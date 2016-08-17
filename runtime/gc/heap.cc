@@ -102,7 +102,8 @@ static constexpr size_t kMaxConcurrentRemainingBytes = 512 * KB;
 // Sticky GC throughput adjustment, divided by 4. Increasing this causes sticky GC to occur more
 // relative to partial/full GC. This may be desirable since sticky GCs interfere less with mutator
 // threads (lower pauses, use less memory bandwidth).
-static constexpr double kStickyGcThroughputAdjustment = 1.0;
+static constexpr double kStickyGcThroughputAdjustment =
+    kEnableGenerationalConcurrentCopyingCollection ? 0.5 : 1.0;
 // Whether or not we compact the zygote in PreZygoteFork.
 static constexpr bool kCompactZygote = kMovingCollector;
 // How many reserve entries are at the end of the allocation stack, these are only needed if the
@@ -260,6 +261,8 @@ Heap::Heap(size_t initial_size,
       verify_object_mode_(kVerifyObjectModeDisabled),
       disable_moving_gc_count_(0),
       semi_space_collector_(nullptr),
+      active_concurrent_copying_collector_(nullptr),
+      young_concurrent_copying_collector_(nullptr),
       concurrent_copying_collector_(nullptr),
       is_running_on_memory_tool_(Runtime::Current()->IsRunningOnMemoryTool()),
       use_tlab_(use_tlab),
@@ -594,11 +597,26 @@ Heap::Heap(size_t initial_size,
     }
     if (MayUseCollector(kCollectorTypeCC)) {
       concurrent_copying_collector_ = new collector::ConcurrentCopying(this,
+                                                                       /*young_gen*/false,
                                                                        "",
                                                                        measure_gc_performance);
+      if (kEnableGenerationalConcurrentCopyingCollection) {
+        young_concurrent_copying_collector_ = new collector::ConcurrentCopying(
+            this,
+            /*young_gen*/true,
+            "young",
+            measure_gc_performance);
+      }
+      active_concurrent_copying_collector_ = concurrent_copying_collector_;
       DCHECK(region_space_ != nullptr);
       concurrent_copying_collector_->SetRegionSpace(region_space_);
+      if (kEnableGenerationalConcurrentCopyingCollection) {
+        young_concurrent_copying_collector_->SetRegionSpace(region_space_);
+      }
       garbage_collectors_.push_back(concurrent_copying_collector_);
+      if (kEnableGenerationalConcurrentCopyingCollection) {
+        garbage_collectors_.push_back(young_concurrent_copying_collector_);
+      }
     }
   }
   if (!GetBootImageSpaces().empty() && non_moving_space_ != nullptr &&
@@ -2120,6 +2138,9 @@ void Heap::ChangeCollector(CollectorType collector_type) {
     gc_plan_.clear();
     switch (collector_type_) {
       case kCollectorTypeCC: {
+        if (kEnableGenerationalConcurrentCopyingCollection) {
+          gc_plan_.push_back(collector::kGcTypeSticky);
+        }
         gc_plan_.push_back(collector::kGcTypeFull);
         if (use_tlab_) {
           ChangeAllocator(kAllocatorTypeRegionTLAB);
@@ -2159,7 +2180,8 @@ void Heap::ChangeCollector(CollectorType collector_type) {
     }
     if (IsGcConcurrent()) {
       concurrent_start_bytes_ =
-          std::max(max_allowed_footprint_, kMinConcurrentRemainingBytes) - kMinConcurrentRemainingBytes;
+          std::max(max_allowed_footprint_, kMinConcurrentRemainingBytes) -
+          kMinConcurrentRemainingBytes;
     } else {
       concurrent_start_bytes_ = std::numeric_limits<size_t>::max();
     }
@@ -2567,12 +2589,19 @@ collector::GcType Heap::CollectGarbageInternal(collector::GcType gc_type,
         collector = semi_space_collector_;
         break;
       case kCollectorTypeCC:
-        collector = concurrent_copying_collector_;
+        if (kEnableGenerationalConcurrentCopyingCollection) {
+          // TODO: Other threads must do the flip checkpoint before they start poking at
+          // active_concurrent_copying_collector_. So we should not concurrency here.
+          active_concurrent_copying_collector_ = (gc_type == collector::kGcTypeSticky) ?
+              young_concurrent_copying_collector_ : concurrent_copying_collector_;
+          active_concurrent_copying_collector_->SetRegionSpace(region_space_);
+        }
+        collector = active_concurrent_copying_collector_;
         break;
       default:
         LOG(FATAL) << "Invalid collector type " << static_cast<size_t>(collector_type_);
     }
-    if (collector != concurrent_copying_collector_) {
+    if (collector != active_concurrent_copying_collector_) {
       temp_space_->GetMemMap()->Protect(PROT_READ | PROT_WRITE);
       if (kIsDebugBuild) {
         // Try to read each page of the memory map in case mprotect didn't work properly b/19894268.
@@ -3435,7 +3464,8 @@ void Heap::GrowForUtilization(collector::GarbageCollector* collector_ran,
   uint64_t target_size;
   collector::GcType gc_type = collector_ran->GetGcType();
   // Use the multiplier to grow more for foreground.
-  const double multiplier = HeapGrowthMultiplier();
+  const double multiplier =
+      HeapGrowthMultiplier() + (kEnableGenerationalConcurrentCopyingCollection ? 3.0 : 0.0);
   const uint64_t adjusted_min_free = static_cast<uint64_t>(min_free_ * multiplier);
   const uint64_t adjusted_max_free = static_cast<uint64_t>(max_free_ * multiplier);
   if (gc_type != collector::kGcTypeSticky) {
@@ -3451,6 +3481,12 @@ void Heap::GrowForUtilization(collector::GarbageCollector* collector_ran,
     collector::GcType non_sticky_gc_type = NonStickyGcType();
     // Find what the next non sticky collector will be.
     collector::GarbageCollector* non_sticky_collector = FindCollectorByGcType(non_sticky_gc_type);
+    if (kEnableGenerationalConcurrentCopyingCollection) {
+      if (non_sticky_collector == nullptr) {
+        non_sticky_collector = FindCollectorByGcType(collector::kGcTypePartial);
+      }
+      CHECK(non_sticky_collector != nullptr);
+    }
     // If the throughput of the current sticky GC >= throughput of the non sticky collector, then
     // do another sticky collection next.
     // We also check that the bytes allocated aren't over the footprint limit in order to prevent a

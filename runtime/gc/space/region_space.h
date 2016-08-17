@@ -43,6 +43,12 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
  public:
   typedef void(*WalkCallback)(void *start, void *end, size_t num_bytes, void* callback_arg);
 
+  enum EvacMode {
+    kEvacModeNewlyAllocated,
+    kEvacModeLivePercentNewlyAllocated,
+    kEvacModeForceAll,
+  };
+
   SpaceType GetType() const OVERRIDE {
     return kSpaceTypeRegionSpace;
   }
@@ -230,6 +236,14 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
     return false;
   }
 
+  bool IsLargeObject(mirror::Object* ref) {
+    if (HasAddress(ref)) {
+      Region* r = RefToRegionUnlocked(ref);
+      return r->IsLarge();
+    }
+    return false;
+  }
+
   bool IsInToSpace(mirror::Object* ref) {
     if (HasAddress(ref)) {
       Region* r = RefToRegionUnlocked(ref);
@@ -255,9 +269,20 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
     return r->Type();
   }
 
+  // Zero live bytes for a large object, used by young gen CC for marking newly allocated large
+  // objects.
+  void ZeroLiveBytesForLargeObject(mirror::Object* ref) {
+    // This method is only used when Generational CC collection is enabled.
+    DCHECK(kEnableGenerationalConcurrentCopyingCollection);
+    DCHECK(IsLargeObject(ref));
+    RefToRegionUnlocked(ref)->ZeroLiveBytes();
+  }
+
   // Determine which regions to evacuate and tag them as
   // from-space. Tag the rest as unevacuated from-space.
-  void SetFromSpace(accounting::ReadBarrierTable* rb_table, bool force_evacuate_all)
+  void SetFromSpace(accounting::ReadBarrierTable* rb_table,
+                    EvacMode evac_mode,
+                    bool clear_live_bytes)
       REQUIRES(!region_lock_);
 
   size_t FromSpaceSize() REQUIRES(!region_lock_);
@@ -386,6 +411,10 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
       return is_large;
     }
 
+    void ZeroLiveBytes() {
+      live_bytes_ = 0;
+    }
+
     // Large-tail allocated.
     bool IsLargeTail() const {
       bool is_large_tail = (state_ == RegionState::kRegionStateLargeTail);
@@ -432,10 +461,14 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
     // collection, RegionSpace::ClearFromSpace will preserve the space
     // used by this region, and tag it as to-space (see
     // Region::SetUnevacFromSpaceAsToSpace below).
-    void SetAsUnevacFromSpace() {
+    void SetAsUnevacFromSpace(bool clear_live_bytes) {
+      // Live bytes are only preserved (i.e. not cleared) during sticky-bit CC collections.
+      DCHECK(kEnableGenerationalConcurrentCopyingCollection || clear_live_bytes);
       DCHECK(!IsFree() && IsInToSpace());
       type_ = RegionType::kRegionTypeUnevacFromSpace;
-      live_bytes_ = 0U;
+      if (clear_live_bytes) {
+        live_bytes_ = 0;
+      }
     }
 
     // Set this region as to-space. Used by RegionSpace::ClearFromSpace.
@@ -443,10 +476,13 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
     void SetUnevacFromSpaceAsToSpace() {
       DCHECK(!IsFree() && IsInUnevacFromSpace());
       type_ = RegionType::kRegionTypeToSpace;
+      if (kEnableGenerationalConcurrentCopyingCollection) {
+        is_newly_allocated_ = false;
+      }
     }
 
     // Return whether this region should be evacuated. Used by RegionSpace::SetFromSpace.
-    ALWAYS_INLINE bool ShouldBeEvacuated();
+    ALWAYS_INLINE bool ShouldBeEvacuated(EvacMode evac_mode);
 
     void AddLiveBytes(size_t live_bytes) {
       DCHECK(IsInUnevacFromSpace());

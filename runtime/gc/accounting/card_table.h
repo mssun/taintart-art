@@ -66,6 +66,11 @@ class CardTable {
     return GetCard(obj) == kCardDirty;
   }
 
+  // Is the object on a clean card?
+  bool IsClean(const mirror::Object* obj) const {
+    return GetCard(obj) == kCardClean;
+  }
+
   // Return the state of the card at an address.
   uint8_t GetCard(const mirror::Object* obj) const {
     return *CardFromAddr(obj);
