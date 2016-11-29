@@ -27,17 +27,18 @@
 #include "debug/method_debug_info.h"
 #include "driver/compiler_options.h"
 #include "elf.h"
-#include "elf_builder.h"
 #include "elf_utils.h"
 #include "globals.h"
 #include "leb128.h"
 #include "linker/buffered_output_stream.h"
+#include "linker/elf_builder.h"
 #include "linker/file_output_stream.h"
 #include "thread-current-inl.h"
 #include "thread_pool.h"
 #include "utils.h"
 
 namespace art {
+namespace linker {
 
 // .eh_frame and .debug_frame are almost identical.
 // Except for some minor formatting differences, the main difference
@@ -315,4 +316,5 @@ size_t ElfWriterQuick<ElfTypes>::GetLoadedSize() {
 template class ElfWriterQuick<ElfTypes32>;
 template class ElfWriterQuick<ElfTypes64>;
 
+}  // namespace linker
 }  // namespace art

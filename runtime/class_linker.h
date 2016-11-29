@@ -43,6 +43,13 @@ namespace space {
   class ImageSpace;
 }  // namespace space
 }  // namespace gc
+
+namespace linker {
+  struct CompilationHelper;
+  class ImageWriter;
+  class OatWriter;
+}  // namespace linker
+
 namespace mirror {
   class ClassLoader;
   class DexCache;
@@ -1276,12 +1283,12 @@ class ClassLinker {
   class FindVirtualMethodHolderVisitor;
 
   friend class AppImageClassLoadersAndDexCachesHelper;
-  friend struct CompilationHelper;  // For Compile in ImageTest.
   friend class ImageDumper;  // for DexLock
-  friend class ImageWriter;  // for GetClassRoots
+  friend struct linker::CompilationHelper;  // For Compile in ImageTest.
+  friend class linker::ImageWriter;  // for GetClassRoots
+  friend class linker::OatWriter;  // for boot image string/class table slot address lookup.
   friend class JniCompilerTest;  // for GetRuntimeQuickGenericJniStub
   friend class JniInternalTest;  // for GetRuntimeQuickGenericJniStub
-  friend class OatWriter;  // for boot image string/class table slot address lookup.
   friend class VMClassLoader;  // for LookupClass and FindClassInBaseDexClassLoader.
   ART_FRIEND_TEST(ClassLinkerTest, RegisterDexFileName);  // for DexLock, and RegisterDexFileLocked
   ART_FRIEND_TEST(mirror::DexCacheMethodHandlesTest, Open);  // for AllocDexCache

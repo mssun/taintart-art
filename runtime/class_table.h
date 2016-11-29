@@ -32,6 +32,14 @@ namespace art {
 
 class OatFile;
 
+namespace linker {
+class ImageWriter;
+}  // namespace linker
+
+namespace linker {
+class OatWriter;
+}  // namespace linker
+
 namespace mirror {
   class Class;
   class ClassLoader;
@@ -286,8 +294,8 @@ class ClassTable {
   // Keep track of oat files with GC roots associated with dex caches in `strong_roots_`.
   std::vector<const OatFile*> oat_files_ GUARDED_BY(lock_);
 
-  friend class ImageWriter;  // for InsertWithoutLocks.
-  friend class OatWriter;  // for boot class TableSlot address lookup.
+  friend class linker::ImageWriter;  // for InsertWithoutLocks.
+  friend class linker::OatWriter;  // for boot class TableSlot address lookup.
 };
 
 }  // namespace art

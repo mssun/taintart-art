@@ -17,6 +17,7 @@
 #include "image_test.h"
 
 namespace art {
+namespace linker {
 
 TEST_F(ImageTest, WriteReadUncompressed) {
   TestWriteRead(ImageHeader::kStorageModeUncompressed);
@@ -30,4 +31,5 @@ TEST_F(ImageTest, WriteReadLZ4HC) {
   TestWriteRead(ImageHeader::kStorageModeLZ4HC);
 }
 
+}  // namespace linker
 }  // namespace art
