@@ -78,9 +78,16 @@ if [ -z "$ANDROID_BUILD_TOP" ]; then
     export ANDROID_BUILD_TOP=$oldwd
 fi
 
+# OUT_DIR defaults to out, and may be relative to $ANDROID_BUILD_TOP.
+# Convert it to an absolute path, since we cd into the tmp_dir to run the tests.
+export OUT_DIR=${OUT_DIR:-out}
+if [[ "$OUT_DIR" != /* ]]; then
+    export OUT_DIR=$ANDROID_BUILD_TOP/$OUT_DIR
+fi
+
 # ANDROID_HOST_OUT is not set in a build environment.
 if [ -z "$ANDROID_HOST_OUT" ]; then
-    export ANDROID_HOST_OUT=${OUT_DIR:-$ANDROID_BUILD_TOP/out}/host/linux-x86
+    export ANDROID_HOST_OUT=${OUT_DIR}/host/linux-x86
 fi
 
 # If JACK_CLASSPATH is not set, assume it only contains core-libart.
