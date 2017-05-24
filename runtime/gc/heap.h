@@ -832,10 +832,13 @@ class Heap {
 
   const Verification* GetVerification() const;
 
+  void PostForkChildAction(Thread* self);
+
  private:
   class ConcurrentGCTask;
   class CollectorTransitionTask;
   class HeapTrimTask;
+  class TriggerPostForkCCGcTask;
 
   // Compact source space to target space. Returns the collector used.
   collector::GarbageCollector* Compact(space::ContinuousMemMapAllocSpace* target_space,
