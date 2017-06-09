@@ -25,12 +25,12 @@
 #include "base/value_object.h"
 #include "dex_file_types.h"
 #include "globals.h"
-#include "invoke_type.h"
 #include "jni.h"
 #include "modifiers.h"
 
 namespace art {
 
+enum InvokeType : uint32_t;
 class MemMap;
 class OatDexFile;
 class Signature;
@@ -1424,24 +1424,7 @@ class ClassDataItemIterator {
   bool MemberIsFinal() const {
     return GetRawMemberAccessFlags() & kAccFinal;
   }
-  InvokeType GetMethodInvokeType(const DexFile::ClassDef& class_def) const {
-    if (HasNextDirectMethod()) {
-      if ((GetRawMemberAccessFlags() & kAccStatic) != 0) {
-        return kStatic;
-      } else {
-        return kDirect;
-      }
-    } else {
-      DCHECK_EQ(GetRawMemberAccessFlags() & kAccStatic, 0U);
-      if ((class_def.access_flags_ & kAccInterface) != 0) {
-        return kInterface;
-      } else if ((GetRawMemberAccessFlags() & kAccConstructor) != 0) {
-        return kSuper;
-      } else {
-        return kVirtual;
-      }
-    }
-  }
+  ALWAYS_INLINE InvokeType GetMethodInvokeType(const DexFile::ClassDef& class_def) const;
   const DexFile::CodeItem* GetMethodCodeItem() const {
     return dex_file_.GetCodeItem(method_.code_off_);
   }

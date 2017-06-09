@@ -21,6 +21,7 @@
 #include "base/logging.h"
 #include "base/stringpiece.h"
 #include "dex_file.h"
+#include "invoke_type.h"
 #include "leb128.h"
 
 namespace art {
@@ -199,6 +200,25 @@ inline bool Signature::operator==(const Signature& rhs) const {
   return true;
 }
 
+inline
+InvokeType ClassDataItemIterator::GetMethodInvokeType(const DexFile::ClassDef& class_def) const {
+  if (HasNextDirectMethod()) {
+    if ((GetRawMemberAccessFlags() & kAccStatic) != 0) {
+      return kStatic;
+    } else {
+      return kDirect;
+    }
+  } else {
+    DCHECK_EQ(GetRawMemberAccessFlags() & kAccStatic, 0U);
+    if ((class_def.access_flags_ & kAccInterface) != 0) {
+      return kInterface;
+    } else if ((GetRawMemberAccessFlags() & kAccConstructor) != 0) {
+      return kSuper;
+    } else {
+      return kVirtual;
+    }
+  }
+}
 
 }  // namespace art
 
