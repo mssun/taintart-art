@@ -1,0 +1,1 @@
+Regression test for an escaping instance of an erroneous class.

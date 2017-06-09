@@ -112,7 +112,6 @@ class CompilerDriver::AOTCompilationStats {
  public:
   AOTCompilationStats()
       : stats_lock_("AOT compilation statistics lock"),
-        resolved_types_(0), unresolved_types_(0),
         resolved_instance_fields_(0), unresolved_instance_fields_(0),
         resolved_local_static_fields_(0), resolved_static_fields_(0), unresolved_static_fields_(0),
         type_based_devirtualization_(0),
@@ -127,7 +126,6 @@ class CompilerDriver::AOTCompilationStats {
   }
 
   void Dump() {
-    DumpStat(resolved_types_, unresolved_types_, "types resolved");
     DumpStat(resolved_instance_fields_, unresolved_instance_fields_, "instance fields resolved");
     DumpStat(resolved_local_static_fields_ + resolved_static_fields_, unresolved_static_fields_,
              "static fields resolved");
@@ -177,16 +175,6 @@ class CompilerDriver::AOTCompilationStats {
 #define STATS_LOCK()
 #endif
 
-  void TypeDoesntNeedAccessCheck() REQUIRES(!stats_lock_) {
-    STATS_LOCK();
-    resolved_types_++;
-  }
-
-  void TypeNeedsAccessCheck() REQUIRES(!stats_lock_) {
-    STATS_LOCK();
-    unresolved_types_++;
-  }
-
   void ResolvedInstanceField() REQUIRES(!stats_lock_) {
     STATS_LOCK();
     resolved_instance_fields_++;
@@ -232,9 +220,6 @@ class CompilerDriver::AOTCompilationStats {
 
  private:
   Mutex stats_lock_;
-
-  size_t resolved_types_;
-  size_t unresolved_types_;
 
   size_t resolved_instance_fields_;
   size_t unresolved_instance_fields_;
@@ -1332,77 +1317,6 @@ void CompilerDriver::UpdateImageClasses(TimingLogger* timings) {
     // Do the marking.
     update->Walk();
   }
-}
-
-bool CompilerDriver::CanAssumeClassIsLoaded(mirror::Class* klass) {
-  Runtime* runtime = Runtime::Current();
-  if (!runtime->IsAotCompiler()) {
-    DCHECK(runtime->UseJitCompilation());
-    // Having the klass reference here implies that the klass is already loaded.
-    return true;
-  }
-  if (!GetCompilerOptions().IsBootImage()) {
-    // Assume loaded only if klass is in the boot image. App classes cannot be assumed
-    // loaded because we don't even know what class loader will be used to load them.
-    bool class_in_image = runtime->GetHeap()->FindSpaceFromObject(klass, false)->IsImageSpace();
-    return class_in_image;
-  }
-  std::string temp;
-  const char* descriptor = klass->GetDescriptor(&temp);
-  return GetCompilerOptions().IsImageClass(descriptor);
-}
-
-bool CompilerDriver::CanAccessTypeWithoutChecks(ObjPtr<mirror::Class> referrer_class,
-                                                ObjPtr<mirror::Class> resolved_class) {
-  if (resolved_class == nullptr) {
-    stats_->TypeNeedsAccessCheck();
-    return false;  // Unknown class needs access checks.
-  }
-  bool is_accessible = resolved_class->IsPublic();  // Public classes are always accessible.
-  if (!is_accessible) {
-    if (referrer_class == nullptr) {
-      stats_->TypeNeedsAccessCheck();
-      return false;  // Incomplete referrer knowledge needs access check.
-    }
-    // Perform access check, will return true if access is ok or false if we're going to have to
-    // check this at runtime (for example for class loaders).
-    is_accessible = referrer_class->CanAccess(resolved_class);
-  }
-  if (is_accessible) {
-    stats_->TypeDoesntNeedAccessCheck();
-  } else {
-    stats_->TypeNeedsAccessCheck();
-  }
-  return is_accessible;
-}
-
-bool CompilerDriver::CanAccessInstantiableTypeWithoutChecks(ObjPtr<mirror::Class> referrer_class,
-                                                            ObjPtr<mirror::Class> resolved_class,
-                                                            bool* finalizable) {
-  if (resolved_class == nullptr) {
-    stats_->TypeNeedsAccessCheck();
-    // Be conservative.
-    *finalizable = true;
-    return false;  // Unknown class needs access checks.
-  }
-  *finalizable = resolved_class->IsFinalizable();
-  bool is_accessible = resolved_class->IsPublic();  // Public classes are always accessible.
-  if (!is_accessible) {
-    if (referrer_class == nullptr) {
-      stats_->TypeNeedsAccessCheck();
-      return false;  // Incomplete referrer knowledge needs access check.
-    }
-    // Perform access and instantiable checks, will return true if access is ok or false if we're
-    // going to have to check this at runtime (for example for class loaders).
-    is_accessible = referrer_class->CanAccess(resolved_class);
-  }
-  bool result = is_accessible && resolved_class->IsInstantiable();
-  if (result) {
-    stats_->TypeDoesntNeedAccessCheck();
-  } else {
-    stats_->TypeNeedsAccessCheck();
-  }
-  return result;
 }
 
 void CompilerDriver::ProcessedInstanceField(bool resolved) {

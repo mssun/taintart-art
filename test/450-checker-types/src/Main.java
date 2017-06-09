@@ -699,7 +699,7 @@ public class Main {
   /// CHECK-DAG:     <<NCArg:l\d+>> NullCheck [<<Arg>>] klass:SubclassA
   /// CHECK-DAG:                    InvokeVirtual [<<NCArg>>] method_name:java.lang.Object.hashCode
 
-  public void testExplicitArgumentMoreSpecific(SubclassA obj) {
+  public static void testExplicitArgumentMoreSpecific(SubclassA obj) {
     // Inlining a method will build it with reference types from its signature,
     // here the callee graph is built with Super as the type of its only argument.
     // Running RTP after its ParameterValue instructions are replaced with actual
