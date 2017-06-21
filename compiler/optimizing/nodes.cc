@@ -865,6 +865,15 @@ void HLoopInformation::Populate() {
   graph->SetHasLoops(true);
 }
 
+void HLoopInformation::PopulateInnerLoopUpwards(HLoopInformation* inner_loop) {
+  DCHECK(inner_loop->GetPreHeader()->GetLoopInformation() == this);
+  blocks_.Union(&inner_loop->blocks_);
+  HLoopInformation* outer_loop = GetPreHeader()->GetLoopInformation();
+  if (outer_loop != nullptr) {
+    outer_loop->PopulateInnerLoopUpwards(this);
+  }
+}
+
 HBasicBlock* HLoopInformation::GetPreHeader() const {
   HBasicBlock* block = header_->GetPredecessors()[0];
   DCHECK(irreducible_ || (block == header_->GetDominator()));
