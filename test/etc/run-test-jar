@@ -570,7 +570,7 @@ if [ "$HAVE_IMAGE" = "n" ]; then
     if [ "${RELOCATE}" = "y" ] ; then
       DALVIKVM_BOOT_OPT="-Ximage:${BOOT_IMAGE}"
     else
-      DALVIKVM_BOOT_OPT="-Ximage:/system/non-existant/core.art"
+      DALVIKVM_BOOT_OPT="-Ximage:/system/non-existent/core.art"
     fi
 else
     DALVIKVM_BOOT_OPT="-Ximage:${BOOT_IMAGE}"

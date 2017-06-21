@@ -31,7 +31,7 @@ public class Main {
         testBadInterfaceMethod();
      }
     /**
-     * Try to create and invoke a non-existant interface method.
+     * Try to create and invoke a non-existent interface method.
      */
     static void testBadInterfaceMethod() {
         BadInterface badiface = new BadIfaceImpl();

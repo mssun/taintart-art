@@ -76,7 +76,7 @@ static bool IsCurrentJniNormal() {
   return gCurrentJni == static_cast<uint32_t>(JniKind::kNormal);
 }
 
-// Signifify that a different kind of JNI is about to be tested.
+// Signify that a different kind of JNI is about to be tested.
 static void UpdateCurrentJni(JniKind kind) {
   gCurrentJni = static_cast<uint32_t>(kind);
 }
