@@ -494,6 +494,10 @@ void Runtime::Abort(const char* msg) {
   UNUSED(old_value);
 #endif
 
+#ifdef ART_TARGET_ANDROID
+  android_set_abort_message(msg);
+#endif
+
   // Ensure that we don't have multiple threads trying to abort at once,
   // which would result in significantly worse diagnostics.
   MutexLock mu(Thread::Current(), *Locks::abort_lock_);
