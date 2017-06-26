@@ -39,6 +39,33 @@ namespace art {
 ProfileSaver* ProfileSaver::instance_ = nullptr;
 pthread_t ProfileSaver::profiler_pthread_ = 0U;
 
+// At what priority to schedule the saver threads. 9 is the lowest foreground priority on device.
+static constexpr int kProfileSaverPthreadPriority = 9;
+
+static void SetProfileSaverThreadPriority(pthread_t thread, int priority) {
+#if defined(ART_TARGET_ANDROID)
+  int result = setpriority(PRIO_PROCESS, pthread_gettid_np(thread), priority);
+  if (result != 0) {
+    LOG(ERROR) << "Failed to setpriority to :" << priority;
+  }
+#else
+  UNUSED(thread);
+  UNUSED(priority);
+#endif
+}
+
+static int GetDefaultThreadPriority() {
+#if defined(ART_TARGET_ANDROID)
+  pthread_attr_t attr;
+  sched_param param;
+  pthread_attr_init(&attr);
+  pthread_attr_getschedparam(&attr, &param);
+  return param.sched_priority;
+#else
+  return 0;
+#endif
+}
+
 ProfileSaver::ProfileSaver(const ProfileSaverOptions& options,
                            const std::string& output_filename,
                            jit::JitCodeCache* jit_code_cache,
@@ -220,6 +247,20 @@ class GetMethodsVisitor : public ClassVisitor {
   uint32_t startup_method_samples_;
 };
 
+class ScopedDefaultPriority {
+ public:
+  explicit ScopedDefaultPriority(pthread_t thread) : thread_(thread) {
+    SetProfileSaverThreadPriority(thread_, GetDefaultThreadPriority());
+  }
+
+  ~ScopedDefaultPriority() {
+    SetProfileSaverThreadPriority(thread_, kProfileSaverPthreadPriority);
+  }
+
+ private:
+  const pthread_t thread_;
+};
+
 void ProfileSaver::FetchAndCacheResolvedClassesAndMethods() {
   ScopedTrace trace(__PRETTY_FUNCTION__);
 
@@ -230,7 +271,15 @@ void ProfileSaver::FetchAndCacheResolvedClassesAndMethods() {
   std::vector<MethodReference> hot_methods;
   std::vector<MethodReference> startup_methods;
   std::set<DexCacheResolvedClasses> resolved_classes;
+  pthread_t profiler_pthread;
   {
+    MutexLock mu(self, *Locks::profiler_lock_);
+    profiler_pthread = profiler_pthread_;
+  }
+  {
+    // Restore profile saver thread priority during the GC critical section. This helps prevent
+    // priority inversions blocking the GC for long periods of time.
+    ScopedDefaultPriority sdp(profiler_pthread);
     ScopedObjectAccess soa(self);
     gc::ScopedGCCriticalSection sgcs(self,
                                      gc::kGcCauseProfileSaver,
@@ -482,15 +531,7 @@ void ProfileSaver::Start(const ProfileSaverOptions& options,
       (&profiler_pthread_, nullptr, &RunProfileSaverThread, reinterpret_cast<void*>(instance_)),
       "Profile saver thread");
 
-#if defined(ART_TARGET_ANDROID)
-  // At what priority to schedule the saver threads. 9 is the lowest foreground priority on device.
-  static constexpr int kProfileSaverPthreadPriority = 9;
-  int result = setpriority(
-      PRIO_PROCESS, pthread_gettid_np(profiler_pthread_), kProfileSaverPthreadPriority);
-  if (result != 0) {
-    PLOG(ERROR) << "Failed to setpriority to :" << kProfileSaverPthreadPriority;
-  }
-#endif
+  SetProfileSaverThreadPriority(profiler_pthread_, kProfileSaverPthreadPriority);
 }
 
 void ProfileSaver::Stop(bool dump_info) {
