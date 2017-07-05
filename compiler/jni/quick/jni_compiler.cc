@@ -646,7 +646,10 @@ static CompiledMethod* ArtJniCompileMethodInternal(CompilerDriver* driver,
   // 16. Remove activation - need to restore callee save registers since the GC may have changed
   //     them.
   DCHECK_EQ(jni_asm->cfi().GetCurrentCFAOffset(), static_cast<int>(frame_size));
-  __ RemoveFrame(frame_size, callee_save_regs);
+  // We expect the compiled method to possibly be suspended during its
+  // execution, except in the case of a CriticalNative method.
+  bool may_suspend = !is_critical_native;
+  __ RemoveFrame(frame_size, callee_save_regs, may_suspend);
   DCHECK_EQ(jni_asm->cfi().GetCurrentCFAOffset(), static_cast<int>(frame_size));
 
   // 17. Finalize code generation
