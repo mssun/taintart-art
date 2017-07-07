@@ -5051,6 +5051,8 @@ jbyteArray Dbg::GetRecentAllocations() {
     StringTable method_names;
     StringTable filenames;
 
+    VLOG(jdwp) << "Collecting StringTables.";
+
     const uint16_t capped_count = CappedAllocRecordCount(records->GetRecentAllocationSize());
     uint16_t count = capped_count;
     for (auto it = records->RBegin(), end = records->REnd();
@@ -5066,6 +5068,11 @@ jbyteArray Dbg::GetRecentAllocations() {
         filenames.Add(GetMethodSourceFile(m), false);
       }
     }
+
+    VLOG(jdwp) << "Done collecting StringTables:" << std::endl
+               << "  ClassNames: " << class_names.Size() << std::endl
+               << "  MethodNames: " << method_names.Size() << std::endl
+               << "  Filenames: " << filenames.Size();
 
     LOG(INFO) << "recent allocation records: " << capped_count;
     LOG(INFO) << "allocation records all objects: " << records->Size();
@@ -5095,6 +5102,8 @@ jbyteArray Dbg::GetRecentAllocations() {
     JDWP::Append2BE(bytes, class_names.Size());
     JDWP::Append2BE(bytes, method_names.Size());
     JDWP::Append2BE(bytes, filenames.Size());
+
+    VLOG(jdwp) << "Dumping allocations with stacks";
 
     std::string temp;
     count = capped_count;
@@ -5133,6 +5142,8 @@ jbyteArray Dbg::GetRecentAllocations() {
       }
     }
 
+    VLOG(jdwp) << "Dumping tables.";
+
     // (xb) class name strings
     // (xb) method name strings
     // (xb) source file strings
@@ -5140,6 +5151,8 @@ jbyteArray Dbg::GetRecentAllocations() {
     class_names.WriteTo(bytes);
     method_names.WriteTo(bytes);
     filenames.WriteTo(bytes);
+
+    VLOG(jdwp) << "GetRecentAllocations: data created. " << bytes.size();
   }
   JNIEnv* env = self->GetJniEnv();
   jbyteArray result = env->NewByteArray(bytes.size());
