@@ -18,7 +18,9 @@
 
 #include <sys/uio.h>
 
+#include <memory>
 #include <set>
+#include <vector>
 
 #include "android-base/stringprintf.h"
 
@@ -4922,11 +4924,20 @@ class StringTable {
   StringTable() {
   }
 
-  void Add(const std::string& str) {
-    table_.insert(str);
-  }
+  void Add(const char* str, bool copy_string) {
+    if (UNLIKELY(copy_string)) {
+      // Check whether it's already there.
+      if (table_.find(str) != table_.end()) {
+        return;
+      }
 
-  void Add(const char* str) {
+      // Make a copy.
+      size_t str_len = strlen(str);
+      char* copy = new char[str_len + 1];
+      strncpy(copy, str, str_len + 1);
+      string_backup_.emplace_back(copy);
+      str = copy;
+    }
     table_.insert(str);
   }
 
@@ -4943,17 +4954,23 @@ class StringTable {
   }
 
   void WriteTo(std::vector<uint8_t>& bytes) const {
-    for (const std::string& str : table_) {
-      const char* s = str.c_str();
-      size_t s_len = CountModifiedUtf8Chars(s);
+    for (const char* str : table_) {
+      size_t s_len = CountModifiedUtf8Chars(str);
       std::unique_ptr<uint16_t[]> s_utf16(new uint16_t[s_len]);
-      ConvertModifiedUtf8ToUtf16(s_utf16.get(), s);
+      ConvertModifiedUtf8ToUtf16(s_utf16.get(), str);
       JDWP::AppendUtf16BE(bytes, s_utf16.get(), s_len);
     }
   }
 
  private:
-  std::set<std::string> table_;
+  struct ConstCharStarComparator {
+    bool operator()(const char *s1, const char *s2) const {
+      return strcmp(s1, s2) < 0;
+    }
+  };
+
+  std::set<const char*, ConstCharStarComparator> table_;
+  std::vector<std::unique_ptr<char[]>> string_backup_;
   DISALLOW_COPY_AND_ASSIGN(StringTable);
 };
 
@@ -5040,12 +5057,13 @@ jbyteArray Dbg::GetRecentAllocations() {
          count > 0 && it != end; count--, it++) {
       const gc::AllocRecord* record = &it->second;
       std::string temp;
-      class_names.Add(record->GetClassDescriptor(&temp));
+      const char* class_descr = record->GetClassDescriptor(&temp);
+      class_names.Add(class_descr, !temp.empty());
       for (size_t i = 0, depth = record->GetDepth(); i < depth; i++) {
         ArtMethod* m = record->StackElement(i).GetMethod();
-        class_names.Add(m->GetDeclaringClassDescriptor());
-        method_names.Add(m->GetName());
-        filenames.Add(GetMethodSourceFile(m));
+        class_names.Add(m->GetDeclaringClassDescriptor(), false);
+        method_names.Add(m->GetName(), false);
+        filenames.Add(GetMethodSourceFile(m), false);
       }
     }
 
