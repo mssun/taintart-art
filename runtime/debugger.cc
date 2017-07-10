@@ -18,7 +18,9 @@
 
 #include <sys/uio.h>
 
+#include <memory>
 #include <set>
+#include <vector>
 
 #include "android-base/stringprintf.h"
 
@@ -4918,24 +4920,81 @@ void Dbg::DumpRecentAllocations() {
 }
 
 class StringTable {
+ private:
+  struct Entry {
+    explicit Entry(const char* data_in)
+        : data(data_in), hash(ComputeModifiedUtf8Hash(data_in)), index(0) {
+    }
+    Entry(const Entry& entry) = default;
+    Entry(Entry&& entry) = default;
+
+    // Pointer to the actual string data.
+    const char* data;
+
+    // The hash of the data.
+    const uint32_t hash;
+
+    // The index. This will be filled in on Finish and is not part of the ordering, so mark it
+    // mutable.
+    mutable uint32_t index;
+
+    bool operator==(const Entry& other) const {
+      return strcmp(data, other.data) == 0;
+    }
+  };
+  struct EntryHash {
+    size_t operator()(const Entry& entry) const {
+      return entry.hash;
+    }
+  };
+
  public:
-  StringTable() {
+  StringTable() : finished_(false) {
   }
 
-  void Add(const std::string& str) {
-    table_.insert(str);
+  void Add(const char* str, bool copy_string) {
+    DCHECK(!finished_);
+    if (UNLIKELY(copy_string)) {
+      // Check whether it's already there.
+      Entry entry(str);
+      if (table_.find(entry) != table_.end()) {
+        return;
+      }
+
+      // Make a copy.
+      size_t str_len = strlen(str);
+      char* copy = new char[str_len + 1];
+      strncpy(copy, str, str_len + 1);
+      string_backup_.emplace_back(copy);
+      str = copy;
+    }
+    Entry entry(str);
+    table_.insert(entry);
   }
 
-  void Add(const char* str) {
-    table_.insert(str);
+  // Update all entries and give them an index. Note that this is likely not the insertion order,
+  // as the set will with high likelihood reorder elements. Thus, Add must not be called after
+  // Finish, and Finish must be called before IndexOf. In that case, WriteTo will walk in
+  // the same order as Finish, and indices will agree. The order invariant, as well as indices,
+  // are enforced through debug checks.
+  void Finish() {
+    DCHECK(!finished_);
+    finished_ = true;
+    uint32_t index = 0;
+    for (auto& entry : table_) {
+      entry.index = index;
+      ++index;
+    }
   }
 
   size_t IndexOf(const char* s) const {
-    auto it = table_.find(s);
+    DCHECK(finished_);
+    Entry entry(s);
+    auto it = table_.find(entry);
     if (it == table_.end()) {
       LOG(FATAL) << "IndexOf(\"" << s << "\") failed";
     }
-    return std::distance(table_.begin(), it);
+    return it->index;
   }
 
   size_t Size() const {
@@ -4943,17 +5002,24 @@ class StringTable {
   }
 
   void WriteTo(std::vector<uint8_t>& bytes) const {
-    for (const std::string& str : table_) {
-      const char* s = str.c_str();
-      size_t s_len = CountModifiedUtf8Chars(s);
+    DCHECK(finished_);
+    uint32_t cur_index = 0;
+    for (const auto& entry : table_) {
+      DCHECK_EQ(cur_index++, entry.index);
+
+      size_t s_len = CountModifiedUtf8Chars(entry.data);
       std::unique_ptr<uint16_t[]> s_utf16(new uint16_t[s_len]);
-      ConvertModifiedUtf8ToUtf16(s_utf16.get(), s);
+      ConvertModifiedUtf8ToUtf16(s_utf16.get(), entry.data);
       JDWP::AppendUtf16BE(bytes, s_utf16.get(), s_len);
     }
   }
 
  private:
-  std::set<std::string> table_;
+  std::unordered_set<Entry, EntryHash> table_;
+  std::vector<std::unique_ptr<char[]>> string_backup_;
+
+  bool finished_;
+
   DISALLOW_COPY_AND_ASSIGN(StringTable);
 };
 
@@ -5034,20 +5100,39 @@ jbyteArray Dbg::GetRecentAllocations() {
     StringTable method_names;
     StringTable filenames;
 
+    VLOG(jdwp) << "Collecting StringTables.";
+
     const uint16_t capped_count = CappedAllocRecordCount(records->GetRecentAllocationSize());
     uint16_t count = capped_count;
+    size_t alloc_byte_count = 0;
     for (auto it = records->RBegin(), end = records->REnd();
          count > 0 && it != end; count--, it++) {
       const gc::AllocRecord* record = &it->second;
       std::string temp;
-      class_names.Add(record->GetClassDescriptor(&temp));
+      const char* class_descr = record->GetClassDescriptor(&temp);
+      class_names.Add(class_descr, !temp.empty());
+
+      // Size + tid + class name index + stack depth.
+      alloc_byte_count += 4u + 2u + 2u + 1u;
+
       for (size_t i = 0, depth = record->GetDepth(); i < depth; i++) {
         ArtMethod* m = record->StackElement(i).GetMethod();
-        class_names.Add(m->GetDeclaringClassDescriptor());
-        method_names.Add(m->GetName());
-        filenames.Add(GetMethodSourceFile(m));
+        class_names.Add(m->GetDeclaringClassDescriptor(), false);
+        method_names.Add(m->GetName(), false);
+        filenames.Add(GetMethodSourceFile(m), false);
       }
+
+      // Depth * (class index + method name index + file name index + line number).
+      alloc_byte_count += record->GetDepth() * (2u + 2u + 2u + 2u);
     }
+
+    class_names.Finish();
+    method_names.Finish();
+    filenames.Finish();
+    VLOG(jdwp) << "Done collecting StringTables:" << std::endl
+               << "  ClassNames: " << class_names.Size() << std::endl
+               << "  MethodNames: " << method_names.Size() << std::endl
+               << "  Filenames: " << filenames.Size();
 
     LOG(INFO) << "recent allocation records: " << capped_count;
     LOG(INFO) << "allocation records all objects: " << records->Size();
@@ -5077,6 +5162,12 @@ jbyteArray Dbg::GetRecentAllocations() {
     JDWP::Append2BE(bytes, class_names.Size());
     JDWP::Append2BE(bytes, method_names.Size());
     JDWP::Append2BE(bytes, filenames.Size());
+
+    VLOG(jdwp) << "Dumping allocations with stacks";
+
+    // Enlarge the vector for the allocation data.
+    size_t reserve_size = bytes.size() + alloc_byte_count;
+    bytes.reserve(reserve_size);
 
     std::string temp;
     count = capped_count;
@@ -5115,6 +5206,9 @@ jbyteArray Dbg::GetRecentAllocations() {
       }
     }
 
+    CHECK_EQ(bytes.size(), reserve_size);
+    VLOG(jdwp) << "Dumping tables.";
+
     // (xb) class name strings
     // (xb) method name strings
     // (xb) source file strings
@@ -5122,6 +5216,8 @@ jbyteArray Dbg::GetRecentAllocations() {
     class_names.WriteTo(bytes);
     method_names.WriteTo(bytes);
     filenames.WriteTo(bytes);
+
+    VLOG(jdwp) << "GetRecentAllocations: data created. " << bytes.size();
   }
   JNIEnv* env = self->GetJniEnv();
   jbyteArray result = env->NewByteArray(bytes.size());
