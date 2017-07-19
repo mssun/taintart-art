@@ -845,6 +845,13 @@ static void UpdateInputsUsers(HInstruction* instruction) {
   DCHECK(!instruction->HasEnvironment());
 }
 
+void HBasicBlock::ReplaceAndRemovePhiWith(HPhi* initial, HPhi* replacement) {
+  DCHECK(initial->GetBlock() == this);
+  InsertPhiAfter(replacement, initial);
+  initial->ReplaceWith(replacement);
+  RemovePhi(initial);
+}
+
 void HBasicBlock::ReplaceAndRemoveInstructionWith(HInstruction* initial,
                                                   HInstruction* replacement) {
   DCHECK(initial->GetBlock() == this);
@@ -2900,6 +2907,28 @@ void HInstruction::RemoveEnvironmentUsers() {
     user->SetRawEnvAt(use.GetIndex(), nullptr);
   }
   env_uses_.clear();
+}
+
+HInstruction* ReplaceInstrOrPhiByClone(HInstruction* instr) {
+  HInstruction* clone = instr->Clone(instr->GetBlock()->GetGraph()->GetAllocator());
+  HBasicBlock* block = instr->GetBlock();
+
+  if (instr->IsPhi()) {
+    HPhi* phi = instr->AsPhi();
+    DCHECK(!phi->HasEnvironment());
+    HPhi* phi_clone = clone->AsPhi();
+    block->ReplaceAndRemovePhiWith(phi, phi_clone);
+  } else {
+    block->ReplaceAndRemoveInstructionWith(instr, clone);
+    if (instr->HasEnvironment()) {
+      clone->CopyEnvironmentFrom(instr->GetEnvironment());
+      HLoopInformation* loop_info = block->GetLoopInformation();
+      if (instr->IsSuspendCheck() && loop_info != nullptr) {
+        loop_info->SetSuspendCheck(clone->AsSuspendCheck());
+      }
+    }
+  }
+  return clone;
 }
 
 // Returns an instruction with the opposite Boolean value from 'cond'.
