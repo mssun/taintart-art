@@ -2098,9 +2098,13 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
     return IsRemovable() && !HasUses();
   }
 
-  // Does this instruction strictly dominate `other_instruction`?
-  // Returns false if this instruction and `other_instruction` are the same.
+  // Does this instruction dominate (strictly or in regular sense depending on 'strictly')
+  // `other_instruction`?
+  // Returns '!strictly' if this instruction and `other_instruction` are the same.
   // Aborts if this instruction and `other_instruction` are both phis.
+  bool Dominates(HInstruction* other_instruction, bool strictly) const;
+
+  // Return 'Dominates(other_instruction, /*strictly*/ true)'.
   bool StrictlyDominates(HInstruction* other_instruction) const;
 
   int GetId() const { return id_; }
@@ -2161,7 +2165,13 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
   void SetLocations(LocationSummary* locations) { locations_ = locations; }
 
   void ReplaceWith(HInstruction* instruction);
-  void ReplaceUsesDominatedBy(HInstruction* dominator, HInstruction* replacement);
+
+  // Replace all uses of the instruction which are dominated by 'dominator' with 'replacement'.
+  // 'strictly' determines whether strict or regular domination relation should be checked.
+  void ReplaceUsesDominatedBy(HInstruction* dominator,
+                              HInstruction* replacement,
+                              bool strictly = true);
+
   void ReplaceInput(HInstruction* replacement, size_t index);
 
   // This is almost the same as doing `ReplaceWith()`. But in this helper, the

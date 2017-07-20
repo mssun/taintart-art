@@ -994,6 +994,27 @@ void InstructionSimplifierVisitor::VisitIf(HIf* instruction) {
     instruction->GetBlock()->SwapSuccessors();
     RecordSimplification();
   }
+  HInstruction* input = instruction->InputAt(0);
+
+  // If a condition 'cond' is evaluated in an HIf instruction then in the successors of the
+  // IF_BLOCK we statically know the value of the condition (TRUE in TRUE_SUCC, FALSE in
+  // FALSE_SUCC). Using that we can replace another evaluation (use) EVAL of the same 'cond'
+  // with TRUE value (FALSE value) if every path from the ENTRY_BLOCK to EVAL_BLOCK contains the
+  // edge HIF_BLOCK->TRUE_SUCC (HIF_BLOCK->FALSE_SUCC).
+  if (!input->IsConstant()) {
+    HBasicBlock* true_succ = instruction->IfTrueSuccessor();
+    HBasicBlock* false_succ = instruction->IfFalseSuccessor();
+
+    DCHECK_EQ(true_succ->GetPredecessors().size(), 1u);
+    input->ReplaceUsesDominatedBy(
+        true_succ->GetFirstInstruction(), GetGraph()->GetIntConstant(1), /* strictly */ false);
+    RecordSimplification();
+
+    DCHECK_EQ(false_succ->GetPredecessors().size(), 1u);
+    input->ReplaceUsesDominatedBy(
+        false_succ->GetFirstInstruction(), GetGraph()->GetIntConstant(0), /* strictly */ false);
+    RecordSimplification();
+  }
 }
 
 void InstructionSimplifierVisitor::VisitArrayLength(HArrayLength* instruction) {
