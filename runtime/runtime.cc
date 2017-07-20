@@ -39,6 +39,7 @@
 
 #include "android-base/strings.h"
 
+#include "aot_class_linker.h"
 #include "arch/arm/quick_method_frame_info_arm.h"
 #include "arch/arm/registers_arm.h"
 #include "arch/arm64/quick_method_frame_info_arm64.h"
@@ -1288,7 +1289,11 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   GetHeap()->EnableObjectValidation();
 
   CHECK_GE(GetHeap()->GetContinuousSpaces().size(), 1U);
-  class_linker_ = new ClassLinker(intern_table_);
+  if (UNLIKELY(IsAotCompiler())) {
+    class_linker_ = new AotClassLinker(intern_table_);
+  } else {
+    class_linker_ = new ClassLinker(intern_table_);
+  }
   cha_ = new ClassHierarchyAnalysis;
   if (GetHeap()->HasBootImageSpace()) {
     bool result = class_linker_->InitFromBootImage(&error_msg);
