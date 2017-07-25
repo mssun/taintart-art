@@ -563,7 +563,14 @@ class Mips64Assembler FINAL : public Assembler, public JNIMacroAssembler<Pointer
   void Bnezc(GpuRegister rs, uint32_t imm21);
   void Bc1eqz(FpuRegister ft, uint16_t imm16);
   void Bc1nez(FpuRegister ft, uint16_t imm16);
-  void Beqz(GpuRegister rt, uint16_t imm16);
+  void Beq(GpuRegister rs, GpuRegister rt, uint16_t imm16);  // R2
+  void Bne(GpuRegister rs, GpuRegister rt, uint16_t imm16);  // R2
+  void Beqz(GpuRegister rt, uint16_t imm16);  // R2
+  void Bnez(GpuRegister rt, uint16_t imm16);  // R2
+  void Bltz(GpuRegister rt, uint16_t imm16);  // R2
+  void Bgez(GpuRegister rt, uint16_t imm16);  // R2
+  void Blez(GpuRegister rt, uint16_t imm16);  // R2
+  void Bgtz(GpuRegister rt, uint16_t imm16);  // R2
 
   void AddS(FpuRegister fd, FpuRegister fs, FpuRegister ft);
   void SubS(FpuRegister fd, FpuRegister fs, FpuRegister ft);
@@ -922,22 +929,57 @@ class Mips64Assembler FINAL : public Assembler, public JNIMacroAssembler<Pointer
   // the table data) and should be loaded using LoadLabelAddress().
   JumpTable* CreateJumpTable(std::vector<Mips64Label*>&& labels);
 
-  void Bc(Mips64Label* label);
-  void Balc(Mips64Label* label);
-  void Bltc(GpuRegister rs, GpuRegister rt, Mips64Label* label);
-  void Bltzc(GpuRegister rt, Mips64Label* label);
-  void Bgtzc(GpuRegister rt, Mips64Label* label);
-  void Bgec(GpuRegister rs, GpuRegister rt, Mips64Label* label);
-  void Bgezc(GpuRegister rt, Mips64Label* label);
-  void Blezc(GpuRegister rt, Mips64Label* label);
-  void Bltuc(GpuRegister rs, GpuRegister rt, Mips64Label* label);
-  void Bgeuc(GpuRegister rs, GpuRegister rt, Mips64Label* label);
-  void Beqc(GpuRegister rs, GpuRegister rt, Mips64Label* label);
-  void Bnec(GpuRegister rs, GpuRegister rt, Mips64Label* label);
-  void Beqzc(GpuRegister rs, Mips64Label* label);
-  void Bnezc(GpuRegister rs, Mips64Label* label);
-  void Bc1eqz(FpuRegister ft, Mips64Label* label);
-  void Bc1nez(FpuRegister ft, Mips64Label* label);
+  // When `is_bare` is false, the branches will promote to long (if the range
+  // of the individual branch instruction is insufficient) and the delay/
+  // forbidden slots will be taken care of.
+  // Use `is_bare = false` when the branch target may be out of reach of the
+  // individual branch instruction. IOW, this is for general purpose use.
+  //
+  // When `is_bare` is true, just the branch instructions will be generated
+  // leaving delay/forbidden slot filling up to the caller and the branches
+  // won't promote to long if the range is insufficient (you'll get a
+  // compilation error when the range is exceeded).
+  // Use `is_bare = true` when the branch target is known to be within reach
+  // of the individual branch instruction. This is intended for small local
+  // optimizations around delay/forbidden slots.
+  // Also prefer using `is_bare = true` if the code near the branch is to be
+  // patched or analyzed at run time (e.g. introspection) to
+  // - show the intent and
+  // - fail during compilation rather than during patching/execution if the
+  //   bare branch range is insufficent but the code size and layout are
+  //   expected to remain unchanged
+  //
+  // R6 compact branches without delay/forbidden slots.
+  void Bc(Mips64Label* label, bool is_bare = false);
+  void Balc(Mips64Label* label, bool is_bare = false);
+  // R6 compact branches with forbidden slots.
+  void Bltc(GpuRegister rs, GpuRegister rt, Mips64Label* label, bool is_bare = false);
+  void Bltzc(GpuRegister rt, Mips64Label* label, bool is_bare = false);
+  void Bgtzc(GpuRegister rt, Mips64Label* label, bool is_bare = false);
+  void Bgec(GpuRegister rs, GpuRegister rt, Mips64Label* label, bool is_bare = false);
+  void Bgezc(GpuRegister rt, Mips64Label* label, bool is_bare = false);
+  void Blezc(GpuRegister rt, Mips64Label* label, bool is_bare = false);
+  void Bltuc(GpuRegister rs, GpuRegister rt, Mips64Label* label, bool is_bare = false);
+  void Bgeuc(GpuRegister rs, GpuRegister rt, Mips64Label* label, bool is_bare = false);
+  void Beqc(GpuRegister rs, GpuRegister rt, Mips64Label* label, bool is_bare = false);
+  void Bnec(GpuRegister rs, GpuRegister rt, Mips64Label* label, bool is_bare = false);
+  void Beqzc(GpuRegister rs, Mips64Label* label, bool is_bare = false);
+  void Bnezc(GpuRegister rs, Mips64Label* label, bool is_bare = false);
+  // R6 branches with delay slots.
+  void Bc1eqz(FpuRegister ft, Mips64Label* label, bool is_bare = false);
+  void Bc1nez(FpuRegister ft, Mips64Label* label, bool is_bare = false);
+  // R2 branches with delay slots that are also available on R6.
+  // The `is_bare` parameter exists and is checked in these branches only to
+  // prevent programming mistakes. These branches never promote to long, not
+  // even if `is_bare` is false.
+  void Bltz(GpuRegister rt, Mips64Label* label, bool is_bare = false);  // R2
+  void Bgtz(GpuRegister rt, Mips64Label* label, bool is_bare = false);  // R2
+  void Bgez(GpuRegister rt, Mips64Label* label, bool is_bare = false);  // R2
+  void Blez(GpuRegister rt, Mips64Label* label, bool is_bare = false);  // R2
+  void Beq(GpuRegister rs, GpuRegister rt, Mips64Label* label, bool is_bare = false);  // R2
+  void Bne(GpuRegister rs, GpuRegister rt, Mips64Label* label, bool is_bare = false);  // R2
+  void Beqz(GpuRegister rs, Mips64Label* label, bool is_bare = false);  // R2
+  void Bnez(GpuRegister rs, Mips64Label* label, bool is_bare = false);  // R2
 
   void EmitLoad(ManagedRegister m_dst, GpuRegister src_register, int32_t src_offset, size_t size);
   void AdjustBaseAndOffset(GpuRegister& base, int32_t& offset, bool is_doubleword);
@@ -1379,10 +1421,16 @@ class Mips64Assembler FINAL : public Assembler, public JNIMacroAssembler<Pointer
   class Branch {
    public:
     enum Type {
-      // Short branches.
+      // R6 short branches (can be promoted to long).
       kUncondBranch,
       kCondBranch,
       kCall,
+      // R6 short branches (can't be promoted to long), forbidden/delay slots filled manually.
+      kBareUncondBranch,
+      kBareCondBranch,
+      kBareCall,
+      // R2 short branches (can't be promoted to long), delay slots filled manually.
+      kR2BareCondBranch,
       // Near label.
       kLabel,
       // Near literals.
@@ -1425,8 +1473,8 @@ class Mips64Assembler FINAL : public Assembler, public JNIMacroAssembler<Pointer
       // different origins, e.g. to PC or PC+4. Encode the origin distance (as a number of 4-byte
       // instructions) from the instruction containing the offset.
       uint32_t pc_org;
-      // How large (in bits) a PC-relative offset can be for a given type of branch (kCondBranch is
-      // an exception: use kOffset23 for beqzc/bnezc).
+      // How large (in bits) a PC-relative offset can be for a given type of branch (kCondBranch
+      // and kBareCondBranch are an exception: use kOffset23 for beqzc/bnezc).
       OffsetBits offset_size;
       // Some MIPS instructions with PC-relative offsets shift the offset by 2. Encode the shift
       // count.
@@ -1435,13 +1483,15 @@ class Mips64Assembler FINAL : public Assembler, public JNIMacroAssembler<Pointer
     static const BranchInfo branch_info_[/* Type */];
 
     // Unconditional branch or call.
-    Branch(uint32_t location, uint32_t target, bool is_call);
+    Branch(uint32_t location, uint32_t target, bool is_call, bool is_bare);
     // Conditional branch.
-    Branch(uint32_t location,
+    Branch(bool is_r6,
+           uint32_t location,
            uint32_t target,
            BranchCondition condition,
            GpuRegister lhs_reg,
-           GpuRegister rhs_reg);
+           GpuRegister rhs_reg,
+           bool is_bare);
     // Label address (in literal area) or literal.
     Branch(uint32_t location, GpuRegister dest_reg, Type label_or_literal_type);
 
@@ -1467,6 +1517,7 @@ class Mips64Assembler FINAL : public Assembler, public JNIMacroAssembler<Pointer
     uint32_t GetOldSize() const;
     uint32_t GetEndLocation() const;
     uint32_t GetOldEndLocation() const;
+    bool IsBare() const;
     bool IsLong() const;
     bool IsResolved() const;
 
@@ -1527,7 +1578,7 @@ class Mips64Assembler FINAL : public Assembler, public JNIMacroAssembler<Pointer
 
    private:
     // Completes branch construction by determining and recording its type.
-    void InitializeType(Type initial_type);
+    void InitializeType(Type initial_type, bool is_r6);
     // Helper for the above.
     void InitShortOrLong(OffsetBits ofs_size, Type short_type, Type long_type);
 
@@ -1554,7 +1605,8 @@ class Mips64Assembler FINAL : public Assembler, public JNIMacroAssembler<Pointer
   void EmitI26(int opcode, uint32_t imm26);
   void EmitFR(int opcode, int fmt, FpuRegister ft, FpuRegister fs, FpuRegister fd, int funct);
   void EmitFI(int opcode, int fmt, FpuRegister rt, uint16_t imm);
-  void EmitBcondc(BranchCondition cond, GpuRegister rs, GpuRegister rt, uint32_t imm16_21);
+  void EmitBcondR6(BranchCondition cond, GpuRegister rs, GpuRegister rt, uint32_t imm16_21);
+  void EmitBcondR2(BranchCondition cond, GpuRegister rs, GpuRegister rt, uint16_t imm16);
   void EmitMsa3R(int operation,
                  int df,
                  VectorRegister wt,
@@ -1568,12 +1620,14 @@ class Mips64Assembler FINAL : public Assembler, public JNIMacroAssembler<Pointer
   void EmitMsa2R(int operation, int df, VectorRegister ws, VectorRegister wd, int minor_opcode);
   void EmitMsa2RF(int operation, int df, VectorRegister ws, VectorRegister wd, int minor_opcode);
 
-  void Buncond(Mips64Label* label);
+  void Buncond(Mips64Label* label, bool is_bare);
   void Bcond(Mips64Label* label,
+             bool is_r6,
+             bool is_bare,
              BranchCondition condition,
              GpuRegister lhs,
              GpuRegister rhs = ZERO);
-  void Call(Mips64Label* label);
+  void Call(Mips64Label* label, bool is_bare);
   void FinalizeLabeledBranch(Mips64Label* label);
 
   Branch* GetBranch(uint32_t branch_id);
