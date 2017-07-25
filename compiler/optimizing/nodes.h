@@ -5871,6 +5871,10 @@ class HLoadString FINAL : public HInstruction {
     // Used for boot image strings referenced by apps in AOT- and JIT-compiled code.
     kBootImageAddress,
 
+    // Use a PC-relative load from a boot image InternTable mmapped into the .bss
+    // of the oat file.
+    kBootImageInternTable,
+
     // Load from an entry in the .bss section using a PC-relative load.
     // Used for strings outside boot image when .bss is accessible with a PC-relative load.
     kBssEntry,
@@ -5930,6 +5934,7 @@ class HLoadString FINAL : public HInstruction {
     LoadKind load_kind = GetLoadKind();
     if (load_kind == LoadKind::kBootImageLinkTimePcRelative ||
         load_kind == LoadKind::kBootImageAddress ||
+        load_kind == LoadKind::kBootImageInternTable ||
         load_kind == LoadKind::kJitTableAddress) {
       return false;
     }
@@ -5990,8 +5995,9 @@ inline void HLoadString::AddSpecialInput(HInstruction* special_input) {
   // The special input is used for PC-relative loads on some architectures,
   // including literal pool loads, which are PC-relative too.
   DCHECK(GetLoadKind() == LoadKind::kBootImageLinkTimePcRelative ||
-         GetLoadKind() == LoadKind::kBssEntry ||
-         GetLoadKind() == LoadKind::kBootImageAddress) << GetLoadKind();
+         GetLoadKind() == LoadKind::kBootImageAddress ||
+         GetLoadKind() == LoadKind::kBootImageInternTable ||
+         GetLoadKind() == LoadKind::kBssEntry) << GetLoadKind();
   // HLoadString::GetInputRecords() returns an empty array at this point,
   // so use the GetInputRecords() from the base class to set the input record.
   DCHECK(special_input_.GetInstruction() == nullptr);
