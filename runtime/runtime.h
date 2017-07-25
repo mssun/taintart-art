@@ -72,7 +72,6 @@ namespace verifier {
 class ArenaPool;
 class ArtMethod;
 enum class CalleeSaveType: uint32_t;
-class ClassHierarchyAnalysis;
 class ClassLinker;
 class CompilerCallbacks;
 class DexFile;
@@ -645,10 +644,6 @@ class Runtime {
   void AddSystemWeakHolder(gc::AbstractSystemWeakHolder* holder);
   void RemoveSystemWeakHolder(gc::AbstractSystemWeakHolder* holder);
 
-  ClassHierarchyAnalysis* GetClassHierarchyAnalysis() {
-    return cha_;
-  }
-
   void AttachAgent(const std::string& agent_arg);
 
   const std::list<ti::Agent>& GetAgents() const {
@@ -938,8 +933,6 @@ class Runtime {
 
   // Generic system-weak holders.
   std::vector<gc::AbstractSystemWeakHolder*> system_weak_holders_;
-
-  ClassHierarchyAnalysis* cha_;
 
   std::unique_ptr<RuntimeCallbacks> callbacks_;
 

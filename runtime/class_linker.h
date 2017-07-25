@@ -57,6 +57,7 @@ namespace mirror {
   class StackTraceElement;
 }  // namespace mirror
 
+class ClassHierarchyAnalysis;
 class ClassTable;
 template<class T> class Handle;
 class ImtConflictTable;
@@ -674,6 +675,10 @@ class ClassLinker {
   bool ValidateSuperClassDescriptors(Handle<mirror::Class> klass)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  ClassHierarchyAnalysis* GetClassHierarchyAnalysis() {
+    return cha_.get();
+  }
+
   struct DexCacheData {
     // Construct an invalid data object.
     DexCacheData()
@@ -728,7 +733,7 @@ class ClassLinker {
       REQUIRES(!Locks::dex_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static void DeleteClassLoader(Thread* self, const ClassLoaderData& data)
+  void DeleteClassLoader(Thread* self, const ClassLoaderData& data)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   void VisitClassesInternal(ClassVisitor* visitor)
@@ -1254,6 +1259,8 @@ class ClassLinker {
 
   // Image pointer size.
   PointerSize image_pointer_size_;
+
+  std::unique_ptr<ClassHierarchyAnalysis> cha_;
 
   class FindVirtualMethodHolderVisitor;
 
