@@ -17,8 +17,6 @@
 package com.android.ahat.heapdump;
 
 import com.android.ahat.dominators.DominatorsComputation;
-import com.android.tools.perflib.heap.ClassObj;
-import com.android.tools.perflib.heap.Instance;
 import java.awt.image.BufferedImage;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -34,14 +32,15 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   private final long mId;
 
   // Fields initialized in initialize().
-  private Size mSize;
   private AhatHeap mHeap;
   private AhatClassObj mClassObj;
   private Site mSite;
 
-  // If this instance is a root, mRootTypes contains a set of the root types.
-  // If this instance is not a root, mRootTypes is null.
-  private List<String> mRootTypes;
+  // Bit vector of the root types of this object.
+  private int mRootTypes;
+
+  // Field initialized via addRegisterednativeSize.
+  private long mRegisteredNativeSize = 0;
 
   // Fields initialized in computeReverseReferences().
   private AhatInstance mNextInstanceToGcRoot;
@@ -55,10 +54,15 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   private AhatInstance mImmediateDominator;
   private List<AhatInstance> mDominated = new ArrayList<AhatInstance>();
   private Size[] mRetainedSizes;
-  private Object mDominatorsComputationState;
 
   // The baseline instance for purposes of diff.
   private AhatInstance mBaseline;
+
+  // temporary user data associated with this instance. This is used for a
+  // couple different purposes:
+  // 1. During parsing of instances, to store temporary field data.
+  // 2. During dominators computation, to store the dominators computation state.
+  private Object mTemporaryUserData;
 
   public AhatInstance(long id) {
     mId = id;
@@ -66,22 +70,13 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
-   * Initializes this AhatInstance based on the given perflib instance.
-   * The AhatSnapshot should be used to look up AhatInstances and AhatHeaps.
-   * There is no guarantee that the AhatInstances returned by
-   * snapshot.findInstance have been initialized yet.
+   * Initialize this AhatInstance based on the the given info.
    */
-  void initialize(AhatSnapshot snapshot, Instance inst, Site site) {
-    site.addInstance(this);
-    mSize = new Size(inst.getSize(), 0);
-    mHeap = snapshot.getHeap(inst.getHeap().getName());
-
-    ClassObj clsObj = inst.getClassObj();
-    if (clsObj != null) {
-      mClassObj = snapshot.findClassObj(clsObj.getId());
-    }
-
+  void initialize(AhatHeap heap, Site site, AhatClassObj classObj) {
+    mHeap = heap;
     mSite = site;
+    site.addInstance(this);
+    mClassObj = classObj;
   }
 
   /**
@@ -95,8 +90,18 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
    * Returns the shallow number of bytes this object takes up.
    */
   public Size getSize() {
-    return mSize;
+    return new Size(mClassObj.getInstanceSize() + getExtraJavaSize(), mRegisteredNativeSize);
   }
+
+  /**
+   * Returns the number of bytes taken up by this object on the Java heap
+   * beyond the standard instance size as recorded by the class of this
+   * instance.
+   *
+   * For example, class objects will have extra size for static fields and
+   * array objects will have extra size for the array elements.
+   */
+  protected abstract long getExtraJavaSize();
 
   /**
    * Returns the number of bytes belonging to the given heap that this instance
@@ -127,7 +132,7 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
    * Increment the number of registered native bytes tied to this object.
    */
   void addRegisteredNativeSize(long size) {
-    mSize = mSize.plusRegisteredNativeSize(size);
+    mRegisteredNativeSize += size;
   }
 
   /**
@@ -154,27 +159,32 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
    * Returns true if this instance is marked as a root instance.
    */
   public boolean isRoot() {
-    return mRootTypes != null;
+    return mRootTypes != 0;
   }
 
   /**
    * Marks this instance as being a root of the given type.
    */
-  void addRootType(String type) {
-    if (mRootTypes == null) {
-      mRootTypes = new ArrayList<String>();
-      mRootTypes.add(type);
-    } else if (!mRootTypes.contains(type)) {
-      mRootTypes.add(type);
-    }
+  void addRootType(RootType type) {
+    mRootTypes |= type.mask;
   }
 
   /**
-   * Returns a list of string descriptions of the root types of this object.
+   * Returns a list of the root types of this object.
    * Returns null if this object is not a root.
    */
-  public Collection<String> getRootTypes() {
-    return mRootTypes;
+  public Collection<RootType> getRootTypes() {
+    if (!isRoot()) {
+      return null;
+    }
+
+    List<RootType> types = new ArrayList<RootType>();
+    for (RootType type : RootType.values()) {
+      if ((mRootTypes & type.mask) != 0) {
+        types.add(type);
+      }
+    }
+    return types;
   }
 
   /**
@@ -446,6 +456,14 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
     return new AhatPlaceHolderInstance(this);
   }
 
+  public void setTemporaryUserData(Object state) {
+    mTemporaryUserData = state;
+  }
+
+  public Object getTemporaryUserData() {
+    return mTemporaryUserData;
+  }
+
   /**
    * Initialize the reverse reference fields of this instance and all other
    * instances reachable from it. Initializes the following fields:
@@ -511,7 +529,7 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
         }
         if (!(inst instanceof SuperRoot)) {
           inst.mRetainedSizes[inst.mHeap.getIndex()] =
-            inst.mRetainedSizes[inst.mHeap.getIndex()].plus(inst.mSize);
+            inst.mRetainedSizes[inst.mHeap.getIndex()].plus(inst.getSize());
         }
         deque.push(inst);
         for (AhatInstance dominated : inst.mDominated) {
@@ -529,12 +547,12 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
 
   @Override
   public void setDominatorsComputationState(Object state) {
-    mDominatorsComputationState = state;
+    setTemporaryUserData(state);
   }
 
   @Override
   public Object getDominatorsComputationState() {
-    return mDominatorsComputationState;
+    return getTemporaryUserData();
   }
 
   @Override

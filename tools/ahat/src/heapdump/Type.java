@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2017 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,27 @@
 
 package com.android.ahat.heapdump;
 
-public class FieldValue {
-  public final String name;
-  public final Type type;
-  public final Value value;
+public enum Type {
+  OBJECT("Object", 4),
+  BOOLEAN("boolean", 1),
+  CHAR("char", 2),
+  FLOAT("float", 4),
+  DOUBLE("double", 8),
+  BYTE("byte", 1),
+  SHORT("short", 2),
+  INT("int", 4),
+  LONG("long", 8);
 
-  public FieldValue(String name, Type type, Value value) {
+  public final String name;
+  public final int size;
+
+  Type(String name, int size) {
     this.name = name;
-    this.type = type;
-    this.value = value;
+    this.size = size;
+  }
+
+  @Override
+  public String toString() {
+    return name;
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2017 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,24 @@
 
 package com.android.ahat.heapdump;
 
-public class FieldValue {
-  public final String name;
-  public final Type type;
-  public final Value value;
+public enum RootType {
+  JNI_GLOBAL      (1 <<  0),
+  JNI_LOCAL       (1 <<  1),
+  JAVA_FRAME      (1 <<  2),
+  NATIVE_STACK    (1 <<  3),
+  STICKY_CLASS    (1 <<  4),
+  THREAD_BLOCK    (1 <<  5),
+  MONITOR         (1 <<  6),
+  THREAD          (1 <<  7),
+  INTERNED_STRING (1 <<  8),
+  DEBUGGER        (1 <<  9),
+  VM_INTERNAL     (1 << 10),
+  UNKNOWN         (1 << 11),
+  JNI_MONITOR     (1 << 12);
 
-  public FieldValue(String name, Type type, Value value) {
-    this.name = name;
-    this.type = type;
-    this.value = value;
+  public final int mask;
+
+  RootType(int mask) {
+    this.mask = mask;
   }
 }

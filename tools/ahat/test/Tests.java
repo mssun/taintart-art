@@ -30,6 +30,7 @@ public class Tests {
         "com.android.ahat.ObjectHandlerTest",
         "com.android.ahat.OverviewHandlerTest",
         "com.android.ahat.PerformanceTest",
+        "com.android.ahat.ProguardMapTest",
         "com.android.ahat.RootedHandlerTest",
         "com.android.ahat.QueryTest",
         "com.android.ahat.SiteHandlerTest",
