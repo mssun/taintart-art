@@ -372,6 +372,8 @@ class ProfileCompilationInfo {
   // the provided list of dex files.
   static bool GenerateTestProfile(int fd,
                                   std::vector<std::unique_ptr<const DexFile>>& dex_files,
+                                  uint16_t method_percentage,
+                                  uint16_t class_percentage,
                                   uint32_t random_seed);
 
   // Check that the given profile method info contain the same data.

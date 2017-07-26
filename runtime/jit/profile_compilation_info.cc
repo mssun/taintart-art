@@ -343,10 +343,6 @@ bool ProfileCompilationInfo::Save(int fd) {
                << " bytes. Profile will not be written to disk.";
     return false;
   }
-  if (required_capacity > kProfileSizeWarningThresholdInBytes) {
-    LOG(WARNING) << "Profile data size exceeds "
-                 << std::to_string(kProfileSizeWarningThresholdInBytes);
-  }
   AddUintToBuffer(&buffer, required_capacity);
   if (!WriteBuffer(fd, buffer.data(), buffer.size())) {
     return false;
@@ -412,6 +408,11 @@ bool ProfileCompilationInfo::Save(int fd) {
   std::unique_ptr<uint8_t[]> compressed_buffer = DeflateBuffer(buffer.data(),
                                                                required_capacity,
                                                                &output_size);
+
+  if (output_size > kProfileSizeWarningThresholdInBytes) {
+    LOG(WARNING) << "Profile data size exceeds "
+                 << std::to_string(kProfileSizeWarningThresholdInBytes);
+  }
 
   buffer.clear();
   AddUintToBuffer(&buffer, output_size);
@@ -1488,16 +1489,16 @@ std::set<DexCacheResolvedClasses> ProfileCompilationInfo::GetResolvedClasses(
 // Naive implementation to generate a random profile file suitable for testing.
 bool ProfileCompilationInfo::GenerateTestProfile(int fd,
                                                  uint16_t number_of_dex_files,
-                                                 uint16_t method_ratio,
-                                                 uint16_t class_ratio,
+                                                 uint16_t method_percentage,
+                                                 uint16_t class_percentage,
                                                  uint32_t random_seed) {
   const std::string base_dex_location = "base.apk";
   ProfileCompilationInfo info;
   // The limits are defined by the dex specification.
   const uint16_t max_method = std::numeric_limits<uint16_t>::max();
   const uint16_t max_classes = std::numeric_limits<uint16_t>::max();
-  uint16_t number_of_methods = max_method * method_ratio / 100;
-  uint16_t number_of_classes = max_classes * class_ratio / 100;
+  uint16_t number_of_methods = max_method * method_percentage / 100;
+  uint16_t number_of_classes = max_classes * class_percentage / 100;
 
   std::srand(random_seed);
 
@@ -1534,28 +1535,47 @@ bool ProfileCompilationInfo::GenerateTestProfile(int fd,
 }
 
 // Naive implementation to generate a random profile file suitable for testing.
+// Description of random selection:
+// * Select a random starting point S.
+// * For every index i, add (S+i) % (N - total number of methods/classes) to profile with the
+//   probably of 1/(N - i - number of methods/classes needed to add in profile).
 bool ProfileCompilationInfo::GenerateTestProfile(
     int fd,
     std::vector<std::unique_ptr<const DexFile>>& dex_files,
+    uint16_t method_percentage,
+    uint16_t class_percentage,
     uint32_t random_seed) {
   std::srand(random_seed);
   ProfileCompilationInfo info;
   for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
     const std::string& location = dex_file->GetLocation();
     uint32_t checksum = dex_file->GetLocationChecksum();
-    for (uint32_t i = 0; i < dex_file->NumClassDefs(); ++i) {
-      // Randomly add a class from the dex file (with 50% chance).
-      if (std::rand() % 2 != 0) {
+
+    uint32_t number_of_classes = dex_file->NumClassDefs();
+    uint32_t classes_required_in_profile = (number_of_classes * class_percentage) / 100;
+    uint32_t class_start_index = rand() % number_of_classes;
+    for (uint32_t i = 0; i < number_of_classes && classes_required_in_profile; ++i) {
+      if (number_of_classes - i == classes_required_in_profile ||
+          std::rand() % (number_of_classes - i - classes_required_in_profile) == 0) {
+        uint32_t class_index = (i + class_start_index) % number_of_classes;
         info.AddClassIndex(location,
                            checksum,
-                           dex_file->GetClassDef(i).class_idx_,
+                           dex_file->GetClassDef(class_index).class_idx_,
                            dex_file->NumMethodIds());
+        classes_required_in_profile--;
       }
     }
-    for (uint32_t i = 0; i < dex_file->NumMethodIds(); ++i) {
-      // Randomly add a method from the dex file (with 50% chance).
-      if (std::rand() % 2 != 0) {
-        info.AddMethodIndex(MethodHotness::kFlagHot, MethodReference(dex_file.get(), i));
+
+    uint32_t number_of_methods = dex_file->NumMethodIds();
+    uint32_t methods_required_in_profile = (number_of_methods * method_percentage) / 100;
+    uint32_t method_start_index = rand() % number_of_methods;
+    for (uint32_t i = 0; i < number_of_methods && methods_required_in_profile; ++i) {
+      if (number_of_methods - i == methods_required_in_profile ||
+          std::rand() % (number_of_methods - i - methods_required_in_profile) == 0) {
+        uint32_t method_index = (method_start_index + i) % number_of_methods;
+        info.AddMethodIndex(MethodHotness::kFlagHot, MethodReference(dex_file.get(),
+                                                                     method_index));
+        methods_required_in_profile--;
       }
     }
   }
