@@ -728,11 +728,4 @@
         "description": [ "Disable the jvmti can_suspend cap and associated tests" ],
         "bug": "b/63579748"
     },
-    {
-        "tests": ["004-JniTest"],
-        "description": [ "Tests failing with --build-with-javac-dx since the new annotation",
-                         "lookup changes" ],
-        "bug": "b/63089991",
-        "env_vars": {"ANDROID_COMPILE_WITH_JACK": "false"}
-    }
 ]
