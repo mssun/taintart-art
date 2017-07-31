@@ -727,5 +727,5 @@
         ],
         "description": [ "Disable the jvmti can_suspend cap and associated tests" ],
         "bug": "b/63579748"
-    },
+    }
 ]
