@@ -67,9 +67,10 @@ ArtMethod* ArtMethod::GetCanonicalMethod(PointerSize pointer_size) {
     return this;
   } else {
     mirror::Class* declaring_class = GetDeclaringClass();
-    ArtMethod* ret = declaring_class->FindDeclaredVirtualMethod(declaring_class->GetDexCache(),
-                                                                GetDexMethodIndex(),
-                                                                pointer_size);
+    DCHECK(declaring_class->IsInterface());
+    ArtMethod* ret = declaring_class->FindInterfaceMethod(declaring_class->GetDexCache(),
+                                                          GetDexMethodIndex(),
+                                                          pointer_size);
     DCHECK(ret != nullptr);
     return ret;
   }
@@ -215,11 +216,8 @@ ArtMethod* ArtMethod::FindOverriddenMethod(PointerSize pointer_size) {
   } else {
     // Method didn't override superclass method so search interfaces
     if (IsProxyMethod()) {
-      result = mirror::DexCache::GetElementPtrSize(GetDexCacheResolvedMethods(pointer_size),
-                                                   GetDexMethodIndex(),
-                                                   pointer_size);
-      CHECK_EQ(result,
-               Runtime::Current()->GetClassLinker()->FindMethodForProxy(GetDeclaringClass(), this));
+      result = GetInterfaceMethodIfProxy(pointer_size);
+      DCHECK(result != nullptr);
     } else {
       mirror::IfTable* iftable = GetDeclaringClass()->GetIfTable();
       for (size_t i = 0; i < iftable->Count() && result == nullptr; i++) {
