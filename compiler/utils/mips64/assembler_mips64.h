@@ -599,6 +599,10 @@ class Mips64Assembler FINAL : public Assembler, public JNIMacroAssembler<Pointer
   void FloorWD(FpuRegister fd, FpuRegister fs);
   void SelS(FpuRegister fd, FpuRegister fs, FpuRegister ft);
   void SelD(FpuRegister fd, FpuRegister fs, FpuRegister ft);
+  void SeleqzS(FpuRegister fd, FpuRegister fs, FpuRegister ft);
+  void SeleqzD(FpuRegister fd, FpuRegister fs, FpuRegister ft);
+  void SelnezS(FpuRegister fd, FpuRegister fs, FpuRegister ft);
+  void SelnezD(FpuRegister fd, FpuRegister fs, FpuRegister ft);
   void RintS(FpuRegister fd, FpuRegister fs);
   void RintD(FpuRegister fd, FpuRegister fs);
   void ClassS(FpuRegister fd, FpuRegister fs);

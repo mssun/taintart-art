@@ -452,6 +452,26 @@ TEST_F(AssemblerMIPS64Test, SelD) {
   DriverStr(RepeatFFF(&mips64::Mips64Assembler::SelD, "sel.d ${reg1}, ${reg2}, ${reg3}"), "sel.d");
 }
 
+TEST_F(AssemblerMIPS64Test, SeleqzS) {
+  DriverStr(RepeatFFF(&mips64::Mips64Assembler::SeleqzS, "seleqz.s ${reg1}, ${reg2}, ${reg3}"),
+            "seleqz.s");
+}
+
+TEST_F(AssemblerMIPS64Test, SeleqzD) {
+  DriverStr(RepeatFFF(&mips64::Mips64Assembler::SeleqzD, "seleqz.d ${reg1}, ${reg2}, ${reg3}"),
+            "seleqz.d");
+}
+
+TEST_F(AssemblerMIPS64Test, SelnezS) {
+  DriverStr(RepeatFFF(&mips64::Mips64Assembler::SelnezS, "selnez.s ${reg1}, ${reg2}, ${reg3}"),
+            "selnez.s");
+}
+
+TEST_F(AssemblerMIPS64Test, SelnezD) {
+  DriverStr(RepeatFFF(&mips64::Mips64Assembler::SelnezD, "selnez.d ${reg1}, ${reg2}, ${reg3}"),
+            "selnez.d");
+}
+
 TEST_F(AssemblerMIPS64Test, RintS) {
   DriverStr(RepeatFF(&mips64::Mips64Assembler::RintS, "rint.s ${reg1}, ${reg2}"), "rint.s");
 }
