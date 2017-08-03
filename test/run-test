@@ -45,7 +45,7 @@ export JAVAC="javac -g -Xlint:-options"
 export RUN="${progdir}/etc/run-test-jar"
 export DEX_LOCATION=/data/run-test/${test_dir}
 export NEED_DEX="true"
-export USE_JACK="true"
+export USE_JACK="false"
 export USE_DESUGAR="true"
 export SMALI_ARGS=""
 
@@ -925,6 +925,11 @@ fi
             echo '#################### strace output'
             tail -n 3000 "$tmp_dir/$strace_output"
             echo '####################'
+        fi
+        if [ "x$target_mode" = "xno" -a "x$SANITIZE_HOST" = "xaddress" ]; then
+            # Run the stack script to symbolize any ASAN aborts on the host for SANITIZE_HOST. The
+            # tools used by the given ABI work for both x86 and x86-64.
+            echo "ABI: 'x86_64'" | cat - "$output" | $ANDROID_BUILD_TOP/development/scripts/stack | tail -n 3000
         fi
         echo ' '
     fi

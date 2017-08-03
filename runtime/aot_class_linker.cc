@@ -27,29 +27,56 @@ AotClassLinker::AotClassLinker(InternTable *intern_table) : ClassLinker(intern_t
 
 AotClassLinker::~AotClassLinker() {}
 
+bool AotClassLinker::CanAllocClass() {
+  // AllocClass doesn't work under transaction, so we abort.
+  if (Runtime::Current()->IsActiveTransaction()) {
+    Runtime::Current()->AbortTransactionAndThrowAbortError(Thread::Current(), "Can't resolve this "
+        "type within a transaction.");
+    return false;
+  }
+  return ClassLinker::CanAllocClass();
+}
+
 // Wrap the original InitializeClass with creation of transaction when in strict mode.
 bool AotClassLinker::InitializeClass(Thread* self, Handle<mirror::Class> klass,
                                   bool can_init_statics, bool can_init_parents) {
   Runtime* const runtime = Runtime::Current();
+  bool strict_mode_ = runtime->IsActiveStrictTransactionMode();
 
   DCHECK(klass != nullptr);
   if (klass->IsInitialized() || klass->IsInitializing()) {
     return ClassLinker::InitializeClass(self, klass, can_init_statics, can_init_parents);
   }
 
-  if (runtime->IsActiveStrictTransactionMode()) {
+  // When in strict_mode, don't initialize a class if it belongs to boot but not initialized.
+  if (strict_mode_ && klass->IsBootStrapClassLoaded()) {
+    runtime->AbortTransactionAndThrowAbortError(self, "Can't resolve "
+        + klass->PrettyTypeOf() + " because it is an uninitialized boot class.");
+    return false;
+  }
+
+  // Don't initialize klass if it's superclass is not initialized, because superclass might abort
+  // the transaction and rolled back after klass's change is commited.
+  if (strict_mode_ && !klass->IsInterface() && klass->HasSuperClass()) {
+    if (klass->GetSuperClass()->GetStatus() == mirror::Class::kStatusInitializing) {
+      runtime->AbortTransactionAndThrowAbortError(self, "Can't resolve "
+          + klass->PrettyTypeOf() + " because it's superclass is not initialized.");
+      return false;
+    }
+  }
+
+  if (strict_mode_) {
     runtime->EnterTransactionMode(true, klass.Get()->AsClass());
   }
   bool success = ClassLinker::InitializeClass(self, klass, can_init_statics, can_init_parents);
 
-  if (runtime->IsActiveStrictTransactionMode()) {
+  if (strict_mode_) {
     if (success) {
       // Exit Transaction if success.
       runtime->ExitTransactionMode();
     } else {
-      // If not successfully initialized, the last transaction must abort. Don't rollback
-      // immediately, leave the cleanup to compiler driver which needs abort message and exception.
-      DCHECK(runtime->IsTransactionAborted());
+      // If not successfully initialized, don't rollback immediately, leave the cleanup to compiler
+      // driver which needs abort message and exception.
       DCHECK(self->IsExceptionPending());
     }
   }

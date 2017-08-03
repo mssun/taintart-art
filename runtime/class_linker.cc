@@ -2854,7 +2854,11 @@ mirror::Class* ClassLinker::DefineClass(Thread* self,
     // Interface object should get the right size here. Regular class will
     // figure out the right size later and be replaced with one of the right
     // size when the class becomes resolved.
-    klass.Assign(AllocClass(self, SizeOfClassWithoutEmbeddedTables(dex_file, dex_class_def)));
+    if (CanAllocClass()) {
+      klass.Assign(AllocClass(self, SizeOfClassWithoutEmbeddedTables(dex_file, dex_class_def)));
+    } else {
+      return nullptr;
+    }
   }
   if (UNLIKELY(klass == nullptr)) {
     self->AssertPendingOOMException();
@@ -4860,11 +4864,16 @@ bool ClassLinker::InitializeClass(Thread* self, Handle<mirror::Class> klass,
       return WaitForInitializeClass(klass, self, lock);
     }
 
+    // Try to get the oat class's status for this class if the oat file is present. The compiler
+    // tries to validate superclass descriptors, and writes the result into the oat file.
+    // Runtime correctness is guaranteed by classpath checks done on loading. If the classpath
+    // is different at runtime than it was at compile time, the oat file is rejected. So if the
+    // oat file is present, the classpaths must match, and the runtime time check can be skipped.
     bool has_oat_class = false;
-    const OatFile::OatClass oat_class =
-        (Runtime::Current()->IsStarted() && !Runtime::Current()->IsAotCompiler())
-            ? OatFile::FindOatClass(klass->GetDexFile(), klass->GetDexClassDefIndex(), &has_oat_class)
-            : OatFile::OatClass::Invalid();
+    const Runtime* runtime = Runtime::Current();
+    const OatFile::OatClass oat_class = (runtime->IsStarted() && !runtime->IsAotCompiler())
+        ? OatFile::FindOatClass(klass->GetDexFile(), klass->GetDexClassDefIndex(), &has_oat_class)
+        : OatFile::OatClass::Invalid();
     if (oat_class.GetStatus() < mirror::Class::kStatusSuperclassValidated &&
         !ValidateSuperClassDescriptors(klass)) {
       mirror::Class::SetStatus(klass, mirror::Class::kStatusErrorResolved, self);
@@ -4895,7 +4904,9 @@ bool ClassLinker::InitializeClass(Thread* self, Handle<mirror::Class> klass,
       if (!super_initialized) {
         // The super class was verified ahead of entering initializing, we should only be here if
         // the super class became erroneous due to initialization.
-        CHECK(handle_scope_super->IsErroneous() && self->IsExceptionPending())
+        // For the case of aot compiler, the super class might also be initializing but we don't
+        // want to process circular dependencies in pre-compile.
+        CHECK(self->IsExceptionPending())
             << "Super class initialization failed for "
             << handle_scope_super->PrettyDescriptor()
             << " that has unexpected status " << handle_scope_super->GetStatus()
