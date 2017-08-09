@@ -1271,18 +1271,59 @@ size_t HConstructorFence::RemoveConstructorFences(HInstruction* instruction) {
   return remove_count;
 }
 
-HInstruction* HConstructorFence::GetAssociatedAllocation() {
+void HConstructorFence::Merge(HConstructorFence* other) {
+  // Do not delete yourself from the graph.
+  DCHECK(this != other);
+  // Don't try to merge with an instruction not associated with a block.
+  DCHECK(other->GetBlock() != nullptr);
+  // A constructor fence's return type is "kPrimVoid"
+  // and therefore it cannot have any environment uses.
+  DCHECK(!other->HasEnvironmentUses());
+
+  auto has_input = [](HInstruction* haystack, HInstruction* needle) {
+    // Check if `haystack` has `needle` as any of its inputs.
+    for (size_t input_count = 0; input_count < haystack->InputCount(); ++input_count) {
+      if (haystack->InputAt(input_count) == needle) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Add any inputs from `other` into `this` if it wasn't already an input.
+  for (size_t input_count = 0; input_count < other->InputCount(); ++input_count) {
+    HInstruction* other_input = other->InputAt(input_count);
+    if (!has_input(this, other_input)) {
+      AddInput(other_input);
+    }
+  }
+
+  other->GetBlock()->RemoveInstruction(other);
+}
+
+HInstruction* HConstructorFence::GetAssociatedAllocation(bool ignore_inputs) {
   HInstruction* new_instance_inst = GetPrevious();
   // Check if the immediately preceding instruction is a new-instance/new-array.
   // Otherwise this fence is for protecting final fields.
   if (new_instance_inst != nullptr &&
       (new_instance_inst->IsNewInstance() || new_instance_inst->IsNewArray())) {
-    // TODO: Need to update this code to handle multiple inputs.
-    DCHECK_EQ(InputCount(), 1u);
-    return new_instance_inst;
-  } else {
-    return nullptr;
+    if (ignore_inputs) {
+      // If inputs are ignored, simply check if the predecessor is
+      // *any* HNewInstance/HNewArray.
+      //
+      // Inputs are normally only ignored for prepare_for_register_allocation,
+      // at which point *any* prior HNewInstance/Array can be considered
+      // associated.
+      return new_instance_inst;
+    } else {
+      // Normal case: There must be exactly 1 input and the previous instruction
+      // must be that input.
+      if (InputCount() == 1u && InputAt(0) == new_instance_inst) {
+        return new_instance_inst;
+      }
+    }
   }
+  return nullptr;
 }
 
 #define DEFINE_ACCEPT(name, super)                                             \

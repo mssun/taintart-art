@@ -6634,13 +6634,24 @@ class HConstructorFence FINAL : public HVariableInputSizeInstruction {
   // Returns how many HConstructorFence instructions were removed from graph.
   static size_t RemoveConstructorFences(HInstruction* instruction);
 
+  // Combine all inputs of `this` and `other` instruction and remove
+  // `other` from the graph.
+  //
+  // Inputs are unique after the merge.
+  //
+  // Requirement: `this` must not be the same as `other.
+  void Merge(HConstructorFence* other);
+
   // Check if this constructor fence is protecting
   // an HNewInstance or HNewArray that is also the immediate
   // predecessor of `this`.
   //
+  // If `ignore_inputs` is true, then the immediate predecessor doesn't need
+  // to be one of the inputs of `this`.
+  //
   // Returns the associated HNewArray or HNewInstance,
   // or null otherwise.
-  HInstruction* GetAssociatedAllocation();
+  HInstruction* GetAssociatedAllocation(bool ignore_inputs = false);
 
   DECLARE_INSTRUCTION(ConstructorFence);
 
