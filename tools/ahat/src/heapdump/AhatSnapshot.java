@@ -145,8 +145,7 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
       if (stack != null) {
         frames = stack.getFrames();
       }
-      Site site = mRootSite.add(frames, frames == null ? 0 : frames.length, ahat);
-      ahat.initialize(this, inst, site);
+      ahat.initialize(this, inst, mRootSite.getSite(frames));
 
       Long registeredNativeSize = registeredNative.get(inst);
       if (registeredNativeSize != null) {
@@ -177,7 +176,7 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
       heap.addToSize(superRoot.getRetainedSize(heap));
     }
 
-    mRootSite.computeObjectsInfos(mHeaps.size());
+    mRootSite.prepareForUse(0, mHeaps.size());
   }
 
   /**
@@ -260,19 +259,11 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
     return mRootSite;
   }
 
-  // Get the site associated with the given id and depth.
+  // Get the site associated with the given id.
   // Returns the root site if no such site found.
-  public Site getSite(int id, int depth) {
-    AhatInstance obj = findInstance(id);
-    if (obj == null) {
-      return mRootSite;
-    }
-
-    Site site = obj.getSite();
-    for (int i = 0; i < depth && site.getParent() != null; i++) {
-      site = site.getParent();
-    }
-    return site;
+  public Site getSite(long id) {
+    Site site = mRootSite.findSite(id);
+    return site == null ? mRootSite : site;
   }
 
   // Return the Value for the given perflib value object.

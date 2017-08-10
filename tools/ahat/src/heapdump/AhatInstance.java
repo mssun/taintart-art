@@ -72,6 +72,7 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
    * snapshot.findInstance have been initialized yet.
    */
   void initialize(AhatSnapshot snapshot, Instance inst, Site site) {
+    site.addInstance(this);
     mSize = new Size(inst.getSize(), 0);
     mHeap = snapshot.getHeap(inst.getHeap().getName());
 
