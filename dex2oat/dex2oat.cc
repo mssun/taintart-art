@@ -1769,13 +1769,11 @@ class Dex2Oat FINAL {
   bool ShouldCompileDexFilesIndividually() const {
     // Compile individually if we are not building an image, not using any compilation, and are
     // using multidex.
-    // This means extract, verify, and quicken will use the individual compilation mode (to reduce
+    // This means extract, verify, and quicken, will use the individual compilation mode (to reduce
     // RAM used by the compiler).
-    // TODO: Still do it for app images to get testing coverage. Note that this will generate empty
-    // app images.
     return !IsImage() &&
         dex_files_.size() > 1 &&
-        !CompilerFilter::IsAnyCompilationEnabled(compiler_options_->GetCompilerFilter());
+        !CompilerFilter::IsAotCompilationEnabled(compiler_options_->GetCompilerFilter());
   }
 
   // Set up and create the compiler driver and then invoke it to compile all the dex files.
@@ -1851,6 +1849,16 @@ class Dex2Oat FINAL {
                                      profile_compilation_info_.get()));
     driver_->SetDexFilesForOatFile(dex_files_);
 
+    const bool compile_individually = ShouldCompileDexFilesIndividually();
+    if (compile_individually) {
+      // Set the compiler driver in the callbacks so that we can avoid re-verification. This not
+      // only helps performance but also prevents reverifying quickened bytecodes. Attempting
+      // verify quickened bytecode causes verification failures.
+      // Only set the compiler filter if we are doing separate compilation since there is a bit
+      // of overhead when checking if a class was previously verified.
+      callbacks_->SetDoesClassUnloading(true, driver_.get());
+    }
+
     // Setup vdex for compilation.
     if (!DoEagerUnquickeningOfVdex() && input_vdex_file_ != nullptr) {
       callbacks_->SetVerifierDeps(
@@ -1867,7 +1875,7 @@ class Dex2Oat FINAL {
       callbacks_->SetVerifierDeps(new verifier::VerifierDeps(dex_files_));
     }
     // Invoke the compilation.
-    if (ShouldCompileDexFilesIndividually()) {
+    if (compile_individually) {
       CompileDexFilesIndividually();
       // Return a null classloader since we already freed released it.
       return nullptr;
@@ -2941,6 +2949,8 @@ class ScopedGlobalRef {
 
 static dex2oat::ReturnCode CompileImage(Dex2Oat& dex2oat) {
   dex2oat.LoadClassProfileDescriptors();
+  // Keep the class loader that was used for compilation live for the rest of the compilation
+  // process.
   ScopedGlobalRef class_loader(dex2oat.Compile());
 
   if (!dex2oat.WriteOutputFiles()) {
@@ -2989,6 +2999,8 @@ static dex2oat::ReturnCode CompileImage(Dex2Oat& dex2oat) {
 }
 
 static dex2oat::ReturnCode CompileApp(Dex2Oat& dex2oat) {
+  // Keep the class loader that was used for compilation live for the rest of the compilation
+  // process.
   ScopedGlobalRef class_loader(dex2oat.Compile());
 
   if (!dex2oat.WriteOutputFiles()) {
