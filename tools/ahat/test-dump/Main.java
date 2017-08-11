@@ -91,6 +91,8 @@ public class Main {
           new ObjectTree(null, new ObjectTree(null, null)),
           new ObjectTree(null, null)),
       null};
+    public Reference aLongStrongPathToSamplePathObject;
+    public WeakReference aShortWeakPathToSamplePathObject;
     public Object[] basicStringRef;
     public AddedObject addedObject;
     public UnchangedObject unchangedObject = new UnchangedObject();
@@ -112,6 +114,11 @@ public class Main {
       NativeAllocationRegistry registry = new NativeAllocationRegistry(
           Main.class.getClassLoader(), 0x12345, 50000);
       registry.registerNativeAllocation(anObject, 0xABCDABCD);
+
+      aLongStrongPathToSamplePathObject = new Reference(new Reference(new Object()));
+      aShortWeakPathToSamplePathObject = new WeakReference(
+          ((Reference)aLongStrongPathToSamplePathObject.referent).referent,
+          referenceQueue);
 
       addedObject = baseline ? null : new AddedObject();
       removedObject = baseline ? new RemovedObject() : null;
