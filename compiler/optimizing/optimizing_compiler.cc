@@ -22,8 +22,6 @@
 
 #include <stdint.h>
 
-#include "android-base/strings.h"
-
 #ifdef ART_ENABLE_CODEGEN_arm64
 #include "instruction_simplifier_arm64.h"
 #endif
@@ -329,12 +327,6 @@ class OptimizingCompiler FINAL : public Compiler {
 
   void UnInit() const OVERRIDE;
 
-  void MaybeRecordStat(MethodCompilationStat compilation_stat) const {
-    if (compilation_stats_.get() != nullptr) {
-      compilation_stats_->RecordStat(compilation_stat);
-    }
-  }
-
   bool JitCompile(Thread* self,
                   jit::JitCodeCache* code_cache,
                   ArtMethod* method,
@@ -512,7 +504,8 @@ static HOptimization* BuildOptimization(
   } else if (opt_name == LoadStoreElimination::kLoadStoreEliminationPassName) {
     CHECK(most_recent_side_effects != nullptr);
     CHECK(most_recent_lsa != nullptr);
-    return new (arena) LoadStoreElimination(graph, *most_recent_side_effects, *most_recent_lsa);
+    return
+        new (arena) LoadStoreElimination(graph, *most_recent_side_effects, *most_recent_lsa, stats);
   } else if (opt_name == SideEffectsAnalysis::kSideEffectsAnalysisPassName) {
     return new (arena) SideEffectsAnalysis(graph);
   } else if (opt_name == HLoopOptimization::kLoopOptimizationPassName) {
@@ -716,11 +709,12 @@ NO_INLINE  // Avoid increasing caller's frame size by large stack-allocated obje
 static void AllocateRegisters(HGraph* graph,
                               CodeGenerator* codegen,
                               PassObserver* pass_observer,
-                              RegisterAllocator::Strategy strategy) {
+                              RegisterAllocator::Strategy strategy,
+                              OptimizingCompilerStats* stats) {
   {
     PassScope scope(PrepareForRegisterAllocation::kPrepareForRegisterAllocationPassName,
                     pass_observer);
-    PrepareForRegisterAllocation(graph).Run();
+    PrepareForRegisterAllocation(graph, stats).Run();
   }
   SsaLivenessAnalysis liveness(graph, codegen);
   {
@@ -778,7 +772,7 @@ void OptimizingCompiler::RunOptimizations(HGraph* graph,
   BoundsCheckElimination* bce = new (arena) BoundsCheckElimination(graph, *side_effects1, induction);
   HLoopOptimization* loop = new (arena) HLoopOptimization(graph, driver, induction);
   LoadStoreAnalysis* lsa = new (arena) LoadStoreAnalysis(graph);
-  LoadStoreElimination* lse = new (arena) LoadStoreElimination(graph, *side_effects2, *lsa);
+  LoadStoreElimination* lse = new (arena) LoadStoreElimination(graph, *side_effects2, *lsa, stats);
   HSharpening* sharpening = new (arena) HSharpening(
       graph, codegen, dex_compilation_unit, driver, handles);
   InstructionSimplifier* simplify2 = new (arena) InstructionSimplifier(
@@ -894,7 +888,8 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* arena,
                                               ArtMethod* method,
                                               bool osr,
                                               VariableSizedHandleScope* handles) const {
-  MaybeRecordStat(MethodCompilationStat::kAttemptCompilation);
+  MaybeRecordStat(compilation_stats_.get(),
+                  MethodCompilationStat::kAttemptCompilation);
   CompilerDriver* compiler_driver = GetCompilerDriver();
   InstructionSet instruction_set = compiler_driver->GetInstructionSet();
 
@@ -904,12 +899,14 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* arena,
 
   // Do not attempt to compile on architectures we do not support.
   if (!IsInstructionSetSupported(instruction_set)) {
-    MaybeRecordStat(MethodCompilationStat::kNotCompiledUnsupportedIsa);
+    MaybeRecordStat(compilation_stats_.get(),
+                    MethodCompilationStat::kNotCompiledUnsupportedIsa);
     return nullptr;
   }
 
   if (Compiler::IsPathologicalCase(*code_item, method_idx, dex_file)) {
-    MaybeRecordStat(MethodCompilationStat::kNotCompiledPathological);
+    MaybeRecordStat(compilation_stats_.get(),
+                    MethodCompilationStat::kNotCompiledPathological);
     return nullptr;
   }
 
@@ -919,7 +916,8 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* arena,
   const CompilerOptions& compiler_options = compiler_driver->GetCompilerOptions();
   if ((compiler_options.GetCompilerFilter() == CompilerFilter::kSpace)
       && (code_item->insns_size_in_code_units_ > kSpaceFilterOptimizingThreshold)) {
-    MaybeRecordStat(MethodCompilationStat::kNotCompiledSpaceFilter);
+    MaybeRecordStat(compilation_stats_.get(),
+                    MethodCompilationStat::kNotCompiledSpaceFilter);
     return nullptr;
   }
 
@@ -966,7 +964,8 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* arena,
                             compiler_driver->GetCompilerOptions(),
                             compilation_stats_.get()));
   if (codegen.get() == nullptr) {
-    MaybeRecordStat(MethodCompilationStat::kNotCompiledNoCodegen);
+    MaybeRecordStat(compilation_stats_.get(),
+                    MethodCompilationStat::kNotCompiledNoCodegen);
     return nullptr;
   }
   codegen->GetAssembler()->cfi().SetEnabled(
@@ -995,17 +994,25 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* arena,
     GraphAnalysisResult result = builder.BuildGraph();
     if (result != kAnalysisSuccess) {
       switch (result) {
-        case kAnalysisSkipped:
-          MaybeRecordStat(MethodCompilationStat::kNotCompiledSkipped);
+        case kAnalysisSkipped: {
+          MaybeRecordStat(compilation_stats_.get(),
+                          MethodCompilationStat::kNotCompiledSkipped);
+        }
           break;
-        case kAnalysisInvalidBytecode:
-          MaybeRecordStat(MethodCompilationStat::kNotCompiledInvalidBytecode);
+        case kAnalysisInvalidBytecode: {
+          MaybeRecordStat(compilation_stats_.get(),
+                          MethodCompilationStat::kNotCompiledInvalidBytecode);
+        }
           break;
-        case kAnalysisFailThrowCatchLoop:
-          MaybeRecordStat(MethodCompilationStat::kNotCompiledThrowCatchLoop);
+        case kAnalysisFailThrowCatchLoop: {
+          MaybeRecordStat(compilation_stats_.get(),
+                          MethodCompilationStat::kNotCompiledThrowCatchLoop);
+        }
           break;
-        case kAnalysisFailAmbiguousArrayOp:
-          MaybeRecordStat(MethodCompilationStat::kNotCompiledAmbiguousArrayOp);
+        case kAnalysisFailAmbiguousArrayOp: {
+          MaybeRecordStat(compilation_stats_.get(),
+                          MethodCompilationStat::kNotCompiledAmbiguousArrayOp);
+        }
           break;
         case kAnalysisSuccess:
           UNREACHABLE();
@@ -1024,7 +1031,11 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* arena,
 
   RegisterAllocator::Strategy regalloc_strategy =
     compiler_options.GetRegisterAllocationStrategy();
-  AllocateRegisters(graph, codegen.get(), &pass_observer, regalloc_strategy);
+  AllocateRegisters(graph,
+                    codegen.get(),
+                    &pass_observer,
+                    regalloc_strategy,
+                    compilation_stats_.get());
 
   codegen->Compile(code_allocator);
   pass_observer.DumpDisassembly();
@@ -1072,7 +1083,8 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
                      &handles));
     }
     if (codegen.get() != nullptr) {
-      MaybeRecordStat(MethodCompilationStat::kCompiled);
+      MaybeRecordStat(compilation_stats_.get(),
+                      MethodCompilationStat::kCompiled);
       method = Emit(&arena, &code_allocator, codegen.get(), compiler_driver, code_item);
 
       if (kArenaAllocatorCountAllocations) {
@@ -1083,11 +1095,13 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
       }
     }
   } else {
+    MethodCompilationStat method_stat;
     if (compiler_driver->GetCompilerOptions().VerifyAtRuntime()) {
-      MaybeRecordStat(MethodCompilationStat::kNotCompiledVerifyAtRuntime);
+      method_stat = MethodCompilationStat::kNotCompiledVerifyAtRuntime;
     } else {
-      MaybeRecordStat(MethodCompilationStat::kNotCompiledVerificationError);
+      method_stat = MethodCompilationStat::kNotCompiledVerificationError;
     }
+    MaybeRecordStat(compilation_stats_.get(), method_stat);
   }
 
   if (kIsDebugBuild &&
@@ -1111,12 +1125,7 @@ Compiler* CreateOptimizingCompiler(CompilerDriver* driver) {
 
 bool IsCompilingWithCoreImage() {
   const std::string& image = Runtime::Current()->GetImageLocation();
-  // TODO: This is under-approximating...
-  if (android::base::EndsWith(image, "core.art") ||
-      android::base::EndsWith(image, "core-optimizing.art")) {
-    return true;
-  }
-  return false;
+  return CompilerDriver::IsCoreImageFilename(image);
 }
 
 bool EncodeArtMethodInInlineInfo(ArtMethod* method ATTRIBUTE_UNUSED) {
@@ -1210,18 +1219,18 @@ bool OptimizingCompiler::JitCompile(Thread* self,
   uint8_t* stack_map_data = nullptr;
   uint8_t* method_info_data = nullptr;
   uint8_t* roots_data = nullptr;
-  code_cache->ReserveData(self,
-                          stack_map_size,
-                          method_info_size,
-                          number_of_roots,
-                          method,
-                          &stack_map_data,
-                          &method_info_data,
-                          &roots_data);
+  uint32_t data_size = code_cache->ReserveData(self,
+                                               stack_map_size,
+                                               method_info_size,
+                                               number_of_roots,
+                                               method,
+                                               &stack_map_data,
+                                               &method_info_data,
+                                               &roots_data);
   if (stack_map_data == nullptr || roots_data == nullptr) {
     return false;
   }
-  MaybeRecordStat(MethodCompilationStat::kCompiled);
+  MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kCompiled);
   codegen->BuildStackMaps(MemoryRegion(stack_map_data, stack_map_size),
                           MemoryRegion(method_info_data, method_info_size),
                           *code_item);
@@ -1238,6 +1247,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
       codegen->GetFpuSpillMask(),
       code_allocator.GetMemory().data(),
       code_allocator.GetSize(),
+      data_size,
       osr,
       roots,
       codegen->GetGraph()->HasShouldDeoptimizeFlag(),

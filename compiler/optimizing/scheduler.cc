@@ -554,6 +554,14 @@ SchedulingNode* CriticalPathSchedulingNodeSelector::GetHigherPrioritySchedulingN
 }
 
 void HScheduler::Schedule(HGraph* graph) {
+  // We run lsa here instead of in a separate pass to better control whether we
+  // should run the analysis or not.
+  LoadStoreAnalysis lsa(graph);
+  if (!only_optimize_loop_blocks_ || graph->HasLoops()) {
+    lsa.Run();
+    scheduling_graph_.SetHeapLocationCollector(lsa.GetHeapLocationCollector());
+  }
+
   for (HBasicBlock* block : graph->GetReversePostOrder()) {
     if (IsSchedulable(block)) {
       Schedule(block);
@@ -566,14 +574,6 @@ void HScheduler::Schedule(HBasicBlock* block) {
 
   // Build the scheduling graph.
   scheduling_graph_.Clear();
-
-  // Only perform LSA/HeapLocation analysis on the basic block that
-  // is going to get instruction scheduled.
-  HeapLocationCollector heap_location_collector(block->GetGraph());
-  heap_location_collector.VisitBasicBlock(block);
-  heap_location_collector.BuildAliasingMatrix();
-  scheduling_graph_.SetHeapLocationCollector(heap_location_collector);
-
   for (HBackwardInstructionIterator it(block->GetInstructions()); !it.Done(); it.Advance()) {
     HInstruction* instruction = it.Current();
     CHECK_EQ(instruction->GetBlock(), block)
@@ -724,8 +724,8 @@ bool HScheduler::IsSchedulable(const HInstruction* instruction) const {
       instruction->IsClassTableGet() ||
       instruction->IsCurrentMethod() ||
       instruction->IsDivZeroCheck() ||
-      instruction->IsInstanceFieldGet() ||
-      instruction->IsInstanceFieldSet() ||
+      (instruction->IsInstanceFieldGet() && !instruction->AsInstanceFieldGet()->IsVolatile()) ||
+      (instruction->IsInstanceFieldSet() && !instruction->AsInstanceFieldSet()->IsVolatile()) ||
       instruction->IsInstanceOf() ||
       instruction->IsInvokeInterface() ||
       instruction->IsInvokeStaticOrDirect() ||
@@ -741,14 +741,10 @@ bool HScheduler::IsSchedulable(const HInstruction* instruction) const {
       instruction->IsReturn() ||
       instruction->IsReturnVoid() ||
       instruction->IsSelect() ||
-      instruction->IsStaticFieldGet() ||
-      instruction->IsStaticFieldSet() ||
+      (instruction->IsStaticFieldGet() && !instruction->AsStaticFieldGet()->IsVolatile()) ||
+      (instruction->IsStaticFieldSet() && !instruction->AsStaticFieldSet()->IsVolatile()) ||
       instruction->IsSuspendCheck() ||
-      instruction->IsTypeConversion() ||
-      instruction->IsUnresolvedInstanceFieldGet() ||
-      instruction->IsUnresolvedInstanceFieldSet() ||
-      instruction->IsUnresolvedStaticFieldGet() ||
-      instruction->IsUnresolvedStaticFieldSet();
+      instruction->IsTypeConversion();
 }
 
 bool HScheduler::IsSchedulable(const HBasicBlock* block) const {

@@ -33,9 +33,9 @@ import dexfuzz.listeners.UpdatingConsoleListener;
  * Entrypoint class for dexfuzz.
  */
 public class DexFuzz {
-  // Last version update 1.7: changed the likelihood of RegisterClobber.
+  // Last version update 1.9: fixed a bug in InvokeChanger.
   private static int majorVersion = 1;
-  private static int minorVersion = 7;
+  private static int minorVersion = 9;
   private static int seedChangeVersion = 0;
 
   /**
