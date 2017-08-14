@@ -714,5 +714,10 @@
                   "968-default-partial-compile-gen"],
         "env_vars": {"SANITIZE_HOST": "address"},
         "description": ["Test hits dex2oat watchdog timeout (60sec) on art-asan"]
+    },
+    {
+        "tests": "664-aget-verifier",
+        "description": ["Aget on potentially null array fails verification."],
+        "bug": "b/64683522"
     }
 ]
