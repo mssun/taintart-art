@@ -727,11 +727,5 @@
         ],
         "description": [ "Disable the jvmti can_suspend cap and associated tests" ],
         "bug": "b/63579748"
-    },
-    {
-        "tests": "662-regression-alias",
-        "variant": "target",
-        "description": ["disable until ARM scheduling/aliasing bug is fixed."],
-        "bug": "b/64018485"
     }
 ]
