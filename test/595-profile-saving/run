@@ -19,9 +19,11 @@
 # and to make sure the test is not compiled  when loaded (by PathClassLoader)
 # -Xjitsaveprofilinginfo to enable profile saving
 # -Xusejit:false to disable jit and only test profiles.
+# -Xjitinitialsize:32M to prevent profiling info creation failure.
 exec ${RUN} \
   -Xcompiler-option --compiler-filter=quicken \
   --runtime-option '-Xcompiler-option --compiler-filter=quicken' \
+  --runtime-option -Xjitinitialsize:32M \
   --runtime-option -Xjitsaveprofilinginfo \
   --runtime-option -Xusejit:false \
   --runtime-option -Xps-profile-boot-class-path \
