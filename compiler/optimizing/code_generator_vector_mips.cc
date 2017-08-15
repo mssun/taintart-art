@@ -88,19 +88,11 @@ void InstructionCodeGeneratorMIPS::VisitVecReplicateScalar(HVecReplicateScalar* 
   }
 }
 
-void LocationsBuilderMIPS::VisitVecSetScalars(HVecSetScalars* instruction) {
+void LocationsBuilderMIPS::VisitVecExtractScalar(HVecExtractScalar* instruction) {
   LOG(FATAL) << "No SIMD for " << instruction->GetId();
 }
 
-void InstructionCodeGeneratorMIPS::VisitVecSetScalars(HVecSetScalars* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
-}
-
-void LocationsBuilderMIPS::VisitVecSumReduce(HVecSumReduce* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
-}
-
-void InstructionCodeGeneratorMIPS::VisitVecSumReduce(HVecSumReduce* instruction) {
+void InstructionCodeGeneratorMIPS::VisitVecExtractScalar(HVecExtractScalar* instruction) {
   LOG(FATAL) << "No SIMD for " << instruction->GetId();
 }
 
@@ -131,6 +123,14 @@ static void CreateVecUnOpLocations(ArenaAllocator* arena, HVecUnaryOperation* in
       LOG(FATAL) << "Unsupported SIMD type";
       UNREACHABLE();
   }
+}
+
+void LocationsBuilderMIPS::VisitVecReduce(HVecReduce* instruction) {
+  CreateVecUnOpLocations(GetGraph()->GetArena(), instruction);
+}
+
+void InstructionCodeGeneratorMIPS::VisitVecReduce(HVecReduce* instruction) {
+  LOG(FATAL) << "No SIMD for " << instruction->GetId();
 }
 
 void LocationsBuilderMIPS::VisitVecCnv(HVecCnv* instruction) {
@@ -816,6 +816,14 @@ void InstructionCodeGeneratorMIPS::VisitVecUShr(HVecUShr* instruction) {
       LOG(FATAL) << "Unsupported SIMD type";
       UNREACHABLE();
   }
+}
+
+void LocationsBuilderMIPS::VisitVecSetScalars(HVecSetScalars* instruction) {
+  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+}
+
+void InstructionCodeGeneratorMIPS::VisitVecSetScalars(HVecSetScalars* instruction) {
+  LOG(FATAL) << "No SIMD for " << instruction->GetId();
 }
 
 void LocationsBuilderMIPS::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instr) {
