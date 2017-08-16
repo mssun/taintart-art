@@ -63,18 +63,18 @@ struct PhaseUtil::PhaseCallback : public art::RuntimePhaseCallback {
         break;
       case RuntimePhase::kStart:
         {
+          PhaseUtil::current_phase_ = JVMTI_PHASE_START;
           art::ScopedThreadSuspension sts(art::Thread::Current(), art::ThreadState::kNative);
           event_handler->DispatchEvent<ArtJvmtiEvent::kVmStart>(nullptr, GetJniEnv());
-          PhaseUtil::current_phase_ = JVMTI_PHASE_START;
         }
         break;
       case RuntimePhase::kInit:
         {
           ThreadUtil::CacheData();
+          PhaseUtil::current_phase_ = JVMTI_PHASE_LIVE;
           ScopedLocalRef<jthread> thread(GetJniEnv(), GetCurrentJThread());
           art::ScopedThreadSuspension sts(art::Thread::Current(), art::ThreadState::kNative);
           event_handler->DispatchEvent<ArtJvmtiEvent::kVmInit>(nullptr, GetJniEnv(), thread.get());
-          PhaseUtil::current_phase_ = JVMTI_PHASE_LIVE;
         }
         break;
       case RuntimePhase::kDeath:
