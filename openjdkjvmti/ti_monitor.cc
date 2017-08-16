@@ -40,6 +40,7 @@
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
+#include "ti_thread.h"
 
 namespace openjdkjvmti {
 
@@ -51,8 +52,7 @@ namespace openjdkjvmti {
 
 class JvmtiMonitor {
  public:
-  JvmtiMonitor() : owner_(nullptr), count_(0) {
-  }
+  JvmtiMonitor() : owner_(nullptr), count_(0) { }
 
   static bool Destroy(art::Thread* self, JvmtiMonitor* monitor) NO_THREAD_SAFETY_ANALYSIS {
     // Check whether this thread holds the monitor, or nobody does.
@@ -72,13 +72,41 @@ class JvmtiMonitor {
   }
 
   void MonitorEnter(art::Thread* self) NO_THREAD_SAFETY_ANALYSIS {
-    // Check for recursive enter.
-    if (IsOwner(self)) {
-      count_++;
-      return;
-    }
+    // Perform a suspend-check. The spec doesn't require this but real-world agents depend on this
+    // behavior. We do this by performing a suspend-check then retrying if the thread is suspended
+    // before or after locking the internal mutex.
+    do {
+      ThreadUtil::SuspendCheck(self);
+      if (ThreadUtil::WouldSuspendForUserCode(self)) {
+        continue;
+      }
 
-    mutex_.lock();
+      // Check for recursive enter.
+      if (IsOwner(self)) {
+        count_++;
+        return;
+      }
+
+      // Checking for user-code suspension takes acquiring 2 art::Mutexes so we want to avoid doing
+      // that if possible. To avoid it we try to get the internal mutex without sleeping. If we do
+      // this we don't bother doing another suspend check since it can linearize after the lock.
+      if (mutex_.try_lock()) {
+        break;
+      } else {
+        // Lock with sleep. We will need to check for suspension after this to make sure that agents
+        // won't deadlock.
+        mutex_.lock();
+        if (!ThreadUtil::WouldSuspendForUserCode(self)) {
+          break;
+        } else {
+          // We got suspended in the middle of waiting for the mutex. We should release the mutex
+          // and try again so we can get it while not suspended. This lets some other
+          // (non-suspended) thread acquire the mutex in case it's waiting to wake us up.
+          mutex_.unlock();
+          continue;
+        }
+      }
+    } while (true);
 
     DCHECK(owner_.load(std::memory_order_relaxed) == nullptr);
     owner_.store(self, std::memory_order_relaxed);
@@ -123,7 +151,7 @@ class JvmtiMonitor {
   }
 
  private:
-  bool IsOwner(art::Thread* self) {
+  bool IsOwner(art::Thread* self) const {
     // There's a subtle correctness argument here for a relaxed load outside the critical section.
     // A thread is guaranteed to see either its own latest store or another thread's store. If a
     // thread sees another thread's store than it cannot be holding the lock.
