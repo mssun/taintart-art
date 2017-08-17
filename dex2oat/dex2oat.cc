@@ -2305,6 +2305,10 @@ class Dex2Oat FINAL {
     return DoProfileGuidedOptimizations();
   }
 
+  bool DoOatLayoutOptimizations() const {
+    return DoProfileGuidedOptimizations();
+  }
+
   bool DoEagerUnquickeningOfVdex() const {
     // DexLayout can invalidate the vdex metadata, so we need to unquicken
     // the vdex file eagerly, before passing it to dexlayout.
@@ -2517,9 +2521,11 @@ class Dex2Oat FINAL {
                                                              compiler_options_.get(),
                                                              oat_file.get()));
       elf_writers_.back()->Start();
-      const bool do_dexlayout = DoDexLayoutOptimizations();
+      const bool do_oat_writer_layout = DoDexLayoutOptimizations() || DoOatLayoutOptimizations();
       oat_writers_.emplace_back(new linker::OatWriter(
-          IsBootImage(), timings_, do_dexlayout ? profile_compilation_info_.get() : nullptr));
+          IsBootImage(),
+          timings_,
+          do_oat_writer_layout ? profile_compilation_info_.get() : nullptr));
     }
   }
 
