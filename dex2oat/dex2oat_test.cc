@@ -480,23 +480,37 @@ class Dex2oatVeryLargeTest : public Dex2oatTest {
 
   void RunTest(CompilerFilter::Filter filter,
                bool expect_large,
+               bool expect_downgrade,
                const std::vector<std::string>& extra_args = {}) {
     std::string dex_location = GetScratchDir() + "/DexNoOat.jar";
     std::string odex_location = GetOdexDir() + "/DexOdexNoOat.odex";
+    std::string app_image_file = GetScratchDir() + "/Test.art";
 
     Copy(GetDexSrc1(), dex_location);
 
-    GenerateOdexForTest(dex_location, odex_location, filter, extra_args);
+    std::vector<std::string> new_args(extra_args);
+    new_args.push_back("--app-image-file=" + app_image_file);
+    GenerateOdexForTest(dex_location, odex_location, filter, new_args);
 
     CheckValidity();
     ASSERT_TRUE(success_);
-    CheckResult(dex_location, odex_location, filter, expect_large);
+    CheckResult(dex_location,
+                odex_location,
+                app_image_file,
+                filter,
+                expect_large,
+                expect_downgrade);
   }
 
   void CheckResult(const std::string& dex_location,
                    const std::string& odex_location,
+                   const std::string& app_image_file,
                    CompilerFilter::Filter filter,
-                   bool expect_large) {
+                   bool expect_large,
+                   bool expect_downgrade) {
+    if (expect_downgrade) {
+      EXPECT_TRUE(expect_large);
+    }
     // Host/target independent checks.
     std::string error_msg;
     std::unique_ptr<OatFile> odex_file(OatFile::Open(odex_location.c_str(),
@@ -508,10 +522,11 @@ class Dex2oatVeryLargeTest : public Dex2oatTest {
                                                      dex_location.c_str(),
                                                      &error_msg));
     ASSERT_TRUE(odex_file.get() != nullptr) << error_msg;
+    EXPECT_GT(app_image_file.length(), 0u);
+    std::unique_ptr<File> file(OS::OpenFileForReading(app_image_file.c_str()));
     if (expect_large) {
-      // Note: we cannot check the following:
-      //   EXPECT_TRUE(CompilerFilter::IsAsGoodAs(CompilerFilter::kVerifyAtRuntime,
-      //                                          odex_file->GetCompilerFilter()));
+      // Note: we cannot check the following
+      // EXPECT_FALSE(CompilerFilter::IsAotCompilationEnabled(odex_file->GetCompilerFilter()));
       // The reason is that the filter override currently happens when the dex files are
       // loaded in dex2oat, which is after the oat file has been started. Thus, the header
       // store cannot be changed, and the original filter is set in stone.
@@ -531,32 +546,35 @@ class Dex2oatVeryLargeTest : public Dex2oatTest {
       if (!CompilerFilter::IsAsGoodAs(CompilerFilter::kExtract, filter)) {
         EXPECT_EQ(odex_file->GetCompilerFilter(), filter);
       }
+
+      // If expect large, make sure the app image isn't generated or is empty.
+      if (file != nullptr) {
+        EXPECT_EQ(file->GetLength(), 0u);
+      }
     } else {
       EXPECT_EQ(odex_file->GetCompilerFilter(), filter);
+      ASSERT_TRUE(file != nullptr) << app_image_file;
+      EXPECT_GT(file->GetLength(), 0u);
     }
 
     // Host/target dependent checks.
     if (kIsTargetBuild) {
-      CheckTargetResult(expect_large);
+      CheckTargetResult(expect_downgrade);
     } else {
-      CheckHostResult(expect_large);
+      CheckHostResult(expect_downgrade);
     }
   }
 
-  void CheckTargetResult(bool expect_large ATTRIBUTE_UNUSED) {
+  void CheckTargetResult(bool expect_downgrade ATTRIBUTE_UNUSED) {
     // TODO: Ignore for now. May do something for fd things.
   }
 
-  void CheckHostResult(bool expect_large) {
+  void CheckHostResult(bool expect_downgrade) {
     if (!kIsTargetBuild) {
-      if (expect_large) {
-        EXPECT_NE(output_.find("Very large app, downgrading to"),
-                  std::string::npos)
-            << output_;
+      if (expect_downgrade) {
+        EXPECT_NE(output_.find("Very large app, downgrading to"), std::string::npos) << output_;
       } else {
-        EXPECT_EQ(output_.find("Very large app, downgrading to"),
-                  std::string::npos)
-            << output_;
+        EXPECT_EQ(output_.find("Very large app, downgrading to"), std::string::npos) << output_;
       }
     }
   }
@@ -581,28 +599,28 @@ class Dex2oatVeryLargeTest : public Dex2oatTest {
 };
 
 TEST_F(Dex2oatVeryLargeTest, DontUseVeryLarge) {
-  RunTest(CompilerFilter::kAssumeVerified, false);
-  RunTest(CompilerFilter::kExtract, false);
-  RunTest(CompilerFilter::kQuicken, false);
-  RunTest(CompilerFilter::kSpeed, false);
+  RunTest(CompilerFilter::kAssumeVerified, false, false);
+  RunTest(CompilerFilter::kExtract, false, false);
+  RunTest(CompilerFilter::kQuicken, false, false);
+  RunTest(CompilerFilter::kSpeed, false, false);
 
-  RunTest(CompilerFilter::kAssumeVerified, false, { "--very-large-app-threshold=1000000" });
-  RunTest(CompilerFilter::kExtract, false, { "--very-large-app-threshold=1000000" });
-  RunTest(CompilerFilter::kQuicken, false, { "--very-large-app-threshold=1000000" });
-  RunTest(CompilerFilter::kSpeed, false, { "--very-large-app-threshold=1000000" });
+  RunTest(CompilerFilter::kAssumeVerified, false, false, { "--very-large-app-threshold=10000000" });
+  RunTest(CompilerFilter::kExtract, false, false, { "--very-large-app-threshold=10000000" });
+  RunTest(CompilerFilter::kQuicken, false, false, { "--very-large-app-threshold=10000000" });
+  RunTest(CompilerFilter::kSpeed, false, false, { "--very-large-app-threshold=10000000" });
 }
 
 TEST_F(Dex2oatVeryLargeTest, UseVeryLarge) {
-  RunTest(CompilerFilter::kAssumeVerified, false, { "--very-large-app-threshold=100" });
-  RunTest(CompilerFilter::kExtract, false, { "--very-large-app-threshold=100" });
-  RunTest(CompilerFilter::kQuicken, true, { "--very-large-app-threshold=100" });
-  RunTest(CompilerFilter::kSpeed, true, { "--very-large-app-threshold=100" });
+  RunTest(CompilerFilter::kAssumeVerified, true, false, { "--very-large-app-threshold=100" });
+  RunTest(CompilerFilter::kExtract, true, false, { "--very-large-app-threshold=100" });
+  RunTest(CompilerFilter::kQuicken, true, true, { "--very-large-app-threshold=100" });
+  RunTest(CompilerFilter::kSpeed, true, true, { "--very-large-app-threshold=100" });
 }
 
 // Regressin test for b/35665292.
 TEST_F(Dex2oatVeryLargeTest, SpeedProfileNoProfile) {
   // Test that dex2oat doesn't crash with speed-profile but no input profile.
-  RunTest(CompilerFilter::kSpeedProfile, false);
+  RunTest(CompilerFilter::kSpeedProfile, false, false);
 }
 
 class Dex2oatLayoutTest : public Dex2oatTest {

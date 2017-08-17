@@ -1662,6 +1662,9 @@ class Dex2Oat FINAL {
 
     // If we need to downgrade the compiler-filter for size reasons.
     if (!IsBootImage() && IsVeryLarge(dex_files_)) {
+      // Disable app image to make sure dex2oat unloading is enabled.
+      compiler_options_->DisableAppImage();
+
       // If we need to downgrade the compiler-filter for size reasons, do that early before we read
       // it below for creating verification callbacks.
       if (!CompilerFilter::IsAsGoodAs(kLargeAppFilter, compiler_options_->GetCompilerFilter())) {
