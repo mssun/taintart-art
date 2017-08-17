@@ -148,27 +148,27 @@ static constexpr uint8_t expected_cfi_kMips[] = {
     0x48, 0x0A, 0x44, 0xDF, 0x44, 0xD1, 0x44, 0xD0, 0x50, 0x0E, 0x00, 0x0B,
     0x0E, 0x40,
 };
-// 0x00000000: addiu r29, r29, -64
+// 0x00000000: addiu sp, sp, -64
 // 0x00000004: .cfi_def_cfa_offset: 64
-// 0x00000004: sw r31, +60(r29)
+// 0x00000004: sw ra, +60(sp)
 // 0x00000008: .cfi_offset: r31 at cfa-4
-// 0x00000008: sw r17, +56(r29)
+// 0x00000008: sw s1, +56(sp)
 // 0x0000000c: .cfi_offset: r17 at cfa-8
-// 0x0000000c: sw r16, +52(r29)
+// 0x0000000c: sw s0, +52(sp)
 // 0x00000010: .cfi_offset: r16 at cfa-12
-// 0x00000010: sdc1 f22, +40(r29)
-// 0x00000014: sdc1 f20, +32(r29)
+// 0x00000010: sdc1 f22, +40(sp)
+// 0x00000014: sdc1 f20, +32(sp)
 // 0x00000018: .cfi_remember_state
-// 0x00000018: lw r31, +60(r29)
+// 0x00000018: lw ra, +60(sp)
 // 0x0000001c: .cfi_restore: r31
-// 0x0000001c: lw r17, +56(r29)
+// 0x0000001c: lw s1, +56(sp)
 // 0x00000020: .cfi_restore: r17
-// 0x00000020: lw r16, +52(r29)
+// 0x00000020: lw s0, +52(sp)
 // 0x00000024: .cfi_restore: r16
-// 0x00000024: ldc1 f22, +40(r29)
-// 0x00000028: ldc1 f20, +32(r29)
-// 0x0000002c: jr r31
-// 0x00000030: addiu r29, r29, 64
+// 0x00000024: ldc1 f22, +40(sp)
+// 0x00000028: ldc1 f20, +32(sp)
+// 0x0000002c: jr ra
+// 0x00000030: addiu sp, sp, 64
 // 0x00000034: .cfi_def_cfa_offset: 0
 // 0x00000034: .cfi_restore_state
 // 0x00000034: .cfi_def_cfa_offset: 64
@@ -185,32 +185,32 @@ static constexpr uint8_t expected_cfi_kMips64[] = {
     0x44, 0xB9, 0x08, 0x44, 0xB8, 0x0A, 0x0A, 0x44, 0xDF, 0x44, 0xD1, 0x44,
     0xD0, 0x44, 0xF9, 0x44, 0xF8, 0x44, 0x0E, 0x00, 0x44, 0x0B, 0x0E, 0x40,
 };
-// 0x00000000: daddiu r29, r29, -64
+// 0x00000000: daddiu sp, sp, -64
 // 0x00000004: .cfi_def_cfa_offset: 64
-// 0x00000004: sd r31, +56(r29)
+// 0x00000004: sd ra, +56(sp)
 // 0x00000008: .cfi_offset: r31 at cfa-8
-// 0x00000008: sd r17, +48(r29)
+// 0x00000008: sd s1, +48(sp)
 // 0x0000000c: .cfi_offset: r17 at cfa-16
-// 0x0000000c: sd r16, +40(r29)
+// 0x0000000c: sd s0, +40(sp)
 // 0x00000010: .cfi_offset: r16 at cfa-24
-// 0x00000010: sdc1 f25, +32(r29)
+// 0x00000010: sdc1 f25, +32(sp)
 // 0x00000014: .cfi_offset: r57 at cfa-32
-// 0x00000014: sdc1 f24, +24(r29)
+// 0x00000014: sdc1 f24, +24(sp)
 // 0x00000018: .cfi_offset: r56 at cfa-40
 // 0x00000018: .cfi_remember_state
-// 0x00000018: ld r31, +56(r29)
+// 0x00000018: ld ra, +56(sp)
 // 0x0000001c: .cfi_restore: r31
-// 0x0000001c: ld r17, +48(r29)
+// 0x0000001c: ld s1, +48(sp)
 // 0x00000020: .cfi_restore: r17
-// 0x00000020: ld r16, +40(r29)
+// 0x00000020: ld s0, +40(sp)
 // 0x00000024: .cfi_restore: r16
-// 0x00000024: ldc1 f25, +32(r29)
+// 0x00000024: ldc1 f25, +32(sp)
 // 0x00000028: .cfi_restore: r57
-// 0x00000028: ldc1 f24, +24(r29)
+// 0x00000028: ldc1 f24, +24(sp)
 // 0x0000002c: .cfi_restore: r56
-// 0x0000002c: daddiu r29, r29, 64
+// 0x0000002c: daddiu sp, sp, 64
 // 0x00000030: .cfi_def_cfa_offset: 0
-// 0x00000030: jic r31, 0
+// 0x00000030: jic ra, 0
 // 0x00000034: .cfi_restore_state
 // 0x00000034: .cfi_def_cfa_offset: 64
 
@@ -330,7 +330,7 @@ static constexpr uint8_t expected_cfi_kThumb2_adjust[] = {
 static constexpr uint8_t expected_asm_kMips_adjust_head[] = {
     0xC0, 0xFF, 0xBD, 0x27, 0x3C, 0x00, 0xBF, 0xAF, 0x38, 0x00, 0xB1, 0xAF,
     0x34, 0x00, 0xB0, 0xAF, 0x28, 0x00, 0xB6, 0xF7, 0x20, 0x00, 0xB4, 0xF7,
-    0x08, 0x00, 0x04, 0x14, 0xFC, 0xFF, 0xBD, 0x27,
+    0x08, 0x00, 0x80, 0x14, 0xFC, 0xFF, 0xBD, 0x27,
     0x00, 0x00, 0xBF, 0xAF, 0x00, 0x00, 0x10, 0x04, 0x02, 0x00, 0x01, 0x3C,
     0x18, 0x00, 0x21, 0x34, 0x21, 0x08, 0x3F, 0x00, 0x00, 0x00, 0xBF, 0x8F,
     0x09, 0x00, 0x20, 0x00, 0x04, 0x00, 0xBD, 0x27,
@@ -345,42 +345,42 @@ static constexpr uint8_t expected_cfi_kMips_adjust[] = {
     0x50, 0x0E, 0x44, 0x60, 0x0E, 0x40, 0x04, 0x04, 0x00, 0x02, 0x00, 0x0A,
     0x44, 0xDF, 0x44, 0xD1, 0x44, 0xD0, 0x50, 0x0E, 0x00, 0x0B, 0x0E, 0x40,
 };
-// 0x00000000: addiu r29, r29, -64
+// 0x00000000: addiu sp, sp, -64
 // 0x00000004: .cfi_def_cfa_offset: 64
-// 0x00000004: sw r31, +60(r29)
+// 0x00000004: sw ra, +60(sp)
 // 0x00000008: .cfi_offset: r31 at cfa-4
-// 0x00000008: sw r17, +56(r29)
+// 0x00000008: sw s1, +56(sp)
 // 0x0000000c: .cfi_offset: r17 at cfa-8
-// 0x0000000c: sw r16, +52(r29)
+// 0x0000000c: sw s0, +52(sp)
 // 0x00000010: .cfi_offset: r16 at cfa-12
-// 0x00000010: sdc1 f22, +40(r29)
-// 0x00000014: sdc1 f20, +32(r29)
-// 0x00000018: bne r0, r4, 0x00000040 ; +36
-// 0x0000001c: addiu r29, r29, -4
+// 0x00000010: sdc1 f22, +40(sp)
+// 0x00000014: sdc1 f20, +32(sp)
+// 0x00000018: bnez a0, 0x0000003c ; +36
+// 0x0000001c: addiu sp, sp, -4
 // 0x00000020: .cfi_def_cfa_offset: 68
-// 0x00000020: sw r31, +0(r29)
-// 0x00000024: bltzal r0, 0x0000002c ; +4
-// 0x00000028: lui r1, 0x20000
-// 0x0000002c: ori r1, r1, 24
-// 0x00000030: addu r1, r1, r31
-// 0x00000034: lw r31, +0(r29)
-// 0x00000038: jr r1
-// 0x0000003c: addiu r29, r29, 4
+// 0x00000020: sw ra, +0(sp)
+// 0x00000024: nal
+// 0x00000028: lui at, 2
+// 0x0000002c: ori at, at, 24
+// 0x00000030: addu at, at, ra
+// 0x00000034: lw ra, +0(sp)
+// 0x00000038: jr at
+// 0x0000003c: addiu sp, sp, 4
 // 0x00000040: .cfi_def_cfa_offset: 64
 // 0x00000040: nop
 //             ...
 // 0x00020040: nop
 // 0x00020044: .cfi_remember_state
-// 0x00020044: lw r31, +60(r29)
+// 0x00020044: lw ra, +60(sp)
 // 0x00020048: .cfi_restore: r31
-// 0x00020048: lw r17, +56(r29)
+// 0x00020048: lw s1, +56(sp)
 // 0x0002004c: .cfi_restore: r17
-// 0x0002004c: lw r16, +52(r29)
+// 0x0002004c: lw s0, +52(sp)
 // 0x00020050: .cfi_restore: r16
-// 0x00020050: ldc1 f22, +40(r29)
-// 0x00020054: ldc1 f20, +32(r29)
-// 0x00020058: jr r31
-// 0x0002005c: addiu r29, r29, 64
+// 0x00020050: ldc1 f22, +40(sp)
+// 0x00020054: ldc1 f20, +32(sp)
+// 0x00020058: jr ra
+// 0x0002005c: addiu sp, sp, 64
 // 0x00020060: .cfi_def_cfa_offset: 0
 // 0x00020060: .cfi_restore_state
 // 0x00020060: .cfi_def_cfa_offset: 64
@@ -401,37 +401,37 @@ static constexpr uint8_t expected_cfi_kMips64_adjust[] = {
     0x44, 0xDF, 0x44, 0xD1, 0x44, 0xD0, 0x44, 0xF9, 0x44, 0xF8, 0x44, 0x0E,
     0x00, 0x44, 0x0B, 0x0E, 0x40,
 };
-// 0x00000000: daddiu r29, r29, -64
+// 0x00000000: daddiu sp, sp, -64
 // 0x00000004: .cfi_def_cfa_offset: 64
-// 0x00000004: sd r31, +56(r29)
+// 0x00000004: sd ra, +56(sp)
 // 0x00000008: .cfi_offset: r31 at cfa-8
-// 0x00000008: sd r17, +48(r29)
+// 0x00000008: sd s1, +48(sp)
 // 0x0000000c: .cfi_offset: r17 at cfa-16
-// 0x0000000c: sd r16, +40(r29)
+// 0x0000000c: sd s0, +40(sp)
 // 0x00000010: .cfi_offset: r16 at cfa-24
-// 0x00000010: sdc1 f25, +32(r29)
+// 0x00000010: sdc1 f25, +32(sp)
 // 0x00000014: .cfi_offset: r57 at cfa-32
-// 0x00000014: sdc1 f24, +24(r29)
+// 0x00000014: sdc1 f24, +24(sp)
 // 0x00000018: .cfi_offset: r56 at cfa-40
-// 0x00000018: bnec r5, r6, 0x00000024 ; +12
-// 0x0000001c: auipc r1, 2
-// 0x00000020: jic r1, 12 ; bc 0x00020028 ; +131080
+// 0x00000018: bnec a1, a2, 0x00000024 ; +12
+// 0x0000001c: auipc at, 2
+// 0x00000020: jic at, 12 ; bc 0x00020028 ; +131080
 // 0x00000024: nop
 //             ...
 // 0x00020024: nop
 // 0x00020028: .cfi_remember_state
-// 0x00020028: ld r31, +56(r29)
+// 0x00020028: ld ra, +56(sp)
 // 0x0002002c: .cfi_restore: r31
-// 0x0002002c: ld r17, +48(r29)
+// 0x0002002c: ld s1, +48(sp)
 // 0x00020030: .cfi_restore: r17
-// 0x00020030: ld r16, +40(r29)
+// 0x00020030: ld s0, +40(sp)
 // 0x00020034: .cfi_restore: r16
-// 0x00020034: ldc1 f25, +32(r29)
+// 0x00020034: ldc1 f25, +32(sp)
 // 0x00020038: .cfi_restore: r57
-// 0x00020038: ldc1 f24, +24(r29)
+// 0x00020038: ldc1 f24, +24(sp)
 // 0x0002003c: .cfi_restore: r56
-// 0x0002003c: daddiu r29, r29, 64
+// 0x0002003c: daddiu sp, sp, 64
 // 0x00020040: .cfi_def_cfa_offset: 0
-// 0x00020040: jic r31, 0
+// 0x00020040: jic ra, 0
 // 0x00020044: .cfi_restore_state
 // 0x00020044: .cfi_def_cfa_offset: 64
