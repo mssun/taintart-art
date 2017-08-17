@@ -1596,10 +1596,21 @@ ENTRY art_quick_imt_conflict_trampoline
     .cfi_rel_offset r1, 0
     .cfi_rel_offset r2, 4
     ldr     r4, [sp, #(2 * 4)]  // Load referrer.
-    ubfx    r1, r12, #0, #METHOD_DEX_CACHE_HASH_BITS  // Calculate DexCache method slot index.
-    ldr     r4, [r4, #ART_METHOD_DEX_CACHE_METHODS_OFFSET_32]   // Load dex cache methods array
-    add     r4, r4, r1, lsl #(POINTER_SIZE_SHIFT + 1)  // Load DexCache method slot address.
     ldr     r2, [r0, #ART_METHOD_JNI_OFFSET_32]  // Load ImtConflictTable
+    // Load the declaring class (without read barrier) and access flags (for obsolete method check).
+    // The obsolete flag is set with suspended threads, so we do not need an acquire operation here.
+#if ART_METHOD_ACCESS_FLAGS_OFFSET != ART_METHOD_DECLARING_CLASS_OFFSET + 4
+#error "Expecting declaring class and access flags to be consecutive for LDRD."
+#endif
+    ldrd    r0, r1, [r4, #ART_METHOD_DECLARING_CLASS_OFFSET]
+    // If the method is obsolete, just go through the dex cache miss slow path.
+    lsrs    r1, #(ACC_OBSOLETE_METHOD_SHIFT + 1)
+    bcs     .Limt_conflict_trampoline_dex_cache_miss
+    ldr     r4, [r0, #MIRROR_CLASS_DEX_CACHE_OFFSET]  // Load the DexCache (without read barrier).
+    UNPOISON_HEAP_REF r4
+    ubfx    r1, r12, #0, #METHOD_DEX_CACHE_HASH_BITS  // Calculate DexCache method slot index.
+    ldr     r4, [r4, #MIRROR_DEX_CACHE_RESOLVED_METHODS_OFFSET]  // Load the resolved methods.
+    add     r4, r4, r1, lsl #(POINTER_SIZE_SHIFT + 1)  // Load DexCache method slot address.
 
 // FIXME: Configure the build to use the faster code when appropriate.
 //        Currently we fall back to the slower version.

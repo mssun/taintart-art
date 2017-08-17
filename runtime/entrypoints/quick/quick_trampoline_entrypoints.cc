@@ -1271,7 +1271,7 @@ extern "C" const void* artQuickResolutionTrampoline(
       // FindVirtualMethodFor... This is ok for FindDexMethodIndexInOtherDexFile that only cares
       // about the name and signature.
       uint32_t update_dex_cache_method_index = called->GetDexMethodIndex();
-      if (!called->HasSameDexCacheResolvedMethods(caller, kRuntimePointerSize)) {
+      if (called->GetDexFile() != caller->GetDexFile()) {
         // Calling from one dex file to another, need to compute the method index appropriate to
         // the caller's dex file. Since we get here only if the original called was a runtime
         // method, we've got the correct dex_file and a dex_method_idx from above.
@@ -1283,12 +1283,16 @@ extern "C" const void* artQuickResolutionTrampoline(
             called->FindDexMethodIndexInOtherDexFile(*caller_dex_file,
                                                      caller_method_name_and_sig_index);
       }
-      if ((update_dex_cache_method_index != DexFile::kDexNoIndex) &&
-          (caller->GetDexCacheResolvedMethod(
-              update_dex_cache_method_index, kRuntimePointerSize) != called)) {
-        caller->SetDexCacheResolvedMethod(update_dex_cache_method_index,
-                                          called,
-                                          kRuntimePointerSize);
+      if (update_dex_cache_method_index != DexFile::kDexNoIndex) {
+        // Note: We do not need the read barrier for the dex cache as the SetResolvedMethod()
+        // operates on native (non-moveable) data and constants (num_resolved_methods_).
+        ObjPtr<mirror::DexCache> caller_dex_cache = caller->GetDexCache<kWithoutReadBarrier>();
+        if (caller_dex_cache->GetResolvedMethod(
+                update_dex_cache_method_index, kRuntimePointerSize) != called) {
+          caller_dex_cache->SetResolvedMethod(update_dex_cache_method_index,
+                                              called,
+                                              kRuntimePointerSize);
+        }
       }
     } else if (invoke_type == kStatic) {
       const auto called_dex_method_idx = called->GetDexMethodIndex();
