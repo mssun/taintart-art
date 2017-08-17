@@ -112,6 +112,8 @@ static const MipsInstruction gMipsInstructions[] = {
   { kRTypeMask, 34, "sub", "DST", },
   { kRTypeMask, 35, "subu", "DST", },
   { kRTypeMask, 36, "and", "DST", },
+  { kRTypeMask | (0x1f << 16), 37 | (0 << 16), "move", "DS" },
+  { kRTypeMask | (0x1f << 21), 37 | (0 << 21), "move", "DT" },
   { kRTypeMask, 37, "or", "DST", },
   { kRTypeMask, 38, "xor", "DST", },
   { kRTypeMask, 39, "nor", "DST", },
@@ -214,13 +216,19 @@ static const MipsInstruction gMipsInstructions[] = {
   { kJTypeMask, 3 << kOpcodeShift, "jal", "L" },
 
   // I-type instructions.
+  { kITypeMask | (0x3ff << 16), 4 << kOpcodeShift, "b", "B" },
+  { kITypeMask | (0x1f << 16), 4 << kOpcodeShift | (0 << 16), "beqz", "SB" },
+  { kITypeMask | (0x1f << 21), 4 << kOpcodeShift | (0 << 21), "beqz", "TB" },
   { kITypeMask, 4 << kOpcodeShift, "beq", "STB" },
+  { kITypeMask | (0x1f << 16), 5 << kOpcodeShift | (0 << 16), "bnez", "SB" },
+  { kITypeMask | (0x1f << 21), 5 << kOpcodeShift | (0 << 21), "bnez", "TB" },
   { kITypeMask, 5 << kOpcodeShift, "bne", "STB" },
   { kITypeMask | (0x1f << 16), 1 << kOpcodeShift | (1 << 16), "bgez", "SB" },
   { kITypeMask | (0x1f << 16), 1 << kOpcodeShift | (0 << 16), "bltz", "SB" },
-  { kITypeMask | (0x1f << 16), 1 << kOpcodeShift | (2 << 16), "bltzl", "SB" },
+  { kITypeMask | (0x3ff << 16), 1 << kOpcodeShift | (16 << 16), "nal", "" },
   { kITypeMask | (0x1f << 16), 1 << kOpcodeShift | (16 << 16), "bltzal", "SB" },
-  { kITypeMask | (0x1f << 16), 1 << kOpcodeShift | (18 << 16), "bltzall", "SB" },
+  { kITypeMask | (0x3ff << 16), 1 << kOpcodeShift | (17 << 16), "bal", "B" },
+  { kITypeMask | (0x1f << 16), 1 << kOpcodeShift | (17 << 16), "bgezal", "SB" },
   { kITypeMask | (0x1f << 16), 6 << kOpcodeShift | (0 << 16), "blez", "SB" },
   { kITypeMask, 6 << kOpcodeShift, "bgeuc", "STB" },
   { kITypeMask | (0x1f << 16), 7 << kOpcodeShift | (0 << 16), "bgtz", "SB" },
@@ -228,18 +236,16 @@ static const MipsInstruction gMipsInstructions[] = {
   { kITypeMask | (0x1f << 16), 1 << kOpcodeShift | (6 << 16), "dahi", "Si", },
   { kITypeMask | (0x1f << 16), 1 << kOpcodeShift | (30 << 16), "dati", "Si", },
 
-  { 0xffff0000, (4 << kOpcodeShift), "b", "B" },
-  { 0xffff0000, (1 << kOpcodeShift) | (17 << 16), "bal", "B" },
-
   { kITypeMask, 8 << kOpcodeShift, "beqc", "STB" },
 
-  { kITypeMask, 8 << kOpcodeShift, "addi", "TSi", },
+  { kITypeMask | (0x1f << 21), 9 << kOpcodeShift | (0 << 21), "li", "Ti" },
   { kITypeMask, 9 << kOpcodeShift, "addiu", "TSi", },
   { kITypeMask, 10 << kOpcodeShift, "slti", "TSi", },
   { kITypeMask, 11 << kOpcodeShift, "sltiu", "TSi", },
-  { kITypeMask, 12 << kOpcodeShift, "andi", "TSi", },
-  { kITypeMask, 13 << kOpcodeShift, "ori", "TSi", },
-  { kITypeMask, 14 << kOpcodeShift, "xori", "TSi", },
+  { kITypeMask, 12 << kOpcodeShift, "andi", "TSI", },
+  { kITypeMask | (0x1f << 21), 13 << kOpcodeShift | (0 << 21), "li", "TI" },
+  { kITypeMask, 13 << kOpcodeShift, "ori", "TSI", },
+  { kITypeMask, 14 << kOpcodeShift, "xori", "TSI", },
   { kITypeMask | (0x1f << 21), 15 << kOpcodeShift, "lui", "Ti", },
   { kITypeMask, 15 << kOpcodeShift, "aui", "TSi", },
 
@@ -324,6 +330,7 @@ static const MipsInstruction gMipsInstructions[] = {
 
   { kITypeMask, 24 << kOpcodeShift, "bnec", "STB" },
 
+  { kITypeMask | (0x1f << 21), 25 << kOpcodeShift | (0 << 21), "dli", "Ti" },
   { kITypeMask, 25 << kOpcodeShift, "daddiu", "TSi", },
   { kITypeMask, 29 << kOpcodeShift, "daui", "TSi", },
 
@@ -561,6 +568,9 @@ size_t DisassemblerMips::Dump(std::ostream& os, const uint8_t* instr_ptr) {
               }
               continue;  // No ", ".
             }
+          case 'I':  // Unsigned lower 16-bit immediate.
+            args << (instruction & 0xffff);
+            break;
           case 'i':  // Sign-extended lower 16-bit immediate.
             args << static_cast<int16_t>(instruction & 0xffff);
             break;
