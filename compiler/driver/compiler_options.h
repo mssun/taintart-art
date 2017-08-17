@@ -197,6 +197,10 @@ class CompilerOptions FINAL {
     return app_image_;
   }
 
+  void DisableAppImage() {
+    app_image_ = false;
+  }
+
   // Should the code be compiled as position independent?
   bool GetCompilePic() const {
     return compile_pic_;
