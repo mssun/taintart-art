@@ -247,12 +247,8 @@ jvmtiError MonitorUtil::RawMonitorWait(jvmtiEnv* env ATTRIBUTE_UNUSED,
   JvmtiMonitor* monitor = DecodeMonitor(id);
   art::Thread* self = art::Thread::Current();
 
-  // This is not in the spec, but it's the only thing that makes sense (and agrees with
-  // Object.wait).
-  if (millis < 0) {
-    return ERR(ILLEGAL_ARGUMENT);
-  }
-
+  // What millis < 0 means is not defined in the spec. Real world agents seem to assume that it is a
+  // valid call though. We treat it as though it was 0 and wait indefinitely.
   bool result = (millis > 0)
       ? monitor->Wait(self, static_cast<uint64_t>(millis))
       : monitor->Wait(self);
