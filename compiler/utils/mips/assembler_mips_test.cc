@@ -186,11 +186,51 @@ class AssemblerMIPSTest : public AssemblerTest<mips::MipsAssembler,
     return result;
   }
 
+  void BranchHelper(void (mips::MipsAssembler::*f)(mips::MipsLabel*,
+                                                   bool),
+                    const std::string& instr_name,
+                    bool is_bare = false) {
+    __ SetReorder(false);
+    mips::MipsLabel label1, label2;
+    (Base::GetAssembler()->*f)(&label1, is_bare);
+    constexpr size_t kAdduCount1 = 63;
+    for (size_t i = 0; i != kAdduCount1; ++i) {
+      __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
+    }
+    __ Bind(&label1);
+    (Base::GetAssembler()->*f)(&label2, is_bare);
+    constexpr size_t kAdduCount2 = 64;
+    for (size_t i = 0; i != kAdduCount2; ++i) {
+      __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
+    }
+    __ Bind(&label2);
+    (Base::GetAssembler()->*f)(&label1, is_bare);
+    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
+
+    std::string expected =
+        ".set noreorder\n" +
+        instr_name + " 1f\n" +
+        (is_bare ? "" : "nop\n") +
+        RepeatInsn(kAdduCount1, "addu $zero, $zero, $zero\n") +
+        "1:\n" +
+        instr_name + " 2f\n" +
+        (is_bare ? "" : "nop\n") +
+        RepeatInsn(kAdduCount2, "addu $zero, $zero, $zero\n") +
+        "2:\n" +
+        instr_name + " 1b\n" +
+        (is_bare ? "" : "nop\n") +
+        "addu $zero, $zero, $zero\n";
+    DriverStr(expected, instr_name);
+  }
+
   void BranchCondOneRegHelper(void (mips::MipsAssembler::*f)(mips::Register,
-                                                             mips::MipsLabel*),
-                              const std::string& instr_name) {
+                                                             mips::MipsLabel*,
+                                                             bool),
+                              const std::string& instr_name,
+                              bool is_bare = false) {
+    __ SetReorder(false);
     mips::MipsLabel label;
-    (Base::GetAssembler()->*f)(mips::A0, &label);
+    (Base::GetAssembler()->*f)(mips::A0, &label, is_bare);
     constexpr size_t kAdduCount1 = 63;
     for (size_t i = 0; i != kAdduCount1; ++i) {
       __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
@@ -200,26 +240,31 @@ class AssemblerMIPSTest : public AssemblerTest<mips::MipsAssembler,
     for (size_t i = 0; i != kAdduCount2; ++i) {
       __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
     }
-    (Base::GetAssembler()->*f)(mips::A1, &label);
+    (Base::GetAssembler()->*f)(mips::A1, &label, is_bare);
+    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
 
     std::string expected =
         ".set noreorder\n" +
-        instr_name + " $a0, 1f\n"
-        "nop\n" +
+        instr_name + " $a0, 1f\n" +
+        (is_bare ? "" : "nop\n") +
         RepeatInsn(kAdduCount1, "addu $zero, $zero, $zero\n") +
         "1:\n" +
         RepeatInsn(kAdduCount2, "addu $zero, $zero, $zero\n") +
-        instr_name + " $a1, 1b\n"
-        "nop\n";
+        instr_name + " $a1, 1b\n" +
+        (is_bare ? "" : "nop\n") +
+        "addu $zero, $zero, $zero\n";
     DriverStr(expected, instr_name);
   }
 
   void BranchCondTwoRegsHelper(void (mips::MipsAssembler::*f)(mips::Register,
                                                               mips::Register,
-                                                              mips::MipsLabel*),
-                               const std::string& instr_name) {
+                                                              mips::MipsLabel*,
+                                                              bool),
+                               const std::string& instr_name,
+                               bool is_bare = false) {
+    __ SetReorder(false);
     mips::MipsLabel label;
-    (Base::GetAssembler()->*f)(mips::A0, mips::A1, &label);
+    (Base::GetAssembler()->*f)(mips::A0, mips::A1, &label, is_bare);
     constexpr size_t kAdduCount1 = 63;
     for (size_t i = 0; i != kAdduCount1; ++i) {
       __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
@@ -229,17 +274,52 @@ class AssemblerMIPSTest : public AssemblerTest<mips::MipsAssembler,
     for (size_t i = 0; i != kAdduCount2; ++i) {
       __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
     }
-    (Base::GetAssembler()->*f)(mips::A2, mips::A3, &label);
+    (Base::GetAssembler()->*f)(mips::A2, mips::A3, &label, is_bare);
+    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
 
     std::string expected =
         ".set noreorder\n" +
-        instr_name + " $a0, $a1, 1f\n"
-        "nop\n" +
+        instr_name + " $a0, $a1, 1f\n" +
+        (is_bare ? "" : "nop\n") +
         RepeatInsn(kAdduCount1, "addu $zero, $zero, $zero\n") +
         "1:\n" +
         RepeatInsn(kAdduCount2, "addu $zero, $zero, $zero\n") +
-        instr_name + " $a2, $a3, 1b\n"
-        "nop\n";
+        instr_name + " $a2, $a3, 1b\n" +
+        (is_bare ? "" : "nop\n") +
+        "addu $zero, $zero, $zero\n";
+    DriverStr(expected, instr_name);
+  }
+
+  void BranchFpuCondCodeHelper(void (mips::MipsAssembler::*f)(int,
+                                                              mips::MipsLabel*,
+                                                              bool),
+                               const std::string& instr_name,
+                               bool is_bare = false) {
+    __ SetReorder(false);
+    mips::MipsLabel label;
+    (Base::GetAssembler()->*f)(0, &label, is_bare);
+    constexpr size_t kAdduCount1 = 63;
+    for (size_t i = 0; i != kAdduCount1; ++i) {
+      __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
+    }
+    __ Bind(&label);
+    constexpr size_t kAdduCount2 = 64;
+    for (size_t i = 0; i != kAdduCount2; ++i) {
+      __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
+    }
+    (Base::GetAssembler()->*f)(7, &label, is_bare);
+    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
+
+    std::string expected =
+        ".set noreorder\n" +
+        instr_name + " $fcc0, 1f\n" +
+        (is_bare ? "" : "nop\n") +
+        RepeatInsn(kAdduCount1, "addu $zero, $zero, $zero\n") +
+        "1:\n" +
+        RepeatInsn(kAdduCount2, "addu $zero, $zero, $zero\n") +
+        instr_name + " $fcc7, 1b\n" +
+        (is_bare ? "" : "nop\n") +
+        "addu $zero, $zero, $zero\n";
     DriverStr(expected, instr_name);
   }
 
@@ -2072,410 +2152,136 @@ TEST_F(AssemblerMIPSTest, StoreConstToOffset) {
   DriverStr(expected, "StoreConstToOffset");
 }
 
-TEST_F(AssemblerMIPSTest, B) {
-  mips::MipsLabel label1, label2;
-  __ B(&label1);
-  constexpr size_t kAdduCount1 = 63;
-  for (size_t i = 0; i != kAdduCount1; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Bind(&label1);
-  __ B(&label2);
-  constexpr size_t kAdduCount2 = 64;
-  for (size_t i = 0; i != kAdduCount2; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Bind(&label2);
-  __ B(&label1);
+//////////////
+// BRANCHES //
+//////////////
 
-  std::string expected =
-      ".set noreorder\n"
-      "b 1f\n"
-      "nop\n" +
-      RepeatInsn(kAdduCount1, "addu $zero, $zero, $zero\n") +
-      "1:\n"
-      "b 2f\n"
-      "nop\n" +
-      RepeatInsn(kAdduCount2, "addu $zero, $zero, $zero\n") +
-      "2:\n"
-      "b 1b\n"
-      "nop\n";
-  DriverStr(expected, "B");
+TEST_F(AssemblerMIPSTest, B) {
+  BranchHelper(&mips::MipsAssembler::B, "B");
+}
+
+TEST_F(AssemblerMIPSTest, Bal) {
+  BranchHelper(&mips::MipsAssembler::Bal, "Bal");
 }
 
 TEST_F(AssemblerMIPSTest, Beq) {
-  __ SetReorder(false);
   BranchCondTwoRegsHelper(&mips::MipsAssembler::Beq, "Beq");
 }
 
 TEST_F(AssemblerMIPSTest, Bne) {
-  __ SetReorder(false);
   BranchCondTwoRegsHelper(&mips::MipsAssembler::Bne, "Bne");
 }
 
 TEST_F(AssemblerMIPSTest, Beqz) {
-  __ SetReorder(false);
-  mips::MipsLabel label;
-  __ Beqz(mips::A0, &label);
-  constexpr size_t kAdduCount1 = 63;
-  for (size_t i = 0; i != kAdduCount1; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Bind(&label);
-  constexpr size_t kAdduCount2 = 64;
-  for (size_t i = 0; i != kAdduCount2; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Beqz(mips::A1, &label);
-
-  std::string expected =
-      ".set noreorder\n"
-      "beq $zero, $a0, 1f\n"
-      "nop\n" +
-      RepeatInsn(kAdduCount1, "addu $zero, $zero, $zero\n") +
-      "1:\n" +
-      RepeatInsn(kAdduCount2, "addu $zero, $zero, $zero\n") +
-      "beq $zero, $a1, 1b\n"
-      "nop\n";
-  DriverStr(expected, "Beqz");
+  BranchCondOneRegHelper(&mips::MipsAssembler::Beqz, "Beqz");
 }
 
 TEST_F(AssemblerMIPSTest, Bnez) {
-  __ SetReorder(false);
-  mips::MipsLabel label;
-  __ Bnez(mips::A0, &label);
-  constexpr size_t kAdduCount1 = 63;
-  for (size_t i = 0; i != kAdduCount1; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Bind(&label);
-  constexpr size_t kAdduCount2 = 64;
-  for (size_t i = 0; i != kAdduCount2; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Bnez(mips::A1, &label);
-
-  std::string expected =
-      ".set noreorder\n"
-      "bne $zero, $a0, 1f\n"
-      "nop\n" +
-      RepeatInsn(kAdduCount1, "addu $zero, $zero, $zero\n") +
-      "1:\n" +
-      RepeatInsn(kAdduCount2, "addu $zero, $zero, $zero\n") +
-      "bne $zero, $a1, 1b\n"
-      "nop\n";
-  DriverStr(expected, "Bnez");
+  BranchCondOneRegHelper(&mips::MipsAssembler::Bnez, "Bnez");
 }
 
 TEST_F(AssemblerMIPSTest, Bltz) {
-  __ SetReorder(false);
   BranchCondOneRegHelper(&mips::MipsAssembler::Bltz, "Bltz");
 }
 
 TEST_F(AssemblerMIPSTest, Bgez) {
-  __ SetReorder(false);
   BranchCondOneRegHelper(&mips::MipsAssembler::Bgez, "Bgez");
 }
 
 TEST_F(AssemblerMIPSTest, Blez) {
-  __ SetReorder(false);
   BranchCondOneRegHelper(&mips::MipsAssembler::Blez, "Blez");
 }
 
 TEST_F(AssemblerMIPSTest, Bgtz) {
-  __ SetReorder(false);
   BranchCondOneRegHelper(&mips::MipsAssembler::Bgtz, "Bgtz");
 }
 
 TEST_F(AssemblerMIPSTest, Blt) {
-  __ SetReorder(false);
-  mips::MipsLabel label;
-  __ Blt(mips::A0, mips::A1, &label);
-  constexpr size_t kAdduCount1 = 63;
-  for (size_t i = 0; i != kAdduCount1; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Bind(&label);
-  constexpr size_t kAdduCount2 = 64;
-  for (size_t i = 0; i != kAdduCount2; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Blt(mips::A2, mips::A3, &label);
-
-  std::string expected =
-      ".set noreorder\n"
-      "slt $at, $a0, $a1\n"
-      "bne $zero, $at, 1f\n"
-      "nop\n" +
-      RepeatInsn(kAdduCount1, "addu $zero, $zero, $zero\n") +
-      "1:\n" +
-      RepeatInsn(kAdduCount2, "addu $zero, $zero, $zero\n") +
-      "slt $at, $a2, $a3\n"
-      "bne $zero, $at, 1b\n"
-      "nop\n";
-  DriverStr(expected, "Blt");
+  BranchCondTwoRegsHelper(&mips::MipsAssembler::Blt, "Blt");
 }
 
 TEST_F(AssemblerMIPSTest, Bge) {
-  __ SetReorder(false);
-  mips::MipsLabel label;
-  __ Bge(mips::A0, mips::A1, &label);
-  constexpr size_t kAdduCount1 = 63;
-  for (size_t i = 0; i != kAdduCount1; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Bind(&label);
-  constexpr size_t kAdduCount2 = 64;
-  for (size_t i = 0; i != kAdduCount2; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Bge(mips::A2, mips::A3, &label);
-
-  std::string expected =
-      ".set noreorder\n"
-      "slt $at, $a0, $a1\n"
-      "beq $zero, $at, 1f\n"
-      "nop\n" +
-      RepeatInsn(kAdduCount1, "addu $zero, $zero, $zero\n") +
-      "1:\n" +
-      RepeatInsn(kAdduCount2, "addu $zero, $zero, $zero\n") +
-      "slt $at, $a2, $a3\n"
-      "beq $zero, $at, 1b\n"
-      "nop\n";
-  DriverStr(expected, "Bge");
+  BranchCondTwoRegsHelper(&mips::MipsAssembler::Bge, "Bge");
 }
 
 TEST_F(AssemblerMIPSTest, Bltu) {
-  __ SetReorder(false);
-  mips::MipsLabel label;
-  __ Bltu(mips::A0, mips::A1, &label);
-  constexpr size_t kAdduCount1 = 63;
-  for (size_t i = 0; i != kAdduCount1; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Bind(&label);
-  constexpr size_t kAdduCount2 = 64;
-  for (size_t i = 0; i != kAdduCount2; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Bltu(mips::A2, mips::A3, &label);
-
-  std::string expected =
-      ".set noreorder\n"
-      "sltu $at, $a0, $a1\n"
-      "bne $zero, $at, 1f\n"
-      "nop\n" +
-      RepeatInsn(kAdduCount1, "addu $zero, $zero, $zero\n") +
-      "1:\n" +
-      RepeatInsn(kAdduCount2, "addu $zero, $zero, $zero\n") +
-      "sltu $at, $a2, $a3\n"
-      "bne $zero, $at, 1b\n"
-      "nop\n";
-  DriverStr(expected, "Bltu");
+  BranchCondTwoRegsHelper(&mips::MipsAssembler::Bltu, "Bltu");
 }
 
 TEST_F(AssemblerMIPSTest, Bgeu) {
-  __ SetReorder(false);
-  mips::MipsLabel label;
-  __ Bgeu(mips::A0, mips::A1, &label);
-  constexpr size_t kAdduCount1 = 63;
-  for (size_t i = 0; i != kAdduCount1; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Bind(&label);
-  constexpr size_t kAdduCount2 = 64;
-  for (size_t i = 0; i != kAdduCount2; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Bgeu(mips::A2, mips::A3, &label);
-
-  std::string expected =
-      ".set noreorder\n"
-      "sltu $at, $a0, $a1\n"
-      "beq $zero, $at, 1f\n"
-      "nop\n" +
-      RepeatInsn(kAdduCount1, "addu $zero, $zero, $zero\n") +
-      "1:\n" +
-      RepeatInsn(kAdduCount2, "addu $zero, $zero, $zero\n") +
-      "sltu $at, $a2, $a3\n"
-      "beq $zero, $at, 1b\n"
-      "nop\n";
-  DriverStr(expected, "Bgeu");
+  BranchCondTwoRegsHelper(&mips::MipsAssembler::Bgeu, "Bgeu");
 }
 
 TEST_F(AssemblerMIPSTest, Bc1f) {
-  __ SetReorder(false);
-  mips::MipsLabel label;
-  __ Bc1f(0, &label);
-  constexpr size_t kAdduCount1 = 63;
-  for (size_t i = 0; i != kAdduCount1; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Bind(&label);
-  constexpr size_t kAdduCount2 = 64;
-  for (size_t i = 0; i != kAdduCount2; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Bc1f(7, &label);
-
-  std::string expected =
-      ".set noreorder\n"
-      "bc1f $fcc0, 1f\n"
-      "nop\n" +
-      RepeatInsn(kAdduCount1, "addu $zero, $zero, $zero\n") +
-      "1:\n" +
-      RepeatInsn(kAdduCount2, "addu $zero, $zero, $zero\n") +
-      "bc1f $fcc7, 1b\n"
-      "nop\n";
-  DriverStr(expected, "Bc1f");
+  BranchFpuCondCodeHelper(&mips::MipsAssembler::Bc1f, "Bc1f");
 }
 
 TEST_F(AssemblerMIPSTest, Bc1t) {
-  __ SetReorder(false);
-  mips::MipsLabel label;
-  __ Bc1t(0, &label);
-  constexpr size_t kAdduCount1 = 63;
-  for (size_t i = 0; i != kAdduCount1; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Bind(&label);
-  constexpr size_t kAdduCount2 = 64;
-  for (size_t i = 0; i != kAdduCount2; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Bc1t(7, &label);
-
-  std::string expected =
-      ".set noreorder\n"
-      "bc1t $fcc0, 1f\n"
-      "nop\n" +
-      RepeatInsn(kAdduCount1, "addu $zero, $zero, $zero\n") +
-      "1:\n" +
-      RepeatInsn(kAdduCount2, "addu $zero, $zero, $zero\n") +
-      "bc1t $fcc7, 1b\n"
-      "nop\n";
-  DriverStr(expected, "Bc1t");
+  BranchFpuCondCodeHelper(&mips::MipsAssembler::Bc1t, "Bc1t");
 }
 
-///////////////////////
-// Loading Constants //
-///////////////////////
-
-TEST_F(AssemblerMIPSTest, LoadConst32) {
-  // IsUint<16>(value)
-  __ LoadConst32(mips::V0, 0);
-  __ LoadConst32(mips::V0, 65535);
-  // IsInt<16>(value)
-  __ LoadConst32(mips::V0, -1);
-  __ LoadConst32(mips::V0, -32768);
-  // Everything else
-  __ LoadConst32(mips::V0, 65536);
-  __ LoadConst32(mips::V0, 65537);
-  __ LoadConst32(mips::V0, 2147483647);
-  __ LoadConst32(mips::V0, -32769);
-  __ LoadConst32(mips::V0, -65536);
-  __ LoadConst32(mips::V0, -65537);
-  __ LoadConst32(mips::V0, -2147483647);
-  __ LoadConst32(mips::V0, -2147483648);
-
-  const char* expected =
-      // IsUint<16>(value)
-      "ori $v0, $zero, 0\n"         // __ LoadConst32(mips::V0, 0);
-      "ori $v0, $zero, 65535\n"     // __ LoadConst32(mips::V0, 65535);
-      // IsInt<16>(value)
-      "addiu $v0, $zero, -1\n"      // __ LoadConst32(mips::V0, -1);
-      "addiu $v0, $zero, -32768\n"  // __ LoadConst32(mips::V0, -32768);
-      // Everything else
-      "lui $v0, 1\n"                // __ LoadConst32(mips::V0, 65536);
-      "lui $v0, 1\n"                // __ LoadConst32(mips::V0, 65537);
-      "ori $v0, 1\n"                //                 "
-      "lui $v0, 32767\n"            // __ LoadConst32(mips::V0, 2147483647);
-      "ori $v0, 65535\n"            //                 "
-      "lui $v0, 65535\n"            // __ LoadConst32(mips::V0, -32769);
-      "ori $v0, 32767\n"            //                 "
-      "lui $v0, 65535\n"            // __ LoadConst32(mips::V0, -65536);
-      "lui $v0, 65534\n"            // __ LoadConst32(mips::V0, -65537);
-      "ori $v0, 65535\n"            //                 "
-      "lui $v0, 32768\n"            // __ LoadConst32(mips::V0, -2147483647);
-      "ori $v0, 1\n"                //                 "
-      "lui $v0, 32768\n";           // __ LoadConst32(mips::V0, -2147483648);
-  DriverStr(expected, "LoadConst32");
+TEST_F(AssemblerMIPSTest, BareB) {
+  BranchHelper(&mips::MipsAssembler::B, "B", /* is_bare */ true);
 }
 
-TEST_F(AssemblerMIPSTest, LoadFarthestNearLabelAddress) {
-  mips::MipsLabel label;
-  __ BindPcRelBaseLabel();
-  __ LoadLabelAddress(mips::V0, mips::V1, &label);
-  constexpr size_t kAddiuCount = 0x1FDE;
-  for (size_t i = 0; i != kAddiuCount; ++i) {
-    __ Addiu(mips::A0, mips::A1, 0);
-  }
-  __ Bind(&label);
-
-  std::string expected =
-      "1:\n"
-      "addiu $v0, $v1, %lo(2f - 1b)\n" +
-      RepeatInsn(kAddiuCount, "addiu $a0, $a1, %hi(2f - 1b)\n") +
-      "2:\n";
-  DriverStr(expected, "LoadFarthestNearLabelAddress");
+TEST_F(AssemblerMIPSTest, BareBal) {
+  BranchHelper(&mips::MipsAssembler::Bal, "Bal", /* is_bare */ true);
 }
 
-TEST_F(AssemblerMIPSTest, LoadNearestFarLabelAddress) {
-  mips::MipsLabel label;
-  __ BindPcRelBaseLabel();
-  __ LoadLabelAddress(mips::V0, mips::V1, &label);
-  constexpr size_t kAdduCount = 0x1FDF;
-  for (size_t i = 0; i != kAdduCount; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
-  __ Bind(&label);
-
-  std::string expected =
-      "1:\n"
-      "lui $at, %hi(2f - 1b)\n"
-      "ori $at, $at, %lo(2f - 1b)\n"
-      "addu $v0, $at, $v1\n" +
-      RepeatInsn(kAdduCount, "addu $zero, $zero, $zero\n") +
-      "2:\n";
-  DriverStr(expected, "LoadNearestFarLabelAddress");
+TEST_F(AssemblerMIPSTest, BareBeq) {
+  BranchCondTwoRegsHelper(&mips::MipsAssembler::Beq, "Beq", /* is_bare */ true);
 }
 
-TEST_F(AssemblerMIPSTest, LoadFarthestNearLiteral) {
-  mips::Literal* literal = __ NewLiteral<uint32_t>(0x12345678);
-  __ BindPcRelBaseLabel();
-  __ LoadLiteral(mips::V0, mips::V1, literal);
-  constexpr size_t kAddiuCount = 0x1FDE;
-  for (size_t i = 0; i != kAddiuCount; ++i) {
-    __ Addiu(mips::A0, mips::A1, 0);
-  }
-
-  std::string expected =
-      "1:\n"
-      "lw $v0, %lo(2f - 1b)($v1)\n" +
-      RepeatInsn(kAddiuCount, "addiu $a0, $a1, %hi(2f - 1b)\n") +
-      "2:\n"
-      ".word 0x12345678\n";
-  DriverStr(expected, "LoadFarthestNearLiteral");
+TEST_F(AssemblerMIPSTest, BareBne) {
+  BranchCondTwoRegsHelper(&mips::MipsAssembler::Bne, "Bne", /* is_bare */ true);
 }
 
-TEST_F(AssemblerMIPSTest, LoadNearestFarLiteral) {
-  mips::Literal* literal = __ NewLiteral<uint32_t>(0x12345678);
-  __ BindPcRelBaseLabel();
-  __ LoadLiteral(mips::V0, mips::V1, literal);
-  constexpr size_t kAdduCount = 0x1FDF;
-  for (size_t i = 0; i != kAdduCount; ++i) {
-    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
-  }
+TEST_F(AssemblerMIPSTest, BareBeqz) {
+  BranchCondOneRegHelper(&mips::MipsAssembler::Beqz, "Beqz", /* is_bare */ true);
+}
 
-  std::string expected =
-      "1:\n"
-      "lui $at, %hi(2f - 1b)\n"
-      "addu $at, $at, $v1\n"
-      "lw $v0, %lo(2f - 1b)($at)\n" +
-      RepeatInsn(kAdduCount, "addu $zero, $zero, $zero\n") +
-      "2:\n"
-      ".word 0x12345678\n";
-  DriverStr(expected, "LoadNearestFarLiteral");
+TEST_F(AssemblerMIPSTest, BareBnez) {
+  BranchCondOneRegHelper(&mips::MipsAssembler::Bnez, "Bnez", /* is_bare */ true);
+}
+
+TEST_F(AssemblerMIPSTest, BareBltz) {
+  BranchCondOneRegHelper(&mips::MipsAssembler::Bltz, "Bltz", /* is_bare */ true);
+}
+
+TEST_F(AssemblerMIPSTest, BareBgez) {
+  BranchCondOneRegHelper(&mips::MipsAssembler::Bgez, "Bgez", /* is_bare */ true);
+}
+
+TEST_F(AssemblerMIPSTest, BareBlez) {
+  BranchCondOneRegHelper(&mips::MipsAssembler::Blez, "Blez", /* is_bare */ true);
+}
+
+TEST_F(AssemblerMIPSTest, BareBgtz) {
+  BranchCondOneRegHelper(&mips::MipsAssembler::Bgtz, "Bgtz", /* is_bare */ true);
+}
+
+TEST_F(AssemblerMIPSTest, BareBlt) {
+  BranchCondTwoRegsHelper(&mips::MipsAssembler::Blt, "Blt", /* is_bare */ true);
+}
+
+TEST_F(AssemblerMIPSTest, BareBge) {
+  BranchCondTwoRegsHelper(&mips::MipsAssembler::Bge, "Bge", /* is_bare */ true);
+}
+
+TEST_F(AssemblerMIPSTest, BareBltu) {
+  BranchCondTwoRegsHelper(&mips::MipsAssembler::Bltu, "Bltu", /* is_bare */ true);
+}
+
+TEST_F(AssemblerMIPSTest, BareBgeu) {
+  BranchCondTwoRegsHelper(&mips::MipsAssembler::Bgeu, "Bgeu", /* is_bare */ true);
+}
+
+TEST_F(AssemblerMIPSTest, BareBc1f) {
+  BranchFpuCondCodeHelper(&mips::MipsAssembler::Bc1f, "Bc1f", /* is_bare */ true);
+}
+
+TEST_F(AssemblerMIPSTest, BareBc1t) {
+  BranchFpuCondCodeHelper(&mips::MipsAssembler::Bc1t, "Bc1t", /* is_bare */ true);
 }
 
 TEST_F(AssemblerMIPSTest, ImpossibleReordering) {
@@ -2554,7 +2360,7 @@ TEST_F(AssemblerMIPSTest, ImpossibleReordering) {
       "nop\n"
 
       "addu $t0, $t1, $t2\n"
-      "beq $zero, $t0, 1b\n"
+      "beqz $t0, 1b\n"
       "nop\n"
 
       "or $t1, $t2, $t3\n"
@@ -2563,17 +2369,17 @@ TEST_F(AssemblerMIPSTest, ImpossibleReordering) {
 
       "and $t0, $t1, $t2\n"
       "slt $at, $t1, $t0\n"
-      "bne $zero, $at, 1b\n"
+      "bnez $at, 1b\n"
       "nop\n"
 
       "xor $at, $t0, $t1\n"
       "slt $at, $t1, $t0\n"
-      "beq $zero, $at, 1b\n"
+      "beqz $at, 1b\n"
       "nop\n"
 
       "subu $t0, $t1, $at\n"
       "sltu $at, $t1, $t0\n"
-      "bne $zero, $at, 1b\n"
+      "bnez $at, 1b\n"
       "nop\n"
 
       "c.olt.s $fcc1, $f2, $f4\n"
@@ -2606,11 +2412,11 @@ TEST_F(AssemblerMIPSTest, ImpossibleReordering) {
 
       "2:\n"
 
-      "bne $zero, $t0, 2b\n"
+      "bnez $t0, 2b\n"
       "nop\n"
 
       "sltu $at, $t1, $t0\n"
-      "beq $zero, $at, 2b\n"
+      "beqz $at, 2b\n"
       "nop\n"
 
       "bc1f $fcc2, 2b\n"
@@ -2666,22 +2472,22 @@ TEST_F(AssemblerMIPSTest, Reordering) {
       ".set noreorder\n"
       "1:\n"
 
-      "beq $zero, $t1, 1b\n"
+      "beqz $t1, 1b\n"
       "addu $t0, $t1, $t2\n"
 
       "bne $t2, $t3, 1b\n"
       "or $t1, $t2, $t3\n"
 
       "slt $at, $t1, $t2\n"
-      "bne $zero, $at, 1b\n"
+      "bnez $at, 1b\n"
       "and $t0, $t1, $t2\n"
 
       "slt $at, $t1, $t0\n"
-      "beq $zero, $at, 1b\n"
+      "beqz $at, 1b\n"
       "xor $t2, $t0, $t1\n"
 
       "sltu $at, $t1, $t0\n"
-      "bne $zero, $at, 1b\n"
+      "bnez $at, 1b\n"
       "subu $t2, $t1, $t0\n"
 
       "bc1t $fcc1, 1b\n"
@@ -2880,6 +2686,127 @@ TEST_F(AssemblerMIPSTest, LongBranchReorder) {
       "addiu $sp, $sp, 4\n";
   std::string expected = oss.str();
   DriverStr(expected, "LongBranchReorder");
+}
+
+///////////////////////
+// Loading Constants //
+///////////////////////
+
+TEST_F(AssemblerMIPSTest, LoadConst32) {
+  // IsUint<16>(value)
+  __ LoadConst32(mips::V0, 0);
+  __ LoadConst32(mips::V0, 65535);
+  // IsInt<16>(value)
+  __ LoadConst32(mips::V0, -1);
+  __ LoadConst32(mips::V0, -32768);
+  // Everything else
+  __ LoadConst32(mips::V0, 65536);
+  __ LoadConst32(mips::V0, 65537);
+  __ LoadConst32(mips::V0, 2147483647);
+  __ LoadConst32(mips::V0, -32769);
+  __ LoadConst32(mips::V0, -65536);
+  __ LoadConst32(mips::V0, -65537);
+  __ LoadConst32(mips::V0, -2147483647);
+  __ LoadConst32(mips::V0, -2147483648);
+
+  const char* expected =
+      // IsUint<16>(value)
+      "ori $v0, $zero, 0\n"         // __ LoadConst32(mips::V0, 0);
+      "ori $v0, $zero, 65535\n"     // __ LoadConst32(mips::V0, 65535);
+      // IsInt<16>(value)
+      "addiu $v0, $zero, -1\n"      // __ LoadConst32(mips::V0, -1);
+      "addiu $v0, $zero, -32768\n"  // __ LoadConst32(mips::V0, -32768);
+      // Everything else
+      "lui $v0, 1\n"                // __ LoadConst32(mips::V0, 65536);
+      "lui $v0, 1\n"                // __ LoadConst32(mips::V0, 65537);
+      "ori $v0, 1\n"                //                 "
+      "lui $v0, 32767\n"            // __ LoadConst32(mips::V0, 2147483647);
+      "ori $v0, 65535\n"            //                 "
+      "lui $v0, 65535\n"            // __ LoadConst32(mips::V0, -32769);
+      "ori $v0, 32767\n"            //                 "
+      "lui $v0, 65535\n"            // __ LoadConst32(mips::V0, -65536);
+      "lui $v0, 65534\n"            // __ LoadConst32(mips::V0, -65537);
+      "ori $v0, 65535\n"            //                 "
+      "lui $v0, 32768\n"            // __ LoadConst32(mips::V0, -2147483647);
+      "ori $v0, 1\n"                //                 "
+      "lui $v0, 32768\n";           // __ LoadConst32(mips::V0, -2147483648);
+  DriverStr(expected, "LoadConst32");
+}
+
+TEST_F(AssemblerMIPSTest, LoadFarthestNearLabelAddress) {
+  mips::MipsLabel label;
+  __ BindPcRelBaseLabel();
+  __ LoadLabelAddress(mips::V0, mips::V1, &label);
+  constexpr size_t kAddiuCount = 0x1FDE;
+  for (size_t i = 0; i != kAddiuCount; ++i) {
+    __ Addiu(mips::A0, mips::A1, 0);
+  }
+  __ Bind(&label);
+
+  std::string expected =
+      "1:\n"
+      "addiu $v0, $v1, %lo(2f - 1b)\n" +
+      RepeatInsn(kAddiuCount, "addiu $a0, $a1, %hi(2f - 1b)\n") +
+      "2:\n";
+  DriverStr(expected, "LoadFarthestNearLabelAddress");
+}
+
+TEST_F(AssemblerMIPSTest, LoadNearestFarLabelAddress) {
+  mips::MipsLabel label;
+  __ BindPcRelBaseLabel();
+  __ LoadLabelAddress(mips::V0, mips::V1, &label);
+  constexpr size_t kAdduCount = 0x1FDF;
+  for (size_t i = 0; i != kAdduCount; ++i) {
+    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
+  }
+  __ Bind(&label);
+
+  std::string expected =
+      "1:\n"
+      "lui $at, %hi(2f - 1b)\n"
+      "ori $at, $at, %lo(2f - 1b)\n"
+      "addu $v0, $at, $v1\n" +
+      RepeatInsn(kAdduCount, "addu $zero, $zero, $zero\n") +
+      "2:\n";
+  DriverStr(expected, "LoadNearestFarLabelAddress");
+}
+
+TEST_F(AssemblerMIPSTest, LoadFarthestNearLiteral) {
+  mips::Literal* literal = __ NewLiteral<uint32_t>(0x12345678);
+  __ BindPcRelBaseLabel();
+  __ LoadLiteral(mips::V0, mips::V1, literal);
+  constexpr size_t kAddiuCount = 0x1FDE;
+  for (size_t i = 0; i != kAddiuCount; ++i) {
+    __ Addiu(mips::A0, mips::A1, 0);
+  }
+
+  std::string expected =
+      "1:\n"
+      "lw $v0, %lo(2f - 1b)($v1)\n" +
+      RepeatInsn(kAddiuCount, "addiu $a0, $a1, %hi(2f - 1b)\n") +
+      "2:\n"
+      ".word 0x12345678\n";
+  DriverStr(expected, "LoadFarthestNearLiteral");
+}
+
+TEST_F(AssemblerMIPSTest, LoadNearestFarLiteral) {
+  mips::Literal* literal = __ NewLiteral<uint32_t>(0x12345678);
+  __ BindPcRelBaseLabel();
+  __ LoadLiteral(mips::V0, mips::V1, literal);
+  constexpr size_t kAdduCount = 0x1FDF;
+  for (size_t i = 0; i != kAdduCount; ++i) {
+    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
+  }
+
+  std::string expected =
+      "1:\n"
+      "lui $at, %hi(2f - 1b)\n"
+      "addu $at, $at, $v1\n"
+      "lw $v0, %lo(2f - 1b)($at)\n" +
+      RepeatInsn(kAdduCount, "addu $zero, $zero, $zero\n") +
+      "2:\n"
+      ".word 0x12345678\n";
+  DriverStr(expected, "LoadNearestFarLiteral");
 }
 
 #undef __

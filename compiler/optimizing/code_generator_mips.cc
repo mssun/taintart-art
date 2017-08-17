@@ -6573,7 +6573,8 @@ void InstructionCodeGeneratorMIPS::GenerateGcRootFieldLoad(HInstruction* instruc
           DCHECK(!label_low);
           __ AddUpper(base, obj, offset_high);
         }
-        __ Beqz(T9, (isR6 ? 2 : 4));  // Skip jialc / addiu+jalr+nop.
+        MipsLabel skip_call;
+        __ Beqz(T9, &skip_call, /* is_bare */ true);
         if (label_low != nullptr) {
           DCHECK(short_offset);
           __ Bind(label_low);
@@ -6588,6 +6589,7 @@ void InstructionCodeGeneratorMIPS::GenerateGcRootFieldLoad(HInstruction* instruc
           __ Jalr(T9);
           __ Nop();
         }
+        __ Bind(&skip_call);
         __ SetReorder(reordering);
       } else {
         // Note that we do not actually check the value of `GetIsGcMarking()`
@@ -6724,27 +6726,31 @@ void CodeGeneratorMIPS::GenerateFieldLoadWithBakerReadBarrier(HInstruction* inst
     __ LoadFromOffset(kLoadWord, T9, TR, entry_point_offset);
     Register ref_reg = ref.AsRegister<Register>();
     Register base = short_offset ? obj : TMP;
+    MipsLabel skip_call;
     if (short_offset) {
       if (isR6) {
-        __ Beqzc(T9, 2);  // Skip jialc.
+        __ Beqzc(T9, &skip_call, /* is_bare */ true);
         __ Nop();  // In forbidden slot.
         __ Jialc(T9, thunk_disp);
       } else {
-        __ Beqz(T9, 3);  // Skip jalr+nop.
+        __ Beqz(T9, &skip_call, /* is_bare */ true);
         __ Addiu(T9, T9, thunk_disp);  // In delay slot.
         __ Jalr(T9);
         __ Nop();  // In delay slot.
       }
+      __ Bind(&skip_call);
     } else {
       if (isR6) {
-        __ Beqz(T9, 2);  // Skip jialc.
+        __ Beqz(T9, &skip_call, /* is_bare */ true);
         __ Aui(base, obj, offset_high);  // In delay slot.
         __ Jialc(T9, thunk_disp);
+        __ Bind(&skip_call);
       } else {
         __ Lui(base, offset_high);
-        __ Beqz(T9, 2);  // Skip jalr.
+        __ Beqz(T9, &skip_call, /* is_bare */ true);
         __ Addiu(T9, T9, thunk_disp);  // In delay slot.
         __ Jalr(T9);
+        __ Bind(&skip_call);
         __ Addu(base, base, obj);  // In delay slot.
       }
     }
@@ -6826,15 +6832,18 @@ void CodeGeneratorMIPS::GenerateArrayLoadWithBakerReadBarrier(HInstruction* inst
     Register index_reg = index.IsRegisterPair()
         ? index.AsRegisterPairLow<Register>()
         : index.AsRegister<Register>();
+    MipsLabel skip_call;
     if (GetInstructionSetFeatures().IsR6()) {
-      __ Beqz(T9, 2);  // Skip jialc.
+      __ Beqz(T9, &skip_call, /* is_bare */ true);
       __ Lsa(TMP, index_reg, obj, scale_factor);  // In delay slot.
       __ Jialc(T9, thunk_disp);
+      __ Bind(&skip_call);
     } else {
       __ Sll(TMP, index_reg, scale_factor);
-      __ Beqz(T9, 2);  // Skip jalr.
+      __ Beqz(T9, &skip_call, /* is_bare */ true);
       __ Addiu(T9, T9, thunk_disp);  // In delay slot.
       __ Jalr(T9);
+      __ Bind(&skip_call);
       __ Addu(TMP, TMP, obj);  // In delay slot.
     }
     // /* HeapReference<Object> */ ref = *(obj + data_offset + (index << scale_factor))
