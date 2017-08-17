@@ -4490,7 +4490,8 @@ void InstructionCodeGeneratorMIPS64::GenerateGcRootFieldLoad(HInstruction* instr
           DCHECK(!label_low);
           __ Daui(base, obj, offset_high);
         }
-        __ Beqz(T9, 2);  // Skip jialc.
+        Mips64Label skip_call;
+        __ Beqz(T9, &skip_call, /* is_bare */ true);
         if (label_low != nullptr) {
           DCHECK(short_offset);
           __ Bind(label_low);
@@ -4499,6 +4500,7 @@ void InstructionCodeGeneratorMIPS64::GenerateGcRootFieldLoad(HInstruction* instr
         __ LoadFromOffset(kLoadUnsignedWord, root_reg, base, offset_low);  // Single instruction
                                                                            // in delay slot.
         __ Jialc(T9, thunk_disp);
+        __ Bind(&skip_call);
       } else {
         // Note that we do not actually check the value of `GetIsGcMarking()`
         // to decide whether to mark the loaded GC root or not.  Instead, we
@@ -4617,18 +4619,21 @@ void CodeGeneratorMIPS64::GenerateFieldLoadWithBakerReadBarrier(HInstruction* in
     // threads are suspended or running a checkpoint.
     __ LoadFromOffset(kLoadDoubleword, T9, TR, entry_point_offset);
     GpuRegister ref_reg = ref.AsRegister<GpuRegister>();
+    Mips64Label skip_call;
     if (short_offset) {
-      __ Beqzc(T9, 2);  // Skip jialc.
+      __ Beqzc(T9, &skip_call, /* is_bare */ true);
       __ Nop();  // In forbidden slot.
       __ Jialc(T9, thunk_disp);
+      __ Bind(&skip_call);
       // /* HeapReference<Object> */ ref = *(obj + offset)
       __ LoadFromOffset(kLoadUnsignedWord, ref_reg, obj, offset);  // Single instruction.
     } else {
       int16_t offset_low = Low16Bits(offset);
       int16_t offset_high = High16Bits(offset - offset_low);  // Accounts for sign extension in lwu.
-      __ Beqz(T9, 2);  // Skip jialc.
+      __ Beqz(T9, &skip_call, /* is_bare */ true);
       __ Daui(TMP, obj, offset_high);  // In delay slot.
       __ Jialc(T9, thunk_disp);
+      __ Bind(&skip_call);
       // /* HeapReference<Object> */ ref = *(obj + offset)
       __ LoadFromOffset(kLoadUnsignedWord, ref_reg, TMP, offset_low);  // Single instruction.
     }
@@ -4702,11 +4707,13 @@ void CodeGeneratorMIPS64::GenerateArrayLoadWithBakerReadBarrier(HInstruction* in
     // Loading the entrypoint does not require a load acquire since it is only changed when
     // threads are suspended or running a checkpoint.
     __ LoadFromOffset(kLoadDoubleword, T9, TR, entry_point_offset);
-    __ Beqz(T9, 2);  // Skip jialc.
+    Mips64Label skip_call;
+    __ Beqz(T9, &skip_call, /* is_bare */ true);
     GpuRegister ref_reg = ref.AsRegister<GpuRegister>();
     GpuRegister index_reg = index.AsRegister<GpuRegister>();
     __ Dlsa(TMP, index_reg, obj, scale_factor);  // In delay slot.
     __ Jialc(T9, thunk_disp);
+    __ Bind(&skip_call);
     // /* HeapReference<Object> */ ref = *(obj + data_offset + (index << scale_factor))
     DCHECK(IsInt<16>(static_cast<int32_t>(data_offset))) << data_offset;
     __ LoadFromOffset(kLoadUnsignedWord, ref_reg, TMP, data_offset);  // Single instruction.
