@@ -356,7 +356,8 @@ static void SampleClassesAndExecutedMethods(pthread_t profiler_pthread,
             sampled_methods->AddReference(method.GetDexFile(), method.GetDexMethodIndex());
           }
         } else {
-          CHECK_EQ(method.GetCounter(), 0u);
+          CHECK_EQ(method.GetCounter(), 0u) << method.PrettyMethod()
+              << " access_flags=" << method.GetAccessFlags();
         }
       }
     }
