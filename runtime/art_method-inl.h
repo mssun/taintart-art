@@ -384,21 +384,22 @@ inline bool ArtMethod::IsProxyMethod() {
   return GetDeclaringClass<kWithoutReadBarrier>()->IsProxyClass();
 }
 
+inline ArtMethod* ArtMethod::GetInterfaceMethodForProxyUnchecked(PointerSize pointer_size) {
+  DCHECK(IsProxyMethod());
+  // Do not check IsAssignableFrom() here as it relies on raw reference comparison
+  // which may give false negatives while visiting references for a non-CC moving GC.
+  return reinterpret_cast<ArtMethod*>(GetDataPtrSize(pointer_size));
+}
+
 inline ArtMethod* ArtMethod::GetInterfaceMethodIfProxy(PointerSize pointer_size) {
   if (LIKELY(!IsProxyMethod())) {
     return this;
   }
-  uint32_t method_index = GetDexMethodIndex();
-  uint32_t slot_idx = method_index % mirror::DexCache::kDexCacheMethodCacheSize;
-  mirror::MethodDexCachePair pair = mirror::DexCache::GetNativePairPtrSize(
-      GetDexCacheResolvedMethods(pointer_size), slot_idx, pointer_size);
-  ArtMethod* interface_method = pair.GetObjectForIndex(method_index);
-  if (LIKELY(interface_method != nullptr)) {
-    DCHECK_EQ(interface_method, Runtime::Current()->GetClassLinker()->FindMethodForProxy(this));
-  } else {
-    interface_method = Runtime::Current()->GetClassLinker()->FindMethodForProxy(this);
-    DCHECK(interface_method != nullptr);
-  }
+  ArtMethod* interface_method = GetInterfaceMethodForProxyUnchecked(pointer_size);
+  // We can check that the proxy class implements the interface only if the proxy class
+  // is resolved, otherwise the interface table is not yet initialized.
+  DCHECK(!GetDeclaringClass()->IsResolved() ||
+         interface_method->GetDeclaringClass()->IsAssignableFrom(GetDeclaringClass()));
   return interface_method;
 }
 
@@ -480,7 +481,7 @@ void ArtMethod::VisitRoots(RootVisitorType& visitor, PointerSize pointer_size) {
     if (UNLIKELY(klass->IsProxyClass())) {
       // For normal methods, dex cache shortcuts will be visited through the declaring class.
       // However, for proxies we need to keep the interface method alive, so we visit its roots.
-      ArtMethod* interface_method = GetInterfaceMethodIfProxy(pointer_size);
+      ArtMethod* interface_method = GetInterfaceMethodForProxyUnchecked(pointer_size);
       DCHECK(interface_method != nullptr);
       interface_method->VisitRoots(visitor, pointer_size);
     }
