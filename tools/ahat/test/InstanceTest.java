@@ -285,6 +285,18 @@ public class InstanceTest {
   }
 
   @Test
+  public void gcRootPathNotWeak() throws IOException {
+    TestDump dump = TestDump.getTestDump();
+
+    AhatInstance strong = dump.getDumpedAhatInstance("aLongStrongPathToSamplePathObject");
+    AhatInstance strong2 = strong.getField("referent").asAhatInstance();
+    AhatInstance object = strong2.getField("referent").asAhatInstance();
+
+    List<PathElement> path = object.getPathFromGcRoot();
+    assertEquals(strong2, path.get(path.size() - 2).instance);
+  }
+
+  @Test
   public void retainedSize() throws IOException {
     TestDump dump = TestDump.getTestDump();
 
