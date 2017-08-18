@@ -74,6 +74,9 @@ static constexpr bool kUseDlopenOnHost = true;
 // For debugging, Open will print DlOpen error message if set to true.
 static constexpr bool kPrintDlOpenErrorMessage = false;
 
+// If true, we advise the kernel about dex file mem map accesses.
+static constexpr bool kMadviseDexFileAccesses = false;
+
 // Note for OatFileBase and descendents:
 //
 // These are used in OatFile::Open to try all our loaders.
@@ -1495,6 +1498,9 @@ const DexFile::ClassDef* OatFile::OatDexFile::FindClassDef(const DexFile& dex_fi
 
 // Madvise the dex file based on the state we are moving to.
 void OatDexFile::MadviseDexFile(const DexFile& dex_file, MadviseState state) {
+  if (!kMadviseDexFileAccesses) {
+    return;
+  }
   if (state == MadviseState::kMadviseStateAtLoad) {
     // Default every dex file to MADV_RANDOM when its loaded by default.
     MadviseLargestPageAlignedRegion(dex_file.Begin(),
