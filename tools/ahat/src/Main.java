@@ -76,7 +76,7 @@ public class Main {
         try {
           mapbase.readFromFile(new File(args[i]));
         } catch (IOException|ParseException ex) {
-          System.out.println("Unable to read baselline proguard map: " + ex);
+          System.out.println("Unable to read baseline proguard map: " + ex);
           System.out.println("The proguard map will not be used.");
         }
       } else if ("--baseline".equals(args[i]) && i + 1 < args.length) {
