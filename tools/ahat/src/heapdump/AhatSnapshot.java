@@ -36,7 +36,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 
 public class AhatSnapshot implements Diffable<AhatSnapshot> {
   private final Site mRootSite = new Site("ROOT");
@@ -128,10 +127,9 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
       }
     });
 
-    Map<Instance, Long> registeredNative = Perflib.getRegisteredNativeAllocations(snapshot);
-
     // Initialize ahat snapshot and instances based on the perflib snapshot
     // and instances.
+    List<AhatInstance> cleaners = new ArrayList<AhatInstance>();
     for (AhatInstance ahat : mInstances) {
       Instance inst = snapshot.findInstance(ahat.getId());
 
@@ -142,9 +140,9 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
       }
       ahat.initialize(this, inst, mRootSite.getSite(frames));
 
-      Long registeredNativeSize = registeredNative.get(inst);
-      if (registeredNativeSize != null) {
-        ahat.addRegisteredNativeSize(registeredNativeSize);
+      ClassObj classObj = inst.getClassObj();
+      if (classObj != null && "sun.misc.Cleaner".equals(classObj.getClassName())) {
+        cleaners.add(ahat);
       }
     }
 
@@ -161,6 +159,14 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
       }
     }
     snapshot.dispose();
+
+    // Update registered native allocation size.
+    for (AhatInstance cleaner : cleaners) {
+      AhatInstance.RegisteredNativeAllocation nra = cleaner.asRegisteredNativeAllocation();
+      if (nra != null) {
+        nra.referent.addRegisteredNativeSize(nra.size);
+      }
+    }
 
     AhatInstance.computeReverseReferences(superRoot);
     DominatorsComputation.computeDominators(superRoot);

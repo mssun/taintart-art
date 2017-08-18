@@ -248,6 +248,49 @@ public class AhatClassInstance extends AhatInstance {
     return bitmap;
   }
 
+  @Override
+  public RegisteredNativeAllocation asRegisteredNativeAllocation() {
+    if (!isInstanceOfClass("sun.misc.Cleaner")) {
+      return null;
+    }
+
+    Value vthunk = getField("thunk");
+    if (vthunk == null || !vthunk.isAhatInstance()) {
+      return null;
+    }
+
+    AhatClassInstance thunk = vthunk.asAhatInstance().asClassInstance();
+    if (thunk == null
+        || !thunk.isInstanceOfClass("libcore.util.NativeAllocationRegistry$CleanerThunk")) {
+      return null;
+    }
+
+    Value vregistry = thunk.getField("this$0");
+    if (vregistry == null || !vregistry.isAhatInstance()) {
+      return null;
+    }
+
+    AhatClassInstance registry = vregistry.asAhatInstance().asClassInstance();
+    if (registry == null || !registry.isInstanceOfClass("libcore.util.NativeAllocationRegistry")) {
+      return null;
+    }
+
+    Value size = registry.getField("size");
+    if (!size.isLong()) {
+      return null;
+    }
+
+    Value referent = getField("referent");
+    if (referent == null || !referent.isAhatInstance()) {
+      return null;
+    }
+
+    RegisteredNativeAllocation rna = new RegisteredNativeAllocation();
+    rna.referent = referent.asAhatInstance();
+    rna.size = size.asLong();
+    return rna;
+  }
+
   private static class InstanceFieldIterator implements Iterable<FieldValue>,
                                                         Iterator<FieldValue> {
     // The complete list of instance field values to iterate over, including

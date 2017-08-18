@@ -363,6 +363,19 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
     return null;
   }
 
+  public static class RegisteredNativeAllocation {
+    public AhatInstance referent;
+    public long size;
+  };
+
+  /**
+   * Return the registered native allocation that this instance represents, if
+   * any. This is relevant for instances of sun.misc.Cleaner.
+   */
+  public RegisteredNativeAllocation asRegisteredNativeAllocation() {
+    return null;
+  }
+
   /**
    * Returns a sample path from a GC root to this instance.
    * This instance is included as the last element of the path with an empty
