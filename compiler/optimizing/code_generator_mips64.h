@@ -293,6 +293,13 @@ class InstructionCodeGeneratorMIPS64 : public InstructionCodeGenerator {
   void GenerateDivRemWithAnyConstant(HBinaryOperation* instruction);
   void GenerateDivRemIntegral(HBinaryOperation* instruction);
   void GenerateIntLongCompare(IfCondition cond, bool is64bit, LocationSummary* locations);
+  // When the function returns `false` it means that the condition holds if `dst` is non-zero
+  // and doesn't hold if `dst` is zero. If it returns `true`, the roles of zero and non-zero
+  // `dst` are exchanged.
+  bool MaterializeIntLongCompare(IfCondition cond,
+                                 bool is64bit,
+                                 LocationSummary* input_locations,
+                                 GpuRegister dst);
   void GenerateIntLongCompareAndBranch(IfCondition cond,
                                        bool is64bit,
                                        LocationSummary* locations,
@@ -301,6 +308,14 @@ class InstructionCodeGeneratorMIPS64 : public InstructionCodeGenerator {
                          bool gt_bias,
                          Primitive::Type type,
                          LocationSummary* locations);
+  // When the function returns `false` it means that the condition holds if `dst` is non-zero
+  // and doesn't hold if `dst` is zero. If it returns `true`, the roles of zero and non-zero
+  // `dst` are exchanged.
+  bool MaterializeFpCompare(IfCondition cond,
+                            bool gt_bias,
+                            Primitive::Type type,
+                            LocationSummary* input_locations,
+                            FpuRegister dst);
   void GenerateFpCompareAndBranch(IfCondition cond,
                                   bool gt_bias,
                                   Primitive::Type type,
@@ -320,6 +335,7 @@ class InstructionCodeGeneratorMIPS64 : public InstructionCodeGenerator {
   int32_t VecAddress(LocationSummary* locations,
                      size_t size,
                      /* out */ GpuRegister* adjusted_base);
+  void GenConditionalMove(HSelect* select);
 
   Mips64Assembler* const assembler_;
   CodeGeneratorMIPS64* const codegen_;
