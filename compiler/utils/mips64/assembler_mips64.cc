@@ -1079,6 +1079,22 @@ void Mips64Assembler::SelD(FpuRegister fd, FpuRegister fs, FpuRegister ft) {
   EmitFR(0x11, 0x11, ft, fs, fd, 0x10);
 }
 
+void Mips64Assembler::SeleqzS(FpuRegister fd, FpuRegister fs, FpuRegister ft) {
+  EmitFR(0x11, 0x10, ft, fs, fd, 0x14);
+}
+
+void Mips64Assembler::SeleqzD(FpuRegister fd, FpuRegister fs, FpuRegister ft) {
+  EmitFR(0x11, 0x11, ft, fs, fd, 0x14);
+}
+
+void Mips64Assembler::SelnezS(FpuRegister fd, FpuRegister fs, FpuRegister ft) {
+  EmitFR(0x11, 0x10, ft, fs, fd, 0x17);
+}
+
+void Mips64Assembler::SelnezD(FpuRegister fd, FpuRegister fs, FpuRegister ft) {
+  EmitFR(0x11, 0x11, ft, fs, fd, 0x17);
+}
+
 void Mips64Assembler::RintS(FpuRegister fd, FpuRegister fs) {
   EmitFR(0x11, 0x10, static_cast<FpuRegister>(0), fs, fd, 0x1a);
 }
