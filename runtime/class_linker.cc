@@ -1020,6 +1020,9 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
                            std::make_move_iterator(dex_files.begin()),
                            std::make_move_iterator(dex_files.end()));
   }
+  for (const std::unique_ptr<const DexFile>& dex_file : boot_dex_files_) {
+    OatDexFile::MadviseDexFile(*dex_file, MadviseState::kMadviseStateAtLoad);
+  }
   FinishInit(self);
 
   VLOG(startup) << __FUNCTION__ << " exiting";
