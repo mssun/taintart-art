@@ -51,9 +51,6 @@ using android::base::StringPrintf;
 // If true, we attempt to load the application image if it exists.
 static constexpr bool kEnableAppImage = true;
 
-// If true, we advise the kernel about dex file mem map accesses.
-static constexpr bool kMadviseDexFileAccesses = false;
-
 const OatFile* OatFileManager::RegisterOatFile(std::unique_ptr<const OatFile> oat_file) {
   WriterMutexLock mu(Thread::Current(), *Locks::oat_file_manager_lock_);
   DCHECK(oat_file != nullptr);
@@ -572,7 +569,7 @@ std::vector<std::unique_ptr<const DexFile>> OatFileManager::OpenDexFilesFromOat(
     }
     if (dex_files.empty()) {
       error_msgs->push_back("Failed to open dex files from " + source_oat_file->GetLocation());
-    } else if (kMadviseDexFileAccesses) {
+    } else {
       // Opened dex files from an oat file, madvise them to their loaded state.
        for (const std::unique_ptr<const DexFile>& dex_file : dex_files) {
          OatDexFile::MadviseDexFile(*dex_file, MadviseState::kMadviseStateAtLoad);
