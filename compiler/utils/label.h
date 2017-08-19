@@ -31,9 +31,11 @@ namespace arm64 {
 }  // namespace arm64
 namespace mips {
   class MipsAssembler;
+  class MipsLabel;
 }  // namespace mips
 namespace mips64 {
   class Mips64Assembler;
+  class Mips64Label;
 }  // namespace mips64
 namespace x86 {
   class X86Assembler;
@@ -114,7 +116,9 @@ class Label {
 
   friend class arm64::Arm64Assembler;
   friend class mips::MipsAssembler;
+  friend class mips::MipsLabel;
   friend class mips64::Mips64Assembler;
+  friend class mips64::Mips64Label;
   friend class x86::X86Assembler;
   friend class x86::NearLabel;
   friend class x86_64::X86_64Assembler;

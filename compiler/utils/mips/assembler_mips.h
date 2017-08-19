@@ -80,6 +80,12 @@ class MipsLabel : public Label {
   MipsLabel(MipsLabel&& src)
       : Label(std::move(src)), prev_branch_id_plus_one_(src.prev_branch_id_plus_one_) {}
 
+  void AdjustBoundPosition(int delta) {
+    CHECK(IsBound());
+    // Bound label's position is negative, hence decrementing it.
+    position_ -= delta;
+  }
+
  private:
   uint32_t prev_branch_id_plus_one_;  // To get distance from preceding branch, if any.
 
@@ -215,6 +221,7 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
 
   // Emit Machine Instructions.
   void Addu(Register rd, Register rs, Register rt);
+  void Addiu(Register rt, Register rs, uint16_t imm16, MipsLabel* patcher_label);
   void Addiu(Register rt, Register rs, uint16_t imm16);
   void Subu(Register rd, Register rs, Register rt);
 
@@ -272,6 +279,7 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
 
   void Lb(Register rt, Register rs, uint16_t imm16);
   void Lh(Register rt, Register rs, uint16_t imm16);
+  void Lw(Register rt, Register rs, uint16_t imm16, MipsLabel* patcher_label);
   void Lw(Register rt, Register rs, uint16_t imm16);
   void Lwl(Register rt, Register rs, uint16_t imm16);
   void Lwr(Register rt, Register rs, uint16_t imm16);
@@ -287,6 +295,7 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
 
   void Sb(Register rt, Register rs, uint16_t imm16);
   void Sh(Register rt, Register rs, uint16_t imm16);
+  void Sw(Register rt, Register rs, uint16_t imm16, MipsLabel* patcher_label);
   void Sw(Register rt, Register rs, uint16_t imm16);
   void Swl(Register rt, Register rs, uint16_t imm16);
   void Swr(Register rt, Register rs, uint16_t imm16);
@@ -1288,6 +1297,9 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
     uint32_t cc_ins_mask_;
     // Branches never operate on the LO and HI registers, hence there's
     // no mask for LO and HI.
+
+    // Label for patchable instructions to allow moving them into delay slots.
+    MipsLabel* patcher_label_;
   };
 
   // Delay slot finite state machine's (DS FSM's) state. The FSM state is updated
@@ -1440,8 +1452,9 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
 
     // Various helpers for branch delay slot management.
     bool CanHaveDelayedInstruction(const DelaySlot& delay_slot) const;
-    void SetDelayedInstruction(uint32_t instruction);
+    void SetDelayedInstruction(uint32_t instruction, MipsLabel* patcher_label = nullptr);
     uint32_t GetDelayedInstruction() const;
+    MipsLabel* GetPatcherLabel() const;
     void DecrementLocations();
 
     // Returns the bit size of the signed offset that the branch instruction can handle.
@@ -1526,6 +1539,8 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
                                     // kUnfillableDelaySlot if none and unfillable
                                     // (the latter is only used for unconditional R2
                                     // branches).
+
+    MipsLabel* patcher_label_;      // Patcher label for the instruction in the delay slot.
   };
   friend std::ostream& operator<<(std::ostream& os, const Branch::Type& rhs);
   friend std::ostream& operator<<(std::ostream& os, const Branch::OffsetBits& rhs);
@@ -1580,9 +1595,14 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
                   uint32_t fpr_outs_mask,
                   uint32_t fpr_ins_mask,
                   uint32_t cc_outs_mask,
-                  uint32_t cc_ins_mask);
+                  uint32_t cc_ins_mask,
+                  MipsLabel* patcher_label = nullptr);
   void DsFsmInstrNop(uint32_t instruction);
-  void DsFsmInstrRrr(uint32_t instruction, Register out, Register in1, Register in2);
+  void DsFsmInstrRrr(uint32_t instruction,
+                     Register out,
+                     Register in1,
+                     Register in2,
+                     MipsLabel* patcher_label = nullptr);
   void DsFsmInstrRrrr(uint32_t instruction, Register in1_out, Register in2, Register in3);
   void DsFsmInstrFff(uint32_t instruction, FRegister out, FRegister in1, FRegister in2);
   void DsFsmInstrFfff(uint32_t instruction, FRegister in1_out, FRegister in2, FRegister in3);
@@ -1605,12 +1625,15 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
   const Branch* GetBranch(uint32_t branch_id) const;
   uint32_t GetBranchLocationOrPcRelBase(const MipsAssembler::Branch* branch) const;
   uint32_t GetBranchOrPcRelBaseForEncoding(const MipsAssembler::Branch* branch) const;
+  void BindRelativeToPrecedingBranch(MipsLabel* label,
+                                     uint32_t prev_branch_id_plus_one,
+                                     uint32_t position);
 
   void EmitLiterals();
   void ReserveJumpTableSpace();
   void EmitJumpTables();
   void PromoteBranches();
-  void EmitBranch(Branch* branch);
+  void EmitBranch(uint32_t branch_id);
   void EmitBranches();
   void PatchCFI(size_t number_of_delayed_adjust_pcs);
 
