@@ -61,10 +61,6 @@ void MipsRelativePatcher::PatchPcRelativeReference(std::vector<uint8_t>* code,
       // lui reg, offset_high
       DCHECK_EQ(((*code)[literal_offset + 2] & 0xE0), 0x00);
       DCHECK_EQ((*code)[literal_offset + 3], 0x3C);
-      // addu reg, reg, reg2
-      DCHECK_EQ((*code)[literal_offset + 4], 0x21);
-      DCHECK_EQ(((*code)[literal_offset + 5] & 0x07), 0x00);
-      DCHECK_EQ(((*code)[literal_offset + 7] & 0xFC), 0x00);
     }
   } else {
     // instr reg(s), offset_low

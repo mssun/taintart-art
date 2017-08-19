@@ -47,7 +47,8 @@ MipsAssembler::DelaySlot::DelaySlot()
       fpr_outs_mask_(0),
       fpr_ins_mask_(0),
       cc_outs_mask_(0),
-      cc_ins_mask_(0) {}
+      cc_ins_mask_(0),
+      patcher_label_(nullptr) {}
 
 void MipsAssembler::DsFsmInstr(uint32_t instruction,
                                uint32_t gpr_outs_mask,
@@ -55,7 +56,8 @@ void MipsAssembler::DsFsmInstr(uint32_t instruction,
                                uint32_t fpr_outs_mask,
                                uint32_t fpr_ins_mask,
                                uint32_t cc_outs_mask,
-                               uint32_t cc_ins_mask) {
+                               uint32_t cc_ins_mask,
+                               MipsLabel* patcher_label) {
   if (!reordering_) {
     CHECK_EQ(ds_fsm_state_, kExpectingLabel);
     CHECK_EQ(delay_slot_.instruction_, 0u);
@@ -96,6 +98,7 @@ void MipsAssembler::DsFsmInstr(uint32_t instruction,
   delay_slot_.fpr_ins_mask_ = fpr_ins_mask;
   delay_slot_.cc_outs_mask_ = cc_outs_mask;
   delay_slot_.cc_ins_mask_ = cc_ins_mask;
+  delay_slot_.patcher_label_ = patcher_label;
 }
 
 void MipsAssembler::DsFsmLabel() {
@@ -167,8 +170,12 @@ void MipsAssembler::DsFsmInstrNop(uint32_t instruction ATTRIBUTE_UNUSED) {
   DsFsmInstr(0, 0, 0, 0, 0, 0, 0);
 }
 
-void MipsAssembler::DsFsmInstrRrr(uint32_t instruction, Register out, Register in1, Register in2) {
-  DsFsmInstr(instruction, (1u << out), (1u << in1) | (1u << in2), 0, 0, 0, 0);
+void MipsAssembler::DsFsmInstrRrr(uint32_t instruction,
+                                  Register out,
+                                  Register in1,
+                                  Register in2,
+                                  MipsLabel* patcher_label) {
+  DsFsmInstr(instruction, (1u << out), (1u << in1) | (1u << in2), 0, 0, 0, 0, patcher_label);
 }
 
 void MipsAssembler::DsFsmInstrRrrr(uint32_t instruction,
@@ -310,8 +317,8 @@ void MipsAssembler::EmitBranches() {
   // Switch from appending instructions at the end of the buffer to overwriting
   // existing instructions (branch placeholders) in the buffer.
   overwriting_ = true;
-  for (auto& branch : branches_) {
-    EmitBranch(&branch);
+  for (size_t id = 0; id < branches_.size(); id++) {
+    EmitBranch(id);
   }
   overwriting_ = false;
 }
@@ -531,8 +538,15 @@ void MipsAssembler::Addu(Register rd, Register rs, Register rt) {
   DsFsmInstrRrr(EmitR(0, rs, rt, rd, 0, 0x21), rd, rs, rt);
 }
 
+void MipsAssembler::Addiu(Register rt, Register rs, uint16_t imm16, MipsLabel* patcher_label) {
+  if (patcher_label != nullptr) {
+    Bind(patcher_label);
+  }
+  DsFsmInstrRrr(EmitI(0x9, rs, rt, imm16), rt, rs, rs, patcher_label);
+}
+
 void MipsAssembler::Addiu(Register rt, Register rs, uint16_t imm16) {
-  DsFsmInstrRrr(EmitI(0x9, rs, rt, imm16), rt, rs, rs);
+  Addiu(rt, rs, imm16, /* patcher_label */ nullptr);
 }
 
 void MipsAssembler::Subu(Register rd, Register rs, Register rt) {
@@ -791,8 +805,15 @@ void MipsAssembler::Lh(Register rt, Register rs, uint16_t imm16) {
   DsFsmInstrRrr(EmitI(0x21, rs, rt, imm16), rt, rs, rs);
 }
 
+void MipsAssembler::Lw(Register rt, Register rs, uint16_t imm16, MipsLabel* patcher_label) {
+  if (patcher_label != nullptr) {
+    Bind(patcher_label);
+  }
+  DsFsmInstrRrr(EmitI(0x23, rs, rt, imm16), rt, rs, rs, patcher_label);
+}
+
 void MipsAssembler::Lw(Register rt, Register rs, uint16_t imm16) {
-  DsFsmInstrRrr(EmitI(0x23, rs, rt, imm16), rt, rs, rs);
+  Lw(rt, rs, imm16, /* patcher_label */ nullptr);
 }
 
 void MipsAssembler::Lwl(Register rt, Register rs, uint16_t imm16) {
@@ -866,8 +887,15 @@ void MipsAssembler::Sh(Register rt, Register rs, uint16_t imm16) {
   DsFsmInstrRrr(EmitI(0x29, rs, rt, imm16), ZERO, rt, rs);
 }
 
+void MipsAssembler::Sw(Register rt, Register rs, uint16_t imm16, MipsLabel* patcher_label) {
+  if (patcher_label != nullptr) {
+    Bind(patcher_label);
+  }
+  DsFsmInstrRrr(EmitI(0x2b, rs, rt, imm16), ZERO, rt, rs, patcher_label);
+}
+
 void MipsAssembler::Sw(Register rt, Register rs, uint16_t imm16) {
-  DsFsmInstrRrr(EmitI(0x2b, rs, rt, imm16), ZERO, rt, rs);
+  Sw(rt, rs, imm16, /* patcher_label */ nullptr);
 }
 
 void MipsAssembler::Swl(Register rt, Register rs, uint16_t imm16) {
@@ -991,6 +1019,7 @@ void MipsAssembler::Jal(uint32_t addr26) {
 
 void MipsAssembler::Jalr(Register rd, Register rs) {
   uint32_t last_instruction = delay_slot_.instruction_;
+  MipsLabel* patcher_label = delay_slot_.patcher_label_;
   bool exchange = (last_instruction != 0 &&
       (delay_slot_.gpr_outs_mask_ & (1u << rs)) == 0 &&
       ((delay_slot_.gpr_ins_mask_ | delay_slot_.gpr_outs_mask_) & (1u << rd)) == 0);
@@ -1011,6 +1040,10 @@ void MipsAssembler::Jalr(Register rd, Register rs) {
     CHECK_EQ(instr1, last_instruction);
     buffer_.Store<uint32_t>(pos1, instr2);
     buffer_.Store<uint32_t>(pos2, instr1);
+    // Move the patcher label along with the patched instruction.
+    if (patcher_label != nullptr) {
+      patcher_label->AdjustBoundPosition(sizeof(uint32_t));
+    }
   } else if (reordering_) {
     Nop();
   }
@@ -3237,7 +3270,8 @@ MipsAssembler::Branch::Branch(bool is_r6,
       lhs_reg_(0),
       rhs_reg_(0),
       condition_(kUncond),
-      delayed_instruction_(kUnfilledDelaySlot) {
+      delayed_instruction_(kUnfilledDelaySlot),
+      patcher_label_(nullptr) {
   InitializeType(
       (is_call ? (is_bare ? kBareCall : kCall) : (is_bare ? kBareCondBranch : kCondBranch)),
       is_r6);
@@ -3256,7 +3290,8 @@ MipsAssembler::Branch::Branch(bool is_r6,
       lhs_reg_(lhs_reg),
       rhs_reg_(rhs_reg),
       condition_(condition),
-      delayed_instruction_(kUnfilledDelaySlot) {
+      delayed_instruction_(kUnfilledDelaySlot),
+      patcher_label_(nullptr) {
   CHECK_NE(condition, kUncond);
   switch (condition) {
     case kCondLT:
@@ -3313,7 +3348,8 @@ MipsAssembler::Branch::Branch(bool is_r6,
       lhs_reg_(dest_reg),
       rhs_reg_(base_reg),
       condition_(kUncond),
-      delayed_instruction_(kUnfilledDelaySlot) {
+      delayed_instruction_(kUnfilledDelaySlot),
+      patcher_label_(nullptr) {
   CHECK_NE(dest_reg, ZERO);
   if (is_r6) {
     CHECK_EQ(base_reg, ZERO);
@@ -3690,6 +3726,17 @@ const MipsAssembler::Branch* MipsAssembler::GetBranch(uint32_t branch_id) const 
   return &branches_[branch_id];
 }
 
+void MipsAssembler::BindRelativeToPrecedingBranch(MipsLabel* label,
+                                                  uint32_t prev_branch_id_plus_one,
+                                                  uint32_t position) {
+  if (prev_branch_id_plus_one != 0) {
+    const Branch* branch = GetBranch(prev_branch_id_plus_one - 1);
+    position -= branch->GetEndLocation();
+  }
+  label->prev_branch_id_plus_one_ = prev_branch_id_plus_one;
+  label->BindTo(position);
+}
+
 void MipsAssembler::Bind(MipsLabel* label) {
   CHECK(!label->IsBound());
   uint32_t bound_pc = buffer_.Size();
@@ -3715,22 +3762,15 @@ void MipsAssembler::Bind(MipsLabel* label) {
 
   // Now make the label object contain its own location (relative to the end of the preceding
   // branch, if any; it will be used by the branches referring to and following this label).
-  label->prev_branch_id_plus_one_ = branches_.size();
-  if (label->prev_branch_id_plus_one_) {
-    uint32_t branch_id = label->prev_branch_id_plus_one_ - 1;
-    const Branch* branch = GetBranch(branch_id);
-    bound_pc -= branch->GetEndLocation();
-  }
-  label->BindTo(bound_pc);
+  BindRelativeToPrecedingBranch(label, branches_.size(), bound_pc);
 }
 
 uint32_t MipsAssembler::GetLabelLocation(const MipsLabel* label) const {
   CHECK(label->IsBound());
   uint32_t target = label->Position();
-  if (label->prev_branch_id_plus_one_) {
+  if (label->prev_branch_id_plus_one_ != 0) {
     // Get label location based on the branch preceding it.
-    uint32_t branch_id = label->prev_branch_id_plus_one_ - 1;
-    const Branch* branch = GetBranch(branch_id);
+    const Branch* branch = GetBranch(label->prev_branch_id_plus_one_ - 1);
     target += branch->GetEndLocation();
   }
   return target;
@@ -3872,10 +3912,15 @@ uint32_t MipsAssembler::Branch::GetDelayedInstruction() const {
   return delayed_instruction_;
 }
 
-void MipsAssembler::Branch::SetDelayedInstruction(uint32_t instruction) {
+MipsLabel* MipsAssembler::Branch::GetPatcherLabel() const {
+  return patcher_label_;
+}
+
+void MipsAssembler::Branch::SetDelayedInstruction(uint32_t instruction, MipsLabel* patcher_label) {
   CHECK_NE(instruction, kUnfilledDelaySlot);
   CHECK_EQ(delayed_instruction_, kUnfilledDelaySlot);
   delayed_instruction_ = instruction;
+  patcher_label_ = patcher_label;
 }
 
 void MipsAssembler::Branch::DecrementLocations() {
@@ -3916,7 +3961,7 @@ void MipsAssembler::MoveInstructionToDelaySlot(Branch& branch) {
     buffer_.Resize(size);
     // Attach it to the branch and adjust the branch locations.
     branch.DecrementLocations();
-    branch.SetDelayedInstruction(delay_slot_.instruction_);
+    branch.SetDelayedInstruction(delay_slot_.instruction_, delay_slot_.patcher_label_);
   } else if (!reordering_ && branch.GetType() == Branch::kUncondBranch) {
     // If reordefing is disabled, prevent absorption of the target instruction.
     branch.SetDelayedInstruction(Branch::kUnfillableDelaySlot);
@@ -4140,15 +4185,49 @@ const MipsAssembler::Branch::BranchInfo MipsAssembler::Branch::branch_info_[] = 
   {  2, 0, 0, MipsAssembler::Branch::kOffset32, 0 },  // kR6FarLiteral
 };
 
+static inline bool IsAbsorbableInstruction(uint32_t instruction) {
+  // The relative patcher patches addiu, lw and sw with an immediate operand of 0x5678.
+  // We want to make sure that these instructions do not get absorbed into delay slots
+  // of unconditional branches on R2. Absorption would otherwise make copies of
+  // unpatched instructions.
+  if ((instruction & 0xFFFF) != 0x5678) {
+    return true;
+  }
+  switch (instruction >> kOpcodeShift) {
+    case 0x09:  // Addiu.
+    case 0x23:  // Lw.
+    case 0x2B:  // Sw.
+      return false;
+    default:
+      return true;
+  }
+}
+
 // Note: make sure branch_info_[] and EmitBranch() are kept synchronized.
-void MipsAssembler::EmitBranch(MipsAssembler::Branch* branch) {
+void MipsAssembler::EmitBranch(uint32_t branch_id) {
   CHECK_EQ(overwriting_, true);
+  Branch* branch = GetBranch(branch_id);
   overwrite_location_ = branch->GetLocation();
   uint32_t offset = branch->GetOffset(GetBranchOrPcRelBaseForEncoding(branch));
   BranchCondition condition = branch->GetCondition();
   Register lhs = branch->GetLeftRegister();
   Register rhs = branch->GetRightRegister();
   uint32_t delayed_instruction = branch->GetDelayedInstruction();
+  MipsLabel* patcher_label = branch->GetPatcherLabel();
+  if (patcher_label != nullptr) {
+    // Update the patcher label location to account for branch promotion and
+    // delay slot filling.
+    CHECK(patcher_label->IsBound());
+    uint32_t bound_pc = branch->GetLocation();
+    if (!branch->IsLong()) {
+      // Short branches precede delay slots.
+      // Long branches follow "delay slots".
+      bound_pc += sizeof(uint32_t);
+    }
+    // Rebind the label.
+    patcher_label->Reinitialize();
+    BindRelativeToPrecedingBranch(patcher_label, branch_id, bound_pc);
+  }
   switch (branch->GetType()) {
     // R2 short branches.
     case Branch::kUncondBranch:
@@ -4164,8 +4243,11 @@ void MipsAssembler::EmitBranch(MipsAssembler::Branch* branch) {
         if (offset != 0x7FFF) {
           uint32_t target = branch->GetTarget();
           if (std::binary_search(ds_fsm_target_pcs_.begin(), ds_fsm_target_pcs_.end(), target)) {
-            delayed_instruction = buffer_.Load<uint32_t>(target);
-            offset++;
+            uint32_t target_instruction = buffer_.Load<uint32_t>(target);
+            if (IsAbsorbableInstruction(target_instruction)) {
+              delayed_instruction = target_instruction;
+              offset++;
+            }
           }
         }
       }
@@ -4406,6 +4488,11 @@ void MipsAssembler::EmitBranch(MipsAssembler::Branch* branch) {
   }
   CHECK_EQ(overwrite_location_, branch->GetEndLocation());
   CHECK_LT(branch->GetSize(), static_cast<uint32_t>(Branch::kMaxBranchSize));
+  if (patcher_label != nullptr) {
+    // The patched instruction should look like one.
+    uint32_t patched_instruction = buffer_.Load<uint32_t>(GetLabelLocation(patcher_label));
+    CHECK(!IsAbsorbableInstruction(patched_instruction));
+  }
 }
 
 void MipsAssembler::B(MipsLabel* label, bool is_bare) {

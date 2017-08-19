@@ -637,8 +637,7 @@ class CodeGeneratorMIPS : public CodeGenerator {
 
   void EmitPcRelativeAddressPlaceholderHigh(PcRelativePatchInfo* info_high,
                                             Register out,
-                                            Register base,
-                                            PcRelativePatchInfo* info_low = nullptr);
+                                            Register base);
 
   // The JitPatchInfo is used for JIT string and class loads.
   struct JitPatchInfo {

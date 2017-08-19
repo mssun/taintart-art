@@ -2506,6 +2506,7 @@ TEST_F(AssemblerMIPSTest, Reordering) {
 
 TEST_F(AssemblerMIPSTest, AbsorbTargetInstruction) {
   mips::MipsLabel label1, label2, label3, label4, label5, label6;
+  mips::MipsLabel label7, label8, label9, label10, label11, label12, label13;
   __ SetReorder(true);
 
   __ B(&label1);
@@ -2529,6 +2530,41 @@ TEST_F(AssemblerMIPSTest, AbsorbTargetInstruction) {
   __ Bind(&label6);
   __ CodePosition();  // Even across Bind(), CodePosition() prevents absorbing the ADDU above.
 
+  __ Nop();
+  __ B(&label7);
+  __ Bind(&label7);
+  __ Lw(mips::V0, mips::A0, 0x5678);  // Possibly patchable instruction, not absorbed.
+
+  __ Nop();
+  __ B(&label8);
+  __ Bind(&label8);
+  __ Sw(mips::V0, mips::A0, 0x5678);  // Possibly patchable instruction, not absorbed.
+
+  __ Nop();
+  __ B(&label9);
+  __ Bind(&label9);
+  __ Addiu(mips::V0, mips::A0, 0x5678);  // Possibly patchable instruction, not absorbed.
+
+  __ Nop();
+  __ B(&label10);
+  __ Bind(&label10);
+  __ Lw(mips::V0, mips::A0, 0x5680);  // Immediate isn't 0x5678, absorbed.
+
+  __ Nop();
+  __ B(&label11);
+  __ Bind(&label11);
+  __ Sw(mips::V0, mips::A0, 0x5680);  // Immediate isn't 0x5678, absorbed.
+
+  __ Nop();
+  __ B(&label12);
+  __ Bind(&label12);
+  __ Addiu(mips::V0, mips::A0, 0x5680);  // Immediate isn't 0x5678, absorbed.
+
+  __ Nop();
+  __ B(&label13);
+  __ Bind(&label13);
+  __ Andi(mips::V0, mips::A0, 0x5678);  // Not one of patchable instructions, absorbed.
+
   std::string expected =
       ".set noreorder\n"
       "b 1f\n"
@@ -2550,7 +2586,49 @@ TEST_F(AssemblerMIPSTest, AbsorbTargetInstruction) {
       "b 5f\n"
       "nop\n"
       "5:\n"
-      "addu $t0, $t1, $t2\n";
+      "addu $t0, $t1, $t2\n"
+
+      "nop\n"
+      "b 7f\n"
+      "nop\n"
+      "7:\n"
+      "lw $v0, 0x5678($a0)\n"
+
+      "nop\n"
+      "b 8f\n"
+      "nop\n"
+      "8:\n"
+      "sw $v0, 0x5678($a0)\n"
+
+      "nop\n"
+      "b 9f\n"
+      "nop\n"
+      "9:\n"
+      "addiu $v0, $a0, 0x5678\n"
+
+      "nop\n"
+      "b 10f\n"
+      "lw $v0, 0x5680($a0)\n"
+      "lw $v0, 0x5680($a0)\n"
+      "10:\n"
+
+      "nop\n"
+      "b 11f\n"
+      "sw $v0, 0x5680($a0)\n"
+      "sw $v0, 0x5680($a0)\n"
+      "11:\n"
+
+      "nop\n"
+      "b 12f\n"
+      "addiu $v0, $a0, 0x5680\n"
+      "addiu $v0, $a0, 0x5680\n"
+      "12:\n"
+
+      "nop\n"
+      "b 13f\n"
+      "andi $v0, $a0, 0x5678\n"
+      "andi $v0, $a0, 0x5678\n"
+      "13:\n";
   DriverStr(expected, "AbsorbTargetInstruction");
 }
 
@@ -2637,10 +2715,62 @@ TEST_F(AssemblerMIPSTest, SetReorder) {
   DriverStr(expected, "SetReorder");
 }
 
-TEST_F(AssemblerMIPSTest, LongBranchReorder) {
-  mips::MipsLabel label;
+TEST_F(AssemblerMIPSTest, ReorderPatchedInstruction) {
   __ SetReorder(true);
-  __ Subu(mips::T0, mips::T1, mips::T2);
+  mips::MipsLabel label1, label2;
+  mips::MipsLabel patcher_label1, patcher_label2, patcher_label3, patcher_label4, patcher_label5;
+  __ Lw(mips::V0, mips::A0, 0x5678, &patcher_label1);
+  __ Beq(mips::A0, mips::A1, &label1);
+  constexpr uint32_t kAdduCount1 = 63;
+  for (size_t i = 0; i != kAdduCount1; ++i) {
+    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
+  }
+  __ Bind(&label1);
+  __ Sw(mips::V0, mips::A0, 0x5678, &patcher_label2);
+  __ Bltz(mips::V1, &label2);
+  constexpr uint32_t kAdduCount2 = 64;
+  for (size_t i = 0; i != kAdduCount2; ++i) {
+    __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
+  }
+  __ Bind(&label2);
+  __ Addiu(mips::V0, mips::A0, 0x5678, &patcher_label3);
+  __ B(&label1);
+  __ Lw(mips::V0, mips::A0, 0x5678, &patcher_label4);
+  __ Jalr(mips::T9);
+  __ Sw(mips::V0, mips::A0, 0x5678, &patcher_label5);
+  __ Blt(mips::V0, mips::V1, &label2);
+  __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
+
+  std::string expected =
+      ".set noreorder\n"
+      "beq $a0, $a1, 1f\n"
+      "lw $v0, 0x5678($a0)\n" +
+      RepeatInsn(kAdduCount1, "addu $zero, $zero, $zero\n") +
+      "1:\n"
+      "bltz $v1, 2f\n"
+      "sw $v0, 0x5678($a0)\n" +
+      RepeatInsn(kAdduCount2, "addu $zero, $zero, $zero\n") +
+      "2:\n"
+      "b 1b\n"
+      "addiu $v0, $a0, 0x5678\n"
+      "jalr $t9\n"
+      "lw $v0, 0x5678($a0)\n"
+      "slt $at, $v0, $v1\n"
+      "bnez $at, 2b\n"
+      "sw $v0, 0x5678($a0)\n"
+      "addu $zero, $zero, $zero\n";
+  DriverStr(expected, "ReorderPatchedInstruction");
+  EXPECT_EQ(__ GetLabelLocation(&patcher_label1), 1 * 4u);
+  EXPECT_EQ(__ GetLabelLocation(&patcher_label2), (kAdduCount1 + 3) * 4u);
+  EXPECT_EQ(__ GetLabelLocation(&patcher_label3), (kAdduCount1 + kAdduCount2 + 5) * 4u);
+  EXPECT_EQ(__ GetLabelLocation(&patcher_label4), (kAdduCount1 + kAdduCount2 + 7) * 4u);
+  EXPECT_EQ(__ GetLabelLocation(&patcher_label5), (kAdduCount1 + kAdduCount2 + 10) * 4u);
+}
+
+TEST_F(AssemblerMIPSTest, LongBranchReorder) {
+  mips::MipsLabel label, patcher_label1, patcher_label2;
+  __ SetReorder(true);
+  __ Addiu(mips::T0, mips::T1, 0x5678, &patcher_label1);
   __ B(&label);
   constexpr uint32_t kAdduCount1 = (1u << 15) + 1;
   for (size_t i = 0; i != kAdduCount1; ++i) {
@@ -2651,7 +2781,7 @@ TEST_F(AssemblerMIPSTest, LongBranchReorder) {
   for (size_t i = 0; i != kAdduCount2; ++i) {
     __ Addu(mips::ZERO, mips::ZERO, mips::ZERO);
   }
-  __ Subu(mips::T0, mips::T1, mips::T2);
+  __ Addiu(mips::T0, mips::T1, 0x5678, &patcher_label2);
   __ B(&label);
 
   // Account for 5 extra instructions: ori, addu, lw, jalr, addiu.
@@ -2662,7 +2792,7 @@ TEST_F(AssemblerMIPSTest, LongBranchReorder) {
   std::ostringstream oss;
   oss <<
       ".set noreorder\n"
-      "subu $t0, $t1, $t2\n"
+      "addiu $t0, $t1, 0x5678\n"
       "addiu $sp, $sp, -4\n"
       "sw $ra, 0($sp)\n"
       "bltzal $zero, .+4\n"
@@ -2674,7 +2804,7 @@ TEST_F(AssemblerMIPSTest, LongBranchReorder) {
       "addiu $sp, $sp, 4\n" <<
       RepeatInsn(kAdduCount1, "addu $zero, $zero, $zero\n") <<
       RepeatInsn(kAdduCount2, "addu $zero, $zero, $zero\n") <<
-      "subu $t0, $t1, $t2\n"
+      "addiu $t0, $t1, 0x5678\n"
       "addiu $sp, $sp, -4\n"
       "sw $ra, 0($sp)\n"
       "bltzal $zero, .+4\n"
@@ -2686,6 +2816,8 @@ TEST_F(AssemblerMIPSTest, LongBranchReorder) {
       "addiu $sp, $sp, 4\n";
   std::string expected = oss.str();
   DriverStr(expected, "LongBranchReorder");
+  EXPECT_EQ(__ GetLabelLocation(&patcher_label1), 0 * 4u);
+  EXPECT_EQ(__ GetLabelLocation(&patcher_label2), (kAdduCount1 + kAdduCount2 + 10) * 4u);
 }
 
 ///////////////////////
