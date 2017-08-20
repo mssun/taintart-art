@@ -396,13 +396,6 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
     return new PathElement(inst.mNextInstanceToGcRoot, inst.mNextInstanceToGcRootField);
   }
 
-  void setNextInstanceToGcRoot(AhatInstance inst, String field) {
-    if (mNextInstanceToGcRoot == null && !isRoot()) {
-      mNextInstanceToGcRoot = inst;
-      mNextInstanceToGcRootField = field;
-    }
-  }
-
   /** Returns a human-readable identifier for this object.
    * For class objects, the string is the class name.
    * For class instances, the string is the class name followed by '@' and the
@@ -456,8 +449,9 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
     while (!bfs.isEmpty()) {
       Reference ref = bfs.poll();
 
-      if (ref.ref.mHardReverseReferences == null) {
-        // This is the first time we are seeing ref.ref.
+      if (ref.ref.mHardReverseReferences == null && ref.strong) {
+        // This is the first time we are seeing ref.ref through a strong
+        // reference.
         ref.ref.mNextInstanceToGcRoot = ref.src;
         ref.ref.mNextInstanceToGcRootField = ref.field;
         ref.ref.mHardReverseReferences = new ArrayList<AhatInstance>();

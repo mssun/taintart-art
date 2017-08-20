@@ -267,13 +267,10 @@ class LoadClassSlowPathMIPS : public SlowPathCodeMIPS {
       DCHECK(bss_info_high_);
       CodeGeneratorMIPS::PcRelativePatchInfo* info_low =
           mips_codegen->NewTypeBssEntryPatch(cls_->GetDexFile(), type_index, bss_info_high_);
-      bool reordering = __ SetReorder(false);
-      __ Bind(&info_low->label);
-      __ StoreToOffset(kStoreWord,
-                       calling_convention.GetRegisterAt(0),
-                       entry_address,
-                       /* placeholder */ 0x5678);
-      __ SetReorder(reordering);
+      __ Sw(calling_convention.GetRegisterAt(0),
+            entry_address,
+            /* placeholder */ 0x5678,
+            &info_low->label);
     }
 
     // Move the class to the desired location.
@@ -296,10 +293,8 @@ class LoadClassSlowPathMIPS : public SlowPathCodeMIPS {
           mips_codegen->NewTypeBssEntryPatch(cls_->GetDexFile(), type_index);
       CodeGeneratorMIPS::PcRelativePatchInfo* info_low =
           mips_codegen->NewTypeBssEntryPatch(cls_->GetDexFile(), type_index, info_high);
-      bool reordering = __ SetReorder(false);
-      mips_codegen->EmitPcRelativeAddressPlaceholderHigh(info_high, TMP, base, info_low);
-      __ StoreToOffset(kStoreWord, out.AsRegister<Register>(), TMP, /* placeholder */ 0x5678);
-      __ SetReorder(reordering);
+      mips_codegen->EmitPcRelativeAddressPlaceholderHigh(info_high, TMP, base);
+      __ Sw(out.AsRegister<Register>(), TMP, /* placeholder */ 0x5678, &info_low->label);
     }
     __ B(GetExitLabel());
   }
@@ -366,13 +361,10 @@ class LoadStringSlowPathMIPS : public SlowPathCodeMIPS {
       DCHECK(bss_info_high_);
       CodeGeneratorMIPS::PcRelativePatchInfo* info_low =
           mips_codegen->NewPcRelativeStringPatch(load->GetDexFile(), string_index, bss_info_high_);
-      bool reordering = __ SetReorder(false);
-      __ Bind(&info_low->label);
-      __ StoreToOffset(kStoreWord,
-                       calling_convention.GetRegisterAt(0),
-                       entry_address,
-                       /* placeholder */ 0x5678);
-      __ SetReorder(reordering);
+      __ Sw(calling_convention.GetRegisterAt(0),
+            entry_address,
+            /* placeholder */ 0x5678,
+            &info_low->label);
     }
 
     Primitive::Type type = instruction_->GetType();
@@ -391,10 +383,8 @@ class LoadStringSlowPathMIPS : public SlowPathCodeMIPS {
           mips_codegen->NewPcRelativeStringPatch(load->GetDexFile(), string_index);
       CodeGeneratorMIPS::PcRelativePatchInfo* info_low =
           mips_codegen->NewPcRelativeStringPatch(load->GetDexFile(), string_index, info_high);
-      bool reordering = __ SetReorder(false);
-      mips_codegen->EmitPcRelativeAddressPlaceholderHigh(info_high, TMP, base, info_low);
-      __ StoreToOffset(kStoreWord, out, TMP, /* placeholder */ 0x5678);
-      __ SetReorder(reordering);
+      mips_codegen->EmitPcRelativeAddressPlaceholderHigh(info_high, TMP, base);
+      __ Sw(out, TMP, /* placeholder */ 0x5678, &info_low->label);
     }
     __ B(GetExitLabel());
   }
@@ -1743,16 +1733,17 @@ Literal* CodeGeneratorMIPS::DeduplicateBootImageAddressLiteral(uint32_t address)
 
 void CodeGeneratorMIPS::EmitPcRelativeAddressPlaceholderHigh(PcRelativePatchInfo* info_high,
                                                              Register out,
-                                                             Register base,
-                                                             PcRelativePatchInfo* info_low) {
+                                                             Register base) {
   DCHECK(!info_high->patch_info_high);
   DCHECK_NE(out, base);
+  bool reordering = __ SetReorder(false);
   if (GetInstructionSetFeatures().IsR6()) {
     DCHECK_EQ(base, ZERO);
     __ Bind(&info_high->label);
     __ Bind(&info_high->pc_rel_label);
     // Add the high half of a 32-bit offset to PC.
     __ Auipc(out, /* placeholder */ 0x1234);
+    __ SetReorder(reordering);
   } else {
     // If base is ZERO, emit NAL to obtain the actual base.
     if (base == ZERO) {
@@ -1766,15 +1757,12 @@ void CodeGeneratorMIPS::EmitPcRelativeAddressPlaceholderHigh(PcRelativePatchInfo
     if (base == ZERO) {
       __ Bind(&info_high->pc_rel_label);
     }
+    __ SetReorder(reordering);
     // Add the high half of a 32-bit offset to PC.
     __ Addu(out, out, (base == ZERO) ? RA : base);
   }
   // A following instruction will add the sign-extended low half of the 32-bit
   // offset to `out` (e.g. lw, jialc, addiu).
-  if (info_low != nullptr) {
-    DCHECK_EQ(info_low->patch_info_high, info_high);
-    __ Bind(&info_low->label);
-  }
 }
 
 CodeGeneratorMIPS::JitPatchInfo* CodeGeneratorMIPS::NewJitRootStringPatch(
@@ -6573,7 +6561,8 @@ void InstructionCodeGeneratorMIPS::GenerateGcRootFieldLoad(HInstruction* instruc
           DCHECK(!label_low);
           __ AddUpper(base, obj, offset_high);
         }
-        __ Beqz(T9, (isR6 ? 2 : 4));  // Skip jialc / addiu+jalr+nop.
+        MipsLabel skip_call;
+        __ Beqz(T9, &skip_call, /* is_bare */ true);
         if (label_low != nullptr) {
           DCHECK(short_offset);
           __ Bind(label_low);
@@ -6588,6 +6577,7 @@ void InstructionCodeGeneratorMIPS::GenerateGcRootFieldLoad(HInstruction* instruc
           __ Jalr(T9);
           __ Nop();
         }
+        __ Bind(&skip_call);
         __ SetReorder(reordering);
       } else {
         // Note that we do not actually check the value of `GetIsGcMarking()`
@@ -6724,27 +6714,31 @@ void CodeGeneratorMIPS::GenerateFieldLoadWithBakerReadBarrier(HInstruction* inst
     __ LoadFromOffset(kLoadWord, T9, TR, entry_point_offset);
     Register ref_reg = ref.AsRegister<Register>();
     Register base = short_offset ? obj : TMP;
+    MipsLabel skip_call;
     if (short_offset) {
       if (isR6) {
-        __ Beqzc(T9, 2);  // Skip jialc.
+        __ Beqzc(T9, &skip_call, /* is_bare */ true);
         __ Nop();  // In forbidden slot.
         __ Jialc(T9, thunk_disp);
       } else {
-        __ Beqz(T9, 3);  // Skip jalr+nop.
+        __ Beqz(T9, &skip_call, /* is_bare */ true);
         __ Addiu(T9, T9, thunk_disp);  // In delay slot.
         __ Jalr(T9);
         __ Nop();  // In delay slot.
       }
+      __ Bind(&skip_call);
     } else {
       if (isR6) {
-        __ Beqz(T9, 2);  // Skip jialc.
+        __ Beqz(T9, &skip_call, /* is_bare */ true);
         __ Aui(base, obj, offset_high);  // In delay slot.
         __ Jialc(T9, thunk_disp);
+        __ Bind(&skip_call);
       } else {
         __ Lui(base, offset_high);
-        __ Beqz(T9, 2);  // Skip jalr.
+        __ Beqz(T9, &skip_call, /* is_bare */ true);
         __ Addiu(T9, T9, thunk_disp);  // In delay slot.
         __ Jalr(T9);
+        __ Bind(&skip_call);
         __ Addu(base, base, obj);  // In delay slot.
       }
     }
@@ -6826,15 +6820,18 @@ void CodeGeneratorMIPS::GenerateArrayLoadWithBakerReadBarrier(HInstruction* inst
     Register index_reg = index.IsRegisterPair()
         ? index.AsRegisterPairLow<Register>()
         : index.AsRegister<Register>();
+    MipsLabel skip_call;
     if (GetInstructionSetFeatures().IsR6()) {
-      __ Beqz(T9, 2);  // Skip jialc.
+      __ Beqz(T9, &skip_call, /* is_bare */ true);
       __ Lsa(TMP, index_reg, obj, scale_factor);  // In delay slot.
       __ Jialc(T9, thunk_disp);
+      __ Bind(&skip_call);
     } else {
       __ Sll(TMP, index_reg, scale_factor);
-      __ Beqz(T9, 2);  // Skip jalr.
+      __ Beqz(T9, &skip_call, /* is_bare */ true);
       __ Addiu(T9, T9, thunk_disp);  // In delay slot.
       __ Jalr(T9);
+      __ Bind(&skip_call);
       __ Addu(TMP, TMP, obj);  // In delay slot.
     }
     // /* HeapReference<Object> */ ref = *(obj + data_offset + (index << scale_factor))
@@ -7506,11 +7503,9 @@ void CodeGeneratorMIPS::GenerateStaticOrDirectCall(
       PcRelativePatchInfo* info_high = NewPcRelativeMethodPatch(invoke->GetTargetMethod());
       PcRelativePatchInfo* info_low =
           NewPcRelativeMethodPatch(invoke->GetTargetMethod(), info_high);
-      bool reordering = __ SetReorder(false);
       Register temp_reg = temp.AsRegister<Register>();
-      EmitPcRelativeAddressPlaceholderHigh(info_high, TMP, base_reg, info_low);
-      __ Addiu(temp_reg, TMP, /* placeholder */ 0x5678);
-      __ SetReorder(reordering);
+      EmitPcRelativeAddressPlaceholderHigh(info_high, TMP, base_reg);
+      __ Addiu(temp_reg, TMP, /* placeholder */ 0x5678, &info_low->label);
       break;
     }
     case HInvokeStaticOrDirect::MethodLoadKind::kDirectAddress:
@@ -7522,10 +7517,8 @@ void CodeGeneratorMIPS::GenerateStaticOrDirectCall(
       PcRelativePatchInfo* info_low = NewMethodBssEntryPatch(
           MethodReference(&GetGraph()->GetDexFile(), invoke->GetDexMethodIndex()), info_high);
       Register temp_reg = temp.AsRegister<Register>();
-      bool reordering = __ SetReorder(false);
-      EmitPcRelativeAddressPlaceholderHigh(info_high, TMP, base_reg, info_low);
-      __ Lw(temp_reg, TMP, /* placeholder */ 0x5678);
-      __ SetReorder(reordering);
+      EmitPcRelativeAddressPlaceholderHigh(info_high, TMP, base_reg);
+      __ Lw(temp_reg, TMP, /* placeholder */ 0x5678, &info_low->label);
       break;
     }
     case HInvokeStaticOrDirect::MethodLoadKind::kRuntimeCall: {
@@ -7720,13 +7713,10 @@ void InstructionCodeGeneratorMIPS::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAF
           codegen_->NewPcRelativeTypePatch(cls->GetDexFile(), cls->GetTypeIndex());
       CodeGeneratorMIPS::PcRelativePatchInfo* info_low =
           codegen_->NewPcRelativeTypePatch(cls->GetDexFile(), cls->GetTypeIndex(), info_high);
-      bool reordering = __ SetReorder(false);
       codegen_->EmitPcRelativeAddressPlaceholderHigh(info_high,
                                                      out,
-                                                     base_or_current_method_reg,
-                                                     info_low);
-      __ Addiu(out, out, /* placeholder */ 0x5678);
-      __ SetReorder(reordering);
+                                                     base_or_current_method_reg);
+      __ Addiu(out, out, /* placeholder */ 0x5678, &info_low->label);
       break;
     }
     case HLoadClass::LoadKind::kBootImageAddress: {
@@ -7745,11 +7735,9 @@ void InstructionCodeGeneratorMIPS::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAF
           codegen_->NewTypeBssEntryPatch(cls->GetDexFile(), cls->GetTypeIndex(), bss_info_high);
       constexpr bool non_baker_read_barrier = kUseReadBarrier && !kUseBakerReadBarrier;
       Register temp = non_baker_read_barrier ? out : locations->GetTemp(0).AsRegister<Register>();
-      bool reordering = __ SetReorder(false);
       codegen_->EmitPcRelativeAddressPlaceholderHigh(bss_info_high,
                                                      temp,
                                                      base_or_current_method_reg);
-      __ SetReorder(reordering);
       GenerateGcRootFieldLoad(cls,
                               out_loc,
                               temp,
@@ -7890,13 +7878,10 @@ void InstructionCodeGeneratorMIPS::VisitLoadString(HLoadString* load) NO_THREAD_
           codegen_->NewPcRelativeStringPatch(load->GetDexFile(), load->GetStringIndex());
       CodeGeneratorMIPS::PcRelativePatchInfo* info_low =
           codegen_->NewPcRelativeStringPatch(load->GetDexFile(), load->GetStringIndex(), info_high);
-      bool reordering = __ SetReorder(false);
       codegen_->EmitPcRelativeAddressPlaceholderHigh(info_high,
                                                      out,
-                                                     base_or_current_method_reg,
-                                                     info_low);
-      __ Addiu(out, out, /* placeholder */ 0x5678);
-      __ SetReorder(reordering);
+                                                     base_or_current_method_reg);
+      __ Addiu(out, out, /* placeholder */ 0x5678, &info_low->label);
       return;  // No dex cache slow path.
     }
     case HLoadString::LoadKind::kBootImageAddress: {
@@ -7916,11 +7901,9 @@ void InstructionCodeGeneratorMIPS::VisitLoadString(HLoadString* load) NO_THREAD_
           codegen_->NewPcRelativeStringPatch(load->GetDexFile(), load->GetStringIndex(), info_high);
       constexpr bool non_baker_read_barrier = kUseReadBarrier && !kUseBakerReadBarrier;
       Register temp = non_baker_read_barrier ? out : locations->GetTemp(0).AsRegister<Register>();
-      bool reordering = __ SetReorder(false);
       codegen_->EmitPcRelativeAddressPlaceholderHigh(info_high,
                                                      temp,
                                                      base_or_current_method_reg);
-      __ SetReorder(reordering);
       GenerateGcRootFieldLoad(load,
                               out_loc,
                               temp,

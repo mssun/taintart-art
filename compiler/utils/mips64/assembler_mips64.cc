@@ -795,14 +795,42 @@ void Mips64Assembler::Bc1nez(FpuRegister ft, uint16_t imm16) {
   EmitFI(0x11, 0xD, ft, imm16);
 }
 
-void Mips64Assembler::Beqz(GpuRegister rt, uint16_t imm16) {
-  EmitI(0x4, ZERO, rt, imm16);
+void Mips64Assembler::Beq(GpuRegister rs, GpuRegister rt, uint16_t imm16) {
+  EmitI(0x4, rs, rt, imm16);
 }
 
-void Mips64Assembler::EmitBcondc(BranchCondition cond,
-                                 GpuRegister rs,
-                                 GpuRegister rt,
-                                 uint32_t imm16_21) {
+void Mips64Assembler::Bne(GpuRegister rs, GpuRegister rt, uint16_t imm16) {
+  EmitI(0x5, rs, rt, imm16);
+}
+
+void Mips64Assembler::Beqz(GpuRegister rt, uint16_t imm16) {
+  Beq(rt, ZERO, imm16);
+}
+
+void Mips64Assembler::Bnez(GpuRegister rt, uint16_t imm16) {
+  Bne(rt, ZERO, imm16);
+}
+
+void Mips64Assembler::Bltz(GpuRegister rt, uint16_t imm16) {
+  EmitI(0x1, rt, static_cast<GpuRegister>(0), imm16);
+}
+
+void Mips64Assembler::Bgez(GpuRegister rt, uint16_t imm16) {
+  EmitI(0x1, rt, static_cast<GpuRegister>(0x1), imm16);
+}
+
+void Mips64Assembler::Blez(GpuRegister rt, uint16_t imm16) {
+  EmitI(0x6, rt, static_cast<GpuRegister>(0), imm16);
+}
+
+void Mips64Assembler::Bgtz(GpuRegister rt, uint16_t imm16) {
+  EmitI(0x7, rt, static_cast<GpuRegister>(0), imm16);
+}
+
+void Mips64Assembler::EmitBcondR6(BranchCondition cond,
+                                  GpuRegister rs,
+                                  GpuRegister rt,
+                                  uint32_t imm16_21) {
   switch (cond) {
     case kCondLT:
       Bltc(rs, rt, imm16_21);
@@ -860,6 +888,55 @@ void Mips64Assembler::EmitBcondc(BranchCondition cond,
       CHECK_EQ(rt, ZERO);
       Bc1nez(static_cast<FpuRegister>(rs), imm16_21);
       break;
+    case kUncond:
+      LOG(FATAL) << "Unexpected branch condition " << cond;
+      UNREACHABLE();
+  }
+}
+
+void Mips64Assembler::EmitBcondR2(BranchCondition cond,
+                                  GpuRegister rs,
+                                  GpuRegister rt,
+                                  uint16_t imm16) {
+  switch (cond) {
+    case kCondLTZ:
+      CHECK_EQ(rt, ZERO);
+      Bltz(rs, imm16);
+      break;
+    case kCondGEZ:
+      CHECK_EQ(rt, ZERO);
+      Bgez(rs, imm16);
+      break;
+    case kCondLEZ:
+      CHECK_EQ(rt, ZERO);
+      Blez(rs, imm16);
+      break;
+    case kCondGTZ:
+      CHECK_EQ(rt, ZERO);
+      Bgtz(rs, imm16);
+      break;
+    case kCondEQ:
+      Beq(rs, rt, imm16);
+      break;
+    case kCondNE:
+      Bne(rs, rt, imm16);
+      break;
+    case kCondEQZ:
+      CHECK_EQ(rt, ZERO);
+      Beqz(rs, imm16);
+      break;
+    case kCondNEZ:
+      CHECK_EQ(rt, ZERO);
+      Bnez(rs, imm16);
+      break;
+    case kCondF:
+    case kCondT:
+    case kCondLT:
+    case kCondGE:
+    case kCondLE:
+    case kCondGT:
+    case kCondLTU:
+    case kCondGEU:
     case kUncond:
       LOG(FATAL) << "Unexpected branch condition " << cond;
       UNREACHABLE();
@@ -1000,6 +1077,22 @@ void Mips64Assembler::SelS(FpuRegister fd, FpuRegister fs, FpuRegister ft) {
 
 void Mips64Assembler::SelD(FpuRegister fd, FpuRegister fs, FpuRegister ft) {
   EmitFR(0x11, 0x11, ft, fs, fd, 0x10);
+}
+
+void Mips64Assembler::SeleqzS(FpuRegister fd, FpuRegister fs, FpuRegister ft) {
+  EmitFR(0x11, 0x10, ft, fs, fd, 0x14);
+}
+
+void Mips64Assembler::SeleqzD(FpuRegister fd, FpuRegister fs, FpuRegister ft) {
+  EmitFR(0x11, 0x11, ft, fs, fd, 0x14);
+}
+
+void Mips64Assembler::SelnezS(FpuRegister fd, FpuRegister fs, FpuRegister ft) {
+  EmitFR(0x11, 0x10, ft, fs, fd, 0x17);
+}
+
+void Mips64Assembler::SelnezD(FpuRegister fd, FpuRegister fs, FpuRegister ft) {
+  EmitFR(0x11, 0x11, ft, fs, fd, 0x17);
 }
 
 void Mips64Assembler::RintS(FpuRegister fd, FpuRegister fs) {
@@ -2013,37 +2106,67 @@ void Mips64Assembler::Branch::InitShortOrLong(Mips64Assembler::Branch::OffsetBit
   type_ = (offset_size <= branch_info_[short_type].offset_size) ? short_type : long_type;
 }
 
-void Mips64Assembler::Branch::InitializeType(Type initial_type) {
-  OffsetBits offset_size = GetOffsetSizeNeeded(location_, target_);
-  switch (initial_type) {
-    case kLabel:
-    case kLiteral:
-    case kLiteralUnsigned:
-    case kLiteralLong:
-      CHECK(!IsResolved());
-      type_ = initial_type;
-      break;
-    case kCall:
-      InitShortOrLong(offset_size, kCall, kLongCall);
-      break;
-    case kCondBranch:
-      switch (condition_) {
-        case kUncond:
-          InitShortOrLong(offset_size, kUncondBranch, kLongUncondBranch);
-          break;
-        case kCondEQZ:
-        case kCondNEZ:
-          // Special case for beqzc/bnezc with longer offset than in other b<cond>c instructions.
-          type_ = (offset_size <= kOffset23) ? kCondBranch : kLongCondBranch;
-          break;
-        default:
-          InitShortOrLong(offset_size, kCondBranch, kLongCondBranch);
-          break;
-      }
-      break;
-    default:
-      LOG(FATAL) << "Unexpected branch type " << initial_type;
-      UNREACHABLE();
+void Mips64Assembler::Branch::InitializeType(Type initial_type, bool is_r6) {
+  OffsetBits offset_size_needed = GetOffsetSizeNeeded(location_, target_);
+  if (is_r6) {
+    // R6
+    switch (initial_type) {
+      case kLabel:
+      case kLiteral:
+      case kLiteralUnsigned:
+      case kLiteralLong:
+        CHECK(!IsResolved());
+        type_ = initial_type;
+        break;
+      case kCall:
+        InitShortOrLong(offset_size_needed, kCall, kLongCall);
+        break;
+      case kCondBranch:
+        switch (condition_) {
+          case kUncond:
+            InitShortOrLong(offset_size_needed, kUncondBranch, kLongUncondBranch);
+            break;
+          case kCondEQZ:
+          case kCondNEZ:
+            // Special case for beqzc/bnezc with longer offset than in other b<cond>c instructions.
+            type_ = (offset_size_needed <= kOffset23) ? kCondBranch : kLongCondBranch;
+            break;
+          default:
+            InitShortOrLong(offset_size_needed, kCondBranch, kLongCondBranch);
+            break;
+        }
+        break;
+      case kBareCall:
+        type_ = kBareCall;
+        CHECK_LE(offset_size_needed, GetOffsetSize());
+        break;
+      case kBareCondBranch:
+        type_ = (condition_ == kUncond) ? kBareUncondBranch : kBareCondBranch;
+        CHECK_LE(offset_size_needed, GetOffsetSize());
+        break;
+      default:
+        LOG(FATAL) << "Unexpected branch type " << initial_type;
+        UNREACHABLE();
+    }
+  } else {
+    // R2
+    CHECK_EQ(initial_type, kBareCondBranch);
+    switch (condition_) {
+      case kCondLTZ:
+      case kCondGEZ:
+      case kCondLEZ:
+      case kCondGTZ:
+      case kCondEQ:
+      case kCondNE:
+      case kCondEQZ:
+      case kCondNEZ:
+        break;
+      default:
+        LOG(FATAL) << "Unexpected R2 branch condition " << condition_;
+        UNREACHABLE();
+    }
+    type_ = kR2BareCondBranch;
+    CHECK_LE(offset_size_needed, GetOffsetSize());
   }
   old_type_ = type_;
 }
@@ -2076,21 +2199,25 @@ bool Mips64Assembler::Branch::IsUncond(BranchCondition condition,
   }
 }
 
-Mips64Assembler::Branch::Branch(uint32_t location, uint32_t target, bool is_call)
+Mips64Assembler::Branch::Branch(uint32_t location, uint32_t target, bool is_call, bool is_bare)
     : old_location_(location),
       location_(location),
       target_(target),
       lhs_reg_(ZERO),
       rhs_reg_(ZERO),
       condition_(kUncond) {
-  InitializeType(is_call ? kCall : kCondBranch);
+  InitializeType(
+      (is_call ? (is_bare ? kBareCall : kCall) : (is_bare ? kBareCondBranch : kCondBranch)),
+      /* is_r6 */ true);
 }
 
-Mips64Assembler::Branch::Branch(uint32_t location,
+Mips64Assembler::Branch::Branch(bool is_r6,
+                                uint32_t location,
                                 uint32_t target,
                                 Mips64Assembler::BranchCondition condition,
                                 GpuRegister lhs_reg,
-                                GpuRegister rhs_reg)
+                                GpuRegister rhs_reg,
+                                bool is_bare)
     : old_location_(location),
       location_(location),
       target_(target),
@@ -2131,7 +2258,7 @@ Mips64Assembler::Branch::Branch(uint32_t location,
     // Branch condition is always true, make the branch unconditional.
     condition_ = kUncond;
   }
-  InitializeType(kCondBranch);
+  InitializeType((is_bare ? kBareCondBranch : kCondBranch), is_r6);
 }
 
 Mips64Assembler::Branch::Branch(uint32_t location, GpuRegister dest_reg, Type label_or_literal_type)
@@ -2142,7 +2269,7 @@ Mips64Assembler::Branch::Branch(uint32_t location, GpuRegister dest_reg, Type la
       rhs_reg_(ZERO),
       condition_(kUncond) {
   CHECK_NE(dest_reg, ZERO);
-  InitializeType(label_or_literal_type);
+  InitializeType(label_or_literal_type, /* is_r6 */ true);
 }
 
 Mips64Assembler::BranchCondition Mips64Assembler::Branch::OppositeCondition(
@@ -2238,12 +2365,32 @@ uint32_t Mips64Assembler::Branch::GetOldEndLocation() const {
   return GetOldLocation() + GetOldSize();
 }
 
+bool Mips64Assembler::Branch::IsBare() const {
+  switch (type_) {
+    // R6 short branches (can't be promoted to long), forbidden/delay slots filled manually.
+    case kBareUncondBranch:
+    case kBareCondBranch:
+    case kBareCall:
+    // R2 short branches (can't be promoted to long), delay slots filled manually.
+    case kR2BareCondBranch:
+      return true;
+    default:
+      return false;
+  }
+}
+
 bool Mips64Assembler::Branch::IsLong() const {
   switch (type_) {
-    // Short branches.
+    // R6 short branches (can be promoted to long).
     case kUncondBranch:
     case kCondBranch:
     case kCall:
+    // R6 short branches (can't be promoted to long), forbidden/delay slots filled manually.
+    case kBareUncondBranch:
+    case kBareCondBranch:
+    case kBareCall:
+    // R2 short branches (can't be promoted to long), delay slots filled manually.
+    case kR2BareCondBranch:
     // Near label.
     case kLabel:
     // Near literals.
@@ -2271,8 +2418,9 @@ bool Mips64Assembler::Branch::IsResolved() const {
 }
 
 Mips64Assembler::Branch::OffsetBits Mips64Assembler::Branch::GetOffsetSize() const {
+  bool r6_cond_branch = (type_ == kCondBranch || type_ == kBareCondBranch);
   OffsetBits offset_size =
-      (type_ == kCondBranch && (condition_ == kCondEQZ || condition_ == kCondNEZ))
+      (r6_cond_branch && (condition_ == kCondEQZ || condition_ == kCondNEZ))
           ? kOffset23
           : branch_info_[type_].offset_size;
   return offset_size;
@@ -2318,8 +2466,9 @@ void Mips64Assembler::Branch::Relocate(uint32_t expand_location, uint32_t delta)
 }
 
 void Mips64Assembler::Branch::PromoteToLong() {
+  CHECK(!IsBare());  // Bare branches do not promote.
   switch (type_) {
-    // Short branches.
+    // R6 short branches (can be promoted to long).
     case kUncondBranch:
       type_ = kLongUncondBranch;
       break;
@@ -2366,7 +2515,7 @@ uint32_t Mips64Assembler::Branch::PromoteIfNeeded(uint32_t max_short_distance) {
   }
   // The following logic is for debugging/testing purposes.
   // Promote some short branches to long when it's not really required.
-  if (UNLIKELY(max_short_distance != std::numeric_limits<uint32_t>::max())) {
+  if (UNLIKELY(max_short_distance != std::numeric_limits<uint32_t>::max() && !IsBare())) {
     int64_t distance = static_cast<int64_t>(target_) - location_;
     distance = (distance >= 0) ? distance : -distance;
     if (distance >= max_short_distance) {
@@ -2498,13 +2647,15 @@ void Mips64Assembler::FinalizeLabeledBranch(Mips64Label* label) {
   }
 }
 
-void Mips64Assembler::Buncond(Mips64Label* label) {
+void Mips64Assembler::Buncond(Mips64Label* label, bool is_bare) {
   uint32_t target = label->IsBound() ? GetLabelLocation(label) : Branch::kUnresolved;
-  branches_.emplace_back(buffer_.Size(), target, /* is_call */ false);
+  branches_.emplace_back(buffer_.Size(), target, /* is_call */ false, is_bare);
   FinalizeLabeledBranch(label);
 }
 
 void Mips64Assembler::Bcond(Mips64Label* label,
+                            bool is_r6,
+                            bool is_bare,
                             BranchCondition condition,
                             GpuRegister lhs,
                             GpuRegister rhs) {
@@ -2513,13 +2664,13 @@ void Mips64Assembler::Bcond(Mips64Label* label,
     return;
   }
   uint32_t target = label->IsBound() ? GetLabelLocation(label) : Branch::kUnresolved;
-  branches_.emplace_back(buffer_.Size(), target, condition, lhs, rhs);
+  branches_.emplace_back(is_r6, buffer_.Size(), target, condition, lhs, rhs, is_bare);
   FinalizeLabeledBranch(label);
 }
 
-void Mips64Assembler::Call(Mips64Label* label) {
+void Mips64Assembler::Call(Mips64Label* label, bool is_bare) {
   uint32_t target = label->IsBound() ? GetLabelLocation(label) : Branch::kUnresolved;
-  branches_.emplace_back(buffer_.Size(), target, /* is_call */ true);
+  branches_.emplace_back(buffer_.Size(), target, /* is_call */ true, is_bare);
   FinalizeLabeledBranch(label);
 }
 
@@ -2730,11 +2881,18 @@ void Mips64Assembler::PromoteBranches() {
 
 // Note: make sure branch_info_[] and EmitBranch() are kept synchronized.
 const Mips64Assembler::Branch::BranchInfo Mips64Assembler::Branch::branch_info_[] = {
-  // Short branches.
+  // R6 short branches (can be promoted to long).
   {  1, 0, 1, Mips64Assembler::Branch::kOffset28, 2 },  // kUncondBranch
   {  2, 0, 1, Mips64Assembler::Branch::kOffset18, 2 },  // kCondBranch
                                                         // Exception: kOffset23 for beqzc/bnezc
   {  1, 0, 1, Mips64Assembler::Branch::kOffset28, 2 },  // kCall
+  // R6 short branches (can't be promoted to long), forbidden/delay slots filled manually.
+  {  1, 0, 1, Mips64Assembler::Branch::kOffset28, 2 },  // kBareUncondBranch
+  {  1, 0, 1, Mips64Assembler::Branch::kOffset18, 2 },  // kBareCondBranch
+                                                        // Exception: kOffset23 for beqzc/bnezc
+  {  1, 0, 1, Mips64Assembler::Branch::kOffset28, 2 },  // kBareCall
+  // R2 short branches (can't be promoted to long), delay slots filled manually.
+  {  1, 0, 1, Mips64Assembler::Branch::kOffset18, 2 },  // kR2BareCondBranch
   // Near label.
   {  1, 0, 0, Mips64Assembler::Branch::kOffset21, 2 },  // kLabel
   // Near literals.
@@ -2769,12 +2927,28 @@ void Mips64Assembler::EmitBranch(Mips64Assembler::Branch* branch) {
       break;
     case Branch::kCondBranch:
       CHECK_EQ(overwrite_location_, branch->GetOffsetLocation());
-      EmitBcondc(condition, lhs, rhs, offset);
+      EmitBcondR6(condition, lhs, rhs, offset);
       Nop();  // TODO: improve by filling the forbidden/delay slot.
       break;
     case Branch::kCall:
       CHECK_EQ(overwrite_location_, branch->GetOffsetLocation());
       Balc(offset);
+      break;
+    case Branch::kBareUncondBranch:
+      CHECK_EQ(overwrite_location_, branch->GetOffsetLocation());
+      Bc(offset);
+      break;
+    case Branch::kBareCondBranch:
+      CHECK_EQ(overwrite_location_, branch->GetOffsetLocation());
+      EmitBcondR6(condition, lhs, rhs, offset);
+      break;
+    case Branch::kBareCall:
+      CHECK_EQ(overwrite_location_, branch->GetOffsetLocation());
+      Balc(offset);
+      break;
+    case Branch::kR2BareCondBranch:
+      CHECK_EQ(overwrite_location_, branch->GetOffsetLocation());
+      EmitBcondR2(condition, lhs, rhs, offset);
       break;
 
     // Near label.
@@ -2804,7 +2978,7 @@ void Mips64Assembler::EmitBranch(Mips64Assembler::Branch* branch) {
       Jic(AT, Low16Bits(offset));
       break;
     case Branch::kLongCondBranch:
-      EmitBcondc(Branch::OppositeCondition(condition), lhs, rhs, 2);
+      EmitBcondR6(Branch::OppositeCondition(condition), lhs, rhs, 2);
       offset += (offset & 0x8000) << 1;  // Account for sign extension in jic.
       CHECK_EQ(overwrite_location_, branch->GetOffsetLocation());
       Auipc(AT, High16Bits(offset));
@@ -2848,68 +3022,108 @@ void Mips64Assembler::EmitBranch(Mips64Assembler::Branch* branch) {
   CHECK_LT(branch->GetSize(), static_cast<uint32_t>(Branch::kMaxBranchSize));
 }
 
-void Mips64Assembler::Bc(Mips64Label* label) {
-  Buncond(label);
+void Mips64Assembler::Bc(Mips64Label* label, bool is_bare) {
+  Buncond(label, is_bare);
 }
 
-void Mips64Assembler::Balc(Mips64Label* label) {
-  Call(label);
+void Mips64Assembler::Balc(Mips64Label* label, bool is_bare) {
+  Call(label, is_bare);
 }
 
-void Mips64Assembler::Bltc(GpuRegister rs, GpuRegister rt, Mips64Label* label) {
-  Bcond(label, kCondLT, rs, rt);
+void Mips64Assembler::Bltc(GpuRegister rs, GpuRegister rt, Mips64Label* label, bool is_bare) {
+  Bcond(label, /* is_r6 */ true, is_bare, kCondLT, rs, rt);
 }
 
-void Mips64Assembler::Bltzc(GpuRegister rt, Mips64Label* label) {
-  Bcond(label, kCondLTZ, rt);
+void Mips64Assembler::Bltzc(GpuRegister rt, Mips64Label* label, bool is_bare) {
+  Bcond(label, /* is_r6 */ true, is_bare, kCondLTZ, rt);
 }
 
-void Mips64Assembler::Bgtzc(GpuRegister rt, Mips64Label* label) {
-  Bcond(label, kCondGTZ, rt);
+void Mips64Assembler::Bgtzc(GpuRegister rt, Mips64Label* label, bool is_bare) {
+  Bcond(label, /* is_r6 */ true, is_bare, kCondGTZ, rt);
 }
 
-void Mips64Assembler::Bgec(GpuRegister rs, GpuRegister rt, Mips64Label* label) {
-  Bcond(label, kCondGE, rs, rt);
+void Mips64Assembler::Bgec(GpuRegister rs, GpuRegister rt, Mips64Label* label, bool is_bare) {
+  Bcond(label, /* is_r6 */ true, is_bare, kCondGE, rs, rt);
 }
 
-void Mips64Assembler::Bgezc(GpuRegister rt, Mips64Label* label) {
-  Bcond(label, kCondGEZ, rt);
+void Mips64Assembler::Bgezc(GpuRegister rt, Mips64Label* label, bool is_bare) {
+  Bcond(label, /* is_r6 */ true, is_bare, kCondGEZ, rt);
 }
 
-void Mips64Assembler::Blezc(GpuRegister rt, Mips64Label* label) {
-  Bcond(label, kCondLEZ, rt);
+void Mips64Assembler::Blezc(GpuRegister rt, Mips64Label* label, bool is_bare) {
+  Bcond(label, /* is_r6 */ true, is_bare, kCondLEZ, rt);
 }
 
-void Mips64Assembler::Bltuc(GpuRegister rs, GpuRegister rt, Mips64Label* label) {
-  Bcond(label, kCondLTU, rs, rt);
+void Mips64Assembler::Bltuc(GpuRegister rs, GpuRegister rt, Mips64Label* label, bool is_bare) {
+  Bcond(label, /* is_r6 */ true, is_bare, kCondLTU, rs, rt);
 }
 
-void Mips64Assembler::Bgeuc(GpuRegister rs, GpuRegister rt, Mips64Label* label) {
-  Bcond(label, kCondGEU, rs, rt);
+void Mips64Assembler::Bgeuc(GpuRegister rs, GpuRegister rt, Mips64Label* label, bool is_bare) {
+  Bcond(label, /* is_r6 */ true, is_bare, kCondGEU, rs, rt);
 }
 
-void Mips64Assembler::Beqc(GpuRegister rs, GpuRegister rt, Mips64Label* label) {
-  Bcond(label, kCondEQ, rs, rt);
+void Mips64Assembler::Beqc(GpuRegister rs, GpuRegister rt, Mips64Label* label, bool is_bare) {
+  Bcond(label, /* is_r6 */ true, is_bare, kCondEQ, rs, rt);
 }
 
-void Mips64Assembler::Bnec(GpuRegister rs, GpuRegister rt, Mips64Label* label) {
-  Bcond(label, kCondNE, rs, rt);
+void Mips64Assembler::Bnec(GpuRegister rs, GpuRegister rt, Mips64Label* label, bool is_bare) {
+  Bcond(label, /* is_r6 */ true, is_bare, kCondNE, rs, rt);
 }
 
-void Mips64Assembler::Beqzc(GpuRegister rs, Mips64Label* label) {
-  Bcond(label, kCondEQZ, rs);
+void Mips64Assembler::Beqzc(GpuRegister rs, Mips64Label* label, bool is_bare) {
+  Bcond(label, /* is_r6 */ true, is_bare, kCondEQZ, rs);
 }
 
-void Mips64Assembler::Bnezc(GpuRegister rs, Mips64Label* label) {
-  Bcond(label, kCondNEZ, rs);
+void Mips64Assembler::Bnezc(GpuRegister rs, Mips64Label* label, bool is_bare) {
+  Bcond(label, /* is_r6 */ true, is_bare, kCondNEZ, rs);
 }
 
-void Mips64Assembler::Bc1eqz(FpuRegister ft, Mips64Label* label) {
-  Bcond(label, kCondF, static_cast<GpuRegister>(ft), ZERO);
+void Mips64Assembler::Bc1eqz(FpuRegister ft, Mips64Label* label, bool is_bare) {
+  Bcond(label, /* is_r6 */ true, is_bare, kCondF, static_cast<GpuRegister>(ft), ZERO);
 }
 
-void Mips64Assembler::Bc1nez(FpuRegister ft, Mips64Label* label) {
-  Bcond(label, kCondT, static_cast<GpuRegister>(ft), ZERO);
+void Mips64Assembler::Bc1nez(FpuRegister ft, Mips64Label* label, bool is_bare) {
+  Bcond(label, /* is_r6 */ true, is_bare, kCondT, static_cast<GpuRegister>(ft), ZERO);
+}
+
+void Mips64Assembler::Bltz(GpuRegister rt, Mips64Label* label, bool is_bare) {
+  CHECK(is_bare);
+  Bcond(label, /* is_r6 */ false, is_bare, kCondLTZ, rt);
+}
+
+void Mips64Assembler::Bgtz(GpuRegister rt, Mips64Label* label, bool is_bare) {
+  CHECK(is_bare);
+  Bcond(label, /* is_r6 */ false, is_bare, kCondGTZ, rt);
+}
+
+void Mips64Assembler::Bgez(GpuRegister rt, Mips64Label* label, bool is_bare) {
+  CHECK(is_bare);
+  Bcond(label, /* is_r6 */ false, is_bare, kCondGEZ, rt);
+}
+
+void Mips64Assembler::Blez(GpuRegister rt, Mips64Label* label, bool is_bare) {
+  CHECK(is_bare);
+  Bcond(label, /* is_r6 */ false, is_bare, kCondLEZ, rt);
+}
+
+void Mips64Assembler::Beq(GpuRegister rs, GpuRegister rt, Mips64Label* label, bool is_bare) {
+  CHECK(is_bare);
+  Bcond(label, /* is_r6 */ false, is_bare, kCondEQ, rs, rt);
+}
+
+void Mips64Assembler::Bne(GpuRegister rs, GpuRegister rt, Mips64Label* label, bool is_bare) {
+  CHECK(is_bare);
+  Bcond(label, /* is_r6 */ false, is_bare, kCondNE, rs, rt);
+}
+
+void Mips64Assembler::Beqz(GpuRegister rs, Mips64Label* label, bool is_bare) {
+  CHECK(is_bare);
+  Bcond(label, /* is_r6 */ false, is_bare, kCondEQZ, rs);
+}
+
+void Mips64Assembler::Bnez(GpuRegister rs, Mips64Label* label, bool is_bare) {
+  CHECK(is_bare);
+  Bcond(label, /* is_r6 */ false, is_bare, kCondNEZ, rs);
 }
 
 void Mips64Assembler::AdjustBaseAndOffset(GpuRegister& base,
