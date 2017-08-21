@@ -1,6 +1,6 @@
 Loaded Agent for test 901-hello-ti-agent
-VMStart
-VMInit
+VMStart (phase 6)
+VMInit (phase 4)
 Hello, world!
 Agent in live phase.
 Received expected error for unattached JVMTI calls
@@ -73,4 +73,4 @@ JVMTI_ERROR_ILLEGAL_ARGUMENT
 115 = JVMTI_ERROR_UNATTACHED_THREAD
 116 = JVMTI_ERROR_INVALID_ENVIRONMENT
 1 times JVMTI_ERROR_ILLEGAL_ARGUMENT
-VMDeath
+VMDeath (phase 4)
