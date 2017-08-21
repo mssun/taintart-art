@@ -38,20 +38,27 @@ static void EnableEvent(jvmtiEnv* env, jvmtiEvent evt) {
   }
 }
 
-static void JNICALL VMStartCallback(jvmtiEnv *jenv ATTRIBUTE_UNUSED,
-                                     JNIEnv* jni_env ATTRIBUTE_UNUSED) {
-  printf("VMStart\n");
+static jvmtiPhase getPhase(jvmtiEnv* jenv) {
+  jvmtiPhase out = static_cast<jvmtiPhase>(-1);
+  jenv->GetPhase(&out);
+  return out;
 }
 
-static void JNICALL VMInitCallback(jvmtiEnv *jvmti_env ATTRIBUTE_UNUSED,
+static void JNICALL VMStartCallback(jvmtiEnv *jenv, JNIEnv* jni_env ATTRIBUTE_UNUSED) {
+  printf("VMStart (phase %d)\n", getPhase(jenv));
+  fsync(1);
+}
+
+static void JNICALL VMInitCallback(jvmtiEnv *jvmti_env,
                                    JNIEnv* jni_env ATTRIBUTE_UNUSED,
                                    jthread thread ATTRIBUTE_UNUSED) {
-  printf("VMInit\n");
+  printf("VMInit (phase %d)\n", getPhase(jvmti_env));
+  fsync(1);
 }
 
-static void JNICALL VMDeatchCallback(jvmtiEnv *jenv ATTRIBUTE_UNUSED,
-                                     JNIEnv* jni_env ATTRIBUTE_UNUSED) {
-  printf("VMDeath\n");
+static void JNICALL VMDeatchCallback(jvmtiEnv *jenv, JNIEnv* jni_env ATTRIBUTE_UNUSED) {
+  printf("VMDeath (phase %d)\n", getPhase(jenv));
+  fsync(1);
 }
 
 
