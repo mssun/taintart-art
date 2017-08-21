@@ -345,7 +345,7 @@
      *              $f0-$f31; 28(GPR)+ 32(FPR) + 1x8 bytes padding + method*
      * This macro sets up $gp; entrypoints using it should start with ENTRY_NO_GP.
      */
-.macro SETUP_SAVE_EVERYTHING_FRAME_DECREMENTED_SP
+.macro SETUP_SAVE_EVERYTHING_FRAME_DECREMENTED_SP runtime_method_offset = RUNTIME_SAVE_EVERYTHING_METHOD_OFFSET
      // Ugly compile-time check, but we only have the preprocessor.
 #if (FRAME_SIZE_SAVE_EVERYTHING != 496)
 #error "FRAME_SIZE_SAVE_EVERYTHING(MIPS64) size not as expected."
@@ -452,7 +452,7 @@
     # load appropriate callee-save-method
     ld      $t1, %got(_ZN3art7Runtime9instance_E)($gp)
     ld      $t1, 0($t1)
-    ld      $t1, RUNTIME_SAVE_EVERYTHING_METHOD_OFFSET($t1)
+    ld      $t1, \runtime_method_offset($t1)
     sd      $t1, 0($sp)                                # Place ArtMethod* at bottom of stack.
     # Place sp in Thread::Current()->top_quick_frame.
     sd      $sp, THREAD_TOP_QUICK_FRAME_OFFSET(rSELF)
@@ -465,10 +465,10 @@
      *              $f0-$f31; 28(GPR)+ 32(FPR) + 1x8 bytes padding + method*
      * This macro sets up $gp; entrypoints using it should start with ENTRY_NO_GP.
      */
-.macro SETUP_SAVE_EVERYTHING_FRAME
+.macro SETUP_SAVE_EVERYTHING_FRAME runtime_method_offset = RUNTIME_SAVE_EVERYTHING_METHOD_OFFSET
     daddiu $sp, $sp, -(FRAME_SIZE_SAVE_EVERYTHING)
     .cfi_adjust_cfa_offset (FRAME_SIZE_SAVE_EVERYTHING)
-    SETUP_SAVE_EVERYTHING_FRAME_DECREMENTED_SP
+    SETUP_SAVE_EVERYTHING_FRAME_DECREMENTED_SP \runtime_method_offset
 .endm
 
 .macro RESTORE_SAVE_EVERYTHING_FRAME restore_a0=1
@@ -1925,10 +1925,10 @@ GENERATE_ALLOC_ARRAY_TLAB art_quick_alloc_array_resolved64_tlab, artAllocArrayFr
 
 // Macro for string and type resolution and initialization.
 // $a0 is both input and output.
-.macro ONE_ARG_SAVE_EVERYTHING_DOWNCALL name, entrypoint
+.macro ONE_ARG_SAVE_EVERYTHING_DOWNCALL name, entrypoint, runtime_method_offset = RUNTIME_SAVE_EVERYTHING_METHOD_OFFSET
     .extern \entrypoint
 ENTRY_NO_GP \name
-    SETUP_SAVE_EVERYTHING_FRAME       # Save everything in case of GC.
+    SETUP_SAVE_EVERYTHING_FRAME \runtime_method_offset  # Save everything in case of GC.
     dla     $t9, \entrypoint
     jalr    $t9                       # (uint32_t index, Thread*)
     move    $a1, rSELF                # Pass Thread::Current (in delay slot).
@@ -1939,6 +1939,10 @@ ENTRY_NO_GP \name
 1:
     DELIVER_PENDING_EXCEPTION_FRAME_READY
 END \name
+.endm
+
+.macro ONE_ARG_SAVE_EVERYTHING_DOWNCALL_FOR_CLINIT name, entrypoint
+    ONE_ARG_SAVE_EVERYTHING_DOWNCALL \name, \entrypoint, RUNTIME_SAVE_EVERYTHING_FOR_CLINIT_METHOD_OFFSET
 .endm
 
     /*
@@ -1953,12 +1957,12 @@ ONE_ARG_SAVE_EVERYTHING_DOWNCALL art_quick_resolve_string, artResolveStringFromC
      * initializer and deliver the exception on error. On success the static storage base is
      * returned.
      */
-ONE_ARG_SAVE_EVERYTHING_DOWNCALL art_quick_initialize_static_storage, artInitializeStaticStorageFromCode
+ONE_ARG_SAVE_EVERYTHING_DOWNCALL_FOR_CLINIT art_quick_initialize_static_storage, artInitializeStaticStorageFromCode
 
     /*
      * Entry from managed code when dex cache misses for a type_idx.
      */
-ONE_ARG_SAVE_EVERYTHING_DOWNCALL art_quick_initialize_type, artInitializeTypeFromCode
+ONE_ARG_SAVE_EVERYTHING_DOWNCALL_FOR_CLINIT art_quick_initialize_type, artInitializeTypeFromCode
 
     /*
      * Entry from managed code when type_idx needs to be checked for access and dex cache may also
@@ -1977,7 +1981,8 @@ ENTRY_NO_GP art_quick_test_suspend
     jalr   $zero, $ra
     nop
 1:
-    SETUP_SAVE_EVERYTHING_FRAME               # save everything for stack crawl
+    SETUP_SAVE_EVERYTHING_FRAME RUNTIME_SAVE_EVERYTHING_FOR_SUSPEND_CHECK_METHOD_OFFSET
+                                              # save everything for stack crawl
     jal    artTestSuspendFromCode             # (Thread*)
     move   $a0, rSELF
     RESTORE_SAVE_EVERYTHING_FRAME
