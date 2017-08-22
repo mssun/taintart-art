@@ -29,7 +29,6 @@ namespace art {
 constexpr bool kObjPtrPoisoning = kIsDebugBuild;
 
 // Value type representing a pointer to a mirror::Object of type MirrorType
-// Pass kPoison as a template boolean for testing in non-debug builds.
 // Since the cookie is thread based, it is not safe to share an ObjPtr between threads.
 template<class MirrorType>
 class ObjPtr {
