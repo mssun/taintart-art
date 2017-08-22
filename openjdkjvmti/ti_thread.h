@@ -53,8 +53,13 @@ class ThreadUtil {
   static void Register(EventHandler* event_handler);
   static void Unregister();
 
-  // To be called when it is safe to cache data.
+  // To be called when it is safe to cache data. This means that we have at least entered the
+  // RuntimePhase::kInit but we might or might not have already called VMInit event.
   static void CacheData();
+
+  // Called just after we have sent the VMInit callback so that ThreadUtil can do final setup. This
+  // ensures that there are no timing issues between the two callbacks.
+  static void VMInitEventSent() REQUIRES_SHARED(art::Locks::mutator_lock_);
 
   // Handle a jvmtiEnv going away.
   static void RemoveEnvironment(jvmtiEnv* env);

@@ -72,9 +72,16 @@ struct PhaseUtil::PhaseCallback : public art::RuntimePhaseCallback {
         {
           ThreadUtil::CacheData();
           PhaseUtil::current_phase_ = JVMTI_PHASE_LIVE;
-          ScopedLocalRef<jthread> thread(GetJniEnv(), GetCurrentJThread());
-          art::ScopedThreadSuspension sts(art::Thread::Current(), art::ThreadState::kNative);
-          event_handler->DispatchEvent<ArtJvmtiEvent::kVmInit>(nullptr, GetJniEnv(), thread.get());
+          {
+            ScopedLocalRef<jthread> thread(GetJniEnv(), GetCurrentJThread());
+            art::ScopedThreadSuspension sts(art::Thread::Current(), art::ThreadState::kNative);
+            event_handler->DispatchEvent<ArtJvmtiEvent::kVmInit>(
+                nullptr, GetJniEnv(), thread.get());
+          }
+          // We need to have these events be ordered to match behavior expected by some real-world
+          // agents. The spec does not really require this but compatibility is a useful property to
+          // maintain.
+          ThreadUtil::VMInitEventSent();
         }
         break;
       case RuntimePhase::kDeath:
