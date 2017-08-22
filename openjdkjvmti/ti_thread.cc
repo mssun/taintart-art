@@ -57,13 +57,14 @@ namespace openjdkjvmti {
 
 art::ArtField* ThreadUtil::context_class_loader_ = nullptr;
 
-struct ThreadCallback : public art::ThreadLifecycleCallback, public art::RuntimePhaseCallback {
+struct ThreadCallback : public art::ThreadLifecycleCallback {
   jthread GetThreadObject(art::Thread* self) REQUIRES_SHARED(art::Locks::mutator_lock_) {
     if (self->GetPeer() == nullptr) {
       return nullptr;
     }
     return self->GetJniEnv()->AddLocalReference<jthread>(self->GetPeer());
   }
+
   template <ArtJvmtiEvent kEvent>
   void Post(art::Thread* self) REQUIRES_SHARED(art::Locks::mutator_lock_) {
     DCHECK_EQ(self, art::Thread::Current());
@@ -96,15 +97,6 @@ struct ThreadCallback : public art::ThreadLifecycleCallback, public art::Runtime
     Post<ArtJvmtiEvent::kThreadEnd>(self);
   }
 
-  void NextRuntimePhase(RuntimePhase phase) OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
-    if (phase == RuntimePhase::kInit) {
-      // We moved to VMInit. Report the main thread as started (it was attached early, and must
-      // not be reported until Init.
-      started = true;
-      Post<ArtJvmtiEvent::kThreadStart>(art::Thread::Current());
-    }
-  }
-
   EventHandler* event_handler = nullptr;
   bool started = false;
 };
@@ -121,10 +113,19 @@ void ThreadUtil::Register(EventHandler* handler) {
                                     art::ThreadState::kWaitingForDebuggerToAttach);
   art::ScopedSuspendAll ssa("Add thread callback");
   runtime->GetRuntimeCallbacks()->AddThreadLifecycleCallback(&gThreadCallback);
-  runtime->GetRuntimeCallbacks()->AddRuntimePhaseCallback(&gThreadCallback);
+}
+
+void ThreadUtil::VMInitEventSent() {
+  // We should have already started.
+  DCHECK(gThreadCallback.started);
+  // We moved to VMInit. Report the main thread as started (it was attached early, and must not be
+  // reported until Init.
+  gThreadCallback.Post<ArtJvmtiEvent::kThreadStart>(art::Thread::Current());
 }
 
 void ThreadUtil::CacheData() {
+  // We must have started since it is now safe to cache our data;
+  gThreadCallback.started = true;
   art::ScopedObjectAccess soa(art::Thread::Current());
   art::ObjPtr<art::mirror::Class> thread_class =
       soa.Decode<art::mirror::Class>(art::WellKnownClasses::java_lang_Thread);
@@ -140,7 +141,6 @@ void ThreadUtil::Unregister() {
   art::ScopedSuspendAll ssa("Remove thread callback");
   art::Runtime* runtime = art::Runtime::Current();
   runtime->GetRuntimeCallbacks()->RemoveThreadLifecycleCallback(&gThreadCallback);
-  runtime->GetRuntimeCallbacks()->RemoveRuntimePhaseCallback(&gThreadCallback);
 }
 
 jvmtiError ThreadUtil::GetCurrentThread(jvmtiEnv* env ATTRIBUTE_UNUSED, jthread* thread_ptr) {
