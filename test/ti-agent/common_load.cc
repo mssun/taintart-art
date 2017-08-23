@@ -28,6 +28,7 @@
 #include "909-attach-agent/attach.h"
 #include "936-search-onload/search_onload.h"
 #include "983-source-transform-verify/source_transform.h"
+#include "1919-vminit-thread-start-timing/vminit.h"
 
 namespace art {
 
@@ -82,6 +83,7 @@ static AgentLib agents[] = {
   { "941-recursive-obsolete-jit", common_redefine::OnLoad, nullptr },
   { "943-private-recursive-jit", common_redefine::OnLoad, nullptr },
   { "983-source-transform-verify", Test983SourceTransformVerify::OnLoad, nullptr },
+  { "1919-vminit-thread-start-timing", Test1919VMInitThreadStart::OnLoad, nullptr },
 };
 
 static AgentLib* FindAgent(char* name) {

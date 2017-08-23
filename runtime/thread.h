@@ -117,6 +117,13 @@ enum class StackedShadowFrameType {
   kDeoptimizationShadowFrame,
 };
 
+// The type of method that triggers deoptimization. It contains info on whether
+// the deoptimized method should advance dex_pc.
+enum class DeoptimizationMethodType {
+  kKeepDexPc,  // dex pc is required to be kept upon deoptimization.
+  kDefault     // dex pc may or may not advance depending on other conditions.
+};
+
 // This should match RosAlloc::kNumThreadLocalSizeBrackets.
 static constexpr size_t kNumRosAllocThreadLocalSizeBracketsInThread = 16;
 
@@ -960,14 +967,18 @@ class Thread {
   // values on stacks.
   // 'from_code' denotes whether the deoptimization was explicitly made from
   // compiled code.
+  // 'method_type' contains info on whether deoptimization should advance
+  // dex_pc.
   void PushDeoptimizationContext(const JValue& return_value,
                                  bool is_reference,
+                                 ObjPtr<mirror::Throwable> exception,
                                  bool from_code,
-                                 ObjPtr<mirror::Throwable> exception)
+                                 DeoptimizationMethodType method_type)
       REQUIRES_SHARED(Locks::mutator_lock_);
   void PopDeoptimizationContext(JValue* result,
                                 ObjPtr<mirror::Throwable>* exception,
-                                bool* from_code)
+                                bool* from_code,
+                                DeoptimizationMethodType* method_type)
       REQUIRES_SHARED(Locks::mutator_lock_);
   void AssertHasDeoptimizationContext()
       REQUIRES_SHARED(Locks::mutator_lock_);

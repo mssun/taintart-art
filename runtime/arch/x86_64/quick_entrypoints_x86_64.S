@@ -2019,45 +2019,31 @@ DEFINE_FUNCTION_CUSTOM_CFA art_quick_instrumentation_exit, 0
     pushq LITERAL(0)          // Push a fake return PC as there will be none on the stack.
     CFI_ADJUST_CFA_OFFSET(8)
 
-    SETUP_SAVE_REFS_ONLY_FRAME
+    SETUP_SAVE_EVERYTHING_FRAME
 
-    // We need to save rax and xmm0. We could use a callee-save from SETUP_REF_ONLY, but then
-    // we would need to fully restore it. As there are a good number of callee-save registers, it
-    // seems easier to have an extra small stack area. But this should be revisited.
-
-    movq  %rsp, %rsi                          // Pass SP.
-
-    PUSH rax                  // Save integer result.
-    movq %rsp, %rdx           // Pass integer result pointer.
-
-    subq LITERAL(8), %rsp     // Save floating-point result.
-    CFI_ADJUST_CFA_OFFSET(8)
-    movq %xmm0, (%rsp)
-    movq %rsp, %rcx           // Pass floating-point result pointer.
-
-    movq  %gs:THREAD_SELF_OFFSET, %rdi        // Pass Thread.
+    leaq 16(%rsp), %rcx       // Pass floating-point result pointer, in kSaveEverything frame.
+    leaq 144(%rsp), %rdx      // Pass integer result pointer, in kSaveEverything frame.
+    movq %rsp, %rsi           // Pass SP.
+    movq %gs:THREAD_SELF_OFFSET, %rdi  // Pass Thread.
 
     call SYMBOL(artInstrumentationMethodExitFromCode)   // (Thread*, SP, gpr_res*, fpr_res*)
 
-    movq  %rax, %rdi          // Store return PC
-    movq  %rdx, %rsi          // Store second return PC in hidden arg.
-
-    movq (%rsp), %xmm0        // Restore floating-point result.
-    addq LITERAL(8), %rsp
-    CFI_ADJUST_CFA_OFFSET(-8)
-    POP rax                   // Restore integer result.
-
-    RESTORE_SAVE_REFS_ONLY_FRAME
-
-    testq %rdi, %rdi          // Check if we have a return-pc to go to. If we don't then there was
+    testq %rax, %rax          // Check if we have a return-pc to go to. If we don't then there was
                               // an exception
-    jz 1f
-
-    addq LITERAL(8), %rsp     // Drop fake return pc.
-
-    jmp   *%rdi               // Return.
-1:
-    DELIVER_PENDING_EXCEPTION
+    jz .Ldo_deliver_instrumentation_exception
+    testq %rdx, %rdx
+    jnz .Ldeoptimize
+    // Normal return.
+    movq %rax, FRAME_SIZE_SAVE_EVERYTHING-8(%rsp)  // Set return pc.
+    RESTORE_SAVE_EVERYTHING_FRAME
+    ret
+.Ldeoptimize:
+    movq %rdx, FRAME_SIZE_SAVE_EVERYTHING-8(%rsp)  // Set return pc.
+    RESTORE_SAVE_EVERYTHING_FRAME
+    // Jump to art_quick_deoptimize.
+    jmp SYMBOL(art_quick_deoptimize)
+.Ldo_deliver_instrumentation_exception:
+    DELIVER_PENDING_EXCEPTION_FRAME_READY
 END_FUNCTION art_quick_instrumentation_exit
 
     /*
@@ -2065,10 +2051,7 @@ END_FUNCTION art_quick_instrumentation_exit
      * will long jump to the upcall with a special exception of -1.
      */
 DEFINE_FUNCTION art_quick_deoptimize
-    pushq %rsi                         // Entry point for a jump. Fake that we were called.
-                                       // Use hidden arg.
-    SETUP_SAVE_ALL_CALLEE_SAVES_FRAME
-                                       // Stack should be aligned now.
+    SETUP_SAVE_EVERYTHING_FRAME        // Stack should be aligned now.
     movq %gs:THREAD_SELF_OFFSET, %rdi  // Pass Thread.
     call SYMBOL(artDeoptimize)         // (Thread*)
     UNREACHABLE

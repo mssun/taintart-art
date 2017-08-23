@@ -499,8 +499,9 @@ static int16_t GetReceiverRegisterForStringInit(const Instruction* instr) {
 
 void EnterInterpreterFromDeoptimize(Thread* self,
                                     ShadowFrame* shadow_frame,
+                                    JValue* ret_val,
                                     bool from_code,
-                                    JValue* ret_val)
+                                    DeoptimizationMethodType deopt_method_type)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   JValue value;
   // Set value to last known result in case the shadow frame chain is empty.
@@ -527,11 +528,27 @@ void EnterInterpreterFromDeoptimize(Thread* self,
       new_dex_pc = found_dex_pc;  // the dex pc of a matching catch handler
                                   // or DexFile::kDexNoIndex if there is none.
     } else if (!from_code) {
-      // For the debugger and full deoptimization stack, we must go past the invoke
-      // instruction, as it already executed.
-      // TODO: should be tested more once b/17586779 is fixed.
+      // Deoptimization is not called from code directly.
       const Instruction* instr = Instruction::At(&code_item->insns_[dex_pc]);
-      if (instr->IsInvoke()) {
+      if (deopt_method_type == DeoptimizationMethodType::kKeepDexPc) {
+        DCHECK(first);
+        // Need to re-execute the dex instruction.
+        // (1) An invocation might be split into class initialization and invoke.
+        //     In this case, the invoke should not be skipped.
+        // (2) A suspend check should also execute the dex instruction at the
+        //     corresponding dex pc.
+        new_dex_pc = dex_pc;
+      } else if (instr->Opcode() == Instruction::MONITOR_ENTER ||
+                 instr->Opcode() == Instruction::MONITOR_EXIT) {
+        DCHECK(deopt_method_type == DeoptimizationMethodType::kDefault);
+        DCHECK(first);
+        // Non-idempotent dex instruction should not be re-executed.
+        // On the other hand, if a MONITOR_ENTER is at the dex_pc of a suspend
+        // check, that MONITOR_ENTER should be executed. That case is handled
+        // above.
+        new_dex_pc = dex_pc + instr->SizeInCodeUnits();
+      } else if (instr->IsInvoke()) {
+        DCHECK(deopt_method_type == DeoptimizationMethodType::kDefault);
         if (IsStringInit(instr, shadow_frame->GetMethod())) {
           uint16_t this_obj_vreg = GetReceiverRegisterForStringInit(instr);
           // Move the StringFactory.newStringFromChars() result into the register representing
@@ -544,30 +561,44 @@ void EnterInterpreterFromDeoptimize(Thread* self,
         }
         new_dex_pc = dex_pc + instr->SizeInCodeUnits();
       } else if (instr->Opcode() == Instruction::NEW_INSTANCE) {
-        // It's possible to deoptimize at a NEW_INSTANCE dex instruciton that's for a
-        // java string, which is turned into a call into StringFactory.newEmptyString();
-        // Move the StringFactory.newEmptyString() result into the destination register.
-        DCHECK(value.GetL()->IsString());
-        shadow_frame->SetVRegReference(instr->VRegA_21c(), value.GetL());
-        // new-instance doesn't generate a result value.
-        value.SetJ(0);
-        // Skip the dex instruction since we essentially come back from an invocation.
-        new_dex_pc = dex_pc + instr->SizeInCodeUnits();
-        if (kIsDebugBuild) {
-          ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-          // This is a suspend point. But it's ok since value has been set into shadow_frame.
-          ObjPtr<mirror::Class> klass = class_linker->ResolveType(
-              dex::TypeIndex(instr->VRegB_21c()), shadow_frame->GetMethod());
-          DCHECK(klass->IsStringClass());
+        DCHECK(deopt_method_type == DeoptimizationMethodType::kDefault);
+        if (!first && value.GetL()->IsString()) {
+          // It's possible to deoptimize at a NEW_INSTANCE dex instruction that's for a
+          // java string, which is turned into a call into StringFactory.newEmptyString();
+          // Move the StringFactory.newEmptyString() result into the destination register.
+          shadow_frame->SetVRegReference(instr->VRegA_21c(), value.GetL());
+          // new-instance doesn't generate a result value.
+          value.SetJ(0);
+          // Skip the dex instruction since we essentially come back from an invocation.
+          new_dex_pc = dex_pc + instr->SizeInCodeUnits();
+          if (kIsDebugBuild) {
+            ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+            // This is a suspend point. But it's ok since value has been set into shadow_frame.
+            ObjPtr<mirror::Class> klass = class_linker->ResolveType(
+                dex::TypeIndex(instr->VRegB_21c()), shadow_frame->GetMethod());
+            DCHECK(klass->IsStringClass());
+          }
+        } else {
+          DCHECK(deopt_method_type == DeoptimizationMethodType::kDefault);
+          DCHECK(first);
+          // A regular NEW_INSTANCE is simply re-executed.
+          new_dex_pc = dex_pc;
         }
       } else {
-        CHECK(false) << "Unexpected instruction opcode " << instr->Opcode()
-                     << " at dex_pc " << dex_pc
-                     << " of method: " << ArtMethod::PrettyMethod(shadow_frame->GetMethod(), false);
+        DCHECK(deopt_method_type == DeoptimizationMethodType::kDefault);
+        DCHECK(first);
+        // By default, we re-execute the dex instruction since if they are not
+        // an invoke, so that we don't have to decode the dex instruction to move
+        // result into the right vreg. All slow paths have been audited to be
+        // idempotent except monitor-enter/exit and invocation stubs.
+        // TODO: move result and advance dex pc. That also requires that we can
+        // tell the return type of a runtime method, which we don't do currently.
+        new_dex_pc = dex_pc;
       }
     } else {
       // Nothing to do, the dex_pc is the one at which the code requested
       // the deoptimization.
+      DCHECK(first);
     }
     if (new_dex_pc != DexFile::kDexNoIndex) {
       shadow_frame->SetDexPC(new_dex_pc);
@@ -576,8 +607,10 @@ void EnterInterpreterFromDeoptimize(Thread* self,
     ShadowFrame* old_frame = shadow_frame;
     shadow_frame = shadow_frame->GetLink();
     ShadowFrame::DeleteDeoptimizedFrame(old_frame);
-    // Following deoptimizations of shadow frames must pass the invoke instruction.
+    // Following deoptimizations of shadow frames must be at invocation point
+    // and should advance dex pc past the invoke instruction.
     from_code = false;
+    deopt_method_type = DeoptimizationMethodType::kDefault;
     first = false;
   }
   ret_val->SetJ(value.GetJ());
