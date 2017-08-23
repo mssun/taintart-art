@@ -207,8 +207,7 @@
         "variant": "trace | stream"
     },
     {
-        "tests": ["597-deopt-runtime-method",
-                  "604-hot-static-interface",
+        "tests": ["604-hot-static-interface",
                   "612-jit-dex-cache",
                   "613-inlining-dex-cache",
                   "626-set-resolved-string"],

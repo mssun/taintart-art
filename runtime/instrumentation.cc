@@ -227,32 +227,39 @@ static void InstrumentationInstallStack(Thread* thread, void* arg)
         return true;  // Continue.
       }
       uintptr_t return_pc = GetReturnPc();
+      if (m->IsRuntimeMethod()) {
+        if (return_pc == instrumentation_exit_pc_) {
+          if (kVerboseInstrumentation) {
+            LOG(INFO) << "  Handling quick to interpreter transition. Frame " << GetFrameId();
+          }
+          CHECK_LT(instrumentation_stack_depth_, instrumentation_stack_->size());
+          const InstrumentationStackFrame& frame =
+              instrumentation_stack_->at(instrumentation_stack_depth_);
+          CHECK(frame.interpreter_entry_);
+          // This is an interpreter frame so method enter event must have been reported. However we
+          // need to push a DEX pc into the dex_pcs_ list to match size of instrumentation stack.
+          // Since we won't report method entry here, we can safely push any DEX pc.
+          dex_pcs_.push_back(0);
+          last_return_pc_ = frame.return_pc_;
+          ++instrumentation_stack_depth_;
+          return true;
+        } else {
+          if (kVerboseInstrumentation) {
+            LOG(INFO) << "  Skipping runtime method. Frame " << GetFrameId();
+          }
+          last_return_pc_ = GetReturnPc();
+          return true;  // Ignore unresolved methods since they will be instrumented after resolution.
+        }
+      }
       if (kVerboseInstrumentation) {
         LOG(INFO) << "  Installing exit stub in " << DescribeLocation();
       }
       if (return_pc == instrumentation_exit_pc_) {
-        CHECK_LT(instrumentation_stack_depth_, instrumentation_stack_->size());
-
-        if (m->IsRuntimeMethod()) {
-          const InstrumentationStackFrame& frame =
-              instrumentation_stack_->at(instrumentation_stack_depth_);
-          if (frame.interpreter_entry_) {
-            // This instrumentation frame is for an interpreter bridge and is
-            // pushed when executing the instrumented interpreter bridge. So method
-            // enter event must have been reported. However we need to push a DEX pc
-            // into the dex_pcs_ list to match size of instrumentation stack.
-            uint32_t dex_pc = DexFile::kDexNoIndex;
-            dex_pcs_.push_back(dex_pc);
-            last_return_pc_ = frame.return_pc_;
-            ++instrumentation_stack_depth_;
-            return true;
-          }
-        }
-
         // We've reached a frame which has already been installed with instrumentation exit stub.
         // We should have already installed instrumentation on previous frames.
         reached_existing_instrumentation_frames_ = true;
 
+        CHECK_LT(instrumentation_stack_depth_, instrumentation_stack_->size());
         const InstrumentationStackFrame& frame =
             instrumentation_stack_->at(instrumentation_stack_depth_);
         CHECK_EQ(m, frame.method_) << "Expected " << ArtMethod::PrettyMethod(m)
@@ -264,12 +271,8 @@ static void InstrumentationInstallStack(Thread* thread, void* arg)
       } else {
         CHECK_NE(return_pc, 0U);
         CHECK(!reached_existing_instrumentation_frames_);
-        InstrumentationStackFrame instrumentation_frame(
-            m->IsRuntimeMethod() ? nullptr : GetThisObject(),
-            m,
-            return_pc,
-            GetFrameId(),    // A runtime method still gets a frame id.
-            false);
+        InstrumentationStackFrame instrumentation_frame(GetThisObject(), m, return_pc, GetFrameId(),
+                                                        false);
         if (kVerboseInstrumentation) {
           LOG(INFO) << "Pushing frame " << instrumentation_frame.Dump();
         }
@@ -286,12 +289,9 @@ static void InstrumentationInstallStack(Thread* thread, void* arg)
         instrumentation_stack_->insert(it, instrumentation_frame);
         SetReturnPc(instrumentation_exit_pc_);
       }
-      uint32_t dex_pc = DexFile::kDexNoIndex;
-      if (last_return_pc_ != 0 &&
-          GetCurrentOatQuickMethodHeader() != nullptr) {
-        dex_pc = GetCurrentOatQuickMethodHeader()->ToDexPc(m, last_return_pc_);
-      }
-      dex_pcs_.push_back(dex_pc);
+      dex_pcs_.push_back((GetCurrentOatQuickMethodHeader() == nullptr)
+          ? DexFile::kDexNoIndex
+          : GetCurrentOatQuickMethodHeader()->ToDexPc(m, last_return_pc_));
       last_return_pc_ = return_pc;
       ++instrumentation_stack_depth_;
       return true;  // Continue.
@@ -389,8 +389,7 @@ static void InstrumentationRestoreStack(Thread* thread, void* arg)
             CHECK(m == instrumentation_frame.method_) << ArtMethod::PrettyMethod(m);
           }
           SetReturnPc(instrumentation_frame.return_pc_);
-          if (instrumentation_->ShouldNotifyMethodEnterExitEvents() &&
-              !m->IsRuntimeMethod()) {
+          if (instrumentation_->ShouldNotifyMethodEnterExitEvents()) {
             // Create the method exit events. As the methods didn't really exit the result is 0.
             // We only do this if no debugger is attached to prevent from posting events twice.
             instrumentation_->MethodExitEvent(thread_, instrumentation_frame.this_object_, m,
@@ -948,7 +947,6 @@ void Instrumentation::MethodEnterEventImpl(Thread* thread,
                                            ObjPtr<mirror::Object> this_object,
                                            ArtMethod* method,
                                            uint32_t dex_pc) const {
-  DCHECK(!method->IsRuntimeMethod());
   if (HasMethodEntryListeners()) {
     Thread* self = Thread::Current();
     StackHandleScope<1> hs(self);
@@ -1153,22 +1151,6 @@ void Instrumentation::PushInstrumentationStackFrame(Thread* self, mirror::Object
   stack->push_front(instrumentation_frame);
 }
 
-DeoptimizationMethodType Instrumentation::GetDeoptimizationMethodType(ArtMethod* method) {
-  if (method->IsRuntimeMethod()) {
-    // Certain methods have strict requirement on whether the dex instruction
-    // should be re-executed upon deoptimization.
-    if (method == Runtime::Current()->GetCalleeSaveMethod(
-        CalleeSaveType::kSaveEverythingForClinit)) {
-      return DeoptimizationMethodType::kKeepDexPc;
-    }
-    if (method == Runtime::Current()->GetCalleeSaveMethod(
-        CalleeSaveType::kSaveEverythingForSuspendCheck)) {
-      return DeoptimizationMethodType::kKeepDexPc;
-    }
-  }
-  return DeoptimizationMethodType::kDefault;
-}
-
 TwoWordReturn Instrumentation::PopInstrumentationStackFrame(Thread* self,
                                                             uintptr_t* return_pc,
                                                             uint64_t* gpr_result,
@@ -1189,21 +1171,7 @@ TwoWordReturn Instrumentation::PopInstrumentationStackFrame(Thread* self,
   ArtMethod* method = instrumentation_frame.method_;
   uint32_t length;
   const PointerSize pointer_size = Runtime::Current()->GetClassLinker()->GetImagePointerSize();
-  char return_shorty;
-
-  // Runtime method does not call into MethodExitEvent() so there should not be
-  // suspension point below.
-  ScopedAssertNoThreadSuspension ants(__FUNCTION__, method->IsRuntimeMethod());
-  if (method->IsRuntimeMethod()) {
-    // Some runtime methods such as allocations, unresolved field getters, etc.
-    // return references. We don't keep track of whether a runtime method returns
-    // a reference or not. But since there is no suspension point below, we don't
-    // need to reassign return value.
-    return_shorty = 'V';
-  } else {
-    return_shorty = method->GetInterfaceMethodIfProxy(pointer_size)->GetShorty(&length)[0];
-  }
-
+  char return_shorty = method->GetInterfaceMethodIfProxy(pointer_size)->GetShorty(&length)[0];
   bool is_ref = return_shorty == '[' || return_shorty == 'L';
   StackHandleScope<1> hs(self);
   MutableHandle<mirror::Object> res(hs.NewHandle<mirror::Object>(nullptr));
@@ -1223,7 +1191,7 @@ TwoWordReturn Instrumentation::PopInstrumentationStackFrame(Thread* self,
   //       return_pc.
   uint32_t dex_pc = DexFile::kDexNoIndex;
   mirror::Object* this_object = instrumentation_frame.this_object_;
-  if (!method->IsRuntimeMethod() && !instrumentation_frame.interpreter_entry_) {
+  if (!instrumentation_frame.interpreter_entry_) {
     MethodExitEvent(self, this_object, instrumentation_frame.method_, dex_pc, return_value);
   }
 
@@ -1249,12 +1217,10 @@ TwoWordReturn Instrumentation::PopInstrumentationStackFrame(Thread* self,
                 << " in "
                 << *self;
     }
-    DeoptimizationMethodType deopt_method_type = GetDeoptimizationMethodType(method);
     self->PushDeoptimizationContext(return_value,
-                                    return_shorty == 'L' || return_shorty == '[',
-                                    nullptr /* no pending exception */,
+                                    return_shorty == 'L',
                                     false /* from_code */,
-                                    deopt_method_type);
+                                    nullptr /* no pending exception */);
     return GetTwoWordSuccessValue(*return_pc,
                                   reinterpret_cast<uintptr_t>(GetQuickDeoptimizationEntryPoint()));
   } else {
