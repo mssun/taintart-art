@@ -1,1 +1,0 @@
-Test deoptimizing when returning from runtime method.
