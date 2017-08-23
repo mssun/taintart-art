@@ -811,6 +811,12 @@ void Trace::ExceptionThrown(Thread* thread ATTRIBUTE_UNUSED,
   LOG(ERROR) << "Unexpected exception thrown event in tracing";
 }
 
+void Trace::ExceptionHandled(Thread* thread ATTRIBUTE_UNUSED,
+                             Handle<mirror::Throwable> exception_object ATTRIBUTE_UNUSED)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  LOG(ERROR) << "Unexpected exception thrown event in tracing";
+}
+
 void Trace::Branch(Thread* /*thread*/, ArtMethod* method,
                    uint32_t /*dex_pc*/, int32_t /*dex_pc_offset*/)
       REQUIRES_SHARED(Locks::mutator_lock_) {
