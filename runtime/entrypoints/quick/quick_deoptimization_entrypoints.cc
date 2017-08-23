@@ -73,11 +73,7 @@ extern "C" NO_RETURN void artDeoptimizeFromCompiledCode(DeoptimizationKind kind,
   // Before deoptimizing to interpreter, we must push the deoptimization context.
   JValue return_value;
   return_value.SetJ(0);  // we never deoptimize from compiled code with an invoke result.
-  self->PushDeoptimizationContext(return_value,
-                                  false /* is_reference */,
-                                  self->GetException(),
-                                  true /* from_code */,
-                                  DeoptimizationMethodType::kDefault);
+  self->PushDeoptimizationContext(return_value, false, /* from_code */ true, self->GetException());
   artDeoptimizeImpl(self, kind, true);
 }
 
