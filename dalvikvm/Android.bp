@@ -25,7 +25,6 @@ art_cc_binary {
         "-Werror",
         "-Wextra",
     ],
-    include_dirs: ["art/runtime"],
     shared_libs: [
         "libnativehelper",
     ],

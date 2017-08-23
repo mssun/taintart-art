@@ -314,6 +314,7 @@ art_cc_library {
     srcs: ["common_compiler_test.cc"],
     shared_libs: [
         "libartd-compiler",
+        "libartd-disassembler",
         "libart-runtime-gtest",
         "libbase",
     ],

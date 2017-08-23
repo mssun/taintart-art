@@ -71,9 +71,6 @@ art_cc_defaults {
     whole_static_libs: [
         "libsigchain",
     ],
-    include_dirs: [
-        "art",
-    ],
 
     target: {
         linux: {
