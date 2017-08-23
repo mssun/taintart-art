@@ -562,8 +562,7 @@ void EnterInterpreterFromDeoptimize(Thread* self,
         new_dex_pc = dex_pc + instr->SizeInCodeUnits();
       } else if (instr->Opcode() == Instruction::NEW_INSTANCE) {
         DCHECK(deopt_method_type == DeoptimizationMethodType::kDefault);
-        if (value.GetL()->IsString()) {
-          DCHECK(!first);
+        if (!first && value.GetL()->IsString()) {
           // It's possible to deoptimize at a NEW_INSTANCE dex instruction that's for a
           // java string, which is turned into a call into StringFactory.newEmptyString();
           // Move the StringFactory.newEmptyString() result into the destination register.
@@ -592,7 +591,8 @@ void EnterInterpreterFromDeoptimize(Thread* self,
         // an invoke, so that we don't have to decode the dex instruction to move
         // result into the right vreg. All slow paths have been audited to be
         // idempotent except monitor-enter/exit and invocation stubs.
-        // TODO: move result and advance dex pc.
+        // TODO: move result and advance dex pc. That also requires that we can
+        // tell the return type of a runtime method, which we don't do currently.
         new_dex_pc = dex_pc;
       }
     } else {
