@@ -22,9 +22,7 @@ include art/build/Android.common_path.mk
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
 LOCAL_JAR_MANIFEST := src/manifest.txt
-LOCAL_JAVA_RESOURCE_FILES := \
-  $(LOCAL_PATH)/src/style.css
-LOCAL_STATIC_JAVA_LIBRARIES := guavalib
+LOCAL_JAVA_RESOURCE_FILES := $(LOCAL_PATH)/src/style.css
 LOCAL_IS_HOST_MODULE := true
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := ahat

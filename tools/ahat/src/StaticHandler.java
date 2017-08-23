@@ -16,7 +16,6 @@
 
 package com.android.ahat;
 
-import com.google.common.io.ByteStreams;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import java.io.IOException;
@@ -49,7 +48,12 @@ class StaticHandler implements HttpHandler {
       exchange.getResponseHeaders().add("Content-Type", mContentType);
       exchange.sendResponseHeaders(200, 0);
       OutputStream os = exchange.getResponseBody();
-      ByteStreams.copy(is, os);
+      int read;
+      byte[] buf = new byte[4096];
+      while ((read = is.read(buf)) >= 0) {
+        os.write(buf, 0, read);
+      }
+      is.close();
       os.close();
     }
   }

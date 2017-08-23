@@ -25,6 +25,7 @@ public class Tests {
         "com.android.ahat.DiffFieldsTest",
         "com.android.ahat.DiffTest",
         "com.android.ahat.DominatorsTest",
+        "com.android.ahat.HtmlEscaperTest",
         "com.android.ahat.InstanceTest",
         "com.android.ahat.NativeAllocationTest",
         "com.android.ahat.ObjectHandlerTest",
