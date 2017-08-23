@@ -73,7 +73,6 @@ art_cc_defaults {
     ],
     include_dirs: [
         "art",
-        "art/cmdline",
     ],
 
     target: {
