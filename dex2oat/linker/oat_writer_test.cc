@@ -48,16 +48,6 @@
 namespace art {
 namespace linker {
 
-NO_RETURN static void Usage(const char* fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  std::string error;
-  android::base::StringAppendV(&error, fmt, ap);
-  LOG(FATAL) << error;
-  va_end(ap);
-  UNREACHABLE();
-}
-
 class OatTest : public CommonCompilerTest {
  protected:
   static const bool kCompile = false;  // DISABLED_ due to the time to compile libcore
@@ -101,8 +91,11 @@ class OatTest : public CommonCompilerTest {
     insn_features_ = InstructionSetFeatures::FromVariant(insn_set, "default", error_msg);
     ASSERT_TRUE(insn_features_ != nullptr) << *error_msg;
     compiler_options_.reset(new CompilerOptions);
-    for (const std::string& option : compiler_options) {
-      compiler_options_->ParseCompilerOption(option, Usage);
+    if (!compiler_options_->ParseCompilerOptions(compiler_options,
+                                                 false /* ignore_unrecognized */,
+                                                 error_msg)) {
+      LOG(FATAL) << *error_msg;
+      UNREACHABLE();
     }
     verification_results_.reset(new VerificationResults(compiler_options_.get()));
     callbacks_.reset(new QuickCompilerCallbacks(CompilerCallbacks::CallbackMode::kCompileApp));

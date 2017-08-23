@@ -193,6 +193,10 @@ art_cc_defaults {
         "liblzma",
     ],
     include_dirs: ["art/disassembler"],
+    header_libs: [
+        "art_cmdlineparser_headers",  // For compiler_options.
+    ],
+
     export_include_dirs: ["."],
 }
 

@@ -20,11 +20,13 @@
 #include <sys/stat.h>
 #include "base/memory_tool.h"
 
+#include <forward_list>
 #include <fstream>
 #include <iostream>
 #include <limits>
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <unordered_set>
 #include <vector>
 
@@ -50,16 +52,19 @@
 #include "base/unix_file/fd_file.h"
 #include "class_linker.h"
 #include "class_loader_context.h"
+#include "cmdline_parser.h"
 #include "compiler.h"
 #include "compiler_callbacks.h"
 #include "debug/elf_debug_writer.h"
 #include "debug/method_debug_info.h"
 #include "dex/quick_compiler_callbacks.h"
 #include "dex/verification_results.h"
+#include "dex2oat_options.h"
 #include "dex2oat_return_codes.h"
 #include "dex_file-inl.h"
 #include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
+#include "driver/compiler_options_map-inl.h"
 #include "elf_file.h"
 #include "gc/space/image_space.h"
 #include "gc/space/space-inl.h"
@@ -659,56 +664,11 @@ class Dex2Oat FINAL {
     std::string error_msg;
   };
 
-  void ParseZipFd(const StringPiece& option) {
-    ParseUintOption(option, "--zip-fd", &zip_fd_, Usage);
-  }
-
-  void ParseInputVdexFd(const StringPiece& option) {
-    // Note that the input vdex fd might be -1.
-    ParseIntOption(option, "--input-vdex-fd", &input_vdex_fd_, Usage);
-  }
-
-  void ParseOutputVdexFd(const StringPiece& option) {
-    ParseUintOption(option, "--output-vdex-fd", &output_vdex_fd_, Usage);
-  }
-
-  void ParseOatFd(const StringPiece& option) {
-    ParseUintOption(option, "--oat-fd", &oat_fd_, Usage);
-  }
-
-  void ParseFdForCollection(const StringPiece& option,
-                            const char* arg_name,
-                            std::vector<uint32_t>* fds) {
-    uint32_t fd;
-    ParseUintOption(option, arg_name, &fd, Usage);
-    fds->push_back(fd);
-  }
-
-  void ParseJ(const StringPiece& option) {
-    ParseUintOption(option, "-j", &thread_count_, Usage, /* is_long_option */ false);
-  }
-
-  void ParseBase(const StringPiece& option) {
-    DCHECK(option.starts_with("--base="));
-    const char* image_base_str = option.substr(strlen("--base=")).data();
+  void ParseBase(const std::string& option) {
     char* end;
-    image_base_ = strtoul(image_base_str, &end, 16);
-    if (end == image_base_str || *end != '\0') {
+    image_base_ = strtoul(option.c_str(), &end, 16);
+    if (end == option.c_str() || *end != '\0') {
       Usage("Failed to parse hexadecimal value for option %s", option.data());
-    }
-  }
-
-  void ParseInstructionSet(const StringPiece& option) {
-    DCHECK(option.starts_with("--instruction-set="));
-    StringPiece instruction_set_str = option.substr(strlen("--instruction-set=")).data();
-    // StringPiece is not necessarily zero-terminated, so need to make a copy and ensure it.
-    std::unique_ptr<char[]> buf(new char[instruction_set_str.length() + 1]);
-    strncpy(buf.get(), instruction_set_str.data(), instruction_set_str.length());
-    buf.get()[instruction_set_str.length()] = 0;
-    instruction_set_ = GetInstructionSetFromString(buf.get());
-    // arm actually means thumb2.
-    if (instruction_set_ == InstructionSet::kArm) {
-      instruction_set_ = InstructionSet::kThumb2;
     }
   }
 
@@ -716,19 +676,15 @@ class Dex2Oat FINAL {
     return profile_compilation_info_->VerifyProfileData(dex_files_);
   }
 
-  void ParseInstructionSetVariant(const StringPiece& option, ParserOptions* parser_options) {
-    DCHECK(option.starts_with("--instruction-set-variant="));
-    StringPiece str = option.substr(strlen("--instruction-set-variant=")).data();
+  void ParseInstructionSetVariant(const std::string& option, ParserOptions* parser_options) {
     instruction_set_features_ = InstructionSetFeatures::FromVariant(
-        instruction_set_, str.as_string(), &parser_options->error_msg);
+        instruction_set_, option, &parser_options->error_msg);
     if (instruction_set_features_.get() == nullptr) {
       Usage("%s", parser_options->error_msg.c_str());
     }
   }
 
-  void ParseInstructionSetFeatures(const StringPiece& option, ParserOptions* parser_options) {
-    DCHECK(option.starts_with("--instruction-set-features="));
-    StringPiece str = option.substr(strlen("--instruction-set-features=")).data();
+  void ParseInstructionSetFeatures(const std::string& option, ParserOptions* parser_options) {
     if (instruction_set_features_ == nullptr) {
       instruction_set_features_ = InstructionSetFeatures::FromVariant(
           instruction_set_, "default", &parser_options->error_msg);
@@ -738,38 +694,9 @@ class Dex2Oat FINAL {
       }
     }
     instruction_set_features_ =
-        instruction_set_features_->AddFeaturesFromString(str.as_string(),
-                                                         &parser_options->error_msg);
+        instruction_set_features_->AddFeaturesFromString(option, &parser_options->error_msg);
     if (instruction_set_features_ == nullptr) {
-      Usage("Error parsing '%s': %s", option.data(), parser_options->error_msg.c_str());
-    }
-  }
-
-  void ParseCompilerBackend(const StringPiece& option, ParserOptions* parser_options) {
-    DCHECK(option.starts_with("--compiler-backend="));
-    parser_options->requested_specific_compiler = true;
-    StringPiece backend_str = option.substr(strlen("--compiler-backend=")).data();
-    if (backend_str == "Quick") {
-      compiler_kind_ = Compiler::kQuick;
-    } else if (backend_str == "Optimizing") {
-      compiler_kind_ = Compiler::kOptimizing;
-    } else {
-      Usage("Unknown compiler backend: %s", backend_str.data());
-    }
-  }
-
-  void ParseImageFormat(const StringPiece& option) {
-    const StringPiece substr("--image-format=");
-    DCHECK(option.starts_with(substr));
-    const StringPiece format_str = option.substr(substr.length());
-    if (format_str == "lz4") {
-      image_storage_mode_ = ImageHeader::kStorageModeLZ4;
-    } else if (format_str == "lz4hc") {
-      image_storage_mode_ = ImageHeader::kStorageModeLZ4HC;
-    } else if (format_str == "uncompressed") {
-      image_storage_mode_ = ImageHeader::kStorageModeUncompressed;
-    } else {
-      Usage("Unknown image format: %s", format_str.data());
+      Usage("Error parsing '%s': %s", option.c_str(), parser_options->error_msg.c_str());
     }
   }
 
@@ -1092,23 +1019,20 @@ class Dex2Oat FINAL {
       base_symbol_oat = base_symbol_oat.substr(0, last_symbol_oat_slash + 1);
     }
 
-    const size_t num_expanded_files = 2 + (base_symbol_oat.empty() ? 0 : 1);
-    char_backing_storage_.reserve((dex_locations_.size() - 1) * num_expanded_files);
-
     // Now create the other names. Use a counted loop to skip the first one.
     for (size_t i = 1; i < dex_locations_.size(); ++i) {
       // TODO: Make everything properly std::string.
       std::string image_name = CreateMultiImageName(dex_locations_[i], prefix, infix, ".art");
-      char_backing_storage_.push_back(base_img + image_name);
-      image_filenames_.push_back((char_backing_storage_.end() - 1)->c_str());
+      char_backing_storage_.push_front(base_img + image_name);
+      image_filenames_.push_back(char_backing_storage_.front().c_str());
 
       std::string oat_name = CreateMultiImageName(dex_locations_[i], prefix, infix, ".oat");
-      char_backing_storage_.push_back(base_oat + oat_name);
-      oat_filenames_.push_back((char_backing_storage_.end() - 1)->c_str());
+      char_backing_storage_.push_front(base_oat + oat_name);
+      oat_filenames_.push_back(char_backing_storage_.front().c_str());
 
       if (!base_symbol_oat.empty()) {
-        char_backing_storage_.push_back(base_symbol_oat + oat_name);
-        oat_unstripped_.push_back((char_backing_storage_.end() - 1)->c_str());
+        char_backing_storage_.push_front(base_symbol_oat + oat_name);
+        oat_unstripped_.push_back(char_backing_storage_.front().c_str());
       }
     }
   }
@@ -1173,6 +1097,43 @@ class Dex2Oat FINAL {
                           kUseReadBarrier ? OatHeader::kTrueValue : OatHeader::kFalseValue);
   }
 
+  // This simple forward is here so the string specializations below don't look out of place.
+  template <typename T, typename U>
+  void AssignIfExists(Dex2oatArgumentMap& map,
+                      const Dex2oatArgumentMap::Key<T>& key,
+                      U* out) {
+    map.AssignIfExists(key, out);
+  }
+
+  // Specializations to handle const char* vs std::string.
+  void AssignIfExists(Dex2oatArgumentMap& map,
+                      const Dex2oatArgumentMap::Key<std::string>& key,
+                      const char** out) {
+    if (map.Exists(key)) {
+      char_backing_storage_.push_front(std::move(*map.Get(key)));
+      *out = char_backing_storage_.front().c_str();
+    }
+  }
+  void AssignIfExists(Dex2oatArgumentMap& map,
+                      const Dex2oatArgumentMap::Key<std::vector<std::string>>& key,
+                      std::vector<const char*>* out) {
+    if (map.Exists(key)) {
+      for (auto& val : *map.Get(key)) {
+        char_backing_storage_.push_front(std::move(val));
+        out->push_back(char_backing_storage_.front().c_str());
+      }
+    }
+  }
+
+  template <typename T>
+  void AssignTrueIfExists(Dex2oatArgumentMap& map,
+                          const Dex2oatArgumentMap::Key<T>& key,
+                          bool* out) {
+    if (map.Exists(key)) {
+      *out = true;
+    }
+  }
+
   // Parse the arguments from the command line. In case of an unrecognized option or impossible
   // values/combinations, a usage error will be displayed and exit() is called. Thus, if the method
   // returns, arguments have been successfully parsed.
@@ -1182,157 +1143,102 @@ class Dex2Oat FINAL {
 
     InitLogging(argv, Runtime::Abort);
 
-    // Skip over argv[0].
-    argv++;
-    argc--;
-
-    if (argc == 0) {
-      Usage("No arguments specified");
-    }
-
-    std::unique_ptr<ParserOptions> parser_options(new ParserOptions());
     compiler_options_.reset(new CompilerOptions());
 
-    for (int i = 0; i < argc; i++) {
-      const StringPiece option(argv[i]);
-      const bool log_options = false;
-      if (log_options) {
-        LOG(INFO) << "dex2oat: option[" << i << "]=" << argv[i];
+    using M = Dex2oatArgumentMap;
+    std::string error_msg;
+    std::unique_ptr<M> args_uptr = M::Parse(argc, const_cast<const char**>(argv), &error_msg);
+    if (args_uptr == nullptr) {
+      Usage("Failed to parse command line: %s", error_msg.c_str());
+      UNREACHABLE();
+    }
+
+    M& args = *args_uptr;
+
+    std::unique_ptr<ParserOptions> parser_options(new ParserOptions());
+
+    AssignIfExists(args, M::DexFiles, &dex_filenames_);
+    AssignIfExists(args, M::DexLocations, &dex_locations_);
+    AssignIfExists(args, M::OatFiles, &oat_filenames_);
+    AssignIfExists(args, M::OatSymbols, &parser_options->oat_symbols);
+    AssignIfExists(args, M::ImageFilenames, &image_filenames_);
+    AssignIfExists(args, M::ZipFd, &zip_fd_);
+    AssignIfExists(args, M::ZipLocation, &zip_location_);
+    AssignIfExists(args, M::InputVdexFd, &input_vdex_fd_);
+    AssignIfExists(args, M::OutputVdexFd, &output_vdex_fd_);
+    AssignIfExists(args, M::InputVdex, &input_vdex_);
+    AssignIfExists(args, M::OutputVdex, &output_vdex_);
+    AssignIfExists(args, M::OatFd, &oat_fd_);
+    AssignIfExists(args, M::OatLocation, &oat_location_);
+    AssignIfExists(args, M::Watchdog, &parser_options->watch_dog_enabled);
+    AssignIfExists(args, M::WatchdogTimeout, &parser_options->watch_dog_timeout_in_ms);
+    AssignIfExists(args, M::Threads, &thread_count_);
+    AssignIfExists(args, M::ImageClasses, &image_classes_filename_);
+    AssignIfExists(args, M::ImageClassesZip, &image_classes_zip_filename_);
+    AssignIfExists(args, M::CompiledClasses, &compiled_classes_filename_);
+    AssignIfExists(args, M::CompiledClassesZip, &compiled_classes_zip_filename_);
+    AssignIfExists(args, M::CompiledMethods, &compiled_methods_filename_);
+    AssignIfExists(args, M::CompiledMethodsZip, &compiled_methods_zip_filename_);
+    AssignIfExists(args, M::Passes, &passes_to_run_filename_);
+    AssignIfExists(args, M::BootImage, &parser_options->boot_image_filename);
+    AssignIfExists(args, M::AndroidRoot, &android_root_);
+    AssignIfExists(args, M::Profile, &profile_file_);
+    AssignIfExists(args, M::ProfileFd, &profile_file_fd_);
+    AssignIfExists(args, M::RuntimeOptions, &runtime_args_);
+    AssignIfExists(args, M::SwapFile, &swap_file_name_);
+    AssignIfExists(args, M::SwapFileFd, &swap_fd_);
+    AssignIfExists(args, M::SwapDexSizeThreshold, &min_dex_file_cumulative_size_for_swap_);
+    AssignIfExists(args, M::SwapDexCountThreshold, &min_dex_files_for_swap_);
+    AssignIfExists(args, M::VeryLargeAppThreshold, &very_large_threshold_);
+    AssignIfExists(args, M::AppImageFile, &app_image_file_name_);
+    AssignIfExists(args, M::AppImageFileFd, &app_image_fd_);
+    AssignIfExists(args, M::NoInlineFrom, &no_inline_from_string_);
+    AssignIfExists(args, M::ClasspathDir, &classpath_dir_);
+    AssignIfExists(args, M::DirtyImageObjects, &dirty_image_objects_filename_);
+    AssignIfExists(args, M::ImageFormat, &image_storage_mode_);
+
+    AssignIfExists(args, M::Backend, &compiler_kind_);
+    parser_options->requested_specific_compiler = args.Exists(M::Backend);
+
+    AssignIfExists(args, M::TargetInstructionSet, &instruction_set_);
+    // arm actually means thumb2.
+    if (instruction_set_ == InstructionSet::kArm) {
+      instruction_set_ = InstructionSet::kThumb2;
+    }
+
+    AssignTrueIfExists(args, M::Host, &is_host_);
+    AssignTrueIfExists(args, M::DumpTiming, &dump_timing_);
+    AssignTrueIfExists(args, M::DumpPasses, &dump_passes_);
+    AssignTrueIfExists(args, M::DumpStats, &dump_stats_);
+    AssignTrueIfExists(args, M::AvoidStoringInvocation, &avoid_storing_invocation_);
+    AssignTrueIfExists(args, M::MultiImage, &multi_image_);
+
+    if (args.Exists(M::ForceDeterminism)) {
+      if (!SupportsDeterministicCompilation()) {
+        Usage("Option --force-determinism requires read barriers or a CMS/MS garbage collector");
       }
-      if (option.starts_with("--dex-file=")) {
-        dex_filenames_.push_back(option.substr(strlen("--dex-file=")).data());
-      } else if (option.starts_with("--dex-location=")) {
-        dex_locations_.push_back(option.substr(strlen("--dex-location=")).data());
-      } else if (option.starts_with("--zip-fd=")) {
-        ParseZipFd(option);
-      } else if (option.starts_with("--zip-location=")) {
-        zip_location_ = option.substr(strlen("--zip-location=")).data();
-      } else if (option.starts_with("--input-vdex-fd=")) {
-        ParseInputVdexFd(option);
-      } else if (option.starts_with("--input-vdex=")) {
-        input_vdex_ = option.substr(strlen("--input-vdex=")).data();
-      } else if (option.starts_with("--output-vdex=")) {
-        output_vdex_ = option.substr(strlen("--output-vdex=")).data();
-      } else if (option.starts_with("--output-vdex-fd=")) {
-        ParseOutputVdexFd(option);
-      } else if (option.starts_with("--oat-file=")) {
-        oat_filenames_.push_back(option.substr(strlen("--oat-file=")).data());
-      } else if (option.starts_with("--oat-symbols=")) {
-        parser_options->oat_symbols.push_back(option.substr(strlen("--oat-symbols=")).data());
-      } else if (option.starts_with("--oat-fd=")) {
-        ParseOatFd(option);
-      } else if (option.starts_with("--oat-location=")) {
-        oat_location_ = option.substr(strlen("--oat-location=")).data();
-      } else if (option == "--watch-dog") {
-        parser_options->watch_dog_enabled = true;
-      } else if (option == "--no-watch-dog") {
-        parser_options->watch_dog_enabled = false;
-      } else if (option.starts_with("--watchdog-timeout=")) {
-        ParseIntOption(option,
-                       "--watchdog-timeout",
-                       &parser_options->watch_dog_timeout_in_ms,
-                       Usage);
-      } else if (option.starts_with("-j")) {
-        ParseJ(option);
-      } else if (option.starts_with("--image=")) {
-        image_filenames_.push_back(option.substr(strlen("--image=")).data());
-      } else if (option.starts_with("--image-classes=")) {
-        image_classes_filename_ = option.substr(strlen("--image-classes=")).data();
-      } else if (option.starts_with("--image-classes-zip=")) {
-        image_classes_zip_filename_ = option.substr(strlen("--image-classes-zip=")).data();
-      } else if (option.starts_with("--image-format=")) {
-        ParseImageFormat(option);
-      } else if (option.starts_with("--compiled-classes=")) {
-        compiled_classes_filename_ = option.substr(strlen("--compiled-classes=")).data();
-      } else if (option.starts_with("--compiled-classes-zip=")) {
-        compiled_classes_zip_filename_ = option.substr(strlen("--compiled-classes-zip=")).data();
-      } else if (option.starts_with("--compiled-methods=")) {
-        compiled_methods_filename_ = option.substr(strlen("--compiled-methods=")).data();
-      } else if (option.starts_with("--compiled-methods-zip=")) {
-        compiled_methods_zip_filename_ = option.substr(strlen("--compiled-methods-zip=")).data();
-      } else if (option.starts_with("--run-passes=")) {
-        passes_to_run_filename_ = option.substr(strlen("--run-passes=")).data();
-      } else if (option.starts_with("--base=")) {
-        ParseBase(option);
-      } else if (option.starts_with("--boot-image=")) {
-        parser_options->boot_image_filename = option.substr(strlen("--boot-image=")).data();
-      } else if (option.starts_with("--android-root=")) {
-        android_root_ = option.substr(strlen("--android-root=")).data();
-      } else if (option.starts_with("--instruction-set=")) {
-        ParseInstructionSet(option);
-      } else if (option.starts_with("--instruction-set-variant=")) {
-        ParseInstructionSetVariant(option, parser_options.get());
-      } else if (option.starts_with("--instruction-set-features=")) {
-        ParseInstructionSetFeatures(option, parser_options.get());
-      } else if (option.starts_with("--compiler-backend=")) {
-        ParseCompilerBackend(option, parser_options.get());
-      } else if (option.starts_with("--profile-file=")) {
-        profile_file_ = option.substr(strlen("--profile-file=")).ToString();
-      } else if (option.starts_with("--profile-file-fd=")) {
-        ParseUintOption(option, "--profile-file-fd", &profile_file_fd_, Usage);
-      } else if (option == "--host") {
-        is_host_ = true;
-      } else if (option == "--runtime-arg") {
-        if (++i >= argc) {
-          Usage("Missing required argument for --runtime-arg");
-        }
-        if (log_options) {
-          LOG(INFO) << "dex2oat: option[" << i << "]=" << argv[i];
-        }
-        runtime_args_.push_back(argv[i]);
-      } else if (option == "--dump-timing") {
-        dump_timing_ = true;
-      } else if (option == "--dump-passes") {
-        dump_passes_ = true;
-      } else if (option == "--dump-stats") {
-        dump_stats_ = true;
-      } else if (option == "--avoid-storing-invocation") {
-        avoid_storing_invocation_ = true;
-      } else if (option.starts_with("--swap-file=")) {
-        swap_file_name_ = option.substr(strlen("--swap-file=")).data();
-      } else if (option.starts_with("--swap-fd=")) {
-        ParseUintOption(option, "--swap-fd", &swap_fd_, Usage);
-      } else if (option.starts_with("--swap-dex-size-threshold=")) {
-        ParseUintOption(option,
-                        "--swap-dex-size-threshold",
-                        &min_dex_file_cumulative_size_for_swap_,
-                        Usage);
-      } else if (option.starts_with("--swap-dex-count-threshold=")) {
-        ParseUintOption(option,
-                        "--swap-dex-count-threshold",
-                        &min_dex_files_for_swap_,
-                        Usage);
-      } else if (option.starts_with("--very-large-app-threshold=")) {
-        ParseUintOption(option,
-                        "--very-large-app-threshold",
-                        &very_large_threshold_,
-                        Usage);
-      } else if (option.starts_with("--app-image-file=")) {
-        app_image_file_name_ = option.substr(strlen("--app-image-file=")).data();
-      } else if (option.starts_with("--app-image-fd=")) {
-        ParseUintOption(option, "--app-image-fd", &app_image_fd_, Usage);
-      } else if (option == "--multi-image") {
-        multi_image_ = true;
-      } else if (option.starts_with("--no-inline-from=")) {
-        no_inline_from_string_ = option.substr(strlen("--no-inline-from=")).data();
-      } else if (option == "--force-determinism") {
-        if (!SupportsDeterministicCompilation()) {
-          Usage("Option --force-determinism requires read barriers or a CMS/MS garbage collector");
-        }
-        force_determinism_ = true;
-      } else if (option.starts_with("--classpath-dir=")) {
-        classpath_dir_ = option.substr(strlen("--classpath-dir=")).data();
-      } else if (option.starts_with("--class-loader-context=")) {
-        class_loader_context_ = ClassLoaderContext::Create(
-            option.substr(strlen("--class-loader-context=")).data());
-        if (class_loader_context_ == nullptr) {
-          Usage("Option --class-loader-context has an incorrect format: %s", option.data());
-        }
-      } else if (option.starts_with("--dirty-image-objects=")) {
-        dirty_image_objects_filename_ = option.substr(strlen("--dirty-image-objects=")).data();
-      } else if (!compiler_options_->ParseCompilerOption(option, Usage)) {
-        Usage("Unknown argument %s", option.data());
+      force_determinism_ = true;
+    }
+
+    if (args.Exists(M::Base)) {
+      ParseBase(*args.Get(M::Base));
+    }
+    if (args.Exists(M::TargetInstructionSetVariant)) {
+      ParseInstructionSetVariant(*args.Get(M::TargetInstructionSetVariant), parser_options.get());
+    }
+    if (args.Exists(M::TargetInstructionSetFeatures)) {
+      ParseInstructionSetFeatures(*args.Get(M::TargetInstructionSetFeatures), parser_options.get());
+    }
+    if (args.Exists(M::ClassLoaderContext)) {
+      class_loader_context_ = ClassLoaderContext::Create(*args.Get(M::ClassLoaderContext));
+      if (class_loader_context_ == nullptr) {
+        Usage("Option --class-loader-context has an incorrect format: %s",
+              args.Get(M::ClassLoaderContext)->c_str());
       }
+    }
+
+    if (!ReadCompilerOptions(args, compiler_options_.get(), &error_msg)) {
+      Usage(error_msg.c_str());
     }
 
     ProcessOptions(parser_options.get());
@@ -2931,7 +2837,7 @@ class Dex2Oat FINAL {
   std::unordered_map<const DexFile*, size_t> dex_file_oat_index_map_;
 
   // Backing storage.
-  std::vector<std::string> char_backing_storage_;
+  std::forward_list<std::string> char_backing_storage_;
 
   // See CompilerOptions.force_determinism_.
   bool force_determinism_;
