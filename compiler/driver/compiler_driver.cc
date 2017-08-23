@@ -2110,8 +2110,24 @@ class VerifyClassVisitor : public CompilationVisitor {
         // invokes once verifier support is fully implemented.
         if (manager_->GetCompiler()->GetCompilerOptions().IsBootImage() &&
             !android::base::StartsWith(descriptor, "Ljava/lang/invoke/")) {
-          DCHECK(klass->IsVerified()) << "Boot classpath class " << klass->PrettyClass()
-              << " failed to fully verify: state= " << klass->GetStatus();
+          if (!klass->IsVerified()) {
+            // Re-run verification to get all failure messages if it soft-failed.
+            if (!klass->IsErroneous()) {
+              gLogVerbosity.verifier = true;
+              // Note: We can't call ClassLinker::VerifyClass, as it will elide the second
+              //       verification.
+              Runtime* runtime = Runtime::Current();
+              std::string v_error;
+              verifier::MethodVerifier::VerifyClass(soa.Self(),
+                                                    klass.Get(),
+                                                    runtime->GetCompilerCallbacks(),
+                                                    runtime->IsAotCompiler(),
+                                                    verifier::HardFailLogMode::kLogInternalFatal,
+                                                    &v_error);
+            }
+            LOG(FATAL) << "Boot classpath class " << klass->PrettyClass()
+                       << " failed to fully verify: state= " << klass->GetStatus();
+          }
         }
         if (klass->IsVerified()) {
           DCHECK_EQ(failure_kind, verifier::FailureKind::kNoFailure);
