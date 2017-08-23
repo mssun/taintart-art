@@ -473,7 +473,23 @@ TEST_F(InstrumentationTest, NoInstrumentation) {
 
 // Test instrumentation listeners for each event.
 TEST_F(InstrumentationTest, MethodEntryEvent) {
-  TestEvent(instrumentation::Instrumentation::kMethodEntered);
+  ScopedObjectAccess soa(Thread::Current());
+  jobject class_loader = LoadDex("Instrumentation");
+  Runtime* const runtime = Runtime::Current();
+  ClassLinker* class_linker = runtime->GetClassLinker();
+  StackHandleScope<1> hs(soa.Self());
+  Handle<mirror::ClassLoader> loader(hs.NewHandle(soa.Decode<mirror::ClassLoader>(class_loader)));
+  mirror::Class* klass = class_linker->FindClass(soa.Self(), "LInstrumentation;", loader);
+  ASSERT_TRUE(klass != nullptr);
+  ArtMethod* method =
+      klass->FindClassMethod("returnReference", "()Ljava/lang/Object;", kRuntimePointerSize);
+  ASSERT_TRUE(method != nullptr);
+  ASSERT_TRUE(method->IsDirect());
+  ASSERT_TRUE(method->GetDeclaringClass() == klass);
+  TestEvent(instrumentation::Instrumentation::kMethodEntered,
+            /*event_method*/ method,
+            /*event_field*/ nullptr,
+            /*with_object*/ true);
 }
 
 TEST_F(InstrumentationTest, MethodExitObjectEvent) {
