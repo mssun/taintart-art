@@ -292,6 +292,8 @@ art_cc_defaults {
         "1909-per-agent-tls/agent_tls.cc",
         "1914-get-local-instance/local_instance.cc",
         "1919-vminit-thread-start-timing/vminit.cc",
+        "1920-suspend-native-monitor/native_suspend_monitor.cc",
+        "1921-suspend-native-recursive-monitor/native_suspend_recursive_monitor.cc",
     ],
     shared_libs: [
         "libbase",
