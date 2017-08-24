@@ -85,7 +85,8 @@ struct ThreadCallback : public art::ThreadLifecycleCallback {
         if (name != "JDWP" &&
             name != "Signal Catcher" &&
             !android::base::StartsWith(name, "Jit thread pool")) {
-          LOG(FATAL) << "Unexpected thread before start: " << name;
+          LOG(FATAL) << "Unexpected thread before start: " << name << " id: "
+                     << self->GetThreadId();
         }
       }
       return;
@@ -413,11 +414,22 @@ static jint GetJavaStateFromInternal(const InternalThreadState& state) {
 }
 
 // Suspends the current thread if it has any suspend requests on it.
-static void SuspendCheck(art::Thread* self)
-    REQUIRES(!art::Locks::mutator_lock_, !art::Locks::user_code_suspension_lock_) {
+void ThreadUtil::SuspendCheck(art::Thread* self) {
   art::ScopedObjectAccess soa(self);
   // Really this is only needed if we are in FastJNI and actually have the mutator_lock_ already.
   self->FullSuspendCheck();
+}
+
+bool ThreadUtil::WouldSuspendForUserCodeLocked(art::Thread* self) {
+  DCHECK(self == art::Thread::Current());
+  art::MutexLock tscl_mu(self, *art::Locks::thread_suspend_count_lock_);
+  return self->GetUserCodeSuspendCount() != 0;
+}
+
+bool ThreadUtil::WouldSuspendForUserCode(art::Thread* self) {
+  DCHECK(self == art::Thread::Current());
+  art::MutexLock ucsl_mu(self, *art::Locks::user_code_suspension_lock_);
+  return WouldSuspendForUserCodeLocked(self);
 }
 
 jvmtiError ThreadUtil::GetThreadState(jvmtiEnv* env ATTRIBUTE_UNUSED,
@@ -435,13 +447,10 @@ jvmtiError ThreadUtil::GetThreadState(jvmtiEnv* env ATTRIBUTE_UNUSED,
   do {
     SuspendCheck(self);
     art::MutexLock ucsl_mu(self, *art::Locks::user_code_suspension_lock_);
-    {
-      art::MutexLock tscl_mu(self, *art::Locks::thread_suspend_count_lock_);
-      if (self->GetUserCodeSuspendCount() != 0) {
-        // Make sure we won't be suspended in the middle of holding the thread_suspend_count_lock_
-        // by a user-code suspension. We retry and do another SuspendCheck to clear this.
-        continue;
-      }
+    if (WouldSuspendForUserCodeLocked(self)) {
+      // Make sure we won't be suspended in the middle of holding the thread_suspend_count_lock_ by
+      // a user-code suspension. We retry and do another SuspendCheck to clear this.
+      continue;
     }
     art::ScopedObjectAccess soa(self);
     art::MutexLock tll_mu(self, *art::Locks::thread_list_lock_);
@@ -657,6 +666,9 @@ jvmtiError ThreadUtil::RunAgentThread(jvmtiEnv* jvmti_env,
                                       jvmtiStartFunction proc,
                                       const void* arg,
                                       jint priority) {
+  if (!PhaseUtil::IsLivePhase()) {
+    return ERR(WRONG_PHASE);
+  }
   if (priority < JVMTI_THREAD_MIN_PRIORITY || priority > JVMTI_THREAD_MAX_PRIORITY) {
     return ERR(INVALID_PRIORITY);
   }
@@ -703,15 +715,12 @@ jvmtiError ThreadUtil::SuspendOther(art::Thread* self,
     // before continuing.
     SuspendCheck(self);
     art::MutexLock mu(self, *art::Locks::user_code_suspension_lock_);
-    {
-      art::MutexLock thread_suspend_count_mu(self, *art::Locks::thread_suspend_count_lock_);
+    if (WouldSuspendForUserCodeLocked(self)) {
       // Make sure we won't be suspended in the middle of holding the thread_suspend_count_lock_ by
       // a user-code suspension. We retry and do another SuspendCheck to clear this.
-      if (self->GetUserCodeSuspendCount() != 0) {
-        continue;
-      }
-      // We are not going to be suspended by user code from now on.
+      continue;
     }
+    // We are not going to be suspended by user code from now on.
     {
       art::ScopedObjectAccess soa(self);
       art::MutexLock thread_list_mu(self, *art::Locks::thread_list_lock_);
@@ -798,13 +807,10 @@ jvmtiError ThreadUtil::ResumeThread(jvmtiEnv* env ATTRIBUTE_UNUSED,
   do {
     SuspendCheck(self);
     art::MutexLock ucsl_mu(self, *art::Locks::user_code_suspension_lock_);
-    {
-      art::MutexLock tscl_mu(self, *art::Locks::thread_suspend_count_lock_);
+    if (WouldSuspendForUserCodeLocked(self)) {
       // Make sure we won't be suspended in the middle of holding the thread_suspend_count_lock_ by
       // a user-code suspension. We retry and do another SuspendCheck to clear this.
-      if (self->GetUserCodeSuspendCount() != 0) {
-        continue;
-      }
+      continue;
     }
     // From now on we know we cannot get suspended by user-code.
     {
