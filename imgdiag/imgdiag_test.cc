@@ -14,24 +14,23 @@
  * limitations under the License.
  */
 
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <sstream>
 #include <string>
 #include <vector>
 
-#include "common_runtime_test.h"
-
 #include "android-base/stringprintf.h"
 
-#include "runtime/arch/instruction_set.h"
-#include "runtime/exec_utils.h"
-#include "runtime/gc/heap.h"
-#include "runtime/gc/space/image_space.h"
-#include "runtime/os.h"
-#include "runtime/runtime.h"
-#include "runtime/utils.h"
-
-#include <sys/types.h>
-#include <unistd.h>
+#include "arch/instruction_set.h"
+#include "common_runtime_test.h"
+#include "exec_utils.h"
+#include "gc/heap.h"
+#include "gc/space/image_space.h"
+#include "os.h"
+#include "runtime.h"
+#include "utils.h"
 
 namespace art {
 
