@@ -463,7 +463,7 @@ class DexFile {
                    std::string* error_msg,
                    std::vector<std::unique_ptr<const DexFile>>* dex_files);
 
-  // Open a single dex file from an fd.
+  // Open a single dex file from an fd. This function closes the fd.
   static std::unique_ptr<const DexFile> OpenDex(int fd,
                                                 const std::string& location,
                                                 bool verify_checksum,

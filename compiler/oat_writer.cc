@@ -2793,7 +2793,12 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
                              &error_msg);
   } else if (oat_dex_file->source_.IsRawFile()) {
     File* raw_file = oat_dex_file->source_.GetRawFile();
-    dex_file = DexFile::OpenDex(raw_file->Fd(), location, /* verify_checksum */ true, &error_msg);
+    int dup_fd = dup(raw_file->Fd());
+    if (dup_fd < 0) {
+      PLOG(ERROR) << "Failed to dup dex file descriptor (" << raw_file->Fd() << ") at " << location;
+      return false;
+    }
+    dex_file = DexFile::OpenDex(dup_fd, location, /* verify_checksum */ true, &error_msg);
   } else {
     // The source data is a vdex file.
     CHECK(oat_dex_file->source_.IsRawData())
