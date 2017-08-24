@@ -26,7 +26,7 @@
 #include "debug/dwarf/dwarf_constants.h"
 #include "debug/dwarf/dwarf_test.h"
 #include "debug/dwarf/headers.h"
-#include "disassembler/disassembler.h"
+#include "disassembler.h"
 #include "gtest/gtest.h"
 #include "thread.h"
 
