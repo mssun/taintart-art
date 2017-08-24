@@ -33,11 +33,10 @@ cc_defaults {
         },
     },
 
-
-    include_dirs: [
-        "art/cmdline",
+    header_libs: [
+        "dex2oat_headers",
+        "art_cmdlineparser_headers",
     ],
-    header_libs: ["dex2oat_headers"],
 }
 
 art_cc_binary {

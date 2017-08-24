@@ -28,10 +28,6 @@ cc_defaults {
         },
     },
 
-    include_dirs: [
-        "art/cmdline",
-    ],
-
     shared_libs: [
         "libbase",
     ],
