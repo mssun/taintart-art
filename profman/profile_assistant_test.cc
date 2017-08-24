@@ -207,7 +207,7 @@ class ProfileAssistantTest : public CommonRuntimeTest {
     return ExecAndReturnCode(argv_str, &error);
   }
 
-  bool CreateProfile(std::string profile_file_contents,
+  bool CreateProfile(const std::string& profile_file_contents,
                      const std::string& filename,
                      const std::string& dex_location) {
     ScratchFile class_names_file;
