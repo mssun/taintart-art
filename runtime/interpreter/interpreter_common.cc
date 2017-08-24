@@ -423,9 +423,9 @@ uint32_t FindNextInstructionFollowingException(
   self->VerifyStack();
   StackHandleScope<2> hs(self);
   Handle<mirror::Throwable> exception(hs.NewHandle(self->GetException()));
-  if (instrumentation != nullptr && instrumentation->HasExceptionCaughtListeners()
+  if (instrumentation != nullptr && instrumentation->HasExceptionThrownListeners()
       && self->IsExceptionThrownByCurrentMethod(exception.Get())) {
-    instrumentation->ExceptionCaughtEvent(self, exception.Get());
+    instrumentation->ExceptionThrownEvent(self, exception.Get());
   }
   bool clear_exception = false;
   uint32_t found_dex_pc = shadow_frame.GetMethod()->FindCatchBlock(

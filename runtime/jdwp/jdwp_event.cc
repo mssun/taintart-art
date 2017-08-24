@@ -164,7 +164,7 @@ static uint32_t GetInstrumentationEventFor(JdwpEventKind eventKind) {
       return instrumentation::Instrumentation::kDexPcMoved;
     case EK_EXCEPTION:
     case EK_EXCEPTION_CATCH:
-      return instrumentation::Instrumentation::kExceptionCaught;
+      return instrumentation::Instrumentation::kExceptionThrown;
     case EK_METHOD_ENTRY:
       return instrumentation::Instrumentation::kMethodEntered;
     case EK_METHOD_EXIT:

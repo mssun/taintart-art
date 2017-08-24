@@ -104,7 +104,7 @@ Instrumentation::Instrumentation()
       have_dex_pc_listeners_(false),
       have_field_read_listeners_(false),
       have_field_write_listeners_(false),
-      have_exception_caught_listeners_(false),
+      have_exception_thrown_listeners_(false),
       have_branch_listeners_(false),
       have_invoke_virtual_or_interface_listeners_(false),
       deoptimized_methods_lock_("deoptimized methods lock", kDeoptimizedMethodsLock),
@@ -499,11 +499,11 @@ void Instrumentation::AddListener(InstrumentationListener* listener, uint32_t ev
                            field_write_listeners_,
                            listener,
                            &have_field_write_listeners_);
-  PotentiallyAddListenerTo(kExceptionCaught,
+  PotentiallyAddListenerTo(kExceptionThrown,
                            events,
-                           exception_caught_listeners_,
+                           exception_thrown_listeners_,
                            listener,
-                           &have_exception_caught_listeners_);
+                           &have_exception_thrown_listeners_);
   UpdateInterpreterHandlerTable();
 }
 
@@ -576,11 +576,11 @@ void Instrumentation::RemoveListener(InstrumentationListener* listener, uint32_t
                                 field_write_listeners_,
                                 listener,
                                 &have_field_write_listeners_);
-  PotentiallyRemoveListenerFrom(kExceptionCaught,
+  PotentiallyRemoveListenerFrom(kExceptionThrown,
                                 events,
-                                exception_caught_listeners_,
+                                exception_thrown_listeners_,
                                 listener,
-                                &have_exception_caught_listeners_);
+                                &have_exception_thrown_listeners_);
   UpdateInterpreterHandlerTable();
 }
 
@@ -1082,17 +1082,17 @@ void Instrumentation::FieldWriteEventImpl(Thread* thread,
   }
 }
 
-void Instrumentation::ExceptionCaughtEvent(Thread* thread,
+void Instrumentation::ExceptionThrownEvent(Thread* thread,
                                            mirror::Throwable* exception_object) const {
   Thread* self = Thread::Current();
   StackHandleScope<1> hs(self);
   Handle<mirror::Throwable> h_exception(hs.NewHandle(exception_object));
-  if (HasExceptionCaughtListeners()) {
+  if (HasExceptionThrownListeners()) {
     DCHECK_EQ(thread->GetException(), h_exception.Get());
     thread->ClearException();
-    for (InstrumentationListener* listener : exception_caught_listeners_) {
+    for (InstrumentationListener* listener : exception_thrown_listeners_) {
       if (listener != nullptr) {
-        listener->ExceptionCaught(thread, h_exception);
+        listener->ExceptionThrown(thread, h_exception);
       }
     }
     thread->SetException(h_exception.Get());
