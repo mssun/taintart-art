@@ -144,7 +144,9 @@ art_global_defaults {
         "external/valgrind",
         "external/vixl/src",
         "external/zlib",
-        "libnativehelper/platform_include"
+    ],
+    header_libs: [
+        "jni_platform_headers",
     ],
 
     tidy_checks: [
