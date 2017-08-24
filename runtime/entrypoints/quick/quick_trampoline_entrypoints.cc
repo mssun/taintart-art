@@ -744,11 +744,7 @@ extern "C" uint64_t artQuickToInterpreterBridge(ArtMethod* method, Thread* self,
 
     ObjPtr<mirror::Throwable> pending_exception;
     bool from_code = false;
-    DeoptimizationMethodType method_type;
-    self->PopDeoptimizationContext(/* out */ &result,
-                                   /* out */ &pending_exception,
-                                   /* out */ &from_code,
-                                   /* out */ &method_type);
+    self->PopDeoptimizationContext(&result, &pending_exception, /* out */ &from_code);
 
     // Push a transition back into managed code onto the linked list in thread.
     self->PushManagedStackFragment(&fragment);
@@ -775,11 +771,7 @@ extern "C" uint64_t artQuickToInterpreterBridge(ArtMethod* method, Thread* self,
     if (pending_exception != nullptr) {
       self->SetException(pending_exception);
     }
-    interpreter::EnterInterpreterFromDeoptimize(self,
-                                                deopt_frame,
-                                                &result,
-                                                from_code,
-                                                DeoptimizationMethodType::kDefault);
+    interpreter::EnterInterpreterFromDeoptimize(self, deopt_frame, from_code, &result);
   } else {
     const char* old_cause = self->StartAssertNoThreadSuspension(
         "Building interpreter shadow frame");
@@ -831,11 +823,7 @@ extern "C" uint64_t artQuickToInterpreterBridge(ArtMethod* method, Thread* self,
       // Push the context of the deoptimization stack so we can restore the return value and the
       // exception before executing the deoptimized frames.
       self->PushDeoptimizationContext(
-          result,
-          shorty[0] == 'L' || shorty[0] == '[',  /* class or array */
-          self->GetException(),
-          false /* from_code */,
-          DeoptimizationMethodType::kDefault);
+          result, shorty[0] == 'L', /* from_code */ false, self->GetException());
 
       // Set special exception to cause deoptimization.
       self->SetException(Thread::GetDeoptimizationException());
@@ -1053,8 +1041,7 @@ extern "C" TwoWordReturn artInstrumentationMethodExitFromCode(Thread* self,
   CHECK(!self->IsExceptionPending()) << "Enter instrumentation exit stub with pending exception "
                                      << self->GetException()->Dump();
   // Compute address of return PC and sanity check that it currently holds 0.
-  size_t return_pc_offset = GetCalleeSaveReturnPcOffset(kRuntimeISA,
-                                                        CalleeSaveType::kSaveEverything);
+  size_t return_pc_offset = GetCalleeSaveReturnPcOffset(kRuntimeISA, CalleeSaveType::kSaveRefsOnly);
   uintptr_t* return_pc = reinterpret_cast<uintptr_t*>(reinterpret_cast<uint8_t*>(sp) +
                                                       return_pc_offset);
   CHECK_EQ(*return_pc, 0U);
