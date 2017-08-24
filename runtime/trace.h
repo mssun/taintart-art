@@ -178,7 +178,7 @@ class Trace FINAL : public instrumentation::InstrumentationListener {
                     ArtField* field,
                     const JValue& field_value)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!*unique_methods_lock_) OVERRIDE;
-  void ExceptionCaught(Thread* thread,
+  void ExceptionThrown(Thread* thread,
                        Handle<mirror::Throwable> exception_object)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!*unique_methods_lock_) OVERRIDE;
   void Branch(Thread* thread,
