@@ -1875,7 +1875,18 @@ static std::pair<vixl32::Condition, vixl32::Condition> GenerateLongTestConstant(
     case kCondBE:
     case kCondA:
     case kCondAE: {
+      const uint32_t value_low = Low32Bits(value);
+      Operand operand_low(value_low);
+
       __ Cmp(left_high, High32Bits(value));
+
+      // Since IT blocks longer than a 16-bit instruction are deprecated by ARMv8,
+      // we must ensure that the operands corresponding to the least significant
+      // halves of the inputs fit into a 16-bit CMP encoding.
+      if (!left_low.IsLow() || !IsUint<8>(value_low)) {
+        operand_low = Operand(temps.Acquire());
+        __ Mov(LeaveFlags, operand_low.GetBaseRegister(), value_low);
+      }
 
       // We use the scope because of the IT block that follows.
       ExactAssemblyScope guard(codegen->GetVIXLAssembler(),
@@ -1883,7 +1894,7 @@ static std::pair<vixl32::Condition, vixl32::Condition> GenerateLongTestConstant(
                                CodeBufferCheckScope::kExactSize);
 
       __ it(eq);
-      __ cmp(eq, left_low, Low32Bits(value));
+      __ cmp(eq, left_low, operand_low);
       ret = std::make_pair(ARMUnsignedCondition(cond), ARMUnsignedCondition(opposite));
       break;
     }
@@ -2025,46 +2036,7 @@ static std::pair<vixl32::Condition, vixl32::Condition> GenerateTest(HCondition* 
   return ret;
 }
 
-static bool CanGenerateTest(HCondition* condition, ArmVIXLAssembler* assembler) {
-  if (condition->GetLeft()->GetType() == Primitive::kPrimLong) {
-    const LocationSummary* const locations = condition->GetLocations();
-
-    if (locations->InAt(1).IsConstant()) {
-      IfCondition c = condition->GetCondition();
-      IfCondition opposite = condition->GetOppositeCondition();
-      const int64_t value =
-          AdjustConstantForCondition(Int64ConstantFrom(locations->InAt(1)), &c, &opposite);
-
-      if (c < kCondLT || c > kCondGE) {
-        // Since IT blocks longer than a 16-bit instruction are deprecated by ARMv8,
-        // we check that the least significant half of the first input to be compared
-        // is in a low register (the other half is read outside an IT block), and
-        // the constant fits in an 8-bit unsigned integer, so that a 16-bit CMP
-        // encoding can be used; 0 is always handled, no matter what registers are
-        // used by the first input.
-        if (value != 0 &&
-            (!LowRegisterFrom(locations->InAt(0)).IsLow() || !IsUint<8>(Low32Bits(value)))) {
-          return false;
-        }
-      // TODO(VIXL): The rest of the checks are there to keep the backend in sync with
-      // the previous one, but are not strictly necessary.
-      } else if (c == kCondLE || c == kCondGT) {
-        if (value < std::numeric_limits<int64_t>::max() &&
-            !assembler->ShifterOperandCanHold(SBC, High32Bits(value + 1), kCcSet)) {
-          return false;
-        }
-      } else if (!assembler->ShifterOperandCanHold(SBC, High32Bits(value), kCcSet)) {
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
 static void GenerateConditionGeneric(HCondition* cond, CodeGeneratorARMVIXL* codegen) {
-  DCHECK(CanGenerateTest(cond, codegen->GetAssembler()));
-
   const vixl32::Register out = OutputRegister(cond);
   const auto condition = GenerateTest(cond, false, codegen);
 
@@ -2147,91 +2119,6 @@ static void GenerateEqualLong(HCondition* cond, CodeGeneratorARMVIXL* codegen) {
   }
 }
 
-static void GenerateLongComparesAndJumps(HCondition* cond,
-                                         vixl32::Label* true_label,
-                                         vixl32::Label* false_label,
-                                         CodeGeneratorARMVIXL* codegen,
-                                         bool is_far_target = true) {
-  LocationSummary* locations = cond->GetLocations();
-  Location left = locations->InAt(0);
-  Location right = locations->InAt(1);
-  IfCondition if_cond = cond->GetCondition();
-
-  vixl32::Register left_high = HighRegisterFrom(left);
-  vixl32::Register left_low = LowRegisterFrom(left);
-  IfCondition true_high_cond = if_cond;
-  IfCondition false_high_cond = cond->GetOppositeCondition();
-  vixl32::Condition final_condition = ARMUnsignedCondition(if_cond);  // unsigned on lower part
-
-  // Set the conditions for the test, remembering that == needs to be
-  // decided using the low words.
-  switch (if_cond) {
-    case kCondEQ:
-    case kCondNE:
-      // Nothing to do.
-      break;
-    case kCondLT:
-      false_high_cond = kCondGT;
-      break;
-    case kCondLE:
-      true_high_cond = kCondLT;
-      break;
-    case kCondGT:
-      false_high_cond = kCondLT;
-      break;
-    case kCondGE:
-      true_high_cond = kCondGT;
-      break;
-    case kCondB:
-      false_high_cond = kCondA;
-      break;
-    case kCondBE:
-      true_high_cond = kCondB;
-      break;
-    case kCondA:
-      false_high_cond = kCondB;
-      break;
-    case kCondAE:
-      true_high_cond = kCondA;
-      break;
-  }
-  if (right.IsConstant()) {
-    int64_t value = Int64ConstantFrom(right);
-    int32_t val_low = Low32Bits(value);
-    int32_t val_high = High32Bits(value);
-
-    __ Cmp(left_high, val_high);
-    if (if_cond == kCondNE) {
-      __ B(ARMCondition(true_high_cond), true_label, is_far_target);
-    } else if (if_cond == kCondEQ) {
-      __ B(ARMCondition(false_high_cond), false_label, is_far_target);
-    } else {
-      __ B(ARMCondition(true_high_cond), true_label, is_far_target);
-      __ B(ARMCondition(false_high_cond), false_label, is_far_target);
-    }
-    // Must be equal high, so compare the lows.
-    __ Cmp(left_low, val_low);
-  } else {
-    vixl32::Register right_high = HighRegisterFrom(right);
-    vixl32::Register right_low = LowRegisterFrom(right);
-
-    __ Cmp(left_high, right_high);
-    if (if_cond == kCondNE) {
-      __ B(ARMCondition(true_high_cond), true_label, is_far_target);
-    } else if (if_cond == kCondEQ) {
-      __ B(ARMCondition(false_high_cond), false_label, is_far_target);
-    } else {
-      __ B(ARMCondition(true_high_cond), true_label, is_far_target);
-      __ B(ARMCondition(false_high_cond), false_label, is_far_target);
-    }
-    // Must be equal high, so compare the lows.
-    __ Cmp(left_low, right_low);
-  }
-  // The last comparison might be unsigned.
-  // TODO: optimize cases where this is always true/false
-  __ B(final_condition, true_label, is_far_target);
-}
-
 static void GenerateConditionLong(HCondition* cond, CodeGeneratorARMVIXL* codegen) {
   DCHECK_EQ(cond->GetLeft()->GetType(), Primitive::kPrimLong);
 
@@ -2286,38 +2173,14 @@ static void GenerateConditionLong(HCondition* cond, CodeGeneratorARMVIXL* codege
     }
   }
 
-  if ((condition == kCondEQ || condition == kCondNE) &&
-      // If `out` is a low register, then the GenerateConditionGeneric()
-      // function generates a shorter code sequence that is still branchless.
-      (!out.IsLow() || !CanGenerateTest(cond, codegen->GetAssembler()))) {
+  // If `out` is a low register, then the GenerateConditionGeneric()
+  // function generates a shorter code sequence that is still branchless.
+  if ((condition == kCondEQ || condition == kCondNE) && !out.IsLow()) {
     GenerateEqualLong(cond, codegen);
     return;
   }
 
-  if (CanGenerateTest(cond, codegen->GetAssembler())) {
-    GenerateConditionGeneric(cond, codegen);
-    return;
-  }
-
-  // Convert the jumps into the result.
-  vixl32::Label done_label;
-  vixl32::Label* const final_label = codegen->GetFinalLabel(cond, &done_label);
-  vixl32::Label true_label, false_label;
-
-  GenerateLongComparesAndJumps(cond, &true_label, &false_label, codegen, /* is_far_target */ false);
-
-  // False case: result = 0.
-  __ Bind(&false_label);
-  __ Mov(out, 0);
-  __ B(final_label);
-
-  // True case: result = 1.
-  __ Bind(&true_label);
-  __ Mov(out, 1);
-
-  if (done_label.IsReferenced()) {
-    __ Bind(&done_label);
-  }
+  GenerateConditionGeneric(cond, codegen);
 }
 
 static void GenerateConditionIntegralOrNonPrimitive(HCondition* cond,
@@ -2977,55 +2840,40 @@ void InstructionCodeGeneratorARMVIXL::VisitExit(HExit* exit ATTRIBUTE_UNUSED) {
 }
 
 void InstructionCodeGeneratorARMVIXL::GenerateCompareTestAndBranch(HCondition* condition,
-                                                                   vixl32::Label* true_target_in,
-                                                                   vixl32::Label* false_target_in,
+                                                                   vixl32::Label* true_target,
+                                                                   vixl32::Label* false_target,
                                                                    bool is_far_target) {
-  if (CanGenerateTest(condition, codegen_->GetAssembler())) {
-    vixl32::Label* non_fallthrough_target;
-    bool invert;
-    bool emit_both_branches;
-
-    if (true_target_in == nullptr) {
-      // The true target is fallthrough.
-      DCHECK(false_target_in != nullptr);
-      non_fallthrough_target = false_target_in;
-      invert = true;
-      emit_both_branches = false;
-    } else {
-      non_fallthrough_target = true_target_in;
-      invert = false;
-      // Either the false target is fallthrough, or there is no fallthrough
-      // and both branches must be emitted.
-      emit_both_branches = (false_target_in != nullptr);
-    }
-
-    const auto cond = GenerateTest(condition, invert, codegen_);
-
-    __ B(cond.first, non_fallthrough_target, is_far_target);
-
-    if (emit_both_branches) {
-      // No target falls through, we need to branch.
-      __ B(false_target_in);
-    }
-
+  if (true_target == false_target) {
+    DCHECK(true_target != nullptr);
+    __ B(true_target);
     return;
   }
 
-  // Generated branching requires both targets to be explicit. If either of the
-  // targets is nullptr (fallthrough) use and bind `fallthrough` instead.
-  vixl32::Label fallthrough;
-  vixl32::Label* true_target = (true_target_in == nullptr) ? &fallthrough : true_target_in;
-  vixl32::Label* false_target = (false_target_in == nullptr) ? &fallthrough : false_target_in;
+  vixl32::Label* non_fallthrough_target;
+  bool invert;
+  bool emit_both_branches;
 
-  DCHECK_EQ(condition->InputAt(0)->GetType(), Primitive::kPrimLong);
-  GenerateLongComparesAndJumps(condition, true_target, false_target, codegen_, is_far_target);
-
-  if (false_target != &fallthrough) {
-    __ B(false_target);
+  if (true_target == nullptr) {
+    // The true target is fallthrough.
+    DCHECK(false_target != nullptr);
+    non_fallthrough_target = false_target;
+    invert = true;
+    emit_both_branches = false;
+  } else {
+    non_fallthrough_target = true_target;
+    invert = false;
+    // Either the false target is fallthrough, or there is no fallthrough
+    // and both branches must be emitted.
+    emit_both_branches = (false_target != nullptr);
   }
 
-  if (fallthrough.IsReferenced()) {
-    __ Bind(&fallthrough);
+  const auto cond = GenerateTest(condition, invert, codegen_);
+
+  __ B(cond.first, non_fallthrough_target, is_far_target);
+
+  if (emit_both_branches) {
+    // No target falls through, we need to branch.
+    __ B(false_target);
   }
 }
 
@@ -3221,9 +3069,7 @@ void InstructionCodeGeneratorARMVIXL::VisitSelect(HSelect* select) {
     return;
   }
 
-  if (!Primitive::IsFloatingPointType(type) &&
-      (IsBooleanValueOrMaterializedCondition(condition) ||
-       CanGenerateTest(condition->AsCondition(), codegen_->GetAssembler()))) {
+  if (!Primitive::IsFloatingPointType(type)) {
     bool invert = false;
 
     if (out.Equals(second)) {
