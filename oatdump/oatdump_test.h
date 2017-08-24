@@ -23,15 +23,13 @@
 
 #include "android-base/strings.h"
 
-#include "common_runtime_test.h"
-
+#include "arch/instruction_set.h"
 #include "base/unix_file/fd_file.h"
-#include "runtime/arch/instruction_set.h"
-#include "runtime/exec_utils.h"
-#include "runtime/gc/heap.h"
-#include "runtime/gc/space/image_space.h"
-#include "runtime/os.h"
-#include "runtime/utils.h"
+#include "common_runtime_test.h"
+#include "exec_utils.h"
+#include "gc/heap.h"
+#include "gc/space/image_space.h"
+#include "os.h"
 #include "utils.h"
 
 #include <sys/types.h>

@@ -19,9 +19,9 @@
 
 #define CMDLINE_NDEBUG 1  // Do not output any debugging information for parsing.
 
-#include "cmdline/detail/cmdline_debug_detail.h"
-#include "cmdline/detail/cmdline_parse_argument_detail.h"
-#include "cmdline/detail/cmdline_parser_detail.h"
+#include "detail/cmdline_debug_detail.h"
+#include "detail/cmdline_parse_argument_detail.h"
+#include "detail/cmdline_parser_detail.h"
 
 #include "cmdline_parse_result.h"
 #include "cmdline_result.h"
@@ -29,7 +29,7 @@
 #include "cmdline_types.h"
 #include "token_range.h"
 
-#include "runtime/base/variant_map.h"
+#include "base/variant_map.h"
 
 #include <memory>
 #include <vector>
