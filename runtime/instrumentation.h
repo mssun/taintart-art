@@ -124,8 +124,8 @@ struct InstrumentationListener {
                             const JValue& field_value)
       REQUIRES_SHARED(Locks::mutator_lock_) = 0;
 
-  // Call-back when an exception is caught.
-  virtual void ExceptionCaught(Thread* thread,
+  // Call-back when an exception is thrown.
+  virtual void ExceptionThrown(Thread* thread,
                                Handle<mirror::Throwable> exception_object)
       REQUIRES_SHARED(Locks::mutator_lock_) = 0;
 
@@ -158,7 +158,7 @@ class Instrumentation {
     kDexPcMoved = 0x8,
     kFieldRead = 0x10,
     kFieldWritten = 0x20,
-    kExceptionCaught = 0x40,
+    kExceptionThrown = 0x40,
     kBranch = 0x80,
     kInvokeVirtualOrInterface = 0x100,
   };
@@ -322,8 +322,8 @@ class Instrumentation {
     return have_field_write_listeners_;
   }
 
-  bool HasExceptionCaughtListeners() const REQUIRES_SHARED(Locks::mutator_lock_) {
-    return have_exception_caught_listeners_;
+  bool HasExceptionThrownListeners() const REQUIRES_SHARED(Locks::mutator_lock_) {
+    return have_exception_thrown_listeners_;
   }
 
   bool HasBranchListeners() const REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -337,7 +337,7 @@ class Instrumentation {
   bool IsActive() const REQUIRES_SHARED(Locks::mutator_lock_) {
     return have_dex_pc_listeners_ || have_method_entry_listeners_ || have_method_exit_listeners_ ||
         have_field_read_listeners_ || have_field_write_listeners_ ||
-        have_exception_caught_listeners_ || have_method_unwind_listeners_ ||
+        have_exception_thrown_listeners_ || have_method_unwind_listeners_ ||
         have_branch_listeners_ || have_invoke_virtual_or_interface_listeners_;
   }
 
@@ -345,7 +345,7 @@ class Instrumentation {
   bool NonJitProfilingActive() const REQUIRES_SHARED(Locks::mutator_lock_) {
     return have_dex_pc_listeners_ || have_method_exit_listeners_ ||
         have_field_read_listeners_ || have_field_write_listeners_ ||
-        have_exception_caught_listeners_ || have_method_unwind_listeners_ ||
+        have_exception_thrown_listeners_ || have_method_unwind_listeners_ ||
         have_branch_listeners_;
   }
 
@@ -424,8 +424,8 @@ class Instrumentation {
     }
   }
 
-  // Inform listeners that an exception was caught.
-  void ExceptionCaughtEvent(Thread* thread, mirror::Throwable* exception_object) const
+  // Inform listeners that an exception was thrown.
+  void ExceptionThrownEvent(Thread* thread, mirror::Throwable* exception_object) const
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Called when an instrumented method is entered. The intended link register (lr) is saved so
@@ -599,8 +599,8 @@ class Instrumentation {
   // instrumentation_lock_.
   bool have_field_write_listeners_ GUARDED_BY(Locks::mutator_lock_);
 
-  // Do we have any exception caught listeners? Short-cut to avoid taking the instrumentation_lock_.
-  bool have_exception_caught_listeners_ GUARDED_BY(Locks::mutator_lock_);
+  // Do we have any exception thrown listeners? Short-cut to avoid taking the instrumentation_lock_.
+  bool have_exception_thrown_listeners_ GUARDED_BY(Locks::mutator_lock_);
 
   // Do we have any branch listeners? Short-cut to avoid taking the instrumentation_lock_.
   bool have_branch_listeners_ GUARDED_BY(Locks::mutator_lock_);
@@ -632,7 +632,7 @@ class Instrumentation {
   std::list<InstrumentationListener*> dex_pc_listeners_ GUARDED_BY(Locks::mutator_lock_);
   std::list<InstrumentationListener*> field_read_listeners_ GUARDED_BY(Locks::mutator_lock_);
   std::list<InstrumentationListener*> field_write_listeners_ GUARDED_BY(Locks::mutator_lock_);
-  std::list<InstrumentationListener*> exception_caught_listeners_ GUARDED_BY(Locks::mutator_lock_);
+  std::list<InstrumentationListener*> exception_thrown_listeners_ GUARDED_BY(Locks::mutator_lock_);
 
   // The set of methods being deoptimized (by the debugger) which must be executed with interpreter
   // only.

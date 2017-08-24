@@ -805,10 +805,10 @@ void Trace::MethodUnwind(Thread* thread,
                       thread_clock_diff, wall_clock_diff);
 }
 
-void Trace::ExceptionCaught(Thread* thread ATTRIBUTE_UNUSED,
+void Trace::ExceptionThrown(Thread* thread ATTRIBUTE_UNUSED,
                             Handle<mirror::Throwable> exception_object ATTRIBUTE_UNUSED)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  LOG(ERROR) << "Unexpected exception caught event in tracing";
+  LOG(ERROR) << "Unexpected exception thrown event in tracing";
 }
 
 void Trace::Branch(Thread* /*thread*/, ArtMethod* method,
