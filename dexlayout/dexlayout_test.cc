@@ -380,7 +380,7 @@ class DexLayoutTest : public CommonRuntimeTest {
   // Runs DexFileLayout test.
   bool DexFileLayoutExec(std::string* error_msg) {
     ScratchFile tmp_file;
-    std::string tmp_name = tmp_file.GetFilename();
+    const std::string& tmp_name = tmp_file.GetFilename();
     size_t tmp_last_slash = tmp_name.rfind('/');
     std::string tmp_dir = tmp_name.substr(0, tmp_last_slash + 1);
 
@@ -415,7 +415,7 @@ class DexLayoutTest : public CommonRuntimeTest {
   // for behavior consistency.
   bool DexFileLayoutFixedPointExec(std::string* error_msg) {
     ScratchFile tmp_file;
-    std::string tmp_name = tmp_file.GetFilename();
+    const std::string& tmp_name = tmp_file.GetFilename();
     size_t tmp_last_slash = tmp_name.rfind('/');
     std::string tmp_dir = tmp_name.substr(0, tmp_last_slash + 1);
 
@@ -481,7 +481,7 @@ class DexLayoutTest : public CommonRuntimeTest {
   // Runs UnreferencedCatchHandlerTest & Unreferenced0SizeCatchHandlerTest.
   bool UnreferencedCatchHandlerExec(std::string* error_msg, const char* filename) {
     ScratchFile tmp_file;
-    std::string tmp_name = tmp_file.GetFilename();
+    const std::string& tmp_name = tmp_file.GetFilename();
     size_t tmp_last_slash = tmp_name.rfind('/');
     std::string tmp_dir = tmp_name.substr(0, tmp_last_slash + 1);
 
