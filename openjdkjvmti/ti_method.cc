@@ -31,6 +31,8 @@
 
 #include "ti_method.h"
 
+#include <type_traits>
+
 #include "art_jvmti.h"
 #include "art_method-inl.h"
 #include "base/enums.h"
@@ -1012,11 +1014,11 @@ FOR_JVMTI_JVALUE_TYPES(JNI_TYPE_CHAR);
 
 #undef JNI_TYPE_CHAR
 
-#define RW_JVALUE(type, prim, id) \
-    template<> void ReadJvalue<type>(jvalue in, type* out) { \
+#define RW_JVALUE(srctype, prim, id) \
+    template<> void ReadJvalue<srctype>(jvalue in, std::add_pointer<srctype>::type out) { \
       *out = in.id; \
     } \
-    template<> void WriteJvalue<type>(type in, jvalue* out) { \
+    template<> void WriteJvalue<srctype>(srctype in, jvalue* out) { \
       out->id = in; \
     }
 
@@ -1058,9 +1060,17 @@ jvmtiError MethodUtil::GetLocalVariable(jvmtiEnv* env,
   }
 }
 
-#define GET_SET_LV(type, prim, id) \
-    template jvmtiError MethodUtil::GetLocalVariable<type>(jvmtiEnv*, jthread, jint, jint, type*); \
-    template jvmtiError MethodUtil::SetLocalVariable<type>(jvmtiEnv*, jthread, jint, jint, type);
+#define GET_SET_LV(srctype, prim, id) \
+    template jvmtiError MethodUtil::GetLocalVariable<srctype>(jvmtiEnv*, \
+                                                              jthread, \
+                                                              jint, \
+                                                              jint, \
+                                                              std::add_pointer<srctype>::type); \
+    template jvmtiError MethodUtil::SetLocalVariable<srctype>(jvmtiEnv*, \
+                                                              jthread, \
+                                                              jint, \
+                                                              jint, \
+                                                              srctype);
 
 FOR_JVMTI_JVALUE_TYPES(GET_SET_LV);
 
