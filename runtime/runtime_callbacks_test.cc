@@ -261,7 +261,7 @@ class ClassLoadCallbackRuntimeCallbacksTest : public RuntimeCallbacksTest {
       std::string location(initial_dex_file.GetLocation());
       std::string event =
           std::string("PreDefine:") + descriptor + " <" +
-          location.substr(location.rfind("/") + 1, location.size()) + ">";
+          location.substr(location.rfind('/') + 1, location.size()) + ">";
       data.push_back(event);
     }
 
