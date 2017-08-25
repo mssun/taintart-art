@@ -17,49 +17,40 @@
 package com.android.ahat.heapdump;
 
 import java.util.Iterator;
-import java.util.List;
 import java.util.NoSuchElementException;
 
-class ReferenceIterator implements Iterator<Reference>,
-                                   Iterable<Reference> {
-  private List<Reference> mRefs;
-  private int mLength;
-  private int mNextIndex;
-  private Reference mNext;
+/**
+ * An iterator that skips over nulls.
+ */
+class SkipNullsIterator<T> implements Iterator<T>, Iterable<T> {
+  Iterator<T> mIter;
+  private T mNext;
 
-  /**
-   * Construct a ReferenceIterator that iterators over the given list of
-   * references. Elements of the given list of references may be null, in
-   * which case the ReferenceIterator will skip over them.
-   */
-  public ReferenceIterator(List<Reference> refs) {
-    mRefs = refs;
-    mLength = refs.size();
-    mNextIndex = 0;
+  public SkipNullsIterator(Iterable<T> iterable) {
+    mIter = iterable.iterator();
     mNext = null;
   }
 
   @Override
   public boolean hasNext() {
-    while (mNext == null && mNextIndex < mLength) {
-      mNext = mRefs.get(mNextIndex);
-      mNextIndex++;
+    while (mNext == null && mIter.hasNext()) {
+      mNext = mIter.next();
     }
     return mNext != null;
   }
 
   @Override
-  public Reference next() {
+  public T next() {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    Reference next = mNext;
+    T next = mNext;
     mNext = null;
     return next;
   }
 
   @Override
-  public Iterator<Reference> iterator() {
+  public Iterator<T> iterator() {
     return this;
   }
 }

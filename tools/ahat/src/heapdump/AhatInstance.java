@@ -148,7 +148,7 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
    * Returns an iterator over the references this AhatInstance has to other
    * AhatInstances.
    */
-  abstract ReferenceIterator getReferences();
+  abstract Iterable<Reference> getReferences();
 
   /**
    * Returns true if this instance is marked as a root instance.

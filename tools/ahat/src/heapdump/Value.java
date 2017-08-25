@@ -52,7 +52,8 @@ public abstract class Value {
     } else if (object instanceof Long) {
       return Value.pack(((Long)object).longValue());
     }
-    throw new IllegalArgumentException("AhatInstance or primitive type required");
+    throw new IllegalArgumentException(
+        "AhatInstance or primitive type required, but got: " + object.toString());
   }
 
   public static Value pack(boolean value) {

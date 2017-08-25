@@ -128,7 +128,7 @@ public class AhatArrayInstance extends AhatInstance {
   }
 
   @Override
-  ReferenceIterator getReferences() {
+  Iterable<Reference> getReferences() {
     // The list of references will be empty if this is a primitive array.
     List<Reference> refs = Collections.emptyList();
     if (!mValues.isEmpty()) {
@@ -153,7 +153,7 @@ public class AhatArrayInstance extends AhatInstance {
         };
       }
     }
-    return new ReferenceIterator(refs);
+    return new SkipNullsIterator(refs);
   }
 
   @Override public boolean isArrayInstance() {

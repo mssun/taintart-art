@@ -152,7 +152,7 @@ class ObjectHandler implements AhatHandler {
    *                   ignored otherwise.
    */
   private static void printFields(Doc doc, Query query, String id, boolean diff,
-      List<FieldValue> current, List<FieldValue> baseline) {
+      Iterable<FieldValue> current, Iterable<FieldValue> baseline) {
 
     if (!diff) {
       // To avoid having to special case when diff is disabled, always diff
