@@ -8590,6 +8590,10 @@ bool ClassLinker::IsQuickGenericJniStub(const void* entry_point) const {
       (quick_generic_jni_trampoline_ == entry_point);
 }
 
+bool ClassLinker::IsJniDlsymLookupStub(const void* entry_point) const {
+  return entry_point == GetJniDlsymLookupStub();
+}
+
 const void* ClassLinker::GetRuntimeQuickGenericJniStub() const {
   return GetQuickGenericJniStub();
 }

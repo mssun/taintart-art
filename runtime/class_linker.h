@@ -506,6 +506,9 @@ class ClassLinker {
   // Is the given entry point quick code to run the generic JNI stub?
   bool IsQuickGenericJniStub(const void* entry_point) const;
 
+  // Is the given entry point the JNI dlsym lookup stub?
+  bool IsJniDlsymLookupStub(const void* entry_point) const;
+
   const void* GetQuickToInterpreterBridgeTrampoline() const {
     return quick_to_interpreter_bridge_trampoline_;
   }
