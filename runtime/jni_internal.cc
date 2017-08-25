@@ -400,13 +400,13 @@ static JavaVMExt* JavaVmExtFromEnv(JNIEnv* env) {
 
 #define CHECK_NON_NULL_ARGUMENT_FN_NAME(name, value, return_val) \
   if (UNLIKELY((value) == nullptr)) { \
-    JavaVmExtFromEnv(env)->JniAbortF(name, #value " == null"); \
+    JavaVmExtFromEnv(env)->JniAbort(name, #value " == null"); \
     return return_val; \
   }
 
 #define CHECK_NON_NULL_MEMCPY_ARGUMENT(length, value) \
   if (UNLIKELY((length) != 0 && (value) == nullptr)) { \
-    JavaVmExtFromEnv(env)->JniAbortF(__FUNCTION__, #value " == null"); \
+    JavaVmExtFromEnv(env)->JniAbort(__FUNCTION__, #value " == null"); \
     return; \
   }
 
