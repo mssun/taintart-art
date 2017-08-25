@@ -4994,6 +4994,31 @@ void MethodVerifier::VerifyISFieldAccess(const Instruction* inst, const RegType&
       DCHECK(!can_load_classes_ || self_->IsExceptionPending());
       self_->ClearException();
     }
+  } else {
+    // If we don't have the field (it seems we failed resolution) and this is a PUT, we need to
+    // redo verification at runtime as the field may be final, unless the field id shows it's in
+    // the same class.
+    //
+    // For simplicity, it is OK to not distinguish compile-time vs runtime, and post this an
+    // ACCESS_FIELD failure at runtime. This has the same effect as NO_FIELD - punting the class
+    // to the access-checks interpreter.
+    //
+    // Note: see b/34966607. This and above may be changed in the future.
+    if (kAccType == FieldAccessType::kAccPut) {
+      const DexFile::FieldId& field_id = dex_file_->GetFieldId(field_idx);
+      const char* field_class_descriptor = dex_file_->GetFieldDeclaringClassDescriptor(field_id);
+      const RegType* field_class_type = &reg_types_.FromDescriptor(GetClassLoader(),
+                                                                   field_class_descriptor,
+                                                                   false);
+      if (!field_class_type->Equals(GetDeclaringClass())) {
+        Fail(VERIFY_ERROR_ACCESS_FIELD) << "could not check field put for final field modify of "
+                                        << field_class_descriptor
+                                        << "."
+                                        << dex_file_->GetFieldName(field_id)
+                                        << " from other class "
+                                        << GetDeclaringClass();
+      }
+    }
   }
   if (field_type == nullptr) {
     const DexFile::FieldId& field_id = dex_file_->GetFieldId(field_idx);
