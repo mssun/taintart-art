@@ -107,7 +107,7 @@ jobject GetJavaValue(jvmtiEnv* jvmtienv, JNIEnv* env, jmethodID m, jvalue value)
     return nullptr;
   }
   std::string type(fsig);
-  type = type.substr(type.find(")") + 1);
+  type = type.substr(type.find(')') + 1);
   jvmtienv->Deallocate(reinterpret_cast<unsigned char*>(fsig));
   jvmtienv->Deallocate(reinterpret_cast<unsigned char*>(fname));
   jvmtienv->Deallocate(reinterpret_cast<unsigned char*>(fgen));
