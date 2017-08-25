@@ -533,7 +533,7 @@ void JNICALL MethodExitHook(jvmtiEnv* jvmtienv,
     return;
   }
   std::string type(method_info.GetSignature());
-  type = type.substr(type.find(")") + 1);
+  type = type.substr(type.find(')') + 1);
   std::string out_val(was_popped_by_exception ? "" : GetValOf(jvmtienv, env, type, val));
   LOG(INFO) << "Leaving method \"" << method_info << "\". Thread is \"" << info.GetName() << "\"."
             << std::endl
