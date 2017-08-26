@@ -123,7 +123,7 @@ void Agent::Unload() {
   }
 }
 
-Agent::Agent(std::string arg)
+Agent::Agent(const std::string& arg)
     : dlopen_handle_(nullptr),
       onload_(nullptr),
       onattach_(nullptr),

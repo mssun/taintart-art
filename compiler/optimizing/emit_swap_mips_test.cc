@@ -91,7 +91,9 @@ class EmitSwapMipsTest : public ::testing::Test {
     return nullptr;
   }
 
-  void DriverWrapper(HParallelMove* move, std::string assembly_text, std::string test_name) {
+  void DriverWrapper(HParallelMove* move,
+                     const std::string& assembly_text,
+                     const std::string& test_name) {
     codegen_->GetMoveResolver()->EmitNativeCode(move);
     assembler_ = codegen_->GetAssembler();
     assembler_->FinalizeCode();
