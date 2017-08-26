@@ -183,22 +183,27 @@ class JvmtiFunctions {
   }
 
   static jvmtiError GetOwnedMonitorInfo(jvmtiEnv* env,
-                                        jthread thread ATTRIBUTE_UNUSED,
-                                        jint* owned_monitor_count_ptr ATTRIBUTE_UNUSED,
-                                        jobject** owned_monitors_ptr ATTRIBUTE_UNUSED) {
+                                        jthread thread,
+                                        jint* owned_monitor_count_ptr,
+                                        jobject** owned_monitors_ptr) {
     ENSURE_VALID_ENV(env);
     ENSURE_HAS_CAP(env, can_get_owned_monitor_info);
-    return ERR(NOT_IMPLEMENTED);
+    return StackUtil::GetOwnedMonitorInfo(env,
+                                          thread,
+                                          owned_monitor_count_ptr,
+                                          owned_monitors_ptr);
   }
 
-  static jvmtiError GetOwnedMonitorStackDepthInfo(
-      jvmtiEnv* env,
-      jthread thread ATTRIBUTE_UNUSED,
-      jint* monitor_info_count_ptr ATTRIBUTE_UNUSED,
-      jvmtiMonitorStackDepthInfo** monitor_info_ptr ATTRIBUTE_UNUSED) {
+  static jvmtiError GetOwnedMonitorStackDepthInfo(jvmtiEnv* env,
+                                                  jthread thread,
+                                                  jint* monitor_info_count_ptr,
+                                                  jvmtiMonitorStackDepthInfo** monitor_info_ptr) {
     ENSURE_VALID_ENV(env);
     ENSURE_HAS_CAP(env, can_get_owned_monitor_stack_depth_info);
-    return ERR(NOT_IMPLEMENTED);
+    return StackUtil::GetOwnedMonitorStackDepthInfo(env,
+                                                    thread,
+                                                    monitor_info_count_ptr,
+                                                    monitor_info_ptr);
   }
 
   static jvmtiError GetCurrentContendedMonitor(jvmtiEnv* env,
