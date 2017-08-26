@@ -3763,13 +3763,15 @@ const RegType& MethodVerifier::ResolveClass(dex::TypeIndex class_idx) {
   // Record result of class resolution attempt.
   VerifierDeps::MaybeRecordClassResolution(*dex_file_, class_idx, klass);
 
-  // Check if access is allowed. Unresolved types use xxxWithAccessCheck to
-  // check at runtime if access is allowed and so pass here. If result is
-  // primitive, skip the access check.
-  if (C == CheckAccess::kYes && result->IsNonZeroReferenceTypes() && !result->IsUnresolvedTypes()) {
+  // If requested, check if access is allowed. Unresolved types are included in this check, as the
+  // interpreter only tests whether access is allowed when a class is not pre-verified and runs in
+  // the access-checks interpreter. If result is primitive, skip the access check.
+  //
+  // Note: we do this for unresolved classes to trigger re-verification at runtime.
+  if (C == CheckAccess::kYes && result->IsNonZeroReferenceTypes()) {
     const RegType& referrer = GetDeclaringClass();
-    if (!referrer.IsUnresolvedTypes() && !referrer.CanAccess(*result)) {
-      Fail(VERIFY_ERROR_ACCESS_CLASS) << "illegal class access: '"
+    if (!referrer.CanAccess(*result)) {
+      Fail(VERIFY_ERROR_ACCESS_CLASS) << "(possibly) illegal class access: '"
                                       << referrer << "' -> '" << *result << "'";
     }
   }
@@ -4824,6 +4826,9 @@ ArtField* MethodVerifier::GetStaticField(int field_idx) {
     return nullptr;
   }
   if (klass_type.IsUnresolvedTypes()) {
+    // Accessibility checks depend on resolved fields.
+    DCHECK(klass_type.Equals(GetDeclaringClass()) || !failures_.empty());
+
     return nullptr;  // Can't resolve Class so no more to do here, will do checking at runtime.
   }
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
@@ -4862,6 +4867,9 @@ ArtField* MethodVerifier::GetInstanceField(const RegType& obj_type, int field_id
     return nullptr;
   }
   if (klass_type.IsUnresolvedTypes()) {
+    // Accessibility checks depend on resolved fields.
+    DCHECK(klass_type.Equals(GetDeclaringClass()) || !failures_.empty());
+
     return nullptr;  // Can't resolve Class so no more to do here
   }
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
