@@ -77,7 +77,7 @@ class Agent {
     return DoLoadHelper(true, call_res, error_msg);
   }
 
-  explicit Agent(std::string arg);
+  explicit Agent(const std::string& arg);
 
   Agent(const Agent& other);
   Agent& operator=(const Agent& other);
