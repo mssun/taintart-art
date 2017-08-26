@@ -271,7 +271,7 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
     if (value instanceof Instance) {
       value = findInstance(((Instance)value).getId());
     }
-    return value == null ? null : new Value(value);
+    return Value.pack(value);
   }
 
   public void setBaseline(AhatSnapshot baseline) {

@@ -58,8 +58,7 @@ public class AhatArrayInstance extends AhatInstance {
           }
 
           @Override public Value get(int index) {
-            AhatInstance obj = insts[index];
-            return obj == null ? null : new Value(insts[index]);
+            return Value.pack(insts[index]);
           }
         };
         break;
@@ -73,7 +72,7 @@ public class AhatArrayInstance extends AhatInstance {
           }
 
           @Override public Value get(int index) {
-            return new Value(chars[index]);
+            return Value.pack(chars[index]);
           }
         };
         break;
@@ -87,7 +86,7 @@ public class AhatArrayInstance extends AhatInstance {
           }
 
           @Override public Value get(int index) {
-            return new Value(bytes[index]);
+            return Value.pack(bytes[index]);
           }
         };
         break;
@@ -100,8 +99,7 @@ public class AhatArrayInstance extends AhatInstance {
           }
 
           @Override public Value get(int index) {
-            Object obj = values[index];
-            return obj == null ? null : new Value(obj);
+            return Value.pack(values[index]);
           }
         };
         break;

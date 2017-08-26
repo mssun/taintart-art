@@ -20,19 +20,71 @@ package com.android.ahat.heapdump;
  * Value represents a field value in a heap dump. The field value is either a
  * subclass of AhatInstance or a primitive Java type.
  */
-public class Value {
-  private Object mObject;
+public abstract class Value {
+  public static Value pack(AhatInstance value) {
+    return value == null ? null : new InstanceValue(value);
+  }
 
   /**
    * Constructs a value from a generic Java Object.
    * The Object must either be a boxed Java primitive type or a subclass of
    * AhatInstance. The object must not be null.
    */
-  public Value(Object object) {
-    // TODO: Check that the Object is either an AhatSnapshot or boxed Java
-    // primitive type?
-    assert object != null;
-    mObject = object;
+  public static Value pack(Object object) {
+    if (object == null) {
+      return null;
+    } else if (object instanceof AhatInstance) {
+      return Value.pack((AhatInstance)object);
+    } else if (object instanceof Boolean) {
+      return Value.pack(((Boolean)object).booleanValue());
+    } else if (object instanceof Character) {
+      return Value.pack(((Character)object).charValue());
+    } else if (object instanceof Float) {
+      return Value.pack(((Float)object).floatValue());
+    } else if (object instanceof Double) {
+      return Value.pack(((Double)object).doubleValue());
+    } else if (object instanceof Byte) {
+      return Value.pack(((Byte)object).byteValue());
+    } else if (object instanceof Short) {
+      return Value.pack(((Short)object).shortValue());
+    } else if (object instanceof Integer) {
+      return Value.pack(((Integer)object).intValue());
+    } else if (object instanceof Long) {
+      return Value.pack(((Long)object).longValue());
+    }
+    throw new IllegalArgumentException("AhatInstance or primitive type required");
+  }
+
+  public static Value pack(boolean value) {
+    return new BooleanValue(value);
+  }
+
+  public static Value pack(char value) {
+    return new CharValue(value);
+  }
+
+  public static Value pack(float value) {
+    return new FloatValue(value);
+  }
+
+  public static Value pack(double value) {
+    return new DoubleValue(value);
+  }
+
+  public static Value pack(byte value) {
+    return new ByteValue(value);
+  }
+
+  public static Value pack(short value) {
+    return new ShortValue(value);
+  }
+
+  public static Value pack(int value) {
+    return new IntValue(value);
+  }
+
+  public static Value pack(long value) {
+    return new LongValue(value);
   }
 
   /**
@@ -40,7 +92,7 @@ public class Value {
    * primitive value.
    */
   public boolean isAhatInstance() {
-    return mObject instanceof AhatInstance;
+    return false;
   }
 
   /**
@@ -48,9 +100,6 @@ public class Value {
    * Returns null if the Value represents a Java primitive value.
    */
   public AhatInstance asAhatInstance() {
-    if (isAhatInstance()) {
-      return (AhatInstance)mObject;
-    }
     return null;
   }
 
@@ -58,7 +107,7 @@ public class Value {
    * Returns true if the Value is an Integer.
    */
   public boolean isInteger() {
-    return mObject instanceof Integer;
+    return false;
   }
 
   /**
@@ -66,9 +115,6 @@ public class Value {
    * Returns null if the Value does not represent an Integer.
    */
   public Integer asInteger() {
-    if (isInteger()) {
-      return (Integer)mObject;
-    }
     return null;
   }
 
@@ -76,7 +122,7 @@ public class Value {
    * Returns true if the Value is an Long.
    */
   public boolean isLong() {
-    return mObject instanceof Long;
+    return false;
   }
 
   /**
@@ -84,9 +130,6 @@ public class Value {
    * Returns null if the Value does not represent an Long.
    */
   public Long asLong() {
-    if (isLong()) {
-      return (Long)mObject;
-    }
     return null;
   }
 
@@ -95,9 +138,6 @@ public class Value {
    * Returns null if the Value does not represent a Byte.
    */
   public Byte asByte() {
-    if (mObject instanceof Byte) {
-      return (Byte)mObject;
-    }
     return null;
   }
 
@@ -106,28 +146,255 @@ public class Value {
    * Returns null if the Value does not represent a Char.
    */
   public Character asChar() {
-    if (mObject instanceof Character) {
-      return (Character)mObject;
-    }
     return null;
   }
 
-  public String toString() {
-    return mObject.toString();
+  @Override
+  public abstract String toString();
+
+  public Value getBaseline() {
+    return this;
   }
 
   public static Value getBaseline(Value value) {
-    if (value == null || !value.isAhatInstance()) {
-      return value;
-    }
-    return new Value(value.asAhatInstance().getBaseline());
+    return value == null ? null : value.getBaseline();
   }
 
-  @Override public boolean equals(Object other) {
-    if (other instanceof Value) {
-      Value value = (Value)other;
-      return mObject.equals(value.mObject);
+  @Override
+  public abstract boolean equals(Object other);
+
+  private static class BooleanValue extends Value {
+    private boolean mBool;
+
+    BooleanValue(boolean bool) {
+      mBool = bool;
     }
-    return false;
+
+    @Override
+    public String toString() {
+      return Boolean.toString(mBool);
+    }
+
+    @Override public boolean equals(Object other) {
+      if (other instanceof BooleanValue) {
+        BooleanValue value = (BooleanValue)other;
+        return mBool == value.mBool;
+      }
+      return false;
+    }
+  }
+
+  private static class ByteValue extends Value {
+    private byte mByte;
+
+    ByteValue(byte b) {
+      mByte = b;
+    }
+
+    @Override
+    public Byte asByte() {
+      return mByte;
+    }
+
+    @Override
+    public String toString() {
+      return Byte.toString(mByte);
+    }
+
+    @Override public boolean equals(Object other) {
+      if (other instanceof ByteValue) {
+        ByteValue value = (ByteValue)other;
+        return mByte == value.mByte;
+      }
+      return false;
+    }
+  }
+
+  private static class CharValue extends Value {
+    private char mChar;
+
+    CharValue(char c) {
+      mChar = c;
+    }
+
+    @Override
+    public Character asChar() {
+      return mChar;
+    }
+
+    @Override
+    public String toString() {
+      return Character.toString(mChar);
+    }
+
+    @Override public boolean equals(Object other) {
+      if (other instanceof CharValue) {
+        CharValue value = (CharValue)other;
+        return mChar == value.mChar;
+      }
+      return false;
+    }
+  }
+
+  private static class DoubleValue extends Value {
+    private double mDouble;
+
+    DoubleValue(double d) {
+      mDouble = d;
+    }
+
+    @Override
+    public String toString() {
+      return Double.toString(mDouble);
+    }
+
+    @Override public boolean equals(Object other) {
+      if (other instanceof DoubleValue) {
+        DoubleValue value = (DoubleValue)other;
+        return mDouble == value.mDouble;
+      }
+      return false;
+    }
+  }
+
+  private static class FloatValue extends Value {
+    private float mFloat;
+
+    FloatValue(float f) {
+      mFloat = f;
+    }
+
+    @Override
+    public String toString() {
+      return Float.toString(mFloat);
+    }
+
+    @Override public boolean equals(Object other) {
+      if (other instanceof FloatValue) {
+        FloatValue value = (FloatValue)other;
+        return mFloat == value.mFloat;
+      }
+      return false;
+    }
+  }
+
+  private static class InstanceValue extends Value {
+    private AhatInstance mInstance;
+
+    InstanceValue(AhatInstance inst) {
+      assert(inst != null);
+      mInstance = inst;
+    }
+
+    @Override
+    public boolean isAhatInstance() {
+      return true;
+    }
+
+    @Override
+    public AhatInstance asAhatInstance() {
+      return mInstance;
+    }
+
+    @Override
+    public String toString() {
+      return mInstance.toString();
+    }
+
+    @Override
+    public Value getBaseline() {
+      return InstanceValue.pack(mInstance.getBaseline());
+    }
+
+    @Override public boolean equals(Object other) {
+      if (other instanceof InstanceValue) {
+        InstanceValue value = (InstanceValue)other;
+        return mInstance.equals(value.mInstance);
+      }
+      return false;
+    }
+  }
+
+  private static class IntValue extends Value {
+    private int mInt;
+
+    IntValue(int i) {
+      mInt = i;
+    }
+
+    @Override
+    public boolean isInteger() {
+      return true;
+    }
+
+    @Override
+    public Integer asInteger() {
+      return mInt;
+    }
+
+    @Override
+    public String toString() {
+      return Integer.toString(mInt);
+    }
+
+    @Override public boolean equals(Object other) {
+      if (other instanceof IntValue) {
+        IntValue value = (IntValue)other;
+        return mInt == value.mInt;
+      }
+      return false;
+    }
+  }
+
+  private static class LongValue extends Value {
+    private long mLong;
+
+    LongValue(long l) {
+      mLong = l;
+    }
+
+    @Override
+    public boolean isLong() {
+      return true;
+    }
+
+    @Override
+    public Long asLong() {
+      return mLong;
+    }
+
+    @Override
+    public String toString() {
+      return Long.toString(mLong);
+    }
+
+    @Override public boolean equals(Object other) {
+      if (other instanceof LongValue) {
+        LongValue value = (LongValue)other;
+        return mLong == value.mLong;
+      }
+      return false;
+    }
+  }
+
+  private static class ShortValue extends Value {
+    private short mShort;
+
+    ShortValue(short s) {
+      mShort = s;
+    }
+
+    @Override
+    public String toString() {
+      return Short.toString(mShort);
+    }
+
+    @Override public boolean equals(Object other) {
+      if (other instanceof ShortValue) {
+        ShortValue value = (ShortValue)other;
+        return mShort == value.mShort;
+      }
+      return false;
+    }
   }
 }
