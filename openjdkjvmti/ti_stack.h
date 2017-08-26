@@ -67,6 +67,16 @@ class StackUtil {
                                              const jthread* thread_list,
                                              jint max_frame_count,
                                              jvmtiStackInfo** stack_info_ptr);
+
+  static jvmtiError GetOwnedMonitorStackDepthInfo(jvmtiEnv* env,
+                                                  jthread thread,
+                                                  jint* info_cnt_ptr,
+                                                  jvmtiMonitorStackDepthInfo** info_ptr);
+
+  static jvmtiError GetOwnedMonitorInfo(jvmtiEnv* env,
+                                        jthread thread,
+                                        jint* owned_monitor_count_ptr,
+                                        jobject** owned_monitors_ptr);
 };
 
 }  // namespace openjdkjvmti
