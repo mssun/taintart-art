@@ -461,49 +461,15 @@ class HeapLocationCollector : public HGraphVisitor {
     has_heap_stores_ = true;
   }
 
-  void VisitNewInstance(HNewInstance* new_instance) OVERRIDE {
-    // Any references appearing in the ref_info_array_ so far cannot alias with new_instance.
-    CreateReferenceInfoForReferenceType(new_instance);
-  }
-
-  void VisitNewArray(HNewArray* new_array) OVERRIDE {
-    // Any references appearing in the ref_info_array_ so far cannot alias with new_array.
-    CreateReferenceInfoForReferenceType(new_array);
-  }
-
-  void VisitInvokeStaticOrDirect(HInvokeStaticOrDirect* instruction) OVERRIDE {
-    CreateReferenceInfoForReferenceType(instruction);
-  }
-
-  void VisitInvokeVirtual(HInvokeVirtual* instruction) OVERRIDE {
-    CreateReferenceInfoForReferenceType(instruction);
-  }
-
-  void VisitInvokeInterface(HInvokeInterface* instruction) OVERRIDE {
-    CreateReferenceInfoForReferenceType(instruction);
-  }
-
-  void VisitInvokeUnresolved(HInvokeUnresolved* instruction) OVERRIDE {
-    CreateReferenceInfoForReferenceType(instruction);
-  }
-
-  void VisitInvokePolymorphic(HInvokePolymorphic* instruction) OVERRIDE {
-    CreateReferenceInfoForReferenceType(instruction);
-  }
-
-  void VisitLoadString(HLoadString* instruction) OVERRIDE {
-    CreateReferenceInfoForReferenceType(instruction);
-  }
-
-  void VisitPhi(HPhi* instruction) OVERRIDE {
-    CreateReferenceInfoForReferenceType(instruction);
-  }
-
-  void VisitParameterValue(HParameterValue* instruction) OVERRIDE {
-    CreateReferenceInfoForReferenceType(instruction);
-  }
-
-  void VisitSelect(HSelect* instruction) OVERRIDE {
+  void VisitInstruction(HInstruction* instruction) OVERRIDE {
+    // Any new-instance or new-array cannot alias with references that
+    // pre-exist the new-instance/new-array. We append entries into
+    // ref_info_array_ which keeps track of the order of creation
+    // of reference values since we visit the blocks in reverse post order.
+    //
+    // By default, VisitXXX() (including VisitPhi()) calls VisitInstruction(),
+    // unless VisitXXX() is overridden. VisitInstanceFieldGet() etc. above
+    // also call CreateReferenceInfoForReferenceType() explicitly.
     CreateReferenceInfoForReferenceType(instruction);
   }
 
