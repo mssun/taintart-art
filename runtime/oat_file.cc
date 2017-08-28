@@ -75,7 +75,7 @@ static constexpr bool kUseDlopenOnHost = true;
 static constexpr bool kPrintDlOpenErrorMessage = false;
 
 // If true, we advise the kernel about dex file mem map accesses.
-static constexpr bool kMadviseDexFileAccesses = false;
+static constexpr bool kMadviseDexFileAccesses = true;
 
 // Note for OatFileBase and descendents:
 //
@@ -1498,11 +1498,13 @@ const DexFile::ClassDef* OatFile::OatDexFile::FindClassDef(const DexFile& dex_fi
 
 // Madvise the dex file based on the state we are moving to.
 void OatDexFile::MadviseDexFile(const DexFile& dex_file, MadviseState state) {
-  if (!kMadviseDexFileAccesses) {
+  const bool low_ram = Runtime::Current()->GetHeap()->IsLowMemoryMode();
+  // TODO: Also do madvise hints for non low ram devices.
+  if (!kMadviseDexFileAccesses || !low_ram) {
     return;
   }
   if (state == MadviseState::kMadviseStateAtLoad) {
-    if (Runtime::Current()->GetHeap()->IsLowMemoryMode()) {
+    if (low_ram) {
       // Default every dex file to MADV_RANDOM when its loaded by default for low ram devices.
       // Other devices have enough page cache to get performance benefits from loading more pages
       // into the page cache.
