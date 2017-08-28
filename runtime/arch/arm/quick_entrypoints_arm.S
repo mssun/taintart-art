@@ -1832,47 +1832,45 @@ ENTRY art_quick_instrumentation_entry
     mov   r12, r0        @ r12 holds reference to code
     ldr   r0, [sp, #4]   @ restore r0
     RESTORE_SAVE_REFS_AND_ARGS_FRAME
+    adr   lr, art_quick_instrumentation_exit + /* thumb mode */ 1
+                         @ load art_quick_instrumentation_exit into lr in thumb mode
     REFRESH_MARKING_REGISTER
-    blx   r12            @ call method with lr set to art_quick_instrumentation_exit
-@ Deliberate fall-through into art_quick_instrumentation_exit.
-    .type art_quick_instrumentation_exit, #function
-    .global art_quick_instrumentation_exit
-art_quick_instrumentation_exit:
-    mov   lr, #0         @ link register is to here, so clobber with 0 for later checks
-    SETUP_SAVE_REFS_ONLY_FRAME r2  @ set up frame knowing r2 and r3 must be dead on exit
-    mov   r12, sp        @ remember bottom of caller's frame
-    push  {r0-r1}        @ save return value
-    .cfi_adjust_cfa_offset 8
-    .cfi_rel_offset r0, 0
-    .cfi_rel_offset r1, 4
-    mov   r2, sp         @ store gpr_res pointer.
-    vpush {d0}           @ save fp return value
-    .cfi_adjust_cfa_offset 8
-    mov   r3, sp         @ store fpr_res pointer
-    mov   r1, r12        @ pass SP
-    mov   r0, r9         @ pass Thread::Current
-    blx   artInstrumentationMethodExitFromCode  @ (Thread*, SP, gpr_res*, fpr_res*)
-
-    mov   r2, r0         @ link register saved by instrumentation
-    mov   lr, r1         @ r1 is holding link register if we're to bounce to deoptimize
-    vpop  {d0}           @ restore fp return value
-    .cfi_adjust_cfa_offset -8
-    pop   {r0, r1}       @ restore return value
-    .cfi_adjust_cfa_offset -8
-    .cfi_restore r0
-    .cfi_restore r1
-    RESTORE_SAVE_REFS_ONLY_FRAME
-    REFRESH_MARKING_REGISTER
-    cbz   r2, .Ldo_deliver_instrumentation_exception
-                         @ Deliver exception if we got nullptr as function.
-    bx    r2             @ Otherwise, return
+    bx    r12            @ call method with lr set to art_quick_instrumentation_exit
 .Ldeliver_instrumentation_entry_exception:
     @ Deliver exception for art_quick_instrumentation_entry placed after
     @ art_quick_instrumentation_exit so that the fallthrough works.
     RESTORE_SAVE_REFS_AND_ARGS_FRAME
-.Ldo_deliver_instrumentation_exception:
     DELIVER_PENDING_EXCEPTION
 END art_quick_instrumentation_entry
+
+ENTRY art_quick_instrumentation_exit
+    mov   lr, #0         @ link register is to here, so clobber with 0 for later checks
+    SETUP_SAVE_EVERYTHING_FRAME r2
+
+    add   r3, sp, #8     @ store fpr_res pointer, in kSaveEverything frame
+    add   r2, sp, #136   @ store gpr_res pointer, in kSaveEverything frame
+    mov   r1, sp         @ pass SP
+    mov   r0, r9         @ pass Thread::Current
+    blx   artInstrumentationMethodExitFromCode  @ (Thread*, SP, gpr_res*, fpr_res*)
+
+    cbz   r0, .Ldo_deliver_instrumentation_exception
+                         @ Deliver exception if we got nullptr as function.
+    cbnz  r1, .Ldeoptimize
+    // Normal return.
+    str   r0, [sp, #FRAME_SIZE_SAVE_EVERYTHING - 4]
+                         @ Set return pc.
+    RESTORE_SAVE_EVERYTHING_FRAME
+    REFRESH_MARKING_REGISTER
+    bx lr
+.Ldo_deliver_instrumentation_exception:
+    DELIVER_PENDING_EXCEPTION_FRAME_READY
+.Ldeoptimize:
+    str   r1, [sp, #FRAME_SIZE_SAVE_EVERYTHING - 4]
+                         @ Set return pc.
+    RESTORE_SAVE_EVERYTHING_FRAME
+    // Jump to art_quick_deoptimize.
+    b     art_quick_deoptimize
+END art_quick_instrumentation_exit
 
     /*
      * Instrumentation has requested that we deoptimize into the interpreter. The deoptimization
@@ -1880,7 +1878,7 @@ END art_quick_instrumentation_entry
      */
     .extern artDeoptimize
 ENTRY art_quick_deoptimize
-    SETUP_SAVE_ALL_CALLEE_SAVES_FRAME r0
+    SETUP_SAVE_EVERYTHING_FRAME r0
     mov    r0, r9         @ pass Thread::Current
     blx    artDeoptimize  @ (Thread*)
 END art_quick_deoptimize
