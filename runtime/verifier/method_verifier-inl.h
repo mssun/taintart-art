@@ -77,7 +77,7 @@ inline bool MethodVerifier::HasFailures() const {
 
 inline const RegType& MethodVerifier::ResolveCheckedClass(dex::TypeIndex class_idx) {
   DCHECK(!HasFailures());
-  const RegType& result = ResolveClassAndCheckAccess(class_idx);
+  const RegType& result = ResolveClass<CheckAccess::kYes>(class_idx);
   DCHECK(!HasFailures());
   return result;
 }

@@ -1765,7 +1765,9 @@ bool MethodVerifier::SetTypesFromSignature() {
         // it's effectively considered initialized the instant we reach here (in the sense that we
         // can return without doing anything or call virtual methods).
         {
-          const RegType& reg_type = ResolveClassAndCheckAccess(iterator.GetTypeIdx());
+          // Note: don't check access. No error would be thrown for declaring or passing an
+          //       inaccessible class. Only actual accesses to fields or methods will.
+          const RegType& reg_type = ResolveClass<CheckAccess::kNo>(iterator.GetTypeIdx());
           if (!reg_type.IsNonZeroReferenceTypes()) {
             DCHECK(HasFailures());
             return false;
@@ -2322,7 +2324,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
     case Instruction::CONST_CLASS: {
       // Get type from instruction if unresolved then we need an access check
       // TODO: check Compiler::CanAccessTypeWithoutChecks returns false when res_type is unresolved
-      const RegType& res_type = ResolveClassAndCheckAccess(dex::TypeIndex(inst->VRegB_21c()));
+      const RegType& res_type = ResolveClass<CheckAccess::kYes>(dex::TypeIndex(inst->VRegB_21c()));
       // Register holds class, ie its type is class, on error it will hold Conflict.
       work_line_->SetRegisterType<LockOp::kClear>(
           this, inst->VRegA_21c(), res_type.IsConflict() ? res_type
@@ -2393,7 +2395,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
        */
       const bool is_checkcast = (inst->Opcode() == Instruction::CHECK_CAST);
       const dex::TypeIndex type_idx((is_checkcast) ? inst->VRegB_21c() : inst->VRegC_22c());
-      const RegType& res_type = ResolveClassAndCheckAccess(type_idx);
+      const RegType& res_type = ResolveClass<CheckAccess::kYes>(type_idx);
       if (res_type.IsConflict()) {
         // If this is a primitive type, fail HARD.
         ObjPtr<mirror::Class> klass =
@@ -2463,7 +2465,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
       break;
     }
     case Instruction::NEW_INSTANCE: {
-      const RegType& res_type = ResolveClassAndCheckAccess(dex::TypeIndex(inst->VRegB_21c()));
+      const RegType& res_type = ResolveClass<CheckAccess::kYes>(dex::TypeIndex(inst->VRegB_21c()));
       if (res_type.IsConflict()) {
         DCHECK_NE(failures_.size(), 0U);
         break;  // bad class
@@ -2675,7 +2677,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
         // ensure that subsequent merges don't lose type information - such as becoming an
         // interface from a class that would lose information relevant to field checks.
         const RegType& orig_type = work_line_->GetRegisterType(this, instance_of_inst->VRegB_22c());
-        const RegType& cast_type = ResolveClassAndCheckAccess(
+        const RegType& cast_type = ResolveClass<CheckAccess::kYes>(
             dex::TypeIndex(instance_of_inst->VRegC_22c()));
 
         if (!orig_type.Equals(cast_type) &&
@@ -3723,7 +3725,8 @@ inline bool MethodVerifier::IsInstantiableOrPrimitive(mirror::Class* klass) {
   return klass->IsInstantiable() || klass->IsPrimitive();
 }
 
-const RegType& MethodVerifier::ResolveClassAndCheckAccess(dex::TypeIndex class_idx) {
+template <MethodVerifier::CheckAccess C>
+const RegType& MethodVerifier::ResolveClass(dex::TypeIndex class_idx) {
   mirror::Class* klass = can_load_classes_
       ? Runtime::Current()->GetClassLinker()->ResolveType(
           *dex_file_, class_idx, dex_cache_, class_loader_)
@@ -3763,7 +3766,7 @@ const RegType& MethodVerifier::ResolveClassAndCheckAccess(dex::TypeIndex class_i
   // Check if access is allowed. Unresolved types use xxxWithAccessCheck to
   // check at runtime if access is allowed and so pass here. If result is
   // primitive, skip the access check.
-  if (result->IsNonZeroReferenceTypes() && !result->IsUnresolvedTypes()) {
+  if (C == CheckAccess::kYes && result->IsNonZeroReferenceTypes() && !result->IsUnresolvedTypes()) {
     const RegType& referrer = GetDeclaringClass();
     if (!referrer.IsUnresolvedTypes() && !referrer.CanAccess(*result)) {
       Fail(VERIFY_ERROR_ACCESS_CLASS) << "illegal class access: '"
@@ -3785,7 +3788,8 @@ const RegType& MethodVerifier::GetCaughtExceptionType() {
           if (!iterator.GetHandlerTypeIndex().IsValid()) {
             common_super = &reg_types_.JavaLangThrowable(false);
           } else {
-            const RegType& exception = ResolveClassAndCheckAccess(iterator.GetHandlerTypeIndex());
+            const RegType& exception =
+                ResolveClass<CheckAccess::kYes>(iterator.GetHandlerTypeIndex());
             if (!reg_types_.JavaLangThrowable(false).IsAssignableFrom(exception, this)) {
               DCHECK(!exception.IsUninitializedTypes());  // Comes from dex, shouldn't be uninit.
               if (exception.IsUnresolvedTypes()) {
@@ -3827,7 +3831,7 @@ const RegType& MethodVerifier::GetCaughtExceptionType() {
 ArtMethod* MethodVerifier::ResolveMethodAndCheckAccess(
     uint32_t dex_method_idx, MethodType method_type) {
   const DexFile::MethodId& method_id = dex_file_->GetMethodId(dex_method_idx);
-  const RegType& klass_type = ResolveClassAndCheckAccess(method_id.class_idx_);
+  const RegType& klass_type = ResolveClass<CheckAccess::kYes>(method_id.class_idx_);
   if (klass_type.IsConflict()) {
     std::string append(" in attempt to access method ");
     append += dex_file_->GetMethodName(method_id);
@@ -4598,7 +4602,7 @@ void MethodVerifier::VerifyNewArray(const Instruction* inst, bool is_filled, boo
     DCHECK_EQ(inst->Opcode(), Instruction::FILLED_NEW_ARRAY_RANGE);
     type_idx = dex::TypeIndex(inst->VRegB_3rc());
   }
-  const RegType& res_type = ResolveClassAndCheckAccess(type_idx);
+  const RegType& res_type = ResolveClass<CheckAccess::kYes>(type_idx);
   if (res_type.IsConflict()) {  // bad class
     DCHECK_NE(failures_.size(), 0U);
   } else {
@@ -4812,7 +4816,7 @@ void MethodVerifier::VerifyAPut(const Instruction* inst,
 ArtField* MethodVerifier::GetStaticField(int field_idx) {
   const DexFile::FieldId& field_id = dex_file_->GetFieldId(field_idx);
   // Check access to class
-  const RegType& klass_type = ResolveClassAndCheckAccess(field_id.class_idx_);
+  const RegType& klass_type = ResolveClass<CheckAccess::kYes>(field_id.class_idx_);
   if (klass_type.IsConflict()) {  // bad class
     AppendToLastFailMessage(StringPrintf(" in attempt to access static field %d (%s) in %s",
                                          field_idx, dex_file_->GetFieldName(field_id),
@@ -4850,7 +4854,7 @@ ArtField* MethodVerifier::GetStaticField(int field_idx) {
 ArtField* MethodVerifier::GetInstanceField(const RegType& obj_type, int field_idx) {
   const DexFile::FieldId& field_id = dex_file_->GetFieldId(field_idx);
   // Check access to class.
-  const RegType& klass_type = ResolveClassAndCheckAccess(field_id.class_idx_);
+  const RegType& klass_type = ResolveClass<CheckAccess::kYes>(field_id.class_idx_);
   if (klass_type.IsConflict()) {
     AppendToLastFailMessage(StringPrintf(" in attempt to access instance field %d (%s) in %s",
                                          field_idx, dex_file_->GetFieldName(field_id),

@@ -576,9 +576,14 @@ class MethodVerifier {
   void VerifyQuickFieldAccess(const Instruction* inst, const RegType& insn_type, bool is_primitive)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Resolves a class based on an index and performs access checks to ensure the referrer can
-  // access the resolved class.
-  const RegType& ResolveClassAndCheckAccess(dex::TypeIndex class_idx)
+  enum class CheckAccess {  // private.
+    kYes,
+    kNo,
+  };
+  // Resolves a class based on an index and, if C is kYes, performs access checks to ensure
+  // the referrer can access the resolved class.
+  template <CheckAccess C>
+  const RegType& ResolveClass(dex::TypeIndex class_idx)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   /*
