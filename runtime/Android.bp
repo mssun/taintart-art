@@ -400,9 +400,11 @@ cc_defaults {
     export_generated_headers: ["cpp-define-generator-asm-support"],
     clang: true,
     include_dirs: [
-        "art/cmdline",
         "art/sigchainlib",
         "art",
+    ],
+    header_libs: [
+        "art_cmdlineparser_headers",
     ],
     shared_libs: [
         "libnativehelper",
@@ -424,6 +426,8 @@ cc_defaults {
     },
     export_include_dirs: ["."],
     // ART's macros.h depends on libbase's macros.h.
+    // Note: runtime_options.h depends on cmdline. But we don't really want to export this
+    //       generically. dex2oat takes care of it itself.
     export_shared_lib_headers: ["libbase"],
 }
 
@@ -608,6 +612,9 @@ art_cc_test {
     ],
     shared_libs: [
         "libbacktrace",
+    ],
+    header_libs: [
+        "art_cmdlineparser_headers",  // For parsed_options_test.
     ],
 }
 

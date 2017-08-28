@@ -20,7 +20,7 @@
 
 namespace art {
 
-static void TestCompilerFilterName(CompilerFilter::Filter filter, std::string name) {
+static void TestCompilerFilterName(CompilerFilter::Filter filter, const std::string& name) {
   CompilerFilter::Filter parsed;
   EXPECT_TRUE(CompilerFilter::ParseCompilerFilter(name.c_str(), &parsed));
   EXPECT_EQ(filter, parsed);
@@ -28,7 +28,7 @@ static void TestCompilerFilterName(CompilerFilter::Filter filter, std::string na
   EXPECT_EQ(name, CompilerFilter::NameOfFilter(filter));
 }
 
-static void TestSafeModeFilter(CompilerFilter::Filter expected, std::string name) {
+static void TestSafeModeFilter(CompilerFilter::Filter expected, const std::string& name) {
   CompilerFilter::Filter parsed;
   EXPECT_TRUE(CompilerFilter::ParseCompilerFilter(name.c_str(), &parsed));
   EXPECT_EQ(expected, CompilerFilter::GetSafeModeFilterFrom(parsed));

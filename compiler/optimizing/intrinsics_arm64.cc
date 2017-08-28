@@ -470,6 +470,68 @@ void IntrinsicCodeGeneratorARM64::VisitIntegerBitCount(HInvoke* invoke) {
   GenBitCount(invoke, Primitive::kPrimInt, GetVIXLAssembler());
 }
 
+static void GenHighestOneBit(HInvoke* invoke, Primitive::Type type, MacroAssembler* masm) {
+  DCHECK(type == Primitive::kPrimInt || type == Primitive::kPrimLong);
+
+  UseScratchRegisterScope temps(masm);
+
+  Register src = InputRegisterAt(invoke, 0);
+  Register dst = RegisterFrom(invoke->GetLocations()->Out(), type);
+  Register temp = (type == Primitive::kPrimLong) ? temps.AcquireX() : temps.AcquireW();
+  size_t high_bit = (type == Primitive::kPrimLong) ? 63u : 31u;
+  size_t clz_high_bit = (type == Primitive::kPrimLong) ? 6u : 5u;
+
+  __ Clz(temp, src);
+  __ Mov(dst, UINT64_C(1) << high_bit);  // MOV (bitmask immediate)
+  __ Bic(dst, dst, Operand(temp, LSL, high_bit - clz_high_bit));  // Clear dst if src was 0.
+  __ Lsr(dst, dst, temp);
+}
+
+void IntrinsicLocationsBuilderARM64::VisitIntegerHighestOneBit(HInvoke* invoke) {
+  CreateIntToIntLocations(arena_, invoke);
+}
+
+void IntrinsicCodeGeneratorARM64::VisitIntegerHighestOneBit(HInvoke* invoke) {
+  GenHighestOneBit(invoke, Primitive::kPrimInt, GetVIXLAssembler());
+}
+
+void IntrinsicLocationsBuilderARM64::VisitLongHighestOneBit(HInvoke* invoke) {
+  CreateIntToIntLocations(arena_, invoke);
+}
+
+void IntrinsicCodeGeneratorARM64::VisitLongHighestOneBit(HInvoke* invoke) {
+  GenHighestOneBit(invoke, Primitive::kPrimLong, GetVIXLAssembler());
+}
+
+static void GenLowestOneBit(HInvoke* invoke, Primitive::Type type, MacroAssembler* masm) {
+  DCHECK(type == Primitive::kPrimInt || type == Primitive::kPrimLong);
+
+  UseScratchRegisterScope temps(masm);
+
+  Register src = InputRegisterAt(invoke, 0);
+  Register dst = RegisterFrom(invoke->GetLocations()->Out(), type);
+  Register temp = (type == Primitive::kPrimLong) ? temps.AcquireX() : temps.AcquireW();
+
+  __ Neg(temp, src);
+  __ And(dst, temp, src);
+}
+
+void IntrinsicLocationsBuilderARM64::VisitIntegerLowestOneBit(HInvoke* invoke) {
+  CreateIntToIntLocations(arena_, invoke);
+}
+
+void IntrinsicCodeGeneratorARM64::VisitIntegerLowestOneBit(HInvoke* invoke) {
+  GenLowestOneBit(invoke, Primitive::kPrimInt, GetVIXLAssembler());
+}
+
+void IntrinsicLocationsBuilderARM64::VisitLongLowestOneBit(HInvoke* invoke) {
+  CreateIntToIntLocations(arena_, invoke);
+}
+
+void IntrinsicCodeGeneratorARM64::VisitLongLowestOneBit(HInvoke* invoke) {
+  GenLowestOneBit(invoke, Primitive::kPrimLong, GetVIXLAssembler());
+}
+
 static void CreateFPToFPLocations(ArenaAllocator* arena, HInvoke* invoke) {
   LocationSummary* locations = new (arena) LocationSummary(invoke,
                                                            LocationSummary::kNoCall,
@@ -2993,10 +3055,6 @@ void IntrinsicCodeGeneratorARM64::VisitThreadInterrupted(HInvoke* invoke) {
 }
 
 UNIMPLEMENTED_INTRINSIC(ARM64, ReferenceGetReferent)
-UNIMPLEMENTED_INTRINSIC(ARM64, IntegerHighestOneBit)
-UNIMPLEMENTED_INTRINSIC(ARM64, LongHighestOneBit)
-UNIMPLEMENTED_INTRINSIC(ARM64, IntegerLowestOneBit)
-UNIMPLEMENTED_INTRINSIC(ARM64, LongLowestOneBit)
 
 UNIMPLEMENTED_INTRINSIC(ARM64, StringStringIndexOf);
 UNIMPLEMENTED_INTRINSIC(ARM64, StringStringIndexOfAfter);

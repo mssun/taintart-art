@@ -292,7 +292,7 @@ class DexLayoutTest : public CommonRuntimeTest {
       if (!::art::Exec(dexlayout_exec_argv, error_msg)) {
         return false;
       }
-      size_t dex_file_last_slash = dex_file.rfind("/");
+      size_t dex_file_last_slash = dex_file.rfind('/');
       std::string dex_file_name = dex_file.substr(dex_file_last_slash + 1);
       std::vector<std::string> unzip_exec_argv =
           { "/usr/bin/unzip", dex_file, "classes.dex", "-d", tmp_dir};
@@ -380,8 +380,8 @@ class DexLayoutTest : public CommonRuntimeTest {
   // Runs DexFileLayout test.
   bool DexFileLayoutExec(std::string* error_msg) {
     ScratchFile tmp_file;
-    std::string tmp_name = tmp_file.GetFilename();
-    size_t tmp_last_slash = tmp_name.rfind("/");
+    const std::string& tmp_name = tmp_file.GetFilename();
+    size_t tmp_last_slash = tmp_name.rfind('/');
     std::string tmp_dir = tmp_name.substr(0, tmp_last_slash + 1);
 
     // Write inputs and expected outputs.
@@ -415,8 +415,8 @@ class DexLayoutTest : public CommonRuntimeTest {
   // for behavior consistency.
   bool DexFileLayoutFixedPointExec(std::string* error_msg) {
     ScratchFile tmp_file;
-    std::string tmp_name = tmp_file.GetFilename();
-    size_t tmp_last_slash = tmp_name.rfind("/");
+    const std::string& tmp_name = tmp_file.GetFilename();
+    size_t tmp_last_slash = tmp_name.rfind('/');
     std::string tmp_dir = tmp_name.substr(0, tmp_last_slash + 1);
 
     // Unzip the test dex file to the classes.dex destination. It is required to unzip since
@@ -481,8 +481,8 @@ class DexLayoutTest : public CommonRuntimeTest {
   // Runs UnreferencedCatchHandlerTest & Unreferenced0SizeCatchHandlerTest.
   bool UnreferencedCatchHandlerExec(std::string* error_msg, const char* filename) {
     ScratchFile tmp_file;
-    std::string tmp_name = tmp_file.GetFilename();
-    size_t tmp_last_slash = tmp_name.rfind("/");
+    const std::string& tmp_name = tmp_file.GetFilename();
+    size_t tmp_last_slash = tmp_name.rfind('/');
     std::string tmp_dir = tmp_name.substr(0, tmp_last_slash + 1);
 
     // Write inputs and expected outputs.

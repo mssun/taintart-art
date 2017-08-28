@@ -538,8 +538,8 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
     }
   }
 
-  // Call-back when an exception is caught.
-  void ExceptionCaught(art::Thread* self ATTRIBUTE_UNUSED,
+  // Call-back when an exception is thrown.
+  void ExceptionThrown(art::Thread* self ATTRIBUTE_UNUSED,
                        art::Handle<art::mirror::Throwable> exception_object ATTRIBUTE_UNUSED)
       REQUIRES_SHARED(art::Locks::mutator_lock_) OVERRIDE {
     return;

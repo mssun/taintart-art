@@ -46,7 +46,7 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
       received_field_read_event(false),
       received_field_written_event(false),
       received_field_written_object_event(false),
-      received_exception_caught_event(false),
+      received_exception_thrown_event(false),
       received_branch_event(false),
       received_invoke_virtual_or_interface_event(false) {}
 
@@ -123,10 +123,10 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
     received_field_written_event = true;
   }
 
-  void ExceptionCaught(Thread* thread ATTRIBUTE_UNUSED,
+  void ExceptionThrown(Thread* thread ATTRIBUTE_UNUSED,
                        Handle<mirror::Throwable> exception_object ATTRIBUTE_UNUSED)
       OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
-    received_exception_caught_event = true;
+    received_exception_thrown_event = true;
   }
 
   void Branch(Thread* thread ATTRIBUTE_UNUSED,
@@ -155,7 +155,7 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
     received_field_read_event = false;
     received_field_written_event = false;
     received_field_written_object_event = false;
-    received_exception_caught_event = false;
+    received_exception_thrown_event = false;
     received_branch_event = false;
     received_invoke_virtual_or_interface_event = false;
   }
@@ -168,7 +168,7 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
   bool received_field_read_event;
   bool received_field_written_event;
   bool received_field_written_object_event;
-  bool received_exception_caught_event;
+  bool received_exception_thrown_event;
   bool received_branch_event;
   bool received_invoke_virtual_or_interface_event;
 
@@ -355,8 +355,8 @@ class InstrumentationTest : public CommonRuntimeTest {
         return instr->HasFieldReadListeners();
       case instrumentation::Instrumentation::kFieldWritten:
         return instr->HasFieldWriteListeners();
-      case instrumentation::Instrumentation::kExceptionCaught:
-        return instr->HasExceptionCaughtListeners();
+      case instrumentation::Instrumentation::kExceptionThrown:
+        return instr->HasExceptionThrownListeners();
       case instrumentation::Instrumentation::kBranch:
         return instr->HasBranchListeners();
       case instrumentation::Instrumentation::kInvokeVirtualOrInterface:
@@ -398,10 +398,10 @@ class InstrumentationTest : public CommonRuntimeTest {
         instr->FieldWriteEvent(self, obj, method, dex_pc, field, value);
         break;
       }
-      case instrumentation::Instrumentation::kExceptionCaught: {
+      case instrumentation::Instrumentation::kExceptionThrown: {
         ThrowArithmeticExceptionDivideByZero();
         mirror::Throwable* event_exception = self->GetException();
-        instr->ExceptionCaughtEvent(self, event_exception);
+        instr->ExceptionThrownEvent(self, event_exception);
         self->ClearException();
         break;
       }
@@ -435,8 +435,8 @@ class InstrumentationTest : public CommonRuntimeTest {
       case instrumentation::Instrumentation::kFieldWritten:
         return (!with_object && listener.received_field_written_event) ||
             (with_object && listener.received_field_written_object_event);
-      case instrumentation::Instrumentation::kExceptionCaught:
-        return listener.received_exception_caught_event;
+      case instrumentation::Instrumentation::kExceptionThrown:
+        return listener.received_exception_thrown_event;
       case instrumentation::Instrumentation::kBranch:
         return listener.received_branch_event;
       case instrumentation::Instrumentation::kInvokeVirtualOrInterface:
@@ -463,7 +463,7 @@ TEST_F(InstrumentationTest, NoInstrumentation) {
 
   // Check there is no registered listener.
   EXPECT_FALSE(instr->HasDexPcListeners());
-  EXPECT_FALSE(instr->HasExceptionCaughtListeners());
+  EXPECT_FALSE(instr->HasExceptionThrownListeners());
   EXPECT_FALSE(instr->HasFieldReadListeners());
   EXPECT_FALSE(instr->HasFieldWriteListeners());
   EXPECT_FALSE(instr->HasMethodEntryListeners());
@@ -563,8 +563,8 @@ TEST_F(InstrumentationTest, FieldWritePrimEvent) {
             /*with_object*/ false);
 }
 
-TEST_F(InstrumentationTest, ExceptionCaughtEvent) {
-  TestEvent(instrumentation::Instrumentation::kExceptionCaught);
+TEST_F(InstrumentationTest, ExceptionThrownEvent) {
+  TestEvent(instrumentation::Instrumentation::kExceptionThrown);
 }
 
 TEST_F(InstrumentationTest, BranchEvent) {

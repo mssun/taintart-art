@@ -28,7 +28,7 @@ namespace linker {
 class ArmBaseRelativePatcher::ThunkData {
  public:
   ThunkData(std::vector<uint8_t> code, uint32_t max_next_offset)
-      : code_(code),
+      : code_(std::move(code)),
         offsets_(),
         max_next_offset_(max_next_offset),
         pending_offset_(0u) {
