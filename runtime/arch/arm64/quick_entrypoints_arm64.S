@@ -2355,32 +2355,31 @@ END art_quick_instrumentation_entry
     .extern artInstrumentationMethodExitFromCode
 ENTRY art_quick_instrumentation_exit
     mov   xLR, #0             // Clobber LR for later checks.
+    SETUP_SAVE_EVERYTHING_FRAME
 
-    SETUP_SAVE_REFS_ONLY_FRAME
-
-    str x0, [sp, #-16]!       // Save integer result.
-    .cfi_adjust_cfa_offset 16
-    str d0, [sp, #8]          // Save floating-point result.
-
-    add   x3, sp, #8          // Pass floating-point result pointer.
-    mov   x2, sp              // Pass integer result pointer.
-    add   x1, sp, #16         // Pass SP.
+    add   x3, sp, #8          // Pass floating-point result pointer, in kSaveEverything frame.
+    add   x2, sp, #264        // Pass integer result pointer, in kSaveEverything frame.
+    mov   x1, sp              // Pass SP.
     mov   x0, xSELF           // Pass Thread.
     bl   artInstrumentationMethodExitFromCode    // (Thread*, SP, gpr_res*, fpr_res*)
 
-    mov   xIP0, x0            // Return address from instrumentation call.
-    mov   xLR, x1             // r1 is holding link register if we're to bounce to deoptimize
-
-    ldr   d0, [sp, #8]        // Restore floating-point result.
-    ldr   x0, [sp], #16       // Restore integer result, and drop stack area.
-    .cfi_adjust_cfa_offset -16
-
-    RESTORE_SAVE_REFS_ONLY_FRAME
+    cbz   x0, .Ldo_deliver_instrumentation_exception
+                              // Handle error
+    cbnz  x1, .Ldeoptimize
+    // Normal return.
+    str   x0, [sp, #FRAME_SIZE_SAVE_EVERYTHING - 8]
+                              // Set return pc.
+    RESTORE_SAVE_EVERYTHING_FRAME
     REFRESH_MARKING_REGISTER
-    cbz   xIP0, 1f            // Handle error
-    br    xIP0                // Tail-call out.
-1:
-    DELIVER_PENDING_EXCEPTION
+    br    lr
+.Ldo_deliver_instrumentation_exception:
+    DELIVER_PENDING_EXCEPTION_FRAME_READY
+.Ldeoptimize:
+    str   x1, [sp, #FRAME_SIZE_SAVE_EVERYTHING - 8]
+                              // Set return pc.
+    RESTORE_SAVE_EVERYTHING_FRAME
+    // Jump to art_quick_deoptimize.
+    b     art_quick_deoptimize
 END art_quick_instrumentation_exit
 
     /*
@@ -2389,7 +2388,7 @@ END art_quick_instrumentation_exit
      */
     .extern artDeoptimize
 ENTRY art_quick_deoptimize
-    SETUP_SAVE_ALL_CALLEE_SAVES_FRAME
+    SETUP_SAVE_EVERYTHING_FRAME
     mov    x0, xSELF          // Pass thread.
     bl     artDeoptimize      // (Thread*)
     brk 0
