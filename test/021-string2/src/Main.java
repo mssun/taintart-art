@@ -556,11 +556,23 @@ public class Main {
         Assert.assertTrue($noinline$equalsConstString0(""));
         Assert.assertFalse($noinline$equalsConstString0("1"));
 
+        Assert.assertTrue($noinline$equalsConstString3("012"));
+        Assert.assertFalse($noinline$equalsConstString3("01"));
+        Assert.assertFalse($noinline$equalsConstString3("0123"));
+        Assert.assertFalse($noinline$equalsConstString3("01x"));
+        Assert.assertFalse($noinline$equalsConstString3("01\u0440"));
+
         Assert.assertTrue($noinline$equalsConstString7("0123456"));
         Assert.assertFalse($noinline$equalsConstString7("012345"));
         Assert.assertFalse($noinline$equalsConstString7("01234567"));
         Assert.assertFalse($noinline$equalsConstString7("012345x"));
         Assert.assertFalse($noinline$equalsConstString7("012345\u0440"));
+
+        Assert.assertTrue($noinline$equalsConstString12("012345678901"));
+        Assert.assertFalse($noinline$equalsConstString12("01234567890"));
+        Assert.assertFalse($noinline$equalsConstString12("0123456789012"));
+        Assert.assertFalse($noinline$equalsConstString12("01234567890x"));
+        Assert.assertFalse($noinline$equalsConstString12("01234567890\u0440"));
 
         Assert.assertTrue($noinline$equalsConstString14("01234567890123"));
         Assert.assertFalse($noinline$equalsConstString14("0123456789012"));
@@ -587,11 +599,23 @@ public class Main {
         Assert.assertFalse(
             $noinline$equalsConstString35("0123456789012345678901234567890123\u0440"));
 
+        Assert.assertTrue($noinline$equalsConstNonAsciiString3("\u044012"));
+        Assert.assertFalse($noinline$equalsConstNonAsciiString3("\u04401"));
+        Assert.assertFalse($noinline$equalsConstNonAsciiString3("\u0440123"));
+        Assert.assertFalse($noinline$equalsConstNonAsciiString3("\u04401x"));
+        Assert.assertFalse($noinline$equalsConstNonAsciiString3("012"));
+
         Assert.assertTrue($noinline$equalsConstNonAsciiString7("\u0440123456"));
         Assert.assertFalse($noinline$equalsConstNonAsciiString7("\u044012345"));
         Assert.assertFalse($noinline$equalsConstNonAsciiString7("\u04401234567"));
         Assert.assertFalse($noinline$equalsConstNonAsciiString7("\u044012345x"));
         Assert.assertFalse($noinline$equalsConstNonAsciiString7("0123456"));
+
+        Assert.assertTrue($noinline$equalsConstNonAsciiString12("\u044012345678901"));
+        Assert.assertFalse($noinline$equalsConstNonAsciiString12("\u04401234567890"));
+        Assert.assertFalse($noinline$equalsConstNonAsciiString12("\u0440123456789012"));
+        Assert.assertFalse($noinline$equalsConstNonAsciiString12("\u04401234567890x"));
+        Assert.assertFalse($noinline$equalsConstNonAsciiString12("012345678901"));
 
         Assert.assertTrue($noinline$equalsConstNonAsciiString14("\u04401234567890123"));
         Assert.assertFalse($noinline$equalsConstNonAsciiString14("\u0440123456789012"));
@@ -631,11 +655,23 @@ public class Main {
         Assert.assertTrue($noinline$constString0Equals(""));
         Assert.assertFalse($noinline$constString0Equals("1"));
 
+        Assert.assertTrue($noinline$constString3Equals("012"));
+        Assert.assertFalse($noinline$constString3Equals("01"));
+        Assert.assertFalse($noinline$constString3Equals("0123"));
+        Assert.assertFalse($noinline$constString3Equals("01x"));
+        Assert.assertFalse($noinline$constString3Equals("01\u0440"));
+
         Assert.assertTrue($noinline$constString7Equals("0123456"));
         Assert.assertFalse($noinline$constString7Equals("012345"));
         Assert.assertFalse($noinline$constString7Equals("01234567"));
         Assert.assertFalse($noinline$constString7Equals("012345x"));
         Assert.assertFalse($noinline$constString7Equals("012345\u0440"));
+
+        Assert.assertTrue($noinline$constString12Equals("012345678901"));
+        Assert.assertFalse($noinline$constString12Equals("01234567890"));
+        Assert.assertFalse($noinline$constString12Equals("0123456789012"));
+        Assert.assertFalse($noinline$constString12Equals("01234567890x"));
+        Assert.assertFalse($noinline$constString12Equals("01234567890\u0440"));
 
         Assert.assertTrue($noinline$constString14Equals("01234567890123"));
         Assert.assertFalse($noinline$constString14Equals("0123456789012"));
@@ -662,11 +698,23 @@ public class Main {
         Assert.assertFalse(
             $noinline$constString35Equals("0123456789012345678901234567890123\u0040"));
 
+        Assert.assertTrue($noinline$constNonAsciiString3Equals("\u044012"));
+        Assert.assertFalse($noinline$constNonAsciiString3Equals("\u04401"));
+        Assert.assertFalse($noinline$constNonAsciiString3Equals("\u0440123"));
+        Assert.assertFalse($noinline$constNonAsciiString3Equals("\u04401x"));
+        Assert.assertFalse($noinline$constNonAsciiString3Equals("0123456"));
+
         Assert.assertTrue($noinline$constNonAsciiString7Equals("\u0440123456"));
         Assert.assertFalse($noinline$constNonAsciiString7Equals("\u044012345"));
         Assert.assertFalse($noinline$constNonAsciiString7Equals("\u04401234567"));
         Assert.assertFalse($noinline$constNonAsciiString7Equals("\u044012345x"));
         Assert.assertFalse($noinline$constNonAsciiString7Equals("0123456"));
+
+        Assert.assertTrue($noinline$constNonAsciiString12Equals("\u044012345678901"));
+        Assert.assertFalse($noinline$constNonAsciiString12Equals("\u04401234567890"));
+        Assert.assertFalse($noinline$constNonAsciiString12Equals("\u0440123456789012"));
+        Assert.assertFalse($noinline$constNonAsciiString12Equals("\u04401234567890x"));
+        Assert.assertFalse($noinline$constNonAsciiString12Equals("012345678901"));
 
         Assert.assertTrue($noinline$constNonAsciiString14Equals("\u04401234567890123"));
         Assert.assertFalse($noinline$constNonAsciiString14Equals("\u0440123456789012"));
@@ -708,134 +756,138 @@ public class Main {
     }
 
     public static boolean $noinline$equalsConstString0(String s) {
-        if (doThrow) { throw new Error(); }
         return s.equals("");
     }
 
+    public static boolean $noinline$equalsConstString3(String s) {
+        return s.equals("012");
+    }
+
     public static boolean $noinline$equalsConstString7(String s) {
-        if (doThrow) { throw new Error(); }
         return s.equals("0123456");
     }
 
+    public static boolean $noinline$equalsConstString12(String s) {
+        return s.equals("012345678901");
+    }
+
     public static boolean $noinline$equalsConstString14(String s) {
-        if (doThrow) { throw new Error(); }
         return s.equals("01234567890123");
     }
 
     public static boolean $noinline$equalsConstString24(String s) {
-        if (doThrow) { throw new Error(); }
         return s.equals("012345678901234567890123");
     }
 
     public static boolean $noinline$equalsConstString29(String s) {
-        if (doThrow) { throw new Error(); }
         return s.equals("01234567890123456789012345678");
     }
 
     public static boolean $noinline$equalsConstString35(String s) {
-        if (doThrow) { throw new Error(); }
         return s.equals("01234567890123456789012345678901234");
     }
 
+    public static boolean $noinline$equalsConstNonAsciiString3(String s) {
+        return s.equals("\u044012");
+    }
+
     public static boolean $noinline$equalsConstNonAsciiString7(String s) {
-        if (doThrow) { throw new Error(); }
         return s.equals("\u0440123456");
     }
 
+    public static boolean $noinline$equalsConstNonAsciiString12(String s) {
+        return s.equals("\u044012345678901");
+    }
+
     public static boolean $noinline$equalsConstNonAsciiString14(String s) {
-        if (doThrow) { throw new Error(); }
         return s.equals("\u04401234567890123");
     }
 
     public static boolean $noinline$equalsConstNonAsciiString24(String s) {
-        if (doThrow) { throw new Error(); }
         return s.equals("\u044012345678901234567890123");
     }
 
     public static boolean $noinline$equalsConstNonAsciiString29(String s) {
-        if (doThrow) { throw new Error(); }
         return s.equals("\u04401234567890123456789012345678");
     }
 
     public static boolean $noinline$equalsConstNonAsciiString35(String s) {
-        if (doThrow) { throw new Error(); }
         return s.equals("\u04401234567890123456789012345678901234");
     }
 
     public static boolean $noinline$constString0Equals(String s) {
-        if (doThrow) { throw new Error(); }
         return s.equals("");
     }
 
+    public static boolean $noinline$constString3Equals(String s) {
+        return "012".equals(s);
+    }
+
     public static boolean $noinline$constString7Equals(String s) {
-        if (doThrow) { throw new Error(); }
         return "0123456".equals(s);
     }
 
+    public static boolean $noinline$constString12Equals(String s) {
+        return "012345678901".equals(s);
+    }
+
     public static boolean $noinline$constString14Equals(String s) {
-        if (doThrow) { throw new Error(); }
         return "01234567890123".equals(s);
     }
 
     public static boolean $noinline$constString24Equals(String s) {
-        if (doThrow) { throw new Error(); }
         return "012345678901234567890123".equals(s);
     }
 
     public static boolean $noinline$constString29Equals(String s) {
-        if (doThrow) { throw new Error(); }
         return "01234567890123456789012345678".equals(s);
     }
 
     public static boolean $noinline$constString35Equals(String s) {
-        if (doThrow) { throw new Error(); }
         return "01234567890123456789012345678901234".equals(s);
     }
 
+    public static boolean $noinline$constNonAsciiString3Equals(String s) {
+        return "\u044012".equals(s);
+    }
+
     public static boolean $noinline$constNonAsciiString7Equals(String s) {
-        if (doThrow) { throw new Error(); }
         return "\u0440123456".equals(s);
     }
 
+    public static boolean $noinline$constNonAsciiString12Equals(String s) {
+        return "\u044012345678901".equals(s);
+    }
+
     public static boolean $noinline$constNonAsciiString14Equals(String s) {
-        if (doThrow) { throw new Error(); }
         return "\u04401234567890123".equals(s);
     }
 
     public static boolean $noinline$constNonAsciiString24Equals(String s) {
-        if (doThrow) { throw new Error(); }
         return "\u044012345678901234567890123".equals(s);
     }
 
     public static boolean $noinline$constNonAsciiString29Equals(String s) {
-        if (doThrow) { throw new Error(); }
         return "\u04401234567890123456789012345678".equals(s);
     }
 
     public static boolean $noinline$constNonAsciiString35Equals(String s) {
-        if (doThrow) { throw new Error(); }
         return "\u04401234567890123456789012345678901234".equals(s);
     }
 
     public static int $noinline$compareTo(String lhs, String rhs) {
-        if (doThrow) { throw new Error(); }
         return lhs.compareTo(rhs);
     }
 
     public static boolean $noinline$equals(String lhs, String rhs) {
-        if (doThrow) { throw new Error(); }
         return lhs.equals(rhs);
     }
 
     public static int $noinline$indexOf(String lhs, int ch) {
-        if (doThrow) { throw new Error(); }
         return lhs.indexOf(ch);
     }
 
     public static int $noinline$indexOf(String lhs, int ch, int fromIndex) {
-        if (doThrow) { throw new Error(); }
         return lhs.indexOf(ch, fromIndex);
     }
-
-    public static boolean doThrow = false;
 }
