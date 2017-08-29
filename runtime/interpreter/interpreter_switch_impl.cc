@@ -150,6 +150,37 @@ NO_INLINE static bool DoDexPcMoveEvent(Thread* self,
   }
 }
 
+static bool NeedsMethodExitEvent(const instrumentation::Instrumentation* ins)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  return ins->HasMethodExitListeners() || ins->HasWatchedFramePopListeners();
+}
+
+// Sends the normal method exit event. Returns true if the events succeeded and false if there is a
+// pending exception.
+NO_INLINE static bool SendMethodExitEvents(Thread* self,
+                                           const instrumentation::Instrumentation* instrumentation,
+                                           const ShadowFrame& frame,
+                                           ObjPtr<mirror::Object> thiz,
+                                           ArtMethod* method,
+                                           uint32_t dex_pc,
+                                           const JValue& result)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool had_event = false;
+  if (UNLIKELY(instrumentation->HasMethodExitListeners())) {
+    had_event = true;
+    instrumentation->MethodExitEvent(self, thiz.Ptr(), method, dex_pc, result);
+  }
+  if (UNLIKELY(frame.NeedsNotifyPop() && instrumentation->HasWatchedFramePopListeners())) {
+    had_event = true;
+    instrumentation->WatchedFramePopped(self, frame);
+  }
+  if (UNLIKELY(had_event)) {
+    return !self->IsExceptionPending();
+  } else {
+    return true;
+  }
+}
+
 template<bool do_access_check, bool transaction_active>
 JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
                          ShadowFrame& shadow_frame, JValue result_register,
@@ -262,14 +293,15 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
         JValue result;
         self->AllowThreadSuspension();
         HANDLE_MONITOR_CHECKS();
-        if (UNLIKELY(instrumentation->HasMethodExitListeners())) {
-          instrumentation->MethodExitEvent(self, shadow_frame.GetThisObject(code_item->ins_size_),
-                                           shadow_frame.GetMethod(), inst->GetDexPc(insns),
-                                           result);
-          if (UNLIKELY(self->IsExceptionPending())) {
-            // Don't send another method exit event.
-            HANDLE_PENDING_EXCEPTION_WITH_INSTRUMENTATION(nullptr);
-          }
+        if (UNLIKELY(NeedsMethodExitEvent(instrumentation) &&
+                     !SendMethodExitEvents(self,
+                                           instrumentation,
+                                           shadow_frame,
+                                           shadow_frame.GetThisObject(code_item->ins_size_),
+                                           shadow_frame.GetMethod(),
+                                           inst->GetDexPc(insns),
+                                           result))) {
+          HANDLE_PENDING_EXCEPTION_WITH_INSTRUMENTATION(nullptr);
         }
         if (interpret_one_instruction) {
           /* Signal mterp to return to caller */
@@ -283,14 +315,15 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
         JValue result;
         self->AllowThreadSuspension();
         HANDLE_MONITOR_CHECKS();
-        if (UNLIKELY(instrumentation->HasMethodExitListeners())) {
-          instrumentation->MethodExitEvent(self, shadow_frame.GetThisObject(code_item->ins_size_),
-                                           shadow_frame.GetMethod(), inst->GetDexPc(insns),
-                                           result);
-          if (UNLIKELY(self->IsExceptionPending())) {
-            // Don't send another method exit event.
-            HANDLE_PENDING_EXCEPTION_WITH_INSTRUMENTATION(nullptr);
-          }
+        if (UNLIKELY(NeedsMethodExitEvent(instrumentation) &&
+                     !SendMethodExitEvents(self,
+                                           instrumentation,
+                                           shadow_frame,
+                                           shadow_frame.GetThisObject(code_item->ins_size_),
+                                           shadow_frame.GetMethod(),
+                                           inst->GetDexPc(insns),
+                                           result))) {
+          HANDLE_PENDING_EXCEPTION_WITH_INSTRUMENTATION(nullptr);
         }
         if (interpret_one_instruction) {
           /* Signal mterp to return to caller */
@@ -305,14 +338,15 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
         result.SetI(shadow_frame.GetVReg(inst->VRegA_11x(inst_data)));
         self->AllowThreadSuspension();
         HANDLE_MONITOR_CHECKS();
-        if (UNLIKELY(instrumentation->HasMethodExitListeners())) {
-          instrumentation->MethodExitEvent(self, shadow_frame.GetThisObject(code_item->ins_size_),
-                                           shadow_frame.GetMethod(), inst->GetDexPc(insns),
-                                           result);
-          if (UNLIKELY(self->IsExceptionPending())) {
-            // Don't send another method exit event.
-            HANDLE_PENDING_EXCEPTION_WITH_INSTRUMENTATION(nullptr);
-          }
+        if (UNLIKELY(NeedsMethodExitEvent(instrumentation) &&
+                     !SendMethodExitEvents(self,
+                                           instrumentation,
+                                           shadow_frame,
+                                           shadow_frame.GetThisObject(code_item->ins_size_),
+                                           shadow_frame.GetMethod(),
+                                           inst->GetDexPc(insns),
+                                           result))) {
+          HANDLE_PENDING_EXCEPTION_WITH_INSTRUMENTATION(nullptr);
         }
         if (interpret_one_instruction) {
           /* Signal mterp to return to caller */
@@ -326,14 +360,15 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
         result.SetJ(shadow_frame.GetVRegLong(inst->VRegA_11x(inst_data)));
         self->AllowThreadSuspension();
         HANDLE_MONITOR_CHECKS();
-        if (UNLIKELY(instrumentation->HasMethodExitListeners())) {
-          instrumentation->MethodExitEvent(self, shadow_frame.GetThisObject(code_item->ins_size_),
-                                           shadow_frame.GetMethod(), inst->GetDexPc(insns),
-                                           result);
-          if (UNLIKELY(self->IsExceptionPending())) {
-            // Don't send another method exit event.
-            HANDLE_PENDING_EXCEPTION_WITH_INSTRUMENTATION(nullptr);
-          }
+        if (UNLIKELY(NeedsMethodExitEvent(instrumentation) &&
+                     !SendMethodExitEvents(self,
+                                           instrumentation,
+                                           shadow_frame,
+                                           shadow_frame.GetThisObject(code_item->ins_size_),
+                                           shadow_frame.GetMethod(),
+                                           inst->GetDexPc(insns),
+                                           result))) {
+          HANDLE_PENDING_EXCEPTION_WITH_INSTRUMENTATION(nullptr);
         }
         if (interpret_one_instruction) {
           /* Signal mterp to return to caller */
@@ -367,17 +402,18 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
           }
         }
         result.SetL(obj_result);
-        if (UNLIKELY(instrumentation->HasMethodExitListeners())) {
-          instrumentation->MethodExitEvent(self, shadow_frame.GetThisObject(code_item->ins_size_),
-                                           shadow_frame.GetMethod(), inst->GetDexPc(insns),
-                                           result);
-          if (UNLIKELY(self->IsExceptionPending())) {
-            // Don't send another method exit event.
-            HANDLE_PENDING_EXCEPTION_WITH_INSTRUMENTATION(nullptr);
-          }
-          // Re-load since it might have moved during the MethodExitEvent.
-          result.SetL(shadow_frame.GetVRegReference(ref_idx));
+        if (UNLIKELY(NeedsMethodExitEvent(instrumentation) &&
+                     !SendMethodExitEvents(self,
+                                           instrumentation,
+                                           shadow_frame,
+                                           shadow_frame.GetThisObject(code_item->ins_size_),
+                                           shadow_frame.GetMethod(),
+                                           inst->GetDexPc(insns),
+                                           result))) {
+          HANDLE_PENDING_EXCEPTION_WITH_INSTRUMENTATION(nullptr);
         }
+        // Re-load since it might have moved during the MethodExitEvent.
+        result.SetL(shadow_frame.GetVRegReference(ref_idx));
         if (interpret_one_instruction) {
           /* Signal mterp to return to caller */
           shadow_frame.SetDexPC(DexFile::kDexNoIndex);

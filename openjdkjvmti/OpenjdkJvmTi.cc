@@ -318,12 +318,10 @@ class JvmtiFunctions {
     return StackUtil::GetFrameLocation(env, thread, depth, method_ptr, location_ptr);
   }
 
-  static jvmtiError NotifyFramePop(jvmtiEnv* env,
-                                   jthread thread ATTRIBUTE_UNUSED,
-                                   jint depth ATTRIBUTE_UNUSED) {
+  static jvmtiError NotifyFramePop(jvmtiEnv* env, jthread thread, jint depth) {
     ENSURE_VALID_ENV(env);
     ENSURE_HAS_CAP(env, can_generate_frame_pop_events);
-    return ERR(NOT_IMPLEMENTED);
+    return StackUtil::NotifyFramePop(env, thread, depth);
   }
 
   static jvmtiError ForceEarlyReturnObject(jvmtiEnv* env,
