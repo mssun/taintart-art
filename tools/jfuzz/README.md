@@ -48,6 +48,7 @@ How to start JFuzz testing
                           [--report_script=SCRIPT]
                           [--jfuzz_arg=ARG]
                           [--true_divergence]
+                          [--use_dx]
 
 where
 
@@ -63,6 +64,7 @@ where
     --report_script   : path to script called for each divergence
     --jfuzz_arg       : argument for jfuzz
     --true_divergence : don't bisect timeout divergences
+    --use_dx          : use dx (rather than jack)
 
 How to start JFuzz nightly testing
 ==================================
@@ -83,12 +85,14 @@ How to start J/DexFuzz testing (multi-layered)
                           [--num_tests=NUM_TESTS]
                           [--num_inputs=NUM_INPUTS]
                           [--device=DEVICE]
+                          [--use_dx]
 
 where
 
     --num_tests : number of tests to run (10000 by default)
     --num_inputs: number of JFuzz programs to generate
     --device    : target device serial number (passed to adb -s)
+    --use_dx    : use dx (rather than jack)
 
 Background
 ==========
