@@ -566,14 +566,6 @@ void IntrinsicCodeGeneratorARM64::VisitMathAbsFloat(HInvoke* invoke) {
   MathAbsFP(invoke->GetLocations(), /* is64bit */ false, GetVIXLAssembler());
 }
 
-static void CreateIntToInt(ArenaAllocator* arena, HInvoke* invoke) {
-  LocationSummary* locations = new (arena) LocationSummary(invoke,
-                                                           LocationSummary::kNoCall,
-                                                           kIntrinsified);
-  locations->SetInAt(0, Location::RequiresRegister());
-  locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
-}
-
 static void GenAbsInteger(LocationSummary* locations,
                           bool is64bit,
                           MacroAssembler* masm) {
@@ -588,7 +580,7 @@ static void GenAbsInteger(LocationSummary* locations,
 }
 
 void IntrinsicLocationsBuilderARM64::VisitMathAbsInt(HInvoke* invoke) {
-  CreateIntToInt(arena_, invoke);
+  CreateIntToIntLocations(arena_, invoke);
 }
 
 void IntrinsicCodeGeneratorARM64::VisitMathAbsInt(HInvoke* invoke) {
@@ -596,7 +588,7 @@ void IntrinsicCodeGeneratorARM64::VisitMathAbsInt(HInvoke* invoke) {
 }
 
 void IntrinsicLocationsBuilderARM64::VisitMathAbsLong(HInvoke* invoke) {
-  CreateIntToInt(arena_, invoke);
+  CreateIntToIntLocations(arena_, invoke);
 }
 
 void IntrinsicCodeGeneratorARM64::VisitMathAbsLong(HInvoke* invoke) {
