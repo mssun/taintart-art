@@ -216,6 +216,18 @@
                         "suppressed when tracing."]
     },
     {
+        "tests": "597-deopt-busy-loop",
+        "variant": "interp-ac | interpreter | trace | stream",
+        "description": ["This test expects JIT compilation, which is",
+                        "suppressed when tracing."]
+    },
+    {
+        "tests": "597-deopt-invoke-stub",
+        "variant": "interp-ac | interpreter | optimizing | trace | stream",
+        "description": ["This test expects JIT compilation and no AOT for",
+                        "testing deoptimizing at quick-to-interpreter bridge."]
+    },
+    {
         "tests": "137-cfi",
         "description": ["CFI unwinding expects managed frames, and the test",
                         "does not iterate enough to even compile. JIT also",

@@ -529,6 +529,34 @@ void ArtInterpreterToCompiledCodeBridge(Thread* self,
                                         uint16_t arg_offset,
                                         JValue* result);
 
+static inline bool IsStringInit(const DexFile* dex_file, uint32_t method_idx)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  const DexFile::MethodId& method_id = dex_file->GetMethodId(method_idx);
+  const char* class_name = dex_file->StringByTypeIdx(method_id.class_idx_);
+  const char* method_name = dex_file->GetMethodName(method_id);
+  // Instead of calling ResolveMethod() which has suspend point and can trigger
+  // GC, look up the method symbolically.
+  // Compare method's class name and method name against string init.
+  // It's ok since it's not allowed to create your own java/lang/String.
+  // TODO: verify that assumption.
+  if ((strcmp(class_name, "Ljava/lang/String;") == 0) &&
+      (strcmp(method_name, "<init>") == 0)) {
+    return true;
+  }
+  return false;
+}
+
+static inline bool IsStringInit(const Instruction* instr, ArtMethod* caller)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  if (instr->Opcode() == Instruction::INVOKE_DIRECT ||
+      instr->Opcode() == Instruction::INVOKE_DIRECT_RANGE) {
+    uint16_t callee_method_idx = (instr->Opcode() == Instruction::INVOKE_DIRECT_RANGE) ?
+        instr->VRegB_3rc() : instr->VRegB_35c();
+    return IsStringInit(caller->GetDexFile(), callee_method_idx);
+  }
+  return false;
+}
+
 // Set string value created from StringFactory.newStringFromXXX() into all aliases of
 // StringFactory.newEmptyString().
 void SetStringInitValueToAllAliases(ShadowFrame* shadow_frame,
