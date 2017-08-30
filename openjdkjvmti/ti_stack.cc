@@ -37,6 +37,7 @@
 #include <vector>
 
 #include "art_field-inl.h"
+#include "art_method-inl.h"
 #include "art_jvmti.h"
 #include "art_method-inl.h"
 #include "barrier.h"
@@ -54,6 +55,7 @@
 #include "nativehelper/ScopedLocalRef.h"
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
+#include "ti_thread.h"
 #include "thread-current-inl.h"
 #include "thread_list.h"
 #include "thread_pool.h"
@@ -989,6 +991,76 @@ jvmtiError StackUtil::GetOwnedMonitorInfo(jvmtiEnv* env,
     return OK;
   };
   return GetOwnedMonitorInfoCommon(thread, handle_fun);
+}
+
+jvmtiError StackUtil::NotifyFramePop(jvmtiEnv* env, jthread thread, jint depth) {
+  if (depth < 0) {
+    return ERR(ILLEGAL_ARGUMENT);
+  }
+  ArtJvmTiEnv* tienv = ArtJvmTiEnv::AsArtJvmTiEnv(env);
+  art::Thread* self = art::Thread::Current();
+  art::Thread* target;
+  do {
+    ThreadUtil::SuspendCheck(self);
+    art::MutexLock ucsl_mu(self, *art::Locks::user_code_suspension_lock_);
+    // Make sure we won't be suspended in the middle of holding the thread_suspend_count_lock_ by a
+    // user-code suspension. We retry and do another SuspendCheck to clear this.
+    if (ThreadUtil::WouldSuspendForUserCodeLocked(self)) {
+      continue;
+    }
+    // From now on we know we cannot get suspended by user-code.
+    // NB This does a SuspendCheck (during thread state change) so we need to make sure we don't
+    // have the 'suspend_lock' locked here.
+    art::ScopedObjectAccess soa(self);
+    art::MutexLock tll_mu(self, *art::Locks::thread_list_lock_);
+    target = ThreadUtil::GetNativeThread(thread, soa);
+    if (target == nullptr) {
+      return ERR(THREAD_NOT_ALIVE);
+    } else if (target != self) {
+      // TODO This is part of the spec but we could easily avoid needing to do it. We would just put
+      // all the logic into a sync-checkpoint.
+      art::MutexLock tscl_mu(self, *art::Locks::thread_suspend_count_lock_);
+      if (target->GetUserCodeSuspendCount() == 0) {
+        return ERR(THREAD_NOT_SUSPENDED);
+      }
+    }
+    // We hold the user_code_suspension_lock_ so the target thread is staying suspended until we are
+    // done (unless it's 'self' in which case we don't care since we aren't going to be returning).
+    // TODO We could implement this using a synchronous checkpoint and not bother with any of the
+    // suspension stuff. The spec does specifically say to return THREAD_NOT_SUSPENDED though.
+    // Find the requested stack frame.
+    std::unique_ptr<art::Context> context(art::Context::Create());
+    FindFrameAtDepthVisitor visitor(target, context.get(), depth);
+    visitor.WalkStack();
+    if (!visitor.FoundFrame()) {
+      return ERR(NO_MORE_FRAMES);
+    }
+    art::ArtMethod* method = visitor.GetMethod();
+    if (method->IsNative()) {
+      return ERR(OPAQUE_FRAME);
+    }
+    // From here we are sure to succeed.
+    bool needs_instrument = false;
+    // Get/create a shadow frame
+    art::ShadowFrame* shadow_frame = visitor.GetCurrentShadowFrame();
+    if (shadow_frame == nullptr) {
+      needs_instrument = true;
+      const size_t frame_id = visitor.GetFrameId();
+      const uint16_t num_regs = method->GetCodeItem()->registers_size_;
+      shadow_frame = target->FindOrCreateDebuggerShadowFrame(frame_id,
+                                                             num_regs,
+                                                             method,
+                                                             visitor.GetDexPc());
+    }
+    // Mark shadow frame as needs_notify_pop_
+    shadow_frame->SetNotifyPop(true);
+    tienv->notify_frames.insert(shadow_frame);
+    // Make sure can we will go to the interpreter and use the shadow frames.
+    if (needs_instrument) {
+      art::Runtime::Current()->GetInstrumentation()->InstrumentThreadStack(target);
+    }
+    return OK;
+  } while (true);
 }
 
 }  // namespace openjdkjvmti
