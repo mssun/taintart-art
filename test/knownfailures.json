@@ -681,16 +681,6 @@
         "env_vars": {"SANITIZE_HOST": "address"}
     },
     {
-        "tests": [
-            "1923-frame-pop",
-            "1924-frame-pop-toggle"
-        ],
-        "description": "ASAN seems to make these tests overflow their stacks.",
-        "variant": "64",
-        "bug": "b/65189092",
-        "env_vars": {"SANITIZE_HOST": "address"}
-    },
-    {
         "tests": ["988-method-trace"],
         "variant": "redefine-stress | jvmti-stress",
         "description": "Test disabled due to redefine-stress disabling intrinsics which changes the trace output slightly."
