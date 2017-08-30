@@ -58,3 +58,5 @@ EXCEPTION OCCURED: java.lang.IncompatibleClassChangeError: Conflicting default m
 hi-lambda: λ
 hi-default δλ
 hi-default δλ
+Clinit Lookup: ClassWithoutClinit: <NSME Exception>
+Clinit Lookup: ClassWithClinit: Main$ClassWithClinit()(Class: class java.lang.reflect.Constructor)
