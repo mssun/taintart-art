@@ -387,6 +387,23 @@ TEST_F(ProfileCompilationInfoTest, MergeFail) {
   ASSERT_FALSE(info1.MergeWith(info2));
 }
 
+
+TEST_F(ProfileCompilationInfoTest, MergeFdFail) {
+  ScratchFile profile;
+
+  ProfileCompilationInfo info1;
+  ASSERT_TRUE(AddMethod("dex_location", /* checksum */ 1, /* method_idx */ 1, &info1));
+  // Use the same file, change the checksum.
+  ProfileCompilationInfo info2;
+  ASSERT_TRUE(AddMethod("dex_location", /* checksum */ 2, /* method_idx */ 2, &info2));
+
+  ASSERT_TRUE(info1.Save(profile.GetFd()));
+  ASSERT_EQ(0, profile.GetFile()->Flush());
+  ASSERT_TRUE(profile.GetFile()->ResetOffset());
+
+  ASSERT_FALSE(info2.Load(profile.GetFd()));
+}
+
 TEST_F(ProfileCompilationInfoTest, SaveMaxMethods) {
   ScratchFile profile;
 
@@ -831,29 +848,6 @@ TEST_F(ProfileCompilationInfoTest, MissingTypesInlineCachesMerge) {
   ASSERT_TRUE(info_no_inline_cache.MergeWith(info_megamorphic));
   ScratchFile profile;
   ASSERT_TRUE(info_no_inline_cache.Save(GetFd(profile)));
-}
-
-TEST_F(ProfileCompilationInfoTest, LoadShouldClearExistingDataFromProfiles) {
-  ScratchFile profile;
-
-  ProfileCompilationInfo saved_info;
-  // Save a few methods.
-  for (uint16_t i = 0; i < 10; i++) {
-    ASSERT_TRUE(AddMethod("dex_location1", /* checksum */ 1, /* method_idx */ i, &saved_info));
-  }
-  ASSERT_TRUE(saved_info.Save(GetFd(profile)));
-  ASSERT_EQ(0, profile.GetFile()->Flush());
-  ASSERT_TRUE(profile.GetFile()->ResetOffset());
-
-  // Add a bunch of methods to test_info.
-  ProfileCompilationInfo test_info;
-  for (uint16_t i = 0; i < 10; i++) {
-    ASSERT_TRUE(AddMethod("dex_location2", /* checksum */ 2, /* method_idx */ i, &test_info));
-  }
-
-  // Attempt to load the saved profile into test_info.
-  // This should fail since the test_info already contains data and the load would overwrite it.
-  ASSERT_FALSE(test_info.Load(GetFd(profile)));
 }
 
 TEST_F(ProfileCompilationInfoTest, SampledMethodsTest) {
