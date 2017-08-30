@@ -538,6 +538,20 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
     }
   }
 
+  void WatchedFramePop(art::Thread* self, const art::ShadowFrame& frame)
+      REQUIRES_SHARED(art::Locks::mutator_lock_) OVERRIDE {
+    if (event_handler_->IsEventEnabledAnywhere(ArtJvmtiEvent::kFramePop)) {
+      art::JNIEnvExt* jnienv = self->GetJniEnv();
+      jboolean is_exception_pending = self->IsExceptionPending();
+      RunEventCallback<ArtJvmtiEvent::kFramePop>(
+          self,
+          jnienv,
+          art::jni::EncodeArtMethod(frame.GetMethod()),
+          is_exception_pending,
+          &frame);
+    }
+  }
+
   // Call-back when an exception is thrown.
   void ExceptionThrown(art::Thread* self ATTRIBUTE_UNUSED,
                        art::Handle<art::mirror::Throwable> exception_object ATTRIBUTE_UNUSED)
@@ -582,6 +596,8 @@ static uint32_t GetInstrumentationEventsFor(ArtJvmtiEvent event) {
     case ArtJvmtiEvent::kBreakpoint:
     case ArtJvmtiEvent::kSingleStep:
       return art::instrumentation::Instrumentation::kDexPcMoved;
+    case ArtJvmtiEvent::kFramePop:
+      return art::instrumentation::Instrumentation::kWatchedFramePop;
     default:
       LOG(FATAL) << "Unknown event ";
       return 0;
@@ -648,6 +664,15 @@ void EventHandler::HandleEventType(ArtJvmtiEvent event, bool enable) {
       }
       return;
     }
+    // FramePop can never be disabled once it's been turned on since we would either need to deal
+    // with dangling pointers or have missed events.
+    case ArtJvmtiEvent::kFramePop:
+      if (!enable || (enable && frame_pop_enabled)) {
+        break;
+      } else {
+        SetupTraceListener(method_trace_listener_.get(), event, enable);
+        break;
+      }
     case ArtJvmtiEvent::kMethodEntry:
     case ArtJvmtiEvent::kMethodExit:
     case ArtJvmtiEvent::kFieldAccess:

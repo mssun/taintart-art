@@ -361,6 +361,14 @@ class ShadowFrame {
     return result_register_;
   }
 
+  bool NeedsNotifyPop() const {
+    return needs_notify_pop_;
+  }
+
+  void SetNotifyPop(bool notify) {
+    needs_notify_pop_ = notify;
+  }
+
  private:
   ShadowFrame(uint32_t num_vregs, ShadowFrame* link, ArtMethod* method,
               uint32_t dex_pc, bool has_reference_array)
@@ -372,7 +380,8 @@ class ShadowFrame {
         number_of_vregs_(num_vregs),
         dex_pc_(dex_pc),
         cached_hotness_countdown_(0),
-        hotness_countdown_(0) {
+        hotness_countdown_(0),
+        needs_notify_pop_(0) {
     // TODO(iam): Remove this parameter, it's an an artifact of portable removal
     DCHECK(has_reference_array);
     if (has_reference_array) {
@@ -404,6 +413,9 @@ class ShadowFrame {
   uint32_t dex_pc_;
   int16_t cached_hotness_countdown_;
   int16_t hotness_countdown_;
+  // TODO Might be worth it to try to bit-pack this into some other field to reduce stack usage.
+  // NB alignment requires that this field takes 4 bytes. Only 1 bit is actually ever used.
+  bool needs_notify_pop_;
 
   // This is a two-part array:
   //  - [0..number_of_vregs) holds the raw virtual registers, and each element here is always 4
