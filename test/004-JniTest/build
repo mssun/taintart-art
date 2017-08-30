@@ -38,4 +38,30 @@ function javac_wrapper {
 export -f javac_wrapper
 export JAVAC=javac_wrapper
 
+######################################################################
+
+# Use the original dx with no extra magic or pessimizing flags.
+# This ensures that any default optimizations that dx do would not break JNI.
+
+export ORIGINAL_DX="$DX"
+
+# Filter out --debug flag from dx.
+function dx_wrapper {
+  local args=("$@")
+  local args_filtered=()
+  for i in "${args[@]}"; do
+    case "$i" in
+      --debug)
+        ;;
+      *)
+        args_filtered+=("$i")
+        ;;
+    esac
+  done
+  "$ORIGINAL_DX" "${args_filtered[@]}"
+}
+
+export -f dx_wrapper
+export DX=dx_wrapper
+
 ./default-build "$@"

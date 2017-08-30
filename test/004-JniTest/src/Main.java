@@ -56,6 +56,8 @@ public class Main {
         registerNativesJniTest();
         testFastNativeMethods();
         testCriticalNativeMethods();
+
+        testClinitMethodLookup();
     }
 
     private static native boolean registerNativesJniTest();
@@ -314,6 +316,36 @@ public class Main {
     }
 
     private static native boolean isSlowDebug();
+
+    private static void testClinitMethodLookup() {
+      // Expect this to print <NSME Exception>
+      try {
+        System.out.println("Clinit Lookup: ClassWithoutClinit: " + methodString(lookupClinit(ClassWithoutClinit.class)));
+      } catch (NoSuchMethodError e) {
+        System.out.println("Clinit Lookup: ClassWithoutClinit: <NSME Exception>");
+      }
+      // Expect this to print <clinit>
+      try {
+        System.out.println("Clinit Lookup: ClassWithClinit: " + methodString(lookupClinit(ClassWithClinit.class)));
+      } catch (NoSuchMethodError e) {
+        System.out.println("Clinit Lookup: ClassWithClinit: <NSME Exception>");
+      }
+   }
+
+    private static String methodString(java.lang.reflect.Executable method) {
+      if (method == null) {
+        return "<<null>>";
+      } else {
+        return method.toString() + "(Class: " + method.getClass().toString() + ")";
+      }
+    }
+    private static native java.lang.reflect.Executable lookupClinit(Class kls);
+
+    private static class ClassWithoutClinit {
+    }
+    private static class ClassWithClinit {
+      static {}
+    }
 }
 
 @FunctionalInterface
