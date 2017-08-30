@@ -184,7 +184,6 @@ class Redefiner {
         REQUIRES(art::Locks::mutator_lock_);
 
     void UpdateMethods(art::ObjPtr<art::mirror::Class> mclass,
-                       art::ObjPtr<art::mirror::DexCache> new_dex_cache,
                        const art::DexFile::ClassDef& class_def)
         REQUIRES(art::Locks::mutator_lock_);
 
