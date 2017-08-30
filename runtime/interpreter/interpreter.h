@@ -30,7 +30,6 @@ class ArtMethod;
 union JValue;
 class ShadowFrame;
 class Thread;
-enum class DeoptimizationMethodType;
 
 namespace interpreter {
 
@@ -45,11 +44,8 @@ extern void EnterInterpreterFromInvoke(Thread* self, ArtMethod* method,
     REQUIRES_SHARED(Locks::mutator_lock_);
 
 // 'from_code' denotes whether the deoptimization was explicitly triggered by compiled code.
-extern void EnterInterpreterFromDeoptimize(Thread* self,
-                                           ShadowFrame* shadow_frame,
-                                           JValue* ret_val,
-                                           bool from_code,
-                                           DeoptimizationMethodType method_type)
+extern void EnterInterpreterFromDeoptimize(Thread* self, ShadowFrame* shadow_frame, bool from_code,
+                                           JValue* ret_val)
     REQUIRES_SHARED(Locks::mutator_lock_);
 
 extern JValue EnterInterpreterFromEntryPoint(Thread* self, const DexFile::CodeItem* code_item,
