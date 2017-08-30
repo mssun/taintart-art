@@ -27,9 +27,97 @@ namespace x86 {
 
 void LocationsBuilderX86::VisitVecReplicateScalar(HVecReplicateScalar* instruction) {
   LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
+  HInstruction* input = instruction->InputAt(0);
+  bool is_zero = IsZeroBitPattern(input);
   switch (instruction->GetPackedType()) {
     case Primitive::kPrimLong:
-      // Long needs extra temporary to load the register pair.
+      // Long needs extra temporary to load from the register pair.
+      if (!is_zero) {
+        locations->AddTemp(Location::RequiresFpuRegister());
+      }
+      FALLTHROUGH_INTENDED;
+    case Primitive::kPrimBoolean:
+    case Primitive::kPrimByte:
+    case Primitive::kPrimChar:
+    case Primitive::kPrimShort:
+    case Primitive::kPrimInt:
+      locations->SetInAt(0, is_zero ? Location::ConstantLocation(input->AsConstant())
+                                    : Location::RequiresRegister());
+      locations->SetOut(Location::RequiresFpuRegister());
+      break;
+    case Primitive::kPrimFloat:
+    case Primitive::kPrimDouble:
+      locations->SetInAt(0, is_zero ? Location::ConstantLocation(input->AsConstant())
+                                    : Location::RequiresFpuRegister());
+      locations->SetOut(Location::SameAsFirstInput());
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
+}
+
+void InstructionCodeGeneratorX86::VisitVecReplicateScalar(HVecReplicateScalar* instruction) {
+  LocationSummary* locations = instruction->GetLocations();
+  XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
+
+  // Shorthand for any type of zero.
+  if (IsZeroBitPattern(instruction->InputAt(0))) {
+    __ xorps(dst, dst);
+    return;
+  }
+
+  switch (instruction->GetPackedType()) {
+    case Primitive::kPrimBoolean:
+    case Primitive::kPrimByte:
+      DCHECK_EQ(16u, instruction->GetVectorLength());
+      __ movd(dst, locations->InAt(0).AsRegister<Register>());
+      __ punpcklbw(dst, dst);
+      __ punpcklwd(dst, dst);
+      __ pshufd(dst, dst, Immediate(0));
+      break;
+    case Primitive::kPrimChar:
+    case Primitive::kPrimShort:
+      DCHECK_EQ(8u, instruction->GetVectorLength());
+      __ movd(dst, locations->InAt(0).AsRegister<Register>());
+      __ punpcklwd(dst, dst);
+      __ pshufd(dst, dst, Immediate(0));
+      break;
+    case Primitive::kPrimInt:
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      __ movd(dst, locations->InAt(0).AsRegister<Register>());
+      __ pshufd(dst, dst, Immediate(0));
+      break;
+    case Primitive::kPrimLong: {
+      XmmRegister tmp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
+      DCHECK_EQ(2u, instruction->GetVectorLength());
+      __ movd(dst, locations->InAt(0).AsRegisterPairLow<Register>());
+      __ movd(tmp, locations->InAt(0).AsRegisterPairHigh<Register>());
+      __ punpckldq(dst, tmp);
+      __ punpcklqdq(dst, dst);
+      break;
+    }
+    case Primitive::kPrimFloat:
+      DCHECK(locations->InAt(0).Equals(locations->Out()));
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      __ shufps(dst, dst, Immediate(0));
+      break;
+    case Primitive::kPrimDouble:
+      DCHECK(locations->InAt(0).Equals(locations->Out()));
+      DCHECK_EQ(2u, instruction->GetVectorLength());
+      __ shufpd(dst, dst, Immediate(0));
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
+}
+
+void LocationsBuilderX86::VisitVecExtractScalar(HVecExtractScalar* instruction) {
+  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
+  switch (instruction->GetPackedType()) {
+    case Primitive::kPrimLong:
+      // Long needs extra temporary to store into the register pair.
       locations->AddTemp(Location::RequiresFpuRegister());
       FALLTHROUGH_INTENDED;
     case Primitive::kPrimBoolean:
@@ -37,8 +125,8 @@ void LocationsBuilderX86::VisitVecReplicateScalar(HVecReplicateScalar* instructi
     case Primitive::kPrimChar:
     case Primitive::kPrimShort:
     case Primitive::kPrimInt:
-      locations->SetInAt(0, Location::RequiresRegister());
-      locations->SetOut(Location::RequiresFpuRegister());
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetOut(Location::RequiresRegister());
       break;
     case Primitive::kPrimFloat:
     case Primitive::kPrimDouble:
@@ -51,69 +139,39 @@ void LocationsBuilderX86::VisitVecReplicateScalar(HVecReplicateScalar* instructi
   }
 }
 
-void InstructionCodeGeneratorX86::VisitVecReplicateScalar(HVecReplicateScalar* instruction) {
+void InstructionCodeGeneratorX86::VisitVecExtractScalar(HVecExtractScalar* instruction) {
   LocationSummary* locations = instruction->GetLocations();
-  XmmRegister reg = locations->Out().AsFpuRegister<XmmRegister>();
+  XmmRegister src = locations->InAt(0).AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
     case Primitive::kPrimBoolean:
     case Primitive::kPrimByte:
-      DCHECK_EQ(16u, instruction->GetVectorLength());
-      __ movd(reg, locations->InAt(0).AsRegister<Register>());
-      __ punpcklbw(reg, reg);
-      __ punpcklwd(reg, reg);
-      __ pshufd(reg, reg, Immediate(0));
-      break;
     case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-      DCHECK_EQ(8u, instruction->GetVectorLength());
-      __ movd(reg, locations->InAt(0).AsRegister<Register>());
-      __ punpcklwd(reg, reg);
-      __ pshufd(reg, reg, Immediate(0));
-      break;
+    case Primitive::kPrimShort:  // TODO: up to here, and?
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
     case Primitive::kPrimInt:
-      DCHECK_EQ(4u, instruction->GetVectorLength());
-      __ movd(reg, locations->InAt(0).AsRegister<Register>());
-      __ pshufd(reg, reg, Immediate(0));
+      DCHECK_LE(4u, instruction->GetVectorLength());
+      DCHECK_LE(instruction->GetVectorLength(), 16u);
+      __ movd(locations->Out().AsRegister<Register>(), src);
       break;
     case Primitive::kPrimLong: {
       XmmRegister tmp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      __ movd(reg, locations->InAt(0).AsRegisterPairLow<Register>());
-      __ movd(tmp, locations->InAt(0).AsRegisterPairHigh<Register>());
-      __ punpckldq(reg, tmp);
-      __ punpcklqdq(reg, reg);
+      __ movd(locations->Out().AsRegisterPairLow<Register>(), src);
+      __ pshufd(tmp, src, Immediate(1));
+      __ movd(locations->Out().AsRegisterPairHigh<Register>(), tmp);
       break;
     }
     case Primitive::kPrimFloat:
-      DCHECK(locations->InAt(0).Equals(locations->Out()));
-      DCHECK_EQ(4u, instruction->GetVectorLength());
-      __ shufps(reg, reg, Immediate(0));
-      break;
     case Primitive::kPrimDouble:
-      DCHECK(locations->InAt(0).Equals(locations->Out()));
-      DCHECK_EQ(2u, instruction->GetVectorLength());
-      __ shufpd(reg, reg, Immediate(0));
+      DCHECK_LE(2u, instruction->GetVectorLength());
+      DCHECK_LE(instruction->GetVectorLength(), 4u);
+      DCHECK(locations->InAt(0).Equals(locations->Out()));  // no code required
       break;
     default:
       LOG(FATAL) << "Unsupported SIMD type";
       UNREACHABLE();
   }
-}
-
-void LocationsBuilderX86::VisitVecSetScalars(HVecSetScalars* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
-}
-
-void InstructionCodeGeneratorX86::VisitVecSetScalars(HVecSetScalars* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
-}
-
-void LocationsBuilderX86::VisitVecSumReduce(HVecSumReduce* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
-}
-
-void InstructionCodeGeneratorX86::VisitVecSumReduce(HVecSumReduce* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
 }
 
 // Helper to set up locations for vector unary operations.
@@ -131,6 +189,73 @@ static void CreateVecUnOpLocations(ArenaAllocator* arena, HVecUnaryOperation* in
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetOut(Location::RequiresFpuRegister());
       break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
+}
+
+void LocationsBuilderX86::VisitVecReduce(HVecReduce* instruction) {
+  CreateVecUnOpLocations(GetGraph()->GetArena(), instruction);
+  // Long reduction or min/max require a temporary.
+  if (instruction->GetPackedType() == Primitive::kPrimLong ||
+      instruction->GetKind() == HVecReduce::kMin ||
+      instruction->GetKind() == HVecReduce::kMax) {
+    instruction->GetLocations()->AddTemp(Location::RequiresFpuRegister());
+  }
+}
+
+void InstructionCodeGeneratorX86::VisitVecReduce(HVecReduce* instruction) {
+  LocationSummary* locations = instruction->GetLocations();
+  XmmRegister src = locations->InAt(0).AsFpuRegister<XmmRegister>();
+  XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
+  switch (instruction->GetPackedType()) {
+    case Primitive::kPrimInt:
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      switch (instruction->GetKind()) {
+        case HVecReduce::kSum:
+          __ movaps(dst, src);
+          __ phaddd(dst, dst);
+          __ phaddd(dst, dst);
+          break;
+        case HVecReduce::kMin: {
+          XmmRegister tmp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
+          __ movaps(tmp, src);
+          __ movaps(dst, src);
+          __ psrldq(tmp, Immediate(8));
+          __ pminsd(dst, tmp);
+          __ psrldq(tmp, Immediate(4));
+          __ pminsd(dst, tmp);
+          break;
+        }
+        case HVecReduce::kMax: {
+          XmmRegister tmp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
+          __ movaps(tmp, src);
+          __ movaps(dst, src);
+          __ psrldq(tmp, Immediate(8));
+          __ pmaxsd(dst, tmp);
+          __ psrldq(tmp, Immediate(4));
+          __ pmaxsd(dst, tmp);
+          break;
+        }
+      }
+      break;
+    case Primitive::kPrimLong: {
+      DCHECK_EQ(2u, instruction->GetVectorLength());
+      XmmRegister tmp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
+      switch (instruction->GetKind()) {
+        case HVecReduce::kSum:
+          __ movaps(tmp, src);
+          __ movaps(dst, src);
+          __ punpckhqdq(tmp, tmp);
+          __ paddq(dst, tmp);
+          break;
+        case HVecReduce::kMin:
+        case HVecReduce::kMax:
+          LOG(FATAL) << "Unsupported SIMD type";
+      }
+      break;
+    }
     default:
       LOG(FATAL) << "Unsupported SIMD type";
       UNREACHABLE();
@@ -821,6 +946,91 @@ void InstructionCodeGeneratorX86::VisitVecUShr(HVecUShr* instruction) {
   }
 }
 
+void LocationsBuilderX86::VisitVecSetScalars(HVecSetScalars* instruction) {
+  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
+
+  DCHECK_EQ(1u, instruction->InputCount());  // only one input currently implemented
+
+  HInstruction* input = instruction->InputAt(0);
+  bool is_zero = IsZeroBitPattern(input);
+
+  switch (instruction->GetPackedType()) {
+    case Primitive::kPrimLong:
+      // Long needs extra temporary to load from register pairs.
+      if (!is_zero) {
+        locations->AddTemp(Location::RequiresFpuRegister());
+      }
+      FALLTHROUGH_INTENDED;
+    case Primitive::kPrimBoolean:
+    case Primitive::kPrimByte:
+    case Primitive::kPrimChar:
+    case Primitive::kPrimShort:
+    case Primitive::kPrimInt:
+      locations->SetInAt(0, is_zero ? Location::ConstantLocation(input->AsConstant())
+                                    : Location::RequiresRegister());
+      locations->SetOut(Location::RequiresFpuRegister());
+      break;
+    case Primitive::kPrimFloat:
+    case Primitive::kPrimDouble:
+      locations->SetInAt(0, is_zero ? Location::ConstantLocation(input->AsConstant())
+                                    : Location::RequiresFpuRegister());
+      locations->SetOut(Location::RequiresFpuRegister());
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
+}
+
+void InstructionCodeGeneratorX86::VisitVecSetScalars(HVecSetScalars* instruction) {
+  LocationSummary* locations = instruction->GetLocations();
+  XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
+
+  DCHECK_EQ(1u, instruction->InputCount());  // only one input currently implemented
+
+  // Zero out all other elements first.
+  __ xorps(dst, dst);
+
+  // Shorthand for any type of zero.
+  if (IsZeroBitPattern(instruction->InputAt(0))) {
+    return;
+  }
+
+  // Set required elements.
+  switch (instruction->GetPackedType()) {
+    case Primitive::kPrimBoolean:
+    case Primitive::kPrimByte:
+    case Primitive::kPrimChar:
+    case Primitive::kPrimShort:  // TODO: up to here, and?
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+    case Primitive::kPrimInt:
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      __ movd(dst, locations->InAt(0).AsRegister<Register>());
+      break;
+    case Primitive::kPrimLong: {
+      XmmRegister tmp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
+      DCHECK_EQ(2u, instruction->GetVectorLength());
+      __ xorps(tmp, tmp);
+      __ movd(dst, locations->InAt(0).AsRegisterPairLow<Register>());
+      __ movd(tmp, locations->InAt(0).AsRegisterPairHigh<Register>());
+      __ punpckldq(dst, tmp);
+      break;
+    }
+    case Primitive::kPrimFloat:
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      __ movss(dst, locations->InAt(1).AsFpuRegister<XmmRegister>());
+      break;
+    case Primitive::kPrimDouble:
+      DCHECK_EQ(2u, instruction->GetVectorLength());
+      __ movsd(dst, locations->InAt(1).AsFpuRegister<XmmRegister>());
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
+}
+
 void LocationsBuilderX86::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instr) {
   LOG(FATAL) << "No SIMD for " << instr->GetId();
 }
@@ -868,6 +1078,7 @@ static Address VecAddress(LocationSummary* locations, size_t size, bool is_strin
     case 8: scale = TIMES_8; break;
     default: break;
   }
+  // Incorporate the string or array offset in the address computation.
   uint32_t offset = is_string_char_at
       ? mirror::String::ValueOffset().Uint32Value()
       : mirror::Array::DataOffset(size).Uint32Value();
@@ -902,7 +1113,7 @@ void InstructionCodeGeneratorX86::VisitVecLoad(HVecLoad* instruction) {
         __ testb(Address(locations->InAt(0).AsRegister<Register>(), count_offset), Immediate(1));
         __ j(kNotZero, &not_compressed);
         // Zero extend 8 compressed bytes into 8 chars.
-        __ movsd(reg, VecAddress(locations, 1, /*is_string_char_at*/ true));
+        __ movsd(reg, VecAddress(locations, 1, instruction->IsStringCharAt()));
         __ pxor(tmp, tmp);
         __ punpcklbw(reg, tmp);
         __ jmp(&done);

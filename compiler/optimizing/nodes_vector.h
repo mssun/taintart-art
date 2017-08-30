@@ -63,6 +63,10 @@ class Alignment {
 // GetVectorLength() x GetPackedType() operations simultaneously.
 class HVecOperation : public HVariableInputSizeInstruction {
  public:
+  // A SIMD operation looks like a FPU location.
+  // TODO: we could introduce SIMD types in HIR.
+  static constexpr Primitive::Type kSIMDType = Primitive::kPrimDouble;
+
   HVecOperation(ArenaAllocator* arena,
                 Primitive::Type packed_type,
                 SideEffects side_effects,
@@ -89,10 +93,9 @@ class HVecOperation : public HVariableInputSizeInstruction {
     return vector_length_ * Primitive::ComponentSize(GetPackedType());
   }
 
-  // Returns the type of the vector operation: a SIMD operation looks like a FPU location.
-  // TODO: we could introduce SIMD types in HIR.
+  // Returns the type of the vector operation.
   Primitive::Type GetType() const OVERRIDE {
-    return Primitive::kPrimDouble;
+    return kSIMDType;
   }
 
   // Returns the true component type packed in a vector.
@@ -220,8 +223,11 @@ class HVecMemoryOperation : public HVecOperation {
   DISALLOW_COPY_AND_ASSIGN(HVecMemoryOperation);
 };
 
-// Packed type consistency checker (same vector length integral types may mix freely).
+// Packed type consistency checker ("same vector length" integral types may mix freely).
 inline static bool HasConsistentPackedTypes(HInstruction* input, Primitive::Type type) {
+  if (input->IsPhi()) {
+    return input->GetType() == HVecOperation::kSIMDType;  // carries SIMD
+  }
   DCHECK(input->IsVecOperation());
   Primitive::Type input_type = input->AsVecOperation()->GetPackedType();
   switch (input_type) {
@@ -265,27 +271,77 @@ class HVecReplicateScalar FINAL : public HVecUnaryOperation {
   DISALLOW_COPY_AND_ASSIGN(HVecReplicateScalar);
 };
 
-// Sum-reduces the given vector into a shorter vector (m < n) or scalar (m = 1),
-// viz. sum-reduce[ x1, .. , xn ] = [ y1, .., ym ], where yi = sum_j x_j.
-class HVecSumReduce FINAL : public HVecUnaryOperation {
-  HVecSumReduce(ArenaAllocator* arena,
-                HInstruction* input,
-                Primitive::Type packed_type,
-                size_t vector_length,
-                uint32_t dex_pc = kNoDexPc)
+// Extracts a particular scalar from the given vector,
+// viz. extract[ x1, .. , xn ] = x_i.
+//
+// TODO: for now only i == 1 case supported.
+class HVecExtractScalar FINAL : public HVecUnaryOperation {
+ public:
+  HVecExtractScalar(ArenaAllocator* arena,
+                    HInstruction* input,
+                    Primitive::Type packed_type,
+                    size_t vector_length,
+                    size_t index,
+                    uint32_t dex_pc = kNoDexPc)
       : HVecUnaryOperation(arena, input, packed_type, vector_length, dex_pc) {
+    DCHECK(HasConsistentPackedTypes(input, packed_type));
+    DCHECK_LT(index, vector_length);
+    DCHECK_EQ(index, 0u);
+  }
+
+  // Yields a single component in the vector.
+  Primitive::Type GetType() const OVERRIDE {
+    return GetPackedType();
+  }
+
+  // An extract needs to stay in place, since SIMD registers are not
+  // kept alive across vector loop boundaries (yet).
+  bool CanBeMoved() const OVERRIDE { return false; }
+
+  DECLARE_INSTRUCTION(VecExtractScalar);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(HVecExtractScalar);
+};
+
+// Reduces the given vector into the first element as sum/min/max,
+// viz. sum-reduce[ x1, .. , xn ] = [ y, ---- ], where y = sum xi
+// and the "-" denotes "don't care" (implementation dependent).
+class HVecReduce FINAL : public HVecUnaryOperation {
+ public:
+  enum ReductionKind {
+    kSum = 1,
+    kMin = 2,
+    kMax = 3
+  };
+
+  HVecReduce(ArenaAllocator* arena,
+             HInstruction* input,
+             Primitive::Type packed_type,
+             size_t vector_length,
+             ReductionKind kind,
+             uint32_t dex_pc = kNoDexPc)
+      : HVecUnaryOperation(arena, input, packed_type, vector_length, dex_pc),
+        kind_(kind) {
     DCHECK(HasConsistentPackedTypes(input, packed_type));
   }
 
-  // TODO: probably integral promotion
-  Primitive::Type GetType() const OVERRIDE { return GetPackedType(); }
+  ReductionKind GetKind() const { return kind_; }
 
   bool CanBeMoved() const OVERRIDE { return true; }
 
-  DECLARE_INSTRUCTION(VecSumReduce);
+  bool InstructionDataEquals(const HInstruction* other) const OVERRIDE {
+    DCHECK(other->IsVecReduce());
+    const HVecReduce* o = other->AsVecReduce();
+    return HVecOperation::InstructionDataEquals(o) && GetKind() == o->GetKind();
+  }
+
+  DECLARE_INSTRUCTION(VecReduce);
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(HVecSumReduce);
+  const ReductionKind kind_;
+
+  DISALLOW_COPY_AND_ASSIGN(HVecReduce);
 };
 
 // Converts every component in the vector,
@@ -754,20 +810,23 @@ class HVecUShr FINAL : public HVecBinaryOperation {
 //
 
 // Assigns the given scalar elements to a vector,
-// viz. set( array(x1, .., xn) ) = [ x1, .. , xn ].
+// viz. set( array(x1, .., xn) ) = [ x1, .. ,           xn ] if n == m,
+//      set( array(x1, .., xm) ) = [ x1, .. , xm, 0, .., 0 ] if m <  n.
 class HVecSetScalars FINAL : public HVecOperation {
+ public:
   HVecSetScalars(ArenaAllocator* arena,
                  HInstruction** scalars,  // array
                  Primitive::Type packed_type,
                  size_t vector_length,
+                 size_t number_of_scalars,
                  uint32_t dex_pc = kNoDexPc)
       : HVecOperation(arena,
                       packed_type,
                       SideEffects::None(),
-                      /* number_of_inputs */ vector_length,
+                      number_of_scalars,
                       vector_length,
                       dex_pc) {
-    for (size_t i = 0; i < vector_length; i++) {
+    for (size_t i = 0; i < number_of_scalars; i++) {
       DCHECK(!scalars[i]->IsVecOperation());
       SetRawInputAt(0, scalars[i]);
     }

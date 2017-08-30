@@ -1374,7 +1374,8 @@ class HLoopInformationOutwardIterator : public ValueObject {
   M(UShr, BinaryOperation)                                              \
   M(Xor, BinaryOperation)                                               \
   M(VecReplicateScalar, VecUnaryOperation)                              \
-  M(VecSumReduce, VecUnaryOperation)                                    \
+  M(VecExtractScalar, VecUnaryOperation)                                \
+  M(VecReduce, VecUnaryOperation)                                       \
   M(VecCnv, VecUnaryOperation)                                          \
   M(VecNeg, VecUnaryOperation)                                          \
   M(VecAbs, VecUnaryOperation)                                          \
@@ -7028,6 +7029,17 @@ inline bool IsInt64AndGet(HInstruction* instruction, /*out*/ int64_t* value) {
     return true;
   }
   return false;
+}
+
+// Returns true iff instruction is the given integral constant.
+inline bool IsInt64Value(HInstruction* instruction, int64_t value) {
+  int64_t val = 0;
+  return IsInt64AndGet(instruction, &val) && val == value;
+}
+
+// Returns true iff instruction is a zero bit pattern.
+inline bool IsZeroBitPattern(HInstruction* instruction) {
+  return instruction->IsConstant() && instruction->AsConstant()->IsZeroBitPattern();
 }
 
 #define INSTRUCTION_TYPE_CHECK(type, super)                                    \
