@@ -1787,7 +1787,14 @@ DEFINE_FUNCTION art_quick_imt_conflict_trampoline
     PUSH ESI
     PUSH EDX
     movl 16(%esp), %edi         // Load referrer.
-    movl ART_METHOD_DEX_CACHE_METHODS_OFFSET_32(%edi), %edi   // Load dex cache methods array.
+    // If the method is obsolete, just go through the dex cache miss slow path.
+    // The obsolete flag is set with suspended threads, so we do not need an acquire operation here.
+    testl LITERAL(ACC_OBSOLETE_METHOD), ART_METHOD_ACCESS_FLAGS_OFFSET(%edi)
+    jnz .Limt_conflict_trampoline_dex_cache_miss
+    movl ART_METHOD_DECLARING_CLASS_OFFSET(%edi), %edi // Load declaring class (no read barrier).
+    movl MIRROR_CLASS_DEX_CACHE_OFFSET(%edi), %edi     // Load the DexCache (without read barrier).
+    UNPOISON_HEAP_REF edi
+    movl MIRROR_DEX_CACHE_RESOLVED_METHODS_OFFSET(%edi), %edi  // Load the resolved methods.
     pushl ART_METHOD_JNI_OFFSET_32(%eax)  // Push ImtConflictTable.
     CFI_ADJUST_CFA_OFFSET(4)
     movd %xmm7, %eax            // Get target method index stored in xmm7.

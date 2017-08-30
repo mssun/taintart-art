@@ -245,11 +245,6 @@ class ClassLinkerTest : public CommonRuntimeTest {
     EXPECT_TRUE(method->GetDeclaringClass() != nullptr);
     EXPECT_TRUE(method->GetName() != nullptr);
     EXPECT_TRUE(method->GetSignature() != Signature::NoSignature());
-
-    EXPECT_TRUE(method->HasDexCacheResolvedMethods(kRuntimePointerSize));
-    EXPECT_TRUE(method->HasSameDexCacheResolvedMethods(
-        method->GetDeclaringClass()->GetDexCache()->GetResolvedMethods(),
-        kRuntimePointerSize));
   }
 
   void AssertField(ObjPtr<mirror::Class> klass, ArtField* field)

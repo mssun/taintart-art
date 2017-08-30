@@ -83,7 +83,7 @@ inline ArtMethod* GetResolvedMethod(ArtMethod* outer_method,
   ObjPtr<mirror::DexCache> dex_cache = caller->GetDexCache();
   const DexFile* dex_file = dex_cache->GetDexFile();
   const DexFile::MethodId& method_id = dex_file->GetMethodId(method_index);
-  ArtMethod* inlined_method = caller->GetDexCacheResolvedMethod(method_index, kRuntimePointerSize);
+  ArtMethod* inlined_method = dex_cache->GetResolvedMethod(method_index, kRuntimePointerSize);
   if (inlined_method != nullptr) {
     DCHECK(!inlined_method->IsRuntimeMethod());
     return inlined_method;
@@ -106,7 +106,7 @@ inline ArtMethod* GetResolvedMethod(ArtMethod* outer_method,
                << dex_file->GetMethodSignature(method_id) << " declared. "
                << "This must be due to duplicate classes or playing wrongly with class loaders";
   }
-  caller->SetDexCacheResolvedMethod(method_index, inlined_method, kRuntimePointerSize);
+  dex_cache->SetResolvedMethod(method_index, inlined_method, kRuntimePointerSize);
 
   return inlined_method;
 }

@@ -186,7 +186,8 @@ inline ArtMethod* ClassLinker::GetResolvedMethod(uint32_t method_idx, ArtMethod*
   // lookup in the context of the original method from where it steals the code.
   // However, we delay the GetInterfaceMethodIfProxy() until needed.
   DCHECK(!referrer->IsProxyMethod() || referrer->IsConstructor());
-  ArtMethod* resolved_method = referrer->GetDexCacheResolvedMethod(method_idx, image_pointer_size_);
+  ArtMethod* resolved_method = referrer->GetDexCache<kWithoutReadBarrier>()->GetResolvedMethod(
+      method_idx, image_pointer_size_);
   if (resolved_method == nullptr) {
     return nullptr;
   }
@@ -226,7 +227,8 @@ inline ArtMethod* ClassLinker::ResolveMethod(Thread* self,
   // However, we delay the GetInterfaceMethodIfProxy() until needed.
   DCHECK(!referrer->IsProxyMethod() || referrer->IsConstructor());
   Thread::PoisonObjectPointersIfDebug();
-  ArtMethod* resolved_method = referrer->GetDexCacheResolvedMethod(method_idx, image_pointer_size_);
+  ArtMethod* resolved_method = referrer->GetDexCache<kWithoutReadBarrier>()->GetResolvedMethod(
+      method_idx, image_pointer_size_);
   DCHECK(resolved_method == nullptr || !resolved_method->IsRuntimeMethod());
   if (UNLIKELY(resolved_method == nullptr)) {
     referrer = referrer->GetInterfaceMethodIfProxy(image_pointer_size_);

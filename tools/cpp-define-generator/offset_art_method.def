@@ -33,10 +33,10 @@
   DEFINE_EXPR(DECLARING_CLASS_ ## field_name ## _OFFSET, int32_t, art::mirror::Class::method_name##Offset().Int32Value())
 
 //                         New macro suffix          Method Name (of the Offset method)
-DEFINE_ART_METHOD_OFFSET_SIZED(DEX_CACHE_METHODS,    DexCacheResolvedMethods)
 DEFINE_ART_METHOD_OFFSET_SIZED(JNI,                  EntryPointFromJni)
 DEFINE_ART_METHOD_OFFSET_SIZED(QUICK_CODE,           EntryPointFromQuickCompiledCode)
 DEFINE_ART_METHOD_OFFSET(DECLARING_CLASS,            DeclaringClass)
+DEFINE_ART_METHOD_OFFSET(ACCESS_FLAGS,               AccessFlags)
 
 #undef DEFINE_ART_METHOD_OFFSET
 #undef DEFINE_ART_METHOD_OFFSET_32

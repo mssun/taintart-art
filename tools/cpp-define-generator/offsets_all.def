@@ -42,12 +42,13 @@
 // #include "offset_shadow_frame.def"
 #include "offset_codeitem.def"
 // TODO: MIRROR_OBJECT_HEADER_SIZE (depends on #ifdef read barrier)
-// TODO: MIRROR_CLASS offsets (see above)
+#include "offset_mirror_class.def"
+#include "offset_mirror_dex_cache.def"
 #include "offset_mirror_object.def"
 #include "constant_class.def"
 // TODO: MIRROR_*_ARRAY offsets (depends on header size)
 // TODO: MIRROR_STRING offsets (depends on header size)
-#include "offset_dexcache.def"
+#include "offset_art_method.def"
 #include "constant_dexcache.def"
 #include "constant_card_table.def"
 #include "constant_heap.def"

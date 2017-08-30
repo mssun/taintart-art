@@ -137,6 +137,10 @@ class ArtMethod FINAL {
     } while (!access_flags_.compare_exchange_weak(old_access_flags, new_access_flags));
   }
 
+  static MemberOffset AccessFlagsOffset() {
+    return MemberOffset(OFFSETOF_MEMBER(ArtMethod, access_flags_));
+  }
+
   // Approximate what kind of method call would be used for this method.
   InvokeType GetInvokeType() REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -356,26 +360,6 @@ class ArtMethod FINAL {
     dex_method_index_ = new_idx;
   }
 
-  ALWAYS_INLINE mirror::MethodDexCacheType* GetDexCacheResolvedMethods(PointerSize pointer_size)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-  ALWAYS_INLINE ArtMethod* GetDexCacheResolvedMethod(uint16_t method_index,
-                                                     PointerSize pointer_size)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
-  ALWAYS_INLINE void SetDexCacheResolvedMethod(uint16_t method_index,
-                                               ArtMethod* new_method,
-                                               PointerSize pointer_size)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-  ALWAYS_INLINE void SetDexCacheResolvedMethods(mirror::MethodDexCacheType* new_dex_cache_methods,
-                                                PointerSize pointer_size)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-  bool HasDexCacheResolvedMethods(PointerSize pointer_size) REQUIRES_SHARED(Locks::mutator_lock_);
-  bool HasSameDexCacheResolvedMethods(ArtMethod* other, PointerSize pointer_size)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-  bool HasSameDexCacheResolvedMethods(mirror::MethodDexCacheType* other_cache,
-                                      PointerSize pointer_size)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
   // Lookup the Class* from the type index into this method's dex cache.
   ObjPtr<mirror::Class> LookupResolvedClassFromTypeIndex(dex::TypeIndex type_idx)
       REQUIRES_SHARED(Locks::mutator_lock_);
@@ -426,12 +410,6 @@ class ArtMethod FINAL {
       REQUIRES_SHARED(Locks::mutator_lock_) WARN_UNUSED;
 
   void UnregisterNative() REQUIRES_SHARED(Locks::mutator_lock_);
-
-  static MemberOffset DexCacheResolvedMethodsOffset(PointerSize pointer_size) {
-    return MemberOffset(PtrSizedFieldsOffset(pointer_size) + OFFSETOF_MEMBER(
-        PtrSizedFields, dex_cache_resolved_methods_) / sizeof(void*)
-            * static_cast<size_t>(pointer_size));
-  }
 
   static MemberOffset DataOffset(PointerSize pointer_size) {
     return MemberOffset(PtrSizedFieldsOffset(pointer_size) + OFFSETOF_MEMBER(
@@ -686,8 +664,7 @@ class ArtMethod FINAL {
   // Update heap objects and non-entrypoint pointers by the passed in visitor for image relocation.
   // Does not use read barrier.
   template <typename Visitor>
-  ALWAYS_INLINE void UpdateObjectsForImageRelocation(const Visitor& visitor,
-                                                     PointerSize pointer_size)
+  ALWAYS_INLINE void UpdateObjectsForImageRelocation(const Visitor& visitor)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Update entry points by passing them through the visitor.
@@ -728,9 +705,6 @@ class ArtMethod FINAL {
 
   // Must be the last fields in the method.
   struct PtrSizedFields {
-    // Short cuts to declaring_class_->dex_cache_ member for fast compiled code access.
-    mirror::MethodDexCacheType* dex_cache_resolved_methods_;
-
     // Depending on the method type, the data is
     //   - native method: pointer to the JNI function registered to this method
     //                    or a function to resolve the JNI function,
