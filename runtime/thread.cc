@@ -166,13 +166,11 @@ class DeoptimizationContextRecord {
                               bool is_reference,
                               bool from_code,
                               ObjPtr<mirror::Throwable> pending_exception,
-                              DeoptimizationMethodType method_type,
                               DeoptimizationContextRecord* link)
       : ret_val_(ret_val),
         is_reference_(is_reference),
         from_code_(from_code),
         pending_exception_(pending_exception.Ptr()),
-        deopt_method_type_(method_type),
         link_(link) {}
 
   JValue GetReturnValue() const { return ret_val_; }
@@ -186,9 +184,6 @@ class DeoptimizationContextRecord {
   }
   mirror::Object** GetPendingExceptionAsGCRoot() {
     return reinterpret_cast<mirror::Object**>(&pending_exception_);
-  }
-  DeoptimizationMethodType GetDeoptimizationMethodType() const {
-    return deopt_method_type_;
   }
 
  private:
@@ -204,9 +199,6 @@ class DeoptimizationContextRecord {
   // The exception that was pending before deoptimization (or null if there was no pending
   // exception).
   mirror::Throwable* pending_exception_;
-
-  // Whether the context was created for an (idempotent) runtime method.
-  const DeoptimizationMethodType deopt_method_type_;
 
   // A link to the previous DeoptimizationContextRecord.
   DeoptimizationContextRecord* const link_;
@@ -237,30 +229,26 @@ class StackedShadowFrameRecord {
 
 void Thread::PushDeoptimizationContext(const JValue& return_value,
                                        bool is_reference,
-                                       ObjPtr<mirror::Throwable> exception,
                                        bool from_code,
-                                       DeoptimizationMethodType method_type) {
+                                       ObjPtr<mirror::Throwable> exception) {
   DeoptimizationContextRecord* record = new DeoptimizationContextRecord(
       return_value,
       is_reference,
       from_code,
       exception,
-      method_type,
       tlsPtr_.deoptimization_context_stack);
   tlsPtr_.deoptimization_context_stack = record;
 }
 
 void Thread::PopDeoptimizationContext(JValue* result,
                                       ObjPtr<mirror::Throwable>* exception,
-                                      bool* from_code,
-                                      DeoptimizationMethodType* method_type) {
+                                      bool* from_code) {
   AssertHasDeoptimizationContext();
   DeoptimizationContextRecord* record = tlsPtr_.deoptimization_context_stack;
   tlsPtr_.deoptimization_context_stack = record->GetLink();
   result->SetJ(record->GetReturnValue().GetJ());
   *exception = record->GetPendingException();
   *from_code = record->GetFromCode();
-  *method_type = record->GetDeoptimizationMethodType();
   delete record;
 }
 
@@ -3096,16 +3084,10 @@ void Thread::QuickDeliverException() {
     NthCallerVisitor visitor(this, 0, false);
     visitor.WalkStack();
     if (Runtime::Current()->IsAsyncDeoptimizeable(visitor.caller_pc)) {
-      // method_type shouldn't matter due to exception handling.
-      const DeoptimizationMethodType method_type = DeoptimizationMethodType::kDefault;
       // Save the exception into the deoptimization context so it can be restored
       // before entering the interpreter.
       PushDeoptimizationContext(
-          JValue(),
-          false /* is_reference */,
-          exception,
-          false /* from_code */,
-          method_type);
+          JValue(), /*is_reference */ false, /* from_code */ false, exception);
       artDeoptimize(this);
       UNREACHABLE();
     } else {
@@ -3665,8 +3647,7 @@ void Thread::DeoptimizeWithDeoptimizationException(JValue* result) {
       PopStackedShadowFrame(StackedShadowFrameType::kDeoptimizationShadowFrame);
   ObjPtr<mirror::Throwable> pending_exception;
   bool from_code = false;
-  DeoptimizationMethodType method_type;
-  PopDeoptimizationContext(result, &pending_exception, &from_code, &method_type);
+  PopDeoptimizationContext(result, &pending_exception, &from_code);
   SetTopOfStack(nullptr);
   SetTopOfShadowStack(shadow_frame);
 
@@ -3675,11 +3656,7 @@ void Thread::DeoptimizeWithDeoptimizationException(JValue* result) {
   if (pending_exception != nullptr) {
     SetException(pending_exception);
   }
-  interpreter::EnterInterpreterFromDeoptimize(this,
-                                              shadow_frame,
-                                              result,
-                                              from_code,
-                                              method_type);
+  interpreter::EnterInterpreterFromDeoptimize(this, shadow_frame, from_code, result);
 }
 
 void Thread::SetException(ObjPtr<mirror::Throwable> new_exception) {
