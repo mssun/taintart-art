@@ -624,7 +624,7 @@ TEST_F(VerifierDepsTest, ConstClass_Resolved) {
 }
 
 TEST_F(VerifierDepsTest, ConstClass_Unresolved) {
-  ASSERT_TRUE(VerifyMethod("ConstClass_Unresolved"));
+  ASSERT_FALSE(VerifyMethod("ConstClass_Unresolved"));
   ASSERT_TRUE(HasClass("LUnresolvedClass;", false));
 }
 
@@ -634,7 +634,7 @@ TEST_F(VerifierDepsTest, CheckCast_Resolved) {
 }
 
 TEST_F(VerifierDepsTest, CheckCast_Unresolved) {
-  ASSERT_TRUE(VerifyMethod("CheckCast_Unresolved"));
+  ASSERT_FALSE(VerifyMethod("CheckCast_Unresolved"));
   ASSERT_TRUE(HasClass("LUnresolvedClass;", false));
 }
 
@@ -644,7 +644,7 @@ TEST_F(VerifierDepsTest, InstanceOf_Resolved) {
 }
 
 TEST_F(VerifierDepsTest, InstanceOf_Unresolved) {
-  ASSERT_TRUE(VerifyMethod("InstanceOf_Unresolved"));
+  ASSERT_FALSE(VerifyMethod("InstanceOf_Unresolved"));
   ASSERT_TRUE(HasClass("LUnresolvedClass;", false));
 }
 
@@ -654,12 +654,12 @@ TEST_F(VerifierDepsTest, NewInstance_Resolved) {
 }
 
 TEST_F(VerifierDepsTest, NewInstance_Unresolved) {
-  ASSERT_TRUE(VerifyMethod("NewInstance_Unresolved"));
+  ASSERT_FALSE(VerifyMethod("NewInstance_Unresolved"));
   ASSERT_TRUE(HasClass("LUnresolvedClass;", false));
 }
 
 TEST_F(VerifierDepsTest, NewArray_Unresolved) {
-  ASSERT_TRUE(VerifyMethod("NewArray_Unresolved"));
+  ASSERT_FALSE(VerifyMethod("NewArray_Unresolved"));
   ASSERT_TRUE(HasClass("[LUnresolvedClass;", false));
 }
 

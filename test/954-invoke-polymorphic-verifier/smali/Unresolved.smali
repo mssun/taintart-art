@@ -23,7 +23,7 @@
 .line 23
   invoke-direct {p0}, Ljava/lang/Object;-><init>()V
   # Get an unresolvable instance (abstract class)
-  invoke-static {}, LAbstract;->getUnresolvedInstance()Lother/thing/Foo;
+  invoke-static {}, LUnresolved;->getUnresolvedInstance()Lother/thing/Foo;
   move-result-object v0
   const-string v1, "1"
   const-string v2, "2"
