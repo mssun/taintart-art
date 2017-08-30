@@ -34,15 +34,15 @@ public class Main {
     return x;
   }
 
-  /// CHECK-START: int Main.oneArrayAbs(int[], int) BCE (before)
+  /// CHECK-START: int Main.oneArrayAbs(int[], int[]) BCE (before)
   /// CHECK-DAG: BoundsCheck loop:<<Loop:B\d+>> outer_loop:none
   //
-  /// CHECK-START: int Main.oneArrayAbs(int[], int) BCE (after)
+  /// CHECK-START: int Main.oneArrayAbs(int[], int[]) BCE (after)
   /// CHECK-NOT: BoundsCheck
   /// CHECK-NOT: Deoptimize
-  static int oneArrayAbs(int[] a, int lo) {
+  static int oneArrayAbs(int[] a, int[] b) {
     int x = 0;
-    for (int i = Math.abs(lo); i < a.length; i++) {
+    for (int i = Math.abs(b.length); i < a.length; i++) {
       x += a[i];
     }
     return x;
@@ -221,15 +221,15 @@ public class Main {
     int[] b = { 6, 7, 8, 9, 4, 2 };
     int[] c = { 1, 2, 3 };
     int[] d = { 8, 5, 3, 2 };
+    int[] e = { };
 
     expectEquals(15, oneArray(a));
     expectEquals(36, oneArray(b));
     expectEquals(6,  oneArray(c));
     expectEquals(18, oneArray(d));
 
-    expectEquals(5,  oneArrayAbs(a, -4));
-    expectEquals(15, oneArrayAbs(a, 0));
-    expectEquals(5,  oneArrayAbs(a, 4));
+    expectEquals(15, oneArrayAbs(a, e));
+    expectEquals(5,  oneArrayAbs(a, d));
 
     expectEquals(30, twoArrays(a, a));
     expectEquals(49, twoArrays(a, b));
