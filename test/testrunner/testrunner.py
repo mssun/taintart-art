@@ -127,6 +127,7 @@ build = False
 gdb = False
 gdb_arg = ''
 stop_testrunner = False
+dex2oat_jobs = -1   # -1 corresponds to default threads for dex2oat
 
 def gather_test_info():
   """The method gathers test information about the test to be run which includes
@@ -340,6 +341,9 @@ def run_tests(tests):
     options_all += ' --gdb'
     if gdb_arg:
       options_all += ' --gdb-arg ' + gdb_arg
+
+  if dex2oat_jobs != -1:
+    options_all += ' --dex2oat-jobs ' + str(dex2oat_jobs)
 
   config = itertools.product(tests, TARGET_TYPES, RUN_TYPES, PREBUILD_TYPES,
                              COMPILER_TYPES, RELOCATE_TYPES, TRACE_TYPES,
@@ -860,6 +864,7 @@ def parse_option():
   global gdb
   global gdb_arg
   global timeout
+  global dex2oat_jobs
 
   parser = argparse.ArgumentParser(description="Runs all or a subset of the ART test suite.")
   parser.add_argument('-t', '--test', dest='test', help='name of the test')
@@ -887,6 +892,8 @@ def parse_option():
   parser.set_defaults(build = env.ART_TEST_RUN_TEST_BUILD)
   parser.add_argument('--gdb', action='store_true', dest='gdb')
   parser.add_argument('--gdb-arg', dest='gdb_arg')
+  parser.add_argument('--dex2oat-jobs', type=int, dest='dex2oat_jobs',
+                      help='Number of dex2oat jobs')
 
   options = vars(parser.parse_args())
   if options['build_target']:
@@ -987,6 +994,8 @@ def parse_option():
     if options['gdb_arg']:
       gdb_arg = options['gdb_arg']
   timeout = options['timeout']
+  if options['dex2oat_jobs']:
+    dex2oat_jobs = options['dex2oat_jobs']
 
   return test
 
