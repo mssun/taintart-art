@@ -431,6 +431,9 @@ uint32_t FindNextInstructionFollowingException(
   uint32_t found_dex_pc = shadow_frame.GetMethod()->FindCatchBlock(
       hs.NewHandle(exception->GetClass()), dex_pc, &clear_exception);
   if (found_dex_pc == DexFile::kDexNoIndex && instrumentation != nullptr) {
+    if (shadow_frame.NeedsNotifyPop()) {
+      instrumentation->WatchedFramePopped(self, shadow_frame);
+    }
     // Exception is not caught by the current method. We will unwind to the
     // caller. Notify any instrumentation listener.
     instrumentation->MethodUnwindEvent(self, shadow_frame.GetThisObject(),

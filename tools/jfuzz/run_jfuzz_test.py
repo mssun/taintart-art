@@ -606,7 +606,7 @@ def main():
   parser.add_argument('--true_divergence', default=False, action='store_true',
                       help='don\'t bisect timeout divergences')
   parser.add_argument('--use_dx', default=False, action='store_true',
-                      help='use old-style dx (rather than jack)')
+                      help='use dx (rather than jack)')
   args = parser.parse_args()
   if args.mode1 == args.mode2:
     raise FatalError('Identical execution modes given')

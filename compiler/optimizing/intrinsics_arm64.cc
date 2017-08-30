@@ -566,14 +566,6 @@ void IntrinsicCodeGeneratorARM64::VisitMathAbsFloat(HInvoke* invoke) {
   MathAbsFP(invoke->GetLocations(), /* is64bit */ false, GetVIXLAssembler());
 }
 
-static void CreateIntToInt(ArenaAllocator* arena, HInvoke* invoke) {
-  LocationSummary* locations = new (arena) LocationSummary(invoke,
-                                                           LocationSummary::kNoCall,
-                                                           kIntrinsified);
-  locations->SetInAt(0, Location::RequiresRegister());
-  locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
-}
-
 static void GenAbsInteger(LocationSummary* locations,
                           bool is64bit,
                           MacroAssembler* masm) {
@@ -588,7 +580,7 @@ static void GenAbsInteger(LocationSummary* locations,
 }
 
 void IntrinsicLocationsBuilderARM64::VisitMathAbsInt(HInvoke* invoke) {
-  CreateIntToInt(arena_, invoke);
+  CreateIntToIntLocations(arena_, invoke);
 }
 
 void IntrinsicCodeGeneratorARM64::VisitMathAbsInt(HInvoke* invoke) {
@@ -596,7 +588,7 @@ void IntrinsicCodeGeneratorARM64::VisitMathAbsInt(HInvoke* invoke) {
 }
 
 void IntrinsicLocationsBuilderARM64::VisitMathAbsLong(HInvoke* invoke) {
-  CreateIntToInt(arena_, invoke);
+  CreateIntToIntLocations(arena_, invoke);
 }
 
 void IntrinsicCodeGeneratorARM64::VisitMathAbsLong(HInvoke* invoke) {
@@ -1641,12 +1633,13 @@ void IntrinsicCodeGeneratorARM64::VisitStringEquals(HInvoke* invoke) {
   }
 
   // Assertions that must hold in order to compare strings 8 bytes at a time.
+  // Ok to do this because strings are zero-padded to kObjectAlignment.
   DCHECK_ALIGNED(value_offset, 8);
   static_assert(IsAligned<8>(kObjectAlignment), "String of odd length is not zero padded");
 
   if (const_string != nullptr &&
-      const_string_length < (is_compressed ? kShortConstStringEqualsCutoffInBytes
-                                           : kShortConstStringEqualsCutoffInBytes / 2u)) {
+      const_string_length <= (is_compressed ? kShortConstStringEqualsCutoffInBytes
+                                            : kShortConstStringEqualsCutoffInBytes / 2u)) {
     // Load and compare the contents. Though we know the contents of the short const string
     // at compile time, materializing constants may be more code than loading from memory.
     int32_t offset = value_offset;
@@ -1654,7 +1647,7 @@ void IntrinsicCodeGeneratorARM64::VisitStringEquals(HInvoke* invoke) {
         RoundUp(is_compressed ? const_string_length : const_string_length * 2u, 8u);
     temp = temp.X();
     temp1 = temp1.X();
-    while (remaining_bytes > 8u) {
+    while (remaining_bytes > sizeof(uint64_t)) {
       Register temp2 = XRegisterFrom(locations->GetTemp(0));
       __ Ldp(temp, temp1, MemOperand(str.X(), offset));
       __ Ldp(temp2, out, MemOperand(arg.X(), offset));
@@ -1690,7 +1683,6 @@ void IntrinsicCodeGeneratorARM64::VisitStringEquals(HInvoke* invoke) {
     temp1 = temp1.X();
     Register temp2 = XRegisterFrom(locations->GetTemp(0));
     // Loop to compare strings 8 bytes at a time starting at the front of the string.
-    // Ok to do this because strings are zero-padded to kObjectAlignment.
     __ Bind(&loop);
     __ Ldr(out, MemOperand(str.X(), temp1));
     __ Ldr(temp2, MemOperand(arg.X(), temp1));

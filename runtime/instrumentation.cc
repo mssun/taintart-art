@@ -106,6 +106,7 @@ Instrumentation::Instrumentation()
       have_field_read_listeners_(false),
       have_field_write_listeners_(false),
       have_exception_thrown_listeners_(false),
+      have_watched_frame_pop_listeners_(false),
       have_branch_listeners_(false),
       have_invoke_virtual_or_interface_listeners_(false),
       deoptimized_methods_lock_("deoptimized methods lock", kDeoptimizedMethodsLock),
@@ -506,6 +507,11 @@ void Instrumentation::AddListener(InstrumentationListener* listener, uint32_t ev
                            exception_thrown_listeners_,
                            listener,
                            &have_exception_thrown_listeners_);
+  PotentiallyAddListenerTo(kWatchedFramePop,
+                           events,
+                           watched_frame_pop_listeners_,
+                           listener,
+                           &have_watched_frame_pop_listeners_);
   UpdateInterpreterHandlerTable();
 }
 
@@ -583,6 +589,11 @@ void Instrumentation::RemoveListener(InstrumentationListener* listener, uint32_t
                                 exception_thrown_listeners_,
                                 listener,
                                 &have_exception_thrown_listeners_);
+  PotentiallyRemoveListenerFrom(kWatchedFramePop,
+                                events,
+                                watched_frame_pop_listeners_,
+                                listener,
+                                &have_watched_frame_pop_listeners_);
   UpdateInterpreterHandlerTable();
 }
 
@@ -1041,6 +1052,14 @@ void Instrumentation::InvokeVirtualOrInterfaceImpl(Thread* thread,
   for (InstrumentationListener* listener : invoke_virtual_or_interface_listeners_) {
     if (listener != nullptr) {
       listener->InvokeVirtualOrInterface(thread, thiz, caller, dex_pc, callee);
+    }
+  }
+}
+
+void Instrumentation::WatchedFramePopImpl(Thread* thread, const ShadowFrame& frame) const {
+  for (InstrumentationListener* listener : watched_frame_pop_listeners_) {
+    if (listener != nullptr) {
+      listener->WatchedFramePop(thread, frame);
     }
   }
 }

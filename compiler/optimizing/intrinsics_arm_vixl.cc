@@ -331,6 +331,14 @@ static void CreateIntToIntLocations(ArenaAllocator* arena, HInvoke* invoke) {
   locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
 }
 
+static void CreateIntToIntLocationsWithOverlap(ArenaAllocator* arena, HInvoke* invoke) {
+  LocationSummary* locations = new (arena) LocationSummary(invoke,
+                                                           LocationSummary::kNoCall,
+                                                           kIntrinsified);
+  locations->SetInAt(0, Location::RequiresRegister());
+  locations->SetOut(Location::RequiresRegister(), Location::kOutputOverlap);
+}
+
 static void CreateFPToFPLocations(ArenaAllocator* arena, HInvoke* invoke) {
   LocationSummary* locations = new (arena) LocationSummary(invoke,
                                                            LocationSummary::kNoCall,
@@ -1713,6 +1721,22 @@ void IntrinsicCodeGeneratorARMVIXL::VisitStringCompareTo(HInvoke* invoke) {
   }
 }
 
+// The cut off for unrolling the loop in String.equals() intrinsic for const strings.
+// The normal loop plus the pre-header is 9 instructions (18-26 bytes) without string compression
+// and 12 instructions (24-32 bytes) with string compression. We can compare up to 4 bytes in 4
+// instructions (LDR+LDR+CMP+BNE) and up to 8 bytes in 6 instructions (LDRD+LDRD+CMP+BNE+CMP+BNE).
+// Allow up to 12 instructions (32 bytes) for the unrolled loop.
+constexpr size_t kShortConstStringEqualsCutoffInBytes = 16;
+
+static const char* GetConstString(HInstruction* candidate, uint32_t* utf16_length) {
+  if (candidate->IsLoadString()) {
+    HLoadString* load_string = candidate->AsLoadString();
+    const DexFile& dex_file = load_string->GetDexFile();
+    return dex_file.StringDataAndUtf16LengthByIdx(load_string->GetStringIndex(), utf16_length);
+  }
+  return nullptr;
+}
+
 void IntrinsicLocationsBuilderARMVIXL::VisitStringEquals(HInvoke* invoke) {
   LocationSummary* locations = new (arena_) LocationSummary(invoke,
                                                             LocationSummary::kNoCall,
@@ -1720,12 +1744,29 @@ void IntrinsicLocationsBuilderARMVIXL::VisitStringEquals(HInvoke* invoke) {
   InvokeRuntimeCallingConventionARMVIXL calling_convention;
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetInAt(1, Location::RequiresRegister());
+
   // Temporary registers to store lengths of strings and for calculations.
   // Using instruction cbz requires a low register, so explicitly set a temp to be R0.
   locations->AddTemp(LocationFrom(r0));
-  locations->AddTemp(Location::RequiresRegister());
-  locations->AddTemp(Location::RequiresRegister());
 
+  // For the generic implementation and for long const strings we need an extra temporary.
+  // We do not need it for short const strings, up to 4 bytes, see code generation below.
+  uint32_t const_string_length = 0u;
+  const char* const_string = GetConstString(invoke->InputAt(0), &const_string_length);
+  if (const_string == nullptr) {
+    const_string = GetConstString(invoke->InputAt(1), &const_string_length);
+  }
+  bool is_compressed =
+      mirror::kUseStringCompression &&
+      const_string != nullptr &&
+      mirror::String::DexFileStringAllASCII(const_string, const_string_length);
+  if (const_string == nullptr || const_string_length > (is_compressed ? 4u : 2u)) {
+    locations->AddTemp(Location::RequiresRegister());
+  }
+
+  // TODO: If the String.equals() is used only for an immediately following HIf, we can
+  // mark it as emitted-at-use-site and emit branches directly to the appropriate blocks.
+  // Then we shall need an extra temporary register instead of the output register.
   locations->SetOut(Location::RequiresRegister());
 }
 
@@ -1738,8 +1779,6 @@ void IntrinsicCodeGeneratorARMVIXL::VisitStringEquals(HInvoke* invoke) {
   vixl32::Register out = OutputRegister(invoke);
 
   vixl32::Register temp = RegisterFrom(locations->GetTemp(0));
-  vixl32::Register temp1 = RegisterFrom(locations->GetTemp(1));
-  vixl32::Register temp2 = RegisterFrom(locations->GetTemp(2));
 
   vixl32::Label loop;
   vixl32::Label end;
@@ -1771,52 +1810,109 @@ void IntrinsicCodeGeneratorARMVIXL::VisitStringEquals(HInvoke* invoke) {
     // Receiver must be a string object, so its class field is equal to all strings' class fields.
     // If the argument is a string object, its class field must be equal to receiver's class field.
     __ Ldr(temp, MemOperand(str, class_offset));
-    __ Ldr(temp1, MemOperand(arg, class_offset));
-    __ Cmp(temp, temp1);
+    __ Ldr(out, MemOperand(arg, class_offset));
+    __ Cmp(temp, out);
     __ B(ne, &return_false, /* far_target */ false);
   }
 
-  // Load `count` fields of this and argument strings.
-  __ Ldr(temp, MemOperand(str, count_offset));
-  __ Ldr(temp1, MemOperand(arg, count_offset));
-  // Check if `count` fields are equal, return false if they're not.
-  // Also compares the compression style, if differs return false.
-  __ Cmp(temp, temp1);
-  __ B(ne, &return_false, /* far_target */ false);
-  // Return true if both strings are empty. Even with string compression `count == 0` means empty.
-  static_assert(static_cast<uint32_t>(mirror::StringCompressionFlag::kCompressed) == 0u,
-                "Expecting 0=compressed, 1=uncompressed");
-  __ CompareAndBranchIfZero(temp, &return_true, /* far_target */ false);
+  // Check if one of the inputs is a const string. Do not special-case both strings
+  // being const, such cases should be handled by constant folding if needed.
+  uint32_t const_string_length = 0u;
+  const char* const_string = GetConstString(invoke->InputAt(0), &const_string_length);
+  if (const_string == nullptr) {
+    const_string = GetConstString(invoke->InputAt(1), &const_string_length);
+    if (const_string != nullptr) {
+      std::swap(str, arg);  // Make sure the const string is in `str`.
+    }
+  }
+  bool is_compressed =
+      mirror::kUseStringCompression &&
+      const_string != nullptr &&
+      mirror::String::DexFileStringAllASCII(const_string, const_string_length);
+
+  if (const_string != nullptr) {
+    // Load `count` field of the argument string and check if it matches the const string.
+    // Also compares the compression style, if differs return false.
+    __ Ldr(temp, MemOperand(arg, count_offset));
+    __ Cmp(temp, Operand(mirror::String::GetFlaggedCount(const_string_length, is_compressed)));
+    __ B(ne, &return_false, /* far_target */ false);
+  } else {
+    // Load `count` fields of this and argument strings.
+    __ Ldr(temp, MemOperand(str, count_offset));
+    __ Ldr(out, MemOperand(arg, count_offset));
+    // Check if `count` fields are equal, return false if they're not.
+    // Also compares the compression style, if differs return false.
+    __ Cmp(temp, out);
+    __ B(ne, &return_false, /* far_target */ false);
+  }
 
   // Assertions that must hold in order to compare strings 4 bytes at a time.
+  // Ok to do this because strings are zero-padded to kObjectAlignment.
   DCHECK_ALIGNED(value_offset, 4);
   static_assert(IsAligned<4>(kObjectAlignment), "String data must be aligned for fast compare.");
 
-  if (mirror::kUseStringCompression) {
-    // For string compression, calculate the number of bytes to compare (not chars).
-    // This could in theory exceed INT32_MAX, so treat temp as unsigned.
-    __ Lsrs(temp, temp, 1u);                        // Extract length and check compression flag.
-    ExactAssemblyScope aas(assembler->GetVIXLAssembler(),
-                           2 * kMaxInstructionSizeInBytes,
-                           CodeBufferCheckScope::kMaximumSize);
-    __ it(cs);                                      // If uncompressed,
-    __ add(cs, temp, temp, temp);                   //   double the byte count.
+  if (const_string != nullptr &&
+      const_string_length <= (is_compressed ? kShortConstStringEqualsCutoffInBytes
+                                            : kShortConstStringEqualsCutoffInBytes / 2u)) {
+    // Load and compare the contents. Though we know the contents of the short const string
+    // at compile time, materializing constants may be more code than loading from memory.
+    int32_t offset = value_offset;
+    size_t remaining_bytes =
+        RoundUp(is_compressed ? const_string_length : const_string_length * 2u, 4u);
+    while (remaining_bytes > sizeof(uint32_t)) {
+      vixl32::Register temp1 = RegisterFrom(locations->GetTemp(1));
+      UseScratchRegisterScope scratch_scope(assembler->GetVIXLAssembler());
+      vixl32::Register temp2 = scratch_scope.Acquire();
+      __ Ldrd(temp, temp1, MemOperand(str, offset));
+      __ Ldrd(temp2, out, MemOperand(arg, offset));
+      __ Cmp(temp, temp2);
+      __ B(ne, &return_false, /* far_label */ false);
+      __ Cmp(temp1, out);
+      __ B(ne, &return_false, /* far_label */ false);
+      offset += 2u * sizeof(uint32_t);
+      remaining_bytes -= 2u * sizeof(uint32_t);
+    }
+    if (remaining_bytes != 0u) {
+      __ Ldr(temp, MemOperand(str, offset));
+      __ Ldr(out, MemOperand(arg, offset));
+      __ Cmp(temp, out);
+      __ B(ne, &return_false, /* far_label */ false);
+    }
+  } else {
+    // Return true if both strings are empty. Even with string compression `count == 0` means empty.
+    static_assert(static_cast<uint32_t>(mirror::StringCompressionFlag::kCompressed) == 0u,
+                  "Expecting 0=compressed, 1=uncompressed");
+    __ CompareAndBranchIfZero(temp, &return_true, /* far_target */ false);
+
+    if (mirror::kUseStringCompression) {
+      // For string compression, calculate the number of bytes to compare (not chars).
+      // This could in theory exceed INT32_MAX, so treat temp as unsigned.
+      __ Lsrs(temp, temp, 1u);                        // Extract length and check compression flag.
+      ExactAssemblyScope aas(assembler->GetVIXLAssembler(),
+                             2 * kMaxInstructionSizeInBytes,
+                             CodeBufferCheckScope::kMaximumSize);
+      __ it(cs);                                      // If uncompressed,
+      __ add(cs, temp, temp, temp);                   //   double the byte count.
+    }
+
+    vixl32::Register temp1 = RegisterFrom(locations->GetTemp(1));
+    UseScratchRegisterScope scratch_scope(assembler->GetVIXLAssembler());
+    vixl32::Register temp2 = scratch_scope.Acquire();
+
+    // Store offset of string value in preparation for comparison loop.
+    __ Mov(temp1, value_offset);
+
+    // Loop to compare strings 4 bytes at a time starting at the front of the string.
+    __ Bind(&loop);
+    __ Ldr(out, MemOperand(str, temp1));
+    __ Ldr(temp2, MemOperand(arg, temp1));
+    __ Add(temp1, temp1, Operand::From(sizeof(uint32_t)));
+    __ Cmp(out, temp2);
+    __ B(ne, &return_false, /* far_target */ false);
+    // With string compression, we have compared 4 bytes, otherwise 2 chars.
+    __ Subs(temp, temp, mirror::kUseStringCompression ? 4 : 2);
+    __ B(hi, &loop, /* far_target */ false);
   }
-
-  // Store offset of string value in preparation for comparison loop.
-  __ Mov(temp1, value_offset);
-
-  // Loop to compare strings 4 bytes at a time starting at the front of the string.
-  // Ok to do this because strings are zero-padded to kObjectAlignment.
-  __ Bind(&loop);
-  __ Ldr(out, MemOperand(str, temp1));
-  __ Ldr(temp2, MemOperand(arg, temp1));
-  __ Add(temp1, temp1, Operand::From(sizeof(uint32_t)));
-  __ Cmp(out, temp2);
-  __ B(ne, &return_false, /* far_target */ false);
-  // With string compression, we have compared 4 bytes, otherwise 2 chars.
-  __ Subs(temp, temp, mirror::kUseStringCompression ? 4 : 2);
-  __ B(hi, &loop, /* far_target */ false);
 
   // Return true and exit the function.
   // If loop does not result in returning false, we return true.
@@ -2827,6 +2923,137 @@ void IntrinsicCodeGeneratorARMVIXL::VisitLongBitCount(HInvoke* invoke) {
   GenBitCount(invoke, Primitive::kPrimLong, GetAssembler());
 }
 
+static void GenHighestOneBit(HInvoke* invoke,
+                             Primitive::Type type,
+                             CodeGeneratorARMVIXL* codegen) {
+  DCHECK(Primitive::IsIntOrLongType(type));
+
+  ArmVIXLAssembler* assembler = codegen->GetAssembler();
+  UseScratchRegisterScope temps(assembler->GetVIXLAssembler());
+  const vixl32::Register temp = temps.Acquire();
+
+  if (type == Primitive::kPrimLong) {
+    LocationSummary* locations = invoke->GetLocations();
+    Location in = locations->InAt(0);
+    Location out = locations->Out();
+
+    vixl32::Register in_reg_lo = LowRegisterFrom(in);
+    vixl32::Register in_reg_hi = HighRegisterFrom(in);
+    vixl32::Register out_reg_lo = LowRegisterFrom(out);
+    vixl32::Register out_reg_hi = HighRegisterFrom(out);
+
+    __ Mov(temp, 0x80000000);  // Modified immediate.
+    __ Clz(out_reg_lo, in_reg_lo);
+    __ Clz(out_reg_hi, in_reg_hi);
+    __ Lsr(out_reg_lo, temp, out_reg_lo);
+    __ Lsrs(out_reg_hi, temp, out_reg_hi);
+
+    // Discard result for lowest 32 bits if highest 32 bits are not zero.
+    // Since IT blocks longer than a 16-bit instruction are deprecated by ARMv8,
+    // we check that the output is in a low register, so that a 16-bit MOV
+    // encoding can be used. If output is in a high register, then we generate
+    // 4 more bytes of code to avoid a branch.
+    Operand mov_src(0);
+    if (!out_reg_lo.IsLow()) {
+      __ Mov(LeaveFlags, temp, 0);
+      mov_src = Operand(temp);
+    }
+    ExactAssemblyScope it_scope(codegen->GetVIXLAssembler(),
+                                  2 * vixl32::k16BitT32InstructionSizeInBytes,
+                                  CodeBufferCheckScope::kExactSize);
+    __ it(ne);
+    __ mov(ne, out_reg_lo, mov_src);
+  } else {
+    vixl32::Register out = OutputRegister(invoke);
+    vixl32::Register in = InputRegisterAt(invoke, 0);
+
+    __ Mov(temp, 0x80000000);  // Modified immediate.
+    __ Clz(out, in);
+    __ Lsr(out, temp, out);
+  }
+}
+
+void IntrinsicLocationsBuilderARMVIXL::VisitIntegerHighestOneBit(HInvoke* invoke) {
+  CreateIntToIntLocations(arena_, invoke);
+}
+
+void IntrinsicCodeGeneratorARMVIXL::VisitIntegerHighestOneBit(HInvoke* invoke) {
+  GenHighestOneBit(invoke, Primitive::kPrimInt, codegen_);
+}
+
+void IntrinsicLocationsBuilderARMVIXL::VisitLongHighestOneBit(HInvoke* invoke) {
+  CreateIntToIntLocationsWithOverlap(arena_, invoke);
+}
+
+void IntrinsicCodeGeneratorARMVIXL::VisitLongHighestOneBit(HInvoke* invoke) {
+  GenHighestOneBit(invoke, Primitive::kPrimLong, codegen_);
+}
+
+static void GenLowestOneBit(HInvoke* invoke,
+                            Primitive::Type type,
+                            CodeGeneratorARMVIXL* codegen) {
+  DCHECK(Primitive::IsIntOrLongType(type));
+
+  ArmVIXLAssembler* assembler = codegen->GetAssembler();
+  UseScratchRegisterScope temps(assembler->GetVIXLAssembler());
+  const vixl32::Register temp = temps.Acquire();
+
+  if (type == Primitive::kPrimLong) {
+    LocationSummary* locations = invoke->GetLocations();
+    Location in = locations->InAt(0);
+    Location out = locations->Out();
+
+    vixl32::Register in_reg_lo = LowRegisterFrom(in);
+    vixl32::Register in_reg_hi = HighRegisterFrom(in);
+    vixl32::Register out_reg_lo = LowRegisterFrom(out);
+    vixl32::Register out_reg_hi = HighRegisterFrom(out);
+
+    __ Rsb(out_reg_hi, in_reg_hi, 0);
+    __ Rsb(out_reg_lo, in_reg_lo, 0);
+    __ And(out_reg_hi, out_reg_hi, in_reg_hi);
+    // The result of this operation is 0 iff in_reg_lo is 0
+    __ Ands(out_reg_lo, out_reg_lo, in_reg_lo);
+
+    // Discard result for highest 32 bits if lowest 32 bits are not zero.
+    // Since IT blocks longer than a 16-bit instruction are deprecated by ARMv8,
+    // we check that the output is in a low register, so that a 16-bit MOV
+    // encoding can be used. If output is in a high register, then we generate
+    // 4 more bytes of code to avoid a branch.
+    Operand mov_src(0);
+    if (!out_reg_lo.IsLow()) {
+      __ Mov(LeaveFlags, temp, 0);
+      mov_src = Operand(temp);
+    }
+    ExactAssemblyScope it_scope(codegen->GetVIXLAssembler(),
+                                  2 * vixl32::k16BitT32InstructionSizeInBytes,
+                                  CodeBufferCheckScope::kExactSize);
+    __ it(ne);
+    __ mov(ne, out_reg_hi, mov_src);
+  } else {
+    vixl32::Register out = OutputRegister(invoke);
+    vixl32::Register in = InputRegisterAt(invoke, 0);
+
+    __ Rsb(temp, in, 0);
+    __ And(out, temp, in);
+  }
+}
+
+void IntrinsicLocationsBuilderARMVIXL::VisitIntegerLowestOneBit(HInvoke* invoke) {
+  CreateIntToIntLocations(arena_, invoke);
+}
+
+void IntrinsicCodeGeneratorARMVIXL::VisitIntegerLowestOneBit(HInvoke* invoke) {
+  GenLowestOneBit(invoke, Primitive::kPrimInt, codegen_);
+}
+
+void IntrinsicLocationsBuilderARMVIXL::VisitLongLowestOneBit(HInvoke* invoke) {
+  CreateIntToIntLocationsWithOverlap(arena_, invoke);
+}
+
+void IntrinsicCodeGeneratorARMVIXL::VisitLongLowestOneBit(HInvoke* invoke) {
+  GenLowestOneBit(invoke, Primitive::kPrimLong, codegen_);
+}
+
 void IntrinsicLocationsBuilderARMVIXL::VisitStringGetCharsNoCheck(HInvoke* invoke) {
   LocationSummary* locations = new (arena_) LocationSummary(invoke,
                                                             LocationSummary::kNoCall,
@@ -3124,10 +3351,6 @@ UNIMPLEMENTED_INTRINSIC(ARMVIXL, MathRoundDouble)   // Could be done by changing
 UNIMPLEMENTED_INTRINSIC(ARMVIXL, UnsafeCASLong)     // High register pressure.
 UNIMPLEMENTED_INTRINSIC(ARMVIXL, SystemArrayCopyChar)
 UNIMPLEMENTED_INTRINSIC(ARMVIXL, ReferenceGetReferent)
-UNIMPLEMENTED_INTRINSIC(ARMVIXL, IntegerHighestOneBit)
-UNIMPLEMENTED_INTRINSIC(ARMVIXL, LongHighestOneBit)
-UNIMPLEMENTED_INTRINSIC(ARMVIXL, IntegerLowestOneBit)
-UNIMPLEMENTED_INTRINSIC(ARMVIXL, LongLowestOneBit)
 
 UNIMPLEMENTED_INTRINSIC(ARMVIXL, StringStringIndexOf);
 UNIMPLEMENTED_INTRINSIC(ARMVIXL, StringStringIndexOfAfter);
