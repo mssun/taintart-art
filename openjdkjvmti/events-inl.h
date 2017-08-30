@@ -244,6 +244,35 @@ inline void EventHandler::DispatchEvent<ArtJvmtiEvent::kBreakpoint>(art::Thread*
   }
 }
 
+// Need to give custom specializations for FramePop since it needs to filter out which particular
+// agents get the event. This specialization gets an extra argument so we can determine which (if
+// any) environments have the frame pop.
+template <>
+inline void EventHandler::DispatchEvent<ArtJvmtiEvent::kFramePop>(
+    art::Thread* thread,
+    JNIEnv* jnienv,
+    jthread jni_thread,
+    jmethodID jmethod,
+    jboolean is_exception,
+    const art::ShadowFrame* frame) const {
+  for (ArtJvmTiEnv* env : envs) {
+    // Search for the frame. Do this before checking if we need to send the event so that we don't
+    // have to deal with use-after-free or the frames being reallocated later.
+    if (env != nullptr && env->notify_frames.erase(frame) != 0) {
+      if (ShouldDispatch<ArtJvmtiEvent::kFramePop>(env, thread)) {
+        // We temporarily clear any pending exceptions so the event can call back into java code.
+        ScopedLocalRef<jthrowable> thr(jnienv, jnienv->ExceptionOccurred());
+        jnienv->ExceptionClear();
+        auto callback = impl::GetCallback<ArtJvmtiEvent::kFramePop>(env);
+        (*callback)(env, jnienv, jni_thread, jmethod, is_exception);
+        if (thr.get() != nullptr && !jnienv->ExceptionCheck()) {
+          jnienv->Throw(thr.get());
+        }
+      }
+    }
+  }
+}
+
 // Need to give custom specializations for FieldAccess and FieldModification since they need to
 // filter out which particular fields agents want to get notified on.
 // TODO The spec allows us to do shortcuts like only allow one agent to ever set these watches. This

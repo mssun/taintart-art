@@ -52,6 +52,7 @@
 namespace art {
 class ArtField;
 class ArtMethod;
+class ShadowFrame;
 }  // namespace art
 
 namespace openjdkjvmti {
@@ -81,6 +82,7 @@ struct ArtJvmTiEnv : public jvmtiEnv {
 
   // Set of breakpoints is unique to each jvmtiEnv.
   std::unordered_set<Breakpoint> breakpoints;
+  std::unordered_set<const art::ShadowFrame*> notify_frames;
 
   ArtJvmTiEnv(art::JavaVMExt* runtime, EventHandler* event_handler);
 
@@ -235,7 +237,7 @@ const jvmtiCapabilities kPotentialCapabilities = {
     .can_maintain_original_method_order              = 1,
     .can_generate_single_step_events                 = 1,
     .can_generate_exception_events                   = 0,
-    .can_generate_frame_pop_events                   = 0,
+    .can_generate_frame_pop_events                   = 1,
     .can_generate_breakpoint_events                  = 1,
     .can_suspend                                     = 1,
     .can_redefine_any_class                          = 0,

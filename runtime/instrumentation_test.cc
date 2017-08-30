@@ -28,6 +28,7 @@
 #include "jvalue.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
+#include "interpreter/shadow_frame.h"
 #include "thread-inl.h"
 #include "thread_list.h"
 #include "well_known_classes.h"
@@ -48,7 +49,8 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
       received_field_written_object_event(false),
       received_exception_thrown_event(false),
       received_branch_event(false),
-      received_invoke_virtual_or_interface_event(false) {}
+      received_invoke_virtual_or_interface_event(false),
+      received_watched_frame_pop(false) {}
 
   virtual ~TestInstrumentationListener() {}
 
@@ -146,6 +148,11 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
     received_invoke_virtual_or_interface_event = true;
   }
 
+  void WatchedFramePop(Thread* thread ATTRIBUTE_UNUSED, const ShadowFrame& frame ATTRIBUTE_UNUSED)
+      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+    received_watched_frame_pop  = true;
+  }
+
   void Reset() {
     received_method_enter_event = false;
     received_method_exit_event = false;
@@ -158,6 +165,7 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
     received_exception_thrown_event = false;
     received_branch_event = false;
     received_invoke_virtual_or_interface_event = false;
+    received_watched_frame_pop = false;
   }
 
   bool received_method_enter_event;
@@ -171,6 +179,7 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
   bool received_exception_thrown_event;
   bool received_branch_event;
   bool received_invoke_virtual_or_interface_event;
+  bool received_watched_frame_pop;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TestInstrumentationListener);
@@ -221,6 +230,7 @@ class InstrumentationTest : public CommonRuntimeTest {
 
     mirror::Object* const event_obj = nullptr;
     const uint32_t event_dex_pc = 0;
+    ShadowFrameAllocaUniquePtr test_frame = CREATE_SHADOW_FRAME(0, nullptr, event_method, 0);
 
     // Check the listener is registered and is notified of the event.
     EXPECT_TRUE(HasEventListener(instr, instrumentation_event));
@@ -231,7 +241,8 @@ class InstrumentationTest : public CommonRuntimeTest {
                 event_method,
                 event_obj,
                 event_field,
-                event_dex_pc);
+                event_dex_pc,
+                *test_frame);
     EXPECT_TRUE(DidListenerReceiveEvent(listener, instrumentation_event, with_object));
 
     listener.Reset();
@@ -250,7 +261,8 @@ class InstrumentationTest : public CommonRuntimeTest {
                 event_method,
                 event_obj,
                 event_field,
-                event_dex_pc);
+                event_dex_pc,
+                *test_frame);
     EXPECT_FALSE(DidListenerReceiveEvent(listener, instrumentation_event, with_object));
   }
 
@@ -361,6 +373,8 @@ class InstrumentationTest : public CommonRuntimeTest {
         return instr->HasBranchListeners();
       case instrumentation::Instrumentation::kInvokeVirtualOrInterface:
         return instr->HasInvokeVirtualOrInterfaceListeners();
+      case instrumentation::Instrumentation::kWatchedFramePop:
+        return instr->HasWatchedFramePopListeners();
       default:
         LOG(FATAL) << "Unknown instrumentation event " << event_type;
         UNREACHABLE();
@@ -373,7 +387,8 @@ class InstrumentationTest : public CommonRuntimeTest {
                           ArtMethod* method,
                           mirror::Object* obj,
                           ArtField* field,
-                          uint32_t dex_pc)
+                          uint32_t dex_pc,
+                          const ShadowFrame& frame)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     switch (event_type) {
       case instrumentation::Instrumentation::kMethodEntered:
@@ -411,6 +426,9 @@ class InstrumentationTest : public CommonRuntimeTest {
       case instrumentation::Instrumentation::kInvokeVirtualOrInterface:
         instr->InvokeVirtualOrInterface(self, obj, method, dex_pc, method);
         break;
+      case instrumentation::Instrumentation::kWatchedFramePop:
+        instr->WatchedFramePopped(self, frame);
+        break;
       default:
         LOG(FATAL) << "Unknown instrumentation event " << event_type;
         UNREACHABLE();
@@ -441,6 +459,8 @@ class InstrumentationTest : public CommonRuntimeTest {
         return listener.received_branch_event;
       case instrumentation::Instrumentation::kInvokeVirtualOrInterface:
         return listener.received_invoke_virtual_or_interface_event;
+      case instrumentation::Instrumentation::kWatchedFramePop:
+        return listener.received_watched_frame_pop;
       default:
         LOG(FATAL) << "Unknown instrumentation event " << event_type;
         UNREACHABLE();
@@ -541,6 +561,10 @@ TEST_F(InstrumentationTest, DexPcMovedEvent) {
 
 TEST_F(InstrumentationTest, FieldReadEvent) {
   TestEvent(instrumentation::Instrumentation::kFieldRead);
+}
+
+TEST_F(InstrumentationTest, WatchedFramePop) {
+  TestEvent(instrumentation::Instrumentation::kWatchedFramePop);
 }
 
 TEST_F(InstrumentationTest, FieldWriteObjectEvent) {

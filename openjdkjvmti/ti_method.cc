@@ -51,6 +51,7 @@
 #include "stack.h"
 #include "thread-current-inl.h"
 #include "thread_list.h"
+#include "ti_stack.h"
 #include "ti_thread.h"
 #include "ti_phase.h"
 
@@ -532,39 +533,6 @@ jvmtiError MethodUtil::IsMethodSynthetic(jvmtiEnv* env, jmethodID m, jboolean* i
   };
   return IsMethodT(env, m, test, is_synthetic_ptr);
 }
-
-struct FindFrameAtDepthVisitor : art::StackVisitor {
- public:
-  FindFrameAtDepthVisitor(art::Thread* target, art::Context* ctx, jint depth)
-      REQUIRES_SHARED(art::Locks::mutator_lock_)
-      : art::StackVisitor(target, ctx, art::StackVisitor::StackWalkKind::kIncludeInlinedFrames),
-        found_frame_(false),
-        cnt_(0),
-        depth_(static_cast<size_t>(depth)) { }
-
-  bool FoundFrame() {
-    return found_frame_;
-  }
-
-  bool VisitFrame() NO_THREAD_SAFETY_ANALYSIS {
-    if (GetMethod()->IsRuntimeMethod()) {
-      return true;
-    }
-    if (cnt_ == depth_) {
-      // We found our frame, exit.
-      found_frame_ = true;
-      return false;
-    } else {
-      cnt_++;
-      return true;
-    }
-  }
-
- private:
-  bool found_frame_;
-  size_t cnt_;
-  size_t depth_;
-};
 
 class CommonLocalVariableClosure : public art::Closure {
  public:
