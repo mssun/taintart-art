@@ -87,8 +87,10 @@ static bool IsGEZero(HInstruction* instruction) {
                IsGEZero(instruction->InputAt(1));
       case Intrinsics::kMathAbsInt:
       case Intrinsics::kMathAbsLong:
-        // Instruction ABS(x) is >= 0.
-        return true;
+        // Instruction ABS(>=0) is >= 0.
+        // NOTE: ABS(minint) = minint prevents assuming
+        //       >= 0 without looking at the argument.
+        return IsGEZero(instruction->InputAt(0));
       default:
         break;
     }
