@@ -1364,7 +1364,6 @@ jvmtiError Redefiner::Run() {
 }
 
 void Redefiner::ClassRedefinition::UpdateMethods(art::ObjPtr<art::mirror::Class> mclass,
-                                                 art::ObjPtr<art::mirror::DexCache> new_dex_cache,
                                                  const art::DexFile::ClassDef& class_def) {
   art::ClassLinker* linker = driver_->runtime_->GetClassLinker();
   art::PointerSize image_pointer_size = linker->GetImagePointerSize();
@@ -1396,7 +1395,6 @@ void Redefiner::ClassRedefinition::UpdateMethods(art::ObjPtr<art::mirror::Class>
     method.SetDexMethodIndex(dex_method_idx);
     linker->SetEntryPointsToInterpreter(&method);
     method.SetCodeItemOffset(dex_file_->FindCodeItemOffset(class_def, dex_method_idx));
-    method.SetDexCacheResolvedMethods(new_dex_cache->GetResolvedMethods(), image_pointer_size);
     // Clear all the intrinsics related flags.
     method.ClearAccessFlags(art::kAccIntrinsic | (~art::kAccFlagsNotUsedByIntrinsic));
     // Notify the jit that this method is redefined.
@@ -1433,7 +1431,7 @@ void Redefiner::ClassRedefinition::UpdateClass(
     art::ObjPtr<art::mirror::Object> original_dex_file) {
   DCHECK_EQ(dex_file_->NumClassDefs(), 1u);
   const art::DexFile::ClassDef& class_def = dex_file_->GetClassDef(0);
-  UpdateMethods(mclass, new_dex_cache, class_def);
+  UpdateMethods(mclass, class_def);
   UpdateFields(mclass);
 
   // Update the class fields.

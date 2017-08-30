@@ -1115,35 +1115,6 @@ static bool FlattenPathClassLoader(ObjPtr<mirror::ClassLoader> class_loader,
   return true;
 }
 
-class FixupArtMethodArrayVisitor : public ArtMethodVisitor {
- public:
-  explicit FixupArtMethodArrayVisitor(const ImageHeader& header) : header_(header) {}
-
-  virtual void Visit(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_) {
-    const bool is_copied = method->IsCopied();
-    mirror::MethodDexCacheType* resolved_methods =
-        method->GetDexCacheResolvedMethods(kRuntimePointerSize);
-    if (resolved_methods != nullptr) {
-      bool in_image_space = false;
-      if (kIsDebugBuild || is_copied) {
-        in_image_space = header_.GetImageSection(ImageHeader::kSectionDexCacheArrays).Contains(
-              reinterpret_cast<const uint8_t*>(resolved_methods) - header_.GetImageBegin());
-      }
-      // Must be in image space for non-miranda method.
-      DCHECK(is_copied || in_image_space)
-          << resolved_methods << " is not in image starting at "
-          << reinterpret_cast<void*>(header_.GetImageBegin());
-      if (!is_copied || in_image_space) {
-        method->SetDexCacheResolvedMethods(method->GetDexCache()->GetResolvedMethods(),
-                                           kRuntimePointerSize);
-      }
-    }
-  }
-
- private:
-  const ImageHeader& header_;
-};
-
 class VerifyDeclaringClassVisitor : public ArtMethodVisitor {
  public:
   VerifyDeclaringClassVisitor() REQUIRES_SHARED(Locks::mutator_lock_, Locks::heap_bitmap_lock_)
@@ -1491,12 +1462,6 @@ bool AppImageClassLoadersAndDexCachesHelper::Update(
 
     FixupInternVisitor fixup_intern_visitor;
     bitmap->VisitMarkedRange(objects_begin, objects_end, fixup_intern_visitor);
-  }
-  if (*out_forward_dex_cache_array) {
-    ScopedTrace timing("Fixup ArtMethod dex cache arrays");
-    FixupArtMethodArrayVisitor visitor(header);
-    header.VisitPackedArtMethods(&visitor, space->Begin(), kRuntimePointerSize);
-    Runtime::Current()->GetHeap()->WriteBarrierEveryFieldOf(class_loader.Get());
   }
   if (kVerifyArtMethodDeclaringClasses) {
     ScopedTrace timing("Verify declaring classes");
@@ -3444,8 +3409,6 @@ void ClassLinker::LoadMethod(const DexFile& dex_file,
   dst->SetDeclaringClass(klass.Get());
   dst->SetCodeItemOffset(it.GetMethodCodeItemOffset());
 
-  dst->SetDexCacheResolvedMethods(klass->GetDexCache()->GetResolvedMethods(), image_pointer_size_);
-
   uint32_t access_flags = it.GetMethodAccessFlags();
 
   if (UNLIKELY(strcmp("finalize", method_name) == 0)) {
@@ -4729,7 +4692,6 @@ void ClassLinker::CheckProxyMethod(ArtMethod* method, ArtMethod* prototype) cons
 
   // The proxy method doesn't have its own dex cache or dex file and so it steals those of its
   // interface prototype. The exception to this are Constructors and the Class of the Proxy itself.
-  CHECK(prototype->HasSameDexCacheResolvedMethods(method, image_pointer_size_));
   auto* np = method->GetInterfaceMethodIfProxy(image_pointer_size_);
   CHECK_EQ(prototype->GetDeclaringClass()->GetDexCache(), np->GetDexCache());
   CHECK_EQ(prototype->GetDexMethodIndex(), method->GetDexMethodIndex());

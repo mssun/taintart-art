@@ -26,7 +26,7 @@
 namespace art {
 
 const uint8_t ImageHeader::kImageMagic[] = { 'a', 'r', 't', '\n' };
-const uint8_t ImageHeader::kImageVersion[] = { '0', '4', '6', '\0' };  // Hash-based methods array.
+const uint8_t ImageHeader::kImageVersion[] = { '0', '4', '7', '\0' };  // Smaller ArtMethod.
 
 ImageHeader::ImageHeader(uint32_t image_begin,
                          uint32_t image_size,

@@ -2024,8 +2024,16 @@ ENTRY art_quick_imt_conflict_trampoline
     SETUP_SAVE_REFS_AND_ARGS_FRAME_INTERNAL /* save_s4_thru_s8 */ 0
 
     ld      $t1, FRAME_SIZE_SAVE_REFS_AND_ARGS($sp)  # $t1 = referrer.
+    // If the method is obsolete, just go through the dex cache miss slow path.
+    // The obsolete flag is set with suspended threads, so we do not need an acquire operation here.
+    lw      $t9, ART_METHOD_ACCESS_FLAGS_OFFSET($t1)  # $t9 = access flags.
+    sll     $t9, $t9, 31 - ACC_OBSOLETE_METHOD_SHIFT  # Move obsolete method bit to sign bit.
+    bltzc   $t9, .Limt_conflict_trampoline_dex_cache_miss
+    lwu     $t1, ART_METHOD_DECLARING_CLASS_OFFSET($t1)  # $t1 = declaring class (no read barrier).
+    lwu     $t1, MIRROR_CLASS_DEX_CACHE_OFFSET($t1)  # $t1 = dex cache (without read barrier).
+    UNPOISON_HEAP_REF $t1
     dla     $t9, __atomic_load_16
-    ld      $t1, ART_METHOD_DEX_CACHE_METHODS_OFFSET_64($t1)  # $t1 = dex cache methods array.
+    ld      $t1, MIRROR_DEX_CACHE_RESOLVED_METHODS_OFFSET($t1)  # $t1 = dex cache methods array.
 
     dext    $s2, $t0, 0, 32                         # $s2 = zero-extended method index
                                                     # (callee-saved).
