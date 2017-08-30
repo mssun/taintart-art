@@ -776,6 +776,18 @@ static jint Java_Main_intCriticalNativeMethod(jint a, jint b, jint c) {
   return a + b + c;
 }
 
+extern "C" JNIEXPORT jobject JNICALL Java_Main_lookupClinit(JNIEnv* env, jclass, jclass kls) {
+  jmethodID clinit_id = env->GetStaticMethodID(kls, "<clinit>", "()V");
+
+  if (clinit_id != nullptr) {
+    jobject obj = env->ToReflectedMethod(kls, clinit_id, /*isStatic*/ true);
+    CHECK(obj != nullptr);
+    return obj;
+  } else {
+    return nullptr;
+  }
+}
+
 extern "C" JNIEXPORT jboolean JNICALL Java_Main_isSlowDebug(JNIEnv*, jclass) {
   // Return whether slow-debug is on. Only relevant for debug builds.
   if (kIsDebugBuild) {
