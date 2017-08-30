@@ -62,17 +62,18 @@ class HLoopOptimization : public HOptimization {
    * Vectorization restrictions (bit mask).
    */
   enum VectorRestrictions {
-    kNone            = 0,    // no restrictions
-    kNoMul           = 1,    // no multiplication
-    kNoDiv           = 2,    // no division
-    kNoShift         = 4,    // no shift
-    kNoShr           = 8,    // no arithmetic shift right
-    kNoHiBits        = 16,   // "wider" operations cannot bring in higher order bits
-    kNoSignedHAdd    = 32,   // no signed halving add
-    kNoUnroundedHAdd = 64,   // no unrounded halving add
-    kNoAbs           = 128,  // no absolute value
-    kNoMinMax        = 256,  // no min/max
-    kNoStringCharAt  = 512,  // no StringCharAt
+    kNone            = 0,        // no restrictions
+    kNoMul           = 1 << 0,   // no multiplication
+    kNoDiv           = 1 << 1,   // no division
+    kNoShift         = 1 << 2,   // no shift
+    kNoShr           = 1 << 3,   // no arithmetic shift right
+    kNoHiBits        = 1 << 4,   // "wider" operations cannot bring in higher order bits
+    kNoSignedHAdd    = 1 << 5,   // no signed halving add
+    kNoUnroundedHAdd = 1 << 6,   // no unrounded halving add
+    kNoAbs           = 1 << 7,   // no absolute value
+    kNoMinMax        = 1 << 8,   // no min/max
+    kNoStringCharAt  = 1 << 9,   // no StringCharAt
+    kNoReduction     = 1 << 10,  // no reduction
   };
 
   /*
@@ -155,6 +156,9 @@ class HLoopOptimization : public HOptimization {
                       HInstruction* opb,
                       HInstruction* offset,
                       Primitive::Type type);
+  void GenerateVecReductionPhi(HPhi* phi);
+  void GenerateVecReductionPhiInputs(HPhi* phi, HInstruction* reduction);
+  HInstruction* ReduceAndExtractIfNeeded(HInstruction* instruction);
   void GenerateVecOp(HInstruction* org,
                      HInstruction* opa,
                      HInstruction* opb,
@@ -252,6 +256,10 @@ class HLoopOptimization : public HOptimization {
   // structure maps original instructions into the new instructions.
   // Contents reside in phase-local heap memory.
   ArenaSafeMap<HInstruction*, HInstruction*>* vector_map_;
+
+  // Permanent mapping used during vectorization synthesis.
+  // Contents reside in phase-local heap memory.
+  ArenaSafeMap<HInstruction*, HInstruction*>* vector_permanent_map_;
 
   // Temporary vectorization bookkeeping.
   VectorMode vector_mode_;  // synthesis mode
