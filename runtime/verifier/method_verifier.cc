@@ -3778,6 +3778,12 @@ const RegType& MethodVerifier::ResolveClass(dex::TypeIndex class_idx) {
   return *result;
 }
 
+// Instantiate.
+template const RegType& MethodVerifier::ResolveClass<MethodVerifier::CheckAccess::kNo>(
+    dex::TypeIndex class_idx);
+template const RegType& MethodVerifier::ResolveClass<MethodVerifier::CheckAccess::kYes>(
+    dex::TypeIndex class_idx);
+
 const RegType& MethodVerifier::GetCaughtExceptionType() {
   const RegType* common_super = nullptr;
   if (code_item_->tries_size_ != 0) {
