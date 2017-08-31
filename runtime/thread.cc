@@ -1736,7 +1736,7 @@ void Thread::DumpState(std::ostream& os, const Thread* thread, pid_t tid) {
           os << " \"" << mutex->GetName() << "\"";
           if (mutex->IsReaderWriterMutex()) {
             ReaderWriterMutex* rw_mutex = down_cast<ReaderWriterMutex*>(mutex);
-            if (rw_mutex->GetExclusiveOwnerTid() == static_cast<uint64_t>(tid)) {
+            if (rw_mutex->GetExclusiveOwnerTid() == tid) {
               os << "(exclusive held)";
             } else {
               os << "(shared held)";
@@ -2291,7 +2291,7 @@ bool Thread::HandleScopeContains(jobject obj) const {
   return tlsPtr_.managed_stack.ShadowFramesContain(hs_entry);
 }
 
-void Thread::HandleScopeVisitRoots(RootVisitor* visitor, uint32_t thread_id) {
+void Thread::HandleScopeVisitRoots(RootVisitor* visitor, pid_t thread_id) {
   BufferedRootVisitor<kDefaultBufferedRootCount> buffered_visitor(
       visitor, RootInfo(kRootNativeStack, thread_id));
   for (BaseHandleScope* cur = tlsPtr_.top_handle_scope; cur; cur = cur->GetLink()) {
@@ -3457,7 +3457,7 @@ class RootCallbackVisitor {
 
 template <bool kPrecise>
 void Thread::VisitRoots(RootVisitor* visitor) {
-  const uint32_t thread_id = GetThreadId();
+  const pid_t thread_id = GetThreadId();
   visitor->VisitRootIfNonNull(&tlsPtr_.opeer, RootInfo(kRootThreadObject, thread_id));
   if (tlsPtr_.exception != nullptr && tlsPtr_.exception != GetDeoptimizationException()) {
     visitor->VisitRoot(reinterpret_cast<mirror::Object**>(&tlsPtr_.exception),
