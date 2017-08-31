@@ -157,14 +157,19 @@ public class Test1923 {
   public static void doRecurTestWith(final int times, int watch_frame) throws Exception {
     final String target_method_name_start = "recurTimes";
     final ThreadPauser safepoint = new ThreadPauser();
-    Thread target = new Thread(() -> {
-      try {
-        recurTimesA(times, safepoint);
-        System.out.println("Ran recurTimes(" + times + ") without errors!");
-      } catch (RecursionError e) {
-        System.out.println("Caught exception " + e + " while running recurTimes(" + times + ")");
-      }
-    });
+    Thread target = new Thread(
+        null,
+        () -> {
+          try {
+            recurTimesA(times, safepoint);
+            System.out.println("Ran recurTimes(" + times + ") without errors!");
+          } catch (RecursionError e) {
+            System.out.println("Caught exception " + e + " while running recurTimes(" + times + ")");
+          }
+        },
+        "RecurTimes(" + times + ") watching: " + watch_frame + " runner.",
+        // 4000 kb stack since ASAN can make us stack-overflow otherwise
+        4000 * 1024);
     target.start();
     safepoint.waitForOtherThreadToPause();
     Suspension.suspend(target);
