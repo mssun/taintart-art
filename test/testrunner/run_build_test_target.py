@@ -100,6 +100,8 @@ if target.has_key('run-test'):
   run_test_command += ['-b']
   run_test_command += ['--host']
   run_test_command += ['--verbose']
+  run_test_command += ['--dex2oat-jobs']
+  run_test_command += ['4']
 
   sys.stdout.write(str(run_test_command) + '\n')
   sys.stdout.flush()
