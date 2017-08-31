@@ -464,6 +464,15 @@ public class Main {
     return r;
   }
 
+  static int absCanBeNegative(int x) {
+    int a[] = { 1, 2, 3 };
+    int y = 0;
+    for (int i = Math.abs(x); i < a.length; i++) {
+      y += a[i];
+    }
+    return y;
+  }
+
   public static void main(String[] args) {
     expectEquals(10, earlyExitFirst(-1));
     for (int i = 0; i <= 10; i++) {
@@ -585,6 +594,24 @@ public class Main {
     for (int i = 0; i < 100; i++) {
       expectEquals(11, f[i]);
     }
+
+    expectEquals(0, absCanBeNegative(-3));
+    expectEquals(3, absCanBeNegative(-2));
+    expectEquals(5, absCanBeNegative(-1));
+    expectEquals(6, absCanBeNegative(0));
+    expectEquals(5, absCanBeNegative(1));
+    expectEquals(3, absCanBeNegative(2));
+    expectEquals(0, absCanBeNegative(3));
+    expectEquals(0, absCanBeNegative(Integer.MAX_VALUE));
+    // Abs(min_int) = min_int.
+    int verify = 0;
+    try {
+      absCanBeNegative(Integer.MIN_VALUE);
+      verify = 1;
+    } catch (ArrayIndexOutOfBoundsException e) {
+      verify = 2;
+    }
+    expectEquals(2, verify);
 
     System.out.println("passed");
   }

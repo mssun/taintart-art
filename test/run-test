@@ -407,6 +407,10 @@ while true; do
     elif [ "x$1" = "x--random-profile" ]; then
         run_args="${run_args} --random-profile"
         shift
+    elif [ "x$1" = "x--dex2oat-jobs" ]; then
+        shift
+        run_args="${run_args} -Xcompiler-option -j$1"
+        shift
     elif expr "x$1" : "x--" >/dev/null 2>&1; then
         echo "unknown $0 option: $1" 1>&2
         usage="yes"
@@ -702,6 +706,7 @@ if [ "$usage" = "yes" ]; then
         echo "    --bisection-search    Perform bisection bug search."
         echo "    --vdex                Test using vdex as in input to dex2oat. Only works with --prebuild."
         echo "    --suspend-timeout     Change thread suspend timeout ms (default 500000)."
+        echo "    --dex2oat-jobs        Number of dex2oat jobs."
     ) 1>&2  # Direct to stderr so usage is not printed if --quiet is set.
     exit 1
 fi

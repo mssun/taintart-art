@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include "android-base/file.h"
 
@@ -47,8 +48,10 @@
 namespace art {
 
 const uint8_t ProfileCompilationInfo::kProfileMagic[] = { 'p', 'r', 'o', '\0' };
-// Last profile version: update the multidex separator.
-const uint8_t ProfileCompilationInfo::kProfileVersion[] = { '0', '0', '9', '\0' };
+// Last profile version: merge profiles directly from the file without creating
+// profile_compilation_info object. All the profile line headers are now placed together
+// before corresponding method_encodings and class_ids.
+const uint8_t ProfileCompilationInfo::kProfileVersion[] = { '0', '1', '0', '\0' };
 
 static constexpr uint16_t kMaxDexFileKeyLength = PATH_MAX;
 
@@ -177,9 +180,36 @@ bool ProfileCompilationInfo::AddClasses(const std::set<DexCacheResolvedClasses>&
   return true;
 }
 
+bool ProfileCompilationInfo::MergeWith(const std::string& filename) {
+  std::string error;
+  int flags = O_RDONLY | O_NOFOLLOW | O_CLOEXEC;
+  ScopedFlock profile_file = LockedFile::Open(filename.c_str(), flags,
+      /*block*/false, &error);
+
+  if (profile_file.get() == nullptr) {
+    LOG(WARNING) << "Couldn't lock the profile file " << filename << ": " << error;
+    return false;
+  }
+
+  int fd = profile_file->Fd();
+
+  ProfileLoadSatus status = LoadInternal(fd, &error);
+  if (status == kProfileLoadSuccess) {
+    return true;
+  }
+
+  LOG(WARNING) << "Could not load profile data from file " << filename << ": " << error;
+  return false;
+}
+
 bool ProfileCompilationInfo::Load(const std::string& filename, bool clear_if_invalid) {
   ScopedTrace trace(__PRETTY_FUNCTION__);
   std::string error;
+
+  if (!IsEmpty()) {
+    return kProfileLoadWouldOverwiteData;
+  }
+
   int flags = O_RDWR | O_NOFOLLOW | O_CLOEXEC;
   // There's no need to fsync profile data right away. We get many chances
   // to write it again in case something goes wrong. We can rely on a simple
@@ -288,15 +318,14 @@ static constexpr size_t kLineHeaderSize =
 
 /**
  * Serialization format:
- *    magic,version,number_of_dex_files,uncompressed_size_of_zipped_data,compressed_data_size,
- *    zipped[dex_location1,number_of_classes1,methods_region_size,dex_location_checksum1
- *        num_method_ids,
- *        method_encoding_11,method_encoding_12...,class_id1,class_id2...
- *        startup/post startup bitmap,
- *    dex_location2,number_of_classes2,methods_region_size,dex_location_checksum2, num_method_ids,
- *        method_encoding_21,method_encoding_22...,,class_id1,class_id2...
- *        startup/post startup bitmap,
- *    .....]
+ * [profile_header, zipped[[profile_line_header1, profile_line_header2...],[profile_line_data1,
+ *    profile_line_data2...]]]
+ * profile_header:
+ *   magic,version,number_of_dex_files,uncompressed_size_of_zipped_data,compressed_data_size
+ * profile_line_header:
+ *   dex_location,number_of_classes,methods_region_size,dex_location_checksum,num_method_ids
+ * profile_line_data:
+ *   method_encoding_1,method_encoding_2...,class_id1,class_id2...,startup/post startup bitmap
  * The method_encoding is:
  *    method_id,number_of_inline_caches,inline_cache1,inline_cache2...
  * The inline_cache is:
@@ -343,10 +372,6 @@ bool ProfileCompilationInfo::Save(int fd) {
                << " bytes. Profile will not be written to disk.";
     return false;
   }
-  if (required_capacity > kProfileSizeWarningThresholdInBytes) {
-    LOG(WARNING) << "Profile data size exceeds "
-                 << std::to_string(kProfileSizeWarningThresholdInBytes);
-  }
   AddUintToBuffer(&buffer, required_capacity);
   if (!WriteBuffer(fd, buffer.data(), buffer.size())) {
     return false;
@@ -358,11 +383,9 @@ bool ProfileCompilationInfo::Save(int fd) {
 
   // Dex files must be written in the order of their profile index. This
   // avoids writing the index in the output file and simplifies the parsing logic.
+  // Write profile line headers.
   for (const DexFileData* dex_data_ptr : info_) {
     const DexFileData& dex_data = *dex_data_ptr;
-
-    // Note that we allow dex files without any methods or classes, so that
-    // inline caches can refer valid dex files.
 
     if (dex_data.profile_key.size() >= kMaxDexFileKeyLength) {
       LOG(WARNING) << "DexFileKey exceeds allocated limit";
@@ -381,6 +404,13 @@ bool ProfileCompilationInfo::Save(int fd) {
     AddUintToBuffer(&buffer, dex_data.num_method_ids);  // uint32_t
 
     AddStringToBuffer(&buffer, dex_data.profile_key);
+  }
+
+  for (const DexFileData* dex_data_ptr : info_) {
+    const DexFileData& dex_data = *dex_data_ptr;
+
+    // Note that we allow dex files without any methods or classes, so that
+    // inline caches can refer valid dex files.
 
     uint16_t last_method_index = 0;
     for (const auto& method_it : dex_data.method_map) {
@@ -412,6 +442,11 @@ bool ProfileCompilationInfo::Save(int fd) {
   std::unique_ptr<uint8_t[]> compressed_buffer = DeflateBuffer(buffer.data(),
                                                                required_capacity,
                                                                &output_size);
+
+  if (output_size > kProfileSizeWarningThresholdInBytes) {
+    LOG(WARNING) << "Profile data size exceeds "
+                 << std::to_string(kProfileSizeWarningThresholdInBytes);
+  }
 
   buffer.clear();
   AddUintToBuffer(&buffer, output_size);
@@ -690,10 +725,12 @@ bool ProfileCompilationInfo::AddClassIndex(const std::string& dex_location,
   }                                                     \
   while (false)
 
-bool ProfileCompilationInfo::ReadInlineCache(SafeBuffer& buffer,
-                                             uint8_t number_of_dex_files,
-                                             /*out*/ InlineCacheMap* inline_cache,
-                                             /*out*/ std::string* error) {
+bool ProfileCompilationInfo::ReadInlineCache(
+    SafeBuffer& buffer,
+    uint8_t number_of_dex_files,
+    const SafeMap<uint8_t, uint8_t>& dex_profile_index_remap,
+    /*out*/ InlineCacheMap* inline_cache,
+    /*out*/ std::string* error) {
   uint16_t inline_cache_size;
   READ_UINT(uint16_t, buffer, inline_cache_size, error);
   for (; inline_cache_size > 0; inline_cache_size--) {
@@ -723,7 +760,8 @@ bool ProfileCompilationInfo::ReadInlineCache(SafeBuffer& buffer,
       for (; dex_classes_size > 0; dex_classes_size--) {
         uint16_t type_index;
         READ_UINT(uint16_t, buffer, type_index, error);
-        dex_pc_data->AddClass(dex_profile_index, dex::TypeIndex(type_index));
+        dex_pc_data->AddClass(dex_profile_index_remap.Get(dex_profile_index),
+                              dex::TypeIndex(type_index));
       }
     }
   }
@@ -733,6 +771,7 @@ bool ProfileCompilationInfo::ReadInlineCache(SafeBuffer& buffer,
 bool ProfileCompilationInfo::ReadMethods(SafeBuffer& buffer,
                                          uint8_t number_of_dex_files,
                                          const ProfileLineHeader& line_header,
+                                         const SafeMap<uint8_t, uint8_t>& dex_profile_index_remap,
                                          /*out*/std::string* error) {
   uint32_t unread_bytes_before_operation = buffer.CountUnreadBytes();
   if (unread_bytes_before_operation < line_header.method_region_size_bytes) {
@@ -751,7 +790,11 @@ bool ProfileCompilationInfo::ReadMethods(SafeBuffer& buffer,
     uint16_t method_index = last_method_index + diff_with_last_method_index;
     last_method_index = method_index;
     InlineCacheMap* inline_cache = data->FindOrAddMethod(method_index);
-    if (!ReadInlineCache(buffer, number_of_dex_files, inline_cache, error)) {
+    if (!ReadInlineCache(buffer,
+                         number_of_dex_files,
+                         dex_profile_index_remap,
+                         inline_cache,
+                         error)) {
       return false;
     }
   }
@@ -954,6 +997,8 @@ ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::ReadProfileLine
       SafeBuffer& buffer,
       uint8_t number_of_dex_files,
       const ProfileLineHeader& line_header,
+      const SafeMap<uint8_t, uint8_t>& dex_profile_index_remap,
+      bool merge_classes,
       /*out*/std::string* error) {
   DexFileData* data = GetOrAddDexFileData(line_header.dex_location,
                                           line_header.checksum,
@@ -964,12 +1009,14 @@ ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::ReadProfileLine
     return kProfileLoadBadData;
   }
 
-  if (!ReadMethods(buffer, number_of_dex_files, line_header, error)) {
+  if (!ReadMethods(buffer, number_of_dex_files, line_header, dex_profile_index_remap, error)) {
     return kProfileLoadBadData;
   }
 
-  if (!ReadClasses(buffer, line_header, error)) {
-    return kProfileLoadBadData;
+  if (merge_classes) {
+    if (!ReadClasses(buffer, line_header, error)) {
+      return kProfileLoadBadData;
+    }
   }
 
   const size_t bytes = data->bitmap_storage.size();
@@ -986,9 +1033,10 @@ ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::ReadProfileLine
 
 // TODO(calin): Fix this API. ProfileCompilationInfo::Load should be static and
 // return a unique pointer to a ProfileCompilationInfo upon success.
-bool ProfileCompilationInfo::Load(int fd) {
+bool ProfileCompilationInfo::Load(int fd, bool merge_classes) {
   std::string error;
-  ProfileLoadSatus status = LoadInternal(fd, &error);
+
+  ProfileLoadSatus status = LoadInternal(fd, &error, merge_classes);
 
   if (status == kProfileLoadSuccess) {
     return true;
@@ -1000,13 +1048,9 @@ bool ProfileCompilationInfo::Load(int fd) {
 
 // TODO(calin): fail fast if the dex checksums don't match.
 ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::LoadInternal(
-      int fd, std::string* error) {
+      int fd, std::string* error, bool merge_classes) {
   ScopedTrace trace(__PRETTY_FUNCTION__);
   DCHECK_GE(fd, 0);
-
-  if (!IsEmpty()) {
-    return kProfileLoadWouldOverwiteData;
-  }
 
   struct stat stat_buffer;
   if (fstat(fd, &stat_buffer) != 0) {
@@ -1071,6 +1115,8 @@ ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::LoadInternal(
     return kProfileLoadBadData;
   }
 
+  std::vector<ProfileLineHeader> profile_line_headers;
+  // Read profile line headers.
   for (uint8_t k = 0; k < number_of_dex_files; k++) {
     ProfileLineHeader line_header;
 
@@ -1079,9 +1125,22 @@ ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::LoadInternal(
     if (status != kProfileLoadSuccess) {
       return status;
     }
+    profile_line_headers.push_back(line_header);
+  }
 
+  SafeMap<uint8_t, uint8_t> dex_profile_index_remap;
+  if (!RemapProfileIndex(profile_line_headers, &dex_profile_index_remap)) {
+    return kProfileLoadBadData;
+  }
+
+  for (uint8_t k = 0; k < number_of_dex_files; k++) {
     // Now read the actual profile line.
-    status = ReadProfileLine(uncompressed_data, number_of_dex_files, line_header, error);
+    status = ReadProfileLine(uncompressed_data,
+                             number_of_dex_files,
+                             profile_line_headers[k],
+                             dex_profile_index_remap,
+                             merge_classes,
+                             error);
     if (status != kProfileLoadSuccess) {
       return status;
     }
@@ -1096,6 +1155,37 @@ ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::LoadInternal(
   }
 }
 
+bool ProfileCompilationInfo::RemapProfileIndex(
+    const std::vector<ProfileLineHeader>& profile_line_headers,
+    /*out*/SafeMap<uint8_t, uint8_t>* dex_profile_index_remap) {
+  // First verify that all checksums match. This will avoid adding garbage to
+  // the current profile info.
+  // Note that the number of elements should be very small, so this should not
+  // be a performance issue.
+  for (const ProfileLineHeader other_profile_line_header : profile_line_headers) {
+    // verify_checksum is false because we want to differentiate between a missing dex data and
+    // a mismatched checksum.
+    const DexFileData* dex_data = FindDexData(other_profile_line_header.dex_location,
+                                              0u,
+                                              false /* verify_checksum */);
+    if ((dex_data != nullptr) && (dex_data->checksum != other_profile_line_header.checksum)) {
+      LOG(WARNING) << "Checksum mismatch for dex " << other_profile_line_header.dex_location;
+      return false;
+    }
+  }
+  // All checksums match. Import the data.
+  uint32_t num_dex_files = static_cast<uint32_t>(profile_line_headers.size());
+  for (uint32_t i = 0; i < num_dex_files; i++) {
+    const DexFileData* dex_data = GetOrAddDexFileData(profile_line_headers[i].dex_location,
+                                                      profile_line_headers[i].checksum,
+                                                      profile_line_headers[i].num_method_ids);
+    if (dex_data == nullptr) {
+      return false;  // Could happen if we exceed the number of allowed dex files.
+    }
+    dex_profile_index_remap->Put(i, dex_data->profile_index);
+  }
+  return true;
+}
 std::unique_ptr<uint8_t[]> ProfileCompilationInfo::DeflateBuffer(const uint8_t* in_buffer,
                                                                  uint32_t in_size,
                                                                  uint32_t* compressed_data_size) {
@@ -1488,16 +1578,16 @@ std::set<DexCacheResolvedClasses> ProfileCompilationInfo::GetResolvedClasses(
 // Naive implementation to generate a random profile file suitable for testing.
 bool ProfileCompilationInfo::GenerateTestProfile(int fd,
                                                  uint16_t number_of_dex_files,
-                                                 uint16_t method_ratio,
-                                                 uint16_t class_ratio,
+                                                 uint16_t method_percentage,
+                                                 uint16_t class_percentage,
                                                  uint32_t random_seed) {
   const std::string base_dex_location = "base.apk";
   ProfileCompilationInfo info;
   // The limits are defined by the dex specification.
   const uint16_t max_method = std::numeric_limits<uint16_t>::max();
   const uint16_t max_classes = std::numeric_limits<uint16_t>::max();
-  uint16_t number_of_methods = max_method * method_ratio / 100;
-  uint16_t number_of_classes = max_classes * class_ratio / 100;
+  uint16_t number_of_methods = max_method * method_percentage / 100;
+  uint16_t number_of_classes = max_classes * class_percentage / 100;
 
   std::srand(random_seed);
 
@@ -1534,28 +1624,47 @@ bool ProfileCompilationInfo::GenerateTestProfile(int fd,
 }
 
 // Naive implementation to generate a random profile file suitable for testing.
+// Description of random selection:
+// * Select a random starting point S.
+// * For every index i, add (S+i) % (N - total number of methods/classes) to profile with the
+//   probably of 1/(N - i - number of methods/classes needed to add in profile).
 bool ProfileCompilationInfo::GenerateTestProfile(
     int fd,
     std::vector<std::unique_ptr<const DexFile>>& dex_files,
+    uint16_t method_percentage,
+    uint16_t class_percentage,
     uint32_t random_seed) {
   std::srand(random_seed);
   ProfileCompilationInfo info;
   for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
     const std::string& location = dex_file->GetLocation();
     uint32_t checksum = dex_file->GetLocationChecksum();
-    for (uint32_t i = 0; i < dex_file->NumClassDefs(); ++i) {
-      // Randomly add a class from the dex file (with 50% chance).
-      if (std::rand() % 2 != 0) {
+
+    uint32_t number_of_classes = dex_file->NumClassDefs();
+    uint32_t classes_required_in_profile = (number_of_classes * class_percentage) / 100;
+    uint32_t class_start_index = rand() % number_of_classes;
+    for (uint32_t i = 0; i < number_of_classes && classes_required_in_profile; ++i) {
+      if (number_of_classes - i == classes_required_in_profile ||
+          std::rand() % (number_of_classes - i - classes_required_in_profile) == 0) {
+        uint32_t class_index = (i + class_start_index) % number_of_classes;
         info.AddClassIndex(location,
                            checksum,
-                           dex_file->GetClassDef(i).class_idx_,
+                           dex_file->GetClassDef(class_index).class_idx_,
                            dex_file->NumMethodIds());
+        classes_required_in_profile--;
       }
     }
-    for (uint32_t i = 0; i < dex_file->NumMethodIds(); ++i) {
-      // Randomly add a method from the dex file (with 50% chance).
-      if (std::rand() % 2 != 0) {
-        info.AddMethodIndex(MethodHotness::kFlagHot, MethodReference(dex_file.get(), i));
+
+    uint32_t number_of_methods = dex_file->NumMethodIds();
+    uint32_t methods_required_in_profile = (number_of_methods * method_percentage) / 100;
+    uint32_t method_start_index = rand() % number_of_methods;
+    for (uint32_t i = 0; i < number_of_methods && methods_required_in_profile; ++i) {
+      if (number_of_methods - i == methods_required_in_profile ||
+          std::rand() % (number_of_methods - i - methods_required_in_profile) == 0) {
+        uint32_t method_index = (method_start_index + i) % number_of_methods;
+        info.AddMethodIndex(MethodHotness::kFlagHot, MethodReference(dex_file.get(),
+                                                                     method_index));
+        methods_required_in_profile--;
       }
     }
   }

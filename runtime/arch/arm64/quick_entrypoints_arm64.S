@@ -2060,8 +2060,18 @@ END art_quick_proxy_invoke_handler
     .extern artLookupResolvedMethod
 ENTRY art_quick_imt_conflict_trampoline
     ldr xIP0, [sp, #0]  // Load referrer
+    // Load the declaring class (without read barrier) and access flags (for obsolete method check).
+    // The obsolete flag is set with suspended threads, so we do not need an acquire operation here.
+#if ART_METHOD_ACCESS_FLAGS_OFFSET != ART_METHOD_DECLARING_CLASS_OFFSET + 4
+#error "Expecting declaring class and access flags to be consecutive for LDP."
+#endif
+    ldp wIP0, w15, [xIP0, #ART_METHOD_DECLARING_CLASS_OFFSET]
+    // If the method is obsolete, just go through the dex cache miss slow path.
+    tbnz x15, #ACC_OBSOLETE_METHOD_SHIFT, .Limt_conflict_trampoline_dex_cache_miss
+    ldr wIP0, [xIP0, #MIRROR_CLASS_DEX_CACHE_OFFSET]  // Load the DexCache (without read barrier).
+    UNPOISON_HEAP_REF wIP0
     ubfx x15, xIP1, #0, #METHOD_DEX_CACHE_HASH_BITS  // Calculate DexCache method slot index.
-    ldr xIP0, [xIP0, #ART_METHOD_DEX_CACHE_METHODS_OFFSET_64]   // Load dex cache methods array
+    ldr xIP0, [xIP0, #MIRROR_DEX_CACHE_RESOLVED_METHODS_OFFSET]  // Load the resolved methods.
     add xIP0, xIP0, x15, lsl #(POINTER_SIZE_SHIFT + 1)  // Load DexCache method slot address.
 
     // Relaxed atomic load x14:x15 from the dex cache slot.
@@ -2355,31 +2365,32 @@ END art_quick_instrumentation_entry
     .extern artInstrumentationMethodExitFromCode
 ENTRY art_quick_instrumentation_exit
     mov   xLR, #0             // Clobber LR for later checks.
-    SETUP_SAVE_EVERYTHING_FRAME
 
-    add   x3, sp, #8          // Pass floating-point result pointer, in kSaveEverything frame.
-    add   x2, sp, #264        // Pass integer result pointer, in kSaveEverything frame.
-    mov   x1, sp              // Pass SP.
+    SETUP_SAVE_REFS_ONLY_FRAME
+
+    str x0, [sp, #-16]!       // Save integer result.
+    .cfi_adjust_cfa_offset 16
+    str d0, [sp, #8]          // Save floating-point result.
+
+    add   x3, sp, #8          // Pass floating-point result pointer.
+    mov   x2, sp              // Pass integer result pointer.
+    add   x1, sp, #16         // Pass SP.
     mov   x0, xSELF           // Pass Thread.
     bl   artInstrumentationMethodExitFromCode    // (Thread*, SP, gpr_res*, fpr_res*)
 
-    cbz   x0, .Ldo_deliver_instrumentation_exception
-                              // Handle error
-    cbnz  x1, .Ldeoptimize
-    // Normal return.
-    str   x0, [sp, #FRAME_SIZE_SAVE_EVERYTHING - 8]
-                              // Set return pc.
-    RESTORE_SAVE_EVERYTHING_FRAME
+    mov   xIP0, x0            // Return address from instrumentation call.
+    mov   xLR, x1             // r1 is holding link register if we're to bounce to deoptimize
+
+    ldr   d0, [sp, #8]        // Restore floating-point result.
+    ldr   x0, [sp], #16       // Restore integer result, and drop stack area.
+    .cfi_adjust_cfa_offset -16
+
+    RESTORE_SAVE_REFS_ONLY_FRAME
     REFRESH_MARKING_REGISTER
-    br    lr
-.Ldo_deliver_instrumentation_exception:
-    DELIVER_PENDING_EXCEPTION_FRAME_READY
-.Ldeoptimize:
-    str   x1, [sp, #FRAME_SIZE_SAVE_EVERYTHING - 8]
-                              // Set return pc.
-    RESTORE_SAVE_EVERYTHING_FRAME
-    // Jump to art_quick_deoptimize.
-    b     art_quick_deoptimize
+    cbz   xIP0, 1f            // Handle error
+    br    xIP0                // Tail-call out.
+1:
+    DELIVER_PENDING_EXCEPTION
 END art_quick_instrumentation_exit
 
     /*
@@ -2388,7 +2399,7 @@ END art_quick_instrumentation_exit
      */
     .extern artDeoptimize
 ENTRY art_quick_deoptimize
-    SETUP_SAVE_EVERYTHING_FRAME
+    SETUP_SAVE_ALL_CALLEE_SAVES_FRAME
     mov    x0, xSELF          // Pass thread.
     bl     artDeoptimize      // (Thread*)
     brk 0

@@ -116,9 +116,9 @@ NO_RETURN static void Usage(const char *fmt, ...) {
   UsageError("  --generate-test-profile=<filename>: generates a random profile file for testing.");
   UsageError("  --generate-test-profile-num-dex=<number>: number of dex files that should be");
   UsageError("      included in the generated profile. Defaults to 20.");
-  UsageError("  --generate-test-profile-method-ratio=<number>: the percentage from the maximum");
+  UsageError("  --generate-test-profile-method-percentage=<number>: the percentage from the maximum");
   UsageError("      number of methods that should be generated. Defaults to 5.");
-  UsageError("  --generate-test-profile-class-ratio=<number>: the percentage from the maximum");
+  UsageError("  --generate-test-profile-class-percentage=<number>: the percentage from the maximum");
   UsageError("      number of classes that should be generated. Defaults to 5.");
   UsageError("  --generate-test-profile-seed=<number>: seed for random number generator used when");
   UsageError("      generating random test profiles. Defaults to using NanoTime.");
@@ -151,8 +151,8 @@ NO_RETURN static void Usage(const char *fmt, ...) {
 
 // Note: make sure you update the Usage if you change these values.
 static constexpr uint16_t kDefaultTestProfileNumDex = 20;
-static constexpr uint16_t kDefaultTestProfileMethodRatio = 5;
-static constexpr uint16_t kDefaultTestProfileClassRatio = 5;
+static constexpr uint16_t kDefaultTestProfileMethodPercentage = 5;
+static constexpr uint16_t kDefaultTestProfileClassPercentage = 5;
 
 // Separators used when parsing human friendly representation of profiles.
 static const std::string kMethodSep = "->";
@@ -178,8 +178,8 @@ class ProfMan FINAL {
       generate_boot_image_profile_(false),
       dump_output_to_fd_(kInvalidFd),
       test_profile_num_dex_(kDefaultTestProfileNumDex),
-      test_profile_method_ratio_(kDefaultTestProfileMethodRatio),
-      test_profile_class_ratio_(kDefaultTestProfileClassRatio),
+      test_profile_method_percerntage_(kDefaultTestProfileMethodPercentage),
+      test_profile_class_percentage_(kDefaultTestProfileClassPercentage),
       test_profile_seed_(NanoTime()),
       start_ns_(NanoTime()) {}
 
@@ -253,15 +253,15 @@ class ProfMan FINAL {
                         "--generate-test-profile-num-dex",
                         &test_profile_num_dex_,
                         Usage);
-      } else if (option.starts_with("--generate-test-profile-method-ratio")) {
+      } else if (option.starts_with("--generate-test-profile-method-percentage")) {
         ParseUintOption(option,
-                        "--generate-test-profile-method-ratio",
-                        &test_profile_method_ratio_,
+                        "--generate-test-profile-method-percentage",
+                        &test_profile_method_percerntage_,
                         Usage);
-      } else if (option.starts_with("--generate-test-profile-class-ratio")) {
+      } else if (option.starts_with("--generate-test-profile-class-percentage")) {
         ParseUintOption(option,
-                        "--generate-test-profile-class-ratio",
-                        &test_profile_class_ratio_,
+                        "--generate-test-profile-class-percentage",
+                        &test_profile_class_percentage_,
                         Usage);
       } else if (option.starts_with("--generate-test-profile-seed=")) {
         ParseUintOption(option, "--generate-test-profile-seed", &test_profile_seed_, Usage);
@@ -1014,11 +1014,11 @@ class ProfMan FINAL {
 
   int GenerateTestProfile() {
     // Validate parameters for this command.
-    if (test_profile_method_ratio_ > 100) {
-      Usage("Invalid ratio for --generate-test-profile-method-ratio");
+    if (test_profile_method_percerntage_ > 100) {
+      Usage("Invalid percentage for --generate-test-profile-method-percentage");
     }
-    if (test_profile_class_ratio_ > 100) {
-      Usage("Invalid ratio for --generate-test-profile-class-ratio");
+    if (test_profile_class_percentage_ > 100) {
+      Usage("Invalid percentage for --generate-test-profile-class-percentage");
     }
     // If given APK files or DEX locations, check that they're ok.
     if (!apk_files_.empty() || !apks_fd_.empty() || !dex_locations_.empty()) {
@@ -1039,8 +1039,8 @@ class ProfMan FINAL {
     if (apk_files_.empty() && apks_fd_.empty() && dex_locations_.empty()) {
       result = ProfileCompilationInfo::GenerateTestProfile(profile_test_fd,
                                                            test_profile_num_dex_,
-                                                           test_profile_method_ratio_,
-                                                           test_profile_class_ratio_,
+                                                           test_profile_method_percerntage_,
+                                                           test_profile_class_percentage_,
                                                            test_profile_seed_);
     } else {
       // Initialize MemMap for ZipArchive::OpenFromFd.
@@ -1051,6 +1051,8 @@ class ProfMan FINAL {
       // Create a random profile file based on the set of dex files.
       result = ProfileCompilationInfo::GenerateTestProfile(profile_test_fd,
                                                            dex_files,
+                                                           test_profile_method_percerntage_,
+                                                           test_profile_class_percentage_,
                                                            test_profile_seed_);
     }
     close(profile_test_fd);  // ignore close result.
@@ -1101,8 +1103,8 @@ class ProfMan FINAL {
   std::string test_profile_;
   std::string create_profile_from_file_;
   uint16_t test_profile_num_dex_;
-  uint16_t test_profile_method_ratio_;
-  uint16_t test_profile_class_ratio_;
+  uint16_t test_profile_method_percerntage_;
+  uint16_t test_profile_class_percentage_;
   uint32_t test_profile_seed_;
   uint64_t start_ns_;
 };
