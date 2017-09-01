@@ -629,12 +629,40 @@ void InstructionCodeGeneratorARMVIXL::VisitVecSetScalars(HVecSetScalars* instruc
   LOG(FATAL) << "No SIMD for " << instruction->GetId();
 }
 
-void LocationsBuilderARMVIXL::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instr) {
-  LOG(FATAL) << "No SIMD for " << instr->GetId();
+// Helper to set up locations for vector accumulations.
+static void CreateVecAccumLocations(ArenaAllocator* arena, HVecOperation* instruction) {
+  LocationSummary* locations = new (arena) LocationSummary(instruction);
+  switch (instruction->GetPackedType()) {
+    case Primitive::kPrimByte:
+    case Primitive::kPrimChar:
+    case Primitive::kPrimShort:
+    case Primitive::kPrimInt:
+    case Primitive::kPrimLong:
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetInAt(1, Location::RequiresFpuRegister());
+      locations->SetInAt(2, Location::RequiresFpuRegister());
+      locations->SetOut(Location::SameAsFirstInput());
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
 }
 
-void InstructionCodeGeneratorARMVIXL::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instr) {
-  LOG(FATAL) << "No SIMD for " << instr->GetId();
+void LocationsBuilderARMVIXL::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instruction) {
+  CreateVecAccumLocations(GetGraph()->GetArena(), instruction);
+}
+
+void InstructionCodeGeneratorARMVIXL::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instruction) {
+  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+}
+
+void LocationsBuilderARMVIXL::VisitVecSADAccumulate(HVecSADAccumulate* instruction) {
+  CreateVecAccumLocations(GetGraph()->GetArena(), instruction);
+}
+
+void InstructionCodeGeneratorARMVIXL::VisitVecSADAccumulate(HVecSADAccumulate* instruction) {
+  LOG(FATAL) << "No SIMD for " << instruction->GetId();
 }
 
 // Return whether the vector memory access operation is guaranteed to be word-aligned (ARM word

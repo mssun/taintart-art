@@ -75,6 +75,7 @@ class HLoopOptimization : public HOptimization {
     kNoMinMax        = 1 << 8,   // no min/max
     kNoStringCharAt  = 1 << 9,   // no StringCharAt
     kNoReduction     = 1 << 10,  // no reduction
+    kNoSAD           = 1 << 11,  // no sum of absolute differences (SAD)
   };
 
   /*
@@ -172,6 +173,11 @@ class HLoopOptimization : public HOptimization {
                                 bool generate_code,
                                 Primitive::Type type,
                                 uint64_t restrictions);
+  bool VectorizeSADIdiom(LoopNode* node,
+                         HInstruction* instruction,
+                         bool generate_code,
+                         Primitive::Type type,
+                         uint64_t restrictions);
 
   // Vectorization heuristics.
   bool IsVectorizationProfitable(int64_t trip_count);
