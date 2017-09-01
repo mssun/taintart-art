@@ -462,9 +462,17 @@ static inline int32_t DoSparseSwitch(const Instruction* inst, const ShadowFrame&
   return 3;
 }
 
-uint32_t FindNextInstructionFollowingException(Thread* self, ShadowFrame& shadow_frame,
-    uint32_t dex_pc, const instrumentation::Instrumentation* instrumentation)
-        REQUIRES_SHARED(Locks::mutator_lock_);
+// We execute any instrumentation events triggered by throwing and/or handing the pending exception
+// and change the shadow_frames dex_pc to the appropriate exception handler if the current method
+// has one. If the exception has been handled and the shadow_frame is now pointing to a catch clause
+// we return true. If the current method is unable to handle the exception we return false.
+// This function accepts a null Instrumentation* as a way to cause instrumentation events not to be
+// reported.
+// TODO We might wish to reconsider how we cause some events to be ignored.
+bool MoveToExceptionHandler(Thread* self,
+                            ShadowFrame& shadow_frame,
+                            const instrumentation::Instrumentation* instrumentation)
+    REQUIRES_SHARED(Locks::mutator_lock_);
 
 NO_RETURN void UnexpectedOpcode(const Instruction* inst, const ShadowFrame& shadow_frame)
   __attribute__((cold))
