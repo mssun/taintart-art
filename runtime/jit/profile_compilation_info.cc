@@ -545,11 +545,6 @@ ProfileCompilationInfo::DexFileData* ProfileCompilationInfo::GetOrAddDexFileData
     info_.push_back(dex_file_data);
   }
   DexFileData* result = info_[profile_index];
-  // DCHECK that profile info map key is consistent with the one stored in the dex file data.
-  // This should always be the case since since the cache map is managed by ProfileCompilationInfo.
-  DCHECK_EQ(profile_key, result->profile_key);
-  DCHECK_EQ(profile_index, result->profile_index);
-  DCHECK_EQ(num_method_ids, result->num_method_ids);
 
   // Check that the checksum matches.
   // This may different if for example the dex file was updated and we had a record of the old one.
@@ -557,6 +552,13 @@ ProfileCompilationInfo::DexFileData* ProfileCompilationInfo::GetOrAddDexFileData
     LOG(WARNING) << "Checksum mismatch for dex " << profile_key;
     return nullptr;
   }
+
+  // DCHECK that profile info map key is consistent with the one stored in the dex file data.
+  // This should always be the case since since the cache map is managed by ProfileCompilationInfo.
+  DCHECK_EQ(profile_key, result->profile_key);
+  DCHECK_EQ(profile_index, result->profile_index);
+  DCHECK_EQ(num_method_ids, result->num_method_ids);
+
   return result;
 }
 
