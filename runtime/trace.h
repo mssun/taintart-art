@@ -181,6 +181,8 @@ class Trace FINAL : public instrumentation::InstrumentationListener {
   void ExceptionThrown(Thread* thread,
                        Handle<mirror::Throwable> exception_object)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!*unique_methods_lock_) OVERRIDE;
+  void ExceptionHandled(Thread* thread, Handle<mirror::Throwable> exception_object)
+      REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!*unique_methods_lock_) OVERRIDE;
   void Branch(Thread* thread,
               ArtMethod* method,
               uint32_t dex_pc,
