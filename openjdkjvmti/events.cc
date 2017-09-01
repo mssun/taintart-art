@@ -48,6 +48,7 @@
 #include "nativehelper/ScopedLocalRef.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
+#include "stack.h"
 #include "thread-inl.h"
 #include "thread_list.h"
 #include "ti_phase.h"
@@ -552,10 +553,123 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
     }
   }
 
+  static void FindCatchMethodsFromThrow(art::Thread* self,
+                                        art::Handle<art::mirror::Throwable> exception,
+                                        /*out*/ art::ArtMethod** out_method,
+                                        /*out*/ uint32_t* dex_pc)
+      REQUIRES_SHARED(art::Locks::mutator_lock_) {
+    // Finds the location where this exception will most likely be caught. We ignore intervening
+    // native frames (which could catch the exception) and return the closest java frame with a
+    // compatible catch statement.
+    class CatchLocationFinder FINAL : public art::StackVisitor {
+     public:
+      CatchLocationFinder(art::Thread* target,
+                          art::Handle<art::mirror::Class> exception_class,
+                          art::Context* context,
+                          /*out*/ art::ArtMethod** out_catch_method,
+                          /*out*/ uint32_t* out_catch_pc)
+          REQUIRES_SHARED(art::Locks::mutator_lock_)
+        : StackVisitor(target, context, art::StackVisitor::StackWalkKind::kIncludeInlinedFrames),
+          exception_class_(exception_class),
+          catch_method_ptr_(out_catch_method),
+          catch_dex_pc_ptr_(out_catch_pc) {}
+
+      bool VisitFrame() OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+        art::ArtMethod* method = GetMethod();
+        DCHECK(method != nullptr);
+        if (method->IsRuntimeMethod()) {
+          return true;
+        }
+
+        if (!method->IsNative()) {
+          uint32_t cur_dex_pc = GetDexPc();
+          if (cur_dex_pc == art::DexFile::kDexNoIndex) {
+            // This frame looks opaque. Just keep on going.
+            return true;
+          }
+          bool has_no_move_exception = false;
+          uint32_t found_dex_pc = method->FindCatchBlock(
+              exception_class_, cur_dex_pc, &has_no_move_exception);
+          if (found_dex_pc != art::DexFile::kDexNoIndex) {
+            // We found the catch. Store the result and return.
+            *catch_method_ptr_ = method;
+            *catch_dex_pc_ptr_ = found_dex_pc;
+            return false;
+          }
+        }
+        return true;
+      }
+
+     private:
+      art::Handle<art::mirror::Class> exception_class_;
+      art::ArtMethod** catch_method_ptr_;
+      uint32_t* catch_dex_pc_ptr_;
+
+      DISALLOW_COPY_AND_ASSIGN(CatchLocationFinder);
+    };
+
+    art::StackHandleScope<1> hs(self);
+    *out_method = nullptr;
+    *dex_pc = 0;
+    std::unique_ptr<art::Context> context(art::Context::Create());
+
+    CatchLocationFinder clf(self,
+                            hs.NewHandle(exception->GetClass()),
+                            context.get(),
+                            /*out*/ out_method,
+                            /*out*/ dex_pc);
+    clf.WalkStack(/* include_transitions */ false);
+  }
+
   // Call-back when an exception is thrown.
-  void ExceptionThrown(art::Thread* self ATTRIBUTE_UNUSED,
-                       art::Handle<art::mirror::Throwable> exception_object ATTRIBUTE_UNUSED)
+  void ExceptionThrown(art::Thread* self, art::Handle<art::mirror::Throwable> exception_object)
       REQUIRES_SHARED(art::Locks::mutator_lock_) OVERRIDE {
+    DCHECK(self->IsExceptionThrownByCurrentMethod(exception_object.Get()));
+    // The instrumentation events get rid of this for us.
+    DCHECK(!self->IsExceptionPending());
+    if (event_handler_->IsEventEnabledAnywhere(ArtJvmtiEvent::kException)) {
+      art::JNIEnvExt* jnienv = self->GetJniEnv();
+      art::ArtMethod* catch_method;
+      uint32_t catch_pc;
+      FindCatchMethodsFromThrow(self, exception_object, &catch_method, &catch_pc);
+      uint32_t dex_pc = 0;
+      art::ArtMethod* method = self->GetCurrentMethod(&dex_pc,
+                                                      /* check_suspended */ true,
+                                                      /* abort_on_error */ art::kIsDebugBuild);
+      ScopedLocalRef<jobject> exception(jnienv,
+                                        AddLocalRef<jobject>(jnienv, exception_object.Get()));
+      RunEventCallback<ArtJvmtiEvent::kException>(
+          self,
+          jnienv,
+          art::jni::EncodeArtMethod(method),
+          static_cast<jlocation>(dex_pc),
+          exception.get(),
+          art::jni::EncodeArtMethod(catch_method),
+          static_cast<jlocation>(catch_pc));
+    }
+    return;
+  }
+
+  // Call-back when an exception is handled.
+  void ExceptionHandled(art::Thread* self, art::Handle<art::mirror::Throwable> exception_object)
+      REQUIRES_SHARED(art::Locks::mutator_lock_) OVERRIDE {
+    // Since the exception has already been handled there shouldn't be one pending.
+    DCHECK(!self->IsExceptionPending());
+    if (event_handler_->IsEventEnabledAnywhere(ArtJvmtiEvent::kExceptionCatch)) {
+      art::JNIEnvExt* jnienv = self->GetJniEnv();
+      uint32_t dex_pc;
+      art::ArtMethod* method = self->GetCurrentMethod(&dex_pc,
+                                                      /* check_suspended */ true,
+                                                      /* abort_on_error */ art::kIsDebugBuild);
+      ScopedLocalRef<jobject> exception(jnienv,
+                                        AddLocalRef<jobject>(jnienv, exception_object.Get()));
+      RunEventCallback<ArtJvmtiEvent::kExceptionCatch>(
+          self,
+          jnienv,
+          art::jni::EncodeArtMethod(method),
+          static_cast<jlocation>(dex_pc),
+          exception.get());
+    }
     return;
   }
 
@@ -598,6 +712,10 @@ static uint32_t GetInstrumentationEventsFor(ArtJvmtiEvent event) {
       return art::instrumentation::Instrumentation::kDexPcMoved;
     case ArtJvmtiEvent::kFramePop:
       return art::instrumentation::Instrumentation::kWatchedFramePop;
+    case ArtJvmtiEvent::kException:
+      return art::instrumentation::Instrumentation::kExceptionThrown;
+    case ArtJvmtiEvent::kExceptionCatch:
+      return art::instrumentation::Instrumentation::kExceptionHandled;
     default:
       LOG(FATAL) << "Unknown event ";
       return 0;
@@ -677,6 +795,8 @@ void EventHandler::HandleEventType(ArtJvmtiEvent event, bool enable) {
     case ArtJvmtiEvent::kMethodExit:
     case ArtJvmtiEvent::kFieldAccess:
     case ArtJvmtiEvent::kFieldModification:
+    case ArtJvmtiEvent::kException:
+    case ArtJvmtiEvent::kExceptionCatch:
       SetupTraceListener(method_trace_listener_.get(), event, enable);
       return;
 

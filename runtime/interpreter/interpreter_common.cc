@@ -416,35 +416,57 @@ EXPLICIT_DO_IPUT_QUICK_ALL_TEMPLATE_DECL(Primitive::kPrimNot)      // iput-objec
 #undef EXPLICIT_DO_IPUT_QUICK_ALL_TEMPLATE_DECL
 #undef EXPLICIT_DO_IPUT_QUICK_TEMPLATE_DECL
 
+// We execute any instrumentation events that are triggered by this exception and change the
+// shadow_frame's dex_pc to that of the exception handler if there is one in the current method.
+// Return true if we should continue executing in the current method and false if we need to go up
+// the stack to find an exception handler.
 // We accept a null Instrumentation* meaning we must not report anything to the instrumentation.
-uint32_t FindNextInstructionFollowingException(
-    Thread* self, ShadowFrame& shadow_frame, uint32_t dex_pc,
-    const instrumentation::Instrumentation* instrumentation) {
+// TODO We should have a better way to skip instrumentation reporting or possibly rethink that
+// behavior.
+bool MoveToExceptionHandler(Thread* self,
+                            ShadowFrame& shadow_frame,
+                            const instrumentation::Instrumentation* instrumentation) {
   self->VerifyStack();
   StackHandleScope<2> hs(self);
   Handle<mirror::Throwable> exception(hs.NewHandle(self->GetException()));
-  if (instrumentation != nullptr && instrumentation->HasExceptionThrownListeners()
-      && self->IsExceptionThrownByCurrentMethod(exception.Get())) {
+  if (instrumentation != nullptr &&
+      instrumentation->HasExceptionThrownListeners() &&
+      self->IsExceptionThrownByCurrentMethod(exception.Get())) {
+    // See b/65049545 for why we don't need to check to see if the exception has changed.
     instrumentation->ExceptionThrownEvent(self, exception.Get());
   }
   bool clear_exception = false;
   uint32_t found_dex_pc = shadow_frame.GetMethod()->FindCatchBlock(
-      hs.NewHandle(exception->GetClass()), dex_pc, &clear_exception);
-  if (found_dex_pc == DexFile::kDexNoIndex && instrumentation != nullptr) {
-    if (shadow_frame.NeedsNotifyPop()) {
-      instrumentation->WatchedFramePopped(self, shadow_frame);
+      hs.NewHandle(exception->GetClass()), shadow_frame.GetDexPC(), &clear_exception);
+  if (found_dex_pc == DexFile::kDexNoIndex) {
+    if (instrumentation != nullptr) {
+      if (shadow_frame.NeedsNotifyPop()) {
+        instrumentation->WatchedFramePopped(self, shadow_frame);
+      }
+      // Exception is not caught by the current method. We will unwind to the
+      // caller. Notify any instrumentation listener.
+      instrumentation->MethodUnwindEvent(self,
+                                         shadow_frame.GetThisObject(),
+                                         shadow_frame.GetMethod(),
+                                         shadow_frame.GetDexPC());
     }
-    // Exception is not caught by the current method. We will unwind to the
-    // caller. Notify any instrumentation listener.
-    instrumentation->MethodUnwindEvent(self, shadow_frame.GetThisObject(),
-                                       shadow_frame.GetMethod(), dex_pc);
+    return false;
   } else {
-    // Exception is caught in the current method. We will jump to the found_dex_pc.
-    if (clear_exception) {
+    shadow_frame.SetDexPC(found_dex_pc);
+    if (instrumentation != nullptr && instrumentation->HasExceptionHandledListeners()) {
+      self->ClearException();
+      instrumentation->ExceptionHandledEvent(self, exception.Get());
+      if (UNLIKELY(self->IsExceptionPending())) {
+        // Exception handled event threw an exception. Try to find the handler for this one.
+        return MoveToExceptionHandler(self, shadow_frame, instrumentation);
+      } else if (!clear_exception) {
+        self->SetException(exception.Get());
+      }
+    } else if (clear_exception) {
       self->ClearException();
     }
+    return true;
   }
-  return found_dex_pc;
 }
 
 void UnexpectedOpcode(const Instruction* inst, const ShadowFrame& shadow_frame) {
