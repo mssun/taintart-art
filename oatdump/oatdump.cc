@@ -178,10 +178,32 @@ class OatSymbolizer FINAL {
                                     oat_file_->BssRootsOffset());
     builder_->WriteDynamicSection();
 
+    const OatHeader& oat_header = oat_file_->GetOatHeader();
+    #define DO_TRAMPOLINE(fn_name)                                                \
+      if (oat_header.Get ## fn_name ## Offset() != 0) {                           \
+        debug::MethodDebugInfo info = {};                                         \
+        info.trampoline_name = #fn_name;                                          \
+        info.isa = oat_header.GetInstructionSet();                                \
+        info.is_code_address_text_relative = true;                                \
+        size_t code_offset = oat_header.Get ## fn_name ## Offset();               \
+        code_offset -= CompiledCode::CodeDelta(oat_header.GetInstructionSet());   \
+        info.code_address = code_offset - oat_header.GetExecutableOffset();       \
+        info.code_size = 0;  /* The symbol lasts until the next symbol. */        \
+        method_debug_infos_.push_back(std::move(info));                           \
+      }
+    DO_TRAMPOLINE(InterpreterToInterpreterBridge)
+    DO_TRAMPOLINE(InterpreterToCompiledCodeBridge)
+    DO_TRAMPOLINE(JniDlsymLookup);
+    DO_TRAMPOLINE(QuickGenericJniTrampoline);
+    DO_TRAMPOLINE(QuickImtConflictTrampoline);
+    DO_TRAMPOLINE(QuickResolutionTrampoline);
+    DO_TRAMPOLINE(QuickToInterpreterBridge);
+    #undef DO_TRAMPOLINE
+
     Walk();
-    for (const auto& trampoline : debug::MakeTrampolineInfos(oat_file_->GetOatHeader())) {
-      method_debug_infos_.push_back(trampoline);
-    }
+
+    // TODO: Try to symbolize link-time thunks?
+    // This would require disassembling all methods to find branches outside the method code.
 
     debug::WriteDebugInfo(builder_.get(),
                           ArrayRef<const debug::MethodDebugInfo>(method_debug_infos_),
@@ -282,8 +304,8 @@ class OatSymbolizer FINAL {
     // Clear Thumb2 bit.
     const void* code_address = EntryPointToCodePointer(reinterpret_cast<void*>(entry_point));
 
-    debug::MethodDebugInfo info = debug::MethodDebugInfo();
-    info.trampoline_name = nullptr;
+    debug::MethodDebugInfo info = {};
+    DCHECK(info.trampoline_name.empty());
     info.dex_file = &dex_file;
     info.class_def_index = class_def_index;
     info.dex_method_index = dex_method_index;

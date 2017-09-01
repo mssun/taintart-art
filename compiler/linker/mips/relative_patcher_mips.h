@@ -44,6 +44,7 @@ class MipsRelativePatcher FINAL : public RelativePatcher {
   void PatchBakerReadBarrierBranch(std::vector<uint8_t>* code,
                                    const LinkerPatch& patch,
                                    uint32_t patch_offset) OVERRIDE;
+  std::vector<debug::MethodDebugInfo> GenerateThunkDebugInfo(uint32_t executable_offset) OVERRIDE;
 
  private:
   bool is_r6;

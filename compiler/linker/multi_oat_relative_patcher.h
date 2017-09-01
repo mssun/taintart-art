@@ -18,6 +18,7 @@
 #define ART_COMPILER_LINKER_MULTI_OAT_RELATIVE_PATCHER_H_
 
 #include "arch/instruction_set.h"
+#include "debug/method_debug_info.h"
 #include "method_reference.h"
 #include "relative_patcher.h"
 #include "safe_map.h"
@@ -117,6 +118,11 @@ class MultiOatRelativePatcher FINAL {
                                    uint32_t patch_offset) {
     patch_offset += adjustment_;
     relative_patcher_->PatchBakerReadBarrierBranch(code, patch, patch_offset);
+  }
+
+  std::vector<debug::MethodDebugInfo> GenerateThunkDebugInfo(size_t executable_offset) {
+    executable_offset += adjustment_;
+    return relative_patcher_->GenerateThunkDebugInfo(executable_offset);
   }
 
   // Wrappers around RelativePatcher for statistics retrieval.

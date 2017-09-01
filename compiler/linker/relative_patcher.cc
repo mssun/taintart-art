@@ -16,6 +16,7 @@
 
 #include "linker/relative_patcher.h"
 
+#include "debug/method_debug_info.h"
 #ifdef ART_ENABLE_CODEGEN_arm
 #include "linker/arm/relative_patcher_thumb2.h"
 #endif
@@ -79,6 +80,11 @@ std::unique_ptr<RelativePatcher> RelativePatcher::Create(
                                      const LinkerPatch& patch ATTRIBUTE_UNUSED,
                                      uint32_t patch_offset ATTRIBUTE_UNUSED) {
       LOG(FATAL) << "Unexpected baker read barrier branch patch.";
+    }
+
+    std::vector<debug::MethodDebugInfo> GenerateThunkDebugInfo(
+        uint32_t executable_offset ATTRIBUTE_UNUSED) OVERRIDE {
+      return std::vector<debug::MethodDebugInfo>();  // No thunks added.
     }
 
    private:

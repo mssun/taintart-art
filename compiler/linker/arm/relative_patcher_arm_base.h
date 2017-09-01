@@ -34,6 +34,7 @@ class ArmBaseRelativePatcher : public RelativePatcher {
                         MethodReference method_ref) OVERRIDE;
   uint32_t ReserveSpaceEnd(uint32_t offset) OVERRIDE;
   uint32_t WriteThunks(OutputStream* out, uint32_t offset) OVERRIDE;
+  std::vector<debug::MethodDebugInfo> GenerateThunkDebugInfo(uint32_t executable_offset) OVERRIDE;
 
  protected:
   ArmBaseRelativePatcher(RelativePatcherTargetProvider* provider,
@@ -94,6 +95,7 @@ class ArmBaseRelativePatcher : public RelativePatcher {
                                            uint32_t target_offset);
 
   virtual std::vector<uint8_t> CompileThunk(const ThunkKey& key) = 0;
+  virtual std::string GetThunkDebugName(const ThunkKey& key) = 0;
   virtual uint32_t MaxPositiveDisplacement(const ThunkKey& key) = 0;
   virtual uint32_t MaxNegativeDisplacement(const ThunkKey& key) = 0;
 

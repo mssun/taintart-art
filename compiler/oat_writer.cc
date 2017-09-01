@@ -867,16 +867,19 @@ class OatWriter::InitOatClassesMethodVisitor : public DexMethodVisitor {
 class OatWriter::InitCodeMethodVisitor : public OatDexMethodVisitor {
  public:
   InitCodeMethodVisitor(OatWriter* writer, size_t offset)
-      : OatDexMethodVisitor(writer, offset),
-        debuggable_(writer->GetCompilerDriver()->GetCompilerOptions().GetDebuggable()) {
-    writer_->absolute_patch_locations_.reserve(
-        writer_->compiler_driver_->GetNonRelativeLinkerPatchCount());
-  }
+      : InitCodeMethodVisitor(writer, offset, writer->GetCompilerDriver()->GetCompilerOptions()) {}
 
   bool EndClass() OVERRIDE {
     OatDexMethodVisitor::EndClass();
     if (oat_class_index_ == writer_->oat_classes_.size()) {
-      offset_ = writer_->relative_patcher_->ReserveSpaceEnd(offset_);
+      offset_ = relative_patcher_->ReserveSpaceEnd(offset_);
+      if (generate_debug_info_) {
+        std::vector<debug::MethodDebugInfo> thunk_infos =
+            relative_patcher_->GenerateThunkDebugInfo(executable_offset_);
+        writer_->method_info_.insert(writer_->method_info_.end(),
+                                     std::make_move_iterator(thunk_infos.begin()),
+                                     std::make_move_iterator(thunk_infos.end()));
+      }
     }
     return true;
   }
@@ -898,7 +901,7 @@ class OatWriter::InitCodeMethodVisitor : public OatDexMethodVisitor {
       bool deduped = true;
       MethodReference method_ref(dex_file_, it.GetMemberIndex());
       if (debuggable_) {
-        quick_code_offset = writer_->relative_patcher_->GetOffset(method_ref);
+        quick_code_offset = relative_patcher_->GetOffset(method_ref);
         if (quick_code_offset != 0u) {
           // Duplicate methods, we want the same code for both of them so that the oat writer puts
           // the same code in both ArtMethods so that we do not get different oat code at runtime.
@@ -916,14 +919,14 @@ class OatWriter::InitCodeMethodVisitor : public OatDexMethodVisitor {
       }
 
       if (code_size != 0) {
-        if (writer_->relative_patcher_->GetOffset(method_ref) != 0u) {
+        if (relative_patcher_->GetOffset(method_ref) != 0u) {
           // TODO: Should this be a hard failure?
           LOG(WARNING) << "Multiple definitions of "
               << method_ref.dex_file->PrettyMethod(method_ref.dex_method_index)
-              << " offsets " << writer_->relative_patcher_->GetOffset(method_ref)
+              << " offsets " << relative_patcher_->GetOffset(method_ref)
               << " " << quick_code_offset;
         } else {
-          writer_->relative_patcher_->SetOffset(method_ref, quick_code_offset);
+          relative_patcher_->SetOffset(method_ref, quick_code_offset);
         }
       }
 
@@ -977,13 +980,12 @@ class OatWriter::InitCodeMethodVisitor : public OatDexMethodVisitor {
         }
       }
 
-      const CompilerOptions& compiler_options = writer_->compiler_driver_->GetCompilerOptions();
       // Exclude quickened dex methods (code_size == 0) since they have no native code.
-      if (compiler_options.GenerateAnyDebugInfo() && code_size != 0) {
+      if (generate_debug_info_ && code_size != 0) {
         bool has_code_info = method_header->IsOptimized();
         // Record debug information for this function if we are doing that.
-        debug::MethodDebugInfo info = debug::MethodDebugInfo();
-        info.trampoline_name = nullptr;
+        debug::MethodDebugInfo info = {};
+        DCHECK(info.trampoline_name.empty());
         info.dex_file = dex_file_;
         info.class_def_index = class_def_index_;
         info.dex_method_index = it.GetMemberIndex();
@@ -991,10 +993,10 @@ class OatWriter::InitCodeMethodVisitor : public OatDexMethodVisitor {
         info.code_item = it.GetMethodCodeItem();
         info.isa = compiled_method->GetInstructionSet();
         info.deduped = deduped;
-        info.is_native_debuggable = compiler_options.GetNativeDebuggable();
+        info.is_native_debuggable = native_debuggable_;
         info.is_optimized = method_header->IsOptimized();
         info.is_code_address_text_relative = true;
-        info.code_address = code_offset - writer_->oat_header_->GetExecutableOffset();
+        info.code_address = code_offset - executable_offset_;
         info.code_size = code_size;
         info.frame_size_in_bytes = compiled_method->GetFrameSizeInBytes();
         info.code_info = has_code_info ? compiled_method->GetVmapTable().data() : nullptr;
@@ -1012,6 +1014,17 @@ class OatWriter::InitCodeMethodVisitor : public OatDexMethodVisitor {
   }
 
  private:
+  InitCodeMethodVisitor(OatWriter* writer, size_t offset, const CompilerOptions& compiler_options)
+      : OatDexMethodVisitor(writer, offset),
+        relative_patcher_(writer->relative_patcher_),
+        executable_offset_(writer->oat_header_->GetExecutableOffset()),
+        debuggable_(compiler_options.GetDebuggable()),
+        native_debuggable_(compiler_options.GetNativeDebuggable()),
+        generate_debug_info_(compiler_options.GenerateAnyDebugInfo()) {
+    writer->absolute_patch_locations_.reserve(
+        writer->GetCompilerDriver()->GetNonRelativeLinkerPatchCount());
+  }
+
   struct CodeOffsetsKeyComparator {
     bool operator()(const CompiledMethod* lhs, const CompiledMethod* rhs) const {
       // Code is deduplicated by CompilerDriver, compare only data pointers.
@@ -1035,7 +1048,7 @@ class OatWriter::InitCodeMethodVisitor : public OatDexMethodVisitor {
   uint32_t NewQuickCodeOffset(CompiledMethod* compiled_method,
                               const ClassDataItemIterator& it,
                               uint32_t thumb_offset) {
-    offset_ = writer_->relative_patcher_->ReserveSpace(
+    offset_ = relative_patcher_->ReserveSpace(
         offset_, compiled_method, MethodReference(dex_file_, it.GetMemberIndex()));
     offset_ += CodeAlignmentSize(offset_, *compiled_method);
     DCHECK_ALIGNED_PARAM(offset_ + sizeof(OatQuickMethodHeader),
@@ -1047,8 +1060,12 @@ class OatWriter::InitCodeMethodVisitor : public OatDexMethodVisitor {
   // so we can simply compare the pointers to find out if things are duplicated.
   SafeMap<const CompiledMethod*, uint32_t, CodeOffsetsKeyComparator> dedupe_map_;
 
-  // Cache of compiler's --debuggable option.
+  // Cache writer_'s members and compiler options.
+  linker::MultiOatRelativePatcher* relative_patcher_;
+  uint32_t executable_offset_;
   const bool debuggable_;
+  const bool native_debuggable_;
+  const bool generate_debug_info_;
 };
 
 class OatWriter::InitMapMethodVisitor : public OatDexMethodVisitor {
@@ -1935,19 +1952,33 @@ size_t OatWriter::InitOatDexFiles(size_t offset) {
 size_t OatWriter::InitOatCode(size_t offset) {
   // calculate the offsets within OatHeader to executable code
   size_t old_offset = offset;
-  size_t adjusted_offset = offset;
   // required to be on a new page boundary
   offset = RoundUp(offset, kPageSize);
   oat_header_->SetExecutableOffset(offset);
   size_executable_offset_alignment_ = offset - old_offset;
+  // TODO: Remove unused trampoline offsets from the OatHeader (requires oat version change).
+  oat_header_->SetInterpreterToInterpreterBridgeOffset(0);
+  oat_header_->SetInterpreterToCompiledCodeBridgeOffset(0);
   if (compiler_driver_->GetCompilerOptions().IsBootImage()) {
     InstructionSet instruction_set = compiler_driver_->GetInstructionSet();
+    const bool generate_debug_info = compiler_driver_->GetCompilerOptions().GenerateAnyDebugInfo();
+    size_t adjusted_offset = offset;
 
-    #define DO_TRAMPOLINE(field, fn_name) \
-      offset = CompiledCode::AlignCode(offset, instruction_set); \
-      adjusted_offset = offset + CompiledCode::CodeDelta(instruction_set); \
-      oat_header_->Set ## fn_name ## Offset(adjusted_offset); \
-      (field) = compiler_driver_->Create ## fn_name(); \
+    #define DO_TRAMPOLINE(field, fn_name)                                   \
+      offset = CompiledCode::AlignCode(offset, instruction_set);            \
+      adjusted_offset = offset + CompiledCode::CodeDelta(instruction_set);  \
+      oat_header_->Set ## fn_name ## Offset(adjusted_offset);               \
+      (field) = compiler_driver_->Create ## fn_name();                      \
+      if (generate_debug_info) {                                            \
+        debug::MethodDebugInfo info = {};                                   \
+        info.trampoline_name = #fn_name;                                    \
+        info.isa = instruction_set;                                         \
+        info.is_code_address_text_relative = true;                          \
+        /* Use the code offset rather than the `adjusted_offset`. */        \
+        info.code_address = offset - oat_header_->GetExecutableOffset();    \
+        info.code_size = (field)->size();                                   \
+        method_info_.push_back(std::move(info));                            \
+      }                                                                     \
       offset += (field)->size();
 
     DO_TRAMPOLINE(jni_dlsym_lookup_, JniDlsymLookup);
@@ -1958,8 +1989,6 @@ size_t OatWriter::InitOatCode(size_t offset) {
 
     #undef DO_TRAMPOLINE
   } else {
-    oat_header_->SetInterpreterToInterpreterBridgeOffset(0);
-    oat_header_->SetInterpreterToCompiledCodeBridgeOffset(0);
     oat_header_->SetJniDlsymLookupOffset(0);
     oat_header_->SetQuickGenericJniTrampolineOffset(0);
     oat_header_->SetQuickImtConflictTrampolineOffset(0);
