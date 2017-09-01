@@ -832,6 +832,11 @@ void Trace::InvokeVirtualOrInterface(Thread*,
              << " " << dex_pc;
 }
 
+void Trace::WatchedFramePop(Thread* self ATTRIBUTE_UNUSED,
+                            const ShadowFrame& frame ATTRIBUTE_UNUSED) {
+  LOG(ERROR) << "Unexpected WatchedFramePop event in tracing";
+}
+
 void Trace::ReadClocks(Thread* thread, uint32_t* thread_clock_diff, uint32_t* wall_clock_diff) {
   if (UseThreadCpuClock()) {
     uint64_t clock_base = thread->GetTraceClockBase();
