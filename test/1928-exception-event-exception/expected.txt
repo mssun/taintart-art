@@ -1,0 +1,236 @@
+Test "art.Test1928$DoThrowClass": Running with handler "art.Test1928$DoNothingHandler"
+main: public static void art.Test1928.doThrow() @ line = 110 throws class art.Test1928$TestException: doThrow
+	Current Stack:
+		private static native art.StackTrace$StackFrameData[] art.StackTrace.nativeGetStackTrace(java.lang.Thread) @ line = -1
+		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 60
+		private static void art.Test1928.PrintStack() @ line = 35
+		public static void art.Test1928.ExceptionEvent(java.lang.Thread,java.lang.reflect.Executable,long,java.lang.Throwable,java.lang.reflect.Executable,long) @ line = 59
+		public static void art.Test1928.doThrow() @ line = 110
+		public void art.Test1928$DoThrowClass.run() @ line = 114
+		public static void art.Test1928.run() throws java.lang.Exception @ line = 196
+	Will be caught by: public static void art.Test1928.run() throws java.lang.Exception @ line = 199
+exception is: art.Test1928$TestException: doThrow
+	at art.Test1928.doThrow(Test1928.java:110)
+	at art.Test1928$DoThrowClass.run(Test1928.java:114)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+	Doing nothing!
+Test "art.Test1928$DoThrowClass": Caught error art.Test1928$TestException:"doThrow" with handler "art.Test1928$DoNothingHandler"
+art.Test1928$TestException: doThrow
+	at art.Test1928.doThrow(Test1928.java:110)
+	at art.Test1928$DoThrowClass.run(Test1928.java:114)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+Test "art.Test1928$DoThrowClass": Finished running with handler "art.Test1928$DoNothingHandler"
+Test "art.Test1928$DoThrowCatchBaseTestException": Running with handler "art.Test1928$DoNothingHandler"
+main: public static void art.Test1928.throwCatchBaseTestException() @ line = 119 throws class art.Test1928$TestException: throwCatchBaseTestException
+	Current Stack:
+		private static native art.StackTrace$StackFrameData[] art.StackTrace.nativeGetStackTrace(java.lang.Thread) @ line = -1
+		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 60
+		private static void art.Test1928.PrintStack() @ line = 35
+		public static void art.Test1928.ExceptionEvent(java.lang.Thread,java.lang.reflect.Executable,long,java.lang.Throwable,java.lang.reflect.Executable,long) @ line = 59
+		public static void art.Test1928.throwCatchBaseTestException() @ line = 119
+		public void art.Test1928$DoThrowCatchBaseTestException.run() @ line = 129
+		public static void art.Test1928.run() throws java.lang.Exception @ line = 196
+	Will be caught by: public static void art.Test1928.throwCatchBaseTestException() @ line = 120
+exception is: art.Test1928$TestException: throwCatchBaseTestException
+	at art.Test1928.throwCatchBaseTestException(Test1928.java:119)
+	at art.Test1928$DoThrowCatchBaseTestException.run(Test1928.java:129)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+	Doing nothing!
+Caught art.Test1928$TestException: "throwCatchBaseTestException"
+art.Test1928$TestException: throwCatchBaseTestException
+	at art.Test1928.throwCatchBaseTestException(Test1928.java:119)
+	at art.Test1928$DoThrowCatchBaseTestException.run(Test1928.java:129)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+Test "art.Test1928$DoThrowCatchBaseTestException": No error caught with handler "art.Test1928$DoNothingHandler"
+Test "art.Test1928$DoThrowCatchBaseTestException": Finished running with handler "art.Test1928$DoNothingHandler"
+Test "art.Test1928$DoThrowCatchTestException": Running with handler "art.Test1928$DoNothingHandler"
+main: public static void art.Test1928.throwCatchTestException() @ line = 134 throws class art.Test1928$TestException: throwCatchTestException
+	Current Stack:
+		private static native art.StackTrace$StackFrameData[] art.StackTrace.nativeGetStackTrace(java.lang.Thread) @ line = -1
+		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 60
+		private static void art.Test1928.PrintStack() @ line = 35
+		public static void art.Test1928.ExceptionEvent(java.lang.Thread,java.lang.reflect.Executable,long,java.lang.Throwable,java.lang.reflect.Executable,long) @ line = 59
+		public static void art.Test1928.throwCatchTestException() @ line = 134
+		public void art.Test1928$DoThrowCatchTestException.run() @ line = 144
+		public static void art.Test1928.run() throws java.lang.Exception @ line = 196
+	Will be caught by: public static void art.Test1928.throwCatchTestException() @ line = 135
+exception is: art.Test1928$TestException: throwCatchTestException
+	at art.Test1928.throwCatchTestException(Test1928.java:134)
+	at art.Test1928$DoThrowCatchTestException.run(Test1928.java:144)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+	Doing nothing!
+Caught art.Test1928$TestException: "throwCatchTestException"
+art.Test1928$TestException: throwCatchTestException
+	at art.Test1928.throwCatchTestException(Test1928.java:134)
+	at art.Test1928$DoThrowCatchTestException.run(Test1928.java:144)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+Test "art.Test1928$DoThrowCatchTestException": No error caught with handler "art.Test1928$DoNothingHandler"
+Test "art.Test1928$DoThrowCatchTestException": Finished running with handler "art.Test1928$DoNothingHandler"
+Test "art.Test1928$DoThrowCatchTestExceptionNoRethrow": Running with handler "art.Test1928$DoNothingHandler"
+main: public static void art.Test1928.throwCatchTestExceptionNoRethrow() @ line = 149 throws class art.Test1928$TestException: throwCatchTestExceptionNoRethrow
+	Current Stack:
+		private static native art.StackTrace$StackFrameData[] art.StackTrace.nativeGetStackTrace(java.lang.Thread) @ line = -1
+		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 60
+		private static void art.Test1928.PrintStack() @ line = 35
+		public static void art.Test1928.ExceptionEvent(java.lang.Thread,java.lang.reflect.Executable,long,java.lang.Throwable,java.lang.reflect.Executable,long) @ line = 59
+		public static void art.Test1928.throwCatchTestExceptionNoRethrow() @ line = 149
+		public void art.Test1928$DoThrowCatchTestExceptionNoRethrow.run() @ line = 159
+		public static void art.Test1928.run() throws java.lang.Exception @ line = 196
+	Will be caught by: public static void art.Test1928.run() throws java.lang.Exception @ line = 199
+exception is: art.Test1928$TestException: throwCatchTestExceptionNoRethrow
+	at art.Test1928.throwCatchTestExceptionNoRethrow(Test1928.java:149)
+	at art.Test1928$DoThrowCatchTestExceptionNoRethrow.run(Test1928.java:159)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+	Doing nothing!
+Test "art.Test1928$DoThrowCatchTestExceptionNoRethrow": Caught error art.Test1928$TestException:"throwCatchTestExceptionNoRethrow" with handler "art.Test1928$DoNothingHandler"
+art.Test1928$TestException: throwCatchTestExceptionNoRethrow
+	at art.Test1928.throwCatchTestExceptionNoRethrow(Test1928.java:149)
+	at art.Test1928$DoThrowCatchTestExceptionNoRethrow.run(Test1928.java:159)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+Test "art.Test1928$DoThrowCatchTestExceptionNoRethrow": Finished running with handler "art.Test1928$DoNothingHandler"
+Test "art.Test1928$DoThrowClass": Running with handler "art.Test1928$ThrowCatchBase"
+main: public static void art.Test1928.doThrow() @ line = 110 throws class art.Test1928$TestException: doThrow
+	Current Stack:
+		private static native art.StackTrace$StackFrameData[] art.StackTrace.nativeGetStackTrace(java.lang.Thread) @ line = -1
+		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 60
+		private static void art.Test1928.PrintStack() @ line = 35
+		public static void art.Test1928.ExceptionEvent(java.lang.Thread,java.lang.reflect.Executable,long,java.lang.Throwable,java.lang.reflect.Executable,long) @ line = 59
+		public static void art.Test1928.doThrow() @ line = 110
+		public void art.Test1928$DoThrowClass.run() @ line = 114
+		public static void art.Test1928.run() throws java.lang.Exception @ line = 196
+	Will be caught by: public static void art.Test1928.run() throws java.lang.Exception @ line = 199
+exception is: art.Test1928$TestException: doThrow
+	at art.Test1928.doThrow(Test1928.java:110)
+	at art.Test1928$DoThrowClass.run(Test1928.java:114)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+	Throwing BaseTestException and catching it!
+Caught art.Test1928$BaseTestException: "ThrowBaseHandler during throw from public static void art.Test1928.doThrow() @ line = 110"
+art.Test1928$BaseTestException: ThrowBaseHandler during throw from public static void art.Test1928.doThrow() @ line = 110
+	at art.Test1928$ThrowCatchBase.exceptionOccurred(Test1928.java:99)
+	at art.Test1928.ExceptionEvent(Test1928.java:66)
+	at art.Test1928.doThrow(Test1928.java:110)
+	at art.Test1928$DoThrowClass.run(Test1928.java:114)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+Caused by: art.Test1928$TestException: doThrow
+	... 4 more
+Test "art.Test1928$DoThrowClass": Caught error art.Test1928$TestException:"doThrow" with handler "art.Test1928$ThrowCatchBase"
+art.Test1928$TestException: doThrow
+	at art.Test1928.doThrow(Test1928.java:110)
+	at art.Test1928$DoThrowClass.run(Test1928.java:114)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+Test "art.Test1928$DoThrowClass": Finished running with handler "art.Test1928$ThrowCatchBase"
+Test "art.Test1928$DoThrowCatchBaseTestException": Running with handler "art.Test1928$ThrowCatchBase"
+main: public static void art.Test1928.throwCatchBaseTestException() @ line = 119 throws class art.Test1928$TestException: throwCatchBaseTestException
+	Current Stack:
+		private static native art.StackTrace$StackFrameData[] art.StackTrace.nativeGetStackTrace(java.lang.Thread) @ line = -1
+		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 60
+		private static void art.Test1928.PrintStack() @ line = 35
+		public static void art.Test1928.ExceptionEvent(java.lang.Thread,java.lang.reflect.Executable,long,java.lang.Throwable,java.lang.reflect.Executable,long) @ line = 59
+		public static void art.Test1928.throwCatchBaseTestException() @ line = 119
+		public void art.Test1928$DoThrowCatchBaseTestException.run() @ line = 129
+		public static void art.Test1928.run() throws java.lang.Exception @ line = 196
+	Will be caught by: public static void art.Test1928.throwCatchBaseTestException() @ line = 120
+exception is: art.Test1928$TestException: throwCatchBaseTestException
+	at art.Test1928.throwCatchBaseTestException(Test1928.java:119)
+	at art.Test1928$DoThrowCatchBaseTestException.run(Test1928.java:129)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+	Throwing BaseTestException and catching it!
+Caught art.Test1928$BaseTestException: "ThrowBaseHandler during throw from public static void art.Test1928.throwCatchBaseTestException() @ line = 119"
+art.Test1928$BaseTestException: ThrowBaseHandler during throw from public static void art.Test1928.throwCatchBaseTestException() @ line = 119
+	at art.Test1928$ThrowCatchBase.exceptionOccurred(Test1928.java:99)
+	at art.Test1928.ExceptionEvent(Test1928.java:66)
+	at art.Test1928.throwCatchBaseTestException(Test1928.java:119)
+	at art.Test1928$DoThrowCatchBaseTestException.run(Test1928.java:129)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+Caused by: art.Test1928$TestException: throwCatchBaseTestException
+	... 4 more
+Caught art.Test1928$TestException: "throwCatchBaseTestException"
+art.Test1928$TestException: throwCatchBaseTestException
+	at art.Test1928.throwCatchBaseTestException(Test1928.java:119)
+	at art.Test1928$DoThrowCatchBaseTestException.run(Test1928.java:129)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+Test "art.Test1928$DoThrowCatchBaseTestException": No error caught with handler "art.Test1928$ThrowCatchBase"
+Test "art.Test1928$DoThrowCatchBaseTestException": Finished running with handler "art.Test1928$ThrowCatchBase"
+Test "art.Test1928$DoThrowCatchTestException": Running with handler "art.Test1928$ThrowCatchBase"
+main: public static void art.Test1928.throwCatchTestException() @ line = 134 throws class art.Test1928$TestException: throwCatchTestException
+	Current Stack:
+		private static native art.StackTrace$StackFrameData[] art.StackTrace.nativeGetStackTrace(java.lang.Thread) @ line = -1
+		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 60
+		private static void art.Test1928.PrintStack() @ line = 35
+		public static void art.Test1928.ExceptionEvent(java.lang.Thread,java.lang.reflect.Executable,long,java.lang.Throwable,java.lang.reflect.Executable,long) @ line = 59
+		public static void art.Test1928.throwCatchTestException() @ line = 134
+		public void art.Test1928$DoThrowCatchTestException.run() @ line = 144
+		public static void art.Test1928.run() throws java.lang.Exception @ line = 196
+	Will be caught by: public static void art.Test1928.throwCatchTestException() @ line = 135
+exception is: art.Test1928$TestException: throwCatchTestException
+	at art.Test1928.throwCatchTestException(Test1928.java:134)
+	at art.Test1928$DoThrowCatchTestException.run(Test1928.java:144)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+	Throwing BaseTestException and catching it!
+Caught art.Test1928$BaseTestException: "ThrowBaseHandler during throw from public static void art.Test1928.throwCatchTestException() @ line = 134"
+art.Test1928$BaseTestException: ThrowBaseHandler during throw from public static void art.Test1928.throwCatchTestException() @ line = 134
+	at art.Test1928$ThrowCatchBase.exceptionOccurred(Test1928.java:99)
+	at art.Test1928.ExceptionEvent(Test1928.java:66)
+	at art.Test1928.throwCatchTestException(Test1928.java:134)
+	at art.Test1928$DoThrowCatchTestException.run(Test1928.java:144)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+Caused by: art.Test1928$TestException: throwCatchTestException
+	... 4 more
+Caught art.Test1928$TestException: "throwCatchTestException"
+art.Test1928$TestException: throwCatchTestException
+	at art.Test1928.throwCatchTestException(Test1928.java:134)
+	at art.Test1928$DoThrowCatchTestException.run(Test1928.java:144)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+Test "art.Test1928$DoThrowCatchTestException": No error caught with handler "art.Test1928$ThrowCatchBase"
+Test "art.Test1928$DoThrowCatchTestException": Finished running with handler "art.Test1928$ThrowCatchBase"
+Test "art.Test1928$DoThrowCatchTestExceptionNoRethrow": Running with handler "art.Test1928$ThrowCatchBase"
+main: public static void art.Test1928.throwCatchTestExceptionNoRethrow() @ line = 149 throws class art.Test1928$TestException: throwCatchTestExceptionNoRethrow
+	Current Stack:
+		private static native art.StackTrace$StackFrameData[] art.StackTrace.nativeGetStackTrace(java.lang.Thread) @ line = -1
+		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 60
+		private static void art.Test1928.PrintStack() @ line = 35
+		public static void art.Test1928.ExceptionEvent(java.lang.Thread,java.lang.reflect.Executable,long,java.lang.Throwable,java.lang.reflect.Executable,long) @ line = 59
+		public static void art.Test1928.throwCatchTestExceptionNoRethrow() @ line = 149
+		public void art.Test1928$DoThrowCatchTestExceptionNoRethrow.run() @ line = 159
+		public static void art.Test1928.run() throws java.lang.Exception @ line = 196
+	Will be caught by: public static void art.Test1928.run() throws java.lang.Exception @ line = 199
+exception is: art.Test1928$TestException: throwCatchTestExceptionNoRethrow
+	at art.Test1928.throwCatchTestExceptionNoRethrow(Test1928.java:149)
+	at art.Test1928$DoThrowCatchTestExceptionNoRethrow.run(Test1928.java:159)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+	Throwing BaseTestException and catching it!
+Caught art.Test1928$BaseTestException: "ThrowBaseHandler during throw from public static void art.Test1928.throwCatchTestExceptionNoRethrow() @ line = 149"
+art.Test1928$BaseTestException: ThrowBaseHandler during throw from public static void art.Test1928.throwCatchTestExceptionNoRethrow() @ line = 149
+	at art.Test1928$ThrowCatchBase.exceptionOccurred(Test1928.java:99)
+	at art.Test1928.ExceptionEvent(Test1928.java:66)
+	at art.Test1928.throwCatchTestExceptionNoRethrow(Test1928.java:149)
+	at art.Test1928$DoThrowCatchTestExceptionNoRethrow.run(Test1928.java:159)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+Caused by: art.Test1928$TestException: throwCatchTestExceptionNoRethrow
+	... 4 more
+Test "art.Test1928$DoThrowCatchTestExceptionNoRethrow": Caught error art.Test1928$TestException:"throwCatchTestExceptionNoRethrow" with handler "art.Test1928$ThrowCatchBase"
+art.Test1928$TestException: throwCatchTestExceptionNoRethrow
+	at art.Test1928.throwCatchTestExceptionNoRethrow(Test1928.java:149)
+	at art.Test1928$DoThrowCatchTestExceptionNoRethrow.run(Test1928.java:159)
+	at art.Test1928.run(Test1928.java:196)
+	at Main.main(Main.java:19)
+Test "art.Test1928$DoThrowCatchTestExceptionNoRethrow": Finished running with handler "art.Test1928$ThrowCatchBase"
