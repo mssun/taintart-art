@@ -285,6 +285,19 @@ static bool HasReductionFormat(HInstruction* reduction, HInstruction* phi) {
   return false;
 }
 
+// Translates operation to reduction kind.
+static HVecReduce::ReductionKind GetReductionKind(HInstruction* reduction) {
+  if (reduction->IsVecAdd() || reduction->IsVecSub()) {
+    return HVecReduce::kSum;
+  } else if (reduction->IsVecMin()) {
+    return HVecReduce::kMin;
+  } else if (reduction->IsVecMax()) {
+    return HVecReduce::kMax;
+  }
+  LOG(FATAL) << "Unsupported SIMD reduction";
+  UNREACHABLE();
+}
+
 // Test vector restrictions.
 static bool HasVectorRestrictions(uint64_t restrictions, uint64_t tested) {
   return (restrictions & tested) != 0;
@@ -334,7 +347,8 @@ HLoopOptimization::HLoopOptimization(HGraph* graph,
       vector_peeling_candidate_(nullptr),
       vector_runtime_test_a_(nullptr),
       vector_runtime_test_b_(nullptr),
-      vector_map_(nullptr) {
+      vector_map_(nullptr),
+      vector_permanent_map_(nullptr) {
 }
 
 void HLoopOptimization::Run() {
@@ -388,11 +402,14 @@ void HLoopOptimization::LocalRun() {
     ArenaSet<ArrayReference> refs(loop_allocator_->Adapter(kArenaAllocLoopOptimization));
     ArenaSafeMap<HInstruction*, HInstruction*> map(
         std::less<HInstruction*>(), loop_allocator_->Adapter(kArenaAllocLoopOptimization));
+    ArenaSafeMap<HInstruction*, HInstruction*> perm(
+        std::less<HInstruction*>(), loop_allocator_->Adapter(kArenaAllocLoopOptimization));
     // Attach.
     iset_ = &iset;
     reductions_ = &reds;
     vector_refs_ = &refs;
     vector_map_ = &map;
+    vector_permanent_map_ = &perm;
     // Traverse.
     TraverseLoopsInnerToOuter(top_loop_);
     // Detach.
@@ -400,6 +417,7 @@ void HLoopOptimization::LocalRun() {
     reductions_ = nullptr;
     vector_refs_ = nullptr;
     vector_map_ = nullptr;
+    vector_permanent_map_ = nullptr;
   }
 }
 
@@ -603,7 +621,6 @@ bool HLoopOptimization::OptimizeInnerLoop(LoopNode* node) {
   // Vectorize loop, if possible and valid.
   if (kEnableVectorization &&
       TrySetSimpleLoopHeader(header, &main_phi) &&
-      reductions_->empty() &&  // TODO: possible with some effort
       ShouldVectorize(node, body, trip_count) &&
       TryAssignLastValue(node->loop_info, main_phi, preheader, /*collect_loop_uses*/ true)) {
     Vectorize(node, body, exit, trip_count);
@@ -802,6 +819,13 @@ void HLoopOptimization::Vectorize(LoopNode* node,
                     /*unroll*/ 1);
   }
 
+  // Link reductions to their final uses.
+  for (auto i = reductions_->begin(); i != reductions_->end(); ++i) {
+    if (i->first->IsPhi()) {
+      i->first->ReplaceWith(ReduceAndExtractIfNeeded(i->second));
+    }
+  }
+
   // Remove the original loop by disconnecting the body block
   // and removing all instructions from the header.
   block->DisconnectAndDelete();
@@ -841,21 +865,10 @@ void HLoopOptimization::GenerateNewLoop(LoopNode* node,
   vector_header_->AddInstruction(cond);
   vector_header_->AddInstruction(new (global_allocator_) HIf(cond));
   vector_index_ = phi;
+  vector_permanent_map_->clear();  // preserved over unrolling
   for (uint32_t u = 0; u < unroll; u++) {
-    // Clear map, leaving loop invariants setup during unrolling.
-    if (u == 0) {
-      vector_map_->clear();
-    } else {
-      for (auto i = vector_map_->begin(); i != vector_map_->end(); ) {
-        if (i->second->IsVecReplicateScalar()) {
-          DCHECK(node->loop_info->IsDefinedOutOfTheLoop(i->first));
-          ++i;
-        } else {
-          i = vector_map_->erase(i);
-        }
-      }
-    }
     // Generate instruction map.
+    vector_map_->clear();
     for (HInstructionIterator it(block->GetInstructions()); !it.Done(); it.Advance()) {
       bool vectorized_def = VectorizeDef(node, it.Current(), /*generate_code*/ true);
       DCHECK(vectorized_def);
@@ -872,8 +885,16 @@ void HLoopOptimization::GenerateNewLoop(LoopNode* node,
         }
       }
     }
+    // Generate the induction.
     vector_index_ = new (global_allocator_) HAdd(induc_type, vector_index_, step);
     Insert(vector_body_, vector_index_);
+  }
+  // Finalize phi inputs for the reductions (if any).
+  for (auto i = reductions_->begin(); i != reductions_->end(); ++i) {
+    if (!i->first->IsPhi()) {
+      DCHECK(i->second->IsPhi());
+      GenerateVecReductionPhiInputs(i->second->AsPhi(), i->first);
+    }
   }
   // Finalize phi inputs for the loop index.
   phi->AddInput(lo);
@@ -905,6 +926,23 @@ bool HLoopOptimization::VectorizeDef(LoopNode* node,
         GenerateVecMem(instruction, vector_map_->Get(index), vector_map_->Get(value), offset, type);
       } else {
         vector_refs_->insert(ArrayReference(base, offset, type, /*lhs*/ true));
+      }
+      return true;
+    }
+    return false;
+  }
+  // Accept a left-hand-side reduction for
+  // (1) supported vector type,
+  // (2) vectorizable right-hand-side value.
+  auto redit = reductions_->find(instruction);
+  if (redit != reductions_->end()) {
+    Primitive::Type type = instruction->GetType();
+    if (TrySetVectorType(type, &restrictions) &&
+        VectorizeUse(node, instruction, generate_code, type, restrictions)) {
+      if (generate_code) {
+        HInstruction* new_red = vector_map_->Get(instruction);
+        vector_permanent_map_->Put(new_red, vector_map_->Get(redit->second));
+        vector_permanent_map_->Overwrite(redit->second, new_red);
       }
       return true;
     }
@@ -965,6 +1003,21 @@ bool HLoopOptimization::VectorizeUse(LoopNode* node,
       }
       return true;
     }
+  } else if (instruction->IsPhi()) {
+    // Accept particular phi operations.
+    if (reductions_->find(instruction) != reductions_->end()) {
+      // Deal with vector restrictions.
+      if (HasVectorRestrictions(restrictions, kNoReduction)) {
+        return false;
+      }
+      // Accept a reduction.
+      if (generate_code) {
+        GenerateVecReductionPhi(instruction->AsPhi());
+      }
+      return true;
+    }
+    // TODO: accept right-hand-side induction?
+    return false;
   } else if (instruction->IsTypeConversion()) {
     // Accept particular type conversions.
     HTypeConversion* conversion = instruction->AsTypeConversion();
@@ -1155,14 +1208,14 @@ bool HLoopOptimization::TrySetVectorType(Primitive::Type type, uint64_t* restric
       switch (type) {
         case Primitive::kPrimBoolean:
         case Primitive::kPrimByte:
-          *restrictions |= kNoDiv;
+          *restrictions |= kNoDiv | kNoReduction;
           return TrySetVectorLength(8);
         case Primitive::kPrimChar:
         case Primitive::kPrimShort:
-          *restrictions |= kNoDiv | kNoStringCharAt;
+          *restrictions |= kNoDiv | kNoStringCharAt | kNoReduction;
           return TrySetVectorLength(4);
         case Primitive::kPrimInt:
-          *restrictions |= kNoDiv;
+          *restrictions |= kNoDiv | kNoReduction;
           return TrySetVectorLength(2);
         default:
           break;
@@ -1174,11 +1227,11 @@ bool HLoopOptimization::TrySetVectorType(Primitive::Type type, uint64_t* restric
       switch (type) {
         case Primitive::kPrimBoolean:
         case Primitive::kPrimByte:
-          *restrictions |= kNoDiv;
+          *restrictions |= kNoDiv | kNoReduction;
           return TrySetVectorLength(16);
         case Primitive::kPrimChar:
         case Primitive::kPrimShort:
-          *restrictions |= kNoDiv;
+          *restrictions |= kNoDiv | kNoReduction;
           return TrySetVectorLength(8);
         case Primitive::kPrimInt:
           *restrictions |= kNoDiv;
@@ -1187,8 +1240,10 @@ bool HLoopOptimization::TrySetVectorType(Primitive::Type type, uint64_t* restric
           *restrictions |= kNoDiv | kNoMul | kNoMinMax;
           return TrySetVectorLength(2);
         case Primitive::kPrimFloat:
+          *restrictions |= kNoReduction;
           return TrySetVectorLength(4);
         case Primitive::kPrimDouble:
+          *restrictions |= kNoReduction;
           return TrySetVectorLength(2);
         default:
           return false;
@@ -1200,11 +1255,12 @@ bool HLoopOptimization::TrySetVectorType(Primitive::Type type, uint64_t* restric
         switch (type) {
           case Primitive::kPrimBoolean:
           case Primitive::kPrimByte:
-            *restrictions |= kNoMul | kNoDiv | kNoShift | kNoAbs | kNoSignedHAdd | kNoUnroundedHAdd;
+            *restrictions |=
+                kNoMul | kNoDiv | kNoShift | kNoAbs | kNoSignedHAdd | kNoUnroundedHAdd | kNoReduction;
             return TrySetVectorLength(16);
           case Primitive::kPrimChar:
           case Primitive::kPrimShort:
-            *restrictions |= kNoDiv | kNoAbs | kNoSignedHAdd | kNoUnroundedHAdd;
+            *restrictions |= kNoDiv | kNoAbs | kNoSignedHAdd | kNoUnroundedHAdd | kNoReduction;
             return TrySetVectorLength(8);
           case Primitive::kPrimInt:
             *restrictions |= kNoDiv;
@@ -1213,10 +1269,10 @@ bool HLoopOptimization::TrySetVectorType(Primitive::Type type, uint64_t* restric
             *restrictions |= kNoMul | kNoDiv | kNoShr | kNoAbs | kNoMinMax;
             return TrySetVectorLength(2);
           case Primitive::kPrimFloat:
-            *restrictions |= kNoMinMax;  // -0.0 vs +0.0
+            *restrictions |= kNoMinMax | kNoReduction;  // minmax: -0.0 vs +0.0
             return TrySetVectorLength(4);
           case Primitive::kPrimDouble:
-            *restrictions |= kNoMinMax;  // -0.0 vs +0.0
+            *restrictions |= kNoMinMax | kNoReduction;  // minmax: -0.0 vs +0.0
             return TrySetVectorLength(2);
           default:
             break;
@@ -1228,23 +1284,23 @@ bool HLoopOptimization::TrySetVectorType(Primitive::Type type, uint64_t* restric
         switch (type) {
           case Primitive::kPrimBoolean:
           case Primitive::kPrimByte:
-            *restrictions |= kNoDiv;
+            *restrictions |= kNoDiv | kNoReduction;
             return TrySetVectorLength(16);
           case Primitive::kPrimChar:
           case Primitive::kPrimShort:
-            *restrictions |= kNoDiv | kNoStringCharAt;
+            *restrictions |= kNoDiv | kNoStringCharAt | kNoReduction;
             return TrySetVectorLength(8);
           case Primitive::kPrimInt:
-            *restrictions |= kNoDiv;
+            *restrictions |= kNoDiv | kNoReduction;
             return TrySetVectorLength(4);
           case Primitive::kPrimLong:
-            *restrictions |= kNoDiv;
+            *restrictions |= kNoDiv | kNoReduction;
             return TrySetVectorLength(2);
           case Primitive::kPrimFloat:
-            *restrictions |= kNoMinMax;  // min/max(x, NaN)
+            *restrictions |= kNoMinMax | kNoReduction;  // min/max(x, NaN)
             return TrySetVectorLength(4);
           case Primitive::kPrimDouble:
-            *restrictions |= kNoMinMax;  // min/max(x, NaN)
+            *restrictions |= kNoMinMax | kNoReduction;  // min/max(x, NaN)
             return TrySetVectorLength(2);
           default:
             break;
@@ -1256,23 +1312,23 @@ bool HLoopOptimization::TrySetVectorType(Primitive::Type type, uint64_t* restric
         switch (type) {
           case Primitive::kPrimBoolean:
           case Primitive::kPrimByte:
-            *restrictions |= kNoDiv;
+            *restrictions |= kNoDiv | kNoReduction;
             return TrySetVectorLength(16);
           case Primitive::kPrimChar:
           case Primitive::kPrimShort:
-            *restrictions |= kNoDiv | kNoStringCharAt;
+            *restrictions |= kNoDiv | kNoStringCharAt | kNoReduction;
             return TrySetVectorLength(8);
           case Primitive::kPrimInt:
-            *restrictions |= kNoDiv;
+            *restrictions |= kNoDiv | kNoReduction;
             return TrySetVectorLength(4);
           case Primitive::kPrimLong:
-            *restrictions |= kNoDiv;
+            *restrictions |= kNoDiv | kNoReduction;
             return TrySetVectorLength(2);
           case Primitive::kPrimFloat:
-            *restrictions |= kNoMinMax;  // min/max(x, NaN)
+            *restrictions |= kNoMinMax | kNoReduction;  // min/max(x, NaN)
             return TrySetVectorLength(4);
           case Primitive::kPrimDouble:
-            *restrictions |= kNoMinMax;  // min/max(x, NaN)
+            *restrictions |= kNoMinMax | kNoReduction;  // min/max(x, NaN)
             return TrySetVectorLength(2);
           default:
             break;
@@ -1305,9 +1361,16 @@ void HLoopOptimization::GenerateVecInv(HInstruction* org, Primitive::Type type) 
       return;
     }
     // In vector code, explicit scalar expansion is needed.
-    HInstruction* vector = new (global_allocator_) HVecReplicateScalar(
-        global_allocator_, org, type, vector_length_);
-    vector_map_->Put(org, Insert(vector_preheader_, vector));
+    HInstruction* vector = nullptr;
+    auto it = vector_permanent_map_->find(org);
+    if (it != vector_permanent_map_->end()) {
+      vector = it->second;  // reuse during unrolling
+    } else {
+      vector = new (global_allocator_) HVecReplicateScalar(
+          global_allocator_, org, type, vector_length_);
+      vector_permanent_map_->Put(org, Insert(vector_preheader_, vector));
+    }
+    vector_map_->Put(org, vector);
   }
 }
 
@@ -1360,6 +1423,78 @@ void HLoopOptimization::GenerateVecMem(HInstruction* org,
     }
   }
   vector_map_->Put(org, vector);
+}
+
+void HLoopOptimization::GenerateVecReductionPhi(HPhi* phi) {
+  DCHECK(reductions_->find(phi) != reductions_->end());
+  DCHECK(reductions_->Get(phi->InputAt(1)) == phi);
+  HInstruction* vector = nullptr;
+  if (vector_mode_ == kSequential) {
+    HPhi* new_phi = new (global_allocator_) HPhi(
+        global_allocator_, kNoRegNumber, 0, phi->GetType());
+    vector_header_->AddPhi(new_phi);
+    vector = new_phi;
+  } else {
+    // Link vector reduction back to prior unrolled update, or a first phi.
+    auto it = vector_permanent_map_->find(phi);
+    if (it != vector_permanent_map_->end()) {
+      vector = it->second;
+    } else {
+      HPhi* new_phi = new (global_allocator_) HPhi(
+          global_allocator_, kNoRegNumber, 0, HVecOperation::kSIMDType);
+      vector_header_->AddPhi(new_phi);
+      vector = new_phi;
+    }
+  }
+  vector_map_->Put(phi, vector);
+}
+
+void HLoopOptimization::GenerateVecReductionPhiInputs(HPhi* phi, HInstruction* reduction) {
+  HInstruction* new_phi = vector_map_->Get(phi);
+  HInstruction* new_init = reductions_->Get(phi);
+  HInstruction* new_red = vector_map_->Get(reduction);
+  // Link unrolled vector loop back to new phi.
+  for (; !new_phi->IsPhi(); new_phi = vector_permanent_map_->Get(new_phi)) {
+    DCHECK(new_phi->IsVecOperation());
+  }
+  // Prepare the new initialization.
+  if (vector_mode_ == kVector) {
+    // Generate a [initial, 0, .., 0] vector.
+    new_init = Insert(
+            vector_preheader_,
+            new (global_allocator_) HVecSetScalars(
+                global_allocator_, &new_init, phi->GetType(), vector_length_, 1));
+  } else {
+    new_init = ReduceAndExtractIfNeeded(new_init);
+  }
+  // Set the phi inputs.
+  DCHECK(new_phi->IsPhi());
+  new_phi->AsPhi()->AddInput(new_init);
+  new_phi->AsPhi()->AddInput(new_red);
+  // New feed value for next phi (safe mutation in iteration).
+  reductions_->find(phi)->second = new_phi;
+}
+
+HInstruction* HLoopOptimization::ReduceAndExtractIfNeeded(HInstruction* instruction) {
+  if (instruction->IsPhi()) {
+    HInstruction* input = instruction->InputAt(1);
+    if (input->IsVecOperation()) {
+      Primitive::Type type = input->AsVecOperation()->GetPackedType();
+      HBasicBlock* exit = instruction->GetBlock()->GetSuccessors()[0];
+      // Generate a vector reduction and scalar extract
+      //    x = REDUCE( [x_1, .., x_n] )
+      //    y = x_1
+      // along the exit of the defining loop.
+      HVecReduce::ReductionKind kind = GetReductionKind(input);
+      HInstruction* reduce = new (global_allocator_) HVecReduce(
+          global_allocator_, instruction, type, vector_length_, kind);
+      exit->InsertInstructionBefore(reduce, exit->GetFirstInstruction());
+      instruction = new (global_allocator_) HVecExtractScalar(
+          global_allocator_, reduce, type, vector_length_, 0);
+      exit->InsertInstructionAfter(instruction, reduce);
+    }
+  }
+  return instruction;
 }
 
 #define GENERATE_VEC(x, y) \
@@ -1542,10 +1677,9 @@ bool HLoopOptimization::VectorizeHalvingAddIdiom(LoopNode* node,
   // Test for top level arithmetic shift right x >> 1 or logical shift right x >>> 1
   // (note whether the sign bit in wider precision is shifted in has no effect
   // on the narrow precision computed by the idiom).
-  int64_t distance = 0;
   if ((instruction->IsShr() ||
        instruction->IsUShr()) &&
-      IsInt64AndGet(instruction->InputAt(1), /*out*/ &distance) && distance == 1) {
+      IsInt64Value(instruction->InputAt(1), 1)) {
     // Test for (a + b + c) >> 1 for optional constant c.
     HInstruction* a = nullptr;
     HInstruction* b = nullptr;
