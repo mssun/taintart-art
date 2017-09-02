@@ -332,32 +332,4 @@ TEST_F(NodesVectorTest, VectorOperationMattersOnMultiplyAccumulate) {
   EXPECT_FALSE(v1->Equals(v3));  // different vector lengths
 }
 
-TEST_F(NodesVectorTest, VectorKindMattersOnReduce) {
-  HVecOperation* v0 = new (&allocator_)
-      HVecReplicateScalar(&allocator_, parameter_, Primitive::kPrimInt, 4);
-
-  HVecReduce* v1 = new (&allocator_) HVecReduce(
-      &allocator_, v0, Primitive::kPrimInt, 4, HVecReduce::kSum);
-  HVecReduce* v2 = new (&allocator_) HVecReduce(
-      &allocator_, v0, Primitive::kPrimInt, 4, HVecReduce::kMin);
-  HVecReduce* v3 = new (&allocator_) HVecReduce(
-      &allocator_, v0, Primitive::kPrimInt, 4, HVecReduce::kMax);
-
-  EXPECT_FALSE(v0->CanBeMoved());
-  EXPECT_TRUE(v1->CanBeMoved());
-  EXPECT_TRUE(v2->CanBeMoved());
-  EXPECT_TRUE(v3->CanBeMoved());
-
-  EXPECT_EQ(HVecReduce::kSum, v1->GetKind());
-  EXPECT_EQ(HVecReduce::kMin, v2->GetKind());
-  EXPECT_EQ(HVecReduce::kMax, v3->GetKind());
-
-  EXPECT_TRUE(v1->Equals(v1));
-  EXPECT_TRUE(v2->Equals(v2));
-  EXPECT_TRUE(v3->Equals(v3));
-
-  EXPECT_FALSE(v1->Equals(v2));  // different kinds
-  EXPECT_FALSE(v1->Equals(v3));
-}
-
 }  // namespace art
