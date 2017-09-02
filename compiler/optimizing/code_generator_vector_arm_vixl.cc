@@ -73,11 +73,19 @@ void InstructionCodeGeneratorARMVIXL::VisitVecReplicateScalar(HVecReplicateScala
   }
 }
 
-void LocationsBuilderARMVIXL::VisitVecExtractScalar(HVecExtractScalar* instruction) {
+void LocationsBuilderARMVIXL::VisitVecSetScalars(HVecSetScalars* instruction) {
   LOG(FATAL) << "No SIMD for " << instruction->GetId();
 }
 
-void InstructionCodeGeneratorARMVIXL::VisitVecExtractScalar(HVecExtractScalar* instruction) {
+void InstructionCodeGeneratorARMVIXL::VisitVecSetScalars(HVecSetScalars* instruction) {
+  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+}
+
+void LocationsBuilderARMVIXL::VisitVecSumReduce(HVecSumReduce* instruction) {
+  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+}
+
+void InstructionCodeGeneratorARMVIXL::VisitVecSumReduce(HVecSumReduce* instruction) {
   LOG(FATAL) << "No SIMD for " << instruction->GetId();
 }
 
@@ -102,14 +110,6 @@ static void CreateVecUnOpLocations(ArenaAllocator* arena, HVecUnaryOperation* in
       LOG(FATAL) << "Unsupported SIMD type";
       UNREACHABLE();
   }
-}
-
-void LocationsBuilderARMVIXL::VisitVecReduce(HVecReduce* instruction) {
-  CreateVecUnOpLocations(GetGraph()->GetArena(), instruction);
-}
-
-void InstructionCodeGeneratorARMVIXL::VisitVecReduce(HVecReduce* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
 }
 
 void LocationsBuilderARMVIXL::VisitVecCnv(HVecCnv* instruction) {
@@ -619,14 +619,6 @@ void InstructionCodeGeneratorARMVIXL::VisitVecUShr(HVecUShr* instruction) {
       LOG(FATAL) << "Unsupported SIMD type";
       UNREACHABLE();
   }
-}
-
-void LocationsBuilderARMVIXL::VisitVecSetScalars(HVecSetScalars* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
-}
-
-void InstructionCodeGeneratorARMVIXL::VisitVecSetScalars(HVecSetScalars* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
 }
 
 void LocationsBuilderARMVIXL::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instr) {

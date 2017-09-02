@@ -215,12 +215,12 @@ void SchedulingLatencyVisitorARM64::VisitVecReplicateScalar(
   last_visited_latency_ = kArm64SIMDReplicateOpLatency;
 }
 
-void SchedulingLatencyVisitorARM64::VisitVecExtractScalar(HVecExtractScalar* instr) {
-  HandleSimpleArithmeticSIMD(instr);
+void SchedulingLatencyVisitorARM64::VisitVecSetScalars(HVecSetScalars* instr) {
+  LOG(FATAL) << "Unsupported SIMD instruction " << instr->GetId();
 }
 
-void SchedulingLatencyVisitorARM64::VisitVecReduce(HVecReduce* instr) {
-  HandleSimpleArithmeticSIMD(instr);
+void SchedulingLatencyVisitorARM64::VisitVecSumReduce(HVecSumReduce* instr) {
+  LOG(FATAL) << "Unsupported SIMD instruction " << instr->GetId();
 }
 
 void SchedulingLatencyVisitorARM64::VisitVecCnv(HVecCnv* instr ATTRIBUTE_UNUSED) {
@@ -283,8 +283,8 @@ void SchedulingLatencyVisitorARM64::VisitVecAnd(HVecAnd* instr ATTRIBUTE_UNUSED)
   last_visited_latency_ = kArm64SIMDIntegerOpLatency;
 }
 
-void SchedulingLatencyVisitorARM64::VisitVecAndNot(HVecAndNot* instr ATTRIBUTE_UNUSED) {
-  last_visited_latency_ = kArm64SIMDIntegerOpLatency;
+void SchedulingLatencyVisitorARM64::VisitVecAndNot(HVecAndNot* instr) {
+  LOG(FATAL) << "Unsupported SIMD instruction " << instr->GetId();
 }
 
 void SchedulingLatencyVisitorARM64::VisitVecOr(HVecOr* instr ATTRIBUTE_UNUSED) {
@@ -304,10 +304,6 @@ void SchedulingLatencyVisitorARM64::VisitVecShr(HVecShr* instr) {
 }
 
 void SchedulingLatencyVisitorARM64::VisitVecUShr(HVecUShr* instr) {
-  HandleSimpleArithmeticSIMD(instr);
-}
-
-void SchedulingLatencyVisitorARM64::VisitVecSetScalars(HVecSetScalars* instr) {
   HandleSimpleArithmeticSIMD(instr);
 }
 
