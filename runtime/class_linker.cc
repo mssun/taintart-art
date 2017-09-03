@@ -4692,14 +4692,8 @@ void ClassLinker::CheckProxyMethod(ArtMethod* method, ArtMethod* prototype) cons
 
   // The proxy method doesn't have its own dex cache or dex file and so it steals those of its
   // interface prototype. The exception to this are Constructors and the Class of the Proxy itself.
-  auto* np = method->GetInterfaceMethodIfProxy(image_pointer_size_);
-  CHECK_EQ(prototype->GetDeclaringClass()->GetDexCache(), np->GetDexCache());
   CHECK_EQ(prototype->GetDexMethodIndex(), method->GetDexMethodIndex());
-
-  CHECK_STREQ(np->GetName(), prototype->GetName());
-  CHECK_STREQ(np->GetShorty(), prototype->GetShorty());
-  // More complex sanity - via dex cache
-  CHECK_EQ(np->ResolveReturnType(), prototype->ResolveReturnType());
+  CHECK_EQ(prototype, method->GetInterfaceMethodIfProxy(image_pointer_size_));
 }
 
 bool ClassLinker::CanWeInitializeClass(ObjPtr<mirror::Class> klass, bool can_init_statics,
