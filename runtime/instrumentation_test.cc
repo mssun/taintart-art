@@ -48,7 +48,6 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
       received_field_written_event(false),
       received_field_written_object_event(false),
       received_exception_thrown_event(false),
-      received_exception_handled_event(false),
       received_branch_event(false),
       received_invoke_virtual_or_interface_event(false),
       received_watched_frame_pop(false) {}
@@ -132,12 +131,6 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
     received_exception_thrown_event = true;
   }
 
-  void ExceptionHandled(Thread* self ATTRIBUTE_UNUSED,
-                        Handle<mirror::Throwable> throwable ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
-    received_exception_handled_event = true;
-  }
-
   void Branch(Thread* thread ATTRIBUTE_UNUSED,
               ArtMethod* method ATTRIBUTE_UNUSED,
               uint32_t dex_pc ATTRIBUTE_UNUSED,
@@ -170,7 +163,6 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
     received_field_written_event = false;
     received_field_written_object_event = false;
     received_exception_thrown_event = false;
-    received_exception_handled_event = false;
     received_branch_event = false;
     received_invoke_virtual_or_interface_event = false;
     received_watched_frame_pop = false;
@@ -185,7 +177,6 @@ class TestInstrumentationListener FINAL : public instrumentation::Instrumentatio
   bool received_field_written_event;
   bool received_field_written_object_event;
   bool received_exception_thrown_event;
-  bool received_exception_handled_event;
   bool received_branch_event;
   bool received_invoke_virtual_or_interface_event;
   bool received_watched_frame_pop;
@@ -378,8 +369,6 @@ class InstrumentationTest : public CommonRuntimeTest {
         return instr->HasFieldWriteListeners();
       case instrumentation::Instrumentation::kExceptionThrown:
         return instr->HasExceptionThrownListeners();
-      case instrumentation::Instrumentation::kExceptionHandled:
-        return instr->HasExceptionHandledListeners();
       case instrumentation::Instrumentation::kBranch:
         return instr->HasBranchListeners();
       case instrumentation::Instrumentation::kInvokeVirtualOrInterface:
@@ -440,13 +429,6 @@ class InstrumentationTest : public CommonRuntimeTest {
       case instrumentation::Instrumentation::kWatchedFramePop:
         instr->WatchedFramePopped(self, frame);
         break;
-      case instrumentation::Instrumentation::kExceptionHandled: {
-        ThrowArithmeticExceptionDivideByZero();
-        mirror::Throwable* event_exception = self->GetException();
-        self->ClearException();
-        instr->ExceptionHandledEvent(self, event_exception);
-        break;
-      }
       default:
         LOG(FATAL) << "Unknown instrumentation event " << event_type;
         UNREACHABLE();
@@ -473,8 +455,6 @@ class InstrumentationTest : public CommonRuntimeTest {
             (with_object && listener.received_field_written_object_event);
       case instrumentation::Instrumentation::kExceptionThrown:
         return listener.received_exception_thrown_event;
-      case instrumentation::Instrumentation::kExceptionHandled:
-        return listener.received_exception_handled_event;
       case instrumentation::Instrumentation::kBranch:
         return listener.received_branch_event;
       case instrumentation::Instrumentation::kInvokeVirtualOrInterface:
@@ -504,7 +484,6 @@ TEST_F(InstrumentationTest, NoInstrumentation) {
   // Check there is no registered listener.
   EXPECT_FALSE(instr->HasDexPcListeners());
   EXPECT_FALSE(instr->HasExceptionThrownListeners());
-  EXPECT_FALSE(instr->HasExceptionHandledListeners());
   EXPECT_FALSE(instr->HasFieldReadListeners());
   EXPECT_FALSE(instr->HasFieldWriteListeners());
   EXPECT_FALSE(instr->HasMethodEntryListeners());
@@ -606,10 +585,6 @@ TEST_F(InstrumentationTest, FieldWritePrimEvent) {
             /*event_method*/ nullptr,
             /*event_field*/ field,
             /*with_object*/ false);
-}
-
-TEST_F(InstrumentationTest, ExceptionHandledEvent) {
-  TestEvent(instrumentation::Instrumentation::kExceptionHandled);
 }
 
 TEST_F(InstrumentationTest, ExceptionThrownEvent) {
