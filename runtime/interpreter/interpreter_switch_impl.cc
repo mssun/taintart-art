@@ -30,7 +30,10 @@ namespace interpreter {
   do {                                                                                          \
     DCHECK(self->IsExceptionPending());                                                         \
     self->AllowThreadSuspension();                                                              \
-    if (!MoveToExceptionHandler(self, shadow_frame, instr)) {                                   \
+    uint32_t found_dex_pc = FindNextInstructionFollowingException(self, shadow_frame,           \
+                                                                  inst->GetDexPc(insns),        \
+                                                                  instr);                       \
+    if (found_dex_pc == DexFile::kDexNoIndex) {                                                 \
       /* Structured locking is to be enforced for abnormal termination, too. */                 \
       DoMonitorCheckOnExit<do_assignability_check>(self, &shadow_frame);                        \
       if (interpret_one_instruction) {                                                          \
@@ -39,8 +42,7 @@ namespace interpreter {
       }                                                                                         \
       return JValue(); /* Handled in caller. */                                                 \
     } else {                                                                                    \
-      int32_t displacement =                                                                    \
-          static_cast<int32_t>(shadow_frame.GetDexPC()) - static_cast<int32_t>(dex_pc);         \
+      int32_t displacement = static_cast<int32_t>(found_dex_pc) - static_cast<int32_t>(dex_pc); \
       inst = inst->RelativeAt(displacement);                                                    \
     }                                                                                           \
   } while (false)
