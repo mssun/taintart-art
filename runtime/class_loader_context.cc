@@ -16,6 +16,9 @@
 
 #include "class_loader_context.h"
 
+#include <stdlib.h>
+
+#include "android-base/file.h"
 #include "art_field-inl.h"
 #include "base/dchecked_vector.h"
 #include "base/stl_util.h"
@@ -202,10 +205,21 @@ bool ClassLoaderContext::OpenDexFiles(InstructionSet isa, const std::string& cla
   for (ClassLoaderInfo& info : class_loader_chain_) {
     for (const std::string& cp_elem : info.classpath) {
       // If path is relative, append it to the provided base directory.
-      std::string location = cp_elem;
-      if (location[0] != '/') {
-        location = classpath_dir + '/' + location;
+      std::string raw_location = cp_elem;
+      if (raw_location[0] != '/') {
+        raw_location = classpath_dir + '/' + raw_location;
       }
+
+      std::string location;  // the real location of the class path element.
+
+      if (!android::base::Realpath(raw_location, &location)) {
+        // If we can't get the realpath of the location there might be something wrong with the
+        // classpath (maybe the file was deleted).
+        // Do not continue in this case and return false.
+        PLOG(ERROR) << "Could not get the realpath of dex location " << raw_location;
+        return false;
+      }
+
       std::string error_msg;
       // When opening the dex files from the context we expect their checksum to match their
       // contents. So pass true to verify_checksum.
