@@ -206,7 +206,7 @@ bool ClassLoaderContext::OpenDexFiles(InstructionSet isa, const std::string& cla
     for (const std::string& cp_elem : info.classpath) {
       // If path is relative, append it to the provided base directory.
       std::string raw_location = cp_elem;
-      if (raw_location[0] != '/') {
+      if (raw_location[0] != '/' && !classpath_dir.empty()) {
         raw_location = classpath_dir + '/' + raw_location;
       }
 
