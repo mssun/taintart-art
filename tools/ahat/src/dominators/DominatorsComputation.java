@@ -88,33 +88,17 @@ public class DominatorsComputation {
     // Invariant: srcS.id < this.id
     public NodeS srcS;
 
+    // The largest id of the nodes we have seen so far on a path from the root
+    // to this node. Used to keep track of which nodes we have already seen
+    // and avoid processing them again.
+    public long seenid;
+
     // The set of nodes X reachable by 'this' on a path of nodes from the
     // root with increasing ids (possibly excluding X) that this node does not
     // dominate (this.id > X.domid).
-    // We can use a List instead of a Set for this because we guarentee that
-    // we don't add the same node more than once to the list (see below).
+    // We can use a List instead of a Set for this because we guarentee based
+    // on seenid that we don't add the same node more than once to the list.
     public List<NodeS> undom = new ArrayList<NodeS>();
-
-    // The largest id of the node X for which we did X.undom.add(this).
-    // This is an optimization to avoid adding duplicate node entries to the
-    // undom set.
-    //
-    // The first time we see this node, we reach it through a path of nodes
-    // with IDs 0,...,a,this. These form our src chain to the root.
-    //
-    // The next time we see this node, we reach it through a path of nodes
-    // with IDS 0,...,b,c,...,d,this. Where all 0,...,b < a and all c,...,d > a.
-    //
-    // The next time we see this node, we reach it through a path of nodes
-    // with IDS 0,...,e,f,...,g,this. With all 0,...,e < d and all f,...,g > d.
-    // And so on.
-    //
-    // The first time we see this node, we set undomid to a.id. Nodes 0,...,a
-    // will be added as undom in the 'revisit' phase of the node.
-    //
-    // The next times we see this node, we mark a+,...,d as undom and
-    // change undomid to d. And so on.
-    public long undomid;
   }
 
   private static class Link {
@@ -171,7 +155,7 @@ public class DominatorsComputation {
         dstS.domid = link.srcS.id;
         dstS.domS = link.srcS;
         dstS.srcS = link.srcS;
-        dstS.undomid = dstS.domid;
+        dstS.seenid = dstS.domid;
         nodes.add(dstS);
         link.dst.setDominatorsComputationState(dstS);
 
@@ -184,13 +168,11 @@ public class DominatorsComputation {
         NodeS srcS = link.srcS;
         boolean revisiting = dstS.domid < dstS.domS.id;
 
-        while (srcS.id > dstS.domid) {
-          if (srcS.id > dstS.undomid) {
-            srcS.undom.add(dstS);
-          }
+        while (srcS.id > dstS.seenid) {
+          srcS.undom.add(dstS);
           srcS = srcS.srcS;
         }
-        dstS.undomid = link.srcS.id;
+        dstS.seenid = link.srcS.id;
 
         if (srcS.id < dstS.domid) {
           // In this case, dstS.domid must be wrong, because we just found a
