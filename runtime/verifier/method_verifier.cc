@@ -3778,7 +3778,8 @@ const RegType& MethodVerifier::ResolveClass(dex::TypeIndex class_idx) {
   return *result;
 }
 
-// Instantiate.
+// Instantiate ResolveClass variants. This is required as the -inl file has a function with a call
+// to ResolveClass, and compilers may decide to inline, requiring a symbol.
 template const RegType& MethodVerifier::ResolveClass<MethodVerifier::CheckAccess::kNo>(
     dex::TypeIndex class_idx);
 template const RegType& MethodVerifier::ResolveClass<MethodVerifier::CheckAccess::kYes>(
