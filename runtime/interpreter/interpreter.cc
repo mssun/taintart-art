@@ -522,8 +522,10 @@ void EnterInterpreterFromDeoptimize(Thread* self,
       // null Instrumentation*.
       const instrumentation::Instrumentation* const instrumentation =
           first ? nullptr : Runtime::Current()->GetInstrumentation();
-      new_dex_pc = MoveToExceptionHandler(
-          self, *shadow_frame, instrumentation) ? shadow_frame->GetDexPC() : DexFile::kDexNoIndex;
+      uint32_t found_dex_pc = FindNextInstructionFollowingException(self, *shadow_frame, dex_pc,
+                                                                    instrumentation);
+      new_dex_pc = found_dex_pc;  // the dex pc of a matching catch handler
+                                  // or DexFile::kDexNoIndex if there is none.
     } else if (!from_code) {
       // For the debugger and full deoptimization stack, we must go past the invoke
       // instruction, as it already executed.
@@ -568,6 +570,7 @@ void EnterInterpreterFromDeoptimize(Thread* self,
       // the deoptimization.
     }
     if (new_dex_pc != DexFile::kDexNoIndex) {
+      shadow_frame->SetDexPC(new_dex_pc);
       value = Execute(self, code_item, *shadow_frame, value);
     }
     ShadowFrame* old_frame = shadow_frame;
