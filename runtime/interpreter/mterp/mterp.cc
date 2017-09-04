@@ -490,7 +490,15 @@ extern "C" size_t MterpHandleException(Thread* self, ShadowFrame* shadow_frame)
   DCHECK(self->IsExceptionPending());
   const instrumentation::Instrumentation* const instrumentation =
       Runtime::Current()->GetInstrumentation();
-  return MoveToExceptionHandler(self, *shadow_frame, instrumentation);
+  uint32_t found_dex_pc = FindNextInstructionFollowingException(self, *shadow_frame,
+                                                                shadow_frame->GetDexPC(),
+                                                                instrumentation);
+  if (found_dex_pc == DexFile::kDexNoIndex) {
+    return false;
+  }
+  // OK - we can deal with it.  Update and continue.
+  shadow_frame->SetDexPC(found_dex_pc);
+  return true;
 }
 
 extern "C" void MterpCheckBefore(Thread* self, ShadowFrame* shadow_frame, uint16_t* dex_pc_ptr)
