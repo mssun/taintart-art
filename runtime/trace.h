@@ -38,7 +38,6 @@ namespace art {
 class ArtField;
 class ArtMethod;
 class DexFile;
-class ShadowFrame;
 class Thread;
 
 using DexIndexBitSet = std::bitset<65536>;
@@ -195,8 +194,6 @@ class Trace FINAL : public instrumentation::InstrumentationListener {
                                 uint32_t dex_pc,
                                 ArtMethod* callee)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!*unique_methods_lock_) OVERRIDE;
-  void WatchedFramePop(Thread* thread, const ShadowFrame& frame)
-      REQUIRES_SHARED(Locks::mutator_lock_) OVERRIDE;
   // Reuse an old stack trace if it exists, otherwise allocate a new one.
   static std::vector<ArtMethod*>* AllocStackTrace();
   // Clear and store an old stack trace for later use.

@@ -154,7 +154,9 @@ struct InstrumentationListener {
   // shadow-frames by deoptimizing stacks.
   virtual void WatchedFramePop(Thread* thread ATTRIBUTE_UNUSED,
                                const ShadowFrame& frame ATTRIBUTE_UNUSED)
-      REQUIRES_SHARED(Locks::mutator_lock_) = 0;
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    return;
+  }
 };
 
 // Instrumentation is a catch-all for when extra information is required from the runtime. The
