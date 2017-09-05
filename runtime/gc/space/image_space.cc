@@ -579,7 +579,7 @@ class ImageSpaceLoader {
       }
     }
 
-    const auto& bitmap_section = image_header->GetImageSection(ImageHeader::kSectionImageBitmap);
+    const auto& bitmap_section = image_header->GetImageBitmapSection();
     // The location we want to map from is the first aligned page after the end of the stored
     // (possibly compressed) data.
     const size_t image_bitmap_offset = RoundUp(sizeof(ImageHeader) + image_header->GetDataSize(),
@@ -644,7 +644,7 @@ class ImageSpaceLoader {
                                          image_filename,
                                          bitmap_index));
     // Bitmap only needs to cover until the end of the mirror objects section.
-    const ImageSection& image_objects = image_header->GetImageSection(ImageHeader::kSectionObjects);
+    const ImageSection& image_objects = image_header->GetObjectsSection();
     // We only want the mirror object, not the ArtFields and ArtMethods.
     uint8_t* const image_end = map->Begin() + image_objects.End();
     std::unique_ptr<accounting::ContinuousSpaceBitmap> bitmap;
@@ -1229,7 +1229,7 @@ class ImageSpaceLoader {
     }
     ScopedDebugDisallowReadBarriers sddrb(Thread::Current());
     // Need to update the image to be at the target base.
-    const ImageSection& objects_section = image_header.GetImageSection(ImageHeader::kSectionObjects);
+    const ImageSection& objects_section = image_header.GetObjectsSection();
     uintptr_t objects_begin = reinterpret_cast<uintptr_t>(target_base + objects_section.Offset());
     uintptr_t objects_end = reinterpret_cast<uintptr_t>(target_base + objects_section.End());
     FixupObjectAdapter fixup_adapter(boot_image, boot_oat, app_image, app_oat);
@@ -1358,7 +1358,7 @@ class ImageSpaceLoader {
       }
       // In the app image case, the image methods are actually in the boot image.
       image_header.RelocateImageMethods(boot_image.Delta());
-      const auto& class_table_section = image_header.GetImageSection(ImageHeader::kSectionClassTable);
+      const auto& class_table_section = image_header.GetClassTableSection();
       if (class_table_section.Size() > 0u) {
         // Note that we require that ReadFromMemory does not make an internal copy of the elements.
         // This also relies on visit roots not doing any verification which could fail after we update

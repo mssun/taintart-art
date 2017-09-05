@@ -298,8 +298,7 @@ bool ImageWriter::Write(int image_fd,
 
     // Write out the image bitmap at the page aligned start of the image end, also uncompressed for
     // convenience.
-    const ImageSection& bitmap_section = image_header->GetImageSection(
-        ImageHeader::kSectionImageBitmap);
+    const ImageSection& bitmap_section = image_header->GetImageBitmapSection();
     // Align up since data size may be unaligned if the image is compressed.
     size_t bitmap_position_in_file = RoundUp(sizeof(ImageHeader) + data_size, kPageSize);
     if (!is_compressed) {
@@ -2114,8 +2113,7 @@ void ImageWriter::CopyAndFixupNativeData(size_t oat_index) {
 
   // Write the intern table into the image.
   if (image_info.intern_table_bytes_ > 0) {
-    const ImageSection& intern_table_section = image_header->GetImageSection(
-        ImageHeader::kSectionInternedStrings);
+    const ImageSection& intern_table_section = image_header->GetInternedStringsSection();
     InternTable* const intern_table = image_info.intern_table_.get();
     uint8_t* const intern_table_memory_ptr =
         image_info.image_->Begin() + intern_table_section.Offset();
@@ -2134,8 +2132,7 @@ void ImageWriter::CopyAndFixupNativeData(size_t oat_index) {
   // Write the class table(s) into the image. class_table_bytes_ may be 0 if there are multiple
   // class loaders. Writing multiple class tables into the image is currently unsupported.
   if (image_info.class_table_bytes_ > 0u) {
-    const ImageSection& class_table_section = image_header->GetImageSection(
-        ImageHeader::kSectionClassTable);
+    const ImageSection& class_table_section = image_header->GetClassTableSection();
     uint8_t* const class_table_memory_ptr =
         image_info.image_->Begin() + class_table_section.Offset();
     ReaderMutexLock mu(Thread::Current(), *Locks::classlinker_classes_lock_);
