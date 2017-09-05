@@ -47,6 +47,23 @@ using android::base::StringPrintf;
 
 GcRoot<Class> Class::java_lang_Class_;
 
+constexpr Class::Status Class::kStatusRetired;
+constexpr Class::Status Class::kStatusErrorResolved;
+constexpr Class::Status Class::kStatusErrorUnresolved;
+constexpr Class::Status Class::kStatusNotReady;
+constexpr Class::Status Class::kStatusIdx;
+constexpr Class::Status Class::kStatusLoaded;
+constexpr Class::Status Class::kStatusResolving;
+constexpr Class::Status Class::kStatusResolved;
+constexpr Class::Status Class::kStatusVerifying;
+constexpr Class::Status Class::kStatusRetryVerificationAtRuntime;
+constexpr Class::Status Class::kStatusVerifyingAtRuntime;
+constexpr Class::Status Class::kStatusVerified;
+constexpr Class::Status Class::kStatusSuperclassValidated;
+constexpr Class::Status Class::kStatusInitializing;
+constexpr Class::Status Class::kStatusInitialized;
+constexpr Class::Status Class::kStatusMax;
+
 void Class::SetClassClass(ObjPtr<Class> java_lang_Class) {
   CHECK(java_lang_Class_.IsNull())
       << java_lang_Class_.Read()
