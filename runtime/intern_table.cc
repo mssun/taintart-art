@@ -182,7 +182,7 @@ void InternTable::AddImagesStringsToTable(const std::vector<gc::space::ImageSpac
   for (gc::space::ImageSpace* image_space : image_spaces) {
     const ImageHeader* const header = &image_space->GetImageHeader();
     // Check if we have the interned strings section.
-    const ImageSection& section = header->GetImageSection(ImageHeader::kSectionInternedStrings);
+    const ImageSection& section = header->GetInternedStringsSection();
     if (section.Size() > 0) {
       AddTableFromMemoryLocked(image_space->Begin() + section.Offset());
     }
