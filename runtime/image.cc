@@ -140,11 +140,6 @@ void ImageHeader::SetImageMethod(ImageMethod index, ArtMethod* method) {
   image_methods_[index] = reinterpret_cast<uint64_t>(method);
 }
 
-const ImageSection& ImageHeader::GetImageSection(ImageSections index) const {
-  CHECK_LT(static_cast<size_t>(index), kSectionCount);
-  return sections_[index];
-}
-
 std::ostream& operator<<(std::ostream& os, const ImageSection& section) {
   return os << "size=" << section.Size() << " range=" << section.Offset() << "-" << section.End();
 }

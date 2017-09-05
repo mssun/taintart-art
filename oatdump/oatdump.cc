@@ -1972,16 +1972,13 @@ class ImageDumper {
       stats_.file_bytes += uncompressed_size - data_size;
     }
     size_t header_bytes = sizeof(ImageHeader);
-    const auto& object_section = image_header_.GetImageSection(ImageHeader::kSectionObjects);
-    const auto& field_section = image_header_.GetImageSection(ImageHeader::kSectionArtFields);
+    const auto& object_section = image_header_.GetObjectsSection();
+    const auto& field_section = image_header_.GetFieldsSection();
     const auto& method_section = image_header_.GetMethodsSection();
-    const auto& dex_cache_arrays_section = image_header_.GetImageSection(
-        ImageHeader::kSectionDexCacheArrays);
-    const auto& intern_section = image_header_.GetImageSection(
-        ImageHeader::kSectionInternedStrings);
-    const auto& class_table_section = image_header_.GetImageSection(
-        ImageHeader::kSectionClassTable);
-    const auto& bitmap_section = image_header_.GetImageSection(ImageHeader::kSectionImageBitmap);
+    const auto& dex_cache_arrays_section = image_header_.GetDexCacheArraysSection();
+    const auto& intern_section = image_header_.GetInternedStringsSection();
+    const auto& class_table_section = image_header_.GetClassTableSection();
+    const auto& bitmap_section = image_header_.GetImageBitmapSection();
 
     stats_.header_bytes = header_bytes;
 
@@ -2235,8 +2232,7 @@ class ImageDumper {
       auto it = dex_caches_.find(obj);
       if (it != dex_caches_.end()) {
         auto* dex_cache = down_cast<mirror::DexCache*>(obj);
-        const auto& field_section = image_header_.GetImageSection(
-            ImageHeader::kSectionArtFields);
+        const auto& field_section = image_header_.GetFieldsSection();
         const auto& method_section = image_header_.GetMethodsSection();
         size_t num_methods = dex_cache->NumResolvedMethods();
         if (num_methods != 0u) {

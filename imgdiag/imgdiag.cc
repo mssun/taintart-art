@@ -1209,7 +1209,7 @@ class ImgDiagDumper {
 
     const uint8_t* image_begin_unaligned = image_header_.GetImageBegin();
     const uint8_t* image_mirror_end_unaligned = image_begin_unaligned +
-        image_header_.GetImageSection(ImageHeader::kSectionObjects).Size();
+        image_header_.GetObjectsSection().Size();
     const uint8_t* image_end_unaligned = image_begin_unaligned + image_header_.GetImageSize();
 
     // Adjust range to nearest page

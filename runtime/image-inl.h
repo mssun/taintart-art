@@ -51,7 +51,7 @@ template <typename Visitor>
 inline void ImageHeader::VisitPackedImTables(const Visitor& visitor,
                                              uint8_t* base,
                                              PointerSize pointer_size) const {
-  const ImageSection& section = GetImageSection(kSectionImTables);
+  const ImageSection& section = GetImTablesSection();
   for (size_t pos = 0; pos < section.Size();) {
     ImTable* imt = reinterpret_cast<ImTable*>(base + section.Offset() + pos);
     for (size_t i = 0; i < ImTable::kSize; ++i) {
@@ -69,7 +69,7 @@ template <typename Visitor>
 inline void ImageHeader::VisitPackedImtConflictTables(const Visitor& visitor,
                                                       uint8_t* base,
                                                       PointerSize pointer_size) const {
-  const ImageSection& section = GetImageSection(kSectionIMTConflictTables);
+  const ImageSection& section = GetIMTConflictTablesSection();
   for (size_t pos = 0; pos < section.Size(); ) {
     auto* table = reinterpret_cast<ImtConflictTable*>(base + section.Offset() + pos);
     table->Visit([&visitor](const std::pair<ArtMethod*, ArtMethod*>& methods) {
