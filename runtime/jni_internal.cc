@@ -2398,10 +2398,12 @@ class JNI {
     ScopedObjectAccess soa(env);
     ObjPtr<mirror::Object> o = soa.Decode<mirror::Object>(java_object);
     o = o->MonitorEnter(soa.Self());
+    if (soa.Self()->HoldsLock(o)) {
+      soa.Env()->monitors.Add(o);
+    }
     if (soa.Self()->IsExceptionPending()) {
       return JNI_ERR;
     }
-    soa.Env()->monitors.Add(o);
     return JNI_OK;
   }
 
@@ -2409,11 +2411,14 @@ class JNI {
     CHECK_NON_NULL_ARGUMENT_RETURN(java_object, JNI_ERR);
     ScopedObjectAccess soa(env);
     ObjPtr<mirror::Object> o = soa.Decode<mirror::Object>(java_object);
+    bool remove_mon = soa.Self()->HoldsLock(o);
     o->MonitorExit(soa.Self());
+    if (remove_mon) {
+      soa.Env()->monitors.Remove(o);
+    }
     if (soa.Self()->IsExceptionPending()) {
       return JNI_ERR;
     }
-    soa.Env()->monitors.Remove(o);
     return JNI_OK;
   }
 

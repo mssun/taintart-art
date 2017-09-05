@@ -31,6 +31,8 @@
 
 #include "events-inl.h"
 
+#include <array>
+
 #include "art_field-inl.h"
 #include "art_jvmti.h"
 #include "art_method-inl.h"
@@ -45,6 +47,7 @@
 #include "jni_internal.h"
 #include "mirror/class.h"
 #include "mirror/object-inl.h"
+#include "monitor.h"
 #include "nativehelper/ScopedLocalRef.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
@@ -247,6 +250,127 @@ static void SetupObjectAllocationTracking(art::gc::AllocationListener* listener,
   }
 }
 
+template<typename Type>
+static Type AddLocalRef(art::JNIEnvExt* e, art::mirror::Object* obj)
+    REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  return (obj == nullptr) ? nullptr : e->AddLocalReference<Type>(obj);
+}
+
+template<ArtJvmtiEvent kEvent, typename ...Args>
+static void RunEventCallback(EventHandler* handler,
+                             art::Thread* self,
+                             art::JNIEnvExt* jnienv,
+                             Args... args)
+    REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  ScopedLocalRef<jthread> thread_jni(jnienv, AddLocalRef<jthread>(jnienv, self->GetPeer()));
+  art::StackHandleScope<1> hs(self);
+  art::Handle<art::mirror::Throwable> old_exception(hs.NewHandle(self->GetException()));
+  self->ClearException();
+  // Just give the event a good sized JNI frame. 100 should be fine.
+  jnienv->PushFrame(100);
+  {
+    // Need to do trampoline! :(
+    art::ScopedThreadSuspension sts(self, art::ThreadState::kNative);
+    handler->DispatchEvent<kEvent>(self,
+                                   static_cast<JNIEnv*>(jnienv),
+                                   thread_jni.get(),
+                                   args...);
+  }
+  jnienv->PopFrame();
+  if (!self->IsExceptionPending() && !old_exception.IsNull()) {
+    self->SetException(old_exception.Get());
+  }
+}
+
+class JvmtiMonitorListener : public art::MonitorCallback {
+ public:
+  explicit JvmtiMonitorListener(EventHandler* handler) : handler_(handler) {}
+
+  void MonitorContendedLocking(art::Monitor* m)
+      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+    if (handler_->IsEventEnabledAnywhere(ArtJvmtiEvent::kMonitorContendedEnter)) {
+      art::Thread* self = art::Thread::Current();
+      art::JNIEnvExt* jnienv = self->GetJniEnv();
+      ScopedLocalRef<jobject> mon(jnienv, AddLocalRef<jobject>(jnienv, m->GetObject()));
+      RunEventCallback<ArtJvmtiEvent::kMonitorContendedEnter>(
+          handler_,
+          self,
+          jnienv,
+          mon.get());
+    }
+  }
+
+  void MonitorContendedLocked(art::Monitor* m)
+      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+    if (handler_->IsEventEnabledAnywhere(ArtJvmtiEvent::kMonitorContendedEntered)) {
+      art::Thread* self = art::Thread::Current();
+      art::JNIEnvExt* jnienv = self->GetJniEnv();
+      ScopedLocalRef<jobject> mon(jnienv, AddLocalRef<jobject>(jnienv, m->GetObject()));
+      RunEventCallback<ArtJvmtiEvent::kMonitorContendedEntered>(
+          handler_,
+          self,
+          jnienv,
+          mon.get());
+    }
+  }
+
+  void ObjectWaitStart(art::Handle<art::mirror::Object> obj, int64_t timeout)
+      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+    if (handler_->IsEventEnabledAnywhere(ArtJvmtiEvent::kMonitorWait)) {
+      art::Thread* self = art::Thread::Current();
+      art::JNIEnvExt* jnienv = self->GetJniEnv();
+      ScopedLocalRef<jobject> mon(jnienv, AddLocalRef<jobject>(jnienv, obj.Get()));
+      RunEventCallback<ArtJvmtiEvent::kMonitorWait>(
+          handler_,
+          self,
+          jnienv,
+          mon.get(),
+          static_cast<jlong>(timeout));
+    }
+  }
+
+
+  // Our interpretation of the spec is that the JVMTI_EVENT_MONITOR_WAITED will be sent immediately
+  // after a thread has woken up from a sleep caused by a call to Object#wait. If the thread will
+  // never go to sleep (due to not having the lock, having bad arguments, or having an exception
+  // propogated from JVMTI_EVENT_MONITOR_WAIT) we will not send this event.
+  //
+  // This does not fully match the RI semantics. Specifically, we will not send the
+  // JVMTI_EVENT_MONITOR_WAITED event in one situation where the RI would, there was an exception in
+  // the JVMTI_EVENT_MONITOR_WAIT event but otherwise the call was fine. In that case the RI would
+  // send this event and return without going to sleep.
+  //
+  // See b/65558434 for more discussion.
+  void MonitorWaitFinished(art::Monitor* m, bool timeout)
+      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+    if (handler_->IsEventEnabledAnywhere(ArtJvmtiEvent::kMonitorWaited)) {
+      art::Thread* self = art::Thread::Current();
+      art::JNIEnvExt* jnienv = self->GetJniEnv();
+      ScopedLocalRef<jobject> mon(jnienv, AddLocalRef<jobject>(jnienv, m->GetObject()));
+      RunEventCallback<ArtJvmtiEvent::kMonitorWaited>(
+          handler_,
+          self,
+          jnienv,
+          mon.get(),
+          static_cast<jboolean>(timeout));
+    }
+  }
+
+ private:
+  EventHandler* handler_;
+};
+
+static void SetupMonitorListener(art::MonitorCallback* listener, bool enable) {
+  // We must not hold the mutator lock here, but if we're in FastJNI, for example, we might. For
+  // now, do a workaround: (possibly) acquire and release.
+  art::ScopedObjectAccess soa(art::Thread::Current());
+  if (enable) {
+    art::Runtime::Current()->GetRuntimeCallbacks()->AddMonitorCallback(listener);
+  } else {
+    art::Runtime::Current()->GetRuntimeCallbacks()->RemoveMonitorCallback(listener);
+  }
+}
+
 // Report GC pauses (see spec) as GARBAGE_COLLECTION_START and GARBAGE_COLLECTION_END.
 class JvmtiGcPauseListener : public art::gc::GcPauseListener {
  public:
@@ -301,32 +425,9 @@ static void SetupGcPauseTracking(JvmtiGcPauseListener* listener, ArtJvmtiEvent e
   }
 }
 
-template<typename Type>
-static Type AddLocalRef(art::JNIEnvExt* e, art::mirror::Object* obj)
-    REQUIRES_SHARED(art::Locks::mutator_lock_) {
-  return (obj == nullptr) ? nullptr : e->AddLocalReference<Type>(obj);
-}
-
 class JvmtiMethodTraceListener FINAL : public art::instrumentation::InstrumentationListener {
  public:
   explicit JvmtiMethodTraceListener(EventHandler* handler) : event_handler_(handler) {}
-
-  template<ArtJvmtiEvent kEvent, typename ...Args>
-  void RunEventCallback(art::Thread* self, art::JNIEnvExt* jnienv, Args... args)
-      REQUIRES_SHARED(art::Locks::mutator_lock_) {
-    ScopedLocalRef<jthread> thread_jni(jnienv, AddLocalRef<jthread>(jnienv, self->GetPeer()));
-    // Just give the event a good sized JNI frame. 100 should be fine.
-    jnienv->PushFrame(100);
-    {
-      // Need to do trampoline! :(
-      art::ScopedThreadSuspension sts(self, art::ThreadState::kNative);
-      event_handler_->DispatchEvent<kEvent>(self,
-                                            static_cast<JNIEnv*>(jnienv),
-                                            thread_jni.get(),
-                                            args...);
-    }
-    jnienv->PopFrame();
-  }
 
   // Call-back for when a method is entered.
   void MethodEntered(art::Thread* self,
@@ -337,7 +438,8 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
     if (!method->IsRuntimeMethod() &&
         event_handler_->IsEventEnabledAnywhere(ArtJvmtiEvent::kMethodEntry)) {
       art::JNIEnvExt* jnienv = self->GetJniEnv();
-      RunEventCallback<ArtJvmtiEvent::kMethodEntry>(self,
+      RunEventCallback<ArtJvmtiEvent::kMethodEntry>(event_handler_,
+                                                    self,
                                                     jnienv,
                                                     art::jni::EncodeArtMethod(method));
     }
@@ -360,6 +462,7 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
       ScopedLocalRef<jobject> return_jobj(jnienv, AddLocalRef<jobject>(jnienv, return_value.Get()));
       val.l = return_jobj.get();
       RunEventCallback<ArtJvmtiEvent::kMethodExit>(
+          event_handler_,
           self,
           jnienv,
           art::jni::EncodeArtMethod(method),
@@ -386,6 +489,7 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
       // the union.
       val.j = return_value.GetJ();
       RunEventCallback<ArtJvmtiEvent::kMethodExit>(
+          event_handler_,
           self,
           jnienv,
           art::jni::EncodeArtMethod(method),
@@ -412,6 +516,7 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
       CHECK(!old_exception.IsNull());
       self->ClearException();
       RunEventCallback<ArtJvmtiEvent::kMethodExit>(
+          event_handler_,
           self,
           jnienv,
           art::jni::EncodeArtMethod(method),
@@ -442,11 +547,11 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
     jlocation location = static_cast<jlocation>(new_dex_pc);
     // Step event is reported first according to the spec.
     if (event_handler_->IsEventEnabledAnywhere(ArtJvmtiEvent::kSingleStep)) {
-      RunEventCallback<ArtJvmtiEvent::kSingleStep>(self, jnienv, jmethod, location);
+      RunEventCallback<ArtJvmtiEvent::kSingleStep>(event_handler_, self, jnienv, jmethod, location);
     }
     // Next we do the Breakpoint events. The Dispatch code will filter the individual
     if (event_handler_->IsEventEnabledAnywhere(ArtJvmtiEvent::kBreakpoint)) {
-      RunEventCallback<ArtJvmtiEvent::kBreakpoint>(self, jnienv, jmethod, location);
+      RunEventCallback<ArtJvmtiEvent::kBreakpoint>(event_handler_, self, jnienv, jmethod, location);
     }
   }
 
@@ -464,7 +569,8 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
       ScopedLocalRef<jobject> fklass(jnienv,
                                      AddLocalRef<jobject>(jnienv,
                                                           field->GetDeclaringClass().Ptr()));
-      RunEventCallback<ArtJvmtiEvent::kFieldAccess>(self,
+      RunEventCallback<ArtJvmtiEvent::kFieldAccess>(event_handler_,
+                                                    self,
                                                     jnienv,
                                                     art::jni::EncodeArtMethod(method),
                                                     static_cast<jlocation>(dex_pc),
@@ -492,6 +598,7 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
       jvalue val;
       val.l = fval.get();
       RunEventCallback<ArtJvmtiEvent::kFieldModification>(
+          event_handler_,
           self,
           jnienv,
           art::jni::EncodeArtMethod(method),
@@ -525,6 +632,7 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
       // the union.
       val.j = field_value.GetJ();
       RunEventCallback<ArtJvmtiEvent::kFieldModification>(
+          event_handler_,
           self,
           jnienv,
           art::jni::EncodeArtMethod(method),
@@ -545,6 +653,7 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
       art::JNIEnvExt* jnienv = self->GetJniEnv();
       jboolean is_exception_pending = self->IsExceptionPending();
       RunEventCallback<ArtJvmtiEvent::kFramePop>(
+          event_handler_,
           self,
           jnienv,
           art::jni::EncodeArtMethod(frame.GetMethod()),
@@ -639,6 +748,7 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
       ScopedLocalRef<jobject> exception(jnienv,
                                         AddLocalRef<jobject>(jnienv, exception_object.Get()));
       RunEventCallback<ArtJvmtiEvent::kException>(
+          event_handler_,
           self,
           jnienv,
           art::jni::EncodeArtMethod(method),
@@ -664,6 +774,7 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
       ScopedLocalRef<jobject> exception(jnienv,
                                         AddLocalRef<jobject>(jnienv, exception_object.Get()));
       RunEventCallback<ArtJvmtiEvent::kExceptionCatch>(
+          event_handler_,
           self,
           jnienv,
           art::jni::EncodeArtMethod(method),
@@ -759,6 +870,23 @@ void EventHandler::HandleLocalAccessCapabilityAdded() {
   instr->DeoptimizeEverything("jvmti-local-variable-access");
 }
 
+bool EventHandler::OtherMonitorEventsEnabledAnywhere(ArtJvmtiEvent event) {
+  std::array<ArtJvmtiEvent, 4> events {
+    {
+      ArtJvmtiEvent::kMonitorContendedEnter,
+      ArtJvmtiEvent::kMonitorContendedEntered,
+      ArtJvmtiEvent::kMonitorWait,
+      ArtJvmtiEvent::kMonitorWaited
+    }
+  };
+  for (ArtJvmtiEvent e : events) {
+    if (e != event && IsEventEnabledAnywhere(e)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Handle special work for the given event type, if necessary.
 void EventHandler::HandleEventType(ArtJvmtiEvent event, bool enable) {
   switch (event) {
@@ -799,7 +927,14 @@ void EventHandler::HandleEventType(ArtJvmtiEvent event, bool enable) {
     case ArtJvmtiEvent::kExceptionCatch:
       SetupTraceListener(method_trace_listener_.get(), event, enable);
       return;
-
+    case ArtJvmtiEvent::kMonitorContendedEnter:
+    case ArtJvmtiEvent::kMonitorContendedEntered:
+    case ArtJvmtiEvent::kMonitorWait:
+    case ArtJvmtiEvent::kMonitorWaited:
+      if (!OtherMonitorEventsEnabledAnywhere(event)) {
+        SetupMonitorListener(monitor_listener_.get(), enable);
+      }
+      return;
     default:
       break;
   }
@@ -928,6 +1063,7 @@ EventHandler::EventHandler() {
   alloc_listener_.reset(new JvmtiAllocationListener(this));
   gc_pause_listener_.reset(new JvmtiGcPauseListener(this));
   method_trace_listener_.reset(new JvmtiMethodTraceListener(this));
+  monitor_listener_.reset(new JvmtiMonitorListener(this));
 }
 
 EventHandler::~EventHandler() {
