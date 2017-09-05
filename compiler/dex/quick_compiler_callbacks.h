@@ -54,7 +54,7 @@ class QuickCompilerCallbacks FINAL : public CompilerCallbacks {
       verification_results_ = verification_results;
     }
 
-    bool CanAssumeVerified(ClassReference ref) OVERRIDE;
+    ClassStatus GetPreviousClassState(ClassReference ref) OVERRIDE;
 
     void SetDoesClassUnloading(bool does_class_unloading, CompilerDriver* compiler_driver)
         OVERRIDE {

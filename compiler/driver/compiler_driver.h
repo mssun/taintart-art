@@ -379,8 +379,6 @@ class CompilerDriver {
     return profile_compilation_info_;
   }
 
-  bool CanAssumeVerified(ClassReference ref) const;
-
   // Is `boot_image_filename` the name of a core image (small boot
   // image used for ART testing only)?
   static bool IsCoreImageFilename(const std::string& boot_image_filename) {
