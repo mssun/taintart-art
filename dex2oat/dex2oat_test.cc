@@ -840,7 +840,7 @@ class Dex2oatLayoutTest : public Dex2oatTest {
       bool success = file->ReadFully(&image_header, sizeof(image_header));
       ASSERT_TRUE(success);
       ASSERT_TRUE(image_header.IsValid());
-      EXPECT_GT(image_header.GetImageSection(ImageHeader::kSectionObjects).Size(), 0u);
+      EXPECT_GT(image_header.GetObjectsSection().Size(), 0u);
     }
   }
 
