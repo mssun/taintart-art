@@ -338,10 +338,13 @@ TEST_F(ClassLoaderContextTest, OpenValidDexFilesSymLink) {
 }
 
 static std::string CreateRelativeString(const std::string& in, const char* cwd) {
-  if (!android::base::StartsWith(in, cwd)) {
+  int cwd_len = strlen(cwd);
+  if (!android::base::StartsWith(in, cwd) || (cwd_len < 1)) {
     LOG(FATAL) << in << " " << cwd;
   }
-  return in.substr(strlen(cwd) + 1);
+  bool contains_trailing_slash = (cwd[cwd_len - 1] == '/');
+  int start_position = cwd_len + (contains_trailing_slash ? 0 : 1);
+  return in.substr(start_position);
 }
 
 TEST_F(ClassLoaderContextTest, OpenValidDexFilesRelative) {
