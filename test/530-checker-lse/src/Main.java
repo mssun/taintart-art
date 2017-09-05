@@ -881,10 +881,10 @@ public class Main {
   /// CHECK: ArrayGet
   private static int testAllocationEliminationOfArray2() {
     // Cannot eliminate array allocation since array is accessed with non-constant
-    // index.
-    int[] array = new int[4];
-    array[2] = 4;
-    array[3] = 7;
+    // index (only 3 elements to prevent vectorization of the reduction).
+    int[] array = new int[3];
+    array[1] = 4;
+    array[2] = 7;
     int sum = 0;
     for (int e : array) {
       sum += e;
