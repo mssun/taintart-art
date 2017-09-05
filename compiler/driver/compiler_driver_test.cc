@@ -369,8 +369,6 @@ TEST_F(CompilerDriverVerifyTest, VerifyCompilation) {
 
 // Test that a class of status kStatusRetryVerificationAtRuntime is indeed recorded that way in the
 // driver.
-// Test that checks that classes can be assumed as verified if unloading mode is enabled and
-// the class status is at least verified.
 TEST_F(CompilerDriverVerifyTest, RetryVerifcationStatusCheckVerified) {
   Thread* const self = Thread::Current();
   jobject class_loader;
@@ -401,12 +399,6 @@ TEST_F(CompilerDriverVerifyTest, RetryVerifcationStatusCheckVerified) {
     mirror::Class::Status status = {};
     ASSERT_TRUE(compiler_driver_->GetCompiledClass(ref, &status));
     EXPECT_EQ(status, expected_status);
-
-    // Check that we can assume verified if we are a status that is at least verified.
-    if (status >= mirror::Class::kStatusVerified) {
-      // Check that the class can be assumed as verified in the compiler driver.
-      EXPECT_TRUE(callbacks_->CanAssumeVerified(ref)) << status;
-    }
   }
 }
 

@@ -34,17 +34,21 @@ void QuickCompilerCallbacks::ClassRejected(ClassReference ref) {
   }
 }
 
-bool QuickCompilerCallbacks::CanAssumeVerified(ClassReference ref) {
+ClassStatus QuickCompilerCallbacks::GetPreviousClassState(ClassReference ref) {
   // If we don't have class unloading enabled in the compiler, we will never see class that were
   // previously verified. Return false to avoid overhead from the lookup in the compiler driver.
   if (!does_class_unloading_) {
-    return false;
+    return ClassStatus::kStatusNotReady;
   }
   DCHECK(compiler_driver_ != nullptr);
   // In the case of the quicken filter: avoiding verification of quickened instructions, which the
   // verifier doesn't currently support.
   // In the case of the verify filter, avoiding verifiying twice.
-  return compiler_driver_->CanAssumeVerified(ref);
+  ClassStatus status;
+  if (!compiler_driver_->GetCompiledClass(ref, &status)) {
+    return ClassStatus::kStatusNotReady;
+  }
+  return status;
 }
 
 }  // namespace art
