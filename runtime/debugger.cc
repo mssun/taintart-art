@@ -262,6 +262,13 @@ class DebugInstrumentationListener FINAL : public instrumentation::Instrumentati
                << " " << dex_pc;
   }
 
+  // TODO Might be worth it to post ExceptionCatch event.
+  void ExceptionHandled(Thread* thread ATTRIBUTE_UNUSED,
+                        Handle<mirror::Throwable> throwable ATTRIBUTE_UNUSED) OVERRIDE {
+    LOG(ERROR) << "Unexpected exception handled event in debugger";
+  }
+
+
  private:
   static bool IsReturn(ArtMethod* method, uint32_t dex_pc)
       REQUIRES_SHARED(Locks::mutator_lock_) {
