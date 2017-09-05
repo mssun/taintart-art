@@ -416,6 +416,12 @@ struct AbortState {
       return;
     }
     Thread* self = Thread::Current();
+
+    // Dump all threads first and then the aborting thread. While this is counter the logical flow,
+    // it improves the chance of relevant data surviving in the Android logs.
+
+    DumpAllThreads(os, self);
+
     if (self == nullptr) {
       os << "(Aborting thread was not attached to runtime!)\n";
       DumpKernelStack(os, GetTid(), "  kernel: ", false);
@@ -431,7 +437,6 @@ struct AbortState {
         }
       }
     }
-    DumpAllThreads(os, self);
   }
 
   // No thread-safety analysis as we do explicitly test for holding the mutator lock.
