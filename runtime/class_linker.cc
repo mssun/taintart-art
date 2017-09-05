@@ -1454,8 +1454,7 @@ bool AppImageClassLoadersAndDexCachesHelper::Update(
     const auto& image_header = space->GetImageHeader();
     const auto bitmap = space->GetMarkBitmap();  // bitmap of objects
     const uint8_t* target_base = space->GetMemMap()->Begin();
-    const ImageSection& objects_section =
-        image_header.GetImageSection(ImageHeader::kSectionObjects);
+    const ImageSection& objects_section = image_header.GetObjectsSection();
 
     uintptr_t objects_begin = reinterpret_cast<uintptr_t>(target_base + objects_section.Offset());
     uintptr_t objects_end = reinterpret_cast<uintptr_t>(target_base + objects_section.End());
@@ -1664,8 +1663,7 @@ class ImageSanityChecks FINAL {
       bool contains = false;
       for (auto space : spaces_) {
         auto offset = reinterpret_cast<uint8_t*>(arr) - space->Begin();
-        if (space->GetImageHeader().GetImageSection(
-            ImageHeader::kSectionDexCacheArrays).Contains(offset)) {
+        if (space->GetImageHeader().GetDexCacheArraysSection().Contains(offset)) {
           contains = true;
           break;
         }
@@ -1980,8 +1978,7 @@ bool ClassLinker::AddImageSpace(
     // In this case, madvise away the dex cache arrays section of the image to reduce RAM usage and
     // mark as PROT_NONE to catch any invalid accesses.
     if (forward_dex_cache_arrays) {
-      const ImageSection& dex_cache_section = header.GetImageSection(
-          ImageHeader::kSectionDexCacheArrays);
+      const ImageSection& dex_cache_section = header.GetDexCacheArraysSection();
       uint8_t* section_begin = AlignUp(space->Begin() + dex_cache_section.Offset(), kPageSize);
       uint8_t* section_end = AlignDown(space->Begin() + dex_cache_section.End(), kPageSize);
       if (section_begin < section_end) {

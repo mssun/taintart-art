@@ -216,7 +216,18 @@ class PACKED(4) ImageHeader {
   ArtMethod* GetImageMethod(ImageMethod index) const;
   void SetImageMethod(ImageMethod index, ArtMethod* method);
 
-  const ImageSection& GetImageSection(ImageSections index) const;
+  const ImageSection& GetImageSection(ImageSections index) const {
+    DCHECK_LT(static_cast<size_t>(index), kSectionCount);
+    return sections_[index];
+  }
+
+  const ImageSection& GetObjectsSection() const {
+    return GetImageSection(kSectionObjects);
+  }
+
+  const ImageSection& GetFieldsSection() const {
+    return GetImageSection(ImageHeader::kSectionArtFields);
+  }
 
   const ImageSection& GetMethodsSection() const {
     return GetImageSection(kSectionArtMethods);
@@ -226,8 +237,28 @@ class PACKED(4) ImageHeader {
     return GetImageSection(kSectionRuntimeMethods);
   }
 
-  const ImageSection& GetFieldsSection() const {
-    return GetImageSection(ImageHeader::kSectionArtFields);
+  const ImageSection& GetImTablesSection() const {
+    return GetImageSection(kSectionImTables);
+  }
+
+  const ImageSection& GetIMTConflictTablesSection() const {
+    return GetImageSection(kSectionIMTConflictTables);
+  }
+
+  const ImageSection& GetDexCacheArraysSection() const {
+    return GetImageSection(kSectionDexCacheArrays);
+  }
+
+  const ImageSection& GetInternedStringsSection() const {
+    return GetImageSection(kSectionInternedStrings);
+  }
+
+  const ImageSection& GetClassTableSection() const {
+    return GetImageSection(kSectionClassTable);
+  }
+
+  const ImageSection& GetImageBitmapSection() const {
+    return GetImageSection(kSectionImageBitmap);
   }
 
   template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
