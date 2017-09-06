@@ -17,6 +17,7 @@
 #include "aot_class_linker.h"
 
 #include "class_reference.h"
+#include "class_status.h"
 #include "compiler_callbacks.h"
 #include "handle_scope-inl.h"
 #include "mirror/class-inl.h"
@@ -75,10 +76,19 @@ verifier::FailureKind AotClassLinker::PerformClassVerification(Thread* self,
                                                                std::string* error_msg) {
   Runtime* const runtime = Runtime::Current();
   CompilerCallbacks* callbacks = runtime->GetCompilerCallbacks();
-  if (callbacks->CanAssumeVerified(ClassReference(&klass->GetDexFile(),
-                                                  klass->GetDexClassDefIndex()))) {
+  ClassStatus old_status = callbacks->GetPreviousClassState(
+      ClassReference(&klass->GetDexFile(), klass->GetDexClassDefIndex()));
+  // Was it verified? Report no failure.
+  if (old_status >= ClassStatus::kStatusVerified) {
     return verifier::FailureKind::kNoFailure;
   }
+  // Does it need to be verified at runtime? Report soft failure.
+  if (old_status >= ClassStatus::kStatusRetryVerificationAtRuntime) {
+    // Error messages from here are only reported through -verbose:class. It is not worth it to
+    // create a message.
+    return verifier::FailureKind::kSoftFailure;
+  }
+  // Do the actual work.
   return ClassLinker::PerformClassVerification(self, klass, log_level, error_msg);
 }
 

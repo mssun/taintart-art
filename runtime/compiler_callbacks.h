@@ -19,6 +19,7 @@
 
 #include "base/mutex.h"
 #include "class_reference.h"
+#include "class_status.h"
 
 namespace art {
 
@@ -51,8 +52,10 @@ class CompilerCallbacks {
   virtual verifier::VerifierDeps* GetVerifierDeps() const = 0;
   virtual void SetVerifierDeps(verifier::VerifierDeps* deps ATTRIBUTE_UNUSED) {}
 
-  virtual bool CanAssumeVerified(ClassReference ref ATTRIBUTE_UNUSED) {
-    return false;
+  // Return the class status of a previous stage of the compilation. This can be used, for example,
+  // when class unloading is enabled during multidex compilation.
+  virtual ClassStatus GetPreviousClassState(ClassReference ref ATTRIBUTE_UNUSED) {
+    return ClassStatus::kStatusNotReady;
   }
 
   virtual void SetDoesClassUnloading(bool does_class_unloading ATTRIBUTE_UNUSED,
