@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import java.lang.reflect.Method;
 
 public class Main {
 
@@ -30,68 +31,24 @@ public class Main {
     return false;
   }
 
-  /// CHECK-START: int Main.testTrueBranch(int, int) dead_code_elimination$after_inlining (before)
-  /// CHECK-DAG:     <<ArgX:i\d+>>    ParameterValue
-  /// CHECK-DAG:     <<ArgY:i\d+>>    ParameterValue
-  /// CHECK-DAG:                      If
-  /// CHECK-DAG:     <<Add:i\d+>>     Add [<<ArgX>>,<<ArgY>>]
-  /// CHECK-DAG:     <<Sub:i\d+>>     Sub [<<ArgX>>,<<ArgY>>]
-  /// CHECK-DAG:     <<Phi:i\d+>>     Phi [<<Add>>,<<Sub>>]
-  /// CHECK-DAG:                      Return [<<Phi>>]
-
-  /// CHECK-START: int Main.testTrueBranch(int, int) dead_code_elimination$after_inlining (after)
-  /// CHECK-DAG:     <<ArgX:i\d+>>    ParameterValue
-  /// CHECK-DAG:     <<ArgY:i\d+>>    ParameterValue
-  /// CHECK-DAG:     <<Add:i\d+>>     Add [<<ArgX>>,<<ArgY>>]
-  /// CHECK-DAG:                      Return [<<Add>>]
-
-  /// CHECK-START: int Main.testTrueBranch(int, int) dead_code_elimination$after_inlining (after)
-  /// CHECK-NOT:                      If
-  /// CHECK-NOT:                      Sub
-  /// CHECK-NOT:                      Phi
-
   public static int testTrueBranch(int x, int y) {
-    int z;
-    if (inlineTrue()) {
-      z = x + y;
-    } else {
-      z = x - y;
-      // Prevent HSelect simplification by having a branch with multiple instructions.
-      System.nanoTime();
+      try {
+      Class<?> c = Class.forName("Smali");
+      Method m = c.getMethod("testTrueBranch", int.class, int.class);
+      return (Integer) m.invoke(null, x, y);
+    } catch (Throwable t) {
+      throw new RuntimeException(t);
     }
-    return z;
   }
 
-  /// CHECK-START: int Main.testFalseBranch(int, int) dead_code_elimination$after_inlining (before)
-  /// CHECK-DAG:     <<ArgX:i\d+>>    ParameterValue
-  /// CHECK-DAG:     <<ArgY:i\d+>>    ParameterValue
-  /// CHECK-DAG:                      If
-  /// CHECK-DAG:     <<Add:i\d+>>     Add [<<ArgX>>,<<ArgY>>]
-  /// CHECK-DAG:     <<Sub:i\d+>>     Sub [<<ArgX>>,<<ArgY>>]
-  /// CHECK-DAG:     <<Phi:i\d+>>     Phi [<<Add>>,<<Sub>>]
-  /// CHECK-DAG:                      Return [<<Phi>>]
-
-  /// CHECK-START: int Main.testFalseBranch(int, int) dead_code_elimination$after_inlining (after)
-  /// CHECK-DAG:     <<ArgX:i\d+>>    ParameterValue
-  /// CHECK-DAG:     <<ArgY:i\d+>>    ParameterValue
-  /// CHECK-DAG:     <<Sub:i\d+>>     Sub [<<ArgX>>,<<ArgY>>]
-  /// CHECK-DAG:                      Return [<<Sub>>]
-
-  /// CHECK-START: int Main.testFalseBranch(int, int) dead_code_elimination$after_inlining (after)
-  /// CHECK-NOT:                      If
-  /// CHECK-NOT:                      Add
-  /// CHECK-NOT:                      Phi
-
   public static int testFalseBranch(int x, int y) {
-    int z;
-    if (inlineFalse()) {
-      z = x + y;
-    } else {
-      z = x - y;
-      // Prevent HSelect simplification by having a branch with multiple instructions.
-      System.nanoTime();
+      try {
+      Class<?> c = Class.forName("Smali");
+      Method m = c.getMethod("testFalseBranch", int.class, int.class);
+      return (Integer) m.invoke(null, x, y);
+    } catch (Throwable t) {
+      throw new RuntimeException(t);
     }
-    return z;
   }
 
   /// CHECK-START: int Main.testRemoveLoop(int) dead_code_elimination$after_inlining (before)
