@@ -7985,7 +7985,8 @@ ArtMethod* ClassLinker::ResolveMethod(const DexFile& dex_file,
     // We have a valid method from the DexCache but we need to perform ICCE and IAE checks.
     DCHECK(resolved->GetDeclaringClassUnchecked() != nullptr) << resolved->GetDexMethodIndex();
     klass = LookupResolvedType(dex_file, method_id.class_idx_, dex_cache.Get(), class_loader.Get());
-    DCHECK(klass != nullptr);
+    CHECK(klass != nullptr) << resolved->PrettyMethod() << " " << resolved << " "
+                            << resolved->GetAccessFlags();
   } else {
     // The method was not in the DexCache, resolve the declaring class.
     klass = ResolveType(dex_file, method_id.class_idx_, dex_cache, class_loader);
