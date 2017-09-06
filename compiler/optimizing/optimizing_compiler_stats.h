@@ -63,6 +63,8 @@ enum MethodCompilationStat {
   kBooleanSimplified,
   kIntrinsicRecognized,
   kLoopInvariantMoved,
+  kLoopVectorized,
+  kLoopVectorizedIdiom,
   kSelectGenerated,
   kRemovedInstanceOf,
   kInlinedInvokeVirtualOrInterface,
@@ -183,6 +185,8 @@ class OptimizingCompilerStats {
       case kBooleanSimplified : name = "BooleanSimplified"; break;
       case kIntrinsicRecognized : name = "IntrinsicRecognized"; break;
       case kLoopInvariantMoved : name = "LoopInvariantMoved"; break;
+      case kLoopVectorized : name = "LoopVectorized"; break;
+      case kLoopVectorizedIdiom : name = "LoopVectorizedIdiom"; break;
       case kSelectGenerated : name = "SelectGenerated"; break;
       case kRemovedInstanceOf: name = "RemovedInstanceOf"; break;
       case kInlinedInvokeVirtualOrInterface: name = "InlinedInvokeVirtualOrInterface"; break;

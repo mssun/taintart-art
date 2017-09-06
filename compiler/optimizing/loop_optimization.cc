@@ -625,6 +625,7 @@ bool HLoopOptimization::OptimizeInnerLoop(LoopNode* node) {
       TryAssignLastValue(node->loop_info, main_phi, preheader, /*collect_loop_uses*/ true)) {
     Vectorize(node, body, exit, trip_count);
     graph_->SetHasSIMD(true);  // flag SIMD usage
+    MaybeRecordStat(stats_, MethodCompilationStat::kLoopVectorized);
     return true;
   }
   return false;
@@ -1724,6 +1725,7 @@ bool HLoopOptimization::VectorizeHalvingAddIdiom(LoopNode* node,
                 vector_length_,
                 is_unsigned,
                 is_rounded));
+            MaybeRecordStat(stats_, MethodCompilationStat::kLoopVectorizedIdiom);
           } else {
             GenerateVecOp(instruction, vector_map_->Get(r), vector_map_->Get(s), type);
           }
