@@ -17,6 +17,7 @@
 #include "code_generator_x86_64.h"
 
 #include "art_method.h"
+#include "class_table.h"
 #include "code_generator_utils.h"
 #include "compiled_method.h"
 #include "entrypoints/quick/quick_entrypoints.h"
@@ -1133,7 +1134,8 @@ void CodeGeneratorX86_64::EmitLinkerPatches(ArenaVector<LinkerPatch>* linker_pat
     EmitPcRelativeLinkerPatches<LinkerPatch::RelativeStringPatch>(string_patches_, linker_patches);
   } else {
     DCHECK(boot_image_method_patches_.empty());
-    DCHECK(boot_image_type_patches_.empty());
+    EmitPcRelativeLinkerPatches<LinkerPatch::TypeClassTablePatch>(boot_image_type_patches_,
+                                                                  linker_patches);
     EmitPcRelativeLinkerPatches<LinkerPatch::StringInternTablePatch>(string_patches_,
                                                                      linker_patches);
   }
@@ -5456,6 +5458,7 @@ HLoadClass::LoadKind CodeGeneratorX86_64::GetSupportedLoadClassKind(
     case HLoadClass::LoadKind::kReferrersClass:
       break;
     case HLoadClass::LoadKind::kBootImageLinkTimePcRelative:
+    case HLoadClass::LoadKind::kBootImageClassTable:
     case HLoadClass::LoadKind::kBssEntry:
       DCHECK(!Runtime::Current()->UseJitCompilation());
       break;
@@ -5562,6 +5565,18 @@ void InstructionCodeGeneratorX86_64::VisitLoadClass(HLoadClass* cls) NO_THREAD_S
           reinterpret_cast<uintptr_t>(cls->GetClass().Get()));
       DCHECK_NE(address, 0u);
       __ movl(out, Immediate(static_cast<int32_t>(address)));  // Zero-extended.
+      break;
+    }
+    case HLoadClass::LoadKind::kBootImageClassTable: {
+      DCHECK(!codegen_->GetCompilerOptions().IsBootImage());
+      __ movl(out, Address::Absolute(CodeGeneratorX86_64::kDummy32BitOffset, /* no_rip */ false));
+      codegen_->RecordBootTypePatch(cls);
+      // Extract the reference from the slot data, i.e. clear the hash bits.
+      int32_t masked_hash = ClassTable::TableSlot::MaskHash(
+          ComputeModifiedUtf8Hash(cls->GetDexFile().StringByTypeIdx(cls->GetTypeIndex())));
+      if (masked_hash != 0) {
+        __ subl(out, Immediate(masked_hash));
+      }
       break;
     }
     case HLoadClass::LoadKind::kBssEntry: {

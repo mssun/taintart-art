@@ -2736,6 +2736,7 @@ bool HLoadClass::InstructionDataEquals(const HInstruction* other) const {
   }
   switch (GetLoadKind()) {
     case LoadKind::kBootImageAddress:
+    case LoadKind::kBootImageClassTable:
     case LoadKind::kJitTableAddress: {
       ScopedObjectAccess soa(Thread::Current());
       return GetClass().Get() == other_load_class->GetClass().Get();
@@ -2769,6 +2770,8 @@ std::ostream& operator<<(std::ostream& os, HLoadClass::LoadKind rhs) {
       return os << "BootImageLinkTimePcRelative";
     case HLoadClass::LoadKind::kBootImageAddress:
       return os << "BootImageAddress";
+    case HLoadClass::LoadKind::kBootImageClassTable:
+      return os << "BootImageClassTable";
     case HLoadClass::LoadKind::kBssEntry:
       return os << "BssEntry";
     case HLoadClass::LoadKind::kJitTableAddress:

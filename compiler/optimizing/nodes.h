@@ -5675,6 +5675,10 @@ class HLoadClass FINAL : public HInstruction {
     // Used for boot image classes referenced by apps in AOT- and JIT-compiled code.
     kBootImageAddress,
 
+    // Use a PC-relative load from a boot image ClassTable mmapped into the .bss
+    // of the oat file.
+    kBootImageClassTable,
+
     // Load from an entry in the .bss section using a PC-relative load.
     // Used for classes outside boot image when .bss is accessible with a PC-relative load.
     kBssEntry,
@@ -5820,6 +5824,7 @@ class HLoadClass FINAL : public HInstruction {
   static bool HasTypeReference(LoadKind load_kind) {
     return load_kind == LoadKind::kReferrersClass ||
         load_kind == LoadKind::kBootImageLinkTimePcRelative ||
+        load_kind == LoadKind::kBootImageClassTable ||
         load_kind == LoadKind::kBssEntry ||
         load_kind == LoadKind::kRuntimeCall;
   }
@@ -5853,6 +5858,7 @@ inline void HLoadClass::AddSpecialInput(HInstruction* special_input) {
   // including literal pool loads, which are PC-relative too.
   DCHECK(GetLoadKind() == LoadKind::kBootImageLinkTimePcRelative ||
          GetLoadKind() == LoadKind::kBootImageAddress ||
+         GetLoadKind() == LoadKind::kBootImageClassTable ||
          GetLoadKind() == LoadKind::kBssEntry) << GetLoadKind();
   DCHECK(special_input_.GetInstruction() == nullptr);
   special_input_ = HUserRecord<HInstruction*>(special_input);
