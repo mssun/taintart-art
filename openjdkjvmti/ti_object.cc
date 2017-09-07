@@ -35,6 +35,8 @@
 #include "mirror/object-inl.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
+#include "thread_list.h"
+#include "ti_thread.h"
 
 namespace openjdkjvmti {
 
@@ -71,6 +73,61 @@ jvmtiError ObjectUtil::GetObjectHashCode(jvmtiEnv* env ATTRIBUTE_UNUSED,
   *hash_code_ptr = object->IdentityHashCode();
 
   return ERR(NONE);
+}
+
+jvmtiError ObjectUtil::GetObjectMonitorUsage(
+    jvmtiEnv* baseenv, jobject obj, jvmtiMonitorUsage* usage) {
+  ArtJvmTiEnv* env = ArtJvmTiEnv::AsArtJvmTiEnv(baseenv);
+  if (obj == nullptr) {
+    return ERR(INVALID_OBJECT);
+  }
+  if (usage == nullptr) {
+    return ERR(NULL_POINTER);
+  }
+  art::Thread* self = art::Thread::Current();
+  ThreadUtil::SuspendCheck(self);
+  art::JNIEnvExt* jni = self->GetJniEnv();
+  std::vector<jthread> wait;
+  std::vector<jthread> notify_wait;
+  {
+    art::ScopedObjectAccess soa(self);      // Now we know we have the shared lock.
+    art::ScopedThreadSuspension sts(self, art::kNative);
+    art::ScopedSuspendAll ssa("GetObjectMonitorUsage", /*long_suspend*/false);
+    art::ObjPtr<art::mirror::Object> target(self->DecodeJObject(obj));
+    // This gets the list of threads trying to lock or wait on the monitor.
+    art::MonitorInfo info(target.Ptr());
+    usage->owner = info.owner_ != nullptr ?
+        jni->AddLocalReference<jthread>(info.owner_->GetPeerFromOtherThread()) : nullptr;
+    usage->entry_count = info.entry_count_;
+    for (art::Thread* thd : info.waiters_) {
+      // RI seems to consider waiting for notify to be included in those waiting to acquire the
+      // monitor. We will match this behavior.
+      notify_wait.push_back(jni->AddLocalReference<jthread>(thd->GetPeerFromOtherThread()));
+      wait.push_back(jni->AddLocalReference<jthread>(thd->GetPeerFromOtherThread()));
+    }
+    {
+      // Scan all threads to see which are waiting on this particular monitor.
+      art::MutexLock tll(self, *art::Locks::thread_list_lock_);
+      for (art::Thread* thd : art::Runtime::Current()->GetThreadList()->GetList()) {
+        if (thd != info.owner_ && target.Ptr() == thd->GetMonitorEnterObject()) {
+          wait.push_back(jni->AddLocalReference<jthread>(thd->GetPeerFromOtherThread()));
+        }
+      }
+    }
+  }
+  usage->waiter_count = wait.size();
+  usage->notify_waiter_count = notify_wait.size();
+  jvmtiError ret = CopyDataIntoJvmtiBuffer(env,
+                                           reinterpret_cast<const unsigned char*>(wait.data()),
+                                           wait.size() * sizeof(jthread),
+                                           reinterpret_cast<unsigned char**>(&usage->waiters));
+  if (ret != OK) {
+    return ret;
+  }
+  return CopyDataIntoJvmtiBuffer(env,
+                                 reinterpret_cast<const unsigned char*>(notify_wait.data()),
+                                 notify_wait.size() * sizeof(jthread),
+                                 reinterpret_cast<unsigned char**>(&usage->notify_waiters));
 }
 
 }  // namespace openjdkjvmti
