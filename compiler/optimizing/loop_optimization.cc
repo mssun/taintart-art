@@ -331,8 +331,9 @@ static bool CheckInductionSetFullyRemoved(ArenaSet<HInstruction*>* iset) {
 
 HLoopOptimization::HLoopOptimization(HGraph* graph,
                                      CompilerDriver* compiler_driver,
-                                     HInductionVarAnalysis* induction_analysis)
-    : HOptimization(graph, kLoopOptimizationPassName),
+                                     HInductionVarAnalysis* induction_analysis,
+                                     OptimizingCompilerStats* stats)
+    : HOptimization(graph, kLoopOptimizationPassName, stats),
       compiler_driver_(compiler_driver),
       induction_range_(induction_analysis),
       loop_allocator_(nullptr),
