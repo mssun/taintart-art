@@ -28,6 +28,10 @@
 #include "jvmti.h"
 #include "utils.h"
 
+#pragma clang diagnostic push
+// Slicer's headers have code that triggers these warnings. b/65298177
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic ignored "-Wsign-compare"
 #include "code_ir.h"
 #include "control_flow_graph.h"
 #include "dex_ir.h"
@@ -35,6 +39,8 @@
 #include "instrumentation.h"
 #include "reader.h"
 #include "writer.h"
+
+#pragma clang diagnostic pop
 
 namespace art {
 
