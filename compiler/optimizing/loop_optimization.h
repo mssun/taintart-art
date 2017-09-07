@@ -34,7 +34,8 @@ class HLoopOptimization : public HOptimization {
  public:
   HLoopOptimization(HGraph* graph,
                     CompilerDriver* compiler_driver,
-                    HInductionVarAnalysis* induction_analysis);
+                    HInductionVarAnalysis* induction_analysis,
+                    OptimizingCompilerStats* stats);
 
   void Run() OVERRIDE;
 

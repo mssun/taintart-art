@@ -509,7 +509,7 @@ static HOptimization* BuildOptimization(
   } else if (opt_name == SideEffectsAnalysis::kSideEffectsAnalysisPassName) {
     return new (arena) SideEffectsAnalysis(graph);
   } else if (opt_name == HLoopOptimization::kLoopOptimizationPassName) {
-    return new (arena) HLoopOptimization(graph, driver, most_recent_induction);
+    return new (arena) HLoopOptimization(graph, driver, most_recent_induction, stats);
   } else if (opt_name == CHAGuardOptimization::kCHAGuardOptimizationPassName) {
     return new (arena) CHAGuardOptimization(graph);
   } else if (opt_name == CodeSinking::kCodeSinkingPassName) {
@@ -770,7 +770,7 @@ void OptimizingCompiler::RunOptimizations(HGraph* graph,
   LICM* licm = new (arena) LICM(graph, *side_effects1, stats);
   HInductionVarAnalysis* induction = new (arena) HInductionVarAnalysis(graph);
   BoundsCheckElimination* bce = new (arena) BoundsCheckElimination(graph, *side_effects1, induction);
-  HLoopOptimization* loop = new (arena) HLoopOptimization(graph, driver, induction);
+  HLoopOptimization* loop = new (arena) HLoopOptimization(graph, driver, induction, stats);
   LoadStoreAnalysis* lsa = new (arena) LoadStoreAnalysis(graph);
   LoadStoreElimination* lse = new (arena) LoadStoreElimination(graph, *side_effects2, *lsa, stats);
   HSharpening* sharpening = new (arena) HSharpening(
