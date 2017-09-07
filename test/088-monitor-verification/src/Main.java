@@ -39,6 +39,7 @@ public class Main {
         ensureJitCompiled(Main.class, "constantLock");
         ensureJitCompiled(Main.class, "notExcessiveNesting");
         ensureJitCompiled(Main.class, "notNested");
+        ensureJitCompiled(TwoPath.class, "twoPath");
 
         Main m = new Main();
 
