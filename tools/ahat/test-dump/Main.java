@@ -115,10 +115,10 @@ public class Main {
     }
 
     DumpedStuff(boolean baseline) {
-      int N = baseline ? 400000 : 1000000;
-      bigArray = new byte[N];
-      for (int i = 0; i < N; i++) {
-        bigArray[i] = (byte)((i*i) & 0xFF);
+      int n = baseline ? 400000 : 1000000;
+      bigArray = new byte[n];
+      for (int i = 0; i < n; i++) {
+        bigArray[i] = (byte)((i * i) & 0xFF);
       }
 
       // 0x12345, 50000, and 0xABCDABCD are arbitrary values.
@@ -138,7 +138,7 @@ public class Main {
       modifiedObject.modifiedRefField = baseline ? "A1" : "A2";
       modifiedObject.unmodifiedRefField = "B";
       modifiedStaticField = baseline ? "C1" : "C2";
-      modifiedArray = baseline ? new int[]{0,1,2,3} : new int[]{3,1,2,0};
+      modifiedArray = baseline ? new int[]{0, 1, 2, 3} : new int[]{3, 1, 2, 0};
 
       allocateObjectAtKnownSite1();
 
