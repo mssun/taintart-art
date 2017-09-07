@@ -810,11 +810,11 @@ class JvmtiFunctions {
   }
 
   static jvmtiError GetObjectMonitorUsage(jvmtiEnv* env,
-                                          jobject object ATTRIBUTE_UNUSED,
-                                          jvmtiMonitorUsage* info_ptr ATTRIBUTE_UNUSED) {
+                                          jobject object,
+                                          jvmtiMonitorUsage* info_ptr) {
     ENSURE_VALID_ENV(env);
     ENSURE_HAS_CAP(env, can_get_monitor_info);
-    return ERR(NOT_IMPLEMENTED);
+    return ObjectUtil::GetObjectMonitorUsage(env, object, info_ptr);
   }
 
   static jvmtiError GetFieldName(jvmtiEnv* env,
