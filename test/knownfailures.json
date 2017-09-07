@@ -736,5 +736,11 @@
         "tests": "664-aget-verifier",
         "description": ["Aget on potentially null array fails verification."],
         "bug": "b/64683522"
+    },
+    {
+        "tests": "913-heaps",
+        "description": ["Fails on 64-bit"],
+        "variant": "64",
+        "bug": "b/65459070"
     }
 ]
