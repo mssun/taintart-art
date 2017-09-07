@@ -1943,20 +1943,15 @@ void OatWriter::InitBssLayout(InstructionSet instruction_set) {
   DCHECK_EQ(bss_size_, 0u);
   if (HasBootImage()) {
     DCHECK(bss_string_entries_.empty());
-    if (bss_method_entries_.empty() && bss_type_entries_.empty()) {
-      // Nothing to put to the .bss section.
-      return;
-    }
+  }
+  if (bss_method_entries_.empty() &&
+      bss_type_entries_.empty() &&
+      bss_string_entries_.empty()) {
+    // Nothing to put to the .bss section.
+    return;
   }
 
-  // Allocate space for app dex cache arrays in the .bss section.
   PointerSize pointer_size = GetInstructionSetPointerSize(instruction_set);
-  if (!HasBootImage()) {
-    for (const DexFile* dex_file : *dex_files_) {
-      DexCacheArraysLayout layout(pointer_size, dex_file);
-      bss_size_ += layout.Size();
-    }
-  }
 
   bss_methods_offset_ = bss_size_;
 
