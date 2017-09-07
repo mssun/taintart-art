@@ -416,8 +416,19 @@ void HandleUnexpectedSignalCommon(int signal_number,
            << "Cmdline: " << cmd_line << std::endl
            << "Thread: " << tid << " \"" << thread_name << "\"" << std::endl
            << "Registers:\n" << Dumpable<UContext>(thread_context) << std::endl
-           << "Backtrace:\n" << Dumpable<Backtrace>(thread_backtrace) << std::endl;
-    stream << std::flush;
+           << "Backtrace:\n" << Dumpable<Backtrace>(thread_backtrace);
+    if (signal_number == SIGILL) {
+      // Note the view we present is from the d-cache, which should
+      // match the i-cache if all is well.
+      static const size_t kCodeSnippetBytes = 16;
+      stream << "Code:\n\t" << info->si_addr << ":";
+      uintptr_t start = reinterpret_cast<uintptr_t>(info->si_addr);
+      uintptr_t end = std::min(start + kCodeSnippetBytes, RoundUp(start, kPageSize));
+      for (uintptr_t addr = start; addr != end; ++addr) {
+        stream << StringPrintf(" %02x", *(reinterpret_cast<const uint8_t*>(addr)));
+      }
+    }
+    stream << std::endl << std::flush;
   };
 
   if (dump_on_stderr) {
