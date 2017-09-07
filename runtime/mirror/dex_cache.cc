@@ -46,13 +46,10 @@ void DexCache::InitializeDexCache(Thread* self,
   DexCacheArraysLayout layout(image_pointer_size, dex_file);
   uint8_t* raw_arrays = nullptr;
 
-  const OatDexFile* const oat_dex = dex_file->GetOatDexFile();
-  if (oat_dex != nullptr && oat_dex->GetDexCacheArrays() != nullptr) {
-    raw_arrays = oat_dex->GetDexCacheArrays();
-  } else if (dex_file->NumStringIds() != 0u ||
-             dex_file->NumTypeIds() != 0u ||
-             dex_file->NumMethodIds() != 0u ||
-             dex_file->NumFieldIds() != 0u) {
+  if (dex_file->NumStringIds() != 0u ||
+      dex_file->NumTypeIds() != 0u ||
+      dex_file->NumMethodIds() != 0u ||
+      dex_file->NumFieldIds() != 0u) {
     static_assert(ArenaAllocator::kAlignment == 8, "Expecting arena alignment of 8.");
     DCHECK(layout.Alignment() == 8u || layout.Alignment() == 16u);
     // Zero-initialized.

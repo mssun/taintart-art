@@ -1189,219 +1189,41 @@ class FixupInternVisitor {
   }
 };
 
-// Copies data from one array to another array at the same position
-// if pred returns false. If there is a page of continuous data in
-// the src array for which pred consistently returns true then
-// corresponding page in the dst array will not be touched.
-// This should reduce number of allocated physical pages.
-template <class T, class NullPred>
-static void CopyNonNull(const T* src, size_t count, T* dst, const NullPred& pred) {
-  for (size_t i = 0; i < count; ++i) {
-    if (!pred(src[i])) {
-      dst[i] = src[i];
-    }
-  }
-}
-
-template <typename T>
-static void CopyDexCachePairs(const std::atomic<mirror::DexCachePair<T>>* src,
-                              size_t count,
-                              std::atomic<mirror::DexCachePair<T>>* dst) {
-  DCHECK_NE(count, 0u);
-  DCHECK(!src[0].load(std::memory_order_relaxed).object.IsNull() ||
-         src[0].load(std::memory_order_relaxed).index != 0u);
-  for (size_t i = 0; i < count; ++i) {
-    DCHECK_EQ(dst[i].load(std::memory_order_relaxed).index, 0u);
-    DCHECK(dst[i].load(std::memory_order_relaxed).object.IsNull());
-    mirror::DexCachePair<T> source = src[i].load(std::memory_order_relaxed);
-    if (source.index != 0u || !source.object.IsNull()) {
-      dst[i].store(source, std::memory_order_relaxed);
-    }
-  }
-}
-
-template <typename T>
-static void CopyNativeDexCachePairs(std::atomic<mirror::NativeDexCachePair<T>>* src,
-                                    size_t count,
-                                    std::atomic<mirror::NativeDexCachePair<T>>* dst,
-                                    PointerSize pointer_size) {
-  DCHECK_NE(count, 0u);
-  DCHECK(mirror::DexCache::GetNativePairPtrSize(src, 0, pointer_size).object != nullptr ||
-         mirror::DexCache::GetNativePairPtrSize(src, 0, pointer_size).index != 0u);
-  for (size_t i = 0; i < count; ++i) {
-    DCHECK_EQ(mirror::DexCache::GetNativePairPtrSize(dst, i, pointer_size).index, 0u);
-    DCHECK(mirror::DexCache::GetNativePairPtrSize(dst, i, pointer_size).object == nullptr);
-    mirror::NativeDexCachePair<T> source =
-        mirror::DexCache::GetNativePairPtrSize(src, i, pointer_size);
-    if (source.index != 0u || source.object != nullptr) {
-      mirror::DexCache::SetNativePairPtrSize(dst, i, source, pointer_size);
-    }
-  }
-}
-
 // new_class_set is the set of classes that were read from the class table section in the image.
 // If there was no class table section, it is null.
 // Note: using a class here to avoid having to make ClassLinker internals public.
 class AppImageClassLoadersAndDexCachesHelper {
  public:
-  static bool Update(
+  static void Update(
       ClassLinker* class_linker,
       gc::space::ImageSpace* space,
       Handle<mirror::ClassLoader> class_loader,
       Handle<mirror::ObjectArray<mirror::DexCache>> dex_caches,
-      ClassTable::ClassSet* new_class_set,
-      bool* out_forward_dex_cache_array,
-      std::string* out_error_msg)
+      ClassTable::ClassSet* new_class_set)
       REQUIRES(!Locks::dex_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 };
 
-bool AppImageClassLoadersAndDexCachesHelper::Update(
+void AppImageClassLoadersAndDexCachesHelper::Update(
     ClassLinker* class_linker,
     gc::space::ImageSpace* space,
     Handle<mirror::ClassLoader> class_loader,
     Handle<mirror::ObjectArray<mirror::DexCache>> dex_caches,
-    ClassTable::ClassSet* new_class_set,
-    bool* out_forward_dex_cache_array,
-    std::string* out_error_msg)
+    ClassTable::ClassSet* new_class_set)
     REQUIRES(!Locks::dex_lock_)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  DCHECK(out_forward_dex_cache_array != nullptr);
-  DCHECK(out_error_msg != nullptr);
-  PointerSize image_pointer_size = class_linker->GetImagePointerSize();
   Thread* const self = Thread::Current();
   gc::Heap* const heap = Runtime::Current()->GetHeap();
   const ImageHeader& header = space->GetImageHeader();
   {
-    // Add image classes into the class table for the class loader, and fixup the dex caches and
-    // class loader fields.
+    // Register dex caches with the class loader.
     WriterMutexLock mu(self, *Locks::classlinker_classes_lock_);
-    // Dex cache array fixup is all or nothing, we must reject app images that have mixed since we
-    // rely on clobering the dex cache arrays in the image to forward to bss.
-    size_t num_dex_caches_with_bss_arrays = 0;
     const size_t num_dex_caches = dex_caches->GetLength();
-    for (size_t i = 0; i < num_dex_caches; i++) {
-      ObjPtr<mirror::DexCache> const dex_cache = dex_caches->Get(i);
-      const DexFile* const dex_file = dex_cache->GetDexFile();
-      const OatFile::OatDexFile* oat_dex_file = dex_file->GetOatDexFile();
-      if (oat_dex_file != nullptr && oat_dex_file->GetDexCacheArrays() != nullptr) {
-        ++num_dex_caches_with_bss_arrays;
-      }
-    }
-    *out_forward_dex_cache_array = num_dex_caches_with_bss_arrays != 0;
-    if (*out_forward_dex_cache_array) {
-      if (num_dex_caches_with_bss_arrays != num_dex_caches) {
-        // Reject application image since we cannot forward only some of the dex cache arrays.
-        // TODO: We could get around this by having a dedicated forwarding slot. It should be an
-        // uncommon case.
-        *out_error_msg = StringPrintf("Dex caches in bss does not match total: %zu vs %zu",
-                                      num_dex_caches_with_bss_arrays,
-                                      num_dex_caches);
-        return false;
-      }
-    }
-
-    // Only add the classes to the class loader after the points where we can return false.
     for (size_t i = 0; i < num_dex_caches; i++) {
       ObjPtr<mirror::DexCache> dex_cache = dex_caches->Get(i);
       const DexFile* const dex_file = dex_cache->GetDexFile();
-      const OatFile::OatDexFile* oat_dex_file = dex_file->GetOatDexFile();
-      if (oat_dex_file != nullptr && oat_dex_file->GetDexCacheArrays() != nullptr) {
-        // If the oat file expects the dex cache arrays to be in the BSS, then allocate there and
-        // copy over the arrays.
-        DCHECK(dex_file != nullptr);
-        size_t num_strings = mirror::DexCache::kDexCacheStringCacheSize;
-        if (dex_file->NumStringIds() < num_strings) {
-          num_strings = dex_file->NumStringIds();
-        }
-        size_t num_types = mirror::DexCache::kDexCacheTypeCacheSize;
-        if (dex_file->NumTypeIds() < num_types) {
-          num_types = dex_file->NumTypeIds();
-        }
-        size_t num_methods = mirror::DexCache::kDexCacheMethodCacheSize;
-        if (dex_file->NumMethodIds() < num_methods) {
-          num_methods = dex_file->NumMethodIds();
-        }
-        size_t num_fields = mirror::DexCache::kDexCacheFieldCacheSize;
-        if (dex_file->NumFieldIds() < num_fields) {
-          num_fields = dex_file->NumFieldIds();
-        }
-        size_t num_method_types = mirror::DexCache::kDexCacheMethodTypeCacheSize;
-        if (dex_file->NumProtoIds() < num_method_types) {
-          num_method_types = dex_file->NumProtoIds();
-        }
-        const size_t num_call_sites = dex_file->NumCallSiteIds();
-        CHECK_EQ(num_strings, dex_cache->NumStrings());
-        CHECK_EQ(num_types, dex_cache->NumResolvedTypes());
-        CHECK_EQ(num_methods, dex_cache->NumResolvedMethods());
-        CHECK_EQ(num_fields, dex_cache->NumResolvedFields());
-        CHECK_EQ(num_method_types, dex_cache->NumResolvedMethodTypes());
-        CHECK_EQ(num_call_sites, dex_cache->NumResolvedCallSites());
-        DexCacheArraysLayout layout(image_pointer_size, dex_file);
-        uint8_t* const raw_arrays = oat_dex_file->GetDexCacheArrays();
-        if (num_strings != 0u) {
-          mirror::StringDexCacheType* const image_resolved_strings = dex_cache->GetStrings();
-          mirror::StringDexCacheType* const strings =
-              reinterpret_cast<mirror::StringDexCacheType*>(raw_arrays + layout.StringsOffset());
-          CopyDexCachePairs(image_resolved_strings, num_strings, strings);
-          dex_cache->SetStrings(strings);
-        }
-        if (num_types != 0u) {
-          mirror::TypeDexCacheType* const image_resolved_types = dex_cache->GetResolvedTypes();
-          mirror::TypeDexCacheType* const types =
-              reinterpret_cast<mirror::TypeDexCacheType*>(raw_arrays + layout.TypesOffset());
-          CopyDexCachePairs(image_resolved_types, num_types, types);
-          dex_cache->SetResolvedTypes(types);
-        }
-        if (num_methods != 0u) {
-          mirror::MethodDexCacheType* const image_resolved_methods =
-              dex_cache->GetResolvedMethods();
-          mirror::MethodDexCacheType* const methods =
-              reinterpret_cast<mirror::MethodDexCacheType*>(raw_arrays + layout.MethodsOffset());
-          CopyNativeDexCachePairs(image_resolved_methods, num_methods, methods, image_pointer_size);
-          dex_cache->SetResolvedMethods(methods);
-        }
-        if (num_fields != 0u) {
-          mirror::FieldDexCacheType* const image_resolved_fields = dex_cache->GetResolvedFields();
-          mirror::FieldDexCacheType* const fields =
-              reinterpret_cast<mirror::FieldDexCacheType*>(raw_arrays + layout.FieldsOffset());
-          CopyNativeDexCachePairs(image_resolved_fields, num_fields, fields, image_pointer_size);
-          dex_cache->SetResolvedFields(fields);
-        }
-        if (num_method_types != 0u) {
-          // NOTE: We currently (Sep 2016) do not resolve any method types at
-          // compile time, but plan to in the future. This code exists for the
-          // sake of completeness.
-          mirror::MethodTypeDexCacheType* const image_resolved_method_types =
-              dex_cache->GetResolvedMethodTypes();
-          mirror::MethodTypeDexCacheType* const method_types =
-              reinterpret_cast<mirror::MethodTypeDexCacheType*>(
-                  raw_arrays + layout.MethodTypesOffset());
-          CopyDexCachePairs(image_resolved_method_types, num_method_types, method_types);
-          dex_cache->SetResolvedMethodTypes(method_types);
-        }
-        if (num_call_sites != 0u) {
-          GcRoot<mirror::CallSite>* const image_resolved_call_sites =
-              dex_cache->GetResolvedCallSites();
-          GcRoot<mirror::CallSite>* const call_sites =
-              reinterpret_cast<GcRoot<mirror::CallSite>*>(raw_arrays + layout.CallSitesOffset());
-          for (size_t j = 0; kIsDebugBuild && j < num_call_sites; ++j) {
-            DCHECK(call_sites[j].IsNull());
-          }
-          CopyNonNull(image_resolved_call_sites,
-                      num_call_sites,
-                      call_sites,
-                      [](const GcRoot<mirror::CallSite>& elem) {
-                          return elem.IsNull();
-                      });
-          dex_cache->SetResolvedCallSites(call_sites);
-        }
-      }
       {
         WriterMutexLock mu2(self, *Locks::dex_lock_);
-        // Make sure to do this after we update the arrays since we store the resolved types array
-        // in DexCacheData in RegisterDexFileLocked. We need the array pointer to be the one in the
-        // BSS.
         CHECK(!class_linker->FindDexCacheDataLocked(*dex_file).IsValid());
         class_linker->RegisterDexFileLocked(*dex_file, dex_cache, class_loader.Get());
       }
@@ -1468,7 +1290,6 @@ bool AppImageClassLoadersAndDexCachesHelper::Update(
     VerifyDeclaringClassVisitor visitor;
     header.VisitPackedArtMethods(&visitor, space->Begin(), kRuntimePointerSize);
   }
-  return true;
 }
 
 // Update the class loader. Should only be used on classes in the image space.
@@ -1947,7 +1768,7 @@ bool ClassLinker::AddImageSpace(
   // If we have a class table section, read it and use it for verification in
   // UpdateAppImageClassLoadersAndDexCaches.
   ClassTable::ClassSet temp_set;
-  const ImageSection& class_table_section = header.GetImageSection(ImageHeader::kSectionClassTable);
+  const ImageSection& class_table_section = header.GetClassTableSection();
   const bool added_class_table = class_table_section.Size() > 0u;
   if (added_class_table) {
     const uint64_t start_time2 = NanoTime();
@@ -1958,36 +1779,16 @@ bool ClassLinker::AddImageSpace(
     VLOG(image) << "Adding class table classes took " << PrettyDuration(NanoTime() - start_time2);
   }
   if (app_image) {
-    bool forward_dex_cache_arrays = false;
-    if (!AppImageClassLoadersAndDexCachesHelper::Update(this,
-                                                        space,
-                                                        class_loader,
-                                                        dex_caches,
-                                                        &temp_set,
-                                                        /*out*/&forward_dex_cache_arrays,
-                                                        /*out*/error_msg)) {
-      return false;
-    }
+    AppImageClassLoadersAndDexCachesHelper::Update(this,
+                                                   space,
+                                                   class_loader,
+                                                   dex_caches,
+                                                   &temp_set);
     // Update class loader and resolved strings. If added_class_table is false, the resolved
     // strings were forwarded UpdateAppImageClassLoadersAndDexCaches.
     UpdateClassLoaderVisitor visitor(space, class_loader.Get());
     for (const ClassTable::TableSlot& root : temp_set) {
       visitor(root.Read());
-    }
-    // forward_dex_cache_arrays is true iff we copied all of the dex cache arrays into the .bss.
-    // In this case, madvise away the dex cache arrays section of the image to reduce RAM usage and
-    // mark as PROT_NONE to catch any invalid accesses.
-    if (forward_dex_cache_arrays) {
-      const ImageSection& dex_cache_section = header.GetDexCacheArraysSection();
-      uint8_t* section_begin = AlignUp(space->Begin() + dex_cache_section.Offset(), kPageSize);
-      uint8_t* section_end = AlignDown(space->Begin() + dex_cache_section.End(), kPageSize);
-      if (section_begin < section_end) {
-        madvise(section_begin, section_end - section_begin, MADV_DONTNEED);
-        mprotect(section_begin, section_end - section_begin, PROT_NONE);
-        VLOG(image) << "Released and protected dex cache array image section from "
-                    << reinterpret_cast<const void*>(section_begin) << "-"
-                    << reinterpret_cast<const void*>(section_end);
-      }
     }
   }
   if (!oat_file->GetBssGcRoots().empty()) {
