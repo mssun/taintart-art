@@ -278,10 +278,12 @@ void HSharpening::ProcessLoadString(HLoadString* load_string) {
     } else {
       // AOT app compilation. Try to lookup the string without allocating if not found.
       string = class_linker->LookupString(dex_file, string_index, dex_cache.Get());
-      if (string != nullptr &&
-          runtime->GetHeap()->ObjectIsInBootImageSpace(string) &&
-          !codegen_->GetCompilerOptions().GetCompilePic()) {
-        desired_load_kind = HLoadString::LoadKind::kBootImageAddress;
+      if (string != nullptr && runtime->GetHeap()->ObjectIsInBootImageSpace(string)) {
+        if (codegen_->GetCompilerOptions().GetCompilePic()) {
+          desired_load_kind = HLoadString::LoadKind::kBootImageInternTable;
+        } else {
+          desired_load_kind = HLoadString::LoadKind::kBootImageAddress;
+        }
       } else {
         desired_load_kind = HLoadString::LoadKind::kBssEntry;
       }

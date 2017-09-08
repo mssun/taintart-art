@@ -1089,15 +1089,15 @@ Label* CodeGeneratorX86_64::NewTypeBssEntryPatch(HLoadClass* load_class) {
 }
 
 void CodeGeneratorX86_64::RecordBootStringPatch(HLoadString* load_string) {
-  DCHECK(GetCompilerOptions().IsBootImage());
   string_patches_.emplace_back(load_string->GetDexFile(), load_string->GetStringIndex().index_);
   __ Bind(&string_patches_.back().label);
 }
 
 Label* CodeGeneratorX86_64::NewStringBssEntryPatch(HLoadString* load_string) {
   DCHECK(!GetCompilerOptions().IsBootImage());
-  string_patches_.emplace_back(load_string->GetDexFile(), load_string->GetStringIndex().index_);
-  return &string_patches_.back().label;
+  string_bss_entry_patches_.emplace_back(
+      load_string->GetDexFile(), load_string->GetStringIndex().index_);
+  return &string_bss_entry_patches_.back().label;
 }
 
 // The label points to the end of the "movl" or another instruction but the literal offset
@@ -1122,7 +1122,8 @@ void CodeGeneratorX86_64::EmitLinkerPatches(ArenaVector<LinkerPatch>* linker_pat
       method_bss_entry_patches_.size() +
       boot_image_type_patches_.size() +
       type_bss_entry_patches_.size() +
-      string_patches_.size();
+      string_patches_.size() +
+      string_bss_entry_patches_.size();
   linker_patches->reserve(size);
   if (GetCompilerOptions().IsBootImage()) {
     EmitPcRelativeLinkerPatches<LinkerPatch::RelativeMethodPatch>(boot_image_method_patches_,
@@ -1133,12 +1134,15 @@ void CodeGeneratorX86_64::EmitLinkerPatches(ArenaVector<LinkerPatch>* linker_pat
   } else {
     DCHECK(boot_image_method_patches_.empty());
     DCHECK(boot_image_type_patches_.empty());
-    EmitPcRelativeLinkerPatches<LinkerPatch::StringBssEntryPatch>(string_patches_, linker_patches);
+    EmitPcRelativeLinkerPatches<LinkerPatch::StringInternTablePatch>(string_patches_,
+                                                                     linker_patches);
   }
   EmitPcRelativeLinkerPatches<LinkerPatch::MethodBssEntryPatch>(method_bss_entry_patches_,
                                                                 linker_patches);
   EmitPcRelativeLinkerPatches<LinkerPatch::TypeBssEntryPatch>(type_bss_entry_patches_,
                                                               linker_patches);
+  EmitPcRelativeLinkerPatches<LinkerPatch::StringBssEntryPatch>(string_bss_entry_patches_,
+                                                                linker_patches);
   DCHECK_EQ(size, linker_patches->size());
 }
 
@@ -1230,6 +1234,7 @@ CodeGeneratorX86_64::CodeGeneratorX86_64(HGraph* graph,
         boot_image_type_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
         type_bss_entry_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
         string_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
+        string_bss_entry_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
         jit_string_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
         jit_class_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
         fixups_to_jump_tables_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)) {
@@ -5621,6 +5626,7 @@ HLoadString::LoadKind CodeGeneratorX86_64::GetSupportedLoadStringKind(
     HLoadString::LoadKind desired_string_load_kind) {
   switch (desired_string_load_kind) {
     case HLoadString::LoadKind::kBootImageLinkTimePcRelative:
+    case HLoadString::LoadKind::kBootImageInternTable:
     case HLoadString::LoadKind::kBssEntry:
       DCHECK(!Runtime::Current()->UseJitCompilation());
       break;
@@ -5678,14 +5684,20 @@ void InstructionCodeGeneratorX86_64::VisitLoadString(HLoadString* load) NO_THREA
       DCHECK(codegen_->GetCompilerOptions().IsBootImage());
       __ leal(out, Address::Absolute(CodeGeneratorX86_64::kDummy32BitOffset, /* no_rip */ false));
       codegen_->RecordBootStringPatch(load);
-      return;  // No dex cache slow path.
+      return;
     }
     case HLoadString::LoadKind::kBootImageAddress: {
       uint32_t address = dchecked_integral_cast<uint32_t>(
           reinterpret_cast<uintptr_t>(load->GetString().Get()));
       DCHECK_NE(address, 0u);
       __ movl(out, Immediate(static_cast<int32_t>(address)));  // Zero-extended.
-      return;  // No dex cache slow path.
+      return;
+    }
+    case HLoadString::LoadKind::kBootImageInternTable: {
+      DCHECK(!codegen_->GetCompilerOptions().IsBootImage());
+      __ movl(out, Address::Absolute(CodeGeneratorX86_64::kDummy32BitOffset, /* no_rip */ false));
+      codegen_->RecordBootStringPatch(load);
+      return;
     }
     case HLoadString::LoadKind::kBssEntry: {
       Address address = Address::Absolute(CodeGeneratorX86_64::kDummy32BitOffset,

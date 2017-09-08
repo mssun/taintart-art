@@ -214,27 +214,27 @@ public class Main {
 
   /// CHECK-START-X86: java.lang.String Main.$noinline$getBootImageString() sharpening (after)
   // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadString load_kind:{{BootImageAddress|BssEntry}}
+  /// CHECK:                LoadString load_kind:{{BootImageAddress|BootImageInternTable}}
 
   /// CHECK-START-X86_64: java.lang.String Main.$noinline$getBootImageString() sharpening (after)
   // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadString load_kind:{{BootImageAddress|BssEntry}}
+  /// CHECK:                LoadString load_kind:{{BootImageAddress|BootImageInternTable}}
 
   /// CHECK-START-ARM: java.lang.String Main.$noinline$getBootImageString() sharpening (after)
   // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadString load_kind:{{BootImageAddress|BssEntry}}
+  /// CHECK:                LoadString load_kind:{{BootImageAddress|BootImageInternTable}}
 
   /// CHECK-START-ARM64: java.lang.String Main.$noinline$getBootImageString() sharpening (after)
   // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadString load_kind:{{BootImageAddress|BssEntry}}
+  /// CHECK:                LoadString load_kind:{{BootImageAddress|BootImageInternTable}}
 
   /// CHECK-START-MIPS: java.lang.String Main.$noinline$getBootImageString() sharpening (after)
   // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadString load_kind:{{BootImageAddress|BssEntry}}
+  /// CHECK:                LoadString load_kind:{{BootImageAddress|BootImageInternTable}}
 
   /// CHECK-START-MIPS64: java.lang.String Main.$noinline$getBootImageString() sharpening (after)
   // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadString load_kind:{{BootImageAddress|BssEntry}}
+  /// CHECK:                LoadString load_kind:{{BootImageAddress|BootImageInternTable}}
 
   public static String $noinline$getBootImageString() {
     // Prevent inlining to avoid the string comparison being optimized away.

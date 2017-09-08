@@ -2006,7 +2006,7 @@ class ImageDumper {
 
     // Intern table is 8-byte aligned.
     uint32_t end_caches = dex_cache_arrays_section.Offset() + dex_cache_arrays_section.Size();
-    CHECK_EQ(RoundUp(end_caches, 8U), intern_section.Offset());
+    CHECK_ALIGNED(intern_section.Offset(), sizeof(uint64_t));
     stats_.alignment_bytes += intern_section.Offset() - end_caches;
 
     // Add space between intern table and class table.
