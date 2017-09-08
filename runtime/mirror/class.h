@@ -1434,6 +1434,9 @@ class MANAGED Class FINAL : public Object {
   // Static fields length-prefixed array.
   uint64_t sfields_;
 
+  // State of class initialization.
+  uint64_t status_;
+
   // Access flags; low 16 bits are defined by VM spec.
   uint32_t access_flags_;
 
@@ -1476,9 +1479,6 @@ class MANAGED Class FINAL : public Object {
 
   // Bitmap of offsets of ifields.
   uint32_t reference_instance_offsets_;
-
-  // State of class initialization.
-  Status status_;
 
   // The offset of the first virtual method that is copied from an interface. This includes miranda,
   // default, and default-conflict methods. Having a hard limit of ((2 << 16) - 1) for methods
