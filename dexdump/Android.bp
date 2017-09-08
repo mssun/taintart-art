@@ -29,6 +29,26 @@ art_cc_binary {
     ],
 }
 
+art_cc_binary {
+    name: "dexdumps",
+    host_supported: true,
+    device_supported: false,
+    srcs: [
+        "dexdump_cfg.cc",
+        "dexdump_main.cc",
+        "dexdump.cc",
+    ],
+    cflags: ["-Wall"],
+    static_libs: [
+        "libart",
+        "libbase",
+    ] + art_static_dependencies,
+    host_ldlibs: [
+        "-ldl",
+        "-lrt",
+    ],
+}
+
 art_cc_test {
     name: "art_dexdump_tests",
     defaults: [
