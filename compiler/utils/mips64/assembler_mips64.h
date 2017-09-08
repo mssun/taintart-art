@@ -86,7 +86,7 @@ static inline int InstrCountForLoadReplicatedConst32(int64_t value) {
   int32_t y = High32Bits(value);
 
   if (x == y) {
-    return (IsUint<16>(x) || IsInt<16>(x) || ((x & 0xFFFF) == 0 && IsInt<16>(value >> 16))) ? 2 : 3;
+    return (IsUint<16>(x) || IsInt<16>(x) || ((x & 0xFFFF) == 0)) ? 2 : 3;
   }
 
   return INT_MAX;
