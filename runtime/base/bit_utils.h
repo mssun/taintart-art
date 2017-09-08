@@ -127,6 +127,14 @@ constexpr T RoundUpToPowerOfTwo(T x) {
   return (x < 2u) ? x : static_cast<T>(1u) << (std::numeric_limits<T>::digits - CLZ(x - 1u));
 }
 
+// Return highest possible N - a power of two - such that val >= N.
+template <typename T>
+constexpr T TruncToPowerOfTwo(T val) {
+  static_assert(std::is_integral<T>::value, "T must be integral");
+  static_assert(std::is_unsigned<T>::value, "T must be unsigned");
+  return (val != 0) ? static_cast<T>(1u) << (BitSizeOf<T>() - CLZ(val) - 1u) : 0;
+}
+
 template<typename T>
 constexpr bool IsPowerOfTwo(T x) {
   static_assert(std::is_integral<T>::value, "T must be integral");
