@@ -473,6 +473,18 @@ public class Main {
     return y;
   }
 
+  // b/65478356: sum up 2-dim array.
+  static int sum(int[][] a) {
+    int sum = 0;
+    for (int y = 0; y < a.length; y++) {
+      int[] aa = a[y];
+      for (int x = 0; x < aa.length; x++) {
+        sum += aa[x];
+      }
+    }
+    return sum;
+  }
+
   public static void main(String[] args) {
     expectEquals(10, earlyExitFirst(-1));
     for (int i = 0; i <= 10; i++) {
@@ -612,6 +624,14 @@ public class Main {
       verify = 2;
     }
     expectEquals(2, verify);
+
+    int[][] x = new int[128][128];
+    for (int i = 0; i < 128; i++) {
+      for (int j = 0; j < 128; j++) {
+        x[i][j] = -i - j;
+      }
+    }
+    expectEquals(-2080768, sum(x));
 
     System.out.println("passed");
   }
