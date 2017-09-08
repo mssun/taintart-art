@@ -67,7 +67,7 @@ void InstructionCodeGeneratorX86_64::VisitVecReplicateScalar(HVecReplicateScalar
     case Primitive::kPrimBoolean:
     case Primitive::kPrimByte:
       DCHECK_EQ(16u, instruction->GetVectorLength());
-      __ movd(dst, locations->InAt(0).AsRegister<CpuRegister>());
+      __ movd(dst, locations->InAt(0).AsRegister<CpuRegister>(), /*64-bit*/ false);
       __ punpcklbw(dst, dst);
       __ punpcklwd(dst, dst);
       __ pshufd(dst, dst, Immediate(0));
@@ -75,28 +75,28 @@ void InstructionCodeGeneratorX86_64::VisitVecReplicateScalar(HVecReplicateScalar
     case Primitive::kPrimChar:
     case Primitive::kPrimShort:
       DCHECK_EQ(8u, instruction->GetVectorLength());
-      __ movd(dst, locations->InAt(0).AsRegister<CpuRegister>());
+      __ movd(dst, locations->InAt(0).AsRegister<CpuRegister>(), /*64-bit*/ false);
       __ punpcklwd(dst, dst);
       __ pshufd(dst, dst, Immediate(0));
       break;
     case Primitive::kPrimInt:
       DCHECK_EQ(4u, instruction->GetVectorLength());
-      __ movd(dst, locations->InAt(0).AsRegister<CpuRegister>());
+      __ movd(dst, locations->InAt(0).AsRegister<CpuRegister>(), /*64-bit*/ false);
       __ pshufd(dst, dst, Immediate(0));
       break;
     case Primitive::kPrimLong:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      __ movd(dst, locations->InAt(0).AsRegister<CpuRegister>());  // is 64-bit
+      __ movd(dst, locations->InAt(0).AsRegister<CpuRegister>(), /*64-bit*/ true);
       __ punpcklqdq(dst, dst);
       break;
     case Primitive::kPrimFloat:
-      DCHECK(locations->InAt(0).Equals(locations->Out()));
       DCHECK_EQ(4u, instruction->GetVectorLength());
+      DCHECK(locations->InAt(0).Equals(locations->Out()));
       __ shufps(dst, dst, Immediate(0));
       break;
     case Primitive::kPrimDouble:
-      DCHECK(locations->InAt(0).Equals(locations->Out()));
       DCHECK_EQ(2u, instruction->GetVectorLength());
+      DCHECK(locations->InAt(0).Equals(locations->Out()));
       __ shufpd(dst, dst, Immediate(0));
       break;
     default:
@@ -140,11 +140,11 @@ void InstructionCodeGeneratorX86_64::VisitVecExtractScalar(HVecExtractScalar* in
       UNREACHABLE();
     case Primitive::kPrimInt:
       DCHECK_EQ(4u, instruction->GetVectorLength());
-      __ movd(locations->Out().AsRegister<CpuRegister>(), src);
+      __ movd(locations->Out().AsRegister<CpuRegister>(), src, /*64-bit*/ false);
       break;
     case Primitive::kPrimLong:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      __ movd(locations->Out().AsRegister<CpuRegister>(), src);   // is 64-bit
+      __ movd(locations->Out().AsRegister<CpuRegister>(), src, /*64-bit*/ true);
       break;
     case Primitive::kPrimFloat:
     case Primitive::kPrimDouble:
@@ -1005,12 +1005,12 @@ void InstructionCodeGeneratorX86_64::VisitVecSetScalars(HVecSetScalars* instruct
   }
 }
 
-void LocationsBuilderX86_64::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instr) {
-  LOG(FATAL) << "No SIMD for " << instr->GetId();
+void LocationsBuilderX86_64::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instruction) {
+  LOG(FATAL) << "No SIMD for " << instruction->GetId();
 }
 
-void InstructionCodeGeneratorX86_64::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instr) {
-  LOG(FATAL) << "No SIMD for " << instr->GetId();
+void InstructionCodeGeneratorX86_64::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instruction) {
+  LOG(FATAL) << "No SIMD for " << instruction->GetId();
 }
 
 // Helper to set up locations for vector memory operations.
