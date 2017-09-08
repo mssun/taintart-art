@@ -133,7 +133,7 @@ inline std::vector<size_t> CompilationHelper::GetImageObjectSectionSizes() {
     ImageHeader image_header;
     CHECK_EQ(file->ReadFully(&image_header, sizeof(image_header)), true);
     CHECK(image_header.IsValid());
-    ret.push_back(image_header.GetImageSize());
+    ret.push_back(image_header.GetObjectsSection().Size());
   }
   return ret;
 }
