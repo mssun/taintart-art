@@ -633,6 +633,9 @@ class CodeGeneratorMIPS : public CodeGenerator {
   PcRelativePatchInfo* NewPcRelativeStringPatch(const DexFile& dex_file,
                                                 dex::StringIndex string_index,
                                                 const PcRelativePatchInfo* info_high = nullptr);
+  PcRelativePatchInfo* NewStringBssEntryPatch(const DexFile& dex_file,
+                                              dex::StringIndex string_index,
+                                              const PcRelativePatchInfo* info_high = nullptr);
   Literal* DeduplicateBootImageAddressLiteral(uint32_t address);
 
   void EmitPcRelativeAddressPlaceholderHigh(PcRelativePatchInfo* info_high,
@@ -699,8 +702,10 @@ class CodeGeneratorMIPS : public CodeGenerator {
   ArenaDeque<PcRelativePatchInfo> pc_relative_type_patches_;
   // PC-relative type patch info for kBssEntry.
   ArenaDeque<PcRelativePatchInfo> type_bss_entry_patches_;
-  // PC-relative String patch info; type depends on configuration (app .bss or boot image PIC).
+  // PC-relative String patch info; type depends on configuration (intern table or boot image PIC).
   ArenaDeque<PcRelativePatchInfo> pc_relative_string_patches_;
+  // PC-relative String patch info for kBssEntry.
+  ArenaDeque<PcRelativePatchInfo> string_bss_entry_patches_;
 
   // Patches for string root accesses in JIT compiled code.
   ArenaDeque<JitPatchInfo> jit_string_patches_;

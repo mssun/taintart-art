@@ -599,6 +599,14 @@ class CodeGeneratorARM64 : public CodeGenerator {
                                                  dex::StringIndex string_index,
                                                  vixl::aarch64::Label* adrp_label = nullptr);
 
+  // Add a new .bss entry string patch for an instruction and return the label
+  // to be bound before the instruction. The instruction will be either the
+  // ADRP (pass `adrp_label = null`) or the ADD (pass `adrp_label` pointing
+  // to the associated ADRP patch label).
+  vixl::aarch64::Label* NewStringBssEntryPatch(const DexFile& dex_file,
+                                               dex::StringIndex string_index,
+                                               vixl::aarch64::Label* adrp_label = nullptr);
+
   // Add a new baker read barrier patch and return the label to be bound
   // before the CBNZ instruction.
   vixl::aarch64::Label* NewBakerReadBarrierPatch(uint32_t custom_data);
@@ -825,8 +833,10 @@ class CodeGeneratorARM64 : public CodeGenerator {
   ArenaDeque<PcRelativePatchInfo> pc_relative_type_patches_;
   // PC-relative type patch info for kBssEntry.
   ArenaDeque<PcRelativePatchInfo> type_bss_entry_patches_;
-  // PC-relative String patch info; type depends on configuration (app .bss or boot image PIC).
+  // PC-relative String patch info; type depends on configuration (intern table or boot image PIC).
   ArenaDeque<PcRelativePatchInfo> pc_relative_string_patches_;
+  // PC-relative String patch info for kBssEntry.
+  ArenaDeque<PcRelativePatchInfo> string_bss_entry_patches_;
   // Baker read barrier patch info.
   ArenaDeque<BakerReadBarrierPatchInfo> baker_read_barrier_patches_;
 
