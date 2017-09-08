@@ -640,8 +640,10 @@ class CodeGeneratorX86 : public CodeGenerator {
   ArenaDeque<X86PcRelativePatchInfo> boot_image_type_patches_;
   // Type patch locations for kBssEntry.
   ArenaDeque<X86PcRelativePatchInfo> type_bss_entry_patches_;
-  // String patch locations; type depends on configuration (app .bss or boot image).
+  // String patch locations; type depends on configuration (intern table or boot image PIC).
   ArenaDeque<X86PcRelativePatchInfo> string_patches_;
+  // String patch locations for kBssEntry.
+  ArenaDeque<X86PcRelativePatchInfo> string_bss_entry_patches_;
 
   // Patches for string root accesses in JIT compiled code.
   ArenaDeque<PatchInfo<Label>> jit_string_patches_;

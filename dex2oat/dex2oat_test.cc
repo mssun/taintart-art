@@ -706,7 +706,7 @@ class Dex2oatLayoutTest : public Dex2oatTest {
     }
   }
 
-  uint64_t GetImageSize(const std::string& image_file_name) {
+  uint64_t GetImageObjectSectionSize(const std::string& image_file_name) {
     EXPECT_FALSE(image_file_name.empty());
     std::unique_ptr<File> file(OS::OpenFileForReading(image_file_name.c_str()));
     CHECK(file != nullptr);
@@ -715,7 +715,7 @@ class Dex2oatLayoutTest : public Dex2oatTest {
     CHECK(success);
     CHECK(image_header.IsValid());
     ReaderMutexLock mu(Thread::Current(), *Locks::mutator_lock_);
-    return image_header.GetImageSize();
+    return image_header.GetObjectsSection().Size();
   }
 
   void RunTest(bool app_image) {
@@ -734,7 +734,7 @@ class Dex2oatLayoutTest : public Dex2oatTest {
       CheckValidity();
       ASSERT_TRUE(success_);
       // Don't check the result since CheckResult relies on the class being in the profile.
-      image_file_empty_profile = GetImageSize(app_image_file);
+      image_file_empty_profile = GetImageObjectSectionSize(app_image_file);
       EXPECT_GT(image_file_empty_profile, 0u);
     }
 
@@ -750,8 +750,8 @@ class Dex2oatLayoutTest : public Dex2oatTest {
 
     if (app_image) {
       // Test that the profile made a difference by adding more classes.
-      const uint64_t image_file_small_profile = GetImageSize(app_image_file);
-      CHECK_LT(image_file_empty_profile, image_file_small_profile);
+      const uint64_t image_file_small_profile = GetImageObjectSectionSize(app_image_file);
+      ASSERT_LT(image_file_empty_profile, image_file_small_profile);
     }
   }
 
