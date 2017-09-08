@@ -122,16 +122,38 @@ class ElfCompilationUnitWriter {
     const Elf_Addr base_address = compilation_unit.is_code_address_text_relative
         ? owner_->builder_->GetText()->GetAddress()
         : 0;
-    const uint64_t cu_size = compilation_unit.code_end - compilation_unit.code_address;
+    const bool is64bit = Is64BitInstructionSet(owner_->builder_->GetIsa());
     using namespace dwarf;  // NOLINT. For easy access to DWARF constants.
 
     info_.StartTag(DW_TAG_compile_unit);
     info_.WriteString(DW_AT_producer, "Android dex2oat");
     info_.WriteData1(DW_AT_language, DW_LANG_Java);
     info_.WriteString(DW_AT_comp_dir, "$JAVA_SRC_ROOT");
+    // The low_pc acts as base address for several other addresses/ranges.
     info_.WriteAddr(DW_AT_low_pc, base_address + compilation_unit.code_address);
-    info_.WriteUdata(DW_AT_high_pc, dchecked_integral_cast<uint32_t>(cu_size));
     info_.WriteSecOffset(DW_AT_stmt_list, compilation_unit.debug_line_offset);
+
+    // Write .debug_ranges entries covering code ranges of the whole compilation unit.
+    dwarf::Writer<> debug_ranges(&owner_->debug_ranges_);
+    info_.WriteSecOffset(DW_AT_ranges, owner_->debug_ranges_.size());
+    for (auto mi : compilation_unit.methods) {
+      uint64_t low_pc = mi->code_address - compilation_unit.code_address;
+      uint64_t high_pc = low_pc + mi->code_size;
+      if (is64bit) {
+        debug_ranges.PushUint64(low_pc);
+        debug_ranges.PushUint64(high_pc);
+      } else {
+        debug_ranges.PushUint32(low_pc);
+        debug_ranges.PushUint32(high_pc);
+      }
+    }
+    if (is64bit) {
+      debug_ranges.PushUint64(0);  // End of list.
+      debug_ranges.PushUint64(0);
+    } else {
+      debug_ranges.PushUint32(0);  // End of list.
+      debug_ranges.PushUint32(0);
+    }
 
     const char* last_dex_class_desc = nullptr;
     for (auto mi : compilation_unit.methods) {
