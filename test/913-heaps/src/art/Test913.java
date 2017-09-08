@@ -404,17 +404,22 @@ public class Test913 {
 
     private static void tagClasses(Verifier v) {
       setTag(A.class, 1000);
+      registerClass(1000, A.class);
 
       setTag(B.class, 1001);
+      registerClass(1001, B.class);
       v.add("1001@0", "1000@0");  // B.class --(superclass)--> A.class.
 
       setTag(C.class, 1002);
+      registerClass(1002, C.class);
       v.add("1002@0", "1001@0");  // C.class --(superclass)--> B.class.
       v.add("1002@0", "2001@0");  // C.class --(interface)--> I2.class.
 
       setTag(I1.class, 2000);
+      registerClass(2000, I1.class);
 
       setTag(I2.class, 2001);
+      registerClass(2001, I2.class);
       v.add("2001@0", "2000@0");  // I2.class --(interface)--> I1.class.
     }
 
@@ -751,4 +756,6 @@ public class Test913 {
   public static native String followReferencesPrimitiveFields(Object initialObject);
 
   private static native void iterateThroughHeapExt();
+
+  private static native void registerClass(long tag, Object obj);
 }
