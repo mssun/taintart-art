@@ -122,6 +122,32 @@ static_assert(32u == MinimumBitsToStore<uint64_t>(UINT64_C(0xFFFFFFFF)), "TestMi
 static_assert(33u == MinimumBitsToStore<uint64_t>(UINT64_C(0x1FFFFFFFF)), "TestMinBits2Store64#10");
 static_assert(64u == MinimumBitsToStore<uint64_t>(~UINT64_C(0)), "TestMinBits2Store64#11");
 
+static_assert(0 == TruncToPowerOfTwo<uint32_t>(0u), "TestTruncToPowerOfTwo32#1");
+static_assert(1 == TruncToPowerOfTwo<uint32_t>(1u), "TestTruncToPowerOfTwo32#2");
+static_assert(2 == TruncToPowerOfTwo<uint32_t>(2u), "TestTruncToPowerOfTwo32#3");
+static_assert(2 == TruncToPowerOfTwo<uint32_t>(3u), "TestTruncToPowerOfTwo32#4");
+static_assert(4 == TruncToPowerOfTwo<uint32_t>(7u), "TestTruncToPowerOfTwo32#5");
+static_assert(0x20000u == TruncToPowerOfTwo<uint32_t>(0x3aaaau),
+              "TestTruncToPowerOfTwo32#6");
+static_assert(0x40000000u == TruncToPowerOfTwo<uint32_t>(0x40000001u),
+              "TestTruncToPowerOfTwo32#7");
+static_assert(0x80000000u == TruncToPowerOfTwo<uint32_t>(0x80000000u),
+              "TestTruncToPowerOfTwo32#8");
+
+static_assert(0 == TruncToPowerOfTwo<uint64_t>(UINT64_C(0)), "TestTruncToPowerOfTwo64#1");
+static_assert(1 == TruncToPowerOfTwo<uint64_t>(UINT64_C(1)), "TestTruncToPowerOfTwo64#2");
+static_assert(2 == TruncToPowerOfTwo<uint64_t>(UINT64_C(2)), "TestTruncToPowerOfTwo64#3");
+static_assert(2 == TruncToPowerOfTwo<uint64_t>(UINT64_C(3)), "TestTruncToPowerOfTwo64#4");
+static_assert(4 == TruncToPowerOfTwo<uint64_t>(UINT64_C(7)), "TestTruncToPowerOfTwo64#5");
+static_assert(UINT64_C(0x20000) == TruncToPowerOfTwo<uint64_t>(UINT64_C(0x3aaaa)),
+              "TestTruncToPowerOfTwo64#6");
+static_assert(
+    UINT64_C(0x4000000000000000) == TruncToPowerOfTwo<uint64_t>(UINT64_C(0x4000000000000001)),
+    "TestTruncToPowerOfTwo64#7");
+static_assert(
+    UINT64_C(0x8000000000000000) == TruncToPowerOfTwo<uint64_t>(UINT64_C(0x8000000000000000)),
+    "TestTruncToPowerOfTwo64#8");
+
 static_assert(0 == RoundUpToPowerOfTwo<uint32_t>(0u), "TestRoundUpPowerOfTwo32#1");
 static_assert(1 == RoundUpToPowerOfTwo<uint32_t>(1u), "TestRoundUpPowerOfTwo32#2");
 static_assert(2 == RoundUpToPowerOfTwo<uint32_t>(2u), "TestRoundUpPowerOfTwo32#3");
