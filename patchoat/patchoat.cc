@@ -469,6 +469,9 @@ class PatchOat::FixupRootVisitor : public RootVisitor {
 
 void PatchOat::PatchInternedStrings(const ImageHeader* image_header) {
   const auto& section = image_header->GetInternedStringsSection();
+  if (section.Size() == 0) {
+    return;
+  }
   InternTable temp_table;
   // Note that we require that ReadFromMemory does not make an internal copy of the elements.
   // This also relies on visit roots not doing any verification which could fail after we update

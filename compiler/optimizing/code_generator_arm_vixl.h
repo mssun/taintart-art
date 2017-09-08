@@ -579,6 +579,8 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
   PcRelativePatchInfo* NewTypeBssEntryPatch(const DexFile& dex_file, dex::TypeIndex type_index);
   PcRelativePatchInfo* NewPcRelativeStringPatch(const DexFile& dex_file,
                                                 dex::StringIndex string_index);
+  PcRelativePatchInfo* NewStringBssEntryPatch(const DexFile& dex_file,
+                                              dex::StringIndex string_index);
 
   // Add a new baker read barrier patch and return the label to be bound
   // before the BNE instruction.
@@ -803,8 +805,10 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
   ArenaDeque<PcRelativePatchInfo> pc_relative_type_patches_;
   // PC-relative type patch info for kBssEntry.
   ArenaDeque<PcRelativePatchInfo> type_bss_entry_patches_;
-  // PC-relative String patch info; type depends on configuration (app .bss or boot image PIC).
+  // PC-relative String patch info; type depends on configuration (intern table or boot image PIC).
   ArenaDeque<PcRelativePatchInfo> pc_relative_string_patches_;
+  // PC-relative String patch info for kBssEntry.
+  ArenaDeque<PcRelativePatchInfo> string_bss_entry_patches_;
   // Baker read barrier patch info.
   ArenaDeque<BakerReadBarrierPatchInfo> baker_read_barrier_patches_;
 

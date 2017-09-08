@@ -598,7 +598,7 @@ class LoadStringSlowPathARMVIXL : public SlowPathCodeARMVIXL {
           down_cast<CodeGeneratorARMVIXL*>(codegen)->GetVIXLAssembler());
       vixl32::Register temp = temps.Acquire();
       CodeGeneratorARMVIXL::PcRelativePatchInfo* labels =
-          arm_codegen->NewPcRelativeStringPatch(load->GetDexFile(), string_index);
+          arm_codegen->NewStringBssEntryPatch(load->GetDexFile(), string_index);
       arm_codegen->EmitMovwMovtPlaceholder(labels, temp);
       __ Str(r0, MemOperand(temp));
     }
@@ -2380,6 +2380,7 @@ CodeGeneratorARMVIXL::CodeGeneratorARMVIXL(HGraph* graph,
       pc_relative_type_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
       type_bss_entry_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
       pc_relative_string_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
+      string_bss_entry_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
       baker_read_barrier_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
       jit_string_patches_(StringReferenceValueComparator(),
                           graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
@@ -7315,6 +7316,7 @@ HLoadString::LoadKind CodeGeneratorARMVIXL::GetSupportedLoadStringKind(
     HLoadString::LoadKind desired_string_load_kind) {
   switch (desired_string_load_kind) {
     case HLoadString::LoadKind::kBootImageLinkTimePcRelative:
+    case HLoadString::LoadKind::kBootImageInternTable:
     case HLoadString::LoadKind::kBssEntry:
       DCHECK(!Runtime::Current()->UseJitCompilation());
       break;
@@ -7372,14 +7374,22 @@ void InstructionCodeGeneratorARMVIXL::VisitLoadString(HLoadString* load) NO_THRE
       CodeGeneratorARMVIXL::PcRelativePatchInfo* labels =
           codegen_->NewPcRelativeStringPatch(load->GetDexFile(), load->GetStringIndex());
       codegen_->EmitMovwMovtPlaceholder(labels, out);
-      return;  // No dex cache slow path.
+      return;
     }
     case HLoadString::LoadKind::kBootImageAddress: {
       uint32_t address = dchecked_integral_cast<uint32_t>(
           reinterpret_cast<uintptr_t>(load->GetString().Get()));
       DCHECK_NE(address, 0u);
       __ Ldr(out, codegen_->DeduplicateBootImageAddressLiteral(address));
-      return;  // No dex cache slow path.
+      return;
+    }
+    case HLoadString::LoadKind::kBootImageInternTable: {
+      DCHECK(!codegen_->GetCompilerOptions().IsBootImage());
+      CodeGeneratorARMVIXL::PcRelativePatchInfo* labels =
+          codegen_->NewPcRelativeStringPatch(load->GetDexFile(), load->GetStringIndex());
+      codegen_->EmitMovwMovtPlaceholder(labels, out);
+      __ Ldr(out, MemOperand(out, /* offset */ 0));
+      return;
     }
     case HLoadString::LoadKind::kBssEntry: {
       DCHECK(!codegen_->GetCompilerOptions().IsBootImage());
@@ -7387,7 +7397,7 @@ void InstructionCodeGeneratorARMVIXL::VisitLoadString(HLoadString* load) NO_THRE
           ? RegisterFrom(locations->GetTemp(0))
           : out;
       CodeGeneratorARMVIXL::PcRelativePatchInfo* labels =
-          codegen_->NewPcRelativeStringPatch(load->GetDexFile(), load->GetStringIndex());
+          codegen_->NewStringBssEntryPatch(load->GetDexFile(), load->GetStringIndex());
       codegen_->EmitMovwMovtPlaceholder(labels, temp);
       GenerateGcRootFieldLoad(load, out_loc, temp, /* offset */ 0, kCompilerReadBarrierOption);
       LoadStringSlowPathARMVIXL* slow_path =
@@ -9119,6 +9129,11 @@ CodeGeneratorARMVIXL::PcRelativePatchInfo* CodeGeneratorARMVIXL::NewPcRelativeSt
   return NewPcRelativePatch(dex_file, string_index.index_, &pc_relative_string_patches_);
 }
 
+CodeGeneratorARMVIXL::PcRelativePatchInfo* CodeGeneratorARMVIXL::NewStringBssEntryPatch(
+    const DexFile& dex_file, dex::StringIndex string_index) {
+  return NewPcRelativePatch(dex_file, string_index.index_, &string_bss_entry_patches_);
+}
+
 CodeGeneratorARMVIXL::PcRelativePatchInfo* CodeGeneratorARMVIXL::NewPcRelativePatch(
     const DexFile& dex_file, uint32_t offset_or_index, ArenaDeque<PcRelativePatchInfo>* patches) {
   patches->emplace_back(dex_file, offset_or_index);
@@ -9187,6 +9202,7 @@ void CodeGeneratorARMVIXL::EmitLinkerPatches(ArenaVector<LinkerPatch>* linker_pa
       /* MOVW+MOVT for each entry */ 2u * pc_relative_type_patches_.size() +
       /* MOVW+MOVT for each entry */ 2u * type_bss_entry_patches_.size() +
       /* MOVW+MOVT for each entry */ 2u * pc_relative_string_patches_.size() +
+      /* MOVW+MOVT for each entry */ 2u * string_bss_entry_patches_.size() +
       baker_read_barrier_patches_.size();
   linker_patches->reserve(size);
   if (GetCompilerOptions().IsBootImage()) {
@@ -9199,13 +9215,15 @@ void CodeGeneratorARMVIXL::EmitLinkerPatches(ArenaVector<LinkerPatch>* linker_pa
   } else {
     DCHECK(pc_relative_method_patches_.empty());
     DCHECK(pc_relative_type_patches_.empty());
-    EmitPcRelativeLinkerPatches<LinkerPatch::StringBssEntryPatch>(pc_relative_string_patches_,
-                                                                  linker_patches);
+    EmitPcRelativeLinkerPatches<LinkerPatch::StringInternTablePatch>(pc_relative_string_patches_,
+                                                                     linker_patches);
   }
   EmitPcRelativeLinkerPatches<LinkerPatch::MethodBssEntryPatch>(method_bss_entry_patches_,
                                                                 linker_patches);
   EmitPcRelativeLinkerPatches<LinkerPatch::TypeBssEntryPatch>(type_bss_entry_patches_,
                                                               linker_patches);
+  EmitPcRelativeLinkerPatches<LinkerPatch::StringBssEntryPatch>(string_bss_entry_patches_,
+                                                                linker_patches);
   for (const BakerReadBarrierPatchInfo& info : baker_read_barrier_patches_) {
     linker_patches->push_back(LinkerPatch::BakerReadBarrierBranchPatch(info.label.GetLocation(),
                                                                        info.custom_data));
