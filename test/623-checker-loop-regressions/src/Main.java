@@ -485,6 +485,18 @@ public class Main {
     return sum;
   }
 
+  // Large loop body should not break unrolling computation.
+  static void largeBody(int[] x) {
+    for (int i = 0; i < 100; i++) {
+      x[i] = x[i] * 1 + x[i] * 2 + x[i] * 3 + x[i] * 4 + x[i] * 5 + x[i] * 6 +
+          x[i] * 7 + x[i] * 8 + x[i] * 9 + x[i] * 10 + x[i] * 11 + x[i] * 12 +
+          x[i] * 13 + x[i] * 14 + x[i] * 15 + x[i] * 1 + x[i] * 2 + x[i] * 3 + x[i] * 4 +
+          x[i] * 5 + x[i] * 6 + x[i] * 7 + x[i] * 8 + x[i] * 9 + x[i] * 10 + x[i] * 11 +
+          x[i] * 12 + x[i] * 13 + x[i] * 14 + x[i] * 15 + x[i] * 1 + x[i] * 2 + x[i] * 3 +
+          x[i] * 4 + x[i] * 5;
+    }
+  }
+
   public static void main(String[] args) {
     expectEquals(10, earlyExitFirst(-1));
     for (int i = 0; i <= 10; i++) {
@@ -632,6 +644,11 @@ public class Main {
       }
     }
     expectEquals(-2080768, sum(x));
+
+    largeBody(f);
+    for (int i = 0; i < 100; i++) {
+      expectEquals(2805, f[i]);
+    }
 
     System.out.println("passed");
   }
