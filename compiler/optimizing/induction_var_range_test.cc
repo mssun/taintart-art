@@ -723,6 +723,29 @@ TEST_F(InductionVarRangeTest, ArrayLengthAndHints) {
   ExpectEqual(Value(x_, 1, 0), GetMax(CreateFetch(array_length), nullptr));
 }
 
+TEST_F(InductionVarRangeTest, AddOrSubAndConstant) {
+  HInstruction* add = new (&allocator_)
+      HAdd(Primitive::kPrimInt, x_, graph_->GetIntConstant(-1));
+  HInstruction* alt = new (&allocator_)
+      HAdd(Primitive::kPrimInt, graph_->GetIntConstant(-1), x_);
+  HInstruction* sub = new (&allocator_)
+      HSub(Primitive::kPrimInt, x_, graph_->GetIntConstant(1));
+  HInstruction* rev = new (&allocator_)
+      HSub(Primitive::kPrimInt, graph_->GetIntConstant(1), x_);
+  entry_block_->AddInstruction(add);
+  entry_block_->AddInstruction(alt);
+  entry_block_->AddInstruction(sub);
+  entry_block_->AddInstruction(rev);
+  ExpectEqual(Value(x_, 1, -1), GetMin(CreateFetch(add), nullptr));
+  ExpectEqual(Value(x_, 1, -1), GetMax(CreateFetch(add), nullptr));
+  ExpectEqual(Value(x_, 1, -1), GetMin(CreateFetch(alt), nullptr));
+  ExpectEqual(Value(x_, 1, -1), GetMax(CreateFetch(alt), nullptr));
+  ExpectEqual(Value(x_, 1, -1), GetMin(CreateFetch(sub), nullptr));
+  ExpectEqual(Value(x_, 1, -1), GetMax(CreateFetch(sub), nullptr));
+  ExpectEqual(Value(x_, -1, 1), GetMin(CreateFetch(rev), nullptr));
+  ExpectEqual(Value(x_, -1, 1), GetMax(CreateFetch(rev), nullptr));
+}
+
 //
 // Tests on public methods.
 //
