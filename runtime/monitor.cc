@@ -1498,13 +1498,21 @@ MonitorInfo::MonitorInfo(mirror::Object* obj) : owner_(nullptr), entry_count_(0)
       break;
     case LockWord::kThinLocked:
       owner_ = Runtime::Current()->GetThreadList()->FindThreadByThreadId(lock_word.ThinLockOwner());
+      DCHECK(owner_ != nullptr) << "Thin-locked without owner!";
       entry_count_ = 1 + lock_word.ThinLockCount();
       // Thin locks have no waiters.
       break;
     case LockWord::kFatLocked: {
       Monitor* mon = lock_word.FatLockMonitor();
       owner_ = mon->owner_;
-      entry_count_ = 1 + mon->lock_count_;
+      // Here it is okay for the owner to be null since we don't reset the LockWord back to
+      // kUnlocked until we get a GC. In cases where this hasn't happened yet we will have a fat
+      // lock without an owner.
+      if (owner_ != nullptr) {
+        entry_count_ = 1 + mon->lock_count_;
+      } else {
+        DCHECK_EQ(mon->lock_count_, 0) << "Monitor is fat-locked without any owner!";
+      }
       for (Thread* waiter = mon->wait_set_; waiter != nullptr; waiter = waiter->GetWaitNext()) {
         waiters_.push_back(waiter);
       }

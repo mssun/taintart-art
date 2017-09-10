@@ -80,6 +80,7 @@ enum ArenaAllocKind {
   kArenaAllocBoundsCheckElimination,
   kArenaAllocDCE,
   kArenaAllocLSE,
+  kArenaAllocCFRE,
   kArenaAllocLICM,
   kArenaAllocLoopOptimization,
   kArenaAllocSsaLiveness,

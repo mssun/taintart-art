@@ -64,6 +64,11 @@ static bool IsInterestingInstruction(HInstruction* instruction) {
     // A fence with "0" inputs is dead and should've been removed in a prior pass.
     DCHECK_NE(0u, ctor_fence->InputCount());
 
+    // TODO: this should be simplified to 'return true' since it's
+    // potentially pessimizing any code sinking for inlined constructors with final fields.
+    // TODO: double check that if the final field assignments are not moved,
+    // then the fence is not moved either.
+
     return ctor_fence->GetAssociatedAllocation() != nullptr;
   }
 

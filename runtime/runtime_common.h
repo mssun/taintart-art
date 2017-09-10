@@ -30,6 +30,7 @@
 
 #include <iomanip>
 
+#include "base/bit_utils.h"
 #include "base/dumpable.h"
 #include "native_stack_dump.h"
 #include "utils.h"

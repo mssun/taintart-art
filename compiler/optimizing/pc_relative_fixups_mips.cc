@@ -88,8 +88,9 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
   void VisitLoadString(HLoadString* load_string) OVERRIDE {
     HLoadString::LoadKind load_kind = load_string->GetLoadKind();
     switch (load_kind) {
-      case HLoadString::LoadKind::kBootImageAddress:
       case HLoadString::LoadKind::kBootImageLinkTimePcRelative:
+      case HLoadString::LoadKind::kBootImageAddress:
+      case HLoadString::LoadKind::kBootImageInternTable:
       case HLoadString::LoadKind::kBssEntry:
         // Add a base register for PC-relative literals on R2.
         InitializePCRelativeBasePointer();

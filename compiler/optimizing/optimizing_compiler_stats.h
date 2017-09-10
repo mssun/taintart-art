@@ -93,6 +93,7 @@ enum MethodCompilationStat {
   kConstructorFenceGeneratedFinal,
   kConstructorFenceRemovedLSE,
   kConstructorFenceRemovedPFRA,
+  kConstructorFenceRemovedCFRE,
   kLastStat
 };
 
@@ -215,6 +216,7 @@ class OptimizingCompilerStats {
       case kConstructorFenceGeneratedFinal: name = "ConstructorFenceGeneratedFinal"; break;
       case kConstructorFenceRemovedLSE: name = "ConstructorFenceRemovedLSE"; break;
       case kConstructorFenceRemovedPFRA: name = "ConstructorFenceRemovedPFRA"; break;
+      case kConstructorFenceRemovedCFRE: name = "ConstructorFenceRemovedCFRE"; break;
 
       case kLastStat:
         LOG(FATAL) << "invalid stat "

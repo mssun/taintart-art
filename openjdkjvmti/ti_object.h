@@ -42,6 +42,8 @@ class ObjectUtil {
   static jvmtiError GetObjectSize(jvmtiEnv* env, jobject object, jlong* size_ptr);
 
   static jvmtiError GetObjectHashCode(jvmtiEnv* env, jobject object, jint* hash_code_ptr);
+
+  static jvmtiError GetObjectMonitorUsage(jvmtiEnv* env, jobject object, jvmtiMonitorUsage* usage);
 };
 
 }  // namespace openjdkjvmti

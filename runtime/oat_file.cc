@@ -44,6 +44,7 @@
 #include "elf_file.h"
 #include "elf_utils.h"
 #include "gc_root.h"
+#include "gc/space/image_space.h"
 #include "mem_map.h"
 #include "mirror/class.h"
 #include "mirror/object-inl.h"
@@ -55,7 +56,6 @@
 #include "type_lookup_table.h"
 #include "utf-inl.h"
 #include "utils.h"
-#include "utils/dex_cache_arrays_layout-inl.h"
 #include "vdex_file.h"
 
 namespace art {
@@ -279,33 +279,34 @@ inline static bool ReadOatDexFileData(const OatFile& oat_file,
   return true;
 }
 
-static bool FindDexFileMapItem(const uint8_t* dex_begin,
-                               const uint8_t* dex_end,
-                               DexFile::MapItemType map_item_type,
-                               const DexFile::MapItem** result_item) {
-  *result_item = nullptr;
+static inline bool MapConstantTables(const gc::space::ImageSpace* space,
+                                     uint8_t* address) {
+  // If MREMAP_DUP is ever merged to Linux kernel, use it to avoid the unnecessary open()/close().
+  // Note: The current approach relies on the filename still referencing the same inode.
 
-  const DexFile::Header* header =
-      BoundsCheckedCast<const DexFile::Header*>(dex_begin, dex_begin, dex_end);
-  if (nullptr == header) return false;
-
-  if (!DexFile::IsMagicValid(header->magic_)) return true;  // Not a dex file, not an error.
-
-  const DexFile::MapList* map_list =
-      BoundsCheckedCast<const DexFile::MapList*>(dex_begin + header->map_off_, dex_begin, dex_end);
-  if (nullptr == map_list) return false;
-
-  const DexFile::MapItem* map_item = map_list->list_;
-  size_t count = map_list->size_;
-  while (count--) {
-    if (map_item->type_ == static_cast<uint16_t>(map_item_type)) {
-      *result_item = map_item;
-      break;
-    }
-    map_item = BoundsCheckedCast<const DexFile::MapItem*>(map_item + 1, dex_begin, dex_end);
-    if (nullptr == map_item) return false;
+  File file(space->GetImageFilename(), O_RDONLY, /* checkUsage */ false);
+  if (!file.IsOpened()) {
+    LOG(ERROR) << "Failed to open boot image file " << space->GetImageFilename();
+    return false;
   }
 
+  uint32_t offset = space->GetImageHeader().GetBootImageConstantTablesOffset();
+  uint32_t size = space->GetImageHeader().GetBootImageConstantTablesSize();
+  std::string error_msg;
+  std::unique_ptr<MemMap> mem_map(MemMap::MapFileAtAddress(address,
+                                                           size,
+                                                           PROT_READ,
+                                                           MAP_PRIVATE,
+                                                           file.Fd(),
+                                                           offset,
+                                                           /* low_4gb */ false,
+                                                           /* reuse */ true,
+                                                           file.GetPath().c_str(),
+                                                           &error_msg));
+  if (mem_map == nullptr) {
+    LOG(ERROR) << "Failed to mmap boot image tables from file " << space->GetImageFilename();
+    return false;
+  }
   return true;
 }
 
@@ -361,7 +362,7 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
       (bss_roots_ != nullptr && (bss_roots_ < bss_begin_ || bss_roots_ > bss_end_)) ||
       (bss_methods_ != nullptr && bss_roots_ != nullptr && bss_methods_ > bss_roots_)) {
     *error_msg = StringPrintf("In oat file '%s' found bss symbol(s) outside .bss or unordered: "
-                                  "begin = %p, methods_ = %p, roots = %p, end = %p",
+                                  "begin = %p, methods = %p, roots = %p, end = %p",
                               GetLocation().c_str(),
                               bss_begin_,
                               bss_methods_,
@@ -370,11 +371,12 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
     return false;
   }
 
-  uint8_t* after_arrays = (bss_methods_ != nullptr) ? bss_methods_ : bss_roots_;  // May be null.
-  uint8_t* dex_cache_arrays = (bss_begin_ == after_arrays) ? nullptr : bss_begin_;
-  uint8_t* dex_cache_arrays_end =
-      (bss_begin_ == after_arrays) ? nullptr : (after_arrays != nullptr) ? after_arrays : bss_end_;
-  DCHECK_EQ(dex_cache_arrays != nullptr, dex_cache_arrays_end != nullptr);
+  uint8_t* after_tables =
+      (bss_methods_ != nullptr) ? bss_methods_ : bss_roots_;  // May be null.
+  uint8_t* boot_image_tables = (bss_begin_ == after_tables) ? nullptr : bss_begin_;
+  uint8_t* boot_image_tables_end =
+      (bss_begin_ == after_tables) ? nullptr : (after_tables != nullptr) ? after_tables : bss_end_;
+  DCHECK_EQ(boot_image_tables != nullptr, boot_image_tables_end != nullptr);
   uint32_t dex_file_count = GetOatHeader().GetDexFileCount();
   oat_dex_files_storage_.reserve(dex_file_count);
   for (size_t i = 0; i < dex_file_count; i++) {
@@ -609,37 +611,6 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
                reinterpret_cast<const DexFile::Header*>(dex_file_pointer)->method_ids_size_);
     }
 
-    uint8_t* current_dex_cache_arrays = nullptr;
-    if (dex_cache_arrays != nullptr) {
-      // All DexCache types except for CallSite have their instance counts in the
-      // DexFile header. For CallSites, we need to read the info from the MapList.
-      const DexFile::MapItem* call_sites_item = nullptr;
-      if (!FindDexFileMapItem(DexBegin(),
-                              DexEnd(),
-                              DexFile::MapItemType::kDexTypeCallSiteIdItem,
-                              &call_sites_item)) {
-        *error_msg = StringPrintf("In oat file '%s' could not read data from truncated DexFile map",
-                                  GetLocation().c_str());
-        return false;
-      }
-      size_t num_call_sites = call_sites_item == nullptr ? 0 : call_sites_item->size_;
-      DexCacheArraysLayout layout(pointer_size, *header, num_call_sites);
-      if (layout.Size() != 0u) {
-        if (static_cast<size_t>(dex_cache_arrays_end - dex_cache_arrays) < layout.Size()) {
-          *error_msg = StringPrintf("In oat file '%s' found OatDexFile #%zu for '%s' with "
-                                        "truncated dex cache arrays, %zu < %zu.",
-                                    GetLocation().c_str(),
-                                    i,
-                                    dex_file_location.c_str(),
-                                    static_cast<size_t>(dex_cache_arrays_end - dex_cache_arrays),
-                                    layout.Size());
-          return false;
-        }
-        current_dex_cache_arrays = dex_cache_arrays;
-        dex_cache_arrays += layout.Size();
-      }
-    }
-
     std::string canonical_location = DexFile::GetDexCanonicalLocation(dex_file_location.c_str());
 
     // Create the OatDexFile and add it to the owning container.
@@ -651,7 +622,6 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
                                               lookup_table_data,
                                               method_bss_mapping,
                                               class_offsets_pointer,
-                                              current_dex_cache_arrays,
                                               dex_layout_sections);
     oat_dex_files_storage_.push_back(oat_dex_file);
 
@@ -664,13 +634,30 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
     }
   }
 
-  if (dex_cache_arrays != dex_cache_arrays_end) {
-    // We expect the bss section to be either empty (dex_cache_arrays and bss_end_
-    // both null) or contain just the dex cache arrays and optionally some GC roots.
-    *error_msg = StringPrintf("In oat file '%s' found unexpected bss size bigger by %zu bytes.",
-                              GetLocation().c_str(),
-                              static_cast<size_t>(bss_end_ - dex_cache_arrays));
-    return false;
+  if (boot_image_tables != nullptr) {
+    // Map boot image tables into the .bss. The reserved size must match size of the tables.
+    size_t reserved_size = static_cast<size_t>(boot_image_tables_end - boot_image_tables);
+    size_t tables_size = 0u;
+    for (gc::space::ImageSpace* space : Runtime::Current()->GetHeap()->GetBootImageSpaces()) {
+      tables_size += space->GetImageHeader().GetBootImageConstantTablesSize();
+      DCHECK_ALIGNED(tables_size, kPageSize);
+    }
+    if (tables_size != reserved_size) {
+      *error_msg = StringPrintf("In oat file '%s' found unexpected boot image table sizes, "
+                                    " %zu bytes, should be %zu.",
+                                GetLocation().c_str(),
+                                reserved_size,
+                                tables_size);
+      return false;
+    }
+    for (gc::space::ImageSpace* space : Runtime::Current()->GetHeap()->GetBootImageSpaces()) {
+      uint32_t current_tables_size = space->GetImageHeader().GetBootImageConstantTablesSize();
+      if (current_tables_size != 0u && !MapConstantTables(space, boot_image_tables)) {
+        return false;
+      }
+      boot_image_tables += current_tables_size;
+    }
+    DCHECK(boot_image_tables == boot_image_tables_end);
   }
   return true;
 }
@@ -1379,7 +1366,6 @@ OatFile::OatDexFile::OatDexFile(const OatFile* oat_file,
                                 const uint8_t* lookup_table_data,
                                 const MethodBssMapping* method_bss_mapping_data,
                                 const uint32_t* oat_class_offsets_pointer,
-                                uint8_t* dex_cache_arrays,
                                 const DexLayoutSections* dex_layout_sections)
     : oat_file_(oat_file),
       dex_file_location_(dex_file_location),
@@ -1389,7 +1375,6 @@ OatFile::OatDexFile::OatDexFile(const OatFile* oat_file,
       lookup_table_data_(lookup_table_data),
       method_bss_mapping_(method_bss_mapping_data),
       oat_class_offsets_pointer_(oat_class_offsets_pointer),
-      dex_cache_arrays_(dex_cache_arrays),
       dex_layout_sections_(dex_layout_sections) {
   // Initialize TypeLookupTable.
   if (lookup_table_data_ != nullptr) {

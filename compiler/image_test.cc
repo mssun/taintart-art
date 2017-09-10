@@ -46,7 +46,7 @@ TEST_F(ImageTest, TestImageLayout) {
   // Make sure that the new stuff in the clinit in ImageLayoutB is in the last image and not in the
   // first two images.
   ASSERT_EQ(image_sizes.size(), image_sizes.size());
-  // Sizes of the images should be the same. These sizes are for the whole image unrounded.
+  // Sizes of the object sections should be the same for all but the last image.
   for (size_t i = 0; i < image_sizes.size() - 1; ++i) {
     EXPECT_EQ(image_sizes[i], image_sizes_extra[i]);
   }

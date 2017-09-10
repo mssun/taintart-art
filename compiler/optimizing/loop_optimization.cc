@@ -1761,21 +1761,33 @@ void HLoopOptimization::SetPeelingCandidate(const ArrayReference* candidate,
   vector_peeling_candidate_ = candidate;
 }
 
+static constexpr uint32_t ARM64_SIMD_MAXIMUM_UNROLL_FACTOR = 8;
+static constexpr uint32_t ARM64_SIMD_HEURISTIC_MAX_BODY_SIZE = 50;
+
 uint32_t HLoopOptimization::GetUnrollingFactor(HBasicBlock* block, int64_t trip_count) {
-  // Current heuristic: unroll by 2 on ARM64/X86 for large known trip
-  // counts and small loop bodies.
-  // TODO: refine with operation count, remaining iterations, etc.
-  //       Artem had some really cool ideas for this already.
   switch (compiler_driver_->GetInstructionSet()) {
-    case kArm64:
-    case kX86:
-    case kX86_64: {
-      size_t num_instructions = block->GetInstructions().CountSize();
-      if (num_instructions <= 10 && trip_count >= 4 * vector_length_) {
-        return 2;
+    case kArm64: {
+      DCHECK_NE(vector_length_, 0u);
+      // TODO: Unroll loops with unknown trip count.
+      if (trip_count < 2 * vector_length_) {
+        return 1;
       }
-      return 1;
+
+      uint32_t instruction_count = block->GetInstructions().CountSize();
+
+      // Find a beneficial unroll factor with the following restrictions:
+      //  - At least one iteration of the transformed loop should be executed.
+      //  - The loop body shouldn't be "too big" (heuristic).
+      uint32_t uf1 = ARM64_SIMD_HEURISTIC_MAX_BODY_SIZE / instruction_count;
+      uint32_t uf2 = trip_count / vector_length_;
+      uint32_t unroll_factor =
+          TruncToPowerOfTwo(std::min({uf1, uf2, ARM64_SIMD_MAXIMUM_UNROLL_FACTOR}));
+      DCHECK_GE(unroll_factor, 1u);
+
+      return unroll_factor;
     }
+    case kX86:
+    case kX86_64:
     default:
       return 1;
   }
