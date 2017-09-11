@@ -25,6 +25,7 @@
 #include "quicken_info.h"
 #include "scoped_thread_state_change-inl.h"
 #include "sharpening.h"
+#include "well_known_classes.h"
 
 namespace art {
 
