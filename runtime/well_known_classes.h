@@ -37,6 +37,9 @@ struct WellKnownClasses {
  public:
   static void Init(JNIEnv* env);  // Run before native methods are registered.
   static void LateInit(JNIEnv* env);  // Run after native methods are registered.
+
+  static void Clear();
+
   static ArtMethod* StringInitToStringFactory(ArtMethod* method);
   static uint32_t StringInitToEntryPoint(ArtMethod* method);
 

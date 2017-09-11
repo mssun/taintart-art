@@ -35,6 +35,7 @@
 #include "obj_ptr-inl.h"
 #include "thread.h"
 #include "verifier/method_verifier.h"
+#include "well_known_classes.h"
 
 namespace art {
 
