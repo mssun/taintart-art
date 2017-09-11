@@ -35,7 +35,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -47,9 +46,6 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
 
   // List of all ahat instances stored in increasing order by id.
   private final List<AhatInstance> mInstances = new ArrayList<AhatInstance>();
-
-  // Map from class name to class object.
-  private final Map<String, AhatClassObj> mClasses = new HashMap<String, AhatClassObj>();
 
   private final List<AhatHeap> mHeaps = new ArrayList<AhatHeap>();
 
@@ -113,7 +109,6 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
           } else if (inst instanceof ClassObj) {
             AhatClassObj classObj = new AhatClassObj(id);
             mInstances.add(classObj);
-            mClasses.put(((ClassObj)inst).getClassName(), classObj);
           }
           return true;
         }
@@ -209,15 +204,6 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
   public AhatClassObj findClassObj(long id) {
     AhatInstance inst = findInstance(id);
     return inst == null ? null : inst.asClassObj();
-  }
-
-  /**
-   * Returns the class object for the class with given name.
-   * Returns null if there is no class object for the given name.
-   * Note: This method is exposed for testing purposes.
-   */
-  public AhatClassObj findClass(String name) {
-    return mClasses.get(name);
   }
 
   /**
