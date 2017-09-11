@@ -277,27 +277,27 @@ public class Main {
 
   /// CHECK-START-X86: java.lang.Class Main.$noinline$getStringClass() sharpening (after)
   // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BssEntry}} class_name:java.lang.String
+  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BootImageClassTable}} class_name:java.lang.String
 
   /// CHECK-START-X86_64: java.lang.Class Main.$noinline$getStringClass() sharpening (after)
   // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BssEntry}} class_name:java.lang.String
+  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BootImageClassTable}} class_name:java.lang.String
 
   /// CHECK-START-ARM: java.lang.Class Main.$noinline$getStringClass() sharpening (after)
   // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BssEntry}} class_name:java.lang.String
+  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BootImageClassTable}} class_name:java.lang.String
 
   /// CHECK-START-ARM64: java.lang.Class Main.$noinline$getStringClass() sharpening (after)
   // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BssEntry}} class_name:java.lang.String
+  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BootImageClassTable}} class_name:java.lang.String
 
   /// CHECK-START-MIPS: java.lang.Class Main.$noinline$getStringClass() sharpening (after)
   // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BssEntry}} class_name:java.lang.String
+  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BootImageClassTable}} class_name:java.lang.String
 
   /// CHECK-START-MIPS64: java.lang.Class Main.$noinline$getStringClass() sharpening (after)
   // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BssEntry}} class_name:java.lang.String
+  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BootImageClassTable}} class_name:java.lang.String
 
   public static Class<?> $noinline$getStringClass() {
     // Prevent inlining to avoid the string comparison being optimized away.

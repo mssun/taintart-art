@@ -124,6 +124,7 @@ class LinkerPatch {
     kCall,
     kCallRelative,            // NOTE: Actual patching is instruction_set-dependent.
     kTypeRelative,            // NOTE: Actual patching is instruction_set-dependent.
+    kTypeClassTable,          // NOTE: Actual patching is instruction_set-dependent.
     kTypeBssEntry,            // NOTE: Actual patching is instruction_set-dependent.
     kStringRelative,          // NOTE: Actual patching is instruction_set-dependent.
     kStringInternTable,       // NOTE: Actual patching is instruction_set-dependent.
@@ -172,6 +173,16 @@ class LinkerPatch {
                                        uint32_t pc_insn_offset,
                                        uint32_t target_type_idx) {
     LinkerPatch patch(literal_offset, Type::kTypeRelative, target_dex_file);
+    patch.type_idx_ = target_type_idx;
+    patch.pc_insn_offset_ = pc_insn_offset;
+    return patch;
+  }
+
+  static LinkerPatch TypeClassTablePatch(size_t literal_offset,
+                                         const DexFile* target_dex_file,
+                                         uint32_t pc_insn_offset,
+                                         uint32_t target_type_idx) {
+    LinkerPatch patch(literal_offset, Type::kTypeClassTable, target_dex_file);
     patch.type_idx_ = target_type_idx;
     patch.pc_insn_offset_ = pc_insn_offset;
     return patch;
@@ -243,6 +254,7 @@ class LinkerPatch {
       case Type::kMethodBssEntry:
       case Type::kCallRelative:
       case Type::kTypeRelative:
+      case Type::kTypeClassTable:
       case Type::kTypeBssEntry:
       case Type::kStringRelative:
       case Type::kStringInternTable:
@@ -264,12 +276,14 @@ class LinkerPatch {
 
   const DexFile* TargetTypeDexFile() const {
     DCHECK(patch_type_ == Type::kTypeRelative ||
+           patch_type_ == Type::kTypeClassTable ||
            patch_type_ == Type::kTypeBssEntry);
     return target_dex_file_;
   }
 
   dex::TypeIndex TargetTypeIndex() const {
     DCHECK(patch_type_ == Type::kTypeRelative ||
+           patch_type_ == Type::kTypeClassTable ||
            patch_type_ == Type::kTypeBssEntry);
     return dex::TypeIndex(type_idx_);
   }
@@ -292,6 +306,7 @@ class LinkerPatch {
     DCHECK(patch_type_ == Type::kMethodRelative ||
            patch_type_ == Type::kMethodBssEntry ||
            patch_type_ == Type::kTypeRelative ||
+           patch_type_ == Type::kTypeClassTable ||
            patch_type_ == Type::kTypeBssEntry ||
            patch_type_ == Type::kStringRelative ||
            patch_type_ == Type::kStringInternTable ||
