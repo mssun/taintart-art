@@ -17,6 +17,7 @@
 #include "code_generator_x86.h"
 
 #include "art_method.h"
+#include "class_table.h"
 #include "code_generator_utils.h"
 #include "compiled_method.h"
 #include "entrypoints/quick/quick_entrypoints.h"
@@ -4702,7 +4703,8 @@ void CodeGeneratorX86::EmitLinkerPatches(ArenaVector<LinkerPatch>* linker_patche
     EmitPcRelativeLinkerPatches<LinkerPatch::RelativeStringPatch>(string_patches_, linker_patches);
   } else {
     DCHECK(boot_image_method_patches_.empty());
-    DCHECK(boot_image_type_patches_.empty());
+    EmitPcRelativeLinkerPatches<LinkerPatch::TypeClassTablePatch>(boot_image_type_patches_,
+                                                                  linker_patches);
     EmitPcRelativeLinkerPatches<LinkerPatch::StringInternTablePatch>(string_patches_,
                                                                      linker_patches);
   }
@@ -6038,6 +6040,7 @@ HLoadClass::LoadKind CodeGeneratorX86::GetSupportedLoadClassKind(
     case HLoadClass::LoadKind::kReferrersClass:
       break;
     case HLoadClass::LoadKind::kBootImageLinkTimePcRelative:
+    case HLoadClass::LoadKind::kBootImageClassTable:
     case HLoadClass::LoadKind::kBssEntry:
       DCHECK(!Runtime::Current()->UseJitCompilation());
       break;
@@ -6075,6 +6078,7 @@ void LocationsBuilderX86::VisitLoadClass(HLoadClass* cls) {
 
   if (load_kind == HLoadClass::LoadKind::kReferrersClass ||
       load_kind == HLoadClass::LoadKind::kBootImageLinkTimePcRelative ||
+      load_kind == HLoadClass::LoadKind::kBootImageClassTable ||
       load_kind == HLoadClass::LoadKind::kBssEntry) {
     locations->SetInAt(0, Location::RequiresRegister());
   }
@@ -6149,6 +6153,19 @@ void InstructionCodeGeneratorX86::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAFE
           reinterpret_cast<uintptr_t>(cls->GetClass().Get()));
       DCHECK_NE(address, 0u);
       __ movl(out, Immediate(address));
+      break;
+    }
+    case HLoadClass::LoadKind::kBootImageClassTable: {
+      DCHECK(!codegen_->GetCompilerOptions().IsBootImage());
+      Register method_address = locations->InAt(0).AsRegister<Register>();
+      __ movl(out, Address(method_address, CodeGeneratorX86::kDummy32BitOffset));
+      codegen_->RecordBootTypePatch(cls);
+      // Extract the reference from the slot data, i.e. clear the hash bits.
+      int32_t masked_hash = ClassTable::TableSlot::MaskHash(
+          ComputeModifiedUtf8Hash(cls->GetDexFile().StringByTypeIdx(cls->GetTypeIndex())));
+      if (masked_hash != 0) {
+        __ subl(out, Immediate(masked_hash));
+      }
       break;
     }
     case HLoadClass::LoadKind::kBssEntry: {
