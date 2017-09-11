@@ -30,6 +30,7 @@
 #include "mirror/method.h"
 #include "reflection.h"
 #include "thread.h"
+#include "well_known_classes.h"
 
 namespace art {
 
