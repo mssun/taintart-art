@@ -20,6 +20,7 @@
 #include "arch/mips/entrypoints_direct_mips.h"
 #include "arch/mips/instruction_set_features_mips.h"
 #include "art_method.h"
+#include "class_table.h"
 #include "code_generator_utils.h"
 #include "compiled_method.h"
 #include "entrypoints/quick/quick_entrypoints.h"
@@ -1664,7 +1665,8 @@ void CodeGeneratorMIPS::EmitLinkerPatches(ArenaVector<LinkerPatch>* linker_patch
                                                                   linker_patches);
   } else {
     DCHECK(pc_relative_method_patches_.empty());
-    DCHECK(pc_relative_type_patches_.empty());
+    EmitPcRelativeLinkerPatches<LinkerPatch::TypeClassTablePatch>(pc_relative_type_patches_,
+                                                                  linker_patches);
     EmitPcRelativeLinkerPatches<LinkerPatch::StringInternTablePatch>(pc_relative_string_patches_,
                                                                      linker_patches);
   }
@@ -7413,6 +7415,7 @@ HLoadClass::LoadKind CodeGeneratorMIPS::GetSupportedLoadClassKind(
       fallback_load = false;
       break;
     case HLoadClass::LoadKind::kBootImageLinkTimePcRelative:
+    case HLoadClass::LoadKind::kBootImageClassTable:
     case HLoadClass::LoadKind::kBssEntry:
       DCHECK(!Runtime::Current()->UseJitCompilation());
       break;
@@ -7643,6 +7646,7 @@ void LocationsBuilderMIPS::VisitLoadClass(HLoadClass* cls) {
     // We need an extra register for PC-relative literals on R2.
     case HLoadClass::LoadKind::kBootImageLinkTimePcRelative:
     case HLoadClass::LoadKind::kBootImageAddress:
+    case HLoadClass::LoadKind::kBootImageClassTable:
     case HLoadClass::LoadKind::kBssEntry:
       if (isR6) {
         break;
@@ -7739,6 +7743,24 @@ void InstructionCodeGeneratorMIPS::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAF
       __ LoadLiteral(out,
                      base_or_current_method_reg,
                      codegen_->DeduplicateBootImageAddressLiteral(address));
+      break;
+    }
+    case HLoadClass::LoadKind::kBootImageClassTable: {
+      DCHECK(!codegen_->GetCompilerOptions().IsBootImage());
+      CodeGeneratorMIPS::PcRelativePatchInfo* info_high =
+          codegen_->NewPcRelativeTypePatch(cls->GetDexFile(), cls->GetTypeIndex());
+      CodeGeneratorMIPS::PcRelativePatchInfo* info_low =
+          codegen_->NewPcRelativeTypePatch(cls->GetDexFile(), cls->GetTypeIndex(), info_high);
+      codegen_->EmitPcRelativeAddressPlaceholderHigh(info_high,
+                                                     out,
+                                                     base_or_current_method_reg);
+      __ Lw(out, out, /* placeholder */ 0x5678, &info_low->label);
+      // Extract the reference from the slot data, i.e. clear the hash bits.
+      int32_t masked_hash = ClassTable::TableSlot::MaskHash(
+          ComputeModifiedUtf8Hash(cls->GetDexFile().StringByTypeIdx(cls->GetTypeIndex())));
+      if (masked_hash != 0) {
+        __ Addiu(out, out, -masked_hash);
+      }
       break;
     }
     case HLoadClass::LoadKind::kBssEntry: {

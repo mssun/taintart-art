@@ -28,6 +28,7 @@
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "class_linker.h"
+#include "class_table-inl.h"
 #include "compiled_method.h"
 #include "debug/method_debug_info.h"
 #include "dex/verification_results.h"
@@ -772,7 +773,8 @@ class OatWriter::InitBssLayoutMethodVisitor : public DexMethodVisitor {
         } else if (patch.GetType() == LinkerPatch::Type::kStringBssEntry) {
           StringReference ref(patch.TargetStringDexFile(), patch.TargetStringIndex());
           writer_->bss_string_entries_.Overwrite(ref, /* placeholder */ 0u);
-        } else if (patch.GetType() == LinkerPatch::Type::kStringInternTable) {
+        } else if (patch.GetType() == LinkerPatch::Type::kStringInternTable ||
+                   patch.GetType() == LinkerPatch::Type::kTypeClassTable) {
           writer_->map_boot_image_tables_to_bss_ = true;
         }
       }
@@ -1427,6 +1429,14 @@ class OatWriter::WriteCodeMethodVisitor : public OatDexMethodVisitor {
                                                                      target_offset);
                 break;
               }
+              case LinkerPatch::Type::kTypeClassTable: {
+                uint32_t target_offset = GetClassTableEntryOffset(patch);
+                writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
+                                                                     patch,
+                                                                     offset_ + literal_offset,
+                                                                     target_offset);
+                break;
+              }
               case LinkerPatch::Type::kTypeBssEntry: {
                 TypeReference ref(patch.TargetTypeDexFile(), patch.TargetTypeIndex());
                 uint32_t target_offset = writer_->bss_start_ + writer_->bss_type_entries_.Get(ref);
@@ -1621,11 +1631,25 @@ class OatWriter::WriteCodeMethodVisitor : public OatDexMethodVisitor {
     const uint8_t* string_root = writer_->LookupBootImageInternTableSlot(
         *patch.TargetStringDexFile(), patch.TargetStringIndex());
     DCHECK(string_root != nullptr);
+    return GetBootImageTableEntryOffset(string_root);
+  }
+
+  // Calculate the offset of the ClassTable::TableSlot when mmapped to the .bss.
+  uint32_t GetClassTableEntryOffset(const LinkerPatch& patch)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    DCHECK(!writer_->HasBootImage());
+    const uint8_t* table_slot =
+        writer_->LookupBootImageClassTableSlot(*patch.TargetTypeDexFile(), patch.TargetTypeIndex());
+    DCHECK(table_slot != nullptr);
+    return GetBootImageTableEntryOffset(table_slot);
+  }
+
+  uint32_t GetBootImageTableEntryOffset(const uint8_t* raw_root) {
     uint32_t base_offset = writer_->bss_start_;
     for (gc::space::ImageSpace* space : Runtime::Current()->GetHeap()->GetBootImageSpaces()) {
       const uint8_t* const_tables_begin =
           space->Begin() + space->GetImageHeader().GetBootImageConstantTablesOffset();
-      size_t offset = static_cast<size_t>(string_root - const_tables_begin);
+      size_t offset = static_cast<size_t>(raw_root - const_tables_begin);
       if (offset < space->GetImageHeader().GetBootImageConstantTablesSize()) {
         DCHECK_LE(base_offset + offset, writer_->bss_start_ + writer_->bss_methods_offset_);
         return base_offset + offset;
@@ -3542,8 +3566,7 @@ bool OatWriter::OatClass::Write(OatWriter* oat_writer, OutputStream* out) const 
 
 const uint8_t* OatWriter::LookupBootImageInternTableSlot(const DexFile& dex_file,
                                                          dex::StringIndex string_idx)
-    NO_THREAD_SAFETY_ANALYSIS {
-  // Single-threaded OatWriter can avoid locking.
+    NO_THREAD_SAFETY_ANALYSIS {  // Single-threaded OatWriter can avoid locking.
   uint32_t utf16_length;
   const char* utf8_data = dex_file.StringDataAndUtf16LengthByIdx(string_idx, &utf16_length);
   DCHECK_EQ(utf16_length, CountModifiedUtf8Chars(utf8_data));
@@ -3558,6 +3581,22 @@ const uint8_t* OatWriter::LookupBootImageInternTableSlot(const DexFile& dex_file
     }
   }
   LOG(FATAL) << "Did not find boot image string " << utf8_data;
+  UNREACHABLE();
+}
+
+const uint8_t* OatWriter::LookupBootImageClassTableSlot(const DexFile& dex_file,
+                                                        dex::TypeIndex type_idx)
+    NO_THREAD_SAFETY_ANALYSIS {  // Single-threaded OatWriter can avoid locking.
+  const char* descriptor = dex_file.StringByTypeIdx(type_idx);
+  ClassTable::DescriptorHashPair pair(descriptor, ComputeModifiedUtf8Hash(descriptor));
+  ClassTable* table = Runtime::Current()->GetClassLinker()->boot_class_table_.get();
+  for (const ClassTable::ClassSet& class_set : table->classes_) {
+    auto it = class_set.Find(pair);
+    if (it != class_set.end()) {
+      return reinterpret_cast<const uint8_t*>(std::addressof(*it));
+    }
+  }
+  LOG(FATAL) << "Did not find boot image class " << descriptor;
   UNREACHABLE();
 }
 
