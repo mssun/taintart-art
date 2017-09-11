@@ -34,6 +34,9 @@ static constexpr bool kEnableVectorization = true;
 // All current SIMD targets want 16-byte alignment.
 static constexpr size_t kAlignedBase = 16;
 
+// No loop unrolling factor (just one copy of the loop-body).
+static constexpr uint32_t kNoUnrollingFactor = 1;
+
 // Remove the instruction from the graph. A bit more elaborate than the usual
 // instruction removal, since there may be a cycle in the use structure.
 static void RemoveFromCycle(HInstruction* instruction) {
@@ -791,7 +794,7 @@ void HLoopOptimization::Vectorize(LoopNode* node,
                     vector_index_,
                     ptc,
                     graph_->GetIntConstant(1),
-                    /*unroll*/ 1);
+                    kNoUnrollingFactor);
   }
 
   // Generate vector loop, possibly further unrolled:
@@ -818,7 +821,7 @@ void HLoopOptimization::Vectorize(LoopNode* node,
                     vector_index_,
                     stc,
                     graph_->GetIntConstant(1),
-                    /*unroll*/ 1);
+                    kNoUnrollingFactor);
   }
 
   // Link reductions to their final uses.
@@ -1767,14 +1770,17 @@ static constexpr uint32_t ARM64_SIMD_HEURISTIC_MAX_BODY_SIZE = 50;
 uint32_t HLoopOptimization::GetUnrollingFactor(HBasicBlock* block, int64_t trip_count) {
   switch (compiler_driver_->GetInstructionSet()) {
     case kArm64: {
-      DCHECK_NE(vector_length_, 0u);
+      // Don't unroll with insufficient iterations.
       // TODO: Unroll loops with unknown trip count.
+      DCHECK_NE(vector_length_, 0u);
       if (trip_count < 2 * vector_length_) {
-        return 1;
+        return kNoUnrollingFactor;
       }
-
+      // Don't unroll for large loop body size.
       uint32_t instruction_count = block->GetInstructions().CountSize();
-
+      if (instruction_count >= ARM64_SIMD_HEURISTIC_MAX_BODY_SIZE) {
+        return kNoUnrollingFactor;
+      }
       // Find a beneficial unroll factor with the following restrictions:
       //  - At least one iteration of the transformed loop should be executed.
       //  - The loop body shouldn't be "too big" (heuristic).
@@ -1783,13 +1789,12 @@ uint32_t HLoopOptimization::GetUnrollingFactor(HBasicBlock* block, int64_t trip_
       uint32_t unroll_factor =
           TruncToPowerOfTwo(std::min({uf1, uf2, ARM64_SIMD_MAXIMUM_UNROLL_FACTOR}));
       DCHECK_GE(unroll_factor, 1u);
-
       return unroll_factor;
     }
     case kX86:
     case kX86_64:
     default:
-      return 1;
+      return kNoUnrollingFactor;
   }
 }
 
