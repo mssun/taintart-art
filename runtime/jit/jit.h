@@ -152,7 +152,7 @@ class Jit {
   bool CanInvokeCompiledCode(ArtMethod* method);
 
   // Return whether the runtime should use a priority thread weight when sampling.
-  static bool ShouldUsePriorityThreadWeight();
+  static bool ShouldUsePriorityThreadWeight(Thread* self);
 
   // If an OSR compiled version is available for `method`,
   // and `dex_pc + dex_pc_offset` is an entry point of that compiled
