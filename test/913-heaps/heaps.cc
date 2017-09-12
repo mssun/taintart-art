@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <cstring>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <vector>
 
@@ -48,6 +49,36 @@ extern "C" JNIEXPORT void JNICALL Java_art_Test913_forceGarbageCollection(
     JNIEnv* env, jclass klass ATTRIBUTE_UNUSED) {
   jvmtiError ret = jvmti_env->ForceGarbageCollection();
   JvmtiErrorToException(env, jvmti_env, ret);
+}
+
+// Collect sizes of objects (classes) ahead of time, to be able to normalize.
+struct ClassData {
+  jlong size;    // Size as reported by GetObjectSize.
+  jlong serial;  // Computed serial that should be printed instead of the size.
+};
+
+// Stores a map from tags to ClassData.
+static std::map<jlong, ClassData> sClassData;
+static size_t sClassDataSerial = 0;
+// Large enough number that a collision with a test object is unlikely.
+static constexpr jlong kClassDataSerialBase = 123456780000;
+
+// Register a class (or general object) in the class-data map. The serial number is determined by
+// the order of calls to this function (so stable Java code leads to stable numbering).
+extern "C" JNIEXPORT void JNICALL Java_art_Test913_registerClass(
+    JNIEnv* env, jclass klass ATTRIBUTE_UNUSED, jlong tag, jobject obj) {
+  ClassData data;
+  if (JvmtiErrorToException(env, jvmti_env, jvmti_env->GetObjectSize(obj, &data.size))) {
+    return;
+  }
+  data.serial = kClassDataSerialBase + sClassDataSerial++;
+  // Remove old element, if it exists.
+  auto old = sClassData.find(tag);
+  if (old != sClassData.end()) {
+    sClassData.erase(old);
+  }
+  // Now insert the new mapping.
+  sClassData.insert(std::pair<jlong, ClassData>(tag, data));
 }
 
 class IterationConfig {
@@ -195,11 +226,17 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_art_Test913_followReferences(
       }
 
       jlong adapted_size = size;
-      if (*tag_ptr >= 1000) {
+      if (*tag_ptr != 0) {
         // This is a class or interface, the size of which will be dependent on the architecture.
         // Do not print the size, but detect known values and "normalize" for the golden file.
-        if ((sizeof(void*) == 4 && size == 172) || (sizeof(void*) == 8 && size == 224)) {
-          adapted_size = 123;
+        auto it = sClassData.find(*tag_ptr);
+        if (it != sClassData.end()) {
+          const ClassData& class_data = it->second;
+          if (class_data.size == size) {
+            adapted_size = class_data.serial;
+          } else {
+            adapted_size = 0xDEADDEAD;
+          }
         }
       }
 
