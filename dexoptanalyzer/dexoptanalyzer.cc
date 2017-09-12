@@ -229,6 +229,8 @@ class DexoptAnalyzer FINAL {
     if (oat_file_assistant.IsInBootClassPath()) {
       return kNoDexOptNeeded;
     }
+
+    // TODO(calin): Pass the class loader context as an argument to dexoptanalyzer. b/62269291.
     int dexoptNeeded = oat_file_assistant.GetDexOptNeeded(
         compiler_filter_, assume_profile_changed_, downgrade_);
 
