@@ -407,9 +407,9 @@ cc_defaults {
     header_libs: [
         "art_cmdlineparser_headers",
         "libnativehelper_header_only",
+        "jni_platform_headers",
     ],
     shared_libs: [
-        "libnativehelper",
         "libnativebridge",
         "libnativeloader",
         "libbacktrace",
