@@ -205,11 +205,15 @@ HLoadClass::LoadKind HSharpening::ComputeLoadClassKind(HLoadClass* load_class,
           // TODO(ngeoffray): Generate HDeoptimize instead.
           desired_load_kind = HLoadClass::LoadKind::kRuntimeCall;
         }
-      } else if (is_in_boot_image && !codegen->GetCompilerOptions().GetCompilePic()) {
-        // AOT app compilation. Check if the class is in the boot image.
-        desired_load_kind = HLoadClass::LoadKind::kBootImageAddress;
+      } else if (is_in_boot_image) {
+        // AOT app compilation, boot image class.
+        if (codegen->GetCompilerOptions().GetCompilePic()) {
+          desired_load_kind = HLoadClass::LoadKind::kBootImageClassTable;
+        } else {
+          desired_load_kind = HLoadClass::LoadKind::kBootImageAddress;
+        }
       } else {
-        // Not JIT and either the klass is not in boot image or we are compiling in PIC mode.
+        // Not JIT and the klass is not in boot image.
         desired_load_kind = HLoadClass::LoadKind::kBssEntry;
       }
     }

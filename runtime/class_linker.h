@@ -500,6 +500,9 @@ class ClassLinker {
   // Is the given entry point quick code to run the generic JNI stub?
   bool IsQuickGenericJniStub(const void* entry_point) const;
 
+  // Is the given entry point the JNI dlsym lookup stub?
+  bool IsJniDlsymLookupStub(const void* entry_point) const;
+
   const void* GetQuickToInterpreterBridgeTrampoline() const {
     return quick_to_interpreter_bridge_trampoline_;
   }
@@ -1278,7 +1281,7 @@ class ClassLinker {
   friend class ImageWriter;  // for GetClassRoots
   friend class JniCompilerTest;  // for GetRuntimeQuickGenericJniStub
   friend class JniInternalTest;  // for GetRuntimeQuickGenericJniStub
-  friend class OatWriter;  // for boot image string table slot address lookup.
+  friend class OatWriter;  // for boot image string/class table slot address lookup.
   friend class VMClassLoader;  // for LookupClass and FindClassInBaseDexClassLoader.
   ART_FRIEND_TEST(ClassLinkerTest, RegisterDexFileName);  // for DexLock, and RegisterDexFileLocked
   ART_FRIEND_TEST(mirror::DexCacheMethodHandlesTest, Open);  // for AllocDexCache

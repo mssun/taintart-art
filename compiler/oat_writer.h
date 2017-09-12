@@ -336,6 +336,8 @@ class OatWriter {
   // Find the address of the GcRoot<String> in the InternTable for a boot image string.
   const uint8_t* LookupBootImageInternTableSlot(const DexFile& dex_file,
                                                 dex::StringIndex string_idx);
+  // Find the address of the ClassTable::TableSlot for a boot image class.
+  const uint8_t* LookupBootImageClassTableSlot(const DexFile& dex_file, dex::TypeIndex type_idx);
 
   enum class WriteState {
     kAddingDexFileSources,

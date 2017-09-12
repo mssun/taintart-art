@@ -73,6 +73,7 @@
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
 #include "utils/dex_cache_arrays_layout-inl.h"
+#include "well_known_classes.h"
 
 using ::art::mirror::Class;
 using ::art::mirror::DexCache;
