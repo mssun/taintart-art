@@ -1205,7 +1205,7 @@ void MarkSweep::SweepArray(accounting::ObjectStack* allocations, bool swap_bitma
       }
     }
   }
-  // Unlikely to sweep a significant amount of non_movable objects, so we do these after the after
+  // Unlikely to sweep a significant amount of non_movable objects, so we do these after
   // the other alloc spaces as an optimization.
   if (non_moving_space != nullptr) {
     sweep_spaces.push_back(non_moving_space);

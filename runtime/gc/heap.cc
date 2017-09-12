@@ -239,7 +239,7 @@ Heap::Heap(size_t initial_size,
       verify_pre_sweeping_rosalloc_(verify_pre_sweeping_rosalloc),
       verify_post_gc_rosalloc_(verify_post_gc_rosalloc),
       gc_stress_mode_(gc_stress_mode),
-      /* For GC a lot mode, we limit the allocations stacks to be kGcAlotInterval allocations. This
+      /* For GC a lot mode, we limit the allocation stacks to be kGcAlotInterval allocations. This
        * causes a lot of GC since we do a GC for alloc whenever the stack is full. When heap
        * verification is enabled, we limit the size of allocation stacks to speed up their
        * searching.
@@ -2932,7 +2932,7 @@ void Heap::PushOnAllocationStackWithInternalGC(Thread* self, ObjPtr<mirror::Obje
     // TODO: Add handle VerifyObject.
     StackHandleScope<1> hs(self);
     HandleWrapperObjPtr<mirror::Object> wrapper(hs.NewHandleWrapper(obj));
-    // Push our object into the reserve region of the allocaiton stack. This is only required due
+    // Push our object into the reserve region of the allocation stack. This is only required due
     // to heap verification requiring that roots are live (either in the live bitmap or in the
     // allocation stack).
     CHECK(allocation_stack_->AtomicPushBackIgnoreGrowthLimit(obj->Ptr()));
