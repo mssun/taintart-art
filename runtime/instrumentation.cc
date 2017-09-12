@@ -779,6 +779,10 @@ void Instrumentation::UpdateMethodsCode(ArtMethod* method, const void* quick_cod
   UpdateMethodsCodeImpl(method, quick_code);
 }
 
+void Instrumentation::UpdateMethodsCodeToInterpreterEntryPoint(ArtMethod* method) {
+  UpdateMethodsCodeImpl(method, GetQuickToInterpreterBridge());
+}
+
 void Instrumentation::UpdateMethodsCodeForJavaDebuggable(ArtMethod* method,
                                                          const void* quick_code) {
   // When the runtime is set to Java debuggable, we may update the entry points of

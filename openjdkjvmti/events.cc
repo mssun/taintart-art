@@ -744,19 +744,34 @@ static void SetupTraceListener(JvmtiMethodTraceListener* listener,
   }
 }
 
+// Makes sure that all compiled methods are AsyncDeoptimizable so we can deoptimize (and force to
+// the switch interpreter) when we try to get or set a local variable.
 void EventHandler::HandleLocalAccessCapabilityAdded() {
-  art::ScopedThreadStateChange stsc(art::Thread::Current(), art::ThreadState::kNative);
-  art::instrumentation::Instrumentation* instr = art::Runtime::Current()->GetInstrumentation();
-  art::gc::ScopedGCCriticalSection gcs(art::Thread::Current(),
-                                       art::gc::kGcCauseInstrumentation,
-                                       art::gc::kCollectorTypeInstrumentation);
-  art::ScopedSuspendAll ssa("Deoptimize everything for local variable access", true);
-  // TODO This should be disabled when there are no environments using it.
-  if (!instr->CanDeoptimize()) {
-    instr->EnableDeoptimization();
-  }
-  // TODO We should be able to support can_access_local_variables without this.
-  instr->DeoptimizeEverything("jvmti-local-variable-access");
+  class UpdateEntryPointsClassVisitor : public art::ClassVisitor {
+   public:
+    explicit UpdateEntryPointsClassVisitor(art::Runtime* runtime)
+        : runtime_(runtime) {}
+
+    bool operator()(art::ObjPtr<art::mirror::Class> klass)
+        OVERRIDE REQUIRES(art::Locks::mutator_lock_) {
+      for (auto& m : klass->GetMethods(art::kRuntimePointerSize)) {
+        const void* code = m.GetEntryPointFromQuickCompiledCode();
+        if (m.IsNative() || m.IsProxyMethod()) {
+          continue;
+        } else if (!runtime_->GetClassLinker()->IsQuickToInterpreterBridge(code) &&
+                   !runtime_->IsAsyncDeoptimizeable(reinterpret_cast<uintptr_t>(code))) {
+          runtime_->GetInstrumentation()->UpdateMethodsCodeToInterpreterEntryPoint(&m);
+        }
+      }
+      return true;
+    }
+
+   private:
+    art::Runtime* runtime_;
+  };
+  art::ScopedObjectAccess soa(art::Thread::Current());
+  UpdateEntryPointsClassVisitor visitor(art::Runtime::Current());
+  art::Runtime::Current()->GetClassLinker()->VisitClasses(&visitor);
 }
 
 // Handle special work for the given event type, if necessary.
