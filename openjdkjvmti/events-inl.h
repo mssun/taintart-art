@@ -18,10 +18,13 @@
 #define ART_OPENJDKJVMTI_EVENTS_INL_H_
 
 #include <array>
+#include <type_traits>
+#include <tuple>
 
 #include "events.h"
 #include "jni_internal.h"
 #include "nativehelper/ScopedLocalRef.h"
+#include "scoped_thread_state_change-inl.h"
 #include "ti_breakpoint.h"
 
 #include "art_jvmti.h"
@@ -115,7 +118,6 @@ FORALL_EVENT_TYPES(GET_CALLBACK)
 
 // C++ does not allow partial template function specialization. The dispatch for our separated
 // ClassFileLoadHook event types is the same, so use this helper for code deduplication.
-// TODO Locking of some type!
 template <ArtJvmtiEvent kEvent>
 inline void EventHandler::DispatchClassFileLoadHookEvent(art::Thread* thread,
                                                          JNIEnv* jnienv,
@@ -137,37 +139,30 @@ inline void EventHandler::DispatchClassFileLoadHookEvent(art::Thread* thread,
     if (env == nullptr) {
       continue;
     }
-    if (ShouldDispatch<kEvent>(env, thread)) {
-      ScopedLocalRef<jthrowable> thr(jnienv, jnienv->ExceptionOccurred());
-      jnienv->ExceptionClear();
-      jint new_len = 0;
-      unsigned char* new_data = nullptr;
-      auto callback = impl::GetCallback<kEvent>(env);
-      callback(env,
-               jnienv,
-               class_being_redefined,
-               loader,
-               name,
-               protection_domain,
-               current_len,
-               current_class_data,
-               &new_len,
-               &new_data);
-      if (thr.get() != nullptr && !jnienv->ExceptionCheck()) {
-        jnienv->Throw(thr.get());
+    jint new_len = 0;
+    unsigned char* new_data = nullptr;
+    DispatchEventOnEnv<kEvent>(env,
+                               thread,
+                               jnienv,
+                               class_being_redefined,
+                               loader,
+                               name,
+                               protection_domain,
+                               current_len,
+                               static_cast<const unsigned char*>(current_class_data),
+                               &new_len,
+                               &new_data);
+    if (new_data != nullptr && new_data != current_class_data) {
+      // Destroy the data the last transformer made. We skip this if the previous state was the
+      // initial one since we don't know here which jvmtiEnv allocated it.
+      // NB Currently this doesn't matter since all allocations just go to malloc but in the
+      // future we might have jvmtiEnv's keep track of their allocations for leak-checking.
+      if (last_env != nullptr) {
+        last_env->Deallocate(current_class_data);
       }
-      if (new_data != nullptr && new_data != current_class_data) {
-        // Destroy the data the last transformer made. We skip this if the previous state was the
-        // initial one since we don't know here which jvmtiEnv allocated it.
-        // NB Currently this doesn't matter since all allocations just go to malloc but in the
-        // future we might have jvmtiEnv's keep track of their allocations for leak-checking.
-        if (last_env != nullptr) {
-          last_env->Deallocate(current_class_data);
-        }
-        last_env = env;
-        current_class_data = new_data;
-        current_len = new_len;
-      }
+      last_env = env;
+      current_class_data = new_data;
+      current_len = new_len;
     }
   }
   if (last_env != nullptr) {
@@ -180,97 +175,125 @@ inline void EventHandler::DispatchClassFileLoadHookEvent(art::Thread* thread,
 // exactly the argument types of the corresponding Jvmti kEvent function pointer.
 
 template <ArtJvmtiEvent kEvent, typename ...Args>
+inline void EventHandler::ExecuteCallback(ArtJvmTiEnv* env, Args... args) {
+  using FnType = typename impl::EventFnType<kEvent>::type;
+  FnType callback = impl::GetCallback<kEvent>(env);
+  if (callback != nullptr) {
+    (*callback)(env, args...);
+  }
+}
+
+template <ArtJvmtiEvent kEvent, typename ...Args>
 inline void EventHandler::DispatchEvent(art::Thread* thread, Args... args) const {
+  static_assert(!std::is_same<JNIEnv*,
+                              typename std::decay_t<
+                                  std::tuple_element_t<0, std::tuple<Args..., nullptr_t>>>>::value,
+                "Should be calling DispatchEvent with explicit JNIEnv* argument!");
+  DCHECK(thread == nullptr || !thread->IsExceptionPending());
   for (ArtJvmTiEnv* env : envs) {
     if (env != nullptr) {
-      DispatchEvent<kEvent, Args...>(env, thread, args...);
+      DispatchEventOnEnv<kEvent, Args...>(env, thread, args...);
     }
   }
 }
 
-// Events with JNIEnvs need to stash pending exceptions since they can cause new ones to be thrown.
-// In accordance with the JVMTI specification we allow exceptions originating from events to
-// overwrite the current exception, including exceptions originating from earlier events.
-// TODO It would be nice to add the overwritten exceptions to the suppressed exceptions list of the
-// newest exception.
+// Helper for ensuring that the dispatch environment is sane. Events with JNIEnvs need to stash
+// pending exceptions since they can cause new ones to be thrown. In accordance with the JVMTI
+// specification we allow exceptions originating from events to overwrite the current exception,
+// including exceptions originating from earlier events.
+class ScopedEventDispatchEnvironment FINAL : public art::ValueObject {
+ public:
+  explicit ScopedEventDispatchEnvironment(JNIEnv* env)
+      : env_(env),
+        thr_(env_, env_->ExceptionOccurred()),
+        suspend_(art::Thread::Current(), art::kNative) {
+    // The spec doesn't say how much local data should be there, so we just give 128 which seems
+    // likely to be enough for most cases.
+    env_->PushLocalFrame(128);
+    env_->ExceptionClear();
+    UNUSED(suspend_);
+  }
+
+  ~ScopedEventDispatchEnvironment() {
+    if (thr_.get() != nullptr && !env_->ExceptionCheck()) {
+      // TODO It would be nice to add the overwritten exceptions to the suppressed exceptions list
+      // of the newest exception.
+      env_->Throw(thr_.get());
+    }
+    env_->PopLocalFrame(nullptr);
+  }
+
+ private:
+  JNIEnv* env_;
+  ScopedLocalRef<jthrowable> thr_;
+  // Not actually unused. The destructor/constructor does important work.
+  art::ScopedThreadStateChange suspend_;
+
+  DISALLOW_COPY_AND_ASSIGN(ScopedEventDispatchEnvironment);
+};
+
 template <ArtJvmtiEvent kEvent, typename ...Args>
 inline void EventHandler::DispatchEvent(art::Thread* thread, JNIEnv* jnienv, Args... args) const {
   for (ArtJvmTiEnv* env : envs) {
     if (env != nullptr) {
-      ScopedLocalRef<jthrowable> thr(jnienv, jnienv->ExceptionOccurred());
-      jnienv->ExceptionClear();
-      DispatchEvent<kEvent, JNIEnv*, Args...>(env, thread, jnienv, args...);
-      if (thr.get() != nullptr && !jnienv->ExceptionCheck()) {
-        jnienv->Throw(thr.get());
-      }
+      DispatchEventOnEnv<kEvent, Args...>(env, thread, jnienv, args...);
     }
   }
 }
 
 template <ArtJvmtiEvent kEvent, typename ...Args>
-inline void EventHandler::DispatchEvent(ArtJvmTiEnv* env, art::Thread* thread, Args... args) const {
-  using FnType = void(jvmtiEnv*, Args...);
-  if (ShouldDispatch<kEvent>(env, thread)) {
-    FnType* callback = impl::GetCallback<kEvent>(env);
-    if (callback != nullptr) {
-      (*callback)(env, args...);
-    }
+inline void EventHandler::DispatchEventOnEnv(
+    ArtJvmTiEnv* env, art::Thread* thread, JNIEnv* jnienv, Args... args) const {
+  DCHECK(env != nullptr);
+  if (ShouldDispatch<kEvent, JNIEnv*, Args...>(env, thread, jnienv, args...)) {
+    ScopedEventDispatchEnvironment sede(jnienv);
+    ExecuteCallback<kEvent, JNIEnv*, Args...>(env, jnienv, args...);
   }
 }
+
+template <ArtJvmtiEvent kEvent, typename ...Args>
+inline void EventHandler::DispatchEventOnEnv(
+    ArtJvmTiEnv* env, art::Thread* thread, Args... args) const {
+  static_assert(!std::is_same<JNIEnv*,
+                              typename std::decay_t<
+                                  std::tuple_element_t<0, std::tuple<Args..., nullptr_t>>>>::value,
+                "Should be calling DispatchEventOnEnv with explicit JNIEnv* argument!");
+  if (ShouldDispatch<kEvent>(env, thread, args...)) {
+    ExecuteCallback<kEvent, Args...>(env, args...);
+  }
+}
+
+// Events that need custom logic for if we send the event but are otherwise normal. This includes
+// the kBreakpoint, kFramePop, kFieldAccess, and kFieldModification events.
 
 // Need to give custom specializations for Breakpoint since it needs to filter out which particular
 // methods/dex_pcs agents get notified on.
 template <>
-inline void EventHandler::DispatchEvent<ArtJvmtiEvent::kBreakpoint>(art::Thread* thread,
-                                                                    JNIEnv* jnienv,
-                                                                    jthread jni_thread,
-                                                                    jmethodID jmethod,
-                                                                    jlocation location) const {
+inline bool EventHandler::ShouldDispatch<ArtJvmtiEvent::kBreakpoint>(
+    ArtJvmTiEnv* env,
+    art::Thread* thread,
+    JNIEnv* jnienv ATTRIBUTE_UNUSED,
+    jthread jni_thread ATTRIBUTE_UNUSED,
+    jmethodID jmethod,
+    jlocation location) const {
   art::ArtMethod* method = art::jni::DecodeArtMethod(jmethod);
-  for (ArtJvmTiEnv* env : envs) {
-    // Search for a breakpoint on this particular method and location.
-    if (env != nullptr &&
-        ShouldDispatch<ArtJvmtiEvent::kBreakpoint>(env, thread) &&
-        env->breakpoints.find({method, location}) != env->breakpoints.end()) {
-      // We temporarily clear any pending exceptions so the event can call back into java code.
-      ScopedLocalRef<jthrowable> thr(jnienv, jnienv->ExceptionOccurred());
-      jnienv->ExceptionClear();
-      auto callback = impl::GetCallback<ArtJvmtiEvent::kBreakpoint>(env);
-      (*callback)(env, jnienv, jni_thread, jmethod, location);
-      if (thr.get() != nullptr && !jnienv->ExceptionCheck()) {
-        jnienv->Throw(thr.get());
-      }
-    }
-  }
+  return ShouldDispatchOnThread<ArtJvmtiEvent::kBreakpoint>(env, thread) &&
+      env->breakpoints.find({method, location}) != env->breakpoints.end();
 }
 
-// Need to give custom specializations for FramePop since it needs to filter out which particular
-// agents get the event. This specialization gets an extra argument so we can determine which (if
-// any) environments have the frame pop.
 template <>
-inline void EventHandler::DispatchEvent<ArtJvmtiEvent::kFramePop>(
+inline bool EventHandler::ShouldDispatch<ArtJvmtiEvent::kFramePop>(
+    ArtJvmTiEnv* env,
     art::Thread* thread,
-    JNIEnv* jnienv,
-    jthread jni_thread,
-    jmethodID jmethod,
-    jboolean is_exception,
+    JNIEnv* jnienv ATTRIBUTE_UNUSED,
+    jthread jni_thread ATTRIBUTE_UNUSED,
+    jmethodID jmethod ATTRIBUTE_UNUSED,
+    jboolean is_exception ATTRIBUTE_UNUSED,
     const art::ShadowFrame* frame) const {
-  for (ArtJvmTiEnv* env : envs) {
-    // Search for the frame. Do this before checking if we need to send the event so that we don't
-    // have to deal with use-after-free or the frames being reallocated later.
-    if (env != nullptr && env->notify_frames.erase(frame) != 0) {
-      if (ShouldDispatch<ArtJvmtiEvent::kFramePop>(env, thread)) {
-        // We temporarily clear any pending exceptions so the event can call back into java code.
-        ScopedLocalRef<jthrowable> thr(jnienv, jnienv->ExceptionOccurred());
-        jnienv->ExceptionClear();
-        auto callback = impl::GetCallback<ArtJvmtiEvent::kFramePop>(env);
-        (*callback)(env, jnienv, jni_thread, jmethod, is_exception);
-        if (thr.get() != nullptr && !jnienv->ExceptionCheck()) {
-          jnienv->Throw(thr.get());
-        }
-      }
-    }
-  }
+  // Search for the frame. Do this before checking if we need to send the event so that we don't
+  // have to deal with use-after-free or the frames being reallocated later.
+  return env->notify_frames.erase(frame) != 0 &&
+      ShouldDispatchOnThread<ArtJvmtiEvent::kFramePop>(env, thread);
 }
 
 // Need to give custom specializations for FieldAccess and FieldModification since they need to
@@ -278,64 +301,54 @@ inline void EventHandler::DispatchEvent<ArtJvmtiEvent::kFramePop>(
 // TODO The spec allows us to do shortcuts like only allow one agent to ever set these watches. This
 // could make the system more performant.
 template <>
-inline void EventHandler::DispatchEvent<ArtJvmtiEvent::kFieldModification>(art::Thread* thread,
-                                                                           JNIEnv* jnienv,
-                                                                           jthread jni_thread,
-                                                                           jmethodID method,
-                                                                           jlocation location,
-                                                                           jclass field_klass,
-                                                                           jobject object,
-                                                                           jfieldID field,
-                                                                           char type_char,
-                                                                           jvalue val) const {
-  for (ArtJvmTiEnv* env : envs) {
-    if (env != nullptr &&
-        ShouldDispatch<ArtJvmtiEvent::kFieldModification>(env, thread) &&
-        env->modify_watched_fields.find(
-            art::jni::DecodeArtField(field)) != env->modify_watched_fields.end()) {
-      ScopedLocalRef<jthrowable> thr(jnienv, jnienv->ExceptionOccurred());
-      jnienv->ExceptionClear();
-      auto callback = impl::GetCallback<ArtJvmtiEvent::kFieldModification>(env);
-      (*callback)(env,
-                  jnienv,
-                  jni_thread,
-                  method,
-                  location,
-                  field_klass,
-                  object,
-                  field,
-                  type_char,
-                  val);
-      if (thr.get() != nullptr && !jnienv->ExceptionCheck()) {
-        jnienv->Throw(thr.get());
-      }
-    }
-  }
+inline bool EventHandler::ShouldDispatch<ArtJvmtiEvent::kFieldModification>(
+    ArtJvmTiEnv* env,
+    art::Thread* thread,
+    JNIEnv* jnienv ATTRIBUTE_UNUSED,
+    jthread jni_thread ATTRIBUTE_UNUSED,
+    jmethodID method ATTRIBUTE_UNUSED,
+    jlocation location ATTRIBUTE_UNUSED,
+    jclass field_klass ATTRIBUTE_UNUSED,
+    jobject object ATTRIBUTE_UNUSED,
+    jfieldID field,
+    char type_char ATTRIBUTE_UNUSED,
+    jvalue val ATTRIBUTE_UNUSED) const {
+  return ShouldDispatchOnThread<ArtJvmtiEvent::kFieldModification>(env, thread) &&
+      env->modify_watched_fields.find(
+          art::jni::DecodeArtField(field)) != env->modify_watched_fields.end();
 }
 
 template <>
-inline void EventHandler::DispatchEvent<ArtJvmtiEvent::kFieldAccess>(art::Thread* thread,
-                                                                     JNIEnv* jnienv,
-                                                                     jthread jni_thread,
-                                                                     jmethodID method,
-                                                                     jlocation location,
-                                                                     jclass field_klass,
-                                                                     jobject object,
-                                                                     jfieldID field) const {
-  for (ArtJvmTiEnv* env : envs) {
-    if (env != nullptr &&
-        ShouldDispatch<ArtJvmtiEvent::kFieldAccess>(env, thread) &&
-        env->access_watched_fields.find(
-            art::jni::DecodeArtField(field)) != env->access_watched_fields.end()) {
-      ScopedLocalRef<jthrowable> thr(jnienv, jnienv->ExceptionOccurred());
-      jnienv->ExceptionClear();
-      auto callback = impl::GetCallback<ArtJvmtiEvent::kFieldAccess>(env);
-      (*callback)(env, jnienv, jni_thread, method, location, field_klass, object, field);
-      if (thr.get() != nullptr && !jnienv->ExceptionCheck()) {
-        jnienv->Throw(thr.get());
-      }
-    }
-  }
+inline bool EventHandler::ShouldDispatch<ArtJvmtiEvent::kFieldAccess>(
+    ArtJvmTiEnv* env,
+    art::Thread* thread,
+    JNIEnv* jnienv ATTRIBUTE_UNUSED,
+    jthread jni_thread ATTRIBUTE_UNUSED,
+    jmethodID method ATTRIBUTE_UNUSED,
+    jlocation location ATTRIBUTE_UNUSED,
+    jclass field_klass ATTRIBUTE_UNUSED,
+    jobject object ATTRIBUTE_UNUSED,
+    jfieldID field) const {
+  return ShouldDispatchOnThread<ArtJvmtiEvent::kFieldAccess>(env, thread) &&
+      env->access_watched_fields.find(
+          art::jni::DecodeArtField(field)) != env->access_watched_fields.end();
+}
+
+// Need to give custom specializations for FramePop since it needs to filter out which particular
+// agents get the event. This specialization gets an extra argument so we can determine which (if
+// any) environments have the frame pop.
+// TODO It might be useful to use more template magic to have this only define ShouldDispatch or
+// something.
+template <>
+inline void EventHandler::ExecuteCallback<ArtJvmtiEvent::kFramePop>(
+    ArtJvmTiEnv* env,
+    JNIEnv* jnienv,
+    jthread jni_thread,
+    jmethodID jmethod,
+    jboolean is_exception,
+    const art::ShadowFrame* frame ATTRIBUTE_UNUSED) {
+  ExecuteCallback<ArtJvmtiEvent::kFramePop>(
+      env, jnienv, jni_thread, jmethod, is_exception);
 }
 
 // Need to give a custom specialization for NativeMethodBind since it has to deal with an out
@@ -349,14 +362,21 @@ inline void EventHandler::DispatchEvent<ArtJvmtiEvent::kNativeMethodBind>(art::T
                                                                           void** new_method) const {
   *new_method = cur_method;
   for (ArtJvmTiEnv* env : envs) {
-    if (env != nullptr && ShouldDispatch<ArtJvmtiEvent::kNativeMethodBind>(env, thread)) {
-      auto callback = impl::GetCallback<ArtJvmtiEvent::kNativeMethodBind>(env);
-      (*callback)(env, jnienv, jni_thread, method, cur_method, new_method);
+    if (env != nullptr) {
+      *new_method = cur_method;
+      DispatchEventOnEnv<ArtJvmtiEvent::kNativeMethodBind>(env,
+                                                           thread,
+                                                           jnienv,
+                                                           jni_thread,
+                                                           method,
+                                                           cur_method,
+                                                           new_method);
       if (*new_method != nullptr) {
         cur_method = *new_method;
       }
     }
   }
+  *new_method = cur_method;
 }
 
 // C++ does not allow partial template function specialization. The dispatch for our separated
@@ -386,6 +406,7 @@ inline void EventHandler::DispatchEvent<ArtJvmtiEvent::kClassFileLoadHookRetrans
       new_class_data_len,
       new_class_data);
 }
+
 template <>
 inline void EventHandler::DispatchEvent<ArtJvmtiEvent::kClassFileLoadHookNonRetransformable>(
     art::Thread* thread,
@@ -412,8 +433,7 @@ inline void EventHandler::DispatchEvent<ArtJvmtiEvent::kClassFileLoadHookNonRetr
 }
 
 template <ArtJvmtiEvent kEvent>
-inline bool EventHandler::ShouldDispatch(ArtJvmTiEnv* env,
-                                         art::Thread* thread) {
+inline bool EventHandler::ShouldDispatchOnThread(ArtJvmTiEnv* env, art::Thread* thread) {
   bool dispatch = env->event_masks.global_event_mask.Test(kEvent);
 
   if (!dispatch && thread != nullptr && env->event_masks.unioned_thread_event_mask.Test(kEvent)) {
@@ -421,6 +441,17 @@ inline bool EventHandler::ShouldDispatch(ArtJvmTiEnv* env,
     dispatch = mask != nullptr && mask->Test(kEvent);
   }
   return dispatch;
+}
+
+template <ArtJvmtiEvent kEvent, typename ...Args>
+inline bool EventHandler::ShouldDispatch(ArtJvmTiEnv* env,
+                                         art::Thread* thread,
+                                         Args... args ATTRIBUTE_UNUSED) const {
+  static_assert(std::is_same<typename impl::EventFnType<kEvent>::type,
+                             void(*)(jvmtiEnv*, Args...)>::value,
+                "Unexpected different type of shouldDispatch");
+
+  return ShouldDispatchOnThread<kEvent>(env, thread);
 }
 
 inline void EventHandler::RecalculateGlobalEventMask(ArtJvmtiEvent event) {
