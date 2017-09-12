@@ -29,6 +29,13 @@ namespace art {
 class ArtField;
 class ArtMethod;
 
+class ObjectVisitor {
+ public:
+  virtual ~ObjectVisitor() {}
+
+  virtual void Visit(mirror::Object* object) = 0;
+};
+
 class ArtMethodVisitor {
  public:
   virtual ~ArtMethodVisitor() {}
@@ -327,6 +334,13 @@ class PACKED(4) ImageHeader {
     size_t tables_size = class_table.Offset() + class_table.Size() - start_offset;
     return RoundUp(tables_size, kPageSize);
   }
+
+  // Visit mirror::Objects in the section starting at base.
+  // TODO: Delete base parameter if it is always equal to GetImageBegin.
+  void VisitObjects(ObjectVisitor* visitor,
+                    uint8_t* base,
+                    PointerSize pointer_size) const
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Visit ArtMethods in the section starting at base. Includes runtime methods.
   // TODO: Delete base parameter if it is always equal to GetImageBegin.
