@@ -1143,9 +1143,9 @@ class BCEVisitor : public HGraphVisitor {
           ValueBound(nullptr, 1 - right_const),
           ValueBound(nullptr, right_const - 1));
 
-      ValueRange* left_range = LookupValueRange(left, left->GetBlock());
+      ValueRange* left_range = LookupValueRange(left, instruction->GetBlock());
       if (left_range != nullptr) {
-        right_range = left_range->Narrow(right_range);
+        right_range = right_range->Narrow(left_range);
       }
       AssignRange(instruction->GetBlock(), instruction, right_range);
       return;
@@ -1172,9 +1172,9 @@ class BCEVisitor : public HGraphVisitor {
           GetGraph()->GetArena(),
           lower,
           upper);
-      ValueRange* left_range = LookupValueRange(left, left->GetBlock());
+      ValueRange* left_range = LookupValueRange(left, instruction->GetBlock());
       if (left_range != nullptr) {
-        right_range = left_range->Narrow(right_range);
+        right_range = right_range->Narrow(left_range);
       }
       AssignRange(instruction->GetBlock(), instruction, right_range);
       return;

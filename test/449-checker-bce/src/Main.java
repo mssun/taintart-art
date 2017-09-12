@@ -962,6 +962,25 @@ public class Main {
     }
   }
 
+  /// CHECK-START: void Main.modArrayIndex5(int[], int) BCE (before)
+  /// CHECK-DAG: BoundsCheck
+  /// CHECK-DAG: ArraySet
+  //
+  /// CHECK-START: void Main.modArrayIndex5(int[], int) BCE (after)
+  /// CHECK-NOT: BoundsCheck
+  /// CHECK-DAG: ArraySet
+  public static void modArrayIndex5(int[] x, int i) {
+    while (true) {
+      int xi = i % x.length;
+      if (xi < 0)
+        break;
+      if (i >= x.length)
+        break;
+      x[xi] = i;
+      i++;
+    }
+  }
+
   /// CHECK-START: void Main.bubbleSort(int[]) GVN (before)
   /// CHECK: BoundsCheck
   /// CHECK: ArrayGet
@@ -1689,6 +1708,21 @@ public class Main {
     }
 
     sieve(20);
+
+    int[] x1 = new int[10];
+    int[] x2 = new int[10];
+    int[] x3 = new int[10];
+    modArrayIndex5(x1, -1);
+    modArrayIndex5(x2, 0);
+    modArrayIndex5(x3, 5);
+    for (int i = 0; i < 10; i++) {
+      int e1 = 0;
+      int e2 = i;
+      int e3 = i < 5 ? 0 : i;
+      if (x1[i] != e1 || x2[i] != e2 || x3[i] != e3) {
+        System.out.println("modarray failed!");
+      }
+    }
 
     int[] array = {5, 2, 3, 7, 0, 1, 6, 4};
     bubbleSort(array);
