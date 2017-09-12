@@ -134,6 +134,7 @@
 #include "native_bridge_art_interface.h"
 #include "native_stack_dump.h"
 #include "nativehelper/JniConstants.h"
+#include "nativehelper/JniConstants-priv.h"
 #include "nativehelper/ScopedLocalRef.h"
 #include "oat_file.h"
 #include "oat_file_manager.h"
@@ -405,6 +406,10 @@ Runtime::~Runtime() {
   // instance. We rely on a small initialization order issue in Runtime::Start() that requires
   // elements of WellKnownClasses to be null, see b/65500943.
   WellKnownClasses::Clear();
+
+  // Ensure that libnativehelper caching is invalidated, in case a new runtime is to be brought
+  // up later.
+  android::ClearJniConstantsCache();
 }
 
 struct AbortState {
