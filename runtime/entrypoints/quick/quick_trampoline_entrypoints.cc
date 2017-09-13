@@ -697,6 +697,72 @@ void BuildQuickShadowFrameVisitor::Visit() {
   ++cur_reg_;
 }
 
+// Don't inline. See b/65159206.
+NO_INLINE
+static void HandleDeoptimization(JValue* result,
+                                 ArtMethod* method,
+                                 ShadowFrame* deopt_frame,
+                                 ManagedStack* fragment)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  // Coming from partial-fragment deopt.
+  Thread* self = Thread::Current();
+  if (kIsDebugBuild) {
+    // Sanity-check: are the methods as expected? We check that the last shadow frame (the bottom
+    // of the call-stack) corresponds to the called method.
+    ShadowFrame* linked = deopt_frame;
+    while (linked->GetLink() != nullptr) {
+      linked = linked->GetLink();
+    }
+    CHECK_EQ(method, linked->GetMethod()) << method->PrettyMethod() << " "
+        << ArtMethod::PrettyMethod(linked->GetMethod());
+  }
+
+  if (VLOG_IS_ON(deopt)) {
+    // Print out the stack to verify that it was a partial-fragment deopt.
+    LOG(INFO) << "Continue-ing from deopt. Stack is:";
+    QuickExceptionHandler::DumpFramesWithType(self, true);
+  }
+
+  ObjPtr<mirror::Throwable> pending_exception;
+  bool from_code = false;
+  DeoptimizationMethodType method_type;
+  self->PopDeoptimizationContext(/* out */ result,
+                                 /* out */ &pending_exception,
+                                 /* out */ &from_code,
+                                 /* out */ &method_type);
+
+  // Push a transition back into managed code onto the linked list in thread.
+  self->PushManagedStackFragment(fragment);
+
+  // Ensure that the stack is still in order.
+  if (kIsDebugBuild) {
+    class DummyStackVisitor : public StackVisitor {
+     public:
+      explicit DummyStackVisitor(Thread* self_in) REQUIRES_SHARED(Locks::mutator_lock_)
+          : StackVisitor(self_in, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames) {}
+
+      bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+        // Nothing to do here. In a debug build, SanityCheckFrame will do the work in the walking
+        // logic. Just always say we want to continue.
+        return true;
+      }
+    };
+    DummyStackVisitor dsv(self);
+    dsv.WalkStack();
+  }
+
+  // Restore the exception that was pending before deoptimization then interpret the
+  // deoptimized frames.
+  if (pending_exception != nullptr) {
+    self->SetException(pending_exception);
+  }
+  interpreter::EnterInterpreterFromDeoptimize(self,
+                                              deopt_frame,
+                                              result,
+                                              from_code,
+                                              DeoptimizationMethodType::kDefault);
+}
+
 extern "C" uint64_t artQuickToInterpreterBridge(ArtMethod* method, Thread* self, ArtMethod** sp)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   // Ensure we don't get thread suspension until the object arguments are safely in the shadow
@@ -722,64 +788,8 @@ extern "C" uint64_t artQuickToInterpreterBridge(ArtMethod* method, Thread* self,
 
   JValue result;
 
-  if (deopt_frame != nullptr) {
-    // Coming from partial-fragment deopt.
-
-    if (kIsDebugBuild) {
-      // Sanity-check: are the methods as expected? We check that the last shadow frame (the bottom
-      // of the call-stack) corresponds to the called method.
-      ShadowFrame* linked = deopt_frame;
-      while (linked->GetLink() != nullptr) {
-        linked = linked->GetLink();
-      }
-      CHECK_EQ(method, linked->GetMethod()) << method->PrettyMethod() << " "
-          << ArtMethod::PrettyMethod(linked->GetMethod());
-    }
-
-    if (VLOG_IS_ON(deopt)) {
-      // Print out the stack to verify that it was a partial-fragment deopt.
-      LOG(INFO) << "Continue-ing from deopt. Stack is:";
-      QuickExceptionHandler::DumpFramesWithType(self, true);
-    }
-
-    ObjPtr<mirror::Throwable> pending_exception;
-    bool from_code = false;
-    DeoptimizationMethodType method_type;
-    self->PopDeoptimizationContext(/* out */ &result,
-                                   /* out */ &pending_exception,
-                                   /* out */ &from_code,
-                                   /* out */ &method_type);
-
-    // Push a transition back into managed code onto the linked list in thread.
-    self->PushManagedStackFragment(&fragment);
-
-    // Ensure that the stack is still in order.
-    if (kIsDebugBuild) {
-      class DummyStackVisitor : public StackVisitor {
-       public:
-        explicit DummyStackVisitor(Thread* self_in) REQUIRES_SHARED(Locks::mutator_lock_)
-            : StackVisitor(self_in, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames) {}
-
-        bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
-          // Nothing to do here. In a debug build, SanityCheckFrame will do the work in the walking
-          // logic. Just always say we want to continue.
-          return true;
-        }
-      };
-      DummyStackVisitor dsv(self);
-      dsv.WalkStack();
-    }
-
-    // Restore the exception that was pending before deoptimization then interpret the
-    // deoptimized frames.
-    if (pending_exception != nullptr) {
-      self->SetException(pending_exception);
-    }
-    interpreter::EnterInterpreterFromDeoptimize(self,
-                                                deopt_frame,
-                                                &result,
-                                                from_code,
-                                                DeoptimizationMethodType::kDefault);
+  if (UNLIKELY(deopt_frame != nullptr)) {
+    HandleDeoptimization(&result, method, deopt_frame, &fragment);
   } else {
     const char* old_cause = self->StartAssertNoThreadSuspension(
         "Building interpreter shadow frame");
