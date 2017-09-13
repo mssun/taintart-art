@@ -93,6 +93,13 @@ public class DiffTest {
   }
 
   @Test
+  public void diffClassRemoved() throws IOException {
+    TestDump dump = TestDump.getTestDump("O.hprof", "L.hprof", null);
+    AhatHandler handler = new ObjectsHandler(dump.getAhatSnapshot());
+    TestHandler.testNoCrash(handler, "http://localhost:7100/objects?class=java.lang.Class");
+  }
+
+  @Test
   public void nullClassObj() throws IOException {
     // Set up a heap dump that has a null classObj.
     // The heap dump is derived from the InstanceTest.asStringEmbedded test.
