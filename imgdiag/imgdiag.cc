@@ -31,13 +31,17 @@
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "base/unix_file/fd_file.h"
+#include "class_linker.h"
 #include "gc/space/image_space.h"
 #include "gc/heap.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
 #include "image.h"
-#include "scoped_thread_state_change-inl.h"
+#include "oat.h"
+#include "oat_file.h"
+#include "oat_file_manager.h"
 #include "os.h"
+#include "scoped_thread_state_change-inl.h"
 
 #include "cmdline.h"
 #include "backtrace/BacktraceMap.h"
@@ -326,6 +330,37 @@ class RegionSpecializedBase : public RegionCommon<T> {
 };
 
 // Region analysis for mirror::Objects
+class ImgObjectVisitor : public ObjectVisitor {
+ public:
+  using ComputeDirtyFunc = std::function<void(mirror::Object* object,
+                                              const uint8_t* begin_image_ptr,
+                                              const std::set<size_t>& dirty_pages)>;
+  ImgObjectVisitor(ComputeDirtyFunc dirty_func,
+                   const uint8_t* begin_image_ptr,
+                   const std::set<size_t>& dirty_pages) :
+    dirty_func_(dirty_func),
+    begin_image_ptr_(begin_image_ptr),
+    dirty_pages_(dirty_pages) { }
+
+  virtual ~ImgObjectVisitor() OVERRIDE { }
+
+  virtual void Visit(mirror::Object* object) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+    // Sanity check that we are reading a real mirror::Object
+    CHECK(object->GetClass() != nullptr) << "Image object at address "
+                                         << object
+                                         << " has null class";
+    if (kUseBakerReadBarrier) {
+      object->AssertReadBarrierState();
+    }
+    dirty_func_(object, begin_image_ptr_, dirty_pages_);
+  }
+
+ private:
+  ComputeDirtyFunc dirty_func_;
+  const uint8_t* begin_image_ptr_;
+  const std::set<size_t>& dirty_pages_;
+};
+
 template<>
 class RegionSpecializedBase<mirror::Object> : public RegionCommon<mirror::Object> {
  public:
@@ -339,24 +374,14 @@ class RegionSpecializedBase<mirror::Object> : public RegionCommon<mirror::Object
         os_(*os),
         dump_dirty_objects_(dump_dirty_objects) { }
 
-  void CheckEntrySanity(const uint8_t* current) const
-      REQUIRES_SHARED(Locks::mutator_lock_) {
-    CHECK_ALIGNED(current, kObjectAlignment);
-    mirror::Object* entry = reinterpret_cast<mirror::Object*>(const_cast<uint8_t*>(current));
-    // Sanity check that we are reading a real mirror::Object
-    CHECK(entry->GetClass() != nullptr) << "Image object at address "
-                                        << entry
-                                        << " has null class";
-    if (kUseBakerReadBarrier) {
-      entry->AssertReadBarrierState();
-    }
-  }
+  // Define a common public type name for use by RegionData.
+  using VisitorClass = ImgObjectVisitor;
 
-  mirror::Object* GetNextEntry(mirror::Object* entry)
+  void VisitEntries(VisitorClass* visitor,
+                    uint8_t* base,
+                    PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    uint8_t* next =
-        reinterpret_cast<uint8_t*>(entry) + RoundUp(EntrySize(entry), kObjectAlignment);
-    return reinterpret_cast<mirror::Object*>(next);
+    RegionCommon<mirror::Object>::image_header_.VisitObjects(visitor, base, pointer_size);
   }
 
   void VisitEntry(mirror::Object* entry)
@@ -616,38 +641,91 @@ class RegionSpecializedBase<mirror::Object> : public RegionCommon<mirror::Object
 };
 
 // Region analysis for ArtMethods.
-// TODO: most of these need work.
+class ImgArtMethodVisitor : public ArtMethodVisitor {
+ public:
+  using ComputeDirtyFunc = std::function<void(ArtMethod*,
+                                              const uint8_t*,
+                                              const std::set<size_t>&)>;
+  ImgArtMethodVisitor(ComputeDirtyFunc dirty_func,
+                      const uint8_t* begin_image_ptr,
+                      const std::set<size_t>& dirty_pages) :
+    dirty_func_(dirty_func),
+    begin_image_ptr_(begin_image_ptr),
+    dirty_pages_(dirty_pages) { }
+  virtual ~ImgArtMethodVisitor() OVERRIDE { }
+  virtual void Visit(ArtMethod* method) OVERRIDE {
+    dirty_func_(method, begin_image_ptr_, dirty_pages_);
+  }
+
+ private:
+  ComputeDirtyFunc dirty_func_;
+  const uint8_t* begin_image_ptr_;
+  const std::set<size_t>& dirty_pages_;
+};
+
+// Struct and functor for computing offsets of members of ArtMethods.
+// template <typename RegionType>
+struct MemberInfo {
+  template <typename T>
+  void operator() (const ArtMethod* method, const T* member_address, const std::string& name) {
+    // Check that member_address is a pointer inside *method.
+    DCHECK(reinterpret_cast<uintptr_t>(method) <= reinterpret_cast<uintptr_t>(member_address));
+    DCHECK(reinterpret_cast<uintptr_t>(member_address) + sizeof(T) <=
+           reinterpret_cast<uintptr_t>(method) + sizeof(ArtMethod));
+    size_t offset =
+        reinterpret_cast<uintptr_t>(member_address) - reinterpret_cast<uintptr_t>(method);
+    offset_to_name_size_.insert({offset, NameAndSize(sizeof(T), name)});
+  }
+
+  struct NameAndSize {
+    size_t size_;
+    std::string name_;
+    NameAndSize(size_t size, const std::string& name) : size_(size), name_(name) { }
+    NameAndSize() : size_(0), name_("INVALID") { }
+  };
+
+  std::map<size_t, NameAndSize> offset_to_name_size_;
+};
+
 template<>
-class RegionSpecializedBase<ArtMethod> : RegionCommon<ArtMethod> {
+class RegionSpecializedBase<ArtMethod> : public RegionCommon<ArtMethod> {
  public:
   RegionSpecializedBase(std::ostream* os,
                         std::vector<uint8_t>* remote_contents,
                         std::vector<uint8_t>* zygote_contents,
                         const backtrace_map_t& boot_map,
-                        const ImageHeader& image_header) :
-    RegionCommon<ArtMethod>(os, remote_contents, zygote_contents, boot_map, image_header),
-    os_(*os) { }
-
-  void CheckEntrySanity(const uint8_t* current ATTRIBUTE_UNUSED) const
-      REQUIRES_SHARED(Locks::mutator_lock_) {
+                        const ImageHeader& image_header,
+                        bool dump_dirty_objects ATTRIBUTE_UNUSED)
+      : RegionCommon<ArtMethod>(os, remote_contents, zygote_contents, boot_map, image_header),
+        os_(*os) {
+    // Prepare the table for offset to member lookups.
+    ArtMethod* art_method = reinterpret_cast<ArtMethod*>(&(*remote_contents)[0]);
+    art_method->VisitMembers(member_info_);
+    // Prepare the table for address to symbolic entry point names.
+    BuildEntryPointNames();
+    class_linker_ = Runtime::Current()->GetClassLinker();
   }
 
-  ArtMethod* GetNextEntry(ArtMethod* entry)
+  // Define a common public type name for use by RegionData.
+  using VisitorClass = ImgArtMethodVisitor;
+
+  void VisitEntries(VisitorClass* visitor,
+                    uint8_t* base,
+                    PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    uint8_t* next = reinterpret_cast<uint8_t*>(entry) + RoundUp(EntrySize(entry), kObjectAlignment);
-    return reinterpret_cast<ArtMethod*>(next);
+    RegionCommon<ArtMethod>::image_header_.VisitPackedArtMethods(visitor, base, pointer_size);
   }
 
   void VisitEntry(ArtMethod* method ATTRIBUTE_UNUSED)
       REQUIRES_SHARED(Locks::mutator_lock_) {
   }
 
+  void AddCleanEntry(ArtMethod* method ATTRIBUTE_UNUSED) {
+  }
+
   void AddFalseDirtyEntry(ArtMethod* method)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     RegionCommon<ArtMethod>::AddFalseDirtyEntry(method);
-  }
-
-  void AddCleanEntry(ArtMethod* method ATTRIBUTE_UNUSED) {
   }
 
   void AddDirtyEntry(ArtMethod* method, ArtMethod* method_remote)
@@ -667,14 +745,50 @@ class RegionSpecializedBase<ArtMethod> : RegionCommon<ArtMethod> {
     dirty_entries_.push_back(method);
   }
 
-  void DiffEntryContents(ArtMethod* method ATTRIBUTE_UNUSED,
-                         uint8_t* remote_bytes ATTRIBUTE_UNUSED,
-                         const uint8_t* base_ptr ATTRIBUTE_UNUSED)
+  void DiffEntryContents(ArtMethod* method,
+                         uint8_t* remote_bytes,
+                         const uint8_t* base_ptr,
+                         bool log_dirty_objects ATTRIBUTE_UNUSED)
       REQUIRES_SHARED(Locks::mutator_lock_) {
+    const char* tabs = "    ";
+    os_ << tabs << "ArtMethod " << ArtMethod::PrettyMethod(method) << "\n";
+
+    std::unordered_set<size_t> dirty_members;
+    // Examine the members comprising the ArtMethod, computing which members are dirty.
+    for (const std::pair<size_t, MemberInfo::NameAndSize>& p : member_info_.offset_to_name_size_) {
+      const size_t offset = p.first;
+      if (memcmp(base_ptr + offset, remote_bytes + offset, p.second.size_) != 0) {
+        dirty_members.insert(p.first);
+      }
+    }
+    // Dump different fields.
+    if (!dirty_members.empty()) {
+      os_ << tabs << "Dirty members " << dirty_members.size() << "\n";
+      for (size_t offset : dirty_members) {
+        const MemberInfo::NameAndSize& member_info = member_info_.offset_to_name_size_[offset];
+        os_ << tabs << member_info.name_
+            << " original=" << StringFromBytes(base_ptr + offset, member_info.size_)
+            << " remote=" << StringFromBytes(remote_bytes + offset, member_info.size_)
+            << "\n";
+      }
+    }
+    os_ << "\n";
+  }
+
+  void DumpDirtyObjects() REQUIRES_SHARED(Locks::mutator_lock_) {
   }
 
   void DumpDirtyEntries() REQUIRES_SHARED(Locks::mutator_lock_) {
     DumpSamplesAndOffsetCount();
+    os_ << "      offset to field map:\n";
+    for (const std::pair<size_t, MemberInfo::NameAndSize>& p : member_info_.offset_to_name_size_) {
+      const size_t offset = p.first;
+      const size_t size = p.second.size_;
+      os_ << StringPrintf("        %zu-%zu: ", offset, offset + size - 1)
+          << p.second.name_
+          << std::endl;
+    }
+
     os_ << "      field contents:\n";
     for (ArtMethod* method : dirty_entries_) {
       // remote method
@@ -694,6 +808,7 @@ class RegionSpecializedBase<ArtMethod> : RegionCommon<ArtMethod> {
   }
 
   void DumpFalseDirtyEntries() REQUIRES_SHARED(Locks::mutator_lock_) {
+    os_ << "\n" << "  False-dirty ArtMethods\n";
     os_ << "      field contents:\n";
     for (ArtMethod* method : false_dirty_entries_) {
       // local class
@@ -707,6 +822,84 @@ class RegionSpecializedBase<ArtMethod> : RegionCommon<ArtMethod> {
 
  private:
   std::ostream& os_;
+  MemberInfo member_info_;
+  std::map<const void*, std::string> entry_point_names_;
+  ClassLinker* class_linker_;
+
+  // Compute a map of addresses to names in the boot OAT file(s).
+  void BuildEntryPointNames() {
+    OatFileManager& oat_file_manager = Runtime::Current()->GetOatFileManager();
+    std::vector<const OatFile*> boot_oat_files = oat_file_manager.GetBootOatFiles();
+    for (const OatFile* oat_file : boot_oat_files) {
+      const OatHeader& oat_header = oat_file->GetOatHeader();
+      const void* i2ib = oat_header.GetInterpreterToInterpreterBridge();
+      if (i2ib != nullptr) {
+        entry_point_names_[i2ib] = "InterpreterToInterpreterBridge (from boot oat file)";
+      }
+      const void* i2ccb = oat_header.GetInterpreterToCompiledCodeBridge();
+      if (i2ccb != nullptr) {
+        entry_point_names_[i2ccb] = "InterpreterToCompiledCodeBridge (from boot oat file)";
+      }
+      const void* jdl = oat_header.GetJniDlsymLookup();
+      if (jdl != nullptr) {
+        entry_point_names_[jdl] = "JniDlsymLookup (from boot oat file)";
+      }
+      const void* qgjt = oat_header.GetQuickGenericJniTrampoline();
+      if (qgjt != nullptr) {
+        entry_point_names_[qgjt] = "QuickGenericJniTrampoline (from boot oat file)";
+      }
+      const void* qrt = oat_header.GetQuickResolutionTrampoline();
+      if (qrt != nullptr) {
+        entry_point_names_[qrt] = "QuickResolutionTrampoline (from boot oat file)";
+      }
+      const void* qict = oat_header.GetQuickImtConflictTrampoline();
+      if (qict != nullptr) {
+        entry_point_names_[qict] = "QuickImtConflictTrampoline (from boot oat file)";
+      }
+      const void* q2ib = oat_header.GetQuickToInterpreterBridge();
+      if (q2ib != nullptr) {
+        entry_point_names_[q2ib] = "QuickToInterpreterBridge (from boot oat file)";
+      }
+    }
+  }
+
+  std::string StringFromBytes(const uint8_t* bytes, size_t size) {
+    switch (size) {
+      case 1:
+        return StringPrintf("%" PRIx8, *bytes);
+      case 2:
+        return StringPrintf("%" PRIx16, *reinterpret_cast<const uint16_t*>(bytes));
+      case 4:
+      case 8: {
+        // Compute an address if the bytes might contain one.
+        uint64_t intval;
+        if (size == 4) {
+          intval = *reinterpret_cast<const uint32_t*>(bytes);
+        } else {
+          intval = *reinterpret_cast<const uint64_t*>(bytes);
+        }
+        const void* addr = reinterpret_cast<const void*>(intval);
+        // Match the address against those that have Is* methods in the ClassLinker.
+        if (class_linker_->IsQuickToInterpreterBridge(addr)) {
+          return "QuickToInterpreterBridge";
+        } else if (class_linker_->IsQuickGenericJniStub(addr)) {
+          return "QuickGenericJniStub";
+        } else if (class_linker_->IsQuickResolutionStub(addr)) {
+          return "QuickResolutionStub";
+        } else if (class_linker_->IsJniDlsymLookupStub(addr)) {
+          return "JniDlsymLookupStub";
+        }
+        // Match the address against those that we saved from the boot OAT files.
+        if (entry_point_names_.find(addr) != entry_point_names_.end()) {
+          return entry_point_names_[addr];
+        }
+        return StringPrintf("%" PRIx64, intval);
+      }
+      default:
+        LOG(WARNING) << "Don't know how to convert " << size << " bytes to integer";
+        return "<UNKNOWN>";
+    }
+  }
 
   void DumpOneArtMethod(ArtMethod* art_method,
                         mirror::Class* declaring_class,
@@ -721,7 +914,10 @@ class RegionSpecializedBase<ArtMethod> : RegionCommon<ArtMethod> {
                art_method->GetEntryPointFromQuickCompiledCodePtrSize(pointer_size))
         << ", ";
     os_ << "  isNative? " << (art_method->IsNative() ? "yes" : "no") << ", ";
-    os_ << "  class_status (local): " << declaring_class->GetStatus();
+    // Null for runtime metionds.
+    if (declaring_class != nullptr) {
+      os_ << "  class_status (local): " << declaring_class->GetStatus();
+    }
     if (remote_declaring_class != nullptr) {
       os_ << ",  class_status (remote): " << remote_declaring_class->GetStatus();
     }
@@ -755,16 +951,20 @@ class RegionData : public RegionSpecializedBase<T> {
   // collecting and reporting data regarding dirty, difference, etc.
   void ProcessRegion(const MappingData& mapping_data,
                      RemoteProcesses remotes,
-                     const uint8_t* begin_image_ptr,
-                     const uint8_t* end_image_ptr)
+                     const uint8_t* begin_image_ptr)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    const uint8_t* current = begin_image_ptr + RoundUp(sizeof(ImageHeader), kObjectAlignment);
-    T* entry = reinterpret_cast<T*>(const_cast<uint8_t*>(current));
-    while (reinterpret_cast<uintptr_t>(entry) < reinterpret_cast<uintptr_t>(end_image_ptr)) {
-      ComputeEntryDirty(entry, begin_image_ptr, mapping_data.dirty_page_set);
-
-      entry = RegionSpecializedBase<T>::GetNextEntry(entry);
-    }
+    typename RegionSpecializedBase<T>::VisitorClass visitor(
+        [this](T* entry,
+               const uint8_t* begin_image_ptr,
+               const std::set<size_t>& dirty_page_set) REQUIRES_SHARED(Locks::mutator_lock_) {
+          this->ComputeEntryDirty(entry, begin_image_ptr, dirty_page_set);
+        },
+        begin_image_ptr,
+        mapping_data.dirty_page_set);
+    PointerSize pointer_size = InstructionSetPointerSize(Runtime::Current()->GetInstructionSet());
+    RegionSpecializedBase<T>::VisitEntries(&visitor,
+                                           const_cast<uint8_t*>(begin_image_ptr),
+                                           pointer_size);
 
     // Looking at only dirty pages, figure out how many of those bytes belong to dirty entries.
     // TODO: fix this now that there are multiple regions in a mapping.
@@ -1208,8 +1408,6 @@ class ImgDiagDumper {
        << "\n\n";
 
     const uint8_t* image_begin_unaligned = image_header_.GetImageBegin();
-    const uint8_t* image_mirror_end_unaligned = image_begin_unaligned +
-        image_header_.GetImageSection(ImageHeader::kSectionObjects).Size();
     const uint8_t* image_end_unaligned = image_begin_unaligned + image_header_.GetImageSize();
 
     // Adjust range to nearest page
@@ -1235,14 +1433,6 @@ class ImgDiagDumper {
     if (!ComputeDirtyBytes(image_begin, &mapping_data)) {
       return false;
     }
-
-    RegionData<mirror::Object> object_region_data(os_,
-                                                  &remote_contents_,
-                                                  &zygote_contents_,
-                                                  boot_map_,
-                                                  image_header_,
-                                                  dump_dirty_objects_);
-
     RemoteProcesses remotes;
     if (zygote_pid_only_) {
       remotes = RemoteProcesses::kZygoteOnly;
@@ -1252,11 +1442,27 @@ class ImgDiagDumper {
       remotes = RemoteProcesses::kImageOnly;
     }
 
+    // Check all the mirror::Object entries in the image.
+    RegionData<mirror::Object> object_region_data(os_,
+                                                  &remote_contents_,
+                                                  &zygote_contents_,
+                                                  boot_map_,
+                                                  image_header_,
+                                                  dump_dirty_objects_);
     object_region_data.ProcessRegion(mapping_data,
                                      remotes,
-                                     image_begin_unaligned,
-                                     image_mirror_end_unaligned);
+                                     image_begin_unaligned);
 
+    // Check all the ArtMethod entries in the image.
+    RegionData<ArtMethod> artmethod_region_data(os_,
+                                                &remote_contents_,
+                                                &zygote_contents_,
+                                                boot_map_,
+                                                image_header_,
+                                                dump_dirty_objects_);
+    artmethod_region_data.ProcessRegion(mapping_data,
+                                        remotes,
+                                        image_begin_unaligned);
     return true;
   }
 

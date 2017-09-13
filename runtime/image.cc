@@ -149,6 +149,19 @@ std::ostream& operator<<(std::ostream& os, const ImageSection& section) {
   return os << "size=" << section.Size() << " range=" << section.Offset() << "-" << section.End();
 }
 
+void ImageHeader::VisitObjects(ObjectVisitor* visitor,
+                               uint8_t* base,
+                               PointerSize pointer_size) const {
+  DCHECK_EQ(pointer_size, GetPointerSize());
+  const ImageSection& objects = GetObjectsSection();
+  static const size_t kStartPos = RoundUp(sizeof(ImageHeader), kObjectAlignment);
+  for (size_t pos = kStartPos; pos < objects.Size(); ) {
+    mirror::Object* object = reinterpret_cast<mirror::Object*>(base + objects.Offset() + pos);
+    visitor->Visit(object);
+    pos += RoundUp(object->SizeOf(), kObjectAlignment);
+  }
+}
+
 void ImageHeader::VisitPackedArtFields(ArtFieldVisitor* visitor, uint8_t* base) const {
   const ImageSection& fields = GetFieldsSection();
   for (size_t pos = 0; pos < fields.Size(); ) {

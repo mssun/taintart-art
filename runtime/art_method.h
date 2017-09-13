@@ -684,6 +684,27 @@ class ArtMethod FINAL {
   template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier, typename Visitor>
   ALWAYS_INLINE void UpdateEntrypoints(const Visitor& visitor, PointerSize pointer_size);
 
+  // Visit the individual members of an ArtMethod.  Used by imgdiag.
+  // As imgdiag does not support mixing instruction sets or pointer sizes (e.g., using imgdiag32
+  // to inspect 64-bit images, etc.), we can go beneath the accessors directly to the class members.
+  template <typename VisitorFunc>
+  void VisitMembers(VisitorFunc& visitor) {
+    DCHECK(IsImagePointerSize(kRuntimePointerSize));
+    visitor(this, &declaring_class_, "declaring_class_");
+    visitor(this, &access_flags_, "access_flags_");
+    visitor(this, &dex_code_item_offset_, "dex_code_item_offset_");
+    visitor(this, &dex_method_index_, "dex_method_index_");
+    visitor(this, &method_index_, "method_index_");
+    visitor(this, &hotness_count_, "hotness_count_");
+    visitor(this,
+            &ptr_sized_fields_.dex_cache_resolved_methods_,
+            "ptr_sized_fields_.dex_cache_resolved_methods_");
+    visitor(this, &ptr_sized_fields_.data_, "ptr_sized_fields_.data_");
+    visitor(this,
+            &ptr_sized_fields_.entry_point_from_quick_compiled_code_,
+            "ptr_sized_fields_.entry_point_from_quick_compiled_code_");
+  }
+
  protected:
   // Field order required by test "ValidateFieldOrderOfJavaCppUnionClasses".
   // The class we are a part of.
