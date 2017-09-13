@@ -63,7 +63,8 @@ ExecuteMterpImpl:
     /* Set up for backwards branches & osr profiling */
     lw      a0, OFF_FP_METHOD(rFP)
     addu    a1, rFP, OFF_FP_SHADOWFRAME
-    JAL(MterpSetUpHotnessCountdown)        # (method, shadow_frame)
+    move    a2, rSELF
+    JAL(MterpSetUpHotnessCountdown)        # (method, shadow_frame, self)
     move    rPROFILE, v0                   # Starting hotness countdown to rPROFILE
 
     /* start executing the instruction at rPC */
