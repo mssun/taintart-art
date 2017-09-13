@@ -159,7 +159,9 @@ class AssemblerTest : public testing::Test {
       for (auto reg2 : reg2_registers) {
         for (int64_t imm : imms) {
           ImmType new_imm = CreateImmediate(imm);
-          (assembler_.get()->*f)(*reg1, *reg2, new_imm * multiplier + bias);
+          if (f != nullptr) {
+            (assembler_.get()->*f)(*reg1, *reg2, new_imm * multiplier + bias);
+          }
           std::string base = fmt;
 
           std::string reg1_string = (this->*GetName1)(*reg1);
@@ -213,7 +215,9 @@ class AssemblerTest : public testing::Test {
         for (auto reg3 : reg3_registers) {
           for (int64_t imm : imms) {
             ImmType new_imm = CreateImmediate(imm);
-            (assembler_.get()->*f)(*reg1, *reg2, *reg3, new_imm + bias);
+            if (f != nullptr) {
+              (assembler_.get()->*f)(*reg1, *reg2, *reg3, new_imm + bias);
+            }
             std::string base = fmt;
 
             std::string reg1_string = (this->*GetName1)(*reg1);
@@ -272,7 +276,9 @@ class AssemblerTest : public testing::Test {
       for (auto reg2 : reg2_registers) {
         for (int64_t imm : imms) {
           ImmType new_imm = CreateImmediate(imm);
-          (assembler_.get()->*f)(new_imm, *reg1, *reg2);
+          if (f != nullptr) {
+            (assembler_.get()->*f)(new_imm, *reg1, *reg2);
+          }
           std::string base = fmt;
 
           std::string reg1_string = (this->*GetName1)(*reg1);
@@ -320,7 +326,9 @@ class AssemblerTest : public testing::Test {
     for (auto reg : registers) {
       for (int64_t imm : imms) {
         ImmType new_imm = CreateImmediate(imm);
-        (assembler_.get()->*f)(*reg, new_imm + bias);
+        if (f != nullptr) {
+          (assembler_.get()->*f)(*reg, new_imm + bias);
+        }
         std::string base = fmt;
 
         std::string reg_string = (this->*GetName)(*reg);
@@ -522,7 +530,9 @@ class AssemblerTest : public testing::Test {
 
     for (int64_t imm : imms) {
       Imm new_imm = CreateImmediate(imm);
-      (assembler_.get()->*f)(new_imm);
+      if (f != nullptr) {
+        (assembler_.get()->*f)(new_imm);
+      }
       std::string base = fmt;
 
       size_t imm_index = base.find(IMM_TOKEN);
@@ -835,7 +845,9 @@ class AssemblerTest : public testing::Test {
                                       const std::string& fmt) {
     std::string str;
     for (auto reg : registers) {
-      (assembler_.get()->*f)(*reg);
+      if (f != nullptr) {
+        (assembler_.get()->*f)(*reg);
+      }
       std::string base = fmt;
 
       std::string reg_string = (this->*GetName)(*reg);
@@ -866,7 +878,9 @@ class AssemblerTest : public testing::Test {
     std::string str;
     for (auto reg1 : reg1_registers) {
       for (auto reg2 : reg2_registers) {
-        (assembler_.get()->*f)(*reg1, *reg2);
+        if (f != nullptr) {
+          (assembler_.get()->*f)(*reg1, *reg2);
+        }
         std::string base = fmt;
 
         std::string reg1_string = (this->*GetName1)(*reg1);
@@ -905,7 +919,9 @@ class AssemblerTest : public testing::Test {
     for (auto reg1 : reg1_registers) {
       for (auto reg2 : reg2_registers) {
         if (reg1 == reg2) continue;
-        (assembler_.get()->*f)(*reg1, *reg2);
+        if (f != nullptr) {
+          (assembler_.get()->*f)(*reg1, *reg2);
+        }
         std::string base = fmt;
 
         std::string reg1_string = (this->*GetName1)(*reg1);
@@ -944,7 +960,9 @@ class AssemblerTest : public testing::Test {
     for (auto reg1 : reg1_registers) {
       for (auto reg2 : reg2_registers) {
         for (auto reg3 : reg3_registers) {
-          (assembler_.get()->*f)(*reg1, *reg2, *reg3);
+          if (f != nullptr) {
+            (assembler_.get()->*f)(*reg1, *reg2, *reg3);
+          }
           std::string base = fmt;
 
           std::string reg1_string = (this->*GetName1)(*reg1);
@@ -993,7 +1011,9 @@ class AssemblerTest : public testing::Test {
       for (auto reg2 : reg2_registers) {
         for (int64_t imm : imms) {
           Imm new_imm = CreateImmediate(imm);
-          (assembler_.get()->*f)(*reg1, *reg2, new_imm);
+          if (f != nullptr) {
+            (assembler_.get()->*f)(*reg1, *reg2, new_imm);
+          }
           std::string base = fmt;
 
           std::string reg1_string = (this->*GetName1)(*reg1);
@@ -1094,7 +1114,9 @@ class AssemblerTest : public testing::Test {
     for (auto reg : registers) {
       for (int64_t imm : imms) {
         Imm new_imm = CreateImmediate(imm);
-        (assembler_.get()->*f)(*reg, new_imm);
+        if (f != nullptr) {
+          (assembler_.get()->*f)(*reg, new_imm);
+        }
         std::string base = fmt;
 
         std::string reg_string = GetRegName<kRegView>(*reg);

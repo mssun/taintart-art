@@ -126,6 +126,10 @@ struct X86_64CpuRegisterCompare {
     }
 };
 
+//
+// Test fixture.
+//
+
 class AssemblerX86_64Test : public AssemblerTest<x86_64::X86_64Assembler, x86_64::CpuRegister,
                                                  x86_64::XmmRegister, x86_64::Immediate> {
  public:
@@ -273,11 +277,129 @@ class AssemblerX86_64Test : public AssemblerTest<x86_64::X86_64Assembler, x86_64
   std::vector<x86_64::XmmRegister*> fp_registers_;
 };
 
+//
+// Test repeat drivers used in the tests.
+//
+
+TEST_F(AssemblerX86_64Test, RepeatI4) {
+  EXPECT_EQ("%0\n%-1\n%18\n%4660\n%-4660\n%305419896\n%-305419896\n",
+            RepeatI(/*f*/ nullptr, /*imm_bytes*/ 4U, "%{imm}"));
+}
+
+TEST_F(AssemblerX86_64Test, RepeatI8) {
+  EXPECT_EQ("%0\n%-1\n%18\n%4660\n%-4660\n%305419896\n%-305419896\n"
+            "%20015998343868\n%-20015998343868\n%1311768467463790320\n"
+            "%-1311768467463790320\n",
+            RepeatI(/*f*/ nullptr, /*imm_bytes*/ 8U, "%{imm}"));
+}
+
+TEST_F(AssemblerX86_64Test, Repeatr) {
+  EXPECT_EQ("%eax\n%ebx\n%ecx\n%edx\n%ebp\n%esp\n%esi\n%edi\n"
+            "%r8d\n%r9d\n%r10d\n%r11d\n%r12d\n%r13d\n%r14d\n%r15d\n",
+            Repeatr(/*f*/ nullptr, "%{reg}"));
+}
+
+TEST_F(AssemblerX86_64Test, Repeatri) {
+  EXPECT_NE(Repeatri(/*f*/ nullptr, /*imm_bytes*/ 1U, "%{reg} %{imm}").
+            find("%eax %0\n%eax %-1\n%eax %18\n%ebx %0\n%ebx %-1\n%ebx %18\n"
+                 "%ecx %0\n%ecx %-1\n%ecx %18\n%edx %0\n%edx %-1\n%edx %18\n"),
+            std::string::npos);
+}
+
+TEST_F(AssemblerX86_64Test, Repeatrr) {
+  EXPECT_NE(Repeatrr(/*f*/ nullptr, "%{reg1} %{reg2}")
+            .find("%eax %eax\n%eax %ebx\n%eax %ecx\n%eax %edx\n"
+                  "%eax %ebp\n%eax %esp\n%eax %esi\n%eax %edi\n"),
+            std::string::npos);
+}
+
+TEST_F(AssemblerX86_64Test, Repeatrb) {
+  EXPECT_NE(Repeatrb(/*f*/ nullptr, "%{reg1} %{reg2}").
+            find("%eax %al\n%eax %bl\n%eax %cl\n%eax %dl\n%eax %bpl\n"
+                 "%eax %spl\n%eax %sil\n%eax %dil\n%eax %r8b\n%eax %r9b\n"),
+            std::string::npos);
+}
+
+TEST_F(AssemblerX86_64Test, RepeatrF) {
+  EXPECT_NE(RepeatrF(/*f*/ nullptr, "%{reg1} %{reg2}")
+            .find("%eax %xmm0\n%eax %xmm1\n%eax %xmm2\n%eax %xmm3\n"
+                  "%eax %xmm4\n%eax %xmm5\n%eax %xmm6\n%eax %xmm7\n"
+                  "%eax %xmm8\n%eax %xmm9\n%eax %xmm10\n%eax %xmm11\n"
+                  "%eax %xmm12\n%eax %xmm13\n%eax %xmm14\n%eax %xmm15\n"
+                  "%ebx %xmm0\n%ebx %xmm1\n%ebx %xmm2\n%ebx %xmm3\n%ebx %xmm4\n"),
+            std::string::npos);
+}
+
+TEST_F(AssemblerX86_64Test, RepeatR) {
+  EXPECT_EQ("%rax\n%rbx\n%rcx\n%rdx\n%rbp\n%rsp\n%rsi\n%rdi\n"
+            "%r8\n%r9\n%r10\n%r11\n%r12\n%r13\n%r14\n%r15\n",
+            RepeatR(/*f*/ nullptr, "%{reg}"));
+}
+
+TEST_F(AssemblerX86_64Test, RepeatRI) {
+  EXPECT_EQ("%rax %0\n%rax %-1\n%rax %18\n%rbx %0\n%rbx %-1\n%rbx %18\n"
+            "%rcx %0\n%rcx %-1\n%rcx %18\n%rdx %0\n%rdx %-1\n%rdx %18\n"
+            "%rbp %0\n%rbp %-1\n%rbp %18\n%rsp %0\n%rsp %-1\n%rsp %18\n"
+            "%rsi %0\n%rsi %-1\n%rsi %18\n%rdi %0\n%rdi %-1\n%rdi %18\n"
+            "%r8 %0\n%r8 %-1\n%r8 %18\n%r9 %0\n%r9 %-1\n%r9 %18\n"
+            "%r10 %0\n%r10 %-1\n%r10 %18\n%r11 %0\n%r11 %-1\n%r11 %18\n"
+            "%r12 %0\n%r12 %-1\n%r12 %18\n%r13 %0\n%r13 %-1\n%r13 %18\n"
+            "%r14 %0\n%r14 %-1\n%r14 %18\n%r15 %0\n%r15 %-1\n%r15 %18\n",
+            RepeatRI(/*f*/ nullptr, /*imm_bytes*/ 1U, "%{reg} %{imm}"));
+}
+
+TEST_F(AssemblerX86_64Test, RepeatRr) {
+  EXPECT_NE(RepeatRr(/*f*/ nullptr, "%{reg1} %{reg2}")
+            .find("%rax %eax\n%rax %ebx\n%rax %ecx\n%rax %edx\n%rax %ebp\n"
+                  "%rax %esp\n%rax %esi\n%rax %edi\n%rax %r8d\n%rax %r9d\n"
+                  "%rax %r10d\n%rax %r11d\n%rax %r12d\n%rax %r13d\n%rax %r14d\n"
+                  "%rax %r15d\n%rbx %eax\n%rbx %ebx\n%rbx %ecx\n%rbx %edx\n"),
+            std::string::npos);
+}
+
+TEST_F(AssemblerX86_64Test, RepeatRR) {
+  EXPECT_NE(RepeatRR(/*f*/ nullptr, "%{reg1} %{reg2}")
+            .find("%rax %rax\n%rax %rbx\n%rax %rcx\n%rax %rdx\n%rax %rbp\n"
+                  "%rax %rsp\n%rax %rsi\n%rax %rdi\n%rax %r8\n%rax %r9\n"
+                  "%rax %r10\n%rax %r11\n%rax %r12\n%rax %r13\n%rax %r14\n"
+                  "%rax %r15\n%rbx %rax\n%rbx %rbx\n%rbx %rcx\n%rbx %rdx\n"),
+            std::string::npos);
+}
+
+TEST_F(AssemblerX86_64Test, RepeatRF) {
+  EXPECT_NE(RepeatRF(/*f*/ nullptr, "%{reg1} %{reg2}")
+            .find("%rax %xmm0\n%rax %xmm1\n%rax %xmm2\n%rax %xmm3\n%rax %xmm4\n"
+                  "%rax %xmm5\n%rax %xmm6\n%rax %xmm7\n%rax %xmm8\n%rax %xmm9\n"
+                  "%rax %xmm10\n%rax %xmm11\n%rax %xmm12\n%rax %xmm13\n%rax %xmm14\n"
+                  "%rax %xmm15\n%rbx %xmm0\n%rbx %xmm1\n%rbx %xmm2\n%rbx %xmm3\n"),
+            std::string::npos);
+}
+
+TEST_F(AssemblerX86_64Test, RepeatFF) {
+  EXPECT_NE(RepeatFF(/*f*/ nullptr, "%{reg1} %{reg2}")
+            .find("%xmm0 %xmm0\n%xmm0 %xmm1\n%xmm0 %xmm2\n%xmm0 %xmm3\n%xmm0 %xmm4\n"
+                  "%xmm0 %xmm5\n%xmm0 %xmm6\n%xmm0 %xmm7\n%xmm0 %xmm8\n%xmm0 %xmm9\n"
+                  "%xmm0 %xmm10\n%xmm0 %xmm11\n%xmm0 %xmm12\n%xmm0 %xmm13\n%xmm0 %xmm14\n"
+                  "%xmm0 %xmm15\n%xmm1 %xmm0\n%xmm1 %xmm1\n%xmm1 %xmm2\n%xmm1 %xmm3\n"),
+            std::string::npos);
+}
+
+TEST_F(AssemblerX86_64Test, RepeatFFI) {
+  EXPECT_NE(RepeatFFI(/*f*/ nullptr, /*imm_bytes*/ 1U, "%{reg1} %{reg2} %{imm}")
+            .find("%xmm0 %xmm0 %0\n%xmm0 %xmm0 %-1\n%xmm0 %xmm0 %18\n"
+                  "%xmm0 %xmm1 %0\n%xmm0 %xmm1 %-1\n%xmm0 %xmm1 %18\n"
+                  "%xmm0 %xmm2 %0\n%xmm0 %xmm2 %-1\n%xmm0 %xmm2 %18\n"
+                  "%xmm0 %xmm3 %0\n%xmm0 %xmm3 %-1\n%xmm0 %xmm3 %18\n"),
+            std::string::npos);
+}
+
+//
+// Actual x86-64 instruction assembler tests.
+//
 
 TEST_F(AssemblerX86_64Test, Toolchain) {
   EXPECT_TRUE(CheckTools());
 }
-
 
 TEST_F(AssemblerX86_64Test, PushqRegs) {
   DriverStr(RepeatR(&x86_64::X86_64Assembler::pushq, "pushq %{reg}"), "pushq");
@@ -978,10 +1100,6 @@ TEST_F(AssemblerX86_64Test, Movsxd) {
   DriverStr(RepeatRr(&x86_64::X86_64Assembler::movsxd, "movsxd %{reg2}, %{reg1}"), "movsxd");
 }
 
-///////////////////
-// FP Operations //
-///////////////////
-
 TEST_F(AssemblerX86_64Test, Movaps) {
   DriverStr(RepeatFF(&x86_64::X86_64Assembler::movaps, "movaps %{reg2}, %{reg1}"), "movaps");
 }
@@ -1176,16 +1294,13 @@ TEST_F(AssemblerX86_64Test, Cvtsi2sd) {
   DriverStr(RepeatFr(&x86_64::X86_64Assembler::cvtsi2sd, "cvtsi2sd %{reg2}, %{reg1}"), "cvtsi2sd");
 }
 
-
 TEST_F(AssemblerX86_64Test, Cvtss2si) {
   DriverStr(RepeatrF(&x86_64::X86_64Assembler::cvtss2si, "cvtss2si %{reg2}, %{reg1}"), "cvtss2si");
 }
 
-
 TEST_F(AssemblerX86_64Test, Cvtss2sd) {
   DriverStr(RepeatFF(&x86_64::X86_64Assembler::cvtss2sd, "cvtss2sd %{reg2}, %{reg1}"), "cvtss2sd");
 }
-
 
 TEST_F(AssemblerX86_64Test, Cvtsd2si) {
   DriverStr(RepeatrF(&x86_64::X86_64Assembler::cvtsd2si, "cvtsd2si %{reg2}, %{reg1}"), "cvtsd2si");
@@ -1586,8 +1701,6 @@ TEST_F(AssemblerX86_64Test, UcomisdAddress) {
   DriverStr(expected, "ucomisd_address");
 }
 
-// X87
-
 std::string x87_fn(AssemblerX86_64Test::Base* assembler_test ATTRIBUTE_UNUSED,
                    x86_64::X86_64Assembler* assembler) {
   std::ostringstream str;
@@ -1629,10 +1742,6 @@ TEST_F(AssemblerX86_64Test, FPUIntegerStore) {
   DriverStr(expected, "FPUIntegerStore");
 }
 
-////////////////
-// CALL / JMP //
-////////////////
-
 TEST_F(AssemblerX86_64Test, Call) {
   DriverStr(RepeatR(&x86_64::X86_64Assembler::call, "call *%{reg}"), "call");
 }
@@ -1667,10 +1776,6 @@ std::string ret_and_leave_fn(AssemblerX86_64Test::Base* assembler_test ATTRIBUTE
 TEST_F(AssemblerX86_64Test, RetAndLeave) {
   DriverFn(&ret_and_leave_fn, "retleave");
 }
-
-//////////
-// MISC //
-//////////
 
 TEST_F(AssemblerX86_64Test, Bswapl) {
   DriverStr(Repeatr(&x86_64::X86_64Assembler::bswapl, "bswap %{reg}"), "bswapl");
@@ -1823,11 +1928,6 @@ TEST_F(AssemblerX86_64Test, CmovqAddress) {
 
   DriverStr(expected, "cmovq_address");
 }
-
-
-/////////////////
-// Near labels //
-/////////////////
 
 TEST_F(AssemblerX86_64Test, Jrcxz) {
   x86_64::NearLabel target;
