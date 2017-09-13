@@ -144,9 +144,8 @@ JitOptions* JitOptions::CreateFromRuntimeArguments(const RuntimeArgumentMap& opt
   return jit_options;
 }
 
-bool Jit::ShouldUsePriorityThreadWeight() {
-  return Runtime::Current()->InJankPerceptibleProcessState()
-      && Thread::Current()->IsJitSensitiveThread();
+bool Jit::ShouldUsePriorityThreadWeight(Thread* self) {
+  return self->IsJitSensitiveThread() && Runtime::Current()->InJankPerceptibleProcessState();
 }
 
 void Jit::DumpInfo(std::ostream& os) {
@@ -653,7 +652,7 @@ void Jit::AddSamples(Thread* self, ArtMethod* method, uint16_t count, bool with_
   DCHECK_LE(priority_thread_weight_, hot_method_threshold_);
 
   int32_t starting_count = method->GetCounter();
-  if (Jit::ShouldUsePriorityThreadWeight()) {
+  if (Jit::ShouldUsePriorityThreadWeight(self)) {
     count *= priority_thread_weight_;
   }
   int32_t new_count = starting_count + count;   // int32 here to avoid wrap-around;
