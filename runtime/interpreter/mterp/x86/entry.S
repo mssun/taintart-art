@@ -69,6 +69,8 @@ SYMBOL(ExecuteMterpImpl):
     movl    %eax, OUT_ARG0(%esp)
     leal    OFF_FP_SHADOWFRAME(rFP), %ecx
     movl    %ecx, OUT_ARG1(%esp)
+    movl    rSELF, %eax
+    movl    %eax, OUT_ARG2(%esp)
     call    SYMBOL(MterpSetUpHotnessCountdown)
 
     /* Starting ibase */

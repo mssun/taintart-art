@@ -888,7 +888,9 @@ extern "C" mirror::Object* artIGetObjectFromMterp(mirror::Object* obj,
  * to the full instrumentation via MterpAddHotnessBatch.  Called once on entry to the method,
  * and regenerated following batch updates.
  */
-extern "C" ssize_t MterpSetUpHotnessCountdown(ArtMethod* method, ShadowFrame* shadow_frame)
+extern "C" ssize_t MterpSetUpHotnessCountdown(ArtMethod* method,
+                                              ShadowFrame* shadow_frame,
+                                              Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   uint16_t hotness_count = method->GetCounter();
   int32_t countdown_value = jit::kJitHotnessDisabled;
@@ -906,7 +908,7 @@ extern "C" ssize_t MterpSetUpHotnessCountdown(ArtMethod* method, ShadowFrame* sh
     } else {
       countdown_value = jit::kJitCheckForOSR;
     }
-    if (jit::Jit::ShouldUsePriorityThreadWeight()) {
+    if (jit::Jit::ShouldUsePriorityThreadWeight(self)) {
       int32_t priority_thread_weight = jit->PriorityThreadWeight();
       countdown_value = std::min(countdown_value, countdown_value / priority_thread_weight);
     }
@@ -935,7 +937,7 @@ extern "C" ssize_t MterpAddHotnessBatch(ArtMethod* method,
     int16_t count = shadow_frame->GetCachedHotnessCountdown() - shadow_frame->GetHotnessCountdown();
     jit->AddSamples(self, method, count, /*with_backedges*/ true);
   }
-  return MterpSetUpHotnessCountdown(method, shadow_frame);
+  return MterpSetUpHotnessCountdown(method, shadow_frame, self);
 }
 
 extern "C" size_t MterpMaybeDoOnStackReplacement(Thread* self,

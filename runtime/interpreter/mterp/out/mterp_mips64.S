@@ -383,6 +383,7 @@ ExecuteMterpImpl:
     /* Set up for backwards branches & osr profiling */
     ld      a0, OFF_FP_METHOD(rFP)
     daddu   a1, rFP, OFF_FP_SHADOWFRAME
+    move    a2, rSELF
     jal     MterpSetUpHotnessCountdown
     move    rPROFILE, v0                # Starting hotness countdown to rPROFILE
 
@@ -3762,7 +3763,6 @@ artMterpAsmInstructionStart = .L_op_nop
     GET_INST_OPCODE v0                  # extract opcode from rINST
     SET_VREG_DOUBLE f0, a1
     GOTO_OPCODE v0                      # jump to next instruction
-
 
 
 /* ------------------------------ */

@@ -67,6 +67,7 @@ ENTRY ExecuteMterpImpl
     /* Set up for backwards branches & osr profiling */
     ldr     r0, [rFP, #OFF_FP_METHOD]
     add     r1, rFP, #OFF_FP_SHADOWFRAME
+    mov     r2, rSELF
     bl      MterpSetUpHotnessCountdown
     mov     rPROFILE, r0                @ Starting hotness countdown to rPROFILE
 
