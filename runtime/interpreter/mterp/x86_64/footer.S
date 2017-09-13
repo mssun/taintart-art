@@ -152,7 +152,7 @@ MterpCommonTakenBranch:
 .L_resume_backward_branch:
     movq    rSELF, %rax
     testl   $$(THREAD_SUSPEND_OR_CHECKPOINT_REQUEST), THREAD_FLAGS_OFFSET(%rax)
-    REFRESH_IBASE
+    REFRESH_IBASE_REG %rax
     leaq    (rPC, rINSTq, 2), rPC
     FETCH_INST
     jnz     .L_suspend_request_pending
