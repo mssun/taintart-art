@@ -17,7 +17,6 @@
 package com.android.ahat.heapdump;
 
 import com.android.tools.perflib.heap.ClassObj;
-import com.android.tools.perflib.heap.Field;
 import com.android.tools.perflib.heap.Instance;
 import java.util.AbstractList;
 import java.util.Arrays;
@@ -30,6 +29,7 @@ public class AhatClassObj extends AhatInstance {
   private AhatClassObj mSuperClassObj;
   private AhatInstance mClassLoader;
   private FieldValue[] mStaticFieldValues;
+  private Field[] mInstanceFields;
 
   public AhatClassObj(long id) {
     super(id);
@@ -51,14 +51,21 @@ public class AhatClassObj extends AhatInstance {
       mClassLoader = snapshot.findInstance(loader.getId());
     }
 
-    Collection<Map.Entry<Field, Object>> fieldValues = classObj.getStaticFieldValues().entrySet();
+    Collection<Map.Entry<com.android.tools.perflib.heap.Field, Object>> fieldValues
+      = classObj.getStaticFieldValues().entrySet();
     mStaticFieldValues = new FieldValue[fieldValues.size()];
     int index = 0;
-    for (Map.Entry<Field, Object> field : fieldValues) {
+    for (Map.Entry<com.android.tools.perflib.heap.Field, Object> field : fieldValues) {
       String name = field.getKey().getName();
       String type = field.getKey().getType().toString();
       Value value = snapshot.getValue(field.getValue());
       mStaticFieldValues[index++] = new FieldValue(name, type, value);
+    }
+
+    com.android.tools.perflib.heap.Field[] fields = classObj.getFields();
+    mInstanceFields = new Field[fields.length];
+    for (int i = 0; i < fields.length; i++) {
+      mInstanceFields[i] = new Field(fields[i].getName(), fields[i].getType().toString());
     }
   }
 
@@ -90,8 +97,15 @@ public class AhatClassObj extends AhatInstance {
     return Arrays.asList(mStaticFieldValues);
   }
 
+  /**
+   * Returns the fields of instances of this class.
+   */
+  public Field[] getInstanceFields() {
+    return mInstanceFields;
+  }
+
   @Override
-  ReferenceIterator getReferences() {
+  Iterable<Reference> getReferences() {
     List<Reference> refs = new AbstractList<Reference>() {
       @Override
       public int size() {
@@ -108,7 +122,7 @@ public class AhatClassObj extends AhatInstance {
         return null;
       }
     };
-    return new ReferenceIterator(refs);
+    return new SkipNullsIterator(refs);
   }
 
   @Override public boolean isClassObj() {

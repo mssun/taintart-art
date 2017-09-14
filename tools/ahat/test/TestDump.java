@@ -21,11 +21,14 @@ import com.android.ahat.heapdump.AhatInstance;
 import com.android.ahat.heapdump.AhatSnapshot;
 import com.android.ahat.heapdump.Diff;
 import com.android.ahat.heapdump.FieldValue;
+import com.android.ahat.heapdump.Site;
 import com.android.ahat.heapdump.Value;
 import com.android.tools.perflib.heap.ProguardMap;
 import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Collection;
 
 /**
  * The TestDump class is used to get an AhatSnapshot for the test-dump
@@ -45,8 +48,10 @@ public class TestDump {
   // fails and don't try to load it again.
   private static boolean mTestDumpFailed = false;
 
-  private AhatSnapshot mSnapshot = null;
-  private AhatSnapshot mBaseline = null;
+  private AhatSnapshot mSnapshot;
+  private AhatSnapshot mBaseline;
+  private AhatClassObj mMain;
+  private AhatClassObj mBaselineMain;
 
   /**
    * Load the test-dump.hprof and test-dump-base.hprof files.
@@ -79,6 +84,12 @@ public class TestDump {
     mSnapshot = AhatSnapshot.fromHprof(new File(hprof), map);
     mBaseline = AhatSnapshot.fromHprof(new File(hprofBase), map);
     Diff.snapshots(mSnapshot, mBaseline);
+
+    mMain = findClass(mSnapshot, "Main");
+    assert(mMain != null);
+
+    mBaselineMain = findClass(mBaseline, "Main");
+    assert(mBaselineMain != null);
   }
 
   /**
@@ -100,7 +111,7 @@ public class TestDump {
    * snapshot for the test-dump program.
    */
   public Value getDumpedValue(String name) {
-    return getDumpedValue(name, mSnapshot);
+    return getDumpedValue(name, mMain);
   }
 
   /**
@@ -108,15 +119,14 @@ public class TestDump {
    * baseline snapshot for the test-dump program.
    */
   public Value getBaselineDumpedValue(String name) {
-    return getDumpedValue(name, mBaseline);
+    return getDumpedValue(name, mBaselineMain);
   }
 
   /**
-   * Returns the value of a field in the DumpedStuff instance in the
-   * given snapshot for the test-dump program.
+   * Returns the value of a field in the DumpedStuff instance given the Main
+   * class object for the snapshot.
    */
-  private Value getDumpedValue(String name, AhatSnapshot snapshot) {
-    AhatClassObj main = snapshot.findClass("Main");
+  private static Value getDumpedValue(String name, AhatClassObj main) {
     AhatInstance stuff = null;
     for (FieldValue field : main.getStaticFieldValues()) {
       if ("stuff".equals(field.name)) {
@@ -124,6 +134,33 @@ public class TestDump {
       }
     }
     return stuff.getField(name);
+  }
+
+  /**
+   * Returns a class object in the given heap dump whose name matches the
+   * given name, or null if no such class object could be found.
+   */
+  private static AhatClassObj findClass(AhatSnapshot snapshot, String name) {
+    Site root = snapshot.getRootSite();
+    Collection<AhatInstance> classes = new ArrayList<AhatInstance>();
+    root.getObjects(null, "java.lang.Class", classes);
+    for (AhatInstance inst : classes) {
+      if (inst.isClassObj()) {
+        AhatClassObj cls = inst.asClassObj();
+        if (name.equals(cls.getName())) {
+          return cls;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Returns a class object in the heap dump whose name matches the given
+   * name, or null if no such class object could be found.
+   */
+  public AhatClassObj findClass(String name) {
+    return findClass(mSnapshot, name);
   }
 
   /**
