@@ -333,7 +333,7 @@ public class Diff {
     // Add placeholders to their corresponding sites.
     // This requires the sites have already been diffed.
     for (AhatInstance placeholder : placeholders) {
-      placeholder.getBaseline().getSite().getBaseline().addPlaceHolderInstance(placeholder);
+      placeholder.getBaseline().getSite().getBaseline().addInstance(placeholder);
     }
   }
 }

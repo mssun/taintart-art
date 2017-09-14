@@ -17,7 +17,6 @@
 package com.android.ahat.heapdump;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -29,14 +28,19 @@ import java.util.List;
 public class DiffFields {
   /**
    * Return the result of diffing two collections of field values.
-   * The input collections 'current' and 'baseline' are not modified by this function.
    */
-  public static List<DiffedFieldValue> diff(Collection<FieldValue> current,
-                                            Collection<FieldValue> baseline) {
-    List<FieldValue> currentSorted = new ArrayList<FieldValue>(current);
+  public static List<DiffedFieldValue> diff(Iterable<FieldValue> current,
+                                            Iterable<FieldValue> baseline) {
+    List<FieldValue> currentSorted = new ArrayList<FieldValue>();
+    for (FieldValue field : current) {
+      currentSorted.add(field);
+    }
     Collections.sort(currentSorted, FOR_DIFF);
 
-    List<FieldValue> baselineSorted = new ArrayList<FieldValue>(baseline);
+    List<FieldValue> baselineSorted = new ArrayList<FieldValue>();
+    for (FieldValue field : baseline) {
+      baselineSorted.add(field);
+    }
     Collections.sort(baselineSorted, FOR_DIFF);
 
     // Merge the two lists to form the diffed list of fields.

@@ -30,26 +30,26 @@ import static org.junit.Assert.assertNull;
 public class DiffFieldsTest {
   @Test
   public void normalMatchedDiffedFieldValues() {
-    FieldValue normal1 = new FieldValue("name", "type", new Value(1));
-    FieldValue normal2 = new FieldValue("name", "type", new Value(2));
+    FieldValue normal1 = new FieldValue("name", "type", Value.pack(1));
+    FieldValue normal2 = new FieldValue("name", "type", Value.pack(2));
 
     DiffedFieldValue x = DiffedFieldValue.matched(normal1, normal2);
     assertEquals("name", x.name);
     assertEquals("type", x.type);
-    assertEquals(new Value(1), x.current);
-    assertEquals(new Value(2), x.baseline);
+    assertEquals(Value.pack(1), x.current);
+    assertEquals(Value.pack(2), x.baseline);
     assertEquals(DiffedFieldValue.Status.MATCHED, x.status);
   }
 
   @Test
   public void nulledMatchedDiffedFieldValues() {
-    FieldValue normal = new FieldValue("name", "type", new Value(1));
+    FieldValue normal = new FieldValue("name", "type", Value.pack(1));
     FieldValue nulled = new FieldValue("name", "type", null);
 
     DiffedFieldValue x = DiffedFieldValue.matched(normal, nulled);
     assertEquals("name", x.name);
     assertEquals("type", x.type);
-    assertEquals(new Value(1), x.current);
+    assertEquals(Value.pack(1), x.current);
     assertNull(x.baseline);
     assertEquals(DiffedFieldValue.Status.MATCHED, x.status);
 
@@ -57,18 +57,18 @@ public class DiffFieldsTest {
     assertEquals("name", y.name);
     assertEquals("type", y.type);
     assertNull(y.current);
-    assertEquals(new Value(1), y.baseline);
+    assertEquals(Value.pack(1), y.baseline);
     assertEquals(DiffedFieldValue.Status.MATCHED, y.status);
   }
 
   @Test
   public void normalAddedDiffedFieldValues() {
-    FieldValue normal = new FieldValue("name", "type", new Value(1));
+    FieldValue normal = new FieldValue("name", "type", Value.pack(1));
 
     DiffedFieldValue x = DiffedFieldValue.added(normal);
     assertEquals("name", x.name);
     assertEquals("type", x.type);
-    assertEquals(new Value(1), x.current);
+    assertEquals(Value.pack(1), x.current);
     assertEquals(DiffedFieldValue.Status.ADDED, x.status);
   }
 
@@ -85,12 +85,12 @@ public class DiffFieldsTest {
 
   @Test
   public void normalDeletedDiffedFieldValues() {
-    FieldValue normal = new FieldValue("name", "type", new Value(1));
+    FieldValue normal = new FieldValue("name", "type", Value.pack(1));
 
     DiffedFieldValue x = DiffedFieldValue.deleted(normal);
     assertEquals("name", x.name);
     assertEquals("type", x.type);
-    assertEquals(new Value(1), x.baseline);
+    assertEquals(Value.pack(1), x.baseline);
     assertEquals(DiffedFieldValue.Status.DELETED, x.status);
   }
 
