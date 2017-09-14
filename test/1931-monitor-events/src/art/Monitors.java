@@ -80,6 +80,7 @@ public class Monitors {
   }
 
   public static native MonitorUsage getObjectMonitorUsage(Object monitor);
+  public static native Object getCurrentContendedMonitor(Thread thr);
 
   public static class TestException extends Error {
     public TestException() { super(); }
@@ -130,6 +131,22 @@ public class Monitors {
       while (!action.compareAndSet(Action.HOLD, a, stamp, stamp + 1)) {
         stamp = action.getStamp();
       }
+    }
+
+    public synchronized void suspendWorker() throws Exception {
+      checkException();
+      if (runner == null) {
+        throw new TestException("We don't have any runner holding  " + lock);
+      }
+      Suspension.suspend(runner);
+    }
+
+    public Object getWorkerContendedMonitor() throws Exception {
+      checkException();
+      if (runner == null) {
+        return null;
+      }
+      return getCurrentContendedMonitor(runner);
     }
 
     public synchronized void DoLock() {

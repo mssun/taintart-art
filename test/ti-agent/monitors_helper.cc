@@ -27,6 +27,13 @@
 namespace art {
 namespace common_monitors {
 
+extern "C" JNIEXPORT jobject JNICALL Java_art_Monitors_getCurrentContendedMonitor(
+    JNIEnv* env, jclass, jthread thr) {
+  jobject out = nullptr;
+  JvmtiErrorToException(env, jvmti_env, jvmti_env->GetCurrentContendedMonitor(thr, &out));
+  return out;
+}
+
 extern "C" JNIEXPORT jobject JNICALL Java_art_Monitors_getObjectMonitorUsage(
     JNIEnv* env, jclass, jobject obj) {
   ScopedLocalRef<jclass> klass(env, env->FindClass("art/Monitors$MonitorUsage"));
