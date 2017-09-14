@@ -4427,10 +4427,6 @@ void ClassLinker::CreateProxyConstructor(Handle<mirror::Class> klass, ArtMethod*
   DCHECK(proxy_constructor != nullptr)
       << "Could not find <init> method in java.lang.reflect.Proxy";
 
-  // Ensure constructor is in dex cache so that we can use the dex cache to look up the overridden
-  // constructor method.
-  GetClassRoot(kJavaLangReflectProxy)->GetDexCache()->SetResolvedMethod(
-      proxy_constructor->GetDexMethodIndex(), proxy_constructor, image_pointer_size_);
   // Clone the existing constructor of Proxy (our constructor would just invoke it so steal its
   // code_ too)
   DCHECK(out != nullptr);
@@ -4457,15 +4453,6 @@ void ClassLinker::CheckProxyConstructor(ArtMethod* constructor) const {
 
 void ClassLinker::CreateProxyMethod(Handle<mirror::Class> klass, ArtMethod* prototype,
                                     ArtMethod* out) {
-  // Ensure prototype is in dex cache so that we can use the dex cache to look up the overridden
-  // prototype method
-  auto* dex_cache = prototype->GetDeclaringClass()->GetDexCache();
-  // Avoid dirtying the dex cache unless we need to.
-  if (dex_cache->GetResolvedMethod(prototype->GetDexMethodIndex(), image_pointer_size_) !=
-      prototype) {
-    dex_cache->SetResolvedMethod(
-        prototype->GetDexMethodIndex(), prototype, image_pointer_size_);
-  }
   // We steal everything from the prototype (such as DexCache, invoke stub, etc.) then specialize
   // as necessary
   DCHECK(out != nullptr);

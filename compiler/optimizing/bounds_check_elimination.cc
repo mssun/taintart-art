@@ -596,6 +596,7 @@ class BCEVisitor : public HGraphVisitor {
 
   // Helper method to assign a new range to an instruction in given basic block.
   void AssignRange(HBasicBlock* basic_block, HInstruction* instruction, ValueRange* range) {
+    DCHECK(!range->IsMonotonicValueRange() || instruction->IsLoopHeaderPhi());
     GetValueRangeMap(basic_block)->Overwrite(instruction->GetId(), range);
   }
 
