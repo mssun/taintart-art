@@ -237,7 +237,7 @@ public class InstanceTest {
   public void gcRootPath() throws IOException {
     TestDump dump = TestDump.getTestDump();
 
-    AhatClassObj main = dump.getAhatSnapshot().findClass("Main");
+    AhatClassObj main = dump.findClass("Main");
     AhatInstance gcPathArray = dump.getDumpedAhatInstance("gcPathArray");
     Value value = gcPathArray.asArrayInstance().getValue(2);
     AhatInstance base = value.asAhatInstance();
@@ -333,7 +333,7 @@ public class InstanceTest {
   @Test
   public void classObjNotABitmap() throws IOException {
     TestDump dump = TestDump.getTestDump();
-    AhatInstance obj = dump.getAhatSnapshot().findClass("Main");
+    AhatInstance obj = dump.findClass("Main");
     assertNull(obj.asBitmap());
   }
 
@@ -348,7 +348,7 @@ public class InstanceTest {
   @Test
   public void classObjToString() throws IOException {
     TestDump dump = TestDump.getTestDump();
-    AhatInstance obj = dump.getAhatSnapshot().findClass("Main");
+    AhatInstance obj = dump.findClass("Main");
     assertEquals("class Main", obj.toString());
   }
 

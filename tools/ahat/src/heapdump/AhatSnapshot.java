@@ -35,7 +35,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -47,9 +46,6 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
 
   // List of all ahat instances stored in increasing order by id.
   private final List<AhatInstance> mInstances = new ArrayList<AhatInstance>();
-
-  // Map from class name to class object.
-  private final Map<String, AhatClassObj> mClasses = new HashMap<String, AhatClassObj>();
 
   private final List<AhatHeap> mHeaps = new ArrayList<AhatHeap>();
 
@@ -113,7 +109,6 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
           } else if (inst instanceof ClassObj) {
             AhatClassObj classObj = new AhatClassObj(id);
             mInstances.add(classObj);
-            mClasses.put(((ClassObj)inst).getClassName(), classObj);
           }
           return true;
         }
@@ -145,8 +140,7 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
       if (stack != null) {
         frames = stack.getFrames();
       }
-      Site site = mRootSite.add(frames, frames == null ? 0 : frames.length, ahat);
-      ahat.initialize(this, inst, site);
+      ahat.initialize(this, inst, mRootSite.getSite(frames));
 
       Long registeredNativeSize = registeredNative.get(inst);
       if (registeredNativeSize != null) {
@@ -177,7 +171,7 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
       heap.addToSize(superRoot.getRetainedSize(heap));
     }
 
-    mRootSite.computeObjectsInfos(mHeaps.size());
+    mRootSite.prepareForUse(0, mHeaps.size());
   }
 
   /**
@@ -210,15 +204,6 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
   public AhatClassObj findClassObj(long id) {
     AhatInstance inst = findInstance(id);
     return inst == null ? null : inst.asClassObj();
-  }
-
-  /**
-   * Returns the class object for the class with given name.
-   * Returns null if there is no class object for the given name.
-   * Note: This method is exposed for testing purposes.
-   */
-  public AhatClassObj findClass(String name) {
-    return mClasses.get(name);
   }
 
   /**
@@ -260,19 +245,11 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
     return mRootSite;
   }
 
-  // Get the site associated with the given id and depth.
+  // Get the site associated with the given id.
   // Returns the root site if no such site found.
-  public Site getSite(int id, int depth) {
-    AhatInstance obj = findInstance(id);
-    if (obj == null) {
-      return mRootSite;
-    }
-
-    Site site = obj.getSite();
-    for (int i = 0; i < depth && site.getParent() != null; i++) {
-      site = site.getParent();
-    }
-    return site;
+  public Site getSite(long id) {
+    Site site = mRootSite.findSite(id);
+    return site == null ? mRootSite : site;
   }
 
   // Return the Value for the given perflib value object.
@@ -280,7 +257,7 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
     if (value instanceof Instance) {
       value = findInstance(((Instance)value).getId());
     }
-    return value == null ? null : new Value(value);
+    return Value.pack(value);
   }
 
   public void setBaseline(AhatSnapshot baseline) {

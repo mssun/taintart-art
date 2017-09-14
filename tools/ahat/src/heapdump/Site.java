@@ -19,6 +19,7 @@ package com.android.ahat.heapdump;
 import com.android.tools.perflib.heap.StackFrame;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,16 +34,20 @@ public class Site implements Diffable<Site> {
   private String mFilename;
   private int mLineNumber;
 
-  // To identify this site, we pick a stack trace that includes the site.
-  // mId is the id of an object allocated at that stack trace, and mDepth
-  // is the number of calls between this site and the innermost site of
-  // allocation of the object with mId.
-  // For the root site, mId is 0 and mDepth is 0.
-  private long mId;
-  private int mDepth;
+  // A unique id to identify this site with. The id is chosen based on a
+  // depth first traversal of the complete site tree, which gives it the
+  // following desired properties:
+  // * The id can easily be represented in a URL.
+  // * The id is determined by the hprof file, so that the same id can be used
+  //   across different instances for viewing the same hprof file.
+  // * A binary search can be used to find a site by id from the root site in
+  //   log time.
+  //
+  // The id is set by prepareForUse after the complete site tree is constructed.
+  private long mId = -1;
 
   // The total size of objects allocated in this site (including child sites),
-  // organized by heap index. Computed as part of computeObjectsInfos.
+  // organized by heap index. Computed as part of prepareForUse.
   private Size[] mSizesByHeap;
 
   // List of child sites.
@@ -99,18 +104,15 @@ public class Site implements Diffable<Site> {
    * Construct a root site.
    */
   public Site(String name) {
-    this(null, name, "", "", 0, 0, 0);
+    this(null, name, "", "", 0);
   }
 
-  public Site(Site parent, String method, String signature, String file,
-      int line, long id, int depth) {
+  private Site(Site parent, String method, String signature, String file, int line) {
     mParent = parent;
     mMethodName = method;
     mSignature = signature;
     mFilename = file;
     mLineNumber = line;
-    mId = id;
-    mDepth = depth;
     mChildren = new ArrayList<Site>();
     mObjects = new ArrayList<AhatInstance>();
     mObjectsInfos = new ArrayList<ObjectsInfo>();
@@ -119,50 +121,63 @@ public class Site implements Diffable<Site> {
   }
 
   /**
-   * Add an instance to this site.
+   * Get a child site of this site.
    * Returns the site at which the instance was allocated.
-   * @param frames - The list of frames in the stack trace, starting with the inner-most frame.
-   * @param depth - The number of frames remaining before the inner-most frame is reached.
+   * @param frames - The list of frames in the stack trace, starting with the
+   *                 inner-most frame. May be null, in which case this site is
+   *                 returned.
    */
-  Site add(StackFrame[] frames, int depth, AhatInstance inst) {
-    return add(this, frames, depth, inst);
+  Site getSite(StackFrame frames[]) {
+    return frames == null ? this : getSite(this, frames);
   }
 
-  private static Site add(Site site, StackFrame[] frames, int depth, AhatInstance inst) {
-    while (depth > 0) {
-      StackFrame next = frames[depth - 1];
+  private static Site getSite(Site site, StackFrame frames[]) {
+    for (int s = frames.length - 1; s >= 0; --s) {
+      StackFrame frame = frames[s];
       Site child = null;
       for (int i = 0; i < site.mChildren.size(); i++) {
         Site curr = site.mChildren.get(i);
-        if (curr.mLineNumber == next.getLineNumber()
-            && curr.mMethodName.equals(next.getMethodName())
-            && curr.mSignature.equals(next.getSignature())
-            && curr.mFilename.equals(next.getFilename())) {
+        if (curr.mLineNumber == frame.getLineNumber()
+            && curr.mMethodName.equals(frame.getMethodName())
+            && curr.mSignature.equals(frame.getSignature())
+            && curr.mFilename.equals(frame.getFilename())) {
           child = curr;
           break;
         }
       }
       if (child == null) {
-        child = new Site(site, next.getMethodName(), next.getSignature(),
-            next.getFilename(), next.getLineNumber(), inst.getId(), depth - 1);
+        child = new Site(site, frame.getMethodName(), frame.getSignature(),
+            frame.getFilename(), frame.getLineNumber());
         site.mChildren.add(child);
       }
-      depth = depth - 1;
       site = child;
     }
-    site.mObjects.add(inst);
     return site;
   }
 
   /**
-   * Recompute the ObjectsInfos for this and all child sites.
-   * This should be done after the sites tree has been formed. It should also
-   * be done after dominators computation has been performed to ensure only
-   * reachable objects are included in the ObjectsInfos.
-   *
-   * @param numHeaps - The number of heaps in the heap dump.
+   * Add an instance allocated at this site.
    */
-  void computeObjectsInfos(int numHeaps) {
+  void addInstance(AhatInstance inst) {
+    mObjects.add(inst);
+  }
+
+  /**
+   * Prepare this and all child sites for use.
+   * Recomputes site ids, sizes, ObjectInfos for this and all child sites.
+   * This should be called after the sites tree has been formed and after
+   * dominators computation has been performed to ensure only reachable
+   * objects are included in the ObjectsInfos.
+   *
+   * @param id - The smallest id that is allowed to be used for this site or
+   * any of its children.
+   * @param numHeaps - The number of heaps in the heap dump.
+   * @return An id larger than the largest id used for this site or any of its
+   * children.
+   */
+  long prepareForUse(long id, int numHeaps) {
+    mId = id++;
+
     // Count up the total sizes by heap.
     mSizesByHeap = new Size[numHeaps];
     for (int i = 0; i < numHeaps; ++i) {
@@ -183,7 +198,7 @@ public class Site implements Diffable<Site> {
 
     // Add objects allocated in child sites.
     for (Site child : mChildren) {
-      child.computeObjectsInfos(numHeaps);
+      id = child.prepareForUse(id, numHeaps);
       for (ObjectsInfo childInfo : child.mObjectsInfos) {
         ObjectsInfo info = getObjectsInfo(childInfo.heap, childInfo.classObj);
         info.numInstances += childInfo.numInstances;
@@ -193,6 +208,7 @@ public class Site implements Diffable<Site> {
         mSizesByHeap[i] = mSizesByHeap[i].plus(child.mSizesByHeap[i]);
       }
     }
+    return id;
   }
 
   // Get the size of a site for a specific heap.
@@ -285,22 +301,49 @@ public class Site implements Diffable<Site> {
   }
 
   /**
-   * Returns the id of some object allocated in this site.
+   * Returns the unique id of this site.
    */
   public long getId() {
     return mId;
   }
 
   /**
-   * Returns the number of frames between this site and the site where the
-   * object with id getId() was allocated.
+   * Find the child site with the given id.
+   * Returns null if no such site was found.
    */
-  public int getDepth() {
-    return mDepth;
+  public Site findSite(long id) {
+    if (id == mId) {
+      return this;
+    }
+
+    // Binary search over the children to find the right child to search in.
+    int start = 0;
+    int end = mChildren.size();
+    while (start < end) {
+      int mid = start + ((end - start) / 2);
+      Site midSite = mChildren.get(mid);
+      if (id < midSite.mId) {
+        end = mid;
+      } else if (mid + 1 == end) {
+        // This is the last child we could possibly find the desired site in,
+        // so search in this child.
+        return midSite.findSite(id);
+      } else if (id < mChildren.get(mid + 1).mId) {
+        // The desired site has an id between this child's id and the next
+        // child's id, so search in this child.
+        return midSite.findSite(id);
+      } else {
+        start = mid + 1;
+      }
+    }
+    return null;
   }
 
+  /**
+   * Returns an unmodifiable list of this site's immediate children.
+   */
   public List<Site> getChildren() {
-    return mChildren;
+    return Collections.unmodifiableList(mChildren);
   }
 
   void setBaseline(Site baseline) {
@@ -313,14 +356,5 @@ public class Site implements Diffable<Site> {
 
   @Override public boolean isPlaceHolder() {
     return false;
-  }
-
-  /**
-   * Adds a place holder instance to this site and all parent sites.
-   */
-  void addPlaceHolderInstance(AhatInstance placeholder) {
-    for (Site site = this; site != null; site = site.mParent) {
-      site.mObjects.add(placeholder);
-    }
   }
 }

@@ -72,6 +72,7 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
    * snapshot.findInstance have been initialized yet.
    */
   void initialize(AhatSnapshot snapshot, Instance inst, Site site) {
+    site.addInstance(this);
     mSize = new Size(inst.getSize(), 0);
     mHeap = snapshot.getHeap(inst.getHeap().getName());
 
@@ -147,7 +148,7 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
    * Returns an iterator over the references this AhatInstance has to other
    * AhatInstances.
    */
-  abstract ReferenceIterator getReferences();
+  abstract Iterable<Reference> getReferences();
 
   /**
    * Returns true if this instance is marked as a root instance.
