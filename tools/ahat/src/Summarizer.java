@@ -130,7 +130,7 @@ class Summarizer {
     if (site.getLineNumber() > 0) {
       text.append(":").append(Integer.toString(site.getLineNumber()));
     }
-    URI uri = DocString.formattedUri("site?id=%d&depth=%d", site.getId(), site.getDepth());
+    URI uri = DocString.formattedUri("site?id=%d", site.getId());
     return DocString.link(uri, text);
   }
 }
