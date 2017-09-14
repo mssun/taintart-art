@@ -33,6 +33,10 @@ TEST(AssemblerX86, CreateBuffer) {
   ASSERT_EQ(static_cast<size_t>(5), buffer.Size());
 }
 
+//
+// Test fixture.
+//
+
 class AssemblerX86Test : public AssemblerTest<x86::X86Assembler, x86::Register,
                                               x86::XmmRegister, x86::Immediate> {
  public:
@@ -105,6 +109,56 @@ class AssemblerX86Test : public AssemblerTest<x86::X86Assembler, x86::Register,
   std::vector<x86::XmmRegister*> fp_registers_;
 };
 
+//
+// Test repeat drivers used in the tests.
+//
+
+TEST_F(AssemblerX86Test, RepeatRR) {
+  EXPECT_EQ("%eax %eax\n%eax %ebx\n%eax %ecx\n%eax %edx\n%eax %ebp\n%eax %esp\n%eax %esi\n"
+            "%eax %edi\n%ebx %eax\n%ebx %ebx\n%ebx %ecx\n%ebx %edx\n%ebx %ebp\n%ebx %esp\n"
+            "%ebx %esi\n%ebx %edi\n%ecx %eax\n%ecx %ebx\n%ecx %ecx\n%ecx %edx\n%ecx %ebp\n"
+            "%ecx %esp\n%ecx %esi\n%ecx %edi\n%edx %eax\n%edx %ebx\n%edx %ecx\n%edx %edx\n"
+            "%edx %ebp\n%edx %esp\n%edx %esi\n%edx %edi\n%ebp %eax\n%ebp %ebx\n%ebp %ecx\n"
+            "%ebp %edx\n%ebp %ebp\n%ebp %esp\n%ebp %esi\n%ebp %edi\n%esp %eax\n%esp %ebx\n"
+            "%esp %ecx\n%esp %edx\n%esp %ebp\n%esp %esp\n%esp %esi\n%esp %edi\n%esi %eax\n"
+            "%esi %ebx\n%esi %ecx\n%esi %edx\n%esi %ebp\n%esi %esp\n%esi %esi\n%esi %edi\n"
+            "%edi %eax\n%edi %ebx\n%edi %ecx\n%edi %edx\n%edi %ebp\n%edi %esp\n%edi %esi\n"
+            "%edi %edi\n",
+            RepeatRR(/*f*/ nullptr, "%{reg1} %{reg2}"));
+}
+
+TEST_F(AssemblerX86Test, RepeatRI) {
+  EXPECT_EQ("%eax %0\n%eax %-1\n%eax %18\n%ebx %0\n%ebx %-1\n%ebx %18\n%ecx %0\n%ecx %-1\n"
+            "%ecx %18\n%edx %0\n%edx %-1\n%edx %18\n%ebp %0\n%ebp %-1\n%ebp %18\n%esp %0\n"
+            "%esp %-1\n%esp %18\n%esi %0\n%esi %-1\n%esi %18\n%edi %0\n%edi %-1\n%edi %18\n",
+            RepeatRI(/*f*/ nullptr, /*imm_bytes*/ 1U, "%{reg} %{imm}"));
+}
+
+TEST_F(AssemblerX86Test, RepeatFF) {
+  EXPECT_EQ("%XMM0 %XMM0\n%XMM0 %XMM1\n%XMM0 %XMM2\n%XMM0 %XMM3\n%XMM0 %XMM4\n%XMM0 %XMM5\n"
+            "%XMM0 %XMM6\n%XMM0 %XMM7\n%XMM1 %XMM0\n%XMM1 %XMM1\n%XMM1 %XMM2\n%XMM1 %XMM3\n"
+            "%XMM1 %XMM4\n%XMM1 %XMM5\n%XMM1 %XMM6\n%XMM1 %XMM7\n%XMM2 %XMM0\n%XMM2 %XMM1\n"
+            "%XMM2 %XMM2\n%XMM2 %XMM3\n%XMM2 %XMM4\n%XMM2 %XMM5\n%XMM2 %XMM6\n%XMM2 %XMM7\n"
+            "%XMM3 %XMM0\n%XMM3 %XMM1\n%XMM3 %XMM2\n%XMM3 %XMM3\n%XMM3 %XMM4\n%XMM3 %XMM5\n"
+            "%XMM3 %XMM6\n%XMM3 %XMM7\n%XMM4 %XMM0\n%XMM4 %XMM1\n%XMM4 %XMM2\n%XMM4 %XMM3\n"
+            "%XMM4 %XMM4\n%XMM4 %XMM5\n%XMM4 %XMM6\n%XMM4 %XMM7\n%XMM5 %XMM0\n%XMM5 %XMM1\n"
+            "%XMM5 %XMM2\n%XMM5 %XMM3\n%XMM5 %XMM4\n%XMM5 %XMM5\n%XMM5 %XMM6\n%XMM5 %XMM7\n"
+            "%XMM6 %XMM0\n%XMM6 %XMM1\n%XMM6 %XMM2\n%XMM6 %XMM3\n%XMM6 %XMM4\n%XMM6 %XMM5\n"
+            "%XMM6 %XMM6\n%XMM6 %XMM7\n%XMM7 %XMM0\n%XMM7 %XMM1\n%XMM7 %XMM2\n%XMM7 %XMM3\n"
+            "%XMM7 %XMM4\n%XMM7 %XMM5\n%XMM7 %XMM6\n%XMM7 %XMM7\n",
+            RepeatFF(/*f*/ nullptr, "%{reg1} %{reg2}"));
+}
+
+TEST_F(AssemblerX86Test, RepeatFFI) {
+  EXPECT_NE(RepeatFFI(/*f*/ nullptr, /*imm_bytes*/ 1U, "%{reg1} %{reg2} %{imm}")
+            .find("%XMM0 %XMM0 %0\n%XMM0 %XMM0 %-1\n%XMM0 %XMM0 %18\n"
+                  "%XMM0 %XMM1 %0\n%XMM0 %XMM1 %-1\n%XMM0 %XMM1 %18\n"),
+            std::string::npos);
+}
+
+//
+// Actual x86 instruction assembler tests.
+//
 
 TEST_F(AssemblerX86Test, Movl) {
   GetAssembler()->movl(x86::EAX, x86::EBX);
@@ -837,10 +891,6 @@ TEST_F(AssemblerX86Test, psrldq) {
   GetAssembler()->psrldq(x86::XMM0, CreateImmediate(16));
   DriverStr("psrldq $0x10, %xmm0\n", "psrldqi");
 }
-
-/////////////////
-// Near labels //
-/////////////////
 
 TEST_F(AssemblerX86Test, Jecxz) {
   x86::NearLabel target;
