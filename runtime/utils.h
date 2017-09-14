@@ -139,9 +139,9 @@ void GetTaskStats(pid_t tid, char* state, int* utime, int* stime, int* task_cpu)
 void SetThreadName(const char* thread_name);
 
 // Find $ANDROID_ROOT, /system, or abort.
-const char* GetAndroidRoot();
-// Find $ANDROID_ROOT, /system, or return null.
-const char* GetAndroidRootSafe(std::string* error_msg);
+std::string GetAndroidRoot();
+// Find $ANDROID_ROOT, /system, or return an empty string.
+std::string GetAndroidRootSafe(std::string* error_msg);
 
 // Find $ANDROID_DATA, /data, or abort.
 const char* GetAndroidData();
