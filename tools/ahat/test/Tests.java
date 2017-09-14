@@ -33,6 +33,7 @@ public class Tests {
         "com.android.ahat.RootedHandlerTest",
         "com.android.ahat.QueryTest",
         "com.android.ahat.SiteHandlerTest",
+        "com.android.ahat.SiteTest",
       };
     }
     JUnitCore.main(args);

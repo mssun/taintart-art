@@ -21,6 +21,7 @@ import com.android.ahat.heapdump.AhatSnapshot;
 import com.android.ahat.heapdump.Site;
 import com.android.ahat.heapdump.Sort;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -39,8 +40,7 @@ class SiteHandler implements AhatHandler {
   @Override
   public void handle(Doc doc, Query query) throws IOException {
     int id = query.getInt("id", 0);
-    int depth = query.getInt("depth", 0);
-    Site site = mSnapshot.getSite(id, depth);
+    Site site = mSnapshot.getSite(id);
 
     doc.title("Site");
     doc.big(Summarizer.summarize(site));
@@ -49,7 +49,8 @@ class SiteHandler implements AhatHandler {
     SitePrinter.printSite(mSnapshot, doc, query, ALLOCATION_SITE_ID, site);
 
     doc.section("Sites Called from Here");
-    List<Site> children = site.getChildren();
+    List<Site> children = new ArrayList<Site>(site.getChildren());
+
     if (children.isEmpty()) {
       doc.println(DocString.text("(none)"));
     } else {
@@ -99,8 +100,8 @@ class SiteHandler implements AhatHandler {
       String className = info.getClassName();
       SizeTable.row(doc, info.numBytes, baseinfo.numBytes,
           DocString.link(
-            DocString.formattedUri("objects?id=%d&depth=%d&heap=%s&class=%s",
-              site.getId(), site.getDepth(), info.heap.getName(), className),
+            DocString.formattedUri("objects?id=%d&heap=%s&class=%s",
+              site.getId(), info.heap.getName(), className),
             DocString.format("%,14d", info.numInstances)),
           DocString.delta(false, false, info.numInstances, baseinfo.numInstances),
           DocString.text(info.heap.getName()),

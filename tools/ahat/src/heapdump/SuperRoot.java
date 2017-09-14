@@ -39,8 +39,8 @@ public class SuperRoot extends AhatInstance implements DominatorsComputation.Nod
   }
 
   @Override
-  ReferenceIterator getReferences() {
-    List<Reference> refs = new AbstractList<Reference>() {
+  Iterable<Reference> getReferences() {
+    return new AbstractList<Reference>() {
       @Override
       public int size() {
         return mRoots.size();
@@ -52,6 +52,5 @@ public class SuperRoot extends AhatInstance implements DominatorsComputation.Nod
         return new Reference(null, field, mRoots.get(index), true);
       }
     };
-    return new ReferenceIterator(refs);
   }
 }

@@ -25,11 +25,11 @@ import java.util.NoSuchElementException;
  */
 class DominatorReferenceIterator implements Iterator<AhatInstance>,
                                             Iterable<AhatInstance> {
-  private ReferenceIterator mIter;
+  private Iterator<Reference> mIter;
   private AhatInstance mNext;
 
-  public DominatorReferenceIterator(ReferenceIterator iter) {
-    mIter = iter;
+  public DominatorReferenceIterator(Iterable<Reference> iter) {
+    mIter = iter.iterator();
     mNext = null;
   }
 

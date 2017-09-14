@@ -65,8 +65,8 @@ public class AhatPlaceHolderInstance extends AhatInstance {
   }
 
   @Override
-  ReferenceIterator getReferences() {
+  Iterable<Reference> getReferences() {
     List<Reference> refs = Collections.emptyList();
-    return new ReferenceIterator(refs);
+    return refs;
   }
 }
