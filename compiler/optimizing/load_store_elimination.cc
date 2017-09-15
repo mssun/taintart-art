@@ -670,6 +670,11 @@ void LoadStoreElimination::Run() {
     return;
   }
 
+  // TODO: analyze VecLoad/VecStore better.
+  if (graph_->HasSIMD()) {
+    return;
+  }
+
   LSEVisitor lse_visitor(graph_, heap_location_collector, side_effects_, stats_);
   for (HBasicBlock* block : graph_->GetReversePostOrder()) {
     lse_visitor.VisitBasicBlock(block);
