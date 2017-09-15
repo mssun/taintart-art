@@ -105,6 +105,14 @@
         "description": ["This test sometimes runs out of memory initializing the boot classpath."]
     },
     {
+        "tests": "164-resolution-trampoline-dex-cache",
+        "variant": "interp-ac | interpreter",
+        "description": ["This test requires AOT mixed with JIT and enables the JIT by the ",
+                        "runtime option -Xusejit:true. This conflicts with -Xint passed for ",
+                        "interpreter configurations (interp-ac | interpreter). The 'jit' ",
+                        "configuration succeeds even though it does not test anything useful."]
+    },
+    {
         "tests": ["908-gc-start-finish",
                   "913-heaps"],
         "variant": "gcstress",

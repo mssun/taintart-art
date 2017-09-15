@@ -1251,44 +1251,6 @@ extern "C" const void* artQuickResolutionTrampoline(
       CHECK(called != nullptr) << orig_called->PrettyMethod() << " "
                                << mirror::Object::PrettyTypeOf(receiver) << " "
                                << invoke_type << " " << orig_called->GetVtableIndex();
-
-      // We came here because of sharpening. Ensure the dex cache is up-to-date on the method index
-      // of the sharpened method avoiding dirtying the dex cache if possible.
-      // Note, called_method.dex_method_index references the dex method before the
-      // FindVirtualMethodFor... This is ok for FindDexMethodIndexInOtherDexFile that only cares
-      // about the name and signature.
-      uint32_t update_dex_cache_method_index = called->GetDexMethodIndex();
-      if (!called->HasSameDexCacheResolvedMethods(caller, kRuntimePointerSize)) {
-        // Calling from one dex file to another, need to compute the method index appropriate to
-        // the caller's dex file. Since we get here only if the original called was a runtime
-        // method, we've got the correct dex_file and a dex_method_idx from above.
-        DCHECK(!called_method_known_on_entry);
-        DCHECK_EQ(caller->GetDexFile(), called_method.dex_file);
-        const DexFile* caller_dex_file = called_method.dex_file;
-        uint32_t caller_method_name_and_sig_index = called_method.dex_method_index;
-        update_dex_cache_method_index =
-            called->FindDexMethodIndexInOtherDexFile(*caller_dex_file,
-                                                     caller_method_name_and_sig_index);
-      }
-      if ((update_dex_cache_method_index != DexFile::kDexNoIndex) &&
-          (caller->GetDexCacheResolvedMethod(
-              update_dex_cache_method_index, kRuntimePointerSize) != called)) {
-        caller->SetDexCacheResolvedMethod(update_dex_cache_method_index,
-                                          called,
-                                          kRuntimePointerSize);
-      }
-    } else if (invoke_type == kStatic) {
-      const auto called_dex_method_idx = called->GetDexMethodIndex();
-      // For static invokes, we may dispatch to the static method in the superclass but resolve
-      // using the subclass. To prevent getting slow paths on each invoke, we force set the
-      // resolved method for the super class dex method index if we are in the same dex file.
-      // b/19175856
-      if (called->GetDexFile() == called_method.dex_file &&
-          called_method.dex_method_index != called_dex_method_idx) {
-        called->GetDexCache()->SetResolvedMethod(called_dex_method_idx,
-                                                 called,
-                                                 kRuntimePointerSize);
-      }
     }
 
     // Ensure that the called method's class is initialized.
