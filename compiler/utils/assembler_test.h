@@ -46,7 +46,12 @@ enum class RegisterView {  // private
 // For use in the template as the default type to get a nonvector registers version.
 struct NoVectorRegs {};
 
-template<typename Ass, typename Reg, typename FPReg, typename Imm, typename VecReg = NoVectorRegs>
+template<typename Ass,
+         typename Addr,
+         typename Reg,
+         typename FPReg,
+         typename Imm,
+         typename VecReg = NoVectorRegs>
 class AssemblerTest : public testing::Test {
  public:
   Ass* GetAssembler() {
@@ -63,6 +68,10 @@ class AssemblerTest : public testing::Test {
   void DriverStr(const std::string& assembly_string, const std::string& test_name) {
     DriverWrapper(assembly_string, test_name);
   }
+
+  //
+  // Register repeats.
+  //
 
   std::string RepeatR(void (Ass::*f)(Reg), const std::string& fmt) {
     return RepeatTemplatedRegister<Reg>(f,
@@ -636,13 +645,23 @@ class AssemblerTest : public testing::Test {
 
   // The following functions are public so that TestFn can use them...
 
+  // Returns a vector of address used by any of the repeat methods
+  // involving an "A" (e.g. RepeatA).
+  virtual std::vector<Addr> GetAddresses() = 0;
+
+  // Returns a vector of registers used by any of the repeat methods
+  // involving an "R" (e.g. RepeatR).
   virtual std::vector<Reg*> GetRegisters() = 0;
 
+  // Returns a vector of fp-registers used by any of the repeat methods
+  // involving an "F" (e.g. RepeatFF).
   virtual std::vector<FPReg*> GetFPRegisters() {
     UNIMPLEMENTED(FATAL) << "Architecture does not support floating-point registers";
     UNREACHABLE();
   }
 
+  // Returns a vector of dedicated simd-registers used by any of the repeat
+  // methods involving an "V" (e.g. RepeatVV).
   virtual std::vector<VecReg*> GetVectorRegisters() {
     UNIMPLEMENTED(FATAL) << "Architecture does not support vector registers";
     UNREACHABLE();
@@ -837,6 +856,268 @@ class AssemblerTest : public testing::Test {
 
   // Create an immediate from the specific value.
   virtual Imm CreateImmediate(int64_t imm_value) = 0;
+
+  //
+  // Addresses repeats.
+  //
+
+  // Repeats over addresses provided by fixture.
+  std::string RepeatA(void (Ass::*f)(const Addr&), const std::string& fmt) {
+    return RepeatA(f, GetAddresses(), fmt);
+  }
+
+  // Variant that takes explicit vector of addresss
+  // (to test restricted addressing modes set).
+  std::string RepeatA(void (Ass::*f)(const Addr&),
+                      const std::vector<Addr>& a,
+                      const std::string& fmt) {
+    return RepeatTemplatedMem<Addr>(f, a, &AssemblerTest::GetAddrName, fmt);
+  }
+
+  // Repeats over addresses and immediates provided by fixture.
+  std::string RepeatAI(void (Ass::*f)(const Addr&, const Imm&),
+                       size_t imm_bytes,
+                       const std::string& fmt) {
+    return RepeatAI(f, imm_bytes, GetAddresses(), fmt);
+  }
+
+  // Variant that takes explicit vector of addresss
+  // (to test restricted addressing modes set).
+  std::string RepeatAI(void (Ass::*f)(const Addr&, const Imm&),
+                       size_t imm_bytes,
+                       const std::vector<Addr>& a,
+                       const std::string& fmt) {
+    return RepeatTemplatedMemImm<Addr>(f, imm_bytes, a, &AssemblerTest::GetAddrName, fmt);
+  }
+
+  // Repeats over registers and addresses provided by fixture.
+  std::string RepeatRA(void (Ass::*f)(Reg, const Addr&), const std::string& fmt) {
+    return RepeatRA(f, GetAddresses(), fmt);
+  }
+
+  // Variant that takes explicit vector of addresss
+  // (to test restricted addressing modes set).
+  std::string RepeatRA(void (Ass::*f)(Reg, const Addr&),
+                       const std::vector<Addr>& a,
+                       const std::string& fmt) {
+    return RepeatTemplatedRegMem<Reg, Addr>(
+        f,
+        GetRegisters(),
+        a,
+        &AssemblerTest::GetRegName<RegisterView::kUsePrimaryName>,
+        &AssemblerTest::GetAddrName,
+        fmt);
+  }
+
+  // Repeats over fp-registers and addresses provided by fixture.
+  std::string RepeatFA(void (Ass::*f)(FPReg, const Addr&), const std::string& fmt) {
+    return RepeatFA(f, GetAddresses(), fmt);
+  }
+
+  // Variant that takes explicit vector of addresss
+  // (to test restricted addressing modes set).
+  std::string RepeatFA(void (Ass::*f)(FPReg, const Addr&),
+                       const std::vector<Addr>& a,
+                       const std::string& fmt) {
+    return RepeatTemplatedRegMem<FPReg, Addr>(
+        f,
+        GetFPRegisters(),
+        a,
+        &AssemblerTest::GetFPRegName,
+        &AssemblerTest::GetAddrName,
+        fmt);
+  }
+
+  // Repeats over addresses and registers provided by fixture.
+  std::string RepeatAR(void (Ass::*f)(const Addr&, Reg), const std::string& fmt) {
+    return RepeatAR(f, GetAddresses(), fmt);
+  }
+
+  // Variant that takes explicit vector of addresss
+  // (to test restricted addressing modes set).
+  std::string RepeatAR(void (Ass::*f)(const Addr&, Reg),
+                       const std::vector<Addr>& a,
+                       const std::string& fmt) {
+    return RepeatTemplatedMemReg<Addr, Reg>(
+        f,
+        a,
+        GetRegisters(),
+        &AssemblerTest::GetAddrName,
+        &AssemblerTest::GetRegName<RegisterView::kUsePrimaryName>,
+        fmt);
+  }
+
+  // Repeats over addresses and fp-registers provided by fixture.
+  std::string RepeatAF(void (Ass::*f)(const Addr&, FPReg), const std::string& fmt) {
+    return RepeatAF(f, GetAddresses(), fmt);
+  }
+
+  // Variant that takes explicit vector of addresss
+  // (to test restricted addressing modes set).
+  std::string RepeatAF(void (Ass::*f)(const Addr&, FPReg),
+                       const std::vector<Addr>& a,
+                       const std::string& fmt) {
+    return RepeatTemplatedMemReg<Addr, FPReg>(
+        f,
+        a,
+        GetFPRegisters(),
+        &AssemblerTest::GetAddrName,
+        &AssemblerTest::GetFPRegName,
+        fmt);
+  }
+
+  template <typename AddrType>
+  std::string RepeatTemplatedMem(void (Ass::*f)(const AddrType&),
+                                 const std::vector<AddrType> addresses,
+                                 std::string (AssemblerTest::*GetAName)(const AddrType&),
+                                 const std::string& fmt) {
+    WarnOnCombinations(addresses.size());
+    std::string str;
+    for (auto addr : addresses) {
+      if (f != nullptr) {
+        (assembler_.get()->*f)(addr);
+      }
+      std::string base = fmt;
+
+      std::string addr_string = (this->*GetAName)(addr);
+      size_t addr_index;
+      if ((addr_index = base.find(ADDRESS_TOKEN)) != std::string::npos) {
+        base.replace(addr_index, ConstexprStrLen(ADDRESS_TOKEN), addr_string);
+      }
+
+      if (str.size() > 0) {
+        str += "\n";
+      }
+      str += base;
+    }
+    // Add a newline at the end.
+    str += "\n";
+    return str;
+  }
+
+  template <typename AddrType>
+  std::string RepeatTemplatedMemImm(void (Ass::*f)(const AddrType&, const Imm&),
+                                    size_t imm_bytes,
+                                    const std::vector<AddrType> addresses,
+                                    std::string (AssemblerTest::*GetAName)(const AddrType&),
+                                    const std::string& fmt) {
+    std::vector<int64_t> imms = CreateImmediateValues(imm_bytes);
+    WarnOnCombinations(addresses.size() * imms.size());
+    std::string str;
+    for (auto addr : addresses) {
+      for (int64_t imm : imms) {
+        Imm new_imm = CreateImmediate(imm);
+        if (f != nullptr) {
+          (assembler_.get()->*f)(addr, new_imm);
+        }
+        std::string base = fmt;
+
+        std::string addr_string = (this->*GetAName)(addr);
+        size_t addr_index;
+        if ((addr_index = base.find(ADDRESS_TOKEN)) != std::string::npos) {
+          base.replace(addr_index, ConstexprStrLen(ADDRESS_TOKEN), addr_string);
+        }
+
+        size_t imm_index = base.find(IMM_TOKEN);
+        if (imm_index != std::string::npos) {
+          std::ostringstream sreg;
+          sreg << imm;
+          std::string imm_string = sreg.str();
+          base.replace(imm_index, ConstexprStrLen(IMM_TOKEN), imm_string);
+        }
+
+        if (str.size() > 0) {
+          str += "\n";
+        }
+        str += base;
+      }
+    }
+    // Add a newline at the end.
+    str += "\n";
+    return str;
+  }
+
+  template <typename RegType, typename AddrType>
+  std::string RepeatTemplatedRegMem(void (Ass::*f)(RegType, const AddrType&),
+                                    const std::vector<RegType*> registers,
+                                    const std::vector<AddrType> addresses,
+                                    std::string (AssemblerTest::*GetRName)(const RegType&),
+                                    std::string (AssemblerTest::*GetAName)(const AddrType&),
+                                    const std::string& fmt) {
+    WarnOnCombinations(addresses.size() * registers.size());
+    std::string str;
+    for (auto reg : registers) {
+      for (auto addr : addresses) {
+        if (f != nullptr) {
+          (assembler_.get()->*f)(*reg, addr);
+        }
+        std::string base = fmt;
+
+        std::string reg_string = (this->*GetRName)(*reg);
+        size_t reg_index;
+        if ((reg_index = base.find(REG_TOKEN)) != std::string::npos) {
+          base.replace(reg_index, ConstexprStrLen(REG_TOKEN), reg_string);
+        }
+
+        std::string addr_string = (this->*GetAName)(addr);
+        size_t addr_index;
+        if ((addr_index = base.find(ADDRESS_TOKEN)) != std::string::npos) {
+          base.replace(addr_index, ConstexprStrLen(ADDRESS_TOKEN), addr_string);
+        }
+
+        if (str.size() > 0) {
+          str += "\n";
+        }
+        str += base;
+      }
+    }
+    // Add a newline at the end.
+    str += "\n";
+    return str;
+  }
+
+  template <typename AddrType, typename RegType>
+  std::string RepeatTemplatedMemReg(void (Ass::*f)(const AddrType&, RegType),
+                                    const std::vector<AddrType> addresses,
+                                    const std::vector<RegType*> registers,
+                                    std::string (AssemblerTest::*GetAName)(const AddrType&),
+                                    std::string (AssemblerTest::*GetRName)(const RegType&),
+                                    const std::string& fmt) {
+    WarnOnCombinations(addresses.size() * registers.size());
+    std::string str;
+    for (auto addr : addresses) {
+      for (auto reg : registers) {
+        if (f != nullptr) {
+          (assembler_.get()->*f)(addr, *reg);
+        }
+        std::string base = fmt;
+
+        std::string addr_string = (this->*GetAName)(addr);
+        size_t addr_index;
+        if ((addr_index = base.find(ADDRESS_TOKEN)) != std::string::npos) {
+          base.replace(addr_index, ConstexprStrLen(ADDRESS_TOKEN), addr_string);
+        }
+
+        std::string reg_string = (this->*GetRName)(*reg);
+        size_t reg_index;
+        if ((reg_index = base.find(REG_TOKEN)) != std::string::npos) {
+          base.replace(reg_index, ConstexprStrLen(REG_TOKEN), reg_string);
+        }
+
+        if (str.size() > 0) {
+          str += "\n";
+        }
+        str += base;
+      }
+    }
+    // Add a newline at the end.
+    str += "\n";
+    return str;
+  }
+
+  //
+  // Register repeats.
+  //
 
   template <typename RegType>
   std::string RepeatTemplatedRegister(void (Ass::*f)(RegType),
@@ -1048,6 +1329,12 @@ class AssemblerTest : public testing::Test {
     return str;
   }
 
+  std::string GetAddrName(const Addr& addr) {
+    std::ostringstream saddr;
+    saddr << addr;
+    return saddr.str();
+  }
+
   template <RegisterView kRegView>
   std::string GetRegName(const Reg& reg) {
     std::ostringstream sreg;
@@ -1094,6 +1381,7 @@ class AssemblerTest : public testing::Test {
     }
   }
 
+  static constexpr const char* ADDRESS_TOKEN = "{mem}";
   static constexpr const char* REG_TOKEN = "{reg}";
   static constexpr const char* REG1_TOKEN = "{reg1}";
   static constexpr const char* REG2_TOKEN = "{reg2}";

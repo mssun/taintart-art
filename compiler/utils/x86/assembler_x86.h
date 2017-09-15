@@ -235,6 +235,7 @@ class Address : public Operand {
   }
 };
 
+std::ostream& operator<<(std::ostream& os, const Address& addr);
 
 // This is equivalent to the Label class, used in a slightly different context. We
 // inherit the functionality of the Label class, but prevent unintended
