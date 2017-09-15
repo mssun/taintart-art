@@ -19,6 +19,7 @@ package com.android.ahat.heapdump;
 import com.android.ahat.proguard.ProguardMap;
 import java.io.File;
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
@@ -48,7 +49,11 @@ public class Parser {
    */
   public static AhatSnapshot parseHeapDump(File hprof, ProguardMap map)
     throws IOException, HprofFormatException {
-    return parseHeapDump(new HprofBuffer(hprof), map);
+    try {
+      return parseHeapDump(new HprofBuffer(hprof), map);
+    } catch (BufferUnderflowException e) {
+      throw new HprofFormatException("Unexpected end of file", e);
+    }
   }
 
   /**
@@ -56,11 +61,15 @@ public class Parser {
    */
   public static AhatSnapshot parseHeapDump(ByteBuffer hprof, ProguardMap map)
     throws IOException, HprofFormatException {
-    return parseHeapDump(new HprofBuffer(hprof), map);
+    try {
+      return parseHeapDump(new HprofBuffer(hprof), map);
+    } catch (BufferUnderflowException e) {
+      throw new HprofFormatException("Unexpected end of file", e);
+    }
   }
 
   private static AhatSnapshot parseHeapDump(HprofBuffer hprof, ProguardMap map)
-    throws IOException, HprofFormatException {
+    throws IOException, HprofFormatException, BufferUnderflowException {
     // Read, and mostly ignore, the hprof header info.
     {
       StringBuilder format = new StringBuilder();
