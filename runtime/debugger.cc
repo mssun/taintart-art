@@ -268,6 +268,11 @@ class DebugInstrumentationListener FINAL : public instrumentation::Instrumentati
     LOG(ERROR) << "Unexpected exception handled event in debugger";
   }
 
+  // TODO Might be worth it to implement this.
+  void WatchedFramePop(Thread* thread ATTRIBUTE_UNUSED,
+                       const ShadowFrame& frame ATTRIBUTE_UNUSED) OVERRIDE {
+    LOG(ERROR) << "Unexpected WatchedFramePop event in debugger";
+  }
 
  private:
   static bool IsReturn(ArtMethod* method, uint32_t dex_pc)
