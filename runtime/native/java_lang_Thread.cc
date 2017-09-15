@@ -86,6 +86,8 @@ static jint Thread_nativeGetStatus(JNIEnv* env, jobject java_thread, jboolean ha
     case kWaiting:                        return kJavaWaiting;
     case kStarting:                       return kJavaNew;
     case kNative:                         return kJavaRunnable;
+    case kWaitingForTaskProcessor:        return kJavaWaiting;
+    case kWaitingForLockInflation:        return kJavaWaiting;
     case kWaitingForGcToComplete:         return kJavaWaiting;
     case kWaitingPerformingGc:            return kJavaWaiting;
     case kWaitingForCheckPointsToRun:     return kJavaWaiting;

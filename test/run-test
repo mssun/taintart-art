@@ -810,6 +810,7 @@ fi
 good="no"
 good_build="yes"
 good_run="yes"
+export TEST_RUNTIME="${runtime}"
 if [ "$dev_mode" = "yes" ]; then
     "./${build}" $build_args 2>&1
     build_exit="$?"
