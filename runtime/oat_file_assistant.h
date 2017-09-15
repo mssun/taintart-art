@@ -26,6 +26,7 @@
 #include "base/scoped_flock.h"
 #include "base/unix_file/fd_file.h"
 #include "compiler_filter.h"
+#include "class_loader_context.h"
 #include "oat_file.h"
 #include "os.h"
 
@@ -164,7 +165,8 @@ class OatFileAssistant {
   // the oat file in the odex location.
   int GetDexOptNeeded(CompilerFilter::Filter target_compiler_filter,
                       bool profile_changed = false,
-                      bool downgrade = false);
+                      bool downgrade = false,
+                      ClassLoaderContext* context = nullptr);
 
   // Returns true if there is up-to-date code for this dex location,
   // irrespective of the compiler filter of the up-to-date code.
@@ -194,7 +196,7 @@ class OatFileAssistant {
   // to a string describing why there was a failure or the update was not
   // attempted. error_msg must not be null.
   ResultOfAttemptToUpdate MakeUpToDate(bool profile_changed,
-                                       const std::string& class_loader_context,
+                                       ClassLoaderContext* class_loader_context,
                                        std::string* error_msg);
 
   // Returns an oat file that can be used for loading dex files.
@@ -330,7 +332,8 @@ class OatFileAssistant {
     // compiler filter.
     DexOptNeeded GetDexOptNeeded(CompilerFilter::Filter target_compiler_filter,
                                  bool profile_changed,
-                                 bool downgrade);
+                                 bool downgrade,
+                                 ClassLoaderContext* context);
 
     // Returns the loaded file.
     // Loads the file if needed. Returns null if the file failed to load.
@@ -366,6 +369,8 @@ class OatFileAssistant {
     // downgrade should be true if the purpose of dexopt is to downgrade the
     // compiler filter.
     bool CompilerFilterIsOkay(CompilerFilter::Filter target, bool profile_changed, bool downgrade);
+
+    bool ClassLoaderContextIsOkay(ClassLoaderContext* context);
 
     // Release the loaded oat file.
     // Returns null if the oat file hasn't been loaded.
@@ -404,7 +409,7 @@ class OatFileAssistant {
   // attempted. error_msg must not be null.
   ResultOfAttemptToUpdate GenerateOatFileNoChecks(OatFileInfo& info,
                                                   CompilerFilter::Filter target,
-                                                  const std::string& class_loader_context,
+                                                  const ClassLoaderContext* class_loader_context,
                                                   std::string* error_msg);
 
   // Return info for the best oat file.
