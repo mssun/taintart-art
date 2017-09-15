@@ -302,6 +302,7 @@ art_cc_defaults {
         "1926-missed-frame-pop/frame_pop_missed.cc",
         "1927-exception-event/exception_event.cc",
         "1930-monitor-info/monitor.cc",
+        "1932-monitor-events-misc/monitor_misc.cc"
     ],
     shared_libs: [
         "libbase",

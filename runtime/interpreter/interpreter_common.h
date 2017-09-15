@@ -65,9 +65,16 @@ template <bool kMonitorCounting>
 static inline void DoMonitorEnter(Thread* self, ShadowFrame* frame, ObjPtr<mirror::Object> ref)
     NO_THREAD_SAFETY_ANALYSIS
     REQUIRES(!Roles::uninterruptible_) {
+  DCHECK(!ref.IsNull());
   StackHandleScope<1> hs(self);
   Handle<mirror::Object> h_ref(hs.NewHandle(ref));
   h_ref->MonitorEnter(self);
+  DCHECK(self->HoldsLock(h_ref.Get()));
+  if (UNLIKELY(self->IsExceptionPending())) {
+    bool unlocked = h_ref->MonitorExit(self);
+    DCHECK(unlocked);
+    return;
+  }
   if (kMonitorCounting && frame->GetMethod()->MustCountLocks()) {
     frame->GetLockCountData().AddMonitor(self, h_ref.Get());
   }

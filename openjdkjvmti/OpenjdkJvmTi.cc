@@ -207,11 +207,11 @@ class JvmtiFunctions {
   }
 
   static jvmtiError GetCurrentContendedMonitor(jvmtiEnv* env,
-                                               jthread thread ATTRIBUTE_UNUSED,
-                                               jobject* monitor_ptr ATTRIBUTE_UNUSED) {
+                                               jthread thread,
+                                               jobject* monitor_ptr) {
     ENSURE_VALID_ENV(env);
     ENSURE_HAS_CAP(env, can_get_current_contended_monitor);
-    return ERR(NOT_IMPLEMENTED);
+    return MonitorUtil::GetCurrentContendedMonitor(env, thread, monitor_ptr);
   }
 
   static jvmtiError RunAgentThread(jvmtiEnv* env,

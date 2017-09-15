@@ -658,6 +658,10 @@ class Runtime {
 
   RuntimeCallbacks* GetRuntimeCallbacks();
 
+  bool HasLoadedPlugins() const {
+    return !plugins_.empty();
+  }
+
   void InitThreadGroups(Thread* self);
 
   void SetDumpGCPerformanceOnShutdown(bool value) {

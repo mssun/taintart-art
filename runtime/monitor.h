@@ -31,6 +31,7 @@
 #include "gc_root.h"
 #include "lock_word.h"
 #include "read_barrier_option.h"
+#include "runtime_callbacks.h"
 #include "thread_state.h"
 
 namespace art {
@@ -46,6 +47,11 @@ typedef uint32_t MonitorId;
 namespace mirror {
   class Object;
 }  // namespace mirror
+
+enum class LockReason {
+  kForWait,
+  kForLock,
+};
 
 class Monitor {
  public:
@@ -205,9 +211,11 @@ class Monitor {
       REQUIRES(monitor_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  template<LockReason reason = LockReason::kForLock>
   void Lock(Thread* self)
       REQUIRES(!monitor_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
+
   bool Unlock(Thread* thread)
       REQUIRES(!monitor_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
