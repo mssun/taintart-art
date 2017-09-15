@@ -493,6 +493,8 @@ static jint GetDexOptNeeded(JNIEnv* env,
   if (oat_file_assistant.IsInBootClassPath()) {
     return OatFileAssistant::kNoDexOptNeeded;
   }
+
+  // TODO(calin): Extend DexFile.getDexOptNeeded to accept the class loader context. b/62269291.
   return oat_file_assistant.GetDexOptNeeded(filter, profile_changed, downgrade);
 }
 
