@@ -41,4 +41,5 @@ subdirs = [
     "test",
     "tools/cpp-define-generator",
     "tools/dmtracedump",
+    "tools/titrace",
 ]

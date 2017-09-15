@@ -634,3 +634,9 @@ art_cc_test {
         "libvixld-arm64",
     ],
 }
+
+cc_library_headers {
+  name: "libart_runtime_headers",
+  host_supported: true,
+  export_include_dirs: ["."],
+}
