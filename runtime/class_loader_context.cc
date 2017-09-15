@@ -187,7 +187,10 @@ bool ClassLoaderContext::Parse(const std::string& spec, bool parse_checksums) {
 // Opens requested class path files and appends them to opened_dex_files. If the dex files have
 // been stripped, this opens them from their oat files (which get added to opened_oat_files).
 bool ClassLoaderContext::OpenDexFiles(InstructionSet isa, const std::string& classpath_dir) {
-  CHECK(!dex_files_open_attempted_) << "OpenDexFiles should not be called twice";
+  if (dex_files_open_attempted_) {
+    // Do not attempt to re-open the files if we already tried.
+    return dex_files_open_result_;
+  }
 
   dex_files_open_attempted_ = true;
   // Assume we can open all dex files. If not, we will set this to false as we go.
@@ -203,6 +206,7 @@ bool ClassLoaderContext::OpenDexFiles(InstructionSet isa, const std::string& cla
   // TODO(calin): Refine the dex opening interface to be able to tell if an archive contains
   // no dex files. So that we can distinguish the real failures...
   for (ClassLoaderInfo& info : class_loader_chain_) {
+    size_t opened_dex_files_index = info.opened_dex_files.size();
     for (const std::string& cp_elem : info.classpath) {
       // If path is relative, append it to the provided base directory.
       std::string raw_location = cp_elem;
@@ -248,6 +252,23 @@ bool ClassLoaderContext::OpenDexFiles(InstructionSet isa, const std::string& cla
           dex_files_open_result_ = false;
         }
       }
+    }
+
+    // We finished opening the dex files from the classpath.
+    // Now update the classpath and the checksum with the locations of the dex files.
+    //
+    // We do this because initially the classpath contains the paths of the dex files; and
+    // some of them might be multi-dexes. So in order to have a consistent view we replace all the
+    // file paths with the actual dex locations being loaded.
+    // This will allow the context to VerifyClassLoaderContextMatch which expects or multidex
+    // location in the class paths.
+    // Note that this will also remove the paths that could not be opened.
+    info.classpath.clear();
+    info.checksums.clear();
+    for (size_t k = opened_dex_files_index; k < info.opened_dex_files.size(); k++) {
+      std::unique_ptr<const DexFile>& dex = info.opened_dex_files[k];
+      info.classpath.push_back(dex->GetLocation());
+      info.checksums.push_back(dex->GetLocationChecksum());
     }
   }
 
@@ -637,13 +658,20 @@ static bool IsAbsoluteLocation(const std::string& location) {
 }
 
 bool ClassLoaderContext::VerifyClassLoaderContextMatch(const std::string& context_spec) const {
+  DCHECK(dex_files_open_attempted_);
+  DCHECK(dex_files_open_result_);
+
   ClassLoaderContext expected_context;
   if (!expected_context.Parse(context_spec, /*parse_checksums*/ true)) {
     LOG(WARNING) << "Invalid class loader context: " << context_spec;
     return false;
   }
 
-  if (expected_context.special_shared_library_) {
+  // Special shared library contexts always match. They essentially instruct the runtime
+  // to ignore the class path check because the oat file is known to be loaded in different
+  // contexts. OatFileManager will further verify if the oat file can be loaded based on the
+  // collision check.
+  if (special_shared_library_ || expected_context.special_shared_library_) {
     return true;
   }
 
