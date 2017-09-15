@@ -346,11 +346,31 @@ bool Monitor::TryLock(Thread* self) {
   return TryLockLocked(self);
 }
 
+// Asserts that a mutex isn't held when the class comes into and out of scope.
+class ScopedAssertNotHeld {
+ public:
+  ScopedAssertNotHeld(Thread* self, Mutex& mu) : self_(self), mu_(mu) {
+    mu_.AssertNotHeld(self_);
+  }
+
+  ~ScopedAssertNotHeld() {
+    mu_.AssertNotHeld(self_);
+  }
+
+ private:
+  Thread* const self_;
+  Mutex& mu_;
+  DISALLOW_COPY_AND_ASSIGN(ScopedAssertNotHeld);
+};
+
+template <LockReason reason>
 void Monitor::Lock(Thread* self) {
-  MutexLock mu(self, monitor_lock_);
+  ScopedAssertNotHeld sanh(self, monitor_lock_);
+  bool called_monitors_callback = false;
+  monitor_lock_.Lock(self);
   while (true) {
     if (TryLockLocked(self)) {
-      return;
+      break;
     }
     // Contended.
     const bool log_contention = (lock_profiling_threshold_ != 0);
@@ -389,6 +409,12 @@ void Monitor::Lock(Thread* self) {
     }
 
     monitor_lock_.Unlock(self);  // Let go of locks in order.
+    // Call the contended locking cb once and only once. Also only call it if we are locking for
+    // the first time, not during a Wait wakeup.
+    if (reason == LockReason::kForLock && !called_monitors_callback) {
+      called_monitors_callback = true;
+      Runtime::Current()->GetRuntimeCallbacks()->MonitorContendedLocking(this);
+    }
     self->SetMonitorEnterObject(GetObject());
     {
       ScopedThreadSuspension tsc(self, kBlocked);  // Change to blocked and give up mutator_lock_.
@@ -492,10 +518,10 @@ void Monitor::Lock(Thread* self) {
                     << PrettyDuration(MsToNs(wait_ms));
               }
               LogContentionEvent(self,
-                                 wait_ms,
-                                 sample_percent,
-                                 owners_method,
-                                 owners_dex_pc);
+                                wait_ms,
+                                sample_percent,
+                                owners_method,
+                                owners_dex_pc);
             }
           }
         }
@@ -508,7 +534,17 @@ void Monitor::Lock(Thread* self) {
     monitor_lock_.Lock(self);  // Reacquire locks in order.
     --num_waiters_;
   }
+  monitor_lock_.Unlock(self);
+  // We need to pair this with a single contended locking call. NB we match the RI behavior and call
+  // this even if MonitorEnter failed.
+  if (called_monitors_callback) {
+    CHECK(reason == LockReason::kForLock);
+    Runtime::Current()->GetRuntimeCallbacks()->MonitorContendedLocked(this);
+  }
 }
+
+template void Monitor::Lock<LockReason::kForLock>(Thread* self);
+template void Monitor::Lock<LockReason::kForWait>(Thread* self);
 
 static void ThrowIllegalMonitorStateExceptionF(const char* fmt, ...)
                                               __attribute__((format(printf, 1, 2)));
@@ -690,6 +726,7 @@ void Monitor::Wait(Thread* self, int64_t ms, int32_t ns,
   AtraceMonitorLock(self, GetObject(), true /* is_wait */);
 
   bool was_interrupted = false;
+  bool timed_out = false;
   {
     // Update thread state. If the GC wakes up, it'll ignore us, knowing
     // that we won't touch any references in this state, and we'll check
@@ -718,7 +755,7 @@ void Monitor::Wait(Thread* self, int64_t ms, int32_t ns,
         self->GetWaitConditionVariable()->Wait(self);
       } else {
         DCHECK(why == kTimedWaiting || why == kSleeping) << why;
-        self->GetWaitConditionVariable()->TimedWait(self, ms, ns);
+        timed_out = self->GetWaitConditionVariable()->TimedWait(self, ms, ns);
       }
       was_interrupted = self->IsInterrupted();
     }
@@ -751,8 +788,11 @@ void Monitor::Wait(Thread* self, int64_t ms, int32_t ns,
 
   AtraceMonitorUnlock();  // End Wait().
 
+  // We just slept, tell the runtime callbacks about this.
+  Runtime::Current()->GetRuntimeCallbacks()->MonitorWaitFinished(this, timed_out);
+
   // Re-acquire the monitor and lock.
-  Lock(self);
+  Lock<LockReason::kForWait>(self);
   monitor_lock_.Lock(self);
   self->GetWaitMutex()->AssertNotHeld(self);
 
@@ -897,7 +937,7 @@ void Monitor::InflateThinLocked(Thread* self, Handle<mirror::Object> obj, LockWo
     bool timed_out;
     Thread* owner;
     {
-      ScopedThreadSuspension sts(self, kBlocked);
+      ScopedThreadSuspension sts(self, kWaitingForLockInflation);
       owner = thread_list->SuspendThreadByThreadId(owner_thread_id,
                                                    SuspendReason::kInternal,
                                                    &timed_out);
@@ -989,10 +1029,10 @@ mirror::Object* Monitor::MonitorEnter(Thread* self, mirror::Object* obj, bool tr
           contention_count++;
           Runtime* runtime = Runtime::Current();
           if (contention_count <= runtime->GetMaxSpinsBeforeThinLockInflation()) {
-            // TODO: Consider switching the thread state to kBlocked when we are yielding.
-            // Use sched_yield instead of NanoSleep since NanoSleep can wait much longer than the
-            // parameter you pass in. This can cause thread suspension to take excessively long
-            // and make long pauses. See b/16307460.
+            // TODO: Consider switching the thread state to kWaitingForLockInflation when we are
+            // yielding.  Use sched_yield instead of NanoSleep since NanoSleep can wait much longer
+            // than the parameter you pass in. This can cause thread suspension to take excessively
+            // long and make long pauses. See b/16307460.
             // TODO: We should literally spin first, without sched_yield. Sched_yield either does
             // nothing (at significant expense), or guarantees that we wait at least microseconds.
             // If the owner is running, I would expect the median lock hold time to be hundreds
@@ -1098,7 +1138,16 @@ void Monitor::Wait(Thread* self, mirror::Object *obj, int64_t ms, int32_t ns,
                    bool interruptShouldThrow, ThreadState why) {
   DCHECK(self != nullptr);
   DCHECK(obj != nullptr);
-  LockWord lock_word = obj->GetLockWord(true);
+  StackHandleScope<1> hs(self);
+  Handle<mirror::Object> h_obj(hs.NewHandle(obj));
+
+  Runtime::Current()->GetRuntimeCallbacks()->ObjectWaitStart(h_obj, ms);
+  if (UNLIKELY(self->IsExceptionPending())) {
+    // See b/65558434 for information on handling of exceptions here.
+    return;
+  }
+
+  LockWord lock_word = h_obj->GetLockWord(true);
   while (lock_word.GetState() != LockWord::kFatLocked) {
     switch (lock_word.GetState()) {
       case LockWord::kHashCode:
@@ -1115,8 +1164,8 @@ void Monitor::Wait(Thread* self, mirror::Object *obj, int64_t ms, int32_t ns,
         } else {
           // We own the lock, inflate to enqueue ourself on the Monitor. May fail spuriously so
           // re-load.
-          Inflate(self, self, obj, 0);
-          lock_word = obj->GetLockWord(true);
+          Inflate(self, self, h_obj.Get(), 0);
+          lock_word = h_obj->GetLockWord(true);
         }
         break;
       }
@@ -1203,8 +1252,9 @@ void Monitor::DescribeWait(std::ostream& os, const Thread* thread) {
     if (monitor != nullptr) {
       pretty_object = monitor->GetObject();
     }
-  } else if (state == kBlocked) {
-    wait_message = "  - waiting to lock ";
+  } else if (state == kBlocked || state == kWaitingForLockInflation) {
+    wait_message = (state == kBlocked) ? "  - waiting to lock "
+                                       : "  - waiting for lock inflation of ";
     pretty_object = thread->GetMonitorEnterObject();
     if (pretty_object != nullptr) {
       if (kUseReadBarrier && Thread::Current()->GetIsGcMarking()) {

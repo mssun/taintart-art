@@ -29,6 +29,8 @@ enum ThreadState {
   kSleeping,                        // TIMED_WAITING  TS_SLEEPING  in Thread.sleep()
   kBlocked,                         // BLOCKED        TS_MONITOR   blocked on a monitor
   kWaiting,                         // WAITING        TS_WAIT      in Object.wait()
+  kWaitingForLockInflation,         // WAITING        TS_WAIT      blocked inflating a thin-lock
+  kWaitingForTaskProcessor,         // WAITING        TS_WAIT      blocked waiting for taskProcessor
   kWaitingForGcToComplete,          // WAITING        TS_WAIT      blocked waiting for GC
   kWaitingForCheckPointsToRun,      // WAITING        TS_WAIT      GC waiting for checkpoints to run
   kWaitingPerformingGc,             // WAITING        TS_WAIT      performing GC
