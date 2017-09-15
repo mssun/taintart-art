@@ -56,9 +56,6 @@ class DexFile {
   static const char* kClassesDex;
 
   // The value of an invalid index.
-  static const uint32_t kDexNoIndex = 0xFFFFFFFF;
-
-  // The value of an invalid index.
   static const uint16_t kDexNoIndex16 = 0xFFFF;
 
   // The separator character in MultiDex locations.

@@ -18,6 +18,7 @@
 #define ART_RUNTIME_CHECK_REFERENCE_MAP_VISITOR_H_
 
 #include "art_method-inl.h"
+#include "dex_file_types.h"
 #include "oat_quick_method_header.h"
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
@@ -35,7 +36,7 @@ class CheckReferenceMapVisitor : public StackVisitor {
   bool VisitFrame() REQUIRES_SHARED(Locks::mutator_lock_) {
     ArtMethod* m = GetMethod();
     if (m->IsCalleeSaveMethod() || m->IsNative()) {
-      CHECK_EQ(GetDexPc(), DexFile::kDexNoIndex);
+      CHECK_EQ(GetDexPc(), dex::kDexNoIndex);
     }
 
     if (m == nullptr || m->IsNative() || m->IsRuntimeMethod() || IsShadowFrame()) {

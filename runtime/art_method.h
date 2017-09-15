@@ -375,7 +375,7 @@ class ArtMethod FINAL {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Find the method index for this method within other_dexfile. If this method isn't present then
-  // return DexFile::kDexNoIndex. The name_and_signature_idx MUST refer to a MethodId with the same
+  // return dex::kDexNoIndex. The name_and_signature_idx MUST refer to a MethodId with the same
   // name and signature in the other_dexfile, such as the method index used to resolve this method
   // in the other_dexfile.
   uint32_t FindDexMethodIndexInOtherDexFile(const DexFile& other_dexfile,

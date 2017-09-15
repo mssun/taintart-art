@@ -1236,7 +1236,7 @@ bool HInliner::TryInlineAndReplace(HInvoke* invoke_instruction,
       const DexFile& caller_dex_file = *caller_compilation_unit_.GetDexFile();
       uint32_t dex_method_index = FindMethodIndexIn(
           method, caller_dex_file, invoke_instruction->GetDexMethodIndex());
-      if (dex_method_index == DexFile::kDexNoIndex) {
+      if (dex_method_index == dex::kDexNoIndex) {
         return false;
       }
       HInvokeVirtual* new_invoke = new (graph_->GetArena()) HInvokeVirtual(
