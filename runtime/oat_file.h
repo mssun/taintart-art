@@ -115,6 +115,8 @@ class OatFile {
 
   CompilerFilter::Filter GetCompilerFilter() const;
 
+  std::string GetClassLoaderContext() const;
+
   const std::string& GetLocation() const {
     return location_;
   }

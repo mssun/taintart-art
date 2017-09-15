@@ -1604,6 +1604,10 @@ CompilerFilter::Filter OatFile::GetCompilerFilter() const {
   return GetOatHeader().GetCompilerFilter();
 }
 
+std::string OatFile::GetClassLoaderContext() const {
+  return GetOatHeader().GetStoreValueByKey(OatHeader::kClassPathKey);
+};
+
 OatFile::OatClass OatFile::FindOatClass(const DexFile& dex_file,
                                         uint16_t class_def_idx,
                                         bool* found) {
