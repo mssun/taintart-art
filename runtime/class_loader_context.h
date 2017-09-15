@@ -41,7 +41,12 @@ class ClassLoaderContext {
   // to ClassLoaderInfo::opened_oat_files. The 'classpath_dir' argument specifies the directory to
   // use for the relative class paths.
   // Returns true if all dex files where successfully opened.
-  // It may be called only once per ClassLoaderContext. The second call will abort.
+  // It may be called only once per ClassLoaderContext. Subsequent calls will return the same
+  // result without doing anything.
+  //
+  // This will replace the class path locations with the locations of the opened dex files.
+  // (Note that one dex file can contain multidexes. Each multidex will be added to the classpath
+  // separately.)
   //
   // Note that a "false" return could mean that either an apk/jar contained no dex files or
   // that we hit a I/O or checksum mismatch error.
@@ -98,6 +103,7 @@ class ClassLoaderContext {
   //    - the number and type of the class loaders from the chain matches
   //    - the class loader from the same position have the same classpath
   //      (the order and checksum of the dex files matches)
+  // This should be called after OpenDexFiles().
   bool VerifyClassLoaderContextMatch(const std::string& context_spec) const;
 
   // Creates the class loader context from the given string.
