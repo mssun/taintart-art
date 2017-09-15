@@ -37,11 +37,17 @@ TEST(AssemblerX86, CreateBuffer) {
 // Test fixture.
 //
 
-class AssemblerX86Test : public AssemblerTest<x86::X86Assembler, x86::Register,
-                                              x86::XmmRegister, x86::Immediate> {
+class AssemblerX86Test : public AssemblerTest<x86::X86Assembler,
+                                              x86::Address,
+                                              x86::Register,
+                                              x86::XmmRegister,
+                                              x86::Immediate> {
  public:
-  typedef AssemblerTest<x86::X86Assembler, x86::Register,
-                         x86::XmmRegister, x86::Immediate> Base;
+  typedef AssemblerTest<x86::X86Assembler,
+                        x86::Address,
+                        x86::Register,
+                        x86::XmmRegister,
+                        x86::Immediate> Base;
 
  protected:
   std::string GetArchitectureString() OVERRIDE {
@@ -57,6 +63,31 @@ class AssemblerX86Test : public AssemblerTest<x86::X86Assembler, x86::Register,
   }
 
   void SetUpHelpers() OVERRIDE {
+    if (addresses_singleton_.size() == 0) {
+      // One addressing mode to test the repeat drivers.
+      addresses_singleton_.push_back(x86::Address(x86::EAX, x86::EBX, x86::TIMES_1, 2));
+    }
+
+    if (addresses_.size() == 0) {
+      // Several addressing modes.
+      addresses_.push_back(x86::Address(x86::EDI, x86::EAX, x86::TIMES_1, 15));
+      addresses_.push_back(x86::Address(x86::EDI, x86::EBX, x86::TIMES_2, 16));
+      addresses_.push_back(x86::Address(x86::EDI, x86::ECX, x86::TIMES_4, 17));
+      addresses_.push_back(x86::Address(x86::EDI, x86::EDX, x86::TIMES_8, 18));
+      addresses_.push_back(x86::Address(x86::EAX, -1));
+      addresses_.push_back(x86::Address(x86::EBX, 0));
+      addresses_.push_back(x86::Address(x86::ESI, 1));
+      addresses_.push_back(x86::Address(x86::EDI, 987654321));
+      // Several addressing modes with the special ESP.
+      addresses_.push_back(x86::Address(x86::ESP, x86::EAX, x86::TIMES_1, 15));
+      addresses_.push_back(x86::Address(x86::ESP, x86::EBX, x86::TIMES_2, 16));
+      addresses_.push_back(x86::Address(x86::ESP, x86::ECX, x86::TIMES_4, 17));
+      addresses_.push_back(x86::Address(x86::ESP, x86::EDX, x86::TIMES_8, 18));
+      addresses_.push_back(x86::Address(x86::ESP, -1));
+      addresses_.push_back(x86::Address(x86::ESP, 0));
+      addresses_.push_back(x86::Address(x86::ESP, 1));
+      addresses_.push_back(x86::Address(x86::ESP, 987654321));
+    }
     if (registers_.size() == 0) {
       registers_.insert(end(registers_),
                         {  // NOLINT(whitespace/braces)
@@ -92,6 +123,10 @@ class AssemblerX86Test : public AssemblerTest<x86::X86Assembler, x86::Register,
     STLDeleteElements(&fp_registers_);
   }
 
+  std::vector<x86::Address> GetAddresses() OVERRIDE {
+    return addresses_;
+  }
+
   std::vector<x86::Register*> GetRegisters() OVERRIDE {
     return registers_;
   }
@@ -104,7 +139,10 @@ class AssemblerX86Test : public AssemblerTest<x86::X86Assembler, x86::Register,
     return x86::Immediate(imm_value);
   }
 
+  std::vector<x86::Address> addresses_singleton_;
+
  private:
+  std::vector<x86::Address> addresses_;
   std::vector<x86::Register*> registers_;
   std::vector<x86::XmmRegister*> fp_registers_;
 };
@@ -128,10 +166,10 @@ TEST_F(AssemblerX86Test, RepeatRR) {
 }
 
 TEST_F(AssemblerX86Test, RepeatRI) {
-  EXPECT_EQ("%eax %0\n%eax %-1\n%eax %18\n%ebx %0\n%ebx %-1\n%ebx %18\n%ecx %0\n%ecx %-1\n"
-            "%ecx %18\n%edx %0\n%edx %-1\n%edx %18\n%ebp %0\n%ebp %-1\n%ebp %18\n%esp %0\n"
-            "%esp %-1\n%esp %18\n%esi %0\n%esi %-1\n%esi %18\n%edi %0\n%edi %-1\n%edi %18\n",
-            RepeatRI(/*f*/ nullptr, /*imm_bytes*/ 1U, "%{reg} %{imm}"));
+  EXPECT_EQ("%eax $0\n%eax $-1\n%eax $18\n%ebx $0\n%ebx $-1\n%ebx $18\n%ecx $0\n%ecx $-1\n"
+            "%ecx $18\n%edx $0\n%edx $-1\n%edx $18\n%ebp $0\n%ebp $-1\n%ebp $18\n%esp $0\n"
+            "%esp $-1\n%esp $18\n%esi $0\n%esi $-1\n%esi $18\n%edi $0\n%edi $-1\n%edi $18\n",
+            RepeatRI(/*f*/ nullptr, /*imm_bytes*/ 1U, "%{reg} ${imm}"));
 }
 
 TEST_F(AssemblerX86Test, RepeatFF) {
@@ -150,10 +188,47 @@ TEST_F(AssemblerX86Test, RepeatFF) {
 }
 
 TEST_F(AssemblerX86Test, RepeatFFI) {
-  EXPECT_NE(RepeatFFI(/*f*/ nullptr, /*imm_bytes*/ 1U, "%{reg1} %{reg2} %{imm}")
-            .find("%XMM0 %XMM0 %0\n%XMM0 %XMM0 %-1\n%XMM0 %XMM0 %18\n"
-                  "%XMM0 %XMM1 %0\n%XMM0 %XMM1 %-1\n%XMM0 %XMM1 %18\n"),
+  EXPECT_NE(RepeatFFI(/*f*/ nullptr, /*imm_bytes*/ 1U, "%{reg1} %{reg2} ${imm}")
+            .find("%XMM0 %XMM0 $0\n%XMM0 %XMM0 $-1\n%XMM0 %XMM0 $18\n"
+                  "%XMM0 %XMM1 $0\n%XMM0 %XMM1 $-1\n%XMM0 %XMM1 $18\n"),
             std::string::npos);
+}
+
+TEST_F(AssemblerX86Test, RepeatA) {
+  EXPECT_EQ("2(%eax,%ebx,1)\n", RepeatA(/*f*/ nullptr, addresses_singleton_, "{mem}"));
+}
+
+TEST_F(AssemblerX86Test, RepeatAI) {
+  EXPECT_EQ("2(%eax,%ebx,1) $0\n2(%eax,%ebx,1) $-1\n2(%eax,%ebx,1) $18\n",
+            RepeatAI(/*f*/ nullptr, /*imm_bytes*/ 1U, addresses_singleton_, "{mem} ${imm}"));
+}
+
+TEST_F(AssemblerX86Test, RepeatRA) {
+  EXPECT_EQ("%eax 2(%eax,%ebx,1)\n%ebx 2(%eax,%ebx,1)\n%ecx 2(%eax,%ebx,1)\n"
+            "%edx 2(%eax,%ebx,1)\n%ebp 2(%eax,%ebx,1)\n%esp 2(%eax,%ebx,1)\n"
+            "%esi 2(%eax,%ebx,1)\n%edi 2(%eax,%ebx,1)\n",
+            RepeatRA(/*f*/ nullptr, addresses_singleton_, "%{reg} {mem}"));
+}
+
+TEST_F(AssemblerX86Test, RepeatAR) {
+  EXPECT_EQ("2(%eax,%ebx,1) %eax\n2(%eax,%ebx,1) %ebx\n2(%eax,%ebx,1) %ecx\n"
+            "2(%eax,%ebx,1) %edx\n2(%eax,%ebx,1) %ebp\n2(%eax,%ebx,1) %esp\n"
+            "2(%eax,%ebx,1) %esi\n2(%eax,%ebx,1) %edi\n",
+            RepeatAR(/*f*/ nullptr, addresses_singleton_, "{mem} %{reg}"));
+}
+
+TEST_F(AssemblerX86Test, RepeatFA) {
+  EXPECT_EQ("%XMM0 2(%eax,%ebx,1)\n%XMM1 2(%eax,%ebx,1)\n%XMM2 2(%eax,%ebx,1)\n"
+            "%XMM3 2(%eax,%ebx,1)\n%XMM4 2(%eax,%ebx,1)\n%XMM5 2(%eax,%ebx,1)\n"
+            "%XMM6 2(%eax,%ebx,1)\n%XMM7 2(%eax,%ebx,1)\n",
+            RepeatFA(/*f*/ nullptr, addresses_singleton_, "%{reg} {mem}"));
+}
+
+TEST_F(AssemblerX86Test, RepeatAF) {
+  EXPECT_EQ("2(%eax,%ebx,1) %XMM0\n2(%eax,%ebx,1) %XMM1\n2(%eax,%ebx,1) %XMM2\n"
+            "2(%eax,%ebx,1) %XMM3\n2(%eax,%ebx,1) %XMM4\n2(%eax,%ebx,1) %XMM5\n"
+            "2(%eax,%ebx,1) %XMM6\n2(%eax,%ebx,1) %XMM7\n",
+            RepeatAF(/*f*/ nullptr, addresses_singleton_, "{mem} %{reg}"));
 }
 
 //
@@ -161,19 +236,19 @@ TEST_F(AssemblerX86Test, RepeatFFI) {
 //
 
 TEST_F(AssemblerX86Test, Movl) {
-  GetAssembler()->movl(x86::EAX, x86::EBX);
-  const char* expected = "mov %ebx, %eax\n";
-  DriverStr(expected, "movl");
+  DriverStr(RepeatRR(&x86::X86Assembler::movl, "movl %{reg2}, %{reg1}"), "movl");
+}
+
+TEST_F(AssemblerX86Test, MovlLoad) {
+  DriverStr(RepeatRA(&x86::X86Assembler::movl, "movl {mem}, %{reg}"), "movl-load");
+}
+
+TEST_F(AssemblerX86Test, MovlStore) {
+  DriverStr(RepeatAR(&x86::X86Assembler::movl, "movl %{reg}, {mem}"), "movl-store");
 }
 
 TEST_F(AssemblerX86Test, Movntl) {
-  GetAssembler()->movntl(x86::Address(x86::EDI, x86::EBX, x86::TIMES_4, 12), x86::EAX);
-  GetAssembler()->movntl(x86::Address(x86::EDI, 0), x86::EAX);
-  const char* expected =
-    "movntil %EAX, 0xc(%EDI,%EBX,4)\n"
-    "movntil %EAX, (%EDI)\n";
-
-  DriverStr(expected, "movntl");
+  DriverStr(RepeatAR(&x86::X86Assembler::movntl, "movntil %{reg}, {mem}"), "movntl");
 }
 
 TEST_F(AssemblerX86Test, LoadLongConstant) {
@@ -187,66 +262,29 @@ TEST_F(AssemblerX86Test, LoadLongConstant) {
 }
 
 TEST_F(AssemblerX86Test, LockCmpxchgl) {
-  GetAssembler()->LockCmpxchgl(x86::Address(
-        x86::Register(x86::EDI), x86::Register(x86::EBX), x86::TIMES_4, 12),
-      x86::Register(x86::ESI));
-  GetAssembler()->LockCmpxchgl(x86::Address(
-        x86::Register(x86::EDI), x86::Register(x86::ESI), x86::TIMES_4, 12),
-      x86::Register(x86::ESI));
-  GetAssembler()->LockCmpxchgl(x86::Address(
-        x86::Register(x86::EDI), x86::Register(x86::ESI), x86::TIMES_4, 12),
-      x86::Register(x86::EDI));
-  GetAssembler()->LockCmpxchgl(x86::Address(
-      x86::Register(x86::EBP), 0), x86::Register(x86::ESI));
-  GetAssembler()->LockCmpxchgl(x86::Address(
-        x86::Register(x86::EBP), x86::Register(x86::ESI), x86::TIMES_1, 0),
-      x86::Register(x86::ESI));
-  const char* expected =
-    "lock cmpxchgl %ESI, 0xc(%EDI,%EBX,4)\n"
-    "lock cmpxchgl %ESI, 0xc(%EDI,%ESI,4)\n"
-    "lock cmpxchgl %EDI, 0xc(%EDI,%ESI,4)\n"
-    "lock cmpxchgl %ESI, (%EBP)\n"
-    "lock cmpxchgl %ESI, (%EBP,%ESI,1)\n";
-
-  DriverStr(expected, "lock_cmpxchgl");
+  DriverStr(RepeatAR(&x86::X86Assembler::LockCmpxchgl,
+                     "lock cmpxchgl %{reg}, {mem}"), "lock_cmpxchgl");
 }
 
 TEST_F(AssemblerX86Test, LockCmpxchg8b) {
-  GetAssembler()->LockCmpxchg8b(x86::Address(
-      x86::Register(x86::EDI), x86::Register(x86::EBX), x86::TIMES_4, 12));
-  GetAssembler()->LockCmpxchg8b(x86::Address(
-      x86::Register(x86::EDI), x86::Register(x86::ESI), x86::TIMES_4, 12));
-  GetAssembler()->LockCmpxchg8b(x86::Address(
-      x86::Register(x86::EDI), x86::Register(x86::ESI), x86::TIMES_4, 12));
-  GetAssembler()->LockCmpxchg8b(x86::Address(x86::Register(x86::EBP), 0));
-  GetAssembler()->LockCmpxchg8b(x86::Address(
-      x86::Register(x86::EBP), x86::Register(x86::ESI), x86::TIMES_1, 0));
-  const char* expected =
-    "lock cmpxchg8b 0xc(%EDI,%EBX,4)\n"
-    "lock cmpxchg8b 0xc(%EDI,%ESI,4)\n"
-    "lock cmpxchg8b 0xc(%EDI,%ESI,4)\n"
-    "lock cmpxchg8b (%EBP)\n"
-    "lock cmpxchg8b (%EBP,%ESI,1)\n";
-
-  DriverStr(expected, "lock_cmpxchg8b");
+  DriverStr(RepeatA(&x86::X86Assembler::LockCmpxchg8b,
+                    "lock cmpxchg8b {mem}"), "lock_cmpxchg8b");
 }
 
-TEST_F(AssemblerX86Test, FPUIntegerLoad) {
-  GetAssembler()->filds(x86::Address(x86::Register(x86::ESP), 4));
-  GetAssembler()->fildl(x86::Address(x86::Register(x86::ESP), 12));
-  const char* expected =
-      "fildl 0x4(%ESP)\n"
-      "fildll 0xc(%ESP)\n";
-  DriverStr(expected, "FPUIntegerLoad");
+TEST_F(AssemblerX86Test, FPUIntegerLoadS) {
+  DriverStr(RepeatA(&x86::X86Assembler::filds, "fildl {mem}"), "fildd");
 }
 
-TEST_F(AssemblerX86Test, FPUIntegerStore) {
-  GetAssembler()->fistps(x86::Address(x86::Register(x86::ESP), 16));
-  GetAssembler()->fistpl(x86::Address(x86::Register(x86::ESP), 24));
-  const char* expected =
-      "fistpl 0x10(%ESP)\n"
-      "fistpll 0x18(%ESP)\n";
-  DriverStr(expected, "FPUIntegerStore");
+TEST_F(AssemblerX86Test, FPUIntegerLoadL) {
+  DriverStr(RepeatA(&x86::X86Assembler::fildl, "fildll {mem}"), "fildl");
+}
+
+TEST_F(AssemblerX86Test, FPUIntegerStoreS) {
+  DriverStr(RepeatA(&x86::X86Assembler::fistps, "fistpl {mem}"), "fistps");
+}
+
+TEST_F(AssemblerX86Test, FPUIntegerStoreL) {
+  DriverStr(RepeatA(&x86::X86Assembler::fistpl, "fistpll {mem}"), "fistpl");
 }
 
 TEST_F(AssemblerX86Test, Repnescasb) {
@@ -296,12 +334,7 @@ TEST_F(AssemblerX86Test, Bsfl) {
 }
 
 TEST_F(AssemblerX86Test, BsflAddress) {
-  GetAssembler()->bsfl(x86::Register(x86::EDI), x86::Address(
-      x86::Register(x86::EDI), x86::Register(x86::EBX), x86::TIMES_4, 12));
-  const char* expected =
-    "bsfl 0xc(%EDI,%EBX,4), %EDI\n";
-
-  DriverStr(expected, "bsfl_address");
+  DriverStr(RepeatRA(&x86::X86Assembler::bsfl, "bsfl {mem}, %{reg}"), "bsfl_address");
 }
 
 TEST_F(AssemblerX86Test, Bsrl) {
@@ -309,12 +342,7 @@ TEST_F(AssemblerX86Test, Bsrl) {
 }
 
 TEST_F(AssemblerX86Test, BsrlAddress) {
-  GetAssembler()->bsrl(x86::Register(x86::EDI), x86::Address(
-      x86::Register(x86::EDI), x86::Register(x86::EBX), x86::TIMES_4, 12));
-  const char* expected =
-    "bsrl 0xc(%EDI,%EBX,4), %EDI\n";
-
-  DriverStr(expected, "bsrl_address");
+  DriverStr(RepeatRA(&x86::X86Assembler::bsrl, "bsrl {mem}, %{reg}"), "bsrl_address");
 }
 
 TEST_F(AssemblerX86Test, Popcntl) {
@@ -322,26 +350,18 @@ TEST_F(AssemblerX86Test, Popcntl) {
 }
 
 TEST_F(AssemblerX86Test, PopcntlAddress) {
-  GetAssembler()->popcntl(x86::Register(x86::EDI), x86::Address(
-      x86::Register(x86::EDI), x86::Register(x86::EBX), x86::TIMES_4, 12));
-  const char* expected =
-    "popcntl 0xc(%EDI,%EBX,4), %EDI\n";
-
-  DriverStr(expected, "popcntl_address");
+  DriverStr(RepeatRA(&x86::X86Assembler::popcntl, "popcntl {mem}, %{reg}"), "popcntl_address");
 }
 
 // Rorl only allows CL as the shift count.
 std::string rorl_fn(AssemblerX86Test::Base* assembler_test, x86::X86Assembler* assembler) {
   std::ostringstream str;
-
   std::vector<x86::Register*> registers = assembler_test->GetRegisters();
-
   x86::Register shifter(x86::ECX);
   for (auto reg : registers) {
     assembler->rorl(*reg, shifter);
     str << "rorl %cl, %" << assembler_test->GetRegisterName(*reg) << "\n";
   }
-
   return str.str();
 }
 
@@ -356,15 +376,12 @@ TEST_F(AssemblerX86Test, RorlImm) {
 // Roll only allows CL as the shift count.
 std::string roll_fn(AssemblerX86Test::Base* assembler_test, x86::X86Assembler* assembler) {
   std::ostringstream str;
-
   std::vector<x86::Register*> registers = assembler_test->GetRegisters();
-
   x86::Register shifter(x86::ECX);
   for (auto reg : registers) {
     assembler->roll(*reg, shifter);
     str << "roll %cl, %" << assembler_test->GetRegisterName(*reg) << "\n";
   }
-
   return str.str();
 }
 
@@ -385,41 +402,29 @@ TEST_F(AssemblerX86Test, Cvtdq2pd) {
 }
 
 TEST_F(AssemblerX86Test, ComissAddr) {
-  GetAssembler()->comiss(x86::XmmRegister(x86::XMM0), x86::Address(x86::EAX, 0));
-  const char* expected = "comiss 0(%EAX), %xmm0\n";
-  DriverStr(expected, "comiss");
+  DriverStr(RepeatFA(&x86::X86Assembler::comiss, "comiss {mem}, %{reg}"), "comiss");
 }
 
 TEST_F(AssemblerX86Test, UComissAddr) {
-  GetAssembler()->ucomiss(x86::XmmRegister(x86::XMM0), x86::Address(x86::EAX, 0));
-  const char* expected = "ucomiss 0(%EAX), %xmm0\n";
-  DriverStr(expected, "ucomiss");
+  DriverStr(RepeatFA(&x86::X86Assembler::ucomiss, "ucomiss {mem}, %{reg}"), "ucomiss");
 }
 
 TEST_F(AssemblerX86Test, ComisdAddr) {
-  GetAssembler()->comisd(x86::XmmRegister(x86::XMM0), x86::Address(x86::EAX, 0));
-  const char* expected = "comisd 0(%EAX), %xmm0\n";
-  DriverStr(expected, "comisd");
+  DriverStr(RepeatFA(&x86::X86Assembler::comisd, "comisd {mem}, %{reg}"), "comisd");
 }
 
 TEST_F(AssemblerX86Test, UComisdAddr) {
-  GetAssembler()->ucomisd(x86::XmmRegister(x86::XMM0), x86::Address(x86::EAX, 0));
-  const char* expected = "ucomisd 0(%EAX), %xmm0\n";
-  DriverStr(expected, "ucomisd");
+  DriverStr(RepeatFA(&x86::X86Assembler::ucomisd, "ucomisd {mem}, %{reg}"), "ucomisd");
 }
 
 TEST_F(AssemblerX86Test, RoundSS) {
-  GetAssembler()->roundss(
-      x86::XmmRegister(x86::XMM0), x86::XmmRegister(x86::XMM1), x86::Immediate(1));
-  const char* expected = "roundss $1, %xmm1, %xmm0\n";
-  DriverStr(expected, "roundss");
+  DriverStr(RepeatFFI(&x86::X86Assembler::roundss, 1U,
+                      "roundss ${imm}, %{reg2}, %{reg1}"), "roundss");
 }
 
 TEST_F(AssemblerX86Test, RoundSD) {
-  GetAssembler()->roundsd(
-      x86::XmmRegister(x86::XMM0), x86::XmmRegister(x86::XMM1), x86::Immediate(1));
-  const char* expected = "roundsd $1, %xmm1, %xmm0\n";
-  DriverStr(expected, "roundsd");
+  DriverStr(RepeatFFI(&x86::X86Assembler::roundsd, 1U,
+                      "roundsd ${imm}, %{reg2}, %{reg1}"), "roundsd");
 }
 
 TEST_F(AssemblerX86Test, CmovlAddress) {
@@ -433,110 +438,75 @@ TEST_F(AssemblerX86Test, CmovlAddress) {
     "cmovzl 0xc(%EDI,%EBX,4), %eax\n"
     "cmovnzl 0xc(%ESI,%EBX,4), %edi\n"
     "cmovzl 0xc(%EDI,%EAX,4), %edi\n";
-
   DriverStr(expected, "cmovl_address");
 }
 
 TEST_F(AssemblerX86Test, TestbAddressImmediate) {
-  GetAssembler()->testb(
-      x86::Address(x86::Register(x86::EDI), x86::Register(x86::EBX), x86::TIMES_4, 12),
-      x86::Immediate(1));
-  GetAssembler()->testb(
-      x86::Address(x86::Register(x86::ESP), FrameOffset(7)),
-      x86::Immediate(-128));
-  GetAssembler()->testb(
-      x86::Address(x86::Register(x86::EBX), MemberOffset(130)),
-      x86::Immediate(127));
-  const char* expected =
-      "testb $1, 0xc(%EDI,%EBX,4)\n"
-      "testb $-128, 0x7(%ESP)\n"
-      "testb $127, 0x82(%EBX)\n";
-
-  DriverStr(expected, "TestbAddressImmediate");
+  DriverStr(RepeatAI(&x86::X86Assembler::testb, /*imm_bytes*/ 1U, "testb ${imm}, {mem}"), "testb");
 }
 
 TEST_F(AssemblerX86Test, TestlAddressImmediate) {
-  GetAssembler()->testl(
-      x86::Address(x86::Register(x86::EDI), x86::Register(x86::EBX), x86::TIMES_4, 12),
-      x86::Immediate(1));
-  GetAssembler()->testl(
-      x86::Address(x86::Register(x86::ESP), FrameOffset(7)),
-      x86::Immediate(-100000));
-  GetAssembler()->testl(
-      x86::Address(x86::Register(x86::EBX), MemberOffset(130)),
-      x86::Immediate(77777777));
-  const char* expected =
-      "testl $1, 0xc(%EDI,%EBX,4)\n"
-      "testl $-100000, 0x7(%ESP)\n"
-      "testl $77777777, 0x82(%EBX)\n";
-
-  DriverStr(expected, "TestlAddressImmediate");
+  DriverStr(RepeatAI(&x86::X86Assembler::testl, /*imm_bytes*/ 4U, "testl ${imm}, {mem}"), "testl");
 }
 
 TEST_F(AssemblerX86Test, Movaps) {
   DriverStr(RepeatFF(&x86::X86Assembler::movaps, "movaps %{reg2}, %{reg1}"), "movaps");
 }
 
-TEST_F(AssemblerX86Test, MovapsAddr) {
-  GetAssembler()->movaps(x86::XmmRegister(x86::XMM0), x86::Address(x86::Register(x86::ESP), 4));
-  GetAssembler()->movaps(x86::Address(x86::Register(x86::ESP), 2), x86::XmmRegister(x86::XMM1));
-  const char* expected =
-    "movaps 0x4(%ESP), %xmm0\n"
-    "movaps %xmm1, 0x2(%ESP)\n";
-  DriverStr(expected, "movaps_address");
+TEST_F(AssemblerX86Test, MovapsLoad) {
+  DriverStr(RepeatFA(&x86::X86Assembler::movaps, "movaps {mem}, %{reg}"), "movaps_load");
 }
 
-TEST_F(AssemblerX86Test, MovupsAddr) {
-  GetAssembler()->movups(x86::XmmRegister(x86::XMM0), x86::Address(x86::Register(x86::ESP), 4));
-  GetAssembler()->movups(x86::Address(x86::Register(x86::ESP), 2), x86::XmmRegister(x86::XMM1));
-  const char* expected =
-    "movups 0x4(%ESP), %xmm0\n"
-    "movups %xmm1, 0x2(%ESP)\n";
-  DriverStr(expected, "movups_address");
+TEST_F(AssemblerX86Test, MovapsStore) {
+  DriverStr(RepeatAF(&x86::X86Assembler::movaps, "movaps %{reg}, {mem}"), "movaps_store");
+}
+
+TEST_F(AssemblerX86Test, MovupsLoad) {
+  DriverStr(RepeatFA(&x86::X86Assembler::movups, "movups {mem}, %{reg}"), "movups_load");
+}
+
+TEST_F(AssemblerX86Test, MovupsStore) {
+  DriverStr(RepeatAF(&x86::X86Assembler::movups, "movups %{reg}, {mem}"), "movups_store");
 }
 
 TEST_F(AssemblerX86Test, Movapd) {
   DriverStr(RepeatFF(&x86::X86Assembler::movapd, "movapd %{reg2}, %{reg1}"), "movapd");
 }
 
-TEST_F(AssemblerX86Test, MovapdAddr) {
-  GetAssembler()->movapd(x86::XmmRegister(x86::XMM0), x86::Address(x86::Register(x86::ESP), 4));
-  GetAssembler()->movapd(x86::Address(x86::Register(x86::ESP), 2), x86::XmmRegister(x86::XMM1));
-  const char* expected =
-    "movapd 0x4(%ESP), %xmm0\n"
-    "movapd %xmm1, 0x2(%ESP)\n";
-  DriverStr(expected, "movapd_address");
+TEST_F(AssemblerX86Test, MovapdLoad) {
+  DriverStr(RepeatFA(&x86::X86Assembler::movapd, "movapd {mem}, %{reg}"), "movapd_load");
 }
 
-TEST_F(AssemblerX86Test, MovupdAddr) {
-  GetAssembler()->movupd(x86::XmmRegister(x86::XMM0), x86::Address(x86::Register(x86::ESP), 4));
-  GetAssembler()->movupd(x86::Address(x86::Register(x86::ESP), 2), x86::XmmRegister(x86::XMM1));
-  const char* expected =
-    "movupd 0x4(%ESP), %xmm0\n"
-    "movupd %xmm1, 0x2(%ESP)\n";
-  DriverStr(expected, "movupd_address");
+TEST_F(AssemblerX86Test, MovapdStore) {
+  DriverStr(RepeatAF(&x86::X86Assembler::movapd, "movapd %{reg}, {mem}"), "movapd_store");
+}
+
+TEST_F(AssemblerX86Test, MovupdLoad) {
+  DriverStr(RepeatFA(&x86::X86Assembler::movupd, "movupd {mem}, %{reg}"), "movupd_load");
+}
+
+TEST_F(AssemblerX86Test, MovupdStore) {
+  DriverStr(RepeatAF(&x86::X86Assembler::movupd, "movupd %{reg}, {mem}"), "movupd_store");
 }
 
 TEST_F(AssemblerX86Test, Movdqa) {
   DriverStr(RepeatFF(&x86::X86Assembler::movdqa, "movdqa %{reg2}, %{reg1}"), "movdqa");
 }
 
-TEST_F(AssemblerX86Test, MovdqaAddr) {
-  GetAssembler()->movdqa(x86::XmmRegister(x86::XMM0), x86::Address(x86::Register(x86::ESP), 4));
-  GetAssembler()->movdqa(x86::Address(x86::Register(x86::ESP), 2), x86::XmmRegister(x86::XMM1));
-  const char* expected =
-    "movdqa 0x4(%ESP), %xmm0\n"
-    "movdqa %xmm1, 0x2(%ESP)\n";
-  DriverStr(expected, "movdqa_address");
+TEST_F(AssemblerX86Test, MovdqaLoad) {
+  DriverStr(RepeatFA(&x86::X86Assembler::movdqa, "movdqa {mem}, %{reg}"), "movdqa_load");
 }
 
-TEST_F(AssemblerX86Test, MovdquAddr) {
-  GetAssembler()->movdqu(x86::XmmRegister(x86::XMM0), x86::Address(x86::Register(x86::ESP), 4));
-  GetAssembler()->movdqu(x86::Address(x86::Register(x86::ESP), 2), x86::XmmRegister(x86::XMM1));
-  const char* expected =
-    "movdqu 0x4(%ESP), %xmm0\n"
-    "movdqu %xmm1, 0x2(%ESP)\n";
-  DriverStr(expected, "movdqu_address");
+TEST_F(AssemblerX86Test, MovdqaStore) {
+  DriverStr(RepeatAF(&x86::X86Assembler::movdqa, "movdqa %{reg}, {mem}"), "movdqa_store");
+}
+
+TEST_F(AssemblerX86Test, MovdquLoad) {
+  DriverStr(RepeatFA(&x86::X86Assembler::movdqu, "movdqu {mem}, %{reg}"), "movdqu_load");
+}
+
+TEST_F(AssemblerX86Test, MovdquStore) {
+  DriverStr(RepeatAF(&x86::X86Assembler::movdqu, "movdqu %{reg}, {mem}"), "movdqu_store");
 }
 
 TEST_F(AssemblerX86Test, AddPS) {
@@ -901,7 +871,6 @@ TEST_F(AssemblerX86Test, Jecxz) {
     "jecxz 1f\n"
     "addl 4(%ESP),%EDI\n"
     "1:\n";
-
   DriverStr(expected, "jecxz");
 }
 
@@ -923,14 +892,11 @@ TEST_F(AssemblerX86Test, NearLabel) {
     "addl 4(%ESP),%EDI\n"
     "2: jne 1b\n"
     "jmp 1b\n";
-
   DriverStr(expected, "near_label");
 }
 
 TEST_F(AssemblerX86Test, Cmpb) {
-  GetAssembler()->cmpb(x86::Address(x86::EDI, 128), x86::Immediate(0));
-  const char* expected = "cmpb $0, 128(%EDI)\n";
-  DriverStr(expected, "cmpb");
+  DriverStr(RepeatAI(&x86::X86Assembler::cmpb, /*imm_bytes*/ 1U, "cmpb ${imm}, {mem}"), "cmpb");
 }
 
 }  // namespace art

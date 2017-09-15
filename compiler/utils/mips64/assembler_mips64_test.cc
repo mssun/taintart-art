@@ -35,12 +35,14 @@ struct MIPS64CpuRegisterCompare {
 };
 
 class AssemblerMIPS64Test : public AssemblerTest<mips64::Mips64Assembler,
+                                                 mips64::Mips64Label,
                                                  mips64::GpuRegister,
                                                  mips64::FpuRegister,
                                                  uint32_t,
                                                  mips64::VectorRegister> {
  public:
   typedef AssemblerTest<mips64::Mips64Assembler,
+                        mips64::Mips64Label,
                         mips64::GpuRegister,
                         mips64::FpuRegister,
                         uint32_t,
@@ -226,6 +228,11 @@ class AssemblerMIPS64Test : public AssemblerTest<mips64::Mips64Assembler,
     STLDeleteElements(&registers_);
     STLDeleteElements(&fp_registers_);
     STLDeleteElements(&vec_registers_);
+  }
+
+  std::vector<mips64::Mips64Label> GetAddresses() {
+    UNIMPLEMENTED(FATAL) << "Feature not implemented yet";
+    UNREACHABLE();
   }
 
   std::vector<mips64::GpuRegister*> GetRegisters() OVERRIDE {
