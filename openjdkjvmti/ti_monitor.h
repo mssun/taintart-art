@@ -52,6 +52,8 @@ class MonitorUtil {
   static jvmtiError RawMonitorNotify(jvmtiEnv* env, jrawMonitorID monitor);
 
   static jvmtiError RawMonitorNotifyAll(jvmtiEnv* env, jrawMonitorID monitor);
+
+  static jvmtiError GetCurrentContendedMonitor(jvmtiEnv* env, jthread thr, jobject* monitor);
 };
 
 }  // namespace openjdkjvmti

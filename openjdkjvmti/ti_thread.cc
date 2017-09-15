@@ -392,6 +392,8 @@ static jint GetJavaStateFromInternal(const InternalThreadState& state) {
       return JVMTI_JAVA_LANG_THREAD_STATE_NEW;
 
     case art::ThreadState::kWaiting:
+    case art::ThreadState::kWaitingForTaskProcessor:
+    case art::ThreadState::kWaitingForLockInflation:
     case art::ThreadState::kWaitingForGcToComplete:
     case art::ThreadState::kWaitingPerformingGc:
     case art::ThreadState::kWaitingForCheckPointsToRun:

@@ -30,6 +30,7 @@ struct ArtJvmTiEnv;
 class JvmtiAllocationListener;
 class JvmtiGcPauseListener;
 class JvmtiMethodTraceListener;
+class JvmtiMonitorListener;
 
 // an enum for ArtEvents. This differs from the JVMTI events only in that we distinguish between
 // retransformation capable and incapable loading
@@ -212,6 +213,8 @@ class EventHandler {
   void HandleEventType(ArtJvmtiEvent event, bool enable);
   void HandleLocalAccessCapabilityAdded();
 
+  bool OtherMonitorEventsEnabledAnywhere(ArtJvmtiEvent event);
+
   // List of all JvmTiEnv objects that have been created, in their creation order.
   // NB Some elements might be null representing envs that have been deleted. They should be skipped
   // anytime this list is used.
@@ -223,6 +226,7 @@ class EventHandler {
   std::unique_ptr<JvmtiAllocationListener> alloc_listener_;
   std::unique_ptr<JvmtiGcPauseListener> gc_pause_listener_;
   std::unique_ptr<JvmtiMethodTraceListener> method_trace_listener_;
+  std::unique_ptr<JvmtiMonitorListener> monitor_listener_;
 
   // True if frame pop has ever been enabled. Since we store pointers to stack frames we need to
   // continue to listen to this event even if it has been disabled.
