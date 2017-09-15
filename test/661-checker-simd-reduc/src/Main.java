@@ -59,6 +59,7 @@ public class Main {
   /// CHECK-DAG: <<Get:i\d+>>    ArrayGet [{{l\d+}},<<Phi1>>]  loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Get>>]        loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]      loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Return [<<Phi2>>]             loop:none
   //
   /// CHECK-START-ARM64: int Main.reductionInt(int[]) loop_optimization (after)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                 loop:none
@@ -88,6 +89,7 @@ public class Main {
   /// CHECK-DAG: <<Get:j\d+>>    ArrayGet [{{l\d+}},<<Phi1>>]  loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Get>>]        loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]      loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Return [<<Phi2>>]             loop:none
   //
   /// CHECK-START-ARM64: long Main.reductionLong(long[]) loop_optimization (after)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                 loop:none
@@ -142,6 +144,7 @@ public class Main {
   /// CHECK-DAG: <<Get:i\d+>>    ArrayGet [{{l\d+}},<<Phi1>>]  loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Get>>]        loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]      loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Return [<<Phi2>>]             loop:none
   //
   /// CHECK-START-ARM64: int Main.reductionIntM1(int[]) loop_optimization (after)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                 loop:none
@@ -172,6 +175,7 @@ public class Main {
   /// CHECK-DAG: <<Get:j\d+>>    ArrayGet [{{l\d+}},<<Phi1>>]  loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Get>>]        loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]      loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Return [<<Phi2>>]             loop:none
   //
   /// CHECK-START-ARM64: long Main.reductionLongM1(long[]) loop_optimization (after)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                 loop:none
@@ -225,6 +229,7 @@ public class Main {
   /// CHECK-DAG: <<Get:i\d+>>    ArrayGet [{{l\d+}},<<Phi1>>]  loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Sub [<<Phi2>>,<<Get>>]        loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]      loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Return [<<Phi2>>]             loop:none
   //
   /// CHECK-START-ARM64: int Main.reductionMinusInt(int[]) loop_optimization (after)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                 loop:none
@@ -254,6 +259,7 @@ public class Main {
   /// CHECK-DAG: <<Get:j\d+>>    ArrayGet [{{l\d+}},<<Phi1>>]  loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Sub [<<Phi2>>,<<Get>>]        loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]      loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Return [<<Phi2>>]             loop:none
   //
   /// CHECK-START-ARM64: long Main.reductionMinusLong(long[]) loop_optimization (after)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                 loop:none
@@ -308,6 +314,7 @@ public class Main {
   /// CHECK-DAG: <<Get:i\d+>>    ArrayGet [{{l\d+}},<<Phi1>>]  loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 InvokeStaticOrDirect [<<Phi2>>,<<Get>>] intrinsic:MathMinIntInt loop:<<Loop>> outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]      loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Return [<<Phi2>>]             loop:none
   //
   /// CHECK-START-ARM64: int Main.reductionMinInt(int[]) loop_optimization (after)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                 loop:none
@@ -370,6 +377,7 @@ public class Main {
   /// CHECK-DAG: <<Get:i\d+>>    ArrayGet [{{l\d+}},<<Phi1>>]  loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 InvokeStaticOrDirect [<<Phi2>>,<<Get>>] intrinsic:MathMaxIntInt loop:<<Loop>> outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]      loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Return [<<Phi2>>]             loop:none
   //
   /// CHECK-START-ARM64: int Main.reductionMaxInt(int[]) loop_optimization (after)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                 loop:none
