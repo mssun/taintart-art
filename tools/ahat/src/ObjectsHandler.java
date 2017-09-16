@@ -37,10 +37,9 @@ class ObjectsHandler implements AhatHandler {
   @Override
   public void handle(Doc doc, Query query) throws IOException {
     int id = query.getInt("id", 0);
-    int depth = query.getInt("depth", 0);
     String className = query.get("class", null);
     String heapName = query.get("heap", null);
-    Site site = mSnapshot.getSite(id, depth);
+    Site site = mSnapshot.getSite(id);
 
     List<AhatInstance> insts = new ArrayList<AhatInstance>();
     site.getObjects(heapName, className, insts);

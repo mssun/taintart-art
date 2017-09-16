@@ -19,12 +19,16 @@ package com.android.ahat.heapdump;
 import com.android.tools.perflib.heap.ClassInstance;
 import com.android.tools.perflib.heap.Instance;
 import java.awt.image.BufferedImage;
-import java.util.AbstractList;
-import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 public class AhatClassInstance extends AhatInstance {
-  private FieldValue[] mFieldValues;
+  // Instance fields of the object. These are stored in order of the instance
+  // field descriptors from the class object, starting with this class first,
+  // followed by the super class, and so on. We store the values separate from
+  // the field types and names to save memory.
+  private Value[] mFields;
 
   public AhatClassInstance(long id) {
     super(id);
@@ -35,18 +39,14 @@ public class AhatClassInstance extends AhatInstance {
 
     ClassInstance classInst = (ClassInstance)inst;
     List<ClassInstance.FieldValue> fieldValues = classInst.getValues();
-    mFieldValues = new FieldValue[fieldValues.size()];
-    for (int i = 0; i < mFieldValues.length; i++) {
-      ClassInstance.FieldValue field = fieldValues.get(i);
-      String name = field.getField().getName();
-      String type = field.getField().getType().toString();
-      Value value = snapshot.getValue(field.getValue());
-      mFieldValues[i] = new FieldValue(name, type, value);
+    mFields = new Value[fieldValues.size()];
+    for (int i = 0; i < mFields.length; i++) {
+      mFields[i] = snapshot.getValue(fieldValues.get(i).getValue());
     }
   }
 
   @Override public Value getField(String fieldName) {
-    for (FieldValue field : mFieldValues) {
+    for (FieldValue field : getInstanceFields()) {
       if (fieldName.equals(field.name)) {
         return field.value;
       }
@@ -90,36 +90,21 @@ public class AhatClassInstance extends AhatInstance {
   /**
    * Returns the list of class instance fields for this instance.
    */
-  public List<FieldValue> getInstanceFields() {
-    return Arrays.asList(mFieldValues);
+  public Iterable<FieldValue> getInstanceFields() {
+    return new InstanceFieldIterator(mFields, getClassObj());
   }
 
   @Override
-  ReferenceIterator getReferences() {
-    List<Reference> refs = new AbstractList<Reference>() {
-      @Override
-      public int size() {
-        return mFieldValues.length;
-      }
-
-      @Override
-      public Reference get(int index) {
-        FieldValue field = mFieldValues[index];
-        Value value = field.value;
-        if (value != null && value.isAhatInstance()) {
-          boolean strong = !field.name.equals("referent")
-                        || !isInstanceOfClass("java.lang.ref.Reference");
-          AhatInstance ref = value.asAhatInstance();
-          return new Reference(AhatClassInstance.this, "." + field.name, ref, strong);
-        }
-        return null;
-      }
-    };
-    return new ReferenceIterator(refs);
+  Iterable<Reference> getReferences() {
+    if (isInstanceOfClass("java.lang.ref.Reference")) {
+      return new WeakReferentReferenceIterator();
+    }
+    return new StrongReferenceIterator();
   }
 
   /**
-   * Returns true if this is an instance of a class with the given name.
+   * Returns true if this is an instance of a (subclass of a) class with the
+   * given name.
    */
   private boolean isInstanceOfClass(String className) {
     AhatClassObj cls = getClassObj();
@@ -261,5 +246,132 @@ public class AhatClassInstance extends AhatInstance {
         info.width, info.height, BufferedImage.TYPE_4BYTE_ABGR);
     bitmap.setRGB(0, 0, info.width, info.height, abgr, 0, info.width);
     return bitmap;
+  }
+
+  private static class InstanceFieldIterator implements Iterable<FieldValue>,
+                                                        Iterator<FieldValue> {
+    // The complete list of instance field values to iterate over, including
+    // superclass field values.
+    private Value[] mValues;
+    private int mValueIndex;
+
+    // The list of field descriptors specific to the current class in the
+    // class hierarchy, not including superclass field descriptors.
+    // mFields and mFieldIndex are reset each time we walk up to the next
+    // superclass in the call hierarchy.
+    private Field[] mFields;
+    private int mFieldIndex;
+    private AhatClassObj mNextClassObj;
+
+    public InstanceFieldIterator(Value[] values, AhatClassObj classObj) {
+      mValues = values;
+      mFields = classObj.getInstanceFields();
+      mValueIndex = 0;
+      mFieldIndex = 0;
+      mNextClassObj = classObj.getSuperClassObj();
+    }
+
+    @Override
+    public boolean hasNext() {
+      // If we have reached the end of the fields in the current class,
+      // continue walking up the class hierarchy to get superclass fields as
+      // well.
+      while (mFieldIndex == mFields.length && mNextClassObj != null) {
+        mFields = mNextClassObj.getInstanceFields();
+        mFieldIndex = 0;
+        mNextClassObj = mNextClassObj.getSuperClassObj();
+      }
+      return mFieldIndex < mFields.length;
+    }
+
+    @Override
+    public FieldValue next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      Field field = mFields[mFieldIndex++];
+      Value value = mValues[mValueIndex++];
+      return new FieldValue(field.name, field.type, value);
+    }
+
+    @Override
+    public Iterator<FieldValue> iterator() {
+      return this;
+    }
+  }
+
+  /**
+   * A Reference iterator that iterates over the fields of this instance
+   * assuming all field references are strong references.
+   */
+  private class StrongReferenceIterator implements Iterable<Reference>,
+                                                   Iterator<Reference> {
+    private Iterator<FieldValue> mIter = getInstanceFields().iterator();
+    private Reference mNext = null;
+
+    @Override
+    public boolean hasNext() {
+      while (mNext == null && mIter.hasNext()) {
+        FieldValue field = mIter.next();
+        if (field.value != null && field.value.isAhatInstance()) {
+          AhatInstance ref = field.value.asAhatInstance();
+          mNext = new Reference(AhatClassInstance.this, "." + field.name, ref, true);
+        }
+      }
+      return mNext != null;
+    }
+
+    @Override
+    public Reference next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      Reference next = mNext;
+      mNext = null;
+      return next;
+    }
+
+    @Override
+    public Iterator<Reference> iterator() {
+      return this;
+    }
+  }
+
+  /**
+   * A Reference iterator that iterates over the fields of a subclass of
+   * java.lang.ref.Reference, where the 'referent' field is considered weak.
+   */
+  private class WeakReferentReferenceIterator implements Iterable<Reference>,
+                                                         Iterator<Reference> {
+    private Iterator<FieldValue> mIter = getInstanceFields().iterator();
+    private Reference mNext = null;
+
+    @Override
+    public boolean hasNext() {
+      while (mNext == null && mIter.hasNext()) {
+        FieldValue field = mIter.next();
+        if (field.value != null && field.value.isAhatInstance()) {
+          boolean strong = !field.name.equals("referent");
+          AhatInstance ref = field.value.asAhatInstance();
+          mNext = new Reference(AhatClassInstance.this, "." + field.name, ref, strong);
+        }
+      }
+      return mNext != null;
+    }
+
+    @Override
+    public Reference next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      Reference next = mNext;
+      mNext = null;
+      return next;
+    }
+
+    @Override
+    public Iterator<Reference> iterator() {
+      return this;
+    }
   }
 }

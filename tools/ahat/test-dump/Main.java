@@ -102,12 +102,23 @@ public class Main {
     public StackSmasher stackSmasherAdded;
     public static String modifiedStaticField;
     public int[] modifiedArray;
+    public Object objectAllocatedAtKnownSite1;
+    public Object objectAllocatedAtKnownSite2;
+
+    private void allocateObjectAtKnownSite1() {
+      objectAllocatedAtKnownSite1 = new Object();
+      allocateObjectAtKnownSite2();
+    }
+
+    private void allocateObjectAtKnownSite2() {
+      objectAllocatedAtKnownSite2 = new Object();
+    }
 
     DumpedStuff(boolean baseline) {
-      int N = baseline ? 400000 : 1000000;
-      bigArray = new byte[N];
-      for (int i = 0; i < N; i++) {
-        bigArray[i] = (byte)((i*i) & 0xFF);
+      int n = baseline ? 400000 : 1000000;
+      bigArray = new byte[n];
+      for (int i = 0; i < n; i++) {
+        bigArray[i] = (byte)((i * i) & 0xFF);
       }
 
       // 0x12345, 50000, and 0xABCDABCD are arbitrary values.
@@ -127,7 +138,9 @@ public class Main {
       modifiedObject.modifiedRefField = baseline ? "A1" : "A2";
       modifiedObject.unmodifiedRefField = "B";
       modifiedStaticField = baseline ? "C1" : "C2";
-      modifiedArray = baseline ? new int[]{0,1,2,3} : new int[]{3,1,2,0};
+      modifiedArray = baseline ? new int[]{0, 1, 2, 3} : new int[]{3, 1, 2, 0};
+
+      allocateObjectAtKnownSite1();
 
       // Deep matching dominator trees shouldn't smash the stack when we try
       // to diff them. Make some deep dominator trees to help test it.

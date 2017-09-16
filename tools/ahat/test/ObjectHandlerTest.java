@@ -42,7 +42,7 @@ public class ObjectHandlerTest {
     AhatSnapshot snapshot = dump.getAhatSnapshot();
     AhatHandler handler = new ObjectHandler(snapshot);
 
-    AhatInstance object = snapshot.findClass("Main");
+    AhatInstance object = dump.findClass("Main");
     assertNotNull(object);
 
     TestHandler.testNoCrash(handler, "http://localhost:7100/object?id=" + object.getId());
@@ -55,7 +55,7 @@ public class ObjectHandlerTest {
     AhatSnapshot snapshot = dump.getAhatSnapshot();
     AhatHandler handler = new ObjectHandler(snapshot);
 
-    AhatInstance object = snapshot.findClass("java.lang.String");
+    AhatInstance object = dump.findClass("java.lang.String");
     assertNotNull(object);
 
     TestHandler.testNoCrash(handler, "http://localhost:7100/object?id=" + object.getId());

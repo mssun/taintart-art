@@ -22,6 +22,7 @@
 
 #include <initializer_list>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include "jni.h"
@@ -29,12 +30,14 @@
 #include "art_method-inl.h"
 #include "base/mutex.h"
 #include "class_linker.h"
+#include "class_reference.h"
 #include "common_runtime_test.h"
 #include "handle.h"
 #include "handle_scope-inl.h"
 #include "mem_map.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
+#include "monitor.h"
 #include "nativehelper/ScopedLocalRef.h"
 #include "obj_ptr.h"
 #include "runtime.h"
@@ -431,6 +434,89 @@ TEST_F(RuntimePhaseCallbackRuntimeCallbacksTest, Phases) {
   ASSERT_EQ(1u, cb_.start_seen);
   ASSERT_EQ(1u, cb_.init_seen);
   ASSERT_EQ(1u, cb_.death_seen);
+}
+
+class MonitorWaitCallbacksTest : public RuntimeCallbacksTest {
+ protected:
+  void AddListener() OVERRIDE REQUIRES(Locks::mutator_lock_) {
+    Runtime::Current()->GetRuntimeCallbacks()->AddMonitorCallback(&cb_);
+  }
+  void RemoveListener() OVERRIDE REQUIRES(Locks::mutator_lock_) {
+    Runtime::Current()->GetRuntimeCallbacks()->RemoveMonitorCallback(&cb_);
+  }
+
+  struct Callback : public MonitorCallback {
+    bool IsInterestingObject(mirror::Object* obj) REQUIRES_SHARED(art::Locks::mutator_lock_) {
+      if (!obj->IsClass()) {
+        return false;
+      }
+      std::lock_guard<std::mutex> lock(ref_guard_);
+      mirror::Class* k = obj->AsClass();
+      ClassReference test = { &k->GetDexFile(), k->GetDexClassDefIndex() };
+      return ref_ == test;
+    }
+
+    void SetInterestingObject(mirror::Object* obj) REQUIRES_SHARED(art::Locks::mutator_lock_) {
+      std::lock_guard<std::mutex> lock(ref_guard_);
+      mirror::Class* k = obj->AsClass();
+      ref_ = { &k->GetDexFile(), k->GetDexClassDefIndex() };
+    }
+
+    void MonitorContendedLocking(Monitor* mon ATTRIBUTE_UNUSED)
+        REQUIRES_SHARED(Locks::mutator_lock_) { }
+
+    void MonitorContendedLocked(Monitor* mon ATTRIBUTE_UNUSED)
+        REQUIRES_SHARED(Locks::mutator_lock_) { }
+
+    void ObjectWaitStart(Handle<mirror::Object> obj, int64_t millis ATTRIBUTE_UNUSED)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      if (IsInterestingObject(obj.Get())) {
+        saw_wait_start_ = true;
+      }
+    }
+
+    void MonitorWaitFinished(Monitor* m, bool timed_out ATTRIBUTE_UNUSED)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      if (IsInterestingObject(m->GetObject())) {
+        saw_wait_finished_ = true;
+      }
+    }
+
+    std::mutex ref_guard_;
+    ClassReference ref_ = {nullptr, 0};
+    bool saw_wait_start_ = false;
+    bool saw_wait_finished_ = false;
+  };
+
+  Callback cb_;
+};
+
+// TODO It would be good to have more tests for this but due to the multi-threaded nature of the
+// callbacks this is difficult. For now the run-tests 1931 & 1932 should be sufficient.
+TEST_F(MonitorWaitCallbacksTest, WaitUnlocked) {
+  ASSERT_FALSE(cb_.saw_wait_finished_);
+  ASSERT_FALSE(cb_.saw_wait_start_);
+  {
+    Thread* self = Thread::Current();
+    self->TransitionFromSuspendedToRunnable();
+    bool started = runtime_->Start();
+    ASSERT_TRUE(started);
+    {
+      ScopedObjectAccess soa(self);
+      cb_.SetInterestingObject(
+          soa.Decode<mirror::Class>(WellKnownClasses::java_util_Collections).Ptr());
+      Monitor::Wait(
+          self,
+          // Just a random class
+          soa.Decode<mirror::Class>(WellKnownClasses::java_util_Collections).Ptr(),
+          /*ms*/0,
+          /*ns*/0,
+          /*interruptShouldThrow*/false,
+          /*why*/kWaiting);
+    }
+  }
+  ASSERT_TRUE(cb_.saw_wait_start_);
+  ASSERT_FALSE(cb_.saw_wait_finished_);
 }
 
 }  // namespace art
