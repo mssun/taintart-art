@@ -1156,34 +1156,33 @@ extern "C" const void* artQuickResolutionTrampoline(
           LOG(FATAL) << "Unexpected call into trampoline: " << instr->DumpString(nullptr);
           UNREACHABLE();
       }
-      called_method.dex_method_index = (is_range) ? instr->VRegB_3rc() : instr->VRegB_35c();
+      called_method.index = (is_range) ? instr->VRegB_3rc() : instr->VRegB_35c();
       // Check that the invoke matches what we expected, note that this path only happens for debug
       // builds.
       if (found_stack_map) {
         DCHECK_EQ(stack_map_invoke_type, invoke_type);
         if (invoke_type != kSuper) {
           // Super may be sharpened.
-          DCHECK_EQ(stack_map_dex_method_idx, called_method.dex_method_index)
+          DCHECK_EQ(stack_map_dex_method_idx, called_method.index)
               << called_method.dex_file->PrettyMethod(stack_map_dex_method_idx) << " "
-              << called_method.dex_file->PrettyMethod(called_method.dex_method_index);
+              << called_method.PrettyMethod();
         }
       } else {
         VLOG(dex) << "Accessed dex file for invoke " << invoke_type << " "
-                  << called_method.dex_method_index;
+                  << called_method.index;
       }
     } else {
       invoke_type = stack_map_invoke_type;
-      called_method.dex_method_index = stack_map_dex_method_idx;
+      called_method.index = stack_map_dex_method_idx;
     }
   } else {
     invoke_type = kStatic;
     called_method.dex_file = called->GetDexFile();
-    called_method.dex_method_index = called->GetDexMethodIndex();
+    called_method.index = called->GetDexMethodIndex();
   }
   uint32_t shorty_len;
   const char* shorty =
-      called_method.dex_file->GetMethodShorty(
-          called_method.dex_file->GetMethodId(called_method.dex_method_index), &shorty_len);
+      called_method.dex_file->GetMethodShorty(called_method.GetMethodId(), &shorty_len);
   RememberForGcArgumentVisitor visitor(sp, invoke_type == kStatic, shorty, shorty_len, &soa);
   visitor.VisitArguments();
   self->EndAssertNoThreadSuspension(old_cause);
@@ -1196,7 +1195,7 @@ extern "C" const void* artQuickResolutionTrampoline(
         hs.NewHandleWrapper(virtual_or_interface ? &receiver : &dummy));
     DCHECK_EQ(caller->GetDexFile(), called_method.dex_file);
     called = linker->ResolveMethod<ClassLinker::ResolveMode::kCheckICCEAndIAE>(
-        self, called_method.dex_method_index, caller, invoke_type);
+        self, called_method.index, caller, invoke_type);
 
     // Update .bss entry in oat file if any.
     if (called != nullptr && called_method.dex_file->GetOatDexFile() != nullptr) {
@@ -1207,10 +1206,10 @@ extern "C" const void* artQuickResolutionTrampoline(
             mapping->begin(),
             mapping->end(),
             [called_method](const MethodBssMappingEntry& entry) {
-              return entry.method_index < called_method.dex_method_index;
+              return entry.method_index < called_method.index;
             });
-        if (pp != mapping->end() && pp->CoversIndex(called_method.dex_method_index)) {
-          size_t bss_offset = pp->GetBssOffset(called_method.dex_method_index,
+        if (pp != mapping->end() && pp->CoversIndex(called_method.index)) {
+          size_t bss_offset = pp->GetBssOffset(called_method.index,
                                                static_cast<size_t>(kRuntimePointerSize));
           DCHECK_ALIGNED(bss_offset, static_cast<size_t>(kRuntimePointerSize));
           const OatFile* oat_file = called_method.dex_file->GetOatDexFile()->GetOatFile();
@@ -1250,7 +1249,7 @@ extern "C" const void* artQuickResolutionTrampoline(
         // TODO Maybe put this into a mirror::Class function.
         ObjPtr<mirror::Class> ref_class = linker->LookupResolvedType(
             *dex_cache->GetDexFile(),
-            dex_cache->GetDexFile()->GetMethodId(called_method.dex_method_index).class_idx_,
+            dex_cache->GetDexFile()->GetMethodId(called_method.index).class_idx_,
             dex_cache.Get(),
             class_loader.Get());
         if (ref_class->IsInterface()) {

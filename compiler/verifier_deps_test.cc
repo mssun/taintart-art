@@ -97,7 +97,7 @@ class VerifierDepsTest : public CommonCompilerTest {
     callbacks_->SetVerifierDeps(nullptr);
     // Clear entries in the verification results to avoid hitting a DCHECK that
     // we always succeed inserting a new entry after verifying.
-    AtomicDexRefMap<const VerifiedMethod*>* map =
+    AtomicDexRefMap<MethodReference, const VerifiedMethod*>* map =
         &compiler_driver_->GetVerificationResults()->atomic_verified_methods_;
     map->Visit([](const DexFileReference& ref ATTRIBUTE_UNUSED, const VerifiedMethod* method) {
       delete method;

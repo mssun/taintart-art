@@ -4623,7 +4623,7 @@ void CodeGeneratorX86::RecordBootMethodPatch(HInvokeStaticOrDirect* invoke) {
       invoke->InputAt(invoke->GetSpecialInputIndex())->AsX86ComputeBaseMethodAddress();
   boot_image_method_patches_.emplace_back(address,
                                           *invoke->GetTargetMethod().dex_file,
-                                          invoke->GetTargetMethod().dex_method_index);
+                                          invoke->GetTargetMethod().index);
   __ Bind(&boot_image_method_patches_.back().label);
 }
 
@@ -4633,7 +4633,7 @@ Label* CodeGeneratorX86::NewMethodBssEntryPatch(
   // Add the patch entry and bind its label at the end of the instruction.
   method_bss_entry_patches_.emplace_back(method_address,
                                          *target_method.dex_file,
-                                         target_method.dex_method_index);
+                                         target_method.index);
   return &method_bss_entry_patches_.back().label;
 }
 

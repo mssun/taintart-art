@@ -1592,7 +1592,7 @@ CodeGeneratorMIPS64::PcRelativePatchInfo* CodeGeneratorMIPS64::NewPcRelativeMeth
     MethodReference target_method,
     const PcRelativePatchInfo* info_high) {
   return NewPcRelativePatch(*target_method.dex_file,
-                            target_method.dex_method_index,
+                            target_method.index,
                             info_high,
                             &pc_relative_method_patches_);
 }
@@ -1601,7 +1601,7 @@ CodeGeneratorMIPS64::PcRelativePatchInfo* CodeGeneratorMIPS64::NewMethodBssEntry
     MethodReference target_method,
     const PcRelativePatchInfo* info_high) {
   return NewPcRelativePatch(*target_method.dex_file,
-                            target_method.dex_method_index,
+                            target_method.index,
                             info_high,
                             &method_bss_entry_patches_);
 }

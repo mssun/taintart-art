@@ -634,8 +634,7 @@ class ProfMan FINAL {
         if (kInvalidTypeIndex >= dex_file->NumTypeIds()) {
           // The dex file does not contain all possible type ids which leaves us room
           // to add an "invalid" type id.
-          class_ref->dex_file = dex_file;
-          class_ref->type_index = dex::TypeIndex(kInvalidTypeIndex);
+          *class_ref = TypeReference(dex_file, dex::TypeIndex(kInvalidTypeIndex));
           return true;
         } else {
           // The dex file contains all possible type ids. We don't have any free type id
@@ -653,8 +652,7 @@ class ProfMan FINAL {
         // Class is only referenced in the current dex file but not defined in it.
         continue;
       }
-      class_ref->dex_file = dex_file;
-      class_ref->type_index = type_index;
+      *class_ref = TypeReference(dex_file, type_index);
       return true;
     }
     return false;
@@ -698,7 +696,7 @@ class ProfMan FINAL {
       return DexFile::kDexNoIndex;
     }
     const DexFile::MethodId* method_id = dex_file->FindMethodId(
-        dex_file->GetTypeId(class_ref.type_index), *name_id, *proto_id);
+        dex_file->GetTypeId(class_ref.TypeIndex()), *name_id, *proto_id);
     if (method_id == nullptr) {
       LOG(WARNING) << "Could not find method_id: " << name;
       return DexFile::kDexNoIndex;
@@ -718,7 +716,7 @@ class ProfMan FINAL {
                        /*out*/uint32_t* dex_pc) {
     const DexFile* dex_file = class_ref.dex_file;
     uint32_t offset = dex_file->FindCodeItemOffset(
-        *dex_file->FindClassDef(class_ref.type_index),
+        *dex_file->FindClassDef(class_ref.TypeIndex()),
         method_index);
     const DexFile::CodeItem* code_item = dex_file->GetCodeItem(offset);
 
@@ -799,11 +797,11 @@ class ProfMan FINAL {
             dex_file->GetBaseLocation(),
             dex_file->GetLocationChecksum(),
             dex_file->NumMethodIds());
-      dex_resolved_classes.first->AddClass(class_ref.type_index);
+      dex_resolved_classes.first->AddClass(class_ref.TypeIndex());
       std::vector<ProfileMethodInfo> methods;
       if (method_str == kClassAllMethods) {
         // Add all of the methods.
-        const DexFile::ClassDef* class_def = dex_file->FindClassDef(class_ref.type_index);
+        const DexFile::ClassDef* class_def = dex_file->FindClassDef(class_ref.TypeIndex());
         const uint8_t* class_data = dex_file->GetClassData(*class_def);
         if (class_data != nullptr) {
           ClassDataItemIterator it(*dex_file, class_data);

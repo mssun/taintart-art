@@ -1238,12 +1238,6 @@ class DexFile {
   ART_FRIEND_TEST(ClassLinkerTest, RegisterDexFileName);  // for constructor
 };
 
-struct DexFileReference {
-  DexFileReference(const DexFile* file, uint32_t idx) : dex_file(file), index(idx) { }
-  const DexFile* dex_file;
-  uint32_t index;
-};
-
 std::ostream& operator<<(std::ostream& os, const DexFile& dex_file);
 
 // Iterate over a dex file's ProtoId's paramters
