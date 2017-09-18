@@ -554,7 +554,7 @@ MethodVerifier::MethodVerifier(Thread* self,
       arena_(&arena_stack_),
       reg_types_(can_load_classes, arena_),
       reg_table_(arena_),
-      work_insn_idx_(DexFile::kDexNoIndex),
+      work_insn_idx_(dex::kDexNoIndex),
       dex_method_idx_(dex_method_idx),
       mirror_method_(method),
       method_access_flags_(method_access_flags),
@@ -928,7 +928,7 @@ std::ostream& MethodVerifier::Fail(VerifyError error) {
         // Note: this assumes that Fail is called before we do any work_line modifications.
         // Note: this can fail before we touch any instruction, for the signature of a method. So
         //       add a check.
-        if (work_insn_idx_ < DexFile::kDexNoIndex) {
+        if (work_insn_idx_ < dex::kDexNoIndex) {
           const uint16_t* insns = code_item_->insns_ + work_insn_idx_;
           const Instruction* inst = Instruction::At(insns);
           int opcode_flags = Instruction::FlagsOf(inst->Opcode());
@@ -1992,7 +1992,7 @@ static uint32_t GetFirstFinalInstanceFieldIndex(const DexFile& dex_file, dex::Ty
     }
     it.Next();
   }
-  return DexFile::kDexNoIndex;
+  return dex::kDexNoIndex;
 }
 
 // Setup a register line for the given return instruction.
@@ -3377,7 +3377,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
           // manually over the underlying dex file.
           uint32_t first_index = GetFirstFinalInstanceFieldIndex(*dex_file_,
               dex_file_->GetMethodId(dex_method_idx_).class_idx_);
-          if (first_index != DexFile::kDexNoIndex) {
+          if (first_index != dex::kDexNoIndex) {
             Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "return-void-no-barrier not expected for field "
                               << first_index;
           }

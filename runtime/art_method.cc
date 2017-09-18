@@ -59,7 +59,7 @@ extern "C" void art_quick_invoke_static_stub(ArtMethod*, uint32_t*, uint32_t, Th
 DEFINE_RUNTIME_DEBUG_FLAG(ArtMethod, kCheckDeclaringClassState);
 
 // Enforce that we he have the right index for runtime methods.
-static_assert(ArtMethod::kRuntimeMethodDexMethodIndex == DexFile::kDexNoIndex,
+static_assert(ArtMethod::kRuntimeMethodDexMethodIndex == dex::kDexNoIndex,
               "Wrong runtime-method dex method index");
 
 ArtMethod* ArtMethod::GetCanonicalMethod(PointerSize pointer_size) {
@@ -258,7 +258,7 @@ uint32_t ArtMethod::FindDexMethodIndexInOtherDexFile(const DexFile& other_dexfil
       return other_dexfile.GetIndexForMethodId(*other_mid);
     }
   }
-  return DexFile::kDexNoIndex;
+  return dex::kDexNoIndex;
 }
 
 uint32_t ArtMethod::FindCatchBlock(Handle<mirror::Class> exception_type,
@@ -270,7 +270,7 @@ uint32_t ArtMethod::FindCatchBlock(Handle<mirror::Class> exception_type,
   Handle<mirror::Throwable> exception(hs.NewHandle(self->GetException()));
   self->ClearException();
   // Default to handler not found.
-  uint32_t found_dex_pc = DexFile::kDexNoIndex;
+  uint32_t found_dex_pc = dex::kDexNoIndex;
   // Iterate over the catch handlers associated with dex_pc.
   for (CatchHandlerIterator it(*code_item, dex_pc); it.HasNext(); it.Next()) {
     dex::TypeIndex iter_type_idx = it.GetHandlerTypeIndex();
@@ -296,7 +296,7 @@ uint32_t ArtMethod::FindCatchBlock(Handle<mirror::Class> exception_type,
       break;
     }
   }
-  if (found_dex_pc != DexFile::kDexNoIndex) {
+  if (found_dex_pc != dex::kDexNoIndex) {
     const Instruction* first_catch_instr =
         Instruction::At(&code_item->insns_[found_dex_pc]);
     *has_no_move_exception = (first_catch_instr->Opcode() != Instruction::MOVE_EXCEPTION);

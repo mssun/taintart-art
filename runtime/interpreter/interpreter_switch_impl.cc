@@ -17,6 +17,7 @@
 #include "interpreter_switch_impl.h"
 
 #include "base/enums.h"
+#include "dex_file_types.h"
 #include "experimental_flags.h"
 #include "interpreter_common.h"
 #include "jit/jit.h"
@@ -35,7 +36,7 @@ namespace interpreter {
       DoMonitorCheckOnExit<do_assignability_check>(self, &shadow_frame);                        \
       if (interpret_one_instruction) {                                                          \
         /* Signal mterp to return to caller */                                                  \
-        shadow_frame.SetDexPC(DexFile::kDexNoIndex);                                            \
+        shadow_frame.SetDexPC(dex::kDexNoIndex);                                                \
       }                                                                                         \
       return JValue(); /* Handled in caller. */                                                 \
     } else {                                                                                    \
@@ -88,7 +89,7 @@ namespace interpreter {
     if (jit::Jit::MaybeDoOnStackReplacement(self, method, dex_pc, offset, &result)) {          \
       if (interpret_one_instruction) {                                                         \
         /* OSR has completed execution of the method.  Signal mterp to return to caller */     \
-        shadow_frame.SetDexPC(DexFile::kDexNoIndex);                                           \
+        shadow_frame.SetDexPC(dex::kDexNoIndex);                                               \
       }                                                                                        \
       return result;                                                                           \
     }                                                                                          \
@@ -303,7 +304,7 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
         }
         if (interpret_one_instruction) {
           /* Signal mterp to return to caller */
-          shadow_frame.SetDexPC(DexFile::kDexNoIndex);
+          shadow_frame.SetDexPC(dex::kDexNoIndex);
         }
         return result;
       }
@@ -325,7 +326,7 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
         }
         if (interpret_one_instruction) {
           /* Signal mterp to return to caller */
-          shadow_frame.SetDexPC(DexFile::kDexNoIndex);
+          shadow_frame.SetDexPC(dex::kDexNoIndex);
         }
         return result;
       }
@@ -348,7 +349,7 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
         }
         if (interpret_one_instruction) {
           /* Signal mterp to return to caller */
-          shadow_frame.SetDexPC(DexFile::kDexNoIndex);
+          shadow_frame.SetDexPC(dex::kDexNoIndex);
         }
         return result;
       }
@@ -370,7 +371,7 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
         }
         if (interpret_one_instruction) {
           /* Signal mterp to return to caller */
-          shadow_frame.SetDexPC(DexFile::kDexNoIndex);
+          shadow_frame.SetDexPC(dex::kDexNoIndex);
         }
         return result;
       }
@@ -414,7 +415,7 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
         result.SetL(shadow_frame.GetVRegReference(ref_idx));
         if (interpret_one_instruction) {
           /* Signal mterp to return to caller */
-          shadow_frame.SetDexPC(DexFile::kDexNoIndex);
+          shadow_frame.SetDexPC(dex::kDexNoIndex);
         }
         return result;
       }

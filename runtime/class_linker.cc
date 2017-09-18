@@ -2771,11 +2771,11 @@ uint32_t ClassLinker::SizeOfClassWithoutEmbeddedTables(const DexFile& dex_file,
   if (class_data != nullptr) {
     // We allow duplicate definitions of the same field in a class_data_item
     // but ignore the repeated indexes here, b/21868015.
-    uint32_t last_field_idx = DexFile::kDexNoIndex;
+    uint32_t last_field_idx = dex::kDexNoIndex;
     for (ClassDataItemIterator it(dex_file, class_data); it.HasNextStaticField(); it.Next()) {
       uint32_t field_idx = it.GetMemberIndex();
       // Ordering enforced by DexFileVerifier.
-      DCHECK(last_field_idx == DexFile::kDexNoIndex || last_field_idx <= field_idx);
+      DCHECK(last_field_idx == dex::kDexNoIndex || last_field_idx <= field_idx);
       if (UNLIKELY(field_idx == last_field_idx)) {
         continue;
       }
@@ -3164,7 +3164,7 @@ void ClassLinker::LoadClassMembers(Thread* self,
         it.NumDirectMethods(),
         it.NumVirtualMethods());
     size_t class_def_method_index = 0;
-    uint32_t last_dex_method_index = DexFile::kDexNoIndex;
+    uint32_t last_dex_method_index = dex::kDexNoIndex;
     size_t last_class_def_method_index = 0;
     // TODO These should really use the iterators.
     for (size_t i = 0; it.HasNextDirectMethod(); i++, it.Next()) {

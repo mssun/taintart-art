@@ -20,6 +20,7 @@
 
 #include "base/enums.h"
 #include "debugger.h"
+#include "dex_file_types.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "jit/jit.h"
 #include "jvalue.h"
@@ -438,7 +439,7 @@ bool MoveToExceptionHandler(Thread* self,
   bool clear_exception = false;
   uint32_t found_dex_pc = shadow_frame.GetMethod()->FindCatchBlock(
       hs.NewHandle(exception->GetClass()), shadow_frame.GetDexPC(), &clear_exception);
-  if (found_dex_pc == DexFile::kDexNoIndex) {
+  if (found_dex_pc == dex::kDexNoIndex) {
     if (instrumentation != nullptr) {
       if (shadow_frame.NeedsNotifyPop()) {
         instrumentation->WatchedFramePopped(self, shadow_frame);

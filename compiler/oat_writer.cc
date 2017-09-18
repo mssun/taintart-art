@@ -33,6 +33,7 @@
 #include "debug/method_debug_info.h"
 #include "dex/verification_results.h"
 #include "dex_file-inl.h"
+#include "dex_file_types.h"
 #include "dexlayout.h"
 #include "driver/compiler_driver-inl.h"
 #include "driver/compiler_options.h"
@@ -667,11 +668,11 @@ class OatWriter::DexMethodVisitor {
       : writer_(writer),
         offset_(offset),
         dex_file_(nullptr),
-        class_def_index_(DexFile::kDexNoIndex) {}
+        class_def_index_(dex::kDexNoIndex) {}
 
   virtual bool StartClass(const DexFile* dex_file, size_t class_def_index) {
     DCHECK(dex_file_ == nullptr);
-    DCHECK_EQ(class_def_index_, DexFile::kDexNoIndex);
+    DCHECK_EQ(class_def_index_, dex::kDexNoIndex);
     dex_file_ = dex_file;
     class_def_index_ = class_def_index;
     return true;
@@ -682,7 +683,7 @@ class OatWriter::DexMethodVisitor {
   virtual bool EndClass() {
     if (kIsDebugBuild) {
       dex_file_ = nullptr;
-      class_def_index_ = DexFile::kDexNoIndex;
+      class_def_index_ = dex::kDexNoIndex;
     }
     return true;
   }

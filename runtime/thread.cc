@@ -48,6 +48,7 @@
 #include "debugger.h"
 #include "dex_file-inl.h"
 #include "dex_file_annotations.h"
+#include "dex_file_types.h"
 #include "entrypoints/entrypoint_utils.h"
 #include "entrypoints/quick/quick_alloc_entrypoints.h"
 #include "gc/accounting/card_table-inl.h"
@@ -2421,7 +2422,7 @@ class FetchStackTraceVisitor : public StackVisitor {
       if (!m->IsRuntimeMethod()) {  // Ignore runtime frames (in particular callee save).
         if (depth_ < max_saved_frames_) {
           saved_frames_[depth_].first = m;
-          saved_frames_[depth_].second = m->IsProxyMethod() ? DexFile::kDexNoIndex : GetDexPc();
+          saved_frames_[depth_].second = m->IsProxyMethod() ? dex::kDexNoIndex : GetDexPc();
         }
         ++depth_;
       }
@@ -2507,7 +2508,7 @@ class BuildInternalStackTraceVisitor : public StackVisitor {
     if (m->IsRuntimeMethod()) {
       return true;  // Ignore runtime frames (in particular callee save).
     }
-    AddFrame(m, m->IsProxyMethod() ? DexFile::kDexNoIndex : GetDexPc());
+    AddFrame(m, m->IsProxyMethod() ? dex::kDexNoIndex : GetDexPc());
     return true;
   }
 

@@ -19,6 +19,7 @@
 #include <limits>
 
 #include "common_throws.h"
+#include "dex_file_types.h"
 #include "interpreter_common.h"
 #include "interpreter_mterp_impl.h"
 #include "interpreter_switch_impl.h"
@@ -318,7 +319,7 @@ static inline JValue Execute(
             // Mterp didn't like that instruction.  Single-step it with the reference interpreter.
             result_register = ExecuteSwitchImpl<false, false>(self, code_item, shadow_frame,
                                                               result_register, true);
-            if (shadow_frame.GetDexPC() == DexFile::kDexNoIndex) {
+            if (shadow_frame.GetDexPC() == dex::kDexNoIndex) {
               // Single-stepped a return or an exception not handled locally.  Return to caller.
               return result_register;
             }
@@ -501,7 +502,7 @@ void EnterInterpreterFromDeoptimize(Thread* self,
       const instrumentation::Instrumentation* const instrumentation =
           first ? nullptr : Runtime::Current()->GetInstrumentation();
       new_dex_pc = MoveToExceptionHandler(
-          self, *shadow_frame, instrumentation) ? shadow_frame->GetDexPC() : DexFile::kDexNoIndex;
+          self, *shadow_frame, instrumentation) ? shadow_frame->GetDexPC() : dex::kDexNoIndex;
     } else if (!from_code) {
       // Deoptimization is not called from code directly.
       const Instruction* instr = Instruction::At(&code_item->insns_[dex_pc]);
@@ -558,7 +559,7 @@ void EnterInterpreterFromDeoptimize(Thread* self,
       DCHECK(first);
       DCHECK_EQ(new_dex_pc, dex_pc);
     }
-    if (new_dex_pc != DexFile::kDexNoIndex) {
+    if (new_dex_pc != dex::kDexNoIndex) {
       shadow_frame->SetDexPC(new_dex_pc);
       value = Execute(self, code_item, *shadow_frame, value);
     }
