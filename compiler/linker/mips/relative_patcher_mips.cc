@@ -17,6 +17,7 @@
 #include "linker/mips/relative_patcher_mips.h"
 
 #include "compiled_method.h"
+#include "debug/method_debug_info.h"
 
 namespace art {
 namespace linker {
@@ -88,6 +89,11 @@ void MipsRelativePatcher::PatchBakerReadBarrierBranch(std::vector<uint8_t>* code
                                                       const LinkerPatch& patch ATTRIBUTE_UNUSED,
                                                       uint32_t patch_offset ATTRIBUTE_UNUSED) {
   LOG(FATAL) << "UNIMPLEMENTED";
+}
+
+std::vector<debug::MethodDebugInfo> MipsRelativePatcher::GenerateThunkDebugInfo(
+    uint32_t executable_offset ATTRIBUTE_UNUSED) {
+  return std::vector<debug::MethodDebugInfo>();  // No thunks added.
 }
 
 }  // namespace linker

@@ -16,6 +16,8 @@
 
 #include "linker/x86/relative_patcher_x86_base.h"
 
+#include "debug/method_debug_info.h"
+
 namespace art {
 namespace linker {
 
@@ -32,6 +34,11 @@ uint32_t X86BaseRelativePatcher::ReserveSpaceEnd(uint32_t offset) {
 
 uint32_t X86BaseRelativePatcher::WriteThunks(OutputStream* out ATTRIBUTE_UNUSED, uint32_t offset) {
   return offset;  // No thunks added; no limit on relative call distance.
+}
+
+std::vector<debug::MethodDebugInfo> X86BaseRelativePatcher::GenerateThunkDebugInfo(
+    uint32_t executable_offset ATTRIBUTE_UNUSED) {
+  return std::vector<debug::MethodDebugInfo>();  // No thunks added.
 }
 
 void X86BaseRelativePatcher::PatchCall(std::vector<uint8_t>* code,
