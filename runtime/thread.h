@@ -40,6 +40,7 @@
 #include "jvalue.h"
 #include "managed_stack.h"
 #include "offsets.h"
+#include "read_barrier_config.h"
 #include "runtime_stats.h"
 #include "suspend_reason.h"
 #include "thread_state.h"
