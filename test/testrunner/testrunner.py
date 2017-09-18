@@ -617,6 +617,7 @@ def print_test_info(test_name, result, failed_test_info=""):
 def verify_knownfailure_entry(entry):
   supported_field = {
       'tests' : (list, str),
+      'test_patterns' : (list,),
       'description' : (list, str),
       'bug' : (str,),
       'variant' : (str,),
@@ -650,6 +651,11 @@ def get_disabled_test_info():
     tests = failure.get('tests', [])
     if isinstance(tests, str):
       tests = [tests]
+    patterns = failure.get("test_patterns", [])
+    if (not isinstance(patterns, list)):
+      raise ValueError("test_patters is not a list in %s" % failure)
+
+    tests += [f for f in RUN_TEST_SET if any(re.match(pat, f) is not None for pat in patterns)]
     variants = parse_variants(failure.get('variant'))
     env_vars = failure.get('env_vars')
 
