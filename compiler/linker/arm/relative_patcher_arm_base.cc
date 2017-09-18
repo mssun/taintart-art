@@ -18,6 +18,7 @@
 
 #include "base/stl_util.h"
 #include "compiled_method.h"
+#include "debug/method_debug_info.h"
 #include "linker/output_stream.h"
 #include "oat.h"
 #include "oat_quick_method_header.h"
@@ -119,6 +120,25 @@ class ArmBaseRelativePatcher::ThunkData {
     return offsets_[pending_offset_ - 1u];
   }
 
+  size_t IndexOfFirstThunkAtOrAfter(uint32_t offset) const {
+    size_t number_of_thunks = NumberOfThunks();
+    for (size_t i = 0; i != number_of_thunks; ++i) {
+      if (GetThunkOffset(i) >= offset) {
+        return i;
+      }
+    }
+    return number_of_thunks;
+  }
+
+  size_t NumberOfThunks() const {
+    return offsets_.size();
+  }
+
+  uint32_t GetThunkOffset(size_t index) const {
+    DCHECK_LT(index, NumberOfThunks());
+    return offsets_[index];
+  }
+
  private:
   std::vector<uint8_t> code_;       // The code of the thunk.
   std::vector<uint32_t> offsets_;   // Offsets at which the thunk needs to be written.
@@ -201,6 +221,48 @@ uint32_t ArmBaseRelativePatcher::WriteThunks(OutputStream* out, uint32_t offset)
   }
   DCHECK(pending_thunks_.empty() || pending_thunks_.front()->GetPendingOffset() > aligned_offset);
   return offset;
+}
+
+std::vector<debug::MethodDebugInfo> ArmBaseRelativePatcher::GenerateThunkDebugInfo(
+    uint32_t executable_offset) {
+  // For multi-oat compilation (boot image), `thunks_` records thunks for all oat files.
+  // To return debug info for the current oat file, we must ignore thunks before the
+  // `executable_offset` as they are in the previous oat files and this function must be
+  // called before reserving thunk positions for subsequent oat files.
+  size_t number_of_thunks = 0u;
+  for (auto&& entry : thunks_) {
+    const ThunkData& data = entry.second;
+    number_of_thunks += data.NumberOfThunks() - data.IndexOfFirstThunkAtOrAfter(executable_offset);
+  }
+  std::vector<debug::MethodDebugInfo> result;
+  result.reserve(number_of_thunks);
+  for (auto&& entry : thunks_) {
+    const ThunkKey& key = entry.first;
+    const ThunkData& data = entry.second;
+    size_t start = data.IndexOfFirstThunkAtOrAfter(executable_offset);
+    if (start == data.NumberOfThunks()) {
+      continue;
+    }
+    // Get the base name to use for the first occurrence of the thunk.
+    std::string base_name = GetThunkDebugName(key);
+    for (size_t i = start, num = data.NumberOfThunks(); i != num; ++i) {
+      debug::MethodDebugInfo info = {};
+      if (i == 0u) {
+        info.trampoline_name = base_name;
+      } else {
+        // Add a disambiguating tag for subsequent identical thunks. Since the `thunks_`
+        // keeps records also for thunks in previous oat files, names based on the thunk
+        // index shall be unique across the whole multi-oat output.
+        info.trampoline_name = base_name + "_" + std::to_string(i);
+      }
+      info.isa = instruction_set_;
+      info.is_code_address_text_relative = true;
+      info.code_address = data.GetThunkOffset(i) - executable_offset;
+      info.code_size = data.CodeSize();
+      result.push_back(std::move(info));
+    }
+  }
+  return result;
 }
 
 ArmBaseRelativePatcher::ArmBaseRelativePatcher(RelativePatcherTargetProvider* provider,

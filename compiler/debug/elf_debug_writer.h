@@ -58,8 +58,6 @@ std::vector<uint8_t> WriteDebugElfFileForClasses(
     const ArrayRef<mirror::Class*>& types)
     REQUIRES_SHARED(Locks::mutator_lock_);
 
-std::vector<MethodDebugInfo> MakeTrampolineInfos(const OatHeader& oat_header);
-
 }  // namespace debug
 }  // namespace art
 
