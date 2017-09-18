@@ -87,16 +87,14 @@ class Dex2oatImageTest : public CommonRuntimeTest {
   void GenerateClasses(File* out_file, size_t frequency = 1) {
     VisitLibcoreDexes(VoidFunctor(),
                       [out_file](TypeReference ref) {
-      WriteLine(out_file,
-                ref.dex_file->PrettyType(ref.type_index));
+      WriteLine(out_file, ref.dex_file->PrettyType(ref.TypeIndex()));
     }, frequency, frequency);
     EXPECT_EQ(out_file->Flush(), 0);
   }
 
   void GenerateMethods(File* out_file, size_t frequency = 1) {
     VisitLibcoreDexes([out_file](MethodReference ref) {
-      WriteLine(out_file,
-                ref.dex_file->PrettyMethod(ref.dex_method_index));
+      WriteLine(out_file, ref.PrettyMethod());
     }, VoidFunctor(), frequency, frequency);
     EXPECT_EQ(out_file->Flush(), 0);
   }
@@ -315,7 +313,7 @@ TEST_F(Dex2oatImageTest, TestModesAndFilters) {
     VisitLibcoreDexes([&profile](MethodReference ref) {
       EXPECT_TRUE(profile.AddMethodIndex(ProfileCompilationInfo::MethodHotness::kFlagHot, ref));
     }, [&profile](TypeReference ref) {
-      EXPECT_TRUE(profile.AddClassesForDex(ref.dex_file, &ref.type_index, &ref.type_index + 1));
+      EXPECT_TRUE(profile.AddClassForDex(ref));
     }, kMethodFrequency, kTypeFrequency);
     ScratchFile profile_file;
     profile.Save(profile_file.GetFile()->Fd());

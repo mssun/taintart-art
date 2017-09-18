@@ -766,7 +766,7 @@ class OatWriter::InitBssLayoutMethodVisitor : public DexMethodVisitor {
                           Allocator::GetMallocAllocator()));
             refs_it->second.ClearAllBits();
           }
-          refs_it->second.SetBit(target_method.dex_method_index);
+          refs_it->second.SetBit(target_method.index);
           writer_->bss_method_entries_.Overwrite(target_method, /* placeholder */ 0u);
         } else if (patch.GetType() == LinkerPatch::Type::kTypeBssEntry) {
           TypeReference ref(patch.TargetTypeDexFile(), patch.TargetTypeIndex());
@@ -923,7 +923,7 @@ class OatWriter::InitCodeMethodVisitor : public OatDexMethodVisitor {
         if (relative_patcher_->GetOffset(method_ref) != 0u) {
           // TODO: Should this be a hard failure?
           LOG(WARNING) << "Multiple definitions of "
-              << method_ref.dex_file->PrettyMethod(method_ref.dex_method_index)
+              << method_ref.PrettyMethod()
               << " offsets " << relative_patcher_->GetOffset(method_ref)
               << " " << quick_code_offset;
         } else {
@@ -1527,8 +1527,7 @@ class OatWriter::WriteCodeMethodVisitor : public OatDexMethodVisitor {
     ObjPtr<mirror::DexCache> dex_cache =
         (dex_file_ == ref.dex_file) ? dex_cache_ : class_linker_->FindDexCache(
             Thread::Current(), *ref.dex_file);
-    ArtMethod* method =
-        class_linker_->LookupResolvedMethod(ref.dex_method_index, dex_cache, class_loader_);
+    ArtMethod* method = class_linker_->LookupResolvedMethod(ref.index, dex_cache, class_loader_);
     CHECK(method != nullptr);
     return method;
   }

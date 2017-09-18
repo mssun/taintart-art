@@ -254,6 +254,16 @@ class ProfileCompilationInfo {
     data->class_set.insert(index_begin, index_end);
     return true;
   }
+  // Add a single type id for a dex file.
+  bool AddClassForDex(const TypeReference& ref) {
+    DexFileData* data = GetOrAddDexFileData(ref.dex_file);
+    if (data == nullptr) {
+      return false;
+    }
+    data->class_set.insert(ref.TypeIndex());
+    return true;
+  }
+
 
   // Add a method index to the profile (without inline caches). The method flags determine if it is
   // hot, startup, or post startup, or a combination of the previous.
