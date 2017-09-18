@@ -529,7 +529,7 @@ public class Main {
 
   // TODO: Add a test for the case of a static method whose declaring
   // class type index is not available (i.e. when `storage_index`
-  // equals `DexFile::kDexNoIndex` in
+  // equals `dex::kDexNoIndex` in
   // art::HGraphBuilder::BuildInvoke).
 
   public static void main(String[] args) {

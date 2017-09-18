@@ -16,12 +16,14 @@
  * Header file of an in-memory representation of DEX files.
  */
 
+#include "dex_writer.h"
+
 #include <stdint.h>
 
 #include <queue>
 #include <vector>
 
-#include "dex_writer.h"
+#include "dex_file_types.h"
 #include "utf.h"
 
 namespace art {
@@ -462,10 +464,10 @@ void DexWriter::WriteClasses() {
   for (std::unique_ptr<dex_ir::ClassDef>& class_def : header_->GetCollections().ClassDefs()) {
     class_def_buffer[0] = class_def->ClassType()->GetIndex();
     class_def_buffer[1] = class_def->GetAccessFlags();
-    class_def_buffer[2] = class_def->Superclass() == nullptr ? DexFile::kDexNoIndex :
+    class_def_buffer[2] = class_def->Superclass() == nullptr ? dex::kDexNoIndex :
         class_def->Superclass()->GetIndex();
     class_def_buffer[3] = class_def->InterfacesOffset();
-    class_def_buffer[4] = class_def->SourceFile() == nullptr ? DexFile::kDexNoIndex :
+    class_def_buffer[4] = class_def->SourceFile() == nullptr ? dex::kDexNoIndex :
         class_def->SourceFile()->GetIndex();
     class_def_buffer[5] = class_def->Annotations() == nullptr ? 0 :
         class_def->Annotations()->GetOffset();

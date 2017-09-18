@@ -17,11 +17,13 @@
 #ifndef ART_RUNTIME_TYPE_LOOKUP_TABLE_H_
 #define ART_RUNTIME_TYPE_LOOKUP_TABLE_H_
 
-#include "dex_file.h"
+#include "dex_file_types.h"
 #include "leb128.h"
 #include "utf.h"
 
 namespace art {
+
+class DexFile;
 
 /**
  * TypeLookupTable used to find class_def_idx by class descriptor quickly.
@@ -40,7 +42,7 @@ class TypeLookupTable {
   }
 
   // Method search class_def_idx by class descriptor and it's hash.
-  // If no data found then the method returns DexFile::kDexNoIndex
+  // If no data found then the method returns dex::kDexNoIndex.
   ALWAYS_INLINE uint32_t Lookup(const char* str, uint32_t hash) const {
     uint32_t pos = hash & GetSizeMask();
     // Thanks to special insertion algorithm, the element at position pos can be empty or start of
@@ -51,12 +53,12 @@ class TypeLookupTable {
         return GetClassDefIdx(entry->data);
       }
       if (entry->IsLast()) {
-        return DexFile::kDexNoIndex;
+        return dex::kDexNoIndex;
       }
       pos = (pos + entry->next_pos_delta) & GetSizeMask();
       entry = &entries_[pos];
     }
-    return DexFile::kDexNoIndex;
+    return dex::kDexNoIndex;
   }
 
   // Method creates lookup table for dex file

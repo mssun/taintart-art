@@ -18,7 +18,6 @@
 #define ART_RUNTIME_COMMON_THROWS_H_
 
 #include "base/mutex.h"
-#include "invoke_type.h"
 #include "obj_ptr.h"
 
 namespace art {
@@ -30,6 +29,7 @@ namespace mirror {
 class ArtField;
 class ArtMethod;
 class DexFile;
+enum InvokeType : uint32_t;
 class Signature;
 class StringPiece;
 
