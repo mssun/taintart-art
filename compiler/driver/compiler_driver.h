@@ -106,6 +106,8 @@ class CompilerDriver {
 
   // Set dex files that will be stored in the oat file after being compiled.
   void SetDexFilesForOatFile(const std::vector<const DexFile*>& dex_files);
+
+  // Set dex files classpath.
   void SetClasspathDexFiles(const std::vector<const DexFile*>& dex_files);
 
   // Get dex file that will be stored in the oat file after being compiled.
@@ -487,9 +489,10 @@ class CompilerDriver {
   std::map<ClassReference, bool> requires_constructor_barrier_
       GUARDED_BY(requires_constructor_barrier_lock_);
 
-  // All class references that this compiler has compiled. Indexed by class defs.
   using ClassStateTable = AtomicDexRefMap<mirror::Class::Status>;
+  // All class references that this compiler has compiled. Indexed by class defs.
   ClassStateTable compiled_classes_;
+  // All class references that are in the classpath. Indexed by class defs.
   ClassStateTable classpath_classes_;
 
   typedef AtomicDexRefMap<CompiledMethod*> MethodTable;
