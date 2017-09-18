@@ -1466,7 +1466,7 @@ const DexFile::ClassDef* OatFile::OatDexFile::FindClassDef(const DexFile& dex_fi
   DCHECK_EQ(ComputeModifiedUtf8Hash(descriptor), hash);
   if (LIKELY((oat_dex_file != nullptr) && (oat_dex_file->GetTypeLookupTable() != nullptr))) {
     const uint32_t class_def_idx = oat_dex_file->GetTypeLookupTable()->Lookup(descriptor, hash);
-    return (class_def_idx != DexFile::kDexNoIndex) ? &dex_file.GetClassDef(class_def_idx) : nullptr;
+    return (class_def_idx != dex::kDexNoIndex) ? &dex_file.GetClassDef(class_def_idx) : nullptr;
   }
   // Fast path for rare no class defs case.
   const uint32_t num_class_defs = dex_file.NumClassDefs();

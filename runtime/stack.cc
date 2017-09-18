@@ -23,6 +23,7 @@
 #include "base/callee_save_type.h"
 #include "base/enums.h"
 #include "base/hex_dump.h"
+#include "dex_file_types.h"
 #include "entrypoints/entrypoint_utils-inl.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "gc/space/image_space.h"
@@ -120,7 +121,7 @@ uint32_t StackVisitor::GetDexPc(bool abort_on_failure) const {
       return GetCurrentInlineInfo(GetCurrentOatQuickMethodHeader(), cur_quick_frame_pc_).
           GetDexPcAtDepth(encoding.inline_info.encoding, depth_in_stack_map);
     } else if (cur_oat_quick_method_header_ == nullptr) {
-      return DexFile::kDexNoIndex;
+      return dex::kDexNoIndex;
     } else {
       return cur_oat_quick_method_header_->ToDexPc(
           GetMethod(), cur_quick_frame_pc_, abort_on_failure);

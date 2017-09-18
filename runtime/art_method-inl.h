@@ -25,8 +25,8 @@
 #include "class_linker-inl.h"
 #include "common_throws.h"
 #include "dex_file-inl.h"
-#include "dex_file.h"
 #include "dex_file_annotations.h"
+#include "dex_file_types.h"
 #include "gc_root-inl.h"
 #include "invoke_type.h"
 #include "jit/profiling_info.h"
@@ -184,7 +184,7 @@ inline const DexFile* ArtMethod::GetDexFile() {
 
 inline const char* ArtMethod::GetDeclaringClassDescriptor() {
   uint32_t dex_method_idx = GetDexMethodIndex();
-  if (UNLIKELY(dex_method_idx == DexFile::kDexNoIndex)) {
+  if (UNLIKELY(dex_method_idx == dex::kDexNoIndex)) {
     return "<runtime method>";
   }
   DCHECK(!IsProxyMethod());
@@ -205,7 +205,7 @@ inline const char* ArtMethod::GetShorty(uint32_t* out_length) {
 
 inline const Signature ArtMethod::GetSignature() {
   uint32_t dex_method_idx = GetDexMethodIndex();
-  if (dex_method_idx != DexFile::kDexNoIndex) {
+  if (dex_method_idx != dex::kDexNoIndex) {
     DCHECK(!IsProxyMethod());
     const DexFile* dex_file = GetDexFile();
     return dex_file->GetMethodSignature(dex_file->GetMethodId(dex_method_idx));
@@ -215,7 +215,7 @@ inline const Signature ArtMethod::GetSignature() {
 
 inline const char* ArtMethod::GetName() {
   uint32_t dex_method_idx = GetDexMethodIndex();
-  if (LIKELY(dex_method_idx != DexFile::kDexNoIndex)) {
+  if (LIKELY(dex_method_idx != dex::kDexNoIndex)) {
     DCHECK(!IsProxyMethod());
     const DexFile* dex_file = GetDexFile();
     return dex_file->GetMethodName(dex_file->GetMethodId(dex_method_idx));
@@ -253,7 +253,7 @@ inline bool ArtMethod::IsResolvedTypeIdx(dex::TypeIndex type_idx) {
 
 inline int32_t ArtMethod::GetLineNumFromDexPC(uint32_t dex_pc) {
   DCHECK(!IsProxyMethod());
-  if (dex_pc == DexFile::kDexNoIndex) {
+  if (dex_pc == dex::kDexNoIndex) {
     return IsNative() ? -2 : -1;
   }
   return annotations::GetLineNumFromPC(GetDexFile(), this, dex_pc);

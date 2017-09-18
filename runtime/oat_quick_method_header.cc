@@ -17,6 +17,7 @@
 #include "oat_quick_method_header.h"
 
 #include "art_method.h"
+#include "dex_file_types.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread.h"
 
@@ -49,7 +50,7 @@ uint32_t OatQuickMethodHeader::ToDexPc(ArtMethod* method,
     }
   } else {
     DCHECK(method->IsNative());
-    return DexFile::kDexNoIndex;
+    return dex::kDexNoIndex;
   }
   if (abort_on_failure) {
     ScopedObjectAccess soa(Thread::Current());
@@ -59,7 +60,7 @@ uint32_t OatQuickMethodHeader::ToDexPc(ArtMethod* method,
            << " current entry_point=" << method->GetEntryPointFromQuickCompiledCode()
            << ") in " << method->PrettyMethod();
   }
-  return DexFile::kDexNoIndex;
+  return dex::kDexNoIndex;
 }
 
 uintptr_t OatQuickMethodHeader::ToNativeQuickPc(ArtMethod* method,

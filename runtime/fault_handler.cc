@@ -23,6 +23,7 @@
 #include "art_method-inl.h"
 #include "base/safe_copy.h"
 #include "base/stl_util.h"
+#include "dex_file_types.h"
 #include "mirror/class.h"
 #include "mirror/object_reference.h"
 #include "oat_quick_method_header.h"
@@ -311,7 +312,7 @@ bool FaultManager::IsInGeneratedCode(siginfo_t* siginfo, void* context, bool che
   }
   uint32_t dexpc = method_header->ToDexPc(method_obj, return_pc, false);
   VLOG(signals) << "dexpc: " << dexpc;
-  return !check_dex_pc || dexpc != DexFile::kDexNoIndex;
+  return !check_dex_pc || dexpc != dex::kDexNoIndex;
 }
 
 FaultHandler::FaultHandler(FaultManager* manager) : manager_(manager) {

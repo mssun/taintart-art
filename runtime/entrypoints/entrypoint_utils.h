@@ -27,7 +27,6 @@
 #include "dex_instruction.h"
 #include "gc/allocator_type.h"
 #include "handle.h"
-#include "invoke_type.h"
 #include "jvalue.h"
 
 namespace art {
@@ -41,6 +40,7 @@ namespace mirror {
 
 class ArtField;
 class ArtMethod;
+enum InvokeType : uint32_t;
 class OatQuickMethodHeader;
 class ScopedObjectAccessAlreadyRunnable;
 class Thread;
