@@ -194,8 +194,7 @@ class RelativePatcherTest : public testing::Test {
     // Sanity check: original code size must match linked_code.size().
     size_t idx = 0u;
     for (auto ref : compiled_method_refs_) {
-      if (ref.dex_file == method_ref.dex_file &&
-          ref.dex_method_index == method_ref.dex_method_index) {
+      if (ref == method_ref) {
         break;
       }
       ++idx;
@@ -264,7 +263,7 @@ class RelativePatcherTest : public testing::Test {
         return std::pair<bool, uint32_t>(true, it->second);
       }
     }
-    SafeMap<MethodReference, uint32_t, MethodReferenceComparator> map;
+    SafeMap<MethodReference, uint32_t> map;
   };
 
   static const uint32_t kTrampolineSize = 4u;

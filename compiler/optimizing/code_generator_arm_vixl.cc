@@ -9119,14 +9119,14 @@ void CodeGeneratorARMVIXL::GenerateVirtualCall(
 CodeGeneratorARMVIXL::PcRelativePatchInfo* CodeGeneratorARMVIXL::NewPcRelativeMethodPatch(
     MethodReference target_method) {
   return NewPcRelativePatch(*target_method.dex_file,
-                            target_method.dex_method_index,
+                            target_method.index,
                             &pc_relative_method_patches_);
 }
 
 CodeGeneratorARMVIXL::PcRelativePatchInfo* CodeGeneratorARMVIXL::NewMethodBssEntryPatch(
     MethodReference target_method) {
   return NewPcRelativePatch(*target_method.dex_file,
-                            target_method.dex_method_index,
+                            target_method.index,
                             &method_bss_entry_patches_);
 }
 

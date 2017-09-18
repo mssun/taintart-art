@@ -143,7 +143,7 @@ bool ProfileCompilationInfo::AddMethodIndex(MethodHotness::Flag flags, const Met
   if (data == nullptr) {
     return false;
   }
-  data->AddMethod(flags, ref.dex_method_index);
+  data->AddMethod(flags, ref.index);
   return true;
 }
 
@@ -683,7 +683,7 @@ bool ProfileCompilationInfo::AddMethod(const ProfileMethodInfo& pmi) {
   if (data == nullptr) {  // checksum mismatch
     return false;
   }
-  InlineCacheMap* inline_cache = data->FindOrAddMethod(pmi.ref.dex_method_index);
+  InlineCacheMap* inline_cache = data->FindOrAddMethod(pmi.ref.index);
 
   for (const ProfileMethodInfo::ProfileInlineCache& cache : pmi.inline_caches) {
     if (cache.is_missing_types) {
@@ -700,7 +700,7 @@ bool ProfileCompilationInfo::AddMethod(const ProfileMethodInfo& pmi) {
         // Don't bother adding classes if we are missing types.
         break;
       }
-      dex_pc_data->AddClass(class_dex_data->profile_index, class_ref.type_index);
+      dex_pc_data->AddClass(class_dex_data->profile_index, class_ref.TypeIndex());
     }
   }
   return true;
@@ -1333,7 +1333,7 @@ ProfileCompilationInfo::MethodHotness ProfileCompilationInfo::GetMethodHotness(
     const MethodReference& method_ref) const {
   const DexFileData* dex_data = FindDexData(method_ref.dex_file);
   return dex_data != nullptr
-      ? dex_data->GetHotnessInfo(method_ref.dex_method_index)
+      ? dex_data->GetHotnessInfo(method_ref.index)
       : MethodHotness();
 }
 
@@ -1342,8 +1342,7 @@ bool ProfileCompilationInfo::AddMethodHotness(const MethodReference& method_ref,
   DexFileData* dex_data = GetOrAddDexFileData(method_ref.dex_file);
   if (dex_data != nullptr) {
     // TODO: Add inline caches.
-    dex_data->AddMethod(static_cast<MethodHotness::Flag>(hotness.GetFlags()),
-                        method_ref.dex_method_index);
+    dex_data->AddMethod(static_cast<MethodHotness::Flag>(hotness.GetFlags()), method_ref.index);
     return true;
   }
   return false;

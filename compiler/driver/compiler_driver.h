@@ -154,8 +154,8 @@ class CompilerDriver {
   std::unique_ptr<const std::vector<uint8_t>> CreateQuickResolutionTrampoline() const;
   std::unique_ptr<const std::vector<uint8_t>> CreateQuickToInterpreterBridge() const;
 
-  bool GetCompiledClass(ClassReference ref, mirror::Class::Status* status) const;
-  mirror::Class::Status GetClassStatus(ClassReference ref) const;
+  mirror::Class::Status GetClassStatus(const ClassReference& ref) const;
+  bool GetCompiledClass(const ClassReference& ref, mirror::Class::Status* status) const;
 
   CompiledMethod* GetCompiledMethod(MethodReference ref) const;
   size_t GetNonRelativeLinkerPatchCount() const;
@@ -338,7 +338,7 @@ class CompilerDriver {
   // according to the profile file.
   bool ShouldVerifyClassBasedOnProfile(const DexFile& dex_file, uint16_t class_idx) const;
 
-  void RecordClassStatus(ClassReference ref, mirror::Class::Status status);
+  void RecordClassStatus(const ClassReference& ref, mirror::Class::Status status);
 
   // Checks if the specified method has been verified without failures. Returns
   // false if the method is not in the verification results (GetVerificationResults).
@@ -489,13 +489,13 @@ class CompilerDriver {
   std::map<ClassReference, bool> requires_constructor_barrier_
       GUARDED_BY(requires_constructor_barrier_lock_);
 
-  using ClassStateTable = AtomicDexRefMap<mirror::Class::Status>;
   // All class references that this compiler has compiled. Indexed by class defs.
+  using ClassStateTable = AtomicDexRefMap<ClassReference, mirror::Class::Status>;
   ClassStateTable compiled_classes_;
   // All class references that are in the classpath. Indexed by class defs.
   ClassStateTable classpath_classes_;
 
-  typedef AtomicDexRefMap<CompiledMethod*> MethodTable;
+  typedef AtomicDexRefMap<MethodReference, CompiledMethod*> MethodTable;
 
  private:
   // All method references that this compiler has compiled.

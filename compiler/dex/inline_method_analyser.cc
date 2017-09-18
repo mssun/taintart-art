@@ -509,7 +509,7 @@ bool InlineMethodAnalyser::AnalyseMethodCode(const DexFile::CodeItem* code_item,
 }
 
 bool InlineMethodAnalyser::IsSyntheticAccessor(MethodReference ref) {
-  const DexFile::MethodId& method_id = ref.dex_file->GetMethodId(ref.dex_method_index);
+  const DexFile::MethodId& method_id = ref.dex_file->GetMethodId(ref.index);
   const char* method_name = ref.dex_file->GetMethodName(method_id);
   // javac names synthetic accessors "access$nnn",
   // jack names them "-getN", "-putN", "-wrapN".
