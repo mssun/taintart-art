@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 
+#include <condition_variable>
 #include <mutex>
 #include <vector>
 
@@ -378,6 +379,48 @@ extern "C" JNIEXPORT void JNICALL Java_art_Test912_enableClassLoadPreparePrintEv
                ClassLoadPreparePrinter::ClassPrepareCallback);
 }
 
+template<typename T>
+static jthread RunEventThread(const std::string& name,
+                              jvmtiEnv* jvmti,
+                              JNIEnv* env,
+                              void (*func)(jvmtiEnv*, JNIEnv*, T*),
+                              T* data) {
+  // Create a Thread object.
+  std::string name_str = name;
+  name_str += ": JVMTI_THREAD-Test912";
+  ScopedLocalRef<jobject> thread_name(env, env->NewStringUTF(name_str.c_str()));
+  CHECK(thread_name.get() != nullptr);
+
+  ScopedLocalRef<jclass> thread_klass(env, env->FindClass("java/lang/Thread"));
+  CHECK(thread_klass.get() != nullptr);
+
+  ScopedLocalRef<jobject> thread(env, env->AllocObject(thread_klass.get()));
+  CHECK(thread.get() != nullptr);
+
+  jmethodID initID = env->GetMethodID(thread_klass.get(), "<init>", "(Ljava/lang/String;)V");
+  CHECK(initID != nullptr);
+
+  env->CallNonvirtualVoidMethod(thread.get(), thread_klass.get(), initID, thread_name.get());
+  CHECK(!env->ExceptionCheck());
+
+  // Run agent thread.
+  CheckJvmtiError(jvmti, jvmti->RunAgentThread(thread.get(),
+                                               reinterpret_cast<jvmtiStartFunction>(func),
+                                               reinterpret_cast<void*>(data),
+                                               JVMTI_THREAD_NORM_PRIORITY));
+  return thread.release();
+}
+
+static void JoinTread(JNIEnv* env, jthread thr) {
+  ScopedLocalRef<jclass> thread_klass(env, env->FindClass("java/lang/Thread"));
+  CHECK(thread_klass.get() != nullptr);
+
+  jmethodID joinID = env->GetMethodID(thread_klass.get(), "join", "()V");
+  CHECK(joinID != nullptr);
+
+  env->CallVoidMethod(thr, joinID);
+}
+
 class ClassLoadPrepareEquality {
  public:
   static constexpr const char* kClassName = "Lart/Test912$ClassE;";
@@ -389,6 +432,21 @@ class ClassLoadPrepareEquality {
   static constexpr const char* kWeakInitSig = "(Ljava/lang/Object;)V";
   static constexpr const char* kWeakGetSig = "()Ljava/lang/Object;";
 
+  static void AgentThreadTest(jvmtiEnv* jvmti ATTRIBUTE_UNUSED,
+                              JNIEnv* env,
+                              jobject* obj_global) {
+    jobject target = *obj_global;
+    jobject target_local = env->NewLocalRef(target);
+    {
+      std::unique_lock<std::mutex> lk(mutex_);
+      started_ = true;
+      cond_started_.notify_all();
+      cond_finished_.wait(lk, [] { return finished_; });
+      CHECK(finished_);
+    }
+    CHECK(env->IsSameObject(target, target_local));
+  }
+
   static void JNICALL ClassLoadCallback(jvmtiEnv* jenv,
                                         JNIEnv* jni_env,
                                         jthread thread ATTRIBUTE_UNUSED,
@@ -398,9 +456,13 @@ class ClassLoadPrepareEquality {
       found_ = true;
       stored_class_ = jni_env->NewGlobalRef(klass);
       weakly_stored_class_ = jni_env->NewWeakGlobalRef(klass);
-      // The following is bad and relies on implementation details. But otherwise a test would be
-      // a lot more complicated.
-      local_stored_class_ = jni_env->NewLocalRef(klass);
+      // Check that we update the local refs.
+      agent_thread_ = static_cast<jthread>(jni_env->NewGlobalRef(RunEventThread<jobject>(
+          "local-ref", jenv, jni_env, &AgentThreadTest, static_cast<jobject*>(&stored_class_))));
+      {
+        std::unique_lock<std::mutex> lk(mutex_);
+        cond_started_.wait(lk, [] { return started_; });
+      }
       // Store the value into a field in the heap.
       SetOrCompare(jni_env, klass, true);
     }
@@ -415,9 +477,14 @@ class ClassLoadPrepareEquality {
       CHECK(stored_class_ != nullptr);
       CHECK(jni_env->IsSameObject(stored_class_, klass));
       CHECK(jni_env->IsSameObject(weakly_stored_class_, klass));
-      CHECK(jni_env->IsSameObject(local_stored_class_, klass));
+      {
+        std::unique_lock<std::mutex> lk(mutex_);
+        finished_ = true;
+        cond_finished_.notify_all();
+      }
       // Look up the value in a field in the heap.
       SetOrCompare(jni_env, klass, false);
+      JoinTread(jni_env, agent_thread_);
       compared_ = true;
     }
   }
@@ -487,14 +554,25 @@ class ClassLoadPrepareEquality {
  private:
   static jobject stored_class_;
   static jweak weakly_stored_class_;
-  static jobject local_stored_class_;
+  static jthread agent_thread_;
+  static std::mutex mutex_;
+  static bool started_;
+  static std::condition_variable cond_finished_;
+  static bool finished_;
+  static std::condition_variable cond_started_;
   static bool found_;
   static bool compared_;
 };
+
 jclass ClassLoadPrepareEquality::storage_class_ = nullptr;
 jobject ClassLoadPrepareEquality::stored_class_ = nullptr;
 jweak ClassLoadPrepareEquality::weakly_stored_class_ = nullptr;
-jobject ClassLoadPrepareEquality::local_stored_class_ = nullptr;
+jthread ClassLoadPrepareEquality::agent_thread_ = nullptr;
+std::mutex ClassLoadPrepareEquality::mutex_;
+bool ClassLoadPrepareEquality::started_ = false;
+std::condition_variable ClassLoadPrepareEquality::cond_started_;
+bool ClassLoadPrepareEquality::finished_ = false;
+std::condition_variable ClassLoadPrepareEquality::cond_finished_;
 bool ClassLoadPrepareEquality::found_ = false;
 bool ClassLoadPrepareEquality::compared_ = false;
 
