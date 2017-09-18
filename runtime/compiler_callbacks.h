@@ -65,6 +65,9 @@ class CompilerCallbacks {
     return mode_ == CallbackMode::kCompileBootImage;
   }
 
+  virtual void UpdateClassState(ClassReference ref ATTRIBUTE_UNUSED,
+                                ClassStatus state ATTRIBUTE_UNUSED) {}
+
  protected:
   explicit CompilerCallbacks(CallbackMode mode) : mode_(mode) { }
 
