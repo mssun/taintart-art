@@ -2900,6 +2900,14 @@ bool CompilerDriver::GetCompiledClass(ClassReference ref, mirror::Class::Status*
   return true;
 }
 
+mirror::Class::Status CompilerDriver::GetClassStatus(ClassReference ref) const {
+  mirror::Class::Status status = ClassStatus::kStatusNotReady;
+  if (!GetCompiledClass(ref, &status)) {
+    classpath_classes_.Get(DexFileReference(ref.first, ref.second), &status);
+  }
+  return status;
+}
+
 void CompilerDriver::RecordClassStatus(ClassReference ref, mirror::Class::Status status) {
   switch (status) {
     case mirror::Class::kStatusErrorResolved:
@@ -2918,11 +2926,12 @@ void CompilerDriver::RecordClassStatus(ClassReference ref, mirror::Class::Status
   }
 
   ClassStateTable::InsertResult result;
+  ClassStateTable* table = &compiled_classes_;
   do {
     DexFileReference dex_ref(ref.first, ref.second);
     mirror::Class::Status existing = mirror::Class::kStatusNotReady;
-    if (!compiled_classes_.Get(dex_ref, &existing)) {
-      // Probably a uses library class, bail.
+    if (!table->Get(dex_ref, &existing)) {
+      // A classpath class.
       if (kIsDebugBuild) {
         // Check to make sure it's not a dex file for an oat file we are compiling since these
         // should always succeed. These do not include classes in for used libraries.
@@ -2930,7 +2939,12 @@ void CompilerDriver::RecordClassStatus(ClassReference ref, mirror::Class::Status
           CHECK_NE(dex_ref.dex_file, dex_file) << dex_ref.dex_file->GetLocation();
         }
       }
-      return;
+      if (!classpath_classes_.HaveDexFile(ref.first)) {
+        // Boot classpath dex file.
+        return;
+      }
+      table = &classpath_classes_;
+      table->Get(dex_ref, &existing);
     }
     if (existing >= status) {
       // Existing status is already better than we expect, break.
@@ -2938,8 +2952,8 @@ void CompilerDriver::RecordClassStatus(ClassReference ref, mirror::Class::Status
     }
     // Update the status if we now have a greater one. This happens with vdex,
     // which records a class is verified, but does not resolve it.
-    result = compiled_classes_.Insert(dex_ref, existing, status);
-    CHECK(result != ClassStateTable::kInsertResultInvalidDexFile);
+    result = table->Insert(dex_ref, existing, status);
+    CHECK(result != ClassStateTable::kInsertResultInvalidDexFile) << ref.first->GetLocation();
   } while (result != ClassStateTable::kInsertResultSuccess);
 }
 
@@ -3046,11 +3060,11 @@ void CompilerDriver::FreeThreadPools() {
 
 void CompilerDriver::SetDexFilesForOatFile(const std::vector<const DexFile*>& dex_files) {
   dex_files_for_oat_file_ = dex_files;
-  for (const DexFile* dex_file : dex_files) {
-    if (!compiled_classes_.HaveDexFile(dex_file)) {
-      compiled_classes_.AddDexFile(dex_file, dex_file->NumClassDefs());
-    }
-  }
+  compiled_classes_.AddDexFiles(dex_files);
+}
+
+void CompilerDriver::SetClasspathDexFiles(const std::vector<const DexFile*>& dex_files) {
+  classpath_classes_.AddDexFiles(dex_files);
 }
 
 }  // namespace art

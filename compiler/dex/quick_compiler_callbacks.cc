@@ -44,11 +44,14 @@ ClassStatus QuickCompilerCallbacks::GetPreviousClassState(ClassReference ref) {
   // In the case of the quicken filter: avoiding verification of quickened instructions, which the
   // verifier doesn't currently support.
   // In the case of the verify filter, avoiding verifiying twice.
-  ClassStatus status;
-  if (!compiler_driver_->GetCompiledClass(ref, &status)) {
-    return ClassStatus::kStatusNotReady;
+  return compiler_driver_->GetClassStatus(ref);
+}
+
+void QuickCompilerCallbacks::UpdateClassState(ClassReference ref, ClassStatus status) {
+  // Driver is null when bootstrapping the runtime.
+  if (compiler_driver_ != nullptr) {
+    compiler_driver_->RecordClassStatus(ref, status);
   }
-  return status;
 }
 
 }  // namespace art
