@@ -38,6 +38,7 @@
 #include "base/enums.h"
 #include "base/mutex-inl.h"
 #include "dex_file_annotations.h"
+#include "dex_file_types.h"
 #include "events-inl.h"
 #include "jit/jit.h"
 #include "jni_internal.h"
@@ -563,7 +564,7 @@ class CommonLocalVariableClosure : public art::Closure {
     }
     bool needs_instrument = !visitor.IsShadowFrame();
     uint32_t pc = visitor.GetDexPc(/*abort_on_failure*/ false);
-    if (pc == art::DexFile::kDexNoIndex) {
+    if (pc == art::dex::kDexNoIndex) {
       // Cannot figure out current PC.
       result_ = ERR(OPAQUE_FRAME);
       return;

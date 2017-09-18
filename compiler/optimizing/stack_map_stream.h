@@ -126,7 +126,7 @@ class StackMapStream : public ValueObject {
   };
 
   struct InlineInfoEntry {
-    uint32_t dex_pc;  // DexFile::kDexNoIndex for intrinsified native methods.
+    uint32_t dex_pc;  // dex::kDexNoIndex for intrinsified native methods.
     ArtMethod* method;
     uint32_t method_index;
     DexRegisterMapEntry dex_register_entry;

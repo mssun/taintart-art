@@ -23,6 +23,8 @@
 namespace art {
 namespace dex {
 
+constexpr uint32_t kDexNoIndex = 0xFFFFFFFF;
+
 class StringIndex {
  public:
   uint32_t index_;

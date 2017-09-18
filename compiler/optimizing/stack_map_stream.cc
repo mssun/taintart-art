@@ -18,6 +18,7 @@
 
 #include "art_method-inl.h"
 #include "base/stl_util.h"
+#include "dex_file_types.h"
 #include "optimizing/optimizing_compiler.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
@@ -39,7 +40,7 @@ void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
   current_entry_.inlining_depth = inlining_depth;
   current_entry_.inline_infos_start_index = inline_infos_.size();
   current_entry_.stack_mask_index = 0;
-  current_entry_.dex_method_index = DexFile::kDexNoIndex;
+  current_entry_.dex_method_index = dex::kDexNoIndex;
   current_entry_.dex_register_entry.num_dex_registers = num_dex_registers;
   current_entry_.dex_register_entry.locations_start_index = dex_register_locations_.size();
   current_entry_.dex_register_entry.live_dex_registers_mask = (num_dex_registers != 0)
@@ -226,7 +227,7 @@ void StackMapStream::ComputeInvokeInfoEncoding(CodeInfoEncoding* encoding) {
   size_t invoke_infos_count = 0;
   size_t invoke_type_max = 0;
   for (const StackMapEntry& entry : stack_maps_) {
-    if (entry.dex_method_index != DexFile::kDexNoIndex) {
+    if (entry.dex_method_index != dex::kDexNoIndex) {
       native_pc_max = std::max(native_pc_max, entry.native_pc_code_offset.CompressedValue());
       method_index_max = std::max(method_index_max, static_cast<uint16_t>(entry.dex_method_index));
       invoke_type_max = std::max(invoke_type_max, static_cast<size_t>(entry.invoke_type));
@@ -240,7 +241,7 @@ void StackMapStream::ComputeInvokeInfoEncoding(CodeInfoEncoding* encoding) {
 void StackMapStream::ComputeInlineInfoEncoding(InlineInfoEncoding* encoding,
                                                size_t dex_register_maps_bytes) {
   uint32_t method_index_max = 0;
-  uint32_t dex_pc_max = DexFile::kDexNoIndex;
+  uint32_t dex_pc_max = dex::kDexNoIndex;
   uint32_t extra_data_max = 0;
 
   uint32_t inline_info_index = 0;
@@ -256,8 +257,8 @@ void StackMapStream::ComputeInlineInfoEncoding(InlineInfoEncoding* encoding,
         extra_data_max = std::max(
             extra_data_max, Low32Bits(reinterpret_cast<uintptr_t>(inline_entry.method)));
       }
-      if (inline_entry.dex_pc != DexFile::kDexNoIndex &&
-          (dex_pc_max == DexFile::kDexNoIndex || dex_pc_max < inline_entry.dex_pc)) {
+      if (inline_entry.dex_pc != dex::kDexNoIndex &&
+          (dex_pc_max == dex::kDexNoIndex || dex_pc_max < inline_entry.dex_pc)) {
         dex_pc_max = inline_entry.dex_pc;
       }
     }
@@ -362,7 +363,7 @@ void StackMapStream::FillInCodeInfo(MemoryRegion region) {
                                             dex_register_locations_region);
     stack_map.SetDexRegisterMapOffset(encoding.stack_map.encoding, offset);
 
-    if (entry.dex_method_index != DexFile::kDexNoIndex) {
+    if (entry.dex_method_index != dex::kDexNoIndex) {
       InvokeInfo invoke_info(code_info.GetInvokeInfo(encoding, invoke_info_idx));
       invoke_info.SetNativePcCodeOffset(encoding.invoke_info.encoding, entry.native_pc_code_offset);
       invoke_info.SetInvokeType(encoding.invoke_info.encoding, entry.invoke_type);
@@ -561,7 +562,7 @@ void StackMapStream::PrepareMethodIndices() {
   for (StackMapEntry& stack_map : stack_maps_) {
     const size_t index = dedupe.size();
     const uint32_t method_index = stack_map.dex_method_index;
-    if (method_index != DexFile::kDexNoIndex) {
+    if (method_index != dex::kDexNoIndex) {
       stack_map.dex_method_index_idx = dedupe.emplace(method_index, index).first->second;
       method_indices_[index] = method_index;
     }
@@ -569,7 +570,7 @@ void StackMapStream::PrepareMethodIndices() {
   for (InlineInfoEntry& inline_info : inline_infos_) {
     const size_t index = dedupe.size();
     const uint32_t method_index = inline_info.method_index;
-    CHECK_NE(method_index, DexFile::kDexNoIndex);
+    CHECK_NE(method_index, dex::kDexNoIndex);
     inline_info.dex_method_index_idx = dedupe.emplace(method_index, index).first->second;
     method_indices_[index] = method_index;
   }
@@ -629,7 +630,7 @@ void StackMapStream::CheckCodeInfo(MemoryRegion region) const {
         DCHECK_EQ(stack_mask.LoadBit(b), 0u);
       }
     }
-    if (entry.dex_method_index != DexFile::kDexNoIndex) {
+    if (entry.dex_method_index != dex::kDexNoIndex) {
       InvokeInfo invoke_info = code_info.GetInvokeInfo(encoding, invoke_info_index);
       DCHECK_EQ(invoke_info.GetNativePcOffset(encoding.invoke_info.encoding, instruction_set_),
                 entry.native_pc_code_offset.Uint32Value(instruction_set_));

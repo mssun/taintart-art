@@ -16,6 +16,7 @@
 
 #include "prepare_for_register_allocation.h"
 
+#include "dex_file_types.h"
 #include "jni_internal.h"
 #include "optimizing_compiler_stats.h"
 #include "well_known_classes.h"
@@ -59,7 +60,7 @@ void PrepareForRegisterAllocation::VisitBoundsCheck(HBoundsCheck* check) {
     HEnvironment* environment = new (arena) HEnvironment(arena,
                                                          /* number_of_vregs */ 0u,
                                                          char_at_method,
-                                                         /* dex_pc */ DexFile::kDexNoIndex,
+                                                         /* dex_pc */ dex::kDexNoIndex,
                                                          check);
     check->InsertRawEnvironment(environment);
   }

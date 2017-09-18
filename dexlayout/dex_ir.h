@@ -26,6 +26,7 @@
 
 #include "base/stl_util.h"
 #include "dex_file-inl.h"
+#include "dex_file_types.h"
 #include "leb128.h"
 #include "utf.h"
 
@@ -250,7 +251,7 @@ class Collections {
   }
 
   StringId* GetStringIdOrNullPtr(uint32_t index) {
-    return index == DexFile::kDexNoIndex ? nullptr : GetStringId(index);
+    return index == dex::kDexNoIndex ? nullptr : GetStringId(index);
   }
   TypeId* GetTypeIdOrNullPtr(uint16_t index) {
     return index == DexFile::kDexNoIndex16 ? nullptr : GetTypeId(index);

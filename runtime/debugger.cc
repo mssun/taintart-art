@@ -34,6 +34,7 @@
 #include "class_linker.h"
 #include "dex_file-inl.h"
 #include "dex_file_annotations.h"
+#include "dex_file_types.h"
 #include "dex_instruction.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "gc/accounting/card_table-inl.h"
@@ -2974,8 +2975,8 @@ class CatchLocationFinder : public StackVisitor {
       this_at_throw_(handle_scope_.NewHandle<mirror::Object>(nullptr)),
       catch_method_(nullptr),
       throw_method_(nullptr),
-      catch_dex_pc_(DexFile::kDexNoIndex),
-      throw_dex_pc_(DexFile::kDexNoIndex) {
+      catch_dex_pc_(dex::kDexNoIndex),
+      throw_dex_pc_(dex::kDexNoIndex) {
   }
 
   bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -2997,13 +2998,13 @@ class CatchLocationFinder : public StackVisitor {
       throw_dex_pc_ = dex_pc;
     }
 
-    if (dex_pc != DexFile::kDexNoIndex) {
+    if (dex_pc != dex::kDexNoIndex) {
       StackHandleScope<1> hs(GetThread());
       uint32_t found_dex_pc;
       Handle<mirror::Class> exception_class(hs.NewHandle(exception_->GetClass()));
       bool unused_clear_exception;
       found_dex_pc = method->FindCatchBlock(exception_class, dex_pc, &unused_clear_exception);
-      if (found_dex_pc != DexFile::kDexNoIndex) {
+      if (found_dex_pc != dex::kDexNoIndex) {
         catch_method_ = method;
         catch_dex_pc_ = found_dex_pc;
         return false;  // End stack walk.

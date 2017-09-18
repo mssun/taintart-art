@@ -37,6 +37,7 @@
 #include "art_jvmti.h"
 #include "art_method-inl.h"
 #include "base/logging.h"
+#include "dex_file_types.h"
 #include "gc/allocation_listener.h"
 #include "gc/gc_pause_listener.h"
 #include "gc/heap.h"
@@ -692,14 +693,14 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
 
         if (!method->IsNative()) {
           uint32_t cur_dex_pc = GetDexPc();
-          if (cur_dex_pc == art::DexFile::kDexNoIndex) {
+          if (cur_dex_pc == art::dex::kDexNoIndex) {
             // This frame looks opaque. Just keep on going.
             return true;
           }
           bool has_no_move_exception = false;
           uint32_t found_dex_pc = method->FindCatchBlock(
               exception_class_, cur_dex_pc, &has_no_move_exception);
-          if (found_dex_pc != art::DexFile::kDexNoIndex) {
+          if (found_dex_pc != art::dex::kDexNoIndex) {
             // We found the catch. Store the result and return.
             *catch_method_ptr_ = method;
             *catch_dex_pc_ptr_ = found_dex_pc;

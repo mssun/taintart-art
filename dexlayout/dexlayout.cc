@@ -35,6 +35,7 @@
 
 #include "dex_file-inl.h"
 #include "dex_file_layout.h"
+#include "dex_file_types.h"
 #include "dex_file_verifier.h"
 #include "dex_instruction-inl.h"
 #include "dex_ir_builder.h"
@@ -366,7 +367,7 @@ static std::unique_ptr<char[]> IndexString(dex_ir::Header* header,
   std::unique_ptr<char[]> buf(new char[buf_size]);
   // Determine index and width of the string.
   uint32_t index = 0;
-  uint32_t secondary_index = DexFile::kDexNoIndex;
+  uint32_t secondary_index = dex::kDexNoIndex;
   uint32_t width = 4;
   switch (Instruction::FormatOf(dec_insn->Opcode())) {
     // SOME NOT SUPPORTED:

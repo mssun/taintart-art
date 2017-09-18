@@ -27,7 +27,6 @@
 #include "gc/allocator_type.h"
 #include "gc_root.h"
 #include "imtable.h"
-#include "invoke_type.h"
 #include "modifiers.h"
 #include "object.h"
 #include "object_array.h"
@@ -43,6 +42,7 @@ class ArtField;
 class ArtMethod;
 struct ClassOffsets;
 template<class T> class Handle;
+enum InvokeType : uint32_t;
 template<typename T> class LengthPrefixedArray;
 template<typename T> class ArraySlice;
 class Signature;
