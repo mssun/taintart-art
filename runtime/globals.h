@@ -105,10 +105,6 @@ static constexpr bool kMarkCompactSupport = false && kMovingCollector;
 // True if we allow moving classes.
 static constexpr bool kMovingClasses = !kMarkCompactSupport;
 
-// If true, the quick compiler embeds class pointers in the compiled
-// code, if possible.
-static constexpr bool kEmbedClassInCode = true;
-
 // If true, enable the tlab allocator by default.
 #ifdef ART_USE_TLAB
 static constexpr bool kUseTlab = true;
@@ -130,8 +126,6 @@ static constexpr TraceClockSource kDefaultTraceClockSource = TraceClockSource::k
 #endif
 
 static constexpr bool kDefaultMustRelocate = true;
-
-static constexpr bool kArm32QuickCodeUseSoftFloat = false;
 
 #ifdef ART_ENABLE_VDEX
 static constexpr bool kIsVdexEnabled = true;
