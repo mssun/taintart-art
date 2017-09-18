@@ -470,8 +470,7 @@ void ArmBaseRelativePatcher::ResolveMethodCalls(uint32_t quick_code_offset,
     if (!method_call_thunk_->HasReservedOffset() ||
         patch_offset - method_call_thunk_->LastReservedOffset() > max_negative_displacement) {
       // No previous thunk in range, check if we can reach the target directly.
-      if (target_method.dex_file == method_ref.dex_file &&
-          target_method.dex_method_index == method_ref.dex_method_index) {
+      if (target_method == method_ref) {
         DCHECK_GT(quick_code_offset, patch_offset);
         if (quick_code_offset - patch_offset > max_positive_displacement) {
           break;

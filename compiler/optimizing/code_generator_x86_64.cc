@@ -1068,13 +1068,13 @@ void CodeGeneratorX86_64::GenerateVirtualCall(
 
 void CodeGeneratorX86_64::RecordBootMethodPatch(HInvokeStaticOrDirect* invoke) {
   boot_image_method_patches_.emplace_back(*invoke->GetTargetMethod().dex_file,
-                                          invoke->GetTargetMethod().dex_method_index);
+                                          invoke->GetTargetMethod().index);
   __ Bind(&boot_image_method_patches_.back().label);
 }
 
 Label* CodeGeneratorX86_64::NewMethodBssEntryPatch(MethodReference target_method) {
   // Add a patch entry and return the label.
-  method_bss_entry_patches_.emplace_back(*target_method.dex_file, target_method.dex_method_index);
+  method_bss_entry_patches_.emplace_back(*target_method.dex_file, target_method.index);
   return &method_bss_entry_patches_.back().label;
 }
 

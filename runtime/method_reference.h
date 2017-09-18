@@ -20,27 +20,19 @@
 #include <stdint.h>
 #include <string>
 #include "dex_file.h"
+#include "dex_file_reference.h"
 
 namespace art {
 
 // A method is uniquely located by its DexFile and the method_ids_ table index into that DexFile
-struct MethodReference {
-  MethodReference(const DexFile* file, uint32_t index) : dex_file(file), dex_method_index(index) {
+class MethodReference : public DexFileReference {
+ public:
+  MethodReference(const DexFile* file, uint32_t index) : DexFileReference(file, index) {}
+  std::string PrettyMethod(bool with_signature = true) const {
+    return dex_file->PrettyMethod(index, with_signature);
   }
-  std::string PrettyMethod(bool with_signature = true) {
-    return dex_file->PrettyMethod(dex_method_index, with_signature);
-  }
-  const DexFile* dex_file;
-  uint32_t dex_method_index;
-};
-
-struct MethodReferenceComparator {
-  bool operator()(MethodReference mr1, MethodReference mr2) const {
-    if (mr1.dex_file == mr2.dex_file) {
-      return mr1.dex_method_index < mr2.dex_method_index;
-    } else {
-      return mr1.dex_file < mr2.dex_file;
-    }
+  const DexFile::MethodId& GetMethodId() const {
+    return dex_file->GetMethodId(index);
   }
 };
 
@@ -48,8 +40,8 @@ struct MethodReferenceComparator {
 struct MethodReferenceValueComparator {
   bool operator()(MethodReference mr1, MethodReference mr2) const {
     if (mr1.dex_file == mr2.dex_file) {
-      DCHECK_EQ(mr1.dex_method_index < mr2.dex_method_index, SlowCompare(mr1, mr2));
-      return mr1.dex_method_index < mr2.dex_method_index;
+      DCHECK_EQ(mr1.index < mr2.index, SlowCompare(mr1, mr2));
+      return mr1.index < mr2.index;
     } else {
       return SlowCompare(mr1, mr2);
     }
@@ -58,8 +50,8 @@ struct MethodReferenceValueComparator {
   bool SlowCompare(MethodReference mr1, MethodReference mr2) const {
     // The order is the same as for method ids in a single dex file.
     // Compare the class descriptors first.
-    const DexFile::MethodId& mid1 = mr1.dex_file->GetMethodId(mr1.dex_method_index);
-    const DexFile::MethodId& mid2 = mr2.dex_file->GetMethodId(mr2.dex_method_index);
+    const DexFile::MethodId& mid1 = mr1.GetMethodId();
+    const DexFile::MethodId& mid2 = mr2.GetMethodId();
     int descriptor_diff = strcmp(mr1.dex_file->StringByTypeIdx(mid1.class_idx_),
                                  mr2.dex_file->StringByTypeIdx(mid2.class_idx_));
     if (descriptor_diff != 0) {
