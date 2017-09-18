@@ -46,6 +46,7 @@ class AtomicDexRefMap {
   // Dex files must be added before method references belonging to them can be used as keys. Not
   // thread safe.
   void AddDexFile(const DexFile* dex_file, size_t max_index);
+  void AddDexFiles(const std::vector<const DexFile*>& dex_files);
 
   bool HaveDexFile(const DexFile* dex_file) const {
     return arrays_.find(dex_file) != arrays_.end();
