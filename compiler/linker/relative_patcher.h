@@ -31,6 +31,10 @@ class CompiledMethod;
 class LinkerPatch;
 class OutputStream;
 
+namespace debug {
+struct MethodDebugInfo;
+}  // namespace debug
+
 namespace linker {
 
 /**
@@ -113,6 +117,9 @@ class RelativePatcher {
   virtual void PatchBakerReadBarrierBranch(std::vector<uint8_t>* code,
                                            const LinkerPatch& patch,
                                            uint32_t patch_offset) = 0;
+
+  virtual std::vector<debug::MethodDebugInfo> GenerateThunkDebugInfo(
+      uint32_t executable_offset) = 0;
 
  protected:
   RelativePatcher()
