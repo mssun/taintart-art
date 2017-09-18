@@ -37,8 +37,7 @@ namespace linker {
 // to the value set by SetAdjustment().
 class MultiOatRelativePatcher FINAL {
  public:
-  using const_iterator =
-      SafeMap<MethodReference, uint32_t, MethodReferenceComparator>::const_iterator;
+  using const_iterator = SafeMap<MethodReference, uint32_t>::const_iterator;
 
   MultiOatRelativePatcher(InstructionSet instruction_set, const InstructionSetFeatures* features);
 
@@ -136,7 +135,7 @@ class MultiOatRelativePatcher FINAL {
   class MethodOffsetMap : public linker::RelativePatcherTargetProvider {
    public:
     std::pair<bool, uint32_t> FindMethodOffset(MethodReference ref) OVERRIDE;
-    SafeMap<MethodReference, uint32_t, MethodReferenceComparator> map;
+    SafeMap<MethodReference, uint32_t> map;
   };
 
   MethodOffsetMap method_offset_map_;

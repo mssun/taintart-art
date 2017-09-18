@@ -64,10 +64,8 @@ class VerificationResults {
 
  private:
   // Verified methods. The method array is fixed to avoid needing a lock to extend it.
-  using AtomicMap = AtomicDexRefMap<const VerifiedMethod*>;
-  using VerifiedMethodMap = SafeMap<MethodReference,
-                                    const VerifiedMethod*,
-                                    MethodReferenceComparator>;
+  using AtomicMap = AtomicDexRefMap<MethodReference, const VerifiedMethod*>;
+  using VerifiedMethodMap = SafeMap<MethodReference, const VerifiedMethod*>;
 
   VerifiedMethodMap verified_methods_ GUARDED_BY(verified_methods_lock_);
   const CompilerOptions* const compiler_options_;

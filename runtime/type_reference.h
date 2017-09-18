@@ -28,31 +28,23 @@ namespace art {
 class DexFile;
 
 // A type is located by its DexFile and the string_ids_ table index into that DexFile.
-struct TypeReference {
+class TypeReference : public DexFileReference {
+ public:
   TypeReference(const DexFile* file = nullptr, dex::TypeIndex index = dex::TypeIndex())
-      : dex_file(file),
-        type_index(index) {}
+      : DexFileReference(file, index.index_) {}
 
-  const DexFile* dex_file;
-  dex::TypeIndex type_index;
-};
-
-struct TypeReferenceComparator {
-  bool operator()(TypeReference mr1, TypeReference mr2) const {
-    if (mr1.dex_file != mr2.dex_file) {
-      return mr1.dex_file < mr2.dex_file;
-    }
-    return mr1.type_index < mr2.type_index;
+  dex::TypeIndex TypeIndex() const {
+    return dex::TypeIndex(index);
   }
 };
 
 // Compare the actual referenced type names. Used for type reference deduplication.
 struct TypeReferenceValueComparator {
-  bool operator()(TypeReference tr1, TypeReference tr2) const {
+  bool operator()(const TypeReference& tr1, const TypeReference& tr2) const {
     // Note that we want to deduplicate identical boot image types even if they are
     // referenced by different dex files, so we simply compare the descriptors.
-    StringReference sr1(tr1.dex_file, tr1.dex_file->GetTypeId(tr1.type_index).descriptor_idx_);
-    StringReference sr2(tr2.dex_file, tr2.dex_file->GetTypeId(tr2.type_index).descriptor_idx_);
+    StringReference sr1(tr1.dex_file, tr1.dex_file->GetTypeId(tr1.TypeIndex()).descriptor_idx_);
+    StringReference sr2(tr2.dex_file, tr2.dex_file->GetTypeId(tr2.TypeIndex()).descriptor_idx_);
     return StringReferenceValueComparator()(sr1, sr2);
   }
 };

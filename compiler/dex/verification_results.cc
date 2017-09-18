@@ -52,18 +52,16 @@ void VerificationResults::ProcessVerifiedMethod(verifier::MethodVerifier* method
     // We'll punt this later.
     return;
   }
-  AtomicMap::InsertResult result = atomic_verified_methods_.Insert(
-      DexFileReference(ref.dex_file, ref.dex_method_index),
-      /*expected*/ nullptr,
-      verified_method.get());
+  AtomicMap::InsertResult result = atomic_verified_methods_.Insert(ref,
+                                                                   /*expected*/ nullptr,
+                                                                   verified_method.get());
   const VerifiedMethod* existing = nullptr;
   bool inserted;
   if (result != AtomicMap::kInsertResultInvalidDexFile) {
     inserted = (result == AtomicMap::kInsertResultSuccess);
     if (!inserted) {
       // Rare case.
-      CHECK(atomic_verified_methods_.Get(DexFileReference(ref.dex_file, ref.dex_method_index),
-                                         &existing));
+      CHECK(atomic_verified_methods_.Get(ref, &existing));
       CHECK_NE(verified_method.get(), existing);
     }
   } else {
@@ -100,7 +98,7 @@ void VerificationResults::ProcessVerifiedMethod(verifier::MethodVerifier* method
 
 const VerifiedMethod* VerificationResults::GetVerifiedMethod(MethodReference ref) {
   const VerifiedMethod* ret = nullptr;
-  if (atomic_verified_methods_.Get(DexFileReference(ref.dex_file, ref.dex_method_index), &ret)) {
+  if (atomic_verified_methods_.Get(ref, &ret)) {
     return ret;
   }
   ReaderMutexLock mu(Thread::Current(), verified_methods_lock_);
@@ -114,7 +112,7 @@ void VerificationResults::CreateVerifiedMethodFor(MethodReference ref) {
   // at runtime.
   std::unique_ptr<VerifiedMethod> verified_method = std::make_unique<VerifiedMethod>(
       /* encountered_error_types */ 0, /* has_runtime_throw */ false);
-  if (atomic_verified_methods_.Insert(DexFileReference(ref.dex_file, ref.dex_method_index),
+  if (atomic_verified_methods_.Insert(ref,
                                       /*expected*/ nullptr,
                                       verified_method.get()) ==
           AtomicMap::InsertResult::kInsertResultSuccess) {
@@ -149,7 +147,7 @@ bool VerificationResults::IsCandidateForCompilation(MethodReference&,
 }
 
 void VerificationResults::AddDexFile(const DexFile* dex_file) {
-  atomic_verified_methods_.AddDexFile(dex_file, dex_file->NumMethodIds());
+  atomic_verified_methods_.AddDexFile(dex_file);
   WriterMutexLock mu(Thread::Current(), verified_methods_lock_);
   // There can be some verified methods that are already registered for the dex_file since we set
   // up well known classes earlier. Remove these and put them in the array so that we don't
@@ -157,9 +155,7 @@ void VerificationResults::AddDexFile(const DexFile* dex_file) {
   for (auto it = verified_methods_.begin(); it != verified_methods_.end(); ) {
     MethodReference ref = it->first;
     if (ref.dex_file == dex_file) {
-      CHECK(atomic_verified_methods_.Insert(DexFileReference(ref.dex_file, ref.dex_method_index),
-                                            nullptr,
-                                            it->second) ==
+      CHECK(atomic_verified_methods_.Insert(ref, nullptr, it->second) ==
           AtomicMap::kInsertResultSuccess);
       it = verified_methods_.erase(it);
     } else {

@@ -936,7 +936,7 @@ class OatDumper {
     }
 
     // Unique string ids loaded from dex code.
-    std::set<StringReference, StringReferenceComparator> unique_string_ids_from_code_;
+    std::set<StringReference> unique_string_ids_from_code_;
 
     // Total string ids loaded from dex code.
     size_t num_string_ids_from_code_ = 0;
