@@ -33,6 +33,7 @@ class X86BaseRelativePatcher : public RelativePatcher {
                  uint32_t literal_offset,
                  uint32_t patch_offset,
                  uint32_t target_offset) OVERRIDE;
+  std::vector<debug::MethodDebugInfo> GenerateThunkDebugInfo(uint32_t executable_offset) OVERRIDE;
 
  protected:
   X86BaseRelativePatcher() { }

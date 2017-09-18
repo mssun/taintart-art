@@ -17,6 +17,7 @@
 #include "multi_oat_relative_patcher.h"
 
 #include "compiled_method.h"
+#include "debug/method_debug_info.h"
 #include "gtest/gtest.h"
 #include "vector_output_stream.h"
 
@@ -100,6 +101,12 @@ class MultiOatRelativePatcherTest : public testing::Test {
                                      const LinkerPatch& patch ATTRIBUTE_UNUSED,
                                      uint32_t patch_offset ATTRIBUTE_UNUSED) {
       LOG(FATAL) << "UNIMPLEMENTED";
+    }
+
+    std::vector<debug::MethodDebugInfo> GenerateThunkDebugInfo(
+        uint32_t executable_offset ATTRIBUTE_UNUSED) {
+      LOG(FATAL) << "UNIMPLEMENTED";
+      UNREACHABLE();
     }
 
     uint32_t last_reserve_offset_ = 0u;
