@@ -174,31 +174,6 @@ std::vector<uint8_t> WriteDebugElfFileForClasses(InstructionSet isa,
   }
 }
 
-std::vector<MethodDebugInfo> MakeTrampolineInfos(const OatHeader& header) {
-  std::map<const char*, uint32_t> trampolines = {
-    { "interpreterToInterpreterBridge", header.GetInterpreterToInterpreterBridgeOffset() },
-    { "interpreterToCompiledCodeBridge", header.GetInterpreterToCompiledCodeBridgeOffset() },
-    { "jniDlsymLookup", header.GetJniDlsymLookupOffset() },
-    { "quickGenericJniTrampoline", header.GetQuickGenericJniTrampolineOffset() },
-    { "quickImtConflictTrampoline", header.GetQuickImtConflictTrampolineOffset() },
-    { "quickResolutionTrampoline", header.GetQuickResolutionTrampolineOffset() },
-    { "quickToInterpreterBridge", header.GetQuickToInterpreterBridgeOffset() },
-  };
-  std::vector<MethodDebugInfo> result;
-  for (const auto& it : trampolines) {
-    if (it.second != 0) {
-      MethodDebugInfo info = MethodDebugInfo();
-      info.trampoline_name = it.first;
-      info.isa = header.GetInstructionSet();
-      info.is_code_address_text_relative = true;
-      info.code_address = it.second - header.GetExecutableOffset();
-      info.code_size = 0;  // The symbol lasts until the next symbol.
-      result.push_back(std::move(info));
-    }
-  }
-  return result;
-}
-
 // Explicit instantiations
 template void WriteDebugInfo<ElfTypes32>(
     ElfBuilder<ElfTypes32>* builder,

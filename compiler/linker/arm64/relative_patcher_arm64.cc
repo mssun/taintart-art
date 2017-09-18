@@ -535,6 +535,35 @@ std::vector<uint8_t> Arm64RelativePatcher::CompileThunk(const ThunkKey& key) {
   return thunk_code;
 }
 
+std::string Arm64RelativePatcher::GetThunkDebugName(const ThunkKey& key) {
+  switch (key.GetType()) {
+    case ThunkType::kMethodCall:
+      return "MethodCallThunk";
+
+    case ThunkType::kBakerReadBarrier: {
+      uint32_t encoded_data = key.GetCustomValue1();
+      BakerReadBarrierKind kind = BakerReadBarrierKindField::Decode(encoded_data);
+      std::ostringstream oss;
+      oss << "BakerReadBarrierThunk";
+      switch (kind) {
+        case BakerReadBarrierKind::kField:
+          oss << "Field_r" << BakerReadBarrierFirstRegField::Decode(encoded_data)
+              << "_r" << BakerReadBarrierSecondRegField::Decode(encoded_data);
+          break;
+        case BakerReadBarrierKind::kArray:
+          oss << "Array_r" << BakerReadBarrierFirstRegField::Decode(encoded_data);
+          DCHECK_EQ(kInvalidEncodedReg, BakerReadBarrierSecondRegField::Decode(encoded_data));
+          break;
+        case BakerReadBarrierKind::kGcRoot:
+          oss << "GcRoot_r" << BakerReadBarrierFirstRegField::Decode(encoded_data);
+          DCHECK_EQ(kInvalidEncodedReg, BakerReadBarrierSecondRegField::Decode(encoded_data));
+          break;
+      }
+      return oss.str();
+    }
+  }
+}
+
 #undef __
 
 uint32_t Arm64RelativePatcher::MaxPositiveDisplacement(const ThunkKey& key) {
