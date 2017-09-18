@@ -31,7 +31,13 @@ public class Main {
             Thread t = entry.getKey();
             String name = t.getName();
             if (name.indexOf("process reaper") >= 0) {
-                System.out.println("process manager: " + t.getState());
+                Thread.State state = t.getState();
+                System.out.println("process manager: " + state);
+                if (state != Thread.State.RUNNABLE && state != Thread.State.TIMED_WAITING) {
+                    for (StackTraceElement e : entry.getValue()) {
+                        System.out.println("  " + e);
+                    }
+                }
                 found = true;
             }
         }
