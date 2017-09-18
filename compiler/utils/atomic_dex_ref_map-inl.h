@@ -54,6 +54,15 @@ inline void AtomicDexRefMap<T>::AddDexFile(const DexFile* dex_file, size_t max_i
 }
 
 template <typename T>
+inline void AtomicDexRefMap<T>::AddDexFiles(const std::vector<const DexFile*>& dex_files) {
+  for (const DexFile* dex_file : dex_files) {
+    if (!HaveDexFile(dex_file)) {
+      AddDexFile(dex_file, dex_file->NumClassDefs());
+    }
+  }
+}
+
+template <typename T>
 inline typename AtomicDexRefMap<T>::ElementArray* AtomicDexRefMap<T>::GetArray(
     const DexFile* dex_file) {
   auto it = arrays_.find(dex_file);
