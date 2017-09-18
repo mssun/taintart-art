@@ -195,7 +195,7 @@ class ProfileCompilationInfoTest : public CommonRuntimeTest {
       for (const auto& class_ref : inline_cache.classes) {
         uint8_t dex_profile_index = dex_map.FindOrAdd(const_cast<DexFile*>(class_ref.dex_file),
                                                       static_cast<uint8_t>(dex_map.size()))->second;
-        dex_pc_data.AddClass(dex_profile_index, class_ref.type_index);
+        dex_pc_data.AddClass(dex_profile_index, class_ref.TypeIndex());
         if (dex_profile_index >= offline_pmi.dex_references.size()) {
           // This is a new dex.
           const std::string& dex_key = ProfileCompilationInfo::GetProfileDexFileKey(

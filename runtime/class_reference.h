@@ -20,22 +20,22 @@
 #include <stdint.h>
 #include <utility>
 
+#include "dex_file_reference.h"
+
 namespace art {
 
 class DexFile;
 
 // A class is uniquely located by its DexFile and the class_defs_ table index into that DexFile
-typedef std::pair<const DexFile*, uint32_t> ClassReference;
+class ClassReference : public DexFileReference {
+ public:
+  ClassReference(const DexFile* file, uint32_t class_def_idx)
+     : DexFileReference(file, class_def_idx) {}
 
-inline bool operator<(const ClassReference& lhs, const ClassReference& rhs) {
-  if (lhs.second < rhs.second) {
-    return true;
-  } else if (lhs.second > rhs.second) {
-    return false;
-  } else {
-    return (lhs.first < rhs.first);
+  uint32_t ClassDefIdx() const {
+    return index;
   }
-}
+};
 
 }  // namespace art
 
