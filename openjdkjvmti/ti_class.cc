@@ -318,14 +318,11 @@ struct ClassCallback : public art::ClassLoadCallback {
       ScopedLocalRef<jthread> thread_jni(
           thread->GetJniEnv(),
           peer.IsNull() ? nullptr : thread->GetJniEnv()->AddLocalReference<jthread>(peer));
-      {
-        art::ScopedThreadSuspension sts(thread, art::ThreadState::kNative);
-        event_handler->DispatchEvent<ArtJvmtiEvent::kClassLoad>(
-            thread,
-            static_cast<JNIEnv*>(thread->GetJniEnv()),
-            thread_jni.get(),
-            jklass.get());
-      }
+      event_handler->DispatchEvent<ArtJvmtiEvent::kClassLoad>(
+          thread,
+          static_cast<JNIEnv*>(thread->GetJniEnv()),
+          thread_jni.get(),
+          jklass.get());
       if (klass->IsTemp()) {
         AddTempClass(thread, jklass.get());
       }
@@ -348,7 +345,6 @@ struct ClassCallback : public art::ClassLoadCallback {
       ScopedLocalRef<jthread> thread_jni(
           thread->GetJniEnv(),
           peer.IsNull() ? nullptr : thread->GetJniEnv()->AddLocalReference<jthread>(peer));
-      art::ScopedThreadSuspension sts(thread, art::ThreadState::kNative);
       event_handler->DispatchEvent<ArtJvmtiEvent::kClassPrepare>(
           thread,
           static_cast<JNIEnv*>(thread->GetJniEnv()),
