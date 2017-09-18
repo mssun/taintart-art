@@ -161,20 +161,21 @@ class EventHandler {
                       ArtJvmtiEvent event,
                       jvmtiEventMode mode);
 
-  // Dispatch event to all registered environments.
+  // Dispatch event to all registered environments. Since this one doesn't have a JNIEnv* it doesn't
+  // matter if it has the mutator_lock.
   template <ArtJvmtiEvent kEvent, typename ...Args>
   ALWAYS_INLINE
   inline void DispatchEvent(art::Thread* thread, Args... args) const;
+
   // Dispatch event to all registered environments stashing exceptions as needed. This works since
   // JNIEnv* is always the second argument if it is passed to an event. Needed since C++ does not
   // allow partial template function specialization.
+  //
+  // We need both of these since we want to make sure to push a stack frame when it is possible for
+  // the event to allocate local references.
   template <ArtJvmtiEvent kEvent, typename ...Args>
   ALWAYS_INLINE
-  void DispatchEvent(art::Thread* thread, JNIEnv* jnienv, Args... args) const;
-  // Dispatch event to the given environment, only.
-  template <ArtJvmtiEvent kEvent, typename ...Args>
-  ALWAYS_INLINE
-  inline void DispatchEvent(ArtJvmTiEnv* env, art::Thread* thread, Args... args) const;
+  inline void DispatchEvent(art::Thread* thread, JNIEnv* jnienv, Args... args) const;
 
   // Tell the event handler capabilities were added/lost so it can adjust the sent events.If
   // caps_added is true then caps is all the newly set capabilities of the jvmtiEnv. If it is false
@@ -184,10 +185,29 @@ class EventHandler {
                                         const jvmtiCapabilities& caps,
                                         bool added);
 
+  // Dispatch event to the given environment, only.
+  template <ArtJvmtiEvent kEvent, typename ...Args>
+  ALWAYS_INLINE
+  inline void DispatchEventOnEnv(
+      ArtJvmTiEnv* env, art::Thread* thread, JNIEnv* jnienv, Args... args) const;
+
+  // Dispatch event to the given environment, only.
+  template <ArtJvmtiEvent kEvent, typename ...Args>
+  ALWAYS_INLINE
+  inline void DispatchEventOnEnv(ArtJvmTiEnv* env, art::Thread* thread, Args... args) const;
+
  private:
   template <ArtJvmtiEvent kEvent>
   ALWAYS_INLINE
-  static inline bool ShouldDispatch(ArtJvmTiEnv* env, art::Thread* thread);
+  static inline bool ShouldDispatchOnThread(ArtJvmTiEnv* env, art::Thread* thread);
+
+  template <ArtJvmtiEvent kEvent, typename ...Args>
+  ALWAYS_INLINE
+  static inline void ExecuteCallback(ArtJvmTiEnv* env, Args... args);
+
+  template <ArtJvmtiEvent kEvent, typename ...Args>
+  ALWAYS_INLINE
+  inline bool ShouldDispatch(ArtJvmTiEnv* env, art::Thread* thread, Args... args) const;
 
   ALWAYS_INLINE
   inline bool NeedsEventUpdate(ArtJvmTiEnv* env,
