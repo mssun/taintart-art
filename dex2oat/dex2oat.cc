@@ -1865,6 +1865,9 @@ class Dex2Oat FINAL {
                                      swap_fd_,
                                      profile_compilation_info_.get()));
     driver_->SetDexFilesForOatFile(dex_files_);
+    if (!IsBootImage()) {
+      driver_->SetClasspathDexFiles(class_loader_context_->FlattenOpenedDexFiles());
+    }
 
     const bool compile_individually = ShouldCompileDexFilesIndividually();
     if (compile_individually) {
@@ -2361,27 +2364,6 @@ class Dex2Oat FINAL {
       dex_files_size += dex_file->GetHeader().file_size_;
     }
     return dex_files_size >= very_large_threshold_;
-  }
-
-  std::vector<std::string> GetClassPathLocations(const std::string& class_path) {
-    // This function is used only for apps and for an app we have exactly one oat file.
-    DCHECK(!IsBootImage());
-    DCHECK_EQ(oat_writers_.size(), 1u);
-    std::vector<std::string> dex_files_canonical_locations;
-    for (const std::string& location : oat_writers_[0]->GetSourceLocations()) {
-      dex_files_canonical_locations.push_back(DexFile::GetDexCanonicalLocation(location.c_str()));
-    }
-
-    std::vector<std::string> parsed;
-    Split(class_path, ':', &parsed);
-    auto kept_it = std::remove_if(parsed.begin(),
-                                  parsed.end(),
-                                  [dex_files_canonical_locations](const std::string& location) {
-      return ContainsElement(dex_files_canonical_locations,
-                             DexFile::GetDexCanonicalLocation(location.c_str()));
-    });
-    parsed.erase(kept_it, parsed.end());
-    return parsed;
   }
 
   bool PrepareImageClasses() {

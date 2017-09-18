@@ -106,6 +106,7 @@ class CompilerDriver {
 
   // Set dex files that will be stored in the oat file after being compiled.
   void SetDexFilesForOatFile(const std::vector<const DexFile*>& dex_files);
+  void SetClasspathDexFiles(const std::vector<const DexFile*>& dex_files);
 
   // Get dex file that will be stored in the oat file after being compiled.
   ArrayRef<const DexFile* const> GetDexFilesForOatFile() const {
@@ -152,6 +153,7 @@ class CompilerDriver {
   std::unique_ptr<const std::vector<uint8_t>> CreateQuickToInterpreterBridge() const;
 
   bool GetCompiledClass(ClassReference ref, mirror::Class::Status* status) const;
+  mirror::Class::Status GetClassStatus(ClassReference ref) const;
 
   CompiledMethod* GetCompiledMethod(MethodReference ref) const;
   size_t GetNonRelativeLinkerPatchCount() const;
@@ -488,6 +490,7 @@ class CompilerDriver {
   // All class references that this compiler has compiled. Indexed by class defs.
   using ClassStateTable = AtomicDexRefMap<mirror::Class::Status>;
   ClassStateTable compiled_classes_;
+  ClassStateTable classpath_classes_;
 
   typedef AtomicDexRefMap<CompiledMethod*> MethodTable;
 
