@@ -19,7 +19,7 @@
 
 #include <vector>
 
-#include "dex_file.h"
+#include "dex_file-inl.h"
 
 namespace art {
 

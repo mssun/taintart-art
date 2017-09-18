@@ -46,6 +46,7 @@
 #include "base/mutex.h"
 #include "dex_file.h"
 #include "dex_file_annotations.h"
+#include "dex_file_types.h"
 #include "gc_root.h"
 #include "handle_scope-inl.h"
 #include "jni_env_ext.h"
@@ -88,7 +89,7 @@ struct GetStackTraceVisitor : public art::StackVisitor {
       jmethodID id = art::jni::EncodeArtMethod(m);
 
       uint32_t dex_pc = GetDexPc(false);
-      jlong dex_location = (dex_pc == art::DexFile::kDexNoIndex) ? -1 : static_cast<jlong>(dex_pc);
+      jlong dex_location = (dex_pc == art::dex::kDexNoIndex) ? -1 : static_cast<jlong>(dex_pc);
 
       jvmtiFrameInfo info = { id, dex_location };
       fn(info);
@@ -819,7 +820,7 @@ jvmtiError StackUtil::GetFrameLocation(jvmtiEnv* env ATTRIBUTE_UNUSED,
   if (closure.method->IsNative()) {
     *location_ptr = -1;
   } else {
-    if (closure.dex_pc == art::DexFile::kDexNoIndex) {
+    if (closure.dex_pc == art::dex::kDexNoIndex) {
       return ERR(INTERNAL);
     }
     *location_ptr = static_cast<jlocation>(closure.dex_pc);

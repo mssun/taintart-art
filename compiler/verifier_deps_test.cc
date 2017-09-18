@@ -23,7 +23,7 @@
 #include "compiler_callbacks.h"
 #include "dex/verification_results.h"
 #include "dex/verified_method.h"
-#include "dex_file.h"
+#include "dex_file-inl.h"
 #include "dex_file_types.h"
 #include "driver/compiler_driver-inl.h"
 #include "driver/compiler_options.h"

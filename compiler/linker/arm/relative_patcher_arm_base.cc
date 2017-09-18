@@ -19,6 +19,7 @@
 #include "base/stl_util.h"
 #include "compiled_method.h"
 #include "debug/method_debug_info.h"
+#include "dex_file_types.h"
 #include "linker/output_stream.h"
 #include "oat.h"
 #include "oat_quick_method_header.h"
@@ -169,7 +170,7 @@ uint32_t ArmBaseRelativePatcher::ReserveSpaceEnd(uint32_t offset) {
   // to place thunk will be soon enough, we need to reserve all needed thunks now. Code for
   // subsequent oat files can still call back to them.
   if (!unprocessed_method_call_patches_.empty()) {
-    ResolveMethodCalls(offset, MethodReference(nullptr, DexFile::kDexNoIndex));
+    ResolveMethodCalls(offset, MethodReference(nullptr, dex::kDexNoIndex));
   }
   for (ThunkData* data : unreserved_thunks_) {
     uint32_t thunk_offset = CompiledCode::AlignCode(offset, instruction_set_);

@@ -27,6 +27,7 @@
 #include "base/time_utils.h"
 #include "class_linker.h"
 #include "dex_file-inl.h"
+#include "dex_file_types.h"
 #include "dex_instruction-inl.h"
 #include "lock_word-inl.h"
 #include "mirror/class-inl.h"
@@ -1344,7 +1345,7 @@ void Monitor::VisitLocks(StackVisitor* stack_visitor, void (*callback)(mirror::O
   // find the dex pc, and instead return kDexNoIndex. Then bail out, as it indicates we have an
   // inconsistent stack anyways.
   uint32_t dex_pc = stack_visitor->GetDexPc(abort_on_failure);
-  if (!abort_on_failure && dex_pc == DexFile::kDexNoIndex) {
+  if (!abort_on_failure && dex_pc == dex::kDexNoIndex) {
     LOG(ERROR) << "Could not find dex_pc for " << m->PrettyMethod();
     return;
   }

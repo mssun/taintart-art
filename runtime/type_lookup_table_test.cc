@@ -25,8 +25,6 @@
 
 namespace art {
 
-static const size_t kDexNoIndex = DexFile::kDexNoIndex;  // Make copy to prevent linking errors.
-
 using DescriptorClassDefIdxPair = std::pair<const char*, uint32_t>;
 class TypeLookupTableTest : public CommonRuntimeTestWithParam<DescriptorClassDefIdxPair> {};
 
@@ -56,7 +54,7 @@ INSTANTIATE_TEST_CASE_P(FindNonExistingClassWithoutCollisions,
                         testing::Values(DescriptorClassDefIdxPair("LAB;", 1U)));
 INSTANTIATE_TEST_CASE_P(FindNonExistingClassWithCollisions,
                         TypeLookupTableTest,
-                        testing::Values(DescriptorClassDefIdxPair("LDA;", kDexNoIndex)));
+                        testing::Values(DescriptorClassDefIdxPair("LDA;", dex::kDexNoIndex)));
 INSTANTIATE_TEST_CASE_P(FindClassNoCollisions,
                         TypeLookupTableTest,
                         testing::Values(DescriptorClassDefIdxPair("LC;", 2U)));

@@ -26,6 +26,7 @@
 #include "class_linker.h"
 #include "debugger.h"
 #include "dex_file-inl.h"
+#include "dex_file_types.h"
 #include "dex_instruction-inl.h"
 #include "entrypoints/quick/quick_alloc_entrypoints.h"
 #include "entrypoints/quick/quick_entrypoints.h"
@@ -245,7 +246,7 @@ static void InstrumentationInstallStack(Thread* thread, void* arg)
             // pushed when executing the instrumented interpreter bridge. So method
             // enter event must have been reported. However we need to push a DEX pc
             // into the dex_pcs_ list to match size of instrumentation stack.
-            uint32_t dex_pc = DexFile::kDexNoIndex;
+            uint32_t dex_pc = dex::kDexNoIndex;
             dex_pcs_.push_back(dex_pc);
             last_return_pc_ = frame.return_pc_;
             ++instrumentation_stack_depth_;
@@ -290,7 +291,7 @@ static void InstrumentationInstallStack(Thread* thread, void* arg)
         instrumentation_stack_->insert(it, instrumentation_frame);
         SetReturnPc(instrumentation_exit_pc_);
       }
-      uint32_t dex_pc = DexFile::kDexNoIndex;
+      uint32_t dex_pc = dex::kDexNoIndex;
       if (last_return_pc_ != 0 &&
           GetCurrentOatQuickMethodHeader() != nullptr) {
         dex_pc = GetCurrentOatQuickMethodHeader()->ToDexPc(m, last_return_pc_);
@@ -1334,7 +1335,7 @@ TwoWordReturn Instrumentation::PopInstrumentationStackFrame(Thread* self,
   }
   // TODO: improve the dex pc information here, requires knowledge of current PC as opposed to
   //       return_pc.
-  uint32_t dex_pc = DexFile::kDexNoIndex;
+  uint32_t dex_pc = dex::kDexNoIndex;
   mirror::Object* this_object = instrumentation_frame.this_object_;
   if (!method->IsRuntimeMethod() && !instrumentation_frame.interpreter_entry_) {
     MethodExitEvent(self, this_object, instrumentation_frame.method_, dex_pc, return_value);
@@ -1403,7 +1404,7 @@ uintptr_t Instrumentation::PopMethodForUnwind(Thread* self, bool is_deoptimizati
     // Notify listeners of method unwind.
     // TODO: improve the dex pc information here, requires knowledge of current PC as opposed to
     //       return_pc.
-    uint32_t dex_pc = DexFile::kDexNoIndex;
+    uint32_t dex_pc = dex::kDexNoIndex;
     if (!method->IsRuntimeMethod()) {
       MethodUnwindEvent(self, instrumentation_frame.this_object_, method, dex_pc);
     }
