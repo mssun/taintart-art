@@ -20,6 +20,7 @@
 #include "art_method.h"
 #include "code_generator_arm_vixl.h"
 #include "common_arm.h"
+#include "heap_poisoning.h"
 #include "lock_word.h"
 #include "mirror/array-inl.h"
 #include "mirror/object_array-inl.h"

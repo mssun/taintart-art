@@ -17,6 +17,7 @@
 #include "assembler_arm64.h"
 #include "base/logging.h"
 #include "entrypoints/quick/quick_entrypoints.h"
+#include "heap_poisoning.h"
 #include "offsets.h"
 #include "thread.h"
 

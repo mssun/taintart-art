@@ -20,6 +20,7 @@
 #include "atomic.h"
 #include "base/mutex.h"  // For Locks::mutator_lock_.
 #include "globals.h"
+#include "heap_poisoning.h"
 #include "obj_ptr.h"
 
 namespace art {

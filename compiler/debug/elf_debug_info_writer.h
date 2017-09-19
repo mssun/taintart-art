@@ -30,6 +30,7 @@
 #include "dex_file-inl.h"
 #include "dex_file.h"
 #include "elf_builder.h"
+#include "heap_poisoning.h"
 #include "linear_alloc.h"
 #include "mirror/array.h"
 #include "mirror/class-inl.h"
