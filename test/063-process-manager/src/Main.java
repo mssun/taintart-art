@@ -3,6 +3,16 @@ import java.util.Map;
 public class Main {
     static public void main(String[] args) throws Exception {
         checkManager();
+
+        // Warm up the reaper so that there are no issues with scheduling because of static
+        // initialization.
+        {
+            ProcessBuilder pb = new ProcessBuilder("sleep", "0");
+            Process proc = pb.start();
+            proc.waitFor();
+            Thread.sleep(500);  // Consider checking for (and waiting on) the reaper state here.
+        }
+
         for (int i = 1; i <= 2; i++) {
             System.out.println("\nspawning child #" + i);
             child();
