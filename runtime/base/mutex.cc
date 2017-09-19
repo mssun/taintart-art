@@ -955,7 +955,7 @@ void ConditionVariable::WaitHoldingLocks(Thread* self) {
   guard_.num_contenders_--;
 #else
   pid_t old_owner = guard_.GetExclusiveOwnerTid();
-  guard_.exclusive_owner.StoreRelaxed(0);
+  guard_.exclusive_owner_.StoreRelaxed(0);
   guard_.recursion_count_ = 0;
   CHECK_MUTEX_CALL(pthread_cond_wait, (&cond_, &guard_.mutex_));
   guard_.exclusive_owner_.StoreRelaxed(old_owner);
