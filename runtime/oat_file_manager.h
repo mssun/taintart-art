@@ -45,7 +45,7 @@ class OatFile;
 // pointers returned from functions are always valid.
 class OatFileManager {
  public:
-  OatFileManager() : have_non_pic_oat_file_(false) {}
+  OatFileManager() : have_non_pic_oat_file_(false), only_use_system_oat_files_(false) {}
   ~OatFileManager();
 
   // Add an oat file to the internal accounting, std::aborts if there already exists an oat file
@@ -105,6 +105,8 @@ class OatFileManager {
 
   void DumpForSigQuit(std::ostream& os);
 
+  void SetOnlyUseSystemOatFiles();
+
  private:
   // Check that the class loader context of the given oat file matches the given context.
   // This will perform a check that all class loaders in the chain have the same type and
@@ -125,6 +127,7 @@ class OatFileManager {
 
   std::set<std::unique_ptr<const OatFile>> oat_files_ GUARDED_BY(Locks::oat_file_manager_lock_);
   bool have_non_pic_oat_file_;
+  bool only_use_system_oat_files_;
 
   DISALLOW_COPY_AND_ASSIGN(OatFileManager);
 };
