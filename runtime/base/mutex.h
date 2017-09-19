@@ -19,6 +19,7 @@
 
 #include <pthread.h>
 #include <stdint.h>
+#include <unistd.h>  // for pid_t
 
 #include <iosfwd>
 #include <string>
@@ -263,7 +264,7 @@ class LOCKABLE Mutex : public BaseMutex {
 
   // Id associated with exclusive owner. No memory ordering semantics if called from a thread other
   // than the owner.
-  uint64_t GetExclusiveOwnerTid() const;
+  pid_t GetExclusiveOwnerTid() const;
 
   // Returns how many times this Mutex has been locked, it is better to use AssertHeld/NotHeld.
   unsigned int GetDepth() const {
@@ -282,12 +283,12 @@ class LOCKABLE Mutex : public BaseMutex {
   // 0 is unheld, 1 is held.
   AtomicInteger state_;
   // Exclusive owner.
-  volatile uint64_t exclusive_owner_;
+  Atomic<pid_t> exclusive_owner_;
   // Number of waiting contenders.
   AtomicInteger num_contenders_;
 #else
   pthread_mutex_t mutex_;
-  volatile uint64_t exclusive_owner_;  // Guarded by mutex_.
+  Atomic<pid_t> exclusive_owner_;  // Guarded by mutex_. Asynchronous reads are OK.
 #endif
   const bool recursive_;  // Can the lock be recursively held?
   unsigned int recursion_count_;
@@ -385,8 +386,9 @@ class SHARED_LOCKABLE ReaderWriterMutex : public BaseMutex {
   }
 
   // Id associated with exclusive owner. No memory ordering semantics if called from a thread other
-  // than the owner.
-  uint64_t GetExclusiveOwnerTid() const;
+  // than the owner. Returns 0 if the lock is not held. Returns either 0 or -1 if it is held by
+  // one or more readers.
+  pid_t GetExclusiveOwnerTid() const;
 
   virtual void Dump(std::ostream& os) const;
 
@@ -403,14 +405,14 @@ class SHARED_LOCKABLE ReaderWriterMutex : public BaseMutex {
   // -1 implies held exclusive, +ve shared held by state_ many owners.
   AtomicInteger state_;
   // Exclusive owner. Modification guarded by this mutex.
-  volatile uint64_t exclusive_owner_;
+  Atomic<pid_t> exclusive_owner_;
   // Number of contenders waiting for a reader share.
   AtomicInteger num_pending_readers_;
   // Number of contenders waiting to be the writer.
   AtomicInteger num_pending_writers_;
 #else
   pthread_rwlock_t rwlock_;
-  volatile uint64_t exclusive_owner_;  // Guarded by rwlock_.
+  Atomic<pid_t> exclusive_owner_;  // Writes guarded by rwlock_. Asynchronous reads are OK.
 #endif
   DISALLOW_COPY_AND_ASSIGN(ReaderWriterMutex);
 };
