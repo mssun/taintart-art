@@ -571,10 +571,6 @@ ENTRY art_quick_invoke_stub_internal
     add    ip, ip, #4                      @ skip r0
     ldm    ip, {r1-r3}                     @ copy r1 - r3
 
-#ifdef ARM_R4_SUSPEND_FLAG
-    mov    r4, #SUSPEND_CHECK_INTERVAL     @ reset r4 to suspend check interval
-#endif
-
     REFRESH_MARKING_REGISTER
 
     ldr    ip, [r0, #ART_METHOD_QUICK_CODE_OFFSET_32]  @ get pointer to the code
@@ -1533,14 +1529,6 @@ GENERATE_ALLOC_ARRAY_TLAB art_quick_alloc_array_resolved64_tlab, artAllocArrayFr
      */
     .extern artTestSuspendFromCode
 ENTRY art_quick_test_suspend
-#ifdef ARM_R4_SUSPEND_FLAG
-    ldrh   rSUSPEND, [rSELF, #THREAD_FLAGS_OFFSET]
-    cbnz   rSUSPEND, 1f                         @ check Thread::Current()->suspend_count_ == 0
-    mov    rSUSPEND, #SUSPEND_CHECK_INTERVAL    @ reset rSUSPEND to SUSPEND_CHECK_INTERVAL
-    bx     lr                                   @ return if suspend_count_ == 0
-1:
-    mov    rSUSPEND, #SUSPEND_CHECK_INTERVAL    @ reset rSUSPEND to SUSPEND_CHECK_INTERVAL
-#endif
     SETUP_SAVE_EVERYTHING_FRAME r0, RUNTIME_SAVE_EVERYTHING_FOR_SUSPEND_CHECK_METHOD_OFFSET @ save everything for GC stack crawl
     mov    r0, rSELF
     bl     artTestSuspendFromCode               @ (Thread*)
