@@ -20,6 +20,7 @@
 #include "art_method.h"
 #include "code_generator_mips64.h"
 #include "entrypoints/quick/quick_entrypoints.h"
+#include "heap_poisoning.h"
 #include "intrinsics.h"
 #include "mirror/array-inl.h"
 #include "mirror/object_array-inl.h"
