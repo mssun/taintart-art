@@ -37,6 +37,7 @@
 #include "obj_ptr.h"
 #include "offsets.h"
 #include "process_state.h"
+#include "read_barrier_config.h"
 #include "safe_map.h"
 #include "verify_object.h"
 

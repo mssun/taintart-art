@@ -24,10 +24,7 @@
 #include "jni.h"
 #include "mirror/object_reference.h"
 #include "offsets.h"
-#include "read_barrier_c.h"
-
-// This is a C++ (not C) header file, separate from read_barrier_c.h
-// which needs to be a C header file for asm_support.h.
+#include "read_barrier_config.h"
 
 namespace art {
 namespace mirror {

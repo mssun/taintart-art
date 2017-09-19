@@ -23,6 +23,7 @@
 #include "gtest/gtest.h"
 #include "optimizing/code_generator.h"
 #include "optimizing/optimizing_unit_test.h"
+#include "read_barrier_config.h"
 #include "utils/arm/assembler_arm_vixl.h"
 #include "utils/assembler.h"
 #include "utils/mips/assembler_mips.h"
