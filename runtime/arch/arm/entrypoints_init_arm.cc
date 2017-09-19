@@ -131,19 +131,11 @@ void InitEntryPoints(JniEntryPoints* jpoints, QuickEntryPoints* qpoints) {
   qpoints->pShlLong = art_quick_shl_long;
   qpoints->pShrLong = art_quick_shr_long;
   qpoints->pUshrLong = art_quick_ushr_long;
-  if (kArm32QuickCodeUseSoftFloat) {
-    qpoints->pFmod = fmod;
-    qpoints->pFmodf = fmodf;
-    qpoints->pD2l = art_d2l;
-    qpoints->pF2l = art_f2l;
-    qpoints->pL2f = art_l2f;
-  } else {
-    qpoints->pFmod = art_quick_fmod;
-    qpoints->pFmodf = art_quick_fmodf;
-    qpoints->pD2l = art_quick_d2l;
-    qpoints->pF2l = art_quick_f2l;
-    qpoints->pL2f = art_quick_l2f;
-  }
+  qpoints->pFmod = art_quick_fmod;
+  qpoints->pFmodf = art_quick_fmodf;
+  qpoints->pD2l = art_quick_d2l;
+  qpoints->pF2l = art_quick_f2l;
+  qpoints->pL2f = art_quick_l2f;
 
   // More math.
   qpoints->pCos = cos;

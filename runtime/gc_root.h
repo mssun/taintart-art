@@ -20,6 +20,7 @@
 #include "base/macros.h"
 #include "base/mutex.h"       // For Locks::mutator_lock_.
 #include "mirror/object_reference.h"
+#include "read_barrier_option.h"
 
 namespace art {
 class ArtField;

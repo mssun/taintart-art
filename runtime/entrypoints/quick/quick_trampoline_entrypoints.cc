@@ -77,13 +77,13 @@ class QuickArgumentVisitor {
   // | S0         |
   // |            |    4x2 bytes padding
   // | Method*    |  <- sp
-  static constexpr bool kSplitPairAcrossRegisterAndStack = kArm32QuickCodeUseSoftFloat;
-  static constexpr bool kAlignPairRegister = !kArm32QuickCodeUseSoftFloat;
-  static constexpr bool kQuickSoftFloatAbi = kArm32QuickCodeUseSoftFloat;
-  static constexpr bool kQuickDoubleRegAlignedFloatBackFilled = !kArm32QuickCodeUseSoftFloat;
+  static constexpr bool kSplitPairAcrossRegisterAndStack = false;
+  static constexpr bool kAlignPairRegister = true;
+  static constexpr bool kQuickSoftFloatAbi = false;
+  static constexpr bool kQuickDoubleRegAlignedFloatBackFilled = true;
   static constexpr bool kQuickSkipOddFpRegisters = false;
   static constexpr size_t kNumQuickGprArgs = 3;
-  static constexpr size_t kNumQuickFprArgs = kArm32QuickCodeUseSoftFloat ? 0 : 16;
+  static constexpr size_t kNumQuickFprArgs = 16;
   static constexpr bool kGprFprLockstep = false;
   static constexpr size_t kQuickCalleeSaveFrame_RefAndArgs_Fpr1Offset =
       arm::ArmCalleeSaveFpr1Offset(CalleeSaveType::kSaveRefsAndArgs);  // Offset of first FPR arg.
