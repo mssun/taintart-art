@@ -971,7 +971,6 @@ ENTRY art_quick_invoke_stub
     move  $fp, $sp              # save sp in fp
     .cfi_def_cfa_register 30
     move  $s1, $a3              # move managed thread pointer into s1
-    addiu $s0, $zero, SUSPEND_CHECK_INTERVAL  # reset s0 to suspend check interval
     addiu $t0, $a2, 4           # create space for ArtMethod* in frame.
     subu  $t0, $sp, $t0         # reserve & align *stack* to 16 bytes:
     srl   $t0, $t0, 4           #   native calling convention only aligns to 8B,
@@ -1131,7 +1130,6 @@ ENTRY art_quick_invoke_static_stub
     move  $fp, $sp              # save sp in fp
     .cfi_def_cfa_register 30
     move  $s1, $a3              # move managed thread pointer into s1
-    addiu $s0, $zero, SUSPEND_CHECK_INTERVAL  # reset s0 to suspend check interval
     addiu $t0, $a2, 4           # create space for ArtMethod* in frame.
     subu  $t0, $sp, $t0         # reserve & align *stack* to 16 bytes:
     srl   $t0, $t0, 4           #   native calling convention only aligns to 8B,
@@ -2061,12 +2059,6 @@ ONE_ARG_SAVE_EVERYTHING_DOWNCALL art_quick_initialize_type_and_verify_access, ar
      */
     .extern artTestSuspendFromCode
 ENTRY_NO_GP art_quick_test_suspend
-    lh     rSUSPEND, THREAD_FLAGS_OFFSET(rSELF)
-    bnez   rSUSPEND, 1f
-    addiu  rSUSPEND, $zero, SUSPEND_CHECK_INTERVAL   # reset rSUSPEND to SUSPEND_CHECK_INTERVAL
-    jalr   $zero, $ra
-    nop
-1:
     SETUP_SAVE_EVERYTHING_FRAME RUNTIME_SAVE_EVERYTHING_FOR_SUSPEND_CHECK_METHOD_OFFSET
                                                      # save everything for stack crawl
     la     $t9, artTestSuspendFromCode

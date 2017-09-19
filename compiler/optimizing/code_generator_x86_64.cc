@@ -22,6 +22,7 @@
 #include "compiled_method.h"
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "gc/accounting/card_table.h"
+#include "heap_poisoning.h"
 #include "intrinsics.h"
 #include "intrinsics_x86_64.h"
 #include "lock_word.h"

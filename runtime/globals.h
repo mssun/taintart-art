@@ -20,8 +20,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "heap_poisoning.h"
-
 namespace art {
 
 static constexpr size_t KB = 1024;
