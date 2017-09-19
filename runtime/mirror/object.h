@@ -24,6 +24,8 @@
 #include "obj_ptr.h"
 #include "object_reference.h"
 #include "offsets.h"
+#include "read_barrier_config.h"
+#include "read_barrier_option.h"
 #include "verify_object.h"
 
 namespace art {

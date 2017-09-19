@@ -34,8 +34,7 @@ static void quick_invoke_reg_setup(ArtMethod* method, uint32_t* args, uint32_t a
   uint32_t fpr_index = 0;  // Index into float registers.
   uint32_t fpr_double_index = 0;  // Index into float registers for doubles.
   uint32_t arg_index = 0;  // Index into argument array.
-  const uint32_t result_in_float = kArm32QuickCodeUseSoftFloat ? 0 :
-      (shorty[0] == 'F' || shorty[0] == 'D') ? 1 : 0;
+  const uint32_t result_in_float = (shorty[0] == 'F' || shorty[0] == 'D') ? 1 : 0;
 
   if (!kIsStatic) {
     // Copy receiver for non-static methods.
@@ -44,10 +43,6 @@ static void quick_invoke_reg_setup(ArtMethod* method, uint32_t* args, uint32_t a
 
   for (uint32_t shorty_index = 1; shorty[shorty_index] != '\0'; ++shorty_index, ++arg_index) {
     char arg_type = shorty[shorty_index];
-    if (kArm32QuickCodeUseSoftFloat) {
-      arg_type = (arg_type == 'D') ? 'J' : arg_type;  // Regard double as long.
-      arg_type = (arg_type == 'F') ? 'I' : arg_type;  // Regard float as int.
-    }
     switch (arg_type) {
       case 'D': {
         // Copy double argument into fp_reg_args if there are still floating point reg arguments.
@@ -75,13 +70,13 @@ static void quick_invoke_reg_setup(ArtMethod* method, uint32_t* args, uint32_t a
         }
         break;
       case 'J':
-        if (gpr_index == 1 && !kArm32QuickCodeUseSoftFloat) {
+        if (gpr_index == 1) {
           // Don't use r1-r2 as a register pair, move to r2-r3 instead.
           gpr_index++;
         }
         if (gpr_index < arraysize(core_reg_args)) {
           // Note that we don't need to do this if two registers are not available
-          // when !kArm32QuickCodeUseSoftFloat. We do it anyway to leave this
+          // when using hard-fp. We do it anyway to leave this
           // code simple.
           core_reg_args[gpr_index++] = args[arg_index];
         }

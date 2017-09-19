@@ -36,6 +36,7 @@
 #include "jdwp/jdwp.h"
 #include "jit/profile_saver_options.h"
 #include "plugin.h"
+#include "read_barrier_config.h"
 #include "ti/agent.h"
 #include "unit.h"
 
