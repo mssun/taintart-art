@@ -361,14 +361,13 @@ void BaseMutex::DumpContention(std::ostream& os) const {
 
 
 Mutex::Mutex(const char* name, LockLevel level, bool recursive)
-    : BaseMutex(name, level), recursive_(recursive), recursion_count_(0) {
+    : BaseMutex(name, level), exclusive_owner_(0), recursive_(recursive), recursion_count_(0) {
 #if ART_USE_FUTEXES
   DCHECK_EQ(0, state_.LoadRelaxed());
   DCHECK_EQ(0, num_contenders_.LoadRelaxed());
 #else
   CHECK_MUTEX_CALL(pthread_mutex_init, (&mutex_, nullptr));
 #endif
-  exclusive_owner_ = 0;
 }
 
 // Helper to allow checking shutdown while locking for thread safety.
@@ -382,9 +381,9 @@ Mutex::~Mutex() {
 #if ART_USE_FUTEXES
   if (state_.LoadRelaxed() != 0) {
     LOG(safe_to_call_abort ? FATAL : WARNING)
-        << "destroying mutex with owner: " << exclusive_owner_;
+        << "destroying mutex with owner: " << GetExclusiveOwnerTid();
   } else {
-    if (exclusive_owner_ != 0) {
+    if (GetExclusiveOwnerTid() != 0) {
       LOG(safe_to_call_abort ? FATAL : WARNING)
           << "unexpectedly found an owner on unlocked mutex " << name_;
     }
@@ -439,8 +438,8 @@ void Mutex::ExclusiveLock(Thread* self) {
 #else
     CHECK_MUTEX_CALL(pthread_mutex_lock, (&mutex_));
 #endif
-    DCHECK_EQ(exclusive_owner_, 0U);
-    exclusive_owner_ = SafeGetTid(self);
+    DCHECK_EQ(GetExclusiveOwnerTid(), 0);
+    exclusive_owner_.StoreRelaxed(SafeGetTid(self));
     RegisterAsLocked(self);
   }
   recursion_count_++;
@@ -479,8 +478,8 @@ bool Mutex::ExclusiveTryLock(Thread* self) {
       PLOG(FATAL) << "pthread_mutex_trylock failed for " << name_;
     }
 #endif
-    DCHECK_EQ(exclusive_owner_, 0U);
-    exclusive_owner_ = SafeGetTid(self);
+    DCHECK_EQ(GetExclusiveOwnerTid(), 0);
+    exclusive_owner_.StoreRelaxed(SafeGetTid(self));
     RegisterAsLocked(self);
   }
   recursion_count_++;
@@ -506,7 +505,7 @@ void Mutex::ExclusiveUnlock(Thread* self) {
                << " Thread::Current()=" << name2;
   }
   AssertHeld(self);
-  DCHECK_NE(exclusive_owner_, 0U);
+  DCHECK_NE(GetExclusiveOwnerTid(), 0);
   recursion_count_--;
   if (!recursive_ || recursion_count_ == 0) {
     if (kDebugLocking) {
@@ -520,9 +519,9 @@ void Mutex::ExclusiveUnlock(Thread* self) {
       int32_t cur_state = state_.LoadRelaxed();
       if (LIKELY(cur_state == 1)) {
         // We're no longer the owner.
-        exclusive_owner_ = 0;
+        exclusive_owner_.StoreRelaxed(0);
         // Change state to 0 and impose load/store ordering appropriate for lock release.
-        // Note, the relaxed loads below musn't reorder before the CompareExchange.
+        // Note, the relaxed loads below mustn't reorder before the CompareExchange.
         // TODO: the ordering here is non-trivial as state is split across 3 fields, fix by placing
         // a status bit into the state on contention.
         done =  state_.CompareExchangeWeakSequentiallyConsistent(cur_state, 0 /* new state */);
@@ -547,7 +546,7 @@ void Mutex::ExclusiveUnlock(Thread* self) {
       }
     } while (!done);
 #else
-    exclusive_owner_ = 0;
+    exclusive_owner_.StoreRelaxed(0);
     CHECK_MUTEX_CALL(pthread_mutex_unlock, (&mutex_));
 #endif
   }
@@ -588,13 +587,13 @@ ReaderWriterMutex::ReaderWriterMutex(const char* name, LockLevel level)
 #if !ART_USE_FUTEXES
   CHECK_MUTEX_CALL(pthread_rwlock_init, (&rwlock_, nullptr));
 #endif
-  exclusive_owner_ = 0;
+  exclusive_owner_.StoreRelaxed(0);
 }
 
 ReaderWriterMutex::~ReaderWriterMutex() {
 #if ART_USE_FUTEXES
   CHECK_EQ(state_.LoadRelaxed(), 0);
-  CHECK_EQ(exclusive_owner_, 0U);
+  CHECK_EQ(GetExclusiveOwnerTid(), 0);
   CHECK_EQ(num_pending_readers_.LoadRelaxed(), 0);
   CHECK_EQ(num_pending_writers_.LoadRelaxed(), 0);
 #else
@@ -640,8 +639,8 @@ void ReaderWriterMutex::ExclusiveLock(Thread* self) {
 #else
   CHECK_MUTEX_CALL(pthread_rwlock_wrlock, (&rwlock_));
 #endif
-  DCHECK_EQ(exclusive_owner_, 0U);
-  exclusive_owner_ = SafeGetTid(self);
+  DCHECK_EQ(GetExclusiveOwnerTid(), 0);
+  exclusive_owner_.StoreRelaxed(SafeGetTid(self));
   RegisterAsLocked(self);
   AssertExclusiveHeld(self);
 }
@@ -650,14 +649,14 @@ void ReaderWriterMutex::ExclusiveUnlock(Thread* self) {
   DCHECK(self == nullptr || self == Thread::Current());
   AssertExclusiveHeld(self);
   RegisterAsUnlocked(self);
-  DCHECK_NE(exclusive_owner_, 0U);
+  DCHECK_NE(GetExclusiveOwnerTid(), 0);
 #if ART_USE_FUTEXES
   bool done = false;
   do {
     int32_t cur_state = state_.LoadRelaxed();
     if (LIKELY(cur_state == -1)) {
       // We're no longer the owner.
-      exclusive_owner_ = 0;
+      exclusive_owner_.StoreRelaxed(0);
       // Change state from -1 to 0 and impose load/store ordering appropriate for lock release.
       // Note, the relaxed loads below musn't reorder before the CompareExchange.
       // TODO: the ordering here is non-trivial as state is split across 3 fields, fix by placing
@@ -675,7 +674,7 @@ void ReaderWriterMutex::ExclusiveUnlock(Thread* self) {
     }
   } while (!done);
 #else
-  exclusive_owner_ = 0;
+  exclusive_owner_.StoreRelaxed(0);
   CHECK_MUTEX_CALL(pthread_rwlock_unlock, (&rwlock_));
 #endif
 }
@@ -731,7 +730,7 @@ bool ReaderWriterMutex::ExclusiveLockWithTimeout(Thread* self, int64_t ms, int32
     PLOG(FATAL) << "pthread_rwlock_timedwrlock failed for " << name_;
   }
 #endif
-  exclusive_owner_ = SafeGetTid(self);
+  exclusive_owner_.StoreRelaxed(SafeGetTid(self));
   RegisterAsLocked(self);
   AssertSharedHeld(self);
   return true;
@@ -955,11 +954,11 @@ void ConditionVariable::WaitHoldingLocks(Thread* self) {
   CHECK_GE(guard_.num_contenders_.LoadRelaxed(), 0);
   guard_.num_contenders_--;
 #else
-  uint64_t old_owner = guard_.exclusive_owner_;
-  guard_.exclusive_owner_ = 0;
+  pid_t old_owner = guard_.GetExclusiveOwnerTid();
+  guard_.exclusive_owner.StoreRelaxed(0);
   guard_.recursion_count_ = 0;
   CHECK_MUTEX_CALL(pthread_cond_wait, (&cond_, &guard_.mutex_));
-  guard_.exclusive_owner_ = old_owner;
+  guard_.exclusive_owner_.StoreRelaxed(old_owner);
 #endif
   guard_.recursion_count_ = old_recursion_count;
 }
@@ -1001,8 +1000,8 @@ bool ConditionVariable::TimedWait(Thread* self, int64_t ms, int32_t ns) {
 #else
   int clock = CLOCK_REALTIME;
 #endif
-  uint64_t old_owner = guard_.exclusive_owner_;
-  guard_.exclusive_owner_ = 0;
+  pid_t old_owner = guard_.GetExclusiveOwnerTid();
+  guard_.exclusive_owner_.StoreRelaxed(0);
   guard_.recursion_count_ = 0;
   timespec ts;
   InitTimeSpec(true, clock, ms, ns, &ts);
@@ -1013,7 +1012,7 @@ bool ConditionVariable::TimedWait(Thread* self, int64_t ms, int32_t ns) {
     errno = rc;
     PLOG(FATAL) << "TimedWait failed for " << name_;
   }
-  guard_.exclusive_owner_ = old_owner;
+  guard_.exclusive_owner_.StoreRelaxed(old_owner);
 #endif
   guard_.recursion_count_ = old_recursion_count;
   return timed_out;
