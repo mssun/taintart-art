@@ -72,7 +72,7 @@ static bool MayHaveReorderingDependency(SideEffects node, SideEffects other) {
 
 size_t SchedulingGraph::ArrayAccessHeapLocation(HInstruction* array, HInstruction* index) const {
   DCHECK(heap_location_collector_ != nullptr);
-  size_t heap_loc = heap_location_collector_->GetArrayAccessHeapLocation(array, index);
+  size_t heap_loc = heap_location_collector_->GetArrayHeapLocation(array, index);
   // This array access should be analyzed and added to HeapLocationCollector before.
   DCHECK(heap_loc != HeapLocationCollector::kHeapLocationNotFound);
   return heap_loc;
@@ -153,12 +153,7 @@ size_t SchedulingGraph::FieldAccessHeapLocation(HInstruction* obj, const FieldIn
   DCHECK(field != nullptr);
   DCHECK(heap_location_collector_ != nullptr);
 
-  size_t heap_loc = heap_location_collector_->FindHeapLocationIndex(
-     heap_location_collector_->FindReferenceInfoOf(
-         heap_location_collector_->HuntForOriginalReference(obj)),
-     field->GetFieldOffset().SizeValue(),
-     nullptr,
-     field->GetDeclaringClassDefIndex());
+  size_t heap_loc = heap_location_collector_->GetFieldHeapLocation(obj, field);
   // This field access should be analyzed and added to HeapLocationCollector before.
   DCHECK(heap_loc != HeapLocationCollector::kHeapLocationNotFound);
 
