@@ -28,6 +28,7 @@
 #include "base/stl_util_identity.h"
 #include "constants_mips.h"
 #include "globals.h"
+#include "heap_poisoning.h"
 #include "managed_register_mips.h"
 #include "offsets.h"
 #include "utils/assembler.h"

@@ -27,6 +27,7 @@
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "entrypoints/quick/quick_entrypoints_enum.h"
 #include "gc/accounting/card_table.h"
+#include "heap_poisoning.h"
 #include "intrinsics.h"
 #include "intrinsics_arm64.h"
 #include "linker/arm64/relative_patcher_arm64.h"

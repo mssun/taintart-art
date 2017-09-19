@@ -23,6 +23,7 @@
 #include "compiled_method.h"
 #include "driver/compiler_driver.h"
 #include "entrypoints/quick/quick_entrypoints_enum.h"
+#include "heap_poisoning.h"
 #include "linker/output_stream.h"
 #include "lock_word.h"
 #include "mirror/array-inl.h"

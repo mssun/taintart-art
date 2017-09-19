@@ -25,6 +25,7 @@
 #include "base/macros.h"
 #include "constants_x86_64.h"
 #include "globals.h"
+#include "heap_poisoning.h"
 #include "managed_register_x86_64.h"
 #include "offsets.h"
 #include "utils/assembler.h"
