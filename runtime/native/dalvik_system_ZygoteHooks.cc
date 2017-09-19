@@ -31,6 +31,8 @@
 #include "nativehelper/JNIHelp.h"
 #include "nativehelper/ScopedUtfChars.h"
 #include "non_debuggable_classes.h"
+#include "oat_file.h"
+#include "oat_file_manager.h"
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
 #include "thread-current-inl.h"
@@ -154,20 +156,22 @@ static void CollectNonDebuggableClasses() REQUIRES(!Locks::mutator_lock_) {
   }
 }
 
-static void EnableDebugFeatures(uint32_t runtime_flags) {
-  // Must match values in com.android.internal.os.Zygote.
-  enum {
-    DEBUG_ENABLE_JDWP               = 1,
-    DEBUG_ENABLE_CHECKJNI           = 1 << 1,
-    DEBUG_ENABLE_ASSERT             = 1 << 2,
-    DEBUG_ENABLE_SAFEMODE           = 1 << 3,
-    DEBUG_ENABLE_JNI_LOGGING        = 1 << 4,
-    DEBUG_GENERATE_DEBUG_INFO       = 1 << 5,
-    DEBUG_ALWAYS_JIT                = 1 << 6,
-    DEBUG_NATIVE_DEBUGGABLE         = 1 << 7,
-    DEBUG_JAVA_DEBUGGABLE           = 1 << 8,
-  };
+// Must match values in com.android.internal.os.Zygote.
+enum {
+  DEBUG_ENABLE_JDWP               = 1,
+  DEBUG_ENABLE_CHECKJNI           = 1 << 1,
+  DEBUG_ENABLE_ASSERT             = 1 << 2,
+  DEBUG_ENABLE_SAFEMODE           = 1 << 3,
+  DEBUG_ENABLE_JNI_LOGGING        = 1 << 4,
+  DEBUG_GENERATE_DEBUG_INFO       = 1 << 5,
+  DEBUG_ALWAYS_JIT                = 1 << 6,
+  DEBUG_NATIVE_DEBUGGABLE         = 1 << 7,
+  DEBUG_JAVA_DEBUGGABLE           = 1 << 8,
+  DISABLE_VERIFIER                = 1 << 9,
+  ONLY_USE_SYSTEM_OAT_FILES       = 1 << 10,
+};
 
+static uint32_t EnableDebugFeatures(uint32_t runtime_flags) {
   Runtime* const runtime = Runtime::Current();
   if ((runtime_flags & DEBUG_ENABLE_CHECKJNI) != 0) {
     JavaVMExt* vm = runtime->GetJavaVM();
@@ -237,9 +241,7 @@ static void EnableDebugFeatures(uint32_t runtime_flags) {
     runtime_flags &= ~DEBUG_NATIVE_DEBUGGABLE;
   }
 
-  if (runtime_flags != 0) {
-    LOG(ERROR) << StringPrintf("Unknown bits set in runtime_flags: %#x", runtime_flags);
-  }
+  return runtime_flags;
 }
 
 static jlong ZygoteHooks_nativePreFork(JNIEnv* env, jclass) {
@@ -266,7 +268,21 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
   Thread* thread = reinterpret_cast<Thread*>(token);
   // Our system thread ID, etc, has changed so reset Thread state.
   thread->InitAfterFork();
-  EnableDebugFeatures(runtime_flags);
+  runtime_flags = EnableDebugFeatures(runtime_flags);
+
+  if ((runtime_flags & DISABLE_VERIFIER) != 0) {
+    Runtime::Current()->DisableVerifier();
+    runtime_flags &= ~DISABLE_VERIFIER;
+  }
+
+  if ((runtime_flags & ONLY_USE_SYSTEM_OAT_FILES) != 0) {
+    Runtime::Current()->GetOatFileManager().SetOnlyUseSystemOatFiles();
+    runtime_flags &= ~ONLY_USE_SYSTEM_OAT_FILES;
+  }
+
+  if (runtime_flags != 0) {
+    LOG(ERROR) << StringPrintf("Unknown bits set in runtime_flags: %#x", runtime_flags);
+  }
 
   // Update tracing.
   if (Trace::GetMethodTracingMode() != TracingMode::kTracingInactive) {
