@@ -17,6 +17,7 @@
 #include "elf_debug_writer.h"
 
 #include <vector>
+#include <unordered_map>
 
 #include "base/array_ref.h"
 #include "debug/dwarf/dwarf_constants.h"
@@ -46,26 +47,41 @@ void WriteDebugInfo(ElfBuilder<ElfTypes>* builder,
   // Write .debug_frame.
   WriteCFISection(builder, method_infos, cfi_format, write_oat_patches);
 
-  // Group the methods into compilation units based on source file.
-  std::vector<ElfCompilationUnit> compilation_units;
-  const char* last_source_file = nullptr;
+  // Group the methods into compilation units based on class.
+  std::unordered_map<const DexFile::ClassDef*, ElfCompilationUnit> class_to_compilation_unit;
   for (const MethodDebugInfo& mi : method_infos) {
     if (mi.dex_file != nullptr) {
       auto& dex_class_def = mi.dex_file->GetClassDef(mi.class_def_index);
-      const char* source_file = mi.dex_file->GetSourceFile(dex_class_def);
-      if (compilation_units.empty() || source_file != last_source_file) {
-        compilation_units.push_back(ElfCompilationUnit());
-      }
-      ElfCompilationUnit& cu = compilation_units.back();
+      ElfCompilationUnit& cu = class_to_compilation_unit[&dex_class_def];
       cu.methods.push_back(&mi);
       // All methods must have the same addressing mode otherwise the min/max below does not work.
       DCHECK_EQ(cu.methods.front()->is_code_address_text_relative, mi.is_code_address_text_relative);
       cu.is_code_address_text_relative = mi.is_code_address_text_relative;
       cu.code_address = std::min(cu.code_address, mi.code_address);
       cu.code_end = std::max(cu.code_end, mi.code_address + mi.code_size);
-      last_source_file = source_file;
     }
   }
+
+  // Sort compilation units to make the compiler output deterministic.
+  std::vector<ElfCompilationUnit> compilation_units;
+  compilation_units.reserve(class_to_compilation_unit.size());
+  for (auto& it : class_to_compilation_unit) {
+    // The .debug_line section requires the methods to be sorted by code address.
+    std::stable_sort(it.second.methods.begin(),
+                     it.second.methods.end(),
+                     [](const MethodDebugInfo* a, const MethodDebugInfo* b) {
+                         return a->code_address < b->code_address;
+                     });
+    compilation_units.push_back(std::move(it.second));
+  }
+  std::sort(compilation_units.begin(),
+            compilation_units.end(),
+            [](ElfCompilationUnit& a, ElfCompilationUnit& b) {
+                // Sort by index of the first method within the method_infos array.
+                // This assumes that the order of method_infos is deterministic.
+                // Code address is not good for sorting due to possible duplicates.
+                return a.methods.front() < b.methods.front();
+            });
 
   // Write .debug_line section.
   if (!compilation_units.empty()) {
