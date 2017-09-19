@@ -17,6 +17,7 @@
 #include "multi_oat_relative_patcher.h"
 
 #include "compiled_method.h"
+#include "debug/method_debug_info.h"
 #include "gtest/gtest.h"
 #include "vector_output_stream.h"
 
@@ -24,10 +25,6 @@ namespace art {
 namespace linker {
 
 static const MethodReference kNullMethodRef = MethodReference(nullptr, 0u);
-
-static bool EqualRef(MethodReference lhs, MethodReference rhs) {
-  return lhs.dex_file == rhs.dex_file && lhs.dex_method_index == rhs.dex_method_index;
-}
 
 class MultiOatRelativePatcherTest : public testing::Test {
  protected:
@@ -100,6 +97,12 @@ class MultiOatRelativePatcherTest : public testing::Test {
                                      const LinkerPatch& patch ATTRIBUTE_UNUSED,
                                      uint32_t patch_offset ATTRIBUTE_UNUSED) {
       LOG(FATAL) << "UNIMPLEMENTED";
+    }
+
+    std::vector<debug::MethodDebugInfo> GenerateThunkDebugInfo(
+        uint32_t executable_offset ATTRIBUTE_UNUSED) {
+      LOG(FATAL) << "UNIMPLEMENTED";
+      UNREACHABLE();
     }
 
     uint32_t last_reserve_offset_ = 0u;
@@ -175,7 +178,7 @@ TEST_F(MultiOatRelativePatcherTest, OffsetsInReserve) {
   uint32_t method1_offset = 0x100;
   uint32_t method1_offset_check = patcher_.ReserveSpace(method1_offset, method, ref1);
   ASSERT_EQ(adjustment1 + method1_offset, mock_->last_reserve_offset_);
-  ASSERT_TRUE(EqualRef(ref1, mock_->last_reserve_method_));
+  ASSERT_TRUE(ref1 == mock_->last_reserve_method_);
   ASSERT_EQ(method1_offset, method1_offset_check);
 
   uint32_t method2_offset = 0x1230;
@@ -183,13 +186,13 @@ TEST_F(MultiOatRelativePatcherTest, OffsetsInReserve) {
   mock_->next_reserve_adjustment_ = method2_reserve_adjustment;
   uint32_t method2_offset_adjusted = patcher_.ReserveSpace(method2_offset, method, ref2);
   ASSERT_EQ(adjustment1 + method2_offset, mock_->last_reserve_offset_);
-  ASSERT_TRUE(EqualRef(ref2, mock_->last_reserve_method_));
+  ASSERT_TRUE(ref2 == mock_->last_reserve_method_);
   ASSERT_EQ(method2_offset + method2_reserve_adjustment, method2_offset_adjusted);
 
   uint32_t end1_offset = 0x4320;
   uint32_t end1_offset_check = patcher_.ReserveSpaceEnd(end1_offset);
   ASSERT_EQ(adjustment1 + end1_offset, mock_->last_reserve_offset_);
-  ASSERT_TRUE(EqualRef(kNullMethodRef, mock_->last_reserve_method_));
+  ASSERT_TRUE(kNullMethodRef == mock_->last_reserve_method_);
   ASSERT_EQ(end1_offset, end1_offset_check);
 
   uint32_t adjustment2 = 0xd000;
@@ -198,7 +201,7 @@ TEST_F(MultiOatRelativePatcherTest, OffsetsInReserve) {
   uint32_t method3_offset = 0xf00;
   uint32_t method3_offset_check = patcher_.ReserveSpace(method3_offset, method, ref3);
   ASSERT_EQ(adjustment2 + method3_offset, mock_->last_reserve_offset_);
-  ASSERT_TRUE(EqualRef(ref3, mock_->last_reserve_method_));
+  ASSERT_TRUE(ref3 == mock_->last_reserve_method_);
   ASSERT_EQ(method3_offset, method3_offset_check);
 
   uint32_t end2_offset = 0x2400;
@@ -206,7 +209,7 @@ TEST_F(MultiOatRelativePatcherTest, OffsetsInReserve) {
   mock_->next_reserve_adjustment_ = end2_reserve_adjustment;
   uint32_t end2_offset_adjusted = patcher_.ReserveSpaceEnd(end2_offset);
   ASSERT_EQ(adjustment2 + end2_offset, mock_->last_reserve_offset_);
-  ASSERT_TRUE(EqualRef(kNullMethodRef, mock_->last_reserve_method_));
+  ASSERT_TRUE(kNullMethodRef == mock_->last_reserve_method_);
   ASSERT_EQ(end2_offset + end2_reserve_adjustment, end2_offset_adjusted);
 }
 

@@ -18,6 +18,7 @@
 #define ART_COMPILER_LINKER_MULTI_OAT_RELATIVE_PATCHER_H_
 
 #include "arch/instruction_set.h"
+#include "debug/method_debug_info.h"
 #include "method_reference.h"
 #include "relative_patcher.h"
 #include "safe_map.h"
@@ -36,8 +37,7 @@ namespace linker {
 // to the value set by SetAdjustment().
 class MultiOatRelativePatcher FINAL {
  public:
-  using const_iterator =
-      SafeMap<MethodReference, uint32_t, MethodReferenceComparator>::const_iterator;
+  using const_iterator = SafeMap<MethodReference, uint32_t>::const_iterator;
 
   MultiOatRelativePatcher(InstructionSet instruction_set, const InstructionSetFeatures* features);
 
@@ -119,6 +119,11 @@ class MultiOatRelativePatcher FINAL {
     relative_patcher_->PatchBakerReadBarrierBranch(code, patch, patch_offset);
   }
 
+  std::vector<debug::MethodDebugInfo> GenerateThunkDebugInfo(size_t executable_offset) {
+    executable_offset += adjustment_;
+    return relative_patcher_->GenerateThunkDebugInfo(executable_offset);
+  }
+
   // Wrappers around RelativePatcher for statistics retrieval.
   uint32_t CodeAlignmentSize() const;
   uint32_t RelativeCallThunksSize() const;
@@ -130,7 +135,7 @@ class MultiOatRelativePatcher FINAL {
   class MethodOffsetMap : public linker::RelativePatcherTargetProvider {
    public:
     std::pair<bool, uint32_t> FindMethodOffset(MethodReference ref) OVERRIDE;
-    SafeMap<MethodReference, uint32_t, MethodReferenceComparator> map;
+    SafeMap<MethodReference, uint32_t> map;
   };
 
   MethodOffsetMap method_offset_map_;

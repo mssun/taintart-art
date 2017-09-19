@@ -37,6 +37,7 @@
 #include "art_jvmti.h"
 #include "art_method-inl.h"
 #include "base/logging.h"
+#include "dex_file_types.h"
 #include "gc/allocation_listener.h"
 #include "gc/gc_pause_listener.h"
 #include "gc/heap.h"
@@ -192,6 +193,25 @@ static bool IsThreadControllable(ArtJvmtiEvent event) {
   }
 }
 
+template<typename Type>
+static Type AddLocalRef(art::JNIEnvExt* e, art::mirror::Object* obj)
+    REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  return (obj == nullptr) ? nullptr : e->AddLocalReference<Type>(obj);
+}
+
+template<ArtJvmtiEvent kEvent, typename ...Args>
+static void RunEventCallback(EventHandler* handler,
+                             art::Thread* self,
+                             art::JNIEnvExt* jnienv,
+                             Args... args)
+    REQUIRES_SHARED(art::Locks::mutator_lock_) {
+  ScopedLocalRef<jthread> thread_jni(jnienv, AddLocalRef<jthread>(jnienv, self->GetPeer()));
+  handler->DispatchEvent<kEvent>(self,
+                                 static_cast<JNIEnv*>(jnienv),
+                                 thread_jni.get(),
+                                 args...);
+}
+
 class JvmtiAllocationListener : public art::gc::AllocationListener {
  public:
   explicit JvmtiAllocationListener(EventHandler* handler) : handler_(handler) {}
@@ -211,26 +231,17 @@ class JvmtiAllocationListener : public art::gc::AllocationListener {
       //      jclass object_klass,
       //      jlong size
       art::JNIEnvExt* jni_env = self->GetJniEnv();
-
-      jthread thread_peer;
-      if (self->IsStillStarting()) {
-        thread_peer = nullptr;
-      } else {
-        thread_peer = jni_env->AddLocalReference<jthread>(self->GetPeer());
-      }
-
-      ScopedLocalRef<jthread> thread(jni_env, thread_peer);
       ScopedLocalRef<jobject> object(
           jni_env, jni_env->AddLocalReference<jobject>(*obj));
       ScopedLocalRef<jclass> klass(
           jni_env, jni_env->AddLocalReference<jclass>(obj->Ptr()->GetClass()));
 
-      handler_->DispatchEvent<ArtJvmtiEvent::kVmObjectAlloc>(self,
-                                                             reinterpret_cast<JNIEnv*>(jni_env),
-                                                             thread.get(),
-                                                             object.get(),
-                                                             klass.get(),
-                                                             static_cast<jlong>(byte_count));
+      RunEventCallback<ArtJvmtiEvent::kVmObjectAlloc>(handler_,
+                                                      self,
+                                                      jni_env,
+                                                      object.get(),
+                                                      klass.get(),
+                                                      static_cast<jlong>(byte_count));
     }
   }
 
@@ -247,38 +258,6 @@ static void SetupObjectAllocationTracking(art::gc::AllocationListener* listener,
     art::Runtime::Current()->GetHeap()->SetAllocationListener(listener);
   } else {
     art::Runtime::Current()->GetHeap()->RemoveAllocationListener();
-  }
-}
-
-template<typename Type>
-static Type AddLocalRef(art::JNIEnvExt* e, art::mirror::Object* obj)
-    REQUIRES_SHARED(art::Locks::mutator_lock_) {
-  return (obj == nullptr) ? nullptr : e->AddLocalReference<Type>(obj);
-}
-
-template<ArtJvmtiEvent kEvent, typename ...Args>
-static void RunEventCallback(EventHandler* handler,
-                             art::Thread* self,
-                             art::JNIEnvExt* jnienv,
-                             Args... args)
-    REQUIRES_SHARED(art::Locks::mutator_lock_) {
-  ScopedLocalRef<jthread> thread_jni(jnienv, AddLocalRef<jthread>(jnienv, self->GetPeer()));
-  art::StackHandleScope<1> hs(self);
-  art::Handle<art::mirror::Throwable> old_exception(hs.NewHandle(self->GetException()));
-  self->ClearException();
-  // Just give the event a good sized JNI frame. 100 should be fine.
-  jnienv->PushFrame(100);
-  {
-    // Need to do trampoline! :(
-    art::ScopedThreadSuspension sts(self, art::ThreadState::kNative);
-    handler->DispatchEvent<kEvent>(self,
-                                   static_cast<JNIEnv*>(jnienv),
-                                   thread_jni.get(),
-                                   args...);
-  }
-  jnienv->PopFrame();
-  if (!self->IsExceptionPending() && !old_exception.IsNull()) {
-    self->SetException(old_exception.Get());
   }
 }
 
@@ -649,17 +628,15 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
 
   void WatchedFramePop(art::Thread* self, const art::ShadowFrame& frame)
       REQUIRES_SHARED(art::Locks::mutator_lock_) OVERRIDE {
-    if (event_handler_->IsEventEnabledAnywhere(ArtJvmtiEvent::kFramePop)) {
       art::JNIEnvExt* jnienv = self->GetJniEnv();
-      jboolean is_exception_pending = self->IsExceptionPending();
-      RunEventCallback<ArtJvmtiEvent::kFramePop>(
-          event_handler_,
-          self,
-          jnienv,
-          art::jni::EncodeArtMethod(frame.GetMethod()),
-          is_exception_pending,
-          &frame);
-    }
+    jboolean is_exception_pending = self->IsExceptionPending();
+    RunEventCallback<ArtJvmtiEvent::kFramePop>(
+        event_handler_,
+        self,
+        jnienv,
+        art::jni::EncodeArtMethod(frame.GetMethod()),
+        is_exception_pending,
+        &frame);
   }
 
   static void FindCatchMethodsFromThrow(art::Thread* self,
@@ -692,14 +669,14 @@ class JvmtiMethodTraceListener FINAL : public art::instrumentation::Instrumentat
 
         if (!method->IsNative()) {
           uint32_t cur_dex_pc = GetDexPc();
-          if (cur_dex_pc == art::DexFile::kDexNoIndex) {
+          if (cur_dex_pc == art::dex::kDexNoIndex) {
             // This frame looks opaque. Just keep on going.
             return true;
           }
           bool has_no_move_exception = false;
           uint32_t found_dex_pc = method->FindCatchBlock(
               exception_class_, cur_dex_pc, &has_no_move_exception);
-          if (found_dex_pc != art::DexFile::kDexNoIndex) {
+          if (found_dex_pc != art::dex::kDexNoIndex) {
             // We found the catch. Store the result and return.
             *catch_method_ptr_ = method;
             *catch_dex_pc_ptr_ = found_dex_pc;

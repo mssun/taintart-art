@@ -76,6 +76,7 @@ class Arm64RelativePatcher FINAL : public ArmBaseRelativePatcher {
 
  protected:
   std::vector<uint8_t> CompileThunk(const ThunkKey& key) OVERRIDE;
+  std::string GetThunkDebugName(const ThunkKey& key) OVERRIDE;
   uint32_t MaxPositiveDisplacement(const ThunkKey& key) OVERRIDE;
   uint32_t MaxNegativeDisplacement(const ThunkKey& key) OVERRIDE;
 

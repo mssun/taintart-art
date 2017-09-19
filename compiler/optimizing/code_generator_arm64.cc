@@ -4641,7 +4641,7 @@ vixl::aarch64::Label* CodeGeneratorARM64::NewPcRelativeMethodPatch(
     MethodReference target_method,
     vixl::aarch64::Label* adrp_label) {
   return NewPcRelativePatch(*target_method.dex_file,
-                            target_method.dex_method_index,
+                            target_method.index,
                             adrp_label,
                             &pc_relative_method_patches_);
 }
@@ -4650,7 +4650,7 @@ vixl::aarch64::Label* CodeGeneratorARM64::NewMethodBssEntryPatch(
     MethodReference target_method,
     vixl::aarch64::Label* adrp_label) {
   return NewPcRelativePatch(*target_method.dex_file,
-                            target_method.dex_method_index,
+                            target_method.index,
                             adrp_label,
                             &method_bss_entry_patches_);
 }

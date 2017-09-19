@@ -896,7 +896,7 @@ void CompilerDriver::PreCompile(jobject class_loader,
     for (const DexFile* dex_file : dex_files) {
       // Can be already inserted if the caller is CompileOne. This happens for gtests.
       if (!compiled_methods_.HaveDexFile(dex_file)) {
-        compiled_methods_.AddDexFile(dex_file, dex_file->NumMethodIds());
+        compiled_methods_.AddDexFile(dex_file);
       }
     }
     // Resolve eagerly to prepare for compilation.
@@ -964,7 +964,7 @@ bool CompilerDriver::IsMethodToCompile(const MethodReference& method_ref) const 
     return true;
   }
 
-  std::string tmp = method_ref.dex_file->PrettyMethod(method_ref.dex_method_index, true);
+  std::string tmp = method_ref.PrettyMethod();
   return methods_to_compile_->find(tmp.c_str()) != methods_to_compile_->end();
 }
 
@@ -985,8 +985,7 @@ bool CompilerDriver::ShouldCompileBasedOnProfile(const MethodReference& method_r
 
   if (kDebugProfileGuidedCompilation) {
     LOG(INFO) << "[ProfileGuidedCompilation] "
-        << (result ? "Compiled" : "Skipped") << " method:"
-        << method_ref.dex_file->PrettyMethod(method_ref.dex_method_index, true);
+        << (result ? "Compiled" : "Skipped") << " method:" << method_ref.PrettyMethod(true);
   }
   return result;
 }
@@ -1359,7 +1358,7 @@ void CompilerDriver::MarkForDexToDexCompilation(Thread* self, const MethodRefere
       &dex_to_dex_references_.back().GetDexFile() != method_ref.dex_file) {
     dex_to_dex_references_.emplace_back(*method_ref.dex_file);
   }
-  dex_to_dex_references_.back().GetMethodIndexes().SetBit(method_ref.dex_method_index);
+  dex_to_dex_references_.back().GetMethodIndexes().SetBit(method_ref.index);
 }
 
 bool CompilerDriver::CanAccessTypeWithoutChecks(ObjPtr<mirror::Class> referrer_class,
@@ -1944,7 +1943,7 @@ bool CompilerDriver::FastVerify(jobject jclass_loader,
         if (compiler_only_verifies) {
           // Just update the compiled_classes_ map. The compiler doesn't need to resolve
           // the type.
-          DexFileReference ref(dex_file, i);
+          ClassReference ref(dex_file, i);
           mirror::Class::Status existing = mirror::Class::kStatusNotReady;
           DCHECK(compiled_classes_.Get(ref, &existing)) << ref.dex_file->GetLocation();
           ClassStateTable::InsertResult result =
@@ -2220,7 +2219,7 @@ void CompilerDriver::SetVerifiedDexFile(jobject class_loader,
                                         TimingLogger* timings) {
   TimingLogger::ScopedTiming t("Verify Dex File", timings);
   if (!compiled_classes_.HaveDexFile(&dex_file)) {
-    compiled_classes_.AddDexFile(&dex_file, dex_file.NumClassDefs());
+    compiled_classes_.AddDexFile(&dex_file);
   }
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   ParallelCompilationManager context(class_linker, class_loader, this, &dex_file, dex_files,
@@ -2877,30 +2876,36 @@ void CompilerDriver::CompileDexFile(jobject class_loader,
 void CompilerDriver::AddCompiledMethod(const MethodReference& method_ref,
                                        CompiledMethod* const compiled_method,
                                        size_t non_relative_linker_patch_count) {
-  DCHECK(GetCompiledMethod(method_ref) == nullptr)
-      << method_ref.dex_file->PrettyMethod(method_ref.dex_method_index);
-  MethodTable::InsertResult result = compiled_methods_.Insert(
-      DexFileReference(method_ref.dex_file, method_ref.dex_method_index),
-      /*expected*/ nullptr,
-      compiled_method);
+  DCHECK(GetCompiledMethod(method_ref) == nullptr) << method_ref.PrettyMethod();
+  MethodTable::InsertResult result = compiled_methods_.Insert(method_ref,
+                                                              /*expected*/ nullptr,
+                                                              compiled_method);
   CHECK(result == MethodTable::kInsertResultSuccess);
   non_relative_linker_patch_count_.FetchAndAddRelaxed(non_relative_linker_patch_count);
-  DCHECK(GetCompiledMethod(method_ref) != nullptr)
-      << method_ref.dex_file->PrettyMethod(method_ref.dex_method_index);
+  DCHECK(GetCompiledMethod(method_ref) != nullptr) << method_ref.PrettyMethod();
 }
 
-bool CompilerDriver::GetCompiledClass(ClassReference ref, mirror::Class::Status* status) const {
+bool CompilerDriver::GetCompiledClass(const ClassReference& ref,
+                                      mirror::Class::Status* status) const {
   DCHECK(status != nullptr);
   // The table doesn't know if something wasn't inserted. For this case it will return
   // kStatusNotReady. To handle this, just assume anything we didn't try to verify is not compiled.
-  if (!compiled_classes_.Get(DexFileReference(ref.first, ref.second), status) ||
+  if (!compiled_classes_.Get(ref, status) ||
       *status < mirror::Class::kStatusRetryVerificationAtRuntime) {
     return false;
   }
   return true;
 }
 
-void CompilerDriver::RecordClassStatus(ClassReference ref, mirror::Class::Status status) {
+mirror::Class::Status CompilerDriver::GetClassStatus(const ClassReference& ref) const {
+  mirror::Class::Status status = ClassStatus::kStatusNotReady;
+  if (!GetCompiledClass(ref, &status)) {
+    classpath_classes_.Get(ref, &status);
+  }
+  return status;
+}
+
+void CompilerDriver::RecordClassStatus(const ClassReference& ref, mirror::Class::Status status) {
   switch (status) {
     case mirror::Class::kStatusErrorResolved:
     case mirror::Class::kStatusErrorUnresolved:
@@ -2913,24 +2918,30 @@ void CompilerDriver::RecordClassStatus(ClassReference ref, mirror::Class::Status
       break;  // Expected states.
     default:
       LOG(FATAL) << "Unexpected class status for class "
-          << PrettyDescriptor(ref.first->GetClassDescriptor(ref.first->GetClassDef(ref.second)))
+          << PrettyDescriptor(
+              ref.dex_file->GetClassDescriptor(ref.dex_file->GetClassDef(ref.index)))
           << " of " << status;
   }
 
   ClassStateTable::InsertResult result;
+  ClassStateTable* table = &compiled_classes_;
   do {
-    DexFileReference dex_ref(ref.first, ref.second);
     mirror::Class::Status existing = mirror::Class::kStatusNotReady;
-    if (!compiled_classes_.Get(dex_ref, &existing)) {
-      // Probably a uses library class, bail.
+    if (!table->Get(ref, &existing)) {
+      // A classpath class.
       if (kIsDebugBuild) {
         // Check to make sure it's not a dex file for an oat file we are compiling since these
         // should always succeed. These do not include classes in for used libraries.
         for (const DexFile* dex_file : GetDexFilesForOatFile()) {
-          CHECK_NE(dex_ref.dex_file, dex_file) << dex_ref.dex_file->GetLocation();
+          CHECK_NE(ref.dex_file, dex_file) << ref.dex_file->GetLocation();
         }
       }
-      return;
+      if (!classpath_classes_.HaveDexFile(ref.dex_file)) {
+        // Boot classpath dex file.
+        return;
+      }
+      table = &classpath_classes_;
+      table->Get(ref, &existing);
     }
     if (existing >= status) {
       // Existing status is already better than we expect, break.
@@ -2938,14 +2949,14 @@ void CompilerDriver::RecordClassStatus(ClassReference ref, mirror::Class::Status
     }
     // Update the status if we now have a greater one. This happens with vdex,
     // which records a class is verified, but does not resolve it.
-    result = compiled_classes_.Insert(dex_ref, existing, status);
-    CHECK(result != ClassStateTable::kInsertResultInvalidDexFile);
+    result = table->Insert(ref, existing, status);
+    CHECK(result != ClassStateTable::kInsertResultInvalidDexFile) << ref.dex_file->GetLocation();
   } while (result != ClassStateTable::kInsertResultSuccess);
 }
 
 CompiledMethod* CompilerDriver::GetCompiledMethod(MethodReference ref) const {
   CompiledMethod* compiled_method = nullptr;
-  compiled_methods_.Get(DexFileReference(ref.dex_file, ref.dex_method_index), &compiled_method);
+  compiled_methods_.Get(ref, &compiled_method);
   return compiled_method;
 }
 
@@ -3046,11 +3057,11 @@ void CompilerDriver::FreeThreadPools() {
 
 void CompilerDriver::SetDexFilesForOatFile(const std::vector<const DexFile*>& dex_files) {
   dex_files_for_oat_file_ = dex_files;
-  for (const DexFile* dex_file : dex_files) {
-    if (!compiled_classes_.HaveDexFile(dex_file)) {
-      compiled_classes_.AddDexFile(dex_file, dex_file->NumClassDefs());
-    }
-  }
+  compiled_classes_.AddDexFiles(dex_files);
+}
+
+void CompilerDriver::SetClasspathDexFiles(const std::vector<const DexFile*>& dex_files) {
+  classpath_classes_.AddDexFiles(dex_files);
 }
 
 }  // namespace art

@@ -21,6 +21,7 @@
 #include "common_throws.h"
 #include "debugger.h"
 #include "dex_file-inl.h"
+#include "dex_file_types.h"
 #include "dex_instruction-inl.h"
 #include "entrypoints/entrypoint_utils-inl.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
@@ -697,6 +698,72 @@ void BuildQuickShadowFrameVisitor::Visit() {
   ++cur_reg_;
 }
 
+// Don't inline. See b/65159206.
+NO_INLINE
+static void HandleDeoptimization(JValue* result,
+                                 ArtMethod* method,
+                                 ShadowFrame* deopt_frame,
+                                 ManagedStack* fragment)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  // Coming from partial-fragment deopt.
+  Thread* self = Thread::Current();
+  if (kIsDebugBuild) {
+    // Sanity-check: are the methods as expected? We check that the last shadow frame (the bottom
+    // of the call-stack) corresponds to the called method.
+    ShadowFrame* linked = deopt_frame;
+    while (linked->GetLink() != nullptr) {
+      linked = linked->GetLink();
+    }
+    CHECK_EQ(method, linked->GetMethod()) << method->PrettyMethod() << " "
+        << ArtMethod::PrettyMethod(linked->GetMethod());
+  }
+
+  if (VLOG_IS_ON(deopt)) {
+    // Print out the stack to verify that it was a partial-fragment deopt.
+    LOG(INFO) << "Continue-ing from deopt. Stack is:";
+    QuickExceptionHandler::DumpFramesWithType(self, true);
+  }
+
+  ObjPtr<mirror::Throwable> pending_exception;
+  bool from_code = false;
+  DeoptimizationMethodType method_type;
+  self->PopDeoptimizationContext(/* out */ result,
+                                 /* out */ &pending_exception,
+                                 /* out */ &from_code,
+                                 /* out */ &method_type);
+
+  // Push a transition back into managed code onto the linked list in thread.
+  self->PushManagedStackFragment(fragment);
+
+  // Ensure that the stack is still in order.
+  if (kIsDebugBuild) {
+    class DummyStackVisitor : public StackVisitor {
+     public:
+      explicit DummyStackVisitor(Thread* self_in) REQUIRES_SHARED(Locks::mutator_lock_)
+          : StackVisitor(self_in, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames) {}
+
+      bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+        // Nothing to do here. In a debug build, SanityCheckFrame will do the work in the walking
+        // logic. Just always say we want to continue.
+        return true;
+      }
+    };
+    DummyStackVisitor dsv(self);
+    dsv.WalkStack();
+  }
+
+  // Restore the exception that was pending before deoptimization then interpret the
+  // deoptimized frames.
+  if (pending_exception != nullptr) {
+    self->SetException(pending_exception);
+  }
+  interpreter::EnterInterpreterFromDeoptimize(self,
+                                              deopt_frame,
+                                              result,
+                                              from_code,
+                                              DeoptimizationMethodType::kDefault);
+}
+
 extern "C" uint64_t artQuickToInterpreterBridge(ArtMethod* method, Thread* self, ArtMethod** sp)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   // Ensure we don't get thread suspension until the object arguments are safely in the shadow
@@ -722,64 +789,8 @@ extern "C" uint64_t artQuickToInterpreterBridge(ArtMethod* method, Thread* self,
 
   JValue result;
 
-  if (deopt_frame != nullptr) {
-    // Coming from partial-fragment deopt.
-
-    if (kIsDebugBuild) {
-      // Sanity-check: are the methods as expected? We check that the last shadow frame (the bottom
-      // of the call-stack) corresponds to the called method.
-      ShadowFrame* linked = deopt_frame;
-      while (linked->GetLink() != nullptr) {
-        linked = linked->GetLink();
-      }
-      CHECK_EQ(method, linked->GetMethod()) << method->PrettyMethod() << " "
-          << ArtMethod::PrettyMethod(linked->GetMethod());
-    }
-
-    if (VLOG_IS_ON(deopt)) {
-      // Print out the stack to verify that it was a partial-fragment deopt.
-      LOG(INFO) << "Continue-ing from deopt. Stack is:";
-      QuickExceptionHandler::DumpFramesWithType(self, true);
-    }
-
-    ObjPtr<mirror::Throwable> pending_exception;
-    bool from_code = false;
-    DeoptimizationMethodType method_type;
-    self->PopDeoptimizationContext(/* out */ &result,
-                                   /* out */ &pending_exception,
-                                   /* out */ &from_code,
-                                   /* out */ &method_type);
-
-    // Push a transition back into managed code onto the linked list in thread.
-    self->PushManagedStackFragment(&fragment);
-
-    // Ensure that the stack is still in order.
-    if (kIsDebugBuild) {
-      class DummyStackVisitor : public StackVisitor {
-       public:
-        explicit DummyStackVisitor(Thread* self_in) REQUIRES_SHARED(Locks::mutator_lock_)
-            : StackVisitor(self_in, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames) {}
-
-        bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
-          // Nothing to do here. In a debug build, SanityCheckFrame will do the work in the walking
-          // logic. Just always say we want to continue.
-          return true;
-        }
-      };
-      DummyStackVisitor dsv(self);
-      dsv.WalkStack();
-    }
-
-    // Restore the exception that was pending before deoptimization then interpret the
-    // deoptimized frames.
-    if (pending_exception != nullptr) {
-      self->SetException(pending_exception);
-    }
-    interpreter::EnterInterpreterFromDeoptimize(self,
-                                                deopt_frame,
-                                                &result,
-                                                from_code,
-                                                DeoptimizationMethodType::kDefault);
+  if (UNLIKELY(deopt_frame != nullptr)) {
+    HandleDeoptimization(&result, method, deopt_frame, &fragment);
   } else {
     const char* old_cause = self->StartAssertNoThreadSuspension(
         "Building interpreter shadow frame");
@@ -1156,34 +1167,33 @@ extern "C" const void* artQuickResolutionTrampoline(
           LOG(FATAL) << "Unexpected call into trampoline: " << instr->DumpString(nullptr);
           UNREACHABLE();
       }
-      called_method.dex_method_index = (is_range) ? instr->VRegB_3rc() : instr->VRegB_35c();
+      called_method.index = (is_range) ? instr->VRegB_3rc() : instr->VRegB_35c();
       // Check that the invoke matches what we expected, note that this path only happens for debug
       // builds.
       if (found_stack_map) {
         DCHECK_EQ(stack_map_invoke_type, invoke_type);
         if (invoke_type != kSuper) {
           // Super may be sharpened.
-          DCHECK_EQ(stack_map_dex_method_idx, called_method.dex_method_index)
+          DCHECK_EQ(stack_map_dex_method_idx, called_method.index)
               << called_method.dex_file->PrettyMethod(stack_map_dex_method_idx) << " "
-              << called_method.dex_file->PrettyMethod(called_method.dex_method_index);
+              << called_method.PrettyMethod();
         }
       } else {
         VLOG(dex) << "Accessed dex file for invoke " << invoke_type << " "
-                  << called_method.dex_method_index;
+                  << called_method.index;
       }
     } else {
       invoke_type = stack_map_invoke_type;
-      called_method.dex_method_index = stack_map_dex_method_idx;
+      called_method.index = stack_map_dex_method_idx;
     }
   } else {
     invoke_type = kStatic;
     called_method.dex_file = called->GetDexFile();
-    called_method.dex_method_index = called->GetDexMethodIndex();
+    called_method.index = called->GetDexMethodIndex();
   }
   uint32_t shorty_len;
   const char* shorty =
-      called_method.dex_file->GetMethodShorty(
-          called_method.dex_file->GetMethodId(called_method.dex_method_index), &shorty_len);
+      called_method.dex_file->GetMethodShorty(called_method.GetMethodId(), &shorty_len);
   RememberForGcArgumentVisitor visitor(sp, invoke_type == kStatic, shorty, shorty_len, &soa);
   visitor.VisitArguments();
   self->EndAssertNoThreadSuspension(old_cause);
@@ -1196,7 +1206,7 @@ extern "C" const void* artQuickResolutionTrampoline(
         hs.NewHandleWrapper(virtual_or_interface ? &receiver : &dummy));
     DCHECK_EQ(caller->GetDexFile(), called_method.dex_file);
     called = linker->ResolveMethod<ClassLinker::ResolveMode::kCheckICCEAndIAE>(
-        self, called_method.dex_method_index, caller, invoke_type);
+        self, called_method.index, caller, invoke_type);
 
     // Update .bss entry in oat file if any.
     if (called != nullptr && called_method.dex_file->GetOatDexFile() != nullptr) {
@@ -1207,10 +1217,10 @@ extern "C" const void* artQuickResolutionTrampoline(
             mapping->begin(),
             mapping->end(),
             [called_method](const MethodBssMappingEntry& entry) {
-              return entry.method_index < called_method.dex_method_index;
+              return entry.method_index < called_method.index;
             });
-        if (pp != mapping->end() && pp->CoversIndex(called_method.dex_method_index)) {
-          size_t bss_offset = pp->GetBssOffset(called_method.dex_method_index,
+        if (pp != mapping->end() && pp->CoversIndex(called_method.index)) {
+          size_t bss_offset = pp->GetBssOffset(called_method.index,
                                                static_cast<size_t>(kRuntimePointerSize));
           DCHECK_ALIGNED(bss_offset, static_cast<size_t>(kRuntimePointerSize));
           const OatFile* oat_file = called_method.dex_file->GetOatDexFile()->GetOatFile();
@@ -1250,7 +1260,7 @@ extern "C" const void* artQuickResolutionTrampoline(
         // TODO Maybe put this into a mirror::Class function.
         ObjPtr<mirror::Class> ref_class = linker->LookupResolvedType(
             *dex_cache->GetDexFile(),
-            dex_cache->GetDexFile()->GetMethodId(called_method.dex_method_index).class_idx_,
+            dex_cache->GetDexFile()->GetMethodId(called_method.index).class_idx_,
             dex_cache.Get(),
             class_loader.Get());
         if (ref_class->IsInterface()) {

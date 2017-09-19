@@ -1269,8 +1269,8 @@ bool OptimizingCompiler::JitCompile(Thread* self,
   if (compiler_options.GetGenerateDebugInfo()) {
     const auto* method_header = reinterpret_cast<const OatQuickMethodHeader*>(code);
     const uintptr_t code_address = reinterpret_cast<uintptr_t>(method_header->GetCode());
-    debug::MethodDebugInfo info = debug::MethodDebugInfo();
-    info.trampoline_name = nullptr;
+    debug::MethodDebugInfo info = {};
+    DCHECK(info.trampoline_name.empty());
     info.dex_file = dex_file;
     info.class_def_index = class_def_idx;
     info.dex_method_index = method_idx;

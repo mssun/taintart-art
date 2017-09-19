@@ -23,7 +23,7 @@
 #include "compiler_callbacks.h"
 #include "dex/verification_results.h"
 #include "dex/verified_method.h"
-#include "dex_file.h"
+#include "dex_file-inl.h"
 #include "dex_file_types.h"
 #include "driver/compiler_driver-inl.h"
 #include "driver/compiler_options.h"
@@ -97,7 +97,7 @@ class VerifierDepsTest : public CommonCompilerTest {
     callbacks_->SetVerifierDeps(nullptr);
     // Clear entries in the verification results to avoid hitting a DCHECK that
     // we always succeed inserting a new entry after verifying.
-    AtomicDexRefMap<const VerifiedMethod*>* map =
+    AtomicDexRefMap<MethodReference, const VerifiedMethod*>* map =
         &compiler_driver_->GetVerificationResults()->atomic_verified_methods_;
     map->Visit([](const DexFileReference& ref ATTRIBUTE_UNUSED, const VerifiedMethod* method) {
       delete method;

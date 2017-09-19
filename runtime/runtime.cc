@@ -1908,7 +1908,7 @@ static ArtMethod* CreateRuntimeMethod(ClassLinker* class_linker, LinearAlloc* li
       1);
   ArtMethod* method = &method_array->At(0, method_size, method_alignment);
   CHECK(method != nullptr);
-  method->SetDexMethodIndex(DexFile::kDexNoIndex);
+  method->SetDexMethodIndex(dex::kDexNoIndex);
   CHECK(method->IsRuntimeMethod());
   return method;
 }
