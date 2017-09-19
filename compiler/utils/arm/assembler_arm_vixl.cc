@@ -21,6 +21,7 @@
 #include "base/bit_utils.h"
 #include "base/bit_utils_iterator.h"
 #include "entrypoints/quick/quick_entrypoints.h"
+#include "heap_poisoning.h"
 #include "thread.h"
 
 using namespace vixl::aarch32;  // NOLINT(build/namespaces)
