@@ -1052,7 +1052,6 @@ ENTRY_NO_GP art_quick_invoke_stub
     sd     $a4, 0($sp)
     .cfi_rel_offset 8, 0
 
-    daddiu $s0, $zero, SUSPEND_CHECK_INTERVAL   # reset rSUSPEND to SUSPEND_CHECK_INTERVAL
     move   $s1, $a3              # move managed thread pointer into s1 (rSELF)
     move   $s8, $sp              # save sp in s8 (fp)
 
@@ -1155,7 +1154,6 @@ ENTRY_NO_GP art_quick_invoke_static_stub
     sd     $a4, 0($sp)
     .cfi_rel_offset 8, 0
 
-    daddiu $s0, $zero, SUSPEND_CHECK_INTERVAL   # reset rSUSPEND to SUSPEND_CHECK_INTERVAL
     move   $s1, $a3              # move managed thread pointer into s1 (rSELF)
     move   $s8, $sp              # save sp in s8 (fp)
 
@@ -1975,12 +1973,6 @@ ONE_ARG_SAVE_EVERYTHING_DOWNCALL art_quick_initialize_type_and_verify_access, ar
      */
     .extern artTestSuspendFromCode
 ENTRY_NO_GP art_quick_test_suspend
-    lh     rSUSPEND, THREAD_FLAGS_OFFSET(rSELF)
-    bne    rSUSPEND, $zero, 1f
-    daddiu rSUSPEND, $zero, SUSPEND_CHECK_INTERVAL   # reset rSUSPEND to SUSPEND_CHECK_INTERVAL
-    jalr   $zero, $ra
-    nop
-1:
     SETUP_SAVE_EVERYTHING_FRAME RUNTIME_SAVE_EVERYTHING_FOR_SUSPEND_CHECK_METHOD_OFFSET
                                               # save everything for stack crawl
     jal    artTestSuspendFromCode             # (Thread*)

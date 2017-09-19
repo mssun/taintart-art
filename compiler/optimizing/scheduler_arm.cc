@@ -19,6 +19,7 @@
 #include "arch/arm/instruction_set_features_arm.h"
 #include "code_generator_utils.h"
 #include "common_arm.h"
+#include "heap_poisoning.h"
 #include "mirror/array-inl.h"
 #include "mirror/string.h"
 

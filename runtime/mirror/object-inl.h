@@ -27,6 +27,7 @@
 #include "class_flags.h"
 #include "class_linker.h"
 #include "dex_cache.h"
+#include "heap_poisoning.h"
 #include "lock_word-inl.h"
 #include "monitor.h"
 #include "obj_ptr-inl.h"

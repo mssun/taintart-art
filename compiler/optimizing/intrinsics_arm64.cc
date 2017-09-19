@@ -21,6 +21,7 @@
 #include "code_generator_arm64.h"
 #include "common_arm64.h"
 #include "entrypoints/quick/quick_entrypoints.h"
+#include "heap_poisoning.h"
 #include "intrinsics.h"
 #include "lock_word.h"
 #include "mirror/array-inl.h"
