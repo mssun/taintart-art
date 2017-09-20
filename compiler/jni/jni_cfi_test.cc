@@ -23,6 +23,7 @@
 #include "cfi_test.h"
 #include "gtest/gtest.h"
 #include "jni/quick/calling_convention.h"
+#include "read_barrier_config.h"
 #include "utils/assembler.h"
 #include "utils/jni_macro_assembler.h"
 

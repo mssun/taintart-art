@@ -27,6 +27,7 @@
 #include "compiled_method.h"
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "gc/accounting/card_table.h"
+#include "heap_poisoning.h"
 #include "intrinsics_arm_vixl.h"
 #include "linker/arm/relative_patcher_thumb2.h"
 #include "mirror/array-inl.h"

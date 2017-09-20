@@ -44,11 +44,15 @@ static inline int futex(volatile int *uaddr, int op, int val, const struct times
 }
 #endif  // ART_USE_FUTEXES
 
-static inline uint64_t SafeGetTid(const Thread* self) {
+// The following isn't strictly necessary, but we want updates on Atomic<pid_t> to be lock-free.
+// TODO: Use std::atomic::is_always_lock_free after switching to C++17 atomics.
+static_assert(sizeof(pid_t) <= sizeof(int32_t), "pid_t should fit in 32 bits");
+
+static inline pid_t SafeGetTid(const Thread* self) {
   if (self != nullptr) {
-    return static_cast<uint64_t>(self->GetTid());
+    return self->GetTid();
   } else {
-    return static_cast<uint64_t>(GetTid());
+    return GetTid();
   }
 }
 
@@ -142,14 +146,14 @@ inline void ReaderWriterMutex::SharedLock(Thread* self) {
 #else
   CHECK_MUTEX_CALL(pthread_rwlock_rdlock, (&rwlock_));
 #endif
-  DCHECK(exclusive_owner_ == 0U || exclusive_owner_ == -1U);
+  DCHECK(GetExclusiveOwnerTid() == 0 || GetExclusiveOwnerTid() == -1);
   RegisterAsLocked(self);
   AssertSharedHeld(self);
 }
 
 inline void ReaderWriterMutex::SharedUnlock(Thread* self) {
   DCHECK(self == nullptr || self == Thread::Current());
-  DCHECK(exclusive_owner_ == 0U || exclusive_owner_ == -1U);
+  DCHECK(GetExclusiveOwnerTid() == 0 || GetExclusiveOwnerTid() == -1);
   AssertSharedHeld(self);
   RegisterAsUnlocked(self);
 #if ART_USE_FUTEXES
@@ -190,8 +194,8 @@ inline bool Mutex::IsExclusiveHeld(const Thread* self) const {
   return result;
 }
 
-inline uint64_t Mutex::GetExclusiveOwnerTid() const {
-  return exclusive_owner_;
+inline pid_t Mutex::GetExclusiveOwnerTid() const {
+  return exclusive_owner_.LoadRelaxed();
 }
 
 inline void Mutex::AssertExclusiveHeld(const Thread* self) const {
@@ -216,7 +220,7 @@ inline bool ReaderWriterMutex::IsExclusiveHeld(const Thread* self) const {
   return result;
 }
 
-inline uint64_t ReaderWriterMutex::GetExclusiveOwnerTid() const {
+inline pid_t ReaderWriterMutex::GetExclusiveOwnerTid() const {
 #if ART_USE_FUTEXES
   int32_t state = state_.LoadRelaxed();
   if (state == 0) {
@@ -224,10 +228,10 @@ inline uint64_t ReaderWriterMutex::GetExclusiveOwnerTid() const {
   } else if (state > 0) {
     return -1;  // Shared.
   } else {
-    return exclusive_owner_;
+    return exclusive_owner_.LoadRelaxed();
   }
 #else
-  return exclusive_owner_;
+  return exclusive_owner_.LoadRelaxed();
 #endif
 }
 

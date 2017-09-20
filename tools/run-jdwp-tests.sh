@@ -119,8 +119,8 @@ while true; do
     # Remove the --jdwp-path from the arguments.
     args=${args/$1}
     shift
-    vm_args="${vm_args} --vm-arg -Djdpa.settings.debuggeeAgentArgument=\"-agentpath:\""
-    vm_args="${vm_args} --vm-arg -Djdpa.settings.debuggeeAgentName=\"$1\""
+    vm_args="${vm_args} --vm-arg -Djpda.settings.debuggeeAgentArgument=\"-agentpath:\""
+    vm_args="${vm_args} --vm-arg -Djpda.settings.debuggeeAgentName=$1"
     # Remove the path from the arguments.
     args=${args/$1}
     shift

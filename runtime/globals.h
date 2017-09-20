@@ -19,8 +19,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "read_barrier_c.h"
-#include "read_barrier_option.h"
 
 namespace art {
 
@@ -105,49 +103,6 @@ static constexpr bool kMarkCompactSupport = false && kMovingCollector;
 // True if we allow moving classes.
 static constexpr bool kMovingClasses = !kMarkCompactSupport;
 
-// If true, the quick compiler embeds class pointers in the compiled
-// code, if possible.
-static constexpr bool kEmbedClassInCode = true;
-
-#ifdef USE_BAKER_READ_BARRIER
-static constexpr bool kUseBakerReadBarrier = true;
-#else
-static constexpr bool kUseBakerReadBarrier = false;
-#endif
-
-#ifdef USE_BROOKS_READ_BARRIER
-static constexpr bool kUseBrooksReadBarrier = true;
-#else
-static constexpr bool kUseBrooksReadBarrier = false;
-#endif
-
-#ifdef USE_TABLE_LOOKUP_READ_BARRIER
-static constexpr bool kUseTableLookupReadBarrier = true;
-#else
-static constexpr bool kUseTableLookupReadBarrier = false;
-#endif
-
-static constexpr bool kUseBakerOrBrooksReadBarrier = kUseBakerReadBarrier || kUseBrooksReadBarrier;
-static constexpr bool kUseReadBarrier =
-    kUseBakerReadBarrier || kUseBrooksReadBarrier || kUseTableLookupReadBarrier;
-
-// Debugging flag that forces the generation of read barriers, but
-// does not trigger the use of the concurrent copying GC.
-//
-// TODO: Remove this flag when the read barriers compiler
-// instrumentation is completed.
-static constexpr bool kForceReadBarrier = false;
-// TODO: Likewise, remove this flag when kForceReadBarrier is removed
-// and replace it with kUseReadBarrier.
-static constexpr bool kEmitCompilerReadBarrier = kForceReadBarrier || kUseReadBarrier;
-
-// If true, references within the heap are poisoned (negated).
-#ifdef USE_HEAP_POISONING
-static constexpr bool kPoisonHeapReferences = true;
-#else
-static constexpr bool kPoisonHeapReferences = false;
-#endif
-
 // If true, enable the tlab allocator by default.
 #ifdef ART_USE_TLAB
 static constexpr bool kUseTlab = true;
@@ -169,8 +124,6 @@ static constexpr TraceClockSource kDefaultTraceClockSource = TraceClockSource::k
 #endif
 
 static constexpr bool kDefaultMustRelocate = true;
-
-static constexpr bool kArm32QuickCodeUseSoftFloat = false;
 
 #ifdef ART_ENABLE_VDEX
 static constexpr bool kIsVdexEnabled = true;

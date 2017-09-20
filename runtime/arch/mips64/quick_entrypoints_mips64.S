@@ -1052,7 +1052,6 @@ ENTRY_NO_GP art_quick_invoke_stub
     sd     $a4, 0($sp)
     .cfi_rel_offset 8, 0
 
-    daddiu $s0, $zero, SUSPEND_CHECK_INTERVAL   # reset rSUSPEND to SUSPEND_CHECK_INTERVAL
     move   $s1, $a3              # move managed thread pointer into s1 (rSELF)
     move   $s8, $sp              # save sp in s8 (fp)
 
@@ -1155,7 +1154,6 @@ ENTRY_NO_GP art_quick_invoke_static_stub
     sd     $a4, 0($sp)
     .cfi_rel_offset 8, 0
 
-    daddiu $s0, $zero, SUSPEND_CHECK_INTERVAL   # reset rSUSPEND to SUSPEND_CHECK_INTERVAL
     move   $s1, $a3              # move managed thread pointer into s1 (rSELF)
     move   $s8, $sp              # save sp in s8 (fp)
 
@@ -1975,12 +1973,6 @@ ONE_ARG_SAVE_EVERYTHING_DOWNCALL art_quick_initialize_type_and_verify_access, ar
      */
     .extern artTestSuspendFromCode
 ENTRY_NO_GP art_quick_test_suspend
-    lh     rSUSPEND, THREAD_FLAGS_OFFSET(rSELF)
-    bne    rSUSPEND, $zero, 1f
-    daddiu rSUSPEND, $zero, SUSPEND_CHECK_INTERVAL   # reset rSUSPEND to SUSPEND_CHECK_INTERVAL
-    jalr   $zero, $ra
-    nop
-1:
     SETUP_SAVE_EVERYTHING_FRAME RUNTIME_SAVE_EVERYTHING_FOR_SUSPEND_CHECK_METHOD_OFFSET
                                               # save everything for stack crawl
     jal    artTestSuspendFromCode             # (Thread*)
@@ -2203,53 +2195,47 @@ END art_invoke_obsolete_method_stub
 ENTRY art_quick_instrumentation_entry
     SETUP_SAVE_REFS_AND_ARGS_FRAME
     # Preserve $a0 knowing there is a spare slot in kSaveRefsAndArgs.
-    sd       $a0, 8($sp)       # Save arg0.
-    move     $a3, $sp          # Pass $sp.
-    jal      artInstrumentationMethodEntryFromCode  # (Method*, Object*, Thread*, SP)
-    move     $a2, rSELF        # pass Thread::Current
-    beqzc    $v0, .Ldeliver_instrumentation_entry_exception
-                               # Deliver exception if we got nullptr as function.
-    move     $t9, $v0          # $t9 holds reference to code
-    ld       $a0, 8($sp)       # Restore arg0.
+    sd      $a0, 8($sp)     # Save arg0.
+    move    $a3, $sp        # Pass $sp.
+    jal     artInstrumentationMethodEntryFromCode  # (Method*, Object*, Thread*, SP)
+    move    $a2, rSELF      # pass Thread::Current
+    beqzc   $v0, .Ldeliver_instrumentation_entry_exception
+                            # Deliver exception if we got nullptr as function.
+    move    $t9, $v0        # $t9 holds reference to code
+    ld      $a0, 8($sp)     # Restore arg0.
     RESTORE_SAVE_REFS_AND_ARGS_FRAME
-    jalr     $t9               # call method
-    nop
-END art_quick_instrumentation_entry
-    /* intentional fallthrough */
-    .global art_quick_instrumentation_exit
-art_quick_instrumentation_exit:
-    .cfi_startproc
-    SETUP_GP
-    move     $ra, $zero        # link register is to here, so clobber with 0 for later checks
-    SETUP_SAVE_REFS_ONLY_FRAME
-    daddiu   $sp, $sp, -16     # save return values and set up args
-    .cfi_adjust_cfa_offset 16
-    sd       $v0, 0($sp)
-    .cfi_rel_offset 2, 0
-    s.d      $f0, 8($sp)
-    daddiu   $a3, $sp, 8       # Pass fpr_res pointer.
-    move     $a2, $sp          # Pass gpr_res pointer.
-    daddiu   $a1, $sp, 16      # Pass $sp.
-    jal      artInstrumentationMethodExitFromCode  # (Thread*, SP, gpr_res*, fpr_res*)
-    move     $a0, rSELF        # pass Thread::Current
-
-    move     $t9, $v0          # set aside returned link register
-    move     $ra, $v1          # set link register for deoptimization
-    ld       $v0, 0($sp)       # restore return values
-    l.d      $f0, 8($sp)
-    daddiu   $sp, $sp, 16
-    .cfi_adjust_cfa_offset -16
-    RESTORE_SAVE_REFS_ONLY_FRAME
-    beqz     $t9, .Ldo_deliver_instrumentation_exception
-    nop                        # Deliver exception if we got nullptr as function.
-    jalr     $zero, $t9        # Otherwise, return.
-    nop
+    dla     $ra, art_quick_instrumentation_exit
+    jic     $t9, 0          # call method, returning to art_quick_instrumentation_exit
 .Ldeliver_instrumentation_entry_exception:
-    # Deliver exception for art_quick_instrumentation_entry placed after
-    # art_quick_instrumentation_exit so that the fallthrough works.
     RESTORE_SAVE_REFS_AND_ARGS_FRAME
-.Ldo_deliver_instrumentation_exception:
     DELIVER_PENDING_EXCEPTION
+END art_quick_instrumentation_entry
+
+ENTRY_NO_GP art_quick_instrumentation_exit
+    move    $ra, $zero      # RA points here, so clobber with 0 for later checks.
+    SETUP_SAVE_EVERYTHING_FRAME
+
+    daddiu  $a3, $sp, 16    # Pass fpr_res pointer ($f0 in SAVE_EVERYTHING_FRAME).
+    daddiu  $a2, $sp, 280   # Pass gpr_res pointer ($v0 in SAVE_EVERYTHING_FRAME).
+    move    $a1, $sp        # Pass $sp.
+    jal     artInstrumentationMethodExitFromCode  # (Thread*, SP, gpr_res*, fpr_res*)
+    move    $a0, rSELF      # pass Thread::Current
+
+    beqzc   $v0, .Ldo_deliver_instrumentation_exception
+                            # Deliver exception if we got nullptr as function.
+    nop
+    bnez    $v1, .Ldeoptimize
+
+    # Normal return.
+    sd      $v0, (FRAME_SIZE_SAVE_EVERYTHING-8)($sp)  # Set return pc.
+    RESTORE_SAVE_EVERYTHING_FRAME
+    jic     $ra, 0
+.Ldo_deliver_instrumentation_exception:
+    DELIVER_PENDING_EXCEPTION_FRAME_READY
+.Ldeoptimize:
+    b       art_quick_deoptimize
+    sd      $v1, (FRAME_SIZE_SAVE_EVERYTHING-8)($sp)
+                            # Fake a call from instrumentation return pc.
 END art_quick_instrumentation_exit
 
     /*
@@ -2257,11 +2243,40 @@ END art_quick_instrumentation_exit
      * will long jump to the upcall with a special exception of -1.
      */
     .extern artDeoptimize
-    .extern artEnterInterpreterFromDeoptimize
-ENTRY art_quick_deoptimize
-    SETUP_SAVE_ALL_CALLEE_SAVES_FRAME
-    jal      artDeoptimize     # artDeoptimize(Thread*)
-    move     $a0, rSELF        # pass Thread::current
+ENTRY_NO_GP_CUSTOM_CFA art_quick_deoptimize, FRAME_SIZE_SAVE_EVERYTHING
+    # SETUP_SAVE_EVERYTHING_FRAME has been done by art_quick_instrumentation_exit.
+    .cfi_rel_offset 31, 488
+    .cfi_rel_offset 30, 480
+    .cfi_rel_offset 28, 472
+    .cfi_rel_offset 25, 464
+    .cfi_rel_offset 24, 456
+    .cfi_rel_offset 23, 448
+    .cfi_rel_offset 22, 440
+    .cfi_rel_offset 21, 432
+    .cfi_rel_offset 20, 424
+    .cfi_rel_offset 19, 416
+    .cfi_rel_offset 18, 408
+    .cfi_rel_offset 17, 400
+    .cfi_rel_offset 16, 392
+    .cfi_rel_offset 15, 384
+    .cfi_rel_offset 14, 376
+    .cfi_rel_offset 13, 368
+    .cfi_rel_offset 12, 360
+    .cfi_rel_offset 11, 352
+    .cfi_rel_offset 10, 344
+    .cfi_rel_offset 9, 336
+    .cfi_rel_offset 8, 328
+    .cfi_rel_offset 7, 320
+    .cfi_rel_offset 6, 312
+    .cfi_rel_offset 5, 304
+    .cfi_rel_offset 4, 296
+    .cfi_rel_offset 3, 288
+    .cfi_rel_offset 2, 280
+    .cfi_rel_offset 1, 272
+
+    jal     artDeoptimize   # artDeoptimize(Thread*)
+    move    $a0, rSELF      # pass Thread::current
+    break
 END art_quick_deoptimize
 
     /*

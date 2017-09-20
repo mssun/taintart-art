@@ -971,7 +971,6 @@ ENTRY art_quick_invoke_stub
     move  $fp, $sp              # save sp in fp
     .cfi_def_cfa_register 30
     move  $s1, $a3              # move managed thread pointer into s1
-    addiu $s0, $zero, SUSPEND_CHECK_INTERVAL  # reset s0 to suspend check interval
     addiu $t0, $a2, 4           # create space for ArtMethod* in frame.
     subu  $t0, $sp, $t0         # reserve & align *stack* to 16 bytes:
     srl   $t0, $t0, 4           #   native calling convention only aligns to 8B,
@@ -1131,7 +1130,6 @@ ENTRY art_quick_invoke_static_stub
     move  $fp, $sp              # save sp in fp
     .cfi_def_cfa_register 30
     move  $s1, $a3              # move managed thread pointer into s1
-    addiu $s0, $zero, SUSPEND_CHECK_INTERVAL  # reset s0 to suspend check interval
     addiu $t0, $a2, 4           # create space for ArtMethod* in frame.
     subu  $t0, $sp, $t0         # reserve & align *stack* to 16 bytes:
     srl   $t0, $t0, 4           #   native calling convention only aligns to 8B,
@@ -2061,12 +2059,6 @@ ONE_ARG_SAVE_EVERYTHING_DOWNCALL art_quick_initialize_type_and_verify_access, ar
      */
     .extern artTestSuspendFromCode
 ENTRY_NO_GP art_quick_test_suspend
-    lh     rSUSPEND, THREAD_FLAGS_OFFSET(rSELF)
-    bnez   rSUSPEND, 1f
-    addiu  rSUSPEND, $zero, SUSPEND_CHECK_INTERVAL   # reset rSUSPEND to SUSPEND_CHECK_INTERVAL
-    jalr   $zero, $ra
-    nop
-1:
     SETUP_SAVE_EVERYTHING_FRAME RUNTIME_SAVE_EVERYTHING_FOR_SUSPEND_CHECK_METHOD_OFFSET
                                                      # save everything for stack crawl
     la     $t9, artTestSuspendFromCode
@@ -2317,58 +2309,50 @@ END art_invoke_obsolete_method_stub
     .extern artInstrumentationMethodExitFromCode
 ENTRY art_quick_instrumentation_entry
     SETUP_SAVE_REFS_AND_ARGS_FRAME
-    sw       $a0, 28($sp)   # save arg0 in free arg slot
-    addiu    $a3, $sp, ARG_SLOT_SIZE      # Pass $sp.
-    la       $t9, artInstrumentationMethodEntryFromCode
-    jalr     $t9            # (Method*, Object*, Thread*, SP)
-    move     $a2, rSELF     # pass Thread::Current
-    beqz     $v0, .Ldeliver_instrumentation_entry_exception
-    move     $t9, $v0       # $t9 holds reference to code
-    lw       $a0, 28($sp)   # restore arg0 from free arg slot
+    sw      $a0, 28($sp)    # save arg0 in free arg slot
+    addiu   $a3, $sp, ARG_SLOT_SIZE     # Pass $sp.
+    la      $t9, artInstrumentationMethodEntryFromCode
+    jalr    $t9             # (Method*, Object*, Thread*, SP)
+    move    $a2, rSELF      # pass Thread::Current
+    beqz    $v0, .Ldeliver_instrumentation_entry_exception
+    move    $t9, $v0        # $t9 holds reference to code
+    lw      $a0, 28($sp)    # restore arg0 from free arg slot
     RESTORE_SAVE_REFS_AND_ARGS_FRAME
-    jalr     $t9            # call method
-    nop
-END art_quick_instrumentation_entry
-    /* intentional fallthrough */
-    .global art_quick_instrumentation_exit
-art_quick_instrumentation_exit:
-    .cfi_startproc
-    addiu    $t9, $ra, 4    # put current address into $t9 to rebuild $gp
-    .cpload  $t9
-    move     $ra, $zero     # link register is to here, so clobber with 0 for later checks
-
-    SETUP_SAVE_REFS_ONLY_FRAME
-    addiu    $sp, $sp, -16  # allocate temp storage on the stack
-    .cfi_adjust_cfa_offset 16
-    sw       $v0, ARG_SLOT_SIZE+8($sp)
-    .cfi_rel_offset 2, ARG_SLOT_SIZE+8
-    sw       $v1, ARG_SLOT_SIZE+12($sp)
-    .cfi_rel_offset 3, ARG_SLOT_SIZE+12
-    s.d      $f0, ARG_SLOT_SIZE($sp)
-    addiu    $a3, $sp, ARG_SLOT_SIZE      # Pass fpr_res pointer.
-    addiu    $a2, $sp, ARG_SLOT_SIZE+8    # Pass gpr_res pointer.
-    addiu    $a1, $sp, ARG_SLOT_SIZE+16   # Pass $sp (remove arg slots and temp storage).
-    la       $t9, artInstrumentationMethodExitFromCode
-    jalr     $t9                          # (Thread*, SP, gpr_res*, fpr_res*)
-    move     $a0, rSELF                   # Pass Thread::Current.
-    move     $t9, $v0                     # Set aside returned link register.
-    move     $ra, $v1                     # Set link register for deoptimization.
-    lw       $v0, ARG_SLOT_SIZE+8($sp)    # Restore return values.
-    lw       $v1, ARG_SLOT_SIZE+12($sp)
-    l.d      $f0, ARG_SLOT_SIZE($sp)
-    addiu    $sp, $sp, 16
-    .cfi_adjust_cfa_offset -16
-    RESTORE_SAVE_REFS_ONLY_FRAME
-    beqz     $t9, .Ldo_deliver_instrumentation_exception
-    nop                     # Deliver exception if we got nullptr as function.
-    jalr     $zero, $t9     # Otherwise, return.
+    la      $ra, art_quick_instrumentation_exit
+    jalr    $zero, $t9      # call method, returning to art_quick_instrumentation_exit
     nop
 .Ldeliver_instrumentation_entry_exception:
-    # Deliver exception for art_quick_instrumentation_entry placed after
-    # art_quick_instrumentation_exit so that the fallthrough works.
     RESTORE_SAVE_REFS_AND_ARGS_FRAME
-.Ldo_deliver_instrumentation_exception:
     DELIVER_PENDING_EXCEPTION
+END art_quick_instrumentation_entry
+
+ENTRY_NO_GP art_quick_instrumentation_exit
+    move    $ra, $zero      # RA points here, so clobber with 0 for later checks.
+    SETUP_SAVE_EVERYTHING_FRAME  # Allocates ARG_SLOT_SIZE bytes at the bottom of the stack.
+    move    $s2, $gp             # Preserve $gp across the call for exception delivery.
+
+    addiu   $a3, $sp, ARG_SLOT_SIZE+16  # Pass fpr_res pointer ($f0 in SAVE_EVERYTHING_FRAME).
+    addiu   $a2, $sp, ARG_SLOT_SIZE+148 # Pass gpr_res pointer ($v0 in SAVE_EVERYTHING_FRAME).
+    addiu   $a1, $sp, ARG_SLOT_SIZE     # Pass $sp.
+    la      $t9, artInstrumentationMethodExitFromCode
+    jalr    $t9                         # (Thread*, SP, gpr_res*, fpr_res*)
+    move    $a0, rSELF                  # Pass Thread::Current.
+
+    beqz    $v0, .Ldo_deliver_instrumentation_exception
+    move    $gp, $s2        # Deliver exception if we got nullptr as function.
+    bnez    $v1, .Ldeoptimize
+
+    # Normal return.
+    sw      $v0, (ARG_SLOT_SIZE+FRAME_SIZE_SAVE_EVERYTHING-4)($sp)  # Set return pc.
+    RESTORE_SAVE_EVERYTHING_FRAME
+    jalr    $zero, $ra
+    nop
+.Ldo_deliver_instrumentation_exception:
+    DELIVER_PENDING_EXCEPTION_FRAME_READY
+.Ldeoptimize:
+    b       art_quick_deoptimize
+    sw      $v1, (ARG_SLOT_SIZE+FRAME_SIZE_SAVE_EVERYTHING-4)($sp)
+                            # Fake a call from instrumentation return pc.
 END art_quick_instrumentation_exit
 
     /*
@@ -2376,11 +2360,41 @@ END art_quick_instrumentation_exit
      * will long jump to the upcall with a special exception of -1.
      */
     .extern artDeoptimize
-ENTRY art_quick_deoptimize
-    SETUP_SAVE_ALL_CALLEE_SAVES_FRAME
-    la       $t9, artDeoptimize
-    jalr     $t9            # (Thread*)
-    move     $a0, rSELF     # pass Thread::current
+ENTRY_NO_GP_CUSTOM_CFA art_quick_deoptimize, ARG_SLOT_SIZE+FRAME_SIZE_SAVE_EVERYTHING
+    # SETUP_SAVE_EVERYTHING_FRAME has been done by art_quick_instrumentation_exit.
+    .cfi_rel_offset 31, ARG_SLOT_SIZE+252
+    .cfi_rel_offset 30, ARG_SLOT_SIZE+248
+    .cfi_rel_offset 28, ARG_SLOT_SIZE+244
+    .cfi_rel_offset 25, ARG_SLOT_SIZE+240
+    .cfi_rel_offset 24, ARG_SLOT_SIZE+236
+    .cfi_rel_offset 23, ARG_SLOT_SIZE+232
+    .cfi_rel_offset 22, ARG_SLOT_SIZE+228
+    .cfi_rel_offset 21, ARG_SLOT_SIZE+224
+    .cfi_rel_offset 20, ARG_SLOT_SIZE+220
+    .cfi_rel_offset 19, ARG_SLOT_SIZE+216
+    .cfi_rel_offset 18, ARG_SLOT_SIZE+212
+    .cfi_rel_offset 17, ARG_SLOT_SIZE+208
+    .cfi_rel_offset 16, ARG_SLOT_SIZE+204
+    .cfi_rel_offset 15, ARG_SLOT_SIZE+200
+    .cfi_rel_offset 14, ARG_SLOT_SIZE+196
+    .cfi_rel_offset 13, ARG_SLOT_SIZE+192
+    .cfi_rel_offset 12, ARG_SLOT_SIZE+188
+    .cfi_rel_offset 11, ARG_SLOT_SIZE+184
+    .cfi_rel_offset 10, ARG_SLOT_SIZE+180
+    .cfi_rel_offset 9, ARG_SLOT_SIZE+176
+    .cfi_rel_offset 8, ARG_SLOT_SIZE+172
+    .cfi_rel_offset 7, ARG_SLOT_SIZE+168
+    .cfi_rel_offset 6, ARG_SLOT_SIZE+164
+    .cfi_rel_offset 5, ARG_SLOT_SIZE+160
+    .cfi_rel_offset 4, ARG_SLOT_SIZE+156
+    .cfi_rel_offset 3, ARG_SLOT_SIZE+152
+    .cfi_rel_offset 2, ARG_SLOT_SIZE+148
+    .cfi_rel_offset 1, ARG_SLOT_SIZE+144
+
+    la      $t9, artDeoptimize
+    jalr    $t9             # (Thread*)
+    move    $a0, rSELF      # pass Thread::current
+    break
 END art_quick_deoptimize
 
     /*
@@ -2388,7 +2402,7 @@ END art_quick_deoptimize
      * will long jump to the upcall with a special exception of -1.
      */
     .extern artDeoptimizeFromCompiledCode
-ENTRY art_quick_deoptimize_from_compiled_code
+ENTRY_NO_GP art_quick_deoptimize_from_compiled_code
     SETUP_SAVE_EVERYTHING_FRAME
     la       $t9, artDeoptimizeFromCompiledCode
     jalr     $t9                            # (DeoptimizationKind, Thread*)

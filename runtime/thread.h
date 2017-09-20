@@ -40,6 +40,7 @@
 #include "jvalue.h"
 #include "managed_stack.h"
 #include "offsets.h"
+#include "read_barrier_config.h"
 #include "runtime_stats.h"
 #include "suspend_reason.h"
 #include "thread_state.h"
@@ -838,7 +839,7 @@ class Thread {
   // Is the given obj in this thread's stack indirect reference table?
   bool HandleScopeContains(jobject obj) const;
 
-  void HandleScopeVisitRoots(RootVisitor* visitor, uint32_t thread_id)
+  void HandleScopeVisitRoots(RootVisitor* visitor, pid_t thread_id)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   BaseHandleScope* GetTopHandleScope() {

@@ -17,21 +17,8 @@
 #ifndef ART_RUNTIME_ASM_SUPPORT_H_
 #define ART_RUNTIME_ASM_SUPPORT_H_
 
-#include "read_barrier_c.h"
-
-#if defined(__arm__) || defined(__mips__)
-// In quick code for ARM and MIPS we make poor use of registers and perform frequent suspend
-// checks in the event of loop back edges. The SUSPEND_CHECK_INTERVAL constant is loaded into a
-// register at the point of an up-call or after handling a suspend check. It reduces the number of
-// loads of the TLS suspend check value by the given amount (turning it into a decrement and compare
-// of a register). This increases the time for a thread to respond to requests from GC and the
-// debugger, damaging GC performance and creating other unwanted artifacts. For example, this count
-// has the effect of making loops and Java code look cold in profilers, where the count is reset
-// impacts where samples will occur. Reducing the count as much as possible improves profiler
-// accuracy in tools like traceview.
-// TODO: get a compiler that can do a proper job of loop optimization and remove this.
-#define SUSPEND_CHECK_INTERVAL 96
-#endif
+#include "heap_poisoning.h"
+#include "read_barrier_config.h"
 
 // To generate tests related to the constants in this header, either define ADD_TEST_EQ before
 // including, or use asm_support_check.h.

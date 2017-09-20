@@ -131,4 +131,41 @@ TEST(Instruction, PropertiesOf4rcc) {
   ASSERT_FALSE(ins->HasVarArgs());
 }
 
+static void Build35c(uint16_t* out,
+                     Instruction::Code code,
+                     uint16_t method_idx,
+                     std::vector<uint16_t> args) {
+  out[0] = 0;
+  out[0] |= (args.size() << 12);
+  out[0] |= static_cast<uint16_t>(code);
+  out[1] = method_idx;
+  size_t i = 0;
+  out[2] = 0;
+  for (; i < 4 && i < args.size(); ++i) {
+    out[2] |= args[i] << (i * 4);
+  }
+  if (args.size() == 5) {
+    out[0] |= args[4] << 8;
+  }
+}
+
+static std::string DumpInst35c(Instruction::Code code,
+                               uint16_t method_idx,
+                               std::vector<uint16_t> args) {
+  uint16_t inst[6] = {};
+  Build35c(inst, code, method_idx, args);
+  return Instruction::At(inst)->DumpString(nullptr);
+}
+
+TEST(Instruction, DumpString) {
+  EXPECT_EQ(DumpInst35c(Instruction::FILLED_NEW_ARRAY, 1234, {3, 2}),
+            "filled-new-array {v3, v2}, type@1234");
+  EXPECT_EQ(DumpInst35c(Instruction::INVOKE_VIRTUAL, 1234, {3, 2, 1, 5, 6}),
+            "invoke-virtual {v3, v2, v1, v5, v6}, thing@1234");
+  EXPECT_EQ(DumpInst35c(Instruction::INVOKE_VIRTUAL_QUICK, 1234, {3, 2, 1, 5}),
+            "invoke-virtual-quick {v3, v2, v1, v5}, thing@1234");
+  EXPECT_EQ(DumpInst35c(Instruction::INVOKE_CUSTOM, 1234, {3, 2, 1}),
+            "invoke-custom {v3, v2, v1}, thing@1234");
+}
+
 }  // namespace art
