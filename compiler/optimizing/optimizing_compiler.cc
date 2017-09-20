@@ -63,7 +63,6 @@
 #include "driver/compiler_driver-inl.h"
 #include "driver/compiler_options.h"
 #include "driver/dex_compilation_unit.h"
-#include "elf_writer_quick.h"
 #include "graph_checker.h"
 #include "graph_visualizer.h"
 #include "gvn.h"

@@ -20,7 +20,7 @@
 #include <unordered_set>
 
 #include "debug/method_debug_info.h"
-#include "elf_builder.h"
+#include "linker/elf_builder.h"
 #include "utils.h"
 
 namespace art {
@@ -36,7 +36,7 @@ namespace debug {
 constexpr bool kGenerateSingleArmMappingSymbol = true;
 
 template <typename ElfTypes>
-static void WriteDebugSymbols(ElfBuilder<ElfTypes>* builder,
+static void WriteDebugSymbols(linker::ElfBuilder<ElfTypes>* builder,
                               const ArrayRef<const MethodDebugInfo>& method_infos,
                               bool with_signature) {
   uint64_t mapping_symbol_address = std::numeric_limits<uint64_t>::max();

@@ -41,7 +41,6 @@
 #include "dex_file-inl.h"
 #include "dex_instruction-inl.h"
 #include "disassembler.h"
-#include "elf_builder.h"
 #include "gc/accounting/space_bitmap-inl.h"
 #include "gc/space/image_space.h"
 #include "gc/space/large_object_space.h"
@@ -51,6 +50,7 @@
 #include "indenter.h"
 #include "interpreter/unstarted_runtime.h"
 #include "linker/buffered_output_stream.h"
+#include "linker/elf_builder.h"
 #include "linker/file_output_stream.h"
 #include "mirror/array-inl.h"
 #include "mirror/class-inl.h"
@@ -133,9 +133,10 @@ class OatSymbolizer FINAL {
     if (elf_file == nullptr) {
       return false;
     }
-    std::unique_ptr<BufferedOutputStream> output_stream =
-        std::make_unique<BufferedOutputStream>(std::make_unique<FileOutputStream>(elf_file.get()));
-    builder_.reset(new ElfBuilder<ElfTypes>(isa, features.get(), output_stream.get()));
+    std::unique_ptr<linker::BufferedOutputStream> output_stream =
+        std::make_unique<linker::BufferedOutputStream>(
+            std::make_unique<linker::FileOutputStream>(elf_file.get()));
+    builder_.reset(new linker::ElfBuilder<ElfTypes>(isa, features.get(), output_stream.get()));
 
     builder_->Start();
 
@@ -326,7 +327,7 @@ class OatSymbolizer FINAL {
 
  private:
   const OatFile* oat_file_;
-  std::unique_ptr<ElfBuilder<ElfTypes> > builder_;
+  std::unique_ptr<linker::ElfBuilder<ElfTypes>> builder_;
   std::vector<debug::MethodDebugInfo> method_debug_infos_;
   std::unordered_set<uint32_t> seen_offsets_;
   const std::string output_name_;

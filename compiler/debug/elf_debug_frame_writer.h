@@ -24,7 +24,7 @@
 #include "debug/dwarf/dwarf_constants.h"
 #include "debug/dwarf/headers.h"
 #include "debug/method_debug_info.h"
-#include "elf_builder.h"
+#include "linker/elf_builder.h"
 
 namespace art {
 namespace debug {
@@ -168,7 +168,7 @@ static void WriteCIE(InstructionSet isa,
 }
 
 template<typename ElfTypes>
-void WriteCFISection(ElfBuilder<ElfTypes>* builder,
+void WriteCFISection(linker::ElfBuilder<ElfTypes>* builder,
                      const ArrayRef<const MethodDebugInfo>& method_infos,
                      dwarf::CFIFormat format,
                      bool write_oat_patches) {

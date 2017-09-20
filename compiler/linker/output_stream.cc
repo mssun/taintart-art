@@ -17,6 +17,7 @@
 #include "output_stream.h"
 
 namespace art {
+namespace linker {
 
 std::ostream& operator<<(std::ostream& os, const Whence& rhs) {
   switch (rhs) {
@@ -28,4 +29,5 @@ std::ostream& operator<<(std::ostream& os, const Whence& rhs) {
   return os;
 }
 
+}  // namespace linker
 }  // namespace art

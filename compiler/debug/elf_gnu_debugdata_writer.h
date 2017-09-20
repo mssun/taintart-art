@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "arch/instruction_set.h"
-#include "elf_builder.h"
+#include "linker/elf_builder.h"
 #include "linker/vector_output_stream.h"
 
 // liblzma.
@@ -85,8 +85,9 @@ static std::vector<uint8_t> MakeMiniDebugInfoInternal(
     const ArrayRef<const MethodDebugInfo>& method_infos) {
   std::vector<uint8_t> buffer;
   buffer.reserve(KB);
-  VectorOutputStream out("Mini-debug-info ELF file", &buffer);
-  std::unique_ptr<ElfBuilder<ElfTypes>> builder(new ElfBuilder<ElfTypes>(isa, features, &out));
+  linker::VectorOutputStream out("Mini-debug-info ELF file", &buffer);
+  std::unique_ptr<linker::ElfBuilder<ElfTypes>> builder(
+      new linker::ElfBuilder<ElfTypes>(isa, features, &out));
   builder->Start();
   // Mirror .rodata and .text as NOBITS sections.
   // It is needed to detected relocations after compression.

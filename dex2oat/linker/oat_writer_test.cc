@@ -30,10 +30,10 @@
 #include "dex/verification_results.h"
 #include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
-#include "elf_writer.h"
-#include "elf_writer_quick.h"
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "linker/buffered_output_stream.h"
+#include "linker/elf_writer.h"
+#include "linker/elf_writer_quick.h"
 #include "linker/file_output_stream.h"
 #include "linker/multi_oat_relative_patcher.h"
 #include "linker/vector_output_stream.h"
@@ -46,6 +46,7 @@
 #include "utils/test_dex_file_builder.h"
 
 namespace art {
+namespace linker {
 
 NO_RETURN static void Usage(const char* fmt, ...) {
   va_list ap;
@@ -212,8 +213,8 @@ class OatTest : public CommonCompilerTest {
       ScopedObjectAccess soa(Thread::Current());
       class_linker->RegisterDexFile(*dex_file, nullptr);
     }
-    linker::MultiOatRelativePatcher patcher(compiler_driver_->GetInstructionSet(),
-                                            instruction_set_features_.get());
+    MultiOatRelativePatcher patcher(compiler_driver_->GetInstructionSet(),
+                                    instruction_set_features_.get());
     oat_writer.Initialize(compiler_driver_.get(), nullptr, dex_files);
     oat_writer.PrepareLayout(&patcher);
     size_t rodata_size = oat_writer.GetOatHeader().GetExecutableOffset();
@@ -867,4 +868,5 @@ TEST_F(OatTest, UpdateChecksum) {
   EXPECT_EQ(216138397U, oat_header->GetChecksum());
 }
 
+}  // namespace linker
 }  // namespace art

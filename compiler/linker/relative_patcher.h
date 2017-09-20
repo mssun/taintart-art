@@ -29,13 +29,14 @@ namespace art {
 
 class CompiledMethod;
 class LinkerPatch;
-class OutputStream;
 
 namespace debug {
 struct MethodDebugInfo;
 }  // namespace debug
 
 namespace linker {
+
+class OutputStream;
 
 /**
  * @class RelativePatcherTargetProvider

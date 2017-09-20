@@ -38,7 +38,6 @@ art_cc_defaults {
         "driver/dex_compilation_unit.cc",
         "linker/buffered_output_stream.cc",
         "linker/file_output_stream.cc",
-        "linker/multi_oat_relative_patcher.cc",
         "linker/output_stream.cc",
         "linker/vector_output_stream.cc",
         "linker/relative_patcher.cc",
@@ -95,10 +94,6 @@ art_cc_defaults {
         "utils/jni_macro_assembler.cc",
         "utils/swap_space.cc",
         "compiler.cc",
-        "elf_writer.cc",
-        "elf_writer_quick.cc",
-        "image_writer.cc",
-        "oat_writer.cc",
     ],
 
     codegen: {
@@ -198,19 +193,10 @@ art_cc_defaults {
     generated_sources: ["art_compiler_operator_srcs"],
     shared_libs: [
         "libbase",
-        "liblz4",
         "liblzma",
     ],
     include_dirs: ["art/disassembler"],
     export_include_dirs: ["."],
-
-    // For SHA-1 checksumming of build ID
-    static: {
-        whole_static_libs: ["libcrypto"],
-    },
-    shared: {
-        shared_libs: ["libcrypto"],
-    },
 }
 
 gensrcs {
@@ -222,7 +208,6 @@ gensrcs {
         "dex/dex_to_dex_compiler.h",
         "driver/compiler_driver.h",
         "driver/compiler_options.h",
-        "image_writer.h",
         "optimizing/locations.h",
 
         "utils/arm/constants_arm.h",
@@ -265,7 +250,6 @@ art_cc_library {
     },
     shared_libs: [
         "libart",
-        "libart-dexlayout",
     ],
 }
 
@@ -305,7 +289,6 @@ art_cc_library {
     },
     shared_libs: [
         "libartd",
-        "libartd-dexlayout"
     ],
 }
 
@@ -332,15 +315,10 @@ art_cc_test {
         "dex/dex_to_dex_decompiler_test.cc",
         "driver/compiled_method_storage_test.cc",
         "driver/compiler_driver_test.cc",
-        "elf_writer_test.cc",
         "exception_test.cc",
-        "image_test.cc",
-        "image_write_read_test.cc",
         "jni/jni_compiler_test.cc",
         "linker/method_bss_mapping_encoder_test.cc",
-        "linker/multi_oat_relative_patcher_test.cc",
         "linker/output_stream_test.cc",
-        "oat_test.cc",
         "optimizing/bounds_check_elimination_test.cc",
         "optimizing/dominator_test.cc",
         "optimizing/find_loops_test.cc",
