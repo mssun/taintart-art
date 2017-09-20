@@ -1048,6 +1048,89 @@ bool ProfileCompilationInfo::Load(int fd, bool merge_classes) {
   }
 }
 
+bool ProfileCompilationInfo::VerifyProfileData(const std::vector<const DexFile*>& dex_files) {
+  std::unordered_map<std::string, const DexFile*> key_to_dex_file;
+  for (const DexFile* dex_file : dex_files) {
+    key_to_dex_file.emplace(GetProfileDexFileKey(dex_file->GetLocation()), dex_file);
+  }
+  for (const DexFileData* dex_data : info_) {
+    const auto it = key_to_dex_file.find(dex_data->profile_key);
+    if (it == key_to_dex_file.end()) {
+      // It is okay if profile contains data for additional dex files.
+      continue;
+    }
+    const DexFile* dex_file = it->second;
+    const std::string& dex_location = dex_file->GetLocation();
+    if (!ChecksumMatch(dex_data->checksum, dex_file->GetLocationChecksum())) {
+      LOG(ERROR) << "Dex checksum mismatch while verifying profile "
+                 << "dex location " << dex_location << " (checksum="
+                 << dex_file->GetLocationChecksum() << ", profile checksum="
+                 << dex_data->checksum;
+      return false;
+    }
+    // Verify method_encoding.
+    for (const auto& method_it : dex_data->method_map) {
+      size_t method_id = (size_t)(method_it.first);
+      if (method_id >= dex_file->NumMethodIds()) {
+        LOG(ERROR) << "Invalid method id in profile file. dex location="
+                   << dex_location << " method_id=" << method_id << " NumMethodIds="
+                   << dex_file->NumMethodIds();
+        return false;
+      }
+
+      // Verify class indices of inline caches.
+      const InlineCacheMap &inline_cache_map = method_it.second;
+      for (const auto& inline_cache_it : inline_cache_map) {
+        const DexPcData dex_pc_data = inline_cache_it.second;
+        if (dex_pc_data.is_missing_types || dex_pc_data.is_megamorphic) {
+          // No class indices to verify.
+          continue;
+        }
+
+        const ClassSet &classes = dex_pc_data.classes;
+        SafeMap<uint8_t, std::vector<dex::TypeIndex>> dex_to_classes_map;
+        // Group the classes by dex. We expect that most of the classes will come from
+        // the same dex, so this will be more efficient than encoding the dex index
+        // for each class reference.
+        GroupClassesByDex(classes, &dex_to_classes_map);
+        for (const auto &dex_it : dex_to_classes_map) {
+          uint8_t dex_profile_index = dex_it.first;
+          const auto dex_file_inline_cache_it = key_to_dex_file.find(
+              info_[dex_profile_index]->profile_key);
+          if (dex_file_inline_cache_it == key_to_dex_file.end()) {
+            // It is okay if profile contains data for additional dex files.
+            continue;
+          }
+          const DexFile *dex_file_for_inline_cache_check = dex_file_inline_cache_it->second;
+          const std::vector<dex::TypeIndex> &dex_classes = dex_it.second;
+          for (size_t i = 0; i < dex_classes.size(); i++) {
+            if (dex_classes[i].index_ >= dex_file_for_inline_cache_check->NumTypeIds()) {
+              LOG(ERROR) << "Invalid inline cache in profile file. dex location="
+                  << dex_location << " method_id=" << method_id
+                  << " dex_profile_index="
+                  << static_cast<uint16_t >(dex_profile_index) << " type_index="
+                  << dex_classes[i].index_
+                  << " NumTypeIds="
+                  << dex_file_for_inline_cache_check->NumTypeIds();
+              return false;
+            }
+          }
+        }
+      }
+    }
+    // Verify class_ids.
+    for (const auto& class_id : dex_data->class_set) {
+      if (class_id.index_ >= dex_file->NumTypeIds()) {
+        LOG(ERROR) << "Invalid class id in profile file. dex_file location "
+                   << dex_location << " class_id=" << class_id.index_ << " NumClassIds="
+                   << dex_file->NumClassDefs();
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 // TODO(calin): fail fast if the dex checksums don't match.
 ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::LoadInternal(
       int fd, std::string* error, bool merge_classes) {
