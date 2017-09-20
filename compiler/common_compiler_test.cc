@@ -22,7 +22,7 @@
 #include "base/callee_save_type.h"
 #include "base/enums.h"
 #include "class_linker.h"
-#include "compiled_method.h"
+#include "compiled_method-inl.h"
 #include "dex/quick_compiler_callbacks.h"
 #include "dex/verification_results.h"
 #include "driver/compiler_driver.h"

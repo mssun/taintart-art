@@ -28,7 +28,9 @@
 
 namespace art {
 
+namespace linker {
 class LinkerPatch;
+}  // namespace linker
 
 class CompiledMethodStorage {
  public:
@@ -61,9 +63,9 @@ class CompiledMethodStorage {
   const LengthPrefixedArray<uint8_t>* DeduplicateCFIInfo(const ArrayRef<const uint8_t>& cfi_info);
   void ReleaseCFIInfo(const LengthPrefixedArray<uint8_t>* cfi_info);
 
-  const LengthPrefixedArray<LinkerPatch>* DeduplicateLinkerPatches(
-      const ArrayRef<const LinkerPatch>& linker_patches);
-  void ReleaseLinkerPatches(const LengthPrefixedArray<LinkerPatch>* linker_patches);
+  const LengthPrefixedArray<linker::LinkerPatch>* DeduplicateLinkerPatches(
+      const ArrayRef<const linker::LinkerPatch>& linker_patches);
+  void ReleaseLinkerPatches(const LengthPrefixedArray<linker::LinkerPatch>* linker_patches);
 
  private:
   template <typename T, typename DedupeSetType>
@@ -98,7 +100,7 @@ class CompiledMethodStorage {
   ArrayDedupeSet<uint8_t> dedupe_method_info_;
   ArrayDedupeSet<uint8_t> dedupe_vmap_table_;
   ArrayDedupeSet<uint8_t> dedupe_cfi_info_;
-  ArrayDedupeSet<LinkerPatch> dedupe_linker_patches_;
+  ArrayDedupeSet<linker::LinkerPatch> dedupe_linker_patches_;
 
   DISALLOW_COPY_AND_ASSIGN(CompiledMethodStorage);
 };

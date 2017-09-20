@@ -424,7 +424,7 @@ class CodeGeneratorX86_64 : public CodeGenerator {
 
   void MoveFromReturnRegister(Location trg, Primitive::Type type) OVERRIDE;
 
-  void EmitLinkerPatches(ArenaVector<LinkerPatch>* linker_patches) OVERRIDE;
+  void EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) OVERRIDE;
 
   void PatchJitRootUse(uint8_t* code,
                        const uint8_t* roots_data,
@@ -586,9 +586,9 @@ class CodeGeneratorX86_64 : public CodeGenerator {
   static constexpr int32_t kDummy32BitOffset = 256;
 
  private:
-  template <LinkerPatch (*Factory)(size_t, const DexFile*, uint32_t, uint32_t)>
+  template <linker::LinkerPatch (*Factory)(size_t, const DexFile*, uint32_t, uint32_t)>
   static void EmitPcRelativeLinkerPatches(const ArenaDeque<PatchInfo<Label>>& infos,
-                                          ArenaVector<LinkerPatch>* linker_patches);
+                                          ArenaVector<linker::LinkerPatch>* linker_patches);
 
   // Labels for each block that will be compiled.
   Label* block_labels_;  // Indexed by block id.

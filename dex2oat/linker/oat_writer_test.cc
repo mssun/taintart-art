@@ -23,7 +23,7 @@
 #include "base/unix_file/fd_file.h"
 #include "class_linker.h"
 #include "common_compiler_test.h"
-#include "compiled_method.h"
+#include "compiled_method-inl.h"
 #include "compiler.h"
 #include "debug/method_debug_info.h"
 #include "dex/quick_compiler_callbacks.h"

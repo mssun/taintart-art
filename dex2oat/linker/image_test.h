@@ -302,8 +302,8 @@ inline void CompilationHelper::Compile(CompilerDriver* driver,
       }
 
       for (size_t i = 0, size = oat_files.size(); i != size; ++i) {
-        linker::MultiOatRelativePatcher patcher(driver->GetInstructionSet(),
-                                                driver->GetInstructionSetFeatures());
+        MultiOatRelativePatcher patcher(driver->GetInstructionSet(),
+                                        driver->GetInstructionSetFeatures());
         OatWriter* const oat_writer = oat_writers[i].get();
         ElfWriter* const elf_writer = elf_writers[i].get();
         std::vector<const DexFile*> cur_dex_files(1u, class_path[i]);
