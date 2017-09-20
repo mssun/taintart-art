@@ -45,6 +45,8 @@ plugin=""
 debug="no"
 verbose="no"
 image="-Ximage:/data/art-test/core.art"
+with_jdwp_path=""
+agent_wrapper=""
 vm_args=""
 # By default, we run the whole JDWP test suite.
 test="org.apache.harmony.jpda.tests.share.AllTests"
@@ -89,6 +91,14 @@ while true; do
     # We don't care about jit with the RI
     use_jit=false
     shift
+  elif [[ $1 == --agent-wrapper ]]; then
+    # Remove the --agent-wrapper from the arguments.
+    args=${args/$1}
+    shift
+    agent_wrapper=${agent_wrapper}${1},
+    # Remove the argument
+    args=${args/$1}
+    shift
   elif [[ $1 == -Ximage:* ]]; then
     image="$1"
     shift
@@ -119,8 +129,7 @@ while true; do
     # Remove the --jdwp-path from the arguments.
     args=${args/$1}
     shift
-    vm_args="${vm_args} --vm-arg -Djpda.settings.debuggeeAgentArgument=\"-agentpath:\""
-    vm_args="${vm_args} --vm-arg -Djpda.settings.debuggeeAgentName=$1"
+    with_jdwp_path=$1
     # Remove the path from the arguments.
     args=${args/$1}
     shift
@@ -140,6 +149,10 @@ done
 
 if [[ $mode == "ri" ]]; then
   using_jack="false"
+  if [[ "x$with_jdwp_path" != "x" ]]; then
+    vm_args="${vm_args} --vm-arg -Djpda.settings.debuggeeAgentArgument=-agentpath:${agent_wrapper}"
+    vm_args="${vm_args} --vm-arg -Djpda.settings.debuggeeAgentName=$with_jdwp_path"
+  fi
   if [[ "x$image" != "x" ]]; then
     echo "Cannot use -Ximage: with --mode=jvm"
     exit 1
@@ -148,6 +161,10 @@ if [[ $mode == "ri" ]]; then
     exit 1
   fi
 else
+  if [[ "x$with_jdwp_path" != "x" ]]; then
+    vm_args="${vm_args} --vm-arg -Djpda.settings.debuggeeAgentArgument=-agentpath:${agent_wrapper}"
+    vm_args="${vm_args} --vm-arg -Djpda.settings.debuggeeAgentName=${with_jdwp_path}"
+  fi
   vm_args="$vm_args --vm-arg -Xcompiler-option --vm-arg --debuggable"
   # Make sure the debuggee doesn't clean up what the debugger has generated.
   art_debugee="$art_debugee --no-clean"
