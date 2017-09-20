@@ -815,7 +815,7 @@ class HVecUShr FINAL : public HVecBinaryOperation {
 class HVecSetScalars FINAL : public HVecOperation {
  public:
   HVecSetScalars(ArenaAllocator* arena,
-                 HInstruction** scalars,  // array
+                 HInstruction* scalars[],
                  Primitive::Type packed_type,
                  size_t vector_length,
                  size_t number_of_scalars,
@@ -827,7 +827,7 @@ class HVecSetScalars FINAL : public HVecOperation {
                       vector_length,
                       dex_pc) {
     for (size_t i = 0; i < number_of_scalars; i++) {
-      DCHECK(!scalars[i]->IsVecOperation());
+      DCHECK(!scalars[i]->IsVecOperation() || scalars[i]->IsVecExtractScalar());
       SetRawInputAt(0, scalars[i]);
     }
   }
