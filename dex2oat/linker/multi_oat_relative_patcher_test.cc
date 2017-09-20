@@ -19,7 +19,7 @@
 #include "compiled_method.h"
 #include "debug/method_debug_info.h"
 #include "gtest/gtest.h"
-#include "vector_output_stream.h"
+#include "linker/vector_output_stream.h"
 
 namespace art {
 namespace linker {

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_ELF_WRITER_QUICK_H_
-#define ART_COMPILER_ELF_WRITER_QUICK_H_
+#ifndef ART_DEX2OAT_LINKER_ELF_WRITER_QUICK_H_
+#define ART_DEX2OAT_LINKER_ELF_WRITER_QUICK_H_
 
 #include <memory>
 
@@ -28,11 +28,14 @@ namespace art {
 class CompilerOptions;
 class InstructionSetFeatures;
 
+namespace linker {
+
 std::unique_ptr<ElfWriter> CreateElfWriterQuick(InstructionSet instruction_set,
                                                 const InstructionSetFeatures* features,
                                                 const CompilerOptions* compiler_options,
                                                 File* elf_file);
 
+}  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_ELF_WRITER_QUICK_H_
+#endif  // ART_DEX2OAT_LINKER_ELF_WRITER_QUICK_H_

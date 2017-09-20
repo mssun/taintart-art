@@ -29,7 +29,7 @@
 #include "debug/elf_gnu_debugdata_writer.h"
 #include "debug/elf_symtab_writer.h"
 #include "debug/method_debug_info.h"
-#include "elf_builder.h"
+#include "linker/elf_builder.h"
 #include "linker/vector_output_stream.h"
 #include "oat.h"
 
@@ -37,7 +37,7 @@ namespace art {
 namespace debug {
 
 template <typename ElfTypes>
-void WriteDebugInfo(ElfBuilder<ElfTypes>* builder,
+void WriteDebugInfo(linker::ElfBuilder<ElfTypes>* builder,
                     const ArrayRef<const MethodDebugInfo>& method_infos,
                     dwarf::CFIFormat cfi_format,
                     bool write_oat_patches) {
@@ -133,8 +133,9 @@ static std::vector<uint8_t> WriteDebugElfFileForMethodsInternal(
     const ArrayRef<const MethodDebugInfo>& method_infos) {
   std::vector<uint8_t> buffer;
   buffer.reserve(KB);
-  VectorOutputStream out("Debug ELF file", &buffer);
-  std::unique_ptr<ElfBuilder<ElfTypes>> builder(new ElfBuilder<ElfTypes>(isa, features, &out));
+  linker::VectorOutputStream out("Debug ELF file", &buffer);
+  std::unique_ptr<linker::ElfBuilder<ElfTypes>> builder(
+      new linker::ElfBuilder<ElfTypes>(isa, features, &out));
   // No program headers since the ELF file is not linked and has no allocated sections.
   builder->Start(false /* write_program_headers */);
   WriteDebugInfo(builder.get(),
@@ -165,8 +166,9 @@ static std::vector<uint8_t> WriteDebugElfFileForClassesInternal(
     REQUIRES_SHARED(Locks::mutator_lock_) {
   std::vector<uint8_t> buffer;
   buffer.reserve(KB);
-  VectorOutputStream out("Debug ELF file", &buffer);
-  std::unique_ptr<ElfBuilder<ElfTypes>> builder(new ElfBuilder<ElfTypes>(isa, features, &out));
+  linker::VectorOutputStream out("Debug ELF file", &buffer);
+  std::unique_ptr<linker::ElfBuilder<ElfTypes>> builder(
+      new linker::ElfBuilder<ElfTypes>(isa, features, &out));
   // No program headers since the ELF file is not linked and has no allocated sections.
   builder->Start(false /* write_program_headers */);
   ElfDebugInfoWriter<ElfTypes> info_writer(builder.get());
@@ -192,12 +194,12 @@ std::vector<uint8_t> WriteDebugElfFileForClasses(InstructionSet isa,
 
 // Explicit instantiations
 template void WriteDebugInfo<ElfTypes32>(
-    ElfBuilder<ElfTypes32>* builder,
+    linker::ElfBuilder<ElfTypes32>* builder,
     const ArrayRef<const MethodDebugInfo>& method_infos,
     dwarf::CFIFormat cfi_format,
     bool write_oat_patches);
 template void WriteDebugInfo<ElfTypes64>(
-    ElfBuilder<ElfTypes64>* builder,
+    linker::ElfBuilder<ElfTypes64>* builder,
     const ArrayRef<const MethodDebugInfo>& method_infos,
     dwarf::CFIFormat cfi_format,
     bool write_oat_patches);

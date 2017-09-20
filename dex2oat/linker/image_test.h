@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_IMAGE_TEST_H_
-#define ART_COMPILER_IMAGE_TEST_H_
+#ifndef ART_DEX2OAT_LINKER_IMAGE_TEST_H_
+#define ART_DEX2OAT_LINKER_IMAGE_TEST_H_
 
 #include "image.h"
 
@@ -33,11 +33,11 @@
 #include "debug/method_debug_info.h"
 #include "dex/quick_compiler_callbacks.h"
 #include "driver/compiler_options.h"
-#include "elf_writer.h"
-#include "elf_writer_quick.h"
 #include "gc/space/image_space.h"
 #include "image_writer.h"
 #include "linker/buffered_output_stream.h"
+#include "linker/elf_writer.h"
+#include "linker/elf_writer_quick.h"
 #include "linker/file_output_stream.h"
 #include "linker/multi_oat_relative_patcher.h"
 #include "lock_word.h"
@@ -48,6 +48,7 @@
 #include "utils.h"
 
 namespace art {
+namespace linker {
 
 static const uintptr_t kRequestedImageBase = ART_BASE_ADDRESS;
 
@@ -494,7 +495,7 @@ inline void ImageTest::TestWriteRead(ImageHeader::StorageMode storage_mode) {
   }
 }
 
-
+}  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_IMAGE_TEST_H_
+#endif  // ART_DEX2OAT_LINKER_IMAGE_TEST_H_

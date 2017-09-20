@@ -14,6 +14,78 @@
 // limitations under the License.
 //
 
+art_cc_defaults {
+    name: "libart-dex2oat-defaults",
+    defaults: ["art_defaults"],
+    host_supported: true,
+    clang: true,
+    srcs: [
+        "linker/elf_writer.cc",
+        "linker/elf_writer_quick.cc",
+        "linker/image_writer.cc",
+        "linker/multi_oat_relative_patcher.cc",
+        "linker/oat_writer.cc",
+    ],
+    target: {
+        host: {
+            // For compiler driver TLS.
+            host_ldlibs: ["-lpthread"],
+        },
+        android: {
+            // For atrace.
+            shared_libs: ["libcutils"],
+        },
+    },
+    generated_sources: ["art_dex2oat_operator_srcs"],
+    shared_libs: [
+        "libart-compiler",
+        "libart-dexlayout",
+        "libbase",
+        "liblz4",
+        "liblzma",
+    ],
+    export_include_dirs: ["."],
+
+    // For SHA-1 checksumming of build ID
+    static: {
+        whole_static_libs: ["libcrypto"],
+    },
+    shared: {
+        shared_libs: ["libcrypto"],
+    },
+}
+
+gensrcs {
+    name: "art_dex2oat_operator_srcs",
+    cmd: "$(location generate-operator-out.py) art/dex2oat $(in) > $(out)",
+    tool_files: ["generate-operator-out.py"],
+    srcs: [
+        "linker/image_writer.h",
+    ],
+    output_extension: "operator_out.cc",
+}
+
+art_cc_static_library {
+    name: "libart-dex2oat",
+    defaults: ["libart-dex2oat-defaults"],
+    shared_libs: [
+        "libart-compiler",
+        "libart"
+    ],
+}
+
+art_cc_static_library {
+    name: "libartd-dex2oat",
+    defaults: [
+        "art_debug_defaults",
+        "libart-dex2oat-defaults",
+    ],
+    shared_libs: [
+        "libartd-compiler",
+        "libartd"
+    ],
+}
+
 cc_library_headers {
     name: "dex2oat_headers",
     host_supported: true,
@@ -45,11 +117,16 @@ art_cc_binary {
         "dex2oat-defaults",
     ],
     shared_libs: [
-        "libart",
         "libart-compiler",
+        "libart-dexlayout",
+        "libart",
         "libbase",
+        "liblz4",
         "libsigchain",
     ],
+    static_libs: [
+        "libart-dex2oat",
+    ]
 }
 
 art_cc_binary {
@@ -59,11 +136,16 @@ art_cc_binary {
         "dex2oat-defaults",
     ],
     shared_libs: [
-        "libartd",
         "libartd-compiler",
+        "libartd-dexlayout",
+        "libartd",
         "libbase",
+        "liblz4",
         "libsigchain",
     ],
+    static_libs: [
+        "libartd-dex2oat",
+    ]
 }
 
 art_cc_binary {
@@ -85,6 +167,7 @@ art_cc_binary {
         "-z muldefs",
     ],
     static_libs: [
+        "libart-dex2oat",
         "libart-compiler",
         "libart-dexlayout",
         "libart",
@@ -115,6 +198,7 @@ art_cc_binary {
         "-z muldefs",
     ],
     static_libs: [
+        "libartd-dex2oat",
         "libartd-compiler",
         "libartd-dexlayout",
         "libartd",
@@ -131,6 +215,21 @@ art_cc_test {
     srcs: [
         "dex2oat_test.cc",
         "dex2oat_image_test.cc",
+        "linker/elf_writer_test.cc",
+        "linker/image_test.cc",
+        "linker/image_write_read_test.cc",
+        "linker/multi_oat_relative_patcher_test.cc",
+        "linker/oat_writer_test.cc",
     ],
     header_libs: ["dex2oat_headers"],
+    shared_libs: [
+        "libartd-compiler",
+        "libartd-dexlayout",
+        "libbase",
+        "liblz4",
+        "libsigchain",
+    ],
+    static_libs: [
+        "libartd-dex2oat",
+    ]
 }

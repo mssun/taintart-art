@@ -29,6 +29,10 @@ namespace art {
 class ArtField;
 class ArtMethod;
 
+namespace linker {
+class ImageWriter;
+}  // namespace linker
+
 class ObjectVisitor {
  public:
   virtual ~ObjectVisitor() {}
@@ -442,7 +446,7 @@ class PACKED(4) ImageHeader {
   // is the compressed size in the file.
   uint32_t data_size_;
 
-  friend class ImageWriter;
+  friend class linker::ImageWriter;
 };
 
 std::ostream& operator<<(std::ostream& os, const ImageHeader::ImageMethod& policy);

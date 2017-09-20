@@ -61,19 +61,20 @@
 #include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
 #include "elf_file.h"
-#include "elf_writer.h"
-#include "elf_writer_quick.h"
 #include "gc/space/image_space.h"
 #include "gc/space/space-inl.h"
 #include "gc/verification.h"
-#include "image_writer.h"
 #include "interpreter/unstarted_runtime.h"
 #include "java_vm_ext.h"
 #include "jit/profile_compilation_info.h"
 #include "leb128.h"
 #include "linker/buffered_output_stream.h"
+#include "linker/elf_writer.h"
+#include "linker/elf_writer_quick.h"
 #include "linker/file_output_stream.h"
+#include "linker/image_writer.h"
 #include "linker/multi_oat_relative_patcher.h"
+#include "linker/oat_writer.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
 #include "mirror/object-inl.h"
@@ -81,7 +82,6 @@
 #include "nativehelper/ScopedLocalRef.h"
 #include "oat_file.h"
 #include "oat_file_assistant.h"
-#include "oat_writer.h"
 #include "os.h"
 #include "runtime.h"
 #include "runtime_options.h"
@@ -1455,8 +1455,9 @@ class Dex2Oat FINAL {
     // Note: we're only invalidating the magic data in the file, as dex2oat needs the rest of
     // the information to remain valid.
     if (update_input_vdex_) {
-      std::unique_ptr<BufferedOutputStream> vdex_out = std::make_unique<BufferedOutputStream>(
-          std::make_unique<FileOutputStream>(vdex_files_.back().get()));
+      std::unique_ptr<linker::BufferedOutputStream> vdex_out =
+          std::make_unique<linker::BufferedOutputStream>(
+              std::make_unique<linker::FileOutputStream>(vdex_files_.back().get()));
       if (!vdex_out->WriteFully(&VdexFile::Header::kVdexInvalidMagic,
                                 arraysize(VdexFile::Header::kVdexInvalidMagic))) {
         PLOG(ERROR) << "Failed to invalidate vdex header. File: " << vdex_out->GetLocation();
@@ -2026,14 +2027,14 @@ class Dex2Oat FINAL {
         VLOG(compiler) << "App image base=" << reinterpret_cast<void*>(image_base_);
       }
 
-      image_writer_.reset(new ImageWriter(*driver_,
-                                          image_base_,
-                                          compiler_options_->GetCompilePic(),
-                                          IsAppImage(),
-                                          image_storage_mode_,
-                                          oat_filenames_,
-                                          dex_file_oat_index_map_,
-                                          dirty_image_objects_.get()));
+      image_writer_.reset(new linker::ImageWriter(*driver_,
+                                                  image_base_,
+                                                  compiler_options_->GetCompilePic(),
+                                                  IsAppImage(),
+                                                  image_storage_mode_,
+                                                  oat_filenames_,
+                                                  dex_file_oat_index_map_,
+                                                  dirty_image_objects_.get()));
 
       // We need to prepare method offsets in the image address space for direct method patching.
       TimingLogger::ScopedTiming t2("dex2oat Prepare image address space", timings_);
@@ -2046,7 +2047,7 @@ class Dex2Oat FINAL {
     // Initialize the writers with the compiler driver, image writer, and their
     // dex files. The writers were created without those being there yet.
     for (size_t i = 0, size = oat_files_.size(); i != size; ++i) {
-      std::unique_ptr<OatWriter>& oat_writer = oat_writers_[i];
+      std::unique_ptr<linker::OatWriter>& oat_writer = oat_writers_[i];
       std::vector<const DexFile*>& dex_files = dex_files_per_oat_file_[i];
       oat_writer->Initialize(driver_.get(), image_writer_.get(), dex_files);
     }
@@ -2057,8 +2058,9 @@ class Dex2Oat FINAL {
       verifier::VerifierDeps* verifier_deps = callbacks_->GetVerifierDeps();
       for (size_t i = 0, size = oat_files_.size(); i != size; ++i) {
         File* vdex_file = vdex_files_[i].get();
-        std::unique_ptr<BufferedOutputStream> vdex_out =
-            std::make_unique<BufferedOutputStream>(std::make_unique<FileOutputStream>(vdex_file));
+        std::unique_ptr<linker::BufferedOutputStream> vdex_out =
+            std::make_unique<linker::BufferedOutputStream>(
+                std::make_unique<linker::FileOutputStream>(vdex_file));
 
         if (!oat_writers_[i]->WriteVerifierDeps(vdex_out.get(), verifier_deps)) {
           LOG(ERROR) << "Failed to write verifier dependencies into VDEX " << vdex_file->GetPath();
@@ -2082,8 +2084,8 @@ class Dex2Oat FINAL {
       TimingLogger::ScopedTiming t2("dex2oat Write ELF", timings_);
       linker::MultiOatRelativePatcher patcher(instruction_set_, instruction_set_features_.get());
       for (size_t i = 0, size = oat_files_.size(); i != size; ++i) {
-        std::unique_ptr<ElfWriter>& elf_writer = elf_writers_[i];
-        std::unique_ptr<OatWriter>& oat_writer = oat_writers_[i];
+        std::unique_ptr<linker::ElfWriter>& elf_writer = elf_writers_[i];
+        std::unique_ptr<linker::OatWriter>& oat_writer = oat_writers_[i];
 
         oat_writer->PrepareLayout(&patcher);
 
@@ -2116,14 +2118,14 @@ class Dex2Oat FINAL {
 
       for (size_t i = 0, size = oat_files_.size(); i != size; ++i) {
         std::unique_ptr<File>& oat_file = oat_files_[i];
-        std::unique_ptr<ElfWriter>& elf_writer = elf_writers_[i];
-        std::unique_ptr<OatWriter>& oat_writer = oat_writers_[i];
+        std::unique_ptr<linker::ElfWriter>& elf_writer = elf_writers_[i];
+        std::unique_ptr<linker::OatWriter>& oat_writer = oat_writers_[i];
 
         // We need to mirror the layout of the ELF file in the compressed debug-info.
         // Therefore PrepareDebugInfo() relies on the SetLoadedSectionSizes() call further above.
         elf_writer->PrepareDebugInfo(oat_writer->GetMethodDebugInfo());
 
-        OutputStream*& rodata = rodata_[i];
+        linker::OutputStream*& rodata = rodata_[i];
         DCHECK(rodata != nullptr);
         if (!oat_writer->WriteRodata(rodata)) {
           LOG(ERROR) << "Failed to write .rodata section to the ELF file " << oat_file->GetPath();
@@ -2132,7 +2134,7 @@ class Dex2Oat FINAL {
         elf_writer->EndRoData(rodata);
         rodata = nullptr;
 
-        OutputStream* text = elf_writer->StartText();
+        linker::OutputStream* text = elf_writer->StartText();
         if (!oat_writer->WriteCode(text)) {
           LOG(ERROR) << "Failed to write .text section to the ELF file " << oat_file->GetPath();
           return false;
@@ -2510,13 +2512,13 @@ class Dex2Oat FINAL {
     elf_writers_.reserve(oat_files_.size());
     oat_writers_.reserve(oat_files_.size());
     for (const std::unique_ptr<File>& oat_file : oat_files_) {
-      elf_writers_.emplace_back(CreateElfWriterQuick(instruction_set_,
-                                                     instruction_set_features_.get(),
-                                                     compiler_options_.get(),
-                                                     oat_file.get()));
+      elf_writers_.emplace_back(linker::CreateElfWriterQuick(instruction_set_,
+                                                             instruction_set_features_.get(),
+                                                             compiler_options_.get(),
+                                                             oat_file.get()));
       elf_writers_.back()->Start();
       const bool do_dexlayout = DoDexLayoutOptimizations();
-      oat_writers_.emplace_back(new OatWriter(
+      oat_writers_.emplace_back(new linker::OatWriter(
           IsBootImage(), timings_, do_dexlayout ? profile_compilation_info_.get() : nullptr));
     }
   }
@@ -2679,7 +2681,7 @@ class Dex2Oat FINAL {
           return false;
         }
 
-        if (!ElfWriter::Fixup(oat_file.get(), oat_data_begins[i])) {
+        if (!linker::ElfWriter::Fixup(oat_file.get(), oat_data_begins[i])) {
           oat_file->Erase();
           LOG(ERROR) << "Failed to fixup ELF file " << oat_file->GetPath();
           return false;
@@ -2882,11 +2884,11 @@ class Dex2Oat FINAL {
   std::vector<const DexFile*> dex_files_;
   std::string no_inline_from_string_;
 
-  std::vector<std::unique_ptr<ElfWriter>> elf_writers_;
-  std::vector<std::unique_ptr<OatWriter>> oat_writers_;
-  std::vector<OutputStream*> rodata_;
-  std::vector<std::unique_ptr<OutputStream>> vdex_out_;
-  std::unique_ptr<ImageWriter> image_writer_;
+  std::vector<std::unique_ptr<linker::ElfWriter>> elf_writers_;
+  std::vector<std::unique_ptr<linker::OatWriter>> oat_writers_;
+  std::vector<linker::OutputStream*> rodata_;
+  std::vector<std::unique_ptr<linker::OutputStream>> vdex_out_;
+  std::unique_ptr<linker::ImageWriter> image_writer_;
   std::unique_ptr<CompilerDriver> driver_;
 
   std::vector<std::unique_ptr<MemMap>> opened_dex_files_maps_;

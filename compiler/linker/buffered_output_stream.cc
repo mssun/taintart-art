@@ -19,6 +19,7 @@
 #include <string.h>
 
 namespace art {
+namespace linker {
 
 BufferedOutputStream::BufferedOutputStream(std::unique_ptr<OutputStream> out)
     : OutputStream(out->GetLocation()),  // Before out is moved to out_.
@@ -67,4 +68,5 @@ off_t BufferedOutputStream::Seek(off_t offset, Whence whence) {
   return out_->Seek(offset, whence);
 }
 
+}  // namespace linker
 }  // namespace art
