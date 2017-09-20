@@ -836,7 +836,7 @@ bool JavaVMExt::LoadNativeLibrary(JNIEnv* env,
       StringAppendF(error_msg, "Shared library \"%s\" already opened by "
           "ClassLoader %p; can't open in ClassLoader %p",
           path.c_str(), library->GetClassLoader(), class_loader);
-      LOG(WARNING) << error_msg;
+      LOG(WARNING) << *error_msg;
       return false;
     }
     VLOG(jni) << "[Shared library \"" << path << "\" already loaded in "
