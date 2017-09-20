@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_OAT_WRITER_H_
-#define ART_COMPILER_OAT_WRITER_H_
+#ifndef ART_DEX2OAT_LINKER_OAT_WRITER_H_
+#define ART_DEX2OAT_LINKER_OAT_WRITER_H_
 
 #include <stdint.h>
 #include <cstddef>
@@ -23,7 +23,7 @@
 
 #include "base/array_ref.h"
 #include "base/dchecked_vector.h"
-#include "linker/relative_patcher.h"  // For linker::RelativePatcherTargetProvider.
+#include "linker/relative_patcher.h"  // For RelativePatcherTargetProvider.
 #include "mem_map.h"
 #include "method_reference.h"
 #include "mirror/class.h"
@@ -38,9 +38,7 @@ namespace art {
 class BitVector;
 class CompiledMethod;
 class CompilerDriver;
-class ImageWriter;
 class ProfileCompilationInfo;
-class OutputStream;
 class TimingLogger;
 class TypeLookupTable;
 class VdexFile;
@@ -50,13 +48,15 @@ namespace debug {
 struct MethodDebugInfo;
 }  // namespace debug
 
-namespace linker {
-class MultiOatRelativePatcher;
-}  // namespace linker
-
 namespace verifier {
-  class VerifierDeps;
+class VerifierDeps;
 }  // namespace verifier
+
+namespace linker {
+
+class ImageWriter;
+class MultiOatRelativePatcher;
+class OutputStream;
 
 // OatHeader         variable length with count of D OatDexFiles
 //
@@ -183,7 +183,7 @@ class OatWriter {
   }
 
   // Prepare layout of remaining data.
-  void PrepareLayout(linker::MultiOatRelativePatcher* relative_patcher);
+  void PrepareLayout(MultiOatRelativePatcher* relative_patcher);
   // Write the rest of .rodata section (ClassOffsets[], OatClass[], maps).
   bool WriteRodata(OutputStream* out);
   // Write the code to the .text section.
@@ -478,7 +478,7 @@ class OatWriter {
   uint32_t size_method_bss_mappings_;
 
   // The helper for processing relative patches is external so that we can patch across oat files.
-  linker::MultiOatRelativePatcher* relative_patcher_;
+  MultiOatRelativePatcher* relative_patcher_;
 
   // The locations of absolute patches relative to the start of the executable section.
   dchecked_vector<uintptr_t> absolute_patch_locations_;
@@ -489,6 +489,7 @@ class OatWriter {
   DISALLOW_COPY_AND_ASSIGN(OatWriter);
 };
 
+}  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_OAT_WRITER_H_
+#endif  // ART_DEX2OAT_LINKER_OAT_WRITER_H_

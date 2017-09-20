@@ -261,6 +261,7 @@ var artTestMutex sync.Mutex
 
 func init() {
 	android.RegisterModuleType("art_cc_library", artLibrary)
+	android.RegisterModuleType("art_cc_static_library", artStaticLibrary)
 	android.RegisterModuleType("art_cc_binary", artBinary)
 	android.RegisterModuleType("art_cc_test", artTest)
 	android.RegisterModuleType("art_cc_test_library", artTestLibrary)
@@ -292,8 +293,18 @@ func artDefaultsFactory() android.Module {
 }
 
 func artLibrary() android.Module {
-	library, _ := cc.NewLibrary(android.HostAndDeviceSupported)
-	module := library.Init()
+	m, _ := cc.NewLibrary(android.HostAndDeviceSupported)
+	module := m.Init()
+
+	installCodegenCustomizer(module, true)
+
+	return module
+}
+
+func artStaticLibrary() android.Module {
+	m, library := cc.NewLibrary(android.HostAndDeviceSupported)
+	library.BuildOnlyStatic()
+	module := m.Init()
 
 	installCodegenCustomizer(module, true)
 

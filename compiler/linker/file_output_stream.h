@@ -22,6 +22,7 @@
 #include "os.h"
 
 namespace art {
+namespace linker {
 
 class FileOutputStream FINAL : public OutputStream {
  public:
@@ -41,6 +42,7 @@ class FileOutputStream FINAL : public OutputStream {
   DISALLOW_COPY_AND_ASSIGN(FileOutputStream);
 };
 
+}  // namespace linker
 }  // namespace art
 
 #endif  // ART_COMPILER_LINKER_FILE_OUTPUT_STREAM_H_

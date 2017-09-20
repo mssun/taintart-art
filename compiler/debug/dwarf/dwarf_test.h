@@ -28,8 +28,8 @@
 
 #include "base/unix_file/fd_file.h"
 #include "common_runtime_test.h"
-#include "elf_builder.h"
 #include "gtest/gtest.h"
+#include "linker/elf_builder.h"
 #include "linker/file_output_stream.h"
 #include "os.h"
 
@@ -62,8 +62,8 @@ class DwarfTest : public CommonRuntimeTest {
     // Write simple elf file with just the DWARF sections.
     InstructionSet isa = (sizeof(typename ElfTypes::Addr) == 8) ? kX86_64 : kX86;
     ScratchFile file;
-    FileOutputStream output_stream(file.GetFile());
-    ElfBuilder<ElfTypes> builder(isa, nullptr, &output_stream);
+    linker::FileOutputStream output_stream(file.GetFile());
+    linker::ElfBuilder<ElfTypes> builder(isa, nullptr, &output_stream);
     builder.Start();
     if (!debug_info_data_.empty()) {
       builder.WriteSection(".debug_info", &debug_info_data_);
