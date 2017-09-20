@@ -99,7 +99,7 @@ class OatTest : public CommonCompilerTest {
                      /*out*/std::string* error_msg) {
     ASSERT_TRUE(error_msg != nullptr);
     insn_features_ = InstructionSetFeatures::FromVariant(insn_set, "default", error_msg);
-    ASSERT_TRUE(insn_features_ != nullptr) << error_msg;
+    ASSERT_TRUE(insn_features_ != nullptr) << *error_msg;
     compiler_options_.reset(new CompilerOptions);
     for (const std::string& option : compiler_options) {
       compiler_options_->ParseCompilerOption(option, Usage);
