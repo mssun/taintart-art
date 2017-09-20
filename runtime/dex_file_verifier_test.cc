@@ -113,7 +113,7 @@ static std::unique_ptr<const DexFile> OpenDexFileBase64(const char* base64,
   ScopedObjectAccess soa(Thread::Current());
   std::vector<std::unique_ptr<const DexFile>> tmp;
   bool success = DexFile::Open(location, location, true, error_msg, &tmp);
-  CHECK(success) << error_msg;
+  CHECK(success) << *error_msg;
   EXPECT_EQ(1U, tmp.size());
   std::unique_ptr<const DexFile> dex_file = std::move(tmp[0]);
   EXPECT_EQ(PROT_READ, dex_file->GetPermissions());
