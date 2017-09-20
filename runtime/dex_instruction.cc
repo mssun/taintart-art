@@ -349,17 +349,19 @@ std::string Instruction::DumpString(const DexFile* file) const {
     case k35c: {
       uint32_t arg[kMaxVarArgRegs];
       GetVarArgs(arg);
+      auto DumpArgs = [&](size_t count) {
+        for (size_t i = 0; i < count; ++i) {
+          if (i != 0) {
+            os << ", ";
+          }
+          os << "v" << arg[i];
+        }
+      };
       switch (Opcode()) {
         case FILLED_NEW_ARRAY:
         {
-          const int32_t a = VRegA_35c();
           os << opcode << " {";
-          for (int i = 0; i < a; ++i) {
-            if (i > 0) {
-              os << ", ";
-            }
-            os << "v" << arg[i];
-          }
+          DumpArgs(VRegA_35c());
           os << "}, type@" << VRegB_35c();
         }
         break;
@@ -372,12 +374,7 @@ std::string Instruction::DumpString(const DexFile* file) const {
           if (file != nullptr) {
             os << opcode << " {";
             uint32_t method_idx = VRegB_35c();
-            for (size_t i = 0; i < VRegA_35c(); ++i) {
-              if (i != 0) {
-                os << ", ";
-              }
-              os << "v" << arg[i];
-            }
+            DumpArgs(VRegA_35c());
             os << "}, " << file->PrettyMethod(method_idx) << " // method@" << method_idx;
             break;
           }
@@ -386,12 +383,7 @@ std::string Instruction::DumpString(const DexFile* file) const {
           if (file != nullptr) {
             os << opcode << " {";
             uint32_t method_idx = VRegB_35c();
-            for (size_t i = 0; i < VRegA_35c(); ++i) {
-              if (i != 0) {
-                os << ", ";
-              }
-              os << "v" << arg[i];
-            }
+            DumpArgs(VRegA_35c());
             os << "},  // vtable@" << method_idx;
             break;
           }
@@ -400,19 +392,15 @@ std::string Instruction::DumpString(const DexFile* file) const {
           if (file != nullptr) {
             os << opcode << " {";
             uint32_t call_site_idx = VRegB_35c();
-            for (size_t i = 0; i < VRegA_35c(); ++i) {
-              if (i != 0) {
-                os << ", ";
-              }
-              os << "v" << arg[i];
-            }
+            DumpArgs(VRegA_35c());
             os << "},  // call_site@" << call_site_idx;
             break;
           }
           FALLTHROUGH_INTENDED;
         default:
-          os << opcode << " {v" << arg[0] << ", v" << arg[1] << ", v" << arg[2]
-                       << ", v" << arg[3] << ", v" << arg[4] << "}, thing@" << VRegB_35c();
+          os << opcode << " {";
+          DumpArgs(VRegA_35c());
+          os << "}, thing@" << VRegB_35c();
           break;
       }
       break;
