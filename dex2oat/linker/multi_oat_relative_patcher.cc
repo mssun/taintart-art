@@ -26,8 +26,7 @@ namespace linker {
 MultiOatRelativePatcher::MultiOatRelativePatcher(InstructionSet instruction_set,
                                                  const InstructionSetFeatures* features)
     : method_offset_map_(),
-      relative_patcher_(
-          linker::RelativePatcher::Create(instruction_set, features, &method_offset_map_)),
+      relative_patcher_(RelativePatcher::Create(instruction_set, features, &method_offset_map_)),
       adjustment_(0u),
       instruction_set_(instruction_set),
       start_size_code_alignment_(0u),

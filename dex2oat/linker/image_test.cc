@@ -24,6 +24,7 @@
 #include "thread.h"
 
 namespace art {
+namespace linker {
 
 TEST_F(ImageTest, TestImageLayout) {
   std::vector<size_t> image_sizes;
@@ -153,4 +154,5 @@ TEST_F(ImageTest, TestDefaultMethods) {
   ASSERT_TRUE(class_linker_->IsQuickToInterpreterBridge(code));
 }
 
+}  // namespace linker
 }  // namespace art

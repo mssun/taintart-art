@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_ELF_WRITER_H_
-#define ART_COMPILER_ELF_WRITER_H_
+#ifndef ART_DEX2OAT_LINKER_ELF_WRITER_H_
+#define ART_DEX2OAT_LINKER_ELF_WRITER_H_
 
 #include <stdint.h>
 #include <cstddef>
@@ -30,11 +30,14 @@
 namespace art {
 
 class ElfFile;
-class OutputStream;
 
 namespace debug {
 struct MethodDebugInfo;
 }  // namespace debug
+
+namespace linker {
+
+class OutputStream;
 
 class ElfWriter {
  public:
@@ -78,6 +81,7 @@ class ElfWriter {
   ElfWriter() = default;
 };
 
+}  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_ELF_WRITER_H_
+#endif  // ART_DEX2OAT_LINKER_ELF_WRITER_H_

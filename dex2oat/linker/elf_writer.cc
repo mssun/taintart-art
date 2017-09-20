@@ -20,6 +20,7 @@
 #include "elf_file.h"
 
 namespace art {
+namespace linker {
 
 uintptr_t ElfWriter::GetOatDataAddress(ElfFile* elf_file) {
   uintptr_t oatdata_address = elf_file->FindSymbolAddress(SHT_DYNSYM,
@@ -59,4 +60,5 @@ bool ElfWriter::Fixup(File* file, uintptr_t oat_data_begin) {
   return elf_file->Fixup(base_address);
 }
 
+}  // namespace linker
 }  // namespace art

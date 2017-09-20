@@ -22,6 +22,7 @@
 #include "base/unix_file/fd_file.h"
 
 namespace art {
+namespace linker {
 
 FileOutputStream::FileOutputStream(File* file) : OutputStream(file->GetPath()), file_(file) {}
 
@@ -37,4 +38,5 @@ bool FileOutputStream::Flush() {
   return file_->Flush() == 0;
 }
 
+}  // namespace linker
 }  // namespace art

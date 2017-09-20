@@ -25,7 +25,7 @@
 #include "debug/dwarf/headers.h"
 #include "debug/elf_compilation_unit.h"
 #include "dex_file-inl.h"
-#include "elf_builder.h"
+#include "linker/elf_builder.h"
 #include "stack_map.h"
 
 namespace art {
@@ -43,7 +43,7 @@ class ElfDebugLineWriter {
   using Elf_Addr = typename ElfTypes::Addr;
 
  public:
-  explicit ElfDebugLineWriter(ElfBuilder<ElfTypes>* builder) : builder_(builder) {
+  explicit ElfDebugLineWriter(linker::ElfBuilder<ElfTypes>* builder) : builder_(builder) {
   }
 
   void Start() {
@@ -280,7 +280,7 @@ class ElfDebugLineWriter {
   }
 
  private:
-  ElfBuilder<ElfTypes>* builder_;
+  linker::ElfBuilder<ElfTypes>* builder_;
   std::vector<uintptr_t> debug_line_patches_;
 };
 

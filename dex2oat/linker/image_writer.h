@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_IMAGE_WRITER_H_
-#define ART_COMPILER_IMAGE_WRITER_H_
+#ifndef ART_DEX2OAT_LINKER_IMAGE_WRITER_H_
+#define ART_DEX2OAT_LINKER_IMAGE_WRITER_H_
 
 #include <stdint.h>
 #include "base/memory_tool.h"
@@ -65,6 +65,8 @@ class ClassLoaderVisitor;
 class ImtConflictTable;
 
 static constexpr int kInvalidFd = -1;
+
+namespace linker {
 
 // Write a Space built during compilation for use during execution.
 class ImageWriter FINAL {
@@ -620,6 +622,7 @@ class ImageWriter FINAL {
   DISALLOW_COPY_AND_ASSIGN(ImageWriter);
 };
 
+}  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_IMAGE_WRITER_H_
+#endif  // ART_DEX2OAT_LINKER_IMAGE_WRITER_H_
