@@ -143,8 +143,7 @@ bool ProfileCompilationInfo::AddMethodIndex(MethodHotness::Flag flags, const Met
   if (data == nullptr) {
     return false;
   }
-  data->AddMethod(flags, ref.index);
-  return true;
+  return data->AddMethod(flags, ref.index);
 }
 
 bool ProfileCompilationInfo::AddMethodIndex(MethodHotness::Flag flags,
@@ -158,8 +157,7 @@ bool ProfileCompilationInfo::AddMethodIndex(MethodHotness::Flag flags,
   if (data == nullptr) {
     return false;
   }
-  data->AddMethod(flags, method_idx);
-  return true;
+  return data->AddMethod(flags, method_idx);
 }
 
 bool ProfileCompilationInfo::AddMethods(const std::vector<ProfileMethodInfo>& methods) {
@@ -592,7 +590,14 @@ ProfileCompilationInfo::DexFileData* ProfileCompilationInfo::GetOrAddDexFileData
   // This should always be the case since since the cache map is managed by ProfileCompilationInfo.
   DCHECK_EQ(profile_key, result->profile_key);
   DCHECK_EQ(profile_index, result->profile_index);
-  DCHECK_EQ(num_method_ids, result->num_method_ids);
+
+  if (num_method_ids != result->num_method_ids) {
+    // This should not happen... added to help investigating b/65812889.
+    LOG(ERROR) << "num_method_ids mismatch for dex " << profile_key
+        << ", expected=" << num_method_ids
+        << ", actual=" << result->num_method_ids;
+    return nullptr;
+  }
 
   return result;
 }
@@ -1342,8 +1347,8 @@ bool ProfileCompilationInfo::AddMethodHotness(const MethodReference& method_ref,
   DexFileData* dex_data = GetOrAddDexFileData(method_ref.dex_file);
   if (dex_data != nullptr) {
     // TODO: Add inline caches.
-    dex_data->AddMethod(static_cast<MethodHotness::Flag>(hotness.GetFlags()), method_ref.index);
-    return true;
+    return dex_data->AddMethod(
+        static_cast<MethodHotness::Flag>(hotness.GetFlags()), method_ref.index);
   }
   return false;
 }
@@ -1727,7 +1732,12 @@ ProfileCompilationInfo::DexFileData::FindOrAddMethod(uint16_t method_index) {
 }
 
 // Mark a method as executed at least once.
-void ProfileCompilationInfo::DexFileData::AddMethod(MethodHotness::Flag flags, size_t index) {
+bool ProfileCompilationInfo::DexFileData::AddMethod(MethodHotness::Flag flags, size_t index) {
+  if (index >= num_method_ids) {
+    LOG(ERROR) << "Invalid method index " << index << ". num_method_ids=" << num_method_ids;
+    return false;
+  }
+
   if ((flags & MethodHotness::kFlagStartup) != 0) {
     method_bitmap.StoreBit(MethodBitIndex(/*startup*/ true, index), /*value*/ true);
   }
@@ -1739,6 +1749,7 @@ void ProfileCompilationInfo::DexFileData::AddMethod(MethodHotness::Flag flags, s
         index,
         InlineCacheMap(std::less<uint16_t>(), arena_->Adapter(kArenaAllocProfile)));
   }
+  return true;
 }
 
 ProfileCompilationInfo::MethodHotness ProfileCompilationInfo::DexFileData::GetHotnessInfo(
