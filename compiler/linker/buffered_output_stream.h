@@ -24,6 +24,7 @@
 #include "globals.h"
 
 namespace art {
+namespace linker {
 
 class BufferedOutputStream FINAL : public OutputStream {
  public:
@@ -49,6 +50,7 @@ class BufferedOutputStream FINAL : public OutputStream {
   DISALLOW_COPY_AND_ASSIGN(BufferedOutputStream);
 };
 
+}  // namespace linker
 }  // namespace art
 
 #endif  // ART_COMPILER_LINKER_BUFFERED_OUTPUT_STREAM_H_

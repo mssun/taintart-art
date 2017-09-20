@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_ELF_BUILDER_H_
-#define ART_COMPILER_ELF_BUILDER_H_
+#ifndef ART_COMPILER_LINKER_ELF_BUILDER_H_
+#define ART_COMPILER_LINKER_ELF_BUILDER_H_
 
 #include <vector>
 
@@ -30,6 +30,7 @@
 #include "linker/error_delaying_output_stream.h"
 
 namespace art {
+namespace linker {
 
 // Writes ELF file.
 //
@@ -1021,6 +1022,7 @@ class ElfBuilder FINAL {
   DISALLOW_COPY_AND_ASSIGN(ElfBuilder);
 };
 
+}  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_ELF_BUILDER_H_
+#endif  // ART_COMPILER_LINKER_ELF_BUILDER_H_

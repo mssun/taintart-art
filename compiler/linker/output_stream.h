@@ -23,6 +23,7 @@
 #include "base/macros.h"
 
 namespace art {
+namespace linker {
 
 enum Whence {
   kSeekSet = SEEK_SET,
@@ -59,6 +60,7 @@ class OutputStream {
   DISALLOW_COPY_AND_ASSIGN(OutputStream);
 };
 
+}  // namespace linker
 }  // namespace art
 
 #endif  // ART_COMPILER_LINKER_OUTPUT_STREAM_H_

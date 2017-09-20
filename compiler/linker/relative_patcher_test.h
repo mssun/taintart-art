@@ -252,8 +252,8 @@ class RelativePatcherTest : public testing::Test {
   }
 
   // Map method reference to assinged offset.
-  // Wrap the map in a class implementing linker::RelativePatcherTargetProvider.
-  class MethodOffsetMap FINAL : public linker::RelativePatcherTargetProvider {
+  // Wrap the map in a class implementing RelativePatcherTargetProvider.
+  class MethodOffsetMap FINAL : public RelativePatcherTargetProvider {
    public:
     std::pair<bool, uint32_t> FindMethodOffset(MethodReference ref) OVERRIDE {
       auto it = map.find(ref);
