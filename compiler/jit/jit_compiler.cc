@@ -175,7 +175,8 @@ bool JitCompiler::CompileMethod(Thread* self, ArtMethod* method, bool osr) {
   DCHECK(!method->IsProxyMethod());
   DCHECK(method->GetDeclaringClass()->IsResolved());
 
-  TimingLogger logger("JIT compiler timing logger", true, VLOG_IS_ON(jit));
+  TimingLogger logger(
+      "JIT compiler timing logger", true, VLOG_IS_ON(jit), TimingLogger::TimingKind::kThreadCpu);
   self->AssertNoPendingException();
   Runtime* runtime = Runtime::Current();
 
