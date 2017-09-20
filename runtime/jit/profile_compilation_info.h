@@ -280,7 +280,9 @@ class ProfileCompilationInfo {
     }
     for (Iterator it = index_begin; it != index_end; ++it) {
       DCHECK_LT(*it, data->num_method_ids);
-      data->AddMethod(flags, *it);
+      if (!data->AddMethod(flags, *it)) {
+        return false;
+      }
     }
     return true;
   }
@@ -428,7 +430,7 @@ class ProfileCompilationInfo {
     }
 
     // Mark a method as executed at least once.
-    void AddMethod(MethodHotness::Flag flags, size_t index);
+    bool AddMethod(MethodHotness::Flag flags, size_t index);
 
     void MergeBitmap(const DexFileData& other) {
       DCHECK_EQ(bitmap_storage.size(), other.bitmap_storage.size());
