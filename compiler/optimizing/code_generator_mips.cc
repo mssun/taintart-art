@@ -291,7 +291,9 @@ class LoadClassSlowPathMIPS : public SlowPathCodeMIPS {
       // For non-Baker read barriers we need to re-calculate the address of
       // the class entry.
       const bool isR6 = mips_codegen->GetInstructionSetFeatures().IsR6();
-      Register base = isR6 ? ZERO : locations->InAt(0).AsRegister<Register>();
+      const bool has_irreducible_loops = codegen->GetGraph()->HasIrreducibleLoops();
+      Register base =
+          (isR6 || has_irreducible_loops) ? ZERO : locations->InAt(0).AsRegister<Register>();
       CodeGeneratorMIPS::PcRelativePatchInfo* info_high =
           mips_codegen->NewTypeBssEntryPatch(cls_->GetDexFile(), type_index);
       CodeGeneratorMIPS::PcRelativePatchInfo* info_low =
@@ -381,7 +383,9 @@ class LoadStringSlowPathMIPS : public SlowPathCodeMIPS {
       // For non-Baker read barriers we need to re-calculate the address of
       // the string entry.
       const bool isR6 = mips_codegen->GetInstructionSetFeatures().IsR6();
-      Register base = isR6 ? ZERO : locations->InAt(0).AsRegister<Register>();
+      const bool has_irreducible_loops = codegen->GetGraph()->HasIrreducibleLoops();
+      Register base =
+          (isR6 || has_irreducible_loops) ? ZERO : locations->InAt(0).AsRegister<Register>();
       CodeGeneratorMIPS::PcRelativePatchInfo* info_high =
           mips_codegen->NewStringBssEntryPatch(load->GetDexFile(), string_index);
       CodeGeneratorMIPS::PcRelativePatchInfo* info_low =
@@ -7333,7 +7337,8 @@ void LocationsBuilderMIPS::VisitInvokeStaticOrDirect(HInvokeStaticOrDirect* invo
   DCHECK(!invoke->IsStaticWithExplicitClinitCheck());
 
   bool is_r6 = codegen_->GetInstructionSetFeatures().IsR6();
-  bool has_extra_input = invoke->HasPcRelativeMethodLoadKind() && !is_r6;
+  bool has_irreducible_loops = codegen_->GetGraph()->HasIrreducibleLoops();
+  bool has_extra_input = invoke->HasPcRelativeMethodLoadKind() && !is_r6 && !has_irreducible_loops;
 
   IntrinsicLocationsBuilderMIPS intrinsic(codegen_);
   if (intrinsic.TryDispatch(invoke)) {
@@ -7371,68 +7376,41 @@ static bool TryGenerateIntrinsicCode(HInvoke* invoke, CodeGeneratorMIPS* codegen
 
 HLoadString::LoadKind CodeGeneratorMIPS::GetSupportedLoadStringKind(
     HLoadString::LoadKind desired_string_load_kind) {
-  // We disable PC-relative load on pre-R6 when there is an irreducible loop, as the optimization
-  // is incompatible with it.
-  // TODO: Create as many HMipsComputeBaseMethodAddress instructions as needed for methods
-  // with irreducible loops.
-  bool has_irreducible_loops = GetGraph()->HasIrreducibleLoops();
-  bool is_r6 = GetInstructionSetFeatures().IsR6();
-  bool fallback_load = has_irreducible_loops && !is_r6;
   switch (desired_string_load_kind) {
     case HLoadString::LoadKind::kBootImageLinkTimePcRelative:
     case HLoadString::LoadKind::kBootImageInternTable:
     case HLoadString::LoadKind::kBssEntry:
       DCHECK(!Runtime::Current()->UseJitCompilation());
       break;
-    case HLoadString::LoadKind::kBootImageAddress:
-      break;
     case HLoadString::LoadKind::kJitTableAddress:
       DCHECK(Runtime::Current()->UseJitCompilation());
-      fallback_load = false;
       break;
+    case HLoadString::LoadKind::kBootImageAddress:
     case HLoadString::LoadKind::kRuntimeCall:
-      fallback_load = false;
       break;
-  }
-  if (fallback_load) {
-    desired_string_load_kind = HLoadString::LoadKind::kRuntimeCall;
   }
   return desired_string_load_kind;
 }
 
 HLoadClass::LoadKind CodeGeneratorMIPS::GetSupportedLoadClassKind(
     HLoadClass::LoadKind desired_class_load_kind) {
-  // We disable PC-relative load on pre-R6 when there is an irreducible loop, as the optimization
-  // is incompatible with it.
-  // TODO: Create as many HMipsComputeBaseMethodAddress instructions as needed for methods
-  // with irreducible loops.
-  bool has_irreducible_loops = GetGraph()->HasIrreducibleLoops();
-  bool is_r6 = GetInstructionSetFeatures().IsR6();
-  bool fallback_load = has_irreducible_loops && !is_r6;
   switch (desired_class_load_kind) {
     case HLoadClass::LoadKind::kInvalid:
       LOG(FATAL) << "UNREACHABLE";
       UNREACHABLE();
     case HLoadClass::LoadKind::kReferrersClass:
-      fallback_load = false;
       break;
     case HLoadClass::LoadKind::kBootImageLinkTimePcRelative:
     case HLoadClass::LoadKind::kBootImageClassTable:
     case HLoadClass::LoadKind::kBssEntry:
       DCHECK(!Runtime::Current()->UseJitCompilation());
       break;
-    case HLoadClass::LoadKind::kBootImageAddress:
-      break;
     case HLoadClass::LoadKind::kJitTableAddress:
       DCHECK(Runtime::Current()->UseJitCompilation());
-      fallback_load = false;
       break;
+    case HLoadClass::LoadKind::kBootImageAddress:
     case HLoadClass::LoadKind::kRuntimeCall:
-      fallback_load = false;
       break;
-  }
-  if (fallback_load) {
-    desired_class_load_kind = HLoadClass::LoadKind::kRuntimeCall;
   }
   return desired_class_load_kind;
 }
@@ -7440,6 +7418,7 @@ HLoadClass::LoadKind CodeGeneratorMIPS::GetSupportedLoadClassKind(
 Register CodeGeneratorMIPS::GetInvokeStaticOrDirectExtraParameter(HInvokeStaticOrDirect* invoke,
                                                                   Register temp) {
   CHECK(!GetInstructionSetFeatures().IsR6());
+  CHECK(!GetGraph()->HasIrreducibleLoops());
   CHECK_EQ(invoke->InputCount(), invoke->GetNumberOfArguments() + 1u);
   Location location = invoke->GetLocations()->InAt(invoke->GetSpecialInputIndex());
   if (!invoke->GetLocations()->Intrinsified()) {
@@ -7467,27 +7446,7 @@ Register CodeGeneratorMIPS::GetInvokeStaticOrDirectExtraParameter(HInvokeStaticO
 HInvokeStaticOrDirect::DispatchInfo CodeGeneratorMIPS::GetSupportedInvokeStaticOrDirectDispatch(
       const HInvokeStaticOrDirect::DispatchInfo& desired_dispatch_info,
       HInvokeStaticOrDirect* invoke ATTRIBUTE_UNUSED) {
-  HInvokeStaticOrDirect::DispatchInfo dispatch_info = desired_dispatch_info;
-  // We disable PC-relative load on pre-R6 when there is an irreducible loop, as the optimization
-  // is incompatible with it.
-  // TODO: Create as many HMipsComputeBaseMethodAddress instructions as needed for methods
-  // with irreducible loops.
-  bool has_irreducible_loops = GetGraph()->HasIrreducibleLoops();
-  bool is_r6 = GetInstructionSetFeatures().IsR6();
-  bool fallback_load = has_irreducible_loops && !is_r6;
-  switch (dispatch_info.method_load_kind) {
-    case HInvokeStaticOrDirect::MethodLoadKind::kBootImageLinkTimePcRelative:
-    case HInvokeStaticOrDirect::MethodLoadKind::kBssEntry:
-      break;
-    default:
-      fallback_load = false;
-      break;
-  }
-  if (fallback_load) {
-    dispatch_info.method_load_kind = HInvokeStaticOrDirect::MethodLoadKind::kRuntimeCall;
-    dispatch_info.method_load_data = 0;
-  }
-  return dispatch_info;
+  return desired_dispatch_info;
 }
 
 void CodeGeneratorMIPS::GenerateStaticOrDirectCall(
@@ -7497,7 +7456,8 @@ void CodeGeneratorMIPS::GenerateStaticOrDirectCall(
   HInvokeStaticOrDirect::MethodLoadKind method_load_kind = invoke->GetMethodLoadKind();
   HInvokeStaticOrDirect::CodePtrLocation code_ptr_location = invoke->GetCodePtrLocation();
   bool is_r6 = GetInstructionSetFeatures().IsR6();
-  Register base_reg = (invoke->HasPcRelativeMethodLoadKind() && !is_r6)
+  bool has_irreducible_loops = GetGraph()->HasIrreducibleLoops();
+  Register base_reg = (invoke->HasPcRelativeMethodLoadKind() && !is_r6 && !has_irreducible_loops)
       ? GetInvokeStaticOrDirectExtraParameter(invoke, temp.AsRegister<Register>())
       : ZERO;
 
@@ -7636,6 +7596,7 @@ void LocationsBuilderMIPS::VisitLoadClass(HLoadClass* cls) {
   }
   DCHECK(!cls->NeedsAccessCheck());
   const bool isR6 = codegen_->GetInstructionSetFeatures().IsR6();
+  const bool has_irreducible_loops = codegen_->GetGraph()->HasIrreducibleLoops();
   const bool requires_read_barrier = kEmitCompilerReadBarrier && !cls->IsInBootImage();
   LocationSummary::CallKind call_kind = (cls->NeedsEnvironment() || requires_read_barrier)
       ? LocationSummary::kCallOnSlowPath
@@ -7651,6 +7612,10 @@ void LocationsBuilderMIPS::VisitLoadClass(HLoadClass* cls) {
     case HLoadClass::LoadKind::kBootImageClassTable:
     case HLoadClass::LoadKind::kBssEntry:
       if (isR6) {
+        break;
+      }
+      if (has_irreducible_loops) {
+        codegen_->ClobberRA();
         break;
       }
       FALLTHROUGH_INTENDED;
@@ -7691,12 +7656,15 @@ void InstructionCodeGeneratorMIPS::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAF
   Register out = out_loc.AsRegister<Register>();
   Register base_or_current_method_reg;
   bool isR6 = codegen_->GetInstructionSetFeatures().IsR6();
+  bool has_irreducible_loops = GetGraph()->HasIrreducibleLoops();
   switch (load_kind) {
     // We need an extra register for PC-relative literals on R2.
     case HLoadClass::LoadKind::kBootImageLinkTimePcRelative:
     case HLoadClass::LoadKind::kBootImageAddress:
+    case HLoadClass::LoadKind::kBootImageClassTable:
     case HLoadClass::LoadKind::kBssEntry:
-      base_or_current_method_reg = isR6 ? ZERO : locations->InAt(0).AsRegister<Register>();
+      base_or_current_method_reg =
+          (isR6 || has_irreducible_loops) ? ZERO : locations->InAt(0).AsRegister<Register>();
       break;
     case HLoadClass::LoadKind::kReferrersClass:
     case HLoadClass::LoadKind::kRuntimeCall:
@@ -7742,9 +7710,13 @@ void InstructionCodeGeneratorMIPS::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAF
       uint32_t address = dchecked_integral_cast<uint32_t>(
           reinterpret_cast<uintptr_t>(cls->GetClass().Get()));
       DCHECK_NE(address, 0u);
-      __ LoadLiteral(out,
-                     base_or_current_method_reg,
-                     codegen_->DeduplicateBootImageAddressLiteral(address));
+      if (isR6 || !has_irreducible_loops) {
+        __ LoadLiteral(out,
+                       base_or_current_method_reg,
+                       codegen_->DeduplicateBootImageAddressLiteral(address));
+      } else {
+        __ LoadConst32(out, address);
+      }
       break;
     }
     case HLoadClass::LoadKind::kBootImageClassTable: {
@@ -7849,6 +7821,7 @@ void LocationsBuilderMIPS::VisitLoadString(HLoadString* load) {
   LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(load, call_kind);
   HLoadString::LoadKind load_kind = load->GetLoadKind();
   const bool isR6 = codegen_->GetInstructionSetFeatures().IsR6();
+  const bool has_irreducible_loops = codegen_->GetGraph()->HasIrreducibleLoops();
   switch (load_kind) {
     // We need an extra register for PC-relative literals on R2.
     case HLoadString::LoadKind::kBootImageAddress:
@@ -7856,6 +7829,10 @@ void LocationsBuilderMIPS::VisitLoadString(HLoadString* load) {
     case HLoadString::LoadKind::kBootImageInternTable:
     case HLoadString::LoadKind::kBssEntry:
       if (isR6) {
+        break;
+      }
+      if (has_irreducible_loops) {
+        codegen_->ClobberRA();
         break;
       }
       FALLTHROUGH_INTENDED;
@@ -7896,13 +7873,15 @@ void InstructionCodeGeneratorMIPS::VisitLoadString(HLoadString* load) NO_THREAD_
   Register out = out_loc.AsRegister<Register>();
   Register base_or_current_method_reg;
   bool isR6 = codegen_->GetInstructionSetFeatures().IsR6();
+  bool has_irreducible_loops = GetGraph()->HasIrreducibleLoops();
   switch (load_kind) {
     // We need an extra register for PC-relative literals on R2.
     case HLoadString::LoadKind::kBootImageAddress:
     case HLoadString::LoadKind::kBootImageLinkTimePcRelative:
     case HLoadString::LoadKind::kBootImageInternTable:
     case HLoadString::LoadKind::kBssEntry:
-      base_or_current_method_reg = isR6 ? ZERO : locations->InAt(0).AsRegister<Register>();
+      base_or_current_method_reg =
+          (isR6 || has_irreducible_loops) ? ZERO : locations->InAt(0).AsRegister<Register>();
       break;
     default:
       base_or_current_method_reg = ZERO;
@@ -7926,9 +7905,13 @@ void InstructionCodeGeneratorMIPS::VisitLoadString(HLoadString* load) NO_THREAD_
       uint32_t address = dchecked_integral_cast<uint32_t>(
           reinterpret_cast<uintptr_t>(load->GetString().Get()));
       DCHECK_NE(address, 0u);
-      __ LoadLiteral(out,
-                     base_or_current_method_reg,
-                     codegen_->DeduplicateBootImageAddressLiteral(address));
+      if (isR6 || !has_irreducible_loops) {
+        __ LoadLiteral(out,
+                       base_or_current_method_reg,
+                       codegen_->DeduplicateBootImageAddressLiteral(address));
+      } else {
+        __ LoadConst32(out, address);
+      }
       return;
     }
     case HLoadString::LoadKind::kBootImageInternTable: {
