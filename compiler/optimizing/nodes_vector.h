@@ -461,8 +461,8 @@ class HVecAdd FINAL : public HVecBinaryOperation {
 };
 
 // Performs halving add on every component in the two vectors, viz.
-// rounded [ x1, .. , xn ] hradd [ y1, .. , yn ] = [ (x1 + y1 + 1) >> 1, .. , (xn + yn + 1) >> 1 ]
-// or      [ x1, .. , xn ] hadd  [ y1, .. , yn ] = [ (x1 + y1)     >> 1, .. , (xn + yn )    >> 1 ]
+// rounded   [ x1, .. , xn ] hradd [ y1, .. , yn ] = [ (x1 + y1 + 1) >> 1, .. , (xn + yn + 1) >> 1 ]
+// truncated [ x1, .. , xn ] hadd  [ y1, .. , yn ] = [ (x1 + y1)     >> 1, .. , (xn + yn )    >> 1 ]
 // for signed operands x, y (sign extension) or unsigned operands x, y (zero extension).
 class HVecHalvingAdd FINAL : public HVecBinaryOperation {
  public:
@@ -810,8 +810,8 @@ class HVecUShr FINAL : public HVecBinaryOperation {
 //
 
 // Assigns the given scalar elements to a vector,
-// viz. set( array(x1, .., xn) ) = [ x1, .. ,           xn ] if n == m,
-//      set( array(x1, .., xm) ) = [ x1, .. , xm, 0, .., 0 ] if m <  n.
+// viz. set( array(x1, .. , xn) ) = [ x1, .. ,            xn ] if n == m,
+//      set( array(x1, .. , xm) ) = [ x1, .. , xm, 0, .. , 0 ] if m <  n.
 class HVecSetScalars FINAL : public HVecOperation {
  public:
   HVecSetScalars(ArenaAllocator* arena,
@@ -842,9 +842,8 @@ class HVecSetScalars FINAL : public HVecOperation {
   DISALLOW_COPY_AND_ASSIGN(HVecSetScalars);
 };
 
-// Multiplies every component in the two vectors, adds the result vector to the accumulator vector.
-// viz. [ acc1, .., accn ] + [ x1, .. , xn ] * [ y1, .. , yn ] =
-//     [ acc1 + x1 * y1, .. , accn + xn * yn ].
+// Multiplies every component in the two vectors, adds the result vector to the accumulator vector,
+// viz. [ a1, .. , an ] + [ x1, .. , xn ] * [ y1, .. , yn ] = [ a1 + x1 * y1, .. , an + xn * yn ].
 class HVecMultiplyAccumulate FINAL : public HVecOperation {
  public:
   HVecMultiplyAccumulate(ArenaAllocator* arena,
@@ -866,14 +865,10 @@ class HVecMultiplyAccumulate FINAL : public HVecOperation {
     DCHECK(HasConsistentPackedTypes(accumulator, packed_type));
     DCHECK(HasConsistentPackedTypes(mul_left, packed_type));
     DCHECK(HasConsistentPackedTypes(mul_right, packed_type));
-    SetRawInputAt(kInputAccumulatorIndex, accumulator);
-    SetRawInputAt(kInputMulLeftIndex, mul_left);
-    SetRawInputAt(kInputMulRightIndex, mul_right);
+    SetRawInputAt(0, accumulator);
+    SetRawInputAt(1, mul_left);
+    SetRawInputAt(2, mul_right);
   }
-
-  static constexpr int kInputAccumulatorIndex = 0;
-  static constexpr int kInputMulLeftIndex = 1;
-  static constexpr int kInputMulRightIndex = 2;
 
   bool CanBeMoved() const OVERRIDE { return true; }
 
@@ -892,6 +887,42 @@ class HVecMultiplyAccumulate FINAL : public HVecOperation {
   const InstructionKind op_kind_;
 
   DISALLOW_COPY_AND_ASSIGN(HVecMultiplyAccumulate);
+};
+
+// Takes the absolute difference of two vectors, and adds the results to
+// same-precision or wider-precision components in the accumulator,
+// viz. SAD([ a1, .. , am ], [ x1, .. , xn ], [ y1, .. , yn ] =
+//          [ a1 + sum abs(xi-yi), .. , am + sum abs(xj-yj) ],
+//      for m <= n and non-overlapping sums.
+class HVecSADAccumulate FINAL : public HVecOperation {
+ public:
+  HVecSADAccumulate(ArenaAllocator* arena,
+                    HInstruction* accumulator,
+                    HInstruction* sad_left,
+                    HInstruction* sad_right,
+                    Primitive::Type packed_type,
+                    size_t vector_length,
+                    uint32_t dex_pc = kNoDexPc)
+      : HVecOperation(arena,
+                      packed_type,
+                      SideEffects::None(),
+                      /* number_of_inputs */ 3,
+                      vector_length,
+                      dex_pc) {
+    DCHECK(HasConsistentPackedTypes(accumulator, packed_type));
+    DCHECK(sad_left->IsVecOperation());
+    DCHECK(sad_right->IsVecOperation());
+    DCHECK_EQ(sad_left->AsVecOperation()->GetPackedType(),
+              sad_right->AsVecOperation()->GetPackedType());
+    SetRawInputAt(0, accumulator);
+    SetRawInputAt(1, sad_left);
+    SetRawInputAt(2, sad_right);
+  }
+
+  DECLARE_INSTRUCTION(VecSADAccumulate);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(HVecSADAccumulate);
 };
 
 // Loads a vector from memory, viz. load(mem, 1)
