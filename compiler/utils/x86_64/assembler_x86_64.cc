@@ -36,6 +36,34 @@ std::ostream& operator<<(std::ostream& os, const X87Register& reg) {
   return os << "ST" << static_cast<int>(reg);
 }
 
+std::ostream& operator<<(std::ostream& os, const Address& addr) {
+  switch (addr.mod()) {
+    case 0:
+      if (addr.rm() != RSP || addr.cpu_index().AsRegister() == RSP) {
+        return os << "(%" << addr.cpu_rm() << ")";
+      } else if (addr.base() == RBP) {
+        return os << static_cast<int>(addr.disp32()) << "(,%" << addr.cpu_index()
+                  << "," << (1 << addr.scale()) << ")";
+      }
+      return os << "(%" << addr.cpu_base() << ",%"
+                << addr.cpu_index() << "," << (1 << addr.scale()) << ")";
+    case 1:
+      if (addr.rm() != RSP || addr.cpu_index().AsRegister() == RSP) {
+        return os << static_cast<int>(addr.disp8()) << "(%" << addr.cpu_rm() << ")";
+      }
+      return os << static_cast<int>(addr.disp8()) << "(%" << addr.cpu_base() << ",%"
+                << addr.cpu_index() << "," << (1 << addr.scale()) << ")";
+    case 2:
+      if (addr.rm() != RSP || addr.cpu_index().AsRegister() == RSP) {
+        return os << static_cast<int>(addr.disp32()) << "(%" << addr.cpu_rm() << ")";
+      }
+      return os << static_cast<int>(addr.disp32()) << "(%" << addr.cpu_base() << ",%"
+                << addr.cpu_index() << "," << (1 << addr.scale()) << ")";
+    default:
+      return os << "<address?>";
+  }
+}
+
 void X86_64Assembler::call(CpuRegister reg) {
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitOptionalRex32(reg);
