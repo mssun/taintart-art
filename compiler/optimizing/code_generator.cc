@@ -288,7 +288,8 @@ void CodeGenerator::Finalize(CodeAllocator* allocator) {
   GetAssembler()->FinalizeInstructions(code);
 }
 
-void CodeGenerator::EmitLinkerPatches(ArenaVector<LinkerPatch>* linker_patches ATTRIBUTE_UNUSED) {
+void CodeGenerator::EmitLinkerPatches(
+    ArenaVector<linker::LinkerPatch>* linker_patches ATTRIBUTE_UNUSED) {
   // No linker patches by default.
 }
 

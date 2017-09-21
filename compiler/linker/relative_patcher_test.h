@@ -21,7 +21,7 @@
 #include "arch/instruction_set_features.h"
 #include "base/array_ref.h"
 #include "base/macros.h"
-#include "compiled_method.h"
+#include "compiled_method-inl.h"
 #include "dex/verification_results.h"
 #include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
