@@ -712,6 +712,10 @@ class Dex2Oat FINAL {
     }
   }
 
+  bool VerifyProfileData() {
+    return profile_compilation_info_->VerifyProfileData(dex_files_);
+  }
+
   void ParseInstructionSetVariant(const StringPiece& option, ParserOptions* parser_options) {
     DCHECK(option.starts_with("--instruction-set-variant="));
     StringPiece str = option.substr(strlen("--instruction-set-variant=")).data();
@@ -3101,6 +3105,19 @@ static dex2oat::ReturnCode Dex2oat(int argc, char** argv) {
   if (setup_code != dex2oat::ReturnCode::kNoFailure) {
     dex2oat->EraseOutputFiles();
     return setup_code;
+  }
+
+  // TODO: Due to the cyclic dependencies, profile loading and verifying are
+  // being done separately. Refactor and place the two next to each other.
+  // If verification fails, we don't abort the compilation and instead log an
+  // error.
+  // TODO(b/62602192, b/65260586): We should consider aborting compilation when
+  // the profile verification fails.
+  // Note: If dex2oat fails, installd will remove the oat files causing the app
+  // to fallback to apk with possible in-memory extraction. We want to avoid
+  // that, and thus we're lenient towards profile corruptions.
+  if (dex2oat->UseProfile()) {
+    dex2oat->VerifyProfileData();
   }
 
   // Helps debugging on device. Can be used to determine which dalvikvm instance invoked a dex2oat

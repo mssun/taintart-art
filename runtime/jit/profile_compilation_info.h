@@ -305,6 +305,15 @@ class ProfileCompilationInfo {
   // If merge_classes is set to false, classes will not be merged/loaded.
   bool Load(int fd, bool merge_classes = true);
 
+  // Verify integrity of the profile file with the provided dex files.
+  // If there exists a DexData object which maps to a dex_file, then it verifies that:
+  // - The checksums of the DexData and dex_file are equals.
+  // - No method id exceeds NumMethodIds corresponding to the dex_file.
+  // - No class id exceeds NumTypeIds corresponding to the dex_file.
+  // - For every inline_caches, class_ids does not exceed NumTypeIds corresponding to
+  //   the dex_file they are in.
+  bool VerifyProfileData(const std::vector<const DexFile *> &dex_files);
+
   // Load profile information from the given file
   // If the current profile is non-empty the load will fail.
   // If clear_if_invalid is true and the file is invalid the method clears the
