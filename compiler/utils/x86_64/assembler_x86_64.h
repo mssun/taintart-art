@@ -80,6 +80,21 @@ class Operand : public ValueObject {
     return static_cast<Register>(encoding_at(1) & 7);
   }
 
+  CpuRegister cpu_rm() const {
+    int ext = (rex_ & 1) != 0 ? x86_64::R8 : x86_64::RAX;
+    return static_cast<CpuRegister>(rm() + ext);
+  }
+
+  CpuRegister cpu_index() const {
+    int ext = (rex_ & 2) != 0 ? x86_64::R8 : x86_64::RAX;
+    return static_cast<CpuRegister>(index() + ext);
+  }
+
+  CpuRegister cpu_base() const {
+    int ext = (rex_ & 1) != 0 ? x86_64::R8 : x86_64::RAX;
+    return static_cast<CpuRegister>(base() + ext);
+  }
+
   uint8_t rex() const {
     return rex_;
   }
@@ -268,6 +283,7 @@ class Address : public Operand {
   Address() {}
 };
 
+std::ostream& operator<<(std::ostream& os, const Address& addr);
 
 /**
  * Class to handle constant area values.
