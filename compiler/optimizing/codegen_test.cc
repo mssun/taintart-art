@@ -91,7 +91,7 @@ static void TestCodeLong(const uint16_t* data,
   for (const CodegenTargetConfig& target_config : GetTargetConfigs()) {
     ArenaPool pool;
     ArenaAllocator arena(&pool);
-    HGraph* graph = CreateCFG(&arena, data, Primitive::kPrimLong);
+    HGraph* graph = CreateCFG(&arena, data, DataType::Type::kInt64);
     // Remove suspend checks, they cannot be executed in this context.
     RemoveSuspendChecks(graph);
     RunCode(target_config, graph, [](HGraph*) {}, has_result, expected);
@@ -602,7 +602,7 @@ TEST_F(CodegenTest, ReturnDivInt2Addr) {
 static void TestComparison(IfCondition condition,
                            int64_t i,
                            int64_t j,
-                           Primitive::Type type,
+                           DataType::Type type,
                            const CodegenTargetConfig target_config) {
   ArenaPool pool;
   ArenaAllocator allocator(&pool);
@@ -626,11 +626,11 @@ static void TestComparison(IfCondition condition,
 
   HInstruction* op1;
   HInstruction* op2;
-  if (type == Primitive::kPrimInt) {
+  if (type == DataType::Type::kInt32) {
     op1 = graph->GetIntConstant(i);
     op2 = graph->GetIntConstant(j);
   } else {
-    DCHECK_EQ(type, Primitive::kPrimLong);
+    DCHECK_EQ(type, DataType::Type::kInt64);
     op1 = graph->GetLongConstant(i);
     op2 = graph->GetLongConstant(j);
   }
@@ -693,7 +693,8 @@ TEST_F(CodegenTest, ComparisonsInt) {
     for (int64_t i = -1; i <= 1; i++) {
       for (int64_t j = -1; j <= 1; j++) {
         for (int cond = kCondFirst; cond <= kCondLast; cond++) {
-          TestComparison(static_cast<IfCondition>(cond), i, j, Primitive::kPrimInt, target_config);
+          TestComparison(
+              static_cast<IfCondition>(cond), i, j, DataType::Type::kInt32, target_config);
         }
       }
     }
@@ -705,7 +706,8 @@ TEST_F(CodegenTest, ComparisonsLong) {
     for (int64_t i = -1; i <= 1; i++) {
       for (int64_t j = -1; j <= 1; j++) {
         for (int cond = kCondFirst; cond <= kCondLast; cond++) {
-          TestComparison(static_cast<IfCondition>(cond), i, j, Primitive::kPrimLong, target_config);
+          TestComparison(
+              static_cast<IfCondition>(cond), i, j, DataType::Type::kInt64, target_config);
         }
       }
     }
@@ -728,8 +730,8 @@ TEST_F(CodegenTest, ARMVIXLParallelMoveResolver) {
   // used as temps; however GPR scratch register is required for big stack offsets which don't fit
   // LDR encoding. So the following code is a regression test for that situation.
   HParallelMove* move = new (graph->GetArena()) HParallelMove(graph->GetArena());
-  move->AddMove(Location::StackSlot(0), Location::StackSlot(8192), Primitive::kPrimInt, nullptr);
-  move->AddMove(Location::StackSlot(8192), Location::StackSlot(0), Primitive::kPrimInt, nullptr);
+  move->AddMove(Location::StackSlot(0), Location::StackSlot(8192), DataType::Type::kInt32, nullptr);
+  move->AddMove(Location::StackSlot(8192), Location::StackSlot(0), DataType::Type::kInt32, nullptr);
   codegen.GetMoveResolver()->EmitNativeCode(move);
 
   InternalCodeAllocator code_allocator;
@@ -778,11 +780,11 @@ TEST_F(CodegenTest, ARM64ParallelMoveResolverB34760542) {
   HParallelMove* move = new (graph->GetArena()) HParallelMove(graph->GetArena());
   move->AddMove(Location::DoubleStackSlot(0),
                 Location::DoubleStackSlot(257),
-                Primitive::kPrimDouble,
+                DataType::Type::kFloat64,
                 nullptr);
   move->AddMove(Location::DoubleStackSlot(257),
                 Location::DoubleStackSlot(0),
-                Primitive::kPrimDouble,
+                DataType::Type::kFloat64,
                 nullptr);
   codegen.GetMoveResolver()->EmitNativeCode(move);
 
@@ -806,19 +808,19 @@ TEST_F(CodegenTest, ARM64ParallelMoveResolverSIMD) {
     HParallelMove* move = new (graph->GetArena()) HParallelMove(graph->GetArena());
     move->AddMove(Location::SIMDStackSlot(0),
                   Location::SIMDStackSlot(257),
-                  Primitive::kPrimDouble,
+                  DataType::Type::kFloat64,
                   nullptr);
     move->AddMove(Location::SIMDStackSlot(257),
                   Location::SIMDStackSlot(0),
-                  Primitive::kPrimDouble,
+                  DataType::Type::kFloat64,
                   nullptr);
     move->AddMove(Location::FpuRegisterLocation(0),
                   Location::FpuRegisterLocation(1),
-                  Primitive::kPrimDouble,
+                  DataType::Type::kFloat64,
                   nullptr);
     move->AddMove(Location::FpuRegisterLocation(1),
                   Location::FpuRegisterLocation(0),
-                  Primitive::kPrimDouble,
+                  DataType::Type::kFloat64,
                   nullptr);
     codegen.GetMoveResolver()->EmitNativeCode(move);
     graph->SetHasSIMD(false);

@@ -97,7 +97,7 @@ class ReadBarrierSystemArrayCopySlowPathX86 : public SlowPathCode {
     DCHECK(instruction_->GetLocations()->Intrinsified());
     DCHECK_EQ(instruction_->AsInvoke()->GetIntrinsic(), Intrinsics::kSystemArrayCopy);
 
-    int32_t element_size = Primitive::ComponentSize(Primitive::kPrimNot);
+    int32_t element_size = DataType::Size(DataType::Type::kReference);
     uint32_t offset = mirror::Array::DataOffset(element_size).Uint32Value();
 
     Register src = locations->InAt(0).AsRegister<Register>();
@@ -282,17 +282,17 @@ static void CreateLongToLongLocations(ArenaAllocator* arena, HInvoke* invoke) {
 }
 
 static void GenReverseBytes(LocationSummary* locations,
-                            Primitive::Type size,
+                            DataType::Type size,
                             X86Assembler* assembler) {
   Register out = locations->Out().AsRegister<Register>();
 
   switch (size) {
-    case Primitive::kPrimShort:
+    case DataType::Type::kInt16:
       // TODO: Can be done with an xchg of 8b registers. This is straight from Quick.
       __ bswapl(out);
       __ sarl(out, Immediate(16));
       break;
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       __ bswapl(out);
       break;
     default:
@@ -306,7 +306,7 @@ void IntrinsicLocationsBuilderX86::VisitIntegerReverseBytes(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorX86::VisitIntegerReverseBytes(HInvoke* invoke) {
-  GenReverseBytes(invoke->GetLocations(), Primitive::kPrimInt, GetAssembler());
+  GenReverseBytes(invoke->GetLocations(), DataType::Type::kInt32, GetAssembler());
 }
 
 void IntrinsicLocationsBuilderX86::VisitLongReverseBytes(HInvoke* invoke) {
@@ -335,7 +335,7 @@ void IntrinsicLocationsBuilderX86::VisitShortReverseBytes(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorX86::VisitShortReverseBytes(HInvoke* invoke) {
-  GenReverseBytes(invoke->GetLocations(), Primitive::kPrimShort, GetAssembler());
+  GenReverseBytes(invoke->GetLocations(), DataType::Type::kInt16, GetAssembler());
 }
 
 
@@ -1307,7 +1307,7 @@ void IntrinsicCodeGeneratorX86::VisitSystemArrayCopyChar(HInvoke* invoke) {
 
   // Okay, everything checks out.  Finally time to do the copy.
   // Check assumption that sizeof(Char) is 2 (used in scaling below).
-  const size_t char_size = Primitive::ComponentSize(Primitive::kPrimChar);
+  const size_t char_size = DataType::Size(DataType::Type::kUint16);
   DCHECK_EQ(char_size, 2u);
 
   const uint32_t data_offset = mirror::Array::DataOffset(char_size).Uint32Value();
@@ -1540,7 +1540,7 @@ static void GenerateStringIndexOf(HInvoke* invoke,
       __ Bind(slow_path->GetExitLabel());
       return;
     }
-  } else if (code_point->GetType() != Primitive::kPrimChar) {
+  } else if (code_point->GetType() != DataType::Type::kUint16) {
     __ cmpl(search_value, Immediate(std::numeric_limits<uint16_t>::max()));
     slow_path = new (allocator) IntrinsicSlowPathX86(invoke);
     codegen->AddSlowPath(slow_path);
@@ -1766,7 +1766,7 @@ void IntrinsicCodeGeneratorX86::VisitStringGetCharsNoCheck(HInvoke* invoke) {
   X86Assembler* assembler = GetAssembler();
   LocationSummary* locations = invoke->GetLocations();
 
-  size_t char_component_size = Primitive::ComponentSize(Primitive::kPrimChar);
+  size_t char_component_size = DataType::Size(DataType::Type::kUint16);
   // Location of data in char array buffer.
   const uint32_t data_offset = mirror::Array::DataOffset(char_component_size).Uint32Value();
   // Location of char array data in string.
@@ -1782,7 +1782,7 @@ void IntrinsicCodeGeneratorX86::VisitStringGetCharsNoCheck(HInvoke* invoke) {
   Register dstBegin = locations->InAt(4).AsRegister<Register>();
 
   // Check assumption that sizeof(Char) is 2 (used in scaling below).
-  const size_t char_size = Primitive::ComponentSize(Primitive::kPrimChar);
+  const size_t char_size = DataType::Size(DataType::Type::kUint16);
   DCHECK_EQ(char_size, 2u);
 
   // Compute the number of chars (words) to move.
@@ -1802,7 +1802,7 @@ void IntrinsicCodeGeneratorX86::VisitStringGetCharsNoCheck(HInvoke* invoke) {
   if (mirror::kUseStringCompression) {
     // Location of count in string
     const uint32_t count_offset = mirror::String::CountOffset().Uint32Value();
-    const size_t c_char_size = Primitive::ComponentSize(Primitive::kPrimByte);
+    const size_t c_char_size = DataType::Size(DataType::Type::kInt8);
     DCHECK_EQ(c_char_size, 1u);
     __ pushl(EAX);
     __ cfi().AdjustCFAOffset(stack_adjust);
@@ -1849,22 +1849,22 @@ void IntrinsicCodeGeneratorX86::VisitStringGetCharsNoCheck(HInvoke* invoke) {
   __ cfi().AdjustCFAOffset(-stack_adjust);
 }
 
-static void GenPeek(LocationSummary* locations, Primitive::Type size, X86Assembler* assembler) {
+static void GenPeek(LocationSummary* locations, DataType::Type size, X86Assembler* assembler) {
   Register address = locations->InAt(0).AsRegisterPairLow<Register>();
   Location out_loc = locations->Out();
   // x86 allows unaligned access. We do not have to check the input or use specific instructions
   // to avoid a SIGBUS.
   switch (size) {
-    case Primitive::kPrimByte:
+    case DataType::Type::kInt8:
       __ movsxb(out_loc.AsRegister<Register>(), Address(address, 0));
       break;
-    case Primitive::kPrimShort:
+    case DataType::Type::kInt16:
       __ movsxw(out_loc.AsRegister<Register>(), Address(address, 0));
       break;
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       __ movl(out_loc.AsRegister<Register>(), Address(address, 0));
       break;
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       __ movl(out_loc.AsRegisterPairLow<Register>(), Address(address, 0));
       __ movl(out_loc.AsRegisterPairHigh<Register>(), Address(address, 4));
       break;
@@ -1879,7 +1879,7 @@ void IntrinsicLocationsBuilderX86::VisitMemoryPeekByte(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorX86::VisitMemoryPeekByte(HInvoke* invoke) {
-  GenPeek(invoke->GetLocations(), Primitive::kPrimByte, GetAssembler());
+  GenPeek(invoke->GetLocations(), DataType::Type::kInt8, GetAssembler());
 }
 
 void IntrinsicLocationsBuilderX86::VisitMemoryPeekIntNative(HInvoke* invoke) {
@@ -1887,7 +1887,7 @@ void IntrinsicLocationsBuilderX86::VisitMemoryPeekIntNative(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorX86::VisitMemoryPeekIntNative(HInvoke* invoke) {
-  GenPeek(invoke->GetLocations(), Primitive::kPrimInt, GetAssembler());
+  GenPeek(invoke->GetLocations(), DataType::Type::kInt32, GetAssembler());
 }
 
 void IntrinsicLocationsBuilderX86::VisitMemoryPeekLongNative(HInvoke* invoke) {
@@ -1895,7 +1895,7 @@ void IntrinsicLocationsBuilderX86::VisitMemoryPeekLongNative(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorX86::VisitMemoryPeekLongNative(HInvoke* invoke) {
-  GenPeek(invoke->GetLocations(), Primitive::kPrimLong, GetAssembler());
+  GenPeek(invoke->GetLocations(), DataType::Type::kInt64, GetAssembler());
 }
 
 void IntrinsicLocationsBuilderX86::VisitMemoryPeekShortNative(HInvoke* invoke) {
@@ -1903,30 +1903,30 @@ void IntrinsicLocationsBuilderX86::VisitMemoryPeekShortNative(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorX86::VisitMemoryPeekShortNative(HInvoke* invoke) {
-  GenPeek(invoke->GetLocations(), Primitive::kPrimShort, GetAssembler());
+  GenPeek(invoke->GetLocations(), DataType::Type::kInt16, GetAssembler());
 }
 
-static void CreateLongIntToVoidLocations(ArenaAllocator* arena, Primitive::Type size,
+static void CreateLongIntToVoidLocations(ArenaAllocator* arena, DataType::Type size,
                                          HInvoke* invoke) {
   LocationSummary* locations = new (arena) LocationSummary(invoke,
                                                            LocationSummary::kNoCall,
                                                            kIntrinsified);
   locations->SetInAt(0, Location::RequiresRegister());
   HInstruction* value = invoke->InputAt(1);
-  if (size == Primitive::kPrimByte) {
+  if (size == DataType::Type::kInt8) {
     locations->SetInAt(1, Location::ByteRegisterOrConstant(EDX, value));
   } else {
     locations->SetInAt(1, Location::RegisterOrConstant(value));
   }
 }
 
-static void GenPoke(LocationSummary* locations, Primitive::Type size, X86Assembler* assembler) {
+static void GenPoke(LocationSummary* locations, DataType::Type size, X86Assembler* assembler) {
   Register address = locations->InAt(0).AsRegisterPairLow<Register>();
   Location value_loc = locations->InAt(1);
   // x86 allows unaligned access. We do not have to check the input or use specific instructions
   // to avoid a SIGBUS.
   switch (size) {
-    case Primitive::kPrimByte:
+    case DataType::Type::kInt8:
       if (value_loc.IsConstant()) {
         __ movb(Address(address, 0),
                 Immediate(value_loc.GetConstant()->AsIntConstant()->GetValue()));
@@ -1934,7 +1934,7 @@ static void GenPoke(LocationSummary* locations, Primitive::Type size, X86Assembl
         __ movb(Address(address, 0), value_loc.AsRegister<ByteRegister>());
       }
       break;
-    case Primitive::kPrimShort:
+    case DataType::Type::kInt16:
       if (value_loc.IsConstant()) {
         __ movw(Address(address, 0),
                 Immediate(value_loc.GetConstant()->AsIntConstant()->GetValue()));
@@ -1942,7 +1942,7 @@ static void GenPoke(LocationSummary* locations, Primitive::Type size, X86Assembl
         __ movw(Address(address, 0), value_loc.AsRegister<Register>());
       }
       break;
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       if (value_loc.IsConstant()) {
         __ movl(Address(address, 0),
                 Immediate(value_loc.GetConstant()->AsIntConstant()->GetValue()));
@@ -1950,7 +1950,7 @@ static void GenPoke(LocationSummary* locations, Primitive::Type size, X86Assembl
         __ movl(Address(address, 0), value_loc.AsRegister<Register>());
       }
       break;
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       if (value_loc.IsConstant()) {
         int64_t value = value_loc.GetConstant()->AsLongConstant()->GetValue();
         __ movl(Address(address, 0), Immediate(Low32Bits(value)));
@@ -1967,35 +1967,35 @@ static void GenPoke(LocationSummary* locations, Primitive::Type size, X86Assembl
 }
 
 void IntrinsicLocationsBuilderX86::VisitMemoryPokeByte(HInvoke* invoke) {
-  CreateLongIntToVoidLocations(arena_, Primitive::kPrimByte, invoke);
+  CreateLongIntToVoidLocations(arena_, DataType::Type::kInt8, invoke);
 }
 
 void IntrinsicCodeGeneratorX86::VisitMemoryPokeByte(HInvoke* invoke) {
-  GenPoke(invoke->GetLocations(), Primitive::kPrimByte, GetAssembler());
+  GenPoke(invoke->GetLocations(), DataType::Type::kInt8, GetAssembler());
 }
 
 void IntrinsicLocationsBuilderX86::VisitMemoryPokeIntNative(HInvoke* invoke) {
-  CreateLongIntToVoidLocations(arena_, Primitive::kPrimInt, invoke);
+  CreateLongIntToVoidLocations(arena_, DataType::Type::kInt32, invoke);
 }
 
 void IntrinsicCodeGeneratorX86::VisitMemoryPokeIntNative(HInvoke* invoke) {
-  GenPoke(invoke->GetLocations(), Primitive::kPrimInt, GetAssembler());
+  GenPoke(invoke->GetLocations(), DataType::Type::kInt32, GetAssembler());
 }
 
 void IntrinsicLocationsBuilderX86::VisitMemoryPokeLongNative(HInvoke* invoke) {
-  CreateLongIntToVoidLocations(arena_, Primitive::kPrimLong, invoke);
+  CreateLongIntToVoidLocations(arena_, DataType::Type::kInt64, invoke);
 }
 
 void IntrinsicCodeGeneratorX86::VisitMemoryPokeLongNative(HInvoke* invoke) {
-  GenPoke(invoke->GetLocations(), Primitive::kPrimLong, GetAssembler());
+  GenPoke(invoke->GetLocations(), DataType::Type::kInt64, GetAssembler());
 }
 
 void IntrinsicLocationsBuilderX86::VisitMemoryPokeShortNative(HInvoke* invoke) {
-  CreateLongIntToVoidLocations(arena_, Primitive::kPrimShort, invoke);
+  CreateLongIntToVoidLocations(arena_, DataType::Type::kInt16, invoke);
 }
 
 void IntrinsicCodeGeneratorX86::VisitMemoryPokeShortNative(HInvoke* invoke) {
-  GenPoke(invoke->GetLocations(), Primitive::kPrimShort, GetAssembler());
+  GenPoke(invoke->GetLocations(), DataType::Type::kInt16, GetAssembler());
 }
 
 void IntrinsicLocationsBuilderX86::VisitThreadCurrentThread(HInvoke* invoke) {
@@ -2011,7 +2011,7 @@ void IntrinsicCodeGeneratorX86::VisitThreadCurrentThread(HInvoke* invoke) {
 }
 
 static void GenUnsafeGet(HInvoke* invoke,
-                         Primitive::Type type,
+                         DataType::Type type,
                          bool is_volatile,
                          CodeGeneratorX86* codegen) {
   X86Assembler* assembler = down_cast<X86Assembler*>(codegen->GetAssembler());
@@ -2023,13 +2023,13 @@ static void GenUnsafeGet(HInvoke* invoke,
   Location output_loc = locations->Out();
 
   switch (type) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       Register output = output_loc.AsRegister<Register>();
       __ movl(output, Address(base, offset, ScaleFactor::TIMES_1, 0));
       break;
     }
 
-    case Primitive::kPrimNot: {
+    case DataType::Type::kReference: {
       Register output = output_loc.AsRegister<Register>();
       if (kEmitCompilerReadBarrier) {
         if (kUseBakerReadBarrier) {
@@ -2048,7 +2048,7 @@ static void GenUnsafeGet(HInvoke* invoke,
       break;
     }
 
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
         Register output_lo = output_loc.AsRegisterPairLow<Register>();
         Register output_hi = output_loc.AsRegisterPairHigh<Register>();
         if (is_volatile) {
@@ -2073,7 +2073,7 @@ static void GenUnsafeGet(HInvoke* invoke,
 
 static void CreateIntIntIntToIntLocations(ArenaAllocator* arena,
                                           HInvoke* invoke,
-                                          Primitive::Type type,
+                                          DataType::Type type,
                                           bool is_volatile) {
   bool can_call = kEmitCompilerReadBarrier &&
       (invoke->GetIntrinsic() == Intrinsics::kUnsafeGetObject ||
@@ -2089,7 +2089,7 @@ static void CreateIntIntIntToIntLocations(ArenaAllocator* arena,
   locations->SetInAt(0, Location::NoLocation());        // Unused receiver.
   locations->SetInAt(1, Location::RequiresRegister());
   locations->SetInAt(2, Location::RequiresRegister());
-  if (type == Primitive::kPrimLong) {
+  if (type == DataType::Type::kInt64) {
     if (is_volatile) {
       // Need to use XMM to read volatile.
       locations->AddTemp(Location::RequiresFpuRegister());
@@ -2104,47 +2104,48 @@ static void CreateIntIntIntToIntLocations(ArenaAllocator* arena,
 }
 
 void IntrinsicLocationsBuilderX86::VisitUnsafeGet(HInvoke* invoke) {
-  CreateIntIntIntToIntLocations(arena_, invoke, Primitive::kPrimInt, /* is_volatile */ false);
+  CreateIntIntIntToIntLocations(arena_, invoke, DataType::Type::kInt32, /* is_volatile */ false);
 }
 void IntrinsicLocationsBuilderX86::VisitUnsafeGetVolatile(HInvoke* invoke) {
-  CreateIntIntIntToIntLocations(arena_, invoke, Primitive::kPrimInt, /* is_volatile */ true);
+  CreateIntIntIntToIntLocations(arena_, invoke, DataType::Type::kInt32, /* is_volatile */ true);
 }
 void IntrinsicLocationsBuilderX86::VisitUnsafeGetLong(HInvoke* invoke) {
-  CreateIntIntIntToIntLocations(arena_, invoke, Primitive::kPrimLong, /* is_volatile */ false);
+  CreateIntIntIntToIntLocations(arena_, invoke, DataType::Type::kInt64, /* is_volatile */ false);
 }
 void IntrinsicLocationsBuilderX86::VisitUnsafeGetLongVolatile(HInvoke* invoke) {
-  CreateIntIntIntToIntLocations(arena_, invoke, Primitive::kPrimLong, /* is_volatile */ true);
+  CreateIntIntIntToIntLocations(arena_, invoke, DataType::Type::kInt64, /* is_volatile */ true);
 }
 void IntrinsicLocationsBuilderX86::VisitUnsafeGetObject(HInvoke* invoke) {
-  CreateIntIntIntToIntLocations(arena_, invoke, Primitive::kPrimNot, /* is_volatile */ false);
+  CreateIntIntIntToIntLocations(
+      arena_, invoke, DataType::Type::kReference, /* is_volatile */ false);
 }
 void IntrinsicLocationsBuilderX86::VisitUnsafeGetObjectVolatile(HInvoke* invoke) {
-  CreateIntIntIntToIntLocations(arena_, invoke, Primitive::kPrimNot, /* is_volatile */ true);
+  CreateIntIntIntToIntLocations(arena_, invoke, DataType::Type::kReference, /* is_volatile */ true);
 }
 
 
 void IntrinsicCodeGeneratorX86::VisitUnsafeGet(HInvoke* invoke) {
-  GenUnsafeGet(invoke, Primitive::kPrimInt, /* is_volatile */ false, codegen_);
+  GenUnsafeGet(invoke, DataType::Type::kInt32, /* is_volatile */ false, codegen_);
 }
 void IntrinsicCodeGeneratorX86::VisitUnsafeGetVolatile(HInvoke* invoke) {
-  GenUnsafeGet(invoke, Primitive::kPrimInt, /* is_volatile */ true, codegen_);
+  GenUnsafeGet(invoke, DataType::Type::kInt32, /* is_volatile */ true, codegen_);
 }
 void IntrinsicCodeGeneratorX86::VisitUnsafeGetLong(HInvoke* invoke) {
-  GenUnsafeGet(invoke, Primitive::kPrimLong, /* is_volatile */ false, codegen_);
+  GenUnsafeGet(invoke, DataType::Type::kInt64, /* is_volatile */ false, codegen_);
 }
 void IntrinsicCodeGeneratorX86::VisitUnsafeGetLongVolatile(HInvoke* invoke) {
-  GenUnsafeGet(invoke, Primitive::kPrimLong, /* is_volatile */ true, codegen_);
+  GenUnsafeGet(invoke, DataType::Type::kInt64, /* is_volatile */ true, codegen_);
 }
 void IntrinsicCodeGeneratorX86::VisitUnsafeGetObject(HInvoke* invoke) {
-  GenUnsafeGet(invoke, Primitive::kPrimNot, /* is_volatile */ false, codegen_);
+  GenUnsafeGet(invoke, DataType::Type::kReference, /* is_volatile */ false, codegen_);
 }
 void IntrinsicCodeGeneratorX86::VisitUnsafeGetObjectVolatile(HInvoke* invoke) {
-  GenUnsafeGet(invoke, Primitive::kPrimNot, /* is_volatile */ true, codegen_);
+  GenUnsafeGet(invoke, DataType::Type::kReference, /* is_volatile */ true, codegen_);
 }
 
 
 static void CreateIntIntIntIntToVoidPlusTempsLocations(ArenaAllocator* arena,
-                                                       Primitive::Type type,
+                                                       DataType::Type type,
                                                        HInvoke* invoke,
                                                        bool is_volatile) {
   LocationSummary* locations = new (arena) LocationSummary(invoke,
@@ -2154,12 +2155,12 @@ static void CreateIntIntIntIntToVoidPlusTempsLocations(ArenaAllocator* arena,
   locations->SetInAt(1, Location::RequiresRegister());
   locations->SetInAt(2, Location::RequiresRegister());
   locations->SetInAt(3, Location::RequiresRegister());
-  if (type == Primitive::kPrimNot) {
+  if (type == DataType::Type::kReference) {
     // Need temp registers for card-marking.
     locations->AddTemp(Location::RequiresRegister());  // Possibly used for reference poisoning too.
     // Ensure the value is in a byte register.
     locations->AddTemp(Location::RegisterLocation(ECX));
-  } else if (type == Primitive::kPrimLong && is_volatile) {
+  } else if (type == DataType::Type::kInt64 && is_volatile) {
     locations->AddTemp(Location::RequiresFpuRegister());
     locations->AddTemp(Location::RequiresFpuRegister());
   }
@@ -2167,45 +2168,45 @@ static void CreateIntIntIntIntToVoidPlusTempsLocations(ArenaAllocator* arena,
 
 void IntrinsicLocationsBuilderX86::VisitUnsafePut(HInvoke* invoke) {
   CreateIntIntIntIntToVoidPlusTempsLocations(
-      arena_, Primitive::kPrimInt, invoke, /* is_volatile */ false);
+      arena_, DataType::Type::kInt32, invoke, /* is_volatile */ false);
 }
 void IntrinsicLocationsBuilderX86::VisitUnsafePutOrdered(HInvoke* invoke) {
   CreateIntIntIntIntToVoidPlusTempsLocations(
-      arena_, Primitive::kPrimInt, invoke, /* is_volatile */ false);
+      arena_, DataType::Type::kInt32, invoke, /* is_volatile */ false);
 }
 void IntrinsicLocationsBuilderX86::VisitUnsafePutVolatile(HInvoke* invoke) {
   CreateIntIntIntIntToVoidPlusTempsLocations(
-      arena_, Primitive::kPrimInt, invoke, /* is_volatile */ true);
+      arena_, DataType::Type::kInt32, invoke, /* is_volatile */ true);
 }
 void IntrinsicLocationsBuilderX86::VisitUnsafePutObject(HInvoke* invoke) {
   CreateIntIntIntIntToVoidPlusTempsLocations(
-      arena_, Primitive::kPrimNot, invoke, /* is_volatile */ false);
+      arena_, DataType::Type::kReference, invoke, /* is_volatile */ false);
 }
 void IntrinsicLocationsBuilderX86::VisitUnsafePutObjectOrdered(HInvoke* invoke) {
   CreateIntIntIntIntToVoidPlusTempsLocations(
-      arena_, Primitive::kPrimNot, invoke, /* is_volatile */ false);
+      arena_, DataType::Type::kReference, invoke, /* is_volatile */ false);
 }
 void IntrinsicLocationsBuilderX86::VisitUnsafePutObjectVolatile(HInvoke* invoke) {
   CreateIntIntIntIntToVoidPlusTempsLocations(
-      arena_, Primitive::kPrimNot, invoke, /* is_volatile */ true);
+      arena_, DataType::Type::kReference, invoke, /* is_volatile */ true);
 }
 void IntrinsicLocationsBuilderX86::VisitUnsafePutLong(HInvoke* invoke) {
   CreateIntIntIntIntToVoidPlusTempsLocations(
-      arena_, Primitive::kPrimLong, invoke, /* is_volatile */ false);
+      arena_, DataType::Type::kInt64, invoke, /* is_volatile */ false);
 }
 void IntrinsicLocationsBuilderX86::VisitUnsafePutLongOrdered(HInvoke* invoke) {
   CreateIntIntIntIntToVoidPlusTempsLocations(
-      arena_, Primitive::kPrimLong, invoke, /* is_volatile */ false);
+      arena_, DataType::Type::kInt64, invoke, /* is_volatile */ false);
 }
 void IntrinsicLocationsBuilderX86::VisitUnsafePutLongVolatile(HInvoke* invoke) {
   CreateIntIntIntIntToVoidPlusTempsLocations(
-      arena_, Primitive::kPrimLong, invoke, /* is_volatile */ true);
+      arena_, DataType::Type::kInt64, invoke, /* is_volatile */ true);
 }
 
 // We don't care for ordered: it requires an AnyStore barrier, which is already given by the x86
 // memory model.
 static void GenUnsafePut(LocationSummary* locations,
-                         Primitive::Type type,
+                         DataType::Type type,
                          bool is_volatile,
                          CodeGeneratorX86* codegen) {
   X86Assembler* assembler = down_cast<X86Assembler*>(codegen->GetAssembler());
@@ -2213,7 +2214,7 @@ static void GenUnsafePut(LocationSummary* locations,
   Register offset = locations->InAt(2).AsRegisterPairLow<Register>();
   Location value_loc = locations->InAt(3);
 
-  if (type == Primitive::kPrimLong) {
+  if (type == DataType::Type::kInt64) {
     Register value_lo = value_loc.AsRegisterPairLow<Register>();
     Register value_hi = value_loc.AsRegisterPairHigh<Register>();
     if (is_volatile) {
@@ -2227,7 +2228,7 @@ static void GenUnsafePut(LocationSummary* locations,
       __ movl(Address(base, offset, ScaleFactor::TIMES_1, 0), value_lo);
       __ movl(Address(base, offset, ScaleFactor::TIMES_1, 4), value_hi);
     }
-  } else if (kPoisonHeapReferences && type == Primitive::kPrimNot) {
+  } else if (kPoisonHeapReferences && type == DataType::Type::kReference) {
     Register temp = locations->GetTemp(0).AsRegister<Register>();
     __ movl(temp, value_loc.AsRegister<Register>());
     __ PoisonHeapReference(temp);
@@ -2240,7 +2241,7 @@ static void GenUnsafePut(LocationSummary* locations,
     codegen->MemoryFence();
   }
 
-  if (type == Primitive::kPrimNot) {
+  if (type == DataType::Type::kReference) {
     bool value_can_be_null = true;  // TODO: Worth finding out this information?
     codegen->MarkGCCard(locations->GetTemp(0).AsRegister<Register>(),
                         locations->GetTemp(1).AsRegister<Register>(),
@@ -2251,35 +2252,38 @@ static void GenUnsafePut(LocationSummary* locations,
 }
 
 void IntrinsicCodeGeneratorX86::VisitUnsafePut(HInvoke* invoke) {
-  GenUnsafePut(invoke->GetLocations(), Primitive::kPrimInt, /* is_volatile */ false, codegen_);
+  GenUnsafePut(invoke->GetLocations(), DataType::Type::kInt32, /* is_volatile */ false, codegen_);
 }
 void IntrinsicCodeGeneratorX86::VisitUnsafePutOrdered(HInvoke* invoke) {
-  GenUnsafePut(invoke->GetLocations(), Primitive::kPrimInt, /* is_volatile */ false, codegen_);
+  GenUnsafePut(invoke->GetLocations(), DataType::Type::kInt32, /* is_volatile */ false, codegen_);
 }
 void IntrinsicCodeGeneratorX86::VisitUnsafePutVolatile(HInvoke* invoke) {
-  GenUnsafePut(invoke->GetLocations(), Primitive::kPrimInt, /* is_volatile */ true, codegen_);
+  GenUnsafePut(invoke->GetLocations(), DataType::Type::kInt32, /* is_volatile */ true, codegen_);
 }
 void IntrinsicCodeGeneratorX86::VisitUnsafePutObject(HInvoke* invoke) {
-  GenUnsafePut(invoke->GetLocations(), Primitive::kPrimNot, /* is_volatile */ false, codegen_);
+  GenUnsafePut(
+      invoke->GetLocations(), DataType::Type::kReference, /* is_volatile */ false, codegen_);
 }
 void IntrinsicCodeGeneratorX86::VisitUnsafePutObjectOrdered(HInvoke* invoke) {
-  GenUnsafePut(invoke->GetLocations(), Primitive::kPrimNot, /* is_volatile */ false, codegen_);
+  GenUnsafePut(
+      invoke->GetLocations(), DataType::Type::kReference, /* is_volatile */ false, codegen_);
 }
 void IntrinsicCodeGeneratorX86::VisitUnsafePutObjectVolatile(HInvoke* invoke) {
-  GenUnsafePut(invoke->GetLocations(), Primitive::kPrimNot, /* is_volatile */ true, codegen_);
+  GenUnsafePut(
+      invoke->GetLocations(), DataType::Type::kReference, /* is_volatile */ true, codegen_);
 }
 void IntrinsicCodeGeneratorX86::VisitUnsafePutLong(HInvoke* invoke) {
-  GenUnsafePut(invoke->GetLocations(), Primitive::kPrimLong, /* is_volatile */ false, codegen_);
+  GenUnsafePut(invoke->GetLocations(), DataType::Type::kInt64, /* is_volatile */ false, codegen_);
 }
 void IntrinsicCodeGeneratorX86::VisitUnsafePutLongOrdered(HInvoke* invoke) {
-  GenUnsafePut(invoke->GetLocations(), Primitive::kPrimLong, /* is_volatile */ false, codegen_);
+  GenUnsafePut(invoke->GetLocations(), DataType::Type::kInt64, /* is_volatile */ false, codegen_);
 }
 void IntrinsicCodeGeneratorX86::VisitUnsafePutLongVolatile(HInvoke* invoke) {
-  GenUnsafePut(invoke->GetLocations(), Primitive::kPrimLong, /* is_volatile */ true, codegen_);
+  GenUnsafePut(invoke->GetLocations(), DataType::Type::kInt64, /* is_volatile */ true, codegen_);
 }
 
 static void CreateIntIntIntIntIntToInt(ArenaAllocator* arena,
-                                       Primitive::Type type,
+                                       DataType::Type type,
                                        HInvoke* invoke) {
   bool can_call = kEmitCompilerReadBarrier &&
       kUseBakerReadBarrier &&
@@ -2296,7 +2300,7 @@ static void CreateIntIntIntIntIntToInt(ArenaAllocator* arena,
   locations->SetInAt(2, Location::RequiresRegister());
   // Expected value must be in EAX or EDX:EAX.
   // For long, new value must be in ECX:EBX.
-  if (type == Primitive::kPrimLong) {
+  if (type == DataType::Type::kInt64) {
     locations->SetInAt(3, Location::RegisterPairLocation(EAX, EDX));
     locations->SetInAt(4, Location::RegisterPairLocation(EBX, ECX));
   } else {
@@ -2306,7 +2310,7 @@ static void CreateIntIntIntIntIntToInt(ArenaAllocator* arena,
 
   // Force a byte register for the output.
   locations->SetOut(Location::RegisterLocation(EAX));
-  if (type == Primitive::kPrimNot) {
+  if (type == DataType::Type::kReference) {
     // Need temporary registers for card-marking, and possibly for
     // (Baker) read barrier.
     locations->AddTemp(Location::RequiresRegister());  // Possibly used for reference poisoning too.
@@ -2316,11 +2320,11 @@ static void CreateIntIntIntIntIntToInt(ArenaAllocator* arena,
 }
 
 void IntrinsicLocationsBuilderX86::VisitUnsafeCASInt(HInvoke* invoke) {
-  CreateIntIntIntIntIntToInt(arena_, Primitive::kPrimInt, invoke);
+  CreateIntIntIntIntIntToInt(arena_, DataType::Type::kInt32, invoke);
 }
 
 void IntrinsicLocationsBuilderX86::VisitUnsafeCASLong(HInvoke* invoke) {
-  CreateIntIntIntIntIntToInt(arena_, Primitive::kPrimLong, invoke);
+  CreateIntIntIntIntIntToInt(arena_, DataType::Type::kInt64, invoke);
 }
 
 void IntrinsicLocationsBuilderX86::VisitUnsafeCASObject(HInvoke* invoke) {
@@ -2330,10 +2334,10 @@ void IntrinsicLocationsBuilderX86::VisitUnsafeCASObject(HInvoke* invoke) {
     return;
   }
 
-  CreateIntIntIntIntIntToInt(arena_, Primitive::kPrimNot, invoke);
+  CreateIntIntIntIntIntToInt(arena_, DataType::Type::kReference, invoke);
 }
 
-static void GenCAS(Primitive::Type type, HInvoke* invoke, CodeGeneratorX86* codegen) {
+static void GenCAS(DataType::Type type, HInvoke* invoke, CodeGeneratorX86* codegen) {
   X86Assembler* assembler = down_cast<X86Assembler*>(codegen->GetAssembler());
   LocationSummary* locations = invoke->GetLocations();
 
@@ -2345,7 +2349,7 @@ static void GenCAS(Primitive::Type type, HInvoke* invoke, CodeGeneratorX86* code
   // The address of the field within the holding object.
   Address field_addr(base, offset, ScaleFactor::TIMES_1, 0);
 
-  if (type == Primitive::kPrimNot) {
+  if (type == DataType::Type::kReference) {
     // The only read barrier implementation supporting the
     // UnsafeCASObject intrinsic is the Baker-style read barriers.
     DCHECK(!kEmitCompilerReadBarrier || kUseBakerReadBarrier);
@@ -2426,12 +2430,12 @@ static void GenCAS(Primitive::Type type, HInvoke* invoke, CodeGeneratorX86* code
       // `expected`, as it is the same as register `out` (EAX).
     }
   } else {
-    if (type == Primitive::kPrimInt) {
+    if (type == DataType::Type::kInt32) {
       // Ensure the expected value is in EAX (required by the CMPXCHG
       // instruction).
       DCHECK_EQ(locations->InAt(3).AsRegister<Register>(), EAX);
       __ LockCmpxchgl(field_addr, locations->InAt(4).AsRegister<Register>());
-    } else if (type == Primitive::kPrimLong) {
+    } else if (type == DataType::Type::kInt64) {
       // Ensure the expected value is in EAX:EDX and that the new
       // value is in EBX:ECX (required by the CMPXCHG8B instruction).
       DCHECK_EQ(locations->InAt(3).AsRegisterPairLow<Register>(), EAX);
@@ -2453,11 +2457,11 @@ static void GenCAS(Primitive::Type type, HInvoke* invoke, CodeGeneratorX86* code
 }
 
 void IntrinsicCodeGeneratorX86::VisitUnsafeCASInt(HInvoke* invoke) {
-  GenCAS(Primitive::kPrimInt, invoke, codegen_);
+  GenCAS(DataType::Type::kInt32, invoke, codegen_);
 }
 
 void IntrinsicCodeGeneratorX86::VisitUnsafeCASLong(HInvoke* invoke) {
-  GenCAS(Primitive::kPrimLong, invoke, codegen_);
+  GenCAS(DataType::Type::kInt64, invoke, codegen_);
 }
 
 void IntrinsicCodeGeneratorX86::VisitUnsafeCASObject(HInvoke* invoke) {
@@ -2465,7 +2469,7 @@ void IntrinsicCodeGeneratorX86::VisitUnsafeCASObject(HInvoke* invoke) {
   // UnsafeCASObject intrinsic is the Baker-style read barriers.
   DCHECK(!kEmitCompilerReadBarrier || kUseBakerReadBarrier);
 
-  GenCAS(Primitive::kPrimNot, invoke, codegen_);
+  GenCAS(DataType::Type::kReference, invoke, codegen_);
 }
 
 void IntrinsicLocationsBuilderX86::VisitIntegerReverse(HInvoke* invoke) {
@@ -2824,16 +2828,16 @@ static bool IsSameInput(HInstruction* instruction, size_t input0, size_t input1)
 
 // Compute base address for the System.arraycopy intrinsic in `base`.
 static void GenSystemArrayCopyBaseAddress(X86Assembler* assembler,
-                                          Primitive::Type type,
+                                          DataType::Type type,
                                           const Register& array,
                                           const Location& pos,
                                           const Register& base) {
   // This routine is only used by the SystemArrayCopy intrinsic at the
-  // moment. We can allow Primitive::kPrimNot as `type` to implement
+  // moment. We can allow DataType::Type::kReference as `type` to implement
   // the SystemArrayCopyChar intrinsic.
-  DCHECK_EQ(type, Primitive::kPrimNot);
-  const int32_t element_size = Primitive::ComponentSize(type);
-  const ScaleFactor scale_factor = static_cast<ScaleFactor>(Primitive::ComponentSizeShift(type));
+  DCHECK_EQ(type, DataType::Type::kReference);
+  const int32_t element_size = DataType::Size(type);
+  const ScaleFactor scale_factor = static_cast<ScaleFactor>(DataType::SizeShift(type));
   const uint32_t data_offset = mirror::Array::DataOffset(element_size).Uint32Value();
 
   if (pos.IsConstant()) {
@@ -2846,16 +2850,16 @@ static void GenSystemArrayCopyBaseAddress(X86Assembler* assembler,
 
 // Compute end source address for the System.arraycopy intrinsic in `end`.
 static void GenSystemArrayCopyEndAddress(X86Assembler* assembler,
-                                         Primitive::Type type,
+                                         DataType::Type type,
                                          const Location& copy_length,
                                          const Register& base,
                                          const Register& end) {
   // This routine is only used by the SystemArrayCopy intrinsic at the
-  // moment. We can allow Primitive::kPrimNot as `type` to implement
+  // moment. We can allow DataType::Type::kReference as `type` to implement
   // the SystemArrayCopyChar intrinsic.
-  DCHECK_EQ(type, Primitive::kPrimNot);
-  const int32_t element_size = Primitive::ComponentSize(type);
-  const ScaleFactor scale_factor = static_cast<ScaleFactor>(Primitive::ComponentSizeShift(type));
+  DCHECK_EQ(type, DataType::Type::kReference);
+  const int32_t element_size = DataType::Size(type);
+  const ScaleFactor scale_factor = static_cast<ScaleFactor>(DataType::SizeShift(type));
 
   if (copy_length.IsConstant()) {
     int32_t constant = copy_length.GetConstant()->AsIntConstant()->GetValue();
@@ -3169,8 +3173,8 @@ void IntrinsicCodeGeneratorX86::VisitSystemArrayCopy(HInvoke* invoke) {
     __ j(kNotEqual, intrinsic_slow_path->GetEntryLabel());
   }
 
-  const Primitive::Type type = Primitive::kPrimNot;
-  const int32_t element_size = Primitive::ComponentSize(type);
+  const DataType::Type type = DataType::Type::kReference;
+  const int32_t element_size = DataType::Size(type);
 
   // Compute the base source address in `temp1`.
   GenSystemArrayCopyBaseAddress(GetAssembler(), type, src, src_pos, temp1);

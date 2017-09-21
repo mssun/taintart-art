@@ -271,21 +271,21 @@ class LSEVisitor : public HGraphVisitor {
     }
   }
 
-  HInstruction* GetDefaultValue(Primitive::Type type) {
+  HInstruction* GetDefaultValue(DataType::Type type) {
     switch (type) {
-      case Primitive::kPrimNot:
+      case DataType::Type::kReference:
         return GetGraph()->GetNullConstant();
-      case Primitive::kPrimBoolean:
-      case Primitive::kPrimByte:
-      case Primitive::kPrimChar:
-      case Primitive::kPrimShort:
-      case Primitive::kPrimInt:
+      case DataType::Type::kBool:
+      case DataType::Type::kInt8:
+      case DataType::Type::kUint16:
+      case DataType::Type::kInt16:
+      case DataType::Type::kInt32:
         return GetGraph()->GetIntConstant(0);
-      case Primitive::kPrimLong:
+      case DataType::Type::kInt64:
         return GetGraph()->GetLongConstant(0);
-      case Primitive::kPrimFloat:
+      case DataType::Type::kFloat32:
         return GetGraph()->GetFloatConstant(0);
-      case Primitive::kPrimDouble:
+      case DataType::Type::kFloat64:
         return GetGraph()->GetDoubleConstant(0);
       default:
         UNREACHABLE();
@@ -328,8 +328,7 @@ class LSEVisitor : public HGraphVisitor {
       // This acts like GVN but with better aliasing analysis.
       heap_values[idx] = instruction;
     } else {
-      if (Primitive::PrimitiveKind(heap_value->GetType())
-              != Primitive::PrimitiveKind(instruction->GetType())) {
+      if (DataType::Kind(heap_value->GetType()) != DataType::Kind(instruction->GetType())) {
         // The only situation where the same heap location has different type is when
         // we do an array get on an instruction that originates from the null constant
         // (the null could be behind a field access, an array access, a null check or

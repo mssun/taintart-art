@@ -461,15 +461,15 @@ TEST_F(RegisterAllocatorTest, FreeUntil) {
   // Add three temps holding the same register, and starting at different positions.
   // Put the one that should be picked in the middle of the inactive list to ensure
   // we do not depend on an order.
-  LiveInterval* interval = LiveInterval::MakeFixedInterval(&allocator, 0, Primitive::kPrimInt);
+  LiveInterval* interval = LiveInterval::MakeFixedInterval(&allocator, 0, DataType::Type::kInt32);
   interval->AddRange(40, 50);
   register_allocator.inactive_.push_back(interval);
 
-  interval = LiveInterval::MakeFixedInterval(&allocator, 0, Primitive::kPrimInt);
+  interval = LiveInterval::MakeFixedInterval(&allocator, 0, DataType::Type::kInt32);
   interval->AddRange(20, 30);
   register_allocator.inactive_.push_back(interval);
 
-  interval = LiveInterval::MakeFixedInterval(&allocator, 0, Primitive::kPrimInt);
+  interval = LiveInterval::MakeFixedInterval(&allocator, 0, DataType::Type::kInt32);
   interval->AddRange(60, 70);
   register_allocator.inactive_.push_back(interval);
 
@@ -496,7 +496,7 @@ static HGraph* BuildIfElseWithPhi(ArenaAllocator* allocator,
   graph->AddBlock(entry);
   graph->SetEntryBlock(entry);
   HInstruction* parameter = new (allocator) HParameterValue(
-      graph->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimNot);
+      graph->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);
   entry->AddInstruction(parameter);
 
   HBasicBlock* block = new (allocator) HBasicBlock(graph);
@@ -505,7 +505,7 @@ static HGraph* BuildIfElseWithPhi(ArenaAllocator* allocator,
 
   HInstruction* test = new (allocator) HInstanceFieldGet(parameter,
                                                          nullptr,
-                                                         Primitive::kPrimBoolean,
+                                                         DataType::Type::kBool,
                                                          MemberOffset(22),
                                                          false,
                                                          kUnknownFieldIndex,
@@ -528,11 +528,11 @@ static HGraph* BuildIfElseWithPhi(ArenaAllocator* allocator,
   then->AddInstruction(new (allocator) HGoto());
   else_->AddInstruction(new (allocator) HGoto());
 
-  *phi = new (allocator) HPhi(allocator, 0, 0, Primitive::kPrimInt);
+  *phi = new (allocator) HPhi(allocator, 0, 0, DataType::Type::kInt32);
   join->AddPhi(*phi);
   *input1 = new (allocator) HInstanceFieldGet(parameter,
                                               nullptr,
-                                              Primitive::kPrimInt,
+                                              DataType::Type::kInt32,
                                               MemberOffset(42),
                                               false,
                                               kUnknownFieldIndex,
@@ -541,7 +541,7 @@ static HGraph* BuildIfElseWithPhi(ArenaAllocator* allocator,
                                               0);
   *input2 = new (allocator) HInstanceFieldGet(parameter,
                                               nullptr,
-                                              Primitive::kPrimInt,
+                                              DataType::Type::kInt32,
                                               MemberOffset(42),
                                               false,
                                               kUnknownFieldIndex,
@@ -658,7 +658,7 @@ static HGraph* BuildFieldReturn(ArenaAllocator* allocator,
   graph->AddBlock(entry);
   graph->SetEntryBlock(entry);
   HInstruction* parameter = new (allocator) HParameterValue(
-      graph->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimNot);
+      graph->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);
   entry->AddInstruction(parameter);
 
   HBasicBlock* block = new (allocator) HBasicBlock(graph);
@@ -667,7 +667,7 @@ static HGraph* BuildFieldReturn(ArenaAllocator* allocator,
 
   *field = new (allocator) HInstanceFieldGet(parameter,
                                              nullptr,
-                                             Primitive::kPrimInt,
+                                             DataType::Type::kInt32,
                                              MemberOffset(42),
                                              false,
                                              kUnknownFieldIndex,
@@ -742,7 +742,7 @@ static HGraph* BuildTwoSubs(ArenaAllocator* allocator,
   graph->AddBlock(entry);
   graph->SetEntryBlock(entry);
   HInstruction* parameter = new (allocator) HParameterValue(
-      graph->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimInt);
+      graph->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kInt32);
   entry->AddInstruction(parameter);
 
   HInstruction* constant1 = graph->GetIntConstant(1);
@@ -752,9 +752,9 @@ static HGraph* BuildTwoSubs(ArenaAllocator* allocator,
   graph->AddBlock(block);
   entry->AddSuccessor(block);
 
-  *first_sub = new (allocator) HSub(Primitive::kPrimInt, parameter, constant1);
+  *first_sub = new (allocator) HSub(DataType::Type::kInt32, parameter, constant1);
   block->AddInstruction(*first_sub);
-  *second_sub = new (allocator) HSub(Primitive::kPrimInt, *first_sub, constant2);
+  *second_sub = new (allocator) HSub(DataType::Type::kInt32, *first_sub, constant2);
   block->AddInstruction(*second_sub);
 
   block->AddInstruction(new (allocator) HExit());
@@ -821,9 +821,9 @@ static HGraph* BuildDiv(ArenaAllocator* allocator,
   graph->AddBlock(entry);
   graph->SetEntryBlock(entry);
   HInstruction* first = new (allocator) HParameterValue(
-      graph->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimInt);
+      graph->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kInt32);
   HInstruction* second = new (allocator) HParameterValue(
-      graph->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimInt);
+      graph->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kInt32);
   entry->AddInstruction(first);
   entry->AddInstruction(second);
 
@@ -831,7 +831,8 @@ static HGraph* BuildDiv(ArenaAllocator* allocator,
   graph->AddBlock(block);
   entry->AddSuccessor(block);
 
-  *div = new (allocator) HDiv(Primitive::kPrimInt, first, second, 0);  // don't care about dex_pc.
+  *div =
+      new (allocator) HDiv(DataType::Type::kInt32, first, second, 0);  // don't care about dex_pc.
   block->AddInstruction(*div);
 
   block->AddInstruction(new (allocator) HExit());
@@ -883,13 +884,13 @@ TEST_F(RegisterAllocatorTest, SpillInactive) {
   graph->AddBlock(entry);
   graph->SetEntryBlock(entry);
   HInstruction* one = new (&allocator) HParameterValue(
-      graph->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimInt);
+      graph->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kInt32);
   HInstruction* two = new (&allocator) HParameterValue(
-      graph->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimInt);
+      graph->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kInt32);
   HInstruction* three = new (&allocator) HParameterValue(
-      graph->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimInt);
+      graph->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kInt32);
   HInstruction* four = new (&allocator) HParameterValue(
-      graph->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimInt);
+      graph->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kInt32);
   entry->AddInstruction(one);
   entry->AddInstruction(two);
   entry->AddInstruction(three);
@@ -902,7 +903,7 @@ TEST_F(RegisterAllocatorTest, SpillInactive) {
 
   // We create a synthesized user requesting a register, to avoid just spilling the
   // intervals.
-  HPhi* user = new (&allocator) HPhi(&allocator, 0, 1, Primitive::kPrimInt);
+  HPhi* user = new (&allocator) HPhi(&allocator, 0, 1, DataType::Type::kInt32);
   user->AddInput(one);
   user->SetBlock(block);
   LocationSummary* locations = new (&allocator) LocationSummary(user, LocationSummary::kNoCall);

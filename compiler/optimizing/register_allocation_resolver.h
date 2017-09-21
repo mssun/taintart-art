@@ -20,7 +20,7 @@
 #include "base/arena_containers.h"
 #include "base/array_ref.h"
 #include "base/value_object.h"
-#include "primitive.h"
+#include "data_type.h"
 
 namespace art {
 
@@ -88,7 +88,7 @@ class RegisterAllocationResolver : ValueObject {
                Location source,
                Location destination,
                HInstruction* instruction,
-               Primitive::Type type) const;
+               DataType::Type type) const;
 
   ArenaAllocator* const allocator_;
   CodeGenerator* const codegen_;

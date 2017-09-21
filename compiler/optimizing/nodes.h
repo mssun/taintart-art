@@ -28,6 +28,7 @@
 #include "base/iteration_range.h"
 #include "base/stl_util.h"
 #include "base/transform_array_ref.h"
+#include "data_type.h"
 #include "deoptimization_kind.h"
 #include "dex_file.h"
 #include "dex_file_types.h"
@@ -40,7 +41,6 @@
 #include "method_reference.h"
 #include "mirror/class.h"
 #include "offsets.h"
-#include "primitive.h"
 #include "utils/intrusive_forward_list.h"
 
 namespace art {
@@ -511,7 +511,7 @@ class HGraph : public ArenaObject<kArenaAllocGraph> {
   // Returns a constant of the given type and value. If it does not exist
   // already, it is created and inserted into the graph. This method is only for
   // integral types.
-  HConstant* GetConstant(Primitive::Type type, int64_t value, uint32_t dex_pc = kNoDexPc);
+  HConstant* GetConstant(DataType::Type type, int64_t value, uint32_t dex_pc = kNoDexPc);
 
   // TODO: This is problematic for the consistency of reference type propagation
   // because it can be created anytime after the pass and thus it will be left
@@ -1567,7 +1567,7 @@ using HConstInputsRef = TransformArrayRef<const HUserRecord<HInstruction*>, HInp
  * The internal representation uses 38-bit and is described in the table below.
  * The first line indicates the side effect, and for field/array accesses the
  * second line indicates the type of the access (in the order of the
- * Primitive::Type enum).
+ * DataType::Type enum).
  * The two numbered lines below indicate the bit position in the bitfield (read
  * vertically).
  *
@@ -1616,23 +1616,23 @@ class SideEffects : public ValueObject {
     return SideEffects(kAllReads);
   }
 
-  static SideEffects FieldWriteOfType(Primitive::Type type, bool is_volatile) {
+  static SideEffects FieldWriteOfType(DataType::Type type, bool is_volatile) {
     return is_volatile
         ? AllWritesAndReads()
         : SideEffects(TypeFlag(type, kFieldWriteOffset));
   }
 
-  static SideEffects ArrayWriteOfType(Primitive::Type type) {
+  static SideEffects ArrayWriteOfType(DataType::Type type) {
     return SideEffects(TypeFlag(type, kArrayWriteOffset));
   }
 
-  static SideEffects FieldReadOfType(Primitive::Type type, bool is_volatile) {
+  static SideEffects FieldReadOfType(DataType::Type type, bool is_volatile) {
     return is_volatile
         ? AllWritesAndReads()
         : SideEffects(TypeFlag(type, kFieldReadOffset));
   }
 
-  static SideEffects ArrayReadOfType(Primitive::Type type) {
+  static SideEffects ArrayReadOfType(DataType::Type type) {
     return SideEffects(TypeFlag(type, kArrayReadOffset));
   }
 
@@ -1761,13 +1761,13 @@ class SideEffects : public ValueObject {
       ((1ULL << (kLastBitForReads + 1 - kFieldReadOffset)) - 1) << kFieldReadOffset;
 
   // Translates type to bit flag.
-  static uint64_t TypeFlag(Primitive::Type type, int offset) {
-    CHECK_NE(type, Primitive::kPrimVoid);
+  static uint64_t TypeFlag(DataType::Type type, int offset) {
+    CHECK_NE(type, DataType::Type::kVoid);
     const uint64_t one = 1;
-    const int shift = type;  // 0-based consecutive enum
+    const int shift = static_cast<int>(type);  // 0-based consecutive enum
     DCHECK_LE(kFieldWriteOffset, shift);
     DCHECK_LT(shift, kArrayWriteOffset);
-    return one << (type + offset);
+    return one << (shift + offset);
   }
 
   // Private constructor on direct flags value.
@@ -1956,7 +1956,7 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
   virtual void Accept(HGraphVisitor* visitor) = 0;
   virtual const char* DebugName() const = 0;
 
-  virtual Primitive::Type GetType() const { return Primitive::kPrimVoid; }
+  virtual DataType::Type GetType() const { return DataType::Type::kVoid; }
 
   virtual bool NeedsEnvironment() const { return false; }
 
@@ -1977,7 +1977,7 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
   // simplifies the null check elimination.
   // TODO: Consider merging can_be_null into ReferenceTypeInfo.
   virtual bool CanBeNull() const {
-    DCHECK_EQ(GetType(), Primitive::kPrimNot) << "CanBeNull only applies to reference types";
+    DCHECK_EQ(GetType(), DataType::Type::kReference) << "CanBeNull only applies to reference types";
     return true;
   }
 
@@ -1986,13 +1986,13 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
   }
 
   virtual bool IsActualObject() const {
-    return GetType() == Primitive::kPrimNot;
+    return GetType() == DataType::Type::kReference;
   }
 
   void SetReferenceTypeInfo(ReferenceTypeInfo rti);
 
   ReferenceTypeInfo GetReferenceTypeInfo() const {
-    DCHECK_EQ(GetType(), Primitive::kPrimNot);
+    DCHECK_EQ(GetType(), DataType::Type::kReference);
     return ReferenceTypeInfo::CreateUnchecked(reference_type_handle_,
                                               GetPackedFlag<kFlagReferenceTypeIsExact>());
   }
@@ -2505,24 +2505,24 @@ class HTemplateInstruction<0>: public HInstruction {
 template<intptr_t N>
 class HExpression : public HTemplateInstruction<N> {
  public:
-  HExpression<N>(Primitive::Type type, SideEffects side_effects, uint32_t dex_pc)
+  HExpression<N>(DataType::Type type, SideEffects side_effects, uint32_t dex_pc)
       : HTemplateInstruction<N>(side_effects, dex_pc) {
     this->template SetPackedField<TypeField>(type);
   }
   virtual ~HExpression() {}
 
-  Primitive::Type GetType() const OVERRIDE {
+  DataType::Type GetType() const OVERRIDE {
     return TypeField::Decode(this->GetPackedFields());
   }
 
  protected:
   static constexpr size_t kFieldType = HInstruction::kNumberOfGenericPackedBits;
   static constexpr size_t kFieldTypeSize =
-      MinimumBitsToStore(static_cast<size_t>(Primitive::kPrimLast));
+      MinimumBitsToStore(static_cast<size_t>(DataType::Type::kLast));
   static constexpr size_t kNumberOfExpressionPackedBits = kFieldType + kFieldTypeSize;
   static_assert(kNumberOfExpressionPackedBits <= HInstruction::kMaxNumberOfPackedBits,
                 "Too many packed fields.");
-  using TypeField = BitField<Primitive::Type, kFieldType, kFieldTypeSize>;
+  using TypeField = BitField<DataType::Type, kFieldType, kFieldTypeSize>;
 };
 
 // Represents dex's RETURN_VOID opcode. A HReturnVoid is a control flow
@@ -2562,7 +2562,7 @@ class HPhi FINAL : public HVariableInputSizeInstruction {
   HPhi(ArenaAllocator* arena,
        uint32_t reg_number,
        size_t number_of_inputs,
-       Primitive::Type type,
+       DataType::Type type,
        uint32_t dex_pc = kNoDexPc)
       : HVariableInputSizeInstruction(
             SideEffects::None(),
@@ -2572,7 +2572,7 @@ class HPhi FINAL : public HVariableInputSizeInstruction {
             kArenaAllocPhiInputs),
         reg_number_(reg_number) {
     SetPackedField<TypeField>(ToPhiType(type));
-    DCHECK_NE(GetType(), Primitive::kPrimVoid);
+    DCHECK_NE(GetType(), DataType::Type::kVoid);
     // Phis are constructed live and marked dead if conflicting or unused.
     // Individual steps of SsaBuilder should assume that if a phi has been
     // marked dead, it can be ignored and will be removed by SsaPhiElimination.
@@ -2581,21 +2581,21 @@ class HPhi FINAL : public HVariableInputSizeInstruction {
   }
 
   // Returns a type equivalent to the given `type`, but that a `HPhi` can hold.
-  static Primitive::Type ToPhiType(Primitive::Type type) {
-    return Primitive::PrimitiveKind(type);
+  static DataType::Type ToPhiType(DataType::Type type) {
+    return DataType::Kind(type);
   }
 
   bool IsCatchPhi() const { return GetBlock()->IsCatchBlock(); }
 
-  Primitive::Type GetType() const OVERRIDE { return GetPackedField<TypeField>(); }
-  void SetType(Primitive::Type new_type) {
+  DataType::Type GetType() const OVERRIDE { return GetPackedField<TypeField>(); }
+  void SetType(DataType::Type new_type) {
     // Make sure that only valid type changes occur. The following are allowed:
     //  (1) int  -> float/ref (primitive type propagation),
     //  (2) long -> double (primitive type propagation).
     DCHECK(GetType() == new_type ||
-           (GetType() == Primitive::kPrimInt && new_type == Primitive::kPrimFloat) ||
-           (GetType() == Primitive::kPrimInt && new_type == Primitive::kPrimNot) ||
-           (GetType() == Primitive::kPrimLong && new_type == Primitive::kPrimDouble));
+           (GetType() == DataType::Type::kInt32 && new_type == DataType::Type::kFloat32) ||
+           (GetType() == DataType::Type::kInt32 && new_type == DataType::Type::kReference) ||
+           (GetType() == DataType::Type::kInt64 && new_type == DataType::Type::kFloat64));
     SetPackedField<TypeField>(new_type);
   }
 
@@ -2645,12 +2645,12 @@ class HPhi FINAL : public HVariableInputSizeInstruction {
  private:
   static constexpr size_t kFieldType = HInstruction::kNumberOfGenericPackedBits;
   static constexpr size_t kFieldTypeSize =
-      MinimumBitsToStore(static_cast<size_t>(Primitive::kPrimLast));
+      MinimumBitsToStore(static_cast<size_t>(DataType::Type::kLast));
   static constexpr size_t kFlagIsLive = kFieldType + kFieldTypeSize;
   static constexpr size_t kFlagCanBeNull = kFlagIsLive + 1;
   static constexpr size_t kNumberOfPhiPackedBits = kFlagCanBeNull + 1;
   static_assert(kNumberOfPhiPackedBits <= kMaxNumberOfPackedBits, "Too many packed fields.");
-  using TypeField = BitField<Primitive::Type, kFieldType, kFieldTypeSize>;
+  using TypeField = BitField<DataType::Type, kFieldType, kFieldTypeSize>;
 
   const uint32_t reg_number_;
 
@@ -2691,7 +2691,7 @@ class HGoto FINAL : public HTemplateInstruction<0> {
 
 class HConstant : public HExpression<0> {
  public:
-  explicit HConstant(Primitive::Type type, uint32_t dex_pc = kNoDexPc)
+  explicit HConstant(DataType::Type type, uint32_t dex_pc = kNoDexPc)
       : HExpression(type, SideEffects::None(), dex_pc) {}
 
   bool CanBeMoved() const OVERRIDE { return true; }
@@ -2729,7 +2729,8 @@ class HNullConstant FINAL : public HConstant {
   DECLARE_INSTRUCTION(NullConstant);
 
  private:
-  explicit HNullConstant(uint32_t dex_pc = kNoDexPc) : HConstant(Primitive::kPrimNot, dex_pc) {}
+  explicit HNullConstant(uint32_t dex_pc = kNoDexPc)
+      : HConstant(DataType::Type::kReference, dex_pc) {}
 
   friend class HGraph;
   DISALLOW_COPY_AND_ASSIGN(HNullConstant);
@@ -2766,9 +2767,9 @@ class HIntConstant FINAL : public HConstant {
 
  private:
   explicit HIntConstant(int32_t value, uint32_t dex_pc = kNoDexPc)
-      : HConstant(Primitive::kPrimInt, dex_pc), value_(value) {}
+      : HConstant(DataType::Type::kInt32, dex_pc), value_(value) {}
   explicit HIntConstant(bool value, uint32_t dex_pc = kNoDexPc)
-      : HConstant(Primitive::kPrimInt, dex_pc), value_(value ? 1 : 0) {}
+      : HConstant(DataType::Type::kInt32, dex_pc), value_(value ? 1 : 0) {}
 
   const int32_t value_;
 
@@ -2800,7 +2801,7 @@ class HLongConstant FINAL : public HConstant {
 
  private:
   explicit HLongConstant(int64_t value, uint32_t dex_pc = kNoDexPc)
-      : HConstant(Primitive::kPrimLong, dex_pc), value_(value) {}
+      : HConstant(DataType::Type::kInt64, dex_pc), value_(value) {}
 
   const int64_t value_;
 
@@ -2849,9 +2850,9 @@ class HFloatConstant FINAL : public HConstant {
 
  private:
   explicit HFloatConstant(float value, uint32_t dex_pc = kNoDexPc)
-      : HConstant(Primitive::kPrimFloat, dex_pc), value_(value) {}
+      : HConstant(DataType::Type::kFloat32, dex_pc), value_(value) {}
   explicit HFloatConstant(int32_t value, uint32_t dex_pc = kNoDexPc)
-      : HConstant(Primitive::kPrimFloat, dex_pc), value_(bit_cast<float, int32_t>(value)) {}
+      : HConstant(DataType::Type::kFloat32, dex_pc), value_(bit_cast<float, int32_t>(value)) {}
 
   const float value_;
 
@@ -2900,9 +2901,9 @@ class HDoubleConstant FINAL : public HConstant {
 
  private:
   explicit HDoubleConstant(double value, uint32_t dex_pc = kNoDexPc)
-      : HConstant(Primitive::kPrimDouble, dex_pc), value_(value) {}
+      : HConstant(DataType::Type::kFloat64, dex_pc), value_(value) {}
   explicit HDoubleConstant(int64_t value, uint32_t dex_pc = kNoDexPc)
-      : HConstant(Primitive::kPrimDouble, dex_pc), value_(bit_cast<double, int64_t>(value)) {}
+      : HConstant(DataType::Type::kFloat64, dex_pc), value_(bit_cast<double, int64_t>(value)) {}
 
   const double value_;
 
@@ -3051,8 +3052,8 @@ class HDeoptimize FINAL : public HVariableInputSizeInstruction {
 
   DeoptimizationKind GetDeoptimizationKind() const { return GetPackedField<DeoptimizeKindField>(); }
 
-  Primitive::Type GetType() const OVERRIDE {
-    return GuardsAnInput() ? GuardedInput()->GetType() : Primitive::kPrimVoid;
+  DataType::Type GetType() const OVERRIDE {
+    return GuardsAnInput() ? GuardedInput()->GetType() : DataType::Type::kVoid;
   }
 
   bool GuardsAnInput() const {
@@ -3098,7 +3099,7 @@ class HShouldDeoptimizeFlag FINAL : public HVariableInputSizeInstruction {
       : HVariableInputSizeInstruction(SideEffects::None(), dex_pc, arena, 0, kArenaAllocCHA) {
   }
 
-  Primitive::Type GetType() const OVERRIDE { return Primitive::kPrimInt; }
+  DataType::Type GetType() const OVERRIDE { return DataType::Type::kInt32; }
 
   // We do all CHA guard elimination/motion in a single pass, after which there is no
   // further guard elimination/motion since a guard might have been used for justification
@@ -3117,7 +3118,7 @@ class HShouldDeoptimizeFlag FINAL : public HVariableInputSizeInstruction {
 // instructions that work with the dex cache.
 class HCurrentMethod FINAL : public HExpression<0> {
  public:
-  explicit HCurrentMethod(Primitive::Type type, uint32_t dex_pc = kNoDexPc)
+  explicit HCurrentMethod(DataType::Type type, uint32_t dex_pc = kNoDexPc)
       : HExpression(type, SideEffects::None(), dex_pc) {}
 
   DECLARE_INSTRUCTION(CurrentMethod);
@@ -3136,7 +3137,7 @@ class HClassTableGet FINAL : public HExpression<1> {
     kLast = kIMTable
   };
   HClassTableGet(HInstruction* cls,
-                 Primitive::Type type,
+                 DataType::Type type,
                  TableKind kind,
                  size_t index,
                  uint32_t dex_pc)
@@ -3208,13 +3209,13 @@ class HPackedSwitch FINAL : public HTemplateInstruction<1> {
 
 class HUnaryOperation : public HExpression<1> {
  public:
-  HUnaryOperation(Primitive::Type result_type, HInstruction* input, uint32_t dex_pc = kNoDexPc)
+  HUnaryOperation(DataType::Type result_type, HInstruction* input, uint32_t dex_pc = kNoDexPc)
       : HExpression(result_type, SideEffects::None(), dex_pc) {
     SetRawInputAt(0, input);
   }
 
   HInstruction* GetInput() const { return InputAt(0); }
-  Primitive::Type GetResultType() const { return GetType(); }
+  DataType::Type GetResultType() const { return GetType(); }
 
   bool CanBeMoved() const OVERRIDE { return true; }
   bool InstructionDataEquals(const HInstruction* other ATTRIBUTE_UNUSED) const OVERRIDE {
@@ -3240,7 +3241,7 @@ class HUnaryOperation : public HExpression<1> {
 
 class HBinaryOperation : public HExpression<2> {
  public:
-  HBinaryOperation(Primitive::Type result_type,
+  HBinaryOperation(DataType::Type result_type,
                    HInstruction* left,
                    HInstruction* right,
                    SideEffects side_effects = SideEffects::None(),
@@ -3252,7 +3253,7 @@ class HBinaryOperation : public HExpression<2> {
 
   HInstruction* GetLeft() const { return InputAt(0); }
   HInstruction* GetRight() const { return InputAt(1); }
-  Primitive::Type GetResultType() const { return GetType(); }
+  DataType::Type GetResultType() const { return GetType(); }
 
   virtual bool IsCommutative() const { return false; }
 
@@ -3342,7 +3343,7 @@ std::ostream& operator<<(std::ostream& os, const ComparisonBias& rhs);
 class HCondition : public HBinaryOperation {
  public:
   HCondition(HInstruction* first, HInstruction* second, uint32_t dex_pc = kNoDexPc)
-      : HBinaryOperation(Primitive::kPrimBoolean, first, second, SideEffects::None(), dex_pc) {
+      : HBinaryOperation(DataType::Type::kBool, first, second, SideEffects::None(), dex_pc) {
     SetPackedField<ComparisonBiasField>(ComparisonBias::kNoBias);
   }
 
@@ -3367,7 +3368,7 @@ class HCondition : public HBinaryOperation {
   }
 
   bool IsFPConditionTrueIfNaN() const {
-    DCHECK(Primitive::IsFloatingPointType(InputAt(0)->GetType())) << InputAt(0)->GetType();
+    DCHECK(DataType::IsFloatingPointType(InputAt(0)->GetType())) << InputAt(0)->GetType();
     IfCondition if_cond = GetCondition();
     if (if_cond == kCondNE) {
       return true;
@@ -3378,7 +3379,7 @@ class HCondition : public HBinaryOperation {
   }
 
   bool IsFPConditionFalseIfNaN() const {
-    DCHECK(Primitive::IsFloatingPointType(InputAt(0)->GetType())) << InputAt(0)->GetType();
+    DCHECK(DataType::IsFloatingPointType(InputAt(0)->GetType())) << InputAt(0)->GetType();
     IfCondition if_cond = GetCondition();
     if (if_cond == kCondEQ) {
       return true;
@@ -3404,7 +3405,7 @@ class HCondition : public HBinaryOperation {
 
   template <typename T>
   int32_t CompareFP(T x, T y) const {
-    DCHECK(Primitive::IsFloatingPointType(InputAt(0)->GetType())) << InputAt(0)->GetType();
+    DCHECK(DataType::IsFloatingPointType(InputAt(0)->GetType())) << InputAt(0)->GetType();
     DCHECK_NE(GetBias(), ComparisonBias::kNoBias);
     // Handle the bias.
     return std::isunordered(x, y) ? (IsGtBias() ? 1 : -1) : Compare(x, y);
@@ -3821,20 +3822,20 @@ class HCompare FINAL : public HBinaryOperation {
  public:
   // Note that `comparison_type` is the type of comparison performed
   // between the comparison's inputs, not the type of the instantiated
-  // HCompare instruction (which is always Primitive::kPrimInt).
-  HCompare(Primitive::Type comparison_type,
+  // HCompare instruction (which is always DataType::Type::kInt).
+  HCompare(DataType::Type comparison_type,
            HInstruction* first,
            HInstruction* second,
            ComparisonBias bias,
            uint32_t dex_pc)
-      : HBinaryOperation(Primitive::kPrimInt,
+      : HBinaryOperation(DataType::Type::kInt32,
                          first,
                          second,
                          SideEffectsForArchRuntimeCalls(comparison_type),
                          dex_pc) {
     SetPackedField<ComparisonBiasField>(bias);
-    DCHECK_EQ(comparison_type, Primitive::PrimitiveKind(first->GetType()));
-    DCHECK_EQ(comparison_type, Primitive::PrimitiveKind(second->GetType()));
+    DCHECK_EQ(comparison_type, DataType::Kind(first->GetType()));
+    DCHECK_EQ(comparison_type, DataType::Kind(second->GetType()));
   }
 
   template <typename T>
@@ -3842,7 +3843,7 @@ class HCompare FINAL : public HBinaryOperation {
 
   template <typename T>
   int32_t ComputeFP(T x, T y) const {
-    DCHECK(Primitive::IsFloatingPointType(InputAt(0)->GetType())) << InputAt(0)->GetType();
+    DCHECK(DataType::IsFloatingPointType(InputAt(0)->GetType())) << InputAt(0)->GetType();
     DCHECK_NE(GetBias(), ComparisonBias::kNoBias);
     // Handle the bias.
     return std::isunordered(x, y) ? (IsGtBias() ? 1 : -1) : Compute(x, y);
@@ -3875,11 +3876,11 @@ class HCompare FINAL : public HBinaryOperation {
   // Does this compare instruction have a "gt bias" (vs an "lt bias")?
   // Only meaningful for floating-point comparisons.
   bool IsGtBias() const {
-    DCHECK(Primitive::IsFloatingPointType(InputAt(0)->GetType())) << InputAt(0)->GetType();
+    DCHECK(DataType::IsFloatingPointType(InputAt(0)->GetType())) << InputAt(0)->GetType();
     return GetBias() == ComparisonBias::kGtBias;
   }
 
-  static SideEffects SideEffectsForArchRuntimeCalls(Primitive::Type type ATTRIBUTE_UNUSED) {
+  static SideEffects SideEffectsForArchRuntimeCalls(DataType::Type type ATTRIBUTE_UNUSED) {
     // Comparisons do not require a runtime call in any back end.
     return SideEffects::None();
   }
@@ -3914,7 +3915,7 @@ class HNewInstance FINAL : public HExpression<1> {
                const DexFile& dex_file,
                bool finalizable,
                QuickEntrypointEnum entrypoint)
-      : HExpression(Primitive::kPrimNot, SideEffects::CanTriggerGC(), dex_pc),
+      : HExpression(DataType::Type::kReference, SideEffects::CanTriggerGC(), dex_pc),
         type_index_(type_index),
         dex_file_(dex_file),
         entrypoint_(entrypoint) {
@@ -4002,7 +4003,7 @@ class HInvoke : public HVariableInputSizeInstruction {
   // inputs at the end of their list of inputs.
   uint32_t GetNumberOfArguments() const { return number_of_arguments_; }
 
-  Primitive::Type GetType() const OVERRIDE { return GetPackedField<ReturnTypeField>(); }
+  DataType::Type GetType() const OVERRIDE { return GetPackedField<ReturnTypeField>(); }
 
   uint32_t GetDexMethodIndex() const { return dex_method_index_; }
 
@@ -4055,17 +4056,17 @@ class HInvoke : public HVariableInputSizeInstruction {
   static constexpr size_t kFieldReturnType =
       kFieldInvokeType + kFieldInvokeTypeSize;
   static constexpr size_t kFieldReturnTypeSize =
-      MinimumBitsToStore(static_cast<size_t>(Primitive::kPrimLast));
+      MinimumBitsToStore(static_cast<size_t>(DataType::Type::kLast));
   static constexpr size_t kFlagCanThrow = kFieldReturnType + kFieldReturnTypeSize;
   static constexpr size_t kNumberOfInvokePackedBits = kFlagCanThrow + 1;
   static_assert(kNumberOfInvokePackedBits <= kMaxNumberOfPackedBits, "Too many packed fields.");
   using InvokeTypeField = BitField<InvokeType, kFieldInvokeType, kFieldInvokeTypeSize>;
-  using ReturnTypeField = BitField<Primitive::Type, kFieldReturnType, kFieldReturnTypeSize>;
+  using ReturnTypeField = BitField<DataType::Type, kFieldReturnType, kFieldReturnTypeSize>;
 
   HInvoke(ArenaAllocator* arena,
           uint32_t number_of_arguments,
           uint32_t number_of_other_inputs,
-          Primitive::Type return_type,
+          DataType::Type return_type,
           uint32_t dex_pc,
           uint32_t dex_method_index,
           ArtMethod* resolved_method,
@@ -4102,7 +4103,7 @@ class HInvokeUnresolved FINAL : public HInvoke {
  public:
   HInvokeUnresolved(ArenaAllocator* arena,
                     uint32_t number_of_arguments,
-                    Primitive::Type return_type,
+                    DataType::Type return_type,
                     uint32_t dex_pc,
                     uint32_t dex_method_index,
                     InvokeType invoke_type)
@@ -4126,7 +4127,7 @@ class HInvokePolymorphic FINAL : public HInvoke {
  public:
   HInvokePolymorphic(ArenaAllocator* arena,
                      uint32_t number_of_arguments,
-                     Primitive::Type return_type,
+                     DataType::Type return_type,
                      uint32_t dex_pc,
                      uint32_t dex_method_index)
       : HInvoke(arena,
@@ -4203,7 +4204,7 @@ class HInvokeStaticOrDirect FINAL : public HInvoke {
 
   HInvokeStaticOrDirect(ArenaAllocator* arena,
                         uint32_t number_of_arguments,
-                        Primitive::Type return_type,
+                        DataType::Type return_type,
                         uint32_t dex_pc,
                         uint32_t method_index,
                         ArtMethod* resolved_method,
@@ -4281,7 +4282,7 @@ class HInvokeStaticOrDirect FINAL : public HInvoke {
   }
 
   bool CanBeNull() const OVERRIDE {
-    return GetPackedField<ReturnTypeField>() == Primitive::kPrimNot && !IsStringInit();
+    return GetPackedField<ReturnTypeField>() == DataType::Type::kReference && !IsStringInit();
   }
 
   // Get the index of the special input, if any.
@@ -4398,7 +4399,7 @@ class HInvokeVirtual FINAL : public HInvoke {
  public:
   HInvokeVirtual(ArenaAllocator* arena,
                  uint32_t number_of_arguments,
-                 Primitive::Type return_type,
+                 DataType::Type return_type,
                  uint32_t dex_pc,
                  uint32_t dex_method_index,
                  ArtMethod* resolved_method,
@@ -4446,7 +4447,7 @@ class HInvokeInterface FINAL : public HInvoke {
  public:
   HInvokeInterface(ArenaAllocator* arena,
                    uint32_t number_of_arguments,
-                   Primitive::Type return_type,
+                   DataType::Type return_type,
                    uint32_t dex_pc,
                    uint32_t dex_method_index,
                    ArtMethod* resolved_method,
@@ -4485,9 +4486,9 @@ class HInvokeInterface FINAL : public HInvoke {
 
 class HNeg FINAL : public HUnaryOperation {
  public:
-  HNeg(Primitive::Type result_type, HInstruction* input, uint32_t dex_pc = kNoDexPc)
+  HNeg(DataType::Type result_type, HInstruction* input, uint32_t dex_pc = kNoDexPc)
       : HUnaryOperation(result_type, input, dex_pc) {
-    DCHECK_EQ(result_type, Primitive::PrimitiveKind(input->GetType()));
+    DCHECK_EQ(result_type, DataType::Kind(input->GetType()));
   }
 
   template <typename T> static T Compute(T x) { return -x; }
@@ -4514,7 +4515,7 @@ class HNeg FINAL : public HUnaryOperation {
 class HNewArray FINAL : public HExpression<2> {
  public:
   HNewArray(HInstruction* cls, HInstruction* length, uint32_t dex_pc)
-      : HExpression(Primitive::kPrimNot, SideEffects::CanTriggerGC(), dex_pc) {
+      : HExpression(DataType::Type::kReference, SideEffects::CanTriggerGC(), dex_pc) {
     SetRawInputAt(0, cls);
     SetRawInputAt(1, length);
   }
@@ -4544,7 +4545,7 @@ class HNewArray FINAL : public HExpression<2> {
 
 class HAdd FINAL : public HBinaryOperation {
  public:
-  HAdd(Primitive::Type result_type,
+  HAdd(DataType::Type result_type,
        HInstruction* left,
        HInstruction* right,
        uint32_t dex_pc = kNoDexPc)
@@ -4579,7 +4580,7 @@ class HAdd FINAL : public HBinaryOperation {
 
 class HSub FINAL : public HBinaryOperation {
  public:
-  HSub(Primitive::Type result_type,
+  HSub(DataType::Type result_type,
        HInstruction* left,
        HInstruction* right,
        uint32_t dex_pc = kNoDexPc)
@@ -4612,7 +4613,7 @@ class HSub FINAL : public HBinaryOperation {
 
 class HMul FINAL : public HBinaryOperation {
  public:
-  HMul(Primitive::Type result_type,
+  HMul(DataType::Type result_type,
        HInstruction* left,
        HInstruction* right,
        uint32_t dex_pc = kNoDexPc)
@@ -4647,7 +4648,7 @@ class HMul FINAL : public HBinaryOperation {
 
 class HDiv FINAL : public HBinaryOperation {
  public:
-  HDiv(Primitive::Type result_type,
+  HDiv(DataType::Type result_type,
        HInstruction* left,
        HInstruction* right,
        uint32_t dex_pc)
@@ -4655,7 +4656,7 @@ class HDiv FINAL : public HBinaryOperation {
 
   template <typename T>
   T ComputeIntegral(T x, T y) const {
-    DCHECK(!Primitive::IsFloatingPointType(GetType())) << GetType();
+    DCHECK(!DataType::IsFloatingPointType(GetType())) << GetType();
     // Our graph structure ensures we never have 0 for `y` during
     // constant folding.
     DCHECK_NE(y, 0);
@@ -4665,7 +4666,7 @@ class HDiv FINAL : public HBinaryOperation {
 
   template <typename T>
   T ComputeFP(T x, T y) const {
-    DCHECK(Primitive::IsFloatingPointType(GetType())) << GetType();
+    DCHECK(DataType::IsFloatingPointType(GetType())) << GetType();
     return x / y;
   }
 
@@ -4694,7 +4695,7 @@ class HDiv FINAL : public HBinaryOperation {
 
 class HRem FINAL : public HBinaryOperation {
  public:
-  HRem(Primitive::Type result_type,
+  HRem(DataType::Type result_type,
        HInstruction* left,
        HInstruction* right,
        uint32_t dex_pc)
@@ -4702,7 +4703,7 @@ class HRem FINAL : public HBinaryOperation {
 
   template <typename T>
   T ComputeIntegral(T x, T y) const {
-    DCHECK(!Primitive::IsFloatingPointType(GetType())) << GetType();
+    DCHECK(!DataType::IsFloatingPointType(GetType())) << GetType();
     // Our graph structure ensures we never have 0 for `y` during
     // constant folding.
     DCHECK_NE(y, 0);
@@ -4712,7 +4713,7 @@ class HRem FINAL : public HBinaryOperation {
 
   template <typename T>
   T ComputeFP(T x, T y) const {
-    DCHECK(Primitive::IsFloatingPointType(GetType())) << GetType();
+    DCHECK(DataType::IsFloatingPointType(GetType())) << GetType();
     return std::fmod(x, y);
   }
 
@@ -4748,7 +4749,7 @@ class HDivZeroCheck FINAL : public HExpression<1> {
     SetRawInputAt(0, value);
   }
 
-  Primitive::Type GetType() const OVERRIDE { return InputAt(0)->GetType(); }
+  DataType::Type GetType() const OVERRIDE { return InputAt(0)->GetType(); }
 
   bool CanBeMoved() const OVERRIDE { return true; }
 
@@ -4767,13 +4768,13 @@ class HDivZeroCheck FINAL : public HExpression<1> {
 
 class HShl FINAL : public HBinaryOperation {
  public:
-  HShl(Primitive::Type result_type,
+  HShl(DataType::Type result_type,
        HInstruction* value,
        HInstruction* distance,
        uint32_t dex_pc = kNoDexPc)
       : HBinaryOperation(result_type, value, distance, SideEffects::None(), dex_pc) {
-    DCHECK_EQ(result_type, Primitive::PrimitiveKind(value->GetType()));
-    DCHECK_EQ(Primitive::kPrimInt, Primitive::PrimitiveKind(distance->GetType()));
+    DCHECK_EQ(result_type, DataType::Kind(value->GetType()));
+    DCHECK_EQ(DataType::Type::kInt32, DataType::Kind(distance->GetType()));
   }
 
   template <typename T>
@@ -4813,13 +4814,13 @@ class HShl FINAL : public HBinaryOperation {
 
 class HShr FINAL : public HBinaryOperation {
  public:
-  HShr(Primitive::Type result_type,
+  HShr(DataType::Type result_type,
        HInstruction* value,
        HInstruction* distance,
        uint32_t dex_pc = kNoDexPc)
       : HBinaryOperation(result_type, value, distance, SideEffects::None(), dex_pc) {
-    DCHECK_EQ(result_type, Primitive::PrimitiveKind(value->GetType()));
-    DCHECK_EQ(Primitive::kPrimInt, Primitive::PrimitiveKind(distance->GetType()));
+    DCHECK_EQ(result_type, DataType::Kind(value->GetType()));
+    DCHECK_EQ(DataType::Type::kInt32, DataType::Kind(distance->GetType()));
   }
 
   template <typename T>
@@ -4859,13 +4860,13 @@ class HShr FINAL : public HBinaryOperation {
 
 class HUShr FINAL : public HBinaryOperation {
  public:
-  HUShr(Primitive::Type result_type,
+  HUShr(DataType::Type result_type,
         HInstruction* value,
         HInstruction* distance,
         uint32_t dex_pc = kNoDexPc)
       : HBinaryOperation(result_type, value, distance, SideEffects::None(), dex_pc) {
-    DCHECK_EQ(result_type, Primitive::PrimitiveKind(value->GetType()));
-    DCHECK_EQ(Primitive::kPrimInt, Primitive::PrimitiveKind(distance->GetType()));
+    DCHECK_EQ(result_type, DataType::Kind(value->GetType()));
+    DCHECK_EQ(DataType::Type::kInt32, DataType::Kind(distance->GetType()));
   }
 
   template <typename T>
@@ -4907,7 +4908,7 @@ class HUShr FINAL : public HBinaryOperation {
 
 class HAnd FINAL : public HBinaryOperation {
  public:
-  HAnd(Primitive::Type result_type,
+  HAnd(DataType::Type result_type,
        HInstruction* left,
        HInstruction* right,
        uint32_t dex_pc = kNoDexPc)
@@ -4944,7 +4945,7 @@ class HAnd FINAL : public HBinaryOperation {
 
 class HOr FINAL : public HBinaryOperation {
  public:
-  HOr(Primitive::Type result_type,
+  HOr(DataType::Type result_type,
       HInstruction* left,
       HInstruction* right,
       uint32_t dex_pc = kNoDexPc)
@@ -4981,7 +4982,7 @@ class HOr FINAL : public HBinaryOperation {
 
 class HXor FINAL : public HBinaryOperation {
  public:
-  HXor(Primitive::Type result_type,
+  HXor(DataType::Type result_type,
        HInstruction* left,
        HInstruction* right,
        uint32_t dex_pc = kNoDexPc)
@@ -5018,10 +5019,10 @@ class HXor FINAL : public HBinaryOperation {
 
 class HRor FINAL : public HBinaryOperation {
  public:
-  HRor(Primitive::Type result_type, HInstruction* value, HInstruction* distance)
+  HRor(DataType::Type result_type, HInstruction* value, HInstruction* distance)
     : HBinaryOperation(result_type, value, distance) {
-    DCHECK_EQ(result_type, Primitive::PrimitiveKind(value->GetType()));
-    DCHECK_EQ(Primitive::kPrimInt, Primitive::PrimitiveKind(distance->GetType()));
+    DCHECK_EQ(result_type, DataType::Kind(value->GetType()));
+    DCHECK_EQ(DataType::Type::kInt32, DataType::Kind(distance->GetType()));
   }
 
   template <typename T>
@@ -5074,7 +5075,7 @@ class HParameterValue FINAL : public HExpression<0> {
   HParameterValue(const DexFile& dex_file,
                   dex::TypeIndex type_index,
                   uint8_t index,
-                  Primitive::Type parameter_type,
+                  DataType::Type parameter_type,
                   bool is_this = false)
       : HExpression(parameter_type, SideEffects::None(), kNoDexPc),
         dex_file_(dex_file),
@@ -5113,7 +5114,7 @@ class HParameterValue FINAL : public HExpression<0> {
 
 class HNot FINAL : public HUnaryOperation {
  public:
-  HNot(Primitive::Type result_type, HInstruction* input, uint32_t dex_pc = kNoDexPc)
+  HNot(DataType::Type result_type, HInstruction* input, uint32_t dex_pc = kNoDexPc)
       : HUnaryOperation(result_type, input, dex_pc) {}
 
   bool CanBeMoved() const OVERRIDE { return true; }
@@ -5147,7 +5148,7 @@ class HNot FINAL : public HUnaryOperation {
 class HBooleanNot FINAL : public HUnaryOperation {
  public:
   explicit HBooleanNot(HInstruction* input, uint32_t dex_pc = kNoDexPc)
-      : HUnaryOperation(Primitive::Type::kPrimBoolean, input, dex_pc) {}
+      : HUnaryOperation(DataType::Type::kBool, input, dex_pc) {}
 
   bool CanBeMoved() const OVERRIDE { return true; }
   bool InstructionDataEquals(const HInstruction* other ATTRIBUTE_UNUSED) const OVERRIDE {
@@ -5184,16 +5185,16 @@ class HBooleanNot FINAL : public HUnaryOperation {
 class HTypeConversion FINAL : public HExpression<1> {
  public:
   // Instantiate a type conversion of `input` to `result_type`.
-  HTypeConversion(Primitive::Type result_type, HInstruction* input, uint32_t dex_pc)
+  HTypeConversion(DataType::Type result_type, HInstruction* input, uint32_t dex_pc)
       : HExpression(result_type, SideEffects::None(), dex_pc) {
     SetRawInputAt(0, input);
     // Invariant: We should never generate a conversion to a Boolean value.
-    DCHECK_NE(Primitive::kPrimBoolean, result_type);
+    DCHECK_NE(DataType::Type::kBool, result_type);
   }
 
   HInstruction* GetInput() const { return InputAt(0); }
-  Primitive::Type GetInputType() const { return GetInput()->GetType(); }
-  Primitive::Type GetResultType() const { return GetType(); }
+  DataType::Type GetInputType() const { return GetInput()->GetType(); }
+  DataType::Type GetResultType() const { return GetType(); }
 
   bool CanBeMoved() const OVERRIDE { return true; }
   bool InstructionDataEquals(const HInstruction* other ATTRIBUTE_UNUSED) const OVERRIDE {
@@ -5245,7 +5246,7 @@ class FieldInfo : public ValueObject {
  public:
   FieldInfo(ArtField* field,
             MemberOffset field_offset,
-            Primitive::Type field_type,
+            DataType::Type field_type,
             bool is_volatile,
             uint32_t index,
             uint16_t declaring_class_def_index,
@@ -5260,7 +5261,7 @@ class FieldInfo : public ValueObject {
 
   ArtField* GetField() const { return field_; }
   MemberOffset GetFieldOffset() const { return field_offset_; }
-  Primitive::Type GetFieldType() const { return field_type_; }
+  DataType::Type GetFieldType() const { return field_type_; }
   uint32_t GetFieldIndex() const { return index_; }
   uint16_t GetDeclaringClassDefIndex() const { return declaring_class_def_index_;}
   const DexFile& GetDexFile() const { return dex_file_; }
@@ -5269,7 +5270,7 @@ class FieldInfo : public ValueObject {
  private:
   ArtField* const field_;
   const MemberOffset field_offset_;
-  const Primitive::Type field_type_;
+  const DataType::Type field_type_;
   const bool is_volatile_;
   const uint32_t index_;
   const uint16_t declaring_class_def_index_;
@@ -5280,7 +5281,7 @@ class HInstanceFieldGet FINAL : public HExpression<1> {
  public:
   HInstanceFieldGet(HInstruction* value,
                     ArtField* field,
-                    Primitive::Type field_type,
+                    DataType::Type field_type,
                     MemberOffset field_offset,
                     bool is_volatile,
                     uint32_t field_idx,
@@ -5315,7 +5316,7 @@ class HInstanceFieldGet FINAL : public HExpression<1> {
 
   const FieldInfo& GetFieldInfo() const { return field_info_; }
   MemberOffset GetFieldOffset() const { return field_info_.GetFieldOffset(); }
-  Primitive::Type GetFieldType() const { return field_info_.GetFieldType(); }
+  DataType::Type GetFieldType() const { return field_info_.GetFieldType(); }
   bool IsVolatile() const { return field_info_.IsVolatile(); }
 
   DECLARE_INSTRUCTION(InstanceFieldGet);
@@ -5331,7 +5332,7 @@ class HInstanceFieldSet FINAL : public HTemplateInstruction<2> {
   HInstanceFieldSet(HInstruction* object,
                     HInstruction* value,
                     ArtField* field,
-                    Primitive::Type field_type,
+                    DataType::Type field_type,
                     MemberOffset field_offset,
                     bool is_volatile,
                     uint32_t field_idx,
@@ -5357,7 +5358,7 @@ class HInstanceFieldSet FINAL : public HTemplateInstruction<2> {
 
   const FieldInfo& GetFieldInfo() const { return field_info_; }
   MemberOffset GetFieldOffset() const { return field_info_.GetFieldOffset(); }
-  Primitive::Type GetFieldType() const { return field_info_.GetFieldType(); }
+  DataType::Type GetFieldType() const { return field_info_.GetFieldType(); }
   bool IsVolatile() const { return field_info_.IsVolatile(); }
   HInstruction* GetValue() const { return InputAt(1); }
   bool GetValueCanBeNull() const { return GetPackedFlag<kFlagValueCanBeNull>(); }
@@ -5380,7 +5381,7 @@ class HArrayGet FINAL : public HExpression<2> {
  public:
   HArrayGet(HInstruction* array,
             HInstruction* index,
-            Primitive::Type type,
+            DataType::Type type,
             uint32_t dex_pc,
             bool is_string_char_at = false)
       : HExpression(type, SideEffects::ArrayReadOfType(type), dex_pc) {
@@ -5414,11 +5415,11 @@ class HArrayGet FINAL : public HExpression<2> {
       DCHECK_EQ(GetBlock(), other->GetBlock());
       DCHECK_EQ(GetArray(), other->GetArray());
       DCHECK_EQ(GetIndex(), other->GetIndex());
-      if (Primitive::IsIntOrLongType(GetType())) {
-        DCHECK(Primitive::IsFloatingPointType(other->GetType())) << other->GetType();
+      if (DataType::IsIntOrLongType(GetType())) {
+        DCHECK(DataType::IsFloatingPointType(other->GetType())) << other->GetType();
       } else {
-        DCHECK(Primitive::IsFloatingPointType(GetType())) << GetType();
-        DCHECK(Primitive::IsIntOrLongType(other->GetType())) << other->GetType();
+        DCHECK(DataType::IsFloatingPointType(GetType())) << GetType();
+        DCHECK(DataType::IsIntOrLongType(other->GetType())) << other->GetType();
       }
     }
     return result;
@@ -5450,11 +5451,11 @@ class HArraySet FINAL : public HTemplateInstruction<3> {
   HArraySet(HInstruction* array,
             HInstruction* index,
             HInstruction* value,
-            Primitive::Type expected_component_type,
+            DataType::Type expected_component_type,
             uint32_t dex_pc)
       : HTemplateInstruction(SideEffects::None(), dex_pc) {
     SetPackedField<ExpectedComponentTypeField>(expected_component_type);
-    SetPackedFlag<kFlagNeedsTypeCheck>(value->GetType() == Primitive::kPrimNot);
+    SetPackedFlag<kFlagNeedsTypeCheck>(value->GetType() == DataType::Type::kReference);
     SetPackedFlag<kFlagValueCanBeNull>(true);
     SetPackedFlag<kFlagStaticTypeOfArrayIsObjectArray>(false);
     SetRawInputAt(0, array);
@@ -5499,29 +5500,30 @@ class HArraySet FINAL : public HTemplateInstruction<3> {
   HInstruction* GetIndex() const { return InputAt(1); }
   HInstruction* GetValue() const { return InputAt(2); }
 
-  Primitive::Type GetComponentType() const {
+  DataType::Type GetComponentType() const {
     // The Dex format does not type floating point index operations. Since the
     // `expected_component_type_` is set during building and can therefore not
     // be correct, we also check what is the value type. If it is a floating
     // point type, we must use that type.
-    Primitive::Type value_type = GetValue()->GetType();
-    return ((value_type == Primitive::kPrimFloat) || (value_type == Primitive::kPrimDouble))
+    DataType::Type value_type = GetValue()->GetType();
+    return ((value_type == DataType::Type::kFloat32) || (value_type == DataType::Type::kFloat64))
         ? value_type
         : GetRawExpectedComponentType();
   }
 
-  Primitive::Type GetRawExpectedComponentType() const {
+  DataType::Type GetRawExpectedComponentType() const {
     return GetPackedField<ExpectedComponentTypeField>();
   }
 
   void ComputeSideEffects() {
-    Primitive::Type type = GetComponentType();
+    DataType::Type type = GetComponentType();
     SetSideEffects(SideEffects::ArrayWriteOfType(type).Union(
         SideEffectsForArchRuntimeCalls(type)));
   }
 
-  static SideEffects SideEffectsForArchRuntimeCalls(Primitive::Type value_type) {
-    return (value_type == Primitive::kPrimNot) ? SideEffects::CanTriggerGC() : SideEffects::None();
+  static SideEffects SideEffectsForArchRuntimeCalls(DataType::Type value_type) {
+    return (value_type == DataType::Type::kReference) ? SideEffects::CanTriggerGC()
+                                                      : SideEffects::None();
   }
 
   DECLARE_INSTRUCTION(ArraySet);
@@ -5529,7 +5531,7 @@ class HArraySet FINAL : public HTemplateInstruction<3> {
  private:
   static constexpr size_t kFieldExpectedComponentType = kNumberOfGenericPackedBits;
   static constexpr size_t kFieldExpectedComponentTypeSize =
-      MinimumBitsToStore(static_cast<size_t>(Primitive::kPrimLast));
+      MinimumBitsToStore(static_cast<size_t>(DataType::Type::kLast));
   static constexpr size_t kFlagNeedsTypeCheck =
       kFieldExpectedComponentType + kFieldExpectedComponentTypeSize;
   static constexpr size_t kFlagValueCanBeNull = kFlagNeedsTypeCheck + 1;
@@ -5540,7 +5542,7 @@ class HArraySet FINAL : public HTemplateInstruction<3> {
       kFlagStaticTypeOfArrayIsObjectArray + 1;
   static_assert(kNumberOfArraySetPackedBits <= kMaxNumberOfPackedBits, "Too many packed fields.");
   using ExpectedComponentTypeField =
-      BitField<Primitive::Type, kFieldExpectedComponentType, kFieldExpectedComponentTypeSize>;
+      BitField<DataType::Type, kFieldExpectedComponentType, kFieldExpectedComponentTypeSize>;
 
   DISALLOW_COPY_AND_ASSIGN(HArraySet);
 };
@@ -5548,7 +5550,7 @@ class HArraySet FINAL : public HTemplateInstruction<3> {
 class HArrayLength FINAL : public HExpression<1> {
  public:
   HArrayLength(HInstruction* array, uint32_t dex_pc, bool is_string_length = false)
-      : HExpression(Primitive::kPrimInt, SideEffects::None(), dex_pc) {
+      : HExpression(DataType::Type::kInt32, SideEffects::None(), dex_pc) {
     SetPackedFlag<kFlagIsStringLength>(is_string_length);
     // Note that arrays do not change length, so the instruction does not
     // depend on any write.
@@ -5590,7 +5592,7 @@ class HBoundsCheck FINAL : public HExpression<2> {
                uint32_t dex_pc,
                bool string_char_at = false)
       : HExpression(index->GetType(), SideEffects::CanTriggerGC(), dex_pc) {
-    DCHECK_EQ(Primitive::kPrimInt, Primitive::PrimitiveKind(index->GetType()));
+    DCHECK_EQ(DataType::Type::kInt32, DataType::Kind(index->GetType()));
     SetPackedFlag<kFlagIsStringCharAt>(string_char_at);
     SetRawInputAt(0, index);
     SetRawInputAt(1, length);
@@ -5800,8 +5802,8 @@ class HLoadClass FINAL : public HInstruction {
         &special_input_, (special_input_.GetInstruction() != nullptr) ? 1u : 0u);
   }
 
-  Primitive::Type GetType() const OVERRIDE {
-    return Primitive::kPrimNot;
+  DataType::Type GetType() const OVERRIDE {
+    return DataType::Type::kReference;
   }
 
   Handle<mirror::Class> GetClass() const {
@@ -5968,8 +5970,8 @@ class HLoadString FINAL : public HInstruction {
         &special_input_, (special_input_.GetInstruction() != nullptr) ? 1u : 0u);
   }
 
-  Primitive::Type GetType() const OVERRIDE {
-    return Primitive::kPrimNot;
+  DataType::Type GetType() const OVERRIDE {
+    return DataType::Type::kReference;
   }
 
   DECLARE_INSTRUCTION(LoadString);
@@ -6020,7 +6022,7 @@ class HClinitCheck FINAL : public HExpression<1> {
  public:
   HClinitCheck(HLoadClass* constant, uint32_t dex_pc)
       : HExpression(
-            Primitive::kPrimNot,
+            DataType::Type::kReference,
             SideEffects::AllChanges(),  // Assume write/read on all fields/arrays.
             dex_pc) {
     SetRawInputAt(0, constant);
@@ -6053,7 +6055,7 @@ class HStaticFieldGet FINAL : public HExpression<1> {
  public:
   HStaticFieldGet(HInstruction* cls,
                   ArtField* field,
-                  Primitive::Type field_type,
+                  DataType::Type field_type,
                   MemberOffset field_offset,
                   bool is_volatile,
                   uint32_t field_idx,
@@ -6085,7 +6087,7 @@ class HStaticFieldGet FINAL : public HExpression<1> {
 
   const FieldInfo& GetFieldInfo() const { return field_info_; }
   MemberOffset GetFieldOffset() const { return field_info_.GetFieldOffset(); }
-  Primitive::Type GetFieldType() const { return field_info_.GetFieldType(); }
+  DataType::Type GetFieldType() const { return field_info_.GetFieldType(); }
   bool IsVolatile() const { return field_info_.IsVolatile(); }
 
   DECLARE_INSTRUCTION(StaticFieldGet);
@@ -6101,7 +6103,7 @@ class HStaticFieldSet FINAL : public HTemplateInstruction<2> {
   HStaticFieldSet(HInstruction* cls,
                   HInstruction* value,
                   ArtField* field,
-                  Primitive::Type field_type,
+                  DataType::Type field_type,
                   MemberOffset field_offset,
                   bool is_volatile,
                   uint32_t field_idx,
@@ -6123,7 +6125,7 @@ class HStaticFieldSet FINAL : public HTemplateInstruction<2> {
 
   const FieldInfo& GetFieldInfo() const { return field_info_; }
   MemberOffset GetFieldOffset() const { return field_info_.GetFieldOffset(); }
-  Primitive::Type GetFieldType() const { return field_info_.GetFieldType(); }
+  DataType::Type GetFieldType() const { return field_info_.GetFieldType(); }
   bool IsVolatile() const { return field_info_.IsVolatile(); }
 
   HInstruction* GetValue() const { return InputAt(1); }
@@ -6146,7 +6148,7 @@ class HStaticFieldSet FINAL : public HTemplateInstruction<2> {
 class HUnresolvedInstanceFieldGet FINAL : public HExpression<1> {
  public:
   HUnresolvedInstanceFieldGet(HInstruction* obj,
-                              Primitive::Type field_type,
+                              DataType::Type field_type,
                               uint32_t field_index,
                               uint32_t dex_pc)
       : HExpression(field_type, SideEffects::AllExceptGCDependency(), dex_pc),
@@ -6157,7 +6159,7 @@ class HUnresolvedInstanceFieldGet FINAL : public HExpression<1> {
   bool NeedsEnvironment() const OVERRIDE { return true; }
   bool CanThrow() const OVERRIDE { return true; }
 
-  Primitive::Type GetFieldType() const { return GetType(); }
+  DataType::Type GetFieldType() const { return GetType(); }
   uint32_t GetFieldIndex() const { return field_index_; }
 
   DECLARE_INSTRUCTION(UnresolvedInstanceFieldGet);
@@ -6172,13 +6174,13 @@ class HUnresolvedInstanceFieldSet FINAL : public HTemplateInstruction<2> {
  public:
   HUnresolvedInstanceFieldSet(HInstruction* obj,
                               HInstruction* value,
-                              Primitive::Type field_type,
+                              DataType::Type field_type,
                               uint32_t field_index,
                               uint32_t dex_pc)
       : HTemplateInstruction(SideEffects::AllExceptGCDependency(), dex_pc),
         field_index_(field_index) {
     SetPackedField<FieldTypeField>(field_type);
-    DCHECK_EQ(Primitive::PrimitiveKind(field_type), Primitive::PrimitiveKind(value->GetType()));
+    DCHECK_EQ(DataType::Kind(field_type), DataType::Kind(value->GetType()));
     SetRawInputAt(0, obj);
     SetRawInputAt(1, value);
   }
@@ -6186,7 +6188,7 @@ class HUnresolvedInstanceFieldSet FINAL : public HTemplateInstruction<2> {
   bool NeedsEnvironment() const OVERRIDE { return true; }
   bool CanThrow() const OVERRIDE { return true; }
 
-  Primitive::Type GetFieldType() const { return GetPackedField<FieldTypeField>(); }
+  DataType::Type GetFieldType() const { return GetPackedField<FieldTypeField>(); }
   uint32_t GetFieldIndex() const { return field_index_; }
 
   DECLARE_INSTRUCTION(UnresolvedInstanceFieldSet);
@@ -6194,12 +6196,12 @@ class HUnresolvedInstanceFieldSet FINAL : public HTemplateInstruction<2> {
  private:
   static constexpr size_t kFieldFieldType = HInstruction::kNumberOfGenericPackedBits;
   static constexpr size_t kFieldFieldTypeSize =
-      MinimumBitsToStore(static_cast<size_t>(Primitive::kPrimLast));
+      MinimumBitsToStore(static_cast<size_t>(DataType::Type::kLast));
   static constexpr size_t kNumberOfUnresolvedStaticFieldSetPackedBits =
       kFieldFieldType + kFieldFieldTypeSize;
   static_assert(kNumberOfUnresolvedStaticFieldSetPackedBits <= HInstruction::kMaxNumberOfPackedBits,
                 "Too many packed fields.");
-  using FieldTypeField = BitField<Primitive::Type, kFieldFieldType, kFieldFieldTypeSize>;
+  using FieldTypeField = BitField<DataType::Type, kFieldFieldType, kFieldFieldTypeSize>;
 
   const uint32_t field_index_;
 
@@ -6208,7 +6210,7 @@ class HUnresolvedInstanceFieldSet FINAL : public HTemplateInstruction<2> {
 
 class HUnresolvedStaticFieldGet FINAL : public HExpression<0> {
  public:
-  HUnresolvedStaticFieldGet(Primitive::Type field_type,
+  HUnresolvedStaticFieldGet(DataType::Type field_type,
                             uint32_t field_index,
                             uint32_t dex_pc)
       : HExpression(field_type, SideEffects::AllExceptGCDependency(), dex_pc),
@@ -6218,7 +6220,7 @@ class HUnresolvedStaticFieldGet FINAL : public HExpression<0> {
   bool NeedsEnvironment() const OVERRIDE { return true; }
   bool CanThrow() const OVERRIDE { return true; }
 
-  Primitive::Type GetFieldType() const { return GetType(); }
+  DataType::Type GetFieldType() const { return GetType(); }
   uint32_t GetFieldIndex() const { return field_index_; }
 
   DECLARE_INSTRUCTION(UnresolvedStaticFieldGet);
@@ -6232,20 +6234,20 @@ class HUnresolvedStaticFieldGet FINAL : public HExpression<0> {
 class HUnresolvedStaticFieldSet FINAL : public HTemplateInstruction<1> {
  public:
   HUnresolvedStaticFieldSet(HInstruction* value,
-                            Primitive::Type field_type,
+                            DataType::Type field_type,
                             uint32_t field_index,
                             uint32_t dex_pc)
       : HTemplateInstruction(SideEffects::AllExceptGCDependency(), dex_pc),
         field_index_(field_index) {
     SetPackedField<FieldTypeField>(field_type);
-    DCHECK_EQ(Primitive::PrimitiveKind(field_type), Primitive::PrimitiveKind(value->GetType()));
+    DCHECK_EQ(DataType::Kind(field_type), DataType::Kind(value->GetType()));
     SetRawInputAt(0, value);
   }
 
   bool NeedsEnvironment() const OVERRIDE { return true; }
   bool CanThrow() const OVERRIDE { return true; }
 
-  Primitive::Type GetFieldType() const { return GetPackedField<FieldTypeField>(); }
+  DataType::Type GetFieldType() const { return GetPackedField<FieldTypeField>(); }
   uint32_t GetFieldIndex() const { return field_index_; }
 
   DECLARE_INSTRUCTION(UnresolvedStaticFieldSet);
@@ -6253,12 +6255,12 @@ class HUnresolvedStaticFieldSet FINAL : public HTemplateInstruction<1> {
  private:
   static constexpr size_t kFieldFieldType = HInstruction::kNumberOfGenericPackedBits;
   static constexpr size_t kFieldFieldTypeSize =
-      MinimumBitsToStore(static_cast<size_t>(Primitive::kPrimLast));
+      MinimumBitsToStore(static_cast<size_t>(DataType::Type::kLast));
   static constexpr size_t kNumberOfUnresolvedStaticFieldSetPackedBits =
       kFieldFieldType + kFieldFieldTypeSize;
   static_assert(kNumberOfUnresolvedStaticFieldSetPackedBits <= HInstruction::kMaxNumberOfPackedBits,
                 "Too many packed fields.");
-  using FieldTypeField = BitField<Primitive::Type, kFieldFieldType, kFieldFieldTypeSize>;
+  using FieldTypeField = BitField<DataType::Type, kFieldFieldType, kFieldFieldTypeSize>;
 
   const uint32_t field_index_;
 
@@ -6269,7 +6271,7 @@ class HUnresolvedStaticFieldSet FINAL : public HTemplateInstruction<1> {
 class HLoadException FINAL : public HExpression<0> {
  public:
   explicit HLoadException(uint32_t dex_pc = kNoDexPc)
-      : HExpression(Primitive::kPrimNot, SideEffects::None(), dex_pc) {}
+      : HExpression(DataType::Type::kReference, SideEffects::None(), dex_pc) {}
 
   bool CanBeNull() const OVERRIDE { return false; }
 
@@ -6335,7 +6337,7 @@ class HInstanceOf FINAL : public HExpression<2> {
               HLoadClass* constant,
               TypeCheckKind check_kind,
               uint32_t dex_pc)
-      : HExpression(Primitive::kPrimBoolean,
+      : HExpression(DataType::Type::kBool,
                     SideEffectsForArchRuntimeCalls(check_kind),
                     dex_pc) {
     SetPackedField<TypeCheckKindField>(check_kind);
@@ -6386,11 +6388,11 @@ class HInstanceOf FINAL : public HExpression<2> {
 class HBoundType FINAL : public HExpression<1> {
  public:
   explicit HBoundType(HInstruction* input, uint32_t dex_pc = kNoDexPc)
-      : HExpression(Primitive::kPrimNot, SideEffects::None(), dex_pc),
+      : HExpression(DataType::Type::kReference, SideEffects::None(), dex_pc),
         upper_bound_(ReferenceTypeInfo::CreateInvalid()) {
     SetPackedFlag<kFlagUpperCanBeNull>(true);
     SetPackedFlag<kFlagCanBeNull>(true);
-    DCHECK_EQ(input->GetType(), Primitive::kPrimNot);
+    DCHECK_EQ(input->GetType(), DataType::Type::kReference);
     SetRawInputAt(0, input);
   }
 
@@ -6761,7 +6763,7 @@ class MoveOperands : public ArenaObject<kArenaAllocMoveOperands> {
  public:
   MoveOperands(Location source,
                Location destination,
-               Primitive::Type type,
+               DataType::Type type,
                HInstruction* instruction)
       : source_(source), destination_(destination), type_(type), instruction_(instruction) {}
 
@@ -6811,10 +6813,10 @@ class MoveOperands : public ArenaObject<kArenaAllocMoveOperands> {
     return source_.IsInvalid();
   }
 
-  Primitive::Type GetType() const { return type_; }
+  DataType::Type GetType() const { return type_; }
 
   bool Is64BitMove() const {
-    return Primitive::Is64BitType(type_);
+    return DataType::Is64BitType(type_);
   }
 
   HInstruction* GetInstruction() const { return instruction_; }
@@ -6823,7 +6825,7 @@ class MoveOperands : public ArenaObject<kArenaAllocMoveOperands> {
   Location source_;
   Location destination_;
   // The type this move is for.
-  Primitive::Type type_;
+  DataType::Type type_;
   // The instruction this move is assocatied with. Null when this move is
   // for moving an input in the expected locations of user (including a phi user).
   // This is only used in debug mode, to ensure we do not connect interval siblings
@@ -6845,7 +6847,7 @@ class HParallelMove FINAL : public HTemplateInstruction<0> {
 
   void AddMove(Location source,
                Location destination,
-               Primitive::Type type,
+               DataType::Type type,
                HInstruction* instruction) {
     DCHECK(source.IsValid());
     DCHECK(destination.IsValid());

@@ -540,7 +540,7 @@ class ColoringIteration {
 };
 
 static bool IsCoreInterval(LiveInterval* interval) {
-  return !Primitive::IsFloatingPointType(interval->GetType());
+  return !DataType::IsFloatingPointType(interval->GetType());
 }
 
 static size_t ComputeReservedArtMethodSlots(const CodeGenerator& codegen) {
@@ -573,7 +573,7 @@ RegisterAllocatorGraphColor::RegisterAllocatorGraphColor(ArenaAllocator* allocat
   // This includes globally blocked registers, such as the stack pointer.
   physical_core_nodes_.resize(codegen_->GetNumberOfCoreRegisters(), nullptr);
   for (size_t i = 0; i < codegen_->GetNumberOfCoreRegisters(); ++i) {
-    LiveInterval* interval = LiveInterval::MakeFixedInterval(allocator_, i, Primitive::kPrimInt);
+    LiveInterval* interval = LiveInterval::MakeFixedInterval(allocator_, i, DataType::Type::kInt32);
     physical_core_nodes_[i] =
         new (allocator_) InterferenceNode(allocator_, interval, liveness);
     physical_core_nodes_[i]->stage = NodeStage::kPrecolored;
@@ -585,7 +585,8 @@ RegisterAllocatorGraphColor::RegisterAllocatorGraphColor(ArenaAllocator* allocat
   // Initialize physical floating point register live intervals and blocked registers.
   physical_fp_nodes_.resize(codegen_->GetNumberOfFloatingPointRegisters(), nullptr);
   for (size_t i = 0; i < codegen_->GetNumberOfFloatingPointRegisters(); ++i) {
-    LiveInterval* interval = LiveInterval::MakeFixedInterval(allocator_, i, Primitive::kPrimFloat);
+    LiveInterval* interval =
+        LiveInterval::MakeFixedInterval(allocator_, i, DataType::Type::kFloat32);
     physical_fp_nodes_[i] =
         new (allocator_) InterferenceNode(allocator_, interval, liveness);
     physical_fp_nodes_[i]->stage = NodeStage::kPrecolored;
@@ -936,7 +937,7 @@ void RegisterAllocatorGraphColor::CheckForTempLiveIntervals(HInstruction* instru
       switch (temp.GetPolicy()) {
         case Location::kRequiresRegister: {
           LiveInterval* interval =
-              LiveInterval::MakeTempInterval(allocator_, Primitive::kPrimInt);
+              LiveInterval::MakeTempInterval(allocator_, DataType::Type::kInt32);
           interval->AddTempUse(instruction, i);
           core_intervals_.push_back(interval);
           temp_intervals_.push_back(interval);
@@ -945,11 +946,11 @@ void RegisterAllocatorGraphColor::CheckForTempLiveIntervals(HInstruction* instru
 
         case Location::kRequiresFpuRegister: {
           LiveInterval* interval =
-              LiveInterval::MakeTempInterval(allocator_, Primitive::kPrimDouble);
+              LiveInterval::MakeTempInterval(allocator_, DataType::Type::kFloat64);
           interval->AddTempUse(instruction, i);
           fp_intervals_.push_back(interval);
           temp_intervals_.push_back(interval);
-          if (codegen_->NeedsTwoRegisters(Primitive::kPrimDouble)) {
+          if (codegen_->NeedsTwoRegisters(DataType::Type::kFloat64)) {
             interval->AddHighInterval(/*is_temp*/ true);
             temp_intervals_.push_back(interval->GetHighInterval());
           }
@@ -1927,24 +1928,24 @@ void RegisterAllocatorGraphColor::AllocateSpillSlots(const ArenaVector<Interfere
       // We need to find a spill slot for this interval. Place it in the correct
       // worklist to be processed later.
       switch (node->GetInterval()->GetType()) {
-        case Primitive::kPrimDouble:
+        case DataType::Type::kFloat64:
           double_intervals.push_back(parent);
           break;
-        case Primitive::kPrimLong:
+        case DataType::Type::kInt64:
           long_intervals.push_back(parent);
           break;
-        case Primitive::kPrimFloat:
+        case DataType::Type::kFloat32:
           float_intervals.push_back(parent);
           break;
-        case Primitive::kPrimNot:
-        case Primitive::kPrimInt:
-        case Primitive::kPrimChar:
-        case Primitive::kPrimByte:
-        case Primitive::kPrimBoolean:
-        case Primitive::kPrimShort:
+        case DataType::Type::kReference:
+        case DataType::Type::kInt32:
+        case DataType::Type::kUint16:
+        case DataType::Type::kInt8:
+        case DataType::Type::kBool:
+        case DataType::Type::kInt16:
           int_intervals.push_back(parent);
           break;
-        case Primitive::kPrimVoid:
+        case DataType::Type::kVoid:
           LOG(FATAL) << "Unexpected type for interval " << node->GetInterval()->GetType();
           UNREACHABLE();
       }

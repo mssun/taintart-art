@@ -20,16 +20,51 @@
 #include "base/arena_bit_vector.h"
 #include "base/bit_vector-inl.h"
 #include "base/logging.h"
+#include "data_type-inl.h"
 #include "dex/verified_method.h"
 #include "driver/compiler_options.h"
 #include "mirror/class_loader.h"
 #include "mirror/dex_cache.h"
 #include "nodes.h"
-#include "primitive.h"
 #include "thread.h"
 #include "utils/dex_cache_arrays_layout-inl.h"
 
 namespace art {
+
+HGraphBuilder::HGraphBuilder(HGraph* graph,
+                             DexCompilationUnit* dex_compilation_unit,
+                             const DexCompilationUnit* const outer_compilation_unit,
+                             CompilerDriver* driver,
+                             CodeGenerator* code_generator,
+                             OptimizingCompilerStats* compiler_stats,
+                             const uint8_t* interpreter_metadata,
+                             Handle<mirror::DexCache> dex_cache,
+                             VariableSizedHandleScope* handles)
+    : graph_(graph),
+      dex_file_(&graph->GetDexFile()),
+      code_item_(*dex_compilation_unit->GetCodeItem()),
+      dex_compilation_unit_(dex_compilation_unit),
+      compiler_driver_(driver),
+      compilation_stats_(compiler_stats),
+      block_builder_(graph, dex_file_, code_item_),
+      ssa_builder_(graph,
+                   dex_compilation_unit->GetClassLoader(),
+                   dex_compilation_unit->GetDexCache(),
+                   handles),
+      instruction_builder_(graph,
+                           &block_builder_,
+                           &ssa_builder_,
+                           dex_file_,
+                           code_item_,
+                           DataType::FromShorty(dex_compilation_unit_->GetShorty()[0]),
+                           dex_compilation_unit,
+                           outer_compilation_unit,
+                           driver,
+                           code_generator,
+                           interpreter_metadata,
+                           compiler_stats,
+                           dex_cache,
+                           handles) {}
 
 bool HGraphBuilder::SkipCompilation(size_t number_of_branches) {
   if (compiler_driver_ == nullptr) {
