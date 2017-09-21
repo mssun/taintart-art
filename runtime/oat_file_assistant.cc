@@ -645,6 +645,30 @@ static bool PrepareOdexDirectories(const std::string& dex_location,
   return true;
 }
 
+class Dex2oatFileWrapper {
+ public:
+  explicit Dex2oatFileWrapper(File* file)
+      : file_(file),
+        unlink_file_at_destruction_(true) {
+  }
+
+  ~Dex2oatFileWrapper() {
+    if (unlink_file_at_destruction_ && (file_ != nullptr)) {
+      file_->Erase(/*unlink*/ true);
+    }
+  }
+
+  File* GetFile() { return file_.get(); }
+
+  void DisableUnlinkAtDestruction() {
+    unlink_file_at_destruction_ = false;
+  };
+
+ private:
+  std::unique_ptr<File> file_;
+  bool unlink_file_at_destruction_;
+};
+
 OatFileAssistant::ResultOfAttemptToUpdate OatFileAssistant::GenerateOatFileNoChecks(
       OatFileAssistant::OatFileInfo& info,
       CompilerFilter::Filter filter,
@@ -690,8 +714,9 @@ OatFileAssistant::ResultOfAttemptToUpdate OatFileAssistant::GenerateOatFileNoChe
       (dex_path_stat.st_mode & S_IRGRP) |
       (dex_path_stat.st_mode & S_IROTH);
 
-  std::unique_ptr<File> vdex_file(OS::CreateEmptyFile(vdex_file_name.c_str()));
-  if (vdex_file.get() == nullptr) {
+  Dex2oatFileWrapper vdex_file_wrapper(OS::CreateEmptyFile(vdex_file_name.c_str()));
+  File* vdex_file = vdex_file_wrapper.GetFile();
+  if (vdex_file == nullptr) {
     *error_msg = "Generation of oat file " + oat_file_name
       + " not attempted because the vdex file " + vdex_file_name
       + " could not be opened.";
@@ -705,8 +730,9 @@ OatFileAssistant::ResultOfAttemptToUpdate OatFileAssistant::GenerateOatFileNoChe
     return kUpdateNotAttempted;
   }
 
-  std::unique_ptr<File> oat_file(OS::CreateEmptyFile(oat_file_name.c_str()));
-  if (oat_file.get() == nullptr) {
+  Dex2oatFileWrapper oat_file_wrapper(OS::CreateEmptyFile(oat_file_name.c_str()));
+  File* oat_file = oat_file_wrapper.GetFile();
+  if (oat_file == nullptr) {
     *error_msg = "Generation of oat file " + oat_file_name
       + " not attempted because the oat file could not be created.";
     return kUpdateNotAttempted;
@@ -715,7 +741,6 @@ OatFileAssistant::ResultOfAttemptToUpdate OatFileAssistant::GenerateOatFileNoChe
   if (fchmod(oat_file->Fd(), file_mode) != 0) {
     *error_msg = "Generation of oat file " + oat_file_name
       + " not attempted because the oat file could not be made world readable.";
-    oat_file->Erase();
     return kUpdateNotAttempted;
   }
 
@@ -731,29 +756,25 @@ OatFileAssistant::ResultOfAttemptToUpdate OatFileAssistant::GenerateOatFileNoChe
   args.push_back("--class-loader-context=" + dex2oat_context);
 
   if (!Dex2Oat(args, error_msg)) {
-    // Manually delete the oat and vdex files. This ensures there is no garbage
-    // left over if the process unexpectedly died.
-    vdex_file->Erase();
-    unlink(vdex_file_name.c_str());
-    oat_file->Erase();
-    unlink(oat_file_name.c_str());
     return kUpdateFailed;
   }
 
   if (vdex_file->FlushCloseOrErase() != 0) {
     *error_msg = "Unable to close vdex file " + vdex_file_name;
-    unlink(vdex_file_name.c_str());
     return kUpdateFailed;
   }
 
   if (oat_file->FlushCloseOrErase() != 0) {
     *error_msg = "Unable to close oat file " + oat_file_name;
-    unlink(oat_file_name.c_str());
     return kUpdateFailed;
   }
 
   // Mark that the odex file has changed and we should try to reload.
   info.Reset();
+  // We have compiled successfully. Disable the auto-unlink.
+  vdex_file_wrapper.DisableUnlinkAtDestruction();
+  oat_file_wrapper.DisableUnlinkAtDestruction();
+
   return kUpdateSucceeded;
 }
 
