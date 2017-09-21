@@ -204,10 +204,10 @@ gensrcs {
     cmd: "$(location generate-operator-out.py) art/compiler $(in) > $(out)",
     tool_files: ["generate-operator-out.py"],
     srcs: [
-        "compiled_method.h",
         "dex/dex_to_dex_compiler.h",
         "driver/compiler_driver.h",
         "driver/compiler_options.h",
+        "linker/linker_patch.h",
         "optimizing/locations.h",
 
         "utils/arm/constants_arm.h",
@@ -310,13 +310,14 @@ art_cc_test {
         "art_gtest_defaults",
     ],
     srcs: [
-        "compiled_method_test.cc",
         "debug/dwarf/dwarf_test.cc",
+        "debug/src_map_elem_test.cc",
         "dex/dex_to_dex_decompiler_test.cc",
         "driver/compiled_method_storage_test.cc",
         "driver/compiler_driver_test.cc",
         "exception_test.cc",
         "jni/jni_compiler_test.cc",
+        "linker/linker_patch_test.cc",
         "linker/method_bss_mapping_encoder_test.cc",
         "linker/output_stream_test.cc",
         "optimizing/bounds_check_elimination_test.cc",

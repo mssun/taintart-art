@@ -26,6 +26,7 @@
 #include "heap_poisoning.h"
 #include "intrinsics.h"
 #include "intrinsics_x86.h"
+#include "linker/linker_patch.h"
 #include "lock_word.h"
 #include "mirror/array-inl.h"
 #include "mirror/class-inl.h"
@@ -4675,10 +4676,10 @@ Label* CodeGeneratorX86::NewStringBssEntryPatch(HLoadString* load_string) {
 // for method patch needs to point to the embedded constant which occupies the last 4 bytes.
 constexpr uint32_t kLabelPositionToLiteralOffsetAdjustment = 4u;
 
-template <LinkerPatch (*Factory)(size_t, const DexFile*, uint32_t, uint32_t)>
+template <linker::LinkerPatch (*Factory)(size_t, const DexFile*, uint32_t, uint32_t)>
 inline void CodeGeneratorX86::EmitPcRelativeLinkerPatches(
     const ArenaDeque<X86PcRelativePatchInfo>& infos,
-    ArenaVector<LinkerPatch>* linker_patches) {
+    ArenaVector<linker::LinkerPatch>* linker_patches) {
   for (const X86PcRelativePatchInfo& info : infos) {
     uint32_t literal_offset = info.label.Position() - kLabelPositionToLiteralOffsetAdjustment;
     linker_patches->push_back(Factory(
@@ -4686,7 +4687,7 @@ inline void CodeGeneratorX86::EmitPcRelativeLinkerPatches(
   }
 }
 
-void CodeGeneratorX86::EmitLinkerPatches(ArenaVector<LinkerPatch>* linker_patches) {
+void CodeGeneratorX86::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) {
   DCHECK(linker_patches->empty());
   size_t size =
       boot_image_method_patches_.size() +
@@ -4697,24 +4698,25 @@ void CodeGeneratorX86::EmitLinkerPatches(ArenaVector<LinkerPatch>* linker_patche
       string_bss_entry_patches_.size();
   linker_patches->reserve(size);
   if (GetCompilerOptions().IsBootImage()) {
-    EmitPcRelativeLinkerPatches<LinkerPatch::RelativeMethodPatch>(boot_image_method_patches_,
-                                                                  linker_patches);
-    EmitPcRelativeLinkerPatches<LinkerPatch::RelativeTypePatch>(boot_image_type_patches_,
-                                                                linker_patches);
-    EmitPcRelativeLinkerPatches<LinkerPatch::RelativeStringPatch>(string_patches_, linker_patches);
+    EmitPcRelativeLinkerPatches<linker::LinkerPatch::RelativeMethodPatch>(
+        boot_image_method_patches_, linker_patches);
+    EmitPcRelativeLinkerPatches<linker::LinkerPatch::RelativeTypePatch>(
+        boot_image_type_patches_, linker_patches);
+    EmitPcRelativeLinkerPatches<linker::LinkerPatch::RelativeStringPatch>(
+        string_patches_, linker_patches);
   } else {
     DCHECK(boot_image_method_patches_.empty());
-    EmitPcRelativeLinkerPatches<LinkerPatch::TypeClassTablePatch>(boot_image_type_patches_,
-                                                                  linker_patches);
-    EmitPcRelativeLinkerPatches<LinkerPatch::StringInternTablePatch>(string_patches_,
-                                                                     linker_patches);
+    EmitPcRelativeLinkerPatches<linker::LinkerPatch::TypeClassTablePatch>(
+        boot_image_type_patches_, linker_patches);
+    EmitPcRelativeLinkerPatches<linker::LinkerPatch::StringInternTablePatch>(
+        string_patches_, linker_patches);
   }
-  EmitPcRelativeLinkerPatches<LinkerPatch::MethodBssEntryPatch>(method_bss_entry_patches_,
-                                                                linker_patches);
-  EmitPcRelativeLinkerPatches<LinkerPatch::TypeBssEntryPatch>(type_bss_entry_patches_,
-                                                              linker_patches);
-  EmitPcRelativeLinkerPatches<LinkerPatch::StringBssEntryPatch>(string_bss_entry_patches_,
-                                                                linker_patches);
+  EmitPcRelativeLinkerPatches<linker::LinkerPatch::MethodBssEntryPatch>(
+      method_bss_entry_patches_, linker_patches);
+  EmitPcRelativeLinkerPatches<linker::LinkerPatch::TypeBssEntryPatch>(
+      type_bss_entry_patches_, linker_patches);
+  EmitPcRelativeLinkerPatches<linker::LinkerPatch::StringBssEntryPatch>(
+      string_bss_entry_patches_, linker_patches);
   DCHECK_EQ(size, linker_patches->size());
 }
 

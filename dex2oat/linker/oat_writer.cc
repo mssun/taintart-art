@@ -29,7 +29,7 @@
 #include "base/unix_file/fd_file.h"
 #include "class_linker.h"
 #include "class_table-inl.h"
-#include "compiled_method.h"
+#include "compiled_method-inl.h"
 #include "debug/method_debug_info.h"
 #include "dex/verification_results.h"
 #include "dex_file-inl.h"
@@ -43,6 +43,7 @@
 #include "image_writer.h"
 #include "linker/buffered_output_stream.h"
 #include "linker/file_output_stream.h"
+#include "linker/linker_patch.h"
 #include "linker/method_bss_mapping_encoder.h"
 #include "linker/multi_oat_relative_patcher.h"
 #include "linker/output_stream.h"
@@ -1063,7 +1064,7 @@ class OatWriter::InitCodeMethodVisitor : public OatDexMethodVisitor {
   SafeMap<const CompiledMethod*, uint32_t, CodeOffsetsKeyComparator> dedupe_map_;
 
   // Cache writer_'s members and compiler options.
-  linker::MultiOatRelativePatcher* relative_patcher_;
+  MultiOatRelativePatcher* relative_patcher_;
   uint32_t executable_offset_;
   const bool debuggable_;
   const bool native_debuggable_;
@@ -1920,7 +1921,7 @@ size_t OatWriter::InitMethodBssMappings(size_t offset) {
       DCHECK_ALIGNED(offset, 4u);
       oat_dex_files_[i].method_bss_mapping_offset_ = offset;
 
-      linker::MethodBssMappingEncoder encoder(
+      MethodBssMappingEncoder encoder(
           GetInstructionSetPointerSize(oat_header_->GetInstructionSet()));
       size_t number_of_entries = 0u;
       bool first_index = true;
@@ -2593,7 +2594,7 @@ size_t OatWriter::WriteMethodBssMappings(OutputStream* out,
                     "MethodBssMapping alignment check.");
       DCHECK_ALIGNED(relative_offset, sizeof(uint32_t));
 
-      linker::MethodBssMappingEncoder encoder(
+      MethodBssMappingEncoder encoder(
           GetInstructionSetPointerSize(oat_header_->GetInstructionSet()));
       // Allocate a sufficiently large MethodBssMapping.
       size_t number_of_method_indexes = method_indexes.NumSetBits();

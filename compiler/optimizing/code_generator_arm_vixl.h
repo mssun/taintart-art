@@ -594,7 +594,7 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
                                                 dex::TypeIndex type_index,
                                                 Handle<mirror::Class> handle);
 
-  void EmitLinkerPatches(ArenaVector<LinkerPatch>* linker_patches) OVERRIDE;
+  void EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) OVERRIDE;
 
   void EmitJitRootPatches(uint8_t* code, const uint8_t* roots_data) OVERRIDE;
 
@@ -778,9 +778,9 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
   PcRelativePatchInfo* NewPcRelativePatch(const DexFile& dex_file,
                                           uint32_t offset_or_index,
                                           ArenaDeque<PcRelativePatchInfo>* patches);
-  template <LinkerPatch (*Factory)(size_t, const DexFile*, uint32_t, uint32_t)>
+  template <linker::LinkerPatch (*Factory)(size_t, const DexFile*, uint32_t, uint32_t)>
   static void EmitPcRelativeLinkerPatches(const ArenaDeque<PcRelativePatchInfo>& infos,
-                                          ArenaVector<LinkerPatch>* linker_patches);
+                                          ArenaVector<linker::LinkerPatch>* linker_patches);
 
   // Labels for each block that will be compiled.
   // We use a deque so that the `vixl::aarch32::Label` objects do not move in memory.
