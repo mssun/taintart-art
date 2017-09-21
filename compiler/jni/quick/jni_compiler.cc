@@ -665,7 +665,7 @@ static CompiledMethod* ArtJniCompileMethodInternal(CompilerDriver* driver,
                                                  /* method_info */ ArrayRef<const uint8_t>(),
                                                  /* vmap_table */ ArrayRef<const uint8_t>(),
                                                  ArrayRef<const uint8_t>(*jni_asm->cfi().data()),
-                                                 ArrayRef<const LinkerPatch>());
+                                                 ArrayRef<const linker::LinkerPatch>());
 }
 
 // Copy a single parameter from the managed to the JNI calling convention.

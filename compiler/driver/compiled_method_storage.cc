@@ -21,6 +21,7 @@
 
 #include "base/logging.h"
 #include "compiled_method.h"
+#include "linker/linker_patch.h"
 #include "thread-current-inl.h"
 #include "utils.h"
 #include "utils/dedupe_set-inl.h"
@@ -178,7 +179,7 @@ CompiledMethodStorage::CompiledMethodStorage(int swap_fd)
                          LengthPrefixedArrayAlloc<uint8_t>(swap_space_.get())),
       dedupe_cfi_info_("dedupe cfi info", LengthPrefixedArrayAlloc<uint8_t>(swap_space_.get())),
       dedupe_linker_patches_("dedupe cfi info",
-                             LengthPrefixedArrayAlloc<LinkerPatch>(swap_space_.get())) {
+                             LengthPrefixedArrayAlloc<linker::LinkerPatch>(swap_space_.get())) {
 }
 
 CompiledMethodStorage::~CompiledMethodStorage() {
@@ -234,13 +235,13 @@ void CompiledMethodStorage::ReleaseCFIInfo(const LengthPrefixedArray<uint8_t>* c
   ReleaseArrayIfNotDeduplicated(cfi_info);
 }
 
-const LengthPrefixedArray<LinkerPatch>* CompiledMethodStorage::DeduplicateLinkerPatches(
-    const ArrayRef<const LinkerPatch>& linker_patches) {
+const LengthPrefixedArray<linker::LinkerPatch>* CompiledMethodStorage::DeduplicateLinkerPatches(
+    const ArrayRef<const linker::LinkerPatch>& linker_patches) {
   return AllocateOrDeduplicateArray(linker_patches, &dedupe_linker_patches_);
 }
 
 void CompiledMethodStorage::ReleaseLinkerPatches(
-    const LengthPrefixedArray<LinkerPatch>* linker_patches) {
+    const LengthPrefixedArray<linker::LinkerPatch>* linker_patches) {
   ReleaseArrayIfNotDeduplicated(linker_patches);
 }
 
