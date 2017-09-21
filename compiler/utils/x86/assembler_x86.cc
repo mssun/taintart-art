@@ -35,25 +35,25 @@ std::ostream& operator<<(std::ostream& os, const X87Register& reg) {
 std::ostream& operator<<(std::ostream& os, const Address& addr) {
   switch (addr.mod()) {
     case 0:
-      if (addr.rm() == ESP && addr.index() != ESP) {
-        return os << "(%" << addr.base() << ",%"
-                  << addr.index() << "," << (1 << addr.scale()) << ")";
+      if (addr.rm() != ESP || addr.index() == ESP) {
+        return os << "(%" << addr.rm() << ")";
+      } else if (addr.base() == EBP) {
+        return os << static_cast<int>(addr.disp32()) << "(,%" << addr.index()
+                  << "," << (1 << addr.scale()) << ")";
       }
-      return os << "(%" << addr.rm() << ")";
+      return os << "(%" << addr.base() << ",%" << addr.index() << "," << (1 << addr.scale()) << ")";
     case 1:
-      if (addr.rm() == ESP && addr.index() != ESP) {
-        return os << static_cast<int>(addr.disp8())
-                  << "(%" << addr.base() << ",%"
-                  << addr.index() << "," << (1 << addr.scale()) << ")";
+      if (addr.rm() != ESP || addr.index() == ESP) {
+        return os << static_cast<int>(addr.disp8()) << "(%" << addr.rm() << ")";
       }
-      return os << static_cast<int>(addr.disp8()) << "(%" << addr.rm() << ")";
+      return os << static_cast<int>(addr.disp8()) << "(%" << addr.base() << ",%"
+                << addr.index() << "," << (1 << addr.scale()) << ")";
     case 2:
-      if (addr.rm() == ESP && addr.index() != ESP) {
-        return os << static_cast<int>(addr.disp32())
-                  << "(%" << addr.base() << ",%"
-                  << addr.index() << "," << (1 << addr.scale()) << ")";
+      if (addr.rm() != ESP || addr.index() == ESP) {
+        return os << static_cast<int>(addr.disp32()) << "(%" << addr.rm() << ")";
       }
-      return os << static_cast<int>(addr.disp32()) << "(%" << addr.rm() << ")";
+      return os << static_cast<int>(addr.disp32()) << "(%" << addr.base() << ",%"
+                << addr.index() << "," << (1 << addr.scale()) << ")";
     default:
       return os << "<address?>";
   }
