@@ -18,7 +18,7 @@
 
 #include <gtest/gtest.h>
 
-#include "compiled_method.h"
+#include "compiled_method-inl.h"
 #include "compiler_driver.h"
 #include "compiler_options.h"
 #include "dex/verification_results.h"
@@ -70,17 +70,17 @@ TEST(CompiledMethodStorage, Deduplicate) {
       ArrayRef<const uint8_t>(raw_cfi_info1),
       ArrayRef<const uint8_t>(raw_cfi_info2),
   };
-  const LinkerPatch raw_patches1[] = {
-      LinkerPatch::CodePatch(0u, nullptr, 1u),
-      LinkerPatch::RelativeMethodPatch(4u, nullptr, 0u, 1u),
+  const linker::LinkerPatch raw_patches1[] = {
+      linker::LinkerPatch::CodePatch(0u, nullptr, 1u),
+      linker::LinkerPatch::RelativeMethodPatch(4u, nullptr, 0u, 1u),
   };
-  const LinkerPatch raw_patches2[] = {
-      LinkerPatch::CodePatch(0u, nullptr, 1u),
-      LinkerPatch::RelativeMethodPatch(4u, nullptr, 0u, 2u),
+  const linker::LinkerPatch raw_patches2[] = {
+      linker::LinkerPatch::CodePatch(0u, nullptr, 1u),
+      linker::LinkerPatch::RelativeMethodPatch(4u, nullptr, 0u, 2u),
   };
-  ArrayRef<const LinkerPatch> patches[] = {
-      ArrayRef<const LinkerPatch>(raw_patches1),
-      ArrayRef<const LinkerPatch>(raw_patches2),
+  ArrayRef<const linker::LinkerPatch> patches[] = {
+      ArrayRef<const linker::LinkerPatch>(raw_patches1),
+      ArrayRef<const linker::LinkerPatch>(raw_patches2),
   };
 
   std::vector<CompiledMethod*> compiled_methods;

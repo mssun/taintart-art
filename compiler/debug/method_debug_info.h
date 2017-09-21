@@ -19,7 +19,8 @@
 
 #include <string>
 
-#include "compiled_method.h"
+#include "arch/instruction_set.h"
+#include "base/array_ref.h"
 #include "dex_file.h"
 
 namespace art {

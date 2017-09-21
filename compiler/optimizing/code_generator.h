@@ -61,8 +61,11 @@ class Assembler;
 class CodeGenerator;
 class CompilerDriver;
 class CompilerOptions;
-class LinkerPatch;
 class ParallelMoveResolver;
+
+namespace linker {
+class LinkerPatch;
+}  // namespace linker
 
 class CodeAllocator {
  public:
@@ -205,7 +208,7 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
 
   virtual void Initialize() = 0;
   virtual void Finalize(CodeAllocator* allocator);
-  virtual void EmitLinkerPatches(ArenaVector<LinkerPatch>* linker_patches);
+  virtual void EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches);
   virtual void GenerateFrameEntry() = 0;
   virtual void GenerateFrameExit() = 0;
   virtual void Bind(HBasicBlock* block) = 0;

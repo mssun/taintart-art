@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 The Android Open Source Project
+ * Copyright (C) 2017 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,37 +16,12 @@
 
 #include <gtest/gtest.h>
 
-#include "compiled_method.h"
+#include "linker_patch.h"
 
 namespace art {
+namespace linker {
 
-TEST(CompiledMethod, SrcMapElemOperators) {
-  SrcMapElem elems[] = {
-      { 1u, -1 },
-      { 1u, 0 },
-      { 1u, 1 },
-      { 2u, -1 },
-      { 2u, 0 },    // Index 4.
-      { 2u, 1 },
-      { 2u, 0u },   // Index 6: Arbitrarily add identical SrcMapElem with index 4.
-  };
-
-  for (size_t i = 0; i != arraysize(elems); ++i) {
-    for (size_t j = 0; j != arraysize(elems); ++j) {
-      bool expected = (i != 6u ? i : 4u) == (j != 6u ? j : 4u);
-      EXPECT_EQ(expected, elems[i] == elems[j]) << i << " " << j;
-    }
-  }
-
-  for (size_t i = 0; i != arraysize(elems); ++i) {
-    for (size_t j = 0; j != arraysize(elems); ++j) {
-      bool expected = (i != 6u ? i : 4u) < (j != 6u ? j : 4u);
-      EXPECT_EQ(expected, elems[i] < elems[j]) << i << " " << j;
-    }
-  }
-}
-
-TEST(CompiledMethod, LinkerPatchOperators) {
+TEST(LinkerPatch, LinkerPatchOperators) {
   const DexFile* dex_file1 = reinterpret_cast<const DexFile*>(1);
   const DexFile* dex_file2 = reinterpret_cast<const DexFile*>(2);
   LinkerPatch patches[] = {
@@ -191,4 +166,5 @@ TEST(CompiledMethod, LinkerPatchOperators) {
   }
 }
 
+}  // namespace linker
 }  // namespace art

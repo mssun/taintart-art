@@ -21,6 +21,7 @@
 #include "base/bit_utils.h"
 #include "compiled_method.h"
 #include "entrypoints/quick/quick_entrypoints_enum.h"
+#include "linker/linker_patch.h"
 #include "lock_word.h"
 #include "mirror/array-inl.h"
 #include "mirror/object.h"

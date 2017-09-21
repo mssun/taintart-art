@@ -17,9 +17,10 @@
 #include "linker/arm/relative_patcher_arm_base.h"
 
 #include "base/stl_util.h"
-#include "compiled_method.h"
+#include "compiled_method-inl.h"
 #include "debug/method_debug_info.h"
 #include "dex_file_types.h"
+#include "linker/linker_patch.h"
 #include "linker/output_stream.h"
 #include "oat.h"
 #include "oat_quick_method_header.h"

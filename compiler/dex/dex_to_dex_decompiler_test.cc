@@ -18,7 +18,7 @@
 
 #include "class_linker.h"
 #include "common_compiler_test.h"
-#include "compiled_method.h"
+#include "compiled_method-inl.h"
 #include "compiler_callbacks.h"
 #include "dex_file.h"
 #include "driver/compiler_driver.h"
