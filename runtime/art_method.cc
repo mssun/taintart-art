@@ -777,26 +777,16 @@ std::string ArtMethod::PrettyMethod(ArtMethod* m, bool with_signature) {
 }
 
 std::string ArtMethod::PrettyMethod(bool with_signature) {
-  ArtMethod* m = this;
-  if (!m->IsRuntimeMethod()) {
-    m = m->GetInterfaceMethodIfProxy(Runtime::Current()->GetClassLinker()->GetImagePointerSize());
+  if (UNLIKELY(IsRuntimeMethod())) {
+    std::string result = GetDeclaringClassDescriptor();
+    result += '.';
+    result += GetName();
+    // Do not add "<no signature>" even if `with_signature` is true.
+    return result;
   }
-  std::string result(PrettyDescriptor(m->GetDeclaringClassDescriptor()));
-  result += '.';
-  result += m->GetName();
-  if (UNLIKELY(m->IsFastNative())) {
-    result += "!";
-  }
-  if (with_signature) {
-    const Signature signature = m->GetSignature();
-    std::string sig_as_string(signature.ToString());
-    if (signature == Signature::NoSignature()) {
-      return result + sig_as_string;
-    }
-    result = PrettyReturnType(sig_as_string.c_str()) + " " + result +
-        PrettyArguments(sig_as_string.c_str());
-  }
-  return result;
+  ArtMethod* m =
+      GetInterfaceMethodIfProxy(Runtime::Current()->GetClassLinker()->GetImagePointerSize());
+  return m->GetDexFile()->PrettyMethod(m->GetDexMethodIndex(), with_signature);
 }
 
 std::string ArtMethod::JniShortName() {

@@ -17,4 +17,13 @@
 class GetMethodSignature {
     Float m1(int a, double b, long c, Object d) { return null; }
     GetMethodSignature m2(boolean x, short y, char z) { return null; }
+    void m3() { }
+    void m4(int i) { }
+    void m5(int i, int j) { }
+    void m6(int i, int j, int[][] array1) { }
+    void m7(int i, int j, int[][] array1, Object o) { }
+    void m8(int i, int j, int[][] array1, Object o, Object[][] array2) { }
+    int m9() { return 0; }
+    int[][] mA() { return null; }
+    Object[][] mB() { return null; }
 }
