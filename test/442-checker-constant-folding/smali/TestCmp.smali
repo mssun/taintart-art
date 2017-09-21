@@ -330,3 +330,141 @@
    cmpl-double v0, v1, v3
    return v0
 .end method
+
+
+##  CHECK-START: int TestCmp.IntAddition2() constant_folding (before)
+##  CHECK-DAG:     <<Const1:i\d+>>  IntConstant 1
+##  CHECK-DAG:     <<Const2:i\d+>>  IntConstant 2
+##  CHECK-DAG:     <<Const5:i\d+>>  IntConstant 5
+##  CHECK-DAG:     <<Const6:i\d+>>  IntConstant 6
+##  CHECK-DAG:     <<Add1:i\d+>>    Add [<<Const1>>,<<Const2>>]
+##  CHECK-DAG:     <<Add2:i\d+>>    Add [<<Const5>>,<<Const6>>]
+##  CHECK-DAG:     <<Add3:i\d+>>    Add [<<Add1>>,<<Add2>>]
+##  CHECK-DAG:                      Return [<<Add3>>]
+
+##  CHECK-START: int TestCmp.IntAddition2() constant_folding (after)
+##  CHECK-DAG:     <<Const14:i\d+>> IntConstant 14
+##  CHECK-DAG:                      Return [<<Const14>>]
+
+##  CHECK-START: int TestCmp.IntAddition2() constant_folding (after)
+##  CHECK-NOT:                      Add
+.method public static IntAddition2()I
+    # A more direct translation from Java.
+
+    # int a, b, c;
+    .registers 3
+
+    # a = 1;
+    const/4 v0, 1
+    # b = 2;
+    const/4 v1, 2
+
+    # a += b;
+    add-int/2addr v0, v1
+
+    # b = 5;
+    const/4 v1, 5
+    # c = 6;
+    const/4 v2, 6
+
+    # b += c;
+    add-int/2addr v1, v2
+    # c = a + b;
+    add-int v2, v0, v1
+
+    # return c;
+    return v2
+.end method
+
+
+##  CHECK-START: int TestCmp.IntAddition2AddAndMove() constant_folding (before)
+##  CHECK-DAG:     <<Const1:i\d+>>  IntConstant 1
+##  CHECK-DAG:     <<Const2:i\d+>>  IntConstant 2
+##  CHECK-DAG:     <<Const5:i\d+>>  IntConstant 5
+##  CHECK-DAG:     <<Const6:i\d+>>  IntConstant 6
+##  CHECK-DAG:     <<Add1:i\d+>>    Add [<<Const1>>,<<Const2>>]
+##  CHECK-DAG:     <<Add2:i\d+>>    Add [<<Const5>>,<<Const6>>]
+##  CHECK-DAG:     <<Add3:i\d+>>    Add [<<Add1>>,<<Add2>>]
+##  CHECK-DAG:                      Return [<<Add3>>]
+
+##  CHECK-START: int TestCmp.IntAddition2AddAndMove() constant_folding (after)
+##  CHECK-DAG:     <<Const14:i\d+>> IntConstant 14
+##  CHECK-DAG:                      Return [<<Const14>>]
+
+##  CHECK-START: int TestCmp.IntAddition2AddAndMove() constant_folding (after)
+##  CHECK-NOT:                      Add
+
+#   D8 uses 3 registers for += when local variable info is presented.
+.method public static IntAddition2AddAndMove()I
+    .registers 4
+
+    # a = 1;
+    const/4 v0, 1
+    # b = 2;
+    const/4 v1, 2
+
+    # a += b;
+    add-int v2, v0, v1
+    move v0, v2
+
+    # b = 5;
+    const/4 v2, 5
+    move v1, v2
+
+    # c = 6;
+    const/4 v2, 6
+
+    # b += c;
+    add-int v3, v1, v2
+    move v1, v3
+
+    # c = a + b;
+    add-int v3, v0, v1
+    move v2, v3
+
+    # return c;
+    return v2
+.end method
+
+
+## CHECK-START: int TestCmp.JumpsAndConditionals(boolean) constant_folding (before)
+## CHECK-DAG:     <<Const2:i\d+>>  IntConstant 2
+## CHECK-DAG:     <<Const5:i\d+>>  IntConstant 5
+## CHECK-DAG:     <<Add:i\d+>>     Add [<<Const5>>,<<Const2>>]
+## CHECK-DAG:     <<Sub:i\d+>>     Sub [<<Const5>>,<<Const2>>]
+## CHECK-DAG:     <<Phi:i\d+>>     Phi [<<Add>>,<<Sub>>]
+## CHECK-DAG:                      Return [<<Phi>>]
+
+## CHECK-START: int TestCmp.JumpsAndConditionals(boolean) constant_folding (after)
+## CHECK-DAG:     <<Const3:i\d+>>  IntConstant 3
+## CHECK-DAG:     <<Const7:i\d+>>  IntConstant 7
+## CHECK-DAG:     <<Phi:i\d+>>     Phi [<<Const7>>,<<Const3>>]
+## CHECK-DAG:                      Return [<<Phi>>]
+
+## CHECK-START: int TestCmp.JumpsAndConditionals(boolean) constant_folding (after)
+## CHECK-NOT:                      Add
+## CHECK-NOT:                      Sub
+.method public static JumpsAndConditionals(Z)I
+    # int a, b, c;
+    # a = 5;
+    # b = 2;
+    # if (cond)
+    #   c = a + b;
+    # else
+    #   c = a - b;
+    # return c;
+    .registers 4
+
+    const/4 v0, 5
+    const/4 v1, 2
+
+    if-eqz p0, :cond_7
+    add-int v2, v0, v1
+
+    :goto_6
+    return v2
+
+    :cond_7
+    sub-int v2, v0, v1
+    goto :goto_6
+.end method
