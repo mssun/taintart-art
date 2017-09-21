@@ -20,10 +20,10 @@
 #include <unordered_set>
 #include <vector>
 
-#include "compiled_method.h"
 #include "debug/dwarf/debug_line_opcode_writer.h"
 #include "debug/dwarf/headers.h"
 #include "debug/elf_compilation_unit.h"
+#include "debug/src_map_elem.h"
 #include "dex_file-inl.h"
 #include "linker/elf_builder.h"
 #include "stack_map.h"

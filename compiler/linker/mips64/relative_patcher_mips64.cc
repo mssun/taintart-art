@@ -18,6 +18,7 @@
 
 #include "compiled_method.h"
 #include "debug/method_debug_info.h"
+#include "linker/linker_patch.h"
 
 namespace art {
 namespace linker {
