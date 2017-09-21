@@ -51,7 +51,6 @@ void LocationsBuilderX86::VisitVecReplicateScalar(HVecReplicateScalar* instructi
                                     : Location::RequiresFpuRegister());
       locations->SetOut(is_zero ? Location::RequiresFpuRegister()
                                 : Location::SameAsFirstInput());
-
       break;
     default:
       LOG(FATAL) << "Unsupported SIMD type";
@@ -1033,12 +1032,42 @@ void InstructionCodeGeneratorX86::VisitVecSetScalars(HVecSetScalars* instruction
   }
 }
 
-void LocationsBuilderX86::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instr) {
-  LOG(FATAL) << "No SIMD for " << instr->GetId();
+// Helper to set up locations for vector accumulations.
+static void CreateVecAccumLocations(ArenaAllocator* arena, HVecOperation* instruction) {
+  LocationSummary* locations = new (arena) LocationSummary(instruction);
+  switch (instruction->GetPackedType()) {
+    case Primitive::kPrimByte:
+    case Primitive::kPrimChar:
+    case Primitive::kPrimShort:
+    case Primitive::kPrimInt:
+    case Primitive::kPrimLong:
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetInAt(1, Location::RequiresFpuRegister());
+      locations->SetInAt(2, Location::RequiresFpuRegister());
+      locations->SetOut(Location::SameAsFirstInput());
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
 }
 
-void InstructionCodeGeneratorX86::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instr) {
-  LOG(FATAL) << "No SIMD for " << instr->GetId();
+void LocationsBuilderX86::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instruction) {
+  CreateVecAccumLocations(GetGraph()->GetArena(), instruction);
+}
+
+void InstructionCodeGeneratorX86::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instruction) {
+  // TODO: pmaddwd?
+  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+}
+
+void LocationsBuilderX86::VisitVecSADAccumulate(HVecSADAccumulate* instruction) {
+  CreateVecAccumLocations(GetGraph()->GetArena(), instruction);
+}
+
+void InstructionCodeGeneratorX86::VisitVecSADAccumulate(HVecSADAccumulate* instruction) {
+  // TODO: psadbw for unsigned?
+  LOG(FATAL) << "No SIMD for " << instruction->GetId();
 }
 
 // Helper to set up locations for vector memory operations.

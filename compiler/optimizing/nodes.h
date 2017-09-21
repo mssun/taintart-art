@@ -1396,6 +1396,7 @@ class HLoopInformationOutwardIterator : public ValueObject {
   M(VecUShr, VecBinaryOperation)                                        \
   M(VecSetScalars, VecOperation)                                        \
   M(VecMultiplyAccumulate, VecOperation)                                \
+  M(VecSADAccumulate, VecOperation)                                     \
   M(VecLoad, VecMemoryOperation)                                        \
   M(VecStore, VecMemoryOperation)                                       \
 
