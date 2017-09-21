@@ -89,6 +89,28 @@ public class Main {
     }
   }
 
+  /// CHECK-START: void Main.doitMin100(char[], char[]) loop_optimization (before)
+  /// CHECK-DAG: <<I100:i\d+>> IntConstant 100                     loop:none
+  /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get:c\d+>>  ArrayGet                            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Min:i\d+>>  InvokeStaticOrDirect [<<Get>>,<<I100>>] intrinsic:MathMinIntInt loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Cnv:c\d+>>  TypeConversion [<<Min>>]            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-START-ARM64: void Main.doitMin100(char[], char[]) loop_optimization (after)
+  /// CHECK-DAG: <<I100:i\d+>> IntConstant 100                     loop:none
+  /// CHECK-DAG: <<Repl:d\d+>> VecReplicateScalar [<<I100>>]       loop:none
+  /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get:d\d+>>  VecLoad                             loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Min:d\d+>>  VecMin [<<Get>>,<<Repl>>] unsigned:true loop:<<Loop>>  outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Min>>] loop:<<Loop>>      outer_loop:none
+  private static void doitMin100(char[] x, char[] y) {
+    int min = Math.min(x.length, y.length);
+    for (int i = 0; i < min; i++) {
+      x[i] = (char) Math.min(y[i], 100);
+    }
+  }
+
   public static void main(String[] args) {
     char[] interesting = {
       0x0000, 0x0001, 0x007f, 0x0080, 0x0081, 0x00ff,
@@ -122,6 +144,11 @@ public class Main {
     doitMax(x, y, z);
     for (int i = 0; i < total; i++) {
       char expected = (char) Math.max(y[i], z[i]);
+      expectEquals(expected, x[i]);
+    }
+    doitMin100(x, y);
+    for (int i = 0; i < total; i++) {
+      char expected = (char) Math.min(y[i], 100);
       expectEquals(expected, x[i]);
     }
 

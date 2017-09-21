@@ -165,6 +165,28 @@ public class Main {
     }
   }
 
+  /// CHECK-START: void Main.doitMin100(byte[], byte[]) loop_optimization (before)
+  /// CHECK-DAG: <<I100:i\d+>> IntConstant 100                     loop:none
+  /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get:b\d+>>  ArrayGet                            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Min:i\d+>>  InvokeStaticOrDirect [<<Get>>,<<I100>>] intrinsic:MathMinIntInt loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Cnv:b\d+>>  TypeConversion [<<Min>>]            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-START-ARM64: void Main.doitMin100(byte[], byte[]) loop_optimization (after)
+  /// CHECK-DAG: <<I100:i\d+>> IntConstant 100                     loop:none
+  /// CHECK-DAG: <<Repl:d\d+>> VecReplicateScalar [<<I100>>]       loop:none
+  /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get:d\d+>>  VecLoad                             loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Min:d\d+>>  VecMin [<<Get>>,<<Repl>>] unsigned:false loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Min>>] loop:<<Loop>>      outer_loop:none
+  private static void doitMin100(byte[] x, byte[] y) {
+    int min = Math.min(x.length, y.length);
+    for (int i = 0; i < min; i++) {
+      x[i] = (byte) Math.min(y[i], 100);
+    }
+  }
+
   public static void main(String[] args) {
     // Initialize cross-values for all possible values.
     int total = 256 * 256;
@@ -200,6 +222,11 @@ public class Main {
     doitMaxUnsigned(x, y, z);
     for (int i = 0; i < total; i++) {
       byte expected = (byte) Math.max(y[i] & 0xff, z[i] & 0xff);
+      expectEquals(expected, x[i]);
+    }
+    doitMin100(x, y);
+    for (int i = 0; i < total; i++) {
+      byte expected = (byte) Math.min(y[i], 100);
       expectEquals(expected, x[i]);
     }
 
