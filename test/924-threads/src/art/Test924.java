@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.Function;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -76,7 +77,9 @@ public class Test924 {
     };
     printThreadInfo(t4);
 
-    doStateTests();
+    doCurrentThreadStateTests();
+    doStateTests(Thread::new);
+    doStateTests(ExtThread::new);
 
     doAllThreadsTests();
 
@@ -85,14 +88,20 @@ public class Test924 {
     doTestEvents();
   }
 
+  private static final class ExtThread extends Thread {
+    public ExtThread(Runnable r) { super(r); }
+  }
+
   private static class Holder {
     volatile boolean flag = false;
   }
 
-  private static void doStateTests() throws Exception {
+  private static void doCurrentThreadStateTests() throws Exception {
     System.out.println(Integer.toHexString(getThreadState(null)));
     System.out.println(Integer.toHexString(getThreadState(Thread.currentThread())));
+  }
 
+  private static void doStateTests(Function<Runnable, Thread> mkThread) throws Exception {
     final CountDownLatch cdl1 = new CountDownLatch(1);
     final CountDownLatch cdl2 = new CountDownLatch(1);
     final CountDownLatch cdl3_1 = new CountDownLatch(1);
@@ -133,7 +142,8 @@ public class Test924 {
       }
     };
 
-    Thread t = new Thread(r);
+    Thread t = mkThread.apply(r);
+    System.out.println("Thread type is " + t.getClass());
     printThreadState(t);
     t.start();
 
