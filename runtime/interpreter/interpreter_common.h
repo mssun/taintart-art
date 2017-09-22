@@ -202,6 +202,25 @@ static inline bool DoInvoke(Thread* self,
   }
 }
 
+static inline mirror::MethodHandle* ResolveMethodHandle(uint32_t method_handle_index,
+                                                        ArtMethod* referrer)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  return class_linker->ResolveMethodHandle(method_handle_index, referrer);
+}
+
+static inline mirror::MethodType* ResolveMethodType(Thread* self,
+                                                    uint32_t method_type_index,
+                                                    ArtMethod* referrer)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  const DexFile* dex_file = referrer->GetDexFile();
+  StackHandleScope<2> hs(self);
+  Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
+  Handle<mirror::ClassLoader> class_loader(hs.NewHandle(referrer->GetClassLoader()));
+  return class_linker->ResolveMethodType(*dex_file, method_type_index, dex_cache, class_loader);
+}
+
 // Performs a signature polymorphic invoke (invoke-polymorphic/invoke-polymorphic-range).
 template<bool is_range>
 bool DoInvokePolymorphic(Thread* self,

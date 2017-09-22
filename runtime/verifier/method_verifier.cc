@@ -43,6 +43,7 @@
 #include "mirror/class.h"
 #include "mirror/dex_cache-inl.h"
 #include "mirror/method_handle_impl.h"
+#include "mirror/method_type.h"
 #include "mirror/object-inl.h"
 #include "mirror/object_array-inl.h"
 #include "reg_type-inl.h"
@@ -1169,6 +1170,15 @@ bool MethodVerifier::VerifyInstruction(const Instruction* inst, uint32_t code_of
     case Instruction::kVerifyRegBWide:
       result = result && CheckWideRegisterIndex(inst->VRegB());
       break;
+    case Instruction::kVerifyRegBCallSite:
+      result = result && CheckCallSiteIndex(inst->VRegB());
+      break;
+    case Instruction::kVerifyRegBMethodHandle:
+      result = result && CheckMethodHandleIndex(inst->VRegB());
+      break;
+    case Instruction::kVerifyRegBPrototype:
+      result = result && CheckPrototypeIndex(inst->VRegB());
+      break;
   }
   switch (inst->GetVerifyTypeArgumentC()) {
     case Instruction::kVerifyRegC:
@@ -1260,6 +1270,16 @@ inline bool MethodVerifier::CheckWideRegisterIndex(uint32_t idx) {
   return true;
 }
 
+inline bool MethodVerifier::CheckCallSiteIndex(uint32_t idx) {
+  uint32_t limit = dex_file_->NumCallSiteIds();
+  if (UNLIKELY(idx >= limit)) {
+    Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "bad call site index " << idx << " (max "
+                                      << limit << ")";
+    return false;
+  }
+  return true;
+}
+
 inline bool MethodVerifier::CheckFieldIndex(uint32_t idx) {
   if (UNLIKELY(idx >= dex_file_->GetHeader().field_ids_size_)) {
     Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "bad field index " << idx << " (max "
@@ -1273,6 +1293,16 @@ inline bool MethodVerifier::CheckMethodIndex(uint32_t idx) {
   if (UNLIKELY(idx >= dex_file_->GetHeader().method_ids_size_)) {
     Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "bad method index " << idx << " (max "
                                       << dex_file_->GetHeader().method_ids_size_ << ")";
+    return false;
+  }
+  return true;
+}
+
+inline bool MethodVerifier::CheckMethodHandleIndex(uint32_t idx) {
+  uint32_t limit = dex_file_->NumMethodHandles();
+  if (UNLIKELY(idx >= limit)) {
+    Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "bad method handle index " << idx << " (max "
+                                      << limit << ")";
     return false;
   }
   return true;
@@ -2320,6 +2350,18 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
                                                          : reg_types_.JavaLangClass());
       break;
     }
+    case Instruction::CONST_METHOD_HANDLE:
+      work_line_->SetRegisterType<LockOp::kClear>(
+          this, inst->VRegA_21c(), reg_types_.JavaLangInvokeMethodHandle());
+      // TODO: add compiler support for const-method-{handle,type} (b/66890674)
+      Fail(VERIFY_ERROR_FORCE_INTERPRETER);
+      break;
+    case Instruction::CONST_METHOD_TYPE:
+      work_line_->SetRegisterType<LockOp::kClear>(
+          this, inst->VRegA_21c(), reg_types_.JavaLangInvokeMethodType());
+      // TODO: add compiler support for const-method-{handle,type} (b/66890674)
+      Fail(VERIFY_ERROR_FORCE_INTERPRETER);
+      break;
     case Instruction::MONITOR_ENTER:
       work_line_->PushMonitor(this, inst->VRegA_11x(), work_insn_idx_);
       // Check whether the previous instruction is a move-object with vAA as a source, creating
@@ -3454,7 +3496,6 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
     /* These should never appear during verification. */
     case Instruction::UNUSED_3E ... Instruction::UNUSED_43:
     case Instruction::UNUSED_F3 ... Instruction::UNUSED_F9:
-    case Instruction::UNUSED_FE ... Instruction::UNUSED_FF:
     case Instruction::UNUSED_79:
     case Instruction::UNUSED_7A:
       Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "Unexpected opcode " << inst->DumpString(dex_file_);
