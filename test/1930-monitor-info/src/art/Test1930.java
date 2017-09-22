@@ -96,7 +96,7 @@ public class Test1930 {
         printMonitorUsage(lk);
         sem.release();
         try {
-          lk.wait();
+          lk.DoWait();
         } catch (Exception e) {
           throw new Error("Error waiting!", e);
         }
@@ -107,7 +107,7 @@ public class Test1930 {
     sem.acquire();
     synchronized (lk) {
       printMonitorUsage(lk);
-      lk.notifyAll();
+      lk.DoNotifyAll();
     }
     t.join();
     printMonitorUsage(lk);
