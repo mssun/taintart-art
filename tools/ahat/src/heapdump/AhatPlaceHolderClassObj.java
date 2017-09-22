@@ -24,9 +24,13 @@ package com.android.ahat.heapdump;
  */
 public class AhatPlaceHolderClassObj extends AhatClassObj {
   AhatPlaceHolderClassObj(AhatClassObj baseline) {
-    super(-1);
+    super(-1, baseline.getClassName());
     setBaseline(baseline);
     baseline.setBaseline(this);
+  }
+
+  @Override public Size getSize() {
+    return Size.ZERO;
   }
 
   @Override public Size getRetainedSize(AhatHeap heap) {

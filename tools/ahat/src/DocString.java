@@ -16,7 +16,6 @@
 
 package com.android.ahat;
 
-import com.google.common.html.HtmlEscapers;
 import java.net.URI;
 import java.net.URISyntaxException;
 
@@ -67,7 +66,7 @@ class DocString {
    * Returns this object.
    */
   public DocString append(String text) {
-    mStringBuilder.append(HtmlEscapers.htmlEscaper().escape(text));
+    mStringBuilder.append(HtmlEscaper.escape(text));
     return this;
   }
 
@@ -185,7 +184,7 @@ class DocString {
 
   public DocString appendImage(URI uri, String alt) {
     mStringBuilder.append("<img alt=\"");
-    mStringBuilder.append(HtmlEscapers.htmlEscaper().escape(alt));
+    mStringBuilder.append(HtmlEscaper.escape(alt));
     mStringBuilder.append("\" src=\"");
     mStringBuilder.append(uri.toASCIIString());
     mStringBuilder.append("\" />");
@@ -194,7 +193,7 @@ class DocString {
 
   public DocString appendThumbnail(URI uri, String alt) {
     mStringBuilder.append("<img height=\"16\" alt=\"");
-    mStringBuilder.append(HtmlEscapers.htmlEscaper().escape(alt));
+    mStringBuilder.append(HtmlEscaper.escape(alt));
     mStringBuilder.append("\" src=\"");
     mStringBuilder.append(uri.toASCIIString());
     mStringBuilder.append("\" />");

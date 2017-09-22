@@ -22,10 +22,7 @@ include art/build/Android.common_path.mk
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
 LOCAL_JAR_MANIFEST := src/manifest.txt
-LOCAL_JAVA_RESOURCE_FILES := \
-  $(LOCAL_PATH)/src/style.css
-
-LOCAL_STATIC_JAVA_LIBRARIES := perflib-prebuilt guavalib trove-prebuilt
+LOCAL_JAVA_RESOURCE_FILES := $(LOCAL_PATH)/src/style.css
 LOCAL_IS_HOST_MODULE := true
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := ahat
@@ -43,17 +40,6 @@ LOCAL_MODULE := ahat
 LOCAL_SRC_FILES := ahat
 include $(BUILD_PREBUILT)
 
-# --- ahat-tests.jar --------------
-include $(CLEAR_VARS)
-LOCAL_SRC_FILES := $(call all-java-files-under, test)
-LOCAL_JAR_MANIFEST := test/manifest.txt
-LOCAL_STATIC_JAVA_LIBRARIES := ahat junit-host
-LOCAL_IS_HOST_MODULE := true
-LOCAL_MODULE_TAGS := tests
-LOCAL_MODULE := ahat-tests
-include $(BUILD_HOST_JAVA_LIBRARY)
-AHAT_TEST_JAR := $(LOCAL_BUILT_MODULE)
-
 # --- ahat-test-dump.jar --------------
 include $(CLEAR_VARS)
 LOCAL_MODULE := ahat-test-dump
@@ -69,7 +55,13 @@ include $(BUILD_JAVA_LIBRARY)
 AHAT_TEST_DUMP_JAR := $(LOCAL_BUILT_MODULE)
 AHAT_TEST_DUMP_HPROF := $(intermediates.COMMON)/test-dump.hprof
 AHAT_TEST_DUMP_BASE_HPROF := $(intermediates.COMMON)/test-dump-base.hprof
-AHAT_TEST_DUMP_PROGUARD_MAP := $(proguard_dictionary)
+AHAT_TEST_DUMP_PROGUARD_MAP := $(intermediates.COMMON)/test-dump.map
+
+# Generate the proguard map in the desired location by copying it from
+# wherever the build system generates it by default.
+$(AHAT_TEST_DUMP_PROGUARD_MAP): PRIVATE_AHAT_SOURCE_PROGUARD_MAP := $(proguard_dictionary)
+$(AHAT_TEST_DUMP_PROGUARD_MAP): $(proguard_dictionary)
+	cp $(PRIVATE_AHAT_SOURCE_PROGUARD_MAP) $@
 
 # Run ahat-test-dump.jar to generate test-dump.hprof and test-dump-base.hprof
 AHAT_TEST_DUMP_DEPENDENCIES := \
@@ -80,23 +72,36 @@ AHAT_TEST_DUMP_DEPENDENCIES := \
 
 $(AHAT_TEST_DUMP_HPROF): PRIVATE_AHAT_TEST_ART := $(HOST_OUT_EXECUTABLES)/art
 $(AHAT_TEST_DUMP_HPROF): PRIVATE_AHAT_TEST_DUMP_JAR := $(AHAT_TEST_DUMP_JAR)
-$(AHAT_TEST_DUMP_HPROF): PRIVATE_AHAT_TEST_DUMP_DEPENDENCIES := $(AHAT_TEST_DUMP_DEPENDENCIES)
 $(AHAT_TEST_DUMP_HPROF): $(AHAT_TEST_DUMP_JAR) $(AHAT_TEST_DUMP_DEPENDENCIES)
 	$(PRIVATE_AHAT_TEST_ART) -cp $(PRIVATE_AHAT_TEST_DUMP_JAR) Main $@
 
 $(AHAT_TEST_DUMP_BASE_HPROF): PRIVATE_AHAT_TEST_ART := $(HOST_OUT_EXECUTABLES)/art
 $(AHAT_TEST_DUMP_BASE_HPROF): PRIVATE_AHAT_TEST_DUMP_JAR := $(AHAT_TEST_DUMP_JAR)
-$(AHAT_TEST_DUMP_BASE_HPROF): PRIVATE_AHAT_TEST_DUMP_DEPENDENCIES := $(AHAT_TEST_DUMP_DEPENDENCIES)
 $(AHAT_TEST_DUMP_BASE_HPROF): $(AHAT_TEST_DUMP_JAR) $(AHAT_TEST_DUMP_DEPENDENCIES)
 	$(PRIVATE_AHAT_TEST_ART) -cp $(PRIVATE_AHAT_TEST_DUMP_JAR) Main $@ --base
 
+# --- ahat-tests.jar --------------
+include $(CLEAR_VARS)
+LOCAL_SRC_FILES := $(call all-java-files-under, test)
+LOCAL_JAR_MANIFEST := test/manifest.txt
+LOCAL_JAVA_RESOURCE_FILES := \
+  $(AHAT_TEST_DUMP_HPROF) \
+  $(AHAT_TEST_DUMP_BASE_HPROF) \
+  $(AHAT_TEST_DUMP_PROGUARD_MAP) \
+  $(LOCAL_PATH)/test-dump/L.hprof \
+  $(LOCAL_PATH)/test-dump/O.hprof \
+  $(LOCAL_PATH)/test-dump/RI.hprof
+LOCAL_STATIC_JAVA_LIBRARIES := ahat junit-host
+LOCAL_IS_HOST_MODULE := true
+LOCAL_MODULE_TAGS := tests
+LOCAL_MODULE := ahat-tests
+include $(BUILD_HOST_JAVA_LIBRARY)
+AHAT_TEST_JAR := $(LOCAL_BUILT_MODULE)
+
 .PHONY: ahat-test
-ahat-test: PRIVATE_AHAT_TEST_DUMP_HPROF := $(AHAT_TEST_DUMP_HPROF)
-ahat-test: PRIVATE_AHAT_TEST_DUMP_BASE_HPROF := $(AHAT_TEST_DUMP_BASE_HPROF)
 ahat-test: PRIVATE_AHAT_TEST_JAR := $(AHAT_TEST_JAR)
-ahat-test: PRIVATE_AHAT_PROGUARD_MAP := $(AHAT_TEST_DUMP_PROGUARD_MAP)
-ahat-test: $(AHAT_TEST_JAR) $(AHAT_TEST_DUMP_HPROF) $(AHAT_TEST_DUMP_BASE_HPROF)
-	java -enableassertions -Dahat.test.dump.hprof=$(PRIVATE_AHAT_TEST_DUMP_HPROF) -Dahat.test.dump.base.hprof=$(PRIVATE_AHAT_TEST_DUMP_BASE_HPROF) -Dahat.test.dump.map=$(PRIVATE_AHAT_PROGUARD_MAP) -jar $(PRIVATE_AHAT_TEST_JAR)
+ahat-test: $(AHAT_TEST_JAR)
+	java -enableassertions -jar $(PRIVATE_AHAT_TEST_JAR)
 
 # Clean up local variables.
 AHAT_TEST_JAR :=
