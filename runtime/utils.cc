@@ -148,7 +148,7 @@ bool PrintFileToLog(const std::string& file_name, LogSeverity level) {
   }
 }
 
-std::string PrettyDescriptor(const char* descriptor) {
+void AppendPrettyDescriptor(const char* descriptor, std::string* result) {
   // Count the number of '['s to get the dimensionality.
   const char* c = descriptor;
   size_t dim = 0;
@@ -166,72 +166,39 @@ std::string PrettyDescriptor(const char* descriptor) {
     // To make life easier, we make primitives look like unqualified
     // reference types.
     switch (*c) {
-    case 'B': c = "byte;"; break;
-    case 'C': c = "char;"; break;
-    case 'D': c = "double;"; break;
-    case 'F': c = "float;"; break;
-    case 'I': c = "int;"; break;
-    case 'J': c = "long;"; break;
-    case 'S': c = "short;"; break;
-    case 'Z': c = "boolean;"; break;
-    case 'V': c = "void;"; break;  // Used when decoding return types.
-    default: return descriptor;
+      case 'B': c = "byte;"; break;
+      case 'C': c = "char;"; break;
+      case 'D': c = "double;"; break;
+      case 'F': c = "float;"; break;
+      case 'I': c = "int;"; break;
+      case 'J': c = "long;"; break;
+      case 'S': c = "short;"; break;
+      case 'Z': c = "boolean;"; break;
+      case 'V': c = "void;"; break;  // Used when decoding return types.
+      default: result->append(descriptor); return;
     }
   }
 
   // At this point, 'c' is a string of the form "fully/qualified/Type;"
   // or "primitive;". Rewrite the type with '.' instead of '/':
-  std::string result;
   const char* p = c;
   while (*p != ';') {
     char ch = *p++;
     if (ch == '/') {
       ch = '.';
     }
-    result.push_back(ch);
+    result->push_back(ch);
   }
   // ...and replace the semicolon with 'dim' "[]" pairs:
   for (size_t i = 0; i < dim; ++i) {
-    result += "[]";
+    result->append("[]");
   }
-  return result;
 }
 
-std::string PrettyArguments(const char* signature) {
+std::string PrettyDescriptor(const char* descriptor) {
   std::string result;
-  result += '(';
-  CHECK_EQ(*signature, '(');
-  ++signature;  // Skip the '('.
-  while (*signature != ')') {
-    size_t argument_length = 0;
-    while (signature[argument_length] == '[') {
-      ++argument_length;
-    }
-    if (signature[argument_length] == 'L') {
-      argument_length = (strchr(signature, ';') - signature + 1);
-    } else {
-      ++argument_length;
-    }
-    {
-      std::string argument_descriptor(signature, argument_length);
-      result += PrettyDescriptor(argument_descriptor.c_str());
-    }
-    if (signature[argument_length] != ')') {
-      result += ", ";
-    }
-    signature += argument_length;
-  }
-  CHECK_EQ(*signature, ')');
-  ++signature;  // Skip the ')'.
-  result += ')';
+  AppendPrettyDescriptor(descriptor, &result);
   return result;
-}
-
-std::string PrettyReturnType(const char* signature) {
-  const char* return_type = strchr(signature, ')');
-  CHECK(return_type != nullptr);
-  ++return_type;  // Skip ')'.
-  return PrettyDescriptor(return_type);
 }
 
 std::string PrettyJavaAccessFlags(uint32_t access_flags) {
