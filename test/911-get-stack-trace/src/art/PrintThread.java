@@ -42,7 +42,7 @@ public class PrintThread {
   // may not exist depending on the environment.
   public final static String IGNORE_THREAD_NAME_REGEX =
       "Binder:|RenderThread|hwuiTask|Jit thread pool worker|Instr:|JDWP|Profile Saver|main|" +
-      "queued-work-looper";
+      "queued-work-looper|InstrumentationConnectionThread";
   public final static Matcher IGNORE_THREADS =
       Pattern.compile(IGNORE_THREAD_NAME_REGEX).matcher("");
 

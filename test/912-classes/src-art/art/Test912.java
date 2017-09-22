@@ -19,8 +19,10 @@ package art;
 import java.lang.ref.Reference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Proxy;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Comparator;
 
 public class Test912 {
@@ -214,8 +216,34 @@ public class Test912 {
     }
   }
 
-  private static void testClassVersion() {
-    System.out.println(Arrays.toString(getClassVersion(Main.class)));
+  /**
+   * base64 encoded class/dex file for
+   * class Transform {
+   *   public void sayHi() {
+   *    System.out.println("Goodbye");
+   *   }
+   * }
+   */
+  private static final byte[] DEX_BYTES = Base64.getDecoder().decode(
+    "ZGV4CjAzNQCLXSBQ5FiS3f16krSYZFF8xYZtFVp0GRXMAgAAcAAAAHhWNBIAAAAAAAAAACwCAAAO" +
+    "AAAAcAAAAAYAAACoAAAAAgAAAMAAAAABAAAA2AAAAAQAAADgAAAAAQAAAAABAACsAQAAIAEAAGIB" +
+    "AABqAQAAcwEAAIABAACXAQAAqwEAAL8BAADTAQAA4wEAAOYBAADqAQAA/gEAAAMCAAAMAgAAAgAA" +
+    "AAMAAAAEAAAABQAAAAYAAAAIAAAACAAAAAUAAAAAAAAACQAAAAUAAABcAQAABAABAAsAAAAAAAAA" +
+    "AAAAAAAAAAANAAAAAQABAAwAAAACAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAHAAAAAAAAAB4CAAAA" +
+    "AAAAAQABAAEAAAATAgAABAAAAHAQAwAAAA4AAwABAAIAAAAYAgAACQAAAGIAAAAbAQEAAABuIAIA" +
+    "EAAOAAAAAQAAAAMABjxpbml0PgAHR29vZGJ5ZQALTFRyYW5zZm9ybTsAFUxqYXZhL2lvL1ByaW50" +
+    "U3RyZWFtOwASTGphdmEvbGFuZy9PYmplY3Q7ABJMamF2YS9sYW5nL1N0cmluZzsAEkxqYXZhL2xh" +
+    "bmcvU3lzdGVtOwAOVHJhbnNmb3JtLmphdmEAAVYAAlZMABJlbWl0dGVyOiBqYWNrLTMuMzYAA291" +
+    "dAAHcHJpbnRsbgAFc2F5SGkAEQAHDgATAAcOhQAAAAEBAICABKACAQG4Ag0AAAAAAAAAAQAAAAAA" +
+    "AAABAAAADgAAAHAAAAACAAAABgAAAKgAAAADAAAAAgAAAMAAAAAEAAAAAQAAANgAAAAFAAAABAAA" +
+    "AOAAAAAGAAAAAQAAAAABAAABIAAAAgAAACABAAABEAAAAQAAAFwBAAACIAAADgAAAGIBAAADIAAA" +
+    "AgAAABMCAAAAIAAAAQAAAB4CAAAAEAAAAQAAACwCAAA=");
+  private static void testClassVersion() throws Exception {
+    Class<?> class_loader_class = Class.forName("dalvik.system.InMemoryDexClassLoader");
+    Constructor<?> ctor = class_loader_class.getConstructor(ByteBuffer.class, ClassLoader.class);
+    Class target = ((ClassLoader)ctor.newInstance(
+        ByteBuffer.wrap(DEX_BYTES), Test912.class.getClassLoader())).loadClass("Transform");
+    System.out.println(Arrays.toString(getClassVersion(target)));
   }
 
   private static void testClassEvents() throws Exception {
