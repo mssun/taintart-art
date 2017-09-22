@@ -91,23 +91,6 @@ TEST_F(UtilsTest, PrettyDescriptor_PrimitiveScalars) {
   EXPECT_EQ("short", PrettyDescriptor("S"));
 }
 
-TEST_F(UtilsTest, PrettyArguments) {
-  EXPECT_EQ("()", PrettyArguments("()V"));
-  EXPECT_EQ("(int)", PrettyArguments("(I)V"));
-  EXPECT_EQ("(int, int)", PrettyArguments("(II)V"));
-  EXPECT_EQ("(int, int, int[][])", PrettyArguments("(II[[I)V"));
-  EXPECT_EQ("(int, int, int[][], java.lang.Poop)", PrettyArguments("(II[[ILjava/lang/Poop;)V"));
-  EXPECT_EQ("(int, int, int[][], java.lang.Poop, java.lang.Poop[][])", PrettyArguments("(II[[ILjava/lang/Poop;[[Ljava/lang/Poop;)V"));
-}
-
-TEST_F(UtilsTest, PrettyReturnType) {
-  EXPECT_EQ("void", PrettyReturnType("()V"));
-  EXPECT_EQ("int", PrettyReturnType("()I"));
-  EXPECT_EQ("int[][]", PrettyReturnType("()[[I"));
-  EXPECT_EQ("java.lang.Poop", PrettyReturnType("()Ljava/lang/Poop;"));
-  EXPECT_EQ("java.lang.Poop[][]", PrettyReturnType("()[[Ljava/lang/Poop;"));
-}
-
 TEST_F(UtilsTest, PrettyTypeOf) {
   ScopedObjectAccess soa(Thread::Current());
   EXPECT_EQ("null", mirror::Object::PrettyTypeOf(nullptr));
