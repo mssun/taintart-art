@@ -16,13 +16,9 @@
 
 package com.android.ahat.heapdump;
 
-import com.android.tools.perflib.heap.ClassObj;
-import com.android.tools.perflib.heap.Instance;
 import java.util.AbstractList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 public class AhatClassObj extends AhatInstance {
   private String mClassName;
@@ -30,43 +26,32 @@ public class AhatClassObj extends AhatInstance {
   private AhatInstance mClassLoader;
   private FieldValue[] mStaticFieldValues;
   private Field[] mInstanceFields;
+  private long mStaticFieldsSize;
+  private long mInstanceSize;
 
-  public AhatClassObj(long id) {
+  public AhatClassObj(long id, String className) {
     super(id);
+    mClassName = className;
   }
 
-  @Override void initialize(AhatSnapshot snapshot, Instance inst, Site site) {
-    super.initialize(snapshot, inst, site);
+  void initialize(AhatClassObj superClass,
+                  long instanceSize,
+                  Field[] instanceFields,
+                  long staticFieldsSize) {
+    mSuperClassObj = superClass;
+    mInstanceSize = instanceSize;
+    mInstanceFields = instanceFields;
+    mStaticFieldsSize = staticFieldsSize;
+  }
 
-    ClassObj classObj = (ClassObj)inst;
-    mClassName = classObj.getClassName();
+  void initialize(AhatInstance classLoader, FieldValue[] staticFields) {
+    mClassLoader = classLoader;
+    mStaticFieldValues = staticFields;
+  }
 
-    ClassObj superClassObj = classObj.getSuperClassObj();
-    if (superClassObj != null) {
-      mSuperClassObj = snapshot.findClassObj(superClassObj.getId());
-    }
-
-    Instance loader = classObj.getClassLoader();
-    if (loader != null) {
-      mClassLoader = snapshot.findInstance(loader.getId());
-    }
-
-    Collection<Map.Entry<com.android.tools.perflib.heap.Field, Object>> fieldValues
-      = classObj.getStaticFieldValues().entrySet();
-    mStaticFieldValues = new FieldValue[fieldValues.size()];
-    int index = 0;
-    for (Map.Entry<com.android.tools.perflib.heap.Field, Object> field : fieldValues) {
-      String name = field.getKey().getName();
-      String type = field.getKey().getType().toString();
-      Value value = snapshot.getValue(field.getValue());
-      mStaticFieldValues[index++] = new FieldValue(name, type, value);
-    }
-
-    com.android.tools.perflib.heap.Field[] fields = classObj.getFields();
-    mInstanceFields = new Field[fields.length];
-    for (int i = 0; i < fields.length; i++) {
-      mInstanceFields[i] = new Field(fields[i].getName(), fields[i].getType().toString());
-    }
+  @Override
+  protected long getExtraJavaSize() {
+    return mStaticFieldsSize;
   }
 
   /**
@@ -88,6 +73,14 @@ public class AhatClassObj extends AhatInstance {
    */
   public AhatInstance getClassLoader() {
     return mClassLoader;
+  }
+
+  /**
+   * Returns the size of instances of this object, as reported in the heap
+   * dump.
+   */
+  public long getInstanceSize() {
+    return mInstanceSize;
   }
 
   /**

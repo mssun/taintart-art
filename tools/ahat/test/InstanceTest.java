@@ -23,23 +23,7 @@ import com.android.ahat.heapdump.AhatSnapshot;
 import com.android.ahat.heapdump.PathElement;
 import com.android.ahat.heapdump.Size;
 import com.android.ahat.heapdump.Value;
-import com.android.tools.perflib.heap.hprof.HprofClassDump;
-import com.android.tools.perflib.heap.hprof.HprofConstant;
-import com.android.tools.perflib.heap.hprof.HprofDumpRecord;
-import com.android.tools.perflib.heap.hprof.HprofHeapDump;
-import com.android.tools.perflib.heap.hprof.HprofInstanceDump;
-import com.android.tools.perflib.heap.hprof.HprofInstanceField;
-import com.android.tools.perflib.heap.hprof.HprofLoadClass;
-import com.android.tools.perflib.heap.hprof.HprofPrimitiveArrayDump;
-import com.android.tools.perflib.heap.hprof.HprofRecord;
-import com.android.tools.perflib.heap.hprof.HprofRootDebugger;
-import com.android.tools.perflib.heap.hprof.HprofStaticField;
-import com.android.tools.perflib.heap.hprof.HprofStringBuilder;
-import com.android.tools.perflib.heap.hprof.HprofType;
-import com.google.common.io.ByteArrayDataOutput;
-import com.google.common.io.ByteStreams;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
 
@@ -395,44 +379,63 @@ public class InstanceTest {
 
   @Test
   public void asStringEmbedded() throws IOException {
-    // Set up a heap dump with an instance of java.lang.String of
-    // "hello" with instance id 0x42 that is backed by a char array that is
-    // bigger. This is how ART used to represent strings, and we should still
-    // support it in case the heap dump is from a previous platform version.
-    HprofStringBuilder strings = new HprofStringBuilder(0);
-    List<HprofRecord> records = new ArrayList<HprofRecord>();
-    List<HprofDumpRecord> dump = new ArrayList<HprofDumpRecord>();
+    // On Android L, image strings were backed by a single big char array.
+    // Verify we show just the relative part of the string, not the entire
+    // char array.
+    TestDump dump = TestDump.getTestDump("L.hprof", null, null);
+    AhatSnapshot snapshot = dump.getAhatSnapshot();
 
-    final int stringClassObjectId = 1;
-    records.add(new HprofLoadClass(0, 0, stringClassObjectId, 0, strings.get("java.lang.String")));
-    dump.add(new HprofClassDump(stringClassObjectId, 0, 0, 0, 0, 0, 0, 0, 0,
-          new HprofConstant[0], new HprofStaticField[0],
-          new HprofInstanceField[]{
-            new HprofInstanceField(strings.get("count"), HprofType.TYPE_INT),
-            new HprofInstanceField(strings.get("hashCode"), HprofType.TYPE_INT),
-            new HprofInstanceField(strings.get("offset"), HprofType.TYPE_INT),
-            new HprofInstanceField(strings.get("value"), HprofType.TYPE_OBJECT)}));
+    // java.lang.String@0x6fe17050 is an image string "char" backed by a
+    // shared char array.
+    AhatInstance str = snapshot.findInstance(0x6fe17050);
+    assertEquals("char", str.asString());
+  }
 
-    dump.add(new HprofPrimitiveArrayDump(0x41, 0, HprofType.TYPE_CHAR,
-          new long[]{'n', 'o', 't', ' ', 'h', 'e', 'l', 'l', 'o', 'o', 'p'}));
+  @Test
+  public void nonDefaultHeapRoot() throws IOException {
+    TestDump dump = TestDump.getTestDump("O.hprof", null, null);
+    AhatSnapshot snapshot = dump.getAhatSnapshot();
 
-    ByteArrayDataOutput values = ByteStreams.newDataOutput();
-    values.writeInt(5);     // count
-    values.writeInt(0);     // hashCode
-    values.writeInt(4);     // offset
-    values.writeInt(0x41);  // value
-    dump.add(new HprofInstanceDump(0x42, 0, stringClassObjectId, values.toByteArray()));
-    dump.add(new HprofRootDebugger(stringClassObjectId));
-    dump.add(new HprofRootDebugger(0x42));
+    // java.util.HashMap@6004fdb8 is marked as a VM INTERNAL root.
+    // Previously we had a bug where roots not on the default heap were not
+    // properly treated as roots (b/65356532).
+    AhatInstance map = snapshot.findInstance(0x6004fdb8);
+    assertEquals("java.util.HashMap", map.getClassName());
+    assertTrue(map.isRoot());
+  }
 
-    records.add(new HprofHeapDump(0, dump.toArray(new HprofDumpRecord[0])));
-    AhatSnapshot snapshot = SnapshotBuilder.makeSnapshot(strings, records);
-    AhatInstance chars = snapshot.findInstance(0x41);
-    assertNotNull(chars);
-    assertEquals("not helloop", chars.asString());
+  @Test
+  public void threadRoot() throws IOException {
+    TestDump dump = TestDump.getTestDump("O.hprof", null, null);
+    AhatSnapshot snapshot = dump.getAhatSnapshot();
 
-    AhatInstance stringInstance = snapshot.findInstance(0x42);
-    assertNotNull(stringInstance);
-    assertEquals("hello", stringInstance.asString());
+    // java.lang.Thread@12c03470 is marked as a thread root.
+    // Previously we had a bug where thread roots were not properly treated as
+    // roots (b/65356532).
+    AhatInstance thread = snapshot.findInstance(0x12c03470);
+    assertEquals("java.lang.Thread", thread.getClassName());
+    assertTrue(thread.isRoot());
+  }
+
+  @Test
+  public void classOfClass() throws IOException {
+    TestDump dump = TestDump.getTestDump();
+    AhatInstance obj = dump.getDumpedAhatInstance("anObject");
+    AhatClassObj cls = obj.getClassObj();
+    AhatClassObj clscls = cls.getClassObj();
+    assertNotNull(clscls);
+    assertEquals("java.lang.Class", clscls.getName());
+  }
+
+  @Test
+  public void nullValueString() throws IOException {
+    TestDump dump = TestDump.getTestDump("RI.hprof", null, null);
+    AhatSnapshot snapshot = dump.getAhatSnapshot();
+
+    // java.lang.String@500001a8 has a null 'value' field, which should not
+    // cause ahat to crash.
+    AhatInstance str = snapshot.findInstance(0x500001a8);
+    assertEquals("java.lang.String", str.getClassName());
+    assertNull(str.asString());
   }
 }

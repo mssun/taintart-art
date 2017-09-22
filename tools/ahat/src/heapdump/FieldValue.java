@@ -18,10 +18,10 @@ package com.android.ahat.heapdump;
 
 public class FieldValue {
   public final String name;
-  public final String type;
+  public final Type type;
   public final Value value;
 
-  public FieldValue(String name, String type, Value value) {
+  public FieldValue(String name, Type type, Value value) {
     this.name = name;
     this.type = type;
     this.value = value;
