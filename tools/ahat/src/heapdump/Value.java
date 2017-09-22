@@ -25,37 +25,6 @@ public abstract class Value {
     return value == null ? null : new InstanceValue(value);
   }
 
-  /**
-   * Constructs a value from a generic Java Object.
-   * The Object must either be a boxed Java primitive type or a subclass of
-   * AhatInstance. The object must not be null.
-   */
-  public static Value pack(Object object) {
-    if (object == null) {
-      return null;
-    } else if (object instanceof AhatInstance) {
-      return Value.pack((AhatInstance)object);
-    } else if (object instanceof Boolean) {
-      return Value.pack(((Boolean)object).booleanValue());
-    } else if (object instanceof Character) {
-      return Value.pack(((Character)object).charValue());
-    } else if (object instanceof Float) {
-      return Value.pack(((Float)object).floatValue());
-    } else if (object instanceof Double) {
-      return Value.pack(((Double)object).doubleValue());
-    } else if (object instanceof Byte) {
-      return Value.pack(((Byte)object).byteValue());
-    } else if (object instanceof Short) {
-      return Value.pack(((Short)object).shortValue());
-    } else if (object instanceof Integer) {
-      return Value.pack(((Integer)object).intValue());
-    } else if (object instanceof Long) {
-      return Value.pack(((Long)object).longValue());
-    }
-    throw new IllegalArgumentException(
-        "AhatInstance or primitive type required, but got: " + object.toString());
-  }
-
   public static Value pack(boolean value) {
     return new BooleanValue(value);
   }
@@ -87,6 +56,18 @@ public abstract class Value {
   public static Value pack(long value) {
     return new LongValue(value);
   }
+
+  /**
+   * Return the type of the given value.
+   */
+  public static Type getType(Value value) {
+    return value == null ? Type.OBJECT : value.getType();
+  }
+
+  /**
+   * Return the type of the given value.
+   */
+  protected abstract Type getType();
 
   /**
    * Returns true if the Value is an AhatInstance, as opposed to a Java
@@ -172,6 +153,11 @@ public abstract class Value {
     }
 
     @Override
+    protected Type getType() {
+      return Type.BOOLEAN;
+    }
+
+    @Override
     public String toString() {
       return Boolean.toString(mBool);
     }
@@ -195,6 +181,11 @@ public abstract class Value {
     @Override
     public Byte asByte() {
       return mByte;
+    }
+
+    @Override
+    protected Type getType() {
+      return Type.BYTE;
     }
 
     @Override
@@ -224,6 +215,11 @@ public abstract class Value {
     }
 
     @Override
+    protected Type getType() {
+      return Type.CHAR;
+    }
+
+    @Override
     public String toString() {
       return Character.toString(mChar);
     }
@@ -245,6 +241,11 @@ public abstract class Value {
     }
 
     @Override
+    protected Type getType() {
+      return Type.DOUBLE;
+    }
+
+    @Override
     public String toString() {
       return Double.toString(mDouble);
     }
@@ -263,6 +264,11 @@ public abstract class Value {
 
     FloatValue(float f) {
       mFloat = f;
+    }
+
+    @Override
+    protected Type getType() {
+      return Type.FLOAT;
     }
 
     @Override
@@ -295,6 +301,11 @@ public abstract class Value {
     @Override
     public AhatInstance asAhatInstance() {
       return mInstance;
+    }
+
+    @Override
+    protected Type getType() {
+      return Type.OBJECT;
     }
 
     @Override
@@ -334,6 +345,11 @@ public abstract class Value {
     }
 
     @Override
+    protected Type getType() {
+      return Type.INT;
+    }
+
+    @Override
     public String toString() {
       return Integer.toString(mInt);
     }
@@ -365,6 +381,11 @@ public abstract class Value {
     }
 
     @Override
+    protected Type getType() {
+      return Type.LONG;
+    }
+
+    @Override
     public String toString() {
       return Long.toString(mLong);
     }
@@ -383,6 +404,11 @@ public abstract class Value {
 
     ShortValue(short s) {
       mShort = s;
+    }
+
+    @Override
+    protected Type getType() {
+      return Type.SHORT;
     }
 
     @Override
