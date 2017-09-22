@@ -34,6 +34,11 @@ public class SuperRoot extends AhatInstance implements DominatorsComputation.Nod
   }
 
   @Override
+  protected long getExtraJavaSize() {
+    return 0;
+  }
+
+  @Override
   public String toString() {
     return "SUPER_ROOT";
   }

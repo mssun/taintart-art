@@ -18,7 +18,8 @@ package com.android.ahat;
 
 import com.android.ahat.heapdump.AhatSnapshot;
 import com.android.ahat.heapdump.Diff;
-import com.android.tools.perflib.heap.ProguardMap;
+import com.android.ahat.heapdump.Parser;
+import com.android.ahat.proguard.ProguardMap;
 import com.sun.net.httpserver.HttpServer;
 import java.io.File;
 import java.io.IOException;
@@ -46,7 +47,7 @@ public class Main {
     out.println("");
   }
 
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) throws Exception {
     int port = 7100;
     for (String arg : args) {
       if (arg.equals("--help")) {
@@ -110,11 +111,11 @@ public class Main {
     HttpServer server = HttpServer.create(addr, 0);
 
     System.out.println("Processing hprof file...");
-    AhatSnapshot ahat = AhatSnapshot.fromHprof(hprof, map);
+    AhatSnapshot ahat = Parser.parseHeapDump(hprof, map);
 
     if (hprofbase != null) {
       System.out.println("Processing baseline hprof file...");
-      AhatSnapshot base = AhatSnapshot.fromHprof(hprofbase, mapbase);
+      AhatSnapshot base = Parser.parseHeapDump(hprofbase, mapbase);
 
       System.out.println("Diffing hprof files...");
       Diff.snapshots(ahat, base);

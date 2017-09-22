@@ -36,6 +36,10 @@ public class AhatPlaceHolderInstance extends AhatInstance {
     return Size.ZERO;
   }
 
+  @Override protected long getExtraJavaSize() {
+    return 0;
+  }
+
   @Override public Size getRetainedSize(AhatHeap heap) {
     return Size.ZERO;
   }
