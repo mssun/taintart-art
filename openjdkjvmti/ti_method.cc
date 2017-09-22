@@ -761,12 +761,10 @@ jvmtiError MethodUtil::GetLocalVariableGeneric(jvmtiEnv* env ATTRIBUTE_UNUSED,
   art::jit::ScopedJitSuspend suspend_jit;
   art::ScopedObjectAccess soa(self);
   art::MutexLock mu(self, *art::Locks::thread_list_lock_);
-  art::Thread* target = ThreadUtil::GetNativeThread(thread, soa);
-  if (target == nullptr && thread == nullptr) {
-    return ERR(INVALID_THREAD);
-  }
-  if (target == nullptr) {
-    return ERR(THREAD_NOT_ALIVE);
+  art::Thread* target = nullptr;
+  jvmtiError err = ERR(INTERNAL);
+  if (!ThreadUtil::GetAliveNativeThread(thread, soa, &target, &err)) {
+    return err;
   }
   GetLocalVariableClosure c(self, depth, slot, type, val);
   if (!target->RequestSynchronousCheckpoint(&c)) {
@@ -890,12 +888,10 @@ jvmtiError MethodUtil::SetLocalVariableGeneric(jvmtiEnv* env ATTRIBUTE_UNUSED,
   art::jit::ScopedJitSuspend suspend_jit;
   art::ScopedObjectAccess soa(self);
   art::MutexLock mu(self, *art::Locks::thread_list_lock_);
-  art::Thread* target = ThreadUtil::GetNativeThread(thread, soa);
-  if (target == nullptr && thread == nullptr) {
-    return ERR(INVALID_THREAD);
-  }
-  if (target == nullptr) {
-    return ERR(THREAD_NOT_ALIVE);
+  art::Thread* target = nullptr;
+  jvmtiError err = ERR(INTERNAL);
+  if (!ThreadUtil::GetAliveNativeThread(thread, soa, &target, &err)) {
+    return err;
   }
   SetLocalVariableClosure c(self, depth, slot, type, val);
   if (!target->RequestSynchronousCheckpoint(&c)) {
@@ -955,12 +951,10 @@ jvmtiError MethodUtil::GetLocalInstance(jvmtiEnv* env ATTRIBUTE_UNUSED,
   art::Thread* self = art::Thread::Current();
   art::ScopedObjectAccess soa(self);
   art::MutexLock mu(self, *art::Locks::thread_list_lock_);
-  art::Thread* target = ThreadUtil::GetNativeThread(thread, soa);
-  if (target == nullptr && thread == nullptr) {
-    return ERR(INVALID_THREAD);
-  }
-  if (target == nullptr) {
-    return ERR(THREAD_NOT_ALIVE);
+  art::Thread* target = nullptr;
+  jvmtiError err = ERR(INTERNAL);
+  if (!ThreadUtil::GetAliveNativeThread(thread, soa, &target, &err)) {
+    return err;
   }
   GetLocalInstanceClosure c(self, depth, data);
   if (!target->RequestSynchronousCheckpoint(&c)) {
