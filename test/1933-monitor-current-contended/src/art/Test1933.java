@@ -34,9 +34,13 @@ public class Test1933 {
      controller1.waitForLockToBeHeld();
      controller1.DoWait();
      controller1.waitForNotifySleep();
-     System.out.println("c1 is contending for monitor: " + controller1.getWorkerContendedMonitor());
+     // Spurious wakeups can hurt us here. Just retry until we get the result we expect. The test
+     // will timeout eventually.
+     Object mon = controller1.getWorkerContendedMonitor();
+     for (; mon == null; mon = controller1.getWorkerContendedMonitor()) { Thread.yield(); }
+     System.out.println("c1 is contending for monitor: " + mon);
      synchronized (lk) {
-       lk.notifyAll();
+       lk.DoNotifyAll();
      }
      controller1.DoUnlock();
   }
