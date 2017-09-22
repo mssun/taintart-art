@@ -1302,17 +1302,27 @@ std::string DexFile::PrettyMethod(uint32_t method_idx, bool with_signature) cons
     return StringPrintf("<<invalid-method-idx-%d>>", method_idx);
   }
   const DexFile::MethodId& method_id = GetMethodId(method_idx);
-  std::string result(PrettyDescriptor(GetMethodDeclaringClassDescriptor(method_id)));
+  std::string result;
+  const DexFile::ProtoId* proto_id = with_signature ? &GetProtoId(method_id.proto_idx_) : nullptr;
+  if (with_signature) {
+    AppendPrettyDescriptor(StringByTypeIdx(proto_id->return_type_idx_), &result);
+    result += ' ';
+  }
+  AppendPrettyDescriptor(GetMethodDeclaringClassDescriptor(method_id), &result);
   result += '.';
   result += GetMethodName(method_id);
   if (with_signature) {
-    const Signature signature = GetMethodSignature(method_id);
-    std::string sig_as_string(signature.ToString());
-    if (signature == Signature::NoSignature()) {
-      return result + sig_as_string;
+    result += '(';
+    const DexFile::TypeList* params = GetProtoParameters(*proto_id);
+    if (params != nullptr) {
+      const char* separator = "";
+      for (uint32_t i = 0u, size = params->Size(); i != size; ++i) {
+        result += separator;
+        separator = ", ";
+        AppendPrettyDescriptor(StringByTypeIdx(params->GetTypeItem(i).type_idx_), &result);
+      }
     }
-    result = PrettyReturnType(sig_as_string.c_str()) + " " + result +
-        PrettyArguments(sig_as_string.c_str());
+    result += ')';
   }
   return result;
 }
@@ -1327,7 +1337,7 @@ std::string DexFile::PrettyField(uint32_t field_idx, bool with_type) const {
     result += GetFieldTypeDescriptor(field_id);
     result += ' ';
   }
-  result += PrettyDescriptor(GetFieldDeclaringClassDescriptor(field_id));
+  AppendPrettyDescriptor(GetFieldDeclaringClassDescriptor(field_id), &result);
   result += '.';
   result += GetFieldName(field_id);
   return result;
