@@ -37,7 +37,7 @@
 #include "base/time_utils.h"
 #include "base/timing_logger.h"
 #include "class_linker-inl.h"
-#include "compiled_method.h"
+#include "compiled_method-inl.h"
 #include "compiler.h"
 #include "compiler_callbacks.h"
 #include "compiler_driver-inl.h"
@@ -55,6 +55,7 @@
 #include "handle_scope-inl.h"
 #include "intrinsics_enum.h"
 #include "jni_internal.h"
+#include "linker/linker_patch.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
 #include "mirror/dex_cache-inl.h"
@@ -618,7 +619,7 @@ static void CompileMethod(Thread* self,
   if (compiled_method != nullptr) {
     // Count non-relative linker patches.
     size_t non_relative_linker_patch_count = 0u;
-    for (const LinkerPatch& patch : compiled_method->GetPatches()) {
+    for (const linker::LinkerPatch& patch : compiled_method->GetPatches()) {
       if (!patch.IsPcRelative()) {
         ++non_relative_linker_patch_count;
       }

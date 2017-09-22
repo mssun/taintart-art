@@ -63,7 +63,6 @@
 #include "driver/compiler_driver-inl.h"
 #include "driver/compiler_options.h"
 #include "driver/dex_compilation_unit.h"
-#include "elf_writer_quick.h"
 #include "graph_checker.h"
 #include "graph_visualizer.h"
 #include "gvn.h"
@@ -78,6 +77,7 @@
 #include "jit/jit_logger.h"
 #include "jni/quick/jni_compiler.h"
 #include "licm.h"
+#include "linker/linker_patch.h"
 #include "load_store_analysis.h"
 #include "load_store_elimination.h"
 #include "loop_optimization.h"
@@ -834,13 +834,13 @@ void OptimizingCompiler::RunOptimizations(HGraph* graph,
   RunArchOptimizations(driver->GetInstructionSet(), graph, codegen, pass_observer);
 }
 
-static ArenaVector<LinkerPatch> EmitAndSortLinkerPatches(CodeGenerator* codegen) {
-  ArenaVector<LinkerPatch> linker_patches(codegen->GetGraph()->GetArena()->Adapter());
+static ArenaVector<linker::LinkerPatch> EmitAndSortLinkerPatches(CodeGenerator* codegen) {
+  ArenaVector<linker::LinkerPatch> linker_patches(codegen->GetGraph()->GetArena()->Adapter());
   codegen->EmitLinkerPatches(&linker_patches);
 
   // Sort patches by literal offset. Required for .oat_patches encoding.
   std::sort(linker_patches.begin(), linker_patches.end(),
-            [](const LinkerPatch& lhs, const LinkerPatch& rhs) {
+            [](const linker::LinkerPatch& lhs, const linker::LinkerPatch& rhs) {
     return lhs.LiteralOffset() < rhs.LiteralOffset();
   });
 
@@ -852,7 +852,7 @@ CompiledMethod* OptimizingCompiler::Emit(ArenaAllocator* arena,
                                          CodeGenerator* codegen,
                                          CompilerDriver* compiler_driver,
                                          const DexFile::CodeItem* code_item) const {
-  ArenaVector<LinkerPatch> linker_patches = EmitAndSortLinkerPatches(codegen);
+  ArenaVector<linker::LinkerPatch> linker_patches = EmitAndSortLinkerPatches(codegen);
   ArenaVector<uint8_t> stack_map(arena->Adapter(kArenaAllocStackMaps));
   ArenaVector<uint8_t> method_info(arena->Adapter(kArenaAllocStackMaps));
   size_t stack_map_size = 0;
@@ -877,7 +877,7 @@ CompiledMethod* OptimizingCompiler::Emit(ArenaAllocator* arena,
       ArrayRef<const uint8_t>(method_info),
       ArrayRef<const uint8_t>(stack_map),
       ArrayRef<const uint8_t>(*codegen->GetAssembler()->cfi().data()),
-      ArrayRef<const LinkerPatch>(linker_patches));
+      ArrayRef<const linker::LinkerPatch>(linker_patches));
 
   return compiled_method;
 }

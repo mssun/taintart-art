@@ -431,7 +431,7 @@ class CodeGeneratorX86 : public CodeGenerator {
   void MoveFromReturnRegister(Location trg, Primitive::Type type) OVERRIDE;
 
   // Emit linker patches.
-  void EmitLinkerPatches(ArenaVector<LinkerPatch>* linker_patches) OVERRIDE;
+  void EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) OVERRIDE;
 
   void PatchJitRootUse(uint8_t* code,
                        const uint8_t* roots_data,
@@ -617,9 +617,9 @@ class CodeGeneratorX86 : public CodeGenerator {
     HX86ComputeBaseMethodAddress* method_address;
   };
 
-  template <LinkerPatch (*Factory)(size_t, const DexFile*, uint32_t, uint32_t)>
+  template <linker::LinkerPatch (*Factory)(size_t, const DexFile*, uint32_t, uint32_t)>
   void EmitPcRelativeLinkerPatches(const ArenaDeque<X86PcRelativePatchInfo>& infos,
-                                   ArenaVector<LinkerPatch>* linker_patches);
+                                   ArenaVector<linker::LinkerPatch>* linker_patches);
 
   Register GetInvokeStaticOrDirectExtraParameter(HInvokeStaticOrDirect* invoke, Register temp);
 

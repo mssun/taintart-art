@@ -148,21 +148,14 @@ class AssemblerX86Test : public AssemblerTest<x86::X86Assembler,
 };
 
 //
-// Test repeat drivers used in the tests.
+// Test some repeat drivers used in the tests.
 //
 
 TEST_F(AssemblerX86Test, RepeatRR) {
-  EXPECT_EQ("%eax %eax\n%eax %ebx\n%eax %ecx\n%eax %edx\n%eax %ebp\n%eax %esp\n%eax %esi\n"
-            "%eax %edi\n%ebx %eax\n%ebx %ebx\n%ebx %ecx\n%ebx %edx\n%ebx %ebp\n%ebx %esp\n"
-            "%ebx %esi\n%ebx %edi\n%ecx %eax\n%ecx %ebx\n%ecx %ecx\n%ecx %edx\n%ecx %ebp\n"
-            "%ecx %esp\n%ecx %esi\n%ecx %edi\n%edx %eax\n%edx %ebx\n%edx %ecx\n%edx %edx\n"
-            "%edx %ebp\n%edx %esp\n%edx %esi\n%edx %edi\n%ebp %eax\n%ebp %ebx\n%ebp %ecx\n"
-            "%ebp %edx\n%ebp %ebp\n%ebp %esp\n%ebp %esi\n%ebp %edi\n%esp %eax\n%esp %ebx\n"
-            "%esp %ecx\n%esp %edx\n%esp %ebp\n%esp %esp\n%esp %esi\n%esp %edi\n%esi %eax\n"
-            "%esi %ebx\n%esi %ecx\n%esi %edx\n%esi %ebp\n%esi %esp\n%esi %esi\n%esi %edi\n"
-            "%edi %eax\n%edi %ebx\n%edi %ecx\n%edi %edx\n%edi %ebp\n%edi %esp\n%edi %esi\n"
-            "%edi %edi\n",
-            RepeatRR(/*f*/ nullptr, "%{reg1} %{reg2}"));
+  EXPECT_NE(RepeatRR(/*f*/ nullptr, "%{reg1} %{reg2}")
+            .find("%eax %eax\n%eax %ebx\n%eax %ecx\n%eax %edx\n%eax %ebp\n%eax %esp\n%eax %esi\n"
+                  "%eax %edi\n%ebx %eax\n%ebx %ebx\n%ebx %ecx\n%ebx %edx\n%ebx %ebp\n%ebx %esp\n"),
+            std::string::npos);
 }
 
 TEST_F(AssemblerX86Test, RepeatRI) {
@@ -173,18 +166,10 @@ TEST_F(AssemblerX86Test, RepeatRI) {
 }
 
 TEST_F(AssemblerX86Test, RepeatFF) {
-  EXPECT_EQ("%XMM0 %XMM0\n%XMM0 %XMM1\n%XMM0 %XMM2\n%XMM0 %XMM3\n%XMM0 %XMM4\n%XMM0 %XMM5\n"
-            "%XMM0 %XMM6\n%XMM0 %XMM7\n%XMM1 %XMM0\n%XMM1 %XMM1\n%XMM1 %XMM2\n%XMM1 %XMM3\n"
-            "%XMM1 %XMM4\n%XMM1 %XMM5\n%XMM1 %XMM6\n%XMM1 %XMM7\n%XMM2 %XMM0\n%XMM2 %XMM1\n"
-            "%XMM2 %XMM2\n%XMM2 %XMM3\n%XMM2 %XMM4\n%XMM2 %XMM5\n%XMM2 %XMM6\n%XMM2 %XMM7\n"
-            "%XMM3 %XMM0\n%XMM3 %XMM1\n%XMM3 %XMM2\n%XMM3 %XMM3\n%XMM3 %XMM4\n%XMM3 %XMM5\n"
-            "%XMM3 %XMM6\n%XMM3 %XMM7\n%XMM4 %XMM0\n%XMM4 %XMM1\n%XMM4 %XMM2\n%XMM4 %XMM3\n"
-            "%XMM4 %XMM4\n%XMM4 %XMM5\n%XMM4 %XMM6\n%XMM4 %XMM7\n%XMM5 %XMM0\n%XMM5 %XMM1\n"
-            "%XMM5 %XMM2\n%XMM5 %XMM3\n%XMM5 %XMM4\n%XMM5 %XMM5\n%XMM5 %XMM6\n%XMM5 %XMM7\n"
-            "%XMM6 %XMM0\n%XMM6 %XMM1\n%XMM6 %XMM2\n%XMM6 %XMM3\n%XMM6 %XMM4\n%XMM6 %XMM5\n"
-            "%XMM6 %XMM6\n%XMM6 %XMM7\n%XMM7 %XMM0\n%XMM7 %XMM1\n%XMM7 %XMM2\n%XMM7 %XMM3\n"
-            "%XMM7 %XMM4\n%XMM7 %XMM5\n%XMM7 %XMM6\n%XMM7 %XMM7\n",
-            RepeatFF(/*f*/ nullptr, "%{reg1} %{reg2}"));
+  EXPECT_NE(RepeatFF(/*f*/ nullptr, "%{reg1} %{reg2}")
+            .find("%XMM0 %XMM0\n%XMM0 %XMM1\n%XMM0 %XMM2\n%XMM0 %XMM3\n%XMM0 %XMM4\n%XMM0 %XMM5\n"
+                  "%XMM0 %XMM6\n%XMM0 %XMM7\n%XMM1 %XMM0\n%XMM1 %XMM1\n%XMM1 %XMM2\n%XMM1 %XMM3\n"),
+            std::string::npos);
 }
 
 TEST_F(AssemblerX86Test, RepeatFFI) {
@@ -234,6 +219,36 @@ TEST_F(AssemblerX86Test, RepeatAF) {
 //
 // Actual x86 instruction assembler tests.
 //
+
+TEST_F(AssemblerX86Test, PoplAllAddresses) {
+  // Make sure all addressing modes combinations are tested at least once.
+  std::vector<x86::Address> all_addresses;
+  for (x86::Register* base : GetRegisters()) {
+    // Base only.
+    all_addresses.push_back(x86::Address(*base, -1));
+    all_addresses.push_back(x86::Address(*base, 0));
+    all_addresses.push_back(x86::Address(*base, 1));
+    all_addresses.push_back(x86::Address(*base, 123456789));
+    for (x86::Register* index : GetRegisters()) {
+      if (*index == x86::ESP) {
+        // Index cannot be ESP.
+        continue;
+      } else if (*base == *index) {
+       // Index only.
+       all_addresses.push_back(x86::Address(*index, x86::TIMES_1, -1));
+       all_addresses.push_back(x86::Address(*index, x86::TIMES_2, 0));
+       all_addresses.push_back(x86::Address(*index, x86::TIMES_4, 1));
+       all_addresses.push_back(x86::Address(*index, x86::TIMES_8, 123456789));
+      }
+      // Base and index.
+      all_addresses.push_back(x86::Address(*base, *index, x86::TIMES_1, -1));
+      all_addresses.push_back(x86::Address(*base, *index, x86::TIMES_2, 0));
+      all_addresses.push_back(x86::Address(*base, *index, x86::TIMES_4, 1));
+      all_addresses.push_back(x86::Address(*base, *index, x86::TIMES_8, 123456789));
+    }
+  }
+  DriverStr(RepeatA(&x86::X86Assembler::popl, all_addresses, "popl {mem}"), "popq");
+}
 
 TEST_F(AssemblerX86Test, Movl) {
   DriverStr(RepeatRR(&x86::X86Assembler::movl, "movl %{reg2}, %{reg1}"), "movl");
@@ -370,7 +385,7 @@ TEST_F(AssemblerX86Test, RorlReg) {
 }
 
 TEST_F(AssemblerX86Test, RorlImm) {
-  DriverStr(RepeatRI(&x86::X86Assembler::rorl, 1U, "rorl ${imm}, %{reg}"), "rorli");
+  DriverStr(RepeatRI(&x86::X86Assembler::rorl, /*imm_bytes*/ 1U, "rorl ${imm}, %{reg}"), "rorli");
 }
 
 // Roll only allows CL as the shift count.
@@ -390,7 +405,7 @@ TEST_F(AssemblerX86Test, RollReg) {
 }
 
 TEST_F(AssemblerX86Test, RollImm) {
-  DriverStr(RepeatRI(&x86::X86Assembler::roll, 1U, "roll ${imm}, %{reg}"), "rolli");
+  DriverStr(RepeatRI(&x86::X86Assembler::roll, /*imm_bytes*/ 1U, "roll ${imm}, %{reg}"), "rolli");
 }
 
 TEST_F(AssemblerX86Test, Cvtdq2ps) {
@@ -418,12 +433,12 @@ TEST_F(AssemblerX86Test, UComisdAddr) {
 }
 
 TEST_F(AssemblerX86Test, RoundSS) {
-  DriverStr(RepeatFFI(&x86::X86Assembler::roundss, 1U,
+  DriverStr(RepeatFFI(&x86::X86Assembler::roundss, /*imm_bytes*/ 1U,
                       "roundss ${imm}, %{reg2}, %{reg1}"), "roundss");
 }
 
 TEST_F(AssemblerX86Test, RoundSD) {
-  DriverStr(RepeatFFI(&x86::X86Assembler::roundsd, 1U,
+  DriverStr(RepeatFFI(&x86::X86Assembler::roundsd, /*imm_bytes*/ 1U,
                       "roundsd ${imm}, %{reg2}, %{reg1}"), "roundsd");
 }
 
@@ -896,7 +911,15 @@ TEST_F(AssemblerX86Test, NearLabel) {
 }
 
 TEST_F(AssemblerX86Test, Cmpb) {
-  DriverStr(RepeatAI(&x86::X86Assembler::cmpb, /*imm_bytes*/ 1U, "cmpb ${imm}, {mem}"), "cmpb");
+  DriverStr(RepeatAI(&x86::X86Assembler::cmpb,
+                     /*imm_bytes*/ 1U,
+                     "cmpb ${imm}, {mem}"), "cmpb");
+}
+
+TEST_F(AssemblerX86Test, Cmpw) {
+  DriverStr(RepeatAI(&x86::X86Assembler::cmpw,
+                     /*imm_bytes*/ 1U,
+                     "cmpw ${imm}, {mem}"), "cmpw");  // TODO: only imm8?
 }
 
 }  // namespace art

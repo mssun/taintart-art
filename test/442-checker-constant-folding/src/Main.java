@@ -113,6 +113,19 @@ public class Main {
     return (Integer)m.invoke(null);
   }
 
+  public static int smaliIntAddition2() throws Exception {
+    Method m = Class.forName("TestCmp").getMethod("IntAddition2");
+    return (Integer)m.invoke(null);
+  }
+  public static int smaliIntAddition2AddAndMove() throws Exception {
+    Method m = Class.forName("TestCmp").getMethod("IntAddition2AddAndMove");
+    return (Integer)m.invoke(null);
+  }
+  public static int smaliJumpsAndConditionals(boolean cond) throws Exception {
+    Method m = Class.forName("TestCmp").getMethod("JumpsAndConditionals", boolean.class);
+    return (Integer)m.invoke(null, cond);
+  }
+
 
   /**
    * Exercise constant folding on negation.
@@ -225,11 +238,8 @@ public class Main {
   /// CHECK-DAG:     <<Const2:i\d+>>  IntConstant 2
   /// CHECK-DAG:     <<Const5:i\d+>>  IntConstant 5
   /// CHECK-DAG:     <<Const6:i\d+>>  IntConstant 6
-  /// CHECK-DAG:     <<Const11:i\d+>> IntConstant 11
   /// CHECK-DAG:     <<Add1:i\d+>>    Add [<<Const1>>,<<Const2>>]
   /// CHECK-DAG:                      Add [<<Const5>>,<<Const6>>]
-  /// CHECK-DAG:     <<Add3:i\d+>>    Add [<<Add1>>,<<Const11>>]
-  /// CHECK-DAG:                      Return [<<Add3>>]
 
   /// CHECK-START: int Main.IntAddition2() constant_folding (after)
   /// CHECK-DAG:     <<Const14:i\d+>> IntConstant 14
@@ -1520,6 +1530,8 @@ public class Main {
 
     assertIntEquals(3, IntAddition1());
     assertIntEquals(14, IntAddition2());
+    assertIntEquals(14, smaliIntAddition2());
+    assertIntEquals(14, smaliIntAddition2AddAndMove());
     assertLongEquals(3L, LongAddition());
     assertFloatEquals(3F, FloatAddition());
     assertDoubleEquals(3D, DoubleAddition());
@@ -1567,6 +1579,8 @@ public class Main {
 
     assertIntEquals(7, JumpsAndConditionals(true));
     assertIntEquals(3, JumpsAndConditionals(false));
+    assertIntEquals(7, smaliJumpsAndConditionals(true));
+    assertIntEquals(3, smaliJumpsAndConditionals(false));
 
     int arbitrary = 123456;  // Value chosen arbitrarily.
 

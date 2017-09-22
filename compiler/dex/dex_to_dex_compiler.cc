@@ -395,7 +395,7 @@ CompiledMethod* ArtCompileDEX(
         ArrayRef<const uint8_t>(),                   // method_info
         ArrayRef<const uint8_t>(quicken_data),       // vmap_table
         ArrayRef<const uint8_t>(),                   // cfi data
-        ArrayRef<const LinkerPatch>());
+        ArrayRef<const linker::LinkerPatch>());
   }
   return nullptr;
 }

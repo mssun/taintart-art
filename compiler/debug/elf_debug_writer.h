@@ -23,7 +23,7 @@
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "debug/dwarf/dwarf_constants.h"
-#include "elf_builder.h"
+#include "linker/elf_builder.h"
 
 namespace art {
 class OatHeader;
@@ -35,7 +35,7 @@ struct MethodDebugInfo;
 
 template <typename ElfTypes>
 void WriteDebugInfo(
-    ElfBuilder<ElfTypes>* builder,
+    linker::ElfBuilder<ElfTypes>* builder,
     const ArrayRef<const MethodDebugInfo>& method_infos,
     dwarf::CFIFormat cfi_format,
     bool write_oat_patches);

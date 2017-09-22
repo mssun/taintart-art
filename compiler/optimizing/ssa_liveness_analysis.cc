@@ -474,7 +474,9 @@ size_t LiveInterval::NumberOfSpillSlotsNeeded() const {
   // For a SIMD operation, compute the number of needed spill slots.
   // TODO: do through vector type?
   HInstruction* definition = GetParent()->GetDefinedBy();
-  if (definition != nullptr && definition->IsVecOperation()) {
+  if (definition != nullptr &&
+      definition->IsVecOperation() &&
+      !definition->IsVecExtractScalar()) {
     return definition->AsVecOperation()->GetVectorNumberOfBytes() / kVRegSize;
   }
   // Return number of needed spill slots based on type.

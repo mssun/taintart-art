@@ -15,5 +15,7 @@
 # limitations under the License.
 
 # When profile verification fails, dex2oat logs an error. The following
-# command parses the error message was logged.
-grep -q -f $1 $2
+# command strips out the error message.
+grep -v -f $1 $2 > $1
+
+./default-check "$@"

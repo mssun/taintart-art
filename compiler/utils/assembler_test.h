@@ -114,6 +114,24 @@ class AssemblerTest : public testing::Test {
         fmt);
   }
 
+  std::string Repeatww(void (Ass::*f)(Reg, Reg), const std::string& fmt) {
+    return RepeatTemplatedRegisters<Reg, Reg>(f,
+        GetRegisters(),
+        GetRegisters(),
+        &AssemblerTest::GetRegName<RegisterView::kUseTertiaryName>,
+        &AssemblerTest::GetRegName<RegisterView::kUseTertiaryName>,
+        fmt);
+  }
+
+  std::string Repeatbb(void (Ass::*f)(Reg, Reg), const std::string& fmt) {
+    return RepeatTemplatedRegisters<Reg, Reg>(f,
+        GetRegisters(),
+        GetRegisters(),
+        &AssemblerTest::GetRegName<RegisterView::kUseQuaternaryName>,
+        &AssemblerTest::GetRegName<RegisterView::kUseQuaternaryName>,
+        fmt);
+  }
+
   std::string RepeatRRR(void (Ass::*f)(Reg, Reg, Reg), const std::string& fmt) {
     return RepeatTemplatedRegisters<Reg, Reg, Reg>(f,
         GetRegisters(),
@@ -147,8 +165,16 @@ class AssemblerTest : public testing::Test {
     return RepeatRegisterImm<RegisterView::kUsePrimaryName>(f, imm_bytes, fmt);
   }
 
-  std::string Repeatri(void (Ass::*f)(Reg, const Imm&), size_t imm_bytes, const std::string& fmt) {
+  std::string RepeatrI(void (Ass::*f)(Reg, const Imm&), size_t imm_bytes, const std::string& fmt) {
     return RepeatRegisterImm<RegisterView::kUseSecondaryName>(f, imm_bytes, fmt);
+  }
+
+  std::string RepeatwI(void (Ass::*f)(Reg, const Imm&), size_t imm_bytes, const std::string& fmt) {
+    return RepeatRegisterImm<RegisterView::kUseTertiaryName>(f, imm_bytes, fmt);
+  }
+
+  std::string RepeatbI(void (Ass::*f)(Reg, const Imm&), size_t imm_bytes, const std::string& fmt) {
+    return RepeatRegisterImm<RegisterView::kUseQuaternaryName>(f, imm_bytes, fmt);
   }
 
   template <typename Reg1, typename Reg2, typename ImmType>
@@ -909,6 +935,63 @@ class AssemblerTest : public testing::Test {
         fmt);
   }
 
+  // Repeats over secondary registers and addresses provided by fixture.
+  std::string RepeatrA(void (Ass::*f)(Reg, const Addr&), const std::string& fmt) {
+    return RepeatrA(f, GetAddresses(), fmt);
+  }
+
+  // Variant that takes explicit vector of addresss
+  // (to test restricted addressing modes set).
+  std::string RepeatrA(void (Ass::*f)(Reg, const Addr&),
+                       const std::vector<Addr>& a,
+                       const std::string& fmt) {
+    return RepeatTemplatedRegMem<Reg, Addr>(
+        f,
+        GetRegisters(),
+        a,
+        &AssemblerTest::GetRegName<RegisterView::kUseSecondaryName>,
+        &AssemblerTest::GetAddrName,
+        fmt);
+  }
+
+  // Repeats over tertiary registers and addresses provided by fixture.
+  std::string RepeatwA(void (Ass::*f)(Reg, const Addr&), const std::string& fmt) {
+    return RepeatwA(f, GetAddresses(), fmt);
+  }
+
+  // Variant that takes explicit vector of addresss
+  // (to test restricted addressing modes set).
+  std::string RepeatwA(void (Ass::*f)(Reg, const Addr&),
+                       const std::vector<Addr>& a,
+                       const std::string& fmt) {
+    return RepeatTemplatedRegMem<Reg, Addr>(
+        f,
+        GetRegisters(),
+        a,
+        &AssemblerTest::GetRegName<RegisterView::kUseTertiaryName>,
+        &AssemblerTest::GetAddrName,
+        fmt);
+  }
+
+  // Repeats over quaternary registers and addresses provided by fixture.
+  std::string RepeatbA(void (Ass::*f)(Reg, const Addr&), const std::string& fmt) {
+    return RepeatbA(f, GetAddresses(), fmt);
+  }
+
+  // Variant that takes explicit vector of addresss
+  // (to test restricted addressing modes set).
+  std::string RepeatbA(void (Ass::*f)(Reg, const Addr&),
+                       const std::vector<Addr>& a,
+                       const std::string& fmt) {
+    return RepeatTemplatedRegMem<Reg, Addr>(
+        f,
+        GetRegisters(),
+        a,
+        &AssemblerTest::GetRegName<RegisterView::kUseQuaternaryName>,
+        &AssemblerTest::GetAddrName,
+        fmt);
+  }
+
   // Repeats over fp-registers and addresses provided by fixture.
   std::string RepeatFA(void (Ass::*f)(FPReg, const Addr&), const std::string& fmt) {
     return RepeatFA(f, GetAddresses(), fmt);
@@ -944,6 +1027,63 @@ class AssemblerTest : public testing::Test {
         GetRegisters(),
         &AssemblerTest::GetAddrName,
         &AssemblerTest::GetRegName<RegisterView::kUsePrimaryName>,
+        fmt);
+  }
+
+  // Repeats over addresses and secondary registers provided by fixture.
+  std::string RepeatAr(void (Ass::*f)(const Addr&, Reg), const std::string& fmt) {
+    return RepeatAr(f, GetAddresses(), fmt);
+  }
+
+  // Variant that takes explicit vector of addresss
+  // (to test restricted addressing modes set).
+  std::string RepeatAr(void (Ass::*f)(const Addr&, Reg),
+                       const std::vector<Addr>& a,
+                       const std::string& fmt) {
+    return RepeatTemplatedMemReg<Addr, Reg>(
+        f,
+        a,
+        GetRegisters(),
+        &AssemblerTest::GetAddrName,
+        &AssemblerTest::GetRegName<RegisterView::kUseSecondaryName>,
+        fmt);
+  }
+
+  // Repeats over addresses and tertiary registers provided by fixture.
+  std::string RepeatAw(void (Ass::*f)(const Addr&, Reg), const std::string& fmt) {
+    return RepeatAw(f, GetAddresses(), fmt);
+  }
+
+  // Variant that takes explicit vector of addresss
+  // (to test restricted addressing modes set).
+  std::string RepeatAw(void (Ass::*f)(const Addr&, Reg),
+                       const std::vector<Addr>& a,
+                       const std::string& fmt) {
+    return RepeatTemplatedMemReg<Addr, Reg>(
+        f,
+        a,
+        GetRegisters(),
+        &AssemblerTest::GetAddrName,
+        &AssemblerTest::GetRegName<RegisterView::kUseTertiaryName>,
+        fmt);
+  }
+
+  // Repeats over addresses and quaternary registers provided by fixture.
+  std::string RepeatAb(void (Ass::*f)(const Addr&, Reg), const std::string& fmt) {
+    return RepeatAb(f, GetAddresses(), fmt);
+  }
+
+  // Variant that takes explicit vector of addresss
+  // (to test restricted addressing modes set).
+  std::string RepeatAb(void (Ass::*f)(const Addr&, Reg),
+                       const std::vector<Addr>& a,
+                       const std::string& fmt) {
+    return RepeatTemplatedMemReg<Addr, Reg>(
+        f,
+        a,
+        GetRegisters(),
+        &AssemblerTest::GetAddrName,
+        &AssemblerTest::GetRegName<RegisterView::kUseQuaternaryName>,
         fmt);
   }
 
