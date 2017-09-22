@@ -20,6 +20,7 @@
 #include "base/histogram.h"
 #include "base/macros.h"
 #include "base/mutex.h"
+#include "base/time_utils.h"
 
 #include <set>
 #include <string>
@@ -79,9 +80,23 @@ class TimingLogger {
  public:
   static constexpr size_t kIndexNotFound = static_cast<size_t>(-1);
 
+  // Kind of timing we are going to do. We collect time at the nano second.
+  enum class TimingKind {
+    kMonotonic,
+    kThreadCpu,
+  };
+
   class Timing {
    public:
-    Timing(uint64_t time, const char* name) : time_(time), name_(name) {
+    Timing(TimingKind kind, const char* name) : name_(name) {
+       switch (kind) {
+        case TimingKind::kMonotonic:
+          time_ = NanoTime();
+          break;
+        case TimingKind::kThreadCpu:
+          time_ = ThreadCpuNanoTime();
+          break;
+       }
     }
     bool IsStartTiming() const {
       return !IsEndTiming();
@@ -131,7 +146,10 @@ class TimingLogger {
     friend class TimingLogger;
   };
 
-  TimingLogger(const char* name, bool precise, bool verbose);
+  TimingLogger(const char* name,
+               bool precise,
+               bool verbose,
+               TimingKind kind = TimingKind::kMonotonic);
   ~TimingLogger();
   // Verify that all open timings have related closed timings.
   void Verify();
@@ -187,6 +205,8 @@ class TimingLogger {
   const bool precise_;
   // Verbose logging.
   const bool verbose_;
+  // The kind of timing we want.
+  const TimingKind kind_;
   // Timing points that are either start or end points. For each starting point ret[i] = location
   // of end split associated with i. If it is and end split ret[i] = i.
   std::vector<Timing> timings_;
