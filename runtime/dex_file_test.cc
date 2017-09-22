@@ -423,28 +423,83 @@ TEST_F(DexFileTest, GetMethodSignature) {
     ASSERT_EQ("()V", signature);
   }
 
-  // Check both virtual methods.
-  ASSERT_EQ(2U, it.NumVirtualMethods());
-  {
+  // Check all virtual methods.
+  struct Result {
+    const char* name;
+    const char* signature;
+    const char* pretty_method;
+  };
+  static const Result results[] = {
+      {
+          "m1",
+          "(IDJLjava/lang/Object;)Ljava/lang/Float;",
+          "java.lang.Float GetMethodSignature.m1(int, double, long, java.lang.Object)"
+      },
+      {  // NOLINT [whitespace/braces] [4]
+          "m2",
+          "(ZSC)LGetMethodSignature;",
+          "GetMethodSignature GetMethodSignature.m2(boolean, short, char)"
+      },
+      {  // NOLINT [whitespace/braces] [4]
+          "m3",
+          "()V",
+          "void GetMethodSignature.m3()"
+      },
+      {  // NOLINT [whitespace/braces] [4]
+          "m4",
+          "(I)V",
+          "void GetMethodSignature.m4(int)"
+      },
+      {  // NOLINT [whitespace/braces] [4]
+          "m5",
+          "(II)V",
+          "void GetMethodSignature.m5(int, int)"
+      },
+      {  // NOLINT [whitespace/braces] [4]
+          "m6",
+          "(II[[I)V",
+          "void GetMethodSignature.m6(int, int, int[][])"
+      },
+      {  // NOLINT [whitespace/braces] [4]
+          "m7",
+          "(II[[ILjava/lang/Object;)V",
+          "void GetMethodSignature.m7(int, int, int[][], java.lang.Object)"
+      },
+      {  // NOLINT [whitespace/braces] [4]
+          "m8",
+          "(II[[ILjava/lang/Object;[[Ljava/lang/Object;)V",
+          "void GetMethodSignature.m8(int, int, int[][], java.lang.Object, java.lang.Object[][])"
+      },
+      {  // NOLINT [whitespace/braces] [4]
+          "m9",
+          "()I",
+          "int GetMethodSignature.m9()"
+      },
+      {  // NOLINT [whitespace/braces] [4]
+          "mA",
+          "()[[I",
+          "int[][] GetMethodSignature.mA()"
+      },
+      {  // NOLINT [whitespace/braces] [4]
+          "mB",
+          "()[[Ljava/lang/Object;",
+          "java.lang.Object[][] GetMethodSignature.mB()"
+      },
+  };
+  ASSERT_EQ(arraysize(results), it.NumVirtualMethods());
+  for (const Result& r : results) {
     it.Next();
     const DexFile::MethodId& method_id = raw->GetMethodId(it.GetMemberIndex());
 
     const char* name = raw->StringDataByIdx(method_id.name_idx_);
-    ASSERT_STREQ("m1", name);
+    ASSERT_STREQ(r.name, name);
 
     std::string signature(raw->GetMethodSignature(method_id).ToString());
-    ASSERT_EQ("(IDJLjava/lang/Object;)Ljava/lang/Float;", signature);
-  }
+    ASSERT_EQ(r.signature, signature);
 
-  {
-    it.Next();
-    const DexFile::MethodId& method_id = raw->GetMethodId(it.GetMemberIndex());
-
-    const char* name = raw->StringDataByIdx(method_id.name_idx_);
-    ASSERT_STREQ("m2", name);
-
-    std::string signature(raw->GetMethodSignature(method_id).ToString());
-    ASSERT_EQ("(ZSC)LGetMethodSignature;", signature);
+    std::string plain_method = std::string("GetMethodSignature.") + r.name;
+    ASSERT_EQ(plain_method, raw->PrettyMethod(it.GetMemberIndex(), /* with_signature */ false));
+    ASSERT_EQ(r.pretty_method, raw->PrettyMethod(it.GetMemberIndex(), /* with_signature */ true));
   }
 }
 
