@@ -484,13 +484,18 @@ jvmtiError ThreadUtil::GetThreadState(jvmtiEnv* env ATTRIBUTE_UNUSED,
   }
 
   art::ScopedObjectAccess soa(self);
+  art::StackHandleScope<1> hs(self);
 
   // Need to read the Java "started" field to know whether this is starting or terminated.
-  art::ObjPtr<art::mirror::Object> peer = soa.Decode<art::mirror::Object>(thread);
-  art::ObjPtr<art::mirror::Class> klass = peer->GetClass();
-  art::ArtField* started_field = klass->FindDeclaredInstanceField("started", "Z");
+  art::Handle<art::mirror::Object> peer(hs.NewHandle(soa.Decode<art::mirror::Object>(thread)));
+  art::ObjPtr<art::mirror::Class> thread_klass =
+      soa.Decode<art::mirror::Class>(art::WellKnownClasses::java_lang_Thread);
+  if (!thread_klass->IsAssignableFrom(peer->GetClass())) {
+    return ERR(INVALID_THREAD);
+  }
+  art::ArtField* started_field = thread_klass->FindDeclaredInstanceField("started", "Z");
   CHECK(started_field != nullptr);
-  bool started = started_field->GetBoolean(peer) != 0;
+  bool started = started_field->GetBoolean(peer.Get()) != 0;
   constexpr jint kStartedState = JVMTI_JAVA_LANG_THREAD_STATE_NEW;
   constexpr jint kTerminatedState = JVMTI_THREAD_STATE_TERMINATED |
                                     JVMTI_JAVA_LANG_THREAD_STATE_TERMINATED;
