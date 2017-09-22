@@ -36,11 +36,39 @@ public class Monitors {
 
   public static class NamedLock {
     public final String name;
+    private volatile int calledNotify;
     public NamedLock(String name) {
       this.name = name;
+      calledNotify = 0;
     }
+
     public String toString() {
       return String.format("NamedLock[%s]", name);
+    }
+
+    public final void DoWait() throws Exception {
+      final int v = calledNotify;
+      while (v == calledNotify) {
+        wait();
+      }
+    }
+
+    public final void DoWait(long t) throws Exception {
+      final int v = calledNotify;
+      final long target = System.currentTimeMillis() + (t / 2);
+      while (v == calledNotify && (t < 0 || System.currentTimeMillis() < target)) {
+        wait(t);
+      }
+    }
+
+    public final void DoNotifyAll() throws Exception {
+      calledNotify++;
+      notifyAll();
+    }
+
+    public final void DoNotify() throws Exception {
+      calledNotify++;
+      notify();
     }
   }
 
@@ -91,7 +119,7 @@ public class Monitors {
   public static class LockController {
     private static enum Action { HOLD, RELEASE, NOTIFY, NOTIFY_ALL, WAIT, TIMED_WAIT }
 
-    public final Object lock;
+    public final NamedLock lock;
     public final long timeout;
     private final AtomicStampedReference<Action> action;
     private volatile Thread runner = null;
@@ -100,10 +128,10 @@ public class Monitors {
     private static final AtomicInteger cnt = new AtomicInteger(0);
     private volatile Throwable exe;
 
-    public LockController(Object lock) {
+    public LockController(NamedLock lock) {
       this(lock, 10 * 1000);
     }
-    public LockController(Object lock, long timeout) {
+    public LockController(NamedLock lock, long timeout) {
       this.lock = lock;
       this.timeout = timeout;
       this.action = new AtomicStampedReference(Action.HOLD, 0);
@@ -177,16 +205,16 @@ public class Monitors {
                       Thread.yield();
                       break;
                     case NOTIFY:
-                      lock.notify();
+                      lock.DoNotify();
                       break;
                     case NOTIFY_ALL:
-                      lock.notifyAll();
+                      lock.DoNotifyAll();
                       break;
                     case TIMED_WAIT:
-                      lock.wait(timeout);
+                      lock.DoWait(timeout);
                       break;
                     case WAIT:
-                      lock.wait();
+                      lock.DoWait();
                       break;
                     default:
                       throw new Error("Unknown action " + action);
