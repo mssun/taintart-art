@@ -1073,6 +1073,15 @@ bool ProfileCompilationInfo::VerifyProfileData(const std::vector<const DexFile*>
                  << dex_data->checksum;
       return false;
     }
+
+    if (dex_data->num_method_ids != dex_file->NumMethodIds()) {
+      LOG(ERROR) << "Number of method ids in dex file and profile don't match."
+                 << "dex location " << dex_location << " NumMethodId in DexFile"
+                 << dex_file->NumMethodIds() << ", NumMethodId in profile"
+                 << dex_data->num_method_ids;
+      return false;
+    }
+
     // Verify method_encoding.
     for (const auto& method_it : dex_data->method_map) {
       size_t method_id = (size_t)(method_it.first);
