@@ -923,12 +923,6 @@ class GetLocalInstanceClosure : public art::Closure {
       result_ = ERR(NO_MORE_FRAMES);
       return;
     }
-    art::ArtMethod* method = visitor.GetMethod();
-    if (!visitor.IsShadowFrame() && !method->IsNative() && !method->IsProxyMethod()) {
-      // TODO We really should support get/set for non-shadow frames.
-      result_ = ERR(OPAQUE_FRAME);
-      return;
-    }
     result_ = OK;
     art::ObjPtr<art::mirror::Object> obj = visitor.GetThisObject();
     *val_ = obj.IsNull() ? nullptr : caller_->GetJniEnv()->AddLocalReference<jobject>(obj);
