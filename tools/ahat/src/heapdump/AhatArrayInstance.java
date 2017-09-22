@@ -16,20 +16,20 @@
 
 package com.android.ahat.heapdump;
 
-import com.android.tools.perflib.heap.ArrayInstance;
-import com.android.tools.perflib.heap.Instance;
 import java.nio.charset.StandardCharsets;
 import java.util.AbstractList;
 import java.util.Collections;
 import java.util.List;
 
 public class AhatArrayInstance extends AhatInstance {
-  // To save space, we store byte, character, and object arrays directly as
-  // byte, character, and AhatInstance arrays respectively. This is especially
-  // important for large byte arrays, such as bitmaps. All other array types
-  // are stored as an array of objects, though we could potentially save space
-  // by specializing those too. mValues is a list view of the underlying
-  // array.
+  // To save space, we store arrays as primitive arrays or AhatInstance arrays
+  // and provide a wrapper over the arrays to expose a list of Values.
+  // This is especially important for large byte arrays, such as bitmaps.
+  // We keep a separate pointer to the underlying array in the case of byte or
+  // char arrays because they are sometimes useful to have.
+  // TODO: Have different subtypes of AhatArrayInstance to avoid the overhead
+  // of these extra pointers and cost in getReferences when the array type is
+  // not relevant?
   private List<Value> mValues;
   private byte[] mByteArray;    // null if not a byte array.
   private char[] mCharArray;    // null if not a char array.
@@ -38,72 +38,151 @@ public class AhatArrayInstance extends AhatInstance {
     super(id);
   }
 
-  @Override void initialize(AhatSnapshot snapshot, Instance inst, Site site) {
-    super.initialize(snapshot, inst, site);
+  /**
+   * Initialize the array elements for a primitive boolean array.
+   */
+  void initialize(final boolean[] bools) {
+    mValues = new AbstractList<Value>() {
+      @Override public int size() {
+        return bools.length;
+      }
 
-    ArrayInstance array = (ArrayInstance)inst;
-    switch (array.getArrayType()) {
-      case OBJECT:
-        Object[] objects = array.getValues();
-        final AhatInstance[] insts = new AhatInstance[objects.length];
-        for (int i = 0; i < objects.length; i++) {
-          if (objects[i] != null) {
-            Instance ref = (Instance)objects[i];
-            insts[i] = snapshot.findInstance(ref.getId());
-          }
-        }
-        mValues = new AbstractList<Value>() {
-          @Override public int size() {
-            return insts.length;
-          }
+      @Override public Value get(int index) {
+        return Value.pack(bools[index]);
+      }
+    };
+  }
 
-          @Override public Value get(int index) {
-            return Value.pack(insts[index]);
-          }
-        };
-        break;
+  /**
+   * Initialize the array elements for a primitive char array.
+   */
+  void initialize(final char[] chars) {
+    mCharArray = chars;
+    mValues = new AbstractList<Value>() {
+      @Override public int size() {
+        return chars.length;
+      }
 
-      case CHAR:
-        final char[] chars = array.asCharArray(0, array.getLength());
-        mCharArray = chars;
-        mValues = new AbstractList<Value>() {
-          @Override public int size() {
-            return chars.length;
-          }
+      @Override public Value get(int index) {
+        return Value.pack(chars[index]);
+      }
+    };
+  }
 
-          @Override public Value get(int index) {
-            return Value.pack(chars[index]);
-          }
-        };
-        break;
+  /**
+   * Initialize the array elements for a primitive float array.
+   */
+  void initialize(final float[] floats) {
+    mValues = new AbstractList<Value>() {
+      @Override public int size() {
+        return floats.length;
+      }
 
-      case BYTE:
-        final byte[] bytes = array.asRawByteArray(0, array.getLength());
-        mByteArray = bytes;
-        mValues = new AbstractList<Value>() {
-          @Override public int size() {
-            return bytes.length;
-          }
+      @Override public Value get(int index) {
+        return Value.pack(floats[index]);
+      }
+    };
+  }
 
-          @Override public Value get(int index) {
-            return Value.pack(bytes[index]);
-          }
-        };
-        break;
+  /**
+   * Initialize the array elements for a primitive double array.
+   */
+  void initialize(final double[] doubles) {
+    mValues = new AbstractList<Value>() {
+      @Override public int size() {
+        return doubles.length;
+      }
 
-      default:
-        final Object[] values = array.getValues();
-        mValues = new AbstractList<Value>() {
-          @Override public int size() {
-            return values.length;
-          }
+      @Override public Value get(int index) {
+        return Value.pack(doubles[index]);
+      }
+    };
+  }
 
-          @Override public Value get(int index) {
-            return Value.pack(values[index]);
-          }
-        };
-        break;
+  /**
+   * Initialize the array elements for a primitive byte array.
+   */
+  void initialize(final byte[] bytes) {
+    mByteArray = bytes;
+    mValues = new AbstractList<Value>() {
+      @Override public int size() {
+        return bytes.length;
+      }
+
+      @Override public Value get(int index) {
+        return Value.pack(bytes[index]);
+      }
+    };
+  }
+
+  /**
+   * Initialize the array elements for a primitive short array.
+   */
+  void initialize(final short[] shorts) {
+    mValues = new AbstractList<Value>() {
+      @Override public int size() {
+        return shorts.length;
+      }
+
+      @Override public Value get(int index) {
+        return Value.pack(shorts[index]);
+      }
+    };
+  }
+
+  /**
+   * Initialize the array elements for a primitive int array.
+   */
+  void initialize(final int[] ints) {
+    mValues = new AbstractList<Value>() {
+      @Override public int size() {
+        return ints.length;
+      }
+
+      @Override public Value get(int index) {
+        return Value.pack(ints[index]);
+      }
+    };
+  }
+
+  /**
+   * Initialize the array elements for a primitive long array.
+   */
+  void initialize(final long[] longs) {
+    mValues = new AbstractList<Value>() {
+      @Override public int size() {
+        return longs.length;
+      }
+
+      @Override public Value get(int index) {
+        return Value.pack(longs[index]);
+      }
+    };
+  }
+
+  /**
+   * Initialize the array elements for an instance array.
+   */
+  void initialize(final AhatInstance[] insts) {
+    mValues = new AbstractList<Value>() {
+      @Override public int size() {
+        return insts.length;
+      }
+
+      @Override public Value get(int index) {
+        return Value.pack(insts[index]);
+      }
+    };
+  }
+
+  @Override
+  protected long getExtraJavaSize() {
+    int length = getLength();
+    if (length == 0) {
+      return 0;
     }
+
+    return Value.getType(mValues.get(0)).size * getLength();
   }
 
   /**

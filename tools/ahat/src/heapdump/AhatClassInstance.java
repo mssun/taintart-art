@@ -16,11 +16,8 @@
 
 package com.android.ahat.heapdump;
 
-import com.android.tools.perflib.heap.ClassInstance;
-import com.android.tools.perflib.heap.Instance;
 import java.awt.image.BufferedImage;
 import java.util.Iterator;
-import java.util.List;
 import java.util.NoSuchElementException;
 
 public class AhatClassInstance extends AhatInstance {
@@ -34,15 +31,13 @@ public class AhatClassInstance extends AhatInstance {
     super(id);
   }
 
-  @Override void initialize(AhatSnapshot snapshot, Instance inst, Site site) {
-    super.initialize(snapshot, inst, site);
+  void initialize(Value[] fields) {
+    mFields = fields;
+  }
 
-    ClassInstance classInst = (ClassInstance)inst;
-    List<ClassInstance.FieldValue> fieldValues = classInst.getValues();
-    mFields = new Value[fieldValues.size()];
-    for (int i = 0; i < mFields.length; i++) {
-      mFields[i] = snapshot.getValue(fieldValues.get(i).getValue());
-    }
+  @Override
+  protected long getExtraJavaSize() {
+    return 0;
   }
 
   @Override public Value getField(String fieldName) {
@@ -123,7 +118,7 @@ public class AhatClassInstance extends AhatInstance {
     }
 
     Value value = getField("value");
-    if (!value.isAhatInstance()) {
+    if (value == null || !value.isAhatInstance()) {
       return null;
     }
 
@@ -246,6 +241,49 @@ public class AhatClassInstance extends AhatInstance {
         info.width, info.height, BufferedImage.TYPE_4BYTE_ABGR);
     bitmap.setRGB(0, 0, info.width, info.height, abgr, 0, info.width);
     return bitmap;
+  }
+
+  @Override
+  public RegisteredNativeAllocation asRegisteredNativeAllocation() {
+    if (!isInstanceOfClass("sun.misc.Cleaner")) {
+      return null;
+    }
+
+    Value vthunk = getField("thunk");
+    if (vthunk == null || !vthunk.isAhatInstance()) {
+      return null;
+    }
+
+    AhatClassInstance thunk = vthunk.asAhatInstance().asClassInstance();
+    if (thunk == null
+        || !thunk.isInstanceOfClass("libcore.util.NativeAllocationRegistry$CleanerThunk")) {
+      return null;
+    }
+
+    Value vregistry = thunk.getField("this$0");
+    if (vregistry == null || !vregistry.isAhatInstance()) {
+      return null;
+    }
+
+    AhatClassInstance registry = vregistry.asAhatInstance().asClassInstance();
+    if (registry == null || !registry.isInstanceOfClass("libcore.util.NativeAllocationRegistry")) {
+      return null;
+    }
+
+    Value size = registry.getField("size");
+    if (!size.isLong()) {
+      return null;
+    }
+
+    Value referent = getField("referent");
+    if (referent == null || !referent.isAhatInstance()) {
+      return null;
+    }
+
+    RegisteredNativeAllocation rna = new RegisteredNativeAllocation();
+    rna.referent = referent.asAhatInstance();
+    rna.size = size.asLong();
+    return rna;
   }
 
   private static class InstanceFieldIterator implements Iterable<FieldValue>,
