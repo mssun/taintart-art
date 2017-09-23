@@ -24,11 +24,6 @@ extern "C" void android_set_application_target_sdk_version(uint32_t version);
 #include <limits.h>
 #include "nativehelper/ScopedUtfChars.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
-#include "nativehelper/toStringArray.h"
-#pragma GCC diagnostic pop
-
 #include "android-base/stringprintf.h"
 
 #include "arch/instruction_set.h"
@@ -53,11 +48,13 @@ extern "C" void android_set_application_target_sdk_version(uint32_t version);
 #include "mirror/object-inl.h"
 #include "native_util.h"
 #include "nativehelper/jni_macros.h"
+#include "nativehelper/ScopedLocalRef.h"
 #include "runtime.h"
 #include "scoped_fast_native_object_access-inl.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread.h"
 #include "thread_list.h"
+#include "well_known_classes.h"
 
 namespace art {
 
@@ -166,7 +163,27 @@ static jboolean VMRuntime_isNativeDebuggable(JNIEnv*, jobject) {
 }
 
 static jobjectArray VMRuntime_properties(JNIEnv* env, jobject) {
-  return toStringArray(env, Runtime::Current()->GetProperties());
+  DCHECK(WellKnownClasses::java_lang_String != nullptr);
+
+  const std::vector<std::string>& properties = Runtime::Current()->GetProperties();
+  ScopedLocalRef<jobjectArray> ret(env,
+                                   env->NewObjectArray(static_cast<jsize>(properties.size()),
+                                                       WellKnownClasses::java_lang_String,
+                                                       nullptr /* initial element */));
+  if (ret == nullptr) {
+    DCHECK(env->ExceptionCheck());
+    return nullptr;
+  }
+  for (size_t i = 0; i != properties.size(); ++i) {
+    ScopedLocalRef<jstring> str(env, env->NewStringUTF(properties[i].c_str()));
+    if (str == nullptr) {
+      DCHECK(env->ExceptionCheck());
+      return nullptr;
+    }
+    env->SetObjectArrayElement(ret.get(), static_cast<jsize>(i), str.get());
+    DCHECK(!env->ExceptionCheck());
+  }
+  return ret.release();
 }
 
 // This is for backward compatibility with dalvik which returned the
