@@ -185,21 +185,14 @@ static bool GetIdsFromByteCode(Collections& collections,
                                std::vector<MethodId*>* method_ids,
                                std::vector<FieldId*>* field_ids) {
   bool has_id = false;
-  // Iterate over all instructions.
-  const uint16_t* insns = code->Insns();
-  for (uint32_t insn_idx = 0; insn_idx < code->InsnsSize();) {
-    const Instruction* instruction = Instruction::At(&insns[insn_idx]);
-    const uint32_t insn_width = instruction->SizeInCodeUnits();
-    if (insn_width == 0) {
-      break;
-    }
+  for (const Instruction& instruction : code->Instructions()) {
+    CHECK_GT(instruction.SizeInCodeUnits(), 0u);
     has_id |= GetIdFromInstruction(collections,
-                                   instruction,
+                                   &instruction,
                                    type_ids,
                                    string_ids,
                                    method_ids,
                                    field_ids);
-    insn_idx += insn_width;
   }  // for
   return has_id;
 }

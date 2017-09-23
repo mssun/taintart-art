@@ -374,8 +374,8 @@ CompiledMethod* ArtCompileDEX(
       // Dex pc is not serialized, only used for checking the instructions. Since we access the
       // array based on the index of the quickened instruction, the indexes must line up perfectly.
       // The reader side uses the NeedsIndexForInstruction function too.
-      const Instruction* inst = Instruction::At(code_item->insns_ + info.dex_pc);
-      CHECK(QuickenInfoTable::NeedsIndexForInstruction(inst)) << inst->Opcode();
+      const Instruction& inst = code_item->InstructionAt(info.dex_pc);
+      CHECK(QuickenInfoTable::NeedsIndexForInstruction(&inst)) << inst.Opcode();
       // Add the index.
       quicken_data.push_back(static_cast<uint8_t>(info.dex_member_index >> 0));
       quicken_data.push_back(static_cast<uint8_t>(info.dex_member_index >> 8));
