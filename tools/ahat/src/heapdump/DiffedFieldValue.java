@@ -23,7 +23,7 @@ import java.util.Objects;
  */
 public class DiffedFieldValue {
   public final String name;
-  public final String type;
+  public final Type type;
   public final Value current;
   public final Value baseline;
 
@@ -60,7 +60,7 @@ public class DiffedFieldValue {
     return new DiffedFieldValue(baseline.name, baseline.type, null, baseline.value, Status.DELETED);
   }
 
-  private DiffedFieldValue(String name, String type, Value current, Value baseline, Status status) {
+  private DiffedFieldValue(String name, Type type, Value current, Value baseline, Status status) {
     this.name = name;
     this.type = type;
     this.current = current;

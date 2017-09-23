@@ -81,12 +81,9 @@ std::string PrintableString(const char* utf8);
 // Returns a human-readable equivalent of 'descriptor'. So "I" would be "int",
 // "[[I" would be "int[][]", "[Ljava/lang/String;" would be
 // "java.lang.String[]", and so forth.
+void AppendPrettyDescriptor(const char* descriptor, std::string* result);
 std::string PrettyDescriptor(const char* descriptor);
 std::string PrettyDescriptor(Primitive::Type type);
-
-// Utilities for printing the types for method signatures.
-std::string PrettyArguments(const char* signature);
-std::string PrettyReturnType(const char* signature);
 
 // Returns a human-readable version of the Java part of the access flags, e.g., "private static "
 // (note the trailing whitespace).

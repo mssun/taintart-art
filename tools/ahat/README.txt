@@ -55,25 +55,6 @@ Things to Test:
 Reported Issues:
  * Request to be able to sort tables by size.
 
-Perflib Requests:
- * Class objects should have java.lang.Class as their class object, not null.
- * ArrayInstance should have asString() to get the string, without requiring a
-   length function.
- * Document that getHeapIndex returns -1 for no such heap.
- * Look up totalRetainedSize for a heap by Heap object, not by a separate heap
-   index.
- * What's the difference between getId and getUniqueId?
- * I see objects with duplicate references.
- * A way to get overall retained size by heap.
- * A method Instance.isReachable()
-
-Things to move to perflib:
- * Extracting the string from a String Instance.
- * Extracting bitmap data from bitmap instances.
- * Adding up allocations by stack frame.
- * Computing, for each instance, the other instances it dominates.
- * Instance.isRoot and Instance.getRootTypes.
-
 Release History:
  1.4 Pending
 
