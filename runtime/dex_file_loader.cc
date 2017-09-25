@@ -25,6 +25,7 @@
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/unix_file/fd_file.h"
+#include "cdex/compact_dex_file.h"
 #include "dex_file.h"
 #include "dex_file_verifier.h"
 #include "standard_dex_file.h"
@@ -37,12 +38,23 @@ using android::base::StringPrintf;
 static constexpr OatDexFile* kNoOatDexFile = nullptr;
 
 
-bool DexFileLoader::IsValidMagic(uint32_t magic) {
-  return IsValidMagic(reinterpret_cast<uint8_t*>(&magic));
+bool DexFileLoader::IsMagicValid(uint32_t magic) {
+  return IsMagicValid(reinterpret_cast<uint8_t*>(&magic));
 }
 
-bool DexFileLoader::IsValidMagic(const uint8_t* magic) {
-  return StandardDexFile::IsMagicValid(magic);
+bool DexFileLoader::IsMagicValid(const uint8_t* magic) {
+  return StandardDexFile::IsMagicValid(magic) ||
+      CompactDexFile::IsMagicValid(magic);
+}
+
+bool DexFileLoader::IsVersionAndMagicValid(const uint8_t* magic) {
+  if (StandardDexFile::IsMagicValid(magic)) {
+    return StandardDexFile::IsVersionValid(magic);
+  }
+  if (CompactDexFile::IsMagicValid(magic)) {
+    return CompactDexFile::IsVersionValid(magic);
+  }
+  return false;
 }
 
 bool DexFileLoader::GetMultiDexChecksums(const char* filename,
@@ -81,7 +93,7 @@ bool DexFileLoader::GetMultiDexChecksums(const char* filename,
     } while (zip_entry.get() != nullptr);
     return true;
   }
-  if (IsValidMagic(magic)) {
+  if (IsMagicValid(magic)) {
     std::unique_ptr<const DexFile> dex_file(
         OpenFile(fd.Release(), filename, false, false, error_msg));
     if (dex_file == nullptr) {
@@ -188,7 +200,7 @@ bool DexFileLoader::Open(const char* filename,
   if (IsZipMagic(magic)) {
     return OpenZip(fd.Release(), location, verify_checksum, error_msg, dex_files);
   }
-  if (IsValidMagic(magic)) {
+  if (IsMagicValid(magic)) {
     std::unique_ptr<const DexFile> dex_file(OpenFile(fd.Release(),
                                                      location,
                                                      /* verify */ true,
