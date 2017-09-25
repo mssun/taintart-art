@@ -42,7 +42,9 @@ include $(BUILD_PREBUILT)
 
 # The ahat tests rely on running ART to generate a heap dump for test, but ART
 # doesn't run on darwin. Only build and run the tests for linux.
+# There are also issues with running under instrumentation.
 ifeq ($(HOST_OS),linux)
+ifneq ($(EMMA_INSTRUMENT),true)
 # --- ahat-test-dump.jar --------------
 include $(CLEAR_VARS)
 LOCAL_MODULE := ahat-test-dump
@@ -105,6 +107,7 @@ AHAT_TEST_JAR := $(LOCAL_BUILT_MODULE)
 ahat-test: PRIVATE_AHAT_TEST_JAR := $(AHAT_TEST_JAR)
 ahat-test: $(AHAT_TEST_JAR)
 	java -enableassertions -jar $(PRIVATE_AHAT_TEST_JAR)
+endif # EMMA_INSTRUMENT
 endif # linux
 
 # Clean up local variables.
