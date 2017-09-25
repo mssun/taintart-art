@@ -25,7 +25,7 @@ public class Main {
     /**
      * Drives tests.
      */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         System.loadLibrary(args[0]);
         if (!hasOatFile() || runtimeIsSoftFail() || isInterpreted()) {
             // Some tests ensure that the verifier was able to guarantee balanced locking by
@@ -40,6 +40,7 @@ public class Main {
         ensureJitCompiled(Main.class, "notExcessiveNesting");
         ensureJitCompiled(Main.class, "notNested");
         ensureJitCompiled(TwoPath.class, "twoPath");
+        ensureJitCompiled(Class.forName("OK"), "runBalancedJoin");
 
         Main m = new Main();
 
