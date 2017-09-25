@@ -3464,6 +3464,10 @@ void Thread::VisitRoots(RootVisitor* visitor) {
     visitor->VisitRoot(reinterpret_cast<mirror::Object**>(&tlsPtr_.exception),
                        RootInfo(kRootNativeStack, thread_id));
   }
+  if (tlsPtr_.async_exception != nullptr) {
+    visitor->VisitRoot(reinterpret_cast<mirror::Object**>(&tlsPtr_.async_exception),
+                       RootInfo(kRootNativeStack, thread_id));
+  }
   visitor->VisitRootIfNonNull(&tlsPtr_.monitor_enter_object, RootInfo(kRootNativeStack, thread_id));
   tlsPtr_.jni_env->locals.VisitRoots(visitor, RootInfo(kRootJNILocal, thread_id));
   tlsPtr_.jni_env->monitors.VisitRoots(visitor, RootInfo(kRootJNIMonitor, thread_id));
@@ -3681,6 +3685,34 @@ void Thread::DeoptimizeWithDeoptimizationException(JValue* result) {
                                               result,
                                               from_code,
                                               method_type);
+}
+
+void Thread::SetAsyncException(ObjPtr<mirror::Throwable> new_exception) {
+  CHECK(new_exception != nullptr);
+  if (kIsDebugBuild) {
+    // Make sure we are in a checkpoint.
+    MutexLock mu(Thread::Current(), *Locks::thread_suspend_count_lock_);
+    CHECK(this == Thread::Current() || GetSuspendCount() >= 1)
+        << "It doesn't look like this was called in a checkpoint! this: "
+        << this << " count: " << GetSuspendCount();
+  }
+  tlsPtr_.async_exception = new_exception.Ptr();
+}
+
+bool Thread::ObserveAsyncException() {
+  DCHECK(this == Thread::Current());
+  if (tlsPtr_.async_exception != nullptr) {
+    if (tlsPtr_.exception != nullptr) {
+      LOG(WARNING) << "Overwriting pending exception with async exception. Pending exception is: "
+                   << tlsPtr_.exception->Dump();
+      LOG(WARNING) << "Async exception is " << tlsPtr_.async_exception->Dump();
+    }
+    tlsPtr_.exception = tlsPtr_.async_exception;
+    tlsPtr_.async_exception = nullptr;
+    return true;
+  } else {
+    return IsExceptionPending();
+  }
 }
 
 void Thread::SetException(ObjPtr<mirror::Throwable> new_exception) {

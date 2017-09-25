@@ -1143,7 +1143,7 @@ void Monitor::Wait(Thread* self, mirror::Object *obj, int64_t ms, int32_t ns,
   Handle<mirror::Object> h_obj(hs.NewHandle(obj));
 
   Runtime::Current()->GetRuntimeCallbacks()->ObjectWaitStart(h_obj, ms);
-  if (UNLIKELY(self->IsExceptionPending())) {
+  if (UNLIKELY(self->ObserveAsyncException() || self->IsExceptionPending())) {
     // See b/65558434 for information on handling of exceptions here.
     return;
   }
