@@ -744,5 +744,10 @@
         "tests": "664-aget-verifier",
         "description": ["Aget on potentially null array fails verification."],
         "bug": "b/64683522"
+    },
+    {
+        "tests": "661-oat-writer-layout",
+        "variant": "interp-ac | interpreter | jit",
+        "description": ["Test is designed to only check --compiler-filter=speed"]
     }
 ]

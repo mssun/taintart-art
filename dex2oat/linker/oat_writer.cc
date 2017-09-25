@@ -16,6 +16,7 @@
 
 #include "oat_writer.h"
 
+#include <algorithm>
 #include <unistd.h>
 #include <zlib.h>
 
@@ -68,6 +69,18 @@ namespace {  // anonymous namespace
 
 // If we write dex layout info in the oat file.
 static constexpr bool kWriteDexLayoutInfo = true;
+
+// Force the OAT method layout to be sorted-by-name instead of
+// the default (class_def_idx, method_idx).
+//
+// Otherwise if profiles are used, that will act as
+// the primary sort order.
+//
+// A bit easier to use for development since oatdump can easily
+// show that things are being re-ordered when two methods aren't adjacent.
+static constexpr bool kOatWriterForceOatCodeLayout = false;
+
+static constexpr bool kOatWriterDebugOatCodeLayout = false;
 
 typedef DexFile::Header __attribute__((aligned(1))) UnalignedDexFileHeader;
 
@@ -867,158 +880,433 @@ class OatWriter::InitOatClassesMethodVisitor : public DexMethodVisitor {
   size_t compiled_methods_with_code_;
 };
 
-class OatWriter::InitCodeMethodVisitor : public OatDexMethodVisitor {
+// CompiledMethod + metadata required to do ordered method layout.
+//
+// See also OrderedMethodVisitor.
+struct OatWriter::OrderedMethodData {
+  ProfileCompilationInfo::MethodHotness method_hotness;
+  OatClass* oat_class;
+  CompiledMethod* compiled_method;
+  MethodReference method_reference;
+  size_t method_offsets_index;
+
+  size_t class_def_index;
+  uint32_t access_flags;
+  const DexFile::CodeItem* code_item;
+
+  // A value of -1 denotes missing debug info
+  static constexpr size_t kDebugInfoIdxInvalid = static_cast<size_t>(-1);
+  // Index into writer_->method_info_
+  size_t debug_info_idx;
+
+  bool HasDebugInfo() const {
+    return debug_info_idx != kDebugInfoIdxInvalid;
+  }
+
+  // Bin each method according to the profile flags.
+  //
+  // Groups by e.g.
+  //  -- not hot at all
+  //  -- hot
+  //  -- hot and startup
+  //  -- hot and post-startup
+  //  -- hot and startup and poststartup
+  //  -- startup
+  //  -- startup and post-startup
+  //  -- post-startup
+  //
+  // (See MethodHotness enum definition for up-to-date binning order.)
+  bool operator<(const OrderedMethodData& other) const {
+    if (kOatWriterForceOatCodeLayout) {
+      // Development flag: Override default behavior by sorting by name.
+
+      std::string name = method_reference.PrettyMethod();
+      std::string other_name = other.method_reference.PrettyMethod();
+      return name < other_name;
+    }
+
+    // Use the profile's method hotness to determine sort order.
+    if (GetMethodHotnessOrder() < other.GetMethodHotnessOrder()) {
+      return true;
+    }
+
+    // Default: retain the original order.
+    return false;
+  }
+
+ private:
+  // Used to determine relative order for OAT code layout when determining
+  // binning.
+  size_t GetMethodHotnessOrder() const {
+    bool hotness[] = {
+      method_hotness.IsHot(),
+      method_hotness.IsStartup(),
+      method_hotness.IsPostStartup()
+    };
+
+
+    // Note: Bin-to-bin order does not matter. If the kernel does or does not read-ahead
+    // any memory, it only goes into the buffer cache and does not grow the PSS until the first
+    // time that memory is referenced in the process.
+
+    size_t hotness_bits = 0;
+    for (size_t i = 0; i < arraysize(hotness); ++i) {
+      if (hotness[i]) {
+        hotness_bits |= (1 << i);
+      }
+    }
+
+    if (kIsDebugBuild) {
+      // Check for bins that are always-empty given a real profile.
+      if (method_hotness.IsHot() &&
+              !method_hotness.IsStartup() && !method_hotness.IsPostStartup()) {
+        std::string name = method_reference.PrettyMethod();
+        LOG(WARNING) << "Method " << name << " had a Hot method that wasn't marked "
+                     << "either start-up or post-startup. Possible corrupted profile?";
+        // This is not fatal, so only warn.
+      }
+    }
+
+    return hotness_bits;
+  }
+};
+
+// Given a queue of CompiledMethod in some total order,
+// visit each one in that order.
+class OatWriter::OrderedMethodVisitor {
  public:
-  InitCodeMethodVisitor(OatWriter* writer, size_t offset)
-      : InitCodeMethodVisitor(writer, offset, writer->GetCompilerDriver()->GetCompilerOptions()) {}
+  explicit OrderedMethodVisitor(OrderedMethodList ordered_methods)
+      : ordered_methods_(std::move(ordered_methods)) {
+  }
+
+  virtual ~OrderedMethodVisitor() {}
+
+  // Invoke VisitMethod in the order of `ordered_methods`, then invoke VisitComplete.
+  bool Visit() REQUIRES_SHARED(Locks::mutator_lock_) {
+    if (!VisitStart()) {
+      return false;
+    }
+
+    for (const OrderedMethodData& method_data : ordered_methods_)  {
+      if (!VisitMethod(method_data)) {
+        return false;
+      }
+    }
+
+    return VisitComplete();
+  }
+
+  // Invoked once at the beginning, prior to visiting anything else.
+  //
+  // Return false to abort further visiting.
+  virtual bool VisitStart() { return true; }
+
+  // Invoked repeatedly in the order specified by `ordered_methods`.
+  //
+  // Return false to short-circuit and to stop visiting further methods.
+  virtual bool VisitMethod(const OrderedMethodData& method_data)
+      REQUIRES_SHARED(Locks::mutator_lock_)  = 0;
+
+  // Invoked once at the end, after every other method has been successfully visited.
+  //
+  // Return false to indicate the overall `Visit` has failed.
+  virtual bool VisitComplete() = 0;
+
+  OrderedMethodList ReleaseOrderedMethods() {
+    return std::move(ordered_methods_);
+  }
+
+ private:
+  // List of compiled methods, sorted by the order defined in OrderedMethodData.
+  // Methods can be inserted more than once in case of duplicated methods.
+  OrderedMethodList ordered_methods_;
+};
+
+// Visit every compiled method in order to determine its order within the OAT file.
+// Methods from the same class do not need to be adjacent in the OAT code.
+class OatWriter::LayoutCodeMethodVisitor : public OatDexMethodVisitor {
+ public:
+  LayoutCodeMethodVisitor(OatWriter* writer, size_t offset)
+      : OatDexMethodVisitor(writer, offset) {
+  }
 
   bool EndClass() OVERRIDE {
     OatDexMethodVisitor::EndClass();
-    if (oat_class_index_ == writer_->oat_classes_.size()) {
-      offset_ = relative_patcher_->ReserveSpaceEnd(offset_);
-      if (generate_debug_info_) {
-        std::vector<debug::MethodDebugInfo> thunk_infos =
-            relative_patcher_->GenerateThunkDebugInfo(executable_offset_);
-        writer_->method_info_.insert(writer_->method_info_.end(),
-                                     std::make_move_iterator(thunk_infos.begin()),
-                                     std::make_move_iterator(thunk_infos.end()));
-      }
-    }
     return true;
   }
 
-  bool VisitMethod(size_t class_def_method_index, const ClassDataItemIterator& it) OVERRIDE
-      REQUIRES_SHARED(Locks::mutator_lock_) {
+  bool VisitMethod(size_t class_def_method_index,
+                   const ClassDataItemIterator& it)
+      OVERRIDE
+      REQUIRES_SHARED(Locks::mutator_lock_)  {
+    Locks::mutator_lock_->AssertSharedHeld(Thread::Current());
+
     OatClass* oat_class = &writer_->oat_classes_[oat_class_index_];
     CompiledMethod* compiled_method = oat_class->GetCompiledMethod(class_def_method_index);
 
     if (HasCompiledCode(compiled_method)) {
-      // Derived from CompiledMethod.
-      uint32_t quick_code_offset = 0;
+      size_t debug_info_idx = OrderedMethodData::kDebugInfoIdxInvalid;
 
-      ArrayRef<const uint8_t> quick_code = compiled_method->GetQuickCode();
-      uint32_t code_size = quick_code.size() * sizeof(uint8_t);
-      uint32_t thumb_offset = compiled_method->CodeDelta();
+      {
+        const CompilerOptions& compiler_options = writer_->compiler_driver_->GetCompilerOptions();
+        ArrayRef<const uint8_t> quick_code = compiled_method->GetQuickCode();
+        uint32_t code_size = quick_code.size() * sizeof(uint8_t);
 
-      // Deduplicate code arrays if we are not producing debuggable code.
-      bool deduped = true;
-      MethodReference method_ref(dex_file_, it.GetMemberIndex());
-      if (debuggable_) {
-        quick_code_offset = relative_patcher_->GetOffset(method_ref);
-        if (quick_code_offset != 0u) {
-          // Duplicate methods, we want the same code for both of them so that the oat writer puts
-          // the same code in both ArtMethods so that we do not get different oat code at runtime.
-        } else {
-          quick_code_offset = NewQuickCodeOffset(compiled_method, it, thumb_offset);
-          deduped = false;
+        // Debug method info must be pushed in the original order
+        // (i.e. all methods from the same class must be adjacent in the debug info sections)
+        // ElfCompilationUnitWriter::Write requires this.
+        if (compiler_options.GenerateAnyDebugInfo() && code_size != 0) {
+          debug::MethodDebugInfo info = debug::MethodDebugInfo();
+          writer_->method_info_.push_back(info);
+
+          // The debug info is filled in LayoutReserveOffsetCodeMethodVisitor
+          // once we know the offsets.
+          //
+          // Store the index into writer_->method_info_ since future push-backs
+          // could reallocate and change the underlying data address.
+          debug_info_idx = writer_->method_info_.size() - 1;
         }
+      }
+
+      MethodReference method_ref(dex_file_, it.GetMemberIndex());
+
+      // Lookup method hotness from profile, if available.
+      // Otherwise assume a default of none-hotness.
+      ProfileCompilationInfo::MethodHotness method_hotness =
+          writer_->profile_compilation_info_ != nullptr
+              ? writer_->profile_compilation_info_->GetMethodHotness(method_ref)
+              : ProfileCompilationInfo::MethodHotness();
+
+      // Handle duplicate methods by pushing them repeatedly.
+      OrderedMethodData method_data = {
+          method_hotness,
+          oat_class,
+          compiled_method,
+          method_ref,
+          method_offsets_index_,
+          class_def_index_,
+          it.GetMethodAccessFlags(),
+          it.GetMethodCodeItem(),
+          debug_info_idx
+      };
+      ordered_methods_.push_back(method_data);
+
+      method_offsets_index_++;
+    }
+
+    return true;
+  }
+
+  OrderedMethodList ReleaseOrderedMethods() {
+    if (kOatWriterForceOatCodeLayout || writer_->profile_compilation_info_ != nullptr) {
+      // Sort by the method ordering criteria (in OrderedMethodData).
+      // Since most methods will have the same ordering criteria,
+      // we preserve the original insertion order within the same sort order.
+      std::stable_sort(ordered_methods_.begin(), ordered_methods_.end());
+    } else {
+      // The profile-less behavior is as if every method had 0 hotness
+      // associated with it.
+      //
+      // Since sorting all methods with hotness=0 should give back the same
+      // order as before, don't do anything.
+      DCHECK(std::is_sorted(ordered_methods_.begin(), ordered_methods_.end()));
+    }
+
+    return std::move(ordered_methods_);
+  }
+
+ private:
+  // List of compiled methods, later to be sorted by order defined in OrderedMethodData.
+  // Methods can be inserted more than once in case of duplicated methods.
+  OrderedMethodList ordered_methods_;
+};
+
+// Given a method order, reserve the offsets for each CompiledMethod in the OAT file.
+class OatWriter::LayoutReserveOffsetCodeMethodVisitor : public OrderedMethodVisitor {
+ public:
+  LayoutReserveOffsetCodeMethodVisitor(OatWriter* writer,
+                                       size_t offset,
+                                       OrderedMethodList ordered_methods)
+      : LayoutReserveOffsetCodeMethodVisitor(writer,
+                                             offset,
+                                             writer->GetCompilerDriver()->GetCompilerOptions(),
+                                             std::move(ordered_methods)) {
+  }
+
+  virtual bool VisitComplete() OVERRIDE {
+    offset_ = writer_->relative_patcher_->ReserveSpaceEnd(offset_);
+    if (generate_debug_info_) {
+      std::vector<debug::MethodDebugInfo> thunk_infos =
+          relative_patcher_->GenerateThunkDebugInfo(executable_offset_);
+      writer_->method_info_.insert(writer_->method_info_.end(),
+                                   std::make_move_iterator(thunk_infos.begin()),
+                                   std::make_move_iterator(thunk_infos.end()));
+    }
+    return true;
+  }
+
+  virtual bool VisitMethod(const OrderedMethodData& method_data)
+      OVERRIDE
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    OatClass* oat_class = method_data.oat_class;
+    CompiledMethod* compiled_method = method_data.compiled_method;
+    const MethodReference& method_ref = method_data.method_reference;
+    uint16_t method_offsets_index_ = method_data.method_offsets_index;
+    size_t class_def_index = method_data.class_def_index;
+    uint32_t access_flags = method_data.access_flags;
+    const DexFile::CodeItem* code_item = method_data.code_item;
+    bool has_debug_info = method_data.HasDebugInfo();
+    size_t debug_info_idx = method_data.debug_info_idx;
+
+    DCHECK(HasCompiledCode(compiled_method)) << method_ref.PrettyMethod();
+
+    // Derived from CompiledMethod.
+    uint32_t quick_code_offset = 0;
+
+    ArrayRef<const uint8_t> quick_code = compiled_method->GetQuickCode();
+    uint32_t code_size = quick_code.size() * sizeof(uint8_t);
+    uint32_t thumb_offset = compiled_method->CodeDelta();
+
+    // Deduplicate code arrays if we are not producing debuggable code.
+    bool deduped = true;
+    if (debuggable_) {
+      quick_code_offset = relative_patcher_->GetOffset(method_ref);
+      if (quick_code_offset != 0u) {
+        // Duplicate methods, we want the same code for both of them so that the oat writer puts
+        // the same code in both ArtMethods so that we do not get different oat code at runtime.
       } else {
-        quick_code_offset = dedupe_map_.GetOrCreate(
-            compiled_method,
-            [this, &deduped, compiled_method, &it, thumb_offset]() {
-              deduped = false;
-              return NewQuickCodeOffset(compiled_method, it, thumb_offset);
-            });
+        quick_code_offset = NewQuickCodeOffset(compiled_method, method_ref, thumb_offset);
+        deduped = false;
       }
 
       if (code_size != 0) {
         if (relative_patcher_->GetOffset(method_ref) != 0u) {
           // TODO: Should this be a hard failure?
           LOG(WARNING) << "Multiple definitions of "
-              << method_ref.PrettyMethod()
+              << method_ref.dex_file->PrettyMethod(method_ref.index)
               << " offsets " << relative_patcher_->GetOffset(method_ref)
               << " " << quick_code_offset;
         } else {
           relative_patcher_->SetOffset(method_ref, quick_code_offset);
         }
       }
+    } else {
+      quick_code_offset = dedupe_map_.GetOrCreate(
+          compiled_method,
+          [this, &deduped, compiled_method, &method_ref, thumb_offset]() {
+            deduped = false;
+            return NewQuickCodeOffset(compiled_method, method_ref, thumb_offset);
+          });
+    }
 
-      // Update quick method header.
-      DCHECK_LT(method_offsets_index_, oat_class->method_headers_.size());
-      OatQuickMethodHeader* method_header = &oat_class->method_headers_[method_offsets_index_];
-      uint32_t vmap_table_offset = method_header->GetVmapTableOffset();
-      uint32_t method_info_offset = method_header->GetMethodInfoOffset();
-      // The code offset was 0 when the mapping/vmap table offset was set, so it's set
-      // to 0-offset and we need to adjust it by code_offset.
-      uint32_t code_offset = quick_code_offset - thumb_offset;
-      if (!compiled_method->GetQuickCode().empty()) {
-        // If the code is compiled, we write the offset of the stack map relative
-        // to the code,
-        if (vmap_table_offset != 0u) {
-          vmap_table_offset += code_offset;
-          DCHECK_LT(vmap_table_offset, code_offset);
-        }
-        if (method_info_offset != 0u) {
-          method_info_offset += code_offset;
-          DCHECK_LT(method_info_offset, code_offset);
-        }
+    if (code_size != 0) {
+      if (relative_patcher_->GetOffset(method_ref) != 0u) {
+        // TODO: Should this be a hard failure?
+        LOG(WARNING) << "Multiple definitions of "
+            << method_ref.dex_file->PrettyMethod(method_ref.index)
+            << " offsets " << relative_patcher_->GetOffset(method_ref)
+            << " " << quick_code_offset;
       } else {
-        CHECK(!kIsVdexEnabled);
-        // We write the offset of the quickening info relative to the code.
+        relative_patcher_->SetOffset(method_ref, quick_code_offset);
+      }
+    }
+
+    // Update quick method header.
+    DCHECK_LT(method_offsets_index_, oat_class->method_headers_.size());
+    OatQuickMethodHeader* method_header = &oat_class->method_headers_[method_offsets_index_];
+    uint32_t vmap_table_offset = method_header->GetVmapTableOffset();
+    uint32_t method_info_offset = method_header->GetMethodInfoOffset();
+    // The code offset was 0 when the mapping/vmap table offset was set, so it's set
+    // to 0-offset and we need to adjust it by code_offset.
+    uint32_t code_offset = quick_code_offset - thumb_offset;
+    if (!compiled_method->GetQuickCode().empty()) {
+      // If the code is compiled, we write the offset of the stack map relative
+      // to the code,
+      if (vmap_table_offset != 0u) {
         vmap_table_offset += code_offset;
         DCHECK_LT(vmap_table_offset, code_offset);
       }
-      uint32_t frame_size_in_bytes = compiled_method->GetFrameSizeInBytes();
-      uint32_t core_spill_mask = compiled_method->GetCoreSpillMask();
-      uint32_t fp_spill_mask = compiled_method->GetFpSpillMask();
-      *method_header = OatQuickMethodHeader(vmap_table_offset,
-                                            method_info_offset,
-                                            frame_size_in_bytes,
-                                            core_spill_mask,
-                                            fp_spill_mask,
-                                            code_size);
+      if (method_info_offset != 0u) {
+        method_info_offset += code_offset;
+        DCHECK_LT(method_info_offset, code_offset);
+      }
+    } else {
+      CHECK(!kIsVdexEnabled);
+      // We write the offset of the quickening info relative to the code.
+      vmap_table_offset += code_offset;
+      DCHECK_LT(vmap_table_offset, code_offset);
+    }
+    uint32_t frame_size_in_bytes = compiled_method->GetFrameSizeInBytes();
+    uint32_t core_spill_mask = compiled_method->GetCoreSpillMask();
+    uint32_t fp_spill_mask = compiled_method->GetFpSpillMask();
+    *method_header = OatQuickMethodHeader(vmap_table_offset,
+                                          method_info_offset,
+                                          frame_size_in_bytes,
+                                          core_spill_mask,
+                                          fp_spill_mask,
+                                          code_size);
 
-      if (!deduped) {
-        // Update offsets. (Checksum is updated when writing.)
-        offset_ += sizeof(*method_header);  // Method header is prepended before code.
-        offset_ += code_size;
-        // Record absolute patch locations.
-        if (!compiled_method->GetPatches().empty()) {
-          uintptr_t base_loc = offset_ - code_size - writer_->oat_header_->GetExecutableOffset();
-          for (const LinkerPatch& patch : compiled_method->GetPatches()) {
-            if (!patch.IsPcRelative()) {
-              writer_->absolute_patch_locations_.push_back(base_loc + patch.LiteralOffset());
-            }
+    if (!deduped) {
+      // Update offsets. (Checksum is updated when writing.)
+      offset_ += sizeof(*method_header);  // Method header is prepended before code.
+      offset_ += code_size;
+      // Record absolute patch locations.
+      if (!compiled_method->GetPatches().empty()) {
+        uintptr_t base_loc = offset_ - code_size - writer_->oat_header_->GetExecutableOffset();
+        for (const LinkerPatch& patch : compiled_method->GetPatches()) {
+          if (!patch.IsPcRelative()) {
+            writer_->absolute_patch_locations_.push_back(base_loc + patch.LiteralOffset());
           }
         }
       }
-
-      // Exclude quickened dex methods (code_size == 0) since they have no native code.
-      if (generate_debug_info_ && code_size != 0) {
-        bool has_code_info = method_header->IsOptimized();
-        // Record debug information for this function if we are doing that.
-        debug::MethodDebugInfo info = {};
-        DCHECK(info.trampoline_name.empty());
-        info.dex_file = dex_file_;
-        info.class_def_index = class_def_index_;
-        info.dex_method_index = it.GetMemberIndex();
-        info.access_flags = it.GetMethodAccessFlags();
-        info.code_item = it.GetMethodCodeItem();
-        info.isa = compiled_method->GetInstructionSet();
-        info.deduped = deduped;
-        info.is_native_debuggable = native_debuggable_;
-        info.is_optimized = method_header->IsOptimized();
-        info.is_code_address_text_relative = true;
-        info.code_address = code_offset - executable_offset_;
-        info.code_size = code_size;
-        info.frame_size_in_bytes = compiled_method->GetFrameSizeInBytes();
-        info.code_info = has_code_info ? compiled_method->GetVmapTable().data() : nullptr;
-        info.cfi = compiled_method->GetCFIInfo();
-        writer_->method_info_.push_back(info);
-      }
-
-      DCHECK_LT(method_offsets_index_, oat_class->method_offsets_.size());
-      OatMethodOffsets* offsets = &oat_class->method_offsets_[method_offsets_index_];
-      offsets->code_offset_ = quick_code_offset;
-      ++method_offsets_index_;
     }
+
+    // Exclude quickened dex methods (code_size == 0) since they have no native code.
+    if (generate_debug_info_ && code_size != 0) {
+      DCHECK(has_debug_info);
+
+      bool has_code_info = method_header->IsOptimized();
+      // Record debug information for this function if we are doing that.
+      debug::MethodDebugInfo& info = writer_->method_info_[debug_info_idx];
+      DCHECK(info.trampoline_name.empty());
+      info.dex_file = method_ref.dex_file;
+      info.class_def_index = class_def_index;
+      info.dex_method_index = method_ref.index;
+      info.access_flags = access_flags;
+      info.code_item = code_item;
+      info.isa = compiled_method->GetInstructionSet();
+      info.deduped = deduped;
+      info.is_native_debuggable = native_debuggable_;
+      info.is_optimized = method_header->IsOptimized();
+      info.is_code_address_text_relative = true;
+      info.code_address = code_offset - executable_offset_;
+      info.code_size = code_size;
+      info.frame_size_in_bytes = compiled_method->GetFrameSizeInBytes();
+      info.code_info = has_code_info ? compiled_method->GetVmapTable().data() : nullptr;
+      info.cfi = compiled_method->GetCFIInfo();
+    } else {
+      DCHECK(!has_debug_info);
+    }
+
+    DCHECK_LT(method_offsets_index_, oat_class->method_offsets_.size());
+    OatMethodOffsets* offsets = &oat_class->method_offsets_[method_offsets_index_];
+    offsets->code_offset_ = quick_code_offset;
 
     return true;
   }
 
+  size_t GetOffset() const {
+    return offset_;
+  }
+
  private:
-  InitCodeMethodVisitor(OatWriter* writer, size_t offset, const CompilerOptions& compiler_options)
-      : OatDexMethodVisitor(writer, offset),
+  LayoutReserveOffsetCodeMethodVisitor(OatWriter* writer,
+                                       size_t offset,
+                                       const CompilerOptions& compiler_options,
+                                       OrderedMethodList ordered_methods)
+      : OrderedMethodVisitor(std::move(ordered_methods)),
+        writer_(writer),
+        offset_(offset),
         relative_patcher_(writer->relative_patcher_),
         executable_offset_(writer->oat_header_->GetExecutableOffset()),
         debuggable_(compiler_options.GetDebuggable()),
@@ -1049,15 +1337,19 @@ class OatWriter::InitCodeMethodVisitor : public OatDexMethodVisitor {
   };
 
   uint32_t NewQuickCodeOffset(CompiledMethod* compiled_method,
-                              const ClassDataItemIterator& it,
+                              const MethodReference& method_ref,
                               uint32_t thumb_offset) {
-    offset_ = relative_patcher_->ReserveSpace(
-        offset_, compiled_method, MethodReference(dex_file_, it.GetMemberIndex()));
+    offset_ = relative_patcher_->ReserveSpace(offset_, compiled_method, method_ref);
     offset_ += CodeAlignmentSize(offset_, *compiled_method);
     DCHECK_ALIGNED_PARAM(offset_ + sizeof(OatQuickMethodHeader),
                          GetInstructionSetAlignment(compiled_method->GetInstructionSet()));
     return offset_ + sizeof(OatQuickMethodHeader) + thumb_offset;
   }
+
+  OatWriter* writer_;
+
+  // Offset of the code of the compiled methods.
+  size_t offset_;
 
   // Deduplication is already done on a pointer basis by the compiler driver,
   // so we can simply compare the pointers to find out if things are duplicated.
@@ -1296,19 +1588,24 @@ class OatWriter::InitImageMethodVisitor : public OatDexMethodVisitor {
   std::vector<std::pair<ArtMethod*, ArtMethod*>> methods_to_process_;
 };
 
-class OatWriter::WriteCodeMethodVisitor : public OatDexMethodVisitor {
+class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
  public:
-  WriteCodeMethodVisitor(OatWriter* writer, OutputStream* out, const size_t file_offset,
-                         size_t relative_offset) SHARED_LOCK_FUNCTION(Locks::mutator_lock_)
-      : OatDexMethodVisitor(writer, relative_offset),
+  WriteCodeMethodVisitor(OatWriter* writer,
+                         OutputStream* out,
+                         const size_t file_offset,
+                         size_t relative_offset,
+                         OrderedMethodList ordered_methods)
+      : OrderedMethodVisitor(std::move(ordered_methods)),
+        writer_(writer),
+        offset_(relative_offset),
+        dex_file_(nullptr),
         pointer_size_(GetInstructionSetPointerSize(writer_->compiler_driver_->GetInstructionSet())),
         class_loader_(writer->HasImage() ? writer->image_writer_->GetClassLoader() : nullptr),
         out_(out),
         file_offset_(file_offset),
-        soa_(Thread::Current()),
-        no_thread_suspension_("OatWriter patching"),
         class_linker_(Runtime::Current()->GetClassLinker()),
-        dex_cache_(nullptr) {
+        dex_cache_(nullptr),
+        no_thread_suspension_("OatWriter patching") {
     patched_code_.reserve(16 * KB);
     if (writer_->HasBootImage()) {
       // If we're creating the image, the address space must be ready so that we can apply patches.
@@ -1316,12 +1613,17 @@ class OatWriter::WriteCodeMethodVisitor : public OatDexMethodVisitor {
     }
   }
 
-  ~WriteCodeMethodVisitor() UNLOCK_FUNCTION(Locks::mutator_lock_) {
+  virtual bool VisitStart() OVERRIDE {
+    return true;
   }
 
-  bool StartClass(const DexFile* dex_file, size_t class_def_index) OVERRIDE
+  void UpdateDexFileAndDexCache(const DexFile* dex_file)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    OatDexMethodVisitor::StartClass(dex_file, class_def_index);
+    dex_file_ = dex_file;
+
+    // Ordered method visiting is only for compiled methods.
+    DCHECK(writer_->MayHaveCompiledMethods());
+
     if (writer_->GetCompilerDriver()->GetCompilerOptions().IsAotCompilationEnabled()) {
       // Only need to set the dex cache if we have compilation. Other modes might have unloaded it.
       if (dex_cache_ == nullptr || dex_cache_->GetDexFile() != dex_file) {
@@ -1329,198 +1631,212 @@ class OatWriter::WriteCodeMethodVisitor : public OatDexMethodVisitor {
         DCHECK(dex_cache_ != nullptr);
       }
     }
+  }
+
+  virtual bool VisitComplete() {
+    offset_ = writer_->relative_patcher_->WriteThunks(out_, offset_);
+    if (UNLIKELY(offset_ == 0u)) {
+      PLOG(ERROR) << "Failed to write final relative call thunks";
+      return false;
+    }
     return true;
   }
 
-  bool EndClass() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
-    bool result = OatDexMethodVisitor::EndClass();
-    if (oat_class_index_ == writer_->oat_classes_.size()) {
-      DCHECK(result);  // OatDexMethodVisitor::EndClass() never fails.
-      offset_ = writer_->relative_patcher_->WriteThunks(out_, offset_);
-      if (UNLIKELY(offset_ == 0u)) {
-        PLOG(ERROR) << "Failed to write final relative call thunks";
-        result = false;
-      }
-    }
-    return result;
-  }
-
-  bool VisitMethod(size_t class_def_method_index, const ClassDataItemIterator& it) OVERRIDE
+  virtual bool VisitMethod(const OrderedMethodData& method_data) OVERRIDE
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    OatClass* oat_class = &writer_->oat_classes_[oat_class_index_];
-    const CompiledMethod* compiled_method = oat_class->GetCompiledMethod(class_def_method_index);
+    const MethodReference& method_ref = method_data.method_reference;
+    UpdateDexFileAndDexCache(method_ref.dex_file);
+
+    OatClass* oat_class = method_data.oat_class;
+    CompiledMethod* compiled_method = method_data.compiled_method;
+    uint16_t method_offsets_index = method_data.method_offsets_index;
 
     // No thread suspension since dex_cache_ that may get invalidated if that occurs.
     ScopedAssertNoThreadSuspension tsc(__FUNCTION__);
-    if (HasCompiledCode(compiled_method)) {
-      size_t file_offset = file_offset_;
-      OutputStream* out = out_;
+    DCHECK(HasCompiledCode(compiled_method)) << method_ref.PrettyMethod();
 
-      ArrayRef<const uint8_t> quick_code = compiled_method->GetQuickCode();
-      uint32_t code_size = quick_code.size() * sizeof(uint8_t);
+    // TODO: cleanup DCHECK_OFFSET_ to accept file_offset as parameter.
+    size_t file_offset = file_offset_;  // Used by DCHECK_OFFSET_ macro.
+    OutputStream* out = out_;
 
-      // Deduplicate code arrays.
-      const OatMethodOffsets& method_offsets = oat_class->method_offsets_[method_offsets_index_];
-      if (method_offsets.code_offset_ > offset_) {
-        offset_ = writer_->relative_patcher_->WriteThunks(out, offset_);
-        if (offset_ == 0u) {
-          ReportWriteFailure("relative call thunk", it);
+    ArrayRef<const uint8_t> quick_code = compiled_method->GetQuickCode();
+    uint32_t code_size = quick_code.size() * sizeof(uint8_t);
+
+    // Deduplicate code arrays.
+    const OatMethodOffsets& method_offsets = oat_class->method_offsets_[method_offsets_index];
+    if (method_offsets.code_offset_ > offset_) {
+      offset_ = writer_->relative_patcher_->WriteThunks(out, offset_);
+      if (offset_ == 0u) {
+        ReportWriteFailure("relative call thunk", method_ref);
+        return false;
+      }
+      uint32_t alignment_size = CodeAlignmentSize(offset_, *compiled_method);
+      if (alignment_size != 0) {
+        if (!writer_->WriteCodeAlignment(out, alignment_size)) {
+          ReportWriteFailure("code alignment padding", method_ref);
           return false;
         }
-        uint32_t alignment_size = CodeAlignmentSize(offset_, *compiled_method);
-        if (alignment_size != 0) {
-          if (!writer_->WriteCodeAlignment(out, alignment_size)) {
-            ReportWriteFailure("code alignment padding", it);
-            return false;
-          }
-          offset_ += alignment_size;
-          DCHECK_OFFSET_();
-        }
-        DCHECK_ALIGNED_PARAM(offset_ + sizeof(OatQuickMethodHeader),
-                             GetInstructionSetAlignment(compiled_method->GetInstructionSet()));
-        DCHECK_EQ(method_offsets.code_offset_,
-                  offset_ + sizeof(OatQuickMethodHeader) + compiled_method->CodeDelta())
-            << dex_file_->PrettyMethod(it.GetMemberIndex());
-        const OatQuickMethodHeader& method_header =
-            oat_class->method_headers_[method_offsets_index_];
-        if (!out->WriteFully(&method_header, sizeof(method_header))) {
-          ReportWriteFailure("method header", it);
-          return false;
-        }
-        writer_->size_method_header_ += sizeof(method_header);
-        offset_ += sizeof(method_header);
+        offset_ += alignment_size;
         DCHECK_OFFSET_();
+      }
+      DCHECK_ALIGNED_PARAM(offset_ + sizeof(OatQuickMethodHeader),
+                           GetInstructionSetAlignment(compiled_method->GetInstructionSet()));
+      DCHECK_EQ(method_offsets.code_offset_,
+                offset_ + sizeof(OatQuickMethodHeader) + compiled_method->CodeDelta())
+          << dex_file_->PrettyMethod(method_ref.index);
+      const OatQuickMethodHeader& method_header =
+          oat_class->method_headers_[method_offsets_index];
+      if (!out->WriteFully(&method_header, sizeof(method_header))) {
+        ReportWriteFailure("method header", method_ref);
+        return false;
+      }
+      writer_->size_method_header_ += sizeof(method_header);
+      offset_ += sizeof(method_header);
+      DCHECK_OFFSET_();
 
-        if (!compiled_method->GetPatches().empty()) {
-          patched_code_.assign(quick_code.begin(), quick_code.end());
-          quick_code = ArrayRef<const uint8_t>(patched_code_);
-          for (const LinkerPatch& patch : compiled_method->GetPatches()) {
-            uint32_t literal_offset = patch.LiteralOffset();
-            switch (patch.GetType()) {
-              case LinkerPatch::Type::kMethodBssEntry: {
-                uint32_t target_offset =
-                    writer_->bss_start_ + writer_->bss_method_entries_.Get(patch.TargetMethod());
-                writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
-                                                                     patch,
-                                                                     offset_ + literal_offset,
-                                                                     target_offset);
-                break;
-              }
-              case LinkerPatch::Type::kCallRelative: {
-                // NOTE: Relative calls across oat files are not supported.
-                uint32_t target_offset = GetTargetOffset(patch);
-                writer_->relative_patcher_->PatchCall(&patched_code_,
-                                                      literal_offset,
-                                                      offset_ + literal_offset,
-                                                      target_offset);
-                break;
-              }
-              case LinkerPatch::Type::kStringRelative: {
-                uint32_t target_offset = GetTargetObjectOffset(GetTargetString(patch));
-                writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
-                                                                     patch,
-                                                                     offset_ + literal_offset,
-                                                                     target_offset);
-                break;
-              }
-              case LinkerPatch::Type::kStringInternTable: {
-                uint32_t target_offset = GetInternTableEntryOffset(patch);
-                writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
-                                                                     patch,
-                                                                     offset_ + literal_offset,
-                                                                     target_offset);
-                break;
-              }
-              case LinkerPatch::Type::kStringBssEntry: {
-                StringReference ref(patch.TargetStringDexFile(), patch.TargetStringIndex());
-                uint32_t target_offset =
-                    writer_->bss_start_ + writer_->bss_string_entries_.Get(ref);
-                writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
-                                                                     patch,
-                                                                     offset_ + literal_offset,
-                                                                     target_offset);
-                break;
-              }
-              case LinkerPatch::Type::kTypeRelative: {
-                uint32_t target_offset = GetTargetObjectOffset(GetTargetType(patch));
-                writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
-                                                                     patch,
-                                                                     offset_ + literal_offset,
-                                                                     target_offset);
-                break;
-              }
-              case LinkerPatch::Type::kTypeClassTable: {
-                uint32_t target_offset = GetClassTableEntryOffset(patch);
-                writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
-                                                                     patch,
-                                                                     offset_ + literal_offset,
-                                                                     target_offset);
-                break;
-              }
-              case LinkerPatch::Type::kTypeBssEntry: {
-                TypeReference ref(patch.TargetTypeDexFile(), patch.TargetTypeIndex());
-                uint32_t target_offset = writer_->bss_start_ + writer_->bss_type_entries_.Get(ref);
-                writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
-                                                                     patch,
-                                                                     offset_ + literal_offset,
-                                                                     target_offset);
-                break;
-              }
-              case LinkerPatch::Type::kCall: {
-                uint32_t target_offset = GetTargetOffset(patch);
-                PatchCodeAddress(&patched_code_, literal_offset, target_offset);
-                break;
-              }
-              case LinkerPatch::Type::kMethodRelative: {
-                uint32_t target_offset = GetTargetMethodOffset(GetTargetMethod(patch));
-                writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
-                                                                     patch,
-                                                                     offset_ + literal_offset,
-                                                                     target_offset);
-                break;
-              }
-              case LinkerPatch::Type::kBakerReadBarrierBranch: {
-                writer_->relative_patcher_->PatchBakerReadBarrierBranch(&patched_code_,
-                                                                        patch,
-                                                                        offset_ + literal_offset);
-                break;
-              }
-              default: {
-                DCHECK(false) << "Unexpected linker patch type: " << patch.GetType();
-                break;
-              }
+      if (!compiled_method->GetPatches().empty()) {
+        patched_code_.assign(quick_code.begin(), quick_code.end());
+        quick_code = ArrayRef<const uint8_t>(patched_code_);
+        for (const LinkerPatch& patch : compiled_method->GetPatches()) {
+          uint32_t literal_offset = patch.LiteralOffset();
+          switch (patch.GetType()) {
+            case LinkerPatch::Type::kMethodBssEntry: {
+              uint32_t target_offset =
+                  writer_->bss_start_ + writer_->bss_method_entries_.Get(patch.TargetMethod());
+              writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
+                                                                   patch,
+                                                                   offset_ + literal_offset,
+                                                                   target_offset);
+              break;
+            }
+            case LinkerPatch::Type::kCallRelative: {
+              // NOTE: Relative calls across oat files are not supported.
+              uint32_t target_offset = GetTargetOffset(patch);
+              writer_->relative_patcher_->PatchCall(&patched_code_,
+                                                    literal_offset,
+                                                    offset_ + literal_offset,
+                                                    target_offset);
+              break;
+            }
+            case LinkerPatch::Type::kStringRelative: {
+              uint32_t target_offset = GetTargetObjectOffset(GetTargetString(patch));
+              writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
+                                                                   patch,
+                                                                   offset_ + literal_offset,
+                                                                   target_offset);
+              break;
+            }
+            case LinkerPatch::Type::kStringInternTable: {
+              uint32_t target_offset = GetInternTableEntryOffset(patch);
+              writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
+                                                                   patch,
+                                                                   offset_ + literal_offset,
+                                                                   target_offset);
+              break;
+            }
+            case LinkerPatch::Type::kStringBssEntry: {
+              StringReference ref(patch.TargetStringDexFile(), patch.TargetStringIndex());
+              uint32_t target_offset =
+                  writer_->bss_start_ + writer_->bss_string_entries_.Get(ref);
+              writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
+                                                                   patch,
+                                                                   offset_ + literal_offset,
+                                                                   target_offset);
+              break;
+            }
+            case LinkerPatch::Type::kTypeRelative: {
+              uint32_t target_offset = GetTargetObjectOffset(GetTargetType(patch));
+              writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
+                                                                   patch,
+                                                                   offset_ + literal_offset,
+                                                                   target_offset);
+              break;
+            }
+            case LinkerPatch::Type::kTypeClassTable: {
+              uint32_t target_offset = GetClassTableEntryOffset(patch);
+              writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
+                                                                   patch,
+                                                                   offset_ + literal_offset,
+                                                                   target_offset);
+              break;
+            }
+            case LinkerPatch::Type::kTypeBssEntry: {
+              TypeReference ref(patch.TargetTypeDexFile(), patch.TargetTypeIndex());
+              uint32_t target_offset = writer_->bss_start_ + writer_->bss_type_entries_.Get(ref);
+              writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
+                                                                   patch,
+                                                                   offset_ + literal_offset,
+                                                                   target_offset);
+              break;
+            }
+            case LinkerPatch::Type::kCall: {
+              uint32_t target_offset = GetTargetOffset(patch);
+              PatchCodeAddress(&patched_code_, literal_offset, target_offset);
+              break;
+            }
+            case LinkerPatch::Type::kMethodRelative: {
+              uint32_t target_offset = GetTargetMethodOffset(GetTargetMethod(patch));
+              writer_->relative_patcher_->PatchPcRelativeReference(&patched_code_,
+                                                                   patch,
+                                                                   offset_ + literal_offset,
+                                                                   target_offset);
+              break;
+            }
+            case LinkerPatch::Type::kBakerReadBarrierBranch: {
+              writer_->relative_patcher_->PatchBakerReadBarrierBranch(&patched_code_,
+                                                                      patch,
+                                                                      offset_ + literal_offset);
+              break;
+            }
+            default: {
+              DCHECK(false) << "Unexpected linker patch type: " << patch.GetType();
+              break;
             }
           }
         }
-
-        if (!out->WriteFully(quick_code.data(), code_size)) {
-          ReportWriteFailure("method code", it);
-          return false;
-        }
-        writer_->size_code_ += code_size;
-        offset_ += code_size;
       }
-      DCHECK_OFFSET_();
-      ++method_offsets_index_;
+
+      if (!out->WriteFully(quick_code.data(), code_size)) {
+        ReportWriteFailure("method code", method_ref);
+        return false;
+      }
+      writer_->size_code_ += code_size;
+      offset_ += code_size;
     }
+    DCHECK_OFFSET_();
 
     return true;
   }
 
+  size_t GetOffset() const {
+    return offset_;
+  }
+
  private:
+  OatWriter* const writer_;
+
+  // Updated in VisitMethod as methods are written out.
+  size_t offset_;
+
+  // Potentially varies with every different VisitMethod.
+  // Used to determine which DexCache to use when finding ArtMethods.
+  const DexFile* dex_file_;
+
+  // Pointer size we are compiling to.
   const PointerSize pointer_size_;
+  // The image writer's classloader, if there is one, else null.
   ObjPtr<mirror::ClassLoader> class_loader_;
+  // Stream to output file, where the OAT code will be written to.
   OutputStream* const out_;
   const size_t file_offset_;
-  const ScopedObjectAccess soa_;
-  const ScopedAssertNoThreadSuspension no_thread_suspension_;
   ClassLinker* const class_linker_;
   ObjPtr<mirror::DexCache> dex_cache_;
   std::vector<uint8_t> patched_code_;
+  const ScopedAssertNoThreadSuspension no_thread_suspension_;
 
-  void ReportWriteFailure(const char* what, const ClassDataItemIterator& it) {
+  void ReportWriteFailure(const char* what, const MethodReference& method_ref) {
     PLOG(ERROR) << "Failed to write " << what << " for "
-        << dex_file_->PrettyMethod(it.GetMemberIndex()) << " to " << out_->GetLocation();
+        << method_ref.PrettyMethod() << " to " << out_->GetLocation();
   }
 
   ArtMethod* GetTargetMethod(const LinkerPatch& patch)
@@ -1529,7 +1845,8 @@ class OatWriter::WriteCodeMethodVisitor : public OatDexMethodVisitor {
     ObjPtr<mirror::DexCache> dex_cache =
         (dex_file_ == ref.dex_file) ? dex_cache_ : class_linker_->FindDexCache(
             Thread::Current(), *ref.dex_file);
-    ArtMethod* method = class_linker_->LookupResolvedMethod(ref.index, dex_cache, class_loader_);
+    ArtMethod* method =
+        class_linker_->LookupResolvedMethod(ref.index, dex_cache, class_loader_);
     CHECK(method != nullptr);
     return method;
   }
@@ -2002,12 +2319,50 @@ size_t OatWriter::InitOatCode(size_t offset) {
 
 size_t OatWriter::InitOatCodeDexFiles(size_t offset) {
   if (!compiler_driver_->GetCompilerOptions().IsAnyCompilationEnabled()) {
+    if (kOatWriterDebugOatCodeLayout) {
+      LOG(INFO) << "InitOatCodeDexFiles: OatWriter("
+                << this << "), "
+                << "compilation is disabled";
+    }
+
     return offset;
   }
-  InitCodeMethodVisitor code_visitor(this, offset);
-  bool success = VisitDexMethods(&code_visitor);
-  DCHECK(success);
-  offset = code_visitor.GetOffset();
+  bool success = false;
+
+  {
+    ScopedObjectAccess soa(Thread::Current());
+
+    LayoutCodeMethodVisitor layout_code_visitor(this, offset);
+    success = VisitDexMethods(&layout_code_visitor);
+    DCHECK(success);
+
+    LayoutReserveOffsetCodeMethodVisitor layout_reserve_code_visitor(
+        this,
+        offset,
+        layout_code_visitor.ReleaseOrderedMethods());
+    success = layout_reserve_code_visitor.Visit();
+    DCHECK(success);
+    offset = layout_reserve_code_visitor.GetOffset();
+
+    // Save the method order because the WriteCodeMethodVisitor will need this
+    // order again.
+    DCHECK(ordered_methods_ == nullptr);
+    ordered_methods_.reset(
+        new OrderedMethodList(
+            layout_reserve_code_visitor.ReleaseOrderedMethods()));
+
+    if (kOatWriterDebugOatCodeLayout) {
+      LOG(INFO) << "IniatOatCodeDexFiles: method order: ";
+      for (const OrderedMethodData& ordered_method : *ordered_methods_) {
+        std::string pretty_name = ordered_method.method_reference.PrettyMethod();
+        LOG(INFO) << pretty_name
+                  << "@ offset "
+                  << relative_patcher_->GetOffset(ordered_method.method_reference)
+                  << " X hotness "
+                  << reinterpret_cast<void*>(ordered_method.method_hotness.GetFlags());
+      }
+    }
+  }
 
   if (HasImage()) {
     InitImageMethodVisitor image_visitor(this, offset, dex_files_);
@@ -2689,18 +3044,30 @@ size_t OatWriter::WriteCode(OutputStream* out, size_t file_offset, size_t relati
 size_t OatWriter::WriteCodeDexFiles(OutputStream* out,
                                     size_t file_offset,
                                     size_t relative_offset) {
-  #define VISIT(VisitorType)                                              \
-    do {                                                                  \
-      VisitorType visitor(this, out, file_offset, relative_offset);       \
-      if (UNLIKELY(!VisitDexMethods(&visitor))) {                         \
-        return 0;                                                         \
-      }                                                                   \
-      relative_offset = visitor.GetOffset();                              \
-    } while (false)
+  if (!compiler_driver_->GetCompilerOptions().IsAnyCompilationEnabled()) {
+    // As with InitOatCodeDexFiles, also skip the writer if
+    // compilation was disabled.
+    if (kOatWriterDebugOatCodeLayout) {
+      LOG(INFO) << "WriteCodeDexFiles: OatWriter("
+                << this << "), "
+                << "compilation is disabled";
+    }
 
-  VISIT(WriteCodeMethodVisitor);
-
-  #undef VISIT
+    return relative_offset;
+  }
+  ScopedObjectAccess soa(Thread::Current());
+  DCHECK(ordered_methods_ != nullptr);
+  std::unique_ptr<OrderedMethodList> ordered_methods_ptr =
+      std::move(ordered_methods_);
+  WriteCodeMethodVisitor visitor(this,
+                                 out,
+                                 file_offset,
+                                 relative_offset,
+                                 std::move(*ordered_methods_ptr));
+  if (UNLIKELY(!visitor.Visit())) {
+    return 0;
+  }
+  relative_offset = visitor.GetOffset();
 
   size_code_alignment_ += relative_patcher_->CodeAlignmentSize();
   size_relative_call_thunks_ += relative_patcher_->RelativeCallThunksSize();

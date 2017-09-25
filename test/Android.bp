@@ -420,7 +420,8 @@ cc_defaults {
         "642-fp-callees/fp_callees.cc",
         "647-jni-get-field-id/get_field_id.cc",
         "656-annotation-lookup-generic-jni/test.cc",
-	"664-aget-verifier/aget-verifier.cc",
+        "661-oat-writer-layout/oat_writer_layout.cc",
+        "664-aget-verifier/aget-verifier.cc",
         "708-jit-cache-churn/jit.cc"
     ],
     shared_libs: [
