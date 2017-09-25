@@ -10,7 +10,7 @@ public class Main {
             ProcessBuilder pb = new ProcessBuilder("sleep", "0");
             Process proc = pb.start();
             proc.waitFor();
-            Thread.sleep(500);  // Consider checking for (and waiting on) the reaper state here.
+            waitForReaperTimedWaiting(true /* reaperMustExist */);
         }
 
         for (int i = 1; i <= 2; i++) {
@@ -32,6 +32,11 @@ public class Main {
         System.out.println("child died");
     }
 
+    private static boolean isReaperThread(Thread t) {
+        String name = t.getName();
+        return name.indexOf("process reaper") >= 0;
+    }
+
     static private void checkManager() {
         Map<Thread, StackTraceElement[]> traces = Thread.getAllStackTraces();
         boolean found = false;
@@ -39,8 +44,7 @@ public class Main {
         for (Map.Entry<Thread, StackTraceElement[]> entry :
                  traces.entrySet()) {
             Thread t = entry.getKey();
-            String name = t.getName();
-            if (name.indexOf("process reaper") >= 0) {
+            if (isReaperThread(t)) {
                 Thread.State state = t.getState();
                 System.out.println("process manager: " + state);
                 if (state != Thread.State.RUNNABLE && state != Thread.State.TIMED_WAITING) {
@@ -54,6 +58,36 @@ public class Main {
 
         if (! found) {
             System.out.println("process manager: nonexistent");
+        }
+    }
+
+    private static void waitForReaperTimedWaiting(boolean reaperMustExist) {
+        for (;;) {
+            Map<Thread, StackTraceElement[]> traces = Thread.getAllStackTraces();
+
+            boolean ok = true;
+            boolean found = false;
+
+            for (Thread t : traces.keySet()) {
+                if (isReaperThread(t)) {
+                    found = true;
+                    Thread.State state = t.getState();
+                    if (state != Thread.State.TIMED_WAITING) {
+                        ok = false;
+                        break;
+                    }
+                }
+            }
+
+            if (ok && (!reaperMustExist || found)) {
+                return;
+            }
+
+            try {
+                Thread.sleep(100);
+            } catch (Exception e) {
+                // Ignore.
+            }
         }
     }
 }
