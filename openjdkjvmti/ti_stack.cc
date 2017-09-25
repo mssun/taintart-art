@@ -211,34 +211,6 @@ struct GetStackTraceDirectClosure : public art::Closure {
   size_t index = 0;
 };
 
-static jvmtiError GetThread(JNIEnv* env,
-                            art::ScopedObjectAccessAlreadyRunnable& soa,
-                            jthread java_thread,
-                            art::Thread** thread)
-    REQUIRES_SHARED(art::Locks::mutator_lock_)  // Needed for FromManagedThread.
-    REQUIRES(art::Locks::thread_list_lock_) {   // Needed for FromManagedThread.
-  if (java_thread == nullptr) {
-    *thread = art::Thread::Current();
-    if (*thread == nullptr) {
-      // GetStackTrace can only be run during the live phase, so the current thread should be
-      // attached and thus available. Getting a null for current means we're starting up or
-      // dying.
-      return ERR(WRONG_PHASE);
-    }
-  } else {
-    if (!env->IsInstanceOf(java_thread, art::WellKnownClasses::java_lang_Thread)) {
-      return ERR(INVALID_THREAD);
-    }
-
-    // TODO: Need non-aborting call here, to return JVMTI_ERROR_INVALID_THREAD.
-    *thread = art::Thread::FromManagedThread(soa, java_thread);
-    if (*thread == nullptr) {
-      return ERR(THREAD_NOT_ALIVE);
-    }
-  }
-  return ERR(NONE);
-}
-
 jvmtiError StackUtil::GetStackTrace(jvmtiEnv* jvmti_env ATTRIBUTE_UNUSED,
                                     jthread java_thread,
                                     jint start_depth,
@@ -251,19 +223,14 @@ jvmtiError StackUtil::GetStackTrace(jvmtiEnv* jvmti_env ATTRIBUTE_UNUSED,
   art::MutexLock mu(soa.Self(), *art::Locks::thread_list_lock_);
 
   art::Thread* thread;
-  jvmtiError thread_error = GetThread(art::Thread::Current()->GetJniEnv(),
-                                      soa,
-                                      java_thread,
-                                      &thread);
-  if (thread_error != ERR(NONE)) {
+  jvmtiError thread_error = ERR(INTERNAL);
+  if (!ThreadUtil::GetAliveNativeThread(java_thread, soa, &thread, &thread_error)) {
     return thread_error;
   }
   DCHECK(thread != nullptr);
 
   art::ThreadState state = thread->GetState();
-  if (state == art::ThreadState::kStarting ||
-      state == art::ThreadState::kTerminated ||
-      thread->IsStillStarting()) {
+  if (state == art::ThreadState::kStarting || thread->IsStillStarting()) {
     return ERR(THREAD_NOT_ALIVE);
   }
 
@@ -714,22 +681,25 @@ jvmtiError StackUtil::GetFrameCount(jvmtiEnv* env ATTRIBUTE_UNUSED,
   art::MutexLock mu(soa.Self(), *art::Locks::thread_list_lock_);
 
   art::Thread* thread;
-  jvmtiError thread_error = GetThread(art::Thread::Current()->GetJniEnv(),
-                                      soa,
-                                      java_thread,
-                                      &thread);
-
-  if (thread_error != ERR(NONE)) {
+  jvmtiError thread_error = ERR(INTERNAL);
+  if (!ThreadUtil::GetAliveNativeThread(java_thread, soa, &thread, &thread_error)) {
     return thread_error;
   }
+
   DCHECK(thread != nullptr);
+  art::ThreadState state = thread->GetState();
+  if (state == art::ThreadState::kStarting || thread->IsStillStarting()) {
+    return ERR(THREAD_NOT_ALIVE);
+  }
 
   if (count_ptr == nullptr) {
     return ERR(NULL_POINTER);
   }
 
   GetFrameCountClosure closure;
-  thread->RequestSynchronousCheckpoint(&closure);
+  if (!thread->RequestSynchronousCheckpoint(&closure)) {
+    return ERR(THREAD_NOT_ALIVE);
+  }
 
   *count_ptr = closure.count;
   return ERR(NONE);
@@ -793,14 +763,16 @@ jvmtiError StackUtil::GetFrameLocation(jvmtiEnv* env ATTRIBUTE_UNUSED,
   art::MutexLock mu(soa.Self(), *art::Locks::thread_list_lock_);
 
   art::Thread* thread;
-  jvmtiError thread_error = GetThread(art::Thread::Current()->GetJniEnv(),
-                                      soa,
-                                      java_thread,
-                                      &thread);
-  if (thread_error != ERR(NONE)) {
+  jvmtiError thread_error = ERR(INTERNAL);
+  if (!ThreadUtil::GetAliveNativeThread(java_thread, soa, &thread, &thread_error)) {
     return thread_error;
   }
   DCHECK(thread != nullptr);
+
+  art::ThreadState state = thread->GetState();
+  if (state == art::ThreadState::kStarting || thread->IsStillStarting()) {
+    return ERR(THREAD_NOT_ALIVE);
+  }
 
   if (depth < 0) {
     return ERR(ILLEGAL_ARGUMENT);
@@ -920,12 +892,10 @@ static jvmtiError GetOwnedMonitorInfoCommon(jthread thread, Fn handle_results) {
   bool called_method = false;
   {
     art::MutexLock mu(self, *art::Locks::thread_list_lock_);
-    art::Thread* target = ThreadUtil::GetNativeThread(thread, soa);
-    if (target == nullptr && thread == nullptr) {
-      return ERR(INVALID_THREAD);
-    }
-    if (target == nullptr) {
-      return ERR(THREAD_NOT_ALIVE);
+    art::Thread* target = nullptr;
+    jvmtiError err = ERR(INTERNAL);
+    if (!ThreadUtil::GetAliveNativeThread(thread, soa, &target, &err)) {
+      return err;
     }
     if (target != self) {
       called_method = true;
@@ -1014,10 +984,11 @@ jvmtiError StackUtil::NotifyFramePop(jvmtiEnv* env, jthread thread, jint depth) 
     // have the 'suspend_lock' locked here.
     art::ScopedObjectAccess soa(self);
     art::MutexLock tll_mu(self, *art::Locks::thread_list_lock_);
-    target = ThreadUtil::GetNativeThread(thread, soa);
-    if (target == nullptr) {
-      return ERR(THREAD_NOT_ALIVE);
-    } else if (target != self) {
+    jvmtiError err = ERR(INTERNAL);
+    if (!ThreadUtil::GetAliveNativeThread(thread, soa, &target, &err)) {
+      return err;
+    }
+    if (target != self) {
       // TODO This is part of the spec but we could easily avoid needing to do it. We would just put
       // all the logic into a sync-checkpoint.
       art::MutexLock tscl_mu(self, *art::Locks::thread_suspend_count_lock_);
