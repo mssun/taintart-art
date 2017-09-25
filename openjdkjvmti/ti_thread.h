@@ -93,8 +93,24 @@ class ThreadUtil {
                                      const jthread* threads,
                                      jvmtiError* results);
 
-  static art::Thread* GetNativeThread(jthread thread,
-                                      const art::ScopedObjectAccessAlreadyRunnable& soa)
+  // Returns true if we decoded the thread and it is alive, false otherwise with an appropriate
+  // error placed into 'err'. A thread is alive if it has had it's 'start' function called and has
+  // (or at least could have) executed managed code and has not yet returned past it's first managed
+  // frame. This means that the thread returned might have IsStillStarting() return true. Code that
+  // does not consider that alive should check manually.
+  static bool GetAliveNativeThread(jthread thread,
+                                   const art::ScopedObjectAccessAlreadyRunnable& soa,
+                                   /*out*/ art::Thread** thr,
+                                   /*out*/ jvmtiError* err)
+      REQUIRES_SHARED(art::Locks::mutator_lock_)
+      REQUIRES(art::Locks::thread_list_lock_);
+
+  // Returns true if we decoded the thread, false otherwise with an appropriate error placed into
+  // 'err'
+  static bool GetNativeThread(jthread thread,
+                              const art::ScopedObjectAccessAlreadyRunnable& soa,
+                              /*out*/ art::Thread** thr,
+                              /*out*/ jvmtiError* err)
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(art::Locks::thread_list_lock_);
 

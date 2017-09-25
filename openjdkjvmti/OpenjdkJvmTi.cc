@@ -1034,14 +1034,13 @@ class JvmtiFunctions {
     ENSURE_VALID_ENV(env);
     art::Thread* art_thread = nullptr;
     if (event_thread != nullptr) {
-      // TODO: Need non-aborting call here, to return JVMTI_ERROR_INVALID_THREAD.
+      // TODO The locking around this call is less then what we really want.
       art::ScopedObjectAccess soa(art::Thread::Current());
       art::MutexLock mu(soa.Self(), *art::Locks::thread_list_lock_);
-      art_thread = art::Thread::FromManagedThread(soa, event_thread);
-
-      if (art_thread == nullptr ||  // The thread hasn't been started or is already dead.
-          art_thread->IsStillStarting()) {
-        // TODO: We may want to let the EventHandler know, so it could clean up masks, potentially.
+      jvmtiError err = ERR(INTERNAL);
+      if (!ThreadUtil::GetAliveNativeThread(event_thread, soa, &art_thread, &err)) {
+        return err;
+      } else if (art_thread->IsStillStarting()) {
         return ERR(THREAD_NOT_ALIVE);
       }
     }
