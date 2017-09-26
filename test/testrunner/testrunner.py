@@ -114,6 +114,7 @@ gdb = False
 gdb_arg = ''
 stop_testrunner = False
 dex2oat_jobs = -1   # -1 corresponds to default threads for dex2oat
+run_all_configs = False
 
 # Dict to store user requested test variants.
 # key: variant_type.
@@ -163,6 +164,13 @@ def setup_test_env():
     env.ART_TEST_RUN_TEST_PREBUILD = False
     # Bisection search writes to standard output.
     env.ART_TEST_QUIET = False
+
+  global _user_input_variants
+  global run_all_configs
+  if run_all_configs:
+    target_types = _user_input_variants['target']
+    _user_input_variants = VARIANT_TYPE_DICT
+    _user_input_variants['target'] = target_types
 
   if not _user_input_variants['target']:
     _user_input_variants['target'].add('host')
@@ -524,11 +532,10 @@ def print_test_info(test_name, result, failed_test_info=""):
       total_test_count)
 
     if result == 'FAIL' or result == 'TIMEOUT':
-      info += ('%s %s %s\n%s\n') % (
+      info += ('%s %s %s\n') % (
         progress_info,
         test_name,
-        COLOR_ERROR + result + COLOR_NORMAL,
-        failed_test_info)
+        COLOR_ERROR + result + COLOR_NORMAL)
     else:
       result_text = ''
       if result == 'PASS':
@@ -818,6 +825,7 @@ def parse_option():
   global gdb_arg
   global timeout
   global dex2oat_jobs
+  global run_all_configs
 
   parser = argparse.ArgumentParser(description="Runs all or a subset of the ART test suite.")
   parser.add_argument('-t', '--test', dest='test', help='name of the test')
@@ -844,6 +852,8 @@ def parse_option():
   parser.add_argument('--gdb-arg', dest='gdb_arg')
   parser.add_argument('--dex2oat-jobs', type=int, dest='dex2oat_jobs',
                       help='Number of dex2oat jobs')
+  parser.add_argument('-a', '--all', action='store_true', dest='run_all',
+                      help="Run all the possible configurations for the input test set")
 
   options = vars(parser.parse_args())
   if options['build_target']:
@@ -876,6 +886,8 @@ def parse_option():
   timeout = options['timeout']
   if options['dex2oat_jobs']:
     dex2oat_jobs = options['dex2oat_jobs']
+  if options['run_all']:
+    run_all_configs = True
 
   return test
 
