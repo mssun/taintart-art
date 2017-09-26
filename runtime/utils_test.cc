@@ -16,9 +16,11 @@
 
 #include "utils.h"
 
+#include <libgen.h>
 #include <stdlib.h>
 
 #include "base/enums.h"
+#include "base/stl_util.h"
 #include "class_linker-inl.h"
 #include "common_runtime_test.h"
 #include "exec_utils.h"
@@ -411,6 +413,42 @@ TEST_F(UtilsTest, BoundsCheckedCast) {
             reinterpret_cast<const uint64_t*>(buffer + 56));
   EXPECT_EQ(BoundsCheckedCast<const uint64_t*>(buffer - 1, buffer, buffer_end), nullptr);
   EXPECT_EQ(BoundsCheckedCast<const uint64_t*>(buffer + 57, buffer, buffer_end), nullptr);
+}
+
+TEST_F(UtilsTest, GetAndroidRootSafe) {
+  std::string error_msg;
+
+  // We don't expect null returns for most cases, so don't check and let std::string crash.
+
+  // CommonRuntimeTest sets ANDROID_ROOT, so expect this to be the same.
+  std::string android_root = GetAndroidRootSafe(&error_msg);
+  std::string android_root_env = getenv("ANDROID_ROOT");
+  EXPECT_EQ(android_root, android_root_env);
+
+  // Set ANDROID_ROOT to something else (but the directory must exist). So use dirname.
+  char* root_dup = strdup(android_root_env.c_str());
+  char* dir = dirname(root_dup);
+  ASSERT_EQ(0, setenv("ANDROID_ROOT", dir, 1 /* overwrite */));
+  std::string android_root2 = GetAndroidRootSafe(&error_msg);
+  EXPECT_STREQ(dir, android_root2.c_str());
+  free(root_dup);
+
+  // Set a bogus value for ANDROID_ROOT. This should be an error.
+  ASSERT_EQ(0, setenv("ANDROID_ROOT", "/this/is/obviously/bogus", 1 /* overwrite */));
+  EXPECT_TRUE(GetAndroidRootSafe(&error_msg) == nullptr);
+
+  // Unset ANDROID_ROOT and see that it still returns something (as libart code is running).
+  ASSERT_EQ(0, unsetenv("ANDROID_ROOT"));
+  std::string android_root3 = GetAndroidRootSafe(&error_msg);
+  // This should be the same as the other root (modulo realpath), otherwise the test setup is
+  // broken.
+  UniqueCPtr<char> real_root(realpath(android_root.c_str(), nullptr));
+  UniqueCPtr<char> real_root3(realpath(android_root3.c_str(), nullptr));
+  EXPECT_STREQ(real_root.get(), real_root3.get());
+
+
+  // Reset ANDROID_ROOT, as other things may depend on it.
+  ASSERT_EQ(0, setenv("ANDROID_ROOT", android_root_env.c_str(), 1 /* overwrite */));
 }
 
 }  // namespace art
