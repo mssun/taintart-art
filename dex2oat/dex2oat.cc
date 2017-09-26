@@ -1357,7 +1357,7 @@ class Dex2Oat FINAL {
       DCHECK(!oat_filenames_.empty());
       for (const char* oat_filename : oat_filenames_) {
         std::unique_ptr<File> oat_file(OS::CreateEmptyFile(oat_filename));
-        if (oat_file.get() == nullptr) {
+        if (oat_file == nullptr) {
           PLOG(ERROR) << "Failed to create oat file: " << oat_filename;
           return false;
         }
@@ -1387,7 +1387,7 @@ class Dex2Oat FINAL {
           vdex_files_.push_back(std::move(vdex_file));
         } else {
           std::unique_ptr<File> vdex_file(OS::CreateEmptyFile(vdex_filename.c_str()));
-          if (vdex_file.get() == nullptr) {
+          if (vdex_file == nullptr) {
             PLOG(ERROR) << "Failed to open vdex file: " << vdex_filename;
             return false;
           }
@@ -1401,13 +1401,15 @@ class Dex2Oat FINAL {
       }
     } else {
       std::unique_ptr<File> oat_file(new File(oat_fd_, oat_location_, /* check_usage */ true));
-      if (oat_file.get() == nullptr) {
+      if (oat_file == nullptr) {
         PLOG(ERROR) << "Failed to create oat file: " << oat_location_;
         return false;
       }
       oat_file->DisableAutoClose();
       if (oat_file->SetLength(0) != 0) {
         PLOG(WARNING) << "Truncating oat file " << oat_location_ << " failed.";
+        oat_file->Erase();
+        return false;
       }
       oat_files_.push_back(std::move(oat_file));
 
@@ -1436,7 +1438,7 @@ class Dex2Oat FINAL {
       DCHECK_NE(output_vdex_fd_, -1);
       std::string vdex_location = ReplaceFileExtension(oat_location_, "vdex");
       std::unique_ptr<File> vdex_file(new File(output_vdex_fd_, vdex_location, /* check_usage */ true));
-      if (vdex_file.get() == nullptr) {
+      if (vdex_file == nullptr) {
         PLOG(ERROR) << "Failed to create vdex file: " << vdex_location;
         return false;
       }
@@ -1446,6 +1448,7 @@ class Dex2Oat FINAL {
       } else {
         if (vdex_file->SetLength(0) != 0) {
           PLOG(ERROR) << "Truncating vdex file " << vdex_location << " failed.";
+          vdex_file->Erase();
           return false;
         }
       }
