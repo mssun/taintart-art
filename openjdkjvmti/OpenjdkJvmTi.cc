@@ -163,18 +163,16 @@ class JvmtiFunctions {
     return ThreadUtil::ResumeThreadList(env, request_count, request_list, results);
   }
 
-  static jvmtiError StopThread(jvmtiEnv* env,
-                               jthread thread ATTRIBUTE_UNUSED,
-                               jobject exception ATTRIBUTE_UNUSED) {
+  static jvmtiError StopThread(jvmtiEnv* env, jthread thread, jobject exception) {
     ENSURE_VALID_ENV(env);
     ENSURE_HAS_CAP(env, can_signal_thread);
-    return ERR(NOT_IMPLEMENTED);
+    return ThreadUtil::StopThread(env, thread, exception);
   }
 
-  static jvmtiError InterruptThread(jvmtiEnv* env, jthread thread ATTRIBUTE_UNUSED) {
+  static jvmtiError InterruptThread(jvmtiEnv* env, jthread thread) {
     ENSURE_VALID_ENV(env);
     ENSURE_HAS_CAP(env, can_signal_thread);
-    return ERR(NOT_IMPLEMENTED);
+    return ThreadUtil::InterruptThread(env, thread);
   }
 
   static jvmtiError GetThreadInfo(jvmtiEnv* env, jthread thread, jvmtiThreadInfo* info_ptr) {
