@@ -115,9 +115,6 @@ ART_HOST_TEST_DIR = tempfile.mkdtemp(prefix = 'test-art-')
 # Keep going after encountering a test failure?
 ART_TEST_KEEP_GOING = _getEnvBoolean('ART_TEST_KEEP_GOING', True)
 
-# Do you want all tests, even those that are time consuming?
-ART_TEST_FULL = _getEnvBoolean('ART_TEST_FULL', False)
-
 # Do you want failed tests to have their artifacts cleaned up?
 ART_TEST_RUN_TEST_ALWAYS_CLEAN = _getEnvBoolean('ART_TEST_RUN_TEST_ALWAYS_CLEAN', True)
 
