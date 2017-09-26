@@ -118,7 +118,7 @@ static bool HasEquality(IfCondition condition) {
 }
 
 static HConstant* Evaluate(HCondition* condition, HInstruction* left, HInstruction* right) {
-  if (left == right && !Primitive::IsFloatingPointType(left->GetType())) {
+  if (left == right && !DataType::IsFloatingPointType(left->GetType())) {
     return condition->GetBlock()->GetGraph()->GetIntConstant(
         HasEquality(condition->GetCondition()) ? 1 : 0);
   }

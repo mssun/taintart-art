@@ -70,7 +70,7 @@ class SsaLivenessAnalysisTest : public testing::Test {
 
 TEST_F(SsaLivenessAnalysisTest, TestReturnArg) {
   HInstruction* arg = new (&allocator_) HParameterValue(
-      graph_->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimInt);
+      graph_->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kInt32);
   entry_->AddInstruction(arg);
 
   HBasicBlock* block = CreateSuccessor(entry_);
@@ -90,15 +90,15 @@ TEST_F(SsaLivenessAnalysisTest, TestReturnArg) {
 
 TEST_F(SsaLivenessAnalysisTest, TestAput) {
   HInstruction* array = new (&allocator_) HParameterValue(
-      graph_->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimNot);
+      graph_->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);
   HInstruction* index = new (&allocator_) HParameterValue(
-      graph_->GetDexFile(), dex::TypeIndex(1), 1, Primitive::kPrimInt);
+      graph_->GetDexFile(), dex::TypeIndex(1), 1, DataType::Type::kInt32);
   HInstruction* value = new (&allocator_) HParameterValue(
-      graph_->GetDexFile(), dex::TypeIndex(2), 2, Primitive::kPrimInt);
+      graph_->GetDexFile(), dex::TypeIndex(2), 2, DataType::Type::kInt32);
   HInstruction* extra_arg1 = new (&allocator_) HParameterValue(
-      graph_->GetDexFile(), dex::TypeIndex(3), 3, Primitive::kPrimInt);
+      graph_->GetDexFile(), dex::TypeIndex(3), 3, DataType::Type::kInt32);
   HInstruction* extra_arg2 = new (&allocator_) HParameterValue(
-      graph_->GetDexFile(), dex::TypeIndex(4), 4, Primitive::kPrimNot);
+      graph_->GetDexFile(), dex::TypeIndex(4), 4, DataType::Type::kReference);
   ArenaVector<HInstruction*> args({ array, index, value, extra_arg1, extra_arg2 },
                                   allocator_.Adapter());
   for (HInstruction* insn : args) {
@@ -127,7 +127,7 @@ TEST_F(SsaLivenessAnalysisTest, TestAput) {
   bounds_check_env->CopyFrom(args);
   bounds_check->SetRawEnvironment(bounds_check_env);
   HInstruction* array_set =
-      new (&allocator_) HArraySet(array, index, value, Primitive::kPrimInt, /* dex_pc */ 0);
+      new (&allocator_) HArraySet(array, index, value, DataType::Type::kInt32, /* dex_pc */ 0);
   block->AddInstruction(array_set);
 
   graph_->BuildDominatorTree();
@@ -160,15 +160,15 @@ TEST_F(SsaLivenessAnalysisTest, TestAput) {
 
 TEST_F(SsaLivenessAnalysisTest, TestDeoptimize) {
   HInstruction* array = new (&allocator_) HParameterValue(
-      graph_->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimNot);
+      graph_->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);
   HInstruction* index = new (&allocator_) HParameterValue(
-      graph_->GetDexFile(), dex::TypeIndex(1), 1, Primitive::kPrimInt);
+      graph_->GetDexFile(), dex::TypeIndex(1), 1, DataType::Type::kInt32);
   HInstruction* value = new (&allocator_) HParameterValue(
-      graph_->GetDexFile(), dex::TypeIndex(2), 2, Primitive::kPrimInt);
+      graph_->GetDexFile(), dex::TypeIndex(2), 2, DataType::Type::kInt32);
   HInstruction* extra_arg1 = new (&allocator_) HParameterValue(
-      graph_->GetDexFile(), dex::TypeIndex(3), 3, Primitive::kPrimInt);
+      graph_->GetDexFile(), dex::TypeIndex(3), 3, DataType::Type::kInt32);
   HInstruction* extra_arg2 = new (&allocator_) HParameterValue(
-      graph_->GetDexFile(), dex::TypeIndex(4), 4, Primitive::kPrimNot);
+      graph_->GetDexFile(), dex::TypeIndex(4), 4, DataType::Type::kReference);
   ArenaVector<HInstruction*> args({ array, index, value, extra_arg1, extra_arg2 },
                                   allocator_.Adapter());
   for (HInstruction* insn : args) {
@@ -201,7 +201,7 @@ TEST_F(SsaLivenessAnalysisTest, TestDeoptimize) {
   deoptimize_env->CopyFrom(args);
   deoptimize->SetRawEnvironment(deoptimize_env);
   HInstruction* array_set =
-      new (&allocator_) HArraySet(array, index, value, Primitive::kPrimInt, /* dex_pc */ 0);
+      new (&allocator_) HArraySet(array, index, value, DataType::Type::kInt32, /* dex_pc */ 0);
   block->AddInstruction(array_set);
 
   graph_->BuildDominatorTree();

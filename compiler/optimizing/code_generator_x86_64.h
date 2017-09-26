@@ -89,16 +89,16 @@ class FieldAccessCallingConventionX86_64 : public FieldAccessCallingConvention {
   Location GetFieldIndexLocation() const OVERRIDE {
     return Location::RegisterLocation(RDI);
   }
-  Location GetReturnLocation(Primitive::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
+  Location GetReturnLocation(DataType::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
     return Location::RegisterLocation(RAX);
   }
-  Location GetSetValueLocation(Primitive::Type type ATTRIBUTE_UNUSED, bool is_instance)
+  Location GetSetValueLocation(DataType::Type type ATTRIBUTE_UNUSED, bool is_instance)
       const OVERRIDE {
     return is_instance
         ? Location::RegisterLocation(RDX)
         : Location::RegisterLocation(RSI);
   }
-  Location GetFpuLocation(Primitive::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
+  Location GetFpuLocation(DataType::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
     return Location::FpuRegisterLocation(XMM0);
   }
 
@@ -112,8 +112,8 @@ class InvokeDexCallingConventionVisitorX86_64 : public InvokeDexCallingConventio
   InvokeDexCallingConventionVisitorX86_64() {}
   virtual ~InvokeDexCallingConventionVisitorX86_64() {}
 
-  Location GetNextLocation(Primitive::Type type) OVERRIDE;
-  Location GetReturnLocation(Primitive::Type type) const OVERRIDE;
+  Location GetNextLocation(DataType::Type type) OVERRIDE;
+  Location GetReturnLocation(DataType::Type type) const OVERRIDE;
   Location GetMethodLocation() const OVERRIDE;
 
  private:
@@ -299,7 +299,7 @@ class CodeGeneratorX86_64 : public CodeGenerator {
   void GenerateFrameExit() OVERRIDE;
   void Bind(HBasicBlock* block) OVERRIDE;
   void MoveConstant(Location destination, int32_t value) OVERRIDE;
-  void MoveLocation(Location dst, Location src, Primitive::Type dst_type) OVERRIDE;
+  void MoveLocation(Location dst, Location src, DataType::Type dst_type) OVERRIDE;
   void AddLocationAsTemp(Location location, LocationSummary* locations) OVERRIDE;
 
   size_t SaveCoreRegister(size_t stack_index, uint32_t reg_id) OVERRIDE;
@@ -384,7 +384,7 @@ class CodeGeneratorX86_64 : public CodeGenerator {
     block_labels_ = CommonInitializeLabels<Label>();
   }
 
-  bool NeedsTwoRegisters(Primitive::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
+  bool NeedsTwoRegisters(DataType::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
     return false;
   }
 
@@ -422,7 +422,7 @@ class CodeGeneratorX86_64 : public CodeGenerator {
                               dex::TypeIndex dex_index,
                               Handle<mirror::Class> handle);
 
-  void MoveFromReturnRegister(Location trg, Primitive::Type type) OVERRIDE;
+  void MoveFromReturnRegister(Location trg, DataType::Type type) OVERRIDE;
 
   void EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) OVERRIDE;
 

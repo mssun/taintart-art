@@ -65,10 +65,10 @@ class HVecOperation : public HVariableInputSizeInstruction {
  public:
   // A SIMD operation looks like a FPU location.
   // TODO: we could introduce SIMD types in HIR.
-  static constexpr Primitive::Type kSIMDType = Primitive::kPrimDouble;
+  static constexpr DataType::Type kSIMDType = DataType::Type::kFloat64;
 
   HVecOperation(ArenaAllocator* arena,
-                Primitive::Type packed_type,
+                DataType::Type packed_type,
                 SideEffects side_effects,
                 size_t number_of_inputs,
                 size_t vector_length,
@@ -90,16 +90,16 @@ class HVecOperation : public HVariableInputSizeInstruction {
 
   // Returns the number of bytes in a full vector.
   size_t GetVectorNumberOfBytes() const {
-    return vector_length_ * Primitive::ComponentSize(GetPackedType());
+    return vector_length_ * DataType::Size(GetPackedType());
   }
 
   // Returns the type of the vector operation.
-  Primitive::Type GetType() const OVERRIDE {
+  DataType::Type GetType() const OVERRIDE {
     return kSIMDType;
   }
 
   // Returns the true component type packed in a vector.
-  Primitive::Type GetPackedType() const {
+  DataType::Type GetPackedType() const {
     return GetPackedField<TypeField>();
   }
 
@@ -122,10 +122,10 @@ class HVecOperation : public HVariableInputSizeInstruction {
   // Additional packed bits.
   static constexpr size_t kFieldType = HInstruction::kNumberOfGenericPackedBits;
   static constexpr size_t kFieldTypeSize =
-      MinimumBitsToStore(static_cast<size_t>(Primitive::kPrimLast));
+      MinimumBitsToStore(static_cast<size_t>(DataType::Type::kLast));
   static constexpr size_t kNumberOfVectorOpPackedBits = kFieldType + kFieldTypeSize;
   static_assert(kNumberOfVectorOpPackedBits <= kMaxNumberOfPackedBits, "Too many packed fields.");
-  using TypeField = BitField<Primitive::Type, kFieldType, kFieldTypeSize>;
+  using TypeField = BitField<DataType::Type, kFieldType, kFieldTypeSize>;
 
  private:
   const size_t vector_length_;
@@ -138,7 +138,7 @@ class HVecUnaryOperation : public HVecOperation {
  public:
   HVecUnaryOperation(ArenaAllocator* arena,
                      HInstruction* input,
-                     Primitive::Type packed_type,
+                     DataType::Type packed_type,
                      size_t vector_length,
                      uint32_t dex_pc)
       : HVecOperation(arena,
@@ -164,7 +164,7 @@ class HVecBinaryOperation : public HVecOperation {
   HVecBinaryOperation(ArenaAllocator* arena,
                       HInstruction* left,
                       HInstruction* right,
-                      Primitive::Type packed_type,
+                      DataType::Type packed_type,
                       size_t vector_length,
                       uint32_t dex_pc)
       : HVecOperation(arena,
@@ -192,13 +192,13 @@ class HVecBinaryOperation : public HVecOperation {
 class HVecMemoryOperation : public HVecOperation {
  public:
   HVecMemoryOperation(ArenaAllocator* arena,
-                      Primitive::Type packed_type,
+                      DataType::Type packed_type,
                       SideEffects side_effects,
                       size_t number_of_inputs,
                       size_t vector_length,
                       uint32_t dex_pc)
       : HVecOperation(arena, packed_type, side_effects, number_of_inputs, vector_length, dex_pc),
-        alignment_(Primitive::ComponentSize(packed_type), 0) {
+        alignment_(DataType::Size(packed_type), 0) {
     DCHECK_GE(number_of_inputs, 2u);
   }
 
@@ -224,21 +224,21 @@ class HVecMemoryOperation : public HVecOperation {
 };
 
 // Packed type consistency checker ("same vector length" integral types may mix freely).
-inline static bool HasConsistentPackedTypes(HInstruction* input, Primitive::Type type) {
+inline static bool HasConsistentPackedTypes(HInstruction* input, DataType::Type type) {
   if (input->IsPhi()) {
     return input->GetType() == HVecOperation::kSIMDType;  // carries SIMD
   }
   DCHECK(input->IsVecOperation());
-  Primitive::Type input_type = input->AsVecOperation()->GetPackedType();
+  DataType::Type input_type = input->AsVecOperation()->GetPackedType();
   switch (input_type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-      return type == Primitive::kPrimBoolean ||
-             type == Primitive::kPrimByte;
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-      return type == Primitive::kPrimChar ||
-             type == Primitive::kPrimShort;
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+      return type == DataType::Type::kBool ||
+             type == DataType::Type::kInt8;
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+      return type == DataType::Type::kUint16 ||
+             type == DataType::Type::kInt16;
     default:
       return type == input_type;
   }
@@ -254,7 +254,7 @@ class HVecReplicateScalar FINAL : public HVecUnaryOperation {
  public:
   HVecReplicateScalar(ArenaAllocator* arena,
                       HInstruction* scalar,
-                      Primitive::Type packed_type,
+                      DataType::Type packed_type,
                       size_t vector_length,
                       uint32_t dex_pc = kNoDexPc)
       : HVecUnaryOperation(arena, scalar, packed_type, vector_length, dex_pc) {
@@ -279,7 +279,7 @@ class HVecExtractScalar FINAL : public HVecUnaryOperation {
  public:
   HVecExtractScalar(ArenaAllocator* arena,
                     HInstruction* input,
-                    Primitive::Type packed_type,
+                    DataType::Type packed_type,
                     size_t vector_length,
                     size_t index,
                     uint32_t dex_pc = kNoDexPc)
@@ -290,7 +290,7 @@ class HVecExtractScalar FINAL : public HVecUnaryOperation {
   }
 
   // Yields a single component in the vector.
-  Primitive::Type GetType() const OVERRIDE {
+  DataType::Type GetType() const OVERRIDE {
     return GetPackedType();
   }
 
@@ -317,7 +317,7 @@ class HVecReduce FINAL : public HVecUnaryOperation {
 
   HVecReduce(ArenaAllocator* arena,
              HInstruction* input,
-             Primitive::Type packed_type,
+             DataType::Type packed_type,
              size_t vector_length,
              ReductionKind kind,
              uint32_t dex_pc = kNoDexPc)
@@ -350,7 +350,7 @@ class HVecCnv FINAL : public HVecUnaryOperation {
  public:
   HVecCnv(ArenaAllocator* arena,
           HInstruction* input,
-          Primitive::Type packed_type,
+          DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc = kNoDexPc)
       : HVecUnaryOperation(arena, input, packed_type, vector_length, dex_pc) {
@@ -358,8 +358,8 @@ class HVecCnv FINAL : public HVecUnaryOperation {
     DCHECK_NE(GetInputType(), GetResultType());  // actual convert
   }
 
-  Primitive::Type GetInputType() const { return InputAt(0)->AsVecOperation()->GetPackedType(); }
-  Primitive::Type GetResultType() const { return GetPackedType(); }
+  DataType::Type GetInputType() const { return InputAt(0)->AsVecOperation()->GetPackedType(); }
+  DataType::Type GetResultType() const { return GetPackedType(); }
 
   bool CanBeMoved() const OVERRIDE { return true; }
 
@@ -375,7 +375,7 @@ class HVecNeg FINAL : public HVecUnaryOperation {
  public:
   HVecNeg(ArenaAllocator* arena,
           HInstruction* input,
-          Primitive::Type packed_type,
+          DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc = kNoDexPc)
       : HVecUnaryOperation(arena, input, packed_type, vector_length, dex_pc) {
@@ -396,7 +396,7 @@ class HVecAbs FINAL : public HVecUnaryOperation {
  public:
   HVecAbs(ArenaAllocator* arena,
           HInstruction* input,
-          Primitive::Type packed_type,
+          DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc = kNoDexPc)
       : HVecUnaryOperation(arena, input, packed_type, vector_length, dex_pc) {
@@ -418,7 +418,7 @@ class HVecNot FINAL : public HVecUnaryOperation {
  public:
   HVecNot(ArenaAllocator* arena,
           HInstruction* input,
-          Primitive::Type packed_type,
+          DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc = kNoDexPc)
       : HVecUnaryOperation(arena, input, packed_type, vector_length, dex_pc) {
@@ -444,7 +444,7 @@ class HVecAdd FINAL : public HVecBinaryOperation {
   HVecAdd(ArenaAllocator* arena,
           HInstruction* left,
           HInstruction* right,
-          Primitive::Type packed_type,
+          DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc = kNoDexPc)
       : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
@@ -469,7 +469,7 @@ class HVecHalvingAdd FINAL : public HVecBinaryOperation {
   HVecHalvingAdd(ArenaAllocator* arena,
                  HInstruction* left,
                  HInstruction* right,
-                 Primitive::Type packed_type,
+                 DataType::Type packed_type,
                  size_t vector_length,
                  bool is_unsigned,
                  bool is_rounded,
@@ -513,7 +513,7 @@ class HVecSub FINAL : public HVecBinaryOperation {
   HVecSub(ArenaAllocator* arena,
           HInstruction* left,
           HInstruction* right,
-          Primitive::Type packed_type,
+          DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc = kNoDexPc)
       : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
@@ -536,7 +536,7 @@ class HVecMul FINAL : public HVecBinaryOperation {
   HVecMul(ArenaAllocator* arena,
           HInstruction* left,
           HInstruction* right,
-          Primitive::Type packed_type,
+          DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc = kNoDexPc)
       : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
@@ -559,7 +559,7 @@ class HVecDiv FINAL : public HVecBinaryOperation {
   HVecDiv(ArenaAllocator* arena,
           HInstruction* left,
           HInstruction* right,
-          Primitive::Type packed_type,
+          DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc = kNoDexPc)
       : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
@@ -582,7 +582,7 @@ class HVecMin FINAL : public HVecBinaryOperation {
   HVecMin(ArenaAllocator* arena,
           HInstruction* left,
           HInstruction* right,
-          Primitive::Type packed_type,
+          DataType::Type packed_type,
           size_t vector_length,
           bool is_unsigned,
           uint32_t dex_pc = kNoDexPc)
@@ -620,7 +620,7 @@ class HVecMax FINAL : public HVecBinaryOperation {
   HVecMax(ArenaAllocator* arena,
           HInstruction* left,
           HInstruction* right,
-          Primitive::Type packed_type,
+          DataType::Type packed_type,
           size_t vector_length,
           bool is_unsigned,
           uint32_t dex_pc = kNoDexPc)
@@ -658,7 +658,7 @@ class HVecAnd FINAL : public HVecBinaryOperation {
   HVecAnd(ArenaAllocator* arena,
           HInstruction* left,
           HInstruction* right,
-          Primitive::Type packed_type,
+          DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc = kNoDexPc)
       : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
@@ -680,7 +680,7 @@ class HVecAndNot FINAL : public HVecBinaryOperation {
   HVecAndNot(ArenaAllocator* arena,
              HInstruction* left,
              HInstruction* right,
-             Primitive::Type packed_type,
+             DataType::Type packed_type,
              size_t vector_length,
              uint32_t dex_pc = kNoDexPc)
          : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
@@ -702,7 +702,7 @@ class HVecOr FINAL : public HVecBinaryOperation {
   HVecOr(ArenaAllocator* arena,
          HInstruction* left,
          HInstruction* right,
-         Primitive::Type packed_type,
+         DataType::Type packed_type,
          size_t vector_length,
          uint32_t dex_pc = kNoDexPc)
       : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
@@ -724,7 +724,7 @@ class HVecXor FINAL : public HVecBinaryOperation {
   HVecXor(ArenaAllocator* arena,
           HInstruction* left,
           HInstruction* right,
-          Primitive::Type packed_type,
+          DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc = kNoDexPc)
       : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
@@ -746,7 +746,7 @@ class HVecShl FINAL : public HVecBinaryOperation {
   HVecShl(ArenaAllocator* arena,
           HInstruction* left,
           HInstruction* right,
-          Primitive::Type packed_type,
+          DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc = kNoDexPc)
       : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
@@ -768,7 +768,7 @@ class HVecShr FINAL : public HVecBinaryOperation {
   HVecShr(ArenaAllocator* arena,
           HInstruction* left,
           HInstruction* right,
-          Primitive::Type packed_type,
+          DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc = kNoDexPc)
       : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
@@ -790,7 +790,7 @@ class HVecUShr FINAL : public HVecBinaryOperation {
   HVecUShr(ArenaAllocator* arena,
            HInstruction* left,
            HInstruction* right,
-           Primitive::Type packed_type,
+           DataType::Type packed_type,
            size_t vector_length,
            uint32_t dex_pc = kNoDexPc)
       : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
@@ -816,7 +816,7 @@ class HVecSetScalars FINAL : public HVecOperation {
  public:
   HVecSetScalars(ArenaAllocator* arena,
                  HInstruction* scalars[],
-                 Primitive::Type packed_type,
+                 DataType::Type packed_type,
                  size_t vector_length,
                  size_t number_of_scalars,
                  uint32_t dex_pc = kNoDexPc)
@@ -851,7 +851,7 @@ class HVecMultiplyAccumulate FINAL : public HVecOperation {
                          HInstruction* accumulator,
                          HInstruction* mul_left,
                          HInstruction* mul_right,
-                         Primitive::Type packed_type,
+                         DataType::Type packed_type,
                          size_t vector_length,
                          uint32_t dex_pc = kNoDexPc)
       : HVecOperation(arena,
@@ -900,7 +900,7 @@ class HVecSADAccumulate FINAL : public HVecOperation {
                     HInstruction* accumulator,
                     HInstruction* sad_left,
                     HInstruction* sad_right,
-                    Primitive::Type packed_type,
+                    DataType::Type packed_type,
                     size_t vector_length,
                     uint32_t dex_pc = kNoDexPc)
       : HVecOperation(arena,
@@ -932,7 +932,7 @@ class HVecLoad FINAL : public HVecMemoryOperation {
   HVecLoad(ArenaAllocator* arena,
            HInstruction* base,
            HInstruction* index,
-           Primitive::Type packed_type,
+           DataType::Type packed_type,
            size_t vector_length,
            bool is_string_char_at,
            uint32_t dex_pc = kNoDexPc)
@@ -976,7 +976,7 @@ class HVecStore FINAL : public HVecMemoryOperation {
             HInstruction* base,
             HInstruction* index,
             HInstruction* value,
-            Primitive::Type packed_type,
+            DataType::Type packed_type,
             size_t vector_length,
             uint32_t dex_pc = kNoDexPc)
       : HVecMemoryOperation(arena,

@@ -27,7 +27,6 @@
 #include "instruction_builder.h"
 #include "nodes.h"
 #include "optimizing_compiler_stats.h"
-#include "primitive.h"
 #include "ssa_builder.h"
 
 namespace art {
@@ -39,45 +38,18 @@ class HGraphBuilder : public ValueObject {
   HGraphBuilder(HGraph* graph,
                 DexCompilationUnit* dex_compilation_unit,
                 const DexCompilationUnit* const outer_compilation_unit,
-                const DexFile* dex_file,
-                const DexFile::CodeItem& code_item,
                 CompilerDriver* driver,
                 CodeGenerator* code_generator,
                 OptimizingCompilerStats* compiler_stats,
                 const uint8_t* interpreter_metadata,
                 Handle<mirror::DexCache> dex_cache,
-                VariableSizedHandleScope* handles)
-      : graph_(graph),
-        dex_file_(dex_file),
-        code_item_(code_item),
-        dex_compilation_unit_(dex_compilation_unit),
-        compiler_driver_(driver),
-        compilation_stats_(compiler_stats),
-        block_builder_(graph, dex_file, code_item),
-        ssa_builder_(graph,
-                     dex_compilation_unit->GetClassLoader(),
-                     dex_compilation_unit->GetDexCache(),
-                     handles),
-        instruction_builder_(graph,
-                             &block_builder_,
-                             &ssa_builder_,
-                             dex_file,
-                             code_item_,
-                             Primitive::GetType(dex_compilation_unit_->GetShorty()[0]),
-                             dex_compilation_unit,
-                             outer_compilation_unit,
-                             driver,
-                             code_generator,
-                             interpreter_metadata,
-                             compiler_stats,
-                             dex_cache,
-                             handles) {}
+                VariableSizedHandleScope* handles);
 
   // Only for unit testing.
   HGraphBuilder(HGraph* graph,
                 const DexFile::CodeItem& code_item,
                 VariableSizedHandleScope* handles,
-                Primitive::Type return_type = Primitive::kPrimInt)
+                DataType::Type return_type = DataType::Type::kInt32)
       : graph_(graph),
         dex_file_(nullptr),
         code_item_(code_item),

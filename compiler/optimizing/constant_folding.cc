@@ -150,7 +150,7 @@ void InstructionWithAbsorbingInputSimplifier::VisitEqual(HEqual* instruction) {
     //    EQUAL lhs, null
     // where lhs cannot be null with
     //    CONSTANT false
-    instruction->ReplaceWith(GetGraph()->GetConstant(Primitive::kPrimBoolean, 0));
+    instruction->ReplaceWith(GetGraph()->GetConstant(DataType::Type::kBool, 0));
     instruction->GetBlock()->RemoveInstruction(instruction);
   }
 }
@@ -162,7 +162,7 @@ void InstructionWithAbsorbingInputSimplifier::VisitNotEqual(HNotEqual* instructi
     //    NOT_EQUAL lhs, null
     // where lhs cannot be null with
     //    CONSTANT true
-    instruction->ReplaceWith(GetGraph()->GetConstant(Primitive::kPrimBoolean, 1));
+    instruction->ReplaceWith(GetGraph()->GetConstant(DataType::Type::kBool, 1));
     instruction->GetBlock()->RemoveInstruction(instruction);
   }
 }
@@ -174,7 +174,7 @@ void InstructionWithAbsorbingInputSimplifier::VisitAbove(HAbove* instruction) {
     //    ABOVE dst, 0, src  // unsigned 0 > src is always false
     // with
     //    CONSTANT false
-    instruction->ReplaceWith(GetGraph()->GetConstant(Primitive::kPrimBoolean, 0));
+    instruction->ReplaceWith(GetGraph()->GetConstant(DataType::Type::kBool, 0));
     instruction->GetBlock()->RemoveInstruction(instruction);
   }
 }
@@ -186,7 +186,7 @@ void InstructionWithAbsorbingInputSimplifier::VisitAboveOrEqual(HAboveOrEqual* i
     //    ABOVE_OR_EQUAL dst, src, 0  // unsigned src >= 0 is always true
     // with
     //    CONSTANT true
-    instruction->ReplaceWith(GetGraph()->GetConstant(Primitive::kPrimBoolean, 1));
+    instruction->ReplaceWith(GetGraph()->GetConstant(DataType::Type::kBool, 1));
     instruction->GetBlock()->RemoveInstruction(instruction);
   }
 }
@@ -198,7 +198,7 @@ void InstructionWithAbsorbingInputSimplifier::VisitBelow(HBelow* instruction) {
     //    BELOW dst, src, 0  // unsigned src < 0 is always false
     // with
     //    CONSTANT false
-    instruction->ReplaceWith(GetGraph()->GetConstant(Primitive::kPrimBoolean, 0));
+    instruction->ReplaceWith(GetGraph()->GetConstant(DataType::Type::kBool, 0));
     instruction->GetBlock()->RemoveInstruction(instruction);
   }
 }
@@ -210,7 +210,7 @@ void InstructionWithAbsorbingInputSimplifier::VisitBelowOrEqual(HBelowOrEqual* i
     //    BELOW_OR_EQUAL dst, 0, src  // unsigned 0 <= src is always true
     // with
     //    CONSTANT true
-    instruction->ReplaceWith(GetGraph()->GetConstant(Primitive::kPrimBoolean, 1));
+    instruction->ReplaceWith(GetGraph()->GetConstant(DataType::Type::kBool, 1));
     instruction->GetBlock()->RemoveInstruction(instruction);
   }
 }
@@ -231,7 +231,7 @@ void InstructionWithAbsorbingInputSimplifier::VisitCompare(HCompare* instruction
   HConstant* input_cst = instruction->GetConstantRight();
   if (input_cst != nullptr) {
     HInstruction* input_value = instruction->GetLeastConstantLeft();
-    if (Primitive::IsFloatingPointType(input_value->GetType()) &&
+    if (DataType::IsFloatingPointType(input_value->GetType()) &&
         ((input_cst->IsFloatConstant() && input_cst->AsFloatConstant()->IsNaN()) ||
          (input_cst->IsDoubleConstant() && input_cst->AsDoubleConstant()->IsNaN()))) {
       // Replace code looking like
@@ -240,7 +240,7 @@ void InstructionWithAbsorbingInputSimplifier::VisitCompare(HCompare* instruction
       //    CONSTANT +1 (gt bias)
       // or
       //    CONSTANT -1 (lt bias)
-      instruction->ReplaceWith(GetGraph()->GetConstant(Primitive::kPrimInt,
+      instruction->ReplaceWith(GetGraph()->GetConstant(DataType::Type::kInt32,
                                                        (instruction->IsGtBias() ? 1 : -1)));
       instruction->GetBlock()->RemoveInstruction(instruction);
     }
@@ -249,8 +249,8 @@ void InstructionWithAbsorbingInputSimplifier::VisitCompare(HCompare* instruction
 
 void InstructionWithAbsorbingInputSimplifier::VisitMul(HMul* instruction) {
   HConstant* input_cst = instruction->GetConstantRight();
-  Primitive::Type type = instruction->GetType();
-  if (Primitive::IsIntOrLongType(type) &&
+  DataType::Type type = instruction->GetType();
+  if (DataType::IsIntOrLongType(type) &&
       (input_cst != nullptr) && input_cst->IsArithmeticZero()) {
     // Replace code looking like
     //    MUL dst, src, 0
@@ -282,9 +282,9 @@ void InstructionWithAbsorbingInputSimplifier::VisitOr(HOr* instruction) {
 }
 
 void InstructionWithAbsorbingInputSimplifier::VisitRem(HRem* instruction) {
-  Primitive::Type type = instruction->GetType();
+  DataType::Type type = instruction->GetType();
 
-  if (!Primitive::IsIntegralType(type)) {
+  if (!DataType::IsIntegralType(type)) {
     return;
   }
 
@@ -326,9 +326,9 @@ void InstructionWithAbsorbingInputSimplifier::VisitShr(HShr* instruction) {
 }
 
 void InstructionWithAbsorbingInputSimplifier::VisitSub(HSub* instruction) {
-  Primitive::Type type = instruction->GetType();
+  DataType::Type type = instruction->GetType();
 
-  if (!Primitive::IsIntegralType(type)) {
+  if (!DataType::IsIntegralType(type)) {
     return;
   }
 
@@ -360,7 +360,7 @@ void InstructionWithAbsorbingInputSimplifier::VisitXor(HXor* instruction) {
     //    XOR dst, src, src
     // with
     //    CONSTANT 0
-    Primitive::Type type = instruction->GetType();
+    DataType::Type type = instruction->GetType();
     HBasicBlock* block = instruction->GetBlock();
     instruction->ReplaceWith(GetGraph()->GetConstant(type, 0));
     block->RemoveInstruction(instruction);

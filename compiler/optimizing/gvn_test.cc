@@ -37,7 +37,7 @@ TEST_F(GVNTest, LocalFieldElimination) {
   HInstruction* parameter = new (&allocator) HParameterValue(graph->GetDexFile(),
                                                              dex::TypeIndex(0),
                                                              0,
-                                                             Primitive::kPrimNot);
+                                                             DataType::Type::kReference);
   entry->AddInstruction(parameter);
 
   HBasicBlock* block = new (&allocator) HBasicBlock(graph);
@@ -46,7 +46,7 @@ TEST_F(GVNTest, LocalFieldElimination) {
 
   block->AddInstruction(new (&allocator) HInstanceFieldGet(parameter,
                                                            nullptr,
-                                                           Primitive::kPrimNot,
+                                                           DataType::Type::kReference,
                                                            MemberOffset(42),
                                                            false,
                                                            kUnknownFieldIndex,
@@ -55,7 +55,7 @@ TEST_F(GVNTest, LocalFieldElimination) {
                                                            0));
   block->AddInstruction(new (&allocator) HInstanceFieldGet(parameter,
                                                            nullptr,
-                                                           Primitive::kPrimNot,
+                                                           DataType::Type::kReference,
                                                            MemberOffset(42),
                                                            false,
                                                            kUnknownFieldIndex,
@@ -65,7 +65,7 @@ TEST_F(GVNTest, LocalFieldElimination) {
   HInstruction* to_remove = block->GetLastInstruction();
   block->AddInstruction(new (&allocator) HInstanceFieldGet(parameter,
                                                            nullptr,
-                                                           Primitive::kPrimNot,
+                                                           DataType::Type::kReference,
                                                            MemberOffset(43),
                                                            false,
                                                            kUnknownFieldIndex,
@@ -77,7 +77,7 @@ TEST_F(GVNTest, LocalFieldElimination) {
   block->AddInstruction(new (&allocator) HInstanceFieldSet(parameter,
                                                            parameter,
                                                            nullptr,
-                                                           Primitive::kPrimNot,
+                                                           DataType::Type::kReference,
                                                            MemberOffset(42),
                                                            false,
                                                            kUnknownFieldIndex,
@@ -86,7 +86,7 @@ TEST_F(GVNTest, LocalFieldElimination) {
                                                            0));
   block->AddInstruction(new (&allocator) HInstanceFieldGet(parameter,
                                                            nullptr,
-                                                           Primitive::kPrimNot,
+                                                           DataType::Type::kReference,
                                                            MemberOffset(42),
                                                            false,
                                                            kUnknownFieldIndex,
@@ -121,7 +121,7 @@ TEST_F(GVNTest, GlobalFieldElimination) {
   HInstruction* parameter = new (&allocator) HParameterValue(graph->GetDexFile(),
                                                              dex::TypeIndex(0),
                                                              0,
-                                                             Primitive::kPrimNot);
+                                                             DataType::Type::kReference);
   entry->AddInstruction(parameter);
 
   HBasicBlock* block = new (&allocator) HBasicBlock(graph);
@@ -129,7 +129,7 @@ TEST_F(GVNTest, GlobalFieldElimination) {
   entry->AddSuccessor(block);
   block->AddInstruction(new (&allocator) HInstanceFieldGet(parameter,
                                                            nullptr,
-                                                           Primitive::kPrimBoolean,
+                                                           DataType::Type::kBool,
                                                            MemberOffset(42),
                                                            false,
                                                            kUnknownFieldIndex,
@@ -152,7 +152,7 @@ TEST_F(GVNTest, GlobalFieldElimination) {
 
   then->AddInstruction(new (&allocator) HInstanceFieldGet(parameter,
                                                           nullptr,
-                                                          Primitive::kPrimBoolean,
+                                                          DataType::Type::kBool,
                                                           MemberOffset(42),
                                                           false,
                                                           kUnknownFieldIndex,
@@ -162,7 +162,7 @@ TEST_F(GVNTest, GlobalFieldElimination) {
   then->AddInstruction(new (&allocator) HGoto());
   else_->AddInstruction(new (&allocator) HInstanceFieldGet(parameter,
                                                            nullptr,
-                                                           Primitive::kPrimBoolean,
+                                                           DataType::Type::kBool,
                                                            MemberOffset(42),
                                                            false,
                                                            kUnknownFieldIndex,
@@ -172,7 +172,7 @@ TEST_F(GVNTest, GlobalFieldElimination) {
   else_->AddInstruction(new (&allocator) HGoto());
   join->AddInstruction(new (&allocator) HInstanceFieldGet(parameter,
                                                           nullptr,
-                                                          Primitive::kPrimBoolean,
+                                                          DataType::Type::kBool,
                                                           MemberOffset(42),
                                                           false,
                                                           kUnknownFieldIndex,
@@ -204,7 +204,7 @@ TEST_F(GVNTest, LoopFieldElimination) {
   HInstruction* parameter = new (&allocator) HParameterValue(graph->GetDexFile(),
                                                              dex::TypeIndex(0),
                                                              0,
-                                                             Primitive::kPrimNot);
+                                                             DataType::Type::kReference);
   entry->AddInstruction(parameter);
 
   HBasicBlock* block = new (&allocator) HBasicBlock(graph);
@@ -212,7 +212,7 @@ TEST_F(GVNTest, LoopFieldElimination) {
   entry->AddSuccessor(block);
   block->AddInstruction(new (&allocator) HInstanceFieldGet(parameter,
                                                            nullptr,
-                                                           Primitive::kPrimBoolean,
+                                                           DataType::Type::kBool,
                                                            MemberOffset(42),
                                                            false,
                                                            kUnknownFieldIndex,
@@ -235,7 +235,7 @@ TEST_F(GVNTest, LoopFieldElimination) {
 
   loop_header->AddInstruction(new (&allocator) HInstanceFieldGet(parameter,
                                                                  nullptr,
-                                                                 Primitive::kPrimBoolean,
+                                                                 DataType::Type::kBool,
                                                                  MemberOffset(42),
                                                                  false,
                                                                  kUnknownFieldIndex,
@@ -250,7 +250,7 @@ TEST_F(GVNTest, LoopFieldElimination) {
   loop_body->AddInstruction(new (&allocator) HInstanceFieldSet(parameter,
                                                                parameter,
                                                                nullptr,
-                                                               Primitive::kPrimBoolean,
+                                                               DataType::Type::kBool,
                                                                MemberOffset(42),
                                                                false,
                                                                kUnknownFieldIndex,
@@ -260,7 +260,7 @@ TEST_F(GVNTest, LoopFieldElimination) {
   HInstruction* field_set = loop_body->GetLastInstruction();
   loop_body->AddInstruction(new (&allocator) HInstanceFieldGet(parameter,
                                                                nullptr,
-                                                               Primitive::kPrimBoolean,
+                                                               DataType::Type::kBool,
                                                                MemberOffset(42),
                                                                false,
                                                                kUnknownFieldIndex,
@@ -272,7 +272,7 @@ TEST_F(GVNTest, LoopFieldElimination) {
 
   exit->AddInstruction(new (&allocator) HInstanceFieldGet(parameter,
                                                           nullptr,
-                                                          Primitive::kPrimBoolean,
+                                                          DataType::Type::kBool,
                                                           MemberOffset(42),
                                                           false,
                                                           kUnknownFieldIndex,
@@ -351,7 +351,7 @@ TEST_F(GVNTest, LoopSideEffects) {
   HInstruction* parameter = new (&allocator) HParameterValue(graph->GetDexFile(),
                                                              dex::TypeIndex(0),
                                                              0,
-                                                             Primitive::kPrimBoolean);
+                                                             DataType::Type::kBool);
   entry->AddInstruction(parameter);
   entry->AddInstruction(new (&allocator) HGoto());
   outer_loop_header->AddInstruction(new (&allocator) HSuspendCheck());
@@ -374,7 +374,7 @@ TEST_F(GVNTest, LoopSideEffects) {
     entry->AddInstruction(new (&allocator) HInstanceFieldSet(parameter,
                                                              parameter,
                                                              nullptr,
-                                                             Primitive::kPrimNot,
+                                                             DataType::Type::kReference,
                                                              MemberOffset(42),
                                                              false,
                                                              kUnknownFieldIndex,
@@ -399,7 +399,7 @@ TEST_F(GVNTest, LoopSideEffects) {
         new (&allocator) HInstanceFieldSet(parameter,
                                            parameter,
                                            nullptr,
-                                           Primitive::kPrimNot,
+                                           DataType::Type::kReference,
                                            MemberOffset(42),
                                            false,
                                            kUnknownFieldIndex,
@@ -425,7 +425,7 @@ TEST_F(GVNTest, LoopSideEffects) {
         new (&allocator) HInstanceFieldSet(parameter,
                                            parameter,
                                            nullptr,
-                                           Primitive::kPrimNot,
+                                           DataType::Type::kReference,
                                            MemberOffset(42),
                                            false,
                                            kUnknownFieldIndex,

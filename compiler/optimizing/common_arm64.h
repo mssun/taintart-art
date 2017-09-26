@@ -73,9 +73,9 @@ inline vixl::aarch64::Register WRegisterFrom(Location location) {
   return vixl::aarch64::Register::GetWRegFromCode(VIXLRegCodeFromART(location.reg()));
 }
 
-inline vixl::aarch64::Register RegisterFrom(Location location, Primitive::Type type) {
-  DCHECK(type != Primitive::kPrimVoid && !Primitive::IsFloatingPointType(type)) << type;
-  return type == Primitive::kPrimLong ? XRegisterFrom(location) : WRegisterFrom(location);
+inline vixl::aarch64::Register RegisterFrom(Location location, DataType::Type type) {
+  DCHECK(type != DataType::Type::kVoid && !DataType::IsFloatingPointType(type)) << type;
+  return type == DataType::Type::kInt64 ? XRegisterFrom(location) : WRegisterFrom(location);
 }
 
 inline vixl::aarch64::Register OutputRegister(HInstruction* instr) {
@@ -107,9 +107,9 @@ inline vixl::aarch64::FPRegister SRegisterFrom(Location location) {
   return vixl::aarch64::FPRegister::GetSRegFromCode(location.reg());
 }
 
-inline vixl::aarch64::FPRegister FPRegisterFrom(Location location, Primitive::Type type) {
-  DCHECK(Primitive::IsFloatingPointType(type)) << type;
-  return type == Primitive::kPrimDouble ? DRegisterFrom(location) : SRegisterFrom(location);
+inline vixl::aarch64::FPRegister FPRegisterFrom(Location location, DataType::Type type) {
+  DCHECK(DataType::IsFloatingPointType(type)) << type;
+  return type == DataType::Type::kFloat64 ? DRegisterFrom(location) : SRegisterFrom(location);
 }
 
 inline vixl::aarch64::FPRegister OutputFPRegister(HInstruction* instr) {
@@ -121,20 +121,20 @@ inline vixl::aarch64::FPRegister InputFPRegisterAt(HInstruction* instr, int inpu
                         instr->InputAt(input_index)->GetType());
 }
 
-inline vixl::aarch64::CPURegister CPURegisterFrom(Location location, Primitive::Type type) {
-  return Primitive::IsFloatingPointType(type)
+inline vixl::aarch64::CPURegister CPURegisterFrom(Location location, DataType::Type type) {
+  return DataType::IsFloatingPointType(type)
       ? vixl::aarch64::CPURegister(FPRegisterFrom(location, type))
       : vixl::aarch64::CPURegister(RegisterFrom(location, type));
 }
 
 inline vixl::aarch64::CPURegister OutputCPURegister(HInstruction* instr) {
-  return Primitive::IsFloatingPointType(instr->GetType())
+  return DataType::IsFloatingPointType(instr->GetType())
       ? static_cast<vixl::aarch64::CPURegister>(OutputFPRegister(instr))
       : static_cast<vixl::aarch64::CPURegister>(OutputRegister(instr));
 }
 
 inline vixl::aarch64::CPURegister InputCPURegisterAt(HInstruction* instr, int index) {
-  return Primitive::IsFloatingPointType(instr->InputAt(index)->GetType())
+  return DataType::IsFloatingPointType(instr->InputAt(index)->GetType())
       ? static_cast<vixl::aarch64::CPURegister>(InputFPRegisterAt(instr, index))
       : static_cast<vixl::aarch64::CPURegister>(InputRegisterAt(instr, index));
 }
@@ -142,9 +142,9 @@ inline vixl::aarch64::CPURegister InputCPURegisterAt(HInstruction* instr, int in
 inline vixl::aarch64::CPURegister InputCPURegisterOrZeroRegAt(HInstruction* instr,
                                                                      int index) {
   HInstruction* input = instr->InputAt(index);
-  Primitive::Type input_type = input->GetType();
+  DataType::Type input_type = input->GetType();
   if (input->IsConstant() && input->AsConstant()->IsZeroBitPattern()) {
-    return (Primitive::ComponentSize(input_type) >= vixl::aarch64::kXRegSizeInBytes)
+    return (DataType::Size(input_type) >= vixl::aarch64::kXRegSizeInBytes)
         ? vixl::aarch64::Register(vixl::aarch64::xzr)
         : vixl::aarch64::Register(vixl::aarch64::wzr);
   }
@@ -163,7 +163,7 @@ inline int64_t Int64ConstantFrom(Location location) {
   }
 }
 
-inline vixl::aarch64::Operand OperandFrom(Location location, Primitive::Type type) {
+inline vixl::aarch64::Operand OperandFrom(Location location, DataType::Type type) {
   if (location.IsRegister()) {
     return vixl::aarch64::Operand(RegisterFrom(location, type));
   } else {
@@ -202,7 +202,7 @@ inline vixl::aarch64::MemOperand HeapOperand(const vixl::aarch64::Register& base
 }
 
 inline vixl::aarch64::MemOperand HeapOperandFrom(Location location, Offset offset) {
-  return HeapOperand(RegisterFrom(location, Primitive::kPrimNot), offset);
+  return HeapOperand(RegisterFrom(location, DataType::Type::kReference), offset);
 }
 
 inline Location LocationFrom(const vixl::aarch64::Register& reg) {

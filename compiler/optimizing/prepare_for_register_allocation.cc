@@ -77,7 +77,7 @@ void PrepareForRegisterAllocation::VisitArraySet(HArraySet* instruction) {
   // BoundType (as value input of this ArraySet) with a NullConstant.
   // If so, this ArraySet no longer needs a type check.
   if (value->IsNullConstant()) {
-    DCHECK_EQ(value->GetType(), Primitive::kPrimNot);
+    DCHECK_EQ(value->GetType(), DataType::Type::kReference);
     if (instruction->NeedsTypeCheck()) {
       instruction->ClearNeedsTypeCheck();
     }

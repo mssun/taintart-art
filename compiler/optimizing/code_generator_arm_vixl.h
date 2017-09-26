@@ -173,8 +173,8 @@ class InvokeDexCallingConventionVisitorARMVIXL : public InvokeDexCallingConventi
   InvokeDexCallingConventionVisitorARMVIXL() {}
   virtual ~InvokeDexCallingConventionVisitorARMVIXL() {}
 
-  Location GetNextLocation(Primitive::Type type) OVERRIDE;
-  Location GetReturnLocation(Primitive::Type type) const OVERRIDE;
+  Location GetNextLocation(DataType::Type type) OVERRIDE;
+  Location GetReturnLocation(DataType::Type type) const OVERRIDE;
   Location GetMethodLocation() const OVERRIDE;
 
  private:
@@ -194,20 +194,20 @@ class FieldAccessCallingConventionARMVIXL : public FieldAccessCallingConvention 
   Location GetFieldIndexLocation() const OVERRIDE {
     return helpers::LocationFrom(vixl::aarch32::r0);
   }
-  Location GetReturnLocation(Primitive::Type type) const OVERRIDE {
-    return Primitive::Is64BitType(type)
+  Location GetReturnLocation(DataType::Type type) const OVERRIDE {
+    return DataType::Is64BitType(type)
         ? helpers::LocationFrom(vixl::aarch32::r0, vixl::aarch32::r1)
         : helpers::LocationFrom(vixl::aarch32::r0);
   }
-  Location GetSetValueLocation(Primitive::Type type, bool is_instance) const OVERRIDE {
-    return Primitive::Is64BitType(type)
+  Location GetSetValueLocation(DataType::Type type, bool is_instance) const OVERRIDE {
+    return DataType::Is64BitType(type)
         ? helpers::LocationFrom(vixl::aarch32::r2, vixl::aarch32::r3)
         : (is_instance
             ? helpers::LocationFrom(vixl::aarch32::r2)
             : helpers::LocationFrom(vixl::aarch32::r1));
   }
-  Location GetFpuLocation(Primitive::Type type) const OVERRIDE {
-    return Primitive::Is64BitType(type)
+  Location GetFpuLocation(DataType::Type type) const OVERRIDE {
+    return DataType::Is64BitType(type)
         ? helpers::LocationFrom(vixl::aarch32::s0, vixl::aarch32::s1)
         : helpers::LocationFrom(vixl::aarch32::s0);
   }
@@ -434,7 +434,7 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
   void GenerateFrameExit() OVERRIDE;
   void Bind(HBasicBlock* block) OVERRIDE;
   void MoveConstant(Location destination, int32_t value) OVERRIDE;
-  void MoveLocation(Location dst, Location src, Primitive::Type dst_type) OVERRIDE;
+  void MoveLocation(Location dst, Location src, DataType::Type dst_type) OVERRIDE;
   void AddLocationAsTemp(Location location, LocationSummary* locations) OVERRIDE;
 
   size_t SaveCoreRegister(size_t stack_index, uint32_t reg_id) OVERRIDE;
@@ -475,12 +475,12 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
   // Helper method to move a 32-bit value between two locations.
   void Move32(Location destination, Location source);
 
-  void LoadFromShiftedRegOffset(Primitive::Type type,
+  void LoadFromShiftedRegOffset(DataType::Type type,
                                 Location out_loc,
                                 vixl::aarch32::Register base,
                                 vixl::aarch32::Register reg_index,
                                 vixl::aarch32::Condition cond = vixl::aarch32::al);
-  void StoreToShiftedRegOffset(Primitive::Type type,
+  void StoreToShiftedRegOffset(DataType::Type type,
                                Location out_loc,
                                vixl::aarch32::Register base,
                                vixl::aarch32::Register reg_index,
@@ -522,8 +522,8 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
 
   const ArmInstructionSetFeatures& GetInstructionSetFeatures() const { return isa_features_; }
 
-  bool NeedsTwoRegisters(Primitive::Type type) const OVERRIDE {
-    return type == Primitive::kPrimDouble || type == Primitive::kPrimLong;
+  bool NeedsTwoRegisters(DataType::Type type) const OVERRIDE {
+    return type == DataType::Type::kFloat64 || type == DataType::Type::kInt64;
   }
 
   void ComputeSpillMask() OVERRIDE;
@@ -551,7 +551,7 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
   void GenerateVirtualCall(
       HInvokeVirtual* invoke, Location temp, SlowPathCode* slow_path = nullptr) OVERRIDE;
 
-  void MoveFromReturnRegister(Location trg, Primitive::Type type) OVERRIDE;
+  void MoveFromReturnRegister(Location trg, DataType::Type type) OVERRIDE;
 
   // The PcRelativePatchInfo is used for PC-relative addressing of dex cache arrays
   // and boot image strings/types. The only difference is the interpretation of the

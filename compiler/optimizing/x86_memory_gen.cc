@@ -41,7 +41,7 @@ class MemoryOperandVisitor : public HGraphVisitor {
     }
 
     HInstruction* array = array_len->InputAt(0);
-    DCHECK_EQ(array->GetType(), Primitive::kPrimNot);
+    DCHECK_EQ(array->GetType(), DataType::Type::kReference);
 
     // Don't apply this optimization when the array is nullptr.
     if (array->IsConstant() || (array->IsNullCheck() && array->InputAt(0)->IsConstant())) {

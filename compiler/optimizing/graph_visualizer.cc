@@ -24,6 +24,7 @@
 #include "bounds_check_elimination.h"
 #include "builder.h"
 #include "code_generator.h"
+#include "data_type-inl.h"
 #include "dead_code_elimination.h"
 #include "disassembler.h"
 #include "inliner.h"
@@ -241,25 +242,6 @@ class HGraphVisualizerPrinter : public HGraphDelegateVisitor {
     for (size_t i = 0; i < indent_; ++i) {
       output_ << "  ";
     }
-  }
-
-  char GetTypeId(Primitive::Type type) {
-    // Note that Primitive::Descriptor would not work for us
-    // because it does not handle reference types (that is kPrimNot).
-    switch (type) {
-      case Primitive::kPrimBoolean: return 'z';
-      case Primitive::kPrimByte: return 'b';
-      case Primitive::kPrimChar: return 'c';
-      case Primitive::kPrimShort: return 's';
-      case Primitive::kPrimInt: return 'i';
-      case Primitive::kPrimLong: return 'j';
-      case Primitive::kPrimFloat: return 'f';
-      case Primitive::kPrimDouble: return 'd';
-      case Primitive::kPrimNot: return 'l';
-      case Primitive::kPrimVoid: return 'v';
-    }
-    LOG(FATAL) << "Unreachable";
-    return 'v';
   }
 
   void PrintPredecessors(HBasicBlock* block) {
@@ -583,7 +565,7 @@ class HGraphVisualizerPrinter : public HGraphDelegateVisitor {
     if (!inputs.empty()) {
       StringList input_list;
       for (const HInstruction* input : inputs) {
-        input_list.NewEntryStream() << GetTypeId(input->GetType()) << input->GetId();
+        input_list.NewEntryStream() << DataType::TypeId(input->GetType()) << input->GetId();
       }
       StartAttributeStream() << input_list;
     }
@@ -597,7 +579,7 @@ class HGraphVisualizerPrinter : public HGraphDelegateVisitor {
         for (size_t i = 0, e = environment->Size(); i < e; ++i) {
           HInstruction* insn = environment->GetInstructionAt(i);
           if (insn != nullptr) {
-            vregs.NewEntryStream() << GetTypeId(insn->GetType()) << insn->GetId();
+            vregs.NewEntryStream() << DataType::TypeId(insn->GetType()) << insn->GetId();
           } else {
             vregs.NewEntryStream() << "_";
           }
@@ -654,7 +636,7 @@ class HGraphVisualizerPrinter : public HGraphDelegateVisitor {
 
     if ((IsPass(HGraphBuilder::kBuilderPassName)
         || IsPass(HInliner::kInlinerPassName))
-        && (instruction->GetType() == Primitive::kPrimNot)) {
+        && (instruction->GetType() == DataType::Type::kReference)) {
       ReferenceTypeInfo info = instruction->IsLoadClass()
         ? instruction->AsLoadClass()->GetLoadedClassRTI()
         : instruction->GetReferenceTypeInfo();
@@ -698,7 +680,7 @@ class HGraphVisualizerPrinter : public HGraphDelegateVisitor {
       size_t num_uses = instruction->GetUses().SizeSlow();
       AddIndent();
       output_ << bci << " " << num_uses << " "
-              << GetTypeId(instruction->GetType()) << instruction->GetId() << " ";
+              << DataType::TypeId(instruction->GetType()) << instruction->GetId() << " ";
       PrintInstruction(instruction);
       output_ << " " << kEndInstructionMarker << "\n";
     }
@@ -821,7 +803,7 @@ class HGraphVisualizerPrinter : public HGraphDelegateVisitor {
     for (HInstructionIterator it(block->GetPhis()); !it.Done(); it.Advance()) {
       AddIndent();
       HInstruction* instruction = it.Current();
-      output_ << instruction->GetId() << " " << GetTypeId(instruction->GetType())
+      output_ << instruction->GetId() << " " << DataType::TypeId(instruction->GetType())
               << instruction->GetId() << "[ ";
       for (const HInstruction* input : instruction->GetInputs()) {
         output_ << input->GetId() << " ";

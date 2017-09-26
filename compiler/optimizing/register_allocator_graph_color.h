@@ -21,7 +21,6 @@
 #include "base/arena_containers.h"
 #include "base/arena_object.h"
 #include "base/macros.h"
-#include "primitive.h"
 #include "register_allocator.h"
 
 namespace art {

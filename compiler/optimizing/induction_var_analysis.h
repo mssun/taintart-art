@@ -103,7 +103,7 @@ class HInductionVarAnalysis : public HOptimization {
                   InductionInfo* a,
                   InductionInfo* b,
                   HInstruction* f,
-                  Primitive::Type t)
+                  DataType::Type t)
         : induction_class(ic),
           operation(op),
           op_a(a),
@@ -115,7 +115,7 @@ class HInductionVarAnalysis : public HOptimization {
     InductionInfo* op_a;
     InductionInfo* op_b;
     HInstruction* fetch;
-    Primitive::Type type;  // precision of operation
+    DataType::Type type;  // precision of operation
   };
 
   bool IsVisitedNode(HInstruction* instruction) const {
@@ -136,7 +136,7 @@ class HInductionVarAnalysis : public HOptimization {
   InductionInfo* CreateTripCount(InductionOp op,
                                  InductionInfo* a,
                                  InductionInfo* b,
-                                 Primitive::Type type) {
+                                 DataType::Type type) {
     DCHECK(a != nullptr && b != nullptr);
     return new (graph_->GetArena()) InductionInfo(kInvariant, op, a, b, nullptr, type);
   }
@@ -146,7 +146,7 @@ class HInductionVarAnalysis : public HOptimization {
                                  InductionInfo* a,
                                  InductionInfo* b,
                                  HInstruction* f,
-                                 Primitive::Type type) {
+                                 DataType::Type type) {
     DCHECK(a != nullptr && b != nullptr);
     return new (graph_->GetArena()) InductionInfo(ic, op, a, b, f, type);
   }
@@ -167,7 +167,7 @@ class HInductionVarAnalysis : public HOptimization {
   InductionInfo* TransferAddSub(InductionInfo* a, InductionInfo* b, InductionOp op);
   InductionInfo* TransferNeg(InductionInfo* a);
   InductionInfo* TransferMul(InductionInfo* a, InductionInfo* b);
-  InductionInfo* TransferConversion(InductionInfo* a, Primitive::Type from, Primitive::Type to);
+  InductionInfo* TransferConversion(InductionInfo* a, DataType::Type from, DataType::Type to);
 
   // Solvers.
   InductionInfo* SolvePhi(HInstruction* phi, size_t input_index, size_t adjust_input_size);
@@ -200,30 +200,30 @@ class HInductionVarAnalysis : public HOptimization {
   void VisitCondition(HLoopInformation* loop,
                       InductionInfo* a,
                       InductionInfo* b,
-                      Primitive::Type type,
+                      DataType::Type type,
                       IfCondition cmp);
   void VisitTripCount(HLoopInformation* loop,
                       InductionInfo* lower_expr,
                       InductionInfo* upper_expr,
                       InductionInfo* stride,
                       int64_t stride_value,
-                      Primitive::Type type,
+                      DataType::Type type,
                       IfCondition cmp);
   bool IsTaken(InductionInfo* lower_expr, InductionInfo* upper_expr, IfCondition cmp);
   bool IsFinite(InductionInfo* upper_expr,
                 int64_t stride_value,
-                Primitive::Type type,
+                DataType::Type type,
                 IfCondition cmp);
   bool FitsNarrowerControl(InductionInfo* lower_expr,
                            InductionInfo* upper_expr,
                            int64_t stride_value,
-                           Primitive::Type type,
+                           DataType::Type type,
                            IfCondition cmp);
 
   // Assign and lookup.
   void AssignInfo(HLoopInformation* loop, HInstruction* instruction, InductionInfo* info);
   InductionInfo* LookupInfo(HLoopInformation* loop, HInstruction* instruction);
-  InductionInfo* CreateConstant(int64_t value, Primitive::Type type);
+  InductionInfo* CreateConstant(int64_t value, DataType::Type type);
   InductionInfo* CreateSimplifiedInvariant(InductionOp op, InductionInfo* a, InductionInfo* b);
   HInstruction* GetShiftConstant(HLoopInformation* loop,
                                  HInstruction* instruction,
@@ -250,7 +250,7 @@ class HInductionVarAnalysis : public HOptimization {
   ArenaSafeMap<HInstruction*, NodeInfo> map_;
   ArenaVector<HInstruction*> scc_;
   ArenaSafeMap<HInstruction*, InductionInfo*> cycle_;
-  Primitive::Type type_;
+  DataType::Type type_;
 
   /**
    * Maintains the results of the analysis as a mapping from loops to a mapping from instructions

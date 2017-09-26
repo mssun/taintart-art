@@ -45,7 +45,7 @@ class NodesVectorTest : public CommonCompilerTest {
     parameter_ = new (&allocator_) HParameterValue(graph_->GetDexFile(),
                                                    dex::TypeIndex(0),
                                                    0,
-                                                   Primitive::kPrimInt);
+                                                   DataType::Type::kInt32);
     entry_block_->AddInstruction(parameter_);
   }
 
@@ -119,15 +119,15 @@ TEST(NodesVector, AlignmentString) {
 
 TEST_F(NodesVectorTest, VectorOperationProperties) {
   HVecOperation* v0 = new (&allocator_)
-      HVecReplicateScalar(&allocator_, parameter_, Primitive::kPrimInt, 4);
+      HVecReplicateScalar(&allocator_, parameter_, DataType::Type::kInt32, 4);
   HVecOperation* v1 = new (&allocator_)
-      HVecReplicateScalar(&allocator_, parameter_, Primitive::kPrimInt, 4);
+      HVecReplicateScalar(&allocator_, parameter_, DataType::Type::kInt32, 4);
   HVecOperation* v2 = new (&allocator_)
-      HVecReplicateScalar(&allocator_, parameter_, Primitive::kPrimInt, 2);
+      HVecReplicateScalar(&allocator_, parameter_, DataType::Type::kInt32, 2);
   HVecOperation* v3 = new (&allocator_)
-      HVecReplicateScalar(&allocator_, parameter_, Primitive::kPrimShort, 4);
+      HVecReplicateScalar(&allocator_, parameter_, DataType::Type::kInt16, 4);
   HVecOperation* v4 = new (&allocator_)
-      HVecStore(&allocator_, parameter_, parameter_, v0, Primitive::kPrimInt, 4);
+      HVecStore(&allocator_, parameter_, parameter_, v0, DataType::Type::kInt32, 4);
 
   EXPECT_TRUE(v0->Equals(v0));
   EXPECT_TRUE(v1->Equals(v1));
@@ -149,17 +149,17 @@ TEST_F(NodesVectorTest, VectorOperationProperties) {
   EXPECT_EQ(4u, v3->GetVectorLength());
   EXPECT_EQ(4u, v4->GetVectorLength());
 
-  EXPECT_EQ(Primitive::kPrimDouble, v0->GetType());
-  EXPECT_EQ(Primitive::kPrimDouble, v1->GetType());
-  EXPECT_EQ(Primitive::kPrimDouble, v2->GetType());
-  EXPECT_EQ(Primitive::kPrimDouble, v3->GetType());
-  EXPECT_EQ(Primitive::kPrimDouble, v4->GetType());
+  EXPECT_EQ(DataType::Type::kFloat64, v0->GetType());
+  EXPECT_EQ(DataType::Type::kFloat64, v1->GetType());
+  EXPECT_EQ(DataType::Type::kFloat64, v2->GetType());
+  EXPECT_EQ(DataType::Type::kFloat64, v3->GetType());
+  EXPECT_EQ(DataType::Type::kFloat64, v4->GetType());
 
-  EXPECT_EQ(Primitive::kPrimInt, v0->GetPackedType());
-  EXPECT_EQ(Primitive::kPrimInt, v1->GetPackedType());
-  EXPECT_EQ(Primitive::kPrimInt, v2->GetPackedType());
-  EXPECT_EQ(Primitive::kPrimShort, v3->GetPackedType());
-  EXPECT_EQ(Primitive::kPrimInt, v4->GetPackedType());
+  EXPECT_EQ(DataType::Type::kInt32, v0->GetPackedType());
+  EXPECT_EQ(DataType::Type::kInt32, v1->GetPackedType());
+  EXPECT_EQ(DataType::Type::kInt32, v2->GetPackedType());
+  EXPECT_EQ(DataType::Type::kInt16, v3->GetPackedType());
+  EXPECT_EQ(DataType::Type::kInt32, v4->GetPackedType());
 
   EXPECT_EQ(16u, v0->GetVectorNumberOfBytes());
   EXPECT_EQ(16u, v1->GetVectorNumberOfBytes());
@@ -175,12 +175,12 @@ TEST_F(NodesVectorTest, VectorOperationProperties) {
 }
 
 TEST_F(NodesVectorTest, VectorAlignmentAndStringCharAtMatterOnLoad) {
-  HVecLoad* v0 = new (&allocator_)
-      HVecLoad(&allocator_, parameter_, parameter_, Primitive::kPrimInt, 4, /*is_string_char_at*/ false);
-  HVecLoad* v1 = new (&allocator_)
-      HVecLoad(&allocator_, parameter_, parameter_, Primitive::kPrimInt, 4, /*is_string_char_at*/ false);
-  HVecLoad* v2 = new (&allocator_)
-      HVecLoad(&allocator_, parameter_, parameter_, Primitive::kPrimInt, 4, /*is_string_char_at*/ true);
+  HVecLoad* v0 = new (&allocator_) HVecLoad(
+      &allocator_, parameter_, parameter_, DataType::Type::kInt32, 4, /*is_string_char_at*/ false);
+  HVecLoad* v1 = new (&allocator_) HVecLoad(
+      &allocator_, parameter_, parameter_, DataType::Type::kInt32, 4, /*is_string_char_at*/ false);
+  HVecLoad* v2 = new (&allocator_) HVecLoad(
+      &allocator_, parameter_, parameter_, DataType::Type::kInt32, 4, /*is_string_char_at*/ true);
 
   EXPECT_TRUE(v0->CanBeMoved());
   EXPECT_TRUE(v1->CanBeMoved());
@@ -210,14 +210,14 @@ TEST_F(NodesVectorTest, VectorAlignmentAndStringCharAtMatterOnLoad) {
 
 TEST_F(NodesVectorTest, VectorSignMattersOnMin) {
   HVecOperation* v0 = new (&allocator_)
-      HVecReplicateScalar(&allocator_, parameter_, Primitive::kPrimInt, 4);
+      HVecReplicateScalar(&allocator_, parameter_, DataType::Type::kInt32, 4);
 
   HVecMin* v1 = new (&allocator_)
-      HVecMin(&allocator_, v0, v0, Primitive::kPrimInt, 4, /*is_unsigned*/ true);
+      HVecMin(&allocator_, v0, v0, DataType::Type::kInt32, 4, /*is_unsigned*/ true);
   HVecMin* v2 = new (&allocator_)
-      HVecMin(&allocator_, v0, v0, Primitive::kPrimInt, 4, /*is_unsigned*/ false);
+      HVecMin(&allocator_, v0, v0, DataType::Type::kInt32, 4, /*is_unsigned*/ false);
   HVecMin* v3 = new (&allocator_)
-      HVecMin(&allocator_, v0, v0, Primitive::kPrimInt, 2, /*is_unsigned*/ true);
+      HVecMin(&allocator_, v0, v0, DataType::Type::kInt32, 2, /*is_unsigned*/ true);
 
   EXPECT_FALSE(v0->CanBeMoved());
   EXPECT_TRUE(v1->CanBeMoved());
@@ -238,14 +238,14 @@ TEST_F(NodesVectorTest, VectorSignMattersOnMin) {
 
 TEST_F(NodesVectorTest, VectorSignMattersOnMax) {
   HVecOperation* v0 = new (&allocator_)
-      HVecReplicateScalar(&allocator_, parameter_, Primitive::kPrimInt, 4);
+      HVecReplicateScalar(&allocator_, parameter_, DataType::Type::kInt32, 4);
 
   HVecMax* v1 = new (&allocator_)
-      HVecMax(&allocator_, v0, v0, Primitive::kPrimInt, 4, /*is_unsigned*/ true);
+      HVecMax(&allocator_, v0, v0, DataType::Type::kInt32, 4, /*is_unsigned*/ true);
   HVecMax* v2 = new (&allocator_)
-      HVecMax(&allocator_, v0, v0, Primitive::kPrimInt, 4, /*is_unsigned*/ false);
+      HVecMax(&allocator_, v0, v0, DataType::Type::kInt32, 4, /*is_unsigned*/ false);
   HVecMax* v3 = new (&allocator_)
-      HVecMax(&allocator_, v0, v0, Primitive::kPrimInt, 2, /*is_unsigned*/ true);
+      HVecMax(&allocator_, v0, v0, DataType::Type::kInt32, 2, /*is_unsigned*/ true);
 
   EXPECT_FALSE(v0->CanBeMoved());
   EXPECT_TRUE(v1->CanBeMoved());
@@ -266,18 +266,18 @@ TEST_F(NodesVectorTest, VectorSignMattersOnMax) {
 
 TEST_F(NodesVectorTest, VectorAttributesMatterOnHalvingAdd) {
   HVecOperation* v0 = new (&allocator_)
-      HVecReplicateScalar(&allocator_, parameter_, Primitive::kPrimInt, 4);
+      HVecReplicateScalar(&allocator_, parameter_, DataType::Type::kInt32, 4);
 
   HVecHalvingAdd* v1 = new (&allocator_) HVecHalvingAdd(
-      &allocator_, v0, v0, Primitive::kPrimInt, 4, /*is_unsigned*/ true, /*is_rounded*/ true);
+      &allocator_, v0, v0, DataType::Type::kInt32, 4, /*is_unsigned*/ true, /*is_rounded*/ true);
   HVecHalvingAdd* v2 = new (&allocator_) HVecHalvingAdd(
-      &allocator_, v0, v0, Primitive::kPrimInt, 4, /*is_unsigned*/ true, /*is_rounded*/ false);
+      &allocator_, v0, v0, DataType::Type::kInt32, 4, /*is_unsigned*/ true, /*is_rounded*/ false);
   HVecHalvingAdd* v3 = new (&allocator_) HVecHalvingAdd(
-      &allocator_, v0, v0, Primitive::kPrimInt, 4, /*is_unsigned*/ false, /*is_rounded*/ true);
+      &allocator_, v0, v0, DataType::Type::kInt32, 4, /*is_unsigned*/ false, /*is_rounded*/ true);
   HVecHalvingAdd* v4 = new (&allocator_) HVecHalvingAdd(
-      &allocator_, v0, v0, Primitive::kPrimInt, 4, /*is_unsigned*/ false, /*is_rounded*/ false);
+      &allocator_, v0, v0, DataType::Type::kInt32, 4, /*is_unsigned*/ false, /*is_rounded*/ false);
   HVecHalvingAdd* v5 = new (&allocator_) HVecHalvingAdd(
-      &allocator_, v0, v0, Primitive::kPrimInt, 2, /*is_unsigned*/ true, /*is_rounded*/ true);
+      &allocator_, v0, v0, DataType::Type::kInt32, 2, /*is_unsigned*/ true, /*is_rounded*/ true);
 
   EXPECT_FALSE(v0->CanBeMoved());
   EXPECT_TRUE(v1->CanBeMoved());
@@ -306,14 +306,14 @@ TEST_F(NodesVectorTest, VectorAttributesMatterOnHalvingAdd) {
 
 TEST_F(NodesVectorTest, VectorOperationMattersOnMultiplyAccumulate) {
   HVecOperation* v0 = new (&allocator_)
-      HVecReplicateScalar(&allocator_, parameter_, Primitive::kPrimInt, 4);
+      HVecReplicateScalar(&allocator_, parameter_, DataType::Type::kInt32, 4);
 
-  HVecMultiplyAccumulate* v1 = new (&allocator_)
-      HVecMultiplyAccumulate(&allocator_, HInstruction::kAdd, v0, v0, v0, Primitive::kPrimInt, 4);
-  HVecMultiplyAccumulate* v2 = new (&allocator_)
-      HVecMultiplyAccumulate(&allocator_, HInstruction::kSub, v0, v0, v0, Primitive::kPrimInt, 4);
-  HVecMultiplyAccumulate* v3 = new (&allocator_)
-      HVecMultiplyAccumulate(&allocator_, HInstruction::kAdd, v0, v0, v0, Primitive::kPrimInt, 2);
+  HVecMultiplyAccumulate* v1 = new (&allocator_) HVecMultiplyAccumulate(
+      &allocator_, HInstruction::kAdd, v0, v0, v0, DataType::Type::kInt32, 4);
+  HVecMultiplyAccumulate* v2 = new (&allocator_) HVecMultiplyAccumulate(
+      &allocator_, HInstruction::kSub, v0, v0, v0, DataType::Type::kInt32, 4);
+  HVecMultiplyAccumulate* v3 = new (&allocator_) HVecMultiplyAccumulate(
+      &allocator_, HInstruction::kAdd, v0, v0, v0, DataType::Type::kInt32, 2);
 
   EXPECT_FALSE(v0->CanBeMoved());
   EXPECT_TRUE(v1->CanBeMoved());
@@ -334,14 +334,14 @@ TEST_F(NodesVectorTest, VectorOperationMattersOnMultiplyAccumulate) {
 
 TEST_F(NodesVectorTest, VectorKindMattersOnReduce) {
   HVecOperation* v0 = new (&allocator_)
-      HVecReplicateScalar(&allocator_, parameter_, Primitive::kPrimInt, 4);
+      HVecReplicateScalar(&allocator_, parameter_, DataType::Type::kInt32, 4);
 
   HVecReduce* v1 = new (&allocator_) HVecReduce(
-      &allocator_, v0, Primitive::kPrimInt, 4, HVecReduce::kSum);
+      &allocator_, v0, DataType::Type::kInt32, 4, HVecReduce::kSum);
   HVecReduce* v2 = new (&allocator_) HVecReduce(
-      &allocator_, v0, Primitive::kPrimInt, 4, HVecReduce::kMin);
+      &allocator_, v0, DataType::Type::kInt32, 4, HVecReduce::kMin);
   HVecReduce* v3 = new (&allocator_) HVecReduce(
-      &allocator_, v0, Primitive::kPrimInt, 4, HVecReduce::kMax);
+      &allocator_, v0, DataType::Type::kInt32, 4, HVecReduce::kMax);
 
   EXPECT_FALSE(v0->CanBeMoved());
   EXPECT_TRUE(v1->CanBeMoved());

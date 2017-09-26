@@ -19,6 +19,7 @@
 #include "art_method-inl.h"
 #include "bytecode_utils.h"
 #include "class_linker.h"
+#include "data_type-inl.h"
 #include "dex_instruction-inl.h"
 #include "driver/compiler_options.h"
 #include "imtable-inl.h"
@@ -221,7 +222,7 @@ void HInstructionBuilder::InitializeInstruction(HInstruction* instruction) {
 }
 
 HInstruction* HInstructionBuilder::LoadNullCheckedLocal(uint32_t register_index, uint32_t dex_pc) {
-  HInstruction* ref = LoadLocal(register_index, Primitive::kPrimNot);
+  HInstruction* ref = LoadLocal(register_index, DataType::Type::kReference);
   if (!ref->CanBeNull()) {
     return ref;
   }
@@ -388,15 +389,15 @@ void HInstructionBuilder::FindNativeDebugInfoLocations(ArenaBitVector* locations
   }
 }
 
-HInstruction* HInstructionBuilder::LoadLocal(uint32_t reg_number, Primitive::Type type) const {
+HInstruction* HInstructionBuilder::LoadLocal(uint32_t reg_number, DataType::Type type) const {
   HInstruction* value = (*current_locals_)[reg_number];
   DCHECK(value != nullptr);
 
   // If the operation requests a specific type, we make sure its input is of that type.
   if (type != value->GetType()) {
-    if (Primitive::IsFloatingPointType(type)) {
+    if (DataType::IsFloatingPointType(type)) {
       value = ssa_builder_->GetFloatOrDoubleEquivalent(value, type);
-    } else if (type == Primitive::kPrimNot) {
+    } else if (type == DataType::Type::kReference) {
       value = ssa_builder_->GetReferenceTypeEquivalent(value);
     }
     DCHECK(value != nullptr);
@@ -406,8 +407,8 @@ HInstruction* HInstructionBuilder::LoadLocal(uint32_t reg_number, Primitive::Typ
 }
 
 void HInstructionBuilder::UpdateLocal(uint32_t reg_number, HInstruction* stored_value) {
-  Primitive::Type stored_type = stored_value->GetType();
-  DCHECK_NE(stored_type, Primitive::kPrimVoid);
+  DataType::Type stored_type = stored_value->GetType();
+  DCHECK_NE(stored_type, DataType::Type::kVoid);
 
   // Storing into vreg `reg_number` may implicitly invalidate the surrounding
   // registers. Consider the following cases:
@@ -420,7 +421,7 @@ void HInstructionBuilder::UpdateLocal(uint32_t reg_number, HInstruction* stored_
 
   if (reg_number != 0) {
     HInstruction* local_low = (*current_locals_)[reg_number - 1];
-    if (local_low != nullptr && Primitive::Is64BitType(local_low->GetType())) {
+    if (local_low != nullptr && DataType::Is64BitType(local_low->GetType())) {
       // The vreg we are storing into was previously the high vreg of a pair.
       // We need to invalidate its low vreg.
       DCHECK((*current_locals_)[reg_number] == nullptr);
@@ -429,7 +430,7 @@ void HInstructionBuilder::UpdateLocal(uint32_t reg_number, HInstruction* stored_
   }
 
   (*current_locals_)[reg_number] = stored_value;
-  if (Primitive::Is64BitType(stored_type)) {
+  if (DataType::Is64BitType(stored_type)) {
     // We are storing a pair. Invalidate the instruction in the high vreg.
     (*current_locals_)[reg_number + 1] = nullptr;
   }
@@ -455,7 +456,7 @@ void HInstructionBuilder::InitializeParameters() {
     HParameterValue* parameter = new (arena_) HParameterValue(*dex_file_,
                                                               referrer_method_id.class_idx_,
                                                               parameter_index++,
-                                                              Primitive::kPrimNot,
+                                                              DataType::Type::kReference,
                                                               /* is_this */ true);
     AppendInstruction(parameter);
     UpdateLocal(locals_index++, parameter);
@@ -472,14 +473,14 @@ void HInstructionBuilder::InitializeParameters() {
         *dex_file_,
         arg_types->GetTypeItem(shorty_pos - 1).type_idx_,
         parameter_index++,
-        Primitive::GetType(shorty[shorty_pos]),
+        DataType::FromShorty(shorty[shorty_pos]),
         /* is_this */ false);
     ++shorty_pos;
     AppendInstruction(parameter);
     // Store the parameter value in the local that the dex code will use
     // to reference that parameter.
     UpdateLocal(locals_index++, parameter);
-    if (Primitive::Is64BitType(parameter->GetType())) {
+    if (DataType::Is64BitType(parameter->GetType())) {
       i++;
       locals_index++;
       parameter_index++;
@@ -489,8 +490,8 @@ void HInstructionBuilder::InitializeParameters() {
 
 template<typename T>
 void HInstructionBuilder::If_22t(const Instruction& instruction, uint32_t dex_pc) {
-  HInstruction* first = LoadLocal(instruction.VRegA(), Primitive::kPrimInt);
-  HInstruction* second = LoadLocal(instruction.VRegB(), Primitive::kPrimInt);
+  HInstruction* first = LoadLocal(instruction.VRegA(), DataType::Type::kInt32);
+  HInstruction* second = LoadLocal(instruction.VRegB(), DataType::Type::kInt32);
   T* comparison = new (arena_) T(first, second, dex_pc);
   AppendInstruction(comparison);
   AppendInstruction(new (arena_) HIf(comparison, dex_pc));
@@ -499,7 +500,7 @@ void HInstructionBuilder::If_22t(const Instruction& instruction, uint32_t dex_pc
 
 template<typename T>
 void HInstructionBuilder::If_21t(const Instruction& instruction, uint32_t dex_pc) {
-  HInstruction* value = LoadLocal(instruction.VRegA(), Primitive::kPrimInt);
+  HInstruction* value = LoadLocal(instruction.VRegA(), DataType::Type::kInt32);
   T* comparison = new (arena_) T(value, graph_->GetIntConstant(0, dex_pc), dex_pc);
   AppendInstruction(comparison);
   AppendInstruction(new (arena_) HIf(comparison, dex_pc));
@@ -508,7 +509,7 @@ void HInstructionBuilder::If_21t(const Instruction& instruction, uint32_t dex_pc
 
 template<typename T>
 void HInstructionBuilder::Unop_12x(const Instruction& instruction,
-                                   Primitive::Type type,
+                                   DataType::Type type,
                                    uint32_t dex_pc) {
   HInstruction* first = LoadLocal(instruction.VRegB(), type);
   AppendInstruction(new (arena_) T(type, first, dex_pc));
@@ -516,8 +517,8 @@ void HInstructionBuilder::Unop_12x(const Instruction& instruction,
 }
 
 void HInstructionBuilder::Conversion_12x(const Instruction& instruction,
-                                         Primitive::Type input_type,
-                                         Primitive::Type result_type,
+                                         DataType::Type input_type,
+                                         DataType::Type result_type,
                                          uint32_t dex_pc) {
   HInstruction* first = LoadLocal(instruction.VRegB(), input_type);
   AppendInstruction(new (arena_) HTypeConversion(result_type, first, dex_pc));
@@ -526,7 +527,7 @@ void HInstructionBuilder::Conversion_12x(const Instruction& instruction,
 
 template<typename T>
 void HInstructionBuilder::Binop_23x(const Instruction& instruction,
-                                    Primitive::Type type,
+                                    DataType::Type type,
                                     uint32_t dex_pc) {
   HInstruction* first = LoadLocal(instruction.VRegB(), type);
   HInstruction* second = LoadLocal(instruction.VRegC(), type);
@@ -536,16 +537,16 @@ void HInstructionBuilder::Binop_23x(const Instruction& instruction,
 
 template<typename T>
 void HInstructionBuilder::Binop_23x_shift(const Instruction& instruction,
-                                          Primitive::Type type,
+                                          DataType::Type type,
                                           uint32_t dex_pc) {
   HInstruction* first = LoadLocal(instruction.VRegB(), type);
-  HInstruction* second = LoadLocal(instruction.VRegC(), Primitive::kPrimInt);
+  HInstruction* second = LoadLocal(instruction.VRegC(), DataType::Type::kInt32);
   AppendInstruction(new (arena_) T(type, first, second, dex_pc));
   UpdateLocal(instruction.VRegA(), current_block_->GetLastInstruction());
 }
 
 void HInstructionBuilder::Binop_23x_cmp(const Instruction& instruction,
-                                        Primitive::Type type,
+                                        DataType::Type type,
                                         ComparisonBias bias,
                                         uint32_t dex_pc) {
   HInstruction* first = LoadLocal(instruction.VRegB(), type);
@@ -556,17 +557,17 @@ void HInstructionBuilder::Binop_23x_cmp(const Instruction& instruction,
 
 template<typename T>
 void HInstructionBuilder::Binop_12x_shift(const Instruction& instruction,
-                                          Primitive::Type type,
+                                          DataType::Type type,
                                           uint32_t dex_pc) {
   HInstruction* first = LoadLocal(instruction.VRegA(), type);
-  HInstruction* second = LoadLocal(instruction.VRegB(), Primitive::kPrimInt);
+  HInstruction* second = LoadLocal(instruction.VRegB(), DataType::Type::kInt32);
   AppendInstruction(new (arena_) T(type, first, second, dex_pc));
   UpdateLocal(instruction.VRegA(), current_block_->GetLastInstruction());
 }
 
 template<typename T>
 void HInstructionBuilder::Binop_12x(const Instruction& instruction,
-                                    Primitive::Type type,
+                                    DataType::Type type,
                                     uint32_t dex_pc) {
   HInstruction* first = LoadLocal(instruction.VRegA(), type);
   HInstruction* second = LoadLocal(instruction.VRegB(), type);
@@ -576,23 +577,23 @@ void HInstructionBuilder::Binop_12x(const Instruction& instruction,
 
 template<typename T>
 void HInstructionBuilder::Binop_22s(const Instruction& instruction, bool reverse, uint32_t dex_pc) {
-  HInstruction* first = LoadLocal(instruction.VRegB(), Primitive::kPrimInt);
+  HInstruction* first = LoadLocal(instruction.VRegB(), DataType::Type::kInt32);
   HInstruction* second = graph_->GetIntConstant(instruction.VRegC_22s(), dex_pc);
   if (reverse) {
     std::swap(first, second);
   }
-  AppendInstruction(new (arena_) T(Primitive::kPrimInt, first, second, dex_pc));
+  AppendInstruction(new (arena_) T(DataType::Type::kInt32, first, second, dex_pc));
   UpdateLocal(instruction.VRegA(), current_block_->GetLastInstruction());
 }
 
 template<typename T>
 void HInstructionBuilder::Binop_22b(const Instruction& instruction, bool reverse, uint32_t dex_pc) {
-  HInstruction* first = LoadLocal(instruction.VRegB(), Primitive::kPrimInt);
+  HInstruction* first = LoadLocal(instruction.VRegB(), DataType::Type::kInt32);
   HInstruction* second = graph_->GetIntConstant(instruction.VRegC_22b(), dex_pc);
   if (reverse) {
     std::swap(first, second);
   }
-  AppendInstruction(new (arena_) T(Primitive::kPrimInt, first, second, dex_pc));
+  AppendInstruction(new (arena_) T(DataType::Type::kInt32, first, second, dex_pc));
   UpdateLocal(instruction.VRegA(), current_block_->GetLastInstruction());
 }
 
@@ -624,7 +625,7 @@ static bool IsFallthroughInstruction(const Instruction& instruction,
 }
 
 void HInstructionBuilder::BuildSwitch(const Instruction& instruction, uint32_t dex_pc) {
-  HInstruction* value = LoadLocal(instruction.VRegA(), Primitive::kPrimInt);
+  HInstruction* value = LoadLocal(instruction.VRegA(), DataType::Type::kInt32);
   DexSwitchTable table(instruction, dex_pc);
 
   if (table.GetNumEntries() == 0) {
@@ -651,9 +652,9 @@ void HInstructionBuilder::BuildSwitch(const Instruction& instruction, uint32_t d
 }
 
 void HInstructionBuilder::BuildReturn(const Instruction& instruction,
-                                      Primitive::Type type,
+                                      DataType::Type type,
                                       uint32_t dex_pc) {
-  if (type == Primitive::kPrimVoid) {
+  if (type == DataType::Type::kVoid) {
     // Only <init> (which is a return-void) could possibly have a constructor fence.
     // This may insert additional redundant constructor fences from the super constructors.
     // TODO: remove redundant constructor fences (b/36656456).
@@ -802,7 +803,7 @@ bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
                                       uint32_t register_index) {
   InvokeType invoke_type = GetInvokeTypeFromOpCode(instruction.Opcode());
   const char* descriptor = dex_file_->GetMethodShorty(method_idx);
-  Primitive::Type return_type = Primitive::GetType(descriptor[0]);
+  DataType::Type return_type = DataType::FromShorty(descriptor[0]);
 
   // Remove the return type from the 'proto'.
   size_t number_of_arguments = strlen(descriptor) - 1;
@@ -844,7 +845,7 @@ bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
     HInvoke* invoke = new (arena_) HInvokeStaticOrDirect(
         arena_,
         number_of_arguments - 1,
-        Primitive::kPrimNot /*return_type */,
+        DataType::Type::kReference /*return_type */,
         dex_pc,
         method_idx,
         nullptr,
@@ -938,7 +939,7 @@ bool HInstructionBuilder::BuildInvokePolymorphic(const Instruction& instruction 
                                                  uint32_t register_index) {
   const char* descriptor = dex_file_->GetShorty(proto_idx);
   DCHECK_EQ(1 + ArtMethod::NumArgRegisters(descriptor), number_of_vreg_arguments);
-  Primitive::Type return_type = Primitive::GetType(descriptor[0]);
+  DataType::Type return_type = DataType::FromShorty(descriptor[0]);
   size_t number_of_arguments = strlen(descriptor);
   HInvoke* invoke = new (arena_) HInvokePolymorphic(arena_,
                                                     number_of_arguments,
@@ -1113,8 +1114,8 @@ bool HInstructionBuilder::SetupInvokeArguments(HInvoke* invoke,
        // it hasn't been properly checked.
        (i < number_of_vreg_arguments) && (*argument_index < invoke->GetNumberOfArguments());
        i++, (*argument_index)++) {
-    Primitive::Type type = Primitive::GetType(descriptor[descriptor_index++]);
-    bool is_wide = (type == Primitive::kPrimLong) || (type == Primitive::kPrimDouble);
+    DataType::Type type = DataType::FromShorty(descriptor[descriptor_index++]);
+    bool is_wide = (type == DataType::Type::kInt64) || (type == DataType::Type::kFloat64);
     if (!is_range
         && is_wide
         && ((i + 1 == number_of_vreg_arguments) || (args[i] + 1 != args[i + 1]))) {
@@ -1169,7 +1170,7 @@ bool HInstructionBuilder::HandleInvoke(HInvoke* invoke,
   if (invoke->GetInvokeType() != InvokeType::kStatic) {  // Instance call.
     uint32_t obj_reg = is_range ? register_index : args[0];
     HInstruction* arg = is_unresolved
-        ? LoadLocal(obj_reg, Primitive::kPrimNot)
+        ? LoadLocal(obj_reg, DataType::Type::kReference)
         : LoadNullCheckedLocal(obj_reg, invoke->GetDexPc());
     invoke->SetArgumentAt(0, arg);
     start_index = 1;
@@ -1229,7 +1230,7 @@ bool HInstructionBuilder::HandleStringInit(HInvoke* invoke,
   // This is a StringFactory call, not an actual String constructor. Its result
   // replaces the empty String pre-allocated by NewInstance.
   uint32_t orig_this_reg = is_range ? register_index : args[0];
-  HInstruction* arg_this = LoadLocal(orig_this_reg, Primitive::kPrimNot);
+  HInstruction* arg_this = LoadLocal(orig_this_reg, DataType::Type::kReference);
 
   // Replacing the NewInstance might render it redundant. Keep a list of these
   // to be visited once it is clear whether it is has remaining uses.
@@ -1251,10 +1252,10 @@ bool HInstructionBuilder::HandleStringInit(HInvoke* invoke,
   return true;
 }
 
-static Primitive::Type GetFieldAccessType(const DexFile& dex_file, uint16_t field_index) {
+static DataType::Type GetFieldAccessType(const DexFile& dex_file, uint16_t field_index) {
   const DexFile::FieldId& field_id = dex_file.GetFieldId(field_index);
   const char* type = dex_file.GetFieldTypeDescriptor(field_id);
-  return Primitive::GetType(type[0]);
+  return DataType::FromShorty(type[0]);
 }
 
 bool HInstructionBuilder::BuildInstanceFieldAccess(const Instruction& instruction,
@@ -1280,12 +1281,10 @@ bool HInstructionBuilder::BuildInstanceFieldAccess(const Instruction& instructio
   // is unresolved. In that case, we rely on the runtime to perform various
   // checks first, followed by a null check.
   HInstruction* object = (resolved_field == nullptr)
-      ? LoadLocal(obj_reg, Primitive::kPrimNot)
+      ? LoadLocal(obj_reg, DataType::Type::kReference)
       : LoadNullCheckedLocal(obj_reg, dex_pc);
 
-  Primitive::Type field_type = (resolved_field == nullptr)
-      ? GetFieldAccessType(*dex_file_, field_index)
-      : resolved_field->GetTypeAsPrimitiveType();
+  DataType::Type field_type = GetFieldAccessType(*dex_file_, field_index);
   if (is_put) {
     HInstruction* value = LoadLocal(source_or_dest_reg, field_type);
     HInstruction* field_set = nullptr;
@@ -1377,7 +1376,7 @@ bool HInstructionBuilder::IsOutermostCompilingClass(dex::TypeIndex type_index) c
 void HInstructionBuilder::BuildUnresolvedStaticFieldAccess(const Instruction& instruction,
                                                            uint32_t dex_pc,
                                                            bool is_put,
-                                                           Primitive::Type field_type) {
+                                                           DataType::Type field_type) {
   uint32_t source_or_dest_reg = instruction.VRegA_21c();
   uint16_t field_index = instruction.VRegB_21c();
 
@@ -1452,12 +1451,12 @@ bool HInstructionBuilder::BuildStaticFieldAccess(const Instruction& instruction,
   if (resolved_field == nullptr) {
     MaybeRecordStat(compilation_stats_,
                     MethodCompilationStat::kUnresolvedField);
-    Primitive::Type field_type = GetFieldAccessType(*dex_file_, field_index);
+    DataType::Type field_type = GetFieldAccessType(*dex_file_, field_index);
     BuildUnresolvedStaticFieldAccess(instruction, dex_pc, is_put, field_type);
     return true;
   }
 
-  Primitive::Type field_type = resolved_field->GetTypeAsPrimitiveType();
+  DataType::Type field_type = GetFieldAccessType(*dex_file_, field_index);
 
   Handle<mirror::Class> klass = handles_->NewHandle(resolved_field->GetDeclaringClass());
   HLoadClass* constant = BuildLoadClass(klass->GetDexTypeIndex(),
@@ -1515,15 +1514,15 @@ void HInstructionBuilder::BuildCheckedDivRem(uint16_t out_vreg,
                                        uint16_t first_vreg,
                                        int64_t second_vreg_or_constant,
                                        uint32_t dex_pc,
-                                       Primitive::Type type,
+                                       DataType::Type type,
                                        bool second_is_constant,
                                        bool isDiv) {
-  DCHECK(type == Primitive::kPrimInt || type == Primitive::kPrimLong);
+  DCHECK(type == DataType::Type::kInt32 || type == DataType::Type::kInt64);
 
   HInstruction* first = LoadLocal(first_vreg, type);
   HInstruction* second = nullptr;
   if (second_is_constant) {
-    if (type == Primitive::kPrimInt) {
+    if (type == DataType::Type::kInt32) {
       second = graph_->GetIntConstant(second_vreg_or_constant, dex_pc);
     } else {
       second = graph_->GetLongConstant(second_vreg_or_constant, dex_pc);
@@ -1533,8 +1532,8 @@ void HInstructionBuilder::BuildCheckedDivRem(uint16_t out_vreg,
   }
 
   if (!second_is_constant
-      || (type == Primitive::kPrimInt && second->AsIntConstant()->GetValue() == 0)
-      || (type == Primitive::kPrimLong && second->AsLongConstant()->GetValue() == 0)) {
+      || (type == DataType::Type::kInt32 && second->AsIntConstant()->GetValue() == 0)
+      || (type == DataType::Type::kInt64 && second->AsLongConstant()->GetValue() == 0)) {
     second = new (arena_) HDivZeroCheck(second, dex_pc);
     AppendInstruction(second);
   }
@@ -1550,7 +1549,7 @@ void HInstructionBuilder::BuildCheckedDivRem(uint16_t out_vreg,
 void HInstructionBuilder::BuildArrayAccess(const Instruction& instruction,
                                            uint32_t dex_pc,
                                            bool is_put,
-                                           Primitive::Type anticipated_type) {
+                                           DataType::Type anticipated_type) {
   uint8_t source_or_dest_reg = instruction.VRegA_23x();
   uint8_t array_reg = instruction.VRegB_23x();
   uint8_t index_reg = instruction.VRegC_23x();
@@ -1558,7 +1557,7 @@ void HInstructionBuilder::BuildArrayAccess(const Instruction& instruction,
   HInstruction* object = LoadNullCheckedLocal(array_reg, dex_pc);
   HInstruction* length = new (arena_) HArrayLength(object, dex_pc);
   AppendInstruction(length);
-  HInstruction* index = LoadLocal(index_reg, Primitive::kPrimInt);
+  HInstruction* index = LoadLocal(index_reg, DataType::Type::kInt32);
   index = new (arena_) HBoundsCheck(index, length, dex_pc);
   AppendInstruction(index);
   if (is_put) {
@@ -1594,7 +1593,7 @@ HNewArray* HInstructionBuilder::BuildFilledNewArray(uint32_t dex_pc,
       || primitive == 'L'
       || primitive == '[') << descriptor;
   bool is_reference_array = (primitive == 'L') || (primitive == '[');
-  Primitive::Type type = is_reference_array ? Primitive::kPrimNot : Primitive::kPrimInt;
+  DataType::Type type = is_reference_array ? DataType::Type::kReference : DataType::Type::kInt32;
 
   for (size_t i = 0; i < number_of_vreg_arguments; ++i) {
     HInstruction* value = LoadLocal(is_range ? register_index + i : args[i], type);
@@ -1612,7 +1611,7 @@ template <typename T>
 void HInstructionBuilder::BuildFillArrayData(HInstruction* object,
                                              const T* data,
                                              uint32_t element_count,
-                                             Primitive::Type anticipated_type,
+                                             DataType::Type anticipated_type,
                                              uint32_t dex_pc) {
   for (uint32_t i = 0; i < element_count; ++i) {
     HInstruction* index = graph_->GetIntConstant(i, dex_pc);
@@ -1650,21 +1649,21 @@ void HInstructionBuilder::BuildFillArrayData(const Instruction& instruction, uin
       BuildFillArrayData(array,
                          reinterpret_cast<const int8_t*>(data),
                          element_count,
-                         Primitive::kPrimByte,
+                         DataType::Type::kInt8,
                          dex_pc);
       break;
     case 2:
       BuildFillArrayData(array,
                          reinterpret_cast<const int16_t*>(data),
                          element_count,
-                         Primitive::kPrimShort,
+                         DataType::Type::kInt16,
                          dex_pc);
       break;
     case 4:
       BuildFillArrayData(array,
                          reinterpret_cast<const int32_t*>(data),
                          element_count,
-                         Primitive::kPrimInt,
+                         DataType::Type::kInt32,
                          dex_pc);
       break;
     case 8:
@@ -1686,7 +1685,7 @@ void HInstructionBuilder::BuildFillWideArrayData(HInstruction* object,
   for (uint32_t i = 0; i < element_count; ++i) {
     HInstruction* index = graph_->GetIntConstant(i, dex_pc);
     HInstruction* value = graph_->GetLongConstant(data[i], dex_pc);
-    HArraySet* aset = new (arena_) HArraySet(object, index, value, Primitive::kPrimLong, dex_pc);
+    HArraySet* aset = new (arena_) HArraySet(object, index, value, DataType::Type::kInt64, dex_pc);
     ssa_builder_->MaybeAddAmbiguousArraySet(aset);
     AppendInstruction(aset);
   }
@@ -1783,7 +1782,7 @@ void HInstructionBuilder::BuildTypeCheck(const Instruction& instruction,
                                          uint8_t reference,
                                          dex::TypeIndex type_index,
                                          uint32_t dex_pc) {
-  HInstruction* object = LoadLocal(reference, Primitive::kPrimNot);
+  HInstruction* object = LoadLocal(reference, DataType::Type::kReference);
   HLoadClass* cls = BuildLoadClass(type_index, dex_pc);
 
   ScopedObjectAccess soa(Thread::Current());
@@ -1889,7 +1888,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     case Instruction::MOVE:
     case Instruction::MOVE_FROM16:
     case Instruction::MOVE_16: {
-      HInstruction* value = LoadLocal(instruction.VRegB(), Primitive::kPrimInt);
+      HInstruction* value = LoadLocal(instruction.VRegB(), DataType::Type::kInt32);
       UpdateLocal(instruction.VRegA(), value);
       break;
     }
@@ -1898,7 +1897,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     case Instruction::MOVE_WIDE:
     case Instruction::MOVE_WIDE_FROM16:
     case Instruction::MOVE_WIDE_16: {
-      HInstruction* value = LoadLocal(instruction.VRegB(), Primitive::kPrimLong);
+      HInstruction* value = LoadLocal(instruction.VRegB(), DataType::Type::kInt64);
       UpdateLocal(instruction.VRegA(), value);
       break;
     }
@@ -1916,9 +1915,10 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
       if (value->IsIntConstant()) {
         DCHECK_EQ(value->AsIntConstant()->GetValue(), 0);
       } else if (value->IsPhi()) {
-        DCHECK(value->GetType() == Primitive::kPrimInt || value->GetType() == Primitive::kPrimNot);
+        DCHECK(value->GetType() == DataType::Type::kInt32 ||
+               value->GetType() == DataType::Type::kReference);
       } else {
-        value = LoadLocal(reg_number, Primitive::kPrimNot);
+        value = LoadLocal(reg_number, DataType::Type::kReference);
       }
       UpdateLocal(instruction.VRegA(), value);
       break;
@@ -1926,7 +1926,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
 
     case Instruction::RETURN_VOID_NO_BARRIER:
     case Instruction::RETURN_VOID: {
-      BuildReturn(instruction, Primitive::kPrimVoid, dex_pc);
+      BuildReturn(instruction, DataType::Type::kVoid, dex_pc);
       break;
     }
 
@@ -2045,435 +2045,435 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     }
 
     case Instruction::NEG_INT: {
-      Unop_12x<HNeg>(instruction, Primitive::kPrimInt, dex_pc);
+      Unop_12x<HNeg>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::NEG_LONG: {
-      Unop_12x<HNeg>(instruction, Primitive::kPrimLong, dex_pc);
+      Unop_12x<HNeg>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::NEG_FLOAT: {
-      Unop_12x<HNeg>(instruction, Primitive::kPrimFloat, dex_pc);
+      Unop_12x<HNeg>(instruction, DataType::Type::kFloat32, dex_pc);
       break;
     }
 
     case Instruction::NEG_DOUBLE: {
-      Unop_12x<HNeg>(instruction, Primitive::kPrimDouble, dex_pc);
+      Unop_12x<HNeg>(instruction, DataType::Type::kFloat64, dex_pc);
       break;
     }
 
     case Instruction::NOT_INT: {
-      Unop_12x<HNot>(instruction, Primitive::kPrimInt, dex_pc);
+      Unop_12x<HNot>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::NOT_LONG: {
-      Unop_12x<HNot>(instruction, Primitive::kPrimLong, dex_pc);
+      Unop_12x<HNot>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::INT_TO_LONG: {
-      Conversion_12x(instruction, Primitive::kPrimInt, Primitive::kPrimLong, dex_pc);
+      Conversion_12x(instruction, DataType::Type::kInt32, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::INT_TO_FLOAT: {
-      Conversion_12x(instruction, Primitive::kPrimInt, Primitive::kPrimFloat, dex_pc);
+      Conversion_12x(instruction, DataType::Type::kInt32, DataType::Type::kFloat32, dex_pc);
       break;
     }
 
     case Instruction::INT_TO_DOUBLE: {
-      Conversion_12x(instruction, Primitive::kPrimInt, Primitive::kPrimDouble, dex_pc);
+      Conversion_12x(instruction, DataType::Type::kInt32, DataType::Type::kFloat64, dex_pc);
       break;
     }
 
     case Instruction::LONG_TO_INT: {
-      Conversion_12x(instruction, Primitive::kPrimLong, Primitive::kPrimInt, dex_pc);
+      Conversion_12x(instruction, DataType::Type::kInt64, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::LONG_TO_FLOAT: {
-      Conversion_12x(instruction, Primitive::kPrimLong, Primitive::kPrimFloat, dex_pc);
+      Conversion_12x(instruction, DataType::Type::kInt64, DataType::Type::kFloat32, dex_pc);
       break;
     }
 
     case Instruction::LONG_TO_DOUBLE: {
-      Conversion_12x(instruction, Primitive::kPrimLong, Primitive::kPrimDouble, dex_pc);
+      Conversion_12x(instruction, DataType::Type::kInt64, DataType::Type::kFloat64, dex_pc);
       break;
     }
 
     case Instruction::FLOAT_TO_INT: {
-      Conversion_12x(instruction, Primitive::kPrimFloat, Primitive::kPrimInt, dex_pc);
+      Conversion_12x(instruction, DataType::Type::kFloat32, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::FLOAT_TO_LONG: {
-      Conversion_12x(instruction, Primitive::kPrimFloat, Primitive::kPrimLong, dex_pc);
+      Conversion_12x(instruction, DataType::Type::kFloat32, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::FLOAT_TO_DOUBLE: {
-      Conversion_12x(instruction, Primitive::kPrimFloat, Primitive::kPrimDouble, dex_pc);
+      Conversion_12x(instruction, DataType::Type::kFloat32, DataType::Type::kFloat64, dex_pc);
       break;
     }
 
     case Instruction::DOUBLE_TO_INT: {
-      Conversion_12x(instruction, Primitive::kPrimDouble, Primitive::kPrimInt, dex_pc);
+      Conversion_12x(instruction, DataType::Type::kFloat64, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::DOUBLE_TO_LONG: {
-      Conversion_12x(instruction, Primitive::kPrimDouble, Primitive::kPrimLong, dex_pc);
+      Conversion_12x(instruction, DataType::Type::kFloat64, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::DOUBLE_TO_FLOAT: {
-      Conversion_12x(instruction, Primitive::kPrimDouble, Primitive::kPrimFloat, dex_pc);
+      Conversion_12x(instruction, DataType::Type::kFloat64, DataType::Type::kFloat32, dex_pc);
       break;
     }
 
     case Instruction::INT_TO_BYTE: {
-      Conversion_12x(instruction, Primitive::kPrimInt, Primitive::kPrimByte, dex_pc);
+      Conversion_12x(instruction, DataType::Type::kInt32, DataType::Type::kInt8, dex_pc);
       break;
     }
 
     case Instruction::INT_TO_SHORT: {
-      Conversion_12x(instruction, Primitive::kPrimInt, Primitive::kPrimShort, dex_pc);
+      Conversion_12x(instruction, DataType::Type::kInt32, DataType::Type::kInt16, dex_pc);
       break;
     }
 
     case Instruction::INT_TO_CHAR: {
-      Conversion_12x(instruction, Primitive::kPrimInt, Primitive::kPrimChar, dex_pc);
+      Conversion_12x(instruction, DataType::Type::kInt32, DataType::Type::kUint16, dex_pc);
       break;
     }
 
     case Instruction::ADD_INT: {
-      Binop_23x<HAdd>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_23x<HAdd>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::ADD_LONG: {
-      Binop_23x<HAdd>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_23x<HAdd>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::ADD_DOUBLE: {
-      Binop_23x<HAdd>(instruction, Primitive::kPrimDouble, dex_pc);
+      Binop_23x<HAdd>(instruction, DataType::Type::kFloat64, dex_pc);
       break;
     }
 
     case Instruction::ADD_FLOAT: {
-      Binop_23x<HAdd>(instruction, Primitive::kPrimFloat, dex_pc);
+      Binop_23x<HAdd>(instruction, DataType::Type::kFloat32, dex_pc);
       break;
     }
 
     case Instruction::SUB_INT: {
-      Binop_23x<HSub>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_23x<HSub>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::SUB_LONG: {
-      Binop_23x<HSub>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_23x<HSub>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::SUB_FLOAT: {
-      Binop_23x<HSub>(instruction, Primitive::kPrimFloat, dex_pc);
+      Binop_23x<HSub>(instruction, DataType::Type::kFloat32, dex_pc);
       break;
     }
 
     case Instruction::SUB_DOUBLE: {
-      Binop_23x<HSub>(instruction, Primitive::kPrimDouble, dex_pc);
+      Binop_23x<HSub>(instruction, DataType::Type::kFloat64, dex_pc);
       break;
     }
 
     case Instruction::ADD_INT_2ADDR: {
-      Binop_12x<HAdd>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_12x<HAdd>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::MUL_INT: {
-      Binop_23x<HMul>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_23x<HMul>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::MUL_LONG: {
-      Binop_23x<HMul>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_23x<HMul>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::MUL_FLOAT: {
-      Binop_23x<HMul>(instruction, Primitive::kPrimFloat, dex_pc);
+      Binop_23x<HMul>(instruction, DataType::Type::kFloat32, dex_pc);
       break;
     }
 
     case Instruction::MUL_DOUBLE: {
-      Binop_23x<HMul>(instruction, Primitive::kPrimDouble, dex_pc);
+      Binop_23x<HMul>(instruction, DataType::Type::kFloat64, dex_pc);
       break;
     }
 
     case Instruction::DIV_INT: {
       BuildCheckedDivRem(instruction.VRegA(), instruction.VRegB(), instruction.VRegC(),
-                         dex_pc, Primitive::kPrimInt, false, true);
+                         dex_pc, DataType::Type::kInt32, false, true);
       break;
     }
 
     case Instruction::DIV_LONG: {
       BuildCheckedDivRem(instruction.VRegA(), instruction.VRegB(), instruction.VRegC(),
-                         dex_pc, Primitive::kPrimLong, false, true);
+                         dex_pc, DataType::Type::kInt64, false, true);
       break;
     }
 
     case Instruction::DIV_FLOAT: {
-      Binop_23x<HDiv>(instruction, Primitive::kPrimFloat, dex_pc);
+      Binop_23x<HDiv>(instruction, DataType::Type::kFloat32, dex_pc);
       break;
     }
 
     case Instruction::DIV_DOUBLE: {
-      Binop_23x<HDiv>(instruction, Primitive::kPrimDouble, dex_pc);
+      Binop_23x<HDiv>(instruction, DataType::Type::kFloat64, dex_pc);
       break;
     }
 
     case Instruction::REM_INT: {
       BuildCheckedDivRem(instruction.VRegA(), instruction.VRegB(), instruction.VRegC(),
-                         dex_pc, Primitive::kPrimInt, false, false);
+                         dex_pc, DataType::Type::kInt32, false, false);
       break;
     }
 
     case Instruction::REM_LONG: {
       BuildCheckedDivRem(instruction.VRegA(), instruction.VRegB(), instruction.VRegC(),
-                         dex_pc, Primitive::kPrimLong, false, false);
+                         dex_pc, DataType::Type::kInt64, false, false);
       break;
     }
 
     case Instruction::REM_FLOAT: {
-      Binop_23x<HRem>(instruction, Primitive::kPrimFloat, dex_pc);
+      Binop_23x<HRem>(instruction, DataType::Type::kFloat32, dex_pc);
       break;
     }
 
     case Instruction::REM_DOUBLE: {
-      Binop_23x<HRem>(instruction, Primitive::kPrimDouble, dex_pc);
+      Binop_23x<HRem>(instruction, DataType::Type::kFloat64, dex_pc);
       break;
     }
 
     case Instruction::AND_INT: {
-      Binop_23x<HAnd>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_23x<HAnd>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::AND_LONG: {
-      Binop_23x<HAnd>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_23x<HAnd>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::SHL_INT: {
-      Binop_23x_shift<HShl>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_23x_shift<HShl>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::SHL_LONG: {
-      Binop_23x_shift<HShl>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_23x_shift<HShl>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::SHR_INT: {
-      Binop_23x_shift<HShr>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_23x_shift<HShr>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::SHR_LONG: {
-      Binop_23x_shift<HShr>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_23x_shift<HShr>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::USHR_INT: {
-      Binop_23x_shift<HUShr>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_23x_shift<HUShr>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::USHR_LONG: {
-      Binop_23x_shift<HUShr>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_23x_shift<HUShr>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::OR_INT: {
-      Binop_23x<HOr>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_23x<HOr>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::OR_LONG: {
-      Binop_23x<HOr>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_23x<HOr>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::XOR_INT: {
-      Binop_23x<HXor>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_23x<HXor>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::XOR_LONG: {
-      Binop_23x<HXor>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_23x<HXor>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::ADD_LONG_2ADDR: {
-      Binop_12x<HAdd>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_12x<HAdd>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::ADD_DOUBLE_2ADDR: {
-      Binop_12x<HAdd>(instruction, Primitive::kPrimDouble, dex_pc);
+      Binop_12x<HAdd>(instruction, DataType::Type::kFloat64, dex_pc);
       break;
     }
 
     case Instruction::ADD_FLOAT_2ADDR: {
-      Binop_12x<HAdd>(instruction, Primitive::kPrimFloat, dex_pc);
+      Binop_12x<HAdd>(instruction, DataType::Type::kFloat32, dex_pc);
       break;
     }
 
     case Instruction::SUB_INT_2ADDR: {
-      Binop_12x<HSub>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_12x<HSub>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::SUB_LONG_2ADDR: {
-      Binop_12x<HSub>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_12x<HSub>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::SUB_FLOAT_2ADDR: {
-      Binop_12x<HSub>(instruction, Primitive::kPrimFloat, dex_pc);
+      Binop_12x<HSub>(instruction, DataType::Type::kFloat32, dex_pc);
       break;
     }
 
     case Instruction::SUB_DOUBLE_2ADDR: {
-      Binop_12x<HSub>(instruction, Primitive::kPrimDouble, dex_pc);
+      Binop_12x<HSub>(instruction, DataType::Type::kFloat64, dex_pc);
       break;
     }
 
     case Instruction::MUL_INT_2ADDR: {
-      Binop_12x<HMul>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_12x<HMul>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::MUL_LONG_2ADDR: {
-      Binop_12x<HMul>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_12x<HMul>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::MUL_FLOAT_2ADDR: {
-      Binop_12x<HMul>(instruction, Primitive::kPrimFloat, dex_pc);
+      Binop_12x<HMul>(instruction, DataType::Type::kFloat32, dex_pc);
       break;
     }
 
     case Instruction::MUL_DOUBLE_2ADDR: {
-      Binop_12x<HMul>(instruction, Primitive::kPrimDouble, dex_pc);
+      Binop_12x<HMul>(instruction, DataType::Type::kFloat64, dex_pc);
       break;
     }
 
     case Instruction::DIV_INT_2ADDR: {
       BuildCheckedDivRem(instruction.VRegA(), instruction.VRegA(), instruction.VRegB(),
-                         dex_pc, Primitive::kPrimInt, false, true);
+                         dex_pc, DataType::Type::kInt32, false, true);
       break;
     }
 
     case Instruction::DIV_LONG_2ADDR: {
       BuildCheckedDivRem(instruction.VRegA(), instruction.VRegA(), instruction.VRegB(),
-                         dex_pc, Primitive::kPrimLong, false, true);
+                         dex_pc, DataType::Type::kInt64, false, true);
       break;
     }
 
     case Instruction::REM_INT_2ADDR: {
       BuildCheckedDivRem(instruction.VRegA(), instruction.VRegA(), instruction.VRegB(),
-                         dex_pc, Primitive::kPrimInt, false, false);
+                         dex_pc, DataType::Type::kInt32, false, false);
       break;
     }
 
     case Instruction::REM_LONG_2ADDR: {
       BuildCheckedDivRem(instruction.VRegA(), instruction.VRegA(), instruction.VRegB(),
-                         dex_pc, Primitive::kPrimLong, false, false);
+                         dex_pc, DataType::Type::kInt64, false, false);
       break;
     }
 
     case Instruction::REM_FLOAT_2ADDR: {
-      Binop_12x<HRem>(instruction, Primitive::kPrimFloat, dex_pc);
+      Binop_12x<HRem>(instruction, DataType::Type::kFloat32, dex_pc);
       break;
     }
 
     case Instruction::REM_DOUBLE_2ADDR: {
-      Binop_12x<HRem>(instruction, Primitive::kPrimDouble, dex_pc);
+      Binop_12x<HRem>(instruction, DataType::Type::kFloat64, dex_pc);
       break;
     }
 
     case Instruction::SHL_INT_2ADDR: {
-      Binop_12x_shift<HShl>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_12x_shift<HShl>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::SHL_LONG_2ADDR: {
-      Binop_12x_shift<HShl>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_12x_shift<HShl>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::SHR_INT_2ADDR: {
-      Binop_12x_shift<HShr>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_12x_shift<HShr>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::SHR_LONG_2ADDR: {
-      Binop_12x_shift<HShr>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_12x_shift<HShr>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::USHR_INT_2ADDR: {
-      Binop_12x_shift<HUShr>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_12x_shift<HUShr>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::USHR_LONG_2ADDR: {
-      Binop_12x_shift<HUShr>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_12x_shift<HUShr>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::DIV_FLOAT_2ADDR: {
-      Binop_12x<HDiv>(instruction, Primitive::kPrimFloat, dex_pc);
+      Binop_12x<HDiv>(instruction, DataType::Type::kFloat32, dex_pc);
       break;
     }
 
     case Instruction::DIV_DOUBLE_2ADDR: {
-      Binop_12x<HDiv>(instruction, Primitive::kPrimDouble, dex_pc);
+      Binop_12x<HDiv>(instruction, DataType::Type::kFloat64, dex_pc);
       break;
     }
 
     case Instruction::AND_INT_2ADDR: {
-      Binop_12x<HAnd>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_12x<HAnd>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::AND_LONG_2ADDR: {
-      Binop_12x<HAnd>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_12x<HAnd>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::OR_INT_2ADDR: {
-      Binop_12x<HOr>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_12x<HOr>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::OR_LONG_2ADDR: {
-      Binop_12x<HOr>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_12x<HOr>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
     case Instruction::XOR_INT_2ADDR: {
-      Binop_12x<HXor>(instruction, Primitive::kPrimInt, dex_pc);
+      Binop_12x<HXor>(instruction, DataType::Type::kInt32, dex_pc);
       break;
     }
 
     case Instruction::XOR_LONG_2ADDR: {
-      Binop_12x<HXor>(instruction, Primitive::kPrimLong, dex_pc);
+      Binop_12x<HXor>(instruction, DataType::Type::kInt64, dex_pc);
       break;
     }
 
@@ -2540,14 +2540,14 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     case Instruction::DIV_INT_LIT16:
     case Instruction::DIV_INT_LIT8: {
       BuildCheckedDivRem(instruction.VRegA(), instruction.VRegB(), instruction.VRegC(),
-                         dex_pc, Primitive::kPrimInt, true, true);
+                         dex_pc, DataType::Type::kInt32, true, true);
       break;
     }
 
     case Instruction::REM_INT_LIT16:
     case Instruction::REM_INT_LIT8: {
       BuildCheckedDivRem(instruction.VRegA(), instruction.VRegB(), instruction.VRegC(),
-                         dex_pc, Primitive::kPrimInt, true, false);
+                         dex_pc, DataType::Type::kInt32, true, false);
       break;
     }
 
@@ -2578,7 +2578,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
 
     case Instruction::NEW_ARRAY: {
       dex::TypeIndex type_index(instruction.VRegC_22c());
-      HInstruction* length = LoadLocal(instruction.VRegB_22c(), Primitive::kPrimInt);
+      HInstruction* length = LoadLocal(instruction.VRegB_22c(), DataType::Type::kInt32);
       HLoadClass* cls = BuildLoadClass(type_index, dex_pc);
 
       HNewArray* new_array = new (arena_) HNewArray(cls, length, dex_pc);
@@ -2632,27 +2632,27 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     }
 
     case Instruction::CMP_LONG: {
-      Binop_23x_cmp(instruction, Primitive::kPrimLong, ComparisonBias::kNoBias, dex_pc);
+      Binop_23x_cmp(instruction, DataType::Type::kInt64, ComparisonBias::kNoBias, dex_pc);
       break;
     }
 
     case Instruction::CMPG_FLOAT: {
-      Binop_23x_cmp(instruction, Primitive::kPrimFloat, ComparisonBias::kGtBias, dex_pc);
+      Binop_23x_cmp(instruction, DataType::Type::kFloat32, ComparisonBias::kGtBias, dex_pc);
       break;
     }
 
     case Instruction::CMPG_DOUBLE: {
-      Binop_23x_cmp(instruction, Primitive::kPrimDouble, ComparisonBias::kGtBias, dex_pc);
+      Binop_23x_cmp(instruction, DataType::Type::kFloat64, ComparisonBias::kGtBias, dex_pc);
       break;
     }
 
     case Instruction::CMPL_FLOAT: {
-      Binop_23x_cmp(instruction, Primitive::kPrimFloat, ComparisonBias::kLtBias, dex_pc);
+      Binop_23x_cmp(instruction, DataType::Type::kFloat32, ComparisonBias::kLtBias, dex_pc);
       break;
     }
 
     case Instruction::CMPL_DOUBLE: {
-      Binop_23x_cmp(instruction, Primitive::kPrimDouble, ComparisonBias::kLtBias, dex_pc);
+      Binop_23x_cmp(instruction, DataType::Type::kFloat64, ComparisonBias::kLtBias, dex_pc);
       break;
     }
 
@@ -2735,13 +2735,13 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
       break;                                                                      \
     }
 
-    ARRAY_XX(, Primitive::kPrimInt);
-    ARRAY_XX(_WIDE, Primitive::kPrimLong);
-    ARRAY_XX(_OBJECT, Primitive::kPrimNot);
-    ARRAY_XX(_BOOLEAN, Primitive::kPrimBoolean);
-    ARRAY_XX(_BYTE, Primitive::kPrimByte);
-    ARRAY_XX(_CHAR, Primitive::kPrimChar);
-    ARRAY_XX(_SHORT, Primitive::kPrimShort);
+    ARRAY_XX(, DataType::Type::kInt32);
+    ARRAY_XX(_WIDE, DataType::Type::kInt64);
+    ARRAY_XX(_OBJECT, DataType::Type::kReference);
+    ARRAY_XX(_BOOLEAN, DataType::Type::kBool);
+    ARRAY_XX(_BYTE, DataType::Type::kInt8);
+    ARRAY_XX(_CHAR, DataType::Type::kUint16);
+    ARRAY_XX(_SHORT, DataType::Type::kInt16);
 
     case Instruction::ARRAY_LENGTH: {
       HInstruction* object = LoadNullCheckedLocal(instruction.VRegB_12x(), dex_pc);
@@ -2781,7 +2781,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     }
 
     case Instruction::THROW: {
-      HInstruction* exception = LoadLocal(instruction.VRegA_11x(), Primitive::kPrimNot);
+      HInstruction* exception = LoadLocal(instruction.VRegA_11x(), DataType::Type::kReference);
       AppendInstruction(new (arena_) HThrow(exception, dex_pc));
       // We finished building this block. Set the current block to null to avoid
       // adding dead instructions to it.
@@ -2806,7 +2806,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
 
     case Instruction::MONITOR_ENTER: {
       AppendInstruction(new (arena_) HMonitorOperation(
-          LoadLocal(instruction.VRegA_11x(), Primitive::kPrimNot),
+          LoadLocal(instruction.VRegA_11x(), DataType::Type::kReference),
           HMonitorOperation::OperationKind::kEnter,
           dex_pc));
       break;
@@ -2814,7 +2814,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
 
     case Instruction::MONITOR_EXIT: {
       AppendInstruction(new (arena_) HMonitorOperation(
-          LoadLocal(instruction.VRegA_11x(), Primitive::kPrimNot),
+          LoadLocal(instruction.VRegA_11x(), DataType::Type::kReference),
           HMonitorOperation::OperationKind::kExit,
           dex_pc));
       break;

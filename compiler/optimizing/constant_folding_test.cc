@@ -43,7 +43,7 @@ class ConstantFoldingTest : public CommonCompilerTest {
                 const std::string& expected_after_cf,
                 const std::string& expected_after_dce,
                 const std::function<void(HGraph*)>& check_after_cf,
-                Primitive::Type return_type = Primitive::kPrimInt) {
+                DataType::Type return_type = DataType::Type::kInt32) {
     graph_ = CreateCFG(&allocator_, data, return_type);
     TestCodeOnReadyGraph(expected_before,
                          expected_after_cf,
@@ -208,7 +208,7 @@ TEST_F(ConstantFoldingTest, LongConstantFoldingNegation) {
            expected_after_cf,
            expected_after_dce,
            check_after_cf,
-           Primitive::kPrimLong);
+           DataType::Type::kInt64);
 }
 
 /**
@@ -483,7 +483,7 @@ TEST_F(ConstantFoldingTest, LongConstantFoldingOnAddition) {
            expected_after_cf,
            expected_after_dce,
            check_after_cf,
-           Primitive::kPrimLong);
+           DataType::Type::kInt64);
 }
 
 /**
@@ -547,7 +547,7 @@ TEST_F(ConstantFoldingTest, LongConstantFoldingOnSubtraction) {
            expected_after_cf,
            expected_after_dce,
            check_after_cf,
-           Primitive::kPrimLong);
+           DataType::Type::kInt64);
 }
 
 /**
@@ -756,7 +756,7 @@ TEST_F(ConstantFoldingTest, UnsignedComparisonsWithZero) {
 
   // Make various unsigned comparisons with zero against a parameter.
   HInstruction* parameter = new (&allocator_) HParameterValue(
-      graph_->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimInt, true);
+      graph_->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kInt32, true);
   entry_block->AddInstruction(parameter);
   entry_block->AddInstruction(new (&allocator_) HGoto());
 

@@ -21,6 +21,7 @@
 #include "builder.h"
 #include "class_linker.h"
 #include "constant_folding.h"
+#include "data_type-inl.h"
 #include "dead_code_elimination.h"
 #include "dex/inline_method_analyser.h"
 #include "dex/verification_results.h"
@@ -707,7 +708,7 @@ HInstanceFieldGet* HInliner::BuildGetReceiverClass(ClassLinker* class_linker,
   HInstanceFieldGet* result = new (graph_->GetArena()) HInstanceFieldGet(
       receiver,
       field,
-      Primitive::kPrimNot,
+      DataType::Type::kReference,
       field->GetOffset(),
       field->IsVolatile(),
       field->GetDexFieldIndex(),
@@ -1143,9 +1144,9 @@ bool HInliner::TryInlinePolymorphicCallToSameTarget(
   HInstanceFieldGet* receiver_class = BuildGetReceiverClass(
       class_linker, receiver, invoke_instruction->GetDexPc());
 
-  Primitive::Type type = Is64BitInstructionSet(graph_->GetInstructionSet())
-      ? Primitive::kPrimLong
-      : Primitive::kPrimInt;
+  DataType::Type type = Is64BitInstructionSet(graph_->GetInstructionSet())
+      ? DataType::Type::kInt64
+      : DataType::Type::kInt32;
   HClassTableGet* class_table_get = new (graph_->GetArena()) HClassTableGet(
       receiver_class,
       type,
@@ -1155,7 +1156,7 @@ bool HInliner::TryInlinePolymorphicCallToSameTarget(
       invoke_instruction->GetDexPc());
 
   HConstant* constant;
-  if (type == Primitive::kPrimLong) {
+  if (type == DataType::Type::kInt64) {
     constant = graph_->GetLongConstant(
         reinterpret_cast<intptr_t>(actual_method), invoke_instruction->GetDexPc());
   } else {
@@ -1253,7 +1254,7 @@ bool HInliner::TryInlineAndReplace(HInvoke* invoke_instruction,
       }
       invoke_instruction->GetBlock()->InsertInstructionBefore(new_invoke, invoke_instruction);
       new_invoke->CopyEnvironmentFrom(invoke_instruction->GetEnvironment());
-      if (invoke_instruction->GetType() == Primitive::kPrimNot) {
+      if (invoke_instruction->GetType() == DataType::Type::kReference) {
         new_invoke->SetReferenceTypeInfo(invoke_instruction->GetReferenceTypeInfo());
       }
       return_replacement = new_invoke;
@@ -1403,7 +1404,7 @@ static HInstruction* GetInvokeInputForArgVRegIndex(HInvoke* invoke_instruction,
   size_t input_index = 0;
   for (size_t i = 0; i < arg_vreg_index; ++i, ++input_index) {
     DCHECK_LT(input_index, invoke_instruction->GetNumberOfArguments());
-    if (Primitive::Is64BitType(invoke_instruction->InputAt(input_index)->GetType())) {
+    if (DataType::Is64BitType(invoke_instruction->InputAt(input_index)->GetType())) {
       ++i;
       DCHECK_NE(i, arg_vreg_index);
     }
@@ -1423,7 +1424,7 @@ bool HInliner::TryPatternSubstitution(HInvoke* invoke_instruction,
 
   switch (inline_method.opcode) {
     case kInlineOpNop:
-      DCHECK_EQ(invoke_instruction->GetType(), Primitive::kPrimVoid);
+      DCHECK_EQ(invoke_instruction->GetType(), DataType::Type::kVoid);
       *return_replacement = nullptr;
       break;
     case kInlineOpReturnArg:
@@ -1541,7 +1542,7 @@ HInstanceFieldGet* HInliner::CreateInstanceFieldGet(uint32_t field_index,
   HInstanceFieldGet* iget = new (graph_->GetArena()) HInstanceFieldGet(
       obj,
       resolved_field,
-      resolved_field->GetTypeAsPrimitiveType(),
+      DataType::FromShorty(resolved_field->GetTypeDescriptor()[0]),
       resolved_field->GetOffset(),
       resolved_field->IsVolatile(),
       field_index,
@@ -1550,7 +1551,7 @@ HInstanceFieldGet* HInliner::CreateInstanceFieldGet(uint32_t field_index,
       // Read barrier generates a runtime call in slow path and we need a valid
       // dex pc for the associated stack map. 0 is bogus but valid. Bug: 26854537.
       /* dex_pc */ 0);
-  if (iget->GetType() == Primitive::kPrimNot) {
+  if (iget->GetType() == DataType::Type::kReference) {
     // Use the same dex_cache that we used for field lookup as the hint_dex_cache.
     Handle<mirror::DexCache> dex_cache = handles_->NewHandle(referrer->GetDexCache());
     ReferenceTypePropagation rtp(graph_,
@@ -1582,7 +1583,7 @@ HInstanceFieldSet* HInliner::CreateInstanceFieldSet(uint32_t field_index,
       obj,
       value,
       resolved_field,
-      resolved_field->GetTypeAsPrimitiveType(),
+      DataType::FromShorty(resolved_field->GetTypeDescriptor()[0]),
       resolved_field->GetOffset(),
       resolved_field->IsVolatile(),
       field_index,
@@ -1667,8 +1668,6 @@ bool HInliner::TryBuildAndInlineHelper(HInvoke* invoke_instruction,
   HGraphBuilder builder(callee_graph,
                         &dex_compilation_unit,
                         &outer_compilation_unit_,
-                        resolved_method->GetDexFile(),
-                        *code_item,
                         compiler_driver_,
                         codegen_,
                         inline_stats_,
@@ -1711,7 +1710,7 @@ bool HInliner::TryBuildAndInlineHelper(HInvoke* invoke_instruction,
       } else if (argument->IsDoubleConstant()) {
         current->ReplaceWith(
             callee_graph->GetDoubleConstant(argument->AsDoubleConstant()->GetValue()));
-      } else if (argument->GetType() == Primitive::kPrimNot) {
+      } else if (argument->GetType() == DataType::Type::kReference) {
         if (!resolved_method->IsStatic() && parameter_index == 0 && receiver_type.IsValid()) {
           run_rtp = true;
           current->SetReferenceTypeInfo(receiver_type);
@@ -1975,7 +1974,7 @@ bool HInliner::ArgumentTypesMoreSpecific(HInvoke* invoke_instruction, ArtMethod*
        param_idx < e;
        ++param_idx, ++input_idx) {
     HInstruction* input = invoke_instruction->InputAt(input_idx);
-    if (input->GetType() == Primitive::kPrimNot) {
+    if (input->GetType() == DataType::Type::kReference) {
       ObjPtr<mirror::Class> param_cls = resolved_method->LookupResolvedClassFromTypeIndex(
           param_list->GetTypeItem(param_idx).type_idx_);
       if (IsReferenceTypeRefinement(GetClassRTI(param_cls),
@@ -1993,7 +1992,7 @@ bool HInliner::ReturnTypeMoreSpecific(HInvoke* invoke_instruction,
                                       HInstruction* return_replacement) {
   // Check the integrity of reference types and run another type propagation if needed.
   if (return_replacement != nullptr) {
-    if (return_replacement->GetType() == Primitive::kPrimNot) {
+    if (return_replacement->GetType() == DataType::Type::kReference) {
       // Test if the return type is a refinement of the declared return type.
       if (IsReferenceTypeRefinement(invoke_instruction->GetReferenceTypeInfo(),
                                     /* declared_can_be_null */ true,
@@ -2019,7 +2018,7 @@ bool HInliner::ReturnTypeMoreSpecific(HInvoke* invoke_instruction,
 void HInliner::FixUpReturnReferenceType(ArtMethod* resolved_method,
                                         HInstruction* return_replacement) {
   if (return_replacement != nullptr) {
-    if (return_replacement->GetType() == Primitive::kPrimNot) {
+    if (return_replacement->GetType() == DataType::Type::kReference) {
       if (!return_replacement->GetReferenceTypeInfo().IsValid()) {
         // Make sure that we have a valid type for the return. We may get an invalid one when
         // we inline invokes with multiple branches and create a Phi for the result.

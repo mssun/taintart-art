@@ -64,20 +64,20 @@ class SsaBuilder : public ValueObject {
 
   GraphAnalysisResult BuildSsa();
 
-  HInstruction* GetFloatOrDoubleEquivalent(HInstruction* instruction, Primitive::Type type);
+  HInstruction* GetFloatOrDoubleEquivalent(HInstruction* instruction, DataType::Type type);
   HInstruction* GetReferenceTypeEquivalent(HInstruction* instruction);
 
   void MaybeAddAmbiguousArrayGet(HArrayGet* aget) {
-    Primitive::Type type = aget->GetType();
-    DCHECK(!Primitive::IsFloatingPointType(type));
-    if (Primitive::IsIntOrLongType(type)) {
+    DataType::Type type = aget->GetType();
+    DCHECK(!DataType::IsFloatingPointType(type));
+    if (DataType::IsIntOrLongType(type)) {
       ambiguous_agets_.push_back(aget);
     }
   }
 
   void MaybeAddAmbiguousArraySet(HArraySet* aset) {
-    Primitive::Type type = aset->GetValue()->GetType();
-    if (Primitive::IsIntOrLongType(type)) {
+    DataType::Type type = aset->GetValue()->GetType();
+    if (DataType::IsIntOrLongType(type)) {
       ambiguous_asets_.push_back(aset);
     }
   }
@@ -111,7 +111,7 @@ class SsaBuilder : public ValueObject {
 
   HFloatConstant* GetFloatEquivalent(HIntConstant* constant);
   HDoubleConstant* GetDoubleEquivalent(HLongConstant* constant);
-  HPhi* GetFloatDoubleOrReferenceEquivalentOfPhi(HPhi* phi, Primitive::Type type);
+  HPhi* GetFloatDoubleOrReferenceEquivalentOfPhi(HPhi* phi, DataType::Type type);
   HArrayGet* GetFloatOrDoubleEquivalentOfArrayGet(HArrayGet* aget);
 
   void RemoveRedundantUninitializedStrings();
