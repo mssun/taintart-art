@@ -54,7 +54,8 @@ static constexpr bool kEnableAppImage = true;
 
 static bool OatFileIsOnSystem(const std::unique_ptr<const OatFile>& oat_file) {
   UniqueCPtr<const char[]> path(realpath(oat_file->GetLocation().c_str(), nullptr));
-  return path != nullptr && android::base::StartsWith(oat_file->GetLocation(), GetAndroidRoot());
+  return path != nullptr && android::base::StartsWith(oat_file->GetLocation(),
+                                                      GetAndroidRoot().c_str());
 }
 
 const OatFile* OatFileManager::RegisterOatFile(std::unique_ptr<const OatFile> oat_file) {

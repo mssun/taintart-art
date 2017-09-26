@@ -25,6 +25,21 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+// We need dladdr.
+#ifndef __APPLE__
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#define DEFINED_GNU_SOURCE
+#endif
+#include <dlfcn.h>
+#include <libgen.h>
+#ifdef DEFINED_GNU_SOURCE
+#undef _GNU_SOURCE
+#undef DEFINED_GNU_SOURCE
+#endif
+#endif
+
+
 #include <memory>
 
 #include "android-base/stringprintf.h"
@@ -702,6 +717,54 @@ void GetTaskStats(pid_t tid, char* state, int* utime, int* stime, int* task_cpu)
   *task_cpu = strtoull(fields[36].c_str(), nullptr, 10);
 }
 
+std::string GetAndroidRootSafe(std::string* error_msg) {
+  // Prefer ANDROID_ROOT if it's set.
+  const char* android_dir = getenv("ANDROID_ROOT");
+  if (android_dir != nullptr) {
+    if (!OS::DirectoryExists(android_dir)) {
+      *error_msg = StringPrintf("Failed to find ANDROID_ROOT directory %s", android_dir);
+      return "";
+    }
+    return android_dir;
+  }
+
+  // Check where libart is from, and derive from there. Only do this for non-Mac.
+#ifndef __APPLE__
+  {
+    Dl_info info;
+    if (dladdr(reinterpret_cast<const void*>(&GetAndroidRootSafe), /* out */ &info) != 0) {
+      // Make a duplicate of the fname so dirname can modify it.
+      UniqueCPtr<char> fname(strdup(info.dli_fname));
+
+      char* dir1 = dirname(fname.get());  // This is the lib directory.
+      char* dir2 = dirname(dir1);         // This is the "system" directory.
+      if (OS::DirectoryExists(dir2)) {
+        std::string tmp = dir2;  // Make a copy here so that fname can be released.
+        return tmp;
+      }
+    }
+  }
+#endif
+
+  // Try "/system".
+  if (!OS::DirectoryExists("/system")) {
+    *error_msg = "Failed to find ANDROID_ROOT directory /system";
+    return "";
+  }
+  return "/system";
+}
+
+std::string GetAndroidRoot() {
+  std::string error_msg;
+  std::string ret = GetAndroidRootSafe(&error_msg);
+  if (ret.empty()) {
+    LOG(FATAL) << error_msg;
+    UNREACHABLE();
+  }
+  return ret;
+}
+
+
 static const char* GetAndroidDirSafe(const char* env_var,
                                      const char* default_dir,
                                      std::string* error_msg) {
@@ -721,7 +784,7 @@ static const char* GetAndroidDirSafe(const char* env_var,
   return android_dir;
 }
 
-const char* GetAndroidDir(const char* env_var, const char* default_dir) {
+static const char* GetAndroidDir(const char* env_var, const char* default_dir) {
   std::string error_msg;
   const char* dir = GetAndroidDirSafe(env_var, default_dir, &error_msg);
   if (dir != nullptr) {
@@ -730,14 +793,6 @@ const char* GetAndroidDir(const char* env_var, const char* default_dir) {
     LOG(FATAL) << error_msg;
     return nullptr;
   }
-}
-
-const char* GetAndroidRoot() {
-  return GetAndroidDir("ANDROID_ROOT", "/system");
-}
-
-const char* GetAndroidRootSafe(std::string* error_msg) {
-  return GetAndroidDirSafe("ANDROID_ROOT", "/system", error_msg);
 }
 
 const char* GetAndroidData() {
@@ -749,11 +804,11 @@ const char* GetAndroidDataSafe(std::string* error_msg) {
 }
 
 std::string GetDefaultBootImageLocation(std::string* error_msg) {
-  const char* android_root = GetAndroidRootSafe(error_msg);
-  if (android_root == nullptr) {
+  std::string android_root = GetAndroidRootSafe(error_msg);
+  if (android_root.empty()) {
     return "";
   }
-  return StringPrintf("%s/framework/boot.art", android_root);
+  return StringPrintf("%s/framework/boot.art", android_root.c_str());
 }
 
 void GetDalvikCache(const char* subdir, const bool create_if_absent, std::string* dalvik_cache,
