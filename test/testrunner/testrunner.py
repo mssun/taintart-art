@@ -168,25 +168,8 @@ def setup_test_env():
     _user_input_variants['target'].add('host')
     _user_input_variants['target'].add('target')
 
-  if env.ART_TEST_RUN_TEST_NO_PREBUILD:
-    _user_input_variants['prebuild'].add('no-prebuild')
-  if env.ART_TEST_RUN_TEST_NO_DEX2OAT:
-    _user_input_variants['prebuild'].add('no-dex2oat')
-  if env.ART_TEST_RUN_TEST_PREBUILD or not _user_input_variants['prebuild']: # Default
+  if not _user_input_variants['prebuild']: # Default
     _user_input_variants['prebuild'].add('prebuild')
-
-  if env.ART_TEST_INTERPRETER_ACCESS_CHECKS:
-    _user_input_variants['compiler'].add('interp-ac')
-  if env.ART_TEST_INTERPRETER:
-    _user_input_variants['compiler'].add('interpreter')
-  if env.ART_TEST_JIT:
-    _user_input_variants['compiler'].add('jit')
-  if env.ART_TEST_OPTIMIZING_GRAPH_COLOR:
-    _user_input_variants['compiler'].add('regalloc_gc')
-  if env.ART_TEST_OPTIMIZING:
-    _user_input_variants['compiler'].add('optimizing')
-  if env.ART_TEST_SPEED_PROFILE:
-    _user_input_variants['compiler'].add('speed-profile')
 
   # By default only run without jvmti
   if not _user_input_variants['jvmti']:
@@ -200,53 +183,30 @@ def setup_test_env():
     _user_input_variants['compiler'].add('interp-ac')
     _user_input_variants['compiler'].add('speed-profile')
 
-  if env.ART_TEST_RUN_TEST_RELOCATE:
-    _user_input_variants['relocate'].add('relocate')
-  if env.ART_TEST_RUN_TEST_RELOCATE_NO_PATCHOAT:
-    _user_input_variants['relocate'].add('relocate-npatchoat')
   if not _user_input_variants['relocate']: # Default
     _user_input_variants['relocate'].add('no-relocate')
 
-  if env.ART_TEST_TRACE:
-    _user_input_variants['trace'].add('trace')
-  if env.ART_TEST_TRACE_STREAM:
-    _user_input_variants['trace'].add('stream')
   if not _user_input_variants['trace']: # Default
     _user_input_variants['trace'].add('ntrace')
 
-  if env.ART_TEST_GC_STRESS:
-    _user_input_variants['gc'].add('gcstress')
-  if env.ART_TEST_GC_VERIFY:
-    _user_input_variants['gc'].add('gcverify')
   if not _user_input_variants['gc']: # Default
     _user_input_variants['gc'].add('cms')
 
-  if env.ART_TEST_JNI_FORCECOPY:
-    _user_input_variants['jni'].add('forcecopy')
   if not _user_input_variants['jni']: # Default
     _user_input_variants['jni'].add('checkjni')
 
-  if env.ART_TEST_RUN_TEST_NO_IMAGE:
-    _user_input_variants['image'].add('no-image')
-  if env.ART_TEST_RUN_TEST_MULTI_IMAGE:
-    _user_input_variants['image'].add('multipicimage')
-  if env.ART_TEST_RUN_TEST_IMAGE or not _user_input_variants['image']: # Default
+  if not _user_input_variants['image']: # Default
     _user_input_variants['image'].add('picimage')
 
-  if env.ART_TEST_PIC_TEST:
-    _user_input_variants['pictest'].add('pictest')
+
   if not _user_input_variants['pictest']: # Default
     _user_input_variants['pictest'].add('npictest')
 
-  if env.ART_TEST_RUN_TEST_NDEBUG:
-    _user_input_variants['run'].add('ndebug')
-  if env.ART_TEST_RUN_TEST_DEBUG or not _user_input_variants['run']: # Default
-    _user_input_variants['run'].add('debug')
-
-  if env.ART_TEST_RUN_TEST_DEBUGGABLE:
-    _user_input_variants['debuggable'].add('debuggable')
   if not _user_input_variants['debuggable']: # Default
     _user_input_variants['debuggable'].add('ndebuggable')
+
+  if not _user_input_variants['run']: # Default
+    _user_input_variants['run'].add('debug')
 
   _user_input_variants['address_sizes_target'] = collections.defaultdict(set)
   if not _user_input_variants['address_sizes']:
@@ -301,7 +261,7 @@ def run_tests(tests):
   options_all = ''
   global total_test_count
   total_test_count = len(tests)
-  for variant_type in _user_input_variants:
+  for variant_type in VARIANT_TYPE_DICT:
     if not (variant_type == 'target' or 'address_sizes' in variant_type):
       total_test_count *= len(_user_input_variants[variant_type])
   target_address_combinations = 0
