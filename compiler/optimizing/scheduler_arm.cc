@@ -31,15 +31,15 @@ using helpers::Uint64ConstantFrom;
 
 void SchedulingLatencyVisitorARM::HandleBinaryOperationLantencies(HBinaryOperation* instr) {
   switch (instr->GetResultType()) {
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       // HAdd and HSub long operations translate to ADDS+ADC or SUBS+SBC pairs,
       // so a bubble (kArmNopLatency) is added to represent the internal carry flag
       // dependency inside these pairs.
       last_visited_internal_latency_ = kArmIntegerOpLatency + kArmNopLatency;
       last_visited_latency_ = kArmIntegerOpLatency;
       break;
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       last_visited_latency_ = kArmFloatingPointOpLatency;
       break;
     default:
@@ -58,12 +58,12 @@ void SchedulingLatencyVisitorARM::VisitSub(HSub* instr) {
 
 void SchedulingLatencyVisitorARM::VisitMul(HMul* instr) {
   switch (instr->GetResultType()) {
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       last_visited_internal_latency_ = 3 * kArmMulIntegerLatency;
       last_visited_latency_ = kArmIntegerOpLatency;
       break;
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       last_visited_latency_ = kArmMulFloatingPointLatency;
       break;
     default:
@@ -74,12 +74,12 @@ void SchedulingLatencyVisitorARM::VisitMul(HMul* instr) {
 
 void SchedulingLatencyVisitorARM::HandleBitwiseOperationLantencies(HBinaryOperation* instr) {
   switch (instr->GetResultType()) {
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       last_visited_internal_latency_ = kArmIntegerOpLatency;
       last_visited_latency_ = kArmIntegerOpLatency;
       break;
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       last_visited_latency_ = kArmFloatingPointOpLatency;
       break;
     default:
@@ -102,10 +102,10 @@ void SchedulingLatencyVisitorARM::VisitXor(HXor* instr) {
 
 void SchedulingLatencyVisitorARM::VisitRor(HRor* instr) {
   switch (instr->GetResultType()) {
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       last_visited_latency_ = kArmIntegerOpLatency;
       break;
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       // HandleLongRotate
       HInstruction* rhs = instr->GetRight();
       if (rhs->IsConstant()) {
@@ -130,16 +130,16 @@ void SchedulingLatencyVisitorARM::VisitRor(HRor* instr) {
 }
 
 void SchedulingLatencyVisitorARM::HandleShiftLatencies(HBinaryOperation* instr) {
-  Primitive::Type type = instr->GetResultType();
+  DataType::Type type = instr->GetResultType();
   HInstruction* rhs = instr->GetRight();
   switch (type) {
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       if (!rhs->IsConstant()) {
         last_visited_internal_latency_ = kArmIntegerOpLatency;
       }
       last_visited_latency_ = kArmIntegerOpLatency;
       break;
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       if (!rhs->IsConstant()) {
         last_visited_internal_latency_ = 8 * kArmIntegerOpLatency;
       } else {
@@ -204,7 +204,7 @@ void SchedulingLatencyVisitorARM::HandleGenerateConditionWithZero(IfCondition co
 }
 
 void SchedulingLatencyVisitorARM::HandleGenerateLongTestConstant(HCondition* condition) {
-  DCHECK_EQ(condition->GetLeft()->GetType(), Primitive::kPrimLong);
+  DCHECK_EQ(condition->GetLeft()->GetType(), DataType::Type::kInt64);
 
   IfCondition cond = condition->GetCondition();
 
@@ -270,7 +270,7 @@ void SchedulingLatencyVisitorARM::HandleGenerateLongTestConstant(HCondition* con
 }
 
 void SchedulingLatencyVisitorARM::HandleGenerateLongTest(HCondition* condition) {
-  DCHECK_EQ(condition->GetLeft()->GetType(), Primitive::kPrimLong);
+  DCHECK_EQ(condition->GetLeft()->GetType(), DataType::Type::kInt64);
 
   IfCondition cond = condition->GetCondition();
 
@@ -301,13 +301,13 @@ void SchedulingLatencyVisitorARM::HandleGenerateLongTest(HCondition* condition) 
 
 // The GenerateTest series of function all counted as internal latency.
 void SchedulingLatencyVisitorARM::HandleGenerateTest(HCondition* condition) {
-  const Primitive::Type type = condition->GetLeft()->GetType();
+  const DataType::Type type = condition->GetLeft()->GetType();
 
-  if (type == Primitive::kPrimLong) {
+  if (type == DataType::Type::kInt64) {
     condition->InputAt(1)->IsConstant()
         ? HandleGenerateLongTestConstant(condition)
         : HandleGenerateLongTest(condition);
-  } else if (Primitive::IsFloatingPointType(type)) {
+  } else if (DataType::IsFloatingPointType(type)) {
     // GenerateVcmp + Vmrs
     last_visited_internal_latency_ += 2 * kArmFloatingPointOpLatency;
   } else {
@@ -317,7 +317,7 @@ void SchedulingLatencyVisitorARM::HandleGenerateTest(HCondition* condition) {
 }
 
 bool SchedulingLatencyVisitorARM::CanGenerateTest(HCondition* condition) {
-  if (condition->GetLeft()->GetType() == Primitive::kPrimLong) {
+  if (condition->GetLeft()->GetType() == DataType::Type::kInt64) {
     HInstruction* right = condition->InputAt(1);
 
     if (right->IsConstant()) {
@@ -353,7 +353,7 @@ void SchedulingLatencyVisitorARM::HandleGenerateConditionGeneric(HCondition* con
 }
 
 void SchedulingLatencyVisitorARM::HandleGenerateEqualLong(HCondition* cond) {
-  DCHECK_EQ(cond->GetLeft()->GetType(), Primitive::kPrimLong);
+  DCHECK_EQ(cond->GetLeft()->GetType(), DataType::Type::kInt64);
 
   IfCondition condition = cond->GetCondition();
 
@@ -374,7 +374,7 @@ void SchedulingLatencyVisitorARM::HandleGenerateLongComparesAndJumps() {
 }
 
 void SchedulingLatencyVisitorARM::HandleGenerateConditionLong(HCondition* cond) {
-  DCHECK_EQ(cond->GetLeft()->GetType(), Primitive::kPrimLong);
+  DCHECK_EQ(cond->GetLeft()->GetType(), DataType::Type::kInt64);
 
   IfCondition condition = cond->GetCondition();
   HInstruction* right = cond->InputAt(1);
@@ -424,11 +424,11 @@ void SchedulingLatencyVisitorARM::HandleGenerateConditionLong(HCondition* cond) 
 }
 
 void SchedulingLatencyVisitorARM::HandleGenerateConditionIntegralOrNonPrimitive(HCondition* cond) {
-  const Primitive::Type type = cond->GetLeft()->GetType();
+  const DataType::Type type = cond->GetLeft()->GetType();
 
-  DCHECK(Primitive::IsIntegralType(type) || type == Primitive::kPrimNot) << type;
+  DCHECK(DataType::IsIntegralType(type) || type == DataType::Type::kReference) << type;
 
-  if (type == Primitive::kPrimLong) {
+  if (type == DataType::Type::kInt64) {
     HandleGenerateConditionLong(cond);
     return;
   }
@@ -482,19 +482,19 @@ void SchedulingLatencyVisitorARM::HandleCondition(HCondition* cond) {
     return;
   }
 
-  const Primitive::Type type = cond->GetLeft()->GetType();
+  const DataType::Type type = cond->GetLeft()->GetType();
 
-  if (Primitive::IsFloatingPointType(type)) {
+  if (DataType::IsFloatingPointType(type)) {
     HandleGenerateConditionGeneric(cond);
     return;
   }
 
-  DCHECK(Primitive::IsIntegralType(type) || type == Primitive::kPrimNot) << type;
+  DCHECK(DataType::IsIntegralType(type) || type == DataType::Type::kReference) << type;
 
   const IfCondition condition = cond->GetCondition();
 
-  if (type == Primitive::kPrimBoolean &&
-      cond->GetRight()->GetType() == Primitive::kPrimBoolean &&
+  if (type == DataType::Type::kBool &&
+      cond->GetRight()->GetType() == DataType::Type::kBool &&
       (condition == kCondEQ || condition == kCondNE)) {
     if (condition == kCondEQ) {
       last_visited_internal_latency_ = kArmIntegerOpLatency;
@@ -511,20 +511,20 @@ void SchedulingLatencyVisitorARM::VisitCondition(HCondition* instr) {
 }
 
 void SchedulingLatencyVisitorARM::VisitCompare(HCompare* instr) {
-  Primitive::Type type = instr->InputAt(0)->GetType();
+  DataType::Type type = instr->InputAt(0)->GetType();
   switch (type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimInt:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt32:
       last_visited_internal_latency_ = 2 * kArmIntegerOpLatency;
       break;
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       last_visited_internal_latency_ = 2 * kArmIntegerOpLatency + 3 * kArmBranchLatency;
       break;
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       last_visited_internal_latency_ = kArmIntegerOpLatency + 2 * kArmFloatingPointOpLatency;
       break;
     default:
@@ -535,7 +535,7 @@ void SchedulingLatencyVisitorARM::VisitCompare(HCompare* instr) {
 }
 
 void SchedulingLatencyVisitorARM::VisitBitwiseNegatedRight(HBitwiseNegatedRight* instruction) {
-  if (instruction->GetResultType() == Primitive::kPrimInt) {
+  if (instruction->GetResultType() == DataType::Type::kInt32) {
     last_visited_latency_ = kArmIntegerOpLatency;
   } else {
     last_visited_internal_latency_ = kArmIntegerOpLatency;
@@ -566,7 +566,7 @@ void SchedulingLatencyVisitorARM::HandleGenerateDataProc(HDataProcWithShifterOp*
 }
 
 void SchedulingLatencyVisitorARM::HandleGenerateLongDataProc(HDataProcWithShifterOp* instruction) {
-  DCHECK_EQ(instruction->GetType(), Primitive::kPrimLong);
+  DCHECK_EQ(instruction->GetType(), DataType::Type::kInt64);
   DCHECK(HDataProcWithShifterOp::IsShiftOp(instruction->GetOpKind()));
 
   const uint32_t shift_value = instruction->GetShiftAmount();
@@ -595,10 +595,10 @@ void SchedulingLatencyVisitorARM::HandleGenerateLongDataProc(HDataProcWithShifte
 void SchedulingLatencyVisitorARM::VisitDataProcWithShifterOp(HDataProcWithShifterOp* instruction) {
   const HDataProcWithShifterOp::OpKind op_kind = instruction->GetOpKind();
 
-  if (instruction->GetType() == Primitive::kPrimInt) {
+  if (instruction->GetType() == DataType::Type::kInt32) {
     HandleGenerateDataProcInstruction();
   } else {
-    DCHECK_EQ(instruction->GetType(), Primitive::kPrimLong);
+    DCHECK_EQ(instruction->GetType(), DataType::Type::kInt64);
     if (HDataProcWithShifterOp::IsExtensionOp(op_kind)) {
       HandleGenerateDataProc(instruction);
     } else {
@@ -624,7 +624,7 @@ void SchedulingLatencyVisitorARM::VisitMultiplyAccumulate(HMultiplyAccumulate* A
 }
 
 void SchedulingLatencyVisitorARM::VisitArrayGet(HArrayGet* instruction) {
-  Primitive::Type type = instruction->GetType();
+  DataType::Type type = instruction->GetType();
   const bool maybe_compressed_char_at =
       mirror::kUseStringCompression && instruction->IsStringCharAt();
   HInstruction* array_instr = instruction->GetArray();
@@ -632,11 +632,11 @@ void SchedulingLatencyVisitorARM::VisitArrayGet(HArrayGet* instruction) {
   HInstruction* index = instruction->InputAt(1);
 
   switch (type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimInt: {
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt32: {
       if (maybe_compressed_char_at) {
         last_visited_internal_latency_ += kArmMemoryLoadLatency;
       }
@@ -664,7 +664,7 @@ void SchedulingLatencyVisitorARM::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimNot: {
+    case DataType::Type::kReference: {
       if (kEmitCompilerReadBarrier && kUseBakerReadBarrier) {
         last_visited_latency_ = kArmLoadWithBakerReadBarrierLatency;
       } else {
@@ -681,7 +681,7 @@ void SchedulingLatencyVisitorARM::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       if (index->IsConstant()) {
         last_visited_latency_ = kArmMemoryLoadLatency;
       } else {
@@ -691,7 +691,7 @@ void SchedulingLatencyVisitorARM::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimFloat: {
+    case DataType::Type::kFloat32: {
       if (index->IsConstant()) {
         last_visited_latency_ = kArmMemoryLoadLatency;
       } else {
@@ -701,7 +701,7 @@ void SchedulingLatencyVisitorARM::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat64: {
       if (index->IsConstant()) {
         last_visited_latency_ = kArmMemoryLoadLatency;
       } else {
@@ -727,16 +727,16 @@ void SchedulingLatencyVisitorARM::VisitArrayLength(HArrayLength* instruction) {
 
 void SchedulingLatencyVisitorARM::VisitArraySet(HArraySet* instruction) {
   HInstruction* index = instruction->InputAt(1);
-  Primitive::Type value_type = instruction->GetComponentType();
+  DataType::Type value_type = instruction->GetComponentType();
   HInstruction* array_instr = instruction->GetArray();
   bool has_intermediate_address = array_instr->IsIntermediateAddress();
 
   switch (value_type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimInt: {
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt32: {
       if (index->IsConstant()) {
         last_visited_latency_ = kArmMemoryStoreLatency;
       } else {
@@ -749,7 +749,7 @@ void SchedulingLatencyVisitorARM::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case Primitive::kPrimNot: {
+    case DataType::Type::kReference: {
       if (instruction->InputAt(2)->IsNullConstant()) {
         if (index->IsConstant()) {
           last_visited_latency_ = kArmMemoryStoreLatency;
@@ -765,7 +765,7 @@ void SchedulingLatencyVisitorARM::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       if (index->IsConstant()) {
         last_visited_latency_ = kArmMemoryLoadLatency;
       } else {
@@ -775,7 +775,7 @@ void SchedulingLatencyVisitorARM::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case Primitive::kPrimFloat: {
+    case DataType::Type::kFloat32: {
       if (index->IsConstant()) {
         last_visited_latency_ = kArmMemoryLoadLatency;
       } else {
@@ -785,7 +785,7 @@ void SchedulingLatencyVisitorARM::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat64: {
       if (index->IsConstant()) {
         last_visited_latency_ = kArmMemoryLoadLatency;
       } else {
@@ -823,9 +823,9 @@ void SchedulingLatencyVisitorARM::HandleDivRemConstantIntegralLatencies(int32_t 
 }
 
 void SchedulingLatencyVisitorARM::VisitDiv(HDiv* instruction) {
-  Primitive::Type type = instruction->GetResultType();
+  DataType::Type type = instruction->GetResultType();
   switch (type) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       HInstruction* rhs = instruction->GetRight();
       if (rhs->IsConstant()) {
         int32_t imm = Int32ConstantFrom(rhs->AsConstant());
@@ -835,10 +835,10 @@ void SchedulingLatencyVisitorARM::VisitDiv(HDiv* instruction) {
       }
       break;
     }
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       last_visited_latency_ = kArmDivFloatLatency;
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       last_visited_latency_ = kArmDivDoubleLatency;
       break;
     default:
@@ -886,9 +886,9 @@ void SchedulingLatencyVisitorARM::VisitNewInstance(HNewInstance* instruction) {
 }
 
 void SchedulingLatencyVisitorARM::VisitRem(HRem* instruction) {
-  Primitive::Type type = instruction->GetResultType();
+  DataType::Type type = instruction->GetResultType();
   switch (type) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       HInstruction* rhs = instruction->GetRight();
       if (rhs->IsConstant()) {
         int32_t imm = Int32ConstantFrom(rhs->AsConstant());
@@ -911,19 +911,19 @@ void SchedulingLatencyVisitorARM::HandleFieldGetLatencies(HInstruction* instruct
   DCHECK(instruction->IsInstanceFieldGet() || instruction->IsStaticFieldGet());
   DCHECK(codegen_ != nullptr);
   bool is_volatile = field_info.IsVolatile();
-  Primitive::Type field_type = field_info.GetFieldType();
+  DataType::Type field_type = field_info.GetFieldType();
   bool atomic_ldrd_strd = codegen_->GetInstructionSetFeatures().HasAtomicLdrdAndStrd();
 
   switch (field_type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimInt:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt32:
       last_visited_latency_ = kArmMemoryLoadLatency;
       break;
 
-    case Primitive::kPrimNot:
+    case DataType::Type::kReference:
       if (kEmitCompilerReadBarrier && kUseBakerReadBarrier) {
         last_visited_internal_latency_ = kArmMemoryLoadLatency + kArmIntegerOpLatency;
         last_visited_latency_ = kArmMemoryLoadLatency;
@@ -932,7 +932,7 @@ void SchedulingLatencyVisitorARM::HandleFieldGetLatencies(HInstruction* instruct
       }
       break;
 
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       if (is_volatile && !atomic_ldrd_strd) {
         last_visited_internal_latency_ = kArmMemoryLoadLatency + kArmIntegerOpLatency;
         last_visited_latency_ = kArmMemoryLoadLatency;
@@ -941,11 +941,11 @@ void SchedulingLatencyVisitorARM::HandleFieldGetLatencies(HInstruction* instruct
       }
       break;
 
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       last_visited_latency_ = kArmMemoryLoadLatency;
       break;
 
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       if (is_volatile && !atomic_ldrd_strd) {
         last_visited_internal_latency_ =
             kArmMemoryLoadLatency + kArmIntegerOpLatency + kArmMemoryLoadLatency;
@@ -970,16 +970,16 @@ void SchedulingLatencyVisitorARM::HandleFieldSetLatencies(HInstruction* instruct
   DCHECK(instruction->IsInstanceFieldSet() || instruction->IsStaticFieldSet());
   DCHECK(codegen_ != nullptr);
   bool is_volatile = field_info.IsVolatile();
-  Primitive::Type field_type = field_info.GetFieldType();
+  DataType::Type field_type = field_info.GetFieldType();
   bool needs_write_barrier =
       CodeGenerator::StoreNeedsWriteBarrier(field_type, instruction->InputAt(1));
   bool atomic_ldrd_strd = codegen_->GetInstructionSetFeatures().HasAtomicLdrdAndStrd();
 
   switch (field_type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16:
       if (is_volatile) {
         last_visited_internal_latency_ = kArmMemoryBarrierLatency + kArmMemoryStoreLatency;
         last_visited_latency_ = kArmMemoryBarrierLatency;
@@ -988,15 +988,15 @@ void SchedulingLatencyVisitorARM::HandleFieldSetLatencies(HInstruction* instruct
       }
       break;
 
-    case Primitive::kPrimInt:
-    case Primitive::kPrimNot:
+    case DataType::Type::kInt32:
+    case DataType::Type::kReference:
       if (kPoisonHeapReferences && needs_write_barrier) {
         last_visited_internal_latency_ += kArmIntegerOpLatency * 2;
       }
       last_visited_latency_ = kArmMemoryStoreLatency;
       break;
 
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       if (is_volatile && !atomic_ldrd_strd) {
         last_visited_internal_latency_ =
             kArmIntegerOpLatency + kArmMemoryLoadLatency + kArmMemoryStoreLatency;
@@ -1006,11 +1006,11 @@ void SchedulingLatencyVisitorARM::HandleFieldSetLatencies(HInstruction* instruct
       }
       break;
 
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       last_visited_latency_ = kArmMemoryStoreLatency;
       break;
 
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       if (is_volatile && !atomic_ldrd_strd) {
         last_visited_internal_latency_ = kArmIntegerOpLatency +
             kArmIntegerOpLatency + kArmMemoryLoadLatency + kArmMemoryStoreLatency;
@@ -1043,23 +1043,23 @@ void SchedulingLatencyVisitorARM::VisitSuspendCheck(HSuspendCheck* instruction) 
 }
 
 void SchedulingLatencyVisitorARM::VisitTypeConversion(HTypeConversion* instr) {
-  Primitive::Type result_type = instr->GetResultType();
-  Primitive::Type input_type = instr->GetInputType();
+  DataType::Type result_type = instr->GetResultType();
+  DataType::Type input_type = instr->GetInputType();
 
   switch (result_type) {
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       last_visited_latency_ = kArmIntegerOpLatency;  // SBFX or UBFX
       break;
 
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       switch (input_type) {
-        case Primitive::kPrimLong:
+        case DataType::Type::kInt64:
           last_visited_latency_ = kArmIntegerOpLatency;  // MOV
           break;
-        case Primitive::kPrimFloat:
-        case Primitive::kPrimDouble:
+        case DataType::Type::kFloat32:
+        case DataType::Type::kFloat64:
           last_visited_internal_latency_ = kArmTypeConversionFloatingPointIntegerLatency;
           last_visited_latency_ = kArmFloatingPointOpLatency;
           break;
@@ -1069,19 +1069,19 @@ void SchedulingLatencyVisitorARM::VisitTypeConversion(HTypeConversion* instr) {
       }
       break;
 
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       switch (input_type) {
-        case Primitive::kPrimBoolean:
-        case Primitive::kPrimByte:
-        case Primitive::kPrimChar:
-        case Primitive::kPrimShort:
-        case Primitive::kPrimInt:
+        case DataType::Type::kBool:
+        case DataType::Type::kInt8:
+        case DataType::Type::kUint16:
+        case DataType::Type::kInt16:
+        case DataType::Type::kInt32:
           // MOV and extension
           last_visited_internal_latency_ = kArmIntegerOpLatency;
           last_visited_latency_ = kArmIntegerOpLatency;
           break;
-        case Primitive::kPrimFloat:
-        case Primitive::kPrimDouble:
+        case DataType::Type::kFloat32:
+        case DataType::Type::kFloat64:
           // invokes runtime
           last_visited_internal_latency_ = kArmCallInternalLatency;
           break;
@@ -1092,21 +1092,21 @@ void SchedulingLatencyVisitorARM::VisitTypeConversion(HTypeConversion* instr) {
       }
       break;
 
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       switch (input_type) {
-        case Primitive::kPrimBoolean:
-        case Primitive::kPrimByte:
-        case Primitive::kPrimChar:
-        case Primitive::kPrimShort:
-        case Primitive::kPrimInt:
+        case DataType::Type::kBool:
+        case DataType::Type::kInt8:
+        case DataType::Type::kUint16:
+        case DataType::Type::kInt16:
+        case DataType::Type::kInt32:
           last_visited_internal_latency_ = kArmTypeConversionFloatingPointIntegerLatency;
           last_visited_latency_ = kArmFloatingPointOpLatency;
           break;
-        case Primitive::kPrimLong:
+        case DataType::Type::kInt64:
           // invokes runtime
           last_visited_internal_latency_ = kArmCallInternalLatency;
           break;
-        case Primitive::kPrimDouble:
+        case DataType::Type::kFloat64:
           last_visited_latency_ = kArmFloatingPointOpLatency;
           break;
         default:
@@ -1115,21 +1115,21 @@ void SchedulingLatencyVisitorARM::VisitTypeConversion(HTypeConversion* instr) {
       }
       break;
 
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       switch (input_type) {
-        case Primitive::kPrimBoolean:
-        case Primitive::kPrimByte:
-        case Primitive::kPrimChar:
-        case Primitive::kPrimShort:
-        case Primitive::kPrimInt:
+        case DataType::Type::kBool:
+        case DataType::Type::kInt8:
+        case DataType::Type::kUint16:
+        case DataType::Type::kInt16:
+        case DataType::Type::kInt32:
           last_visited_internal_latency_ = kArmTypeConversionFloatingPointIntegerLatency;
           last_visited_latency_ = kArmFloatingPointOpLatency;
           break;
-        case Primitive::kPrimLong:
+        case DataType::Type::kInt64:
           last_visited_internal_latency_ = 5 * kArmFloatingPointOpLatency;
           last_visited_latency_ = kArmFloatingPointOpLatency;
           break;
-        case Primitive::kPrimFloat:
+        case DataType::Type::kFloat32:
           last_visited_latency_ = kArmFloatingPointOpLatency;
           break;
         default:

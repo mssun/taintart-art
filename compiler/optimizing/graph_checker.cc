@@ -456,7 +456,7 @@ void GraphChecker::VisitInstruction(HInstruction* instruction) {
   }
 
   // Ensure that reference type instructions have reference type info.
-  if (instruction->GetType() == Primitive::kPrimNot) {
+  if (instruction->GetType() == DataType::Type::kReference) {
     if (!instruction->GetReferenceTypeInfo().IsValid()) {
       AddError(StringPrintf("Reference type instruction %s:%d does not have "
                             "valid reference type information.",
@@ -674,7 +674,7 @@ void GraphChecker::HandleLoop(HBasicBlock* loop_header) {
 static bool IsSameSizeConstant(const HInstruction* insn1, const HInstruction* insn2) {
   return insn1->IsConstant()
       && insn2->IsConstant()
-      && Primitive::Is64BitType(insn1->GetType()) == Primitive::Is64BitType(insn2->GetType());
+      && DataType::Is64BitType(insn1->GetType()) == DataType::Is64BitType(insn2->GetType());
 }
 
 static bool IsConstantEquivalent(const HInstruction* insn1,
@@ -721,20 +721,20 @@ void GraphChecker::VisitPhi(HPhi* phi) {
   // Ensure that the inputs have the same primitive kind as the phi.
   for (size_t i = 0; i < input_records.size(); ++i) {
     HInstruction* input = input_records[i].GetInstruction();
-    if (Primitive::PrimitiveKind(input->GetType()) != Primitive::PrimitiveKind(phi->GetType())) {
+    if (DataType::Kind(input->GetType()) != DataType::Kind(phi->GetType())) {
         AddError(StringPrintf(
             "Input %d at index %zu of phi %d from block %d does not have the "
             "same kind as the phi: %s versus %s",
             input->GetId(), i, phi->GetId(), phi->GetBlock()->GetBlockId(),
-            Primitive::PrettyDescriptor(input->GetType()),
-            Primitive::PrettyDescriptor(phi->GetType())));
+            DataType::PrettyDescriptor(input->GetType()),
+            DataType::PrettyDescriptor(phi->GetType())));
     }
   }
   if (phi->GetType() != HPhi::ToPhiType(phi->GetType())) {
     AddError(StringPrintf("Phi %d in block %d does not have an expected phi type: %s",
                           phi->GetId(),
                           phi->GetBlock()->GetBlockId(),
-                          Primitive::PrettyDescriptor(phi->GetType())));
+                          DataType::PrettyDescriptor(phi->GetType())));
   }
 
   if (phi->IsCatchPhi()) {
@@ -820,7 +820,7 @@ void GraphChecker::VisitPhi(HPhi* phi) {
                                 phi->GetId(),
                                 phi->GetRegNumber(),
                                 type_str.str().c_str()));
-        } else if (phi->GetType() == Primitive::kPrimNot) {
+        } else if (phi->GetType() == DataType::Type::kReference) {
           std::stringstream type_str;
           type_str << other_phi->GetType();
           AddError(StringPrintf(
@@ -859,7 +859,7 @@ void GraphChecker::HandleBooleanInput(HInstruction* instruction, size_t input_in
           static_cast<int>(input_index),
           value));
     }
-  } else if (Primitive::PrimitiveKind(input->GetType()) != Primitive::kPrimInt) {
+  } else if (DataType::Kind(input->GetType()) != DataType::Type::kInt32) {
     // TODO: We need a data-flow analysis to determine if an input like Phi,
     //       Select or a binary operation is actually Boolean. Allow for now.
     AddError(StringPrintf(
@@ -867,7 +867,7 @@ void GraphChecker::HandleBooleanInput(HInstruction* instruction, size_t input_in
         instruction->DebugName(),
         instruction->GetId(),
         static_cast<int>(input_index),
-        Primitive::PrettyDescriptor(input->GetType())));
+        DataType::PrettyDescriptor(input->GetType())));
   }
 }
 
@@ -904,27 +904,27 @@ void GraphChecker::VisitBooleanNot(HBooleanNot* instruction) {
 
 void GraphChecker::VisitCondition(HCondition* op) {
   VisitInstruction(op);
-  if (op->GetType() != Primitive::kPrimBoolean) {
+  if (op->GetType() != DataType::Type::kBool) {
     AddError(StringPrintf(
         "Condition %s %d has a non-Boolean result type: %s.",
         op->DebugName(), op->GetId(),
-        Primitive::PrettyDescriptor(op->GetType())));
+        DataType::PrettyDescriptor(op->GetType())));
   }
   HInstruction* lhs = op->InputAt(0);
   HInstruction* rhs = op->InputAt(1);
-  if (Primitive::PrimitiveKind(lhs->GetType()) != Primitive::PrimitiveKind(rhs->GetType())) {
+  if (DataType::Kind(lhs->GetType()) != DataType::Kind(rhs->GetType())) {
     AddError(StringPrintf(
         "Condition %s %d has inputs of different kinds: %s, and %s.",
         op->DebugName(), op->GetId(),
-        Primitive::PrettyDescriptor(lhs->GetType()),
-        Primitive::PrettyDescriptor(rhs->GetType())));
+        DataType::PrettyDescriptor(lhs->GetType()),
+        DataType::PrettyDescriptor(rhs->GetType())));
   }
   if (!op->IsEqual() && !op->IsNotEqual()) {
-    if ((lhs->GetType() == Primitive::kPrimNot)) {
+    if ((lhs->GetType() == DataType::Type::kReference)) {
       AddError(StringPrintf(
           "Condition %s %d uses an object as left-hand side input.",
           op->DebugName(), op->GetId()));
-    } else if (rhs->GetType() == Primitive::kPrimNot) {
+    } else if (rhs->GetType() == DataType::Type::kReference) {
       AddError(StringPrintf(
           "Condition %s %d uses an object as right-hand side input.",
           op->DebugName(), op->GetId()));
@@ -934,72 +934,72 @@ void GraphChecker::VisitCondition(HCondition* op) {
 
 void GraphChecker::VisitNeg(HNeg* instruction) {
   VisitInstruction(instruction);
-  Primitive::Type input_type = instruction->InputAt(0)->GetType();
-  Primitive::Type result_type = instruction->GetType();
-  if (result_type != Primitive::PrimitiveKind(input_type)) {
+  DataType::Type input_type = instruction->InputAt(0)->GetType();
+  DataType::Type result_type = instruction->GetType();
+  if (result_type != DataType::Kind(input_type)) {
     AddError(StringPrintf("Binary operation %s %d has a result type different "
                           "from its input kind: %s vs %s.",
                           instruction->DebugName(), instruction->GetId(),
-                          Primitive::PrettyDescriptor(result_type),
-                          Primitive::PrettyDescriptor(input_type)));
+                          DataType::PrettyDescriptor(result_type),
+                          DataType::PrettyDescriptor(input_type)));
   }
 }
 
 void GraphChecker::VisitBinaryOperation(HBinaryOperation* op) {
   VisitInstruction(op);
-  Primitive::Type lhs_type = op->InputAt(0)->GetType();
-  Primitive::Type rhs_type = op->InputAt(1)->GetType();
-  Primitive::Type result_type = op->GetType();
+  DataType::Type lhs_type = op->InputAt(0)->GetType();
+  DataType::Type rhs_type = op->InputAt(1)->GetType();
+  DataType::Type result_type = op->GetType();
 
   // Type consistency between inputs.
   if (op->IsUShr() || op->IsShr() || op->IsShl() || op->IsRor()) {
-    if (Primitive::PrimitiveKind(rhs_type) != Primitive::kPrimInt) {
+    if (DataType::Kind(rhs_type) != DataType::Type::kInt32) {
       AddError(StringPrintf("Shift/rotate operation %s %d has a non-int kind second input: "
                             "%s of type %s.",
                             op->DebugName(), op->GetId(),
                             op->InputAt(1)->DebugName(),
-                            Primitive::PrettyDescriptor(rhs_type)));
+                            DataType::PrettyDescriptor(rhs_type)));
     }
   } else {
-    if (Primitive::PrimitiveKind(lhs_type) != Primitive::PrimitiveKind(rhs_type)) {
+    if (DataType::Kind(lhs_type) != DataType::Kind(rhs_type)) {
       AddError(StringPrintf("Binary operation %s %d has inputs of different kinds: %s, and %s.",
                             op->DebugName(), op->GetId(),
-                            Primitive::PrettyDescriptor(lhs_type),
-                            Primitive::PrettyDescriptor(rhs_type)));
+                            DataType::PrettyDescriptor(lhs_type),
+                            DataType::PrettyDescriptor(rhs_type)));
     }
   }
 
   // Type consistency between result and input(s).
   if (op->IsCompare()) {
-    if (result_type != Primitive::kPrimInt) {
+    if (result_type != DataType::Type::kInt32) {
       AddError(StringPrintf("Compare operation %d has a non-int result type: %s.",
                             op->GetId(),
-                            Primitive::PrettyDescriptor(result_type)));
+                            DataType::PrettyDescriptor(result_type)));
     }
   } else if (op->IsUShr() || op->IsShr() || op->IsShl() || op->IsRor()) {
     // Only check the first input (value), as the second one (distance)
     // must invariably be of kind `int`.
-    if (result_type != Primitive::PrimitiveKind(lhs_type)) {
+    if (result_type != DataType::Kind(lhs_type)) {
       AddError(StringPrintf("Shift/rotate operation %s %d has a result type different "
                             "from its left-hand side (value) input kind: %s vs %s.",
                             op->DebugName(), op->GetId(),
-                            Primitive::PrettyDescriptor(result_type),
-                            Primitive::PrettyDescriptor(lhs_type)));
+                            DataType::PrettyDescriptor(result_type),
+                            DataType::PrettyDescriptor(lhs_type)));
     }
   } else {
-    if (Primitive::PrimitiveKind(result_type) != Primitive::PrimitiveKind(lhs_type)) {
+    if (DataType::Kind(result_type) != DataType::Kind(lhs_type)) {
       AddError(StringPrintf("Binary operation %s %d has a result kind different "
                             "from its left-hand side input kind: %s vs %s.",
                             op->DebugName(), op->GetId(),
-                            Primitive::PrettyDescriptor(result_type),
-                            Primitive::PrettyDescriptor(lhs_type)));
+                            DataType::PrettyDescriptor(result_type),
+                            DataType::PrettyDescriptor(lhs_type)));
     }
-    if (Primitive::PrimitiveKind(result_type) != Primitive::PrimitiveKind(rhs_type)) {
+    if (DataType::Kind(result_type) != DataType::Kind(rhs_type)) {
       AddError(StringPrintf("Binary operation %s %d has a result kind different "
                             "from its right-hand side input kind: %s vs %s.",
                             op->DebugName(), op->GetId(),
-                            Primitive::PrettyDescriptor(result_type),
-                            Primitive::PrettyDescriptor(rhs_type)));
+                            DataType::PrettyDescriptor(result_type),
+                            DataType::PrettyDescriptor(rhs_type)));
     }
   }
 }
@@ -1028,16 +1028,16 @@ void GraphChecker::VisitBoundType(HBoundType* instruction) {
 
 void GraphChecker::VisitTypeConversion(HTypeConversion* instruction) {
   VisitInstruction(instruction);
-  Primitive::Type result_type = instruction->GetResultType();
-  Primitive::Type input_type = instruction->GetInputType();
+  DataType::Type result_type = instruction->GetResultType();
+  DataType::Type input_type = instruction->GetInputType();
   // Invariant: We should never generate a conversion to a Boolean value.
-  if (result_type == Primitive::kPrimBoolean) {
+  if (result_type == DataType::Type::kBool) {
     AddError(StringPrintf(
         "%s %d converts to a %s (from a %s).",
         instruction->DebugName(),
         instruction->GetId(),
-        Primitive::PrettyDescriptor(result_type),
-        Primitive::PrettyDescriptor(input_type)));
+        DataType::PrettyDescriptor(result_type),
+        DataType::PrettyDescriptor(input_type)));
   }
 }
 

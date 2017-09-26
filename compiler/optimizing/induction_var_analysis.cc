@@ -56,17 +56,17 @@ static void RotateEntryPhiFirst(HLoopInformation* loop,
 /**
  * Returns true if the from/to types denote a narrowing, integral conversion (precision loss).
  */
-static bool IsNarrowingIntegralConversion(Primitive::Type from, Primitive::Type to) {
+static bool IsNarrowingIntegralConversion(DataType::Type from, DataType::Type to) {
   switch (from) {
-    case Primitive::kPrimLong:
-      return to == Primitive::kPrimByte || to == Primitive::kPrimShort
-          || to == Primitive::kPrimChar || to == Primitive::kPrimInt;
-    case Primitive::kPrimInt:
-      return to == Primitive::kPrimByte || to == Primitive::kPrimShort
-          || to == Primitive::kPrimChar;
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-      return to == Primitive::kPrimByte;
+    case DataType::Type::kInt64:
+      return to == DataType::Type::kInt8 || to == DataType::Type::kInt16
+          || to == DataType::Type::kUint16 || to == DataType::Type::kInt32;
+    case DataType::Type::kInt32:
+      return to == DataType::Type::kInt8 || to == DataType::Type::kInt16
+          || to == DataType::Type::kUint16;
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+      return to == DataType::Type::kInt8;
     default:
       return false;
   }
@@ -75,13 +75,13 @@ static bool IsNarrowingIntegralConversion(Primitive::Type from, Primitive::Type 
 /**
  * Returns result of implicit widening type conversion done in HIR.
  */
-static Primitive::Type ImplicitConversion(Primitive::Type type) {
+static DataType::Type ImplicitConversion(DataType::Type type) {
   switch (type) {
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimBoolean:
-      return Primitive::kPrimInt;
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt8:
+    case DataType::Type::kBool:
+      return DataType::Type::kInt32;
     default:
       return type;
   }
@@ -100,7 +100,7 @@ HInductionVarAnalysis::HInductionVarAnalysis(HGraph* graph)
       scc_(graph->GetArena()->Adapter(kArenaAllocInductionVarAnalysis)),
       cycle_(std::less<HInstruction*>(),
              graph->GetArena()->Adapter(kArenaAllocInductionVarAnalysis)),
-      type_(Primitive::kPrimVoid),
+      type_(DataType::Type::kVoid),
       induction_(std::less<HLoopInformation*>(),
                  graph->GetArena()->Adapter(kArenaAllocInductionVarAnalysis)),
       cycles_(std::less<HPhi*>(),
@@ -520,8 +520,8 @@ HInductionVarAnalysis::InductionInfo* HInductionVarAnalysis::TransferMul(Inducti
 
 HInductionVarAnalysis::InductionInfo* HInductionVarAnalysis::TransferConversion(
     InductionInfo* a,
-    Primitive::Type from,
-    Primitive::Type to) {
+    DataType::Type from,
+    DataType::Type to) {
   if (a != nullptr) {
     // Allow narrowing conversion on linear induction in certain cases:
     // induction is already at narrow type, or can be made narrower.
@@ -723,15 +723,15 @@ HInductionVarAnalysis::InductionInfo* HInductionVarAnalysis::SolveConversion(
     HLoopInformation* loop,
     HInstruction* entry_phi,
     HTypeConversion* conversion) {
-  Primitive::Type from = conversion->GetInputType();
-  Primitive::Type to = conversion->GetResultType();
+  DataType::Type from = conversion->GetInputType();
+  DataType::Type to = conversion->GetResultType();
   // A narrowing conversion is allowed as *last* operation of the cycle of a linear induction
   // with an initial value that fits the type, provided that the narrowest encountered type is
   // recorded with the induction to account for the precision loss. The narrower induction does
   // *not* transfer to any wider operations, however, since these may yield out-of-type values
   if (entry_phi->InputCount() == 2 && conversion == entry_phi->InputAt(1)) {
-    int64_t min = Primitive::MinValueOfIntegralType(to);
-    int64_t max = Primitive::MaxValueOfIntegralType(to);
+    int64_t min = DataType::MinValueOfIntegralType(to);
+    int64_t max = DataType::MaxValueOfIntegralType(to);
     int64_t value = 0;
     InductionInfo* initial = LookupInfo(loop, entry_phi->InputAt(0));
     if (IsNarrowingIntegralConversion(from, to) &&
@@ -761,7 +761,7 @@ void HInductionVarAnalysis::VisitControl(HLoopInformation* loop) {
       HCondition* condition = if_expr->AsCondition();
       InductionInfo* a = LookupInfo(loop, condition->InputAt(0));
       InductionInfo* b = LookupInfo(loop, condition->InputAt(1));
-      Primitive::Type type = ImplicitConversion(condition->InputAt(0)->GetType());
+      DataType::Type type = ImplicitConversion(condition->InputAt(0)->GetType());
       // Determine if the loop control uses a known sequence on an if-exit (X outside) or on
       // an if-iterate (X inside), expressed as if-iterate when passed into VisitCondition().
       if (a == nullptr || b == nullptr) {
@@ -778,7 +778,7 @@ void HInductionVarAnalysis::VisitControl(HLoopInformation* loop) {
 void HInductionVarAnalysis::VisitCondition(HLoopInformation* loop,
                                            InductionInfo* a,
                                            InductionInfo* b,
-                                           Primitive::Type type,
+                                           DataType::Type type,
                                            IfCondition cmp) {
   if (a->induction_class == kInvariant && b->induction_class == kLinear) {
     // Swap condition if induction is at right-hand-side (e.g. U > i is same as i < U).
@@ -809,7 +809,7 @@ void HInductionVarAnalysis::VisitCondition(HLoopInformation* loop,
     }
     // Only accept integral condition. A mismatch between the type of condition and the induction
     // is only allowed if the, necessarily narrower, induction range fits the narrower control.
-    if (type != Primitive::kPrimInt && type != Primitive::kPrimLong) {
+    if (type != DataType::Type::kInt32 && type != DataType::Type::kInt64) {
       return;  // not integral
     } else if (type != a->type &&
                !FitsNarrowerControl(lower_expr, upper_expr, stride_value, a->type, cmp)) {
@@ -830,7 +830,7 @@ void HInductionVarAnalysis::VisitTripCount(HLoopInformation* loop,
                                            InductionInfo* upper_expr,
                                            InductionInfo* stride_expr,
                                            int64_t stride_value,
-                                           Primitive::Type type,
+                                           DataType::Type type,
                                            IfCondition cmp) {
   // Any loop of the general form:
   //
@@ -931,10 +931,10 @@ bool HInductionVarAnalysis::IsTaken(InductionInfo* lower_expr,
 
 bool HInductionVarAnalysis::IsFinite(InductionInfo* upper_expr,
                                      int64_t stride_value,
-                                     Primitive::Type type,
+                                     DataType::Type type,
                                      IfCondition cmp) {
-  int64_t min = Primitive::MinValueOfIntegralType(type);
-  int64_t max = Primitive::MaxValueOfIntegralType(type);
+  int64_t min = DataType::MinValueOfIntegralType(type);
+  int64_t max = DataType::MaxValueOfIntegralType(type);
   // Some rules under which it is certain at compile-time that the loop is finite.
   int64_t value;
   switch (cmp) {
@@ -957,10 +957,10 @@ bool HInductionVarAnalysis::IsFinite(InductionInfo* upper_expr,
 bool HInductionVarAnalysis::FitsNarrowerControl(InductionInfo* lower_expr,
                                                 InductionInfo* upper_expr,
                                                 int64_t stride_value,
-                                                Primitive::Type type,
+                                                DataType::Type type,
                                                 IfCondition cmp) {
-  int64_t min = Primitive::MinValueOfIntegralType(type);
-  int64_t max = Primitive::MaxValueOfIntegralType(type);
+  int64_t min = DataType::MinValueOfIntegralType(type);
+  int64_t max = DataType::MaxValueOfIntegralType(type);
   // Inclusive test need one extra.
   if (stride_value != 1 && stride_value != -1) {
     return false;  // non-unit stride
@@ -1008,13 +1008,13 @@ HInductionVarAnalysis::InductionInfo* HInductionVarAnalysis::LookupInfo(HLoopInf
 }
 
 HInductionVarAnalysis::InductionInfo* HInductionVarAnalysis::CreateConstant(int64_t value,
-                                                                            Primitive::Type type) {
+                                                                            DataType::Type type) {
   HInstruction* constant;
   switch (type) {
-    case Primitive::kPrimDouble: constant = graph_->GetDoubleConstant(value); break;
-    case Primitive::kPrimFloat:  constant = graph_->GetFloatConstant(value);  break;
-    case Primitive::kPrimLong:   constant = graph_->GetLongConstant(value);   break;
-    default:                     constant = graph_->GetIntConstant(value);    break;
+    case DataType::Type::kFloat64: constant = graph_->GetDoubleConstant(value); break;
+    case DataType::Type::kFloat32: constant = graph_->GetFloatConstant(value);  break;
+    case DataType::Type::kInt64:   constant = graph_->GetLongConstant(value);   break;
+    default:                       constant = graph_->GetIntConstant(value);    break;
   }
   return CreateInvariantFetch(constant);
 }
@@ -1100,11 +1100,11 @@ HInstruction* HInductionVarAnalysis::GetShiftConstant(HLoopInformation* loop,
   InductionInfo* b = LookupInfo(loop, instruction->InputAt(1));
   int64_t value = -1;
   if (IsExact(b, &value)) {
-    Primitive::Type type = instruction->InputAt(0)->GetType();
-    if (type == Primitive::kPrimInt && 0 <= value && value < 31) {
+    DataType::Type type = instruction->InputAt(0)->GetType();
+    if (type == DataType::Type::kInt32 && 0 <= value && value < 31) {
       return graph_->GetIntConstant(1 << value);
     }
-    if (type == Primitive::kPrimLong && 0 <= value && value < 63) {
+    if (type == DataType::Type::kInt64 && 0 <= value && value < 63) {
       return graph_->GetLongConstant(1L << value);
     }
   }
@@ -1142,11 +1142,11 @@ bool HInductionVarAnalysis::IsAtLeast(InductionInfo* info, int64_t* value) {
 bool HInductionVarAnalysis::IsNarrowingLinear(InductionInfo* info) {
   return info != nullptr &&
       info->induction_class == kLinear &&
-      (info->type == Primitive::kPrimByte ||
-       info->type == Primitive::kPrimShort ||
-       info->type == Primitive::kPrimChar ||
-       (info->type == Primitive::kPrimInt && (info->op_a->type == Primitive::kPrimLong ||
-                                              info->op_b->type == Primitive::kPrimLong)));
+      (info->type == DataType::Type::kInt8 ||
+       info->type == DataType::Type::kInt16 ||
+       info->type == DataType::Type::kUint16 ||
+       (info->type == DataType::Type::kInt32 && (info->op_a->type == DataType::Type::kInt64 ||
+                                                 info->op_b->type == DataType::Type::kInt64)));
 }
 
 bool HInductionVarAnalysis::InductionEqual(InductionInfo* info1,
@@ -1207,12 +1207,12 @@ std::string HInductionVarAnalysis::InductionToString(InductionInfo* info) {
         DCHECK(info->operation == kNop);
         return "(" + InductionToString(info->op_a) + " * i + " +
                      InductionToString(info->op_b) + "):" +
-                     Primitive::PrettyDescriptor(info->type);
+                     DataType::PrettyDescriptor(info->type);
       } else if (info->induction_class == kPolynomial) {
         DCHECK(info->operation == kNop);
         return "poly(sum_lt(" + InductionToString(info->op_a) + ") + " +
                                 InductionToString(info->op_b) + "):" +
-                                Primitive::PrettyDescriptor(info->type);
+                                DataType::PrettyDescriptor(info->type);
       } else if (info->induction_class == kGeometric) {
         DCHECK(info->operation == kMul || info->operation == kDiv);
         DCHECK(info->fetch != nullptr);
@@ -1220,17 +1220,17 @@ std::string HInductionVarAnalysis::InductionToString(InductionInfo* info) {
                         FetchToString(info->fetch) +
                         (info->operation == kMul ? " ^ i + " : " ^ -i + ") +
                         InductionToString(info->op_b) + "):" +
-                        Primitive::PrettyDescriptor(info->type);
+                        DataType::PrettyDescriptor(info->type);
       } else if (info->induction_class == kWrapAround) {
         DCHECK(info->operation == kNop);
         return "wrap(" + InductionToString(info->op_a) + ", " +
                          InductionToString(info->op_b) + "):" +
-                         Primitive::PrettyDescriptor(info->type);
+                         DataType::PrettyDescriptor(info->type);
       } else if (info->induction_class == kPeriodic) {
         DCHECK(info->operation == kNop);
         return "periodic(" + InductionToString(info->op_a) + ", " +
                              InductionToString(info->op_b) + "):" +
-                             Primitive::PrettyDescriptor(info->type);
+                             DataType::PrettyDescriptor(info->type);
       }
     }
   }

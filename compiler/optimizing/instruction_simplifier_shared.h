@@ -26,10 +26,10 @@ namespace helpers {
 inline bool CanFitInShifterOperand(HInstruction* instruction) {
   if (instruction->IsTypeConversion()) {
     HTypeConversion* conversion = instruction->AsTypeConversion();
-    Primitive::Type result_type = conversion->GetResultType();
-    Primitive::Type input_type = conversion->GetInputType();
+    DataType::Type result_type = conversion->GetResultType();
+    DataType::Type input_type = conversion->GetInputType();
     // We don't expect to see the same type as input and result.
-    return Primitive::IsIntegralType(result_type) && Primitive::IsIntegralType(input_type) &&
+    return DataType::IsIntegralType(result_type) && DataType::IsIntegralType(input_type) &&
         (result_type != input_type);
   } else {
     return (instruction->IsShl() && instruction->AsShl()->InputAt(1)->IsIntConstant()) ||

@@ -450,10 +450,10 @@ class BoundsCheckSlowPathARMVIXL : public SlowPathCodeARMVIXL {
     codegen->EmitParallelMoves(
         locations->InAt(0),
         LocationFrom(calling_convention.GetRegisterAt(0)),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         locations->InAt(1),
         LocationFrom(calling_convention.GetRegisterAt(1)),
-        Primitive::kPrimInt);
+        DataType::Type::kInt32);
     QuickEntrypointEnum entrypoint = instruction_->AsBoundsCheck()->IsStringCharAt()
         ? kQuickThrowStringBounds
         : kQuickThrowArrayBounds;
@@ -641,10 +641,10 @@ class TypeCheckSlowPathARMVIXL : public SlowPathCodeARMVIXL {
 
     codegen->EmitParallelMoves(locations->InAt(0),
                                LocationFrom(calling_convention.GetRegisterAt(0)),
-                               Primitive::kPrimNot,
+                               DataType::Type::kReference,
                                locations->InAt(1),
                                LocationFrom(calling_convention.GetRegisterAt(1)),
-                               Primitive::kPrimNot);
+                               DataType::Type::kReference);
     if (instruction_->IsInstanceOf()) {
       arm_codegen->InvokeRuntime(kQuickInstanceofNonTrivial,
                                  instruction_,
@@ -715,17 +715,17 @@ class ArraySetSlowPathARMVIXL : public SlowPathCodeARMVIXL {
     parallel_move.AddMove(
         locations->InAt(0),
         LocationFrom(calling_convention.GetRegisterAt(0)),
-        Primitive::kPrimNot,
+        DataType::Type::kReference,
         nullptr);
     parallel_move.AddMove(
         locations->InAt(1),
         LocationFrom(calling_convention.GetRegisterAt(1)),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     parallel_move.AddMove(
         locations->InAt(2),
         LocationFrom(calling_convention.GetRegisterAt(2)),
-        Primitive::kPrimNot,
+        DataType::Type::kReference,
         nullptr);
     codegen->GetMoveResolver()->EmitNativeCode(&parallel_move);
 
@@ -1365,16 +1365,16 @@ class ReadBarrierForHeapReferenceSlowPathARMVIXL : public SlowPathCodeARMVIXL {
     HParallelMove parallel_move(codegen->GetGraph()->GetArena());
     parallel_move.AddMove(ref_,
                           LocationFrom(calling_convention.GetRegisterAt(0)),
-                          Primitive::kPrimNot,
+                          DataType::Type::kReference,
                           nullptr);
     parallel_move.AddMove(obj_,
                           LocationFrom(calling_convention.GetRegisterAt(1)),
-                          Primitive::kPrimNot,
+                          DataType::Type::kReference,
                           nullptr);
     if (index.IsValid()) {
       parallel_move.AddMove(index,
                             LocationFrom(calling_convention.GetRegisterAt(2)),
-                            Primitive::kPrimInt,
+                            DataType::Type::kInt32,
                             nullptr);
       codegen->GetMoveResolver()->EmitNativeCode(&parallel_move);
     } else {
@@ -1641,7 +1641,7 @@ static Operand GetShifterOperand(vixl32::Register rm, ShiftType shift, uint32_t 
 
 static void GenerateLongDataProc(HDataProcWithShifterOp* instruction,
                                  CodeGeneratorARMVIXL* codegen) {
-  DCHECK_EQ(instruction->GetType(), Primitive::kPrimLong);
+  DCHECK_EQ(instruction->GetType(), DataType::Type::kInt64);
   DCHECK(HDataProcWithShifterOp::IsShiftOp(instruction->GetOpKind()));
 
   const LocationSummary* const locations = instruction->GetLocations();
@@ -1776,12 +1776,12 @@ static void GenerateVcmp(HInstruction* instruction, CodeGeneratorARMVIXL* codege
     // care here.
     DCHECK(rhs_loc.GetConstant()->IsArithmeticZero());
 
-    const Primitive::Type type = instruction->InputAt(0)->GetType();
+    const DataType::Type type = instruction->InputAt(0)->GetType();
 
-    if (type == Primitive::kPrimFloat) {
+    if (type == DataType::Type::kFloat32) {
       __ Vcmp(F32, InputSRegisterAt(instruction, 0), 0.0);
     } else {
-      DCHECK_EQ(type, Primitive::kPrimDouble);
+      DCHECK_EQ(type, DataType::Type::kFloat64);
       __ Vcmp(F64, InputDRegisterAt(instruction, 0), 0.0);
     }
   } else {
@@ -1821,7 +1821,7 @@ static std::pair<vixl32::Condition, vixl32::Condition> GenerateLongTestConstant(
     HCondition* condition,
     bool invert,
     CodeGeneratorARMVIXL* codegen) {
-  DCHECK_EQ(condition->GetLeft()->GetType(), Primitive::kPrimLong);
+  DCHECK_EQ(condition->GetLeft()->GetType(), DataType::Type::kInt64);
 
   const LocationSummary* const locations = condition->GetLocations();
   IfCondition cond = condition->GetCondition();
@@ -1942,7 +1942,7 @@ static std::pair<vixl32::Condition, vixl32::Condition> GenerateLongTest(
     HCondition* condition,
     bool invert,
     CodeGeneratorARMVIXL* codegen) {
-  DCHECK_EQ(condition->GetLeft()->GetType(), Primitive::kPrimLong);
+  DCHECK_EQ(condition->GetLeft()->GetType(), DataType::Type::kInt64);
 
   const LocationSummary* const locations = condition->GetLocations();
   IfCondition cond = condition->GetCondition();
@@ -2012,7 +2012,7 @@ static std::pair<vixl32::Condition, vixl32::Condition> GenerateLongTest(
 static std::pair<vixl32::Condition, vixl32::Condition> GenerateTest(HCondition* condition,
                                                                     bool invert,
                                                                     CodeGeneratorARMVIXL* codegen) {
-  const Primitive::Type type = condition->GetLeft()->GetType();
+  const DataType::Type type = condition->GetLeft()->GetType();
   IfCondition cond = condition->GetCondition();
   IfCondition opposite = condition->GetOppositeCondition();
   std::pair<vixl32::Condition, vixl32::Condition> ret(eq, ne);
@@ -2021,17 +2021,17 @@ static std::pair<vixl32::Condition, vixl32::Condition> GenerateTest(HCondition* 
     std::swap(cond, opposite);
   }
 
-  if (type == Primitive::kPrimLong) {
+  if (type == DataType::Type::kInt64) {
     ret = condition->GetLocations()->InAt(1).IsConstant()
         ? GenerateLongTestConstant(condition, invert, codegen)
         : GenerateLongTest(condition, invert, codegen);
-  } else if (Primitive::IsFloatingPointType(type)) {
+  } else if (DataType::IsFloatingPointType(type)) {
     GenerateVcmp(condition, codegen);
     __ Vmrs(RegisterOrAPSR_nzcv(kPcCode), FPSCR);
     ret = std::make_pair(ARMFPCondition(cond, condition->IsGtBias()),
                          ARMFPCondition(opposite, condition->IsGtBias()));
   } else {
-    DCHECK(Primitive::IsIntegralType(type) || type == Primitive::kPrimNot) << type;
+    DCHECK(DataType::IsIntegralType(type) || type == DataType::Type::kReference) << type;
     __ Cmp(InputRegisterAt(condition, 0), InputOperandAt(condition, 1));
     ret = std::make_pair(ARMCondition(cond), ARMCondition(opposite));
   }
@@ -2067,7 +2067,7 @@ static void GenerateConditionGeneric(HCondition* cond, CodeGeneratorARMVIXL* cod
 }
 
 static void GenerateEqualLong(HCondition* cond, CodeGeneratorARMVIXL* codegen) {
-  DCHECK_EQ(cond->GetLeft()->GetType(), Primitive::kPrimLong);
+  DCHECK_EQ(cond->GetLeft()->GetType(), DataType::Type::kInt64);
 
   const LocationSummary* const locations = cond->GetLocations();
   IfCondition condition = cond->GetCondition();
@@ -2123,7 +2123,7 @@ static void GenerateEqualLong(HCondition* cond, CodeGeneratorARMVIXL* codegen) {
 }
 
 static void GenerateConditionLong(HCondition* cond, CodeGeneratorARMVIXL* codegen) {
-  DCHECK_EQ(cond->GetLeft()->GetType(), Primitive::kPrimLong);
+  DCHECK_EQ(cond->GetLeft()->GetType(), DataType::Type::kInt64);
 
   const LocationSummary* const locations = cond->GetLocations();
   IfCondition condition = cond->GetCondition();
@@ -2188,11 +2188,11 @@ static void GenerateConditionLong(HCondition* cond, CodeGeneratorARMVIXL* codege
 
 static void GenerateConditionIntegralOrNonPrimitive(HCondition* cond,
                                                     CodeGeneratorARMVIXL* codegen) {
-  const Primitive::Type type = cond->GetLeft()->GetType();
+  const DataType::Type type = cond->GetLeft()->GetType();
 
-  DCHECK(Primitive::IsIntegralType(type) || type == Primitive::kPrimNot) << type;
+  DCHECK(DataType::IsIntegralType(type) || type == DataType::Type::kReference) << type;
 
-  if (type == Primitive::kPrimLong) {
+  if (type == DataType::Type::kInt64) {
     GenerateConditionLong(cond, codegen);
     return;
   }
@@ -2278,12 +2278,12 @@ static void GenerateConditionIntegralOrNonPrimitive(HCondition* cond,
 }
 
 static bool CanEncodeConstantAs8BitImmediate(HConstant* constant) {
-  const Primitive::Type type = constant->GetType();
+  const DataType::Type type = constant->GetType();
   bool ret = false;
 
-  DCHECK(Primitive::IsIntegralType(type) || type == Primitive::kPrimNot) << type;
+  DCHECK(DataType::IsIntegralType(type) || type == DataType::Type::kReference) << type;
 
-  if (type == Primitive::kPrimLong) {
+  if (type == DataType::Type::kInt64) {
     const uint64_t value = Uint64ConstantFrom(constant);
 
     ret = IsUint<8>(Low32Bits(value)) && IsUint<8>(High32Bits(value));
@@ -2295,7 +2295,7 @@ static bool CanEncodeConstantAs8BitImmediate(HConstant* constant) {
 }
 
 static Location Arm8BitEncodableConstantOrRegister(HInstruction* constant) {
-  DCHECK(!Primitive::IsFloatingPointType(constant->GetType()));
+  DCHECK(!DataType::IsFloatingPointType(constant->GetType()));
 
   if (constant->IsConstant() && CanEncodeConstantAs8BitImmediate(constant->AsConstant())) {
     return Location::ConstantLocation(constant->AsConstant());
@@ -2596,14 +2596,14 @@ void CodeGeneratorARMVIXL::Bind(HBasicBlock* block) {
   __ Bind(GetLabelOf(block));
 }
 
-Location InvokeDexCallingConventionVisitorARMVIXL::GetNextLocation(Primitive::Type type) {
+Location InvokeDexCallingConventionVisitorARMVIXL::GetNextLocation(DataType::Type type) {
   switch (type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimNot: {
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kReference: {
       uint32_t index = gp_index_++;
       uint32_t stack_index = stack_index_++;
       if (index < calling_convention.GetNumberOfRegisters()) {
@@ -2613,7 +2613,7 @@ Location InvokeDexCallingConventionVisitorARMVIXL::GetNextLocation(Primitive::Ty
       }
     }
 
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       uint32_t index = gp_index_;
       uint32_t stack_index = stack_index_;
       gp_index_ += 2;
@@ -2636,7 +2636,7 @@ Location InvokeDexCallingConventionVisitorARMVIXL::GetNextLocation(Primitive::Ty
       }
     }
 
-    case Primitive::kPrimFloat: {
+    case DataType::Type::kFloat32: {
       uint32_t stack_index = stack_index_++;
       if (float_index_ % 2 == 0) {
         float_index_ = std::max(double_index_, float_index_);
@@ -2648,7 +2648,7 @@ Location InvokeDexCallingConventionVisitorARMVIXL::GetNextLocation(Primitive::Ty
       }
     }
 
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat64: {
       double_index_ = std::max(double_index_, RoundUp(float_index_, 2));
       uint32_t stack_index = stack_index_;
       stack_index_ += 2;
@@ -2665,37 +2665,37 @@ Location InvokeDexCallingConventionVisitorARMVIXL::GetNextLocation(Primitive::Ty
       }
     }
 
-    case Primitive::kPrimVoid:
+    case DataType::Type::kVoid:
       LOG(FATAL) << "Unexpected parameter type " << type;
       break;
   }
   return Location::NoLocation();
 }
 
-Location InvokeDexCallingConventionVisitorARMVIXL::GetReturnLocation(Primitive::Type type) const {
+Location InvokeDexCallingConventionVisitorARMVIXL::GetReturnLocation(DataType::Type type) const {
   switch (type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimNot: {
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kReference: {
       return LocationFrom(r0);
     }
 
-    case Primitive::kPrimFloat: {
+    case DataType::Type::kFloat32: {
       return LocationFrom(s0);
     }
 
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       return LocationFrom(r0, r1);
     }
 
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat64: {
       return LocationFrom(s0, s1);
     }
 
-    case Primitive::kPrimVoid:
+    case DataType::Type::kVoid:
       return Location::NoLocation();
   }
 
@@ -2753,7 +2753,7 @@ void CodeGeneratorARMVIXL::MoveConstant(Location location, int32_t value) {
   __ Mov(RegisterFrom(location), value);
 }
 
-void CodeGeneratorARMVIXL::MoveLocation(Location dst, Location src, Primitive::Type dst_type) {
+void CodeGeneratorARMVIXL::MoveLocation(Location dst, Location src, DataType::Type dst_type) {
   // TODO(VIXL): Maybe refactor to have the 'move' implementation here and use it in
   // `ParallelMoveResolverARMVIXL::EmitMove`, as is done in the `arm64` backend.
   HParallelMove move(GetGraph()->GetArena());
@@ -2936,8 +2936,8 @@ void InstructionCodeGeneratorARMVIXL::GenerateTestAndBranch(HInstruction* instru
 
     // If this is a long or FP comparison that has been folded into
     // the HCondition, generate the comparison directly.
-    Primitive::Type type = condition->InputAt(0)->GetType();
-    if (type == Primitive::kPrimLong || Primitive::IsFloatingPointType(type)) {
+    DataType::Type type = condition->InputAt(0)->GetType();
+    if (type == DataType::Type::kInt64 || DataType::IsFloatingPointType(type)) {
       GenerateCompareTestAndBranch(condition, true_target, false_target, far_target);
       return;
     }
@@ -3028,7 +3028,7 @@ void InstructionCodeGeneratorARMVIXL::VisitShouldDeoptimizeFlag(HShouldDeoptimiz
 
 void LocationsBuilderARMVIXL::VisitSelect(HSelect* select) {
   LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(select);
-  const bool is_floating_point = Primitive::IsFloatingPointType(select->GetType());
+  const bool is_floating_point = DataType::IsFloatingPointType(select->GetType());
 
   if (is_floating_point) {
     locations->SetInAt(0, Location::RequiresFpuRegister());
@@ -3056,7 +3056,7 @@ void LocationsBuilderARMVIXL::VisitSelect(HSelect* select) {
 void InstructionCodeGeneratorARMVIXL::VisitSelect(HSelect* select) {
   HInstruction* const condition = select->GetCondition();
   const LocationSummary* const locations = select->GetLocations();
-  const Primitive::Type type = select->GetType();
+  const DataType::Type type = select->GetType();
   const Location first = locations->InAt(0);
   const Location out = locations->Out();
   const Location second = locations->InAt(1);
@@ -3073,7 +3073,7 @@ void InstructionCodeGeneratorARMVIXL::VisitSelect(HSelect* select) {
     return;
   }
 
-  if (!Primitive::IsFloatingPointType(type)) {
+  if (!DataType::IsFloatingPointType(type)) {
     bool invert = false;
 
     if (out.Equals(second)) {
@@ -3261,7 +3261,7 @@ void LocationsBuilderARMVIXL::HandleCondition(HCondition* cond) {
       new (GetGraph()->GetArena()) LocationSummary(cond, LocationSummary::kNoCall);
   // Handle the long/FP comparisons made in instruction simplification.
   switch (cond->InputAt(0)->GetType()) {
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RegisterOrConstant(cond->InputAt(1)));
       if (!cond->IsEmittedAtUseSite()) {
@@ -3269,8 +3269,8 @@ void LocationsBuilderARMVIXL::HandleCondition(HCondition* cond) {
       }
       break;
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetInAt(1, ArithmeticZeroOrFpuRegister(cond->InputAt(1)));
       if (!cond->IsEmittedAtUseSite()) {
@@ -3292,22 +3292,22 @@ void InstructionCodeGeneratorARMVIXL::HandleCondition(HCondition* cond) {
     return;
   }
 
-  const Primitive::Type type = cond->GetLeft()->GetType();
+  const DataType::Type type = cond->GetLeft()->GetType();
 
-  if (Primitive::IsFloatingPointType(type)) {
+  if (DataType::IsFloatingPointType(type)) {
     GenerateConditionGeneric(cond, codegen_);
     return;
   }
 
-  DCHECK(Primitive::IsIntegralType(type) || type == Primitive::kPrimNot) << type;
+  DCHECK(DataType::IsIntegralType(type) || type == DataType::Type::kReference) << type;
 
   const IfCondition condition = cond->GetCondition();
 
   // A condition with only one boolean input, or two boolean inputs without being equality or
   // inequality results from transformations done by the instruction simplifier, and is handled
   // as a regular condition with integral inputs.
-  if (type == Primitive::kPrimBoolean &&
-      cond->GetRight()->GetType() == Primitive::kPrimBoolean &&
+  if (type == DataType::Type::kBool &&
+      cond->GetRight()->GetType() == DataType::Type::kBool &&
       (condition == kCondEQ || condition == kCondNE)) {
     vixl32::Register left = InputRegisterAt(cond, 0);
     const vixl32::Register out = OutputRegister(cond);
@@ -3670,19 +3670,19 @@ void LocationsBuilderARMVIXL::VisitNeg(HNeg* neg) {
   LocationSummary* locations =
       new (GetGraph()->GetArena()) LocationSummary(neg, LocationSummary::kNoCall);
   switch (neg->GetResultType()) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
       break;
     }
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetOut(Location::RequiresRegister(), Location::kOutputOverlap);
       break;
     }
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
       break;
@@ -3697,11 +3697,11 @@ void InstructionCodeGeneratorARMVIXL::VisitNeg(HNeg* neg) {
   Location out = locations->Out();
   Location in = locations->InAt(0);
   switch (neg->GetResultType()) {
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       __ Rsb(OutputRegister(neg), InputRegisterAt(neg, 0), 0);
       break;
 
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       // out.lo = 0 - in.lo (and update the carry/borrow (C) flag)
       __ Rsbs(LowRegisterFrom(out), LowRegisterFrom(in), 0);
       // We cannot emit an RSC (Reverse Subtract with Carry)
@@ -3715,8 +3715,8 @@ void InstructionCodeGeneratorARMVIXL::VisitNeg(HNeg* neg) {
       __ Sub(HighRegisterFrom(out), HighRegisterFrom(out), HighRegisterFrom(in));
       break;
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       __ Vneg(OutputVRegister(neg), InputVRegister(neg));
       break;
 
@@ -3726,16 +3726,16 @@ void InstructionCodeGeneratorARMVIXL::VisitNeg(HNeg* neg) {
 }
 
 void LocationsBuilderARMVIXL::VisitTypeConversion(HTypeConversion* conversion) {
-  Primitive::Type result_type = conversion->GetResultType();
-  Primitive::Type input_type = conversion->GetInputType();
+  DataType::Type result_type = conversion->GetResultType();
+  DataType::Type input_type = conversion->GetInputType();
   DCHECK_NE(result_type, input_type);
 
   // The float-to-long, double-to-long and long-to-float type conversions
   // rely on a call to the runtime.
   LocationSummary::CallKind call_kind =
-      (((input_type == Primitive::kPrimFloat || input_type == Primitive::kPrimDouble)
-        && result_type == Primitive::kPrimLong)
-       || (input_type == Primitive::kPrimLong && result_type == Primitive::kPrimFloat))
+      (((input_type == DataType::Type::kFloat32 || input_type == DataType::Type::kFloat64)
+        && result_type == DataType::Type::kInt64)
+       || (input_type == DataType::Type::kInt64 && result_type == DataType::Type::kFloat32))
       ? LocationSummary::kCallOnMainOnly
       : LocationSummary::kNoCall;
   LocationSummary* locations =
@@ -3745,15 +3745,15 @@ void LocationsBuilderARMVIXL::VisitTypeConversion(HTypeConversion* conversion) {
   // our bit representation makes it safe.
 
   switch (result_type) {
-    case Primitive::kPrimByte:
+    case DataType::Type::kInt8:
       switch (input_type) {
-        case Primitive::kPrimLong:
+        case DataType::Type::kInt64:
           // Type conversion from long to byte is a result of code transformations.
-        case Primitive::kPrimBoolean:
+        case DataType::Type::kBool:
           // Boolean input is a result of code transformations.
-        case Primitive::kPrimShort:
-        case Primitive::kPrimInt:
-        case Primitive::kPrimChar:
+        case DataType::Type::kInt16:
+        case DataType::Type::kInt32:
+        case DataType::Type::kUint16:
           // Processing a Dex `int-to-byte' instruction.
           locations->SetInAt(0, Location::RequiresRegister());
           locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
@@ -3765,15 +3765,15 @@ void LocationsBuilderARMVIXL::VisitTypeConversion(HTypeConversion* conversion) {
       }
       break;
 
-    case Primitive::kPrimShort:
+    case DataType::Type::kInt16:
       switch (input_type) {
-        case Primitive::kPrimLong:
+        case DataType::Type::kInt64:
           // Type conversion from long to short is a result of code transformations.
-        case Primitive::kPrimBoolean:
+        case DataType::Type::kBool:
           // Boolean input is a result of code transformations.
-        case Primitive::kPrimByte:
-        case Primitive::kPrimInt:
-        case Primitive::kPrimChar:
+        case DataType::Type::kInt8:
+        case DataType::Type::kInt32:
+        case DataType::Type::kUint16:
           // Processing a Dex `int-to-short' instruction.
           locations->SetInAt(0, Location::RequiresRegister());
           locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
@@ -3785,22 +3785,22 @@ void LocationsBuilderARMVIXL::VisitTypeConversion(HTypeConversion* conversion) {
       }
       break;
 
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       switch (input_type) {
-        case Primitive::kPrimLong:
+        case DataType::Type::kInt64:
           // Processing a Dex `long-to-int' instruction.
           locations->SetInAt(0, Location::Any());
           locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
           break;
 
-        case Primitive::kPrimFloat:
+        case DataType::Type::kFloat32:
           // Processing a Dex `float-to-int' instruction.
           locations->SetInAt(0, Location::RequiresFpuRegister());
           locations->SetOut(Location::RequiresRegister());
           locations->AddTemp(Location::RequiresFpuRegister());
           break;
 
-        case Primitive::kPrimDouble:
+        case DataType::Type::kFloat64:
           // Processing a Dex `double-to-int' instruction.
           locations->SetInAt(0, Location::RequiresFpuRegister());
           locations->SetOut(Location::RequiresRegister());
@@ -3813,20 +3813,20 @@ void LocationsBuilderARMVIXL::VisitTypeConversion(HTypeConversion* conversion) {
       }
       break;
 
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       switch (input_type) {
-        case Primitive::kPrimBoolean:
+        case DataType::Type::kBool:
           // Boolean input is a result of code transformations.
-        case Primitive::kPrimByte:
-        case Primitive::kPrimShort:
-        case Primitive::kPrimInt:
-        case Primitive::kPrimChar:
+        case DataType::Type::kInt8:
+        case DataType::Type::kInt16:
+        case DataType::Type::kInt32:
+        case DataType::Type::kUint16:
           // Processing a Dex `int-to-long' instruction.
           locations->SetInAt(0, Location::RequiresRegister());
           locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
           break;
 
-        case Primitive::kPrimFloat: {
+        case DataType::Type::kFloat32: {
           // Processing a Dex `float-to-long' instruction.
           InvokeRuntimeCallingConventionARMVIXL calling_convention;
           locations->SetInAt(0, LocationFrom(calling_convention.GetFpuRegisterAt(0)));
@@ -3834,7 +3834,7 @@ void LocationsBuilderARMVIXL::VisitTypeConversion(HTypeConversion* conversion) {
           break;
         }
 
-        case Primitive::kPrimDouble: {
+        case DataType::Type::kFloat64: {
           // Processing a Dex `double-to-long' instruction.
           InvokeRuntimeCallingConventionARMVIXL calling_convention;
           locations->SetInAt(0, LocationFrom(calling_convention.GetFpuRegisterAt(0),
@@ -3849,15 +3849,15 @@ void LocationsBuilderARMVIXL::VisitTypeConversion(HTypeConversion* conversion) {
       }
       break;
 
-    case Primitive::kPrimChar:
+    case DataType::Type::kUint16:
       switch (input_type) {
-        case Primitive::kPrimLong:
+        case DataType::Type::kInt64:
           // Type conversion from long to char is a result of code transformations.
-        case Primitive::kPrimBoolean:
+        case DataType::Type::kBool:
           // Boolean input is a result of code transformations.
-        case Primitive::kPrimByte:
-        case Primitive::kPrimShort:
-        case Primitive::kPrimInt:
+        case DataType::Type::kInt8:
+        case DataType::Type::kInt16:
+        case DataType::Type::kInt32:
           // Processing a Dex `int-to-char' instruction.
           locations->SetInAt(0, Location::RequiresRegister());
           locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
@@ -3869,20 +3869,20 @@ void LocationsBuilderARMVIXL::VisitTypeConversion(HTypeConversion* conversion) {
       }
       break;
 
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       switch (input_type) {
-        case Primitive::kPrimBoolean:
+        case DataType::Type::kBool:
           // Boolean input is a result of code transformations.
-        case Primitive::kPrimByte:
-        case Primitive::kPrimShort:
-        case Primitive::kPrimInt:
-        case Primitive::kPrimChar:
+        case DataType::Type::kInt8:
+        case DataType::Type::kInt16:
+        case DataType::Type::kInt32:
+        case DataType::Type::kUint16:
           // Processing a Dex `int-to-float' instruction.
           locations->SetInAt(0, Location::RequiresRegister());
           locations->SetOut(Location::RequiresFpuRegister());
           break;
 
-        case Primitive::kPrimLong: {
+        case DataType::Type::kInt64: {
           // Processing a Dex `long-to-float' instruction.
           InvokeRuntimeCallingConventionARMVIXL calling_convention;
           locations->SetInAt(0, LocationFrom(calling_convention.GetRegisterAt(0),
@@ -3891,7 +3891,7 @@ void LocationsBuilderARMVIXL::VisitTypeConversion(HTypeConversion* conversion) {
           break;
         }
 
-        case Primitive::kPrimDouble:
+        case DataType::Type::kFloat64:
           // Processing a Dex `double-to-float' instruction.
           locations->SetInAt(0, Location::RequiresFpuRegister());
           locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
@@ -3903,20 +3903,20 @@ void LocationsBuilderARMVIXL::VisitTypeConversion(HTypeConversion* conversion) {
       };
       break;
 
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       switch (input_type) {
-        case Primitive::kPrimBoolean:
+        case DataType::Type::kBool:
           // Boolean input is a result of code transformations.
-        case Primitive::kPrimByte:
-        case Primitive::kPrimShort:
-        case Primitive::kPrimInt:
-        case Primitive::kPrimChar:
+        case DataType::Type::kInt8:
+        case DataType::Type::kInt16:
+        case DataType::Type::kInt32:
+        case DataType::Type::kUint16:
           // Processing a Dex `int-to-double' instruction.
           locations->SetInAt(0, Location::RequiresRegister());
           locations->SetOut(Location::RequiresFpuRegister());
           break;
 
-        case Primitive::kPrimLong:
+        case DataType::Type::kInt64:
           // Processing a Dex `long-to-double' instruction.
           locations->SetInAt(0, Location::RequiresRegister());
           locations->SetOut(Location::RequiresFpuRegister());
@@ -3924,7 +3924,7 @@ void LocationsBuilderARMVIXL::VisitTypeConversion(HTypeConversion* conversion) {
           locations->AddTemp(Location::RequiresFpuRegister());
           break;
 
-        case Primitive::kPrimFloat:
+        case DataType::Type::kFloat32:
           // Processing a Dex `float-to-double' instruction.
           locations->SetInAt(0, Location::RequiresFpuRegister());
           locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
@@ -3946,21 +3946,21 @@ void InstructionCodeGeneratorARMVIXL::VisitTypeConversion(HTypeConversion* conve
   LocationSummary* locations = conversion->GetLocations();
   Location out = locations->Out();
   Location in = locations->InAt(0);
-  Primitive::Type result_type = conversion->GetResultType();
-  Primitive::Type input_type = conversion->GetInputType();
+  DataType::Type result_type = conversion->GetResultType();
+  DataType::Type input_type = conversion->GetInputType();
   DCHECK_NE(result_type, input_type);
   switch (result_type) {
-    case Primitive::kPrimByte:
+    case DataType::Type::kInt8:
       switch (input_type) {
-        case Primitive::kPrimLong:
+        case DataType::Type::kInt64:
           // Type conversion from long to byte is a result of code transformations.
           __ Sbfx(OutputRegister(conversion), LowRegisterFrom(in), 0, 8);
           break;
-        case Primitive::kPrimBoolean:
+        case DataType::Type::kBool:
           // Boolean input is a result of code transformations.
-        case Primitive::kPrimShort:
-        case Primitive::kPrimInt:
-        case Primitive::kPrimChar:
+        case DataType::Type::kInt16:
+        case DataType::Type::kInt32:
+        case DataType::Type::kUint16:
           // Processing a Dex `int-to-byte' instruction.
           __ Sbfx(OutputRegister(conversion), InputRegisterAt(conversion, 0), 0, 8);
           break;
@@ -3971,17 +3971,17 @@ void InstructionCodeGeneratorARMVIXL::VisitTypeConversion(HTypeConversion* conve
       }
       break;
 
-    case Primitive::kPrimShort:
+    case DataType::Type::kInt16:
       switch (input_type) {
-        case Primitive::kPrimLong:
+        case DataType::Type::kInt64:
           // Type conversion from long to short is a result of code transformations.
           __ Sbfx(OutputRegister(conversion), LowRegisterFrom(in), 0, 16);
           break;
-        case Primitive::kPrimBoolean:
+        case DataType::Type::kBool:
           // Boolean input is a result of code transformations.
-        case Primitive::kPrimByte:
-        case Primitive::kPrimInt:
-        case Primitive::kPrimChar:
+        case DataType::Type::kInt8:
+        case DataType::Type::kInt32:
+        case DataType::Type::kUint16:
           // Processing a Dex `int-to-short' instruction.
           __ Sbfx(OutputRegister(conversion), InputRegisterAt(conversion, 0), 0, 16);
           break;
@@ -3992,9 +3992,9 @@ void InstructionCodeGeneratorARMVIXL::VisitTypeConversion(HTypeConversion* conve
       }
       break;
 
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       switch (input_type) {
-        case Primitive::kPrimLong:
+        case DataType::Type::kInt64:
           // Processing a Dex `long-to-int' instruction.
           DCHECK(out.IsRegister());
           if (in.IsRegisterPair()) {
@@ -4012,7 +4012,7 @@ void InstructionCodeGeneratorARMVIXL::VisitTypeConversion(HTypeConversion* conve
           }
           break;
 
-        case Primitive::kPrimFloat: {
+        case DataType::Type::kFloat32: {
           // Processing a Dex `float-to-int' instruction.
           vixl32::SRegister temp = LowSRegisterFrom(locations->GetTemp(0));
           __ Vcvt(S32, F32, temp, InputSRegisterAt(conversion, 0));
@@ -4020,7 +4020,7 @@ void InstructionCodeGeneratorARMVIXL::VisitTypeConversion(HTypeConversion* conve
           break;
         }
 
-        case Primitive::kPrimDouble: {
+        case DataType::Type::kFloat64: {
           // Processing a Dex `double-to-int' instruction.
           vixl32::SRegister temp_s = LowSRegisterFrom(locations->GetTemp(0));
           __ Vcvt(S32, F64, temp_s, DRegisterFrom(in));
@@ -4034,14 +4034,14 @@ void InstructionCodeGeneratorARMVIXL::VisitTypeConversion(HTypeConversion* conve
       }
       break;
 
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       switch (input_type) {
-        case Primitive::kPrimBoolean:
+        case DataType::Type::kBool:
           // Boolean input is a result of code transformations.
-        case Primitive::kPrimByte:
-        case Primitive::kPrimShort:
-        case Primitive::kPrimInt:
-        case Primitive::kPrimChar:
+        case DataType::Type::kInt8:
+        case DataType::Type::kInt16:
+        case DataType::Type::kInt32:
+        case DataType::Type::kUint16:
           // Processing a Dex `int-to-long' instruction.
           DCHECK(out.IsRegisterPair());
           DCHECK(in.IsRegister());
@@ -4050,13 +4050,13 @@ void InstructionCodeGeneratorARMVIXL::VisitTypeConversion(HTypeConversion* conve
           __ Asr(HighRegisterFrom(out), LowRegisterFrom(out), 31);
           break;
 
-        case Primitive::kPrimFloat:
+        case DataType::Type::kFloat32:
           // Processing a Dex `float-to-long' instruction.
           codegen_->InvokeRuntime(kQuickF2l, conversion, conversion->GetDexPc());
           CheckEntrypointTypes<kQuickF2l, int64_t, float>();
           break;
 
-        case Primitive::kPrimDouble:
+        case DataType::Type::kFloat64:
           // Processing a Dex `double-to-long' instruction.
           codegen_->InvokeRuntime(kQuickD2l, conversion, conversion->GetDexPc());
           CheckEntrypointTypes<kQuickD2l, int64_t, double>();
@@ -4068,17 +4068,17 @@ void InstructionCodeGeneratorARMVIXL::VisitTypeConversion(HTypeConversion* conve
       }
       break;
 
-    case Primitive::kPrimChar:
+    case DataType::Type::kUint16:
       switch (input_type) {
-        case Primitive::kPrimLong:
+        case DataType::Type::kInt64:
           // Type conversion from long to char is a result of code transformations.
           __ Ubfx(OutputRegister(conversion), LowRegisterFrom(in), 0, 16);
           break;
-        case Primitive::kPrimBoolean:
+        case DataType::Type::kBool:
           // Boolean input is a result of code transformations.
-        case Primitive::kPrimByte:
-        case Primitive::kPrimShort:
-        case Primitive::kPrimInt:
+        case DataType::Type::kInt8:
+        case DataType::Type::kInt16:
+        case DataType::Type::kInt32:
           // Processing a Dex `int-to-char' instruction.
           __ Ubfx(OutputRegister(conversion), InputRegisterAt(conversion, 0), 0, 16);
           break;
@@ -4089,27 +4089,27 @@ void InstructionCodeGeneratorARMVIXL::VisitTypeConversion(HTypeConversion* conve
       }
       break;
 
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       switch (input_type) {
-        case Primitive::kPrimBoolean:
+        case DataType::Type::kBool:
           // Boolean input is a result of code transformations.
-        case Primitive::kPrimByte:
-        case Primitive::kPrimShort:
-        case Primitive::kPrimInt:
-        case Primitive::kPrimChar: {
+        case DataType::Type::kInt8:
+        case DataType::Type::kInt16:
+        case DataType::Type::kInt32:
+        case DataType::Type::kUint16: {
           // Processing a Dex `int-to-float' instruction.
           __ Vmov(OutputSRegister(conversion), InputRegisterAt(conversion, 0));
           __ Vcvt(F32, S32, OutputSRegister(conversion), OutputSRegister(conversion));
           break;
         }
 
-        case Primitive::kPrimLong:
+        case DataType::Type::kInt64:
           // Processing a Dex `long-to-float' instruction.
           codegen_->InvokeRuntime(kQuickL2f, conversion, conversion->GetDexPc());
           CheckEntrypointTypes<kQuickL2f, float, int64_t>();
           break;
 
-        case Primitive::kPrimDouble:
+        case DataType::Type::kFloat64:
           // Processing a Dex `double-to-float' instruction.
           __ Vcvt(F32, F64, OutputSRegister(conversion), DRegisterFrom(in));
           break;
@@ -4120,21 +4120,21 @@ void InstructionCodeGeneratorARMVIXL::VisitTypeConversion(HTypeConversion* conve
       };
       break;
 
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       switch (input_type) {
-        case Primitive::kPrimBoolean:
+        case DataType::Type::kBool:
           // Boolean input is a result of code transformations.
-        case Primitive::kPrimByte:
-        case Primitive::kPrimShort:
-        case Primitive::kPrimInt:
-        case Primitive::kPrimChar: {
+        case DataType::Type::kInt8:
+        case DataType::Type::kInt16:
+        case DataType::Type::kInt32:
+        case DataType::Type::kUint16: {
           // Processing a Dex `int-to-double' instruction.
           __ Vmov(LowSRegisterFrom(out), InputRegisterAt(conversion, 0));
           __ Vcvt(F64, S32, DRegisterFrom(out), LowSRegisterFrom(out));
           break;
         }
 
-        case Primitive::kPrimLong: {
+        case DataType::Type::kInt64: {
           // Processing a Dex `long-to-double' instruction.
           vixl32::Register low = LowRegisterFrom(in);
           vixl32::Register high = HighRegisterFrom(in);
@@ -4157,7 +4157,7 @@ void InstructionCodeGeneratorARMVIXL::VisitTypeConversion(HTypeConversion* conve
           break;
         }
 
-        case Primitive::kPrimFloat:
+        case DataType::Type::kFloat32:
           // Processing a Dex `float-to-double' instruction.
           __ Vcvt(F64, F32, DRegisterFrom(out), InputSRegisterAt(conversion, 0));
           break;
@@ -4178,22 +4178,22 @@ void LocationsBuilderARMVIXL::VisitAdd(HAdd* add) {
   LocationSummary* locations =
       new (GetGraph()->GetArena()) LocationSummary(add, LocationSummary::kNoCall);
   switch (add->GetResultType()) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RegisterOrConstant(add->InputAt(1)));
       locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
       break;
     }
 
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, ArmEncodableConstantOrRegister(add->InputAt(1), ADD));
       locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
       break;
     }
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64: {
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetInAt(1, Location::RequiresFpuRegister());
       locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
@@ -4212,12 +4212,12 @@ void InstructionCodeGeneratorARMVIXL::VisitAdd(HAdd* add) {
   Location second = locations->InAt(1);
 
   switch (add->GetResultType()) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       __ Add(OutputRegister(add), InputRegisterAt(add, 0), InputOperandAt(add, 1));
       }
       break;
 
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       if (second.IsConstant()) {
         uint64_t value = static_cast<uint64_t>(Int64FromConstant(second.GetConstant()));
         GenerateAddLongConst(out, first, value);
@@ -4229,8 +4229,8 @@ void InstructionCodeGeneratorARMVIXL::VisitAdd(HAdd* add) {
       break;
     }
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       __ Vadd(OutputVRegister(add), InputVRegisterAt(add, 0), InputVRegisterAt(add, 1));
       break;
 
@@ -4243,21 +4243,21 @@ void LocationsBuilderARMVIXL::VisitSub(HSub* sub) {
   LocationSummary* locations =
       new (GetGraph()->GetArena()) LocationSummary(sub, LocationSummary::kNoCall);
   switch (sub->GetResultType()) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RegisterOrConstant(sub->InputAt(1)));
       locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
       break;
     }
 
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, ArmEncodableConstantOrRegister(sub->InputAt(1), SUB));
       locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
       break;
     }
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64: {
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetInAt(1, Location::RequiresFpuRegister());
       locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
@@ -4274,12 +4274,12 @@ void InstructionCodeGeneratorARMVIXL::VisitSub(HSub* sub) {
   Location first = locations->InAt(0);
   Location second = locations->InAt(1);
   switch (sub->GetResultType()) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       __ Sub(OutputRegister(sub), InputRegisterAt(sub, 0), InputOperandAt(sub, 1));
       break;
     }
 
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       if (second.IsConstant()) {
         uint64_t value = static_cast<uint64_t>(Int64FromConstant(second.GetConstant()));
         GenerateAddLongConst(out, first, -value);
@@ -4291,8 +4291,8 @@ void InstructionCodeGeneratorARMVIXL::VisitSub(HSub* sub) {
       break;
     }
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       __ Vsub(OutputVRegister(sub), InputVRegisterAt(sub, 0), InputVRegisterAt(sub, 1));
       break;
 
@@ -4305,16 +4305,16 @@ void LocationsBuilderARMVIXL::VisitMul(HMul* mul) {
   LocationSummary* locations =
       new (GetGraph()->GetArena()) LocationSummary(mul, LocationSummary::kNoCall);
   switch (mul->GetResultType()) {
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:  {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:  {
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RequiresRegister());
       locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
       break;
     }
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64: {
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetInAt(1, Location::RequiresFpuRegister());
       locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
@@ -4332,11 +4332,11 @@ void InstructionCodeGeneratorARMVIXL::VisitMul(HMul* mul) {
   Location first = locations->InAt(0);
   Location second = locations->InAt(1);
   switch (mul->GetResultType()) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       __ Mul(OutputRegister(mul), InputRegisterAt(mul, 0), InputRegisterAt(mul, 1));
       break;
     }
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       vixl32::Register out_hi = HighRegisterFrom(out);
       vixl32::Register out_lo = LowRegisterFrom(out);
       vixl32::Register in1_hi = HighRegisterFrom(first);
@@ -4369,8 +4369,8 @@ void InstructionCodeGeneratorARMVIXL::VisitMul(HMul* mul) {
       break;
     }
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       __ Vmul(OutputVRegister(mul), InputVRegisterAt(mul, 0), InputVRegisterAt(mul, 1));
       break;
 
@@ -4381,7 +4381,7 @@ void InstructionCodeGeneratorARMVIXL::VisitMul(HMul* mul) {
 
 void InstructionCodeGeneratorARMVIXL::DivRemOneOrMinusOne(HBinaryOperation* instruction) {
   DCHECK(instruction->IsDiv() || instruction->IsRem());
-  DCHECK(instruction->GetResultType() == Primitive::kPrimInt);
+  DCHECK(instruction->GetResultType() == DataType::Type::kInt32);
 
   Location second = instruction->GetLocations()->InAt(1);
   DCHECK(second.IsConstant());
@@ -4404,7 +4404,7 @@ void InstructionCodeGeneratorARMVIXL::DivRemOneOrMinusOne(HBinaryOperation* inst
 
 void InstructionCodeGeneratorARMVIXL::DivRemByPowerOfTwo(HBinaryOperation* instruction) {
   DCHECK(instruction->IsDiv() || instruction->IsRem());
-  DCHECK(instruction->GetResultType() == Primitive::kPrimInt);
+  DCHECK(instruction->GetResultType() == DataType::Type::kInt32);
 
   LocationSummary* locations = instruction->GetLocations();
   Location second = locations->InAt(1);
@@ -4438,7 +4438,7 @@ void InstructionCodeGeneratorARMVIXL::DivRemByPowerOfTwo(HBinaryOperation* instr
 
 void InstructionCodeGeneratorARMVIXL::GenerateDivRemWithAnyConstant(HBinaryOperation* instruction) {
   DCHECK(instruction->IsDiv() || instruction->IsRem());
-  DCHECK(instruction->GetResultType() == Primitive::kPrimInt);
+  DCHECK(instruction->GetResultType() == DataType::Type::kInt32);
 
   LocationSummary* locations = instruction->GetLocations();
   Location second = locations->InAt(1);
@@ -4481,7 +4481,7 @@ void InstructionCodeGeneratorARMVIXL::GenerateDivRemWithAnyConstant(HBinaryOpera
 void InstructionCodeGeneratorARMVIXL::GenerateDivRemConstantIntegral(
     HBinaryOperation* instruction) {
   DCHECK(instruction->IsDiv() || instruction->IsRem());
-  DCHECK(instruction->GetResultType() == Primitive::kPrimInt);
+  DCHECK(instruction->GetResultType() == DataType::Type::kInt32);
 
   Location second = instruction->GetLocations()->InAt(1);
   DCHECK(second.IsConstant());
@@ -4501,12 +4501,12 @@ void InstructionCodeGeneratorARMVIXL::GenerateDivRemConstantIntegral(
 
 void LocationsBuilderARMVIXL::VisitDiv(HDiv* div) {
   LocationSummary::CallKind call_kind = LocationSummary::kNoCall;
-  if (div->GetResultType() == Primitive::kPrimLong) {
+  if (div->GetResultType() == DataType::Type::kInt64) {
     // pLdiv runtime call.
     call_kind = LocationSummary::kCallOnMainOnly;
-  } else if (div->GetResultType() == Primitive::kPrimInt && div->InputAt(1)->IsConstant()) {
+  } else if (div->GetResultType() == DataType::Type::kInt32 && div->InputAt(1)->IsConstant()) {
     // sdiv will be replaced by other instruction sequence.
-  } else if (div->GetResultType() == Primitive::kPrimInt &&
+  } else if (div->GetResultType() == DataType::Type::kInt32 &&
              !codegen_->GetInstructionSetFeatures().HasDivideInstruction()) {
     // pIdivmod runtime call.
     call_kind = LocationSummary::kCallOnMainOnly;
@@ -4515,7 +4515,7 @@ void LocationsBuilderARMVIXL::VisitDiv(HDiv* div) {
   LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(div, call_kind);
 
   switch (div->GetResultType()) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       if (div->InputAt(1)->IsConstant()) {
         locations->SetInAt(0, Location::RequiresRegister());
         locations->SetInAt(1, Location::ConstantLocation(div->InputAt(1)->AsConstant()));
@@ -4543,7 +4543,7 @@ void LocationsBuilderARMVIXL::VisitDiv(HDiv* div) {
       }
       break;
     }
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       InvokeRuntimeCallingConventionARMVIXL calling_convention;
       locations->SetInAt(0, LocationFrom(
           calling_convention.GetRegisterAt(0), calling_convention.GetRegisterAt(1)));
@@ -4552,8 +4552,8 @@ void LocationsBuilderARMVIXL::VisitDiv(HDiv* div) {
       locations->SetOut(LocationFrom(r0, r1));
       break;
     }
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64: {
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetInAt(1, Location::RequiresFpuRegister());
       locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
@@ -4570,7 +4570,7 @@ void InstructionCodeGeneratorARMVIXL::VisitDiv(HDiv* div) {
   Location rhs = div->GetLocations()->InAt(1);
 
   switch (div->GetResultType()) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       if (rhs.IsConstant()) {
         GenerateDivRemConstantIntegral(div);
       } else if (codegen_->GetInstructionSetFeatures().HasDivideInstruction()) {
@@ -4587,7 +4587,7 @@ void InstructionCodeGeneratorARMVIXL::VisitDiv(HDiv* div) {
       break;
     }
 
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       InvokeRuntimeCallingConventionARMVIXL calling_convention;
       DCHECK(calling_convention.GetRegisterAt(0).Is(LowRegisterFrom(lhs)));
       DCHECK(calling_convention.GetRegisterAt(1).Is(HighRegisterFrom(lhs)));
@@ -4601,8 +4601,8 @@ void InstructionCodeGeneratorARMVIXL::VisitDiv(HDiv* div) {
       break;
     }
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       __ Vdiv(OutputVRegister(div), InputVRegisterAt(div, 0), InputVRegisterAt(div, 1));
       break;
 
@@ -4612,14 +4612,14 @@ void InstructionCodeGeneratorARMVIXL::VisitDiv(HDiv* div) {
 }
 
 void LocationsBuilderARMVIXL::VisitRem(HRem* rem) {
-  Primitive::Type type = rem->GetResultType();
+  DataType::Type type = rem->GetResultType();
 
   // Most remainders are implemented in the runtime.
   LocationSummary::CallKind call_kind = LocationSummary::kCallOnMainOnly;
-  if (rem->GetResultType() == Primitive::kPrimInt && rem->InputAt(1)->IsConstant()) {
+  if (rem->GetResultType() == DataType::Type::kInt32 && rem->InputAt(1)->IsConstant()) {
     // sdiv will be replaced by other instruction sequence.
     call_kind = LocationSummary::kNoCall;
-  } else if ((rem->GetResultType() == Primitive::kPrimInt)
+  } else if ((rem->GetResultType() == DataType::Type::kInt32)
              && codegen_->GetInstructionSetFeatures().HasDivideInstruction()) {
     // Have hardware divide instruction for int, do it with three instructions.
     call_kind = LocationSummary::kNoCall;
@@ -4628,7 +4628,7 @@ void LocationsBuilderARMVIXL::VisitRem(HRem* rem) {
   LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(rem, call_kind);
 
   switch (type) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       if (rem->InputAt(1)->IsConstant()) {
         locations->SetInAt(0, Location::RequiresRegister());
         locations->SetInAt(1, Location::ConstantLocation(rem->InputAt(1)->AsConstant()));
@@ -4657,7 +4657,7 @@ void LocationsBuilderARMVIXL::VisitRem(HRem* rem) {
       }
       break;
     }
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       InvokeRuntimeCallingConventionARMVIXL calling_convention;
       locations->SetInAt(0, LocationFrom(
           calling_convention.GetRegisterAt(0), calling_convention.GetRegisterAt(1)));
@@ -4667,7 +4667,7 @@ void LocationsBuilderARMVIXL::VisitRem(HRem* rem) {
       locations->SetOut(LocationFrom(r2, r3));
       break;
     }
-    case Primitive::kPrimFloat: {
+    case DataType::Type::kFloat32: {
       InvokeRuntimeCallingConventionARMVIXL calling_convention;
       locations->SetInAt(0, LocationFrom(calling_convention.GetFpuRegisterAt(0)));
       locations->SetInAt(1, LocationFrom(calling_convention.GetFpuRegisterAt(1)));
@@ -4675,7 +4675,7 @@ void LocationsBuilderARMVIXL::VisitRem(HRem* rem) {
       break;
     }
 
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat64: {
       InvokeRuntimeCallingConventionARMVIXL calling_convention;
       locations->SetInAt(0, LocationFrom(
           calling_convention.GetFpuRegisterAt(0), calling_convention.GetFpuRegisterAt(1)));
@@ -4694,9 +4694,9 @@ void InstructionCodeGeneratorARMVIXL::VisitRem(HRem* rem) {
   LocationSummary* locations = rem->GetLocations();
   Location second = locations->InAt(1);
 
-  Primitive::Type type = rem->GetResultType();
+  DataType::Type type = rem->GetResultType();
   switch (type) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
         vixl32::Register reg1 = InputRegisterAt(rem, 0);
         vixl32::Register out_reg = OutputRegister(rem);
         if (second.IsConstant()) {
@@ -4721,19 +4721,19 @@ void InstructionCodeGeneratorARMVIXL::VisitRem(HRem* rem) {
       break;
     }
 
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       codegen_->InvokeRuntime(kQuickLmod, rem, rem->GetDexPc());
         CheckEntrypointTypes<kQuickLmod, int64_t, int64_t, int64_t>();
       break;
     }
 
-    case Primitive::kPrimFloat: {
+    case DataType::Type::kFloat32: {
       codegen_->InvokeRuntime(kQuickFmodf, rem, rem->GetDexPc());
       CheckEntrypointTypes<kQuickFmodf, float, float, float>();
       break;
     }
 
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat64: {
       codegen_->InvokeRuntime(kQuickFmod, rem, rem->GetDexPc());
       CheckEntrypointTypes<kQuickFmod, double, double, double>();
       break;
@@ -4759,11 +4759,11 @@ void InstructionCodeGeneratorARMVIXL::VisitDivZeroCheck(HDivZeroCheck* instructi
   Location value = locations->InAt(0);
 
   switch (instruction->GetType()) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt: {
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32: {
       if (value.IsRegister()) {
         __ CompareAndBranchIfZero(InputRegisterAt(instruction, 0), slow_path->GetEntryLabel());
       } else {
@@ -4774,7 +4774,7 @@ void InstructionCodeGeneratorARMVIXL::VisitDivZeroCheck(HDivZeroCheck* instructi
       }
       break;
     }
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       if (value.IsRegisterPair()) {
         UseScratchRegisterScope temps(GetVIXLAssembler());
         vixl32::Register temp = temps.Acquire();
@@ -4891,13 +4891,13 @@ void LocationsBuilderARMVIXL::VisitRor(HRor* ror) {
   LocationSummary* locations =
       new (GetGraph()->GetArena()) LocationSummary(ror, LocationSummary::kNoCall);
   switch (ror->GetResultType()) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RegisterOrConstant(ror->InputAt(1)));
       locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
       break;
     }
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       locations->SetInAt(0, Location::RequiresRegister());
       if (ror->InputAt(1)->IsConstant()) {
         locations->SetInAt(1, Location::ConstantLocation(ror->InputAt(1)->AsConstant()));
@@ -4915,13 +4915,13 @@ void LocationsBuilderARMVIXL::VisitRor(HRor* ror) {
 }
 
 void InstructionCodeGeneratorARMVIXL::VisitRor(HRor* ror) {
-  Primitive::Type type = ror->GetResultType();
+  DataType::Type type = ror->GetResultType();
   switch (type) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       HandleIntegerRotate(ror);
       break;
     }
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       HandleLongRotate(ror);
       break;
     }
@@ -4938,7 +4938,7 @@ void LocationsBuilderARMVIXL::HandleShift(HBinaryOperation* op) {
       new (GetGraph()->GetArena()) LocationSummary(op, LocationSummary::kNoCall);
 
   switch (op->GetResultType()) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       locations->SetInAt(0, Location::RequiresRegister());
       if (op->InputAt(1)->IsConstant()) {
         locations->SetInAt(1, Location::ConstantLocation(op->InputAt(1)->AsConstant()));
@@ -4951,7 +4951,7 @@ void LocationsBuilderARMVIXL::HandleShift(HBinaryOperation* op) {
       }
       break;
     }
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       locations->SetInAt(0, Location::RequiresRegister());
       if (op->InputAt(1)->IsConstant()) {
         locations->SetInAt(1, Location::ConstantLocation(op->InputAt(1)->AsConstant()));
@@ -4978,9 +4978,9 @@ void InstructionCodeGeneratorARMVIXL::HandleShift(HBinaryOperation* op) {
   Location first = locations->InAt(0);
   Location second = locations->InAt(1);
 
-  Primitive::Type type = op->GetResultType();
+  DataType::Type type = op->GetResultType();
   switch (type) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       vixl32::Register out_reg = OutputRegister(op);
       vixl32::Register first_reg = InputRegisterAt(op, 0);
       if (second.IsRegister()) {
@@ -5009,7 +5009,7 @@ void InstructionCodeGeneratorARMVIXL::HandleShift(HBinaryOperation* op) {
       }
       break;
     }
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       vixl32::Register o_h = HighRegisterFrom(out);
       vixl32::Register o_l = LowRegisterFrom(out);
 
@@ -5258,11 +5258,11 @@ void InstructionCodeGeneratorARMVIXL::VisitNot(HNot* not_) {
   Location out = locations->Out();
   Location in = locations->InAt(0);
   switch (not_->GetResultType()) {
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       __ Mvn(OutputRegister(not_), InputRegisterAt(not_, 0));
       break;
 
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       __ Mvn(LowRegisterFrom(out), LowRegisterFrom(in));
       __ Mvn(HighRegisterFrom(out), HighRegisterFrom(in));
       break;
@@ -5287,20 +5287,20 @@ void LocationsBuilderARMVIXL::VisitCompare(HCompare* compare) {
   LocationSummary* locations =
       new (GetGraph()->GetArena()) LocationSummary(compare, LocationSummary::kNoCall);
   switch (compare->InputAt(0)->GetType()) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong: {
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64: {
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RequiresRegister());
       // Output overlaps because it is written before doing the low comparison.
       locations->SetOut(Location::RequiresRegister(), Location::kOutputOverlap);
       break;
     }
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64: {
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetInAt(1, ArithmeticZeroOrFpuRegister(compare->InputAt(1)));
       locations->SetOut(Location::RequiresRegister());
@@ -5319,21 +5319,21 @@ void InstructionCodeGeneratorARMVIXL::VisitCompare(HCompare* compare) {
 
   vixl32::Label less, greater, done;
   vixl32::Label* final_label = codegen_->GetFinalLabel(compare, &done);
-  Primitive::Type type = compare->InputAt(0)->GetType();
+  DataType::Type type = compare->InputAt(0)->GetType();
   vixl32::Condition less_cond = vixl32::Condition(kNone);
   switch (type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimInt: {
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt32: {
       // Emit move to `out` before the `Cmp`, as `Mov` might affect the status flags.
       __ Mov(out, 0);
       __ Cmp(RegisterFrom(left), RegisterFrom(right));  // Signed compare.
       less_cond = lt;
       break;
     }
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       __ Cmp(HighRegisterFrom(left), HighRegisterFrom(right));  // Signed compare.
       __ B(lt, &less, /* far_target */ false);
       __ B(gt, &greater, /* far_target */ false);
@@ -5343,8 +5343,8 @@ void InstructionCodeGeneratorARMVIXL::VisitCompare(HCompare* compare) {
       less_cond = lo;
       break;
     }
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64: {
       __ Mov(out, 0);
       GenerateVcmp(compare, codegen_);
       // To branch on the FP compare result we transfer FPSCR to APSR (encoded as PC in VMRS).
@@ -5455,14 +5455,14 @@ void LocationsBuilderARMVIXL::HandleFieldSet(
       new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kNoCall);
   locations->SetInAt(0, Location::RequiresRegister());
 
-  Primitive::Type field_type = field_info.GetFieldType();
-  if (Primitive::IsFloatingPointType(field_type)) {
+  DataType::Type field_type = field_info.GetFieldType();
+  if (DataType::IsFloatingPointType(field_type)) {
     locations->SetInAt(1, Location::RequiresFpuRegister());
   } else {
     locations->SetInAt(1, Location::RequiresRegister());
   }
 
-  bool is_wide = field_type == Primitive::kPrimLong || field_type == Primitive::kPrimDouble;
+  bool is_wide = field_type == DataType::Type::kInt64 || field_type == DataType::Type::kFloat64;
   bool generate_volatile = field_info.IsVolatile()
       && is_wide
       && !codegen_->GetInstructionSetFeatures().HasAtomicLdrdAndStrd();
@@ -5483,7 +5483,7 @@ void LocationsBuilderARMVIXL::HandleFieldSet(
 
     locations->AddTemp(Location::RequiresRegister());
     locations->AddTemp(Location::RequiresRegister());
-    if (field_type == Primitive::kPrimDouble) {
+    if (field_type == DataType::Type::kFloat64) {
       // For doubles we need two more registers to copy the value.
       locations->AddTemp(LocationFrom(r2));
       locations->AddTemp(LocationFrom(r3));
@@ -5502,7 +5502,7 @@ void InstructionCodeGeneratorARMVIXL::HandleFieldSet(HInstruction* instruction,
 
   bool is_volatile = field_info.IsVolatile();
   bool atomic_ldrd_strd = codegen_->GetInstructionSetFeatures().HasAtomicLdrdAndStrd();
-  Primitive::Type field_type = field_info.GetFieldType();
+  DataType::Type field_type = field_info.GetFieldType();
   uint32_t offset = field_info.GetFieldOffset().Uint32Value();
   bool needs_write_barrier =
       CodeGenerator::StoreNeedsWriteBarrier(field_type, instruction->InputAt(1));
@@ -5512,25 +5512,25 @@ void InstructionCodeGeneratorARMVIXL::HandleFieldSet(HInstruction* instruction,
   }
 
   switch (field_type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte: {
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8: {
       GetAssembler()->StoreToOffset(kStoreByte, RegisterFrom(value), base, offset);
       break;
     }
 
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar: {
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16: {
       GetAssembler()->StoreToOffset(kStoreHalfword, RegisterFrom(value), base, offset);
       break;
     }
 
-    case Primitive::kPrimInt:
-    case Primitive::kPrimNot: {
+    case DataType::Type::kInt32:
+    case DataType::Type::kReference: {
       if (kPoisonHeapReferences && needs_write_barrier) {
         // Note that in the case where `value` is a null reference,
         // we do not enter this block, as a null reference does not
         // need poisoning.
-        DCHECK_EQ(field_type, Primitive::kPrimNot);
+        DCHECK_EQ(field_type, DataType::Type::kReference);
         vixl32::Register temp = RegisterFrom(locations->GetTemp(0));
         __ Mov(temp, RegisterFrom(value));
         GetAssembler()->PoisonHeapReference(temp);
@@ -5541,7 +5541,7 @@ void InstructionCodeGeneratorARMVIXL::HandleFieldSet(HInstruction* instruction,
       break;
     }
 
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       if (is_volatile && !atomic_ldrd_strd) {
         GenerateWideAtomicStore(base,
                                 offset,
@@ -5557,12 +5557,12 @@ void InstructionCodeGeneratorARMVIXL::HandleFieldSet(HInstruction* instruction,
       break;
     }
 
-    case Primitive::kPrimFloat: {
+    case DataType::Type::kFloat32: {
       GetAssembler()->StoreSToOffset(SRegisterFrom(value), base, offset);
       break;
     }
 
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat64: {
       vixl32::DRegister value_reg = DRegisterFrom(value);
       if (is_volatile && !atomic_ldrd_strd) {
         vixl32::Register value_reg_lo = RegisterFrom(locations->GetTemp(0));
@@ -5584,13 +5584,13 @@ void InstructionCodeGeneratorARMVIXL::HandleFieldSet(HInstruction* instruction,
       break;
     }
 
-    case Primitive::kPrimVoid:
+    case DataType::Type::kVoid:
       LOG(FATAL) << "Unreachable type " << field_type;
       UNREACHABLE();
   }
 
   // Longs and doubles are handled in the switch.
-  if (field_type != Primitive::kPrimLong && field_type != Primitive::kPrimDouble) {
+  if (field_type != DataType::Type::kInt64 && field_type != DataType::Type::kFloat64) {
     // TODO(VIXL): Here and for other calls to `MaybeRecordImplicitNullCheck` in this method, we
     // should use a scope and the assembler to emit the store instruction to guarantee that we
     // record the pc at the correct position. But the `Assembler` does not automatically handle
@@ -5615,7 +5615,7 @@ void LocationsBuilderARMVIXL::HandleFieldGet(HInstruction* instruction,
   DCHECK(instruction->IsInstanceFieldGet() || instruction->IsStaticFieldGet());
 
   bool object_field_get_with_read_barrier =
-      kEmitCompilerReadBarrier && (field_info.GetFieldType() == Primitive::kPrimNot);
+      kEmitCompilerReadBarrier && (field_info.GetFieldType() == DataType::Type::kReference);
   LocationSummary* locations =
       new (GetGraph()->GetArena()) LocationSummary(instruction,
                                                    object_field_get_with_read_barrier ?
@@ -5627,17 +5627,18 @@ void LocationsBuilderARMVIXL::HandleFieldGet(HInstruction* instruction,
   locations->SetInAt(0, Location::RequiresRegister());
 
   bool volatile_for_double = field_info.IsVolatile()
-      && (field_info.GetFieldType() == Primitive::kPrimDouble)
+      && (field_info.GetFieldType() == DataType::Type::kFloat64)
       && !codegen_->GetInstructionSetFeatures().HasAtomicLdrdAndStrd();
   // The output overlaps in case of volatile long: we don't want the
   // code generated by GenerateWideAtomicLoad to overwrite the
   // object's location.  Likewise, in the case of an object field get
   // with read barriers enabled, we do not want the load to overwrite
   // the object's location, as we need it to emit the read barrier.
-  bool overlap = (field_info.IsVolatile() && (field_info.GetFieldType() == Primitive::kPrimLong)) ||
+  bool overlap =
+      (field_info.IsVolatile() && (field_info.GetFieldType() == DataType::Type::kInt64)) ||
       object_field_get_with_read_barrier;
 
-  if (Primitive::IsFloatingPointType(instruction->GetType())) {
+  if (DataType::IsFloatingPointType(instruction->GetType())) {
     locations->SetOut(Location::RequiresFpuRegister());
   } else {
     locations->SetOut(Location::RequiresRegister(),
@@ -5671,7 +5672,7 @@ void LocationsBuilderARMVIXL::HandleFieldGet(HInstruction* instruction,
 }
 
 Location LocationsBuilderARMVIXL::ArithmeticZeroOrFpuRegister(HInstruction* input) {
-  DCHECK(Primitive::IsFloatingPointType(input->GetType())) << input->GetType();
+  DCHECK(DataType::IsFloatingPointType(input->GetType())) << input->GetType();
   if ((input->IsFloatConstant() && (input->AsFloatConstant()->IsArithmeticZero())) ||
       (input->IsDoubleConstant() && (input->AsDoubleConstant()->IsArithmeticZero()))) {
     return Location::ConstantLocation(input->AsConstant());
@@ -5682,7 +5683,7 @@ Location LocationsBuilderARMVIXL::ArithmeticZeroOrFpuRegister(HInstruction* inpu
 
 Location LocationsBuilderARMVIXL::ArmEncodableConstantOrRegister(HInstruction* constant,
                                                                  Opcode opcode) {
-  DCHECK(!Primitive::IsFloatingPointType(constant->GetType()));
+  DCHECK(!DataType::IsFloatingPointType(constant->GetType()));
   if (constant->IsConstant() &&
       CanEncodeConstantAsImmediate(constant->AsConstant(), opcode)) {
     return Location::ConstantLocation(constant->AsConstant());
@@ -5693,7 +5694,7 @@ Location LocationsBuilderARMVIXL::ArmEncodableConstantOrRegister(HInstruction* c
 bool LocationsBuilderARMVIXL::CanEncodeConstantAsImmediate(HConstant* input_cst,
                                                            Opcode opcode) {
   uint64_t value = static_cast<uint64_t>(Int64FromConstant(input_cst));
-  if (Primitive::Is64BitType(input_cst->GetType())) {
+  if (DataType::Is64BitType(input_cst->GetType())) {
     Opcode high_opcode = opcode;
     SetCc low_set_cc = kCcDontCare;
     switch (opcode) {
@@ -5758,31 +5759,31 @@ void InstructionCodeGeneratorARMVIXL::HandleFieldGet(HInstruction* instruction,
   Location out = locations->Out();
   bool is_volatile = field_info.IsVolatile();
   bool atomic_ldrd_strd = codegen_->GetInstructionSetFeatures().HasAtomicLdrdAndStrd();
-  Primitive::Type field_type = field_info.GetFieldType();
+  DataType::Type field_type = field_info.GetFieldType();
   uint32_t offset = field_info.GetFieldOffset().Uint32Value();
 
   switch (field_type) {
-    case Primitive::kPrimBoolean:
+    case DataType::Type::kBool:
       GetAssembler()->LoadFromOffset(kLoadUnsignedByte, RegisterFrom(out), base, offset);
       break;
 
-    case Primitive::kPrimByte:
+    case DataType::Type::kInt8:
       GetAssembler()->LoadFromOffset(kLoadSignedByte, RegisterFrom(out), base, offset);
       break;
 
-    case Primitive::kPrimShort:
+    case DataType::Type::kInt16:
       GetAssembler()->LoadFromOffset(kLoadSignedHalfword, RegisterFrom(out), base, offset);
       break;
 
-    case Primitive::kPrimChar:
+    case DataType::Type::kUint16:
       GetAssembler()->LoadFromOffset(kLoadUnsignedHalfword, RegisterFrom(out), base, offset);
       break;
 
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       GetAssembler()->LoadFromOffset(kLoadWord, RegisterFrom(out), base, offset);
       break;
 
-    case Primitive::kPrimNot: {
+    case DataType::Type::kReference: {
       // /* HeapReference<Object> */ out = *(base + offset)
       if (kEmitCompilerReadBarrier && kUseBakerReadBarrier) {
         Location temp_loc = locations->GetTemp(0);
@@ -5807,7 +5808,7 @@ void InstructionCodeGeneratorARMVIXL::HandleFieldGet(HInstruction* instruction,
       break;
     }
 
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       if (is_volatile && !atomic_ldrd_strd) {
         GenerateWideAtomicLoad(base, offset, LowRegisterFrom(out), HighRegisterFrom(out));
       } else {
@@ -5815,11 +5816,11 @@ void InstructionCodeGeneratorARMVIXL::HandleFieldGet(HInstruction* instruction,
       }
       break;
 
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       GetAssembler()->LoadSFromOffset(SRegisterFrom(out), base, offset);
       break;
 
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat64: {
       vixl32::DRegister out_dreg = DRegisterFrom(out);
       if (is_volatile && !atomic_ldrd_strd) {
         vixl32::Register lo = RegisterFrom(locations->GetTemp(0));
@@ -5836,12 +5837,12 @@ void InstructionCodeGeneratorARMVIXL::HandleFieldGet(HInstruction* instruction,
       break;
     }
 
-    case Primitive::kPrimVoid:
+    case DataType::Type::kVoid:
       LOG(FATAL) << "Unreachable type " << field_type;
       UNREACHABLE();
   }
 
-  if (field_type == Primitive::kPrimNot || field_type == Primitive::kPrimDouble) {
+  if (field_type == DataType::Type::kReference || field_type == DataType::Type::kFloat64) {
     // Potential implicit null checks, in the case of reference or
     // double fields, are handled in the previous switch statement.
   } else {
@@ -5855,7 +5856,7 @@ void InstructionCodeGeneratorARMVIXL::HandleFieldGet(HInstruction* instruction,
   }
 
   if (is_volatile) {
-    if (field_type == Primitive::kPrimNot) {
+    if (field_type == DataType::Type::kReference) {
       // Memory barriers, in the case of references, are also handled
       // in the previous switch statement.
     } else {
@@ -5994,25 +5995,25 @@ void InstructionCodeGeneratorARMVIXL::VisitNullCheck(HNullCheck* instruction) {
   codegen_->GenerateNullCheck(instruction);
 }
 
-static LoadOperandType GetLoadOperandType(Primitive::Type type) {
+static LoadOperandType GetLoadOperandType(DataType::Type type) {
   switch (type) {
-    case Primitive::kPrimNot:
+    case DataType::Type::kReference:
       return kLoadWord;
-    case Primitive::kPrimBoolean:
+    case DataType::Type::kBool:
       return kLoadUnsignedByte;
-    case Primitive::kPrimByte:
+    case DataType::Type::kInt8:
       return kLoadSignedByte;
-    case Primitive::kPrimChar:
+    case DataType::Type::kUint16:
       return kLoadUnsignedHalfword;
-    case Primitive::kPrimShort:
+    case DataType::Type::kInt16:
       return kLoadSignedHalfword;
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       return kLoadWord;
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       return kLoadWordPair;
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       return kLoadSWord;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       return kLoadDWord;
     default:
       LOG(FATAL) << "Unreachable type " << type;
@@ -6020,23 +6021,23 @@ static LoadOperandType GetLoadOperandType(Primitive::Type type) {
   }
 }
 
-static StoreOperandType GetStoreOperandType(Primitive::Type type) {
+static StoreOperandType GetStoreOperandType(DataType::Type type) {
   switch (type) {
-    case Primitive::kPrimNot:
+    case DataType::Type::kReference:
       return kStoreWord;
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
       return kStoreByte;
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       return kStoreHalfword;
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       return kStoreWord;
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       return kStoreWordPair;
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       return kStoreSWord;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       return kStoreDWord;
     default:
       LOG(FATAL) << "Unreachable type " << type;
@@ -6044,66 +6045,66 @@ static StoreOperandType GetStoreOperandType(Primitive::Type type) {
   }
 }
 
-void CodeGeneratorARMVIXL::LoadFromShiftedRegOffset(Primitive::Type type,
+void CodeGeneratorARMVIXL::LoadFromShiftedRegOffset(DataType::Type type,
                                                     Location out_loc,
                                                     vixl32::Register base,
                                                     vixl32::Register reg_index,
                                                     vixl32::Condition cond) {
-  uint32_t shift_count = Primitive::ComponentSizeShift(type);
+  uint32_t shift_count = DataType::SizeShift(type);
   MemOperand mem_address(base, reg_index, vixl32::LSL, shift_count);
 
   switch (type) {
-    case Primitive::kPrimByte:
+    case DataType::Type::kInt8:
       __ Ldrsb(cond, RegisterFrom(out_loc), mem_address);
       break;
-    case Primitive::kPrimBoolean:
+    case DataType::Type::kBool:
       __ Ldrb(cond, RegisterFrom(out_loc), mem_address);
       break;
-    case Primitive::kPrimShort:
+    case DataType::Type::kInt16:
       __ Ldrsh(cond, RegisterFrom(out_loc), mem_address);
       break;
-    case Primitive::kPrimChar:
+    case DataType::Type::kUint16:
       __ Ldrh(cond, RegisterFrom(out_loc), mem_address);
       break;
-    case Primitive::kPrimNot:
-    case Primitive::kPrimInt:
+    case DataType::Type::kReference:
+    case DataType::Type::kInt32:
       __ Ldr(cond, RegisterFrom(out_loc), mem_address);
       break;
     // T32 doesn't support LoadFromShiftedRegOffset mem address mode for these types.
-    case Primitive::kPrimLong:
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kInt64:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
     default:
       LOG(FATAL) << "Unreachable type " << type;
       UNREACHABLE();
   }
 }
 
-void CodeGeneratorARMVIXL::StoreToShiftedRegOffset(Primitive::Type type,
+void CodeGeneratorARMVIXL::StoreToShiftedRegOffset(DataType::Type type,
                                                    Location loc,
                                                    vixl32::Register base,
                                                    vixl32::Register reg_index,
                                                    vixl32::Condition cond) {
-  uint32_t shift_count = Primitive::ComponentSizeShift(type);
+  uint32_t shift_count = DataType::SizeShift(type);
   MemOperand mem_address(base, reg_index, vixl32::LSL, shift_count);
 
   switch (type) {
-    case Primitive::kPrimByte:
-    case Primitive::kPrimBoolean:
+    case DataType::Type::kInt8:
+    case DataType::Type::kBool:
       __ Strb(cond, RegisterFrom(loc), mem_address);
       break;
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar:
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16:
       __ Strh(cond, RegisterFrom(loc), mem_address);
       break;
-    case Primitive::kPrimNot:
-    case Primitive::kPrimInt:
+    case DataType::Type::kReference:
+    case DataType::Type::kInt32:
       __ Str(cond, RegisterFrom(loc), mem_address);
       break;
     // T32 doesn't support StoreToShiftedRegOffset mem address mode for these types.
-    case Primitive::kPrimLong:
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kInt64:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
     default:
       LOG(FATAL) << "Unreachable type " << type;
       UNREACHABLE();
@@ -6112,7 +6113,7 @@ void CodeGeneratorARMVIXL::StoreToShiftedRegOffset(Primitive::Type type,
 
 void LocationsBuilderARMVIXL::VisitArrayGet(HArrayGet* instruction) {
   bool object_array_get_with_read_barrier =
-      kEmitCompilerReadBarrier && (instruction->GetType() == Primitive::kPrimNot);
+      kEmitCompilerReadBarrier && (instruction->GetType() == DataType::Type::kReference);
   LocationSummary* locations =
       new (GetGraph()->GetArena()) LocationSummary(instruction,
                                                    object_array_get_with_read_barrier ?
@@ -6123,7 +6124,7 @@ void LocationsBuilderARMVIXL::VisitArrayGet(HArrayGet* instruction) {
   }
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetInAt(1, Location::RegisterOrConstant(instruction->InputAt(1)));
-  if (Primitive::IsFloatingPointType(instruction->GetType())) {
+  if (DataType::IsFloatingPointType(instruction->GetType())) {
     locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
   } else {
     // The output overlaps in the case of an object array get with
@@ -6144,7 +6145,7 @@ void LocationsBuilderARMVIXL::VisitArrayGet(HArrayGet* instruction) {
       // constant index loads we need a temporary only if the offset is too big.
       uint32_t offset = CodeGenerator::GetArrayDataOffset(instruction);
       uint32_t index = instruction->GetIndex()->AsIntConstant()->GetValue();
-      offset += index << Primitive::ComponentSizeShift(Primitive::kPrimNot);
+      offset += index << DataType::SizeShift(DataType::Type::kReference);
       if (offset >= kReferenceLoadMinFarOffset) {
         locations->AddTemp(Location::RequiresRegister());
       }
@@ -6173,18 +6174,18 @@ void InstructionCodeGeneratorARMVIXL::VisitArrayGet(HArrayGet* instruction) {
   Location index = locations->InAt(1);
   Location out_loc = locations->Out();
   uint32_t data_offset = CodeGenerator::GetArrayDataOffset(instruction);
-  Primitive::Type type = instruction->GetType();
+  DataType::Type type = instruction->GetType();
   const bool maybe_compressed_char_at = mirror::kUseStringCompression &&
                                         instruction->IsStringCharAt();
   HInstruction* array_instr = instruction->GetArray();
   bool has_intermediate_address = array_instr->IsIntermediateAddress();
 
   switch (type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimInt: {
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt32: {
       vixl32::Register length;
       if (maybe_compressed_char_at) {
         length = RegisterFrom(locations->GetTemp(0));
@@ -6207,7 +6208,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArrayGet(HArrayGet* instruction) {
                                          data_offset + const_index);
           __ B(final_label);
           __ Bind(&uncompressed_load);
-          GetAssembler()->LoadFromOffset(GetLoadOperandType(Primitive::kPrimChar),
+          GetAssembler()->LoadFromOffset(GetLoadOperandType(DataType::Type::kUint16),
                                          RegisterFrom(out_loc),
                                          obj,
                                          data_offset + (const_index << 1));
@@ -6215,7 +6216,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArrayGet(HArrayGet* instruction) {
             __ Bind(&done);
           }
         } else {
-          uint32_t full_offset = data_offset + (const_index << Primitive::ComponentSizeShift(type));
+          uint32_t full_offset = data_offset + (const_index << DataType::SizeShift(type));
 
           LoadOperandType load_type = GetLoadOperandType(type);
           GetAssembler()->LoadFromOffset(load_type, RegisterFrom(out_loc), obj, full_offset);
@@ -6257,7 +6258,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimNot: {
+    case DataType::Type::kReference: {
       // The read barrier instrumentation of object ArrayGet
       // instructions does not support the HIntermediateAddress
       // instruction.
@@ -6275,7 +6276,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArrayGet(HArrayGet* instruction) {
         DCHECK(!instruction->CanDoImplicitNullCheckOn(instruction->InputAt(0)));
         if (index.IsConstant()) {
           // Array load with a constant index can be treated as a field load.
-          data_offset += Int32ConstantFrom(index) << Primitive::ComponentSizeShift(type);
+          data_offset += Int32ConstantFrom(index) << DataType::SizeShift(type);
           codegen_->GenerateFieldLoadWithBakerReadBarrier(instruction,
                                                           out_loc,
                                                           obj,
@@ -6334,7 +6335,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       if (index.IsConstant()) {
         size_t offset =
             (Int32ConstantFrom(index) << TIMES_8) + data_offset;
@@ -6348,7 +6349,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimFloat: {
+    case DataType::Type::kFloat32: {
       vixl32::SRegister out = SRegisterFrom(out_loc);
       if (index.IsConstant()) {
         size_t offset = (Int32ConstantFrom(index) << TIMES_4) + data_offset;
@@ -6362,7 +6363,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat64: {
       if (index.IsConstant()) {
         size_t offset = (Int32ConstantFrom(index) << TIMES_8) + data_offset;
         GetAssembler()->LoadDFromOffset(DRegisterFrom(out_loc), obj, offset);
@@ -6375,12 +6376,12 @@ void InstructionCodeGeneratorARMVIXL::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimVoid:
+    case DataType::Type::kVoid:
       LOG(FATAL) << "Unreachable type " << type;
       UNREACHABLE();
   }
 
-  if (type == Primitive::kPrimNot) {
+  if (type == DataType::Type::kReference) {
     // Potential implicit null checks, in the case of reference
     // arrays, are handled in the previous switch statement.
   } else if (!maybe_compressed_char_at) {
@@ -6391,7 +6392,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArrayGet(HArrayGet* instruction) {
 }
 
 void LocationsBuilderARMVIXL::VisitArraySet(HArraySet* instruction) {
-  Primitive::Type value_type = instruction->GetComponentType();
+  DataType::Type value_type = instruction->GetComponentType();
 
   bool needs_write_barrier =
       CodeGenerator::StoreNeedsWriteBarrier(value_type, instruction->GetValue());
@@ -6405,7 +6406,7 @@ void LocationsBuilderARMVIXL::VisitArraySet(HArraySet* instruction) {
 
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetInAt(1, Location::RegisterOrConstant(instruction->InputAt(1)));
-  if (Primitive::IsFloatingPointType(value_type)) {
+  if (DataType::IsFloatingPointType(value_type)) {
     locations->SetInAt(2, Location::RequiresFpuRegister());
   } else {
     locations->SetInAt(2, Location::RequiresRegister());
@@ -6421,26 +6422,26 @@ void InstructionCodeGeneratorARMVIXL::VisitArraySet(HArraySet* instruction) {
   LocationSummary* locations = instruction->GetLocations();
   vixl32::Register array = InputRegisterAt(instruction, 0);
   Location index = locations->InAt(1);
-  Primitive::Type value_type = instruction->GetComponentType();
+  DataType::Type value_type = instruction->GetComponentType();
   bool may_need_runtime_call_for_type_check = instruction->NeedsTypeCheck();
   bool needs_write_barrier =
       CodeGenerator::StoreNeedsWriteBarrier(value_type, instruction->GetValue());
   uint32_t data_offset =
-      mirror::Array::DataOffset(Primitive::ComponentSize(value_type)).Uint32Value();
+      mirror::Array::DataOffset(DataType::Size(value_type)).Uint32Value();
   Location value_loc = locations->InAt(2);
   HInstruction* array_instr = instruction->GetArray();
   bool has_intermediate_address = array_instr->IsIntermediateAddress();
 
   switch (value_type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimInt: {
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt32: {
       if (index.IsConstant()) {
         int32_t const_index = Int32ConstantFrom(index);
         uint32_t full_offset =
-            data_offset + (const_index << Primitive::ComponentSizeShift(value_type));
+            data_offset + (const_index << DataType::SizeShift(value_type));
         StoreOperandType store_type = GetStoreOperandType(value_type);
         GetAssembler()->StoreToOffset(store_type, RegisterFrom(value_loc), array, full_offset);
       } else {
@@ -6464,7 +6465,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case Primitive::kPrimNot: {
+    case DataType::Type::kReference: {
       vixl32::Register value = RegisterFrom(value_loc);
       // TryExtractArrayAccessAddress optimization is never applied for non-primitive ArraySet.
       // See the comment in instruction_simplifier_shared.cc.
@@ -6577,7 +6578,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArraySet(HArraySet* instruction) {
         // Note that in the case where `value` is a null reference,
         // we do not enter this block, as a null reference does not
         // need poisoning.
-        DCHECK_EQ(value_type, Primitive::kPrimNot);
+        DCHECK_EQ(value_type, DataType::Type::kReference);
         __ Mov(temp1, value);
         GetAssembler()->PoisonHeapReference(temp1);
         source = temp1;
@@ -6618,7 +6619,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       Location value = locations->InAt(2);
       if (index.IsConstant()) {
         size_t offset =
@@ -6633,7 +6634,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case Primitive::kPrimFloat: {
+    case DataType::Type::kFloat32: {
       Location value = locations->InAt(2);
       DCHECK(value.IsFpuRegister());
       if (index.IsConstant()) {
@@ -6648,7 +6649,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat64: {
       Location value = locations->InAt(2);
       DCHECK(value.IsFpuRegisterPair());
       if (index.IsConstant()) {
@@ -6663,13 +6664,13 @@ void InstructionCodeGeneratorARMVIXL::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case Primitive::kPrimVoid:
+    case DataType::Type::kVoid:
       LOG(FATAL) << "Unreachable type " << value_type;
       UNREACHABLE();
   }
 
   // Objects are handled in the switch.
-  if (value_type != Primitive::kPrimNot) {
+  if (value_type != DataType::Type::kReference) {
     // TODO(VIXL): Ensure we record the pc position immediately after the preceding store
     // instruction.
     codegen_->MaybeRecordImplicitNullCheck(instruction);
@@ -7966,7 +7967,7 @@ void InstructionCodeGeneratorARMVIXL::VisitCheckCast(HCheckCast* instruction) {
       // Otherwise,the object is indeed an array, jump to label `check_non_primitive_component_type`
       // to further check that this component type is not a primitive type.
       GetAssembler()->LoadFromOffset(kLoadUnsignedHalfword, temp, temp, primitive_offset);
-      static_assert(Primitive::kPrimNot == 0, "Expected 0 for art::Primitive::kPrimNot");
+      static_assert(Primitive::kPrimNot == 0, "Expected 0 for kPrimNot");
       __ CompareAndBranchIfNonZero(temp, type_check_slow_path->GetEntryLabel());
       break;
     }
@@ -8061,8 +8062,8 @@ void LocationsBuilderARMVIXL::VisitXor(HXor* instruction) {
 void LocationsBuilderARMVIXL::HandleBitwiseOperation(HBinaryOperation* instruction, Opcode opcode) {
   LocationSummary* locations =
       new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kNoCall);
-  DCHECK(instruction->GetResultType() == Primitive::kPrimInt
-         || instruction->GetResultType() == Primitive::kPrimLong);
+  DCHECK(instruction->GetResultType() == DataType::Type::kInt32
+         || instruction->GetResultType() == DataType::Type::kInt64);
   // Note: GVN reorders commutative operations to have the constant on the right hand side.
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetInAt(1, ArmEncodableConstantOrRegister(instruction->InputAt(1), opcode));
@@ -8084,8 +8085,8 @@ void InstructionCodeGeneratorARMVIXL::VisitXor(HXor* instruction) {
 void LocationsBuilderARMVIXL::VisitBitwiseNegatedRight(HBitwiseNegatedRight* instruction) {
   LocationSummary* locations =
       new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kNoCall);
-  DCHECK(instruction->GetResultType() == Primitive::kPrimInt
-         || instruction->GetResultType() == Primitive::kPrimLong);
+  DCHECK(instruction->GetResultType() == DataType::Type::kInt32
+         || instruction->GetResultType() == DataType::Type::kInt64);
 
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetInAt(1, Location::RequiresRegister());
@@ -8098,7 +8099,7 @@ void InstructionCodeGeneratorARMVIXL::VisitBitwiseNegatedRight(HBitwiseNegatedRi
   Location second = locations->InAt(1);
   Location out = locations->Out();
 
-  if (instruction->GetResultType() == Primitive::kPrimInt) {
+  if (instruction->GetResultType() == DataType::Type::kInt32) {
     vixl32::Register first_reg = RegisterFrom(first);
     vixl32::Register second_reg = RegisterFrom(second);
     vixl32::Register out_reg = RegisterFrom(out);
@@ -8119,7 +8120,7 @@ void InstructionCodeGeneratorARMVIXL::VisitBitwiseNegatedRight(HBitwiseNegatedRi
     return;
 
   } else {
-    DCHECK_EQ(instruction->GetResultType(), Primitive::kPrimLong);
+    DCHECK_EQ(instruction->GetResultType(), DataType::Type::kInt64);
     vixl32::Register first_low = LowRegisterFrom(first);
     vixl32::Register first_high = HighRegisterFrom(first);
     vixl32::Register second_low = LowRegisterFrom(second);
@@ -8147,11 +8148,11 @@ void InstructionCodeGeneratorARMVIXL::VisitBitwiseNegatedRight(HBitwiseNegatedRi
 
 void LocationsBuilderARMVIXL::VisitDataProcWithShifterOp(
     HDataProcWithShifterOp* instruction) {
-  DCHECK(instruction->GetType() == Primitive::kPrimInt ||
-         instruction->GetType() == Primitive::kPrimLong);
+  DCHECK(instruction->GetType() == DataType::Type::kInt32 ||
+         instruction->GetType() == DataType::Type::kInt64);
   LocationSummary* locations =
       new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kNoCall);
-  const bool overlap = instruction->GetType() == Primitive::kPrimLong &&
+  const bool overlap = instruction->GetType() == DataType::Type::kInt64 &&
                        HDataProcWithShifterOp::IsExtensionOp(instruction->GetOpKind());
 
   locations->SetInAt(0, Location::RequiresRegister());
@@ -8166,10 +8167,10 @@ void InstructionCodeGeneratorARMVIXL::VisitDataProcWithShifterOp(
   const HInstruction::InstructionKind kind = instruction->GetInstrKind();
   const HDataProcWithShifterOp::OpKind op_kind = instruction->GetOpKind();
 
-  if (instruction->GetType() == Primitive::kPrimInt) {
+  if (instruction->GetType() == DataType::Type::kInt32) {
     const vixl32::Register first = InputRegisterAt(instruction, 0);
     const vixl32::Register output = OutputRegister(instruction);
-    const vixl32::Register second = instruction->InputAt(1)->GetType() == Primitive::kPrimLong
+    const vixl32::Register second = instruction->InputAt(1)->GetType() == DataType::Type::kInt64
         ? LowRegisterFrom(locations->InAt(1))
         : InputRegisterAt(instruction, 1);
 
@@ -8203,7 +8204,7 @@ void InstructionCodeGeneratorARMVIXL::VisitDataProcWithShifterOp(
                                   codegen_);
     }
   } else {
-    DCHECK_EQ(instruction->GetType(), Primitive::kPrimLong);
+    DCHECK_EQ(instruction->GetType(), DataType::Type::kInt64);
 
     if (HDataProcWithShifterOp::IsExtensionOp(op_kind)) {
       const vixl32::Register second = InputRegisterAt(instruction, 1);
@@ -8319,7 +8320,7 @@ void InstructionCodeGeneratorARMVIXL::HandleBitwiseOperation(HBinaryOperation* i
   if (second.IsConstant()) {
     uint64_t value = static_cast<uint64_t>(Int64FromConstant(second.GetConstant()));
     uint32_t value_low = Low32Bits(value);
-    if (instruction->GetResultType() == Primitive::kPrimInt) {
+    if (instruction->GetResultType() == DataType::Type::kInt32) {
       vixl32::Register first_reg = InputRegisterAt(instruction, 0);
       vixl32::Register out_reg = OutputRegister(instruction);
       if (instruction->IsAnd()) {
@@ -8331,7 +8332,7 @@ void InstructionCodeGeneratorARMVIXL::HandleBitwiseOperation(HBinaryOperation* i
         GenerateEorConst(out_reg, first_reg, value_low);
       }
     } else {
-      DCHECK_EQ(instruction->GetResultType(), Primitive::kPrimLong);
+      DCHECK_EQ(instruction->GetResultType(), DataType::Type::kInt64);
       uint32_t value_high = High32Bits(value);
       vixl32::Register first_low = LowRegisterFrom(first);
       vixl32::Register first_high = HighRegisterFrom(first);
@@ -8352,7 +8353,7 @@ void InstructionCodeGeneratorARMVIXL::HandleBitwiseOperation(HBinaryOperation* i
     return;
   }
 
-  if (instruction->GetResultType() == Primitive::kPrimInt) {
+  if (instruction->GetResultType() == DataType::Type::kInt32) {
     vixl32::Register first_reg = InputRegisterAt(instruction, 0);
     vixl32::Register second_reg = InputRegisterAt(instruction, 1);
     vixl32::Register out_reg = OutputRegister(instruction);
@@ -8365,7 +8366,7 @@ void InstructionCodeGeneratorARMVIXL::HandleBitwiseOperation(HBinaryOperation* i
       __ Eor(out_reg, first_reg, second_reg);
     }
   } else {
-    DCHECK_EQ(instruction->GetResultType(), Primitive::kPrimLong);
+    DCHECK_EQ(instruction->GetResultType(), DataType::Type::kInt64);
     vixl32::Register first_low = LowRegisterFrom(first);
     vixl32::Register first_high = HighRegisterFrom(first);
     vixl32::Register second_low = LowRegisterFrom(second);
@@ -8590,7 +8591,7 @@ void CodeGeneratorARMVIXL::GenerateFieldLoadWithBakerReadBarrier(HInstruction* i
     //   gray_return_address:
 
     DCHECK_ALIGNED(offset, sizeof(mirror::HeapReference<mirror::Object>));
-    vixl32::Register ref_reg = RegisterFrom(ref, Primitive::kPrimNot);
+    vixl32::Register ref_reg = RegisterFrom(ref, DataType::Type::kReference);
     bool narrow = CanEmitNarrowLdr(ref_reg, obj, offset);
     vixl32::Register base = obj;
     if (offset >= kReferenceLoadMinFarOffset) {
@@ -8686,9 +8687,9 @@ void CodeGeneratorARMVIXL::GenerateArrayLoadWithBakerReadBarrier(HInstruction* i
     //   gray_return_address:
 
     DCHECK(index.IsValid());
-    vixl32::Register index_reg = RegisterFrom(index, Primitive::kPrimInt);
-    vixl32::Register ref_reg = RegisterFrom(ref, Primitive::kPrimNot);
-    vixl32::Register data_reg = RegisterFrom(temp, Primitive::kPrimInt);  // Raw pointer.
+    vixl32::Register index_reg = RegisterFrom(index, DataType::Type::kInt32);
+    vixl32::Register ref_reg = RegisterFrom(ref, DataType::Type::kReference);
+    vixl32::Register data_reg = RegisterFrom(temp, DataType::Type::kInt32);  // Raw pointer.
     DCHECK(!data_reg.Is(kBakerCcEntrypointRegister));
 
     UseScratchRegisterScope temps(GetVIXLAssembler());
@@ -8836,7 +8837,7 @@ void CodeGeneratorARMVIXL::GenerateRawReferenceLoad(HInstruction* instruction,
                                                     Location index,
                                                     ScaleFactor scale_factor,
                                                     bool needs_null_check) {
-  Primitive::Type type = Primitive::kPrimNot;
+  DataType::Type type = DataType::Type::kReference;
   vixl32::Register ref_reg = RegisterFrom(ref, type);
 
   // If needed, vixl::EmissionCheckScope guards are used to ensure
@@ -9392,13 +9393,13 @@ void InstructionCodeGeneratorARMVIXL::VisitPackedSwitch(HPackedSwitch* switch_in
 }
 
 // Copy the result of a call into the given target.
-void CodeGeneratorARMVIXL::MoveFromReturnRegister(Location trg, Primitive::Type type) {
+void CodeGeneratorARMVIXL::MoveFromReturnRegister(Location trg, DataType::Type type) {
   if (!trg.IsValid()) {
-    DCHECK_EQ(type, Primitive::kPrimVoid);
+    DCHECK_EQ(type, DataType::Type::kVoid);
     return;
   }
 
-  DCHECK_NE(type, Primitive::kPrimVoid);
+  DCHECK_NE(type, DataType::Type::kVoid);
 
   Location return_loc = InvokeDexCallingConventionVisitorARMVIXL().GetReturnLocation(type);
   if (return_loc.Equals(trg)) {
@@ -9407,9 +9408,9 @@ void CodeGeneratorARMVIXL::MoveFromReturnRegister(Location trg, Primitive::Type 
 
   // TODO: Consider pairs in the parallel move resolver, then this could be nicely merged
   //       with the last branch.
-  if (type == Primitive::kPrimLong) {
+  if (type == DataType::Type::kInt64) {
     TODO_VIXL32(FATAL);
-  } else if (type == Primitive::kPrimDouble) {
+  } else if (type == DataType::Type::kFloat64) {
     TODO_VIXL32(FATAL);
   } else {
     // Let the parallel move resolver take care of all of this.

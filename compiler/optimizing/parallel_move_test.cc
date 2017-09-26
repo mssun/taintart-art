@@ -158,7 +158,7 @@ static HParallelMove* BuildParallelMove(ArenaAllocator* allocator,
     moves->AddMove(
         Location::RegisterLocation(operands[i][0]),
         Location::RegisterLocation(operands[i][1]),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
   }
   return moves;
@@ -264,12 +264,12 @@ TYPED_TEST(ParallelMoveTest, ConstantLast) {
   moves->AddMove(
       Location::ConstantLocation(new (&allocator) HIntConstant(0)),
       Location::RegisterLocation(0),
-      Primitive::kPrimInt,
+      DataType::Type::kInt32,
       nullptr);
   moves->AddMove(
       Location::RegisterLocation(1),
       Location::RegisterLocation(2),
-      Primitive::kPrimInt,
+      DataType::Type::kInt32,
       nullptr);
   resolver.EmitNativeCode(moves);
   ASSERT_STREQ("(1 -> 2) (C -> 0)", resolver.GetMessage().c_str());
@@ -285,12 +285,12 @@ TYPED_TEST(ParallelMoveTest, Pairs) {
     moves->AddMove(
         Location::RegisterLocation(2),
         Location::RegisterLocation(4),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     moves->AddMove(
         Location::RegisterPairLocation(0, 1),
         Location::RegisterPairLocation(2, 3),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     resolver.EmitNativeCode(moves);
     ASSERT_STREQ("(2 -> 4) (0,1 -> 2,3)", resolver.GetMessage().c_str());
@@ -302,12 +302,12 @@ TYPED_TEST(ParallelMoveTest, Pairs) {
     moves->AddMove(
         Location::RegisterPairLocation(0, 1),
         Location::RegisterPairLocation(2, 3),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     moves->AddMove(
         Location::RegisterLocation(2),
         Location::RegisterLocation(4),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     resolver.EmitNativeCode(moves);
     ASSERT_STREQ("(2 -> 4) (0,1 -> 2,3)", resolver.GetMessage().c_str());
@@ -319,12 +319,12 @@ TYPED_TEST(ParallelMoveTest, Pairs) {
     moves->AddMove(
         Location::RegisterPairLocation(0, 1),
         Location::RegisterPairLocation(2, 3),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     moves->AddMove(
         Location::RegisterLocation(2),
         Location::RegisterLocation(0),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     resolver.EmitNativeCode(moves);
     if (TestFixture::has_swap) {
@@ -339,17 +339,17 @@ TYPED_TEST(ParallelMoveTest, Pairs) {
     moves->AddMove(
         Location::RegisterLocation(2),
         Location::RegisterLocation(7),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     moves->AddMove(
         Location::RegisterLocation(7),
         Location::RegisterLocation(1),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     moves->AddMove(
         Location::RegisterPairLocation(0, 1),
         Location::RegisterPairLocation(2, 3),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     resolver.EmitNativeCode(moves);
     if (TestFixture::has_swap) {
@@ -365,17 +365,17 @@ TYPED_TEST(ParallelMoveTest, Pairs) {
     moves->AddMove(
         Location::RegisterLocation(2),
         Location::RegisterLocation(7),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     moves->AddMove(
         Location::RegisterPairLocation(0, 1),
         Location::RegisterPairLocation(2, 3),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     moves->AddMove(
         Location::RegisterLocation(7),
         Location::RegisterLocation(1),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     resolver.EmitNativeCode(moves);
     if (TestFixture::has_swap) {
@@ -391,17 +391,17 @@ TYPED_TEST(ParallelMoveTest, Pairs) {
     moves->AddMove(
         Location::RegisterPairLocation(0, 1),
         Location::RegisterPairLocation(2, 3),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     moves->AddMove(
         Location::RegisterLocation(2),
         Location::RegisterLocation(7),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     moves->AddMove(
         Location::RegisterLocation(7),
         Location::RegisterLocation(1),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     resolver.EmitNativeCode(moves);
     if (TestFixture::has_swap) {
@@ -416,12 +416,12 @@ TYPED_TEST(ParallelMoveTest, Pairs) {
     moves->AddMove(
         Location::RegisterPairLocation(0, 1),
         Location::RegisterPairLocation(2, 3),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     moves->AddMove(
         Location::RegisterPairLocation(2, 3),
         Location::RegisterPairLocation(0, 1),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     resolver.EmitNativeCode(moves);
     if (TestFixture::has_swap) {
@@ -436,12 +436,12 @@ TYPED_TEST(ParallelMoveTest, Pairs) {
     moves->AddMove(
         Location::RegisterPairLocation(2, 3),
         Location::RegisterPairLocation(0, 1),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     moves->AddMove(
         Location::RegisterPairLocation(0, 1),
         Location::RegisterPairLocation(2, 3),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     resolver.EmitNativeCode(moves);
     if (TestFixture::has_swap) {
@@ -473,17 +473,17 @@ TYPED_TEST(ParallelMoveTest, MultiCycles) {
     moves->AddMove(
         Location::RegisterPairLocation(0, 1),
         Location::RegisterPairLocation(2, 3),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     moves->AddMove(
         Location::RegisterLocation(2),
         Location::RegisterLocation(0),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     moves->AddMove(
         Location::RegisterLocation(3),
         Location::RegisterLocation(1),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     resolver.EmitNativeCode(moves);
     if (TestFixture::has_swap) {
@@ -499,17 +499,17 @@ TYPED_TEST(ParallelMoveTest, MultiCycles) {
     moves->AddMove(
         Location::RegisterLocation(2),
         Location::RegisterLocation(0),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     moves->AddMove(
         Location::RegisterLocation(3),
         Location::RegisterLocation(1),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     moves->AddMove(
         Location::RegisterPairLocation(0, 1),
         Location::RegisterPairLocation(2, 3),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     resolver.EmitNativeCode(moves);
     if (TestFixture::has_swap) {
@@ -527,17 +527,17 @@ TYPED_TEST(ParallelMoveTest, MultiCycles) {
     moves->AddMove(
         Location::RegisterLocation(10),
         Location::RegisterLocation(5),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     moves->AddMove(
         Location::RegisterPairLocation(4, 5),
         Location::DoubleStackSlot(32),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     moves->AddMove(
         Location::DoubleStackSlot(32),
         Location::RegisterPairLocation(10, 11),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     resolver.EmitNativeCode(moves);
     if (TestFixture::has_swap) {
@@ -560,17 +560,17 @@ TYPED_TEST(ParallelMoveTest, CyclesWith64BitsMoves) {
     moves->AddMove(
         Location::RegisterLocation(0),
         Location::RegisterLocation(1),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     moves->AddMove(
         Location::RegisterLocation(1),
         Location::StackSlot(48),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     moves->AddMove(
         Location::StackSlot(48),
         Location::RegisterLocation(0),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     resolver.EmitNativeCode(moves);
     if (TestFixture::has_swap) {
@@ -587,17 +587,17 @@ TYPED_TEST(ParallelMoveTest, CyclesWith64BitsMoves) {
     moves->AddMove(
         Location::RegisterPairLocation(0, 1),
         Location::RegisterPairLocation(2, 3),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     moves->AddMove(
         Location::RegisterPairLocation(2, 3),
         Location::DoubleStackSlot(32),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     moves->AddMove(
         Location::DoubleStackSlot(32),
         Location::RegisterPairLocation(0, 1),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     resolver.EmitNativeCode(moves);
     if (TestFixture::has_swap) {
@@ -619,17 +619,17 @@ TYPED_TEST(ParallelMoveTest, CyclesWith64BitsMoves2) {
     moves->AddMove(
         Location::RegisterLocation(0),
         Location::RegisterLocation(3),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     moves->AddMove(
         Location::RegisterPairLocation(2, 3),
         Location::RegisterPairLocation(0, 1),
-        Primitive::kPrimLong,
+        DataType::Type::kInt64,
         nullptr);
     moves->AddMove(
         Location::RegisterLocation(7),
         Location::RegisterLocation(2),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     resolver.EmitNativeCode(moves);
     if (TestFixture::has_swap) {

@@ -47,28 +47,28 @@ constexpr bool kBakerReadBarrierThunksEnableForFields = true;
 constexpr bool kBakerReadBarrierThunksEnableForArrays = true;
 constexpr bool kBakerReadBarrierThunksEnableForGcRoots = true;
 
-Location Mips64ReturnLocation(Primitive::Type return_type) {
+Location Mips64ReturnLocation(DataType::Type return_type) {
   switch (return_type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimNot:
-    case Primitive::kPrimLong:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kReference:
+    case DataType::Type::kInt64:
       return Location::RegisterLocation(V0);
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       return Location::FpuRegisterLocation(F0);
 
-    case Primitive::kPrimVoid:
+    case DataType::Type::kVoid:
       return Location();
   }
   UNREACHABLE();
 }
 
-Location InvokeDexCallingConventionVisitorMIPS64::GetReturnLocation(Primitive::Type type) const {
+Location InvokeDexCallingConventionVisitorMIPS64::GetReturnLocation(DataType::Type type) const {
   return Mips64ReturnLocation(type);
 }
 
@@ -76,34 +76,34 @@ Location InvokeDexCallingConventionVisitorMIPS64::GetMethodLocation() const {
   return Location::RegisterLocation(kMethodRegisterArgument);
 }
 
-Location InvokeDexCallingConventionVisitorMIPS64::GetNextLocation(Primitive::Type type) {
+Location InvokeDexCallingConventionVisitorMIPS64::GetNextLocation(DataType::Type type) {
   Location next_location;
-  if (type == Primitive::kPrimVoid) {
+  if (type == DataType::Type::kVoid) {
     LOG(FATAL) << "Unexpected parameter type " << type;
   }
 
-  if (Primitive::IsFloatingPointType(type) &&
+  if (DataType::IsFloatingPointType(type) &&
       (float_index_ < calling_convention.GetNumberOfFpuRegisters())) {
     next_location = Location::FpuRegisterLocation(
         calling_convention.GetFpuRegisterAt(float_index_++));
     gp_index_++;
-  } else if (!Primitive::IsFloatingPointType(type) &&
+  } else if (!DataType::IsFloatingPointType(type) &&
              (gp_index_ < calling_convention.GetNumberOfRegisters())) {
     next_location = Location::RegisterLocation(calling_convention.GetRegisterAt(gp_index_++));
     float_index_++;
   } else {
     size_t stack_offset = calling_convention.GetStackOffsetOf(stack_index_);
-    next_location = Primitive::Is64BitType(type) ? Location::DoubleStackSlot(stack_offset)
-                                                 : Location::StackSlot(stack_offset);
+    next_location = DataType::Is64BitType(type) ? Location::DoubleStackSlot(stack_offset)
+                                                : Location::StackSlot(stack_offset);
   }
 
   // Space on the stack is reserved for all arguments.
-  stack_index_ += Primitive::Is64BitType(type) ? 2 : 1;
+  stack_index_ += DataType::Is64BitType(type) ? 2 : 1;
 
   return next_location;
 }
 
-Location InvokeRuntimeCallingConvention::GetReturnLocation(Primitive::Type type) {
+Location InvokeRuntimeCallingConvention::GetReturnLocation(DataType::Type type) {
   return Mips64ReturnLocation(type);
 }
 
@@ -128,10 +128,10 @@ class BoundsCheckSlowPathMIPS64 : public SlowPathCodeMIPS64 {
     InvokeRuntimeCallingConvention calling_convention;
     codegen->EmitParallelMoves(locations->InAt(0),
                                Location::RegisterLocation(calling_convention.GetRegisterAt(0)),
-                               Primitive::kPrimInt,
+                               DataType::Type::kInt32,
                                locations->InAt(1),
                                Location::RegisterLocation(calling_convention.GetRegisterAt(1)),
-                               Primitive::kPrimInt);
+                               DataType::Type::kInt32);
     QuickEntrypointEnum entrypoint = instruction_->AsBoundsCheck()->IsStringCharAt()
         ? kQuickThrowStringBounds
         : kQuickThrowArrayBounds;
@@ -236,7 +236,7 @@ class LoadClassSlowPathMIPS64 : public SlowPathCodeMIPS64 {
     // Move the class to the desired location.
     if (out.IsValid()) {
       DCHECK(out.IsRegister() && !locations->GetLiveRegisters()->ContainsCoreRegister(out.reg()));
-      Primitive::Type type = instruction_->GetType();
+      DataType::Type type = instruction_->GetType();
       mips64_codegen->MoveLocation(out,
                                    Location::RegisterLocation(calling_convention.GetRegisterAt(0)),
                                    type);
@@ -331,7 +331,7 @@ class LoadStringSlowPathMIPS64 : public SlowPathCodeMIPS64 {
                        /* placeholder */ 0x5678);
     }
 
-    Primitive::Type type = instruction_->GetType();
+    DataType::Type type = instruction_->GetType();
     mips64_codegen->MoveLocation(locations->Out(),
                                  Location::RegisterLocation(calling_convention.GetRegisterAt(0)),
                                  type);
@@ -446,14 +446,14 @@ class TypeCheckSlowPathMIPS64 : public SlowPathCodeMIPS64 {
     InvokeRuntimeCallingConvention calling_convention;
     codegen->EmitParallelMoves(locations->InAt(0),
                                Location::RegisterLocation(calling_convention.GetRegisterAt(0)),
-                               Primitive::kPrimNot,
+                               DataType::Type::kReference,
                                locations->InAt(1),
                                Location::RegisterLocation(calling_convention.GetRegisterAt(1)),
-                               Primitive::kPrimNot);
+                               DataType::Type::kReference);
     if (instruction_->IsInstanceOf()) {
       mips64_codegen->InvokeRuntime(kQuickInstanceofNonTrivial, instruction_, dex_pc, this);
       CheckEntrypointTypes<kQuickInstanceofNonTrivial, size_t, mirror::Object*, mirror::Class*>();
-      Primitive::Type ret_type = instruction_->GetType();
+      DataType::Type ret_type = instruction_->GetType();
       Location ret_loc = calling_convention.GetReturnLocation(ret_type);
       mips64_codegen->MoveLocation(locations->Out(), ret_loc, ret_type);
     } else {
@@ -515,17 +515,17 @@ class ArraySetSlowPathMIPS64 : public SlowPathCodeMIPS64 {
     parallel_move.AddMove(
         locations->InAt(0),
         Location::RegisterLocation(calling_convention.GetRegisterAt(0)),
-        Primitive::kPrimNot,
+        DataType::Type::kReference,
         nullptr);
     parallel_move.AddMove(
         locations->InAt(1),
         Location::RegisterLocation(calling_convention.GetRegisterAt(1)),
-        Primitive::kPrimInt,
+        DataType::Type::kInt32,
         nullptr);
     parallel_move.AddMove(
         locations->InAt(2),
         Location::RegisterLocation(calling_convention.GetRegisterAt(2)),
-        Primitive::kPrimNot,
+        DataType::Type::kReference,
         nullptr);
     codegen->GetMoveResolver()->EmitNativeCode(&parallel_move);
 
@@ -823,7 +823,7 @@ class ReadBarrierForHeapReferenceSlowPathMIPS64 : public SlowPathCodeMIPS64 {
   void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
     CodeGeneratorMIPS64* mips64_codegen = down_cast<CodeGeneratorMIPS64*>(codegen);
     LocationSummary* locations = instruction_->GetLocations();
-    Primitive::Type type = Primitive::kPrimNot;
+    DataType::Type type = DataType::Type::kReference;
     GpuRegister reg_out = out_.AsRegister<GpuRegister>();
     DCHECK(locations->CanCall());
     DCHECK(!locations->GetLiveRegisters()->ContainsCoreRegister(reg_out));
@@ -912,16 +912,16 @@ class ReadBarrierForHeapReferenceSlowPathMIPS64 : public SlowPathCodeMIPS64 {
     HParallelMove parallel_move(codegen->GetGraph()->GetArena());
     parallel_move.AddMove(ref_,
                           Location::RegisterLocation(calling_convention.GetRegisterAt(0)),
-                          Primitive::kPrimNot,
+                          DataType::Type::kReference,
                           nullptr);
     parallel_move.AddMove(obj_,
                           Location::RegisterLocation(calling_convention.GetRegisterAt(1)),
-                          Primitive::kPrimNot,
+                          DataType::Type::kReference,
                           nullptr);
     if (index.IsValid()) {
       parallel_move.AddMove(index,
                             Location::RegisterLocation(calling_convention.GetRegisterAt(2)),
-                            Primitive::kPrimInt,
+                            DataType::Type::kInt32,
                             nullptr);
       codegen->GetMoveResolver()->EmitNativeCode(&parallel_move);
     } else {
@@ -987,7 +987,7 @@ class ReadBarrierForRootSlowPathMIPS64 : public SlowPathCodeMIPS64 {
 
   void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
     LocationSummary* locations = instruction_->GetLocations();
-    Primitive::Type type = Primitive::kPrimNot;
+    DataType::Type type = DataType::Type::kReference;
     GpuRegister reg_out = out_.AsRegister<GpuRegister>();
     DCHECK(locations->CanCall());
     DCHECK(!locations->GetLiveRegisters()->ContainsCoreRegister(reg_out));
@@ -1002,7 +1002,7 @@ class ReadBarrierForRootSlowPathMIPS64 : public SlowPathCodeMIPS64 {
     CodeGeneratorMIPS64* mips64_codegen = down_cast<CodeGeneratorMIPS64*>(codegen);
     mips64_codegen->MoveLocation(Location::RegisterLocation(calling_convention.GetRegisterAt(0)),
                                  root_,
-                                 Primitive::kPrimNot);
+                                 DataType::Type::kReference);
     mips64_codegen->InvokeRuntime(kQuickReadBarrierForRootSlow,
                                   instruction_,
                                   instruction_->GetDexPc(),
@@ -1254,7 +1254,7 @@ void CodeGeneratorMIPS64::Bind(HBasicBlock* block) {
 
 void CodeGeneratorMIPS64::MoveLocation(Location destination,
                                        Location source,
-                                       Primitive::Type dst_type) {
+                                       DataType::Type dst_type) {
   if (source.Equals(destination)) {
     return;
   }
@@ -1262,7 +1262,7 @@ void CodeGeneratorMIPS64::MoveLocation(Location destination,
   // A valid move can always be inferred from the destination and source
   // locations. When moving from and to a register, the argument type can be
   // used to generate 32bit instead of 64bit moves.
-  bool unspecified_type = (dst_type == Primitive::kPrimVoid);
+  bool unspecified_type = (dst_type == DataType::Type::kVoid);
   DCHECK_EQ(unspecified_type, false);
 
   if (destination.IsRegister() || destination.IsFpuRegister()) {
@@ -1273,27 +1273,27 @@ void CodeGeneratorMIPS64::MoveLocation(Location destination,
                                   || src_cst->IsFloatConstant()
                                   || src_cst->IsNullConstant()))) {
         // For stack slots and 32bit constants, a 64bit type is appropriate.
-        dst_type = destination.IsRegister() ? Primitive::kPrimInt : Primitive::kPrimFloat;
+        dst_type = destination.IsRegister() ? DataType::Type::kInt32 : DataType::Type::kFloat32;
       } else {
         // If the source is a double stack slot or a 64bit constant, a 64bit
         // type is appropriate. Else the source is a register, and since the
         // type has not been specified, we chose a 64bit type to force a 64bit
         // move.
-        dst_type = destination.IsRegister() ? Primitive::kPrimLong : Primitive::kPrimDouble;
+        dst_type = destination.IsRegister() ? DataType::Type::kInt64 : DataType::Type::kFloat64;
       }
     }
-    DCHECK((destination.IsFpuRegister() && Primitive::IsFloatingPointType(dst_type)) ||
-           (destination.IsRegister() && !Primitive::IsFloatingPointType(dst_type)));
+    DCHECK((destination.IsFpuRegister() && DataType::IsFloatingPointType(dst_type)) ||
+           (destination.IsRegister() && !DataType::IsFloatingPointType(dst_type)));
     if (source.IsStackSlot() || source.IsDoubleStackSlot()) {
       // Move to GPR/FPR from stack
       LoadOperandType load_type = source.IsStackSlot() ? kLoadWord : kLoadDoubleword;
-      if (Primitive::IsFloatingPointType(dst_type)) {
+      if (DataType::IsFloatingPointType(dst_type)) {
         __ LoadFpuFromOffset(load_type,
                              destination.AsFpuRegister<FpuRegister>(),
                              SP,
                              source.GetStackIndex());
       } else {
-        // TODO: use load_type = kLoadUnsignedWord when type == Primitive::kPrimNot.
+        // TODO: use load_type = kLoadUnsignedWord when type == DataType::Type::kReference.
         __ LoadFromOffset(load_type,
                           destination.AsRegister<GpuRegister>(),
                           SP,
@@ -1307,27 +1307,27 @@ void CodeGeneratorMIPS64::MoveLocation(Location destination,
     } else if (source.IsConstant()) {
       // Move to GPR/FPR from constant
       GpuRegister gpr = AT;
-      if (!Primitive::IsFloatingPointType(dst_type)) {
+      if (!DataType::IsFloatingPointType(dst_type)) {
         gpr = destination.AsRegister<GpuRegister>();
       }
-      if (dst_type == Primitive::kPrimInt || dst_type == Primitive::kPrimFloat) {
+      if (dst_type == DataType::Type::kInt32 || dst_type == DataType::Type::kFloat32) {
         int32_t value = GetInt32ValueOf(source.GetConstant()->AsConstant());
-        if (Primitive::IsFloatingPointType(dst_type) && value == 0) {
+        if (DataType::IsFloatingPointType(dst_type) && value == 0) {
           gpr = ZERO;
         } else {
           __ LoadConst32(gpr, value);
         }
       } else {
         int64_t value = GetInt64ValueOf(source.GetConstant()->AsConstant());
-        if (Primitive::IsFloatingPointType(dst_type) && value == 0) {
+        if (DataType::IsFloatingPointType(dst_type) && value == 0) {
           gpr = ZERO;
         } else {
           __ LoadConst64(gpr, value);
         }
       }
-      if (dst_type == Primitive::kPrimFloat) {
+      if (dst_type == DataType::Type::kFloat32) {
         __ Mtc1(gpr, destination.AsFpuRegister<FpuRegister>());
-      } else if (dst_type == Primitive::kPrimDouble) {
+      } else if (dst_type == DataType::Type::kFloat64) {
         __ Dmtc1(gpr, destination.AsFpuRegister<FpuRegister>());
       }
     } else if (source.IsRegister()) {
@@ -1336,7 +1336,7 @@ void CodeGeneratorMIPS64::MoveLocation(Location destination,
         __ Move(destination.AsRegister<GpuRegister>(), source.AsRegister<GpuRegister>());
       } else {
         DCHECK(destination.IsFpuRegister());
-        if (Primitive::Is64BitType(dst_type)) {
+        if (DataType::Is64BitType(dst_type)) {
           __ Dmtc1(source.AsRegister<GpuRegister>(), destination.AsFpuRegister<FpuRegister>());
         } else {
           __ Mtc1(source.AsRegister<GpuRegister>(), destination.AsFpuRegister<FpuRegister>());
@@ -1349,16 +1349,16 @@ void CodeGeneratorMIPS64::MoveLocation(Location destination,
                    VectorRegisterFrom(source));
         } else {
           // Move to FPR from FPR
-          if (dst_type == Primitive::kPrimFloat) {
+          if (dst_type == DataType::Type::kFloat32) {
             __ MovS(destination.AsFpuRegister<FpuRegister>(), source.AsFpuRegister<FpuRegister>());
           } else {
-            DCHECK_EQ(dst_type, Primitive::kPrimDouble);
+            DCHECK_EQ(dst_type, DataType::Type::kFloat64);
             __ MovD(destination.AsFpuRegister<FpuRegister>(), source.AsFpuRegister<FpuRegister>());
           }
         }
       } else {
         DCHECK(destination.IsRegister());
-        if (Primitive::Is64BitType(dst_type)) {
+        if (DataType::Is64BitType(dst_type)) {
           __ Dmfc1(destination.AsRegister<GpuRegister>(), source.AsFpuRegister<FpuRegister>());
         } else {
           __ Mfc1(destination.AsRegister<GpuRegister>(), source.AsFpuRegister<FpuRegister>());
@@ -1387,13 +1387,14 @@ void CodeGeneratorMIPS64::MoveLocation(Location destination,
     if (source.IsRegister() || source.IsFpuRegister()) {
       if (unspecified_type) {
         if (source.IsRegister()) {
-          dst_type = destination.IsStackSlot() ? Primitive::kPrimInt : Primitive::kPrimLong;
+          dst_type = destination.IsStackSlot() ? DataType::Type::kInt32 : DataType::Type::kInt64;
         } else {
-          dst_type = destination.IsStackSlot() ? Primitive::kPrimFloat : Primitive::kPrimDouble;
+          dst_type =
+              destination.IsStackSlot() ? DataType::Type::kFloat32 : DataType::Type::kFloat64;
         }
       }
-      DCHECK((destination.IsDoubleStackSlot() == Primitive::Is64BitType(dst_type)) &&
-             (source.IsFpuRegister() == Primitive::IsFloatingPointType(dst_type)));
+      DCHECK((destination.IsDoubleStackSlot() == DataType::Is64BitType(dst_type)) &&
+             (source.IsFpuRegister() == DataType::IsFloatingPointType(dst_type)));
       // Move to stack from GPR/FPR
       StoreOperandType store_type = destination.IsStackSlot() ? kStoreWord : kStoreDoubleword;
       if (source.IsRegister()) {
@@ -1442,7 +1443,7 @@ void CodeGeneratorMIPS64::MoveLocation(Location destination,
   }
 }
 
-void CodeGeneratorMIPS64::SwapLocations(Location loc1, Location loc2, Primitive::Type type) {
+void CodeGeneratorMIPS64::SwapLocations(Location loc1, Location loc2, DataType::Type type) {
   DCHECK(!loc1.IsConstant());
   DCHECK(!loc2.IsConstant());
 
@@ -1466,12 +1467,12 @@ void CodeGeneratorMIPS64::SwapLocations(Location loc1, Location loc2, Primitive:
     // Swap 2 FPRs
     FpuRegister r1 = loc1.AsFpuRegister<FpuRegister>();
     FpuRegister r2 = loc2.AsFpuRegister<FpuRegister>();
-    if (type == Primitive::kPrimFloat) {
+    if (type == DataType::Type::kFloat32) {
       __ MovS(FTMP, r1);
       __ MovS(r1, r2);
       __ MovS(r2, FTMP);
     } else {
-      DCHECK_EQ(type, Primitive::kPrimDouble);
+      DCHECK_EQ(type, DataType::Type::kFloat64);
       __ MovD(FTMP, r1);
       __ MovD(r1, r2);
       __ MovD(r2, FTMP);
@@ -1482,7 +1483,7 @@ void CodeGeneratorMIPS64::SwapLocations(Location loc1, Location loc2, Primitive:
     Location mem_loc = is_slot1 ? loc1 : loc2;
     LoadOperandType load_type = mem_loc.IsStackSlot() ? kLoadWord : kLoadDoubleword;
     StoreOperandType store_type = mem_loc.IsStackSlot() ? kStoreWord : kStoreDoubleword;
-    // TODO: use load_type = kLoadUnsignedWord when type == Primitive::kPrimNot.
+    // TODO: use load_type = kLoadUnsignedWord when type == DataType::Type::kReference.
     __ LoadFromOffset(load_type, TMP, SP, mem_loc.GetStackIndex());
     if (reg_loc.IsFpuRegister()) {
       __ StoreFpuToOffset(store_type,
@@ -1859,10 +1860,10 @@ InstructionCodeGeneratorMIPS64::InstructionCodeGeneratorMIPS64(HGraph* graph,
 void LocationsBuilderMIPS64::HandleBinaryOp(HBinaryOperation* instruction) {
   DCHECK_EQ(instruction->InputCount(), 2U);
   LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
-  Primitive::Type type = instruction->GetResultType();
+  DataType::Type type = instruction->GetResultType();
   switch (type) {
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64: {
       locations->SetInAt(0, Location::RequiresRegister());
       HInstruction* right = instruction->InputAt(1);
       bool can_use_imm = false;
@@ -1885,8 +1886,8 @@ void LocationsBuilderMIPS64::HandleBinaryOp(HBinaryOperation* instruction) {
       }
       break;
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetInAt(1, Location::RequiresFpuRegister());
       locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
@@ -1898,12 +1899,12 @@ void LocationsBuilderMIPS64::HandleBinaryOp(HBinaryOperation* instruction) {
 }
 
 void InstructionCodeGeneratorMIPS64::HandleBinaryOp(HBinaryOperation* instruction) {
-  Primitive::Type type = instruction->GetType();
+  DataType::Type type = instruction->GetType();
   LocationSummary* locations = instruction->GetLocations();
 
   switch (type) {
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64: {
       GpuRegister dst = locations->Out().AsRegister<GpuRegister>();
       GpuRegister lhs = locations->InAt(0).AsRegister<GpuRegister>();
       Location rhs_location = locations->InAt(1);
@@ -1933,7 +1934,7 @@ void InstructionCodeGeneratorMIPS64::HandleBinaryOp(HBinaryOperation* instructio
         else
           __ Xor(dst, lhs, rhs_reg);
       } else if (instruction->IsAdd()) {
-        if (type == Primitive::kPrimInt) {
+        if (type == DataType::Type::kInt32) {
           if (use_imm)
             __ Addiu(dst, lhs, rhs_imm);
           else
@@ -1946,7 +1947,7 @@ void InstructionCodeGeneratorMIPS64::HandleBinaryOp(HBinaryOperation* instructio
         }
       } else {
         DCHECK(instruction->IsSub());
-        if (type == Primitive::kPrimInt) {
+        if (type == DataType::Type::kInt32) {
           if (use_imm)
             __ Addiu(dst, lhs, -rhs_imm);
           else
@@ -1960,18 +1961,18 @@ void InstructionCodeGeneratorMIPS64::HandleBinaryOp(HBinaryOperation* instructio
       }
       break;
     }
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64: {
       FpuRegister dst = locations->Out().AsFpuRegister<FpuRegister>();
       FpuRegister lhs = locations->InAt(0).AsFpuRegister<FpuRegister>();
       FpuRegister rhs = locations->InAt(1).AsFpuRegister<FpuRegister>();
       if (instruction->IsAdd()) {
-        if (type == Primitive::kPrimFloat)
+        if (type == DataType::Type::kFloat32)
           __ AddS(dst, lhs, rhs);
         else
           __ AddD(dst, lhs, rhs);
       } else if (instruction->IsSub()) {
-        if (type == Primitive::kPrimFloat)
+        if (type == DataType::Type::kFloat32)
           __ SubS(dst, lhs, rhs);
         else
           __ SubD(dst, lhs, rhs);
@@ -1989,10 +1990,10 @@ void LocationsBuilderMIPS64::HandleShift(HBinaryOperation* instr) {
   DCHECK(instr->IsShl() || instr->IsShr() || instr->IsUShr() || instr->IsRor());
 
   LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instr);
-  Primitive::Type type = instr->GetResultType();
+  DataType::Type type = instr->GetResultType();
   switch (type) {
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64: {
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RegisterOrConstant(instr->InputAt(1)));
       locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
@@ -2006,11 +2007,11 @@ void LocationsBuilderMIPS64::HandleShift(HBinaryOperation* instr) {
 void InstructionCodeGeneratorMIPS64::HandleShift(HBinaryOperation* instr) {
   DCHECK(instr->IsShl() || instr->IsShr() || instr->IsUShr() || instr->IsRor());
   LocationSummary* locations = instr->GetLocations();
-  Primitive::Type type = instr->GetType();
+  DataType::Type type = instr->GetType();
 
   switch (type) {
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64: {
       GpuRegister dst = locations->Out().AsRegister<GpuRegister>();
       GpuRegister lhs = locations->InAt(0).AsRegister<GpuRegister>();
       Location rhs_location = locations->InAt(1);
@@ -2026,13 +2027,13 @@ void InstructionCodeGeneratorMIPS64::HandleShift(HBinaryOperation* instr) {
 
       if (use_imm) {
         uint32_t shift_value = rhs_imm &
-            (type == Primitive::kPrimInt ? kMaxIntShiftDistance : kMaxLongShiftDistance);
+            (type == DataType::Type::kInt32 ? kMaxIntShiftDistance : kMaxLongShiftDistance);
 
         if (shift_value == 0) {
           if (dst != lhs) {
             __ Move(dst, lhs);
           }
-        } else if (type == Primitive::kPrimInt) {
+        } else if (type == DataType::Type::kInt32) {
           if (instr->IsShl()) {
             __ Sll(dst, lhs, shift_value);
           } else if (instr->IsShr()) {
@@ -2067,7 +2068,7 @@ void InstructionCodeGeneratorMIPS64::HandleShift(HBinaryOperation* instr) {
           }
         }
       } else {
-        if (type == Primitive::kPrimInt) {
+        if (type == DataType::Type::kInt32) {
           if (instr->IsShl()) {
             __ Sllv(dst, lhs, rhs_reg);
           } else if (instr->IsShr()) {
@@ -2113,9 +2114,9 @@ void InstructionCodeGeneratorMIPS64::VisitAnd(HAnd* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitArrayGet(HArrayGet* instruction) {
-  Primitive::Type type = instruction->GetType();
+  DataType::Type type = instruction->GetType();
   bool object_array_get_with_read_barrier =
-      kEmitCompilerReadBarrier && (type == Primitive::kPrimNot);
+      kEmitCompilerReadBarrier && (type == DataType::Type::kReference);
   LocationSummary* locations =
       new (GetGraph()->GetArena()) LocationSummary(instruction,
                                                    object_array_get_with_read_barrier
@@ -2126,7 +2127,7 @@ void LocationsBuilderMIPS64::VisitArrayGet(HArrayGet* instruction) {
   }
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetInAt(1, Location::RegisterOrConstant(instruction->InputAt(1)));
-  if (Primitive::IsFloatingPointType(type)) {
+  if (DataType::IsFloatingPointType(type)) {
     locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
   } else {
     // The output overlaps in the case of an object array get with
@@ -2165,11 +2166,11 @@ void InstructionCodeGeneratorMIPS64::VisitArrayGet(HArrayGet* instruction) {
   uint32_t data_offset = CodeGenerator::GetArrayDataOffset(instruction);
   auto null_checker = GetImplicitNullChecker(instruction, codegen_);
 
-  Primitive::Type type = instruction->GetType();
+  DataType::Type type = instruction->GetType();
   const bool maybe_compressed_char_at = mirror::kUseStringCompression &&
                                         instruction->IsStringCharAt();
   switch (type) {
-    case Primitive::kPrimBoolean: {
+    case DataType::Type::kBool: {
       GpuRegister out = out_loc.AsRegister<GpuRegister>();
       if (index.IsConstant()) {
         size_t offset =
@@ -2182,7 +2183,7 @@ void InstructionCodeGeneratorMIPS64::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimByte: {
+    case DataType::Type::kInt8: {
       GpuRegister out = out_loc.AsRegister<GpuRegister>();
       if (index.IsConstant()) {
         size_t offset =
@@ -2195,7 +2196,7 @@ void InstructionCodeGeneratorMIPS64::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimShort: {
+    case DataType::Type::kInt16: {
       GpuRegister out = out_loc.AsRegister<GpuRegister>();
       if (index.IsConstant()) {
         size_t offset =
@@ -2208,7 +2209,7 @@ void InstructionCodeGeneratorMIPS64::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimChar: {
+    case DataType::Type::kUint16: {
       GpuRegister out = out_loc.AsRegister<GpuRegister>();
       if (maybe_compressed_char_at) {
         uint32_t count_offset = mirror::String::CountOffset().Uint32Value();
@@ -2260,10 +2261,11 @@ void InstructionCodeGeneratorMIPS64::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       DCHECK_EQ(sizeof(mirror::HeapReference<mirror::Object>), sizeof(int32_t));
       GpuRegister out = out_loc.AsRegister<GpuRegister>();
-      LoadOperandType load_type = (type == Primitive::kPrimNot) ? kLoadUnsignedWord : kLoadWord;
+      LoadOperandType load_type =
+          (type == DataType::Type::kReference) ? kLoadUnsignedWord : kLoadWord;
       if (index.IsConstant()) {
         size_t offset =
             (index.GetConstant()->AsIntConstant()->GetValue() << TIMES_4) + data_offset;
@@ -2275,7 +2277,7 @@ void InstructionCodeGeneratorMIPS64::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimNot: {
+    case DataType::Type::kReference: {
       static_assert(
           sizeof(mirror::HeapReference<mirror::Object>) == sizeof(int32_t),
           "art::mirror::HeapReference<art::mirror::Object> and int32_t have different sizes.");
@@ -2335,7 +2337,7 @@ void InstructionCodeGeneratorMIPS64::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       GpuRegister out = out_loc.AsRegister<GpuRegister>();
       if (index.IsConstant()) {
         size_t offset =
@@ -2348,7 +2350,7 @@ void InstructionCodeGeneratorMIPS64::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimFloat: {
+    case DataType::Type::kFloat32: {
       FpuRegister out = out_loc.AsFpuRegister<FpuRegister>();
       if (index.IsConstant()) {
         size_t offset =
@@ -2361,7 +2363,7 @@ void InstructionCodeGeneratorMIPS64::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat64: {
       FpuRegister out = out_loc.AsFpuRegister<FpuRegister>();
       if (index.IsConstant()) {
         size_t offset =
@@ -2374,7 +2376,7 @@ void InstructionCodeGeneratorMIPS64::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
-    case Primitive::kPrimVoid:
+    case DataType::Type::kVoid:
       LOG(FATAL) << "Unreachable type " << instruction->GetType();
       UNREACHABLE();
   }
@@ -2419,7 +2421,7 @@ Location LocationsBuilderMIPS64::FpuRegisterOrConstantForStore(HInstruction* ins
 }
 
 void LocationsBuilderMIPS64::VisitArraySet(HArraySet* instruction) {
-  Primitive::Type value_type = instruction->GetComponentType();
+  DataType::Type value_type = instruction->GetComponentType();
 
   bool needs_write_barrier =
       CodeGenerator::StoreNeedsWriteBarrier(value_type, instruction->GetValue());
@@ -2433,7 +2435,7 @@ void LocationsBuilderMIPS64::VisitArraySet(HArraySet* instruction) {
 
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetInAt(1, Location::RegisterOrConstant(instruction->InputAt(1)));
-  if (Primitive::IsFloatingPointType(instruction->InputAt(2)->GetType())) {
+  if (DataType::IsFloatingPointType(instruction->InputAt(2)->GetType())) {
     locations->SetInAt(2, FpuRegisterOrConstantForStore(instruction->InputAt(2)));
   } else {
     locations->SetInAt(2, RegisterOrZeroConstant(instruction->InputAt(2)));
@@ -2449,7 +2451,7 @@ void InstructionCodeGeneratorMIPS64::VisitArraySet(HArraySet* instruction) {
   GpuRegister obj = locations->InAt(0).AsRegister<GpuRegister>();
   Location index = locations->InAt(1);
   Location value_location = locations->InAt(2);
-  Primitive::Type value_type = instruction->GetComponentType();
+  DataType::Type value_type = instruction->GetComponentType();
   bool may_need_runtime_call_for_type_check = instruction->NeedsTypeCheck();
   bool needs_write_barrier =
       CodeGenerator::StoreNeedsWriteBarrier(value_type, instruction->GetValue());
@@ -2457,8 +2459,8 @@ void InstructionCodeGeneratorMIPS64::VisitArraySet(HArraySet* instruction) {
   GpuRegister base_reg = index.IsConstant() ? obj : TMP;
 
   switch (value_type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte: {
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8: {
       uint32_t data_offset = mirror::Array::DataOffset(sizeof(uint8_t)).Uint32Value();
       if (index.IsConstant()) {
         data_offset += index.GetConstant()->AsIntConstant()->GetValue() << TIMES_1;
@@ -2475,8 +2477,8 @@ void InstructionCodeGeneratorMIPS64::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar: {
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16: {
       uint32_t data_offset = mirror::Array::DataOffset(sizeof(uint16_t)).Uint32Value();
       if (index.IsConstant()) {
         data_offset += index.GetConstant()->AsIntConstant()->GetValue() << TIMES_2;
@@ -2493,7 +2495,7 @@ void InstructionCodeGeneratorMIPS64::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       uint32_t data_offset = mirror::Array::DataOffset(sizeof(int32_t)).Uint32Value();
       if (index.IsConstant()) {
         data_offset += index.GetConstant()->AsIntConstant()->GetValue() << TIMES_4;
@@ -2510,7 +2512,7 @@ void InstructionCodeGeneratorMIPS64::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case Primitive::kPrimNot: {
+    case DataType::Type::kReference: {
       if (value_location.IsConstant()) {
         // Just setting null.
         uint32_t data_offset = mirror::Array::DataOffset(sizeof(int32_t)).Uint32Value();
@@ -2625,7 +2627,7 @@ void InstructionCodeGeneratorMIPS64::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       uint32_t data_offset = mirror::Array::DataOffset(sizeof(int64_t)).Uint32Value();
       if (index.IsConstant()) {
         data_offset += index.GetConstant()->AsIntConstant()->GetValue() << TIMES_8;
@@ -2642,7 +2644,7 @@ void InstructionCodeGeneratorMIPS64::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case Primitive::kPrimFloat: {
+    case DataType::Type::kFloat32: {
       uint32_t data_offset = mirror::Array::DataOffset(sizeof(float)).Uint32Value();
       if (index.IsConstant()) {
         data_offset += index.GetConstant()->AsIntConstant()->GetValue() << TIMES_4;
@@ -2659,7 +2661,7 @@ void InstructionCodeGeneratorMIPS64::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat64: {
       uint32_t data_offset = mirror::Array::DataOffset(sizeof(double)).Uint32Value();
       if (index.IsConstant()) {
         data_offset += index.GetConstant()->AsIntConstant()->GetValue() << TIMES_8;
@@ -2676,7 +2678,7 @@ void InstructionCodeGeneratorMIPS64::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case Primitive::kPrimVoid:
+    case DataType::Type::kVoid:
       LOG(FATAL) << "Unreachable type " << instruction->GetType();
       UNREACHABLE();
   }
@@ -2961,24 +2963,24 @@ void InstructionCodeGeneratorMIPS64::VisitClinitCheck(HClinitCheck* check) {
 }
 
 void LocationsBuilderMIPS64::VisitCompare(HCompare* compare) {
-  Primitive::Type in_type = compare->InputAt(0)->GetType();
+  DataType::Type in_type = compare->InputAt(0)->GetType();
 
   LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(compare);
 
   switch (in_type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RegisterOrConstant(compare->InputAt(1)));
       locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
       break;
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetInAt(1, Location::RequiresFpuRegister());
       locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
@@ -2992,24 +2994,24 @@ void LocationsBuilderMIPS64::VisitCompare(HCompare* compare) {
 void InstructionCodeGeneratorMIPS64::VisitCompare(HCompare* instruction) {
   LocationSummary* locations = instruction->GetLocations();
   GpuRegister res = locations->Out().AsRegister<GpuRegister>();
-  Primitive::Type in_type = instruction->InputAt(0)->GetType();
+  DataType::Type in_type = instruction->InputAt(0)->GetType();
 
   //  0 if: left == right
   //  1 if: left  > right
   // -1 if: left  < right
   switch (in_type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong: {
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64: {
       GpuRegister lhs = locations->InAt(0).AsRegister<GpuRegister>();
       Location rhs_location = locations->InAt(1);
       bool use_imm = rhs_location.IsConstant();
       GpuRegister rhs = ZERO;
       if (use_imm) {
-        if (in_type == Primitive::kPrimLong) {
+        if (in_type == DataType::Type::kInt64) {
           int64_t value = CodeGenerator::GetInt64ValueOf(rhs_location.GetConstant()->AsConstant());
           if (value != 0) {
             rhs = AT;
@@ -3031,7 +3033,7 @@ void InstructionCodeGeneratorMIPS64::VisitCompare(HCompare* instruction) {
       break;
     }
 
-    case Primitive::kPrimFloat: {
+    case DataType::Type::kFloat32: {
       FpuRegister lhs = locations->InAt(0).AsFpuRegister<FpuRegister>();
       FpuRegister rhs = locations->InAt(1).AsFpuRegister<FpuRegister>();
       Mips64Label done;
@@ -3053,7 +3055,7 @@ void InstructionCodeGeneratorMIPS64::VisitCompare(HCompare* instruction) {
       break;
     }
 
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat64: {
       FpuRegister lhs = locations->InAt(0).AsFpuRegister<FpuRegister>();
       FpuRegister rhs = locations->InAt(1).AsFpuRegister<FpuRegister>();
       Mips64Label done;
@@ -3084,13 +3086,13 @@ void LocationsBuilderMIPS64::HandleCondition(HCondition* instruction) {
   LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
   switch (instruction->InputAt(0)->GetType()) {
     default:
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RegisterOrConstant(instruction->InputAt(1)));
       break;
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetInAt(1, Location::RequiresFpuRegister());
       break;
@@ -3105,18 +3107,18 @@ void InstructionCodeGeneratorMIPS64::HandleCondition(HCondition* instruction) {
     return;
   }
 
-  Primitive::Type type = instruction->InputAt(0)->GetType();
+  DataType::Type type = instruction->InputAt(0)->GetType();
   LocationSummary* locations = instruction->GetLocations();
   switch (type) {
     default:
       // Integer case.
       GenerateIntLongCompare(instruction->GetCondition(), /* is64bit */ false, locations);
       return;
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       GenerateIntLongCompare(instruction->GetCondition(), /* is64bit */ true, locations);
       return;
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       GenerateFpCompare(instruction->GetCondition(), instruction->IsGtBias(), type, locations);
      return;
   }
@@ -3124,7 +3126,7 @@ void InstructionCodeGeneratorMIPS64::HandleCondition(HCondition* instruction) {
 
 void InstructionCodeGeneratorMIPS64::DivRemOneOrMinusOne(HBinaryOperation* instruction) {
   DCHECK(instruction->IsDiv() || instruction->IsRem());
-  Primitive::Type type = instruction->GetResultType();
+  DataType::Type type = instruction->GetResultType();
 
   LocationSummary* locations = instruction->GetLocations();
   Location second = locations->InAt(1);
@@ -3139,10 +3141,10 @@ void InstructionCodeGeneratorMIPS64::DivRemOneOrMinusOne(HBinaryOperation* instr
     __ Move(out, ZERO);
   } else {
     if (imm == -1) {
-      if (type == Primitive::kPrimInt) {
+      if (type == DataType::Type::kInt32) {
         __ Subu(out, ZERO, dividend);
       } else {
-        DCHECK_EQ(type, Primitive::kPrimLong);
+        DCHECK_EQ(type, DataType::Type::kInt64);
         __ Dsubu(out, ZERO, dividend);
       }
     } else if (out != dividend) {
@@ -3153,7 +3155,7 @@ void InstructionCodeGeneratorMIPS64::DivRemOneOrMinusOne(HBinaryOperation* instr
 
 void InstructionCodeGeneratorMIPS64::DivRemByPowerOfTwo(HBinaryOperation* instruction) {
   DCHECK(instruction->IsDiv() || instruction->IsRem());
-  Primitive::Type type = instruction->GetResultType();
+  DataType::Type type = instruction->GetResultType();
 
   LocationSummary* locations = instruction->GetLocations();
   Location second = locations->InAt(1);
@@ -3166,7 +3168,7 @@ void InstructionCodeGeneratorMIPS64::DivRemByPowerOfTwo(HBinaryOperation* instru
   int ctz_imm = CTZ(abs_imm);
 
   if (instruction->IsDiv()) {
-    if (type == Primitive::kPrimInt) {
+    if (type == DataType::Type::kInt32) {
       if (ctz_imm == 1) {
         // Fast path for division by +/-2, which is very common.
         __ Srl(TMP, dividend, 31);
@@ -3180,7 +3182,7 @@ void InstructionCodeGeneratorMIPS64::DivRemByPowerOfTwo(HBinaryOperation* instru
         __ Subu(out, ZERO, out);
       }
     } else {
-      DCHECK_EQ(type, Primitive::kPrimLong);
+      DCHECK_EQ(type, DataType::Type::kInt64);
       if (ctz_imm == 1) {
         // Fast path for division by +/-2, which is very common.
         __ Dsrl32(TMP, dividend, 31);
@@ -3203,7 +3205,7 @@ void InstructionCodeGeneratorMIPS64::DivRemByPowerOfTwo(HBinaryOperation* instru
       }
     }
   } else {
-    if (type == Primitive::kPrimInt) {
+    if (type == DataType::Type::kInt32) {
       if (ctz_imm == 1) {
         // Fast path for modulo +/-2, which is very common.
         __ Sra(TMP, dividend, 31);
@@ -3223,7 +3225,7 @@ void InstructionCodeGeneratorMIPS64::DivRemByPowerOfTwo(HBinaryOperation* instru
         __ Subu(out, out, TMP);
       }
     } else {
-      DCHECK_EQ(type, Primitive::kPrimLong);
+      DCHECK_EQ(type, DataType::Type::kInt64);
       if (ctz_imm == 1) {
         // Fast path for modulo +/-2, which is very common.
         __ Dsra32(TMP, dividend, 31);
@@ -3266,17 +3268,17 @@ void InstructionCodeGeneratorMIPS64::GenerateDivRemWithAnyConstant(HBinaryOperat
   GpuRegister dividend = locations->InAt(0).AsRegister<GpuRegister>();
   int64_t imm = Int64FromConstant(second.GetConstant());
 
-  Primitive::Type type = instruction->GetResultType();
-  DCHECK(type == Primitive::kPrimInt || type == Primitive::kPrimLong) << type;
+  DataType::Type type = instruction->GetResultType();
+  DCHECK(type == DataType::Type::kInt32 || type == DataType::Type::kInt64) << type;
 
   int64_t magic;
   int shift;
   CalculateMagicAndShiftForDivRem(imm,
-                                  (type == Primitive::kPrimLong),
+                                  (type == DataType::Type::kInt64),
                                   &magic,
                                   &shift);
 
-  if (type == Primitive::kPrimInt) {
+  if (type == DataType::Type::kInt32) {
     __ LoadConst32(TMP, magic);
     __ MuhR6(TMP, dividend, TMP);
 
@@ -3331,8 +3333,8 @@ void InstructionCodeGeneratorMIPS64::GenerateDivRemWithAnyConstant(HBinaryOperat
 
 void InstructionCodeGeneratorMIPS64::GenerateDivRemIntegral(HBinaryOperation* instruction) {
   DCHECK(instruction->IsDiv() || instruction->IsRem());
-  Primitive::Type type = instruction->GetResultType();
-  DCHECK(type == Primitive::kPrimInt || type == Primitive::kPrimLong) << type;
+  DataType::Type type = instruction->GetResultType();
+  DCHECK(type == DataType::Type::kInt32 || type == DataType::Type::kInt64) << type;
 
   LocationSummary* locations = instruction->GetLocations();
   GpuRegister out = locations->Out().AsRegister<GpuRegister>();
@@ -3354,12 +3356,12 @@ void InstructionCodeGeneratorMIPS64::GenerateDivRemIntegral(HBinaryOperation* in
     GpuRegister dividend = locations->InAt(0).AsRegister<GpuRegister>();
     GpuRegister divisor = second.AsRegister<GpuRegister>();
     if (instruction->IsDiv()) {
-      if (type == Primitive::kPrimInt)
+      if (type == DataType::Type::kInt32)
         __ DivR6(out, dividend, divisor);
       else
         __ Ddiv(out, dividend, divisor);
     } else {
-      if (type == Primitive::kPrimInt)
+      if (type == DataType::Type::kInt32)
         __ ModR6(out, dividend, divisor);
       else
         __ Dmod(out, dividend, divisor);
@@ -3371,15 +3373,15 @@ void LocationsBuilderMIPS64::VisitDiv(HDiv* div) {
   LocationSummary* locations =
       new (GetGraph()->GetArena()) LocationSummary(div, LocationSummary::kNoCall);
   switch (div->GetResultType()) {
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RegisterOrConstant(div->InputAt(1)));
       locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
       break;
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetInAt(1, Location::RequiresFpuRegister());
       locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
@@ -3391,20 +3393,20 @@ void LocationsBuilderMIPS64::VisitDiv(HDiv* div) {
 }
 
 void InstructionCodeGeneratorMIPS64::VisitDiv(HDiv* instruction) {
-  Primitive::Type type = instruction->GetType();
+  DataType::Type type = instruction->GetType();
   LocationSummary* locations = instruction->GetLocations();
 
   switch (type) {
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       GenerateDivRemIntegral(instruction);
       break;
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64: {
       FpuRegister dst = locations->Out().AsFpuRegister<FpuRegister>();
       FpuRegister lhs = locations->InAt(0).AsFpuRegister<FpuRegister>();
       FpuRegister rhs = locations->InAt(1).AsFpuRegister<FpuRegister>();
-      if (type == Primitive::kPrimFloat)
+      if (type == DataType::Type::kFloat32)
         __ DivS(dst, lhs, rhs);
       else
         __ DivD(dst, lhs, rhs);
@@ -3426,9 +3428,9 @@ void InstructionCodeGeneratorMIPS64::VisitDivZeroCheck(HDivZeroCheck* instructio
   codegen_->AddSlowPath(slow_path);
   Location value = instruction->GetLocations()->InAt(0);
 
-  Primitive::Type type = instruction->GetType();
+  DataType::Type type = instruction->GetType();
 
-  if (!Primitive::IsIntegralType(type)) {
+  if (!DataType::IsIntegralType(type)) {
     LOG(FATAL) << "Unexpected type " << type << " for DivZeroCheck.";
     return;
   }
@@ -3864,12 +3866,12 @@ void InstructionCodeGeneratorMIPS64::GenerateIntLongCompareAndBranch(IfCondition
 
 void InstructionCodeGeneratorMIPS64::GenerateFpCompare(IfCondition cond,
                                                        bool gt_bias,
-                                                       Primitive::Type type,
+                                                       DataType::Type type,
                                                        LocationSummary* locations) {
   GpuRegister dst = locations->Out().AsRegister<GpuRegister>();
   FpuRegister lhs = locations->InAt(0).AsFpuRegister<FpuRegister>();
   FpuRegister rhs = locations->InAt(1).AsFpuRegister<FpuRegister>();
-  if (type == Primitive::kPrimFloat) {
+  if (type == DataType::Type::kFloat32) {
     switch (cond) {
       case kCondEQ:
         __ CmpEqS(FTMP, lhs, rhs);
@@ -3922,7 +3924,7 @@ void InstructionCodeGeneratorMIPS64::GenerateFpCompare(IfCondition cond,
         UNREACHABLE();
     }
   } else {
-    DCHECK_EQ(type, Primitive::kPrimDouble);
+    DCHECK_EQ(type, DataType::Type::kFloat64);
     switch (cond) {
       case kCondEQ:
         __ CmpEqD(FTMP, lhs, rhs);
@@ -3979,12 +3981,12 @@ void InstructionCodeGeneratorMIPS64::GenerateFpCompare(IfCondition cond,
 
 bool InstructionCodeGeneratorMIPS64::MaterializeFpCompare(IfCondition cond,
                                                           bool gt_bias,
-                                                          Primitive::Type type,
+                                                          DataType::Type type,
                                                           LocationSummary* input_locations,
                                                           FpuRegister dst) {
   FpuRegister lhs = input_locations->InAt(0).AsFpuRegister<FpuRegister>();
   FpuRegister rhs = input_locations->InAt(1).AsFpuRegister<FpuRegister>();
-  if (type == Primitive::kPrimFloat) {
+  if (type == DataType::Type::kFloat32) {
     switch (cond) {
       case kCondEQ:
         __ CmpEqS(dst, lhs, rhs);
@@ -4025,7 +4027,7 @@ bool InstructionCodeGeneratorMIPS64::MaterializeFpCompare(IfCondition cond,
         UNREACHABLE();
     }
   } else {
-    DCHECK_EQ(type, Primitive::kPrimDouble);
+    DCHECK_EQ(type, DataType::Type::kFloat64);
     switch (cond) {
       case kCondEQ:
         __ CmpEqD(dst, lhs, rhs);
@@ -4070,12 +4072,12 @@ bool InstructionCodeGeneratorMIPS64::MaterializeFpCompare(IfCondition cond,
 
 void InstructionCodeGeneratorMIPS64::GenerateFpCompareAndBranch(IfCondition cond,
                                                                 bool gt_bias,
-                                                                Primitive::Type type,
+                                                                DataType::Type type,
                                                                 LocationSummary* locations,
                                                                 Mips64Label* label) {
   FpuRegister lhs = locations->InAt(0).AsFpuRegister<FpuRegister>();
   FpuRegister rhs = locations->InAt(1).AsFpuRegister<FpuRegister>();
-  if (type == Primitive::kPrimFloat) {
+  if (type == DataType::Type::kFloat32) {
     switch (cond) {
       case kCondEQ:
         __ CmpEqS(FTMP, lhs, rhs);
@@ -4122,7 +4124,7 @@ void InstructionCodeGeneratorMIPS64::GenerateFpCompareAndBranch(IfCondition cond
         UNREACHABLE();
     }
   } else {
-    DCHECK_EQ(type, Primitive::kPrimDouble);
+    DCHECK_EQ(type, DataType::Type::kFloat64);
     switch (cond) {
       case kCondEQ:
         __ CmpEqD(FTMP, lhs, rhs);
@@ -4216,7 +4218,7 @@ void InstructionCodeGeneratorMIPS64::GenerateTestAndBranch(HInstruction* instruc
     // The condition instruction has not been materialized, use its inputs as
     // the comparison and its condition as the branch condition.
     HCondition* condition = cond->AsCondition();
-    Primitive::Type type = condition->InputAt(0)->GetType();
+    DataType::Type type = condition->InputAt(0)->GetType();
     LocationSummary* locations = cond->GetLocations();
     IfCondition if_cond = condition->GetCondition();
     Mips64Label* branch_target = true_target;
@@ -4230,11 +4232,11 @@ void InstructionCodeGeneratorMIPS64::GenerateTestAndBranch(HInstruction* instruc
       default:
         GenerateIntLongCompareAndBranch(if_cond, /* is64bit */ false, locations, branch_target);
         break;
-      case Primitive::kPrimLong:
+      case DataType::Type::kInt64:
         GenerateIntLongCompareAndBranch(if_cond, /* is64bit */ true, locations, branch_target);
         break;
-      case Primitive::kPrimFloat:
-      case Primitive::kPrimDouble:
+      case DataType::Type::kFloat32:
+      case DataType::Type::kFloat64:
         GenerateFpCompareAndBranch(if_cond, condition->IsGtBias(), type, locations, branch_target);
         break;
     }
@@ -4299,8 +4301,9 @@ static bool CanMoveConditionally(HSelect* select, LocationSummary* locations_to_
   HInstruction* cond = select->InputAt(/* condition_input_index */ 2);
   HCondition* condition = cond->AsCondition();
 
-  Primitive::Type cond_type = materialized ? Primitive::kPrimInt : condition->InputAt(0)->GetType();
-  Primitive::Type dst_type = select->GetType();
+  DataType::Type cond_type =
+      materialized ? DataType::Type::kInt32 : condition->InputAt(0)->GetType();
+  DataType::Type dst_type = select->GetType();
 
   HConstant* cst_true_value = select->GetTrueValue()->AsConstant();
   HConstant* cst_false_value = select->GetFalseValue()->AsConstant();
@@ -4314,8 +4317,8 @@ static bool CanMoveConditionally(HSelect* select, LocationSummary* locations_to_
   bool use_const_for_true_in = false;
 
   if (!cond->IsConstant()) {
-    if (!Primitive::IsFloatingPointType(cond_type)) {
-      if (!Primitive::IsFloatingPointType(dst_type)) {
+    if (!DataType::IsFloatingPointType(cond_type)) {
+      if (!DataType::IsFloatingPointType(dst_type)) {
         // Moving int/long on int/long condition.
         if (is_true_value_zero_constant) {
           // seleqz out_reg, false_reg, cond_reg
@@ -4358,7 +4361,7 @@ static bool CanMoveConditionally(HSelect* select, LocationSummary* locations_to_
         }
       }
     } else {
-      if (!Primitive::IsFloatingPointType(dst_type)) {
+      if (!DataType::IsFloatingPointType(dst_type)) {
         // Moving int/long on float/double condition.
         can_move_conditionally = true;
         if (is_true_value_zero_constant) {
@@ -4404,7 +4407,7 @@ static bool CanMoveConditionally(HSelect* select, LocationSummary* locations_to_
       locations_to_set->SetInAt(0, Location::ConstantLocation(cst_false_value));
     } else {
       locations_to_set->SetInAt(0,
-                                Primitive::IsFloatingPointType(dst_type)
+                                DataType::IsFloatingPointType(dst_type)
                                     ? Location::RequiresFpuRegister()
                                     : Location::RequiresRegister());
     }
@@ -4412,7 +4415,7 @@ static bool CanMoveConditionally(HSelect* select, LocationSummary* locations_to_
       locations_to_set->SetInAt(1, Location::ConstantLocation(cst_true_value));
     } else {
       locations_to_set->SetInAt(1,
-                                Primitive::IsFloatingPointType(dst_type)
+                                DataType::IsFloatingPointType(dst_type)
                                     ? Location::RequiresFpuRegister()
                                     : Location::RequiresRegister());
     }
@@ -4421,7 +4424,7 @@ static bool CanMoveConditionally(HSelect* select, LocationSummary* locations_to_
     }
 
     if (can_move_conditionally) {
-      locations_to_set->SetOut(Primitive::IsFloatingPointType(dst_type)
+      locations_to_set->SetOut(DataType::IsFloatingPointType(dst_type)
                                    ? Location::RequiresFpuRegister()
                                    : Location::RequiresRegister());
     } else {
@@ -4441,9 +4444,9 @@ void InstructionCodeGeneratorMIPS64::GenConditionalMove(HSelect* select) {
   HInstruction* cond = select->InputAt(/* condition_input_index */ 2);
   GpuRegister cond_reg = TMP;
   FpuRegister fcond_reg = FTMP;
-  Primitive::Type cond_type = Primitive::kPrimInt;
+  DataType::Type cond_type = DataType::Type::kInt32;
   bool cond_inverted = false;
-  Primitive::Type dst_type = select->GetType();
+  DataType::Type dst_type = select->GetType();
 
   if (IsBooleanValueOrMaterializedCondition(cond)) {
     cond_reg = locations->InAt(/* condition_input_index */ 2).AsRegister<GpuRegister>();
@@ -4459,14 +4462,14 @@ void InstructionCodeGeneratorMIPS64::GenConditionalMove(HSelect* select) {
                                                   cond_locations,
                                                   cond_reg);
         break;
-      case Primitive::kPrimLong:
+      case DataType::Type::kInt64:
         cond_inverted = MaterializeIntLongCompare(if_cond,
                                                   /* is64bit */ true,
                                                   cond_locations,
                                                   cond_reg);
         break;
-      case Primitive::kPrimFloat:
-      case Primitive::kPrimDouble:
+      case DataType::Type::kFloat32:
+      case DataType::Type::kFloat64:
         cond_inverted = MaterializeFpCompare(if_cond,
                                              condition->IsGtBias(),
                                              cond_type,
@@ -4485,7 +4488,7 @@ void InstructionCodeGeneratorMIPS64::GenConditionalMove(HSelect* select) {
 
   switch (dst_type) {
     default:
-      if (Primitive::IsFloatingPointType(cond_type)) {
+      if (DataType::IsFloatingPointType(cond_type)) {
         __ Mfc1(cond_reg, fcond_reg);
       }
       if (true_src.IsConstant()) {
@@ -4512,8 +4515,8 @@ void InstructionCodeGeneratorMIPS64::GenConditionalMove(HSelect* select) {
         __ Or(dst.AsRegister<GpuRegister>(), AT, TMP);
       }
       break;
-    case Primitive::kPrimFloat: {
-      if (!Primitive::IsFloatingPointType(cond_type)) {
+    case DataType::Type::kFloat32: {
+      if (!DataType::IsFloatingPointType(cond_type)) {
         // sel*.fmt tests bit 0 of the condition register, account for that.
         __ Sltu(TMP, ZERO, cond_reg);
         __ Mtc1(TMP, fcond_reg);
@@ -4547,8 +4550,8 @@ void InstructionCodeGeneratorMIPS64::GenConditionalMove(HSelect* select) {
       }
       break;
     }
-    case Primitive::kPrimDouble: {
-      if (!Primitive::IsFloatingPointType(cond_type)) {
+    case DataType::Type::kFloat64: {
+      if (!DataType::IsFloatingPointType(cond_type)) {
         // sel*.fmt tests bit 0 of the condition register, account for that.
         __ Sltu(TMP, ZERO, cond_reg);
         __ Mtc1(TMP, fcond_reg);
@@ -4632,9 +4635,9 @@ void CodeGeneratorMIPS64::GenerateNop() {
 
 void LocationsBuilderMIPS64::HandleFieldGet(HInstruction* instruction,
                                             const FieldInfo& field_info) {
-  Primitive::Type field_type = field_info.GetFieldType();
+  DataType::Type field_type = field_info.GetFieldType();
   bool object_field_get_with_read_barrier =
-      kEmitCompilerReadBarrier && (field_type == Primitive::kPrimNot);
+      kEmitCompilerReadBarrier && (field_type == DataType::Type::kReference);
   LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(
       instruction,
       object_field_get_with_read_barrier
@@ -4644,7 +4647,7 @@ void LocationsBuilderMIPS64::HandleFieldGet(HInstruction* instruction,
     locations->SetCustomSlowPathCallerSaves(RegisterSet::Empty());  // No caller-save registers.
   }
   locations->SetInAt(0, Location::RequiresRegister());
-  if (Primitive::IsFloatingPointType(instruction->GetType())) {
+  if (DataType::IsFloatingPointType(instruction->GetType())) {
     locations->SetOut(Location::RequiresFpuRegister());
   } else {
     // The output overlaps in the case of an object field get with
@@ -4666,7 +4669,7 @@ void LocationsBuilderMIPS64::HandleFieldGet(HInstruction* instruction,
 
 void InstructionCodeGeneratorMIPS64::HandleFieldGet(HInstruction* instruction,
                                                     const FieldInfo& field_info) {
-  Primitive::Type type = field_info.GetFieldType();
+  DataType::Type type = field_info.GetFieldType();
   LocationSummary* locations = instruction->GetLocations();
   Location obj_loc = locations->InAt(0);
   GpuRegister obj = obj_loc.AsRegister<GpuRegister>();
@@ -4677,37 +4680,37 @@ void InstructionCodeGeneratorMIPS64::HandleFieldGet(HInstruction* instruction,
   auto null_checker = GetImplicitNullChecker(instruction, codegen_);
 
   switch (type) {
-    case Primitive::kPrimBoolean:
+    case DataType::Type::kBool:
       load_type = kLoadUnsignedByte;
       break;
-    case Primitive::kPrimByte:
+    case DataType::Type::kInt8:
       load_type = kLoadSignedByte;
       break;
-    case Primitive::kPrimShort:
+    case DataType::Type::kInt16:
       load_type = kLoadSignedHalfword;
       break;
-    case Primitive::kPrimChar:
+    case DataType::Type::kUint16:
       load_type = kLoadUnsignedHalfword;
       break;
-    case Primitive::kPrimInt:
-    case Primitive::kPrimFloat:
+    case DataType::Type::kInt32:
+    case DataType::Type::kFloat32:
       load_type = kLoadWord;
       break;
-    case Primitive::kPrimLong:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kInt64:
+    case DataType::Type::kFloat64:
       load_type = kLoadDoubleword;
       break;
-    case Primitive::kPrimNot:
+    case DataType::Type::kReference:
       load_type = kLoadUnsignedWord;
       break;
-    case Primitive::kPrimVoid:
+    case DataType::Type::kVoid:
       LOG(FATAL) << "Unreachable type " << type;
       UNREACHABLE();
   }
-  if (!Primitive::IsFloatingPointType(type)) {
+  if (!DataType::IsFloatingPointType(type)) {
     DCHECK(dst_loc.IsRegister());
     GpuRegister dst = dst_loc.AsRegister<GpuRegister>();
-    if (type == Primitive::kPrimNot) {
+    if (type == DataType::Type::kReference) {
       // /* HeapReference<Object> */ dst = *(obj + offset)
       if (kEmitCompilerReadBarrier && kUseBakerReadBarrier) {
         Location temp_loc =
@@ -4744,7 +4747,7 @@ void InstructionCodeGeneratorMIPS64::HandleFieldGet(HInstruction* instruction,
 
   // Memory barriers, in the case of references, are handled in the
   // previous switch statement.
-  if (is_volatile && (type != Primitive::kPrimNot)) {
+  if (is_volatile && (type != DataType::Type::kReference)) {
     GenerateMemoryBarrier(MemBarrierKind::kLoadAny);
   }
 }
@@ -4754,7 +4757,7 @@ void LocationsBuilderMIPS64::HandleFieldSet(HInstruction* instruction,
   LocationSummary* locations =
       new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kNoCall);
   locations->SetInAt(0, Location::RequiresRegister());
-  if (Primitive::IsFloatingPointType(instruction->InputAt(1)->GetType())) {
+  if (DataType::IsFloatingPointType(instruction->InputAt(1)->GetType())) {
     locations->SetInAt(1, FpuRegisterOrConstantForStore(instruction->InputAt(1)));
   } else {
     locations->SetInAt(1, RegisterOrZeroConstant(instruction->InputAt(1)));
@@ -4764,7 +4767,7 @@ void LocationsBuilderMIPS64::HandleFieldSet(HInstruction* instruction,
 void InstructionCodeGeneratorMIPS64::HandleFieldSet(HInstruction* instruction,
                                                     const FieldInfo& field_info,
                                                     bool value_can_be_null) {
-  Primitive::Type type = field_info.GetFieldType();
+  DataType::Type type = field_info.GetFieldType();
   LocationSummary* locations = instruction->GetLocations();
   GpuRegister obj = locations->InAt(0).AsRegister<GpuRegister>();
   Location value_location = locations->InAt(1);
@@ -4775,24 +4778,24 @@ void InstructionCodeGeneratorMIPS64::HandleFieldSet(HInstruction* instruction,
   auto null_checker = GetImplicitNullChecker(instruction, codegen_);
 
   switch (type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
       store_type = kStoreByte;
       break;
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar:
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16:
       store_type = kStoreHalfword;
       break;
-    case Primitive::kPrimInt:
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimNot:
+    case DataType::Type::kInt32:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kReference:
       store_type = kStoreWord;
       break;
-    case Primitive::kPrimLong:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kInt64:
+    case DataType::Type::kFloat64:
       store_type = kStoreDoubleword;
       break;
-    case Primitive::kPrimVoid:
+    case DataType::Type::kVoid:
       LOG(FATAL) << "Unreachable type " << type;
       UNREACHABLE();
   }
@@ -4805,14 +4808,14 @@ void InstructionCodeGeneratorMIPS64::HandleFieldSet(HInstruction* instruction,
     int64_t value = CodeGenerator::GetInt64ValueOf(value_location.GetConstant());
     __ StoreConstToOffset(store_type, value, obj, offset, TMP, null_checker);
   } else {
-    if (!Primitive::IsFloatingPointType(type)) {
+    if (!DataType::IsFloatingPointType(type)) {
       DCHECK(value_location.IsRegister());
       GpuRegister src = value_location.AsRegister<GpuRegister>();
       if (kPoisonHeapReferences && needs_write_barrier) {
         // Note that in the case where `value` is a null reference,
         // we do not enter this block, as a null reference does not
         // need poisoning.
-        DCHECK_EQ(type, Primitive::kPrimNot);
+        DCHECK_EQ(type, DataType::Type::kReference);
         __ PoisonHeapReference(TMP, src);
         __ StoreToOffset(store_type, TMP, obj, offset, null_checker);
       } else {
@@ -6247,15 +6250,15 @@ void LocationsBuilderMIPS64::VisitMul(HMul* mul) {
   LocationSummary* locations =
       new (GetGraph()->GetArena()) LocationSummary(mul, LocationSummary::kNoCall);
   switch (mul->GetResultType()) {
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RequiresRegister());
       locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
       break;
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetInAt(1, Location::RequiresFpuRegister());
       locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
@@ -6267,27 +6270,27 @@ void LocationsBuilderMIPS64::VisitMul(HMul* mul) {
 }
 
 void InstructionCodeGeneratorMIPS64::VisitMul(HMul* instruction) {
-  Primitive::Type type = instruction->GetType();
+  DataType::Type type = instruction->GetType();
   LocationSummary* locations = instruction->GetLocations();
 
   switch (type) {
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64: {
       GpuRegister dst = locations->Out().AsRegister<GpuRegister>();
       GpuRegister lhs = locations->InAt(0).AsRegister<GpuRegister>();
       GpuRegister rhs = locations->InAt(1).AsRegister<GpuRegister>();
-      if (type == Primitive::kPrimInt)
+      if (type == DataType::Type::kInt32)
         __ MulR6(dst, lhs, rhs);
       else
         __ Dmul(dst, lhs, rhs);
       break;
     }
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64: {
       FpuRegister dst = locations->Out().AsFpuRegister<FpuRegister>();
       FpuRegister lhs = locations->InAt(0).AsFpuRegister<FpuRegister>();
       FpuRegister rhs = locations->InAt(1).AsFpuRegister<FpuRegister>();
-      if (type == Primitive::kPrimFloat)
+      if (type == DataType::Type::kFloat32)
         __ MulS(dst, lhs, rhs);
       else
         __ MulD(dst, lhs, rhs);
@@ -6302,14 +6305,14 @@ void LocationsBuilderMIPS64::VisitNeg(HNeg* neg) {
   LocationSummary* locations =
       new (GetGraph()->GetArena()) LocationSummary(neg, LocationSummary::kNoCall);
   switch (neg->GetResultType()) {
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
       break;
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
       break;
@@ -6320,25 +6323,25 @@ void LocationsBuilderMIPS64::VisitNeg(HNeg* neg) {
 }
 
 void InstructionCodeGeneratorMIPS64::VisitNeg(HNeg* instruction) {
-  Primitive::Type type = instruction->GetType();
+  DataType::Type type = instruction->GetType();
   LocationSummary* locations = instruction->GetLocations();
 
   switch (type) {
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64: {
       GpuRegister dst = locations->Out().AsRegister<GpuRegister>();
       GpuRegister src = locations->InAt(0).AsRegister<GpuRegister>();
-      if (type == Primitive::kPrimInt)
+      if (type == DataType::Type::kInt32)
         __ Subu(dst, ZERO, src);
       else
         __ Dsubu(dst, ZERO, src);
       break;
     }
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64: {
       FpuRegister dst = locations->Out().AsFpuRegister<FpuRegister>();
       FpuRegister src = locations->InAt(0).AsFpuRegister<FpuRegister>();
-      if (type == Primitive::kPrimFloat)
+      if (type == DataType::Type::kFloat32)
         __ NegS(dst, src);
       else
         __ NegD(dst, src);
@@ -6353,7 +6356,7 @@ void LocationsBuilderMIPS64::VisitNewArray(HNewArray* instruction) {
   LocationSummary* locations =
       new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kCallOnMainOnly);
   InvokeRuntimeCallingConvention calling_convention;
-  locations->SetOut(calling_convention.GetReturnLocation(Primitive::kPrimNot));
+  locations->SetOut(calling_convention.GetReturnLocation(DataType::Type::kReference));
   locations->SetInAt(0, Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
   locations->SetInAt(1, Location::RegisterLocation(calling_convention.GetRegisterAt(1)));
 }
@@ -6377,7 +6380,7 @@ void LocationsBuilderMIPS64::VisitNewInstance(HNewInstance* instruction) {
   } else {
     locations->SetInAt(0, Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
   }
-  locations->SetOut(calling_convention.GetReturnLocation(Primitive::kPrimNot));
+  locations->SetOut(calling_convention.GetReturnLocation(DataType::Type::kReference));
 }
 
 void InstructionCodeGeneratorMIPS64::VisitNewInstance(HNewInstance* instruction) {
@@ -6406,12 +6409,12 @@ void LocationsBuilderMIPS64::VisitNot(HNot* instruction) {
 }
 
 void InstructionCodeGeneratorMIPS64::VisitNot(HNot* instruction) {
-  Primitive::Type type = instruction->GetType();
+  DataType::Type type = instruction->GetType();
   LocationSummary* locations = instruction->GetLocations();
 
   switch (type) {
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64: {
       GpuRegister dst = locations->Out().AsRegister<GpuRegister>();
       GpuRegister src = locations->InAt(0).AsRegister<GpuRegister>();
       __ Nor(dst, src, ZERO);
@@ -6520,22 +6523,22 @@ void InstructionCodeGeneratorMIPS64::VisitPhi(HPhi* instruction ATTRIBUTE_UNUSED
 }
 
 void LocationsBuilderMIPS64::VisitRem(HRem* rem) {
-  Primitive::Type type = rem->GetResultType();
+  DataType::Type type = rem->GetResultType();
   LocationSummary::CallKind call_kind =
-      Primitive::IsFloatingPointType(type) ? LocationSummary::kCallOnMainOnly
-                                           : LocationSummary::kNoCall;
+      DataType::IsFloatingPointType(type) ? LocationSummary::kCallOnMainOnly
+                                          : LocationSummary::kNoCall;
   LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(rem, call_kind);
 
   switch (type) {
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RegisterOrConstant(rem->InputAt(1)));
       locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
       break;
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble: {
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64: {
       InvokeRuntimeCallingConvention calling_convention;
       locations->SetInAt(0, Location::FpuRegisterLocation(calling_convention.GetFpuRegisterAt(0)));
       locations->SetInAt(1, Location::FpuRegisterLocation(calling_convention.GetFpuRegisterAt(1)));
@@ -6549,19 +6552,20 @@ void LocationsBuilderMIPS64::VisitRem(HRem* rem) {
 }
 
 void InstructionCodeGeneratorMIPS64::VisitRem(HRem* instruction) {
-  Primitive::Type type = instruction->GetType();
+  DataType::Type type = instruction->GetType();
 
   switch (type) {
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       GenerateDivRemIntegral(instruction);
       break;
 
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble: {
-      QuickEntrypointEnum entrypoint = (type == Primitive::kPrimFloat) ? kQuickFmodf : kQuickFmod;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64: {
+      QuickEntrypointEnum entrypoint =
+          (type == DataType::Type::kFloat32) ? kQuickFmodf : kQuickFmod;
       codegen_->InvokeRuntime(entrypoint, instruction, instruction->GetDexPc());
-      if (type == Primitive::kPrimFloat) {
+      if (type == DataType::Type::kFloat32) {
         CheckEntrypointTypes<kQuickFmodf, float, float, float>();
       } else {
         CheckEntrypointTypes<kQuickFmod, double, double, double>();
@@ -6592,7 +6596,7 @@ void InstructionCodeGeneratorMIPS64::VisitMemoryBarrier(HMemoryBarrier* memory_b
 
 void LocationsBuilderMIPS64::VisitReturn(HReturn* ret) {
   LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(ret);
-  Primitive::Type return_type = ret->InputAt(0)->GetType();
+  DataType::Type return_type = ret->InputAt(0)->GetType();
   locations->SetInAt(0, Mips64ReturnLocation(return_type));
 }
 
@@ -6761,24 +6765,24 @@ void InstructionCodeGeneratorMIPS64::VisitThrow(HThrow* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitTypeConversion(HTypeConversion* conversion) {
-  Primitive::Type input_type = conversion->GetInputType();
-  Primitive::Type result_type = conversion->GetResultType();
+  DataType::Type input_type = conversion->GetInputType();
+  DataType::Type result_type = conversion->GetResultType();
   DCHECK_NE(input_type, result_type);
 
-  if ((input_type == Primitive::kPrimNot) || (input_type == Primitive::kPrimVoid) ||
-      (result_type == Primitive::kPrimNot) || (result_type == Primitive::kPrimVoid)) {
+  if ((input_type == DataType::Type::kReference) || (input_type == DataType::Type::kVoid) ||
+      (result_type == DataType::Type::kReference) || (result_type == DataType::Type::kVoid)) {
     LOG(FATAL) << "Unexpected type conversion from " << input_type << " to " << result_type;
   }
 
   LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(conversion);
 
-  if (Primitive::IsFloatingPointType(input_type)) {
+  if (DataType::IsFloatingPointType(input_type)) {
     locations->SetInAt(0, Location::RequiresFpuRegister());
   } else {
     locations->SetInAt(0, Location::RequiresRegister());
   }
 
-  if (Primitive::IsFloatingPointType(result_type)) {
+  if (DataType::IsFloatingPointType(result_type)) {
     locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
   } else {
     locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
@@ -6787,21 +6791,21 @@ void LocationsBuilderMIPS64::VisitTypeConversion(HTypeConversion* conversion) {
 
 void InstructionCodeGeneratorMIPS64::VisitTypeConversion(HTypeConversion* conversion) {
   LocationSummary* locations = conversion->GetLocations();
-  Primitive::Type result_type = conversion->GetResultType();
-  Primitive::Type input_type = conversion->GetInputType();
+  DataType::Type result_type = conversion->GetResultType();
+  DataType::Type input_type = conversion->GetInputType();
 
   DCHECK_NE(input_type, result_type);
 
-  if (Primitive::IsIntegralType(result_type) && Primitive::IsIntegralType(input_type)) {
+  if (DataType::IsIntegralType(result_type) && DataType::IsIntegralType(input_type)) {
     GpuRegister dst = locations->Out().AsRegister<GpuRegister>();
     GpuRegister src = locations->InAt(0).AsRegister<GpuRegister>();
 
     switch (result_type) {
-      case Primitive::kPrimChar:
+      case DataType::Type::kUint16:
         __ Andi(dst, src, 0xFFFF);
         break;
-      case Primitive::kPrimByte:
-        if (input_type == Primitive::kPrimLong) {
+      case DataType::Type::kInt8:
+        if (input_type == DataType::Type::kInt64) {
           // Type conversion from long to types narrower than int is a result of code
           // transformations. To avoid unpredictable results for SEB and SEH, we first
           // need to sign-extend the low 32-bit value into bits 32 through 63.
@@ -6811,8 +6815,8 @@ void InstructionCodeGeneratorMIPS64::VisitTypeConversion(HTypeConversion* conver
           __ Seb(dst, src);
         }
         break;
-      case Primitive::kPrimShort:
-        if (input_type == Primitive::kPrimLong) {
+      case DataType::Type::kInt16:
+        if (input_type == DataType::Type::kInt64) {
           // Type conversion from long to types narrower than int is a result of code
           // transformations. To avoid unpredictable results for SEB and SEH, we first
           // need to sign-extend the low 32-bit value into bits 32 through 63.
@@ -6822,12 +6826,12 @@ void InstructionCodeGeneratorMIPS64::VisitTypeConversion(HTypeConversion* conver
           __ Seh(dst, src);
         }
         break;
-      case Primitive::kPrimInt:
-      case Primitive::kPrimLong:
+      case DataType::Type::kInt32:
+      case DataType::Type::kInt64:
         // Sign-extend 32-bit int into bits 32 through 63 for int-to-long and long-to-int
         // conversions, except when the input and output registers are the same and we are not
         // converting longs to shorter types. In these cases, do nothing.
-        if ((input_type == Primitive::kPrimLong) || (dst != src)) {
+        if ((input_type == DataType::Type::kInt64) || (dst != src)) {
           __ Sll(dst, src, 0);
         }
         break;
@@ -6836,49 +6840,49 @@ void InstructionCodeGeneratorMIPS64::VisitTypeConversion(HTypeConversion* conver
         LOG(FATAL) << "Unexpected type conversion from " << input_type
                    << " to " << result_type;
     }
-  } else if (Primitive::IsFloatingPointType(result_type) && Primitive::IsIntegralType(input_type)) {
+  } else if (DataType::IsFloatingPointType(result_type) && DataType::IsIntegralType(input_type)) {
     FpuRegister dst = locations->Out().AsFpuRegister<FpuRegister>();
     GpuRegister src = locations->InAt(0).AsRegister<GpuRegister>();
-    if (input_type == Primitive::kPrimLong) {
+    if (input_type == DataType::Type::kInt64) {
       __ Dmtc1(src, FTMP);
-      if (result_type == Primitive::kPrimFloat) {
+      if (result_type == DataType::Type::kFloat32) {
         __ Cvtsl(dst, FTMP);
       } else {
         __ Cvtdl(dst, FTMP);
       }
     } else {
       __ Mtc1(src, FTMP);
-      if (result_type == Primitive::kPrimFloat) {
+      if (result_type == DataType::Type::kFloat32) {
         __ Cvtsw(dst, FTMP);
       } else {
         __ Cvtdw(dst, FTMP);
       }
     }
-  } else if (Primitive::IsIntegralType(result_type) && Primitive::IsFloatingPointType(input_type)) {
-    CHECK(result_type == Primitive::kPrimInt || result_type == Primitive::kPrimLong);
+  } else if (DataType::IsIntegralType(result_type) && DataType::IsFloatingPointType(input_type)) {
+    CHECK(result_type == DataType::Type::kInt32 || result_type == DataType::Type::kInt64);
     GpuRegister dst = locations->Out().AsRegister<GpuRegister>();
     FpuRegister src = locations->InAt(0).AsFpuRegister<FpuRegister>();
 
-    if (result_type == Primitive::kPrimLong) {
-      if (input_type == Primitive::kPrimFloat) {
+    if (result_type == DataType::Type::kInt64) {
+      if (input_type == DataType::Type::kFloat32) {
         __ TruncLS(FTMP, src);
       } else {
         __ TruncLD(FTMP, src);
       }
       __ Dmfc1(dst, FTMP);
     } else {
-      if (input_type == Primitive::kPrimFloat) {
+      if (input_type == DataType::Type::kFloat32) {
         __ TruncWS(FTMP, src);
       } else {
         __ TruncWD(FTMP, src);
       }
       __ Mfc1(dst, FTMP);
     }
-  } else if (Primitive::IsFloatingPointType(result_type) &&
-             Primitive::IsFloatingPointType(input_type)) {
+  } else if (DataType::IsFloatingPointType(result_type) &&
+             DataType::IsFloatingPointType(input_type)) {
     FpuRegister dst = locations->Out().AsFpuRegister<FpuRegister>();
     FpuRegister src = locations->InAt(0).AsFpuRegister<FpuRegister>();
-    if (result_type == Primitive::kPrimFloat) {
+    if (result_type == DataType::Type::kFloat32) {
       __ Cvtsd(dst, src);
     } else {
       __ Cvtds(dst, src);

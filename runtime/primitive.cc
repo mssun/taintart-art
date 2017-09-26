@@ -60,9 +60,9 @@ const char* Primitive::BoxedDescriptor(Primitive::Type type) {
   return kBoxedDescriptors[type];
 }
 
-std::ostream& operator<<(std::ostream& os, const Primitive::Type& type) {
-  int32_t int_type = static_cast<int32_t>(type);
-  if (type >= Primitive::kPrimNot && type <= Primitive::kPrimVoid) {
+std::ostream& operator<<(std::ostream& os, Primitive::Type type) {
+  uint32_t int_type = static_cast<uint32_t>(type);
+  if (type <= Primitive::kPrimLast) {
     os << kTypeNames[int_type];
   } else {
     os << "Type[" << int_type << "]";

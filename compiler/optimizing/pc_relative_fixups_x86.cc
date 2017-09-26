@@ -63,7 +63,7 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
 
   void VisitReturn(HReturn* ret) OVERRIDE {
     HConstant* value = ret->InputAt(0)->AsConstant();
-    if ((value != nullptr && Primitive::IsFloatingPointType(value->GetType()))) {
+    if ((value != nullptr && DataType::IsFloatingPointType(value->GetType()))) {
       ReplaceInput(ret, value, 0, true);
     }
   }
@@ -102,7 +102,7 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
 
   void BinaryFP(HBinaryOperation* bin) {
     HConstant* rhs = bin->InputAt(1)->AsConstant();
-    if (rhs != nullptr && Primitive::IsFloatingPointType(rhs->GetType())) {
+    if (rhs != nullptr && DataType::IsFloatingPointType(rhs->GetType())) {
       ReplaceInput(bin, rhs, 1, false);
     }
   }
@@ -132,7 +132,7 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
   }
 
   void VisitNeg(HNeg* neg) OVERRIDE {
-    if (Primitive::IsFloatingPointType(neg->GetType())) {
+    if (DataType::IsFloatingPointType(neg->GetType())) {
       // We need to replace the HNeg with a HX86FPNeg in order to address the constant area.
       HX86ComputeBaseMethodAddress* method_address = GetPCRelativeBasePointer(neg);
       HGraph* graph = GetGraph();
@@ -225,7 +225,7 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
     HInputsRef inputs = invoke->GetInputs();
     for (size_t i = 0; i < inputs.size(); i++) {
       HConstant* input = inputs[i]->AsConstant();
-      if (input != nullptr && Primitive::IsFloatingPointType(input->GetType())) {
+      if (input != nullptr && DataType::IsFloatingPointType(input->GetType())) {
         ReplaceInput(invoke, input, i, true);
       }
     }

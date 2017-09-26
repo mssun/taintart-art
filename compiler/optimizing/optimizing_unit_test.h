@@ -50,7 +50,8 @@ LiveInterval* BuildInterval(const size_t ranges[][2],
                             ArenaAllocator* allocator,
                             int reg = -1,
                             HInstruction* defined_by = nullptr) {
-  LiveInterval* interval = LiveInterval::MakeInterval(allocator, Primitive::kPrimInt, defined_by);
+  LiveInterval* interval =
+      LiveInterval::MakeInterval(allocator, DataType::Type::kInt32, defined_by);
   if (defined_by != nullptr) {
     defined_by->SetLiveInterval(interval);
   }
@@ -88,7 +89,7 @@ inline HGraph* CreateGraph(ArenaAllocator* allocator) {
 // Create a control-flow graph from Dex instructions.
 inline HGraph* CreateCFG(ArenaAllocator* allocator,
                          const uint16_t* data,
-                         Primitive::Type return_type = Primitive::kPrimInt) {
+                         DataType::Type return_type = DataType::Type::kInt32) {
   const DexFile::CodeItem* item =
     reinterpret_cast<const DexFile::CodeItem*>(data);
   HGraph* graph = CreateGraph(allocator);
