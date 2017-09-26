@@ -42,7 +42,7 @@ class HInstructionBuilder : public ValueObject {
                       SsaBuilder* ssa_builder,
                       const DexFile* dex_file,
                       const DexFile::CodeItem& code_item,
-                      Primitive::Type return_type,
+                      DataType::Type return_type,
                       DexCompilationUnit* dex_compilation_unit,
                       const DexCompilationUnit* const outer_compilation_unit,
                       CompilerDriver* driver,
@@ -96,7 +96,7 @@ class HInstructionBuilder : public ValueObject {
   ArenaVector<HInstruction*>* GetLocalsForWithAllocation(
       HBasicBlock* block, ArenaVector<HInstruction*>* locals, const size_t vregs);
   HInstruction* ValueOfLocalAt(HBasicBlock* block, size_t local);
-  HInstruction* LoadLocal(uint32_t register_index, Primitive::Type type) const;
+  HInstruction* LoadLocal(uint32_t register_index, DataType::Type type) const;
   HInstruction* LoadNullCheckedLocal(uint32_t register_index, uint32_t dex_pc);
   void UpdateLocal(uint32_t register_index, HInstruction* instruction);
 
@@ -112,24 +112,24 @@ class HInstructionBuilder : public ValueObject {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<typename T>
-  void Unop_12x(const Instruction& instruction, Primitive::Type type, uint32_t dex_pc);
+  void Unop_12x(const Instruction& instruction, DataType::Type type, uint32_t dex_pc);
 
   template<typename T>
-  void Binop_23x(const Instruction& instruction, Primitive::Type type, uint32_t dex_pc);
+  void Binop_23x(const Instruction& instruction, DataType::Type type, uint32_t dex_pc);
 
   template<typename T>
-  void Binop_23x_shift(const Instruction& instruction, Primitive::Type type, uint32_t dex_pc);
+  void Binop_23x_shift(const Instruction& instruction, DataType::Type type, uint32_t dex_pc);
 
   void Binop_23x_cmp(const Instruction& instruction,
-                     Primitive::Type type,
+                     DataType::Type type,
                      ComparisonBias bias,
                      uint32_t dex_pc);
 
   template<typename T>
-  void Binop_12x(const Instruction& instruction, Primitive::Type type, uint32_t dex_pc);
+  void Binop_12x(const Instruction& instruction, DataType::Type type, uint32_t dex_pc);
 
   template<typename T>
-  void Binop_12x_shift(const Instruction& instruction, Primitive::Type type, uint32_t dex_pc);
+  void Binop_12x_shift(const Instruction& instruction, DataType::Type type, uint32_t dex_pc);
 
   template<typename T>
   void Binop_22b(const Instruction& instruction, bool reverse, uint32_t dex_pc);
@@ -141,19 +141,19 @@ class HInstructionBuilder : public ValueObject {
   template<typename T> void If_22t(const Instruction& instruction, uint32_t dex_pc);
 
   void Conversion_12x(const Instruction& instruction,
-                      Primitive::Type input_type,
-                      Primitive::Type result_type,
+                      DataType::Type input_type,
+                      DataType::Type result_type,
                       uint32_t dex_pc);
 
   void BuildCheckedDivRem(uint16_t out_reg,
                           uint16_t first_reg,
                           int64_t second_reg_or_constant,
                           uint32_t dex_pc,
-                          Primitive::Type type,
+                          DataType::Type type,
                           bool second_is_lit,
                           bool is_div);
 
-  void BuildReturn(const Instruction& instruction, Primitive::Type type, uint32_t dex_pc);
+  void BuildReturn(const Instruction& instruction, DataType::Type type, uint32_t dex_pc);
 
   // Builds an instance field access node and returns whether the instruction is supported.
   bool BuildInstanceFieldAccess(const Instruction& instruction,
@@ -164,14 +164,14 @@ class HInstructionBuilder : public ValueObject {
   void BuildUnresolvedStaticFieldAccess(const Instruction& instruction,
                                         uint32_t dex_pc,
                                         bool is_put,
-                                        Primitive::Type field_type);
+                                        DataType::Type field_type);
   // Builds a static field access node and returns whether the instruction is supported.
   bool BuildStaticFieldAccess(const Instruction& instruction, uint32_t dex_pc, bool is_put);
 
   void BuildArrayAccess(const Instruction& instruction,
                         uint32_t dex_pc,
                         bool is_get,
-                        Primitive::Type anticipated_type);
+                        DataType::Type anticipated_type);
 
   // Builds an invocation node and returns whether the instruction is supported.
   bool BuildInvoke(const Instruction& instruction,
@@ -210,7 +210,7 @@ class HInstructionBuilder : public ValueObject {
   void BuildFillArrayData(HInstruction* object,
                           const T* data,
                           uint32_t element_count,
-                          Primitive::Type anticipated_type,
+                          DataType::Type anticipated_type,
                           uint32_t dex_pc);
 
   // Fills the given object with data as specified in the fill-array-data
@@ -321,7 +321,7 @@ class HInstructionBuilder : public ValueObject {
   const DexFile::CodeItem& code_item_;
 
   // The return type of the method being compiled.
-  const Primitive::Type return_type_;
+  const DataType::Type return_type_;
 
   HBasicBlockBuilder* block_builder_;
   SsaBuilder* ssa_builder_;

@@ -103,18 +103,20 @@ class SchedulerTest : public CommonCompilerTest {
     HInstruction* array = new (&allocator_) HParameterValue(graph_->GetDexFile(),
                                                             dex::TypeIndex(0),
                                                             0,
-                                                            Primitive::kPrimNot);
+                                                            DataType::Type::kReference);
     HInstruction* c1 = graph_->GetIntConstant(1);
     HInstruction* c2 = graph_->GetIntConstant(10);
-    HInstruction* add1 = new (&allocator_) HAdd(Primitive::kPrimInt, c1, c2);
-    HInstruction* add2 = new (&allocator_) HAdd(Primitive::kPrimInt, add1, c2);
-    HInstruction* mul = new (&allocator_) HMul(Primitive::kPrimInt, add1, add2);
+    HInstruction* add1 = new (&allocator_) HAdd(DataType::Type::kInt32, c1, c2);
+    HInstruction* add2 = new (&allocator_) HAdd(DataType::Type::kInt32, add1, c2);
+    HInstruction* mul = new (&allocator_) HMul(DataType::Type::kInt32, add1, add2);
     HInstruction* div_check = new (&allocator_) HDivZeroCheck(add2, 0);
-    HInstruction* div = new (&allocator_) HDiv(Primitive::kPrimInt, add1, div_check, 0);
-    HInstruction* array_get1 = new (&allocator_) HArrayGet(array, add1, Primitive::kPrimInt, 0);
-    HInstruction* array_set1 = new (&allocator_) HArraySet(array, add1, add2, Primitive::kPrimInt, 0);
-    HInstruction* array_get2 = new (&allocator_) HArrayGet(array, add1, Primitive::kPrimInt, 0);
-    HInstruction* array_set2 = new (&allocator_) HArraySet(array, add1, add2, Primitive::kPrimInt, 0);
+    HInstruction* div = new (&allocator_) HDiv(DataType::Type::kInt32, add1, div_check, 0);
+    HInstruction* array_get1 = new (&allocator_) HArrayGet(array, add1, DataType::Type::kInt32, 0);
+    HInstruction* array_set1 =
+        new (&allocator_) HArraySet(array, add1, add2, DataType::Type::kInt32, 0);
+    HInstruction* array_get2 = new (&allocator_) HArrayGet(array, add1, DataType::Type::kInt32, 0);
+    HInstruction* array_set2 =
+        new (&allocator_) HArraySet(array, add1, add2, DataType::Type::kInt32, 0);
 
     DCHECK(div_check->CanThrow());
 
@@ -204,37 +206,41 @@ class SchedulerTest : public CommonCompilerTest {
     HInstruction* arr = new (&allocator_) HParameterValue(graph_->GetDexFile(),
                                                           dex::TypeIndex(0),
                                                           0,
-                                                          Primitive::kPrimNot);
+                                                          DataType::Type::kReference);
     HInstruction* i = new (&allocator_) HParameterValue(graph_->GetDexFile(),
                                                         dex::TypeIndex(1),
                                                         1,
-                                                        Primitive::kPrimInt);
+                                                        DataType::Type::kInt32);
     HInstruction* j = new (&allocator_) HParameterValue(graph_->GetDexFile(),
                                                         dex::TypeIndex(1),
                                                         1,
-                                                        Primitive::kPrimInt);
+                                                        DataType::Type::kInt32);
     HInstruction* object = new (&allocator_) HParameterValue(graph_->GetDexFile(),
                                                              dex::TypeIndex(0),
                                                              0,
-                                                             Primitive::kPrimNot);
+                                                             DataType::Type::kReference);
     HInstruction* c0 = graph_->GetIntConstant(0);
     HInstruction* c1 = graph_->GetIntConstant(1);
-    HInstruction* add0 = new (&allocator_) HAdd(Primitive::kPrimInt, i, c0);
-    HInstruction* add1 = new (&allocator_) HAdd(Primitive::kPrimInt, i, c1);
-    HInstruction* sub0 = new (&allocator_) HSub(Primitive::kPrimInt, i, c0);
-    HInstruction* sub1 = new (&allocator_) HSub(Primitive::kPrimInt, i, c1);
-    HInstruction* arr_set_0 = new (&allocator_) HArraySet(arr, c0, c0, Primitive::kPrimInt, 0);
-    HInstruction* arr_set_1 = new (&allocator_) HArraySet(arr, c1, c0, Primitive::kPrimInt, 0);
-    HInstruction* arr_set_i = new (&allocator_) HArraySet(arr, i, c0, Primitive::kPrimInt, 0);
-    HInstruction* arr_set_add0 = new (&allocator_) HArraySet(arr, add0, c0, Primitive::kPrimInt, 0);
-    HInstruction* arr_set_add1 = new (&allocator_) HArraySet(arr, add1, c0, Primitive::kPrimInt, 0);
-    HInstruction* arr_set_sub0 = new (&allocator_) HArraySet(arr, sub0, c0, Primitive::kPrimInt, 0);
-    HInstruction* arr_set_sub1 = new (&allocator_) HArraySet(arr, sub1, c0, Primitive::kPrimInt, 0);
-    HInstruction* arr_set_j = new (&allocator_) HArraySet(arr, j, c0, Primitive::kPrimInt, 0);
+    HInstruction* add0 = new (&allocator_) HAdd(DataType::Type::kInt32, i, c0);
+    HInstruction* add1 = new (&allocator_) HAdd(DataType::Type::kInt32, i, c1);
+    HInstruction* sub0 = new (&allocator_) HSub(DataType::Type::kInt32, i, c0);
+    HInstruction* sub1 = new (&allocator_) HSub(DataType::Type::kInt32, i, c1);
+    HInstruction* arr_set_0 = new (&allocator_) HArraySet(arr, c0, c0, DataType::Type::kInt32, 0);
+    HInstruction* arr_set_1 = new (&allocator_) HArraySet(arr, c1, c0, DataType::Type::kInt32, 0);
+    HInstruction* arr_set_i = new (&allocator_) HArraySet(arr, i, c0, DataType::Type::kInt32, 0);
+    HInstruction* arr_set_add0 =
+        new (&allocator_) HArraySet(arr, add0, c0, DataType::Type::kInt32, 0);
+    HInstruction* arr_set_add1 =
+        new (&allocator_) HArraySet(arr, add1, c0, DataType::Type::kInt32, 0);
+    HInstruction* arr_set_sub0 =
+        new (&allocator_) HArraySet(arr, sub0, c0, DataType::Type::kInt32, 0);
+    HInstruction* arr_set_sub1 =
+        new (&allocator_) HArraySet(arr, sub1, c0, DataType::Type::kInt32, 0);
+    HInstruction* arr_set_j = new (&allocator_) HArraySet(arr, j, c0, DataType::Type::kInt32, 0);
     HInstanceFieldSet* set_field10 = new (&allocator_) HInstanceFieldSet(object,
                                                                          c1,
                                                                          nullptr,
-                                                                         Primitive::kPrimInt,
+                                                                         DataType::Type::kInt32,
                                                                          MemberOffset(10),
                                                                          false,
                                                                          kUnknownFieldIndex,

@@ -369,7 +369,7 @@ class HeapLocationCollector : public HGraphVisitor {
   }
 
   void CreateReferenceInfoForReferenceType(HInstruction* instruction) {
-    if (instruction->GetType() != Primitive::kPrimNot) {
+    if (instruction->GetType() != DataType::Type::kReference) {
       return;
     }
     DCHECK(FindReferenceInfoOf(instruction) == nullptr);

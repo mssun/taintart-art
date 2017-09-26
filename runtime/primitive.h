@@ -49,7 +49,7 @@ class Primitive {
     kPrimLast = kPrimVoid
   };
 
-  static Type GetType(char type) {
+  static constexpr Type GetType(char type) {
     switch (type) {
       case 'B':
         return kPrimByte;
@@ -74,7 +74,7 @@ class Primitive {
     }
   }
 
-  static size_t ComponentSizeShift(Type type) {
+  static constexpr size_t ComponentSizeShift(Type type) {
     switch (type) {
       case kPrimVoid:
       case kPrimBoolean:
@@ -86,13 +86,12 @@ class Primitive {
       case kPrimLong:
       case kPrimDouble:  return 3;
       case kPrimNot:     return ComponentSizeShiftWidth(kObjectReferenceSize);
-      default:
-        LOG(FATAL) << "Invalid type " << static_cast<int>(type);
-        return 0;
     }
+    LOG(FATAL) << "Invalid type " << static_cast<int>(type);
+    UNREACHABLE();
   }
 
-  static size_t ComponentSize(Type type) {
+  static constexpr size_t ComponentSize(Type type) {
     switch (type) {
       case kPrimVoid:    return 0;
       case kPrimBoolean:
@@ -104,10 +103,9 @@ class Primitive {
       case kPrimLong:
       case kPrimDouble:  return 8;
       case kPrimNot:     return kObjectReferenceSize;
-      default:
-        LOG(FATAL) << "Invalid type " << static_cast<int>(type);
-        return 0;
     }
+    LOG(FATAL) << "Invalid type " << static_cast<int>(type);
+    UNREACHABLE();
   }
 
   static const char* Descriptor(Type type) {
@@ -141,26 +139,6 @@ class Primitive {
   // Returns the descriptor corresponding to the boxed type of |type|.
   static const char* BoxedDescriptor(Type type);
 
-  static bool IsFloatingPointType(Type type) {
-    return type == kPrimFloat || type == kPrimDouble;
-  }
-
-  static bool IsIntegralType(Type type) {
-    // The Java language does not allow treating boolean as an integral type but
-    // our bit representation makes it safe.
-    switch (type) {
-      case kPrimBoolean:
-      case kPrimByte:
-      case kPrimChar:
-      case kPrimShort:
-      case kPrimInt:
-      case kPrimLong:
-        return true;
-      default:
-        return false;
-    }
-  }
-
   // Return true if |type| is an numeric type.
   static constexpr bool IsNumericType(Type type) {
     switch (type) {
@@ -175,6 +153,8 @@ class Primitive {
       case Primitive::Type::kPrimDouble: return true;
       case Primitive::Type::kPrimVoid: return false;
     }
+    LOG(FATAL) << "Invalid type " << static_cast<int>(type);
+    UNREACHABLE();
   }
 
   // Returns true if it is possible to widen type |from| to type |to|. Both |from| and
@@ -190,73 +170,15 @@ class Primitive {
     return IsNumericType(from) && IsNumericType(to) && from <= to;
   }
 
-  static bool IsIntOrLongType(Type type) {
-    return type == kPrimInt || type == kPrimLong;
-  }
-
   static bool Is64BitType(Type type) {
     return type == kPrimLong || type == kPrimDouble;
-  }
-
-  // Return the general kind of `type`, fusing integer-like types as kPrimInt.
-  static Type PrimitiveKind(Type type) {
-    switch (type) {
-      case kPrimBoolean:
-      case kPrimByte:
-      case kPrimShort:
-      case kPrimChar:
-      case kPrimInt:
-        return kPrimInt;
-      default:
-        return type;
-    }
-  }
-
-  static int64_t MinValueOfIntegralType(Type type) {
-    switch (type) {
-      case kPrimBoolean:
-        return std::numeric_limits<bool>::min();
-      case kPrimByte:
-        return std::numeric_limits<int8_t>::min();
-      case kPrimChar:
-        return std::numeric_limits<uint16_t>::min();
-      case kPrimShort:
-        return std::numeric_limits<int16_t>::min();
-      case kPrimInt:
-        return std::numeric_limits<int32_t>::min();
-      case kPrimLong:
-        return std::numeric_limits<int64_t>::min();
-      default:
-        LOG(FATAL) << "non integral type";
-    }
-    return 0;
-  }
-
-  static int64_t MaxValueOfIntegralType(Type type) {
-    switch (type) {
-      case kPrimBoolean:
-        return std::numeric_limits<bool>::max();
-      case kPrimByte:
-        return std::numeric_limits<int8_t>::max();
-      case kPrimChar:
-        return std::numeric_limits<uint16_t>::max();
-      case kPrimShort:
-        return std::numeric_limits<int16_t>::max();
-      case kPrimInt:
-        return std::numeric_limits<int32_t>::max();
-      case kPrimLong:
-        return std::numeric_limits<int64_t>::max();
-      default:
-        LOG(FATAL) << "non integral type";
-    }
-    return 0;
   }
 
  private:
   DISALLOW_IMPLICIT_CONSTRUCTORS(Primitive);
 };
 
-std::ostream& operator<<(std::ostream& os, const Primitive::Type& state);
+std::ostream& operator<<(std::ostream& os, Primitive::Type state);
 
 }  // namespace art
 

@@ -91,7 +91,7 @@ class HLoopOptimization : public HOptimization {
    * Representation of a unit-stride array reference.
    */
   struct ArrayReference {
-    ArrayReference(HInstruction* b, HInstruction* o, Primitive::Type t, bool l)
+    ArrayReference(HInstruction* b, HInstruction* o, DataType::Type t, bool l)
         : base(b), offset(o), type(t), lhs(l) { }
     bool operator<(const ArrayReference& other) const {
       return
@@ -103,7 +103,7 @@ class HLoopOptimization : public HOptimization {
     }
     HInstruction* base;    // base address
     HInstruction* offset;  // offset + i
-    Primitive::Type type;  // component type
+    DataType::Type type;   // component type
     bool lhs;              // def/use
   };
 
@@ -147,36 +147,36 @@ class HLoopOptimization : public HOptimization {
   bool VectorizeUse(LoopNode* node,
                     HInstruction* instruction,
                     bool generate_code,
-                    Primitive::Type type,
+                    DataType::Type type,
                     uint64_t restrictions);
-  bool TrySetVectorType(Primitive::Type type, /*out*/ uint64_t* restrictions);
+  bool TrySetVectorType(DataType::Type type, /*out*/ uint64_t* restrictions);
   bool TrySetVectorLength(uint32_t length);
-  void GenerateVecInv(HInstruction* org, Primitive::Type type);
+  void GenerateVecInv(HInstruction* org, DataType::Type type);
   void GenerateVecSub(HInstruction* org, HInstruction* offset);
   void GenerateVecMem(HInstruction* org,
                       HInstruction* opa,
                       HInstruction* opb,
                       HInstruction* offset,
-                      Primitive::Type type);
+                      DataType::Type type);
   void GenerateVecReductionPhi(HPhi* phi);
   void GenerateVecReductionPhiInputs(HPhi* phi, HInstruction* reduction);
   HInstruction* ReduceAndExtractIfNeeded(HInstruction* instruction);
   void GenerateVecOp(HInstruction* org,
                      HInstruction* opa,
                      HInstruction* opb,
-                     Primitive::Type type,
+                     DataType::Type type,
                      bool is_unsigned = false);
 
   // Vectorization idioms.
   bool VectorizeHalvingAddIdiom(LoopNode* node,
                                 HInstruction* instruction,
                                 bool generate_code,
-                                Primitive::Type type,
+                                DataType::Type type,
                                 uint64_t restrictions);
   bool VectorizeSADIdiom(LoopNode* node,
                          HInstruction* instruction,
                          bool generate_code,
-                         Primitive::Type type,
+                         DataType::Type type,
                          uint64_t restrictions);
 
   // Vectorization heuristics.

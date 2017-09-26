@@ -118,12 +118,12 @@ TEST_F(EmitSwapMipsTest, TwoRegisters) {
   moves_->AddMove(
       Location::RegisterLocation(4),
       Location::RegisterLocation(5),
-      Primitive::kPrimInt,
+      DataType::Type::kInt32,
       nullptr);
   moves_->AddMove(
       Location::RegisterLocation(5),
       Location::RegisterLocation(4),
-      Primitive::kPrimInt,
+      DataType::Type::kInt32,
       nullptr);
   const char* expected =
       "or $t8, $a1, $zero\n"
@@ -136,12 +136,12 @@ TEST_F(EmitSwapMipsTest, TwoRegisterPairs) {
   moves_->AddMove(
       Location::RegisterPairLocation(4, 5),
       Location::RegisterPairLocation(6, 7),
-      Primitive::kPrimLong,
+      DataType::Type::kInt64,
       nullptr);
   moves_->AddMove(
       Location::RegisterPairLocation(6, 7),
       Location::RegisterPairLocation(4, 5),
-      Primitive::kPrimLong,
+      DataType::Type::kInt64,
       nullptr);
   const char* expected =
       "or $t8, $a2, $zero\n"
@@ -157,12 +157,12 @@ TEST_F(EmitSwapMipsTest, TwoFpuRegistersFloat) {
   moves_->AddMove(
       Location::FpuRegisterLocation(4),
       Location::FpuRegisterLocation(2),
-      Primitive::kPrimFloat,
+      DataType::Type::kFloat32,
       nullptr);
   moves_->AddMove(
       Location::FpuRegisterLocation(2),
       Location::FpuRegisterLocation(4),
-      Primitive::kPrimFloat,
+      DataType::Type::kFloat32,
       nullptr);
   const char* expected =
       "mov.s $f6, $f2\n"
@@ -175,12 +175,12 @@ TEST_F(EmitSwapMipsTest, TwoFpuRegistersDouble) {
   moves_->AddMove(
       Location::FpuRegisterLocation(4),
       Location::FpuRegisterLocation(2),
-      Primitive::kPrimDouble,
+      DataType::Type::kFloat64,
       nullptr);
   moves_->AddMove(
       Location::FpuRegisterLocation(2),
       Location::FpuRegisterLocation(4),
-      Primitive::kPrimDouble,
+      DataType::Type::kFloat64,
       nullptr);
   const char* expected =
       "mov.d $f6, $f2\n"
@@ -193,12 +193,12 @@ TEST_F(EmitSwapMipsTest, RegisterAndFpuRegister) {
   moves_->AddMove(
       Location::RegisterLocation(4),
       Location::FpuRegisterLocation(2),
-      Primitive::kPrimFloat,
+      DataType::Type::kFloat32,
       nullptr);
   moves_->AddMove(
       Location::FpuRegisterLocation(2),
       Location::RegisterLocation(4),
-      Primitive::kPrimFloat,
+      DataType::Type::kFloat32,
       nullptr);
   const char* expected =
       "or $t8, $a0, $zero\n"
@@ -211,12 +211,12 @@ TEST_F(EmitSwapMipsTest, RegisterPairAndFpuRegister) {
   moves_->AddMove(
       Location::RegisterPairLocation(4, 5),
       Location::FpuRegisterLocation(4),
-      Primitive::kPrimDouble,
+      DataType::Type::kFloat64,
       nullptr);
   moves_->AddMove(
       Location::FpuRegisterLocation(4),
       Location::RegisterPairLocation(4, 5),
-      Primitive::kPrimDouble,
+      DataType::Type::kFloat64,
       nullptr);
   const char* expected =
       "mfc1 $t8, $f4\n"
@@ -232,12 +232,12 @@ TEST_F(EmitSwapMipsTest, TwoStackSlots) {
   moves_->AddMove(
       Location::StackSlot(52),
       Location::StackSlot(48),
-      Primitive::kPrimInt,
+      DataType::Type::kInt32,
       nullptr);
   moves_->AddMove(
       Location::StackSlot(48),
       Location::StackSlot(52),
-      Primitive::kPrimInt,
+      DataType::Type::kInt32,
       nullptr);
   const char* expected =
       "addiu $sp, $sp, -4\n"
@@ -255,12 +255,12 @@ TEST_F(EmitSwapMipsTest, TwoDoubleStackSlots) {
   moves_->AddMove(
       Location::DoubleStackSlot(56),
       Location::DoubleStackSlot(48),
-      Primitive::kPrimLong,
+      DataType::Type::kInt64,
       nullptr);
   moves_->AddMove(
       Location::DoubleStackSlot(48),
       Location::DoubleStackSlot(56),
-      Primitive::kPrimLong,
+      DataType::Type::kInt64,
       nullptr);
   const char* expected =
       "addiu $sp, $sp, -4\n"
@@ -282,12 +282,12 @@ TEST_F(EmitSwapMipsTest, RegisterAndStackSlot) {
   moves_->AddMove(
       Location::RegisterLocation(4),
       Location::StackSlot(48),
-      Primitive::kPrimInt,
+      DataType::Type::kInt32,
       nullptr);
   moves_->AddMove(
       Location::StackSlot(48),
       Location::RegisterLocation(4),
-      Primitive::kPrimInt,
+      DataType::Type::kInt32,
       nullptr);
   const char* expected =
       "or $t8, $a0, $zero\n"
@@ -300,12 +300,12 @@ TEST_F(EmitSwapMipsTest, RegisterPairAndDoubleStackSlot) {
   moves_->AddMove(
       Location::RegisterPairLocation(4, 5),
       Location::DoubleStackSlot(32),
-      Primitive::kPrimLong,
+      DataType::Type::kInt64,
       nullptr);
   moves_->AddMove(
       Location::DoubleStackSlot(32),
       Location::RegisterPairLocation(4, 5),
-      Primitive::kPrimLong,
+      DataType::Type::kInt64,
       nullptr);
   const char* expected =
       "or $t8, $a0, $zero\n"
@@ -321,12 +321,12 @@ TEST_F(EmitSwapMipsTest, FpuRegisterAndStackSlot) {
   moves_->AddMove(
       Location::FpuRegisterLocation(4),
       Location::StackSlot(48),
-      Primitive::kPrimFloat,
+      DataType::Type::kFloat32,
       nullptr);
   moves_->AddMove(
       Location::StackSlot(48),
       Location::FpuRegisterLocation(4),
-      Primitive::kPrimFloat,
+      DataType::Type::kFloat32,
       nullptr);
   const char* expected =
       "mov.s $f6, $f4\n"
@@ -339,12 +339,12 @@ TEST_F(EmitSwapMipsTest, FpuRegisterAndDoubleStackSlot) {
   moves_->AddMove(
       Location::FpuRegisterLocation(4),
       Location::DoubleStackSlot(48),
-      Primitive::kPrimDouble,
+      DataType::Type::kFloat64,
       nullptr);
   moves_->AddMove(
       Location::DoubleStackSlot(48),
       Location::FpuRegisterLocation(4),
-      Primitive::kPrimDouble,
+      DataType::Type::kFloat64,
       nullptr);
   const char* expected =
       "mov.d $f6, $f4\n"

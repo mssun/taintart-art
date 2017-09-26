@@ -480,7 +480,7 @@ size_t LiveInterval::NumberOfSpillSlotsNeeded() const {
     return definition->AsVecOperation()->GetVectorNumberOfBytes() / kVRegSize;
   }
   // Return number of needed spill slots based on type.
-  return (type_ == Primitive::kPrimLong || type_ == Primitive::kPrimDouble) ? 2 : 1;
+  return (type_ == DataType::Type::kInt64 || type_ == DataType::Type::kFloat64) ? 2 : 1;
 }
 
 Location LiveInterval::ToLocation() const {

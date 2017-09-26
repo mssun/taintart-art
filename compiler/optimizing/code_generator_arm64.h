@@ -100,7 +100,7 @@ const vixl::aarch64::CPURegList callee_saved_fp_registers(vixl::aarch64::CPURegi
                                                           vixl::aarch64::kDRegSize,
                                                           vixl::aarch64::d8.GetCode(),
                                                           vixl::aarch64::d15.GetCode());
-Location ARM64ReturnLocation(Primitive::Type return_type);
+Location ARM64ReturnLocation(DataType::Type return_type);
 
 class SlowPathCodeARM64 : public SlowPathCode {
  public:
@@ -171,7 +171,7 @@ class InvokeRuntimeCallingConvention : public CallingConvention<vixl::aarch64::R
                           kRuntimeParameterFpuRegistersLength,
                           kArm64PointerSize) {}
 
-  Location GetReturnLocation(Primitive::Type return_type);
+  Location GetReturnLocation(DataType::Type return_type);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(InvokeRuntimeCallingConvention);
@@ -187,7 +187,7 @@ class InvokeDexCallingConvention : public CallingConvention<vixl::aarch64::Regis
                           kParameterFPRegistersLength,
                           kArm64PointerSize) {}
 
-  Location GetReturnLocation(Primitive::Type return_type) const {
+  Location GetReturnLocation(DataType::Type return_type) const {
     return ARM64ReturnLocation(return_type);
   }
 
@@ -201,8 +201,8 @@ class InvokeDexCallingConventionVisitorARM64 : public InvokeDexCallingConvention
   InvokeDexCallingConventionVisitorARM64() {}
   virtual ~InvokeDexCallingConventionVisitorARM64() {}
 
-  Location GetNextLocation(Primitive::Type type) OVERRIDE;
-  Location GetReturnLocation(Primitive::Type return_type) const OVERRIDE {
+  Location GetNextLocation(DataType::Type type) OVERRIDE;
+  Location GetReturnLocation(DataType::Type return_type) const OVERRIDE {
     return calling_convention.GetReturnLocation(return_type);
   }
   Location GetMethodLocation() const OVERRIDE;
@@ -223,16 +223,16 @@ class FieldAccessCallingConventionARM64 : public FieldAccessCallingConvention {
   Location GetFieldIndexLocation() const OVERRIDE {
     return helpers::LocationFrom(vixl::aarch64::x0);
   }
-  Location GetReturnLocation(Primitive::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
+  Location GetReturnLocation(DataType::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
     return helpers::LocationFrom(vixl::aarch64::x0);
   }
-  Location GetSetValueLocation(Primitive::Type type ATTRIBUTE_UNUSED,
+  Location GetSetValueLocation(DataType::Type type ATTRIBUTE_UNUSED,
                                bool is_instance) const OVERRIDE {
     return is_instance
         ? helpers::LocationFrom(vixl::aarch64::x2)
         : helpers::LocationFrom(vixl::aarch64::x1);
   }
-  Location GetFpuLocation(Primitive::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
+  Location GetFpuLocation(DataType::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
     return helpers::LocationFrom(vixl::aarch64::d0);
   }
 
@@ -498,13 +498,13 @@ class CodeGeneratorARM64 : public CodeGenerator {
   // Code generation helpers.
   void MoveConstant(vixl::aarch64::CPURegister destination, HConstant* constant);
   void MoveConstant(Location destination, int32_t value) OVERRIDE;
-  void MoveLocation(Location dst, Location src, Primitive::Type dst_type) OVERRIDE;
+  void MoveLocation(Location dst, Location src, DataType::Type dst_type) OVERRIDE;
   void AddLocationAsTemp(Location location, LocationSummary* locations) OVERRIDE;
 
-  void Load(Primitive::Type type,
+  void Load(DataType::Type type,
             vixl::aarch64::CPURegister dst,
             const vixl::aarch64::MemOperand& src);
-  void Store(Primitive::Type type,
+  void Store(DataType::Type type,
              vixl::aarch64::CPURegister src,
              const vixl::aarch64::MemOperand& dst);
   void LoadAcquire(HInstruction* instruction,
@@ -512,7 +512,7 @@ class CodeGeneratorARM64 : public CodeGenerator {
                    const vixl::aarch64::MemOperand& src,
                    bool needs_null_check);
   void StoreRelease(HInstruction* instruction,
-                    Primitive::Type type,
+                    DataType::Type type,
                     vixl::aarch64::CPURegister src,
                     const vixl::aarch64::MemOperand& dst,
                     bool needs_null_check);
@@ -531,7 +531,7 @@ class CodeGeneratorARM64 : public CodeGenerator {
 
   ParallelMoveResolverARM64* GetMoveResolver() OVERRIDE { return &move_resolver_; }
 
-  bool NeedsTwoRegisters(Primitive::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
+  bool NeedsTwoRegisters(DataType::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
     return false;
   }
 
@@ -557,7 +557,7 @@ class CodeGeneratorARM64 : public CodeGenerator {
       HInvokeVirtual* invoke, Location temp, SlowPathCode* slow_path = nullptr) OVERRIDE;
 
   void MoveFromReturnRegister(Location trg ATTRIBUTE_UNUSED,
-                              Primitive::Type type ATTRIBUTE_UNUSED) OVERRIDE {
+                              DataType::Type type ATTRIBUTE_UNUSED) OVERRIDE {
     UNIMPLEMENTED(FATAL);
   }
 
