@@ -50,6 +50,7 @@ constexpr bool kBakerReadBarrierThunksEnableForGcRoots = true;
 Location Mips64ReturnLocation(DataType::Type return_type) {
   switch (return_type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -2170,7 +2171,8 @@ void InstructionCodeGeneratorMIPS64::VisitArrayGet(HArrayGet* instruction) {
   const bool maybe_compressed_char_at = mirror::kUseStringCompression &&
                                         instruction->IsStringCharAt();
   switch (type) {
-    case DataType::Type::kBool: {
+    case DataType::Type::kBool:
+    case DataType::Type::kUint8: {
       GpuRegister out = out_loc.AsRegister<GpuRegister>();
       if (index.IsConstant()) {
         size_t offset =
@@ -2192,19 +2194,6 @@ void InstructionCodeGeneratorMIPS64::VisitArrayGet(HArrayGet* instruction) {
       } else {
         __ Daddu(TMP, obj, index.AsRegister<GpuRegister>());
         __ LoadFromOffset(kLoadSignedByte, out, TMP, data_offset, null_checker);
-      }
-      break;
-    }
-
-    case DataType::Type::kInt16: {
-      GpuRegister out = out_loc.AsRegister<GpuRegister>();
-      if (index.IsConstant()) {
-        size_t offset =
-            (index.GetConstant()->AsIntConstant()->GetValue() << TIMES_2) + data_offset;
-        __ LoadFromOffset(kLoadSignedHalfword, out, obj, offset, null_checker);
-      } else {
-        __ Dlsa(TMP, index.AsRegister<GpuRegister>(), obj, TIMES_2);
-        __ LoadFromOffset(kLoadSignedHalfword, out, TMP, data_offset, null_checker);
       }
       break;
     }
@@ -2257,6 +2246,19 @@ void InstructionCodeGeneratorMIPS64::VisitArrayGet(HArrayGet* instruction) {
           __ Dlsa(TMP, index_reg, obj, TIMES_2);
           __ LoadFromOffset(kLoadUnsignedHalfword, out, TMP, data_offset, null_checker);
         }
+      }
+      break;
+    }
+
+    case DataType::Type::kInt16: {
+      GpuRegister out = out_loc.AsRegister<GpuRegister>();
+      if (index.IsConstant()) {
+        size_t offset =
+            (index.GetConstant()->AsIntConstant()->GetValue() << TIMES_2) + data_offset;
+        __ LoadFromOffset(kLoadSignedHalfword, out, obj, offset, null_checker);
+      } else {
+        __ Dlsa(TMP, index.AsRegister<GpuRegister>(), obj, TIMES_2);
+        __ LoadFromOffset(kLoadSignedHalfword, out, TMP, data_offset, null_checker);
       }
       break;
     }
@@ -2460,6 +2462,7 @@ void InstructionCodeGeneratorMIPS64::VisitArraySet(HArraySet* instruction) {
 
   switch (value_type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8: {
       uint32_t data_offset = mirror::Array::DataOffset(sizeof(uint8_t)).Uint32Value();
       if (index.IsConstant()) {
@@ -2477,8 +2480,8 @@ void InstructionCodeGeneratorMIPS64::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case DataType::Type::kInt16:
-    case DataType::Type::kUint16: {
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16: {
       uint32_t data_offset = mirror::Array::DataOffset(sizeof(uint16_t)).Uint32Value();
       if (index.IsConstant()) {
         data_offset += index.GetConstant()->AsIntConstant()->GetValue() << TIMES_2;
@@ -2969,9 +2972,10 @@ void LocationsBuilderMIPS64::VisitCompare(HCompare* compare) {
 
   switch (in_type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
-    case DataType::Type::kInt16:
     case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
     case DataType::Type::kInt32:
     case DataType::Type::kInt64:
       locations->SetInAt(0, Location::RequiresRegister());
@@ -3001,9 +3005,10 @@ void InstructionCodeGeneratorMIPS64::VisitCompare(HCompare* instruction) {
   // -1 if: left  < right
   switch (in_type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
-    case DataType::Type::kInt16:
     case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
     case DataType::Type::kInt32:
     case DataType::Type::kInt64: {
       GpuRegister lhs = locations->InAt(0).AsRegister<GpuRegister>();
@@ -4681,16 +4686,17 @@ void InstructionCodeGeneratorMIPS64::HandleFieldGet(HInstruction* instruction,
 
   switch (type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
       load_type = kLoadUnsignedByte;
       break;
     case DataType::Type::kInt8:
       load_type = kLoadSignedByte;
       break;
-    case DataType::Type::kInt16:
-      load_type = kLoadSignedHalfword;
-      break;
     case DataType::Type::kUint16:
       load_type = kLoadUnsignedHalfword;
+      break;
+    case DataType::Type::kInt16:
+      load_type = kLoadSignedHalfword;
       break;
     case DataType::Type::kInt32:
     case DataType::Type::kFloat32:
@@ -4779,11 +4785,12 @@ void InstructionCodeGeneratorMIPS64::HandleFieldSet(HInstruction* instruction,
 
   switch (type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       store_type = kStoreByte;
       break;
-    case DataType::Type::kInt16:
     case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       store_type = kStoreHalfword;
       break;
     case DataType::Type::kInt32:
@@ -6767,7 +6774,8 @@ void InstructionCodeGeneratorMIPS64::VisitThrow(HThrow* instruction) {
 void LocationsBuilderMIPS64::VisitTypeConversion(HTypeConversion* conversion) {
   DataType::Type input_type = conversion->GetInputType();
   DataType::Type result_type = conversion->GetResultType();
-  DCHECK_NE(input_type, result_type);
+  DCHECK(!DataType::IsTypeConversionImplicit(input_type, result_type))
+      << input_type << " -> " << result_type;
 
   if ((input_type == DataType::Type::kReference) || (input_type == DataType::Type::kVoid) ||
       (result_type == DataType::Type::kReference) || (result_type == DataType::Type::kVoid)) {
@@ -6794,15 +6802,16 @@ void InstructionCodeGeneratorMIPS64::VisitTypeConversion(HTypeConversion* conver
   DataType::Type result_type = conversion->GetResultType();
   DataType::Type input_type = conversion->GetInputType();
 
-  DCHECK_NE(input_type, result_type);
+  DCHECK(!DataType::IsTypeConversionImplicit(input_type, result_type))
+      << input_type << " -> " << result_type;
 
   if (DataType::IsIntegralType(result_type) && DataType::IsIntegralType(input_type)) {
     GpuRegister dst = locations->Out().AsRegister<GpuRegister>();
     GpuRegister src = locations->InAt(0).AsRegister<GpuRegister>();
 
     switch (result_type) {
-      case DataType::Type::kUint16:
-        __ Andi(dst, src, 0xFFFF);
+      case DataType::Type::kUint8:
+        __ Andi(dst, src, 0xFF);
         break;
       case DataType::Type::kInt8:
         if (input_type == DataType::Type::kInt64) {
@@ -6814,6 +6823,9 @@ void InstructionCodeGeneratorMIPS64::VisitTypeConversion(HTypeConversion* conver
         } else {
           __ Seb(dst, src);
         }
+        break;
+      case DataType::Type::kUint16:
+        __ Andi(dst, src, 0xFFFF);
         break;
       case DataType::Type::kInt16:
         if (input_type == DataType::Type::kInt64) {

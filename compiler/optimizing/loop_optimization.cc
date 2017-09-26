@@ -28,6 +28,46 @@
 
 namespace art {
 
+// TODO: Clean up the packed type detection so that we have the right type straight away
+// and do not need to go through this normalization.
+static inline void NormalizePackedType(/* inout */ DataType::Type* type,
+                                       /* inout */ bool* is_unsigned) {
+  switch (*type) {
+    case DataType::Type::kBool:
+      DCHECK(!*is_unsigned);
+      break;
+    case DataType::Type::kUint8:
+    case DataType::Type::kInt8:
+      if (*is_unsigned) {
+        *is_unsigned = false;
+        *type = DataType::Type::kUint8;
+      } else {
+        *type = DataType::Type::kInt8;
+      }
+      break;
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+      if (*is_unsigned) {
+        *is_unsigned = false;
+        *type = DataType::Type::kUint16;
+      } else {
+        *type = DataType::Type::kInt16;
+      }
+      break;
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+      // We do not have kUint32 and kUint64 at the moment.
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      DCHECK(!*is_unsigned);
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type " << *type;
+      UNREACHABLE();
+  }
+}
+
 // Enables vectorization (SIMDization) in the loop optimizer.
 static constexpr bool kEnableVectorization = true;
 
@@ -87,6 +127,7 @@ static bool IsSignExtensionAndGet(HInstruction* instruction,
   int64_t value = 0;
   if (IsInt64AndGet(instruction, /*out*/ &value)) {
     switch (type) {
+      case DataType::Type::kUint8:
       case DataType::Type::kInt8:
         if (IsInt<8>(value)) {
           *operand = instruction;
@@ -151,6 +192,7 @@ static bool IsZeroExtensionAndGet(HInstruction* instruction,
   int64_t value = 0;
   if (IsInt64AndGet(instruction, /*out*/ &value)) {
     switch (type) {
+      case DataType::Type::kUint8:
       case DataType::Type::kInt8:
         if (IsUint<8>(value)) {
           *operand = instruction;
@@ -170,9 +212,13 @@ static bool IsZeroExtensionAndGet(HInstruction* instruction,
   }
   // An implicit widening conversion of any unsigned expression zero-extends.
   if (instruction->GetType() == type) {
-    if (type == DataType::Type::kUint16) {
-      *operand = instruction;
-      return true;
+    switch (type) {
+      case DataType::Type::kUint8:
+      case DataType::Type::kUint16:
+        *operand = instruction;
+        return true;
+      default:
+        return false;
     }
   }
   // A sign (or zero) extension followed by an explicit removal of just the
@@ -190,6 +236,7 @@ static bool IsZeroExtensionAndGet(HInstruction* instruction,
         (IsInt64AndGet(b, /*out*/ &mask) && (IsSignExtensionAndGet(a, type, /*out*/ operand) ||
                                              IsZeroExtensionAndGet(a, type, /*out*/ operand)))) {
       switch ((*operand)->GetType()) {
+        case DataType::Type::kUint8:
         case DataType::Type::kInt8:
           return mask == std::numeric_limits<uint8_t>::max();
         case DataType::Type::kUint16:
@@ -257,51 +304,10 @@ static bool IsNarrowerOperand(HInstruction* a,
 
 // Compute relative vector length based on type difference.
 static size_t GetOtherVL(DataType::Type other_type, DataType::Type vector_type, size_t vl) {
-  switch (other_type) {
-    case DataType::Type::kBool:
-    case DataType::Type::kInt8:
-      switch (vector_type) {
-        case DataType::Type::kBool:
-        case DataType::Type::kInt8: return vl;
-        default: break;
-      }
-      return vl;
-    case DataType::Type::kUint16:
-    case DataType::Type::kInt16:
-      switch (vector_type) {
-        case DataType::Type::kBool:
-        case DataType::Type::kInt8: return vl >> 1;
-        case DataType::Type::kUint16:
-        case DataType::Type::kInt16: return vl;
-        default: break;
-      }
-      break;
-    case DataType::Type::kInt32:
-      switch (vector_type) {
-        case DataType::Type::kBool:
-        case DataType::Type::kInt8: return vl >> 2;
-        case DataType::Type::kUint16:
-        case DataType::Type::kInt16: return vl >> 1;
-        case DataType::Type::kInt32: return vl;
-        default: break;
-      }
-      break;
-    case DataType::Type::kInt64:
-      switch (vector_type) {
-        case DataType::Type::kBool:
-        case DataType::Type::kInt8: return vl >> 3;
-        case DataType::Type::kUint16:
-        case DataType::Type::kInt16: return vl >> 2;
-        case DataType::Type::kInt32: return vl >> 1;
-        case DataType::Type::kInt64: return vl;
-        default: break;
-      }
-      break;
-    default:
-      break;
-  }
-  LOG(FATAL) << "Unsupported idiom conversion";
-  UNREACHABLE();
+  DCHECK(DataType::IsIntegralType(other_type));
+  DCHECK(DataType::IsIntegralType(vector_type));
+  DCHECK_GE(DataType::SizeShift(other_type), DataType::SizeShift(vector_type));
+  return vl >> (DataType::SizeShift(other_type) - DataType::SizeShift(vector_type));
 }
 
 // Detect up to two instructions a and b, and an acccumulated constant c.
@@ -1105,19 +1111,19 @@ bool HLoopOptimization::VectorizeUse(LoopNode* node,
     return true;
   } else if (instruction->IsArrayGet()) {
     // Deal with vector restrictions.
-    if (instruction->AsArrayGet()->IsStringCharAt() &&
-        HasVectorRestrictions(restrictions, kNoStringCharAt)) {
+    bool is_string_char_at = instruction->AsArrayGet()->IsStringCharAt();
+    if (is_string_char_at && HasVectorRestrictions(restrictions, kNoStringCharAt)) {
       return false;
     }
     // Accept a right-hand-side array base[index] for
-    // (1) exact matching vector type,
+    // (1) matching vector type (exact match or signed/unsigned integral type of the same size),
     // (2) loop-invariant base,
     // (3) unit stride index,
     // (4) vectorizable right-hand-side value.
     HInstruction* base = instruction->InputAt(0);
     HInstruction* index = instruction->InputAt(1);
     HInstruction* offset = nullptr;
-    if (type == instruction->GetType() &&
+    if (DataType::ToSignedType(type) == DataType::ToSignedType(instruction->GetType()) &&
         node->loop_info->IsDefinedOutOfTheLoop(base) &&
         induction_range_.IsUnitStride(instruction, index, graph_, &offset)) {
       if (generate_code) {
@@ -1281,6 +1287,7 @@ bool HLoopOptimization::VectorizeUse(LoopNode* node,
         }
         if (VectorizeUse(node, r, generate_code, type, restrictions)) {
           if (generate_code) {
+            NormalizePackedType(&type, &is_unsigned);
             GenerateVecOp(instruction, vector_map_->Get(r), nullptr, type);
           }
           return true;
@@ -1340,6 +1347,7 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
       // ARM 32-bit always supports advanced SIMD (64-bit SIMD).
       switch (type) {
         case DataType::Type::kBool:
+        case DataType::Type::kUint8:
         case DataType::Type::kInt8:
           *restrictions |= kNoDiv | kNoReduction;
           return TrySetVectorLength(8);
@@ -1359,6 +1367,7 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
       // ARMv8 AArch64 always supports advanced SIMD (128-bit SIMD).
       switch (type) {
         case DataType::Type::kBool:
+        case DataType::Type::kUint8:
         case DataType::Type::kInt8:
           *restrictions |= kNoDiv;
           return TrySetVectorLength(16);
@@ -1387,6 +1396,7 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
       if (features->AsX86InstructionSetFeatures()->HasSSE4_1()) {
         switch (type) {
           case DataType::Type::kBool:
+          case DataType::Type::kUint8:
           case DataType::Type::kInt8:
             *restrictions |=
                 kNoMul | kNoDiv | kNoShift | kNoAbs | kNoSignedHAdd | kNoUnroundedHAdd | kNoSAD;
@@ -1416,6 +1426,7 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
       if (features->AsMipsInstructionSetFeatures()->HasMsa()) {
         switch (type) {
           case DataType::Type::kBool:
+          case DataType::Type::kUint8:
           case DataType::Type::kInt8:
             *restrictions |= kNoDiv | kNoReduction | kNoSAD;
             return TrySetVectorLength(16);
@@ -1444,6 +1455,7 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
       if (features->AsMips64InstructionSetFeatures()->HasMsa()) {
         switch (type) {
           case DataType::Type::kBool:
+          case DataType::Type::kUint8:
           case DataType::Type::kInt8:
             *restrictions |= kNoDiv | kNoReduction | kNoSAD;
             return TrySetVectorLength(16);
@@ -1540,11 +1552,16 @@ void HLoopOptimization::GenerateVecMem(HInstruction* org,
     HInstruction* base = org->InputAt(0);
     if (opb != nullptr) {
       vector = new (global_allocator_) HVecStore(
-          global_allocator_, base, opa, opb, type, vector_length_);
+          global_allocator_, base, opa, opb, type, org->GetSideEffects(), vector_length_);
     } else  {
       bool is_string_char_at = org->AsArrayGet()->IsStringCharAt();
-      vector = new (global_allocator_) HVecLoad(
-          global_allocator_, base, opa, type, vector_length_, is_string_char_at);
+      vector = new (global_allocator_) HVecLoad(global_allocator_,
+                                                base,
+                                                opa,
+                                                type,
+                                                org->GetSideEffects(),
+                                                vector_length_,
+                                                is_string_char_at);
     }
     // Known dynamically enforced alignment?
     if (vector_peeling_candidate_ != nullptr &&
@@ -1556,11 +1573,12 @@ void HLoopOptimization::GenerateVecMem(HInstruction* org,
     // Scalar store or load.
     DCHECK(vector_mode_ == kSequential);
     if (opb != nullptr) {
-      vector = new (global_allocator_) HArraySet(org->InputAt(0), opa, opb, type, kNoDexPc);
+      vector = new (global_allocator_) HArraySet(
+          org->InputAt(0), opa, opb, type, org->GetSideEffects(), kNoDexPc);
     } else  {
       bool is_string_char_at = org->AsArrayGet()->IsStringCharAt();
       vector = new (global_allocator_) HArrayGet(
-          org->InputAt(0), opa, type, kNoDexPc, is_string_char_at);
+          org->InputAt(0), opa, type, org->GetSideEffects(), kNoDexPc, is_string_char_at);
     }
   }
   vector_map_->Put(org, vector);
@@ -1737,6 +1755,7 @@ void HLoopOptimization::GenerateVecOp(HInstruction* org,
           case Intrinsics::kMathMinLongLong:
           case Intrinsics::kMathMinFloatFloat:
           case Intrinsics::kMathMinDoubleDouble: {
+            NormalizePackedType(&type, &is_unsigned);
             vector = new (global_allocator_)
                 HVecMin(global_allocator_, opa, opb, type, vector_length_, is_unsigned);
             break;
@@ -1745,6 +1764,7 @@ void HLoopOptimization::GenerateVecOp(HInstruction* org,
           case Intrinsics::kMathMaxLongLong:
           case Intrinsics::kMathMaxFloatFloat:
           case Intrinsics::kMathMaxDoubleDouble: {
+            NormalizePackedType(&type, &is_unsigned);
             vector = new (global_allocator_)
                 HVecMax(global_allocator_, opa, opb, type, vector_length_, is_unsigned);
             break;
@@ -1857,14 +1877,15 @@ bool HLoopOptimization::VectorizeHalvingAddIdiom(LoopNode* node,
           VectorizeUse(node, s, generate_code, type, restrictions)) {
         if (generate_code) {
           if (vector_mode_ == kVector) {
+            NormalizePackedType(&type, &is_unsigned);
             vector_map_->Put(instruction, new (global_allocator_) HVecHalvingAdd(
                 global_allocator_,
                 vector_map_->Get(r),
                 vector_map_->Get(s),
                 type,
                 vector_length_,
-                is_unsigned,
-                is_rounded));
+                is_rounded,
+                is_unsigned));
             MaybeRecordStat(stats_, MethodCompilationStat::kLoopVectorizedIdiom);
           } else {
             GenerateVecOp(instruction, vector_map_->Get(r), vector_map_->Get(s), type);
@@ -1952,6 +1973,7 @@ bool HLoopOptimization::VectorizeSADIdiom(LoopNode* node,
       VectorizeUse(node, r, generate_code, sub_type, restrictions) &&
       VectorizeUse(node, s, generate_code, sub_type, restrictions)) {
     if (generate_code) {
+      NormalizePackedType(&reduction_type, &is_unsigned);
       if (vector_mode_ == kVector) {
         vector_map_->Put(instruction, new (global_allocator_) HVecSADAccumulate(
             global_allocator_,

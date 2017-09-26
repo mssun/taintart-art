@@ -590,6 +590,7 @@ HConstant* HGraph::GetConstant(DataType::Type type, int64_t value, uint32_t dex_
     case DataType::Type::kBool:
       DCHECK(IsUint<1>(value));
       FALLTHROUGH_INTENDED;
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
