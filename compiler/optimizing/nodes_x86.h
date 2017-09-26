@@ -24,7 +24,7 @@ class HX86ComputeBaseMethodAddress FINAL : public HExpression<0> {
  public:
   // Treat the value as an int32_t, but it is really a 32 bit native pointer.
   HX86ComputeBaseMethodAddress()
-      : HExpression(Primitive::kPrimInt, SideEffects::None(), kNoDexPc) {}
+      : HExpression(DataType::Type::kInt32, SideEffects::None(), kNoDexPc) {}
 
   bool CanBeMoved() const OVERRIDE { return true; }
 
@@ -61,12 +61,12 @@ class HX86LoadFromConstantTable FINAL : public HExpression<2> {
 // Version of HNeg with access to the constant table for FP types.
 class HX86FPNeg FINAL : public HExpression<2> {
  public:
-  HX86FPNeg(Primitive::Type result_type,
+  HX86FPNeg(DataType::Type result_type,
             HInstruction* input,
             HX86ComputeBaseMethodAddress* method_base,
             uint32_t dex_pc)
       : HExpression(result_type, SideEffects::None(), dex_pc) {
-    DCHECK(Primitive::IsFloatingPointType(result_type));
+    DCHECK(DataType::IsFloatingPointType(result_type));
     SetRawInputAt(0, input);
     SetRawInputAt(1, method_base);
   }

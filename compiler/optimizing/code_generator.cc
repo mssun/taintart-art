@@ -68,35 +68,35 @@ namespace art {
 static constexpr bool kEnableDexLayoutOptimizations = false;
 
 // Return whether a location is consistent with a type.
-static bool CheckType(Primitive::Type type, Location location) {
+static bool CheckType(DataType::Type type, Location location) {
   if (location.IsFpuRegister()
       || (location.IsUnallocated() && (location.GetPolicy() == Location::kRequiresFpuRegister))) {
-    return (type == Primitive::kPrimFloat) || (type == Primitive::kPrimDouble);
+    return (type == DataType::Type::kFloat32) || (type == DataType::Type::kFloat64);
   } else if (location.IsRegister() ||
              (location.IsUnallocated() && (location.GetPolicy() == Location::kRequiresRegister))) {
-    return Primitive::IsIntegralType(type) || (type == Primitive::kPrimNot);
+    return DataType::IsIntegralType(type) || (type == DataType::Type::kReference);
   } else if (location.IsRegisterPair()) {
-    return type == Primitive::kPrimLong;
+    return type == DataType::Type::kInt64;
   } else if (location.IsFpuRegisterPair()) {
-    return type == Primitive::kPrimDouble;
+    return type == DataType::Type::kFloat64;
   } else if (location.IsStackSlot()) {
-    return (Primitive::IsIntegralType(type) && type != Primitive::kPrimLong)
-           || (type == Primitive::kPrimFloat)
-           || (type == Primitive::kPrimNot);
+    return (DataType::IsIntegralType(type) && type != DataType::Type::kInt64)
+           || (type == DataType::Type::kFloat32)
+           || (type == DataType::Type::kReference);
   } else if (location.IsDoubleStackSlot()) {
-    return (type == Primitive::kPrimLong) || (type == Primitive::kPrimDouble);
+    return (type == DataType::Type::kInt64) || (type == DataType::Type::kFloat64);
   } else if (location.IsConstant()) {
     if (location.GetConstant()->IsIntConstant()) {
-      return Primitive::IsIntegralType(type) && (type != Primitive::kPrimLong);
+      return DataType::IsIntegralType(type) && (type != DataType::Type::kInt64);
     } else if (location.GetConstant()->IsNullConstant()) {
-      return type == Primitive::kPrimNot;
+      return type == DataType::Type::kReference;
     } else if (location.GetConstant()->IsLongConstant()) {
-      return type == Primitive::kPrimLong;
+      return type == DataType::Type::kInt64;
     } else if (location.GetConstant()->IsFloatConstant()) {
-      return type == Primitive::kPrimFloat;
+      return type == DataType::Type::kFloat32;
     } else {
       return location.GetConstant()->IsDoubleConstant()
-          && (type == Primitive::kPrimDouble);
+          && (type == DataType::Type::kFloat64);
     }
   } else {
     return location.IsInvalid() || (location.GetPolicy() == Location::kAny);
@@ -130,7 +130,7 @@ static bool CheckTypeConsistency(HInstruction* instruction) {
   HEnvironment* environment = instruction->GetEnvironment();
   for (size_t i = 0; i < instruction->EnvironmentSize(); ++i) {
     if (environment->GetInstructionAt(i) != nullptr) {
-      Primitive::Type type = environment->GetInstructionAt(i)->GetType();
+      DataType::Type type = environment->GetInstructionAt(i)->GetType();
       DCHECK(CheckType(type, environment->GetLocationAt(i)))
         << type << " " << environment->GetLocationAt(i);
     } else {
@@ -157,10 +157,10 @@ uint32_t CodeGenerator::GetArrayLengthOffset(HArrayLength* array_length) {
 }
 
 uint32_t CodeGenerator::GetArrayDataOffset(HArrayGet* array_get) {
-  DCHECK(array_get->GetType() == Primitive::kPrimChar || !array_get->IsStringCharAt());
+  DCHECK(array_get->GetType() == DataType::Type::kUint16 || !array_get->IsStringCharAt());
   return array_get->IsStringCharAt()
       ? mirror::String::ValueOffset().Uint32Value()
-      : mirror::Array::DataOffset(Primitive::ComponentSize(array_get->GetType())).Uint32Value();
+      : mirror::Array::DataOffset(DataType::Size(array_get->GetType())).Uint32Value();
 }
 
 bool CodeGenerator::GoesToNextBlock(HBasicBlock* current, HBasicBlock* next) const {
@@ -413,7 +413,7 @@ void CodeGenerator::GenerateInvokePolymorphicCall(HInvokePolymorphic* invoke) {
 
 void CodeGenerator::CreateUnresolvedFieldLocationSummary(
     HInstruction* field_access,
-    Primitive::Type field_type,
+    DataType::Type field_type,
     const FieldAccessCallingConvention& calling_convention) {
   bool is_instance = field_access->IsUnresolvedInstanceFieldGet()
       || field_access->IsUnresolvedInstanceFieldSet();
@@ -435,7 +435,7 @@ void CodeGenerator::CreateUnresolvedFieldLocationSummary(
   // regardless of the the type. Because of that we forced to special case
   // the access to floating point values.
   if (is_get) {
-    if (Primitive::IsFloatingPointType(field_type)) {
+    if (DataType::IsFloatingPointType(field_type)) {
       // The return value will be stored in regular registers while register
       // allocator expects it in a floating point register.
       // Note We don't need to request additional temps because the return
@@ -448,7 +448,7 @@ void CodeGenerator::CreateUnresolvedFieldLocationSummary(
     }
   } else {
      size_t set_index = is_instance ? 1 : 0;
-     if (Primitive::IsFloatingPointType(field_type)) {
+     if (DataType::IsFloatingPointType(field_type)) {
       // The set value comes from a float location while the calling convention
       // expects it in a regular register location. Allocate a temp for it and
       // make the transfer at codegen.
@@ -463,7 +463,7 @@ void CodeGenerator::CreateUnresolvedFieldLocationSummary(
 
 void CodeGenerator::GenerateUnresolvedFieldAccess(
     HInstruction* field_access,
-    Primitive::Type field_type,
+    DataType::Type field_type,
     uint32_t field_index,
     uint32_t dex_pc,
     const FieldAccessCallingConvention& calling_convention) {
@@ -476,51 +476,52 @@ void CodeGenerator::GenerateUnresolvedFieldAccess(
   bool is_get = field_access->IsUnresolvedInstanceFieldGet()
       || field_access->IsUnresolvedStaticFieldGet();
 
-  if (!is_get && Primitive::IsFloatingPointType(field_type)) {
+  if (!is_get && DataType::IsFloatingPointType(field_type)) {
     // Copy the float value to be set into the calling convention register.
     // Note that using directly the temp location is problematic as we don't
     // support temp register pairs. To avoid boilerplate conversion code, use
     // the location from the calling convention.
     MoveLocation(calling_convention.GetSetValueLocation(field_type, is_instance),
                  locations->InAt(is_instance ? 1 : 0),
-                 (Primitive::Is64BitType(field_type) ? Primitive::kPrimLong : Primitive::kPrimInt));
+                 (DataType::Is64BitType(field_type) ? DataType::Type::kInt64
+                                                    : DataType::Type::kInt32));
   }
 
   QuickEntrypointEnum entrypoint = kQuickSet8Static;  // Initialize to anything to avoid warnings.
   switch (field_type) {
-    case Primitive::kPrimBoolean:
+    case DataType::Type::kBool:
       entrypoint = is_instance
           ? (is_get ? kQuickGetBooleanInstance : kQuickSet8Instance)
           : (is_get ? kQuickGetBooleanStatic : kQuickSet8Static);
       break;
-    case Primitive::kPrimByte:
+    case DataType::Type::kInt8:
       entrypoint = is_instance
           ? (is_get ? kQuickGetByteInstance : kQuickSet8Instance)
           : (is_get ? kQuickGetByteStatic : kQuickSet8Static);
       break;
-    case Primitive::kPrimShort:
+    case DataType::Type::kInt16:
       entrypoint = is_instance
           ? (is_get ? kQuickGetShortInstance : kQuickSet16Instance)
           : (is_get ? kQuickGetShortStatic : kQuickSet16Static);
       break;
-    case Primitive::kPrimChar:
+    case DataType::Type::kUint16:
       entrypoint = is_instance
           ? (is_get ? kQuickGetCharInstance : kQuickSet16Instance)
           : (is_get ? kQuickGetCharStatic : kQuickSet16Static);
       break;
-    case Primitive::kPrimInt:
-    case Primitive::kPrimFloat:
+    case DataType::Type::kInt32:
+    case DataType::Type::kFloat32:
       entrypoint = is_instance
           ? (is_get ? kQuickGet32Instance : kQuickSet32Instance)
           : (is_get ? kQuickGet32Static : kQuickSet32Static);
       break;
-    case Primitive::kPrimNot:
+    case DataType::Type::kReference:
       entrypoint = is_instance
           ? (is_get ? kQuickGetObjInstance : kQuickSetObjInstance)
           : (is_get ? kQuickGetObjStatic : kQuickSetObjStatic);
       break;
-    case Primitive::kPrimLong:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kInt64:
+    case DataType::Type::kFloat64:
       entrypoint = is_instance
           ? (is_get ? kQuickGet64Instance : kQuickSet64Instance)
           : (is_get ? kQuickGet64Static : kQuickSet64Static);
@@ -530,7 +531,7 @@ void CodeGenerator::GenerateUnresolvedFieldAccess(
   }
   InvokeRuntime(entrypoint, field_access, dex_pc, nullptr);
 
-  if (is_get && Primitive::IsFloatingPointType(field_type)) {
+  if (is_get && DataType::IsFloatingPointType(field_type)) {
     MoveLocation(locations->Out(), calling_convention.GetReturnLocation(field_type), field_type);
   }
 }
@@ -780,8 +781,8 @@ void CodeGenerator::RecordPcInfo(HInstruction* instruction,
       return;
     }
     if (instruction->IsRem()) {
-      Primitive::Type type = instruction->AsRem()->GetResultType();
-      if ((type == Primitive::kPrimFloat) || (type == Primitive::kPrimDouble)) {
+      DataType::Type type = instruction->AsRem()->GetResultType();
+      if ((type == DataType::Type::kFloat32) || (type == DataType::Type::kFloat64)) {
         return;
       }
     }
@@ -1052,7 +1053,7 @@ void CodeGenerator::EmitEnvironment(HEnvironment* environment, SlowPathCode* slo
         if (slow_path != nullptr && slow_path->IsCoreRegisterSaved(id)) {
           uint32_t offset = slow_path->GetStackOffsetOfCoreRegister(id);
           stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInStack, offset);
-          if (current->GetType() == Primitive::kPrimLong) {
+          if (current->GetType() == DataType::Type::kInt64) {
             stack_map_stream_.AddDexRegisterEntry(
                 DexRegisterLocation::Kind::kInStack, offset + kVRegSize);
             ++i;
@@ -1060,7 +1061,7 @@ void CodeGenerator::EmitEnvironment(HEnvironment* environment, SlowPathCode* slo
           }
         } else {
           stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInRegister, id);
-          if (current->GetType() == Primitive::kPrimLong) {
+          if (current->GetType() == DataType::Type::kInt64) {
             stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInRegisterHigh, id);
             ++i;
             DCHECK_LT(i, environment_size);
@@ -1074,7 +1075,7 @@ void CodeGenerator::EmitEnvironment(HEnvironment* environment, SlowPathCode* slo
         if (slow_path != nullptr && slow_path->IsFpuRegisterSaved(id)) {
           uint32_t offset = slow_path->GetStackOffsetOfFpuRegister(id);
           stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInStack, offset);
-          if (current->GetType() == Primitive::kPrimDouble) {
+          if (current->GetType() == DataType::Type::kFloat64) {
             stack_map_stream_.AddDexRegisterEntry(
                 DexRegisterLocation::Kind::kInStack, offset + kVRegSize);
             ++i;
@@ -1082,7 +1083,7 @@ void CodeGenerator::EmitEnvironment(HEnvironment* environment, SlowPathCode* slo
           }
         } else {
           stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInFpuRegister, id);
-          if (current->GetType() == Primitive::kPrimDouble) {
+          if (current->GetType() == DataType::Type::kFloat64) {
             stack_map_stream_.AddDexRegisterEntry(
                 DexRegisterLocation::Kind::kInFpuRegisterHigh, id);
             ++i;
@@ -1226,7 +1227,7 @@ void CodeGenerator::ClearSpillSlotsFromLoopPhisInStackMap(HSuspendCheck* suspend
     LiveInterval* interval = current->GetLiveInterval();
     // We only need to clear bits of loop phis containing objects and allocated in register.
     // Loop phis allocated on stack already have the object in the stack.
-    if (current->GetType() == Primitive::kPrimNot
+    if (current->GetType() == DataType::Type::kReference
         && interval->HasRegister()
         && interval->HasSpillSlot()) {
       locations->ClearStackBit(interval->GetSpillSlot() / kVRegSize);
@@ -1236,10 +1237,10 @@ void CodeGenerator::ClearSpillSlotsFromLoopPhisInStackMap(HSuspendCheck* suspend
 
 void CodeGenerator::EmitParallelMoves(Location from1,
                                       Location to1,
-                                      Primitive::Type type1,
+                                      DataType::Type type1,
                                       Location from2,
                                       Location to2,
-                                      Primitive::Type type2) {
+                                      DataType::Type type2) {
   HParallelMove parallel_move(GetGraph()->GetArena());
   parallel_move.AddMove(from1, to1, type1, nullptr);
   parallel_move.AddMove(from2, to2, type2, nullptr);

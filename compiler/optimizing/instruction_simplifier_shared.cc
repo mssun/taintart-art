@@ -25,7 +25,7 @@ namespace {
 bool TrySimpleMultiplyAccumulatePatterns(HMul* mul,
                                          HBinaryOperation* input_binop,
                                          HInstruction* input_other) {
-  DCHECK(Primitive::IsIntOrLongType(mul->GetType()));
+  DCHECK(DataType::IsIntOrLongType(mul->GetType()));
   DCHECK(input_binop->IsAdd() || input_binop->IsSub());
   DCHECK_NE(input_binop, input_other);
   if (!input_binop->HasOnlyOneNonEnvironmentUse()) {
@@ -88,16 +88,16 @@ bool TrySimpleMultiplyAccumulatePatterns(HMul* mul,
 }  // namespace
 
 bool TryCombineMultiplyAccumulate(HMul* mul, InstructionSet isa) {
-  Primitive::Type type = mul->GetType();
+  DataType::Type type = mul->GetType();
   switch (isa) {
     case kArm:
     case kThumb2:
-      if (type != Primitive::kPrimInt) {
+      if (type != DataType::Type::kInt32) {
         return false;
       }
       break;
     case kArm64:
-      if (!Primitive::IsIntOrLongType(type)) {
+      if (!DataType::IsIntOrLongType(type)) {
         return false;
       }
       break;
@@ -240,13 +240,13 @@ bool TryExtractArrayAccessAddress(HInstruction* access,
     return false;
   }
   if (access->IsArraySet() &&
-      access->AsArraySet()->GetValue()->GetType() == Primitive::kPrimNot) {
+      access->AsArraySet()->GetValue()->GetType() == DataType::Type::kReference) {
     // The access may require a runtime call or the original array pointer.
     return false;
   }
   if (kEmitCompilerReadBarrier &&
       access->IsArrayGet() &&
-      access->GetType() == Primitive::kPrimNot) {
+      access->GetType() == DataType::Type::kReference) {
     // For object arrays, the read barrier instrumentation requires
     // the original array pointer.
     // TODO: This can be relaxed for Baker CC.
@@ -290,10 +290,10 @@ bool TryExtractVecArrayAccessAddress(HVecMemoryOperation* access, HInstruction* 
 
   HGraph* graph = access->GetBlock()->GetGraph();
   ArenaAllocator* arena = graph->GetArena();
-  Primitive::Type packed_type = access->GetPackedType();
+  DataType::Type packed_type = access->GetPackedType();
   uint32_t data_offset = mirror::Array::DataOffset(
-      Primitive::ComponentSize(packed_type)).Uint32Value();
-  size_t component_shift = Primitive::ComponentSizeShift(packed_type);
+      DataType::Size(packed_type)).Uint32Value();
+  size_t component_shift = DataType::SizeShift(packed_type);
 
   bool is_extracting_beneficial = false;
   // It is beneficial to extract index intermediate address only if there are at least 2 users.
@@ -301,10 +301,10 @@ bool TryExtractVecArrayAccessAddress(HVecMemoryOperation* access, HInstruction* 
     HInstruction* user = use.GetUser();
     if (user->IsVecMemoryOperation() && user != access) {
       HVecMemoryOperation* another_access = user->AsVecMemoryOperation();
-      Primitive::Type another_packed_type = another_access->GetPackedType();
+      DataType::Type another_packed_type = another_access->GetPackedType();
       uint32_t another_data_offset = mirror::Array::DataOffset(
-          Primitive::ComponentSize(another_packed_type)).Uint32Value();
-      size_t another_component_shift = Primitive::ComponentSizeShift(another_packed_type);
+          DataType::Size(another_packed_type)).Uint32Value();
+      size_t another_component_shift = DataType::SizeShift(another_packed_type);
       if (another_data_offset == data_offset && another_component_shift == component_shift) {
         is_extracting_beneficial = true;
         break;

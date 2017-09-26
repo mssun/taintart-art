@@ -51,7 +51,7 @@ class LoopOptimizationTest : public CommonCompilerTest {
     parameter_ = new (&allocator_) HParameterValue(graph_->GetDexFile(),
                                                    dex::TypeIndex(0),
                                                    0,
-                                                   Primitive::kPrimInt);
+                                                   DataType::Type::kInt32);
     entry_block_->AddInstruction(parameter_);
     return_block_->AddInstruction(new (&allocator_) HReturnVoid());
     exit_block_->AddInstruction(new (&allocator_) HExit());
@@ -216,8 +216,8 @@ TEST_F(LoopOptimizationTest, SimplifyLoop) {
   header->AddInstruction(new (&allocator_) HIf(parameter_));
   body->AddInstruction(new (&allocator_) HGoto());
 
-  HPhi* phi = new (&allocator_) HPhi(&allocator_, 0, 0, Primitive::kPrimInt);
-  HInstruction* add = new (&allocator_) HAdd(Primitive::kPrimInt, phi, parameter_);
+  HPhi* phi = new (&allocator_) HPhi(&allocator_, 0, 0, DataType::Type::kInt32);
+  HInstruction* add = new (&allocator_) HAdd(DataType::Type::kInt32, phi, parameter_);
   header->AddPhi(phi);
   body->AddInstruction(add);
 

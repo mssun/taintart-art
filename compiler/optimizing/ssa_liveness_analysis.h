@@ -262,16 +262,16 @@ class SafepointPosition : public ArenaObject<kArenaAllocSsaLiveness> {
 class LiveInterval : public ArenaObject<kArenaAllocSsaLiveness> {
  public:
   static LiveInterval* MakeInterval(ArenaAllocator* allocator,
-                                    Primitive::Type type,
+                                    DataType::Type type,
                                     HInstruction* instruction = nullptr) {
     return new (allocator) LiveInterval(allocator, type, instruction);
   }
 
-  static LiveInterval* MakeFixedInterval(ArenaAllocator* allocator, int reg, Primitive::Type type) {
+  static LiveInterval* MakeFixedInterval(ArenaAllocator* allocator, int reg, DataType::Type type) {
     return new (allocator) LiveInterval(allocator, type, nullptr, true, reg, false);
   }
 
-  static LiveInterval* MakeTempInterval(ArenaAllocator* allocator, Primitive::Type type) {
+  static LiveInterval* MakeTempInterval(ArenaAllocator* allocator, DataType::Type type) {
     return new (allocator) LiveInterval(allocator, type, nullptr, false, kNoRegister, true);
   }
 
@@ -608,7 +608,7 @@ class LiveInterval : public ArenaObject<kArenaAllocSsaLiveness> {
     return parent_->env_uses_;
   }
 
-  Primitive::Type GetType() const {
+  DataType::Type GetType() const {
     return type_;
   }
 
@@ -783,7 +783,7 @@ class LiveInterval : public ArenaObject<kArenaAllocSsaLiveness> {
   size_t NumberOfSpillSlotsNeeded() const;
 
   bool IsFloatingPoint() const {
-    return type_ == Primitive::kPrimFloat || type_ == Primitive::kPrimDouble;
+    return type_ == DataType::Type::kFloat32 || type_ == DataType::Type::kFloat64;
   }
 
   // Converts the location of the interval to a `Location` object.
@@ -970,7 +970,7 @@ class LiveInterval : public ArenaObject<kArenaAllocSsaLiveness> {
 
  private:
   LiveInterval(ArenaAllocator* allocator,
-               Primitive::Type type,
+               DataType::Type type,
                HInstruction* defined_by = nullptr,
                bool is_fixed = false,
                int reg = kNoRegister,
@@ -1102,7 +1102,7 @@ class LiveInterval : public ArenaObject<kArenaAllocSsaLiveness> {
   EnvUsePositionList env_uses_;
 
   // The instruction type this interval corresponds to.
-  const Primitive::Type type_;
+  const DataType::Type type_;
 
   // Live interval that is the result of a split.
   LiveInterval* next_sibling_;
@@ -1262,7 +1262,7 @@ class SsaLivenessAnalysis : public ValueObject {
     // the exception handler to its location at the top of the catch block.
     if (env_holder->CanThrowIntoCatchBlock()) return true;
     if (instruction->GetBlock()->GetGraph()->IsDebuggable()) return true;
-    return instruction->GetType() == Primitive::kPrimNot;
+    return instruction->GetType() == DataType::Type::kReference;
   }
 
   void CheckNoLiveInIrreducibleLoop(const HBasicBlock& block) const {

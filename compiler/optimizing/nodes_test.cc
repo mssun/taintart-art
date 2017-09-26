@@ -36,7 +36,7 @@ TEST(Node, RemoveInstruction) {
   graph->AddBlock(entry);
   graph->SetEntryBlock(entry);
   HInstruction* parameter = new (&allocator) HParameterValue(
-      graph->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimNot);
+      graph->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);
   entry->AddInstruction(parameter);
   entry->AddInstruction(new (&allocator) HGoto());
 
@@ -79,9 +79,9 @@ TEST(Node, InsertInstruction) {
   graph->AddBlock(entry);
   graph->SetEntryBlock(entry);
   HInstruction* parameter1 = new (&allocator) HParameterValue(
-      graph->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimNot);
+      graph->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);
   HInstruction* parameter2 = new (&allocator) HParameterValue(
-      graph->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimNot);
+      graph->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);
   entry->AddInstruction(parameter1);
   entry->AddInstruction(parameter2);
   entry->AddInstruction(new (&allocator) HExit());
@@ -107,7 +107,7 @@ TEST(Node, AddInstruction) {
   graph->AddBlock(entry);
   graph->SetEntryBlock(entry);
   HInstruction* parameter = new (&allocator) HParameterValue(
-      graph->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimNot);
+      graph->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);
   entry->AddInstruction(parameter);
 
   ASSERT_FALSE(parameter->HasUses());
@@ -128,7 +128,7 @@ TEST(Node, ParentEnvironment) {
   graph->AddBlock(entry);
   graph->SetEntryBlock(entry);
   HInstruction* parameter1 = new (&allocator) HParameterValue(
-      graph->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimNot);
+      graph->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);
   HInstruction* with_environment = new (&allocator) HNullCheck(parameter1, 0);
   entry->AddInstruction(parameter1);
   entry->AddInstruction(with_environment);

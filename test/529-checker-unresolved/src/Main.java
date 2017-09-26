@@ -45,21 +45,21 @@ public class Main extends UnresolvedSuperClass {
   }
 
   /// CHECK-START: void Main.callUnresolvedStaticFieldAccess() register (before)
-  /// CHECK:        UnresolvedStaticFieldSet field_type:PrimByte
-  /// CHECK:        UnresolvedStaticFieldSet field_type:PrimChar
-  /// CHECK:        UnresolvedStaticFieldSet field_type:PrimInt
-  /// CHECK:        UnresolvedStaticFieldSet field_type:PrimLong
-  /// CHECK:        UnresolvedStaticFieldSet field_type:PrimFloat
-  /// CHECK:        UnresolvedStaticFieldSet field_type:PrimDouble
-  /// CHECK:        UnresolvedStaticFieldSet field_type:PrimNot
+  /// CHECK:        UnresolvedStaticFieldSet field_type:Int8
+  /// CHECK:        UnresolvedStaticFieldSet field_type:Uint16
+  /// CHECK:        UnresolvedStaticFieldSet field_type:Int32
+  /// CHECK:        UnresolvedStaticFieldSet field_type:Int64
+  /// CHECK:        UnresolvedStaticFieldSet field_type:Float32
+  /// CHECK:        UnresolvedStaticFieldSet field_type:Float64
+  /// CHECK:        UnresolvedStaticFieldSet field_type:Reference
 
-  /// CHECK:        UnresolvedStaticFieldGet field_type:PrimByte
-  /// CHECK:        UnresolvedStaticFieldGet field_type:PrimChar
-  /// CHECK:        UnresolvedStaticFieldGet field_type:PrimInt
-  /// CHECK:        UnresolvedStaticFieldGet field_type:PrimLong
-  /// CHECK:        UnresolvedStaticFieldGet field_type:PrimFloat
-  /// CHECK:        UnresolvedStaticFieldGet field_type:PrimDouble
-  /// CHECK:        UnresolvedStaticFieldGet field_type:PrimNot
+  /// CHECK:        UnresolvedStaticFieldGet field_type:Int8
+  /// CHECK:        UnresolvedStaticFieldGet field_type:Uint16
+  /// CHECK:        UnresolvedStaticFieldGet field_type:Int32
+  /// CHECK:        UnresolvedStaticFieldGet field_type:Int64
+  /// CHECK:        UnresolvedStaticFieldGet field_type:Float32
+  /// CHECK:        UnresolvedStaticFieldGet field_type:Float64
+  /// CHECK:        UnresolvedStaticFieldGet field_type:Reference
   static public void callUnresolvedStaticFieldAccess() {
     Object o = new Object();
     UnresolvedClass.staticByte = (byte)1;
@@ -90,21 +90,21 @@ public class Main extends UnresolvedSuperClass {
   }
 
   /// CHECK-START: void Main.callUnresolvedInstanceFieldAccess(UnresolvedClass) register (before)
-  /// CHECK:        UnresolvedInstanceFieldSet field_type:PrimByte
-  /// CHECK:        UnresolvedInstanceFieldSet field_type:PrimChar
-  /// CHECK:        UnresolvedInstanceFieldSet field_type:PrimInt
-  /// CHECK:        UnresolvedInstanceFieldSet field_type:PrimLong
-  /// CHECK:        UnresolvedInstanceFieldSet field_type:PrimFloat
-  /// CHECK:        UnresolvedInstanceFieldSet field_type:PrimDouble
-  /// CHECK:        UnresolvedInstanceFieldSet field_type:PrimNot
+  /// CHECK:        UnresolvedInstanceFieldSet field_type:Int8
+  /// CHECK:        UnresolvedInstanceFieldSet field_type:Uint16
+  /// CHECK:        UnresolvedInstanceFieldSet field_type:Int32
+  /// CHECK:        UnresolvedInstanceFieldSet field_type:Int64
+  /// CHECK:        UnresolvedInstanceFieldSet field_type:Float32
+  /// CHECK:        UnresolvedInstanceFieldSet field_type:Float64
+  /// CHECK:        UnresolvedInstanceFieldSet field_type:Reference
 
-  /// CHECK:        UnresolvedInstanceFieldGet field_type:PrimByte
-  /// CHECK:        UnresolvedInstanceFieldGet field_type:PrimChar
-  /// CHECK:        UnresolvedInstanceFieldGet field_type:PrimInt
-  /// CHECK:        UnresolvedInstanceFieldGet field_type:PrimLong
-  /// CHECK:        UnresolvedInstanceFieldGet field_type:PrimFloat
-  /// CHECK:        UnresolvedInstanceFieldGet field_type:PrimDouble
-  /// CHECK:        UnresolvedInstanceFieldGet field_type:PrimNot
+  /// CHECK:        UnresolvedInstanceFieldGet field_type:Int8
+  /// CHECK:        UnresolvedInstanceFieldGet field_type:Uint16
+  /// CHECK:        UnresolvedInstanceFieldGet field_type:Int32
+  /// CHECK:        UnresolvedInstanceFieldGet field_type:Int64
+  /// CHECK:        UnresolvedInstanceFieldGet field_type:Float32
+  /// CHECK:        UnresolvedInstanceFieldGet field_type:Float64
+  /// CHECK:        UnresolvedInstanceFieldGet field_type:Reference
   static public void callUnresolvedInstanceFieldAccess(UnresolvedClass c) {
     Object o = new Object();
     c.instanceByte = (byte)1;

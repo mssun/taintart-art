@@ -30,18 +30,18 @@ void LocationsBuilderX86_64::VisitVecReplicateScalar(HVecReplicateScalar* instru
   HInstruction* input = instruction->InputAt(0);
   bool is_zero = IsZeroBitPattern(input);
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       locations->SetInAt(0, is_zero ? Location::ConstantLocation(input->AsConstant())
                                     : Location::RequiresRegister());
       locations->SetOut(Location::RequiresFpuRegister());
       break;
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       locations->SetInAt(0, is_zero ? Location::ConstantLocation(input->AsConstant())
                                     : Location::RequiresFpuRegister());
       locations->SetOut(is_zero ? Location::RequiresFpuRegister()
@@ -64,37 +64,37 @@ void InstructionCodeGeneratorX86_64::VisitVecReplicateScalar(HVecReplicateScalar
   }
 
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ movd(dst, locations->InAt(0).AsRegister<CpuRegister>(), /*64-bit*/ false);
       __ punpcklbw(dst, dst);
       __ punpcklwd(dst, dst);
       __ pshufd(dst, dst, Immediate(0));
       break;
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
       __ movd(dst, locations->InAt(0).AsRegister<CpuRegister>(), /*64-bit*/ false);
       __ punpcklwd(dst, dst);
       __ pshufd(dst, dst, Immediate(0));
       break;
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ movd(dst, locations->InAt(0).AsRegister<CpuRegister>(), /*64-bit*/ false);
       __ pshufd(dst, dst, Immediate(0));
       break;
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ movd(dst, locations->InAt(0).AsRegister<CpuRegister>(), /*64-bit*/ true);
       __ punpcklqdq(dst, dst);
       break;
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       DCHECK(locations->InAt(0).Equals(locations->Out()));
       __ shufps(dst, dst, Immediate(0));
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       DCHECK(locations->InAt(0).Equals(locations->Out()));
       __ shufpd(dst, dst, Immediate(0));
@@ -108,17 +108,17 @@ void InstructionCodeGeneratorX86_64::VisitVecReplicateScalar(HVecReplicateScalar
 void LocationsBuilderX86_64::VisitVecExtractScalar(HVecExtractScalar* instruction) {
   LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetOut(Location::RequiresRegister());
       break;
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetOut(Location::SameAsFirstInput());
       break;
@@ -132,22 +132,22 @@ void InstructionCodeGeneratorX86_64::VisitVecExtractScalar(HVecExtractScalar* in
   LocationSummary* locations = instruction->GetLocations();
   XmmRegister src = locations->InAt(0).AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:  // TODO: up to here, and?
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:  // TODO: up to here, and?
       LOG(FATAL) << "Unsupported SIMD type";
       UNREACHABLE();
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ movd(locations->Out().AsRegister<CpuRegister>(), src, /*64-bit*/ false);
       break;
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ movd(locations->Out().AsRegister<CpuRegister>(), src, /*64-bit*/ true);
       break;
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       DCHECK_LE(2u, instruction->GetVectorLength());
       DCHECK_LE(instruction->GetVectorLength(), 4u);
       DCHECK(locations->InAt(0).Equals(locations->Out()));  // no code required
@@ -162,14 +162,14 @@ void InstructionCodeGeneratorX86_64::VisitVecExtractScalar(HVecExtractScalar* in
 static void CreateVecUnOpLocations(ArenaAllocator* arena, HVecUnaryOperation* instruction) {
   LocationSummary* locations = new (arena) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetOut(Location::RequiresFpuRegister());
       break;
@@ -182,7 +182,7 @@ static void CreateVecUnOpLocations(ArenaAllocator* arena, HVecUnaryOperation* in
 void LocationsBuilderX86_64::VisitVecReduce(HVecReduce* instruction) {
   CreateVecUnOpLocations(GetGraph()->GetArena(), instruction);
   // Long reduction or min/max require a temporary.
-  if (instruction->GetPackedType() == Primitive::kPrimLong ||
+  if (instruction->GetPackedType() == DataType::Type::kInt64 ||
       instruction->GetKind() == HVecReduce::kMin ||
       instruction->GetKind() == HVecReduce::kMax) {
     instruction->GetLocations()->AddTemp(Location::RequiresFpuRegister());
@@ -194,7 +194,7 @@ void InstructionCodeGeneratorX86_64::VisitVecReduce(HVecReduce* instruction) {
   XmmRegister src = locations->InAt(0).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       switch (instruction->GetKind()) {
         case HVecReduce::kSum:
@@ -224,7 +224,7 @@ void InstructionCodeGeneratorX86_64::VisitVecReduce(HVecReduce* instruction) {
         }
       }
       break;
-    case Primitive::kPrimLong: {
+    case DataType::Type::kInt64: {
       DCHECK_EQ(2u, instruction->GetVectorLength());
       XmmRegister tmp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
       switch (instruction->GetKind()) {
@@ -254,9 +254,9 @@ void InstructionCodeGeneratorX86_64::VisitVecCnv(HVecCnv* instruction) {
   LocationSummary* locations = instruction->GetLocations();
   XmmRegister src = locations->InAt(0).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
-  Primitive::Type from = instruction->GetInputType();
-  Primitive::Type to = instruction->GetResultType();
-  if (from == Primitive::kPrimInt && to == Primitive::kPrimFloat) {
+  DataType::Type from = instruction->GetInputType();
+  DataType::Type to = instruction->GetResultType();
+  if (from == DataType::Type::kInt32 && to == DataType::Type::kFloat32) {
     DCHECK_EQ(4u, instruction->GetVectorLength());
     __ cvtdq2ps(dst, src);
   } else {
@@ -273,33 +273,33 @@ void InstructionCodeGeneratorX86_64::VisitVecNeg(HVecNeg* instruction) {
   XmmRegister src = locations->InAt(0).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimByte:
+    case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ pxor(dst, dst);
       __ psubb(dst, src);
       break;
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
       __ pxor(dst, dst);
       __ psubw(dst, src);
       break;
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ pxor(dst, dst);
       __ psubd(dst, src);
       break;
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ pxor(dst, dst);
       __ psubq(dst, src);
       break;
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ xorps(dst, dst);
       __ subps(dst, src);
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ xorpd(dst, dst);
       __ subpd(dst, src);
@@ -313,7 +313,7 @@ void InstructionCodeGeneratorX86_64::VisitVecNeg(HVecNeg* instruction) {
 void LocationsBuilderX86_64::VisitVecAbs(HVecAbs* instruction) {
   CreateVecUnOpLocations(GetGraph()->GetArena(), instruction);
   // Integral-abs requires a temporary for the comparison.
-  if (instruction->GetPackedType() == Primitive::kPrimInt) {
+  if (instruction->GetPackedType() == DataType::Type::kInt32) {
     instruction->GetLocations()->AddTemp(Location::RequiresFpuRegister());
   }
 }
@@ -323,7 +323,7 @@ void InstructionCodeGeneratorX86_64::VisitVecAbs(HVecAbs* instruction) {
   XmmRegister src = locations->InAt(0).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimInt: {
+    case DataType::Type::kInt32: {
       DCHECK_EQ(4u, instruction->GetVectorLength());
       XmmRegister tmp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
       __ movaps(dst, src);
@@ -333,13 +333,13 @@ void InstructionCodeGeneratorX86_64::VisitVecAbs(HVecAbs* instruction) {
       __ psubd(dst, tmp);
       break;
     }
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ pcmpeqb(dst, dst);  // all ones
       __ psrld(dst, Immediate(1));
       __ andps(dst, src);
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ pcmpeqb(dst, dst);  // all ones
       __ psrlq(dst, Immediate(1));
@@ -354,7 +354,7 @@ void InstructionCodeGeneratorX86_64::VisitVecAbs(HVecAbs* instruction) {
 void LocationsBuilderX86_64::VisitVecNot(HVecNot* instruction) {
   CreateVecUnOpLocations(GetGraph()->GetArena(), instruction);
   // Boolean-not requires a temporary to construct the 16 x one.
-  if (instruction->GetPackedType() == Primitive::kPrimBoolean) {
+  if (instruction->GetPackedType() == DataType::Type::kBool) {
     instruction->GetLocations()->AddTemp(Location::RequiresFpuRegister());
   }
 }
@@ -364,7 +364,7 @@ void InstructionCodeGeneratorX86_64::VisitVecNot(HVecNot* instruction) {
   XmmRegister src = locations->InAt(0).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimBoolean: {  // special case boolean-not
+    case DataType::Type::kBool: {  // special case boolean-not
       DCHECK_EQ(16u, instruction->GetVectorLength());
       XmmRegister tmp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
       __ pxor(dst, dst);
@@ -373,22 +373,22 @@ void InstructionCodeGeneratorX86_64::VisitVecNot(HVecNot* instruction) {
       __ pxor(dst, src);
       break;
     }
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       DCHECK_LE(2u, instruction->GetVectorLength());
       DCHECK_LE(instruction->GetVectorLength(), 16u);
       __ pcmpeqb(dst, dst);  // all ones
       __ pxor(dst, src);
       break;
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ pcmpeqb(dst, dst);  // all ones
       __ xorps(dst, src);
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ pcmpeqb(dst, dst);  // all ones
       __ xorpd(dst, src);
@@ -403,14 +403,14 @@ void InstructionCodeGeneratorX86_64::VisitVecNot(HVecNot* instruction) {
 static void CreateVecBinOpLocations(ArenaAllocator* arena, HVecBinaryOperation* instruction) {
   LocationSummary* locations = new (arena) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetInAt(1, Location::RequiresFpuRegister());
       locations->SetOut(Location::SameAsFirstInput());
@@ -431,28 +431,28 @@ void InstructionCodeGeneratorX86_64::VisitVecAdd(HVecAdd* instruction) {
   XmmRegister src = locations->InAt(1).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimByte:
+    case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ paddb(dst, src);
       break;
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
       __ paddw(dst, src);
       break;
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ paddd(dst, src);
       break;
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ paddq(dst, src);
       break;
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ addps(dst, src);
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ addpd(dst, src);
       break;
@@ -476,12 +476,12 @@ void InstructionCodeGeneratorX86_64::VisitVecHalvingAdd(HVecHalvingAdd* instruct
   DCHECK(instruction->IsUnsigned());
 
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimByte:
+    case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
      __ pavgb(dst, src);
      return;
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
       __ pavgw(dst, src);
       return;
@@ -501,28 +501,28 @@ void InstructionCodeGeneratorX86_64::VisitVecSub(HVecSub* instruction) {
   XmmRegister src = locations->InAt(1).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimByte:
+    case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ psubb(dst, src);
       break;
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
       __ psubw(dst, src);
       break;
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ psubd(dst, src);
       break;
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ psubq(dst, src);
       break;
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ subps(dst, src);
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ subpd(dst, src);
       break;
@@ -542,20 +542,20 @@ void InstructionCodeGeneratorX86_64::VisitVecMul(HVecMul* instruction) {
   XmmRegister src = locations->InAt(1).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
       __ pmullw(dst, src);
       break;
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ pmulld(dst, src);
       break;
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ mulps(dst, src);
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ mulpd(dst, src);
       break;
@@ -575,11 +575,11 @@ void InstructionCodeGeneratorX86_64::VisitVecDiv(HVecDiv* instruction) {
   XmmRegister src = locations->InAt(1).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ divps(dst, src);
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ divpd(dst, src);
       break;
@@ -599,7 +599,7 @@ void InstructionCodeGeneratorX86_64::VisitVecMin(HVecMin* instruction) {
   XmmRegister src = locations->InAt(1).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimByte:
+    case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       if (instruction->IsUnsigned()) {
         __ pminub(dst, src);
@@ -607,8 +607,8 @@ void InstructionCodeGeneratorX86_64::VisitVecMin(HVecMin* instruction) {
         __ pminsb(dst, src);
       }
       break;
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
       if (instruction->IsUnsigned()) {
         __ pminuw(dst, src);
@@ -616,7 +616,7 @@ void InstructionCodeGeneratorX86_64::VisitVecMin(HVecMin* instruction) {
         __ pminsw(dst, src);
       }
       break;
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       if (instruction->IsUnsigned()) {
         __ pminud(dst, src);
@@ -625,12 +625,12 @@ void InstructionCodeGeneratorX86_64::VisitVecMin(HVecMin* instruction) {
       }
       break;
     // Next cases are sloppy wrt 0.0 vs -0.0.
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       DCHECK(!instruction->IsUnsigned());
       __ minps(dst, src);
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       DCHECK(!instruction->IsUnsigned());
       __ minpd(dst, src);
@@ -651,7 +651,7 @@ void InstructionCodeGeneratorX86_64::VisitVecMax(HVecMax* instruction) {
   XmmRegister src = locations->InAt(1).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimByte:
+    case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       if (instruction->IsUnsigned()) {
         __ pmaxub(dst, src);
@@ -659,8 +659,8 @@ void InstructionCodeGeneratorX86_64::VisitVecMax(HVecMax* instruction) {
         __ pmaxsb(dst, src);
       }
       break;
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
       if (instruction->IsUnsigned()) {
         __ pmaxuw(dst, src);
@@ -668,7 +668,7 @@ void InstructionCodeGeneratorX86_64::VisitVecMax(HVecMax* instruction) {
         __ pmaxsw(dst, src);
       }
       break;
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       if (instruction->IsUnsigned()) {
         __ pmaxud(dst, src);
@@ -677,12 +677,12 @@ void InstructionCodeGeneratorX86_64::VisitVecMax(HVecMax* instruction) {
       }
       break;
     // Next cases are sloppy wrt 0.0 vs -0.0.
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       DCHECK(!instruction->IsUnsigned());
       __ maxps(dst, src);
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       DCHECK(!instruction->IsUnsigned());
       __ maxpd(dst, src);
@@ -703,21 +703,21 @@ void InstructionCodeGeneratorX86_64::VisitVecAnd(HVecAnd* instruction) {
   XmmRegister src = locations->InAt(1).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       DCHECK_LE(2u, instruction->GetVectorLength());
       DCHECK_LE(instruction->GetVectorLength(), 16u);
       __ pand(dst, src);
       break;
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ andps(dst, src);
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ andpd(dst, src);
       break;
@@ -737,21 +737,21 @@ void InstructionCodeGeneratorX86_64::VisitVecAndNot(HVecAndNot* instruction) {
   XmmRegister src = locations->InAt(1).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       DCHECK_LE(2u, instruction->GetVectorLength());
       DCHECK_LE(instruction->GetVectorLength(), 16u);
       __ pandn(dst, src);
       break;
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ andnps(dst, src);
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ andnpd(dst, src);
       break;
@@ -771,21 +771,21 @@ void InstructionCodeGeneratorX86_64::VisitVecOr(HVecOr* instruction) {
   XmmRegister src = locations->InAt(1).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       DCHECK_LE(2u, instruction->GetVectorLength());
       DCHECK_LE(instruction->GetVectorLength(), 16u);
       __ por(dst, src);
       break;
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ orps(dst, src);
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ orpd(dst, src);
       break;
@@ -805,21 +805,21 @@ void InstructionCodeGeneratorX86_64::VisitVecXor(HVecXor* instruction) {
   XmmRegister src = locations->InAt(1).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       DCHECK_LE(2u, instruction->GetVectorLength());
       DCHECK_LE(instruction->GetVectorLength(), 16u);
       __ pxor(dst, src);
       break;
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ xorps(dst, src);
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ xorpd(dst, src);
       break;
@@ -833,10 +833,10 @@ void InstructionCodeGeneratorX86_64::VisitVecXor(HVecXor* instruction) {
 static void CreateVecShiftLocations(ArenaAllocator* arena, HVecBinaryOperation* instruction) {
   LocationSummary* locations = new (arena) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetInAt(1, Location::ConstantLocation(instruction->InputAt(1)->AsConstant()));
       locations->SetOut(Location::SameAsFirstInput());
@@ -857,16 +857,16 @@ void InstructionCodeGeneratorX86_64::VisitVecShl(HVecShl* instruction) {
   int32_t value = locations->InAt(1).GetConstant()->AsIntConstant()->GetValue();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
       __ psllw(dst, Immediate(static_cast<int8_t>(value)));
       break;
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ pslld(dst, Immediate(static_cast<int8_t>(value)));
       break;
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ psllq(dst, Immediate(static_cast<int8_t>(value)));
       break;
@@ -886,12 +886,12 @@ void InstructionCodeGeneratorX86_64::VisitVecShr(HVecShr* instruction) {
   int32_t value = locations->InAt(1).GetConstant()->AsIntConstant()->GetValue();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
       __ psraw(dst, Immediate(static_cast<int8_t>(value)));
       break;
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ psrad(dst, Immediate(static_cast<int8_t>(value)));
       break;
@@ -911,16 +911,16 @@ void InstructionCodeGeneratorX86_64::VisitVecUShr(HVecUShr* instruction) {
   int32_t value = locations->InAt(1).GetConstant()->AsIntConstant()->GetValue();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
       __ psrlw(dst, Immediate(static_cast<int8_t>(value)));
       break;
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ psrld(dst, Immediate(static_cast<int8_t>(value)));
       break;
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ psrlq(dst, Immediate(static_cast<int8_t>(value)));
       break;
@@ -939,18 +939,18 @@ void LocationsBuilderX86_64::VisitVecSetScalars(HVecSetScalars* instruction) {
   bool is_zero = IsZeroBitPattern(input);
 
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       locations->SetInAt(0, is_zero ? Location::ConstantLocation(input->AsConstant())
                                     : Location::RequiresRegister());
       locations->SetOut(Location::RequiresFpuRegister());
       break;
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       locations->SetInAt(0, is_zero ? Location::ConstantLocation(input->AsConstant())
                                     : Location::RequiresFpuRegister());
       locations->SetOut(Location::RequiresFpuRegister());
@@ -977,25 +977,25 @@ void InstructionCodeGeneratorX86_64::VisitVecSetScalars(HVecSetScalars* instruct
 
   // Set required elements.
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:  // TODO: up to here, and?
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:  // TODO: up to here, and?
       LOG(FATAL) << "Unsupported SIMD type";
       UNREACHABLE();
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ movd(dst, locations->InAt(0).AsRegister<CpuRegister>());
       break;
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ movd(dst, locations->InAt(0).AsRegister<CpuRegister>());  // is 64-bit
       break;
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ movss(dst, locations->InAt(0).AsFpuRegister<XmmRegister>());
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       __ movsd(dst, locations->InAt(0).AsFpuRegister<XmmRegister>());
       break;
@@ -1009,11 +1009,11 @@ void InstructionCodeGeneratorX86_64::VisitVecSetScalars(HVecSetScalars* instruct
 static void CreateVecAccumLocations(ArenaAllocator* arena, HVecOperation* instruction) {
   LocationSummary* locations = new (arena) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetInAt(1, Location::RequiresFpuRegister());
       locations->SetInAt(2, Location::RequiresFpuRegister());
@@ -1049,14 +1049,14 @@ static void CreateVecMemLocations(ArenaAllocator* arena,
                                   bool is_load) {
   LocationSummary* locations = new (arena) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
-    case Primitive::kPrimFloat:
-    case Primitive::kPrimDouble:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RegisterOrConstant(instruction->InputAt(1)));
       if (is_load) {
@@ -1099,12 +1099,12 @@ void LocationsBuilderX86_64::VisitVecLoad(HVecLoad* instruction) {
 
 void InstructionCodeGeneratorX86_64::VisitVecLoad(HVecLoad* instruction) {
   LocationSummary* locations = instruction->GetLocations();
-  size_t size = Primitive::ComponentSize(instruction->GetPackedType());
+  size_t size = DataType::Size(instruction->GetPackedType());
   Address address = VecAddress(locations, size, instruction->IsStringCharAt());
   XmmRegister reg = locations->Out().AsFpuRegister<XmmRegister>();
   bool is_aligned16 = instruction->GetAlignment().IsAlignedAt(16);
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimChar:
+    case DataType::Type::kUint16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
       // Special handling of compressed/uncompressed string load.
       if (mirror::kUseStringCompression && instruction->IsStringCharAt()) {
@@ -1128,20 +1128,20 @@ void InstructionCodeGeneratorX86_64::VisitVecLoad(HVecLoad* instruction) {
         return;
       }
       FALLTHROUGH_INTENDED;
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       DCHECK_LE(2u, instruction->GetVectorLength());
       DCHECK_LE(instruction->GetVectorLength(), 16u);
       is_aligned16 ? __ movdqa(reg, address) : __ movdqu(reg, address);
       break;
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       is_aligned16 ? __ movaps(reg, address) : __ movups(reg, address);
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       is_aligned16 ? __ movapd(reg, address) : __ movupd(reg, address);
       break;
@@ -1157,26 +1157,26 @@ void LocationsBuilderX86_64::VisitVecStore(HVecStore* instruction) {
 
 void InstructionCodeGeneratorX86_64::VisitVecStore(HVecStore* instruction) {
   LocationSummary* locations = instruction->GetLocations();
-  size_t size = Primitive::ComponentSize(instruction->GetPackedType());
+  size_t size = DataType::Size(instruction->GetPackedType());
   Address address = VecAddress(locations, size, /*is_string_char_at*/ false);
   XmmRegister reg = locations->InAt(2).AsFpuRegister<XmmRegister>();
   bool is_aligned16 = instruction->GetAlignment().IsAlignedAt(16);
   switch (instruction->GetPackedType()) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimLong:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
       DCHECK_LE(2u, instruction->GetVectorLength());
       DCHECK_LE(instruction->GetVectorLength(), 16u);
       is_aligned16 ? __ movdqa(address, reg) : __ movdqu(address, reg);
       break;
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
       is_aligned16 ? __ movaps(address, reg) : __ movups(address, reg);
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
       is_aligned16 ? __ movapd(address, reg) : __ movupd(address, reg);
       break;

@@ -24,7 +24,7 @@ namespace art {
 namespace arm64 {
 
 void SchedulingLatencyVisitorARM64::VisitBinaryOperation(HBinaryOperation* instr) {
-  last_visited_latency_ = Primitive::IsFloatingPointType(instr->GetResultType())
+  last_visited_latency_ = DataType::IsFloatingPointType(instr->GetResultType())
       ? kArm64FloatingPointOpLatency
       : kArm64IntegerOpLatency;
 }
@@ -80,12 +80,12 @@ void SchedulingLatencyVisitorARM64::VisitBoundsCheck(HBoundsCheck* ATTRIBUTE_UNU
 }
 
 void SchedulingLatencyVisitorARM64::VisitDiv(HDiv* instr) {
-  Primitive::Type type = instr->GetResultType();
+  DataType::Type type = instr->GetResultType();
   switch (type) {
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       last_visited_latency_ = kArm64DivFloatLatency;
       break;
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       last_visited_latency_ = kArm64DivDoubleLatency;
       break;
     default:
@@ -133,7 +133,7 @@ void SchedulingLatencyVisitorARM64::VisitLoadString(HLoadString* ATTRIBUTE_UNUSE
 }
 
 void SchedulingLatencyVisitorARM64::VisitMul(HMul* instr) {
-  last_visited_latency_ = Primitive::IsFloatingPointType(instr->GetResultType())
+  last_visited_latency_ = DataType::IsFloatingPointType(instr->GetResultType())
       ? kArm64MulFloatingPointLatency
       : kArm64MulIntegerLatency;
 }
@@ -153,7 +153,7 @@ void SchedulingLatencyVisitorARM64::VisitNewInstance(HNewInstance* instruction) 
 }
 
 void SchedulingLatencyVisitorARM64::VisitRem(HRem* instruction) {
-  if (Primitive::IsFloatingPointType(instruction->GetResultType())) {
+  if (DataType::IsFloatingPointType(instruction->GetResultType())) {
     last_visited_internal_latency_ = kArm64CallInternalLatency;
     last_visited_latency_ = kArm64CallLatency;
   } else {
@@ -194,8 +194,8 @@ void SchedulingLatencyVisitorARM64::VisitSuspendCheck(HSuspendCheck* instruction
 }
 
 void SchedulingLatencyVisitorARM64::VisitTypeConversion(HTypeConversion* instr) {
-  if (Primitive::IsFloatingPointType(instr->GetResultType()) ||
-      Primitive::IsFloatingPointType(instr->GetInputType())) {
+  if (DataType::IsFloatingPointType(instr->GetResultType()) ||
+      DataType::IsFloatingPointType(instr->GetInputType())) {
     last_visited_latency_ = kArm64TypeConversionFloatingPointIntegerLatency;
   } else {
     last_visited_latency_ = kArm64IntegerOpLatency;
@@ -203,7 +203,7 @@ void SchedulingLatencyVisitorARM64::VisitTypeConversion(HTypeConversion* instr) 
 }
 
 void SchedulingLatencyVisitorARM64::HandleSimpleArithmeticSIMD(HVecOperation *instr) {
-  if (Primitive::IsFloatingPointType(instr->GetPackedType())) {
+  if (DataType::IsFloatingPointType(instr->GetPackedType())) {
     last_visited_latency_ = kArm64SIMDFloatingPointOpLatency;
   } else {
     last_visited_latency_ = kArm64SIMDIntegerOpLatency;
@@ -236,7 +236,7 @@ void SchedulingLatencyVisitorARM64::VisitVecAbs(HVecAbs* instr) {
 }
 
 void SchedulingLatencyVisitorARM64::VisitVecNot(HVecNot* instr) {
-  if (instr->GetPackedType() == Primitive::kPrimBoolean) {
+  if (instr->GetPackedType() == DataType::Type::kBool) {
     last_visited_internal_latency_ = kArm64SIMDIntegerOpLatency;
   }
   last_visited_latency_ = kArm64SIMDIntegerOpLatency;
@@ -255,7 +255,7 @@ void SchedulingLatencyVisitorARM64::VisitVecSub(HVecSub* instr) {
 }
 
 void SchedulingLatencyVisitorARM64::VisitVecMul(HVecMul* instr) {
-  if (Primitive::IsFloatingPointType(instr->GetPackedType())) {
+  if (DataType::IsFloatingPointType(instr->GetPackedType())) {
     last_visited_latency_ = kArm64SIMDMulFloatingPointLatency;
   } else {
     last_visited_latency_ = kArm64SIMDMulIntegerLatency;
@@ -263,10 +263,10 @@ void SchedulingLatencyVisitorARM64::VisitVecMul(HVecMul* instr) {
 }
 
 void SchedulingLatencyVisitorARM64::VisitVecDiv(HVecDiv* instr) {
-  if (instr->GetPackedType() == Primitive::kPrimFloat) {
+  if (instr->GetPackedType() == DataType::Type::kFloat32) {
     last_visited_latency_ = kArm64SIMDDivFloatLatency;
   } else {
-    DCHECK(instr->GetPackedType() == Primitive::kPrimDouble);
+    DCHECK(instr->GetPackedType() == DataType::Type::kFloat64);
     last_visited_latency_ = kArm64SIMDDivDoubleLatency;
   }
 }
@@ -327,9 +327,9 @@ void SchedulingLatencyVisitorARM64::HandleVecAddress(
 
 void SchedulingLatencyVisitorARM64::VisitVecLoad(HVecLoad* instr) {
   last_visited_internal_latency_ = 0;
-  size_t size = Primitive::ComponentSize(instr->GetPackedType());
+  size_t size = DataType::Size(instr->GetPackedType());
 
-  if (instr->GetPackedType() == Primitive::kPrimChar
+  if (instr->GetPackedType() == DataType::Type::kUint16
       && mirror::kUseStringCompression
       && instr->IsStringCharAt()) {
     // Set latencies for the uncompressed case.
@@ -344,7 +344,7 @@ void SchedulingLatencyVisitorARM64::VisitVecLoad(HVecLoad* instr) {
 
 void SchedulingLatencyVisitorARM64::VisitVecStore(HVecStore* instr) {
   last_visited_internal_latency_ = 0;
-  size_t size = Primitive::ComponentSize(instr->GetPackedType());
+  size_t size = DataType::Size(instr->GetPackedType());
   HandleVecAddress(instr, size);
   last_visited_latency_ = kArm64SIMDMemoryStoreLatency;
 }

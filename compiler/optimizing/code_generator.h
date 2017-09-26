@@ -146,8 +146,8 @@ class SlowPathCode : public DeletableArenaObject<kArenaAllocSlowPaths> {
 
 class InvokeDexCallingConventionVisitor {
  public:
-  virtual Location GetNextLocation(Primitive::Type type) = 0;
-  virtual Location GetReturnLocation(Primitive::Type type) const = 0;
+  virtual Location GetNextLocation(DataType::Type type) = 0;
+  virtual Location GetReturnLocation(DataType::Type type) const = 0;
   virtual Location GetMethodLocation() const = 0;
 
  protected:
@@ -169,9 +169,9 @@ class FieldAccessCallingConvention {
  public:
   virtual Location GetObjectLocation() const = 0;
   virtual Location GetFieldIndexLocation() const = 0;
-  virtual Location GetReturnLocation(Primitive::Type type) const = 0;
-  virtual Location GetSetValueLocation(Primitive::Type type, bool is_instance) const = 0;
-  virtual Location GetFpuLocation(Primitive::Type type) const = 0;
+  virtual Location GetReturnLocation(DataType::Type type) const = 0;
+  virtual Location GetSetValueLocation(DataType::Type type, bool is_instance) const = 0;
+  virtual Location GetFpuLocation(DataType::Type type) const = 0;
   virtual ~FieldAccessCallingConvention() {}
 
  protected:
@@ -213,7 +213,7 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
   virtual void GenerateFrameExit() = 0;
   virtual void Bind(HBasicBlock* block) = 0;
   virtual void MoveConstant(Location destination, int32_t value) = 0;
-  virtual void MoveLocation(Location dst, Location src, Primitive::Type dst_type) = 0;
+  virtual void MoveLocation(Location dst, Location src, DataType::Type dst_type) = 0;
   virtual void AddLocationAsTemp(Location location, LocationSummary* locations) = 0;
 
   virtual Assembler* GetAssembler() = 0;
@@ -265,7 +265,7 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
   virtual size_t SaveFloatingPointRegister(size_t stack_index, uint32_t reg_id) = 0;
   virtual size_t RestoreFloatingPointRegister(size_t stack_index, uint32_t reg_id) = 0;
 
-  virtual bool NeedsTwoRegisters(Primitive::Type type) const = 0;
+  virtual bool NeedsTwoRegisters(DataType::Type type) const = 0;
   // Returns whether we should split long moves in parallel moves.
   virtual bool ShouldSplitLongMoves() const { return false; }
 
@@ -407,15 +407,15 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
 
   void EmitParallelMoves(Location from1,
                          Location to1,
-                         Primitive::Type type1,
+                         DataType::Type type1,
                          Location from2,
                          Location to2,
-                         Primitive::Type type2);
+                         DataType::Type type2);
 
-  static bool StoreNeedsWriteBarrier(Primitive::Type type, HInstruction* value) {
+  static bool StoreNeedsWriteBarrier(DataType::Type type, HInstruction* value) {
     // Check that null value is not represented as an integer constant.
-    DCHECK(type != Primitive::kPrimNot || !value->IsIntConstant());
-    return type == Primitive::kPrimNot && !value->IsNullConstant();
+    DCHECK(type != DataType::Type::kReference || !value->IsIntConstant());
+    return type == DataType::Type::kReference && !value->IsNullConstant();
   }
 
 
@@ -504,12 +504,12 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
 
   void CreateUnresolvedFieldLocationSummary(
       HInstruction* field_access,
-      Primitive::Type field_type,
+      DataType::Type field_type,
       const FieldAccessCallingConvention& calling_convention);
 
   void GenerateUnresolvedFieldAccess(
       HInstruction* field_access,
-      Primitive::Type field_type,
+      DataType::Type field_type,
       uint32_t field_index,
       uint32_t dex_pc,
       const FieldAccessCallingConvention& calling_convention);
@@ -573,7 +573,7 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
       HInvokeVirtual* invoke, Location temp, SlowPathCode* slow_path = nullptr) = 0;
 
   // Copy the result of a call into the given target.
-  virtual void MoveFromReturnRegister(Location trg, Primitive::Type type) = 0;
+  virtual void MoveFromReturnRegister(Location trg, DataType::Type type) = 0;
 
   virtual void GenerateNop() = 0;
 
