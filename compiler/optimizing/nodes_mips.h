@@ -24,7 +24,7 @@ class HMipsComputeBaseMethodAddress : public HExpression<0> {
  public:
   // Treat the value as an int32_t, but it is really a 32 bit native pointer.
   HMipsComputeBaseMethodAddress()
-      : HExpression(Primitive::kPrimInt, SideEffects::None(), kNoDexPc) {}
+      : HExpression(DataType::Type::kInt32, SideEffects::None(), kNoDexPc) {}
 
   bool CanBeMoved() const OVERRIDE { return true; }
 

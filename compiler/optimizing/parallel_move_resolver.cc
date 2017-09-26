@@ -457,7 +457,7 @@ void ParallelMoveResolverNoSwap::PerformMove(size_t index) {
     DCHECK_NE(kind, Location::kConstant);
     Location scratch = AllocateScratchLocationFor(kind);
     // We only care about the move size.
-    Primitive::Type type = move->Is64BitMove() ? Primitive::kPrimLong : Primitive::kPrimInt;
+    DataType::Type type = move->Is64BitMove() ? DataType::Type::kInt64 : DataType::Type::kInt32;
     // Perform (C -> scratch)
     move->SetDestination(scratch);
     EmitMove(index);
@@ -521,7 +521,8 @@ void ParallelMoveResolverNoSwap::UpdateMoveSource(Location from, Location to) {
 }
 
 void ParallelMoveResolverNoSwap::AddPendingMove(Location source,
-    Location destination, Primitive::Type type) {
+                                                Location destination,
+                                                DataType::Type type) {
   pending_moves_.push_back(new (allocator_) MoveOperands(source, destination, type, nullptr));
 }
 

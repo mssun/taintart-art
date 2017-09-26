@@ -38,8 +38,8 @@ bool InstructionSimplifierArmVisitor::TryMergeIntoShifterOperand(HInstruction* u
   DCHECK(CanFitInShifterOperand(bitfield_op));
   DCHECK(!bitfield_op->HasEnvironmentUses());
 
-  Primitive::Type type = use->GetType();
-  if (type != Primitive::kPrimInt && type != Primitive::kPrimLong) {
+  DataType::Type type = use->GetType();
+  if (type != DataType::Type::kInt32 && type != DataType::Type::kInt64) {
     return false;
   }
 
@@ -70,17 +70,17 @@ bool InstructionSimplifierArmVisitor::TryMergeIntoShifterOperand(HInstruction* u
   int shift_amount = 0;
 
   HDataProcWithShifterOp::GetOpInfoFromInstruction(bitfield_op, &op_kind, &shift_amount);
-  shift_amount &= use->GetType() == Primitive::kPrimInt
+  shift_amount &= use->GetType() == DataType::Type::kInt32
       ? kMaxIntShiftDistance
       : kMaxLongShiftDistance;
 
   if (HDataProcWithShifterOp::IsExtensionOp(op_kind)) {
-    if (!use->IsAdd() && (!use->IsSub() || use->GetType() != Primitive::kPrimLong)) {
+    if (!use->IsAdd() && (!use->IsSub() || use->GetType() != DataType::Type::kInt64)) {
       return false;
     }
   // Shift by 1 is a special case that results in the same number and type of instructions
   // as this simplification, but potentially shorter code.
-  } else if (type == Primitive::kPrimLong && shift_amount == 1) {
+  } else if (type == DataType::Type::kInt64 && shift_amount == 1) {
     return false;
   }
 
@@ -143,7 +143,7 @@ void InstructionSimplifierArmVisitor::VisitAnd(HAnd* instruction) {
 
 void InstructionSimplifierArmVisitor::VisitArrayGet(HArrayGet* instruction) {
   size_t data_offset = CodeGenerator::GetArrayDataOffset(instruction);
-  Primitive::Type type = instruction->GetType();
+  DataType::Type type = instruction->GetType();
 
   // TODO: Implement reading (length + compression) for String compression feature from
   // negative offset (count_offset - data_offset). Thumb2Assembler (now removed) did
@@ -153,9 +153,9 @@ void InstructionSimplifierArmVisitor::VisitArrayGet(HArrayGet* instruction) {
     return;
   }
 
-  if (type == Primitive::kPrimLong
-      || type == Primitive::kPrimFloat
-      || type == Primitive::kPrimDouble) {
+  if (type == DataType::Type::kInt64
+      || type == DataType::Type::kFloat32
+      || type == DataType::Type::kFloat64) {
     // T32 doesn't support ShiftedRegOffset mem address mode for these types
     // to enable optimization.
     return;
@@ -170,13 +170,13 @@ void InstructionSimplifierArmVisitor::VisitArrayGet(HArrayGet* instruction) {
 }
 
 void InstructionSimplifierArmVisitor::VisitArraySet(HArraySet* instruction) {
-  size_t access_size = Primitive::ComponentSize(instruction->GetComponentType());
+  size_t access_size = DataType::Size(instruction->GetComponentType());
   size_t data_offset = mirror::Array::DataOffset(access_size).Uint32Value();
-  Primitive::Type type = instruction->GetComponentType();
+  DataType::Type type = instruction->GetComponentType();
 
-  if (type == Primitive::kPrimLong
-      || type == Primitive::kPrimFloat
-      || type == Primitive::kPrimDouble) {
+  if (type == DataType::Type::kInt64
+      || type == DataType::Type::kFloat32
+      || type == DataType::Type::kFloat64) {
     // T32 doesn't support ShiftedRegOffset mem address mode for these types
     // to enable optimization.
     return;
@@ -215,15 +215,15 @@ void InstructionSimplifierArmVisitor::VisitShr(HShr* instruction) {
 }
 
 void InstructionSimplifierArmVisitor::VisitTypeConversion(HTypeConversion* instruction) {
-  Primitive::Type result_type = instruction->GetResultType();
-  Primitive::Type input_type = instruction->GetInputType();
+  DataType::Type result_type = instruction->GetResultType();
+  DataType::Type input_type = instruction->GetInputType();
 
   if (input_type == result_type) {
     // We let the arch-independent code handle this.
     return;
   }
 
-  if (Primitive::IsIntegralType(result_type) && Primitive::IsIntegralType(input_type)) {
+  if (DataType::IsIntegralType(result_type) && DataType::IsIntegralType(input_type)) {
     TryMergeIntoUsersShifterOperand(instruction);
   }
 }

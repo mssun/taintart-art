@@ -16,8 +16,10 @@
 
 #include <string>
 
-#include "prepare_for_register_allocation.h"
 #include "scheduler.h"
+
+#include "data_type-inl.h"
+#include "prepare_for_register_allocation.h"
 
 #ifdef ART_ENABLE_CODEGEN_arm64
 #include "scheduler_arm64.h"
@@ -399,17 +401,7 @@ bool SchedulingGraph::HasImmediateOtherDependency(const HInstruction* instructio
 }
 
 static const std::string InstructionTypeId(const HInstruction* instruction) {
-  std::string id;
-  Primitive::Type type = instruction->GetType();
-  if (type == Primitive::kPrimNot) {
-    id.append("l");
-  } else {
-    id.append(Primitive::Descriptor(instruction->GetType()));
-  }
-  // Use lower-case to be closer to the `HGraphVisualizer` output.
-  id[0] = std::tolower(id[0]);
-  id.append(std::to_string(instruction->GetId()));
-  return id;
+  return DataType::TypeId(instruction->GetType()) + std::to_string(instruction->GetId());
 }
 
 // Ideally we would reuse the graph visualizer code, but it is not available

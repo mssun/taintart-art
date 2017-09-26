@@ -1,0 +1,184 @@
+/*
+ * Copyright (C) 2017 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef ART_COMPILER_OPTIMIZING_DATA_TYPE_H_
+#define ART_COMPILER_OPTIMIZING_DATA_TYPE_H_
+
+#include <iosfwd>
+
+#include "base/logging.h"
+#include "base/bit_utils.h"
+
+namespace art {
+
+class DataType {
+ public:
+  enum class Type : uint8_t {
+    kReference = 0,
+    kBool,
+    kInt8,
+    kUint16,
+    kInt16,
+    kInt32,
+    kInt64,
+    kFloat32,
+    kFloat64,
+    kVoid,
+    kLast = kVoid
+  };
+
+  static constexpr Type FromShorty(char type);
+  static constexpr char TypeId(DataType::Type type);
+
+  static constexpr size_t SizeShift(Type type) {
+    switch (type) {
+      case Type::kVoid:
+      case Type::kBool:
+      case Type::kInt8:
+        return 0;
+      case Type::kUint16:
+      case Type::kInt16:
+        return 1;
+      case Type::kInt32:
+      case Type::kFloat32:
+        return 2;
+      case Type::kInt64:
+      case Type::kFloat64:
+        return 3;
+      case Type::kReference:
+        return WhichPowerOf2(kObjectReferenceSize);
+      default:
+        LOG(FATAL) << "Invalid type " << static_cast<int>(type);
+        return 0;
+    }
+  }
+
+  static constexpr size_t Size(Type type) {
+    switch (type) {
+      case Type::kVoid:
+        return 0;
+      case Type::kBool:
+      case Type::kInt8:
+        return 1;
+      case Type::kUint16:
+      case Type::kInt16:
+        return 2;
+      case Type::kInt32:
+      case Type::kFloat32:
+        return 4;
+      case Type::kInt64:
+      case Type::kFloat64:
+        return 8;
+      case Type::kReference:
+        return kObjectReferenceSize;
+      default:
+        LOG(FATAL) << "Invalid type " << static_cast<int>(type);
+        return 0;
+    }
+  }
+
+  static bool IsFloatingPointType(Type type) {
+    return type == Type::kFloat32 || type == Type::kFloat64;
+  }
+
+  static bool IsIntegralType(Type type) {
+    // The Java language does not allow treating boolean as an integral type but
+    // our bit representation makes it safe.
+    switch (type) {
+      case Type::kBool:
+      case Type::kInt8:
+      case Type::kUint16:
+      case Type::kInt16:
+      case Type::kInt32:
+      case Type::kInt64:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  static bool IsIntOrLongType(Type type) {
+    return type == Type::kInt32 || type == Type::kInt64;
+  }
+
+  static bool Is64BitType(Type type) {
+    return type == Type::kInt64 || type == Type::kFloat64;
+  }
+
+  // Return the general kind of `type`, fusing integer-like types as Type::kInt.
+  static Type Kind(Type type) {
+    switch (type) {
+      case Type::kBool:
+      case Type::kInt8:
+      case Type::kInt16:
+      case Type::kUint16:
+      case Type::kInt32:
+        return Type::kInt32;
+      default:
+        return type;
+    }
+  }
+
+  static int64_t MinValueOfIntegralType(Type type) {
+    switch (type) {
+      case Type::kBool:
+        return std::numeric_limits<bool>::min();
+      case Type::kInt8:
+        return std::numeric_limits<int8_t>::min();
+      case Type::kUint16:
+        return std::numeric_limits<uint16_t>::min();
+      case Type::kInt16:
+        return std::numeric_limits<int16_t>::min();
+      case Type::kInt32:
+        return std::numeric_limits<int32_t>::min();
+      case Type::kInt64:
+        return std::numeric_limits<int64_t>::min();
+      default:
+        LOG(FATAL) << "non integral type";
+    }
+    return 0;
+  }
+
+  static int64_t MaxValueOfIntegralType(Type type) {
+    switch (type) {
+      case Type::kBool:
+        return std::numeric_limits<bool>::max();
+      case Type::kInt8:
+        return std::numeric_limits<int8_t>::max();
+      case Type::kUint16:
+        return std::numeric_limits<uint16_t>::max();
+      case Type::kInt16:
+        return std::numeric_limits<int16_t>::max();
+      case Type::kInt32:
+        return std::numeric_limits<int32_t>::max();
+      case Type::kInt64:
+        return std::numeric_limits<int64_t>::max();
+      default:
+        LOG(FATAL) << "non integral type";
+    }
+    return 0;
+  }
+
+  static const char* PrettyDescriptor(Type type);
+
+ private:
+  static constexpr size_t kObjectReferenceSize = 4u;
+};
+std::ostream& operator<<(std::ostream& os, DataType::Type data_type);
+
+}  // namespace art
+
+#endif  // ART_COMPILER_OPTIMIZING_DATA_TYPE_H_

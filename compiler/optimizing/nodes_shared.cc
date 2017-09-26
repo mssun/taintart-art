@@ -42,20 +42,20 @@ void HDataProcWithShifterOp::GetOpInfoFromInstruction(HInstruction* instruction,
     *shift_amount = instruction->AsUShr()->GetRight()->AsIntConstant()->GetValue();
   } else {
     DCHECK(instruction->IsTypeConversion());
-    Primitive::Type result_type = instruction->AsTypeConversion()->GetResultType();
-    Primitive::Type input_type = instruction->AsTypeConversion()->GetInputType();
-    int result_size = Primitive::ComponentSize(result_type);
-    int input_size = Primitive::ComponentSize(input_type);
+    DataType::Type result_type = instruction->AsTypeConversion()->GetResultType();
+    DataType::Type input_type = instruction->AsTypeConversion()->GetInputType();
+    int result_size = DataType::Size(result_type);
+    int input_size = DataType::Size(input_type);
     int min_size = std::min(result_size, input_size);
-    if (result_type == Primitive::kPrimInt && input_type == Primitive::kPrimLong) {
+    if (result_type == DataType::Type::kInt32 && input_type == DataType::Type::kInt64) {
       // There is actually nothing to do. On ARM the high register from the
       // pair will be ignored. On ARM64 the register will be used as a W
       // register, discarding the top bits. This is represented by the
       // default encoding 'LSL 0'.
       *op_kind = kLSL;
       *shift_amount = 0;
-    } else if (result_type == Primitive::kPrimChar ||
-               (input_type == Primitive::kPrimChar && input_size < result_size)) {
+    } else if (result_type == DataType::Type::kUint16 ||
+               (input_type == DataType::Type::kUint16 && input_size < result_size)) {
       *op_kind = kUXTH;
     } else {
       switch (min_size) {

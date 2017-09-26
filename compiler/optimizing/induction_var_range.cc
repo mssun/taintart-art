@@ -157,15 +157,15 @@ static bool IsConstantValue(InductionVarRange::Value v) {
 }
 
 /** Corrects a value for type to account for arithmetic wrap-around in lower precision. */
-static InductionVarRange::Value CorrectForType(InductionVarRange::Value v, Primitive::Type type) {
+static InductionVarRange::Value CorrectForType(InductionVarRange::Value v, DataType::Type type) {
   switch (type) {
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimByte: {
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt8: {
       // Constants within range only.
       // TODO: maybe some room for improvement, like allowing widening conversions
-      int32_t min = Primitive::MinValueOfIntegralType(type);
-      int32_t max = Primitive::MaxValueOfIntegralType(type);
+      int32_t min = DataType::MinValueOfIntegralType(type);
+      int32_t max = DataType::MaxValueOfIntegralType(type);
       return (IsConstantValue(v) && min <= v.b_constant && v.b_constant <= max)
           ? v
           : InductionVarRange::Value();
@@ -216,10 +216,10 @@ bool InductionVarRange::GetInductionRange(HInstruction* context,
   // bounds check elimination, will have truncated higher precision induction
   // at their use point already).
   switch (info->type) {
-    case Primitive::kPrimInt:
-    case Primitive::kPrimShort:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimByte:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt16:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt8:
       break;
     default:
       return false;
@@ -689,8 +689,8 @@ InductionVarRange::Value InductionVarRange::GetFetch(HInstruction* instruction,
   } else if (instruction->IsTypeConversion()) {
     // Since analysis is 32-bit (or narrower), chase beyond widening along the path.
     // For example, this discovers the length in: for (long i = 0; i < a.length; i++);
-    if (instruction->AsTypeConversion()->GetInputType() == Primitive::kPrimInt &&
-        instruction->AsTypeConversion()->GetResultType() == Primitive::kPrimLong) {
+    if (instruction->AsTypeConversion()->GetInputType() == DataType::Type::kInt32 &&
+        instruction->AsTypeConversion()->GetResultType() == DataType::Type::kInt64) {
       return GetFetch(instruction->InputAt(0), trip, in_body, is_min);
     }
   }
@@ -1051,9 +1051,9 @@ bool InductionVarRange::GenerateLastValuePolynomial(HInductionVarAnalysis::Induc
     HInstruction* c = nullptr;
     if (GenerateCode(info->op_b, nullptr, graph, block, graph ? &c : nullptr, false, false)) {
       if (graph != nullptr) {
-        Primitive::Type type = info->type;
+        DataType::Type type = info->type;
         int64_t sum = a * ((m * (m - 1)) / 2) + b * m;
-        if (type != Primitive::kPrimLong) {
+        if (type != DataType::Type::kInt64) {
           sum = static_cast<int32_t>(sum);  // okay to truncate
         }
         *result =
@@ -1081,16 +1081,16 @@ bool InductionVarRange::GenerateLastValueGeometric(HInductionVarAnalysis::Induct
     if (GenerateCode(info->op_a, nullptr, graph, block, &opa, false, false) &&
         GenerateCode(info->op_b, nullptr, graph, block, &opb, false, false)) {
       if (graph != nullptr) {
-        Primitive::Type type = info->type;
+        DataType::Type type = info->type;
         // Compute f ^ m for known maximum index value m.
         bool overflow = false;
         int64_t fpow = IntPow(f, m, &overflow);
         if (info->operation == HInductionVarAnalysis::kDiv) {
           // For division, any overflow truncates to zero.
-          if (overflow || (type != Primitive::kPrimLong && !CanLongValueFitIntoInt(fpow))) {
+          if (overflow || (type != DataType::Type::kInt64 && !CanLongValueFitIntoInt(fpow))) {
             fpow = 0;
           }
-        } else if (type != Primitive::kPrimLong) {
+        } else if (type != DataType::Type::kInt64) {
           // For multiplication, okay to truncate to required precision.
           DCHECK(info->operation == HInductionVarAnalysis::kMul);
           fpow = static_cast<int32_t>(fpow);
@@ -1161,7 +1161,7 @@ bool InductionVarRange::GenerateLastValuePeriodic(HInductionVarAnalysis::Inducti
   }
   // Don't rely on FP arithmetic to be precise, unless the full period
   // consist of pre-computed expressions only.
-  if (info->type == Primitive::kPrimFloat || info->type == Primitive::kPrimDouble) {
+  if (info->type == DataType::Type::kFloat32 || info->type == DataType::Type::kFloat64) {
     if (!all_invariants) {
       return false;
     }
@@ -1187,7 +1187,7 @@ bool InductionVarRange::GenerateLastValuePeriodic(HInductionVarAnalysis::Inducti
       GenerateCode(trip->op_a, nullptr, graph, block, graph ? &t : nullptr, false, false)) {
     // During actual code generation (graph != nullptr), generate is_even ? x : y.
     if (graph != nullptr) {
-      Primitive::Type type = trip->type;
+      DataType::Type type = trip->type;
       HInstruction* msk =
           Insert(block, new (graph->GetArena()) HAnd(type, t, graph->GetConstant(type, 1)));
       HInstruction* is_even =
@@ -1224,7 +1224,7 @@ bool InductionVarRange::GenerateCode(HInductionVarAnalysis::InductionInfo* info,
       return true;
     }
     // Handle current operation.
-    Primitive::Type type = info->type;
+    DataType::Type type = info->type;
     HInstruction* opa = nullptr;
     HInstruction* opb = nullptr;
     switch (info->induction_class) {

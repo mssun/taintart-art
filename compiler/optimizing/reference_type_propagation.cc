@@ -133,7 +133,7 @@ void ReferenceTypePropagation::ValidateTypes() {
     for (HBasicBlock* block : graph_->GetReversePostOrder()) {
       for (HInstructionIterator iti(block->GetInstructions()); !iti.Done(); iti.Advance()) {
         HInstruction* instr = iti.Current();
-        if (instr->GetType() == Primitive::kPrimNot) {
+        if (instr->GetType() == DataType::Type::kReference) {
           DCHECK(instr->GetReferenceTypeInfo().IsValid())
               << "Invalid RTI for instruction: " << instr->DebugName();
           if (instr->IsBoundType()) {
@@ -555,7 +555,7 @@ void ReferenceTypePropagation::RTPVisitor::UpdateReferenceTypeInfo(HInstruction*
                                                                    dex::TypeIndex type_idx,
                                                                    const DexFile& dex_file,
                                                                    bool is_exact) {
-  DCHECK_EQ(instr->GetType(), Primitive::kPrimNot);
+  DCHECK_EQ(instr->GetType(), DataType::Type::kReference);
 
   ScopedObjectAccess soa(Thread::Current());
   ObjPtr<mirror::DexCache> dex_cache = FindDexCacheWithHint(soa.Self(), dex_file, hint_dex_cache_);
@@ -576,7 +576,7 @@ void ReferenceTypePropagation::RTPVisitor::VisitNewArray(HNewArray* instr) {
 
 void ReferenceTypePropagation::RTPVisitor::VisitParameterValue(HParameterValue* instr) {
   // We check if the existing type is valid: the inliner may have set it.
-  if (instr->GetType() == Primitive::kPrimNot && !instr->GetReferenceTypeInfo().IsValid()) {
+  if (instr->GetType() == DataType::Type::kReference && !instr->GetReferenceTypeInfo().IsValid()) {
     UpdateReferenceTypeInfo(instr,
                             instr->GetTypeIndex(),
                             instr->GetDexFile(),
@@ -586,7 +586,7 @@ void ReferenceTypePropagation::RTPVisitor::VisitParameterValue(HParameterValue* 
 
 void ReferenceTypePropagation::RTPVisitor::UpdateFieldAccessTypeInfo(HInstruction* instr,
                                                                      const FieldInfo& info) {
-  if (instr->GetType() != Primitive::kPrimNot) {
+  if (instr->GetType() != DataType::Type::kReference) {
     return;
   }
 
@@ -612,7 +612,7 @@ void ReferenceTypePropagation::RTPVisitor::VisitStaticFieldGet(HStaticFieldGet* 
 void ReferenceTypePropagation::RTPVisitor::VisitUnresolvedInstanceFieldGet(
     HUnresolvedInstanceFieldGet* instr) {
   // TODO: Use descriptor to get the actual type.
-  if (instr->GetFieldType() == Primitive::kPrimNot) {
+  if (instr->GetFieldType() == DataType::Type::kReference) {
     instr->SetReferenceTypeInfo(instr->GetBlock()->GetGraph()->GetInexactObjectRti());
   }
 }
@@ -620,7 +620,7 @@ void ReferenceTypePropagation::RTPVisitor::VisitUnresolvedInstanceFieldGet(
 void ReferenceTypePropagation::RTPVisitor::VisitUnresolvedStaticFieldGet(
     HUnresolvedStaticFieldGet* instr) {
   // TODO: Use descriptor to get the actual type.
-  if (instr->GetFieldType() == Primitive::kPrimNot) {
+  if (instr->GetFieldType() == DataType::Type::kReference) {
     instr->SetReferenceTypeInfo(instr->GetBlock()->GetGraph()->GetInexactObjectRti());
   }
 }
@@ -729,7 +729,7 @@ void ReferenceTypePropagation::RTPVisitor::VisitCheckCast(HCheckCast* check_cast
 }
 
 void ReferenceTypePropagation::VisitPhi(HPhi* phi) {
-  if (phi->IsDead() || phi->GetType() != Primitive::kPrimNot) {
+  if (phi->IsDead() || phi->GetType() != DataType::Type::kReference) {
     return;
   }
 
@@ -813,7 +813,7 @@ ReferenceTypeInfo ReferenceTypePropagation::MergeTypes(const ReferenceTypeInfo& 
 }
 
 void ReferenceTypePropagation::UpdateArrayGet(HArrayGet* instr, HandleCache* handle_cache) {
-  DCHECK_EQ(Primitive::kPrimNot, instr->GetType());
+  DCHECK_EQ(DataType::Type::kReference, instr->GetType());
 
   ReferenceTypeInfo parent_rti = instr->InputAt(0)->GetReferenceTypeInfo();
   if (!parent_rti.IsValid()) {
@@ -857,7 +857,7 @@ bool ReferenceTypePropagation::UpdateReferenceTypeInfo(HInstruction* instr) {
 }
 
 void ReferenceTypePropagation::RTPVisitor::VisitInvoke(HInvoke* instr) {
-  if (instr->GetType() != Primitive::kPrimNot) {
+  if (instr->GetType() != DataType::Type::kReference) {
     return;
   }
 
@@ -868,7 +868,7 @@ void ReferenceTypePropagation::RTPVisitor::VisitInvoke(HInvoke* instr) {
 }
 
 void ReferenceTypePropagation::RTPVisitor::VisitArrayGet(HArrayGet* instr) {
-  if (instr->GetType() != Primitive::kPrimNot) {
+  if (instr->GetType() != DataType::Type::kReference) {
     return;
   }
 
@@ -989,7 +989,7 @@ void ReferenceTypePropagation::ProcessWorklist() {
 }
 
 void ReferenceTypePropagation::AddToWorklist(HInstruction* instruction) {
-  DCHECK_EQ(instruction->GetType(), Primitive::kPrimNot)
+  DCHECK_EQ(instruction->GetType(), DataType::Type::kReference)
       << instruction->DebugName() << ":" << instruction->GetType();
   worklist_.push_back(instruction);
 }
@@ -1000,7 +1000,7 @@ void ReferenceTypePropagation::AddDependentInstructionsToWorklist(HInstruction* 
     if ((user->IsPhi() && user->AsPhi()->IsLive())
        || user->IsBoundType()
        || user->IsNullCheck()
-       || (user->IsArrayGet() && (user->GetType() == Primitive::kPrimNot))) {
+       || (user->IsArrayGet() && (user->GetType() == DataType::Type::kReference))) {
       AddToWorklist(user);
     }
   }

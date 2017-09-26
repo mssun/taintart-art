@@ -70,10 +70,10 @@ TEST_F(BoundsCheckEliminationTest, NarrowingRangeArrayBoundsElimination) {
   HBasicBlock* entry = new (&allocator_) HBasicBlock(graph_);
   graph_->AddBlock(entry);
   graph_->SetEntryBlock(entry);
-  HInstruction* parameter1 = new (&allocator_)
-      HParameterValue(graph_->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimNot);  // array
-  HInstruction* parameter2 = new (&allocator_)
-      HParameterValue(graph_->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimInt);  // i
+  HInstruction* parameter1 = new (&allocator_) HParameterValue(
+      graph_->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);  // array
+  HInstruction* parameter2 = new (&allocator_) HParameterValue(
+      graph_->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kInt32);  // i
   entry->AddInstruction(parameter1);
   entry->AddInstruction(parameter2);
 
@@ -95,7 +95,7 @@ TEST_F(BoundsCheckEliminationTest, NarrowingRangeArrayBoundsElimination) {
   HBoundsCheck* bounds_check2 = new (&allocator_)
       HBoundsCheck(parameter2, array_length, 0);
   HArraySet* array_set = new (&allocator_) HArraySet(
-    null_check, bounds_check2, constant_1, Primitive::kPrimInt, 0);
+    null_check, bounds_check2, constant_1, DataType::Type::kInt32, 0);
   block2->AddInstruction(null_check);
   block2->AddInstruction(array_length);
   block2->AddInstruction(bounds_check2);
@@ -119,7 +119,7 @@ TEST_F(BoundsCheckEliminationTest, NarrowingRangeArrayBoundsElimination) {
   HBoundsCheck* bounds_check4 = new (&allocator_)
       HBoundsCheck(parameter2, array_length, 0);
   array_set = new (&allocator_) HArraySet(
-    null_check, bounds_check4, constant_1, Primitive::kPrimInt, 0);
+    null_check, bounds_check4, constant_1, DataType::Type::kInt32, 0);
   block4->AddInstruction(null_check);
   block4->AddInstruction(array_length);
   block4->AddInstruction(bounds_check4);
@@ -132,7 +132,7 @@ TEST_F(BoundsCheckEliminationTest, NarrowingRangeArrayBoundsElimination) {
   HBoundsCheck* bounds_check5 = new (&allocator_)
       HBoundsCheck(parameter2, array_length, 0);
   array_set = new (&allocator_) HArraySet(
-    null_check, bounds_check5, constant_1, Primitive::kPrimInt, 0);
+    null_check, bounds_check5, constant_1, DataType::Type::kInt32, 0);
   block5->AddInstruction(null_check);
   block5->AddInstruction(array_length);
   block5->AddInstruction(bounds_check5);
@@ -167,10 +167,10 @@ TEST_F(BoundsCheckEliminationTest, OverflowArrayBoundsElimination) {
   HBasicBlock* entry = new (&allocator_) HBasicBlock(graph_);
   graph_->AddBlock(entry);
   graph_->SetEntryBlock(entry);
-  HInstruction* parameter1 = new (&allocator_)
-      HParameterValue(graph_->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimNot);  // array
-  HInstruction* parameter2 = new (&allocator_)
-      HParameterValue(graph_->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimInt);  // i
+  HInstruction* parameter1 = new (&allocator_) HParameterValue(
+      graph_->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);  // array
+  HInstruction* parameter2 = new (&allocator_) HParameterValue(
+      graph_->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kInt32);  // i
   entry->AddInstruction(parameter1);
   entry->AddInstruction(parameter2);
 
@@ -188,7 +188,7 @@ TEST_F(BoundsCheckEliminationTest, OverflowArrayBoundsElimination) {
 
   HBasicBlock* block2 = new (&allocator_) HBasicBlock(graph_);
   graph_->AddBlock(block2);
-  HInstruction* add = new (&allocator_) HAdd(Primitive::kPrimInt, parameter2, constant_max_int);
+  HInstruction* add = new (&allocator_) HAdd(DataType::Type::kInt32, parameter2, constant_max_int);
   HNullCheck* null_check = new (&allocator_) HNullCheck(parameter1, 0);
   HArrayLength* array_length = new (&allocator_) HArrayLength(null_check, 0);
   HInstruction* cmp2 = new (&allocator_) HGreaterThanOrEqual(add, array_length);
@@ -204,7 +204,7 @@ TEST_F(BoundsCheckEliminationTest, OverflowArrayBoundsElimination) {
   HBoundsCheck* bounds_check = new (&allocator_)
       HBoundsCheck(add, array_length, 0);
   HArraySet* array_set = new (&allocator_) HArraySet(
-    null_check, bounds_check, constant_1, Primitive::kPrimInt, 0);
+    null_check, bounds_check, constant_1, DataType::Type::kInt32, 0);
   block3->AddInstruction(bounds_check);
   block3->AddInstruction(array_set);
 
@@ -231,10 +231,10 @@ TEST_F(BoundsCheckEliminationTest, UnderflowArrayBoundsElimination) {
   HBasicBlock* entry = new (&allocator_) HBasicBlock(graph_);
   graph_->AddBlock(entry);
   graph_->SetEntryBlock(entry);
-  HInstruction* parameter1 = new (&allocator_)
-      HParameterValue(graph_->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimNot);  // array
-  HInstruction* parameter2 = new (&allocator_)
-      HParameterValue(graph_->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimInt);  // i
+  HInstruction* parameter1 = new (&allocator_) HParameterValue(
+      graph_->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);  // array
+  HInstruction* parameter2 = new (&allocator_) HParameterValue(
+      graph_->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kInt32);  // i
   entry->AddInstruction(parameter1);
   entry->AddInstruction(parameter2);
 
@@ -256,8 +256,8 @@ TEST_F(BoundsCheckEliminationTest, UnderflowArrayBoundsElimination) {
 
   HBasicBlock* block2 = new (&allocator_) HBasicBlock(graph_);
   graph_->AddBlock(block2);
-  HInstruction* sub1 = new (&allocator_) HSub(Primitive::kPrimInt, parameter2, constant_max_int);
-  HInstruction* sub2 = new (&allocator_) HSub(Primitive::kPrimInt, sub1, constant_max_int);
+  HInstruction* sub1 = new (&allocator_) HSub(DataType::Type::kInt32, parameter2, constant_max_int);
+  HInstruction* sub2 = new (&allocator_) HSub(DataType::Type::kInt32, sub1, constant_max_int);
   HInstruction* cmp2 = new (&allocator_) HLessThanOrEqual(sub2, constant_0);
   if_inst = new (&allocator_) HIf(cmp2);
   block2->AddInstruction(sub1);
@@ -270,7 +270,7 @@ TEST_F(BoundsCheckEliminationTest, UnderflowArrayBoundsElimination) {
   HBoundsCheck* bounds_check = new (&allocator_)
       HBoundsCheck(sub2, array_length, 0);
   HArraySet* array_set = new (&allocator_) HArraySet(
-    null_check, bounds_check, constant_1, Primitive::kPrimInt, 0);
+    null_check, bounds_check, constant_1, DataType::Type::kInt32, 0);
   block3->AddInstruction(bounds_check);
   block3->AddInstruction(array_set);
 
@@ -296,7 +296,7 @@ TEST_F(BoundsCheckEliminationTest, ConstantArrayBoundsElimination) {
   graph_->AddBlock(entry);
   graph_->SetEntryBlock(entry);
   HInstruction* parameter = new (&allocator_) HParameterValue(
-      graph_->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimNot);
+      graph_->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);
   entry->AddInstruction(parameter);
 
   HInstruction* constant_5 = graph_->GetIntConstant(5);
@@ -313,7 +313,7 @@ TEST_F(BoundsCheckEliminationTest, ConstantArrayBoundsElimination) {
   HBoundsCheck* bounds_check6 = new (&allocator_)
       HBoundsCheck(constant_6, array_length, 0);
   HInstruction* array_set = new (&allocator_) HArraySet(
-    null_check, bounds_check6, constant_1, Primitive::kPrimInt, 0);
+    null_check, bounds_check6, constant_1, DataType::Type::kInt32, 0);
   block->AddInstruction(null_check);
   block->AddInstruction(array_length);
   block->AddInstruction(bounds_check6);
@@ -324,7 +324,7 @@ TEST_F(BoundsCheckEliminationTest, ConstantArrayBoundsElimination) {
   HBoundsCheck* bounds_check5 = new (&allocator_)
       HBoundsCheck(constant_5, array_length, 0);
   array_set = new (&allocator_) HArraySet(
-    null_check, bounds_check5, constant_1, Primitive::kPrimInt, 0);
+    null_check, bounds_check5, constant_1, DataType::Type::kInt32, 0);
   block->AddInstruction(null_check);
   block->AddInstruction(array_length);
   block->AddInstruction(bounds_check5);
@@ -335,7 +335,7 @@ TEST_F(BoundsCheckEliminationTest, ConstantArrayBoundsElimination) {
   HBoundsCheck* bounds_check4 = new (&allocator_)
       HBoundsCheck(constant_4, array_length, 0);
   array_set = new (&allocator_) HArraySet(
-    null_check, bounds_check4, constant_1, Primitive::kPrimInt, 0);
+    null_check, bounds_check4, constant_1, DataType::Type::kInt32, 0);
   block->AddInstruction(null_check);
   block->AddInstruction(array_length);
   block->AddInstruction(bounds_check4);
@@ -365,7 +365,7 @@ static HInstruction* BuildSSAGraph1(HGraph* graph,
   graph->AddBlock(entry);
   graph->SetEntryBlock(entry);
   HInstruction* parameter = new (allocator) HParameterValue(
-      graph->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimNot);
+      graph->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);
   entry->AddInstruction(parameter);
 
   HInstruction* constant_initial = graph->GetIntConstant(initial);
@@ -389,7 +389,7 @@ static HInstruction* BuildSSAGraph1(HGraph* graph,
   loop_header->AddSuccessor(loop_body);  // false successor
   loop_body->AddSuccessor(loop_header);
 
-  HPhi* phi = new (allocator) HPhi(allocator, 0, 0, Primitive::kPrimInt);
+  HPhi* phi = new (allocator) HPhi(allocator, 0, 0, DataType::Type::kInt32);
   HInstruction* null_check = new (allocator) HNullCheck(parameter, 0);
   HInstruction* array_length = new (allocator) HArrayLength(null_check, 0);
   HInstruction* cmp = nullptr;
@@ -411,9 +411,9 @@ static HInstruction* BuildSSAGraph1(HGraph* graph,
   array_length = new (allocator) HArrayLength(null_check, 0);
   HInstruction* bounds_check = new (allocator) HBoundsCheck(phi, array_length, 0);
   HInstruction* array_set = new (allocator) HArraySet(
-      null_check, bounds_check, constant_10, Primitive::kPrimInt, 0);
+      null_check, bounds_check, constant_10, DataType::Type::kInt32, 0);
 
-  HInstruction* add = new (allocator) HAdd(Primitive::kPrimInt, phi, constant_increment);
+  HInstruction* add = new (allocator) HAdd(DataType::Type::kInt32, phi, constant_increment);
   loop_body->AddInstruction(null_check);
   loop_body->AddInstruction(array_length);
   loop_body->AddInstruction(bounds_check);
@@ -480,7 +480,7 @@ static HInstruction* BuildSSAGraph2(HGraph *graph,
   graph->AddBlock(entry);
   graph->SetEntryBlock(entry);
   HInstruction* parameter = new (allocator) HParameterValue(
-      graph->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimNot);
+      graph->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);
   entry->AddInstruction(parameter);
 
   HInstruction* constant_initial = graph->GetIntConstant(initial);
@@ -509,7 +509,7 @@ static HInstruction* BuildSSAGraph2(HGraph *graph,
   loop_header->AddSuccessor(loop_body);  // false successor
   loop_body->AddSuccessor(loop_header);
 
-  HPhi* phi = new (allocator) HPhi(allocator, 0, 0, Primitive::kPrimInt);
+  HPhi* phi = new (allocator) HPhi(allocator, 0, 0, DataType::Type::kInt32);
   HInstruction* cmp = nullptr;
   if (cond == kCondLE) {
     cmp = new (allocator) HLessThanOrEqual(phi, constant_initial);
@@ -523,13 +523,13 @@ static HInstruction* BuildSSAGraph2(HGraph *graph,
   loop_header->AddInstruction(if_inst);
   phi->AddInput(array_length);
 
-  HInstruction* add = new (allocator) HAdd(Primitive::kPrimInt, phi, constant_minus_1);
+  HInstruction* add = new (allocator) HAdd(DataType::Type::kInt32, phi, constant_minus_1);
   null_check = new (allocator) HNullCheck(parameter, 0);
   array_length = new (allocator) HArrayLength(null_check, 0);
   HInstruction* bounds_check = new (allocator) HBoundsCheck(add, array_length, 0);
   HInstruction* array_set = new (allocator) HArraySet(
-      null_check, bounds_check, constant_10, Primitive::kPrimInt, 0);
-  HInstruction* add_phi = new (allocator) HAdd(Primitive::kPrimInt, phi, constant_increment);
+      null_check, bounds_check, constant_10, DataType::Type::kInt32, 0);
+  HInstruction* add_phi = new (allocator) HAdd(DataType::Type::kInt32, phi, constant_increment);
   loop_body->AddInstruction(add);
   loop_body->AddInstruction(null_check);
   loop_body->AddInstruction(array_length);
@@ -617,7 +617,7 @@ static HInstruction* BuildSSAGraph3(HGraph* graph,
   loop_header->AddSuccessor(loop_body);  // false successor
   loop_body->AddSuccessor(loop_header);
 
-  HPhi* phi = new (allocator) HPhi(allocator, 0, 0, Primitive::kPrimInt);
+  HPhi* phi = new (allocator) HPhi(allocator, 0, 0, DataType::Type::kInt32);
   HInstruction* cmp = nullptr;
   if (cond == kCondGE) {
     cmp = new (allocator) HGreaterThanOrEqual(phi, constant_10);
@@ -635,8 +635,8 @@ static HInstruction* BuildSSAGraph3(HGraph* graph,
   HArrayLength* array_length = new (allocator) HArrayLength(null_check, 0);
   HInstruction* bounds_check = new (allocator) HBoundsCheck(phi, array_length, 0);
   HInstruction* array_set = new (allocator) HArraySet(
-      null_check, bounds_check, constant_10, Primitive::kPrimInt, 0);
-  HInstruction* add = new (allocator) HAdd(Primitive::kPrimInt, phi, constant_increment);
+      null_check, bounds_check, constant_10, DataType::Type::kInt32, 0);
+  HInstruction* add = new (allocator) HAdd(DataType::Type::kInt32, phi, constant_increment);
   loop_body->AddInstruction(null_check);
   loop_body->AddInstruction(array_length);
   loop_body->AddInstruction(bounds_check);
@@ -691,7 +691,7 @@ static HInstruction* BuildSSAGraph4(HGraph* graph,
   graph->AddBlock(entry);
   graph->SetEntryBlock(entry);
   HInstruction* parameter = new (allocator) HParameterValue(
-      graph->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimNot);
+      graph->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);
   entry->AddInstruction(parameter);
 
   HInstruction* constant_initial = graph->GetIntConstant(initial);
@@ -716,7 +716,7 @@ static HInstruction* BuildSSAGraph4(HGraph* graph,
   loop_header->AddSuccessor(loop_body);  // false successor
   loop_body->AddSuccessor(loop_header);
 
-  HPhi* phi = new (allocator) HPhi(allocator, 0, 0, Primitive::kPrimInt);
+  HPhi* phi = new (allocator) HPhi(allocator, 0, 0, DataType::Type::kInt32);
   HInstruction* null_check = new (allocator) HNullCheck(parameter, 0);
   HInstruction* array_length = new (allocator) HArrayLength(null_check, 0);
   HInstruction* cmp = nullptr;
@@ -735,13 +735,13 @@ static HInstruction* BuildSSAGraph4(HGraph* graph,
 
   null_check = new (allocator) HNullCheck(parameter, 0);
   array_length = new (allocator) HArrayLength(null_check, 0);
-  HInstruction* sub = new (allocator) HSub(Primitive::kPrimInt, array_length, phi);
+  HInstruction* sub = new (allocator) HSub(DataType::Type::kInt32, array_length, phi);
   HInstruction* add_minus_1 = new (allocator)
-      HAdd(Primitive::kPrimInt, sub, constant_minus_1);
+      HAdd(DataType::Type::kInt32, sub, constant_minus_1);
   HInstruction* bounds_check = new (allocator) HBoundsCheck(add_minus_1, array_length, 0);
   HInstruction* array_set = new (allocator) HArraySet(
-      null_check, bounds_check, constant_10, Primitive::kPrimInt, 0);
-  HInstruction* add = new (allocator) HAdd(Primitive::kPrimInt, phi, constant_1);
+      null_check, bounds_check, constant_10, DataType::Type::kInt32, 0);
+  HInstruction* add = new (allocator) HAdd(DataType::Type::kInt32, phi, constant_1);
   loop_body->AddInstruction(null_check);
   loop_body->AddInstruction(array_length);
   loop_body->AddInstruction(sub);
@@ -794,7 +794,7 @@ TEST_F(BoundsCheckEliminationTest, BubbleSortArrayBoundsElimination) {
   graph_->AddBlock(entry);
   graph_->SetEntryBlock(entry);
   HInstruction* parameter = new (&allocator_) HParameterValue(
-      graph_->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimNot);
+      graph_->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);
   entry->AddInstruction(parameter);
 
   HInstruction* constant_0 = graph_->GetIntConstant(0);
@@ -812,10 +812,10 @@ TEST_F(BoundsCheckEliminationTest, BubbleSortArrayBoundsElimination) {
 
   HBasicBlock* outer_header = new (&allocator_) HBasicBlock(graph_);
   graph_->AddBlock(outer_header);
-  HPhi* phi_i = new (&allocator_) HPhi(&allocator_, 0, 0, Primitive::kPrimInt);
+  HPhi* phi_i = new (&allocator_) HPhi(&allocator_, 0, 0, DataType::Type::kInt32);
   HNullCheck* null_check = new (&allocator_) HNullCheck(parameter, 0);
   HArrayLength* array_length = new (&allocator_) HArrayLength(null_check, 0);
-  HAdd* add = new (&allocator_) HAdd(Primitive::kPrimInt, array_length, constant_minus_1);
+  HAdd* add = new (&allocator_) HAdd(DataType::Type::kInt32, array_length, constant_minus_1);
   HInstruction* cmp = new (&allocator_) HGreaterThanOrEqual(phi_i, add);
   HIf* if_inst = new (&allocator_) HIf(cmp);
   outer_header->AddPhi(phi_i);
@@ -828,11 +828,11 @@ TEST_F(BoundsCheckEliminationTest, BubbleSortArrayBoundsElimination) {
 
   HBasicBlock* inner_header = new (&allocator_) HBasicBlock(graph_);
   graph_->AddBlock(inner_header);
-  HPhi* phi_j = new (&allocator_) HPhi(&allocator_, 0, 0, Primitive::kPrimInt);
+  HPhi* phi_j = new (&allocator_) HPhi(&allocator_, 0, 0, DataType::Type::kInt32);
   null_check = new (&allocator_) HNullCheck(parameter, 0);
   array_length = new (&allocator_) HArrayLength(null_check, 0);
-  HSub* sub = new (&allocator_) HSub(Primitive::kPrimInt, array_length, phi_i);
-  add = new (&allocator_) HAdd(Primitive::kPrimInt, sub, constant_minus_1);
+  HSub* sub = new (&allocator_) HSub(DataType::Type::kInt32, array_length, phi_i);
+  add = new (&allocator_) HAdd(DataType::Type::kInt32, sub, constant_minus_1);
   cmp = new (&allocator_) HGreaterThanOrEqual(phi_j, add);
   if_inst = new (&allocator_) HIf(cmp);
   inner_header->AddPhi(phi_j);
@@ -850,17 +850,17 @@ TEST_F(BoundsCheckEliminationTest, BubbleSortArrayBoundsElimination) {
   array_length = new (&allocator_) HArrayLength(null_check, 0);
   HBoundsCheck* bounds_check1 = new (&allocator_) HBoundsCheck(phi_j, array_length, 0);
   HArrayGet* array_get_j = new (&allocator_)
-      HArrayGet(null_check, bounds_check1, Primitive::kPrimInt, 0);
+      HArrayGet(null_check, bounds_check1, DataType::Type::kInt32, 0);
   inner_body_compare->AddInstruction(null_check);
   inner_body_compare->AddInstruction(array_length);
   inner_body_compare->AddInstruction(bounds_check1);
   inner_body_compare->AddInstruction(array_get_j);
-  HInstruction* j_plus_1 = new (&allocator_) HAdd(Primitive::kPrimInt, phi_j, constant_1);
+  HInstruction* j_plus_1 = new (&allocator_) HAdd(DataType::Type::kInt32, phi_j, constant_1);
   null_check = new (&allocator_) HNullCheck(parameter, 0);
   array_length = new (&allocator_) HArrayLength(null_check, 0);
   HBoundsCheck* bounds_check2 = new (&allocator_) HBoundsCheck(j_plus_1, array_length, 0);
   HArrayGet* array_get_j_plus_1 = new (&allocator_)
-      HArrayGet(null_check, bounds_check2, Primitive::kPrimInt, 0);
+      HArrayGet(null_check, bounds_check2, DataType::Type::kInt32, 0);
   cmp = new (&allocator_) HGreaterThanOrEqual(array_get_j, array_get_j_plus_1);
   if_inst = new (&allocator_) HIf(cmp);
   inner_body_compare->AddInstruction(j_plus_1);
@@ -873,13 +873,13 @@ TEST_F(BoundsCheckEliminationTest, BubbleSortArrayBoundsElimination) {
 
   HBasicBlock* inner_body_swap = new (&allocator_) HBasicBlock(graph_);
   graph_->AddBlock(inner_body_swap);
-  j_plus_1 = new (&allocator_) HAdd(Primitive::kPrimInt, phi_j, constant_1);
+  j_plus_1 = new (&allocator_) HAdd(DataType::Type::kInt32, phi_j, constant_1);
   // temp = array[j+1]
   null_check = new (&allocator_) HNullCheck(parameter, 0);
   array_length = new (&allocator_) HArrayLength(null_check, 0);
   HInstruction* bounds_check3 = new (&allocator_) HBoundsCheck(j_plus_1, array_length, 0);
   array_get_j_plus_1 = new (&allocator_)
-      HArrayGet(null_check, bounds_check3, Primitive::kPrimInt, 0);
+      HArrayGet(null_check, bounds_check3, DataType::Type::kInt32, 0);
   inner_body_swap->AddInstruction(j_plus_1);
   inner_body_swap->AddInstruction(null_check);
   inner_body_swap->AddInstruction(array_length);
@@ -890,7 +890,7 @@ TEST_F(BoundsCheckEliminationTest, BubbleSortArrayBoundsElimination) {
   array_length = new (&allocator_) HArrayLength(null_check, 0);
   HInstruction* bounds_check4 = new (&allocator_) HBoundsCheck(phi_j, array_length, 0);
   array_get_j = new (&allocator_)
-      HArrayGet(null_check, bounds_check4, Primitive::kPrimInt, 0);
+      HArrayGet(null_check, bounds_check4, DataType::Type::kInt32, 0);
   inner_body_swap->AddInstruction(null_check);
   inner_body_swap->AddInstruction(array_length);
   inner_body_swap->AddInstruction(bounds_check4);
@@ -899,7 +899,7 @@ TEST_F(BoundsCheckEliminationTest, BubbleSortArrayBoundsElimination) {
   array_length = new (&allocator_) HArrayLength(null_check, 0);
   HInstruction* bounds_check5 = new (&allocator_) HBoundsCheck(j_plus_1, array_length, 0);
   HArraySet* array_set_j_plus_1 = new (&allocator_)
-      HArraySet(null_check, bounds_check5, array_get_j, Primitive::kPrimInt, 0);
+      HArraySet(null_check, bounds_check5, array_get_j, DataType::Type::kInt32, 0);
   inner_body_swap->AddInstruction(null_check);
   inner_body_swap->AddInstruction(array_length);
   inner_body_swap->AddInstruction(bounds_check5);
@@ -909,7 +909,7 @@ TEST_F(BoundsCheckEliminationTest, BubbleSortArrayBoundsElimination) {
   array_length = new (&allocator_) HArrayLength(null_check, 0);
   HInstruction* bounds_check6 = new (&allocator_) HBoundsCheck(phi_j, array_length, 0);
   HArraySet* array_set_j = new (&allocator_)
-      HArraySet(null_check, bounds_check6, array_get_j_plus_1, Primitive::kPrimInt, 0);
+      HArraySet(null_check, bounds_check6, array_get_j_plus_1, DataType::Type::kInt32, 0);
   inner_body_swap->AddInstruction(null_check);
   inner_body_swap->AddInstruction(array_length);
   inner_body_swap->AddInstruction(bounds_check6);
@@ -918,14 +918,14 @@ TEST_F(BoundsCheckEliminationTest, BubbleSortArrayBoundsElimination) {
 
   HBasicBlock* inner_body_add = new (&allocator_) HBasicBlock(graph_);
   graph_->AddBlock(inner_body_add);
-  add = new (&allocator_) HAdd(Primitive::kPrimInt, phi_j, constant_1);
+  add = new (&allocator_) HAdd(DataType::Type::kInt32, phi_j, constant_1);
   inner_body_add->AddInstruction(add);
   inner_body_add->AddInstruction(new (&allocator_) HGoto());
   phi_j->AddInput(add);
 
   HBasicBlock* outer_body_add = new (&allocator_) HBasicBlock(graph_);
   graph_->AddBlock(outer_body_add);
-  add = new (&allocator_) HAdd(Primitive::kPrimInt, phi_i, constant_1);
+  add = new (&allocator_) HAdd(DataType::Type::kInt32, phi_i, constant_1);
   outer_body_add->AddInstruction(add);
   outer_body_add->AddInstruction(new (&allocator_) HGoto());
   phi_i->AddInput(add);
@@ -965,7 +965,7 @@ TEST_F(BoundsCheckEliminationTest, ModArrayBoundsElimination) {
   graph_->AddBlock(entry);
   graph_->SetEntryBlock(entry);
   HInstruction* param_i = new (&allocator_)
-      HParameterValue(graph_->GetDexFile(), dex::TypeIndex(0), 0, Primitive::kPrimInt);
+      HParameterValue(graph_->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kInt32);
   entry->AddInstruction(param_i);
 
   HInstruction* constant_0 = graph_->GetIntConstant(0);
@@ -994,7 +994,7 @@ TEST_F(BoundsCheckEliminationTest, ModArrayBoundsElimination) {
   loop_header->AddSuccessor(loop_body);  // false successor
   loop_body->AddSuccessor(loop_header);
 
-  HPhi* phi = new (&allocator_) HPhi(&allocator_, 0, 0, Primitive::kPrimInt);
+  HPhi* phi = new (&allocator_) HPhi(&allocator_, 0, 0, DataType::Type::kInt32);
   HInstruction* cmp = new (&allocator_) HGreaterThanOrEqual(phi, constant_200);
   HInstruction* if_inst = new (&allocator_) HIf(cmp);
   loop_header->AddPhi(phi);
@@ -1005,38 +1005,38 @@ TEST_F(BoundsCheckEliminationTest, ModArrayBoundsElimination) {
   //////////////////////////////////////////////////////////////////////////////////
   // LOOP BODY:
   // array[i % 10] = 10;
-  HRem* i_mod_10 = new (&allocator_) HRem(Primitive::kPrimInt, phi, constant_10, 0);
+  HRem* i_mod_10 = new (&allocator_) HRem(DataType::Type::kInt32, phi, constant_10, 0);
   HBoundsCheck* bounds_check_i_mod_10 = new (&allocator_) HBoundsCheck(i_mod_10, constant_10, 0);
   HInstruction* array_set = new (&allocator_) HArraySet(
-      new_array, bounds_check_i_mod_10, constant_10, Primitive::kPrimInt, 0);
+      new_array, bounds_check_i_mod_10, constant_10, DataType::Type::kInt32, 0);
   loop_body->AddInstruction(i_mod_10);
   loop_body->AddInstruction(bounds_check_i_mod_10);
   loop_body->AddInstruction(array_set);
 
   // array[i % 1] = 10;
-  HRem* i_mod_1 = new (&allocator_) HRem(Primitive::kPrimInt, phi, constant_1, 0);
+  HRem* i_mod_1 = new (&allocator_) HRem(DataType::Type::kInt32, phi, constant_1, 0);
   HBoundsCheck* bounds_check_i_mod_1 = new (&allocator_) HBoundsCheck(i_mod_1, constant_10, 0);
   array_set = new (&allocator_) HArraySet(
-      new_array, bounds_check_i_mod_1, constant_10, Primitive::kPrimInt, 0);
+      new_array, bounds_check_i_mod_1, constant_10, DataType::Type::kInt32, 0);
   loop_body->AddInstruction(i_mod_1);
   loop_body->AddInstruction(bounds_check_i_mod_1);
   loop_body->AddInstruction(array_set);
 
   // array[i % 200] = 10;
-  HRem* i_mod_200 = new (&allocator_) HRem(Primitive::kPrimInt, phi, constant_1, 0);
+  HRem* i_mod_200 = new (&allocator_) HRem(DataType::Type::kInt32, phi, constant_1, 0);
   HBoundsCheck* bounds_check_i_mod_200 = new (&allocator_) HBoundsCheck(i_mod_200, constant_10, 0);
   array_set = new (&allocator_) HArraySet(
-      new_array, bounds_check_i_mod_200, constant_10, Primitive::kPrimInt, 0);
+      new_array, bounds_check_i_mod_200, constant_10, DataType::Type::kInt32, 0);
   loop_body->AddInstruction(i_mod_200);
   loop_body->AddInstruction(bounds_check_i_mod_200);
   loop_body->AddInstruction(array_set);
 
   // array[i % -10] = 10;
-  HRem* i_mod_minus_10 = new (&allocator_) HRem(Primitive::kPrimInt, phi, constant_minus_10, 0);
+  HRem* i_mod_minus_10 = new (&allocator_) HRem(DataType::Type::kInt32, phi, constant_minus_10, 0);
   HBoundsCheck* bounds_check_i_mod_minus_10 = new (&allocator_) HBoundsCheck(
       i_mod_minus_10, constant_10, 0);
   array_set = new (&allocator_) HArraySet(
-      new_array, bounds_check_i_mod_minus_10, constant_10, Primitive::kPrimInt, 0);
+      new_array, bounds_check_i_mod_minus_10, constant_10, DataType::Type::kInt32, 0);
   loop_body->AddInstruction(i_mod_minus_10);
   loop_body->AddInstruction(bounds_check_i_mod_minus_10);
   loop_body->AddInstruction(array_set);
@@ -1044,11 +1044,11 @@ TEST_F(BoundsCheckEliminationTest, ModArrayBoundsElimination) {
   // array[i%array.length] = 10;
   HNullCheck* null_check = new (&allocator_) HNullCheck(new_array, 0);
   HArrayLength* array_length = new (&allocator_) HArrayLength(null_check, 0);
-  HRem* i_mod_array_length = new (&allocator_) HRem(Primitive::kPrimInt, phi, array_length, 0);
+  HRem* i_mod_array_length = new (&allocator_) HRem(DataType::Type::kInt32, phi, array_length, 0);
   HBoundsCheck* bounds_check_i_mod_array_len = new (&allocator_) HBoundsCheck(
       i_mod_array_length, array_length, 0);
   array_set = new (&allocator_) HArraySet(
-      null_check, bounds_check_i_mod_array_len, constant_10, Primitive::kPrimInt, 0);
+      null_check, bounds_check_i_mod_array_len, constant_10, DataType::Type::kInt32, 0);
   loop_body->AddInstruction(null_check);
   loop_body->AddInstruction(array_length);
   loop_body->AddInstruction(i_mod_array_length);
@@ -1056,11 +1056,11 @@ TEST_F(BoundsCheckEliminationTest, ModArrayBoundsElimination) {
   loop_body->AddInstruction(array_set);
 
   // array[param_i % 10] = 10;
-  HRem* param_i_mod_10 = new (&allocator_) HRem(Primitive::kPrimInt, param_i, constant_10, 0);
+  HRem* param_i_mod_10 = new (&allocator_) HRem(DataType::Type::kInt32, param_i, constant_10, 0);
   HBoundsCheck* bounds_check_param_i_mod_10 = new (&allocator_) HBoundsCheck(
       param_i_mod_10, constant_10, 0);
   array_set = new (&allocator_) HArraySet(
-      new_array, bounds_check_param_i_mod_10, constant_10, Primitive::kPrimInt, 0);
+      new_array, bounds_check_param_i_mod_10, constant_10, DataType::Type::kInt32, 0);
   loop_body->AddInstruction(param_i_mod_10);
   loop_body->AddInstruction(bounds_check_param_i_mod_10);
   loop_body->AddInstruction(array_set);
@@ -1069,11 +1069,11 @@ TEST_F(BoundsCheckEliminationTest, ModArrayBoundsElimination) {
   null_check = new (&allocator_) HNullCheck(new_array, 0);
   array_length = new (&allocator_) HArrayLength(null_check, 0);
   HRem* param_i_mod_array_length = new (&allocator_) HRem(
-      Primitive::kPrimInt, param_i, array_length, 0);
+      DataType::Type::kInt32, param_i, array_length, 0);
   HBoundsCheck* bounds_check_param_i_mod_array_len = new (&allocator_) HBoundsCheck(
       param_i_mod_array_length, array_length, 0);
   array_set = new (&allocator_) HArraySet(
-      null_check, bounds_check_param_i_mod_array_len, constant_10, Primitive::kPrimInt, 0);
+      null_check, bounds_check_param_i_mod_array_len, constant_10, DataType::Type::kInt32, 0);
   loop_body->AddInstruction(null_check);
   loop_body->AddInstruction(array_length);
   loop_body->AddInstruction(param_i_mod_array_length);
@@ -1081,7 +1081,7 @@ TEST_F(BoundsCheckEliminationTest, ModArrayBoundsElimination) {
   loop_body->AddInstruction(array_set);
 
   // i++;
-  HInstruction* add = new (&allocator_) HAdd(Primitive::kPrimInt, phi, constant_1);
+  HInstruction* add = new (&allocator_) HAdd(DataType::Type::kInt32, phi, constant_1);
   loop_body->AddInstruction(add);
   loop_body->AddInstruction(new (&allocator_) HGoto());
   phi->AddInput(add);

@@ -75,7 +75,7 @@ static bool IsEarlyExit(HLoopInformation* loop_info) {
 // denotes if result is long, and thus sign extension from int can be included.
 // Returns the promoted operand on success.
 static bool IsSignExtensionAndGet(HInstruction* instruction,
-                                  Primitive::Type type,
+                                  DataType::Type type,
                                   /*out*/ HInstruction** operand,
                                   bool to64 = false) {
   // Accept any already wider constant that would be handled properly by sign
@@ -84,20 +84,20 @@ static bool IsSignExtensionAndGet(HInstruction* instruction,
   int64_t value = 0;
   if (IsInt64AndGet(instruction, /*out*/ &value)) {
     switch (type) {
-      case Primitive::kPrimByte:
+      case DataType::Type::kInt8:
         if (IsInt<8>(value)) {
           *operand = instruction;
           return true;
         }
         return false;
-      case Primitive::kPrimChar:
-      case Primitive::kPrimShort:
+      case DataType::Type::kUint16:
+      case DataType::Type::kInt16:
         if (IsInt<16>(value)) {
           *operand = instruction;
           return true;
         }
         return false;
-      case Primitive::kPrimInt:
+      case DataType::Type::kInt32:
         if (IsInt<32>(value)) {
           *operand = instruction;
           return to64;
@@ -113,11 +113,11 @@ static bool IsSignExtensionAndGet(HInstruction* instruction,
                                          instruction->IsStaticFieldGet() ||
                                          instruction->IsInstanceFieldGet())) {
     switch (type) {
-      case Primitive::kPrimByte:
-      case Primitive::kPrimShort:
+      case DataType::Type::kInt8:
+      case DataType::Type::kInt16:
         *operand = instruction;
         return true;
-      case Primitive::kPrimInt:
+      case DataType::Type::kInt32:
         *operand = instruction;
         return to64;
       default:
@@ -125,7 +125,7 @@ static bool IsSignExtensionAndGet(HInstruction* instruction,
     }
   }
   // Explicit type conversion to long.
-  if (instruction->IsTypeConversion() && instruction->GetType() == Primitive::kPrimLong) {
+  if (instruction->IsTypeConversion() && instruction->GetType() == DataType::Type::kInt64) {
     return IsSignExtensionAndGet(instruction->InputAt(0), type, /*out*/ operand, /*to64*/ true);
   }
   return false;
@@ -135,7 +135,7 @@ static bool IsSignExtensionAndGet(HInstruction* instruction,
 // denotes if result is long, and thus zero extension from int can be included.
 // Returns the promoted operand on success.
 static bool IsZeroExtensionAndGet(HInstruction* instruction,
-                                  Primitive::Type type,
+                                  DataType::Type type,
                                   /*out*/ HInstruction** operand,
                                   bool to64 = false) {
   // Accept any already wider constant that would be handled properly by zero
@@ -144,20 +144,20 @@ static bool IsZeroExtensionAndGet(HInstruction* instruction,
   int64_t value = 0;
   if (IsInt64AndGet(instruction, /*out*/ &value)) {
     switch (type) {
-      case Primitive::kPrimByte:
+      case DataType::Type::kInt8:
         if (IsUint<8>(value)) {
           *operand = instruction;
           return true;
         }
         return false;
-      case Primitive::kPrimChar:
-      case Primitive::kPrimShort:
+      case DataType::Type::kUint16:
+      case DataType::Type::kInt16:
         if (IsUint<16>(value)) {
           *operand = instruction;
           return true;
         }
         return false;
-      case Primitive::kPrimInt:
+      case DataType::Type::kInt32:
         if (IsUint<32>(value)) {
           *operand = instruction;
           return to64;
@@ -172,7 +172,7 @@ static bool IsZeroExtensionAndGet(HInstruction* instruction,
   if (instruction->GetType() == type && (instruction->IsArrayGet() ||
                                          instruction->IsStaticFieldGet() ||
                                          instruction->IsInstanceFieldGet())) {
-    if (type == Primitive::kPrimChar) {
+    if (type == DataType::Type::kUint16) {
       *operand = instruction;
       return true;
     }
@@ -189,19 +189,19 @@ static bool IsZeroExtensionAndGet(HInstruction* instruction,
         (IsInt64AndGet(b, /*out*/ &mask) && (IsSignExtensionAndGet(a, type, /*out*/ operand) ||
                                              IsZeroExtensionAndGet(a, type, /*out*/ operand)))) {
       switch ((*operand)->GetType()) {
-        case Primitive::kPrimByte:
+        case DataType::Type::kInt8:
           return mask == std::numeric_limits<uint8_t>::max();
-        case Primitive::kPrimChar:
-        case Primitive::kPrimShort:
+        case DataType::Type::kUint16:
+        case DataType::Type::kInt16:
           return mask == std::numeric_limits<uint16_t>::max();
-        case Primitive::kPrimInt:
+        case DataType::Type::kInt32:
           return mask == std::numeric_limits<uint32_t>::max() && to64;
         default: return false;
       }
     }
   }
   // Explicit type conversion to long.
-  if (instruction->IsTypeConversion() && instruction->GetType() == Primitive::kPrimLong) {
+  if (instruction->IsTypeConversion() && instruction->GetType() == DataType::Type::kInt64) {
     return IsZeroExtensionAndGet(instruction->InputAt(0), type, /*out*/ operand, /*to64*/ true);
   }
   return false;
@@ -211,7 +211,7 @@ static bool IsZeroExtensionAndGet(HInstruction* instruction,
 // Returns true on success and sets is_unsigned accordingly.
 static bool IsNarrowerOperands(HInstruction* a,
                                HInstruction* b,
-                               Primitive::Type type,
+                               DataType::Type type,
                                /*out*/ HInstruction** r,
                                /*out*/ HInstruction** s,
                                /*out*/ bool* is_unsigned) {
@@ -227,7 +227,7 @@ static bool IsNarrowerOperands(HInstruction* a,
 
 // As above, single operand.
 static bool IsNarrowerOperand(HInstruction* a,
-                              Primitive::Type type,
+                              DataType::Type type,
                               /*out*/ HInstruction** r,
                               /*out*/ bool* is_unsigned) {
   if (IsSignExtensionAndGet(a, type, r)) {
@@ -241,44 +241,44 @@ static bool IsNarrowerOperand(HInstruction* a,
 }
 
 // Compute relative vector length based on type difference.
-static size_t GetOtherVL(Primitive::Type other_type, Primitive::Type vector_type, size_t vl) {
+static size_t GetOtherVL(DataType::Type other_type, DataType::Type vector_type, size_t vl) {
   switch (other_type) {
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimByte:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt8:
       switch (vector_type) {
-        case Primitive::kPrimBoolean:
-        case Primitive::kPrimByte: return vl;
+        case DataType::Type::kBool:
+        case DataType::Type::kInt8: return vl;
         default: break;
       }
       return vl;
-    case Primitive::kPrimChar:
-    case Primitive::kPrimShort:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       switch (vector_type) {
-        case Primitive::kPrimBoolean:
-        case Primitive::kPrimByte: return vl >> 1;
-        case Primitive::kPrimChar:
-        case Primitive::kPrimShort: return vl;
+        case DataType::Type::kBool:
+        case DataType::Type::kInt8: return vl >> 1;
+        case DataType::Type::kUint16:
+        case DataType::Type::kInt16: return vl;
         default: break;
       }
       break;
-    case Primitive::kPrimInt:
+    case DataType::Type::kInt32:
       switch (vector_type) {
-        case Primitive::kPrimBoolean:
-        case Primitive::kPrimByte: return vl >> 2;
-        case Primitive::kPrimChar:
-        case Primitive::kPrimShort: return vl >> 1;
-        case Primitive::kPrimInt: return vl;
+        case DataType::Type::kBool:
+        case DataType::Type::kInt8: return vl >> 2;
+        case DataType::Type::kUint16:
+        case DataType::Type::kInt16: return vl >> 1;
+        case DataType::Type::kInt32: return vl;
         default: break;
       }
       break;
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       switch (vector_type) {
-        case Primitive::kPrimBoolean:
-        case Primitive::kPrimByte: return vl >> 3;
-        case Primitive::kPrimChar:
-        case Primitive::kPrimShort: return vl >> 2;
-        case Primitive::kPrimInt: return vl >> 1;
-        case Primitive::kPrimLong: return vl;
+        case DataType::Type::kBool:
+        case DataType::Type::kInt8: return vl >> 3;
+        case DataType::Type::kUint16:
+        case DataType::Type::kInt16: return vl >> 2;
+        case DataType::Type::kInt32: return vl >> 1;
+        case DataType::Type::kInt64: return vl;
         default: break;
       }
       break;
@@ -815,8 +815,9 @@ void HLoopOptimization::Vectorize(LoopNode* node,
   vector_body_ = block;
 
   // Loop induction type.
-  Primitive::Type induc_type = main_phi->GetType();
-  DCHECK(induc_type == Primitive::kPrimInt || induc_type == Primitive::kPrimLong) << induc_type;
+  DataType::Type induc_type = main_phi->GetType();
+  DCHECK(induc_type == DataType::Type::kInt32 || induc_type == DataType::Type::kInt64)
+      << induc_type;
 
   // Generate dynamic loop peeling trip count, if needed, under the assumption
   // that the Android runtime guarantees at least "component size" alignment:
@@ -939,7 +940,7 @@ void HLoopOptimization::GenerateNewLoop(LoopNode* node,
                                         HInstruction* step,
                                         uint32_t unroll) {
   DCHECK(unroll == 1 || vector_mode_ == kVector);
-  Primitive::Type induc_type = lo->GetType();
+  DataType::Type induc_type = lo->GetType();
   // Prepare new loop.
   vector_preheader_ = new_preheader,
   vector_header_ = vector_preheader_->GetSingleSuccessor();
@@ -1003,7 +1004,7 @@ bool HLoopOptimization::VectorizeDef(LoopNode* node,
   // (4) vectorizable right-hand-side value.
   uint64_t restrictions = kNone;
   if (instruction->IsArraySet()) {
-    Primitive::Type type = instruction->AsArraySet()->GetComponentType();
+    DataType::Type type = instruction->AsArraySet()->GetComponentType();
     HInstruction* base = instruction->InputAt(0);
     HInstruction* index = instruction->InputAt(1);
     HInstruction* value = instruction->InputAt(2);
@@ -1027,7 +1028,7 @@ bool HLoopOptimization::VectorizeDef(LoopNode* node,
   // (2) vectorizable right-hand-side value.
   auto redit = reductions_->find(instruction);
   if (redit != reductions_->end()) {
-    Primitive::Type type = instruction->GetType();
+    DataType::Type type = instruction->GetType();
     // Recognize SAD idiom or direct reduction.
     if (VectorizeSADIdiom(node, instruction, generate_code, type, restrictions) ||
         (TrySetVectorType(type, &restrictions) &&
@@ -1054,7 +1055,7 @@ bool HLoopOptimization::VectorizeDef(LoopNode* node,
 bool HLoopOptimization::VectorizeUse(LoopNode* node,
                                      HInstruction* instruction,
                                      bool generate_code,
-                                     Primitive::Type type,
+                                     DataType::Type type,
                                      uint64_t restrictions) {
   // Accept anything for which code has already been generated.
   if (generate_code) {
@@ -1115,12 +1116,12 @@ bool HLoopOptimization::VectorizeUse(LoopNode* node,
     // Accept particular type conversions.
     HTypeConversion* conversion = instruction->AsTypeConversion();
     HInstruction* opa = conversion->InputAt(0);
-    Primitive::Type from = conversion->GetInputType();
-    Primitive::Type to = conversion->GetResultType();
-    if (Primitive::IsIntegralType(from) && Primitive::IsIntegralType(to)) {
-      size_t size_vec = Primitive::ComponentSize(type);
-      size_t size_from = Primitive::ComponentSize(from);
-      size_t size_to = Primitive::ComponentSize(to);
+    DataType::Type from = conversion->GetInputType();
+    DataType::Type to = conversion->GetResultType();
+    if (DataType::IsIntegralType(from) && DataType::IsIntegralType(to)) {
+      size_t size_vec = DataType::Size(type);
+      size_t size_from = DataType::Size(from);
+      size_t size_to = DataType::Size(to);
       // Accept an integral conversion
       // (1a) narrowing into vector type, "wider" operations cannot bring in higher order bits, or
       // (1b) widening from at least vector type, and
@@ -1140,7 +1141,7 @@ bool HLoopOptimization::VectorizeUse(LoopNode* node,
         }
         return true;
       }
-    } else if (to == Primitive::kPrimFloat && from == Primitive::kPrimInt) {
+    } else if (to == DataType::Type::kFloat32 && from == DataType::Type::kInt32) {
       DCHECK_EQ(to, type);
       // Accept int to float conversion for
       // (1) supported int,
@@ -1215,7 +1216,7 @@ bool HLoopOptimization::VectorizeUse(LoopNode* node,
     if (VectorizeUse(node, r, generate_code, type, restrictions) &&
         IsInt64AndGet(opb, /*out*/ &distance)) {
       // Restrict shift distance to packed data type width.
-      int64_t max_distance = Primitive::ComponentSize(type) * 8;
+      int64_t max_distance = DataType::Size(type) * 8;
       if (0 <= distance && distance < max_distance) {
         if (generate_code) {
           GenerateVecOp(instruction, vector_map_->Get(r), opb, type);
@@ -1298,7 +1299,7 @@ bool HLoopOptimization::VectorizeUse(LoopNode* node,
   return false;
 }
 
-bool HLoopOptimization::TrySetVectorType(Primitive::Type type, uint64_t* restrictions) {
+bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrictions) {
   const InstructionSetFeatures* features = compiler_driver_->GetInstructionSetFeatures();
   switch (compiler_driver_->GetInstructionSet()) {
     case kArm:
@@ -1306,15 +1307,15 @@ bool HLoopOptimization::TrySetVectorType(Primitive::Type type, uint64_t* restric
       // Allow vectorization for all ARM devices, because Android assumes that
       // ARM 32-bit always supports advanced SIMD (64-bit SIMD).
       switch (type) {
-        case Primitive::kPrimBoolean:
-        case Primitive::kPrimByte:
+        case DataType::Type::kBool:
+        case DataType::Type::kInt8:
           *restrictions |= kNoDiv | kNoReduction;
           return TrySetVectorLength(8);
-        case Primitive::kPrimChar:
-        case Primitive::kPrimShort:
+        case DataType::Type::kUint16:
+        case DataType::Type::kInt16:
           *restrictions |= kNoDiv | kNoStringCharAt | kNoReduction;
           return TrySetVectorLength(4);
-        case Primitive::kPrimInt:
+        case DataType::Type::kInt32:
           *restrictions |= kNoDiv | kNoReduction;
           return TrySetVectorLength(2);
         default:
@@ -1325,24 +1326,24 @@ bool HLoopOptimization::TrySetVectorType(Primitive::Type type, uint64_t* restric
       // Allow vectorization for all ARM devices, because Android assumes that
       // ARMv8 AArch64 always supports advanced SIMD (128-bit SIMD).
       switch (type) {
-        case Primitive::kPrimBoolean:
-        case Primitive::kPrimByte:
+        case DataType::Type::kBool:
+        case DataType::Type::kInt8:
           *restrictions |= kNoDiv;
           return TrySetVectorLength(16);
-        case Primitive::kPrimChar:
-        case Primitive::kPrimShort:
+        case DataType::Type::kUint16:
+        case DataType::Type::kInt16:
           *restrictions |= kNoDiv;
           return TrySetVectorLength(8);
-        case Primitive::kPrimInt:
+        case DataType::Type::kInt32:
           *restrictions |= kNoDiv;
           return TrySetVectorLength(4);
-        case Primitive::kPrimLong:
+        case DataType::Type::kInt64:
           *restrictions |= kNoDiv | kNoMul | kNoMinMax;
           return TrySetVectorLength(2);
-        case Primitive::kPrimFloat:
+        case DataType::Type::kFloat32:
           *restrictions |= kNoReduction;
           return TrySetVectorLength(4);
-        case Primitive::kPrimDouble:
+        case DataType::Type::kFloat64:
           *restrictions |= kNoReduction;
           return TrySetVectorLength(2);
         default:
@@ -1353,25 +1354,25 @@ bool HLoopOptimization::TrySetVectorType(Primitive::Type type, uint64_t* restric
       // Allow vectorization for SSE4.1-enabled X86 devices only (128-bit SIMD).
       if (features->AsX86InstructionSetFeatures()->HasSSE4_1()) {
         switch (type) {
-          case Primitive::kPrimBoolean:
-          case Primitive::kPrimByte:
+          case DataType::Type::kBool:
+          case DataType::Type::kInt8:
             *restrictions |=
                 kNoMul | kNoDiv | kNoShift | kNoAbs | kNoSignedHAdd | kNoUnroundedHAdd | kNoSAD;
             return TrySetVectorLength(16);
-          case Primitive::kPrimChar:
-          case Primitive::kPrimShort:
+          case DataType::Type::kUint16:
+          case DataType::Type::kInt16:
             *restrictions |= kNoDiv | kNoAbs | kNoSignedHAdd | kNoUnroundedHAdd | kNoSAD;
             return TrySetVectorLength(8);
-          case Primitive::kPrimInt:
+          case DataType::Type::kInt32:
             *restrictions |= kNoDiv | kNoSAD;
             return TrySetVectorLength(4);
-          case Primitive::kPrimLong:
+          case DataType::Type::kInt64:
             *restrictions |= kNoMul | kNoDiv | kNoShr | kNoAbs | kNoMinMax | kNoSAD;
             return TrySetVectorLength(2);
-          case Primitive::kPrimFloat:
+          case DataType::Type::kFloat32:
             *restrictions |= kNoMinMax | kNoReduction;  // minmax: -0.0 vs +0.0
             return TrySetVectorLength(4);
-          case Primitive::kPrimDouble:
+          case DataType::Type::kFloat64:
             *restrictions |= kNoMinMax | kNoReduction;  // minmax: -0.0 vs +0.0
             return TrySetVectorLength(2);
           default:
@@ -1382,24 +1383,24 @@ bool HLoopOptimization::TrySetVectorType(Primitive::Type type, uint64_t* restric
     case kMips:
       if (features->AsMipsInstructionSetFeatures()->HasMsa()) {
         switch (type) {
-          case Primitive::kPrimBoolean:
-          case Primitive::kPrimByte:
+          case DataType::Type::kBool:
+          case DataType::Type::kInt8:
             *restrictions |= kNoDiv | kNoReduction | kNoSAD;
             return TrySetVectorLength(16);
-          case Primitive::kPrimChar:
-          case Primitive::kPrimShort:
+          case DataType::Type::kUint16:
+          case DataType::Type::kInt16:
             *restrictions |= kNoDiv | kNoStringCharAt | kNoReduction | kNoSAD;
             return TrySetVectorLength(8);
-          case Primitive::kPrimInt:
+          case DataType::Type::kInt32:
             *restrictions |= kNoDiv | kNoReduction | kNoSAD;
             return TrySetVectorLength(4);
-          case Primitive::kPrimLong:
+          case DataType::Type::kInt64:
             *restrictions |= kNoDiv | kNoReduction | kNoSAD;
             return TrySetVectorLength(2);
-          case Primitive::kPrimFloat:
+          case DataType::Type::kFloat32:
             *restrictions |= kNoMinMax | kNoReduction;  // min/max(x, NaN)
             return TrySetVectorLength(4);
-          case Primitive::kPrimDouble:
+          case DataType::Type::kFloat64:
             *restrictions |= kNoMinMax | kNoReduction;  // min/max(x, NaN)
             return TrySetVectorLength(2);
           default:
@@ -1410,24 +1411,24 @@ bool HLoopOptimization::TrySetVectorType(Primitive::Type type, uint64_t* restric
     case kMips64:
       if (features->AsMips64InstructionSetFeatures()->HasMsa()) {
         switch (type) {
-          case Primitive::kPrimBoolean:
-          case Primitive::kPrimByte:
+          case DataType::Type::kBool:
+          case DataType::Type::kInt8:
             *restrictions |= kNoDiv | kNoReduction | kNoSAD;
             return TrySetVectorLength(16);
-          case Primitive::kPrimChar:
-          case Primitive::kPrimShort:
+          case DataType::Type::kUint16:
+          case DataType::Type::kInt16:
             *restrictions |= kNoDiv | kNoStringCharAt | kNoReduction | kNoSAD;
             return TrySetVectorLength(8);
-          case Primitive::kPrimInt:
+          case DataType::Type::kInt32:
             *restrictions |= kNoDiv | kNoReduction | kNoSAD;
             return TrySetVectorLength(4);
-          case Primitive::kPrimLong:
+          case DataType::Type::kInt64:
             *restrictions |= kNoDiv | kNoReduction | kNoSAD;
             return TrySetVectorLength(2);
-          case Primitive::kPrimFloat:
+          case DataType::Type::kFloat32:
             *restrictions |= kNoMinMax | kNoReduction;  // min/max(x, NaN)
             return TrySetVectorLength(4);
-          case Primitive::kPrimDouble:
+          case DataType::Type::kFloat64:
             *restrictions |= kNoMinMax | kNoReduction;  // min/max(x, NaN)
             return TrySetVectorLength(2);
           default:
@@ -1452,7 +1453,7 @@ bool HLoopOptimization::TrySetVectorLength(uint32_t length) {
   return vector_length_ == length;
 }
 
-void HLoopOptimization::GenerateVecInv(HInstruction* org, Primitive::Type type) {
+void HLoopOptimization::GenerateVecInv(HInstruction* org, DataType::Type type) {
   if (vector_map_->find(org) == vector_map_->end()) {
     // In scalar code, just use a self pass-through for scalar invariants
     // (viz. expression remains itself).
@@ -1468,9 +1469,9 @@ void HLoopOptimization::GenerateVecInv(HInstruction* org, Primitive::Type type) 
     } else {
       // Generates ReplicateScalar( (optional_type_conv) org ).
       HInstruction* input = org;
-      Primitive::Type input_type = input->GetType();
-      if (type != input_type && (type == Primitive::kPrimLong ||
-                                 input_type == Primitive::kPrimLong)) {
+      DataType::Type input_type = input->GetType();
+      if (type != input_type && (type == DataType::Type::kInt64 ||
+                                 input_type == DataType::Type::kInt64)) {
         input = Insert(vector_preheader_,
                        new (global_allocator_) HTypeConversion(type, input, kNoDexPc));
       }
@@ -1487,7 +1488,7 @@ void HLoopOptimization::GenerateVecSub(HInstruction* org, HInstruction* offset) 
     HInstruction* subscript = vector_index_;
     int64_t value = 0;
     if (!IsInt64AndGet(offset, &value) || value != 0) {
-      subscript = new (global_allocator_) HAdd(Primitive::kPrimInt, subscript, offset);
+      subscript = new (global_allocator_) HAdd(DataType::Type::kInt32, subscript, offset);
       if (org->IsPhi()) {
         Insert(vector_body_, subscript);  // lacks layout placeholder
       }
@@ -1500,7 +1501,7 @@ void HLoopOptimization::GenerateVecMem(HInstruction* org,
                                        HInstruction* opa,
                                        HInstruction* opb,
                                        HInstruction* offset,
-                                       Primitive::Type type) {
+                                       DataType::Type type) {
   HInstruction* vector = nullptr;
   if (vector_mode_ == kVector) {
     // Vector store or load.
@@ -1570,7 +1571,7 @@ void HLoopOptimization::GenerateVecReductionPhiInputs(HPhi* phi, HInstruction* r
     // Generate a [initial, 0, .., 0] vector.
     HVecOperation* red_vector = new_red->AsVecOperation();
     size_t vector_length = red_vector->GetVectorLength();
-    Primitive::Type type = red_vector->GetPackedType();
+    DataType::Type type = red_vector->GetPackedType();
     new_init = Insert(vector_preheader_,
                       new (global_allocator_) HVecSetScalars(global_allocator_,
                                                              &new_init,
@@ -1594,7 +1595,7 @@ HInstruction* HLoopOptimization::ReduceAndExtractIfNeeded(HInstruction* instruct
     if (input->IsVecOperation()) {
       HVecOperation* input_vector = input->AsVecOperation();
       size_t vector_length = input_vector->GetVectorLength();
-      Primitive::Type type = input_vector->GetPackedType();
+      DataType::Type type = input_vector->GetPackedType();
       HVecReduce::ReductionKind kind = GetReductionKind(input_vector);
       HBasicBlock* exit = instruction->GetBlock()->GetSuccessors()[0];
       // Generate a vector reduction and scalar extract
@@ -1624,10 +1625,10 @@ HInstruction* HLoopOptimization::ReduceAndExtractIfNeeded(HInstruction* instruct
 void HLoopOptimization::GenerateVecOp(HInstruction* org,
                                       HInstruction* opa,
                                       HInstruction* opb,
-                                      Primitive::Type type,
+                                      DataType::Type type,
                                       bool is_unsigned) {
   HInstruction* vector = nullptr;
-  Primitive::Type org_type = org->GetType();
+  DataType::Type org_type = org->GetType();
   switch (org->GetKind()) {
     case HInstruction::kNeg:
       DCHECK(opb == nullptr);
@@ -1779,7 +1780,7 @@ void HLoopOptimization::GenerateVecOp(HInstruction* org,
 bool HLoopOptimization::VectorizeHalvingAddIdiom(LoopNode* node,
                                                  HInstruction* instruction,
                                                  bool generate_code,
-                                                 Primitive::Type type,
+                                                 DataType::Type type,
                                                  uint64_t restrictions) {
   // Test for top level arithmetic shift right x >> 1 or logical shift right x >>> 1
   // (note whether the sign bit in wider precision is shifted in has no effect
@@ -1853,12 +1854,12 @@ bool HLoopOptimization::VectorizeHalvingAddIdiom(LoopNode* node,
 bool HLoopOptimization::VectorizeSADIdiom(LoopNode* node,
                                           HInstruction* instruction,
                                           bool generate_code,
-                                          Primitive::Type reduction_type,
+                                          DataType::Type reduction_type,
                                           uint64_t restrictions) {
   // Filter integral "q += ABS(a - b);" reduction, where ABS and SUB
   // are done in the same precision (either int or long).
   if (!instruction->IsAdd() ||
-      (reduction_type != Primitive::kPrimInt && reduction_type != Primitive::kPrimLong)) {
+      (reduction_type != DataType::Type::kInt32 && reduction_type != DataType::Type::kInt64)) {
     return false;
   }
   HInstruction* q = instruction->InputAt(0);
@@ -1882,7 +1883,7 @@ bool HLoopOptimization::VectorizeSADIdiom(LoopNode* node,
   HInstruction* r = a;
   HInstruction* s = b;
   bool is_unsigned = false;
-  Primitive::Type sub_type = a->GetType();
+  DataType::Type sub_type = a->GetType();
   if (a->IsTypeConversion()) {
     sub_type = a->InputAt(0)->GetType();
   } else if (b->IsTypeConversion()) {

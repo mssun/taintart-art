@@ -18,6 +18,7 @@
 
 #include "art_method-inl.h"
 #include "class_linker-inl.h"
+#include "data_type-inl.h"
 #include "escape.h"
 #include "intrinsics.h"
 #include "mirror/class-inl.h"
@@ -103,10 +104,10 @@ class InstructionSimplifierVisitor : public HGraphDelegateVisitor {
 
   bool CanEnsureNotNullAt(HInstruction* instr, HInstruction* at) const;
 
-  void SimplifyRotate(HInvoke* invoke, bool is_left, Primitive::Type type);
+  void SimplifyRotate(HInvoke* invoke, bool is_left, DataType::Type type);
   void SimplifySystemArrayCopy(HInvoke* invoke);
   void SimplifyStringEquals(HInvoke* invoke);
-  void SimplifyCompare(HInvoke* invoke, bool is_signum, Primitive::Type type);
+  void SimplifyCompare(HInvoke* invoke, bool is_signum, DataType::Type type);
   void SimplifyIsNaN(HInvoke* invoke);
   void SimplifyFP2Int(HInvoke* invoke);
   void SimplifyStringCharAt(HInvoke* invoke);
@@ -178,7 +179,7 @@ bool InstructionSimplifierVisitor::TryMoveNegOnInputsAfterBinop(HBinaryOperation
   // Note that we cannot optimize `(-a) + (-b)` to `-(a + b)` for floating-point.
   // When `a` is `-0.0` and `b` is `0.0`, the former expression yields `0.0`,
   // while the later yields `-0.0`.
-  if (!Primitive::IsIntegralType(binop->GetType())) {
+  if (!DataType::IsIntegralType(binop->GetType())) {
     return false;
   }
   binop->ReplaceInput(left_neg->GetInput(), 0);
@@ -194,7 +195,7 @@ bool InstructionSimplifierVisitor::TryMoveNegOnInputsAfterBinop(HBinaryOperation
 
 bool InstructionSimplifierVisitor::TryDeMorganNegationFactoring(HBinaryOperation* op) {
   DCHECK(op->IsAnd() || op->IsOr()) << op->DebugName();
-  Primitive::Type type = op->GetType();
+  DataType::Type type = op->GetType();
   HInstruction* left = op->GetLeft();
   HInstruction* right = op->GetRight();
 
@@ -246,24 +247,24 @@ bool InstructionSimplifierVisitor::TryDeMorganNegationFactoring(HBinaryOperation
 }
 
 bool InstructionSimplifierVisitor::TryCombineVecMultiplyAccumulate(HVecMul* mul) {
-  Primitive::Type type = mul->GetPackedType();
+  DataType::Type type = mul->GetPackedType();
   InstructionSet isa = codegen_->GetInstructionSet();
   switch (isa) {
     case kArm64:
-      if (!(type == Primitive::kPrimByte ||
-            type == Primitive::kPrimChar ||
-            type == Primitive::kPrimShort ||
-            type == Primitive::kPrimInt)) {
+      if (!(type == DataType::Type::kInt8 ||
+            type == DataType::Type::kUint16 ||
+            type == DataType::Type::kInt16 ||
+            type == DataType::Type::kInt32)) {
         return false;
       }
       break;
     case kMips:
     case kMips64:
-      if (!(type == Primitive::kPrimByte ||
-            type == Primitive::kPrimChar ||
-            type == Primitive::kPrimShort ||
-            type == Primitive::kPrimInt ||
-            type == Primitive::kPrimLong)) {
+      if (!(type == DataType::Type::kInt8 ||
+            type == DataType::Type::kUint16 ||
+            type == DataType::Type::kInt16 ||
+            type == DataType::Type::kInt32 ||
+            type == DataType::Type::kInt64)) {
         return false;
       }
       break;
@@ -328,7 +329,7 @@ void InstructionSimplifierVisitor::VisitShift(HBinaryOperation* instruction) {
   HInstruction* shift_amount = instruction->GetRight();
   HInstruction* value = instruction->GetLeft();
 
-  int64_t implicit_mask = (value->GetType() == Primitive::kPrimLong)
+  int64_t implicit_mask = (value->GetType() == DataType::Type::kInt64)
       ? kMaxLongShiftDistance
       : kMaxIntShiftDistance;
 
@@ -351,7 +352,7 @@ void InstructionSimplifierVisitor::VisitShift(HBinaryOperation* instruction) {
       //    SHL dst, value, cst & implicit_mask
       // (as defined by shift semantics). This ensures other
       // optimizations do not need to special case for such situations.
-      DCHECK_EQ(shift_amount->GetType(), Primitive::kPrimInt);
+      DCHECK_EQ(shift_amount->GetType(), DataType::Type::kInt32);
       instruction->ReplaceInput(GetGraph()->GetIntConstant(masked_cst), /* index */ 1);
       RecordSimplification();
       return;
@@ -412,7 +413,7 @@ bool InstructionSimplifierVisitor::TryReplaceWithRotate(HBinaryOperation* op) {
   if ((left->IsUShr() && right->IsShl()) || (left->IsShl() && right->IsUShr())) {
     HUShr* ushr = left->IsUShr() ? left->AsUShr() : right->AsUShr();
     HShl* shl = left->IsShl() ? left->AsShl() : right->AsShl();
-    DCHECK(Primitive::IsIntOrLongType(ushr->GetType()));
+    DCHECK(DataType::IsIntOrLongType(ushr->GetType()));
     if (ushr->GetType() == shl->GetType() &&
         ushr->GetLeft() == shl->GetLeft()) {
       if (ushr->GetRight()->IsConstant() && shl->GetRight()->IsConstant()) {
@@ -445,7 +446,7 @@ bool InstructionSimplifierVisitor::TryReplaceWithRotateConstantPattern(HBinaryOp
                                                                        HUShr* ushr,
                                                                        HShl* shl) {
   DCHECK(op->IsAdd() || op->IsXor() || op->IsOr());
-  size_t reg_bits = Primitive::ComponentSize(ushr->GetType()) * kBitsPerByte;
+  size_t reg_bits = DataType::Size(ushr->GetType()) * kBitsPerByte;
   size_t rdist = Int64FromConstant(ushr->GetRight()->AsConstant());
   size_t ldist = Int64FromConstant(shl->GetRight()->AsConstant());
   if (((ldist + rdist) & (reg_bits - 1)) == 0) {
@@ -506,7 +507,7 @@ bool InstructionSimplifierVisitor::TryReplaceWithRotateRegisterSubPattern(HBinar
                                                                           HShl* shl) {
   DCHECK(op->IsAdd() || op->IsXor() || op->IsOr());
   DCHECK(ushr->GetRight()->IsSub() || shl->GetRight()->IsSub());
-  size_t reg_bits = Primitive::ComponentSize(ushr->GetType()) * kBitsPerByte;
+  size_t reg_bits = DataType::Size(ushr->GetType()) * kBitsPerByte;
   HInstruction* shl_shift = shl->GetRight();
   HInstruction* ushr_shift = ushr->GetRight();
   if ((shl_shift->IsSub() && IsSubRegBitsMinusOther(shl_shift->AsSub(), reg_bits, ushr_shift)) ||
@@ -664,14 +665,14 @@ void InstructionSimplifierVisitor::VisitInstanceOf(HInstanceOf* instruction) {
 }
 
 void InstructionSimplifierVisitor::VisitInstanceFieldSet(HInstanceFieldSet* instruction) {
-  if ((instruction->GetValue()->GetType() == Primitive::kPrimNot)
+  if ((instruction->GetValue()->GetType() == DataType::Type::kReference)
       && CanEnsureNotNullAt(instruction->GetValue(), instruction)) {
     instruction->ClearValueCanBeNull();
   }
 }
 
 void InstructionSimplifierVisitor::VisitStaticFieldSet(HStaticFieldSet* instruction) {
-  if ((instruction->GetValue()->GetType() == Primitive::kPrimNot)
+  if ((instruction->GetValue()->GetType() == DataType::Type::kReference)
       && CanEnsureNotNullAt(instruction->GetValue(), instruction)) {
     instruction->ClearValueCanBeNull();
   }
@@ -708,7 +709,7 @@ static HCondition* GetOppositeConditionSwapOps(ArenaAllocator* arena, HInstructi
 }
 
 static bool CmpHasBoolType(HInstruction* input, HInstruction* cmp) {
-  if (input->GetType() == Primitive::kPrimBoolean) {
+  if (input->GetType() == DataType::Type::kBool) {
     return true;  // input has direct boolean type
   } else if (cmp->GetUses().HasExactlyOneElement()) {
     // Comparison also has boolean type if both its input and the instruction
@@ -801,7 +802,7 @@ void InstructionSimplifierVisitor::VisitBooleanNot(HBooleanNot* bool_not) {
   } else if (input->IsCondition() &&
              // Don't change FP compares. The definition of compares involving
              // NaNs forces the compares to be done as written by the user.
-             !Primitive::IsFloatingPointType(input->InputAt(0)->GetType())) {
+             !DataType::IsFloatingPointType(input->InputAt(0)->GetType())) {
     // Replace condition with its opposite.
     replace_with = GetGraph()->InsertOppositeCondition(input->AsCondition(), bool_not);
   }
@@ -815,8 +816,8 @@ void InstructionSimplifierVisitor::VisitBooleanNot(HBooleanNot* bool_not) {
 
 // Constructs a new ABS(x) node in the HIR.
 static HInstruction* NewIntegralAbs(ArenaAllocator* arena, HInstruction* x, HInstruction* cursor) {
-  Primitive::Type type = x->GetType();
-  DCHECK(type == Primitive::kPrimInt || type ==  Primitive::kPrimLong);
+  DataType::Type type = x->GetType();
+  DCHECK(type == DataType::Type::kInt32 || type ==  DataType::Type::kInt64);
   // Construct a fake intrinsic with as much context as is needed to allocate one.
   // The intrinsic will always be lowered into code later anyway.
   // TODO: b/65164101 : moving towards a real HAbs node makes more sense.
@@ -837,8 +838,8 @@ static HInstruction* NewIntegralAbs(ArenaAllocator* arena, HInstruction* x, HIns
       MethodReference(nullptr, dex::kDexNoIndex),
       HInvokeStaticOrDirect::ClinitCheckRequirement::kNone);
   invoke->SetArgumentAt(0, x);
-  invoke->SetIntrinsic(type == Primitive::kPrimInt ? Intrinsics::kMathAbsInt
-                                                   : Intrinsics::kMathAbsLong,
+  invoke->SetIntrinsic(type == DataType::Type::kInt32 ? Intrinsics::kMathAbsInt
+                                                      : Intrinsics::kMathAbsLong,
                        kNoEnvironmentOrCache,
                        kNoSideEffects,
                        kNoThrow);
@@ -848,20 +849,20 @@ static HInstruction* NewIntegralAbs(ArenaAllocator* arena, HInstruction* x, HIns
 
 // Returns true if operands a and b consists of widening type conversions
 // (either explicit or implicit) to the given to_type.
-static bool AreLowerPrecisionArgs(Primitive::Type to_type, HInstruction* a, HInstruction* b) {
+static bool AreLowerPrecisionArgs(DataType::Type to_type, HInstruction* a, HInstruction* b) {
   if (a->IsTypeConversion() && a->GetType() == to_type) {
     a = a->InputAt(0);
   }
   if (b->IsTypeConversion() && b->GetType() == to_type) {
     b = b->InputAt(0);
   }
-  Primitive::Type type1 = a->GetType();
-  Primitive::Type type2 = b->GetType();
-  return (type1 == Primitive::kPrimByte  && type2 == Primitive::kPrimByte) ||
-         (type1 == Primitive::kPrimShort && type2 == Primitive::kPrimShort) ||
-         (type1 == Primitive::kPrimChar  && type2 == Primitive::kPrimChar) ||
-         (type1 == Primitive::kPrimInt   && type2 == Primitive::kPrimInt &&
-          to_type == Primitive::kPrimLong);
+  DataType::Type type1 = a->GetType();
+  DataType::Type type2 = b->GetType();
+  return (type1 == DataType::Type::kInt8  && type2 == DataType::Type::kInt8) ||
+         (type1 == DataType::Type::kInt16 && type2 == DataType::Type::kInt16) ||
+         (type1 == DataType::Type::kUint16  && type2 == DataType::Type::kUint16) ||
+         (type1 == DataType::Type::kInt32   && type2 == DataType::Type::kInt32 &&
+          to_type == DataType::Type::kInt64);
 }
 
 void InstructionSimplifierVisitor::VisitSelect(HSelect* select) {
@@ -904,11 +905,12 @@ void InstructionSimplifierVisitor::VisitSelect(HSelect* select) {
     IfCondition cmp = condition->AsCondition()->GetCondition();
     HInstruction* a = condition->InputAt(0);
     HInstruction* b = condition->InputAt(1);
-    Primitive::Type t_type = true_value->GetType();
-    Primitive::Type f_type = false_value->GetType();
+    DataType::Type t_type = true_value->GetType();
+    DataType::Type f_type = false_value->GetType();
     // Here we have a <cmp> b ? true_value : false_value.
     // Test if both values are same-typed int or long.
-    if (t_type == f_type && (t_type == Primitive::kPrimInt || t_type == Primitive::kPrimLong)) {
+    if (t_type == f_type &&
+        (t_type == DataType::Type::kInt32 || t_type == DataType::Type::kInt64)) {
       // Try to replace typical integral ABS constructs.
       if (true_value->IsNeg()) {
         HInstruction* negated = true_value->InputAt(0);
@@ -974,7 +976,9 @@ void InstructionSimplifierVisitor::VisitArrayLength(HArrayLength* instruction) {
 
 void InstructionSimplifierVisitor::VisitArraySet(HArraySet* instruction) {
   HInstruction* value = instruction->GetValue();
-  if (value->GetType() != Primitive::kPrimNot) return;
+  if (value->GetType() != DataType::Type::kReference) {
+    return;
+  }
 
   if (CanEnsureNotNullAt(value, instruction)) {
     instruction->ClearValueCanBeNull();
@@ -1014,39 +1018,39 @@ void InstructionSimplifierVisitor::VisitArraySet(HArraySet* instruction) {
   }
 }
 
-static bool IsTypeConversionImplicit(Primitive::Type input_type, Primitive::Type result_type) {
+static bool IsTypeConversionImplicit(DataType::Type input_type, DataType::Type result_type) {
   // Invariant: We should never generate a conversion to a Boolean value.
-  DCHECK_NE(Primitive::kPrimBoolean, result_type);
+  DCHECK_NE(DataType::Type::kBool, result_type);
 
   // Besides conversion to the same type, widening integral conversions are implicit,
   // excluding conversions to long and the byte->char conversion where we need to
   // clear the high 16 bits of the 32-bit sign-extended representation of byte.
   return result_type == input_type ||
-      (result_type == Primitive::kPrimInt && (input_type == Primitive::kPrimBoolean ||
-                                              input_type == Primitive::kPrimByte ||
-                                              input_type == Primitive::kPrimShort ||
-                                              input_type == Primitive::kPrimChar)) ||
-      (result_type == Primitive::kPrimChar && input_type == Primitive::kPrimBoolean) ||
-      (result_type == Primitive::kPrimShort && (input_type == Primitive::kPrimBoolean ||
-                                                input_type == Primitive::kPrimByte)) ||
-      (result_type == Primitive::kPrimByte && input_type == Primitive::kPrimBoolean);
+      (result_type == DataType::Type::kInt32 && (input_type == DataType::Type::kBool ||
+                                                 input_type == DataType::Type::kInt8 ||
+                                                 input_type == DataType::Type::kInt16 ||
+                                                 input_type == DataType::Type::kUint16)) ||
+      (result_type == DataType::Type::kUint16 && input_type == DataType::Type::kBool) ||
+      (result_type == DataType::Type::kInt16 && (input_type == DataType::Type::kBool ||
+                                                 input_type == DataType::Type::kInt8)) ||
+      (result_type == DataType::Type::kInt8 && input_type == DataType::Type::kBool);
 }
 
-static bool IsTypeConversionLossless(Primitive::Type input_type, Primitive::Type result_type) {
+static bool IsTypeConversionLossless(DataType::Type input_type, DataType::Type result_type) {
   // The conversion to a larger type is loss-less with the exception of two cases,
-  //   - conversion to char, the only unsigned type, where we may lose some bits, and
+  //   - conversion to Uint16, the only unsigned type, where we may lose some bits, and
   //   - conversion from float to long, the only FP to integral conversion with smaller FP type.
   // For integral to FP conversions this holds because the FP mantissa is large enough.
   DCHECK_NE(input_type, result_type);
-  return Primitive::ComponentSize(result_type) > Primitive::ComponentSize(input_type) &&
-      result_type != Primitive::kPrimChar &&
-      !(result_type == Primitive::kPrimLong && input_type == Primitive::kPrimFloat);
+  return DataType::Size(result_type) > DataType::Size(input_type) &&
+      result_type != DataType::Type::kUint16 &&
+      !(result_type == DataType::Type::kInt64 && input_type == DataType::Type::kFloat32);
 }
 
 void InstructionSimplifierVisitor::VisitTypeConversion(HTypeConversion* instruction) {
   HInstruction* input = instruction->GetInput();
-  Primitive::Type input_type = input->GetType();
-  Primitive::Type result_type = instruction->GetResultType();
+  DataType::Type input_type = input->GetType();
+  DataType::Type result_type = instruction->GetResultType();
   if (IsTypeConversionImplicit(input_type, result_type)) {
     // Remove the implicit conversion; this includes conversion to the same type.
     instruction->ReplaceWith(input);
@@ -1058,7 +1062,7 @@ void InstructionSimplifierVisitor::VisitTypeConversion(HTypeConversion* instruct
   if (input->IsTypeConversion()) {
     HTypeConversion* input_conversion = input->AsTypeConversion();
     HInstruction* original_input = input_conversion->GetInput();
-    Primitive::Type original_type = original_input->GetType();
+    DataType::Type original_type = original_input->GetType();
 
     // When the first conversion is lossless, a direct conversion from the original type
     // to the final type yields the same result, even for a lossy second conversion, for
@@ -1069,10 +1073,10 @@ void InstructionSimplifierVisitor::VisitTypeConversion(HTypeConversion* instruct
     // doesn't need, i.e. the final type is no wider than the intermediate. If so, direct
     // conversion yields the same result, for example long->int->short or int->char->short.
     bool integral_conversions_with_non_widening_second =
-        Primitive::IsIntegralType(input_type) &&
-        Primitive::IsIntegralType(original_type) &&
-        Primitive::IsIntegralType(result_type) &&
-        Primitive::ComponentSize(result_type) <= Primitive::ComponentSize(input_type);
+        DataType::IsIntegralType(input_type) &&
+        DataType::IsIntegralType(original_type) &&
+        DataType::IsIntegralType(result_type) &&
+        DataType::Size(result_type) <= DataType::Size(input_type);
 
     if (is_first_conversion_lossless || integral_conversions_with_non_widening_second) {
       // If the merged conversion is implicit, do the simplification unconditionally.
@@ -1094,15 +1098,15 @@ void InstructionSimplifierVisitor::VisitTypeConversion(HTypeConversion* instruct
         return;
       }
     }
-  } else if (input->IsAnd() && Primitive::IsIntegralType(result_type)) {
-    DCHECK(Primitive::IsIntegralType(input_type));
+  } else if (input->IsAnd() && DataType::IsIntegralType(result_type)) {
+    DCHECK(DataType::IsIntegralType(input_type));
     HAnd* input_and = input->AsAnd();
     HConstant* constant = input_and->GetConstantRight();
     if (constant != nullptr) {
       int64_t value = Int64FromConstant(constant);
       DCHECK_NE(value, -1);  // "& -1" would have been optimized away in VisitAnd().
       size_t trailing_ones = CTZ(~static_cast<uint64_t>(value));
-      if (trailing_ones >= kBitsPerByte * Primitive::ComponentSize(result_type)) {
+      if (trailing_ones >= kBitsPerByte * DataType::Size(result_type)) {
         // The `HAnd` is useless, for example in `(byte) (x & 0xff)`, get rid of it.
         HInstruction* original_input = input_and->GetLeastConstantLeft();
         if (IsTypeConversionImplicit(original_input->GetType(), result_type)) {
@@ -1124,7 +1128,7 @@ void InstructionSimplifierVisitor::VisitTypeConversion(HTypeConversion* instruct
 void InstructionSimplifierVisitor::VisitAdd(HAdd* instruction) {
   HConstant* input_cst = instruction->GetConstantRight();
   HInstruction* input_other = instruction->GetLeastConstantLeft();
-  bool integral_type = Primitive::IsIntegralType(instruction->GetType());
+  bool integral_type = DataType::IsIntegralType(instruction->GetType());
   if ((input_cst != nullptr) && input_cst->IsArithmeticZero()) {
     // Replace code looking like
     //    ADD dst, src, 0
@@ -1226,7 +1230,7 @@ void InstructionSimplifierVisitor::VisitAnd(HAnd* instruction) {
     // can be non-zero after UShr. Transform Shr+And to UShr if the And-mask
     // precisely clears the shifted-in sign bits.
     if ((input_other->IsUShr() || input_other->IsShr()) && input_other->InputAt(1)->IsConstant()) {
-      size_t reg_bits = (instruction->GetResultType() == Primitive::kPrimLong) ? 64 : 32;
+      size_t reg_bits = (instruction->GetResultType() == DataType::Type::kInt64) ? 64 : 32;
       size_t shift = Int64FromConstant(input_other->InputAt(1)->AsConstant()) & (reg_bits - 1);
       size_t num_tail_bits_set = CTZ(value + 1);
       if ((num_tail_bits_set >= reg_bits - shift) && input_other->IsUShr()) {
@@ -1447,7 +1451,7 @@ static constexpr bool CanDivideByReciprocalMultiplyDouble(int64_t divisor) {
 void InstructionSimplifierVisitor::VisitDiv(HDiv* instruction) {
   HConstant* input_cst = instruction->GetConstantRight();
   HInstruction* input_other = instruction->GetLeastConstantLeft();
-  Primitive::Type type = instruction->GetType();
+  DataType::Type type = instruction->GetType();
 
   if ((input_cst != nullptr) && input_cst->IsOne()) {
     // Replace code looking like
@@ -1471,19 +1475,19 @@ void InstructionSimplifierVisitor::VisitDiv(HDiv* instruction) {
     return;
   }
 
-  if ((input_cst != nullptr) && Primitive::IsFloatingPointType(type)) {
+  if ((input_cst != nullptr) && DataType::IsFloatingPointType(type)) {
     // Try replacing code looking like
     //    DIV dst, src, constant
     // with
     //    MUL dst, src, 1 / constant
     HConstant* reciprocal = nullptr;
-    if (type == Primitive::Primitive::kPrimDouble) {
+    if (type == DataType::Type::kFloat64) {
       double value = input_cst->AsDoubleConstant()->GetValue();
       if (CanDivideByReciprocalMultiplyDouble(bit_cast<int64_t, double>(value))) {
         reciprocal = GetGraph()->GetDoubleConstant(1.0 / value);
       }
     } else {
-      DCHECK_EQ(type, Primitive::kPrimFloat);
+      DCHECK_EQ(type, DataType::Type::kFloat32);
       float value = input_cst->AsFloatConstant()->GetValue();
       if (CanDivideByReciprocalMultiplyFloat(bit_cast<int32_t, float>(value))) {
         reciprocal = GetGraph()->GetFloatConstant(1.0f / value);
@@ -1502,7 +1506,7 @@ void InstructionSimplifierVisitor::VisitDiv(HDiv* instruction) {
 void InstructionSimplifierVisitor::VisitMul(HMul* instruction) {
   HConstant* input_cst = instruction->GetConstantRight();
   HInstruction* input_other = instruction->GetLeastConstantLeft();
-  Primitive::Type type = instruction->GetType();
+  DataType::Type type = instruction->GetType();
   HBasicBlock* block = instruction->GetBlock();
   ArenaAllocator* allocator = GetGraph()->GetArena();
 
@@ -1522,7 +1526,7 @@ void InstructionSimplifierVisitor::VisitMul(HMul* instruction) {
   }
 
   if (input_cst->IsMinusOne() &&
-      (Primitive::IsFloatingPointType(type) || Primitive::IsIntOrLongType(type))) {
+      (DataType::IsFloatingPointType(type) || DataType::IsIntOrLongType(type))) {
     // Replace code looking like
     //    MUL dst, src, -1
     // with
@@ -1533,7 +1537,7 @@ void InstructionSimplifierVisitor::VisitMul(HMul* instruction) {
     return;
   }
 
-  if (Primitive::IsFloatingPointType(type) &&
+  if (DataType::IsFloatingPointType(type) &&
       ((input_cst->IsFloatConstant() && input_cst->AsFloatConstant()->GetValue() == 2.0f) ||
        (input_cst->IsDoubleConstant() && input_cst->AsDoubleConstant()->GetValue() == 2.0))) {
     // Replace code looking like
@@ -1547,7 +1551,7 @@ void InstructionSimplifierVisitor::VisitMul(HMul* instruction) {
     return;
   }
 
-  if (Primitive::IsIntOrLongType(type)) {
+  if (DataType::IsIntOrLongType(type)) {
     int64_t factor = Int64FromConstant(input_cst);
     // Even though constant propagation also takes care of the zero case, other
     // optimizations can lead to having a zero multiplication.
@@ -1630,7 +1634,7 @@ void InstructionSimplifierVisitor::VisitNeg(HNeg* instruction) {
   }
 
   if (input->IsSub() && input->HasOnlyOneNonEnvironmentUse() &&
-      !Primitive::IsFloatingPointType(input->GetType())) {
+      !DataType::IsFloatingPointType(input->GetType())) {
     // Replace code looking like
     //    SUB tmp, a, b
     //    NEG dst, tmp
@@ -1726,8 +1730,8 @@ void InstructionSimplifierVisitor::VisitSub(HSub* instruction) {
   HConstant* input_cst = instruction->GetConstantRight();
   HInstruction* input_other = instruction->GetLeastConstantLeft();
 
-  Primitive::Type type = instruction->GetType();
-  if (Primitive::IsFloatingPointType(type)) {
+  DataType::Type type = instruction->GetType();
+  if (DataType::IsFloatingPointType(type)) {
     return;
   }
 
@@ -1818,7 +1822,7 @@ void InstructionSimplifierVisitor::VisitSub(HSub* instruction) {
     // SUB instruction is not needed in this case, we may use
     // one of inputs of ADD instead.
     // It is applicable to integral types only.
-    DCHECK(Primitive::IsIntegralType(type));
+    DCHECK(DataType::IsIntegralType(type));
     if (left->InputAt(1) == right) {
       instruction->ReplaceWith(left->InputAt(0));
       RecordSimplification();
@@ -1853,7 +1857,7 @@ void InstructionSimplifierVisitor::VisitXor(HXor* instruction) {
   }
 
   if ((input_cst != nullptr) && input_cst->IsOne()
-      && input_other->GetType() == Primitive::kPrimBoolean) {
+      && input_other->GetType() == DataType::Type::kBool) {
     // Replace code looking like
     //    XOR dst, src, 1
     // with
@@ -1930,7 +1934,7 @@ void InstructionSimplifierVisitor::SimplifyStringEquals(HInvoke* instruction) {
 
 void InstructionSimplifierVisitor::SimplifyRotate(HInvoke* invoke,
                                                   bool is_left,
-                                                  Primitive::Type type) {
+                                                  DataType::Type type) {
   DCHECK(invoke->IsInvokeStaticOrDirect());
   DCHECK_EQ(invoke->GetInvokeType(), InvokeType::kStatic);
   HInstruction* value = invoke->InputAt(0);
@@ -1940,7 +1944,7 @@ void InstructionSimplifierVisitor::SimplifyRotate(HInvoke* invoke,
     // Unconditionally set the type of the negated distance to `int`,
     // as shift and rotate operations expect a 32-bit (or narrower)
     // value for their distance input.
-    distance = new (GetGraph()->GetArena()) HNeg(Primitive::kPrimInt, distance);
+    distance = new (GetGraph()->GetArena()) HNeg(DataType::Type::kInt32, distance);
     invoke->GetBlock()->InsertInstructionBefore(distance, invoke);
   }
   HRor* ror = new (GetGraph()->GetArena()) HRor(type, value, distance);
@@ -1993,8 +1997,8 @@ void InstructionSimplifierVisitor::SimplifySystemArrayCopy(HInvoke* instruction)
 
   {
     ScopedObjectAccess soa(Thread::Current());
-    Primitive::Type source_component_type = Primitive::kPrimVoid;
-    Primitive::Type destination_component_type = Primitive::kPrimVoid;
+    DataType::Type source_component_type = DataType::Type::kVoid;
+    DataType::Type destination_component_type = DataType::Type::kVoid;
     ReferenceTypeInfo destination_rti = destination->GetReferenceTypeInfo();
     if (destination_rti.IsValid()) {
       if (destination_rti.IsObjectArray()) {
@@ -2004,8 +2008,8 @@ void InstructionSimplifierVisitor::SimplifySystemArrayCopy(HInvoke* instruction)
         optimizations.SetDestinationIsTypedObjectArray();
       }
       if (destination_rti.IsPrimitiveArrayClass()) {
-        destination_component_type =
-            destination_rti.GetTypeHandle()->GetComponentType()->GetPrimitiveType();
+        destination_component_type = DataTypeFromPrimitive(
+            destination_rti.GetTypeHandle()->GetComponentType()->GetPrimitiveType());
         optimizations.SetDestinationIsPrimitiveArray();
       } else if (destination_rti.IsNonPrimitiveArrayClass()) {
         optimizations.SetDestinationIsNonPrimitiveArray();
@@ -2018,13 +2022,14 @@ void InstructionSimplifierVisitor::SimplifySystemArrayCopy(HInvoke* instruction)
       }
       if (source_rti.IsPrimitiveArrayClass()) {
         optimizations.SetSourceIsPrimitiveArray();
-        source_component_type = source_rti.GetTypeHandle()->GetComponentType()->GetPrimitiveType();
+        source_component_type = DataTypeFromPrimitive(
+            source_rti.GetTypeHandle()->GetComponentType()->GetPrimitiveType());
       } else if (source_rti.IsNonPrimitiveArrayClass()) {
         optimizations.SetSourceIsNonPrimitiveArray();
       }
     }
     // For primitive arrays, use their optimized ArtMethod implementations.
-    if ((source_component_type != Primitive::kPrimVoid) &&
+    if ((source_component_type != DataType::Type::kVoid) &&
         (source_component_type == destination_component_type)) {
       ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
       PointerSize image_size = class_linker->GetImagePointerSize();
@@ -2032,28 +2037,28 @@ void InstructionSimplifierVisitor::SimplifySystemArrayCopy(HInvoke* instruction)
       mirror::Class* system = invoke->GetResolvedMethod()->GetDeclaringClass();
       ArtMethod* method = nullptr;
       switch (source_component_type) {
-        case Primitive::kPrimBoolean:
+        case DataType::Type::kBool:
           method = system->FindClassMethod("arraycopy", "([ZI[ZII)V", image_size);
           break;
-        case Primitive::kPrimByte:
+        case DataType::Type::kInt8:
           method = system->FindClassMethod("arraycopy", "([BI[BII)V", image_size);
           break;
-        case Primitive::kPrimChar:
+        case DataType::Type::kUint16:
           method = system->FindClassMethod("arraycopy", "([CI[CII)V", image_size);
           break;
-        case Primitive::kPrimShort:
+        case DataType::Type::kInt16:
           method = system->FindClassMethod("arraycopy", "([SI[SII)V", image_size);
           break;
-        case Primitive::kPrimInt:
+        case DataType::Type::kInt32:
           method = system->FindClassMethod("arraycopy", "([II[III)V", image_size);
           break;
-        case Primitive::kPrimFloat:
+        case DataType::Type::kFloat32:
           method = system->FindClassMethod("arraycopy", "([FI[FII)V", image_size);
           break;
-        case Primitive::kPrimLong:
+        case DataType::Type::kInt64:
           method = system->FindClassMethod("arraycopy", "([JI[JII)V", image_size);
           break;
-        case Primitive::kPrimDouble:
+        case DataType::Type::kFloat64:
           method = system->FindClassMethod("arraycopy", "([DI[DII)V", image_size);
           break;
         default:
@@ -2074,14 +2079,14 @@ void InstructionSimplifierVisitor::SimplifySystemArrayCopy(HInvoke* instruction)
 
 void InstructionSimplifierVisitor::SimplifyCompare(HInvoke* invoke,
                                                    bool is_signum,
-                                                   Primitive::Type type) {
+                                                   DataType::Type type) {
   DCHECK(invoke->IsInvokeStaticOrDirect());
   uint32_t dex_pc = invoke->GetDexPc();
   HInstruction* left = invoke->InputAt(0);
   HInstruction* right;
   if (!is_signum) {
     right = invoke->InputAt(1);
-  } else if (type == Primitive::kPrimLong) {
+  } else if (type == DataType::Type::kInt64) {
     right = GetGraph()->GetLongConstant(0);
   } else {
     right = GetGraph()->GetIntConstant(0);
@@ -2105,17 +2110,17 @@ void InstructionSimplifierVisitor::SimplifyFP2Int(HInvoke* invoke) {
   DCHECK(invoke->IsInvokeStaticOrDirect());
   uint32_t dex_pc = invoke->GetDexPc();
   HInstruction* x = invoke->InputAt(0);
-  Primitive::Type type = x->GetType();
+  DataType::Type type = x->GetType();
   // Set proper bit pattern for NaN and replace intrinsic with raw version.
   HInstruction* nan;
-  if (type == Primitive::kPrimDouble) {
+  if (type == DataType::Type::kFloat64) {
     nan = GetGraph()->GetLongConstant(0x7ff8000000000000L);
     invoke->SetIntrinsic(Intrinsics::kDoubleDoubleToRawLongBits,
                          kNeedsEnvironmentOrCache,
                          kNoSideEffects,
                          kNoThrow);
   } else {
-    DCHECK_EQ(type, Primitive::kPrimFloat);
+    DCHECK_EQ(type, DataType::Type::kFloat32);
     nan = GetGraph()->GetIntConstant(0x7fc00000);
     invoke->SetIntrinsic(Intrinsics::kFloatFloatToRawIntBits,
                          kNeedsEnvironmentOrCache,
@@ -2145,7 +2150,7 @@ void InstructionSimplifierVisitor::SimplifyStringCharAt(HInvoke* invoke) {
       index, length, dex_pc, invoke->GetDexMethodIndex());
   invoke->GetBlock()->InsertInstructionBefore(bounds_check, invoke);
   HArrayGet* array_get = new (arena) HArrayGet(
-      str, bounds_check, Primitive::kPrimChar, dex_pc, /* is_string_char_at */ true);
+      str, bounds_check, DataType::Type::kUint16, dex_pc, /* is_string_char_at */ true);
   invoke->GetBlock()->ReplaceAndRemoveInstructionWith(invoke, array_get);
   bounds_check->CopyEnvironmentFrom(invoke->GetEnvironment());
   GetGraph()->SetHasBoundsChecks(true);
@@ -2248,28 +2253,28 @@ void InstructionSimplifierVisitor::VisitInvoke(HInvoke* instruction) {
       SimplifySystemArrayCopy(instruction);
       break;
     case Intrinsics::kIntegerRotateRight:
-      SimplifyRotate(instruction, /* is_left */ false, Primitive::kPrimInt);
+      SimplifyRotate(instruction, /* is_left */ false, DataType::Type::kInt32);
       break;
     case Intrinsics::kLongRotateRight:
-      SimplifyRotate(instruction, /* is_left */ false, Primitive::kPrimLong);
+      SimplifyRotate(instruction, /* is_left */ false, DataType::Type::kInt64);
       break;
     case Intrinsics::kIntegerRotateLeft:
-      SimplifyRotate(instruction, /* is_left */ true, Primitive::kPrimInt);
+      SimplifyRotate(instruction, /* is_left */ true, DataType::Type::kInt32);
       break;
     case Intrinsics::kLongRotateLeft:
-      SimplifyRotate(instruction, /* is_left */ true, Primitive::kPrimLong);
+      SimplifyRotate(instruction, /* is_left */ true, DataType::Type::kInt64);
       break;
     case Intrinsics::kIntegerCompare:
-      SimplifyCompare(instruction, /* is_signum */ false, Primitive::kPrimInt);
+      SimplifyCompare(instruction, /* is_signum */ false, DataType::Type::kInt32);
       break;
     case Intrinsics::kLongCompare:
-      SimplifyCompare(instruction, /* is_signum */ false, Primitive::kPrimLong);
+      SimplifyCompare(instruction, /* is_signum */ false, DataType::Type::kInt64);
       break;
     case Intrinsics::kIntegerSignum:
-      SimplifyCompare(instruction, /* is_signum */ true, Primitive::kPrimInt);
+      SimplifyCompare(instruction, /* is_signum */ true, DataType::Type::kInt32);
       break;
     case Intrinsics::kLongSignum:
-      SimplifyCompare(instruction, /* is_signum */ true, Primitive::kPrimLong);
+      SimplifyCompare(instruction, /* is_signum */ true, DataType::Type::kInt64);
       break;
     case Intrinsics::kFloatIsNaN:
     case Intrinsics::kDoubleIsNaN:
@@ -2337,7 +2342,7 @@ bool InstructionSimplifierVisitor::TryHandleAssociativeAndCommutativeOperation(
     HBinaryOperation* instruction) {
   DCHECK(instruction->IsCommutative());
 
-  if (!Primitive::IsIntegralType(instruction->GetType())) {
+  if (!DataType::IsIntegralType(instruction->GetType())) {
     return false;
   }
 
@@ -2387,12 +2392,12 @@ static HBinaryOperation* AsAddOrSub(HInstruction* binop) {
 }
 
 // Helper function that performs addition statically, considering the result type.
-static int64_t ComputeAddition(Primitive::Type type, int64_t x, int64_t y) {
+static int64_t ComputeAddition(DataType::Type type, int64_t x, int64_t y) {
   // Use the Compute() method for consistency with TryStaticEvaluation().
-  if (type == Primitive::kPrimInt) {
+  if (type == DataType::Type::kInt32) {
     return HAdd::Compute<int32_t>(x, y);
   } else {
-    DCHECK_EQ(type, Primitive::kPrimLong);
+    DCHECK_EQ(type, DataType::Type::kInt64);
     return HAdd::Compute<int64_t>(x, y);
   }
 }
@@ -2414,8 +2419,8 @@ bool InstructionSimplifierVisitor::TrySubtractionChainSimplification(
     HBinaryOperation* instruction) {
   DCHECK(instruction->IsAdd() || instruction->IsSub()) << instruction->DebugName();
 
-  Primitive::Type type = instruction->GetType();
-  if (!Primitive::IsIntegralType(type)) {
+  DataType::Type type = instruction->GetType();
+  if (!DataType::IsIntegralType(type)) {
     return false;
   }
 

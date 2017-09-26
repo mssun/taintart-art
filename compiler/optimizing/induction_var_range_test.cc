@@ -71,12 +71,12 @@ class InductionVarRangeTest : public CommonCompilerTest {
     x_ = new (&allocator_) HParameterValue(graph_->GetDexFile(),
                                            dex::TypeIndex(0),
                                            0,
-                                           Primitive::kPrimInt);
+                                           DataType::Type::kInt32);
     entry_block_->AddInstruction(x_);
     y_ = new (&allocator_) HParameterValue(graph_->GetDexFile(),
                                            dex::TypeIndex(0),
                                            0,
-                                           Primitive::kPrimInt);
+                                           DataType::Type::kInt32);
     entry_block_->AddInstruction(y_);
     // Set arbitrary range analysis hint while testing private methods.
     SetHint(x_);
@@ -101,7 +101,7 @@ class InductionVarRangeTest : public CommonCompilerTest {
     return_block->AddSuccessor(exit_block_);
     // Instructions.
     loop_preheader_->AddInstruction(new (&allocator_) HGoto());
-    HPhi* phi = new (&allocator_) HPhi(&allocator_, 0, 0, Primitive::kPrimInt);
+    HPhi* phi = new (&allocator_) HPhi(&allocator_, 0, 0, DataType::Type::kInt32);
     loop_header_->AddPhi(phi);
     phi->AddInput(graph_->GetIntConstant(lower));  // i = l
     if (stride > 0) {
@@ -111,7 +111,8 @@ class InductionVarRangeTest : public CommonCompilerTest {
     }
     loop_header_->AddInstruction(condition_);
     loop_header_->AddInstruction(new (&allocator_) HIf(condition_));
-    increment_ = new (&allocator_) HAdd(Primitive::kPrimInt, phi, graph_->GetIntConstant(stride));
+    increment_ =
+        new (&allocator_) HAdd(DataType::Type::kInt32, phi, graph_->GetIntConstant(stride));
     loop_body_->AddInstruction(increment_);  // i += s
     phi->AddInput(increment_);
     loop_body_->AddInstruction(new (&allocator_) HGoto());
@@ -173,7 +174,7 @@ class InductionVarRangeTest : public CommonCompilerTest {
     return iva_->CreateTripCount(op,
                                  CreateConst(tc),
                                  CreateInvariant('<', CreateConst(0), CreateConst(tc)),
-                                 Primitive::kPrimInt);
+                                 DataType::Type::kInt32);
   }
 
   /** Constructs a linear a * i + b induction. */
@@ -183,7 +184,7 @@ class InductionVarRangeTest : public CommonCompilerTest {
                                  CreateConst(a),
                                  CreateConst(b),
                                  nullptr,
-                                 Primitive::kPrimInt);
+                                 DataType::Type::kInt32);
   }
 
   /** Constructs a polynomial sum(a * i + b) + c induction. */
@@ -193,7 +194,7 @@ class InductionVarRangeTest : public CommonCompilerTest {
                                  CreateLinear(a, b),
                                  CreateConst(c),
                                  nullptr,
-                                 Primitive::kPrimInt);
+                                 DataType::Type::kInt32);
   }
 
   /** Constructs a geometric a * f^i + b induction. */
@@ -204,7 +205,7 @@ class InductionVarRangeTest : public CommonCompilerTest {
                                  CreateConst(a),
                                  CreateConst(b),
                                  graph_->GetIntConstant(f),
-                                 Primitive::kPrimInt);
+                                 DataType::Type::kInt32);
   }
 
   /** Constructs a range [lo, hi] using a periodic induction. */
@@ -214,7 +215,7 @@ class InductionVarRangeTest : public CommonCompilerTest {
                                  CreateConst(lo),
                                  CreateConst(hi),
                                  nullptr,
-                                 Primitive::kPrimInt);
+                                 DataType::Type::kInt32);
   }
 
   /** Constructs a wrap-around induction consisting of a constant, followed by info. */
@@ -226,7 +227,7 @@ class InductionVarRangeTest : public CommonCompilerTest {
                                  CreateConst(initial),
                                  info,
                                  nullptr,
-                                 Primitive::kPrimInt);
+                                 DataType::Type::kInt32);
   }
 
   /** Constructs a wrap-around induction consisting of a constant, followed by a range. */
@@ -725,13 +726,13 @@ TEST_F(InductionVarRangeTest, ArrayLengthAndHints) {
 
 TEST_F(InductionVarRangeTest, AddOrSubAndConstant) {
   HInstruction* add = new (&allocator_)
-      HAdd(Primitive::kPrimInt, x_, graph_->GetIntConstant(-1));
+      HAdd(DataType::Type::kInt32, x_, graph_->GetIntConstant(-1));
   HInstruction* alt = new (&allocator_)
-      HAdd(Primitive::kPrimInt, graph_->GetIntConstant(-1), x_);
+      HAdd(DataType::Type::kInt32, graph_->GetIntConstant(-1), x_);
   HInstruction* sub = new (&allocator_)
-      HSub(Primitive::kPrimInt, x_, graph_->GetIntConstant(1));
+      HSub(DataType::Type::kInt32, x_, graph_->GetIntConstant(1));
   HInstruction* rev = new (&allocator_)
-      HSub(Primitive::kPrimInt, graph_->GetIntConstant(1), x_);
+      HSub(DataType::Type::kInt32, graph_->GetIntConstant(1), x_);
   entry_block_->AddInstruction(add);
   entry_block_->AddInstruction(alt);
   entry_block_->AddInstruction(sub);

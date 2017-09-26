@@ -927,7 +927,7 @@ class BCEVisitor : public HGraphVisitor {
 
   void VisitPhi(HPhi* phi) OVERRIDE {
     if (phi->IsLoopHeaderPhi()
-        && (phi->GetType() == Primitive::kPrimInt)
+        && (phi->GetType() == DataType::Type::kInt32)
         && HasSameInputAtBackEdges(phi)) {
       HInstruction* instruction = phi->InputAt(1);
       HInstruction *left;
@@ -1261,8 +1261,8 @@ class BCEVisitor : public HGraphVisitor {
       DCHECK_GE(min_c, 0);
     } else {
       HInstruction* lower = new (GetGraph()->GetArena())
-          HAdd(Primitive::kPrimInt, base, GetGraph()->GetIntConstant(min_c));
-      upper = new (GetGraph()->GetArena()) HAdd(Primitive::kPrimInt, base, upper);
+          HAdd(DataType::Type::kInt32, base, GetGraph()->GetIntConstant(min_c));
+      upper = new (GetGraph()->GetArena()) HAdd(DataType::Type::kInt32, base, upper);
       block->InsertInstructionBefore(lower, bounds_check);
       block->InsertInstructionBefore(upper, bounds_check);
       InsertDeoptInBlock(bounds_check, new (GetGraph()->GetArena()) HAbove(lower, upper));
@@ -1801,7 +1801,7 @@ class BCEVisitor : public HGraphVisitor {
       // Scan all instructions in a new deoptimization block.
       for (HInstructionIterator it(true_block->GetInstructions()); !it.Done(); it.Advance()) {
         HInstruction* instruction = it.Current();
-        Primitive::Type type = instruction->GetType();
+        DataType::Type type = instruction->GetType();
         HPhi* phi = nullptr;
         // Scan all uses of an instruction and replace each later use with a phi node.
         const HUseList<HInstruction*>& uses = instruction->GetUses();
@@ -1844,20 +1844,20 @@ class BCEVisitor : public HGraphVisitor {
    */
   HPhi* NewPhi(HBasicBlock* new_preheader,
                HInstruction* instruction,
-               Primitive::Type type) {
+               DataType::Type type) {
     HGraph* graph = GetGraph();
     HInstruction* zero;
     switch (type) {
-      case Primitive::kPrimNot: zero = graph->GetNullConstant(); break;
-      case Primitive::kPrimFloat: zero = graph->GetFloatConstant(0); break;
-      case Primitive::kPrimDouble: zero = graph->GetDoubleConstant(0); break;
+      case DataType::Type::kReference: zero = graph->GetNullConstant(); break;
+      case DataType::Type::kFloat32: zero = graph->GetFloatConstant(0); break;
+      case DataType::Type::kFloat64: zero = graph->GetDoubleConstant(0); break;
       default: zero = graph->GetConstant(type, 0); break;
     }
     HPhi* phi = new (graph->GetArena())
         HPhi(graph->GetArena(), kNoRegNumber, /*number_of_inputs*/ 2, HPhi::ToPhiType(type));
     phi->SetRawInputAt(0, instruction);
     phi->SetRawInputAt(1, zero);
-    if (type == Primitive::kPrimNot) {
+    if (type == DataType::Type::kReference) {
       phi->SetReferenceTypeInfo(instruction->GetReferenceTypeInfo());
     }
     new_preheader->AddPhi(phi);
