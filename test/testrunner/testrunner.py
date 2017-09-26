@@ -45,6 +45,7 @@ In the end, the script will print the failed and skipped tests if any.
 
 """
 import argparse
+import collections
 import fnmatch
 import itertools
 import json
@@ -60,21 +61,6 @@ import time
 import env
 from target_config import target_config
 
-TARGET_TYPES = set()
-RUN_TYPES = set()
-PREBUILD_TYPES = set()
-COMPILER_TYPES = set()
-RELOCATE_TYPES = set()
-TRACE_TYPES = set()
-GC_TYPES = set()
-JNI_TYPES = set()
-IMAGE_TYPES = set()
-PICTEST_TYPES = set()
-DEBUGGABLE_TYPES = set()
-ADDRESS_SIZES = set()
-OPTIMIZING_COMPILER_TYPES = set()
-JVMTI_TYPES = set()
-ADDRESS_SIZES_TARGET = {'host': set(), 'target': set()}
 # timeout for individual tests.
 # TODO: make it adjustable per tests and for buildbots
 timeout = 3000 # 50 minutes
@@ -129,6 +115,11 @@ gdb_arg = ''
 stop_testrunner = False
 dex2oat_jobs = -1   # -1 corresponds to default threads for dex2oat
 
+# Dict to store user requested test variants.
+# key: variant_type.
+# value: set of variants user wants to run of type <key>.
+_user_input_variants = collections.defaultdict(set)
+
 def gather_test_info():
   """The method gathers test information about the test to be run which includes
   generating the list of total tests from the art/test directory and the list
@@ -151,7 +142,7 @@ def gather_test_info():
   VARIANT_TYPE_DICT['jvmti'] = {'no-jvmti', 'jvmti-stress', 'redefine-stress', 'trace-stress',
                                 'field-stress', 'step-stress'}
   VARIANT_TYPE_DICT['compiler'] = {'interp-ac', 'interpreter', 'jit', 'optimizing',
-                              'regalloc_gc', 'speed-profile'}
+                                   'regalloc_gc', 'speed-profile'}
 
   for v_type in VARIANT_TYPE_DICT:
     TOTAL_VARIANTS_SET = TOTAL_VARIANTS_SET.union(VARIANT_TYPE_DICT.get(v_type))
@@ -173,106 +164,108 @@ def setup_test_env():
     # Bisection search writes to standard output.
     env.ART_TEST_QUIET = False
 
-  if not TARGET_TYPES:
-    TARGET_TYPES.add('host')
-    TARGET_TYPES.add('target')
+  if not _user_input_variants['target']:
+    _user_input_variants['target'].add('host')
+    _user_input_variants['target'].add('target')
 
   if env.ART_TEST_RUN_TEST_NO_PREBUILD:
-    PREBUILD_TYPES.add('no-prebuild')
+    _user_input_variants['prebuild'].add('no-prebuild')
   if env.ART_TEST_RUN_TEST_NO_DEX2OAT:
-    PREBUILD_TYPES.add('no-dex2oat')
-  if env.ART_TEST_RUN_TEST_PREBUILD or not PREBUILD_TYPES: # Default
-    PREBUILD_TYPES.add('prebuild')
+    _user_input_variants['prebuild'].add('no-dex2oat')
+  if env.ART_TEST_RUN_TEST_PREBUILD or not _user_input_variants['prebuild']: # Default
+    _user_input_variants['prebuild'].add('prebuild')
 
   if env.ART_TEST_INTERPRETER_ACCESS_CHECKS:
-    COMPILER_TYPES.add('interp-ac')
+    _user_input_variants['compiler'].add('interp-ac')
   if env.ART_TEST_INTERPRETER:
-    COMPILER_TYPES.add('interpreter')
+    _user_input_variants['compiler'].add('interpreter')
   if env.ART_TEST_JIT:
-    COMPILER_TYPES.add('jit')
+    _user_input_variants['compiler'].add('jit')
   if env.ART_TEST_OPTIMIZING_GRAPH_COLOR:
-    COMPILER_TYPES.add('regalloc_gc')
-    OPTIMIZING_COMPILER_TYPES.add('regalloc_gc')
+    _user_input_variants['compiler'].add('regalloc_gc')
   if env.ART_TEST_OPTIMIZING:
-    COMPILER_TYPES.add('optimizing')
-    OPTIMIZING_COMPILER_TYPES.add('optimizing')
+    _user_input_variants['compiler'].add('optimizing')
   if env.ART_TEST_SPEED_PROFILE:
-    COMPILER_TYPES.add('speed-profile')
+    _user_input_variants['compiler'].add('speed-profile')
 
   # By default only run without jvmti
-  if not JVMTI_TYPES:
-    JVMTI_TYPES.add('no-jvmti')
+  if not _user_input_variants['jvmti']:
+    _user_input_variants['jvmti'].add('no-jvmti')
 
   # By default we run all 'compiler' variants.
-  if not COMPILER_TYPES:
-    COMPILER_TYPES.add('optimizing')
-    COMPILER_TYPES.add('jit')
-    COMPILER_TYPES.add('interpreter')
-    COMPILER_TYPES.add('interp-ac')
-    COMPILER_TYPES.add('speed-profile')
-    OPTIMIZING_COMPILER_TYPES.add('optimizing')
+  if not _user_input_variants['compiler']:
+    _user_input_variants['compiler'].add('optimizing')
+    _user_input_variants['compiler'].add('jit')
+    _user_input_variants['compiler'].add('interpreter')
+    _user_input_variants['compiler'].add('interp-ac')
+    _user_input_variants['compiler'].add('speed-profile')
 
   if env.ART_TEST_RUN_TEST_RELOCATE:
-    RELOCATE_TYPES.add('relocate')
+    _user_input_variants['relocate'].add('relocate')
   if env.ART_TEST_RUN_TEST_RELOCATE_NO_PATCHOAT:
-    RELOCATE_TYPES.add('relocate-npatchoat')
-  if not RELOCATE_TYPES: # Default
-    RELOCATE_TYPES.add('no-relocate')
+    _user_input_variants['relocate'].add('relocate-npatchoat')
+  if not _user_input_variants['relocate']: # Default
+    _user_input_variants['relocate'].add('no-relocate')
 
   if env.ART_TEST_TRACE:
-    TRACE_TYPES.add('trace')
+    _user_input_variants['trace'].add('trace')
   if env.ART_TEST_TRACE_STREAM:
-    TRACE_TYPES.add('stream')
-  if not TRACE_TYPES: # Default
-    TRACE_TYPES.add('ntrace')
+    _user_input_variants['trace'].add('stream')
+  if not _user_input_variants['trace']: # Default
+    _user_input_variants['trace'].add('ntrace')
 
   if env.ART_TEST_GC_STRESS:
-    GC_TYPES.add('gcstress')
+    _user_input_variants['gc'].add('gcstress')
   if env.ART_TEST_GC_VERIFY:
-    GC_TYPES.add('gcverify')
-  if not GC_TYPES: # Default
-    GC_TYPES.add('cms')
+    _user_input_variants['gc'].add('gcverify')
+  if not _user_input_variants['gc']: # Default
+    _user_input_variants['gc'].add('cms')
 
   if env.ART_TEST_JNI_FORCECOPY:
-    JNI_TYPES.add('forcecopy')
-  if not JNI_TYPES: # Default
-    JNI_TYPES.add('checkjni')
+    _user_input_variants['jni'].add('forcecopy')
+  if not _user_input_variants['jni']: # Default
+    _user_input_variants['jni'].add('checkjni')
 
   if env.ART_TEST_RUN_TEST_NO_IMAGE:
-    IMAGE_TYPES.add('no-image')
+    _user_input_variants['image'].add('no-image')
   if env.ART_TEST_RUN_TEST_MULTI_IMAGE:
-    IMAGE_TYPES.add('multipicimage')
-  if env.ART_TEST_RUN_TEST_IMAGE or not IMAGE_TYPES: # Default
-    IMAGE_TYPES.add('picimage')
+    _user_input_variants['image'].add('multipicimage')
+  if env.ART_TEST_RUN_TEST_IMAGE or not _user_input_variants['image']: # Default
+    _user_input_variants['image'].add('picimage')
 
   if env.ART_TEST_PIC_TEST:
-    PICTEST_TYPES.add('pictest')
-  if not PICTEST_TYPES: # Default
-    PICTEST_TYPES.add('npictest')
+    _user_input_variants['pictest'].add('pictest')
+  if not _user_input_variants['pictest']: # Default
+    _user_input_variants['pictest'].add('npictest')
 
   if env.ART_TEST_RUN_TEST_NDEBUG:
-    RUN_TYPES.add('ndebug')
-  if env.ART_TEST_RUN_TEST_DEBUG or not RUN_TYPES: # Default
-    RUN_TYPES.add('debug')
+    _user_input_variants['run'].add('ndebug')
+  if env.ART_TEST_RUN_TEST_DEBUG or not _user_input_variants['run']: # Default
+    _user_input_variants['run'].add('debug')
 
   if env.ART_TEST_RUN_TEST_DEBUGGABLE:
-    DEBUGGABLE_TYPES.add('debuggable')
-  if not DEBUGGABLE_TYPES: # Default
-    DEBUGGABLE_TYPES.add('ndebuggable')
+    _user_input_variants['debuggable'].add('debuggable')
+  if not _user_input_variants['debuggable']: # Default
+    _user_input_variants['debuggable'].add('ndebuggable')
 
-  if not ADDRESS_SIZES:
-    ADDRESS_SIZES_TARGET['target'].add(env.ART_PHONY_TEST_TARGET_SUFFIX)
-    ADDRESS_SIZES_TARGET['host'].add(env.ART_PHONY_TEST_HOST_SUFFIX)
+  _user_input_variants['address_sizes_target'] = collections.defaultdict(set)
+  if not _user_input_variants['address_sizes']:
+    _user_input_variants['address_sizes_target']['target'].add(
+        env.ART_PHONY_TEST_TARGET_SUFFIX)
+    _user_input_variants['address_sizes_target']['host'].add(
+        env.ART_PHONY_TEST_HOST_SUFFIX)
     if env.ART_TEST_RUN_TEST_2ND_ARCH:
-      ADDRESS_SIZES_TARGET['host'].add(env.ART_2ND_PHONY_TEST_HOST_SUFFIX)
-      ADDRESS_SIZES_TARGET['target'].add(env.ART_2ND_PHONY_TEST_TARGET_SUFFIX)
+      _user_input_variants['address_sizes_target']['host'].add(
+          env.ART_2ND_PHONY_TEST_HOST_SUFFIX)
+      _user_input_variants['address_sizes_target']['target'].add(
+          env.ART_2ND_PHONY_TEST_TARGET_SUFFIX)
   else:
-    ADDRESS_SIZES_TARGET['host'] = ADDRESS_SIZES_TARGET['host'].union(ADDRESS_SIZES)
-    ADDRESS_SIZES_TARGET['target'] = ADDRESS_SIZES_TARGET['target'].union(ADDRESS_SIZES)
+    _user_input_variants['address_sizes_target']['host'] = _user_input_variants['address_sizes']
+    _user_input_variants['address_sizes_target']['target'] = _user_input_variants['address_sizes']
 
   global n_thread
   if n_thread is -1:
-    if 'target' in TARGET_TYPES:
+    if 'target' in _user_input_variants['target']:
       n_thread = get_default_threads('target')
     else:
       n_thread = get_default_threads('host')
@@ -308,20 +301,12 @@ def run_tests(tests):
   options_all = ''
   global total_test_count
   total_test_count = len(tests)
-  total_test_count *= len(RUN_TYPES)
-  total_test_count *= len(PREBUILD_TYPES)
-  total_test_count *= len(RELOCATE_TYPES)
-  total_test_count *= len(TRACE_TYPES)
-  total_test_count *= len(GC_TYPES)
-  total_test_count *= len(JNI_TYPES)
-  total_test_count *= len(IMAGE_TYPES)
-  total_test_count *= len(PICTEST_TYPES)
-  total_test_count *= len(DEBUGGABLE_TYPES)
-  total_test_count *= len(COMPILER_TYPES)
-  total_test_count *= len(JVMTI_TYPES)
+  for variant_type in _user_input_variants:
+    if not (variant_type == 'target' or 'address_sizes' in variant_type):
+      total_test_count *= len(_user_input_variants[variant_type])
   target_address_combinations = 0
-  for target in TARGET_TYPES:
-    for address_size in ADDRESS_SIZES_TARGET[target]:
+  for target in _user_input_variants['target']:
+    for address_size in _user_input_variants['address_sizes_target'][target]:
       target_address_combinations += 1
   total_test_count *= target_address_combinations
 
@@ -345,14 +330,16 @@ def run_tests(tests):
   if dex2oat_jobs != -1:
     options_all += ' --dex2oat-jobs ' + str(dex2oat_jobs)
 
-  config = itertools.product(tests, TARGET_TYPES, RUN_TYPES, PREBUILD_TYPES,
-                             COMPILER_TYPES, RELOCATE_TYPES, TRACE_TYPES,
-                             GC_TYPES, JNI_TYPES, IMAGE_TYPES, PICTEST_TYPES,
-                             DEBUGGABLE_TYPES, JVMTI_TYPES)
+  config = itertools.product(tests, _user_input_variants['target'], _user_input_variants['run'],
+                             _user_input_variants['prebuild'], _user_input_variants['compiler'],
+                             _user_input_variants['relocate'], _user_input_variants['trace'],
+                             _user_input_variants['gc'], _user_input_variants['jni'],
+                             _user_input_variants['image'], _user_input_variants['pictest'],
+                             _user_input_variants['debuggable'], _user_input_variants['jvmti'])
 
   for test, target, run, prebuild, compiler, relocate, trace, gc, \
       jni, image, pictest, debuggable, jvmti in config:
-    for address_size in ADDRESS_SIZES_TARGET[target]:
+    for address_size in _user_input_variants['address_sizes_target'][target]:
       if stop_testrunner:
         # When ART_TEST_KEEP_GOING is set to false, then as soon as a test
         # fails, stop_testrunner is set to True. When this happens, the method
@@ -810,19 +797,19 @@ def parse_test_name(test_name):
   regex += '(' + '|'.join(VARIANT_TYPE_DICT['address_sizes']) + ')$'
   match = re.match(regex, test_name)
   if match:
-    TARGET_TYPES.add(match.group(1))
-    RUN_TYPES.add(match.group(2))
-    PREBUILD_TYPES.add(match.group(3))
-    COMPILER_TYPES.add(match.group(4))
-    RELOCATE_TYPES.add(match.group(5))
-    TRACE_TYPES.add(match.group(6))
-    GC_TYPES.add(match.group(7))
-    JNI_TYPES.add(match.group(8))
-    IMAGE_TYPES.add(match.group(9))
-    PICTEST_TYPES.add(match.group(10))
-    DEBUGGABLE_TYPES.add(match.group(11))
-    JVMTI_TYPES.add(match.group(12))
-    ADDRESS_SIZES.add(match.group(14))
+    _user_input_variants['target'].add(match.group(1))
+    _user_input_variants['run'].add(match.group(2))
+    _user_input_variants['prebuild'].add(match.group(3))
+    _user_input_variants['compiler'].add(match.group(4))
+    _user_input_variants['relocate'].add(match.group(5))
+    _user_input_variants['trace'].add(match.group(6))
+    _user_input_variants['gc'].add(match.group(7))
+    _user_input_variants['jni'].add(match.group(8))
+    _user_input_variants['image'].add(match.group(9))
+    _user_input_variants['pictest'].add(match.group(10))
+    _user_input_variants['debuggable'].add(match.group(11))
+    _user_input_variants['jvmti'].add(match.group(12))
+    _user_input_variants['address_sizes'].add(match.group(14))
     return {match.group(13)}
   raise ValueError(test_name + " is not a valid test")
 
@@ -878,10 +865,7 @@ def parse_option():
   parser.add_argument('--timeout', default=timeout, type=int, dest='timeout')
   for variant in TOTAL_VARIANTS_SET:
     flag = '--' + variant
-    flag_dest = variant.replace('-', '_')
-    if variant == '32' or variant == '64':
-      flag_dest = 'n' + flag_dest
-    parser.add_argument(flag, action='store_true', dest=flag_dest)
+    parser.add_argument(flag, action='store_true', dest=variant)
   parser.add_argument('--verbose', '-v', action='store_true', dest='verbose')
   parser.add_argument('--dry-run', action='store_true', dest='dry_run')
   parser.add_argument("--skip", action="append", dest="skips", default=[],
@@ -910,82 +894,12 @@ def parse_option():
   env.EXTRA_DISABLED_TESTS.update(set(options['skips']))
   if options['test']:
     test = parse_test_name(options['test'])
-  if options['pictest']:
-    PICTEST_TYPES.add('pictest')
-  if options['ndebug']:
-    RUN_TYPES.add('ndebug')
-  if options['interp_ac']:
-    COMPILER_TYPES.add('interp-ac')
-  if options['picimage']:
-    IMAGE_TYPES.add('picimage')
-  if options['n64']:
-    ADDRESS_SIZES.add('64')
-  if options['interpreter']:
-    COMPILER_TYPES.add('interpreter')
-  if options['jni']:
-    JNI_TYPES.add('jni')
-  if options['relocate_npatchoat']:
-    RELOCATE_TYPES.add('relocate-npatchoat')
-  if options['no_prebuild']:
-    PREBUILD_TYPES.add('no-prebuild')
-  if options['npictest']:
-    PICTEST_TYPES.add('npictest')
-  if options['no_dex2oat']:
-    PREBUILD_TYPES.add('no-dex2oat')
-  if options['jit']:
-    COMPILER_TYPES.add('jit')
-  if options['relocate']:
-    RELOCATE_TYPES.add('relocate')
-  if options['ndebuggable']:
-    DEBUGGABLE_TYPES.add('ndebuggable')
-  if options['no_image']:
-    IMAGE_TYPES.add('no-image')
-  if options['optimizing']:
-    COMPILER_TYPES.add('optimizing')
-  if options['speed_profile']:
-    COMPILER_TYPES.add('speed-profile')
-  if options['trace']:
-    TRACE_TYPES.add('trace')
-  if options['gcstress']:
-    GC_TYPES.add('gcstress')
-  if options['no_relocate']:
-    RELOCATE_TYPES.add('no-relocate')
-  if options['target']:
-    TARGET_TYPES.add('target')
-  if options['forcecopy']:
-    JNI_TYPES.add('forcecopy')
-  if options['n32']:
-    ADDRESS_SIZES.add('32')
-  if options['host']:
-    TARGET_TYPES.add('host')
-  if options['gcverify']:
-    GC_TYPES.add('gcverify')
-  if options['debuggable']:
-    DEBUGGABLE_TYPES.add('debuggable')
-  if options['prebuild']:
-    PREBUILD_TYPES.add('prebuild')
-  if options['debug']:
-    RUN_TYPES.add('debug')
-  if options['checkjni']:
-    JNI_TYPES.add('checkjni')
-  if options['ntrace']:
-    TRACE_TYPES.add('ntrace')
-  if options['cms']:
-    GC_TYPES.add('cms')
-  if options['multipicimage']:
-    IMAGE_TYPES.add('multipicimage')
-  if options['jvmti_stress']:
-    JVMTI_TYPES.add('jvmti-stress')
-  if options['redefine_stress']:
-    JVMTI_TYPES.add('redefine-stress')
-  if options['field_stress']:
-    JVMTI_TYPES.add('field-stress')
-  if options['step_stress']:
-    JVMTI_TYPES.add('step-stress')
-  if options['trace_stress']:
-    JVMTI_TYPES.add('trace-stress')
-  if options['no_jvmti']:
-    JVMTI_TYPES.add('no-jvmti')
+
+  for variant_type in VARIANT_TYPE_DICT:
+    for variant in VARIANT_TYPE_DICT[variant_type]:
+      if options.get(variant):
+        _user_input_variants[variant_type].add(variant)
+
   if options['verbose']:
     verbose = True
   if options['n_thread']:
@@ -1011,9 +925,9 @@ def main():
   setup_test_env()
   if build:
     build_targets = ''
-    if 'host' in TARGET_TYPES:
+    if 'host' in _user_input_variants['target']:
       build_targets += 'test-art-host-run-test-dependencies'
-    if 'target' in TARGET_TYPES:
+    if 'target' in _user_input_variants['target']:
       build_targets += 'test-art-target-run-test-dependencies'
     build_command = 'make'
     build_command += ' -j'
