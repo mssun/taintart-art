@@ -99,7 +99,14 @@ jobject JNIEnvExt::NewLocalRef(mirror::Object* obj) {
   if (obj == nullptr) {
     return nullptr;
   }
-  return reinterpret_cast<jobject>(locals.Add(local_ref_cookie, obj));
+  std::string error_msg;
+  jobject ref = reinterpret_cast<jobject>(locals.Add(local_ref_cookie, obj, &error_msg));
+  if (UNLIKELY(ref == nullptr)) {
+    // This is really unexpected if we allow resizing local IRTs...
+    LOG(FATAL) << error_msg;
+    UNREACHABLE();
+  }
+  return ref;
 }
 
 void JNIEnvExt::DeleteLocalRef(jobject obj) {
