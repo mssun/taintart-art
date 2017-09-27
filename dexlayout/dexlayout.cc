@@ -1079,16 +1079,15 @@ void DexLayout::DumpBytecodes(uint32_t idx, const dex_ir::CodeItem* code, uint32
           code_offset, code_offset, dot.c_str(), name, type_descriptor.c_str());
 
   // Iterate over all instructions.
-  const uint16_t* insns = code->Insns();
-  for (uint32_t insn_idx = 0; insn_idx < code->InsnsSize();) {
-    const Instruction* instruction = Instruction::At(&insns[insn_idx]);
-    const uint32_t insn_width = instruction->SizeInCodeUnits();
+  IterationRange<DexInstructionIterator> instructions = code->Instructions();
+  for (auto inst = instructions.begin(); inst != instructions.end(); ++inst) {
+    const uint32_t dex_pc = inst.GetDexPC(instructions.begin());
+    const uint32_t insn_width = inst->SizeInCodeUnits();
     if (insn_width == 0) {
-      fprintf(stderr, "GLITCH: zero-width instruction at idx=0x%04x\n", insn_idx);
+      fprintf(stderr, "GLITCH: zero-width instruction at idx=0x%04x\n", dex_pc);
       break;
     }
-    DumpInstruction(code, code_offset, insn_idx, insn_width, instruction);
-    insn_idx += insn_width;
+    DumpInstruction(code, code_offset, dex_pc, insn_width, &*inst);
   }  // for
 }
 

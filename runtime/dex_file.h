@@ -21,9 +21,11 @@
 #include <string>
 #include <vector>
 
+#include "base/iteration_range.h"
 #include "base/logging.h"
 #include "base/value_object.h"
 #include "dex_file_types.h"
+#include "dex_instruction_iterator.h"
 #include "globals.h"
 #include "jni.h"
 #include "modifiers.h"
@@ -293,6 +295,15 @@ class DexFile {
 
   // Raw code_item.
   struct CodeItem {
+    IterationRange<DexInstructionIterator> Instructions() const {
+      return { DexInstructionIterator(insns_),
+               DexInstructionIterator(insns_ + insns_size_in_code_units_)};
+    }
+
+    const Instruction& InstructionAt(uint32_t dex_pc) const {
+      return *Instruction::At(insns_ + dex_pc);
+    }
+
     uint16_t registers_size_;            // the number of registers used by this code
                                          //   (locals + parameters)
     uint16_t ins_size_;                  // the number of words of incoming arguments to the method

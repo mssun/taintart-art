@@ -762,18 +762,14 @@ static void ResolveConstStrings(Handle<mirror::DexCache> dex_cache,
     return;
   }
 
-  const uint16_t* code_ptr = code_item->insns_;
-  const uint16_t* code_end = code_item->insns_ + code_item->insns_size_in_code_units_;
   ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
-
-  while (code_ptr < code_end) {
-    const Instruction* inst = Instruction::At(code_ptr);
-    switch (inst->Opcode()) {
+  for (const Instruction& inst : code_item->Instructions()) {
+    switch (inst.Opcode()) {
       case Instruction::CONST_STRING:
       case Instruction::CONST_STRING_JUMBO: {
-        dex::StringIndex string_index((inst->Opcode() == Instruction::CONST_STRING)
-            ? inst->VRegB_21c()
-            : inst->VRegB_31c());
+        dex::StringIndex string_index((inst.Opcode() == Instruction::CONST_STRING)
+            ? inst.VRegB_21c()
+            : inst.VRegB_31c());
         mirror::String* string = class_linker->ResolveString(dex_file, string_index, dex_cache);
         CHECK(string != nullptr) << "Could not allocate a string when forcing determinism";
         break;
@@ -782,8 +778,6 @@ static void ResolveConstStrings(Handle<mirror::DexCache> dex_cache,
       default:
         break;
     }
-
-    code_ptr += inst->SizeInCodeUnits();
   }
 }
 
@@ -2439,21 +2433,16 @@ class InitializeClassVisitor : public CompilationVisitor {
     if (clinit != nullptr) {
       const DexFile::CodeItem* code_item = clinit->GetCodeItem();
       DCHECK(code_item != nullptr);
-      const Instruction* inst = Instruction::At(code_item->insns_);
-
-      const uint32_t insns_size = code_item->insns_size_in_code_units_;
-      for (uint32_t dex_pc = 0; dex_pc < insns_size;) {
-        if (inst->Opcode() == Instruction::CONST_STRING) {
+      for (const Instruction& inst : code_item->Instructions()) {
+        if (inst.Opcode() == Instruction::CONST_STRING) {
           ObjPtr<mirror::String> s = class_linker->ResolveString(
-              *dex_file, dex::StringIndex(inst->VRegB_21c()), h_dex_cache);
+              *dex_file, dex::StringIndex(inst.VRegB_21c()), h_dex_cache);
           CHECK(s != nullptr);
-        } else if (inst->Opcode() == Instruction::CONST_STRING_JUMBO) {
+        } else if (inst.Opcode() == Instruction::CONST_STRING_JUMBO) {
           ObjPtr<mirror::String> s = class_linker->ResolveString(
-              *dex_file, dex::StringIndex(inst->VRegB_31c()), h_dex_cache);
+              *dex_file, dex::StringIndex(inst.VRegB_31c()), h_dex_cache);
           CHECK(s != nullptr);
         }
-        dex_pc += inst->SizeInCodeUnits();
-        inst = inst->Next();
       }
     }
   }
