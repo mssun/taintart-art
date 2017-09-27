@@ -237,7 +237,8 @@ bool IndirectReferenceTable::Resize(size_t new_size, std::string* error_msg) {
 }
 
 IndirectRef IndirectReferenceTable::Add(IRTSegmentState previous_state,
-                                        ObjPtr<mirror::Object> obj) {
+                                        ObjPtr<mirror::Object> obj,
+                                        std::string* error_msg) {
   if (kDebugIRT) {
     LOG(INFO) << "+++ Add: previous_state=" << previous_state.top_index
               << " top_index=" << segment_state_.top_index
@@ -253,28 +254,34 @@ IndirectRef IndirectReferenceTable::Add(IRTSegmentState previous_state,
 
   if (top_index == max_entries_) {
     if (resizable_ == ResizableCapacity::kNo) {
-      LOG(FATAL) << "JNI ERROR (app bug): " << kind_ << " table overflow "
-                 << "(max=" << max_entries_ << ")\n"
-                 << MutatorLockedDumpable<IndirectReferenceTable>(*this);
-      UNREACHABLE();
+      std::ostringstream oss;
+      oss << "JNI ERROR (app bug): " << kind_ << " table overflow "
+          << "(max=" << max_entries_ << ")"
+          << MutatorLockedDumpable<IndirectReferenceTable>(*this);
+      *error_msg = oss.str();
+      return nullptr;
     }
 
     // Try to double space.
     if (std::numeric_limits<size_t>::max() / 2 < max_entries_) {
-      LOG(FATAL) << "JNI ERROR (app bug): " << kind_ << " table overflow "
-                 << "(max=" << max_entries_ << ")" << std::endl
-                 << MutatorLockedDumpable<IndirectReferenceTable>(*this)
-                << " Resizing failed: exceeds size_t";
-      UNREACHABLE();
+      std::ostringstream oss;
+      oss << "JNI ERROR (app bug): " << kind_ << " table overflow "
+          << "(max=" << max_entries_ << ")" << std::endl
+          << MutatorLockedDumpable<IndirectReferenceTable>(*this)
+          << " Resizing failed: exceeds size_t";
+      *error_msg = oss.str();
+      return nullptr;
     }
 
-    std::string error_msg;
-    if (!Resize(max_entries_ * 2, &error_msg)) {
-      LOG(FATAL) << "JNI ERROR (app bug): " << kind_ << " table overflow "
-                 << "(max=" << max_entries_ << ")" << std::endl
-                 << MutatorLockedDumpable<IndirectReferenceTable>(*this)
-                 << " Resizing failed: " << error_msg;
-      UNREACHABLE();
+    std::string inner_error_msg;
+    if (!Resize(max_entries_ * 2, &inner_error_msg)) {
+      std::ostringstream oss;
+      oss << "JNI ERROR (app bug): " << kind_ << " table overflow "
+          << "(max=" << max_entries_ << ")" << std::endl
+          << MutatorLockedDumpable<IndirectReferenceTable>(*this)
+          << " Resizing failed: " << inner_error_msg;
+      *error_msg = oss.str();
+      return nullptr;
     }
   }
 
