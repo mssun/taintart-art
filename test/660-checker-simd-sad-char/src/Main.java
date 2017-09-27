@@ -23,7 +23,7 @@ public class Main {
 
   // TODO: consider unsigned SAD too, b/64091002
 
-  private static char sadShort2Short(char[] s1, char[] s2) {
+  private static char sadChar2Char(char[] s1, char[] s2) {
     int min_length = Math.min(s1.length, s2.length);
     char sad = 0;
     for (int i = 0; i < min_length; i++) {
@@ -32,7 +32,7 @@ public class Main {
     return sad;
   }
 
-  private static char sadShort2ShortAlt(char[] s1, char[] s2) {
+  private static char sadChar2CharAlt(char[] s1, char[] s2) {
     int min_length = Math.min(s1.length, s2.length);
     char sad = 0;
     for (int i = 0; i < min_length; i++) {
@@ -43,7 +43,7 @@ public class Main {
     return sad;
   }
 
-  private static char sadShort2ShortAlt2(char[] s1, char[] s2) {
+  private static char sadChar2CharAlt2(char[] s1, char[] s2) {
     int min_length = Math.min(s1.length, s2.length);
     char sad = 0;
     for (int i = 0; i < min_length; i++) {
@@ -56,7 +56,7 @@ public class Main {
     return sad;
   }
 
-  /// CHECK-START: int Main.sadShort2Int(char[], char[]) loop_optimization (before)
+  /// CHECK-START: int Main.sadChar2Int(char[], char[]) loop_optimization (before)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
   /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
   /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
@@ -68,9 +68,9 @@ public class Main {
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-ARM64: int Main.sadShort2Int(char[], char[]) loop_optimization (after)
+  /// CHECK-START-ARM64: int Main.sadChar2Int(char[], char[]) loop_optimization (after)
   /// CHECK-NOT: VecSADAccumulate
-  private static int sadShort2Int(char[] s1, char[] s2) {
+  private static int sadChar2Int(char[] s1, char[] s2) {
     int min_length = Math.min(s1.length, s2.length);
     int sad = 0;
     for (int i = 0; i < min_length; i++) {
@@ -79,7 +79,7 @@ public class Main {
     return sad;
   }
 
-  /// CHECK-START: int Main.sadShort2IntAlt(char[], char[]) loop_optimization (before)
+  /// CHECK-START: int Main.sadChar2IntAlt(char[], char[]) loop_optimization (before)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
   /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
   /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
@@ -91,9 +91,9 @@ public class Main {
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-ARM64: int Main.sadShort2IntAlt(char[], char[]) loop_optimization (after)
+  /// CHECK-START-ARM64: int Main.sadChar2IntAlt(char[], char[]) loop_optimization (after)
   /// CHECK-NOT: VecSADAccumulate
-  private static int sadShort2IntAlt(char[] s1, char[] s2) {
+  private static int sadChar2IntAlt(char[] s1, char[] s2) {
     int min_length = Math.min(s1.length, s2.length);
     int sad = 0;
     for (int i = 0; i < min_length; i++) {
@@ -104,7 +104,7 @@ public class Main {
     return sad;
   }
 
-  /// CHECK-START: int Main.sadShort2IntAlt2(char[], char[]) loop_optimization (before)
+  /// CHECK-START: int Main.sadChar2IntAlt2(char[], char[]) loop_optimization (before)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
   /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
   /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
@@ -116,9 +116,9 @@ public class Main {
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-ARM64: int Main.sadShort2IntAlt2(char[], char[]) loop_optimization (after)
+  /// CHECK-START-ARM64: int Main.sadChar2IntAlt2(char[], char[]) loop_optimization (after)
   /// CHECK-NOT: VecSADAccumulate
-  private static int sadShort2IntAlt2(char[] s1, char[] s2) {
+  private static int sadChar2IntAlt2(char[] s1, char[] s2) {
     int min_length = Math.min(s1.length, s2.length);
     int sad = 0;
     for (int i = 0; i < min_length; i++) {
@@ -131,7 +131,7 @@ public class Main {
     return sad;
   }
 
-  /// CHECK-START: long Main.sadShort2Long(char[], char[]) loop_optimization (before)
+  /// CHECK-START: long Main.sadChar2Long(char[], char[]) loop_optimization (before)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
   /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
   /// CHECK-DAG: <<ConsL:j\d+>>  LongConstant 0                 loop:none
@@ -146,9 +146,9 @@ public class Main {
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-ARM64: long Main.sadShort2Long(char[], char[]) loop_optimization (after)
+  /// CHECK-START-ARM64: long Main.sadChar2Long(char[], char[]) loop_optimization (after)
   /// CHECK-NOT: VecSADAccumulate
-  private static long sadShort2Long(char[] s1, char[] s2) {
+  private static long sadChar2Long(char[] s1, char[] s2) {
     int min_length = Math.min(s1.length, s2.length);
     long sad = 0;
     for (int i = 0; i < min_length; i++) {
@@ -159,7 +159,7 @@ public class Main {
     return sad;
   }
 
-  /// CHECK-START: long Main.sadShort2LongAt1(char[], char[]) loop_optimization (before)
+  /// CHECK-START: long Main.sadChar2LongAt1(char[], char[]) loop_optimization (before)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
   /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
   /// CHECK-DAG: <<ConsL:j\d+>>  LongConstant 1                 loop:none
@@ -174,9 +174,9 @@ public class Main {
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-ARM64: long Main.sadShort2LongAt1(char[], char[]) loop_optimization (after)
+  /// CHECK-START-ARM64: long Main.sadChar2LongAt1(char[], char[]) loop_optimization (after)
   /// CHECK-NOT: VecSADAccumulate
-  private static long sadShort2LongAt1(char[] s1, char[] s2) {
+  private static long sadChar2LongAt1(char[] s1, char[] s2) {
     int min_length = Math.min(s1.length, s2.length);
     long sad = 1;  // starts at 1
     for (int i = 0; i < min_length; i++) {
@@ -191,22 +191,22 @@ public class Main {
     // Cross-test the two most extreme values individually.
     char[] s1 = { 0, 0x8000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     char[] s2 = { 0, 0x7fff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    expectEquals(1, sadShort2Short(s1, s2));
-    expectEquals(1, sadShort2Short(s2, s1));
-    expectEquals(1, sadShort2ShortAlt(s1, s2));
-    expectEquals(1, sadShort2ShortAlt(s2, s1));
-    expectEquals(1, sadShort2ShortAlt2(s1, s2));
-    expectEquals(1, sadShort2ShortAlt2(s2, s1));
-    expectEquals(1, sadShort2Int(s1, s2));
-    expectEquals(1, sadShort2Int(s2, s1));
-    expectEquals(1, sadShort2IntAlt(s1, s2));
-    expectEquals(1, sadShort2IntAlt(s2, s1));
-    expectEquals(1, sadShort2IntAlt2(s1, s2));
-    expectEquals(1, sadShort2IntAlt2(s2, s1));
-    expectEquals(1L, sadShort2Long(s1, s2));
-    expectEquals(1L, sadShort2Long(s2, s1));
-    expectEquals(2L, sadShort2LongAt1(s1, s2));
-    expectEquals(2L, sadShort2LongAt1(s2, s1));
+    expectEquals(1, sadChar2Char(s1, s2));
+    expectEquals(1, sadChar2Char(s2, s1));
+    expectEquals(1, sadChar2CharAlt(s1, s2));
+    expectEquals(1, sadChar2CharAlt(s2, s1));
+    expectEquals(1, sadChar2CharAlt2(s1, s2));
+    expectEquals(1, sadChar2CharAlt2(s2, s1));
+    expectEquals(1, sadChar2Int(s1, s2));
+    expectEquals(1, sadChar2Int(s2, s1));
+    expectEquals(1, sadChar2IntAlt(s1, s2));
+    expectEquals(1, sadChar2IntAlt(s2, s1));
+    expectEquals(1, sadChar2IntAlt2(s1, s2));
+    expectEquals(1, sadChar2IntAlt2(s2, s1));
+    expectEquals(1L, sadChar2Long(s1, s2));
+    expectEquals(1L, sadChar2Long(s2, s1));
+    expectEquals(2L, sadChar2LongAt1(s1, s2));
+    expectEquals(2L, sadChar2LongAt1(s2, s1));
 
     // Use cross-values to test all cases.
     char[] interesting = {
@@ -233,14 +233,14 @@ public class Main {
     }
     s1[k] = 10;
     s2[k] = 2;
-    expectEquals(56196, sadShort2Short(s1, s2));
-    expectEquals(56196, sadShort2ShortAlt(s1, s2));
-    expectEquals(56196, sadShort2ShortAlt2(s1, s2));
-    expectEquals(1497988, sadShort2Int(s1, s2));
-    expectEquals(1497988, sadShort2IntAlt(s1, s2));
-    expectEquals(1497988, sadShort2IntAlt2(s1, s2));
-    expectEquals(1497988L, sadShort2Long(s1, s2));
-    expectEquals(1497989L, sadShort2LongAt1(s1, s2));
+    expectEquals(56196, sadChar2Char(s1, s2));
+    expectEquals(56196, sadChar2CharAlt(s1, s2));
+    expectEquals(56196, sadChar2CharAlt2(s1, s2));
+    expectEquals(1497988, sadChar2Int(s1, s2));
+    expectEquals(1497988, sadChar2IntAlt(s1, s2));
+    expectEquals(1497988, sadChar2IntAlt2(s1, s2));
+    expectEquals(1497988L, sadChar2Long(s1, s2));
+    expectEquals(1497989L, sadChar2LongAt1(s1, s2));
 
     System.out.println("passed");
   }
