@@ -25,7 +25,13 @@ namespace art {
 
 template<typename T>
 inline T JNIEnvExt::AddLocalReference(ObjPtr<mirror::Object> obj) {
-  IndirectRef ref = locals.Add(local_ref_cookie, obj);
+  std::string error_msg;
+  IndirectRef ref = locals.Add(local_ref_cookie, obj, &error_msg);
+  if (UNLIKELY(ref == nullptr)) {
+    // This is really unexpected if we allow resizing local IRTs...
+    LOG(FATAL) << error_msg;
+    UNREACHABLE();
+  }
 
   // TODO: fix this to understand PushLocalFrame, so we can turn it on.
   if (false) {

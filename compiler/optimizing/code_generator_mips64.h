@@ -79,8 +79,8 @@ class InvokeDexCallingConventionVisitorMIPS64 : public InvokeDexCallingConventio
   InvokeDexCallingConventionVisitorMIPS64() {}
   virtual ~InvokeDexCallingConventionVisitorMIPS64() {}
 
-  Location GetNextLocation(Primitive::Type type) OVERRIDE;
-  Location GetReturnLocation(Primitive::Type type) const OVERRIDE;
+  Location GetNextLocation(DataType::Type type) OVERRIDE;
+  Location GetReturnLocation(DataType::Type type) const OVERRIDE;
   Location GetMethodLocation() const OVERRIDE;
 
  private:
@@ -98,7 +98,7 @@ class InvokeRuntimeCallingConvention : public CallingConvention<GpuRegister, Fpu
                           kRuntimeParameterFpuRegistersLength,
                           kMips64PointerSize) {}
 
-  Location GetReturnLocation(Primitive::Type return_type);
+  Location GetReturnLocation(DataType::Type return_type);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(InvokeRuntimeCallingConvention);
@@ -114,16 +114,16 @@ class FieldAccessCallingConventionMIPS64 : public FieldAccessCallingConvention {
   Location GetFieldIndexLocation() const OVERRIDE {
     return Location::RegisterLocation(A0);
   }
-  Location GetReturnLocation(Primitive::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
+  Location GetReturnLocation(DataType::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
     return Location::RegisterLocation(V0);
   }
-  Location GetSetValueLocation(Primitive::Type type ATTRIBUTE_UNUSED,
+  Location GetSetValueLocation(DataType::Type type ATTRIBUTE_UNUSED,
                                bool is_instance) const OVERRIDE {
     return is_instance
         ? Location::RegisterLocation(A2)
         : Location::RegisterLocation(A1);
   }
-  Location GetFpuLocation(Primitive::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
+  Location GetFpuLocation(DataType::Type type ATTRIBUTE_UNUSED) const OVERRIDE {
     return Location::FpuRegisterLocation(F0);
   }
 
@@ -306,19 +306,19 @@ class InstructionCodeGeneratorMIPS64 : public InstructionCodeGenerator {
                                        Mips64Label* label);
   void GenerateFpCompare(IfCondition cond,
                          bool gt_bias,
-                         Primitive::Type type,
+                         DataType::Type type,
                          LocationSummary* locations);
   // When the function returns `false` it means that the condition holds if `dst` is non-zero
   // and doesn't hold if `dst` is zero. If it returns `true`, the roles of zero and non-zero
   // `dst` are exchanged.
   bool MaterializeFpCompare(IfCondition cond,
                             bool gt_bias,
-                            Primitive::Type type,
+                            DataType::Type type,
                             LocationSummary* input_locations,
                             FpuRegister dst);
   void GenerateFpCompareAndBranch(IfCondition cond,
                                   bool gt_bias,
-                                  Primitive::Type type,
+                                  DataType::Type type,
                                   LocationSummary* locations,
                                   Mips64Label* label);
   void HandleGoto(HInstruction* got, HBasicBlock* successor);
@@ -497,14 +497,14 @@ class CodeGeneratorMIPS64 : public CodeGenerator {
   void Finalize(CodeAllocator* allocator) OVERRIDE;
 
   // Code generation helpers.
-  void MoveLocation(Location dst, Location src, Primitive::Type dst_type) OVERRIDE;
+  void MoveLocation(Location dst, Location src, DataType::Type dst_type) OVERRIDE;
 
   void MoveConstant(Location destination, int32_t value) OVERRIDE;
 
   void AddLocationAsTemp(Location location, LocationSummary* locations) OVERRIDE;
 
 
-  void SwapLocations(Location loc1, Location loc2, Primitive::Type type);
+  void SwapLocations(Location loc1, Location loc2, DataType::Type type);
 
   // Generate code to invoke a runtime entry point.
   void InvokeRuntime(QuickEntrypointEnum entrypoint,
@@ -522,7 +522,7 @@ class CodeGeneratorMIPS64 : public CodeGenerator {
 
   ParallelMoveResolver* GetMoveResolver() OVERRIDE { return &move_resolver_; }
 
-  bool NeedsTwoRegisters(Primitive::Type type ATTRIBUTE_UNUSED) const OVERRIDE { return false; }
+  bool NeedsTwoRegisters(DataType::Type type ATTRIBUTE_UNUSED) const OVERRIDE { return false; }
 
   // Check if the desired_string_load_kind is supported. If it is, return it,
   // otherwise return a fall-back kind that should be used instead.
@@ -546,7 +546,7 @@ class CodeGeneratorMIPS64 : public CodeGenerator {
       HInvokeVirtual* invoke, Location temp, SlowPathCode* slow_path = nullptr) OVERRIDE;
 
   void MoveFromReturnRegister(Location trg ATTRIBUTE_UNUSED,
-                              Primitive::Type type ATTRIBUTE_UNUSED) OVERRIDE {
+                              DataType::Type type ATTRIBUTE_UNUSED) OVERRIDE {
     UNIMPLEMENTED(FATAL) << "Not implemented on MIPS64";
   }
 

@@ -89,7 +89,7 @@ static void TestCode(const uint16_t* data, const char* expected) {
   // Test that phis had their type set.
   for (HBasicBlock* block : graph->GetBlocks()) {
     for (HInstructionIterator it(block->GetPhis()); !it.Done(); it.Advance()) {
-      ASSERT_NE(it.Current()->GetType(), Primitive::kPrimVoid);
+      ASSERT_NE(it.Current()->GetType(), DataType::Type::kVoid);
     }
   }
 

@@ -140,11 +140,11 @@ void HSelectGenerator::Run() {
                                                        false_value,
                                                        if_instruction->GetDexPc());
     if (both_successors_return) {
-      if (true_value->GetType() == Primitive::kPrimNot) {
-        DCHECK(false_value->GetType() == Primitive::kPrimNot);
+      if (true_value->GetType() == DataType::Type::kReference) {
+        DCHECK(false_value->GetType() == DataType::Type::kReference);
         ReferenceTypePropagation::FixUpInstructionType(select, handle_scope_);
       }
-    } else if (phi->GetType() == Primitive::kPrimNot) {
+    } else if (phi->GetType() == DataType::Type::kReference) {
       select->SetReferenceTypeInfo(phi->GetReferenceTypeInfo());
     }
     block->InsertInstructionBefore(select, if_instruction);

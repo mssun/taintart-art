@@ -83,8 +83,8 @@ RegisterAllocatorLinearScan::RegisterAllocatorLinearScan(ArenaAllocator* allocat
 
 static bool ShouldProcess(bool processing_core_registers, LiveInterval* interval) {
   if (interval == nullptr) return false;
-  bool is_core_register = (interval->GetType() != Primitive::kPrimDouble)
-      && (interval->GetType() != Primitive::kPrimFloat);
+  bool is_core_register = (interval->GetType() != DataType::Type::kFloat64)
+      && (interval->GetType() != DataType::Type::kFloat32);
   return processing_core_registers == is_core_register;
 }
 
@@ -132,9 +132,9 @@ void RegisterAllocatorLinearScan::BlockRegister(Location location, size_t start,
   LiveInterval* interval = location.IsRegister()
       ? physical_core_register_intervals_[reg]
       : physical_fp_register_intervals_[reg];
-  Primitive::Type type = location.IsRegister()
-      ? Primitive::kPrimInt
-      : Primitive::kPrimFloat;
+  DataType::Type type = location.IsRegister()
+      ? DataType::Type::kInt32
+      : DataType::Type::kFloat32;
   if (interval == nullptr) {
     interval = LiveInterval::MakeFixedInterval(allocator_, reg, type);
     if (location.IsRegister()) {
@@ -237,7 +237,7 @@ void RegisterAllocatorLinearScan::ProcessInstruction(HInstruction* instruction) 
       switch (temp.GetPolicy()) {
         case Location::kRequiresRegister: {
           LiveInterval* interval =
-              LiveInterval::MakeTempInterval(allocator_, Primitive::kPrimInt);
+              LiveInterval::MakeTempInterval(allocator_, DataType::Type::kInt32);
           temp_intervals_.push_back(interval);
           interval->AddTempUse(instruction, i);
           unhandled_core_intervals_.push_back(interval);
@@ -246,10 +246,10 @@ void RegisterAllocatorLinearScan::ProcessInstruction(HInstruction* instruction) 
 
         case Location::kRequiresFpuRegister: {
           LiveInterval* interval =
-              LiveInterval::MakeTempInterval(allocator_, Primitive::kPrimDouble);
+              LiveInterval::MakeTempInterval(allocator_, DataType::Type::kFloat64);
           temp_intervals_.push_back(interval);
           interval->AddTempUse(instruction, i);
-          if (codegen_->NeedsTwoRegisters(Primitive::kPrimDouble)) {
+          if (codegen_->NeedsTwoRegisters(DataType::Type::kFloat64)) {
             interval->AddHighInterval(/* is_temp */ true);
             LiveInterval* high = interval->GetHighInterval();
             temp_intervals_.push_back(high);
@@ -266,8 +266,8 @@ void RegisterAllocatorLinearScan::ProcessInstruction(HInstruction* instruction) 
     }
   }
 
-  bool core_register = (instruction->GetType() != Primitive::kPrimDouble)
-      && (instruction->GetType() != Primitive::kPrimFloat);
+  bool core_register = (instruction->GetType() != DataType::Type::kFloat64)
+      && (instruction->GetType() != DataType::Type::kFloat32);
 
   if (locations->NeedsSafepoint()) {
     if (codegen_->IsLeafMethod()) {
@@ -1104,24 +1104,24 @@ void RegisterAllocatorLinearScan::AllocateSpillSlotFor(LiveInterval* interval) {
 
   ArenaVector<size_t>* spill_slots = nullptr;
   switch (interval->GetType()) {
-    case Primitive::kPrimDouble:
+    case DataType::Type::kFloat64:
       spill_slots = &double_spill_slots_;
       break;
-    case Primitive::kPrimLong:
+    case DataType::Type::kInt64:
       spill_slots = &long_spill_slots_;
       break;
-    case Primitive::kPrimFloat:
+    case DataType::Type::kFloat32:
       spill_slots = &float_spill_slots_;
       break;
-    case Primitive::kPrimNot:
-    case Primitive::kPrimInt:
-    case Primitive::kPrimChar:
-    case Primitive::kPrimByte:
-    case Primitive::kPrimBoolean:
-    case Primitive::kPrimShort:
+    case DataType::Type::kReference:
+    case DataType::Type::kInt32:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt8:
+    case DataType::Type::kBool:
+    case DataType::Type::kInt16:
       spill_slots = &int_spill_slots_;
       break;
-    case Primitive::kPrimVoid:
+    case DataType::Type::kVoid:
       LOG(FATAL) << "Unexpected type for interval " << interval->GetType();
   }
 

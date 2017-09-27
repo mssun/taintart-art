@@ -38,8 +38,8 @@ bool InstructionSimplifierArm64Visitor::TryMergeIntoShifterOperand(HInstruction*
   DCHECK(CanFitInShifterOperand(bitfield_op));
   DCHECK(!bitfield_op->HasEnvironmentUses());
 
-  Primitive::Type type = use->GetType();
-  if (type != Primitive::kPrimInt && type != Primitive::kPrimLong) {
+  DataType::Type type = use->GetType();
+  if (type != DataType::Type::kInt32 && type != DataType::Type::kInt64) {
     return false;
   }
 
@@ -150,7 +150,7 @@ void InstructionSimplifierArm64Visitor::VisitArrayGet(HArrayGet* instruction) {
 }
 
 void InstructionSimplifierArm64Visitor::VisitArraySet(HArraySet* instruction) {
-  size_t access_size = Primitive::ComponentSize(instruction->GetComponentType());
+  size_t access_size = DataType::Size(instruction->GetComponentType());
   size_t data_offset = mirror::Array::DataOffset(access_size).Uint32Value();
   if (TryExtractArrayAccessAddress(instruction,
                                    instruction->GetArray(),
@@ -185,15 +185,15 @@ void InstructionSimplifierArm64Visitor::VisitShr(HShr* instruction) {
 }
 
 void InstructionSimplifierArm64Visitor::VisitTypeConversion(HTypeConversion* instruction) {
-  Primitive::Type result_type = instruction->GetResultType();
-  Primitive::Type input_type = instruction->GetInputType();
+  DataType::Type result_type = instruction->GetResultType();
+  DataType::Type input_type = instruction->GetInputType();
 
   if (input_type == result_type) {
     // We let the arch-independent code handle this.
     return;
   }
 
-  if (Primitive::IsIntegralType(result_type) && Primitive::IsIntegralType(input_type)) {
+  if (DataType::IsIntegralType(result_type) && DataType::IsIntegralType(input_type)) {
     TryMergeIntoUsersShifterOperand(instruction);
   }
 }

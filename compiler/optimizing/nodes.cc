@@ -564,7 +564,7 @@ HCurrentMethod* HGraph::GetCurrentMethod() {
   // id and/or any invariants the graph is assuming when adding new instructions.
   if ((cached_current_method_ == nullptr) || (cached_current_method_->GetBlock() == nullptr)) {
     cached_current_method_ = new (arena_) HCurrentMethod(
-        Is64BitInstructionSet(instruction_set_) ? Primitive::kPrimLong : Primitive::kPrimInt,
+        Is64BitInstructionSet(instruction_set_) ? DataType::Type::kInt64 : DataType::Type::kInt32,
         entry_block_->GetDexPc());
     if (entry_block_->GetFirstInstruction() == nullptr) {
       entry_block_->AddInstruction(cached_current_method_);
@@ -585,19 +585,19 @@ std::string HGraph::PrettyMethod(bool with_signature) const {
   return dex_file_.PrettyMethod(method_idx_, with_signature);
 }
 
-HConstant* HGraph::GetConstant(Primitive::Type type, int64_t value, uint32_t dex_pc) {
+HConstant* HGraph::GetConstant(DataType::Type type, int64_t value, uint32_t dex_pc) {
   switch (type) {
-    case Primitive::Type::kPrimBoolean:
+    case DataType::Type::kBool:
       DCHECK(IsUint<1>(value));
       FALLTHROUGH_INTENDED;
-    case Primitive::Type::kPrimByte:
-    case Primitive::Type::kPrimChar:
-    case Primitive::Type::kPrimShort:
-    case Primitive::Type::kPrimInt:
-      DCHECK(IsInt(Primitive::ComponentSize(type) * kBitsPerByte, value));
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+      DCHECK(IsInt(DataType::Size(type) * kBitsPerByte, value));
       return GetIntConstant(static_cast<int32_t>(value), dex_pc);
 
-    case Primitive::Type::kPrimLong:
+    case DataType::Type::kInt64:
       return GetLongConstant(value, dex_pc);
 
     default:
@@ -838,9 +838,9 @@ void HBasicBlock::ReplaceAndRemoveInstructionWith(HInstruction* initial,
     // We can only replace a control flow instruction with another control flow instruction.
     DCHECK(replacement->IsControlFlow());
     DCHECK_EQ(replacement->GetId(), -1);
-    DCHECK_EQ(replacement->GetType(), Primitive::kPrimVoid);
+    DCHECK_EQ(replacement->GetType(), DataType::Type::kVoid);
     DCHECK_EQ(initial->GetBlock(), this);
-    DCHECK_EQ(initial->GetType(), Primitive::kPrimVoid);
+    DCHECK_EQ(initial->GetType(), DataType::Type::kVoid);
     DCHECK(initial->GetUses().empty());
     DCHECK(initial->GetEnvUses().empty());
     replacement->SetBlock(this);
@@ -1219,7 +1219,7 @@ void HVariableInputSizeInstruction::RemoveAllInputs() {
 size_t HConstructorFence::RemoveConstructorFences(HInstruction* instruction) {
   DCHECK(instruction->GetBlock() != nullptr);
   // Removing constructor fences only makes sense for instructions with an object return type.
-  DCHECK_EQ(Primitive::kPrimNot, instruction->GetType());
+  DCHECK_EQ(DataType::Type::kReference, instruction->GetType());
 
   // Return how many instructions were removed for statistic purposes.
   size_t remove_count = 0;
@@ -1382,11 +1382,11 @@ HConstant* HTypeConversion::TryStaticEvaluation() const {
   if (GetInput()->IsIntConstant()) {
     int32_t value = GetInput()->AsIntConstant()->GetValue();
     switch (GetResultType()) {
-      case Primitive::kPrimLong:
+      case DataType::Type::kInt64:
         return graph->GetLongConstant(static_cast<int64_t>(value), GetDexPc());
-      case Primitive::kPrimFloat:
+      case DataType::Type::kFloat32:
         return graph->GetFloatConstant(static_cast<float>(value), GetDexPc());
-      case Primitive::kPrimDouble:
+      case DataType::Type::kFloat64:
         return graph->GetDoubleConstant(static_cast<double>(value), GetDexPc());
       default:
         return nullptr;
@@ -1394,11 +1394,11 @@ HConstant* HTypeConversion::TryStaticEvaluation() const {
   } else if (GetInput()->IsLongConstant()) {
     int64_t value = GetInput()->AsLongConstant()->GetValue();
     switch (GetResultType()) {
-      case Primitive::kPrimInt:
+      case DataType::Type::kInt32:
         return graph->GetIntConstant(static_cast<int32_t>(value), GetDexPc());
-      case Primitive::kPrimFloat:
+      case DataType::Type::kFloat32:
         return graph->GetFloatConstant(static_cast<float>(value), GetDexPc());
-      case Primitive::kPrimDouble:
+      case DataType::Type::kFloat64:
         return graph->GetDoubleConstant(static_cast<double>(value), GetDexPc());
       default:
         return nullptr;
@@ -1406,7 +1406,7 @@ HConstant* HTypeConversion::TryStaticEvaluation() const {
   } else if (GetInput()->IsFloatConstant()) {
     float value = GetInput()->AsFloatConstant()->GetValue();
     switch (GetResultType()) {
-      case Primitive::kPrimInt:
+      case DataType::Type::kInt32:
         if (std::isnan(value))
           return graph->GetIntConstant(0, GetDexPc());
         if (value >= kPrimIntMax)
@@ -1414,7 +1414,7 @@ HConstant* HTypeConversion::TryStaticEvaluation() const {
         if (value <= kPrimIntMin)
           return graph->GetIntConstant(kPrimIntMin, GetDexPc());
         return graph->GetIntConstant(static_cast<int32_t>(value), GetDexPc());
-      case Primitive::kPrimLong:
+      case DataType::Type::kInt64:
         if (std::isnan(value))
           return graph->GetLongConstant(0, GetDexPc());
         if (value >= kPrimLongMax)
@@ -1422,7 +1422,7 @@ HConstant* HTypeConversion::TryStaticEvaluation() const {
         if (value <= kPrimLongMin)
           return graph->GetLongConstant(kPrimLongMin, GetDexPc());
         return graph->GetLongConstant(static_cast<int64_t>(value), GetDexPc());
-      case Primitive::kPrimDouble:
+      case DataType::Type::kFloat64:
         return graph->GetDoubleConstant(static_cast<double>(value), GetDexPc());
       default:
         return nullptr;
@@ -1430,7 +1430,7 @@ HConstant* HTypeConversion::TryStaticEvaluation() const {
   } else if (GetInput()->IsDoubleConstant()) {
     double value = GetInput()->AsDoubleConstant()->GetValue();
     switch (GetResultType()) {
-      case Primitive::kPrimInt:
+      case DataType::Type::kInt32:
         if (std::isnan(value))
           return graph->GetIntConstant(0, GetDexPc());
         if (value >= kPrimIntMax)
@@ -1438,7 +1438,7 @@ HConstant* HTypeConversion::TryStaticEvaluation() const {
         if (value <= kPrimLongMin)
           return graph->GetIntConstant(kPrimIntMin, GetDexPc());
         return graph->GetIntConstant(static_cast<int32_t>(value), GetDexPc());
-      case Primitive::kPrimLong:
+      case DataType::Type::kInt64:
         if (std::isnan(value))
           return graph->GetLongConstant(0, GetDexPc());
         if (value >= kPrimLongMax)
@@ -1446,7 +1446,7 @@ HConstant* HTypeConversion::TryStaticEvaluation() const {
         if (value <= kPrimLongMin)
           return graph->GetLongConstant(kPrimLongMin, GetDexPc());
         return graph->GetLongConstant(static_cast<int64_t>(value), GetDexPc());
-      case Primitive::kPrimFloat:
+      case DataType::Type::kFloat32:
         return graph->GetFloatConstant(static_cast<float>(value), GetDexPc());
       default:
         return nullptr;
@@ -2604,7 +2604,7 @@ static void CheckAgainstUpperBound(ReferenceTypeInfo rti, ReferenceTypeInfo uppe
 
 void HInstruction::SetReferenceTypeInfo(ReferenceTypeInfo rti) {
   if (kIsDebugBuild) {
-    DCHECK_EQ(GetType(), Primitive::kPrimNot);
+    DCHECK_EQ(GetType(), DataType::Type::kReference);
     ScopedObjectAccess soa(Thread::Current());
     DCHECK(rti.IsValid()) << "Invalid RTI for " << DebugName();
     if (IsBoundType()) {
@@ -2893,7 +2893,7 @@ HInstruction* HGraph::InsertOppositeCondition(HInstruction* cond, HInstruction* 
   ArenaAllocator* allocator = GetArena();
 
   if (cond->IsCondition() &&
-      !Primitive::IsFloatingPointType(cond->InputAt(0)->GetType())) {
+      !DataType::IsFloatingPointType(cond->InputAt(0)->GetType())) {
     // Can't reverse floating point conditions.  We have to use HBooleanNot in that case.
     HInstruction* lhs = cond->InputAt(0);
     HInstruction* rhs = cond->InputAt(1);

@@ -78,7 +78,7 @@ class LICMTest : public CommonCompilerTest {
     parameter_ = new (&allocator_) HParameterValue(graph_->GetDexFile(),
                                                    dex::TypeIndex(0),
                                                    0,
-                                                   Primitive::kPrimNot);
+                                                   DataType::Type::kReference);
     entry_->AddInstruction(parameter_);
     int_constant_ = graph_->GetIntConstant(42);
     float_constant_ = graph_->GetFloatConstant(42.0f);
@@ -125,7 +125,7 @@ TEST_F(LICMTest, FieldHoisting) {
   // Populate the loop with instructions: set/get field with different types.
   HInstruction* get_field = new (&allocator_) HInstanceFieldGet(parameter_,
                                                                 nullptr,
-                                                                Primitive::kPrimLong,
+                                                                DataType::Type::kInt64,
                                                                 MemberOffset(10),
                                                                 false,
                                                                 kUnknownFieldIndex,
@@ -134,7 +134,7 @@ TEST_F(LICMTest, FieldHoisting) {
                                                                 0);
   loop_body_->InsertInstructionBefore(get_field, loop_body_->GetLastInstruction());
   HInstruction* set_field = new (&allocator_) HInstanceFieldSet(
-      parameter_, int_constant_, nullptr, Primitive::kPrimInt, MemberOffset(20),
+      parameter_, int_constant_, nullptr, DataType::Type::kInt32, MemberOffset(20),
       false, kUnknownFieldIndex, kUnknownClassDefIndex, graph_->GetDexFile(), 0);
   loop_body_->InsertInstructionBefore(set_field, loop_body_->GetLastInstruction());
 
@@ -152,7 +152,7 @@ TEST_F(LICMTest, NoFieldHoisting) {
   ScopedNullHandle<mirror::DexCache> dex_cache;
   HInstruction* get_field = new (&allocator_) HInstanceFieldGet(parameter_,
                                                                 nullptr,
-                                                                Primitive::kPrimLong,
+                                                                DataType::Type::kInt64,
                                                                 MemberOffset(10),
                                                                 false,
                                                                 kUnknownFieldIndex,
@@ -163,7 +163,7 @@ TEST_F(LICMTest, NoFieldHoisting) {
   HInstruction* set_field = new (&allocator_) HInstanceFieldSet(parameter_,
                                                                 get_field,
                                                                 nullptr,
-                                                                Primitive::kPrimLong,
+                                                                DataType::Type::kInt64,
                                                                 MemberOffset(10),
                                                                 false,
                                                                 kUnknownFieldIndex,
@@ -184,10 +184,10 @@ TEST_F(LICMTest, ArrayHoisting) {
 
   // Populate the loop with instructions: set/get array with different types.
   HInstruction* get_array = new (&allocator_) HArrayGet(
-      parameter_, int_constant_, Primitive::kPrimInt, 0);
+      parameter_, int_constant_, DataType::Type::kInt32, 0);
   loop_body_->InsertInstructionBefore(get_array, loop_body_->GetLastInstruction());
   HInstruction* set_array = new (&allocator_) HArraySet(
-      parameter_, int_constant_, float_constant_, Primitive::kPrimFloat, 0);
+      parameter_, int_constant_, float_constant_, DataType::Type::kFloat32, 0);
   loop_body_->InsertInstructionBefore(set_array, loop_body_->GetLastInstruction());
 
   EXPECT_EQ(get_array->GetBlock(), loop_body_);
@@ -202,10 +202,10 @@ TEST_F(LICMTest, NoArrayHoisting) {
 
   // Populate the loop with instructions: set/get array with same types.
   HInstruction* get_array = new (&allocator_) HArrayGet(
-      parameter_, int_constant_, Primitive::kPrimFloat, 0);
+      parameter_, int_constant_, DataType::Type::kFloat32, 0);
   loop_body_->InsertInstructionBefore(get_array, loop_body_->GetLastInstruction());
   HInstruction* set_array = new (&allocator_) HArraySet(
-      parameter_, get_array, float_constant_, Primitive::kPrimFloat, 0);
+      parameter_, get_array, float_constant_, DataType::Type::kFloat32, 0);
   loop_body_->InsertInstructionBefore(set_array, loop_body_->GetLastInstruction());
 
   EXPECT_EQ(get_array->GetBlock(), loop_body_);

@@ -26,7 +26,7 @@ namespace art {
 
 class HMultiplyAccumulate FINAL : public HExpression<3> {
  public:
-  HMultiplyAccumulate(Primitive::Type type,
+  HMultiplyAccumulate(DataType::Type type,
                       InstructionKind op,
                       HInstruction* accumulator,
                       HInstruction* mul_left,
@@ -60,11 +60,11 @@ class HMultiplyAccumulate FINAL : public HExpression<3> {
 
 class HBitwiseNegatedRight FINAL : public HBinaryOperation {
  public:
-  HBitwiseNegatedRight(Primitive::Type result_type,
-                            InstructionKind op,
-                            HInstruction* left,
-                            HInstruction* right,
-                            uint32_t dex_pc = kNoDexPc)
+  HBitwiseNegatedRight(DataType::Type result_type,
+                       InstructionKind op,
+                       HInstruction* left,
+                       HInstruction* right,
+                       uint32_t dex_pc = kNoDexPc)
     : HBinaryOperation(result_type, left, right, SideEffects::None(), dex_pc),
       op_kind_(op) {
     DCHECK(op == HInstruction::kAnd || op == HInstruction::kOr || op == HInstruction::kXor) << op;
@@ -122,14 +122,14 @@ class HBitwiseNegatedRight FINAL : public HBinaryOperation {
 // This instruction computes an intermediate address pointing in the 'middle' of an object. The
 // result pointer cannot be handled by GC, so extra care is taken to make sure that this value is
 // never used across anything that can trigger GC.
-// The result of this instruction is not a pointer in the sense of `Primitive::kPrimNot`. So we
-// represent it by the type `Primitive::kPrimInt`.
+// The result of this instruction is not a pointer in the sense of `DataType::Type::kreference`.
+// So we represent it by the type `DataType::Type::kInt`.
 class HIntermediateAddress FINAL : public HExpression<2> {
  public:
   HIntermediateAddress(HInstruction* base_address, HInstruction* offset, uint32_t dex_pc)
-      : HExpression(Primitive::kPrimInt, SideEffects::DependsOnGC(), dex_pc) {
-        DCHECK_EQ(Primitive::ComponentSize(Primitive::kPrimInt),
-                  Primitive::ComponentSize(Primitive::kPrimNot))
+      : HExpression(DataType::Type::kInt32, SideEffects::DependsOnGC(), dex_pc) {
+        DCHECK_EQ(DataType::Size(DataType::Type::kInt32),
+                  DataType::Size(DataType::Type::kReference))
             << "kPrimInt and kPrimNot have different sizes.";
     SetRawInputAt(0, base_address);
     SetRawInputAt(1, offset);
@@ -171,7 +171,7 @@ class HIntermediateAddressIndex FINAL : public HExpression<3> {
  public:
   HIntermediateAddressIndex(
       HInstruction* index, HInstruction* offset, HInstruction* shift, uint32_t dex_pc)
-      : HExpression(Primitive::kPrimInt, SideEffects::None(), dex_pc) {
+      : HExpression(DataType::Type::kInt32, SideEffects::None(), dex_pc) {
     SetRawInputAt(0, index);
     SetRawInputAt(1, offset);
     SetRawInputAt(2, shift);
@@ -222,7 +222,7 @@ class HDataProcWithShifterOp FINAL : public HExpression<2> {
                          uint32_t dex_pc = kNoDexPc)
       : HExpression(instr->GetType(), SideEffects::None(), dex_pc),
         instr_kind_(instr->GetKind()), op_kind_(op),
-        shift_amount_(shift & (instr->GetType() == Primitive::kPrimInt
+        shift_amount_(shift & (instr->GetType() == DataType::Type::kInt32
             ? kMaxIntShiftDistance
             : kMaxLongShiftDistance)) {
     DCHECK(!instr->HasSideEffects());
