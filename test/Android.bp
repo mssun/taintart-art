@@ -86,10 +86,6 @@ art_cc_defaults {
                 "libziparchive",
                 "libz-host",
             ],
-            host_ldlibs: [
-                "-ldl",
-                "-lpthread",
-            ],
             cflags: [
                 // gtest issue
                 "-Wno-used-but-marked-unused",
@@ -107,7 +103,6 @@ art_cc_defaults {
             ],
             shared_libs: [
                 "liblog",
-                "libdl",
                 "libz",
             ],
             cflags: [
@@ -178,17 +173,6 @@ art_cc_library {
         "libbacktrace"
     ],
     target: {
-        android: {
-            shared_libs: [
-                "libdl",
-            ],
-        },
-        host: {
-            host_ldlibs: [
-                "-ldl",
-                "-lpthread",
-            ],
-        },
         darwin: {
             enabled: false,
         },
@@ -206,17 +190,6 @@ cc_defaults {
         "libbase",
         "libnativehelper",
     ],
-    target: {
-        android: {
-            shared_libs: ["libdl"],
-        },
-        host: {
-            host_ldlibs: [
-                "-ldl",
-                "-lpthread",
-            ],
-        },
-    },
 }
 
 art_cc_test_library {
@@ -429,17 +402,6 @@ cc_defaults {
         "libbase",
         "libnativehelper",
     ],
-    target: {
-        android: {
-            shared_libs: ["libdl"],
-        },
-        host: {
-            host_ldlibs: [
-                "-ldl",
-                "-lpthread",
-            ],
-        },
-    },
 }
 
 art_cc_test_library {
@@ -467,18 +429,4 @@ art_cc_test_library {
     ],
     header_libs: ["libnativebridge-dummy-headers"],
     srcs: ["115-native-bridge/nativebridge.cc"],
-    target: {
-        android: {
-            shared_libs: ["libdl"],
-        },
-        host: {
-            host_ldlibs: [
-                "-ldl",
-                "-lpthread",
-            ],
-        },
-        linux: {
-            host_ldlibs: ["-lrt"],
-        },
-    },
 }

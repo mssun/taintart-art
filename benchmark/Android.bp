@@ -31,15 +31,6 @@ art_cc_library {
         "libbase",
         "libnativehelper",
     ],
-    clang: true,
-    target: {
-        android: {
-            shared_libs: ["libdl"],
-        },
-        host: {
-            host_ldlibs: ["-ldl", "-lpthread"],
-        },
-    },
     cflags: [
         "-Wno-frame-larger-than=",
     ],
@@ -60,12 +51,6 @@ art_cc_library {
     ],
     header_libs: ["jni_headers"],
     stl: "libc++_static",
-    clang: true,
-    target: {
-        host: {
-            host_ldlibs: ["-ldl", "-lpthread"],
-        },
-    },
     cflags: [
         "-Wno-frame-larger-than=",
     ],

@@ -356,7 +356,6 @@ cc_defaults {
                 "thread_android.cc",
             ],
             shared_libs: [
-                "libdl",
                 // For android::FileMap used by libziparchive.
                 "libutils",
                 "libtombstoned_client"
@@ -398,7 +397,6 @@ cc_defaults {
     generated_headers: ["cpp-define-generator-asm-support"],
     // export our headers so the libart-gtest targets can use it as well.
     export_generated_headers: ["cpp-define-generator-asm-support"],
-    clang: true,
     include_dirs: [
         "art/sigchainlib",
         "art",

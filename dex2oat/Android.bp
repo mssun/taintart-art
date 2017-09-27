@@ -18,7 +18,6 @@ art_cc_defaults {
     name: "libart-dex2oat-defaults",
     defaults: ["art_defaults"],
     host_supported: true,
-    clang: true,
     srcs: [
         "linker/elf_writer.cc",
         "linker/elf_writer_quick.cc",
@@ -27,10 +26,6 @@ art_cc_defaults {
         "linker/oat_writer.cc",
     ],
     target: {
-        host: {
-            // For compiler driver TLS.
-            host_ldlibs: ["-lpthread"],
-        },
         android: {
             // For atrace.
             shared_libs: ["libcutils"],
