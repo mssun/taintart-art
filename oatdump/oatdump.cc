@@ -905,26 +905,23 @@ class OatDumper {
       if (code_item == nullptr) {
         return;
       }
-      const size_t code_item_size = code_item->insns_size_in_code_units_;
-      const uint16_t* code_ptr = code_item->insns_;
-      const uint16_t* code_end = code_item->insns_ + code_item_size;
 
+      const uint16_t* code_ptr = code_item->insns_;
       // If we inserted a new dex code item pointer, add to total code bytes.
       if (dex_code_item_ptrs_.insert(code_ptr).second) {
-        dex_code_bytes_ += code_item_size * sizeof(code_ptr[0]);
+        dex_code_bytes_ += code_item->insns_size_in_code_units_ * sizeof(code_ptr[0]);
       }
 
-      while (code_ptr < code_end) {
-        const Instruction* inst = Instruction::At(code_ptr);
-        switch (inst->Opcode()) {
+      for (const Instruction& inst : code_item->Instructions()) {
+        switch (inst.Opcode()) {
           case Instruction::CONST_STRING: {
-            const dex::StringIndex string_index(inst->VRegB_21c());
+            const dex::StringIndex string_index(inst.VRegB_21c());
             unique_string_ids_from_code_.insert(StringReference(&dex_file, string_index));
             ++num_string_ids_from_code_;
             break;
           }
           case Instruction::CONST_STRING_JUMBO: {
-            const dex::StringIndex string_index(inst->VRegB_31c());
+            const dex::StringIndex string_index(inst.VRegB_31c());
             unique_string_ids_from_code_.insert(StringReference(&dex_file, string_index));
             ++num_string_ids_from_code_;
             break;
@@ -932,8 +929,6 @@ class OatDumper {
           default:
             break;
         }
-
-        code_ptr += inst->SizeInCodeUnits();
       }
     }
 
@@ -1520,12 +1515,11 @@ class OatDumper {
 
   void DumpDexCode(std::ostream& os, const DexFile& dex_file, const DexFile::CodeItem* code_item) {
     if (code_item != nullptr) {
-      size_t i = 0;
-      while (i < code_item->insns_size_in_code_units_) {
-        const Instruction* instruction = Instruction::At(&code_item->insns_[i]);
-        os << StringPrintf("0x%04zx: ", i) << instruction->DumpHexLE(5)
-           << StringPrintf("\t| %s\n", instruction->DumpString(&dex_file).c_str());
-        i += instruction->SizeInCodeUnits();
+      IterationRange<DexInstructionIterator> instructions = code_item->Instructions();
+      for (auto it = instructions.begin(); it != instructions.end(); ++it) {
+        const size_t dex_pc = it.GetDexPC(instructions.begin());
+        os << StringPrintf("0x%04zx: ", dex_pc) << it->DumpHexLE(5)
+           << StringPrintf("\t| %s\n", it->DumpString(&dex_file).c_str());
       }
     }
   }
