@@ -69,7 +69,7 @@ void FdFile::Destroy() {
     if (guard_state_ < GuardState::kClosed) {
       LOG(ERROR) << "File " << file_path_ << " wasn't explicitly closed before destruction.";
     }
-    CHECK_GE(guard_state_, GuardState::kClosed);
+    DCHECK_GE(guard_state_, GuardState::kClosed);
   }
   if (auto_close_ && fd_ != -1) {
     if (Close() != 0) {
@@ -134,7 +134,7 @@ bool FdFile::Open(const std::string& path, int flags) {
 
 bool FdFile::Open(const std::string& path, int flags, mode_t mode) {
   static_assert(O_RDONLY == 0, "Readonly flag has unexpected value.");
-  CHECK_EQ(fd_, -1) << path;
+  DCHECK_EQ(fd_, -1) << path;
   read_only_mode_ = ((flags & O_ACCMODE) == O_RDONLY);
   fd_ = TEMP_FAILURE_RETRY(open(path.c_str(), flags, mode));
   if (fd_ == -1) {
@@ -157,7 +157,7 @@ int FdFile::Close() {
 
   // Test here, so the file is closed and not leaked.
   if (kCheckSafeUsage) {
-    CHECK_GE(guard_state_, GuardState::kFlushed) << "File " << file_path_
+    DCHECK_GE(guard_state_, GuardState::kFlushed) << "File " << file_path_
         << " has not been flushed before closing.";
     moveUp(GuardState::kClosed, nullptr);
   }
