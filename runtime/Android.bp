@@ -387,7 +387,7 @@ cc_defaults {
             ],
             shared_libs: [
                 "libziparchive",
-                "libz-host",
+                "libz",
             ],
         },
     },
