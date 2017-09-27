@@ -128,7 +128,8 @@ inline ArraySlice<ArtMethod> Class::GetDirectMethodsSlice(PointerSize pointer_si
 }
 
 inline ArraySlice<ArtMethod> Class::GetDirectMethodsSliceUnchecked(PointerSize pointer_size) {
-  return GetMethodsSliceRangeUnchecked(pointer_size,
+  return GetMethodsSliceRangeUnchecked(GetMethodsPtr(),
+                                       pointer_size,
                                        GetDirectMethodsStartOffset(),
                                        GetVirtualMethodsStartOffset());
 }
@@ -140,7 +141,8 @@ inline ArraySlice<ArtMethod> Class::GetDeclaredMethodsSlice(PointerSize pointer_
 }
 
 inline ArraySlice<ArtMethod> Class::GetDeclaredMethodsSliceUnchecked(PointerSize pointer_size) {
-  return GetMethodsSliceRangeUnchecked(pointer_size,
+  return GetMethodsSliceRangeUnchecked(GetMethodsPtr(),
+                                       pointer_size,
                                        GetDirectMethodsStartOffset(),
                                        GetCopiedMethodsStartOffset());
 }
@@ -152,7 +154,8 @@ inline ArraySlice<ArtMethod> Class::GetDeclaredVirtualMethodsSlice(PointerSize p
 
 inline ArraySlice<ArtMethod> Class::GetDeclaredVirtualMethodsSliceUnchecked(
     PointerSize pointer_size) {
-  return GetMethodsSliceRangeUnchecked(pointer_size,
+  return GetMethodsSliceRangeUnchecked(GetMethodsPtr(),
+                                       pointer_size,
                                        GetVirtualMethodsStartOffset(),
                                        GetCopiedMethodsStartOffset());
 }
@@ -164,9 +167,11 @@ inline ArraySlice<ArtMethod> Class::GetVirtualMethodsSlice(PointerSize pointer_s
 }
 
 inline ArraySlice<ArtMethod> Class::GetVirtualMethodsSliceUnchecked(PointerSize pointer_size) {
-  return GetMethodsSliceRangeUnchecked(pointer_size,
+  LengthPrefixedArray<ArtMethod>* methods = GetMethodsPtr();
+  return GetMethodsSliceRangeUnchecked(methods,
+                                       pointer_size,
                                        GetVirtualMethodsStartOffset(),
-                                       NumMethods());
+                                       NumMethods(methods));
 }
 
 template<VerifyObjectFlags kVerifyFlags>
@@ -176,7 +181,11 @@ inline ArraySlice<ArtMethod> Class::GetCopiedMethodsSlice(PointerSize pointer_si
 }
 
 inline ArraySlice<ArtMethod> Class::GetCopiedMethodsSliceUnchecked(PointerSize pointer_size) {
-  return GetMethodsSliceRangeUnchecked(pointer_size, GetCopiedMethodsStartOffset(), NumMethods());
+  LengthPrefixedArray<ArtMethod>* methods = GetMethodsPtr();
+  return GetMethodsSliceRangeUnchecked(methods,
+                                       pointer_size,
+                                       GetCopiedMethodsStartOffset(),
+                                       NumMethods(methods));
 }
 
 inline LengthPrefixedArray<ArtMethod>* Class::GetMethodsPtr() {
@@ -187,19 +196,21 @@ inline LengthPrefixedArray<ArtMethod>* Class::GetMethodsPtr() {
 template<VerifyObjectFlags kVerifyFlags>
 inline ArraySlice<ArtMethod> Class::GetMethodsSlice(PointerSize pointer_size) {
   DCHECK(IsLoaded() || IsErroneous());
-  return GetMethodsSliceRangeUnchecked(pointer_size, 0, NumMethods());
+  LengthPrefixedArray<ArtMethod>* methods = GetMethodsPtr();
+  return GetMethodsSliceRangeUnchecked(methods, pointer_size, 0, NumMethods(methods));
 }
 
-inline ArraySlice<ArtMethod> Class::GetMethodsSliceRangeUnchecked(PointerSize pointer_size,
-                                                                  uint32_t start_offset,
-                                                                  uint32_t end_offset) {
+inline ArraySlice<ArtMethod> Class::GetMethodsSliceRangeUnchecked(
+    LengthPrefixedArray<ArtMethod>* methods,
+    PointerSize pointer_size,
+    uint32_t start_offset,
+    uint32_t end_offset) {
   DCHECK_LE(start_offset, end_offset);
-  DCHECK_LE(end_offset, NumMethods());
+  DCHECK_LE(end_offset, NumMethods(methods));
   uint32_t size = end_offset - start_offset;
   if (size == 0u) {
     return ArraySlice<ArtMethod>();
   }
-  LengthPrefixedArray<ArtMethod>* methods = GetMethodsPtr();
   DCHECK(methods != nullptr);
   DCHECK_LE(end_offset, methods->size());
   size_t method_size = ArtMethod::Size(pointer_size);
@@ -211,7 +222,10 @@ inline ArraySlice<ArtMethod> Class::GetMethodsSliceRangeUnchecked(PointerSize po
 }
 
 inline uint32_t Class::NumMethods() {
-  LengthPrefixedArray<ArtMethod>* methods = GetMethodsPtr();
+  return NumMethods(GetMethodsPtr());
+}
+
+inline uint32_t Class::NumMethods(LengthPrefixedArray<ArtMethod>* methods) {
   return (methods == nullptr) ? 0 : methods->size();
 }
 
@@ -969,7 +983,8 @@ inline ArraySlice<ArtMethod> Class::GetCopiedMethods(PointerSize pointer_size) {
 
 inline ArraySlice<ArtMethod> Class::GetMethods(PointerSize pointer_size) {
   CheckPointerSize(pointer_size);
-  return GetMethodsSliceRangeUnchecked(pointer_size, 0u, NumMethods());
+  LengthPrefixedArray<ArtMethod>* methods = GetMethodsPtr();
+  return GetMethodsSliceRangeUnchecked(methods, pointer_size, 0u, NumMethods(methods));
 }
 
 inline IterationRange<StrideIterator<ArtField>> Class::GetIFields() {
