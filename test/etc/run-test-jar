@@ -70,6 +70,10 @@ JVMTI_REDEFINE_STRESS="n"
 VDEX_FILTER=""
 PROFILE="n"
 RANDOM_PROFILE="n"
+# The normal dex2oat timeout.
+DEX2OAT_TIMEOUT="60"
+# The *hard* timeout where we really start trying to kill the dex2oat.
+DEX2OAT_RT_TIMEOUT="90"
 
 # if "y", set -Xstacktracedir and inform the test of its location. When
 # this is set, stack trace dumps (from signal 3) will be written to a file
@@ -86,6 +90,22 @@ ANDROID_FLAGS="${ANDROID_FLAGS} -XX:SlowDebug=true"
 while true; do
     if [ "x$1" = "x--quiet" ]; then
         QUIET="y"
+        shift
+    elif [ "x$1" = "x--dex2oat-rt-timeout" ]; then
+        shift
+        if [ "x$1" = "x" ]; then
+            echo "$0 missing argument to --dex2oat-rt-timeout" 1>&2
+            exit 1
+        fi
+        DEX2OAT_RT_TIMEOUT="$1"
+        shift
+    elif [ "x$1" = "x--dex2oat-timeout" ]; then
+        shift
+        if [ "x$1" = "x" ]; then
+            echo "$0 missing argument to --dex2oat-timeout" 1>&2
+            exit 1
+        fi
+        DEX2OAT_TIMEOUT="$1"
         shift
     elif [ "x$1" = "x--jvmti" ]; then
         IS_JVMTI_TEST="y"
@@ -646,10 +666,11 @@ if [ "$PREBUILD" = "y" ]; then
   # Note: as we don't know how decent targets are (e.g., emulator), only do this on the host for
   #       now. We should try to improve this.
   #       The current value is rather arbitrary. run-tests should compile quickly.
+  # Watchdog timeout is in milliseconds so add 3 '0's to the dex2oat timeout.
   if [ "$HOST" != "n" ]; then
     # Use SIGRTMIN+2 to try to dump threads.
     # Use -k 1m to SIGKILL it a minute later if it hasn't ended.
-    dex2oat_cmdline="timeout -k 1m -s SIGRTMIN+2 90s ${dex2oat_cmdline} --watchdog-timeout=60000"
+    dex2oat_cmdline="timeout -k ${DEX2OAT_TIMEOUT}s -s SIGRTMIN+2 ${DEX2OAT_RT_TIMEOUT}s ${dex2oat_cmdline} --watchdog-timeout=${DEX2OAT_TIMEOUT}000"
   fi
   if [ "$PROFILE" = "y" ] || [ "$RANDOM_PROFILE" = "y" ]; then
     vdex_cmdline="${dex2oat_cmdline} ${VDEX_FILTER} --input-vdex=$DEX_LOCATION/oat/$ISA/$TEST_NAME.vdex --output-vdex=$DEX_LOCATION/oat/$ISA/$TEST_NAME.vdex"
