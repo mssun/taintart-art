@@ -947,6 +947,11 @@ class CodeItem : public Item {
 
   void Accept(AbstractDispatcher* dispatch) { dispatch->Dispatch(this); }
 
+  IterationRange<DexInstructionIterator> Instructions() const {
+    return MakeIterationRange(DexInstructionIterator(Insns()),
+                              DexInstructionIterator(Insns() + InsnsSize()));
+  }
+
  private:
   uint16_t registers_size_;
   uint16_t ins_size_;

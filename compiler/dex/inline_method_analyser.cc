@@ -64,14 +64,14 @@ class Matcher {
  private:
   explicit Matcher(const DexFile::CodeItem* code_item)
       : code_item_(code_item),
-        instruction_(Instruction::At(code_item->insns_)),
+        instruction_(code_item->Instructions().begin()),
         pos_(0u),
         mark_(0u) { }
 
   static bool DoMatch(const DexFile::CodeItem* code_item, MatchFn* const* pattern, size_t size);
 
   const DexFile::CodeItem* const code_item_;
-  const Instruction* instruction_;
+  DexInstructionIterator instruction_;
   size_t pos_;
   size_t mark_;
 };
@@ -93,7 +93,7 @@ bool Matcher::Required(Matcher* matcher) {
     return false;
   }
   matcher->pos_ += 1u;
-  matcher->instruction_ = matcher->instruction_->Next();
+  ++matcher->instruction_;
   return true;
 }
 
@@ -105,7 +105,7 @@ bool Matcher::Repeated(Matcher* matcher) {
     return true;
   }
   matcher->pos_ = matcher->mark_;
-  matcher->instruction_ = matcher->instruction_->Next();
+  ++matcher->instruction_;
   return true;
 }
 
@@ -301,26 +301,27 @@ bool DoAnalyseConstructor(const DexFile::CodeItem* code_item,
   // Verify the invoke, prevent a few odd cases and collect IPUTs.
   uint16_t this_vreg = code_item->registers_size_ - code_item->ins_size_;
   uint16_t zero_vreg_mask = 0u;
-  for (const Instruction* instruction = Instruction::At(code_item->insns_);
-      instruction->Opcode() != Instruction::RETURN_VOID;
-      instruction = instruction->Next()) {
-    if (instruction->Opcode() == Instruction::INVOKE_DIRECT) {
-      ArtMethod* target_method = GetTargetConstructor(method, instruction);
+
+  for (const Instruction& instruction : code_item->Instructions()) {
+    if (instruction.Opcode() == Instruction::RETURN_VOID) {
+      break;
+    } else if (instruction.Opcode() == Instruction::INVOKE_DIRECT) {
+      ArtMethod* target_method = GetTargetConstructor(method, &instruction);
       if (target_method == nullptr) {
         return false;
       }
       // We allow forwarding constructors only if they pass more arguments
       // to prevent infinite recursion.
       if (target_method->GetDeclaringClass() == method->GetDeclaringClass() &&
-          instruction->VRegA_35c() <= code_item->ins_size_) {
+          instruction.VRegA_35c() <= code_item->ins_size_) {
         return false;
       }
-      size_t forwarded = CountForwardedConstructorArguments(code_item, instruction, zero_vreg_mask);
+      size_t forwarded = CountForwardedConstructorArguments(code_item, &instruction, zero_vreg_mask);
       if (forwarded == static_cast<size_t>(-1)) {
         return false;
       }
       if (target_method->GetDeclaringClass()->IsObjectClass()) {
-        DCHECK_EQ(Instruction::At(target_method->GetCodeItem()->insns_)->Opcode(),
+        DCHECK_EQ(target_method->GetCodeItem()->Instructions().begin()->Opcode(),
                   Instruction::RETURN_VOID);
       } else {
         const DexFile::CodeItem* target_code_item = target_method->GetCodeItem();
@@ -345,15 +346,15 @@ bool DoAnalyseConstructor(const DexFile::CodeItem* code_item,
           return false;
         }
       }
-    } else if (IsInstructionDirectConst(instruction->Opcode())) {
-      zero_vreg_mask |= GetZeroVRegMask(instruction);
+    } else if (IsInstructionDirectConst(instruction.Opcode())) {
+      zero_vreg_mask |= GetZeroVRegMask(&instruction);
       if ((zero_vreg_mask & (1u << this_vreg)) != 0u) {
         return false;  // Overwriting `this` is unsupported.
       }
     } else {
-      DCHECK(IsInstructionIPut(instruction->Opcode()));
-      DCHECK_EQ(instruction->VRegB_22c(), this_vreg);
-      if (!RecordConstructorIPut(method, instruction, this_vreg, zero_vreg_mask, iputs)) {
+      DCHECK(IsInstructionIPut(instruction.Opcode()));
+      DCHECK_EQ(instruction.VRegB_22c(), this_vreg);
+      if (!RecordConstructorIPut(method, &instruction, this_vreg, zero_vreg_mask, iputs)) {
         return false;
       }
     }
@@ -447,8 +448,7 @@ bool InlineMethodAnalyser::AnalyseMethodCode(const DexFile::CodeItem* code_item,
   // We currently support only plain return or 2-instruction methods.
 
   DCHECK_NE(code_item->insns_size_in_code_units_, 0u);
-  const Instruction* instruction = Instruction::At(code_item->insns_);
-  Instruction::Code opcode = instruction->Opcode();
+  Instruction::Code opcode = code_item->Instructions().begin()->Opcode();
 
   switch (opcode) {
     case Instruction::RETURN_VOID:
@@ -519,7 +519,7 @@ bool InlineMethodAnalyser::IsSyntheticAccessor(MethodReference ref) {
 
 bool InlineMethodAnalyser::AnalyseReturnMethod(const DexFile::CodeItem* code_item,
                                                InlineMethod* result) {
-  const Instruction* return_instruction = Instruction::At(code_item->insns_);
+  DexInstructionIterator return_instruction = code_item->Instructions().begin();
   Instruction::Code return_opcode = return_instruction->Opcode();
   uint32_t reg = return_instruction->VRegA_11x();
   uint32_t arg_start = code_item->registers_size_ - code_item->ins_size_;
@@ -541,7 +541,7 @@ bool InlineMethodAnalyser::AnalyseReturnMethod(const DexFile::CodeItem* code_ite
 
 bool InlineMethodAnalyser::AnalyseConstMethod(const DexFile::CodeItem* code_item,
                                               InlineMethod* result) {
-  const Instruction* instruction = Instruction::At(code_item->insns_);
+  DexInstructionIterator instruction = code_item->Instructions().begin();
   const Instruction* return_instruction = instruction->Next();
   Instruction::Code return_opcode = return_instruction->Opcode();
   if (return_opcode != Instruction::RETURN &&
@@ -575,7 +575,7 @@ bool InlineMethodAnalyser::AnalyseIGetMethod(const DexFile::CodeItem* code_item,
                                              bool is_static,
                                              ArtMethod* method,
                                              InlineMethod* result) {
-  const Instruction* instruction = Instruction::At(code_item->insns_);
+  DexInstructionIterator instruction = code_item->Instructions().begin();
   Instruction::Code opcode = instruction->Opcode();
   DCHECK(IsInstructionIGet(opcode));
 
@@ -639,7 +639,7 @@ bool InlineMethodAnalyser::AnalyseIPutMethod(const DexFile::CodeItem* code_item,
                                              bool is_static,
                                              ArtMethod* method,
                                              InlineMethod* result) {
-  const Instruction* instruction = Instruction::At(code_item->insns_);
+  DexInstructionIterator instruction = code_item->Instructions().begin();
   Instruction::Code opcode = instruction->Opcode();
   DCHECK(IsInstructionIPut(opcode));
 
