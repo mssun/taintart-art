@@ -589,7 +589,12 @@ jobject JavaVMExt::AddGlobalRef(Thread* self, ObjPtr<mirror::Object> obj) {
     return nullptr;
   }
   WriterMutexLock mu(self, *Locks::jni_globals_lock_);
-  IndirectRef ref = globals_.Add(kIRTFirstSegment, obj);
+  std::string error_msg;
+  IndirectRef ref = globals_.Add(kIRTFirstSegment, obj, &error_msg);
+  if (UNLIKELY(ref == nullptr)) {
+    LOG(FATAL) << error_msg;
+    UNREACHABLE();
+  }
   return reinterpret_cast<jobject>(ref);
 }
 
@@ -607,7 +612,12 @@ jweak JavaVMExt::AddWeakGlobalRef(Thread* self, ObjPtr<mirror::Object> obj) {
     self->CheckEmptyCheckpointFromWeakRefAccess(Locks::jni_weak_globals_lock_);
     weak_globals_add_condition_.WaitHoldingLocks(self);
   }
-  IndirectRef ref = weak_globals_.Add(kIRTFirstSegment, obj);
+  std::string error_msg;
+  IndirectRef ref = weak_globals_.Add(kIRTFirstSegment, obj, &error_msg);
+  if (UNLIKELY(ref == nullptr)) {
+    LOG(FATAL) << error_msg;
+    UNREACHABLE();
+  }
   return reinterpret_cast<jweak>(ref);
 }
 
