@@ -23,8 +23,11 @@ namespace art {
 
 // Minimum number of new methods/classes that profiles
 // must contain to enable recompilation.
-static constexpr const uint32_t kMinNewMethodsForCompilation = 10;
-static constexpr const uint32_t kMinNewClassesForCompilation = 10;
+static constexpr const uint32_t kMinNewMethodsForCompilation = 100;
+static constexpr const uint32_t kMinNewMethodsPercentChangeForCompilation = 2;
+static constexpr const uint32_t kMinNewClassesForCompilation = 50;
+static constexpr const uint32_t kMinNewClassesPercentChangeForCompilation = 2;
+
 
 ProfileAssistant::ProcessingResult ProfileAssistant::ProcessProfilesInternal(
         const std::vector<ScopedFlock>& profile_files,
@@ -55,9 +58,16 @@ ProfileAssistant::ProcessingResult ProfileAssistant::ProcessProfilesInternal(
     }
   }
 
+  uint32_t min_change_in_methods_for_compilation = std::max(
+      (kMinNewMethodsPercentChangeForCompilation * number_of_methods) / 100,
+      kMinNewMethodsForCompilation);
+  uint32_t min_change_in_classes_for_compilation = std::max(
+      (kMinNewClassesPercentChangeForCompilation * number_of_classes) / 100,
+      kMinNewClassesForCompilation);
   // Check if there is enough new information added by the current profiles.
-  if (((info.GetNumberOfMethods() - number_of_methods) < kMinNewMethodsForCompilation) &&
-      ((info.GetNumberOfResolvedClasses() - number_of_classes) < kMinNewClassesForCompilation)) {
+  if (((info.GetNumberOfMethods() - number_of_methods) < min_change_in_methods_for_compilation) &&
+      ((info.GetNumberOfResolvedClasses() - number_of_classes)
+          < min_change_in_classes_for_compilation)) {
     return kSkipCompilation;
   }
 
