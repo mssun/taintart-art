@@ -773,6 +773,8 @@ class MANAGED Class FINAL : public Object {
   ALWAYS_INLINE uint32_t NumDeclaredVirtualMethods() REQUIRES_SHARED(Locks::mutator_lock_);
 
   ALWAYS_INLINE uint32_t NumMethods() REQUIRES_SHARED(Locks::mutator_lock_);
+  static ALWAYS_INLINE uint32_t NumMethods(LengthPrefixedArray<ArtMethod>* methods)
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   ArtMethod* GetVirtualMethod(size_t i, PointerSize pointer_size)
@@ -1294,9 +1296,11 @@ class MANAGED Class FINAL : public Object {
   ALWAYS_INLINE void SetMethodsPtrInternal(LengthPrefixedArray<ArtMethod>* new_methods)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  ALWAYS_INLINE ArraySlice<ArtMethod> GetMethodsSliceRangeUnchecked(PointerSize pointer_size,
-                                                                    uint32_t start_offset,
-                                                                    uint32_t end_offset)
+  ALWAYS_INLINE static ArraySlice<ArtMethod> GetMethodsSliceRangeUnchecked(
+      LengthPrefixedArray<ArtMethod>* methods,
+      PointerSize pointer_size,
+      uint32_t start_offset,
+      uint32_t end_offset)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   template <bool throw_on_failure>
