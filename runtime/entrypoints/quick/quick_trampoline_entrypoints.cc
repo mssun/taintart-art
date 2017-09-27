@@ -1119,7 +1119,7 @@ extern "C" const void* artQuickResolutionTrampoline(
       const DexFile::CodeItem* code;
       code = caller->GetCodeItem();
       CHECK_LT(dex_pc, code->insns_size_in_code_units_);
-      const Instruction* instr = Instruction::At(&code->insns_[dex_pc]);
+      const Instruction* instr = &code->InstructionAt(dex_pc);
       Instruction::Code instr_code = instr->Opcode();
       bool is_range;
       switch (instr_code) {
@@ -2484,7 +2484,7 @@ extern "C" TwoWordReturn artInvokeInterfaceTrampoline(ArtMethod* interface_metho
     uint32_t dex_pc = QuickArgumentVisitor::GetCallingDexPc(sp);
     const DexFile::CodeItem* code_item = caller_method->GetCodeItem();
     DCHECK_LT(dex_pc, code_item->insns_size_in_code_units_);
-    const Instruction* instr = Instruction::At(&code_item->insns_[dex_pc]);
+    const Instruction* instr = &code_item->InstructionAt(dex_pc);
     Instruction::Code instr_code = instr->Opcode();
     DCHECK(instr_code == Instruction::INVOKE_INTERFACE ||
            instr_code == Instruction::INVOKE_INTERFACE_RANGE)
@@ -2600,7 +2600,7 @@ extern "C" uintptr_t artInvokePolymorphic(
   ArtMethod* caller_method = QuickArgumentVisitor::GetCallingMethod(sp);
   uint32_t dex_pc = QuickArgumentVisitor::GetCallingDexPc(sp);
   const DexFile::CodeItem* code = caller_method->GetCodeItem();
-  const Instruction* inst = Instruction::At(&code->insns_[dex_pc]);
+  const Instruction* inst = &code->InstructionAt(dex_pc);
   DCHECK(inst->Opcode() == Instruction::INVOKE_POLYMORPHIC ||
          inst->Opcode() == Instruction::INVOKE_POLYMORPHIC_RANGE);
   const DexFile* dex_file = caller_method->GetDexFile();
