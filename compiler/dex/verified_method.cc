@@ -64,24 +64,21 @@ void VerifiedMethod::GenerateSafeCastSet(verifier::MethodVerifier* method_verifi
   if (method_verifier->HasFailures()) {
     return;
   }
-  const DexFile::CodeItem* code_item = method_verifier->CodeItem();
-  const Instruction* inst = Instruction::At(code_item->insns_);
-  const Instruction* end = Instruction::At(code_item->insns_ +
-                                           code_item->insns_size_in_code_units_);
-
-  for (; inst < end; inst = inst->Next()) {
-    Instruction::Code code = inst->Opcode();
+  IterationRange<DexInstructionIterator> instructions = method_verifier->CodeItem()->Instructions();
+  for (auto it = instructions.begin(); it != instructions.end(); ++it) {
+    const Instruction& inst = *it;
+    const Instruction::Code code = inst.Opcode();
     if (code == Instruction::CHECK_CAST) {
-      uint32_t dex_pc = inst->GetDexPc(code_item->insns_);
+      const uint32_t dex_pc = it.GetDexPC(instructions.begin());
       if (!method_verifier->GetInstructionFlags(dex_pc).IsVisited()) {
         // Do not attempt to quicken this instruction, it's unreachable anyway.
         continue;
       }
       const verifier::RegisterLine* line = method_verifier->GetRegLine(dex_pc);
       const verifier::RegType& reg_type(line->GetRegisterType(method_verifier,
-                                                              inst->VRegA_21c()));
+                                                              inst.VRegA_21c()));
       const verifier::RegType& cast_type =
-          method_verifier->ResolveCheckedClass(dex::TypeIndex(inst->VRegB_21c()));
+          method_verifier->ResolveCheckedClass(dex::TypeIndex(inst.VRegB_21c()));
       // Pass null for the method verifier to not record the VerifierDeps dependency
       // if the types are not assignable.
       if (cast_type.IsStrictlyAssignableFrom(reg_type, /* method_verifier */ nullptr)) {
