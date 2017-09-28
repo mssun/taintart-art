@@ -126,15 +126,8 @@ void DumpAndCheck(std::vector<uint8_t>& code, const char* testname, const char* 
   int cmd_result = system(cmd);
   ASSERT_EQ(cmd_result, 0) << strerror(errno);
 
-  // Remove the $d symbols to prevent the disassembler dumping the instructions
-  // as .word
-  snprintf(cmd, sizeof(cmd), "%sobjcopy -N '$d' %s.o %s.oo", toolsdir.c_str(), filename, filename);
-  int cmd_result2 = system(cmd);
-  ASSERT_EQ(cmd_result2, 0) << strerror(errno);
-
   // Disassemble.
-
-  snprintf(cmd, sizeof(cmd), "%sobjdump -d %s.oo | grep '^  *[0-9a-f][0-9a-f]*:'",
+  snprintf(cmd, sizeof(cmd), "%sobjdump -D -M force-thumb --section=.text %s.o  | grep '^  *[0-9a-f][0-9a-f]*:'",
     toolsdir.c_str(), filename);
   if (kPrintResults) {
     // Print the results only, don't check. This is used to generate new output for inserting
@@ -168,9 +161,6 @@ void DumpAndCheck(std::vector<uint8_t>& code, const char* testname, const char* 
 
   char buf[FILENAME_MAX];
   snprintf(buf, sizeof(buf), "%s.o", filename);
-  unlink(buf);
-
-  snprintf(buf, sizeof(buf), "%s.oo", filename);
   unlink(buf);
 #endif  // ART_TARGET_ANDROID
 }
