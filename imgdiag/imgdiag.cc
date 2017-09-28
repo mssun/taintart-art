@@ -1715,7 +1715,7 @@ struct ImgDiagArgs : public CmdlineArgs {
         *error_msg = StringPrintf("Failed to check process status: %s", strerror(errno));
       }
       return kParseError;
-    } else if (instruction_set_ != kRuntimeISA) {
+    } else if (instruction_set_ != InstructionSet::kNone && instruction_set_ != kRuntimeISA) {
       // Don't allow different ISAs since the images are ISA-specific.
       // Right now the code assumes both the runtime ISA and the remote ISA are identical.
       *error_msg = "Must use the default runtime ISA; changing ISA is not supported.";
