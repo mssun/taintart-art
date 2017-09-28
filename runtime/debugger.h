@@ -34,6 +34,7 @@
 #include "jni.h"
 #include "jvalue.h"
 #include "obj_ptr.h"
+#include "runtime_callbacks.h"
 #include "thread.h"
 #include "thread_state.h"
 
@@ -50,6 +51,12 @@ class ScopedObjectAccess;
 class ScopedObjectAccessUnchecked;
 class StackVisitor;
 class Thread;
+
+struct DebuggerActiveMethodInspectionCallback : public MethodInspectionCallback {
+  bool IsMethodBeingInspected(ArtMethod* m ATTRIBUTE_UNUSED)
+      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
+};
+
 
 /*
  * Invoke-during-breakpoint support.
@@ -772,6 +779,8 @@ class Dbg {
 
   // Indicates whether the debugger is making requests.
   static bool gDebuggerActive;
+
+  static DebuggerActiveMethodInspectionCallback gDebugActiveCallback;
 
   // Indicates whether we should drop the JDWP connection because the runtime stops or the
   // debugger called VirtualMachine.Dispose.
