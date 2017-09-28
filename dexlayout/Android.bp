@@ -74,9 +74,9 @@ art_cc_binary {
         android: {
             shared_libs: [
                 "libpagemap",
-            ]
+            ],
         },
-    }
+    },
 }
 
 art_cc_test {

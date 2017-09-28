@@ -356,10 +356,9 @@ cc_defaults {
                 "thread_android.cc",
             ],
             shared_libs: [
-                "libdl",
                 // For android::FileMap used by libziparchive.
                 "libutils",
-                "libtombstoned_client"
+                "libtombstoned_client",
             ],
             static_libs: [
                 // ZipArchive support, the order matters here to get all symbols.
@@ -398,7 +397,6 @@ cc_defaults {
     generated_headers: ["cpp-define-generator-asm-support"],
     // export our headers so the libart-gtest targets can use it as well.
     export_generated_headers: ["cpp-define-generator-asm-support"],
-    clang: true,
     include_dirs: [
         "art/sigchainlib",
         "art",
@@ -493,8 +491,8 @@ art_cc_library {
 art_cc_library {
     name: "libartd",
     defaults: [
-       "art_debug_defaults",
-       "libart_defaults",
+        "art_debug_defaults",
+        "libart_defaults",
     ],
 }
 
@@ -503,12 +501,12 @@ art_cc_library {
     defaults: ["libart-gtest-defaults"],
     srcs: [
         "common_runtime_test.cc",
-        "dexopt_test.cc"
+        "dexopt_test.cc",
     ],
     shared_libs: [
         "libartd",
         "libbase",
-        "libbacktrace"
+        "libbacktrace",
     ],
 }
 
@@ -613,7 +611,7 @@ art_cc_test {
         "libbacktrace",
     ],
     header_libs: [
-        "art_cmdlineparser_headers",  // For parsed_options_test.
+        "art_cmdlineparser_headers", // For parsed_options_test.
     ],
 }
 
@@ -635,7 +633,7 @@ art_cc_test {
 }
 
 cc_library_headers {
-  name: "libart_runtime_headers",
-  host_supported: true,
-  export_include_dirs: ["."],
+    name: "libart_runtime_headers",
+    host_supported: true,
+    export_include_dirs: ["."],
 }

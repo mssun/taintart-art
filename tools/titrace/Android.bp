@@ -19,7 +19,10 @@
 cc_defaults {
     name: "titrace-defaults",
     host_supported: true,
-    srcs: ["titrace.cc", "instruction_decoder.cc"],
+    srcs: [
+        "titrace.cc",
+        "instruction_decoder.cc",
+    ],
     defaults: ["art_defaults"],
 
     // Note that this tool needs to be built for both 32-bit and 64-bit since it requires
@@ -27,7 +30,7 @@ cc_defaults {
     compile_multilib: "both",
 
     shared_libs: [
-        "libbase"
+        "libbase",
     ],
     target: {
         android: {
@@ -37,7 +40,7 @@ cc_defaults {
     },
     header_libs: [
         "libopenjdkjvmti_headers",
-        "libart_runtime_headers"    // for dex_instruction_list.h only
+        "libart_runtime_headers", // for dex_instruction_list.h only
         // "libbase_headers",
     ],
     multilib: {
