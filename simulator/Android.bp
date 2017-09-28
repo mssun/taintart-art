@@ -73,7 +73,7 @@ cc_defaults {
     ],
 
     header_libs: ["libart_simulator_headers"],
-    export_include_dirs: ["."],  // TODO: Consider a proper separation.
+    export_include_dirs: ["."], // TODO: Consider a proper separation.
 }
 
 art_cc_library {
