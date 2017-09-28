@@ -1119,8 +1119,8 @@ extern "C" const void* artQuickResolutionTrampoline(
       const DexFile::CodeItem* code;
       code = caller->GetCodeItem();
       CHECK_LT(dex_pc, code->insns_size_in_code_units_);
-      const Instruction* instr = &code->InstructionAt(dex_pc);
-      Instruction::Code instr_code = instr->Opcode();
+      const Instruction& instr = code->InstructionAt(dex_pc);
+      Instruction::Code instr_code = instr.Opcode();
       bool is_range;
       switch (instr_code) {
         case Instruction::INVOKE_DIRECT:
@@ -1164,10 +1164,10 @@ extern "C" const void* artQuickResolutionTrampoline(
           is_range = true;
           break;
         default:
-          LOG(FATAL) << "Unexpected call into trampoline: " << instr->DumpString(nullptr);
+          LOG(FATAL) << "Unexpected call into trampoline: " << instr.DumpString(nullptr);
           UNREACHABLE();
       }
-      called_method.index = (is_range) ? instr->VRegB_3rc() : instr->VRegB_35c();
+      called_method.index = (is_range) ? instr.VRegB_3rc() : instr.VRegB_35c();
       // Check that the invoke matches what we expected, note that this path only happens for debug
       // builds.
       if (found_stack_map) {
@@ -2484,16 +2484,16 @@ extern "C" TwoWordReturn artInvokeInterfaceTrampoline(ArtMethod* interface_metho
     uint32_t dex_pc = QuickArgumentVisitor::GetCallingDexPc(sp);
     const DexFile::CodeItem* code_item = caller_method->GetCodeItem();
     DCHECK_LT(dex_pc, code_item->insns_size_in_code_units_);
-    const Instruction* instr = &code_item->InstructionAt(dex_pc);
-    Instruction::Code instr_code = instr->Opcode();
+    const Instruction& instr = code_item->InstructionAt(dex_pc);
+    Instruction::Code instr_code = instr.Opcode();
     DCHECK(instr_code == Instruction::INVOKE_INTERFACE ||
            instr_code == Instruction::INVOKE_INTERFACE_RANGE)
-        << "Unexpected call into interface trampoline: " << instr->DumpString(nullptr);
+        << "Unexpected call into interface trampoline: " << instr.DumpString(nullptr);
     if (instr_code == Instruction::INVOKE_INTERFACE) {
-      dex_method_idx = instr->VRegB_35c();
+      dex_method_idx = instr.VRegB_35c();
     } else {
       DCHECK_EQ(instr_code, Instruction::INVOKE_INTERFACE_RANGE);
-      dex_method_idx = instr->VRegB_3rc();
+      dex_method_idx = instr.VRegB_3rc();
     }
 
     const DexFile& dex_file = caller_method->GetDeclaringClass()->GetDexFile();
@@ -2600,11 +2600,11 @@ extern "C" uintptr_t artInvokePolymorphic(
   ArtMethod* caller_method = QuickArgumentVisitor::GetCallingMethod(sp);
   uint32_t dex_pc = QuickArgumentVisitor::GetCallingDexPc(sp);
   const DexFile::CodeItem* code = caller_method->GetCodeItem();
-  const Instruction* inst = &code->InstructionAt(dex_pc);
-  DCHECK(inst->Opcode() == Instruction::INVOKE_POLYMORPHIC ||
-         inst->Opcode() == Instruction::INVOKE_POLYMORPHIC_RANGE);
+  const Instruction& inst = code->InstructionAt(dex_pc);
+  DCHECK(inst.Opcode() == Instruction::INVOKE_POLYMORPHIC ||
+         inst.Opcode() == Instruction::INVOKE_POLYMORPHIC_RANGE);
   const DexFile* dex_file = caller_method->GetDexFile();
-  const uint32_t proto_idx = inst->VRegH();
+  const uint32_t proto_idx = inst.VRegH();
   const char* shorty = dex_file->GetShorty(proto_idx);
   const size_t shorty_length = strlen(shorty);
   static const bool kMethodIsStatic = false;  // invoke() and invokeExact() are not static.
@@ -2621,7 +2621,7 @@ extern "C" uintptr_t artInvokePolymorphic(
   // Resolve method - it's either MethodHandle.invoke() or MethodHandle.invokeExact().
   ClassLinker* linker = Runtime::Current()->GetClassLinker();
   ArtMethod* resolved_method = linker->ResolveMethod<ClassLinker::ResolveMode::kCheckICCEAndIAE>(
-      self, inst->VRegB(), caller_method, kVirtual);
+      self, inst.VRegB(), caller_method, kVirtual);
   DCHECK((resolved_method ==
           jni::DecodeArtMethod(WellKnownClasses::java_lang_invoke_MethodHandle_invokeExact)) ||
          (resolved_method ==
@@ -2642,15 +2642,15 @@ extern "C" uintptr_t artInvokePolymorphic(
     return static_cast<uintptr_t>('V');
   }
 
-  DCHECK_EQ(ArtMethod::NumArgRegisters(shorty) + 1u, (uint32_t)inst->VRegA());
+  DCHECK_EQ(ArtMethod::NumArgRegisters(shorty) + 1u, (uint32_t)inst.VRegA());
   DCHECK_EQ(resolved_method->IsStatic(), kMethodIsStatic);
 
   // Fix references before constructing the shadow frame.
   gc_visitor.FixupReferences();
 
   // Construct shadow frame placing arguments consecutively from |first_arg|.
-  const bool is_range = (inst->Opcode() == Instruction::INVOKE_POLYMORPHIC_RANGE);
-  const size_t num_vregs = is_range ? inst->VRegA_4rcc() : inst->VRegA_45cc();
+  const bool is_range = (inst.Opcode() == Instruction::INVOKE_POLYMORPHIC_RANGE);
+  const size_t num_vregs = is_range ? inst.VRegA_4rcc() : inst.VRegA_45cc();
   const size_t first_arg = 0;
   ShadowFrameAllocaUniquePtr shadow_frame_unique_ptr =
       CREATE_SHADOW_FRAME(num_vregs, /* link */ nullptr, resolved_method, dex_pc);
