@@ -27,7 +27,7 @@ cc_defaults {
     compile_multilib: "both",
 
     shared_libs: [
-        "libbase"
+        "libbase",
     ],
     target: {
         android: {
@@ -62,5 +62,5 @@ art_cc_library {
         "art_debug_defaults",
         "wrapagentproperties-defaults",
     ],
-    shared_libs: [ ],
+    shared_libs: [],
 }
