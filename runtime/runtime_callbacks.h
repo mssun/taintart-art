@@ -94,6 +94,18 @@ class MonitorCallback {
   virtual ~MonitorCallback() {}
 };
 
+// A callback to let parts of the runtime note that they are currently relying on a particular
+// method remaining in it's current state. Users should not rely on always being called. If multiple
+// callbacks are added the runtime will short-circuit when the first one returns 'true'.
+class MethodInspectionCallback {
+ public:
+  virtual ~MethodInspectionCallback() {}
+
+  // Returns true if the method is being inspected currently and the runtime should not modify it in
+  // potentially dangerous ways (i.e. replace with compiled version, JIT it, etc).
+  virtual bool IsMethodBeingInspected(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_) = 0;
+};
+
 class RuntimeCallbacks {
  public:
   void AddThreadLifecycleCallback(ThreadLifecycleCallback* cb) REQUIRES(Locks::mutator_lock_);
@@ -151,6 +163,15 @@ class RuntimeCallbacks {
   void AddMonitorCallback(MonitorCallback* cb) REQUIRES_SHARED(Locks::mutator_lock_);
   void RemoveMonitorCallback(MonitorCallback* cb) REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Returns true if some MethodInspectionCallback indicates the method is being inspected/depended
+  // on by some code.
+  bool IsMethodBeingInspected(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_);
+
+  void AddMethodInspectionCallback(MethodInspectionCallback* cb)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+  void RemoveMethodInspectionCallback(MethodInspectionCallback* cb)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
  private:
   std::vector<ThreadLifecycleCallback*> thread_callbacks_
       GUARDED_BY(Locks::mutator_lock_);
@@ -163,6 +184,8 @@ class RuntimeCallbacks {
   std::vector<MethodCallback*> method_callbacks_
       GUARDED_BY(Locks::mutator_lock_);
   std::vector<MonitorCallback*> monitor_callbacks_
+      GUARDED_BY(Locks::mutator_lock_);
+  std::vector<MethodInspectionCallback*> method_inspection_callbacks_
       GUARDED_BY(Locks::mutator_lock_);
 };
 
