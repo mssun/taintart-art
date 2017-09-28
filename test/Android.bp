@@ -67,6 +67,7 @@ art_cc_defaults {
         "libicuuc",
         "libicui18n",
         "libnativehelper",
+        "libz",
     ],
     whole_static_libs: [
         "libsigchain",
@@ -84,7 +85,6 @@ art_cc_defaults {
             ],
             shared_libs: [
                 "libziparchive",
-                "libz-host",
             ],
             cflags: [
                 // gtest issue
@@ -103,7 +103,6 @@ art_cc_defaults {
             ],
             shared_libs: [
                 "liblog",
-                "libz",
             ],
             cflags: [
                 // gtest issue
