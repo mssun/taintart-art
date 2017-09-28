@@ -18,7 +18,6 @@ art_cc_defaults {
     name: "libart-disassembler-defaults",
     defaults: ["art_defaults"],
     host_supported: true,
-    clang: true,
     srcs: [
         "disassembler.cc",
         "disassembler_arm.cc",

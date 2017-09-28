@@ -20,7 +20,7 @@
 //
 // In the future we may wish to parameterize this on (32,64)x(read_barrier,no_read_barrier).
 
-cc_binary {  // Do not use art_cc_binary because HOST_PREFER_32_BIT is incompatible with genrule.
+cc_binary { // Do not use art_cc_binary because HOST_PREFER_32_BIT is incompatible with genrule.
     name: "cpp-define-generator-data",
     host_supported: true,
     device_supported: false,
@@ -39,9 +39,9 @@ cc_binary {  // Do not use art_cc_binary because HOST_PREFER_32_BIT is incompati
 // For the exact filename that this generates to run make command on just
 // this rule later.
 genrule {
-  name: "cpp-define-generator-asm-support",
-  out: ["asm_support_gen.h"],
-  tools: ["cpp-define-generator-data"],
-  tool_files: ["verify-asm-support"],
-  cmd: "$(location verify-asm-support) --quiet \"$(location cpp-define-generator-data)\" \"$(out)\""
+    name: "cpp-define-generator-asm-support",
+    out: ["asm_support_gen.h"],
+    tools: ["cpp-define-generator-data"],
+    tool_files: ["verify-asm-support"],
+    cmd: "$(location verify-asm-support) --quiet \"$(location cpp-define-generator-data)\" \"$(out)\"",
 }

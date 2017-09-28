@@ -25,9 +25,6 @@ cc_library {
         srcs: ["sigchain.cc"],
     },
     target: {
-        host: {
-            host_ldlibs: ["-ldl"],
-        },
         android: {
             shared_libs: ["liblog"],
         },
@@ -49,9 +46,6 @@ cc_library_static {
     defaults: ["art_defaults"],
     srcs: ["sigchain_dummy.cc"],
     target: {
-        host: {
-            host_ldlibs: ["-ldl"],
-        },
         android: {
             shared_libs: ["liblog"],
         },
