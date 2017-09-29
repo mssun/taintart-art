@@ -8,15 +8,6 @@ B::m_c$$$
 C::m_a$$$
 C::m_b$$$
 C::m_c$$$
-A::m_a$Hot$$
-A::m_b$Hot$$
-A::m_c$Hot$$
-B::m_a$Hot$$
-B::m_b$Hot$$
-B::m_c$Hot$$
-C::m_a$Hot$$
-C::m_b$Hot$$
-C::m_c$Hot$$
 A::m_a$$Startup$
 A::m_b$$Startup$
 A::m_c$$Startup$
