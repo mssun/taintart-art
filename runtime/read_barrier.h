@@ -89,6 +89,14 @@ class ReadBarrier {
   static void AssertToSpaceInvariant(GcRootSource* gc_root_source, mirror::Object* ref)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Without the holder object, and only with the read barrier configuration (no-op otherwise).
+  static void MaybeAssertToSpaceInvariant(mirror::Object* ref)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    if (kUseReadBarrier) {
+      AssertToSpaceInvariant(ref);
+    }
+  }
+
   // ALWAYS_INLINE on this caused a performance regression b/26744236.
   static mirror::Object* Mark(mirror::Object* obj) REQUIRES_SHARED(Locks::mutator_lock_);
 
