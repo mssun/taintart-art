@@ -81,6 +81,8 @@ Supported OPTIONS include:
   -d                       Use the debug ART library (libartd.so).
   --debug                  Equivalent to -d.
   --gdb                    Launch the Android Runtime in gdb.
+  --gdbserver <comms>      Launch the Android Runtime in gdbserver using the
+                           supplied communication channel.
   --help                   Display usage message.
   --invoke-with <program>  Launch the Android Runtime in <program>.
   --perf                   Launch the Android Runtime with perf recording.
@@ -270,6 +272,10 @@ while [[ "$1" = "-"* ]]; do
     LIBART="libartd.so"
     # Expect that debug mode wants all checks.
     EXTRA_OPTIONS+=(-XX:SlowDebug=true)
+    ;;
+  --gdbserver)
+    LAUNCH_WRAPPER="gdbserver $2"
+    shift
     ;;
   --gdb)
     LIBART="libartd.so"
