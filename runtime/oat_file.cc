@@ -635,29 +635,35 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
   }
 
   if (boot_image_tables != nullptr) {
-    // Map boot image tables into the .bss. The reserved size must match size of the tables.
-    size_t reserved_size = static_cast<size_t>(boot_image_tables_end - boot_image_tables);
-    size_t tables_size = 0u;
-    for (gc::space::ImageSpace* space : Runtime::Current()->GetHeap()->GetBootImageSpaces()) {
-      tables_size += space->GetImageHeader().GetBootImageConstantTablesSize();
-      DCHECK_ALIGNED(tables_size, kPageSize);
-    }
-    if (tables_size != reserved_size) {
-      *error_msg = StringPrintf("In oat file '%s' found unexpected boot image table sizes, "
-                                    " %zu bytes, should be %zu.",
-                                GetLocation().c_str(),
-                                reserved_size,
-                                tables_size);
-      return false;
-    }
-    for (gc::space::ImageSpace* space : Runtime::Current()->GetHeap()->GetBootImageSpaces()) {
-      uint32_t current_tables_size = space->GetImageHeader().GetBootImageConstantTablesSize();
-      if (current_tables_size != 0u && !MapConstantTables(space, boot_image_tables)) {
+    Runtime* runtime = Runtime::Current();
+    if (UNLIKELY(runtime == nullptr)) {
+      // This must be oatdump without boot image. Make sure the .bss is inaccessible.
+      mprotect(const_cast<uint8_t*>(BssBegin()), BssSize(), PROT_NONE);
+    } else {
+      // Map boot image tables into the .bss. The reserved size must match size of the tables.
+      size_t reserved_size = static_cast<size_t>(boot_image_tables_end - boot_image_tables);
+      size_t tables_size = 0u;
+      for (gc::space::ImageSpace* space : runtime->GetHeap()->GetBootImageSpaces()) {
+        tables_size += space->GetImageHeader().GetBootImageConstantTablesSize();
+        DCHECK_ALIGNED(tables_size, kPageSize);
+      }
+      if (tables_size != reserved_size) {
+        *error_msg = StringPrintf("In oat file '%s' found unexpected boot image table sizes, "
+                                      " %zu bytes, should be %zu.",
+                                  GetLocation().c_str(),
+                                  reserved_size,
+                                  tables_size);
         return false;
       }
-      boot_image_tables += current_tables_size;
+      for (gc::space::ImageSpace* space : Runtime::Current()->GetHeap()->GetBootImageSpaces()) {
+        uint32_t current_tables_size = space->GetImageHeader().GetBootImageConstantTablesSize();
+        if (current_tables_size != 0u && !MapConstantTables(space, boot_image_tables)) {
+          return false;
+        }
+        boot_image_tables += current_tables_size;
+      }
+      DCHECK(boot_image_tables == boot_image_tables_end);
     }
-    DCHECK(boot_image_tables == boot_image_tables_end);
   }
   return true;
 }
