@@ -2159,11 +2159,11 @@ void Thread::Destroy() {
     ScopedObjectAccess soa(self);
     // We may need to call user-supplied managed code, do this before final clean-up.
     HandleUncaughtExceptions(soa);
+    RemoveFromThreadGroup(soa);
     Runtime* runtime = Runtime::Current();
     if (runtime != nullptr) {
       runtime->GetRuntimeCallbacks()->ThreadDeath(self);
     }
-    RemoveFromThreadGroup(soa);
 
     // this.nativePeer = 0;
     if (Runtime::Current()->IsActiveTransaction()) {
