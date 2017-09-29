@@ -1704,7 +1704,10 @@ bool ProfileCompilationInfo::GenerateTestProfile(int fd,
       if (m < (number_of_methods / kFavorSplit)) {
         method_idx %= kFavorFirstN;
       }
-      info.AddMethodIndex(MethodHotness::kFlagHot,
+      // Alternate between startup and post startup.
+      uint32_t flags = MethodHotness::kFlagHot;
+      flags |= ((m & 1) != 0) ? MethodHotness::kFlagPostStartup : MethodHotness::kFlagStartup;
+      info.AddMethodIndex(static_cast<MethodHotness::Flag>(flags),
                           profile_key,
                           /*method_idx*/ 0,
                           method_idx,
@@ -1761,8 +1764,13 @@ bool ProfileCompilationInfo::GenerateTestProfile(
       if (number_of_methods - i == methods_required_in_profile ||
           std::rand() % (number_of_methods - i - methods_required_in_profile) == 0) {
         uint32_t method_index = (method_start_index + i) % number_of_methods;
-        info.AddMethodIndex(MethodHotness::kFlagHot, MethodReference(dex_file.get(),
-                                                                     method_index));
+        // Alternate between startup and post startup.
+        uint32_t flags = MethodHotness::kFlagHot;
+        flags |= ((method_index & 1) != 0)
+            ? MethodHotness::kFlagPostStartup
+            : MethodHotness::kFlagStartup;
+        info.AddMethodIndex(static_cast<MethodHotness::Flag>(flags),
+                            MethodReference(dex_file.get(), method_index));
         methods_required_in_profile--;
       }
     }
