@@ -231,7 +231,7 @@
     },
     {
         "tests": "597-deopt-invoke-stub",
-        "variant": "interp-ac | interpreter | optimizing | trace | stream",
+        "variant": "speed-profile | interp-ac | interpreter | optimizing | trace | stream",
         "description": ["This test expects JIT compilation and no AOT for",
                         "testing deoptimizing at quick-to-interpreter bridge."]
     },
