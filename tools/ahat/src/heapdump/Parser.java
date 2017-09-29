@@ -409,6 +409,12 @@ public class Parser {
                   break;
                 }
 
+                case 0x8a: { // ROOT FINALIZING (ANDROID)
+                  long objectId = hprof.getId();
+                  roots.add(new RootData(objectId, RootType.FINALIZING));
+                  break;
+                }
+
                 case 0x8b: { // ROOT DEBUGGER (ANDROID)
                   long objectId = hprof.getId();
                   roots.add(new RootData(objectId, RootType.DEBUGGER));
