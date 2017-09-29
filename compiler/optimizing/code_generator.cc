@@ -722,12 +722,10 @@ static void CheckLoopEntriesCanBeUsedForOsr(const HGraph& graph,
     }
   }
   ArenaVector<size_t> covered(loop_headers.size(), 0, graph.GetArena()->Adapter(kArenaAllocMisc));
-  const uint16_t* code_ptr = code_item.insns_;
-  const uint16_t* code_end = code_item.insns_ + code_item.insns_size_in_code_units_;
-
-  size_t dex_pc = 0;
-  while (code_ptr < code_end) {
-    const Instruction& instruction = *Instruction::At(code_ptr);
+  IterationRange<DexInstructionIterator> instructions = code_item.Instructions();
+  for (auto it = instructions.begin(); it != instructions.end(); ++it) {
+    const uint32_t dex_pc = it.GetDexPC(instructions.begin());
+    const Instruction& instruction = *it;
     if (instruction.IsBranch()) {
       uint32_t target = dex_pc + instruction.GetTargetOffset();
       CheckCovers(target, graph, code_info, loop_headers, &covered);
@@ -743,8 +741,6 @@ static void CheckLoopEntriesCanBeUsedForOsr(const HGraph& graph,
         CheckCovers(target, graph, code_info, loop_headers, &covered);
       }
     }
-    dex_pc += instruction.SizeInCodeUnits();
-    code_ptr += instruction.SizeInCodeUnits();
   }
 
   for (size_t i = 0; i < covered.size(); ++i) {

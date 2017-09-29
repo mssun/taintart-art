@@ -26,10 +26,6 @@
 
 namespace art {
 
-void RuntimeCallbacks::AddThreadLifecycleCallback(ThreadLifecycleCallback* cb) {
-  thread_callbacks_.push_back(cb);
-}
-
 template <typename T>
 ALWAYS_INLINE
 static inline void Remove(T* cb, std::vector<T*>* data) {
@@ -37,6 +33,27 @@ static inline void Remove(T* cb, std::vector<T*>* data) {
   if (it != data->end()) {
     data->erase(it);
   }
+}
+
+void RuntimeCallbacks::AddMethodInspectionCallback(MethodInspectionCallback* cb) {
+  method_inspection_callbacks_.push_back(cb);
+}
+
+void RuntimeCallbacks::RemoveMethodInspectionCallback(MethodInspectionCallback* cb) {
+  Remove(cb, &method_inspection_callbacks_);
+}
+
+bool RuntimeCallbacks::IsMethodBeingInspected(ArtMethod* m) {
+  for (MethodInspectionCallback* cb : method_inspection_callbacks_) {
+    if (cb->IsMethodBeingInspected(m)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void RuntimeCallbacks::AddThreadLifecycleCallback(ThreadLifecycleCallback* cb) {
+  thread_callbacks_.push_back(cb);
 }
 
 void RuntimeCallbacks::MonitorContendedLocking(Monitor* m) {

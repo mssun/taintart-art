@@ -669,22 +669,42 @@ void OptimizingCompiler::RunArchOptimizations(InstructionSet instruction_set,
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips
     case kMips: {
+      SideEffectsAnalysis* side_effects = new (arena) SideEffectsAnalysis(graph);
+      GVNOptimization* gvn = new (arena) GVNOptimization(graph, *side_effects, "GVN$after_arch");
       mips::PcRelativeFixups* pc_relative_fixups =
           new (arena) mips::PcRelativeFixups(graph, codegen, stats);
       HOptimization* mips_optimizations[] = {
+          side_effects,
+          gvn,
           pc_relative_fixups,
       };
       RunOptimizations(mips_optimizations, arraysize(mips_optimizations), pass_observer);
       break;
     }
 #endif
+#ifdef ART_ENABLE_CODEGEN_mips64
+    case kMips64: {
+      SideEffectsAnalysis* side_effects = new (arena) SideEffectsAnalysis(graph);
+      GVNOptimization* gvn = new (arena) GVNOptimization(graph, *side_effects, "GVN$after_arch");
+      HOptimization* mips64_optimizations[] = {
+          side_effects,
+          gvn,
+      };
+      RunOptimizations(mips64_optimizations, arraysize(mips64_optimizations), pass_observer);
+      break;
+    }
+#endif
 #ifdef ART_ENABLE_CODEGEN_x86
     case kX86: {
+      SideEffectsAnalysis* side_effects = new (arena) SideEffectsAnalysis(graph);
+      GVNOptimization* gvn = new (arena) GVNOptimization(graph, *side_effects, "GVN$after_arch");
       x86::PcRelativeFixups* pc_relative_fixups =
           new (arena) x86::PcRelativeFixups(graph, codegen, stats);
       x86::X86MemoryOperandGeneration* memory_gen =
           new (arena) x86::X86MemoryOperandGeneration(graph, codegen, stats);
       HOptimization* x86_optimizations[] = {
+          side_effects,
+          gvn,
           pc_relative_fixups,
           memory_gen
       };
@@ -694,9 +714,13 @@ void OptimizingCompiler::RunArchOptimizations(InstructionSet instruction_set,
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86_64
     case kX86_64: {
+      SideEffectsAnalysis* side_effects = new (arena) SideEffectsAnalysis(graph);
+      GVNOptimization* gvn = new (arena) GVNOptimization(graph, *side_effects, "GVN$after_arch");
       x86::X86MemoryOperandGeneration* memory_gen =
           new (arena) x86::X86MemoryOperandGeneration(graph, codegen, stats);
       HOptimization* x86_64_optimizations[] = {
+          side_effects,
+          gvn,
           memory_gen
       };
       RunOptimizations(x86_64_optimizations, arraysize(x86_64_optimizations), pass_observer);

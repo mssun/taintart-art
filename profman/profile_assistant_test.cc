@@ -335,8 +335,33 @@ class ProfileAssistantTest : public CommonRuntimeTest {
     ASSERT_EQ(expected_clases.size(), found);
   }
 
-  int CheckCompilationPercentChange(int methods_in_cur_profile, int classes_in_cur_profile,
-                                    int methods_in_ref_profile, int classes_in_ref_profile) {
+  int CheckCompilationMethodPercentChange(uint16_t methods_in_cur_profile,
+                                          uint16_t methods_in_ref_profile) {
+    ScratchFile profile;
+    ScratchFile reference_profile;
+    std::vector<int> profile_fds({ GetFd(profile)});
+    int reference_profile_fd = GetFd(reference_profile);
+    std::vector<uint32_t> hot_methods_cur;
+    std::vector<uint32_t> hot_methods_ref;
+    std::vector<uint32_t> empty_vector;
+    for (size_t i = 0; i < methods_in_cur_profile; ++i) {
+      hot_methods_cur.push_back(i);
+    }
+    for (size_t i = 0; i < methods_in_ref_profile; ++i) {
+      hot_methods_ref.push_back(i);
+    }
+    ProfileCompilationInfo info1;
+    uint16_t methods_in_profile = std::max(methods_in_cur_profile, methods_in_ref_profile);
+    SetupBasicProfile("p1", 1, methods_in_profile, hot_methods_cur, empty_vector, empty_vector,
+        profile,  &info1);
+    ProfileCompilationInfo info2;
+    SetupBasicProfile("p1", 1, methods_in_profile, hot_methods_ref, empty_vector, empty_vector,
+        reference_profile,  &info2);
+    return ProcessProfiles(profile_fds, reference_profile_fd);
+  }
+
+  int CheckCompilationClassPercentChange(uint16_t classes_in_cur_profile,
+                                         uint16_t classes_in_ref_profile) {
     ScratchFile profile;
     ScratchFile reference_profile;
 
@@ -344,10 +369,9 @@ class ProfileAssistantTest : public CommonRuntimeTest {
     int reference_profile_fd = GetFd(reference_profile);
 
     ProfileCompilationInfo info1;
-    SetupProfile("p1", 1, methods_in_cur_profile, classes_in_cur_profile, profile,  &info1);
+    SetupProfile("p1", 1, 0, classes_in_cur_profile, profile,  &info1);
     ProfileCompilationInfo info2;
-    SetupProfile("p1", 1, methods_in_ref_profile, classes_in_ref_profile, reference_profile,
-        &info2);
+    SetupProfile("p1", 1, 0, classes_in_ref_profile, reference_profile, &info2);
     return ProcessProfiles(profile_fds, reference_profile_fd);
   }
 
@@ -507,24 +531,20 @@ TEST_F(ProfileAssistantTest, DoNotAdviseCompilation) {
 
 TEST_F(ProfileAssistantTest, DoNotAdviseCompilationMethodPercentage) {
   const uint16_t kNumberOfMethodsInRefProfile = 6000;
-  const uint16_t kNumberOfMethodsInCurProfile = 6110;  // Threshold is 2%.
+  const uint16_t kNumberOfMethodsInCurProfile = 6100;  // Threshold is 2%.
   // We should not advise compilation.
   ASSERT_EQ(ProfileAssistant::kSkipCompilation,
-            CheckCompilationPercentChange(kNumberOfMethodsInCurProfile,
-                                          0,
-                                          kNumberOfMethodsInRefProfile,
-                                          0));
+            CheckCompilationMethodPercentChange(kNumberOfMethodsInCurProfile,
+                                                kNumberOfMethodsInRefProfile));
 }
 
 TEST_F(ProfileAssistantTest, ShouldAdviseCompilationMethodPercentage) {
   const uint16_t kNumberOfMethodsInRefProfile = 6000;
-  const uint16_t kNumberOfMethodsInCurProfile = 6120;  // Threshold is 2%.
+  const uint16_t kNumberOfMethodsInCurProfile = 6200;  // Threshold is 2%.
   // We should advise compilation.
   ASSERT_EQ(ProfileAssistant::kCompile,
-            CheckCompilationPercentChange(kNumberOfMethodsInCurProfile,
-                                          0,
-                                          kNumberOfMethodsInRefProfile,
-                                          0));
+            CheckCompilationMethodPercentChange(kNumberOfMethodsInCurProfile,
+                                                kNumberOfMethodsInRefProfile));
 }
 
 TEST_F(ProfileAssistantTest, DoNotdviseCompilationClassPercentage) {
@@ -532,10 +552,8 @@ TEST_F(ProfileAssistantTest, DoNotdviseCompilationClassPercentage) {
   const uint16_t kNumberOfClassesInCurProfile = 6110;  // Threshold is 2%.
   // We should not advise compilation.
   ASSERT_EQ(ProfileAssistant::kSkipCompilation,
-            CheckCompilationPercentChange(0,
-                                          kNumberOfClassesInCurProfile,
-                                          0,
-                                          kNumberOfClassesInRefProfile));
+            CheckCompilationClassPercentChange(kNumberOfClassesInCurProfile,
+                                               kNumberOfClassesInRefProfile));
 }
 
 TEST_F(ProfileAssistantTest, ShouldAdviseCompilationClassPercentage) {
@@ -543,10 +561,8 @@ TEST_F(ProfileAssistantTest, ShouldAdviseCompilationClassPercentage) {
   const uint16_t kNumberOfClassesInCurProfile = 6120;  // Threshold is 2%.
   // We should advise compilation.
   ASSERT_EQ(ProfileAssistant::kCompile,
-            CheckCompilationPercentChange(0,
-                                          kNumberOfClassesInCurProfile,
-                                          0,
-                                          kNumberOfClassesInRefProfile));
+            CheckCompilationClassPercentChange(kNumberOfClassesInCurProfile,
+                                               kNumberOfClassesInRefProfile));
 }
 
 TEST_F(ProfileAssistantTest, FailProcessingBecauseOfProfiles) {

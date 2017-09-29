@@ -20,7 +20,6 @@ art_global_defaults {
     // Additional flags are computed by art.go
 
     name: "art_defaults",
-    clang: true,
     cflags: [
         // Base set of cflags used by all things ART.
         "-fno-rtti",
@@ -90,9 +89,6 @@ art_global_defaults {
                 // Apple, it's a pain.
                 "-Wmissing-noreturn",
             ],
-            host_ldlibs: [
-                "-lrt",
-            ],
         },
         host: {
             cflags: [
@@ -108,10 +104,6 @@ art_global_defaults {
                 // x86/x86_64 target should not be affected.
                 "-msse4.2",
                 "-mpopcnt",
-            ],
-            host_ldlibs: [
-                "-ldl",
-                "-lpthread",
             ],
         },
     },

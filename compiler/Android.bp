@@ -23,7 +23,6 @@ art_cc_defaults {
     name: "libart-compiler-defaults",
     defaults: ["art_defaults"],
     host_supported: true,
-    clang: true,
     srcs: [
         "compiled_method.cc",
         "debug/elf_debug_writer.cc",
@@ -182,10 +181,6 @@ art_cc_defaults {
         },
     },
     target: {
-        host: {
-            // For compiler driver TLS.
-            host_ldlibs: ["-lpthread"],
-        },
         android: {
             // For atrace.
             shared_libs: ["libcutils"],
