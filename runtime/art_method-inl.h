@@ -377,14 +377,14 @@ inline bool ArtMethod::HasSingleImplementation() {
 }
 
 inline void ArtMethod::SetIntrinsic(uint32_t intrinsic) {
-  DCHECK(IsUint<8>(intrinsic));
   // Currently we only do intrinsics for static/final methods or methods of final
   // classes. We don't set kHasSingleImplementation for those methods.
   DCHECK(IsStatic() || IsFinal() || GetDeclaringClass()->IsFinal()) <<
       "Potential conflict with kAccSingleImplementation";
-  uint32_t new_value = (GetAccessFlags() & kAccFlagsNotUsedByIntrinsic) |
-      kAccIntrinsic |
-      (intrinsic << POPCOUNT(kAccFlagsNotUsedByIntrinsic));
+  static const int kAccFlagsShift = CTZ(kAccIntrinsicBits);
+  DCHECK_LE(intrinsic, kAccIntrinsicBits >> kAccFlagsShift);
+  uint32_t intrinsic_bits = intrinsic << kAccFlagsShift;
+  uint32_t new_value = (GetAccessFlags() & ~kAccIntrinsicBits) | kAccIntrinsic | intrinsic_bits;
   if (kIsDebugBuild) {
     uint32_t java_flags = (GetAccessFlags() & kAccJavaFlagsMask);
     bool is_constructor = IsConstructor();

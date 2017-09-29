@@ -117,26 +117,6 @@ class ArtMethod FINAL {
     access_flags_.store(new_access_flags, std::memory_order_relaxed);
   }
 
-  // This setter guarantees atomicity.
-  void AddAccessFlags(uint32_t flag) {
-    uint32_t old_access_flags;
-    uint32_t new_access_flags;
-    do {
-      old_access_flags = access_flags_.load(std::memory_order_relaxed);
-      new_access_flags = old_access_flags | flag;
-    } while (!access_flags_.compare_exchange_weak(old_access_flags, new_access_flags));
-  }
-
-  // This setter guarantees atomicity.
-  void ClearAccessFlags(uint32_t flag) {
-    uint32_t old_access_flags;
-    uint32_t new_access_flags;
-    do {
-      old_access_flags = access_flags_.load(std::memory_order_relaxed);
-      new_access_flags = old_access_flags & ~flag;
-    } while (!access_flags_.compare_exchange_weak(old_access_flags, new_access_flags));
-  }
-
   static MemberOffset AccessFlagsOffset() {
     return MemberOffset(OFFSETOF_MEMBER(ArtMethod, access_flags_));
   }
@@ -196,12 +176,21 @@ class ArtMethod FINAL {
   ALWAYS_INLINE void SetIntrinsic(uint32_t intrinsic) REQUIRES_SHARED(Locks::mutator_lock_);
 
   uint32_t GetIntrinsic() {
+    static const int kAccFlagsShift = CTZ(kAccIntrinsicBits);
+    static_assert(IsPowerOfTwo((kAccIntrinsicBits >> kAccFlagsShift) + 1),
+                  "kAccIntrinsicBits are not continuous");
+    static_assert((kAccIntrinsic & kAccIntrinsicBits) == 0,
+                  "kAccIntrinsic overlaps kAccIntrinsicBits");
     DCHECK(IsIntrinsic());
-    return (GetAccessFlags() >> POPCOUNT(kAccFlagsNotUsedByIntrinsic)) & kAccMaxIntrinsic;
+    return (GetAccessFlags() & kAccIntrinsicBits) >> kAccFlagsShift;
+  }
+
+  void SetNotIntrinsic() REQUIRES_SHARED(Locks::mutator_lock_) {
+    ClearAccessFlags(kAccIntrinsic | kAccIntrinsicBits);
   }
 
   bool IsCopied() {
-    static_assert((kAccCopied & kAccFlagsNotUsedByIntrinsic) == kAccCopied,
+    static_assert((kAccCopied & (kAccIntrinsic | kAccIntrinsicBits)) == 0,
                   "kAccCopied conflicts with intrinsic modifier");
     const bool copied = (GetAccessFlags() & kAccCopied) != 0;
     // (IsMiranda() || IsDefaultConflicting()) implies copied
@@ -211,7 +200,7 @@ class ArtMethod FINAL {
   }
 
   bool IsMiranda() {
-    static_assert((kAccMiranda & kAccFlagsNotUsedByIntrinsic) == kAccMiranda,
+    static_assert((kAccMiranda & (kAccIntrinsic | kAccIntrinsicBits)) == 0,
                   "kAccMiranda conflicts with intrinsic modifier");
     return (GetAccessFlags() & kAccMiranda) != 0;
   }
@@ -245,7 +234,7 @@ class ArtMethod FINAL {
 
   // This is set by the class linker.
   bool IsDefault() {
-    static_assert((kAccDefault & kAccFlagsNotUsedByIntrinsic) == kAccDefault,
+    static_assert((kAccDefault & (kAccIntrinsic | kAccIntrinsicBits)) == 0,
                   "kAccDefault conflicts with intrinsic modifier");
     return (GetAccessFlags() & kAccDefault) != 0;
   }
@@ -290,6 +279,22 @@ class ArtMethod FINAL {
     AddAccessFlags(kAccSkipAccessChecks);
   }
 
+  bool PreviouslyWarm() {
+    if (IsIntrinsic()) {
+      // kAccPreviouslyWarm overlaps with kAccIntrinsicBits.
+      return true;
+    }
+    return (GetAccessFlags() & kAccPreviouslyWarm) != 0;
+  }
+
+  void SetPreviouslyWarm() {
+    if (IsIntrinsic()) {
+      // kAccPreviouslyWarm overlaps with kAccIntrinsicBits.
+      return;
+    }
+    AddAccessFlags(kAccPreviouslyWarm);
+  }
+
   // Should this method be run in the interpreter and count locks (e.g., failed structured-
   // locking verification)?
   bool MustCountLocks() {
@@ -297,6 +302,10 @@ class ArtMethod FINAL {
       return false;
     }
     return (GetAccessFlags() & kAccMustCountLocks) != 0;
+  }
+
+  void SetMustCountLocks() {
+    AddAccessFlags(kAccMustCountLocks);
   }
 
   // Checks to see if the method was annotated with @dalvik.annotation.optimization.FastNative
@@ -781,6 +790,37 @@ class ArtMethod FINAL {
   }
 
   template <ReadBarrierOption kReadBarrierOption> void GetAccessFlagsDCheck();
+
+  static inline bool IsValidIntrinsicUpdate(uint32_t modifier) {
+    return (((modifier & kAccIntrinsic) == kAccIntrinsic) &&
+            (((modifier & ~(kAccIntrinsic | kAccIntrinsicBits)) == 0)));
+  }
+
+  static inline bool OverlapsIntrinsicBits(uint32_t modifier) {
+    return (modifier & kAccIntrinsicBits) != 0;
+  }
+
+  // This setter guarantees atomicity.
+  void AddAccessFlags(uint32_t flag) {
+    DCHECK(!IsIntrinsic() || !OverlapsIntrinsicBits(flag) || IsValidIntrinsicUpdate(flag));
+    uint32_t old_access_flags;
+    uint32_t new_access_flags;
+    do {
+      old_access_flags = access_flags_.load(std::memory_order_relaxed);
+      new_access_flags = old_access_flags | flag;
+    } while (!access_flags_.compare_exchange_weak(old_access_flags, new_access_flags));
+  }
+
+  // This setter guarantees atomicity.
+  void ClearAccessFlags(uint32_t flag) {
+    DCHECK(!IsIntrinsic() || !OverlapsIntrinsicBits(flag) || IsValidIntrinsicUpdate(flag));
+    uint32_t old_access_flags;
+    uint32_t new_access_flags;
+    do {
+      old_access_flags = access_flags_.load(std::memory_order_relaxed);
+      new_access_flags = old_access_flags & ~flag;
+    } while (!access_flags_.compare_exchange_weak(old_access_flags, new_access_flags));
+  }
 
   DISALLOW_COPY_AND_ASSIGN(ArtMethod);  // Need to use CopyFrom to deal with 32 vs 64 bits.
 };

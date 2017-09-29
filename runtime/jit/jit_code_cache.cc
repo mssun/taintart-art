@@ -534,7 +534,7 @@ void JitCodeCache::CopyInlineCacheInto(const InlineCache& ic,
 
 static void ClearMethodCounter(ArtMethod* method, bool was_warm) {
   if (was_warm) {
-    method->AddAccessFlags(kAccPreviouslyWarm);
+    method->SetPreviouslyWarm();
   }
   // We reset the counter to 1 so that the profile knows that the method was executed at least once.
   // This is required for layout purposes.
