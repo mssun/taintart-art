@@ -1,4 +1,4 @@
-LMain;->attemptInlineMonomorphic(LMain;)I+invalid_class
-LMain;->attemptInlinePolymorphic(LMain;)I+LMain;,invalid_class
-LMain;->invalid_method
+SHLMain;->attemptInlineMonomorphic(LMain;)I+invalid_class
+SHLMain;->attemptInlinePolymorphic(LMain;)I+LMain;,invalid_class
+SHLMain;->invalid_method
 invalid_class

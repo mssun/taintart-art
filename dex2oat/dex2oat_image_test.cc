@@ -311,7 +311,11 @@ TEST_F(Dex2oatImageTest, TestModesAndFilters) {
   {
     ProfileCompilationInfo profile;
     VisitLibcoreDexes([&profile](MethodReference ref) {
-      EXPECT_TRUE(profile.AddMethodIndex(ProfileCompilationInfo::MethodHotness::kFlagHot, ref));
+      uint32_t flags = ProfileCompilationInfo::MethodHotness::kFlagHot |
+          ProfileCompilationInfo::MethodHotness::kFlagStartup;
+      EXPECT_TRUE(profile.AddMethodIndex(
+          static_cast<ProfileCompilationInfo::MethodHotness::Flag>(flags),
+          ref));
     }, [&profile](TypeReference ref) {
       EXPECT_TRUE(profile.AddClassForDex(ref));
     }, kMethodFrequency, kTypeFrequency);
