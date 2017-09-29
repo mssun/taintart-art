@@ -3080,9 +3080,7 @@ void Thread::QuickDeliverException() {
     UNREACHABLE();
   }
 
-  if (kUseReadBarrier) {
-    ReadBarrier::AssertToSpaceInvariant(exception.Ptr());
-  }
+  ReadBarrier::MaybeAssertToSpaceInvariant(exception.Ptr());
 
   // This is a real exception: let the instrumentation know about it.
   instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
@@ -3131,11 +3129,8 @@ void Thread::QuickDeliverException() {
   } else {
     // Exception was put back with a throw location.
     DCHECK(IsExceptionPending());
-    if (kUseReadBarrier) {
-      // Check the to-space invariant on the re-installed exception.
-      ObjPtr<mirror::Throwable> reinstalled_exception = GetException();
-      ReadBarrier::AssertToSpaceInvariant(reinstalled_exception.Ptr());
-    }
+    // Check the to-space invariant on the re-installed exception (if applicable).
+    ReadBarrier::MaybeAssertToSpaceInvariant(GetException());
   }
   exception_handler.DoLongJump();
 }
