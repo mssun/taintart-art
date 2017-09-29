@@ -20,4 +20,8 @@ public class HprofFormatException extends Exception {
   public HprofFormatException(String msg) {
     super(msg);
   }
+
+  public HprofFormatException(String msg, Exception cause) {
+    super(msg, cause);
+  }
 }
