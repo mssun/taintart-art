@@ -188,9 +188,7 @@ class ShadowFrame {
       const uint32_t* vreg_ptr = &vregs_[i];
       ref = reinterpret_cast<const StackReference<mirror::Object>*>(vreg_ptr)->AsMirrorPtr();
     }
-    if (kUseReadBarrier) {
-      ReadBarrier::AssertToSpaceInvariant(ref);
-    }
+    ReadBarrier::MaybeAssertToSpaceInvariant(ref);
     if (kVerifyFlags & kVerifyReads) {
       VerifyObject(ref);
     }
@@ -256,9 +254,7 @@ class ShadowFrame {
     if (kVerifyFlags & kVerifyWrites) {
       VerifyObject(val);
     }
-    if (kUseReadBarrier) {
-      ReadBarrier::AssertToSpaceInvariant(val);
-    }
+    ReadBarrier::MaybeAssertToSpaceInvariant(val);
     uint32_t* vreg = &vregs_[i];
     reinterpret_cast<StackReference<mirror::Object>*>(vreg)->Assign(val);
     if (HasReferenceArray()) {
