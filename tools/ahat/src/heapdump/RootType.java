@@ -29,7 +29,8 @@ public enum RootType {
   DEBUGGER        (1 <<  9),
   VM_INTERNAL     (1 << 10),
   UNKNOWN         (1 << 11),
-  JNI_MONITOR     (1 << 12);
+  JNI_MONITOR     (1 << 12),
+  FINALIZING      (1 << 13);
 
   public final int mask;
 
