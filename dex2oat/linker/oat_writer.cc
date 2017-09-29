@@ -961,8 +961,8 @@ struct OatWriter::OrderedMethodData {
       if (method_hotness.IsHot() &&
               !method_hotness.IsStartup() && !method_hotness.IsPostStartup()) {
         std::string name = method_reference.PrettyMethod();
-        LOG(WARNING) << "Method " << name << " had a Hot method that wasn't marked "
-                     << "either start-up or post-startup. Possible corrupted profile?";
+        LOG(FATAL) << "Method " << name << " had a Hot method that wasn't marked "
+                   << "either start-up or post-startup. Possible corrupted profile?";
         // This is not fatal, so only warn.
       }
     }

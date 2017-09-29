@@ -1,2 +1,2 @@
-LMain;->inlineMonomorphic(LMain;)I+LUnrelated;
-LMain;->inlinePolymorphic(LMain;)I+LUnrelated;,LMain;
+SHLMain;->inlineMonomorphic(LMain;)I+LUnrelated;
+SHLMain;->inlinePolymorphic(LMain;)I+LUnrelated;,LMain;
