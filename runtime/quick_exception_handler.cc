@@ -166,10 +166,9 @@ void QuickExceptionHandler::FindCatch(ObjPtr<mirror::Throwable> exception) {
                 << line_number << ")";
     }
   }
-  if (clear_exception_) {
-    // Exception was cleared as part of delivery.
-    DCHECK(!self_->IsExceptionPending());
-  } else {
+  // Exception was cleared as part of delivery.
+  DCHECK(!self_->IsExceptionPending());
+  if (!clear_exception_) {
     // Put exception back in root set with clear throw location.
     self_->SetException(exception_ref.Get());
   }
