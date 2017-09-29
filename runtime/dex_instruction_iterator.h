@@ -26,8 +26,8 @@ namespace art {
 
 class DexInstructionIterator : public std::iterator<std::forward_iterator_tag, Instruction> {
  public:
-  using Type = std::iterator<std::forward_iterator_tag, Instruction>::value_type;
-  using difference_type = typename std::iterator<std::forward_iterator_tag, Type>::difference_type;
+  using value_type = std::iterator<std::forward_iterator_tag, Instruction>::value_type;
+  using difference_type = std::iterator<std::forward_iterator_tag, value_type>::difference_type;
 
   DexInstructionIterator() = default;
   DexInstructionIterator(const DexInstructionIterator&) = default;
@@ -35,12 +35,8 @@ class DexInstructionIterator : public std::iterator<std::forward_iterator_tag, I
   DexInstructionIterator& operator=(const DexInstructionIterator&) = default;
   DexInstructionIterator& operator=(DexInstructionIterator&&) = default;
 
-  explicit DexInstructionIterator(const Type* inst) : inst_(inst) {}
-  explicit DexInstructionIterator(const uint16_t* inst) : inst_(Type::At(inst)) {}
-
-  ALWAYS_INLINE bool operator==(const DexInstructionIterator& other) const {
-    return inst_ == other.inst_ || inst_ == nullptr || other.inst_ == nullptr;
-  }
+  explicit DexInstructionIterator(const value_type* inst) : inst_(inst) {}
+  explicit DexInstructionIterator(const uint16_t* inst) : inst_(value_type::At(inst)) {}
 
   // Value after modification.
   DexInstructionIterator& operator++() {
@@ -55,11 +51,11 @@ class DexInstructionIterator : public std::iterator<std::forward_iterator_tag, I
     return temp;
   }
 
-  const Type& operator*() const {
+  const value_type& operator*() const {
     return *inst_;
   }
 
-  const Type* operator->() const {
+  const value_type* operator->() const {
     return &**this;
   }
 
@@ -69,13 +65,18 @@ class DexInstructionIterator : public std::iterator<std::forward_iterator_tag, I
         reinterpret_cast<const uint16_t*>(code_item_begin.inst_);
   }
 
-  const Type* Inst() const {
+  const value_type* Inst() const {
     return inst_;
   }
 
  private:
-  const Type* inst_ = nullptr;
+  const value_type* inst_ = nullptr;
 };
+
+static ALWAYS_INLINE inline bool operator==(const DexInstructionIterator& lhs,
+                                            const DexInstructionIterator& rhs) {
+  return lhs.Inst() == rhs.Inst();
+}
 
 static inline bool operator!=(const DexInstructionIterator& lhs,
                               const DexInstructionIterator& rhs) {
