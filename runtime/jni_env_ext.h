@@ -45,7 +45,8 @@ struct JNIEnvExt : public JNIEnv {
   ~JNIEnvExt();
 
   void DumpReferenceTables(std::ostream& os)
-      REQUIRES_SHARED(Locks::mutator_lock_);
+      REQUIRES_SHARED(Locks::mutator_lock_)
+      REQUIRES(!Locks::alloc_tracker_lock_);
 
   void SetCheckJniEnabled(bool enabled) REQUIRES(!Locks::jni_function_table_lock_);
 
@@ -53,7 +54,9 @@ struct JNIEnvExt : public JNIEnv {
   void PopFrame() REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<typename T>
-  T AddLocalReference(ObjPtr<mirror::Object> obj) REQUIRES_SHARED(Locks::mutator_lock_);
+  T AddLocalReference(ObjPtr<mirror::Object> obj)
+      REQUIRES_SHARED(Locks::mutator_lock_)
+      REQUIRES(!Locks::alloc_tracker_lock_);
 
   static Offset SegmentStateOffset(size_t pointer_size);
   static Offset LocalRefCookieOffset(size_t pointer_size);
