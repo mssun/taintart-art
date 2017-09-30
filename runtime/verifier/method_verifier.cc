@@ -1955,7 +1955,7 @@ bool MethodVerifier::CodeFlowVerifyMethod() {
     if (dead_start >= 0) {
       LogVerifyInfo()
           << "dead code " << reinterpret_cast<void*>(dead_start)
-          << "-" << reinterpret_cast<void*>(instructions.end().GetDexPC(instructions.begin()));
+          << "-" << reinterpret_cast<void*>(instructions.end().GetDexPC(instructions.begin()) - 1);
     }
     // To dump the state of the verify after a method, do something like:
     // if (dex_file_->PrettyMethod(dex_method_idx_) ==
@@ -2637,7 +2637,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
         break;
       }
 
-      const Instruction* instance_of_inst = &code_item_->InstructionAt(instance_of_idx);
+      const Instruction& instance_of_inst = code_item_->InstructionAt(instance_of_idx);
 
       /* Check for peep-hole pattern of:
        *    ...;
@@ -2652,9 +2652,9 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
        *  - when vX == vY.
        */
       if (!CurrentInsnFlags()->IsBranchTarget() &&
-          (Instruction::INSTANCE_OF == instance_of_inst->Opcode()) &&
-          (inst->VRegA_21t() == instance_of_inst->VRegA_22c()) &&
-          (instance_of_inst->VRegA_22c() != instance_of_inst->VRegB_22c())) {
+          (Instruction::INSTANCE_OF == instance_of_inst.Opcode()) &&
+          (inst->VRegA_21t() == instance_of_inst.VRegA_22c()) &&
+          (instance_of_inst.VRegA_22c() != instance_of_inst.VRegB_22c())) {
         // Check the type of the instance-of is different than that of registers type, as if they
         // are the same there is no work to be done here. Check that the conversion is not to or
         // from an unresolved type as type information is imprecise. If the instance-of is to an
@@ -2665,9 +2665,9 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
         // type is assignable to the original then allow optimization. This check is performed to
         // ensure that subsequent merges don't lose type information - such as becoming an
         // interface from a class that would lose information relevant to field checks.
-        const RegType& orig_type = work_line_->GetRegisterType(this, instance_of_inst->VRegB_22c());
+        const RegType& orig_type = work_line_->GetRegisterType(this, instance_of_inst.VRegB_22c());
         const RegType& cast_type = ResolveClass<CheckAccess::kYes>(
-            dex::TypeIndex(instance_of_inst->VRegC_22c()));
+            dex::TypeIndex(instance_of_inst.VRegC_22c()));
 
         if (!orig_type.Equals(cast_type) &&
             !cast_type.IsUnresolvedTypes() && !orig_type.IsUnresolvedTypes() &&
@@ -2684,7 +2684,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
           }
           update_line->CopyFromLine(work_line_.get());
           update_line->SetRegisterType<LockOp::kKeep>(this,
-                                                      instance_of_inst->VRegB_22c(),
+                                                      instance_of_inst.VRegB_22c(),
                                                       cast_type);
           if (!GetInstructionFlags(instance_of_idx).IsBranchTarget() && 0 != instance_of_idx) {
             // See if instance-of was preceded by a move-object operation, common due to the small
@@ -2699,26 +2699,26 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
                             work_insn_idx_)) {
               break;
             }
-            const Instruction* move_inst = &code_item_->InstructionAt(move_idx);
-            switch (move_inst->Opcode()) {
+            const Instruction& move_inst = code_item_->InstructionAt(move_idx);
+            switch (move_inst.Opcode()) {
               case Instruction::MOVE_OBJECT:
-                if (move_inst->VRegA_12x() == instance_of_inst->VRegB_22c()) {
+                if (move_inst.VRegA_12x() == instance_of_inst.VRegB_22c()) {
                   update_line->SetRegisterType<LockOp::kKeep>(this,
-                                                              move_inst->VRegB_12x(),
+                                                              move_inst.VRegB_12x(),
                                                               cast_type);
                 }
                 break;
               case Instruction::MOVE_OBJECT_FROM16:
-                if (move_inst->VRegA_22x() == instance_of_inst->VRegB_22c()) {
+                if (move_inst.VRegA_22x() == instance_of_inst.VRegB_22c()) {
                   update_line->SetRegisterType<LockOp::kKeep>(this,
-                                                              move_inst->VRegB_22x(),
+                                                              move_inst.VRegB_22x(),
                                                               cast_type);
                 }
                 break;
               case Instruction::MOVE_OBJECT_16:
-                if (move_inst->VRegA_32x() == instance_of_inst->VRegB_22c()) {
+                if (move_inst.VRegA_32x() == instance_of_inst.VRegB_22c()) {
                   update_line->SetRegisterType<LockOp::kKeep>(this,
-                                                              move_inst->VRegB_32x(),
+                                                              move_inst.VRegB_32x(),
                                                               cast_type);
                 }
                 break;

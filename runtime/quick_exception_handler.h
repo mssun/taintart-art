@@ -112,6 +112,10 @@ class QuickExceptionHandler {
     handler_dex_pc_ = dex_pc;
   }
 
+  bool GetClearException() const {
+    return clear_exception_;
+  }
+
   void SetClearException(bool clear_exception) {
     clear_exception_ = clear_exception;
   }

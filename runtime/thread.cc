@@ -2159,11 +2159,11 @@ void Thread::Destroy() {
     ScopedObjectAccess soa(self);
     // We may need to call user-supplied managed code, do this before final clean-up.
     HandleUncaughtExceptions(soa);
+    RemoveFromThreadGroup(soa);
     Runtime* runtime = Runtime::Current();
     if (runtime != nullptr) {
       runtime->GetRuntimeCallbacks()->ThreadDeath(self);
     }
-    RemoveFromThreadGroup(soa);
 
     // this.nativePeer = 0;
     if (Runtime::Current()->IsActiveTransaction()) {
@@ -3080,6 +3080,8 @@ void Thread::QuickDeliverException() {
     UNREACHABLE();
   }
 
+  ReadBarrier::MaybeAssertToSpaceInvariant(exception.Ptr());
+
   // This is a real exception: let the instrumentation know about it.
   instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
   if (instrumentation->HasExceptionThrownListeners() &&
@@ -3121,6 +3123,15 @@ void Thread::QuickDeliverException() {
   QuickExceptionHandler exception_handler(this, false);
   exception_handler.FindCatch(exception);
   exception_handler.UpdateInstrumentationStack();
+  if (exception_handler.GetClearException()) {
+    // Exception was cleared as part of delivery.
+    DCHECK(!IsExceptionPending());
+  } else {
+    // Exception was put back with a throw location.
+    DCHECK(IsExceptionPending());
+    // Check the to-space invariant on the re-installed exception (if applicable).
+    ReadBarrier::MaybeAssertToSpaceInvariant(GetException());
+  }
   exception_handler.DoLongJump();
 }
 

@@ -34,10 +34,35 @@ struct TraceData {
   jmethodID field_access;
   jmethodID field_modify;
   jmethodID single_step;
+  jmethodID thread_start;
+  jmethodID thread_end;
   bool in_callback;
   bool access_watch_on_load;
   bool modify_watch_on_load;
 };
+
+static void threadStartCB(jvmtiEnv* jvmti,
+                          JNIEnv* jnienv,
+                          jthread thread) {
+  TraceData* data = nullptr;
+  if (JvmtiErrorToException(jnienv, jvmti,
+                            jvmti->GetEnvironmentLocalStorage(reinterpret_cast<void**>(&data)))) {
+    return;
+  }
+  CHECK(data->thread_start != nullptr);
+  jnienv->CallStaticVoidMethod(data->test_klass, data->thread_start, thread);
+}
+static void threadEndCB(jvmtiEnv* jvmti,
+                          JNIEnv* jnienv,
+                          jthread thread) {
+  TraceData* data = nullptr;
+  if (JvmtiErrorToException(jnienv, jvmti,
+                            jvmti->GetEnvironmentLocalStorage(reinterpret_cast<void**>(&data)))) {
+    return;
+  }
+  CHECK(data->thread_end != nullptr);
+  jnienv->CallStaticVoidMethod(data->test_klass, data->thread_end, thread);
+}
 
 static void singleStepCB(jvmtiEnv* jvmti,
                          JNIEnv* jnienv,
@@ -362,7 +387,7 @@ extern "C" JNIEXPORT void JNICALL Java_art_Trace_watchFieldAccess(
   env->DeleteLocalRef(klass);
 }
 
-extern "C" JNIEXPORT void JNICALL Java_art_Trace_enableTracing(
+extern "C" JNIEXPORT void JNICALL Java_art_Trace_enableTracing2(
     JNIEnv* env,
     jclass trace ATTRIBUTE_UNUSED,
     jclass klass,
@@ -371,6 +396,8 @@ extern "C" JNIEXPORT void JNICALL Java_art_Trace_enableTracing(
     jobject field_access,
     jobject field_modify,
     jobject single_step,
+    jobject thread_start,
+    jobject thread_end,
     jthread thr) {
   TraceData* data = nullptr;
   if (JvmtiErrorToException(env,
@@ -386,6 +413,8 @@ extern "C" JNIEXPORT void JNICALL Java_art_Trace_enableTracing(
   data->field_access = field_access != nullptr ? env->FromReflectedMethod(field_access) : nullptr;
   data->field_modify = field_modify != nullptr ? env->FromReflectedMethod(field_modify) : nullptr;
   data->single_step = single_step != nullptr ? env->FromReflectedMethod(single_step) : nullptr;
+  data->thread_start = thread_start != nullptr ? env->FromReflectedMethod(thread_start) : nullptr;
+  data->thread_end = thread_end != nullptr ? env->FromReflectedMethod(thread_end) : nullptr;
   data->in_callback = false;
 
   TraceData* old_data = nullptr;
@@ -410,6 +439,8 @@ extern "C" JNIEXPORT void JNICALL Java_art_Trace_enableTracing(
   cb.FieldModification = fieldModificationCB;
   cb.ClassPrepare = classPrepareCB;
   cb.SingleStep = singleStepCB;
+  cb.ThreadStart = threadStartCB;
+  cb.ThreadEnd = threadEndCB;
   if (JvmtiErrorToException(env, jvmti_env, jvmti_env->SetEventCallbacks(&cb, sizeof(cb)))) {
     return;
   }
@@ -453,6 +484,46 @@ extern "C" JNIEXPORT void JNICALL Java_art_Trace_enableTracing(
                                                                 thr))) {
     return;
   }
+  if (thread_start != nullptr &&
+      JvmtiErrorToException(env,
+                            jvmti_env,
+                            jvmti_env->SetEventNotificationMode(JVMTI_ENABLE,
+                                                                JVMTI_EVENT_THREAD_START,
+                                                                thr))) {
+    return;
+  }
+  if (thread_end != nullptr &&
+      JvmtiErrorToException(env,
+                            jvmti_env,
+                            jvmti_env->SetEventNotificationMode(JVMTI_ENABLE,
+                                                                JVMTI_EVENT_THREAD_END,
+                                                                thr))) {
+    return;
+  }
+}
+
+extern "C" JNIEXPORT void JNICALL Java_art_Trace_enableTracing(
+    JNIEnv* env,
+    jclass trace,
+    jclass klass,
+    jobject enter,
+    jobject exit,
+    jobject field_access,
+    jobject field_modify,
+    jobject single_step,
+    jthread thr) {
+  Java_art_Trace_enableTracing2(env,
+                                trace,
+                                klass,
+                                enter,
+                                exit,
+                                field_access,
+                                field_modify,
+                                single_step,
+                                /* thread_start */ nullptr,
+                                /* thread_end */ nullptr,
+                                thr);
+  return;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_art_Trace_disableTracing(

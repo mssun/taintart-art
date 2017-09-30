@@ -53,4 +53,16 @@ public class Trace {
   public static native void watchFieldModification(Field f);
   public static native void watchAllFieldAccesses();
   public static native void watchAllFieldModifications();
+
+  // the names, arguments, and even line numbers of these functions are embedded in the tests so we
+  // need to add to the bottom and not modify old ones to maintain compat.
+  public static native void enableTracing2(Class<?> methodClass,
+                                           Method entryMethod,
+                                           Method exitMethod,
+                                           Method fieldAccess,
+                                           Method fieldModify,
+                                           Method singleStep,
+                                           Method ThreadStart,
+                                           Method ThreadEnd,
+                                           Thread thr);
 }
