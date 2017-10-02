@@ -2038,6 +2038,84 @@ public class Main {
     return (value >> temp) + temp;
   }
 
+  /// CHECK-START: int Main.$noinline$intUnnecessaryShiftModifications(int, int) instruction_simplifier (before)
+  /// CHECK:          <<Value:i\d+>>    ParameterValue
+  /// CHECK:          <<Shift:i\d+>>    ParameterValue
+  /// CHECK-DAG:      <<Const32:i\d+>>  IntConstant 32
+  /// CHECK-DAG:      <<Const64:i\d+>>  IntConstant 64
+  /// CHECK-DAG:      <<Const96:i\d+>>  IntConstant 96
+  /// CHECK-DAG:      <<Const128:i\d+>> IntConstant 128
+  /// CHECK-DAG:      <<Or:i\d+>>       Or [<<Shift>>,<<Const32>>]
+  /// CHECK-DAG:      <<Xor:i\d+>>      Xor [<<Shift>>,<<Const64>>]
+  /// CHECK-DAG:      <<Add:i\d+>>      Add [<<Shift>>,<<Const96>>]
+  /// CHECK-DAG:      <<Sub:i\d+>>      Sub [<<Shift>>,<<Const128>>]
+  /// CHECK-DAG:      <<Conv:b\d+>>     TypeConversion [<<Shift>>]
+  /// CHECK-DAG:                        Shl [<<Value>>,<<Or>>]
+  /// CHECK-DAG:                        Shr [<<Value>>,<<Xor>>]
+  /// CHECK-DAG:                        UShr [<<Value>>,<<Add>>]
+  /// CHECK-DAG:                        Shl [<<Value>>,<<Sub>>]
+  /// CHECK-DAG:                        Shr [<<Value>>,<<Conv>>]
+
+  /// CHECK-START: int Main.$noinline$intUnnecessaryShiftModifications(int, int) instruction_simplifier (after)
+  /// CHECK:          <<Value:i\d+>>    ParameterValue
+  /// CHECK:          <<Shift:i\d+>>    ParameterValue
+  /// CHECK-DAG:                        Shl [<<Value>>,<<Shift>>]
+  /// CHECK-DAG:                        Shr [<<Value>>,<<Shift>>]
+  /// CHECK-DAG:                        UShr [<<Value>>,<<Shift>>]
+  /// CHECK-DAG:                        Shl [<<Value>>,<<Shift>>]
+  /// CHECK-DAG:                        Shr [<<Value>>,<<Shift>>]
+
+  public static int $noinline$intUnnecessaryShiftModifications(int value, int shift) {
+    if (doThrow) { throw new Error(); }
+    int c128 = 128;
+    return (value << (shift | 32)) +
+           (value >> (shift ^ 64)) +
+           (value >>> (shift + 96)) +
+           (value << (shift - c128)) +  // Needs a named constant to generate Sub.
+           (value >> ((byte) shift));
+  }
+
+  /// CHECK-START: int Main.$noinline$intNecessaryShiftModifications(int, int) instruction_simplifier (before)
+  /// CHECK:          <<Value:i\d+>>    ParameterValue
+  /// CHECK:          <<Shift:i\d+>>    ParameterValue
+  /// CHECK-DAG:      <<Const33:i\d+>>  IntConstant 33
+  /// CHECK-DAG:      <<Const65:i\d+>>  IntConstant 65
+  /// CHECK-DAG:      <<Const97:i\d+>>  IntConstant 97
+  /// CHECK-DAG:      <<Const129:i\d+>> IntConstant 129
+  /// CHECK-DAG:      <<Or:i\d+>>       Or [<<Shift>>,<<Const33>>]
+  /// CHECK-DAG:      <<Xor:i\d+>>      Xor [<<Shift>>,<<Const65>>]
+  /// CHECK-DAG:      <<Add:i\d+>>      Add [<<Shift>>,<<Const97>>]
+  /// CHECK-DAG:      <<Sub:i\d+>>      Sub [<<Shift>>,<<Const129>>]
+  /// CHECK-DAG:                        Shl [<<Value>>,<<Or>>]
+  /// CHECK-DAG:                        Shr [<<Value>>,<<Xor>>]
+  /// CHECK-DAG:                        UShr [<<Value>>,<<Add>>]
+  /// CHECK-DAG:                        Shl [<<Value>>,<<Sub>>]
+
+  /// CHECK-START: int Main.$noinline$intNecessaryShiftModifications(int, int) instruction_simplifier (after)
+  /// CHECK:          <<Value:i\d+>>    ParameterValue
+  /// CHECK:          <<Shift:i\d+>>    ParameterValue
+  /// CHECK-DAG:      <<Const33:i\d+>>  IntConstant 33
+  /// CHECK-DAG:      <<Const65:i\d+>>  IntConstant 65
+  /// CHECK-DAG:      <<Const97:i\d+>>  IntConstant 97
+  /// CHECK-DAG:      <<Const129:i\d+>> IntConstant 129
+  /// CHECK-DAG:      <<Or:i\d+>>       Or [<<Shift>>,<<Const33>>]
+  /// CHECK-DAG:      <<Xor:i\d+>>      Xor [<<Shift>>,<<Const65>>]
+  /// CHECK-DAG:      <<Add:i\d+>>      Add [<<Shift>>,<<Const97>>]
+  /// CHECK-DAG:      <<Sub:i\d+>>      Sub [<<Shift>>,<<Const129>>]
+  /// CHECK-DAG:                        Shl [<<Value>>,<<Or>>]
+  /// CHECK-DAG:                        Shr [<<Value>>,<<Xor>>]
+  /// CHECK-DAG:                        UShr [<<Value>>,<<Add>>]
+  /// CHECK-DAG:                        Shl [<<Value>>,<<Sub>>]
+
+  public static int $noinline$intNecessaryShiftModifications(int value, int shift) {
+    if (doThrow) { throw new Error(); }
+    int c129 = 129;
+    return (value << (shift | 33)) +
+           (value >> (shift ^ 65)) +
+           (value >>> (shift + 97)) +
+           (value << (shift - c129));  // Needs a named constant to generate Sub.
+  }
+
   /// CHECK-START: int Main.$noinline$intAddSubSimplifyArg1(int, int) instruction_simplifier (before)
   /// CHECK:          <<X:i\d+>>        ParameterValue
   /// CHECK:          <<Y:i\d+>>        ParameterValue
@@ -2363,14 +2441,22 @@ public class Main {
     assertIntEquals(26, $noinline$runSmaliTestInt("SubSubConst3", 5));
     assertIntEquals(0x5e6f7808, $noinline$intUnnecessaryShiftMasking(0xabcdef01, 3));
     assertIntEquals(0x5e6f7808, $noinline$intUnnecessaryShiftMasking(0xabcdef01, 3 + 32));
-    assertLongEquals(0xffffffffffffeaf3L, $noinline$longUnnecessaryShiftMasking(0xabcdef0123456789L, 50));
-    assertLongEquals(0xffffffffffffeaf3L, $noinline$longUnnecessaryShiftMasking(0xabcdef0123456789L, 50 + 64));
+    assertLongEquals(0xffffffffffffeaf3L,
+                     $noinline$longUnnecessaryShiftMasking(0xabcdef0123456789L, 50));
+    assertLongEquals(0xffffffffffffeaf3L,
+                     $noinline$longUnnecessaryShiftMasking(0xabcdef0123456789L, 50 + 64));
     assertIntEquals(0x2af37b, $noinline$intUnnecessaryWiderShiftMasking(0xabcdef01, 10));
     assertIntEquals(0x2af37b, $noinline$intUnnecessaryWiderShiftMasking(0xabcdef01, 10 + 128));
-    assertLongEquals(0xaf37bc048d159e24L, $noinline$longSmallerShiftMasking(0xabcdef0123456789L, 2));
-    assertLongEquals(0xaf37bc048d159e24L, $noinline$longSmallerShiftMasking(0xabcdef0123456789L, 2 + 256));
+    assertLongEquals(0xaf37bc048d159e24L,
+                     $noinline$longSmallerShiftMasking(0xabcdef0123456789L, 2));
+    assertLongEquals(0xaf37bc048d159e24L,
+                     $noinline$longSmallerShiftMasking(0xabcdef0123456789L, 2 + 256));
     assertIntEquals(0xfffd5e7c, $noinline$otherUseOfUnnecessaryShiftMasking(0xabcdef01, 13));
     assertIntEquals(0xfffd5e7c, $noinline$otherUseOfUnnecessaryShiftMasking(0xabcdef01, 13 + 512));
+    assertIntEquals(0x5f49eb48, $noinline$intUnnecessaryShiftModifications(0xabcdef01, 2));
+    assertIntEquals(0xbd4c29b0, $noinline$intUnnecessaryShiftModifications(0xabcdef01, 3));
+    assertIntEquals(0xc0fed1ca, $noinline$intNecessaryShiftModifications(0xabcdef01, 2));
+    assertIntEquals(0x03578ebc, $noinline$intNecessaryShiftModifications(0xabcdef01, 3));
 
     assertIntEquals(654321, $noinline$intAddSubSimplifyArg1(arg, 654321));
     assertIntEquals(arg, $noinline$intAddSubSimplifyArg2(arg, 654321));
