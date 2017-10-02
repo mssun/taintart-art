@@ -22,8 +22,7 @@ TEST_ART_RUN_TEST_DEPENDENCIES := \
   $(HOST_OUT_EXECUTABLES)/dx \
   $(HOST_OUT_EXECUTABLES)/jasmin \
   $(HOST_OUT_EXECUTABLES)/smali \
-  $(HOST_OUT_EXECUTABLES)/dexmerger \
-  $(JACK)
+  $(HOST_OUT_EXECUTABLES)/dexmerger
 
 # Convert's a rule name to the form used in variables, e.g. no-relocate to NO_RELOCATE
 define name-to-var
@@ -124,18 +123,8 @@ endif
 # Host executables.
 host_prereq_rules := $(ART_TEST_HOST_RUN_TEST_DEPENDENCIES)
 
-ifeq ($(ANDROID_COMPILE_WITH_JACK),true)
-# Classpath for Jack compilation for host.
-host_prereq_rules += $(HOST_JACK_CLASSPATH_DEPENDENCIES)
-endif
-
-# Required for dx, jasmin, smali, dexmerger, jack.
+# Required for dx, jasmin, smali, dexmerger.
 host_prereq_rules += $(TEST_ART_RUN_TEST_DEPENDENCIES)
-
-ifeq ($(ANDROID_COMPILE_WITH_JACK),true)
-# Classpath for Jack compilation for target.
-target_prereq_rules := $(TARGET_JACK_CLASSPATH_DEPENDENCIES)
-endif
 
 # Sync test files to the target, depends upon all things that must be pushed
 #to the target.
