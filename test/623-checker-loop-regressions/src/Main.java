@@ -497,6 +497,13 @@ public class Main {
     }
   }
 
+  // Mixed of 16-bit and 8-bit array references.
+  static void castAndNarrow(byte[] x, char[] y) {
+    for (int i = 0; i < x.length; i++) {
+      x[i] = (byte) ((short) y[i] +  1);
+    }
+  }
+
   public static void main(String[] args) {
     expectEquals(10, earlyExitFirst(-1));
     for (int i = 0; i <= 10; i++) {
@@ -648,6 +655,15 @@ public class Main {
     largeBody(f);
     for (int i = 0; i < 100; i++) {
       expectEquals(2805, f[i]);
+    }
+
+    char[] cx = new char[259];
+    for (int i = 0; i < 259; i++) {
+      cx[i] = (char) (i - 100);
+    }
+    castAndNarrow(b1, cx);
+    for (int i = 0; i < 259; i++) {
+      expectEquals((byte)((short) cx[i] + 1), b1[i]);
     }
 
     System.out.println("passed");
