@@ -84,12 +84,6 @@ endif
 HOST_CORE_DEX_FILES   := $(foreach jar,$(HOST_CORE_JARS),  $(call intermediates-dir-for,JAVA_LIBRARIES,$(jar),t,COMMON)/javalib.jar)
 TARGET_CORE_DEX_FILES := $(foreach jar,$(TARGET_CORE_JARS),$(call intermediates-dir-for,JAVA_LIBRARIES,$(jar), ,COMMON)/javalib.jar)
 
-# Classpath for Jack compilation: we only need core-libart.
-HOST_JACK_CLASSPATH_DEPENDENCIES   := $(call intermediates-dir-for,JAVA_LIBRARIES,core-oj-hostdex,t,COMMON)/classes.jack $(call intermediates-dir-for,JAVA_LIBRARIES,core-libart-hostdex,t,COMMON)/classes.jack
-HOST_JACK_CLASSPATH                := $(abspath $(call intermediates-dir-for,JAVA_LIBRARIES,core-oj-hostdex,t,COMMON)/classes.jack):$(abspath $(call intermediates-dir-for,JAVA_LIBRARIES,core-libart-hostdex,t,COMMON)/classes.jack)
-TARGET_JACK_CLASSPATH_DEPENDENCIES := $(call intermediates-dir-for,JAVA_LIBRARIES,core-oj, ,COMMON)/classes.jack $(call intermediates-dir-for,JAVA_LIBRARIES,core-libart, ,COMMON)/classes.jack
-TARGET_JACK_CLASSPATH              := $(abspath $(call intermediates-dir-for,JAVA_LIBRARIES,core-oj, ,COMMON)/classes.jack):$(abspath $(call intermediates-dir-for,JAVA_LIBRARIES,core-libart, ,COMMON)/classes.jack)
-
 ART_HOST_DEX_DEPENDENCIES := $(foreach jar,$(HOST_CORE_JARS),$(HOST_OUT_JAVA_LIBRARIES)/$(jar).jar)
 ART_TARGET_DEX_DEPENDENCIES := $(foreach jar,$(TARGET_CORE_JARS),$(TARGET_OUT_JAVA_LIBRARIES)/$(jar).jar)
 
