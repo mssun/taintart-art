@@ -1396,7 +1396,7 @@ void Redefiner::ClassRedefinition::UpdateMethods(art::ObjPtr<art::mirror::Class>
     linker->SetEntryPointsToInterpreter(&method);
     method.SetCodeItemOffset(dex_file_->FindCodeItemOffset(class_def, dex_method_idx));
     // Clear all the intrinsics related flags.
-    method.ClearAccessFlags(art::kAccIntrinsic | (~art::kAccFlagsNotUsedByIntrinsic));
+    method.SetNotIntrinsic();
     // Notify the jit that this method is redefined.
     art::jit::Jit* jit = driver_->runtime_->GetJit();
     if (jit != nullptr) {
