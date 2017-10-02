@@ -26,7 +26,7 @@
 namespace art {
 
 const uint8_t ImageHeader::kImageMagic[] = { 'a', 'r', 't', '\n' };
-const uint8_t ImageHeader::kImageVersion[] = { '0', '4', '8', '\0' };  // Map boot image tables.
+const uint8_t ImageHeader::kImageVersion[] = { '0', '4', '9', '\0' };  // 256 intrinsics
 
 ImageHeader::ImageHeader(uint32_t image_begin,
                          uint32_t image_size,
