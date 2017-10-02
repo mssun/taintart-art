@@ -19,4 +19,8 @@ if [[ "$USE_JACK" == true ]]; then
   patch -p0 expected.txt < expected_jack.diff
 fi
 
+if [[ "$DX" == 'd8' ]]; then
+  patch -p0 expected.txt < expected_d8.diff
+fi
+
 ./default-check "$@"
