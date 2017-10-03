@@ -51,12 +51,13 @@ constexpr bool kBakerReadBarrierThunksEnableForGcRoots = true;
 
 Location MipsReturnLocation(DataType::Type return_type) {
   switch (return_type) {
+    case DataType::Type::kReference:
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
     case DataType::Type::kInt32:
-    case DataType::Type::kReference:
       return Location::RegisterLocation(V0);
 
     case DataType::Type::kInt64:
@@ -84,12 +85,13 @@ Location InvokeDexCallingConventionVisitorMIPS::GetNextLocation(DataType::Type t
   Location next_location;
 
   switch (type) {
+    case DataType::Type::kReference:
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
-    case DataType::Type::kInt32:
-    case DataType::Type::kReference: {
+    case DataType::Type::kInt32: {
       uint32_t gp_index = gp_index_++;
       if (gp_index < calling_convention.GetNumberOfRegisters()) {
         next_location = Location::RegisterLocation(calling_convention.GetRegisterAt(gp_index));
@@ -2592,7 +2594,8 @@ void InstructionCodeGeneratorMIPS::VisitArrayGet(HArrayGet* instruction) {
   const bool maybe_compressed_char_at = mirror::kUseStringCompression &&
                                         instruction->IsStringCharAt();
   switch (type) {
-    case DataType::Type::kBool: {
+    case DataType::Type::kBool:
+    case DataType::Type::kUint8: {
       Register out = out_loc.AsRegister<Register>();
       if (index.IsConstant()) {
         size_t offset =
@@ -2614,19 +2617,6 @@ void InstructionCodeGeneratorMIPS::VisitArrayGet(HArrayGet* instruction) {
       } else {
         __ Addu(TMP, obj, index.AsRegister<Register>());
         __ LoadFromOffset(kLoadSignedByte, out, TMP, data_offset, null_checker);
-      }
-      break;
-    }
-
-    case DataType::Type::kInt16: {
-      Register out = out_loc.AsRegister<Register>();
-      if (index.IsConstant()) {
-        size_t offset =
-            (index.GetConstant()->AsIntConstant()->GetValue() << TIMES_2) + data_offset;
-        __ LoadFromOffset(kLoadSignedHalfword, out, obj, offset, null_checker);
-      } else {
-        __ ShiftAndAdd(TMP, index.AsRegister<Register>(), obj, TIMES_2, TMP);
-        __ LoadFromOffset(kLoadSignedHalfword, out, TMP, data_offset, null_checker);
       }
       break;
     }
@@ -2679,6 +2669,19 @@ void InstructionCodeGeneratorMIPS::VisitArrayGet(HArrayGet* instruction) {
           __ ShiftAndAdd(TMP, index_reg, obj, TIMES_2, TMP);
           __ LoadFromOffset(kLoadUnsignedHalfword, out, TMP, data_offset, null_checker);
         }
+      }
+      break;
+    }
+
+    case DataType::Type::kInt16: {
+      Register out = out_loc.AsRegister<Register>();
+      if (index.IsConstant()) {
+        size_t offset =
+            (index.GetConstant()->AsIntConstant()->GetValue() << TIMES_2) + data_offset;
+        __ LoadFromOffset(kLoadSignedHalfword, out, obj, offset, null_checker);
+      } else {
+        __ ShiftAndAdd(TMP, index.AsRegister<Register>(), obj, TIMES_2, TMP);
+        __ LoadFromOffset(kLoadSignedHalfword, out, TMP, data_offset, null_checker);
       }
       break;
     }
@@ -2880,6 +2883,7 @@ void InstructionCodeGeneratorMIPS::VisitArraySet(HArraySet* instruction) {
 
   switch (value_type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8: {
       uint32_t data_offset = mirror::Array::DataOffset(sizeof(uint8_t)).Uint32Value();
       if (index.IsConstant()) {
@@ -2897,8 +2901,8 @@ void InstructionCodeGeneratorMIPS::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
-    case DataType::Type::kInt16:
-    case DataType::Type::kUint16: {
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16: {
       uint32_t data_offset = mirror::Array::DataOffset(sizeof(uint16_t)).Uint32Value();
       if (index.IsConstant()) {
         data_offset += index.GetConstant()->AsIntConstant()->GetValue() << TIMES_2;
@@ -3390,9 +3394,10 @@ void LocationsBuilderMIPS::VisitCompare(HCompare* compare) {
 
   switch (in_type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
-    case DataType::Type::kInt16:
     case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
     case DataType::Type::kInt32:
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RequiresRegister());
@@ -3429,9 +3434,10 @@ void InstructionCodeGeneratorMIPS::VisitCompare(HCompare* instruction) {
   // -1 if: left  < right
   switch (in_type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
-    case DataType::Type::kInt16:
     case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
     case DataType::Type::kInt32: {
       Register lhs = locations->InAt(0).AsRegister<Register>();
       Register rhs = locations->InAt(1).AsRegister<Register>();
@@ -3833,6 +3839,7 @@ void InstructionCodeGeneratorMIPS::VisitDivZeroCheck(HDivZeroCheck* instruction)
 
   switch (type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -6159,16 +6166,17 @@ void InstructionCodeGeneratorMIPS::HandleFieldGet(HInstruction* instruction,
 
   switch (type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
       load_type = kLoadUnsignedByte;
       break;
     case DataType::Type::kInt8:
       load_type = kLoadSignedByte;
       break;
-    case DataType::Type::kInt16:
-      load_type = kLoadSignedHalfword;
-      break;
     case DataType::Type::kUint16:
       load_type = kLoadUnsignedHalfword;
+      break;
+    case DataType::Type::kInt16:
+      load_type = kLoadSignedHalfword;
       break;
     case DataType::Type::kInt32:
     case DataType::Type::kFloat32:
@@ -6312,11 +6320,12 @@ void InstructionCodeGeneratorMIPS::HandleFieldSet(HInstruction* instruction,
 
   switch (type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       store_type = kStoreByte;
       break;
-    case DataType::Type::kInt16:
     case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       store_type = kStoreHalfword;
       break;
     case DataType::Type::kInt32:
@@ -8601,7 +8610,8 @@ void InstructionCodeGeneratorMIPS::VisitThrow(HThrow* instruction) {
 void LocationsBuilderMIPS::VisitTypeConversion(HTypeConversion* conversion) {
   DataType::Type input_type = conversion->GetInputType();
   DataType::Type result_type = conversion->GetResultType();
-  DCHECK_NE(input_type, result_type);
+  DCHECK(!DataType::IsTypeConversionImplicit(input_type, result_type))
+      << input_type << " -> " << result_type;
   bool isR6 = codegen_->GetInstructionSetFeatures().IsR6();
 
   if ((input_type == DataType::Type::kReference) || (input_type == DataType::Type::kVoid) ||
@@ -8652,7 +8662,8 @@ void InstructionCodeGeneratorMIPS::VisitTypeConversion(HTypeConversion* conversi
   bool has_sign_extension = codegen_->GetInstructionSetFeatures().IsMipsIsaRevGreaterThanEqual2();
   bool isR6 = codegen_->GetInstructionSetFeatures().IsR6();
 
-  DCHECK_NE(input_type, result_type);
+  DCHECK(!DataType::IsTypeConversionImplicit(input_type, result_type))
+      << input_type << " -> " << result_type;
 
   if (result_type == DataType::Type::kInt64 && DataType::IsIntegralType(input_type)) {
     Register dst_high = locations->Out().AsRegisterPairHigh<Register>();
@@ -8670,8 +8681,8 @@ void InstructionCodeGeneratorMIPS::VisitTypeConversion(HTypeConversion* conversi
         : locations->InAt(0).AsRegister<Register>();
 
     switch (result_type) {
-      case DataType::Type::kUint16:
-        __ Andi(dst, src, 0xFFFF);
+      case DataType::Type::kUint8:
+        __ Andi(dst, src, 0xFF);
         break;
       case DataType::Type::kInt8:
         if (has_sign_extension) {
@@ -8680,6 +8691,9 @@ void InstructionCodeGeneratorMIPS::VisitTypeConversion(HTypeConversion* conversi
           __ Sll(dst, src, 24);
           __ Sra(dst, dst, 24);
         }
+        break;
+      case DataType::Type::kUint16:
+        __ Andi(dst, src, 0xFFFF);
         break;
       case DataType::Type::kInt16:
         if (has_sign_extension) {
