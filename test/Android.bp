@@ -74,7 +74,7 @@ art_cc_defaults {
     ],
 
     target: {
-        linux: {
+        linux_glibc: {
             ldflags: [
                 // Allow jni_compiler_test to find Java_MyClassNatives_bar
                 // within itself using dlopen(NULL, ...).
@@ -143,7 +143,7 @@ art_cc_defaults {
                 "-Wno-missing-noreturn",
             ],
         },
-        linux: {
+        linux_glibc: {
             cflags: [
                 // gtest issue
                 "-Wno-used-but-marked-unused",
