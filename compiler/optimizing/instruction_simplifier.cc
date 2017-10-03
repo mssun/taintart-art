@@ -1230,6 +1230,37 @@ void InstructionSimplifierVisitor::VisitAnd(HAnd* instruction) {
       RecordSimplification();
       return;
     }
+    if (input_other->IsTypeConversion() &&
+        input_other->GetType() == DataType::Type::kInt64 &&
+        DataType::IsIntegralType(input_other->InputAt(0)->GetType()) &&
+        IsInt<32>(value) &&
+        input_other->HasOnlyOneNonEnvironmentUse()) {
+      // The AND can be reordered before the TypeConversion. Replace
+      //   LongConstant cst, <32-bit-constant-sign-extended-to-64-bits>
+      //   TypeConversion<Int64> tmp, src
+      //   AND dst, tmp, cst
+      // with
+      //   IntConstant cst, <32-bit-constant>
+      //   AND tmp, src, cst
+      //   TypeConversion<Int64> dst, tmp
+      // This helps 32-bit targets and does not hurt 64-bit targets.
+      // This also simplifies detection of other patterns, such as Uint8 loads.
+      HInstruction* new_and_input = input_other->InputAt(0);
+      // Implicit conversion Int64->Int64 would have been removed previously.
+      DCHECK_NE(new_and_input->GetType(), DataType::Type::kInt64);
+      HConstant* new_const = GetGraph()->GetConstant(DataType::Type::kInt32, value);
+      HAnd* new_and =
+          new (GetGraph()->GetArena()) HAnd(DataType::Type::kInt32, new_and_input, new_const);
+      instruction->GetBlock()->InsertInstructionBefore(new_and, instruction);
+      HTypeConversion* new_conversion =
+          new (GetGraph()->GetArena()) HTypeConversion(DataType::Type::kInt64, new_and);
+      instruction->GetBlock()->ReplaceAndRemoveInstructionWith(instruction, new_conversion);
+      input_other->GetBlock()->RemoveInstruction(input_other);
+      RecordSimplification();
+      // Try to process the new And now, do not wait for the next round of simplifications.
+      instruction = new_and;
+      input_other = new_and_input;
+    }
     // Eliminate And from UShr+And if the And-mask contains all the bits that
     // can be non-zero after UShr. Transform Shr+And to UShr if the And-mask
     // precisely clears the shifted-in sign bits.
