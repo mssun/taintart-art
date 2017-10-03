@@ -59,14 +59,19 @@ static void RotateEntryPhiFirst(HLoopInformation* loop,
 static bool IsNarrowingIntegralConversion(DataType::Type from, DataType::Type to) {
   switch (from) {
     case DataType::Type::kInt64:
-      return to == DataType::Type::kInt8 || to == DataType::Type::kInt16
-          || to == DataType::Type::kUint16 || to == DataType::Type::kInt32;
+      return to == DataType::Type::kUint8 ||
+             to == DataType::Type::kInt8 ||
+             to == DataType::Type::kUint16 ||
+             to == DataType::Type::kInt16 ||
+             to == DataType::Type::kInt32;
     case DataType::Type::kInt32:
-      return to == DataType::Type::kInt8 || to == DataType::Type::kInt16
-          || to == DataType::Type::kUint16;
+      return to == DataType::Type::kUint8 ||
+             to == DataType::Type::kInt8 ||
+             to == DataType::Type::kUint16 ||
+             to == DataType::Type::kInt16;
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
-      return to == DataType::Type::kInt8;
+      return to == DataType::Type::kUint8 || to == DataType::Type::kInt8;
     default:
       return false;
   }
@@ -77,10 +82,11 @@ static bool IsNarrowingIntegralConversion(DataType::Type from, DataType::Type to
  */
 static DataType::Type ImplicitConversion(DataType::Type type) {
   switch (type) {
-    case DataType::Type::kInt16:
-    case DataType::Type::kUint16:
-    case DataType::Type::kInt8:
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       return DataType::Type::kInt32;
     default:
       return type;
@@ -1142,9 +1148,10 @@ bool HInductionVarAnalysis::IsAtLeast(InductionInfo* info, int64_t* value) {
 bool HInductionVarAnalysis::IsNarrowingLinear(InductionInfo* info) {
   return info != nullptr &&
       info->induction_class == kLinear &&
-      (info->type == DataType::Type::kInt8 ||
-       info->type == DataType::Type::kInt16 ||
+      (info->type == DataType::Type::kUint8 ||
+       info->type == DataType::Type::kInt8 ||
        info->type == DataType::Type::kUint16 ||
+       info->type == DataType::Type::kInt16 ||
        (info->type == DataType::Type::kInt32 && (info->op_a->type == DataType::Type::kInt64 ||
                                                  info->op_b->type == DataType::Type::kInt64)));
 }

@@ -31,6 +31,7 @@ void LocationsBuilderX86_64::VisitVecReplicateScalar(HVecReplicateScalar* instru
   bool is_zero = IsZeroBitPattern(input);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -65,6 +66,7 @@ void InstructionCodeGeneratorX86_64::VisitVecReplicateScalar(HVecReplicateScalar
 
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ movd(dst, locations->InAt(0).AsRegister<CpuRegister>(), /*64-bit*/ false);
@@ -109,6 +111,7 @@ void LocationsBuilderX86_64::VisitVecExtractScalar(HVecExtractScalar* instructio
   LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -133,6 +136,7 @@ void InstructionCodeGeneratorX86_64::VisitVecExtractScalar(HVecExtractScalar* in
   XmmRegister src = locations->InAt(0).AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:  // TODO: up to here, and?
@@ -163,6 +167,7 @@ static void CreateVecUnOpLocations(ArenaAllocator* arena, HVecUnaryOperation* in
   LocationSummary* locations = new (arena) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -273,6 +278,7 @@ void InstructionCodeGeneratorX86_64::VisitVecNeg(HVecNeg* instruction) {
   XmmRegister src = locations->InAt(0).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ pxor(dst, dst);
@@ -373,6 +379,7 @@ void InstructionCodeGeneratorX86_64::VisitVecNot(HVecNot* instruction) {
       __ pxor(dst, src);
       break;
     }
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -404,6 +411,7 @@ static void CreateVecBinOpLocations(ArenaAllocator* arena, HVecBinaryOperation* 
   LocationSummary* locations = new (arena) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -431,6 +439,7 @@ void InstructionCodeGeneratorX86_64::VisitVecAdd(HVecAdd* instruction) {
   XmmRegister src = locations->InAt(1).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ paddb(dst, src);
@@ -473,15 +482,13 @@ void InstructionCodeGeneratorX86_64::VisitVecHalvingAdd(HVecHalvingAdd* instruct
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
 
   DCHECK(instruction->IsRounded());
-  DCHECK(instruction->IsUnsigned());
 
   switch (instruction->GetPackedType()) {
-    case DataType::Type::kInt8:
+    case DataType::Type::kUint8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
      __ pavgb(dst, src);
      return;
     case DataType::Type::kUint16:
-    case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
       __ pavgw(dst, src);
       return;
@@ -501,6 +508,7 @@ void InstructionCodeGeneratorX86_64::VisitVecSub(HVecSub* instruction) {
   XmmRegister src = locations->InAt(1).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ psubb(dst, src);
@@ -599,22 +607,21 @@ void InstructionCodeGeneratorX86_64::VisitVecMin(HVecMin* instruction) {
   XmmRegister src = locations->InAt(1).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
+      DCHECK_EQ(16u, instruction->GetVectorLength());
+      __ pminub(dst, src);
+      break;
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ pminub(dst, src);
-      } else {
-        __ pminsb(dst, src);
-      }
+      __ pminsb(dst, src);
       break;
     case DataType::Type::kUint16:
+      DCHECK_EQ(8u, instruction->GetVectorLength());
+      __ pminuw(dst, src);
+      break;
     case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ pminuw(dst, src);
-      } else {
-        __ pminsw(dst, src);
-      }
+      __ pminsw(dst, src);
       break;
     case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
@@ -651,22 +658,21 @@ void InstructionCodeGeneratorX86_64::VisitVecMax(HVecMax* instruction) {
   XmmRegister src = locations->InAt(1).AsFpuRegister<XmmRegister>();
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
+      DCHECK_EQ(16u, instruction->GetVectorLength());
+      __ pmaxub(dst, src);
+      break;
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ pmaxub(dst, src);
-      } else {
-        __ pmaxsb(dst, src);
-      }
+      __ pmaxsb(dst, src);
       break;
     case DataType::Type::kUint16:
+      DCHECK_EQ(8u, instruction->GetVectorLength());
+      __ pmaxuw(dst, src);
+      break;
     case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ pmaxuw(dst, src);
-      } else {
-        __ pmaxsw(dst, src);
-      }
+      __ pmaxsw(dst, src);
       break;
     case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
@@ -704,6 +710,7 @@ void InstructionCodeGeneratorX86_64::VisitVecAnd(HVecAnd* instruction) {
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -738,6 +745,7 @@ void InstructionCodeGeneratorX86_64::VisitVecAndNot(HVecAndNot* instruction) {
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -772,6 +780,7 @@ void InstructionCodeGeneratorX86_64::VisitVecOr(HVecOr* instruction) {
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -806,6 +815,7 @@ void InstructionCodeGeneratorX86_64::VisitVecXor(HVecXor* instruction) {
   XmmRegister dst = locations->Out().AsFpuRegister<XmmRegister>();
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -940,6 +950,7 @@ void LocationsBuilderX86_64::VisitVecSetScalars(HVecSetScalars* instruction) {
 
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -978,6 +989,7 @@ void InstructionCodeGeneratorX86_64::VisitVecSetScalars(HVecSetScalars* instruct
   // Set required elements.
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:  // TODO: up to here, and?
@@ -1009,6 +1021,7 @@ void InstructionCodeGeneratorX86_64::VisitVecSetScalars(HVecSetScalars* instruct
 static void CreateVecAccumLocations(ArenaAllocator* arena, HVecOperation* instruction) {
   LocationSummary* locations = new (arena) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -1050,6 +1063,7 @@ static void CreateVecMemLocations(ArenaAllocator* arena,
   LocationSummary* locations = new (arena) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -1129,6 +1143,7 @@ void InstructionCodeGeneratorX86_64::VisitVecLoad(HVecLoad* instruction) {
       }
       FALLTHROUGH_INTENDED;
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kInt16:
     case DataType::Type::kInt32:
@@ -1163,6 +1178,7 @@ void InstructionCodeGeneratorX86_64::VisitVecStore(HVecStore* instruction) {
   bool is_aligned16 = instruction->GetAlignment().IsAlignedAt(16);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
