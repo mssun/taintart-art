@@ -29,6 +29,7 @@ class DataType {
   enum class Type : uint8_t {
     kReference = 0,
     kBool,
+    kUint8,
     kInt8,
     kUint16,
     kInt16,
@@ -47,6 +48,7 @@ class DataType {
     switch (type) {
       case Type::kVoid:
       case Type::kBool:
+      case Type::kUint8:
       case Type::kInt8:
         return 0;
       case Type::kUint16:
@@ -71,6 +73,7 @@ class DataType {
       case Type::kVoid:
         return 0;
       case Type::kBool:
+      case Type::kUint8:
       case Type::kInt8:
         return 1;
       case Type::kUint16:
@@ -99,6 +102,7 @@ class DataType {
     // our bit representation makes it safe.
     switch (type) {
       case Type::kBool:
+      case Type::kUint8:
       case Type::kInt8:
       case Type::kUint16:
       case Type::kInt16:
@@ -118,10 +122,27 @@ class DataType {
     return type == Type::kInt64 || type == Type::kFloat64;
   }
 
+  static bool IsUnsignedType(Type type) {
+    return type == Type::kUint8 || type == Type::kUint16;
+  }
+
+  static Type ToSignedType(Type type) {
+    switch (type) {
+      case Type::kUint8:
+        return Type::kInt8;
+      case Type::kUint16:
+        return Type::kInt16;
+      default:
+        DCHECK(type != Type::kVoid && type != Type::kReference);
+        return type;
+    }
+  }
+
   // Return the general kind of `type`, fusing integer-like types as Type::kInt.
   static Type Kind(Type type) {
     switch (type) {
       case Type::kBool:
+      case Type::kUint8:
       case Type::kInt8:
       case Type::kInt16:
       case Type::kUint16:
@@ -136,6 +157,8 @@ class DataType {
     switch (type) {
       case Type::kBool:
         return std::numeric_limits<bool>::min();
+      case Type::kUint8:
+        return std::numeric_limits<uint8_t>::min();
       case Type::kInt8:
         return std::numeric_limits<int8_t>::min();
       case Type::kUint16:
@@ -156,6 +179,8 @@ class DataType {
     switch (type) {
       case Type::kBool:
         return std::numeric_limits<bool>::max();
+      case Type::kUint8:
+        return std::numeric_limits<uint8_t>::max();
       case Type::kInt8:
         return std::numeric_limits<int8_t>::max();
       case Type::kUint16:
@@ -172,12 +197,33 @@ class DataType {
     return 0;
   }
 
+  static bool IsTypeConversionImplicit(Type input_type, Type result_type);
+
   static const char* PrettyDescriptor(Type type);
 
  private:
   static constexpr size_t kObjectReferenceSize = 4u;
 };
 std::ostream& operator<<(std::ostream& os, DataType::Type data_type);
+
+// Defined outside DataType to have the operator<< available for DCHECK_NE().
+inline bool DataType::IsTypeConversionImplicit(Type input_type, Type result_type) {
+  DCHECK_NE(DataType::Type::kVoid, result_type);
+  DCHECK_NE(DataType::Type::kVoid, input_type);
+
+  // Invariant: We should never generate a conversion to a Boolean value.
+  DCHECK_NE(DataType::Type::kBool, result_type);
+
+  // Besides conversion to the same type, integral conversions to non-Int64 types
+  // are implicit if the result value range covers the input value range, i.e.
+  // widening conversions that do not need to trim the sign bits.
+  return result_type == input_type ||
+         (result_type != Type::kInt64 &&
+          IsIntegralType(input_type) &&
+          IsIntegralType(result_type) &&
+          MinValueOfIntegralType(input_type) >= MinValueOfIntegralType(result_type) &&
+          MaxValueOfIntegralType(input_type) <= MaxValueOfIntegralType(result_type));
+}
 
 }  // namespace art
 

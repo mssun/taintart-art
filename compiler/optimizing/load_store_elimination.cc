@@ -276,6 +276,7 @@ class LSEVisitor : public HGraphVisitor {
       case DataType::Type::kReference:
         return GetGraph()->GetNullConstant();
       case DataType::Type::kBool:
+      case DataType::Type::kUint8:
       case DataType::Type::kInt8:
       case DataType::Type::kUint16:
       case DataType::Type::kInt16:
