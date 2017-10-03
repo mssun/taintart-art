@@ -135,6 +135,8 @@ class Instruction {
     kIndexVtableOffset,       // vtable offset (for static linked methods)
     kIndexMethodAndProtoRef,  // method and a proto reference index (for invoke-polymorphic)
     kIndexCallSiteRef,        // call site reference index
+    kIndexMethodHandleRef,    // constant method handle reference index
+    kIndexProtoRef,           // prototype reference index
   };
 
   enum Flags : uint8_t {
@@ -195,7 +197,9 @@ class Instruction {
     kVerifyRuntimeOnly        = 0x0200000,
     kVerifyError              = 0x0400000,
     kVerifyRegHPrototype      = 0x0800000,
-    kVerifyRegBCallSite       = 0x1000000
+    kVerifyRegBCallSite       = 0x1000000,
+    kVerifyRegBMethodHandle   = 0x2000000,
+    kVerifyRegBPrototype      = 0x4000000,
   };
 
   // Collect the enums in a struct for better locality.
