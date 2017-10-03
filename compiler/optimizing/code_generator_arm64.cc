@@ -1929,16 +1929,17 @@ void CodeGeneratorARM64::Load(DataType::Type type,
                               const MemOperand& src) {
   switch (type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
       __ Ldrb(Register(dst), src);
       break;
     case DataType::Type::kInt8:
       __ Ldrsb(Register(dst), src);
       break;
-    case DataType::Type::kInt16:
-      __ Ldrsh(Register(dst), src);
-      break;
     case DataType::Type::kUint16:
       __ Ldrh(Register(dst), src);
+      break;
+    case DataType::Type::kInt16:
+      __ Ldrsh(Register(dst), src);
       break;
     case DataType::Type::kInt32:
     case DataType::Type::kReference:
@@ -1972,14 +1973,7 @@ void CodeGeneratorARM64::LoadAcquire(HInstruction* instruction,
     MemOperand base = MemOperand(temp_base);
     switch (type) {
       case DataType::Type::kBool:
-        {
-          ExactAssemblyScope eas(masm, kInstructionSize, CodeBufferCheckScope::kExactSize);
-          __ ldarb(Register(dst), base);
-          if (needs_null_check) {
-            MaybeRecordImplicitNullCheck(instruction);
-          }
-        }
-        break;
+      case DataType::Type::kUint8:
       case DataType::Type::kInt8:
         {
           ExactAssemblyScope eas(masm, kInstructionSize, CodeBufferCheckScope::kExactSize);
@@ -1988,17 +1982,11 @@ void CodeGeneratorARM64::LoadAcquire(HInstruction* instruction,
             MaybeRecordImplicitNullCheck(instruction);
           }
         }
-        __ Sbfx(Register(dst), Register(dst), 0, DataType::Size(type) * kBitsPerByte);
-        break;
-      case DataType::Type::kUint16:
-        {
-          ExactAssemblyScope eas(masm, kInstructionSize, CodeBufferCheckScope::kExactSize);
-          __ ldarh(Register(dst), base);
-          if (needs_null_check) {
-            MaybeRecordImplicitNullCheck(instruction);
-          }
+        if (type == DataType::Type::kInt8) {
+          __ Sbfx(Register(dst), Register(dst), 0, DataType::Size(type) * kBitsPerByte);
         }
         break;
+      case DataType::Type::kUint16:
       case DataType::Type::kInt16:
         {
           ExactAssemblyScope eas(masm, kInstructionSize, CodeBufferCheckScope::kExactSize);
@@ -2007,7 +1995,9 @@ void CodeGeneratorARM64::LoadAcquire(HInstruction* instruction,
             MaybeRecordImplicitNullCheck(instruction);
           }
         }
-        __ Sbfx(Register(dst), Register(dst), 0, DataType::Size(type) * kBitsPerByte);
+        if (type == DataType::Type::kInt16) {
+          __ Sbfx(Register(dst), Register(dst), 0, DataType::Size(type) * kBitsPerByte);
+        }
         break;
       case DataType::Type::kInt32:
       case DataType::Type::kReference:
@@ -2048,6 +2038,7 @@ void CodeGeneratorARM64::Store(DataType::Type type,
                                const MemOperand& dst) {
   switch (type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       __ Strb(Register(src), dst);
       break;
@@ -2087,6 +2078,7 @@ void CodeGeneratorARM64::StoreRelease(HInstruction* instruction,
   // Ensure that between store and MaybeRecordImplicitNullCheck there are no pools emitted.
   switch (type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       {
         ExactAssemblyScope eas(masm, kInstructionSize, CodeBufferCheckScope::kExactSize);
@@ -3222,9 +3214,10 @@ void LocationsBuilderARM64::VisitCompare(HCompare* compare) {
   DataType::Type in_type = compare->InputAt(0)->GetType();
   switch (in_type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
-    case DataType::Type::kInt16:
     case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
     case DataType::Type::kInt32:
     case DataType::Type::kInt64: {
       locations->SetInAt(0, Location::RequiresRegister());
@@ -3255,9 +3248,10 @@ void InstructionCodeGeneratorARM64::VisitCompare(HCompare* compare) {
   // -1 if: left  < right
   switch (in_type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
-    case DataType::Type::kInt16:
     case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
     case DataType::Type::kInt32:
     case DataType::Type::kInt64: {
       Register result = OutputRegister(compare);
@@ -5744,7 +5738,8 @@ void LocationsBuilderARM64::VisitTypeConversion(HTypeConversion* conversion) {
       new (GetGraph()->GetArena()) LocationSummary(conversion, LocationSummary::kNoCall);
   DataType::Type input_type = conversion->GetInputType();
   DataType::Type result_type = conversion->GetResultType();
-  DCHECK_NE(input_type, result_type);
+  DCHECK(!DataType::IsTypeConversionImplicit(input_type, result_type))
+      << input_type << " -> " << result_type;
   if ((input_type == DataType::Type::kReference) || (input_type == DataType::Type::kVoid) ||
       (result_type == DataType::Type::kReference) || (result_type == DataType::Type::kVoid)) {
     LOG(FATAL) << "Unexpected type conversion from " << input_type << " to " << result_type;
@@ -5767,7 +5762,8 @@ void InstructionCodeGeneratorARM64::VisitTypeConversion(HTypeConversion* convers
   DataType::Type result_type = conversion->GetResultType();
   DataType::Type input_type = conversion->GetInputType();
 
-  DCHECK_NE(input_type, result_type);
+  DCHECK(!DataType::IsTypeConversionImplicit(input_type, result_type))
+      << input_type << " -> " << result_type;
 
   if (DataType::IsIntegralType(result_type) && DataType::IsIntegralType(input_type)) {
     int result_size = DataType::Size(result_type);
@@ -5784,11 +5780,9 @@ void InstructionCodeGeneratorARM64::VisitTypeConversion(HTypeConversion* convers
       // 32bit input value as a 64bit value assuming that the top 32 bits are
       // zero.
       __ Mov(output.W(), source.W());
-    } else if (result_type == DataType::Type::kUint16 ||
-               (input_type == DataType::Type::kUint16 && input_size < result_size)) {
-      __ Ubfx(output,
-              output.IsX() ? source.X() : source.W(),
-              0, DataType::Size(DataType::Type::kUint16) * kBitsPerByte);
+    } else if (DataType::IsUnsignedType(result_type) ||
+               (DataType::IsUnsignedType(input_type) && input_size < result_size)) {
+      __ Ubfx(output, output.IsX() ? source.X() : source.W(), 0, result_size * kBitsPerByte);
     } else {
       __ Sbfx(output, output.IsX() ? source.X() : source.W(), 0, min_size * kBitsPerByte);
     }

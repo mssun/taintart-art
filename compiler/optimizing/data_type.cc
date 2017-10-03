@@ -21,6 +21,7 @@ namespace art {
 static const char* kTypeNames[] = {
     "Reference",
     "Bool",
+    "Uint8",
     "Int8",
     "Uint16",
     "Int16",

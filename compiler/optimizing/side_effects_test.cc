@@ -21,6 +21,19 @@
 
 namespace art {
 
+// Only runtime types other than void are allowed.
+static const DataType::Type kTestTypes[] = {
+    DataType::Type::kReference,
+    DataType::Type::kBool,
+    DataType::Type::kInt8,
+    DataType::Type::kUint16,
+    DataType::Type::kInt16,
+    DataType::Type::kInt32,
+    DataType::Type::kInt64,
+    DataType::Type::kFloat32,
+    DataType::Type::kFloat64,
+};
+
 /**
  * Tests for the SideEffects class.
  */
@@ -91,9 +104,7 @@ TEST(SideEffectsTest, None) {
 
 TEST(SideEffectsTest, DependencesAndNoDependences) {
   // Apply test to each individual data type.
-  for (DataType::Type type = DataType::Type::kReference;
-       type < DataType::Type::kVoid;
-       type = static_cast<DataType::Type>(static_cast<uint8_t>(type) + 1u)) {
+  for (DataType::Type type : kTestTypes) {
     // Same data type and access type: proper write/read dep.
     testWriteAndReadDependence(
         SideEffects::FieldWriteOfType(type, false),
@@ -169,9 +180,7 @@ TEST(SideEffectsTest, SameWidthTypesNoAlias) {
 TEST(SideEffectsTest, AllWritesAndReads) {
   SideEffects s = SideEffects::None();
   // Keep taking the union of different writes and reads.
-  for (DataType::Type type = DataType::Type::kReference;
-       type < DataType::Type::kVoid;
-       type = static_cast<DataType::Type>(static_cast<uint8_t>(type) + 1u)) {
+  for (DataType::Type type : kTestTypes) {
     s = s.Union(SideEffects::FieldWriteOfType(type, /* is_volatile */ false));
     s = s.Union(SideEffects::ArrayWriteOfType(type));
     s = s.Union(SideEffects::FieldReadOfType(type, /* is_volatile */ false));

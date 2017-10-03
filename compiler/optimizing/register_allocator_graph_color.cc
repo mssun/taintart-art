@@ -1940,6 +1940,7 @@ void RegisterAllocatorGraphColor::AllocateSpillSlots(const ArenaVector<Interfere
         case DataType::Type::kReference:
         case DataType::Type::kInt32:
         case DataType::Type::kUint16:
+        case DataType::Type::kUint8:
         case DataType::Type::kInt8:
         case DataType::Type::kBool:
         case DataType::Type::kInt16:
