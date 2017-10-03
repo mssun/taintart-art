@@ -83,7 +83,7 @@ art_global_defaults {
                 "bionic/libc/private",
             ],
         },
-        linux: {
+        linux_glibc: {
             cflags: [
                 // Enable missing-noreturn only on non-Mac. As lots of things are not implemented for
                 // Apple, it's a pain.
