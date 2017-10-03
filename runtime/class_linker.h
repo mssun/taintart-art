@@ -371,6 +371,9 @@ class ClassLinker {
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
 
+  mirror::MethodType* ResolveMethodType(uint32_t proto_idx,  ArtMethod* referrer)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   // Resolve a method handle with a given ID from the DexFile. The
   // result is not cached in the DexCache as the instance will only be
   // used once in most circumstances.

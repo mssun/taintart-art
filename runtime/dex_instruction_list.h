@@ -273,8 +273,8 @@
   V(0xFB, INVOKE_POLYMORPHIC_RANGE, "invoke-polymorphic/range", k4rcc, kIndexMethodAndProtoRef, kContinue | kThrow | kInvoke, 0, kVerifyRegBMethod | kVerifyVarArgRangeNonZero | kVerifyRegHPrototype) \
   V(0xFC, INVOKE_CUSTOM, "invoke-custom", k35c, kIndexCallSiteRef, kContinue | kThrow, 0, kVerifyRegBCallSite | kVerifyVarArg) \
   V(0xFD, INVOKE_CUSTOM_RANGE, "invoke-custom/range", k3rc, kIndexCallSiteRef, kContinue | kThrow, 0, kVerifyRegBCallSite | kVerifyVarArgRange) \
-  V(0xFE, UNUSED_FE, "unused-fe", k10x, kIndexUnknown, 0, 0, kVerifyError) \
-  V(0xFF, UNUSED_FF, "unused-ff", k10x, kIndexUnknown, 0, 0, kVerifyError)
+  V(0xFE, CONST_METHOD_HANDLE, "const-method-handle", k21c, kIndexMethodHandleRef, kContinue | kThrow, 0, kVerifyRegA | kVerifyRegBMethodHandle) \
+  V(0xFF, CONST_METHOD_TYPE, "const-method-type", k21c, kIndexProtoRef, kContinue | kThrow, 0, kVerifyRegA | kVerifyRegBPrototype)
 
 #define DEX_INSTRUCTION_FORMAT_LIST(V) \
   V(k10x) \

@@ -525,6 +525,30 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
         }
         break;
       }
+      case Instruction::CONST_METHOD_HANDLE: {
+        PREAMBLE();
+        ObjPtr<mirror::MethodHandle> mh =
+            Runtime::Current()->GetClassLinker()->ResolveMethodHandle(inst->VRegB_21c(), method);
+        if (UNLIKELY(mh == nullptr)) {
+          HANDLE_PENDING_EXCEPTION();
+        } else {
+          shadow_frame.SetVRegReference(inst->VRegA_21c(inst_data), mh.Ptr());
+          inst = inst->Next_2xx();
+        }
+        break;
+      }
+      case Instruction::CONST_METHOD_TYPE: {
+        PREAMBLE();
+        ObjPtr<mirror::MethodType> mt =
+            Runtime::Current()->GetClassLinker()->ResolveMethodType(inst->VRegB_21c(), method);
+        if (UNLIKELY(mt == nullptr)) {
+          HANDLE_PENDING_EXCEPTION();
+        } else {
+          shadow_frame.SetVRegReference(inst->VRegA_21c(inst_data), mt.Ptr());
+          inst = inst->Next_2xx();
+        }
+        break;
+      }
       case Instruction::MONITOR_ENTER: {
         PREAMBLE();
         ObjPtr<mirror::Object> obj = shadow_frame.GetVRegReference(inst->VRegA_11x(inst_data));
@@ -2435,10 +2459,8 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
         inst = inst->Next_2xx();
         break;
       case Instruction::UNUSED_3E ... Instruction::UNUSED_43:
+      case Instruction::UNUSED_79 ... Instruction::UNUSED_7A:
       case Instruction::UNUSED_F3 ... Instruction::UNUSED_F9:
-      case Instruction::UNUSED_FE ... Instruction::UNUSED_FF:
-      case Instruction::UNUSED_79:
-      case Instruction::UNUSED_7A:
         UnexpectedOpcode(inst, shadow_frame);
     }
   } while (!interpret_one_instruction);
