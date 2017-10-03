@@ -477,7 +477,7 @@ def run_test(command, test, test_variant, test_name):
       if test_passed:
         print_test_info(test_name, 'PASS')
       else:
-        failed_tests.append((test_name, script_output))
+        failed_tests.append((test_name, str(command) + "\n" + script_output))
         if not env.ART_TEST_KEEP_GOING:
           stop_testrunner = True
         print_test_info(test_name, 'FAIL', ('%s\n%s') % (
@@ -532,10 +532,17 @@ def print_test_info(test_name, result, failed_test_info=""):
       total_test_count)
 
     if result == 'FAIL' or result == 'TIMEOUT':
-      info += ('%s %s %s\n') % (
-        progress_info,
-        test_name,
-        COLOR_ERROR + result + COLOR_NORMAL)
+      if not verbose:
+        info += ('%s %s %s\n') % (
+          progress_info,
+          test_name,
+          COLOR_ERROR + result + COLOR_NORMAL)
+      else:
+        info += ('%s %s %s\n%s\n') % (
+          progress_info,
+          test_name,
+          COLOR_ERROR + result + COLOR_NORMAL,
+          failed_test_info)
     else:
       result_text = ''
       if result == 'PASS':
