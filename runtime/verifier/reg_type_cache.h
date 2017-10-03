@@ -126,6 +126,8 @@ class RegTypeCache {
 
   const PreciseReferenceType& JavaLangClass() REQUIRES_SHARED(Locks::mutator_lock_);
   const PreciseReferenceType& JavaLangString() REQUIRES_SHARED(Locks::mutator_lock_);
+  const PreciseReferenceType& JavaLangInvokeMethodHandle() REQUIRES_SHARED(Locks::mutator_lock_);
+  const PreciseReferenceType& JavaLangInvokeMethodType() REQUIRES_SHARED(Locks::mutator_lock_);
   const RegType& JavaLangThrowable(bool precise) REQUIRES_SHARED(Locks::mutator_lock_);
   const RegType& JavaLangObject(bool precise) REQUIRES_SHARED(Locks::mutator_lock_);
 
