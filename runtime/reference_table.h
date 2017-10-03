@@ -47,7 +47,9 @@ class ReferenceTable {
 
   size_t Size() const;
 
-  void Dump(std::ostream& os) REQUIRES_SHARED(Locks::mutator_lock_);
+  void Dump(std::ostream& os)
+      REQUIRES_SHARED(Locks::mutator_lock_)
+      REQUIRES(!Locks::alloc_tracker_lock_);
 
   void VisitRoots(RootVisitor* visitor, const RootInfo& root_info)
       REQUIRES_SHARED(Locks::mutator_lock_);
@@ -56,7 +58,8 @@ class ReferenceTable {
   typedef std::vector<GcRoot<mirror::Object>,
                       TrackingAllocator<GcRoot<mirror::Object>, kAllocatorTagReferenceTable>> Table;
   static void Dump(std::ostream& os, Table& entries)
-      REQUIRES_SHARED(Locks::mutator_lock_);
+      REQUIRES_SHARED(Locks::mutator_lock_)
+      REQUIRES(!Locks::alloc_tracker_lock_);
   friend class IndirectReferenceTable;  // For Dump.
 
   std::string name_;

@@ -278,7 +278,9 @@ class IndirectReferenceTable {
 
   void AssertEmpty() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  void Dump(std::ostream& os) const REQUIRES_SHARED(Locks::mutator_lock_);
+  void Dump(std::ostream& os) const
+      REQUIRES_SHARED(Locks::mutator_lock_)
+      REQUIRES(!Locks::alloc_tracker_lock_);
 
   // Return the #of entries in the entire table.  This includes holes, and
   // so may be larger than the actual number of "live" entries.

@@ -16,6 +16,8 @@
 
 #include "reference_table.h"
 
+#include <regex>
+
 #include "android-base/stringprintf.h"
 
 #include "art_method-inl.h"
@@ -30,6 +32,7 @@
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
+#include "well_known_classes.h"
 
 namespace art {
 
@@ -156,6 +159,7 @@ TEST_F(ReferenceTableTest, Basics) {
     rt.Dump(oss);
     EXPECT_NE(oss.str().find("java.lang.ref.WeakReference (referent is null)"), std::string::npos)
         << oss.str();
+    rt.Remove(empty_reference);
   }
 
   {
@@ -168,6 +172,86 @@ TEST_F(ReferenceTableTest, Basics) {
     EXPECT_NE(oss.str().find("java.lang.ref.WeakReference (referent is a java.lang.String)"),
               std::string::npos)
         << oss.str();
+    rt.Remove(non_empty_reference);
+  }
+
+  // Add two objects. Enable allocation tracking for the latter.
+  {
+    StackHandleScope<3> hs(soa.Self());
+    Handle<mirror::String> h_without_trace(hs.NewHandle(
+        mirror::String::AllocFromModifiedUtf8(soa.Self(), "Without")));
+
+    {
+      ScopedThreadSuspension sts(soa.Self(), ThreadState::kSuspended);
+      gc::AllocRecordObjectMap::SetAllocTrackingEnabled(true);
+    }
+
+    // To get a stack, actually make a call. Use substring, that's simple. Calling through JNI
+    // avoids having to create the low-level args array ourselves.
+    Handle<mirror::Object> h_with_trace;
+    {
+      jmethodID substr = soa.Env()->GetMethodID(WellKnownClasses::java_lang_String,
+                                                "substring",
+                                                "(II)Ljava/lang/String;");
+      ASSERT_TRUE(substr != nullptr);
+      jobject jobj = soa.Env()->AddLocalReference<jobject>(h_without_trace.Get());
+      ASSERT_TRUE(jobj != nullptr);
+      jobject result = soa.Env()->CallObjectMethod(jobj,
+                                                   substr,
+                                                   static_cast<jint>(0),
+                                                   static_cast<jint>(4));
+      ASSERT_TRUE(result != nullptr);
+      h_with_trace = hs.NewHandle(soa.Self()->DecodeJObject(result));
+    }
+
+    Handle<mirror::Object> h_ref;
+    {
+      jclass weak_ref_class = soa.Env()->FindClass("java/lang/ref/WeakReference");
+      ASSERT_TRUE(weak_ref_class != nullptr);
+      jmethodID init = soa.Env()->GetMethodID(weak_ref_class,
+                                              "<init>",
+                                              "(Ljava/lang/Object;)V");
+      ASSERT_TRUE(init != nullptr);
+      jobject referent = soa.Env()->AddLocalReference<jobject>(h_with_trace.Get());
+      jobject result = soa.Env()->NewObject(weak_ref_class, init, referent);
+      ASSERT_TRUE(result != nullptr);
+      h_ref = hs.NewHandle(soa.Self()->DecodeJObject(result));
+    }
+
+    rt.Add(h_without_trace.Get());
+    rt.Add(h_with_trace.Get());
+    rt.Add(h_ref.Get());
+
+    std::ostringstream oss;
+    rt.Dump(oss);
+
+    constexpr const char* kStackTracePattern =
+        R"(test reference table dump:\n)"
+        R"(  Last 3 entries \(of 3\):\n)"  // NOLINT
+        R"(        2: 0x[0-9a-f]* java.lang.ref.WeakReference \(referent is a java.lang.String\)\n)"  // NOLINT
+        R"(          Allocated at:\n)"
+        R"(            \(No managed frames\)\n)"  // NOLINT
+        R"(          Referent allocated at:\n)"
+        R"(            java.lang.String java.lang.String.fastSubstring\(int, int\):-2\n)"  // NOLINT
+        R"(            java.lang.String java.lang.String.substring\(int, int\):[0-9]*\n)"  // NOLINT
+        R"(        1: 0x[0-9a-f]* java.lang.String "With"\n)"
+        R"(          Allocated at:\n)"
+        R"(            java.lang.String java.lang.String.fastSubstring\(int, int\):-2\n)"  // NOLINT
+        R"(            java.lang.String java.lang.String.substring\(int, int\):[0-9]*\n)"  // NOLINT
+        R"(        0: 0x[0-9a-f]* java.lang.String "Without"\n)"
+        R"(  Summary:\n)"
+        R"(        2 of java.lang.String \(2 unique instances\)\n)"  // NOLINT
+        R"(        1 of java.lang.ref.WeakReference\n)";
+    std::regex stack_trace_regex(kStackTracePattern);
+    std::smatch stack_trace_match;
+    std::string str = oss.str();
+    bool found = std::regex_search(str, stack_trace_match, stack_trace_regex);
+    EXPECT_TRUE(found) << str;
+
+    {
+      ScopedThreadSuspension sts(soa.Self(), ThreadState::kSuspended);
+      gc::AllocRecordObjectMap::SetAllocTrackingEnabled(false);
+    }
   }
 }
 
