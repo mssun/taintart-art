@@ -137,7 +137,7 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
       HX86ComputeBaseMethodAddress* method_address = GetPCRelativeBasePointer(neg);
       HGraph* graph = GetGraph();
       HBasicBlock* block = neg->GetBlock();
-      HX86FPNeg* x86_fp_neg = new (graph->GetArena()) HX86FPNeg(
+      HX86FPNeg* x86_fp_neg = new (graph->GetAllocator()) HX86FPNeg(
           neg->GetType(),
           neg->InputAt(0),
           method_address,
@@ -156,7 +156,7 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
     HX86ComputeBaseMethodAddress* method_address = GetPCRelativeBasePointer(switch_insn);
     HGraph* graph = GetGraph();
     HBasicBlock* block = switch_insn->GetBlock();
-    HX86PackedSwitch* x86_switch = new (graph->GetArena()) HX86PackedSwitch(
+    HX86PackedSwitch* x86_switch = new (graph->GetAllocator()) HX86PackedSwitch(
         switch_insn->GetStartValue(),
         switch_insn->GetNumEntries(),
         switch_insn->InputAt(0),
@@ -176,7 +176,7 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
     // Insert the base at the start of the entry block, move it to a better
     // position later in MoveBaseIfNeeded().
     HX86ComputeBaseMethodAddress* method_address =
-        new (GetGraph()->GetArena()) HX86ComputeBaseMethodAddress();
+        new (GetGraph()->GetAllocator()) HX86ComputeBaseMethodAddress();
     if (has_irreducible_loops) {
       cursor->GetBlock()->InsertInstructionBefore(method_address, cursor);
     } else {
@@ -190,7 +190,7 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
   void ReplaceInput(HInstruction* insn, HConstant* value, int input_index, bool materialize) {
     HX86ComputeBaseMethodAddress* method_address = GetPCRelativeBasePointer(insn);
     HX86LoadFromConstantTable* load_constant =
-        new (GetGraph()->GetArena()) HX86LoadFromConstantTable(method_address, value);
+        new (GetGraph()->GetAllocator()) HX86LoadFromConstantTable(method_address, value);
     if (!materialize) {
       load_constant->MarkEmittedAtUseSite();
     }

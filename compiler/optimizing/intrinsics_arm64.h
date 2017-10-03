@@ -39,8 +39,8 @@ class CodeGeneratorARM64;
 
 class IntrinsicLocationsBuilderARM64 FINAL : public IntrinsicVisitor {
  public:
-  explicit IntrinsicLocationsBuilderARM64(ArenaAllocator* arena, CodeGeneratorARM64* codegen)
-      : arena_(arena), codegen_(codegen) {}
+  explicit IntrinsicLocationsBuilderARM64(ArenaAllocator* allocator, CodeGeneratorARM64* codegen)
+      : allocator_(allocator), codegen_(codegen) {}
 
   // Define visitor methods.
 
@@ -57,7 +57,7 @@ class IntrinsicLocationsBuilderARM64 FINAL : public IntrinsicVisitor {
   bool TryDispatch(HInvoke* invoke);
 
  private:
-  ArenaAllocator* arena_;
+  ArenaAllocator* allocator_;
   CodeGeneratorARM64* codegen_;
 
   DISALLOW_COPY_AND_ASSIGN(IntrinsicLocationsBuilderARM64);

@@ -137,7 +137,7 @@ class SchedulingLatencyVisitorARM : public SchedulingLatencyVisitor {
 
 class HSchedulerARM : public HScheduler {
  public:
-  HSchedulerARM(ArenaAllocator* arena,
+  HSchedulerARM(ScopedArenaAllocator* arena,
                 SchedulingNodeSelector* selector,
                 SchedulingLatencyVisitorARM* arm_latency_visitor)
       : HScheduler(arena, arm_latency_visitor, selector) {}

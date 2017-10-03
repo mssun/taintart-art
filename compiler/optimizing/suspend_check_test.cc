@@ -28,18 +28,19 @@ namespace art {
  * Check that the HGraphBuilder adds suspend checks to backward branches.
  */
 
-static void TestCode(const uint16_t* data) {
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
-  HGraph* graph = CreateCFG(&allocator, data);
+class SuspendCheckTest : public OptimizingUnitTest {
+ protected:
+  void TestCode(const uint16_t* data);
+};
+
+void SuspendCheckTest::TestCode(const uint16_t* data) {
+  HGraph* graph = CreateCFG(data);
   HBasicBlock* first_block = graph->GetEntryBlock()->GetSingleSuccessor();
   HBasicBlock* loop_header = first_block->GetSingleSuccessor();
   ASSERT_TRUE(loop_header->IsLoopHeader());
   ASSERT_EQ(loop_header->GetLoopInformation()->GetPreHeader(), first_block);
   ASSERT_TRUE(loop_header->GetFirstInstruction()->IsSuspendCheck());
 }
-
-class SuspendCheckTest : public CommonCompilerTest {};
 
 TEST_F(SuspendCheckTest, CFG1) {
   const uint16_t data[] = ZERO_REGISTER_CODE_ITEM(

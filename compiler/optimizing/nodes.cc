@@ -56,13 +56,13 @@ void HGraph::FindBackEdges(ArenaBitVector* visited) {
   DCHECK_EQ(visited->GetHighestBitSet(), -1);
 
   // Nodes that we're currently visiting, indexed by block id.
-  ArenaBitVector visiting(arena_, blocks_.size(), false, kArenaAllocGraphBuilder);
+  ArenaBitVector visiting(allocator_, blocks_.size(), false, kArenaAllocGraphBuilder);
   // Number of successors visited from a given node, indexed by block id.
   ArenaVector<size_t> successors_visited(blocks_.size(),
                                          0u,
-                                         arena_->Adapter(kArenaAllocGraphBuilder));
+                                         allocator_->Adapter(kArenaAllocGraphBuilder));
   // Stack of nodes that we're currently visiting (same as marked in "visiting" above).
-  ArenaVector<HBasicBlock*> worklist(arena_->Adapter(kArenaAllocGraphBuilder));
+  ArenaVector<HBasicBlock*> worklist(allocator_->Adapter(kArenaAllocGraphBuilder));
   constexpr size_t kDefaultWorklistSize = 8;
   worklist.reserve(kDefaultWorklistSize);
   visited->SetBit(entry_block_->GetBlockId());
@@ -173,7 +173,7 @@ void HGraph::RemoveDeadBlocks(const ArenaBitVector& visited) {
 }
 
 GraphAnalysisResult HGraph::BuildDominatorTree() {
-  ArenaBitVector visited(arena_, blocks_.size(), false, kArenaAllocGraphBuilder);
+  ArenaBitVector visited(allocator_, blocks_.size(), false, kArenaAllocGraphBuilder);
 
   // (1) Find the back edges in the graph doing a DFS traversal.
   FindBackEdges(&visited);
@@ -259,13 +259,13 @@ void HGraph::ComputeDominanceInformation() {
   reverse_post_order_.push_back(entry_block_);
 
   // Number of visits of a given node, indexed by block id.
-  ArenaVector<size_t> visits(blocks_.size(), 0u, arena_->Adapter(kArenaAllocGraphBuilder));
+  ArenaVector<size_t> visits(blocks_.size(), 0u, allocator_->Adapter(kArenaAllocGraphBuilder));
   // Number of successors visited from a given node, indexed by block id.
   ArenaVector<size_t> successors_visited(blocks_.size(),
                                          0u,
-                                         arena_->Adapter(kArenaAllocGraphBuilder));
+                                         allocator_->Adapter(kArenaAllocGraphBuilder));
   // Nodes for which we need to visit successors.
-  ArenaVector<HBasicBlock*> worklist(arena_->Adapter(kArenaAllocGraphBuilder));
+  ArenaVector<HBasicBlock*> worklist(allocator_->Adapter(kArenaAllocGraphBuilder));
   constexpr size_t kDefaultWorklistSize = 8;
   worklist.reserve(kDefaultWorklistSize);
   worklist.push_back(entry_block_);
@@ -335,7 +335,7 @@ void HGraph::ComputeDominanceInformation() {
 }
 
 HBasicBlock* HGraph::SplitEdge(HBasicBlock* block, HBasicBlock* successor) {
-  HBasicBlock* new_block = new (arena_) HBasicBlock(this, successor->GetDexPc());
+  HBasicBlock* new_block = new (allocator_) HBasicBlock(this, successor->GetDexPc());
   AddBlock(new_block);
   // Use `InsertBetween` to ensure the predecessor index and successor index of
   // `block` and `successor` are preserved.
@@ -347,7 +347,7 @@ void HGraph::SplitCriticalEdge(HBasicBlock* block, HBasicBlock* successor) {
   // Insert a new node between `block` and `successor` to split the
   // critical edge.
   HBasicBlock* new_block = SplitEdge(block, successor);
-  new_block->AddInstruction(new (arena_) HGoto(successor->GetDexPc()));
+  new_block->AddInstruction(new (allocator_) HGoto(successor->GetDexPc()));
   if (successor->IsLoopHeader()) {
     // If we split at a back edge boundary, make the new block the back edge.
     HLoopInformation* info = successor->GetLoopInformation();
@@ -396,9 +396,9 @@ void HGraph::SimplifyLoop(HBasicBlock* header) {
   // this graph.
   size_t number_of_incomings = header->GetPredecessors().size() - info->NumberOfBackEdges();
   if (number_of_incomings != 1 || (GetEntryBlock()->GetSingleSuccessor() == header)) {
-    HBasicBlock* pre_header = new (arena_) HBasicBlock(this, header->GetDexPc());
+    HBasicBlock* pre_header = new (allocator_) HBasicBlock(this, header->GetDexPc());
     AddBlock(pre_header);
-    pre_header->AddInstruction(new (arena_) HGoto(header->GetDexPc()));
+    pre_header->AddInstruction(new (allocator_) HGoto(header->GetDexPc()));
 
     for (size_t pred = 0; pred < header->GetPredecessors().size(); ++pred) {
       HBasicBlock* predecessor = header->GetPredecessors()[pred];
@@ -440,7 +440,7 @@ void HGraph::ComputeTryBlockInformation() {
          try_entry != &block->GetTryCatchInformation()->GetTryEntry())) {
       // We are either setting try block membership for the first time or it
       // has changed.
-      block->SetTryCatchInformation(new (arena_) TryCatchInformation(*try_entry));
+      block->SetTryCatchInformation(new (allocator_) TryCatchInformation(*try_entry));
     }
   }
 }
@@ -547,7 +547,7 @@ HNullConstant* HGraph::GetNullConstant(uint32_t dex_pc) {
   // not null and not in a block. Otherwise, we need to clear the instruction
   // id and/or any invariants the graph is assuming when adding new instructions.
   if ((cached_null_constant_ == nullptr) || (cached_null_constant_->GetBlock() == nullptr)) {
-    cached_null_constant_ = new (arena_) HNullConstant(dex_pc);
+    cached_null_constant_ = new (allocator_) HNullConstant(dex_pc);
     cached_null_constant_->SetReferenceTypeInfo(inexact_object_rti_);
     InsertConstant(cached_null_constant_);
   }
@@ -563,7 +563,7 @@ HCurrentMethod* HGraph::GetCurrentMethod() {
   // not null and not in a block. Otherwise, we need to clear the instruction
   // id and/or any invariants the graph is assuming when adding new instructions.
   if ((cached_current_method_ == nullptr) || (cached_current_method_->GetBlock() == nullptr)) {
-    cached_current_method_ = new (arena_) HCurrentMethod(
+    cached_current_method_ = new (allocator_) HCurrentMethod(
         Is64BitInstructionSet(instruction_set_) ? DataType::Type::kInt64 : DataType::Type::kInt32,
         entry_block_->GetDexPc());
     if (entry_block_->GetFirstInstruction() == nullptr) {
@@ -710,7 +710,7 @@ void HLoopInformation::Populate() {
   bool is_irreducible_loop = HasBackEdgeNotDominatedByHeader();
 
   if (is_irreducible_loop) {
-    ArenaBitVector visited(graph->GetArena(),
+    ArenaBitVector visited(graph->GetAllocator(),
                            graph->GetBlocks().size(),
                            /* expandable */ false,
                            kArenaAllocGraphBuilder);
@@ -1655,8 +1655,8 @@ HBasicBlock* HBasicBlock::SplitBefore(HInstruction* cursor) {
   DCHECK(!graph_->IsInSsaForm()) << "Support for SSA form not implemented.";
   DCHECK_EQ(cursor->GetBlock(), this);
 
-  HBasicBlock* new_block = new (GetGraph()->GetArena()) HBasicBlock(GetGraph(),
-                                                                    cursor->GetDexPc());
+  HBasicBlock* new_block =
+      new (GetGraph()->GetAllocator()) HBasicBlock(GetGraph(), cursor->GetDexPc());
   new_block->instructions_.first_instruction_ = cursor;
   new_block->instructions_.last_instruction_ = instructions_.last_instruction_;
   instructions_.last_instruction_ = cursor->previous_;
@@ -1668,7 +1668,7 @@ HBasicBlock* HBasicBlock::SplitBefore(HInstruction* cursor) {
   }
 
   new_block->instructions_.SetBlockOfInstructions(new_block);
-  AddInstruction(new (GetGraph()->GetArena()) HGoto(new_block->GetDexPc()));
+  AddInstruction(new (GetGraph()->GetAllocator()) HGoto(new_block->GetDexPc()));
 
   for (HBasicBlock* successor : GetSuccessors()) {
     successor->predecessors_[successor->GetPredecessorIndexOf(this)] = new_block;
@@ -1685,7 +1685,7 @@ HBasicBlock* HBasicBlock::CreateImmediateDominator() {
   DCHECK(!graph_->IsInSsaForm()) << "Support for SSA form not implemented.";
   DCHECK(!IsCatchBlock()) << "Support for updating try/catch information not implemented.";
 
-  HBasicBlock* new_block = new (GetGraph()->GetArena()) HBasicBlock(GetGraph(), GetDexPc());
+  HBasicBlock* new_block = new (GetGraph()->GetAllocator()) HBasicBlock(GetGraph(), GetDexPc());
 
   for (HBasicBlock* predecessor : GetPredecessors()) {
     predecessor->successors_[predecessor->GetSuccessorIndexOf(this)] = new_block;
@@ -1701,8 +1701,8 @@ HBasicBlock* HBasicBlock::CreateImmediateDominator() {
 HBasicBlock* HBasicBlock::SplitBeforeForInlining(HInstruction* cursor) {
   DCHECK_EQ(cursor->GetBlock(), this);
 
-  HBasicBlock* new_block = new (GetGraph()->GetArena()) HBasicBlock(GetGraph(),
-                                                                    cursor->GetDexPc());
+  HBasicBlock* new_block =
+      new (GetGraph()->GetAllocator()) HBasicBlock(GetGraph(), cursor->GetDexPc());
   new_block->instructions_.first_instruction_ = cursor;
   new_block->instructions_.last_instruction_ = instructions_.last_instruction_;
   instructions_.last_instruction_ = cursor->previous_;
@@ -1734,7 +1734,7 @@ HBasicBlock* HBasicBlock::SplitAfterForInlining(HInstruction* cursor) {
   DCHECK_NE(instructions_.last_instruction_, cursor);
   DCHECK_EQ(cursor->GetBlock(), this);
 
-  HBasicBlock* new_block = new (GetGraph()->GetArena()) HBasicBlock(GetGraph(), GetDexPc());
+  HBasicBlock* new_block = new (GetGraph()->GetAllocator()) HBasicBlock(GetGraph(), GetDexPc());
   new_block->instructions_.first_instruction_ = cursor->GetNext();
   new_block->instructions_.last_instruction_ = instructions_.last_instruction_;
   cursor->next_->previous_ = nullptr;
@@ -2030,7 +2030,7 @@ void HBasicBlock::DisconnectAndDelete() {
              last_instruction->IsPackedSwitch() ||
              (last_instruction->IsTryBoundary() && IsCatchBlock()));
       predecessor->RemoveInstruction(last_instruction);
-      predecessor->AddInstruction(new (graph_->GetArena()) HGoto(last_instruction->GetDexPc()));
+      predecessor->AddInstruction(new (graph_->GetAllocator()) HGoto(last_instruction->GetDexPc()));
     } else if (num_pred_successors == 0u) {
       // The predecessor has no remaining successors and therefore must be dead.
       // We deliberately leave it without a control-flow instruction so that the
@@ -2241,7 +2241,7 @@ HInstruction* HGraph::InlineInto(HGraph* outer_graph, HInvoke* invoke) {
         if (current->NeedsEnvironment()) {
           DCHECK(current->HasEnvironment());
           current->GetEnvironment()->SetAndCopyParentChain(
-              outer_graph->GetArena(), invoke->GetEnvironment());
+              outer_graph->GetAllocator(), invoke->GetEnvironment());
         }
       }
     }
@@ -2294,7 +2294,7 @@ HInstruction* HGraph::InlineInto(HGraph* outer_graph, HInvoke* invoke) {
     // into two blocks, merge the first block of the inlined graph into
     // the first half, and replace the exit block of the inlined graph
     // with the second half.
-    ArenaAllocator* allocator = outer_graph->GetArena();
+    ArenaAllocator* allocator = outer_graph->GetAllocator();
     HBasicBlock* at = invoke->GetBlock();
     // Note that we split before the invoke only to simplify polymorphic inlining.
     HBasicBlock* to = at->SplitBeforeForInlining(invoke);
@@ -2478,10 +2478,10 @@ void HGraph::TransformLoopHeaderForBCE(HBasicBlock* header) {
   HBasicBlock* old_pre_header = header->GetDominator();
 
   // Need extra block to avoid critical edge.
-  HBasicBlock* if_block = new (arena_) HBasicBlock(this, header->GetDexPc());
-  HBasicBlock* true_block = new (arena_) HBasicBlock(this, header->GetDexPc());
-  HBasicBlock* false_block = new (arena_) HBasicBlock(this, header->GetDexPc());
-  HBasicBlock* new_pre_header = new (arena_) HBasicBlock(this, header->GetDexPc());
+  HBasicBlock* if_block = new (allocator_) HBasicBlock(this, header->GetDexPc());
+  HBasicBlock* true_block = new (allocator_) HBasicBlock(this, header->GetDexPc());
+  HBasicBlock* false_block = new (allocator_) HBasicBlock(this, header->GetDexPc());
+  HBasicBlock* new_pre_header = new (allocator_) HBasicBlock(this, header->GetDexPc());
   AddBlock(if_block);
   AddBlock(true_block);
   AddBlock(false_block);
@@ -2536,9 +2536,9 @@ HBasicBlock* HGraph::TransformLoopForVectorization(HBasicBlock* header,
   HLoopInformation* loop = header->GetLoopInformation();
 
   // Add new loop blocks.
-  HBasicBlock* new_pre_header = new (arena_) HBasicBlock(this, header->GetDexPc());
-  HBasicBlock* new_header = new (arena_) HBasicBlock(this, header->GetDexPc());
-  HBasicBlock* new_body = new (arena_) HBasicBlock(this, header->GetDexPc());
+  HBasicBlock* new_pre_header = new (allocator_) HBasicBlock(this, header->GetDexPc());
+  HBasicBlock* new_header = new (allocator_) HBasicBlock(this, header->GetDexPc());
+  HBasicBlock* new_body = new (allocator_) HBasicBlock(this, header->GetDexPc());
   AddBlock(new_pre_header);
   AddBlock(new_header);
   AddBlock(new_body);
@@ -2570,10 +2570,10 @@ HBasicBlock* HGraph::TransformLoopForVectorization(HBasicBlock* header,
   reverse_post_order_[index_of_body] = new_body;
 
   // Add gotos and suspend check (client must add conditional in header).
-  new_pre_header->AddInstruction(new (arena_) HGoto());
-  HSuspendCheck* suspend_check = new (arena_) HSuspendCheck(header->GetDexPc());
+  new_pre_header->AddInstruction(new (allocator_) HGoto());
+  HSuspendCheck* suspend_check = new (allocator_) HSuspendCheck(header->GetDexPc());
   new_header->AddInstruction(suspend_check);
-  new_body->AddInstruction(new (arena_) HGoto());
+  new_body->AddInstruction(new (allocator_) HGoto());
   suspend_check->CopyEnvironmentFromWithLoopPhiAdjustment(
       loop->GetSuspendCheck()->GetEnvironment(), header);
 
@@ -2891,7 +2891,7 @@ void HInstruction::RemoveEnvironmentUsers() {
 
 // Returns an instruction with the opposite Boolean value from 'cond'.
 HInstruction* HGraph::InsertOppositeCondition(HInstruction* cond, HInstruction* cursor) {
-  ArenaAllocator* allocator = GetArena();
+  ArenaAllocator* allocator = GetAllocator();
 
   if (cond->IsCondition() &&
       !DataType::IsFloatingPointType(cond->InputAt(0)->GetType())) {

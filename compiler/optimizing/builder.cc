@@ -32,13 +32,12 @@
 namespace art {
 
 HGraphBuilder::HGraphBuilder(HGraph* graph,
-                             DexCompilationUnit* dex_compilation_unit,
-                             const DexCompilationUnit* const outer_compilation_unit,
+                             const DexCompilationUnit* dex_compilation_unit,
+                             const DexCompilationUnit* outer_compilation_unit,
                              CompilerDriver* driver,
                              CodeGenerator* code_generator,
                              OptimizingCompilerStats* compiler_stats,
                              const uint8_t* interpreter_metadata,
-                             Handle<mirror::DexCache> dex_cache,
                              VariableSizedHandleScope* handles)
     : graph_(graph),
       dex_file_(&graph->GetDexFile()),
@@ -63,7 +62,7 @@ HGraphBuilder::HGraphBuilder(HGraph* graph,
                            code_generator,
                            interpreter_metadata,
                            compiler_stats,
-                           dex_cache,
+                           dex_compilation_unit->GetDexCache(),
                            handles) {}
 
 bool HGraphBuilder::SkipCompilation(size_t number_of_branches) {

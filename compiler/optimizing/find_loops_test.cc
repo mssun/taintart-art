@@ -27,7 +27,7 @@
 
 namespace art {
 
-class FindLoopsTest : public CommonCompilerTest {};
+class FindLoopsTest : public OptimizingUnitTest {};
 
 TEST_F(FindLoopsTest, CFG1) {
   // Constant is not used.
@@ -35,9 +35,7 @@ TEST_F(FindLoopsTest, CFG1) {
     Instruction::CONST_4 | 0 | 0,
     Instruction::RETURN_VOID);
 
-  ArenaPool arena;
-  ArenaAllocator allocator(&arena);
-  HGraph* graph = CreateCFG(&allocator, data);
+  HGraph* graph = CreateCFG(data);
   for (HBasicBlock* block : graph->GetBlocks()) {
     ASSERT_EQ(block->GetLoopInformation(), nullptr);
   }
@@ -48,9 +46,7 @@ TEST_F(FindLoopsTest, CFG2) {
     Instruction::CONST_4 | 0 | 0,
     Instruction::RETURN);
 
-  ArenaPool arena;
-  ArenaAllocator allocator(&arena);
-  HGraph* graph = CreateCFG(&allocator, data);
+  HGraph* graph = CreateCFG(data);
   for (HBasicBlock* block : graph->GetBlocks()) {
     ASSERT_EQ(block->GetLoopInformation(), nullptr);
   }
@@ -64,9 +60,7 @@ TEST_F(FindLoopsTest, CFG3) {
     Instruction::GOTO | 0x100,
     Instruction::RETURN);
 
-  ArenaPool arena;
-  ArenaAllocator allocator(&arena);
-  HGraph* graph = CreateCFG(&allocator, data);
+  HGraph* graph = CreateCFG(data);
   for (HBasicBlock* block : graph->GetBlocks()) {
     ASSERT_EQ(block->GetLoopInformation(), nullptr);
   }
@@ -81,9 +75,7 @@ TEST_F(FindLoopsTest, CFG4) {
     Instruction::CONST_4 | 5 << 12 | 0,
     Instruction::RETURN | 0 << 8);
 
-  ArenaPool arena;
-  ArenaAllocator allocator(&arena);
-  HGraph* graph = CreateCFG(&allocator, data);
+  HGraph* graph = CreateCFG(data);
   for (HBasicBlock* block : graph->GetBlocks()) {
     ASSERT_EQ(block->GetLoopInformation(), nullptr);
   }
@@ -96,9 +88,7 @@ TEST_F(FindLoopsTest, CFG5) {
     Instruction::CONST_4 | 4 << 12 | 0,
     Instruction::RETURN | 0 << 8);
 
-  ArenaPool arena;
-  ArenaAllocator allocator(&arena);
-  HGraph* graph = CreateCFG(&allocator, data);
+  HGraph* graph = CreateCFG(data);
   for (HBasicBlock* block : graph->GetBlocks()) {
     ASSERT_EQ(block->GetLoopInformation(), nullptr);
   }
@@ -142,9 +132,7 @@ TEST_F(FindLoopsTest, Loop1) {
     Instruction::GOTO | 0xFE00,
     Instruction::RETURN_VOID);
 
-  ArenaPool arena;
-  ArenaAllocator allocator(&arena);
-  HGraph* graph = CreateCFG(&allocator, data);
+  HGraph* graph = CreateCFG(data);
 
   TestBlock(graph, 0, false, kInvalidBlockId);  // entry block
   TestBlock(graph, 1, false, kInvalidBlockId);  // pre header
@@ -170,9 +158,7 @@ TEST_F(FindLoopsTest, Loop2) {
     Instruction::GOTO | 0xFD00,
     Instruction::RETURN | 0 << 8);
 
-  ArenaPool arena;
-  ArenaAllocator allocator(&arena);
-  HGraph* graph = CreateCFG(&allocator, data);
+  HGraph* graph = CreateCFG(data);
 
   TestBlock(graph, 0, false, kInvalidBlockId);  // entry block
   TestBlock(graph, 1, false, kInvalidBlockId);  // goto block
@@ -195,9 +181,7 @@ TEST_F(FindLoopsTest, Loop3) {
     Instruction::GOTO | 0xFE00,
     Instruction::RETURN | 0 << 8);
 
-  ArenaPool arena;
-  ArenaAllocator allocator(&arena);
-  HGraph* graph = CreateCFG(&allocator, data);
+  HGraph* graph = CreateCFG(data);
 
   TestBlock(graph, 0, false, kInvalidBlockId);  // entry block
   TestBlock(graph, 1, false, kInvalidBlockId);  // goto block
@@ -221,9 +205,7 @@ TEST_F(FindLoopsTest, Loop4) {
     Instruction::GOTO | 0xFB00,
     Instruction::RETURN | 0 << 8);
 
-  ArenaPool arena;
-  ArenaAllocator allocator(&arena);
-  HGraph* graph = CreateCFG(&allocator, data);
+  HGraph* graph = CreateCFG(data);
 
   TestBlock(graph, 0, false, kInvalidBlockId);  // entry block
   TestBlock(graph, 1, false, kInvalidBlockId);  // pre header
@@ -247,9 +229,7 @@ TEST_F(FindLoopsTest, Loop5) {
     Instruction::GOTO | 0xFB00,
     Instruction::RETURN | 0 << 8);
 
-  ArenaPool arena;
-  ArenaAllocator allocator(&arena);
-  HGraph* graph = CreateCFG(&allocator, data);
+  HGraph* graph = CreateCFG(data);
 
   TestBlock(graph, 0, false, kInvalidBlockId);  // entry block
   TestBlock(graph, 1, false, kInvalidBlockId);  // pre header
@@ -272,9 +252,7 @@ TEST_F(FindLoopsTest, InnerLoop) {
     Instruction::GOTO | 0xFB00,
     Instruction::RETURN | 0 << 8);
 
-  ArenaPool arena;
-  ArenaAllocator allocator(&arena);
-  HGraph* graph = CreateCFG(&allocator, data);
+  HGraph* graph = CreateCFG(data);
 
   TestBlock(graph, 0, false, kInvalidBlockId);  // entry block
   TestBlock(graph, 1, false, kInvalidBlockId);  // pre header of outer loop
@@ -303,9 +281,7 @@ TEST_F(FindLoopsTest, TwoLoops) {
     Instruction::GOTO | 0xFE00,  // second loop
     Instruction::RETURN | 0 << 8);
 
-  ArenaPool arena;
-  ArenaAllocator allocator(&arena);
-  HGraph* graph = CreateCFG(&allocator, data);
+  HGraph* graph = CreateCFG(data);
 
   TestBlock(graph, 0, false, kInvalidBlockId);  // entry block
   TestBlock(graph, 1, false, kInvalidBlockId);  // pre header of first loop
@@ -333,9 +309,7 @@ TEST_F(FindLoopsTest, NonNaturalLoop) {
     Instruction::GOTO | 0xFD00,
     Instruction::RETURN | 0 << 8);
 
-  ArenaPool arena;
-  ArenaAllocator allocator(&arena);
-  HGraph* graph = CreateCFG(&allocator, data);
+  HGraph* graph = CreateCFG(data);
   ASSERT_TRUE(graph->GetBlocks()[3]->IsLoopHeader());
   HLoopInformation* info = graph->GetBlocks()[3]->GetLoopInformation();
   ASSERT_EQ(1u, info->NumberOfBackEdges());
@@ -349,9 +323,7 @@ TEST_F(FindLoopsTest, DoWhileLoop) {
     Instruction::IF_EQ, 0xFFFF,
     Instruction::RETURN | 0 << 8);
 
-  ArenaPool arena;
-  ArenaAllocator allocator(&arena);
-  HGraph* graph = CreateCFG(&allocator, data);
+  HGraph* graph = CreateCFG(data);
 
   TestBlock(graph, 0, false, kInvalidBlockId);  // entry block
   TestBlock(graph, 1, false, kInvalidBlockId);  // pre header of first loop

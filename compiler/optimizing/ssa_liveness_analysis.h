@@ -1163,9 +1163,10 @@ class SsaLivenessAnalysis : public ValueObject {
         codegen_(codegen),
         block_infos_(graph->GetBlocks().size(),
                      nullptr,
-                     graph->GetArena()->Adapter(kArenaAllocSsaLiveness)),
-        instructions_from_ssa_index_(graph->GetArena()->Adapter(kArenaAllocSsaLiveness)),
-        instructions_from_lifetime_position_(graph->GetArena()->Adapter(kArenaAllocSsaLiveness)),
+                     graph->GetAllocator()->Adapter(kArenaAllocSsaLiveness)),
+        instructions_from_ssa_index_(graph->GetAllocator()->Adapter(kArenaAllocSsaLiveness)),
+        instructions_from_lifetime_position_(
+            graph->GetAllocator()->Adapter(kArenaAllocSsaLiveness)),
         number_of_ssa_values_(0) {
   }
 

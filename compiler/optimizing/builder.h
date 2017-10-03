@@ -36,13 +36,12 @@ class CodeGenerator;
 class HGraphBuilder : public ValueObject {
  public:
   HGraphBuilder(HGraph* graph,
-                DexCompilationUnit* dex_compilation_unit,
-                const DexCompilationUnit* const outer_compilation_unit,
+                const DexCompilationUnit* dex_compilation_unit,
+                const DexCompilationUnit* outer_compilation_unit,
                 CompilerDriver* driver,
                 CodeGenerator* code_generator,
                 OptimizingCompilerStats* compiler_stats,
                 const uint8_t* interpreter_metadata,
-                Handle<mirror::DexCache> dex_cache,
                 VariableSizedHandleScope* handles);
 
   // Only for unit testing.
@@ -89,7 +88,7 @@ class HGraphBuilder : public ValueObject {
 
   // The compilation unit of the current method being compiled. Note that
   // it can be an inlined method.
-  DexCompilationUnit* const dex_compilation_unit_;
+  const DexCompilationUnit* const dex_compilation_unit_;
 
   CompilerDriver* const compiler_driver_;
 

@@ -29,7 +29,10 @@
 
 namespace art {
 
-class LivenessTest : public CommonCompilerTest {};
+class LivenessTest : public OptimizingUnitTest {
+ protected:
+  void TestCode(const uint16_t* data, const char* expected);
+};
 
 static void DumpBitVector(BitVector* vector,
                           std::ostream& buffer,
@@ -43,10 +46,8 @@ static void DumpBitVector(BitVector* vector,
   buffer << ")\n";
 }
 
-static void TestCode(const uint16_t* data, const char* expected) {
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
-  HGraph* graph = CreateCFG(&allocator, data);
+void LivenessTest::TestCode(const uint16_t* data, const char* expected) {
+  HGraph* graph = CreateCFG(data);
   // `Inline` conditions into ifs.
   PrepareForRegisterAllocation(graph).Run();
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
