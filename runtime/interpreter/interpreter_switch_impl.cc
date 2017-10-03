@@ -102,6 +102,13 @@ namespace interpreter {
     }                                                                                          \
   } while (false)
 
+#define HANDLE_ASYNC_EXCEPTION()                                                               \
+  if (UNLIKELY(self->ObserveAsyncException())) {                                               \
+    HANDLE_PENDING_EXCEPTION();                                                                \
+    break;                                                                                     \
+  }                                                                                            \
+  do {} while (false)
+
 #define HANDLE_BACKWARD_BRANCH(offset)                                                         \
   do {                                                                                         \
     if (IsBackwardBranch(offset)) {                                                            \
@@ -551,6 +558,7 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
       }
       case Instruction::MONITOR_ENTER: {
         PREAMBLE();
+        HANDLE_ASYNC_EXCEPTION();
         ObjPtr<mirror::Object> obj = shadow_frame.GetVRegReference(inst->VRegA_11x(inst_data));
         if (UNLIKELY(obj == nullptr)) {
           ThrowNullPointerExceptionFromInterpreter();
@@ -563,6 +571,7 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
       }
       case Instruction::MONITOR_EXIT: {
         PREAMBLE();
+        HANDLE_ASYNC_EXCEPTION();
         ObjPtr<mirror::Object> obj = shadow_frame.GetVRegReference(inst->VRegA_11x(inst_data));
         if (UNLIKELY(obj == nullptr)) {
           ThrowNullPointerExceptionFromInterpreter();
@@ -710,6 +719,7 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
       }
       case Instruction::THROW: {
         PREAMBLE();
+        HANDLE_ASYNC_EXCEPTION();
         ObjPtr<mirror::Object> exception =
             shadow_frame.GetVRegReference(inst->VRegA_11x(inst_data));
         if (UNLIKELY(exception == nullptr)) {
@@ -728,6 +738,7 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
       }
       case Instruction::GOTO: {
         PREAMBLE();
+        HANDLE_ASYNC_EXCEPTION();
         int8_t offset = inst->VRegA_10t(inst_data);
         BRANCH_INSTRUMENTATION(offset);
         inst = inst->RelativeAt(offset);
@@ -736,6 +747,7 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
       }
       case Instruction::GOTO_16: {
         PREAMBLE();
+        HANDLE_ASYNC_EXCEPTION();
         int16_t offset = inst->VRegA_20t();
         BRANCH_INSTRUMENTATION(offset);
         inst = inst->RelativeAt(offset);
@@ -744,6 +756,7 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
       }
       case Instruction::GOTO_32: {
         PREAMBLE();
+        HANDLE_ASYNC_EXCEPTION();
         int32_t offset = inst->VRegA_30t();
         BRANCH_INSTRUMENTATION(offset);
         inst = inst->RelativeAt(offset);
