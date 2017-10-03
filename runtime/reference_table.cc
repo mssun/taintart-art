@@ -19,6 +19,8 @@
 #include "android-base/stringprintf.h"
 
 #include "base/mutex.h"
+#include "gc/allocation_record.h"
+#include "gc/heap.h"
 #include "indirect_reference_table.h"
 #include "mirror/array-inl.h"
 #include "mirror/array.h"
@@ -206,6 +208,54 @@ void ReferenceTable::Dump(std::ostream& os, Table& entries) {
       }
     }
     os << StringPrintf("    %5d: ", idx) << ref << " " << className << extras << "\n";
+    if (runtime->GetHeap()->IsAllocTrackingEnabled()) {
+      MutexLock mu(Thread::Current(), *Locks::alloc_tracker_lock_);
+
+      gc::AllocRecordObjectMap* records = runtime->GetHeap()->GetAllocationRecords();
+      DCHECK(records != nullptr);
+      // It's annoying that this is a list. But this code should be very uncommon to be executed.
+
+      auto print_stack = [&](ObjPtr<mirror::Object> to_print, const std::string& msg)
+          REQUIRES_SHARED(Locks::mutator_lock_)
+          REQUIRES(Locks::alloc_tracker_lock_) {
+        for (auto it = records->Begin(), end = records->End(); it != end; ++it) {
+          GcRoot<mirror::Object>& stack_for_object = it->first;
+          gc::AllocRecord& record = it->second;
+          if (stack_for_object.Read() == to_print.Ptr()) {
+            os << "          " << msg << "\n";
+            const gc::AllocRecordStackTrace* trace = record.GetStackTrace();
+            size_t depth = trace->GetDepth();
+            if (depth == 0) {
+              os << "            (No managed frames)\n";
+            } else {
+              for (size_t i = 0; i < depth; ++i) {
+                const gc::AllocRecordStackTraceElement& frame = trace->GetStackElement(i);
+                os << "            ";
+                if (frame.GetMethod() == nullptr) {
+                  os << "(missing method data)\n";
+                  continue;
+                }
+                os << frame.GetMethod()->PrettyMethod(true)
+                   << ":"
+                   << frame.ComputeLineNumber()
+                   << "\n";
+              }
+            }
+            break;
+          }
+        }
+      };
+      // Print the stack trace of the ref.
+      print_stack(ref, "Allocated at:");
+
+      // If it's a reference, see if we have data about the referent.
+      if (ref->IsReferenceInstance()) {
+        ObjPtr<mirror::Object> referent = ref->AsReference()->GetReferent();
+        if (referent != nullptr) {
+          print_stack(referent, "Referent allocated at:");
+        }
+      }
+    }
   }
 
   // Make a copy of the table and sort it, only adding non null and not cleared elements.

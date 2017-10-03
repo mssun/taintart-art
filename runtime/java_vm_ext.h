@@ -123,7 +123,9 @@ class JavaVMExt : public JavaVM {
 
   void DumpReferenceTables(std::ostream& os)
       REQUIRES_SHARED(Locks::mutator_lock_)
-      REQUIRES(!Locks::jni_globals_lock_, !Locks::jni_weak_globals_lock_);
+      REQUIRES(!Locks::jni_globals_lock_,
+               !Locks::jni_weak_globals_lock_,
+               !Locks::alloc_tracker_lock_);
 
   bool SetCheckJniEnabled(bool enabled);
 
