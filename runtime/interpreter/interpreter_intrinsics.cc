@@ -323,6 +323,25 @@ static ALWAYS_INLINE bool MterpStringEquals(ShadowFrame* shadow_frame,
   return true;
 }
 
+#define VARHANDLE_FENCE_INTRINSIC(name, std_memory_operation)   \
+static ALWAYS_INLINE bool name(ShadowFrame* /* shadow_frame */, \
+                               const Instruction* /* inst */,   \
+                               uint16_t /* inst_data */,        \
+                               JValue* /* result_register */)   \
+    REQUIRES_SHARED(Locks::mutator_lock_) {                     \
+    std::atomic_thread_fence(std_memory_operation);             \
+    return true;                                                \
+}
+
+// The VarHandle fence methods are static (unlike sun.misc.Unsafe versions).
+// The fences for the LoadLoadFence and StoreStoreFence are stronger
+// than strictly required, but the impact should be marginal.
+VARHANDLE_FENCE_INTRINSIC(MterpVarHandleFullFence, std::memory_order_seq_cst)
+VARHANDLE_FENCE_INTRINSIC(MterpVarHandleAcquireFence, std::memory_order_acquire)
+VARHANDLE_FENCE_INTRINSIC(MterpVarHandleReleaseFence, std::memory_order_release)
+VARHANDLE_FENCE_INTRINSIC(MterpVarHandleLoadLoadFence, std::memory_order_acquire)
+VARHANDLE_FENCE_INTRINSIC(MterpVarHandleStoreStoreFence, std::memory_order_release)
+
 // Macro to help keep track of what's left to implement.
 #define UNIMPLEMENTED_CASE(name)    \
     case Intrinsics::k##name:       \
@@ -470,6 +489,11 @@ bool MterpHandleIntrinsic(ShadowFrame* shadow_frame,
     UNIMPLEMENTED_CASE(ReferenceGetReferent /* ()Ljava/lang/Object; */)
     UNIMPLEMENTED_CASE(IntegerValueOf /* (I)Ljava/lang/Integer; */)
     UNIMPLEMENTED_CASE(ThreadInterrupted /* ()Z */)
+    INTRINSIC_CASE(VarHandleFullFence)
+    INTRINSIC_CASE(VarHandleAcquireFence)
+    INTRINSIC_CASE(VarHandleReleaseFence)
+    INTRINSIC_CASE(VarHandleLoadLoadFence)
+    INTRINSIC_CASE(VarHandleStoreStoreFence)
     case Intrinsics::kNone:
       res = false;
       break;

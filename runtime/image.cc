@@ -26,7 +26,7 @@
 namespace art {
 
 const uint8_t ImageHeader::kImageMagic[] = { 'a', 'r', 't', '\n' };
-const uint8_t ImageHeader::kImageVersion[] = { '0', '4', '9', '\0' };  // 256 intrinsics
+const uint8_t ImageHeader::kImageVersion[] = { '0', '4', 'A', '\0' };  // VarHandle fence intrinsics
 
 ImageHeader::ImageHeader(uint32_t image_begin,
                          uint32_t image_size,
