@@ -232,8 +232,10 @@ inline static bool HasConsistentPackedTypes(HInstruction* input, DataType::Type 
   DataType::Type input_type = input->AsVecOperation()->GetPackedType();
   switch (input_type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       return type == DataType::Type::kBool ||
+             type == DataType::Type::kUint8 ||
              type == DataType::Type::kInt8;
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -471,10 +473,14 @@ class HVecHalvingAdd FINAL : public HVecBinaryOperation {
                  HInstruction* right,
                  DataType::Type packed_type,
                  size_t vector_length,
-                 bool is_unsigned,
                  bool is_rounded,
-                 uint32_t dex_pc = kNoDexPc)
-      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
+                 bool is_unsigned = false)
+      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, kNoDexPc) {
+    // The `is_unsigned` flag should be used exclusively with the Int32 or Int64.
+    // This flag is a temporary measure while we do not have the Uint32 and Uint64 data types.
+    DCHECK(!is_unsigned ||
+           packed_type == DataType::Type::kInt32 ||
+           packed_type == DataType::Type::kInt64) << packed_type;
     DCHECK(HasConsistentPackedTypes(left, packed_type));
     DCHECK(HasConsistentPackedTypes(right, packed_type));
     SetPackedFlag<kFieldHAddIsUnsigned>(is_unsigned);
@@ -584,9 +590,13 @@ class HVecMin FINAL : public HVecBinaryOperation {
           HInstruction* right,
           DataType::Type packed_type,
           size_t vector_length,
-          bool is_unsigned,
-          uint32_t dex_pc = kNoDexPc)
-      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
+          bool is_unsigned = false)
+      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, kNoDexPc) {
+    // The `is_unsigned` flag should be used exclusively with the Int32 or Int64.
+    // This flag is a temporary measure while we do not have the Uint32 and Uint64 data types.
+    DCHECK(!is_unsigned ||
+           packed_type == DataType::Type::kInt32 ||
+           packed_type == DataType::Type::kInt64) << packed_type;
     DCHECK(HasConsistentPackedTypes(left, packed_type));
     DCHECK(HasConsistentPackedTypes(right, packed_type));
     SetPackedFlag<kFieldMinOpIsUnsigned>(is_unsigned);
@@ -622,9 +632,13 @@ class HVecMax FINAL : public HVecBinaryOperation {
           HInstruction* right,
           DataType::Type packed_type,
           size_t vector_length,
-          bool is_unsigned,
-          uint32_t dex_pc = kNoDexPc)
-      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
+          bool is_unsigned = false)
+      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, kNoDexPc) {
+    // The `is_unsigned` flag should be used exclusively with the Int32 or Int64.
+    // This flag is a temporary measure while we do not have the Uint32 and Uint64 data types.
+    DCHECK(!is_unsigned ||
+           packed_type == DataType::Type::kInt32 ||
+           packed_type == DataType::Type::kInt64) << packed_type;
     DCHECK(HasConsistentPackedTypes(left, packed_type));
     DCHECK(HasConsistentPackedTypes(right, packed_type));
     SetPackedFlag<kFieldMaxOpIsUnsigned>(is_unsigned);
@@ -933,12 +947,13 @@ class HVecLoad FINAL : public HVecMemoryOperation {
            HInstruction* base,
            HInstruction* index,
            DataType::Type packed_type,
+           SideEffects side_effects,
            size_t vector_length,
            bool is_string_char_at,
            uint32_t dex_pc = kNoDexPc)
       : HVecMemoryOperation(arena,
                             packed_type,
-                            SideEffects::ArrayReadOfType(packed_type),
+                            side_effects,
                             /* number_of_inputs */ 2,
                             vector_length,
                             dex_pc) {
@@ -977,11 +992,12 @@ class HVecStore FINAL : public HVecMemoryOperation {
             HInstruction* index,
             HInstruction* value,
             DataType::Type packed_type,
+            SideEffects side_effects,
             size_t vector_length,
             uint32_t dex_pc = kNoDexPc)
       : HVecMemoryOperation(arena,
                             packed_type,
-                            SideEffects::ArrayWriteOfType(packed_type),
+                            side_effects,
                             /* number_of_inputs */ 3,
                             vector_length,
                             dex_pc) {

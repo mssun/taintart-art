@@ -393,7 +393,7 @@ bool SsaBuilder::FixAmbiguousArrayOps() {
         }
         // Refine the side effects of this floating point aset. Note that we do this even if
         // no replacement occurs, since the right-hand-side may have been corrected already.
-        aset->ComputeSideEffects();
+        aset->SetSideEffects(HArraySet::ComputeSideEffects(aset->GetComponentType()));
       } else {
         // Array elements are integral and the value assigned to it initially
         // was integral too. Nothing to do.

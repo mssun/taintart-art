@@ -514,9 +514,10 @@ void SchedulingLatencyVisitorARM::VisitCompare(HCompare* instr) {
   DataType::Type type = instr->InputAt(0)->GetType();
   switch (type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
-    case DataType::Type::kInt16:
     case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
     case DataType::Type::kInt32:
       last_visited_internal_latency_ = 2 * kArmIntegerOpLatency;
       break;
@@ -633,9 +634,10 @@ void SchedulingLatencyVisitorARM::VisitArrayGet(HArrayGet* instruction) {
 
   switch (type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
-    case DataType::Type::kInt16:
     case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
     case DataType::Type::kInt32: {
       if (maybe_compressed_char_at) {
         last_visited_internal_latency_ += kArmMemoryLoadLatency;
@@ -733,9 +735,10 @@ void SchedulingLatencyVisitorARM::VisitArraySet(HArraySet* instruction) {
 
   switch (value_type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
-    case DataType::Type::kInt16:
     case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
     case DataType::Type::kInt32: {
       if (index->IsConstant()) {
         last_visited_latency_ = kArmMemoryStoreLatency;
@@ -916,9 +919,10 @@ void SchedulingLatencyVisitorARM::HandleFieldGetLatencies(HInstruction* instruct
 
   switch (field_type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
-    case DataType::Type::kInt16:
     case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
     case DataType::Type::kInt32:
       last_visited_latency_ = kArmMemoryLoadLatency;
       break;
@@ -977,9 +981,10 @@ void SchedulingLatencyVisitorARM::HandleFieldSetLatencies(HInstruction* instruct
 
   switch (field_type) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
-    case DataType::Type::kInt16:
     case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
       if (is_volatile) {
         last_visited_internal_latency_ = kArmMemoryBarrierLatency + kArmMemoryStoreLatency;
         last_visited_latency_ = kArmMemoryBarrierLatency;
@@ -1047,6 +1052,7 @@ void SchedulingLatencyVisitorARM::VisitTypeConversion(HTypeConversion* instr) {
   DataType::Type input_type = instr->GetInputType();
 
   switch (result_type) {
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -1072,6 +1078,7 @@ void SchedulingLatencyVisitorARM::VisitTypeConversion(HTypeConversion* instr) {
     case DataType::Type::kInt64:
       switch (input_type) {
         case DataType::Type::kBool:
+        case DataType::Type::kUint8:
         case DataType::Type::kInt8:
         case DataType::Type::kUint16:
         case DataType::Type::kInt16:
@@ -1095,6 +1102,7 @@ void SchedulingLatencyVisitorARM::VisitTypeConversion(HTypeConversion* instr) {
     case DataType::Type::kFloat32:
       switch (input_type) {
         case DataType::Type::kBool:
+        case DataType::Type::kUint8:
         case DataType::Type::kInt8:
         case DataType::Type::kUint16:
         case DataType::Type::kInt16:
@@ -1118,6 +1126,7 @@ void SchedulingLatencyVisitorARM::VisitTypeConversion(HTypeConversion* instr) {
     case DataType::Type::kFloat64:
       switch (input_type) {
         case DataType::Type::kBool:
+        case DataType::Type::kUint8:
         case DataType::Type::kInt8:
         case DataType::Type::kUint16:
         case DataType::Type::kInt16:
