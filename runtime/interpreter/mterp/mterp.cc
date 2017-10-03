@@ -145,9 +145,14 @@ extern "C" ssize_t MterpDoPackedSwitch(const uint16_t* switchData, int32_t testV
 
 extern "C" size_t MterpShouldSwitchInterpreters()
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  const instrumentation::Instrumentation* const instrumentation =
-      Runtime::Current()->GetInstrumentation();
-  return instrumentation->NonJitProfilingActive() || Dbg::IsDebuggerActive();
+  const Runtime* const runtime = Runtime::Current();
+  const instrumentation::Instrumentation* const instrumentation = runtime->GetInstrumentation();
+  return instrumentation->NonJitProfilingActive() ||
+      Dbg::IsDebuggerActive() ||
+      // An async exception has been thrown. We need to go to the switch interpreter. MTerp doesn't
+      // know how to deal with these so we could end up never dealing with it if we are in an
+      // infinite loop.
+      UNLIKELY(Thread::Current()->IsAsyncExceptionPending());
 }
 
 
