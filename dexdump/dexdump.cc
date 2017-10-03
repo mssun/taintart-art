@@ -906,13 +906,26 @@ static std::unique_ptr<char[]> indexString(const DexFile* pDexFile,
       // Call site information is too large to detail in disassembly so just output the index.
       outSize = snprintf(buf.get(), bufSize, "call_site@%0*x", width, index);
       break;
-    // SOME NOT SUPPORTED:
-    // case Instruction::kIndexVaries:
-    // case Instruction::kIndexInlineMethod:
-    default:
-      outSize = snprintf(buf.get(), bufSize, "<?>");
+    case Instruction::kIndexMethodHandleRef:
+      // Method handle information is too large to detail in disassembly so just output the index.
+      outSize = snprintf(buf.get(), bufSize, "method_handle@%0*x", width, index);
+      break;
+    case Instruction::kIndexProtoRef:
+      if (index < pDexFile->GetHeader().proto_ids_size_) {
+        const DexFile::ProtoId& protoId = pDexFile->GetProtoId(index);
+        const Signature signature = pDexFile->GetProtoSignature(protoId);
+        const std::string& proto = signature.ToString();
+        outSize = snprintf(buf.get(), bufSize, "%s // proto@%0*x", proto.c_str(), width, index);
+      } else {
+        outSize = snprintf(buf.get(), bufSize, "<?> // proto@%0*x", width, index);
+      }
       break;
   }  // switch
+
+  if (outSize == 0) {
+    // The index type has not been handled in the switch above.
+    outSize = snprintf(buf.get(), bufSize, "<?>");
+  }
 
   // Determine success of string construction.
   if (outSize >= bufSize) {

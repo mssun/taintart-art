@@ -8033,6 +8033,15 @@ mirror::MethodType* ClassLinker::ResolveMethodType(const DexFile& dex_file,
   return type.Get();
 }
 
+mirror::MethodType* ClassLinker::ResolveMethodType(uint32_t proto_idx, ArtMethod* referrer) {
+  Thread* const self = Thread::Current();
+  StackHandleScope<2> hs(self);
+  const DexFile* dex_file = referrer->GetDexFile();
+  Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
+  Handle<mirror::ClassLoader> class_loader(hs.NewHandle(referrer->GetClassLoader()));
+  return ResolveMethodType(*dex_file, proto_idx, dex_cache, class_loader);
+}
+
 mirror::MethodHandle* ClassLinker::ResolveMethodHandleForField(
     Thread* self,
     const DexFile::MethodHandleItem& method_handle,
