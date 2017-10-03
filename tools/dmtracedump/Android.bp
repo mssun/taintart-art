@@ -23,6 +23,7 @@ art_cc_binary {
         "-O0",
         "-g",
         "-Wall",
+        "-Werror",
     ],
     target: {
         windows: {
@@ -40,5 +41,6 @@ art_cc_binary {
         "-O0",
         "-g",
         "-Wall",
+        "-Werror",
     ],
 }

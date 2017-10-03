@@ -16,7 +16,7 @@ art_cc_binary {
     name: "dexlist",
     host_supported: true,
     srcs: ["dexlist.cc"],
-    cflags: ["-Wall"],
+    cflags: ["-Wall", "-Werror"],
     shared_libs: ["libart"],
 }
 
