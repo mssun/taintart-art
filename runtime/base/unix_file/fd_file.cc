@@ -173,13 +173,20 @@ int FdFile::Close() {
 
 int FdFile::Flush() {
   DCHECK(!read_only_mode_);
+
 #ifdef __linux__
   int rc = TEMP_FAILURE_RETRY(fdatasync(fd_));
 #else
   int rc = TEMP_FAILURE_RETRY(fsync(fd_));
 #endif
+
   moveUp(GuardState::kFlushed, "Flushing closed file.");
-  return (rc == -1) ? -errno : rc;
+  if (rc == 0) {
+    return 0;
+  }
+
+  // Don't report failure if we just tried to flush a pipe or socket.
+  return errno == EINVAL ? 0 : -errno;
 }
 
 int64_t FdFile::Read(char* buf, int64_t byte_count, int64_t offset) const {
