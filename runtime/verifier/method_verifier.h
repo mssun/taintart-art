@@ -404,6 +404,10 @@ class MethodVerifier {
   /* Ensure that the wide register index is valid for this code item. */
   bool CheckWideRegisterIndex(uint32_t idx);
 
+  // Perform static checks on an instruction referencing a CallSite. All we do here is ensure that
+  // the call site index is in the valid range.
+  bool CheckCallSiteIndex(uint32_t idx);
+
   // Perform static checks on a field Get or set instruction. All we do here is ensure that the
   // field index is in the valid range.
   bool CheckFieldIndex(uint32_t idx);
@@ -411,6 +415,10 @@ class MethodVerifier {
   // Perform static checks on a method invocation instruction. All we do here is ensure that the
   // method index is in the valid range.
   bool CheckMethodIndex(uint32_t idx);
+
+  // Perform static checks on an instruction referencing a constant method handle. All we do here
+  // is ensure that the method index is in the valid range.
+  bool CheckMethodHandleIndex(uint32_t idx);
 
   // Perform static checks on a "new-instance" instruction. Specifically, make sure the class
   // reference isn't for an array class.
