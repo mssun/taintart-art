@@ -2330,6 +2330,21 @@ void InstructionSimplifierVisitor::VisitInvoke(HInvoke* instruction) {
     case Intrinsics::kUnsafeFullFence:
       SimplifyMemBarrier(instruction, MemBarrierKind::kAnyAny);
       break;
+    case Intrinsics::kVarHandleFullFence:
+      SimplifyMemBarrier(instruction, MemBarrierKind::kAnyAny);
+      break;
+    case Intrinsics::kVarHandleAcquireFence:
+      SimplifyMemBarrier(instruction, MemBarrierKind::kLoadAny);
+      break;
+    case Intrinsics::kVarHandleReleaseFence:
+      SimplifyMemBarrier(instruction, MemBarrierKind::kAnyStore);
+      break;
+    case Intrinsics::kVarHandleLoadLoadFence:
+      SimplifyMemBarrier(instruction, MemBarrierKind::kLoadAny);
+      break;
+    case Intrinsics::kVarHandleStoreStoreFence:
+      SimplifyMemBarrier(instruction, MemBarrierKind::kStoreStore);
+      break;
     default:
       break;
   }
