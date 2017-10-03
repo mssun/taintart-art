@@ -74,19 +74,16 @@ static bool IsEarlyExit(HLoopInformation* loop_info) {
 // Forward declaration.
 static bool IsZeroExtensionAndGet(HInstruction* instruction,
                                   DataType::Type type,
-                                  /*out*/ HInstruction** operand,
-                                  bool to64 = false);
+                                  /*out*/ HInstruction** operand);
 
-// Detect a sign extension in instruction from the given type. The to64 parameter
-// denotes if result is long, and thus sign extension from int can be included.
+// Detect a sign extension in instruction from the given type.
 // Returns the promoted operand on success.
 static bool IsSignExtensionAndGet(HInstruction* instruction,
                                   DataType::Type type,
-                                  /*out*/ HInstruction** operand,
-                                  bool to64 = false) {
+                                  /*out*/ HInstruction** operand) {
   // Accept any already wider constant that would be handled properly by sign
   // extension when represented in the *width* of the given narrower data type
-  // (the fact that char normally zero extends does not matter here).
+  // (the fact that Uint16 normally zero extends does not matter here).
   int64_t value = 0;
   if (IsInt64AndGet(instruction, /*out*/ &value)) {
     switch (type) {
@@ -103,43 +100,39 @@ static bool IsSignExtensionAndGet(HInstruction* instruction,
           return true;
         }
         return false;
-      case DataType::Type::kInt32:
-        if (IsInt<32>(value)) {
-          *operand = instruction;
-          return to64;
-        }
-        return false;
       default:
         return false;
     }
   }
-  // An implicit widening conversion of a signed integer to an integral type sign-extends
-  // the two's-complement representation of the integer value to fill the wider format.
-  if (instruction->GetType() == type && (instruction->IsArrayGet() ||
-                                         instruction->IsStaticFieldGet() ||
-                                         instruction->IsInstanceFieldGet())) {
+  // An implicit widening conversion of any signed expression sign-extends.
+  if (instruction->GetType() == type) {
     switch (type) {
       case DataType::Type::kInt8:
       case DataType::Type::kInt16:
         *operand = instruction;
         return true;
-      case DataType::Type::kInt32:
-        *operand = instruction;
-        return to64;
       default:
         return false;
     }
   }
-  // Explicit type conversions.
+  // An explicit widening conversion of a signed expression sign-extends.
   if (instruction->IsTypeConversion()) {
-    DataType::Type from = instruction->InputAt(0)->GetType();
+    HInstruction* conv = instruction->InputAt(0);
+    DataType::Type from = conv->GetType();
     switch (instruction->GetType()) {
+      case DataType::Type::kInt32:
       case DataType::Type::kInt64:
-        return IsSignExtensionAndGet(instruction->InputAt(0), type, /*out*/ operand, /*to64*/ true);
+        if (type == from && (from == DataType::Type::kInt8 ||
+                             from == DataType::Type::kInt16 ||
+                             from == DataType::Type::kInt32)) {
+          *operand = conv;
+          return true;
+        }
+        return false;
       case DataType::Type::kInt16:
         return type == DataType::Type::kUint16 &&
                from == DataType::Type::kUint16 &&
-               IsZeroExtensionAndGet(instruction->InputAt(0), type, /*out*/ operand, to64);
+               IsZeroExtensionAndGet(instruction->InputAt(0), type, /*out*/ operand);
       default:
         return false;
     }
@@ -147,16 +140,14 @@ static bool IsSignExtensionAndGet(HInstruction* instruction,
   return false;
 }
 
-// Detect a zero extension in instruction from the given type. The to64 parameter
-// denotes if result is long, and thus zero extension from int can be included.
+// Detect a zero extension in instruction from the given type.
 // Returns the promoted operand on success.
 static bool IsZeroExtensionAndGet(HInstruction* instruction,
                                   DataType::Type type,
-                                  /*out*/ HInstruction** operand,
-                                  bool to64) {
+                                  /*out*/ HInstruction** operand) {
   // Accept any already wider constant that would be handled properly by zero
   // extension when represented in the *width* of the given narrower data type
-  // (the fact that byte/short/int normally sign extend does not matter here).
+  // (the fact that Int8/Int16 normally sign extend does not matter here).
   int64_t value = 0;
   if (IsInt64AndGet(instruction, /*out*/ &value)) {
     switch (type) {
@@ -173,21 +164,12 @@ static bool IsZeroExtensionAndGet(HInstruction* instruction,
           return true;
         }
         return false;
-      case DataType::Type::kInt32:
-        if (IsUint<32>(value)) {
-          *operand = instruction;
-          return to64;
-        }
-        return false;
       default:
         return false;
     }
   }
-  // An implicit widening conversion of a char to an integral type zero-extends
-  // the representation of the char value to fill the wider format.
-  if (instruction->GetType() == type && (instruction->IsArrayGet() ||
-                                         instruction->IsStaticFieldGet() ||
-                                         instruction->IsInstanceFieldGet())) {
+  // An implicit widening conversion of any unsigned expression zero-extends.
+  if (instruction->GetType() == type) {
     if (type == DataType::Type::kUint16) {
       *operand = instruction;
       return true;
@@ -195,6 +177,9 @@ static bool IsZeroExtensionAndGet(HInstruction* instruction,
   }
   // A sign (or zero) extension followed by an explicit removal of just the
   // higher sign bits is equivalent to a zero extension of the underlying operand.
+  //
+  // TODO: move this into simplifier and use new type system instead.
+  //
   if (instruction->IsAnd()) {
     int64_t mask = 0;
     HInstruction* a = instruction->InputAt(0);
@@ -210,22 +195,26 @@ static bool IsZeroExtensionAndGet(HInstruction* instruction,
         case DataType::Type::kUint16:
         case DataType::Type::kInt16:
           return mask == std::numeric_limits<uint16_t>::max();
-        case DataType::Type::kInt32:
-          return mask == std::numeric_limits<uint32_t>::max() && to64;
         default: return false;
       }
     }
   }
-  // Explicit type conversions.
+  // An explicit widening conversion of an unsigned expression zero-extends.
   if (instruction->IsTypeConversion()) {
-    DataType::Type from = instruction->InputAt(0)->GetType();
+    HInstruction* conv = instruction->InputAt(0);
+    DataType::Type from = conv->GetType();
     switch (instruction->GetType()) {
+      case DataType::Type::kInt32:
       case DataType::Type::kInt64:
-        return IsZeroExtensionAndGet(instruction->InputAt(0), type, /*out*/ operand, /*to64*/ true);
+        if (type == from && from == DataType::Type::kUint16) {
+          *operand = conv;
+          return true;
+        }
+        return false;
       case DataType::Type::kUint16:
         return type == DataType::Type::kInt16 &&
                from == DataType::Type::kInt16 &&
-               IsSignExtensionAndGet(instruction->InputAt(0), type, /*out*/ operand, to64);
+               IsSignExtensionAndGet(instruction->InputAt(0), type, /*out*/ operand);
       default:
         return false;
     }
@@ -356,6 +345,22 @@ static bool IsAddConst(HInstruction* instruction,
     *b = instruction->InputAt(1);
     *c = 0;
     return true;
+  }
+  return false;
+}
+
+// Detect a + c for constant c.
+static bool IsAddConst(HInstruction* instruction,
+                       /*out*/ HInstruction** a,
+                       /*out*/ int64_t* c) {
+  if (instruction->IsAdd()) {
+    if (IsInt64AndGet(instruction->InputAt(0), c)) {
+      *a = instruction->InputAt(1);
+      return true;
+    } else if (IsInt64AndGet(instruction->InputAt(1), c)) {
+      *a = instruction->InputAt(0);
+      return true;
+    }
   }
   return false;
 }
@@ -1148,6 +1153,7 @@ bool HLoopOptimization::VectorizeUse(LoopNode* node,
       size_t size_vec = DataType::Size(type);
       size_t size_from = DataType::Size(from);
       size_t size_to = DataType::Size(to);
+      DataType::Type ctype = size_from == size_vec ? from : type;
       // Accept an integral conversion
       // (1a) narrowing into vector type, "wider" operations cannot bring in higher order bits, or
       // (1b) widening from at least vector type, and
@@ -1157,7 +1163,7 @@ bool HLoopOptimization::VectorizeUse(LoopNode* node,
            VectorizeUse(node, opa, generate_code, type, restrictions | kNoHiBits)) ||
           (size_to >= size_from &&
            size_from >= size_vec &&
-           VectorizeUse(node, opa, generate_code, type, restrictions))) {
+           VectorizeUse(node, opa, generate_code, ctype, restrictions))) {
         if (generate_code) {
           if (vector_mode_ == kVector) {
             vector_map_->Put(instruction, vector_map_->Get(opa));  // operand pass-through
@@ -1896,9 +1902,14 @@ bool HLoopOptimization::VectorizeSADIdiom(LoopNode* node,
        (v->AsInvokeStaticOrDirect()->GetIntrinsic() == Intrinsics::kMathAbsInt ||
         v->AsInvokeStaticOrDirect()->GetIntrinsic() == Intrinsics::kMathAbsLong)) {
     HInstruction* x = v->InputAt(0);
-    if (x->IsSub() && x->GetType() == reduction_type) {
-      a = x->InputAt(0);
-      b = x->InputAt(1);
+    if (x->GetType() == reduction_type) {
+      int64_t c = 0;
+      if (x->IsSub()) {
+        a = x->InputAt(0);
+        b = x->InputAt(1);
+      } else if (IsAddConst(x, /*out*/ &a, /*out*/ &c)) {
+        b = graph_->GetConstant(reduction_type, -c);  // hidden SUB!
+      }
     }
   }
   if (a == nullptr || b == nullptr) {
@@ -1906,22 +1917,21 @@ bool HLoopOptimization::VectorizeSADIdiom(LoopNode* node,
   }
   // Accept same-type or consistent sign extension for narrower-type on operands a and b.
   // The same-type or narrower operands are called r (a or lower) and s (b or lower).
+  // We inspect the operands carefully to pick the most suited type.
   HInstruction* r = a;
   HInstruction* s = b;
   bool is_unsigned = false;
   DataType::Type sub_type = a->GetType();
-  if (a->IsTypeConversion()) {
-    HInstruction* hunt = a;
-    while (hunt->IsTypeConversion()) {
-      hunt = hunt->InputAt(0);
-    }
-    sub_type = hunt->GetType();
-  } else if (b->IsTypeConversion()) {
-    HInstruction* hunt = a;
-    while (hunt->IsTypeConversion()) {
-      hunt = hunt->InputAt(0);
-    }
-    sub_type = hunt->GetType();
+  if (DataType::Size(b->GetType()) < DataType::Size(sub_type)) {
+    sub_type = b->GetType();
+  }
+  if (a->IsTypeConversion() &&
+      DataType::Size(a->InputAt(0)->GetType()) < DataType::Size(sub_type)) {
+    sub_type = a->InputAt(0)->GetType();
+  }
+  if (b->IsTypeConversion() &&
+      DataType::Size(b->InputAt(0)->GetType()) < DataType::Size(sub_type)) {
+    sub_type = b->InputAt(0)->GetType();
   }
   if (reduction_type != sub_type &&
       (!IsNarrowerOperands(a, b, sub_type, &r, &s, &is_unsigned) || is_unsigned)) {

@@ -431,7 +431,7 @@ MethodVerifier::FailureData MethodVerifier::VerifyMethod(Thread* self,
         }
       }
       if ((verifier.encountered_failure_types_ & VerifyError::VERIFY_ERROR_LOCKING) != 0) {
-        method->AddAccessFlags(kAccMustCountLocks);
+        method->SetMustCountLocks();
       }
     }
   } else {

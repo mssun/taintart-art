@@ -30,6 +30,16 @@
 
 namespace art {
 
+// Check that intrinsic enum values fit within space set aside in ArtMethod modifier flags.
+#define CHECK_INTRINSICS_ENUM_VALUES(Name, IsStatic, NeedsEnvironmentOrCache, SideEffects, Exceptions, ...) \
+  static_assert( \
+      static_cast<uint32_t>(Intrinsics::k ## Name) <= (kAccIntrinsicBits >> CTZ(kAccIntrinsicBits)), \
+      "Instrinsics enumeration space overflow: ");
+#include "intrinsics_list.h"
+  INTRINSICS_LIST(CHECK_INTRINSICS_ENUM_VALUES)
+#undef INTRINSICS_LIST
+#undef CHECK_INTRINSICS_ENUM_VALUES
+
 // Function that returns whether an intrinsic is static/direct or virtual.
 static inline InvokeType GetIntrinsicInvokeType(Intrinsics i) {
   switch (i) {
@@ -109,6 +119,7 @@ static bool CheckInvokeType(Intrinsics intrinsic, HInvoke* invoke) {
   // InvokeStaticOrDirect.
   InvokeType intrinsic_type = GetIntrinsicInvokeType(intrinsic);
   InvokeType invoke_type = invoke->GetInvokeType();
+
   switch (intrinsic_type) {
     case kStatic:
       return (invoke_type == kStatic);

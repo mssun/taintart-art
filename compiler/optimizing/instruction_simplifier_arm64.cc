@@ -30,6 +30,63 @@ namespace arm64 {
 
 using helpers::ShifterOperandSupportsExtension;
 
+class InstructionSimplifierArm64Visitor : public HGraphVisitor {
+ public:
+  InstructionSimplifierArm64Visitor(HGraph* graph, OptimizingCompilerStats* stats)
+      : HGraphVisitor(graph), stats_(stats) {}
+
+ private:
+  void RecordSimplification() {
+    if (stats_ != nullptr) {
+      stats_->RecordStat(kInstructionSimplificationsArch);
+    }
+  }
+
+  bool TryMergeIntoUsersShifterOperand(HInstruction* instruction);
+  bool TryMergeIntoShifterOperand(HInstruction* use,
+                                  HInstruction* bitfield_op,
+                                  bool do_merge);
+  bool CanMergeIntoShifterOperand(HInstruction* use, HInstruction* bitfield_op) {
+    return TryMergeIntoShifterOperand(use, bitfield_op, /* do_merge */ false);
+  }
+  bool MergeIntoShifterOperand(HInstruction* use, HInstruction* bitfield_op) {
+    DCHECK(CanMergeIntoShifterOperand(use, bitfield_op));
+    return TryMergeIntoShifterOperand(use, bitfield_op, /* do_merge */ true);
+  }
+
+  /**
+   * This simplifier uses a special-purpose BB visitor.
+   * (1) No need to visit Phi nodes.
+   * (2) Since statements can be removed in a "forward" fashion,
+   *     the visitor should test if each statement is still there.
+   */
+  void VisitBasicBlock(HBasicBlock* block) OVERRIDE {
+    // TODO: fragile iteration, provide more robust iterators?
+    for (HInstructionIterator it(block->GetInstructions()); !it.Done(); it.Advance()) {
+      HInstruction* instruction = it.Current();
+      if (instruction->IsInBlock()) {
+        instruction->Accept(this);
+      }
+    }
+  }
+
+  // HInstruction visitors, sorted alphabetically.
+  void VisitAnd(HAnd* instruction) OVERRIDE;
+  void VisitArrayGet(HArrayGet* instruction) OVERRIDE;
+  void VisitArraySet(HArraySet* instruction) OVERRIDE;
+  void VisitMul(HMul* instruction) OVERRIDE;
+  void VisitOr(HOr* instruction) OVERRIDE;
+  void VisitShl(HShl* instruction) OVERRIDE;
+  void VisitShr(HShr* instruction) OVERRIDE;
+  void VisitTypeConversion(HTypeConversion* instruction) OVERRIDE;
+  void VisitUShr(HUShr* instruction) OVERRIDE;
+  void VisitXor(HXor* instruction) OVERRIDE;
+  void VisitVecLoad(HVecLoad* instruction) OVERRIDE;
+  void VisitVecStore(HVecStore* instruction) OVERRIDE;
+
+  OptimizingCompilerStats* stats_;
+};
+
 bool InstructionSimplifierArm64Visitor::TryMergeIntoShifterOperand(HInstruction* use,
                                                                    HInstruction* bitfield_op,
                                                                    bool do_merge) {
@@ -221,6 +278,11 @@ void InstructionSimplifierArm64Visitor::VisitVecStore(HVecStore* instruction) {
   if (TryExtractVecArrayAccessAddress(instruction, instruction->GetIndex())) {
     RecordSimplification();
   }
+}
+
+void InstructionSimplifierArm64::Run() {
+  InstructionSimplifierArm64Visitor visitor(graph_, stats_);
+  visitor.VisitReversePostOrder();
 }
 
 }  // namespace arm64

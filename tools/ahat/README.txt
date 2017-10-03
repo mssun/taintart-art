@@ -48,15 +48,22 @@ Things to Test:
    time.
  * That we don't show the 'extra' column in the DominatedList if we are
    showing all the instances.
- * That Instance.asString properly takes into account "offset" and
-   "count" fields, if they are present.
  * Instance.getDexCacheLocation
 
 Reported Issues:
  * Request to be able to sort tables by size.
 
 Release History:
- 1.4 Pending
+ 1.5 Pending
+
+ 1.4 October 03, 2017
+   Give better error messages on failure to launch ahat.
+   Properly mark thread and non-default root objects as roots.
+   Improve startup performance, in some cases significantly.
+   Other miscellaneous bug fixes.
+
+ 1.3.1 August 22, 2017
+   Don't include weak references in sample paths.
 
  1.3 July 25, 2017
    Improve diffing of static and instance fields.
