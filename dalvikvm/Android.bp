@@ -36,7 +36,7 @@ art_cc_binary {
             ],
             ldflags: ["-Wl,--export-dynamic"],
         },
-        linux: {
+        linux_glibc: {
             ldflags: ["-Wl,--export-dynamic"],
         },
     },
