@@ -331,70 +331,54 @@
 # Test simplification of the `~~var` pattern.
 # The transformation tested is implemented in `InstructionSimplifierVisitor::VisitNot`.
 
-## CHECK-START: long SmaliTests.NotNot1(long) instruction_simplifier (before)
+## CHECK-START: long SmaliTests.$noinline$NotNot1(long) instruction_simplifier (before)
 ## CHECK-DAG:     <<Arg:j\d+>>      ParameterValue
 ## CHECK-DAG:     <<Not1:j\d+>>     Not [<<Arg>>]
 ## CHECK-DAG:     <<Not2:j\d+>>     Not [<<Not1>>]
 ## CHECK-DAG:                       Return [<<Not2>>]
 
-## CHECK-START: long SmaliTests.NotNot1(long) instruction_simplifier (after)
+## CHECK-START: long SmaliTests.$noinline$NotNot1(long) instruction_simplifier (after)
 ## CHECK-DAG:     <<Arg:j\d+>>      ParameterValue
 ## CHECK-DAG:                       Return [<<Arg>>]
 
-## CHECK-START: long SmaliTests.NotNot1(long) instruction_simplifier (after)
+## CHECK-START: long SmaliTests.$noinline$NotNot1(long) instruction_simplifier (after)
 ## CHECK-NOT:                       Not
 
-.method public static NotNot1(J)J
+.method public static $noinline$NotNot1(J)J
     .registers 4
     .param p0, "arg"    # J
 
     .prologue
-    sget-boolean v0, LMain;->doThrow:Z
 
-    # if (doThrow) throw new Error();
-    if-eqz v0, :cond_a
-    new-instance v0, Ljava/lang/Error;
-    invoke-direct {v0}, Ljava/lang/Error;-><init>()V
-    throw v0
-
-  :cond_a
     # return ~~arg
     not-long v0, p0
     not-long v0, v0
     return-wide v0
 .end method
 
-## CHECK-START: int SmaliTests.NotNot2(int) instruction_simplifier (before)
+## CHECK-START: int SmaliTests.$noinline$NotNot2(int) instruction_simplifier (before)
 ## CHECK-DAG:     <<Arg:i\d+>>      ParameterValue
 ## CHECK-DAG:     <<Not1:i\d+>>     Not [<<Arg>>]
 ## CHECK-DAG:     <<Not2:i\d+>>     Not [<<Not1>>]
 ## CHECK-DAG:     <<Add:i\d+>>      Add [<<Not2>>,<<Not1>>]
 ## CHECK-DAG:                       Return [<<Add>>]
 
-## CHECK-START: int SmaliTests.NotNot2(int) instruction_simplifier (after)
+## CHECK-START: int SmaliTests.$noinline$NotNot2(int) instruction_simplifier (after)
 ## CHECK-DAG:     <<Arg:i\d+>>      ParameterValue
 ## CHECK-DAG:     <<Not:i\d+>>      Not [<<Arg>>]
 ## CHECK-DAG:     <<Add:i\d+>>      Add [<<Arg>>,<<Not>>]
 ## CHECK-DAG:                       Return [<<Add>>]
 
-## CHECK-START: int SmaliTests.NotNot2(int) instruction_simplifier (after)
+## CHECK-START: int SmaliTests.$noinline$NotNot2(int) instruction_simplifier (after)
 ## CHECK:                           Not
 ## CHECK-NOT:                       Not
 
-.method public static NotNot2(I)I
+.method public static $noinline$NotNot2(I)I
     .registers 3
     .param p0, "arg"    # I
 
     .prologue
-    sget-boolean v1, LMain;->doThrow:Z
 
-    # if (doThrow) throw new Error();
-    if-eqz v1, :cond_a
-    new-instance v1, Ljava/lang/Error;
-    invoke-direct {v1}, Ljava/lang/Error;-><init>()V
-    throw v1
-
-  :cond_a
     # temp = ~arg; return temp + ~temp;
     not-int v0, p0
     not-int v1, v0
@@ -407,31 +391,31 @@
 # both negations can be removed but we only expect the simplifier to
 # remove the second.
 
-## CHECK-START: boolean SmaliTests.NotNotBool(boolean) instruction_simplifier (before)
+## CHECK-START: boolean SmaliTests.$noinline$NotNotBool(boolean) instruction_simplifier (before)
 ## CHECK-DAG:     <<Arg:z\d+>>       ParameterValue
 ## CHECK-DAG:     <<Const1:i\d+>>    IntConstant 1
 ## CHECK-DAG:     <<Result:z\d+>>    InvokeStaticOrDirect
 ## CHECK-DAG:     <<NotResult:i\d+>> Xor [<<Result>>,<<Const1>>]
 ## CHECK-DAG:                        Return [<<NotResult>>]
 
-## CHECK-START: boolean SmaliTests.NotNotBool(boolean) instruction_simplifier (after)
+## CHECK-START: boolean SmaliTests.$noinline$NotNotBool(boolean) instruction_simplifier (after)
 ## CHECK-DAG:     <<Arg:z\d+>>       ParameterValue
 ## CHECK-DAG:     <<Result:z\d+>>    InvokeStaticOrDirect
 ## CHECK-DAG:     <<NotResult:z\d+>> BooleanNot [<<Result>>]
 ## CHECK-DAG:                        Return [<<NotResult>>]
 
-## CHECK-START: boolean SmaliTests.NotNotBool(boolean) instruction_simplifier$after_inlining (before)
+## CHECK-START: boolean SmaliTests.$noinline$NotNotBool(boolean) instruction_simplifier$after_inlining (before)
 ## CHECK-DAG:     <<Arg:z\d+>>       ParameterValue
 ## CHECK-DAG:     <<NotArg:z\d+>>    BooleanNot [<<Arg>>]
 ## CHECK-DAG:     <<NotNotArg:z\d+>> BooleanNot [<<NotArg>>]
 ## CHECK-DAG:                        Return [<<NotNotArg>>]
 
-## CHECK-START: boolean SmaliTests.NotNotBool(boolean) instruction_simplifier$after_inlining (after)
+## CHECK-START: boolean SmaliTests.$noinline$NotNotBool(boolean) instruction_simplifier$after_inlining (after)
 ## CHECK-DAG:     <<Arg:z\d+>>       ParameterValue
 ## CHECK-DAG:     <<NotArg:z\d+>>    BooleanNot [<<Arg>>]
 ## CHECK-DAG:                        Return [<<Arg>>]
 
-## CHECK-START: boolean SmaliTests.NotNotBool(boolean) dead_code_elimination$final (after)
+## CHECK-START: boolean SmaliTests.$noinline$NotNotBool(boolean) dead_code_elimination$final (after)
 ## CHECK-DAG:     <<Arg:z\d+>>       ParameterValue
 ## CHECK-DAG:                        Return [<<Arg>>]
 
@@ -447,20 +431,12 @@
 .end method
 
 
-.method public static NotNotBool(Z)Z
+.method public static $noinline$NotNotBool(Z)Z
     .registers 2
     .param p0, "arg"    # Z
 
     .prologue
-    sget-boolean v0, LMain;->doThrow:Z
 
-    # if (doThrow) throw new Error();
-    if-eqz v0, :cond_a
-    new-instance v0, Ljava/lang/Error;
-    invoke-direct {v0}, Ljava/lang/Error;-><init>()V
-    throw v0
-
-  :cond_a
     # return !Negate(arg)
     invoke-static {p0}, LSmaliTests;->NegateValue(Z)Z
     move-result v0

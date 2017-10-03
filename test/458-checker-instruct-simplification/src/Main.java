@@ -18,8 +18,6 @@ import java.lang.reflect.Method;
 
 public class Main {
 
-  static boolean doThrow = false;
-
   public static void assertBooleanEquals(boolean expected, boolean result) {
     if (expected != result) {
       throw new Error("Expected: " + expected + ", found: " + result);
@@ -74,7 +72,6 @@ public class Main {
   /// CHECK-NOT:                        Add
 
   public static long $noinline$Add0(long arg) {
-    if (doThrow) { throw new Error(); }
     return 0 + arg;
   }
 
@@ -97,7 +94,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Add>>]
 
   public static int $noinline$AddAddSubAddConst(int arg) {
-    if (doThrow) { throw new Error(); }
     return arg + 1 + 2 - 3 + 4;
   }
 
@@ -115,7 +111,6 @@ public class Main {
   /// CHECK-NOT:                      And
 
   public static int $noinline$AndAllOnes(int arg) {
-    if (doThrow) { throw new Error(); }
     return arg & -1;
   }
 
@@ -137,7 +132,6 @@ public class Main {
   /// CHECK-NOT:                       And
 
   public static int $noinline$UShr28And15(int arg) {
-    if (doThrow) { throw new Error(); }
     return (arg >>> 28) & 15;
   }
 
@@ -159,7 +153,6 @@ public class Main {
   /// CHECK-NOT:                       And
 
   public static long $noinline$UShr60And15(long arg) {
-    if (doThrow) { throw new Error(); }
     return (arg >>> 60) & 15;
   }
 
@@ -180,7 +173,6 @@ public class Main {
   /// CHECK-DAG:                       Return [<<And>>]
 
   public static int $noinline$UShr28And7(int arg) {
-    if (doThrow) { throw new Error(); }
     return (arg >>> 28) & 7;
   }
 
@@ -201,7 +193,6 @@ public class Main {
   /// CHECK-DAG:                       Return [<<And>>]
 
   public static long $noinline$UShr60And7(long arg) {
-    if (doThrow) { throw new Error(); }
     return (arg >>> 60) & 7;
   }
 
@@ -224,7 +215,6 @@ public class Main {
   /// CHECK-NOT:                       And
 
   public static int $noinline$Shr24And255(int arg) {
-    if (doThrow) { throw new Error(); }
     return (arg >> 24) & 255;
   }
 
@@ -247,7 +237,6 @@ public class Main {
   /// CHECK-NOT:                       And
 
   public static long $noinline$Shr56And255(long arg) {
-    if (doThrow) { throw new Error(); }
     return (arg >> 56) & 255;
   }
 
@@ -268,7 +257,6 @@ public class Main {
   /// CHECK-DAG:                       Return [<<And>>]
 
   public static int $noinline$Shr24And127(int arg) {
-    if (doThrow) { throw new Error(); }
     return (arg >> 24) & 127;
   }
 
@@ -289,7 +277,6 @@ public class Main {
   /// CHECK-DAG:                       Return [<<And>>]
 
   public static long $noinline$Shr56And127(long arg) {
-    if (doThrow) { throw new Error(); }
     return (arg >> 56) & 127;
   }
 
@@ -307,7 +294,6 @@ public class Main {
   /// CHECK-NOT:                      Div
 
   public static long $noinline$Div1(long arg) {
-    if (doThrow) { throw new Error(); }
     return arg / 1;
   }
 
@@ -326,7 +312,6 @@ public class Main {
   /// CHECK-NOT:                       Div
 
   public static int $noinline$DivN1(int arg) {
-    if (doThrow) { throw new Error(); }
     return arg / -1;
   }
 
@@ -344,7 +329,6 @@ public class Main {
   /// CHECK-NOT:                       Mul
 
   public static long $noinline$Mul1(long arg) {
-    if (doThrow) { throw new Error(); }
     return arg * 1;
   }
 
@@ -363,7 +347,6 @@ public class Main {
   /// CHECK-NOT:                       Mul
 
   public static int $noinline$MulN1(int arg) {
-    if (doThrow) { throw new Error(); }
     return arg * -1;
   }
 
@@ -383,7 +366,6 @@ public class Main {
   /// CHECK-NOT:                        Mul
 
   public static long $noinline$MulPowerOfTwo128(long arg) {
-    if (doThrow) { throw new Error(); }
     return arg * 128;
   }
 
@@ -404,7 +386,6 @@ public class Main {
   /// CHECK-DAG:                         Return [<<Mul>>]
 
   public static long $noinline$MulMulMulConst(long arg) {
-    if (doThrow) { throw new Error(); }
     return 10 * arg * 11 * 12;
   }
 
@@ -422,7 +403,6 @@ public class Main {
   /// CHECK-NOT:                       Or
 
   public static int $noinline$Or0(int arg) {
-    if (doThrow) { throw new Error(); }
     return arg | 0;
   }
 
@@ -439,7 +419,6 @@ public class Main {
   /// CHECK-NOT:                        Or
 
   public static long $noinline$OrSame(long arg) {
-    if (doThrow) { throw new Error(); }
     return arg | arg;
   }
 
@@ -457,7 +436,6 @@ public class Main {
   /// CHECK-NOT:                       Shl
 
   public static int $noinline$Shl0(int arg) {
-    if (doThrow) { throw new Error(); }
     return arg << 0;
   }
 
@@ -475,7 +453,6 @@ public class Main {
   /// CHECK-NOT:                       Shr
 
   public static long $noinline$Shr0(long arg) {
-    if (doThrow) { throw new Error(); }
     return arg >> 0;
   }
 
@@ -493,7 +470,6 @@ public class Main {
   /// CHECK-NOT:                       Shr
 
   public static long $noinline$Shr64(long arg) {
-    if (doThrow) { throw new Error(); }
     return arg >> 64;
   }
 
@@ -511,7 +487,6 @@ public class Main {
   /// CHECK-NOT:                       Sub
 
   public static long $noinline$Sub0(long arg) {
-    if (doThrow) { throw new Error(); }
     return arg - 0;
   }
 
@@ -530,7 +505,6 @@ public class Main {
   /// CHECK-NOT:                       Sub
 
   public static int $noinline$SubAliasNeg(int arg) {
-    if (doThrow) { throw new Error(); }
     return 0 - arg;
   }
 
@@ -549,7 +523,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Sub>>]
 
   public static int $noinline$SubAddConst1(int arg) {
-    if (doThrow) { throw new Error(); }
     return 5 - arg + 6;
   }
 
@@ -568,7 +541,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Sub>>]
 
   public static int $noinline$SubAddConst2(int arg) {
-    if (doThrow) { throw new Error(); }
     return 14 - (arg + 13);
   }
 
@@ -587,7 +559,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Add>>]
 
   public static long $noinline$SubSubConst(long arg) {
-    if (doThrow) { throw new Error(); }
     return 17 - (18 - arg);
   }
 
@@ -605,7 +576,6 @@ public class Main {
   /// CHECK-NOT:                       UShr
 
   public static long $noinline$UShr0(long arg) {
-    if (doThrow) { throw new Error(); }
     return arg >>> 0;
   }
 
@@ -623,7 +593,6 @@ public class Main {
   /// CHECK-NOT:                       Xor
 
   public static int $noinline$Xor0(int arg) {
-    if (doThrow) { throw new Error(); }
     return arg ^ 0;
   }
 
@@ -642,7 +611,6 @@ public class Main {
   /// CHECK-NOT:                       Xor
 
   public static int $noinline$XorAllOnes(int arg) {
-    if (doThrow) { throw new Error(); }
     return arg ^ -1;
   }
 
@@ -670,7 +638,6 @@ public class Main {
   /// CHECK-DAG:                       Return [<<Neg>>]
 
   public static int $noinline$AddNegs1(int arg1, int arg2) {
-    if (doThrow) { throw new Error(); }
     return -arg1 + -arg2;
   }
 
@@ -716,7 +683,6 @@ public class Main {
   /// CHECK-DAG:                       Return [<<Or>>]
 
   public static int $noinline$AddNegs2(int arg1, int arg2) {
-    if (doThrow) { throw new Error(); }
     int temp1 = -arg1;
     int temp2 = -arg2;
     return (temp1 + temp2) | (temp1 + temp2);
@@ -756,7 +722,6 @@ public class Main {
   /// CHECK:                           Goto
 
   public static long $noinline$AddNegs3(long arg1, long arg2) {
-    if (doThrow) { throw new Error(); }
     long res = 0;
     long n_arg1 = -arg1;
     long n_arg2 = -arg2;
@@ -790,7 +755,6 @@ public class Main {
   /// CHECK-NOT:                       Add
 
   public static long $noinline$AddNeg1(long arg1, long arg2) {
-    if (doThrow) { throw new Error(); }
     return -arg1 + arg2;
   }
 
@@ -825,7 +789,6 @@ public class Main {
   /// CHECK-NOT:                       Sub
 
   public static long $noinline$AddNeg2(long arg1, long arg2) {
-    if (doThrow) { throw new Error(); }
     long temp = -arg2;
     return (arg1 + temp) | (arg1 + temp);
   }
@@ -849,7 +812,6 @@ public class Main {
   /// CHECK-NOT:                       Neg
 
   public static long $noinline$NegNeg1(long arg) {
-    if (doThrow) { throw new Error(); }
     return -(-arg);
   }
 
@@ -883,7 +845,6 @@ public class Main {
   /// CHECK:                           Return [<<Const0>>]
 
   public static int $noinline$NegNeg2(int arg) {
-    if (doThrow) { throw new Error(); }
     int temp = -arg;
     return temp + -temp;
   }
@@ -911,7 +872,6 @@ public class Main {
   /// CHECK-NOT:                       Sub
 
   public static long $noinline$NegNeg3(long arg) {
-    if (doThrow) { throw new Error(); }
     return 0 - -arg;
   }
 
@@ -938,7 +898,6 @@ public class Main {
   /// CHECK-NOT:                       Neg
 
   public static int $noinline$NegSub1(int arg1, int arg2) {
-    if (doThrow) { throw new Error(); }
     return -(arg1 - arg2);
   }
 
@@ -971,7 +930,6 @@ public class Main {
   /// CHECK-DAG:                       Return [<<Or>>]
 
   public static int $noinline$NegSub2(int arg1, int arg2) {
-    if (doThrow) { throw new Error(); }
     int temp = arg1 - arg2;
     return -temp | -temp;
   }
@@ -996,7 +954,6 @@ public class Main {
   /// CHECK-NOT:                       Xor
 
   public static long $noinline$NotNot1(long arg) {
-    if (doThrow) { throw new Error(); }
     return ~~arg;
   }
 
@@ -1022,7 +979,6 @@ public class Main {
   /// CHECK-NOT:                       Xor
 
   public static int $noinline$NotNot2(int arg) {
-    if (doThrow) { throw new Error(); }
     int temp = ~arg;
     return temp + ~temp;
   }
@@ -1050,7 +1006,6 @@ public class Main {
   /// CHECK-NOT:                       Sub
 
   public static int $noinline$SubNeg1(int arg1, int arg2) {
-    if (doThrow) { throw new Error(); }
     return -arg1 - arg2;
   }
 
@@ -1086,7 +1041,6 @@ public class Main {
   /// CHECK-NOT:                       Add
 
   public static int $noinline$SubNeg2(int arg1, int arg2) {
-    if (doThrow) { throw new Error(); }
     int temp = -arg1;
     return (temp - arg2) | (temp - arg2);
   }
@@ -1122,7 +1076,6 @@ public class Main {
   /// CHECK:                           Goto
 
   public static long $noinline$SubNeg3(long arg1, long arg2) {
-    if (doThrow) { throw new Error(); }
     long res = 0;
     long temp = -arg1;
     for (long i = 0; i < 1; i++) {
@@ -1146,7 +1099,6 @@ public class Main {
   /// CHECK-DAG:                       Return [<<True>>]
 
   public static boolean $noinline$EqualBoolVsIntConst(boolean arg) {
-    if (doThrow) { throw new Error(); }
     // Make calls that will be inlined to make sure the instruction simplifier
     // sees the simplification (dead code elimination will also try to simplify it).
     return (arg ? $inline$ReturnArg(0) : $inline$ReturnArg(1)) != 2;
@@ -1171,7 +1123,6 @@ public class Main {
   /// CHECK-DAG:                       Return [<<False>>]
 
   public static boolean $noinline$NotEqualBoolVsIntConst(boolean arg) {
-    if (doThrow) { throw new Error(); }
     // Make calls that will be inlined to make sure the instruction simplifier
     // sees the simplification (dead code elimination will also try to simplify it).
     return (arg ? $inline$ReturnArg(0) : $inline$ReturnArg(1)) == 2;
@@ -1232,7 +1183,6 @@ public class Main {
   }
 
   public static boolean $noinline$NotNotBool(boolean arg) {
-    if (doThrow) { throw new Error(); }
     return !(NegateValue(arg));
   }
 
@@ -1252,7 +1202,6 @@ public class Main {
   /// CHECK-NOT:                        Div
 
   public static float $noinline$Div2(float arg) {
-    if (doThrow) { throw new Error(); }
     return arg / 2.0f;
   }
 
@@ -1271,7 +1220,6 @@ public class Main {
   /// CHECK-START: double Main.$noinline$Div2(double) instruction_simplifier (after)
   /// CHECK-NOT:                        Div
   public static double $noinline$Div2(double arg) {
-    if (doThrow) { throw new Error(); }
     return arg / 2.0;
   }
 
@@ -1291,7 +1239,6 @@ public class Main {
   /// CHECK-NOT:                        Div
 
   public static float $noinline$DivMP25(float arg) {
-    if (doThrow) { throw new Error(); }
     return arg / -0.25f;
   }
 
@@ -1310,7 +1257,6 @@ public class Main {
   /// CHECK-START: double Main.$noinline$DivMP25(double) instruction_simplifier (after)
   /// CHECK-NOT:                        Div
   public static double $noinline$DivMP25(double arg) {
-    if (doThrow) { throw new Error(); }
     return arg / -0.25f;
   }
 
@@ -1330,7 +1276,6 @@ public class Main {
   /// CHECK-NEXT:                       Add [<<Arg>>,<<Shift>>]
 
   public static int $noinline$mulPow2Plus1(int arg) {
-    if (doThrow) { throw new Error(); }
     return arg * 9;
   }
 
@@ -1350,7 +1295,6 @@ public class Main {
   /// CHECK-NEXT:                       Sub [<<Shift>>,<<Arg>>]
 
   public static long $noinline$mulPow2Minus1(long arg) {
-    if (doThrow) { throw new Error(); }
     return arg * 31;
   }
 
@@ -1358,14 +1302,12 @@ public class Main {
   /// CHECK-DAG:      <<Const1:i\d+>>   IntConstant 1
   /// CHECK-DAG:      <<Const13:i\d+>>  IntConstant 13
   /// CHECK-DAG:      <<Const54:i\d+>>  IntConstant 54
-  /// CHECK-DAG:      <<doThrow:z\d+>>  StaticFieldGet
   /// CHECK-DAG:      <<Field:z\d+>>    StaticFieldGet
   /// CHECK-DAG:      <<NE:z\d+>>       NotEqual [<<Field>>,<<Const1>>]
   /// CHECK-DAG:      <<Select:i\d+>>   Select [<<Const13>>,<<Const54>>,<<NE>>]
   /// CHECK-DAG:                        Return [<<Select>>]
 
   /// CHECK-START: int Main.$noinline$booleanFieldNotEqualOne() instruction_simplifier$after_inlining (after)
-  /// CHECK-DAG:      <<doThrow:z\d+>>  StaticFieldGet
   /// CHECK-DAG:      <<Field:z\d+>>    StaticFieldGet
   /// CHECK-DAG:      <<Const13:i\d+>>  IntConstant 13
   /// CHECK-DAG:      <<Const54:i\d+>>  IntConstant 54
@@ -1373,7 +1315,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Select>>]
 
   public static int $noinline$booleanFieldNotEqualOne() {
-    if (doThrow) { throw new Error(); }
     return (booleanField == $inline$true()) ? 13 : 54;
   }
 
@@ -1381,14 +1322,12 @@ public class Main {
   /// CHECK-DAG:      <<Const0:i\d+>>   IntConstant 0
   /// CHECK-DAG:      <<Const13:i\d+>>  IntConstant 13
   /// CHECK-DAG:      <<Const54:i\d+>>  IntConstant 54
-  /// CHECK-DAG:      <<doThrow:z\d+>>  StaticFieldGet
   /// CHECK-DAG:      <<Field:z\d+>>    StaticFieldGet
   /// CHECK-DAG:      <<NE:z\d+>>       Equal [<<Field>>,<<Const0>>]
   /// CHECK-DAG:      <<Select:i\d+>>   Select [<<Const13>>,<<Const54>>,<<NE>>]
   /// CHECK-DAG:                        Return [<<Select>>]
 
   /// CHECK-START: int Main.$noinline$booleanFieldEqualZero() instruction_simplifier$after_inlining (after)
-  /// CHECK-DAG:      <<doThrow:z\d+>>  StaticFieldGet
   /// CHECK-DAG:      <<Field:z\d+>>    StaticFieldGet
   /// CHECK-DAG:      <<Const13:i\d+>>  IntConstant 13
   /// CHECK-DAG:      <<Const54:i\d+>>  IntConstant 54
@@ -1396,7 +1335,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Select>>]
 
   public static int $noinline$booleanFieldEqualZero() {
-    if (doThrow) { throw new Error(); }
     return (booleanField != $inline$false()) ? 13 : 54;
   }
 
@@ -1425,7 +1363,6 @@ public class Main {
   // LessThanOrEqual instructions.
 
   public static int $noinline$intConditionNotEqualOne(int i) {
-    if (doThrow) { throw new Error(); }
     return ((i > 42) == $inline$true()) ? 13 : 54;
   }
 
@@ -1454,7 +1391,6 @@ public class Main {
   // LessThanOrEqual instructions.
 
   public static int $noinline$intConditionEqualZero(int i) {
-    if (doThrow) { throw new Error(); }
     return ((i > 42) != $inline$false()) ? 13 : 54;
   }
 
@@ -1473,7 +1409,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Select>>]
 
   public static int $noinline$floatConditionNotEqualOne(float f) {
-    if (doThrow) { throw new Error(); }
     return ((f > 42.0f) == true) ? 13 : 54;
   }
 
@@ -1490,7 +1425,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Select>>]
 
   public static int $noinline$doubleConditionEqualZero(double d) {
-    if (doThrow) { throw new Error(); }
     return ((d > 42.0) != false) ? 13 : 54;
   }
 
@@ -1508,7 +1442,6 @@ public class Main {
   /// CHECK-NOT:                        TypeConversion
 
   public static int $noinline$intToDoubleToInt(int value) {
-    if (doThrow) { throw new Error(); }
     // Lossless conversion followed by a conversion back.
     return (int) (double) value;
   }
@@ -1527,7 +1460,6 @@ public class Main {
   /// CHECK-NOT:                        TypeConversion
 
   public static String $noinline$intToDoubleToIntPrint(int value) {
-    if (doThrow) { throw new Error(); }
     // Lossless conversion followed by a conversion back
     // with another use of the intermediate result.
     double d = (double) value;
@@ -1549,7 +1481,6 @@ public class Main {
   /// CHECK-NOT:                        TypeConversion
 
   public static int $noinline$byteToDoubleToInt(byte value) {
-    if (doThrow) { throw new Error(); }
     // Lossless conversion followed by another conversion, use implicit conversion.
     return (int) (double) value;
   }
@@ -1570,7 +1501,6 @@ public class Main {
   /// CHECK-NOT:                        TypeConversion
 
   public static int $noinline$floatToDoubleToInt(float value) {
-    if (doThrow) { throw new Error(); }
     // Lossless conversion followed by another conversion.
     return (int) (double) value;
   }
@@ -1586,7 +1516,6 @@ public class Main {
   /// CHECK-DAG:      {{i\d+}}          TypeConversion [<<Double>>]
 
   public static String $noinline$floatToDoubleToIntPrint(float value) {
-    if (doThrow) { throw new Error(); }
     // Lossless conversion followed by another conversion with
     // an extra use of the intermediate result.
     double d = (double) value;
@@ -1609,7 +1538,6 @@ public class Main {
   /// CHECK-NOT:                        TypeConversion
 
   public static short $noinline$byteToDoubleToShort(byte value) {
-    if (doThrow) { throw new Error(); }
     // Originally, this is byte->double->int->short. The first conversion is lossless,
     // so we merge this with the second one to byte->int which we omit as it's an implicit
     // conversion. Then we eliminate the resulting byte->short as an implicit conversion.
@@ -1633,7 +1561,6 @@ public class Main {
   /// CHECK-NOT:                        TypeConversion
 
   public static short $noinline$charToDoubleToShort(char value) {
-    if (doThrow) { throw new Error(); }
     // Originally, this is char->double->int->short. The first conversion is lossless,
     // so we merge this with the second one to char->int which we omit as it's an implicit
     // conversion. Then we are left with the resulting char->short conversion.
@@ -1653,7 +1580,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Short>>]
 
   public static short $noinline$floatToIntToShort(float value) {
-    if (doThrow) { throw new Error(); }
     // Lossy FP to integral conversion followed by another conversion: no simplification.
     return (short) value;
   }
@@ -1671,7 +1597,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Int>>]
 
   public static int $noinline$intToFloatToInt(int value) {
-    if (doThrow) { throw new Error(); }
     // Lossy integral to FP conversion followed another conversion: no simplification.
     return (int) (float) value;
   }
@@ -1689,7 +1614,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Double>>]
 
   public static double $noinline$longToIntToDouble(long value) {
-    if (doThrow) { throw new Error(); }
     // Lossy long-to-int conversion followed an integral to FP conversion: no simplification.
     return (double) (int) value;
   }
@@ -1707,7 +1631,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Long>>]
 
   public static long $noinline$longToIntToLong(long value) {
-    if (doThrow) { throw new Error(); }
     // Lossy long-to-int conversion followed an int-to-long conversion: no simplification.
     return (long) (int) value;
   }
@@ -1723,7 +1646,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Arg>>]
 
   public static short $noinline$shortToCharToShort(short value) {
-    if (doThrow) { throw new Error(); }
     // Integral conversion followed by non-widening integral conversion to original type.
     return (short) (char) value;
   }
@@ -1739,7 +1661,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Arg>>]
 
   public static int $noinline$shortToLongToInt(short value) {
-    if (doThrow) { throw new Error(); }
     // Integral conversion followed by non-widening integral conversion, use implicit conversion.
     return (int) (long) value;
   }
@@ -1756,7 +1677,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Byte>>]
 
   public static byte $noinline$shortToCharToByte(short value) {
-    if (doThrow) { throw new Error(); }
     // Integral conversion followed by non-widening integral conversion losing bits
     // from the original type. Simplify to use only one conversion.
     return (byte) (char) value;
@@ -1773,12 +1693,67 @@ public class Main {
   /// CHECK-DAG:      {{b\d+}}          TypeConversion [<<Char>>]
 
   public static String $noinline$shortToCharToBytePrint(short value) {
-    if (doThrow) { throw new Error(); }
     // Integral conversion followed by non-widening integral conversion losing bits
     // from the original type with an extra use of the intermediate result.
     char c = (char) value;
     byte b = (byte) c;
     return "c=" + ((int) c) + ", b=" + ((int) b);  // implicit conversions.
+  }
+
+  /// CHECK-START: long Main.$noinline$intAndSmallLongConstant(int) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Arg:i\d+>>      ParameterValue
+  /// CHECK-DAG:      <<Mask:j\d+>>     LongConstant -12345678
+  /// CHECK-DAG:      <<Long:j\d+>>     TypeConversion [<<Arg>>]
+  /// CHECK-DAG:      <<And:j\d+>>      And [<<Long>>,<<Mask>>]
+  /// CHECK-DAG:                        Return [<<And>>]
+
+  /// CHECK-START: long Main.$noinline$intAndSmallLongConstant(int) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Arg:i\d+>>      ParameterValue
+  /// CHECK-DAG:      <<Mask:i\d+>>     IntConstant -12345678
+  /// CHECK-DAG:      <<And:i\d+>>      And [<<Arg>>,<<Mask>>]
+  /// CHECK-DAG:      <<Long:j\d+>>     TypeConversion [<<And>>]
+  /// CHECK-DAG:                        Return [<<Long>>]
+
+  public static long $noinline$intAndSmallLongConstant(int value) {
+    return value & -12345678L;  // Shall be simplified (constant is 32-bit).
+  }
+
+  /// CHECK-START: long Main.$noinline$intAndLargeLongConstant(int) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Arg:i\d+>>      ParameterValue
+  /// CHECK-DAG:      <<Mask:j\d+>>     LongConstant 9876543210
+  /// CHECK-DAG:      <<Long:j\d+>>     TypeConversion [<<Arg>>]
+  /// CHECK-DAG:      <<And:j\d+>>      And [<<Long>>,<<Mask>>]
+  /// CHECK-DAG:                        Return [<<And>>]
+
+  /// CHECK-START: long Main.$noinline$intAndLargeLongConstant(int) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Arg:i\d+>>      ParameterValue
+  /// CHECK-DAG:      <<Mask:j\d+>>     LongConstant 9876543210
+  /// CHECK-DAG:      <<Long:j\d+>>     TypeConversion [<<Arg>>]
+  /// CHECK-DAG:      <<And:j\d+>>      And [<<Long>>,<<Mask>>]
+  /// CHECK-DAG:                        Return [<<And>>]
+
+  public static long $noinline$intAndLargeLongConstant(int value) {
+    return value & 9876543210L;  // Shall not be simplified (constant is not 32-bit).
+  }
+
+  /// CHECK-START: long Main.$noinline$intShr28And15L(int) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Arg:i\d+>>      ParameterValue
+  /// CHECK-DAG:      <<Shift:i\d+>>    IntConstant 28
+  /// CHECK-DAG:      <<Mask:j\d+>>     LongConstant 15
+  /// CHECK-DAG:      <<Shifted:i\d+>>  Shr [<<Arg>>,<<Shift>>]
+  /// CHECK-DAG:      <<Long:j\d+>>     TypeConversion [<<Shifted>>]
+  /// CHECK-DAG:      <<And:j\d+>>      And [<<Long>>,<<Mask>>]
+  /// CHECK-DAG:                        Return [<<And>>]
+
+  /// CHECK-START: long Main.$noinline$intShr28And15L(int) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Arg:i\d+>>      ParameterValue
+  /// CHECK-DAG:      <<Shift:i\d+>>    IntConstant 28
+  /// CHECK-DAG:      <<Shifted:i\d+>>  UShr [<<Arg>>,<<Shift>>]
+  /// CHECK-DAG:      <<Long:j\d+>>     TypeConversion [<<Shifted>>]
+  /// CHECK-DAG:                        Return [<<Long>>]
+
+  public static long $noinline$intShr28And15L(int value) {
+    return (value >> 28) & 15L;
   }
 
   /// CHECK-START: byte Main.$noinline$longAnd0xffToByte(long) instruction_simplifier (before)
@@ -1798,7 +1773,6 @@ public class Main {
   /// CHECK-NOT:                        And
 
   public static byte $noinline$longAnd0xffToByte(long value) {
-    if (doThrow) { throw new Error(); }
     return (byte) (value & 0xff);
   }
 
@@ -1818,7 +1792,6 @@ public class Main {
   /// CHECK-NOT:                        And
 
   public static char $noinline$intAnd0x1ffffToChar(int value) {
-    if (doThrow) { throw new Error(); }
     // Keeping all significant bits and one more.
     return (char) (value & 0x1ffff);
   }
@@ -1838,7 +1811,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Short>>]
 
   public static short $noinline$intAnd0x17fffToShort(int value) {
-    if (doThrow) { throw new Error(); }
     // No simplification: clearing a significant bit.
     return (short) (value & 0x17fff);
   }
@@ -1857,7 +1829,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Double>>]
 
   public static double $noinline$shortAnd0xffffToShortToDouble(short value) {
-    if (doThrow) { throw new Error(); }
     short same = (short) (value & 0xffff);
     return (double) same;
   }
@@ -1873,7 +1844,6 @@ public class Main {
   /// CHECK-DAG:      <<GE:z\d+>>       GreaterThanOrEqual [<<Arg>>,<<Const42>>]
 
   public static int $noinline$intReverseCondition(int i) {
-    if (doThrow) { throw new Error(); }
     return (42 > i) ? 13 : 54;
   }
 
@@ -1888,12 +1858,10 @@ public class Main {
   /// CHECK-DAG:      <<EQ:z\d+>>       Equal [<<Result>>,<<Const42>>]
 
   public static int $noinline$intReverseConditionNaN(int i) {
-    if (doThrow) { throw new Error(); }
     return (42 != Math.sqrt(i)) ? 13 : 54;
   }
 
   public static int $noinline$runSmaliTest(String name, boolean input) {
-    if (doThrow) { throw new Error(); }
     try {
       Class<?> c = Class.forName("SmaliTests");
       Method m = c.getMethod(name, boolean.class);
@@ -1904,7 +1872,6 @@ public class Main {
   }
 
   public static boolean $noinline$runSmaliTestBoolean(String name, boolean input) {
-    if (doThrow) { throw new Error(); }
     try {
       Class<?> c = Class.forName("SmaliTests");
       Method m = c.getMethod(name, boolean.class);
@@ -1915,7 +1882,6 @@ public class Main {
   }
 
   public static int $noinline$runSmaliTestInt(String name, int arg) {
-    if (doThrow) { throw new Error(); }
     try {
       Class<?> c = Class.forName("SmaliTests");
       Method m = c.getMethod(name, int.class);
@@ -1926,7 +1892,6 @@ public class Main {
   }
 
   public static long $noinline$runSmaliTestLong(String name, long arg) {
-    if (doThrow) { throw new Error(); }
     try {
       Class<?> c = Class.forName("SmaliTests");
       Method m = c.getMethod(name, long.class);
@@ -1951,7 +1916,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Shl>>]
 
   public static int $noinline$intUnnecessaryShiftMasking(int value, int shift) {
-    if (doThrow) { throw new Error(); }
     return value << (shift & 31);
   }
 
@@ -1970,7 +1934,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Shr>>]
 
   public static long $noinline$longUnnecessaryShiftMasking(long value, int shift) {
-    if (doThrow) { throw new Error(); }
     return value >> (shift & 63);
   }
 
@@ -1989,7 +1952,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<UShr>>]
 
   public static int $noinline$intUnnecessaryWiderShiftMasking(int value, int shift) {
-    if (doThrow) { throw new Error(); }
     return value >>> (shift & 0xff);
   }
 
@@ -2010,7 +1972,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Shl>>]
 
   public static long $noinline$longSmallerShiftMasking(long value, int shift) {
-    if (doThrow) { throw new Error(); }
     return value << (shift & 3);
   }
 
@@ -2033,7 +1994,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Add>>]
 
   public static int $noinline$otherUseOfUnnecessaryShiftMasking(int value, int shift) {
-    if (doThrow) { throw new Error(); }
     int temp = shift & 31;
     return (value >> temp) + temp;
   }
@@ -2066,7 +2026,6 @@ public class Main {
   /// CHECK-DAG:                        Shr [<<Value>>,<<Shift>>]
 
   public static int $noinline$intUnnecessaryShiftModifications(int value, int shift) {
-    if (doThrow) { throw new Error(); }
     int c128 = 128;
     return (value << (shift | 32)) +
            (value >> (shift ^ 64)) +
@@ -2108,7 +2067,6 @@ public class Main {
   /// CHECK-DAG:                        Shl [<<Value>>,<<Sub>>]
 
   public static int $noinline$intNecessaryShiftModifications(int value, int shift) {
-    if (doThrow) { throw new Error(); }
     int c129 = 129;
     return (value << (shift | 33)) +
            (value >> (shift ^ 65)) +
@@ -2130,7 +2088,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Y>>]
 
   public static int $noinline$intAddSubSimplifyArg1(int x, int y) {
-    if (doThrow) { throw new Error(); }
     int sum = x + y;
     return sum - x;
   }
@@ -2149,7 +2106,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<X>>]
 
   public static int $noinline$intAddSubSimplifyArg2(int x, int y) {
-    if (doThrow) { throw new Error(); }
     int sum = x + y;
     return sum - y;
   }
@@ -2168,7 +2124,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<X>>]
 
   public static int $noinline$intSubAddSimplifyLeft(int x, int y) {
-    if (doThrow) { throw new Error(); }
     int sub = x - y;
     return sub + y;
   }
@@ -2187,7 +2142,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<X>>]
 
   public static int $noinline$intSubAddSimplifyRight(int x, int y) {
-    if (doThrow) { throw new Error(); }
     int sub = x - y;
     return y + sub;
   }
@@ -2207,7 +2161,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Res>>]
 
   public static float $noinline$floatAddSubSimplifyArg1(float x, float y) {
-    if (doThrow) { throw new Error(); }
     float sum = x + y;
     return sum - x;
   }
@@ -2227,7 +2180,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Res>>]
 
   public static float $noinline$floatAddSubSimplifyArg2(float x, float y) {
-    if (doThrow) { throw new Error(); }
     float sum = x + y;
     return sum - y;
   }
@@ -2247,7 +2199,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Res>>]
 
   public static float $noinline$floatSubAddSimplifyLeft(float x, float y) {
-    if (doThrow) { throw new Error(); }
     float sub = x - y;
     return sub + y;
   }
@@ -2267,7 +2218,6 @@ public class Main {
   /// CHECK-DAG:                        Return [<<Res>>]
 
   public static float $noinline$floatSubAddSimplifyRight(float x, float y) {
-    if (doThrow) { throw new Error(); }
     float sub = x - y;
     return y + sub;
   }
@@ -2309,9 +2259,9 @@ public class Main {
     assertIntEquals(1, $noinline$NegSub1(arg, arg + 1));
     assertIntEquals(1, $noinline$NegSub2(arg, arg + 1));
     assertLongEquals(arg, $noinline$NotNot1(arg));
-    assertLongEquals(arg, $noinline$runSmaliTestLong("NotNot1", arg));
+    assertLongEquals(arg, $noinline$runSmaliTestLong("$noinline$NotNot1", arg));
     assertIntEquals(-1, $noinline$NotNot2(arg));
-    assertIntEquals(-1, $noinline$runSmaliTestInt("NotNot2", arg));
+    assertIntEquals(-1, $noinline$runSmaliTestInt("$noinline$NotNot2", arg));
     assertIntEquals(-(arg + arg + 1), $noinline$SubNeg1(arg, arg + 1));
     assertIntEquals(-(arg + arg + 1), $noinline$SubNeg2(arg, arg + 1));
     assertLongEquals(-(2 * arg + 1), $noinline$SubNeg3(arg, arg + 1));
@@ -2320,9 +2270,9 @@ public class Main {
     assertBooleanEquals(false, $noinline$NotEqualBoolVsIntConst(false));
     assertBooleanEquals(false, $noinline$NotEqualBoolVsIntConst(false));
     assertBooleanEquals(true, $noinline$NotNotBool(true));
-    assertBooleanEquals(true, $noinline$runSmaliTestBoolean("NotNotBool", true));
+    assertBooleanEquals(true, $noinline$runSmaliTestBoolean("$noinline$NotNotBool", true));
     assertBooleanEquals(false, $noinline$NotNotBool(false));
-    assertBooleanEquals(false, $noinline$runSmaliTestBoolean("NotNotBool", false));
+    assertBooleanEquals(false, $noinline$runSmaliTestBoolean("$noinline$NotNotBool", false));
     assertFloatEquals(50.0f, $noinline$Div2(100.0f));
     assertDoubleEquals(75.0, $noinline$Div2(150.0));
     assertFloatEquals(-400.0f, $noinline$DivMP25(100.0f));
@@ -2400,6 +2350,12 @@ public class Main {
     assertStringEquals("c=1025, b=1", $noinline$shortToCharToBytePrint((short) 1025));
     assertStringEquals("c=1023, b=-1", $noinline$shortToCharToBytePrint((short) 1023));
     assertStringEquals("c=65535, b=-1", $noinline$shortToCharToBytePrint((short) -1));
+
+    assertLongEquals(0x55411410L, $noinline$intAndSmallLongConstant(0x55555555));
+    assertLongEquals(0xffffffffaa028aa2L, $noinline$intAndSmallLongConstant(0xaaaaaaaa));
+    assertLongEquals(0x44101440L, $noinline$intAndLargeLongConstant(0x55555555));
+    assertLongEquals(0x208a002aaL, $noinline$intAndLargeLongConstant(0xaaaaaaaa));
+    assertLongEquals(7L, $noinline$intShr28And15L(0x76543210));
 
     assertIntEquals(0x21, $noinline$longAnd0xffToByte(0x1234432112344321L));
     assertIntEquals(0, $noinline$longAnd0xffToByte(Long.MIN_VALUE));
