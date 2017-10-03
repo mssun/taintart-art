@@ -594,6 +594,10 @@ bool DoInvokePolymorphic(Thread* self,
                          uint16_t inst_data,
                          JValue* result)
     REQUIRES_SHARED(Locks::mutator_lock_) {
+  // Make sure to check for async exceptions
+  if (UNLIKELY(self->ObserveAsyncException())) {
+    return false;
+  }
   // Invoke-polymorphic instructions always take a receiver. i.e, they are never static.
   const uint32_t vRegC = (is_range) ? inst->VRegC_4rcc() : inst->VRegC_45cc();
   const int invoke_method_idx = (is_range) ? inst->VRegB_4rcc() : inst->VRegB_45cc();
@@ -899,6 +903,10 @@ bool DoInvokeCustom(Thread* self,
                     uint16_t inst_data,
                     JValue* result)
     REQUIRES_SHARED(Locks::mutator_lock_) {
+  // Make sure to check for async exceptions
+  if (UNLIKELY(self->ObserveAsyncException())) {
+    return false;
+  }
   // invoke-custom is not supported in transactions. In transactions
   // there is a limited set of types supported. invoke-custom allows
   // running arbitrary code and instantiating arbitrary types.
