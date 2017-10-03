@@ -34,7 +34,7 @@ namespace art {
 #define CHECK_INTRINSICS_ENUM_VALUES(Name, IsStatic, NeedsEnvironmentOrCache, SideEffects, Exceptions, ...) \
   static_assert( \
       static_cast<uint32_t>(Intrinsics::k ## Name) <= (kAccIntrinsicBits >> CTZ(kAccIntrinsicBits)), \
-      "Instrinsics enumeration space overflow: ");
+      "Instrinsics enumeration space overflow.");
 #include "intrinsics_list.h"
   INTRINSICS_LIST(CHECK_INTRINSICS_ENUM_VALUES)
 #undef INTRINSICS_LIST
