@@ -27,7 +27,12 @@
 
 #include <sstream>
 
-#include "android-base/stringprintf.h"
+#include <android-base/stringprintf.h>
+
+#if defined(ART_TARGET_ANDROID)
+#include <tombstoned/tombstoned.h>
+#endif
+
 #include "arch/instruction_set.h"
 #include "base/time_utils.h"
 #include "base/unix_file/fd_file.h"
@@ -41,10 +46,6 @@
 #include "thread.h"
 #include "thread_list.h"
 #include "utils.h"
-
-#if defined(ART_TARGET_ANDROID)
-#include "tombstoned/tombstoned.h"
-#endif
 
 namespace art {
 
