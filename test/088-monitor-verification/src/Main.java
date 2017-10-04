@@ -40,6 +40,8 @@ public class Main {
         ensureJitCompiled(Main.class, "notExcessiveNesting");
         ensureJitCompiled(Main.class, "notNested");
         ensureJitCompiled(TwoPath.class, "twoPath");
+        ensureJitCompiled(Class.forName("OK"), "runNoMonitors");
+        ensureJitCompiled(Class.forName("OK"), "runStraightLine");
         ensureJitCompiled(Class.forName("OK"), "runBalancedJoin");
 
         Main m = new Main();
