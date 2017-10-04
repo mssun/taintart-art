@@ -274,4 +274,15 @@ TEST_F(FdFileTest, Compare) {
   EXPECT_EQ(reset_compare(tmp, tmp6), 0);
 }
 
+TEST_F(FdFileTest, PipeFlush) {
+  int pipefd[2];
+  ASSERT_EQ(0, pipe2(pipefd, O_CLOEXEC));
+
+  FdFile file(pipefd[1], true);
+  ASSERT_TRUE(file.WriteFully("foo", 3));
+  ASSERT_EQ(0, file.Flush());
+  ASSERT_EQ(0, file.FlushCloseOrErase());
+  close(pipefd[0]);
+}
+
 }  // namespace unix_file
