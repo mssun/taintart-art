@@ -638,7 +638,7 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
     Runtime* runtime = Runtime::Current();
     if (UNLIKELY(runtime == nullptr)) {
       // This must be oatdump without boot image. Make sure the .bss is inaccessible.
-      mprotect(const_cast<uint8_t*>(BssBegin()), BssSize(), PROT_NONE);
+      CheckedCall(mprotect, "protect bss", const_cast<uint8_t*>(BssBegin()), BssSize(), PROT_NONE);
     } else {
       // Map boot image tables into the .bss. The reserved size must match size of the tables.
       size_t reserved_size = static_cast<size_t>(boot_image_tables_end - boot_image_tables);

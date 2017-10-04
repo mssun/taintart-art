@@ -453,7 +453,7 @@ size_t FreeListSpace::Free(Thread* self, mirror::Object* obj) {
   madvise(obj, allocation_size, MADV_DONTNEED);
   if (kIsDebugBuild) {
     // Can't disallow reads since we use them to find next chunks during coalescing.
-    mprotect(obj, allocation_size, PROT_READ);
+    CheckedCall(mprotect, __FUNCTION__, obj, allocation_size, PROT_READ);
   }
   return allocation_size;
 }
@@ -519,7 +519,7 @@ mirror::Object* FreeListSpace::Alloc(Thread* self, size_t num_bytes, size_t* byt
   // We always put our object at the start of the free block, there cannot be another free block
   // before it.
   if (kIsDebugBuild) {
-    mprotect(obj, allocation_size, PROT_READ | PROT_WRITE);
+    CheckedCall(mprotect, __FUNCTION__, obj, allocation_size, PROT_READ | PROT_WRITE);
   }
   new_info->SetPrevFreeBytes(0);
   new_info->SetByteSize(allocation_size, false);
