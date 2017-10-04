@@ -1768,7 +1768,11 @@ bool ClassLinker::AddImageSpace(
     // We cannot do that for app image even after the fixup as some interned
     // String references may actually end up pointing to moveable Strings.
     uint8_t* const_section_begin = space->Begin() + header.GetBootImageConstantTablesOffset();
-    mprotect(const_section_begin, header.GetBootImageConstantTablesSize(), PROT_READ);
+    CheckedCall(mprotect,
+                "protect constant tables",
+                const_section_begin,
+                header.GetBootImageConstantTablesSize(),
+                PROT_READ);
   }
 
   ClassTable* class_table = nullptr;

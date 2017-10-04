@@ -31,6 +31,7 @@
 #include "base/time_utils.h"
 #include "runtime.h"
 #include "thread-current-inl.h"
+#include "utils.h"
 
 namespace art {
 
@@ -49,8 +50,11 @@ ThreadPoolWorker::ThreadPoolWorker(ThreadPool* thread_pool, const std::string& n
                                     false, false, &error_msg));
   CHECK(stack_.get() != nullptr) << error_msg;
   CHECK_ALIGNED(stack_->Begin(), kPageSize);
-  int mprotect_result = mprotect(stack_->Begin(), kPageSize, PROT_NONE);
-  CHECK_EQ(mprotect_result, 0) << "Failed to mprotect() bottom page of thread pool worker stack.";
+  CheckedCall(mprotect,
+              "mprotect bottom page of thread pool worker stack",
+              stack_->Begin(),
+              kPageSize,
+              PROT_NONE);
   const char* reason = "new thread pool worker thread";
   pthread_attr_t attr;
   CHECK_PTHREAD_CALL(pthread_attr_init, (&attr), reason);

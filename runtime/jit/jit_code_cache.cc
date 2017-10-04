@@ -51,15 +51,6 @@ static constexpr int kProtCode = PROT_READ | PROT_EXEC;
 static constexpr size_t kCodeSizeLogThreshold = 50 * KB;
 static constexpr size_t kStackMapSizeLogThreshold = 50 * KB;
 
-#define CHECKED_MPROTECT(memory, size, prot)                \
-  do {                                                      \
-    int rc = mprotect(memory, size, prot);                  \
-    if (UNLIKELY(rc != 0)) {                                \
-      errno = rc;                                           \
-      PLOG(FATAL) << "Failed to mprotect jit code cache";   \
-    }                                                       \
-  } while (false)                                           \
-
 JitCodeCache* JitCodeCache::Create(size_t initial_capacity,
                                    size_t max_capacity,
                                    bool generate_debug_info,
@@ -173,8 +164,16 @@ JitCodeCache::JitCodeCache(MemMap* code_map,
 
   SetFootprintLimit(current_capacity_);
 
-  CHECKED_MPROTECT(code_map_->Begin(), code_map_->Size(), kProtCode);
-  CHECKED_MPROTECT(data_map_->Begin(), data_map_->Size(), kProtData);
+  CheckedCall(mprotect,
+              "mprotect jit code cache",
+              code_map_->Begin(),
+              code_map_->Size(),
+              kProtCode);
+  CheckedCall(mprotect,
+              "mprotect jit data cache",
+              data_map_->Begin(),
+              data_map_->Size(),
+              kProtData);
 
   VLOG(jit) << "Created jit code cache: initial data size="
             << PrettySize(initial_data_capacity)
@@ -203,14 +202,21 @@ class ScopedCodeCacheWrite : ScopedTrace {
         code_map_(code_map),
         only_for_tlb_shootdown_(only_for_tlb_shootdown) {
     ScopedTrace trace("mprotect all");
-    CHECKED_MPROTECT(
-        code_map_->Begin(), only_for_tlb_shootdown_ ? kPageSize : code_map_->Size(), kProtAll);
+    CheckedCall(mprotect,
+                "make code writable",
+                code_map_->Begin(),
+                only_for_tlb_shootdown_ ? kPageSize : code_map_->Size(),
+                kProtAll);
   }
   ~ScopedCodeCacheWrite() {
     ScopedTrace trace("mprotect code");
-    CHECKED_MPROTECT(
-        code_map_->Begin(), only_for_tlb_shootdown_ ? kPageSize : code_map_->Size(), kProtCode);
+    CheckedCall(mprotect,
+                "make code protected",
+                code_map_->Begin(),
+                only_for_tlb_shootdown_ ? kPageSize : code_map_->Size(),
+                kProtCode);
   }
+
  private:
   MemMap* const code_map_;
 
