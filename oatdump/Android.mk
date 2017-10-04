@@ -83,10 +83,3 @@ dump-oat-boot: dump-oat-boot-$(TARGET_ARCH)
 ifdef TARGET_2ND_ARCH
 dump-oat-boot: dump-oat-boot-$(TARGET_2ND_ARCH)
 endif
-
-.PHONY: dump-oat-Calculator
-ifeq ($(ART_BUILD_TARGET_NDEBUG),true)
-dump-oat-Calculator: $(TARGET_OUT_APPS)/Calculator.odex $(DEFAULT_DEX_PREOPT_BUILT_IMAGE) $(OATDUMP)
-	$(OATDUMP) --oat-file=$< --output=$(ART_DUMP_OAT_PATH)/Calculator.oatdump.txt
-	@echo Output in $(ART_DUMP_OAT_PATH)/Calculator.oatdump.txt
-endif
