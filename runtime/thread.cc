@@ -1451,21 +1451,25 @@ class BarrierClosure : public Closure {
   Barrier barrier_;
 };
 
+// RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
 bool Thread::RequestSynchronousCheckpoint(Closure* function) {
+  Thread* self = Thread::Current();
   if (this == Thread::Current()) {
+    Locks::thread_list_lock_->AssertExclusiveHeld(self);
+    // Unlock the tll before running so that the state is the same regardless of thread.
+    Locks::thread_list_lock_->ExclusiveUnlock(self);
     // Asked to run on this thread. Just run.
     function->Run(this);
     return true;
   }
-  Thread* self = Thread::Current();
 
   // The current thread is not this thread.
 
   if (GetState() == ThreadState::kTerminated) {
+    Locks::thread_list_lock_->ExclusiveUnlock(self);
     return false;
   }
 
-  // Note: we're holding the thread-list lock. The thread cannot die at this point.
   struct ScopedThreadListLockUnlock {
     explicit ScopedThreadListLockUnlock(Thread* self_in) RELEASE(*Locks::thread_list_lock_)
         : self_thread(self_in) {
@@ -1482,6 +1486,7 @@ bool Thread::RequestSynchronousCheckpoint(Closure* function) {
   };
 
   for (;;) {
+    Locks::thread_list_lock_->AssertExclusiveHeld(self);
     // If this thread is runnable, try to schedule a checkpoint. Do some gymnastics to not hold the
     // suspend-count lock for too long.
     if (GetState() == ThreadState::kRunnable) {
@@ -1492,8 +1497,9 @@ bool Thread::RequestSynchronousCheckpoint(Closure* function) {
         installed = RequestCheckpoint(&barrier_closure);
       }
       if (installed) {
-        // Relinquish the thread-list lock, temporarily. We should not wait holding any locks.
-        ScopedThreadListLockUnlock stllu(self);
+        // Relinquish the thread-list lock. We should not wait holding any locks. We cannot
+        // reacquire it since we don't know if 'this' hasn't been deleted yet.
+        Locks::thread_list_lock_->ExclusiveUnlock(self);
         ScopedThreadSuspension sts(self, ThreadState::kWaiting);
         barrier_closure.Wait(self);
         return true;
@@ -1515,6 +1521,8 @@ bool Thread::RequestSynchronousCheckpoint(Closure* function) {
     }
 
     {
+      // Release for the wait. The suspension will keep us from being deleted. Reacquire after so
+      // that we can call ModifySuspendCount without racing against ThreadList::Unregister.
       ScopedThreadListLockUnlock stllu(self);
       {
         ScopedThreadSuspension sts(self, ThreadState::kWaiting);
@@ -1542,6 +1550,9 @@ bool Thread::RequestSynchronousCheckpoint(Closure* function) {
       MutexLock mu2(self, *Locks::thread_suspend_count_lock_);
       Thread::resume_cond_->Broadcast(self);
     }
+
+    // Release the thread_list_lock_ to be consistent with the barrier-closure path.
+    Locks::thread_list_lock_->ExclusiveUnlock(self);
 
     return true;  // We're done, break out of the loop.
   }

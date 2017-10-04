@@ -963,12 +963,14 @@ jvmtiError ThreadUtil::StopThread(jvmtiEnv* env ATTRIBUTE_UNUSED,
     return ERR(INVALID_OBJECT);
   }
   art::Handle<art::mirror::Throwable> exc(hs.NewHandle(obj->AsThrowable()));
-  art::MutexLock tll_mu(self, *art::Locks::thread_list_lock_);
+  art::Locks::thread_list_lock_->ExclusiveLock(self);
   art::Thread* target = nullptr;
   jvmtiError err = ERR(INTERNAL);
   if (!GetAliveNativeThread(thread, soa, &target, &err)) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(self);
     return err;
   } else if (target->GetState() == art::ThreadState::kStarting || target->IsStillStarting()) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(self);
     return ERR(THREAD_NOT_ALIVE);
   }
   struct StopThreadClosure : public art::Closure {
@@ -987,6 +989,7 @@ jvmtiError ThreadUtil::StopThread(jvmtiEnv* env ATTRIBUTE_UNUSED,
     art::Handle<art::mirror::Throwable> exception_;
   };
   StopThreadClosure c(exc);
+  // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
   if (target->RequestSynchronousCheckpoint(&c)) {
     return OK;
   } else {
