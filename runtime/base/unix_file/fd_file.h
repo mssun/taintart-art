@@ -94,6 +94,7 @@ class FdFile : public RandomAccessFile {
   int SetLength(int64_t new_length) OVERRIDE WARN_UNUSED;
   int64_t GetLength() const OVERRIDE;
   int64_t Write(const char* buf, int64_t byte_count, int64_t offset) OVERRIDE WARN_UNUSED;
+
   int Flush() OVERRIDE WARN_UNUSED;
 
   // Short for SetLength(0); Flush(); Close();
