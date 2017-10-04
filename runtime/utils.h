@@ -338,6 +338,15 @@ inline static int32_t Signum(T opnd) {
 // Madvise the largest page aligned region within begin and end.
 int MadviseLargestPageAlignedRegion(const uint8_t* begin, const uint8_t* end, int advice);
 
+template <typename Func, typename... Args>
+static inline void CheckedCall(const Func& function, const char* what, Args... args) {
+  int rc = function(args...);
+  if (UNLIKELY(rc != 0)) {
+    errno = rc;
+    PLOG(FATAL) << "Checked call failed for " << what;
+  }
+}
+
 }  // namespace art
 
 #endif  // ART_RUNTIME_UTILS_H_
