@@ -425,8 +425,13 @@ std::vector<std::unique_ptr<const DexFile>> OatFileManager::OpenDexFilesFromOat(
     // Update the oat file on disk if we can, based on the --compiler-filter
     // option derived from the current runtime options.
     // This may fail, but that's okay. Best effort is all that matters here.
-    switch (oat_file_assistant.MakeUpToDate(/*profile_changed*/false,
-                                            context.get(),
+    // TODO(calin): b/64530081 b/66984396. Pass a null context to verify and compile
+    // secondary dex files in isolation (and avoid to extract/verify the main apk
+    // if it's in the class path). Note this trades correctness for performance
+    // since the resulting slow down is unacceptable in some cases until b/64530081
+    // is fixed.
+    switch (oat_file_assistant.MakeUpToDate(/*profile_changed*/ false,
+                                            /*class_loader_context*/ nullptr,
                                             /*out*/ &error_msg)) {
       case OatFileAssistant::kUpdateFailed:
         LOG(WARNING) << error_msg;
