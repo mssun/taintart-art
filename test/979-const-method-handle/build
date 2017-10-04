@@ -17,6 +17,6 @@
 # Stop if something fails.
 set -e
 
-${DX} --dex --min-sdk-version=27 --output=classes.dex classes
+${DX} --dex --min-sdk-version=28 --output=classes.dex classes
 
 zip $TEST_NAME.jar classes.dex
