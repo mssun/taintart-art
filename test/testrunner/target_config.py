@@ -66,6 +66,13 @@ target_config = {
             'ART_USE_READ_BARRIER' : 'true'
         }
     },
+    'art-pictest' : {
+        'run-test' : ['--pictest',
+                      '--optimizing'],
+        'env' : {
+            'ART_USE_READ_BARRIER' : 'true'
+        }
+    },
     'art-gcstress-gcverify': {
         'run-test': ['--gcstress',
                      '--gcverify'],
