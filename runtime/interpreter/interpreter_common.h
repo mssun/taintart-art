@@ -169,6 +169,10 @@ static inline bool DoInvoke(Thread* self,
                             const Instruction* inst,
                             uint16_t inst_data,
                             JValue* result) {
+  // Make sure to check for async exceptions before anything else.
+  if (UNLIKELY(self->ObserveAsyncException())) {
+    return false;
+  }
   const uint32_t method_idx = (is_range) ? inst->VRegB_3rc() : inst->VRegB_35c();
   const uint32_t vregC = (is_range) ? inst->VRegC_3rc() : inst->VRegC_35c();
   ObjPtr<mirror::Object> receiver = (type == kStatic) ? nullptr : shadow_frame.GetVRegReference(vregC);
@@ -200,6 +204,25 @@ static inline bool DoInvoke(Thread* self,
     return DoCall<is_range, do_access_check>(called_method, self, shadow_frame, inst, inst_data,
                                              result);
   }
+}
+
+static inline mirror::MethodHandle* ResolveMethodHandle(uint32_t method_handle_index,
+                                                        ArtMethod* referrer)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  return class_linker->ResolveMethodHandle(method_handle_index, referrer);
+}
+
+static inline mirror::MethodType* ResolveMethodType(Thread* self,
+                                                    uint32_t method_type_index,
+                                                    ArtMethod* referrer)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  const DexFile* dex_file = referrer->GetDexFile();
+  StackHandleScope<2> hs(self);
+  Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
+  Handle<mirror::ClassLoader> class_loader(hs.NewHandle(referrer->GetClassLoader()));
+  return class_linker->ResolveMethodType(*dex_file, method_type_index, dex_cache, class_loader);
 }
 
 // Performs a signature polymorphic invoke (invoke-polymorphic/invoke-polymorphic-range).

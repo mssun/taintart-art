@@ -93,6 +93,9 @@ class ThreadUtil {
                                      const jthread* threads,
                                      jvmtiError* results);
 
+  static jvmtiError StopThread(jvmtiEnv* env, jthread thr, jobject exception);
+  static jvmtiError InterruptThread(jvmtiEnv* env, jthread thr);
+
   // Returns true if we decoded the thread and it is alive, false otherwise with an appropriate
   // error placed into 'err'. A thread is alive if it has had it's 'start' function called and has
   // (or at least could have) executed managed code and has not yet returned past it's first managed

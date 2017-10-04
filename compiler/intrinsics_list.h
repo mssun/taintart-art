@@ -158,7 +158,12 @@
   V(UnsafeFullFence, kVirtual, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Lsun/misc/Unsafe;", "fullFence", "()V") \
   V(ReferenceGetReferent, kDirect, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/ref/Reference;", "getReferent", "()Ljava/lang/Object;") \
   V(IntegerValueOf, kStatic, kNeedsEnvironmentOrCache, kNoSideEffects, kNoThrow, "Ljava/lang/Integer;", "valueOf", "(I)Ljava/lang/Integer;") \
-  V(ThreadInterrupted, kStatic, kNeedsEnvironmentOrCache, kAllSideEffects, kNoThrow, "Ljava/lang/Thread;", "interrupted", "()Z")
+  V(ThreadInterrupted, kStatic, kNeedsEnvironmentOrCache, kAllSideEffects, kNoThrow, "Ljava/lang/Thread;", "interrupted", "()Z") \
+  V(VarHandleFullFence, kStatic, kNeedsEnvironmentOrCache, kWriteSideEffects, kNoThrow, "Ljava/lang/invoke/VarHandle;", "fullFence", "()V") \
+  V(VarHandleAcquireFence, kStatic, kNeedsEnvironmentOrCache, kWriteSideEffects, kNoThrow, "Ljava/lang/invoke/VarHandle;", "acquireFence", "()V") \
+  V(VarHandleReleaseFence, kStatic, kNeedsEnvironmentOrCache, kWriteSideEffects, kNoThrow, "Ljava/lang/invoke/VarHandle;", "releaseFence", "()V") \
+  V(VarHandleLoadLoadFence, kStatic, kNeedsEnvironmentOrCache, kWriteSideEffects, kNoThrow, "Ljava/lang/invoke/VarHandle;", "loadLoadFence", "()V") \
+  V(VarHandleStoreStoreFence, kStatic, kNeedsEnvironmentOrCache, kReadSideEffects, kNoThrow, "Ljava/lang/invoke/VarHandle;", "storeStoreFence", "()V") \
 
 #endif  // ART_COMPILER_INTRINSICS_LIST_H_
 #undef ART_COMPILER_INTRINSICS_LIST_H_   // #define is only for lint.

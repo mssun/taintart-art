@@ -32,6 +32,7 @@ void LocationsBuilderMIPS64::VisitVecReplicateScalar(HVecReplicateScalar* instru
   LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -56,6 +57,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecReplicateScalar(HVecReplicateScalar
   VectorRegister dst = VectorRegisterFrom(locations->Out());
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ FillB(dst, locations->InAt(0).AsRegister<GpuRegister>());
@@ -109,6 +111,7 @@ static void CreateVecUnOpLocations(ArenaAllocator* arena, HVecUnaryOperation* in
                         instruction->IsVecNot() ? Location::kOutputOverlap
                                                 : Location::kNoOutputOverlap);
       break;
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -164,6 +167,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecNeg(HVecNeg* instruction) {
   VectorRegister src = VectorRegisterFrom(locations->InAt(0));
   VectorRegister dst = VectorRegisterFrom(locations->Out());
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ FillB(dst, ZERO);
@@ -215,7 +219,6 @@ void InstructionCodeGeneratorMIPS64::VisitVecAbs(HVecAbs* instruction) {
       __ FillB(dst, ZERO);       // all zeroes
       __ Add_aB(dst, dst, src);  // dst = abs(0) + abs(src)
       break;
-    case DataType::Type::kUint16:
     case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
       __ FillH(dst, ZERO);       // all zeroes
@@ -263,6 +266,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecNot(HVecNot* instruction) {
       __ LdiB(dst, 1);
       __ XorV(dst, dst, src);
       break;
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -285,6 +289,7 @@ static void CreateVecBinOpLocations(ArenaAllocator* arena, HVecBinaryOperation* 
   LocationSummary* locations = new (arena) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -312,6 +317,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecAdd(HVecAdd* instruction) {
   VectorRegister rhs = VectorRegisterFrom(locations->InAt(1));
   VectorRegister dst = VectorRegisterFrom(locations->Out());
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ AddvB(dst, lhs, rhs);
@@ -353,30 +359,29 @@ void InstructionCodeGeneratorMIPS64::VisitVecHalvingAdd(HVecHalvingAdd* instruct
   VectorRegister rhs = VectorRegisterFrom(locations->InAt(1));
   VectorRegister dst = VectorRegisterFrom(locations->Out());
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
+      DCHECK_EQ(16u, instruction->GetVectorLength());
+      instruction->IsRounded()
+          ? __ Aver_uB(dst, lhs, rhs)
+          : __ Ave_uB(dst, lhs, rhs);
+      break;
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        instruction->IsRounded()
-            ? __ Aver_uB(dst, lhs, rhs)
-            : __ Ave_uB(dst, lhs, rhs);
-      } else {
-        instruction->IsRounded()
-            ? __ Aver_sB(dst, lhs, rhs)
-            : __ Ave_sB(dst, lhs, rhs);
-      }
+      instruction->IsRounded()
+          ? __ Aver_sB(dst, lhs, rhs)
+          : __ Ave_sB(dst, lhs, rhs);
       break;
     case DataType::Type::kUint16:
+      DCHECK_EQ(8u, instruction->GetVectorLength());
+      instruction->IsRounded()
+          ? __ Aver_uH(dst, lhs, rhs)
+          : __ Ave_uH(dst, lhs, rhs);
+      break;
     case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        instruction->IsRounded()
-            ? __ Aver_uH(dst, lhs, rhs)
-            : __ Ave_uH(dst, lhs, rhs);
-      } else {
-        instruction->IsRounded()
-            ? __ Aver_sH(dst, lhs, rhs)
-            : __ Ave_sH(dst, lhs, rhs);
-      }
+      instruction->IsRounded()
+          ? __ Aver_sH(dst, lhs, rhs)
+          : __ Ave_sH(dst, lhs, rhs);
       break;
     default:
       LOG(FATAL) << "Unsupported SIMD type";
@@ -394,6 +399,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecSub(HVecSub* instruction) {
   VectorRegister rhs = VectorRegisterFrom(locations->InAt(1));
   VectorRegister dst = VectorRegisterFrom(locations->Out());
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ SubvB(dst, lhs, rhs);
@@ -435,6 +441,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecMul(HVecMul* instruction) {
   VectorRegister rhs = VectorRegisterFrom(locations->InAt(1));
   VectorRegister dst = VectorRegisterFrom(locations->Out());
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ MulvB(dst, lhs, rhs);
@@ -500,22 +507,21 @@ void InstructionCodeGeneratorMIPS64::VisitVecMin(HVecMin* instruction) {
   VectorRegister rhs = VectorRegisterFrom(locations->InAt(1));
   VectorRegister dst = VectorRegisterFrom(locations->Out());
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
+      DCHECK_EQ(16u, instruction->GetVectorLength());
+      __ Min_uB(dst, lhs, rhs);
+      break;
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ Min_uB(dst, lhs, rhs);
-      } else {
-        __ Min_sB(dst, lhs, rhs);
-      }
+      __ Min_sB(dst, lhs, rhs);
       break;
     case DataType::Type::kUint16:
+      DCHECK_EQ(8u, instruction->GetVectorLength());
+      __ Min_uH(dst, lhs, rhs);
+      break;
     case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ Min_uH(dst, lhs, rhs);
-      } else {
-        __ Min_sH(dst, lhs, rhs);
-      }
+      __ Min_sH(dst, lhs, rhs);
       break;
     case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
@@ -561,22 +567,21 @@ void InstructionCodeGeneratorMIPS64::VisitVecMax(HVecMax* instruction) {
   VectorRegister rhs = VectorRegisterFrom(locations->InAt(1));
   VectorRegister dst = VectorRegisterFrom(locations->Out());
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
+      DCHECK_EQ(16u, instruction->GetVectorLength());
+      __ Max_uB(dst, lhs, rhs);
+      break;
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ Max_uB(dst, lhs, rhs);
-      } else {
-        __ Max_sB(dst, lhs, rhs);
-      }
+      __ Max_sB(dst, lhs, rhs);
       break;
     case DataType::Type::kUint16:
+      DCHECK_EQ(8u, instruction->GetVectorLength());
+      __ Max_uH(dst, lhs, rhs);
+      break;
     case DataType::Type::kInt16:
       DCHECK_EQ(8u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ Max_uH(dst, lhs, rhs);
-      } else {
-        __ Max_sH(dst, lhs, rhs);
-      }
+      __ Max_sH(dst, lhs, rhs);
       break;
     case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
@@ -623,6 +628,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecAnd(HVecAnd* instruction) {
   VectorRegister dst = VectorRegisterFrom(locations->Out());
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -659,6 +665,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecOr(HVecOr* instruction) {
   VectorRegister dst = VectorRegisterFrom(locations->Out());
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -687,6 +694,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecXor(HVecXor* instruction) {
   VectorRegister dst = VectorRegisterFrom(locations->Out());
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -708,6 +716,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecXor(HVecXor* instruction) {
 static void CreateVecShiftLocations(ArenaAllocator* arena, HVecBinaryOperation* instruction) {
   LocationSummary* locations = new (arena) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -733,6 +742,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecShl(HVecShl* instruction) {
   VectorRegister dst = VectorRegisterFrom(locations->Out());
   int32_t value = locations->InAt(1).GetConstant()->AsIntConstant()->GetValue();
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ SlliB(dst, lhs, value);
@@ -766,6 +776,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecShr(HVecShr* instruction) {
   VectorRegister dst = VectorRegisterFrom(locations->Out());
   int32_t value = locations->InAt(1).GetConstant()->AsIntConstant()->GetValue();
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ SraiB(dst, lhs, value);
@@ -799,6 +810,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecUShr(HVecUShr* instruction) {
   VectorRegister dst = VectorRegisterFrom(locations->Out());
   int32_t value = locations->InAt(1).GetConstant()->AsIntConstant()->GetValue();
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ SrliB(dst, lhs, value);
@@ -834,6 +846,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecSetScalars(HVecSetScalars* instruct
 static void CreateVecAccumLocations(ArenaAllocator* arena, HVecOperation* instruction) {
   LocationSummary* locations = new (arena) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -860,6 +873,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecMultiplyAccumulate(HVecMultiplyAccu
   VectorRegister left = VectorRegisterFrom(locations->InAt(1));
   VectorRegister right = VectorRegisterFrom(locations->InAt(2));
   switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       if (instruction->GetOpKind() == HInstruction::kAdd) {
@@ -915,6 +929,7 @@ static void CreateVecMemLocations(ArenaAllocator* arena,
   LocationSummary* locations = new (arena) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -980,6 +995,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecLoad(HVecLoad* instruction) {
   int32_t offset = VecAddress(locations, size, &base);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ LdB(reg, base, offset);
@@ -1022,6 +1038,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecStore(HVecStore* instruction) {
   int32_t offset = VecAddress(locations, size, &base);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
       DCHECK_EQ(16u, instruction->GetVectorLength());
       __ StB(reg, base, offset);

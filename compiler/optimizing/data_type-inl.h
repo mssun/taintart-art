@@ -46,17 +46,19 @@ constexpr DataType::Type DataType::FromShorty(char type) {
 
 constexpr char DataType::TypeId(DataType::Type type) {
   // Type id for visualizer.
+  // Types corresponding to Java types are given a lower-case version of their shorty character.
   switch (type) {
-    case DataType::Type::kBool: return 'z';
-    case DataType::Type::kInt8: return 'b';
-    case DataType::Type::kUint16: return 'c';
-    case DataType::Type::kInt16: return 's';
-    case DataType::Type::kInt32: return 'i';
-    case DataType::Type::kInt64: return 'j';
-    case DataType::Type::kFloat32: return 'f';
-    case DataType::Type::kFloat64: return 'd';
-    case DataType::Type::kReference: return 'l';
-    case DataType::Type::kVoid: return 'v';
+    case DataType::Type::kBool: return 'z';       // Java boolean (Z).
+    case DataType::Type::kUint8: return 'a';      // The character before Java byte's 'b'.
+    case DataType::Type::kInt8: return 'b';       // Java byte (B).
+    case DataType::Type::kUint16: return 'c';     // Java char (C).
+    case DataType::Type::kInt16: return 's';      // Java short (S).
+    case DataType::Type::kInt32: return 'i';      // Java int (I).
+    case DataType::Type::kInt64: return 'j';      // Java long (J).
+    case DataType::Type::kFloat32: return 'f';    // Java float (F).
+    case DataType::Type::kFloat64: return 'd';    // Java double (D).
+    case DataType::Type::kReference: return 'l';  // Java reference (L).
+    case DataType::Type::kVoid: return 'v';       // Java void (V).
   }
   LOG(FATAL) << "Unreachable";
   UNREACHABLE();

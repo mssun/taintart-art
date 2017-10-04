@@ -1760,14 +1760,26 @@ class SideEffects : public ValueObject {
   static constexpr uint64_t kAllReads =
       ((1ULL << (kLastBitForReads + 1 - kFieldReadOffset)) - 1) << kFieldReadOffset;
 
-  // Translates type to bit flag.
+  // Translates type to bit flag. The type must correspond to a Java type.
   static uint64_t TypeFlag(DataType::Type type, int offset) {
-    CHECK_NE(type, DataType::Type::kVoid);
-    const uint64_t one = 1;
-    const int shift = static_cast<int>(type);  // 0-based consecutive enum
+    int shift;
+    switch (type) {
+      case DataType::Type::kReference: shift = 0; break;
+      case DataType::Type::kBool:      shift = 1; break;
+      case DataType::Type::kInt8:      shift = 2; break;
+      case DataType::Type::kUint16:    shift = 3; break;
+      case DataType::Type::kInt16:     shift = 4; break;
+      case DataType::Type::kInt32:     shift = 5; break;
+      case DataType::Type::kInt64:     shift = 6; break;
+      case DataType::Type::kFloat32:   shift = 7; break;
+      case DataType::Type::kFloat64:   shift = 8; break;
+      default:
+        LOG(FATAL) << "Unexpected data type " << type;
+        UNREACHABLE();
+    }
     DCHECK_LE(kFieldWriteOffset, shift);
     DCHECK_LT(shift, kArrayWriteOffset);
-    return one << (shift + offset);
+    return UINT64_C(1) << (shift + offset);
   }
 
   // Private constructor on direct flags value.
@@ -5185,7 +5197,7 @@ class HBooleanNot FINAL : public HUnaryOperation {
 class HTypeConversion FINAL : public HExpression<1> {
  public:
   // Instantiate a type conversion of `input` to `result_type`.
-  HTypeConversion(DataType::Type result_type, HInstruction* input, uint32_t dex_pc)
+  HTypeConversion(DataType::Type result_type, HInstruction* input, uint32_t dex_pc = kNoDexPc)
       : HExpression(result_type, SideEffects::None(), dex_pc) {
     SetRawInputAt(0, input);
     // Invariant: We should never generate a conversion to a Boolean value.
@@ -5382,9 +5394,21 @@ class HArrayGet FINAL : public HExpression<2> {
   HArrayGet(HInstruction* array,
             HInstruction* index,
             DataType::Type type,
+            uint32_t dex_pc)
+     : HArrayGet(array,
+                 index,
+                 type,
+                 SideEffects::ArrayReadOfType(type),
+                 dex_pc,
+                 /* is_string_char_at */ false) {}
+
+  HArrayGet(HInstruction* array,
+            HInstruction* index,
+            DataType::Type type,
+            SideEffects side_effects,
             uint32_t dex_pc,
-            bool is_string_char_at = false)
-      : HExpression(type, SideEffects::ArrayReadOfType(type), dex_pc) {
+            bool is_string_char_at)
+      : HExpression(type, side_effects, dex_pc) {
     SetPackedFlag<kFlagIsStringCharAt>(is_string_char_at);
     SetRawInputAt(0, array);
     SetRawInputAt(1, index);
@@ -5453,7 +5477,21 @@ class HArraySet FINAL : public HTemplateInstruction<3> {
             HInstruction* value,
             DataType::Type expected_component_type,
             uint32_t dex_pc)
-      : HTemplateInstruction(SideEffects::None(), dex_pc) {
+      : HArraySet(array,
+                  index,
+                  value,
+                  expected_component_type,
+                  // Make a best guess for side effects now, may be refined during SSA building.
+                  ComputeSideEffects(GetComponentType(value->GetType(), expected_component_type)),
+                  dex_pc) {}
+
+  HArraySet(HInstruction* array,
+            HInstruction* index,
+            HInstruction* value,
+            DataType::Type expected_component_type,
+            SideEffects side_effects,
+            uint32_t dex_pc)
+      : HTemplateInstruction(side_effects, dex_pc) {
     SetPackedField<ExpectedComponentTypeField>(expected_component_type);
     SetPackedFlag<kFlagNeedsTypeCheck>(value->GetType() == DataType::Type::kReference);
     SetPackedFlag<kFlagValueCanBeNull>(true);
@@ -5461,8 +5499,6 @@ class HArraySet FINAL : public HTemplateInstruction<3> {
     SetRawInputAt(0, array);
     SetRawInputAt(1, index);
     SetRawInputAt(2, value);
-    // Make a best guess now, may be refined during SSA building.
-    ComputeSideEffects();
   }
 
   bool NeedsEnvironment() const OVERRIDE {
@@ -5501,24 +5537,26 @@ class HArraySet FINAL : public HTemplateInstruction<3> {
   HInstruction* GetValue() const { return InputAt(2); }
 
   DataType::Type GetComponentType() const {
+    return GetComponentType(GetValue()->GetType(), GetRawExpectedComponentType());
+  }
+
+  static DataType::Type GetComponentType(DataType::Type value_type,
+                                         DataType::Type expected_component_type) {
     // The Dex format does not type floating point index operations. Since the
-    // `expected_component_type_` is set during building and can therefore not
+    // `expected_component_type` comes from SSA building and can therefore not
     // be correct, we also check what is the value type. If it is a floating
     // point type, we must use that type.
-    DataType::Type value_type = GetValue()->GetType();
     return ((value_type == DataType::Type::kFloat32) || (value_type == DataType::Type::kFloat64))
         ? value_type
-        : GetRawExpectedComponentType();
+        : expected_component_type;
   }
 
   DataType::Type GetRawExpectedComponentType() const {
     return GetPackedField<ExpectedComponentTypeField>();
   }
 
-  void ComputeSideEffects() {
-    DataType::Type type = GetComponentType();
-    SetSideEffects(SideEffects::ArrayWriteOfType(type).Union(
-        SideEffectsForArchRuntimeCalls(type)));
+  static SideEffects ComputeSideEffects(DataType::Type type) {
+    return SideEffects::ArrayWriteOfType(type).Union(SideEffectsForArchRuntimeCalls(type));
   }
 
   static SideEffects SideEffectsForArchRuntimeCalls(DataType::Type value_type) {

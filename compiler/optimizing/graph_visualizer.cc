@@ -521,20 +521,28 @@ class HGraphVisualizerPrinter : public HGraphDelegateVisitor {
     StartAttributeStream("kind") << deoptimize->GetKind();
   }
 
+  void VisitVecOperation(HVecOperation* vec_operation) OVERRIDE {
+    StartAttributeStream("packed_type") << vec_operation->GetPackedType();
+  }
+
   void VisitVecHalvingAdd(HVecHalvingAdd* hadd) OVERRIDE {
+    VisitVecBinaryOperation(hadd);
     StartAttributeStream("unsigned") << std::boolalpha << hadd->IsUnsigned() << std::noboolalpha;
     StartAttributeStream("rounded") << std::boolalpha << hadd->IsRounded() << std::noboolalpha;
   }
 
   void VisitVecMin(HVecMin* min) OVERRIDE {
+    VisitVecBinaryOperation(min);
     StartAttributeStream("unsigned") << std::boolalpha << min->IsUnsigned() << std::noboolalpha;
   }
 
   void VisitVecMax(HVecMax* max) OVERRIDE {
+    VisitVecBinaryOperation(max);
     StartAttributeStream("unsigned") << std::boolalpha << max->IsUnsigned() << std::noboolalpha;
   }
 
   void VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instruction) OVERRIDE {
+    VisitVecOperation(instruction);
     StartAttributeStream("kind") << instruction->GetOpKind();
   }
 

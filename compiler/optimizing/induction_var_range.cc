@@ -159,9 +159,10 @@ static bool IsConstantValue(InductionVarRange::Value v) {
 /** Corrects a value for type to account for arithmetic wrap-around in lower precision. */
 static InductionVarRange::Value CorrectForType(InductionVarRange::Value v, DataType::Type type) {
   switch (type) {
-    case DataType::Type::kInt16:
+    case DataType::Type::kUint8:
+    case DataType::Type::kInt8:
     case DataType::Type::kUint16:
-    case DataType::Type::kInt8: {
+    case DataType::Type::kInt16: {
       // Constants within range only.
       // TODO: maybe some room for improvement, like allowing widening conversions
       int32_t min = DataType::MinValueOfIntegralType(type);
@@ -216,10 +217,11 @@ bool InductionVarRange::GetInductionRange(HInstruction* context,
   // bounds check elimination, will have truncated higher precision induction
   // at their use point already).
   switch (info->type) {
-    case DataType::Type::kInt32:
-    case DataType::Type::kInt16:
-    case DataType::Type::kUint16:
+    case DataType::Type::kUint8:
     case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
       break;
     default:
       return false;

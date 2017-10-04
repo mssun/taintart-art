@@ -66,8 +66,10 @@ const uint8_t DexFile::kDexMagicVersions[DexFile::kNumDexVersions][DexFile::kDex
   // Dex version 036 skipped because of an old dalvik bug on some versions of android where dex
   // files with that version number would erroneously be accepted and run.
   {'0', '3', '7', '\0'},
-  // Dex version 038: Android "O" and beyond.
-  {'0', '3', '8', '\0'}
+  // Dex version 038: Android "O".
+  {'0', '3', '8', '\0'},
+  // Dex verion 039: Beyond Android "O".
+  {'0', '3', '9', '\0'},
 };
 
 uint32_t DexFile::CalculateChecksum() const {
