@@ -135,6 +135,7 @@ art_cc_defaults {
                 "linker/mips/relative_patcher_mips.cc",
                 "optimizing/code_generator_mips.cc",
                 "optimizing/code_generator_vector_mips.cc",
+                "optimizing/instruction_simplifier_mips.cc",
                 "optimizing/intrinsics_mips.cc",
                 "optimizing/pc_relative_fixups_mips.cc",
                 "utils/mips/assembler_mips.cc",
