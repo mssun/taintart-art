@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import java.lang.reflect.Method;
 
 /**
  * Tests properties of some string operations represented by intrinsics.
@@ -105,12 +106,10 @@ public class Main {
   /// CHECK-START: int Main.bufferLen2() instruction_simplifier (before)
   /// CHECK-DAG: <<New:l\d+>>     NewInstance
   /// CHECK-DAG: <<String1:l\d+>> LoadString
-  /// CHECK-DAG: <<Append1:l\d+>> InvokeVirtual [<<New>>,<<String1>>]   intrinsic:StringBufferAppend
+  /// CHECK-DAG: <<Append1:l\d+>> InvokeVirtual [<<New>>,<<String1>>]  intrinsic:StringBufferAppend
   /// CHECK-DAG: <<String2:l\d+>> LoadString
-  /// CHECK-DAG: <<Null1:l\d+>>   NullCheck     [<<Append1>>]
-  /// CHECK-DAG: <<Append2:l\d+>> InvokeVirtual [<<Null1>>,<<String2>>] intrinsic:StringBufferAppend
-  /// CHECK-DAG: <<Null2:l\d+>>   NullCheck     [<<Append2>>]
-  /// CHECK-DAG:                  InvokeVirtual [<<Null2>>]             intrinsic:StringBufferLength
+  /// CHECK-DAG: <<Append2:l\d+>> InvokeVirtual [{{l\d+}},<<String2>>] intrinsic:StringBufferAppend
+  /// CHECK-DAG:                  InvokeVirtual [{{l\d+}}]             intrinsic:StringBufferLength
   //
   /// CHECK-START: int Main.bufferLen2() instruction_simplifier (after)
   /// CHECK-DAG: <<New:l\d+>>     NewInstance
@@ -124,6 +123,12 @@ public class Main {
     return s.append("x").append("x").length();
   }
 
+  static int bufferLen2Smali() throws Exception {
+    Class<?> c = Class.forName("Smali");
+    Method m = c.getMethod("bufferLen2");
+    return (Integer) m.invoke(null);
+  }
+
   //
   // Allows combining of returned "this". Also ensures that similar looking append() calls
   // are not combined somehow through returned result.
@@ -131,12 +136,10 @@ public class Main {
   /// CHECK-START: int Main.builderLen2() instruction_simplifier (before)
   /// CHECK-DAG: <<New:l\d+>>     NewInstance
   /// CHECK-DAG: <<String1:l\d+>> LoadString
-  /// CHECK-DAG: <<Append1:l\d+>> InvokeVirtual [<<New>>,<<String1>>]   intrinsic:StringBuilderAppend
+  /// CHECK-DAG: <<Append1:l\d+>> InvokeVirtual [<<New>>,<<String1>>]  intrinsic:StringBuilderAppend
   /// CHECK-DAG: <<String2:l\d+>> LoadString
-  /// CHECK-DAG: <<Null2:l\d+>>   NullCheck     [<<Append1>>]
-  /// CHECK-DAG: <<Append2:l\d+>> InvokeVirtual [<<Null2>>,<<String2>>] intrinsic:StringBuilderAppend
-  /// CHECK-DAG: <<Null3:l\d+>>   NullCheck     [<<Append2>>]
-  /// CHECK-DAG:                  InvokeVirtual [<<Null3>>]             intrinsic:StringBuilderLength
+  /// CHECK-DAG: <<Append2:l\d+>> InvokeVirtual [{{l\d+}},<<String2>>] intrinsic:StringBuilderAppend
+  /// CHECK-DAG:                  InvokeVirtual [{{l\d+}}]             intrinsic:StringBuilderLength
   //
   /// CHECK-START: int Main.builderLen2() instruction_simplifier (after)
   /// CHECK-DAG: <<New:l\d+>>     NewInstance
@@ -150,6 +153,12 @@ public class Main {
     return s.append("x").append("x").length();
   }
 
+  static int builderLen2Smali() throws Exception {
+    Class<?> c = Class.forName("Smali");
+    Method m = c.getMethod("builderLen2");
+    return (Integer) m.invoke(null);
+  }
+
   //
   // Similar situation in a loop.
   //
@@ -159,13 +168,10 @@ public class Main {
   /// CHECK-DAG: <<Null1:l\d+>>   NullCheck     [<<New>>]                                             loop:<<Loop>>
   /// CHECK-DAG: <<Append1:l\d+>> InvokeVirtual [<<Null1>>,<<String1>>] intrinsic:StringBufferAppend  loop:<<Loop>>
   /// CHECK-DAG: <<String2:l\d+>> LoadString                                                          loop:<<Loop>>
-  /// CHECK-DAG: <<Null2:l\d+>>   NullCheck     [<<Append1>>]                                         loop:<<Loop>>
-  /// CHECK-DAG: <<Append2:l\d+>> InvokeVirtual [<<Null2>>,<<String2>>] intrinsic:StringBufferAppend  loop:<<Loop>>
+  /// CHECK-DAG: <<Append2:l\d+>> InvokeVirtual [{{l\d+}},<<String2>>]  intrinsic:StringBufferAppend  loop:<<Loop>>
   /// CHECK-DAG: <<String3:l\d+>> LoadString                                                          loop:<<Loop>>
-  /// CHECK-DAG: <<Null3:l\d+>>   NullCheck     [<<Append2>>]                                         loop:<<Loop>>
-  /// CHECK-DAG: <<Append3:l\d+>> InvokeVirtual [<<Null3>>,<<String3>>] intrinsic:StringBufferAppend  loop:<<Loop>>
-  /// CHECK-DAG: <<Null4:l\d+>>   NullCheck     [<<New>>]                                             loop:none
-  /// CHECK-DAG:                  InvokeVirtual [<<Null4>>]             intrinsic:StringBufferLength  loop:none
+  /// CHECK-DAG: <<Append3:l\d+>> InvokeVirtual [{{l\d+}},<<String3>>]  intrinsic:StringBufferAppend  loop:<<Loop>>
+  /// CHECK-DAG:                  InvokeVirtual [{{l\d+}}]              intrinsic:StringBufferLength  loop:none
   //
   /// CHECK-START: int Main.bufferLoopAppender() instruction_simplifier (after)
   /// CHECK-DAG: <<New:l\d+>>     NewInstance                                                       loop:none
@@ -184,6 +190,12 @@ public class Main {
     return b.length();
   }
 
+  static int bufferLoopAppenderSmali() throws Exception {
+    Class<?> c = Class.forName("Smali");
+    Method m = c.getMethod("bufferLoopAppender");
+    return (Integer) m.invoke(null);
+  }
+
   //
   // Similar situation in a loop.
   //
@@ -193,13 +205,10 @@ public class Main {
   /// CHECK-DAG: <<Null1:l\d+>>   NullCheck     [<<New>>]                                             loop:<<Loop>>
   /// CHECK-DAG: <<Append1:l\d+>> InvokeVirtual [<<Null1>>,<<String1>>] intrinsic:StringBuilderAppend loop:<<Loop>>
   /// CHECK-DAG: <<String2:l\d+>> LoadString                                                          loop:<<Loop>>
-  /// CHECK-DAG: <<Null2:l\d+>>   NullCheck     [<<Append1>>]                                         loop:<<Loop>>
-  /// CHECK-DAG: <<Append2:l\d+>> InvokeVirtual [<<Null2>>,<<String2>>] intrinsic:StringBuilderAppend loop:<<Loop>>
+  /// CHECK-DAG: <<Append2:l\d+>> InvokeVirtual [{{l\d+}},<<String2>>]  intrinsic:StringBuilderAppend loop:<<Loop>>
   /// CHECK-DAG: <<String3:l\d+>> LoadString                                                          loop:<<Loop>>
-  /// CHECK-DAG: <<Null3:l\d+>>   NullCheck     [<<Append2>>]                                         loop:<<Loop>>
-  /// CHECK-DAG: <<Append3:l\d+>> InvokeVirtual [<<Null3>>,<<String3>>] intrinsic:StringBuilderAppend loop:<<Loop>>
-  /// CHECK-DAG: <<Null4:l\d+>>   NullCheck     [<<New>>]                                             loop:none
-  /// CHECK-DAG:                  InvokeVirtual [<<Null4>>]             intrinsic:StringBuilderLength loop:none
+  /// CHECK-DAG: <<Append3:l\d+>> InvokeVirtual [{{l\d+}},<<String3>>]  intrinsic:StringBuilderAppend loop:<<Loop>>
+  /// CHECK-DAG:                  InvokeVirtual [{{l\d+}}]              intrinsic:StringBuilderLength loop:none
   //
   /// CHECK-START: int Main.builderLoopAppender() instruction_simplifier (after)
   /// CHECK-DAG: <<New:l\d+>>     NewInstance                                                       loop:none
@@ -216,6 +225,12 @@ public class Main {
       b.append("x").append("y").append("z");
     }
     return b.length();
+  }
+
+  static int builderLoopAppenderSmali() throws Exception {
+    Class<?> c = Class.forName("Smali");
+    Method m = c.getMethod("bufferLoopAppender");
+    return (Integer) m.invoke(null);
   }
 
   //
@@ -274,7 +289,7 @@ public class Main {
     x.toString();
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     expectEquals(1865, liveIndexOf());
     expectEquals(29, deadIndexOf());
 
@@ -291,9 +306,13 @@ public class Main {
     expectEquals(598, indexOfExceptions(ABC, XYZ));
 
     expectEquals(2, bufferLen2());
+    expectEquals(2, bufferLen2Smali());
     expectEquals(2, builderLen2());
+    expectEquals(2, builderLen2Smali());
     expectEquals(30, bufferLoopAppender());
+    expectEquals(30, bufferLoopAppenderSmali());
     expectEquals(30, builderLoopAppender());
+    expectEquals(30, builderLoopAppenderSmali());
     expectEquals(0, bufferDeadLoop());
     expectEquals(0, builderDeadLoop());
 
