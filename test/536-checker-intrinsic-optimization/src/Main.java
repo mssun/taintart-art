@@ -171,8 +171,11 @@ public class Main {
   /// CHECK-START: char Main.$opt$noinline$stringCharAtCatch(java.lang.String, int) instruction_simplifier (before)
   /// CHECK-DAG:  <<Int:i\d+>>      IntConstant 0
   /// CHECK-DAG:  <<Char:c\d+>>     InvokeVirtual intrinsic:StringCharAt
-  /// CHECK-DAG:  <<Phi:i\d+>>      Phi [<<Char>>,<<Int>>]
-  /// CHECK-DAG:                    Return [<<Phi>>]
+
+  //                                The return value can come from a Phi should the two returns be merged.
+  //                                Please refer to the Smali code for a more detailed verification.
+
+  /// CHECK-DAG:                    Return [{{(c|i)\d+}}]
 
   /// CHECK-START: char Main.$opt$noinline$stringCharAtCatch(java.lang.String, int) instruction_simplifier (after)
   /// CHECK-DAG:  <<String:l\d+>>   ParameterValue
@@ -182,8 +185,7 @@ public class Main {
   /// CHECK-DAG:  <<Length:i\d+>>   ArrayLength [<<NullCk>>] is_string_length:true
   /// CHECK-DAG:  <<Bounds:i\d+>>   BoundsCheck [<<Pos>>,<<Length>>] is_string_char_at:true
   /// CHECK-DAG:  <<Char:c\d+>>     ArrayGet [<<NullCk>>,<<Bounds>>] is_string_char_at:true
-  /// CHECK-DAG:  <<Phi:i\d+>>      Phi [<<Char>>,<<Int>>]
-  /// CHECK-DAG:                    Return [<<Phi>>]
+  /// CHECK-DAG:                    Return [{{(c|i)\d+}}]
 
   /// CHECK-START: char Main.$opt$noinline$stringCharAtCatch(java.lang.String, int) instruction_simplifier (after)
   /// CHECK-NOT:                    InvokeVirtual intrinsic:StringCharAt
