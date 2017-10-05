@@ -1423,7 +1423,8 @@ class HLoopInformationOutwardIterator : public ValueObject {
 #else
 #define FOR_EACH_CONCRETE_INSTRUCTION_MIPS(M)                           \
   M(MipsComputeBaseMethodAddress, Instruction)                          \
-  M(MipsPackedSwitch, Instruction)
+  M(MipsPackedSwitch, Instruction)                                      \
+  M(IntermediateArrayAddressIndex, Instruction)
 #endif
 
 #define FOR_EACH_CONCRETE_INSTRUCTION_MIPS64(M)
