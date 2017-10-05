@@ -126,18 +126,6 @@ class DataType {
     return type == Type::kUint8 || type == Type::kUint16;
   }
 
-  static Type ToSignedType(Type type) {
-    switch (type) {
-      case Type::kUint8:
-        return Type::kInt8;
-      case Type::kUint16:
-        return Type::kInt16;
-      default:
-        DCHECK(type != Type::kVoid && type != Type::kReference);
-        return type;
-    }
-  }
-
   // Return the general kind of `type`, fusing integer-like types as Type::kInt.
   static Type Kind(Type type) {
     switch (type) {
