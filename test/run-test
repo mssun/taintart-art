@@ -45,6 +45,7 @@ export JAVAC="javac -g -Xlint:-options"
 export RUN="${progdir}/etc/run-test-jar"
 export DEX_LOCATION=/data/run-test/${test_dir}
 export NEED_DEX="true"
+export USE_D8="false"
 export USE_JACK="false"
 export USE_DESUGAR="true"
 export SMALI_ARGS=""
@@ -338,6 +339,9 @@ while true; do
         shift
     elif [ "x$1" = "x--build-only" ]; then
         build_only="yes"
+        shift
+    elif [ "x$1" = "x--build-with-d8" ]; then
+        USE_D8="true"
         shift
     elif [ "x$1" = "x--build-with-javac-dx" ]; then
         USE_JACK="false"
@@ -648,6 +652,7 @@ if [ "$usage" = "yes" ]; then
         echo "    --gdb                 Run under gdb; incompatible with some tests."
         echo "    --gdb-arg             Pass an option to gdb."
         echo "    --build-only          Build test files only (off by default)."
+        echo "    --build-with-d8       Build test files with javac and d8 (off by default)."
         echo "    --build-with-javac-dx Build test files with javac and dx (off by default)."
         echo "    --build-with-jack     Build test files with jack and jill (on by default)."
         echo "    --interpreter         Enable interpreter only mode (off by default)."
