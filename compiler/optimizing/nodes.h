@@ -1800,21 +1800,23 @@ class SideEffects : public ValueObject {
 // A HEnvironment object contains the values of virtual registers at a given location.
 class HEnvironment : public ArenaObject<kArenaAllocEnvironment> {
  public:
-  ALWAYS_INLINE HEnvironment(ArenaAllocator* arena,
+  ALWAYS_INLINE HEnvironment(ArenaAllocator* allocator,
                              size_t number_of_vregs,
                              ArtMethod* method,
                              uint32_t dex_pc,
                              HInstruction* holder)
-     : vregs_(number_of_vregs, arena->Adapter(kArenaAllocEnvironmentVRegs)),
-       locations_(arena->Adapter(kArenaAllocEnvironmentLocations)),
+     : vregs_(number_of_vregs, allocator->Adapter(kArenaAllocEnvironmentVRegs)),
+       locations_(allocator->Adapter(kArenaAllocEnvironmentLocations)),
        parent_(nullptr),
        method_(method),
        dex_pc_(dex_pc),
        holder_(holder) {
   }
 
-  ALWAYS_INLINE HEnvironment(ArenaAllocator* arena, const HEnvironment& to_copy, HInstruction* holder)
-      : HEnvironment(arena,
+  ALWAYS_INLINE HEnvironment(ArenaAllocator* allocator,
+                             const HEnvironment& to_copy,
+                             HInstruction* holder)
+      : HEnvironment(allocator,
                      to_copy.Size(),
                      to_copy.GetMethod(),
                      to_copy.GetDexPc(),
@@ -2475,11 +2477,11 @@ class HVariableInputSizeInstruction : public HInstruction {
  protected:
   HVariableInputSizeInstruction(SideEffects side_effects,
                                 uint32_t dex_pc,
-                                ArenaAllocator* arena,
+                                ArenaAllocator* allocator,
                                 size_t number_of_inputs,
                                 ArenaAllocKind kind)
       : HInstruction(side_effects, dex_pc),
-        inputs_(number_of_inputs, arena->Adapter(kind)) {}
+        inputs_(number_of_inputs, allocator->Adapter(kind)) {}
 
   ArenaVector<HUserRecord<HInstruction*>> inputs_;
 
@@ -2580,7 +2582,7 @@ class HReturn FINAL : public HTemplateInstruction<1> {
 
 class HPhi FINAL : public HVariableInputSizeInstruction {
  public:
-  HPhi(ArenaAllocator* arena,
+  HPhi(ArenaAllocator* allocator,
        uint32_t reg_number,
        size_t number_of_inputs,
        DataType::Type type,
@@ -2588,7 +2590,7 @@ class HPhi FINAL : public HVariableInputSizeInstruction {
       : HVariableInputSizeInstruction(
             SideEffects::None(),
             dex_pc,
-            arena,
+            allocator,
             number_of_inputs,
             kArenaAllocPhiInputs),
         reg_number_(reg_number) {
@@ -3027,11 +3029,14 @@ class HDeoptimize FINAL : public HVariableInputSizeInstruction {
  public:
   // Use this constructor when the `HDeoptimize` acts as a barrier, where no code can move
   // across.
-  HDeoptimize(ArenaAllocator* arena, HInstruction* cond, DeoptimizationKind kind, uint32_t dex_pc)
+  HDeoptimize(ArenaAllocator* allocator,
+              HInstruction* cond,
+              DeoptimizationKind kind,
+              uint32_t dex_pc)
       : HVariableInputSizeInstruction(
             SideEffects::All(),
             dex_pc,
-            arena,
+            allocator,
             /* number_of_inputs */ 1,
             kArenaAllocMisc) {
     SetPackedFlag<kFieldCanBeMoved>(false);
@@ -3044,7 +3049,7 @@ class HDeoptimize FINAL : public HVariableInputSizeInstruction {
   // instead of `guard`.
   // We set CanTriggerGC to prevent any intermediate address to be live
   // at the point of the `HDeoptimize`.
-  HDeoptimize(ArenaAllocator* arena,
+  HDeoptimize(ArenaAllocator* allocator,
               HInstruction* cond,
               HInstruction* guard,
               DeoptimizationKind kind,
@@ -3052,7 +3057,7 @@ class HDeoptimize FINAL : public HVariableInputSizeInstruction {
       : HVariableInputSizeInstruction(
             SideEffects::CanTriggerGC(),
             dex_pc,
-            arena,
+            allocator,
             /* number_of_inputs */ 2,
             kArenaAllocMisc) {
     SetPackedFlag<kFieldCanBeMoved>(true);
@@ -3116,8 +3121,8 @@ class HShouldDeoptimizeFlag FINAL : public HVariableInputSizeInstruction {
  public:
   // CHA guards are only optimized in a separate pass and it has no side effects
   // with regard to other passes.
-  HShouldDeoptimizeFlag(ArenaAllocator* arena, uint32_t dex_pc)
-      : HVariableInputSizeInstruction(SideEffects::None(), dex_pc, arena, 0, kArenaAllocCHA) {
+  HShouldDeoptimizeFlag(ArenaAllocator* allocator, uint32_t dex_pc)
+      : HVariableInputSizeInstruction(SideEffects::None(), dex_pc, allocator, 0, kArenaAllocCHA) {
   }
 
   DataType::Type GetType() const OVERRIDE { return DataType::Type::kInt32; }
@@ -4084,7 +4089,7 @@ class HInvoke : public HVariableInputSizeInstruction {
   using InvokeTypeField = BitField<InvokeType, kFieldInvokeType, kFieldInvokeTypeSize>;
   using ReturnTypeField = BitField<DataType::Type, kFieldReturnType, kFieldReturnTypeSize>;
 
-  HInvoke(ArenaAllocator* arena,
+  HInvoke(ArenaAllocator* allocator,
           uint32_t number_of_arguments,
           uint32_t number_of_other_inputs,
           DataType::Type return_type,
@@ -4095,7 +4100,7 @@ class HInvoke : public HVariableInputSizeInstruction {
     : HVariableInputSizeInstruction(
           SideEffects::AllExceptGCDependency(),  // Assume write/read on all fields/arrays.
           dex_pc,
-          arena,
+          allocator,
           number_of_arguments + number_of_other_inputs,
           kArenaAllocInvokeInputs),
       number_of_arguments_(number_of_arguments),
@@ -4122,13 +4127,13 @@ class HInvoke : public HVariableInputSizeInstruction {
 
 class HInvokeUnresolved FINAL : public HInvoke {
  public:
-  HInvokeUnresolved(ArenaAllocator* arena,
+  HInvokeUnresolved(ArenaAllocator* allocator,
                     uint32_t number_of_arguments,
                     DataType::Type return_type,
                     uint32_t dex_pc,
                     uint32_t dex_method_index,
                     InvokeType invoke_type)
-      : HInvoke(arena,
+      : HInvoke(allocator,
                 number_of_arguments,
                 0u /* number_of_other_inputs */,
                 return_type,
@@ -4146,12 +4151,12 @@ class HInvokeUnresolved FINAL : public HInvoke {
 
 class HInvokePolymorphic FINAL : public HInvoke {
  public:
-  HInvokePolymorphic(ArenaAllocator* arena,
+  HInvokePolymorphic(ArenaAllocator* allocator,
                      uint32_t number_of_arguments,
                      DataType::Type return_type,
                      uint32_t dex_pc,
                      uint32_t dex_method_index)
-      : HInvoke(arena,
+      : HInvoke(allocator,
                 number_of_arguments,
                 0u /* number_of_other_inputs */,
                 return_type,
@@ -4223,7 +4228,7 @@ class HInvokeStaticOrDirect FINAL : public HInvoke {
     uint64_t method_load_data;
   };
 
-  HInvokeStaticOrDirect(ArenaAllocator* arena,
+  HInvokeStaticOrDirect(ArenaAllocator* allocator,
                         uint32_t number_of_arguments,
                         DataType::Type return_type,
                         uint32_t dex_pc,
@@ -4233,7 +4238,7 @@ class HInvokeStaticOrDirect FINAL : public HInvoke {
                         InvokeType invoke_type,
                         MethodReference target_method,
                         ClinitCheckRequirement clinit_check_requirement)
-      : HInvoke(arena,
+      : HInvoke(allocator,
                 number_of_arguments,
                 // There is potentially one extra argument for the HCurrentMethod node, and
                 // potentially one other if the clinit check is explicit, and potentially
@@ -4418,14 +4423,14 @@ std::ostream& operator<<(std::ostream& os, HInvokeStaticOrDirect::ClinitCheckReq
 
 class HInvokeVirtual FINAL : public HInvoke {
  public:
-  HInvokeVirtual(ArenaAllocator* arena,
+  HInvokeVirtual(ArenaAllocator* allocator,
                  uint32_t number_of_arguments,
                  DataType::Type return_type,
                  uint32_t dex_pc,
                  uint32_t dex_method_index,
                  ArtMethod* resolved_method,
                  uint32_t vtable_index)
-      : HInvoke(arena,
+      : HInvoke(allocator,
                 number_of_arguments,
                 0u,
                 return_type,
@@ -4466,14 +4471,14 @@ class HInvokeVirtual FINAL : public HInvoke {
 
 class HInvokeInterface FINAL : public HInvoke {
  public:
-  HInvokeInterface(ArenaAllocator* arena,
+  HInvokeInterface(ArenaAllocator* allocator,
                    uint32_t number_of_arguments,
                    DataType::Type return_type,
                    uint32_t dex_pc,
                    uint32_t dex_method_index,
                    ArtMethod* resolved_method,
                    uint32_t imt_index)
-      : HInvoke(arena,
+      : HInvoke(allocator,
                 number_of_arguments,
                 0u,
                 return_type,
@@ -6645,7 +6650,7 @@ class HConstructorFence FINAL : public HVariableInputSizeInstruction {
   // about the associated object.
   HConstructorFence(HInstruction* fence_object,
                     uint32_t dex_pc,
-                    ArenaAllocator* arena)
+                    ArenaAllocator* allocator)
     // We strongly suspect there is not a more accurate way to describe the fine-grained reordering
     // constraints described in the class header. We claim that these SideEffects constraints
     // enforce a superset of the real constraints.
@@ -6669,7 +6674,7 @@ class HConstructorFence FINAL : public HVariableInputSizeInstruction {
     // we can refine the side effect to a smaller set of type reads (see above constraints).
       : HVariableInputSizeInstruction(SideEffects::AllReads(),
                                       dex_pc,
-                                      arena,
+                                      allocator,
                                       /* number_of_inputs */ 1,
                                       kArenaAllocConstructorFenceInputs) {
     DCHECK(fence_object != nullptr);
@@ -6886,9 +6891,9 @@ static constexpr size_t kDefaultNumberOfMoves = 4;
 
 class HParallelMove FINAL : public HTemplateInstruction<0> {
  public:
-  explicit HParallelMove(ArenaAllocator* arena, uint32_t dex_pc = kNoDexPc)
+  explicit HParallelMove(ArenaAllocator* allocator, uint32_t dex_pc = kNoDexPc)
       : HTemplateInstruction(SideEffects::None(), dex_pc),
-        moves_(arena->Adapter(kArenaAllocMoveOperands)) {
+        moves_(allocator->Adapter(kArenaAllocMoveOperands)) {
     moves_.reserve(kDefaultNumberOfMoves);
   }
 

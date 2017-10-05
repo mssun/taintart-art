@@ -56,7 +56,7 @@ void SsaLivenessAnalysis::NumberInstructions() {
         instructions_from_ssa_index_.push_back(current);
         current->SetSsaIndex(ssa_index++);
         current->SetLiveInterval(
-            LiveInterval::MakeInterval(graph_->GetAllocator(), current->GetType(), current));
+            LiveInterval::MakeInterval(allocator_, current->GetType(), current));
       }
       current->SetLifetimePosition(lifetime_position);
     }
@@ -74,7 +74,7 @@ void SsaLivenessAnalysis::NumberInstructions() {
         instructions_from_ssa_index_.push_back(current);
         current->SetSsaIndex(ssa_index++);
         current->SetLiveInterval(
-            LiveInterval::MakeInterval(graph_->GetAllocator(), current->GetType(), current));
+            LiveInterval::MakeInterval(allocator_, current->GetType(), current));
       }
       instructions_from_lifetime_position_.push_back(current);
       current->SetLifetimePosition(lifetime_position);
@@ -88,8 +88,8 @@ void SsaLivenessAnalysis::NumberInstructions() {
 
 void SsaLivenessAnalysis::ComputeLiveness() {
   for (HBasicBlock* block : graph_->GetLinearOrder()) {
-    block_infos_[block->GetBlockId()] = new (graph_->GetAllocator()) BlockInfo(
-        graph_->GetAllocator(), *block, number_of_ssa_values_);
+    block_infos_[block->GetBlockId()] =
+        new (allocator_) BlockInfo(allocator_, *block, number_of_ssa_values_);
   }
 
   // Compute the live ranges, as well as the initial live_in, live_out, and kill sets.

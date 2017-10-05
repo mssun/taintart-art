@@ -34,8 +34,8 @@ namespace x86_64 {
 class X86_64JNIMacroAssembler FINAL : public JNIMacroAssemblerFwd<X86_64Assembler,
                                                                   PointerSize::k64> {
  public:
-  explicit X86_64JNIMacroAssembler(ArenaAllocator* arena)
-      : JNIMacroAssemblerFwd<X86_64Assembler, PointerSize::k64>(arena) {}
+  explicit X86_64JNIMacroAssembler(ArenaAllocator* allocator)
+      : JNIMacroAssemblerFwd<X86_64Assembler, PointerSize::k64>(allocator) {}
   virtual ~X86_64JNIMacroAssembler() {}
 
   //

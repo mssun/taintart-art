@@ -40,7 +40,7 @@ static bool IsLowOfUnalignedPairInterval(LiveInterval* low) {
   return GetHighForLowRegister(low->GetRegister()) != low->GetHighInterval()->GetRegister();
 }
 
-RegisterAllocatorLinearScan::RegisterAllocatorLinearScan(ArenaAllocator* allocator,
+RegisterAllocatorLinearScan::RegisterAllocatorLinearScan(ScopedArenaAllocator* allocator,
                                                          CodeGenerator* codegen,
                                                          const SsaLivenessAnalysis& liveness)
       : RegisterAllocator(allocator, codegen, liveness),
@@ -81,6 +81,8 @@ RegisterAllocatorLinearScan::RegisterAllocatorLinearScan(ArenaAllocator* allocat
   reserved_out_slots_ = ptr_size / kVRegSize + codegen->GetGraph()->GetMaximumNumberOfOutVRegs();
 }
 
+RegisterAllocatorLinearScan::~RegisterAllocatorLinearScan() {}
+
 static bool ShouldProcess(bool processing_core_registers, LiveInterval* interval) {
   if (interval == nullptr) return false;
   bool is_core_register = (interval->GetType() != DataType::Type::kFloat64)
@@ -90,7 +92,7 @@ static bool ShouldProcess(bool processing_core_registers, LiveInterval* interval
 
 void RegisterAllocatorLinearScan::AllocateRegisters() {
   AllocateRegistersInternal();
-  RegisterAllocationResolver(allocator_, codegen_, liveness_)
+  RegisterAllocationResolver(codegen_, liveness_)
       .Resolve(ArrayRef<HInstruction* const>(safepoints_),
                reserved_out_slots_,
                int_spill_slots_.size(),
@@ -98,7 +100,7 @@ void RegisterAllocatorLinearScan::AllocateRegisters() {
                float_spill_slots_.size(),
                double_spill_slots_.size(),
                catch_phi_spill_slots_,
-               temp_intervals_);
+               ArrayRef<LiveInterval* const>(temp_intervals_));
 
   if (kIsDebugBuild) {
     processing_core_registers_ = true;
@@ -298,7 +300,7 @@ void RegisterAllocatorLinearScan::ProcessInstruction(HInstruction* instruction) 
   LiveInterval* current = instruction->GetLiveInterval();
   if (current == nullptr) return;
 
-  ArenaVector<LiveInterval*>& unhandled = core_register
+  ScopedArenaVector<LiveInterval*>& unhandled = core_register
       ? unhandled_core_intervals_
       : unhandled_fp_intervals_;
 
@@ -425,7 +427,9 @@ class AllRangesIterator : public ValueObject {
 bool RegisterAllocatorLinearScan::ValidateInternal(bool log_fatal_on_failure) const {
   // To simplify unit testing, we eagerly create the array of intervals, and
   // call the helper method.
-  ArenaVector<LiveInterval*> intervals(allocator_->Adapter(kArenaAllocRegisterAllocatorValidate));
+  ScopedArenaAllocator allocator(allocator_->GetArenaStack());
+  ScopedArenaVector<LiveInterval*> intervals(
+      allocator.Adapter(kArenaAllocRegisterAllocatorValidate));
   for (size_t i = 0; i < liveness_.GetNumberOfSsaValues(); ++i) {
     HInstruction* instruction = liveness_.GetInstructionFromSsaIndex(i);
     if (ShouldProcess(processing_core_registers_, instruction->GetLiveInterval())) {
@@ -433,7 +437,7 @@ bool RegisterAllocatorLinearScan::ValidateInternal(bool log_fatal_on_failure) co
     }
   }
 
-  const ArenaVector<LiveInterval*>* physical_register_intervals = processing_core_registers_
+  const ScopedArenaVector<LiveInterval*>* physical_register_intervals = processing_core_registers_
       ? &physical_core_register_intervals_
       : &physical_fp_register_intervals_;
   for (LiveInterval* fixed : *physical_register_intervals) {
@@ -448,8 +452,12 @@ bool RegisterAllocatorLinearScan::ValidateInternal(bool log_fatal_on_failure) co
     }
   }
 
-  return ValidateIntervals(intervals, GetNumberOfSpillSlots(), reserved_out_slots_, *codegen_,
-                           allocator_, processing_core_registers_, log_fatal_on_failure);
+  return ValidateIntervals(ArrayRef<LiveInterval* const>(intervals),
+                           GetNumberOfSpillSlots(),
+                           reserved_out_slots_,
+                           *codegen_,
+                           processing_core_registers_,
+                           log_fatal_on_failure);
 }
 
 void RegisterAllocatorLinearScan::DumpInterval(std::ostream& stream, LiveInterval* interval) const {
@@ -813,7 +821,7 @@ int RegisterAllocatorLinearScan::FindAvailableRegister(size_t* next_use, LiveInt
 
 // Remove interval and its other half if any. Return iterator to the following element.
 static ArenaVector<LiveInterval*>::iterator RemoveIntervalAndPotentialOtherHalf(
-    ArenaVector<LiveInterval*>* intervals, ArenaVector<LiveInterval*>::iterator pos) {
+    ScopedArenaVector<LiveInterval*>* intervals, ScopedArenaVector<LiveInterval*>::iterator pos) {
   DCHECK(intervals->begin() <= pos && pos < intervals->end());
   LiveInterval* interval = *pos;
   if (interval->IsLowInterval()) {
@@ -1044,7 +1052,8 @@ bool RegisterAllocatorLinearScan::AllocateBlockedReg(LiveInterval* current) {
   }
 }
 
-void RegisterAllocatorLinearScan::AddSorted(ArenaVector<LiveInterval*>* array, LiveInterval* interval) {
+void RegisterAllocatorLinearScan::AddSorted(ScopedArenaVector<LiveInterval*>* array,
+                                            LiveInterval* interval) {
   DCHECK(!interval->IsFixed() && !interval->HasSpillSlot());
   size_t insert_at = 0;
   for (size_t i = array->size(); i > 0; --i) {
@@ -1102,7 +1111,7 @@ void RegisterAllocatorLinearScan::AllocateSpillSlotFor(LiveInterval* interval) {
     return;
   }
 
-  ArenaVector<size_t>* spill_slots = nullptr;
+  ScopedArenaVector<size_t>* spill_slots = nullptr;
   switch (interval->GetType()) {
     case DataType::Type::kFloat64:
       spill_slots = &double_spill_slots_;
