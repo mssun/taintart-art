@@ -292,8 +292,13 @@ function make_dex() {
     dx_input="${name}"
   fi
 
+  local dexer="${DX}"
+  if [ ${USE_D8} = "true" ]; then
+    dexer="${ANDROID_HOST_OUT}/bin/d8"
+  fi
+
   # Make dex file from desugared JAR.
-  ${DX} -JXmx256m ${DX_VM_FLAGS} --debug --dex --dump-to=${name}.lst --output=${name}.dex --dump-width=1000 ${DX_FLAGS} "${dx_input}"
+  ${dexer} -JXmx256m ${DX_VM_FLAGS} --debug --dex --dump-to=${name}.lst --output=${name}.dex --dump-width=1000 ${DX_FLAGS} "${dx_input}"
 }
 
 # Merge all the dex files in $1..$N into $1. Skip non-existing files, but at least 1 file must exist.
