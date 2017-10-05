@@ -26,6 +26,7 @@
 #include <cstring>
 #include <sstream>
 #include <type_traits>
+#include <sys/stat.h>
 
 // dlopen_ext support from bionic.
 #ifdef ART_TARGET_ANDROID
@@ -105,6 +106,19 @@ class OatFileBase : public OatFile {
                                   const char* abs_dex_location,
                                   std::string* error_msg);
 
+  template <typename kOatFileBaseSubType>
+  static OatFileBase* OpenOatFile(int vdex_fd,
+                                  int oat_fd,
+                                  const std::string& vdex_filename,
+                                  const std::string& oat_filename,
+                                  uint8_t* requested_base,
+                                  uint8_t* oat_file_begin,
+                                  bool writable,
+                                  bool executable,
+                                  bool low_4gb,
+                                  const char* abs_dex_location,
+                                  std::string* error_msg);
+
  protected:
   OatFileBase(const std::string& filename, bool executable) : OatFile(filename, executable) {}
 
@@ -118,7 +132,20 @@ class OatFileBase : public OatFile {
                 bool low_4gb,
                 std::string* error_msg);
 
+  bool LoadVdex(int vdex_fd,
+                const std::string& vdex_filename,
+                bool writable,
+                bool low_4gb,
+                std::string* error_msg);
+
   virtual bool Load(const std::string& elf_filename,
+                    uint8_t* oat_file_begin,
+                    bool writable,
+                    bool executable,
+                    bool low_4gb,
+                    std::string* error_msg) = 0;
+
+  virtual bool Load(int oat_fd,
                     uint8_t* oat_file_begin,
                     bool writable,
                     bool executable,
@@ -192,6 +219,46 @@ OatFileBase* OatFileBase::OpenOatFile(const std::string& vdex_filename,
   return ret.release();
 }
 
+template <typename kOatFileBaseSubType>
+OatFileBase* OatFileBase::OpenOatFile(int vdex_fd,
+                                      int oat_fd,
+                                      const std::string& vdex_location,
+                                      const std::string& oat_location,
+                                      uint8_t* requested_base,
+                                      uint8_t* oat_file_begin,
+                                      bool writable,
+                                      bool executable,
+                                      bool low_4gb,
+                                      const char* abs_dex_location,
+                                      std::string* error_msg) {
+  std::unique_ptr<OatFileBase> ret(new kOatFileBaseSubType(oat_location, executable));
+
+  if (kIsVdexEnabled && !ret->LoadVdex(vdex_fd, vdex_location, writable, low_4gb, error_msg)) {
+    return nullptr;
+  }
+
+  if (!ret->Load(oat_fd,
+                 oat_file_begin,
+                 writable,
+                 executable,
+                 low_4gb,
+                 error_msg)) {
+    return nullptr;
+  }
+
+  if (!ret->ComputeFields(requested_base, oat_location, error_msg)) {
+    return nullptr;
+  }
+
+  ret->PreSetup(oat_location);
+
+  if (!ret->Setup(abs_dex_location, error_msg)) {
+    return nullptr;
+  }
+
+  return ret.release();
+}
+
 bool OatFileBase::LoadVdex(const std::string& vdex_filename,
                            bool writable,
                            bool low_4gb,
@@ -202,6 +269,33 @@ bool OatFileBase::LoadVdex(const std::string& vdex_filename,
                               vdex_filename.c_str(),
                               error_msg->c_str());
     return false;
+  }
+  return true;
+}
+
+bool OatFileBase::LoadVdex(int vdex_fd,
+                           const std::string& vdex_filename,
+                           bool writable,
+                           bool low_4gb,
+                           std::string* error_msg) {
+  if (vdex_fd != -1) {
+    struct stat s;
+    int rc = TEMP_FAILURE_RETRY(fstat(vdex_fd, &s));
+    if (rc == -1) {
+      PLOG(WARNING) << "Failed getting length of vdex file";
+    } else {
+      vdex_ = VdexFile::Open(vdex_fd,
+                             s.st_size,
+                             vdex_filename,
+                             writable,
+                             low_4gb,
+                             false /* unquicken */,
+                             error_msg);
+      if (vdex_.get() == nullptr) {
+        *error_msg = "Failed opening vdex file.";
+        return false;
+      }
+    }
   }
   return true;
 }
@@ -712,6 +806,10 @@ class DlOpenOatFile FINAL : public OatFileBase {
             bool low_4gb,
             std::string* error_msg) OVERRIDE;
 
+  bool Load(int, uint8_t*, bool, bool, bool, std::string*) {
+    return false;
+  }
+
   // Ask the linker where it mmaped the file and notify our mmap wrapper of the regions.
   void PreSetup(const std::string& elf_filename) OVERRIDE;
 
@@ -973,6 +1071,13 @@ class ElfOatFile FINAL : public OatFileBase {
             bool low_4gb,
             std::string* error_msg) OVERRIDE;
 
+  bool Load(int oat_fd,
+            uint8_t* oat_file_begin,  // Override where the file is loaded to if not null
+            bool writable,
+            bool executable,
+            bool low_4gb,
+            std::string* error_msg) OVERRIDE;
+
   void PreSetup(const std::string& elf_filename ATTRIBUTE_UNUSED) OVERRIDE {
   }
 
@@ -1063,6 +1168,31 @@ bool ElfOatFile::Load(const std::string& elf_filename,
                                  executable,
                                  low_4gb,
                                  error_msg);
+}
+
+bool ElfOatFile::Load(int oat_fd,
+                      uint8_t* oat_file_begin,  // Override where the file is loaded to if not null
+                      bool writable,
+                      bool executable,
+                      bool low_4gb,
+                      std::string* error_msg) {
+  ScopedTrace trace(__PRETTY_FUNCTION__);
+  if (oat_fd != -1) {
+    std::unique_ptr<File> file = std::make_unique<File>(oat_fd, false);
+    file->DisableAutoClose();
+    if (file == nullptr) {
+      *error_msg = StringPrintf("Failed to open oat filename for reading: %s",
+                                strerror(errno));
+      return false;
+    }
+    return ElfOatFile::ElfFileOpen(file.get(),
+                                   oat_file_begin,
+                                   writable,
+                                   executable,
+                                   low_4gb,
+                                   error_msg);
+  }
+  return false;
 }
 
 bool ElfOatFile::ElfFileOpen(File* file,
@@ -1183,6 +1313,33 @@ OatFile* OatFile::Open(const std::string& oat_filename,
   // does honor the virtual address encoded in the ELF file only for ET_EXEC files, not ET_DYN.
   OatFile* with_internal = OatFileBase::OpenOatFile<ElfOatFile>(vdex_filename,
                                                                 oat_filename,
+                                                                oat_location,
+                                                                requested_base,
+                                                                oat_file_begin,
+                                                                false /* writable */,
+                                                                executable,
+                                                                low_4gb,
+                                                                abs_dex_location,
+                                                                error_msg);
+  return with_internal;
+}
+
+OatFile* OatFile::Open(int vdex_fd,
+                       int oat_fd,
+                       const std::string& oat_location,
+                       uint8_t* requested_base,
+                       uint8_t* oat_file_begin,
+                       bool executable,
+                       bool low_4gb,
+                       const char* abs_dex_location,
+                       std::string* error_msg) {
+  CHECK(!oat_location.empty()) << oat_location;
+
+  std::string vdex_location = GetVdexFilename(oat_location);
+
+  OatFile* with_internal = OatFileBase::OpenOatFile<ElfOatFile>(vdex_fd,
+                                                                oat_fd,
+                                                                vdex_location,
                                                                 oat_location,
                                                                 requested_base,
                                                                 oat_file_begin,
