@@ -3856,14 +3856,16 @@ void Heap::AddModUnionTable(accounting::ModUnionTable* mod_union_table) {
 
 void Heap::CheckPreconditionsForAllocObject(ObjPtr<mirror::Class> c, size_t byte_count) {
   CHECK(c == nullptr || (c->IsClassClass() && byte_count >= sizeof(mirror::Class)) ||
-        (c->IsVariableSize() || c->GetObjectSize() == byte_count))
+        (c->IsVariableSize() ||
+            RoundUp(c->GetObjectSize(), kObjectAlignment) ==
+                RoundUp(byte_count, kObjectAlignment)))
       << "ClassFlags=" << c->GetClassFlags()
       << " IsClassClass=" << c->IsClassClass()
       << " byte_count=" << byte_count
       << " IsVariableSize=" << c->IsVariableSize()
       << " ObjectSize=" << c->GetObjectSize()
       << " sizeof(Class)=" << sizeof(mirror::Class)
-      << verification_->DumpObjectInfo(c.Ptr(), /*tag*/ "klass");
+      << " " << verification_->DumpObjectInfo(c.Ptr(), /*tag*/ "klass");
   CHECK_GE(byte_count, sizeof(mirror::Object));
 }
 
