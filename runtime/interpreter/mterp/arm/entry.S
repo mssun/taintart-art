@@ -19,8 +19,6 @@
 
     .text
     .align  2
-    .global ExecuteMterpImpl
-    .type   ExecuteMterpImpl, %function
 
 /*
  * On entry:
