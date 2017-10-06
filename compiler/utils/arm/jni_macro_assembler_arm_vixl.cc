@@ -117,7 +117,8 @@ void ArmVIXLJNIMacroAssembler::BuildFrame(size_t frame_size,
 }
 
 void ArmVIXLJNIMacroAssembler::RemoveFrame(size_t frame_size,
-                                           ArrayRef<const ManagedRegister> callee_save_regs) {
+                                           ArrayRef<const ManagedRegister> callee_save_regs,
+                                           bool may_suspend) {
   CHECK_ALIGNED(frame_size, kStackAlignment);
   cfi().RememberState();
 
@@ -152,9 +153,18 @@ void ArmVIXLJNIMacroAssembler::RemoveFrame(size_t frame_size,
   ___ Pop(RegisterList(core_spill_mask));
 
   if (kEmitCompilerReadBarrier && kUseBakerReadBarrier) {
-    // Refresh Mark Register.
-    // TODO: Refresh MR only if suspend is taken.
-    ___ Ldr(mr, MemOperand(tr, Thread::IsGcMarkingOffset<kArmPointerSize>().Int32Value()));
+    if (may_suspend) {
+      // The method may be suspended; refresh the Marking Register.
+      ___ Ldr(mr, MemOperand(tr, Thread::IsGcMarkingOffset<kArmPointerSize>().Int32Value()));
+    } else {
+      // The method shall not be suspended; no need to refresh the Marking Register.
+
+      // Check that the Marking Register is a callee-save register,
+      // and thus has been preserved by native code following the
+      // AAPCS calling convention.
+      DCHECK_NE(core_spill_mask & (1 << MR), 0)
+          << "core_spill_mask should contain Marking Register R" << MR;
+    }
   }
 
   // Return to LR.

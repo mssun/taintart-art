@@ -66,7 +66,13 @@ class JNIMacroAssembler : public DeletableArenaObject<kArenaAllocAssembler> {
                           const ManagedRegisterEntrySpills& entry_spills) = 0;
 
   // Emit code that will remove an activation from the stack
-  virtual void RemoveFrame(size_t frame_size, ArrayRef<const ManagedRegister> callee_save_regs) = 0;
+  //
+  // Argument `may_suspend` must be `true` if the compiled method may be
+  // suspended during its execution (otherwise `false`, if it is impossible
+  // to suspend during its execution).
+  virtual void RemoveFrame(size_t frame_size,
+                           ArrayRef<const ManagedRegister> callee_save_regs,
+                           bool may_suspend) = 0;
 
   virtual void IncreaseFrameSize(size_t adjust) = 0;
   virtual void DecreaseFrameSize(size_t adjust) = 0;
