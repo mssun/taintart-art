@@ -1399,7 +1399,9 @@ void Redefiner::ClassRedefinition::UpdateMethods(art::ObjPtr<art::mirror::Class>
     method.SetNotIntrinsic();
     // Notify the jit that this method is redefined.
     art::jit::Jit* jit = driver_->runtime_->GetJit();
-    if (jit != nullptr) {
+    // Non-invokable methods don't have any JIT data associated with them so we don't need to tell
+    // the jit about them.
+    if (jit != nullptr && method.IsInvokable()) {
       jit->GetCodeCache()->NotifyMethodRedefined(&method);
     }
   }
