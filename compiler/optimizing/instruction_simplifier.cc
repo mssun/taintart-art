@@ -313,7 +313,8 @@ bool InstructionSimplifierVisitor::TryCombineVecMultiplyAccumulate(HVecMul* mul)
                                                mul->GetLeft(),
                                                mul->GetRight(),
                                                binop->GetPackedType(),
-                                               binop->GetVectorLength());
+                                               binop->GetVectorLength(),
+                                               binop->GetDexPc());
 
         binop->GetBlock()->ReplaceAndRemoveInstructionWith(binop, mulacc);
         DCHECK(!mul->HasUses());
