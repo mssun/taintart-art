@@ -91,7 +91,10 @@ cc_defaults {
     name: "dex2oat-defaults",
     host_supported: true,
     defaults: ["art_defaults"],
-    srcs: ["dex2oat.cc"],
+    srcs: [
+        "dex2oat_options.cc",
+        "dex2oat.cc",
+    ],
 
     target: {
         android: {
