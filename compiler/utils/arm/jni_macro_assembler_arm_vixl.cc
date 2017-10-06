@@ -164,6 +164,21 @@ void ArmVIXLJNIMacroAssembler::RemoveFrame(size_t frame_size,
       // AAPCS calling convention.
       DCHECK_NE(core_spill_mask & (1 << MR), 0)
           << "core_spill_mask should contain Marking Register R" << MR;
+
+      // The following condition is a compile-time one, so it does not have a run-time cost.
+      if (kIsDebugBuild) {
+        // The following condition is a run-time one; it is executed after the
+        // previous compile-time test, to avoid penalizing non-debug builds.
+        if (emit_run_time_checks_in_debug_mode_) {
+          // Emit a run-time check verifying that the Marking Register is up-to-date.
+          UseScratchRegisterScope temps(asm_.GetVIXLAssembler());
+          vixl32::Register temp = temps.Acquire();
+          // Ensure we are not clobbering a callee-save register that was restored before.
+          DCHECK_EQ(core_spill_mask & (1 << temp.GetCode()), 0)
+              << "core_spill_mask hould not contain scratch register R" << temp.GetCode();
+          asm_.GenerateMarkingRegisterCheck(temp);
+        }
+      }
     }
   }
 
