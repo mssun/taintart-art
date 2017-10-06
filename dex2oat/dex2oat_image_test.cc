@@ -328,8 +328,8 @@ TEST_F(Dex2oatImageTest, TestModesAndFilters) {
     profile_file.Close();
     std::cout << "Profile sizes " << profile_sizes << std::endl;
     // Since there is some difference between profile vs image + methods due to layout, check that
-    // the range is within expected margins (+-5%).
-    const double kRatio = 0.95;
+    // the range is within expected margins (+-10%).
+    const double kRatio = 0.90;
     EXPECT_LE(profile_sizes.art_size * kRatio, compiled_methods_sizes.art_size);
     // TODO(mathieuc): Find a reliable way to check compiled code. b/63746626
     // EXPECT_LE(profile_sizes.oat_size * kRatio, compiled_methods_sizes.oat_size);
