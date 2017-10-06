@@ -743,7 +743,8 @@ void Arm64JNIMacroAssembler::BuildFrame(size_t frame_size,
 }
 
 void Arm64JNIMacroAssembler::RemoveFrame(size_t frame_size,
-                                         ArrayRef<const ManagedRegister> callee_save_regs) {
+                                         ArrayRef<const ManagedRegister> callee_save_regs,
+                                         bool may_suspend) {
   // Setup VIXL CPURegList for callee-saves.
   CPURegList core_reg_list(CPURegister::kRegister, kXRegSize, 0);
   CPURegList fp_reg_list(CPURegister::kFPRegister, kDRegSize, 0);
@@ -773,10 +774,21 @@ void Arm64JNIMacroAssembler::RemoveFrame(size_t frame_size,
   asm_.UnspillRegisters(fp_reg_list, frame_size - core_reg_size - fp_reg_size);
 
   if (kEmitCompilerReadBarrier && kUseBakerReadBarrier) {
-    // Refresh Mark Register.
-    // TODO: Refresh MR only if suspend is taken.
-    ___ Ldr(reg_w(MR),
-            MemOperand(reg_x(TR), Thread::IsGcMarkingOffset<kArm64PointerSize>().Int32Value()));
+    vixl::aarch64::Register mr = reg_x(MR);  // Marking Register.
+    vixl::aarch64::Register tr = reg_x(TR);  // Thread Register.
+
+    if (may_suspend) {
+      // The method may be suspended; refresh the Marking Register.
+      ___ Ldr(mr.W(), MemOperand(tr, Thread::IsGcMarkingOffset<kArm64PointerSize>().Int32Value()));
+    } else {
+      // The method shall not be suspended; no need to refresh the Marking Register.
+
+      // Check that the Marking Register is a callee-save register,
+      // and thus has been preserved by native code following the
+      // AAPCS64 calling convention.
+      DCHECK(core_reg_list.IncludesAliasOf(mr))
+          << "core_reg_list should contain Marking Register X" << mr.GetCode();
+    }
   }
 
   // Decrease frame size to start of callee saved regs.

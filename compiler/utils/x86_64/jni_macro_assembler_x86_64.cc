@@ -100,7 +100,8 @@ void X86_64JNIMacroAssembler::BuildFrame(size_t frame_size,
 }
 
 void X86_64JNIMacroAssembler::RemoveFrame(size_t frame_size,
-                                          ArrayRef<const ManagedRegister> spill_regs) {
+                                          ArrayRef<const ManagedRegister> spill_regs,
+                                          bool may_suspend ATTRIBUTE_UNUSED) {
   CHECK_ALIGNED(frame_size, kStackAlignment);
   cfi().RememberState();
   int gpr_count = 0;
