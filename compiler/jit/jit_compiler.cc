@@ -78,21 +78,16 @@ extern "C" void jit_types_loaded(void* handle, mirror::Class** types, size_t cou
   }
 }
 
-// Callers of this method assume it has NO_RETURN.
-NO_RETURN static void Usage(const char* fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  std::string error;
-  android::base::StringAppendV(&error, fmt, ap);
-  LOG(FATAL) << error;
-  va_end(ap);
-  exit(EXIT_FAILURE);
-}
-
 JitCompiler::JitCompiler() {
   compiler_options_.reset(new CompilerOptions());
-  for (const std::string& argument : Runtime::Current()->GetCompilerOptions()) {
-    compiler_options_->ParseCompilerOption(argument, Usage);
+  {
+    std::string error_msg;
+    if (!compiler_options_->ParseCompilerOptions(Runtime::Current()->GetCompilerOptions(),
+                                                 true /* ignore_unrecognized */,
+                                                 &error_msg)) {
+      LOG(FATAL) << error_msg;
+      UNREACHABLE();
+    }
   }
   // JIT is never PIC, no matter what the runtime compiler options specify.
   compiler_options_->SetNonPic();
