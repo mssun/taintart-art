@@ -1096,15 +1096,19 @@ bool Redefiner::ClassRedefinition::CheckVerification(const RedefinitionDataIter&
                                                  hs.NewHandle(GetClassLoader()),
                                                  dex_file_->GetClassDef(0), /*class_def*/
                                                  nullptr, /*compiler_callbacks*/
-                                                 false, /*allow_soft_failures*/
+                                                 true, /*allow_soft_failures*/
                                                  /*log_level*/
                                                  art::verifier::HardFailLogMode::kLogWarning,
                                                  &error);
-  bool passes = failure == art::verifier::FailureKind::kNoFailure;
-  if (!passes) {
-    RecordFailure(ERR(FAILS_VERIFICATION), "Failed to verify class. Error was: " + error);
+  switch (failure) {
+    case art::verifier::FailureKind::kNoFailure:
+    case art::verifier::FailureKind::kSoftFailure:
+      return true;
+    case art::verifier::FailureKind::kHardFailure: {
+      RecordFailure(ERR(FAILS_VERIFICATION), "Failed to verify class. Error was: " + error);
+      return false;
+    }
   }
-  return passes;
 }
 
 // Looks through the previously allocated cookies to see if we need to update them with another new
