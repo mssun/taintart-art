@@ -237,6 +237,14 @@ struct VariantMap {
     return (ptr == nullptr) ? key.CreateDefaultValue() : *ptr;
   }
 
+  template <typename T, typename U>
+  void AssignIfExists(const TKey<T>& key, U* out) {
+    DCHECK(out != nullptr);
+    if (Exists(key)) {
+      *out = std::move(*Get(key));
+    }
+  }
+
  private:
   // TODO: move to detail, or make it more generic like a ScopeGuard(function)
   template <typename TValue>
