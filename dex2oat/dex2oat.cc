@@ -235,6 +235,13 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("  --oat-fd=<number>: specifies the oat output destination via a file descriptor.");
   UsageError("      Example: --oat-fd=6");
   UsageError("");
+  UsageError("  --input-vdex-fd=<number>: specifies the vdex input source via a file descriptor.");
+  UsageError("      Example: --input-vdex-fd=6");
+  UsageError("");
+  UsageError("  --output-vdex-fd=<number>: specifies the vdex output destination via a file");
+  UsageError("      descriptor.");
+  UsageError("      Example: --output-vdex-fd=6");
+  UsageError("");
   UsageError("  --oat-location=<oat-name>: specifies a symbolic name for the file corresponding");
   UsageError("      to the file descriptor specified by --oat-fd.");
   UsageError("      Example: --oat-location=/data/dalvik-cache/system@app@Calculator.apk.oat");
