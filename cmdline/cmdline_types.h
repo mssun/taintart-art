@@ -290,26 +290,42 @@ struct CmdlineType<double> : CmdlineTypeParser<double> {
   static const char* Name() { return "double"; }
 };
 
+template <typename T>
+static inline CmdlineParseResult<T> ParseNumeric(const std::string& str) {
+  static_assert(sizeof(T) < sizeof(long long int),  // NOLINT [runtime/int] [4]
+                "Current support is restricted.");
+
+  const char* begin = str.c_str();
+  char* end;
+
+  // Parse into a larger type (long long) because we can't use strtoul
+  // since it silently converts negative values into unsigned long and doesn't set errno.
+  errno = 0;
+  long long int result = strtoll(begin, &end, 10);  // NOLINT [runtime/int] [4]
+  if (begin == end || *end != '\0' || errno == EINVAL) {
+    return CmdlineParseResult<T>::Failure("Failed to parse integer from " + str);
+  } else if ((errno == ERANGE) ||  // NOLINT [runtime/int] [4]
+      result < std::numeric_limits<T>::min() || result > std::numeric_limits<T>::max()) {
+    return CmdlineParseResult<T>::OutOfRange(
+        "Failed to parse integer from " + str + "; out of range");
+  }
+
+  return CmdlineParseResult<T>::Success(static_cast<T>(result));
+}
+
 template <>
 struct CmdlineType<unsigned int> : CmdlineTypeParser<unsigned int> {
   Result Parse(const std::string& str) {
-    const char* begin = str.c_str();
-    char* end;
+    return ParseNumeric<unsigned int>(str);
+  }
 
-    // Parse into a larger type (long long) because we can't use strtoul
-    // since it silently converts negative values into unsigned long and doesn't set errno.
-    errno = 0;
-    long long int result = strtoll(begin, &end, 10);  // NOLINT [runtime/int] [4]
-    if (begin == end || *end != '\0' || errno == EINVAL) {
-      return Result::Failure("Failed to parse integer from " + str);
-    } else if ((errno == ERANGE) ||  // NOLINT [runtime/int] [4]
-        result < std::numeric_limits<int>::min()
-        || result > std::numeric_limits<unsigned int>::max() || result < 0) {
-      return Result::OutOfRange(
-          "Failed to parse integer from " + str + "; out of unsigned int range");
-    }
+  static const char* Name() { return "unsigned integer"; }
+};
 
-    return Result::Success(static_cast<unsigned int>(result));
+template <>
+struct CmdlineType<int> : CmdlineTypeParser<int> {
+  Result Parse(const std::string& str) {
+    return ParseNumeric<int>(str);
   }
 
   static const char* Name() { return "unsigned integer"; }
