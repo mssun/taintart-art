@@ -371,6 +371,128 @@ inline static uint64_t ReverseBits64(uint64_t opnd) {
   return opnd;
 }
 
+// Create a mask for the least significant "bits"
+// The returned value is always unsigned to prevent undefined behavior for bitwise ops.
+//
+// Given 'bits',
+// Returns:
+//                   <--- bits --->
+// +-----------------+------------+
+// | 0 ............0 |   1.....1  |
+// +-----------------+------------+
+// msb                           lsb
+template <typename T = size_t>
+inline static constexpr std::make_unsigned_t<T> MaskLeastSignificant(size_t bits) {
+  DCHECK_GE(BitSizeOf<T>(), bits) << "Bits out of range for type T";
+  using unsigned_T = std::make_unsigned_t<T>;
+  if (bits >= BitSizeOf<T>()) {
+    return std::numeric_limits<unsigned_T>::max();
+  } else {
+    return static_cast<unsigned_T>((1 << bits) - 1);
+  }
+}
+
+// Clears the bitfield starting at the least significant bit "lsb" with a bitwidth of 'width'.
+// (Equivalent of ARM BFC instruction).
+//
+// Given:
+//           <-- width  -->
+// +--------+------------+--------+
+// | ABC... |  bitfield  | XYZ... +
+// +--------+------------+--------+
+//                       lsb      0
+// Returns:
+//           <-- width  -->
+// +--------+------------+--------+
+// | ABC... | 0........0 | XYZ... +
+// +--------+------------+--------+
+//                       lsb      0
+template <typename T>
+inline static constexpr T BitFieldClear(T value, size_t lsb, size_t width) {
+  DCHECK_GE(BitSizeOf(value), lsb + width) << "Bit field out of range for value";
+  const auto val = static_cast<std::make_unsigned_t<T>>(value);
+  const auto mask = MaskLeastSignificant<T>(width);
+
+  return static_cast<T>(val & ~(mask << lsb));
+}
+
+// Inserts the contents of 'data' into bitfield of 'value'  starting
+// at the least significant bit "lsb" with a bitwidth of 'width'.
+// Note: data must be within range of [MinInt(width), MaxInt(width)].
+// (Equivalent of ARM BFI instruction).
+//
+// Given (data):
+//           <-- width  -->
+// +--------+------------+--------+
+// | ABC... |  bitfield  | XYZ... +
+// +--------+------------+--------+
+//                       lsb      0
+// Returns:
+//           <-- width  -->
+// +--------+------------+--------+
+// | ABC... | 0...data   | XYZ... +
+// +--------+------------+--------+
+//                       lsb      0
+
+template <typename T, typename T2>
+inline static constexpr T BitFieldInsert(T value, T2 data, size_t lsb, size_t width) {
+  DCHECK_GE(BitSizeOf(value), lsb + width) << "Bit field out of range for value";
+  if (width != 0u) {
+    DCHECK_GE(MaxInt<T2>(width), data) << "Data out of range [too large] for bitwidth";
+    DCHECK_LE(MinInt<T2>(width), data) << "Data out of range [too small] for bitwidth";
+  } else {
+    DCHECK_EQ(static_cast<T2>(0), data) << "Data out of range [nonzero] for bitwidth 0";
+  }
+  const auto data_mask = MaskLeastSignificant<T2>(width);
+  const auto value_cleared = BitFieldClear(value, lsb, width);
+
+  return static_cast<T>(value_cleared | ((data & data_mask) << lsb));
+}
+
+// Extracts the bitfield starting at the least significant bit "lsb" with a bitwidth of 'width'.
+// Signed types are sign-extended during extraction. (Equivalent of ARM UBFX/SBFX instruction).
+//
+// Given:
+//           <-- width   -->
+// +--------+-------------+-------+
+// |        |   bitfield  |       +
+// +--------+-------------+-------+
+//                       lsb      0
+// (Unsigned) Returns:
+//                  <-- width   -->
+// +----------------+-------------+
+// | 0...        0  |   bitfield  |
+// +----------------+-------------+
+//                                0
+// (Signed) Returns:
+//                  <-- width   -->
+// +----------------+-------------+
+// | S...        S  |   bitfield  |
+// +----------------+-------------+
+//                                0
+// where S is the highest bit in 'bitfield'.
+template <typename T>
+inline static constexpr T BitFieldExtract(T value, size_t lsb, size_t width) {
+  DCHECK_GE(BitSizeOf(value), lsb + width) << "Bit field out of range for value";
+  const auto val = static_cast<std::make_unsigned_t<T>>(value);
+
+  const T bitfield_unsigned =
+      static_cast<T>((val >> lsb) & MaskLeastSignificant<T>(width));
+  if (std::is_signed<T>::value) {
+    // Perform sign extension
+    if (width == 0) {  // Avoid underflow.
+      return static_cast<T>(0);
+    } else if (bitfield_unsigned & (1 << (width - 1))) {  // Detect if sign bit was set.
+      // MSB        <width> LSB
+      // 0b11111...100...000000
+      const auto ones_negmask = ~MaskLeastSignificant<T>(width);
+      return static_cast<T>(bitfield_unsigned | ones_negmask);
+    }
+  }
+  // Skip sign extension.
+  return bitfield_unsigned;
+}
+
 }  // namespace art
 
 #endif  // ART_RUNTIME_BASE_BIT_UTILS_H_
