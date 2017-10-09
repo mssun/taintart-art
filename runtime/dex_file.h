@@ -496,11 +496,7 @@ class DexFile {
   // classes*.dex path.
   static std::string GetBaseLocation(const char* location) {
     const char* pos = strrchr(location, kMultiDexSeparator);
-    if (pos == nullptr) {
-      return location;
-    } else {
-      return std::string(location, pos - location);
-    }
+    return (pos == nullptr) ? location : std::string(location, pos - location);
   }
 
   static std::string GetBaseLocation(const std::string& location) {
@@ -512,11 +508,7 @@ class DexFile {
   // The kMultiDexSeparator is included in the returned suffix.
   static std::string GetMultiDexSuffix(const std::string& location) {
     size_t pos = location.rfind(kMultiDexSeparator);
-    if (pos == std::string::npos) {
-      return "";
-    } else {
-      return location.substr(pos);
-    }
+    return (pos == std::string::npos) ? std::string() : location.substr(pos);
   }
 
   std::string GetBaseLocation() const {
@@ -733,11 +725,10 @@ class DexFile {
 
   const TypeList* GetInterfacesList(const ClassDef& class_def) const {
     if (class_def.interfaces_off_ == 0) {
-        return nullptr;
-    } else {
-      const uint8_t* addr = begin_ + class_def.interfaces_off_;
-      return reinterpret_cast<const TypeList*>(addr);
+      return nullptr;
     }
+    const uint8_t* addr = begin_ + class_def.interfaces_off_;
+    return reinterpret_cast<const TypeList*>(addr);
   }
 
   uint32_t NumMethodHandles() const {
@@ -760,11 +751,7 @@ class DexFile {
 
   // Returns a pointer to the raw memory mapped class_data_item
   const uint8_t* GetClassData(const ClassDef& class_def) const {
-    if (class_def.class_data_off_ == 0) {
-      return nullptr;
-    } else {
-      return begin_ + class_def.class_data_off_;
-    }
+    return (class_def.class_data_off_ == 0) ? nullptr : begin_ + class_def.class_data_off_;
   }
 
   //
@@ -772,10 +759,9 @@ class DexFile {
     DCHECK_LT(code_off, size_) << "Code item offset larger then maximum allowed offset";
     if (code_off == 0) {
       return nullptr;  // native or abstract method
-    } else {
-      const uint8_t* addr = begin_ + code_off;
-      return reinterpret_cast<const CodeItem*>(addr);
     }
+    const uint8_t* addr = begin_ + code_off;
+    return reinterpret_cast<const CodeItem*>(addr);
   }
 
   const char* GetReturnTypeDescriptor(const ProtoId& proto_id) const;
@@ -820,20 +806,13 @@ class DexFile {
   const char* GetShorty(uint32_t proto_idx) const;
 
   const TypeList* GetProtoParameters(const ProtoId& proto_id) const {
-    if (proto_id.parameters_off_ == 0) {
-      return nullptr;
-    } else {
-      const uint8_t* addr = begin_ + proto_id.parameters_off_;
-      return reinterpret_cast<const TypeList*>(addr);
-    }
+    return (proto_id.parameters_off_ == 0)
+        ? nullptr
+        : reinterpret_cast<const TypeList*>(begin_ + proto_id.parameters_off_);
   }
 
   const uint8_t* GetEncodedStaticFieldValuesArray(const ClassDef& class_def) const {
-    if (class_def.static_values_off_ == 0) {
-      return 0;
-    } else {
-      return begin_ + class_def.static_values_off_;
-    }
+    return (class_def.static_values_off_ == 0) ? 0 : begin_ + class_def.static_values_off_;
   }
 
   const uint8_t* GetCallSiteEncodedValuesArray(const CallSiteIdItem& call_site_id) const {
@@ -860,27 +839,18 @@ class DexFile {
     // Check that the offset is in bounds.
     // Note that although the specification says that 0 should be used if there
     // is no debug information, some applications incorrectly use 0xFFFFFFFF.
-    if (code_item->debug_info_off_ == 0 || code_item->debug_info_off_ >= size_) {
-      return nullptr;
-    } else {
-      return begin_ + code_item->debug_info_off_;
-    }
+    const uint32_t debug_info_off = code_item->debug_info_off_;
+    return (debug_info_off == 0 || debug_info_off >= size_) ? nullptr : begin_ + debug_info_off;
   }
 
   struct PositionInfo {
-    PositionInfo()
-        : address_(0),
-          line_(0),
-          source_file_(nullptr),
-          prologue_end_(false),
-          epilogue_begin_(false) {
-    }
+    PositionInfo() = default;
 
-    uint32_t address_;  // In 16-bit code units.
-    uint32_t line_;  // Source code line number starting at 1.
-    const char* source_file_;  // nullptr if the file from ClassDef still applies.
-    bool prologue_end_;
-    bool epilogue_begin_;
+    uint32_t address_ = 0;  // In 16-bit code units.
+    uint32_t line_ = 0;  // Source code line number starting at 1.
+    const char* source_file_ = nullptr;  // nullptr if the file from ClassDef still applies.
+    bool prologue_end_ = false;
+    bool epilogue_begin_ = false;
   };
 
   // Callback for "new position table entry".
@@ -888,23 +858,15 @@ class DexFile {
   typedef bool (*DexDebugNewPositionCb)(void* context, const PositionInfo& entry);
 
   struct LocalInfo {
-    LocalInfo()
-        : name_(nullptr),
-          descriptor_(nullptr),
-          signature_(nullptr),
-          start_address_(0),
-          end_address_(0),
-          reg_(0),
-          is_live_(false) {
-    }
+    LocalInfo() = default;
 
-    const char* name_;  // E.g., list.  It can be nullptr if unknown.
-    const char* descriptor_;  // E.g., Ljava/util/LinkedList;
-    const char* signature_;  // E.g., java.util.LinkedList<java.lang.Integer>
-    uint32_t start_address_;  // PC location where the local is first defined.
-    uint32_t end_address_;  // PC location where the local is no longer defined.
-    uint16_t reg_;  // Dex register which stores the values.
-    bool is_live_;  // Is the local defined and live.
+    const char* name_ = nullptr;  // E.g., list.  It can be nullptr if unknown.
+    const char* descriptor_ = nullptr;  // E.g., Ljava/util/LinkedList;
+    const char* signature_ = nullptr;  // E.g., java.util.LinkedList<java.lang.Integer>
+    uint32_t start_address_ = 0;  // PC location where the local is first defined.
+    uint32_t end_address_ = 0;  // PC location where the local is no longer defined.
+    uint16_t reg_ = 0;  // Dex register which stores the values.
+    bool is_live_ = false;  // Is the local defined and live.
   };
 
   // Callback for "new locals table entry".
@@ -913,98 +875,82 @@ class DexFile {
   static bool LineNumForPcCb(void* context, const PositionInfo& entry);
 
   const AnnotationsDirectoryItem* GetAnnotationsDirectory(const ClassDef& class_def) const {
-    if (class_def.annotations_off_ == 0) {
-      return nullptr;
-    } else {
-      return reinterpret_cast<const AnnotationsDirectoryItem*>(begin_ + class_def.annotations_off_);
-    }
+    return (class_def.annotations_off_ == 0)
+        ? nullptr
+        : reinterpret_cast<const AnnotationsDirectoryItem*>(begin_ + class_def.annotations_off_);
   }
 
   const AnnotationSetItem* GetClassAnnotationSet(const AnnotationsDirectoryItem* anno_dir) const {
-    if (anno_dir->class_annotations_off_ == 0) {
-      return nullptr;
-    } else {
-      return reinterpret_cast<const AnnotationSetItem*>(begin_ + anno_dir->class_annotations_off_);
-    }
+    return (anno_dir->class_annotations_off_ == 0)
+        ? nullptr
+        : reinterpret_cast<const AnnotationSetItem*>(begin_ + anno_dir->class_annotations_off_);
   }
 
   const FieldAnnotationsItem* GetFieldAnnotations(const AnnotationsDirectoryItem* anno_dir) const {
-    if (anno_dir->fields_size_ == 0) {
-      return nullptr;
-    } else {
-      return reinterpret_cast<const FieldAnnotationsItem*>(&anno_dir[1]);
-    }
+    return (anno_dir->fields_size_ == 0)
+        ? nullptr
+        : reinterpret_cast<const FieldAnnotationsItem*>(&anno_dir[1]);
   }
 
   const MethodAnnotationsItem* GetMethodAnnotations(const AnnotationsDirectoryItem* anno_dir)
       const {
     if (anno_dir->methods_size_ == 0) {
       return nullptr;
-    } else {
-      // Skip past the header and field annotations.
-      const uint8_t* addr = reinterpret_cast<const uint8_t*>(&anno_dir[1]);
-      addr += anno_dir->fields_size_ * sizeof(FieldAnnotationsItem);
-      return reinterpret_cast<const MethodAnnotationsItem*>(addr);
     }
+    // Skip past the header and field annotations.
+    const uint8_t* addr = reinterpret_cast<const uint8_t*>(&anno_dir[1]);
+    addr += anno_dir->fields_size_ * sizeof(FieldAnnotationsItem);
+    return reinterpret_cast<const MethodAnnotationsItem*>(addr);
   }
 
   const ParameterAnnotationsItem* GetParameterAnnotations(const AnnotationsDirectoryItem* anno_dir)
       const {
     if (anno_dir->parameters_size_ == 0) {
       return nullptr;
-    } else {
-      // Skip past the header, field annotations, and method annotations.
-      const uint8_t* addr = reinterpret_cast<const uint8_t*>(&anno_dir[1]);
-      addr += anno_dir->fields_size_ * sizeof(FieldAnnotationsItem);
-      addr += anno_dir->methods_size_ * sizeof(MethodAnnotationsItem);
-      return reinterpret_cast<const ParameterAnnotationsItem*>(addr);
     }
+    // Skip past the header, field annotations, and method annotations.
+    const uint8_t* addr = reinterpret_cast<const uint8_t*>(&anno_dir[1]);
+    addr += anno_dir->fields_size_ * sizeof(FieldAnnotationsItem);
+    addr += anno_dir->methods_size_ * sizeof(MethodAnnotationsItem);
+    return reinterpret_cast<const ParameterAnnotationsItem*>(addr);
   }
 
   const AnnotationSetItem* GetFieldAnnotationSetItem(const FieldAnnotationsItem& anno_item) const {
     uint32_t offset = anno_item.annotations_off_;
-    if (offset == 0) {
-      return nullptr;
-    } else {
-      return reinterpret_cast<const AnnotationSetItem*>(begin_ + offset);
-    }
+    return (offset == 0)
+        ? nullptr
+        : reinterpret_cast<const AnnotationSetItem*>(begin_ + offset);
   }
 
   const AnnotationSetItem* GetMethodAnnotationSetItem(const MethodAnnotationsItem& anno_item)
       const {
     uint32_t offset = anno_item.annotations_off_;
-    if (offset == 0) {
-      return nullptr;
-    } else {
-      return reinterpret_cast<const AnnotationSetItem*>(begin_ + offset);
-    }
+    return (offset == 0)
+        ? nullptr
+        : reinterpret_cast<const AnnotationSetItem*>(begin_ + offset);
   }
 
   const AnnotationSetRefList* GetParameterAnnotationSetRefList(
       const ParameterAnnotationsItem* anno_item) const {
     uint32_t offset = anno_item->annotations_off_;
-    if (offset == 0) {
-      return nullptr;
-    }
-    return reinterpret_cast<const AnnotationSetRefList*>(begin_ + offset);
+    return (offset == 0)
+        ? nullptr
+        : reinterpret_cast<const AnnotationSetRefList*>(begin_ + offset);
   }
 
   const AnnotationItem* GetAnnotationItem(const AnnotationSetItem* set_item, uint32_t index) const {
     DCHECK_LE(index, set_item->size_);
     uint32_t offset = set_item->entries_[index];
-    if (offset == 0) {
-      return nullptr;
-    } else {
-      return reinterpret_cast<const AnnotationItem*>(begin_ + offset);
-    }
+    return (offset == 0)
+        ? nullptr
+        : reinterpret_cast<const AnnotationItem*>(begin_ + offset);
   }
 
   const AnnotationSetItem* GetSetRefItemItem(const AnnotationSetRefItem* anno_item) const {
     uint32_t offset = anno_item->annotations_off_;
-    if (offset == 0) {
-      return nullptr;
-    }
-    return reinterpret_cast<const AnnotationSetItem*>(begin_ + offset);
+    return (offset == 0)
+        ? nullptr
+        : reinterpret_cast<const AnnotationSetItem*>(begin_ + offset);
   }
 
   // Debug info opcodes and constants
@@ -1252,7 +1198,7 @@ std::ostream& operator<<(std::ostream& os, const DexFile& dex_file);
 class DexFileParameterIterator {
  public:
   DexFileParameterIterator(const DexFile& dex_file, const DexFile::ProtoId& proto_id)
-      : dex_file_(dex_file), size_(0), pos_(0) {
+      : dex_file_(dex_file) {
     type_list_ = dex_file_.GetProtoParameters(proto_id);
     if (type_list_ != nullptr) {
       size_ = type_list_->Size();
@@ -1269,9 +1215,9 @@ class DexFileParameterIterator {
   }
  private:
   const DexFile& dex_file_;
-  const DexFile::TypeList* type_list_;
-  uint32_t size_;
-  uint32_t pos_;
+  const DexFile::TypeList* type_list_ = nullptr;
+  uint32_t size_ = 0;
+  uint32_t pos_ = 0;
   DISALLOW_IMPLICIT_CONSTRUCTORS(DexFileParameterIterator);
 };
 
@@ -1298,13 +1244,12 @@ class Signature : public ValueObject {
   Signature(const DexFile* dex, const DexFile::ProtoId& proto) : dex_file_(dex), proto_id_(&proto) {
   }
 
-  Signature() : dex_file_(nullptr), proto_id_(nullptr) {
-  }
+  Signature() = default;
 
   friend class DexFile;
 
-  const DexFile* const dex_file_;
-  const DexFile::ProtoId* const proto_id_;
+  const DexFile* const dex_file_ = nullptr;
+  const DexFile::ProtoId* const proto_id_ = nullptr;
 };
 std::ostream& operator<<(std::ostream& os, const Signature& sig);
 
@@ -1583,44 +1528,44 @@ class CallSiteArrayValueIterator : public EncodedArrayValueIterator {
 std::ostream& operator<<(std::ostream& os, const CallSiteArrayValueIterator::ValueType& code);
 
 class CatchHandlerIterator {
-  public:
-    CatchHandlerIterator(const DexFile::CodeItem& code_item, uint32_t address);
+ public:
+  CatchHandlerIterator(const DexFile::CodeItem& code_item, uint32_t address);
 
-    CatchHandlerIterator(const DexFile::CodeItem& code_item,
-                         const DexFile::TryItem& try_item);
+  CatchHandlerIterator(const DexFile::CodeItem& code_item,
+                       const DexFile::TryItem& try_item);
 
-    explicit CatchHandlerIterator(const uint8_t* handler_data) {
-      Init(handler_data);
-    }
+  explicit CatchHandlerIterator(const uint8_t* handler_data) {
+    Init(handler_data);
+  }
 
-    dex::TypeIndex GetHandlerTypeIndex() const {
-      return handler_.type_idx_;
-    }
-    uint32_t GetHandlerAddress() const {
-      return handler_.address_;
-    }
-    void Next();
-    bool HasNext() const {
-      return remaining_count_ != -1 || catch_all_;
-    }
-    // End of this set of catch blocks, convenience method to locate next set of catch blocks
-    const uint8_t* EndDataPointer() const {
-      CHECK(!HasNext());
-      return current_data_;
-    }
+  dex::TypeIndex GetHandlerTypeIndex() const {
+    return handler_.type_idx_;
+  }
+  uint32_t GetHandlerAddress() const {
+    return handler_.address_;
+  }
+  void Next();
+  bool HasNext() const {
+    return remaining_count_ != -1 || catch_all_;
+  }
+  // End of this set of catch blocks, convenience method to locate next set of catch blocks
+  const uint8_t* EndDataPointer() const {
+    CHECK(!HasNext());
+    return current_data_;
+  }
 
-  private:
-    void Init(const DexFile::CodeItem& code_item, int32_t offset);
-    void Init(const uint8_t* handler_data);
+ private:
+  void Init(const DexFile::CodeItem& code_item, int32_t offset);
+  void Init(const uint8_t* handler_data);
 
-    struct CatchHandlerItem {
-      dex::TypeIndex type_idx_;  // type index of the caught exception type
-      uint32_t address_;  // handler address
-    } handler_;
-    const uint8_t* current_data_;  // the current handler in dex file.
-    int32_t remaining_count_;   // number of handlers not read.
-    bool catch_all_;            // is there a handler that will catch all exceptions in case
-                                // that all typed handler does not match.
+  struct CatchHandlerItem {
+    dex::TypeIndex type_idx_;  // type index of the caught exception type
+    uint32_t address_;  // handler address
+  } handler_;
+  const uint8_t* current_data_;  // the current handler in dex file.
+  int32_t remaining_count_;   // number of handlers not read.
+  bool catch_all_;            // is there a handler that will catch all exceptions in case
+                              // that all typed handler does not match.
 };
 
 }  // namespace art
