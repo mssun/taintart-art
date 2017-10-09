@@ -1828,7 +1828,7 @@ ProfileCompilationInfo::InlineCacheMap*
 ProfileCompilationInfo::DexFileData::FindOrAddMethod(uint16_t method_index) {
   return &(method_map.FindOrAdd(
       method_index,
-      InlineCacheMap(std::less<uint16_t>(), arena_->Adapter(kArenaAllocProfile)))->second);
+      InlineCacheMap(std::less<uint16_t>(), allocator_->Adapter(kArenaAllocProfile)))->second);
 }
 
 // Mark a method as executed at least once.
@@ -1847,7 +1847,7 @@ bool ProfileCompilationInfo::DexFileData::AddMethod(MethodHotness::Flag flags, s
   if ((flags & MethodHotness::kFlagHot) != 0) {
     method_map.FindOrAdd(
         index,
-        InlineCacheMap(std::less<uint16_t>(), arena_->Adapter(kArenaAllocProfile)));
+        InlineCacheMap(std::less<uint16_t>(), allocator_->Adapter(kArenaAllocProfile)));
   }
   return true;
 }

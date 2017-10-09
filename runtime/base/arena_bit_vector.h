@@ -31,19 +31,19 @@ class ScopedArenaAllocator;
 class ArenaBitVector : public BitVector, public ArenaObject<kArenaAllocGrowableBitMap> {
  public:
   template <typename Allocator>
-  static ArenaBitVector* Create(Allocator* arena,
+  static ArenaBitVector* Create(Allocator* allocator,
                                 uint32_t start_bits,
                                 bool expandable,
                                 ArenaAllocKind kind = kArenaAllocGrowableBitMap) {
-    void* storage = arena->template Alloc<ArenaBitVector>(kind);
-    return new (storage) ArenaBitVector(arena, start_bits, expandable, kind);
+    void* storage = allocator->template Alloc<ArenaBitVector>(kind);
+    return new (storage) ArenaBitVector(allocator, start_bits, expandable, kind);
   }
 
-  ArenaBitVector(ArenaAllocator* arena,
+  ArenaBitVector(ArenaAllocator* allocator,
                  uint32_t start_bits,
                  bool expandable,
                  ArenaAllocKind kind = kArenaAllocGrowableBitMap);
-  ArenaBitVector(ScopedArenaAllocator* arena,
+  ArenaBitVector(ScopedArenaAllocator* allocator,
                  uint32_t start_bits,
                  bool expandable,
                  ArenaAllocKind kind = kArenaAllocGrowableBitMap);

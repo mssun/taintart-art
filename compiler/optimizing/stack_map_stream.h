@@ -223,7 +223,7 @@ class StackMapStream : public ValueObject {
                            size_t dex_register_locations_index) const;
   void CheckCodeInfo(MemoryRegion region) const;
 
-  ArenaAllocator* allocator_;
+  ArenaAllocator* const allocator_;
   const InstructionSet instruction_set_;
   ArenaVector<StackMapEntry> stack_maps_;
 

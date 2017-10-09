@@ -24,8 +24,8 @@ namespace art {
 
 TEST(AssemblerX86, CreateBuffer) {
   ArenaPool pool;
-  ArenaAllocator arena(&pool);
-  AssemblerBuffer buffer(&arena);
+  ArenaAllocator allocator(&pool);
+  AssemblerBuffer buffer(&allocator);
   AssemblerBuffer::EnsureCapacity ensured(&buffer);
   buffer.Emit<uint8_t>(0x42);
   ASSERT_EQ(static_cast<size_t>(1), buffer.Size());

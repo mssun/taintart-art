@@ -511,8 +511,8 @@ void Arm64RelativePatcher::CompileBakerReadBarrierThunk(arm64::Arm64Assembler& a
 
 std::vector<uint8_t> Arm64RelativePatcher::CompileThunk(const ThunkKey& key) {
   ArenaPool pool;
-  ArenaAllocator arena(&pool);
-  arm64::Arm64Assembler assembler(&arena);
+  ArenaAllocator allocator(&pool);
+  arm64::Arm64Assembler assembler(&allocator);
 
   switch (key.GetType()) {
     case ThunkType::kMethodCall: {
