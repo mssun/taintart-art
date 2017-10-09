@@ -23,29 +23,29 @@
 namespace art {
 
 TEST(LiveInterval, GetStart) {
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
+  ArenaPoolAndAllocator pool;
+  ScopedArenaAllocator* allocator = pool.GetScopedAllocator();
 
   {
     static constexpr size_t ranges[][2] = {{0, 42}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     ASSERT_EQ(0u, interval->GetStart());
   }
 
   {
     static constexpr size_t ranges[][2] = {{4, 12}, {14, 16}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     ASSERT_EQ(4u, interval->GetStart());
   }
 }
 
 TEST(LiveInterval, IsDeadAt) {
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
+  ArenaPoolAndAllocator pool;
+  ScopedArenaAllocator* allocator = pool.GetScopedAllocator();
 
   {
     static constexpr size_t ranges[][2] = {{0, 42}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     ASSERT_TRUE(interval->IsDeadAt(42));
     ASSERT_TRUE(interval->IsDeadAt(43));
     ASSERT_FALSE(interval->IsDeadAt(41));
@@ -55,7 +55,7 @@ TEST(LiveInterval, IsDeadAt) {
 
   {
     static constexpr size_t ranges[][2] = {{4, 12}, {14, 16}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     ASSERT_TRUE(interval->IsDeadAt(16));
     ASSERT_TRUE(interval->IsDeadAt(32));
     ASSERT_FALSE(interval->IsDeadAt(0));
@@ -68,12 +68,12 @@ TEST(LiveInterval, IsDeadAt) {
 }
 
 TEST(LiveInterval, Covers) {
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
+  ArenaPoolAndAllocator pool;
+  ScopedArenaAllocator* allocator = pool.GetScopedAllocator();
 
   {
     static constexpr size_t ranges[][2] = {{0, 42}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     ASSERT_TRUE(interval->Covers(0));
     ASSERT_TRUE(interval->Covers(4));
     ASSERT_TRUE(interval->Covers(41));
@@ -83,7 +83,7 @@ TEST(LiveInterval, Covers) {
 
   {
     static constexpr size_t ranges[][2] = {{4, 12}, {14, 16}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     ASSERT_FALSE(interval->Covers(0));
     ASSERT_TRUE(interval->Covers(4));
     ASSERT_TRUE(interval->Covers(11));
@@ -96,68 +96,68 @@ TEST(LiveInterval, Covers) {
 }
 
 TEST(LiveInterval, FirstIntersectionWith) {
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
+  ArenaPoolAndAllocator pool;
+  ScopedArenaAllocator* allocator = pool.GetScopedAllocator();
 
   {
     static constexpr size_t ranges1[][2] = {{0, 4}, {8, 10}};
-    LiveInterval* interval1 = BuildInterval(ranges1, arraysize(ranges1), &allocator);
+    LiveInterval* interval1 = BuildInterval(ranges1, arraysize(ranges1), allocator);
     static constexpr size_t ranges2[][2] = {{5, 6}};
-    LiveInterval* interval2 = BuildInterval(ranges2, arraysize(ranges2), &allocator);
+    LiveInterval* interval2 = BuildInterval(ranges2, arraysize(ranges2), allocator);
 
     ASSERT_EQ(kNoLifetime, interval1->FirstIntersectionWith(interval2));
   }
 
   {
     static constexpr size_t ranges1[][2] = {{0, 4}, {8, 10}};
-    LiveInterval* interval1 = BuildInterval(ranges1, arraysize(ranges1), &allocator);
+    LiveInterval* interval1 = BuildInterval(ranges1, arraysize(ranges1), allocator);
     static constexpr size_t ranges2[][2] = {{5, 42}};
-    LiveInterval* interval2 = BuildInterval(ranges2, arraysize(ranges2), &allocator);
+    LiveInterval* interval2 = BuildInterval(ranges2, arraysize(ranges2), allocator);
 
     ASSERT_EQ(8u, interval1->FirstIntersectionWith(interval2));
   }
 
   {
     static constexpr size_t ranges1[][2] = {{0, 4}, {8, 10}};
-    LiveInterval* interval1 = BuildInterval(ranges1, arraysize(ranges1), &allocator);
+    LiveInterval* interval1 = BuildInterval(ranges1, arraysize(ranges1), allocator);
     static constexpr size_t ranges2[][2] = {{5, 6}, {7, 8}, {11, 12}};
-    LiveInterval* interval2 = BuildInterval(ranges2, arraysize(ranges2), &allocator);
+    LiveInterval* interval2 = BuildInterval(ranges2, arraysize(ranges2), allocator);
 
     ASSERT_EQ(kNoLifetime, interval1->FirstIntersectionWith(interval2));
   }
 
   {
     static constexpr size_t ranges1[][2] = {{0, 4}, {8, 10}};
-    LiveInterval* interval1 = BuildInterval(ranges1, arraysize(ranges1), &allocator);
+    LiveInterval* interval1 = BuildInterval(ranges1, arraysize(ranges1), allocator);
     static constexpr size_t ranges2[][2] = {{5, 6}, {7, 8}, {9, 10}};
-    LiveInterval* interval2 = BuildInterval(ranges2, arraysize(ranges2), &allocator);
+    LiveInterval* interval2 = BuildInterval(ranges2, arraysize(ranges2), allocator);
 
     ASSERT_EQ(9u, interval1->FirstIntersectionWith(interval2));
   }
 
   {
     static constexpr size_t ranges1[][2] = {{0, 1}, {2, 7}, {8, 10}};
-    LiveInterval* interval1 = BuildInterval(ranges1, arraysize(ranges1), &allocator);
+    LiveInterval* interval1 = BuildInterval(ranges1, arraysize(ranges1), allocator);
     static constexpr size_t ranges2[][2] = {{1, 2}, {6, 7}, {9, 10}};
-    LiveInterval* interval2 = BuildInterval(ranges2, arraysize(ranges2), &allocator);
+    LiveInterval* interval2 = BuildInterval(ranges2, arraysize(ranges2), allocator);
 
     ASSERT_EQ(6u, interval1->FirstIntersectionWith(interval2));
   }
 
   {
     static constexpr size_t ranges1[][2] = {{0, 1}, {2, 8}, {55, 58}};
-    LiveInterval* interval1 = BuildInterval(ranges1, arraysize(ranges1), &allocator);
+    LiveInterval* interval1 = BuildInterval(ranges1, arraysize(ranges1), allocator);
     static constexpr size_t ranges2[][2] = {{1, 2}, {11, 42}, {43, 48}, {54, 56}};
-    LiveInterval* interval2 = BuildInterval(ranges2, arraysize(ranges2), &allocator);
+    LiveInterval* interval2 = BuildInterval(ranges2, arraysize(ranges2), allocator);
 
     ASSERT_EQ(55u, interval1->FirstIntersectionWith(interval2));
   }
 
   {
     static constexpr size_t ranges1[][2] = {{0, 1}, {2, 8}, {15, 18}, {27, 32}, {41, 53}, {54, 60}};
-    LiveInterval* interval1 = BuildInterval(ranges1, arraysize(ranges1), &allocator);
+    LiveInterval* interval1 = BuildInterval(ranges1, arraysize(ranges1), allocator);
     static constexpr size_t ranges2[][2] = {{1, 2}, {11, 12}, {19, 25}, {34, 42}, {52, 60}};
-    LiveInterval* interval2 = BuildInterval(ranges2, arraysize(ranges2), &allocator);
+    LiveInterval* interval2 = BuildInterval(ranges2, arraysize(ranges2), allocator);
 
     ASSERT_EQ(41u, interval1->FirstIntersectionWith(interval2));
   }
@@ -188,13 +188,13 @@ static bool RangesEquals(LiveInterval* interval,
 }
 
 TEST(LiveInterval, SplitAt) {
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
+  ArenaPoolAndAllocator pool;
+  ScopedArenaAllocator* allocator = pool.GetScopedAllocator();
 
   {
     // Test within one range.
     static constexpr size_t ranges[][2] = {{0, 4}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     LiveInterval* split = interval->SplitAt(1);
     static constexpr size_t expected[][2] = {{0, 1}};
     ASSERT_TRUE(RangesEquals(interval, expected, arraysize(expected)));
@@ -205,7 +205,7 @@ TEST(LiveInterval, SplitAt) {
   {
     // Test just before the end of one range.
     static constexpr size_t ranges[][2] = {{0, 4}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     LiveInterval* split = interval->SplitAt(3);
     static constexpr size_t expected[][2] = {{0, 3}};
     ASSERT_TRUE(RangesEquals(interval, expected, arraysize(expected)));
@@ -216,7 +216,7 @@ TEST(LiveInterval, SplitAt) {
   {
     // Test withing the first range.
     static constexpr size_t ranges[][2] = {{0, 4}, {8, 12}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     LiveInterval* split = interval->SplitAt(1);
     static constexpr size_t expected[][2] = {{0, 1}};
     ASSERT_TRUE(RangesEquals(interval, expected, arraysize(expected)));
@@ -227,7 +227,7 @@ TEST(LiveInterval, SplitAt) {
   {
     // Test in a hole.
     static constexpr size_t ranges[][2] = {{0, 4}, {8, 12}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     LiveInterval* split = interval->SplitAt(5);
     static constexpr size_t expected[][2] = {{0, 4}};
     ASSERT_TRUE(RangesEquals(interval, expected, arraysize(expected)));
@@ -238,7 +238,7 @@ TEST(LiveInterval, SplitAt) {
   {
     // Test withing the second range.
     static constexpr size_t ranges[][2] = {{0, 4}, {8, 12}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     LiveInterval* split = interval->SplitAt(9);
     static constexpr size_t expected[][2] = {{0, 4}, {8, 9}};
     ASSERT_TRUE(RangesEquals(interval, expected, arraysize(expected)));
@@ -249,7 +249,7 @@ TEST(LiveInterval, SplitAt) {
   {
     // Test at the beginning of the second range.
     static constexpr size_t ranges[][2] = {{0, 4}, {6, 10}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     LiveInterval* split = interval->SplitAt(6);
     static constexpr size_t expected[][2] = {{0, 4}};
     ASSERT_TRUE(RangesEquals(interval, expected, arraysize(expected)));
@@ -260,7 +260,7 @@ TEST(LiveInterval, SplitAt) {
   {
     // Test at the end of the first range.
     static constexpr size_t ranges[][2] = {{0, 4}, {6, 10}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     LiveInterval* split = interval->SplitAt(4);
     static constexpr size_t expected[][2] = {{0, 4}};
     ASSERT_TRUE(RangesEquals(interval, expected, arraysize(expected)));
@@ -271,7 +271,7 @@ TEST(LiveInterval, SplitAt) {
   {
     // Test that we get null if we split at a position where the interval is dead.
     static constexpr size_t ranges[][2] = {{0, 4}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     LiveInterval* split = interval->SplitAt(5);
     ASSERT_TRUE(split == nullptr);
     ASSERT_TRUE(RangesEquals(interval, ranges, arraysize(ranges)));
@@ -279,13 +279,13 @@ TEST(LiveInterval, SplitAt) {
 }
 
 TEST(LiveInterval, AddLoopRange) {
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
+  ArenaPoolAndAllocator pool;
+  ScopedArenaAllocator* allocator = pool.GetScopedAllocator();
 
   {
     // Test when only used in a loop.
     static constexpr size_t ranges[][2] = {{0, 4}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     interval->AddLoopRange(0, 8);
     LiveRange* range = interval->GetFirstRange();
     ASSERT_TRUE(range->GetNext() == nullptr);
@@ -296,7 +296,7 @@ TEST(LiveInterval, AddLoopRange) {
   {
     // Test when only used in a loop.
     static constexpr size_t ranges[][2] = {{2, 4}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     interval->AddLoopRange(0, 8);
     LiveRange* range = interval->GetFirstRange();
     ASSERT_TRUE(range->GetNext() == nullptr);
@@ -307,7 +307,7 @@ TEST(LiveInterval, AddLoopRange) {
   {
     // Test when used just after the loop.
     static constexpr size_t ranges[][2] = {{2, 4}, {8, 10}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     interval->AddLoopRange(0, 8);
     LiveRange* range = interval->GetFirstRange();
     ASSERT_TRUE(range->GetNext() == nullptr);
@@ -318,7 +318,7 @@ TEST(LiveInterval, AddLoopRange) {
   {
     // Test when use after the loop is after a lifetime hole.
     static constexpr size_t ranges[][2] = {{2, 4}, {10, 12}};
-    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), &allocator);
+    LiveInterval* interval = BuildInterval(ranges, arraysize(ranges), allocator);
     interval->AddLoopRange(0, 8);
     LiveRange* range = interval->GetFirstRange();
     ASSERT_EQ(range->GetStart(), 0u);

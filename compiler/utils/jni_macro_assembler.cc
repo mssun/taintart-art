@@ -47,7 +47,7 @@ using MacroAsm32UniquePtr = std::unique_ptr<JNIMacroAssembler<PointerSize::k32>>
 
 template <>
 MacroAsm32UniquePtr JNIMacroAssembler<PointerSize::k32>::Create(
-    ArenaAllocator* arena,
+    ArenaAllocator* allocator,
     InstructionSet instruction_set,
     const InstructionSetFeatures* instruction_set_features) {
 #ifndef ART_ENABLE_CODEGEN_mips
@@ -58,19 +58,19 @@ MacroAsm32UniquePtr JNIMacroAssembler<PointerSize::k32>::Create(
 #ifdef ART_ENABLE_CODEGEN_arm
     case kArm:
     case kThumb2:
-      return MacroAsm32UniquePtr(new (arena) arm::ArmVIXLJNIMacroAssembler(arena));
+      return MacroAsm32UniquePtr(new (allocator) arm::ArmVIXLJNIMacroAssembler(allocator));
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips
     case kMips:
-      return MacroAsm32UniquePtr(new (arena) mips::MipsAssembler(
-          arena,
+      return MacroAsm32UniquePtr(new (allocator) mips::MipsAssembler(
+          allocator,
           instruction_set_features != nullptr
               ? instruction_set_features->AsMipsInstructionSetFeatures()
               : nullptr));
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86
     case kX86:
-      return MacroAsm32UniquePtr(new (arena) x86::X86JNIMacroAssembler(arena));
+      return MacroAsm32UniquePtr(new (allocator) x86::X86JNIMacroAssembler(allocator));
 #endif
     default:
       LOG(FATAL) << "Unknown/unsupported 4B InstructionSet: " << instruction_set;
@@ -82,7 +82,7 @@ using MacroAsm64UniquePtr = std::unique_ptr<JNIMacroAssembler<PointerSize::k64>>
 
 template <>
 MacroAsm64UniquePtr JNIMacroAssembler<PointerSize::k64>::Create(
-    ArenaAllocator* arena,
+    ArenaAllocator* allocator,
     InstructionSet instruction_set,
     const InstructionSetFeatures* instruction_set_features) {
 #ifndef ART_ENABLE_CODEGEN_mips64
@@ -92,22 +92,22 @@ MacroAsm64UniquePtr JNIMacroAssembler<PointerSize::k64>::Create(
   switch (instruction_set) {
 #ifdef ART_ENABLE_CODEGEN_arm64
     case kArm64:
-      return MacroAsm64UniquePtr(new (arena) arm64::Arm64JNIMacroAssembler(arena));
+      return MacroAsm64UniquePtr(new (allocator) arm64::Arm64JNIMacroAssembler(allocator));
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips64
     case kMips64:
-      return MacroAsm64UniquePtr(new (arena) mips64::Mips64Assembler(
-          arena,
+      return MacroAsm64UniquePtr(new (allocator) mips64::Mips64Assembler(
+          allocator,
           instruction_set_features != nullptr
               ? instruction_set_features->AsMips64InstructionSetFeatures()
               : nullptr));
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86_64
     case kX86_64:
-      return MacroAsm64UniquePtr(new (arena) x86_64::X86_64JNIMacroAssembler(arena));
+      return MacroAsm64UniquePtr(new (allocator) x86_64::X86_64JNIMacroAssembler(allocator));
 #endif
     default:
-      UNUSED(arena);
+      UNUSED(allocator);
       LOG(FATAL) << "Unknown/unsupported 8B InstructionSet: " << instruction_set;
       UNREACHABLE();
   }

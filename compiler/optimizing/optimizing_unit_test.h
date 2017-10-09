@@ -48,7 +48,7 @@ namespace art {
 
 LiveInterval* BuildInterval(const size_t ranges[][2],
                             size_t number_of_ranges,
-                            ArenaAllocator* allocator,
+                            ScopedArenaAllocator* allocator,
                             int reg = -1,
                             HInstruction* defined_by = nullptr) {
   LiveInterval* interval =
@@ -81,15 +81,18 @@ void RemoveSuspendChecks(HGraph* graph) {
 
 class ArenaPoolAndAllocator {
  public:
-  ArenaPoolAndAllocator() : pool_(), allocator_(&pool_), arena_stack_(&pool_) { }
+  ArenaPoolAndAllocator()
+      : pool_(), allocator_(&pool_), arena_stack_(&pool_), scoped_allocator_(&arena_stack_) { }
 
   ArenaAllocator* GetAllocator() { return &allocator_; }
   ArenaStack* GetArenaStack() { return &arena_stack_; }
+  ScopedArenaAllocator* GetScopedAllocator() { return &scoped_allocator_; }
 
  private:
   ArenaPool pool_;
   ArenaAllocator allocator_;
   ArenaStack arena_stack_;
+  ScopedArenaAllocator scoped_allocator_;
 };
 
 inline HGraph* CreateGraph(ArenaPoolAndAllocator* pool_and_allocator) {
@@ -107,6 +110,7 @@ class OptimizingUnitTest : public CommonCompilerTest {
 
   ArenaAllocator* GetAllocator() { return pool_and_allocator_->GetAllocator(); }
   ArenaStack* GetArenaStack() { return pool_and_allocator_->GetArenaStack(); }
+  ScopedArenaAllocator* GetScopedAllocator() { return pool_and_allocator_->GetScopedAllocator(); }
 
   void ResetPoolAndAllocator() {
     pool_and_allocator_.reset(new ArenaPoolAndAllocator());

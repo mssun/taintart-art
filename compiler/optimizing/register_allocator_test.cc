@@ -58,6 +58,16 @@ class RegisterAllocatorTest : public OptimizingUnitTest {
   HGraph* BuildTwoSubs(HInstruction** first_sub, HInstruction** second_sub);
   HGraph* BuildDiv(HInstruction** div);
   void ExpectedExactInRegisterAndSameOutputHint(Strategy strategy);
+
+  bool ValidateIntervals(const ScopedArenaVector<LiveInterval*>& intervals,
+                         const CodeGenerator& codegen) {
+    return RegisterAllocator::ValidateIntervals(ArrayRef<LiveInterval* const>(intervals),
+                                                /* number_of_spill_slots */ 0u,
+                                                /* number_of_out_slots */ 0u,
+                                                codegen,
+                                                /* processing_core_registers */ true,
+                                                /* log_fatal_on_failure */ false);
+  }
 };
 
 // This macro should include all register allocation strategies that should be tested.
@@ -74,10 +84,10 @@ bool RegisterAllocatorTest::Check(const uint16_t* data, Strategy strategy) {
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
       X86InstructionSetFeatures::FromCppDefines());
   x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-  SsaLivenessAnalysis liveness(graph, &codegen);
+  SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
   liveness.Analyze();
-  RegisterAllocator* register_allocator =
-      RegisterAllocator::Create(GetAllocator(), &codegen, liveness, strategy);
+  std::unique_ptr<RegisterAllocator> register_allocator =
+      RegisterAllocator::Create(GetScopedAllocator(), &codegen, liveness, strategy);
   register_allocator->AllocateRegisters();
   return register_allocator->Validate(false);
 }
@@ -91,85 +101,74 @@ TEST_F(RegisterAllocatorTest, ValidateIntervals) {
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
       X86InstructionSetFeatures::FromCppDefines());
   x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-  ArenaVector<LiveInterval*> intervals(GetAllocator()->Adapter());
+  ScopedArenaVector<LiveInterval*> intervals(GetScopedAllocator()->Adapter());
 
   // Test with two intervals of the same range.
   {
     static constexpr size_t ranges[][2] = {{0, 42}};
-    intervals.push_back(BuildInterval(ranges, arraysize(ranges), GetAllocator(), 0));
-    intervals.push_back(BuildInterval(ranges, arraysize(ranges), GetAllocator(), 1));
-    ASSERT_TRUE(RegisterAllocator::ValidateIntervals(
-        intervals, 0, 0, codegen, GetAllocator(), true, false));
+    intervals.push_back(BuildInterval(ranges, arraysize(ranges), GetScopedAllocator(), 0));
+    intervals.push_back(BuildInterval(ranges, arraysize(ranges), GetScopedAllocator(), 1));
+    ASSERT_TRUE(ValidateIntervals(intervals, codegen));
 
     intervals[1]->SetRegister(0);
-    ASSERT_FALSE(RegisterAllocator::ValidateIntervals(
-        intervals, 0, 0, codegen, GetAllocator(), true, false));
+    ASSERT_FALSE(ValidateIntervals(intervals, codegen));
     intervals.clear();
   }
 
   // Test with two non-intersecting intervals.
   {
     static constexpr size_t ranges1[][2] = {{0, 42}};
-    intervals.push_back(BuildInterval(ranges1, arraysize(ranges1), GetAllocator(), 0));
+    intervals.push_back(BuildInterval(ranges1, arraysize(ranges1), GetScopedAllocator(), 0));
     static constexpr size_t ranges2[][2] = {{42, 43}};
-    intervals.push_back(BuildInterval(ranges2, arraysize(ranges2), GetAllocator(), 1));
-    ASSERT_TRUE(RegisterAllocator::ValidateIntervals(
-        intervals, 0, 0, codegen, GetAllocator(), true, false));
+    intervals.push_back(BuildInterval(ranges2, arraysize(ranges2), GetScopedAllocator(), 1));
+    ASSERT_TRUE(ValidateIntervals(intervals, codegen));
 
     intervals[1]->SetRegister(0);
-    ASSERT_TRUE(RegisterAllocator::ValidateIntervals(
-        intervals, 0, 0, codegen, GetAllocator(), true, false));
+    ASSERT_TRUE(ValidateIntervals(intervals, codegen));
     intervals.clear();
   }
 
   // Test with two non-intersecting intervals, with one with a lifetime hole.
   {
     static constexpr size_t ranges1[][2] = {{0, 42}, {45, 48}};
-    intervals.push_back(BuildInterval(ranges1, arraysize(ranges1), GetAllocator(), 0));
+    intervals.push_back(BuildInterval(ranges1, arraysize(ranges1), GetScopedAllocator(), 0));
     static constexpr size_t ranges2[][2] = {{42, 43}};
-    intervals.push_back(BuildInterval(ranges2, arraysize(ranges2), GetAllocator(), 1));
-    ASSERT_TRUE(RegisterAllocator::ValidateIntervals(
-        intervals, 0, 0, codegen, GetAllocator(), true, false));
+    intervals.push_back(BuildInterval(ranges2, arraysize(ranges2), GetScopedAllocator(), 1));
+    ASSERT_TRUE(ValidateIntervals(intervals, codegen));
 
     intervals[1]->SetRegister(0);
-    ASSERT_TRUE(RegisterAllocator::ValidateIntervals(
-        intervals, 0, 0, codegen, GetAllocator(), true, false));
+    ASSERT_TRUE(ValidateIntervals(intervals, codegen));
     intervals.clear();
   }
 
   // Test with intersecting intervals.
   {
     static constexpr size_t ranges1[][2] = {{0, 42}, {44, 48}};
-    intervals.push_back(BuildInterval(ranges1, arraysize(ranges1), GetAllocator(), 0));
+    intervals.push_back(BuildInterval(ranges1, arraysize(ranges1), GetScopedAllocator(), 0));
     static constexpr size_t ranges2[][2] = {{42, 47}};
-    intervals.push_back(BuildInterval(ranges2, arraysize(ranges2), GetAllocator(), 1));
-    ASSERT_TRUE(RegisterAllocator::ValidateIntervals(
-        intervals, 0, 0, codegen, GetAllocator(), true, false));
+    intervals.push_back(BuildInterval(ranges2, arraysize(ranges2), GetScopedAllocator(), 1));
+    ASSERT_TRUE(ValidateIntervals(intervals, codegen));
 
     intervals[1]->SetRegister(0);
-    ASSERT_FALSE(RegisterAllocator::ValidateIntervals(
-        intervals, 0, 0, codegen, GetAllocator(), true, false));
+    ASSERT_FALSE(ValidateIntervals(intervals, codegen));
     intervals.clear();
   }
 
   // Test with siblings.
   {
     static constexpr size_t ranges1[][2] = {{0, 42}, {44, 48}};
-    intervals.push_back(BuildInterval(ranges1, arraysize(ranges1), GetAllocator(), 0));
+    intervals.push_back(BuildInterval(ranges1, arraysize(ranges1), GetScopedAllocator(), 0));
     intervals[0]->SplitAt(43);
     static constexpr size_t ranges2[][2] = {{42, 47}};
-    intervals.push_back(BuildInterval(ranges2, arraysize(ranges2), GetAllocator(), 1));
-    ASSERT_TRUE(RegisterAllocator::ValidateIntervals(
-        intervals, 0, 0, codegen, GetAllocator(), true, false));
+    intervals.push_back(BuildInterval(ranges2, arraysize(ranges2), GetScopedAllocator(), 1));
+    ASSERT_TRUE(ValidateIntervals(intervals, codegen));
 
     intervals[1]->SetRegister(0);
     // Sibling of the first interval has no register allocated to it.
-    ASSERT_TRUE(RegisterAllocator::ValidateIntervals(
-        intervals, 0, 0, codegen, GetAllocator(), true, false));
+    ASSERT_TRUE(ValidateIntervals(intervals, codegen));
 
     intervals[0]->GetNextSibling()->SetRegister(0);
-    ASSERT_FALSE(RegisterAllocator::ValidateIntervals(
-        intervals, 0, 0, codegen, GetAllocator(), true, false));
+    ASSERT_FALSE(ValidateIntervals(intervals, codegen));
   }
 }
 
@@ -328,10 +327,10 @@ void RegisterAllocatorTest::Loop3(Strategy strategy) {
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
       X86InstructionSetFeatures::FromCppDefines());
   x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-  SsaLivenessAnalysis liveness(graph, &codegen);
+  SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
   liveness.Analyze();
-  RegisterAllocator* register_allocator =
-      RegisterAllocator::Create(GetAllocator(), &codegen, liveness, strategy);
+  std::unique_ptr<RegisterAllocator> register_allocator =
+      RegisterAllocator::Create(GetScopedAllocator(), &codegen, liveness, strategy);
   register_allocator->AllocateRegisters();
   ASSERT_TRUE(register_allocator->Validate(false));
 
@@ -363,7 +362,7 @@ TEST_F(RegisterAllocatorTest, FirstRegisterUse) {
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
       X86InstructionSetFeatures::FromCppDefines());
   x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-  SsaLivenessAnalysis liveness(graph, &codegen);
+  SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
   liveness.Analyze();
 
   HXor* first_xor = graph->GetBlocks()[1]->GetFirstInstruction()->AsXor();
@@ -416,10 +415,10 @@ void RegisterAllocatorTest::DeadPhi(Strategy strategy) {
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
       X86InstructionSetFeatures::FromCppDefines());
   x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-  SsaLivenessAnalysis liveness(graph, &codegen);
+  SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
   liveness.Analyze();
-  RegisterAllocator* register_allocator =
-      RegisterAllocator::Create(GetAllocator(), &codegen, liveness, strategy);
+  std::unique_ptr<RegisterAllocator> register_allocator =
+      RegisterAllocator::Create(GetScopedAllocator(), &codegen, liveness, strategy);
   register_allocator->AllocateRegisters();
   ASSERT_TRUE(register_allocator->Validate(false));
 }
@@ -442,9 +441,9 @@ TEST_F(RegisterAllocatorTest, FreeUntil) {
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
       X86InstructionSetFeatures::FromCppDefines());
   x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-  SsaLivenessAnalysis liveness(graph, &codegen);
+  SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
   liveness.Analyze();
-  RegisterAllocatorLinearScan register_allocator(GetAllocator(), &codegen, liveness);
+  RegisterAllocatorLinearScan register_allocator(GetScopedAllocator(), &codegen, liveness);
 
   // Add an artifical range to cover the temps that will be put in the unhandled list.
   LiveInterval* unhandled = graph->GetEntryBlock()->GetFirstInstruction()->GetLiveInterval();
@@ -464,15 +463,15 @@ TEST_F(RegisterAllocatorTest, FreeUntil) {
   // Put the one that should be picked in the middle of the inactive list to ensure
   // we do not depend on an order.
   LiveInterval* interval =
-      LiveInterval::MakeFixedInterval(GetAllocator(), 0, DataType::Type::kInt32);
+      LiveInterval::MakeFixedInterval(GetScopedAllocator(), 0, DataType::Type::kInt32);
   interval->AddRange(40, 50);
   register_allocator.inactive_.push_back(interval);
 
-  interval = LiveInterval::MakeFixedInterval(GetAllocator(), 0, DataType::Type::kInt32);
+  interval = LiveInterval::MakeFixedInterval(GetScopedAllocator(), 0, DataType::Type::kInt32);
   interval->AddRange(20, 30);
   register_allocator.inactive_.push_back(interval);
 
-  interval = LiveInterval::MakeFixedInterval(GetAllocator(), 0, DataType::Type::kInt32);
+  interval = LiveInterval::MakeFixedInterval(GetScopedAllocator(), 0, DataType::Type::kInt32);
   interval->AddRange(60, 70);
   register_allocator.inactive_.push_back(interval);
 
@@ -570,12 +569,12 @@ void RegisterAllocatorTest::PhiHint(Strategy strategy) {
     std::unique_ptr<const X86InstructionSetFeatures> features_x86(
         X86InstructionSetFeatures::FromCppDefines());
     x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-    SsaLivenessAnalysis liveness(graph, &codegen);
+    SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
     liveness.Analyze();
 
     // Check that the register allocator is deterministic.
-    RegisterAllocator* register_allocator =
-        RegisterAllocator::Create(GetAllocator(), &codegen, liveness, strategy);
+    std::unique_ptr<RegisterAllocator> register_allocator =
+        RegisterAllocator::Create(GetScopedAllocator(), &codegen, liveness, strategy);
     register_allocator->AllocateRegisters();
 
     ASSERT_EQ(input1->GetLiveInterval()->GetRegister(), 0);
@@ -588,14 +587,14 @@ void RegisterAllocatorTest::PhiHint(Strategy strategy) {
     std::unique_ptr<const X86InstructionSetFeatures> features_x86(
         X86InstructionSetFeatures::FromCppDefines());
     x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-    SsaLivenessAnalysis liveness(graph, &codegen);
+    SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
     liveness.Analyze();
 
     // Set the phi to a specific register, and check that the inputs get allocated
     // the same register.
     phi->GetLocations()->UpdateOut(Location::RegisterLocation(2));
-    RegisterAllocator* register_allocator =
-        RegisterAllocator::Create(GetAllocator(), &codegen, liveness, strategy);
+    std::unique_ptr<RegisterAllocator> register_allocator =
+        RegisterAllocator::Create(GetScopedAllocator(), &codegen, liveness, strategy);
     register_allocator->AllocateRegisters();
 
     ASSERT_EQ(input1->GetLiveInterval()->GetRegister(), 2);
@@ -608,14 +607,14 @@ void RegisterAllocatorTest::PhiHint(Strategy strategy) {
     std::unique_ptr<const X86InstructionSetFeatures> features_x86(
         X86InstructionSetFeatures::FromCppDefines());
     x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-    SsaLivenessAnalysis liveness(graph, &codegen);
+    SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
     liveness.Analyze();
 
     // Set input1 to a specific register, and check that the phi and other input get allocated
     // the same register.
     input1->GetLocations()->UpdateOut(Location::RegisterLocation(2));
-    RegisterAllocator* register_allocator =
-        RegisterAllocator::Create(GetAllocator(), &codegen, liveness, strategy);
+    std::unique_ptr<RegisterAllocator> register_allocator =
+        RegisterAllocator::Create(GetScopedAllocator(), &codegen, liveness, strategy);
     register_allocator->AllocateRegisters();
 
     ASSERT_EQ(input1->GetLiveInterval()->GetRegister(), 2);
@@ -628,14 +627,14 @@ void RegisterAllocatorTest::PhiHint(Strategy strategy) {
     std::unique_ptr<const X86InstructionSetFeatures> features_x86(
         X86InstructionSetFeatures::FromCppDefines());
     x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-    SsaLivenessAnalysis liveness(graph, &codegen);
+    SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
     liveness.Analyze();
 
     // Set input2 to a specific register, and check that the phi and other input get allocated
     // the same register.
     input2->GetLocations()->UpdateOut(Location::RegisterLocation(2));
-    RegisterAllocator* register_allocator =
-        RegisterAllocator::Create(GetAllocator(), &codegen, liveness, strategy);
+    std::unique_ptr<RegisterAllocator> register_allocator =
+        RegisterAllocator::Create(GetScopedAllocator(), &codegen, liveness, strategy);
     register_allocator->AllocateRegisters();
 
     ASSERT_EQ(input1->GetLiveInterval()->GetRegister(), 2);
@@ -693,11 +692,11 @@ void RegisterAllocatorTest::ExpectedInRegisterHint(Strategy strategy) {
     std::unique_ptr<const X86InstructionSetFeatures> features_x86(
         X86InstructionSetFeatures::FromCppDefines());
     x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-    SsaLivenessAnalysis liveness(graph, &codegen);
+    SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
     liveness.Analyze();
 
-    RegisterAllocator* register_allocator =
-        RegisterAllocator::Create(GetAllocator(), &codegen, liveness, strategy);
+    std::unique_ptr<RegisterAllocator> register_allocator =
+        RegisterAllocator::Create(GetScopedAllocator(), &codegen, liveness, strategy);
     register_allocator->AllocateRegisters();
 
     // Sanity check that in normal conditions, the register should be hinted to 0 (EAX).
@@ -709,15 +708,15 @@ void RegisterAllocatorTest::ExpectedInRegisterHint(Strategy strategy) {
     std::unique_ptr<const X86InstructionSetFeatures> features_x86(
         X86InstructionSetFeatures::FromCppDefines());
     x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-    SsaLivenessAnalysis liveness(graph, &codegen);
+    SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
     liveness.Analyze();
 
     // Check that the field gets put in the register expected by its use.
     // Don't use SetInAt because we are overriding an already allocated location.
     ret->GetLocations()->inputs_[0] = Location::RegisterLocation(2);
 
-    RegisterAllocator* register_allocator =
-        RegisterAllocator::Create(GetAllocator(), &codegen, liveness, strategy);
+    std::unique_ptr<RegisterAllocator> register_allocator =
+        RegisterAllocator::Create(GetScopedAllocator(), &codegen, liveness, strategy);
     register_allocator->AllocateRegisters();
 
     ASSERT_EQ(field->GetLiveInterval()->GetRegister(), 2);
@@ -765,11 +764,11 @@ void RegisterAllocatorTest::SameAsFirstInputHint(Strategy strategy) {
     std::unique_ptr<const X86InstructionSetFeatures> features_x86(
         X86InstructionSetFeatures::FromCppDefines());
     x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-    SsaLivenessAnalysis liveness(graph, &codegen);
+    SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
     liveness.Analyze();
 
-    RegisterAllocator* register_allocator =
-        RegisterAllocator::Create(GetAllocator(), &codegen, liveness, strategy);
+    std::unique_ptr<RegisterAllocator> register_allocator =
+        RegisterAllocator::Create(GetScopedAllocator(), &codegen, liveness, strategy);
     register_allocator->AllocateRegisters();
 
     // Sanity check that in normal conditions, the registers are the same.
@@ -782,7 +781,7 @@ void RegisterAllocatorTest::SameAsFirstInputHint(Strategy strategy) {
     std::unique_ptr<const X86InstructionSetFeatures> features_x86(
         X86InstructionSetFeatures::FromCppDefines());
     x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-    SsaLivenessAnalysis liveness(graph, &codegen);
+    SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
     liveness.Analyze();
 
     // check that both adds get the same register.
@@ -791,8 +790,8 @@ void RegisterAllocatorTest::SameAsFirstInputHint(Strategy strategy) {
     ASSERT_EQ(first_sub->GetLocations()->Out().GetPolicy(), Location::kSameAsFirstInput);
     ASSERT_EQ(second_sub->GetLocations()->Out().GetPolicy(), Location::kSameAsFirstInput);
 
-    RegisterAllocator* register_allocator =
-        RegisterAllocator::Create(GetAllocator(), &codegen, liveness, strategy);
+    std::unique_ptr<RegisterAllocator> register_allocator =
+        RegisterAllocator::Create(GetScopedAllocator(), &codegen, liveness, strategy);
     register_allocator->AllocateRegisters();
 
     ASSERT_EQ(first_sub->GetLiveInterval()->GetRegister(), 2);
@@ -838,11 +837,11 @@ void RegisterAllocatorTest::ExpectedExactInRegisterAndSameOutputHint(Strategy st
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
       X86InstructionSetFeatures::FromCppDefines());
   x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-  SsaLivenessAnalysis liveness(graph, &codegen);
+  SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
   liveness.Analyze();
 
-  RegisterAllocator* register_allocator =
-      RegisterAllocator::Create(GetAllocator(), &codegen, liveness, strategy);
+  std::unique_ptr<RegisterAllocator> register_allocator =
+      RegisterAllocator::Create(GetScopedAllocator(), &codegen, liveness, strategy);
   register_allocator->AllocateRegisters();
 
   // div on x86 requires its first input in eax and the output be the same as the first input.
@@ -892,14 +891,14 @@ TEST_F(RegisterAllocatorTest, SpillInactive) {
   LocationSummary* locations = new (GetAllocator()) LocationSummary(user, LocationSummary::kNoCall);
   locations->SetInAt(0, Location::RequiresRegister());
   static constexpr size_t phi_ranges[][2] = {{20, 30}};
-  BuildInterval(phi_ranges, arraysize(phi_ranges), GetAllocator(), -1, user);
+  BuildInterval(phi_ranges, arraysize(phi_ranges), GetScopedAllocator(), -1, user);
 
   // Create an interval with lifetime holes.
   static constexpr size_t ranges1[][2] = {{0, 2}, {4, 6}, {8, 10}};
-  LiveInterval* first = BuildInterval(ranges1, arraysize(ranges1), GetAllocator(), -1, one);
-  first->uses_.push_front(*new(GetAllocator()) UsePosition(user, false, 8));
-  first->uses_.push_front(*new(GetAllocator()) UsePosition(user, false, 7));
-  first->uses_.push_front(*new(GetAllocator()) UsePosition(user, false, 6));
+  LiveInterval* first = BuildInterval(ranges1, arraysize(ranges1), GetScopedAllocator(), -1, one);
+  first->uses_.push_front(*new (GetScopedAllocator()) UsePosition(user, false, 8));
+  first->uses_.push_front(*new (GetScopedAllocator()) UsePosition(user, false, 7));
+  first->uses_.push_front(*new (GetScopedAllocator()) UsePosition(user, false, 6));
 
   locations = new (GetAllocator()) LocationSummary(first->GetDefinedBy(), LocationSummary::kNoCall);
   locations->SetOut(Location::RequiresRegister());
@@ -908,7 +907,7 @@ TEST_F(RegisterAllocatorTest, SpillInactive) {
   // Create an interval that conflicts with the next interval, to force the next
   // interval to call `AllocateBlockedReg`.
   static constexpr size_t ranges2[][2] = {{2, 4}};
-  LiveInterval* second = BuildInterval(ranges2, arraysize(ranges2), GetAllocator(), -1, two);
+  LiveInterval* second = BuildInterval(ranges2, arraysize(ranges2), GetScopedAllocator(), -1, two);
   locations =
       new (GetAllocator()) LocationSummary(second->GetDefinedBy(), LocationSummary::kNoCall);
   locations->SetOut(Location::RequiresRegister());
@@ -919,10 +918,10 @@ TEST_F(RegisterAllocatorTest, SpillInactive) {
   // "[0, 2(, [4, 6(" in the list of handled intervals, even though we haven't processed intervals
   // before lifetime position 6 yet.
   static constexpr size_t ranges3[][2] = {{2, 4}, {8, 10}};
-  LiveInterval* third = BuildInterval(ranges3, arraysize(ranges3), GetAllocator(), -1, three);
-  third->uses_.push_front(*new(GetAllocator()) UsePosition(user, false, 8));
-  third->uses_.push_front(*new(GetAllocator()) UsePosition(user, false, 4));
-  third->uses_.push_front(*new(GetAllocator()) UsePosition(user, false, 3));
+  LiveInterval* third = BuildInterval(ranges3, arraysize(ranges3), GetScopedAllocator(), -1, three);
+  third->uses_.push_front(*new (GetScopedAllocator()) UsePosition(user, false, 8));
+  third->uses_.push_front(*new (GetScopedAllocator()) UsePosition(user, false, 4));
+  third->uses_.push_front(*new (GetScopedAllocator()) UsePosition(user, false, 3));
   locations = new (GetAllocator()) LocationSummary(third->GetDefinedBy(), LocationSummary::kNoCall);
   locations->SetOut(Location::RequiresRegister());
   third = third->SplitAt(3);
@@ -930,7 +929,7 @@ TEST_F(RegisterAllocatorTest, SpillInactive) {
   // Because the first part of the split interval was considered handled, this interval
   // was free to allocate the same register, even though it conflicts with it.
   static constexpr size_t ranges4[][2] = {{4, 6}};
-  LiveInterval* fourth = BuildInterval(ranges4, arraysize(ranges4), GetAllocator(), -1, four);
+  LiveInterval* fourth = BuildInterval(ranges4, arraysize(ranges4), GetScopedAllocator(), -1, four);
   locations =
       new (GetAllocator()) LocationSummary(fourth->GetDefinedBy(), LocationSummary::kNoCall);
   locations->SetOut(Location::RequiresRegister());
@@ -938,13 +937,13 @@ TEST_F(RegisterAllocatorTest, SpillInactive) {
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
       X86InstructionSetFeatures::FromCppDefines());
   x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-  SsaLivenessAnalysis liveness(graph, &codegen);
+  SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
   // Populate the instructions in the liveness object, to please the register allocator.
   for (size_t i = 0; i < 32; ++i) {
     liveness.instructions_from_lifetime_position_.push_back(user);
   }
 
-  RegisterAllocatorLinearScan register_allocator(GetAllocator(), &codegen, liveness);
+  RegisterAllocatorLinearScan register_allocator(GetScopedAllocator(), &codegen, liveness);
   register_allocator.unhandled_core_intervals_.push_back(fourth);
   register_allocator.unhandled_core_intervals_.push_back(third);
   register_allocator.unhandled_core_intervals_.push_back(second);
@@ -958,13 +957,12 @@ TEST_F(RegisterAllocatorTest, SpillInactive) {
   register_allocator.LinearScan();
 
   // Test that there is no conflicts between intervals.
-  ArenaVector<LiveInterval*> intervals(GetAllocator()->Adapter());
+  ScopedArenaVector<LiveInterval*> intervals(GetScopedAllocator()->Adapter());
   intervals.push_back(first);
   intervals.push_back(second);
   intervals.push_back(third);
   intervals.push_back(fourth);
-  ASSERT_TRUE(RegisterAllocator::ValidateIntervals(
-      intervals, 0, 0, codegen, GetAllocator(), true, false));
+  ASSERT_TRUE(ValidateIntervals(intervals, codegen));
 }
 
 }  // namespace art

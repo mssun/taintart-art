@@ -199,8 +199,8 @@ inline const UndefinedType* UndefinedType::GetInstance() {
   return instance_;
 }
 
-inline void* RegType::operator new(size_t size, ScopedArenaAllocator* arena) {
-  return arena->Alloc(size, kArenaAllocMisc);
+inline void* RegType::operator new(size_t size, ScopedArenaAllocator* allocator) {
+  return allocator->Alloc(size, kArenaAllocMisc);
 }
 
 }  // namespace verifier

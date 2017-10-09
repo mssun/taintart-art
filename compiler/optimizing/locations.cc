@@ -43,8 +43,7 @@ LocationSummary::LocationSummary(HInstruction* instruction,
   instruction->SetLocations(this);
 
   if (NeedsSafepoint()) {
-    ArenaAllocator* arena = instruction->GetBlock()->GetGraph()->GetAllocator();
-    stack_mask_ = ArenaBitVector::Create(arena, 0, true, kArenaAllocLocationSummary);
+    stack_mask_ = ArenaBitVector::Create(allocator, 0, true, kArenaAllocLocationSummary);
   }
 }
 

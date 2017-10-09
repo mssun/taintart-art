@@ -564,7 +564,7 @@ void HScheduler::Schedule(HGraph* graph) {
 }
 
 void HScheduler::Schedule(HBasicBlock* block) {
-  ScopedArenaVector<SchedulingNode*> scheduling_nodes(arena_->Adapter(kArenaAllocScheduler));
+  ScopedArenaVector<SchedulingNode*> scheduling_nodes(allocator_->Adapter(kArenaAllocScheduler));
 
   // Build the scheduling graph.
   scheduling_graph_.Clear();
@@ -595,7 +595,7 @@ void HScheduler::Schedule(HBasicBlock* block) {
     }
   }
 
-  ScopedArenaVector<SchedulingNode*> initial_candidates(arena_->Adapter(kArenaAllocScheduler));
+  ScopedArenaVector<SchedulingNode*> initial_candidates(allocator_->Adapter(kArenaAllocScheduler));
   if (kDumpDotSchedulingGraphs) {
     // Remember the list of initial candidates for debug output purposes.
     initial_candidates.assign(candidates_.begin(), candidates_.end());

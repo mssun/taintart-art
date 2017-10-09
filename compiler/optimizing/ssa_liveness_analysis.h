@@ -20,6 +20,8 @@
 #include <iostream>
 
 #include "base/iteration_range.h"
+#include "base/scoped_arena_allocator.h"
+#include "base/scoped_arena_containers.h"
 #include "nodes.h"
 #include "utils/intrusive_forward_list.h"
 
@@ -32,7 +34,7 @@ static constexpr int kNoRegister = -1;
 
 class BlockInfo : public ArenaObject<kArenaAllocSsaLiveness> {
  public:
-  BlockInfo(ArenaAllocator* allocator, const HBasicBlock& block, size_t number_of_ssa_values)
+  BlockInfo(ScopedArenaAllocator* allocator, const HBasicBlock& block, size_t number_of_ssa_values)
       : block_(block),
         live_in_(allocator, number_of_ssa_values, false, kArenaAllocSsaLiveness),
         live_out_(allocator, number_of_ssa_values, false, kArenaAllocSsaLiveness),
@@ -82,7 +84,7 @@ class LiveRange FINAL : public ArenaObject<kArenaAllocSsaLiveness> {
     stream << "[" << start_ << "," << end_ << ")";
   }
 
-  LiveRange* Dup(ArenaAllocator* allocator) const {
+  LiveRange* Dup(ScopedArenaAllocator* allocator) const {
     return new (allocator) LiveRange(
         start_, end_, next_ == nullptr ? nullptr : next_->Dup(allocator));
   }
@@ -135,7 +137,7 @@ class UsePosition : public ArenaObject<kArenaAllocSsaLiveness>,
     return user_->GetBlock()->GetLoopInformation();
   }
 
-  UsePosition* Clone(ArenaAllocator* allocator) const {
+  UsePosition* Clone(ScopedArenaAllocator* allocator) const {
     return new (allocator) UsePosition(user_, input_index_, position_);
   }
 
@@ -180,7 +182,7 @@ class EnvUsePosition : public ArenaObject<kArenaAllocSsaLiveness>,
     stream << position_;
   }
 
-  EnvUsePosition* Clone(ArenaAllocator* allocator) const {
+  EnvUsePosition* Clone(ScopedArenaAllocator* allocator) const {
     return new (allocator) EnvUsePosition(environment_, input_index_, position_);
   }
 
@@ -261,17 +263,19 @@ class SafepointPosition : public ArenaObject<kArenaAllocSsaLiveness> {
  */
 class LiveInterval : public ArenaObject<kArenaAllocSsaLiveness> {
  public:
-  static LiveInterval* MakeInterval(ArenaAllocator* allocator,
+  static LiveInterval* MakeInterval(ScopedArenaAllocator* allocator,
                                     DataType::Type type,
                                     HInstruction* instruction = nullptr) {
     return new (allocator) LiveInterval(allocator, type, instruction);
   }
 
-  static LiveInterval* MakeFixedInterval(ArenaAllocator* allocator, int reg, DataType::Type type) {
+  static LiveInterval* MakeFixedInterval(ScopedArenaAllocator* allocator,
+                                         int reg,
+                                         DataType::Type type) {
     return new (allocator) LiveInterval(allocator, type, nullptr, true, reg, false);
   }
 
-  static LiveInterval* MakeTempInterval(ArenaAllocator* allocator, DataType::Type type) {
+  static LiveInterval* MakeTempInterval(ScopedArenaAllocator* allocator, DataType::Type type) {
     return new (allocator) LiveInterval(allocator, type, nullptr, false, kNoRegister, true);
   }
 
@@ -969,7 +973,7 @@ class LiveInterval : public ArenaObject<kArenaAllocSsaLiveness> {
   }
 
  private:
-  LiveInterval(ArenaAllocator* allocator,
+  LiveInterval(ScopedArenaAllocator* allocator,
                DataType::Type type,
                HInstruction* defined_by = nullptr,
                bool is_fixed = false,
@@ -1082,7 +1086,7 @@ class LiveInterval : public ArenaObject<kArenaAllocSsaLiveness> {
     }
   }
 
-  ArenaAllocator* const allocator_;
+  ScopedArenaAllocator* const allocator_;
 
   // Ranges of this interval. We need a quick access to the last range to test
   // for liveness (see `IsDeadAt`).
@@ -1158,15 +1162,15 @@ class LiveInterval : public ArenaObject<kArenaAllocSsaLiveness> {
  */
 class SsaLivenessAnalysis : public ValueObject {
  public:
-  SsaLivenessAnalysis(HGraph* graph, CodeGenerator* codegen)
+  SsaLivenessAnalysis(HGraph* graph, CodeGenerator* codegen, ScopedArenaAllocator* allocator)
       : graph_(graph),
         codegen_(codegen),
+        allocator_(allocator),
         block_infos_(graph->GetBlocks().size(),
                      nullptr,
-                     graph->GetAllocator()->Adapter(kArenaAllocSsaLiveness)),
-        instructions_from_ssa_index_(graph->GetAllocator()->Adapter(kArenaAllocSsaLiveness)),
-        instructions_from_lifetime_position_(
-            graph->GetAllocator()->Adapter(kArenaAllocSsaLiveness)),
+                     allocator_->Adapter(kArenaAllocSsaLiveness)),
+        instructions_from_ssa_index_(allocator_->Adapter(kArenaAllocSsaLiveness)),
+        instructions_from_lifetime_position_(allocator_->Adapter(kArenaAllocSsaLiveness)),
         number_of_ssa_values_(0) {
   }
 
@@ -1285,13 +1289,18 @@ class SsaLivenessAnalysis : public ValueObject {
 
   HGraph* const graph_;
   CodeGenerator* const codegen_;
-  ArenaVector<BlockInfo*> block_infos_;
+
+  // Use a local ScopedArenaAllocator for allocating memory.
+  // This allocator must remain alive while doing register allocation.
+  ScopedArenaAllocator* allocator_;
+
+  ScopedArenaVector<BlockInfo*> block_infos_;
 
   // Temporary array used when computing live_in, live_out, and kill sets.
-  ArenaVector<HInstruction*> instructions_from_ssa_index_;
+  ScopedArenaVector<HInstruction*> instructions_from_ssa_index_;
 
   // Temporary array used when inserting moves in the graph.
-  ArenaVector<HInstruction*> instructions_from_lifetime_position_;
+  ScopedArenaVector<HInstruction*> instructions_from_lifetime_position_;
   size_t number_of_ssa_values_;
 
   ART_FRIEND_TEST(RegisterAllocatorTest, SpillInactive);

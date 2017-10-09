@@ -146,8 +146,7 @@ class SchedulerTest : public OptimizingUnitTest {
     environment->SetRawEnvAt(1, mul);
     mul->AddEnvUseAt(div_check->GetEnvironment(), 1);
 
-    ScopedArenaAllocator allocator(graph_->GetArenaStack());
-    SchedulingGraph scheduling_graph(scheduler, &allocator);
+    SchedulingGraph scheduling_graph(scheduler, GetScopedAllocator());
     // Instructions must be inserted in reverse order into the scheduling graph.
     for (HInstruction* instr : ReverseRange(block_instructions)) {
       scheduling_graph.AddNode(instr);
@@ -273,8 +272,7 @@ class SchedulerTest : public OptimizingUnitTest {
       entry->AddInstruction(instr);
     }
 
-    ScopedArenaAllocator allocator(graph_->GetArenaStack());
-    SchedulingGraph scheduling_graph(scheduler, &allocator);
+    SchedulingGraph scheduling_graph(scheduler, GetScopedAllocator());
     HeapLocationCollector heap_location_collector(graph_);
     heap_location_collector.VisitBasicBlock(entry);
     heap_location_collector.BuildAliasingMatrix();
@@ -352,15 +350,13 @@ class SchedulerTest : public OptimizingUnitTest {
 #if defined(ART_ENABLE_CODEGEN_arm64)
 TEST_F(SchedulerTest, DependencyGraphAndSchedulerARM64) {
   CriticalPathSchedulingNodeSelector critical_path_selector;
-  ScopedArenaAllocator allocator(GetArenaStack());
-  arm64::HSchedulerARM64 scheduler(&allocator, &critical_path_selector);
+  arm64::HSchedulerARM64 scheduler(GetScopedAllocator(), &critical_path_selector);
   TestBuildDependencyGraphAndSchedule(&scheduler);
 }
 
 TEST_F(SchedulerTest, ArrayAccessAliasingARM64) {
   CriticalPathSchedulingNodeSelector critical_path_selector;
-  ScopedArenaAllocator allocator(GetArenaStack());
-  arm64::HSchedulerARM64 scheduler(&allocator, &critical_path_selector);
+  arm64::HSchedulerARM64 scheduler(GetScopedAllocator(), &critical_path_selector);
   TestDependencyGraphOnAliasingArrayAccesses(&scheduler);
 }
 #endif
@@ -369,16 +365,14 @@ TEST_F(SchedulerTest, ArrayAccessAliasingARM64) {
 TEST_F(SchedulerTest, DependencyGraphAndSchedulerARM) {
   CriticalPathSchedulingNodeSelector critical_path_selector;
   arm::SchedulingLatencyVisitorARM arm_latency_visitor(/*CodeGenerator*/ nullptr);
-  ScopedArenaAllocator allocator(GetArenaStack());
-  arm::HSchedulerARM scheduler(&allocator, &critical_path_selector, &arm_latency_visitor);
+  arm::HSchedulerARM scheduler(GetScopedAllocator(), &critical_path_selector, &arm_latency_visitor);
   TestBuildDependencyGraphAndSchedule(&scheduler);
 }
 
 TEST_F(SchedulerTest, ArrayAccessAliasingARM) {
   CriticalPathSchedulingNodeSelector critical_path_selector;
   arm::SchedulingLatencyVisitorARM arm_latency_visitor(/*CodeGenerator*/ nullptr);
-  ScopedArenaAllocator allocator(GetArenaStack());
-  arm::HSchedulerARM scheduler(&allocator, &critical_path_selector, &arm_latency_visitor);
+  arm::HSchedulerARM scheduler(GetScopedAllocator(), &critical_path_selector, &arm_latency_visitor);
   TestDependencyGraphOnAliasingArrayAccesses(&scheduler);
 }
 #endif

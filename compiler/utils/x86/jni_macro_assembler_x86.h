@@ -34,7 +34,7 @@ class X86JNIMacroLabel;
 
 class X86JNIMacroAssembler FINAL : public JNIMacroAssemblerFwd<X86Assembler, PointerSize::k32> {
  public:
-  explicit X86JNIMacroAssembler(ArenaAllocator* arena) : JNIMacroAssemblerFwd(arena) {}
+  explicit X86JNIMacroAssembler(ArenaAllocator* allocator) : JNIMacroAssemblerFwd(allocator) {}
   virtual ~X86JNIMacroAssembler() {}
 
   //

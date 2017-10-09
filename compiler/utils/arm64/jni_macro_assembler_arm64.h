@@ -40,9 +40,9 @@ namespace arm64 {
 
 class Arm64JNIMacroAssembler FINAL : public JNIMacroAssemblerFwd<Arm64Assembler, PointerSize::k64> {
  public:
-  explicit Arm64JNIMacroAssembler(ArenaAllocator* arena)
-      : JNIMacroAssemblerFwd(arena),
-        exception_blocks_(arena->Adapter(kArenaAllocAssembler)) {}
+  explicit Arm64JNIMacroAssembler(ArenaAllocator* allocator)
+      : JNIMacroAssemblerFwd(allocator),
+        exception_blocks_(allocator->Adapter(kArenaAllocAssembler)) {}
 
   ~Arm64JNIMacroAssembler();
 
