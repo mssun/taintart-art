@@ -46,7 +46,7 @@ class IntrinsicLocationsBuilderARMVIXL FINAL : public IntrinsicVisitor {
   bool TryDispatch(HInvoke* invoke);
 
  private:
-  ArenaAllocator* arena_;
+  ArenaAllocator* allocator_;
   CodeGenerator* codegen_;
   ArmVIXLAssembler* assembler_;
   const ArmInstructionSetFeatures& features_;

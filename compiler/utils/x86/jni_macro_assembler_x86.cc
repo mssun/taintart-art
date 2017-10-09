@@ -518,7 +518,7 @@ void X86JNIMacroAssembler::GetCurrentThread(FrameOffset offset,
 }
 
 void X86JNIMacroAssembler::ExceptionPoll(ManagedRegister /*scratch*/, size_t stack_adjust) {
-  X86ExceptionSlowPath* slow = new (__ GetArena()) X86ExceptionSlowPath(stack_adjust);
+  X86ExceptionSlowPath* slow = new (__ GetAllocator()) X86ExceptionSlowPath(stack_adjust);
   __ GetBuffer()->EnqueueSlowPath(slow);
   __ fs()->cmpl(Address::Absolute(Thread::ExceptionOffset<kX86PointerSize>()), Immediate(0));
   __ j(kNotEqual, slow->Entry());

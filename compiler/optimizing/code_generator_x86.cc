@@ -414,7 +414,7 @@ class ArraySetSlowPathX86 : public SlowPathCode {
     SaveLiveRegisters(codegen, locations);
 
     InvokeRuntimeCallingConvention calling_convention;
-    HParallelMove parallel_move(codegen->GetGraph()->GetArena());
+    HParallelMove parallel_move(codegen->GetGraph()->GetAllocator());
     parallel_move.AddMove(
         locations->InAt(0),
         Location::RegisterLocation(calling_convention.GetRegisterAt(0)),
@@ -811,7 +811,7 @@ class ReadBarrierForHeapReferenceSlowPathX86 : public SlowPathCode {
     // We're moving two or three locations to locations that could
     // overlap, so we need a parallel move resolver.
     InvokeRuntimeCallingConvention calling_convention;
-    HParallelMove parallel_move(codegen->GetGraph()->GetArena());
+    HParallelMove parallel_move(codegen->GetGraph()->GetAllocator());
     parallel_move.AddMove(ref_,
                           Location::RegisterLocation(calling_convention.GetRegisterAt(0)),
                           DataType::Type::kReference,
@@ -1030,21 +1030,21 @@ CodeGeneratorX86::CodeGeneratorX86(HGraph* graph,
       block_labels_(nullptr),
       location_builder_(graph, this),
       instruction_visitor_(graph, this),
-      move_resolver_(graph->GetArena(), this),
-      assembler_(graph->GetArena()),
+      move_resolver_(graph->GetAllocator(), this),
+      assembler_(graph->GetAllocator()),
       isa_features_(isa_features),
-      boot_image_method_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
-      method_bss_entry_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
-      boot_image_type_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
-      type_bss_entry_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
-      string_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
-      string_bss_entry_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
-      jit_string_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
-      jit_class_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
+      boot_image_method_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      method_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      boot_image_type_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      type_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      string_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      string_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      jit_string_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      jit_class_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       constant_area_start_(-1),
-      fixups_to_jump_tables_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
+      fixups_to_jump_tables_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       method_address_offset_(std::less<uint32_t>(),
-                             graph->GetArena()->Adapter(kArenaAllocCodeGenerator)) {
+                             graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)) {
   // Use a fake return address register to mimic Quick.
   AddAllocatedRegister(Location::RegisterLocation(kFakeReturnRegister));
 }
@@ -1333,7 +1333,7 @@ void CodeGeneratorX86::MoveConstant(Location location, int32_t value) {
 }
 
 void CodeGeneratorX86::MoveLocation(Location dst, Location src, DataType::Type dst_type) {
-  HParallelMove move(GetGraph()->GetArena());
+  HParallelMove move(GetGraph()->GetAllocator());
   if (dst_type == DataType::Type::kInt64 && !src.IsConstant() && !src.IsFpuRegister()) {
     move.AddMove(src.ToLow(), dst.ToLow(), DataType::Type::kInt32, nullptr);
     move.AddMove(src.ToHigh(), dst.ToHigh(), DataType::Type::kInt32, nullptr);
@@ -1681,7 +1681,7 @@ void InstructionCodeGeneratorX86::GenerateTestAndBranch(HInstruction* instructio
 }
 
 void LocationsBuilderX86::VisitIf(HIf* if_instr) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(if_instr);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(if_instr);
   if (IsBooleanValueOrMaterializedCondition(if_instr->InputAt(0))) {
     locations->SetInAt(0, Location::Any());
   }
@@ -1698,7 +1698,7 @@ void InstructionCodeGeneratorX86::VisitIf(HIf* if_instr) {
 }
 
 void LocationsBuilderX86::VisitDeoptimize(HDeoptimize* deoptimize) {
-  LocationSummary* locations = new (GetGraph()->GetArena())
+  LocationSummary* locations = new (GetGraph()->GetAllocator())
       LocationSummary(deoptimize, LocationSummary::kCallOnSlowPath);
   InvokeRuntimeCallingConvention calling_convention;
   RegisterSet caller_saves = RegisterSet::Empty();
@@ -1718,7 +1718,7 @@ void InstructionCodeGeneratorX86::VisitDeoptimize(HDeoptimize* deoptimize) {
 }
 
 void LocationsBuilderX86::VisitShouldDeoptimizeFlag(HShouldDeoptimizeFlag* flag) {
-  LocationSummary* locations = new (GetGraph()->GetArena())
+  LocationSummary* locations = new (GetGraph()->GetAllocator())
       LocationSummary(flag, LocationSummary::kNoCall);
   locations->SetOut(Location::RequiresRegister());
 }
@@ -1750,7 +1750,7 @@ static bool SelectCanUseCMOV(HSelect* select) {
 }
 
 void LocationsBuilderX86::VisitSelect(HSelect* select) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(select);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(select);
   if (DataType::IsFloatingPointType(select->GetType())) {
     locations->SetInAt(0, Location::RequiresFpuRegister());
     locations->SetInAt(1, Location::Any());
@@ -1844,7 +1844,7 @@ void InstructionCodeGeneratorX86::VisitSelect(HSelect* select) {
 }
 
 void LocationsBuilderX86::VisitNativeDebugInfo(HNativeDebugInfo* info) {
-  new (GetGraph()->GetArena()) LocationSummary(info);
+  new (GetGraph()->GetAllocator()) LocationSummary(info);
 }
 
 void InstructionCodeGeneratorX86::VisitNativeDebugInfo(HNativeDebugInfo*) {
@@ -1857,7 +1857,7 @@ void CodeGeneratorX86::GenerateNop() {
 
 void LocationsBuilderX86::HandleCondition(HCondition* cond) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(cond, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(cond, LocationSummary::kNoCall);
   // Handle the long/FP comparisons made in instruction simplification.
   switch (cond->InputAt(0)->GetType()) {
     case DataType::Type::kInt64: {
@@ -2024,7 +2024,7 @@ void InstructionCodeGeneratorX86::VisitAboveOrEqual(HAboveOrEqual* comp) {
 
 void LocationsBuilderX86::VisitIntConstant(HIntConstant* constant) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(constant, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(constant, LocationSummary::kNoCall);
   locations->SetOut(Location::ConstantLocation(constant));
 }
 
@@ -2034,7 +2034,7 @@ void InstructionCodeGeneratorX86::VisitIntConstant(HIntConstant* constant ATTRIB
 
 void LocationsBuilderX86::VisitNullConstant(HNullConstant* constant) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(constant, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(constant, LocationSummary::kNoCall);
   locations->SetOut(Location::ConstantLocation(constant));
 }
 
@@ -2044,7 +2044,7 @@ void InstructionCodeGeneratorX86::VisitNullConstant(HNullConstant* constant ATTR
 
 void LocationsBuilderX86::VisitLongConstant(HLongConstant* constant) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(constant, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(constant, LocationSummary::kNoCall);
   locations->SetOut(Location::ConstantLocation(constant));
 }
 
@@ -2054,7 +2054,7 @@ void InstructionCodeGeneratorX86::VisitLongConstant(HLongConstant* constant ATTR
 
 void LocationsBuilderX86::VisitFloatConstant(HFloatConstant* constant) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(constant, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(constant, LocationSummary::kNoCall);
   locations->SetOut(Location::ConstantLocation(constant));
 }
 
@@ -2064,7 +2064,7 @@ void InstructionCodeGeneratorX86::VisitFloatConstant(HFloatConstant* constant AT
 
 void LocationsBuilderX86::VisitDoubleConstant(HDoubleConstant* constant) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(constant, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(constant, LocationSummary::kNoCall);
   locations->SetOut(Location::ConstantLocation(constant));
 }
 
@@ -2099,7 +2099,7 @@ void InstructionCodeGeneratorX86::VisitReturnVoid(HReturnVoid* ret ATTRIBUTE_UNU
 
 void LocationsBuilderX86::VisitReturn(HReturn* ret) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(ret, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(ret, LocationSummary::kNoCall);
   switch (ret->InputAt(0)->GetType()) {
     case DataType::Type::kReference:
     case DataType::Type::kBool:
@@ -2300,7 +2300,7 @@ void InstructionCodeGeneratorX86::VisitInvokePolymorphic(HInvokePolymorphic* inv
 
 void LocationsBuilderX86::VisitNeg(HNeg* neg) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(neg, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(neg, LocationSummary::kNoCall);
   switch (neg->GetResultType()) {
     case DataType::Type::kInt32:
     case DataType::Type::kInt64:
@@ -2381,7 +2381,7 @@ void InstructionCodeGeneratorX86::VisitNeg(HNeg* neg) {
 
 void LocationsBuilderX86::VisitX86FPNeg(HX86FPNeg* neg) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(neg, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(neg, LocationSummary::kNoCall);
   DCHECK(DataType::IsFloatingPointType(neg->GetType()));
   locations->SetInAt(0, Location::RequiresFpuRegister());
   locations->SetInAt(1, Location::RequiresRegister());
@@ -2423,7 +2423,7 @@ void LocationsBuilderX86::VisitTypeConversion(HTypeConversion* conversion) {
       ? LocationSummary::kCallOnMainOnly
       : LocationSummary::kNoCall;
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(conversion, call_kind);
+      new (GetGraph()->GetAllocator()) LocationSummary(conversion, call_kind);
 
   switch (result_type) {
     case DataType::Type::kUint8:
@@ -2921,7 +2921,7 @@ void InstructionCodeGeneratorX86::VisitTypeConversion(HTypeConversion* conversio
 
 void LocationsBuilderX86::VisitAdd(HAdd* add) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(add, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(add, LocationSummary::kNoCall);
   switch (add->GetResultType()) {
     case DataType::Type::kInt32: {
       locations->SetInAt(0, Location::RequiresRegister());
@@ -3048,7 +3048,7 @@ void InstructionCodeGeneratorX86::VisitAdd(HAdd* add) {
 
 void LocationsBuilderX86::VisitSub(HSub* sub) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(sub, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(sub, LocationSummary::kNoCall);
   switch (sub->GetResultType()) {
     case DataType::Type::kInt32:
     case DataType::Type::kInt64: {
@@ -3154,7 +3154,7 @@ void InstructionCodeGeneratorX86::VisitSub(HSub* sub) {
 
 void LocationsBuilderX86::VisitMul(HMul* mul) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(mul, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(mul, LocationSummary::kNoCall);
   switch (mul->GetResultType()) {
     case DataType::Type::kInt32:
       locations->SetInAt(0, Location::RequiresRegister());
@@ -3581,7 +3581,7 @@ void InstructionCodeGeneratorX86::GenerateDivRemIntegral(HBinaryOperation* instr
           GenerateDivRemWithAnyConstant(instruction);
         }
       } else {
-        SlowPathCode* slow_path = new (GetGraph()->GetArena()) DivRemMinusOneSlowPathX86(
+        SlowPathCode* slow_path = new (GetGraph()->GetAllocator()) DivRemMinusOneSlowPathX86(
             instruction, out.AsRegister<Register>(), is_div);
         codegen_->AddSlowPath(slow_path);
 
@@ -3630,7 +3630,7 @@ void LocationsBuilderX86::VisitDiv(HDiv* div) {
   LocationSummary::CallKind call_kind = (div->GetResultType() == DataType::Type::kInt64)
       ? LocationSummary::kCallOnMainOnly
       : LocationSummary::kNoCall;
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(div, call_kind);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(div, call_kind);
 
   switch (div->GetResultType()) {
     case DataType::Type::kInt32: {
@@ -3735,7 +3735,7 @@ void LocationsBuilderX86::VisitRem(HRem* rem) {
   LocationSummary::CallKind call_kind = (rem->GetResultType() == DataType::Type::kInt64)
       ? LocationSummary::kCallOnMainOnly
       : LocationSummary::kNoCall;
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(rem, call_kind);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(rem, call_kind);
 
   switch (type) {
     case DataType::Type::kInt32: {
@@ -3817,7 +3817,7 @@ void LocationsBuilderX86::VisitDivZeroCheck(HDivZeroCheck* instruction) {
 }
 
 void InstructionCodeGeneratorX86::VisitDivZeroCheck(HDivZeroCheck* instruction) {
-  SlowPathCode* slow_path = new (GetGraph()->GetArena()) DivZeroCheckSlowPathX86(instruction);
+  SlowPathCode* slow_path = new (GetGraph()->GetAllocator()) DivZeroCheckSlowPathX86(instruction);
   codegen_->AddSlowPath(slow_path);
 
   LocationSummary* locations = instruction->GetLocations();
@@ -3867,7 +3867,7 @@ void LocationsBuilderX86::HandleShift(HBinaryOperation* op) {
   DCHECK(op->IsShl() || op->IsShr() || op->IsUShr());
 
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(op, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(op, LocationSummary::kNoCall);
 
   switch (op->GetResultType()) {
     case DataType::Type::kInt32:
@@ -4062,7 +4062,7 @@ void InstructionCodeGeneratorX86::GenerateUShrLong(const Location& loc, Register
 
 void LocationsBuilderX86::VisitRor(HRor* ror) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(ror, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(ror, LocationSummary::kNoCall);
 
   switch (ror->GetResultType()) {
     case DataType::Type::kInt64:
@@ -4170,8 +4170,8 @@ void InstructionCodeGeneratorX86::VisitUShr(HUShr* ushr) {
 }
 
 void LocationsBuilderX86::VisitNewInstance(HNewInstance* instruction) {
-  LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kCallOnMainOnly);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
+      instruction, LocationSummary::kCallOnMainOnly);
   locations->SetOut(Location::RegisterLocation(EAX));
   if (instruction->IsStringAlloc()) {
     locations->AddTemp(Location::RegisterLocation(kMethodRegisterArgument));
@@ -4199,8 +4199,8 @@ void InstructionCodeGeneratorX86::VisitNewInstance(HNewInstance* instruction) {
 }
 
 void LocationsBuilderX86::VisitNewArray(HNewArray* instruction) {
-  LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kCallOnMainOnly);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
+      instruction, LocationSummary::kCallOnMainOnly);
   locations->SetOut(Location::RegisterLocation(EAX));
   InvokeRuntimeCallingConvention calling_convention;
   locations->SetInAt(0, Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
@@ -4219,7 +4219,7 @@ void InstructionCodeGeneratorX86::VisitNewArray(HNewArray* instruction) {
 
 void LocationsBuilderX86::VisitParameterValue(HParameterValue* instruction) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction, LocationSummary::kNoCall);
   Location location = parameter_visitor_.GetNextLocation(instruction->GetType());
   if (location.IsStackSlot()) {
     location = Location::StackSlot(location.GetStackIndex() + codegen_->GetFrameSize());
@@ -4235,7 +4235,7 @@ void InstructionCodeGeneratorX86::VisitParameterValue(
 
 void LocationsBuilderX86::VisitCurrentMethod(HCurrentMethod* instruction) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction, LocationSummary::kNoCall);
   locations->SetOut(Location::RegisterLocation(kMethodRegisterArgument));
 }
 
@@ -4244,7 +4244,7 @@ void InstructionCodeGeneratorX86::VisitCurrentMethod(HCurrentMethod* instruction
 
 void LocationsBuilderX86::VisitClassTableGet(HClassTableGet* instruction) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction, LocationSummary::kNoCall);
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetOut(Location::RequiresRegister());
 }
@@ -4270,7 +4270,7 @@ void InstructionCodeGeneratorX86::VisitClassTableGet(HClassTableGet* instruction
 
 void LocationsBuilderX86::VisitNot(HNot* not_) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(not_, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(not_, LocationSummary::kNoCall);
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetOut(Location::SameAsFirstInput());
 }
@@ -4297,7 +4297,7 @@ void InstructionCodeGeneratorX86::VisitNot(HNot* not_) {
 
 void LocationsBuilderX86::VisitBooleanNot(HBooleanNot* bool_not) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(bool_not, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(bool_not, LocationSummary::kNoCall);
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetOut(Location::SameAsFirstInput());
 }
@@ -4312,7 +4312,7 @@ void InstructionCodeGeneratorX86::VisitBooleanNot(HBooleanNot* bool_not) {
 
 void LocationsBuilderX86::VisitCompare(HCompare* compare) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(compare, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(compare, LocationSummary::kNoCall);
   switch (compare->InputAt(0)->GetType()) {
     case DataType::Type::kBool:
     case DataType::Type::kUint8:
@@ -4431,7 +4431,7 @@ void InstructionCodeGeneratorX86::VisitCompare(HCompare* compare) {
 
 void LocationsBuilderX86::VisitPhi(HPhi* instruction) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction, LocationSummary::kNoCall);
   for (size_t i = 0, e = locations->GetInputCount(); i < e; ++i) {
     locations->SetInAt(i, Location::Any());
   }
@@ -4714,10 +4714,10 @@ void LocationsBuilderX86::HandleFieldGet(HInstruction* instruction, const FieldI
   bool object_field_get_with_read_barrier =
       kEmitCompilerReadBarrier && (instruction->GetType() == DataType::Type::kReference);
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction,
-                                                   kEmitCompilerReadBarrier ?
-                                                       LocationSummary::kCallOnSlowPath :
-                                                       LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction,
+                                                       kEmitCompilerReadBarrier
+                                                           ? LocationSummary::kCallOnSlowPath
+                                                           : LocationSummary::kNoCall);
   if (object_field_get_with_read_barrier && kUseBakerReadBarrier) {
     locations->SetCustomSlowPathCallerSaves(RegisterSet::Empty());  // No caller-save registers.
   }
@@ -4862,7 +4862,7 @@ void LocationsBuilderX86::HandleFieldSet(HInstruction* instruction, const FieldI
   DCHECK(instruction->IsInstanceFieldSet() || instruction->IsStaticFieldSet());
 
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction, LocationSummary::kNoCall);
   locations->SetInAt(0, Location::RequiresRegister());
   bool is_volatile = field_info.IsVolatile();
   DataType::Type field_type = field_info.GetFieldType();
@@ -5149,7 +5149,7 @@ void CodeGeneratorX86::GenerateImplicitNullCheck(HNullCheck* instruction) {
 }
 
 void CodeGeneratorX86::GenerateExplicitNullCheck(HNullCheck* instruction) {
-  SlowPathCode* slow_path = new (GetGraph()->GetArena()) NullCheckSlowPathX86(instruction);
+  SlowPathCode* slow_path = new (GetGraph()->GetAllocator()) NullCheckSlowPathX86(instruction);
   AddSlowPath(slow_path);
 
   LocationSummary* locations = instruction->GetLocations();
@@ -5176,10 +5176,10 @@ void LocationsBuilderX86::VisitArrayGet(HArrayGet* instruction) {
   bool object_array_get_with_read_barrier =
       kEmitCompilerReadBarrier && (instruction->GetType() == DataType::Type::kReference);
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction,
-                                                   object_array_get_with_read_barrier ?
-                                                       LocationSummary::kCallOnSlowPath :
-                                                       LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction,
+                                                       object_array_get_with_read_barrier
+                                                           ? LocationSummary::kCallOnSlowPath
+                                                           : LocationSummary::kNoCall);
   if (object_array_get_with_read_barrier && kUseBakerReadBarrier) {
     locations->SetCustomSlowPathCallerSaves(RegisterSet::Empty());  // No caller-save registers.
   }
@@ -5332,7 +5332,7 @@ void LocationsBuilderX86::VisitArraySet(HArraySet* instruction) {
       CodeGenerator::StoreNeedsWriteBarrier(value_type, instruction->GetValue());
   bool may_need_runtime_call_for_type_check = instruction->NeedsTypeCheck();
 
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
       instruction,
       may_need_runtime_call_for_type_check ?
           LocationSummary::kCallOnSlowPath :
@@ -5427,7 +5427,7 @@ void InstructionCodeGeneratorX86::VisitArraySet(HArraySet* instruction) {
       Location temp_loc = locations->GetTemp(0);
       Register temp = temp_loc.AsRegister<Register>();
       if (may_need_runtime_call_for_type_check) {
-        slow_path = new (GetGraph()->GetArena()) ArraySetSlowPathX86(instruction);
+        slow_path = new (GetGraph()->GetAllocator()) ArraySetSlowPathX86(instruction);
         codegen_->AddSlowPath(slow_path);
         if (instruction->GetValueCanBeNull()) {
           __ testl(register_value, register_value);
@@ -5570,7 +5570,7 @@ void InstructionCodeGeneratorX86::VisitArraySet(HArraySet* instruction) {
 }
 
 void LocationsBuilderX86::VisitArrayLength(HArrayLength* instruction) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
   locations->SetInAt(0, Location::RequiresRegister());
   if (!instruction->IsEmittedAtUseSite()) {
     locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
@@ -5618,7 +5618,7 @@ void InstructionCodeGeneratorX86::VisitBoundsCheck(HBoundsCheck* instruction) {
   Location index_loc = locations->InAt(0);
   Location length_loc = locations->InAt(1);
   SlowPathCode* slow_path =
-    new (GetGraph()->GetArena()) BoundsCheckSlowPathX86(instruction);
+    new (GetGraph()->GetAllocator()) BoundsCheckSlowPathX86(instruction);
 
   if (length_loc.IsConstant()) {
     int32_t length = CodeGenerator::GetInt32ValueOf(length_loc.GetConstant());
@@ -5684,8 +5684,8 @@ void InstructionCodeGeneratorX86::VisitParallelMove(HParallelMove* instruction) 
 }
 
 void LocationsBuilderX86::VisitSuspendCheck(HSuspendCheck* instruction) {
-  LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kCallOnSlowPath);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
+      instruction, LocationSummary::kCallOnSlowPath);
   // In suspend check slow path, usually there are no caller-save registers at all.
   // If SIMD instructions are present, however, we force spilling all live SIMD
   // registers in full width (since the runtime only saves/restores lower part).
@@ -5712,7 +5712,7 @@ void InstructionCodeGeneratorX86::GenerateSuspendCheck(HSuspendCheck* instructio
   SuspendCheckSlowPathX86* slow_path =
       down_cast<SuspendCheckSlowPathX86*>(instruction->GetSlowPath());
   if (slow_path == nullptr) {
-    slow_path = new (GetGraph()->GetArena()) SuspendCheckSlowPathX86(instruction, successor);
+    slow_path = new (GetGraph()->GetAllocator()) SuspendCheckSlowPathX86(instruction, successor);
     instruction->SetSlowPath(slow_path);
     codegen_->AddSlowPath(slow_path);
     if (successor != nullptr) {
@@ -6044,7 +6044,7 @@ void LocationsBuilderX86::VisitLoadClass(HLoadClass* cls) {
   LocationSummary::CallKind call_kind = (cls->NeedsEnvironment() || requires_read_barrier)
       ? LocationSummary::kCallOnSlowPath
       : LocationSummary::kNoCall;
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(cls, call_kind);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(cls, call_kind);
   if (kUseBakerReadBarrier && requires_read_barrier && !cls->NeedsEnvironment()) {
     locations->SetCustomSlowPathCallerSaves(RegisterSet::Empty());  // No caller-save registers.
   }
@@ -6165,7 +6165,7 @@ void InstructionCodeGeneratorX86::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAFE
 
   if (generate_null_check || cls->MustGenerateClinitCheck()) {
     DCHECK(cls->CanCallRuntime());
-    SlowPathCode* slow_path = new (GetGraph()->GetArena()) LoadClassSlowPathX86(
+    SlowPathCode* slow_path = new (GetGraph()->GetAllocator()) LoadClassSlowPathX86(
         cls, cls, cls->GetDexPc(), cls->MustGenerateClinitCheck());
     codegen_->AddSlowPath(slow_path);
 
@@ -6184,7 +6184,7 @@ void InstructionCodeGeneratorX86::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAFE
 
 void LocationsBuilderX86::VisitClinitCheck(HClinitCheck* check) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(check, LocationSummary::kCallOnSlowPath);
+      new (GetGraph()->GetAllocator()) LocationSummary(check, LocationSummary::kCallOnSlowPath);
   locations->SetInAt(0, Location::RequiresRegister());
   if (check->HasUses()) {
     locations->SetOut(Location::SameAsFirstInput());
@@ -6193,7 +6193,7 @@ void LocationsBuilderX86::VisitClinitCheck(HClinitCheck* check) {
 
 void InstructionCodeGeneratorX86::VisitClinitCheck(HClinitCheck* check) {
   // We assume the class to not be null.
-  SlowPathCode* slow_path = new (GetGraph()->GetArena()) LoadClassSlowPathX86(
+  SlowPathCode* slow_path = new (GetGraph()->GetAllocator()) LoadClassSlowPathX86(
       check->GetLoadClass(), check, check->GetDexPc(), true);
   codegen_->AddSlowPath(slow_path);
   GenerateClassInitializationCheck(slow_path,
@@ -6229,7 +6229,7 @@ HLoadString::LoadKind CodeGeneratorX86::GetSupportedLoadStringKind(
 
 void LocationsBuilderX86::VisitLoadString(HLoadString* load) {
   LocationSummary::CallKind call_kind = CodeGenerator::GetLoadStringCallKind(load);
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(load, call_kind);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(load, call_kind);
   HLoadString::LoadKind load_kind = load->GetLoadKind();
   if (load_kind == HLoadString::LoadKind::kBootImageLinkTimePcRelative ||
       load_kind == HLoadString::LoadKind::kBootImageInternTable ||
@@ -6300,7 +6300,7 @@ void InstructionCodeGeneratorX86::VisitLoadString(HLoadString* load) NO_THREAD_S
       Label* fixup_label = codegen_->NewStringBssEntryPatch(load);
       // /* GcRoot<mirror::String> */ out = *address  /* PC-relative */
       GenerateGcRootFieldLoad(load, out_loc, address, fixup_label, kCompilerReadBarrierOption);
-      SlowPathCode* slow_path = new (GetGraph()->GetArena()) LoadStringSlowPathX86(load);
+      SlowPathCode* slow_path = new (GetGraph()->GetAllocator()) LoadStringSlowPathX86(load);
       codegen_->AddSlowPath(slow_path);
       __ testl(out, out);
       __ j(kEqual, slow_path->GetEntryLabel());
@@ -6333,7 +6333,7 @@ static Address GetExceptionTlsAddress() {
 
 void LocationsBuilderX86::VisitLoadException(HLoadException* load) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(load, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(load, LocationSummary::kNoCall);
   locations->SetOut(Location::RequiresRegister());
 }
 
@@ -6342,7 +6342,7 @@ void InstructionCodeGeneratorX86::VisitLoadException(HLoadException* load) {
 }
 
 void LocationsBuilderX86::VisitClearException(HClearException* clear) {
-  new (GetGraph()->GetArena()) LocationSummary(clear, LocationSummary::kNoCall);
+  new (GetGraph()->GetAllocator()) LocationSummary(clear, LocationSummary::kNoCall);
 }
 
 void InstructionCodeGeneratorX86::VisitClearException(HClearException* clear ATTRIBUTE_UNUSED) {
@@ -6350,8 +6350,8 @@ void InstructionCodeGeneratorX86::VisitClearException(HClearException* clear ATT
 }
 
 void LocationsBuilderX86::VisitThrow(HThrow* instruction) {
-  LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kCallOnMainOnly);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
+      instruction, LocationSummary::kCallOnMainOnly);
   InvokeRuntimeCallingConvention calling_convention;
   locations->SetInAt(0, Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
 }
@@ -6403,7 +6403,8 @@ void LocationsBuilderX86::VisitInstanceOf(HInstanceOf* instruction) {
       break;
   }
 
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction, call_kind);
+  LocationSummary* locations =
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction, call_kind);
   if (baker_read_barrier_slow_path) {
     locations->SetCustomSlowPathCallerSaves(RegisterSet::Empty());  // No caller-save registers.
   }
@@ -6580,8 +6581,8 @@ void InstructionCodeGeneratorX86::VisitInstanceOf(HInstanceOf* instruction) {
         __ cmpl(out, Address(ESP, cls.GetStackIndex()));
       }
       DCHECK(locations->OnlyCallsOnSlowPath());
-      slow_path = new (GetGraph()->GetArena()) TypeCheckSlowPathX86(instruction,
-                                                                    /* is_fatal */ false);
+      slow_path = new (GetGraph()->GetAllocator()) TypeCheckSlowPathX86(instruction,
+                                                                        /* is_fatal */ false);
       codegen_->AddSlowPath(slow_path);
       __ j(kNotEqual, slow_path->GetEntryLabel());
       __ movl(out, Immediate(1));
@@ -6612,8 +6613,8 @@ void InstructionCodeGeneratorX86::VisitInstanceOf(HInstanceOf* instruction) {
       // call to the runtime not using a type checking slow path).
       // This should also be beneficial for the other cases above.
       DCHECK(locations->OnlyCallsOnSlowPath());
-      slow_path = new (GetGraph()->GetArena()) TypeCheckSlowPathX86(instruction,
-                                                                    /* is_fatal */ false);
+      slow_path = new (GetGraph()->GetAllocator()) TypeCheckSlowPathX86(instruction,
+                                                                        /* is_fatal */ false);
       codegen_->AddSlowPath(slow_path);
       __ jmp(slow_path->GetEntryLabel());
       if (zero.IsLinked()) {
@@ -6661,7 +6662,8 @@ void LocationsBuilderX86::VisitCheckCast(HCheckCast* instruction) {
       IsTypeCheckSlowPathFatal(type_check_kind, throws_into_catch)
           ? LocationSummary::kNoCall
           : LocationSummary::kCallOnSlowPath;
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction, call_kind);
+  LocationSummary* locations =
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction, call_kind);
   locations->SetInAt(0, Location::RequiresRegister());
   if (type_check_kind == TypeCheckKind::kInterfaceCheck) {
     // Require a register for the interface check since there is a loop that compares the class to
@@ -6704,8 +6706,8 @@ void InstructionCodeGeneratorX86::VisitCheckCast(HCheckCast* instruction) {
       IsTypeCheckSlowPathFatal(type_check_kind, instruction->CanThrowIntoCatchBlock());
 
   SlowPathCode* type_check_slow_path =
-      new (GetGraph()->GetArena()) TypeCheckSlowPathX86(instruction,
-                                                        is_type_check_slow_path_fatal);
+      new (GetGraph()->GetAllocator()) TypeCheckSlowPathX86(instruction,
+                                                            is_type_check_slow_path_fatal);
   codegen_->AddSlowPath(type_check_slow_path);
 
   NearLabel done;
@@ -6902,8 +6904,8 @@ void InstructionCodeGeneratorX86::VisitCheckCast(HCheckCast* instruction) {
 }
 
 void LocationsBuilderX86::VisitMonitorOperation(HMonitorOperation* instruction) {
-  LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kCallOnMainOnly);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
+      instruction, LocationSummary::kCallOnMainOnly);
   InvokeRuntimeCallingConvention calling_convention;
   locations->SetInAt(0, Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
 }
@@ -6926,7 +6928,7 @@ void LocationsBuilderX86::VisitXor(HXor* instruction) { HandleBitwiseOperation(i
 
 void LocationsBuilderX86::HandleBitwiseOperation(HBinaryOperation* instruction) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction, LocationSummary::kNoCall);
   DCHECK(instruction->GetResultType() == DataType::Type::kInt32
          || instruction->GetResultType() == DataType::Type::kInt64);
   locations->SetInAt(0, Location::RequiresRegister());
@@ -7148,7 +7150,7 @@ void InstructionCodeGeneratorX86::GenerateGcRootFieldLoad(
                     "have different sizes.");
 
       // Slow path marking the GC root `root`.
-      SlowPathCode* slow_path = new (GetGraph()->GetArena()) ReadBarrierMarkSlowPathX86(
+      SlowPathCode* slow_path = new (GetGraph()->GetAllocator()) ReadBarrierMarkSlowPathX86(
           instruction, root, /* unpoison_ref_before_marking */ false);
       codegen_->AddSlowPath(slow_path);
 
@@ -7278,10 +7280,10 @@ void CodeGeneratorX86::GenerateReferenceLoadWithBakerReadBarrier(HInstruction* i
   SlowPathCode* slow_path;
   if (always_update_field) {
     DCHECK(temp != nullptr);
-    slow_path = new (GetGraph()->GetArena()) ReadBarrierMarkAndUpdateFieldSlowPathX86(
+    slow_path = new (GetGraph()->GetAllocator()) ReadBarrierMarkAndUpdateFieldSlowPathX86(
         instruction, ref, obj, src, /* unpoison_ref_before_marking */ true, *temp);
   } else {
-    slow_path = new (GetGraph()->GetArena()) ReadBarrierMarkSlowPathX86(
+    slow_path = new (GetGraph()->GetAllocator()) ReadBarrierMarkSlowPathX86(
         instruction, ref, /* unpoison_ref_before_marking */ true);
   }
   AddSlowPath(slow_path);
@@ -7314,7 +7316,7 @@ void CodeGeneratorX86::GenerateReadBarrierSlow(HInstruction* instruction,
   // not used by the artReadBarrierSlow entry point.
   //
   // TODO: Unpoison `ref` when it is used by artReadBarrierSlow.
-  SlowPathCode* slow_path = new (GetGraph()->GetArena())
+  SlowPathCode* slow_path = new (GetGraph()->GetAllocator())
       ReadBarrierForHeapReferenceSlowPathX86(instruction, out, ref, obj, offset, index);
   AddSlowPath(slow_path);
 
@@ -7350,7 +7352,7 @@ void CodeGeneratorX86::GenerateReadBarrierForRootSlow(HInstruction* instruction,
   // Note that GC roots are not affected by heap poisoning, so we do
   // not need to do anything special for this here.
   SlowPathCode* slow_path =
-      new (GetGraph()->GetArena()) ReadBarrierForRootSlowPathX86(instruction, out, root);
+      new (GetGraph()->GetAllocator()) ReadBarrierForRootSlowPathX86(instruction, out, root);
   AddSlowPath(slow_path);
 
   __ jmp(slow_path->GetEntryLabel());
@@ -7370,7 +7372,7 @@ void InstructionCodeGeneratorX86::VisitBoundType(HBoundType* instruction ATTRIBU
 // Simple implementation of packed switch - generate cascaded compare/jumps.
 void LocationsBuilderX86::VisitPackedSwitch(HPackedSwitch* switch_instr) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(switch_instr, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(switch_instr, LocationSummary::kNoCall);
   locations->SetInAt(0, Location::RequiresRegister());
 }
 
@@ -7437,7 +7439,7 @@ void InstructionCodeGeneratorX86::VisitPackedSwitch(HPackedSwitch* switch_instr)
 
 void LocationsBuilderX86::VisitX86PackedSwitch(HX86PackedSwitch* switch_instr) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(switch_instr, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(switch_instr, LocationSummary::kNoCall);
   locations->SetInAt(0, Location::RequiresRegister());
 
   // Constant area pointer.
@@ -7492,7 +7494,7 @@ void InstructionCodeGeneratorX86::VisitX86PackedSwitch(HX86PackedSwitch* switch_
 void LocationsBuilderX86::VisitX86ComputeBaseMethodAddress(
     HX86ComputeBaseMethodAddress* insn) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(insn, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(insn, LocationSummary::kNoCall);
   locations->SetOut(Location::RequiresRegister());
 }
 
@@ -7516,7 +7518,7 @@ void InstructionCodeGeneratorX86::VisitX86ComputeBaseMethodAddress(
 void LocationsBuilderX86::VisitX86LoadFromConstantTable(
     HX86LoadFromConstantTable* insn) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(insn, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(insn, LocationSummary::kNoCall);
 
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetInAt(1, Location::ConstantLocation(insn->GetConstant()));
@@ -7676,28 +7678,31 @@ Address CodeGeneratorX86::LiteralDoubleAddress(double v,
                                                HX86ComputeBaseMethodAddress* method_base,
                                                Register reg) {
   AssemblerFixup* fixup =
-      new (GetGraph()->GetArena()) RIPFixup(*this, method_base, __ AddDouble(v));
+      new (GetGraph()->GetAllocator()) RIPFixup(*this, method_base, __ AddDouble(v));
   return Address(reg, kDummy32BitOffset, fixup);
 }
 
 Address CodeGeneratorX86::LiteralFloatAddress(float v,
                                               HX86ComputeBaseMethodAddress* method_base,
                                               Register reg) {
-  AssemblerFixup* fixup = new (GetGraph()->GetArena()) RIPFixup(*this, method_base, __ AddFloat(v));
+  AssemblerFixup* fixup =
+      new (GetGraph()->GetAllocator()) RIPFixup(*this, method_base, __ AddFloat(v));
   return Address(reg, kDummy32BitOffset, fixup);
 }
 
 Address CodeGeneratorX86::LiteralInt32Address(int32_t v,
                                               HX86ComputeBaseMethodAddress* method_base,
                                               Register reg) {
-  AssemblerFixup* fixup = new (GetGraph()->GetArena()) RIPFixup(*this, method_base, __ AddInt32(v));
+  AssemblerFixup* fixup =
+      new (GetGraph()->GetAllocator()) RIPFixup(*this, method_base, __ AddInt32(v));
   return Address(reg, kDummy32BitOffset, fixup);
 }
 
 Address CodeGeneratorX86::LiteralInt64Address(int64_t v,
                                               HX86ComputeBaseMethodAddress* method_base,
                                               Register reg) {
-  AssemblerFixup* fixup = new (GetGraph()->GetArena()) RIPFixup(*this, method_base, __ AddInt64(v));
+  AssemblerFixup* fixup =
+      new (GetGraph()->GetAllocator()) RIPFixup(*this, method_base, __ AddInt64(v));
   return Address(reg, kDummy32BitOffset, fixup);
 }
 
@@ -7747,7 +7752,7 @@ Address CodeGeneratorX86::LiteralCaseTable(HX86PackedSwitch* switch_instr,
                                            Register value) {
   // Create a fixup to be used to create and address the jump table.
   JumpTableRIPFixup* table_fixup =
-      new (GetGraph()->GetArena()) JumpTableRIPFixup(*this, switch_instr);
+      new (GetGraph()->GetAllocator()) JumpTableRIPFixup(*this, switch_instr);
 
   // We have to populate the jump tables.
   fixups_to_jump_tables_.push_back(table_fixup);
@@ -7773,13 +7778,13 @@ void CodeGeneratorX86::MoveFromReturnRegister(Location target, DataType::Type ty
   // TODO: Consider pairs in the parallel move resolver, then this could be nicely merged
   //       with the else branch.
   if (type == DataType::Type::kInt64) {
-    HParallelMove parallel_move(GetGraph()->GetArena());
+    HParallelMove parallel_move(GetGraph()->GetAllocator());
     parallel_move.AddMove(return_loc.ToLow(), target.ToLow(), DataType::Type::kInt32, nullptr);
     parallel_move.AddMove(return_loc.ToHigh(), target.ToHigh(), DataType::Type::kInt32, nullptr);
     GetMoveResolver()->EmitNativeCode(&parallel_move);
   } else {
     // Let the parallel move resolver take care of all of this.
-    HParallelMove parallel_move(GetGraph()->GetArena());
+    HParallelMove parallel_move(GetGraph()->GetAllocator());
     parallel_move.AddMove(return_loc, target, type, nullptr);
     GetMoveResolver()->EmitNativeCode(&parallel_move);
   }

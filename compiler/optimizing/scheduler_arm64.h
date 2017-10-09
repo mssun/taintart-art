@@ -131,7 +131,7 @@ class SchedulingLatencyVisitorARM64 : public SchedulingLatencyVisitor {
 
 class HSchedulerARM64 : public HScheduler {
  public:
-  HSchedulerARM64(ArenaAllocator* arena, SchedulingNodeSelector* selector)
+  HSchedulerARM64(ScopedArenaAllocator* arena, SchedulingNodeSelector* selector)
       : HScheduler(arena, &arm64_latency_visitor_, selector) {}
   ~HSchedulerARM64() OVERRIDE {}
 

@@ -100,17 +100,17 @@ static DataType::Type ImplicitConversion(DataType::Type type) {
 HInductionVarAnalysis::HInductionVarAnalysis(HGraph* graph)
     : HOptimization(graph, kInductionPassName),
       global_depth_(0),
-      stack_(graph->GetArena()->Adapter(kArenaAllocInductionVarAnalysis)),
+      stack_(graph->GetAllocator()->Adapter(kArenaAllocInductionVarAnalysis)),
       map_(std::less<HInstruction*>(),
-           graph->GetArena()->Adapter(kArenaAllocInductionVarAnalysis)),
-      scc_(graph->GetArena()->Adapter(kArenaAllocInductionVarAnalysis)),
+           graph->GetAllocator()->Adapter(kArenaAllocInductionVarAnalysis)),
+      scc_(graph->GetAllocator()->Adapter(kArenaAllocInductionVarAnalysis)),
       cycle_(std::less<HInstruction*>(),
-             graph->GetArena()->Adapter(kArenaAllocInductionVarAnalysis)),
+             graph->GetAllocator()->Adapter(kArenaAllocInductionVarAnalysis)),
       type_(DataType::Type::kVoid),
       induction_(std::less<HLoopInformation*>(),
-                 graph->GetArena()->Adapter(kArenaAllocInductionVarAnalysis)),
+                 graph->GetAllocator()->Adapter(kArenaAllocInductionVarAnalysis)),
       cycles_(std::less<HPhi*>(),
-              graph->GetArena()->Adapter(kArenaAllocInductionVarAnalysis)) {
+              graph->GetAllocator()->Adapter(kArenaAllocInductionVarAnalysis)) {
 }
 
 void HInductionVarAnalysis::Run() {
@@ -265,7 +265,8 @@ void HInductionVarAnalysis::ClassifyNonTrivial(HLoopInformation* loop) {
 
   // Rotate proper loop-phi to front.
   if (size > 1) {
-    ArenaVector<HInstruction*> other(graph_->GetArena()->Adapter(kArenaAllocInductionVarAnalysis));
+    ArenaVector<HInstruction*> other(
+        graph_->GetAllocator()->Adapter(kArenaAllocInductionVarAnalysis));
     RotateEntryPhiFirst(loop, &scc_, &other);
   }
 
@@ -991,7 +992,7 @@ void HInductionVarAnalysis::AssignInfo(HLoopInformation* loop,
     it = induction_.Put(loop,
                         ArenaSafeMap<HInstruction*, InductionInfo*>(
                             std::less<HInstruction*>(),
-                            graph_->GetArena()->Adapter(kArenaAllocInductionVarAnalysis)));
+                            graph_->GetAllocator()->Adapter(kArenaAllocInductionVarAnalysis)));
   }
   it->second.Put(instruction, info);
 }
@@ -1082,7 +1083,7 @@ HInductionVarAnalysis::InductionInfo* HInductionVarAnalysis::CreateSimplifiedInv
       return CreateSimplifiedInvariant(kSub, b->op_b, b->op_a);
     }
   }
-  return new (graph_->GetArena()) InductionInfo(
+  return new (graph_->GetAllocator()) InductionInfo(
       kInvariant, op, a, b, nullptr, ImplicitConversion(b->type));
 }
 
@@ -1119,7 +1120,7 @@ HInstruction* HInductionVarAnalysis::GetShiftConstant(HLoopInformation* loop,
 
 void HInductionVarAnalysis::AssignCycle(HPhi* phi) {
   ArenaSet<HInstruction*>* set = &cycles_.Put(phi, ArenaSet<HInstruction*>(
-      graph_->GetArena()->Adapter(kArenaAllocInductionVarAnalysis)))->second;
+      graph_->GetAllocator()->Adapter(kArenaAllocInductionVarAnalysis)))->second;
   for (HInstruction* i : scc_) {
     set->insert(i);
   }

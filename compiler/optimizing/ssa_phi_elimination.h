@@ -31,7 +31,7 @@ class SsaDeadPhiElimination : public HOptimization {
  public:
   explicit SsaDeadPhiElimination(HGraph* graph)
       : HOptimization(graph, kSsaDeadPhiEliminationPassName),
-        worklist_(graph->GetArena()->Adapter(kArenaAllocSsaPhiElimination)) {
+        worklist_(graph->GetAllocator()->Adapter(kArenaAllocSsaPhiElimination)) {
     worklist_.reserve(kDefaultWorklistSize);
   }
 
@@ -60,7 +60,7 @@ class SsaRedundantPhiElimination : public HOptimization {
  public:
   explicit SsaRedundantPhiElimination(HGraph* graph)
       : HOptimization(graph, kSsaRedundantPhiEliminationPassName),
-        worklist_(graph->GetArena()->Adapter(kArenaAllocSsaPhiElimination)) {
+        worklist_(graph->GetAllocator()->Adapter(kArenaAllocSsaPhiElimination)) {
     worklist_.reserve(kDefaultWorklistSize);
   }
 
