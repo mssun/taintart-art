@@ -2866,6 +2866,11 @@ bool ClassLinker::ShouldUseInterpreterEntrypoint(ArtMethod* method, const void* 
     return true;
   }
 
+  if (Thread::Current()->IsAsyncExceptionPending()) {
+    // Force use of interpreter to handle async-exceptions
+    return true;
+  }
+
   if (runtime->IsJavaDebuggable()) {
     // For simplicity, we ignore precompiled code and go to the interpreter
     // assuming we don't already have jitted code.
