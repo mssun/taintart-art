@@ -75,7 +75,7 @@ TEST_F(SsaLivenessAnalysisTest, TestReturnArg) {
   block->AddInstruction(new (GetAllocator()) HExit());
 
   graph_->BuildDominatorTree();
-  SsaLivenessAnalysis ssa_analysis(graph_, codegen_.get());
+  SsaLivenessAnalysis ssa_analysis(graph_, codegen_.get(), GetScopedAllocator());
   ssa_analysis.Analyze();
 
   std::ostringstream arg_dump;
@@ -127,7 +127,7 @@ TEST_F(SsaLivenessAnalysisTest, TestAput) {
   block->AddInstruction(array_set);
 
   graph_->BuildDominatorTree();
-  SsaLivenessAnalysis ssa_analysis(graph_, codegen_.get());
+  SsaLivenessAnalysis ssa_analysis(graph_, codegen_.get(), GetScopedAllocator());
   ssa_analysis.Analyze();
 
   EXPECT_FALSE(graph_->IsDebuggable());
@@ -201,7 +201,7 @@ TEST_F(SsaLivenessAnalysisTest, TestDeoptimize) {
   block->AddInstruction(array_set);
 
   graph_->BuildDominatorTree();
-  SsaLivenessAnalysis ssa_analysis(graph_, codegen_.get());
+  SsaLivenessAnalysis ssa_analysis(graph_, codegen_.get(), GetScopedAllocator());
   ssa_analysis.Analyze();
 
   EXPECT_FALSE(graph_->IsDebuggable());

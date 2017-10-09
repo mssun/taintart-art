@@ -83,8 +83,8 @@ class AssemblerMIPS64Test : public AssemblerTest<mips64::Mips64Assembler,
     return " -D -bbinary -mmips:isa64r6";
   }
 
-  mips64::Mips64Assembler* CreateAssembler(ArenaAllocator* arena) OVERRIDE {
-    return new (arena) mips64::Mips64Assembler(arena, instruction_set_features_.get());
+  mips64::Mips64Assembler* CreateAssembler(ArenaAllocator* allocator) OVERRIDE {
+    return new (allocator) mips64::Mips64Assembler(allocator, instruction_set_features_.get());
   }
 
   void SetUpHelpers() OVERRIDE {

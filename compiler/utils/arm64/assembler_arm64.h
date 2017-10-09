@@ -61,7 +61,7 @@ enum StoreOperandType {
 
 class Arm64Assembler FINAL : public Assembler {
  public:
-  explicit Arm64Assembler(ArenaAllocator* arena) : Assembler(arena) {}
+  explicit Arm64Assembler(ArenaAllocator* allocator) : Assembler(allocator) {}
 
   virtual ~Arm64Assembler() {}
 

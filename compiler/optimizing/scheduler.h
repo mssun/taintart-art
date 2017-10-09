@@ -156,14 +156,14 @@ class HScheduler;
  */
 class SchedulingNode : public DeletableArenaObject<kArenaAllocScheduler> {
  public:
-  SchedulingNode(HInstruction* instr, ScopedArenaAllocator* arena, bool is_scheduling_barrier)
+  SchedulingNode(HInstruction* instr, ScopedArenaAllocator* allocator, bool is_scheduling_barrier)
       : latency_(0),
         internal_latency_(0),
         critical_path_(0),
         instruction_(instr),
         is_scheduling_barrier_(is_scheduling_barrier),
-        data_predecessors_(arena->Adapter(kArenaAllocScheduler)),
-        other_predecessors_(arena->Adapter(kArenaAllocScheduler)),
+        data_predecessors_(allocator->Adapter(kArenaAllocScheduler)),
+        other_predecessors_(allocator->Adapter(kArenaAllocScheduler)),
         num_unscheduled_successors_(0) {
     data_predecessors_.reserve(kPreallocatedPredecessors);
   }
@@ -251,9 +251,9 @@ class SchedulingNode : public DeletableArenaObject<kArenaAllocScheduler> {
  */
 class SchedulingGraph : public ValueObject {
  public:
-  SchedulingGraph(const HScheduler* scheduler, ScopedArenaAllocator* arena)
+  SchedulingGraph(const HScheduler* scheduler, ScopedArenaAllocator* allocator)
       : scheduler_(scheduler),
-        arena_(arena),
+        arena_(allocator),
         contains_scheduling_barrier_(false),
         nodes_map_(arena_->Adapter(kArenaAllocScheduler)),
         heap_location_collector_(nullptr) {}
@@ -434,16 +434,16 @@ class CriticalPathSchedulingNodeSelector : public SchedulingNodeSelector {
 
 class HScheduler {
  public:
-  HScheduler(ScopedArenaAllocator* arena,
+  HScheduler(ScopedArenaAllocator* allocator,
              SchedulingLatencyVisitor* latency_visitor,
              SchedulingNodeSelector* selector)
-      : arena_(arena),
+      : allocator_(allocator),
         latency_visitor_(latency_visitor),
         selector_(selector),
         only_optimize_loop_blocks_(true),
-        scheduling_graph_(this, arena),
+        scheduling_graph_(this, allocator),
         cursor_(nullptr),
-        candidates_(arena_->Adapter(kArenaAllocScheduler)) {}
+        candidates_(allocator_->Adapter(kArenaAllocScheduler)) {}
   virtual ~HScheduler() {}
 
   void Schedule(HGraph* graph);
@@ -471,7 +471,7 @@ class HScheduler {
     node->SetInternalLatency(latency_visitor_->GetLastVisitedInternalLatency());
   }
 
-  ScopedArenaAllocator* const arena_;
+  ScopedArenaAllocator* const allocator_;
   SchedulingLatencyVisitor* const latency_visitor_;
   SchedulingNodeSelector* const selector_;
   bool only_optimize_loop_blocks_;

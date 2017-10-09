@@ -80,8 +80,8 @@ class JNIMacroAssemblerTest : public testing::Test {
   }
 
   // Override this to set up any architecture-specific things, e.g., CPU revision.
-  virtual Ass* CreateAssembler(ArenaAllocator* arena) {
-    return new (arena) Ass(arena);
+  virtual Ass* CreateAssembler(ArenaAllocator* allocator) {
+    return new (allocator) Ass(allocator);
   }
 
   // Override this to set up any architecture-specific things, e.g., register vectors.

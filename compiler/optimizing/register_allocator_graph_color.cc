@@ -217,13 +217,12 @@ static float ComputeSpillWeight(LiveInterval* interval, const SsaLivenessAnalysi
 // and thus whether it is safe to prune it from the interference graph early on.
 class InterferenceNode : public ArenaObject<kArenaAllocRegisterAllocator> {
  public:
-  InterferenceNode(ArenaAllocator* allocator,
-                   LiveInterval* interval,
+  InterferenceNode(LiveInterval* interval,
                    const SsaLivenessAnalysis& liveness)
         : stage(NodeStage::kInitial),
           interval_(interval),
-          adjacent_nodes_(allocator->Adapter(kArenaAllocRegisterAllocator)),
-          coalesce_opportunities_(allocator->Adapter(kArenaAllocRegisterAllocator)),
+          adjacent_nodes_(nullptr),
+          coalesce_opportunities_(nullptr),
           out_degree_(interval->HasRegister() ? std::numeric_limits<size_t>::max() : 0),
           alias_(this),
           spill_weight_(ComputeSpillWeight(interval, liveness)),
@@ -232,21 +231,26 @@ class InterferenceNode : public ArenaObject<kArenaAllocRegisterAllocator> {
     DCHECK(!interval->IsHighInterval()) << "Pair nodes should be represented by the low interval";
   }
 
-  void AddInterference(InterferenceNode* other, bool guaranteed_not_interfering_yet) {
+  void AddInterference(InterferenceNode* other,
+                       bool guaranteed_not_interfering_yet,
+                       ScopedArenaDeque<ScopedArenaVector<InterferenceNode*>>* storage) {
     DCHECK(!IsPrecolored()) << "To save memory, fixed nodes should not have outgoing interferences";
     DCHECK_NE(this, other) << "Should not create self loops in the interference graph";
     DCHECK_EQ(this, alias_) << "Should not add interferences to a node that aliases another";
     DCHECK_NE(stage, NodeStage::kPruned);
     DCHECK_NE(other->stage, NodeStage::kPruned);
+    if (adjacent_nodes_ == nullptr) {
+      ScopedArenaVector<InterferenceNode*>::allocator_type adapter(storage->get_allocator());
+      storage->emplace_back(adapter);
+      adjacent_nodes_ = &storage->back();
+    }
     if (guaranteed_not_interfering_yet) {
-      DCHECK(std::find(adjacent_nodes_.begin(), adjacent_nodes_.end(), other)
-             == adjacent_nodes_.end());
-      adjacent_nodes_.push_back(other);
+      DCHECK(!ContainsElement(GetAdjacentNodes(), other));
+      adjacent_nodes_->push_back(other);
       out_degree_ += EdgeWeightWith(other);
     } else {
-      auto it = std::find(adjacent_nodes_.begin(), adjacent_nodes_.end(), other);
-      if (it == adjacent_nodes_.end()) {
-        adjacent_nodes_.push_back(other);
+      if (!ContainsElement(GetAdjacentNodes(), other)) {
+        adjacent_nodes_->push_back(other);
         out_degree_ += EdgeWeightWith(other);
       }
     }
@@ -255,26 +259,29 @@ class InterferenceNode : public ArenaObject<kArenaAllocRegisterAllocator> {
   void RemoveInterference(InterferenceNode* other) {
     DCHECK_EQ(this, alias_) << "Should not remove interferences from a coalesced node";
     DCHECK_EQ(other->stage, NodeStage::kPruned) << "Should only remove interferences when pruning";
-    auto it = std::find(adjacent_nodes_.begin(), adjacent_nodes_.end(), other);
-    if (it != adjacent_nodes_.end()) {
-      adjacent_nodes_.erase(it);
-      out_degree_ -= EdgeWeightWith(other);
+    if (adjacent_nodes_ != nullptr) {
+      auto it = std::find(adjacent_nodes_->begin(), adjacent_nodes_->end(), other);
+      if (it != adjacent_nodes_->end()) {
+        adjacent_nodes_->erase(it);
+        out_degree_ -= EdgeWeightWith(other);
+      }
     }
   }
 
   bool ContainsInterference(InterferenceNode* other) const {
     DCHECK(!IsPrecolored()) << "Should not query fixed nodes for interferences";
     DCHECK_EQ(this, alias_) << "Should not query a coalesced node for interferences";
-    auto it = std::find(adjacent_nodes_.begin(), adjacent_nodes_.end(), other);
-    return it != adjacent_nodes_.end();
+    return ContainsElement(GetAdjacentNodes(), other);
   }
 
   LiveInterval* GetInterval() const {
     return interval_;
   }
 
-  const ArenaVector<InterferenceNode*>& GetAdjacentNodes() const {
-    return adjacent_nodes_;
+  ArrayRef<InterferenceNode*> GetAdjacentNodes() const {
+    return adjacent_nodes_ != nullptr
+        ? ArrayRef<InterferenceNode*>(*adjacent_nodes_)
+        : ArrayRef<InterferenceNode*>();
   }
 
   size_t GetOutDegree() const {
@@ -283,16 +290,22 @@ class InterferenceNode : public ArenaObject<kArenaAllocRegisterAllocator> {
     return out_degree_;
   }
 
-  void AddCoalesceOpportunity(CoalesceOpportunity* opportunity) {
-    coalesce_opportunities_.push_back(opportunity);
+  void AddCoalesceOpportunity(CoalesceOpportunity* opportunity,
+                              ScopedArenaDeque<ScopedArenaVector<CoalesceOpportunity*>>* storage) {
+    if (coalesce_opportunities_ == nullptr) {
+      ScopedArenaVector<CoalesceOpportunity*>::allocator_type adapter(storage->get_allocator());
+      storage->emplace_back(adapter);
+      coalesce_opportunities_ = &storage->back();
+    }
+    coalesce_opportunities_->push_back(opportunity);
   }
 
   void ClearCoalesceOpportunities() {
-    coalesce_opportunities_.clear();
+    coalesce_opportunities_ = nullptr;
   }
 
   bool IsMoveRelated() const {
-    for (CoalesceOpportunity* opportunity : coalesce_opportunities_) {
+    for (CoalesceOpportunity* opportunity : GetCoalesceOpportunities()) {
       if (opportunity->stage == CoalesceStage::kWorklist ||
           opportunity->stage == CoalesceStage::kActive) {
         return true;
@@ -325,8 +338,10 @@ class InterferenceNode : public ArenaObject<kArenaAllocRegisterAllocator> {
     return alias_;
   }
 
-  const ArenaVector<CoalesceOpportunity*>& GetCoalesceOpportunities() const {
-    return coalesce_opportunities_;
+  ArrayRef<CoalesceOpportunity*> GetCoalesceOpportunities() const {
+    return coalesce_opportunities_ != nullptr
+        ? ArrayRef<CoalesceOpportunity*>(*coalesce_opportunities_)
+        : ArrayRef<CoalesceOpportunity*>();
   }
 
   float GetSpillWeight() const {
@@ -361,10 +376,10 @@ class InterferenceNode : public ArenaObject<kArenaAllocRegisterAllocator> {
   // All nodes interfering with this one.
   // We use an unsorted vector as a set, since a tree or hash set is too heavy for the
   // set sizes that we encounter. Using a vector leads to much better performance.
-  ArenaVector<InterferenceNode*> adjacent_nodes_;
+  ScopedArenaVector<InterferenceNode*>* adjacent_nodes_;  // Owned by ColoringIteration.
 
   // Interference nodes that this node should be coalesced with to reduce moves.
-  ArenaVector<CoalesceOpportunity*> coalesce_opportunities_;
+  ScopedArenaVector<CoalesceOpportunity*>* coalesce_opportunities_;  // Owned by ColoringIteration.
 
   // The maximum number of colors with which this node could interfere. This could be more than
   // the number of adjacent nodes if this is a pair node, or if some adjacent nodes are pair nodes.
@@ -416,7 +431,7 @@ static bool HasGreaterNodePriority(const InterferenceNode* lhs,
 class ColoringIteration {
  public:
   ColoringIteration(RegisterAllocatorGraphColor* register_allocator,
-                    ArenaAllocator* allocator,
+                    ScopedArenaAllocator* allocator,
                     bool processing_core_regs,
                     size_t num_regs)
         : register_allocator_(register_allocator),
@@ -430,15 +445,17 @@ class ColoringIteration {
           freeze_worklist_(allocator->Adapter(kArenaAllocRegisterAllocator)),
           spill_worklist_(HasGreaterNodePriority, allocator->Adapter(kArenaAllocRegisterAllocator)),
           coalesce_worklist_(CoalesceOpportunity::CmpPriority,
-                             allocator->Adapter(kArenaAllocRegisterAllocator)) {}
+                             allocator->Adapter(kArenaAllocRegisterAllocator)),
+          adjacent_nodes_links_(allocator->Adapter(kArenaAllocRegisterAllocator)),
+          coalesce_opportunities_links_(allocator->Adapter(kArenaAllocRegisterAllocator)) {}
 
   // Use the intervals collected from instructions to construct an
   // interference graph mapping intervals to adjacency lists.
   // Also, collect synthesized safepoint nodes, used to keep
   // track of live intervals across safepoints.
   // TODO: Should build safepoints elsewhere.
-  void BuildInterferenceGraph(const ArenaVector<LiveInterval*>& intervals,
-                              const ArenaVector<InterferenceNode*>& physical_nodes);
+  void BuildInterferenceGraph(const ScopedArenaVector<LiveInterval*>& intervals,
+                              const ScopedArenaVector<InterferenceNode*>& physical_nodes);
 
   // Add coalesce opportunities to interference nodes.
   void FindCoalesceOpportunities();
@@ -456,8 +473,8 @@ class ColoringIteration {
   // Return prunable nodes.
   // The register allocator will need to access prunable nodes after coloring
   // in order to tell the code generator which registers have been assigned.
-  const ArenaVector<InterferenceNode*>& GetPrunableNodes() const {
-    return prunable_nodes_;
+  ArrayRef<InterferenceNode* const> GetPrunableNodes() const {
+    return ArrayRef<InterferenceNode* const>(prunable_nodes_);
   }
 
  private:
@@ -503,38 +520,46 @@ class ColoringIteration {
   // needed to split intervals and assign spill slots.
   RegisterAllocatorGraphColor* register_allocator_;
 
-  // An arena allocator used for a single graph coloring attempt.
-  ArenaAllocator* allocator_;
+  // A scoped arena allocator used for a single graph coloring attempt.
+  ScopedArenaAllocator* allocator_;
 
   const bool processing_core_regs_;
 
   const size_t num_regs_;
 
   // A map from live intervals to interference nodes.
-  ArenaHashMap<LiveInterval*, InterferenceNode*> interval_node_map_;
+  ScopedArenaHashMap<LiveInterval*, InterferenceNode*> interval_node_map_;
 
   // Uncolored nodes that should be pruned from the interference graph.
-  ArenaVector<InterferenceNode*> prunable_nodes_;
+  ScopedArenaVector<InterferenceNode*> prunable_nodes_;
 
   // A stack of nodes pruned from the interference graph, waiting to be pruned.
-  ArenaStdStack<InterferenceNode*> pruned_nodes_;
+  ScopedArenaStdStack<InterferenceNode*> pruned_nodes_;
 
   // A queue containing low degree, non-move-related nodes that can pruned immediately.
-  ArenaDeque<InterferenceNode*> simplify_worklist_;
+  ScopedArenaDeque<InterferenceNode*> simplify_worklist_;
 
   // A queue containing low degree, move-related nodes.
-  ArenaDeque<InterferenceNode*> freeze_worklist_;
+  ScopedArenaDeque<InterferenceNode*> freeze_worklist_;
 
   // A queue containing high degree nodes.
   // If we have to prune from the spill worklist, we cannot guarantee
   // the pruned node a color, so we order the worklist by priority.
-  ArenaPriorityQueue<InterferenceNode*, decltype(&HasGreaterNodePriority)> spill_worklist_;
+  ScopedArenaPriorityQueue<InterferenceNode*, decltype(&HasGreaterNodePriority)> spill_worklist_;
 
   // A queue containing coalesce opportunities.
   // We order the coalesce worklist by priority, since some coalesce opportunities (e.g., those
   // inside of loops) are more important than others.
-  ArenaPriorityQueue<CoalesceOpportunity*,
-                     decltype(&CoalesceOpportunity::CmpPriority)> coalesce_worklist_;
+  ScopedArenaPriorityQueue<CoalesceOpportunity*,
+                           decltype(&CoalesceOpportunity::CmpPriority)> coalesce_worklist_;
+
+  // Storage for links to adjacent nodes for interference nodes.
+  // Using std::deque so that elements do not move when adding new ones.
+  ScopedArenaDeque<ScopedArenaVector<InterferenceNode*>> adjacent_nodes_links_;
+
+  // Storage for links to coalesce opportunities for interference nodes.
+  // Using std::deque so that elements do not move when adding new ones.
+  ScopedArenaDeque<ScopedArenaVector<CoalesceOpportunity*>> coalesce_opportunities_links_;
 
   DISALLOW_COPY_AND_ASSIGN(ColoringIteration);
 };
@@ -547,7 +572,7 @@ static size_t ComputeReservedArtMethodSlots(const CodeGenerator& codegen) {
   return static_cast<size_t>(InstructionSetPointerSize(codegen.GetInstructionSet())) / kVRegSize;
 }
 
-RegisterAllocatorGraphColor::RegisterAllocatorGraphColor(ArenaAllocator* allocator,
+RegisterAllocatorGraphColor::RegisterAllocatorGraphColor(ScopedArenaAllocator* allocator,
                                                          CodeGenerator* codegen,
                                                          const SsaLivenessAnalysis& liveness,
                                                          bool iterative_move_coalescing)
@@ -574,8 +599,7 @@ RegisterAllocatorGraphColor::RegisterAllocatorGraphColor(ArenaAllocator* allocat
   physical_core_nodes_.resize(codegen_->GetNumberOfCoreRegisters(), nullptr);
   for (size_t i = 0; i < codegen_->GetNumberOfCoreRegisters(); ++i) {
     LiveInterval* interval = LiveInterval::MakeFixedInterval(allocator_, i, DataType::Type::kInt32);
-    physical_core_nodes_[i] =
-        new (allocator_) InterferenceNode(allocator_, interval, liveness);
+    physical_core_nodes_[i] = new (allocator_) InterferenceNode(interval, liveness);
     physical_core_nodes_[i]->stage = NodeStage::kPrecolored;
     core_intervals_.push_back(interval);
     if (codegen_->IsBlockedCoreRegister(i)) {
@@ -587,8 +611,7 @@ RegisterAllocatorGraphColor::RegisterAllocatorGraphColor(ArenaAllocator* allocat
   for (size_t i = 0; i < codegen_->GetNumberOfFloatingPointRegisters(); ++i) {
     LiveInterval* interval =
         LiveInterval::MakeFixedInterval(allocator_, i, DataType::Type::kFloat32);
-    physical_fp_nodes_[i] =
-        new (allocator_) InterferenceNode(allocator_, interval, liveness);
+    physical_fp_nodes_[i] = new (allocator_) InterferenceNode(interval, liveness);
     physical_fp_nodes_[i]->stage = NodeStage::kPrecolored;
     fp_intervals_.push_back(interval);
     if (codegen_->IsBlockedFloatingPointRegister(i)) {
@@ -597,12 +620,14 @@ RegisterAllocatorGraphColor::RegisterAllocatorGraphColor(ArenaAllocator* allocat
   }
 }
 
+RegisterAllocatorGraphColor::~RegisterAllocatorGraphColor() {}
+
 void RegisterAllocatorGraphColor::AllocateRegisters() {
   // (1) Collect and prepare live intervals.
   ProcessInstructions();
 
   for (bool processing_core_regs : {true, false}) {
-    ArenaVector<LiveInterval*>& intervals = processing_core_regs
+    ScopedArenaVector<LiveInterval*>& intervals = processing_core_regs
         ? core_intervals_
         : fp_intervals_;
     size_t num_registers = processing_core_regs
@@ -619,17 +644,15 @@ void RegisterAllocatorGraphColor::AllocateRegisters() {
           << "should be prioritized over long ones, because they cannot be split further.)";
 
       // Many data structures are cleared between graph coloring attempts, so we reduce
-      // total memory usage by using a new arena allocator for each attempt.
-      ArenaAllocator coloring_attempt_allocator(allocator_->GetArenaPool());
+      // total memory usage by using a new scoped arena allocator for each attempt.
+      ScopedArenaAllocator coloring_attempt_allocator(allocator_->GetArenaStack());
       ColoringIteration iteration(this,
                                   &coloring_attempt_allocator,
                                   processing_core_regs,
                                   num_registers);
 
-      // (2) Build the interference graph. Also gather safepoints.
-      ArenaVector<InterferenceNode*> safepoints(
-          coloring_attempt_allocator.Adapter(kArenaAllocRegisterAllocator));
-      ArenaVector<InterferenceNode*>& physical_nodes = processing_core_regs
+      // (2) Build the interference graph.
+      ScopedArenaVector<InterferenceNode*>& physical_nodes = processing_core_regs
           ? physical_core_nodes_
           : physical_fp_nodes_;
       iteration.BuildInterferenceGraph(intervals, physical_nodes);
@@ -691,7 +714,7 @@ void RegisterAllocatorGraphColor::AllocateRegisters() {
   }  // for processing_core_instructions
 
   // (6) Resolve locations and deconstruct SSA form.
-  RegisterAllocationResolver(allocator_, codegen_, liveness_)
+  RegisterAllocationResolver(codegen_, liveness_)
       .Resolve(ArrayRef<HInstruction* const>(safepoints_),
                reserved_art_method_slots_ + reserved_out_slots_,
                num_int_spill_slots_,
@@ -699,7 +722,7 @@ void RegisterAllocatorGraphColor::AllocateRegisters() {
                num_float_spill_slots_,
                num_double_spill_slots_,
                catch_phi_spill_slot_counter_,
-               temp_intervals_);
+               ArrayRef<LiveInterval* const>(temp_intervals_));
 
   if (kIsDebugBuild) {
     Validate(/*log_fatal_on_failure*/ true);
@@ -708,8 +731,9 @@ void RegisterAllocatorGraphColor::AllocateRegisters() {
 
 bool RegisterAllocatorGraphColor::Validate(bool log_fatal_on_failure) {
   for (bool processing_core_regs : {true, false}) {
-    ArenaVector<LiveInterval*> intervals(
-        allocator_->Adapter(kArenaAllocRegisterAllocatorValidate));
+    ScopedArenaAllocator allocator(allocator_->GetArenaStack());
+    ScopedArenaVector<LiveInterval*> intervals(
+        allocator.Adapter(kArenaAllocRegisterAllocatorValidate));
     for (size_t i = 0; i < liveness_.GetNumberOfSsaValues(); ++i) {
       HInstruction* instruction = liveness_.GetInstructionFromSsaIndex(i);
       LiveInterval* interval = instruction->GetLiveInterval();
@@ -718,7 +742,7 @@ bool RegisterAllocatorGraphColor::Validate(bool log_fatal_on_failure) {
       }
     }
 
-    ArenaVector<InterferenceNode*>& physical_nodes = processing_core_regs
+    ScopedArenaVector<InterferenceNode*>& physical_nodes = processing_core_regs
         ? physical_core_nodes_
         : physical_fp_nodes_;
     for (InterferenceNode* fixed : physical_nodes) {
@@ -742,11 +766,10 @@ bool RegisterAllocatorGraphColor::Validate(bool log_fatal_on_failure) {
                        + num_float_spill_slots_
                        + num_double_spill_slots_
                        + catch_phi_spill_slot_counter_;
-    bool ok = ValidateIntervals(intervals,
+    bool ok = ValidateIntervals(ArrayRef<LiveInterval* const>(intervals),
                                 spill_slots,
                                 reserved_art_method_slots_ + reserved_out_slots_,
                                 *codegen_,
-                                allocator_,
                                 processing_core_regs,
                                 log_fatal_on_failure);
     if (!ok) {
@@ -825,7 +848,7 @@ void RegisterAllocatorGraphColor::ProcessInstruction(HInstruction* instruction) 
   CheckForFixedOutput(instruction);
   AllocateSpillSlotForCatchPhi(instruction);
 
-  ArenaVector<LiveInterval*>& intervals = IsCoreInterval(interval)
+  ScopedArenaVector<LiveInterval*>& intervals = IsCoreInterval(interval)
       ? core_intervals_
       : fp_intervals_;
   if (interval->HasSpillSlot() || instruction->IsConstant()) {
@@ -1075,11 +1098,12 @@ void ColoringIteration::AddPotentialInterference(InterferenceNode* from,
   } else if (to->IsPrecolored()) {
     // It is important that only a single node represents a given fixed register in the
     // interference graph. We retrieve that node here.
-    const ArenaVector<InterferenceNode*>& physical_nodes = to->GetInterval()->IsFloatingPoint()
-        ? register_allocator_->physical_fp_nodes_
-        : register_allocator_->physical_core_nodes_;
+    const ScopedArenaVector<InterferenceNode*>& physical_nodes =
+        to->GetInterval()->IsFloatingPoint() ? register_allocator_->physical_fp_nodes_
+                                             : register_allocator_->physical_core_nodes_;
     InterferenceNode* physical_node = physical_nodes[to->GetInterval()->GetRegister()];
-    from->AddInterference(physical_node, /*guaranteed_not_interfering_yet*/ false);
+    from->AddInterference(
+        physical_node, /*guaranteed_not_interfering_yet*/ false, &adjacent_nodes_links_);
     DCHECK_EQ(to->GetInterval()->GetRegister(), physical_node->GetInterval()->GetRegister());
     DCHECK_EQ(to->GetAlias(), physical_node) << "Fixed nodes should alias the canonical fixed node";
 
@@ -1097,11 +1121,12 @@ void ColoringIteration::AddPotentialInterference(InterferenceNode* from,
           physical_nodes[to->GetInterval()->GetHighInterval()->GetRegister()];
       DCHECK_EQ(to->GetInterval()->GetHighInterval()->GetRegister(),
                 high_node->GetInterval()->GetRegister());
-      from->AddInterference(high_node, /*guaranteed_not_interfering_yet*/ false);
+      from->AddInterference(
+          high_node, /*guaranteed_not_interfering_yet*/ false, &adjacent_nodes_links_);
     }
   } else {
     // Standard interference between two uncolored nodes.
-    from->AddInterference(to, guaranteed_not_interfering_yet);
+    from->AddInterference(to, guaranteed_not_interfering_yet, &adjacent_nodes_links_);
   }
 
   if (both_directions) {
@@ -1156,8 +1181,8 @@ static bool CheckInputOutputCanOverlap(InterferenceNode* in_node, InterferenceNo
 }
 
 void ColoringIteration::BuildInterferenceGraph(
-    const ArenaVector<LiveInterval*>& intervals,
-    const ArenaVector<InterferenceNode*>& physical_nodes) {
+    const ScopedArenaVector<LiveInterval*>& intervals,
+    const ScopedArenaVector<InterferenceNode*>& physical_nodes) {
   DCHECK(interval_node_map_.Empty() && prunable_nodes_.empty());
   // Build the interference graph efficiently by ordering range endpoints
   // by position and doing a linear sweep to find interferences. (That is, we
@@ -1171,7 +1196,7 @@ void ColoringIteration::BuildInterferenceGraph(
   //
   // For simplicity, we create a tuple for each endpoint, and then sort the tuples.
   // Tuple contents: (position, is_range_beginning, node).
-  ArenaVector<std::tuple<size_t, bool, InterferenceNode*>> range_endpoints(
+  ScopedArenaVector<std::tuple<size_t, bool, InterferenceNode*>> range_endpoints(
       allocator_->Adapter(kArenaAllocRegisterAllocator));
 
   // We reserve plenty of space to avoid excessive copying.
@@ -1181,8 +1206,8 @@ void ColoringIteration::BuildInterferenceGraph(
     for (LiveInterval* sibling = parent; sibling != nullptr; sibling = sibling->GetNextSibling()) {
       LiveRange* range = sibling->GetFirstRange();
       if (range != nullptr) {
-        InterferenceNode* node = new (allocator_) InterferenceNode(
-            allocator_, sibling, register_allocator_->liveness_);
+        InterferenceNode* node =
+            new (allocator_) InterferenceNode(sibling, register_allocator_->liveness_);
         interval_node_map_.Insert(std::make_pair(sibling, node));
 
         if (sibling->HasRegister()) {
@@ -1217,8 +1242,7 @@ void ColoringIteration::BuildInterferenceGraph(
   });
 
   // Nodes live at the current position in the linear sweep.
-  ArenaVector<InterferenceNode*> live(
-      allocator_->Adapter(kArenaAllocRegisterAllocator));
+  ScopedArenaVector<InterferenceNode*> live(allocator_->Adapter(kArenaAllocRegisterAllocator));
 
   // Linear sweep. When we encounter the beginning of a range, we add the corresponding node to the
   // live set. When we encounter the end of a range, we remove the corresponding node
@@ -1261,8 +1285,8 @@ void ColoringIteration::CreateCoalesceOpportunity(InterferenceNode* a,
       << "Nodes of different memory widths should never be coalesced";
   CoalesceOpportunity* opportunity =
       new (allocator_) CoalesceOpportunity(a, b, kind, position, register_allocator_->liveness_);
-  a->AddCoalesceOpportunity(opportunity);
-  b->AddCoalesceOpportunity(opportunity);
+  a->AddCoalesceOpportunity(opportunity, &coalesce_opportunities_links_);
+  b->AddCoalesceOpportunity(opportunity, &coalesce_opportunities_links_);
   coalesce_worklist_.push(opportunity);
 }
 
@@ -1332,7 +1356,7 @@ void ColoringIteration::FindCoalesceOpportunities() {
     // Coalesce phi inputs with the corresponding output.
     HInstruction* defined_by = interval->GetDefinedBy();
     if (defined_by != nullptr && defined_by->IsPhi()) {
-      const ArenaVector<HBasicBlock*>& predecessors = defined_by->GetBlock()->GetPredecessors();
+      ArrayRef<HBasicBlock* const> predecessors(defined_by->GetBlock()->GetPredecessors());
       HInputsRef inputs = defined_by->GetInputs();
 
       for (size_t i = 0, e = inputs.size(); i < e; ++i) {
@@ -1675,7 +1699,7 @@ void ColoringIteration::Combine(InterferenceNode* from,
   // Add coalesce opportunities.
   for (CoalesceOpportunity* opportunity : from->GetCoalesceOpportunities()) {
     if (opportunity->stage != CoalesceStage::kDefunct) {
-      into->AddCoalesceOpportunity(opportunity);
+      into->AddCoalesceOpportunity(opportunity, &coalesce_opportunities_links_);
     }
   }
   EnableCoalesceOpportunities(from);
@@ -1729,7 +1753,7 @@ void ColoringIteration::Coalesce(CoalesceOpportunity* opportunity) {
 // Build a mask with a bit set for each register assigned to some
 // interval in `intervals`.
 template <typename Container>
-static std::bitset<kMaxNumRegs> BuildConflictMask(Container& intervals) {
+static std::bitset<kMaxNumRegs> BuildConflictMask(const Container& intervals) {
   std::bitset<kMaxNumRegs> conflict_mask;
   for (InterferenceNode* adjacent : intervals) {
     LiveInterval* conflicting = adjacent->GetInterval();
@@ -1765,7 +1789,7 @@ static size_t FindFirstZeroInConflictMask(std::bitset<kMaxNumRegs> conflict_mask
 
 bool ColoringIteration::ColorInterferenceGraph() {
   DCHECK_LE(num_regs_, kMaxNumRegs) << "kMaxNumRegs is too small";
-  ArenaVector<LiveInterval*> colored_intervals(
+  ScopedArenaVector<LiveInterval*> colored_intervals(
       allocator_->Adapter(kArenaAllocRegisterAllocator));
   bool successful = true;
 
@@ -1888,16 +1912,18 @@ bool ColoringIteration::ColorInterferenceGraph() {
   return successful;
 }
 
-void RegisterAllocatorGraphColor::AllocateSpillSlots(const ArenaVector<InterferenceNode*>& nodes) {
+void RegisterAllocatorGraphColor::AllocateSpillSlots(ArrayRef<InterferenceNode* const> nodes) {
   // The register allocation resolver will organize the stack based on value type,
   // so we assign stack slots for each value type separately.
-  ArenaVector<LiveInterval*> double_intervals(allocator_->Adapter(kArenaAllocRegisterAllocator));
-  ArenaVector<LiveInterval*> long_intervals(allocator_->Adapter(kArenaAllocRegisterAllocator));
-  ArenaVector<LiveInterval*> float_intervals(allocator_->Adapter(kArenaAllocRegisterAllocator));
-  ArenaVector<LiveInterval*> int_intervals(allocator_->Adapter(kArenaAllocRegisterAllocator));
+  ScopedArenaAllocator allocator(allocator_->GetArenaStack());
+  ScopedArenaAllocatorAdapter<void> adapter = allocator.Adapter(kArenaAllocRegisterAllocator);
+  ScopedArenaVector<LiveInterval*> double_intervals(adapter);
+  ScopedArenaVector<LiveInterval*> long_intervals(adapter);
+  ScopedArenaVector<LiveInterval*> float_intervals(adapter);
+  ScopedArenaVector<LiveInterval*> int_intervals(adapter);
 
   // The set of parent intervals already handled.
-  ArenaSet<LiveInterval*> seen(allocator_->Adapter(kArenaAllocRegisterAllocator));
+  ScopedArenaSet<LiveInterval*> seen(adapter);
 
   // Find nodes that need spill slots.
   for (InterferenceNode* node : nodes) {
@@ -1954,23 +1980,24 @@ void RegisterAllocatorGraphColor::AllocateSpillSlots(const ArenaVector<Interfere
   }
 
   // Color spill slots for each value type.
-  ColorSpillSlots(&double_intervals, &num_double_spill_slots_);
-  ColorSpillSlots(&long_intervals, &num_long_spill_slots_);
-  ColorSpillSlots(&float_intervals, &num_float_spill_slots_);
-  ColorSpillSlots(&int_intervals, &num_int_spill_slots_);
+  ColorSpillSlots(ArrayRef<LiveInterval* const>(double_intervals), &num_double_spill_slots_);
+  ColorSpillSlots(ArrayRef<LiveInterval* const>(long_intervals), &num_long_spill_slots_);
+  ColorSpillSlots(ArrayRef<LiveInterval* const>(float_intervals), &num_float_spill_slots_);
+  ColorSpillSlots(ArrayRef<LiveInterval* const>(int_intervals), &num_int_spill_slots_);
 }
 
-void RegisterAllocatorGraphColor::ColorSpillSlots(ArenaVector<LiveInterval*>* intervals,
-                                                  size_t* num_stack_slots_used) {
+void RegisterAllocatorGraphColor::ColorSpillSlots(ArrayRef<LiveInterval* const> intervals,
+                                                  /* out */ size_t* num_stack_slots_used) {
   // We cannot use the original interference graph here because spill slots are assigned to
   // all of the siblings of an interval, whereas an interference node represents only a single
   // sibling. So, we assign spill slots linear-scan-style by sorting all the interval endpoints
   // by position, and assigning the lowest spill slot available when we encounter an interval
   // beginning. We ignore lifetime holes for simplicity.
-  ArenaVector<std::tuple<size_t, bool, LiveInterval*>> interval_endpoints(
-      allocator_->Adapter(kArenaAllocRegisterAllocator));
+  ScopedArenaAllocator allocator(allocator_->GetArenaStack());
+  ScopedArenaVector<std::tuple<size_t, bool, LiveInterval*>> interval_endpoints(
+      allocator.Adapter(kArenaAllocRegisterAllocator));
 
-  for (LiveInterval* parent_interval : *intervals) {
+  for (LiveInterval* parent_interval : intervals) {
     DCHECK(parent_interval->IsParent());
     DCHECK(!parent_interval->HasSpillSlot());
     size_t start = parent_interval->GetStart();
@@ -1990,7 +2017,7 @@ void RegisterAllocatorGraphColor::ColorSpillSlots(ArenaVector<LiveInterval*>* in
          < std::tie(std::get<0>(rhs), std::get<1>(rhs));
   });
 
-  ArenaBitVector taken(allocator_, 0, true);
+  ArenaBitVector taken(&allocator, 0, true, kArenaAllocRegisterAllocator);
   for (auto it = interval_endpoints.begin(), end = interval_endpoints.end(); it != end; ++it) {
     // Extract information from the current tuple.
     LiveInterval* parent_interval;

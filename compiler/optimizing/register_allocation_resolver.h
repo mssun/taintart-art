@@ -17,7 +17,6 @@
 #ifndef ART_COMPILER_OPTIMIZING_REGISTER_ALLOCATION_RESOLVER_H_
 #define ART_COMPILER_OPTIMIZING_REGISTER_ALLOCATION_RESOLVER_H_
 
-#include "base/arena_containers.h"
 #include "base/array_ref.h"
 #include "base/value_object.h"
 #include "data_type.h"
@@ -40,9 +39,7 @@ class SsaLivenessAnalysis;
  */
 class RegisterAllocationResolver : ValueObject {
  public:
-  RegisterAllocationResolver(ArenaAllocator* allocator,
-                             CodeGenerator* codegen,
-                             const SsaLivenessAnalysis& liveness);
+  RegisterAllocationResolver(CodeGenerator* codegen, const SsaLivenessAnalysis& liveness);
 
   void Resolve(ArrayRef<HInstruction* const> safepoints,
                size_t reserved_out_slots,  // Includes slot(s) for the art method.
@@ -51,7 +48,7 @@ class RegisterAllocationResolver : ValueObject {
                size_t float_spill_slots,
                size_t double_spill_slots,
                size_t catch_phi_spill_slots,
-               const ArenaVector<LiveInterval*>& temp_intervals);
+               ArrayRef<LiveInterval* const> temp_intervals);
 
  private:
   // Update live registers of safepoint location summary.

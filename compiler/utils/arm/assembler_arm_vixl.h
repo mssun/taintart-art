@@ -151,8 +151,8 @@ class ArmVIXLAssembler FINAL : public Assembler {
  private:
   class ArmException;
  public:
-  explicit ArmVIXLAssembler(ArenaAllocator* arena)
-      : Assembler(arena) {
+  explicit ArmVIXLAssembler(ArenaAllocator* allocator)
+      : Assembler(allocator) {
     // Use Thumb2 instruction set.
     vixl_masm_.UseT32();
   }

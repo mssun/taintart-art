@@ -617,61 +617,49 @@ std::unique_ptr<CodeGenerator> CodeGenerator::Create(HGraph* graph,
                                                      const InstructionSetFeatures& isa_features,
                                                      const CompilerOptions& compiler_options,
                                                      OptimizingCompilerStats* stats) {
-  ArenaAllocator* arena = graph->GetAllocator();
+  ArenaAllocator* allocator = graph->GetAllocator();
   switch (instruction_set) {
 #ifdef ART_ENABLE_CODEGEN_arm
     case kArm:
     case kThumb2: {
       return std::unique_ptr<CodeGenerator>(
-          new (arena) arm::CodeGeneratorARMVIXL(graph,
-                                                *isa_features.AsArmInstructionSetFeatures(),
-                                                compiler_options,
-                                                stats));
+          new (allocator) arm::CodeGeneratorARMVIXL(
+              graph, *isa_features.AsArmInstructionSetFeatures(), compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_arm64
     case kArm64: {
       return std::unique_ptr<CodeGenerator>(
-          new (arena) arm64::CodeGeneratorARM64(graph,
-                                                *isa_features.AsArm64InstructionSetFeatures(),
-                                                compiler_options,
-                                                stats));
+          new (allocator) arm64::CodeGeneratorARM64(
+              graph, *isa_features.AsArm64InstructionSetFeatures(), compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips
     case kMips: {
       return std::unique_ptr<CodeGenerator>(
-          new (arena) mips::CodeGeneratorMIPS(graph,
-                                              *isa_features.AsMipsInstructionSetFeatures(),
-                                              compiler_options,
-                                              stats));
+          new (allocator) mips::CodeGeneratorMIPS(
+              graph, *isa_features.AsMipsInstructionSetFeatures(), compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips64
     case kMips64: {
       return std::unique_ptr<CodeGenerator>(
-          new (arena) mips64::CodeGeneratorMIPS64(graph,
-                                                  *isa_features.AsMips64InstructionSetFeatures(),
-                                                  compiler_options,
-                                                  stats));
+          new (allocator) mips64::CodeGeneratorMIPS64(
+              graph, *isa_features.AsMips64InstructionSetFeatures(), compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86
     case kX86: {
       return std::unique_ptr<CodeGenerator>(
-          new (arena) x86::CodeGeneratorX86(graph,
-                                            *isa_features.AsX86InstructionSetFeatures(),
-                                            compiler_options,
-                                            stats));
+          new (allocator) x86::CodeGeneratorX86(
+              graph, *isa_features.AsX86InstructionSetFeatures(), compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86_64
     case kX86_64: {
       return std::unique_ptr<CodeGenerator>(
-          new (arena) x86_64::CodeGeneratorX86_64(graph,
-                                                  *isa_features.AsX86_64InstructionSetFeatures(),
-                                                  compiler_options,
-                                                  stats));
+          new (allocator) x86_64::CodeGeneratorX86_64(
+              graph, *isa_features.AsX86_64InstructionSetFeatures(), compiler_options, stats));
     }
 #endif
     default:
@@ -910,7 +898,7 @@ void CodeGenerator::MaybeRecordNativeDebugInfo(HInstruction* instruction,
 }
 
 void CodeGenerator::RecordCatchBlockInfo() {
-  ArenaAllocator* arena = graph_->GetAllocator();
+  ArenaAllocator* allocator = graph_->GetAllocator();
 
   for (HBasicBlock* block : *block_order_) {
     if (!block->IsCatchBlock()) {
@@ -925,7 +913,7 @@ void CodeGenerator::RecordCatchBlockInfo() {
 
     // The stack mask is not used, so we leave it empty.
     ArenaBitVector* stack_mask =
-        ArenaBitVector::Create(arena, 0, /* expandable */ true, kArenaAllocCodeGenerator);
+        ArenaBitVector::Create(allocator, 0, /* expandable */ true, kArenaAllocCodeGenerator);
 
     stack_map_stream_.BeginStackMapEntry(dex_pc,
                                          native_pc,

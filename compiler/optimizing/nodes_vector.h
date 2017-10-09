@@ -71,7 +71,7 @@ class HVecOperation : public HVariableInputSizeInstruction {
   // TODO: we could introduce SIMD types in HIR.
   static constexpr DataType::Type kSIMDType = DataType::Type::kFloat64;
 
-  HVecOperation(ArenaAllocator* arena,
+  HVecOperation(ArenaAllocator* allocator,
                 DataType::Type packed_type,
                 SideEffects side_effects,
                 size_t number_of_inputs,
@@ -79,7 +79,7 @@ class HVecOperation : public HVariableInputSizeInstruction {
                 uint32_t dex_pc)
       : HVariableInputSizeInstruction(side_effects,
                                       dex_pc,
-                                      arena,
+                                      allocator,
                                       number_of_inputs,
                                       kArenaAllocVectorNode),
         vector_length_(vector_length) {
@@ -156,12 +156,12 @@ class HVecOperation : public HVariableInputSizeInstruction {
 // Abstraction of a unary vector operation.
 class HVecUnaryOperation : public HVecOperation {
  public:
-  HVecUnaryOperation(ArenaAllocator* arena,
+  HVecUnaryOperation(ArenaAllocator* allocator,
                      HInstruction* input,
                      DataType::Type packed_type,
                      size_t vector_length,
                      uint32_t dex_pc)
-      : HVecOperation(arena,
+      : HVecOperation(allocator,
                       packed_type,
                       SideEffects::None(),
                       /* number_of_inputs */ 1,
@@ -181,13 +181,13 @@ class HVecUnaryOperation : public HVecOperation {
 // Abstraction of a binary vector operation.
 class HVecBinaryOperation : public HVecOperation {
  public:
-  HVecBinaryOperation(ArenaAllocator* arena,
+  HVecBinaryOperation(ArenaAllocator* allocator,
                       HInstruction* left,
                       HInstruction* right,
                       DataType::Type packed_type,
                       size_t vector_length,
                       uint32_t dex_pc)
-      : HVecOperation(arena,
+      : HVecOperation(allocator,
                       packed_type,
                       SideEffects::None(),
                       /* number_of_inputs */ 2,
@@ -210,13 +210,18 @@ class HVecBinaryOperation : public HVecOperation {
 // The Android runtime guarantees elements have at least natural alignment.
 class HVecMemoryOperation : public HVecOperation {
  public:
-  HVecMemoryOperation(ArenaAllocator* arena,
+  HVecMemoryOperation(ArenaAllocator* allocator,
                       DataType::Type packed_type,
                       SideEffects side_effects,
                       size_t number_of_inputs,
                       size_t vector_length,
                       uint32_t dex_pc)
-      : HVecOperation(arena, packed_type, side_effects, number_of_inputs, vector_length, dex_pc),
+      : HVecOperation(allocator,
+                      packed_type,
+                      side_effects,
+                      number_of_inputs,
+                      vector_length,
+                      dex_pc),
         alignment_(DataType::Size(packed_type), 0) {
     DCHECK_GE(number_of_inputs, 2u);
   }
@@ -260,12 +265,12 @@ inline static bool HasConsistentPackedTypes(HInstruction* input, DataType::Type 
 // viz. replicate(x) = [ x, .. , x ].
 class HVecReplicateScalar FINAL : public HVecUnaryOperation {
  public:
-  HVecReplicateScalar(ArenaAllocator* arena,
+  HVecReplicateScalar(ArenaAllocator* allocator,
                       HInstruction* scalar,
                       DataType::Type packed_type,
                       size_t vector_length,
                       uint32_t dex_pc)
-      : HVecUnaryOperation(arena, scalar, packed_type, vector_length, dex_pc) {
+      : HVecUnaryOperation(allocator, scalar, packed_type, vector_length, dex_pc) {
     DCHECK(!scalar->IsVecOperation());
   }
 
@@ -285,13 +290,13 @@ class HVecReplicateScalar FINAL : public HVecUnaryOperation {
 // TODO: for now only i == 1 case supported.
 class HVecExtractScalar FINAL : public HVecUnaryOperation {
  public:
-  HVecExtractScalar(ArenaAllocator* arena,
+  HVecExtractScalar(ArenaAllocator* allocator,
                     HInstruction* input,
                     DataType::Type packed_type,
                     size_t vector_length,
                     size_t index,
                     uint32_t dex_pc)
-      : HVecUnaryOperation(arena, input, packed_type, vector_length, dex_pc) {
+      : HVecUnaryOperation(allocator, input, packed_type, vector_length, dex_pc) {
     DCHECK(HasConsistentPackedTypes(input, packed_type));
     DCHECK_LT(index, vector_length);
     DCHECK_EQ(index, 0u);
@@ -323,13 +328,13 @@ class HVecReduce FINAL : public HVecUnaryOperation {
     kMax = 3
   };
 
-  HVecReduce(ArenaAllocator* arena,
+  HVecReduce(ArenaAllocator* allocator,
              HInstruction* input,
              DataType::Type packed_type,
              size_t vector_length,
              ReductionKind kind,
              uint32_t dex_pc)
-      : HVecUnaryOperation(arena, input, packed_type, vector_length, dex_pc),
+      : HVecUnaryOperation(allocator, input, packed_type, vector_length, dex_pc),
         kind_(kind) {
     DCHECK(HasConsistentPackedTypes(input, packed_type));
   }
@@ -356,12 +361,12 @@ class HVecReduce FINAL : public HVecUnaryOperation {
 // viz. cnv[ x1, .. , xn ]  = [ cnv(x1), .. , cnv(xn) ].
 class HVecCnv FINAL : public HVecUnaryOperation {
  public:
-  HVecCnv(ArenaAllocator* arena,
+  HVecCnv(ArenaAllocator* allocator,
           HInstruction* input,
           DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc)
-      : HVecUnaryOperation(arena, input, packed_type, vector_length, dex_pc) {
+      : HVecUnaryOperation(allocator, input, packed_type, vector_length, dex_pc) {
     DCHECK(input->IsVecOperation());
     DCHECK_NE(GetInputType(), GetResultType());  // actual convert
   }
@@ -381,12 +386,12 @@ class HVecCnv FINAL : public HVecUnaryOperation {
 // viz. neg[ x1, .. , xn ]  = [ -x1, .. , -xn ].
 class HVecNeg FINAL : public HVecUnaryOperation {
  public:
-  HVecNeg(ArenaAllocator* arena,
+  HVecNeg(ArenaAllocator* allocator,
           HInstruction* input,
           DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc)
-      : HVecUnaryOperation(arena, input, packed_type, vector_length, dex_pc) {
+      : HVecUnaryOperation(allocator, input, packed_type, vector_length, dex_pc) {
     DCHECK(HasConsistentPackedTypes(input, packed_type));
   }
 
@@ -403,12 +408,12 @@ class HVecNeg FINAL : public HVecUnaryOperation {
 // for signed operand x.
 class HVecAbs FINAL : public HVecUnaryOperation {
  public:
-  HVecAbs(ArenaAllocator* arena,
+  HVecAbs(ArenaAllocator* allocator,
           HInstruction* input,
           DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc)
-      : HVecUnaryOperation(arena, input, packed_type, vector_length, dex_pc) {
+      : HVecUnaryOperation(allocator, input, packed_type, vector_length, dex_pc) {
     DCHECK(HasConsistentPackedTypes(input, packed_type));
   }
 
@@ -425,12 +430,12 @@ class HVecAbs FINAL : public HVecUnaryOperation {
 //      not[ x1, .. , xn ]  = [ !x1, .. , !xn ] for boolean.
 class HVecNot FINAL : public HVecUnaryOperation {
  public:
-  HVecNot(ArenaAllocator* arena,
+  HVecNot(ArenaAllocator* allocator,
           HInstruction* input,
           DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc)
-      : HVecUnaryOperation(arena, input, packed_type, vector_length, dex_pc) {
+      : HVecUnaryOperation(allocator, input, packed_type, vector_length, dex_pc) {
     DCHECK(input->IsVecOperation());
   }
 
@@ -450,13 +455,13 @@ class HVecNot FINAL : public HVecUnaryOperation {
 // viz. [ x1, .. , xn ] + [ y1, .. , yn ] = [ x1 + y1, .. , xn + yn ].
 class HVecAdd FINAL : public HVecBinaryOperation {
  public:
-  HVecAdd(ArenaAllocator* arena,
+  HVecAdd(ArenaAllocator* allocator,
           HInstruction* left,
           HInstruction* right,
           DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc)
-      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
+      : HVecBinaryOperation(allocator, left, right, packed_type, vector_length, dex_pc) {
     DCHECK(HasConsistentPackedTypes(left, packed_type));
     DCHECK(HasConsistentPackedTypes(right, packed_type));
   }
@@ -475,7 +480,7 @@ class HVecAdd FINAL : public HVecBinaryOperation {
 // for either both signed or both unsigned operands x, y.
 class HVecHalvingAdd FINAL : public HVecBinaryOperation {
  public:
-  HVecHalvingAdd(ArenaAllocator* arena,
+  HVecHalvingAdd(ArenaAllocator* allocator,
                  HInstruction* left,
                  HInstruction* right,
                  DataType::Type packed_type,
@@ -483,7 +488,7 @@ class HVecHalvingAdd FINAL : public HVecBinaryOperation {
                  bool is_rounded,
                  bool is_unsigned,
                  uint32_t dex_pc)
-      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
+      : HVecBinaryOperation(allocator, left, right, packed_type, vector_length, dex_pc) {
     // The `is_unsigned` flag should be used exclusively with the Int32 or Int64.
     // This flag is a temporary measure while we do not have the Uint32 and Uint64 data types.
     DCHECK(!is_unsigned ||
@@ -524,13 +529,13 @@ class HVecHalvingAdd FINAL : public HVecBinaryOperation {
 // viz. [ x1, .. , xn ] - [ y1, .. , yn ] = [ x1 - y1, .. , xn - yn ].
 class HVecSub FINAL : public HVecBinaryOperation {
  public:
-  HVecSub(ArenaAllocator* arena,
+  HVecSub(ArenaAllocator* allocator,
           HInstruction* left,
           HInstruction* right,
           DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc)
-      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
+      : HVecBinaryOperation(allocator, left, right, packed_type, vector_length, dex_pc) {
     DCHECK(HasConsistentPackedTypes(left, packed_type));
     DCHECK(HasConsistentPackedTypes(right, packed_type));
   }
@@ -547,13 +552,13 @@ class HVecSub FINAL : public HVecBinaryOperation {
 // viz. [ x1, .. , xn ] * [ y1, .. , yn ] = [ x1 * y1, .. , xn * yn ].
 class HVecMul FINAL : public HVecBinaryOperation {
  public:
-  HVecMul(ArenaAllocator* arena,
+  HVecMul(ArenaAllocator* allocator,
           HInstruction* left,
           HInstruction* right,
           DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc)
-      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
+      : HVecBinaryOperation(allocator, left, right, packed_type, vector_length, dex_pc) {
     DCHECK(HasConsistentPackedTypes(left, packed_type));
     DCHECK(HasConsistentPackedTypes(right, packed_type));
   }
@@ -570,13 +575,13 @@ class HVecMul FINAL : public HVecBinaryOperation {
 // viz. [ x1, .. , xn ] / [ y1, .. , yn ] = [ x1 / y1, .. , xn / yn ].
 class HVecDiv FINAL : public HVecBinaryOperation {
  public:
-  HVecDiv(ArenaAllocator* arena,
+  HVecDiv(ArenaAllocator* allocator,
           HInstruction* left,
           HInstruction* right,
           DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc)
-      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
+      : HVecBinaryOperation(allocator, left, right, packed_type, vector_length, dex_pc) {
     DCHECK(HasConsistentPackedTypes(left, packed_type));
     DCHECK(HasConsistentPackedTypes(right, packed_type));
   }
@@ -594,14 +599,14 @@ class HVecDiv FINAL : public HVecBinaryOperation {
 // for either both signed or both unsigned operands x, y.
 class HVecMin FINAL : public HVecBinaryOperation {
  public:
-  HVecMin(ArenaAllocator* arena,
+  HVecMin(ArenaAllocator* allocator,
           HInstruction* left,
           HInstruction* right,
           DataType::Type packed_type,
           size_t vector_length,
           bool is_unsigned,
           uint32_t dex_pc)
-      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
+      : HVecBinaryOperation(allocator, left, right, packed_type, vector_length, dex_pc) {
     // The `is_unsigned` flag should be used exclusively with the Int32 or Int64.
     // This flag is a temporary measure while we do not have the Uint32 and Uint64 data types.
     DCHECK(!is_unsigned ||
@@ -638,14 +643,14 @@ class HVecMin FINAL : public HVecBinaryOperation {
 // for either both signed or both unsigned operands x, y.
 class HVecMax FINAL : public HVecBinaryOperation {
  public:
-  HVecMax(ArenaAllocator* arena,
+  HVecMax(ArenaAllocator* allocator,
           HInstruction* left,
           HInstruction* right,
           DataType::Type packed_type,
           size_t vector_length,
           bool is_unsigned,
           uint32_t dex_pc)
-      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
+      : HVecBinaryOperation(allocator, left, right, packed_type, vector_length, dex_pc) {
     // The `is_unsigned` flag should be used exclusively with the Int32 or Int64.
     // This flag is a temporary measure while we do not have the Uint32 and Uint64 data types.
     DCHECK(!is_unsigned ||
@@ -681,13 +686,13 @@ class HVecMax FINAL : public HVecBinaryOperation {
 // viz. [ x1, .. , xn ] & [ y1, .. , yn ] = [ x1 & y1, .. , xn & yn ].
 class HVecAnd FINAL : public HVecBinaryOperation {
  public:
-  HVecAnd(ArenaAllocator* arena,
+  HVecAnd(ArenaAllocator* allocator,
           HInstruction* left,
           HInstruction* right,
           DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc)
-      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
+      : HVecBinaryOperation(allocator, left, right, packed_type, vector_length, dex_pc) {
     DCHECK(left->IsVecOperation() && right->IsVecOperation());
   }
 
@@ -703,13 +708,13 @@ class HVecAnd FINAL : public HVecBinaryOperation {
 // viz. [ x1, .. , xn ] and-not [ y1, .. , yn ] = [ ~x1 & y1, .. , ~xn & yn ].
 class HVecAndNot FINAL : public HVecBinaryOperation {
  public:
-  HVecAndNot(ArenaAllocator* arena,
+  HVecAndNot(ArenaAllocator* allocator,
              HInstruction* left,
              HInstruction* right,
              DataType::Type packed_type,
              size_t vector_length,
              uint32_t dex_pc)
-         : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
+         : HVecBinaryOperation(allocator, left, right, packed_type, vector_length, dex_pc) {
     DCHECK(left->IsVecOperation() && right->IsVecOperation());
   }
 
@@ -725,13 +730,13 @@ class HVecAndNot FINAL : public HVecBinaryOperation {
 // viz. [ x1, .. , xn ] | [ y1, .. , yn ] = [ x1 | y1, .. , xn | yn ].
 class HVecOr FINAL : public HVecBinaryOperation {
  public:
-  HVecOr(ArenaAllocator* arena,
+  HVecOr(ArenaAllocator* allocator,
          HInstruction* left,
          HInstruction* right,
          DataType::Type packed_type,
          size_t vector_length,
          uint32_t dex_pc)
-      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
+      : HVecBinaryOperation(allocator, left, right, packed_type, vector_length, dex_pc) {
     DCHECK(left->IsVecOperation() && right->IsVecOperation());
   }
 
@@ -747,13 +752,13 @@ class HVecOr FINAL : public HVecBinaryOperation {
 // viz. [ x1, .. , xn ] ^ [ y1, .. , yn ] = [ x1 ^ y1, .. , xn ^ yn ].
 class HVecXor FINAL : public HVecBinaryOperation {
  public:
-  HVecXor(ArenaAllocator* arena,
+  HVecXor(ArenaAllocator* allocator,
           HInstruction* left,
           HInstruction* right,
           DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc)
-      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
+      : HVecBinaryOperation(allocator, left, right, packed_type, vector_length, dex_pc) {
     DCHECK(left->IsVecOperation() && right->IsVecOperation());
   }
 
@@ -769,13 +774,13 @@ class HVecXor FINAL : public HVecBinaryOperation {
 // viz. [ x1, .. , xn ] << d = [ x1 << d, .. , xn << d ].
 class HVecShl FINAL : public HVecBinaryOperation {
  public:
-  HVecShl(ArenaAllocator* arena,
+  HVecShl(ArenaAllocator* allocator,
           HInstruction* left,
           HInstruction* right,
           DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc)
-      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
+      : HVecBinaryOperation(allocator, left, right, packed_type, vector_length, dex_pc) {
     DCHECK(HasConsistentPackedTypes(left, packed_type));
   }
 
@@ -791,13 +796,13 @@ class HVecShl FINAL : public HVecBinaryOperation {
 // viz. [ x1, .. , xn ] >> d = [ x1 >> d, .. , xn >> d ].
 class HVecShr FINAL : public HVecBinaryOperation {
  public:
-  HVecShr(ArenaAllocator* arena,
+  HVecShr(ArenaAllocator* allocator,
           HInstruction* left,
           HInstruction* right,
           DataType::Type packed_type,
           size_t vector_length,
           uint32_t dex_pc)
-      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
+      : HVecBinaryOperation(allocator, left, right, packed_type, vector_length, dex_pc) {
     DCHECK(HasConsistentPackedTypes(left, packed_type));
   }
 
@@ -813,13 +818,13 @@ class HVecShr FINAL : public HVecBinaryOperation {
 // viz. [ x1, .. , xn ] >>> d = [ x1 >>> d, .. , xn >>> d ].
 class HVecUShr FINAL : public HVecBinaryOperation {
  public:
-  HVecUShr(ArenaAllocator* arena,
+  HVecUShr(ArenaAllocator* allocator,
            HInstruction* left,
            HInstruction* right,
            DataType::Type packed_type,
            size_t vector_length,
            uint32_t dex_pc)
-      : HVecBinaryOperation(arena, left, right, packed_type, vector_length, dex_pc) {
+      : HVecBinaryOperation(allocator, left, right, packed_type, vector_length, dex_pc) {
     DCHECK(HasConsistentPackedTypes(left, packed_type));
   }
 
@@ -840,13 +845,13 @@ class HVecUShr FINAL : public HVecBinaryOperation {
 //      set( array(x1, .. , xm) ) = [ x1, .. , xm, 0, .. , 0 ] if m <  n.
 class HVecSetScalars FINAL : public HVecOperation {
  public:
-  HVecSetScalars(ArenaAllocator* arena,
+  HVecSetScalars(ArenaAllocator* allocator,
                  HInstruction* scalars[],
                  DataType::Type packed_type,
                  size_t vector_length,
                  size_t number_of_scalars,
                  uint32_t dex_pc)
-      : HVecOperation(arena,
+      : HVecOperation(allocator,
                       packed_type,
                       SideEffects::None(),
                       number_of_scalars,
@@ -872,7 +877,7 @@ class HVecSetScalars FINAL : public HVecOperation {
 // viz. [ a1, .. , an ] + [ x1, .. , xn ] * [ y1, .. , yn ] = [ a1 + x1 * y1, .. , an + xn * yn ].
 class HVecMultiplyAccumulate FINAL : public HVecOperation {
  public:
-  HVecMultiplyAccumulate(ArenaAllocator* arena,
+  HVecMultiplyAccumulate(ArenaAllocator* allocator,
                          InstructionKind op,
                          HInstruction* accumulator,
                          HInstruction* mul_left,
@@ -880,7 +885,7 @@ class HVecMultiplyAccumulate FINAL : public HVecOperation {
                          DataType::Type packed_type,
                          size_t vector_length,
                          uint32_t dex_pc)
-      : HVecOperation(arena,
+      : HVecOperation(allocator,
                       packed_type,
                       SideEffects::None(),
                       /* number_of_inputs */ 3,
@@ -922,14 +927,14 @@ class HVecMultiplyAccumulate FINAL : public HVecOperation {
 //      for m <= n, non-overlapping sums, and signed operands x, y.
 class HVecSADAccumulate FINAL : public HVecOperation {
  public:
-  HVecSADAccumulate(ArenaAllocator* arena,
+  HVecSADAccumulate(ArenaAllocator* allocator,
                     HInstruction* accumulator,
                     HInstruction* sad_left,
                     HInstruction* sad_right,
                     DataType::Type packed_type,
                     size_t vector_length,
                     uint32_t dex_pc)
-      : HVecOperation(arena,
+      : HVecOperation(allocator,
                       packed_type,
                       SideEffects::None(),
                       /* number_of_inputs */ 3,
@@ -955,7 +960,7 @@ class HVecSADAccumulate FINAL : public HVecOperation {
 // yield the vector [ mem(1), .. , mem(n) ].
 class HVecLoad FINAL : public HVecMemoryOperation {
  public:
-  HVecLoad(ArenaAllocator* arena,
+  HVecLoad(ArenaAllocator* allocator,
            HInstruction* base,
            HInstruction* index,
            DataType::Type packed_type,
@@ -963,7 +968,7 @@ class HVecLoad FINAL : public HVecMemoryOperation {
            size_t vector_length,
            bool is_string_char_at,
            uint32_t dex_pc)
-      : HVecMemoryOperation(arena,
+      : HVecMemoryOperation(allocator,
                             packed_type,
                             side_effects,
                             /* number_of_inputs */ 2,
@@ -999,7 +1004,7 @@ class HVecLoad FINAL : public HVecMemoryOperation {
 // sets mem(1) = x1, .. , mem(n) = xn.
 class HVecStore FINAL : public HVecMemoryOperation {
  public:
-  HVecStore(ArenaAllocator* arena,
+  HVecStore(ArenaAllocator* allocator,
             HInstruction* base,
             HInstruction* index,
             HInstruction* value,
@@ -1007,7 +1012,7 @@ class HVecStore FINAL : public HVecMemoryOperation {
             SideEffects side_effects,
             size_t vector_length,
             uint32_t dex_pc)
-      : HVecMemoryOperation(arena,
+      : HVecMemoryOperation(allocator,
                             packed_type,
                             side_effects,
                             /* number_of_inputs */ 3,
