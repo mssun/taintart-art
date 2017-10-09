@@ -72,8 +72,8 @@ class AssemblerMIPS32r5Test : public AssemblerTest<mips::MipsAssembler,
     return " -D -bbinary -mmips:isa32r5";
   }
 
-  mips::MipsAssembler* CreateAssembler(ArenaAllocator* arena) OVERRIDE {
-    return new (arena) mips::MipsAssembler(arena, instruction_set_features_.get());
+  mips::MipsAssembler* CreateAssembler(ArenaAllocator* allocator) OVERRIDE {
+    return new (allocator) mips::MipsAssembler(allocator, instruction_set_features_.get());
   }
 
   void SetUpHelpers() OVERRIDE {

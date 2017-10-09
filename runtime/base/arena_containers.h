@@ -137,22 +137,22 @@ class ArenaAllocatorAdapter<void> : private ArenaAllocatorAdapterKind {
     typedef ArenaAllocatorAdapter<U> other;
   };
 
-  explicit ArenaAllocatorAdapter(ArenaAllocator* arena_allocator,
+  explicit ArenaAllocatorAdapter(ArenaAllocator* allocator,
                                  ArenaAllocKind kind = kArenaAllocSTL)
       : ArenaAllocatorAdapterKind(kind),
-        arena_allocator_(arena_allocator) {
+        allocator_(allocator) {
   }
   template <typename U>
   ArenaAllocatorAdapter(const ArenaAllocatorAdapter<U>& other)  // NOLINT, implicit
       : ArenaAllocatorAdapterKind(other),
-        arena_allocator_(other.arena_allocator_) {
+        allocator_(other.allocator_) {
   }
   ArenaAllocatorAdapter(const ArenaAllocatorAdapter&) = default;
   ArenaAllocatorAdapter& operator=(const ArenaAllocatorAdapter&) = default;
   ~ArenaAllocatorAdapter() = default;
 
  private:
-  ArenaAllocator* arena_allocator_;
+  ArenaAllocator* allocator_;
 
   template <typename U>
   friend class ArenaAllocatorAdapter;
@@ -174,14 +174,14 @@ class ArenaAllocatorAdapter : private ArenaAllocatorAdapterKind {
     typedef ArenaAllocatorAdapter<U> other;
   };
 
-  ArenaAllocatorAdapter(ArenaAllocator* arena_allocator, ArenaAllocKind kind)
+  ArenaAllocatorAdapter(ArenaAllocator* allocator, ArenaAllocKind kind)
       : ArenaAllocatorAdapterKind(kind),
-        arena_allocator_(arena_allocator) {
+        allocator_(allocator) {
   }
   template <typename U>
   ArenaAllocatorAdapter(const ArenaAllocatorAdapter<U>& other)  // NOLINT, implicit
       : ArenaAllocatorAdapterKind(other),
-        arena_allocator_(other.arena_allocator_) {
+        allocator_(other.allocator_) {
   }
   ArenaAllocatorAdapter(const ArenaAllocatorAdapter&) = default;
   ArenaAllocatorAdapter& operator=(const ArenaAllocatorAdapter&) = default;
@@ -197,10 +197,10 @@ class ArenaAllocatorAdapter : private ArenaAllocatorAdapterKind {
   pointer allocate(size_type n,
                    ArenaAllocatorAdapter<void>::pointer hint ATTRIBUTE_UNUSED = nullptr) {
     DCHECK_LE(n, max_size());
-    return arena_allocator_->AllocArray<T>(n, ArenaAllocatorAdapterKind::Kind());
+    return allocator_->AllocArray<T>(n, ArenaAllocatorAdapterKind::Kind());
   }
   void deallocate(pointer p, size_type n) {
-    arena_allocator_->MakeInaccessible(p, sizeof(T) * n);
+    allocator_->MakeInaccessible(p, sizeof(T) * n);
   }
 
   template <typename U, typename... Args>
@@ -213,7 +213,7 @@ class ArenaAllocatorAdapter : private ArenaAllocatorAdapterKind {
   }
 
  private:
-  ArenaAllocator* arena_allocator_;
+  ArenaAllocator* allocator_;
 
   template <typename U>
   friend class ArenaAllocatorAdapter;
@@ -226,7 +226,7 @@ class ArenaAllocatorAdapter : private ArenaAllocatorAdapterKind {
 template <typename T>
 inline bool operator==(const ArenaAllocatorAdapter<T>& lhs,
                        const ArenaAllocatorAdapter<T>& rhs) {
-  return lhs.arena_allocator_ == rhs.arena_allocator_;
+  return lhs.allocator_ == rhs.allocator_;
 }
 
 template <typename T>

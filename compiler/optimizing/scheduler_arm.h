@@ -137,10 +137,10 @@ class SchedulingLatencyVisitorARM : public SchedulingLatencyVisitor {
 
 class HSchedulerARM : public HScheduler {
  public:
-  HSchedulerARM(ScopedArenaAllocator* arena,
+  HSchedulerARM(ScopedArenaAllocator* allocator,
                 SchedulingNodeSelector* selector,
                 SchedulingLatencyVisitorARM* arm_latency_visitor)
-      : HScheduler(arena, arm_latency_visitor, selector) {}
+      : HScheduler(allocator, arm_latency_visitor, selector) {}
   ~HSchedulerARM() OVERRIDE {}
 
   bool IsSchedulable(const HInstruction* instruction) const OVERRIDE {

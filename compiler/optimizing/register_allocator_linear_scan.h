@@ -18,7 +18,7 @@
 #define ART_COMPILER_OPTIMIZING_REGISTER_ALLOCATOR_LINEAR_SCAN_H_
 
 #include "arch/instruction_set.h"
-#include "base/arena_containers.h"
+#include "base/scoped_arena_containers.h"
 #include "base/macros.h"
 #include "register_allocator.h"
 
@@ -39,10 +39,10 @@ class SsaLivenessAnalysis;
  */
 class RegisterAllocatorLinearScan : public RegisterAllocator {
  public:
-  RegisterAllocatorLinearScan(ArenaAllocator* allocator,
+  RegisterAllocatorLinearScan(ScopedArenaAllocator* allocator,
                               CodeGenerator* codegen,
                               const SsaLivenessAnalysis& analysis);
-  ~RegisterAllocatorLinearScan() OVERRIDE {}
+  ~RegisterAllocatorLinearScan() OVERRIDE;
 
   void AllocateRegisters() OVERRIDE;
 
@@ -70,7 +70,7 @@ class RegisterAllocatorLinearScan : public RegisterAllocator {
   bool AllocateBlockedReg(LiveInterval* interval);
 
   // Add `interval` in the given sorted list.
-  static void AddSorted(ArenaVector<LiveInterval*>* array, LiveInterval* interval);
+  static void AddSorted(ScopedArenaVector<LiveInterval*>* array, LiveInterval* interval);
 
   // Returns whether `reg` is blocked by the code generator.
   bool IsBlocked(int reg) const;
@@ -107,43 +107,43 @@ class RegisterAllocatorLinearScan : public RegisterAllocator {
   // List of intervals for core registers that must be processed, ordered by start
   // position. Last entry is the interval that has the lowest start position.
   // This list is initially populated before doing the linear scan.
-  ArenaVector<LiveInterval*> unhandled_core_intervals_;
+  ScopedArenaVector<LiveInterval*> unhandled_core_intervals_;
 
   // List of intervals for floating-point registers. Same comments as above.
-  ArenaVector<LiveInterval*> unhandled_fp_intervals_;
+  ScopedArenaVector<LiveInterval*> unhandled_fp_intervals_;
 
   // Currently processed list of unhandled intervals. Either `unhandled_core_intervals_`
   // or `unhandled_fp_intervals_`.
-  ArenaVector<LiveInterval*>* unhandled_;
+  ScopedArenaVector<LiveInterval*>* unhandled_;
 
   // List of intervals that have been processed.
-  ArenaVector<LiveInterval*> handled_;
+  ScopedArenaVector<LiveInterval*> handled_;
 
   // List of intervals that are currently active when processing a new live interval.
   // That is, they have a live range that spans the start of the new interval.
-  ArenaVector<LiveInterval*> active_;
+  ScopedArenaVector<LiveInterval*> active_;
 
   // List of intervals that are currently inactive when processing a new live interval.
   // That is, they have a lifetime hole that spans the start of the new interval.
-  ArenaVector<LiveInterval*> inactive_;
+  ScopedArenaVector<LiveInterval*> inactive_;
 
   // Fixed intervals for physical registers. Such intervals cover the positions
   // where an instruction requires a specific register.
-  ArenaVector<LiveInterval*> physical_core_register_intervals_;
-  ArenaVector<LiveInterval*> physical_fp_register_intervals_;
+  ScopedArenaVector<LiveInterval*> physical_core_register_intervals_;
+  ScopedArenaVector<LiveInterval*> physical_fp_register_intervals_;
 
   // Intervals for temporaries. Such intervals cover the positions
   // where an instruction requires a temporary.
-  ArenaVector<LiveInterval*> temp_intervals_;
+  ScopedArenaVector<LiveInterval*> temp_intervals_;
 
   // The spill slots allocated for live intervals. We ensure spill slots
   // are typed to avoid (1) doing moves and swaps between two different kinds
   // of registers, and (2) swapping between a single stack slot and a double
   // stack slot. This simplifies the parallel move resolver.
-  ArenaVector<size_t> int_spill_slots_;
-  ArenaVector<size_t> long_spill_slots_;
-  ArenaVector<size_t> float_spill_slots_;
-  ArenaVector<size_t> double_spill_slots_;
+  ScopedArenaVector<size_t> int_spill_slots_;
+  ScopedArenaVector<size_t> long_spill_slots_;
+  ScopedArenaVector<size_t> float_spill_slots_;
+  ScopedArenaVector<size_t> double_spill_slots_;
 
   // Spill slots allocated to catch phis. This category is special-cased because
   // (1) slots are allocated prior to linear scan and in reverse linear order,
@@ -151,7 +151,7 @@ class RegisterAllocatorLinearScan : public RegisterAllocator {
   size_t catch_phi_spill_slots_;
 
   // Instructions that need a safepoint.
-  ArenaVector<HInstruction*> safepoints_;
+  ScopedArenaVector<HInstruction*> safepoints_;
 
   // True if processing core registers. False if processing floating
   // point registers.

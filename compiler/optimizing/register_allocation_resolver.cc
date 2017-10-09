@@ -22,10 +22,9 @@
 
 namespace art {
 
-RegisterAllocationResolver::RegisterAllocationResolver(ArenaAllocator* allocator,
-                                                       CodeGenerator* codegen,
+RegisterAllocationResolver::RegisterAllocationResolver(CodeGenerator* codegen,
                                                        const SsaLivenessAnalysis& liveness)
-      : allocator_(allocator),
+      : allocator_(codegen->GetGraph()->GetAllocator()),
         codegen_(codegen),
         liveness_(liveness) {}
 
@@ -36,7 +35,7 @@ void RegisterAllocationResolver::Resolve(ArrayRef<HInstruction* const> safepoint
                                          size_t float_spill_slots,
                                          size_t double_spill_slots,
                                          size_t catch_phi_spill_slots,
-                                         const ArenaVector<LiveInterval*>& temp_intervals) {
+                                         ArrayRef<LiveInterval* const> temp_intervals) {
   size_t spill_slots = int_spill_slots
                      + long_spill_slots
                      + float_spill_slots
