@@ -18,9 +18,10 @@
 #define ART_COMPILER_OPTIMIZING_REGISTER_ALLOCATOR_GRAPH_COLOR_H_
 
 #include "arch/instruction_set.h"
-#include "base/arena_containers.h"
 #include "base/arena_object.h"
+#include "base/array_ref.h"
 #include "base/macros.h"
+#include "base/scoped_arena_containers.h"
 #include "register_allocator.h"
 
 namespace art {
@@ -85,11 +86,11 @@ enum class CoalesceKind;
  */
 class RegisterAllocatorGraphColor : public RegisterAllocator {
  public:
-  RegisterAllocatorGraphColor(ArenaAllocator* allocator,
+  RegisterAllocatorGraphColor(ScopedArenaAllocator* allocator,
                               CodeGenerator* codegen,
                               const SsaLivenessAnalysis& analysis,
                               bool iterative_move_coalescing = true);
-  ~RegisterAllocatorGraphColor() OVERRIDE {}
+  ~RegisterAllocatorGraphColor() OVERRIDE;
 
   void AllocateRegisters() OVERRIDE;
 
@@ -141,11 +142,10 @@ class RegisterAllocatorGraphColor : public RegisterAllocator {
 
   // Assigns stack slots to a list of intervals, ensuring that interfering intervals are not
   // assigned the same stack slot.
-  void ColorSpillSlots(ArenaVector<LiveInterval*>* nodes,
-                       size_t* num_stack_slots_used);
+  void ColorSpillSlots(ArrayRef<LiveInterval* const> nodes, /* out */ size_t* num_stack_slots_used);
 
   // Provide stack slots to nodes that need them.
-  void AllocateSpillSlots(const ArenaVector<InterferenceNode*>& nodes);
+  void AllocateSpillSlots(ArrayRef<InterferenceNode* const> nodes);
 
   // Whether iterative move coalescing should be performed. Iterative move coalescing
   // improves code quality, but increases compile time.
@@ -154,19 +154,19 @@ class RegisterAllocatorGraphColor : public RegisterAllocator {
   // Live intervals, split by kind (core and floating point).
   // These should not contain high intervals, as those are represented by
   // the corresponding low interval throughout register allocation.
-  ArenaVector<LiveInterval*> core_intervals_;
-  ArenaVector<LiveInterval*> fp_intervals_;
+  ScopedArenaVector<LiveInterval*> core_intervals_;
+  ScopedArenaVector<LiveInterval*> fp_intervals_;
 
   // Intervals for temporaries, saved for special handling in the resolution phase.
-  ArenaVector<LiveInterval*> temp_intervals_;
+  ScopedArenaVector<LiveInterval*> temp_intervals_;
 
   // Safepoints, saved for special handling while processing instructions.
-  ArenaVector<HInstruction*> safepoints_;
+  ScopedArenaVector<HInstruction*> safepoints_;
 
   // Interference nodes representing specific registers. These are "pre-colored" nodes
   // in the interference graph.
-  ArenaVector<InterferenceNode*> physical_core_nodes_;
-  ArenaVector<InterferenceNode*> physical_fp_nodes_;
+  ScopedArenaVector<InterferenceNode*> physical_core_nodes_;
+  ScopedArenaVector<InterferenceNode*> physical_fp_nodes_;
 
   // Allocated stack slot counters.
   size_t num_int_spill_slots_;

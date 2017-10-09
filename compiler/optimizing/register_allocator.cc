@@ -19,6 +19,8 @@
 #include <iostream>
 #include <sstream>
 
+#include "base/scoped_arena_allocator.h"
+#include "base/scoped_arena_containers.h"
 #include "base/bit_vector-inl.h"
 #include "code_generator.h"
 #include "register_allocator_graph_color.h"
@@ -27,22 +29,24 @@
 
 namespace art {
 
-RegisterAllocator::RegisterAllocator(ArenaAllocator* allocator,
+RegisterAllocator::RegisterAllocator(ScopedArenaAllocator* allocator,
                                      CodeGenerator* codegen,
                                      const SsaLivenessAnalysis& liveness)
     : allocator_(allocator),
       codegen_(codegen),
       liveness_(liveness) {}
 
-RegisterAllocator* RegisterAllocator::Create(ArenaAllocator* allocator,
-                                             CodeGenerator* codegen,
-                                             const SsaLivenessAnalysis& analysis,
-                                             Strategy strategy) {
+std::unique_ptr<RegisterAllocator> RegisterAllocator::Create(ScopedArenaAllocator* allocator,
+                                                             CodeGenerator* codegen,
+                                                             const SsaLivenessAnalysis& analysis,
+                                                             Strategy strategy) {
   switch (strategy) {
     case kRegisterAllocatorLinearScan:
-      return new (allocator) RegisterAllocatorLinearScan(allocator, codegen, analysis);
+      return std::unique_ptr<RegisterAllocator>(
+          new (allocator) RegisterAllocatorLinearScan(allocator, codegen, analysis));
     case kRegisterAllocatorGraphColor:
-      return new (allocator) RegisterAllocatorGraphColor(allocator, codegen, analysis);
+      return std::unique_ptr<RegisterAllocator>(
+          new (allocator) RegisterAllocatorGraphColor(allocator, codegen, analysis));
     default:
       LOG(FATAL) << "Invalid register allocation strategy: " << strategy;
       UNREACHABLE();
@@ -87,18 +91,18 @@ class AllRangesIterator : public ValueObject {
   DISALLOW_COPY_AND_ASSIGN(AllRangesIterator);
 };
 
-bool RegisterAllocator::ValidateIntervals(const ArenaVector<LiveInterval*>& intervals,
+bool RegisterAllocator::ValidateIntervals(ArrayRef<LiveInterval* const> intervals,
                                           size_t number_of_spill_slots,
                                           size_t number_of_out_slots,
                                           const CodeGenerator& codegen,
-                                          ArenaAllocator* allocator,
                                           bool processing_core_registers,
                                           bool log_fatal_on_failure) {
   size_t number_of_registers = processing_core_registers
       ? codegen.GetNumberOfCoreRegisters()
       : codegen.GetNumberOfFloatingPointRegisters();
-  ArenaVector<ArenaBitVector*> liveness_of_values(
-      allocator->Adapter(kArenaAllocRegisterAllocatorValidate));
+  ScopedArenaAllocator allocator(codegen.GetGraph()->GetArenaStack());
+  ScopedArenaVector<ArenaBitVector*> liveness_of_values(
+      allocator.Adapter(kArenaAllocRegisterAllocatorValidate));
   liveness_of_values.reserve(number_of_registers + number_of_spill_slots);
 
   size_t max_end = 0u;
@@ -112,7 +116,8 @@ bool RegisterAllocator::ValidateIntervals(const ArenaVector<LiveInterval*>& inte
   // allocated will populate the associated bit vector based on its live ranges.
   for (size_t i = 0; i < number_of_registers + number_of_spill_slots; ++i) {
     liveness_of_values.push_back(
-        ArenaBitVector::Create(allocator, max_end, false, kArenaAllocRegisterAllocatorValidate));
+        ArenaBitVector::Create(&allocator, max_end, false, kArenaAllocRegisterAllocatorValidate));
+    liveness_of_values.back()->ClearAllBits();
   }
 
   for (LiveInterval* start_interval : intervals) {

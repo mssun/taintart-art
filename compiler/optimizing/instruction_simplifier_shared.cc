@@ -75,8 +75,8 @@ bool TrySimpleMultiplyAccumulatePatterns(HMul* mul,
     return false;
   }
 
-  ArenaAllocator* arena = mul->GetBlock()->GetGraph()->GetAllocator();
-  HMultiplyAccumulate* mulacc = new(arena) HMultiplyAccumulate(
+  ArenaAllocator* allocator = mul->GetBlock()->GetGraph()->GetAllocator();
+  HMultiplyAccumulate* mulacc = new (allocator) HMultiplyAccumulate(
       mul->GetType(), op_kind, input_a, input_a, input_b, mul->GetDexPc());
 
   mul->GetBlock()->ReplaceAndRemoveInstructionWith(mul, mulacc);
@@ -105,7 +105,7 @@ bool TryCombineMultiplyAccumulate(HMul* mul, InstructionSet isa) {
       return false;
   }
 
-  ArenaAllocator* arena = mul->GetBlock()->GetGraph()->GetAllocator();
+  ArenaAllocator* allocator = mul->GetBlock()->GetGraph()->GetAllocator();
 
   if (mul->HasOnlyOneNonEnvironmentUse()) {
     HInstruction* use = mul->GetUses().front().GetUser();
@@ -137,11 +137,11 @@ bool TryCombineMultiplyAccumulate(HMul* mul, InstructionSet isa) {
 
       if (accumulator != nullptr) {
         HMultiplyAccumulate* mulacc =
-            new (arena) HMultiplyAccumulate(type,
-                                            binop->GetKind(),
-                                            accumulator,
-                                            mul->GetLeft(),
-                                            mul->GetRight());
+            new (allocator) HMultiplyAccumulate(type,
+                                                binop->GetKind(),
+                                                accumulator,
+                                                mul->GetLeft(),
+                                                mul->GetRight());
 
         binop->GetBlock()->ReplaceAndRemoveInstructionWith(binop, mulacc);
         DCHECK(!mul->HasUses());
@@ -150,11 +150,11 @@ bool TryCombineMultiplyAccumulate(HMul* mul, InstructionSet isa) {
       }
     } else if (use->IsNeg() && isa != kArm) {
       HMultiplyAccumulate* mulacc =
-          new (arena) HMultiplyAccumulate(type,
-                                          HInstruction::kSub,
-                                          mul->GetBlock()->GetGraph()->GetConstant(type, 0),
-                                          mul->GetLeft(),
-                                          mul->GetRight());
+          new (allocator) HMultiplyAccumulate(type,
+                                              HInstruction::kSub,
+                                              mul->GetBlock()->GetGraph()->GetConstant(type, 0),
+                                              mul->GetLeft(),
+                                              mul->GetRight());
 
       use->GetBlock()->ReplaceAndRemoveInstructionWith(use, mulacc);
       DCHECK(!mul->HasUses());
@@ -255,10 +255,10 @@ bool TryExtractArrayAccessAddress(HInstruction* access,
 
   // Proceed to extract the base address computation.
   HGraph* graph = access->GetBlock()->GetGraph();
-  ArenaAllocator* arena = graph->GetAllocator();
+  ArenaAllocator* allocator = graph->GetAllocator();
 
   HIntConstant* offset = graph->GetIntConstant(data_offset);
-  HIntermediateAddress* address = new (arena) HIntermediateAddress(array, offset, kNoDexPc);
+  HIntermediateAddress* address = new (allocator) HIntermediateAddress(array, offset, kNoDexPc);
   // TODO: Is it ok to not have this on the intermediate address?
   // address->SetReferenceTypeInfo(array->GetReferenceTypeInfo());
   access->GetBlock()->InsertInstructionBefore(address, access);
@@ -289,7 +289,7 @@ bool TryExtractVecArrayAccessAddress(HVecMemoryOperation* access, HInstruction* 
   }
 
   HGraph* graph = access->GetBlock()->GetGraph();
-  ArenaAllocator* arena = graph->GetAllocator();
+  ArenaAllocator* allocator = graph->GetAllocator();
   DataType::Type packed_type = access->GetPackedType();
   uint32_t data_offset = mirror::Array::DataOffset(
       DataType::Size(packed_type)).Uint32Value();
@@ -328,7 +328,7 @@ bool TryExtractVecArrayAccessAddress(HVecMemoryOperation* access, HInstruction* 
   HIntConstant* offset = graph->GetIntConstant(data_offset);
   HIntConstant* shift = graph->GetIntConstant(component_shift);
   HIntermediateAddressIndex* address =
-      new (arena) HIntermediateAddressIndex(index, offset, shift, kNoDexPc);
+      new (allocator) HIntermediateAddressIndex(index, offset, shift, kNoDexPc);
 
   access->GetBlock()->InsertInstructionBefore(address, access);
   access->ReplaceInput(address, 1);

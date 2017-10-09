@@ -66,8 +66,8 @@ static void SetNativeParameter(JNIMacroAssembler<kPointerSize>* jni_asm,
 
 template <PointerSize kPointerSize>
 static std::unique_ptr<JNIMacroAssembler<kPointerSize>> GetMacroAssembler(
-    ArenaAllocator* arena, InstructionSet isa, const InstructionSetFeatures* features) {
-  return JNIMacroAssembler<kPointerSize>::Create(arena, isa, features);
+    ArenaAllocator* allocator, InstructionSet isa, const InstructionSetFeatures* features) {
+  return JNIMacroAssembler<kPointerSize>::Create(allocator, isa, features);
 }
 
 enum class JniEntrypoint {

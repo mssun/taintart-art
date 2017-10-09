@@ -231,7 +231,7 @@ class CallingConvention : public DeletableArenaObject<kArenaAllocCallingConventi
 // | { Method* }             | <-- SP
 class ManagedRuntimeCallingConvention : public CallingConvention {
  public:
-  static std::unique_ptr<ManagedRuntimeCallingConvention> Create(ArenaAllocator* arena,
+  static std::unique_ptr<ManagedRuntimeCallingConvention> Create(ArenaAllocator* allocator,
                                                                  bool is_static,
                                                                  bool is_synchronized,
                                                                  const char* shorty,
@@ -284,7 +284,7 @@ class ManagedRuntimeCallingConvention : public CallingConvention {
 // callee saves for frames above this one.
 class JniCallingConvention : public CallingConvention {
  public:
-  static std::unique_ptr<JniCallingConvention> Create(ArenaAllocator* arena,
+  static std::unique_ptr<JniCallingConvention> Create(ArenaAllocator* allocator,
                                                       bool is_static,
                                                       bool is_synchronized,
                                                       bool is_critical_native,

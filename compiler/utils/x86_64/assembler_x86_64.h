@@ -290,7 +290,8 @@ std::ostream& operator<<(std::ostream& os, const Address& addr);
  */
 class ConstantArea {
  public:
-  explicit ConstantArea(ArenaAllocator* arena) : buffer_(arena->Adapter(kArenaAllocAssembler)) {}
+  explicit ConstantArea(ArenaAllocator* allocator)
+      : buffer_(allocator->Adapter(kArenaAllocAssembler)) {}
 
   // Add a double to the constant area, returning the offset into
   // the constant area where the literal resides.
@@ -352,7 +353,8 @@ class NearLabel : private Label {
 
 class X86_64Assembler FINAL : public Assembler {
  public:
-  explicit X86_64Assembler(ArenaAllocator* arena) : Assembler(arena), constant_area_(arena) {}
+  explicit X86_64Assembler(ArenaAllocator* allocator)
+      : Assembler(allocator), constant_area_(allocator) {}
   virtual ~X86_64Assembler() {}
 
   /*

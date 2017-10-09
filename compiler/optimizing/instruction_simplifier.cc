@@ -274,7 +274,7 @@ bool InstructionSimplifierVisitor::TryCombineVecMultiplyAccumulate(HVecMul* mul)
       return false;
   }
 
-  ArenaAllocator* arena = mul->GetBlock()->GetGraph()->GetAllocator();
+  ArenaAllocator* allocator = mul->GetBlock()->GetGraph()->GetAllocator();
 
   if (mul->HasOnlyOneNonEnvironmentUse()) {
     HInstruction* use = mul->GetUses().front().GetUser();
@@ -307,14 +307,14 @@ bool InstructionSimplifierVisitor::TryCombineVecMultiplyAccumulate(HVecMul* mul)
           use->IsVecAdd() ? HInstruction::kAdd : HInstruction::kSub;
       if (accumulator != nullptr) {
         HVecMultiplyAccumulate* mulacc =
-            new (arena) HVecMultiplyAccumulate(arena,
-                                               kind,
-                                               accumulator,
-                                               mul->GetLeft(),
-                                               mul->GetRight(),
-                                               binop->GetPackedType(),
-                                               binop->GetVectorLength(),
-                                               binop->GetDexPc());
+            new (allocator) HVecMultiplyAccumulate(allocator,
+                                                   kind,
+                                                   accumulator,
+                                                   mul->GetLeft(),
+                                                   mul->GetRight(),
+                                                   binop->GetPackedType(),
+                                                   binop->GetVectorLength(),
+                                                   binop->GetDexPc());
 
         binop->GetBlock()->ReplaceAndRemoveInstructionWith(binop, mulacc);
         DCHECK(!mul->HasUses());
@@ -700,30 +700,30 @@ void InstructionSimplifierVisitor::VisitStaticFieldSet(HStaticFieldSet* instruct
   }
 }
 
-static HCondition* GetOppositeConditionSwapOps(ArenaAllocator* arena, HInstruction* cond) {
+static HCondition* GetOppositeConditionSwapOps(ArenaAllocator* allocator, HInstruction* cond) {
   HInstruction *lhs = cond->InputAt(0);
   HInstruction *rhs = cond->InputAt(1);
   switch (cond->GetKind()) {
     case HInstruction::kEqual:
-      return new (arena) HEqual(rhs, lhs);
+      return new (allocator) HEqual(rhs, lhs);
     case HInstruction::kNotEqual:
-      return new (arena) HNotEqual(rhs, lhs);
+      return new (allocator) HNotEqual(rhs, lhs);
     case HInstruction::kLessThan:
-      return new (arena) HGreaterThan(rhs, lhs);
+      return new (allocator) HGreaterThan(rhs, lhs);
     case HInstruction::kLessThanOrEqual:
-      return new (arena) HGreaterThanOrEqual(rhs, lhs);
+      return new (allocator) HGreaterThanOrEqual(rhs, lhs);
     case HInstruction::kGreaterThan:
-      return new (arena) HLessThan(rhs, lhs);
+      return new (allocator) HLessThan(rhs, lhs);
     case HInstruction::kGreaterThanOrEqual:
-      return new (arena) HLessThanOrEqual(rhs, lhs);
+      return new (allocator) HLessThanOrEqual(rhs, lhs);
     case HInstruction::kBelow:
-      return new (arena) HAbove(rhs, lhs);
+      return new (allocator) HAbove(rhs, lhs);
     case HInstruction::kBelowOrEqual:
-      return new (arena) HAboveOrEqual(rhs, lhs);
+      return new (allocator) HAboveOrEqual(rhs, lhs);
     case HInstruction::kAbove:
-      return new (arena) HBelow(rhs, lhs);
+      return new (allocator) HBelow(rhs, lhs);
     case HInstruction::kAboveOrEqual:
-      return new (arena) HBelowOrEqual(rhs, lhs);
+      return new (allocator) HBelowOrEqual(rhs, lhs);
     default:
       LOG(FATAL) << "Unknown ConditionType " << cond->GetKind();
   }
@@ -837,7 +837,9 @@ void InstructionSimplifierVisitor::VisitBooleanNot(HBooleanNot* bool_not) {
 }
 
 // Constructs a new ABS(x) node in the HIR.
-static HInstruction* NewIntegralAbs(ArenaAllocator* arena, HInstruction* x, HInstruction* cursor) {
+static HInstruction* NewIntegralAbs(ArenaAllocator* allocator,
+                                    HInstruction* x,
+                                    HInstruction* cursor) {
   DataType::Type type = x->GetType();
   DCHECK(type == DataType::Type::kInt32 || type ==  DataType::Type::kInt64);
   // Construct a fake intrinsic with as much context as is needed to allocate one.
@@ -848,8 +850,8 @@ static HInstruction* NewIntegralAbs(ArenaAllocator* arena, HInstruction* x, HIns
     HInvokeStaticOrDirect::CodePtrLocation::kCallArtMethod,
     0u
   };
-  HInvokeStaticOrDirect* invoke = new (arena) HInvokeStaticOrDirect(
-      arena,
+  HInvokeStaticOrDirect* invoke = new (allocator) HInvokeStaticOrDirect(
+      allocator,
       1,
       type,
       x->GetDexPc(),
@@ -2180,20 +2182,20 @@ void InstructionSimplifierVisitor::SimplifyStringCharAt(HInvoke* invoke) {
   HInstruction* str = invoke->InputAt(0);
   HInstruction* index = invoke->InputAt(1);
   uint32_t dex_pc = invoke->GetDexPc();
-  ArenaAllocator* arena = GetGraph()->GetAllocator();
+  ArenaAllocator* allocator = GetGraph()->GetAllocator();
   // We treat String as an array to allow DCE and BCE to seamlessly work on strings,
   // so create the HArrayLength, HBoundsCheck and HArrayGet.
-  HArrayLength* length = new (arena) HArrayLength(str, dex_pc, /* is_string_length */ true);
+  HArrayLength* length = new (allocator) HArrayLength(str, dex_pc, /* is_string_length */ true);
   invoke->GetBlock()->InsertInstructionBefore(length, invoke);
-  HBoundsCheck* bounds_check = new (arena) HBoundsCheck(
+  HBoundsCheck* bounds_check = new (allocator) HBoundsCheck(
       index, length, dex_pc, invoke->GetDexMethodIndex());
   invoke->GetBlock()->InsertInstructionBefore(bounds_check, invoke);
-  HArrayGet* array_get = new (arena) HArrayGet(str,
-                                               bounds_check,
-                                               DataType::Type::kUint16,
-                                               SideEffects::None(),  // Strings are immutable.
-                                               dex_pc,
-                                               /* is_string_char_at */ true);
+  HArrayGet* array_get = new (allocator) HArrayGet(str,
+                                                   bounds_check,
+                                                   DataType::Type::kUint16,
+                                                   SideEffects::None(),  // Strings are immutable.
+                                                   dex_pc,
+                                                   /* is_string_char_at */ true);
   invoke->GetBlock()->ReplaceAndRemoveInstructionWith(invoke, array_get);
   bounds_check->CopyEnvironmentFrom(invoke->GetEnvironment());
   GetGraph()->SetHasBoundsChecks(true);
@@ -2524,13 +2526,13 @@ bool InstructionSimplifierVisitor::TrySubtractionChainSimplification(
   int64_t const3_val = ComputeAddition(type, const1_val, const2_val);
   HBasicBlock* block = instruction->GetBlock();
   HConstant* const3 = block->GetGraph()->GetConstant(type, const3_val);
-  ArenaAllocator* arena = instruction->GetAllocator();
+  ArenaAllocator* allocator = instruction->GetAllocator();
   HInstruction* z;
 
   if (is_x_negated) {
-    z = new (arena) HSub(type, const3, x, instruction->GetDexPc());
+    z = new (allocator) HSub(type, const3, x, instruction->GetDexPc());
   } else {
-    z = new (arena) HAdd(type, x, const3, instruction->GetDexPc());
+    z = new (allocator) HAdd(type, x, const3, instruction->GetDexPc());
   }
 
   block->ReplaceAndRemoveInstructionWith(instruction, z);

@@ -192,16 +192,16 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
  public:
   using JNIBase = JNIMacroAssembler<PointerSize::k32>;
 
-  explicit MipsAssembler(ArenaAllocator* arena,
+  explicit MipsAssembler(ArenaAllocator* allocator,
                          const MipsInstructionSetFeatures* instruction_set_features = nullptr)
-      : Assembler(arena),
+      : Assembler(allocator),
         overwriting_(false),
         overwrite_location_(0),
         reordering_(true),
         ds_fsm_state_(kExpectingLabel),
         ds_fsm_target_pc_(0),
-        literals_(arena->Adapter(kArenaAllocAssembler)),
-        jump_tables_(arena->Adapter(kArenaAllocAssembler)),
+        literals_(allocator->Adapter(kArenaAllocAssembler)),
+        jump_tables_(allocator->Adapter(kArenaAllocAssembler)),
         last_position_adjustment_(0),
         last_old_position_(0),
         last_branch_id_(0),
