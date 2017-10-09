@@ -322,7 +322,7 @@ void CodeGenerator::InitializeCodeGeneration(size_t number_of_spill_slots,
 
 void CodeGenerator::CreateCommonInvokeLocationSummary(
     HInvoke* invoke, InvokeDexCallingConventionVisitor* visitor) {
-  ArenaAllocator* allocator = invoke->GetBlock()->GetGraph()->GetArena();
+  ArenaAllocator* allocator = invoke->GetBlock()->GetGraph()->GetAllocator();
   LocationSummary* locations = new (allocator) LocationSummary(invoke,
                                                                LocationSummary::kCallOnMainOnly);
 
@@ -420,7 +420,7 @@ void CodeGenerator::CreateUnresolvedFieldLocationSummary(
   bool is_get = field_access->IsUnresolvedInstanceFieldGet()
       || field_access->IsUnresolvedStaticFieldGet();
 
-  ArenaAllocator* allocator = field_access->GetBlock()->GetGraph()->GetArena();
+  ArenaAllocator* allocator = field_access->GetBlock()->GetGraph()->GetAllocator();
   LocationSummary* locations =
       new (allocator) LocationSummary(field_access, LocationSummary::kCallOnMainOnly);
 
@@ -541,7 +541,7 @@ void CodeGenerator::CreateLoadClassRuntimeCallLocationSummary(HLoadClass* cls,
                                                               Location runtime_return_location) {
   DCHECK_EQ(cls->GetLoadKind(), HLoadClass::LoadKind::kRuntimeCall);
   DCHECK_EQ(cls->InputCount(), 1u);
-  LocationSummary* locations = new (cls->GetBlock()->GetGraph()->GetArena()) LocationSummary(
+  LocationSummary* locations = new (cls->GetBlock()->GetGraph()->GetAllocator()) LocationSummary(
       cls, LocationSummary::kCallOnMainOnly);
   locations->SetInAt(0, Location::NoLocation());
   locations->AddTemp(runtime_type_index_location);
@@ -617,7 +617,7 @@ std::unique_ptr<CodeGenerator> CodeGenerator::Create(HGraph* graph,
                                                      const InstructionSetFeatures& isa_features,
                                                      const CompilerOptions& compiler_options,
                                                      OptimizingCompilerStats* stats) {
-  ArenaAllocator* arena = graph->GetArena();
+  ArenaAllocator* arena = graph->GetAllocator();
   switch (instruction_set) {
 #ifdef ART_ENABLE_CODEGEN_arm
     case kArm:
@@ -712,7 +712,7 @@ static void CheckLoopEntriesCanBeUsedForOsr(const HGraph& graph,
     // One can write loops through try/catch, which we do not support for OSR anyway.
     return;
   }
-  ArenaVector<HSuspendCheck*> loop_headers(graph.GetArena()->Adapter(kArenaAllocMisc));
+  ArenaVector<HSuspendCheck*> loop_headers(graph.GetAllocator()->Adapter(kArenaAllocMisc));
   for (HBasicBlock* block : graph.GetReversePostOrder()) {
     if (block->IsLoopHeader()) {
       HSuspendCheck* suspend_check = block->GetLoopInformation()->GetSuspendCheck();
@@ -721,7 +721,8 @@ static void CheckLoopEntriesCanBeUsedForOsr(const HGraph& graph,
       }
     }
   }
-  ArenaVector<size_t> covered(loop_headers.size(), 0, graph.GetArena()->Adapter(kArenaAllocMisc));
+  ArenaVector<size_t> covered(
+      loop_headers.size(), 0, graph.GetAllocator()->Adapter(kArenaAllocMisc));
   IterationRange<DexInstructionIterator> instructions = code_item.Instructions();
   for (auto it = instructions.begin(); it != instructions.end(); ++it) {
     const uint32_t dex_pc = it.GetDexPC(instructions.begin());
@@ -909,7 +910,7 @@ void CodeGenerator::MaybeRecordNativeDebugInfo(HInstruction* instruction,
 }
 
 void CodeGenerator::RecordCatchBlockInfo() {
-  ArenaAllocator* arena = graph_->GetArena();
+  ArenaAllocator* arena = graph_->GetAllocator();
 
   for (HBasicBlock* block : *block_order_) {
     if (!block->IsCatchBlock()) {
@@ -1194,7 +1195,8 @@ LocationSummary* CodeGenerator::CreateThrowingSlowPathLocations(HInstruction* in
   if (can_throw_into_catch_block) {
     call_kind = LocationSummary::kCallOnSlowPath;
   }
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction, call_kind);
+  LocationSummary* locations =
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction, call_kind);
   if (can_throw_into_catch_block && compiler_options_.GetImplicitNullChecks()) {
     locations->SetCustomSlowPathCallerSaves(caller_saves);  // Default: no caller-save registers.
   }
@@ -1237,7 +1239,7 @@ void CodeGenerator::EmitParallelMoves(Location from1,
                                       Location from2,
                                       Location to2,
                                       DataType::Type type2) {
-  HParallelMove parallel_move(GetGraph()->GetArena());
+  HParallelMove parallel_move(GetGraph()->GetAllocator());
   parallel_move.AddMove(from1, to1, type1, nullptr);
   parallel_move.AddMove(from2, to2, type2, nullptr);
   GetMoveResolver()->EmitNativeCode(&parallel_move);
@@ -1400,7 +1402,7 @@ void CodeGenerator::CreateSystemArrayCopyLocationSummary(HInvoke* invoke) {
     return;
   }
 
-  ArenaAllocator* allocator = invoke->GetBlock()->GetGraph()->GetArena();
+  ArenaAllocator* allocator = invoke->GetBlock()->GetGraph()->GetAllocator();
   LocationSummary* locations = new (allocator) LocationSummary(invoke,
                                                                LocationSummary::kCallOnSlowPath,
                                                                kIntrinsified);

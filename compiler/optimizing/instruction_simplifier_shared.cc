@@ -75,7 +75,7 @@ bool TrySimpleMultiplyAccumulatePatterns(HMul* mul,
     return false;
   }
 
-  ArenaAllocator* arena = mul->GetBlock()->GetGraph()->GetArena();
+  ArenaAllocator* arena = mul->GetBlock()->GetGraph()->GetAllocator();
   HMultiplyAccumulate* mulacc = new(arena) HMultiplyAccumulate(
       mul->GetType(), op_kind, input_a, input_a, input_b, mul->GetDexPc());
 
@@ -105,7 +105,7 @@ bool TryCombineMultiplyAccumulate(HMul* mul, InstructionSet isa) {
       return false;
   }
 
-  ArenaAllocator* arena = mul->GetBlock()->GetGraph()->GetArena();
+  ArenaAllocator* arena = mul->GetBlock()->GetGraph()->GetAllocator();
 
   if (mul->HasOnlyOneNonEnvironmentUse()) {
     HInstruction* use = mul->GetUses().front().GetUser();
@@ -216,7 +216,7 @@ bool TryMergeNegatedInput(HBinaryOperation* op) {
       //    BIC dst, src, mask  (respectively ORN, EON)
       HInstruction* src = hnot->AsNot()->GetInput();
 
-      HBitwiseNegatedRight* neg_op = new (hnot->GetBlock()->GetGraph()->GetArena())
+      HBitwiseNegatedRight* neg_op = new (hnot->GetBlock()->GetGraph()->GetAllocator())
           HBitwiseNegatedRight(op->GetType(), op->GetKind(), hother, src, op->GetDexPc());
 
       op->GetBlock()->ReplaceAndRemoveInstructionWith(op, neg_op);
@@ -255,7 +255,7 @@ bool TryExtractArrayAccessAddress(HInstruction* access,
 
   // Proceed to extract the base address computation.
   HGraph* graph = access->GetBlock()->GetGraph();
-  ArenaAllocator* arena = graph->GetArena();
+  ArenaAllocator* arena = graph->GetAllocator();
 
   HIntConstant* offset = graph->GetIntConstant(data_offset);
   HIntermediateAddress* address = new (arena) HIntermediateAddress(array, offset, kNoDexPc);
@@ -289,7 +289,7 @@ bool TryExtractVecArrayAccessAddress(HVecMemoryOperation* access, HInstruction* 
   }
 
   HGraph* graph = access->GetBlock()->GetGraph();
-  ArenaAllocator* arena = graph->GetArena();
+  ArenaAllocator* arena = graph->GetAllocator();
   DataType::Type packed_type = access->GetPackedType();
   uint32_t data_offset = mirror::Array::DataOffset(
       DataType::Size(packed_type)).Uint32Value();

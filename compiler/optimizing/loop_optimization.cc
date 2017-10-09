@@ -429,7 +429,7 @@ static HInstruction* Insert(HBasicBlock* block, HInstruction* instruction) {
 
 // Check that instructions from the induction sets are fully removed: have no uses
 // and no other instructions use them.
-static bool CheckInductionSetFullyRemoved(ArenaSet<HInstruction*>* iset) {
+static bool CheckInductionSetFullyRemoved(ScopedArenaSet<HInstruction*>* iset) {
   for (HInstruction* instr : *iset) {
     if (instr->GetBlock() != nullptr ||
         !instr->GetUses().empty() ||
@@ -453,7 +453,7 @@ HLoopOptimization::HLoopOptimization(HGraph* graph,
       compiler_driver_(compiler_driver),
       induction_range_(induction_analysis),
       loop_allocator_(nullptr),
-      global_allocator_(graph_->GetArena()),
+      global_allocator_(graph_->GetAllocator()),
       top_loop_(nullptr),
       last_loop_(nullptr),
       iset_(nullptr),
@@ -465,7 +465,12 @@ HLoopOptimization::HLoopOptimization(HGraph* graph,
       vector_runtime_test_a_(nullptr),
       vector_runtime_test_b_(nullptr),
       vector_map_(nullptr),
-      vector_permanent_map_(nullptr) {
+      vector_permanent_map_(nullptr),
+      vector_mode_(kSequential),
+      vector_preheader_(nullptr),
+      vector_header_(nullptr),
+      vector_body_(nullptr),
+      vector_index_(nullptr) {
 }
 
 void HLoopOptimization::Run() {
@@ -475,10 +480,8 @@ void HLoopOptimization::Run() {
     return;
   }
 
-  // Phase-local allocator that draws from the global pool. Since the allocator
-  // itself resides on the stack, it is destructed on exiting Run(), which
-  // implies its underlying memory is released immediately.
-  ArenaAllocator allocator(global_allocator_->GetArenaPool());
+  // Phase-local allocator.
+  ScopedArenaAllocator allocator(graph_->GetArenaStack());
   loop_allocator_ = &allocator;
 
   // Perform loop optimizations.
@@ -499,8 +502,8 @@ void HLoopOptimization::Run() {
 void HLoopOptimization::LocalRun() {
   // Build the linear order using the phase-local allocator. This step enables building
   // a loop hierarchy that properly reflects the outer-inner and previous-next relation.
-  ArenaVector<HBasicBlock*> linear_order(loop_allocator_->Adapter(kArenaAllocLinearOrder));
-  LinearizeGraph(graph_, loop_allocator_, &linear_order);
+  ScopedArenaVector<HBasicBlock*> linear_order(loop_allocator_->Adapter(kArenaAllocLinearOrder));
+  LinearizeGraph(graph_, &linear_order);
 
   // Build the loop hierarchy.
   for (HBasicBlock* block : linear_order) {
@@ -513,13 +516,13 @@ void HLoopOptimization::LocalRun() {
   // temporary data structures using the phase-local allocator. All new HIR
   // should use the global allocator.
   if (top_loop_ != nullptr) {
-    ArenaSet<HInstruction*> iset(loop_allocator_->Adapter(kArenaAllocLoopOptimization));
-    ArenaSafeMap<HInstruction*, HInstruction*> reds(
+    ScopedArenaSet<HInstruction*> iset(loop_allocator_->Adapter(kArenaAllocLoopOptimization));
+    ScopedArenaSafeMap<HInstruction*, HInstruction*> reds(
         std::less<HInstruction*>(), loop_allocator_->Adapter(kArenaAllocLoopOptimization));
-    ArenaSet<ArrayReference> refs(loop_allocator_->Adapter(kArenaAllocLoopOptimization));
-    ArenaSafeMap<HInstruction*, HInstruction*> map(
+    ScopedArenaSet<ArrayReference> refs(loop_allocator_->Adapter(kArenaAllocLoopOptimization));
+    ScopedArenaSafeMap<HInstruction*, HInstruction*> map(
         std::less<HInstruction*>(), loop_allocator_->Adapter(kArenaAllocLoopOptimization));
-    ArenaSafeMap<HInstruction*, HInstruction*> perm(
+    ScopedArenaSafeMap<HInstruction*, HInstruction*> perm(
         std::less<HInstruction*>(), loop_allocator_->Adapter(kArenaAllocLoopOptimization));
     // Attach.
     iset_ = &iset;

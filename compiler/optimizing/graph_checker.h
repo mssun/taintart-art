@@ -28,14 +28,14 @@ class GraphChecker : public HGraphDelegateVisitor {
  public:
   explicit GraphChecker(HGraph* graph, const char* dump_prefix = "art::GraphChecker: ")
     : HGraphDelegateVisitor(graph),
-      errors_(graph->GetArena()->Adapter(kArenaAllocGraphChecker)),
+      errors_(graph->GetAllocator()->Adapter(kArenaAllocGraphChecker)),
       dump_prefix_(dump_prefix),
-      seen_ids_(graph->GetArena(),
+      seen_ids_(graph->GetAllocator(),
                 graph->GetCurrentInstructionId(),
                 false,
                 kArenaAllocGraphChecker),
-      blocks_storage_(graph->GetArena()->Adapter(kArenaAllocGraphChecker)),
-      visited_storage_(graph->GetArena(), 0u, true, kArenaAllocGraphChecker) {}
+      blocks_storage_(graph->GetAllocator()->Adapter(kArenaAllocGraphChecker)),
+      visited_storage_(graph->GetAllocator(), 0u, true, kArenaAllocGraphChecker) {}
 
   // Check the whole graph (in reverse post-order).
   void Run() {

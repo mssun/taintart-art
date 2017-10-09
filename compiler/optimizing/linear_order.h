@@ -17,9 +17,13 @@
 #ifndef ART_COMPILER_OPTIMIZING_LINEAR_ORDER_H_
 #define ART_COMPILER_OPTIMIZING_LINEAR_ORDER_H_
 
+#include <type_traits>
+
 #include "nodes.h"
 
 namespace art {
+
+void LinearizeGraphInternal(const HGraph* graph, ArrayRef<HBasicBlock*> linear_order);
 
 // Linearizes the 'graph' such that:
 // (1): a block is always after its dominator,
@@ -32,9 +36,15 @@ namespace art {
 //
 // for (HBasicBlock* block : ReverseRange(linear_order))     // linear post order
 //
-void LinearizeGraph(const HGraph* graph,
-                    ArenaAllocator* allocator,
-                    ArenaVector<HBasicBlock*>* linear_order);
+template <typename Vector>
+void LinearizeGraph(const HGraph* graph, Vector* linear_order) {
+  static_assert(std::is_same<HBasicBlock*, typename Vector::value_type>::value,
+                "Vector::value_type must be HBasicBlock*.");
+  // Resize the vector and pass an ArrayRef<> to internal implementation which is shared
+  // for all kinds of vectors, i.e. ArenaVector<> or ScopedArenaVector<>.
+  linear_order->resize(graph->GetReversePostOrder().size());
+  LinearizeGraphInternal(graph, ArrayRef<HBasicBlock*>(*linear_order));
+}
 
 }  // namespace art
 

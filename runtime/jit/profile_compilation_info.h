@@ -405,7 +405,7 @@ class ProfileCompilationInfo {
   static bool Equals(const ProfileCompilationInfo::OfflineProfileMethodInfo& pmi1,
                      const ProfileCompilationInfo::OfflineProfileMethodInfo& pmi2);
 
-  ArenaAllocator* GetArena() { return &arena_; }
+  ArenaAllocator* GetAllocator() { return &allocator_; }
 
   // Return all of the class descriptors in the profile for a set of dex files.
   std::unordered_set<std::string> GetClassDescriptors(const std::vector<const DexFile*>& dex_files);
@@ -698,7 +698,7 @@ class ProfileCompilationInfo {
   friend class Dex2oatLayoutTest;
 
   ArenaPool default_arena_pool_;
-  ArenaAllocator arena_;
+  ArenaAllocator allocator_;
 
   // Vector containing the actual profile info.
   // The vector index is the profile index of the dex data and

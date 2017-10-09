@@ -119,7 +119,7 @@ class JumpTableARMVIXL : public DeletableArenaObject<kArenaAllocSwitchTable> {
   explicit JumpTableARMVIXL(HPackedSwitch* switch_instr)
       : switch_instr_(switch_instr),
         table_start_(),
-        bb_addresses_(switch_instr->GetArena()->Adapter(kArenaAllocCodeGenerator)) {
+        bb_addresses_(switch_instr->GetAllocator()->Adapter(kArenaAllocCodeGenerator)) {
     uint32_t num_entries = switch_instr_->GetNumEntries();
     for (uint32_t i = 0; i < num_entries; i++) {
       VIXLInt32Literal *lit = new VIXLInt32Literal(0, vixl32::RawLiteral::kManuallyPlaced);
@@ -739,7 +739,7 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
   void GenerateExplicitNullCheck(HNullCheck* instruction) OVERRIDE;
 
   JumpTableARMVIXL* CreateJumpTable(HPackedSwitch* switch_instr) {
-    jump_tables_.emplace_back(new (GetGraph()->GetArena()) JumpTableARMVIXL(switch_instr));
+    jump_tables_.emplace_back(new (GetGraph()->GetAllocator()) JumpTableARMVIXL(switch_instr));
     return jump_tables_.back().get();
   }
   void EmitJumpTables();

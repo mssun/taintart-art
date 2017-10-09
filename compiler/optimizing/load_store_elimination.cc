@@ -49,13 +49,13 @@ class LSEVisitor : public HGraphVisitor {
                          ArenaVector<HInstruction*>(heap_locations_collector.
                                                     GetNumberOfHeapLocations(),
                                                     kUnknownHeapValue,
-                                                    graph->GetArena()->Adapter(kArenaAllocLSE)),
-                         graph->GetArena()->Adapter(kArenaAllocLSE)),
-        removed_loads_(graph->GetArena()->Adapter(kArenaAllocLSE)),
-        substitute_instructions_for_loads_(graph->GetArena()->Adapter(kArenaAllocLSE)),
-        possibly_removed_stores_(graph->GetArena()->Adapter(kArenaAllocLSE)),
-        singleton_new_instances_(graph->GetArena()->Adapter(kArenaAllocLSE)),
-        singleton_new_arrays_(graph->GetArena()->Adapter(kArenaAllocLSE)) {
+                                                    graph->GetAllocator()->Adapter(kArenaAllocLSE)),
+                         graph->GetAllocator()->Adapter(kArenaAllocLSE)),
+        removed_loads_(graph->GetAllocator()->Adapter(kArenaAllocLSE)),
+        substitute_instructions_for_loads_(graph->GetAllocator()->Adapter(kArenaAllocLSE)),
+        possibly_removed_stores_(graph->GetAllocator()->Adapter(kArenaAllocLSE)),
+        singleton_new_instances_(graph->GetAllocator()->Adapter(kArenaAllocLSE)),
+        singleton_new_arrays_(graph->GetAllocator()->Adapter(kArenaAllocLSE)) {
   }
 
   void VisitBasicBlock(HBasicBlock* block) OVERRIDE {

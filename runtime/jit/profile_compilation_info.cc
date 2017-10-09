@@ -76,20 +76,20 @@ static bool ChecksumMatch(uint32_t dex_file_checksum, uint32_t checksum) {
 
 ProfileCompilationInfo::ProfileCompilationInfo(ArenaPool* custom_arena_pool)
     : default_arena_pool_(),
-      arena_(custom_arena_pool),
-      info_(arena_.Adapter(kArenaAllocProfile)),
-      profile_key_map_(std::less<const std::string>(), arena_.Adapter(kArenaAllocProfile)) {
+      allocator_(custom_arena_pool),
+      info_(allocator_.Adapter(kArenaAllocProfile)),
+      profile_key_map_(std::less<const std::string>(), allocator_.Adapter(kArenaAllocProfile)) {
 }
 
 ProfileCompilationInfo::ProfileCompilationInfo()
     : default_arena_pool_(/*use_malloc*/true, /*low_4gb*/false, "ProfileCompilationInfo"),
-      arena_(&default_arena_pool_),
-      info_(arena_.Adapter(kArenaAllocProfile)),
-      profile_key_map_(std::less<const std::string>(), arena_.Adapter(kArenaAllocProfile)) {
+      allocator_(&default_arena_pool_),
+      info_(allocator_.Adapter(kArenaAllocProfile)),
+      profile_key_map_(std::less<const std::string>(), allocator_.Adapter(kArenaAllocProfile)) {
 }
 
 ProfileCompilationInfo::~ProfileCompilationInfo() {
-  VLOG(profiler) << Dumpable<MemStats>(arena_.GetMemStats());
+  VLOG(profiler) << Dumpable<MemStats>(allocator_.GetMemStats());
   for (DexFileData* data : info_) {
     delete data;
   }
@@ -569,8 +569,8 @@ ProfileCompilationInfo::DexFileData* ProfileCompilationInfo::GetOrAddDexFileData
   uint8_t profile_index = profile_index_it->second;
   if (info_.size() <= profile_index) {
     // This is a new addition. Add it to the info_ array.
-    DexFileData* dex_file_data = new (&arena_) DexFileData(
-        &arena_,
+    DexFileData* dex_file_data = new (&allocator_) DexFileData(
+        &allocator_,
         profile_key,
         checksum,
         profile_index,
@@ -1871,7 +1871,7 @@ ProfileCompilationInfo::MethodHotness ProfileCompilationInfo::DexFileData::GetHo
 
 ProfileCompilationInfo::DexPcData*
 ProfileCompilationInfo::FindOrAddDexPc(InlineCacheMap* inline_cache, uint32_t dex_pc) {
-  return &(inline_cache->FindOrAdd(dex_pc, DexPcData(&arena_))->second);
+  return &(inline_cache->FindOrAdd(dex_pc, DexPcData(&allocator_))->second);
 }
 
 std::unordered_set<std::string> ProfileCompilationInfo::GetClassDescriptors(

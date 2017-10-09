@@ -665,6 +665,11 @@ class LocationSummary : public ArenaObject<kArenaAllocLocationSummary> {
   }
 
  private:
+  LocationSummary(HInstruction* instruction,
+                  CallKind call_kind,
+                  bool intrinsified,
+                  ArenaAllocator* allocator);
+
   ArenaVector<Location> inputs_;
   ArenaVector<Location> temps_;
   const CallKind call_kind_;

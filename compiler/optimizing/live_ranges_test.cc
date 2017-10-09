@@ -29,10 +29,13 @@
 
 namespace art {
 
-class LiveRangesTest : public CommonCompilerTest {};
+class LiveRangesTest : public OptimizingUnitTest {
+ public:
+  HGraph* BuildGraph(const uint16_t* data);
+};
 
-static HGraph* BuildGraph(const uint16_t* data, ArenaAllocator* allocator) {
-  HGraph* graph = CreateCFG(allocator, data);
+HGraph* LiveRangesTest::BuildGraph(const uint16_t* data) {
+  HGraph* graph = CreateCFG(data);
   // Suspend checks implementation may change in the future, and this test relies
   // on how instructions are ordered.
   RemoveSuspendChecks(graph);
@@ -58,9 +61,7 @@ TEST_F(LiveRangesTest, CFG1) {
     Instruction::CONST_4 | 0 | 0,
     Instruction::RETURN);
 
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
-  HGraph* graph = BuildGraph(data, &allocator);
+  HGraph* graph = BuildGraph(data);
 
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
       X86InstructionSetFeatures::FromCppDefines());
@@ -107,9 +108,7 @@ TEST_F(LiveRangesTest, CFG2) {
     Instruction::GOTO | 0x100,
     Instruction::RETURN | 0 << 8);
 
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
-  HGraph* graph = BuildGraph(data, &allocator);
+  HGraph* graph = BuildGraph(data);
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
       X86InstructionSetFeatures::FromCppDefines());
   x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
@@ -158,9 +157,7 @@ TEST_F(LiveRangesTest, CFG3) {
     Instruction::CONST_4 | 4 << 12 | 0,
     Instruction::RETURN | 0 << 8);
 
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
-  HGraph* graph = BuildGraph(data, &allocator);
+  HGraph* graph = BuildGraph(data);
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
       X86InstructionSetFeatures::FromCppDefines());
   x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
@@ -236,9 +233,7 @@ TEST_F(LiveRangesTest, Loop1) {
     Instruction::CONST_4 | 5 << 12 | 1 << 8,
     Instruction::RETURN | 1 << 8);
 
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
-  HGraph* graph = BuildGraph(data, &allocator);
+  HGraph* graph = BuildGraph(data);
   RemoveSuspendChecks(graph);
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
       X86InstructionSetFeatures::FromCppDefines());
@@ -316,9 +311,7 @@ TEST_F(LiveRangesTest, Loop2) {
     Instruction::GOTO | 0xFB00,
     Instruction::RETURN | 0 << 8);
 
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
-  HGraph* graph = BuildGraph(data, &allocator);
+  HGraph* graph = BuildGraph(data);
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
       X86InstructionSetFeatures::FromCppDefines());
   x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
@@ -394,9 +387,7 @@ TEST_F(LiveRangesTest, CFG4) {
     Instruction::ADD_INT, 1 << 8,
     Instruction::RETURN);
 
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
-  HGraph* graph = BuildGraph(data, &allocator);
+  HGraph* graph = BuildGraph(data);
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
       X86InstructionSetFeatures::FromCppDefines());
   x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
