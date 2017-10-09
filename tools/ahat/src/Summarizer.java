@@ -51,7 +51,9 @@ class Summarizer {
     }
 
     // Annotate unreachable objects as such.
-    if (!inst.isReachable()) {
+    if (inst.isWeaklyReachable()) {
+      formatted.append("weak ");
+    } else if (inst.isUnreachable()) {
       formatted.append("unreachable ");
     }
 
