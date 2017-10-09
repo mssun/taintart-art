@@ -32,8 +32,8 @@ class ArenaObject {
     return allocator->Alloc(size, kAllocKind);
   }
 
-  static void* operator new(size_t size, ScopedArenaAllocator* arena) {
-    return arena->Alloc(size, kAllocKind);
+  static void* operator new(size_t size, ScopedArenaAllocator* allocator) {
+    return allocator->Alloc(size, kAllocKind);
   }
 
   void operator delete(void*, size_t) {
@@ -56,8 +56,8 @@ class DeletableArenaObject {
     return allocator->Alloc(size, kAllocKind);
   }
 
-  static void* operator new(size_t size, ScopedArenaAllocator* arena) {
-    return arena->Alloc(size, kAllocKind);
+  static void* operator new(size_t size, ScopedArenaAllocator* allocator) {
+    return allocator->Alloc(size, kAllocKind);
   }
 
   void operator delete(void*, size_t) {

@@ -133,10 +133,10 @@ class ProfileCompilationInfo {
   // megamorphic and its possible types).
   // If the receiver is megamorphic or is missing types the set of classes will be empty.
   struct DexPcData : public ArenaObject<kArenaAllocProfile> {
-    explicit DexPcData(ArenaAllocator* arena)
+    explicit DexPcData(ArenaAllocator* allocator)
         : is_missing_types(false),
           is_megamorphic(false),
-          classes(std::less<ClassReference>(), arena->Adapter(kArenaAllocProfile)) {}
+          classes(std::less<ClassReference>(), allocator->Adapter(kArenaAllocProfile)) {}
     void AddClass(uint16_t dex_profile_idx, const dex::TypeIndex& type_idx);
     void SetIsMegamorphic() {
       if (is_missing_types) return;
@@ -429,19 +429,19 @@ class ProfileCompilationInfo {
   // profile_key_map_ and info_. However, it makes the profiles logic much
   // simpler if we have references here as well.
   struct DexFileData : public DeletableArenaObject<kArenaAllocProfile> {
-    DexFileData(ArenaAllocator* arena,
+    DexFileData(ArenaAllocator* allocator,
                 const std::string& key,
                 uint32_t location_checksum,
                 uint16_t index,
                 uint32_t num_methods)
-        : arena_(arena),
+        : arena_(allocator),
           profile_key(key),
           profile_index(index),
           checksum(location_checksum),
-          method_map(std::less<uint16_t>(), arena->Adapter(kArenaAllocProfile)),
-          class_set(std::less<dex::TypeIndex>(), arena->Adapter(kArenaAllocProfile)),
+          method_map(std::less<uint16_t>(), allocator->Adapter(kArenaAllocProfile)),
+          class_set(std::less<dex::TypeIndex>(), allocator->Adapter(kArenaAllocProfile)),
           num_method_ids(num_methods),
-          bitmap_storage(arena->Adapter(kArenaAllocProfile)) {
+          bitmap_storage(allocator->Adapter(kArenaAllocProfile)) {
       const size_t num_bits = num_method_ids * kBitmapIndexCount;
       bitmap_storage.resize(RoundUp(num_bits, kBitsPerByte) / kBitsPerByte);
       if (!bitmap_storage.empty()) {

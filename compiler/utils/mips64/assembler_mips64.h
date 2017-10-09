@@ -418,14 +418,14 @@ class Mips64Assembler FINAL : public Assembler, public JNIMacroAssembler<Pointer
  public:
   using JNIBase = JNIMacroAssembler<PointerSize::k64>;
 
-  explicit Mips64Assembler(ArenaAllocator* arena,
+  explicit Mips64Assembler(ArenaAllocator* allocator,
                            const Mips64InstructionSetFeatures* instruction_set_features = nullptr)
-      : Assembler(arena),
+      : Assembler(allocator),
         overwriting_(false),
         overwrite_location_(0),
-        literals_(arena->Adapter(kArenaAllocAssembler)),
-        long_literals_(arena->Adapter(kArenaAllocAssembler)),
-        jump_tables_(arena->Adapter(kArenaAllocAssembler)),
+        literals_(allocator->Adapter(kArenaAllocAssembler)),
+        long_literals_(allocator->Adapter(kArenaAllocAssembler)),
+        jump_tables_(allocator->Adapter(kArenaAllocAssembler)),
         last_position_adjustment_(0),
         last_old_position_(0),
         last_branch_id_(0),

@@ -46,7 +46,7 @@ template <PointerSize kPointerSize>
 class JNIMacroAssembler : public DeletableArenaObject<kArenaAllocAssembler> {
  public:
   static std::unique_ptr<JNIMacroAssembler<kPointerSize>> Create(
-      ArenaAllocator* arena,
+      ArenaAllocator* allocator,
       InstructionSet instruction_set,
       const InstructionSetFeatures* instruction_set_features = nullptr);
 
@@ -275,7 +275,7 @@ class JNIMacroAssemblerFwd : public JNIMacroAssembler<kPointerSize> {
   }
 
  protected:
-  explicit JNIMacroAssemblerFwd(ArenaAllocator* arena) : asm_(arena) {}
+  explicit JNIMacroAssemblerFwd(ArenaAllocator* allocator) : asm_(allocator) {}
 
   T asm_;
 };

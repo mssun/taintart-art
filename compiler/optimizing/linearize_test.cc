@@ -45,7 +45,7 @@ void LinearizeTest::TestCode(const uint16_t* data,
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
       X86InstructionSetFeatures::FromCppDefines());
   x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-  SsaLivenessAnalysis liveness(graph, &codegen);
+  SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
   liveness.Analyze();
 
   ASSERT_EQ(graph->GetLinearOrder().size(), number_of_blocks);

@@ -145,6 +145,10 @@ class ScopedArenaAllocator
   explicit ScopedArenaAllocator(ArenaStack* arena_stack);
   ~ScopedArenaAllocator();
 
+  ArenaStack* GetArenaStack() const {
+    return arena_stack_;
+  }
+
   void Reset();
 
   void* Alloc(size_t bytes, ArenaAllocKind kind = kArenaAllocMisc) ALWAYS_INLINE {

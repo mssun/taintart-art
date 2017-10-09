@@ -35,9 +35,9 @@ class ArmVIXLJNIMacroAssembler FINAL
  private:
   class ArmException;
  public:
-  explicit ArmVIXLJNIMacroAssembler(ArenaAllocator* arena)
-      : JNIMacroAssemblerFwd(arena),
-        exception_blocks_(arena->Adapter(kArenaAllocAssembler)) {}
+  explicit ArmVIXLJNIMacroAssembler(ArenaAllocator* allocator)
+      : JNIMacroAssemblerFwd(allocator),
+        exception_blocks_(allocator->Adapter(kArenaAllocAssembler)) {}
 
   virtual ~ArmVIXLJNIMacroAssembler() {}
   void FinalizeCode() OVERRIDE;

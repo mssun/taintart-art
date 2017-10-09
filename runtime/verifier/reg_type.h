@@ -264,8 +264,8 @@ class RegType {
     return ::operator new(size);
   }
 
-  static void* operator new(size_t size, ArenaAllocator* arena) = delete;
-  static void* operator new(size_t size, ScopedArenaAllocator* arena);
+  static void* operator new(size_t size, ArenaAllocator* allocator) = delete;
+  static void* operator new(size_t size, ScopedArenaAllocator* allocator);
 
   enum class AssignmentType {
     kBoolean,
