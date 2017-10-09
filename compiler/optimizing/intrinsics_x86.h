@@ -49,7 +49,7 @@ class IntrinsicLocationsBuilderX86 FINAL : public IntrinsicVisitor {
   bool TryDispatch(HInvoke* invoke);
 
  private:
-  ArenaAllocator* arena_;
+  ArenaAllocator* allocator_;
   CodeGeneratorX86* codegen_;
 
   DISALLOW_COPY_AND_ASSIGN(IntrinsicLocationsBuilderX86);

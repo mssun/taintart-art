@@ -141,12 +141,12 @@ bool InstructionSimplifierArm64Visitor::TryMergeIntoShifterOperand(HInstruction*
 
   if (do_merge) {
     HDataProcWithShifterOp* alu_with_op =
-        new (GetGraph()->GetArena()) HDataProcWithShifterOp(use,
-                                                            other_input,
-                                                            bitfield_op->InputAt(0),
-                                                            op_kind,
-                                                            shift_amount,
-                                                            use->GetDexPc());
+        new (GetGraph()->GetAllocator()) HDataProcWithShifterOp(use,
+                                                                other_input,
+                                                                bitfield_op->InputAt(0),
+                                                                op_kind,
+                                                                shift_amount,
+                                                                use->GetDexPc());
     use->GetBlock()->ReplaceAndRemoveInstructionWith(use, alu_with_op);
     if (bitfield_op->GetUses().empty()) {
       bitfield_op->GetBlock()->RemoveInstruction(bitfield_op);

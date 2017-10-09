@@ -17,6 +17,8 @@
 #ifndef ART_COMPILER_OPTIMIZING_LOOP_OPTIMIZATION_H_
 #define ART_COMPILER_OPTIMIZING_LOOP_OPTIMIZATION_H_
 
+#include "base/scoped_arena_allocator.h"
+#include "base/scoped_arena_containers.h"
 #include "induction_var_range.h"
 #include "nodes.h"
 #include "optimization.h"
@@ -220,7 +222,7 @@ class HLoopOptimization : public HOptimization {
 
   // Phase-local heap memory allocator for the loop optimizer. Storage obtained
   // through this allocator is immediately released when the loop optimizer is done.
-  ArenaAllocator* loop_allocator_;
+  ScopedArenaAllocator* loop_allocator_;
 
   // Global heap memory allocator. Used to build HIR.
   ArenaAllocator* global_allocator_;
@@ -232,14 +234,14 @@ class HLoopOptimization : public HOptimization {
 
   // Temporary bookkeeping of a set of instructions.
   // Contents reside in phase-local heap memory.
-  ArenaSet<HInstruction*>* iset_;
+  ScopedArenaSet<HInstruction*>* iset_;
 
   // Temporary bookkeeping of reduction instructions. Mapping is two-fold:
   // (1) reductions in the loop-body are mapped back to their phi definition,
   // (2) phi definitions are mapped to their initial value (updated during
   //     code generation to feed the proper values into the new chain).
   // Contents reside in phase-local heap memory.
-  ArenaSafeMap<HInstruction*, HInstruction*>* reductions_;
+  ScopedArenaSafeMap<HInstruction*, HInstruction*>* reductions_;
 
   // Flag that tracks if any simplifications have occurred.
   bool simplified_;
@@ -249,7 +251,7 @@ class HLoopOptimization : public HOptimization {
 
   // Set of array references in the vector loop.
   // Contents reside in phase-local heap memory.
-  ArenaSet<ArrayReference>* vector_refs_;
+  ScopedArenaSet<ArrayReference>* vector_refs_;
 
   // Dynamic loop peeling candidate for alignment.
   const ArrayReference* vector_peeling_candidate_;
@@ -262,11 +264,11 @@ class HLoopOptimization : public HOptimization {
   // loop (mode is kSequential) and the actual vector loop (mode is kVector). The data
   // structure maps original instructions into the new instructions.
   // Contents reside in phase-local heap memory.
-  ArenaSafeMap<HInstruction*, HInstruction*>* vector_map_;
+  ScopedArenaSafeMap<HInstruction*, HInstruction*>* vector_map_;
 
   // Permanent mapping used during vectorization synthesis.
   // Contents reside in phase-local heap memory.
-  ArenaSafeMap<HInstruction*, HInstruction*>* vector_permanent_map_;
+  ScopedArenaSafeMap<HInstruction*, HInstruction*>* vector_permanent_map_;
 
   // Temporary vectorization bookkeeping.
   VectorMode vector_mode_;  // synthesis mode

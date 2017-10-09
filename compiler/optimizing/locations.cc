@@ -28,10 +28,10 @@ static_assert(std::is_trivially_copyable<Location>::value, "Location should be t
 
 LocationSummary::LocationSummary(HInstruction* instruction,
                                  CallKind call_kind,
-                                 bool intrinsified)
-    : inputs_(instruction->InputCount(),
-              instruction->GetBlock()->GetGraph()->GetArena()->Adapter(kArenaAllocLocationSummary)),
-      temps_(instruction->GetBlock()->GetGraph()->GetArena()->Adapter(kArenaAllocLocationSummary)),
+                                 bool intrinsified,
+                                 ArenaAllocator* allocator)
+    : inputs_(instruction->InputCount(), allocator->Adapter(kArenaAllocLocationSummary)),
+      temps_(allocator->Adapter(kArenaAllocLocationSummary)),
       call_kind_(call_kind),
       intrinsified_(intrinsified),
       has_custom_slow_path_calling_convention_(false),
@@ -43,11 +43,18 @@ LocationSummary::LocationSummary(HInstruction* instruction,
   instruction->SetLocations(this);
 
   if (NeedsSafepoint()) {
-    ArenaAllocator* arena = instruction->GetBlock()->GetGraph()->GetArena();
+    ArenaAllocator* arena = instruction->GetBlock()->GetGraph()->GetAllocator();
     stack_mask_ = ArenaBitVector::Create(arena, 0, true, kArenaAllocLocationSummary);
   }
 }
 
+LocationSummary::LocationSummary(HInstruction* instruction,
+                                 CallKind call_kind,
+                                 bool intrinsified)
+    : LocationSummary(instruction,
+                      call_kind,
+                      intrinsified,
+                      instruction->GetBlock()->GetGraph()->GetAllocator()) {}
 
 Location Location::RegisterOrConstant(HInstruction* instruction) {
   return instruction->IsConstant()

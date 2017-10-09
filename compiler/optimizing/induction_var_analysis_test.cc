@@ -27,12 +27,10 @@ namespace art {
 /**
  * Fixture class for the InductionVarAnalysis tests.
  */
-class InductionVarAnalysisTest : public CommonCompilerTest {
+class InductionVarAnalysisTest : public OptimizingUnitTest {
  public:
   InductionVarAnalysisTest()
-      : pool_(),
-        allocator_(&pool_),
-        iva_(nullptr),
+      : iva_(nullptr),
         entry_(nullptr),
         return_(nullptr),
         exit_(nullptr),
@@ -44,7 +42,7 @@ class InductionVarAnalysisTest : public CommonCompilerTest {
         constant100_(nullptr),
         constantm1_(nullptr),
         float_constant0_(nullptr) {
-    graph_ = CreateGraph(&allocator_);
+    graph_ = CreateGraph();
   }
 
   ~InductionVarAnalysisTest() { }
@@ -52,15 +50,15 @@ class InductionVarAnalysisTest : public CommonCompilerTest {
   // Builds single for-loop at depth d.
   void BuildForLoop(int d, int n) {
     ASSERT_LT(d, n);
-    loop_preheader_[d] = new (&allocator_) HBasicBlock(graph_);
+    loop_preheader_[d] = new (GetAllocator()) HBasicBlock(graph_);
     graph_->AddBlock(loop_preheader_[d]);
-    loop_header_[d] = new (&allocator_) HBasicBlock(graph_);
+    loop_header_[d] = new (GetAllocator()) HBasicBlock(graph_);
     graph_->AddBlock(loop_header_[d]);
     loop_preheader_[d]->AddSuccessor(loop_header_[d]);
     if (d < (n - 1)) {
       BuildForLoop(d + 1, n);
     }
-    loop_body_[d] = new (&allocator_) HBasicBlock(graph_);
+    loop_body_[d] = new (GetAllocator()) HBasicBlock(graph_);
     graph_->AddBlock(loop_body_[d]);
     loop_body_[d]->AddSuccessor(loop_header_[d]);
     if (d < (n - 1)) {
@@ -79,12 +77,12 @@ class InductionVarAnalysisTest : public CommonCompilerTest {
     graph_->SetNumberOfVRegs(n + 3);
 
     // Build basic blocks with entry, nested loop, exit.
-    entry_ = new (&allocator_) HBasicBlock(graph_);
+    entry_ = new (GetAllocator()) HBasicBlock(graph_);
     graph_->AddBlock(entry_);
     BuildForLoop(0, n);
-    return_ = new (&allocator_) HBasicBlock(graph_);
+    return_ = new (GetAllocator()) HBasicBlock(graph_);
     graph_->AddBlock(return_);
-    exit_ = new (&allocator_) HBasicBlock(graph_);
+    exit_ = new (GetAllocator()) HBasicBlock(graph_);
     graph_->AddBlock(exit_);
     entry_->AddSuccessor(loop_preheader_[0]);
     loop_header_[0]->AddSuccessor(return_);
@@ -93,7 +91,7 @@ class InductionVarAnalysisTest : public CommonCompilerTest {
     graph_->SetExitBlock(exit_);
 
     // Provide entry and exit instructions.
-    parameter_ = new (&allocator_) HParameterValue(
+    parameter_ = new (GetAllocator()) HParameterValue(
         graph_->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference, true);
     entry_->AddInstruction(parameter_);
     constant0_ = graph_->GetIntConstant(0);
@@ -103,20 +101,20 @@ class InductionVarAnalysisTest : public CommonCompilerTest {
     constant100_ = graph_->GetIntConstant(100);
     constantm1_ = graph_->GetIntConstant(-1);
     float_constant0_ = graph_->GetFloatConstant(0.0f);
-    return_->AddInstruction(new (&allocator_) HReturnVoid());
-    exit_->AddInstruction(new (&allocator_) HExit());
+    return_->AddInstruction(new (GetAllocator()) HReturnVoid());
+    exit_->AddInstruction(new (GetAllocator()) HExit());
 
     // Provide loop instructions.
     for (int d = 0; d < n; d++) {
-      basic_[d] = new (&allocator_) HPhi(&allocator_, d, 0, DataType::Type::kInt32);
-      loop_preheader_[d]->AddInstruction(new (&allocator_) HGoto());
+      basic_[d] = new (GetAllocator()) HPhi(GetAllocator(), d, 0, DataType::Type::kInt32);
+      loop_preheader_[d]->AddInstruction(new (GetAllocator()) HGoto());
       loop_header_[d]->AddPhi(basic_[d]);
-      HInstruction* compare = new (&allocator_) HLessThan(basic_[d], constant100_);
+      HInstruction* compare = new (GetAllocator()) HLessThan(basic_[d], constant100_);
       loop_header_[d]->AddInstruction(compare);
-      loop_header_[d]->AddInstruction(new (&allocator_) HIf(compare));
-      increment_[d] = new (&allocator_) HAdd(DataType::Type::kInt32, basic_[d], constant1_);
+      loop_header_[d]->AddInstruction(new (GetAllocator()) HIf(compare));
+      increment_[d] = new (GetAllocator()) HAdd(DataType::Type::kInt32, basic_[d], constant1_);
       loop_body_[d]->AddInstruction(increment_[d]);
-      loop_body_[d]->AddInstruction(new (&allocator_) HGoto());
+      loop_body_[d]->AddInstruction(new (GetAllocator()) HGoto());
 
       basic_[d]->AddInput(constant0_);
       basic_[d]->AddInput(increment_[d]);
@@ -125,9 +123,9 @@ class InductionVarAnalysisTest : public CommonCompilerTest {
 
   // Builds if-statement at depth d.
   HPhi* BuildIf(int d, HBasicBlock** ifT, HBasicBlock** ifF) {
-    HBasicBlock* cond = new (&allocator_) HBasicBlock(graph_);
-    HBasicBlock* ifTrue = new (&allocator_) HBasicBlock(graph_);
-    HBasicBlock* ifFalse = new (&allocator_) HBasicBlock(graph_);
+    HBasicBlock* cond = new (GetAllocator()) HBasicBlock(graph_);
+    HBasicBlock* ifTrue = new (GetAllocator()) HBasicBlock(graph_);
+    HBasicBlock* ifFalse = new (GetAllocator()) HBasicBlock(graph_);
     graph_->AddBlock(cond);
     graph_->AddBlock(ifTrue);
     graph_->AddBlock(ifFalse);
@@ -137,11 +135,11 @@ class InductionVarAnalysisTest : public CommonCompilerTest {
     cond->AddSuccessor(ifFalse);
     ifTrue->AddSuccessor(loop_body_[d]);
     ifFalse->AddSuccessor(loop_body_[d]);
-    cond->AddInstruction(new (&allocator_) HIf(parameter_));
+    cond->AddInstruction(new (GetAllocator()) HIf(parameter_));
     *ifT = ifTrue;
     *ifF = ifFalse;
 
-    HPhi* select_phi = new (&allocator_) HPhi(&allocator_, -1, 0, DataType::Type::kInt32);
+    HPhi* select_phi = new (GetAllocator()) HPhi(GetAllocator(), -1, 0, DataType::Type::kInt32);
     loop_body_[d]->AddPhi(select_phi);
     return select_phi;
   }
@@ -154,7 +152,7 @@ class InductionVarAnalysisTest : public CommonCompilerTest {
 
   // Inserts a phi to loop header at depth d and returns it.
   HPhi* InsertLoopPhi(int vreg, int d) {
-    HPhi* phi = new (&allocator_) HPhi(&allocator_, vreg, 0, DataType::Type::kInt32);
+    HPhi* phi = new (GetAllocator()) HPhi(GetAllocator(), vreg, 0, DataType::Type::kInt32);
     loop_header_[d]->AddPhi(phi);
     return phi;
   }
@@ -164,7 +162,7 @@ class InductionVarAnalysisTest : public CommonCompilerTest {
   HInstruction* InsertArrayStore(HInstruction* subscript, int d) {
     // ArraySet is given a float value in order to avoid SsaBuilder typing
     // it from the array's non-existent reference type info.
-    return InsertInstruction(new (&allocator_) HArraySet(
+    return InsertInstruction(new (GetAllocator()) HArraySet(
         parameter_, subscript, float_constant0_, DataType::Type::kFloat32, 0), d);
   }
 
@@ -197,13 +195,11 @@ class InductionVarAnalysisTest : public CommonCompilerTest {
   // Performs InductionVarAnalysis (after proper set up).
   void PerformInductionVarAnalysis() {
     graph_->BuildDominatorTree();
-    iva_ = new (&allocator_) HInductionVarAnalysis(graph_);
+    iva_ = new (GetAllocator()) HInductionVarAnalysis(graph_);
     iva_->Run();
   }
 
   // General building fields.
-  ArenaPool pool_;
-  ArenaAllocator allocator_;
   HGraph* graph_;
   HInductionVarAnalysis* iva_;
 
@@ -286,15 +282,15 @@ TEST_F(InductionVarAnalysisTest, FindDerivedInduction) {
   // }
   BuildLoopNest(1);
   HInstruction* add = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, constant100_, basic_[0]), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, constant100_, basic_[0]), 0);
   HInstruction* sub = InsertInstruction(
-      new (&allocator_) HSub(DataType::Type::kInt32, constant100_, basic_[0]), 0);
+      new (GetAllocator()) HSub(DataType::Type::kInt32, constant100_, basic_[0]), 0);
   HInstruction* mul = InsertInstruction(
-      new (&allocator_) HMul(DataType::Type::kInt32, constant100_, basic_[0]), 0);
+      new (GetAllocator()) HMul(DataType::Type::kInt32, constant100_, basic_[0]), 0);
   HInstruction* shl = InsertInstruction(
-      new (&allocator_) HShl(DataType::Type::kInt32, basic_[0], constant1_), 0);
+      new (GetAllocator()) HShl(DataType::Type::kInt32, basic_[0], constant1_), 0);
   HInstruction* neg = InsertInstruction(
-      new (&allocator_) HNeg(DataType::Type::kInt32, basic_[0]), 0);
+      new (GetAllocator()) HNeg(DataType::Type::kInt32, basic_[0]), 0);
   PerformInductionVarAnalysis();
 
   EXPECT_STREQ("((1) * i + (100)):Int32", GetInductionInfo(add, 0).c_str());
@@ -318,10 +314,10 @@ TEST_F(InductionVarAnalysisTest, FindChainInduction) {
   k_header->AddInput(constant0_);
 
   HInstruction* add = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, k_header, constant100_), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, k_header, constant100_), 0);
   HInstruction* store1 = InsertArrayStore(add, 0);
   HInstruction* sub = InsertInstruction(
-      new (&allocator_) HSub(DataType::Type::kInt32, add, constant1_), 0);
+      new (GetAllocator()) HSub(DataType::Type::kInt32, add, constant1_), 0);
   HInstruction* store2 = InsertArrayStore(sub, 0);
   k_header->AddInput(sub);
   PerformInductionVarAnalysis();
@@ -351,11 +347,11 @@ TEST_F(InductionVarAnalysisTest, FindTwoWayBasicInduction) {
   HPhi* k_body = BuildIf(0, &ifTrue, &ifFalse);
 
   // True-branch.
-  HInstruction* inc1 = new (&allocator_) HAdd(DataType::Type::kInt32, k_header, constant1_);
+  HInstruction* inc1 = new (GetAllocator()) HAdd(DataType::Type::kInt32, k_header, constant1_);
   ifTrue->AddInstruction(inc1);
   k_body->AddInput(inc1);
   // False-branch.
-  HInstruction* inc2 = new (&allocator_) HAdd(DataType::Type::kInt32, k_header, constant1_);
+  HInstruction* inc2 = new (GetAllocator()) HAdd(DataType::Type::kInt32, k_header, constant1_);
   ifFalse->AddInstruction(inc2);
   k_body->AddInput(inc2);
   // Merge over a phi.
@@ -384,11 +380,11 @@ TEST_F(InductionVarAnalysisTest, FindTwoWayDerivedInduction) {
   HPhi* k = BuildIf(0, &ifTrue, &ifFalse);
 
   // True-branch.
-  HInstruction* inc1 = new (&allocator_) HAdd(DataType::Type::kInt32, basic_[0], constant1_);
+  HInstruction* inc1 = new (GetAllocator()) HAdd(DataType::Type::kInt32, basic_[0], constant1_);
   ifTrue->AddInstruction(inc1);
   k->AddInput(inc1);
   // False-branch.
-  HInstruction* inc2 = new (&allocator_) HAdd(DataType::Type::kInt32, basic_[0], constant1_);
+  HInstruction* inc2 = new (GetAllocator()) HAdd(DataType::Type::kInt32, basic_[0], constant1_);
   ifFalse->AddInstruction(inc2);
   k->AddInput(inc2);
   // Merge over a phi.
@@ -412,11 +408,11 @@ TEST_F(InductionVarAnalysisTest, AddLinear) {
   BuildLoopNest(1);
 
   HInstruction* add1 = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, basic_[0], basic_[0]), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, basic_[0], basic_[0]), 0);
   HInstruction* add2 = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, constant7_, basic_[0]), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, constant7_, basic_[0]), 0);
   HInstruction* add3 = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, add1, add2), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, add1, add2), 0);
   PerformInductionVarAnalysis();
 
   EXPECT_STREQ("((1) * i + (0)):Int32", GetInductionInfo(basic_[0], 0).c_str());
@@ -438,11 +434,11 @@ TEST_F(InductionVarAnalysisTest, FindPolynomialInduction) {
   k_header->AddInput(constant1_);
 
   HInstruction* mul = InsertInstruction(
-      new (&allocator_) HMul(DataType::Type::kInt32, basic_[0], constant2_), 0);
+      new (GetAllocator()) HMul(DataType::Type::kInt32, basic_[0], constant2_), 0);
   HInstruction* add = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, constant100_, mul), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, constant100_, mul), 0);
   HInstruction* pol = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, add, k_header), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, add, k_header), 0);
   k_header->AddInput(pol);
   PerformInductionVarAnalysis();
 
@@ -469,17 +465,17 @@ TEST_F(InductionVarAnalysisTest, FindPolynomialInductionAndDerived) {
   k_header->AddInput(constant1_);
 
   HInstruction* add = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, k_header, constant100_), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, k_header, constant100_), 0);
   HInstruction* sub = InsertInstruction(
-      new (&allocator_) HSub(DataType::Type::kInt32, k_header, constant1_), 0);
+      new (GetAllocator()) HSub(DataType::Type::kInt32, k_header, constant1_), 0);
   HInstruction* neg = InsertInstruction(
-      new (&allocator_) HNeg(DataType::Type::kInt32, sub), 0);
+      new (GetAllocator()) HNeg(DataType::Type::kInt32, sub), 0);
   HInstruction* mul = InsertInstruction(
-      new (&allocator_) HMul(DataType::Type::kInt32, k_header, constant2_), 0);
+      new (GetAllocator()) HMul(DataType::Type::kInt32, k_header, constant2_), 0);
   HInstruction* shl = InsertInstruction(
-      new (&allocator_) HShl(DataType::Type::kInt32, k_header, constant2_), 0);
+      new (GetAllocator()) HShl(DataType::Type::kInt32, k_header, constant2_), 0);
   HInstruction* pol = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, k_header, basic_[0]), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, k_header, basic_[0]), 0);
   k_header->AddInput(pol);
   PerformInductionVarAnalysis();
 
@@ -512,11 +508,11 @@ TEST_F(InductionVarAnalysisTest, AddPolynomial) {
   k_header->AddInput(constant7_);
 
   HInstruction* add1 = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, k_header, k_header), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, k_header, k_header), 0);
   HInstruction* add2 = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, add1, k_header), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, add1, k_header), 0);
   HInstruction* add3 = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, k_header, basic_[0]), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, k_header, basic_[0]), 0);
   k_header->AddInput(add3);
   PerformInductionVarAnalysis();
 
@@ -542,7 +538,7 @@ TEST_F(InductionVarAnalysisTest, FindGeometricMulInduction) {
   k_header->AddInput(constant1_);
 
   HInstruction* mul = InsertInstruction(
-      new (&allocator_) HMul(DataType::Type::kInt32, k_header, constant100_), 0);
+      new (GetAllocator()) HMul(DataType::Type::kInt32, k_header, constant100_), 0);
   k_header->AddInput(mul);
   PerformInductionVarAnalysis();
 
@@ -567,19 +563,19 @@ TEST_F(InductionVarAnalysisTest, FindGeometricShlInductionAndDerived) {
   k_header->AddInput(constant1_);
 
   HInstruction* add1 = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, k_header, constant1_), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, k_header, constant1_), 0);
   HInstruction* shl1 = InsertInstruction(
-      new (&allocator_) HShl(DataType::Type::kInt32, k_header, constant1_), 0);
+      new (GetAllocator()) HShl(DataType::Type::kInt32, k_header, constant1_), 0);
   HInstruction* add2 = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, shl1, constant100_), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, shl1, constant100_), 0);
   HInstruction* sub = InsertInstruction(
-      new (&allocator_) HSub(DataType::Type::kInt32, shl1, constant1_), 0);
+      new (GetAllocator()) HSub(DataType::Type::kInt32, shl1, constant1_), 0);
   HInstruction* neg = InsertInstruction(
-      new (&allocator_) HNeg(DataType::Type::kInt32, sub), 0);
+      new (GetAllocator()) HNeg(DataType::Type::kInt32, sub), 0);
   HInstruction* mul = InsertInstruction(
-      new (&allocator_) HMul(DataType::Type::kInt32, shl1, constant2_), 0);
+      new (GetAllocator()) HMul(DataType::Type::kInt32, shl1, constant2_), 0);
   HInstruction* shl2 = InsertInstruction(
-      new (&allocator_) HShl(DataType::Type::kInt32, shl1, constant2_), 0);
+      new (GetAllocator()) HShl(DataType::Type::kInt32, shl1, constant2_), 0);
   k_header->AddInput(shl1);
   PerformInductionVarAnalysis();
 
@@ -610,17 +606,17 @@ TEST_F(InductionVarAnalysisTest, FindGeometricDivInductionAndDerived) {
   k_header->AddInput(constant1_);
 
   HInstruction* add = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, k_header, constant100_), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, k_header, constant100_), 0);
   HInstruction* sub = InsertInstruction(
-      new (&allocator_) HSub(DataType::Type::kInt32, k_header, constant1_), 0);
+      new (GetAllocator()) HSub(DataType::Type::kInt32, k_header, constant1_), 0);
   HInstruction* neg = InsertInstruction(
-      new (&allocator_) HNeg(DataType::Type::kInt32, sub), 0);
+      new (GetAllocator()) HNeg(DataType::Type::kInt32, sub), 0);
   HInstruction* mul = InsertInstruction(
-      new (&allocator_) HMul(DataType::Type::kInt32, k_header, constant2_), 0);
+      new (GetAllocator()) HMul(DataType::Type::kInt32, k_header, constant2_), 0);
   HInstruction* shl = InsertInstruction(
-      new (&allocator_) HShl(DataType::Type::kInt32, k_header, constant2_), 0);
+      new (GetAllocator()) HShl(DataType::Type::kInt32, k_header, constant2_), 0);
   HInstruction* div = InsertInstruction(
-      new (&allocator_) HDiv(DataType::Type::kInt32, k_header, constant100_, kNoDexPc), 0);
+      new (GetAllocator()) HDiv(DataType::Type::kInt32, k_header, constant100_, kNoDexPc), 0);
   k_header->AddInput(div);
   PerformInductionVarAnalysis();
 
@@ -645,7 +641,7 @@ TEST_F(InductionVarAnalysisTest, FindGeometricShrInduction) {
   k_header->AddInput(constant100_);
 
   HInstruction* shr = InsertInstruction(
-      new (&allocator_) HShr(DataType::Type::kInt32, k_header, constant1_), 0);
+      new (GetAllocator()) HShr(DataType::Type::kInt32, k_header, constant1_), 0);
   k_header->AddInput(shr);
   PerformInductionVarAnalysis();
 
@@ -665,7 +661,7 @@ TEST_F(InductionVarAnalysisTest, FindNotGeometricShrInduction) {
   k_header->AddInput(constantm1_);
 
   HInstruction* shr = InsertInstruction(
-      new (&allocator_) HShr(DataType::Type::kInt32, k_header, constant1_), 0);
+      new (GetAllocator()) HShr(DataType::Type::kInt32, k_header, constant1_), 0);
   k_header->AddInput(shr);
   PerformInductionVarAnalysis();
 
@@ -689,17 +685,17 @@ TEST_F(InductionVarAnalysisTest, FindRemWrapAroundInductionAndDerived) {
   k_header->AddInput(constant100_);
 
   HInstruction* add = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, k_header, constant100_), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, k_header, constant100_), 0);
   HInstruction* sub = InsertInstruction(
-      new (&allocator_) HSub(DataType::Type::kInt32, k_header, constant1_), 0);
+      new (GetAllocator()) HSub(DataType::Type::kInt32, k_header, constant1_), 0);
   HInstruction* neg = InsertInstruction(
-      new (&allocator_) HNeg(DataType::Type::kInt32, sub), 0);
+      new (GetAllocator()) HNeg(DataType::Type::kInt32, sub), 0);
   HInstruction* mul = InsertInstruction(
-      new (&allocator_) HMul(DataType::Type::kInt32, k_header, constant2_), 0);
+      new (GetAllocator()) HMul(DataType::Type::kInt32, k_header, constant2_), 0);
   HInstruction* shl = InsertInstruction(
-      new (&allocator_) HShl(DataType::Type::kInt32, k_header, constant2_), 0);
+      new (GetAllocator()) HShl(DataType::Type::kInt32, k_header, constant2_), 0);
   HInstruction* rem = InsertInstruction(
-      new (&allocator_) HRem(DataType::Type::kInt32, k_header, constant7_, kNoDexPc), 0);
+      new (GetAllocator()) HRem(DataType::Type::kInt32, k_header, constant7_, kNoDexPc), 0);
   k_header->AddInput(rem);
   PerformInductionVarAnalysis();
 
@@ -731,7 +727,7 @@ TEST_F(InductionVarAnalysisTest, FindFirstOrderWrapAroundInduction) {
 
   HInstruction* store = InsertArrayStore(k_header, 0);
   HInstruction* sub = InsertInstruction(
-      new (&allocator_) HSub(DataType::Type::kInt32, constant100_, basic_[0]), 0);
+      new (GetAllocator()) HSub(DataType::Type::kInt32, constant100_, basic_[0]), 0);
   k_header->AddInput(sub);
   PerformInductionVarAnalysis();
 
@@ -760,7 +756,7 @@ TEST_F(InductionVarAnalysisTest, FindSecondOrderWrapAroundInduction) {
   HInstruction* store = InsertArrayStore(k_header, 0);
   k_header->AddInput(t);
   HInstruction* sub = InsertInstruction(
-      new (&allocator_) HSub(DataType::Type::kInt32, constant100_, basic_[0], 0), 0);
+      new (GetAllocator()) HSub(DataType::Type::kInt32, constant100_, basic_[0], 0), 0);
   t->AddInput(sub);
   PerformInductionVarAnalysis();
 
@@ -785,19 +781,19 @@ TEST_F(InductionVarAnalysisTest, FindWrapAroundDerivedInduction) {
   k_header->AddInput(constant0_);
 
   HInstruction* add = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, k_header, constant100_), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, k_header, constant100_), 0);
   HInstruction* sub = InsertInstruction(
-      new (&allocator_) HSub(DataType::Type::kInt32, k_header, constant100_), 0);
+      new (GetAllocator()) HSub(DataType::Type::kInt32, k_header, constant100_), 0);
   HInstruction* mul = InsertInstruction(
-      new (&allocator_) HMul(DataType::Type::kInt32, k_header, constant100_), 0);
+      new (GetAllocator()) HMul(DataType::Type::kInt32, k_header, constant100_), 0);
   HInstruction* shl1 = InsertInstruction(
-      new (&allocator_) HShl(DataType::Type::kInt32, k_header, constant1_), 0);
+      new (GetAllocator()) HShl(DataType::Type::kInt32, k_header, constant1_), 0);
   HInstruction* neg1 = InsertInstruction(
-      new (&allocator_) HNeg(DataType::Type::kInt32, k_header), 0);
+      new (GetAllocator()) HNeg(DataType::Type::kInt32, k_header), 0);
   HInstruction* shl2 = InsertInstruction(
-      new (&allocator_) HShl(DataType::Type::kInt32, basic_[0], constant1_), 0);
+      new (GetAllocator()) HShl(DataType::Type::kInt32, basic_[0], constant1_), 0);
   HInstruction* neg2 = InsertInstruction(
-      new (&allocator_) HNeg(DataType::Type::kInt32, shl2), 0);
+      new (GetAllocator()) HNeg(DataType::Type::kInt32, shl2), 0);
   k_header->AddInput(shl2);
   PerformInductionVarAnalysis();
 
@@ -856,7 +852,7 @@ TEST_F(InductionVarAnalysisTest, FindIdiomaticPeriodicInduction) {
 
   HInstruction* store = InsertArrayStore(k_header, 0);
   HInstruction* sub = InsertInstruction(
-      new (&allocator_) HSub(DataType::Type::kInt32, constant1_, k_header), 0);
+      new (GetAllocator()) HSub(DataType::Type::kInt32, constant1_, k_header), 0);
   k_header->AddInput(sub);
   PerformInductionVarAnalysis();
 
@@ -877,7 +873,7 @@ TEST_F(InductionVarAnalysisTest, FindXorPeriodicInduction) {
 
   HInstruction* store = InsertArrayStore(k_header, 0);
   HInstruction* x = InsertInstruction(
-      new (&allocator_) HXor(DataType::Type::kInt32, k_header, constant1_), 0);
+      new (GetAllocator()) HXor(DataType::Type::kInt32, k_header, constant1_), 0);
   k_header->AddInput(x);
   PerformInductionVarAnalysis();
 
@@ -896,7 +892,7 @@ TEST_F(InductionVarAnalysisTest, FindXorConstantLeftPeriodicInduction) {
   k_header->AddInput(constant1_);
 
   HInstruction* x = InsertInstruction(
-      new (&allocator_) HXor(DataType::Type::kInt32, constant1_, k_header), 0);
+      new (GetAllocator()) HXor(DataType::Type::kInt32, constant1_, k_header), 0);
   k_header->AddInput(x);
   PerformInductionVarAnalysis();
 
@@ -915,7 +911,7 @@ TEST_F(InductionVarAnalysisTest, FindXor100PeriodicInduction) {
   k_header->AddInput(constant1_);
 
   HInstruction* x = InsertInstruction(
-      new (&allocator_) HXor(DataType::Type::kInt32, k_header, constant100_), 0);
+      new (GetAllocator()) HXor(DataType::Type::kInt32, k_header, constant100_), 0);
   k_header->AddInput(x);
   PerformInductionVarAnalysis();
 
@@ -933,7 +929,7 @@ TEST_F(InductionVarAnalysisTest, FindBooleanEqPeriodicInduction) {
   HPhi* k_header = InsertLoopPhi(0, 0);
   k_header->AddInput(constant0_);
 
-  HInstruction* x = InsertInstruction(new (&allocator_) HEqual(k_header, constant0_), 0);
+  HInstruction* x = InsertInstruction(new (GetAllocator()) HEqual(k_header, constant0_), 0);
   k_header->AddInput(x);
   PerformInductionVarAnalysis();
 
@@ -951,7 +947,7 @@ TEST_F(InductionVarAnalysisTest, FindBooleanEqConstantLeftPeriodicInduction) {
   HPhi* k_header = InsertLoopPhi(0, 0);
   k_header->AddInput(constant0_);
 
-  HInstruction* x = InsertInstruction(new (&allocator_) HEqual(constant0_, k_header), 0);
+  HInstruction* x = InsertInstruction(new (GetAllocator()) HEqual(constant0_, k_header), 0);
   k_header->AddInput(x);
   PerformInductionVarAnalysis();
 
@@ -969,7 +965,7 @@ TEST_F(InductionVarAnalysisTest, FindBooleanNePeriodicInduction) {
   HPhi* k_header = InsertLoopPhi(0, 0);
   k_header->AddInput(constant0_);
 
-  HInstruction* x = InsertInstruction(new (&allocator_) HNotEqual(k_header, constant1_), 0);
+  HInstruction* x = InsertInstruction(new (GetAllocator()) HNotEqual(k_header, constant1_), 0);
   k_header->AddInput(x);
   PerformInductionVarAnalysis();
 
@@ -987,7 +983,7 @@ TEST_F(InductionVarAnalysisTest, FindBooleanNeConstantLeftPeriodicInduction) {
   HPhi* k_header = InsertLoopPhi(0, 0);
   k_header->AddInput(constant0_);
 
-  HInstruction* x = InsertInstruction(new (&allocator_) HNotEqual(constant1_, k_header), 0);
+  HInstruction* x = InsertInstruction(new (GetAllocator()) HNotEqual(constant1_, k_header), 0);
   k_header->AddInput(x);
   PerformInductionVarAnalysis();
 
@@ -1012,19 +1008,19 @@ TEST_F(InductionVarAnalysisTest, FindDerivedPeriodicInduction) {
   k_header->AddInput(constant0_);
 
   HInstruction* neg1 = InsertInstruction(
-      new (&allocator_) HNeg(DataType::Type::kInt32, k_header), 0);
+      new (GetAllocator()) HNeg(DataType::Type::kInt32, k_header), 0);
   HInstruction* idiom = InsertInstruction(
-      new (&allocator_) HSub(DataType::Type::kInt32, constant1_, k_header), 0);
+      new (GetAllocator()) HSub(DataType::Type::kInt32, constant1_, k_header), 0);
   HInstruction* add = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, idiom, constant100_), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, idiom, constant100_), 0);
   HInstruction* sub = InsertInstruction(
-      new (&allocator_) HSub(DataType::Type::kInt32, idiom, constant100_), 0);
+      new (GetAllocator()) HSub(DataType::Type::kInt32, idiom, constant100_), 0);
   HInstruction* mul = InsertInstruction(
-      new (&allocator_) HMul(DataType::Type::kInt32, idiom, constant100_), 0);
+      new (GetAllocator()) HMul(DataType::Type::kInt32, idiom, constant100_), 0);
   HInstruction* shl = InsertInstruction(
-      new (&allocator_) HShl(DataType::Type::kInt32, idiom, constant1_), 0);
+      new (GetAllocator()) HShl(DataType::Type::kInt32, idiom, constant1_), 0);
   HInstruction* neg2 = InsertInstruction(
-      new (&allocator_) HNeg(DataType::Type::kInt32, idiom), 0);
+      new (GetAllocator()) HNeg(DataType::Type::kInt32, idiom), 0);
   k_header->AddInput(idiom);
   PerformInductionVarAnalysis();
 
@@ -1057,7 +1053,7 @@ TEST_F(InductionVarAnalysisTest, FindDeepLoopInduction) {
   }
 
   HInstruction* inc = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, constant1_, k_header[9]), 9);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, constant1_, k_header[9]), 9);
   HInstruction* store = InsertArrayStore(inc, 9);
 
   for (int d = 0; d < 10; d++) {
@@ -1091,7 +1087,7 @@ TEST_F(InductionVarAnalysisTest, ByteInductionIntLoopControl) {
   // }
   BuildLoopNest(1);
   HInstruction* conv = InsertInstruction(
-      new (&allocator_) HTypeConversion(DataType::Type::kInt8, basic_[0], kNoDexPc), 0);
+      new (GetAllocator()) HTypeConversion(DataType::Type::kInt8, basic_[0], kNoDexPc), 0);
   HInstruction* store1 = InsertArrayStore(conv, 0);
   HInstruction* store2 = InsertArrayStore(basic_[0], 0);
   PerformInductionVarAnalysis();
@@ -1122,10 +1118,10 @@ TEST_F(InductionVarAnalysisTest, ByteInductionDerivedIntLoopControl) {
   // }
   BuildLoopNest(1);
   HInstruction* conv = InsertInstruction(
-      new (&allocator_) HTypeConversion(DataType::Type::kInt8, basic_[0], kNoDexPc), 0);
+      new (GetAllocator()) HTypeConversion(DataType::Type::kInt8, basic_[0], kNoDexPc), 0);
   HInstruction* store1 = InsertArrayStore(conv, 0);
   HInstruction* add = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, conv, constant1_), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, conv, constant1_), 0);
   HInstruction* store2 = InsertArrayStore(add, 0);
 
   PerformInductionVarAnalysis();
@@ -1152,9 +1148,9 @@ TEST_F(InductionVarAnalysisTest, ByteInduction) {
   k_header->AddInput(graph_->GetIntConstant(-128));
 
   HInstruction* add = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, k_header, constant1_), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, k_header, constant1_), 0);
   HInstruction* conv = InsertInstruction(
-      new (&allocator_) HTypeConversion(DataType::Type::kInt8, add, kNoDexPc), 0);
+      new (GetAllocator()) HTypeConversion(DataType::Type::kInt8, add, kNoDexPc), 0);
   k_header->AddInput(conv);
   PerformInductionVarAnalysis();
 
@@ -1180,9 +1176,9 @@ TEST_F(InductionVarAnalysisTest, NoByteInduction1) {
   k_header->AddInput(graph_->GetIntConstant(-129));
 
   HInstruction* add = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, k_header, constant1_), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, k_header, constant1_), 0);
   HInstruction* conv = InsertInstruction(
-      new (&allocator_) HTypeConversion(DataType::Type::kInt8, add, kNoDexPc), 0);
+      new (GetAllocator()) HTypeConversion(DataType::Type::kInt8, add, kNoDexPc), 0);
   k_header->AddInput(conv);
   PerformInductionVarAnalysis();
 
@@ -1202,9 +1198,9 @@ TEST_F(InductionVarAnalysisTest, NoByteInduction2) {
   k_header->AddInput(constant0_);
 
   HInstruction* conv = InsertInstruction(
-      new (&allocator_) HTypeConversion(DataType::Type::kInt8, k_header, kNoDexPc), 0);
+      new (GetAllocator()) HTypeConversion(DataType::Type::kInt8, k_header, kNoDexPc), 0);
   HInstruction* add = InsertInstruction(
-      new (&allocator_) HAdd(DataType::Type::kInt32, conv, constant1_), 0);
+      new (GetAllocator()) HAdd(DataType::Type::kInt32, conv, constant1_), 0);
   k_header->AddInput(add);
   PerformInductionVarAnalysis();
 
@@ -1221,7 +1217,7 @@ TEST_F(InductionVarAnalysisTest, ByteLoopControl1) {
   HInstruction* ifs = loop_header_[0]->GetLastInstruction()->GetPrevious();
   ifs->ReplaceInput(graph_->GetIntConstant(127), 1);
   HInstruction* conv =
-      new (&allocator_) HTypeConversion(DataType::Type::kInt8, increment_[0], kNoDexPc);
+      new (GetAllocator()) HTypeConversion(DataType::Type::kInt8, increment_[0], kNoDexPc);
   loop_body_[0]->InsertInstructionBefore(conv, increment_[0]->GetNext());
   basic_[0]->ReplaceInput(conv, 1);
   PerformInductionVarAnalysis();
@@ -1247,7 +1243,7 @@ TEST_F(InductionVarAnalysisTest, ByteLoopControl2) {
   HInstruction* ifs = loop_header_[0]->GetLastInstruction()->GetPrevious();
   ifs->ReplaceInput(graph_->GetIntConstant(128), 1);
   HInstruction* conv =
-      new (&allocator_) HTypeConversion(DataType::Type::kInt8, increment_[0], kNoDexPc);
+      new (GetAllocator()) HTypeConversion(DataType::Type::kInt8, increment_[0], kNoDexPc);
   loop_body_[0]->InsertInstructionBefore(conv, increment_[0]->GetNext());
   basic_[0]->ReplaceInput(conv, 1);
   PerformInductionVarAnalysis();
@@ -1273,7 +1269,7 @@ TEST_F(InductionVarAnalysisTest, ShortLoopControl1) {
   HInstruction* ifs = loop_header_[0]->GetLastInstruction()->GetPrevious();
   ifs->ReplaceInput(graph_->GetIntConstant(32767), 1);
   HInstruction* conv =
-      new (&allocator_) HTypeConversion(DataType::Type::kInt16, increment_[0], kNoDexPc);
+      new (GetAllocator()) HTypeConversion(DataType::Type::kInt16, increment_[0], kNoDexPc);
   loop_body_[0]->InsertInstructionBefore(conv, increment_[0]->GetNext());
   basic_[0]->ReplaceInput(conv, 1);
   PerformInductionVarAnalysis();
@@ -1299,7 +1295,7 @@ TEST_F(InductionVarAnalysisTest, ShortLoopControl2) {
   HInstruction* ifs = loop_header_[0]->GetLastInstruction()->GetPrevious();
   ifs->ReplaceInput(graph_->GetIntConstant(32768), 1);
   HInstruction* conv =
-      new (&allocator_) HTypeConversion(DataType::Type::kInt16, increment_[0], kNoDexPc);
+      new (GetAllocator()) HTypeConversion(DataType::Type::kInt16, increment_[0], kNoDexPc);
   loop_body_[0]->InsertInstructionBefore(conv, increment_[0]->GetNext());
   basic_[0]->ReplaceInput(conv, 1);
   PerformInductionVarAnalysis();
@@ -1324,7 +1320,7 @@ TEST_F(InductionVarAnalysisTest, CharLoopControl1) {
   HInstruction* ifs = loop_header_[0]->GetLastInstruction()->GetPrevious();
   ifs->ReplaceInput(graph_->GetIntConstant(65535), 1);
   HInstruction* conv =
-      new (&allocator_) HTypeConversion(DataType::Type::kUint16, increment_[0], kNoDexPc);
+      new (GetAllocator()) HTypeConversion(DataType::Type::kUint16, increment_[0], kNoDexPc);
   loop_body_[0]->InsertInstructionBefore(conv, increment_[0]->GetNext());
   basic_[0]->ReplaceInput(conv, 1);
   PerformInductionVarAnalysis();
@@ -1349,7 +1345,7 @@ TEST_F(InductionVarAnalysisTest, CharLoopControl2) {
   HInstruction* ifs = loop_header_[0]->GetLastInstruction()->GetPrevious();
   ifs->ReplaceInput(graph_->GetIntConstant(65536), 1);
   HInstruction* conv =
-      new (&allocator_) HTypeConversion(DataType::Type::kUint16, increment_[0], kNoDexPc);
+      new (GetAllocator()) HTypeConversion(DataType::Type::kUint16, increment_[0], kNoDexPc);
   loop_body_[0]->InsertInstructionBefore(conv, increment_[0]->GetNext());
   basic_[0]->ReplaceInput(conv, 1);
   PerformInductionVarAnalysis();

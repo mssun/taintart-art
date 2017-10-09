@@ -566,7 +566,7 @@ HBasicBlock* GlobalValueNumberer::FindVisitedBlockWithRecyclableSet(
 }
 
 void GVNOptimization::Run() {
-  GlobalValueNumberer gvn(graph_->GetArena(), graph_, side_effects_);
+  GlobalValueNumberer gvn(graph_->GetAllocator(), graph_, side_effects_);
   gvn.Run();
 }
 

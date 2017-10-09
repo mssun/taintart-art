@@ -50,7 +50,7 @@ class IntrinsicLocationsBuilderMIPS64 FINAL : public IntrinsicVisitor {
 
  private:
   CodeGeneratorMIPS64* codegen_;
-  ArenaAllocator* arena_;
+  ArenaAllocator* allocator_;
 
   DISALLOW_COPY_AND_ASSIGN(IntrinsicLocationsBuilderMIPS64);
 };

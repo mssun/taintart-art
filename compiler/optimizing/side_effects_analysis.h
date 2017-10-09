@@ -29,9 +29,9 @@ class SideEffectsAnalysis : public HOptimization {
       : HOptimization(graph, pass_name),
         graph_(graph),
         block_effects_(graph->GetBlocks().size(),
-                       graph->GetArena()->Adapter(kArenaAllocSideEffectsAnalysis)),
+                       graph->GetAllocator()->Adapter(kArenaAllocSideEffectsAnalysis)),
         loop_effects_(graph->GetBlocks().size(),
-                      graph->GetArena()->Adapter(kArenaAllocSideEffectsAnalysis)) {}
+                      graph->GetAllocator()->Adapter(kArenaAllocSideEffectsAnalysis)) {}
 
   SideEffects GetLoopEffects(HBasicBlock* block) const;
   SideEffects GetBlockEffects(HBasicBlock* block) const;

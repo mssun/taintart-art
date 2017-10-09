@@ -172,9 +172,9 @@ class HeapLocationCollector : public HGraphVisitor {
 
   explicit HeapLocationCollector(HGraph* graph)
       : HGraphVisitor(graph),
-        ref_info_array_(graph->GetArena()->Adapter(kArenaAllocLSE)),
-        heap_locations_(graph->GetArena()->Adapter(kArenaAllocLSE)),
-        aliasing_matrix_(graph->GetArena(),
+        ref_info_array_(graph->GetAllocator()->Adapter(kArenaAllocLSE)),
+        heap_locations_(graph->GetAllocator()->Adapter(kArenaAllocLSE)),
+        aliasing_matrix_(graph->GetAllocator(),
                          kInitialAliasingMatrixBitVectorSize,
                          true,
                          kArenaAllocLSE),
@@ -362,7 +362,7 @@ class HeapLocationCollector : public HGraphVisitor {
     ReferenceInfo* ref_info = FindReferenceInfoOf(instruction);
     if (ref_info == nullptr) {
       size_t pos = ref_info_array_.size();
-      ref_info = new (GetGraph()->GetArena()) ReferenceInfo(instruction, pos);
+      ref_info = new (GetGraph()->GetAllocator()) ReferenceInfo(instruction, pos);
       ref_info_array_.push_back(ref_info);
     }
     return ref_info;
@@ -385,7 +385,7 @@ class HeapLocationCollector : public HGraphVisitor {
     size_t heap_location_idx = FindHeapLocationIndex(
         ref_info, offset, index, declaring_class_def_index);
     if (heap_location_idx == kHeapLocationNotFound) {
-      HeapLocation* heap_loc = new (GetGraph()->GetArena())
+      HeapLocation* heap_loc = new (GetGraph()->GetAllocator())
           HeapLocation(ref_info, offset, index, declaring_class_def_index);
       heap_locations_.push_back(heap_loc);
       return heap_loc;

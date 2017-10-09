@@ -26,7 +26,7 @@ namespace art {
 void SsaLivenessAnalysis::Analyze() {
   // Compute the linear order directly in the graph's data structure
   // (there are no more following graph mutations).
-  LinearizeGraph(graph_, graph_->GetArena(), &graph_->linear_order_);
+  LinearizeGraph(graph_, &graph_->linear_order_);
 
   // Liveness analysis.
   NumberInstructions();
@@ -56,7 +56,7 @@ void SsaLivenessAnalysis::NumberInstructions() {
         instructions_from_ssa_index_.push_back(current);
         current->SetSsaIndex(ssa_index++);
         current->SetLiveInterval(
-            LiveInterval::MakeInterval(graph_->GetArena(), current->GetType(), current));
+            LiveInterval::MakeInterval(graph_->GetAllocator(), current->GetType(), current));
       }
       current->SetLifetimePosition(lifetime_position);
     }
@@ -74,7 +74,7 @@ void SsaLivenessAnalysis::NumberInstructions() {
         instructions_from_ssa_index_.push_back(current);
         current->SetSsaIndex(ssa_index++);
         current->SetLiveInterval(
-            LiveInterval::MakeInterval(graph_->GetArena(), current->GetType(), current));
+            LiveInterval::MakeInterval(graph_->GetAllocator(), current->GetType(), current));
       }
       instructions_from_lifetime_position_.push_back(current);
       current->SetLifetimePosition(lifetime_position);
@@ -88,8 +88,8 @@ void SsaLivenessAnalysis::NumberInstructions() {
 
 void SsaLivenessAnalysis::ComputeLiveness() {
   for (HBasicBlock* block : graph_->GetLinearOrder()) {
-    block_infos_[block->GetBlockId()] =
-        new (graph_->GetArena()) BlockInfo(graph_->GetArena(), *block, number_of_ssa_values_);
+    block_infos_[block->GetBlockId()] = new (graph_->GetAllocator()) BlockInfo(
+        graph_->GetAllocator(), *block, number_of_ssa_values_);
   }
 
   // Compute the live ranges, as well as the initial live_in, live_out, and kill sets.

@@ -605,26 +605,26 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
         fpu_spill_mask_(0),
         first_register_slot_in_slow_path_(0),
         allocated_registers_(RegisterSet::Empty()),
-        blocked_core_registers_(graph->GetArena()->AllocArray<bool>(number_of_core_registers,
-                                                                    kArenaAllocCodeGenerator)),
-        blocked_fpu_registers_(graph->GetArena()->AllocArray<bool>(number_of_fpu_registers,
-                                                                   kArenaAllocCodeGenerator)),
+        blocked_core_registers_(graph->GetAllocator()->AllocArray<bool>(number_of_core_registers,
+                                                                        kArenaAllocCodeGenerator)),
+        blocked_fpu_registers_(graph->GetAllocator()->AllocArray<bool>(number_of_fpu_registers,
+                                                                       kArenaAllocCodeGenerator)),
         number_of_core_registers_(number_of_core_registers),
         number_of_fpu_registers_(number_of_fpu_registers),
         number_of_register_pairs_(number_of_register_pairs),
         core_callee_save_mask_(core_callee_save_mask),
         fpu_callee_save_mask_(fpu_callee_save_mask),
-        stack_map_stream_(graph->GetArena(), graph->GetInstructionSet()),
+        stack_map_stream_(graph->GetAllocator(), graph->GetInstructionSet()),
         block_order_(nullptr),
         jit_string_roots_(StringReferenceValueComparator(),
-                          graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
+                          graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
         jit_class_roots_(TypeReferenceValueComparator(),
-                         graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
+                         graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
         disasm_info_(nullptr),
         stats_(stats),
         graph_(graph),
         compiler_options_(compiler_options),
-        slow_paths_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
+        slow_paths_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
         current_slow_path_(nullptr),
         current_block_index_(0),
         is_leaf_(true),
@@ -668,8 +668,8 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
     // We use raw array allocations instead of ArenaVector<> because Labels are
     // non-constructible and non-movable and as such cannot be held in a vector.
     size_t size = GetGraph()->GetBlocks().size();
-    LabelType* labels = GetGraph()->GetArena()->AllocArray<LabelType>(size,
-                                                                      kArenaAllocCodeGenerator);
+    LabelType* labels =
+        GetGraph()->GetAllocator()->AllocArray<LabelType>(size, kArenaAllocCodeGenerator);
     for (size_t i = 0; i != size; ++i) {
       new(labels + i) LabelType();
     }
@@ -823,7 +823,8 @@ class SlowPathGenerator {
   SlowPathGenerator(HGraph* graph, CodeGenerator* codegen)
       : graph_(graph),
         codegen_(codegen),
-        slow_path_map_(std::less<uint32_t>(), graph->GetArena()->Adapter(kArenaAllocSlowPaths)) {}
+        slow_path_map_(std::less<uint32_t>(),
+                       graph->GetAllocator()->Adapter(kArenaAllocSlowPaths)) {}
 
   // Creates and adds a new slow-path, if needed, or returns existing one otherwise.
   // Templating the method (rather than the whole class) on the slow-path type enables
@@ -857,10 +858,11 @@ class SlowPathGenerator {
       }
     } else {
       // First time this dex-pc is seen.
-      iter = slow_path_map_.Put(dex_pc, {{}, {graph_->GetArena()->Adapter(kArenaAllocSlowPaths)}});
+      iter = slow_path_map_.Put(dex_pc,
+                                {{}, {graph_->GetAllocator()->Adapter(kArenaAllocSlowPaths)}});
     }
     // Cannot share: create and add new slow-path for this particular dex-pc.
-    SlowPathCodeType* slow_path = new (graph_->GetArena()) SlowPathCodeType(instruction);
+    SlowPathCodeType* slow_path = new (graph_->GetAllocator()) SlowPathCodeType(instruction);
     iter->second.emplace_back(std::make_pair(instruction, slow_path));
     codegen_->AddSlowPath(slow_path);
     return slow_path;

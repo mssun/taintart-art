@@ -24,12 +24,13 @@
 
 namespace art {
 
-class OptimizerTest : public CommonCompilerTest {};
+class OptimizerTest : public OptimizingUnitTest {
+ protected:
+  void TestCode(const uint16_t* data, const uint32_t* blocks, size_t blocks_length);
+};
 
-static void TestCode(const uint16_t* data, const uint32_t* blocks, size_t blocks_length) {
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
-  HGraph* graph = CreateCFG(&allocator, data);
+void OptimizerTest::TestCode(const uint16_t* data, const uint32_t* blocks, size_t blocks_length) {
+  HGraph* graph = CreateCFG(data);
   ASSERT_EQ(graph->GetBlocks().size(), blocks_length);
   for (size_t i = 0, e = blocks_length; i < e; ++i) {
     if (blocks[i] == kInvalidBlockId) {

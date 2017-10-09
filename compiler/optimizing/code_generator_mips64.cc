@@ -512,7 +512,7 @@ class ArraySetSlowPathMIPS64 : public SlowPathCodeMIPS64 {
     SaveLiveRegisters(codegen, locations);
 
     InvokeRuntimeCallingConvention calling_convention;
-    HParallelMove parallel_move(codegen->GetGraph()->GetArena());
+    HParallelMove parallel_move(codegen->GetGraph()->GetAllocator());
     parallel_move.AddMove(
         locations->InAt(0),
         Location::RegisterLocation(calling_convention.GetRegisterAt(0)),
@@ -910,7 +910,7 @@ class ReadBarrierForHeapReferenceSlowPathMIPS64 : public SlowPathCodeMIPS64 {
     // We're moving two or three locations to locations that could
     // overlap, so we need a parallel move resolver.
     InvokeRuntimeCallingConvention calling_convention;
-    HParallelMove parallel_move(codegen->GetGraph()->GetArena());
+    HParallelMove parallel_move(codegen->GetGraph()->GetAllocator());
     parallel_move.AddMove(ref_,
                           Location::RegisterLocation(calling_convention.GetRegisterAt(0)),
                           DataType::Type::kReference,
@@ -1041,23 +1041,23 @@ CodeGeneratorMIPS64::CodeGeneratorMIPS64(HGraph* graph,
       block_labels_(nullptr),
       location_builder_(graph, this),
       instruction_visitor_(graph, this),
-      move_resolver_(graph->GetArena(), this),
-      assembler_(graph->GetArena(), &isa_features),
+      move_resolver_(graph->GetAllocator(), this),
+      assembler_(graph->GetAllocator(), &isa_features),
       isa_features_(isa_features),
       uint32_literals_(std::less<uint32_t>(),
-                       graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
+                       graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       uint64_literals_(std::less<uint64_t>(),
-                       graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
-      pc_relative_method_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
-      method_bss_entry_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
-      pc_relative_type_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
-      type_bss_entry_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
-      pc_relative_string_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
-      string_bss_entry_patches_(graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
+                       graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      pc_relative_method_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      method_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      pc_relative_type_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      type_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      pc_relative_string_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      string_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       jit_string_patches_(StringReferenceValueComparator(),
-                          graph->GetArena()->Adapter(kArenaAllocCodeGenerator)),
+                          graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       jit_class_patches_(TypeReferenceValueComparator(),
-                         graph->GetArena()->Adapter(kArenaAllocCodeGenerator)) {
+                         graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)) {
   // Save RA (containing the return address) to mimic Quick.
   AddAllocatedRegister(Location::RegisterLocation(RA));
 }
@@ -1835,7 +1835,7 @@ void InstructionCodeGeneratorMIPS64::GenerateMemoryBarrier(MemBarrierKind kind A
 void InstructionCodeGeneratorMIPS64::GenerateSuspendCheck(HSuspendCheck* instruction,
                                                           HBasicBlock* successor) {
   SuspendCheckSlowPathMIPS64* slow_path =
-    new (GetGraph()->GetArena()) SuspendCheckSlowPathMIPS64(instruction, successor);
+    new (GetGraph()->GetAllocator()) SuspendCheckSlowPathMIPS64(instruction, successor);
   codegen_->AddSlowPath(slow_path);
 
   __ LoadFromOffset(kLoadUnsignedHalfword,
@@ -1860,7 +1860,7 @@ InstructionCodeGeneratorMIPS64::InstructionCodeGeneratorMIPS64(HGraph* graph,
 
 void LocationsBuilderMIPS64::HandleBinaryOp(HBinaryOperation* instruction) {
   DCHECK_EQ(instruction->InputCount(), 2U);
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
   DataType::Type type = instruction->GetResultType();
   switch (type) {
     case DataType::Type::kInt32:
@@ -1990,7 +1990,7 @@ void InstructionCodeGeneratorMIPS64::HandleBinaryOp(HBinaryOperation* instructio
 void LocationsBuilderMIPS64::HandleShift(HBinaryOperation* instr) {
   DCHECK(instr->IsShl() || instr->IsShr() || instr->IsUShr() || instr->IsRor());
 
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instr);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instr);
   DataType::Type type = instr->GetResultType();
   switch (type) {
     case DataType::Type::kInt32:
@@ -2119,10 +2119,10 @@ void LocationsBuilderMIPS64::VisitArrayGet(HArrayGet* instruction) {
   bool object_array_get_with_read_barrier =
       kEmitCompilerReadBarrier && (type == DataType::Type::kReference);
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction,
-                                                   object_array_get_with_read_barrier
-                                                       ? LocationSummary::kCallOnSlowPath
-                                                       : LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction,
+                                                       object_array_get_with_read_barrier
+                                                           ? LocationSummary::kCallOnSlowPath
+                                                           : LocationSummary::kNoCall);
   if (object_array_get_with_read_barrier && kUseBakerReadBarrier) {
     locations->SetCustomSlowPathCallerSaves(RegisterSet::Empty());  // No caller-save registers.
   }
@@ -2385,7 +2385,7 @@ void InstructionCodeGeneratorMIPS64::VisitArrayGet(HArrayGet* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitArrayLength(HArrayLength* instruction) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
 }
@@ -2429,7 +2429,7 @@ void LocationsBuilderMIPS64::VisitArraySet(HArraySet* instruction) {
       CodeGenerator::StoreNeedsWriteBarrier(value_type, instruction->GetValue());
   bool may_need_runtime_call_for_type_check = instruction->NeedsTypeCheck();
 
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
       instruction,
       may_need_runtime_call_for_type_check ?
           LocationSummary::kCallOnSlowPath :
@@ -2543,7 +2543,7 @@ void InstructionCodeGeneratorMIPS64::VisitArraySet(HArraySet* instruction) {
       SlowPathCodeMIPS64* slow_path = nullptr;
 
       if (may_need_runtime_call_for_type_check) {
-        slow_path = new (GetGraph()->GetArena()) ArraySetSlowPathMIPS64(instruction);
+        slow_path = new (GetGraph()->GetAllocator()) ArraySetSlowPathMIPS64(instruction);
         codegen_->AddSlowPath(slow_path);
         if (instruction->GetValueCanBeNull()) {
           Mips64Label non_zero;
@@ -2700,7 +2700,7 @@ void LocationsBuilderMIPS64::VisitBoundsCheck(HBoundsCheck* instruction) {
 void InstructionCodeGeneratorMIPS64::VisitBoundsCheck(HBoundsCheck* instruction) {
   LocationSummary* locations = instruction->GetLocations();
   BoundsCheckSlowPathMIPS64* slow_path =
-      new (GetGraph()->GetArena()) BoundsCheckSlowPathMIPS64(instruction);
+      new (GetGraph()->GetAllocator()) BoundsCheckSlowPathMIPS64(instruction);
   codegen_->AddSlowPath(slow_path);
 
   GpuRegister index = locations->InAt(0).AsRegister<GpuRegister>();
@@ -2751,7 +2751,8 @@ void LocationsBuilderMIPS64::VisitCheckCast(HCheckCast* instruction) {
       break;
   }
 
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction, call_kind);
+  LocationSummary* locations =
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction, call_kind);
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetInAt(1, Location::RequiresRegister());
   locations->AddRegisterTemps(NumberOfCheckCastTemps(type_check_kind));
@@ -2791,8 +2792,8 @@ void InstructionCodeGeneratorMIPS64::VisitCheckCast(HCheckCast* instruction) {
         !instruction->CanThrowIntoCatchBlock();
   }
   SlowPathCodeMIPS64* slow_path =
-      new (GetGraph()->GetArena()) TypeCheckSlowPathMIPS64(instruction,
-                                                           is_type_check_slow_path_fatal);
+      new (GetGraph()->GetAllocator()) TypeCheckSlowPathMIPS64(instruction,
+                                                               is_type_check_slow_path_fatal);
   codegen_->AddSlowPath(slow_path);
 
   // Avoid this check if we know `obj` is not null.
@@ -2946,7 +2947,7 @@ void InstructionCodeGeneratorMIPS64::VisitCheckCast(HCheckCast* instruction) {
 
 void LocationsBuilderMIPS64::VisitClinitCheck(HClinitCheck* check) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(check, LocationSummary::kCallOnSlowPath);
+      new (GetGraph()->GetAllocator()) LocationSummary(check, LocationSummary::kCallOnSlowPath);
   locations->SetInAt(0, Location::RequiresRegister());
   if (check->HasUses()) {
     locations->SetOut(Location::SameAsFirstInput());
@@ -2955,7 +2956,7 @@ void LocationsBuilderMIPS64::VisitClinitCheck(HClinitCheck* check) {
 
 void InstructionCodeGeneratorMIPS64::VisitClinitCheck(HClinitCheck* check) {
   // We assume the class is not null.
-  SlowPathCodeMIPS64* slow_path = new (GetGraph()->GetArena()) LoadClassSlowPathMIPS64(
+  SlowPathCodeMIPS64* slow_path = new (GetGraph()->GetAllocator()) LoadClassSlowPathMIPS64(
       check->GetLoadClass(),
       check,
       check->GetDexPc(),
@@ -2968,7 +2969,7 @@ void InstructionCodeGeneratorMIPS64::VisitClinitCheck(HClinitCheck* check) {
 void LocationsBuilderMIPS64::VisitCompare(HCompare* compare) {
   DataType::Type in_type = compare->InputAt(0)->GetType();
 
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(compare);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(compare);
 
   switch (in_type) {
     case DataType::Type::kBool:
@@ -3088,7 +3089,7 @@ void InstructionCodeGeneratorMIPS64::VisitCompare(HCompare* instruction) {
 }
 
 void LocationsBuilderMIPS64::HandleCondition(HCondition* instruction) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
   switch (instruction->InputAt(0)->GetType()) {
     default:
     case DataType::Type::kInt64:
@@ -3376,7 +3377,7 @@ void InstructionCodeGeneratorMIPS64::GenerateDivRemIntegral(HBinaryOperation* in
 
 void LocationsBuilderMIPS64::VisitDiv(HDiv* div) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(div, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(div, LocationSummary::kNoCall);
   switch (div->GetResultType()) {
     case DataType::Type::kInt32:
     case DataType::Type::kInt64:
@@ -3429,7 +3430,7 @@ void LocationsBuilderMIPS64::VisitDivZeroCheck(HDivZeroCheck* instruction) {
 
 void InstructionCodeGeneratorMIPS64::VisitDivZeroCheck(HDivZeroCheck* instruction) {
   SlowPathCodeMIPS64* slow_path =
-      new (GetGraph()->GetArena()) DivZeroCheckSlowPathMIPS64(instruction);
+      new (GetGraph()->GetAllocator()) DivZeroCheckSlowPathMIPS64(instruction);
   codegen_->AddSlowPath(slow_path);
   Location value = instruction->GetLocations()->InAt(0);
 
@@ -3455,7 +3456,7 @@ void InstructionCodeGeneratorMIPS64::VisitDivZeroCheck(HDivZeroCheck* instructio
 
 void LocationsBuilderMIPS64::VisitDoubleConstant(HDoubleConstant* constant) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(constant, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(constant, LocationSummary::kNoCall);
   locations->SetOut(Location::ConstantLocation(constant));
 }
 
@@ -3472,7 +3473,7 @@ void InstructionCodeGeneratorMIPS64::VisitExit(HExit* exit ATTRIBUTE_UNUSED) {
 
 void LocationsBuilderMIPS64::VisitFloatConstant(HFloatConstant* constant) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(constant, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(constant, LocationSummary::kNoCall);
   locations->SetOut(Location::ConstantLocation(constant));
 }
 
@@ -4255,7 +4256,7 @@ void InstructionCodeGeneratorMIPS64::GenerateTestAndBranch(HInstruction* instruc
 }
 
 void LocationsBuilderMIPS64::VisitIf(HIf* if_instr) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(if_instr);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(if_instr);
   if (IsBooleanValueOrMaterializedCondition(if_instr->InputAt(0))) {
     locations->SetInAt(0, Location::RequiresRegister());
   }
@@ -4272,7 +4273,7 @@ void InstructionCodeGeneratorMIPS64::VisitIf(HIf* if_instr) {
 }
 
 void LocationsBuilderMIPS64::VisitDeoptimize(HDeoptimize* deoptimize) {
-  LocationSummary* locations = new (GetGraph()->GetArena())
+  LocationSummary* locations = new (GetGraph()->GetAllocator())
       LocationSummary(deoptimize, LocationSummary::kCallOnSlowPath);
   InvokeRuntimeCallingConvention calling_convention;
   RegisterSet caller_saves = RegisterSet::Empty();
@@ -4594,7 +4595,7 @@ void InstructionCodeGeneratorMIPS64::GenConditionalMove(HSelect* select) {
 }
 
 void LocationsBuilderMIPS64::VisitShouldDeoptimizeFlag(HShouldDeoptimizeFlag* flag) {
-  LocationSummary* locations = new (GetGraph()->GetArena())
+  LocationSummary* locations = new (GetGraph()->GetAllocator())
       LocationSummary(flag, LocationSummary::kNoCall);
   locations->SetOut(Location::RequiresRegister());
 }
@@ -4607,7 +4608,7 @@ void InstructionCodeGeneratorMIPS64::VisitShouldDeoptimizeFlag(HShouldDeoptimize
 }
 
 void LocationsBuilderMIPS64::VisitSelect(HSelect* select) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(select);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(select);
   CanMoveConditionally(select, locations);
 }
 
@@ -4627,7 +4628,7 @@ void InstructionCodeGeneratorMIPS64::VisitSelect(HSelect* select) {
 }
 
 void LocationsBuilderMIPS64::VisitNativeDebugInfo(HNativeDebugInfo* info) {
-  new (GetGraph()->GetArena()) LocationSummary(info);
+  new (GetGraph()->GetAllocator()) LocationSummary(info);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitNativeDebugInfo(HNativeDebugInfo*) {
@@ -4643,7 +4644,7 @@ void LocationsBuilderMIPS64::HandleFieldGet(HInstruction* instruction,
   DataType::Type field_type = field_info.GetFieldType();
   bool object_field_get_with_read_barrier =
       kEmitCompilerReadBarrier && (field_type == DataType::Type::kReference);
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
       instruction,
       object_field_get_with_read_barrier
           ? LocationSummary::kCallOnSlowPath
@@ -4761,7 +4762,7 @@ void InstructionCodeGeneratorMIPS64::HandleFieldGet(HInstruction* instruction,
 void LocationsBuilderMIPS64::HandleFieldSet(HInstruction* instruction,
                                             const FieldInfo& field_info ATTRIBUTE_UNUSED) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction, LocationSummary::kNoCall);
   locations->SetInAt(0, Location::RequiresRegister());
   if (DataType::IsFloatingPointType(instruction->InputAt(1)->GetType())) {
     locations->SetInAt(1, FpuRegisterOrConstantForStore(instruction->InputAt(1)));
@@ -5050,7 +5051,7 @@ void InstructionCodeGeneratorMIPS64::GenerateGcRootFieldLoad(HInstruction* instr
         // Slow path marking the GC root `root`.
         Location temp = Location::RegisterLocation(T9);
         SlowPathCodeMIPS64* slow_path =
-            new (GetGraph()->GetArena()) ReadBarrierMarkSlowPathMIPS64(
+            new (GetGraph()->GetAllocator()) ReadBarrierMarkSlowPathMIPS64(
                 instruction,
                 root,
                 /*entrypoint*/ temp);
@@ -5335,14 +5336,14 @@ void CodeGeneratorMIPS64::GenerateReferenceLoadWithBakerReadBarrier(HInstruction
     // above are expected to be null in this code path.
     DCHECK_EQ(offset, 0u);
     DCHECK_EQ(scale_factor, ScaleFactor::TIMES_1);
-    slow_path = new (GetGraph()->GetArena())
+    slow_path = new (GetGraph()->GetAllocator())
         ReadBarrierMarkAndUpdateFieldSlowPathMIPS64(instruction,
                                                     ref,
                                                     obj,
                                                     /* field_offset */ index,
                                                     temp_reg);
   } else {
-    slow_path = new (GetGraph()->GetArena()) ReadBarrierMarkSlowPathMIPS64(instruction, ref);
+    slow_path = new (GetGraph()->GetAllocator()) ReadBarrierMarkSlowPathMIPS64(instruction, ref);
   }
   AddSlowPath(slow_path);
 
@@ -5378,7 +5379,7 @@ void CodeGeneratorMIPS64::GenerateReadBarrierSlow(HInstruction* instruction,
   // not used by the artReadBarrierSlow entry point.
   //
   // TODO: Unpoison `ref` when it is used by artReadBarrierSlow.
-  SlowPathCodeMIPS64* slow_path = new (GetGraph()->GetArena())
+  SlowPathCodeMIPS64* slow_path = new (GetGraph()->GetAllocator())
       ReadBarrierForHeapReferenceSlowPathMIPS64(instruction, out, ref, obj, offset, index);
   AddSlowPath(slow_path);
 
@@ -5414,7 +5415,7 @@ void CodeGeneratorMIPS64::GenerateReadBarrierForRootSlow(HInstruction* instructi
   // Note that GC roots are not affected by heap poisoning, so we do
   // not need to do anything special for this here.
   SlowPathCodeMIPS64* slow_path =
-      new (GetGraph()->GetArena()) ReadBarrierForRootSlowPathMIPS64(instruction, out, root);
+      new (GetGraph()->GetAllocator()) ReadBarrierForRootSlowPathMIPS64(instruction, out, root);
   AddSlowPath(slow_path);
 
   __ Bc(slow_path->GetEntryLabel());
@@ -5441,7 +5442,8 @@ void LocationsBuilderMIPS64::VisitInstanceOf(HInstanceOf* instruction) {
       break;
   }
 
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction, call_kind);
+  LocationSummary* locations =
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction, call_kind);
   if (baker_read_barrier_slow_path) {
     locations->SetCustomSlowPathCallerSaves(RegisterSet::Empty());  // No caller-save registers.
   }
@@ -5583,8 +5585,8 @@ void InstructionCodeGeneratorMIPS64::VisitInstanceOf(HInstanceOf* instruction) {
                                         maybe_temp_loc,
                                         kWithoutReadBarrier);
       DCHECK(locations->OnlyCallsOnSlowPath());
-      slow_path = new (GetGraph()->GetArena()) TypeCheckSlowPathMIPS64(instruction,
-                                                                       /* is_fatal */ false);
+      slow_path = new (GetGraph()->GetAllocator()) TypeCheckSlowPathMIPS64(instruction,
+                                                                           /* is_fatal */ false);
       codegen_->AddSlowPath(slow_path);
       __ Bnec(out, cls, slow_path->GetEntryLabel());
       __ LoadConst32(out, 1);
@@ -5612,8 +5614,8 @@ void InstructionCodeGeneratorMIPS64::VisitInstanceOf(HInstanceOf* instruction) {
       // call to the runtime not using a type checking slow path).
       // This should also be beneficial for the other cases above.
       DCHECK(locations->OnlyCallsOnSlowPath());
-      slow_path = new (GetGraph()->GetArena()) TypeCheckSlowPathMIPS64(instruction,
-                                                                       /* is_fatal */ false);
+      slow_path = new (GetGraph()->GetAllocator()) TypeCheckSlowPathMIPS64(instruction,
+                                                                           /* is_fatal */ false);
       codegen_->AddSlowPath(slow_path);
       __ Bc(slow_path->GetEntryLabel());
       break;
@@ -5628,7 +5630,7 @@ void InstructionCodeGeneratorMIPS64::VisitInstanceOf(HInstanceOf* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitIntConstant(HIntConstant* constant) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(constant);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(constant);
   locations->SetOut(Location::ConstantLocation(constant));
 }
 
@@ -5637,7 +5639,7 @@ void InstructionCodeGeneratorMIPS64::VisitIntConstant(HIntConstant* constant ATT
 }
 
 void LocationsBuilderMIPS64::VisitNullConstant(HNullConstant* constant) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(constant);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(constant);
   locations->SetOut(Location::ConstantLocation(constant));
 }
 
@@ -5952,7 +5954,7 @@ void LocationsBuilderMIPS64::VisitLoadClass(HLoadClass* cls) {
   LocationSummary::CallKind call_kind = (cls->NeedsEnvironment() || requires_read_barrier)
       ? LocationSummary::kCallOnSlowPath
       : LocationSummary::kNoCall;
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(cls, call_kind);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(cls, call_kind);
   if (kUseBakerReadBarrier && requires_read_barrier && !cls->NeedsEnvironment()) {
     locations->SetCustomSlowPathCallerSaves(RegisterSet::Empty());  // No caller-save registers.
   }
@@ -6081,7 +6083,7 @@ void InstructionCodeGeneratorMIPS64::VisitLoadClass(HLoadClass* cls) NO_THREAD_S
 
   if (generate_null_check || cls->MustGenerateClinitCheck()) {
     DCHECK(cls->CanCallRuntime());
-    SlowPathCodeMIPS64* slow_path = new (GetGraph()->GetArena()) LoadClassSlowPathMIPS64(
+    SlowPathCodeMIPS64* slow_path = new (GetGraph()->GetAllocator()) LoadClassSlowPathMIPS64(
         cls, cls, cls->GetDexPc(), cls->MustGenerateClinitCheck(), bss_info_high);
     codegen_->AddSlowPath(slow_path);
     if (generate_null_check) {
@@ -6101,7 +6103,7 @@ static int32_t GetExceptionTlsOffset() {
 
 void LocationsBuilderMIPS64::VisitLoadException(HLoadException* load) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(load, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(load, LocationSummary::kNoCall);
   locations->SetOut(Location::RequiresRegister());
 }
 
@@ -6111,7 +6113,7 @@ void InstructionCodeGeneratorMIPS64::VisitLoadException(HLoadException* load) {
 }
 
 void LocationsBuilderMIPS64::VisitClearException(HClearException* clear) {
-  new (GetGraph()->GetArena()) LocationSummary(clear, LocationSummary::kNoCall);
+  new (GetGraph()->GetAllocator()) LocationSummary(clear, LocationSummary::kNoCall);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitClearException(HClearException* clear ATTRIBUTE_UNUSED) {
@@ -6121,7 +6123,7 @@ void InstructionCodeGeneratorMIPS64::VisitClearException(HClearException* clear 
 void LocationsBuilderMIPS64::VisitLoadString(HLoadString* load) {
   HLoadString::LoadKind load_kind = load->GetLoadKind();
   LocationSummary::CallKind call_kind = CodeGenerator::GetLoadStringCallKind(load);
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(load, call_kind);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(load, call_kind);
   if (load_kind == HLoadString::LoadKind::kRuntimeCall) {
     InvokeRuntimeCallingConvention calling_convention;
     locations->SetOut(Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
@@ -6199,7 +6201,7 @@ void InstructionCodeGeneratorMIPS64::VisitLoadString(HLoadString* load) NO_THREA
                               kCompilerReadBarrierOption,
                               &info_low->label);
       SlowPathCodeMIPS64* slow_path =
-          new (GetGraph()->GetArena()) LoadStringSlowPathMIPS64(load, info_high);
+          new (GetGraph()->GetAllocator()) LoadStringSlowPathMIPS64(load, info_high);
       codegen_->AddSlowPath(slow_path);
       __ Beqzc(out, slow_path->GetEntryLabel());
       __ Bind(slow_path->GetExitLabel());
@@ -6227,7 +6229,7 @@ void InstructionCodeGeneratorMIPS64::VisitLoadString(HLoadString* load) NO_THREA
 }
 
 void LocationsBuilderMIPS64::VisitLongConstant(HLongConstant* constant) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(constant);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(constant);
   locations->SetOut(Location::ConstantLocation(constant));
 }
 
@@ -6236,8 +6238,8 @@ void InstructionCodeGeneratorMIPS64::VisitLongConstant(HLongConstant* constant A
 }
 
 void LocationsBuilderMIPS64::VisitMonitorOperation(HMonitorOperation* instruction) {
-  LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kCallOnMainOnly);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
+      instruction, LocationSummary::kCallOnMainOnly);
   InvokeRuntimeCallingConvention calling_convention;
   locations->SetInAt(0, Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
 }
@@ -6255,7 +6257,7 @@ void InstructionCodeGeneratorMIPS64::VisitMonitorOperation(HMonitorOperation* in
 
 void LocationsBuilderMIPS64::VisitMul(HMul* mul) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(mul, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(mul, LocationSummary::kNoCall);
   switch (mul->GetResultType()) {
     case DataType::Type::kInt32:
     case DataType::Type::kInt64:
@@ -6310,7 +6312,7 @@ void InstructionCodeGeneratorMIPS64::VisitMul(HMul* instruction) {
 
 void LocationsBuilderMIPS64::VisitNeg(HNeg* neg) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(neg, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(neg, LocationSummary::kNoCall);
   switch (neg->GetResultType()) {
     case DataType::Type::kInt32:
     case DataType::Type::kInt64:
@@ -6360,8 +6362,8 @@ void InstructionCodeGeneratorMIPS64::VisitNeg(HNeg* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitNewArray(HNewArray* instruction) {
-  LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kCallOnMainOnly);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
+      instruction, LocationSummary::kCallOnMainOnly);
   InvokeRuntimeCallingConvention calling_convention;
   locations->SetOut(calling_convention.GetReturnLocation(DataType::Type::kReference));
   locations->SetInAt(0, Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
@@ -6379,8 +6381,8 @@ void InstructionCodeGeneratorMIPS64::VisitNewArray(HNewArray* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitNewInstance(HNewInstance* instruction) {
-  LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kCallOnMainOnly);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
+      instruction, LocationSummary::kCallOnMainOnly);
   InvokeRuntimeCallingConvention calling_convention;
   if (instruction->IsStringAlloc()) {
     locations->AddTemp(Location::RegisterLocation(kMethodRegisterArgument));
@@ -6410,7 +6412,7 @@ void InstructionCodeGeneratorMIPS64::VisitNewInstance(HNewInstance* instruction)
 }
 
 void LocationsBuilderMIPS64::VisitNot(HNot* instruction) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
 }
@@ -6434,7 +6436,7 @@ void InstructionCodeGeneratorMIPS64::VisitNot(HNot* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitBooleanNot(HBooleanNot* instruction) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
 }
@@ -6462,7 +6464,8 @@ void CodeGeneratorMIPS64::GenerateImplicitNullCheck(HNullCheck* instruction) {
 }
 
 void CodeGeneratorMIPS64::GenerateExplicitNullCheck(HNullCheck* instruction) {
-  SlowPathCodeMIPS64* slow_path = new (GetGraph()->GetArena()) NullCheckSlowPathMIPS64(instruction);
+  SlowPathCodeMIPS64* slow_path =
+      new (GetGraph()->GetAllocator()) NullCheckSlowPathMIPS64(instruction);
   AddSlowPath(slow_path);
 
   Location obj = instruction->GetLocations()->InAt(0);
@@ -6491,7 +6494,7 @@ void InstructionCodeGeneratorMIPS64::VisitParallelMove(HParallelMove* instructio
 }
 
 void LocationsBuilderMIPS64::VisitParameterValue(HParameterValue* instruction) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
   Location location = parameter_visitor_.GetNextLocation(instruction->GetType());
   if (location.IsStackSlot()) {
     location = Location::StackSlot(location.GetStackIndex() + codegen_->GetFrameSize());
@@ -6508,7 +6511,7 @@ void InstructionCodeGeneratorMIPS64::VisitParameterValue(HParameterValue* instru
 
 void LocationsBuilderMIPS64::VisitCurrentMethod(HCurrentMethod* instruction) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction, LocationSummary::kNoCall);
   locations->SetOut(Location::RegisterLocation(kMethodRegisterArgument));
 }
 
@@ -6518,7 +6521,7 @@ void InstructionCodeGeneratorMIPS64::VisitCurrentMethod(HCurrentMethod* instruct
 }
 
 void LocationsBuilderMIPS64::VisitPhi(HPhi* instruction) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
   for (size_t i = 0, e = locations->GetInputCount(); i < e; ++i) {
     locations->SetInAt(i, Location::Any());
   }
@@ -6534,7 +6537,7 @@ void LocationsBuilderMIPS64::VisitRem(HRem* rem) {
   LocationSummary::CallKind call_kind =
       DataType::IsFloatingPointType(type) ? LocationSummary::kCallOnMainOnly
                                           : LocationSummary::kNoCall;
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(rem, call_kind);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(rem, call_kind);
 
   switch (type) {
     case DataType::Type::kInt32:
@@ -6602,7 +6605,7 @@ void InstructionCodeGeneratorMIPS64::VisitMemoryBarrier(HMemoryBarrier* memory_b
 }
 
 void LocationsBuilderMIPS64::VisitReturn(HReturn* ret) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(ret);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(ret);
   DataType::Type return_type = ret->InputAt(0)->GetType();
   locations->SetInAt(0, Mips64ReturnLocation(return_type));
 }
@@ -6736,8 +6739,8 @@ void InstructionCodeGeneratorMIPS64::VisitUnresolvedStaticFieldSet(
 }
 
 void LocationsBuilderMIPS64::VisitSuspendCheck(HSuspendCheck* instruction) {
-  LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kCallOnSlowPath);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
+      instruction, LocationSummary::kCallOnSlowPath);
   // In suspend check slow path, usually there are no caller-save registers at all.
   // If SIMD instructions are present, however, we force spilling all live SIMD
   // registers in full width (since the runtime only saves/restores lower part).
@@ -6760,8 +6763,8 @@ void InstructionCodeGeneratorMIPS64::VisitSuspendCheck(HSuspendCheck* instructio
 }
 
 void LocationsBuilderMIPS64::VisitThrow(HThrow* instruction) {
-  LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kCallOnMainOnly);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
+      instruction, LocationSummary::kCallOnMainOnly);
   InvokeRuntimeCallingConvention calling_convention;
   locations->SetInAt(0, Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
 }
@@ -6782,7 +6785,7 @@ void LocationsBuilderMIPS64::VisitTypeConversion(HTypeConversion* conversion) {
     LOG(FATAL) << "Unexpected type conversion from " << input_type << " to " << result_type;
   }
 
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(conversion);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(conversion);
 
   if (DataType::IsFloatingPointType(input_type)) {
     locations->SetInAt(0, Location::RequiresFpuRegister());
@@ -7014,7 +7017,7 @@ void InstructionCodeGeneratorMIPS64::VisitAboveOrEqual(HAboveOrEqual* comp) {
 // Simple implementation of packed switch - generate cascaded compare/jumps.
 void LocationsBuilderMIPS64::VisitPackedSwitch(HPackedSwitch* switch_instr) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(switch_instr, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(switch_instr, LocationSummary::kNoCall);
   locations->SetInAt(0, Location::RequiresRegister());
 }
 
@@ -7110,7 +7113,7 @@ void InstructionCodeGeneratorMIPS64::VisitPackedSwitch(HPackedSwitch* switch_ins
 
 void LocationsBuilderMIPS64::VisitClassTableGet(HClassTableGet* instruction) {
   LocationSummary* locations =
-      new (GetGraph()->GetArena()) LocationSummary(instruction, LocationSummary::kNoCall);
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction, LocationSummary::kNoCall);
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetOut(Location::RequiresRegister());
 }

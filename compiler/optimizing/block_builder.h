@@ -29,7 +29,7 @@ class HBasicBlockBuilder : public ValueObject {
   HBasicBlockBuilder(HGraph* graph,
                      const DexFile* const dex_file,
                      const DexFile::CodeItem& code_item)
-      : arena_(graph->GetArena()),
+      : arena_(graph->GetAllocator()),
         graph_(graph),
         dex_file_(dex_file),
         code_item_(code_item),

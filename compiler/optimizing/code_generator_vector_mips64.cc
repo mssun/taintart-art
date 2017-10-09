@@ -29,7 +29,7 @@ VectorRegister VectorRegisterFrom(Location location) {
 }
 
 void LocationsBuilderMIPS64::VisitVecReplicateScalar(HVecReplicateScalar* instruction) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
     case DataType::Type::kUint8:
@@ -132,7 +132,7 @@ static void CreateVecUnOpLocations(ArenaAllocator* arena, HVecUnaryOperation* in
 }
 
 void LocationsBuilderMIPS64::VisitVecReduce(HVecReduce* instruction) {
-  CreateVecUnOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecUnOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecReduce(HVecReduce* instruction) {
@@ -140,7 +140,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecReduce(HVecReduce* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecCnv(HVecCnv* instruction) {
-  CreateVecUnOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecUnOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecCnv(HVecCnv* instruction) {
@@ -159,7 +159,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecCnv(HVecCnv* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecNeg(HVecNeg* instruction) {
-  CreateVecUnOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecUnOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecNeg(HVecNeg* instruction) {
@@ -206,7 +206,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecNeg(HVecNeg* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecAbs(HVecAbs* instruction) {
-  CreateVecUnOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecUnOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecAbs(HVecAbs* instruction) {
@@ -253,7 +253,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecAbs(HVecAbs* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecNot(HVecNot* instruction) {
-  CreateVecUnOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecUnOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecNot(HVecNot* instruction) {
@@ -308,7 +308,7 @@ static void CreateVecBinOpLocations(ArenaAllocator* arena, HVecBinaryOperation* 
 }
 
 void LocationsBuilderMIPS64::VisitVecAdd(HVecAdd* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecAdd(HVecAdd* instruction) {
@@ -350,7 +350,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecAdd(HVecAdd* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecHalvingAdd(HVecHalvingAdd* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecHalvingAdd(HVecHalvingAdd* instruction) {
@@ -390,7 +390,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecHalvingAdd(HVecHalvingAdd* instruct
 }
 
 void LocationsBuilderMIPS64::VisitVecSub(HVecSub* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecSub(HVecSub* instruction) {
@@ -432,7 +432,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecSub(HVecSub* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecMul(HVecMul* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecMul(HVecMul* instruction) {
@@ -474,7 +474,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecMul(HVecMul* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecDiv(HVecDiv* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecDiv(HVecDiv* instruction) {
@@ -498,7 +498,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecDiv(HVecDiv* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecMin(HVecMin* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecMin(HVecMin* instruction) {
@@ -558,7 +558,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecMin(HVecMin* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecMax(HVecMax* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecMax(HVecMax* instruction) {
@@ -618,7 +618,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecMax(HVecMax* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecAnd(HVecAnd* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecAnd(HVecAnd* instruction) {
@@ -647,7 +647,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecAnd(HVecAnd* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecAndNot(HVecAndNot* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecAndNot(HVecAndNot* instruction) {
@@ -655,7 +655,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecAndNot(HVecAndNot* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecOr(HVecOr* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecOr(HVecOr* instruction) {
@@ -684,7 +684,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecOr(HVecOr* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecXor(HVecXor* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecXor(HVecXor* instruction) {
@@ -733,7 +733,7 @@ static void CreateVecShiftLocations(ArenaAllocator* arena, HVecBinaryOperation* 
 }
 
 void LocationsBuilderMIPS64::VisitVecShl(HVecShl* instruction) {
-  CreateVecShiftLocations(GetGraph()->GetArena(), instruction);
+  CreateVecShiftLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecShl(HVecShl* instruction) {
@@ -767,7 +767,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecShl(HVecShl* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecShr(HVecShr* instruction) {
-  CreateVecShiftLocations(GetGraph()->GetArena(), instruction);
+  CreateVecShiftLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecShr(HVecShr* instruction) {
@@ -801,7 +801,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecShr(HVecShr* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecUShr(HVecUShr* instruction) {
-  CreateVecShiftLocations(GetGraph()->GetArena(), instruction);
+  CreateVecShiftLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecUShr(HVecUShr* instruction) {
@@ -864,7 +864,7 @@ static void CreateVecAccumLocations(ArenaAllocator* arena, HVecOperation* instru
 }
 
 void LocationsBuilderMIPS64::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instruction) {
-  CreateVecAccumLocations(GetGraph()->GetArena(), instruction);
+  CreateVecAccumLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instruction) {
@@ -914,7 +914,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecMultiplyAccumulate(HVecMultiplyAccu
 }
 
 void LocationsBuilderMIPS64::VisitVecSADAccumulate(HVecSADAccumulate* instruction) {
-  CreateVecAccumLocations(GetGraph()->GetArena(), instruction);
+  CreateVecAccumLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecSADAccumulate(HVecSADAccumulate* instruction) {
@@ -984,7 +984,7 @@ int32_t InstructionCodeGeneratorMIPS64::VecAddress(LocationSummary* locations,
 }
 
 void LocationsBuilderMIPS64::VisitVecLoad(HVecLoad* instruction) {
-  CreateVecMemLocations(GetGraph()->GetArena(), instruction, /* is_load */ true);
+  CreateVecMemLocations(GetGraph()->GetAllocator(), instruction, /* is_load */ true);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecLoad(HVecLoad* instruction) {
@@ -1027,7 +1027,7 @@ void InstructionCodeGeneratorMIPS64::VisitVecLoad(HVecLoad* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecStore(HVecStore* instruction) {
-  CreateVecMemLocations(GetGraph()->GetArena(), instruction, /* is_load */ false);
+  CreateVecMemLocations(GetGraph()->GetAllocator(), instruction, /* is_load */ false);
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecStore(HVecStore* instruction) {
