@@ -94,7 +94,6 @@
   V(ObjectNotifyAll, "void java.lang.Object.notifyAll()") \
   V(StringCompareTo, "int java.lang.String.compareTo(java.lang.String)") \
   V(StringIntern, "java.lang.String java.lang.String.intern()") \
-  V(StringFastIndexOf, "int java.lang.String.fastIndexOf(int, int)") \
   V(ArrayCreateMultiArray, "java.lang.Object java.lang.reflect.Array.createMultiArray(java.lang.Class, int[])") \
   V(ArrayCreateObjectArray, "java.lang.Object java.lang.reflect.Array.createObjectArray(java.lang.Class, int)") \
   V(ThrowableNativeFillInStackTrace, "java.lang.Object java.lang.Throwable.nativeFillInStackTrace()") \
