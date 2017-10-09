@@ -19,6 +19,7 @@ package com.android.ahat;
 import com.android.ahat.heapdump.AhatArrayInstance;
 import com.android.ahat.heapdump.AhatClassInstance;
 import com.android.ahat.heapdump.AhatClassObj;
+import com.android.ahat.heapdump.AhatHeap;
 import com.android.ahat.heapdump.AhatInstance;
 import com.android.ahat.heapdump.AhatSnapshot;
 import com.android.ahat.heapdump.DiffFields;
@@ -264,16 +265,47 @@ class ObjectHandler implements AhatHandler {
   private void printGcRootPath(Doc doc, Query query, AhatInstance inst) {
     doc.section("Sample Path from GC Root");
     List<PathElement> path = inst.getPathFromGcRoot();
-    doc.table(new Column(""), new Column("Path Element"));
-    doc.row(DocString.text("(rooted)"),
-        DocString.link(DocString.uri("root"), DocString.text("ROOT")));
-    for (PathElement element : path) {
-      DocString label = DocString.text("→ ");
-      label.append(Summarizer.summarize(element.instance));
-      label.append(element.field);
-      doc.row(DocString.text(element.isDominator ? "(dominator)" : ""), label);
+
+    // Add a dummy PathElement as a marker for the root.
+    final PathElement root = new PathElement(null, null);
+    path.add(0, root);
+
+    HeapTable.TableConfig<PathElement> table = new HeapTable.TableConfig<PathElement>() {
+      public String getHeapsDescription() {
+        return "Bytes Retained by Heap (Dominators Only)";
+      }
+
+      public long getSize(PathElement element, AhatHeap heap) {
+        if (element == root) {
+          return heap.getSize().getSize();
+        }
+        if (element.isDominator) {
+          return element.instance.getRetainedSize(heap).getSize();
+        }
+        return 0;
+      }
+
+      public List<HeapTable.ValueConfig<PathElement>> getValueConfigs() {
+        HeapTable.ValueConfig<PathElement> value = new HeapTable.ValueConfig<PathElement>() {
+          public String getDescription() {
+            return "Path Element";
+          }
+
+          public DocString render(PathElement element) {
+            if (element == root) {
+              return DocString.link(DocString.uri("rooted"), DocString.text("ROOT"));
+            } else {
+              DocString label = DocString.text("→ ");
+              label.append(Summarizer.summarize(element.instance));
+              label.append(element.field);
+              return label;
+            }
+          }
+        };
+        return Collections.singletonList(value);
+      }
     };
-    doc.end();
+    HeapTable.render(doc, query, DOMINATOR_PATH_ID, table, mSnapshot, path);
   }
 
   public void printDominatedObjects(Doc doc, Query query, AhatInstance inst) {
