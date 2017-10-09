@@ -14,5 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# We want to run in debuggable mode and compiled.
-exec ${RUN} --jit -Xcompiler-option --debuggable "${@}"
+# In order to test deoptimizing at quick-to-interpreter bridge,
+# we want to run in debuggable mode with jit compilation.
+# We also bump up the jit threshold to 10 to make sure that the method
+# that should be interpreted is not compiled.
+exec ${RUN} --jit --runtime-option -Xjitthreshold:10000 -Xcompiler-option --debuggable "${@}"
