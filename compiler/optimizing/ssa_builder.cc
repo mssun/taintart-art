@@ -233,7 +233,7 @@ bool SsaBuilder::UpdatePrimitiveType(HPhi* phi, ArenaVector<HPhi*>* worklist) {
 }
 
 void SsaBuilder::RunPrimitiveTypePropagation() {
-  ArenaVector<HPhi*> worklist(graph_->GetArena()->Adapter(kArenaAllocGraphBuilder));
+  ArenaVector<HPhi*> worklist(graph_->GetAllocator()->Adapter(kArenaAllocGraphBuilder));
 
   for (HBasicBlock* block : graph_->GetReversePostOrder()) {
     if (block->IsLoopHeader()) {
@@ -293,7 +293,7 @@ static HArrayGet* CreateFloatOrDoubleEquivalentOfArrayGet(HArrayGet* aget) {
   DCHECK(DataType::IsIntOrLongType(type));
   DCHECK(FindFloatOrDoubleEquivalentOfArrayGet(aget) == nullptr);
 
-  HArrayGet* equivalent = new (aget->GetBlock()->GetGraph()->GetArena()) HArrayGet(
+  HArrayGet* equivalent = new (aget->GetBlock()->GetGraph()->GetAllocator()) HArrayGet(
       aget->GetArray(),
       aget->GetIndex(),
       type == DataType::Type::kInt32 ? DataType::Type::kFloat32 : DataType::Type::kFloat64,
@@ -319,7 +319,7 @@ bool SsaBuilder::FixAmbiguousArrayOps() {
   // uses (because they are untyped) and environment uses (if --debuggable).
   // After resolving all ambiguous ArrayGets, we will re-run primitive type
   // propagation on the Phis which need to be updated.
-  ArenaVector<HPhi*> worklist(graph_->GetArena()->Adapter(kArenaAllocGraphBuilder));
+  ArenaVector<HPhi*> worklist(graph_->GetAllocator()->Adapter(kArenaAllocGraphBuilder));
 
   {
     ScopedObjectAccess soa(Thread::Current());
@@ -566,7 +566,7 @@ HFloatConstant* SsaBuilder::GetFloatEquivalent(HIntConstant* constant) {
   HFloatConstant* result = constant->GetNext()->AsFloatConstant();
   if (result == nullptr) {
     float value = bit_cast<float, int32_t>(constant->GetValue());
-    result = new (graph_->GetArena()) HFloatConstant(value);
+    result = new (graph_->GetAllocator()) HFloatConstant(value);
     constant->GetBlock()->InsertInstructionBefore(result, constant->GetNext());
     graph_->CacheFloatConstant(result);
   } else {
@@ -588,7 +588,7 @@ HDoubleConstant* SsaBuilder::GetDoubleEquivalent(HLongConstant* constant) {
   HDoubleConstant* result = constant->GetNext()->AsDoubleConstant();
   if (result == nullptr) {
     double value = bit_cast<double, int64_t>(constant->GetValue());
-    result = new (graph_->GetArena()) HDoubleConstant(value);
+    result = new (graph_->GetAllocator()) HDoubleConstant(value);
     constant->GetBlock()->InsertInstructionBefore(result, constant->GetNext());
     graph_->CacheDoubleConstant(result);
   } else {
@@ -621,7 +621,7 @@ HPhi* SsaBuilder::GetFloatDoubleOrReferenceEquivalentOfPhi(HPhi* phi, DataType::
   if (next == nullptr
       || (next->AsPhi()->GetRegNumber() != phi->GetRegNumber())
       || (next->GetType() != type)) {
-    ArenaAllocator* allocator = graph_->GetArena();
+    ArenaAllocator* allocator = graph_->GetAllocator();
     HInputsRef inputs = phi->GetInputs();
     HPhi* new_phi =
         new (allocator) HPhi(allocator, phi->GetRegNumber(), inputs.size(), type);

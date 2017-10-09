@@ -489,7 +489,7 @@ class CodeGeneratorARM64 : public CodeGenerator {
   uint32_t GetPreferredSlotsAlignment() const OVERRIDE { return vixl::aarch64::kXRegSizeInBytes; }
 
   JumpTableARM64* CreateJumpTable(HPackedSwitch* switch_instr) {
-    jump_tables_.emplace_back(new (GetGraph()->GetArena()) JumpTableARM64(switch_instr));
+    jump_tables_.emplace_back(new (GetGraph()->GetAllocator()) JumpTableARM64(switch_instr));
     return jump_tables_.back().get();
   }
 

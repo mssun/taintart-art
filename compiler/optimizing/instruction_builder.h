@@ -43,15 +43,15 @@ class HInstructionBuilder : public ValueObject {
                       const DexFile* dex_file,
                       const DexFile::CodeItem& code_item,
                       DataType::Type return_type,
-                      DexCompilationUnit* dex_compilation_unit,
-                      const DexCompilationUnit* const outer_compilation_unit,
+                      const DexCompilationUnit* dex_compilation_unit,
+                      const DexCompilationUnit* outer_compilation_unit,
                       CompilerDriver* driver,
                       CodeGenerator* code_generator,
                       const uint8_t* interpreter_metadata,
                       OptimizingCompilerStats* compiler_stats,
                       Handle<mirror::DexCache> dex_cache,
                       VariableSizedHandleScope* handles)
-      : arena_(graph->GetArena()),
+      : allocator_(graph->GetAllocator()),
         graph_(graph),
         handles_(handles),
         dex_file_(dex_file),
@@ -59,7 +59,7 @@ class HInstructionBuilder : public ValueObject {
         return_type_(return_type),
         block_builder_(block_builder),
         ssa_builder_(ssa_builder),
-        locals_for_(arena_->Adapter(kArenaAllocGraphBuilder)),
+        locals_for_(allocator_->Adapter(kArenaAllocGraphBuilder)),
         current_block_(nullptr),
         current_locals_(nullptr),
         latest_result_(nullptr),
@@ -71,7 +71,7 @@ class HInstructionBuilder : public ValueObject {
         quicken_info_(interpreter_metadata),
         compilation_stats_(compiler_stats),
         dex_cache_(dex_cache),
-        loop_headers_(graph->GetArena()->Adapter(kArenaAllocGraphBuilder)) {
+        loop_headers_(allocator_->Adapter(kArenaAllocGraphBuilder)) {
     loop_headers_.reserve(kDefaultNumberOfLoops);
   }
 
@@ -312,7 +312,7 @@ class HInstructionBuilder : public ValueObject {
 
   ObjPtr<mirror::Class> LookupReferrerClass() const REQUIRES_SHARED(Locks::mutator_lock_);
 
-  ArenaAllocator* const arena_;
+  ArenaAllocator* const allocator_;
   HGraph* const graph_;
   VariableSizedHandleScope* handles_;
 
@@ -342,7 +342,7 @@ class HInstructionBuilder : public ValueObject {
 
   // The compilation unit of the current method being compiled. Note that
   // it can be an inlined method.
-  DexCompilationUnit* const dex_compilation_unit_;
+  const DexCompilationUnit* const dex_compilation_unit_;
 
   // The compilation unit of the outermost method being compiled. That is the
   // method being compiled (and not inlined), and potentially inlining other

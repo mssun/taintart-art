@@ -56,9 +56,9 @@ class SsaBuilder : public ValueObject {
         dex_cache_(dex_cache),
         handles_(handles),
         agets_fixed_(false),
-        ambiguous_agets_(graph->GetArena()->Adapter(kArenaAllocGraphBuilder)),
-        ambiguous_asets_(graph->GetArena()->Adapter(kArenaAllocGraphBuilder)),
-        uninitialized_strings_(graph->GetArena()->Adapter(kArenaAllocGraphBuilder)) {
+        ambiguous_agets_(graph->GetAllocator()->Adapter(kArenaAllocGraphBuilder)),
+        ambiguous_asets_(graph->GetAllocator()->Adapter(kArenaAllocGraphBuilder)),
+        uninitialized_strings_(graph->GetAllocator()->Adapter(kArenaAllocGraphBuilder)) {
     graph_->InitializeInexactObjectRTI(handles);
   }
 

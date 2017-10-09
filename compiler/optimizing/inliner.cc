@@ -705,7 +705,7 @@ HInstanceFieldGet* HInliner::BuildGetReceiverClass(ClassLinker* class_linker,
                                                    uint32_t dex_pc) const {
   ArtField* field = class_linker->GetClassRoot(ClassLinker::kJavaLangObject)->GetInstanceField(0);
   DCHECK_EQ(std::string(field->GetName()), "shadow$_klass_");
-  HInstanceFieldGet* result = new (graph_->GetArena()) HInstanceFieldGet(
+  HInstanceFieldGet* result = new (graph_->GetAllocator()) HInstanceFieldGet(
       receiver,
       field,
       DataType::Type::kReference,
@@ -812,12 +812,12 @@ void HInliner::AddCHAGuard(HInstruction* invoke_instruction,
                            uint32_t dex_pc,
                            HInstruction* cursor,
                            HBasicBlock* bb_cursor) {
-  HShouldDeoptimizeFlag* deopt_flag = new (graph_->GetArena())
-      HShouldDeoptimizeFlag(graph_->GetArena(), dex_pc);
-  HInstruction* compare = new (graph_->GetArena()) HNotEqual(
+  HShouldDeoptimizeFlag* deopt_flag = new (graph_->GetAllocator())
+      HShouldDeoptimizeFlag(graph_->GetAllocator(), dex_pc);
+  HInstruction* compare = new (graph_->GetAllocator()) HNotEqual(
       deopt_flag, graph_->GetIntConstant(0, dex_pc));
-  HInstruction* deopt = new (graph_->GetArena()) HDeoptimize(
-      graph_->GetArena(), compare, DeoptimizationKind::kCHA, dex_pc);
+  HInstruction* deopt = new (graph_->GetAllocator()) HDeoptimize(
+      graph_->GetAllocator(), compare, DeoptimizationKind::kCHA, dex_pc);
 
   if (cursor != nullptr) {
     bb_cursor->InsertInstructionAfter(deopt_flag, cursor);
@@ -865,13 +865,13 @@ HInstruction* HInliner::AddTypeGuard(HInstruction* receiver,
   // Note that we will just compare the classes, so we don't need Java semantics access checks.
   // Note that the type index and the dex file are relative to the method this type guard is
   // inlined into.
-  HLoadClass* load_class = new (graph_->GetArena()) HLoadClass(graph_->GetCurrentMethod(),
-                                                               class_index,
-                                                               caller_dex_file,
-                                                               klass,
-                                                               is_referrer,
-                                                               invoke_instruction->GetDexPc(),
-                                                               /* needs_access_check */ false);
+  HLoadClass* load_class = new (graph_->GetAllocator()) HLoadClass(graph_->GetCurrentMethod(),
+                                                                   class_index,
+                                                                   caller_dex_file,
+                                                                   klass,
+                                                                   is_referrer,
+                                                                   invoke_instruction->GetDexPc(),
+                                                                   /* needs_access_check */ false);
   HLoadClass::LoadKind kind = HSharpening::ComputeLoadClassKind(
       load_class, codegen_, compiler_driver_, caller_compilation_unit_);
   DCHECK(kind != HLoadClass::LoadKind::kInvalid)
@@ -887,11 +887,11 @@ HInstruction* HInliner::AddTypeGuard(HInstruction* receiver,
     load_class->CopyEnvironmentFrom(invoke_instruction->GetEnvironment());
   }
 
-  HNotEqual* compare = new (graph_->GetArena()) HNotEqual(load_class, receiver_class);
+  HNotEqual* compare = new (graph_->GetAllocator()) HNotEqual(load_class, receiver_class);
   bb_cursor->InsertInstructionAfter(compare, load_class);
   if (with_deoptimization) {
-    HDeoptimize* deoptimize = new (graph_->GetArena()) HDeoptimize(
-        graph_->GetArena(),
+    HDeoptimize* deoptimize = new (graph_->GetAllocator()) HDeoptimize(
+        graph_->GetAllocator(),
         compare,
         receiver,
         Runtime::Current()->IsAotCompiler()
@@ -1012,7 +1012,7 @@ void HInliner::CreateDiamondPatternForPolymorphicInline(HInstruction* compare,
   uint32_t dex_pc = invoke_instruction->GetDexPc();
   HBasicBlock* cursor_block = compare->GetBlock();
   HBasicBlock* original_invoke_block = invoke_instruction->GetBlock();
-  ArenaAllocator* allocator = graph_->GetArena();
+  ArenaAllocator* allocator = graph_->GetAllocator();
 
   // Spit the block after the compare: `cursor_block` will now be the start of the diamond,
   // and the returned block is the start of the then branch (that could contain multiple blocks).
@@ -1147,7 +1147,7 @@ bool HInliner::TryInlinePolymorphicCallToSameTarget(
   DataType::Type type = Is64BitInstructionSet(graph_->GetInstructionSet())
       ? DataType::Type::kInt64
       : DataType::Type::kInt32;
-  HClassTableGet* class_table_get = new (graph_->GetArena()) HClassTableGet(
+  HClassTableGet* class_table_get = new (graph_->GetAllocator()) HClassTableGet(
       receiver_class,
       type,
       invoke_instruction->IsInvokeVirtual() ? HClassTableGet::TableKind::kVTable
@@ -1164,7 +1164,7 @@ bool HInliner::TryInlinePolymorphicCallToSameTarget(
         reinterpret_cast<intptr_t>(actual_method), invoke_instruction->GetDexPc());
   }
 
-  HNotEqual* compare = new (graph_->GetArena()) HNotEqual(class_table_get, constant);
+  HNotEqual* compare = new (graph_->GetAllocator()) HNotEqual(class_table_get, constant);
   if (cursor != nullptr) {
     bb_cursor->InsertInstructionAfter(receiver_class, cursor);
   } else {
@@ -1176,8 +1176,8 @@ bool HInliner::TryInlinePolymorphicCallToSameTarget(
   if (outermost_graph_->IsCompilingOsr()) {
     CreateDiamondPatternForPolymorphicInline(compare, return_replacement, invoke_instruction);
   } else {
-    HDeoptimize* deoptimize = new (graph_->GetArena()) HDeoptimize(
-        graph_->GetArena(),
+    HDeoptimize* deoptimize = new (graph_->GetAllocator()) HDeoptimize(
+        graph_->GetAllocator(),
         compare,
         receiver,
         DeoptimizationKind::kJitSameTarget,
@@ -1240,8 +1240,8 @@ bool HInliner::TryInlineAndReplace(HInvoke* invoke_instruction,
       if (dex_method_index == dex::kDexNoIndex) {
         return false;
       }
-      HInvokeVirtual* new_invoke = new (graph_->GetArena()) HInvokeVirtual(
-          graph_->GetArena(),
+      HInvokeVirtual* new_invoke = new (graph_->GetAllocator()) HInvokeVirtual(
+          graph_->GetAllocator(),
           invoke_instruction->GetNumberOfArguments(),
           invoke_instruction->GetType(),
           invoke_instruction->GetDexPc(),
@@ -1517,7 +1517,7 @@ bool HInliner::TryPatternSubstitution(HInvoke* invoke_instruction,
         DCHECK(obj != nullptr) << "only non-static methods can have a constructor fence";
 
         HConstructorFence* constructor_fence =
-            new (graph_->GetArena()) HConstructorFence(obj, kNoDexPc, graph_->GetArena());
+            new (graph_->GetAllocator()) HConstructorFence(obj, kNoDexPc, graph_->GetAllocator());
         invoke_instruction->GetBlock()->InsertInstructionBefore(constructor_fence,
                                                                 invoke_instruction);
       }
@@ -1539,7 +1539,7 @@ HInstanceFieldGet* HInliner::CreateInstanceFieldGet(uint32_t field_index,
   ArtField* resolved_field =
       class_linker->LookupResolvedField(field_index, referrer, /* is_static */ false);
   DCHECK(resolved_field != nullptr);
-  HInstanceFieldGet* iget = new (graph_->GetArena()) HInstanceFieldGet(
+  HInstanceFieldGet* iget = new (graph_->GetAllocator()) HInstanceFieldGet(
       obj,
       resolved_field,
       DataType::FromShorty(resolved_field->GetTypeDescriptor()[0]),
@@ -1579,7 +1579,7 @@ HInstanceFieldSet* HInliner::CreateInstanceFieldSet(uint32_t field_index,
     DCHECK(referrer->IsConstructor());
     *is_final = resolved_field->IsFinal();
   }
-  HInstanceFieldSet* iput = new (graph_->GetArena()) HInstanceFieldSet(
+  HInstanceFieldSet* iput = new (graph_->GetAllocator()) HInstanceFieldSet(
       obj,
       value,
       resolved_field,
@@ -1641,8 +1641,9 @@ bool HInliner::TryBuildAndInlineHelper(HInvoke* invoke_instruction,
   }
 
   const int32_t caller_instruction_counter = graph_->GetCurrentInstructionId();
-  HGraph* callee_graph = new (graph_->GetArena()) HGraph(
-      graph_->GetArena(),
+  HGraph* callee_graph = new (graph_->GetAllocator()) HGraph(
+      graph_->GetAllocator(),
+      graph_->GetArenaStack(),
       callee_dex_file,
       method_index,
       compiler_driver_->GetInstructionSet(),
@@ -1659,7 +1660,7 @@ bool HInliner::TryBuildAndInlineHelper(HInvoke* invoke_instruction,
   if (stats_ != nullptr) {
     // Reuse one object for all inline attempts from this caller to keep Arena memory usage low.
     if (inline_stats_ == nullptr) {
-      void* storage = graph_->GetArena()->Alloc<OptimizingCompilerStats>(kArenaAllocMisc);
+      void* storage = graph_->GetAllocator()->Alloc<OptimizingCompilerStats>(kArenaAllocMisc);
       inline_stats_ = new (storage) OptimizingCompilerStats;
     } else {
       inline_stats_->Reset();
@@ -1672,7 +1673,6 @@ bool HInliner::TryBuildAndInlineHelper(HInvoke* invoke_instruction,
                         codegen_,
                         inline_stats_,
                         resolved_method->GetQuickenedInfo(class_linker->GetImagePointerSize()),
-                        dex_cache,
                         handles_);
 
   if (builder.BuildGraph() != kAnalysisSuccess) {

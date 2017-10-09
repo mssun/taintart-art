@@ -298,7 +298,7 @@ static void RunCodeNoCheck(CodeGenerator* codegen,
   SsaLivenessAnalysis liveness(graph, codegen);
   PrepareForRegisterAllocation(graph).Run();
   liveness.Analyze();
-  RegisterAllocator::Create(graph->GetArena(), codegen, liveness)->AllocateRegisters();
+  RegisterAllocator::Create(graph->GetAllocator(), codegen, liveness)->AllocateRegisters();
   hook_before_codegen(graph);
   InternalCodeAllocator allocator;
   codegen->Compile(&allocator);
@@ -331,7 +331,7 @@ static void RunCode(CodegenTargetConfig target_config,
 CodeGenerator* create_codegen_arm_vixl32(HGraph* graph, const CompilerOptions& compiler_options) {
   std::unique_ptr<const ArmInstructionSetFeatures> features_arm(
       ArmInstructionSetFeatures::FromCppDefines());
-  return new (graph->GetArena())
+  return new (graph->GetAllocator())
       TestCodeGeneratorARMVIXL(graph, *features_arm.get(), compiler_options);
 }
 #endif
@@ -340,7 +340,7 @@ CodeGenerator* create_codegen_arm_vixl32(HGraph* graph, const CompilerOptions& c
 CodeGenerator* create_codegen_arm64(HGraph* graph, const CompilerOptions& compiler_options) {
   std::unique_ptr<const Arm64InstructionSetFeatures> features_arm64(
       Arm64InstructionSetFeatures::FromCppDefines());
-  return new (graph->GetArena())
+  return new (graph->GetAllocator())
       TestCodeGeneratorARM64(graph, *features_arm64.get(), compiler_options);
 }
 #endif
@@ -349,7 +349,8 @@ CodeGenerator* create_codegen_arm64(HGraph* graph, const CompilerOptions& compil
 CodeGenerator* create_codegen_x86(HGraph* graph, const CompilerOptions& compiler_options) {
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
       X86InstructionSetFeatures::FromCppDefines());
-  return new (graph->GetArena()) TestCodeGeneratorX86(graph, *features_x86.get(), compiler_options);
+  return new (graph->GetAllocator()) TestCodeGeneratorX86(
+      graph, *features_x86.get(), compiler_options);
 }
 #endif
 
@@ -357,7 +358,7 @@ CodeGenerator* create_codegen_x86(HGraph* graph, const CompilerOptions& compiler
 CodeGenerator* create_codegen_x86_64(HGraph* graph, const CompilerOptions& compiler_options) {
   std::unique_ptr<const X86_64InstructionSetFeatures> features_x86_64(
      X86_64InstructionSetFeatures::FromCppDefines());
-  return new (graph->GetArena())
+  return new (graph->GetAllocator())
       x86_64::CodeGeneratorX86_64(graph, *features_x86_64.get(), compiler_options);
 }
 #endif
@@ -366,7 +367,7 @@ CodeGenerator* create_codegen_x86_64(HGraph* graph, const CompilerOptions& compi
 CodeGenerator* create_codegen_mips(HGraph* graph, const CompilerOptions& compiler_options) {
   std::unique_ptr<const MipsInstructionSetFeatures> features_mips(
       MipsInstructionSetFeatures::FromCppDefines());
-  return new (graph->GetArena())
+  return new (graph->GetAllocator())
       mips::CodeGeneratorMIPS(graph, *features_mips.get(), compiler_options);
 }
 #endif
@@ -375,7 +376,7 @@ CodeGenerator* create_codegen_mips(HGraph* graph, const CompilerOptions& compile
 CodeGenerator* create_codegen_mips64(HGraph* graph, const CompilerOptions& compiler_options) {
   std::unique_ptr<const Mips64InstructionSetFeatures> features_mips64(
       Mips64InstructionSetFeatures::FromCppDefines());
-  return new (graph->GetArena())
+  return new (graph->GetAllocator())
       mips64::CodeGeneratorMIPS64(graph, *features_mips64.get(), compiler_options);
 }
 #endif

@@ -149,7 +149,10 @@ void ArenaAllocatorStatsImpl<kCount>::Dump(std::ostream& os, const Arena* first,
   os << "===== Allocation by kind\n";
   static_assert(arraysize(kAllocNames) == kNumArenaAllocKinds, "arraysize of kAllocNames");
   for (int i = 0; i < kNumArenaAllocKinds; i++) {
+    // Reduce output by listing only allocation kinds that actually have allocations.
+    if (alloc_stats_[i] != 0u) {
       os << kAllocNames[i] << std::setw(10) << alloc_stats_[i] << "\n";
+    }
   }
 }
 

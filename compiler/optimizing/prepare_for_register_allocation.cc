@@ -56,7 +56,7 @@ void PrepareForRegisterAllocation::VisitBoundsCheck(HBoundsCheck* check) {
     // Add a fake environment for String.charAt() inline info as we want
     // the exception to appear as being thrown from there.
     ArtMethod* char_at_method = jni::DecodeArtMethod(WellKnownClasses::java_lang_String_charAt);
-    ArenaAllocator* arena = GetGraph()->GetArena();
+    ArenaAllocator* arena = GetGraph()->GetAllocator();
     HEnvironment* environment = new (arena) HEnvironment(arena,
                                                          /* number_of_vregs */ 0u,
                                                          char_at_method,

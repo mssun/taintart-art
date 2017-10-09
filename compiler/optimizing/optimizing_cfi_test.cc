@@ -46,19 +46,20 @@ class OptimizingCFITest : public CFITest {
   static constexpr bool kGenerateExpected = false;
 
   OptimizingCFITest()
-      : pool_(),
-        allocator_(&pool_),
+      : pool_and_allocator_(),
         opts_(),
         isa_features_(),
         graph_(nullptr),
         code_gen_(),
-        blocks_(allocator_.Adapter()) {}
+        blocks_(GetAllocator()->Adapter()) {}
+
+  ArenaAllocator* GetAllocator() { return pool_and_allocator_.GetAllocator(); }
 
   void SetUpFrame(InstructionSet isa) {
     // Setup simple context.
     std::string error;
     isa_features_ = InstructionSetFeatures::FromVariant(isa, "default", &error);
-    graph_ = CreateGraph(&allocator_);
+    graph_ = CreateGraph(&pool_and_allocator_);
     // Generate simple frame with some spills.
     code_gen_ = CodeGenerator::Create(graph_, isa, *isa_features_, opts_);
     code_gen_->GetAssembler()->cfi().SetEnabled(true);
@@ -142,8 +143,7 @@ class OptimizingCFITest : public CFITest {
     DISALLOW_COPY_AND_ASSIGN(InternalCodeAllocator);
   };
 
-  ArenaPool pool_;
-  ArenaAllocator allocator_;
+  ArenaPoolAndAllocator pool_and_allocator_;
   CompilerOptions opts_;
   std::unique_ptr<const InstructionSetFeatures> isa_features_;
   HGraph* graph_;

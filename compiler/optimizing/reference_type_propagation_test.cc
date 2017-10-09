@@ -28,22 +28,20 @@ namespace art {
  * Fixture class for unit testing the ReferenceTypePropagation phase. Used to verify the
  * functionality of methods and situations that are hard to set up with checker tests.
  */
-class ReferenceTypePropagationTest : public CommonCompilerTest {
+class ReferenceTypePropagationTest : public OptimizingUnitTest {
  public:
-  ReferenceTypePropagationTest() : pool_(), allocator_(&pool_), propagation_(nullptr) {
-    graph_ = CreateGraph(&allocator_);
-  }
+  ReferenceTypePropagationTest() : graph_(CreateGraph()), propagation_(nullptr) { }
 
   ~ReferenceTypePropagationTest() { }
 
   void SetupPropagation(VariableSizedHandleScope* handles) {
     graph_->InitializeInexactObjectRTI(handles);
-    propagation_ = new (&allocator_) ReferenceTypePropagation(graph_,
-                                                              Handle<mirror::ClassLoader>(),
-                                                              Handle<mirror::DexCache>(),
-                                                              handles,
-                                                              true,
-                                                              "test_prop");
+    propagation_ = new (GetAllocator()) ReferenceTypePropagation(graph_,
+                                                                 Handle<mirror::ClassLoader>(),
+                                                                 Handle<mirror::DexCache>(),
+                                                                 handles,
+                                                                 true,
+                                                                 "test_prop");
   }
 
   // Relay method to merge type in reference type propagation.
@@ -68,8 +66,6 @@ class ReferenceTypePropagationTest : public CommonCompilerTest {
   }
 
   // General building fields.
-  ArenaPool pool_;
-  ArenaAllocator allocator_;
   HGraph* graph_;
 
   ReferenceTypePropagation* propagation_;

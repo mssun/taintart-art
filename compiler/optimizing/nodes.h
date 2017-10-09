@@ -45,6 +45,7 @@
 
 namespace art {
 
+class ArenaStack;
 class GraphChecker;
 class HBasicBlock;
 class HConstructorFence;
@@ -305,7 +306,8 @@ std::ostream& operator<<(std::ostream& os, const ReferenceTypeInfo& rhs);
 // Control-flow graph of a method. Contains a list of basic blocks.
 class HGraph : public ArenaObject<kArenaAllocGraph> {
  public:
-  HGraph(ArenaAllocator* arena,
+  HGraph(ArenaAllocator* allocator,
+         ArenaStack* arena_stack,
          const DexFile& dex_file,
          uint32_t method_idx,
          InstructionSet instruction_set,
@@ -313,10 +315,11 @@ class HGraph : public ArenaObject<kArenaAllocGraph> {
          bool debuggable = false,
          bool osr = false,
          int start_instruction_id = 0)
-      : arena_(arena),
-        blocks_(arena->Adapter(kArenaAllocBlockList)),
-        reverse_post_order_(arena->Adapter(kArenaAllocReversePostOrder)),
-        linear_order_(arena->Adapter(kArenaAllocLinearOrder)),
+      : allocator_(allocator),
+        arena_stack_(arena_stack),
+        blocks_(allocator->Adapter(kArenaAllocBlockList)),
+        reverse_post_order_(allocator->Adapter(kArenaAllocReversePostOrder)),
+        linear_order_(allocator->Adapter(kArenaAllocLinearOrder)),
         entry_block_(nullptr),
         exit_block_(nullptr),
         maximum_number_of_out_vregs_(0),
@@ -337,22 +340,23 @@ class HGraph : public ArenaObject<kArenaAllocGraph> {
         number_of_cha_guards_(0),
         instruction_set_(instruction_set),
         cached_null_constant_(nullptr),
-        cached_int_constants_(std::less<int32_t>(), arena->Adapter(kArenaAllocConstantsMap)),
-        cached_float_constants_(std::less<int32_t>(), arena->Adapter(kArenaAllocConstantsMap)),
-        cached_long_constants_(std::less<int64_t>(), arena->Adapter(kArenaAllocConstantsMap)),
-        cached_double_constants_(std::less<int64_t>(), arena->Adapter(kArenaAllocConstantsMap)),
+        cached_int_constants_(std::less<int32_t>(), allocator->Adapter(kArenaAllocConstantsMap)),
+        cached_float_constants_(std::less<int32_t>(), allocator->Adapter(kArenaAllocConstantsMap)),
+        cached_long_constants_(std::less<int64_t>(), allocator->Adapter(kArenaAllocConstantsMap)),
+        cached_double_constants_(std::less<int64_t>(), allocator->Adapter(kArenaAllocConstantsMap)),
         cached_current_method_(nullptr),
         art_method_(nullptr),
         inexact_object_rti_(ReferenceTypeInfo::CreateInvalid()),
         osr_(osr),
-        cha_single_implementation_list_(arena->Adapter(kArenaAllocCHA)) {
+        cha_single_implementation_list_(allocator->Adapter(kArenaAllocCHA)) {
     blocks_.reserve(kDefaultNumberOfBlocks);
   }
 
   // Acquires and stores RTI of inexact Object to be used when creating HNullConstant.
   void InitializeInexactObjectRTI(VariableSizedHandleScope* handles);
 
-  ArenaAllocator* GetArena() const { return arena_; }
+  ArenaAllocator* GetAllocator() const { return allocator_; }
+  ArenaStack* GetArenaStack() const { return arena_stack_; }
   const ArenaVector<HBasicBlock*>& GetBlocks() const { return blocks_; }
 
   bool IsInSsaForm() const { return in_ssa_form_; }
@@ -613,7 +617,7 @@ class HGraph : public ArenaObject<kArenaAllocGraph> {
     // If not found or previously deleted, create and cache a new instruction.
     // Don't bother reviving a previously deleted instruction, for simplicity.
     if (constant == nullptr || constant->GetBlock() == nullptr) {
-      constant = new (arena_) InstructionType(value, dex_pc);
+      constant = new (allocator_) InstructionType(value, dex_pc);
       cache->Overwrite(value, constant);
       InsertConstant(constant);
     }
@@ -629,7 +633,8 @@ class HGraph : public ArenaObject<kArenaAllocGraph> {
   // See CacheFloatConstant comment.
   void CacheDoubleConstant(HDoubleConstant* constant);
 
-  ArenaAllocator* const arena_;
+  ArenaAllocator* const allocator_;
+  ArenaStack* const arena_stack_;
 
   // List of blocks in insertion order.
   ArenaVector<HBasicBlock*> blocks_;
@@ -751,9 +756,12 @@ class HLoopInformation : public ArenaObject<kArenaAllocLoopInfo> {
         suspend_check_(nullptr),
         irreducible_(false),
         contains_irreducible_loop_(false),
-        back_edges_(graph->GetArena()->Adapter(kArenaAllocLoopInfoBackEdges)),
+        back_edges_(graph->GetAllocator()->Adapter(kArenaAllocLoopInfoBackEdges)),
         // Make bit vector growable, as the number of blocks may change.
-        blocks_(graph->GetArena(), graph->GetBlocks().size(), true, kArenaAllocLoopInfoBackEdges) {
+        blocks_(graph->GetAllocator(),
+                graph->GetBlocks().size(),
+                true,
+                kArenaAllocLoopInfoBackEdges) {
     back_edges_.reserve(kDefaultNumberOfBackEdges);
   }
 
@@ -916,11 +924,11 @@ class HBasicBlock : public ArenaObject<kArenaAllocBasicBlock> {
  public:
   explicit HBasicBlock(HGraph* graph, uint32_t dex_pc = kNoDexPc)
       : graph_(graph),
-        predecessors_(graph->GetArena()->Adapter(kArenaAllocPredecessors)),
-        successors_(graph->GetArena()->Adapter(kArenaAllocSuccessors)),
+        predecessors_(graph->GetAllocator()->Adapter(kArenaAllocPredecessors)),
+        successors_(graph->GetAllocator()->Adapter(kArenaAllocSuccessors)),
         loop_information_(nullptr),
         dominator_(nullptr),
-        dominated_blocks_(graph->GetArena()->Adapter(kArenaAllocDominated)),
+        dominated_blocks_(graph->GetAllocator()->Adapter(kArenaAllocDominated)),
         block_id_(kInvalidBlockId),
         dex_pc_(dex_pc),
         lifetime_start_(kNoLifetime),
@@ -972,7 +980,7 @@ class HBasicBlock : public ArenaObject<kArenaAllocBasicBlock> {
 
   void AddBackEdge(HBasicBlock* back_edge) {
     if (loop_information_ == nullptr) {
-      loop_information_ = new (graph_->GetArena()) HLoopInformation(this, graph_);
+      loop_information_ = new (graph_->GetAllocator()) HLoopInformation(this, graph_);
     }
     DCHECK_EQ(loop_information_->GetHeader(), this);
     loop_information_->AddBackEdge(back_edge);
@@ -1925,7 +1933,7 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
   HInstruction* GetPreviousDisregardingMoves() const;
 
   HBasicBlock* GetBlock() const { return block_; }
-  ArenaAllocator* GetArena() const { return block_->GetGraph()->GetArena(); }
+  ArenaAllocator* GetAllocator() const { return block_->GetGraph()->GetAllocator(); }
   void SetBlock(HBasicBlock* block) { block_ = block; }
   bool IsInBlock() const { return block_ != nullptr; }
   bool IsInLoop() const { return block_->IsInLoop(); }
@@ -2015,7 +2023,7 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
     // Note: fixup_end remains valid across push_front().
     auto fixup_end = uses_.empty() ? uses_.begin() : ++uses_.begin();
     HUseListNode<HInstruction*>* new_node =
-        new (GetBlock()->GetGraph()->GetArena()) HUseListNode<HInstruction*>(user, index);
+        new (GetBlock()->GetGraph()->GetAllocator()) HUseListNode<HInstruction*>(user, index);
     uses_.push_front(*new_node);
     FixUpUserRecordsAfterUseInsertion(fixup_end);
   }
@@ -2025,7 +2033,7 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
     // Note: env_fixup_end remains valid across push_front().
     auto env_fixup_end = env_uses_.empty() ? env_uses_.begin() : ++env_uses_.begin();
     HUseListNode<HEnvironment*>* new_node =
-        new (GetBlock()->GetGraph()->GetArena()) HUseListNode<HEnvironment*>(user, index);
+        new (GetBlock()->GetGraph()->GetAllocator()) HUseListNode<HEnvironment*>(user, index);
     env_uses_.push_front(*new_node);
     FixUpUserRecordsAfterEnvUseInsertion(env_fixup_end);
   }
@@ -2108,7 +2116,7 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
   // copying, the uses lists are being updated.
   void CopyEnvironmentFrom(HEnvironment* environment) {
     DCHECK(environment_ == nullptr);
-    ArenaAllocator* allocator = GetBlock()->GetGraph()->GetArena();
+    ArenaAllocator* allocator = GetBlock()->GetGraph()->GetAllocator();
     environment_ = new (allocator) HEnvironment(allocator, *environment, this);
     environment_->CopyFrom(environment);
     if (environment->GetParent() != nullptr) {
@@ -2119,7 +2127,7 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
   void CopyEnvironmentFromWithLoopPhiAdjustment(HEnvironment* environment,
                                                 HBasicBlock* block) {
     DCHECK(environment_ == nullptr);
-    ArenaAllocator* allocator = GetBlock()->GetGraph()->GetArena();
+    ArenaAllocator* allocator = GetBlock()->GetGraph()->GetAllocator();
     environment_ = new (allocator) HEnvironment(allocator, *environment, this);
     environment_->CopyFromWithLoopPhiAdjustment(environment, block);
     if (environment->GetParent() != nullptr) {

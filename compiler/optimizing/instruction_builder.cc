@@ -59,8 +59,8 @@ ArenaVector<HInstruction*>* HInstructionBuilder::GetLocalsForWithAllocation(
       // the first throwing instruction.
       HInstruction* current_local_value = (*current_locals_)[i];
       if (current_local_value != nullptr) {
-        HPhi* phi = new (arena_) HPhi(
-            arena_,
+        HPhi* phi = new (allocator_) HPhi(
+            allocator_,
             i,
             0,
             current_local_value->GetType());
@@ -109,8 +109,8 @@ void HInstructionBuilder::InitializeBlockLocals() {
       HInstruction* incoming =
           ValueOfLocalAt(current_block_->GetLoopInformation()->GetPreHeader(), local);
       if (incoming != nullptr) {
-        HPhi* phi = new (arena_) HPhi(
-            arena_,
+        HPhi* phi = new (allocator_) HPhi(
+            allocator_,
             local,
             0,
             incoming->GetType());
@@ -148,8 +148,8 @@ void HInstructionBuilder::InitializeBlockLocals() {
 
       if (is_different) {
         HInstruction* first_input = ValueOfLocalAt(current_block_->GetPredecessors()[0], local);
-        HPhi* phi = new (arena_) HPhi(
-            arena_,
+        HPhi* phi = new (allocator_) HPhi(
+            allocator_,
             local,
             current_block_->GetPredecessors().size(),
             first_input->GetType());
@@ -210,8 +210,8 @@ void HInstructionBuilder::InsertInstructionAtTop(HInstruction* instruction) {
 
 void HInstructionBuilder::InitializeInstruction(HInstruction* instruction) {
   if (instruction->NeedsEnvironment()) {
-    HEnvironment* environment = new (arena_) HEnvironment(
-        arena_,
+    HEnvironment* environment = new (allocator_) HEnvironment(
+        allocator_,
         current_locals_->size(),
         graph_->GetArtMethod(),
         instruction->GetDexPc(),
@@ -227,7 +227,7 @@ HInstruction* HInstructionBuilder::LoadNullCheckedLocal(uint32_t register_index,
     return ref;
   }
 
-  HNullCheck* null_check = new (arena_) HNullCheck(ref, dex_pc);
+  HNullCheck* null_check = new (allocator_) HNullCheck(ref, dex_pc);
   AppendInstruction(null_check);
   return null_check;
 }
@@ -265,7 +265,7 @@ static bool IsBlockPopulated(HBasicBlock* block) {
 
 bool HInstructionBuilder::Build() {
   locals_for_.resize(graph_->GetBlocks().size(),
-                     ArenaVector<HInstruction*>(arena_->Adapter(kArenaAllocGraphBuilder)));
+                     ArenaVector<HInstruction*>(allocator_->Adapter(kArenaAllocGraphBuilder)));
 
   // Find locations where we want to generate extra stackmaps for native debugging.
   // This allows us to generate the info only at interesting points (for example,
@@ -275,7 +275,8 @@ bool HInstructionBuilder::Build() {
   ArenaBitVector* native_debug_info_locations = nullptr;
   if (native_debuggable) {
     const uint32_t num_instructions = code_item_.insns_size_in_code_units_;
-    native_debug_info_locations = new (arena_) ArenaBitVector (arena_, num_instructions, false);
+    native_debug_info_locations =
+        new (allocator_) ArenaBitVector (allocator_, num_instructions, false);
     FindNativeDebugInfoLocations(native_debug_info_locations);
   }
 
@@ -287,14 +288,14 @@ bool HInstructionBuilder::Build() {
 
     if (current_block_->IsEntryBlock()) {
       InitializeParameters();
-      AppendInstruction(new (arena_) HSuspendCheck(0u));
-      AppendInstruction(new (arena_) HGoto(0u));
+      AppendInstruction(new (allocator_) HSuspendCheck(0u));
+      AppendInstruction(new (allocator_) HGoto(0u));
       continue;
     } else if (current_block_->IsExitBlock()) {
-      AppendInstruction(new (arena_) HExit());
+      AppendInstruction(new (allocator_) HExit());
       continue;
     } else if (current_block_->IsLoopHeader()) {
-      HSuspendCheck* suspend_check = new (arena_) HSuspendCheck(current_block_->GetDexPc());
+      HSuspendCheck* suspend_check = new (allocator_) HSuspendCheck(current_block_->GetDexPc());
       current_block_->GetLoopInformation()->SetSuspendCheck(suspend_check);
       // This is slightly odd because the loop header might not be empty (TryBoundary).
       // But we're still creating the environment with locals from the top of the block.
@@ -331,7 +332,7 @@ bool HInstructionBuilder::Build() {
       }
 
       if (native_debuggable && native_debug_info_locations->IsBitSet(dex_pc)) {
-        AppendInstruction(new (arena_) HNativeDebugInfo(dex_pc));
+        AppendInstruction(new (allocator_) HNativeDebugInfo(dex_pc));
       }
 
       if (!ProcessDexInstruction(it.CurrentInstruction(), dex_pc, quicken_index)) {
@@ -348,7 +349,7 @@ bool HInstructionBuilder::Build() {
       // instruction of the current block is not a branching instruction.
       // We add an unconditional Goto to the next block.
       DCHECK_EQ(current_block_->GetSuccessors().size(), 1u);
-      AppendInstruction(new (arena_) HGoto());
+      AppendInstruction(new (allocator_) HGoto());
     }
   }
 
@@ -452,7 +453,7 @@ void HInstructionBuilder::InitializeParameters() {
       dex_file_->GetMethodId(dex_compilation_unit_->GetDexMethodIndex());
   if (!dex_compilation_unit_->IsStatic()) {
     // Add the implicit 'this' argument, not expressed in the signature.
-    HParameterValue* parameter = new (arena_) HParameterValue(*dex_file_,
+    HParameterValue* parameter = new (allocator_) HParameterValue(*dex_file_,
                                                               referrer_method_id.class_idx_,
                                                               parameter_index++,
                                                               DataType::Type::kReference,
@@ -468,7 +469,7 @@ void HInstructionBuilder::InitializeParameters() {
   const DexFile::ProtoId& proto = dex_file_->GetMethodPrototype(referrer_method_id);
   const DexFile::TypeList* arg_types = dex_file_->GetProtoParameters(proto);
   for (int i = 0, shorty_pos = 1; i < number_of_parameters; i++) {
-    HParameterValue* parameter = new (arena_) HParameterValue(
+    HParameterValue* parameter = new (allocator_) HParameterValue(
         *dex_file_,
         arg_types->GetTypeItem(shorty_pos - 1).type_idx_,
         parameter_index++,
@@ -491,18 +492,18 @@ template<typename T>
 void HInstructionBuilder::If_22t(const Instruction& instruction, uint32_t dex_pc) {
   HInstruction* first = LoadLocal(instruction.VRegA(), DataType::Type::kInt32);
   HInstruction* second = LoadLocal(instruction.VRegB(), DataType::Type::kInt32);
-  T* comparison = new (arena_) T(first, second, dex_pc);
+  T* comparison = new (allocator_) T(first, second, dex_pc);
   AppendInstruction(comparison);
-  AppendInstruction(new (arena_) HIf(comparison, dex_pc));
+  AppendInstruction(new (allocator_) HIf(comparison, dex_pc));
   current_block_ = nullptr;
 }
 
 template<typename T>
 void HInstructionBuilder::If_21t(const Instruction& instruction, uint32_t dex_pc) {
   HInstruction* value = LoadLocal(instruction.VRegA(), DataType::Type::kInt32);
-  T* comparison = new (arena_) T(value, graph_->GetIntConstant(0, dex_pc), dex_pc);
+  T* comparison = new (allocator_) T(value, graph_->GetIntConstant(0, dex_pc), dex_pc);
   AppendInstruction(comparison);
-  AppendInstruction(new (arena_) HIf(comparison, dex_pc));
+  AppendInstruction(new (allocator_) HIf(comparison, dex_pc));
   current_block_ = nullptr;
 }
 
@@ -511,7 +512,7 @@ void HInstructionBuilder::Unop_12x(const Instruction& instruction,
                                    DataType::Type type,
                                    uint32_t dex_pc) {
   HInstruction* first = LoadLocal(instruction.VRegB(), type);
-  AppendInstruction(new (arena_) T(type, first, dex_pc));
+  AppendInstruction(new (allocator_) T(type, first, dex_pc));
   UpdateLocal(instruction.VRegA(), current_block_->GetLastInstruction());
 }
 
@@ -520,7 +521,7 @@ void HInstructionBuilder::Conversion_12x(const Instruction& instruction,
                                          DataType::Type result_type,
                                          uint32_t dex_pc) {
   HInstruction* first = LoadLocal(instruction.VRegB(), input_type);
-  AppendInstruction(new (arena_) HTypeConversion(result_type, first, dex_pc));
+  AppendInstruction(new (allocator_) HTypeConversion(result_type, first, dex_pc));
   UpdateLocal(instruction.VRegA(), current_block_->GetLastInstruction());
 }
 
@@ -530,7 +531,7 @@ void HInstructionBuilder::Binop_23x(const Instruction& instruction,
                                     uint32_t dex_pc) {
   HInstruction* first = LoadLocal(instruction.VRegB(), type);
   HInstruction* second = LoadLocal(instruction.VRegC(), type);
-  AppendInstruction(new (arena_) T(type, first, second, dex_pc));
+  AppendInstruction(new (allocator_) T(type, first, second, dex_pc));
   UpdateLocal(instruction.VRegA(), current_block_->GetLastInstruction());
 }
 
@@ -540,7 +541,7 @@ void HInstructionBuilder::Binop_23x_shift(const Instruction& instruction,
                                           uint32_t dex_pc) {
   HInstruction* first = LoadLocal(instruction.VRegB(), type);
   HInstruction* second = LoadLocal(instruction.VRegC(), DataType::Type::kInt32);
-  AppendInstruction(new (arena_) T(type, first, second, dex_pc));
+  AppendInstruction(new (allocator_) T(type, first, second, dex_pc));
   UpdateLocal(instruction.VRegA(), current_block_->GetLastInstruction());
 }
 
@@ -550,7 +551,7 @@ void HInstructionBuilder::Binop_23x_cmp(const Instruction& instruction,
                                         uint32_t dex_pc) {
   HInstruction* first = LoadLocal(instruction.VRegB(), type);
   HInstruction* second = LoadLocal(instruction.VRegC(), type);
-  AppendInstruction(new (arena_) HCompare(type, first, second, bias, dex_pc));
+  AppendInstruction(new (allocator_) HCompare(type, first, second, bias, dex_pc));
   UpdateLocal(instruction.VRegA(), current_block_->GetLastInstruction());
 }
 
@@ -560,7 +561,7 @@ void HInstructionBuilder::Binop_12x_shift(const Instruction& instruction,
                                           uint32_t dex_pc) {
   HInstruction* first = LoadLocal(instruction.VRegA(), type);
   HInstruction* second = LoadLocal(instruction.VRegB(), DataType::Type::kInt32);
-  AppendInstruction(new (arena_) T(type, first, second, dex_pc));
+  AppendInstruction(new (allocator_) T(type, first, second, dex_pc));
   UpdateLocal(instruction.VRegA(), current_block_->GetLastInstruction());
 }
 
@@ -570,7 +571,7 @@ void HInstructionBuilder::Binop_12x(const Instruction& instruction,
                                     uint32_t dex_pc) {
   HInstruction* first = LoadLocal(instruction.VRegA(), type);
   HInstruction* second = LoadLocal(instruction.VRegB(), type);
-  AppendInstruction(new (arena_) T(type, first, second, dex_pc));
+  AppendInstruction(new (allocator_) T(type, first, second, dex_pc));
   UpdateLocal(instruction.VRegA(), current_block_->GetLastInstruction());
 }
 
@@ -581,7 +582,7 @@ void HInstructionBuilder::Binop_22s(const Instruction& instruction, bool reverse
   if (reverse) {
     std::swap(first, second);
   }
-  AppendInstruction(new (arena_) T(DataType::Type::kInt32, first, second, dex_pc));
+  AppendInstruction(new (allocator_) T(DataType::Type::kInt32, first, second, dex_pc));
   UpdateLocal(instruction.VRegA(), current_block_->GetLastInstruction());
 }
 
@@ -592,7 +593,7 @@ void HInstructionBuilder::Binop_22b(const Instruction& instruction, bool reverse
   if (reverse) {
     std::swap(first, second);
   }
-  AppendInstruction(new (arena_) T(DataType::Type::kInt32, first, second, dex_pc));
+  AppendInstruction(new (allocator_) T(DataType::Type::kInt32, first, second, dex_pc));
   UpdateLocal(instruction.VRegA(), current_block_->GetLastInstruction());
 }
 
@@ -630,13 +631,13 @@ void HInstructionBuilder::BuildSwitch(const Instruction& instruction, uint32_t d
   if (table.GetNumEntries() == 0) {
     // Empty Switch. Code falls through to the next block.
     DCHECK(IsFallthroughInstruction(instruction, dex_pc, current_block_));
-    AppendInstruction(new (arena_) HGoto(dex_pc));
+    AppendInstruction(new (allocator_) HGoto(dex_pc));
   } else if (table.ShouldBuildDecisionTree()) {
     for (DexSwitchTableIterator it(table); !it.Done(); it.Advance()) {
       HInstruction* case_value = graph_->GetIntConstant(it.CurrentKey(), dex_pc);
-      HEqual* comparison = new (arena_) HEqual(value, case_value, dex_pc);
+      HEqual* comparison = new (allocator_) HEqual(value, case_value, dex_pc);
       AppendInstruction(comparison);
-      AppendInstruction(new (arena_) HIf(comparison, dex_pc));
+      AppendInstruction(new (allocator_) HIf(comparison, dex_pc));
 
       if (!it.IsLast()) {
         current_block_ = FindBlockStartingAt(it.GetDexPcForCurrentIndex());
@@ -644,7 +645,7 @@ void HInstructionBuilder::BuildSwitch(const Instruction& instruction, uint32_t d
     }
   } else {
     AppendInstruction(
-        new (arena_) HPackedSwitch(table.GetEntryAt(0), table.GetNumEntries(), value, dex_pc));
+        new (allocator_) HPackedSwitch(table.GetEntryAt(0), table.GetNumEntries(), value, dex_pc));
   }
 
   current_block_ = nullptr;
@@ -664,16 +665,16 @@ void HInstructionBuilder::BuildReturn(const Instruction& instruction,
       HInstruction* fence_target = current_this_parameter_;
       DCHECK(fence_target != nullptr);
 
-      AppendInstruction(new (arena_) HConstructorFence(fence_target, dex_pc, arena_));
+      AppendInstruction(new (allocator_) HConstructorFence(fence_target, dex_pc, allocator_));
       MaybeRecordStat(
           compilation_stats_,
           MethodCompilationStat::kConstructorFenceGeneratedFinal);
     }
-    AppendInstruction(new (arena_) HReturnVoid(dex_pc));
+    AppendInstruction(new (allocator_) HReturnVoid(dex_pc));
   } else {
     DCHECK(!RequiresConstructorBarrier(dex_compilation_unit_, compiler_driver_));
     HInstruction* value = LoadLocal(instruction.VRegA(), type);
-    AppendInstruction(new (arena_) HReturn(value, dex_pc));
+    AppendInstruction(new (allocator_) HReturn(value, dex_pc));
   }
   current_block_ = nullptr;
 }
@@ -816,12 +817,12 @@ bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
   if (UNLIKELY(resolved_method == nullptr)) {
     MaybeRecordStat(compilation_stats_,
                     MethodCompilationStat::kUnresolvedMethod);
-    HInvoke* invoke = new (arena_) HInvokeUnresolved(arena_,
-                                                     number_of_arguments,
-                                                     return_type,
-                                                     dex_pc,
-                                                     method_idx,
-                                                     invoke_type);
+    HInvoke* invoke = new (allocator_) HInvokeUnresolved(allocator_,
+                                                         number_of_arguments,
+                                                         return_type,
+                                                         dex_pc,
+                                                         method_idx,
+                                                         invoke_type);
     return HandleInvoke(invoke,
                         number_of_vreg_arguments,
                         args,
@@ -841,8 +842,8 @@ bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
         dchecked_integral_cast<uint64_t>(string_init_entry_point)
     };
     MethodReference target_method(dex_file_, method_idx);
-    HInvoke* invoke = new (arena_) HInvokeStaticOrDirect(
-        arena_,
+    HInvoke* invoke = new (allocator_) HInvokeStaticOrDirect(
+        allocator_,
         number_of_arguments - 1,
         DataType::Type::kReference /*return_type */,
         dex_pc,
@@ -887,35 +888,35 @@ bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
     };
     MethodReference target_method(resolved_method->GetDexFile(),
                                   resolved_method->GetDexMethodIndex());
-    invoke = new (arena_) HInvokeStaticOrDirect(arena_,
-                                                number_of_arguments,
-                                                return_type,
-                                                dex_pc,
-                                                method_idx,
-                                                resolved_method,
-                                                dispatch_info,
-                                                invoke_type,
-                                                target_method,
-                                                clinit_check_requirement);
+    invoke = new (allocator_) HInvokeStaticOrDirect(allocator_,
+                                                    number_of_arguments,
+                                                    return_type,
+                                                    dex_pc,
+                                                    method_idx,
+                                                    resolved_method,
+                                                    dispatch_info,
+                                                    invoke_type,
+                                                    target_method,
+                                                    clinit_check_requirement);
   } else if (invoke_type == kVirtual) {
     ScopedObjectAccess soa(Thread::Current());  // Needed for the method index
-    invoke = new (arena_) HInvokeVirtual(arena_,
-                                         number_of_arguments,
-                                         return_type,
-                                         dex_pc,
-                                         method_idx,
-                                         resolved_method,
-                                         resolved_method->GetMethodIndex());
+    invoke = new (allocator_) HInvokeVirtual(allocator_,
+                                             number_of_arguments,
+                                             return_type,
+                                             dex_pc,
+                                             method_idx,
+                                             resolved_method,
+                                             resolved_method->GetMethodIndex());
   } else {
     DCHECK_EQ(invoke_type, kInterface);
     ScopedObjectAccess soa(Thread::Current());  // Needed for the IMT index.
-    invoke = new (arena_) HInvokeInterface(arena_,
-                                           number_of_arguments,
-                                           return_type,
-                                           dex_pc,
-                                           method_idx,
-                                           resolved_method,
-                                           ImTable::GetImtIndex(resolved_method));
+    invoke = new (allocator_) HInvokeInterface(allocator_,
+                                               number_of_arguments,
+                                               return_type,
+                                               dex_pc,
+                                               method_idx,
+                                               resolved_method,
+                                               ImTable::GetImtIndex(resolved_method));
   }
 
   return HandleInvoke(invoke,
@@ -940,11 +941,11 @@ bool HInstructionBuilder::BuildInvokePolymorphic(const Instruction& instruction 
   DCHECK_EQ(1 + ArtMethod::NumArgRegisters(descriptor), number_of_vreg_arguments);
   DataType::Type return_type = DataType::FromShorty(descriptor[0]);
   size_t number_of_arguments = strlen(descriptor);
-  HInvoke* invoke = new (arena_) HInvokePolymorphic(arena_,
-                                                    number_of_arguments,
-                                                    return_type,
-                                                    dex_pc,
-                                                    method_idx);
+  HInvoke* invoke = new (allocator_) HInvokePolymorphic(allocator_,
+                                                        number_of_arguments,
+                                                        return_type,
+                                                        dex_pc,
+                                                        method_idx);
   return HandleInvoke(invoke,
                       number_of_vreg_arguments,
                       args,
@@ -964,7 +965,7 @@ HNewInstance* HInstructionBuilder::BuildNewInstance(dex::TypeIndex type_index, u
   Handle<mirror::Class> klass = load_class->GetClass();
 
   if (!IsInitialized(klass)) {
-    cls = new (arena_) HClinitCheck(load_class, dex_pc);
+    cls = new (allocator_) HClinitCheck(load_class, dex_pc);
     AppendInstruction(cls);
   }
 
@@ -979,7 +980,7 @@ HNewInstance* HInstructionBuilder::BuildNewInstance(dex::TypeIndex type_index, u
   // Consider classes we haven't resolved as potentially finalizable.
   bool finalizable = (klass == nullptr) || klass->IsFinalizable();
 
-  HNewInstance* new_instance = new (arena_) HNewInstance(
+  HNewInstance* new_instance = new (allocator_) HNewInstance(
       cls,
       dex_pc,
       type_index,
@@ -1036,7 +1037,7 @@ void HInstructionBuilder::BuildConstructorFenceForAllocation(HInstruction* alloc
   // (and in theory the 0-initializing, but that happens automatically
   // when new memory pages are mapped in by the OS).
   HConstructorFence* ctor_fence =
-      new (arena_) HConstructorFence(allocation, allocation->GetDexPc(), arena_);
+      new (allocator_) HConstructorFence(allocation, allocation->GetDexPc(), allocator_);
   AppendInstruction(ctor_fence);
   MaybeRecordStat(
       compilation_stats_,
@@ -1090,7 +1091,7 @@ HClinitCheck* HInstructionBuilder::ProcessClinitCheckForInvoke(
                                      /* needs_access_check */ false);
     if (cls != nullptr) {
       *clinit_check_requirement = HInvokeStaticOrDirect::ClinitCheckRequirement::kExplicit;
-      clinit_check = new (arena_) HClinitCheck(cls, dex_pc);
+      clinit_check = new (allocator_) HClinitCheck(cls, dex_pc);
       AppendInstruction(clinit_check);
     }
   }
@@ -1290,23 +1291,23 @@ bool HInstructionBuilder::BuildInstanceFieldAccess(const Instruction& instructio
     if (resolved_field == nullptr) {
       MaybeRecordStat(compilation_stats_,
                       MethodCompilationStat::kUnresolvedField);
-      field_set = new (arena_) HUnresolvedInstanceFieldSet(object,
-                                                           value,
-                                                           field_type,
-                                                           field_index,
-                                                           dex_pc);
+      field_set = new (allocator_) HUnresolvedInstanceFieldSet(object,
+                                                               value,
+                                                               field_type,
+                                                               field_index,
+                                                               dex_pc);
     } else {
       uint16_t class_def_index = resolved_field->GetDeclaringClass()->GetDexClassDefIndex();
-      field_set = new (arena_) HInstanceFieldSet(object,
-                                                 value,
-                                                 resolved_field,
-                                                 field_type,
-                                                 resolved_field->GetOffset(),
-                                                 resolved_field->IsVolatile(),
-                                                 field_index,
-                                                 class_def_index,
-                                                 *dex_file_,
-                                                 dex_pc);
+      field_set = new (allocator_) HInstanceFieldSet(object,
+                                                     value,
+                                                     resolved_field,
+                                                     field_type,
+                                                     resolved_field->GetOffset(),
+                                                     resolved_field->IsVolatile(),
+                                                     field_index,
+                                                     class_def_index,
+                                                     *dex_file_,
+                                                     dex_pc);
     }
     AppendInstruction(field_set);
   } else {
@@ -1314,21 +1315,21 @@ bool HInstructionBuilder::BuildInstanceFieldAccess(const Instruction& instructio
     if (resolved_field == nullptr) {
       MaybeRecordStat(compilation_stats_,
                       MethodCompilationStat::kUnresolvedField);
-      field_get = new (arena_) HUnresolvedInstanceFieldGet(object,
-                                                           field_type,
-                                                           field_index,
-                                                           dex_pc);
+      field_get = new (allocator_) HUnresolvedInstanceFieldGet(object,
+                                                               field_type,
+                                                               field_index,
+                                                               dex_pc);
     } else {
       uint16_t class_def_index = resolved_field->GetDeclaringClass()->GetDexClassDefIndex();
-      field_get = new (arena_) HInstanceFieldGet(object,
-                                                 resolved_field,
-                                                 field_type,
-                                                 resolved_field->GetOffset(),
-                                                 resolved_field->IsVolatile(),
-                                                 field_index,
-                                                 class_def_index,
-                                                 *dex_file_,
-                                                 dex_pc);
+      field_get = new (allocator_) HInstanceFieldGet(object,
+                                                     resolved_field,
+                                                     field_type,
+                                                     resolved_field->GetOffset(),
+                                                     resolved_field->IsVolatile(),
+                                                     field_index,
+                                                     class_def_index,
+                                                     *dex_file_,
+                                                     dex_pc);
     }
     AppendInstruction(field_get);
     UpdateLocal(source_or_dest_reg, field_get);
@@ -1382,9 +1383,9 @@ void HInstructionBuilder::BuildUnresolvedStaticFieldAccess(const Instruction& in
   if (is_put) {
     HInstruction* value = LoadLocal(source_or_dest_reg, field_type);
     AppendInstruction(
-        new (arena_) HUnresolvedStaticFieldSet(value, field_type, field_index, dex_pc));
+        new (allocator_) HUnresolvedStaticFieldSet(value, field_type, field_index, dex_pc));
   } else {
-    AppendInstruction(new (arena_) HUnresolvedStaticFieldGet(field_type, field_index, dex_pc));
+    AppendInstruction(new (allocator_) HUnresolvedStaticFieldGet(field_type, field_index, dex_pc));
     UpdateLocal(source_or_dest_reg, current_block_->GetLastInstruction());
   }
 }
@@ -1475,7 +1476,7 @@ bool HInstructionBuilder::BuildStaticFieldAccess(const Instruction& instruction,
 
   HInstruction* cls = constant;
   if (!IsInitialized(klass)) {
-    cls = new (arena_) HClinitCheck(constant, dex_pc);
+    cls = new (allocator_) HClinitCheck(constant, dex_pc);
     AppendInstruction(cls);
   }
 
@@ -1484,38 +1485,38 @@ bool HInstructionBuilder::BuildStaticFieldAccess(const Instruction& instruction,
     // We need to keep the class alive before loading the value.
     HInstruction* value = LoadLocal(source_or_dest_reg, field_type);
     DCHECK_EQ(HPhi::ToPhiType(value->GetType()), HPhi::ToPhiType(field_type));
-    AppendInstruction(new (arena_) HStaticFieldSet(cls,
-                                                   value,
-                                                   resolved_field,
-                                                   field_type,
-                                                   resolved_field->GetOffset(),
-                                                   resolved_field->IsVolatile(),
-                                                   field_index,
-                                                   class_def_index,
-                                                   *dex_file_,
-                                                   dex_pc));
+    AppendInstruction(new (allocator_) HStaticFieldSet(cls,
+                                                       value,
+                                                       resolved_field,
+                                                       field_type,
+                                                       resolved_field->GetOffset(),
+                                                       resolved_field->IsVolatile(),
+                                                       field_index,
+                                                       class_def_index,
+                                                       *dex_file_,
+                                                       dex_pc));
   } else {
-    AppendInstruction(new (arena_) HStaticFieldGet(cls,
-                                                   resolved_field,
-                                                   field_type,
-                                                   resolved_field->GetOffset(),
-                                                   resolved_field->IsVolatile(),
-                                                   field_index,
-                                                   class_def_index,
-                                                   *dex_file_,
-                                                   dex_pc));
+    AppendInstruction(new (allocator_) HStaticFieldGet(cls,
+                                                       resolved_field,
+                                                       field_type,
+                                                       resolved_field->GetOffset(),
+                                                       resolved_field->IsVolatile(),
+                                                       field_index,
+                                                       class_def_index,
+                                                       *dex_file_,
+                                                       dex_pc));
     UpdateLocal(source_or_dest_reg, current_block_->GetLastInstruction());
   }
   return true;
 }
 
 void HInstructionBuilder::BuildCheckedDivRem(uint16_t out_vreg,
-                                       uint16_t first_vreg,
-                                       int64_t second_vreg_or_constant,
-                                       uint32_t dex_pc,
-                                       DataType::Type type,
-                                       bool second_is_constant,
-                                       bool isDiv) {
+                                             uint16_t first_vreg,
+                                             int64_t second_vreg_or_constant,
+                                             uint32_t dex_pc,
+                                             DataType::Type type,
+                                             bool second_is_constant,
+                                             bool isDiv) {
   DCHECK(type == DataType::Type::kInt32 || type == DataType::Type::kInt64);
 
   HInstruction* first = LoadLocal(first_vreg, type);
@@ -1533,14 +1534,14 @@ void HInstructionBuilder::BuildCheckedDivRem(uint16_t out_vreg,
   if (!second_is_constant
       || (type == DataType::Type::kInt32 && second->AsIntConstant()->GetValue() == 0)
       || (type == DataType::Type::kInt64 && second->AsLongConstant()->GetValue() == 0)) {
-    second = new (arena_) HDivZeroCheck(second, dex_pc);
+    second = new (allocator_) HDivZeroCheck(second, dex_pc);
     AppendInstruction(second);
   }
 
   if (isDiv) {
-    AppendInstruction(new (arena_) HDiv(type, first, second, dex_pc));
+    AppendInstruction(new (allocator_) HDiv(type, first, second, dex_pc));
   } else {
-    AppendInstruction(new (arena_) HRem(type, first, second, dex_pc));
+    AppendInstruction(new (allocator_) HRem(type, first, second, dex_pc));
   }
   UpdateLocal(out_vreg, current_block_->GetLastInstruction());
 }
@@ -1554,19 +1555,19 @@ void HInstructionBuilder::BuildArrayAccess(const Instruction& instruction,
   uint8_t index_reg = instruction.VRegC_23x();
 
   HInstruction* object = LoadNullCheckedLocal(array_reg, dex_pc);
-  HInstruction* length = new (arena_) HArrayLength(object, dex_pc);
+  HInstruction* length = new (allocator_) HArrayLength(object, dex_pc);
   AppendInstruction(length);
   HInstruction* index = LoadLocal(index_reg, DataType::Type::kInt32);
-  index = new (arena_) HBoundsCheck(index, length, dex_pc);
+  index = new (allocator_) HBoundsCheck(index, length, dex_pc);
   AppendInstruction(index);
   if (is_put) {
     HInstruction* value = LoadLocal(source_or_dest_reg, anticipated_type);
     // TODO: Insert a type check node if the type is Object.
-    HArraySet* aset = new (arena_) HArraySet(object, index, value, anticipated_type, dex_pc);
+    HArraySet* aset = new (allocator_) HArraySet(object, index, value, anticipated_type, dex_pc);
     ssa_builder_->MaybeAddAmbiguousArraySet(aset);
     AppendInstruction(aset);
   } else {
-    HArrayGet* aget = new (arena_) HArrayGet(object, index, anticipated_type, dex_pc);
+    HArrayGet* aget = new (allocator_) HArrayGet(object, index, anticipated_type, dex_pc);
     ssa_builder_->MaybeAddAmbiguousArrayGet(aget);
     AppendInstruction(aget);
     UpdateLocal(source_or_dest_reg, current_block_->GetLastInstruction());
@@ -1582,7 +1583,7 @@ HNewArray* HInstructionBuilder::BuildFilledNewArray(uint32_t dex_pc,
                                                     uint32_t register_index) {
   HInstruction* length = graph_->GetIntConstant(number_of_vreg_arguments, dex_pc);
   HLoadClass* cls = BuildLoadClass(type_index, dex_pc);
-  HNewArray* const object = new (arena_) HNewArray(cls, length, dex_pc);
+  HNewArray* const object = new (allocator_) HNewArray(cls, length, dex_pc);
   AppendInstruction(object);
 
   const char* descriptor = dex_file_->StringByTypeIdx(type_index);
@@ -1597,7 +1598,7 @@ HNewArray* HInstructionBuilder::BuildFilledNewArray(uint32_t dex_pc,
   for (size_t i = 0; i < number_of_vreg_arguments; ++i) {
     HInstruction* value = LoadLocal(is_range ? register_index + i : args[i], type);
     HInstruction* index = graph_->GetIntConstant(i, dex_pc);
-    HArraySet* aset = new (arena_) HArraySet(object, index, value, type, dex_pc);
+    HArraySet* aset = new (allocator_) HArraySet(object, index, value, type, dex_pc);
     ssa_builder_->MaybeAddAmbiguousArraySet(aset);
     AppendInstruction(aset);
   }
@@ -1615,7 +1616,7 @@ void HInstructionBuilder::BuildFillArrayData(HInstruction* object,
   for (uint32_t i = 0; i < element_count; ++i) {
     HInstruction* index = graph_->GetIntConstant(i, dex_pc);
     HInstruction* value = graph_->GetIntConstant(data[i], dex_pc);
-    HArraySet* aset = new (arena_) HArraySet(object, index, value, anticipated_type, dex_pc);
+    HArraySet* aset = new (allocator_) HArraySet(object, index, value, anticipated_type, dex_pc);
     ssa_builder_->MaybeAddAmbiguousArraySet(aset);
     AppendInstruction(aset);
   }
@@ -1635,13 +1636,13 @@ void HInstructionBuilder::BuildFillArrayData(const Instruction& instruction, uin
     return;
   }
 
-  HInstruction* length = new (arena_) HArrayLength(array, dex_pc);
+  HInstruction* length = new (allocator_) HArrayLength(array, dex_pc);
   AppendInstruction(length);
 
   // Implementation of this DEX instruction seems to be that the bounds check is
   // done before doing any stores.
   HInstruction* last_index = graph_->GetIntConstant(payload->element_count - 1, dex_pc);
-  AppendInstruction(new (arena_) HBoundsCheck(last_index, length, dex_pc));
+  AppendInstruction(new (allocator_) HBoundsCheck(last_index, length, dex_pc));
 
   switch (payload->element_width) {
     case 1:
@@ -1684,7 +1685,8 @@ void HInstructionBuilder::BuildFillWideArrayData(HInstruction* object,
   for (uint32_t i = 0; i < element_count; ++i) {
     HInstruction* index = graph_->GetIntConstant(i, dex_pc);
     HInstruction* value = graph_->GetLongConstant(data[i], dex_pc);
-    HArraySet* aset = new (arena_) HArraySet(object, index, value, DataType::Type::kInt64, dex_pc);
+    HArraySet* aset =
+        new (allocator_) HArraySet(object, index, value, DataType::Type::kInt64, dex_pc);
     ssa_builder_->MaybeAddAmbiguousArraySet(aset);
     AppendInstruction(aset);
   }
@@ -1752,7 +1754,7 @@ HLoadClass* HInstructionBuilder::BuildLoadClass(dex::TypeIndex type_index,
   }
 
   // Note: `klass` must be from `handles_`.
-  HLoadClass* load_class = new (arena_) HLoadClass(
+  HLoadClass* load_class = new (allocator_) HLoadClass(
       graph_->GetCurrentMethod(),
       type_index,
       *actual_dex_file,
@@ -1787,15 +1789,15 @@ void HInstructionBuilder::BuildTypeCheck(const Instruction& instruction,
   ScopedObjectAccess soa(Thread::Current());
   TypeCheckKind check_kind = ComputeTypeCheckKind(cls->GetClass());
   if (instruction.Opcode() == Instruction::INSTANCE_OF) {
-    AppendInstruction(new (arena_) HInstanceOf(object, cls, check_kind, dex_pc));
+    AppendInstruction(new (allocator_) HInstanceOf(object, cls, check_kind, dex_pc));
     UpdateLocal(destination, current_block_->GetLastInstruction());
   } else {
     DCHECK_EQ(instruction.Opcode(), Instruction::CHECK_CAST);
     // We emit a CheckCast followed by a BoundType. CheckCast is a statement
     // which may throw. If it succeeds BoundType sets the new type of `object`
     // for all subsequent uses.
-    AppendInstruction(new (arena_) HCheckCast(object, cls, check_kind, dex_pc));
-    AppendInstruction(new (arena_) HBoundType(object, dex_pc));
+    AppendInstruction(new (allocator_) HCheckCast(object, cls, check_kind, dex_pc));
+    AppendInstruction(new (allocator_) HBoundType(object, dex_pc));
     UpdateLocal(reference, current_block_->GetLastInstruction());
   }
 }
@@ -1943,7 +1945,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     case Instruction::GOTO:
     case Instruction::GOTO_16:
     case Instruction::GOTO_32: {
-      AppendInstruction(new (arena_) HGoto(dex_pc));
+      AppendInstruction(new (allocator_) HGoto(dex_pc));
       current_block_ = nullptr;
       break;
     }
@@ -2580,7 +2582,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
       HInstruction* length = LoadLocal(instruction.VRegB_22c(), DataType::Type::kInt32);
       HLoadClass* cls = BuildLoadClass(type_index, dex_pc);
 
-      HNewArray* new_array = new (arena_) HNewArray(cls, length, dex_pc);
+      HNewArray* new_array = new (allocator_) HNewArray(cls, length, dex_pc);
       AppendInstruction(new_array);
       UpdateLocal(instruction.VRegA_22c(), current_block_->GetLastInstruction());
       BuildConstructorFenceForAllocation(new_array);
@@ -2744,23 +2746,27 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
 
     case Instruction::ARRAY_LENGTH: {
       HInstruction* object = LoadNullCheckedLocal(instruction.VRegB_12x(), dex_pc);
-      AppendInstruction(new (arena_) HArrayLength(object, dex_pc));
+      AppendInstruction(new (allocator_) HArrayLength(object, dex_pc));
       UpdateLocal(instruction.VRegA_12x(), current_block_->GetLastInstruction());
       break;
     }
 
     case Instruction::CONST_STRING: {
       dex::StringIndex string_index(instruction.VRegB_21c());
-      AppendInstruction(
-          new (arena_) HLoadString(graph_->GetCurrentMethod(), string_index, *dex_file_, dex_pc));
+      AppendInstruction(new (allocator_) HLoadString(graph_->GetCurrentMethod(),
+                                                     string_index,
+                                                     *dex_file_,
+                                                     dex_pc));
       UpdateLocal(instruction.VRegA_21c(), current_block_->GetLastInstruction());
       break;
     }
 
     case Instruction::CONST_STRING_JUMBO: {
       dex::StringIndex string_index(instruction.VRegB_31c());
-      AppendInstruction(
-          new (arena_) HLoadString(graph_->GetCurrentMethod(), string_index, *dex_file_, dex_pc));
+      AppendInstruction(new (allocator_) HLoadString(graph_->GetCurrentMethod(),
+                                                     string_index,
+                                                     *dex_file_,
+                                                     dex_pc));
       UpdateLocal(instruction.VRegA_31c(), current_block_->GetLastInstruction());
       break;
     }
@@ -2773,15 +2779,15 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     }
 
     case Instruction::MOVE_EXCEPTION: {
-      AppendInstruction(new (arena_) HLoadException(dex_pc));
+      AppendInstruction(new (allocator_) HLoadException(dex_pc));
       UpdateLocal(instruction.VRegA_11x(), current_block_->GetLastInstruction());
-      AppendInstruction(new (arena_) HClearException(dex_pc));
+      AppendInstruction(new (allocator_) HClearException(dex_pc));
       break;
     }
 
     case Instruction::THROW: {
       HInstruction* exception = LoadLocal(instruction.VRegA_11x(), DataType::Type::kReference);
-      AppendInstruction(new (arena_) HThrow(exception, dex_pc));
+      AppendInstruction(new (allocator_) HThrow(exception, dex_pc));
       // We finished building this block. Set the current block to null to avoid
       // adding dead instructions to it.
       current_block_ = nullptr;
@@ -2804,7 +2810,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     }
 
     case Instruction::MONITOR_ENTER: {
-      AppendInstruction(new (arena_) HMonitorOperation(
+      AppendInstruction(new (allocator_) HMonitorOperation(
           LoadLocal(instruction.VRegA_11x(), DataType::Type::kReference),
           HMonitorOperation::OperationKind::kEnter,
           dex_pc));
@@ -2812,7 +2818,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     }
 
     case Instruction::MONITOR_EXIT: {
-      AppendInstruction(new (arena_) HMonitorOperation(
+      AppendInstruction(new (allocator_) HMonitorOperation(
           LoadLocal(instruction.VRegA_11x(), DataType::Type::kReference),
           HMonitorOperation::OperationKind::kExit,
           dex_pc));
