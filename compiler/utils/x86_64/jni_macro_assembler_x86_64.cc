@@ -584,9 +584,10 @@ class X86_64ExceptionSlowPath FINAL : public SlowPath {
 };
 
 void X86_64JNIMacroAssembler::ExceptionPoll(ManagedRegister /*scratch*/, size_t stack_adjust) {
-  X86_64ExceptionSlowPath* slow = new (__ GetArena()) X86_64ExceptionSlowPath(stack_adjust);
+  X86_64ExceptionSlowPath* slow = new (__ GetAllocator()) X86_64ExceptionSlowPath(stack_adjust);
   __ GetBuffer()->EnqueueSlowPath(slow);
-  __ gs()->cmpl(Address::Absolute(Thread::ExceptionOffset<kX86_64PointerSize>(), true), Immediate(0));
+  __ gs()->cmpl(Address::Absolute(Thread::ExceptionOffset<kX86_64PointerSize>(), true),
+                Immediate(0));
   __ j(kNotEqual, slow->Entry());
 }
 

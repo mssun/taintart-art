@@ -18,6 +18,8 @@
 
 #include "scheduler.h"
 
+#include "base/scoped_arena_allocator.h"
+#include "base/scoped_arena_containers.h"
 #include "data_type-inl.h"
 #include "prepare_for_register_allocation.h"
 
@@ -442,7 +444,7 @@ static void DumpAsDotNode(std::ostream& output, const SchedulingNode* node) {
 }
 
 void SchedulingGraph::DumpAsDotGraph(const std::string& description,
-                                     const ArenaVector<SchedulingNode*>& initial_candidates) {
+                                     const ScopedArenaVector<SchedulingNode*>& initial_candidates) {
   // TODO(xueliang): ideally we should move scheduling information into HInstruction, after that
   // we should move this dotty graph dump feature to visualizer, and have a compiler option for it.
   std::ofstream output("scheduling_graphs.dot", std::ofstream::out | std::ofstream::app);
@@ -451,7 +453,7 @@ void SchedulingGraph::DumpAsDotGraph(const std::string& description,
   // Start the dot graph. Use an increasing index for easier differentiation.
   output << "digraph G {\n";
   for (const auto& entry : nodes_map_) {
-    SchedulingNode* node = entry.second;
+    SchedulingNode* node = entry.second.get();
     DumpAsDotNode(output, node);
   }
   // Create a fake 'end_of_scheduling' node to help visualization of critical_paths.
@@ -466,7 +468,7 @@ void SchedulingGraph::DumpAsDotGraph(const std::string& description,
 }
 
 SchedulingNode* CriticalPathSchedulingNodeSelector::SelectMaterializedCondition(
-    ArenaVector<SchedulingNode*>* nodes, const SchedulingGraph& graph) const {
+    ScopedArenaVector<SchedulingNode*>* nodes, const SchedulingGraph& graph) const {
   // Schedule condition inputs that can be materialized immediately before their use.
   // In following example, after we've scheduled HSelect, we want LessThan to be scheduled
   // immediately, because it is a materialized condition, and will be emitted right before HSelect
@@ -506,7 +508,7 @@ SchedulingNode* CriticalPathSchedulingNodeSelector::SelectMaterializedCondition(
 }
 
 SchedulingNode* CriticalPathSchedulingNodeSelector::PopHighestPriorityNode(
-    ArenaVector<SchedulingNode*>* nodes, const SchedulingGraph& graph) {
+    ScopedArenaVector<SchedulingNode*>* nodes, const SchedulingGraph& graph) {
   DCHECK(!nodes->empty());
   SchedulingNode* select_node = nullptr;
 
@@ -562,7 +564,7 @@ void HScheduler::Schedule(HGraph* graph) {
 }
 
 void HScheduler::Schedule(HBasicBlock* block) {
-  ArenaVector<SchedulingNode*> scheduling_nodes(arena_->Adapter(kArenaAllocScheduler));
+  ScopedArenaVector<SchedulingNode*> scheduling_nodes(arena_->Adapter(kArenaAllocScheduler));
 
   // Build the scheduling graph.
   scheduling_graph_.Clear();
@@ -593,7 +595,7 @@ void HScheduler::Schedule(HBasicBlock* block) {
     }
   }
 
-  ArenaVector<SchedulingNode*> initial_candidates(arena_->Adapter(kArenaAllocScheduler));
+  ScopedArenaVector<SchedulingNode*> initial_candidates(arena_->Adapter(kArenaAllocScheduler));
   if (kDumpDotSchedulingGraphs) {
     // Remember the list of initial candidates for debug output purposes.
     initial_candidates.assign(candidates_.begin(), candidates_.end());
@@ -779,7 +781,7 @@ void HInstructionScheduling::Run(bool only_optimize_loop_blocks,
 #if defined(ART_ENABLE_CODEGEN_arm64) || defined(ART_ENABLE_CODEGEN_arm)
   // Phase-local allocator that allocates scheduler internal data structures like
   // scheduling nodes, internel nodes map, dependencies, etc.
-  ArenaAllocator arena_allocator(graph_->GetArena()->GetArenaPool());
+  ScopedArenaAllocator arena_allocator(graph_->GetArenaStack());
   CriticalPathSchedulingNodeSelector critical_path_selector;
   RandomSchedulingNodeSelector random_selector;
   SchedulingNodeSelector* selector = schedule_randomly

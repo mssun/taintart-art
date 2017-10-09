@@ -17,6 +17,8 @@
 #include "constructor_fence_redundancy_elimination.h"
 
 #include "base/arena_allocator.h"
+#include "base/scoped_arena_allocator.h"
+#include "base/scoped_arena_containers.h"
 
 namespace art {
 
@@ -27,7 +29,7 @@ class CFREVisitor : public HGraphVisitor {
  public:
   CFREVisitor(HGraph* graph, OptimizingCompilerStats* stats)
       : HGraphVisitor(graph),
-        scoped_allocator_(graph->GetArena()->GetArenaPool()),
+        scoped_allocator_(graph->GetArenaStack()),
         candidate_fences_(scoped_allocator_.Adapter(kArenaAllocCFRE)),
         candidate_fence_targets_(scoped_allocator_.Adapter(kArenaAllocCFRE)),
         stats_(stats) {}
@@ -227,9 +229,8 @@ class CFREVisitor : public HGraphVisitor {
     MaybeRecordStat(stats_, MethodCompilationStat::kConstructorFenceRemovedCFRE);
   }
 
-  // Phase-local heap memory allocator for CFRE optimizer. Storage obtained
-  // through this allocator is immediately released when the CFRE optimizer is done.
-  ArenaAllocator scoped_allocator_;
+  // Phase-local heap memory allocator for CFRE optimizer.
+  ScopedArenaAllocator scoped_allocator_;
 
   // Set of constructor fences that we've seen in the current block.
   // Each constructor fences acts as a guard for one or more `targets`.
@@ -237,11 +238,11 @@ class CFREVisitor : public HGraphVisitor {
   //
   // Fences are in succession order (e.g. fence[i] succeeds fence[i-1]
   // within the same basic block).
-  ArenaVector<HConstructorFence*> candidate_fences_;
+  ScopedArenaVector<HConstructorFence*> candidate_fences_;
 
   // Stores a set of the fence targets, to allow faster lookup of whether
   // a detected publish is a target of one of the candidate fences.
-  ArenaHashSet<HInstruction*> candidate_fence_targets_;
+  ScopedArenaHashSet<HInstruction*> candidate_fence_targets_;
 
   // Used to record stats about the optimization.
   OptimizingCompilerStats* const stats_;

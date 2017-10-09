@@ -221,7 +221,7 @@ class MethodVerifier {
     return IsConstructor() && !IsStatic();
   }
 
-  ScopedArenaAllocator& GetArena() {
+  ScopedArenaAllocator& GetScopedAllocator() {
     return arena_;
   }
 

@@ -19,6 +19,12 @@
 
 namespace art {
 
+class GraphCheckerTest : public OptimizingUnitTest {
+ protected:
+  HGraph* CreateSimpleCFG();
+  void TestCode(const uint16_t* data);
+};
+
 /**
  * Create a simple control-flow graph composed of two blocks:
  *
@@ -27,14 +33,14 @@ namespace art {
  *   BasicBlock 1, pred: 0
  *     1: Exit
  */
-HGraph* CreateSimpleCFG(ArenaAllocator* allocator) {
-  HGraph* graph = CreateGraph(allocator);
-  HBasicBlock* entry_block = new (allocator) HBasicBlock(graph);
-  entry_block->AddInstruction(new (allocator) HReturnVoid());
+HGraph* GraphCheckerTest::CreateSimpleCFG() {
+  HGraph* graph = CreateGraph();
+  HBasicBlock* entry_block = new (GetAllocator()) HBasicBlock(graph);
+  entry_block->AddInstruction(new (GetAllocator()) HReturnVoid());
   graph->AddBlock(entry_block);
   graph->SetEntryBlock(entry_block);
-  HBasicBlock* exit_block = new (allocator) HBasicBlock(graph);
-  exit_block->AddInstruction(new (allocator) HExit());
+  HBasicBlock* exit_block = new (GetAllocator()) HBasicBlock(graph);
+  exit_block->AddInstruction(new (GetAllocator()) HExit());
   graph->AddBlock(exit_block);
   graph->SetExitBlock(exit_block);
   entry_block->AddSuccessor(exit_block);
@@ -42,18 +48,14 @@ HGraph* CreateSimpleCFG(ArenaAllocator* allocator) {
   return graph;
 }
 
-static void TestCode(const uint16_t* data) {
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
-  HGraph* graph = CreateCFG(&allocator, data);
+void GraphCheckerTest::TestCode(const uint16_t* data) {
+  HGraph* graph = CreateCFG(data);
   ASSERT_NE(graph, nullptr);
 
   GraphChecker graph_checker(graph);
   graph_checker.Run();
   ASSERT_TRUE(graph_checker.IsValid());
 }
-
-class GraphCheckerTest : public CommonCompilerTest {};
 
 TEST_F(GraphCheckerTest, ReturnVoid) {
   const uint16_t data[] = ZERO_REGISTER_CODE_ITEM(
@@ -93,10 +95,7 @@ TEST_F(GraphCheckerTest, CFG3) {
 // Test case with an invalid graph containing inconsistent
 // predecessor/successor arcs in CFG.
 TEST_F(GraphCheckerTest, InconsistentPredecessorsAndSuccessors) {
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
-
-  HGraph* graph = CreateSimpleCFG(&allocator);
+  HGraph* graph = CreateSimpleCFG();
   GraphChecker graph_checker(graph);
   graph_checker.Run();
   ASSERT_TRUE(graph_checker.IsValid());
@@ -111,10 +110,7 @@ TEST_F(GraphCheckerTest, InconsistentPredecessorsAndSuccessors) {
 // Test case with an invalid graph containing a non-branch last
 // instruction in a block.
 TEST_F(GraphCheckerTest, BlockEndingWithNonBranchInstruction) {
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
-
-  HGraph* graph = CreateSimpleCFG(&allocator);
+  HGraph* graph = CreateSimpleCFG();
   GraphChecker graph_checker(graph);
   graph_checker.Run();
   ASSERT_TRUE(graph_checker.IsValid());

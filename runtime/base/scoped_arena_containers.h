@@ -58,10 +58,27 @@ template <typename K, typename V, typename Comparator = std::less<K>>
 using ScopedArenaSafeMap =
     SafeMap<K, V, Comparator, ScopedArenaAllocatorAdapter<std::pair<const K, V>>>;
 
+template <typename T,
+          typename EmptyFn = DefaultEmptyFn<T>,
+          typename HashFn = std::hash<T>,
+          typename Pred = std::equal_to<T>>
+using ScopedArenaHashSet = HashSet<T, EmptyFn, HashFn, Pred, ScopedArenaAllocatorAdapter<T>>;
+
+template <typename Key,
+          typename Value,
+          typename EmptyFn = DefaultEmptyFn<std::pair<Key, Value>>,
+          typename HashFn = std::hash<Key>,
+          typename Pred = std::equal_to<Key>>
+using ScopedArenaHashMap = HashMap<Key,
+                                   Value,
+                                   EmptyFn,
+                                   HashFn,
+                                   Pred,
+                                   ScopedArenaAllocatorAdapter<std::pair<Key, Value>>>;
+
 template <typename K, typename V, class Hash = std::hash<K>, class KeyEqual = std::equal_to<K>>
 using ScopedArenaUnorderedMap =
     std::unordered_map<K, V, Hash, KeyEqual, ScopedArenaAllocatorAdapter<std::pair<const K, V>>>;
-
 
 // Implementation details below.
 

@@ -513,18 +513,18 @@ class BCEVisitor : public HGraphVisitor {
         maps_(graph->GetBlocks().size(),
               ArenaSafeMap<int, ValueRange*>(
                   std::less<int>(),
-                  graph->GetArena()->Adapter(kArenaAllocBoundsCheckElimination)),
-              graph->GetArena()->Adapter(kArenaAllocBoundsCheckElimination)),
+                  graph->GetAllocator()->Adapter(kArenaAllocBoundsCheckElimination)),
+              graph->GetAllocator()->Adapter(kArenaAllocBoundsCheckElimination)),
         first_index_bounds_check_map_(
             std::less<int>(),
-            graph->GetArena()->Adapter(kArenaAllocBoundsCheckElimination)),
+            graph->GetAllocator()->Adapter(kArenaAllocBoundsCheckElimination)),
         early_exit_loop_(
             std::less<uint32_t>(),
-            graph->GetArena()->Adapter(kArenaAllocBoundsCheckElimination)),
+            graph->GetAllocator()->Adapter(kArenaAllocBoundsCheckElimination)),
         taken_test_loop_(
             std::less<uint32_t>(),
-            graph->GetArena()->Adapter(kArenaAllocBoundsCheckElimination)),
-        finite_loop_(graph->GetArena()->Adapter(kArenaAllocBoundsCheckElimination)),
+            graph->GetAllocator()->Adapter(kArenaAllocBoundsCheckElimination)),
+        finite_loop_(graph->GetAllocator()->Adapter(kArenaAllocBoundsCheckElimination)),
         has_dom_based_dynamic_bce_(false),
         initial_block_size_(graph->GetBlocks().size()),
         side_effects_(side_effects),
@@ -668,8 +668,8 @@ class BCEVisitor : public HGraphVisitor {
       if (successor != nullptr) {
         bool overflow;
         bool underflow;
-        ValueRange* new_left_range = new (GetGraph()->GetArena()) ValueRange(
-            GetGraph()->GetArena(),
+        ValueRange* new_left_range = new (GetGraph()->GetAllocator()) ValueRange(
+            GetGraph()->GetAllocator(),
             left_range->GetBound(),
             right_range->GetBound().Add(left_compensation, &overflow, &underflow));
         if (!overflow && !underflow) {
@@ -677,8 +677,8 @@ class BCEVisitor : public HGraphVisitor {
                                    new_left_range);
         }
 
-        ValueRange* new_right_range = new (GetGraph()->GetArena()) ValueRange(
-            GetGraph()->GetArena(),
+        ValueRange* new_right_range = new (GetGraph()->GetAllocator()) ValueRange(
+            GetGraph()->GetAllocator(),
             left_range->GetBound().Add(right_compensation, &overflow, &underflow),
             right_range->GetBound());
         if (!overflow && !underflow) {
@@ -750,8 +750,8 @@ class BCEVisitor : public HGraphVisitor {
         if (overflow || underflow) {
           return;
         }
-        ValueRange* new_range = new (GetGraph()->GetArena())
-            ValueRange(GetGraph()->GetArena(), ValueBound::Min(), new_upper);
+        ValueRange* new_range = new (GetGraph()->GetAllocator())
+            ValueRange(GetGraph()->GetAllocator(), ValueBound::Min(), new_upper);
         ApplyRangeFromComparison(left, block, true_successor, new_range);
       }
 
@@ -762,8 +762,8 @@ class BCEVisitor : public HGraphVisitor {
         if (overflow || underflow) {
           return;
         }
-        ValueRange* new_range = new (GetGraph()->GetArena())
-            ValueRange(GetGraph()->GetArena(), new_lower, ValueBound::Max());
+        ValueRange* new_range = new (GetGraph()->GetAllocator())
+            ValueRange(GetGraph()->GetAllocator(), new_lower, ValueBound::Max());
         ApplyRangeFromComparison(left, block, false_successor, new_range);
       }
     } else if (cond == kCondGT || cond == kCondGE) {
@@ -774,8 +774,8 @@ class BCEVisitor : public HGraphVisitor {
         if (overflow || underflow) {
           return;
         }
-        ValueRange* new_range = new (GetGraph()->GetArena())
-            ValueRange(GetGraph()->GetArena(), new_lower, ValueBound::Max());
+        ValueRange* new_range = new (GetGraph()->GetAllocator())
+            ValueRange(GetGraph()->GetAllocator(), new_lower, ValueBound::Max());
         ApplyRangeFromComparison(left, block, true_successor, new_range);
       }
 
@@ -785,8 +785,8 @@ class BCEVisitor : public HGraphVisitor {
         if (overflow || underflow) {
           return;
         }
-        ValueRange* new_range = new (GetGraph()->GetArena())
-            ValueRange(GetGraph()->GetArena(), ValueBound::Min(), new_upper);
+        ValueRange* new_range = new (GetGraph()->GetAllocator())
+            ValueRange(GetGraph()->GetAllocator(), ValueBound::Min(), new_upper);
         ApplyRangeFromComparison(left, block, false_successor, new_range);
       }
     } else if (cond == kCondNE || cond == kCondEQ) {
@@ -795,8 +795,8 @@ class BCEVisitor : public HGraphVisitor {
         //   length == [c,d] yields [c, d] along true
         //   length != [c,d] yields [c, d] along false
         if (!lower.Equals(ValueBound::Min()) || !upper.Equals(ValueBound::Max())) {
-          ValueRange* new_range = new (GetGraph()->GetArena())
-              ValueRange(GetGraph()->GetArena(), lower, upper);
+          ValueRange* new_range = new (GetGraph()->GetAllocator())
+              ValueRange(GetGraph()->GetAllocator(), lower, upper);
           ApplyRangeFromComparison(
               left, block, cond == kCondEQ ? true_successor : false_successor, new_range);
         }
@@ -804,8 +804,8 @@ class BCEVisitor : public HGraphVisitor {
         //   length == 0 yields [1, max] along false
         //   length != 0 yields [1, max] along true
         if (lower.GetConstant() == 0 && upper.GetConstant() == 0) {
-          ValueRange* new_range = new (GetGraph()->GetArena())
-              ValueRange(GetGraph()->GetArena(), ValueBound(nullptr, 1), ValueBound::Max());
+          ValueRange* new_range = new (GetGraph()->GetAllocator())
+              ValueRange(GetGraph()->GetAllocator(), ValueBound(nullptr, 1), ValueBound::Max());
           ApplyRangeFromComparison(
               left, block, cond == kCondEQ ? false_successor : true_successor, new_range);
         }
@@ -826,7 +826,7 @@ class BCEVisitor : public HGraphVisitor {
       // Non-constant index.
       ValueBound lower = ValueBound(nullptr, 0);        // constant 0
       ValueBound upper = ValueBound(array_length, -1);  // array_length - 1
-      ValueRange array_range(GetGraph()->GetArena(), lower, upper);
+      ValueRange array_range(GetGraph()->GetAllocator(), lower, upper);
       // Try index range obtained by dominator-based analysis.
       ValueRange* index_range = LookupValueRange(index, block);
       if (index_range != nullptr && index_range->FitsIn(&array_range)) {
@@ -875,8 +875,8 @@ class BCEVisitor : public HGraphVisitor {
       } else {
         ValueBound lower = ValueBound(nullptr, constant + 1);
         ValueBound upper = ValueBound::Max();
-        ValueRange* range = new (GetGraph()->GetArena())
-            ValueRange(GetGraph()->GetArena(), lower, upper);
+        ValueRange* range = new (GetGraph()->GetAllocator())
+            ValueRange(GetGraph()->GetAllocator(), lower, upper);
         AssignRange(block, array_length, range);
       }
     }
@@ -938,8 +938,8 @@ class BCEVisitor : public HGraphVisitor {
           ValueRange* range = nullptr;
           if (increment == 0) {
             // Add constant 0. It's really a fixed value.
-            range = new (GetGraph()->GetArena()) ValueRange(
-                GetGraph()->GetArena(),
+            range = new (GetGraph()->GetAllocator()) ValueRange(
+                GetGraph()->GetAllocator(),
                 ValueBound(initial_value, 0),
                 ValueBound(initial_value, 0));
           } else {
@@ -959,8 +959,8 @@ class BCEVisitor : public HGraphVisitor {
                 bound = increment > 0 ? ValueBound::Min() : ValueBound::Max();
               }
             }
-            range = new (GetGraph()->GetArena()) MonotonicValueRange(
-                GetGraph()->GetArena(),
+            range = new (GetGraph()->GetAllocator()) MonotonicValueRange(
+                GetGraph()->GetAllocator(),
                 phi,
                 initial_value,
                 increment,
@@ -1039,8 +1039,8 @@ class BCEVisitor : public HGraphVisitor {
                 !ValueBound::WouldAddOverflowOrUnderflow(c0, -c1)) {
               if ((c0 - c1) <= 0) {
                 // array.length + (c0 - c1) won't overflow/underflow.
-                ValueRange* range = new (GetGraph()->GetArena()) ValueRange(
-                    GetGraph()->GetArena(),
+                ValueRange* range = new (GetGraph()->GetAllocator()) ValueRange(
+                    GetGraph()->GetAllocator(),
                     ValueBound(nullptr, right_const - upper.GetConstant()),
                     ValueBound(array_length, right_const - lower.GetConstant()));
                 AssignRange(sub->GetBlock(), sub, range);
@@ -1087,8 +1087,8 @@ class BCEVisitor : public HGraphVisitor {
         // than array_length.
         return;
       }
-      ValueRange* range = new (GetGraph()->GetArena()) ValueRange(
-          GetGraph()->GetArena(),
+      ValueRange* range = new (GetGraph()->GetAllocator()) ValueRange(
+          GetGraph()->GetAllocator(),
           ValueBound(nullptr, std::numeric_limits<int32_t>::min()),
           ValueBound(left, 0));
       AssignRange(instruction->GetBlock(), instruction, range);
@@ -1113,8 +1113,8 @@ class BCEVisitor : public HGraphVisitor {
       if (constant > 0) {
         // constant serves as a mask so any number masked with it
         // gets a [0, constant] value range.
-        ValueRange* range = new (GetGraph()->GetArena()) ValueRange(
-            GetGraph()->GetArena(),
+        ValueRange* range = new (GetGraph()->GetAllocator()) ValueRange(
+            GetGraph()->GetAllocator(),
             ValueBound(nullptr, 0),
             ValueBound(nullptr, constant));
         AssignRange(instruction->GetBlock(), instruction, range);
@@ -1139,8 +1139,8 @@ class BCEVisitor : public HGraphVisitor {
       //   array[i % 10];  // index value range [0, 9]
       //   array[i % -10]; // index value range [0, 9]
       // }
-      ValueRange* right_range = new (GetGraph()->GetArena()) ValueRange(
-          GetGraph()->GetArena(),
+      ValueRange* right_range = new (GetGraph()->GetAllocator()) ValueRange(
+          GetGraph()->GetAllocator(),
           ValueBound(nullptr, 1 - right_const),
           ValueBound(nullptr, right_const - 1));
 
@@ -1169,8 +1169,8 @@ class BCEVisitor : public HGraphVisitor {
     if (right->IsArrayLength()) {
       ValueBound lower = ValueBound::Min();  // ideally, lower should be '1-array_length'.
       ValueBound upper = ValueBound(right, -1);  // array_length - 1
-      ValueRange* right_range = new (GetGraph()->GetArena()) ValueRange(
-          GetGraph()->GetArena(),
+      ValueRange* right_range = new (GetGraph()->GetAllocator()) ValueRange(
+          GetGraph()->GetAllocator(),
           lower,
           upper);
       ValueRange* left_range = LookupValueRange(left, instruction->GetBlock());
@@ -1195,8 +1195,8 @@ class BCEVisitor : public HGraphVisitor {
         // which isn't available as an instruction yet. new_array will
         // be treated the same as new_array.length when it's used in a ValueBound.
         ValueBound upper = ValueBound(new_array, -right_const);
-        ValueRange* range = new (GetGraph()->GetArena())
-            ValueRange(GetGraph()->GetArena(), lower, upper);
+        ValueRange* range = new (GetGraph()->GetAllocator())
+            ValueRange(GetGraph()->GetAllocator(), lower, upper);
         ValueRange* existing_range = LookupValueRange(left, new_array->GetBlock());
         if (existing_range != nullptr) {
           range = existing_range->Narrow(range);
@@ -1260,14 +1260,15 @@ class BCEVisitor : public HGraphVisitor {
     if (base == nullptr) {
       DCHECK_GE(min_c, 0);
     } else {
-      HInstruction* lower = new (GetGraph()->GetArena())
+      HInstruction* lower = new (GetGraph()->GetAllocator())
           HAdd(DataType::Type::kInt32, base, GetGraph()->GetIntConstant(min_c));
-      upper = new (GetGraph()->GetArena()) HAdd(DataType::Type::kInt32, base, upper);
+      upper = new (GetGraph()->GetAllocator()) HAdd(DataType::Type::kInt32, base, upper);
       block->InsertInstructionBefore(lower, bounds_check);
       block->InsertInstructionBefore(upper, bounds_check);
-      InsertDeoptInBlock(bounds_check, new (GetGraph()->GetArena()) HAbove(lower, upper));
+      InsertDeoptInBlock(bounds_check, new (GetGraph()->GetAllocator()) HAbove(lower, upper));
     }
-    InsertDeoptInBlock(bounds_check, new (GetGraph()->GetArena()) HAboveOrEqual(upper, array_length));
+    InsertDeoptInBlock(
+        bounds_check, new (GetGraph()->GetAllocator()) HAboveOrEqual(upper, array_length));
     // Flag that this kind of deoptimization has occurred.
     has_dom_based_dynamic_bce_ = true;
   }
@@ -1291,9 +1292,9 @@ class BCEVisitor : public HGraphVisitor {
       int32_t min_c = base == nullptr ? 0 : value.GetConstant();
       int32_t max_c = value.GetConstant();
       ArenaVector<HBoundsCheck*> candidates(
-          GetGraph()->GetArena()->Adapter(kArenaAllocBoundsCheckElimination));
+          GetGraph()->GetAllocator()->Adapter(kArenaAllocBoundsCheckElimination));
       ArenaVector<HBoundsCheck*> standby(
-          GetGraph()->GetArena()->Adapter(kArenaAllocBoundsCheckElimination));
+          GetGraph()->GetAllocator()->Adapter(kArenaAllocBoundsCheckElimination));
       for (const HUseListNode<HInstruction*>& use : array_length->GetUses()) {
         // Another bounds check in same or dominated block?
         HInstruction* user = use.GetUser();
@@ -1377,7 +1378,7 @@ class BCEVisitor : public HGraphVisitor {
           v2.is_known && (v2.a_constant == 0 || v2.a_constant == 1)) {
         DCHECK(v1.a_constant == 1 || v1.instruction == nullptr);
         DCHECK(v2.a_constant == 1 || v2.instruction == nullptr);
-        ValueRange index_range(GetGraph()->GetArena(),
+        ValueRange index_range(GetGraph()->GetAllocator(),
                                ValueBound(v1.instruction, v1.b_constant),
                                ValueBound(v2.instruction, v2.b_constant));
         // If analysis reveals a certain OOB, disable dynamic BCE. Otherwise,
@@ -1410,9 +1411,9 @@ class BCEVisitor : public HGraphVisitor {
     int32_t min_c = base == nullptr ? 0 : value.GetConstant();
     int32_t max_c = value.GetConstant();
     ArenaVector<HBoundsCheck*> candidates(
-        GetGraph()->GetArena()->Adapter(kArenaAllocBoundsCheckElimination));
+        GetGraph()->GetAllocator()->Adapter(kArenaAllocBoundsCheckElimination));
     ArenaVector<HBoundsCheck*> standby(
-        GetGraph()->GetArena()->Adapter(kArenaAllocBoundsCheckElimination));
+        GetGraph()->GetAllocator()->Adapter(kArenaAllocBoundsCheckElimination));
     for (const HUseListNode<HInstruction*>& use : array_length->GetUses()) {
       HInstruction* user = use.GetUser();
       if (user->IsBoundsCheck() && loop == user->GetBlock()->GetLoopInformation()) {
@@ -1498,7 +1499,8 @@ class BCEVisitor : public HGraphVisitor {
         if (min_c != max_c) {
           DCHECK(min_lower == nullptr && min_upper != nullptr &&
                  max_lower == nullptr && max_upper != nullptr);
-          InsertDeoptInLoop(loop, block, new (GetGraph()->GetArena()) HAbove(min_upper, max_upper));
+          InsertDeoptInLoop(
+              loop, block, new (GetGraph()->GetAllocator()) HAbove(min_upper, max_upper));
         } else {
           DCHECK(min_lower == nullptr && min_upper == nullptr &&
                  max_lower == nullptr && max_upper != nullptr);
@@ -1508,15 +1510,17 @@ class BCEVisitor : public HGraphVisitor {
         if (min_c != max_c) {
           DCHECK(min_lower != nullptr && min_upper != nullptr &&
                  max_lower != nullptr && max_upper != nullptr);
-          InsertDeoptInLoop(loop, block, new (GetGraph()->GetArena()) HAbove(min_lower, max_lower));
+          InsertDeoptInLoop(
+              loop, block, new (GetGraph()->GetAllocator()) HAbove(min_lower, max_lower));
         } else {
           DCHECK(min_lower == nullptr && min_upper == nullptr &&
                  max_lower != nullptr && max_upper != nullptr);
         }
-        InsertDeoptInLoop(loop, block, new (GetGraph()->GetArena()) HAbove(max_lower, max_upper));
+        InsertDeoptInLoop(
+            loop, block, new (GetGraph()->GetAllocator()) HAbove(max_lower, max_upper));
       }
       InsertDeoptInLoop(
-          loop, block, new (GetGraph()->GetArena()) HAboveOrEqual(max_upper, array_length));
+          loop, block, new (GetGraph()->GetAllocator()) HAboveOrEqual(max_upper, array_length));
     } else {
       // TODO: if rejected, avoid doing this again for subsequent instructions in this set?
     }
@@ -1610,7 +1614,7 @@ class BCEVisitor : public HGraphVisitor {
         TransformLoopForDeoptimizationIfNeeded(loop, needs_taken_test);
         HBasicBlock* block = GetPreHeader(loop, check);
         HInstruction* cond =
-            new (GetGraph()->GetArena()) HEqual(array, GetGraph()->GetNullConstant());
+            new (GetGraph()->GetAllocator()) HEqual(array, GetGraph()->GetNullConstant());
         InsertDeoptInLoop(loop, block, cond, /* is_null_check */ true);
         ReplaceInstruction(check, array);
         return true;
@@ -1685,8 +1689,8 @@ class BCEVisitor : public HGraphVisitor {
     block->InsertInstructionBefore(condition, block->GetLastInstruction());
     DeoptimizationKind kind =
         is_null_check ? DeoptimizationKind::kLoopNullBCE : DeoptimizationKind::kLoopBoundsBCE;
-    HDeoptimize* deoptimize = new (GetGraph()->GetArena()) HDeoptimize(
-        GetGraph()->GetArena(), condition, kind, suspend->GetDexPc());
+    HDeoptimize* deoptimize = new (GetGraph()->GetAllocator()) HDeoptimize(
+        GetGraph()->GetAllocator(), condition, kind, suspend->GetDexPc());
     block->InsertInstructionBefore(deoptimize, block->GetLastInstruction());
     if (suspend->HasEnvironment()) {
       deoptimize->CopyEnvironmentFromWithLoopPhiAdjustment(
@@ -1698,8 +1702,11 @@ class BCEVisitor : public HGraphVisitor {
   void InsertDeoptInBlock(HBoundsCheck* bounds_check, HInstruction* condition) {
     HBasicBlock* block = bounds_check->GetBlock();
     block->InsertInstructionBefore(condition, bounds_check);
-    HDeoptimize* deoptimize = new (GetGraph()->GetArena()) HDeoptimize(
-        GetGraph()->GetArena(), condition, DeoptimizationKind::kBlockBCE, bounds_check->GetDexPc());
+    HDeoptimize* deoptimize = new (GetGraph()->GetAllocator()) HDeoptimize(
+        GetGraph()->GetAllocator(),
+        condition,
+        DeoptimizationKind::kBlockBCE,
+        bounds_check->GetDexPc());
     block->InsertInstructionBefore(deoptimize, bounds_check);
     deoptimize->CopyEnvironmentFrom(bounds_check->GetEnvironment());
   }
@@ -1763,18 +1770,18 @@ class BCEVisitor : public HGraphVisitor {
     HBasicBlock* false_block = if_block->GetSuccessors()[1];  // False successor.
 
     // Goto instructions.
-    true_block->AddInstruction(new (GetGraph()->GetArena()) HGoto());
-    false_block->AddInstruction(new (GetGraph()->GetArena()) HGoto());
-    new_preheader->AddInstruction(new (GetGraph()->GetArena()) HGoto());
+    true_block->AddInstruction(new (GetGraph()->GetAllocator()) HGoto());
+    false_block->AddInstruction(new (GetGraph()->GetAllocator()) HGoto());
+    new_preheader->AddInstruction(new (GetGraph()->GetAllocator()) HGoto());
 
     // Insert the taken-test to see if the loop body is entered. If the
     // loop isn't entered at all, it jumps around the deoptimization block.
-    if_block->AddInstruction(new (GetGraph()->GetArena()) HGoto());  // placeholder
+    if_block->AddInstruction(new (GetGraph()->GetAllocator()) HGoto());  // placeholder
     HInstruction* condition = induction_range_.GenerateTakenTest(
         header->GetLastInstruction(), GetGraph(), if_block);
     DCHECK(condition != nullptr);
     if_block->RemoveInstruction(if_block->GetLastInstruction());
-    if_block->AddInstruction(new (GetGraph()->GetArena()) HIf(condition));
+    if_block->AddInstruction(new (GetGraph()->GetAllocator()) HIf(condition));
 
     taken_test_loop_.Put(loop_id, true_block);
   }
@@ -1853,8 +1860,8 @@ class BCEVisitor : public HGraphVisitor {
       case DataType::Type::kFloat64: zero = graph->GetDoubleConstant(0); break;
       default: zero = graph->GetConstant(type, 0); break;
     }
-    HPhi* phi = new (graph->GetArena())
-        HPhi(graph->GetArena(), kNoRegNumber, /*number_of_inputs*/ 2, HPhi::ToPhiType(type));
+    HPhi* phi = new (graph->GetAllocator())
+        HPhi(graph->GetAllocator(), kNoRegNumber, /*number_of_inputs*/ 2, HPhi::ToPhiType(type));
     phi->SetRawInputAt(0, instruction);
     phi->SetRawInputAt(1, zero);
     if (type == DataType::Type::kReference) {
