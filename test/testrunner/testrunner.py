@@ -237,6 +237,7 @@ def setup_test_env():
       n_thread = get_default_threads('target')
     else:
       n_thread = get_default_threads('host')
+    print_text("Concurrency: " + str(n_thread) + "\n")
 
   global semaphore
   semaphore = threading.Semaphore(n_thread)
