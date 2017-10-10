@@ -65,7 +65,7 @@ class Query {
    */
   public long getLong(String name, long defaultValue) {
     String value = get(name, null);
-    return value == null ? defaultValue : Long.parseLong(value);
+    return value == null ? defaultValue : Long.decode(value);
   }
 
   /**
@@ -73,7 +73,7 @@ class Query {
    */
   public int getInt(String name, int defaultValue) {
     String value = get(name, null);
-    return value == null ? defaultValue : Integer.parseInt(value);
+    return value == null ? defaultValue : Integer.decode(value);
   }
 
   /**
