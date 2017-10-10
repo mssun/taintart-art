@@ -214,7 +214,9 @@ public class InstanceTest {
     // reference as having a non-null referent.
     TestDump dump = TestDump.getTestDump();
     AhatInstance ref = dump.getDumpedAhatInstance("aSoftReference");
-    assertNotNull(ref.getReferent());
+    AhatInstance referent = ref.getReferent();
+    assertNotNull(referent);
+    assertTrue(referent.isWeaklyReachable());
   }
 
   @Test
