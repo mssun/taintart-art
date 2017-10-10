@@ -186,7 +186,7 @@ public class Site implements Diffable<Site> {
 
     // Add all reachable objects allocated at this site.
     for (AhatInstance inst : mObjects) {
-      if (inst.isReachable()) {
+      if (inst.isStronglyReachable()) {
         AhatHeap heap = inst.getHeap();
         Size size = inst.getSize();
         ObjectsInfo info = getObjectsInfo(heap, inst.getClassObj());
