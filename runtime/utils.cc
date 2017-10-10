@@ -48,6 +48,7 @@
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "dex_file-inl.h"
+#include "dex_file_loader.h"
 #include "dex_instruction.h"
 #include "oat_quick_method_header.h"
 #include "os.h"
@@ -858,7 +859,7 @@ bool GetDalvikCacheFilename(const char* location, const char* cache_location,
       !android::base::EndsWith(location, ".art") &&
       !android::base::EndsWith(location, ".oat")) {
     cache_file += "/";
-    cache_file += DexFile::kClassesDex;
+    cache_file += DexFileLoader::kClassesDex;
   }
   std::replace(cache_file.begin(), cache_file.end(), '/', '@');
   *filename = StringPrintf("%s/%s", cache_location, cache_file.c_str());

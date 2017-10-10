@@ -67,6 +67,7 @@
 #include "class_linker-inl.h"
 #include "compiler_callbacks.h"
 #include "debugger.h"
+#include "dex_file_loader.h"
 #include "elf_file.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "experimental_flags.h"
@@ -1020,7 +1021,7 @@ static size_t OpenDexFiles(const std::vector<std::string>& dex_filenames,
       LOG(WARNING) << "Skipping non-existent dex file '" << dex_filename << "'";
       continue;
     }
-    if (!DexFile::Open(dex_filename, dex_location, kVerifyChecksum, &error_msg, dex_files)) {
+    if (!DexFileLoader::Open(dex_filename, dex_location, kVerifyChecksum, &error_msg, dex_files)) {
       LOG(WARNING) << "Failed to open .dex from file '" << dex_filename << "': " << error_msg;
       ++failure_count;
     }

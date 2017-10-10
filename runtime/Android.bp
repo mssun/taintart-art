@@ -55,6 +55,7 @@ cc_defaults {
         "compiler_filter.cc",
         "debugger.cc",
         "dex_file.cc",
+        "dex_file_loader.cc",
         "dex_file_annotations.cc",
         "dex_file_layout.cc",
         "dex_file_tracking_registrar.cc",

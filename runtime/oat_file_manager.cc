@@ -31,6 +31,7 @@
 #include "class_linker.h"
 #include "class_loader_context.h"
 #include "dex_file-inl.h"
+#include "dex_file_loader.h"
 #include "dex_file_tracking_registrar.h"
 #include "gc/scoped_gc_critical_section.h"
 #include "gc/space/image_space.h"
@@ -94,7 +95,7 @@ const OatFile* OatFileManager::FindOpenedOatFileFromDexLocation(
   for (const std::unique_ptr<const OatFile>& oat_file : oat_files_) {
     const std::vector<const OatDexFile*>& oat_dex_files = oat_file->GetOatDexFiles();
     for (const OatDexFile* oat_dex_file : oat_dex_files) {
-      if (DexFile::GetBaseLocation(oat_dex_file->GetDexFileLocation()) == dex_base_location) {
+      if (DexFileLoader::GetBaseLocation(oat_dex_file->GetDexFileLocation()) == dex_base_location) {
         return oat_file.get();
       }
     }
@@ -596,7 +597,7 @@ std::vector<std::unique_ptr<const DexFile>> OatFileManager::OpenDexFilesFromOat(
     if (oat_file_assistant.HasOriginalDexFiles()) {
       if (Runtime::Current()->IsDexFileFallbackEnabled()) {
         static constexpr bool kVerifyChecksum = true;
-        if (!DexFile::Open(
+        if (!DexFileLoader::Open(
             dex_location, dex_location, kVerifyChecksum, /*out*/ &error_msg, &dex_files)) {
           LOG(WARNING) << error_msg;
           error_msgs->push_back("Failed to open dex files from " + std::string(dex_location)

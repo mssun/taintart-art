@@ -26,6 +26,7 @@
 #include "base/time_utils.h"
 #include "cha.h"
 #include "debugger_interface.h"
+#include "dex_file_loader.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "gc/accounting/bitmap-inl.h"
 #include "gc/scoped_gc_critical_section.h"
@@ -1350,7 +1351,8 @@ void JitCodeCache::GetProfiledMethods(const std::set<std::string>& dex_base_loca
   for (const ProfilingInfo* info : profiling_infos_) {
     ArtMethod* method = info->GetMethod();
     const DexFile* dex_file = method->GetDexFile();
-    if (!ContainsElement(dex_base_locations, dex_file->GetBaseLocation())) {
+    const std::string base_location = DexFileLoader::GetBaseLocation(dex_file->GetLocation());
+    if (!ContainsElement(dex_base_locations, base_location)) {
       // Skip dex files which are not profiled.
       continue;
     }
@@ -1404,7 +1406,8 @@ void JitCodeCache::GetProfiledMethods(const std::set<std::string>& dex_base_loca
           is_missing_types = true;
           continue;
         }
-        if (ContainsElement(dex_base_locations, class_dex_file->GetBaseLocation())) {
+        if (ContainsElement(dex_base_locations,
+                            DexFileLoader::GetBaseLocation(class_dex_file->GetLocation()))) {
           // Only consider classes from the same apk (including multidex).
           profile_classes.emplace_back(/*ProfileMethodInfo::ProfileClassReference*/
               class_dex_file, type_index);

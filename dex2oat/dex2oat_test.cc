@@ -33,6 +33,7 @@
 #include "dex2oat_environment_test.h"
 #include "dex2oat_return_codes.h"
 #include "dex_file-inl.h"
+#include "dex_file_loader.h"
 #include "jit/profile_compilation_info.h"
 #include "oat.h"
 #include "oat_file.h"
@@ -677,7 +678,7 @@ class Dex2oatLayoutTest : public Dex2oatTest {
     const char* location = dex_location.c_str();
     std::string error_msg;
     std::vector<std::unique_ptr<const DexFile>> dex_files;
-    ASSERT_TRUE(DexFile::Open(location, location, true, &error_msg, &dex_files));
+    ASSERT_TRUE(DexFileLoader::Open(location, location, true, &error_msg, &dex_files));
     EXPECT_EQ(dex_files.size(), 1U);
     std::unique_ptr<const DexFile>& dex_file = dex_files[0];
     GenerateProfile(profile_location,
@@ -811,7 +812,7 @@ class Dex2oatLayoutTest : public Dex2oatTest {
 
     const char* location = dex_location.c_str();
     std::vector<std::unique_ptr<const DexFile>> dex_files;
-    ASSERT_TRUE(DexFile::Open(location, location, true, &error_msg, &dex_files));
+    ASSERT_TRUE(DexFileLoader::Open(location, location, true, &error_msg, &dex_files));
     EXPECT_EQ(dex_files.size(), 1U);
     std::unique_ptr<const DexFile>& old_dex_file = dex_files[0];
 
