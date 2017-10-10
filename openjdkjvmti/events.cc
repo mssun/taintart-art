@@ -842,6 +842,12 @@ void EventHandler::HandleLocalAccessCapabilityAdded() {
 
     bool operator()(art::ObjPtr<art::mirror::Class> klass)
         OVERRIDE REQUIRES(art::Locks::mutator_lock_) {
+      if (!klass->IsLoaded()) {
+        // Skip classes that aren't loaded since they might not have fully allocated and initialized
+        // their methods. Furthemore since the jvmti-plugin must have been loaded by this point
+        // these methods will definitately be using debuggable code.
+        return true;
+      }
       for (auto& m : klass->GetMethods(art::kRuntimePointerSize)) {
         const void* code = m.GetEntryPointFromQuickCompiledCode();
         if (m.IsNative() || m.IsProxyMethod()) {
