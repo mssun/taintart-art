@@ -58,7 +58,6 @@
 #define ART_COMPILER_OPTIMIZING_SELECT_GENERATOR_H_
 
 #include "optimization.h"
-#include "reference_type_propagation.h"
 
 namespace art {
 
