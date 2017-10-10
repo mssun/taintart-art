@@ -136,10 +136,25 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
-   * Returns whether this object is strongly-reachable.
+   * Returns true if this object is strongly-reachable.
    */
-  public boolean isReachable() {
+  public boolean isStronglyReachable() {
     return mImmediateDominator != null;
+  }
+
+  /**
+   * Returns true if this object is reachable only through a
+   * soft/weak/phantom/finalizer reference.
+   */
+  public boolean isWeaklyReachable() {
+    return !isStronglyReachable() && mNextInstanceToGcRoot != null;
+  }
+
+  /**
+   * Returns true if this object is completely unreachable.
+   */
+  public boolean isUnreachable() {
+    return !isStronglyReachable() && !isWeaklyReachable();
   }
 
   /**
@@ -499,6 +514,10 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
         } else {
           if (ref.ref.mSoftReverseReferences == null) {
             ref.ref.mSoftReverseReferences = new ArrayList<AhatInstance>();
+            if (ref.ref.mNextInstanceToGcRoot == null) {
+              ref.ref.mNextInstanceToGcRoot = ref.src;
+              ref.ref.mNextInstanceToGcRootField = ref.field;
+            }
           }
           ref.ref.mSoftReverseReferences.add(ref.src);
         }
