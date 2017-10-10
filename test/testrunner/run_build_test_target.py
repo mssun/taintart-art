@@ -96,7 +96,9 @@ if target.has_key('run-test'):
   run_test_command = [os.path.join(env.ANDROID_BUILD_TOP,
                                    'art/test/testrunner/testrunner.py')]
   run_test_command += target.get('run-test', [])
-  run_test_command += ['-j', str(n_threads)]
+  # Let testrunner compute concurrency based on #cpus.
+  # b/65822340
+  # run_test_command += ['-j', str(n_threads)]
   run_test_command += ['-b']
   run_test_command += ['--host']
   run_test_command += ['--verbose']
