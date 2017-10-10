@@ -32,34 +32,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.Consumer;
 
-public class Test1914 {
-  public static final String TARGET_VAR = "TARGET";
-
-  public static void reportValue(Object val) {
-    System.out.println("\tValue is '" + val + "' (class: "
-        + (val != null ? (val instanceof Proxy ? "PROXY CLASS" : val.getClass()) : "NULL") + ")");
-  }
-
-  public static void StaticMethod(Runnable safepoint) {
-    safepoint.run();
-    reportValue(null);
-  }
-
-  public static native void NativeStaticMethod(Runnable safepoint);
-
-  public static class TargetClass {
-    public String id;
-    public String toString() { return String.format("TargetClass(\"%s\")", id); }
-    public TargetClass(String id) { this.id = id; }
-
-    public void InstanceMethod(Runnable safepoint) {
-      safepoint.run();
-      reportValue(this);
-    }
-
-    public native void NativeInstanceMethod(Runnable safepoint);
-  }
-
+public class Test1939 {
   public static interface SafepointFunction {
     public void invoke(
         Thread thread,
@@ -174,14 +147,13 @@ public class Test1914 {
 
   public static Object getProxyObject(final Class... k) {
     return Proxy.newProxyInstance(
-        Test1914.class.getClassLoader(),
+        Test1939.class.getClassLoader(),
         k,
         (p, m, a) -> {
           if (m.getName().equals("toString")) {
             return "Proxy for " + Arrays.toString(k);
           } else {
             ((Runnable)a[0]).run();
-            reportValue(p);
             return null;
           }
         });
@@ -190,19 +162,17 @@ public class Test1914 {
   public static void run() throws Exception {
     Locals.EnableLocalVariableAccess();
     final TestCase[] MAIN_TEST_CASES = new TestCase[] {
-      new TestCase(null, getMethod(Test1914.class, "StaticMethod")),
-      new TestCase(null, getMethod(Test1914.class, "NativeStaticMethod")),
-      new TestCase(new TargetClass("InstanceMethodObject"),
-                   getMethod(TargetClass.class, "InstanceMethod")),
-      new TestCase(new TargetClass("NativeInstanceMethodObject"),
-                   getMethod(TargetClass.class, "NativeInstanceMethod")),
-      new TestCase(getProxyObject(Foo.class),
-                   getMethod(Foo.class, "InterfaceProxyMethod")),
     };
 
-    for (TestCase t: MAIN_TEST_CASES) {
-      t.exec(NamedGet("This", Locals::GetLocalInstance));
-    }
+    TestCase test = new TestCase(
+        getProxyObject(Foo.class), getMethod(Foo.class, "InterfaceProxyMethod"));
+    test.exec(NamedGet("This", Locals::GetLocalInstance));
+    test.exec(NamedGet("LocalReference0", (t, d) -> Locals.GetLocalVariableObject(t, d, 0)));
+    test.exec(NamedGet("ProxyFrameLocation", (t, d) -> Long.valueOf(GetFrameLocation(t, d))));
+    test.exec(NamedGet("ProxyFrameMethod", Test1939::GetFrameMethod));
   }
+
+  public static native long GetFrameLocation(Thread thr, int depth);
+  public static native Executable GetFrameMethod(Thread thr, int depth);
 }
 
