@@ -15,6 +15,6 @@
 # limitations under the License.
 
 # See b/65168732
-export DX=$ANDROID_HOST_OUT/bin/dx
+export USE_D8=false
 
 ./default-build "$@"
