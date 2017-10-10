@@ -3228,7 +3228,7 @@ ENTRY art_quick_invoke_polymorphic
     sw    $zero, 20($sp)                      # Initialize JValue result.
     sw    $zero, 16($sp)
     la    $t9, artInvokePolymorphic
-    jalr  $t9                                 # (result, receiver, Thread*, context)
+    jalr  $t9                                 # artInvokePolymorphic(result, receiver, Thread*, context)
     addiu $a0, $sp, 16                        # Make $a0 a pointer to the JValue result
 .macro MATCH_RETURN_TYPE c, handler
     li    $t0, \c

@@ -256,30 +256,63 @@ void IntrinsicCodeGenerator ## Arch::Visit ## Name(HInvoke* invoke) {    \
   LOG(FATAL) << "Unreachable: intrinsic " << invoke->GetIntrinsic()      \
              << " should have been converted to HIR";                    \
 }
-#define UNREACHABLE_INTRINSICS(Arch)                  \
-UNREACHABLE_INTRINSIC(Arch, FloatFloatToIntBits)      \
-UNREACHABLE_INTRINSIC(Arch, DoubleDoubleToLongBits)   \
-UNREACHABLE_INTRINSIC(Arch, FloatIsNaN)               \
-UNREACHABLE_INTRINSIC(Arch, DoubleIsNaN)              \
-UNREACHABLE_INTRINSIC(Arch, IntegerRotateLeft)        \
-UNREACHABLE_INTRINSIC(Arch, LongRotateLeft)           \
-UNREACHABLE_INTRINSIC(Arch, IntegerRotateRight)       \
-UNREACHABLE_INTRINSIC(Arch, LongRotateRight)          \
-UNREACHABLE_INTRINSIC(Arch, IntegerCompare)           \
-UNREACHABLE_INTRINSIC(Arch, LongCompare)              \
-UNREACHABLE_INTRINSIC(Arch, IntegerSignum)            \
-UNREACHABLE_INTRINSIC(Arch, LongSignum)               \
-UNREACHABLE_INTRINSIC(Arch, StringCharAt)             \
-UNREACHABLE_INTRINSIC(Arch, StringIsEmpty)            \
-UNREACHABLE_INTRINSIC(Arch, StringLength)             \
-UNREACHABLE_INTRINSIC(Arch, UnsafeLoadFence)          \
-UNREACHABLE_INTRINSIC(Arch, UnsafeStoreFence)         \
-UNREACHABLE_INTRINSIC(Arch, UnsafeFullFence)          \
-UNREACHABLE_INTRINSIC(Arch, VarHandleFullFence)       \
-UNREACHABLE_INTRINSIC(Arch, VarHandleAcquireFence)    \
-UNREACHABLE_INTRINSIC(Arch, VarHandleReleaseFence)    \
-UNREACHABLE_INTRINSIC(Arch, VarHandleLoadLoadFence)   \
-UNREACHABLE_INTRINSIC(Arch, VarHandleStoreStoreFence)
+#define UNREACHABLE_INTRINSICS(Arch)                            \
+UNREACHABLE_INTRINSIC(Arch, FloatFloatToIntBits)                \
+UNREACHABLE_INTRINSIC(Arch, DoubleDoubleToLongBits)             \
+UNREACHABLE_INTRINSIC(Arch, FloatIsNaN)                         \
+UNREACHABLE_INTRINSIC(Arch, DoubleIsNaN)                        \
+UNREACHABLE_INTRINSIC(Arch, IntegerRotateLeft)                  \
+UNREACHABLE_INTRINSIC(Arch, LongRotateLeft)                     \
+UNREACHABLE_INTRINSIC(Arch, IntegerRotateRight)                 \
+UNREACHABLE_INTRINSIC(Arch, LongRotateRight)                    \
+UNREACHABLE_INTRINSIC(Arch, IntegerCompare)                     \
+UNREACHABLE_INTRINSIC(Arch, LongCompare)                        \
+UNREACHABLE_INTRINSIC(Arch, IntegerSignum)                      \
+UNREACHABLE_INTRINSIC(Arch, LongSignum)                         \
+UNREACHABLE_INTRINSIC(Arch, StringCharAt)                       \
+UNREACHABLE_INTRINSIC(Arch, StringIsEmpty)                      \
+UNREACHABLE_INTRINSIC(Arch, StringLength)                       \
+UNREACHABLE_INTRINSIC(Arch, UnsafeLoadFence)                    \
+UNREACHABLE_INTRINSIC(Arch, UnsafeStoreFence)                   \
+UNREACHABLE_INTRINSIC(Arch, UnsafeFullFence)                    \
+UNREACHABLE_INTRINSIC(Arch, VarHandleFullFence)                 \
+UNREACHABLE_INTRINSIC(Arch, VarHandleAcquireFence)              \
+UNREACHABLE_INTRINSIC(Arch, VarHandleReleaseFence)              \
+UNREACHABLE_INTRINSIC(Arch, VarHandleLoadLoadFence)             \
+UNREACHABLE_INTRINSIC(Arch, VarHandleStoreStoreFence)           \
+UNREACHABLE_INTRINSIC(Arch, MethodHandleInvokeExact)            \
+UNREACHABLE_INTRINSIC(Arch, MethodHandleInvoke)                 \
+UNREACHABLE_INTRINSIC(Arch, VarHandleCompareAndExchange)        \
+UNREACHABLE_INTRINSIC(Arch, VarHandleCompareAndExchangeAcquire) \
+UNREACHABLE_INTRINSIC(Arch, VarHandleCompareAndExchangeRelease) \
+UNREACHABLE_INTRINSIC(Arch, VarHandleCompareAndSet)             \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGet)                       \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetAcquire)                \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetAndAdd)                 \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetAndAddAcquire)          \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetAndAddRelease)          \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetAndBitwiseAnd)          \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetAndBitwiseAndAcquire)   \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetAndBitwiseAndRelease)   \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetAndBitwiseOr)           \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetAndBitwiseOrAcquire)    \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetAndBitwiseOrRelease)    \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetAndBitwiseXor)          \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetAndBitwiseXorAcquire)   \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetAndBitwiseXorRelease)   \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetAndSet)                 \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetAndSetAcquire)          \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetAndSetRelease)          \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetOpaque)                 \
+UNREACHABLE_INTRINSIC(Arch, VarHandleGetVolatile)               \
+UNREACHABLE_INTRINSIC(Arch, VarHandleSet)                       \
+UNREACHABLE_INTRINSIC(Arch, VarHandleSetOpaque)                 \
+UNREACHABLE_INTRINSIC(Arch, VarHandleSetRelease)                \
+UNREACHABLE_INTRINSIC(Arch, VarHandleSetVolatile)               \
+UNREACHABLE_INTRINSIC(Arch, VarHandleWeakCompareAndSet)         \
+UNREACHABLE_INTRINSIC(Arch, VarHandleWeakCompareAndSetAcquire)  \
+UNREACHABLE_INTRINSIC(Arch, VarHandleWeakCompareAndSetPlain)    \
+UNREACHABLE_INTRINSIC(Arch, VarHandleWeakCompareAndSetRelease)
 
 template <typename IntrinsicLocationsBuilder, typename Codegenerator>
 bool IsCallFreeIntrinsic(HInvoke* invoke, Codegenerator* codegen) {

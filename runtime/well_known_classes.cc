@@ -52,6 +52,7 @@ jclass WellKnownClasses::java_lang_ClassNotFoundException;
 jclass WellKnownClasses::java_lang_Daemons;
 jclass WellKnownClasses::java_lang_Error;
 jclass WellKnownClasses::java_lang_invoke_MethodHandle;
+jclass WellKnownClasses::java_lang_invoke_MethodHandle_PolymorphicSignature;
 jclass WellKnownClasses::java_lang_IllegalAccessError;
 jclass WellKnownClasses::java_lang_NoClassDefFoundError;
 jclass WellKnownClasses::java_lang_Object;
@@ -298,6 +299,7 @@ void WellKnownClasses::Init(JNIEnv* env) {
   java_lang_Error = CacheClass(env, "java/lang/Error");
   java_lang_IllegalAccessError = CacheClass(env, "java/lang/IllegalAccessError");
   java_lang_invoke_MethodHandle = CacheClass(env, "java/lang/invoke/MethodHandle");
+  java_lang_invoke_MethodHandle_PolymorphicSignature = CacheClass(env, "java/lang/invoke/MethodHandle$PolymorphicSignature");
   java_lang_NoClassDefFoundError = CacheClass(env, "java/lang/NoClassDefFoundError");
   java_lang_reflect_Constructor = CacheClass(env, "java/lang/reflect/Constructor");
   java_lang_reflect_Executable = CacheClass(env, "java/lang/reflect/Executable");
@@ -334,6 +336,7 @@ void WellKnownClasses::Init(JNIEnv* env) {
   java_lang_invoke_MethodHandle_invokeExact = CacheMethod(env, java_lang_invoke_MethodHandle, false, "invokeExact", "([Ljava/lang/Object;)Ljava/lang/Object;");
   java_lang_invoke_MethodHandles_lookup = CacheMethod(env, "java/lang/invoke/MethodHandles", true, "lookup", "()Ljava/lang/invoke/MethodHandles$Lookup;");
   java_lang_invoke_MethodHandles_Lookup_findConstructor = CacheMethod(env, "java/lang/invoke/MethodHandles$Lookup", false, "findConstructor", "(Ljava/lang/Class;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;");
+
   java_lang_ref_FinalizerReference_add = CacheMethod(env, "java/lang/ref/FinalizerReference", true, "add", "(Ljava/lang/Object;)V");
   java_lang_ref_ReferenceQueue_add = CacheMethod(env, "java/lang/ref/ReferenceQueue", true, "add", "(Ljava/lang/ref/Reference;)V");
 
@@ -434,6 +437,7 @@ void WellKnownClasses::Clear() {
   java_lang_Error = nullptr;
   java_lang_IllegalAccessError = nullptr;
   java_lang_invoke_MethodHandle = nullptr;
+  java_lang_invoke_MethodHandle_PolymorphicSignature = nullptr;
   java_lang_NoClassDefFoundError = nullptr;
   java_lang_Object = nullptr;
   java_lang_OutOfMemoryError = nullptr;

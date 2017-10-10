@@ -2419,7 +2419,7 @@ DEFINE_FUNCTION art_quick_invoke_polymorphic
     CFI_ADJUST_CFA_OFFSET(4)
     PUSH ecx                                       // pass receiver (method handle)
     PUSH eax                                       // pass JResult
-    call SYMBOL(artInvokePolymorphic)              // (result, receiver, Thread*, SP)
+    call SYMBOL(artInvokePolymorphic)              // artInvokePolymorphic(result, receiver, Thread*, SP)
     subl LITERAL('A'), %eax                        // Eliminate out of bounds options
     cmpb LITERAL('Z' - 'A'), %al
     ja .Lcleanup_and_return
