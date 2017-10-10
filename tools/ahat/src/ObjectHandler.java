@@ -261,7 +261,7 @@ class ObjectHandler implements AhatHandler {
     if (bitmap != null) {
       doc.section("Bitmap Image");
       doc.println(DocString.image(
-            DocString.formattedUri("bitmap?id=%d", bitmap.getId()), "bitmap image"));
+            DocString.formattedUri("bitmap?id=0x%x", bitmap.getId()), "bitmap image"));
     }
   }
 
