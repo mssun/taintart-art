@@ -2185,20 +2185,11 @@ extern "C" TwoWordReturn artQuickGenericJniTrampoline(Thread* self, ArtMethod** 
   // Generic JNI trampoline at this stage; instead, method's
   // annotations' classes are looked up in the bootstrap class
   // loader's resolved types (which won't trigger an exception).
+  CHECK(!self->IsExceptionPending());
   bool critical_native = called->IsAnnotatedWithCriticalNative();
-  // ArtMethod::IsAnnotatedWithCriticalNative should not throw
-  // an exception; clear it if it happened anyway.
-  // TODO: Revisit this code path and turn this into a CHECK(!self->IsExceptionPending()).
-  if (self->IsExceptionPending()) {
-    self->ClearException();
-  }
+  CHECK(!self->IsExceptionPending());
   bool fast_native = called->IsAnnotatedWithFastNative();
-  // ArtMethod::IsAnnotatedWithFastNative should not throw
-  // an exception; clear it if it happened anyway.
-  // TODO: Revisit this code path and turn this into a CHECK(!self->IsExceptionPending()).
-  if (self->IsExceptionPending()) {
-    self->ClearException();
-  }
+  CHECK(!self->IsExceptionPending());
   bool normal_native = !critical_native && !fast_native;
   // Restore the initial ArtMethod pointer at `*sp`.
   *sp = called;
