@@ -32,17 +32,20 @@
 
 namespace art {
 
-class LinearizeTest : public CommonCompilerTest {};
+class LinearizeTest : public OptimizingUnitTest {
+ protected:
+  template <size_t number_of_blocks>
+  void TestCode(const uint16_t* data, const uint32_t (&expected_order)[number_of_blocks]);
+};
 
 template <size_t number_of_blocks>
-static void TestCode(const uint16_t* data, const uint32_t (&expected_order)[number_of_blocks]) {
-  ArenaPool pool;
-  ArenaAllocator allocator(&pool);
-  HGraph* graph = CreateCFG(&allocator, data);
+void LinearizeTest::TestCode(const uint16_t* data,
+                             const uint32_t (&expected_order)[number_of_blocks]) {
+  HGraph* graph = CreateCFG(data);
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
       X86InstructionSetFeatures::FromCppDefines());
   x86::CodeGeneratorX86 codegen(graph, *features_x86.get(), CompilerOptions());
-  SsaLivenessAnalysis liveness(graph, &codegen);
+  SsaLivenessAnalysis liveness(graph, &codegen, GetScopedAllocator());
   liveness.Analyze();
 
   ASSERT_EQ(graph->GetLinearOrder().size(), number_of_blocks);

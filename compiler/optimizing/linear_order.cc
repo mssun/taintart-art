@@ -16,6 +16,9 @@
 
 #include "linear_order.h"
 
+#include "base/scoped_arena_allocator.h"
+#include "base/scoped_arena_containers.h"
+
 namespace art {
 
 static bool InSameLoop(HLoopInformation* first_loop, HLoopInformation* second_loop) {
@@ -34,7 +37,8 @@ static bool IsInnerLoop(HLoopInformation* outer, HLoopInformation* inner) {
 }
 
 // Helper method to update work list for linear order.
-static void AddToListForLinearization(ArenaVector<HBasicBlock*>* worklist, HBasicBlock* block) {
+static void AddToListForLinearization(ScopedArenaVector<HBasicBlock*>* worklist,
+                                      HBasicBlock* block) {
   HLoopInformation* block_loop = block->GetLoopInformation();
   auto insert_pos = worklist->rbegin();  // insert_pos.base() will be the actual position.
   for (auto end = worklist->rend(); insert_pos != end; ++insert_pos) {
@@ -51,7 +55,7 @@ static void AddToListForLinearization(ArenaVector<HBasicBlock*>* worklist, HBasi
 }
 
 // Helper method to validate linear order.
-static bool IsLinearOrderWellFormed(const HGraph* graph, ArenaVector<HBasicBlock*>* linear_order) {
+static bool IsLinearOrderWellFormed(const HGraph* graph, ArrayRef<HBasicBlock*> linear_order) {
   for (HBasicBlock* header : graph->GetBlocks()) {
     if (header == nullptr || !header->IsLoopHeader()) {
       continue;
@@ -59,7 +63,7 @@ static bool IsLinearOrderWellFormed(const HGraph* graph, ArenaVector<HBasicBlock
     HLoopInformation* loop = header->GetLoopInformation();
     size_t num_blocks = loop->GetBlocks().NumSetBits();
     size_t found_blocks = 0u;
-    for (HBasicBlock* block : *linear_order) {
+    for (HBasicBlock* block : linear_order) {
       if (loop->Contains(*block)) {
         found_blocks++;
         if (found_blocks == 1u && block != header) {
@@ -79,10 +83,8 @@ static bool IsLinearOrderWellFormed(const HGraph* graph, ArenaVector<HBasicBlock
   return true;
 }
 
-void LinearizeGraph(const HGraph* graph,
-                    ArenaAllocator* allocator,
-                    ArenaVector<HBasicBlock*>* linear_order) {
-  DCHECK(linear_order->empty());
+void LinearizeGraphInternal(const HGraph* graph, ArrayRef<HBasicBlock*> linear_order) {
+  DCHECK_EQ(linear_order.size(), graph->GetReversePostOrder().size());
   // Create a reverse post ordering with the following properties:
   // - Blocks in a loop are consecutive,
   // - Back-edge is the last block before loop exits.
@@ -92,8 +94,9 @@ void LinearizeGraph(const HGraph* graph,
   //      current reverse post order in the graph, but it would require making
   //      order queries to a GrowableArray, which is not the best data structure
   //      for it.
-  ArenaVector<uint32_t> forward_predecessors(graph->GetBlocks().size(),
-                                             allocator->Adapter(kArenaAllocLinearOrder));
+  ScopedArenaAllocator allocator(graph->GetArenaStack());
+  ScopedArenaVector<uint32_t> forward_predecessors(graph->GetBlocks().size(),
+                                                   allocator.Adapter(kArenaAllocLinearOrder));
   for (HBasicBlock* block : graph->GetReversePostOrder()) {
     size_t number_of_forward_predecessors = block->GetPredecessors().size();
     if (block->IsLoopHeader()) {
@@ -105,13 +108,14 @@ void LinearizeGraph(const HGraph* graph,
   //      iterate over the successors. When all non-back edge predecessors of a
   //      successor block are visited, the successor block is added in the worklist
   //      following an order that satisfies the requirements to build our linear graph.
-  linear_order->reserve(graph->GetReversePostOrder().size());
-  ArenaVector<HBasicBlock*> worklist(allocator->Adapter(kArenaAllocLinearOrder));
+  ScopedArenaVector<HBasicBlock*> worklist(allocator.Adapter(kArenaAllocLinearOrder));
   worklist.push_back(graph->GetEntryBlock());
+  size_t num_added = 0u;
   do {
     HBasicBlock* current = worklist.back();
     worklist.pop_back();
-    linear_order->push_back(current);
+    linear_order[num_added] = current;
+    ++num_added;
     for (HBasicBlock* successor : current->GetSuccessors()) {
       int block_id = successor->GetBlockId();
       size_t number_of_remaining_predecessors = forward_predecessors[block_id];
@@ -121,6 +125,7 @@ void LinearizeGraph(const HGraph* graph,
       forward_predecessors[block_id] = number_of_remaining_predecessors - 1;
     }
   } while (!worklist.empty());
+  DCHECK_EQ(num_added, linear_order.size());
 
   DCHECK(graph->HasIrreducibleLoops() || IsLinearOrderWellFormed(graph, linear_order));
 }

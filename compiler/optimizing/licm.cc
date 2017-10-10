@@ -84,10 +84,10 @@ void LICM::Run() {
   // Only used during debug.
   ArenaBitVector* visited = nullptr;
   if (kIsDebugBuild) {
-    visited = new (graph_->GetArena()) ArenaBitVector(graph_->GetArena(),
-                                                      graph_->GetBlocks().size(),
-                                                      false,
-                                                      kArenaAllocLICM);
+    visited = new (graph_->GetAllocator()) ArenaBitVector(graph_->GetAllocator(),
+                                                          graph_->GetBlocks().size(),
+                                                          false,
+                                                          kArenaAllocLICM);
   }
 
   // Post order visit to visit inner loops before outer loops.

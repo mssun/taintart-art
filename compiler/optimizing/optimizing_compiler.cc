@@ -45,6 +45,7 @@
 #include "base/dumpable.h"
 #include "base/macros.h"
 #include "base/mutex.h"
+#include "base/scoped_arena_allocator.h"
 #include "base/timing_logger.h"
 #include "bounds_check_elimination.h"
 #include "builder.h"
@@ -108,8 +109,8 @@ static constexpr const char* kPassNameSeparator = "$";
  */
 class CodeVectorAllocator FINAL : public CodeAllocator {
  public:
-  explicit CodeVectorAllocator(ArenaAllocator* arena)
-      : memory_(arena->Adapter(kArenaAllocCodeBuffer)),
+  explicit CodeVectorAllocator(ArenaAllocator* allocator)
+      : memory_(allocator->Adapter(kArenaAllocCodeBuffer)),
         size_(0) {}
 
   virtual uint8_t* Allocate(size_t size) {
@@ -148,7 +149,7 @@ class PassObserver : public ValueObject {
         cached_method_name_(),
         timing_logger_enabled_(compiler_driver->GetDumpPasses()),
         timing_logger_(timing_logger_enabled_ ? GetMethodName() : "", true, true),
-        disasm_info_(graph->GetArena()),
+        disasm_info_(graph->GetAllocator()),
         visualizer_oss_(),
         visualizer_output_(visualizer_output),
         visualizer_enabled_(!compiler_driver->GetCompilerOptions().GetDumpCfgFileName().empty()),
@@ -351,7 +352,7 @@ class OptimizingCompiler FINAL : public Compiler {
 
  private:
   // Create a 'CompiledMethod' for an optimized graph.
-  CompiledMethod* Emit(ArenaAllocator* arena,
+  CompiledMethod* Emit(ArenaAllocator* allocator,
                        CodeVectorAllocator* code_allocator,
                        CodeGenerator* codegen,
                        CompilerDriver* driver,
@@ -364,7 +365,8 @@ class OptimizingCompiler FINAL : public Compiler {
   // 2) Transforms the graph to SSA. Returns null if it failed.
   // 3) Runs optimizations on the graph, including register allocator.
   // 4) Generates code with the `code_allocator` provided.
-  CodeGenerator* TryCompile(ArenaAllocator* arena,
+  CodeGenerator* TryCompile(ArenaAllocator* allocator,
+                            ArenaStack* arena_stack,
                             CodeVectorAllocator* code_allocator,
                             const DexFile::CodeItem* code_item,
                             uint32_t access_flags,
@@ -452,7 +454,7 @@ static std::string ConvertPassNameToOptimizationName(const std::string& pass_nam
 
 static HOptimization* BuildOptimization(
     const std::string& pass_name,
-    ArenaAllocator* arena,
+    ArenaAllocator* allocator,
     HGraph* graph,
     OptimizingCompilerStats* stats,
     CodeGenerator* codegen,
@@ -465,78 +467,79 @@ static HOptimization* BuildOptimization(
   std::string opt_name = ConvertPassNameToOptimizationName(pass_name);
   if (opt_name == BoundsCheckElimination::kBoundsCheckEliminationPassName) {
     CHECK(most_recent_side_effects != nullptr && most_recent_induction != nullptr);
-    return new (arena) BoundsCheckElimination(graph,
-                                              *most_recent_side_effects,
-                                              most_recent_induction);
+    return new (allocator) BoundsCheckElimination(graph,
+                                                  *most_recent_side_effects,
+                                                  most_recent_induction);
   } else if (opt_name == GVNOptimization::kGlobalValueNumberingPassName) {
     CHECK(most_recent_side_effects != nullptr);
-    return new (arena) GVNOptimization(graph, *most_recent_side_effects, pass_name.c_str());
+    return new (allocator) GVNOptimization(graph, *most_recent_side_effects, pass_name.c_str());
   } else if (opt_name == HConstantFolding::kConstantFoldingPassName) {
-    return new (arena) HConstantFolding(graph, pass_name.c_str());
+    return new (allocator) HConstantFolding(graph, pass_name.c_str());
   } else if (opt_name == HDeadCodeElimination::kDeadCodeEliminationPassName) {
-    return new (arena) HDeadCodeElimination(graph, stats, pass_name.c_str());
+    return new (allocator) HDeadCodeElimination(graph, stats, pass_name.c_str());
   } else if (opt_name == HInliner::kInlinerPassName) {
     size_t number_of_dex_registers = dex_compilation_unit.GetCodeItem()->registers_size_;
-    return new (arena) HInliner(graph,                   // outer_graph
-                                graph,                   // outermost_graph
-                                codegen,
-                                dex_compilation_unit,    // outer_compilation_unit
-                                dex_compilation_unit,    // outermost_compilation_unit
-                                driver,
-                                handles,
-                                stats,
-                                number_of_dex_registers,
-                                /* total_number_of_instructions */ 0,
-                                /* parent */ nullptr);
+    return new (allocator) HInliner(graph,                   // outer_graph
+                                    graph,                   // outermost_graph
+                                    codegen,
+                                    dex_compilation_unit,    // outer_compilation_unit
+                                    dex_compilation_unit,    // outermost_compilation_unit
+                                    driver,
+                                    handles,
+                                    stats,
+                                    number_of_dex_registers,
+                                    /* total_number_of_instructions */ 0,
+                                    /* parent */ nullptr);
   } else if (opt_name == HSharpening::kSharpeningPassName) {
-    return new (arena) HSharpening(graph, codegen, dex_compilation_unit, driver, handles);
+    return new (allocator) HSharpening(graph, codegen, dex_compilation_unit, driver, handles);
   } else if (opt_name == HSelectGenerator::kSelectGeneratorPassName) {
-    return new (arena) HSelectGenerator(graph, handles, stats);
+    return new (allocator) HSelectGenerator(graph, handles, stats);
   } else if (opt_name == HInductionVarAnalysis::kInductionPassName) {
-    return new (arena) HInductionVarAnalysis(graph);
+    return new (allocator) HInductionVarAnalysis(graph);
   } else if (opt_name == InstructionSimplifier::kInstructionSimplifierPassName) {
-    return new (arena) InstructionSimplifier(graph, codegen, driver, stats, pass_name.c_str());
+    return new (allocator) InstructionSimplifier(graph, codegen, driver, stats, pass_name.c_str());
   } else if (opt_name == IntrinsicsRecognizer::kIntrinsicsRecognizerPassName) {
-    return new (arena) IntrinsicsRecognizer(graph, stats);
+    return new (allocator) IntrinsicsRecognizer(graph, stats);
   } else if (opt_name == LICM::kLoopInvariantCodeMotionPassName) {
     CHECK(most_recent_side_effects != nullptr);
-    return new (arena) LICM(graph, *most_recent_side_effects, stats);
+    return new (allocator) LICM(graph, *most_recent_side_effects, stats);
   } else if (opt_name == LoadStoreAnalysis::kLoadStoreAnalysisPassName) {
-    return new (arena) LoadStoreAnalysis(graph);
+    return new (allocator) LoadStoreAnalysis(graph);
   } else if (opt_name == LoadStoreElimination::kLoadStoreEliminationPassName) {
     CHECK(most_recent_side_effects != nullptr);
     CHECK(most_recent_lsa != nullptr);
-    return
-        new (arena) LoadStoreElimination(graph, *most_recent_side_effects, *most_recent_lsa, stats);
+    return new (allocator) LoadStoreElimination(graph,
+                                                *most_recent_side_effects,
+                                                *most_recent_lsa, stats);
   } else if (opt_name == SideEffectsAnalysis::kSideEffectsAnalysisPassName) {
-    return new (arena) SideEffectsAnalysis(graph);
+    return new (allocator) SideEffectsAnalysis(graph);
   } else if (opt_name == HLoopOptimization::kLoopOptimizationPassName) {
-    return new (arena) HLoopOptimization(graph, driver, most_recent_induction, stats);
+    return new (allocator) HLoopOptimization(graph, driver, most_recent_induction, stats);
   } else if (opt_name == CHAGuardOptimization::kCHAGuardOptimizationPassName) {
-    return new (arena) CHAGuardOptimization(graph);
+    return new (allocator) CHAGuardOptimization(graph);
   } else if (opt_name == CodeSinking::kCodeSinkingPassName) {
-    return new (arena) CodeSinking(graph, stats);
+    return new (allocator) CodeSinking(graph, stats);
   } else if (opt_name == ConstructorFenceRedundancyElimination::kPassName) {
-    return new (arena) ConstructorFenceRedundancyElimination(graph, stats);
+    return new (allocator) ConstructorFenceRedundancyElimination(graph, stats);
 #ifdef ART_ENABLE_CODEGEN_arm
   } else if (opt_name == arm::InstructionSimplifierArm::kInstructionSimplifierArmPassName) {
-    return new (arena) arm::InstructionSimplifierArm(graph, stats);
+    return new (allocator) arm::InstructionSimplifierArm(graph, stats);
 #endif
 #ifdef ART_ENABLE_CODEGEN_arm64
   } else if (opt_name == arm64::InstructionSimplifierArm64::kInstructionSimplifierArm64PassName) {
-    return new (arena) arm64::InstructionSimplifierArm64(graph, stats);
+    return new (allocator) arm64::InstructionSimplifierArm64(graph, stats);
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips
   } else if (opt_name == mips::PcRelativeFixups::kPcRelativeFixupsMipsPassName) {
-    return new (arena) mips::PcRelativeFixups(graph, codegen, stats);
+    return new (allocator) mips::PcRelativeFixups(graph, codegen, stats);
   } else if (opt_name == mips::InstructionSimplifierMips::kInstructionSimplifierMipsPassName) {
-    return new (arena) mips::InstructionSimplifierMips(graph, codegen, stats);
+    return new (allocator) mips::InstructionSimplifierMips(graph, codegen, stats);
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86
   } else if (opt_name == x86::PcRelativeFixups::kPcRelativeFixupsX86PassName) {
-    return new (arena) x86::PcRelativeFixups(graph, codegen, stats);
+    return new (allocator) x86::PcRelativeFixups(graph, codegen, stats);
   } else if (opt_name == x86::X86MemoryOperandGeneration::kX86MemoryOperandGenerationPassName) {
-    return new (arena) x86::X86MemoryOperandGeneration(graph, codegen, stats);
+    return new (allocator) x86::X86MemoryOperandGeneration(graph, codegen, stats);
 #endif
   }
   return nullptr;
@@ -544,7 +547,7 @@ static HOptimization* BuildOptimization(
 
 static ArenaVector<HOptimization*> BuildOptimizations(
     const std::vector<std::string>& pass_names,
-    ArenaAllocator* arena,
+    ArenaAllocator* allocator,
     HGraph* graph,
     OptimizingCompilerStats* stats,
     CodeGenerator* codegen,
@@ -557,11 +560,11 @@ static ArenaVector<HOptimization*> BuildOptimizations(
   SideEffectsAnalysis* most_recent_side_effects = nullptr;
   HInductionVarAnalysis* most_recent_induction = nullptr;
   LoadStoreAnalysis* most_recent_lsa = nullptr;
-  ArenaVector<HOptimization*> ret(arena->Adapter());
+  ArenaVector<HOptimization*> ret(allocator->Adapter());
   for (const std::string& pass_name : pass_names) {
     HOptimization* opt = BuildOptimization(
         pass_name,
-        arena,
+        allocator,
         graph,
         stats,
         codegen,
@@ -608,7 +611,7 @@ void OptimizingCompiler::MaybeRunInliner(HGraph* graph,
     return;
   }
   size_t number_of_dex_registers = dex_compilation_unit.GetCodeItem()->registers_size_;
-  HInliner* inliner = new (graph->GetArena()) HInliner(
+  HInliner* inliner = new (graph->GetAllocator()) HInliner(
       graph,                   // outer_graph
       graph,                   // outermost_graph
       codegen,
@@ -631,17 +634,18 @@ void OptimizingCompiler::RunArchOptimizations(InstructionSet instruction_set,
                                               PassObserver* pass_observer) const {
   UNUSED(codegen);  // To avoid compilation error when compiling for svelte
   OptimizingCompilerStats* stats = compilation_stats_.get();
-  ArenaAllocator* arena = graph->GetArena();
+  ArenaAllocator* allocator = graph->GetAllocator();
   switch (instruction_set) {
 #if defined(ART_ENABLE_CODEGEN_arm)
     case kThumb2:
     case kArm: {
       arm::InstructionSimplifierArm* simplifier =
-          new (arena) arm::InstructionSimplifierArm(graph, stats);
-      SideEffectsAnalysis* side_effects = new (arena) SideEffectsAnalysis(graph);
-      GVNOptimization* gvn = new (arena) GVNOptimization(graph, *side_effects, "GVN$after_arch");
+          new (allocator) arm::InstructionSimplifierArm(graph, stats);
+      SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
+      GVNOptimization* gvn =
+          new (allocator) GVNOptimization(graph, *side_effects, "GVN$after_arch");
       HInstructionScheduling* scheduling =
-          new (arena) HInstructionScheduling(graph, instruction_set, codegen);
+          new (allocator) HInstructionScheduling(graph, instruction_set, codegen);
       HOptimization* arm_optimizations[] = {
         simplifier,
         side_effects,
@@ -655,11 +659,12 @@ void OptimizingCompiler::RunArchOptimizations(InstructionSet instruction_set,
 #ifdef ART_ENABLE_CODEGEN_arm64
     case kArm64: {
       arm64::InstructionSimplifierArm64* simplifier =
-          new (arena) arm64::InstructionSimplifierArm64(graph, stats);
-      SideEffectsAnalysis* side_effects = new (arena) SideEffectsAnalysis(graph);
-      GVNOptimization* gvn = new (arena) GVNOptimization(graph, *side_effects, "GVN$after_arch");
+          new (allocator) arm64::InstructionSimplifierArm64(graph, stats);
+      SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
+      GVNOptimization* gvn =
+          new (allocator) GVNOptimization(graph, *side_effects, "GVN$after_arch");
       HInstructionScheduling* scheduling =
-          new (arena) HInstructionScheduling(graph, instruction_set);
+          new (allocator) HInstructionScheduling(graph, instruction_set);
       HOptimization* arm64_optimizations[] = {
         simplifier,
         side_effects,
@@ -673,11 +678,12 @@ void OptimizingCompiler::RunArchOptimizations(InstructionSet instruction_set,
 #ifdef ART_ENABLE_CODEGEN_mips
     case kMips: {
       mips::InstructionSimplifierMips* simplifier =
-          new (arena) mips::InstructionSimplifierMips(graph, codegen, stats);
-      SideEffectsAnalysis* side_effects = new (arena) SideEffectsAnalysis(graph);
-      GVNOptimization* gvn = new (arena) GVNOptimization(graph, *side_effects, "GVN$after_arch");
+          new (allocator) mips::InstructionSimplifierMips(graph, codegen, stats);
+      SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
+      GVNOptimization* gvn =
+          new (allocator) GVNOptimization(graph, *side_effects, "GVN$after_arch");
       mips::PcRelativeFixups* pc_relative_fixups =
-          new (arena) mips::PcRelativeFixups(graph, codegen, stats);
+          new (allocator) mips::PcRelativeFixups(graph, codegen, stats);
       HOptimization* mips_optimizations[] = {
           simplifier,
           side_effects,
@@ -690,8 +696,9 @@ void OptimizingCompiler::RunArchOptimizations(InstructionSet instruction_set,
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips64
     case kMips64: {
-      SideEffectsAnalysis* side_effects = new (arena) SideEffectsAnalysis(graph);
-      GVNOptimization* gvn = new (arena) GVNOptimization(graph, *side_effects, "GVN$after_arch");
+      SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
+      GVNOptimization* gvn =
+          new (allocator) GVNOptimization(graph, *side_effects, "GVN$after_arch");
       HOptimization* mips64_optimizations[] = {
           side_effects,
           gvn,
@@ -702,12 +709,13 @@ void OptimizingCompiler::RunArchOptimizations(InstructionSet instruction_set,
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86
     case kX86: {
-      SideEffectsAnalysis* side_effects = new (arena) SideEffectsAnalysis(graph);
-      GVNOptimization* gvn = new (arena) GVNOptimization(graph, *side_effects, "GVN$after_arch");
+      SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
+      GVNOptimization* gvn =
+          new (allocator) GVNOptimization(graph, *side_effects, "GVN$after_arch");
       x86::PcRelativeFixups* pc_relative_fixups =
-          new (arena) x86::PcRelativeFixups(graph, codegen, stats);
+          new (allocator) x86::PcRelativeFixups(graph, codegen, stats);
       x86::X86MemoryOperandGeneration* memory_gen =
-          new (arena) x86::X86MemoryOperandGeneration(graph, codegen, stats);
+          new (allocator) x86::X86MemoryOperandGeneration(graph, codegen, stats);
       HOptimization* x86_optimizations[] = {
           side_effects,
           gvn,
@@ -720,10 +728,11 @@ void OptimizingCompiler::RunArchOptimizations(InstructionSet instruction_set,
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86_64
     case kX86_64: {
-      SideEffectsAnalysis* side_effects = new (arena) SideEffectsAnalysis(graph);
-      GVNOptimization* gvn = new (arena) GVNOptimization(graph, *side_effects, "GVN$after_arch");
+      SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
+      GVNOptimization* gvn =
+          new (allocator) GVNOptimization(graph, *side_effects, "GVN$after_arch");
       x86::X86MemoryOperandGeneration* memory_gen =
-          new (arena) x86::X86MemoryOperandGeneration(graph, codegen, stats);
+          new (allocator) x86::X86MemoryOperandGeneration(graph, codegen, stats);
       HOptimization* x86_64_optimizations[] = {
           side_effects,
           gvn,
@@ -749,14 +758,19 @@ static void AllocateRegisters(HGraph* graph,
                     pass_observer);
     PrepareForRegisterAllocation(graph, stats).Run();
   }
-  SsaLivenessAnalysis liveness(graph, codegen);
+  // Use local allocator shared by SSA liveness analysis and register allocator.
+  // (Register allocator creates new objects in the liveness data.)
+  ScopedArenaAllocator local_allocator(graph->GetArenaStack());
+  SsaLivenessAnalysis liveness(graph, codegen, &local_allocator);
   {
     PassScope scope(SsaLivenessAnalysis::kLivenessPassName, pass_observer);
     liveness.Analyze();
   }
   {
     PassScope scope(RegisterAllocator::kRegisterAllocatorPassName, pass_observer);
-    RegisterAllocator::Create(graph->GetArena(), codegen, liveness, strategy)->AllocateRegisters();
+    std::unique_ptr<RegisterAllocator> register_allocator =
+        RegisterAllocator::Create(&local_allocator, codegen, liveness, strategy);
+    register_allocator->AllocateRegisters();
   }
 }
 
@@ -767,11 +781,11 @@ void OptimizingCompiler::RunOptimizations(HGraph* graph,
                                           PassObserver* pass_observer,
                                           VariableSizedHandleScope* handles) const {
   OptimizingCompilerStats* stats = compilation_stats_.get();
-  ArenaAllocator* arena = graph->GetArena();
+  ArenaAllocator* allocator = graph->GetAllocator();
   if (driver->GetCompilerOptions().GetPassesToRun() != nullptr) {
     ArenaVector<HOptimization*> optimizations = BuildOptimizations(
         *driver->GetCompilerOptions().GetPassesToRun(),
-        arena,
+        allocator,
         graph,
         stats,
         codegen,
@@ -782,43 +796,45 @@ void OptimizingCompiler::RunOptimizations(HGraph* graph,
     return;
   }
 
-  HDeadCodeElimination* dce1 = new (arena) HDeadCodeElimination(
+  HDeadCodeElimination* dce1 = new (allocator) HDeadCodeElimination(
       graph, stats, "dead_code_elimination$initial");
-  HDeadCodeElimination* dce2 = new (arena) HDeadCodeElimination(
+  HDeadCodeElimination* dce2 = new (allocator) HDeadCodeElimination(
       graph, stats, "dead_code_elimination$after_inlining");
-  HDeadCodeElimination* dce3 = new (arena) HDeadCodeElimination(
+  HDeadCodeElimination* dce3 = new (allocator) HDeadCodeElimination(
       graph, stats, "dead_code_elimination$final");
-  HConstantFolding* fold1 = new (arena) HConstantFolding(graph, "constant_folding");
-  InstructionSimplifier* simplify1 = new (arena) InstructionSimplifier(
+  HConstantFolding* fold1 = new (allocator) HConstantFolding(graph, "constant_folding");
+  InstructionSimplifier* simplify1 = new (allocator) InstructionSimplifier(
       graph, codegen, driver, stats);
-  HSelectGenerator* select_generator = new (arena) HSelectGenerator(graph, handles, stats);
-  HConstantFolding* fold2 = new (arena) HConstantFolding(
+  HSelectGenerator* select_generator = new (allocator) HSelectGenerator(graph, handles, stats);
+  HConstantFolding* fold2 = new (allocator) HConstantFolding(
       graph, "constant_folding$after_inlining");
-  HConstantFolding* fold3 = new (arena) HConstantFolding(graph, "constant_folding$after_bce");
-  SideEffectsAnalysis* side_effects1 = new (arena) SideEffectsAnalysis(
+  HConstantFolding* fold3 = new (allocator) HConstantFolding(graph, "constant_folding$after_bce");
+  SideEffectsAnalysis* side_effects1 = new (allocator) SideEffectsAnalysis(
       graph, "side_effects$before_gvn");
-  SideEffectsAnalysis* side_effects2 = new (arena) SideEffectsAnalysis(
+  SideEffectsAnalysis* side_effects2 = new (allocator) SideEffectsAnalysis(
       graph, "side_effects$before_lse");
-  GVNOptimization* gvn = new (arena) GVNOptimization(graph, *side_effects1);
-  LICM* licm = new (arena) LICM(graph, *side_effects1, stats);
-  HInductionVarAnalysis* induction = new (arena) HInductionVarAnalysis(graph);
-  BoundsCheckElimination* bce = new (arena) BoundsCheckElimination(graph, *side_effects1, induction);
-  HLoopOptimization* loop = new (arena) HLoopOptimization(graph, driver, induction, stats);
-  LoadStoreAnalysis* lsa = new (arena) LoadStoreAnalysis(graph);
-  LoadStoreElimination* lse = new (arena) LoadStoreElimination(graph, *side_effects2, *lsa, stats);
-  HSharpening* sharpening = new (arena) HSharpening(
+  GVNOptimization* gvn = new (allocator) GVNOptimization(graph, *side_effects1);
+  LICM* licm = new (allocator) LICM(graph, *side_effects1, stats);
+  HInductionVarAnalysis* induction = new (allocator) HInductionVarAnalysis(graph);
+  BoundsCheckElimination* bce =
+      new (allocator) BoundsCheckElimination(graph, *side_effects1, induction);
+  HLoopOptimization* loop = new (allocator) HLoopOptimization(graph, driver, induction, stats);
+  LoadStoreAnalysis* lsa = new (allocator) LoadStoreAnalysis(graph);
+  LoadStoreElimination* lse =
+      new (allocator) LoadStoreElimination(graph, *side_effects2, *lsa, stats);
+  HSharpening* sharpening = new (allocator) HSharpening(
       graph, codegen, dex_compilation_unit, driver, handles);
-  InstructionSimplifier* simplify2 = new (arena) InstructionSimplifier(
+  InstructionSimplifier* simplify2 = new (allocator) InstructionSimplifier(
       graph, codegen, driver, stats, "instruction_simplifier$after_inlining");
-  InstructionSimplifier* simplify3 = new (arena) InstructionSimplifier(
+  InstructionSimplifier* simplify3 = new (allocator) InstructionSimplifier(
       graph, codegen, driver, stats, "instruction_simplifier$after_bce");
-  InstructionSimplifier* simplify4 = new (arena) InstructionSimplifier(
+  InstructionSimplifier* simplify4 = new (allocator) InstructionSimplifier(
       graph, codegen, driver, stats, "instruction_simplifier$before_codegen");
-  IntrinsicsRecognizer* intrinsics = new (arena) IntrinsicsRecognizer(graph, stats);
-  CHAGuardOptimization* cha_guard = new (arena) CHAGuardOptimization(graph);
-  CodeSinking* code_sinking = new (arena) CodeSinking(graph, stats);
+  IntrinsicsRecognizer* intrinsics = new (allocator) IntrinsicsRecognizer(graph, stats);
+  CHAGuardOptimization* cha_guard = new (allocator) CHAGuardOptimization(graph);
+  CodeSinking* code_sinking = new (allocator) CodeSinking(graph, stats);
   ConstructorFenceRedundancyElimination* cfre =
-      new (arena) ConstructorFenceRedundancyElimination(graph, stats);
+      new (allocator) ConstructorFenceRedundancyElimination(graph, stats);
 
   HOptimization* optimizations1[] = {
     intrinsics,
@@ -865,7 +881,7 @@ void OptimizingCompiler::RunOptimizations(HGraph* graph,
 }
 
 static ArenaVector<linker::LinkerPatch> EmitAndSortLinkerPatches(CodeGenerator* codegen) {
-  ArenaVector<linker::LinkerPatch> linker_patches(codegen->GetGraph()->GetArena()->Adapter());
+  ArenaVector<linker::LinkerPatch> linker_patches(codegen->GetGraph()->GetAllocator()->Adapter());
   codegen->EmitLinkerPatches(&linker_patches);
 
   // Sort patches by literal offset. Required for .oat_patches encoding.
@@ -877,14 +893,14 @@ static ArenaVector<linker::LinkerPatch> EmitAndSortLinkerPatches(CodeGenerator* 
   return linker_patches;
 }
 
-CompiledMethod* OptimizingCompiler::Emit(ArenaAllocator* arena,
+CompiledMethod* OptimizingCompiler::Emit(ArenaAllocator* allocator,
                                          CodeVectorAllocator* code_allocator,
                                          CodeGenerator* codegen,
                                          CompilerDriver* compiler_driver,
                                          const DexFile::CodeItem* code_item) const {
   ArenaVector<linker::LinkerPatch> linker_patches = EmitAndSortLinkerPatches(codegen);
-  ArenaVector<uint8_t> stack_map(arena->Adapter(kArenaAllocStackMaps));
-  ArenaVector<uint8_t> method_info(arena->Adapter(kArenaAllocStackMaps));
+  ArenaVector<uint8_t> stack_map(allocator->Adapter(kArenaAllocStackMaps));
+  ArenaVector<uint8_t> method_info(allocator->Adapter(kArenaAllocStackMaps));
   size_t stack_map_size = 0;
   size_t method_info_size = 0;
   codegen->ComputeStackMapAndMethodInfoSize(&stack_map_size, &method_info_size);
@@ -912,7 +928,8 @@ CompiledMethod* OptimizingCompiler::Emit(ArenaAllocator* arena,
   return compiled_method;
 }
 
-CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* arena,
+CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
+                                              ArenaStack* arena_stack,
                                               CodeVectorAllocator* code_allocator,
                                               const DexFile::CodeItem* code_item,
                                               uint32_t access_flags,
@@ -970,8 +987,9 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* arena,
       /* verified_method */ nullptr,
       dex_cache);
 
-  HGraph* graph = new (arena) HGraph(
-      arena,
+  HGraph* graph = new (allocator) HGraph(
+      allocator,
+      arena_stack,
       dex_file,
       method_idx,
       compiler_driver->GetInstructionSet(),
@@ -1024,7 +1042,6 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* arena,
                           codegen.get(),
                           compilation_stats_.get(),
                           interpreter_metadata,
-                          dex_cache,
                           handles);
     GraphAnalysisResult result = builder.BuildGraph();
     if (result != kAnalysisSuccess) {
@@ -1091,11 +1108,12 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
   DCHECK(Runtime::Current()->IsAotCompiler());
   const VerifiedMethod* verified_method = compiler_driver->GetVerifiedMethod(&dex_file, method_idx);
   DCHECK(!verified_method->HasRuntimeThrow());
-  if (compiler_driver->IsMethodVerifiedWithoutFailures(method_idx, class_def_idx, dex_file)
-      || verifier::CanCompilerHandleVerificationFailure(
-            verified_method->GetEncounteredVerificationFailures())) {
-    ArenaAllocator arena(Runtime::Current()->GetArenaPool());
-    CodeVectorAllocator code_allocator(&arena);
+  if (compiler_driver->IsMethodVerifiedWithoutFailures(method_idx, class_def_idx, dex_file) ||
+      verifier::CanCompilerHandleVerificationFailure(
+          verified_method->GetEncounteredVerificationFailures())) {
+    ArenaAllocator allocator(Runtime::Current()->GetArenaPool());
+    ArenaStack arena_stack(Runtime::Current()->GetArenaPool());
+    CodeVectorAllocator code_allocator(&allocator);
     std::unique_ptr<CodeGenerator> codegen;
     {
       ScopedObjectAccess soa(Thread::Current());
@@ -1103,7 +1121,8 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
       // Go to native so that we don't block GC during compilation.
       ScopedThreadSuspension sts(soa.Self(), kNative);
       codegen.reset(
-          TryCompile(&arena,
+          TryCompile(&allocator,
+                     &arena_stack,
                      &code_allocator,
                      code_item,
                      access_flags,
@@ -1120,12 +1139,16 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
     if (codegen.get() != nullptr) {
       MaybeRecordStat(compilation_stats_.get(),
                       MethodCompilationStat::kCompiled);
-      method = Emit(&arena, &code_allocator, codegen.get(), compiler_driver, code_item);
+      method = Emit(&allocator, &code_allocator, codegen.get(), compiler_driver, code_item);
 
       if (kArenaAllocatorCountAllocations) {
-        if (arena.BytesAllocated() > kArenaAllocatorMemoryReportThreshold) {
-          MemStats mem_stats(arena.GetMemStats());
-          LOG(INFO) << dex_file.PrettyMethod(method_idx) << " " << Dumpable<MemStats>(mem_stats);
+        size_t total_allocated = allocator.BytesAllocated() + arena_stack.PeakBytesAllocated();
+        if (total_allocated > kArenaAllocatorMemoryReportThreshold) {
+          MemStats mem_stats(allocator.GetMemStats());
+          MemStats peak_stats(arena_stack.GetPeakStats());
+          LOG(INFO) << dex_file.PrettyMethod(method_idx)
+                    << "\n" << Dumpable<MemStats>(mem_stats)
+                    << "\n" << Dumpable<MemStats>(peak_stats);
         }
       }
     }
@@ -1200,8 +1223,9 @@ bool OptimizingCompiler::JitCompile(Thread* self,
   const uint32_t access_flags = method->GetAccessFlags();
   const InvokeType invoke_type = method->GetInvokeType();
 
-  ArenaAllocator arena(Runtime::Current()->GetJitArenaPool());
-  CodeVectorAllocator code_allocator(&arena);
+  ArenaAllocator allocator(Runtime::Current()->GetJitArenaPool());
+  ArenaStack arena_stack(Runtime::Current()->GetJitArenaPool());
+  CodeVectorAllocator code_allocator(&allocator);
   VariableSizedHandleScope handles(self);
 
   std::unique_ptr<CodeGenerator> codegen;
@@ -1209,7 +1233,8 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     // Go to native so that we don't block GC during compilation.
     ScopedThreadSuspension sts(self, kNative);
     codegen.reset(
-        TryCompile(&arena,
+        TryCompile(&allocator,
+                   &arena_stack,
                    &code_allocator,
                    code_item,
                    access_flags,
@@ -1227,9 +1252,13 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     }
 
     if (kArenaAllocatorCountAllocations) {
-      if (arena.BytesAllocated() > kArenaAllocatorMemoryReportThreshold) {
-        MemStats mem_stats(arena.GetMemStats());
-        LOG(INFO) << dex_file->PrettyMethod(method_idx) << " " << Dumpable<MemStats>(mem_stats);
+      size_t total_allocated = allocator.BytesAllocated() + arena_stack.PeakBytesAllocated();
+      if (total_allocated > kArenaAllocatorMemoryReportThreshold) {
+        MemStats mem_stats(allocator.GetMemStats());
+        MemStats peak_stats(arena_stack.GetPeakStats());
+        LOG(INFO) << dex_file->PrettyMethod(method_idx)
+                  << "\n" << Dumpable<MemStats>(mem_stats)
+                  << "\n" << Dumpable<MemStats>(peak_stats);
       }
     }
   }
@@ -1321,7 +1350,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     CreateJITCodeEntryForAddress(code_address, std::move(elf_file));
   }
 
-  Runtime::Current()->GetJit()->AddMemoryUsage(method, arena.BytesUsed());
+  Runtime::Current()->GetJit()->AddMemoryUsage(method, allocator.BytesUsed());
   if (jit_logger != nullptr) {
     jit_logger->WriteLog(code, code_allocator.GetSize(), method);
   }

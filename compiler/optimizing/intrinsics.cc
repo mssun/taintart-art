@@ -220,7 +220,7 @@ void IntrinsicVisitor::ComputeIntegerValueOfLocations(HInvoke* invoke,
   }
 
   // The intrinsic will call if it needs to allocate a j.l.Integer.
-  LocationSummary* locations = new (invoke->GetBlock()->GetGraph()->GetArena()) LocationSummary(
+  LocationSummary* locations = new (invoke->GetBlock()->GetGraph()->GetAllocator()) LocationSummary(
       invoke, LocationSummary::kCallOnMainOnly, kIntrinsified);
   if (!invoke->InputAt(0)->IsConstant()) {
     locations->SetInAt(0, Location::RequiresRegister());

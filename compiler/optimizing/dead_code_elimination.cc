@@ -24,7 +24,7 @@
 namespace art {
 
 static void MarkReachableBlocks(HGraph* graph, ArenaBitVector* visited) {
-  ArenaVector<HBasicBlock*> worklist(graph->GetArena()->Adapter(kArenaAllocDCE));
+  ArenaVector<HBasicBlock*> worklist(graph->GetAllocator()->Adapter(kArenaAllocDCE));
   constexpr size_t kDefaultWorlistSize = 8;
   worklist.reserve(kDefaultWorlistSize);
   visited->SetBit(graph->GetEntryBlock()->GetBlockId());
@@ -306,7 +306,7 @@ void HDeadCodeElimination::ConnectSuccessiveBlocks() {
 
 bool HDeadCodeElimination::RemoveDeadBlocks() {
   // Classify blocks as reachable/unreachable.
-  ArenaAllocator* allocator = graph_->GetArena();
+  ArenaAllocator* allocator = graph_->GetAllocator();
   ArenaBitVector live_blocks(allocator, graph_->GetBlocks().size(), false, kArenaAllocDCE);
 
   MarkReachableBlocks(graph_, &live_blocks);

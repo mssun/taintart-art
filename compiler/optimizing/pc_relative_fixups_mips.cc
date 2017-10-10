@@ -52,7 +52,7 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
     }
     // Insert the base at the start of the entry block, move it to a better
     // position later in MoveBaseIfNeeded().
-    base_ = new (GetGraph()->GetArena()) HMipsComputeBaseMethodAddress();
+    base_ = new (GetGraph()->GetAllocator()) HMipsComputeBaseMethodAddress();
     HBasicBlock* entry_block = GetGraph()->GetEntryBlock();
     entry_block->InsertInstructionBefore(base_, entry_block->GetFirstInstruction());
     DCHECK(base_ != nullptr);
@@ -112,7 +112,7 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
     InitializePCRelativeBasePointer();
     HGraph* graph = GetGraph();
     HBasicBlock* block = switch_insn->GetBlock();
-    HMipsPackedSwitch* mips_switch = new (graph->GetArena()) HMipsPackedSwitch(
+    HMipsPackedSwitch* mips_switch = new (graph->GetAllocator()) HMipsPackedSwitch(
         switch_insn->GetStartValue(),
         switch_insn->GetNumEntries(),
         switch_insn->InputAt(0),

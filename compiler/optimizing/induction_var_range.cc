@@ -418,7 +418,8 @@ HInstruction* InductionVarRange::GenerateTripCount(HLoopInformation* loop,
     if (GenerateCode(trip->op_a, nullptr, graph, block, &trip_expr, false, false)) {
       if (taken_test != nullptr) {
         HInstruction* zero = graph->GetConstant(trip->type, 0);
-        trip_expr = Insert(block, new (graph->GetArena()) HSelect(taken_test, trip_expr, zero, kNoDexPc));
+        ArenaAllocator* allocator = graph->GetAllocator();
+        trip_expr = Insert(block, new (allocator) HSelect(taken_test, trip_expr, zero, kNoDexPc));
       }
       return trip_expr;
     }
@@ -1059,7 +1060,7 @@ bool InductionVarRange::GenerateLastValuePolynomial(HInductionVarAnalysis::Induc
           sum = static_cast<int32_t>(sum);  // okay to truncate
         }
         *result =
-            Insert(block, new (graph->GetArena()) HAdd(type, graph->GetConstant(type, sum), c));
+            Insert(block, new (graph->GetAllocator()) HAdd(type, graph->GetConstant(type, sum), c));
       }
       return true;
     }
@@ -1104,12 +1105,13 @@ bool InductionVarRange::GenerateLastValueGeometric(HInductionVarAnalysis::Induct
         } else {
           // Last value: a * f ^ m + b or a * f ^ -m + b.
           HInstruction* e = nullptr;
+          ArenaAllocator* allocator = graph->GetAllocator();
           if (info->operation == HInductionVarAnalysis::kMul) {
-            e = new (graph->GetArena()) HMul(type, opa, graph->GetConstant(type, fpow));
+            e = new (allocator) HMul(type, opa, graph->GetConstant(type, fpow));
           } else {
-            e = new (graph->GetArena()) HDiv(type, opa, graph->GetConstant(type, fpow), kNoDexPc);
+            e = new (allocator) HDiv(type, opa, graph->GetConstant(type, fpow), kNoDexPc);
           }
-          *result = Insert(block, new (graph->GetArena()) HAdd(type, Insert(block, e), opb));
+          *result = Insert(block, new (allocator) HAdd(type, Insert(block, e), opb));
         }
       }
       return true;
@@ -1190,18 +1192,20 @@ bool InductionVarRange::GenerateLastValuePeriodic(HInductionVarAnalysis::Inducti
     // During actual code generation (graph != nullptr), generate is_even ? x : y.
     if (graph != nullptr) {
       DataType::Type type = trip->type;
+      ArenaAllocator* allocator = graph->GetAllocator();
       HInstruction* msk =
-          Insert(block, new (graph->GetArena()) HAnd(type, t, graph->GetConstant(type, 1)));
+          Insert(block, new (allocator) HAnd(type, t, graph->GetConstant(type, 1)));
       HInstruction* is_even =
-          Insert(block, new (graph->GetArena()) HEqual(msk, graph->GetConstant(type, 0), kNoDexPc));
-      *result = Insert(block, new (graph->GetArena()) HSelect(is_even, x, y, kNoDexPc));
+          Insert(block, new (allocator) HEqual(msk, graph->GetConstant(type, 0), kNoDexPc));
+      *result = Insert(block, new (graph->GetAllocator()) HSelect(is_even, x, y, kNoDexPc));
     }
     // Guard select with taken test if needed.
     if (*needs_taken_test) {
       HInstruction* is_taken = nullptr;
       if (GenerateCode(trip->op_b, nullptr, graph, block, graph ? &is_taken : nullptr, false, false)) {
         if (graph != nullptr) {
-          *result = Insert(block, new (graph->GetArena()) HSelect(is_taken, *result, x, kNoDexPc));
+          ArenaAllocator* allocator = graph->GetAllocator();
+          *result = Insert(block, new (allocator) HSelect(is_taken, *result, x, kNoDexPc));
         }
         *needs_taken_test = false;  // taken care of
       } else {
@@ -1250,25 +1254,25 @@ bool InductionVarRange::GenerateCode(HInductionVarAnalysis::InductionInfo* info,
                 HInstruction* operation = nullptr;
                 switch (info->operation) {
                   case HInductionVarAnalysis::kAdd:
-                    operation = new (graph->GetArena()) HAdd(type, opa, opb); break;
+                    operation = new (graph->GetAllocator()) HAdd(type, opa, opb); break;
                   case HInductionVarAnalysis::kSub:
-                    operation = new (graph->GetArena()) HSub(type, opa, opb); break;
+                    operation = new (graph->GetAllocator()) HSub(type, opa, opb); break;
                   case HInductionVarAnalysis::kMul:
-                    operation = new (graph->GetArena()) HMul(type, opa, opb, kNoDexPc); break;
+                    operation = new (graph->GetAllocator()) HMul(type, opa, opb, kNoDexPc); break;
                   case HInductionVarAnalysis::kDiv:
-                    operation = new (graph->GetArena()) HDiv(type, opa, opb, kNoDexPc); break;
+                    operation = new (graph->GetAllocator()) HDiv(type, opa, opb, kNoDexPc); break;
                   case HInductionVarAnalysis::kRem:
-                    operation = new (graph->GetArena()) HRem(type, opa, opb, kNoDexPc); break;
+                    operation = new (graph->GetAllocator()) HRem(type, opa, opb, kNoDexPc); break;
                   case HInductionVarAnalysis::kXor:
-                    operation = new (graph->GetArena()) HXor(type, opa, opb); break;
+                    operation = new (graph->GetAllocator()) HXor(type, opa, opb); break;
                   case HInductionVarAnalysis::kLT:
-                    operation = new (graph->GetArena()) HLessThan(opa, opb); break;
+                    operation = new (graph->GetAllocator()) HLessThan(opa, opb); break;
                   case HInductionVarAnalysis::kLE:
-                    operation = new (graph->GetArena()) HLessThanOrEqual(opa, opb); break;
+                    operation = new (graph->GetAllocator()) HLessThanOrEqual(opa, opb); break;
                   case HInductionVarAnalysis::kGT:
-                    operation = new (graph->GetArena()) HGreaterThan(opa, opb); break;
+                    operation = new (graph->GetAllocator()) HGreaterThan(opa, opb); break;
                   case HInductionVarAnalysis::kGE:
-                    operation = new (graph->GetArena()) HGreaterThanOrEqual(opa, opb); break;
+                    operation = new (graph->GetAllocator()) HGreaterThanOrEqual(opa, opb); break;
                   default:
                     LOG(FATAL) << "unknown operation";
                 }
@@ -1280,7 +1284,7 @@ bool InductionVarRange::GenerateCode(HInductionVarAnalysis::InductionInfo* info,
           case HInductionVarAnalysis::kNeg:
             if (GenerateCode(info->op_b, trip, graph, block, &opb, in_body, !is_min)) {
               if (graph != nullptr) {
-                *result = Insert(block, new (graph->GetArena()) HNeg(type, opb));
+                *result = Insert(block, new (graph->GetAllocator()) HNeg(type, opb));
               }
               return true;
             }
@@ -1306,9 +1310,9 @@ bool InductionVarRange::GenerateCode(HInductionVarAnalysis::InductionInfo* info,
             } else if (in_body) {
               if (GenerateCode(info->op_a, trip, graph, block, &opb, in_body, is_min)) {
                 if (graph != nullptr) {
+                  ArenaAllocator* allocator = graph->GetAllocator();
                   *result =
-                      Insert(block,
-                             new (graph->GetArena()) HSub(type, opb, graph->GetConstant(type, 1)));
+                      Insert(block, new (allocator) HSub(type, opb, graph->GetConstant(type, 1)));
                 }
                 return true;
               }
@@ -1333,15 +1337,16 @@ bool InductionVarRange::GenerateCode(HInductionVarAnalysis::InductionInfo* info,
             if (GenerateCode(trip,       trip, graph, block, &opa, in_body, is_min_a) &&
                 GenerateCode(info->op_b, trip, graph, block, &opb, in_body, is_min)) {
               if (graph != nullptr) {
+                ArenaAllocator* allocator = graph->GetAllocator();
                 HInstruction* oper;
                 if (stride_value == 1) {
-                  oper = new (graph->GetArena()) HAdd(type, opa, opb);
+                  oper = new (allocator) HAdd(type, opa, opb);
                 } else if (stride_value == -1) {
-                  oper = new (graph->GetArena()) HSub(type, opb, opa);
+                  oper = new (graph->GetAllocator()) HSub(type, opb, opa);
                 } else {
                   HInstruction* mul =
-                      new (graph->GetArena()) HMul(type, graph->GetConstant(type, stride_value), opa);
-                  oper = new (graph->GetArena()) HAdd(type, Insert(block, mul), opb);
+                      new (allocator) HMul(type, graph->GetConstant(type, stride_value), opa);
+                  oper = new (allocator) HAdd(type, Insert(block, mul), opb);
                 }
                 *result = Insert(block, oper);
               }

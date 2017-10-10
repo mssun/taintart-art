@@ -129,7 +129,7 @@ class HInductionVarAnalysis : public HOptimization {
 
   InductionInfo* CreateInvariantFetch(HInstruction* f) {
     DCHECK(f != nullptr);
-    return new (graph_->GetArena())
+    return new (graph_->GetAllocator())
         InductionInfo(kInvariant, kFetch, nullptr, nullptr, f, f->GetType());
   }
 
@@ -138,7 +138,7 @@ class HInductionVarAnalysis : public HOptimization {
                                  InductionInfo* b,
                                  DataType::Type type) {
     DCHECK(a != nullptr && b != nullptr);
-    return new (graph_->GetArena()) InductionInfo(kInvariant, op, a, b, nullptr, type);
+    return new (graph_->GetAllocator()) InductionInfo(kInvariant, op, a, b, nullptr, type);
   }
 
   InductionInfo* CreateInduction(InductionClass ic,
@@ -148,7 +148,7 @@ class HInductionVarAnalysis : public HOptimization {
                                  HInstruction* f,
                                  DataType::Type type) {
     DCHECK(a != nullptr && b != nullptr);
-    return new (graph_->GetArena()) InductionInfo(ic, op, a, b, f, type);
+    return new (graph_->GetAllocator()) InductionInfo(ic, op, a, b, f, type);
   }
 
   // Methods for analysis.

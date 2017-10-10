@@ -266,7 +266,8 @@ class NearLabel : private Label {
  */
 class ConstantArea {
  public:
-  explicit ConstantArea(ArenaAllocator* arena) : buffer_(arena->Adapter(kArenaAllocAssembler)) {}
+  explicit ConstantArea(ArenaAllocator* allocator)
+      : buffer_(allocator->Adapter(kArenaAllocAssembler)) {}
 
   // Add a double to the constant area, returning the offset into
   // the constant area where the literal resides.
@@ -307,7 +308,8 @@ class ConstantArea {
 
 class X86Assembler FINAL : public Assembler {
  public:
-  explicit X86Assembler(ArenaAllocator* arena) : Assembler(arena), constant_area_(arena) {}
+  explicit X86Assembler(ArenaAllocator* allocator)
+      : Assembler(allocator), constant_area_(allocator) {}
   virtual ~X86Assembler() {}
 
   /*

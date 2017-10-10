@@ -26,7 +26,7 @@ namespace x86 {
 #define __ down_cast<X86Assembler*>(GetAssembler())->  // NOLINT
 
 void LocationsBuilderX86::VisitVecReplicateScalar(HVecReplicateScalar* instruction) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
   HInstruction* input = instruction->InputAt(0);
   bool is_zero = IsZeroBitPattern(input);
   switch (instruction->GetPackedType()) {
@@ -117,7 +117,7 @@ void InstructionCodeGeneratorX86::VisitVecReplicateScalar(HVecReplicateScalar* i
 }
 
 void LocationsBuilderX86::VisitVecExtractScalar(HVecExtractScalar* instruction) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kInt64:
       // Long needs extra temporary to store into the register pair.
@@ -180,8 +180,8 @@ void InstructionCodeGeneratorX86::VisitVecExtractScalar(HVecExtractScalar* instr
 }
 
 // Helper to set up locations for vector unary operations.
-static void CreateVecUnOpLocations(ArenaAllocator* arena, HVecUnaryOperation* instruction) {
-  LocationSummary* locations = new (arena) LocationSummary(instruction);
+static void CreateVecUnOpLocations(ArenaAllocator* allocator, HVecUnaryOperation* instruction) {
+  LocationSummary* locations = new (allocator) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
     case DataType::Type::kUint8:
@@ -202,7 +202,7 @@ static void CreateVecUnOpLocations(ArenaAllocator* arena, HVecUnaryOperation* in
 }
 
 void LocationsBuilderX86::VisitVecReduce(HVecReduce* instruction) {
-  CreateVecUnOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecUnOpLocations(GetGraph()->GetAllocator(), instruction);
   // Long reduction or min/max require a temporary.
   if (instruction->GetPackedType() == DataType::Type::kInt64 ||
       instruction->GetKind() == HVecReduce::kMin ||
@@ -269,7 +269,7 @@ void InstructionCodeGeneratorX86::VisitVecReduce(HVecReduce* instruction) {
 }
 
 void LocationsBuilderX86::VisitVecCnv(HVecCnv* instruction) {
-  CreateVecUnOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecUnOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecCnv(HVecCnv* instruction) {
@@ -287,7 +287,7 @@ void InstructionCodeGeneratorX86::VisitVecCnv(HVecCnv* instruction) {
 }
 
 void LocationsBuilderX86::VisitVecNeg(HVecNeg* instruction) {
-  CreateVecUnOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecUnOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecNeg(HVecNeg* instruction) {
@@ -334,7 +334,7 @@ void InstructionCodeGeneratorX86::VisitVecNeg(HVecNeg* instruction) {
 }
 
 void LocationsBuilderX86::VisitVecAbs(HVecAbs* instruction) {
-  CreateVecUnOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecUnOpLocations(GetGraph()->GetAllocator(), instruction);
   // Integral-abs requires a temporary for the comparison.
   if (instruction->GetPackedType() == DataType::Type::kInt32) {
     instruction->GetLocations()->AddTemp(Location::RequiresFpuRegister());
@@ -375,7 +375,7 @@ void InstructionCodeGeneratorX86::VisitVecAbs(HVecAbs* instruction) {
 }
 
 void LocationsBuilderX86::VisitVecNot(HVecNot* instruction) {
-  CreateVecUnOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecUnOpLocations(GetGraph()->GetAllocator(), instruction);
   // Boolean-not requires a temporary to construct the 16 x one.
   if (instruction->GetPackedType() == DataType::Type::kBool) {
     instruction->GetLocations()->AddTemp(Location::RequiresFpuRegister());
@@ -424,8 +424,8 @@ void InstructionCodeGeneratorX86::VisitVecNot(HVecNot* instruction) {
 }
 
 // Helper to set up locations for vector binary operations.
-static void CreateVecBinOpLocations(ArenaAllocator* arena, HVecBinaryOperation* instruction) {
-  LocationSummary* locations = new (arena) LocationSummary(instruction);
+static void CreateVecBinOpLocations(ArenaAllocator* allocator, HVecBinaryOperation* instruction) {
+  LocationSummary* locations = new (allocator) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
     case DataType::Type::kUint8:
@@ -447,7 +447,7 @@ static void CreateVecBinOpLocations(ArenaAllocator* arena, HVecBinaryOperation* 
 }
 
 void LocationsBuilderX86::VisitVecAdd(HVecAdd* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecAdd(HVecAdd* instruction) {
@@ -489,7 +489,7 @@ void InstructionCodeGeneratorX86::VisitVecAdd(HVecAdd* instruction) {
 }
 
 void LocationsBuilderX86::VisitVecHalvingAdd(HVecHalvingAdd* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecHalvingAdd(HVecHalvingAdd* instruction) {
@@ -516,7 +516,7 @@ void InstructionCodeGeneratorX86::VisitVecHalvingAdd(HVecHalvingAdd* instruction
 }
 
 void LocationsBuilderX86::VisitVecSub(HVecSub* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecSub(HVecSub* instruction) {
@@ -558,7 +558,7 @@ void InstructionCodeGeneratorX86::VisitVecSub(HVecSub* instruction) {
 }
 
 void LocationsBuilderX86::VisitVecMul(HVecMul* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecMul(HVecMul* instruction) {
@@ -591,7 +591,7 @@ void InstructionCodeGeneratorX86::VisitVecMul(HVecMul* instruction) {
 }
 
 void LocationsBuilderX86::VisitVecDiv(HVecDiv* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecDiv(HVecDiv* instruction) {
@@ -615,7 +615,7 @@ void InstructionCodeGeneratorX86::VisitVecDiv(HVecDiv* instruction) {
 }
 
 void LocationsBuilderX86::VisitVecMin(HVecMin* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecMin(HVecMin* instruction) {
@@ -666,7 +666,7 @@ void InstructionCodeGeneratorX86::VisitVecMin(HVecMin* instruction) {
 }
 
 void LocationsBuilderX86::VisitVecMax(HVecMax* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecMax(HVecMax* instruction) {
@@ -717,7 +717,7 @@ void InstructionCodeGeneratorX86::VisitVecMax(HVecMax* instruction) {
 }
 
 void LocationsBuilderX86::VisitVecAnd(HVecAnd* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecAnd(HVecAnd* instruction) {
@@ -752,7 +752,7 @@ void InstructionCodeGeneratorX86::VisitVecAnd(HVecAnd* instruction) {
 }
 
 void LocationsBuilderX86::VisitVecAndNot(HVecAndNot* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecAndNot(HVecAndNot* instruction) {
@@ -787,7 +787,7 @@ void InstructionCodeGeneratorX86::VisitVecAndNot(HVecAndNot* instruction) {
 }
 
 void LocationsBuilderX86::VisitVecOr(HVecOr* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecOr(HVecOr* instruction) {
@@ -822,7 +822,7 @@ void InstructionCodeGeneratorX86::VisitVecOr(HVecOr* instruction) {
 }
 
 void LocationsBuilderX86::VisitVecXor(HVecXor* instruction) {
-  CreateVecBinOpLocations(GetGraph()->GetArena(), instruction);
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecXor(HVecXor* instruction) {
@@ -857,8 +857,8 @@ void InstructionCodeGeneratorX86::VisitVecXor(HVecXor* instruction) {
 }
 
 // Helper to set up locations for vector shift operations.
-static void CreateVecShiftLocations(ArenaAllocator* arena, HVecBinaryOperation* instruction) {
-  LocationSummary* locations = new (arena) LocationSummary(instruction);
+static void CreateVecShiftLocations(ArenaAllocator* allocator, HVecBinaryOperation* instruction) {
+  LocationSummary* locations = new (allocator) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
@@ -875,7 +875,7 @@ static void CreateVecShiftLocations(ArenaAllocator* arena, HVecBinaryOperation* 
 }
 
 void LocationsBuilderX86::VisitVecShl(HVecShl* instruction) {
-  CreateVecShiftLocations(GetGraph()->GetArena(), instruction);
+  CreateVecShiftLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecShl(HVecShl* instruction) {
@@ -904,7 +904,7 @@ void InstructionCodeGeneratorX86::VisitVecShl(HVecShl* instruction) {
 }
 
 void LocationsBuilderX86::VisitVecShr(HVecShr* instruction) {
-  CreateVecShiftLocations(GetGraph()->GetArena(), instruction);
+  CreateVecShiftLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecShr(HVecShr* instruction) {
@@ -929,7 +929,7 @@ void InstructionCodeGeneratorX86::VisitVecShr(HVecShr* instruction) {
 }
 
 void LocationsBuilderX86::VisitVecUShr(HVecUShr* instruction) {
-  CreateVecShiftLocations(GetGraph()->GetArena(), instruction);
+  CreateVecShiftLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecUShr(HVecUShr* instruction) {
@@ -958,7 +958,7 @@ void InstructionCodeGeneratorX86::VisitVecUShr(HVecUShr* instruction) {
 }
 
 void LocationsBuilderX86::VisitVecSetScalars(HVecSetScalars* instruction) {
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction);
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
 
   DCHECK_EQ(1u, instruction->InputCount());  // only one input currently implemented
 
@@ -1045,8 +1045,8 @@ void InstructionCodeGeneratorX86::VisitVecSetScalars(HVecSetScalars* instruction
 }
 
 // Helper to set up locations for vector accumulations.
-static void CreateVecAccumLocations(ArenaAllocator* arena, HVecOperation* instruction) {
-  LocationSummary* locations = new (arena) LocationSummary(instruction);
+static void CreateVecAccumLocations(ArenaAllocator* allocator, HVecOperation* instruction) {
+  LocationSummary* locations = new (allocator) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kUint8:
     case DataType::Type::kInt8:
@@ -1066,7 +1066,7 @@ static void CreateVecAccumLocations(ArenaAllocator* arena, HVecOperation* instru
 }
 
 void LocationsBuilderX86::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instruction) {
-  CreateVecAccumLocations(GetGraph()->GetArena(), instruction);
+  CreateVecAccumLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecMultiplyAccumulate(HVecMultiplyAccumulate* instruction) {
@@ -1075,7 +1075,7 @@ void InstructionCodeGeneratorX86::VisitVecMultiplyAccumulate(HVecMultiplyAccumul
 }
 
 void LocationsBuilderX86::VisitVecSADAccumulate(HVecSADAccumulate* instruction) {
-  CreateVecAccumLocations(GetGraph()->GetArena(), instruction);
+  CreateVecAccumLocations(GetGraph()->GetAllocator(), instruction);
 }
 
 void InstructionCodeGeneratorX86::VisitVecSADAccumulate(HVecSADAccumulate* instruction) {
@@ -1084,10 +1084,10 @@ void InstructionCodeGeneratorX86::VisitVecSADAccumulate(HVecSADAccumulate* instr
 }
 
 // Helper to set up locations for vector memory operations.
-static void CreateVecMemLocations(ArenaAllocator* arena,
+static void CreateVecMemLocations(ArenaAllocator* allocator,
                                   HVecMemoryOperation* instruction,
                                   bool is_load) {
-  LocationSummary* locations = new (arena) LocationSummary(instruction);
+  LocationSummary* locations = new (allocator) LocationSummary(instruction);
   switch (instruction->GetPackedType()) {
     case DataType::Type::kBool:
     case DataType::Type::kUint8:
@@ -1131,7 +1131,7 @@ static Address VecAddress(LocationSummary* locations, size_t size, bool is_strin
 }
 
 void LocationsBuilderX86::VisitVecLoad(HVecLoad* instruction) {
-  CreateVecMemLocations(GetGraph()->GetArena(), instruction, /*is_load*/ true);
+  CreateVecMemLocations(GetGraph()->GetAllocator(), instruction, /*is_load*/ true);
   // String load requires a temporary for the compressed load.
   if (mirror::kUseStringCompression && instruction->IsStringCharAt()) {
     instruction->GetLocations()->AddTemp(Location::RequiresFpuRegister());
@@ -1194,7 +1194,7 @@ void InstructionCodeGeneratorX86::VisitVecLoad(HVecLoad* instruction) {
 }
 
 void LocationsBuilderX86::VisitVecStore(HVecStore* instruction) {
-  CreateVecMemLocations(GetGraph()->GetArena(), instruction, /*is_load*/ false);
+  CreateVecMemLocations(GetGraph()->GetAllocator(), instruction, /*is_load*/ false);
 }
 
 void InstructionCodeGeneratorX86::VisitVecStore(HVecStore* instruction) {

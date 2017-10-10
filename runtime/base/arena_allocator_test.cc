@@ -23,9 +23,9 @@ namespace art {
 
 class ArenaAllocatorTest : public testing::Test {
  protected:
-  size_t NumberOfArenas(ArenaAllocator* arena) {
+  size_t NumberOfArenas(ArenaAllocator* allocator) {
     size_t result = 0u;
-    for (Arena* a = arena->arena_head_; a != nullptr; a = a->next_) {
+    for (Arena* a = allocator->arena_head_; a != nullptr; a = a->next_) {
       ++result;
     }
     return result;

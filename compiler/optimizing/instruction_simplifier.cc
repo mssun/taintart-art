@@ -186,7 +186,7 @@ bool InstructionSimplifierVisitor::TryMoveNegOnInputsAfterBinop(HBinaryOperation
   binop->ReplaceInput(right_neg->GetInput(), 1);
   left_neg->GetBlock()->RemoveInstruction(left_neg);
   right_neg->GetBlock()->RemoveInstruction(right_neg);
-  HNeg* neg = new (GetGraph()->GetArena()) HNeg(binop->GetType(), binop);
+  HNeg* neg = new (GetGraph()->GetAllocator()) HNeg(binop->GetType(), binop);
   binop->GetBlock()->InsertInstructionBefore(neg, binop->GetNext());
   binop->ReplaceWithExceptInReplacementAtIndex(neg, 0);
   RecordSimplification();
@@ -225,15 +225,15 @@ bool InstructionSimplifierVisitor::TryDeMorganNegationFactoring(HBinaryOperation
     // Replace the `HAnd` or `HOr`.
     HBinaryOperation* hbin;
     if (op->IsAnd()) {
-      hbin = new (GetGraph()->GetArena()) HOr(type, src_left, src_right, dex_pc);
+      hbin = new (GetGraph()->GetAllocator()) HOr(type, src_left, src_right, dex_pc);
     } else {
-      hbin = new (GetGraph()->GetArena()) HAnd(type, src_left, src_right, dex_pc);
+      hbin = new (GetGraph()->GetAllocator()) HAnd(type, src_left, src_right, dex_pc);
     }
     HInstruction* hnot;
     if (left->IsBooleanNot()) {
-      hnot = new (GetGraph()->GetArena()) HBooleanNot(hbin, dex_pc);
+      hnot = new (GetGraph()->GetAllocator()) HBooleanNot(hbin, dex_pc);
     } else {
-      hnot = new (GetGraph()->GetArena()) HNot(type, hbin, dex_pc);
+      hnot = new (GetGraph()->GetAllocator()) HNot(type, hbin, dex_pc);
     }
 
     op->GetBlock()->InsertInstructionBefore(hbin, op);
@@ -274,7 +274,7 @@ bool InstructionSimplifierVisitor::TryCombineVecMultiplyAccumulate(HVecMul* mul)
       return false;
   }
 
-  ArenaAllocator* arena = mul->GetBlock()->GetGraph()->GetArena();
+  ArenaAllocator* allocator = mul->GetBlock()->GetGraph()->GetAllocator();
 
   if (mul->HasOnlyOneNonEnvironmentUse()) {
     HInstruction* use = mul->GetUses().front().GetUser();
@@ -307,14 +307,14 @@ bool InstructionSimplifierVisitor::TryCombineVecMultiplyAccumulate(HVecMul* mul)
           use->IsVecAdd() ? HInstruction::kAdd : HInstruction::kSub;
       if (accumulator != nullptr) {
         HVecMultiplyAccumulate* mulacc =
-            new (arena) HVecMultiplyAccumulate(arena,
-                                               kind,
-                                               accumulator,
-                                               mul->GetLeft(),
-                                               mul->GetRight(),
-                                               binop->GetPackedType(),
-                                               binop->GetVectorLength(),
-                                               binop->GetDexPc());
+            new (allocator) HVecMultiplyAccumulate(allocator,
+                                                   kind,
+                                                   accumulator,
+                                                   mul->GetLeft(),
+                                                   mul->GetRight(),
+                                                   binop->GetPackedType(),
+                                                   binop->GetVectorLength(),
+                                                   binop->GetDexPc());
 
         binop->GetBlock()->ReplaceAndRemoveInstructionWith(binop, mulacc);
         DCHECK(!mul->HasUses());
@@ -407,7 +407,8 @@ bool InstructionSimplifierVisitor::ReplaceRotateWithRor(HBinaryOperation* op,
                                                         HUShr* ushr,
                                                         HShl* shl) {
   DCHECK(op->IsAdd() || op->IsXor() || op->IsOr()) << op->DebugName();
-  HRor* ror = new (GetGraph()->GetArena()) HRor(ushr->GetType(), ushr->GetLeft(), ushr->GetRight());
+  HRor* ror =
+      new (GetGraph()->GetAllocator()) HRor(ushr->GetType(), ushr->GetLeft(), ushr->GetRight());
   op->GetBlock()->ReplaceAndRemoveInstructionWith(op, ror);
   if (!ushr->HasUses()) {
     ushr->GetBlock()->RemoveInstruction(ushr);
@@ -667,7 +668,7 @@ void InstructionSimplifierVisitor::VisitInstanceOf(HInstanceOf* instruction) {
     MaybeRecordStat(stats_, kRemovedInstanceOf);
     if (outcome && can_be_null) {
       // Type test will succeed, we just need a null test.
-      HNotEqual* test = new (graph->GetArena()) HNotEqual(graph->GetNullConstant(), object);
+      HNotEqual* test = new (graph->GetAllocator()) HNotEqual(graph->GetNullConstant(), object);
       instruction->GetBlock()->InsertInstructionBefore(test, instruction);
       instruction->ReplaceWith(test);
     } else {
@@ -699,30 +700,30 @@ void InstructionSimplifierVisitor::VisitStaticFieldSet(HStaticFieldSet* instruct
   }
 }
 
-static HCondition* GetOppositeConditionSwapOps(ArenaAllocator* arena, HInstruction* cond) {
+static HCondition* GetOppositeConditionSwapOps(ArenaAllocator* allocator, HInstruction* cond) {
   HInstruction *lhs = cond->InputAt(0);
   HInstruction *rhs = cond->InputAt(1);
   switch (cond->GetKind()) {
     case HInstruction::kEqual:
-      return new (arena) HEqual(rhs, lhs);
+      return new (allocator) HEqual(rhs, lhs);
     case HInstruction::kNotEqual:
-      return new (arena) HNotEqual(rhs, lhs);
+      return new (allocator) HNotEqual(rhs, lhs);
     case HInstruction::kLessThan:
-      return new (arena) HGreaterThan(rhs, lhs);
+      return new (allocator) HGreaterThan(rhs, lhs);
     case HInstruction::kLessThanOrEqual:
-      return new (arena) HGreaterThanOrEqual(rhs, lhs);
+      return new (allocator) HGreaterThanOrEqual(rhs, lhs);
     case HInstruction::kGreaterThan:
-      return new (arena) HLessThan(rhs, lhs);
+      return new (allocator) HLessThan(rhs, lhs);
     case HInstruction::kGreaterThanOrEqual:
-      return new (arena) HLessThanOrEqual(rhs, lhs);
+      return new (allocator) HLessThanOrEqual(rhs, lhs);
     case HInstruction::kBelow:
-      return new (arena) HAbove(rhs, lhs);
+      return new (allocator) HAbove(rhs, lhs);
     case HInstruction::kBelowOrEqual:
-      return new (arena) HAboveOrEqual(rhs, lhs);
+      return new (allocator) HAboveOrEqual(rhs, lhs);
     case HInstruction::kAbove:
-      return new (arena) HBelow(rhs, lhs);
+      return new (allocator) HBelow(rhs, lhs);
     case HInstruction::kAboveOrEqual:
-      return new (arena) HBelowOrEqual(rhs, lhs);
+      return new (allocator) HBelowOrEqual(rhs, lhs);
     default:
       LOG(FATAL) << "Unknown ConditionType " << cond->GetKind();
   }
@@ -836,7 +837,9 @@ void InstructionSimplifierVisitor::VisitBooleanNot(HBooleanNot* bool_not) {
 }
 
 // Constructs a new ABS(x) node in the HIR.
-static HInstruction* NewIntegralAbs(ArenaAllocator* arena, HInstruction* x, HInstruction* cursor) {
+static HInstruction* NewIntegralAbs(ArenaAllocator* allocator,
+                                    HInstruction* x,
+                                    HInstruction* cursor) {
   DataType::Type type = x->GetType();
   DCHECK(type == DataType::Type::kInt32 || type ==  DataType::Type::kInt64);
   // Construct a fake intrinsic with as much context as is needed to allocate one.
@@ -847,8 +850,8 @@ static HInstruction* NewIntegralAbs(ArenaAllocator* arena, HInstruction* x, HIns
     HInvokeStaticOrDirect::CodePtrLocation::kCallArtMethod,
     0u
   };
-  HInvokeStaticOrDirect* invoke = new (arena) HInvokeStaticOrDirect(
-      arena,
+  HInvokeStaticOrDirect* invoke = new (allocator) HInvokeStaticOrDirect(
+      allocator,
       1,
       type,
       x->GetDexPc(),
@@ -939,14 +942,14 @@ void InstructionSimplifierVisitor::VisitSelect(HSelect* select) {
         if ((cmp == kCondLT || cmp == kCondLE) &&
             (a == negated && a == false_value && IsInt64Value(b, 0))) {
           // Found a < 0 ? -a : a which can be replaced by ABS(a).
-          replace_with = NewIntegralAbs(GetGraph()->GetArena(), false_value, select);
+          replace_with = NewIntegralAbs(GetGraph()->GetAllocator(), false_value, select);
         }
       } else if (false_value->IsNeg()) {
         HInstruction* negated = false_value->InputAt(0);
         if ((cmp == kCondGT || cmp == kCondGE) &&
             (a == true_value && a == negated && IsInt64Value(b, 0))) {
           // Found a > 0 ? a : -a which can be replaced by ABS(a).
-          replace_with = NewIntegralAbs(GetGraph()->GetArena(), true_value, select);
+          replace_with = NewIntegralAbs(GetGraph()->GetAllocator(), true_value, select);
         }
       } else if (true_value->IsSub() && false_value->IsSub()) {
         HInstruction* true_sub1 = true_value->InputAt(0);
@@ -961,7 +964,7 @@ void InstructionSimplifierVisitor::VisitSelect(HSelect* select) {
           // Found a > b ? a - b  : b - a   or
           //       a < b ? b - a  : a - b
           // which can be replaced by ABS(a - b) for lower precision operands a, b.
-          replace_with = NewIntegralAbs(GetGraph()->GetArena(), true_value, select);
+          replace_with = NewIntegralAbs(GetGraph()->GetAllocator(), true_value, select);
         }
       }
     }
@@ -1173,7 +1176,8 @@ void InstructionSimplifierVisitor::VisitAdd(HAdd* instruction) {
     // particular, we do not want the live range of `b` to be extended if we are
     // not sure the initial 'NEG' instruction can be removed.
     HInstruction* other = left_is_neg ? right : left;
-    HSub* sub = new(GetGraph()->GetArena()) HSub(instruction->GetType(), other, neg->GetInput());
+    HSub* sub =
+        new(GetGraph()->GetAllocator()) HSub(instruction->GetType(), other, neg->GetInput());
     instruction->GetBlock()->ReplaceAndRemoveInstructionWith(instruction, sub);
     RecordSimplification();
     neg->GetBlock()->RemoveInstruction(neg);
@@ -1251,10 +1255,10 @@ void InstructionSimplifierVisitor::VisitAnd(HAnd* instruction) {
       DCHECK_NE(new_and_input->GetType(), DataType::Type::kInt64);
       HConstant* new_const = GetGraph()->GetConstant(DataType::Type::kInt32, value);
       HAnd* new_and =
-          new (GetGraph()->GetArena()) HAnd(DataType::Type::kInt32, new_and_input, new_const);
+          new (GetGraph()->GetAllocator()) HAnd(DataType::Type::kInt32, new_and_input, new_const);
       instruction->GetBlock()->InsertInstructionBefore(new_and, instruction);
       HTypeConversion* new_conversion =
-          new (GetGraph()->GetArena()) HTypeConversion(DataType::Type::kInt64, new_and);
+          new (GetGraph()->GetAllocator()) HTypeConversion(DataType::Type::kInt64, new_and);
       instruction->GetBlock()->ReplaceAndRemoveInstructionWith(instruction, new_conversion);
       input_other->GetBlock()->RemoveInstruction(input_other);
       RecordSimplification();
@@ -1279,7 +1283,7 @@ void InstructionSimplifierVisitor::VisitAnd(HAnd* instruction) {
           input_other->HasOnlyOneNonEnvironmentUse()) {
         DCHECK(input_other->IsShr());  // For UShr, we would have taken the branch above.
         // Replace SHR+AND with USHR, for example "(x >> 24) & 0xff" -> "x >>> 24".
-        HUShr* ushr = new (GetGraph()->GetArena()) HUShr(instruction->GetType(),
+        HUShr* ushr = new (GetGraph()->GetAllocator()) HUShr(instruction->GetType(),
                                                          input_other->InputAt(0),
                                                          input_other->InputAt(1),
                                                          input_other->GetDexPc());
@@ -1410,7 +1414,8 @@ void InstructionSimplifierVisitor::VisitCondition(HCondition* condition) {
   // on the right hand side.
   if (condition->GetLeft()->IsConstant() && !condition->GetRight()->IsConstant()) {
     HBasicBlock* block = condition->GetBlock();
-    HCondition* replacement = GetOppositeConditionSwapOps(block->GetGraph()->GetArena(), condition);
+    HCondition* replacement =
+        GetOppositeConditionSwapOps(block->GetGraph()->GetAllocator(), condition);
     // If it is a fp we must set the opposite bias.
     if (replacement != nullptr) {
       if (condition->IsLtBias()) {
@@ -1506,7 +1511,7 @@ void InstructionSimplifierVisitor::VisitDiv(HDiv* instruction) {
     // with
     //    NEG dst, src
     instruction->GetBlock()->ReplaceAndRemoveInstructionWith(
-        instruction, new (GetGraph()->GetArena()) HNeg(type, input_other));
+        instruction, new (GetGraph()->GetAllocator()) HNeg(type, input_other));
     RecordSimplification();
     return;
   }
@@ -1532,7 +1537,7 @@ void InstructionSimplifierVisitor::VisitDiv(HDiv* instruction) {
 
     if (reciprocal != nullptr) {
       instruction->GetBlock()->ReplaceAndRemoveInstructionWith(
-          instruction, new (GetGraph()->GetArena()) HMul(type, input_other, reciprocal));
+          instruction, new (GetGraph()->GetAllocator()) HMul(type, input_other, reciprocal));
       RecordSimplification();
       return;
     }
@@ -1544,7 +1549,7 @@ void InstructionSimplifierVisitor::VisitMul(HMul* instruction) {
   HInstruction* input_other = instruction->GetLeastConstantLeft();
   DataType::Type type = instruction->GetType();
   HBasicBlock* block = instruction->GetBlock();
-  ArenaAllocator* allocator = GetGraph()->GetArena();
+  ArenaAllocator* allocator = GetGraph()->GetAllocator();
 
   if (input_cst == nullptr) {
     return;
@@ -1683,8 +1688,8 @@ void InstructionSimplifierVisitor::VisitNeg(HNeg* instruction) {
     // removed.
     // We do not perform optimization for fp because we could lose the sign of zero.
     HSub* sub = input->AsSub();
-    HSub* new_sub =
-        new (GetGraph()->GetArena()) HSub(instruction->GetType(), sub->GetRight(), sub->GetLeft());
+    HSub* new_sub = new (GetGraph()->GetAllocator()) HSub(
+        instruction->GetType(), sub->GetRight(), sub->GetLeft());
     instruction->GetBlock()->ReplaceAndRemoveInstructionWith(instruction, new_sub);
     if (!sub->HasUses()) {
       sub->GetBlock()->RemoveInstruction(sub);
@@ -1786,7 +1791,7 @@ void InstructionSimplifierVisitor::VisitSub(HSub* instruction) {
   }
 
   HBasicBlock* block = instruction->GetBlock();
-  ArenaAllocator* allocator = GetGraph()->GetArena();
+  ArenaAllocator* allocator = GetGraph()->GetAllocator();
 
   HInstruction* left = instruction->GetLeft();
   HInstruction* right = instruction->GetRight();
@@ -1818,7 +1823,7 @@ void InstructionSimplifierVisitor::VisitSub(HSub* instruction) {
     //    SUB dst, a, tmp
     // with
     //    ADD dst, a, b
-    HAdd* add = new(GetGraph()->GetArena()) HAdd(type, left, right->AsNeg()->GetInput());
+    HAdd* add = new(GetGraph()->GetAllocator()) HAdd(type, left, right->AsNeg()->GetInput());
     instruction->GetBlock()->ReplaceAndRemoveInstructionWith(instruction, add);
     RecordSimplification();
     right->GetBlock()->RemoveInstruction(right);
@@ -1834,9 +1839,9 @@ void InstructionSimplifierVisitor::VisitSub(HSub* instruction) {
     //    NEG dst, tmp
     // The second version is not intrinsically better, but enables more
     // transformations.
-    HAdd* add = new(GetGraph()->GetArena()) HAdd(type, left->AsNeg()->GetInput(), right);
+    HAdd* add = new(GetGraph()->GetAllocator()) HAdd(type, left->AsNeg()->GetInput(), right);
     instruction->GetBlock()->InsertInstructionBefore(add, instruction);
-    HNeg* neg = new (GetGraph()->GetArena()) HNeg(instruction->GetType(), add);
+    HNeg* neg = new (GetGraph()->GetAllocator()) HNeg(instruction->GetType(), add);
     instruction->GetBlock()->InsertInstructionBefore(neg, instruction);
     instruction->ReplaceWith(neg);
     instruction->GetBlock()->RemoveInstruction(instruction);
@@ -1898,7 +1903,7 @@ void InstructionSimplifierVisitor::VisitXor(HXor* instruction) {
     //    XOR dst, src, 1
     // with
     //    BOOLEAN_NOT dst, src
-    HBooleanNot* boolean_not = new (GetGraph()->GetArena()) HBooleanNot(input_other);
+    HBooleanNot* boolean_not = new (GetGraph()->GetAllocator()) HBooleanNot(input_other);
     instruction->GetBlock()->ReplaceAndRemoveInstructionWith(instruction, boolean_not);
     RecordSimplification();
     return;
@@ -1909,7 +1914,7 @@ void InstructionSimplifierVisitor::VisitXor(HXor* instruction) {
     //    XOR dst, src, 0xFFF...FF
     // with
     //    NOT dst, src
-    HNot* bitwise_not = new (GetGraph()->GetArena()) HNot(instruction->GetType(), input_other);
+    HNot* bitwise_not = new (GetGraph()->GetAllocator()) HNot(instruction->GetType(), input_other);
     instruction->GetBlock()->ReplaceAndRemoveInstructionWith(instruction, bitwise_not);
     RecordSimplification();
     return;
@@ -1980,10 +1985,10 @@ void InstructionSimplifierVisitor::SimplifyRotate(HInvoke* invoke,
     // Unconditionally set the type of the negated distance to `int`,
     // as shift and rotate operations expect a 32-bit (or narrower)
     // value for their distance input.
-    distance = new (GetGraph()->GetArena()) HNeg(DataType::Type::kInt32, distance);
+    distance = new (GetGraph()->GetAllocator()) HNeg(DataType::Type::kInt32, distance);
     invoke->GetBlock()->InsertInstructionBefore(distance, invoke);
   }
-  HRor* ror = new (GetGraph()->GetArena()) HRor(type, value, distance);
+  HRor* ror = new (GetGraph()->GetAllocator()) HRor(type, value, distance);
   invoke->GetBlock()->ReplaceAndRemoveInstructionWith(invoke, ror);
   // Remove ClinitCheck and LoadClass, if possible.
   HInstruction* clinit = invoke->GetInputs().back();
@@ -2127,7 +2132,7 @@ void InstructionSimplifierVisitor::SimplifyCompare(HInvoke* invoke,
   } else {
     right = GetGraph()->GetIntConstant(0);
   }
-  HCompare* compare = new (GetGraph()->GetArena())
+  HCompare* compare = new (GetGraph()->GetAllocator())
       HCompare(type, left, right, ComparisonBias::kNoBias, dex_pc);
   invoke->GetBlock()->ReplaceAndRemoveInstructionWith(invoke, compare);
 }
@@ -2137,7 +2142,7 @@ void InstructionSimplifierVisitor::SimplifyIsNaN(HInvoke* invoke) {
   uint32_t dex_pc = invoke->GetDexPc();
   // IsNaN(x) is the same as x != x.
   HInstruction* x = invoke->InputAt(0);
-  HCondition* condition = new (GetGraph()->GetArena()) HNotEqual(x, x, dex_pc);
+  HCondition* condition = new (GetGraph()->GetAllocator()) HNotEqual(x, x, dex_pc);
   condition->SetBias(ComparisonBias::kLtBias);
   invoke->GetBlock()->ReplaceAndRemoveInstructionWith(invoke, condition);
 }
@@ -2164,11 +2169,11 @@ void InstructionSimplifierVisitor::SimplifyFP2Int(HInvoke* invoke) {
                          kNoThrow);
   }
   // Test IsNaN(x), which is the same as x != x.
-  HCondition* condition = new (GetGraph()->GetArena()) HNotEqual(x, x, dex_pc);
+  HCondition* condition = new (GetGraph()->GetAllocator()) HNotEqual(x, x, dex_pc);
   condition->SetBias(ComparisonBias::kLtBias);
   invoke->GetBlock()->InsertInstructionBefore(condition, invoke->GetNext());
   // Select between the two.
-  HInstruction* select = new (GetGraph()->GetArena()) HSelect(condition, nan, invoke, dex_pc);
+  HInstruction* select = new (GetGraph()->GetAllocator()) HSelect(condition, nan, invoke, dex_pc);
   invoke->GetBlock()->InsertInstructionBefore(select, condition->GetNext());
   invoke->ReplaceWithExceptInReplacementAtIndex(select, 0);  // false at index 0
 }
@@ -2177,20 +2182,20 @@ void InstructionSimplifierVisitor::SimplifyStringCharAt(HInvoke* invoke) {
   HInstruction* str = invoke->InputAt(0);
   HInstruction* index = invoke->InputAt(1);
   uint32_t dex_pc = invoke->GetDexPc();
-  ArenaAllocator* arena = GetGraph()->GetArena();
+  ArenaAllocator* allocator = GetGraph()->GetAllocator();
   // We treat String as an array to allow DCE and BCE to seamlessly work on strings,
   // so create the HArrayLength, HBoundsCheck and HArrayGet.
-  HArrayLength* length = new (arena) HArrayLength(str, dex_pc, /* is_string_length */ true);
+  HArrayLength* length = new (allocator) HArrayLength(str, dex_pc, /* is_string_length */ true);
   invoke->GetBlock()->InsertInstructionBefore(length, invoke);
-  HBoundsCheck* bounds_check = new (arena) HBoundsCheck(
+  HBoundsCheck* bounds_check = new (allocator) HBoundsCheck(
       index, length, dex_pc, invoke->GetDexMethodIndex());
   invoke->GetBlock()->InsertInstructionBefore(bounds_check, invoke);
-  HArrayGet* array_get = new (arena) HArrayGet(str,
-                                               bounds_check,
-                                               DataType::Type::kUint16,
-                                               SideEffects::None(),  // Strings are immutable.
-                                               dex_pc,
-                                               /* is_string_char_at */ true);
+  HArrayGet* array_get = new (allocator) HArrayGet(str,
+                                                   bounds_check,
+                                                   DataType::Type::kUint16,
+                                                   SideEffects::None(),  // Strings are immutable.
+                                                   dex_pc,
+                                                   /* is_string_char_at */ true);
   invoke->GetBlock()->ReplaceAndRemoveInstructionWith(invoke, array_get);
   bounds_check->CopyEnvironmentFrom(invoke->GetEnvironment());
   GetGraph()->SetHasBoundsChecks(true);
@@ -2202,13 +2207,13 @@ void InstructionSimplifierVisitor::SimplifyStringIsEmptyOrLength(HInvoke* invoke
   // We treat String as an array to allow DCE and BCE to seamlessly work on strings,
   // so create the HArrayLength.
   HArrayLength* length =
-      new (GetGraph()->GetArena()) HArrayLength(str, dex_pc, /* is_string_length */ true);
+      new (GetGraph()->GetAllocator()) HArrayLength(str, dex_pc, /* is_string_length */ true);
   HInstruction* replacement;
   if (invoke->GetIntrinsic() == Intrinsics::kStringIsEmpty) {
     // For String.isEmpty(), create the `HEqual` representing the `length == 0`.
     invoke->GetBlock()->InsertInstructionBefore(length, invoke);
     HIntConstant* zero = GetGraph()->GetIntConstant(0);
-    HEqual* equal = new (GetGraph()->GetArena()) HEqual(length, zero, dex_pc);
+    HEqual* equal = new (GetGraph()->GetAllocator()) HEqual(length, zero, dex_pc);
     replacement = equal;
   } else {
     DCHECK_EQ(invoke->GetIntrinsic(), Intrinsics::kStringLength);
@@ -2278,9 +2283,11 @@ void InstructionSimplifierVisitor::SimplifyAllocationIntrinsic(HInvoke* invoke) 
   }
 }
 
-void InstructionSimplifierVisitor::SimplifyMemBarrier(HInvoke* invoke, MemBarrierKind barrier_kind) {
+void InstructionSimplifierVisitor::SimplifyMemBarrier(HInvoke* invoke,
+                                                      MemBarrierKind barrier_kind) {
   uint32_t dex_pc = invoke->GetDexPc();
-  HMemoryBarrier* mem_barrier = new (GetGraph()->GetArena()) HMemoryBarrier(barrier_kind, dex_pc);
+  HMemoryBarrier* mem_barrier =
+      new (GetGraph()->GetAllocator()) HMemoryBarrier(barrier_kind, dex_pc);
   invoke->GetBlock()->ReplaceAndRemoveInstructionWith(invoke, mem_barrier);
 }
 
@@ -2519,13 +2526,13 @@ bool InstructionSimplifierVisitor::TrySubtractionChainSimplification(
   int64_t const3_val = ComputeAddition(type, const1_val, const2_val);
   HBasicBlock* block = instruction->GetBlock();
   HConstant* const3 = block->GetGraph()->GetConstant(type, const3_val);
-  ArenaAllocator* arena = instruction->GetArena();
+  ArenaAllocator* allocator = instruction->GetAllocator();
   HInstruction* z;
 
   if (is_x_negated) {
-    z = new (arena) HSub(type, const3, x, instruction->GetDexPc());
+    z = new (allocator) HSub(type, const3, x, instruction->GetDexPc());
   } else {
-    z = new (arena) HAdd(type, x, const3, instruction->GetDexPc());
+    z = new (allocator) HAdd(type, x, const3, instruction->GetDexPc());
   }
 
   block->ReplaceAndRemoveInstructionWith(instruction, z);

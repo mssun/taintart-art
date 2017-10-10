@@ -322,7 +322,7 @@ void CodeGenerator::InitializeCodeGeneration(size_t number_of_spill_slots,
 
 void CodeGenerator::CreateCommonInvokeLocationSummary(
     HInvoke* invoke, InvokeDexCallingConventionVisitor* visitor) {
-  ArenaAllocator* allocator = invoke->GetBlock()->GetGraph()->GetArena();
+  ArenaAllocator* allocator = invoke->GetBlock()->GetGraph()->GetAllocator();
   LocationSummary* locations = new (allocator) LocationSummary(invoke,
                                                                LocationSummary::kCallOnMainOnly);
 
@@ -420,7 +420,7 @@ void CodeGenerator::CreateUnresolvedFieldLocationSummary(
   bool is_get = field_access->IsUnresolvedInstanceFieldGet()
       || field_access->IsUnresolvedStaticFieldGet();
 
-  ArenaAllocator* allocator = field_access->GetBlock()->GetGraph()->GetArena();
+  ArenaAllocator* allocator = field_access->GetBlock()->GetGraph()->GetAllocator();
   LocationSummary* locations =
       new (allocator) LocationSummary(field_access, LocationSummary::kCallOnMainOnly);
 
@@ -541,7 +541,7 @@ void CodeGenerator::CreateLoadClassRuntimeCallLocationSummary(HLoadClass* cls,
                                                               Location runtime_return_location) {
   DCHECK_EQ(cls->GetLoadKind(), HLoadClass::LoadKind::kRuntimeCall);
   DCHECK_EQ(cls->InputCount(), 1u);
-  LocationSummary* locations = new (cls->GetBlock()->GetGraph()->GetArena()) LocationSummary(
+  LocationSummary* locations = new (cls->GetBlock()->GetGraph()->GetAllocator()) LocationSummary(
       cls, LocationSummary::kCallOnMainOnly);
   locations->SetInAt(0, Location::NoLocation());
   locations->AddTemp(runtime_type_index_location);
@@ -617,61 +617,49 @@ std::unique_ptr<CodeGenerator> CodeGenerator::Create(HGraph* graph,
                                                      const InstructionSetFeatures& isa_features,
                                                      const CompilerOptions& compiler_options,
                                                      OptimizingCompilerStats* stats) {
-  ArenaAllocator* arena = graph->GetArena();
+  ArenaAllocator* allocator = graph->GetAllocator();
   switch (instruction_set) {
 #ifdef ART_ENABLE_CODEGEN_arm
     case kArm:
     case kThumb2: {
       return std::unique_ptr<CodeGenerator>(
-          new (arena) arm::CodeGeneratorARMVIXL(graph,
-                                                *isa_features.AsArmInstructionSetFeatures(),
-                                                compiler_options,
-                                                stats));
+          new (allocator) arm::CodeGeneratorARMVIXL(
+              graph, *isa_features.AsArmInstructionSetFeatures(), compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_arm64
     case kArm64: {
       return std::unique_ptr<CodeGenerator>(
-          new (arena) arm64::CodeGeneratorARM64(graph,
-                                                *isa_features.AsArm64InstructionSetFeatures(),
-                                                compiler_options,
-                                                stats));
+          new (allocator) arm64::CodeGeneratorARM64(
+              graph, *isa_features.AsArm64InstructionSetFeatures(), compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips
     case kMips: {
       return std::unique_ptr<CodeGenerator>(
-          new (arena) mips::CodeGeneratorMIPS(graph,
-                                              *isa_features.AsMipsInstructionSetFeatures(),
-                                              compiler_options,
-                                              stats));
+          new (allocator) mips::CodeGeneratorMIPS(
+              graph, *isa_features.AsMipsInstructionSetFeatures(), compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips64
     case kMips64: {
       return std::unique_ptr<CodeGenerator>(
-          new (arena) mips64::CodeGeneratorMIPS64(graph,
-                                                  *isa_features.AsMips64InstructionSetFeatures(),
-                                                  compiler_options,
-                                                  stats));
+          new (allocator) mips64::CodeGeneratorMIPS64(
+              graph, *isa_features.AsMips64InstructionSetFeatures(), compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86
     case kX86: {
       return std::unique_ptr<CodeGenerator>(
-          new (arena) x86::CodeGeneratorX86(graph,
-                                            *isa_features.AsX86InstructionSetFeatures(),
-                                            compiler_options,
-                                            stats));
+          new (allocator) x86::CodeGeneratorX86(
+              graph, *isa_features.AsX86InstructionSetFeatures(), compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86_64
     case kX86_64: {
       return std::unique_ptr<CodeGenerator>(
-          new (arena) x86_64::CodeGeneratorX86_64(graph,
-                                                  *isa_features.AsX86_64InstructionSetFeatures(),
-                                                  compiler_options,
-                                                  stats));
+          new (allocator) x86_64::CodeGeneratorX86_64(
+              graph, *isa_features.AsX86_64InstructionSetFeatures(), compiler_options, stats));
     }
 #endif
     default:
@@ -712,7 +700,7 @@ static void CheckLoopEntriesCanBeUsedForOsr(const HGraph& graph,
     // One can write loops through try/catch, which we do not support for OSR anyway.
     return;
   }
-  ArenaVector<HSuspendCheck*> loop_headers(graph.GetArena()->Adapter(kArenaAllocMisc));
+  ArenaVector<HSuspendCheck*> loop_headers(graph.GetAllocator()->Adapter(kArenaAllocMisc));
   for (HBasicBlock* block : graph.GetReversePostOrder()) {
     if (block->IsLoopHeader()) {
       HSuspendCheck* suspend_check = block->GetLoopInformation()->GetSuspendCheck();
@@ -721,7 +709,8 @@ static void CheckLoopEntriesCanBeUsedForOsr(const HGraph& graph,
       }
     }
   }
-  ArenaVector<size_t> covered(loop_headers.size(), 0, graph.GetArena()->Adapter(kArenaAllocMisc));
+  ArenaVector<size_t> covered(
+      loop_headers.size(), 0, graph.GetAllocator()->Adapter(kArenaAllocMisc));
   IterationRange<DexInstructionIterator> instructions = code_item.Instructions();
   for (auto it = instructions.begin(); it != instructions.end(); ++it) {
     const uint32_t dex_pc = it.GetDexPC(instructions.begin());
@@ -909,7 +898,7 @@ void CodeGenerator::MaybeRecordNativeDebugInfo(HInstruction* instruction,
 }
 
 void CodeGenerator::RecordCatchBlockInfo() {
-  ArenaAllocator* arena = graph_->GetArena();
+  ArenaAllocator* allocator = graph_->GetAllocator();
 
   for (HBasicBlock* block : *block_order_) {
     if (!block->IsCatchBlock()) {
@@ -924,7 +913,7 @@ void CodeGenerator::RecordCatchBlockInfo() {
 
     // The stack mask is not used, so we leave it empty.
     ArenaBitVector* stack_mask =
-        ArenaBitVector::Create(arena, 0, /* expandable */ true, kArenaAllocCodeGenerator);
+        ArenaBitVector::Create(allocator, 0, /* expandable */ true, kArenaAllocCodeGenerator);
 
     stack_map_stream_.BeginStackMapEntry(dex_pc,
                                          native_pc,
@@ -1194,7 +1183,8 @@ LocationSummary* CodeGenerator::CreateThrowingSlowPathLocations(HInstruction* in
   if (can_throw_into_catch_block) {
     call_kind = LocationSummary::kCallOnSlowPath;
   }
-  LocationSummary* locations = new (GetGraph()->GetArena()) LocationSummary(instruction, call_kind);
+  LocationSummary* locations =
+      new (GetGraph()->GetAllocator()) LocationSummary(instruction, call_kind);
   if (can_throw_into_catch_block && compiler_options_.GetImplicitNullChecks()) {
     locations->SetCustomSlowPathCallerSaves(caller_saves);  // Default: no caller-save registers.
   }
@@ -1237,7 +1227,7 @@ void CodeGenerator::EmitParallelMoves(Location from1,
                                       Location from2,
                                       Location to2,
                                       DataType::Type type2) {
-  HParallelMove parallel_move(GetGraph()->GetArena());
+  HParallelMove parallel_move(GetGraph()->GetAllocator());
   parallel_move.AddMove(from1, to1, type1, nullptr);
   parallel_move.AddMove(from2, to2, type2, nullptr);
   GetMoveResolver()->EmitNativeCode(&parallel_move);
@@ -1400,7 +1390,7 @@ void CodeGenerator::CreateSystemArrayCopyLocationSummary(HInvoke* invoke) {
     return;
   }
 
-  ArenaAllocator* allocator = invoke->GetBlock()->GetGraph()->GetArena();
+  ArenaAllocator* allocator = invoke->GetBlock()->GetGraph()->GetAllocator();
   LocationSummary* locations = new (allocator) LocationSummary(invoke,
                                                                LocationSummary::kCallOnSlowPath,
                                                                kIntrinsified);

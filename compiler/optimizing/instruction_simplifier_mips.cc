@@ -74,7 +74,7 @@ bool InstructionSimplifierMipsVisitor::TryExtractArrayAccessIndex(HInstruction* 
   }
 
   HGraph* graph = access->GetBlock()->GetGraph();
-  ArenaAllocator* arena = graph->GetArena();
+  ArenaAllocator* allocator = graph->GetAllocator();
   size_t component_shift = DataType::SizeShift(packed_type);
 
   bool is_extracting_beneficial = false;
@@ -113,7 +113,7 @@ bool InstructionSimplifierMipsVisitor::TryExtractArrayAccessIndex(HInstruction* 
 
   HIntConstant* shift = graph->GetIntConstant(component_shift);
   HIntermediateArrayAddressIndex* address =
-      new (arena) HIntermediateArrayAddressIndex(index, shift, kNoDexPc);
+      new (allocator) HIntermediateArrayAddressIndex(index, shift, kNoDexPc);
   access->GetBlock()->InsertInstructionBefore(address, access);
   access->ReplaceInput(address, 1);
   return true;
