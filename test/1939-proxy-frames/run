@@ -14,7 +14,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# See b/65168732
-export USE_D8=false
-
-./default-build "$@"
+# Ask for stack traces to be dumped to a file rather than to stdout.
+./default-run "$@" --jvmti

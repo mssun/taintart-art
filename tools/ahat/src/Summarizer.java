@@ -51,7 +51,9 @@ class Summarizer {
     }
 
     // Annotate unreachable objects as such.
-    if (!inst.isReachable()) {
+    if (inst.isWeaklyReachable()) {
+      formatted.append("weak ");
+    } else if (inst.isUnreachable()) {
       formatted.append("unreachable ");
     }
 
@@ -65,7 +67,7 @@ class Summarizer {
       // Don't make links to placeholder objects.
       formatted.append(linkText);
     } else {
-      URI objTarget = DocString.formattedUri("object?id=%d", inst.getId());
+      URI objTarget = DocString.formattedUri("object?id=0x%x", inst.getId());
       formatted.appendLink(objTarget, linkText);
     }
 
@@ -100,7 +102,7 @@ class Summarizer {
     AhatInstance bitmap = inst.getAssociatedBitmapInstance();
     String thumbnail = "";
     if (bitmap != null) {
-      URI uri = DocString.formattedUri("bitmap?id=%d", bitmap.getId());
+      URI uri = DocString.formattedUri("bitmap?id=0x%x", bitmap.getId());
       formatted.appendThumbnail(uri, "bitmap image");
     }
     return formatted;
