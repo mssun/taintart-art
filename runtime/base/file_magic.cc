@@ -55,8 +55,4 @@ bool IsZipMagic(uint32_t magic) {
           ('K' == ((magic >> 8) & 0xff)));
 }
 
-bool IsDexMagic(uint32_t magic) {
-  return DexFile::IsMagicValid(reinterpret_cast<const uint8_t*>(&magic));
-}
-
 }  // namespace art
