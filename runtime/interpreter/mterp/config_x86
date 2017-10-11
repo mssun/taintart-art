@@ -290,12 +290,12 @@ op-start x86
     # op op_unused_f7 FALLBACK
     # op op_unused_f8 FALLBACK
     # op op_unused_f9 FALLBACK
-    op op_invoke_polymorphic FALLBACK
-    op op_invoke_polymorphic_range FALLBACK
-    op op_invoke_custom FALLBACK
-    op op_invoke_custom_range FALLBACK
-    # op op_unused_fe FALLBACK
-    # op op_unused_ff FALLBACK
+    # op op_invoke_polymorphic FALLBACK
+    # op op_invoke_polymorphic_range FALLBACK
+    # op op_invoke_custom FALLBACK
+    # op op_invoke_custom_range FALLBACK
+    # op op_const_method_handle FALLBACK
+    # op op_const_method_type FALLBACK
 op-end
 
 # common subroutines for asm
