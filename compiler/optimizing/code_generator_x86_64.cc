@@ -5125,6 +5125,13 @@ void LocationsBuilderX86_64::VisitParallelMove(HParallelMove* instruction ATTRIB
 }
 
 void InstructionCodeGeneratorX86_64::VisitParallelMove(HParallelMove* instruction) {
+  if (instruction->GetNext()->IsSuspendCheck() &&
+      instruction->GetBlock()->GetLoopInformation() != nullptr) {
+    HSuspendCheck* suspend_check = instruction->GetNext()->AsSuspendCheck();
+    // The back edge will generate the suspend check.
+    codegen_->ClearSpillSlotsFromLoopPhisInStackMap(suspend_check, instruction);
+  }
+
   codegen_->GetMoveResolver()->EmitNativeCode(instruction);
 }
 
@@ -5162,7 +5169,6 @@ void InstructionCodeGeneratorX86_64::GenerateSuspendCheck(HSuspendCheck* instruc
     codegen_->AddSlowPath(slow_path);
     if (successor != nullptr) {
       DCHECK(successor->IsLoopHeader());
-      codegen_->ClearSpillSlotsFromLoopPhisInStackMap(instruction);
     }
   } else {
     DCHECK_EQ(slow_path->GetSuccessor(), successor);

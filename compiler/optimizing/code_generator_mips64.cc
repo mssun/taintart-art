@@ -3488,7 +3488,6 @@ void InstructionCodeGeneratorMIPS64::HandleGoto(HInstruction* got, HBasicBlock* 
   HLoopInformation* info = block->GetLoopInformation();
 
   if (info != nullptr && info->IsBackEdge(*block) && info->HasSuspendCheck()) {
-    codegen_->ClearSpillSlotsFromLoopPhisInStackMap(info->GetSuspendCheck());
     GenerateSuspendCheck(info->GetSuspendCheck(), successor);
     return;
   }
@@ -6490,6 +6489,13 @@ void LocationsBuilderMIPS64::VisitParallelMove(HParallelMove* instruction ATTRIB
 }
 
 void InstructionCodeGeneratorMIPS64::VisitParallelMove(HParallelMove* instruction) {
+  if (instruction->GetNext()->IsSuspendCheck() &&
+      instruction->GetBlock()->GetLoopInformation() != nullptr) {
+    HSuspendCheck* suspend_check = instruction->GetNext()->AsSuspendCheck();
+    // The back edge will generate the suspend check.
+    codegen_->ClearSpillSlotsFromLoopPhisInStackMap(suspend_check, instruction);
+  }
+
   codegen_->GetMoveResolver()->EmitNativeCode(instruction);
 }
 
