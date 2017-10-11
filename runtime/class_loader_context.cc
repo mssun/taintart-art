@@ -25,6 +25,7 @@
 #include "class_linker.h"
 #include "class_loader_utils.h"
 #include "dex_file.h"
+#include "dex_file_loader.h"
 #include "handle_scope-inl.h"
 #include "jni_internal.h"
 #include "oat_file_assistant.h"
@@ -227,11 +228,11 @@ bool ClassLoaderContext::OpenDexFiles(InstructionSet isa, const std::string& cla
       std::string error_msg;
       // When opening the dex files from the context we expect their checksum to match their
       // contents. So pass true to verify_checksum.
-      if (!DexFile::Open(location.c_str(),
-                         location.c_str(),
-                         /*verify_checksum*/ true,
-                         &error_msg,
-                         &info.opened_dex_files)) {
+      if (!DexFileLoader::Open(location.c_str(),
+                               location.c_str(),
+                               /*verify_checksum*/ true,
+                               &error_msg,
+                               &info.opened_dex_files)) {
         // If we fail to open the dex file because it's been stripped, try to open the dex file
         // from its corresponding oat file.
         // This could happen when we need to recompile a pre-build whose dex code has been stripped.
@@ -282,7 +283,7 @@ bool ClassLoaderContext::RemoveLocationsFromClassPaths(
 
   std::set<std::string> canonical_locations;
   for (const std::string& location : locations) {
-    canonical_locations.insert(DexFile::GetDexCanonicalLocation(location.c_str()));
+    canonical_locations.insert(DexFileLoader::GetDexCanonicalLocation(location.c_str()));
   }
   bool removed_locations = false;
   for (ClassLoaderInfo& info : class_loader_chain_) {
@@ -292,7 +293,7 @@ bool ClassLoaderContext::RemoveLocationsFromClassPaths(
         info.classpath.end(),
         [canonical_locations](const std::string& location) {
             return ContainsElement(canonical_locations,
-                                   DexFile::GetDexCanonicalLocation(location.c_str()));
+                                   DexFileLoader::GetDexCanonicalLocation(location.c_str()));
         });
     info.classpath.erase(kept_it, info.classpath.end());
     if (initial_size != info.classpath.size()) {
@@ -340,7 +341,8 @@ std::string ClassLoaderContext::EncodeContext(const std::string& base_dir,
       if (for_dex2oat) {
         // dex2oat only needs the base location. It cannot accept multidex locations.
         // So ensure we only add each file once.
-        bool new_insert = seen_locations.insert(dex_file->GetBaseLocation()).second;
+        bool new_insert = seen_locations.insert(
+            DexFileLoader::GetBaseLocation(dex_file->GetLocation())).second;
         if (!new_insert) {
           continue;
         }

@@ -30,6 +30,7 @@
  */
 
 #include "fixed_up_dex_file.h"
+#include "dex_file_loader.h"
 #include "dex_file-inl.h"
 
 // Runtime includes.
@@ -68,7 +69,7 @@ std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& origi
   data.resize(original.Size());
   memcpy(data.data(), original.Begin(), original.Size());
   std::string error;
-  std::unique_ptr<const art::DexFile> new_dex_file(art::DexFile::Open(
+  std::unique_ptr<const art::DexFile> new_dex_file(art::DexFileLoader::Open(
       data.data(),
       data.size(),
       /*location*/"Unquickening_dexfile.dex",

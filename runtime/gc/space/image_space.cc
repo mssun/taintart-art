@@ -35,6 +35,7 @@
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/time_utils.h"
+#include "dex_file_loader.h"
 #include "exec_utils.h"
 #include "gc/accounting/space_bitmap-inl.h"
 #include "image-inl.h"
@@ -1829,12 +1830,12 @@ bool ImageSpace::ValidateOatFile(const OatFile& oat_file, std::string* error_msg
 
     // Skip multidex locations - These will be checked when we visit their
     // corresponding primary non-multidex location.
-    if (DexFile::IsMultiDexLocation(dex_file_location.c_str())) {
+    if (DexFileLoader::IsMultiDexLocation(dex_file_location.c_str())) {
       continue;
     }
 
     std::vector<uint32_t> checksums;
-    if (!DexFile::GetMultiDexChecksums(dex_file_location.c_str(), &checksums, error_msg)) {
+    if (!DexFileLoader::GetMultiDexChecksums(dex_file_location.c_str(), &checksums, error_msg)) {
       *error_msg = StringPrintf("ValidateOatFile failed to get checksums of dex file '%s' "
                                 "referenced by oat file %s: %s",
                                 dex_file_location.c_str(),
@@ -1855,7 +1856,9 @@ bool ImageSpace::ValidateOatFile(const OatFile& oat_file, std::string* error_msg
 
     // Verify checksums for any related multidex entries.
     for (size_t i = 1; i < checksums.size(); i++) {
-      std::string multi_dex_location = DexFile::GetMultiDexLocation(i, dex_file_location.c_str());
+      std::string multi_dex_location = DexFileLoader::GetMultiDexLocation(
+          i,
+          dex_file_location.c_str());
       const OatFile::OatDexFile* multi_dex = oat_file.GetOatDexFile(multi_dex_location.c_str(),
                                                                     nullptr,
                                                                     error_msg);

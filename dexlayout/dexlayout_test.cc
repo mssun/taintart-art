@@ -24,6 +24,7 @@
 #include "base/unix_file/fd_file.h"
 #include "common_runtime_test.h"
 #include "dex_file-inl.h"
+#include "dex_file_loader.h"
 #include "exec_utils.h"
 #include "jit/profile_compilation_info.h"
 #include "utils.h"
@@ -322,11 +323,11 @@ class DexLayoutTest : public CommonRuntimeTest {
                      const std::string& dex_location) {
     std::vector<std::unique_ptr<const DexFile>> dex_files;
     std::string error_msg;
-    bool result = DexFile::Open(input_dex.c_str(),
-                                input_dex,
-                                false,
-                                &error_msg,
-                                &dex_files);
+    bool result = DexFileLoader::Open(input_dex.c_str(),
+                                      input_dex,
+                                      false,
+                                      &error_msg,
+                                      &dex_files);
 
     ASSERT_TRUE(result) << error_msg;
     ASSERT_GE(dex_files.size(), 1u);

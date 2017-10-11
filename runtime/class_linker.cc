@@ -51,6 +51,7 @@
 #include "compiler_callbacks.h"
 #include "debugger.h"
 #include "dex_file-inl.h"
+#include "dex_file_loader.h"
 #include "entrypoints/entrypoint_utils.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "experimental_flags.h"
@@ -8714,10 +8715,11 @@ class GetResolvedClassesVisitor : public ClassVisitor {
       const DexFile& dex_file = klass->GetDexFile();
       if (&dex_file != last_dex_file_) {
         last_dex_file_ = &dex_file;
-        DexCacheResolvedClasses resolved_classes(dex_file.GetLocation(),
-                                                 dex_file.GetBaseLocation(),
-                                                 dex_file.GetLocationChecksum(),
-                                                 dex_file.NumMethodIds());
+        DexCacheResolvedClasses resolved_classes(
+            dex_file.GetLocation(),
+            DexFileLoader::GetBaseLocation(dex_file.GetLocation()),
+            dex_file.GetLocationChecksum(),
+            dex_file.NumMethodIds());
         last_resolved_classes_ = result_->find(resolved_classes);
         if (last_resolved_classes_ == result_->end()) {
           last_resolved_classes_ = result_->insert(resolved_classes).first;
