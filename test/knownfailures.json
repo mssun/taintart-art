@@ -1,7 +1,7 @@
 [
     {
-        "tests": "1939-proxy-frames",
-        "description": ["Test 1939 seems to consistently fail in gcstress on 64 bit with",
+        "tests": [ "1939-proxy-frames", "1914-get-local-instance" ],
+        "description": ["Test 1939 & 1914 seems to consistently fail in gcstress on 64 bit with",
                         "a proxy this object having no associated class!"],
         "variant": "gcstress",
         "bug": "http://b/67679263"
