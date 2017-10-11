@@ -943,8 +943,8 @@ class HVecSADAccumulate FINAL : public HVecOperation {
     DCHECK(HasConsistentPackedTypes(accumulator, packed_type));
     DCHECK(sad_left->IsVecOperation());
     DCHECK(sad_right->IsVecOperation());
-    DCHECK_EQ(sad_left->AsVecOperation()->GetPackedType(),
-              sad_right->AsVecOperation()->GetPackedType());
+    DCHECK_EQ(ToSignedType(sad_left->AsVecOperation()->GetPackedType()),
+              ToSignedType(sad_right->AsVecOperation()->GetPackedType()));
     SetRawInputAt(0, accumulator);
     SetRawInputAt(1, sad_left);
     SetRawInputAt(2, sad_right);

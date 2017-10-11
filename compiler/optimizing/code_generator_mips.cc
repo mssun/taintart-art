@@ -6205,7 +6205,8 @@ void LocationsBuilderMIPS::HandleFieldGet(HInstruction* instruction, const Field
 void InstructionCodeGeneratorMIPS::HandleFieldGet(HInstruction* instruction,
                                                   const FieldInfo& field_info,
                                                   uint32_t dex_pc) {
-  DataType::Type type = field_info.GetFieldType();
+  DCHECK_EQ(DataType::Size(field_info.GetFieldType()), DataType::Size(instruction->GetType()));
+  DataType::Type type = instruction->GetType();
   LocationSummary* locations = instruction->GetLocations();
   Location obj_loc = locations->InAt(0);
   Register obj = obj_loc.AsRegister<Register>();

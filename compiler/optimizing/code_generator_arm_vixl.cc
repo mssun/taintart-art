@@ -5741,17 +5741,18 @@ void InstructionCodeGeneratorARMVIXL::HandleFieldGet(HInstruction* instruction,
   Location out = locations->Out();
   bool is_volatile = field_info.IsVolatile();
   bool atomic_ldrd_strd = codegen_->GetInstructionSetFeatures().HasAtomicLdrdAndStrd();
-  DataType::Type field_type = field_info.GetFieldType();
+  DCHECK_EQ(DataType::Size(field_info.GetFieldType()), DataType::Size(instruction->GetType()));
+  DataType::Type load_type = instruction->GetType();
   uint32_t offset = field_info.GetFieldOffset().Uint32Value();
 
-  switch (field_type) {
+  switch (load_type) {
     case DataType::Type::kBool:
     case DataType::Type::kUint8:
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
     case DataType::Type::kInt32: {
-      LoadOperandType operand_type = GetLoadOperandType(field_type);
+      LoadOperandType operand_type = GetLoadOperandType(load_type);
       GetAssembler()->LoadFromOffset(operand_type, RegisterFrom(out), base, offset);
       break;
     }
@@ -5811,11 +5812,11 @@ void InstructionCodeGeneratorARMVIXL::HandleFieldGet(HInstruction* instruction,
     }
 
     case DataType::Type::kVoid:
-      LOG(FATAL) << "Unreachable type " << field_type;
+      LOG(FATAL) << "Unreachable type " << load_type;
       UNREACHABLE();
   }
 
-  if (field_type == DataType::Type::kReference || field_type == DataType::Type::kFloat64) {
+  if (load_type == DataType::Type::kReference || load_type == DataType::Type::kFloat64) {
     // Potential implicit null checks, in the case of reference or
     // double fields, are handled in the previous switch statement.
   } else {
@@ -5829,7 +5830,7 @@ void InstructionCodeGeneratorARMVIXL::HandleFieldGet(HInstruction* instruction,
   }
 
   if (is_volatile) {
-    if (field_type == DataType::Type::kReference) {
+    if (load_type == DataType::Type::kReference) {
       // Memory barriers, in the case of references, are also handled
       // in the previous switch statement.
     } else {
@@ -5977,12 +5978,12 @@ void CodeGeneratorARMVIXL::LoadFromShiftedRegOffset(DataType::Type type,
   MemOperand mem_address(base, reg_index, vixl32::LSL, shift_count);
 
   switch (type) {
+    case DataType::Type::kBool:
     case DataType::Type::kUint8:
+      __ Ldrb(cond, RegisterFrom(out_loc), mem_address);
+      break;
     case DataType::Type::kInt8:
       __ Ldrsb(cond, RegisterFrom(out_loc), mem_address);
-      break;
-    case DataType::Type::kBool:
-      __ Ldrb(cond, RegisterFrom(out_loc), mem_address);
       break;
     case DataType::Type::kUint16:
       __ Ldrh(cond, RegisterFrom(out_loc), mem_address);
