@@ -29,6 +29,7 @@
 #include "base/macros.h"
 #include "bytecode_utils.h"
 #include "dex_file.h"
+#include "dex_file_loader.h"
 #include "dex_instruction.h"
 #include "jit/jit.h"
 #include "native_stack_dump.h"
@@ -66,14 +67,14 @@ void JNICALL CheckDexFileHook(jvmtiEnv* jvmti_env ATTRIBUTE_UNUSED,
     return;
   }
   std::string error;
-  std::unique_ptr<const DexFile> dex(DexFile::Open(class_data,
-                                                   class_data_len,
-                                                   "fake_location.dex",
-                                                   /*location_checksum*/ 0,
-                                                   /*oat_dex_file*/ nullptr,
-                                                   /*verify*/ true,
-                                                   /*verify_checksum*/ true,
-                                                   &error));
+  std::unique_ptr<const DexFile> dex(DexFileLoader::Open(class_data,
+                                                         class_data_len,
+                                                         "fake_location.dex",
+                                                         /*location_checksum*/ 0,
+                                                         /*oat_dex_file*/ nullptr,
+                                                         /*verify*/ true,
+                                                         /*verify_checksum*/ true,
+                                                         &error));
   if (dex.get() == nullptr) {
     std::cout << "Failed to verify dex file for " << name << " because " << error << std::endl;
     return;

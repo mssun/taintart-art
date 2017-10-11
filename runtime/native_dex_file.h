@@ -48,7 +48,7 @@ class NativeDexFile : public DexFile {
                 const OatDexFile* oat_dex_file)
       : DexFile(base, size, location, location_checksum, oat_dex_file) {}
 
-  friend class DexFile;
+  friend class DexFileLoader;
   friend class DexFileVerifierTest;
 
   ART_FRIEND_TEST(ClassLinkerTest, RegisterDexFileName);  // for constructor

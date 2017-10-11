@@ -27,6 +27,7 @@
 #include "base/unix_file/fd_file.h"
 #include "common_runtime_test.h"
 #include "dex_file-inl.h"
+#include "dex_file_loader.h"
 #include "dex_file_types.h"
 #include "leb128.h"
 #include "native_dex_file.h"
@@ -113,7 +114,7 @@ static std::unique_ptr<const DexFile> OpenDexFileBase64(const char* base64,
   // read dex file
   ScopedObjectAccess soa(Thread::Current());
   std::vector<std::unique_ptr<const DexFile>> tmp;
-  bool success = DexFile::Open(location, location, true, error_msg, &tmp);
+  bool success = DexFileLoader::Open(location, location, true, error_msg, &tmp);
   CHECK(success) << *error_msg;
   EXPECT_EQ(1U, tmp.size());
   std::unique_ptr<const DexFile> dex_file = std::move(tmp[0]);

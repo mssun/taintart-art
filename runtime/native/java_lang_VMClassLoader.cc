@@ -17,6 +17,7 @@
 #include "java_lang_VMClassLoader.h"
 
 #include "class_linker.h"
+#include "dex_file_loader.h"
 #include "jni_internal.h"
 #include "mirror/class_loader.h"
 #include "mirror/object-inl.h"
@@ -135,7 +136,7 @@ static jobjectArray VMClassLoader_getBootClassPathEntries(JNIEnv* env, jclass) {
     const DexFile* dex_file = path[i];
 
     // For multidex locations, e.g., x.jar!classes2.dex, we want to look into x.jar.
-    const std::string& location(dex_file->GetBaseLocation());
+    const std::string location(DexFileLoader::GetBaseLocation(dex_file->GetLocation()));
 
     ScopedLocalRef<jstring> javaPath(env, env->NewStringUTF(location.c_str()));
     if (javaPath.get() == nullptr) {
