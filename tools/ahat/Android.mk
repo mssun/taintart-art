@@ -20,9 +20,9 @@ include art/build/Android.common_path.mk
 
 # --- ahat.jar ----------------
 include $(CLEAR_VARS)
-LOCAL_SRC_FILES := $(call all-java-files-under, src)
-LOCAL_JAR_MANIFEST := src/manifest.txt
-LOCAL_JAVA_RESOURCE_FILES := $(LOCAL_PATH)/src/style.css
+LOCAL_SRC_FILES := $(call all-java-files-under, src/main)
+LOCAL_JAR_MANIFEST := etc/ahat.mf
+LOCAL_JAVA_RESOURCE_FILES := $(LOCAL_PATH)/etc/style.css
 LOCAL_IS_HOST_MODULE := true
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := ahat
@@ -49,9 +49,9 @@ ifneq ($(EMMA_INSTRUMENT),true)
 include $(CLEAR_VARS)
 LOCAL_MODULE := ahat-test-dump
 LOCAL_MODULE_TAGS := tests
-LOCAL_SRC_FILES := $(call all-java-files-under, test-dump)
+LOCAL_SRC_FILES := $(call all-java-files-under, src/test-dump)
 LOCAL_PROGUARD_ENABLED := obfuscation
-LOCAL_PROGUARD_FLAG_FILES := test-dump/config.pro
+LOCAL_PROGUARD_FLAG_FILES := etc/test-dump.pro
 include $(BUILD_JAVA_LIBRARY)
 
 # Determine the location of the test-dump.jar, test-dump.hprof, and proguard
@@ -87,15 +87,15 @@ $(AHAT_TEST_DUMP_BASE_HPROF): $(AHAT_TEST_DUMP_JAR) $(AHAT_TEST_DUMP_DEPENDENCIE
 
 # --- ahat-tests.jar --------------
 include $(CLEAR_VARS)
-LOCAL_SRC_FILES := $(call all-java-files-under, test)
-LOCAL_JAR_MANIFEST := test/manifest.txt
+LOCAL_SRC_FILES := $(call all-java-files-under, src/test)
+LOCAL_JAR_MANIFEST := etc/ahat-tests.mf
 LOCAL_JAVA_RESOURCE_FILES := \
   $(AHAT_TEST_DUMP_HPROF) \
   $(AHAT_TEST_DUMP_BASE_HPROF) \
   $(AHAT_TEST_DUMP_PROGUARD_MAP) \
-  $(LOCAL_PATH)/test-dump/L.hprof \
-  $(LOCAL_PATH)/test-dump/O.hprof \
-  $(LOCAL_PATH)/test-dump/RI.hprof
+  $(LOCAL_PATH)/etc/L.hprof \
+  $(LOCAL_PATH)/etc/O.hprof \
+  $(LOCAL_PATH)/etc/RI.hprof
 LOCAL_STATIC_JAVA_LIBRARIES := ahat junit-host
 LOCAL_IS_HOST_MODULE := true
 LOCAL_MODULE_TAGS := tests
