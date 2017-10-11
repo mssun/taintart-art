@@ -48,7 +48,7 @@
   name: "org.apache.harmony.jpda.tests.jdwp.Events.VMDeath002Test#testVMDeathRequest"
 },
 {
-  description: "Test fails with INTERNAL error due to proxy frame!",
+  description: "Test fails with OPAQUE_FRAME error due to attempting a GetLocalReference on a proxy frame instead of GetLocalInstance!",
   result: EXEC_FAILED,
   bug: 66903662,
   name: "org.apache.harmony.jpda.tests.jdwp.StackFrame.ProxyThisObjectTest#testThisObject"
