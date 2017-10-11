@@ -18,9 +18,7 @@ package art;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
-import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Semaphore;
 import java.util.Arrays;
@@ -37,7 +35,7 @@ public class Test1914 {
 
   public static void reportValue(Object val) {
     System.out.println("\tValue is '" + val + "' (class: "
-        + (val != null ? (val instanceof Proxy ? "PROXY CLASS" : val.getClass()) : "NULL") + ")");
+        + (val != null ? val.getClass() : "NULL") + ")");
   }
 
   public static void StaticMethod(Runnable safepoint) {
@@ -153,10 +151,7 @@ public class Test1914 {
 
     private StackTrace.StackFrameData findStackFrame(Thread thr) {
       for (StackTrace.StackFrameData frame : StackTrace.GetStackTrace(thr)) {
-        if (frame.method.equals(target) ||
-            (frame.method.getName().equals(target.getName()) &&
-             Arrays.deepEquals(frame.method.getParameterTypes(), target.getParameterTypes()) &&
-             ((Method)frame.method).getReturnType().equals(target.getReturnType()))) {
+        if (frame.method.equals(target)) {
           return frame;
         }
       }
@@ -168,25 +163,6 @@ public class Test1914 {
     return klass.getDeclaredMethod(name, Runnable.class);
   }
 
-  public static interface Foo {
-    public void InterfaceProxyMethod(Runnable r);
-  }
-
-  public static Object getProxyObject(final Class... k) {
-    return Proxy.newProxyInstance(
-        Test1914.class.getClassLoader(),
-        k,
-        (p, m, a) -> {
-          if (m.getName().equals("toString")) {
-            return "Proxy for " + Arrays.toString(k);
-          } else {
-            ((Runnable)a[0]).run();
-            reportValue(p);
-            return null;
-          }
-        });
-  }
-
   public static void run() throws Exception {
     Locals.EnableLocalVariableAccess();
     final TestCase[] MAIN_TEST_CASES = new TestCase[] {
@@ -196,8 +172,6 @@ public class Test1914 {
                    getMethod(TargetClass.class, "InstanceMethod")),
       new TestCase(new TargetClass("NativeInstanceMethodObject"),
                    getMethod(TargetClass.class, "NativeInstanceMethod")),
-      new TestCase(getProxyObject(Foo.class),
-                   getMethod(Foo.class, "InterfaceProxyMethod")),
     };
 
     for (TestCase t: MAIN_TEST_CASES) {
