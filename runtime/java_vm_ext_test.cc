@@ -163,6 +163,19 @@ TEST_F(JavaVmExtStackTraceTest, TestEnableDisable) {
 
   EXPECT_FALSE(Runtime::Current()->GetHeap()->IsAllocTrackingEnabled());
 
+  global_refs_.clear();
+  for (size_t i = 0; i < 2000; ++i) {
+    global_refs_.push_back(env->NewGlobalRef(local_ref));
+  }
+
+  EXPECT_TRUE(Runtime::Current()->GetHeap()->IsAllocTrackingEnabled());
+
+  for (jobject global_ref : global_refs_) {
+    env->DeleteGlobalRef(global_ref);
+  }
+
+  EXPECT_FALSE(Runtime::Current()->GetHeap()->IsAllocTrackingEnabled());
+
   ok = vm_->DetachCurrentThread();
   EXPECT_EQ(JNI_OK, ok);
 }
