@@ -220,6 +220,11 @@ function detect_boot_image_location() {
   echo "$image_location"
 }
 
+# If android logging is not explicitly set, only print warnings and errors.
+if [ -z "$ANDROID_LOG_TAGS" ]; then
+  ANDROID_LOG_TAGS='*:w'
+fi
+
 # Runs dalvikvm, returns its exit code.
 # (Oat directories are cleaned up in between runs)
 function run_art() {
@@ -229,15 +234,16 @@ function run_art() {
   # First cleanup any left-over 'oat' files from the last time dalvikvm was run.
   cleanup_oat_directory_for_classpath "$@"
   # Run dalvikvm.
-  verbose_run ANDROID_DATA=$ANDROID_DATA               \
-              ANDROID_ROOT=$ANDROID_ROOT               \
-              LD_LIBRARY_PATH=$LD_LIBRARY_PATH         \
-              PATH=$ANDROID_ROOT/bin:$PATH             \
-              LD_USE_LOAD_BIAS=1                       \
-              $LAUNCH_WRAPPER $ART_BINARY_PATH $lib    \
-              -XXlib:$LIBART                           \
-              -Xnorelocate                             \
-              -Ximage:"$image_location"                \
+  verbose_run ANDROID_DATA="$ANDROID_DATA"                  \
+              ANDROID_ROOT="$ANDROID_ROOT"                  \
+              LD_LIBRARY_PATH="$LD_LIBRARY_PATH"            \
+              PATH="$ANDROID_ROOT/bin:$PATH"                \
+              LD_USE_LOAD_BIAS=1                            \
+              ANDROID_LOG_TAGS="$ANDROID_LOG_TAGS"          \
+              $LAUNCH_WRAPPER $ART_BINARY_PATH $lib         \
+              -XXlib:"$LIBART"                              \
+              -Xnorelocate                                  \
+              -Ximage:"$image_location"                     \
               "$@"
   ret=$?
 
