@@ -511,7 +511,7 @@ bool IndirectReferenceTable::EnsureFreeCapacity(size_t free_capacity, std::strin
   return true;
 }
 
-size_t IndirectReferenceTable::FreeCapacity() {
+size_t IndirectReferenceTable::FreeCapacity() const {
   return max_entries_ - segment_state_.top_index;
 }
 
