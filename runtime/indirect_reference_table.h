@@ -293,7 +293,7 @@ class IndirectReferenceTable {
       REQUIRES_SHARED(Locks::mutator_lock_);
   // See implementation of EnsureFreeCapacity. We'll only state here how much is trivially free,
   // without recovering holes. Thus this is a conservative estimate.
-  size_t FreeCapacity() REQUIRES_SHARED(Locks::mutator_lock_);
+  size_t FreeCapacity() const;
 
   // Note IrtIterator does not have a read barrier as it's used to visit roots.
   IrtIterator begin() {
