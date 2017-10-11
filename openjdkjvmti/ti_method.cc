@@ -572,8 +572,9 @@ class CommonLocalVariableClosure : public art::Closure {
       return;
     }
     art::ArtMethod* method = visitor.GetMethod();
-    if (method->IsNative()) {
-      // TODO We really should support get/set for non-shadow frames.
+    // Native and 'art' proxy methods don't have registers.
+    if (method->IsNative() || method->IsProxyMethod()) {
+      // TODO It might be useful to fake up support for get at least on proxy frames.
       result_ = ERR(OPAQUE_FRAME);
       return;
     } else if (method->GetCodeItem()->registers_size_ <= slot_) {
