@@ -42,6 +42,7 @@
 #include "dex_file_verifier.h"
 #include "jvalue.h"
 #include "leb128.h"
+#include "native_dex_file.h"
 #include "os.h"
 #include "utf-inl.h"
 #include "utils.h"
@@ -60,18 +61,6 @@ static constexpr OatDexFile* kNoOatDexFile = nullptr;
 
 const char* DexFile::kClassesDex = "classes.dex";
 
-const uint8_t DexFile::kDexMagic[] = { 'd', 'e', 'x', '\n' };
-const uint8_t DexFile::kDexMagicVersions[DexFile::kNumDexVersions][DexFile::kDexVersionLen] = {
-  {'0', '3', '5', '\0'},
-  // Dex version 036 skipped because of an old dalvik bug on some versions of android where dex
-  // files with that version number would erroneously be accepted and run.
-  {'0', '3', '7', '\0'},
-  // Dex version 038: Android "O".
-  {'0', '3', '8', '\0'},
-  // Dex verion 039: Beyond Android "O".
-  {'0', '3', '9', '\0'},
-};
-
 uint32_t DexFile::CalculateChecksum() const {
   const uint32_t non_sum = OFFSETOF_MEMBER(DexFile::Header, signature_);
   const uint8_t* non_sum_ptr = Begin() + non_sum;
@@ -82,6 +71,14 @@ struct DexFile::AnnotationValue {
   JValue value_;
   uint8_t type_;
 };
+
+bool DexFile::IsValidMagic(uint32_t magic) {
+  return IsValidMagic(reinterpret_cast<uint8_t*>(&magic));
+}
+
+bool DexFile::IsValidMagic(const uint8_t* magic) {
+  return NativeDexFile::IsMagicValid(magic);
+}
 
 bool DexFile::GetMultiDexChecksums(const char* filename,
                                    std::vector<uint32_t>* checksums,
@@ -119,7 +116,7 @@ bool DexFile::GetMultiDexChecksums(const char* filename,
     } while (zip_entry.get() != nullptr);
     return true;
   }
-  if (IsDexMagic(magic)) {
+  if (IsValidMagic(magic)) {
     std::unique_ptr<const DexFile> dex_file(
         DexFile::OpenFile(fd.Release(), filename, false, false, error_msg));
     if (dex_file.get() == nullptr) {
@@ -161,7 +158,6 @@ bool DexFile::DisableWrite() const {
     return mem_map_->Protect(PROT_READ);
   }
 }
-
 
 std::unique_ptr<const DexFile> DexFile::Open(const uint8_t* base,
                                              size_t size,
@@ -228,7 +224,7 @@ bool DexFile::Open(const char* filename,
   if (IsZipMagic(magic)) {
     return DexFile::OpenZip(fd.Release(), location, verify_checksum, error_msg, dex_files);
   }
-  if (IsDexMagic(magic)) {
+  if (IsValidMagic(magic)) {
     std::unique_ptr<const DexFile> dex_file(DexFile::OpenFile(fd.Release(),
                                                               location,
                                                               /* verify */ true,
@@ -492,11 +488,10 @@ std::unique_ptr<DexFile> DexFile::OpenCommon(const uint8_t* base,
   if (verify_result != nullptr) {
     *verify_result = VerifyResult::kVerifyNotAttempted;
   }
-  std::unique_ptr<DexFile> dex_file(new DexFile(base,
-                                                size,
-                                                location,
-                                                location_checksum,
-                                                oat_dex_file));
+  std::unique_ptr<DexFile> dex_file;
+  if (NativeDexFile::IsMagicValid(base)) {
+    dex_file.reset(new NativeDexFile(base, size, location, location_checksum, oat_dex_file));
+  }
   if (dex_file == nullptr) {
     *error_msg = StringPrintf("Failed to open dex file '%s' from memory: %s", location.c_str(),
                               error_msg->c_str());
@@ -569,7 +564,7 @@ bool DexFile::Init(std::string* error_msg) {
 }
 
 bool DexFile::CheckMagicAndVersion(std::string* error_msg) const {
-  if (!IsMagicValid(header_->magic_)) {
+  if (!IsMagicValid()) {
     std::ostringstream oss;
     oss << "Unrecognized magic number in "  << GetLocation() << ":"
             << " " << header_->magic_[0]
@@ -579,7 +574,7 @@ bool DexFile::CheckMagicAndVersion(std::string* error_msg) const {
     *error_msg = oss.str();
     return false;
   }
-  if (!IsVersionValid(header_->magic_)) {
+  if (!IsVersionValid()) {
     std::ostringstream oss;
     oss << "Unrecognized version number in "  << GetLocation() << ":"
             << " " << header_->magic_[4]
@@ -619,22 +614,8 @@ void DexFile::InitializeSectionsFromMapList() {
   }
 }
 
-bool DexFile::IsMagicValid(const uint8_t* magic) {
-  return (memcmp(magic, kDexMagic, sizeof(kDexMagic)) == 0);
-}
-
-bool DexFile::IsVersionValid(const uint8_t* magic) {
-  const uint8_t* version = &magic[sizeof(kDexMagic)];
-  for (uint32_t i = 0; i < kNumDexVersions; i++) {
-    if (memcmp(version, kDexMagicVersions[i], kDexVersionLen) == 0) {
-      return true;
-    }
-  }
-  return false;
-}
-
 uint32_t DexFile::Header::GetVersion() const {
-  const char* version = reinterpret_cast<const char*>(&magic_[sizeof(kDexMagic)]);
+  const char* version = reinterpret_cast<const char*>(&magic_[kDexMagicSize]);
   return atoi(version);
 }
 

@@ -152,6 +152,7 @@ cc_defaults {
         "mirror/throwable.cc",
         "monitor.cc",
         "native_bridge_art_interface.cc",
+        "native_dex_file.cc",
         "native_stack_dump.cc",
         "native/dalvik_system_DexFile.cc",
         "native/dalvik_system_VMDebug.cc",
