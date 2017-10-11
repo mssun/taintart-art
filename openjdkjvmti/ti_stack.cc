@@ -789,7 +789,7 @@ jvmtiError StackUtil::GetFrameLocation(jvmtiEnv* env ATTRIBUTE_UNUSED,
   }
 
   *method_ptr = art::jni::EncodeArtMethod(closure.method);
-  if (closure.method->IsNative() || closure.method->IsProxyMethod()) {
+  if (closure.method->IsNative()) {
     *location_ptr = -1;
   } else {
     if (closure.dex_pc == art::dex::kDexNoIndex) {

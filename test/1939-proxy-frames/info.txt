@@ -1,2 +1,0 @@
-Test for jvmti get local instance
-
