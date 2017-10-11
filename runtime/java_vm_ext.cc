@@ -617,7 +617,7 @@ void JavaVMExt::CheckGlobalRefAllocationTracking() {
         ScopedThreadSuspension sts(soa.Self(), ThreadState::kNative);
         gc::AllocRecordObjectMap::SetAllocTrackingEnabled(false);
       }
-      allocation_tracking_enabled_ = true;
+      allocation_tracking_enabled_ = false;
     }
   }
 }
