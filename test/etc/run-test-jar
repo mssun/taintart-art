@@ -71,9 +71,9 @@ VDEX_FILTER=""
 PROFILE="n"
 RANDOM_PROFILE="n"
 # The normal dex2oat timeout.
-DEX2OAT_TIMEOUT="60"
+DEX2OAT_TIMEOUT="300" # 5 mins
 # The *hard* timeout where we really start trying to kill the dex2oat.
-DEX2OAT_RT_TIMEOUT="90"
+DEX2OAT_RT_TIMEOUT="360" # 6 mins
 
 # if "y", set -Xstacktracedir and inform the test of its location. When
 # this is set, stack trace dumps (from signal 3) will be written to a file
