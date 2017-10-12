@@ -17,15 +17,23 @@
 #include "instruction_builder.h"
 
 #include "art_method-inl.h"
+#include "base/arena_bit_vector.h"
+#include "base/bit_vector-inl.h"
+#include "block_builder.h"
 #include "bytecode_utils.h"
 #include "class_linker.h"
 #include "data_type-inl.h"
 #include "dex_instruction-inl.h"
+#include "driver/compiler_driver-inl.h"
+#include "driver/dex_compilation_unit.h"
 #include "driver/compiler_options.h"
 #include "imtable-inl.h"
+#include "mirror/dex_cache.h"
+#include "optimizing_compiler_stats.h"
 #include "quicken_info.h"
 #include "scoped_thread_state_change-inl.h"
 #include "sharpening.h"
+#include "ssa_builder.h"
 #include "well_known_classes.h"
 
 namespace art {
@@ -34,8 +42,8 @@ HBasicBlock* HInstructionBuilder::FindBlockStartingAt(uint32_t dex_pc) const {
   return block_builder_->GetBlockAt(dex_pc);
 }
 
-inline ArenaVector<HInstruction*>* HInstructionBuilder::GetLocalsFor(HBasicBlock* block) {
-  ArenaVector<HInstruction*>* locals = &locals_for_[block->GetBlockId()];
+inline ScopedArenaVector<HInstruction*>* HInstructionBuilder::GetLocalsFor(HBasicBlock* block) {
+  ScopedArenaVector<HInstruction*>* locals = &locals_for_[block->GetBlockId()];
   const size_t vregs = graph_->GetNumberOfVRegs();
   if (locals->size() == vregs) {
     return locals;
@@ -43,9 +51,9 @@ inline ArenaVector<HInstruction*>* HInstructionBuilder::GetLocalsFor(HBasicBlock
   return GetLocalsForWithAllocation(block, locals, vregs);
 }
 
-ArenaVector<HInstruction*>* HInstructionBuilder::GetLocalsForWithAllocation(
+ScopedArenaVector<HInstruction*>* HInstructionBuilder::GetLocalsForWithAllocation(
     HBasicBlock* block,
-    ArenaVector<HInstruction*>* locals,
+    ScopedArenaVector<HInstruction*>* locals,
     const size_t vregs) {
   DCHECK_NE(locals->size(), vregs);
   locals->resize(vregs, nullptr);
@@ -73,7 +81,7 @@ ArenaVector<HInstruction*>* HInstructionBuilder::GetLocalsForWithAllocation(
 }
 
 inline HInstruction* HInstructionBuilder::ValueOfLocalAt(HBasicBlock* block, size_t local) {
-  ArenaVector<HInstruction*>* locals = GetLocalsFor(block);
+  ScopedArenaVector<HInstruction*>* locals = GetLocalsFor(block);
   return (*locals)[local];
 }
 
@@ -168,7 +176,7 @@ void HInstructionBuilder::InitializeBlockLocals() {
 void HInstructionBuilder::PropagateLocalsToCatchBlocks() {
   const HTryBoundary& try_entry = current_block_->GetTryCatchInformation()->GetTryEntry();
   for (HBasicBlock* catch_block : try_entry.GetExceptionHandlers()) {
-    ArenaVector<HInstruction*>* handler_locals = GetLocalsFor(catch_block);
+    ScopedArenaVector<HInstruction*>* handler_locals = GetLocalsFor(catch_block);
     DCHECK_EQ(handler_locals->size(), current_locals_->size());
     for (size_t vreg = 0, e = current_locals_->size(); vreg < e; ++vreg) {
       HInstruction* handler_value = (*handler_locals)[vreg];
@@ -216,7 +224,7 @@ void HInstructionBuilder::InitializeInstruction(HInstruction* instruction) {
         graph_->GetArtMethod(),
         instruction->GetDexPc(),
         instruction);
-    environment->CopyFrom(*current_locals_);
+    environment->CopyFrom(ArrayRef<HInstruction* const>(*current_locals_));
     instruction->SetRawEnvironment(environment);
   }
 }
@@ -264,8 +272,9 @@ static bool IsBlockPopulated(HBasicBlock* block) {
 }
 
 bool HInstructionBuilder::Build() {
-  locals_for_.resize(graph_->GetBlocks().size(),
-                     ArenaVector<HInstruction*>(allocator_->Adapter(kArenaAllocGraphBuilder)));
+  locals_for_.resize(
+      graph_->GetBlocks().size(),
+      ScopedArenaVector<HInstruction*>(local_allocator_->Adapter(kArenaAllocGraphBuilder)));
 
   // Find locations where we want to generate extra stackmaps for native debugging.
   // This allows us to generate the info only at interesting points (for example,
@@ -274,10 +283,7 @@ bool HInstructionBuilder::Build() {
                                  compiler_driver_->GetCompilerOptions().GetNativeDebuggable();
   ArenaBitVector* native_debug_info_locations = nullptr;
   if (native_debuggable) {
-    const uint32_t num_instructions = code_item_.insns_size_in_code_units_;
-    native_debug_info_locations =
-        new (allocator_) ArenaBitVector (allocator_, num_instructions, false);
-    FindNativeDebugInfoLocations(native_debug_info_locations);
+    native_debug_info_locations = FindNativeDebugInfoLocations();
   }
 
   for (HBasicBlock* block : graph_->GetReversePostOrder()) {
@@ -358,7 +364,7 @@ bool HInstructionBuilder::Build() {
   return true;
 }
 
-void HInstructionBuilder::FindNativeDebugInfoLocations(ArenaBitVector* locations) {
+ArenaBitVector* HInstructionBuilder::FindNativeDebugInfoLocations() {
   // The callback gets called when the line number changes.
   // In other words, it marks the start of new java statement.
   struct Callback {
@@ -367,6 +373,12 @@ void HInstructionBuilder::FindNativeDebugInfoLocations(ArenaBitVector* locations
       return false;
     }
   };
+  const uint32_t num_instructions = code_item_.insns_size_in_code_units_;
+  ArenaBitVector* locations = ArenaBitVector::Create(local_allocator_,
+                                                     num_instructions,
+                                                     /* expandable */ false,
+                                                     kArenaAllocGraphBuilder);
+  locations->ClearAllBits();
   dex_file_->DecodeDebugPositionInfo(&code_item_, Callback::Position, locations);
   // Instruction-specific tweaks.
   IterationRange<DexInstructionIterator> instructions = code_item_.Instructions();
@@ -387,6 +399,7 @@ void HInstructionBuilder::FindNativeDebugInfoLocations(ArenaBitVector* locations
         break;
     }
   }
+  return locations;
 }
 
 HInstruction* HInstructionBuilder::LoadLocal(uint32_t reg_number, DataType::Type type) const {
@@ -439,8 +452,8 @@ void HInstructionBuilder::UpdateLocal(uint32_t reg_number, HInstruction* stored_
 void HInstructionBuilder::InitializeParameters() {
   DCHECK(current_block_->IsEntryBlock());
 
-  // dex_compilation_unit_ is null only when unit testing.
-  if (dex_compilation_unit_ == nullptr) {
+  // outer_compilation_unit_ is null only when unit testing.
+  if (outer_compilation_unit_ == nullptr) {
     return;
   }
 

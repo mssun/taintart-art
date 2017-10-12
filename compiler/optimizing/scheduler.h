@@ -253,14 +253,14 @@ class SchedulingGraph : public ValueObject {
  public:
   SchedulingGraph(const HScheduler* scheduler, ScopedArenaAllocator* allocator)
       : scheduler_(scheduler),
-        arena_(allocator),
+        allocator_(allocator),
         contains_scheduling_barrier_(false),
-        nodes_map_(arena_->Adapter(kArenaAllocScheduler)),
+        nodes_map_(allocator_->Adapter(kArenaAllocScheduler)),
         heap_location_collector_(nullptr) {}
 
   SchedulingNode* AddNode(HInstruction* instr, bool is_scheduling_barrier = false) {
     std::unique_ptr<SchedulingNode> node(
-        new (arena_) SchedulingNode(instr, arena_, is_scheduling_barrier));
+        new (allocator_) SchedulingNode(instr, allocator_, is_scheduling_barrier));
     SchedulingNode* result = node.get();
     nodes_map_.Insert(std::make_pair(instr, std::move(node)));
     contains_scheduling_barrier_ |= is_scheduling_barrier;
@@ -323,7 +323,7 @@ class SchedulingGraph : public ValueObject {
 
   const HScheduler* const scheduler_;
 
-  ScopedArenaAllocator* const arena_;
+  ScopedArenaAllocator* const allocator_;
 
   bool contains_scheduling_barrier_;
 

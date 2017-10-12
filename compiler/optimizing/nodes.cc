@@ -55,14 +55,18 @@ void HGraph::FindBackEdges(ArenaBitVector* visited) {
   // "visited" must be empty on entry, it's an output argument for all visited (i.e. live) blocks.
   DCHECK_EQ(visited->GetHighestBitSet(), -1);
 
+  // Allocate memory from local ScopedArenaAllocator.
+  ScopedArenaAllocator allocator(GetArenaStack());
   // Nodes that we're currently visiting, indexed by block id.
-  ArenaBitVector visiting(allocator_, blocks_.size(), false, kArenaAllocGraphBuilder);
+  ArenaBitVector visiting(
+      &allocator, blocks_.size(), /* expandable */ false, kArenaAllocGraphBuilder);
+  visiting.ClearAllBits();
   // Number of successors visited from a given node, indexed by block id.
-  ArenaVector<size_t> successors_visited(blocks_.size(),
-                                         0u,
-                                         allocator_->Adapter(kArenaAllocGraphBuilder));
+  ScopedArenaVector<size_t> successors_visited(blocks_.size(),
+                                               0u,
+                                               allocator.Adapter(kArenaAllocGraphBuilder));
   // Stack of nodes that we're currently visiting (same as marked in "visiting" above).
-  ArenaVector<HBasicBlock*> worklist(allocator_->Adapter(kArenaAllocGraphBuilder));
+  ScopedArenaVector<HBasicBlock*> worklist(allocator.Adapter(kArenaAllocGraphBuilder));
   constexpr size_t kDefaultWorklistSize = 8;
   worklist.reserve(kDefaultWorklistSize);
   visited->SetBit(entry_block_->GetBlockId());
@@ -173,7 +177,11 @@ void HGraph::RemoveDeadBlocks(const ArenaBitVector& visited) {
 }
 
 GraphAnalysisResult HGraph::BuildDominatorTree() {
-  ArenaBitVector visited(allocator_, blocks_.size(), false, kArenaAllocGraphBuilder);
+  // Allocate memory from local ScopedArenaAllocator.
+  ScopedArenaAllocator allocator(GetArenaStack());
+
+  ArenaBitVector visited(&allocator, blocks_.size(), false, kArenaAllocGraphBuilder);
+  visited.ClearAllBits();
 
   // (1) Find the back edges in the graph doing a DFS traversal.
   FindBackEdges(&visited);
@@ -258,14 +266,16 @@ void HGraph::ComputeDominanceInformation() {
   reverse_post_order_.reserve(blocks_.size());
   reverse_post_order_.push_back(entry_block_);
 
+  // Allocate memory from local ScopedArenaAllocator.
+  ScopedArenaAllocator allocator(GetArenaStack());
   // Number of visits of a given node, indexed by block id.
-  ArenaVector<size_t> visits(blocks_.size(), 0u, allocator_->Adapter(kArenaAllocGraphBuilder));
+  ScopedArenaVector<size_t> visits(blocks_.size(), 0u, allocator.Adapter(kArenaAllocGraphBuilder));
   // Number of successors visited from a given node, indexed by block id.
-  ArenaVector<size_t> successors_visited(blocks_.size(),
-                                         0u,
-                                         allocator_->Adapter(kArenaAllocGraphBuilder));
+  ScopedArenaVector<size_t> successors_visited(blocks_.size(),
+                                               0u,
+                                               allocator.Adapter(kArenaAllocGraphBuilder));
   // Nodes for which we need to visit successors.
-  ArenaVector<HBasicBlock*> worklist(allocator_->Adapter(kArenaAllocGraphBuilder));
+  ScopedArenaVector<HBasicBlock*> worklist(allocator.Adapter(kArenaAllocGraphBuilder));
   constexpr size_t kDefaultWorklistSize = 8;
   worklist.reserve(kDefaultWorklistSize);
   worklist.push_back(entry_block_);
@@ -710,10 +720,13 @@ void HLoopInformation::Populate() {
   bool is_irreducible_loop = HasBackEdgeNotDominatedByHeader();
 
   if (is_irreducible_loop) {
-    ArenaBitVector visited(graph->GetAllocator(),
+    // Allocate memory from local ScopedArenaAllocator.
+    ScopedArenaAllocator allocator(graph->GetArenaStack());
+    ArenaBitVector visited(&allocator,
                            graph->GetBlocks().size(),
                            /* expandable */ false,
                            kArenaAllocGraphBuilder);
+    visited.ClearAllBits();
     // Stop marking blocks at the loop header.
     visited.SetBit(header_->GetBlockId());
 
@@ -942,7 +955,7 @@ void HBasicBlock::RemoveInstructionOrPhi(HInstruction* instruction, bool ensure_
   }
 }
 
-void HEnvironment::CopyFrom(const ArenaVector<HInstruction*>& locals) {
+void HEnvironment::CopyFrom(ArrayRef<HInstruction* const> locals) {
   for (size_t i = 0; i < locals.size(); i++) {
     HInstruction* instruction = locals[i];
     SetRawEnvAt(i, instruction);

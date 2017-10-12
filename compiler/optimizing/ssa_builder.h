@@ -17,7 +17,8 @@
 #ifndef ART_COMPILER_OPTIMIZING_SSA_BUILDER_H_
 #define ART_COMPILER_OPTIMIZING_SSA_BUILDER_H_
 
-#include "base/arena_containers.h"
+#include "base/scoped_arena_allocator.h"
+#include "base/scoped_arena_containers.h"
 #include "nodes.h"
 #include "optimization.h"
 
@@ -50,15 +51,17 @@ class SsaBuilder : public ValueObject {
   SsaBuilder(HGraph* graph,
              Handle<mirror::ClassLoader> class_loader,
              Handle<mirror::DexCache> dex_cache,
-             VariableSizedHandleScope* handles)
+             VariableSizedHandleScope* handles,
+             ScopedArenaAllocator* local_allocator)
       : graph_(graph),
         class_loader_(class_loader),
         dex_cache_(dex_cache),
         handles_(handles),
         agets_fixed_(false),
-        ambiguous_agets_(graph->GetAllocator()->Adapter(kArenaAllocGraphBuilder)),
-        ambiguous_asets_(graph->GetAllocator()->Adapter(kArenaAllocGraphBuilder)),
-        uninitialized_strings_(graph->GetAllocator()->Adapter(kArenaAllocGraphBuilder)) {
+        local_allocator_(local_allocator),
+        ambiguous_agets_(local_allocator->Adapter(kArenaAllocGraphBuilder)),
+        ambiguous_asets_(local_allocator->Adapter(kArenaAllocGraphBuilder)),
+        uninitialized_strings_(local_allocator->Adapter(kArenaAllocGraphBuilder)) {
     graph_->InitializeInexactObjectRTI(handles);
   }
 
@@ -105,9 +108,9 @@ class SsaBuilder : public ValueObject {
   // input. Returns false if the type of an array is unknown.
   bool FixAmbiguousArrayOps();
 
-  bool TypeInputsOfPhi(HPhi* phi, ArenaVector<HPhi*>* worklist);
-  bool UpdatePrimitiveType(HPhi* phi, ArenaVector<HPhi*>* worklist);
-  void ProcessPrimitiveTypePropagationWorklist(ArenaVector<HPhi*>* worklist);
+  bool TypeInputsOfPhi(HPhi* phi, ScopedArenaVector<HPhi*>* worklist);
+  bool UpdatePrimitiveType(HPhi* phi, ScopedArenaVector<HPhi*>* worklist);
+  void ProcessPrimitiveTypePropagationWorklist(ScopedArenaVector<HPhi*>* worklist);
 
   HFloatConstant* GetFloatEquivalent(HIntConstant* constant);
   HDoubleConstant* GetDoubleEquivalent(HLongConstant* constant);
@@ -116,7 +119,7 @@ class SsaBuilder : public ValueObject {
 
   void RemoveRedundantUninitializedStrings();
 
-  HGraph* graph_;
+  HGraph* const graph_;
   Handle<mirror::ClassLoader> class_loader_;
   Handle<mirror::DexCache> dex_cache_;
   VariableSizedHandleScope* const handles_;
@@ -124,9 +127,10 @@ class SsaBuilder : public ValueObject {
   // True if types of ambiguous ArrayGets have been resolved.
   bool agets_fixed_;
 
-  ArenaVector<HArrayGet*> ambiguous_agets_;
-  ArenaVector<HArraySet*> ambiguous_asets_;
-  ArenaVector<HNewInstance*> uninitialized_strings_;
+  ScopedArenaAllocator* const local_allocator_;
+  ScopedArenaVector<HArrayGet*> ambiguous_agets_;
+  ScopedArenaVector<HArraySet*> ambiguous_asets_;
+  ScopedArenaVector<HNewInstance*> uninitialized_strings_;
 
   DISALLOW_COPY_AND_ASSIGN(SsaBuilder);
 };
