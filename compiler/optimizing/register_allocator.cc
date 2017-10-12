@@ -53,6 +53,21 @@ std::unique_ptr<RegisterAllocator> RegisterAllocator::Create(ScopedArenaAllocato
   }
 }
 
+RegisterAllocator::~RegisterAllocator() {
+  if (kIsDebugBuild) {
+    // Poison live interval pointers with "Error: BAD 71ve1nt3rval."
+    LiveInterval* bad_live_interval = reinterpret_cast<LiveInterval*>(0xebad7113u);
+    for (HBasicBlock* block : codegen_->GetGraph()->GetLinearOrder()) {
+      for (HInstructionIterator it(block->GetPhis()); !it.Done(); it.Advance()) {
+        it.Current()->SetLiveInterval(bad_live_interval);
+      }
+      for (HInstructionIterator it(block->GetInstructions()); !it.Done(); it.Advance()) {
+        it.Current()->SetLiveInterval(bad_live_interval);
+      }
+    }
+  }
+}
+
 bool RegisterAllocator::CanAllocateRegistersFor(const HGraph& graph ATTRIBUTE_UNUSED,
                                                 InstructionSet instruction_set) {
   return instruction_set == kArm
