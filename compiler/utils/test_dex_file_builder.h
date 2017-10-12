@@ -26,6 +26,7 @@
 
 #include "base/bit_utils.h"
 #include "base/logging.h"
+#include "dex_file_loader.h"
 #include "native_dex_file.h"
 
 namespace art {
@@ -231,7 +232,7 @@ class TestDexFileBuilder {
     static constexpr bool kVerify = false;
     static constexpr bool kVerifyChecksum = false;
     std::string error_msg;
-    std::unique_ptr<const DexFile> dex_file(DexFile::Open(
+    std::unique_ptr<const DexFile> dex_file(DexFileLoader::Open(
         &dex_file_data_[0],
         dex_file_data_.size(),
         dex_location,

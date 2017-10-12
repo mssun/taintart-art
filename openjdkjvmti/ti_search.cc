@@ -39,6 +39,7 @@
 #include "base/macros.h"
 #include "class_linker.h"
 #include "dex_file.h"
+#include "dex_file_loader.h"
 #include "jni_internal.h"
 #include "mirror/class-inl.h"
 #include "mirror/object.h"
@@ -226,7 +227,7 @@ jvmtiError SearchUtil::AddToBootstrapClassLoaderSearch(jvmtiEnv* env ATTRIBUTE_U
 
   std::string error_msg;
   std::vector<std::unique_ptr<const art::DexFile>> dex_files;
-  if (!art::DexFile::Open(segment, segment, true, &error_msg, &dex_files)) {
+  if (!art::DexFileLoader::Open(segment, segment, true, &error_msg, &dex_files)) {
     LOG(WARNING) << "Could not open " << segment << " for boot classpath extension: " << error_msg;
     return ERR(ILLEGAL_ARGUMENT);
   }

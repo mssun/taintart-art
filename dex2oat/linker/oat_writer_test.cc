@@ -26,6 +26,7 @@
 #include "compiled_method-inl.h"
 #include "compiler.h"
 #include "debug/method_debug_info.h"
+#include "dex_file_loader.h"
 #include "dex/quick_compiler_callbacks.h"
 #include "dex/verification_results.h"
 #include "driver/compiler_driver.h"
@@ -745,14 +746,14 @@ void OatTest::TestZipFileInput(bool verify) {
       ASSERT_EQ(0, memcmp(&dex_file1_data->GetHeader(),
                           &opened_dex_file1->GetHeader(),
                           dex_file1_data->GetHeader().file_size_));
-      ASSERT_EQ(DexFile::GetMultiDexLocation(0, zip_file.GetFilename().c_str()),
+      ASSERT_EQ(DexFileLoader::GetMultiDexLocation(0, zip_file.GetFilename().c_str()),
                 opened_dex_file1->GetLocation());
 
       ASSERT_EQ(dex_file2_data->GetHeader().file_size_, opened_dex_file2->GetHeader().file_size_);
       ASSERT_EQ(0, memcmp(&dex_file2_data->GetHeader(),
                           &opened_dex_file2->GetHeader(),
                           dex_file2_data->GetHeader().file_size_));
-      ASSERT_EQ(DexFile::GetMultiDexLocation(1, zip_file.GetFilename().c_str()),
+      ASSERT_EQ(DexFileLoader::GetMultiDexLocation(1, zip_file.GetFilename().c_str()),
                 opened_dex_file2->GetLocation());
     }
   }
@@ -794,14 +795,14 @@ void OatTest::TestZipFileInput(bool verify) {
       ASSERT_EQ(0, memcmp(&dex_file1_data->GetHeader(),
                           &opened_dex_file1->GetHeader(),
                           dex_file1_data->GetHeader().file_size_));
-      ASSERT_EQ(DexFile::GetMultiDexLocation(0, zip_file.GetFilename().c_str()),
+      ASSERT_EQ(DexFileLoader::GetMultiDexLocation(0, zip_file.GetFilename().c_str()),
                 opened_dex_file1->GetLocation());
 
       ASSERT_EQ(dex_file2_data->GetHeader().file_size_, opened_dex_file2->GetHeader().file_size_);
       ASSERT_EQ(0, memcmp(&dex_file2_data->GetHeader(),
                           &opened_dex_file2->GetHeader(),
                           dex_file2_data->GetHeader().file_size_));
-      ASSERT_EQ(DexFile::GetMultiDexLocation(1, zip_file.GetFilename().c_str()),
+      ASSERT_EQ(DexFileLoader::GetMultiDexLocation(1, zip_file.GetFilename().c_str()),
                 opened_dex_file2->GetLocation());
     }
   }

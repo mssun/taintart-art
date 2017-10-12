@@ -35,6 +35,7 @@
 
 #include "dex_file-inl.h"
 #include "dex_file_layout.h"
+#include "dex_file_loader.h"
 #include "dex_file_types.h"
 #include "dex_file_verifier.h"
 #include "dex_instruction-inl.h"
@@ -1929,14 +1930,14 @@ void DexLayout::OutputDexFile(const DexFile* dex_file) {
   // Verify the output dex file's structure for debug builds.
   if (kIsDebugBuild) {
     std::string location = "memory mapped file for " + dex_file_location;
-    std::unique_ptr<const DexFile> output_dex_file(DexFile::Open(mem_map_->Begin(),
-                                                                 mem_map_->Size(),
-                                                                 location,
-                                                                 header_->Checksum(),
-                                                                 /*oat_dex_file*/ nullptr,
-                                                                 /*verify*/ true,
-                                                                 /*verify_checksum*/ false,
-                                                                 &error_msg));
+    std::unique_ptr<const DexFile> output_dex_file(DexFileLoader::Open(mem_map_->Begin(),
+                                                                       mem_map_->Size(),
+                                                                       location,
+                                                                       header_->Checksum(),
+                                                                       /*oat_dex_file*/ nullptr,
+                                                                       /*verify*/ true,
+                                                                       /*verify_checksum*/ false,
+                                                                       &error_msg));
     DCHECK(output_dex_file != nullptr) << "Failed to re-open output file:" << error_msg;
   }
   // Do IR-level comparison between input and output. This check ignores potential differences
@@ -1998,7 +1999,7 @@ int DexLayout::ProcessFile(const char* file_name) {
   const bool verify_checksum = !options_.ignore_bad_checksum_;
   std::string error_msg;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  if (!DexFile::Open(file_name, file_name, verify_checksum, &error_msg, &dex_files)) {
+  if (!DexFileLoader::Open(file_name, file_name, verify_checksum, &error_msg, &dex_files)) {
     // Display returned error message to user. Note that this error behavior
     // differs from the error messages shown by the original Dalvik dexdump.
     fputs(error_msg.c_str(), stderr);

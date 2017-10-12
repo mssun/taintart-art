@@ -27,6 +27,7 @@
 #include "base/stl_util.h"
 #include "class_linker.h"
 #include "compiler_filter.h"
+#include "dex_file_loader.h"
 #include "exec_utils.h"
 #include "gc/heap.h"
 #include "gc/space/image_space.h"
@@ -349,7 +350,7 @@ bool OatFileAssistant::LoadDexFiles(
 
   // Load the rest of the multidex entries
   for (size_t i = 1;; i++) {
-    std::string multidex_dex_location = DexFile::GetMultiDexLocation(i, dex_location.c_str());
+    std::string multidex_dex_location = DexFileLoader::GetMultiDexLocation(i, dex_location.c_str());
     oat_dex_file = oat_file.GetOatDexFile(multidex_dex_location.c_str(), nullptr);
     if (oat_dex_file == nullptr) {
       // There are no more multidex entries to load.
@@ -401,7 +402,7 @@ bool OatFileAssistant::DexChecksumUpToDate(const VdexFile& file, std::string* er
     uint32_t expected_checksum = (*required_dex_checksums)[i];
     uint32_t actual_checksum = file.GetLocationChecksum(i);
     if (expected_checksum != actual_checksum) {
-      std::string dex = DexFile::GetMultiDexLocation(i, dex_location_.c_str());
+      std::string dex = DexFileLoader::GetMultiDexLocation(i, dex_location_.c_str());
       *error_msg = StringPrintf("Dex checksum does not match for dex: %s."
                                 "Expected: %u, actual: %u",
                                 dex.c_str(),
@@ -430,7 +431,7 @@ bool OatFileAssistant::DexChecksumUpToDate(const OatFile& file, std::string* err
   }
 
   for (uint32_t i = 0; i < number_of_dex_files; i++) {
-    std::string dex = DexFile::GetMultiDexLocation(i, dex_location_.c_str());
+    std::string dex = DexFileLoader::GetMultiDexLocation(i, dex_location_.c_str());
     uint32_t expected_checksum = (*required_dex_checksums)[i];
     const OatFile::OatDexFile* oat_dex_file = file.GetOatDexFile(dex.c_str(), nullptr);
     if (oat_dex_file == nullptr) {
@@ -863,9 +864,9 @@ const std::vector<uint32_t>* OatFileAssistant::GetRequiredDexChecksums() {
     required_dex_checksums_found_ = false;
     cached_required_dex_checksums_.clear();
     std::string error_msg;
-    if (DexFile::GetMultiDexChecksums(dex_location_.c_str(),
-                                      &cached_required_dex_checksums_,
-                                      &error_msg)) {
+    if (DexFileLoader::GetMultiDexChecksums(dex_location_.c_str(),
+                                            &cached_required_dex_checksums_,
+                                            &error_msg)) {
       required_dex_checksums_found_ = true;
       has_original_dex_files_ = true;
     } else {
@@ -879,7 +880,7 @@ const std::vector<uint32_t>* OatFileAssistant::GetRequiredDexChecksums() {
       if (odex_file != nullptr) {
         required_dex_checksums_found_ = true;
         for (size_t i = 0; i < odex_file->GetOatHeader().GetDexFileCount(); i++) {
-          std::string dex = DexFile::GetMultiDexLocation(i, dex_location_.c_str());
+          std::string dex = DexFileLoader::GetMultiDexLocation(i, dex_location_.c_str());
           const OatFile::OatDexFile* odex_dex_file = odex_file->GetOatDexFile(dex.c_str(), nullptr);
           if (odex_dex_file == nullptr) {
             required_dex_checksums_found_ = false;
