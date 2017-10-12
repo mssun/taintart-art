@@ -22,7 +22,9 @@
 #include "common_compiler_test.h"
 #include "dex_file.h"
 #include "dex_instruction.h"
-#include "handle_scope.h"
+#include "handle_scope-inl.h"
+#include "mirror/class_loader.h"
+#include "mirror/dex_cache.h"
 #include "nodes.h"
 #include "scoped_thread_state_change.h"
 #include "ssa_builder.h"
@@ -123,8 +125,7 @@ class OptimizingUnitTest : public CommonCompilerTest {
 
   // Create a control-flow graph from Dex instructions.
   HGraph* CreateCFG(const uint16_t* data, DataType::Type return_type = DataType::Type::kInt32) {
-    const DexFile::CodeItem* item =
-      reinterpret_cast<const DexFile::CodeItem*>(data);
+    const DexFile::CodeItem* code_item = reinterpret_cast<const DexFile::CodeItem*>(data);
     HGraph* graph = CreateGraph();
 
     {
@@ -132,7 +133,19 @@ class OptimizingUnitTest : public CommonCompilerTest {
       if (handles_ == nullptr) {
         handles_.reset(new VariableSizedHandleScope(soa.Self()));
       }
-      HGraphBuilder builder(graph, *item, handles_.get(), return_type);
+      const DexFile* dex_file = graph->GetAllocator()->Alloc<DexFile>();
+      const DexCompilationUnit* dex_compilation_unit =
+          new (graph->GetAllocator()) DexCompilationUnit(
+              handles_->NewHandle<mirror::ClassLoader>(nullptr),
+              /* class_linker */ nullptr,
+              *dex_file,
+              code_item,
+              /* class_def_index */ DexFile::kDexNoIndex16,
+              /* method_idx */ dex::kDexNoIndex,
+              /* access_flags */ 0u,
+              /* verified_method */ nullptr,
+              handles_->NewHandle<mirror::DexCache>(nullptr));
+      HGraphBuilder builder(graph, dex_compilation_unit, *code_item, handles_.get(), return_type);
       bool graph_built = (builder.BuildGraph() == kAnalysisSuccess);
       return graph_built ? graph : nullptr;
     }

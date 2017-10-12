@@ -17,7 +17,8 @@
 #include "ssa_phi_elimination.h"
 
 #include "base/arena_bit_vector.h"
-#include "base/arena_containers.h"
+#include "base/scoped_arena_allocator.h"
+#include "base/scoped_arena_containers.h"
 #include "base/bit_vector-inl.h"
 
 namespace art {
@@ -28,10 +29,17 @@ void SsaDeadPhiElimination::Run() {
 }
 
 void SsaDeadPhiElimination::MarkDeadPhis() {
+  // Use local allocator for allocating memory used by this optimization.
+  ScopedArenaAllocator allocator(graph_->GetArenaStack());
+
+  static constexpr size_t kDefaultWorklistSize = 8;
+  ScopedArenaVector<HPhi*> worklist(allocator.Adapter(kArenaAllocSsaPhiElimination));
+  worklist.reserve(kDefaultWorklistSize);
+
   // Phis are constructed live and should not be revived if previously marked
   // dead. This algorithm temporarily breaks that invariant but we DCHECK that
   // only phis which were initially live are revived.
-  ArenaSet<HPhi*> initially_live(graph_->GetAllocator()->Adapter(kArenaAllocSsaPhiElimination));
+  ScopedArenaSet<HPhi*> initially_live(allocator.Adapter(kArenaAllocSsaPhiElimination));
 
   // Add to the worklist phis referenced by non-phi instructions.
   for (HBasicBlock* block : graph_->GetReversePostOrder()) {
@@ -52,7 +60,7 @@ void SsaDeadPhiElimination::MarkDeadPhis() {
       }
 
       if (keep_alive) {
-        worklist_.push_back(phi);
+        worklist.push_back(phi);
       } else {
         phi->SetDead();
         if (kIsDebugBuild) {
@@ -63,9 +71,9 @@ void SsaDeadPhiElimination::MarkDeadPhis() {
   }
 
   // Process the worklist by propagating liveness to phi inputs.
-  while (!worklist_.empty()) {
-    HPhi* phi = worklist_.back();
-    worklist_.pop_back();
+  while (!worklist.empty()) {
+    HPhi* phi = worklist.back();
+    worklist.pop_back();
     for (HInstruction* raw_input : phi->GetInputs()) {
       HPhi* input = raw_input->AsPhi();
       if (input != nullptr && input->IsDead()) {
@@ -73,7 +81,7 @@ void SsaDeadPhiElimination::MarkDeadPhis() {
         // that the phi was not dead initially (see definition of `initially_live`).
         DCHECK(ContainsElement(initially_live, input));
         input->SetLive();
-        worklist_.push_back(input);
+        worklist.push_back(input);
       }
     }
   }
@@ -115,23 +123,31 @@ void SsaDeadPhiElimination::EliminateDeadPhis() {
 }
 
 void SsaRedundantPhiElimination::Run() {
+  // Use local allocator for allocating memory used by this optimization.
+  ScopedArenaAllocator allocator(graph_->GetArenaStack());
+
+  static constexpr size_t kDefaultWorklistSize = 8;
+  ScopedArenaVector<HPhi*> worklist(allocator.Adapter(kArenaAllocSsaPhiElimination));
+  worklist.reserve(kDefaultWorklistSize);
+
   // Add all phis in the worklist. Order does not matter for correctness, and
   // neither will necessarily converge faster.
   for (HBasicBlock* block : graph_->GetReversePostOrder()) {
     for (HInstructionIterator inst_it(block->GetPhis()); !inst_it.Done(); inst_it.Advance()) {
-      worklist_.push_back(inst_it.Current()->AsPhi());
+      worklist.push_back(inst_it.Current()->AsPhi());
     }
   }
 
-  ArenaBitVector visited_phis_in_cycle(graph_->GetAllocator(),
+  ArenaBitVector visited_phis_in_cycle(&allocator,
                                        graph_->GetCurrentInstructionId(),
                                        /* expandable */ false,
                                        kArenaAllocSsaPhiElimination);
-  ArenaVector<HPhi*> cycle_worklist(graph_->GetAllocator()->Adapter(kArenaAllocSsaPhiElimination));
+  visited_phis_in_cycle.ClearAllBits();
+  ScopedArenaVector<HPhi*> cycle_worklist(allocator.Adapter(kArenaAllocSsaPhiElimination));
 
-  while (!worklist_.empty()) {
-    HPhi* phi = worklist_.back();
-    worklist_.pop_back();
+  while (!worklist.empty()) {
+    HPhi* phi = worklist.back();
+    worklist.pop_back();
 
     // If the phi has already been processed, continue.
     if (!phi->IsInBlock()) {
@@ -231,7 +247,7 @@ void SsaRedundantPhiElimination::Run() {
       for (const HUseListNode<HInstruction*>& use : current->GetUses()) {
         HInstruction* user = use.GetUser();
         if (user->IsPhi() && !visited_phis_in_cycle.IsBitSet(user->GetId())) {
-          worklist_.push_back(user->AsPhi());
+          worklist.push_back(user->AsPhi());
         }
       }
       DCHECK(candidate->StrictlyDominates(current));

@@ -1146,7 +1146,8 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
         if (total_allocated > kArenaAllocatorMemoryReportThreshold) {
           MemStats mem_stats(allocator.GetMemStats());
           MemStats peak_stats(arena_stack.GetPeakStats());
-          LOG(INFO) << dex_file.PrettyMethod(method_idx)
+          LOG(INFO) << "Used " << total_allocated << " bytes of arena memory for compiling "
+                    << dex_file.PrettyMethod(method_idx)
                     << "\n" << Dumpable<MemStats>(mem_stats)
                     << "\n" << Dumpable<MemStats>(peak_stats);
         }
@@ -1256,7 +1257,8 @@ bool OptimizingCompiler::JitCompile(Thread* self,
       if (total_allocated > kArenaAllocatorMemoryReportThreshold) {
         MemStats mem_stats(allocator.GetMemStats());
         MemStats peak_stats(arena_stack.GetPeakStats());
-        LOG(INFO) << dex_file->PrettyMethod(method_idx)
+        LOG(INFO) << "Used " << total_allocated << " bytes of arena memory for compiling "
+                  << dex_file->PrettyMethod(method_idx)
                   << "\n" << Dumpable<MemStats>(mem_stats)
                   << "\n" << Dumpable<MemStats>(peak_stats);
       }

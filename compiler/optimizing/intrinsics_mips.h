@@ -49,8 +49,8 @@ class IntrinsicLocationsBuilderMIPS FINAL : public IntrinsicVisitor {
   bool TryDispatch(HInvoke* invoke);
 
  private:
-  CodeGeneratorMIPS* codegen_;
-  ArenaAllocator* allocator_;
+  CodeGeneratorMIPS* const codegen_;
+  ArenaAllocator* const allocator_;
 
   DISALLOW_COPY_AND_ASSIGN(IntrinsicLocationsBuilderMIPS);
 };
@@ -77,7 +77,7 @@ class IntrinsicCodeGeneratorMIPS FINAL : public IntrinsicVisitor {
 
   ArenaAllocator* GetAllocator();
 
-  CodeGeneratorMIPS* codegen_;
+  CodeGeneratorMIPS* const codegen_;
 
   DISALLOW_COPY_AND_ASSIGN(IntrinsicCodeGeneratorMIPS);
 };

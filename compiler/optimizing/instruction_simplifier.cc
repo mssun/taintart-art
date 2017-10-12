@@ -1284,9 +1284,9 @@ void InstructionSimplifierVisitor::VisitAnd(HAnd* instruction) {
         DCHECK(input_other->IsShr());  // For UShr, we would have taken the branch above.
         // Replace SHR+AND with USHR, for example "(x >> 24) & 0xff" -> "x >>> 24".
         HUShr* ushr = new (GetGraph()->GetAllocator()) HUShr(instruction->GetType(),
-                                                         input_other->InputAt(0),
-                                                         input_other->InputAt(1),
-                                                         input_other->GetDexPc());
+                                                             input_other->InputAt(0),
+                                                             input_other->InputAt(1),
+                                                             input_other->GetDexPc());
         instruction->GetBlock()->ReplaceAndRemoveInstructionWith(instruction, ushr);
         input_other->GetBlock()->RemoveInstruction(input_other);
         RecordSimplification();

@@ -35,7 +35,7 @@ static constexpr size_t kMaxMethodIds = 65535;
 class ProfileAssistantTest : public CommonRuntimeTest {
  public:
   void PostRuntimeCreate() OVERRIDE {
-    arena_.reset(new ArenaAllocator(Runtime::Current()->GetArenaPool()));
+    allocator_.reset(new ArenaAllocator(Runtime::Current()->GetArenaPool()));
   }
 
  protected:
@@ -108,7 +108,7 @@ class ProfileAssistantTest : public CommonRuntimeTest {
   // Creates an inline cache which will be destructed at the end of the test.
   ProfileCompilationInfo::InlineCacheMap* CreateInlineCacheMap() {
     used_inline_caches.emplace_back(new ProfileCompilationInfo::InlineCacheMap(
-        std::less<uint16_t>(), arena_->Adapter(kArenaAllocProfile)));
+        std::less<uint16_t>(), allocator_->Adapter(kArenaAllocProfile)));
     return used_inline_caches.back().get();
   }
 
@@ -122,13 +122,13 @@ class ProfileAssistantTest : public CommonRuntimeTest {
 
     // Monomorphic
     for (uint16_t dex_pc = 0; dex_pc < 11; dex_pc++) {
-      ProfileCompilationInfo::DexPcData dex_pc_data(arena_.get());
+      ProfileCompilationInfo::DexPcData dex_pc_data(allocator_.get());
       dex_pc_data.AddClass(0, dex::TypeIndex(0));
       ic_map->Put(dex_pc, dex_pc_data);
     }
     // Polymorphic
     for (uint16_t dex_pc = 11; dex_pc < 22; dex_pc++) {
-      ProfileCompilationInfo::DexPcData dex_pc_data(arena_.get());
+      ProfileCompilationInfo::DexPcData dex_pc_data(allocator_.get());
       dex_pc_data.AddClass(0, dex::TypeIndex(0));
       dex_pc_data.AddClass(1, dex::TypeIndex(1));
 
@@ -136,13 +136,13 @@ class ProfileAssistantTest : public CommonRuntimeTest {
     }
     // Megamorphic
     for (uint16_t dex_pc = 22; dex_pc < 33; dex_pc++) {
-      ProfileCompilationInfo::DexPcData dex_pc_data(arena_.get());
+      ProfileCompilationInfo::DexPcData dex_pc_data(allocator_.get());
       dex_pc_data.SetIsMegamorphic();
       ic_map->Put(dex_pc, dex_pc_data);
     }
     // Missing types
     for (uint16_t dex_pc = 33; dex_pc < 44; dex_pc++) {
-      ProfileCompilationInfo::DexPcData dex_pc_data(arena_.get());
+      ProfileCompilationInfo::DexPcData dex_pc_data(allocator_.get());
       dex_pc_data.SetIsMissingTypes();
       ic_map->Put(dex_pc, dex_pc_data);
     }
@@ -375,7 +375,7 @@ class ProfileAssistantTest : public CommonRuntimeTest {
     return ProcessProfiles(profile_fds, reference_profile_fd);
   }
 
-  std::unique_ptr<ArenaAllocator> arena_;
+  std::unique_ptr<ArenaAllocator> allocator_;
 
   // Cache of inline caches generated during tests.
   // This makes it easier to pass data between different utilities and ensure that
