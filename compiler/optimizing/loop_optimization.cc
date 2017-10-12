@@ -1359,7 +1359,7 @@ bool HLoopOptimization::TrySetVectorType(DataType::Type type, uint64_t* restrict
           *restrictions |= kNoDiv | kNoStringCharAt | kNoReduction;
           return TrySetVectorLength(4);
         case DataType::Type::kInt32:
-          *restrictions |= kNoDiv | kNoReduction;
+          *restrictions |= kNoDiv | kNoWideSAD;
           return TrySetVectorLength(2);
         default:
           break;
@@ -1968,7 +1968,9 @@ bool HLoopOptimization::VectorizeSADIdiom(LoopNode* node,
     return false;
   }
   // Try same/narrower type and deal with vector restrictions.
-  if (!TrySetVectorType(sub_type, &restrictions) || HasVectorRestrictions(restrictions, kNoSAD)) {
+  if (!TrySetVectorType(sub_type, &restrictions) ||
+      HasVectorRestrictions(restrictions, kNoSAD) ||
+      (reduction_type != sub_type && HasVectorRestrictions(restrictions, kNoWideSAD))) {
     return false;
   }
   // Accept SAD idiom for vectorizable operands. Vectorized code uses the shorthand
