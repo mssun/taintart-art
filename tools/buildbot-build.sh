@@ -66,13 +66,16 @@ if [[ $using_jack == "true" ]]; then
   common_targets="$common_targets ${out_dir}/host/linux-x86/bin/jack"
 fi
 
+# Allow to build successfully in master-art.
+extra_args=SOONG_ALLOW_MISSING_DEPENDENCIES=true
+
 if [[ $mode == "host" ]]; then
-  make_command="make $j_arg $showcommands build-art-host-tests $common_targets dx-tests"
+  make_command="make $j_arg $extra_args $showcommands build-art-host-tests $common_targets dx-tests"
   make_command+=" ${out_dir}/host/linux-x86/lib/libjavacoretests.so "
   make_command+=" ${out_dir}/host/linux-x86/lib64/libjavacoretests.so"
   make_command+=" libwrapagentpropertiesd libwrapagentproperties"
 elif [[ $mode == "target" ]]; then
-  make_command="make $j_arg $showcommands build-art-target-tests $common_targets"
+  make_command="make $j_arg $extra_args $showcommands build-art-target-tests $common_targets"
   make_command+=" libjavacrypto libjavacoretests libnetd_client linker toybox toolbox sh"
   make_command+=" ${out_dir}/host/linux-x86/bin/adb libstdc++ "
   make_command+=" ${out_dir}/target/product/${TARGET_PRODUCT}/system/etc/public.libraries.txt"
