@@ -16,6 +16,7 @@
 
 #include "art_method-inl.h"
 #include "base/casts.h"
+#include "base/logging.h"
 #include "entrypoints/entrypoint_utils-inl.h"
 #include "indirect_reference_table.h"
 #include "mirror/object-inl.h"
@@ -26,6 +27,8 @@ namespace art {
 
 static_assert(sizeof(IRTSegmentState) == sizeof(uint32_t), "IRTSegmentState size unexpected");
 static_assert(std::is_trivial<IRTSegmentState>::value, "IRTSegmentState not trivial");
+
+static bool kEnableAnnotationChecks = RegisterRuntimeDebugFlag(&kEnableAnnotationChecks);
 
 template <bool kDynamicFast>
 static inline void GoToRunnableFast(Thread* self) NO_THREAD_SAFETY_ANALYSIS;
@@ -53,7 +56,7 @@ extern uint32_t JniMethodFastStart(Thread* self) {
   uint32_t saved_local_ref_cookie = bit_cast<uint32_t>(env->local_ref_cookie);
   env->local_ref_cookie = env->locals.GetSegmentState();
 
-  if (kIsDebugBuild) {
+  if (kIsDebugBuild && kEnableAnnotationChecks) {
     ArtMethod* native_method = *self->GetManagedStack()->GetTopQuickFrame();
     CHECK(native_method->IsAnnotatedWithFastNative()) << native_method->PrettyMethod();
   }
@@ -94,7 +97,7 @@ static void GoToRunnable(Thread* self) NO_THREAD_SAFETY_ANALYSIS {
 // TODO: NO_THREAD_SAFETY_ANALYSIS due to different control paths depending on fast JNI.
 template <bool kDynamicFast>
 ALWAYS_INLINE static inline void GoToRunnableFast(Thread* self) NO_THREAD_SAFETY_ANALYSIS {
-  if (kIsDebugBuild) {
+  if (kIsDebugBuild && kEnableAnnotationChecks) {
     // Should only enter here if the method is !Fast JNI or @FastNative.
     ArtMethod* native_method = *self->GetManagedStack()->GetTopQuickFrame();
 
