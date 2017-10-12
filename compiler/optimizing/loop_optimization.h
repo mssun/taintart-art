@@ -78,6 +78,7 @@ class HLoopOptimization : public HOptimization {
     kNoStringCharAt  = 1 << 9,   // no StringCharAt
     kNoReduction     = 1 << 10,  // no reduction
     kNoSAD           = 1 << 11,  // no sum of absolute differences (SAD)
+    kNoWideSAD       = 1 << 12,  // no sum of absolute differences (SAD) with operand widening
   };
 
   /*
