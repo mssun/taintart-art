@@ -195,8 +195,18 @@ public class Test1934 {
     target.start();
     sem.acquire();
     System.out.println("stopping other thread recurring");
-    Threads.stopThread(target, new Error("AWESOME!"));
-    target.join();
+    do {
+      // Due to the fact that dex has a specific instruction to get the current exception it is
+      // possible for the 'stop-thread' to be unintentionally caught. We just retry in this case.
+      try {
+        Threads.stopThread(target, new Error("AWESOME!"));
+      } catch (Exception e) {
+        // If we just missed the thread dying we would get a JVMTI_ERROR_THREAD_NOT_ALIVE so we
+        // catch that here.
+      }
+      // Wait for 1 second.
+      target.join(1000);
+    } while (target.isAlive());
     System.out.println("Other thread Stopped by: " + out_err[0]);
     if (PRINT_STACK_TRACE && out_err[0] != null) {
       out_err[0].printStackTrace();
