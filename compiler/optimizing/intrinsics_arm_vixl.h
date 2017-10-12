@@ -46,9 +46,9 @@ class IntrinsicLocationsBuilderARMVIXL FINAL : public IntrinsicVisitor {
   bool TryDispatch(HInvoke* invoke);
 
  private:
-  ArenaAllocator* allocator_;
-  CodeGenerator* codegen_;
-  ArmVIXLAssembler* assembler_;
+  ArenaAllocator* const allocator_;
+  CodeGenerator* const codegen_;
+  ArmVIXLAssembler* const assembler_;
   const ArmInstructionSetFeatures& features_;
 
   DISALLOW_COPY_AND_ASSIGN(IntrinsicLocationsBuilderARMVIXL);
@@ -71,7 +71,7 @@ class IntrinsicCodeGeneratorARMVIXL FINAL : public IntrinsicVisitor {
   ArenaAllocator* GetAllocator();
   ArmVIXLAssembler* GetAssembler();
 
-  CodeGeneratorARMVIXL* codegen_;
+  CodeGeneratorARMVIXL* const codegen_;
 
   DISALLOW_COPY_AND_ASSIGN(IntrinsicCodeGeneratorARMVIXL);
 };

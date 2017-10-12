@@ -167,10 +167,10 @@ void DumpAndCheck(std::vector<uint8_t>& code, const char* testname, const char* 
 
 class ArmVIXLAssemblerTest : public ::testing::Test {
  public:
-  ArmVIXLAssemblerTest() : pool(), arena(&pool), assembler(&arena) { }
+  ArmVIXLAssemblerTest() : pool(), allocator(&pool), assembler(&allocator) { }
 
   ArenaPool pool;
-  ArenaAllocator arena;
+  ArenaAllocator allocator;
   ArmVIXLJNIMacroAssembler assembler;
 };
 
@@ -209,18 +209,16 @@ TEST_F(ArmVIXLAssemblerTest, VixlJniHelpers) {
   const bool is_critical_native = false;
   const char* shorty = "IIFII";
 
-  ArenaPool pool;
-  ArenaAllocator arena(&pool);
-
   std::unique_ptr<JniCallingConvention> jni_conv(
-      JniCallingConvention::Create(&arena,
+      JniCallingConvention::Create(&allocator,
                                    is_static,
                                    is_synchronized,
                                    is_critical_native,
                                    shorty,
                                    kThumb2));
   std::unique_ptr<ManagedRuntimeCallingConvention> mr_conv(
-      ManagedRuntimeCallingConvention::Create(&arena, is_static, is_synchronized, shorty, kThumb2));
+      ManagedRuntimeCallingConvention::Create(
+          &allocator, is_static, is_synchronized, shorty, kThumb2));
   const int frame_size(jni_conv->FrameSize());
   ArrayRef<const ManagedRegister> callee_save_regs = jni_conv->CalleeSaveRegisters();
 
