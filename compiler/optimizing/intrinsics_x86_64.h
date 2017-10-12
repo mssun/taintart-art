@@ -49,8 +49,8 @@ class IntrinsicLocationsBuilderX86_64 FINAL : public IntrinsicVisitor {
   bool TryDispatch(HInvoke* invoke);
 
  private:
-  ArenaAllocator* allocator_;
-  CodeGeneratorX86_64* codegen_;
+  ArenaAllocator* const allocator_;
+  CodeGeneratorX86_64* const codegen_;
 
   DISALLOW_COPY_AND_ASSIGN(IntrinsicLocationsBuilderX86_64);
 };
@@ -73,7 +73,7 @@ class IntrinsicCodeGeneratorX86_64 FINAL : public IntrinsicVisitor {
 
   ArenaAllocator* GetAllocator();
 
-  CodeGeneratorX86_64* codegen_;
+  CodeGeneratorX86_64* const codegen_;
 
   DISALLOW_COPY_AND_ASSIGN(IntrinsicCodeGeneratorX86_64);
 };

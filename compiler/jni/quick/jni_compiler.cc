@@ -179,11 +179,11 @@ static CompiledMethod* ArtJniCompileMethodInternal(CompilerDriver* driver,
   }
 
   ArenaPool pool;
-  ArenaAllocator arena(&pool);
+  ArenaAllocator allocator(&pool);
 
   // Calling conventions used to iterate over parameters to method
   std::unique_ptr<JniCallingConvention> main_jni_conv =
-      JniCallingConvention::Create(&arena,
+      JniCallingConvention::Create(&allocator,
                                    is_static,
                                    is_synchronized,
                                    is_critical_native,
@@ -193,7 +193,7 @@ static CompiledMethod* ArtJniCompileMethodInternal(CompilerDriver* driver,
 
   std::unique_ptr<ManagedRuntimeCallingConvention> mr_conv(
       ManagedRuntimeCallingConvention::Create(
-          &arena, is_static, is_synchronized, shorty, instruction_set));
+          &allocator, is_static, is_synchronized, shorty, instruction_set));
 
   // Calling conventions to call into JNI method "end" possibly passing a returned reference, the
   //     method and the current thread.
@@ -209,7 +209,7 @@ static CompiledMethod* ArtJniCompileMethodInternal(CompilerDriver* driver,
   }
 
   std::unique_ptr<JniCallingConvention> end_jni_conv(
-      JniCallingConvention::Create(&arena,
+      JniCallingConvention::Create(&allocator,
                                    is_static,
                                    is_synchronized,
                                    is_critical_native,
@@ -218,7 +218,7 @@ static CompiledMethod* ArtJniCompileMethodInternal(CompilerDriver* driver,
 
   // Assembler that holds generated instructions
   std::unique_ptr<JNIMacroAssembler<kPointerSize>> jni_asm =
-      GetMacroAssembler<kPointerSize>(&arena, instruction_set, instruction_set_features);
+      GetMacroAssembler<kPointerSize>(&allocator, instruction_set, instruction_set_features);
   const CompilerOptions& compiler_options = driver->GetCompilerOptions();
   jni_asm->cfi().SetEnabled(compiler_options.GenerateAnyDebugInfo());
   jni_asm->SetEmitRunTimeChecksInDebugMode(compiler_options.EmitRunTimeChecksInDebugMode());

@@ -95,8 +95,7 @@ TEST_F(SsaLivenessAnalysisTest, TestAput) {
       graph_->GetDexFile(), dex::TypeIndex(3), 3, DataType::Type::kInt32);
   HInstruction* extra_arg2 = new (GetAllocator()) HParameterValue(
       graph_->GetDexFile(), dex::TypeIndex(4), 4, DataType::Type::kReference);
-  ArenaVector<HInstruction*> args({ array, index, value, extra_arg1, extra_arg2 },
-                                  GetAllocator()->Adapter());
+  HInstruction* const args[] = { array, index, value, extra_arg1, extra_arg2 };
   for (HInstruction* insn : args) {
     entry_->AddInstruction(insn);
   }
@@ -109,7 +108,7 @@ TEST_F(SsaLivenessAnalysisTest, TestAput) {
                                                                    /* method */ nullptr,
                                                                    /* dex_pc */ 0u,
                                                                    null_check);
-  null_check_env->CopyFrom(args);
+  null_check_env->CopyFrom(ArrayRef<HInstruction* const>(args));
   null_check->SetRawEnvironment(null_check_env);
   HInstruction* length = new (GetAllocator()) HArrayLength(array, 0);
   block->AddInstruction(length);
@@ -120,7 +119,7 @@ TEST_F(SsaLivenessAnalysisTest, TestAput) {
                                                                      /* method */ nullptr,
                                                                      /* dex_pc */ 0u,
                                                                      bounds_check);
-  bounds_check_env->CopyFrom(args);
+  bounds_check_env->CopyFrom(ArrayRef<HInstruction* const>(args));
   bounds_check->SetRawEnvironment(bounds_check_env);
   HInstruction* array_set =
       new (GetAllocator()) HArraySet(array, index, value, DataType::Type::kInt32, /* dex_pc */ 0);
@@ -144,7 +143,7 @@ TEST_F(SsaLivenessAnalysisTest, TestAput) {
       // Environment uses keep the reference argument alive.
       "ranges: { [10,19) }, uses: { }, { 15 19 } is_fixed: 0, is_split: 0 is_low: 0 is_high: 0",
   };
-  ASSERT_EQ(arraysize(expected), args.size());
+  static_assert(arraysize(expected) == arraysize(args), "Array size check.");
   size_t arg_index = 0u;
   for (HInstruction* arg : args) {
     std::ostringstream arg_dump;
@@ -165,8 +164,7 @@ TEST_F(SsaLivenessAnalysisTest, TestDeoptimize) {
       graph_->GetDexFile(), dex::TypeIndex(3), 3, DataType::Type::kInt32);
   HInstruction* extra_arg2 = new (GetAllocator()) HParameterValue(
       graph_->GetDexFile(), dex::TypeIndex(4), 4, DataType::Type::kReference);
-  ArenaVector<HInstruction*> args({ array, index, value, extra_arg1, extra_arg2 },
-                                  GetAllocator()->Adapter());
+  HInstruction* const args[] = { array, index, value, extra_arg1, extra_arg2 };
   for (HInstruction* insn : args) {
     entry_->AddInstruction(insn);
   }
@@ -179,7 +177,7 @@ TEST_F(SsaLivenessAnalysisTest, TestDeoptimize) {
                                                                    /* method */ nullptr,
                                                                    /* dex_pc */ 0u,
                                                                    null_check);
-  null_check_env->CopyFrom(args);
+  null_check_env->CopyFrom(ArrayRef<HInstruction* const>(args));
   null_check->SetRawEnvironment(null_check_env);
   HInstruction* length = new (GetAllocator()) HArrayLength(array, 0);
   block->AddInstruction(length);
@@ -194,7 +192,7 @@ TEST_F(SsaLivenessAnalysisTest, TestDeoptimize) {
                                                                    /* method */ nullptr,
                                                                    /* dex_pc */ 0u,
                                                                    deoptimize);
-  deoptimize_env->CopyFrom(args);
+  deoptimize_env->CopyFrom(ArrayRef<HInstruction* const>(args));
   deoptimize->SetRawEnvironment(deoptimize_env);
   HInstruction* array_set =
       new (GetAllocator()) HArraySet(array, index, value, DataType::Type::kInt32, /* dex_pc */ 0);
@@ -217,7 +215,7 @@ TEST_F(SsaLivenessAnalysisTest, TestDeoptimize) {
       // Environment uses keep the reference argument alive.
       "ranges: { [10,21) }, uses: { }, { 15 21 } is_fixed: 0, is_split: 0 is_low: 0 is_high: 0",
   };
-  ASSERT_EQ(arraysize(expected), args.size());
+  static_assert(arraysize(expected) == arraysize(args), "Array size check.");
   size_t arg_index = 0u;
   for (HInstruction* arg : args) {
     std::ostringstream arg_dump;

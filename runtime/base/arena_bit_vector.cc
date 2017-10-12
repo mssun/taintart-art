@@ -52,9 +52,9 @@ using ArenaBitVectorAllocatorKind =
 template <typename ArenaAlloc>
 class ArenaBitVectorAllocator FINAL : public Allocator, private ArenaBitVectorAllocatorKind {
  public:
-  static ArenaBitVectorAllocator* Create(ArenaAlloc* arena, ArenaAllocKind kind) {
-    void* storage = arena->template Alloc<ArenaBitVectorAllocator>(kind);
-    return new (storage) ArenaBitVectorAllocator(arena, kind);
+  static ArenaBitVectorAllocator* Create(ArenaAlloc* allocator, ArenaAllocKind kind) {
+    void* storage = allocator->template Alloc<ArenaBitVectorAllocator>(kind);
+    return new (storage) ArenaBitVectorAllocator(allocator, kind);
   }
 
   ~ArenaBitVectorAllocator() {
@@ -63,36 +63,36 @@ class ArenaBitVectorAllocator FINAL : public Allocator, private ArenaBitVectorAl
   }
 
   virtual void* Alloc(size_t size) {
-    return arena_->Alloc(size, this->Kind());
+    return allocator_->Alloc(size, this->Kind());
   }
 
   virtual void Free(void*) {}  // Nop.
 
  private:
-  ArenaBitVectorAllocator(ArenaAlloc* arena, ArenaAllocKind kind)
-      : ArenaBitVectorAllocatorKind(kind), arena_(arena) { }
+  ArenaBitVectorAllocator(ArenaAlloc* allocator, ArenaAllocKind kind)
+      : ArenaBitVectorAllocatorKind(kind), allocator_(allocator) { }
 
-  ArenaAlloc* const arena_;
+  ArenaAlloc* const allocator_;
 
   DISALLOW_COPY_AND_ASSIGN(ArenaBitVectorAllocator);
 };
 
-ArenaBitVector::ArenaBitVector(ArenaAllocator* arena,
+ArenaBitVector::ArenaBitVector(ArenaAllocator* allocator,
                                unsigned int start_bits,
                                bool expandable,
                                ArenaAllocKind kind)
   :  BitVector(start_bits,
                expandable,
-               ArenaBitVectorAllocator<ArenaAllocator>::Create(arena, kind)) {
+               ArenaBitVectorAllocator<ArenaAllocator>::Create(allocator, kind)) {
 }
 
-ArenaBitVector::ArenaBitVector(ScopedArenaAllocator* arena,
+ArenaBitVector::ArenaBitVector(ScopedArenaAllocator* allocator,
                                unsigned int start_bits,
                                bool expandable,
                                ArenaAllocKind kind)
   :  BitVector(start_bits,
                expandable,
-               ArenaBitVectorAllocator<ScopedArenaAllocator>::Create(arena, kind)) {
+               ArenaBitVectorAllocator<ScopedArenaAllocator>::Create(allocator, kind)) {
 }
 
 }  // namespace art

@@ -17,21 +17,17 @@
 #ifndef ART_COMPILER_OPTIMIZING_BUILDER_H_
 #define ART_COMPILER_OPTIMIZING_BUILDER_H_
 
-#include "base/arena_containers.h"
 #include "base/arena_object.h"
-#include "block_builder.h"
 #include "dex_file-inl.h"
 #include "dex_file.h"
 #include "driver/compiler_driver.h"
 #include "driver/dex_compilation_unit.h"
-#include "instruction_builder.h"
 #include "nodes.h"
-#include "optimizing_compiler_stats.h"
-#include "ssa_builder.h"
 
 namespace art {
 
 class CodeGenerator;
+class OptimizingCompilerStats;
 
 class HGraphBuilder : public ValueObject {
  public:
@@ -46,34 +42,21 @@ class HGraphBuilder : public ValueObject {
 
   // Only for unit testing.
   HGraphBuilder(HGraph* graph,
+                const DexCompilationUnit* dex_compilation_unit,
                 const DexFile::CodeItem& code_item,
                 VariableSizedHandleScope* handles,
                 DataType::Type return_type = DataType::Type::kInt32)
       : graph_(graph),
-        dex_file_(nullptr),
+        dex_file_(dex_compilation_unit->GetDexFile()),
         code_item_(code_item),
-        dex_compilation_unit_(nullptr),
+        dex_compilation_unit_(dex_compilation_unit),
+        outer_compilation_unit_(nullptr),
         compiler_driver_(nullptr),
+        code_generator_(nullptr),
         compilation_stats_(nullptr),
-        block_builder_(graph, nullptr, code_item),
-        ssa_builder_(graph,
-                     handles->NewHandle<mirror::ClassLoader>(nullptr),
-                     handles->NewHandle<mirror::DexCache>(nullptr),
-                     handles),
-        instruction_builder_(graph,
-                             &block_builder_,
-                             &ssa_builder_,
-                             /* dex_file */ nullptr,
-                             code_item_,
-                             return_type,
-                             /* dex_compilation_unit */ nullptr,
-                             /* outer_compilation_unit */ nullptr,
-                             /* compiler_driver */ nullptr,
-                             /* code_generator */ nullptr,
-                             /* interpreter_metadata */ nullptr,
-                             /* compiler_stats */ nullptr,
-                             handles->NewHandle<mirror::DexCache>(nullptr),
-                             handles) {}
+        interpreter_metadata_(nullptr),
+        handles_(handles),
+        return_type_(return_type) {}
 
   GraphAnalysisResult BuildGraph();
 
@@ -90,13 +73,16 @@ class HGraphBuilder : public ValueObject {
   // it can be an inlined method.
   const DexCompilationUnit* const dex_compilation_unit_;
 
+  // The compilation unit of the enclosing method being compiled.
+  const DexCompilationUnit* const outer_compilation_unit_;
+
   CompilerDriver* const compiler_driver_;
+  CodeGenerator* const code_generator_;
 
-  OptimizingCompilerStats* compilation_stats_;
-
-  HBasicBlockBuilder block_builder_;
-  SsaBuilder ssa_builder_;
-  HInstructionBuilder instruction_builder_;
+  OptimizingCompilerStats* const compilation_stats_;
+  const uint8_t* const interpreter_metadata_;
+  VariableSizedHandleScope* const handles_;
+  const DataType::Type return_type_;
 
   DISALLOW_COPY_AND_ASSIGN(HGraphBuilder);
 };

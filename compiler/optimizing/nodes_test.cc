@@ -129,10 +129,9 @@ TEST_F(NodeTest, ParentEnvironment) {
 
   HEnvironment* environment = new (GetAllocator()) HEnvironment(
       GetAllocator(), 1, graph->GetArtMethod(), 0, with_environment);
-  ArenaVector<HInstruction*> array(GetAllocator()->Adapter());
-  array.push_back(parameter1);
+  HInstruction* const array[] = { parameter1 };
 
-  environment->CopyFrom(array);
+  environment->CopyFrom(ArrayRef<HInstruction* const>(array));
   with_environment->SetRawEnvironment(environment);
 
   ASSERT_TRUE(parameter1->HasEnvironmentUses());
@@ -140,13 +139,13 @@ TEST_F(NodeTest, ParentEnvironment) {
 
   HEnvironment* parent1 = new (GetAllocator()) HEnvironment(
       GetAllocator(), 1, graph->GetArtMethod(), 0, nullptr);
-  parent1->CopyFrom(array);
+  parent1->CopyFrom(ArrayRef<HInstruction* const>(array));
 
   ASSERT_EQ(parameter1->GetEnvUses().SizeSlow(), 2u);
 
   HEnvironment* parent2 = new (GetAllocator()) HEnvironment(
       GetAllocator(), 1, graph->GetArtMethod(), 0, nullptr);
-  parent2->CopyFrom(array);
+  parent2->CopyFrom(ArrayRef<HInstruction* const>(array));
   parent1->SetAndCopyParentChain(GetAllocator(), parent2);
 
   // One use for parent2, and one other use for the new parent of parent1.

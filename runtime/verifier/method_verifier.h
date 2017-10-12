@@ -67,7 +67,7 @@ enum RegisterTrackingMode {
 // execution of that instruction.
 class PcToRegisterLineTable {
  public:
-  explicit PcToRegisterLineTable(ScopedArenaAllocator& arena);
+  explicit PcToRegisterLineTable(ScopedArenaAllocator& allocator);
   ~PcToRegisterLineTable();
 
   // Initialize the RegisterTable. Every instruction address can have a different set of information
@@ -222,7 +222,7 @@ class MethodVerifier {
   }
 
   ScopedArenaAllocator& GetScopedAllocator() {
-    return arena_;
+    return allocator_;
   }
 
  private:
@@ -711,7 +711,7 @@ class MethodVerifier {
 
   // Arena allocator.
   ArenaStack arena_stack_;
-  ScopedArenaAllocator arena_;
+  ScopedArenaAllocator allocator_;
 
   RegTypeCache reg_types_;
 
