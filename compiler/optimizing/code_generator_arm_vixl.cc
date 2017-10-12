@@ -4733,7 +4733,7 @@ void LocationsBuilderARMVIXL::VisitDivZeroCheck(HDivZeroCheck* instruction) {
 
 void InstructionCodeGeneratorARMVIXL::VisitDivZeroCheck(HDivZeroCheck* instruction) {
   DivZeroCheckSlowPathARMVIXL* slow_path =
-      new (GetGraph()->GetAllocator()) DivZeroCheckSlowPathARMVIXL(instruction);
+      new (codegen_->GetScopedAllocator()) DivZeroCheckSlowPathARMVIXL(instruction);
   codegen_->AddSlowPath(slow_path);
 
   LocationSummary* locations = instruction->GetLocations();
@@ -5959,7 +5959,7 @@ void CodeGeneratorARMVIXL::GenerateImplicitNullCheck(HNullCheck* instruction) {
 
 void CodeGeneratorARMVIXL::GenerateExplicitNullCheck(HNullCheck* instruction) {
   NullCheckSlowPathARMVIXL* slow_path =
-      new (GetGraph()->GetAllocator()) NullCheckSlowPathARMVIXL(instruction);
+      new (GetScopedAllocator()) NullCheckSlowPathARMVIXL(instruction);
   AddSlowPath(slow_path);
   __ CompareAndBranchIfZero(InputRegisterAt(instruction, 0), slow_path->GetEntryLabel());
 }
@@ -6432,7 +6432,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArraySet(HArraySet* instruction) {
       SlowPathCodeARMVIXL* slow_path = nullptr;
 
       if (may_need_runtime_call_for_type_check) {
-        slow_path = new (GetGraph()->GetAllocator()) ArraySetSlowPathARMVIXL(instruction);
+        slow_path = new (codegen_->GetScopedAllocator()) ArraySetSlowPathARMVIXL(instruction);
         codegen_->AddSlowPath(slow_path);
         if (instruction->GetValueCanBeNull()) {
           vixl32::Label non_zero;
@@ -6693,7 +6693,7 @@ void InstructionCodeGeneratorARMVIXL::VisitBoundsCheck(HBoundsCheck* instruction
       int32_t index = Int32ConstantFrom(index_loc);
       if (index < 0 || index >= length) {
         SlowPathCodeARMVIXL* slow_path =
-            new (GetGraph()->GetAllocator()) BoundsCheckSlowPathARMVIXL(instruction);
+            new (codegen_->GetScopedAllocator()) BoundsCheckSlowPathARMVIXL(instruction);
         codegen_->AddSlowPath(slow_path);
         __ B(slow_path->GetEntryLabel());
       } else {
@@ -6704,13 +6704,13 @@ void InstructionCodeGeneratorARMVIXL::VisitBoundsCheck(HBoundsCheck* instruction
     }
 
     SlowPathCodeARMVIXL* slow_path =
-        new (GetGraph()->GetAllocator()) BoundsCheckSlowPathARMVIXL(instruction);
+        new (codegen_->GetScopedAllocator()) BoundsCheckSlowPathARMVIXL(instruction);
     __ Cmp(RegisterFrom(index_loc), length);
     codegen_->AddSlowPath(slow_path);
     __ B(hs, slow_path->GetEntryLabel());
   } else {
     SlowPathCodeARMVIXL* slow_path =
-        new (GetGraph()->GetAllocator()) BoundsCheckSlowPathARMVIXL(instruction);
+        new (codegen_->GetScopedAllocator()) BoundsCheckSlowPathARMVIXL(instruction);
     __ Cmp(RegisterFrom(length_loc), InputOperandAt(instruction, 0));
     codegen_->AddSlowPath(slow_path);
     __ B(ls, slow_path->GetEntryLabel());
@@ -6777,7 +6777,7 @@ void InstructionCodeGeneratorARMVIXL::GenerateSuspendCheck(HSuspendCheck* instru
       down_cast<SuspendCheckSlowPathARMVIXL*>(instruction->GetSlowPath());
   if (slow_path == nullptr) {
     slow_path =
-        new (GetGraph()->GetAllocator()) SuspendCheckSlowPathARMVIXL(instruction, successor);
+        new (codegen_->GetScopedAllocator()) SuspendCheckSlowPathARMVIXL(instruction, successor);
     instruction->SetSlowPath(slow_path);
     codegen_->AddSlowPath(slow_path);
     if (successor != nullptr) {
@@ -7214,8 +7214,9 @@ void InstructionCodeGeneratorARMVIXL::VisitLoadClass(HLoadClass* cls) NO_THREAD_
 
   if (generate_null_check || cls->MustGenerateClinitCheck()) {
     DCHECK(cls->CanCallRuntime());
-    LoadClassSlowPathARMVIXL* slow_path = new (GetGraph()->GetAllocator()) LoadClassSlowPathARMVIXL(
-        cls, cls, cls->GetDexPc(), cls->MustGenerateClinitCheck());
+    LoadClassSlowPathARMVIXL* slow_path =
+        new (codegen_->GetScopedAllocator()) LoadClassSlowPathARMVIXL(
+            cls, cls, cls->GetDexPc(), cls->MustGenerateClinitCheck());
     codegen_->AddSlowPath(slow_path);
     if (generate_null_check) {
       __ CompareAndBranchIfZero(out, slow_path->GetEntryLabel());
@@ -7241,10 +7242,10 @@ void LocationsBuilderARMVIXL::VisitClinitCheck(HClinitCheck* check) {
 void InstructionCodeGeneratorARMVIXL::VisitClinitCheck(HClinitCheck* check) {
   // We assume the class is not null.
   LoadClassSlowPathARMVIXL* slow_path =
-      new (GetGraph()->GetAllocator()) LoadClassSlowPathARMVIXL(check->GetLoadClass(),
-                                                                check,
-                                                                check->GetDexPc(),
-                                                                /* do_clinit */ true);
+      new (codegen_->GetScopedAllocator()) LoadClassSlowPathARMVIXL(check->GetLoadClass(),
+                                                                    check,
+                                                                    check->GetDexPc(),
+                                                                    /* do_clinit */ true);
   codegen_->AddSlowPath(slow_path);
   GenerateClassInitializationCheck(slow_path, InputRegisterAt(check, 0));
 }
@@ -7354,7 +7355,7 @@ void InstructionCodeGeneratorARMVIXL::VisitLoadString(HLoadString* load) NO_THRE
       codegen_->EmitMovwMovtPlaceholder(labels, temp);
       GenerateGcRootFieldLoad(load, out_loc, temp, /* offset */ 0, kCompilerReadBarrierOption);
       LoadStringSlowPathARMVIXL* slow_path =
-          new (GetGraph()->GetAllocator()) LoadStringSlowPathARMVIXL(load);
+          new (codegen_->GetScopedAllocator()) LoadStringSlowPathARMVIXL(load);
       codegen_->AddSlowPath(slow_path);
       __ CompareAndBranchIfZero(out, slow_path->GetEntryLabel());
       __ Bind(slow_path->GetExitLabel());
@@ -7681,8 +7682,8 @@ void InstructionCodeGeneratorARMVIXL::VisitInstanceOf(HInstanceOf* instruction) 
                                         kWithoutReadBarrier);
       __ Cmp(out, cls);
       DCHECK(locations->OnlyCallsOnSlowPath());
-      slow_path = new (GetGraph()->GetAllocator()) TypeCheckSlowPathARMVIXL(instruction,
-                                                                            /* is_fatal */ false);
+      slow_path = new (codegen_->GetScopedAllocator()) TypeCheckSlowPathARMVIXL(
+          instruction, /* is_fatal */ false);
       codegen_->AddSlowPath(slow_path);
       __ B(ne, slow_path->GetEntryLabel());
       __ Mov(out, 1);
@@ -7710,8 +7711,8 @@ void InstructionCodeGeneratorARMVIXL::VisitInstanceOf(HInstanceOf* instruction) 
       // call to the runtime not using a type checking slow path).
       // This should also be beneficial for the other cases above.
       DCHECK(locations->OnlyCallsOnSlowPath());
-      slow_path = new (GetGraph()->GetAllocator()) TypeCheckSlowPathARMVIXL(instruction,
-                                                                            /* is_fatal */ false);
+      slow_path = new (codegen_->GetScopedAllocator()) TypeCheckSlowPathARMVIXL(
+          instruction, /* is_fatal */ false);
       codegen_->AddSlowPath(slow_path);
       __ B(slow_path->GetEntryLabel());
       break;
@@ -7789,8 +7790,8 @@ void InstructionCodeGeneratorARMVIXL::VisitCheckCast(HCheckCast* instruction) {
         !instruction->CanThrowIntoCatchBlock();
   }
   SlowPathCodeARMVIXL* type_check_slow_path =
-      new (GetGraph()->GetAllocator()) TypeCheckSlowPathARMVIXL(instruction,
-                                                                is_type_check_slow_path_fatal);
+      new (codegen_->GetScopedAllocator()) TypeCheckSlowPathARMVIXL(
+          instruction, is_type_check_slow_path_fatal);
   codegen_->AddSlowPath(type_check_slow_path);
 
   vixl32::Label done;
@@ -8451,7 +8452,7 @@ void InstructionCodeGeneratorARMVIXL::GenerateGcRootFieldLoad(
         // Slow path marking the GC root `root`. The entrypoint will
         // be loaded by the slow path code.
         SlowPathCodeARMVIXL* slow_path =
-            new (GetGraph()->GetAllocator()) ReadBarrierMarkSlowPathARMVIXL(instruction, root);
+            new (codegen_->GetScopedAllocator()) ReadBarrierMarkSlowPathARMVIXL(instruction, root);
         codegen_->AddSlowPath(slow_path);
 
         // /* GcRoot<mirror::Object> */ root = *(obj + offset)
@@ -8700,7 +8701,7 @@ void CodeGeneratorARMVIXL::GenerateReferenceLoadWithBakerReadBarrier(HInstructio
   // Slow path marking the object `ref` when the GC is marking. The
   // entrypoint will be loaded by the slow path code.
   SlowPathCodeARMVIXL* slow_path =
-      new (GetGraph()->GetAllocator()) LoadReferenceWithBakerReadBarrierSlowPathARMVIXL(
+      new (GetScopedAllocator()) LoadReferenceWithBakerReadBarrierSlowPathARMVIXL(
           instruction, ref, obj, offset, index, scale_factor, needs_null_check, temp_reg);
   AddSlowPath(slow_path);
 
@@ -8746,8 +8747,8 @@ void CodeGeneratorARMVIXL::UpdateReferenceFieldWithBakerReadBarrier(HInstruction
 
   // Slow path updating the object reference at address `obj + field_offset`
   // when the GC is marking. The entrypoint will be loaded by the slow path code.
-  SlowPathCodeARMVIXL* slow_path = new (GetGraph()->GetAllocator())
-      LoadReferenceWithBakerReadBarrierAndUpdateFieldSlowPathARMVIXL(
+  SlowPathCodeARMVIXL* slow_path =
+      new (GetScopedAllocator()) LoadReferenceWithBakerReadBarrierAndUpdateFieldSlowPathARMVIXL(
           instruction,
           ref,
           obj,
@@ -8858,7 +8859,7 @@ void CodeGeneratorARMVIXL::GenerateReadBarrierSlow(HInstruction* instruction,
   // not used by the artReadBarrierSlow entry point.
   //
   // TODO: Unpoison `ref` when it is used by artReadBarrierSlow.
-  SlowPathCodeARMVIXL* slow_path = new (GetGraph()->GetAllocator())
+  SlowPathCodeARMVIXL* slow_path = new (GetScopedAllocator())
       ReadBarrierForHeapReferenceSlowPathARMVIXL(instruction, out, ref, obj, offset, index);
   AddSlowPath(slow_path);
 
@@ -8894,7 +8895,7 @@ void CodeGeneratorARMVIXL::GenerateReadBarrierForRootSlow(HInstruction* instruct
   // Note that GC roots are not affected by heap poisoning, so we do
   // not need to do anything special for this here.
   SlowPathCodeARMVIXL* slow_path =
-      new (GetGraph()->GetAllocator()) ReadBarrierForRootSlowPathARMVIXL(instruction, out, root);
+      new (GetScopedAllocator()) ReadBarrierForRootSlowPathARMVIXL(instruction, out, root);
   AddSlowPath(slow_path);
 
   __ B(slow_path->GetEntryLabel());
@@ -9108,8 +9109,7 @@ VIXLUInt32Literal* CodeGeneratorARMVIXL::DeduplicateJitStringLiteral(
     const DexFile& dex_file,
     dex::StringIndex string_index,
     Handle<mirror::String> handle) {
-  jit_string_roots_.Overwrite(StringReference(&dex_file, string_index),
-                              reinterpret_cast64<uint64_t>(handle.GetReference()));
+  ReserveJitStringRoot(StringReference(&dex_file, string_index), handle);
   return jit_string_patches_.GetOrCreate(
       StringReference(&dex_file, string_index),
       [this]() {
@@ -9120,8 +9120,7 @@ VIXLUInt32Literal* CodeGeneratorARMVIXL::DeduplicateJitStringLiteral(
 VIXLUInt32Literal* CodeGeneratorARMVIXL::DeduplicateJitClassLiteral(const DexFile& dex_file,
                                                       dex::TypeIndex type_index,
                                                       Handle<mirror::Class> handle) {
-  jit_class_roots_.Overwrite(TypeReference(&dex_file, type_index),
-                             reinterpret_cast64<uint64_t>(handle.GetReference()));
+  ReserveJitClassRoot(TypeReference(&dex_file, type_index), handle);
   return jit_class_patches_.GetOrCreate(
       TypeReference(&dex_file, type_index),
       [this]() {
@@ -9401,17 +9400,13 @@ void CodeGeneratorARMVIXL::EmitJitRootPatches(uint8_t* code, const uint8_t* root
   for (const auto& entry : jit_string_patches_) {
     const StringReference& string_reference = entry.first;
     VIXLUInt32Literal* table_entry_literal = entry.second;
-    const auto it = jit_string_roots_.find(string_reference);
-    DCHECK(it != jit_string_roots_.end());
-    uint64_t index_in_table = it->second;
+    uint64_t index_in_table = GetJitStringRootIndex(string_reference);
     PatchJitRootUse(code, roots_data, table_entry_literal, index_in_table);
   }
   for (const auto& entry : jit_class_patches_) {
     const TypeReference& type_reference = entry.first;
     VIXLUInt32Literal* table_entry_literal = entry.second;
-    const auto it = jit_class_roots_.find(type_reference);
-    DCHECK(it != jit_class_roots_.end());
-    uint64_t index_in_table = it->second;
+    uint64_t index_in_table = GetJitClassRootIndex(type_reference);
     PatchJitRootUse(code, roots_data, table_entry_literal, index_in_table);
   }
 }

@@ -33,6 +33,7 @@
 #include "mirror/array-inl.h"
 #include "mirror/class-inl.h"
 #include "offsets.h"
+#include "stack_map_stream.h"
 #include "thread.h"
 #include "utils/assembler.h"
 #include "utils/mips/assembler_mips.h"
@@ -1128,12 +1129,13 @@ void CodeGeneratorMIPS::Finalize(CodeAllocator* allocator) {
   __ FinalizeCode();
 
   // Adjust native pc offsets in stack maps.
-  for (size_t i = 0, num = stack_map_stream_.GetNumberOfStackMaps(); i != num; ++i) {
+  StackMapStream* stack_map_stream = GetStackMapStream();
+  for (size_t i = 0, num = stack_map_stream->GetNumberOfStackMaps(); i != num; ++i) {
     uint32_t old_position =
-        stack_map_stream_.GetStackMap(i).native_pc_code_offset.Uint32Value(kMips);
+        stack_map_stream->GetStackMap(i).native_pc_code_offset.Uint32Value(kMips);
     uint32_t new_position = __ GetAdjustedPosition(old_position);
     DCHECK_GE(new_position, old_position);
-    stack_map_stream_.SetStackMapNativePcOffset(i, new_position);
+    stack_map_stream->SetStackMapNativePcOffset(i, new_position);
   }
 
   // Adjust pc offsets for the disassembly information.
@@ -1788,21 +1790,19 @@ void CodeGeneratorMIPS::EmitPcRelativeAddressPlaceholderHigh(PcRelativePatchInfo
 
 CodeGeneratorMIPS::JitPatchInfo* CodeGeneratorMIPS::NewJitRootStringPatch(
     const DexFile& dex_file,
-    dex::StringIndex dex_index,
+    dex::StringIndex string_index,
     Handle<mirror::String> handle) {
-  jit_string_roots_.Overwrite(StringReference(&dex_file, dex_index),
-                              reinterpret_cast64<uint64_t>(handle.GetReference()));
-  jit_string_patches_.emplace_back(dex_file, dex_index.index_);
+  ReserveJitStringRoot(StringReference(&dex_file, string_index), handle);
+  jit_string_patches_.emplace_back(dex_file, string_index.index_);
   return &jit_string_patches_.back();
 }
 
 CodeGeneratorMIPS::JitPatchInfo* CodeGeneratorMIPS::NewJitRootClassPatch(
     const DexFile& dex_file,
-    dex::TypeIndex dex_index,
+    dex::TypeIndex type_index,
     Handle<mirror::Class> handle) {
-  jit_class_roots_.Overwrite(TypeReference(&dex_file, dex_index),
-                             reinterpret_cast64<uint64_t>(handle.GetReference()));
-  jit_class_patches_.emplace_back(dex_file, dex_index.index_);
+  ReserveJitClassRoot(TypeReference(&dex_file, type_index), handle);
+  jit_class_patches_.emplace_back(dex_file, type_index.index_);
   return &jit_class_patches_.back();
 }
 
@@ -1834,17 +1834,13 @@ void CodeGeneratorMIPS::PatchJitRootUse(uint8_t* code,
 
 void CodeGeneratorMIPS::EmitJitRootPatches(uint8_t* code, const uint8_t* roots_data) {
   for (const JitPatchInfo& info : jit_string_patches_) {
-    const auto it = jit_string_roots_.find(StringReference(&info.target_dex_file,
-                                                           dex::StringIndex(info.index)));
-    DCHECK(it != jit_string_roots_.end());
-    uint64_t index_in_table = it->second;
+    StringReference string_reference(&info.target_dex_file, dex::StringIndex(info.index));
+    uint64_t index_in_table = GetJitStringRootIndex(string_reference);
     PatchJitRootUse(code, roots_data, info, index_in_table);
   }
   for (const JitPatchInfo& info : jit_class_patches_) {
-    const auto it = jit_class_roots_.find(TypeReference(&info.target_dex_file,
-                                                        dex::TypeIndex(info.index)));
-    DCHECK(it != jit_class_roots_.end());
-    uint64_t index_in_table = it->second;
+    TypeReference type_reference(&info.target_dex_file, dex::TypeIndex(info.index));
+    uint64_t index_in_table = GetJitClassRootIndex(type_reference);
     PatchJitRootUse(code, roots_data, info, index_in_table);
   }
 }
@@ -1998,7 +1994,7 @@ void InstructionCodeGeneratorMIPS::GenerateMemoryBarrier(MemBarrierKind kind ATT
 void InstructionCodeGeneratorMIPS::GenerateSuspendCheck(HSuspendCheck* instruction,
                                                         HBasicBlock* successor) {
   SuspendCheckSlowPathMIPS* slow_path =
-    new (GetGraph()->GetAllocator()) SuspendCheckSlowPathMIPS(instruction, successor);
+    new (codegen_->GetScopedAllocator()) SuspendCheckSlowPathMIPS(instruction, successor);
   codegen_->AddSlowPath(slow_path);
 
   __ LoadFromOffset(kLoadUnsignedHalfword,
@@ -2986,7 +2982,7 @@ void InstructionCodeGeneratorMIPS::VisitArraySet(HArraySet* instruction) {
       SlowPathCodeMIPS* slow_path = nullptr;
 
       if (may_need_runtime_call_for_type_check) {
-        slow_path = new (GetGraph()->GetAllocator()) ArraySetSlowPathMIPS(instruction);
+        slow_path = new (codegen_->GetScopedAllocator()) ArraySetSlowPathMIPS(instruction);
         codegen_->AddSlowPath(slow_path);
         if (instruction->GetValueCanBeNull()) {
           MipsLabel non_zero;
@@ -3171,7 +3167,7 @@ void LocationsBuilderMIPS::VisitBoundsCheck(HBoundsCheck* instruction) {
 void InstructionCodeGeneratorMIPS::VisitBoundsCheck(HBoundsCheck* instruction) {
   LocationSummary* locations = instruction->GetLocations();
   BoundsCheckSlowPathMIPS* slow_path =
-      new (GetGraph()->GetAllocator()) BoundsCheckSlowPathMIPS(instruction);
+      new (codegen_->GetScopedAllocator()) BoundsCheckSlowPathMIPS(instruction);
   codegen_->AddSlowPath(slow_path);
 
   Register index = locations->InAt(0).AsRegister<Register>();
@@ -3263,8 +3259,8 @@ void InstructionCodeGeneratorMIPS::VisitCheckCast(HCheckCast* instruction) {
         !instruction->CanThrowIntoCatchBlock();
   }
   SlowPathCodeMIPS* slow_path =
-      new (GetGraph()->GetAllocator()) TypeCheckSlowPathMIPS(instruction,
-                                                             is_type_check_slow_path_fatal);
+      new (codegen_->GetScopedAllocator()) TypeCheckSlowPathMIPS(
+          instruction, is_type_check_slow_path_fatal);
   codegen_->AddSlowPath(slow_path);
 
   // Avoid this check if we know `obj` is not null.
@@ -3427,7 +3423,7 @@ void LocationsBuilderMIPS::VisitClinitCheck(HClinitCheck* check) {
 
 void InstructionCodeGeneratorMIPS::VisitClinitCheck(HClinitCheck* check) {
   // We assume the class is not null.
-  SlowPathCodeMIPS* slow_path = new (GetGraph()->GetAllocator()) LoadClassSlowPathMIPS(
+  SlowPathCodeMIPS* slow_path = new (codegen_->GetScopedAllocator()) LoadClassSlowPathMIPS(
       check->GetLoadClass(),
       check,
       check->GetDexPc(),
@@ -3884,7 +3880,7 @@ void LocationsBuilderMIPS::VisitDivZeroCheck(HDivZeroCheck* instruction) {
 
 void InstructionCodeGeneratorMIPS::VisitDivZeroCheck(HDivZeroCheck* instruction) {
   SlowPathCodeMIPS* slow_path =
-      new (GetGraph()->GetAllocator()) DivZeroCheckSlowPathMIPS(instruction);
+      new (codegen_->GetScopedAllocator()) DivZeroCheckSlowPathMIPS(instruction);
   codegen_->AddSlowPath(slow_path);
   Location value = instruction->GetLocations()->InAt(0);
   DataType::Type type = instruction->GetType();
@@ -6692,7 +6688,7 @@ void InstructionCodeGeneratorMIPS::GenerateGcRootFieldLoad(HInstruction* instruc
         // Slow path marking the GC root `root`.
         Location temp = Location::RegisterLocation(T9);
         SlowPathCodeMIPS* slow_path =
-            new (GetGraph()->GetAllocator()) ReadBarrierMarkSlowPathMIPS(
+            new (codegen_->GetScopedAllocator()) ReadBarrierMarkSlowPathMIPS(
                 instruction,
                 root,
                 /*entrypoint*/ temp);
@@ -7019,14 +7015,14 @@ void CodeGeneratorMIPS::GenerateReferenceLoadWithBakerReadBarrier(HInstruction* 
     // to be null in this code path.
     DCHECK_EQ(offset, 0u);
     DCHECK_EQ(scale_factor, ScaleFactor::TIMES_1);
-    slow_path = new (GetGraph()->GetAllocator())
+    slow_path = new (GetScopedAllocator())
         ReadBarrierMarkAndUpdateFieldSlowPathMIPS(instruction,
                                                   ref,
                                                   obj,
                                                   /* field_offset */ index,
                                                   temp_reg);
   } else {
-    slow_path = new (GetGraph()->GetAllocator()) ReadBarrierMarkSlowPathMIPS(instruction, ref);
+    slow_path = new (GetScopedAllocator()) ReadBarrierMarkSlowPathMIPS(instruction, ref);
   }
   AddSlowPath(slow_path);
 
@@ -7062,7 +7058,7 @@ void CodeGeneratorMIPS::GenerateReadBarrierSlow(HInstruction* instruction,
   // not used by the artReadBarrierSlow entry point.
   //
   // TODO: Unpoison `ref` when it is used by artReadBarrierSlow.
-  SlowPathCodeMIPS* slow_path = new (GetGraph()->GetAllocator())
+  SlowPathCodeMIPS* slow_path = new (GetScopedAllocator())
       ReadBarrierForHeapReferenceSlowPathMIPS(instruction, out, ref, obj, offset, index);
   AddSlowPath(slow_path);
 
@@ -7098,7 +7094,7 @@ void CodeGeneratorMIPS::GenerateReadBarrierForRootSlow(HInstruction* instruction
   // Note that GC roots are not affected by heap poisoning, so we do
   // not need to do anything special for this here.
   SlowPathCodeMIPS* slow_path =
-      new (GetGraph()->GetAllocator()) ReadBarrierForRootSlowPathMIPS(instruction, out, root);
+      new (GetScopedAllocator()) ReadBarrierForRootSlowPathMIPS(instruction, out, root);
   AddSlowPath(slow_path);
 
   __ B(slow_path->GetEntryLabel());
@@ -7268,8 +7264,8 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
                                         maybe_temp_loc,
                                         kWithoutReadBarrier);
       DCHECK(locations->OnlyCallsOnSlowPath());
-      slow_path = new (GetGraph()->GetAllocator()) TypeCheckSlowPathMIPS(instruction,
-                                                                         /* is_fatal */ false);
+      slow_path = new (codegen_->GetScopedAllocator()) TypeCheckSlowPathMIPS(
+          instruction, /* is_fatal */ false);
       codegen_->AddSlowPath(slow_path);
       __ Bne(out, cls, slow_path->GetEntryLabel());
       __ LoadConst32(out, 1);
@@ -7297,8 +7293,8 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
       // call to the runtime not using a type checking slow path).
       // This should also be beneficial for the other cases above.
       DCHECK(locations->OnlyCallsOnSlowPath());
-      slow_path = new (GetGraph()->GetAllocator()) TypeCheckSlowPathMIPS(instruction,
-                                                                         /* is_fatal */ false);
+      slow_path = new (codegen_->GetScopedAllocator()) TypeCheckSlowPathMIPS(
+          instruction, /* is_fatal */ false);
       codegen_->AddSlowPath(slow_path);
       __ B(slow_path->GetEntryLabel());
       break;
@@ -7841,7 +7837,7 @@ void InstructionCodeGeneratorMIPS::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAF
 
   if (generate_null_check || cls->MustGenerateClinitCheck()) {
     DCHECK(cls->CanCallRuntime());
-    SlowPathCodeMIPS* slow_path = new (GetGraph()->GetAllocator()) LoadClassSlowPathMIPS(
+    SlowPathCodeMIPS* slow_path = new (codegen_->GetScopedAllocator()) LoadClassSlowPathMIPS(
         cls, cls, cls->GetDexPc(), cls->MustGenerateClinitCheck(), bss_info_high);
     codegen_->AddSlowPath(slow_path);
     if (generate_null_check) {
@@ -8006,7 +8002,7 @@ void InstructionCodeGeneratorMIPS::VisitLoadString(HLoadString* load) NO_THREAD_
                               kCompilerReadBarrierOption,
                               &info_low->label);
       SlowPathCodeMIPS* slow_path =
-          new (GetGraph()->GetAllocator()) LoadStringSlowPathMIPS(load, info_high);
+          new (codegen_->GetScopedAllocator()) LoadStringSlowPathMIPS(load, info_high);
       codegen_->AddSlowPath(slow_path);
       __ Beqz(out, slow_path->GetEntryLabel());
       __ Bind(slow_path->GetExitLabel());
@@ -8333,7 +8329,7 @@ void CodeGeneratorMIPS::GenerateImplicitNullCheck(HNullCheck* instruction) {
 }
 
 void CodeGeneratorMIPS::GenerateExplicitNullCheck(HNullCheck* instruction) {
-  SlowPathCodeMIPS* slow_path = new (GetGraph()->GetAllocator()) NullCheckSlowPathMIPS(instruction);
+  SlowPathCodeMIPS* slow_path = new (GetScopedAllocator()) NullCheckSlowPathMIPS(instruction);
   AddSlowPath(slow_path);
 
   Location obj = instruction->GetLocations()->InAt(0);

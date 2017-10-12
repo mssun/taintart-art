@@ -1339,7 +1339,7 @@ void IntrinsicCodeGeneratorARM64::VisitStringCompareTo(HInvoke* invoke) {
   SlowPathCodeARM64* slow_path = nullptr;
   const bool can_slow_path = invoke->InputAt(1)->CanBeNull();
   if (can_slow_path) {
-    slow_path = new (GetAllocator()) IntrinsicSlowPathARM64(invoke);
+    slow_path = new (codegen_->GetScopedAllocator()) IntrinsicSlowPathARM64(invoke);
     codegen_->AddSlowPath(slow_path);
     __ Cbz(arg, slow_path->GetEntryLabel());
   }
@@ -1702,7 +1702,6 @@ void IntrinsicCodeGeneratorARM64::VisitStringEquals(HInvoke* invoke) {
 static void GenerateVisitStringIndexOf(HInvoke* invoke,
                                        MacroAssembler* masm,
                                        CodeGeneratorARM64* codegen,
-                                       ArenaAllocator* allocator,
                                        bool start_at_zero) {
   LocationSummary* locations = invoke->GetLocations();
 
@@ -1717,7 +1716,7 @@ static void GenerateVisitStringIndexOf(HInvoke* invoke,
     if (static_cast<uint32_t>(code_point->AsIntConstant()->GetValue()) > 0xFFFFU) {
       // Always needs the slow-path. We could directly dispatch to it, but this case should be
       // rare, so for simplicity just put the full slow-path down and branch unconditionally.
-      slow_path = new (allocator) IntrinsicSlowPathARM64(invoke);
+      slow_path = new (codegen->GetScopedAllocator()) IntrinsicSlowPathARM64(invoke);
       codegen->AddSlowPath(slow_path);
       __ B(slow_path->GetEntryLabel());
       __ Bind(slow_path->GetExitLabel());
@@ -1726,7 +1725,7 @@ static void GenerateVisitStringIndexOf(HInvoke* invoke,
   } else if (code_point->GetType() != DataType::Type::kUint16) {
     Register char_reg = WRegisterFrom(locations->InAt(1));
     __ Tst(char_reg, 0xFFFF0000);
-    slow_path = new (allocator) IntrinsicSlowPathARM64(invoke);
+    slow_path = new (codegen->GetScopedAllocator()) IntrinsicSlowPathARM64(invoke);
     codegen->AddSlowPath(slow_path);
     __ B(ne, slow_path->GetEntryLabel());
   }
@@ -1760,8 +1759,7 @@ void IntrinsicLocationsBuilderARM64::VisitStringIndexOf(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorARM64::VisitStringIndexOf(HInvoke* invoke) {
-  GenerateVisitStringIndexOf(
-      invoke, GetVIXLAssembler(), codegen_, GetAllocator(), /* start_at_zero */ true);
+  GenerateVisitStringIndexOf(invoke, GetVIXLAssembler(), codegen_, /* start_at_zero */ true);
 }
 
 void IntrinsicLocationsBuilderARM64::VisitStringIndexOfAfter(HInvoke* invoke) {
@@ -1777,8 +1775,7 @@ void IntrinsicLocationsBuilderARM64::VisitStringIndexOfAfter(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorARM64::VisitStringIndexOfAfter(HInvoke* invoke) {
-  GenerateVisitStringIndexOf(
-      invoke, GetVIXLAssembler(), codegen_, GetAllocator(), /* start_at_zero */ false);
+  GenerateVisitStringIndexOf(invoke, GetVIXLAssembler(), codegen_, /* start_at_zero */ false);
 }
 
 void IntrinsicLocationsBuilderARM64::VisitStringNewStringFromBytes(HInvoke* invoke) {
@@ -1798,7 +1795,8 @@ void IntrinsicCodeGeneratorARM64::VisitStringNewStringFromBytes(HInvoke* invoke)
 
   Register byte_array = WRegisterFrom(locations->InAt(0));
   __ Cmp(byte_array, 0);
-  SlowPathCodeARM64* slow_path = new (GetAllocator()) IntrinsicSlowPathARM64(invoke);
+  SlowPathCodeARM64* slow_path =
+      new (codegen_->GetScopedAllocator()) IntrinsicSlowPathARM64(invoke);
   codegen_->AddSlowPath(slow_path);
   __ B(eq, slow_path->GetEntryLabel());
 
@@ -1842,7 +1840,8 @@ void IntrinsicCodeGeneratorARM64::VisitStringNewStringFromString(HInvoke* invoke
 
   Register string_to_copy = WRegisterFrom(locations->InAt(0));
   __ Cmp(string_to_copy, 0);
-  SlowPathCodeARM64* slow_path = new (GetAllocator()) IntrinsicSlowPathARM64(invoke);
+  SlowPathCodeARM64* slow_path =
+      new (codegen_->GetScopedAllocator()) IntrinsicSlowPathARM64(invoke);
   codegen_->AddSlowPath(slow_path);
   __ B(eq, slow_path->GetEntryLabel());
 
@@ -2285,7 +2284,8 @@ void IntrinsicCodeGeneratorARM64::VisitSystemArrayCopyChar(HInvoke* invoke) {
   Location dst_pos = locations->InAt(3);
   Location length = locations->InAt(4);
 
-  SlowPathCodeARM64* slow_path = new (GetAllocator()) IntrinsicSlowPathARM64(invoke);
+  SlowPathCodeARM64* slow_path =
+      new (codegen_->GetScopedAllocator()) IntrinsicSlowPathARM64(invoke);
   codegen_->AddSlowPath(slow_path);
 
   // If source and destination are the same, take the slow path. Overlapping copy regions must be
@@ -2462,7 +2462,8 @@ void IntrinsicCodeGeneratorARM64::VisitSystemArrayCopy(HInvoke* invoke) {
   Register temp2 = WRegisterFrom(locations->GetTemp(1));
   Location temp2_loc = LocationFrom(temp2);
 
-  SlowPathCodeARM64* intrinsic_slow_path = new (GetAllocator()) IntrinsicSlowPathARM64(invoke);
+  SlowPathCodeARM64* intrinsic_slow_path =
+      new (codegen_->GetScopedAllocator()) IntrinsicSlowPathARM64(invoke);
   codegen_->AddSlowPath(intrinsic_slow_path);
 
   vixl::aarch64::Label conditions_on_positions_validated;
@@ -2839,7 +2840,8 @@ void IntrinsicCodeGeneratorARM64::VisitSystemArrayCopy(HInvoke* invoke) {
 
         // Slow path used to copy array when `src` is gray.
         SlowPathCodeARM64* read_barrier_slow_path =
-            new (GetAllocator()) ReadBarrierSystemArrayCopySlowPathARM64(invoke, LocationFrom(tmp));
+            new (codegen_->GetScopedAllocator()) ReadBarrierSystemArrayCopySlowPathARM64(
+                invoke, LocationFrom(tmp));
         codegen_->AddSlowPath(read_barrier_slow_path);
 
         // Given the numeric representation, it's enough to check the low bit of the rb_state.

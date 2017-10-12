@@ -416,10 +416,10 @@ class CodeGeneratorX86_64 : public CodeGenerator {
   void RecordBootStringPatch(HLoadString* load_string);
   Label* NewStringBssEntryPatch(HLoadString* load_string);
   Label* NewJitRootStringPatch(const DexFile& dex_file,
-                               dex::StringIndex dex_index,
+                               dex::StringIndex string_index,
                                Handle<mirror::String> handle);
   Label* NewJitRootClassPatch(const DexFile& dex_file,
-                              dex::TypeIndex dex_index,
+                              dex::TypeIndex type_index,
                               Handle<mirror::Class> handle);
 
   void MoveFromReturnRegister(Location trg, DataType::Type type) OVERRIDE;

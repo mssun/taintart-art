@@ -1490,7 +1490,7 @@ void IntrinsicCodeGeneratorARMVIXL::VisitStringCompareTo(HInvoke* invoke) {
   SlowPathCodeARMVIXL* slow_path = nullptr;
   const bool can_slow_path = invoke->InputAt(1)->CanBeNull();
   if (can_slow_path) {
-    slow_path = new (GetAllocator()) IntrinsicSlowPathARMVIXL(invoke);
+    slow_path = new (codegen_->GetScopedAllocator()) IntrinsicSlowPathARMVIXL(invoke);
     codegen_->AddSlowPath(slow_path);
     __ CompareAndBranchIfZero(arg, slow_path->GetEntryLabel());
   }
@@ -1916,7 +1916,6 @@ void IntrinsicCodeGeneratorARMVIXL::VisitStringEquals(HInvoke* invoke) {
 static void GenerateVisitStringIndexOf(HInvoke* invoke,
                                        ArmVIXLAssembler* assembler,
                                        CodeGeneratorARMVIXL* codegen,
-                                       ArenaAllocator* allocator,
                                        bool start_at_zero) {
   LocationSummary* locations = invoke->GetLocations();
 
@@ -1932,7 +1931,7 @@ static void GenerateVisitStringIndexOf(HInvoke* invoke,
         std::numeric_limits<uint16_t>::max()) {
       // Always needs the slow-path. We could directly dispatch to it, but this case should be
       // rare, so for simplicity just put the full slow-path down and branch unconditionally.
-      slow_path = new (allocator) IntrinsicSlowPathARMVIXL(invoke);
+      slow_path = new (codegen->GetScopedAllocator()) IntrinsicSlowPathARMVIXL(invoke);
       codegen->AddSlowPath(slow_path);
       __ B(slow_path->GetEntryLabel());
       __ Bind(slow_path->GetExitLabel());
@@ -1942,7 +1941,7 @@ static void GenerateVisitStringIndexOf(HInvoke* invoke,
     vixl32::Register char_reg = InputRegisterAt(invoke, 1);
     // 0xffff is not modified immediate but 0x10000 is, so use `>= 0x10000` instead of `> 0xffff`.
     __ Cmp(char_reg, static_cast<uint32_t>(std::numeric_limits<uint16_t>::max()) + 1);
-    slow_path = new (allocator) IntrinsicSlowPathARMVIXL(invoke);
+    slow_path = new (codegen->GetScopedAllocator()) IntrinsicSlowPathARMVIXL(invoke);
     codegen->AddSlowPath(slow_path);
     __ B(hs, slow_path->GetEntryLabel());
   }
@@ -1977,8 +1976,7 @@ void IntrinsicLocationsBuilderARMVIXL::VisitStringIndexOf(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorARMVIXL::VisitStringIndexOf(HInvoke* invoke) {
-  GenerateVisitStringIndexOf(
-      invoke, GetAssembler(), codegen_, GetAllocator(), /* start_at_zero */ true);
+  GenerateVisitStringIndexOf(invoke, GetAssembler(), codegen_, /* start_at_zero */ true);
 }
 
 void IntrinsicLocationsBuilderARMVIXL::VisitStringIndexOfAfter(HInvoke* invoke) {
@@ -1994,8 +1992,7 @@ void IntrinsicLocationsBuilderARMVIXL::VisitStringIndexOfAfter(HInvoke* invoke) 
 }
 
 void IntrinsicCodeGeneratorARMVIXL::VisitStringIndexOfAfter(HInvoke* invoke) {
-  GenerateVisitStringIndexOf(
-      invoke, GetAssembler(), codegen_, GetAllocator(), /* start_at_zero */ false);
+  GenerateVisitStringIndexOf(invoke, GetAssembler(), codegen_, /* start_at_zero */ false);
 }
 
 void IntrinsicLocationsBuilderARMVIXL::VisitStringNewStringFromBytes(HInvoke* invoke) {
@@ -2013,7 +2010,8 @@ void IntrinsicCodeGeneratorARMVIXL::VisitStringNewStringFromBytes(HInvoke* invok
   ArmVIXLAssembler* assembler = GetAssembler();
   vixl32::Register byte_array = InputRegisterAt(invoke, 0);
   __ Cmp(byte_array, 0);
-  SlowPathCodeARMVIXL* slow_path = new (GetAllocator()) IntrinsicSlowPathARMVIXL(invoke);
+  SlowPathCodeARMVIXL* slow_path =
+      new (codegen_->GetScopedAllocator()) IntrinsicSlowPathARMVIXL(invoke);
   codegen_->AddSlowPath(slow_path);
   __ B(eq, slow_path->GetEntryLabel());
 
@@ -2055,7 +2053,8 @@ void IntrinsicCodeGeneratorARMVIXL::VisitStringNewStringFromString(HInvoke* invo
   ArmVIXLAssembler* assembler = GetAssembler();
   vixl32::Register string_to_copy = InputRegisterAt(invoke, 0);
   __ Cmp(string_to_copy, 0);
-  SlowPathCodeARMVIXL* slow_path = new (GetAllocator()) IntrinsicSlowPathARMVIXL(invoke);
+  SlowPathCodeARMVIXL* slow_path =
+      new (codegen_->GetScopedAllocator()) IntrinsicSlowPathARMVIXL(invoke);
   codegen_->AddSlowPath(slow_path);
   __ B(eq, slow_path->GetEntryLabel());
 
@@ -2190,7 +2189,8 @@ void IntrinsicCodeGeneratorARMVIXL::VisitSystemArrayCopy(HInvoke* invoke) {
   Location temp3_loc = locations->GetTemp(2);
   vixl32::Register temp3 = RegisterFrom(temp3_loc);
 
-  SlowPathCodeARMVIXL* intrinsic_slow_path = new (GetAllocator()) IntrinsicSlowPathARMVIXL(invoke);
+  SlowPathCodeARMVIXL* intrinsic_slow_path =
+      new (codegen_->GetScopedAllocator()) IntrinsicSlowPathARMVIXL(invoke);
   codegen_->AddSlowPath(intrinsic_slow_path);
 
   vixl32::Label conditions_on_positions_validated;
@@ -2496,7 +2496,7 @@ void IntrinsicCodeGeneratorARMVIXL::VisitSystemArrayCopy(HInvoke* invoke) {
       // Note that the base destination address is computed in `temp2`
       // by the slow path code.
       SlowPathCodeARMVIXL* read_barrier_slow_path =
-          new (GetAllocator()) ReadBarrierSystemArrayCopySlowPathARMVIXL(invoke);
+          new (codegen_->GetScopedAllocator()) ReadBarrierSystemArrayCopySlowPathARMVIXL(invoke);
       codegen_->AddSlowPath(read_barrier_slow_path);
 
       // Given the numeric representation, it's enough to check the low bit of the

@@ -3581,7 +3581,7 @@ void InstructionCodeGeneratorX86::GenerateDivRemIntegral(HBinaryOperation* instr
           GenerateDivRemWithAnyConstant(instruction);
         }
       } else {
-        SlowPathCode* slow_path = new (GetGraph()->GetAllocator()) DivRemMinusOneSlowPathX86(
+        SlowPathCode* slow_path = new (codegen_->GetScopedAllocator()) DivRemMinusOneSlowPathX86(
             instruction, out.AsRegister<Register>(), is_div);
         codegen_->AddSlowPath(slow_path);
 
@@ -3817,7 +3817,8 @@ void LocationsBuilderX86::VisitDivZeroCheck(HDivZeroCheck* instruction) {
 }
 
 void InstructionCodeGeneratorX86::VisitDivZeroCheck(HDivZeroCheck* instruction) {
-  SlowPathCode* slow_path = new (GetGraph()->GetAllocator()) DivZeroCheckSlowPathX86(instruction);
+  SlowPathCode* slow_path =
+      new (codegen_->GetScopedAllocator()) DivZeroCheckSlowPathX86(instruction);
   codegen_->AddSlowPath(slow_path);
 
   LocationSummary* locations = instruction->GetLocations();
@@ -5149,7 +5150,7 @@ void CodeGeneratorX86::GenerateImplicitNullCheck(HNullCheck* instruction) {
 }
 
 void CodeGeneratorX86::GenerateExplicitNullCheck(HNullCheck* instruction) {
-  SlowPathCode* slow_path = new (GetGraph()->GetAllocator()) NullCheckSlowPathX86(instruction);
+  SlowPathCode* slow_path = new (GetScopedAllocator()) NullCheckSlowPathX86(instruction);
   AddSlowPath(slow_path);
 
   LocationSummary* locations = instruction->GetLocations();
@@ -5427,7 +5428,7 @@ void InstructionCodeGeneratorX86::VisitArraySet(HArraySet* instruction) {
       Location temp_loc = locations->GetTemp(0);
       Register temp = temp_loc.AsRegister<Register>();
       if (may_need_runtime_call_for_type_check) {
-        slow_path = new (GetGraph()->GetAllocator()) ArraySetSlowPathX86(instruction);
+        slow_path = new (codegen_->GetScopedAllocator()) ArraySetSlowPathX86(instruction);
         codegen_->AddSlowPath(slow_path);
         if (instruction->GetValueCanBeNull()) {
           __ testl(register_value, register_value);
@@ -5618,7 +5619,7 @@ void InstructionCodeGeneratorX86::VisitBoundsCheck(HBoundsCheck* instruction) {
   Location index_loc = locations->InAt(0);
   Location length_loc = locations->InAt(1);
   SlowPathCode* slow_path =
-    new (GetGraph()->GetAllocator()) BoundsCheckSlowPathX86(instruction);
+    new (codegen_->GetScopedAllocator()) BoundsCheckSlowPathX86(instruction);
 
   if (length_loc.IsConstant()) {
     int32_t length = CodeGenerator::GetInt32ValueOf(length_loc.GetConstant());
@@ -5719,7 +5720,8 @@ void InstructionCodeGeneratorX86::GenerateSuspendCheck(HSuspendCheck* instructio
   SuspendCheckSlowPathX86* slow_path =
       down_cast<SuspendCheckSlowPathX86*>(instruction->GetSlowPath());
   if (slow_path == nullptr) {
-    slow_path = new (GetGraph()->GetAllocator()) SuspendCheckSlowPathX86(instruction, successor);
+    slow_path =
+        new (codegen_->GetScopedAllocator()) SuspendCheckSlowPathX86(instruction, successor);
     instruction->SetSlowPath(slow_path);
     codegen_->AddSlowPath(slow_path);
     if (successor != nullptr) {
@@ -6076,12 +6078,11 @@ void LocationsBuilderX86::VisitLoadClass(HLoadClass* cls) {
 }
 
 Label* CodeGeneratorX86::NewJitRootClassPatch(const DexFile& dex_file,
-                                              dex::TypeIndex dex_index,
+                                              dex::TypeIndex type_index,
                                               Handle<mirror::Class> handle) {
-  jit_class_roots_.Overwrite(TypeReference(&dex_file, dex_index),
-                             reinterpret_cast64<uint64_t>(handle.GetReference()));
+  ReserveJitClassRoot(TypeReference(&dex_file, type_index), handle);
   // Add a patch entry and return the label.
-  jit_class_patches_.emplace_back(dex_file, dex_index.index_);
+  jit_class_patches_.emplace_back(dex_file, type_index.index_);
   PatchInfo<Label>* info = &jit_class_patches_.back();
   return &info->label;
 }
@@ -6171,7 +6172,7 @@ void InstructionCodeGeneratorX86::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAFE
 
   if (generate_null_check || cls->MustGenerateClinitCheck()) {
     DCHECK(cls->CanCallRuntime());
-    SlowPathCode* slow_path = new (GetGraph()->GetAllocator()) LoadClassSlowPathX86(
+    SlowPathCode* slow_path = new (codegen_->GetScopedAllocator()) LoadClassSlowPathX86(
         cls, cls, cls->GetDexPc(), cls->MustGenerateClinitCheck());
     codegen_->AddSlowPath(slow_path);
 
@@ -6199,7 +6200,7 @@ void LocationsBuilderX86::VisitClinitCheck(HClinitCheck* check) {
 
 void InstructionCodeGeneratorX86::VisitClinitCheck(HClinitCheck* check) {
   // We assume the class to not be null.
-  SlowPathCode* slow_path = new (GetGraph()->GetAllocator()) LoadClassSlowPathX86(
+  SlowPathCode* slow_path = new (codegen_->GetScopedAllocator()) LoadClassSlowPathX86(
       check->GetLoadClass(), check, check->GetDexPc(), true);
   codegen_->AddSlowPath(slow_path);
   GenerateClassInitializationCheck(slow_path,
@@ -6261,12 +6262,11 @@ void LocationsBuilderX86::VisitLoadString(HLoadString* load) {
 }
 
 Label* CodeGeneratorX86::NewJitRootStringPatch(const DexFile& dex_file,
-                                               dex::StringIndex dex_index,
+                                               dex::StringIndex string_index,
                                                Handle<mirror::String> handle) {
-  jit_string_roots_.Overwrite(
-      StringReference(&dex_file, dex_index), reinterpret_cast64<uint64_t>(handle.GetReference()));
+  ReserveJitStringRoot(StringReference(&dex_file, string_index), handle);
   // Add a patch entry and return the label.
-  jit_string_patches_.emplace_back(dex_file, dex_index.index_);
+  jit_string_patches_.emplace_back(dex_file, string_index.index_);
   PatchInfo<Label>* info = &jit_string_patches_.back();
   return &info->label;
 }
@@ -6306,7 +6306,7 @@ void InstructionCodeGeneratorX86::VisitLoadString(HLoadString* load) NO_THREAD_S
       Label* fixup_label = codegen_->NewStringBssEntryPatch(load);
       // /* GcRoot<mirror::String> */ out = *address  /* PC-relative */
       GenerateGcRootFieldLoad(load, out_loc, address, fixup_label, kCompilerReadBarrierOption);
-      SlowPathCode* slow_path = new (GetGraph()->GetAllocator()) LoadStringSlowPathX86(load);
+      SlowPathCode* slow_path = new (codegen_->GetScopedAllocator()) LoadStringSlowPathX86(load);
       codegen_->AddSlowPath(slow_path);
       __ testl(out, out);
       __ j(kEqual, slow_path->GetEntryLabel());
@@ -6587,8 +6587,8 @@ void InstructionCodeGeneratorX86::VisitInstanceOf(HInstanceOf* instruction) {
         __ cmpl(out, Address(ESP, cls.GetStackIndex()));
       }
       DCHECK(locations->OnlyCallsOnSlowPath());
-      slow_path = new (GetGraph()->GetAllocator()) TypeCheckSlowPathX86(instruction,
-                                                                        /* is_fatal */ false);
+      slow_path = new (codegen_->GetScopedAllocator()) TypeCheckSlowPathX86(
+          instruction, /* is_fatal */ false);
       codegen_->AddSlowPath(slow_path);
       __ j(kNotEqual, slow_path->GetEntryLabel());
       __ movl(out, Immediate(1));
@@ -6619,8 +6619,8 @@ void InstructionCodeGeneratorX86::VisitInstanceOf(HInstanceOf* instruction) {
       // call to the runtime not using a type checking slow path).
       // This should also be beneficial for the other cases above.
       DCHECK(locations->OnlyCallsOnSlowPath());
-      slow_path = new (GetGraph()->GetAllocator()) TypeCheckSlowPathX86(instruction,
-                                                                        /* is_fatal */ false);
+      slow_path = new (codegen_->GetScopedAllocator()) TypeCheckSlowPathX86(
+          instruction, /* is_fatal */ false);
       codegen_->AddSlowPath(slow_path);
       __ jmp(slow_path->GetEntryLabel());
       if (zero.IsLinked()) {
@@ -6712,8 +6712,8 @@ void InstructionCodeGeneratorX86::VisitCheckCast(HCheckCast* instruction) {
       IsTypeCheckSlowPathFatal(type_check_kind, instruction->CanThrowIntoCatchBlock());
 
   SlowPathCode* type_check_slow_path =
-      new (GetGraph()->GetAllocator()) TypeCheckSlowPathX86(instruction,
-                                                            is_type_check_slow_path_fatal);
+      new (codegen_->GetScopedAllocator()) TypeCheckSlowPathX86(
+          instruction, is_type_check_slow_path_fatal);
   codegen_->AddSlowPath(type_check_slow_path);
 
   NearLabel done;
@@ -7156,7 +7156,7 @@ void InstructionCodeGeneratorX86::GenerateGcRootFieldLoad(
                     "have different sizes.");
 
       // Slow path marking the GC root `root`.
-      SlowPathCode* slow_path = new (GetGraph()->GetAllocator()) ReadBarrierMarkSlowPathX86(
+      SlowPathCode* slow_path = new (codegen_->GetScopedAllocator()) ReadBarrierMarkSlowPathX86(
           instruction, root, /* unpoison_ref_before_marking */ false);
       codegen_->AddSlowPath(slow_path);
 
@@ -7286,10 +7286,10 @@ void CodeGeneratorX86::GenerateReferenceLoadWithBakerReadBarrier(HInstruction* i
   SlowPathCode* slow_path;
   if (always_update_field) {
     DCHECK(temp != nullptr);
-    slow_path = new (GetGraph()->GetAllocator()) ReadBarrierMarkAndUpdateFieldSlowPathX86(
+    slow_path = new (GetScopedAllocator()) ReadBarrierMarkAndUpdateFieldSlowPathX86(
         instruction, ref, obj, src, /* unpoison_ref_before_marking */ true, *temp);
   } else {
-    slow_path = new (GetGraph()->GetAllocator()) ReadBarrierMarkSlowPathX86(
+    slow_path = new (GetScopedAllocator()) ReadBarrierMarkSlowPathX86(
         instruction, ref, /* unpoison_ref_before_marking */ true);
   }
   AddSlowPath(slow_path);
@@ -7322,7 +7322,7 @@ void CodeGeneratorX86::GenerateReadBarrierSlow(HInstruction* instruction,
   // not used by the artReadBarrierSlow entry point.
   //
   // TODO: Unpoison `ref` when it is used by artReadBarrierSlow.
-  SlowPathCode* slow_path = new (GetGraph()->GetAllocator())
+  SlowPathCode* slow_path = new (GetScopedAllocator())
       ReadBarrierForHeapReferenceSlowPathX86(instruction, out, ref, obj, offset, index);
   AddSlowPath(slow_path);
 
@@ -7358,7 +7358,7 @@ void CodeGeneratorX86::GenerateReadBarrierForRootSlow(HInstruction* instruction,
   // Note that GC roots are not affected by heap poisoning, so we do
   // not need to do anything special for this here.
   SlowPathCode* slow_path =
-      new (GetGraph()->GetAllocator()) ReadBarrierForRootSlowPathX86(instruction, out, root);
+      new (GetScopedAllocator()) ReadBarrierForRootSlowPathX86(instruction, out, root);
   AddSlowPath(slow_path);
 
   __ jmp(slow_path->GetEntryLabel());
@@ -7810,18 +7810,14 @@ void CodeGeneratorX86::PatchJitRootUse(uint8_t* code,
 
 void CodeGeneratorX86::EmitJitRootPatches(uint8_t* code, const uint8_t* roots_data) {
   for (const PatchInfo<Label>& info : jit_string_patches_) {
-    const auto it = jit_string_roots_.find(
-        StringReference(&info.dex_file, dex::StringIndex(info.index)));
-    DCHECK(it != jit_string_roots_.end());
-    uint64_t index_in_table = it->second;
+    StringReference string_reference(&info.dex_file, dex::StringIndex(info.index));
+    uint64_t index_in_table = GetJitStringRootIndex(string_reference);
     PatchJitRootUse(code, roots_data, info, index_in_table);
   }
 
   for (const PatchInfo<Label>& info : jit_class_patches_) {
-    const auto it = jit_class_roots_.find(
-        TypeReference(&info.dex_file, dex::TypeIndex(info.index)));
-    DCHECK(it != jit_class_roots_.end());
-    uint64_t index_in_table = it->second;
+    TypeReference type_reference(&info.dex_file, dex::TypeIndex(info.index));
+    uint64_t index_in_table = GetJitClassRootIndex(type_reference);
     PatchJitRootUse(code, roots_data, info, index_in_table);
   }
 }
