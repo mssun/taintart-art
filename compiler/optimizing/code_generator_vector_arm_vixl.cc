@@ -28,6 +28,7 @@ using helpers::Int64ConstantFrom;
 using helpers::InputDRegisterAt;
 using helpers::InputRegisterAt;
 using helpers::OutputDRegister;
+using helpers::OutputRegister;
 using helpers::RegisterFrom;
 
 #define __ GetVIXLAssembler()->
@@ -76,11 +77,30 @@ void InstructionCodeGeneratorARMVIXL::VisitVecReplicateScalar(HVecReplicateScala
 }
 
 void LocationsBuilderARMVIXL::VisitVecExtractScalar(HVecExtractScalar* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
+  switch (instruction->GetPackedType()) {
+    case DataType::Type::kInt32:
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetOut(Location::RequiresRegister());
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
 }
 
 void InstructionCodeGeneratorARMVIXL::VisitVecExtractScalar(HVecExtractScalar* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+  LocationSummary* locations = instruction->GetLocations();
+  vixl32::DRegister src = DRegisterFrom(locations->InAt(0));
+  switch (instruction->GetPackedType()) {
+    case DataType::Type::kInt32:
+      DCHECK_EQ(2u, instruction->GetVectorLength());
+      __ Vmov(OutputRegister(instruction), DRegisterLane(src, 0));
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
 }
 
 // Helper to set up locations for vector unary operations.
@@ -112,7 +132,28 @@ void LocationsBuilderARMVIXL::VisitVecReduce(HVecReduce* instruction) {
 }
 
 void InstructionCodeGeneratorARMVIXL::VisitVecReduce(HVecReduce* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+  LocationSummary* locations = instruction->GetLocations();
+  vixl32::DRegister src = DRegisterFrom(locations->InAt(0));
+  vixl32::DRegister dst = DRegisterFrom(locations->Out());
+  switch (instruction->GetPackedType()) {
+    case DataType::Type::kInt32:
+      DCHECK_EQ(2u, instruction->GetVectorLength());
+      switch (instruction->GetKind()) {
+        case HVecReduce::kSum:
+          __ Vpadd(DataTypeValue::I32, dst, src, src);
+          break;
+        case HVecReduce::kMin:
+          __ Vpmin(DataTypeValue::S32, dst, src, src);
+          break;
+        case HVecReduce::kMax:
+          __ Vpmax(DataTypeValue::S32, dst, src, src);
+          break;
+      }
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
 }
 
 void LocationsBuilderARMVIXL::VisitVecCnv(HVecCnv* instruction) {
@@ -635,11 +676,49 @@ void InstructionCodeGeneratorARMVIXL::VisitVecUShr(HVecUShr* instruction) {
 }
 
 void LocationsBuilderARMVIXL::VisitVecSetScalars(HVecSetScalars* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
+
+  DCHECK_EQ(1u, instruction->InputCount());  // only one input currently implemented
+
+  HInstruction* input = instruction->InputAt(0);
+  bool is_zero = IsZeroBitPattern(input);
+
+  switch (instruction->GetPackedType()) {
+    case DataType::Type::kInt32:
+      locations->SetInAt(0, is_zero ? Location::ConstantLocation(input->AsConstant())
+                                    : Location::RequiresRegister());
+      locations->SetOut(Location::RequiresFpuRegister());
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
 }
 
 void InstructionCodeGeneratorARMVIXL::VisitVecSetScalars(HVecSetScalars* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+  LocationSummary* locations = instruction->GetLocations();
+  vixl32::DRegister dst = DRegisterFrom(locations->Out());
+
+  DCHECK_EQ(1u, instruction->InputCount());  // only one input currently implemented
+
+  // Zero out all other elements first.
+  __ Vmov(I32, dst, 0);
+
+  // Shorthand for any type of zero.
+  if (IsZeroBitPattern(instruction->InputAt(0))) {
+    return;
+  }
+
+  // Set required elements.
+  switch (instruction->GetPackedType()) {
+    case DataType::Type::kInt32:
+      DCHECK_EQ(2u, instruction->GetVectorLength());
+      __ Vmov(Untyped32, DRegisterLane(dst, 0), InputRegisterAt(instruction, 0));
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
 }
 
 // Helper to set up locations for vector accumulations.
@@ -676,7 +755,39 @@ void LocationsBuilderARMVIXL::VisitVecSADAccumulate(HVecSADAccumulate* instructi
 }
 
 void InstructionCodeGeneratorARMVIXL::VisitVecSADAccumulate(HVecSADAccumulate* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+  LocationSummary* locations = instruction->GetLocations();
+  vixl32::DRegister acc = DRegisterFrom(locations->InAt(0));
+  vixl32::DRegister left = DRegisterFrom(locations->InAt(1));
+  vixl32::DRegister right = DRegisterFrom(locations->InAt(2));
+
+  DCHECK(locations->InAt(0).Equals(locations->Out()));
+
+  // Handle all feasible acc_T += sad(a_S, b_S) type combinations (T x S).
+  HVecOperation* a = instruction->InputAt(1)->AsVecOperation();
+  HVecOperation* b = instruction->InputAt(2)->AsVecOperation();
+  DCHECK_EQ(a->GetPackedType(), b->GetPackedType());
+  switch (a->GetPackedType()) {
+    case DataType::Type::kInt32:
+      DCHECK_EQ(2u, a->GetVectorLength());
+      switch (instruction->GetPackedType()) {
+        case DataType::Type::kInt32: {
+          DCHECK_EQ(2u, instruction->GetVectorLength());
+          UseScratchRegisterScope temps(GetVIXLAssembler());
+          vixl32::DRegister tmp = temps.AcquireD();
+          __ Vsub(DataTypeValue::I32, tmp, left, right);
+          __ Vabs(DataTypeValue::S32, tmp, tmp);
+          __ Vadd(DataTypeValue::I32, acc, acc, tmp);
+          break;
+        }
+        default:
+          LOG(FATAL) << "Unsupported SIMD type";
+          UNREACHABLE();
+      }
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
 }
 
 // Return whether the vector memory access operation is guaranteed to be word-aligned (ARM word
