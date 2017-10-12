@@ -121,7 +121,9 @@ class OatFileAssistant {
   // executable code for this dex location.
   OatFileAssistant(const char* dex_location,
                    const InstructionSet isa,
-                   bool load_executable);
+                   bool load_executable,
+                   int vdex_fd = -1,
+                   int oat_fd = -1);
 
   ~OatFileAssistant();
 
@@ -349,7 +351,7 @@ class OatFileAssistant {
 
     // Clear any cached information and switch to getting info about the oat
     // file with the given filename.
-    void Reset(const std::string& filename);
+    void Reset(const std::string& filename, int vdex_fd = -1, int oat_fd = -1);
 
     // Release the loaded oat file for runtime use.
     // Returns null if the oat file hasn't been loaded or is out of date.
@@ -385,6 +387,9 @@ class OatFileAssistant {
 
     bool filename_provided_ = false;
     std::string filename_;
+
+    int oat_fd_ = -1;
+    int vdex_fd_ = -1;
 
     bool load_attempted_ = false;
     std::unique_ptr<OatFile> file_;
