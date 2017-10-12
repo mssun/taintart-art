@@ -82,6 +82,7 @@
     "org.apache.harmony.jpda.tests.jdwp.Events.CombinedEventsTest#testCombinedEvents_02",
     "org.apache.harmony.jpda.tests.jdwp.Events.CombinedEventsTest#testCombinedEvents_03",
     "org.apache.harmony.jpda.tests.jdwp.Events.CombinedEventsTest#testCombinedEvents_04",
+    "org.apache.harmony.jpda.tests.jdwp.Events.CombinedEventsTest#testCombinedEvents_05",
     "org.apache.harmony.jpda.tests.jdwp.Events.CombinedEventsTest#testCombinedEvents_06",
     "org.apache.harmony.jpda.tests.jdwp.Events.VMDeathTest#testVMDeathEvent",
     "org.apache.harmony.jpda.tests.jdwp.MultiSession.ClassPrepareTest#testClassPrepare001",
