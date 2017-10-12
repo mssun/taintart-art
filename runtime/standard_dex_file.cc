@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "native_dex_file.h"
+#include "standard_dex_file.h"
 
 namespace art {
 
-const uint8_t NativeDexFile::kDexMagic[] = { 'd', 'e', 'x', '\n' };
-const uint8_t NativeDexFile::kDexMagicVersions[NativeDexFile::kNumDexVersions]
-                                              [NativeDexFile::kDexVersionLen] = {
+const uint8_t StandardDexFile::kDexMagic[] = { 'd', 'e', 'x', '\n' };
+const uint8_t StandardDexFile::kDexMagicVersions[StandardDexFile::kNumDexVersions]
+                                                [StandardDexFile::kDexVersionLen] = {
   {'0', '3', '5', '\0'},
   // Dex version 036 skipped because of an old dalvik bug on some versions of android where dex
   // files with that version number would erroneously be accepted and run.
@@ -31,11 +31,11 @@ const uint8_t NativeDexFile::kDexMagicVersions[NativeDexFile::kNumDexVersions]
   {'0', '3', '9', '\0'},
 };
 
-bool NativeDexFile::IsMagicValid(const uint8_t* magic) {
+bool StandardDexFile::IsMagicValid(const uint8_t* magic) {
   return (memcmp(magic, kDexMagic, sizeof(kDexMagic)) == 0);
 }
 
-bool NativeDexFile::IsVersionValid(const uint8_t* magic) {
+bool StandardDexFile::IsVersionValid(const uint8_t* magic) {
   const uint8_t* version = &magic[sizeof(kDexMagic)];
   for (uint32_t i = 0; i < kNumDexVersions; i++) {
     if (memcmp(version, kDexMagicVersions[i], kDexVersionLen) == 0) {
@@ -45,11 +45,11 @@ bool NativeDexFile::IsVersionValid(const uint8_t* magic) {
   return false;
 }
 
-bool NativeDexFile::IsMagicValid() const {
+bool StandardDexFile::IsMagicValid() const {
   return IsMagicValid(header_->magic_);
 }
 
-bool NativeDexFile::IsVersionValid() const {
+bool StandardDexFile::IsVersionValid() const {
   return IsVersionValid(header_->magic_);
 }
 
