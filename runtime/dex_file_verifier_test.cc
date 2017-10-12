@@ -30,8 +30,8 @@
 #include "dex_file_loader.h"
 #include "dex_file_types.h"
 #include "leb128.h"
-#include "native_dex_file.h"
 #include "scoped_thread_state_change-inl.h"
+#include "standard_dex_file.h"
 #include "thread-current-inl.h"
 #include "utils.h"
 
@@ -57,7 +57,7 @@ static void FixUpChecksum(uint8_t* dex_file) {
 class DexFileVerifierTest : public CommonRuntimeTest {
  protected:
   DexFile* GetDexFile(const uint8_t* dex_bytes, size_t length) {
-    return new NativeDexFile(dex_bytes, length, "tmp", 0, nullptr);
+    return new StandardDexFile(dex_bytes, length, "tmp", 0, nullptr);
   }
 
   void VerifyModification(const char* dex_file_base64_content,

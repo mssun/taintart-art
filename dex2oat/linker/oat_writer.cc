@@ -53,7 +53,7 @@
 #include "mirror/class_loader.h"
 #include "mirror/dex_cache-inl.h"
 #include "mirror/object-inl.h"
-#include "native_dex_file.h"
+#include "standard_dex_file.h"
 #include "oat_quick_method_header.h"
 #include "os.h"
 #include "safe_map.h"
@@ -3110,12 +3110,12 @@ bool OatWriter::ReadDexFileHeader(File* file, OatDexFile* oat_dex_file) {
 }
 
 bool OatWriter::ValidateDexFileHeader(const uint8_t* raw_header, const char* location) {
-  const bool valid_native_dex_magic = NativeDexFile::IsMagicValid(raw_header);
-  if (!valid_native_dex_magic) {
+  const bool valid_standard_dex_magic = StandardDexFile::IsMagicValid(raw_header);
+  if (!valid_standard_dex_magic) {
     LOG(ERROR) << "Invalid magic number in dex file header. " << " File: " << location;
     return false;
   }
-  if (!NativeDexFile::IsVersionValid(raw_header)) {
+  if (!StandardDexFile::IsVersionValid(raw_header)) {
     LOG(ERROR) << "Invalid version number in dex file header. " << " File: " << location;
     return false;
   }

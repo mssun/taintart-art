@@ -50,12 +50,12 @@
 #include "mem_map.h"
 #include "mirror/class.h"
 #include "mirror/object-inl.h"
-#include "native_dex_file.h"
 #include "oat.h"
 #include "oat_file-inl.h"
 #include "oat_file_manager.h"
 #include "os.h"
 #include "runtime.h"
+#include "standard_dex_file.h"
 #include "type_lookup_table.h"
 #include "utf-inl.h"
 #include "utils.h"
@@ -555,7 +555,7 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
 
     const uint8_t* dex_file_pointer = DexBegin() + dex_file_offset;
 
-    const bool valid_magic = NativeDexFile::IsMagicValid(dex_file_pointer);
+    const bool valid_magic = StandardDexFile::IsMagicValid(dex_file_pointer);
     if (UNLIKELY(!valid_magic)) {
       *error_msg = StringPrintf("In oat file '%s' found OatDexFile #%zu for '%s' with invalid "
                                     "dex file magic '%s'",
@@ -565,7 +565,7 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
                                 dex_file_pointer);
       return false;
     }
-    if (UNLIKELY(!NativeDexFile::IsVersionValid(dex_file_pointer))) {
+    if (UNLIKELY(!StandardDexFile::IsVersionValid(dex_file_pointer))) {
       *error_msg = StringPrintf("In oat file '%s' found OatDexFile #%zu for '%s' with invalid "
                                     "dex file version '%s'",
                                 GetLocation().c_str(),
