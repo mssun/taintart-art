@@ -79,6 +79,7 @@ enum ArenaAllocKind {
   kArenaAllocInductionVarAnalysis,
   kArenaAllocBoundsCheckElimination,
   kArenaAllocDCE,
+  kArenaAllocLSA,
   kArenaAllocLSE,
   kArenaAllocCFRE,
   kArenaAllocLICM,

@@ -18,12 +18,10 @@
 #define ART_COMPILER_OPTIMIZING_REFERENCE_TYPE_PROPAGATION_H_
 
 #include "base/arena_containers.h"
-#include "driver/dex_compilation_unit.h"
-#include "handle_scope-inl.h"
+#include "mirror/class-inl.h"
 #include "nodes.h"
 #include "obj_ptr.h"
 #include "optimization.h"
-#include "optimizing_compiler_stats.h"
 
 namespace art {
 
@@ -91,22 +89,6 @@ class ReferenceTypePropagation : public HOptimization {
 
   class RTPVisitor;
 
-  void VisitPhi(HPhi* phi);
-  void VisitBasicBlock(HBasicBlock* block);
-  void UpdateBoundType(HBoundType* bound_type) REQUIRES_SHARED(Locks::mutator_lock_);
-  void UpdatePhi(HPhi* phi) REQUIRES_SHARED(Locks::mutator_lock_);
-  void BoundTypeForIfNotNull(HBasicBlock* block);
-  void BoundTypeForIfInstanceOf(HBasicBlock* block);
-  void ProcessWorklist();
-  void AddToWorklist(HInstruction* instr);
-  void AddDependentInstructionsToWorklist(HInstruction* instr);
-
-  bool UpdateNullability(HInstruction* instr);
-  bool UpdateReferenceTypeInfo(HInstruction* instr);
-
-  static void UpdateArrayGet(HArrayGet* instr, HandleCache* handle_cache)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
   static ReferenceTypeInfo MergeTypes(const ReferenceTypeInfo& a,
                                       const ReferenceTypeInfo& b,
                                       HandleCache* handle_cache)
@@ -122,12 +104,8 @@ class ReferenceTypePropagation : public HOptimization {
   Handle<mirror::DexCache> hint_dex_cache_;
   HandleCache handle_cache_;
 
-  ArenaVector<HInstruction*> worklist_;
-
   // Whether this reference type propagation is the first run we are doing.
   const bool is_first_run_;
-
-  static constexpr size_t kDefaultWorklistSize = 8;
 
   friend class ReferenceTypePropagationTest;
 

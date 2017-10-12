@@ -17,9 +17,12 @@
 #ifndef ART_COMPILER_OPTIMIZING_GRAPH_CHECKER_H_
 #define ART_COMPILER_OPTIMIZING_GRAPH_CHECKER_H_
 
-#include "nodes.h"
-
 #include <ostream>
+
+#include "base/arena_bit_vector.h"
+#include "base/bit_vector-inl.h"
+#include "base/scoped_arena_allocator.h"
+#include "nodes.h"
 
 namespace art {
 
@@ -30,12 +33,10 @@ class GraphChecker : public HGraphDelegateVisitor {
     : HGraphDelegateVisitor(graph),
       errors_(graph->GetAllocator()->Adapter(kArenaAllocGraphChecker)),
       dump_prefix_(dump_prefix),
-      seen_ids_(graph->GetAllocator(),
-                graph->GetCurrentInstructionId(),
-                false,
-                kArenaAllocGraphChecker),
-      blocks_storage_(graph->GetAllocator()->Adapter(kArenaAllocGraphChecker)),
-      visited_storage_(graph->GetAllocator(), 0u, true, kArenaAllocGraphChecker) {}
+      allocator_(graph->GetArenaStack()),
+      seen_ids_(&allocator_, graph->GetCurrentInstructionId(), false, kArenaAllocGraphChecker) {
+    seen_ids_.ClearAllBits();
+  }
 
   // Check the whole graph (in reverse post-order).
   void Run() {
@@ -104,11 +105,8 @@ class GraphChecker : public HGraphDelegateVisitor {
  private:
   // String displayed before dumped errors.
   const char* const dump_prefix_;
+  ScopedArenaAllocator allocator_;
   ArenaBitVector seen_ids_;
-
-  // To reduce the total arena memory allocation, we reuse the same storage.
-  ArenaVector<HBasicBlock*> blocks_storage_;
-  ArenaBitVector visited_storage_;
 
   DISALLOW_COPY_AND_ASSIGN(GraphChecker);
 };
