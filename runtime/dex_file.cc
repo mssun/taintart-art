@@ -39,8 +39,8 @@
 #include "jvalue.h"
 #include "leb128.h"
 #include "mem_map.h"
-#include "native_dex_file.h"
 #include "os.h"
+#include "standard_dex_file.h"
 #include "utf-inl.h"
 #include "utils.h"
 
