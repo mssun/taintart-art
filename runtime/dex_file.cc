@@ -23,7 +23,6 @@
 #include <string.h>
 #include <sys/file.h>
 #include <sys/mman.h>  // For the PROT_* and MAP_* constants.
-#include <sys/stat.h>
 #include <zlib.h>
 
 #include <memory>
@@ -33,20 +32,17 @@
 #include "android-base/stringprintf.h"
 
 #include "base/enums.h"
-#include "base/file_magic.h"
 #include "base/logging.h"
 #include "base/stl_util.h"
-#include "base/systrace.h"
-#include "base/unix_file/fd_file.h"
 #include "dex_file-inl.h"
-#include "dex_file_verifier.h"
+#include "dex_file_loader.h"
 #include "jvalue.h"
 #include "leb128.h"
+#include "mem_map.h"
 #include "native_dex_file.h"
 #include "os.h"
 #include "utf-inl.h"
 #include "utils.h"
-#include "zip_archive.h"
 
 namespace art {
 
@@ -56,10 +52,6 @@ static_assert(sizeof(dex::StringIndex) == sizeof(uint32_t), "StringIndex size is
 static_assert(std::is_trivially_copyable<dex::StringIndex>::value, "StringIndex not trivial");
 static_assert(sizeof(dex::TypeIndex) == sizeof(uint16_t), "TypeIndex size is wrong");
 static_assert(std::is_trivially_copyable<dex::TypeIndex>::value, "TypeIndex not trivial");
-
-static constexpr OatDexFile* kNoOatDexFile = nullptr;
-
-const char* DexFile::kClassesDex = "classes.dex";
 
 uint32_t DexFile::CalculateChecksum() const {
   const uint32_t non_sum = OFFSETOF_MEMBER(DexFile::Header, signature_);
@@ -71,63 +63,6 @@ struct DexFile::AnnotationValue {
   JValue value_;
   uint8_t type_;
 };
-
-bool DexFile::IsValidMagic(uint32_t magic) {
-  return IsValidMagic(reinterpret_cast<uint8_t*>(&magic));
-}
-
-bool DexFile::IsValidMagic(const uint8_t* magic) {
-  return NativeDexFile::IsMagicValid(magic);
-}
-
-bool DexFile::GetMultiDexChecksums(const char* filename,
-                                   std::vector<uint32_t>* checksums,
-                                   std::string* error_msg) {
-  CHECK(checksums != nullptr);
-  uint32_t magic;
-
-  File fd = OpenAndReadMagic(filename, &magic, error_msg);
-  if (fd.Fd() == -1) {
-    DCHECK(!error_msg->empty());
-    return false;
-  }
-  if (IsZipMagic(magic)) {
-    std::unique_ptr<ZipArchive> zip_archive(
-        ZipArchive::OpenFromFd(fd.Release(), filename, error_msg));
-    if (zip_archive.get() == nullptr) {
-      *error_msg = StringPrintf("Failed to open zip archive '%s' (error msg: %s)", filename,
-                                error_msg->c_str());
-      return false;
-    }
-
-    uint32_t i = 0;
-    std::string zip_entry_name = GetMultiDexClassesDexName(i++);
-    std::unique_ptr<ZipEntry> zip_entry(zip_archive->Find(zip_entry_name.c_str(), error_msg));
-    if (zip_entry.get() == nullptr) {
-      *error_msg = StringPrintf("Zip archive '%s' doesn't contain %s (error msg: %s)", filename,
-          zip_entry_name.c_str(), error_msg->c_str());
-      return false;
-    }
-
-    do {
-      checksums->push_back(zip_entry->GetCrc32());
-      zip_entry_name = DexFile::GetMultiDexClassesDexName(i++);
-      zip_entry.reset(zip_archive->Find(zip_entry_name.c_str(), error_msg));
-    } while (zip_entry.get() != nullptr);
-    return true;
-  }
-  if (IsValidMagic(magic)) {
-    std::unique_ptr<const DexFile> dex_file(
-        DexFile::OpenFile(fd.Release(), filename, false, false, error_msg));
-    if (dex_file.get() == nullptr) {
-      return false;
-    }
-    checksums->push_back(dex_file->GetHeader().checksum_);
-    return true;
-  }
-  *error_msg = StringPrintf("Expected valid zip or dex file: '%s'", filename);
-  return false;
-}
 
 int DexFile::GetPermissions() const {
   if (mem_map_.get() == nullptr) {
@@ -157,365 +92,6 @@ bool DexFile::DisableWrite() const {
   } else {
     return mem_map_->Protect(PROT_READ);
   }
-}
-
-std::unique_ptr<const DexFile> DexFile::Open(const uint8_t* base,
-                                             size_t size,
-                                             const std::string& location,
-                                             uint32_t location_checksum,
-                                             const OatDexFile* oat_dex_file,
-                                             bool verify,
-                                             bool verify_checksum,
-                                             std::string* error_msg) {
-  ScopedTrace trace(std::string("Open dex file from RAM ") + location);
-  return OpenCommon(base,
-                    size,
-                    location,
-                    location_checksum,
-                    oat_dex_file,
-                    verify,
-                    verify_checksum,
-                    error_msg);
-}
-
-std::unique_ptr<const DexFile> DexFile::Open(const std::string& location,
-                                             uint32_t location_checksum,
-                                             std::unique_ptr<MemMap> map,
-                                             bool verify,
-                                             bool verify_checksum,
-                                             std::string* error_msg) {
-  ScopedTrace trace(std::string("Open dex file from mapped-memory ") + location);
-  CHECK(map.get() != nullptr);
-
-  if (map->Size() < sizeof(DexFile::Header)) {
-    *error_msg = StringPrintf(
-        "DexFile: failed to open dex file '%s' that is too short to have a header",
-        location.c_str());
-    return nullptr;
-  }
-
-  std::unique_ptr<DexFile> dex_file = OpenCommon(map->Begin(),
-                                                 map->Size(),
-                                                 location,
-                                                 location_checksum,
-                                                 kNoOatDexFile,
-                                                 verify,
-                                                 verify_checksum,
-                                                 error_msg);
-  if (dex_file != nullptr) {
-    dex_file->mem_map_ = std::move(map);
-  }
-  return dex_file;
-}
-
-bool DexFile::Open(const char* filename,
-                   const std::string& location,
-                   bool verify_checksum,
-                   std::string* error_msg,
-                   std::vector<std::unique_ptr<const DexFile>>* dex_files) {
-  ScopedTrace trace(std::string("Open dex file ") + std::string(location));
-  DCHECK(dex_files != nullptr) << "DexFile::Open: out-param is nullptr";
-  uint32_t magic;
-  File fd = OpenAndReadMagic(filename, &magic, error_msg);
-  if (fd.Fd() == -1) {
-    DCHECK(!error_msg->empty());
-    return false;
-  }
-  if (IsZipMagic(magic)) {
-    return DexFile::OpenZip(fd.Release(), location, verify_checksum, error_msg, dex_files);
-  }
-  if (IsValidMagic(magic)) {
-    std::unique_ptr<const DexFile> dex_file(DexFile::OpenFile(fd.Release(),
-                                                              location,
-                                                              /* verify */ true,
-                                                              verify_checksum,
-                                                              error_msg));
-    if (dex_file.get() != nullptr) {
-      dex_files->push_back(std::move(dex_file));
-      return true;
-    } else {
-      return false;
-    }
-  }
-  *error_msg = StringPrintf("Expected valid zip or dex file: '%s'", filename);
-  return false;
-}
-
-std::unique_ptr<const DexFile> DexFile::OpenDex(int fd,
-                                                const std::string& location,
-                                                bool verify_checksum,
-                                                std::string* error_msg) {
-  ScopedTrace trace("Open dex file " + std::string(location));
-  return OpenFile(fd, location, true /* verify */, verify_checksum, error_msg);
-}
-
-bool DexFile::OpenZip(int fd,
-                      const std::string& location,
-                      bool verify_checksum,
-                      std::string* error_msg,
-                      std::vector<std::unique_ptr<const DexFile>>* dex_files) {
-  ScopedTrace trace("Dex file open Zip " + std::string(location));
-  DCHECK(dex_files != nullptr) << "DexFile::OpenZip: out-param is nullptr";
-  std::unique_ptr<ZipArchive> zip_archive(ZipArchive::OpenFromFd(fd, location.c_str(), error_msg));
-  if (zip_archive.get() == nullptr) {
-    DCHECK(!error_msg->empty());
-    return false;
-  }
-  return DexFile::OpenAllDexFilesFromZip(*zip_archive,
-                                         location,
-                                         verify_checksum,
-                                         error_msg,
-                                         dex_files);
-}
-
-std::unique_ptr<const DexFile> DexFile::OpenFile(int fd,
-                                                 const std::string& location,
-                                                 bool verify,
-                                                 bool verify_checksum,
-                                                 std::string* error_msg) {
-  ScopedTrace trace(std::string("Open dex file ") + std::string(location));
-  CHECK(!location.empty());
-  std::unique_ptr<MemMap> map;
-  {
-    File delayed_close(fd, /* check_usage */ false);
-    struct stat sbuf;
-    memset(&sbuf, 0, sizeof(sbuf));
-    if (fstat(fd, &sbuf) == -1) {
-      *error_msg = StringPrintf("DexFile: fstat '%s' failed: %s", location.c_str(),
-                                strerror(errno));
-      return nullptr;
-    }
-    if (S_ISDIR(sbuf.st_mode)) {
-      *error_msg = StringPrintf("Attempt to mmap directory '%s'", location.c_str());
-      return nullptr;
-    }
-    size_t length = sbuf.st_size;
-    map.reset(MemMap::MapFile(length,
-                              PROT_READ,
-                              MAP_PRIVATE,
-                              fd,
-                              0,
-                              /*low_4gb*/false,
-                              location.c_str(),
-                              error_msg));
-    if (map == nullptr) {
-      DCHECK(!error_msg->empty());
-      return nullptr;
-    }
-  }
-
-  if (map->Size() < sizeof(DexFile::Header)) {
-    *error_msg = StringPrintf(
-        "DexFile: failed to open dex file '%s' that is too short to have a header",
-        location.c_str());
-    return nullptr;
-  }
-
-  const Header* dex_header = reinterpret_cast<const Header*>(map->Begin());
-
-  std::unique_ptr<DexFile> dex_file = OpenCommon(map->Begin(),
-                                                 map->Size(),
-                                                 location,
-                                                 dex_header->checksum_,
-                                                 kNoOatDexFile,
-                                                 verify,
-                                                 verify_checksum,
-                                                 error_msg);
-  if (dex_file != nullptr) {
-    dex_file->mem_map_ = std::move(map);
-  }
-
-  return dex_file;
-}
-
-std::unique_ptr<const DexFile> DexFile::OpenOneDexFileFromZip(const ZipArchive& zip_archive,
-                                                              const char* entry_name,
-                                                              const std::string& location,
-                                                              bool verify_checksum,
-                                                              std::string* error_msg,
-                                                              ZipOpenErrorCode* error_code) {
-  ScopedTrace trace("Dex file open from Zip Archive " + std::string(location));
-  CHECK(!location.empty());
-  std::unique_ptr<ZipEntry> zip_entry(zip_archive.Find(entry_name, error_msg));
-  if (zip_entry == nullptr) {
-    *error_code = ZipOpenErrorCode::kEntryNotFound;
-    return nullptr;
-  }
-  if (zip_entry->GetUncompressedLength() == 0) {
-    *error_msg = StringPrintf("Dex file '%s' has zero length", location.c_str());
-    *error_code = ZipOpenErrorCode::kDexFileError;
-    return nullptr;
-  }
-
-  std::unique_ptr<MemMap> map;
-  if (zip_entry->IsUncompressed()) {
-    if (!zip_entry->IsAlignedTo(alignof(Header))) {
-      // Do not mmap unaligned ZIP entries because
-      // doing so would fail dex verification which requires 4 byte alignment.
-      LOG(WARNING) << "Can't mmap dex file " << location << "!" << entry_name << " directly; "
-                   << "please zipalign to " << alignof(Header) << " bytes. "
-                   << "Falling back to extracting file.";
-    } else {
-      // Map uncompressed files within zip as file-backed to avoid a dirty copy.
-      map.reset(zip_entry->MapDirectlyFromFile(location.c_str(), /*out*/error_msg));
-      if (map == nullptr) {
-        LOG(WARNING) << "Can't mmap dex file " << location << "!" << entry_name << " directly; "
-                     << "is your ZIP file corrupted? Falling back to extraction.";
-        // Try again with Extraction which still has a chance of recovery.
-      }
-    }
-  }
-
-  if (map == nullptr) {
-    // Default path for compressed ZIP entries,
-    // and fallback for stored ZIP entries.
-    map.reset(zip_entry->ExtractToMemMap(location.c_str(), entry_name, error_msg));
-  }
-
-  if (map == nullptr) {
-    *error_msg = StringPrintf("Failed to extract '%s' from '%s': %s", entry_name, location.c_str(),
-                              error_msg->c_str());
-    *error_code = ZipOpenErrorCode::kExtractToMemoryError;
-    return nullptr;
-  }
-  VerifyResult verify_result;
-  std::unique_ptr<DexFile> dex_file = OpenCommon(map->Begin(),
-                                                 map->Size(),
-                                                 location,
-                                                 zip_entry->GetCrc32(),
-                                                 kNoOatDexFile,
-                                                 /* verify */ true,
-                                                 verify_checksum,
-                                                 error_msg,
-                                                 &verify_result);
-  if (dex_file == nullptr) {
-    if (verify_result == VerifyResult::kVerifyNotAttempted) {
-      *error_code = ZipOpenErrorCode::kDexFileError;
-    } else {
-      *error_code = ZipOpenErrorCode::kVerifyError;
-    }
-    return nullptr;
-  }
-  dex_file->mem_map_ = std::move(map);
-  if (!dex_file->DisableWrite()) {
-    *error_msg = StringPrintf("Failed to make dex file '%s' read only", location.c_str());
-    *error_code = ZipOpenErrorCode::kMakeReadOnlyError;
-    return nullptr;
-  }
-  CHECK(dex_file->IsReadOnly()) << location;
-  if (verify_result != VerifyResult::kVerifySucceeded) {
-    *error_code = ZipOpenErrorCode::kVerifyError;
-    return nullptr;
-  }
-  *error_code = ZipOpenErrorCode::kNoError;
-  return dex_file;
-}
-
-// Technically we do not have a limitation with respect to the number of dex files that can be in a
-// multidex APK. However, it's bad practice, as each dex file requires its own tables for symbols
-// (types, classes, methods, ...) and dex caches. So warn the user that we open a zip with what
-// seems an excessive number.
-static constexpr size_t kWarnOnManyDexFilesThreshold = 100;
-
-bool DexFile::OpenAllDexFilesFromZip(const ZipArchive& zip_archive,
-                                     const std::string& location,
-                                     bool verify_checksum,
-                                     std::string* error_msg,
-                                     std::vector<std::unique_ptr<const DexFile>>* dex_files) {
-  ScopedTrace trace("Dex file open from Zip " + std::string(location));
-  DCHECK(dex_files != nullptr) << "DexFile::OpenFromZip: out-param is nullptr";
-  ZipOpenErrorCode error_code;
-  std::unique_ptr<const DexFile> dex_file(OpenOneDexFileFromZip(zip_archive,
-                                                                kClassesDex,
-                                                                location,
-                                                                verify_checksum,
-                                                                error_msg,
-                                                                &error_code));
-  if (dex_file.get() == nullptr) {
-    return false;
-  } else {
-    // Had at least classes.dex.
-    dex_files->push_back(std::move(dex_file));
-
-    // Now try some more.
-
-    // We could try to avoid std::string allocations by working on a char array directly. As we
-    // do not expect a lot of iterations, this seems too involved and brittle.
-
-    for (size_t i = 1; ; ++i) {
-      std::string name = GetMultiDexClassesDexName(i);
-      std::string fake_location = GetMultiDexLocation(i, location.c_str());
-      std::unique_ptr<const DexFile> next_dex_file(OpenOneDexFileFromZip(zip_archive,
-                                                                         name.c_str(),
-                                                                         fake_location,
-                                                                         verify_checksum,
-                                                                         error_msg,
-                                                                         &error_code));
-      if (next_dex_file.get() == nullptr) {
-        if (error_code != ZipOpenErrorCode::kEntryNotFound) {
-          LOG(WARNING) << "Zip open failed: " << *error_msg;
-        }
-        break;
-      } else {
-        dex_files->push_back(std::move(next_dex_file));
-      }
-
-      if (i == kWarnOnManyDexFilesThreshold) {
-        LOG(WARNING) << location << " has in excess of " << kWarnOnManyDexFilesThreshold
-                     << " dex files. Please consider coalescing and shrinking the number to "
-                        " avoid runtime overhead.";
-      }
-
-      if (i == std::numeric_limits<size_t>::max()) {
-        LOG(ERROR) << "Overflow in number of dex files!";
-        break;
-      }
-    }
-
-    return true;
-  }
-}
-
-std::unique_ptr<DexFile> DexFile::OpenCommon(const uint8_t* base,
-                                             size_t size,
-                                             const std::string& location,
-                                             uint32_t location_checksum,
-                                             const OatDexFile* oat_dex_file,
-                                             bool verify,
-                                             bool verify_checksum,
-                                             std::string* error_msg,
-                                             VerifyResult* verify_result) {
-  if (verify_result != nullptr) {
-    *verify_result = VerifyResult::kVerifyNotAttempted;
-  }
-  std::unique_ptr<DexFile> dex_file;
-  if (NativeDexFile::IsMagicValid(base)) {
-    dex_file.reset(new NativeDexFile(base, size, location, location_checksum, oat_dex_file));
-  }
-  if (dex_file == nullptr) {
-    *error_msg = StringPrintf("Failed to open dex file '%s' from memory: %s", location.c_str(),
-                              error_msg->c_str());
-    return nullptr;
-  }
-  if (!dex_file->Init(error_msg)) {
-    dex_file.reset();
-    return nullptr;
-  }
-  if (verify && !DexFileVerifier::Verify(dex_file.get(),
-                                         dex_file->Begin(),
-                                         dex_file->Size(),
-                                         location.c_str(),
-                                         verify_checksum,
-                                         error_msg)) {
-    if (verify_result != nullptr) {
-      *verify_result = VerifyResult::kVerifyFailed;
-    }
-    return nullptr;
-  }
-  if (verify_result != nullptr) {
-    *verify_result = VerifyResult::kVerifySucceeded;
-  }
-  return dex_file;
 }
 
 DexFile::DexFile(const uint8_t* base,
@@ -1196,41 +772,6 @@ bool DexFile::LineNumForPcCb(void* raw_context, const PositionInfo& entry) {
   } else {
     context->line_num_ = entry.line_;
     return entry.address_ == context->address_;
-  }
-}
-
-bool DexFile::IsMultiDexLocation(const char* location) {
-  return strrchr(location, kMultiDexSeparator) != nullptr;
-}
-
-std::string DexFile::GetMultiDexClassesDexName(size_t index) {
-  if (index == 0) {
-    return "classes.dex";
-  } else {
-    return StringPrintf("classes%zu.dex", index + 1);
-  }
-}
-
-std::string DexFile::GetMultiDexLocation(size_t index, const char* dex_location) {
-  if (index == 0) {
-    return dex_location;
-  } else {
-    return StringPrintf("%s" kMultiDexSeparatorString "classes%zu.dex", dex_location, index + 1);
-  }
-}
-
-std::string DexFile::GetDexCanonicalLocation(const char* dex_location) {
-  CHECK_NE(dex_location, static_cast<const char*>(nullptr));
-  std::string base_location = GetBaseLocation(dex_location);
-  const char* suffix = dex_location + base_location.size();
-  DCHECK(suffix[0] == 0 || suffix[0] == kMultiDexSeparator);
-  UniqueCPtr<const char[]> path(realpath(base_location.c_str(), nullptr));
-  if (path != nullptr && path.get() != base_location) {
-    return std::string(path.get()) + suffix;
-  } else if (suffix[0] == 0) {
-    return base_location;
-  } else {
-    return dex_location;
   }
 }
 

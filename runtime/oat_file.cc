@@ -41,6 +41,7 @@
 #include "base/systrace.h"
 #include "base/unix_file/fd_file.h"
 #include "dex_file_types.h"
+#include "dex_file_loader.h"
 #include "elf_file.h"
 #include "elf_utils.h"
 #include "gc_root.h"
@@ -614,7 +615,8 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
                reinterpret_cast<const DexFile::Header*>(dex_file_pointer)->method_ids_size_);
     }
 
-    std::string canonical_location = DexFile::GetDexCanonicalLocation(dex_file_location.c_str());
+    std::string canonical_location =
+        DexFileLoader::GetDexCanonicalLocation(dex_file_location.c_str());
 
     // Create the OatDexFile and add it to the owning container.
     OatDexFile* oat_dex_file = new OatDexFile(this,
@@ -1099,8 +1101,8 @@ std::string OatFile::ResolveRelativeEncodedDexLocation(
       const char* abs_dex_location, const std::string& rel_dex_location) {
   if (abs_dex_location != nullptr && rel_dex_location[0] != '/') {
     // Strip :classes<N>.dex used for secondary multidex files.
-    std::string base = DexFile::GetBaseLocation(rel_dex_location);
-    std::string multidex_suffix = DexFile::GetMultiDexSuffix(rel_dex_location);
+    std::string base = DexFileLoader::GetBaseLocation(rel_dex_location);
+    std::string multidex_suffix = DexFileLoader::GetMultiDexSuffix(rel_dex_location);
 
     // Check if the base is a suffix of the provided abs_dex_location.
     std::string target_suffix = "/" + base;
@@ -1327,7 +1329,7 @@ const OatFile::OatDexFile* OatFile::GetOatDexFile(const char* dex_location,
       oat_dex_file = secondary_lb->second;  // May be null.
     } else {
       // We haven't seen this dex_location before, we must check the canonical location.
-      std::string dex_canonical_location = DexFile::GetDexCanonicalLocation(dex_location);
+      std::string dex_canonical_location = DexFileLoader::GetDexCanonicalLocation(dex_location);
       if (dex_canonical_location != dex_location) {
         StringPiece canonical_key(dex_canonical_location);
         auto canonical_it = oat_dex_files_.find(canonical_key);
@@ -1345,7 +1347,7 @@ const OatFile::OatDexFile* OatFile::GetOatDexFile(const char* dex_location,
 
   if (oat_dex_file == nullptr) {
     if (error_msg != nullptr) {
-      std::string dex_canonical_location = DexFile::GetDexCanonicalLocation(dex_location);
+      std::string dex_canonical_location = DexFileLoader::GetDexCanonicalLocation(dex_location);
       *error_msg = "Failed to find OatDexFile for DexFile " + std::string(dex_location)
           + " (canonical path " + dex_canonical_location + ") in OatFile " + GetLocation();
     }
@@ -1355,7 +1357,7 @@ const OatFile::OatDexFile* OatFile::GetOatDexFile(const char* dex_location,
   if (dex_location_checksum != nullptr &&
       oat_dex_file->GetDexFileLocationChecksum() != *dex_location_checksum) {
     if (error_msg != nullptr) {
-      std::string dex_canonical_location = DexFile::GetDexCanonicalLocation(dex_location);
+      std::string dex_canonical_location = DexFileLoader::GetDexCanonicalLocation(dex_location);
       std::string checksum = StringPrintf("0x%08x", oat_dex_file->GetDexFileLocationChecksum());
       std::string required_checksum = StringPrintf("0x%08x", *dex_location_checksum);
       *error_msg = "OatDexFile for DexFile " + std::string(dex_location)
@@ -1411,14 +1413,14 @@ std::unique_ptr<const DexFile> OatFile::OatDexFile::OpenDexFile(std::string* err
   ScopedTrace trace(__PRETTY_FUNCTION__);
   static constexpr bool kVerify = false;
   static constexpr bool kVerifyChecksum = false;
-  return DexFile::Open(dex_file_pointer_,
-                       FileSize(),
-                       dex_file_location_,
-                       dex_file_location_checksum_,
-                       this,
-                       kVerify,
-                       kVerifyChecksum,
-                       error_msg);
+  return DexFileLoader::Open(dex_file_pointer_,
+                             FileSize(),
+                             dex_file_location_,
+                             dex_file_location_checksum_,
+                             this,
+                             kVerify,
+                             kVerifyChecksum,
+                             error_msg);
 }
 
 uint32_t OatFile::OatDexFile::GetOatClassOffset(uint16_t class_def_index) const {

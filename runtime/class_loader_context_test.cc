@@ -100,12 +100,13 @@ class ClassLoaderContextTest : public CommonRuntimeTest {
             info.opened_dex_files[cur_open_dex_index++];
       std::unique_ptr<const DexFile>& expected_dex_file = (*all_dex_files)[k];
 
-      std::string expected_location = expected_dex_file->GetBaseLocation();
+      std::string expected_location =
+          DexFileLoader::GetBaseLocation(expected_dex_file->GetLocation());
       UniqueCPtr<const char[]> expected_real_location(
           realpath(expected_location.c_str(), nullptr));
       ASSERT_TRUE(expected_real_location != nullptr) << expected_location;
       expected_location.assign(expected_real_location.get());
-      expected_location += DexFile::GetMultiDexSuffix(expected_dex_file->GetLocation());
+      expected_location += DexFileLoader::GetMultiDexSuffix(expected_dex_file->GetLocation());
 
       ASSERT_EQ(expected_location, opened_dex_file->GetLocation());
       ASSERT_EQ(expected_dex_file->GetLocationChecksum(), opened_dex_file->GetLocationChecksum());
