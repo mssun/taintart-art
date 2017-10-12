@@ -50,7 +50,7 @@ class RegisterAllocator : public DeletableArenaObject<kArenaAllocRegisterAllocat
                                                    const SsaLivenessAnalysis& analysis,
                                                    Strategy strategy = kRegisterAllocatorDefault);
 
-  virtual ~RegisterAllocator() = default;
+  virtual ~RegisterAllocator();
 
   // Main entry point for the register allocator. Given the liveness analysis,
   // allocates registers to live intervals.
