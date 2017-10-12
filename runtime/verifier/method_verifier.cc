@@ -71,8 +71,8 @@ static constexpr bool kDumpRegLinesOnHardFailureIfVLOG = true;
 // sure we only print this once.
 static bool gPrintedDxMonitorText = false;
 
-PcToRegisterLineTable::PcToRegisterLineTable(ScopedArenaAllocator& arena)
-    : register_lines_(arena.Adapter(kArenaAllocVerifier)) {}
+PcToRegisterLineTable::PcToRegisterLineTable(ScopedArenaAllocator& allocator)
+    : register_lines_(allocator.Adapter(kArenaAllocVerifier)) {}
 
 void PcToRegisterLineTable::Init(RegisterTrackingMode mode, InstructionFlags* flags,
                                  uint32_t insns_size, uint16_t registers_size,
@@ -552,9 +552,9 @@ MethodVerifier::MethodVerifier(Thread* self,
                                bool allow_thread_suspension)
     : self_(self),
       arena_stack_(Runtime::Current()->GetArenaPool()),
-      arena_(&arena_stack_),
-      reg_types_(can_load_classes, arena_),
-      reg_table_(arena_),
+      allocator_(&arena_stack_),
+      reg_types_(can_load_classes, allocator_),
+      reg_table_(allocator_),
       work_insn_idx_(dex::kDexNoIndex),
       dex_method_idx_(dex_method_idx),
       mirror_method_(method),
@@ -868,7 +868,7 @@ bool MethodVerifier::Verify() {
   }
 
   // Allocate and initialize an array to hold instruction data.
-  insn_flags_.reset(arena_.AllocArray<InstructionFlags>(code_item_->insns_size_in_code_units_));
+  insn_flags_.reset(allocator_.AllocArray<InstructionFlags>(code_item_->insns_size_in_code_units_));
   DCHECK(insn_flags_ != nullptr);
   std::uninitialized_fill_n(insn_flags_.get(),
                             code_item_->insns_size_in_code_units_,

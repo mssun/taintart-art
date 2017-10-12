@@ -434,7 +434,7 @@ class ProfileCompilationInfo {
                 uint32_t location_checksum,
                 uint16_t index,
                 uint32_t num_methods)
-        : arena_(allocator),
+        : allocator_(allocator),
           profile_key(key),
           profile_index(index),
           checksum(location_checksum),
@@ -466,8 +466,8 @@ class ProfileCompilationInfo {
 
     MethodHotness GetHotnessInfo(uint32_t dex_method_index) const;
 
-    // The arena used to allocate new inline cache maps.
-    ArenaAllocator* arena_;
+    // The allocator used to allocate new inline cache maps.
+    ArenaAllocator* const allocator_;
     // The profile key this data belongs to.
     std::string profile_key;
     // The profile index of this dex file (matches ClassReference#dex_profile_index).

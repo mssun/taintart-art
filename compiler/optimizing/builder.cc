@@ -20,12 +20,16 @@
 #include "base/arena_bit_vector.h"
 #include "base/bit_vector-inl.h"
 #include "base/logging.h"
+#include "block_builder.h"
 #include "data_type-inl.h"
 #include "dex/verified_method.h"
 #include "driver/compiler_options.h"
+#include "instruction_builder.h"
 #include "mirror/class_loader.h"
 #include "mirror/dex_cache.h"
 #include "nodes.h"
+#include "optimizing_compiler_stats.h"
+#include "ssa_builder.h"
 #include "thread.h"
 #include "utils/dex_cache_arrays_layout-inl.h"
 
@@ -43,27 +47,13 @@ HGraphBuilder::HGraphBuilder(HGraph* graph,
       dex_file_(&graph->GetDexFile()),
       code_item_(*dex_compilation_unit->GetCodeItem()),
       dex_compilation_unit_(dex_compilation_unit),
+      outer_compilation_unit_(outer_compilation_unit),
       compiler_driver_(driver),
+      code_generator_(code_generator),
       compilation_stats_(compiler_stats),
-      block_builder_(graph, dex_file_, code_item_),
-      ssa_builder_(graph,
-                   dex_compilation_unit->GetClassLoader(),
-                   dex_compilation_unit->GetDexCache(),
-                   handles),
-      instruction_builder_(graph,
-                           &block_builder_,
-                           &ssa_builder_,
-                           dex_file_,
-                           code_item_,
-                           DataType::FromShorty(dex_compilation_unit_->GetShorty()[0]),
-                           dex_compilation_unit,
-                           outer_compilation_unit,
-                           driver,
-                           code_generator,
-                           interpreter_metadata,
-                           compiler_stats,
-                           dex_compilation_unit->GetDexCache(),
-                           handles) {}
+      interpreter_metadata_(interpreter_metadata),
+      handles_(handles),
+      return_type_(DataType::FromShorty(dex_compilation_unit_->GetShorty()[0])) {}
 
 bool HGraphBuilder::SkipCompilation(size_t number_of_branches) {
   if (compiler_driver_ == nullptr) {
@@ -108,15 +98,38 @@ GraphAnalysisResult HGraphBuilder::BuildGraph() {
   graph_->SetMaximumNumberOfOutVRegs(code_item_.outs_size_);
   graph_->SetHasTryCatch(code_item_.tries_size_ != 0);
 
+  // Use ScopedArenaAllocator for all local allocations.
+  ScopedArenaAllocator local_allocator(graph_->GetArenaStack());
+  HBasicBlockBuilder block_builder(graph_, dex_file_, code_item_, &local_allocator);
+  SsaBuilder ssa_builder(graph_,
+                         dex_compilation_unit_->GetClassLoader(),
+                         dex_compilation_unit_->GetDexCache(),
+                         handles_,
+                         &local_allocator);
+  HInstructionBuilder instruction_builder(graph_,
+                                          &block_builder,
+                                          &ssa_builder,
+                                          dex_file_,
+                                          code_item_,
+                                          return_type_,
+                                          dex_compilation_unit_,
+                                          outer_compilation_unit_,
+                                          compiler_driver_,
+                                          code_generator_,
+                                          interpreter_metadata_,
+                                          compilation_stats_,
+                                          handles_,
+                                          &local_allocator);
+
   // 1) Create basic blocks and link them together. Basic blocks are left
   //    unpopulated with the exception of synthetic blocks, e.g. HTryBoundaries.
-  if (!block_builder_.Build()) {
+  if (!block_builder.Build()) {
     return kAnalysisInvalidBytecode;
   }
 
   // 2) Decide whether to skip this method based on its code size and number
   //    of branches.
-  if (SkipCompilation(block_builder_.GetNumberOfBranches())) {
+  if (SkipCompilation(block_builder.GetNumberOfBranches())) {
     return kAnalysisSkipped;
   }
 
@@ -127,12 +140,12 @@ GraphAnalysisResult HGraphBuilder::BuildGraph() {
   }
 
   // 4) Populate basic blocks with instructions.
-  if (!instruction_builder_.Build()) {
+  if (!instruction_builder.Build()) {
     return kAnalysisInvalidBytecode;
   }
 
   // 5) Type the graph and eliminate dead/redundant phis.
-  return ssa_builder_.BuildSsa();
+  return ssa_builder.BuildSsa();
 }
 
 }  // namespace art

@@ -1292,7 +1292,7 @@ class SsaLivenessAnalysis : public ValueObject {
 
   // Use a local ScopedArenaAllocator for allocating memory.
   // This allocator must remain alive while doing register allocation.
-  ScopedArenaAllocator* allocator_;
+  ScopedArenaAllocator* const allocator_;
 
   ScopedArenaVector<BlockInfo*> block_infos_;
 

@@ -252,7 +252,7 @@ class AssemblerBuffer {
   // for a single, fast space check per instruction.
   static const int kMinimumGap = 32;
 
-  ArenaAllocator* allocator_;
+  ArenaAllocator* const allocator_;
   uint8_t* contents_;
   uint8_t* cursor_;
   uint8_t* limit_;
