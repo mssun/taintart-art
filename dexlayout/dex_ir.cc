@@ -39,24 +39,6 @@ static uint64_t ReadVarWidth(const uint8_t** data, uint8_t length, bool sign_ext
   return value;
 }
 
-static bool GetPositionsCb(void* context, const DexFile::PositionInfo& entry) {
-  DebugInfoItem* debug_info = reinterpret_cast<DebugInfoItem*>(context);
-  PositionInfoVector& positions = debug_info->GetPositionInfo();
-  positions.push_back(std::unique_ptr<PositionInfo>(new PositionInfo(entry.address_, entry.line_)));
-  return false;
-}
-
-static void GetLocalsCb(void* context, const DexFile::LocalInfo& entry) {
-  DebugInfoItem* debug_info = reinterpret_cast<DebugInfoItem*>(context);
-  LocalInfoVector& locals = debug_info->GetLocalInfo();
-  const char* name = entry.name_ != nullptr ? entry.name_ : "(null)";
-  const char* descriptor = entry.descriptor_ != nullptr ? entry.descriptor_ : "";
-  const char* signature = entry.signature_ != nullptr ? entry.signature_ : "";
-  locals.push_back(std::unique_ptr<LocalInfo>(
-      new LocalInfo(name, descriptor, signature, entry.start_address_, entry.end_address_,
-                    entry.reg_)));
-}
-
 static uint32_t GetDebugInfoStreamSize(const uint8_t* debug_info_stream) {
   const uint8_t* stream = debug_info_stream;
   DecodeUnsignedLeb128(&stream);  // line_start
@@ -693,12 +675,6 @@ MethodItem* Collections::GenerateMethodItem(const DexFile& dex_file, ClassDataIt
       code_item = CreateCodeItem(dex_file, *disk_code_item, cdii.GetMethodCodeItemOffset());
     }
     debug_info = code_item->DebugInfo();
-  }
-  if (debug_info != nullptr) {
-    bool is_static = (access_flags & kAccStatic) != 0;
-    dex_file.DecodeDebugLocalInfo(
-        disk_code_item, is_static, cdii.GetMemberIndex(), GetLocalsCb, debug_info);
-    dex_file.DecodeDebugPositionInfo(disk_code_item, GetPositionsCb, debug_info);
   }
   return new MethodItem(access_flags, method_id, code_item);
 }

@@ -820,37 +820,6 @@ void DexLayout::DumpCatches(const dex_ir::CodeItem* code) {
 }
 
 /*
- * Dumps all positions table entries associated with the code.
- */
-void DexLayout::DumpPositionInfo(const dex_ir::CodeItem* code) {
-  dex_ir::DebugInfoItem* debug_info = code->DebugInfo();
-  if (debug_info == nullptr) {
-    return;
-  }
-  std::vector<std::unique_ptr<dex_ir::PositionInfo>>& positions = debug_info->GetPositionInfo();
-  for (size_t i = 0; i < positions.size(); ++i) {
-    fprintf(out_file_, "        0x%04x line=%d\n", positions[i]->address_, positions[i]->line_);
-  }
-}
-
-/*
- * Dumps all locals table entries associated with the code.
- */
-void DexLayout::DumpLocalInfo(const dex_ir::CodeItem* code) {
-  dex_ir::DebugInfoItem* debug_info = code->DebugInfo();
-  if (debug_info == nullptr) {
-    return;
-  }
-  std::vector<std::unique_ptr<dex_ir::LocalInfo>>& locals = debug_info->GetLocalInfo();
-  for (size_t i = 0; i < locals.size(); ++i) {
-    dex_ir::LocalInfo* entry = locals[i].get();
-    fprintf(out_file_, "        0x%04x - 0x%04x reg=%d %s %s %s\n",
-            entry->start_address_, entry->end_address_, entry->reg_,
-            entry->name_.c_str(), entry->descriptor_.c_str(), entry->signature_.c_str());
-  }
-}
-
-/*
  * Dumps a single instruction.
  */
 void DexLayout::DumpInstruction(const dex_ir::CodeItem* code,
@@ -1093,9 +1062,59 @@ void DexLayout::DumpBytecodes(uint32_t idx, const dex_ir::CodeItem* code, uint32
 }
 
 /*
+ * Callback for dumping each positions table entry.
+ */
+static bool DumpPositionsCb(void* context, const DexFile::PositionInfo& entry) {
+  FILE* out_file = reinterpret_cast<FILE*>(context);
+  fprintf(out_file, "        0x%04x line=%d\n", entry.address_, entry.line_);
+  return false;
+}
+
+/*
+ * Callback for dumping locals table entry.
+ */
+static void DumpLocalsCb(void* context, const DexFile::LocalInfo& entry) {
+  const char* signature = entry.signature_ != nullptr ? entry.signature_ : "";
+  FILE* out_file = reinterpret_cast<FILE*>(context);
+  fprintf(out_file, "        0x%04x - 0x%04x reg=%d %s %s %s\n",
+          entry.start_address_, entry.end_address_, entry.reg_,
+          entry.name_, entry.descriptor_, signature);
+}
+
+/*
+ * Lookup functions.
+ */
+static const char* StringDataByIdx(uint32_t idx, dex_ir::Collections& collections) {
+  dex_ir::StringId* string_id = collections.GetStringIdOrNullPtr(idx);
+  if (string_id == nullptr) {
+    return nullptr;
+  }
+  return string_id->Data();
+}
+
+static const char* StringDataByTypeIdx(uint16_t idx, dex_ir::Collections& collections) {
+  dex_ir::TypeId* type_id = collections.GetTypeIdOrNullPtr(idx);
+  if (type_id == nullptr) {
+    return nullptr;
+  }
+  dex_ir::StringId* string_id = type_id->GetStringId();
+  if (string_id == nullptr) {
+    return nullptr;
+  }
+  return string_id->Data();
+}
+
+
+/*
  * Dumps code of a method.
  */
-void DexLayout::DumpCode(uint32_t idx, const dex_ir::CodeItem* code, uint32_t code_offset) {
+void DexLayout::DumpCode(uint32_t idx,
+                         const dex_ir::CodeItem* code,
+                         uint32_t code_offset,
+                         const char* declaring_class_descriptor,
+                         const char* method_name,
+                         bool is_static,
+                         const dex_ir::ProtoId* proto) {
   fprintf(out_file_, "      registers     : %d\n", code->RegistersSize());
   fprintf(out_file_, "      ins           : %d\n", code->InsSize());
   fprintf(out_file_, "      outs          : %d\n", code->OutsSize());
@@ -1111,10 +1130,48 @@ void DexLayout::DumpCode(uint32_t idx, const dex_ir::CodeItem* code, uint32_t co
   DumpCatches(code);
 
   // Positions and locals table in the debug info.
+  dex_ir::DebugInfoItem* debug_info = code->DebugInfo();
   fprintf(out_file_, "      positions     : \n");
-  DumpPositionInfo(code);
+  if (debug_info != nullptr) {
+    DexFile::DecodeDebugPositionInfo(debug_info->GetDebugInfo(),
+                                     [this](uint32_t idx) {
+                                       return StringDataByIdx(idx, this->header_->GetCollections());
+                                     },
+                                     DumpPositionsCb,
+                                     out_file_);
+  }
   fprintf(out_file_, "      locals        : \n");
-  DumpLocalInfo(code);
+  if (debug_info != nullptr) {
+    std::vector<const char*> arg_descriptors;
+    const dex_ir::TypeList* parameters = proto->Parameters();
+    if (parameters != nullptr) {
+      const dex_ir::TypeIdVector* parameter_type_vector = parameters->GetTypeList();
+      if (parameter_type_vector != nullptr) {
+        for (const dex_ir::TypeId* type_id : *parameter_type_vector) {
+          arg_descriptors.push_back(type_id->GetStringId()->Data());
+        }
+      }
+    }
+    DexFile::DecodeDebugLocalInfo(debug_info->GetDebugInfo(),
+                                  "DexLayout in-memory",
+                                  declaring_class_descriptor,
+                                  arg_descriptors,
+                                  method_name,
+                                  is_static,
+                                  code->RegistersSize(),
+                                  code->InsSize(),
+                                  code->InsnsSize(),
+                                  [this](uint32_t idx) {
+                                    return StringDataByIdx(idx, this->header_->GetCollections());
+                                  },
+                                  [this](uint32_t idx) {
+                                    return
+                                        StringDataByTypeIdx(dchecked_integral_cast<uint16_t>(idx),
+                                                            this->header_->GetCollections());
+                                  },
+                                  DumpLocalsCb,
+                                  out_file_);
+  }
 }
 
 /*
@@ -1141,7 +1198,13 @@ void DexLayout::DumpMethod(uint32_t idx, uint32_t flags, const dex_ir::CodeItem*
       fprintf(out_file_, "      code          : (none)\n");
     } else {
       fprintf(out_file_, "      code          -\n");
-      DumpCode(idx, code, code->GetOffset());
+      DumpCode(idx,
+               code,
+               code->GetOffset(),
+               back_descriptor,
+               name,
+               (flags & kAccStatic) != 0,
+               method_id->Proto());
     }
     if (options_.disassemble_) {
       fputc('\n', out_file_);
