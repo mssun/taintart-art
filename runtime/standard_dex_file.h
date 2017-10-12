@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_NATIVE_DEX_FILE_H_
-#define ART_RUNTIME_NATIVE_DEX_FILE_H_
+#ifndef ART_RUNTIME_STANDARD_DEX_FILE_H_
+#define ART_RUNTIME_STANDARD_DEX_FILE_H_
 
 #include <iosfwd>
 
@@ -25,8 +25,8 @@ namespace art {
 
 class OatDexFile;
 
-// Native (ordinary) dex file. This is the format that is packaged in APKs and produced by tools.
-class NativeDexFile : public DexFile {
+// Standard dex file. This is the format that is packaged in APKs and produced by tools.
+class StandardDexFile : public DexFile {
  public:
   static const uint8_t kDexMagic[kDexMagicSize];
   static constexpr size_t kNumDexVersions = 4;
@@ -41,11 +41,11 @@ class NativeDexFile : public DexFile {
   virtual bool IsVersionValid() const OVERRIDE;
 
  private:
-  NativeDexFile(const uint8_t* base,
-                size_t size,
-                const std::string& location,
-                uint32_t location_checksum,
-                const OatDexFile* oat_dex_file)
+  StandardDexFile(const uint8_t* base,
+                  size_t size,
+                  const std::string& location,
+                  uint32_t location_checksum,
+                  const OatDexFile* oat_dex_file)
       : DexFile(base, size, location, location_checksum, oat_dex_file) {}
 
   friend class DexFileLoader;
@@ -53,9 +53,9 @@ class NativeDexFile : public DexFile {
 
   ART_FRIEND_TEST(ClassLinkerTest, RegisterDexFileName);  // for constructor
 
-  DISALLOW_COPY_AND_ASSIGN(NativeDexFile);
+  DISALLOW_COPY_AND_ASSIGN(StandardDexFile);
 };
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_NATIVE_DEX_FILE_H_
+#endif  // ART_RUNTIME_STANDARD_DEX_FILE_H_
