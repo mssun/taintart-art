@@ -25,7 +25,7 @@ namespace art {
 
 // A ReferenceInfo contains additional info about a reference such as
 // whether it's a singleton, returned, etc.
-class ReferenceInfo : public ArenaObject<kArenaAllocMisc> {
+class ReferenceInfo : public ArenaObject<kArenaAllocLSA> {
  public:
   ReferenceInfo(HInstruction* reference, size_t pos)
       : reference_(reference),
@@ -99,7 +99,7 @@ class ReferenceInfo : public ArenaObject<kArenaAllocMisc> {
 
 // A heap location is a reference-offset/index pair that a value can be loaded from
 // or stored to.
-class HeapLocation : public ArenaObject<kArenaAllocMisc> {
+class HeapLocation : public ArenaObject<kArenaAllocLSA> {
  public:
   static constexpr size_t kInvalidFieldOffset = -1;
 
@@ -172,12 +172,12 @@ class HeapLocationCollector : public HGraphVisitor {
 
   explicit HeapLocationCollector(HGraph* graph)
       : HGraphVisitor(graph),
-        ref_info_array_(graph->GetAllocator()->Adapter(kArenaAllocLSE)),
-        heap_locations_(graph->GetAllocator()->Adapter(kArenaAllocLSE)),
+        ref_info_array_(graph->GetAllocator()->Adapter(kArenaAllocLSA)),
+        heap_locations_(graph->GetAllocator()->Adapter(kArenaAllocLSA)),
         aliasing_matrix_(graph->GetAllocator(),
                          kInitialAliasingMatrixBitVectorSize,
                          true,
-                         kArenaAllocLSE),
+                         kArenaAllocLSA),
         has_heap_stores_(false),
         has_volatile_(false),
         has_monitor_operations_(false) {}

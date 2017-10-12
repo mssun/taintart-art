@@ -16,6 +16,8 @@
 
 #include "select_generator.h"
 
+#include "reference_type_propagation.h"
+
 namespace art {
 
 static constexpr size_t kMaxInstructionsInBranch = 1u;

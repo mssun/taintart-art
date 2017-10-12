@@ -22,8 +22,9 @@
 
 #include "android-base/stringprintf.h"
 
-#include "base/arena_containers.h"
 #include "base/bit_vector-inl.h"
+#include "base/scoped_arena_allocator.h"
+#include "base/scoped_arena_containers.h"
 
 namespace art {
 
@@ -47,10 +48,13 @@ static bool IsExitTryBoundaryIntoExitBlock(HBasicBlock* block) {
 void GraphChecker::VisitBasicBlock(HBasicBlock* block) {
   current_block_ = block;
 
+  // Use local allocator for allocating memory.
+  ScopedArenaAllocator allocator(GetGraph()->GetArenaStack());
+
   // Check consistency with respect to predecessors of `block`.
   // Note: Counting duplicates with a sorted vector uses up to 6x less memory
   // than ArenaSafeMap<HBasicBlock*, size_t> and also allows storage reuse.
-  ArenaVector<HBasicBlock*>& sorted_predecessors = blocks_storage_;
+  ScopedArenaVector<HBasicBlock*> sorted_predecessors(allocator.Adapter(kArenaAllocGraphChecker));
   sorted_predecessors.assign(block->GetPredecessors().begin(), block->GetPredecessors().end());
   std::sort(sorted_predecessors.begin(), sorted_predecessors.end());
   for (auto it = sorted_predecessors.begin(), end = sorted_predecessors.end(); it != end; ) {
@@ -73,7 +77,7 @@ void GraphChecker::VisitBasicBlock(HBasicBlock* block) {
   // Check consistency with respect to successors of `block`.
   // Note: Counting duplicates with a sorted vector uses up to 6x less memory
   // than ArenaSafeMap<HBasicBlock*, size_t> and also allows storage reuse.
-  ArenaVector<HBasicBlock*>& sorted_successors = blocks_storage_;
+  ScopedArenaVector<HBasicBlock*> sorted_successors(allocator.Adapter(kArenaAllocGraphChecker));
   sorted_successors.assign(block->GetSuccessors().begin(), block->GetSuccessors().end());
   std::sort(sorted_successors.begin(), sorted_successors.end());
   for (auto it = sorted_successors.begin(), end = sorted_successors.end(); it != end; ) {
@@ -829,10 +833,14 @@ void GraphChecker::VisitPhi(HPhi* phi) {
               phi->GetRegNumber(),
               type_str.str().c_str()));
         } else {
+          // Use local allocator for allocating memory.
+          ScopedArenaAllocator allocator(GetGraph()->GetArenaStack());
           // If we get here, make sure we allocate all the necessary storage at once
           // because the BitVector reallocation strategy has very bad worst-case behavior.
-          ArenaBitVector& visited = visited_storage_;
-          visited.SetBit(GetGraph()->GetCurrentInstructionId());
+          ArenaBitVector visited(&allocator,
+                                 GetGraph()->GetCurrentInstructionId(),
+                                 /* expandable */ false,
+                                 kArenaAllocGraphChecker);
           visited.ClearAllBits();
           if (!IsConstantEquivalent(phi, other_phi, &visited)) {
             AddError(StringPrintf("Two phis (%d and %d) found for VReg %d but they "
