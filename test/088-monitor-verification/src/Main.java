@@ -43,6 +43,7 @@ public class Main {
         ensureJitCompiled(Class.forName("OK"), "runNoMonitors");
         ensureJitCompiled(Class.forName("OK"), "runStraightLine");
         ensureJitCompiled(Class.forName("OK"), "runBalancedJoin");
+        ensureJitCompiled(Class.forName("NullLocks"), "run");
 
         Main m = new Main();
 
