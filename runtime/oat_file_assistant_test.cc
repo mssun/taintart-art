@@ -20,6 +20,7 @@
 
 #include <string>
 #include <vector>
+#include <fcntl.h>
 
 #include <gtest/gtest.h>
 
@@ -220,6 +221,125 @@ TEST_F(OatFileAssistantTest, OatUpToDate) {
   EXPECT_EQ(OatFileAssistant::kOatCannotOpen, oat_file_assistant.OdexFileStatus());
   EXPECT_EQ(OatFileAssistant::kOatUpToDate, oat_file_assistant.OatFileStatus());
   EXPECT_TRUE(oat_file_assistant.HasOriginalDexFiles());
+}
+
+// Case: Passing valid file descriptors of updated odex/vdex filesalong with
+// the dex file.
+// Expect: The status is kNoDexOptNeeded.
+TEST_F(OatFileAssistantTest, GetDexOptNeededWithFd) {
+  std::string dex_location = GetScratchDir() + "/OatUpToDate.jar";
+  std::string odex_location = GetScratchDir() + "/OatUpToDate.odex";
+  std::string vdex_location = GetScratchDir() + "/OatUpToDate.vdex";
+
+  Copy(GetDexSrc1(), dex_location);
+  GenerateOatForTest(dex_location.c_str(),
+                     odex_location.c_str(),
+                     CompilerFilter::kSpeed,
+                     true,
+                     false,
+                     false);
+
+  android::base::unique_fd odex_fd(open(odex_location.c_str(), O_RDONLY));
+  android::base::unique_fd vdex_fd(open(vdex_location.c_str(), O_RDONLY));
+
+  OatFileAssistant oat_file_assistant(dex_location.c_str(),
+                                      kRuntimeISA,
+                                      false,
+                                      vdex_fd.get(),
+                                      odex_fd.get());
+  EXPECT_EQ(OatFileAssistant::kNoDexOptNeeded,
+      oat_file_assistant.GetDexOptNeeded(CompilerFilter::kSpeed));
+  EXPECT_EQ(OatFileAssistant::kNoDexOptNeeded,
+      oat_file_assistant.GetDexOptNeeded(CompilerFilter::kQuicken));
+  EXPECT_EQ(OatFileAssistant::kNoDexOptNeeded,
+      oat_file_assistant.GetDexOptNeeded(CompilerFilter::kExtract));
+  EXPECT_EQ(-OatFileAssistant::kDex2OatForFilter,
+      oat_file_assistant.GetDexOptNeeded(CompilerFilter::kEverything));
+
+  EXPECT_FALSE(oat_file_assistant.IsInBootClassPath());
+  EXPECT_EQ(OatFileAssistant::kOatUpToDate, oat_file_assistant.OdexFileStatus());
+  EXPECT_EQ(OatFileAssistant::kOatCannotOpen, oat_file_assistant.OatFileStatus());
+  EXPECT_TRUE(oat_file_assistant.HasOriginalDexFiles());
+}
+
+// Case: Passing valid odex fd, however, invalid fd for vdex with
+// the dex file.
+// Expect: The status is kDex2oatFromScratch.
+TEST_F(OatFileAssistantTest, GetDexOptNeededWithInvalidVdexFd) {
+  std::string dex_location = GetScratchDir() + "/OatUpToDate.jar";
+  std::string odex_location = GetScratchDir() + "/OatUpToDate.odex";
+
+  Copy(GetDexSrc1(), dex_location);
+  GenerateOatForTest(dex_location.c_str(),
+                     odex_location.c_str(),
+                     CompilerFilter::kSpeed,
+                     true,
+                     false,
+                     false);
+
+  android::base::unique_fd odex_fd(open(odex_location.c_str(), O_RDONLY));
+
+  OatFileAssistant oat_file_assistant(dex_location.c_str(),
+                                      kRuntimeISA,
+                                      false,
+                                      -1,
+                                      odex_fd.get());
+  EXPECT_EQ(OatFileAssistant::kDex2OatFromScratch,
+      oat_file_assistant.GetDexOptNeeded(CompilerFilter::kSpeed));
+  EXPECT_EQ(OatFileAssistant::kOatCannotOpen, oat_file_assistant.OdexFileStatus());
+  EXPECT_EQ(OatFileAssistant::kOatCannotOpen, oat_file_assistant.OatFileStatus());
+}
+
+// Case: Passing valid vdex fd, however, invalid fd for odex with
+// the dex file.
+// Expect: The status is kDex2oatFromScratch.
+TEST_F(OatFileAssistantTest, GetDexOptNeededWithInvalidOdexFd) {
+  std::string dex_location = GetScratchDir() + "/OatUpToDate.jar";
+  std::string odex_location = GetScratchDir() + "/OatUpToDate.odex";
+  std::string vdex_location = GetScratchDir() + "/OatUpToDate.vdex";
+
+  Copy(GetDexSrc1(), dex_location);
+  GenerateOatForTest(dex_location.c_str(),
+                     odex_location.c_str(),
+                     CompilerFilter::kSpeed,
+                     true,
+                     false,
+                     false);
+
+  android::base::unique_fd vdex_fd(open(vdex_location.c_str(), O_RDONLY));
+
+  OatFileAssistant oat_file_assistant(dex_location.c_str(),
+                                      kRuntimeISA,
+                                      false,
+                                      vdex_fd.get(),
+                                      -1);
+  // Even though the vdex file is up to date, because we don't have the oat
+  // file, we can't know that the vdex depends on the boot image and is up to
+  // date with respect to the boot image. Instead we must assume the vdex file
+  // depends on the boot image and is out of date with respect to the boot
+  // image.
+  EXPECT_EQ(-OatFileAssistant::kDex2OatForBootImage,
+      oat_file_assistant.GetDexOptNeeded(CompilerFilter::kSpeed));
+  EXPECT_EQ(OatFileAssistant::kOatBootImageOutOfDate, oat_file_assistant.OdexFileStatus());
+  EXPECT_EQ(OatFileAssistant::kOatCannotOpen, oat_file_assistant.OatFileStatus());
+}
+
+// Case: Passing invalid vdex and odex fd with the dex file.
+// Expect: The status is kDex2oatFromScratch.
+TEST_F(OatFileAssistantTest, GetDexOptNeededWithInvalidOdexVdexFd) {
+  std::string dex_location = GetScratchDir() + "/OatUpToDate.jar";
+
+  Copy(GetDexSrc1(), dex_location);
+
+  OatFileAssistant oat_file_assistant(dex_location.c_str(),
+                                      kRuntimeISA,
+                                      false,
+                                      -1,
+                                      -1);
+  EXPECT_EQ(OatFileAssistant::kDex2OatFromScratch,
+      oat_file_assistant.GetDexOptNeeded(CompilerFilter::kSpeed));
+  EXPECT_EQ(OatFileAssistant::kOatCannotOpen, oat_file_assistant.OdexFileStatus());
+  EXPECT_EQ(OatFileAssistant::kOatCannotOpen, oat_file_assistant.OatFileStatus());
 }
 
 // Case: We have a DEX file and up-to-date OAT file for it. We load the dex file
