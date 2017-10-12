@@ -26,7 +26,6 @@
 #include "base/enums.h"
 #include "class_linker-inl.h"
 #include "common_runtime_test.h"
-#include "native_dex_file.h"
 #include "dex_file_types.h"
 #include "entrypoints/entrypoint_utils-inl.h"
 #include "experimental_flags.h"
@@ -50,6 +49,7 @@
 #include "mirror/stack_trace_element.h"
 #include "mirror/string-inl.h"
 #include "scoped_thread_state_change-inl.h"
+#include "standard_dex_file.h"
 #include "thread-current-inl.h"
 
 namespace art {
@@ -1462,11 +1462,11 @@ TEST_F(ClassLinkerTest, RegisterDexFileName) {
   dex_cache->SetLocation(location.Get());
   const DexFile* old_dex_file = dex_cache->GetDexFile();
 
-  std::unique_ptr<DexFile> dex_file(new NativeDexFile(old_dex_file->Begin(),
-                                                      old_dex_file->Size(),
-                                                      location->ToModifiedUtf8(),
-                                                      0u,
-                                                      nullptr));
+  std::unique_ptr<DexFile> dex_file(new StandardDexFile(old_dex_file->Begin(),
+                                                        old_dex_file->Size(),
+                                                        location->ToModifiedUtf8(),
+                                                        0u,
+                                                        nullptr));
   {
     WriterMutexLock mu(soa.Self(), *Locks::dex_lock_);
     // Check that inserting with a UTF16 name works.

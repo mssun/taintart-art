@@ -27,7 +27,7 @@
 #include "base/unix_file/fd_file.h"
 #include "dex_file.h"
 #include "dex_file_verifier.h"
-#include "native_dex_file.h"
+#include "standard_dex_file.h"
 #include "zip_archive.h"
 
 namespace art {
@@ -42,7 +42,7 @@ bool DexFileLoader::IsValidMagic(uint32_t magic) {
 }
 
 bool DexFileLoader::IsValidMagic(const uint8_t* magic) {
-  return NativeDexFile::IsMagicValid(magic);
+  return StandardDexFile::IsMagicValid(magic);
 }
 
 bool DexFileLoader::GetMultiDexChecksums(const char* filename,
@@ -450,8 +450,8 @@ std::unique_ptr<DexFile> DexFileLoader::OpenCommon(const uint8_t* base,
     *verify_result = VerifyResult::kVerifyNotAttempted;
   }
   std::unique_ptr<DexFile> dex_file;
-  if (NativeDexFile::IsMagicValid(base)) {
-    dex_file.reset(new NativeDexFile(base, size, location, location_checksum, oat_dex_file));
+  if (StandardDexFile::IsMagicValid(base)) {
+    dex_file.reset(new StandardDexFile(base, size, location, location_checksum, oat_dex_file));
   } else {
     return nullptr;
   }
