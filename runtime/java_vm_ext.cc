@@ -28,6 +28,8 @@
 #include "check_jni.h"
 #include "dex_file-inl.h"
 #include "fault_handler.h"
+#include "gc/allocation_record.h"
+#include "gc/heap.h"
 #include "gc_root-inl.h"
 #include "indirect_reference_table-inl.h"
 #include "jni_internal.h"
@@ -468,7 +470,11 @@ JavaVMExt::JavaVMExt(Runtime* runtime,
       weak_globals_add_condition_("weak globals add condition",
                                   (CHECK(Locks::jni_weak_globals_lock_ != nullptr),
                                    *Locks::jni_weak_globals_lock_)),
-      env_hooks_() {
+      env_hooks_(),
+      enable_allocation_tracking_delta_(
+          runtime_options.GetOrDefault(RuntimeArgumentMap::GlobalRefAllocStackTraceLimit)),
+      allocation_tracking_enabled_(false),
+      old_allocation_tracking_state_(false) {
   functions = unchecked_functions_;
   SetCheckJniEnabled(runtime_options.Exists(RuntimeArgumentMap::CheckJni));
 }
@@ -583,18 +589,55 @@ bool JavaVMExt::ShouldTrace(ArtMethod* method) {
   return true;
 }
 
+void JavaVMExt::CheckGlobalRefAllocationTracking() {
+  if (LIKELY(enable_allocation_tracking_delta_ == 0)) {
+    return;
+  }
+  size_t simple_free_capacity = globals_.FreeCapacity();
+  if (UNLIKELY(simple_free_capacity <= enable_allocation_tracking_delta_)) {
+    if (!allocation_tracking_enabled_) {
+      LOG(WARNING) << "Global reference storage appears close to exhaustion, program termination "
+                   << "may be imminent. Enabling allocation tracking to improve abort diagnostics. "
+                   << "This will result in program slow-down.";
+
+      old_allocation_tracking_state_ = runtime_->GetHeap()->IsAllocTrackingEnabled();
+      if (!old_allocation_tracking_state_) {
+        // Need to be guaranteed suspended.
+        ScopedObjectAccess soa(Thread::Current());
+        ScopedThreadSuspension sts(soa.Self(), ThreadState::kNative);
+        gc::AllocRecordObjectMap::SetAllocTrackingEnabled(true);
+      }
+      allocation_tracking_enabled_ = true;
+    }
+  } else {
+    if (UNLIKELY(allocation_tracking_enabled_)) {
+      if (!old_allocation_tracking_state_) {
+        // Need to be guaranteed suspended.
+        ScopedObjectAccess soa(Thread::Current());
+        ScopedThreadSuspension sts(soa.Self(), ThreadState::kNative);
+        gc::AllocRecordObjectMap::SetAllocTrackingEnabled(false);
+      }
+      allocation_tracking_enabled_ = false;
+    }
+  }
+}
+
 jobject JavaVMExt::AddGlobalRef(Thread* self, ObjPtr<mirror::Object> obj) {
   // Check for null after decoding the object to handle cleared weak globals.
   if (obj == nullptr) {
     return nullptr;
   }
-  WriterMutexLock mu(self, *Locks::jni_globals_lock_);
+  IndirectRef ref;
   std::string error_msg;
-  IndirectRef ref = globals_.Add(kIRTFirstSegment, obj, &error_msg);
+  {
+    WriterMutexLock mu(self, *Locks::jni_globals_lock_);
+    ref = globals_.Add(kIRTFirstSegment, obj, &error_msg);
+  }
   if (UNLIKELY(ref == nullptr)) {
     LOG(FATAL) << error_msg;
     UNREACHABLE();
   }
+  CheckGlobalRefAllocationTracking();
   return reinterpret_cast<jobject>(ref);
 }
 
@@ -625,11 +668,14 @@ void JavaVMExt::DeleteGlobalRef(Thread* self, jobject obj) {
   if (obj == nullptr) {
     return;
   }
-  WriterMutexLock mu(self, *Locks::jni_globals_lock_);
-  if (!globals_.Remove(kIRTFirstSegment, obj)) {
-    LOG(WARNING) << "JNI WARNING: DeleteGlobalRef(" << obj << ") "
-                 << "failed to find entry";
+  {
+    WriterMutexLock mu(self, *Locks::jni_globals_lock_);
+    if (!globals_.Remove(kIRTFirstSegment, obj)) {
+      LOG(WARNING) << "JNI WARNING: DeleteGlobalRef(" << obj << ") "
+                   << "failed to find entry";
+    }
   }
+  CheckGlobalRefAllocationTracking();
 }
 
 void JavaVMExt::DeleteWeakGlobalRef(Thread* self, jweak obj) {

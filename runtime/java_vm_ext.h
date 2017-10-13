@@ -211,6 +211,8 @@ class JavaVMExt : public JavaVM {
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(Locks::jni_weak_globals_lock_);
 
+  void CheckGlobalRefAllocationTracking();
+
   Runtime* const runtime_;
 
   // Used for testing. By default, we'll LOG(FATAL) the reason.
@@ -246,6 +248,10 @@ class JavaVMExt : public JavaVM {
 
   // TODO Maybe move this to Runtime.
   std::vector<GetEnvHook> env_hooks_;
+
+  size_t enable_allocation_tracking_delta_;
+  std::atomic<bool> allocation_tracking_enabled_;
+  std::atomic<bool> old_allocation_tracking_state_;
 
   DISALLOW_COPY_AND_ASSIGN(JavaVMExt);
 };

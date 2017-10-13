@@ -45,6 +45,7 @@
 #include "android-base/stringprintf.h"
 
 #include "dex_file-inl.h"
+#include "dex_file_loader.h"
 #include "dex_file_types.h"
 #include "dex_instruction-inl.h"
 #include "dexdump_cfg.h"
@@ -1825,7 +1826,7 @@ static void processDexFile(const char* fileName,
     fputs("Opened '", gOutFile);
     fputs(fileName, gOutFile);
     if (n > 1) {
-      fprintf(gOutFile, ":%s", DexFile::GetMultiDexClassesDexName(i).c_str());
+      fprintf(gOutFile, ":%s", DexFileLoader::GetMultiDexClassesDexName(i).c_str());
     }
     fprintf(gOutFile, "', DEX version '%.3s'\n", pDexFile->GetHeader().magic_ + 4);
   }
@@ -1882,7 +1883,7 @@ int processFile(const char* fileName) {
   const bool kVerifyChecksum = !gOptions.ignoreBadChecksum;
   std::string error_msg;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  if (!DexFile::Open(fileName, fileName, kVerifyChecksum, &error_msg, &dex_files)) {
+  if (!DexFileLoader::Open(fileName, fileName, kVerifyChecksum, &error_msg, &dex_files)) {
     // Display returned error message to user. Note that this error behavior
     // differs from the error messages shown by the original Dalvik dexdump.
     fputs(error_msg.c_str(), stderr);

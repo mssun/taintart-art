@@ -105,7 +105,7 @@ void SsaBuilder::FixEnvironmentPhis() {
 }
 
 static void AddDependentInstructionsToWorklist(HInstruction* instruction,
-                                               ArenaVector<HPhi*>* worklist) {
+                                               ScopedArenaVector<HPhi*>* worklist) {
   // If `instruction` is a dead phi, type conflict was just identified. All its
   // live phi users, and transitively users of those users, therefore need to be
   // marked dead/conflicting too, so we add them to the worklist. Otherwise we
@@ -167,7 +167,7 @@ static bool TypePhiFromInputs(HPhi* phi) {
 }
 
 // Replace inputs of `phi` to match its type. Return false if conflict is identified.
-bool SsaBuilder::TypeInputsOfPhi(HPhi* phi, ArenaVector<HPhi*>* worklist) {
+bool SsaBuilder::TypeInputsOfPhi(HPhi* phi, ScopedArenaVector<HPhi*>* worklist) {
   DataType::Type common_type = phi->GetType();
   if (DataType::IsIntegralType(common_type)) {
     // We do not need to retype ambiguous inputs because they are always constructed
@@ -213,7 +213,7 @@ bool SsaBuilder::TypeInputsOfPhi(HPhi* phi, ArenaVector<HPhi*>* worklist) {
 
 // Attempt to set the primitive type of `phi` to match its inputs. Return whether
 // it was changed by the algorithm or not.
-bool SsaBuilder::UpdatePrimitiveType(HPhi* phi, ArenaVector<HPhi*>* worklist) {
+bool SsaBuilder::UpdatePrimitiveType(HPhi* phi, ScopedArenaVector<HPhi*>* worklist) {
   DCHECK(phi->IsLive());
   DataType::Type original_type = phi->GetType();
 
@@ -233,7 +233,7 @@ bool SsaBuilder::UpdatePrimitiveType(HPhi* phi, ArenaVector<HPhi*>* worklist) {
 }
 
 void SsaBuilder::RunPrimitiveTypePropagation() {
-  ArenaVector<HPhi*> worklist(graph_->GetAllocator()->Adapter(kArenaAllocGraphBuilder));
+  ScopedArenaVector<HPhi*> worklist(local_allocator_->Adapter(kArenaAllocGraphBuilder));
 
   for (HBasicBlock* block : graph_->GetReversePostOrder()) {
     if (block->IsLoopHeader()) {
@@ -262,7 +262,7 @@ void SsaBuilder::RunPrimitiveTypePropagation() {
   EquivalentPhisCleanup();
 }
 
-void SsaBuilder::ProcessPrimitiveTypePropagationWorklist(ArenaVector<HPhi*>* worklist) {
+void SsaBuilder::ProcessPrimitiveTypePropagationWorklist(ScopedArenaVector<HPhi*>* worklist) {
   // Process worklist
   while (!worklist->empty()) {
     HPhi* phi = worklist->back();
@@ -319,7 +319,7 @@ bool SsaBuilder::FixAmbiguousArrayOps() {
   // uses (because they are untyped) and environment uses (if --debuggable).
   // After resolving all ambiguous ArrayGets, we will re-run primitive type
   // propagation on the Phis which need to be updated.
-  ArenaVector<HPhi*> worklist(graph_->GetAllocator()->Adapter(kArenaAllocGraphBuilder));
+  ScopedArenaVector<HPhi*> worklist(local_allocator_->Adapter(kArenaAllocGraphBuilder));
 
   {
     ScopedObjectAccess soa(Thread::Current());
@@ -623,8 +623,7 @@ HPhi* SsaBuilder::GetFloatDoubleOrReferenceEquivalentOfPhi(HPhi* phi, DataType::
       || (next->GetType() != type)) {
     ArenaAllocator* allocator = graph_->GetAllocator();
     HInputsRef inputs = phi->GetInputs();
-    HPhi* new_phi =
-        new (allocator) HPhi(allocator, phi->GetRegNumber(), inputs.size(), type);
+    HPhi* new_phi = new (allocator) HPhi(allocator, phi->GetRegNumber(), inputs.size(), type);
     // Copy the inputs. Note that the graph may not be correctly typed
     // by doing this copy, but the type propagation phase will fix it.
     ArrayRef<HUserRecord<HInstruction*>> new_input_records = new_phi->GetInputRecords();

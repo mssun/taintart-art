@@ -380,7 +380,8 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
   // for the suspend check at the back edge (instead of where the suspend check
   // is, which is the loop entry). At this point, the spill slots for the phis
   // have not been written to.
-  void ClearSpillSlotsFromLoopPhisInStackMap(HSuspendCheck* suspend_check) const;
+  void ClearSpillSlotsFromLoopPhisInStackMap(HSuspendCheck* suspend_check,
+                                             HParallelMove* spills) const;
 
   bool* GetBlockedCoreRegisters() const { return blocked_core_registers_; }
   bool* GetBlockedFloatingPointRegisters() const { return blocked_fpu_registers_; }

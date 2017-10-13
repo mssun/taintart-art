@@ -40,6 +40,7 @@
 #include "base/systrace.h"
 #include "base/time_utils.h"
 #include "base/unix_file/fd_file.h"
+#include "dex_file_loader.h"
 #include "jit/profiling_info.h"
 #include "os.h"
 #include "safe_map.h"
@@ -1537,7 +1538,7 @@ std::string ProfileCompilationInfo::DumpInfo(const std::vector<const DexFile*>* 
       os << dex_data->profile_key;
     } else {
       // Replace the (empty) multidex suffix of the first key with a substitute for easier reading.
-      std::string multidex_suffix = DexFile::GetMultiDexSuffix(dex_data->profile_key);
+      std::string multidex_suffix = DexFileLoader::GetMultiDexSuffix(dex_data->profile_key);
       os << (multidex_suffix.empty() ? kFirstDexFileKeySubstitute : multidex_suffix);
     }
     os << " [index=" << static_cast<uint32_t>(dex_data->profile_index) << "]";
@@ -1696,7 +1697,7 @@ bool ProfileCompilationInfo::GenerateTestProfile(int fd,
   const uint16_t kFavorSplit = 2;
 
   for (uint16_t i = 0; i < number_of_dex_files; i++) {
-    std::string dex_location = DexFile::GetMultiDexLocation(i, base_dex_location.c_str());
+    std::string dex_location = DexFileLoader::GetMultiDexLocation(i, base_dex_location.c_str());
     std::string profile_key = GetProfileDexFileKey(dex_location);
 
     for (uint16_t m = 0; m < number_of_methods; m++) {
@@ -1828,7 +1829,7 @@ ProfileCompilationInfo::InlineCacheMap*
 ProfileCompilationInfo::DexFileData::FindOrAddMethod(uint16_t method_index) {
   return &(method_map.FindOrAdd(
       method_index,
-      InlineCacheMap(std::less<uint16_t>(), arena_->Adapter(kArenaAllocProfile)))->second);
+      InlineCacheMap(std::less<uint16_t>(), allocator_->Adapter(kArenaAllocProfile)))->second);
 }
 
 // Mark a method as executed at least once.
@@ -1847,7 +1848,7 @@ bool ProfileCompilationInfo::DexFileData::AddMethod(MethodHotness::Flag flags, s
   if ((flags & MethodHotness::kFlagHot) != 0) {
     method_map.FindOrAdd(
         index,
-        InlineCacheMap(std::less<uint16_t>(), arena_->Adapter(kArenaAllocProfile)));
+        InlineCacheMap(std::less<uint16_t>(), allocator_->Adapter(kArenaAllocProfile)));
   }
   return true;
 }

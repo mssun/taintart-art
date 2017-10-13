@@ -161,9 +161,6 @@ public class Test1939 {
 
   public static void run() throws Exception {
     Locals.EnableLocalVariableAccess();
-    final TestCase[] MAIN_TEST_CASES = new TestCase[] {
-    };
-
     TestCase test = new TestCase(
         getProxyObject(Foo.class), getMethod(Foo.class, "InterfaceProxyMethod"));
     test.exec(NamedGet("This", Locals::GetLocalInstance));

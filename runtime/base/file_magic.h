@@ -29,7 +29,6 @@ File OpenAndReadMagic(const char* filename, uint32_t* magic, std::string* error_
 
 // Check whether the given magic matches a known file type.
 bool IsZipMagic(uint32_t magic);
-bool IsDexMagic(uint32_t magic);
 
 }  // namespace art
 

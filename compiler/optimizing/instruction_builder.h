@@ -17,23 +17,32 @@
 #ifndef ART_COMPILER_OPTIMIZING_INSTRUCTION_BUILDER_H_
 #define ART_COMPILER_OPTIMIZING_INSTRUCTION_BUILDER_H_
 
-#include "base/arena_containers.h"
-#include "base/arena_object.h"
-#include "block_builder.h"
+#include "base/scoped_arena_allocator.h"
+#include "base/scoped_arena_containers.h"
+#include "data_type.h"
+#include "dex_file.h"
 #include "dex_file_types.h"
-#include "driver/compiler_driver-inl.h"
-#include "driver/compiler_driver.h"
-#include "driver/dex_compilation_unit.h"
-#include "mirror/dex_cache.h"
+#include "handle.h"
 #include "nodes.h"
-#include "optimizing_compiler_stats.h"
 #include "quicken_info.h"
-#include "ssa_builder.h"
 
 namespace art {
 
+class ArenaBitVector;
+class ArtField;
+class ArtMethod;
 class CodeGenerator;
+class CompilerDriver;
+class DexCompilationUnit;
+class HBasicBlockBuilder;
 class Instruction;
+class OptimizingCompilerStats;
+class SsaBuilder;
+class VariableSizedHandleScope;
+
+namespace mirror {
+class Class;
+}  // namespace mirror
 
 class HInstructionBuilder : public ValueObject {
  public:
@@ -45,12 +54,12 @@ class HInstructionBuilder : public ValueObject {
                       DataType::Type return_type,
                       const DexCompilationUnit* dex_compilation_unit,
                       const DexCompilationUnit* outer_compilation_unit,
-                      CompilerDriver* driver,
+                      CompilerDriver* compiler_driver,
                       CodeGenerator* code_generator,
                       const uint8_t* interpreter_metadata,
                       OptimizingCompilerStats* compiler_stats,
-                      Handle<mirror::DexCache> dex_cache,
-                      VariableSizedHandleScope* handles)
+                      VariableSizedHandleScope* handles,
+                      ScopedArenaAllocator* local_allocator)
       : allocator_(graph->GetAllocator()),
         graph_(graph),
         handles_(handles),
@@ -59,19 +68,19 @@ class HInstructionBuilder : public ValueObject {
         return_type_(return_type),
         block_builder_(block_builder),
         ssa_builder_(ssa_builder),
-        locals_for_(allocator_->Adapter(kArenaAllocGraphBuilder)),
-        current_block_(nullptr),
-        current_locals_(nullptr),
-        latest_result_(nullptr),
-        current_this_parameter_(nullptr),
-        compiler_driver_(driver),
+        compiler_driver_(compiler_driver),
         code_generator_(code_generator),
         dex_compilation_unit_(dex_compilation_unit),
         outer_compilation_unit_(outer_compilation_unit),
         quicken_info_(interpreter_metadata),
         compilation_stats_(compiler_stats),
-        dex_cache_(dex_cache),
-        loop_headers_(allocator_->Adapter(kArenaAllocGraphBuilder)) {
+        local_allocator_(local_allocator),
+        locals_for_(local_allocator->Adapter(kArenaAllocGraphBuilder)),
+        current_block_(nullptr),
+        current_locals_(nullptr),
+        latest_result_(nullptr),
+        current_this_parameter_(nullptr),
+        loop_headers_(local_allocator->Adapter(kArenaAllocGraphBuilder)) {
     loop_headers_.reserve(kDefaultNumberOfLoops);
   }
 
@@ -83,18 +92,18 @@ class HInstructionBuilder : public ValueObject {
   void SetLoopHeaderPhiInputs();
 
   bool ProcessDexInstruction(const Instruction& instruction, uint32_t dex_pc, size_t quicken_index);
-  void FindNativeDebugInfoLocations(ArenaBitVector* locations);
+  ArenaBitVector* FindNativeDebugInfoLocations();
 
   bool CanDecodeQuickenedInfo() const;
   uint16_t LookupQuickenedInfo(uint32_t quicken_index);
 
   HBasicBlock* FindBlockStartingAt(uint32_t dex_pc) const;
 
-  ArenaVector<HInstruction*>* GetLocalsFor(HBasicBlock* block);
+  ScopedArenaVector<HInstruction*>* GetLocalsFor(HBasicBlock* block);
   // Out of line version of GetLocalsFor(), which has a fast path that is
   // beneficial to get inlined by callers.
-  ArenaVector<HInstruction*>* GetLocalsForWithAllocation(
-      HBasicBlock* block, ArenaVector<HInstruction*>* locals, const size_t vregs);
+  ScopedArenaVector<HInstruction*>* GetLocalsForWithAllocation(
+      HBasicBlock* block, ScopedArenaVector<HInstruction*>* locals, const size_t vregs);
   HInstruction* ValueOfLocalAt(HBasicBlock* block, size_t local);
   HInstruction* LoadLocal(uint32_t register_index, DataType::Type type) const;
   HInstruction* LoadNullCheckedLocal(uint32_t register_index, uint32_t dex_pc);
@@ -314,7 +323,7 @@ class HInstructionBuilder : public ValueObject {
 
   ArenaAllocator* const allocator_;
   HGraph* const graph_;
-  VariableSizedHandleScope* handles_;
+  VariableSizedHandleScope* const handles_;
 
   // The dex file where the method being compiled is, and the bytecode data.
   const DexFile* const dex_file_;
@@ -323,18 +332,8 @@ class HInstructionBuilder : public ValueObject {
   // The return type of the method being compiled.
   const DataType::Type return_type_;
 
-  HBasicBlockBuilder* block_builder_;
-  SsaBuilder* ssa_builder_;
-
-  ArenaVector<ArenaVector<HInstruction*>> locals_for_;
-  HBasicBlock* current_block_;
-  ArenaVector<HInstruction*>* current_locals_;
-  HInstruction* latest_result_;
-  // Current "this" parameter.
-  // Valid only after InitializeParameters() finishes.
-  // * Null for static methods.
-  // * Non-null for instance methods.
-  HParameterValue* current_this_parameter_;
+  HBasicBlockBuilder* const block_builder_;
+  SsaBuilder* const ssa_builder_;
 
   CompilerDriver* const compiler_driver_;
 
@@ -352,10 +351,20 @@ class HInstructionBuilder : public ValueObject {
   // Original values kept after instruction quickening.
   QuickenInfoTable quicken_info_;
 
-  OptimizingCompilerStats* compilation_stats_;
-  Handle<mirror::DexCache> dex_cache_;
+  OptimizingCompilerStats* const compilation_stats_;
 
-  ArenaVector<HBasicBlock*> loop_headers_;
+  ScopedArenaAllocator* const local_allocator_;
+  ScopedArenaVector<ScopedArenaVector<HInstruction*>> locals_for_;
+  HBasicBlock* current_block_;
+  ScopedArenaVector<HInstruction*>* current_locals_;
+  HInstruction* latest_result_;
+  // Current "this" parameter.
+  // Valid only after InitializeParameters() finishes.
+  // * Null for static methods.
+  // * Non-null for instance methods.
+  HParameterValue* current_this_parameter_;
+
+  ScopedArenaVector<HBasicBlock*> loop_headers_;
 
   static constexpr int kDefaultNumberOfLoops = 2;
 

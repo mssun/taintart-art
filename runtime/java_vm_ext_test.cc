@@ -19,6 +19,7 @@
 #include <pthread.h>
 
 #include "common_runtime_test.h"
+#include "gc/heap.h"
 #include "java_vm_ext.h"
 #include "runtime.h"
 
@@ -132,6 +133,51 @@ TEST_F(JavaVmExtTest, DetachCurrentThread) {
 
   jint err = vm_->DetachCurrentThread();
   EXPECT_EQ(JNI_ERR, err);
+}
+
+class JavaVmExtStackTraceTest : public JavaVmExtTest {
+ protected:
+  void SetUpRuntimeOptions(RuntimeOptions* options) OVERRIDE {
+    options->emplace_back("-XX:GlobalRefAllocStackTraceLimit=50000", nullptr);
+  }
+};
+
+TEST_F(JavaVmExtStackTraceTest, TestEnableDisable) {
+  ASSERT_FALSE(Runtime::Current()->GetHeap()->IsAllocTrackingEnabled());
+
+  JNIEnv* env;
+  jint ok = vm_->AttachCurrentThread(&env, nullptr);
+  ASSERT_EQ(JNI_OK, ok);
+
+  std::vector<jobject> global_refs_;
+  jobject local_ref = env->NewStringUTF("Dummy");
+  for (size_t i = 0; i < 2000; ++i) {
+    global_refs_.push_back(env->NewGlobalRef(local_ref));
+  }
+
+  EXPECT_TRUE(Runtime::Current()->GetHeap()->IsAllocTrackingEnabled());
+
+  for (jobject global_ref : global_refs_) {
+    env->DeleteGlobalRef(global_ref);
+  }
+
+  EXPECT_FALSE(Runtime::Current()->GetHeap()->IsAllocTrackingEnabled());
+
+  global_refs_.clear();
+  for (size_t i = 0; i < 2000; ++i) {
+    global_refs_.push_back(env->NewGlobalRef(local_ref));
+  }
+
+  EXPECT_TRUE(Runtime::Current()->GetHeap()->IsAllocTrackingEnabled());
+
+  for (jobject global_ref : global_refs_) {
+    env->DeleteGlobalRef(global_ref);
+  }
+
+  EXPECT_FALSE(Runtime::Current()->GetHeap()->IsAllocTrackingEnabled());
+
+  ok = vm_->DetachCurrentThread();
+  EXPECT_EQ(JNI_OK, ok);
 }
 
 }  // namespace art

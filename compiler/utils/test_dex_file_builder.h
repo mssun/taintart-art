@@ -26,7 +26,8 @@
 
 #include "base/bit_utils.h"
 #include "base/logging.h"
-#include "dex_file.h"
+#include "dex_file_loader.h"
+#include "standard_dex_file.h"
 
 namespace art {
 
@@ -88,8 +89,8 @@ class TestDexFileBuilder {
     } header_data;
     std::memset(header_data.data, 0, sizeof(header_data.data));
     DexFile::Header* header = reinterpret_cast<DexFile::Header*>(&header_data.data);
-    std::copy_n(DexFile::kDexMagic, 4u, header->magic_);
-    std::copy_n(DexFile::kDexMagicVersions[0], 4u, header->magic_ + 4u);
+    std::copy_n(StandardDexFile::kDexMagic, 4u, header->magic_);
+    std::copy_n(StandardDexFile::kDexMagicVersions[0], 4u, header->magic_ + 4u);
     header->header_size_ = sizeof(DexFile::Header);
     header->endian_tag_ = DexFile::kDexEndianConstant;
     header->link_size_ = 0u;  // Unused.
@@ -231,7 +232,7 @@ class TestDexFileBuilder {
     static constexpr bool kVerify = false;
     static constexpr bool kVerifyChecksum = false;
     std::string error_msg;
-    std::unique_ptr<const DexFile> dex_file(DexFile::Open(
+    std::unique_ptr<const DexFile> dex_file(DexFileLoader::Open(
         &dex_file_data_[0],
         dex_file_data_.size(),
         dex_location,

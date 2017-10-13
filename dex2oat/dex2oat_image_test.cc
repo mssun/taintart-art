@@ -28,6 +28,7 @@
 #include "base/macros.h"
 #include "base/unix_file/fd_file.h"
 #include "dex_file-inl.h"
+#include "dex_file_loader.h"
 #include "jit/profile_compilation_info.h"
 #include "method_reference.h"
 #include "runtime.h"
@@ -62,7 +63,11 @@ class Dex2oatImageTest : public CommonRuntimeTest {
     for (const std::string& dex : GetLibCoreDexFileNames()) {
       std::vector<std::unique_ptr<const DexFile>> dex_files;
       std::string error_msg;
-      CHECK(DexFile::Open(dex.c_str(), dex, /*verify_checksum*/ false, &error_msg, &dex_files))
+      CHECK(DexFileLoader::Open(dex.c_str(),
+                                dex,
+                                /*verify_checksum*/ false,
+                                &error_msg,
+                                &dex_files))
           << error_msg;
       for (const std::unique_ptr<const DexFile>& dex_file : dex_files) {
         for (size_t i = 0; i < dex_file->NumMethodIds(); ++i) {

@@ -25,6 +25,7 @@
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "dex_file.h"
+#include "dex_file_loader.h"
 #include "dex_to_dex_decompiler.h"
 
 namespace art {
@@ -151,15 +152,15 @@ bool VdexFile::OpenAllDexFiles(std::vector<std::unique_ptr<const DexFile>>* dex_
     size_t size = reinterpret_cast<const DexFile::Header*>(dex_file_start)->file_size_;
     // TODO: Supply the location information for a vdex file.
     static constexpr char kVdexLocation[] = "";
-    std::string location = DexFile::GetMultiDexLocation(i, kVdexLocation);
-    std::unique_ptr<const DexFile> dex(DexFile::Open(dex_file_start,
-                                                     size,
-                                                     location,
-                                                     GetLocationChecksum(i),
-                                                     nullptr /*oat_dex_file*/,
-                                                     false /*verify*/,
-                                                     false /*verify_checksum*/,
-                                                     error_msg));
+    std::string location = DexFileLoader::GetMultiDexLocation(i, kVdexLocation);
+    std::unique_ptr<const DexFile> dex(DexFileLoader::Open(dex_file_start,
+                                                           size,
+                                                           location,
+                                                           GetLocationChecksum(i),
+                                                           nullptr /*oat_dex_file*/,
+                                                           false /*verify*/,
+                                                           false /*verify_checksum*/,
+                                                           error_msg));
     if (dex == nullptr) {
       return false;
     }

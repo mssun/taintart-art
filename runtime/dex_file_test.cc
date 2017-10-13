@@ -24,6 +24,7 @@
 #include "base/unix_file/fd_file.h"
 #include "common_runtime_test.h"
 #include "dex_file-inl.h"
+#include "dex_file_loader.h"
 #include "mem_map.h"
 #include "os.h"
 #include "scoped_thread_state_change-inl.h"
@@ -235,7 +236,7 @@ static bool OpenDexFilesBase64(const char* base64,
   ScopedObjectAccess soa(Thread::Current());
   static constexpr bool kVerifyChecksum = true;
   std::vector<std::unique_ptr<const DexFile>> tmp;
-  bool success = DexFile::Open(location, location, kVerifyChecksum, error_msg, &tmp);
+  bool success = DexFileLoader::Open(location, location, kVerifyChecksum, error_msg, &tmp);
   if (success) {
     for (std::unique_ptr<const DexFile>& dex_file : tmp) {
       EXPECT_EQ(PROT_READ, dex_file->GetPermissions());
@@ -274,12 +275,12 @@ static std::unique_ptr<const DexFile> OpenDexFileInMemoryBase64(const char* base
                                                       /* reuse */ false,
                                                       &error_message));
   memcpy(region->Begin(), dex_bytes.data(), dex_bytes.size());
-  std::unique_ptr<const DexFile> dex_file(DexFile::Open(location,
-                                                        location_checksum,
-                                                        std::move(region),
-                                                        /* verify */ true,
-                                                        /* verify_checksum */ true,
-                                                        &error_message));
+  std::unique_ptr<const DexFile> dex_file(DexFileLoader::Open(location,
+                                                              location_checksum,
+                                                              std::move(region),
+                                                              /* verify */ true,
+                                                              /* verify_checksum */ true,
+                                                              &error_message));
   if (expect_success) {
     CHECK(dex_file != nullptr) << error_message;
   } else {
@@ -365,7 +366,7 @@ TEST_F(DexFileTest, Version40Rejected) {
   static constexpr bool kVerifyChecksum = true;
   std::string error_msg;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  ASSERT_FALSE(DexFile::Open(location, location, kVerifyChecksum, &error_msg, &dex_files));
+  ASSERT_FALSE(DexFileLoader::Open(location, location, kVerifyChecksum, &error_msg, &dex_files));
 }
 
 TEST_F(DexFileTest, Version41Rejected) {
@@ -377,7 +378,7 @@ TEST_F(DexFileTest, Version41Rejected) {
   static constexpr bool kVerifyChecksum = true;
   std::string error_msg;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  ASSERT_FALSE(DexFile::Open(location, location, kVerifyChecksum, &error_msg, &dex_files));
+  ASSERT_FALSE(DexFileLoader::Open(location, location, kVerifyChecksum, &error_msg, &dex_files));
 }
 
 TEST_F(DexFileTest, ZeroLengthDexRejected) {
@@ -389,7 +390,7 @@ TEST_F(DexFileTest, ZeroLengthDexRejected) {
   static constexpr bool kVerifyChecksum = true;
   std::string error_msg;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  ASSERT_FALSE(DexFile::Open(location, location, kVerifyChecksum, &error_msg, &dex_files));
+  ASSERT_FALSE(DexFileLoader::Open(location, location, kVerifyChecksum, &error_msg, &dex_files));
 }
 
 TEST_F(DexFileTest, GetLocationChecksum) {
@@ -402,7 +403,9 @@ TEST_F(DexFileTest, GetChecksum) {
   std::vector<uint32_t> checksums;
   ScopedObjectAccess soa(Thread::Current());
   std::string error_msg;
-  EXPECT_TRUE(DexFile::GetMultiDexChecksums(GetLibCoreDexFileNames()[0].c_str(), &checksums, &error_msg))
+  EXPECT_TRUE(DexFileLoader::GetMultiDexChecksums(GetLibCoreDexFileNames()[0].c_str(),
+                                                  &checksums,
+                                                  &error_msg))
       << error_msg;
   ASSERT_EQ(1U, checksums.size());
   EXPECT_EQ(java_lang_dex_file_->GetLocationChecksum(), checksums[0]);
@@ -412,18 +415,18 @@ TEST_F(DexFileTest, GetMultiDexChecksums) {
   std::string error_msg;
   std::vector<uint32_t> checksums;
   std::string multidex_file = GetTestDexFileName("MultiDex");
-  EXPECT_TRUE(DexFile::GetMultiDexChecksums(multidex_file.c_str(),
-                                            &checksums,
-                                            &error_msg)) << error_msg;
+  EXPECT_TRUE(DexFileLoader::GetMultiDexChecksums(multidex_file.c_str(),
+                                                  &checksums,
+                                                  &error_msg)) << error_msg;
 
   std::vector<std::unique_ptr<const DexFile>> dexes = OpenTestDexFiles("MultiDex");
   ASSERT_EQ(2U, dexes.size());
   ASSERT_EQ(2U, checksums.size());
 
-  EXPECT_EQ(dexes[0]->GetLocation(), DexFile::GetMultiDexLocation(0, multidex_file.c_str()));
+  EXPECT_EQ(dexes[0]->GetLocation(), DexFileLoader::GetMultiDexLocation(0, multidex_file.c_str()));
   EXPECT_EQ(dexes[0]->GetLocationChecksum(), checksums[0]);
 
-  EXPECT_EQ(dexes[1]->GetLocation(), DexFile::GetMultiDexLocation(1, multidex_file.c_str()));
+  EXPECT_EQ(dexes[1]->GetLocation(), DexFileLoader::GetMultiDexLocation(1, multidex_file.c_str()));
   EXPECT_EQ(dexes[1]->GetLocationChecksum(), checksums[1]);
 }
 
@@ -625,20 +628,20 @@ TEST_F(DexFileTest, FindFieldId) {
 }
 
 TEST_F(DexFileTest, GetMultiDexClassesDexName) {
-  ASSERT_EQ("classes.dex", DexFile::GetMultiDexClassesDexName(0));
-  ASSERT_EQ("classes2.dex", DexFile::GetMultiDexClassesDexName(1));
-  ASSERT_EQ("classes3.dex", DexFile::GetMultiDexClassesDexName(2));
-  ASSERT_EQ("classes100.dex", DexFile::GetMultiDexClassesDexName(99));
+  ASSERT_EQ("classes.dex", DexFileLoader::GetMultiDexClassesDexName(0));
+  ASSERT_EQ("classes2.dex", DexFileLoader::GetMultiDexClassesDexName(1));
+  ASSERT_EQ("classes3.dex", DexFileLoader::GetMultiDexClassesDexName(2));
+  ASSERT_EQ("classes100.dex", DexFileLoader::GetMultiDexClassesDexName(99));
 }
 
 TEST_F(DexFileTest, GetMultiDexLocation) {
   std::string dex_location_str = "/system/app/framework.jar";
   const char* dex_location = dex_location_str.c_str();
-  ASSERT_EQ("/system/app/framework.jar", DexFile::GetMultiDexLocation(0, dex_location));
+  ASSERT_EQ("/system/app/framework.jar", DexFileLoader::GetMultiDexLocation(0, dex_location));
   ASSERT_EQ("/system/app/framework.jar!classes2.dex",
-            DexFile::GetMultiDexLocation(1, dex_location));
+            DexFileLoader::GetMultiDexLocation(1, dex_location));
   ASSERT_EQ("/system/app/framework.jar!classes101.dex",
-            DexFile::GetMultiDexLocation(100, dex_location));
+            DexFileLoader::GetMultiDexLocation(100, dex_location));
 }
 
 TEST_F(DexFileTest, GetDexCanonicalLocation) {
@@ -646,28 +649,30 @@ TEST_F(DexFileTest, GetDexCanonicalLocation) {
   UniqueCPtr<const char[]> dex_location_real(realpath(file.GetFilename().c_str(), nullptr));
   std::string dex_location(dex_location_real.get());
 
-  ASSERT_EQ(dex_location, DexFile::GetDexCanonicalLocation(dex_location.c_str()));
-  std::string multidex_location = DexFile::GetMultiDexLocation(1, dex_location.c_str());
-  ASSERT_EQ(multidex_location, DexFile::GetDexCanonicalLocation(multidex_location.c_str()));
+  ASSERT_EQ(dex_location, DexFileLoader::GetDexCanonicalLocation(dex_location.c_str()));
+  std::string multidex_location = DexFileLoader::GetMultiDexLocation(1, dex_location.c_str());
+  ASSERT_EQ(multidex_location, DexFileLoader::GetDexCanonicalLocation(multidex_location.c_str()));
 
   std::string dex_location_sym = dex_location + "symlink";
   ASSERT_EQ(0, symlink(dex_location.c_str(), dex_location_sym.c_str()));
 
-  ASSERT_EQ(dex_location, DexFile::GetDexCanonicalLocation(dex_location_sym.c_str()));
+  ASSERT_EQ(dex_location, DexFileLoader::GetDexCanonicalLocation(dex_location_sym.c_str()));
 
-  std::string multidex_location_sym = DexFile::GetMultiDexLocation(1, dex_location_sym.c_str());
-  ASSERT_EQ(multidex_location, DexFile::GetDexCanonicalLocation(multidex_location_sym.c_str()));
+  std::string multidex_location_sym = DexFileLoader::GetMultiDexLocation(
+      1, dex_location_sym.c_str());
+  ASSERT_EQ(multidex_location,
+            DexFileLoader::GetDexCanonicalLocation(multidex_location_sym.c_str()));
 
   ASSERT_EQ(0, unlink(dex_location_sym.c_str()));
 }
 
 TEST(DexFileUtilsTest, GetBaseLocationAndMultiDexSuffix) {
-  EXPECT_EQ("/foo/bar/baz.jar", DexFile::GetBaseLocation("/foo/bar/baz.jar"));
-  EXPECT_EQ("/foo/bar/baz.jar", DexFile::GetBaseLocation("/foo/bar/baz.jar!classes2.dex"));
-  EXPECT_EQ("/foo/bar/baz.jar", DexFile::GetBaseLocation("/foo/bar/baz.jar!classes8.dex"));
-  EXPECT_EQ("", DexFile::GetMultiDexSuffix("/foo/bar/baz.jar"));
-  EXPECT_EQ("!classes2.dex", DexFile::GetMultiDexSuffix("/foo/bar/baz.jar!classes2.dex"));
-  EXPECT_EQ("!classes8.dex", DexFile::GetMultiDexSuffix("/foo/bar/baz.jar!classes8.dex"));
+  EXPECT_EQ("/foo/bar/baz.jar", DexFileLoader::GetBaseLocation("/foo/bar/baz.jar"));
+  EXPECT_EQ("/foo/bar/baz.jar", DexFileLoader::GetBaseLocation("/foo/bar/baz.jar!classes2.dex"));
+  EXPECT_EQ("/foo/bar/baz.jar", DexFileLoader::GetBaseLocation("/foo/bar/baz.jar!classes8.dex"));
+  EXPECT_EQ("", DexFileLoader::GetMultiDexSuffix("/foo/bar/baz.jar"));
+  EXPECT_EQ("!classes2.dex", DexFileLoader::GetMultiDexSuffix("/foo/bar/baz.jar!classes2.dex"));
+  EXPECT_EQ("!classes8.dex", DexFileLoader::GetMultiDexSuffix("/foo/bar/baz.jar!classes8.dex"));
 }
 
 TEST_F(DexFileTest, ZipOpenClassesPresent) {

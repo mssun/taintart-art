@@ -72,6 +72,7 @@ const char* const ArenaAllocatorStatsImpl<kCount>::kAllocNames[] = {
   "InductionVar ",
   "BCE          ",
   "DCE          ",
+  "LSA          ",
   "LSE          ",
   "CFRE         ",
   "LICM         ",
@@ -296,7 +297,7 @@ ArenaPool::~ArenaPool() {
 
 void ArenaPool::ReclaimMemory() {
   while (free_arenas_ != nullptr) {
-    auto* arena = free_arenas_;
+    Arena* arena = free_arenas_;
     free_arenas_ = free_arenas_->next_;
     delete arena;
   }
@@ -330,7 +331,7 @@ void ArenaPool::TrimMaps() {
     ScopedTrace trace(__PRETTY_FUNCTION__);
     // Doesn't work for malloc.
     MutexLock lock(Thread::Current(), lock_);
-    for (auto* arena = free_arenas_; arena != nullptr; arena = arena->next_) {
+    for (Arena* arena = free_arenas_; arena != nullptr; arena = arena->next_) {
       arena->Release();
     }
   }
