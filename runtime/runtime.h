@@ -671,6 +671,12 @@ class Runtime {
     return result;
   }
 
+  // Whether or not we use MADV_RANDOM on files that are thought to have random access patterns.
+  // This is beneficial for low RAM devices since it reduces page cache thrashing.
+  bool MAdviseRandomAccess() const {
+    return madvise_random_access_;
+  }
+
  private:
   static void InitPlatformSignalHandlers();
 
@@ -901,6 +907,10 @@ class Runtime {
 
   // Whether or not we are on a low RAM device.
   bool is_low_memory_mode_;
+
+  // Whether or not we use MADV_RANDOM on files that are thought to have random access patterns.
+  // This is beneficial for low RAM devices since it reduces page cache thrashing.
+  bool madvise_random_access_;
 
   // Whether the application should run in safe mode, that is, interpreter only.
   bool safe_mode_;

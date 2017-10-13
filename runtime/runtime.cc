@@ -1135,6 +1135,7 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   zygote_max_failed_boots_ = runtime_options.GetOrDefault(Opt::ZygoteMaxFailedBoots);
   experimental_flags_ = runtime_options.GetOrDefault(Opt::Experimental);
   is_low_memory_mode_ = runtime_options.Exists(Opt::LowMemoryMode);
+  madvise_random_access_ = runtime_options.GetOrDefault(Opt::MadviseRandomAccess);
 
   plugins_ = runtime_options.ReleaseOrDefault(Opt::Plugins);
   agents_ = runtime_options.ReleaseOrDefault(Opt::AgentPath);

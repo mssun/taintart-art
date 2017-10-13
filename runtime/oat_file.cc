@@ -74,9 +74,6 @@ static constexpr bool kUseDlopenOnHost = true;
 // For debugging, Open will print DlOpen error message if set to true.
 static constexpr bool kPrintDlOpenErrorMessage = false;
 
-// If true, we advise the kernel about dex file mem map accesses.
-static constexpr bool kMadviseDexFileAccesses = true;
-
 // Note for OatFileBase and descendents:
 //
 // These are used in OatFile::Open to try all our loaders.
@@ -1498,20 +1495,19 @@ const DexFile::ClassDef* OatFile::OatDexFile::FindClassDef(const DexFile& dex_fi
 
 // Madvise the dex file based on the state we are moving to.
 void OatDexFile::MadviseDexFile(const DexFile& dex_file, MadviseState state) {
-  const bool low_ram = Runtime::Current()->GetHeap()->IsLowMemoryMode();
+  Runtime* const runtime = Runtime::Current();
+  const bool low_ram = runtime->GetHeap()->IsLowMemoryMode();
   // TODO: Also do madvise hints for non low ram devices.
-  if (!kMadviseDexFileAccesses || !low_ram) {
+  if (!low_ram) {
     return;
   }
-  if (state == MadviseState::kMadviseStateAtLoad) {
-    if (low_ram) {
-      // Default every dex file to MADV_RANDOM when its loaded by default for low ram devices.
-      // Other devices have enough page cache to get performance benefits from loading more pages
-      // into the page cache.
-      MadviseLargestPageAlignedRegion(dex_file.Begin(),
-                                      dex_file.Begin() + dex_file.Size(),
-                                      MADV_RANDOM);
-    }
+  if (state == MadviseState::kMadviseStateAtLoad && runtime->MAdviseRandomAccess()) {
+    // Default every dex file to MADV_RANDOM when its loaded by default for low ram devices.
+    // Other devices have enough page cache to get performance benefits from loading more pages
+    // into the page cache.
+    MadviseLargestPageAlignedRegion(dex_file.Begin(),
+                                    dex_file.Begin() + dex_file.Size(),
+                                    MADV_RANDOM);
   }
   const OatFile::OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
   if (oat_dex_file != nullptr) {

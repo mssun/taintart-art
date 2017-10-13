@@ -159,6 +159,10 @@ std::unique_ptr<RuntimeParser> ParsedOptions::MakeParser(bool ignore_unrecognize
           .WithType<bool>()
           .WithValueMap({{"false", false}, {"true", true}})
           .IntoKey(M::DumpNativeStackOnSigQuit)
+      .Define("-XX:MadviseRandomAccess:_")
+          .WithType<bool>()
+          .WithValueMap({{"false", false}, {"true", true}})
+          .IntoKey(M::MadviseRandomAccess)
       .Define("-Xusejit:_")
           .WithType<bool>()
           .WithValueMap({{"false", false}, {"true", true}})
@@ -714,6 +718,7 @@ void ParsedOptions::Usage(const char* fmt, ...) {
   UsageMessage(stream, "  -XX:LargeObjectSpace={disabled,map,freelist}\n");
   UsageMessage(stream, "  -XX:LargeObjectThreshold=N\n");
   UsageMessage(stream, "  -XX:DumpNativeStackOnSigQuit=booleanvalue\n");
+  UsageMessage(stream, "  -XX:MadviseRandomAccess:booleanvalue\n");
   UsageMessage(stream, "  -XX:SlowDebug={false,true}\n");
   UsageMessage(stream, "  -Xmethod-trace\n");
   UsageMessage(stream, "  -Xmethod-trace-file:filename");
