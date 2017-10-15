@@ -20,6 +20,7 @@
 public class Main {
 
   static final int N = 500;
+  static final int M = 100;
 
   //
   // Basic reductions in loops.
@@ -493,7 +494,7 @@ public class Main {
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                 loop:none
   /// CHECK-DAG: <<ConsM:i\d+>>  IntConstant 2147483647        loop:none
   /// CHECK-DAG: <<Cons2:i\d+>>  IntConstant 2                 loop:none
-  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [<<ConsM>>]     loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecReplicateScalar [<<ConsM>>] loop:none
   /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]      loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Phi2:d\d+>>   Phi [<<Set>>,{{d\d+}}]        loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Load:d\d+>>   VecLoad [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
@@ -506,7 +507,7 @@ public class Main {
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                 loop:none
   /// CHECK-DAG: <<ConsM:i\d+>>  IntConstant 2147483647        loop:none
   /// CHECK-DAG: <<Cons4:i\d+>>  IntConstant 4                 loop:none
-  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [<<ConsM>>]     loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecReplicateScalar [<<ConsM>>] loop:none
   /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]      loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Phi2:d\d+>>   Phi [<<Set>>,{{d\d+}}]        loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Load:d\d+>>   VecLoad [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
@@ -569,7 +570,7 @@ public class Main {
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                 loop:none
   /// CHECK-DAG: <<ConsM:i\d+>>  IntConstant -2147483648       loop:none
   /// CHECK-DAG: <<Cons2:i\d+>>  IntConstant 2                 loop:none
-  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [<<ConsM>>]     loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecReplicateScalar [<<ConsM>>] loop:none
   /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]      loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Phi2:d\d+>>   Phi [<<Set>>,{{d\d+}}]        loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Load:d\d+>>   VecLoad [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
@@ -582,7 +583,7 @@ public class Main {
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                 loop:none
   /// CHECK-DAG: <<ConsM:i\d+>>  IntConstant -2147483648       loop:none
   /// CHECK-DAG: <<Cons4:i\d+>>  IntConstant 4                 loop:none
-  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [<<ConsM>>]     loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecReplicateScalar [<<ConsM>>] loop:none
   /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]      loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Phi2:d\d+>>   Phi [<<Set>>,{{d\d+}}]        loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Load:d\d+>>   VecLoad [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
@@ -666,6 +667,32 @@ public class Main {
       xl[i] = k;
     }
 
+    // Arrays with all positive elements.
+    byte[] xpb = new byte[M];
+    short[] xps = new short[M];
+    char[] xpc = new char[M];
+    int[] xpi = new int[M];
+    long[] xpl = new long[M];
+    for (int i = 0, k = 3; i < M; i++, k++) {
+      xpb[i] = (byte) k;
+      xps[i] = (short) k;
+      xpc[i] = (char) k;
+      xpi[i] = k;
+      xpl[i] = k;
+    }
+
+    // Arrays with all negative elements.
+    byte[] xnb = new byte[M];
+    short[] xns = new short[M];
+    int[] xni = new int[M];
+    long[] xnl = new long[M];
+    for (int i = 0, k = -103; i < M; i++, k++) {
+      xnb[i] = (byte) k;
+      xns[i] = (short) k;
+      xni[i] = k;
+      xnl[i] = k;
+    }
+
     // Test various reductions in loops.
     int[] x0 = { 0, 0, 0, 0 };
     int[] x1 = { 0, 0, 0, 1 };
@@ -705,11 +732,29 @@ public class Main {
     expectEquals(1, reductionMinChar(xc));
     expectEquals(-17, reductionMinInt(xi));
     expectEquals(-17L, reductionMinLong(xl));
+    expectEquals(3, reductionMinByte(xpb));
+    expectEquals(3, reductionMinShort(xps));
+    expectEquals(3, reductionMinChar(xpc));
+    expectEquals(3, reductionMinInt(xpi));
+    expectEquals(3L, reductionMinLong(xpl));
+    expectEquals(-103, reductionMinByte(xnb));
+    expectEquals(-103, reductionMinShort(xns));
+    expectEquals(-103, reductionMinInt(xni));
+    expectEquals(-103L, reductionMinLong(xnl));
     expectEquals(127, reductionMaxByte(xb));
     expectEquals(1480, reductionMaxShort(xs));
     expectEquals(65534, reductionMaxChar(xc));
     expectEquals(1480, reductionMaxInt(xi));
     expectEquals(1480L, reductionMaxLong(xl));
+    expectEquals(102, reductionMaxByte(xpb));
+    expectEquals(102, reductionMaxShort(xps));
+    expectEquals(102, reductionMaxChar(xpc));
+    expectEquals(102, reductionMaxInt(xpi));
+    expectEquals(102L, reductionMaxLong(xpl));
+    expectEquals(-4, reductionMaxByte(xnb));
+    expectEquals(-4, reductionMaxShort(xns));
+    expectEquals(-4, reductionMaxInt(xni));
+    expectEquals(-4L, reductionMaxLong(xnl));
 
     // Test special cases.
     expectEquals(13, reductionInt10(xi));
