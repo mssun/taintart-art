@@ -288,6 +288,14 @@ while true; do
     elif [ "x$1" = "x--debug" ]; then
         run_args="${run_args} --debug"
         shift
+    elif [ "x$1" = "x--debug-wrap-agent" ]; then
+        run_args="${run_args} --debug-wrap-agent"
+        shift
+    elif [ "x$1" = "x--debug-agent" ]; then
+        shift
+        option="$1"
+        run_args="${run_args} --debug-agent $1"
+        shift
     elif [ "x$1" = "x--gdb" ]; then
         run_args="${run_args} --gdb"
         dev_mode="yes"
@@ -647,7 +655,12 @@ if [ "$usage" = "yes" ]; then
         echo "    -Xcompiler-option     Pass an option to the compiler."
         echo "    --build-option        Pass an option to the build script."
         echo "    --runtime-option      Pass an option to the runtime."
-        echo "    --debug               Wait for a debugger to attach."
+        echo "    --debug               Wait for the default debugger to attach."
+        echo "    --debug-agent <agent-path>"
+        echo "                          Wait for the given debugger agent to attach. Currently"
+        echo "                          only supported on host."
+        echo "    --debug-wrap-agent    use libwrapagentproperties and tools/libjdwp-compat.props"
+        echo "                          to load the debugger agent specified by --debug-agent."
         echo "    --debuggable          Whether to compile Java code for a debugger."
         echo "    --gdb                 Run under gdb; incompatible with some tests."
         echo "    --gdb-arg             Pass an option to gdb."
