@@ -1623,17 +1623,28 @@ void HLoopOptimization::GenerateVecReductionPhiInputs(HPhi* phi, HInstruction* r
   }
   // Prepare the new initialization.
   if (vector_mode_ == kVector) {
-    // Generate a [initial, 0, .., 0] vector.
+    // Generate a [initial, 0, .., 0] vector for add or
+    // a [initial, initial, .., initial] vector for min/max.
     HVecOperation* red_vector = new_red->AsVecOperation();
+    HVecReduce::ReductionKind kind = GetReductionKind(red_vector);
     size_t vector_length = red_vector->GetVectorLength();
     DataType::Type type = red_vector->GetPackedType();
-    new_init = Insert(vector_preheader_,
-                      new (global_allocator_) HVecSetScalars(global_allocator_,
-                                                             &new_init,
-                                                             type,
-                                                             vector_length,
-                                                             1,
-                                                             kNoDexPc));
+    if (kind == HVecReduce::ReductionKind::kSum) {
+      new_init = Insert(vector_preheader_,
+                        new (global_allocator_) HVecSetScalars(global_allocator_,
+                                                               &new_init,
+                                                               type,
+                                                               vector_length,
+                                                               1,
+                                                               kNoDexPc));
+    } else {
+      new_init = Insert(vector_preheader_,
+                        new (global_allocator_) HVecReplicateScalar(global_allocator_,
+                                                                    new_init,
+                                                                    type,
+                                                                    vector_length,
+                                                                    kNoDexPc));
+    }
   } else {
     new_init = ReduceAndExtractIfNeeded(new_init);
   }
