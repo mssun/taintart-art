@@ -16,6 +16,7 @@
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.WrongMethodTypeException;
+import java.lang.reflect.Field;
 
 public class Main {
 
@@ -42,11 +43,26 @@ public class Main {
 
         public final int m_fi = 0xa5a5a5a5;
         public static final int s_fi = 0x5a5a5a5a;
+
+        private boolean m_pz;
+        private static final boolean s_fz = false;
     }
 
     public static class Tester {
-        public static void assertActualAndExpectedMatch(boolean actual, boolean expected)
+        public static void assertEquals(boolean actual, boolean expected)
                 throws AssertionError {
+            if (actual != expected) {
+                throw new AssertionError("Actual != Expected (" + actual + " != " + expected + ")");
+            }
+        }
+
+        public static void assertEquals(char actual, char expected) {
+            if (actual != expected) {
+                throw new AssertionError("Actual != Expected (" + actual + " != " + expected + ")");
+            }
+        }
+
+        public static void assertEquals(int actual, int expected) {
             if (actual != expected) {
                 throw new AssertionError("Actual != Expected (" + actual + " != " + expected + ")");
             }
@@ -97,7 +113,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void setByte(MethodHandle m, byte value, boolean expectFailure) throws Throwable {
@@ -119,7 +135,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void getByte(MethodHandle m, byte value, boolean expectFailure) throws Throwable {
@@ -140,7 +156,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void setChar(MethodHandle m, char value, boolean expectFailure) throws Throwable {
@@ -162,7 +178,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void getChar(MethodHandle m, char value, boolean expectFailure) throws Throwable {
@@ -183,7 +199,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void setShort(MethodHandle m, short value, boolean expectFailure) throws Throwable {
@@ -200,7 +216,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void getShort(MethodHandle m, short value, boolean expectFailure) throws Throwable {
@@ -221,7 +237,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void setInt(MethodHandle m, int value, boolean expectFailure) throws Throwable {
@@ -238,7 +254,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void getInt(MethodHandle m, int value, boolean expectFailure) throws Throwable {
@@ -259,7 +275,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void setLong(MethodHandle m, long value, boolean expectFailure) throws Throwable {
@@ -276,7 +292,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void getLong(MethodHandle m, long value, boolean expectFailure) throws Throwable {
@@ -297,7 +313,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void setFloat(MethodHandle m, float value, boolean expectFailure) throws Throwable {
@@ -314,7 +330,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void getFloat(MethodHandle m, float value, boolean expectFailure) throws Throwable {
@@ -335,7 +351,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void setDouble(MethodHandle m, double value, boolean expectFailure)
@@ -353,7 +369,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void getDouble(MethodHandle m, double value, boolean expectFailure)
@@ -375,7 +391,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void setString(MethodHandle m, String value, boolean expectFailure)
@@ -393,7 +409,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void getString(MethodHandle m, String value, boolean expectFailure)
@@ -415,7 +431,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void setBoolean(MethodHandle m, boolean value, boolean expectFailure)
@@ -434,7 +450,7 @@ public class Main {
             catch (WrongMethodTypeException e) {
                 exceptionThrown = true;
             }
-            assertActualAndExpectedMatch(exceptionThrown, expectFailure);
+            assertEquals(exceptionThrown, expectFailure);
         }
 
         static void getBoolean(MethodHandle m, boolean value, boolean expectFailure)
@@ -694,15 +710,15 @@ public class Main {
             // (ValueHolder) is initialized. This happens in the
             // invoke-polymorphic dispatch.
             MethodHandles.Lookup lookup = MethodHandles.lookup();
-            try {
+            {
                 MethodHandle mh = lookup.findStaticGetter(ValueHolder.class, "s_fi", int.class);
                 int initialValue = (int)mh.invokeExact();
                 System.out.println(initialValue);
-            } catch (NoSuchFieldException e) { unreachable(); }
-            try {
+            }
+            {
                 MethodHandle mh = lookup.findStaticSetter(ValueHolder.class, "s_i", int.class);
                 mh.invokeExact(0);
-            } catch (NoSuchFieldException e) { unreachable(); }
+            }
             try {
                 lookup.findStaticGetter(ValueHolder.class, "s_fi", byte.class);
                 unreachable();
@@ -836,11 +852,11 @@ public class Main {
                 h0.invoke(valueHolder, doubleNumber);
                 unreachable();
             } catch (NullPointerException e) {}
-            try {
+            {
                 // Mismatched return type - float != void
                 float tmp = (float)h0.invoke(valueHolder, 0.45f);
                 assertTrue(tmp == 0.0);
-            } catch (Exception e) { unreachable(); }
+            }
             try {
                 h0.invoke(valueHolder, "bam");
                 unreachable();
@@ -921,11 +937,108 @@ public class Main {
         }
     }
 
+    public static class UnreflectTester extends Tester {
+        public static void main() throws Throwable {
+            ValueHolder v = new ValueHolder();
+            {
+                // public field test
+                Field f = ValueHolder.class.getDeclaredField("m_c");
+                MethodHandles.lookup().unreflectSetter(f).invokeExact(v, 'z');
+                assertEquals((char)MethodHandles.lookup().unreflectGetter(f).invokeExact(v), 'z');
+                MethodHandles.lookup().unreflectSetter(f).invokeExact(v, 'A');
+                assertEquals((char)MethodHandles.lookup().unreflectGetter(f).invokeExact(v), 'A');
+            }
+            {
+                // public static final field test
+                Field f = ValueHolder.class.getDeclaredField("s_fi");
+                try {
+                    MethodHandles.lookup().unreflectSetter(f);
+                    unreachable();
+                } catch (IllegalAccessException e) {}
+                MethodHandles.lookup().unreflectGetter(f);
+                f.setAccessible(true);
+                int savedValue = (int) MethodHandles.lookup().unreflectGetter(f).invokeExact();
+                int newValue = savedValue + 1;
+                MethodHandles.lookup().unreflectSetter(f).invokeExact(newValue);
+                assertEquals((int)MethodHandles.lookup().unreflectGetter(f).invokeExact(),
+                             newValue);
+                MethodHandles.lookup().unreflectSetter(f).invokeExact(savedValue);
+                assertEquals((int)MethodHandles.lookup().unreflectGetter(f).invokeExact(),
+                             savedValue);
+                f.setAccessible(false);
+                try {
+                    MethodHandles.lookup().unreflectSetter(f);
+                    unreachable();
+                } catch (IllegalAccessException e) {}
+                MethodHandles.lookup().unreflectGetter(f);
+            }
+            {
+                // private field test
+                Field f = ValueHolder.class.getDeclaredField("m_pz");
+                try {
+                    MethodHandle mh = MethodHandles.lookup().unreflectSetter(f);
+                    unreachable();
+                } catch (IllegalAccessException e) {}
+                try {
+                    MethodHandle mh = MethodHandles.lookup().unreflectGetter(f);
+                    unreachable();
+                } catch (IllegalAccessException e) {}
+                f.setAccessible(true);
+                MethodHandles.lookup().unreflectSetter(f).invokeExact(v, true);
+                assertEquals((boolean)MethodHandles.lookup().unreflectGetter(f).invokeExact(v),
+                            true);
+                MethodHandles.lookup().unreflectSetter(f).invokeExact(v, false);
+                assertEquals((boolean)MethodHandles.lookup().unreflectGetter(f).invokeExact(v),
+                            false);
+                f.setAccessible(false);
+                try {
+                    MethodHandle mh = MethodHandles.lookup().unreflectGetter(f);
+                    unreachable();
+                } catch (IllegalAccessException e) {}
+                try {
+                    MethodHandle mh = MethodHandles.lookup().unreflectSetter(f);
+                    unreachable();
+                } catch (IllegalAccessException e) {}
+            }
+            {
+                // private static final field test
+                Field f = ValueHolder.class.getDeclaredField("s_fz");  // private static final field
+                try {
+                    MethodHandles.lookup().unreflectSetter(f);
+                    unreachable();
+                } catch (IllegalAccessException e) {}
+                try {
+                    MethodHandles.lookup().unreflectGetter(f);
+                    unreachable();
+                } catch (IllegalAccessException e) {}
+                f.setAccessible(true);
+                // Setter is okay despite being final because field isAccessible().
+                MethodHandles.lookup().unreflectSetter(f).invokeExact(false);
+                assertEquals((boolean)MethodHandles.lookup().unreflectGetter(f).invokeExact(),
+                            false);
+                MethodHandles.lookup().unreflectSetter(f).invokeExact(true);
+                assertEquals((boolean)MethodHandles.lookup().unreflectGetter(f).invokeExact(),
+                            true);
+                f.setAccessible(false);
+                try {
+                    MethodHandles.lookup().unreflectSetter(f);
+                    unreachable();
+                } catch (IllegalAccessException e) {}
+                try {
+                    MethodHandles.lookup().unreflectGetter(f);
+                    unreachable();
+                } catch (IllegalAccessException e) {}
+            }
+            System.out.println("Passed MethodHandles.unreflect(Field) tests.");
+        }
+    }
+
     public static void main(String[] args) throws Throwable {
         // FindAccessor test should be the first test class in this
         // file to ensure class initialization test is run.
         FindAccessorTester.main();
         InvokeExactTester.main();
         InvokeTester.main();
+        UnreflectTester.main();
     }
 }
