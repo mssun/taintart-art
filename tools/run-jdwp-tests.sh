@@ -43,12 +43,14 @@ vm_command="--vm-command=$art"
 image_compiler_option=""
 plugin=""
 debug="no"
+explicit_debug="no"
 verbose="no"
 image="-Ximage:/data/art-test/core.art"
 with_jdwp_path=""
 agent_wrapper=""
 vm_args=""
 # By default, we run the whole JDWP test suite.
+has_specific_test="no"
 test="org.apache.harmony.jpda.tests.share.AllTests"
 mode="target"
 # Use JIT compiling by default.
@@ -60,6 +62,9 @@ variant_cmdline_parameter="--variant=X32"
 # A lower timeout can save up several minutes when running the whole test suite, especially for
 # continuous testing. This value can be adjusted to fit the configuration of the host machine(s).
 jdwp_test_timeout=10000
+
+gdb_target=
+has_gdb="no"
 
 while true; do
   if [[ "$1" == "--mode=host" ]]; then
@@ -107,7 +112,14 @@ while true; do
     # Remove the --no-jit from the arguments.
     args=${args/$1}
     shift
+  elif [[ $1 == "--no-debug" ]]; then
+    explicit_debug="yes"
+    debug="no"
+    # Remove the --no-debug from the arguments.
+    args=${args/$1}
+    shift
   elif [[ $1 == "--debug" ]]; then
+    explicit_debug="yes"
     debug="yes"
     # Remove the --debug from the arguments.
     args=${args/$1}
@@ -117,10 +129,20 @@ while true; do
     # Remove the --verbose from the arguments.
     args=${args/$1}
     shift
+  elif [[ $1 == "--gdbserver" ]]; then
+    # Remove the --gdbserver from the arguments.
+    args=${args/$1}
+    has_gdb="yes"
+    shift
+    gdb_target=$1
+    # Remove the target from the arguments.
+    args=${args/$1}
+    shift
   elif [[ $1 == "--test" ]]; then
     # Remove the --test from the arguments.
     args=${args/$1}
     shift
+    has_specific_test="yes"
     test=$1
     # Remove the test from the arguments.
     args=${args/$1}
@@ -147,6 +169,12 @@ while true; do
   fi
 done
 
+if [[ $has_gdb = "yes" ]]; then
+  if [[ $explicit_debug = "no" ]]; then
+    debug="yes"
+  fi
+fi
+
 if [[ $mode == "ri" ]]; then
   using_jack="false"
   if [[ "x$with_jdwp_path" != "x" ]]; then
@@ -156,11 +184,25 @@ if [[ $mode == "ri" ]]; then
   if [[ "x$image" != "x" ]]; then
     echo "Cannot use -Ximage: with --mode=jvm"
     exit 1
+  elif [[ $has_gdb = "yes" ]]; then
+    echo "Cannot use --gdbserver with --mode=jvm"
+    exit 1
   elif [[ $debug == "yes" ]]; then
     echo "Cannot use --debug with --mode=jvm"
     exit 1
   fi
 else
+  if [[ $has_gdb = "yes" ]]; then
+    if [[ $mode == "target" ]]; then
+      echo "Cannot use --gdbserver with --mode=target"
+      exit 1
+    else
+      art_debugee="$art_debugee --gdbserver $gdb_target"
+      # The tests absolutely require some timeout. We set a ~2 week timeout since we can kill the
+      # test with gdb if it goes on too long.
+      jdwp_test_timeout="1000000000"
+    fi
+  fi
   if [[ "x$with_jdwp_path" != "x" ]]; then
     vm_args="${vm_args} --vm-arg -Djpda.settings.debuggeeAgentArgument=-agentpath:${agent_wrapper}"
     vm_args="${vm_args} --vm-arg -Djpda.settings.debuggeeAgentName=${with_jdwp_path}"
