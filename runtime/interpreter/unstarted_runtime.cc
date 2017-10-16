@@ -1751,12 +1751,6 @@ void UnstartedRuntime::UnstartedJNIStringIntern(
   result->SetL(receiver->AsString()->Intern());
 }
 
-void UnstartedRuntime::UnstartedJNIStringFastIndexOf(
-    Thread* self ATTRIBUTE_UNUSED, ArtMethod* method ATTRIBUTE_UNUSED, mirror::Object* receiver,
-    uint32_t* args, JValue* result) {
-  result->SetI(receiver->AsString()->FastIndexOf(args[0], args[1]));
-}
-
 void UnstartedRuntime::UnstartedJNIArrayCreateMultiArray(
     Thread* self, ArtMethod* method ATTRIBUTE_UNUSED, mirror::Object* receiver ATTRIBUTE_UNUSED,
     uint32_t* args, JValue* result) {
