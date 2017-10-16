@@ -121,7 +121,7 @@ std::unique_ptr<RuntimeParser> ParsedOptions::MakeParser(bool ignore_unrecognize
           .WithType<double>().WithRange(0.1, 0.9)
           .IntoKey(M::HeapTargetUtilization)
       .Define("-XX:ForegroundHeapGrowthMultiplier=_")
-          .WithType<double>().WithRange(0.1, 1.0)
+          .WithType<double>().WithRange(0.1, 5.0)
           .IntoKey(M::ForegroundHeapGrowthMultiplier)
       .Define("-XX:ParallelGCThreads=_")
           .WithType<unsigned int>()
