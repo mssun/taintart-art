@@ -195,7 +195,8 @@ class BoundsCheckSlowPathX86_64 : public SlowPathCode {
     InvokeRuntimeCallingConvention calling_convention;
     if (array_length->IsArrayLength() && array_length->IsEmittedAtUseSite()) {
       // Load the array length into our temporary.
-      uint32_t len_offset = CodeGenerator::GetArrayLengthOffset(array_length->AsArrayLength());
+      HArrayLength* length = array_length->AsArrayLength();
+      uint32_t len_offset = CodeGenerator::GetArrayLengthOffset(length->AsArrayLength());
       Location array_loc = array_length->GetLocations()->InAt(0);
       Address array_len(array_loc.AsRegister<CpuRegister>(), len_offset);
       length_loc = Location::RegisterLocation(calling_convention.GetRegisterAt(1));
@@ -205,7 +206,7 @@ class BoundsCheckSlowPathX86_64 : public SlowPathCode {
         length_loc = Location::RegisterLocation(calling_convention.GetRegisterAt(2));
       }
       __ movl(length_loc.AsRegister<CpuRegister>(), array_len);
-      if (mirror::kUseStringCompression) {
+      if (mirror::kUseStringCompression && length->IsStringLength()) {
         __ shrl(length_loc.AsRegister<CpuRegister>(), Immediate(1));
       }
     }
