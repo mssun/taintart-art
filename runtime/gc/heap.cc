@@ -132,10 +132,6 @@ static constexpr uint32_t kAllocSpaceBeginForDeterministicAoT = 0x40000000;
 // Dump the rosalloc stats on SIGQUIT.
 static constexpr bool kDumpRosAllocStatsOnSigQuit = false;
 
-// Extra added to the heap growth multiplier. Used to adjust the GC ergonomics for the read barrier
-// config.
-static constexpr double kExtraHeapGrowthMultiplier = kUseReadBarrier ? 1.0 : 0.0;
-
 static const char* kRegionSpaceName = "main space (region space)";
 
 // If true, we log all GCs in the both the foreground and background. Used for debugging.
@@ -255,8 +251,7 @@ Heap::Heap(size_t initial_size,
       min_free_(min_free),
       max_free_(max_free),
       target_utilization_(target_utilization),
-      foreground_heap_growth_multiplier_(
-          foreground_heap_growth_multiplier + kExtraHeapGrowthMultiplier),
+      foreground_heap_growth_multiplier_(foreground_heap_growth_multiplier),
       total_wait_time_(0),
       verify_object_mode_(kVerifyObjectModeDisabled),
       disable_moving_gc_count_(0),
@@ -3428,7 +3423,7 @@ collector::GarbageCollector* Heap::FindCollectorByGcType(collector::GcType gc_ty
 
 double Heap::HeapGrowthMultiplier() const {
   // If we don't care about pause times we are background, so return 1.0.
-  if (!CareAboutPauseTimes() || IsLowMemoryMode()) {
+  if (!CareAboutPauseTimes()) {
     return 1.0;
   }
   return foreground_heap_growth_multiplier_;
