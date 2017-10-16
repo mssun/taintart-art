@@ -113,7 +113,8 @@ void Agent::Unload() {
     if (onunload_ != nullptr) {
       onunload_(Runtime::Current()->GetJavaVM());
     }
-    dlclose(dlopen_handle_);
+    // Don't actually dlclose since some agents assume they will never get unloaded. Since this only
+    // happens when the runtime is shutting down anyway this isn't a big deal.
     dlopen_handle_ = nullptr;
     onload_ = nullptr;
     onattach_ = nullptr;
