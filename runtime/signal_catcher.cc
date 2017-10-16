@@ -169,7 +169,7 @@ void SignalCatcher::Output(const std::string& s) {
 
 #if defined(ART_TARGET_ANDROID)
   if (use_tombstoned_stack_trace_fd_ && !tombstoned_notify_completion(tombstone_fd)) {
-    LOG(WARNING) << "Unable to notify tombstoned of dump completion.";
+    PLOG(WARNING) << "Unable to notify tombstoned of dump completion";
   }
 #endif
 }
