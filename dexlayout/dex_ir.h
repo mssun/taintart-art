@@ -966,39 +966,6 @@ class CodeItem : public Item {
   DISALLOW_COPY_AND_ASSIGN(CodeItem);
 };
 
-struct PositionInfo {
-  PositionInfo(uint32_t address, uint32_t line) : address_(address), line_(line) { }
-
-  uint32_t address_;
-  uint32_t line_;
-};
-
-using PositionInfoVector = std::vector<std::unique_ptr<PositionInfo>>;
-
-struct LocalInfo {
-  LocalInfo(const char* name,
-            const char* descriptor,
-            const char* signature,
-            uint32_t start_address,
-            uint32_t end_address,
-            uint16_t reg)
-      : name_(name),
-        descriptor_(descriptor),
-        signature_(signature),
-        start_address_(start_address),
-        end_address_(end_address),
-        reg_(reg) { }
-
-  std::string name_;
-  std::string descriptor_;
-  std::string signature_;
-  uint32_t start_address_;
-  uint32_t end_address_;
-  uint16_t reg_;
-};
-
-using LocalInfoVector = std::vector<std::unique_ptr<LocalInfo>>;
-
 class DebugInfoItem : public Item {
  public:
   DebugInfoItem(uint32_t debug_info_size, uint8_t* debug_info)
@@ -1007,15 +974,9 @@ class DebugInfoItem : public Item {
   uint32_t GetDebugInfoSize() const { return debug_info_size_; }
   uint8_t* GetDebugInfo() const { return debug_info_.get(); }
 
-  PositionInfoVector& GetPositionInfo() { return positions_; }
-  LocalInfoVector& GetLocalInfo() { return locals_; }
-
  private:
   uint32_t debug_info_size_;
   std::unique_ptr<uint8_t[]> debug_info_;
-
-  PositionInfoVector positions_;
-  LocalInfoVector locals_;
 
   DISALLOW_COPY_AND_ASSIGN(DebugInfoItem);
 };
