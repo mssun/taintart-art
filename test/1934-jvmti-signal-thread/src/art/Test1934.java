@@ -173,11 +173,13 @@ public class Test1934 {
     destroyNativeMonitor(native_monitor_id);
   }
 
-  public static void doRecur(Runnable r) {
+  public static void doRecurCnt(Runnable r, int cnt) {
     if (r != null) {
       r.run();
     }
-    doRecur(r);
+    if (cnt != 0) {
+      doRecurCnt(r, cnt - 1);
+    }
   }
 
   public static void testStopRecur() throws Exception {
@@ -186,27 +188,15 @@ public class Test1934 {
     Thread target = new Thread(() -> {
       sem.release();
       while (true) {
-        try {
-          doRecur(null);
-        } catch (StackOverflowError e) {}
+        doRecurCnt(null, 50);
       }
     }, "recuring thread!");
     target.setUncaughtExceptionHandler((t, e) -> { out_err[0] = e; });
     target.start();
     sem.acquire();
     System.out.println("stopping other thread recurring");
-    do {
-      // Due to the fact that dex has a specific instruction to get the current exception it is
-      // possible for the 'stop-thread' to be unintentionally caught. We just retry in this case.
-      try {
-        Threads.stopThread(target, new Error("AWESOME!"));
-      } catch (Exception e) {
-        // If we just missed the thread dying we would get a JVMTI_ERROR_THREAD_NOT_ALIVE so we
-        // catch that here.
-      }
-      // Wait for 1 second.
-      target.join(1000);
-    } while (target.isAlive());
+    Threads.stopThread(target, new Error("AWESOME!"));
+    target.join();
     System.out.println("Other thread Stopped by: " + out_err[0]);
     if (PRINT_STACK_TRACE && out_err[0] != null) {
       out_err[0].printStackTrace();
@@ -219,11 +209,9 @@ public class Test1934 {
     Thread target = new Thread(() -> {
       sem.release();
       while (true) {
-        try {
-          doRecur(() -> {
-            if (Thread.currentThread().isInterrupted()) { throw new Error("Interrupted!"); }
-          });
-        } catch (StackOverflowError e) { }
+        doRecurCnt(() -> {
+          if (Thread.currentThread().isInterrupted()) { throw new Error("Interrupted!"); }
+        }, 50);
       }
     }, "recuring thread!");
     target.setUncaughtExceptionHandler((t, e) -> { out_err[0] = e; });
