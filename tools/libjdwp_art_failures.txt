@@ -71,34 +71,6 @@
            "org.apache.harmony.jpda.tests.jdwp.EventModifiers.InstanceOnlyModifierTest#testMethodExit",
            "org.apache.harmony.jpda.tests.jdwp.EventModifiers.InstanceOnlyModifierTest#testMethodExitWithReturnValue" ]
 },
-/* TODO Investigate these failures more closely */
-{
-  description: "Tests that fail when run on the chromium buildbots against the prebuilt libjdwp.so in certain configurations",
-  result: EXEC_FAILED,
-  bug: 67497270,
-  names: [
-    "org.apache.harmony.jpda.tests.jdwp.Events.CombinedEvents003Test#testCombinedEvents003_01",
-    "org.apache.harmony.jpda.tests.jdwp.Events.CombinedEventsTest#testCombinedEvents_01",
-    "org.apache.harmony.jpda.tests.jdwp.Events.CombinedEventsTest#testCombinedEvents_02",
-    "org.apache.harmony.jpda.tests.jdwp.Events.CombinedEventsTest#testCombinedEvents_03",
-    "org.apache.harmony.jpda.tests.jdwp.Events.CombinedEventsTest#testCombinedEvents_04",
-    "org.apache.harmony.jpda.tests.jdwp.Events.CombinedEventsTest#testCombinedEvents_05",
-    "org.apache.harmony.jpda.tests.jdwp.Events.CombinedEventsTest#testCombinedEvents_06",
-    "org.apache.harmony.jpda.tests.jdwp.Events.VMDeathTest#testVMDeathEvent",
-    "org.apache.harmony.jpda.tests.jdwp.MultiSession.ClassPrepareTest#testClassPrepare001",
-    "org.apache.harmony.jpda.tests.jdwp.MultiSession.ExceptionTest#testException001",
-    "org.apache.harmony.jpda.tests.jdwp.MultiSession.FieldAccessTest#testFieldAccess001",
-    "org.apache.harmony.jpda.tests.jdwp.MultiSession.FieldModificationTest#testFieldModification001",
-    "org.apache.harmony.jpda.tests.jdwp.MultiSession.SingleStepTest#testSingleStep001",
-    "org.apache.harmony.jpda.tests.jdwp.MultiSession.VMDeathTest#testVMDeathRequest",
-    "org.apache.harmony.jpda.tests.jdwp.ReferenceType.SignatureWithGenericTest#testSignatureWithGeneric001",
-    "org.apache.harmony.jpda.tests.jdwp.StackFrame.GetValues002Test#testGetValues005_Int2",
-    "org.apache.harmony.jpda.tests.jdwp.VirtualMachine.SetDefaultStratumTest#testSetDefaultStratum001",
-    "org.apache.harmony.jpda.tests.jdwp.ThreadReference.StatusTest#testStatus001",
-    "org.apache.harmony.jpda.tests.jdwp.VirtualMachine.AllClassesTest#testAllClasses002",
-    "org.apache.harmony.jpda.tests.jdwp.VirtualMachine.AllClassesWithGenericTest#testAllClassesWithGeneric001"
-  ]
-},
 /* TODO Categorize these failures more. */
 {
   description: "Tests that fail on both ART and RI. These tests are likely incorrect",

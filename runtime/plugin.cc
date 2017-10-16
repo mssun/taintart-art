@@ -74,10 +74,8 @@ bool Plugin::Unload() {
     LOG(WARNING) << this << " does not include a deinitialization function";
   }
   dlopen_handle_ = nullptr;
-  if (dlclose(handle) != 0) {
-    LOG(ERROR) << this << " failed to dlclose: " << dlerror();
-    ret = false;
-  }
+  // Don't bother to actually dlclose since we are shutting down anyway and there might be small
+  // amounts of processing still being done.
   return ret;
 }
 
