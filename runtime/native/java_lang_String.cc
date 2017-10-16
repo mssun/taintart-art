@@ -68,13 +68,6 @@ static jstring String_concat(JNIEnv* env, jobject java_this, jobject java_string
   return reinterpret_cast<jstring>(string_original);
 }
 
-static jint String_fastIndexOf(JNIEnv* env, jobject java_this, jint ch, jint start) {
-  ScopedFastNativeObjectAccess soa(env);
-  // This method does not handle supplementary characters. They're dealt with in managed code.
-  DCHECK_LE(ch, 0xffff);
-  return soa.Decode<mirror::String>(java_this)->FastIndexOf(ch, start);
-}
-
 static jstring String_fastSubstring(JNIEnv* env, jobject java_this, jint start, jint length) {
   ScopedFastNativeObjectAccess soa(env);
   StackHandleScope<1> hs(soa.Self());
@@ -121,7 +114,6 @@ static JNINativeMethod gMethods[] = {
   FAST_NATIVE_METHOD(String, compareTo, "(Ljava/lang/String;)I"),
   FAST_NATIVE_METHOD(String, concat, "(Ljava/lang/String;)Ljava/lang/String;"),
   FAST_NATIVE_METHOD(String, doReplace, "(CC)Ljava/lang/String;"),
-  FAST_NATIVE_METHOD(String, fastIndexOf, "(II)I"),
   FAST_NATIVE_METHOD(String, fastSubstring, "(II)Ljava/lang/String;"),
   FAST_NATIVE_METHOD(String, getCharsNoCheck, "(II[CI)V"),
   FAST_NATIVE_METHOD(String, intern, "()Ljava/lang/String;"),
