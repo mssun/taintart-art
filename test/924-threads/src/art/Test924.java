@@ -109,6 +109,7 @@ public class Test924 {
     final CountDownLatch cdl4 = new CountDownLatch(1);
     final CountDownLatch cdl5 = new CountDownLatch(1);
     final Holder h = new Holder();
+    final NativeWaiter w = new NativeWaiter();
     Runnable r = new Runnable() {
       @Override
       public void run() {
@@ -136,6 +137,8 @@ public class Test924 {
           while (!h.flag) {
             // Busy-loop.
           }
+
+          nativeLoop(w.struct);
         } catch (Exception e) {
           throw new RuntimeException(e);
         }
@@ -192,6 +195,11 @@ public class Test924 {
     Thread.sleep(100);
     printThreadState(t);
     h.flag = true;
+
+    // Native
+    w.waitForNative();
+    printThreadState(t);
+    w.finish();
 
     // Dying.
     t.join();
@@ -426,6 +434,31 @@ public class Test924 {
     System.out.println(threadInfo[3]);  // Threadgroup
     System.out.println(threadInfo[4] == null ? "null" : threadInfo[4].getClass());  // Context CL.
   }
+
+  public static final class NativeWaiter {
+    public long struct;
+    public NativeWaiter() {
+      struct = nativeWaiterStructAlloc();
+    }
+    public void waitForNative() {
+      if (struct == 0l) {
+        throw new Error("Already resumed from native!");
+      }
+      nativeWaiterStructWaitForNative(struct);
+    }
+    public void finish() {
+      if (struct == 0l) {
+        throw new Error("Already resumed from native!");
+      }
+      nativeWaiterStructFinish(struct);
+      struct = 0;
+    }
+  }
+
+  private static native long nativeWaiterStructAlloc();
+  private static native void nativeWaiterStructWaitForNative(long struct);
+  private static native void nativeWaiterStructFinish(long struct);
+  private static native void nativeLoop(long w);
 
   private static native Thread getCurrentThread();
   private static native Object[] getThreadInfo(Thread t);
