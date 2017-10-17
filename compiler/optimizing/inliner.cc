@@ -171,8 +171,8 @@ void HInliner::Run() {
           // Tests prevent inlining by having $noinline$ in their method names.
           if (callee_name.find("$noinline$") == std::string::npos) {
             if (!TryInline(call)) {
-//              bool should_have_inlined = (callee_name.find("$inline$") != std::string::npos);
-//              CHECK(!should_have_inlined) << "Could not inline " << callee_name;
+              bool should_have_inlined = (callee_name.find("$inline$") != std::string::npos);
+              CHECK(!should_have_inlined) << "Could not inline " << callee_name;
             }
           }
         } else {
