@@ -610,7 +610,7 @@ bool DoInvokePolymorphic(Thread* self,
   // The invoke_method_idx here is the name of the signature polymorphic method that
   // was symbolically invoked in bytecode (say MethodHandle.invoke or MethodHandle.invokeExact)
   // and not the method that we'll dispatch to in the end.
-  StackHandleScope<5> hs(self);
+  StackHandleScope<2> hs(self);
   Handle<mirror::MethodHandle> method_handle(hs.NewHandle(
       ObjPtr<mirror::MethodHandle>::DownCast(
           MakeObjPtr(shadow_frame.GetVRegReference(vRegC)))));
@@ -629,11 +629,8 @@ bool DoInvokePolymorphic(Thread* self,
   // with the callsite. This information is stored in the dex cache so it's
   // guaranteed to be fast after the first resolution.
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  Handle<mirror::Class> caller_class(hs.NewHandle(shadow_frame.GetMethod()->GetDeclaringClass()));
-  Handle<mirror::MethodType> callsite_type(hs.NewHandle(class_linker->ResolveMethodType(
-      caller_class->GetDexFile(), callsite_proto_id,
-      hs.NewHandle<mirror::DexCache>(caller_class->GetDexCache()),
-      hs.NewHandle<mirror::ClassLoader>(caller_class->GetClassLoader()))));
+  Handle<mirror::MethodType> callsite_type(hs.NewHandle(
+      class_linker->ResolveMethodType(self, callsite_proto_id, shadow_frame.GetMethod())));
 
   // This implies we couldn't resolve one or more types in this method handle.
   if (UNLIKELY(callsite_type == nullptr)) {
@@ -695,7 +692,7 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
   uint32_t method_handle_idx = static_cast<uint32_t>(it.GetJavaValue().i);
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   Handle<mirror::MethodHandle>
-      bootstrap(hs.NewHandle(class_linker->ResolveMethodHandle(method_handle_idx, referrer)));
+      bootstrap(hs.NewHandle(class_linker->ResolveMethodHandle(self, method_handle_idx, referrer)));
   if (bootstrap.IsNull()) {
     DCHECK(self->IsExceptionPending());
     return nullptr;
@@ -740,7 +737,8 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
   // The third parameter is the method type associated with the name.
   uint32_t method_type_idx = static_cast<uint32_t>(it.GetJavaValue().i);
   Handle<mirror::MethodType>
-      method_type(hs.NewHandle(class_linker->ResolveMethodType(*dex_file,
+      method_type(hs.NewHandle(class_linker->ResolveMethodType(self,
+                                                               *dex_file,
                                                                method_type_idx,
                                                                dex_cache,
                                                                class_loader)));
@@ -778,7 +776,7 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
       case EncodedArrayValueIterator::ValueType::kMethodType: {
         uint32_t idx = static_cast<uint32_t>(jvalue.i);
         ObjPtr<mirror::MethodType> ref =
-            class_linker->ResolveMethodType(*dex_file, idx, dex_cache, class_loader);
+            class_linker->ResolveMethodType(self, *dex_file, idx, dex_cache, class_loader);
         if (ref.IsNull()) {
           DCHECK(self->IsExceptionPending());
           return nullptr;
@@ -790,7 +788,7 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
       case EncodedArrayValueIterator::ValueType::kMethodHandle: {
         uint32_t idx = static_cast<uint32_t>(jvalue.i);
         ObjPtr<mirror::MethodHandle> ref =
-            class_linker->ResolveMethodHandle(idx, referrer);
+            class_linker->ResolveMethodHandle(self, idx, referrer);
         if (ref.IsNull()) {
           DCHECK(self->IsExceptionPending());
           return nullptr;
