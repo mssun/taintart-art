@@ -364,20 +364,23 @@ class ClassLinker {
 
   // Resolve a method type with a given ID from the DexFile, storing
   // the result in the DexCache.
-  mirror::MethodType* ResolveMethodType(const DexFile& dex_file,
+  mirror::MethodType* ResolveMethodType(Thread* self,
+                                        const DexFile& dex_file,
                                         uint32_t proto_idx,
                                         Handle<mirror::DexCache> dex_cache,
                                         Handle<mirror::ClassLoader> class_loader)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
 
-  mirror::MethodType* ResolveMethodType(uint32_t proto_idx,  ArtMethod* referrer)
+  mirror::MethodType* ResolveMethodType(Thread* self, uint32_t proto_idx, ArtMethod* referrer)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Resolve a method handle with a given ID from the DexFile. The
   // result is not cached in the DexCache as the instance will only be
   // used once in most circumstances.
-  mirror::MethodHandle* ResolveMethodHandle(uint32_t method_handle_idx, ArtMethod* referrer)
+  mirror::MethodHandle* ResolveMethodHandle(Thread* self,
+                                            uint32_t method_handle_idx,
+                                            ArtMethod* referrer)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns true on success, false if there's an exception pending.

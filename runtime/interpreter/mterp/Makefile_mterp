@@ -25,7 +25,7 @@ SHELL := /bin/sh
 # To generate sources:
 # for arch in arm arm64 x86 x86_64 mips mips64
 # do
-#   TARGET_ARCH_EXT=$arch make -f Makefile-mterp
+#   TARGET_ARCH_EXT=$arch make -f Makefile_mterp
 # done
 #
 
