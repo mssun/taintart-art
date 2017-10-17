@@ -65,6 +65,14 @@ public class Main {
     } catch (Throwable t) {
       throw new Error("Unexpected Throwable", t);
     }
+    try {
+      $noinline$runSmaliTest("bar2");
+      throw new Error("Expected NullPointerException");
+    } catch (NullPointerException e) {
+      // Expected.
+    } catch (Throwable t) {
+      throw new Error("Unexpected Throwable", t);
+    }
 
     try {
       test1();
@@ -86,9 +94,8 @@ public class Main {
 
   /// CHECK-START: void Main.bar() load_store_elimination (after)
   /// CHECK-DAG: <<Null:l\d+>>       NullConstant
-  /// CHECK-DAG: <<BoundFirst:l\d+>> BoundType [<<Null>>]
-  /// CHECK-DAG: <<BoundType:l\d+>>  BoundType [<<BoundFirst>>]
-  /// CHECK-DAG: <<CheckL:l\d+>>     NullCheck [<<BoundType>>]
+  /// CHECK-DAG:                     BoundType [<<Null>>]
+  /// CHECK-DAG: <<CheckL:l\d+>>     NullCheck
   /// CHECK-DAG: <<GetL0:l\d+>>      ArrayGet [<<CheckL>>,{{i\d+}}]
   /// CHECK-DAG: <<GetL1:l\d+>>      ArrayGet [<<CheckL>>,{{i\d+}}]
   /// CHECK-DAG: <<GetL2:l\d+>>      ArrayGet [<<CheckL>>,{{i\d+}}]
