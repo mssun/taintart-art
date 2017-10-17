@@ -3353,8 +3353,6 @@ MipsAssembler::Branch::Branch(bool is_r6,
   CHECK_NE(dest_reg, ZERO);
   if (is_r6) {
     CHECK_EQ(base_reg, ZERO);
-  } else {
-    CHECK_NE(base_reg, ZERO);
   }
   InitializeType(label_or_literal_type, is_r6);
 }
@@ -3646,15 +3644,29 @@ uint32_t MipsAssembler::GetBranchLocationOrPcRelBase(const MipsAssembler::Branch
     case Branch::kFarLabel:
     case Branch::kLiteral:
     case Branch::kFarLiteral:
-      return GetLabelLocation(&pc_rel_base_label_);
+      if (branch->GetRightRegister() != ZERO) {
+        return GetLabelLocation(&pc_rel_base_label_);
+      }
+      // For those label/literal loads which come with their own NAL instruction
+      // and don't depend on `pc_rel_base_label_` we can simply use the location
+      // of the "branch" (the NAL precedes the "branch" immediately). The location
+      // is close enough for the user of the returned location, PromoteIfNeeded(),
+      // to not miss needed promotion to a far load.
+      // (GetOffsetSizeNeeded() provides a little leeway by means of kMaxBranchSize,
+      // which is larger than all composite branches and label/literal loads: it's
+      // OK to promote a bit earlier than strictly necessary, it makes things
+      // simpler.)
+      FALLTHROUGH_INTENDED;
     default:
       return branch->GetLocation();
   }
 }
 
 uint32_t MipsAssembler::Branch::PromoteIfNeeded(uint32_t location, uint32_t max_short_distance) {
-  // `location` is either `GetLabelLocation(&pc_rel_base_label_)` for R2 labels/literals or
-  // `this->GetLocation()` for everything else.
+  // `location` comes from GetBranchLocationOrPcRelBase() and is either the location
+  // of the PC-relative branch or (for some R2 label and literal loads) the location
+  // of `pc_rel_base_label_`. The PC-relative offset of the branch/load is relative
+  // to this location.
   // If the branch is still unresolved or already long, nothing to do.
   if (IsLong() || !IsResolved()) {
     return 0;
@@ -3695,7 +3707,15 @@ uint32_t MipsAssembler::GetBranchOrPcRelBaseForEncoding(const MipsAssembler::Bra
     case Branch::kFarLabel:
     case Branch::kLiteral:
     case Branch::kFarLiteral:
-      return GetLabelLocation(&pc_rel_base_label_);
+      if (branch->GetRightRegister() == ZERO) {
+        // These loads don't use `pc_rel_base_label_` and instead rely on their own
+        // NAL instruction (it immediately precedes the "branch"). Therefore the
+        // effective PC-relative base register is RA and it corresponds to the 2nd
+        // instruction after the NAL.
+        return branch->GetLocation() + sizeof(uint32_t);
+      } else {
+        return GetLabelLocation(&pc_rel_base_label_);
+      }
     default:
       return branch->GetOffsetLocation() +
           Branch::branch_info_[branch->GetType()].pc_org * sizeof(uint32_t);
@@ -3703,9 +3723,10 @@ uint32_t MipsAssembler::GetBranchOrPcRelBaseForEncoding(const MipsAssembler::Bra
 }
 
 uint32_t MipsAssembler::Branch::GetOffset(uint32_t location) const {
-  // `location` is either `GetLabelLocation(&pc_rel_base_label_)` for R2 labels/literals or
-  // `this->GetOffsetLocation() + branch_info_[this->GetType()].pc_org * sizeof(uint32_t)`
-  // for everything else.
+  // `location` comes from GetBranchOrPcRelBaseForEncoding() and is either a location
+  // within/near the PC-relative branch or (for some R2 label and literal loads) the
+  // location of `pc_rel_base_label_`. The PC-relative offset of the branch/load is
+  // relative to this location.
   CHECK(IsResolved());
   uint32_t ofs_mask = 0xFFFFFFFF >> (32 - GetOffsetSize());
   // Calculate the byte distance between instructions and also account for
@@ -4001,6 +4022,12 @@ void MipsAssembler::Call(MipsLabel* label, bool is_r6, bool is_bare) {
 void MipsAssembler::LoadLabelAddress(Register dest_reg, Register base_reg, MipsLabel* label) {
   // Label address loads are treated as pseudo branches since they require very similar handling.
   DCHECK(!label->IsBound());
+  // If `pc_rel_base_label_` isn't bound or none of registers contains its address, we
+  // may generate an individual NAL instruction to simulate PC-relative addressing on R2
+  // by specifying `base_reg` of `ZERO`. Check for it.
+  if (base_reg == ZERO && !IsR6()) {
+    Nal();
+  }
   branches_.emplace_back(IsR6(), buffer_.Size(), dest_reg, base_reg, Branch::kLabel);
   FinalizeLabeledBranch(label);
 }
@@ -4016,6 +4043,12 @@ void MipsAssembler::LoadLiteral(Register dest_reg, Register base_reg, Literal* l
   DCHECK_EQ(literal->GetSize(), 4u);
   MipsLabel* label = literal->GetLabel();
   DCHECK(!label->IsBound());
+  // If `pc_rel_base_label_` isn't bound or none of registers contains its address, we
+  // may generate an individual NAL instruction to simulate PC-relative addressing on R2
+  // by specifying `base_reg` of `ZERO`. Check for it.
+  if (base_reg == ZERO && !IsR6()) {
+    Nal();
+  }
   branches_.emplace_back(IsR6(), buffer_.Size(), dest_reg, base_reg, Branch::kLiteral);
   FinalizeLabeledBranch(label);
 }
@@ -4203,6 +4236,13 @@ static inline bool IsAbsorbableInstruction(uint32_t instruction) {
   }
 }
 
+static inline Register GetR2PcRelBaseRegister(Register reg) {
+  // LoadLabelAddress() and LoadLiteral() generate individual NAL
+  // instructions on R2 when the specified base register is ZERO
+  // and so the effective PC-relative base register is RA, not ZERO.
+  return (reg == ZERO) ? RA : reg;
+}
+
 // Note: make sure branch_info_[] and EmitBranch() are kept synchronized.
 void MipsAssembler::EmitBranch(uint32_t branch_id) {
   CHECK_EQ(overwriting_, true);
@@ -4293,13 +4333,13 @@ void MipsAssembler::EmitBranch(uint32_t branch_id) {
     case Branch::kLabel:
       DCHECK_EQ(delayed_instruction, Branch::kUnfilledDelaySlot);
       CHECK_EQ(overwrite_location_, branch->GetOffsetLocation());
-      Addiu(lhs, rhs, offset);
+      Addiu(lhs, GetR2PcRelBaseRegister(rhs), offset);
       break;
     // R2 near literal.
     case Branch::kLiteral:
       DCHECK_EQ(delayed_instruction, Branch::kUnfilledDelaySlot);
       CHECK_EQ(overwrite_location_, branch->GetOffsetLocation());
-      Lw(lhs, rhs, offset);
+      Lw(lhs, GetR2PcRelBaseRegister(rhs), offset);
       break;
 
     // R2 long branches.
@@ -4378,7 +4418,7 @@ void MipsAssembler::EmitBranch(uint32_t branch_id) {
       CHECK_EQ(overwrite_location_, branch->GetOffsetLocation());
       Lui(AT, High16Bits(offset));
       Ori(AT, AT, Low16Bits(offset));
-      Addu(lhs, AT, rhs);
+      Addu(lhs, AT, GetR2PcRelBaseRegister(rhs));
       break;
     // R2 far literal.
     case Branch::kFarLiteral:
@@ -4386,7 +4426,7 @@ void MipsAssembler::EmitBranch(uint32_t branch_id) {
       offset += (offset & 0x8000) << 1;  // Account for sign extension in lw.
       CHECK_EQ(overwrite_location_, branch->GetOffsetLocation());
       Lui(AT, High16Bits(offset));
-      Addu(AT, AT, rhs);
+      Addu(AT, AT, GetR2PcRelBaseRegister(rhs));
       Lw(lhs, AT, Low16Bits(offset));
       break;
 

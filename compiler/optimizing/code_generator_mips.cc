@@ -7677,7 +7677,9 @@ void LocationsBuilderMIPS::VisitLoadClass(HLoadClass* cls) {
         break;
       }
       if (has_irreducible_loops) {
-        codegen_->ClobberRA();
+        if (load_kind != HLoadClass::LoadKind::kBootImageAddress) {
+          codegen_->ClobberRA();
+        }
         break;
       }
       FALLTHROUGH_INTENDED;
@@ -7894,7 +7896,9 @@ void LocationsBuilderMIPS::VisitLoadString(HLoadString* load) {
         break;
       }
       if (has_irreducible_loops) {
-        codegen_->ClobberRA();
+        if (load_kind != HLoadString::LoadKind::kBootImageAddress) {
+          codegen_->ClobberRA();
+        }
         break;
       }
       FALLTHROUGH_INTENDED;
@@ -9026,6 +9030,15 @@ void LocationsBuilderMIPS::VisitPackedSwitch(HPackedSwitch* switch_instr) {
   LocationSummary* locations =
       new (GetGraph()->GetAllocator()) LocationSummary(switch_instr, LocationSummary::kNoCall);
   locations->SetInAt(0, Location::RequiresRegister());
+  if (!codegen_->GetInstructionSetFeatures().IsR6()) {
+    uint32_t num_entries = switch_instr->GetNumEntries();
+    if (num_entries > InstructionCodeGeneratorMIPS::kPackedSwitchJumpTableThreshold) {
+      // When there's no HMipsComputeBaseMethodAddress input, R2 uses the NAL
+      // instruction to simulate PC-relative addressing when accessing the jump table.
+      // NAL clobbers RA. Make sure RA is preserved.
+      codegen_->ClobberRA();
+    }
+  }
 }
 
 void InstructionCodeGeneratorMIPS::GenPackedSwitchWithCompares(Register value_reg,
@@ -9109,13 +9122,17 @@ void InstructionCodeGeneratorMIPS::VisitPackedSwitch(HPackedSwitch* switch_instr
   HBasicBlock* switch_block = switch_instr->GetBlock();
   HBasicBlock* default_block = switch_instr->GetDefaultBlock();
 
-  if (codegen_->GetInstructionSetFeatures().IsR6() &&
-      num_entries > kPackedSwitchJumpTableThreshold) {
+  if (num_entries > kPackedSwitchJumpTableThreshold) {
     // R6 uses PC-relative addressing to access the jump table.
-    // R2, OTOH, requires an HMipsComputeBaseMethodAddress input to access
-    // the jump table and it is implemented by changing HPackedSwitch to
-    // HMipsPackedSwitch, which bears HMipsComputeBaseMethodAddress.
-    // See VisitMipsPackedSwitch() for the table-based implementation on R2.
+    //
+    // R2, OTOH, uses an HMipsComputeBaseMethodAddress input (when available)
+    // to access the jump table and it is implemented by changing HPackedSwitch to
+    // HMipsPackedSwitch, which bears HMipsComputeBaseMethodAddress (see
+    // VisitMipsPackedSwitch()).
+    //
+    // When there's no HMipsComputeBaseMethodAddress input (e.g. in presence of
+    // irreducible loops), R2 uses the NAL instruction to simulate PC-relative
+    // addressing.
     GenTableBasedPackedSwitch(value_reg,
                               ZERO,
                               lower_bound,
