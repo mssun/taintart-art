@@ -35,6 +35,46 @@
 namespace art {
 namespace Test924Threads {
 
+struct WaiterStruct {
+  std::atomic<bool> started;
+  std::atomic<bool> finish;
+};
+
+extern "C" JNIEXPORT jlong JNICALL Java_art_Test924_nativeWaiterStructAlloc(
+    JNIEnv* env, jclass TestClass ATTRIBUTE_UNUSED) {
+  WaiterStruct* s = nullptr;
+  if (JvmtiErrorToException(env,
+                            jvmti_env,
+                            jvmti_env->Allocate(sizeof(WaiterStruct),
+                                                reinterpret_cast<unsigned char**>(&s)))) {
+    return 0;
+  }
+  s->started = false;
+  s->finish = false;
+  return static_cast<jlong>(reinterpret_cast<intptr_t>(s));
+}
+
+extern "C" JNIEXPORT void JNICALL Java_art_Test924_nativeWaiterStructWaitForNative(
+    JNIEnv* env ATTRIBUTE_UNUSED, jclass TestClass ATTRIBUTE_UNUSED, jlong waiter_struct) {
+  WaiterStruct* s = reinterpret_cast<WaiterStruct*>(static_cast<intptr_t>(waiter_struct));
+  while (!s->started) { }
+}
+
+extern "C" JNIEXPORT void JNICALL Java_art_Test924_nativeWaiterStructFinish(
+    JNIEnv* env ATTRIBUTE_UNUSED, jclass TestClass ATTRIBUTE_UNUSED, jlong waiter_struct) {
+  WaiterStruct* s = reinterpret_cast<WaiterStruct*>(static_cast<intptr_t>(waiter_struct));
+  s->finish = true;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_art_Test924_nativeLoop(JNIEnv* env,
+                                                              jclass TestClass ATTRIBUTE_UNUSED,
+                                                              jlong waiter_struct) {
+  WaiterStruct* s = reinterpret_cast<WaiterStruct*>(static_cast<intptr_t>(waiter_struct));
+  s->started = true;
+  while (!s->finish) { }
+  JvmtiErrorToException(env, jvmti_env, jvmti_env->Deallocate(reinterpret_cast<unsigned char*>(s)));
+}
+
 // private static native Thread getCurrentThread();
 // private static native Object[] getThreadInfo(Thread t);
 
