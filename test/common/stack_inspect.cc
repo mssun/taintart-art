@@ -29,7 +29,7 @@
 
 namespace art {
 
-static bool asserts_enabled = false;
+static bool asserts_enabled = true;
 
 // public static native void disableStackFrameAsserts();
 // Note: to globally disable asserts in unsupported configurations.
