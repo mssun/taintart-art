@@ -196,7 +196,7 @@ class BoundsCheckSlowPathX86_64 : public SlowPathCode {
     if (array_length->IsArrayLength() && array_length->IsEmittedAtUseSite()) {
       // Load the array length into our temporary.
       HArrayLength* length = array_length->AsArrayLength();
-      uint32_t len_offset = CodeGenerator::GetArrayLengthOffset(length->AsArrayLength());
+      uint32_t len_offset = CodeGenerator::GetArrayLengthOffset(length);
       Location array_loc = array_length->GetLocations()->InAt(0);
       Address array_len(array_loc.AsRegister<CpuRegister>(), len_offset);
       length_loc = Location::RegisterLocation(calling_convention.GetRegisterAt(1));
