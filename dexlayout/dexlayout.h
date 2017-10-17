@@ -96,7 +96,13 @@ class DexLayout {
   void DumpClass(int idx, char** last_package);
   void DumpClassAnnotations(int idx);
   void DumpClassDef(int idx);
-  void DumpCode(uint32_t idx, const dex_ir::CodeItem* code, uint32_t code_offset);
+  void DumpCode(uint32_t idx,
+                const dex_ir::CodeItem* code,
+                uint32_t code_offset,
+                const char* declaring_class_descriptor,
+                const char* method_name,
+                bool is_static,
+                const dex_ir::ProtoId* proto);
   void DumpEncodedAnnotation(dex_ir::EncodedAnnotation* annotation);
   void DumpEncodedValue(const dex_ir::EncodedValue* data);
   void DumpFileHeader();

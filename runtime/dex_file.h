@@ -772,10 +772,6 @@ class DexFile {
     bool epilogue_begin_ = false;
   };
 
-  // Callback for "new position table entry".
-  // Returning true causes the decoder to stop early.
-  typedef bool (*DexDebugNewPositionCb)(void* context, const PositionInfo& entry);
-
   struct LocalInfo {
     LocalInfo() = default;
 
@@ -899,11 +895,36 @@ class DexFile {
   };
 
   // Returns false if there is no debugging information or if it cannot be decoded.
-  bool DecodeDebugLocalInfo(const CodeItem* code_item, bool is_static, uint32_t method_idx,
-                            DexDebugNewLocalCb local_cb, void* context) const;
+  template<typename NewLocalCallback, typename IndexToStringData, typename TypeIndexToStringData>
+  static bool DecodeDebugLocalInfo(const uint8_t* stream,
+                                   const std::string& location,
+                                   const char* declaring_class_descriptor,
+                                   const std::vector<const char*>& arg_descriptors,
+                                   const std::string& method_name,
+                                   bool is_static,
+                                   uint16_t registers_size,
+                                   uint16_t ins_size,
+                                   uint16_t insns_size_in_code_units,
+                                   IndexToStringData index_to_string_data,
+                                   TypeIndexToStringData type_index_to_string_data,
+                                   NewLocalCallback new_local,
+                                   void* context);
+  template<typename NewLocalCallback>
+  bool DecodeDebugLocalInfo(const CodeItem* code_item,
+                            bool is_static,
+                            uint32_t method_idx,
+                            NewLocalCallback new_local,
+                            void* context) const;
 
   // Returns false if there is no debugging information or if it cannot be decoded.
-  bool DecodeDebugPositionInfo(const CodeItem* code_item, DexDebugNewPositionCb position_cb,
+  template<typename DexDebugNewPosition, typename IndexToStringData>
+  static bool DecodeDebugPositionInfo(const uint8_t* stream,
+                                      IndexToStringData index_to_string_data,
+                                      DexDebugNewPosition position_functor,
+                                      void* context);
+  template<typename DexDebugNewPosition>
+  bool DecodeDebugPositionInfo(const CodeItem* code_item,
+                               DexDebugNewPosition position_functor,
                                void* context) const;
 
   const char* GetSourceFile(const ClassDef& class_def) const {

@@ -893,108 +893,23 @@ bool VerifyDebugInfo(dex_ir::DebugInfoItem* orig,
     }
     return true;
   }
-  if (!VerifyPositionInfo(orig->GetPositionInfo(),
-                          output->GetPositionInfo(),
-                          orig->GetOffset(),
-                          error_msg)) {
+  // TODO: Test for debug equivalence rather than byte array equality.
+  uint32_t orig_size = orig->GetDebugInfoSize();
+  uint32_t output_size = output->GetDebugInfoSize();
+  if (orig_size != output_size) {
+    *error_msg = "DebugInfoSize disagreed.";
     return false;
   }
-  return VerifyLocalInfo(orig->GetLocalInfo(),
-                         output->GetLocalInfo(),
-                         orig->GetOffset(),
-                         error_msg);
-}
-
-bool VerifyPositionInfo(dex_ir::PositionInfoVector& orig,
-                        dex_ir::PositionInfoVector& output,
-                        uint32_t orig_offset,
-                        std::string* error_msg) {
-  if (orig.size() != output.size()) {
-    *error_msg = StringPrintf(
-        "Mismatched number of positions for debug info at offset %x: %zu vs %zu.",
-        orig_offset,
-        orig.size(),
-        output.size());
+  uint8_t* orig_data = orig->GetDebugInfo();
+  uint8_t* output_data = output->GetDebugInfo();
+  if ((orig_data == nullptr && output_data != nullptr) ||
+      (orig_data != nullptr && output_data == nullptr)) {
+    *error_msg = "DebugInfo null/non-null mismatch.";
     return false;
   }
-  for (size_t i = 0; i < orig.size(); ++i) {
-    if (orig[i]->address_ != output[i]->address_) {
-      *error_msg = StringPrintf(
-          "Mismatched position address for debug info at offset %x: %u vs %u.",
-          orig_offset,
-          orig[i]->address_,
-          output[i]->address_);
-      return false;
-    }
-    if (orig[i]->line_ != output[i]->line_) {
-      *error_msg = StringPrintf("Mismatched position line for debug info at offset %x: %u vs %u.",
-                                orig_offset,
-                                orig[i]->line_,
-                                output[i]->line_);
-      return false;
-    }
-  }
-  return true;
-}
-
-bool VerifyLocalInfo(dex_ir::LocalInfoVector& orig,
-                     dex_ir::LocalInfoVector& output,
-                     uint32_t orig_offset,
-                     std::string* error_msg) {
-  if (orig.size() != output.size()) {
-    *error_msg = StringPrintf(
-        "Mismatched number of locals for debug info at offset %x: %zu vs %zu.",
-        orig_offset,
-        orig.size(),
-        output.size());
+  if (memcmp(orig_data, output_data, orig_size) != 0) {
+    *error_msg = "DebugInfo bytes mismatch.";
     return false;
-  }
-  for (size_t i = 0; i < orig.size(); ++i) {
-    if (orig[i]->name_ != output[i]->name_) {
-      *error_msg = StringPrintf("Mismatched local name for debug info at offset %x: %s vs %s.",
-                                orig_offset,
-                                orig[i]->name_.c_str(),
-                                output[i]->name_.c_str());
-      return false;
-    }
-    if (orig[i]->descriptor_ != output[i]->descriptor_) {
-      *error_msg = StringPrintf(
-          "Mismatched local descriptor for debug info at offset %x: %s vs %s.",
-          orig_offset,
-          orig[i]->descriptor_.c_str(),
-          output[i]->descriptor_.c_str());
-      return false;
-    }
-    if (orig[i]->signature_ != output[i]->signature_) {
-      *error_msg = StringPrintf("Mismatched local signature for debug info at offset %x: %s vs %s.",
-                                orig_offset,
-                                orig[i]->signature_.c_str(),
-                                output[i]->signature_.c_str());
-      return false;
-    }
-    if (orig[i]->start_address_ != output[i]->start_address_) {
-      *error_msg = StringPrintf(
-          "Mismatched local start address for debug info at offset %x: %u vs %u.",
-          orig_offset,
-          orig[i]->start_address_,
-          output[i]->start_address_);
-      return false;
-    }
-    if (orig[i]->end_address_ != output[i]->end_address_) {
-      *error_msg = StringPrintf(
-          "Mismatched local end address for debug info at offset %x: %u vs %u.",
-          orig_offset,
-          orig[i]->end_address_,
-          output[i]->end_address_);
-      return false;
-    }
-    if (orig[i]->reg_ != output[i]->reg_) {
-      *error_msg = StringPrintf("Mismatched local reg for debug info at offset %x: %u vs %u.",
-                                orig_offset,
-                                orig[i]->reg_,
-                                output[i]->reg_);
-      return false;
-    }
   }
   return true;
 }
