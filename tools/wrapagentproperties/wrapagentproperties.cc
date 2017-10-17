@@ -45,7 +45,6 @@ static std::mutex unload_mutex;
 
 struct Unloader {
   AgentUnloadFunction unload;
-  void* dlclose_handle;
 };
 static std::vector<Unloader> unload_functions;
 
@@ -71,7 +70,6 @@ struct ProxyJavaVM {
       std::lock_guard<std::mutex> lk(unload_mutex);
       unload_functions.push_back({
         reinterpret_cast<AgentUnloadFunction>(dlsym(dlopen_handle, kOnUnload)),
-        dlopen_handle
       });
     }
     attach = reinterpret_cast<AgentLoadFunction>(dlsym(dlopen_handle, kOnAttach));
@@ -337,7 +335,7 @@ extern "C" JNIEXPORT void JNICALL Agent_OnUnload(JavaVM* jvm) {
   std::lock_guard<std::mutex> lk(unload_mutex);
   for (const Unloader& u : unload_functions) {
     u.unload(jvm);
-    dlclose(u.dlclose_handle);
+    // Don't dlclose since some agents expect to still have code loaded after this.
   }
   unload_functions.clear();
 }

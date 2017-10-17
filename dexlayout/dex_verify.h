@@ -100,14 +100,6 @@ bool VerifyCode(dex_ir::CodeItem* orig, dex_ir::CodeItem* output, std::string* e
 bool VerifyDebugInfo(dex_ir::DebugInfoItem* orig,
                      dex_ir::DebugInfoItem* output,
                      std::string* error_msg);
-bool VerifyPositionInfo(dex_ir::PositionInfoVector& orig,
-                        dex_ir::PositionInfoVector& output,
-                        uint32_t orig_offset,
-                        std::string* error_msg);
-bool VerifyLocalInfo(dex_ir::LocalInfoVector& orig,
-                     dex_ir::LocalInfoVector& output,
-                     uint32_t orig_offset,
-                     std::string* error_msg);
 bool VerifyTries(dex_ir::TryItemVector* orig,
                  dex_ir::TryItemVector* output,
                  uint32_t orig_offset,

@@ -462,7 +462,69 @@ public class Main implements Runnable {
             permits = 3;
         }
 
-        return new Semaphore(permits, /* fair */ true);
+        Semaphore semaphore = new Semaphore(permits, /* fair */ true);
+        forceTransitiveClassInitialization(semaphore, permits);
+        return semaphore;
+    }
+
+    // Force ahead-of-time initialization of classes used by Semaphore
+    // code. Try to exercise all code paths likely to be taken during
+    // the actual test later (including having a thread blocking on
+    // the semaphore trying to acquire a permit), so that we increase
+    // the chances to initialize all classes indirectly used by
+    // QueuedWait (e.g. AbstractQueuedSynchronizer$Node).
+    private static void forceTransitiveClassInitialization(Semaphore semaphore, final int permits) {
+        // Ensure `semaphore` has the expected number of permits
+        // before we start.
+        assert semaphore.availablePermits() == permits;
+
+        // Let the main (current) thread acquire all permits from
+        // `semaphore`. Then create an auxiliary thread acquiring a
+        // permit from `semaphore`, blocking because none is
+        // available. Have the main thread release one permit, thus
+        // unblocking the second thread.
+
+        // Auxiliary thread.
+        Thread auxThread = new Thread("Aux") {
+            public void run() {
+                try {
+                    // Try to acquire one permit, and block until
+                    // that permit is released by the main thread.
+                    semaphore.acquire();
+                    // When unblocked, release the acquired permit
+                    // immediately.
+                    semaphore.release();
+                } catch (InterruptedException ignored) {
+                    throw new RuntimeException("Test set up failed in auxiliary thread");
+                }
+            }
+        };
+
+        // Main thread.
+        try {
+            // Acquire all permits.
+            semaphore.acquire(permits);
+            // Start the auxiliary thread and have it try to acquire a
+            // permit.
+            auxThread.start();
+            // Synchronization: Wait until the auxiliary thread is
+            // blocked trying to acquire a permit from `semaphore`.
+            while (!semaphore.hasQueuedThreads()) {
+                Thread.sleep(100);
+            }
+            // Release one permit, thus unblocking `auxThread` and let
+            // it acquire a permit.
+            semaphore.release();
+            // Synchronization: Wait for the auxiliary thread to die.
+            auxThread.join();
+            // Release remaining permits.
+            semaphore.release(permits - 1);
+
+            // Verify that all permits have been released.
+            assert semaphore.availablePermits() == permits;
+        } catch (InterruptedException ignored) {
+            throw new RuntimeException("Test set up failed in main thread");
+        }
     }
 
     public static void runTest(final int numberOfThreads, final int numberOfDaemons,
