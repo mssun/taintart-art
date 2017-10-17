@@ -74,7 +74,7 @@ art_cc_defaults {
     ],
 
     target: {
-        linux_glibc: {
+        linux: {
             ldflags: [
                 // Allow jni_compiler_test to find Java_MyClassNatives_bar
                 // within itself using dlopen(NULL, ...).
@@ -83,9 +83,6 @@ art_cc_defaults {
                 "-Wl,-u,Java_MyClassNatives_bar",
                 "-Wl,-u,Java_MyClassNatives_sbar",
             ],
-            shared_libs: [
-                "libziparchive",
-            ],
             cflags: [
                 // gtest issue
                 "-Wno-used-but-marked-unused",
@@ -93,22 +90,14 @@ art_cc_defaults {
                 "-Wno-missing-noreturn",
             ],
         },
-        android: {
-            ldflags: [
-                // Allow jni_compiler_test to find Java_MyClassNatives_bar
-                // within itself using dlopen(NULL, ...).
-                "-Wl,--export-dynamic",
-                "-Wl,-u,Java_MyClassNatives_bar",
-                "-Wl,-u,Java_MyClassNatives_sbar",
+        host: {
+            shared_libs: [
+                "libziparchive",
             ],
+        },
+        android: {
             shared_libs: [
                 "liblog",
-            ],
-            cflags: [
-                // gtest issue
-                "-Wno-used-but-marked-unused",
-                "-Wno-deprecated",
-                "-Wno-missing-noreturn",
             ],
         },
     },
@@ -135,15 +124,7 @@ art_cc_defaults {
         android64: {
             cflags: ["-DART_TARGET_NATIVETEST_DIR=/data/nativetest64/art"],
         },
-        android: {
-            cflags: [
-                // gtest issue
-                "-Wno-used-but-marked-unused",
-                "-Wno-deprecated",
-                "-Wno-missing-noreturn",
-            ],
-        },
-        linux_glibc: {
+        linux: {
             cflags: [
                 // gtest issue
                 "-Wno-used-but-marked-unused",
