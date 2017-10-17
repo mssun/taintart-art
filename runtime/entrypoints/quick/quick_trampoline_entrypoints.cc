@@ -2603,7 +2603,7 @@ extern "C" uintptr_t artInvokePolymorphic(
   gc_visitor.VisitArguments();
 
   // Wrap raw_method_handle in a Handle for safety.
-  StackHandleScope<5> hs(self);
+  StackHandleScope<2> hs(self);
   Handle<mirror::MethodHandle> method_handle(
       hs.NewHandle(ObjPtr<mirror::MethodHandle>::DownCast(MakeObjPtr(raw_method_handle))));
   raw_method_handle = nullptr;
@@ -2622,11 +2622,9 @@ extern "C" uintptr_t artInvokePolymorphic(
     return static_cast<uintptr_t>('V');
   }
 
-  Handle<mirror::Class> caller_class(hs.NewHandle(caller_method->GetDeclaringClass()));
-  Handle<mirror::MethodType> method_type(hs.NewHandle(linker->ResolveMethodType(
-      *dex_file, proto_idx,
-      hs.NewHandle<mirror::DexCache>(caller_class->GetDexCache()),
-      hs.NewHandle<mirror::ClassLoader>(caller_class->GetClassLoader()))));
+  Handle<mirror::MethodType> method_type(
+      hs.NewHandle(linker->ResolveMethodType(self, proto_idx, caller_method)));
+
   // This implies we couldn't resolve one or more types in this method handle.
   if (UNLIKELY(method_type.IsNull())) {
     CHECK(self->IsExceptionPending());
