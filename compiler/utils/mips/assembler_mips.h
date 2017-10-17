@@ -1061,16 +1061,36 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
     return NewLiteral(sizeof(value), reinterpret_cast<const uint8_t*>(&value));
   }
 
-  // Load label address using the base register (for R2 only) or using PC-relative loads
-  // (for R6 only; base_reg must be ZERO). To be used with data labels in the literal /
-  // jump table area only and not with regular code labels.
+  // Load label address using PC-relative addressing.
+  // To be used with data labels in the literal / jump table area only and not
+  // with regular code labels.
+  //
+  // For R6 base_reg must be ZERO.
+  //
+  // On R2 there are two possible uses w.r.t. base_reg:
+  //
+  // - base_reg = ZERO:
+  //   The NAL instruction will be generated as part of the load and it will
+  //   clobber the RA register.
+  //
+  // - base_reg != ZERO:
+  //   The RA-clobbering NAL instruction won't be generated as part of the load.
+  //   The label pc_rel_base_label_ must be bound (with BindPcRelBaseLabel())
+  //   and base_reg must hold the address of the label. Example:
+  //     __ Nal();
+  //     __ Move(S3, RA);
+  //     __ BindPcRelBaseLabel();  // S3 holds the address of pc_rel_base_label_.
+  //     __ LoadLabelAddress(A0, S3, label1);
+  //     __ LoadLabelAddress(A1, S3, label2);
+  //     __ LoadLiteral(V0, S3, literal1);
+  //     __ LoadLiteral(V1, S3, literal2);
   void LoadLabelAddress(Register dest_reg, Register base_reg, MipsLabel* label);
 
   // Create a new literal with the given data.
   Literal* NewLiteral(size_t size, const uint8_t* data);
 
-  // Load literal using the base register (for R2 only) or using PC-relative loads
-  // (for R6 only; base_reg must be ZERO).
+  // Load literal using PC-relative addressing.
+  // See the above comments for LoadLabelAddress() on the value of base_reg.
   void LoadLiteral(Register dest_reg, Register base_reg, Literal* literal);
 
   // Create a jump table for the given labels that will be emitted when finalizing.
