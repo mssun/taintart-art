@@ -34,9 +34,8 @@ art_cc_binary {
             shared_libs: [
                 "liblog",
             ],
-            ldflags: ["-Wl,--export-dynamic"],
         },
-        linux_glibc: {
+        linux: {
             ldflags: ["-Wl,--export-dynamic"],
         },
     },
