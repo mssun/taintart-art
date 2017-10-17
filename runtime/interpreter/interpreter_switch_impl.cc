@@ -534,8 +534,8 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
       }
       case Instruction::CONST_METHOD_HANDLE: {
         PREAMBLE();
-        ObjPtr<mirror::MethodHandle> mh =
-            Runtime::Current()->GetClassLinker()->ResolveMethodHandle(inst->VRegB_21c(), method);
+        ClassLinker* cl = Runtime::Current()->GetClassLinker();
+        ObjPtr<mirror::MethodHandle> mh = cl->ResolveMethodHandle(self, inst->VRegB_21c(), method);
         if (UNLIKELY(mh == nullptr)) {
           HANDLE_PENDING_EXCEPTION();
         } else {
@@ -546,8 +546,8 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
       }
       case Instruction::CONST_METHOD_TYPE: {
         PREAMBLE();
-        ObjPtr<mirror::MethodType> mt =
-            Runtime::Current()->GetClassLinker()->ResolveMethodType(inst->VRegB_21c(), method);
+        ClassLinker* cl = Runtime::Current()->GetClassLinker();
+        ObjPtr<mirror::MethodType> mt = cl->ResolveMethodType(self, inst->VRegB_21c(), method);
         if (UNLIKELY(mt == nullptr)) {
           HANDLE_PENDING_EXCEPTION();
         } else {

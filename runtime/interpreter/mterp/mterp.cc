@@ -211,6 +211,28 @@ extern "C" size_t MterpInvokeStatic(Thread* self,
       self, *shadow_frame, inst, inst_data, result_register);
 }
 
+extern "C" size_t MterpInvokeCustom(Thread* self,
+                                    ShadowFrame* shadow_frame,
+                                    uint16_t* dex_pc_ptr,
+                                    uint16_t inst_data)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  JValue* result_register = shadow_frame->GetResultRegister();
+  const Instruction* inst = Instruction::At(dex_pc_ptr);
+  return DoInvokeCustom<false /* is_range */>(
+      self, *shadow_frame, inst, inst_data, result_register);
+}
+
+extern "C" size_t MterpInvokePolymorphic(Thread* self,
+                                         ShadowFrame* shadow_frame,
+                                         uint16_t* dex_pc_ptr,
+                                         uint16_t inst_data)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  JValue* result_register = shadow_frame->GetResultRegister();
+  const Instruction* inst = Instruction::At(dex_pc_ptr);
+  return DoInvokePolymorphic<false /* is_range */>(
+      self, *shadow_frame, inst, inst_data, result_register);
+}
+
 extern "C" size_t MterpInvokeVirtualRange(Thread* self,
                                           ShadowFrame* shadow_frame,
                                           uint16_t* dex_pc_ptr,
@@ -263,6 +285,27 @@ extern "C" size_t MterpInvokeStaticRange(Thread* self,
   JValue* result_register = shadow_frame->GetResultRegister();
   const Instruction* inst = Instruction::At(dex_pc_ptr);
   return DoInvoke<kStatic, true, false>(
+      self, *shadow_frame, inst, inst_data, result_register);
+}
+
+extern "C" size_t MterpInvokeCustomRange(Thread* self,
+                                         ShadowFrame* shadow_frame,
+                                         uint16_t* dex_pc_ptr,
+                                         uint16_t inst_data)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  JValue* result_register = shadow_frame->GetResultRegister();
+  const Instruction* inst = Instruction::At(dex_pc_ptr);
+  return DoInvokeCustom<true /* is_range */>(self, *shadow_frame, inst, inst_data, result_register);
+}
+
+extern "C" size_t MterpInvokePolymorphicRange(Thread* self,
+                                              ShadowFrame* shadow_frame,
+                                              uint16_t* dex_pc_ptr,
+                                              uint16_t inst_data)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  JValue* result_register = shadow_frame->GetResultRegister();
+  const Instruction* inst = Instruction::At(dex_pc_ptr);
+  return DoInvokePolymorphic<true /* is_range */>(
       self, *shadow_frame, inst, inst_data, result_register);
 }
 
@@ -336,6 +379,32 @@ extern "C" size_t MterpConstClass(uint32_t index,
     return true;
   }
   shadow_frame->SetVRegReference(tgt_vreg, c);
+  return false;
+}
+
+extern "C" size_t MterpConstMethodHandle(uint32_t index,
+                                         uint32_t tgt_vreg,
+                                         ShadowFrame* shadow_frame,
+                                         Thread* self)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  ObjPtr<mirror::MethodHandle> mh = ResolveMethodHandle(self, index, shadow_frame->GetMethod());
+  if (UNLIKELY(mh == nullptr)) {
+    return true;
+  }
+  shadow_frame->SetVRegReference(tgt_vreg, mh.Ptr());
+  return false;
+}
+
+extern "C" size_t MterpConstMethodType(uint32_t index,
+                                       uint32_t tgt_vreg,
+                                       ShadowFrame* shadow_frame,
+                                       Thread* self)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  ObjPtr<mirror::MethodType> mt = ResolveMethodType(self, index, shadow_frame->GetMethod());
+  if (UNLIKELY(mt == nullptr)) {
+    return true;
+  }
+  shadow_frame->SetVRegReference(tgt_vreg, mt.Ptr());
   return false;
 }
 
