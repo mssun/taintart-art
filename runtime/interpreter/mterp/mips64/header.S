@@ -14,17 +14,50 @@
  * limitations under the License.
  */
 
-#include <machine/regdef.h>
+#define zero $$0  /* always zero */
+#define AT   $$at /* assembler temp */
+#define v0   $$2  /* return value */
+#define v1   $$3
+#define a0   $$4  /* argument registers */
+#define a1   $$5
+#define a2   $$6
+#define a3   $$7
+#define a4   $$8  /* expanded register arguments */
+#define a5   $$9
+#define a6   $$10
+#define a7   $$11
+#define ta0  $$8  /* alias */
+#define ta1  $$9
+#define ta2  $$10
+#define ta3  $$11
+#define t0   $$12 /* temp registers (not saved across subroutine calls) */
+#define t1   $$13
+#define t2   $$14
+#define t3   $$15
 
-/* TODO: add the missing file and use its FP register definitions. */
-/* #include <machine/fpregdef.h> */
-/* FP register definitions */
-#define f0  $$f0
-#define f1  $$f1
-#define f2  $$f2
-#define f3  $$f3
-#define f12 $$f12
-#define f13 $$f13
+#define s0   $$16 /* saved across subroutine calls (callee saved) */
+#define s1   $$17
+#define s2   $$18
+#define s3   $$19
+#define s4   $$20
+#define s5   $$21
+#define s6   $$22
+#define s7   $$23
+#define t8   $$24 /* two more temp registers */
+#define t9   $$25
+#define k0   $$26 /* kernel temporary */
+#define k1   $$27
+#define gp   $$28 /* global pointer */
+#define sp   $$29 /* stack pointer */
+#define s8   $$30 /* one more callee saved */
+#define ra   $$31 /* return address */
+
+#define f0   $$f0
+#define f1   $$f1
+#define f2   $$f2
+#define f3   $$f3
+#define f12  $$f12
+#define f13  $$f13
 
 /*
  * It looks like the GNU assembler currently does not support the blec and bgtc
