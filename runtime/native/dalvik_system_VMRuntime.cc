@@ -22,7 +22,7 @@
 extern "C" void android_set_application_target_sdk_version(uint32_t version);
 #endif
 #include <limits.h>
-#include "nativehelper/ScopedUtfChars.h"
+#include "nativehelper/scoped_utf_chars.h"
 
 #include "android-base/stringprintf.h"
 
@@ -48,7 +48,7 @@ extern "C" void android_set_application_target_sdk_version(uint32_t version);
 #include "mirror/object-inl.h"
 #include "native_util.h"
 #include "nativehelper/jni_macros.h"
-#include "nativehelper/ScopedLocalRef.h"
+#include "nativehelper/scoped_local_ref.h"
 #include "runtime.h"
 #include "scoped_fast_native_object_access-inl.h"
 #include "scoped_thread_state_change-inl.h"

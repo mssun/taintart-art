@@ -51,7 +51,7 @@
 #include "mirror/class.h"
 #include "mirror/class_ext.h"
 #include "mirror/object.h"
-#include "nativehelper/ScopedLocalRef.h"
+#include "nativehelper/scoped_local_ref.h"
 #include "object_lock.h"
 #include "runtime.h"
 #include "transform.h"

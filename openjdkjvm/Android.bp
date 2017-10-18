@@ -20,7 +20,9 @@ cc_defaults {
     srcs: ["OpenjdkJvm.cc"],
     shared_libs: [
         "libbase",
-        "libnativehelper",
+    ],
+    header_libs: [
+        "libnativehelper_header_only",
     ],
 }
 

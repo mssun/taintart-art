@@ -22,7 +22,7 @@
 #include "mirror/string-inl.h"
 #include "mirror/string.h"
 #include "native_util.h"
-#include "nativehelper/ScopedPrimitiveArray.h"
+#include "nativehelper/scoped_primitive_array.h"
 #include "nativehelper/jni_macros.h"
 #include "scoped_fast_native_object_access-inl.h"
 #include "unicode/utf16.h"
