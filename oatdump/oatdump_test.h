@@ -43,6 +43,24 @@ class OatDumpTest : public CommonRuntimeTest {
     CommonRuntimeTest::SetUp();
     core_art_location_ = GetCoreArtLocation();
     core_oat_location_ = GetSystemImageFilename(GetCoreOatLocation().c_str(), kRuntimeISA);
+    tmp_dir_ = GetScratchDir();
+  }
+
+  virtual void TearDown() {
+    ClearDirectory(tmp_dir_.c_str(), /*recursive*/ false);
+    ASSERT_EQ(rmdir(tmp_dir_.c_str()), 0);
+    CommonRuntimeTest::TearDown();
+  }
+
+  std::string GetScratchDir() {
+    // ANDROID_DATA needs to be set
+    CHECK_NE(static_cast<char*>(nullptr), getenv("ANDROID_DATA"));
+    std::string dir = getenv("ANDROID_DATA");
+    dir += "/oatdump-tmp-dir-XXXXXX";
+    if (mkdtemp(&dir[0]) == nullptr) {
+      PLOG(FATAL) << "mkdtemp(\"" << &dir[0] << "\") failed";
+    }
+    return dir;
   }
 
   // Linking flavor.
@@ -216,6 +234,8 @@ class OatDumpTest : public CommonRuntimeTest {
 
     return result;
   }
+
+  std::string tmp_dir_;
 
  private:
   std::string core_art_location_;
