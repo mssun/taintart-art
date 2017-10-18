@@ -56,20 +56,6 @@ namespace detail {
                                 /* else */ type_unsigned>::type;
   };
 
-  // Ensure the minimal type storage for 'T' matches its declared BitStructSizeOf.
-  // Nominally used by the BITSTRUCT_DEFINE_END macro.
-  template <typename T>
-  static constexpr bool ValidateBitStructSize() {
-    const size_t kBitStructSizeOf = BitStructSizeOf<T>();
-    const size_t kExpectedSize = (BitStructSizeOf<T>() < kBitsPerByte)
-                                     ? kBitsPerByte
-                                     : RoundUpToPowerOfTwo(kBitStructSizeOf);
-
-    // Ensure no extra fields were added in between START/END.
-    const size_t kActualSize = sizeof(T) * kBitsPerByte;
-    return kExpectedSize == kActualSize;
-  }
-
   // Denotes the beginning of a bit struct.
   //
   // This marker is required by the C++ standard in order to
@@ -84,6 +70,49 @@ namespace detail {
    private:
     typename MinimumTypeUnsignedHelper<kSize>::type _;
   };
+
+  // Check if type "T" has a member called _ in it.
+  template <typename T>
+  struct HasUnderscoreField {
+   private:
+    using TrueT = std::integral_constant<bool, true>::type;
+    using FalseT = std::integral_constant<bool, false>::type;
+
+    template <typename C>
+    static constexpr auto Test(void*) -> decltype(std::declval<C>()._, TrueT{});  // NOLINT
+
+    template <typename>
+    static constexpr FalseT Test(...);
+
+   public:
+    static constexpr bool value = decltype(Test<T>(0))::value;
+  };
+
+  // Infer the type of the member of &T::M.
+  template <typename T, typename M>
+  M GetMemberType(M T:: *);
+
+  // Ensure the minimal type storage for 'T' matches its declared BitStructSizeOf.
+  // Nominally used by the BITSTRUCT_DEFINE_END macro.
+  template <typename T>
+  static constexpr bool ValidateBitStructSize() {
+    static_assert(std::is_union<T>::value, "T must be union");
+    static_assert(std::is_standard_layout<T>::value, "T must be standard-layout");
+    static_assert(HasUnderscoreField<T>::value, "T must have the _ DefineBitStructSize");
+
+    const size_t kBitStructSizeOf = BitStructSizeOf<T>();
+    static_assert(std::is_same<decltype(GetMemberType(&T::_)),
+                               DefineBitStructSize<kBitStructSizeOf>>::value,
+                  "T::_ must be a DefineBitStructSize of the same size");
+
+    const size_t kExpectedSize = (BitStructSizeOf<T>() < kBitsPerByte)
+                                     ? kBitsPerByte
+                                     : RoundUpToPowerOfTwo(kBitStructSizeOf);
+
+    // Ensure no extra fields were added in between START/END.
+    const size_t kActualSize = sizeof(T) * kBitsPerByte;
+    return kExpectedSize == kActualSize;
+  }
 }  // namespace detail
 }  // namespace art
 
