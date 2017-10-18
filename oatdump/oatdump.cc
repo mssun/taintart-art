@@ -58,7 +58,6 @@
 #include "mirror/dex_cache-inl.h"
 #include "mirror/object-inl.h"
 #include "mirror/object_array-inl.h"
-#include "nativehelper/ScopedLocalRef.h"
 #include "oat.h"
 #include "oat_file-inl.h"
 #include "oat_file_manager.h"
