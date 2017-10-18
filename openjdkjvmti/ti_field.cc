@@ -189,6 +189,7 @@ jvmtiError FieldUtil::IsFieldSynthetic(jvmtiEnv* env ATTRIBUTE_UNUSED,
 
 jvmtiError FieldUtil::SetFieldModificationWatch(jvmtiEnv* jenv, jclass klass, jfieldID field) {
   ArtJvmTiEnv* env = ArtJvmTiEnv::AsArtJvmTiEnv(jenv);
+  art::WriterMutexLock lk(art::Thread::Current(), env->event_info_mutex_);
   if (klass == nullptr) {
     return ERR(INVALID_CLASS);
   }
@@ -205,6 +206,7 @@ jvmtiError FieldUtil::SetFieldModificationWatch(jvmtiEnv* jenv, jclass klass, jf
 
 jvmtiError FieldUtil::ClearFieldModificationWatch(jvmtiEnv* jenv, jclass klass, jfieldID field) {
   ArtJvmTiEnv* env = ArtJvmTiEnv::AsArtJvmTiEnv(jenv);
+  art::WriterMutexLock lk(art::Thread::Current(), env->event_info_mutex_);
   if (klass == nullptr) {
     return ERR(INVALID_CLASS);
   }
@@ -221,6 +223,7 @@ jvmtiError FieldUtil::ClearFieldModificationWatch(jvmtiEnv* jenv, jclass klass, 
 
 jvmtiError FieldUtil::SetFieldAccessWatch(jvmtiEnv* jenv, jclass klass, jfieldID field) {
   ArtJvmTiEnv* env = ArtJvmTiEnv::AsArtJvmTiEnv(jenv);
+  art::WriterMutexLock lk(art::Thread::Current(), env->event_info_mutex_);
   if (klass == nullptr) {
     return ERR(INVALID_CLASS);
   }
@@ -237,6 +240,7 @@ jvmtiError FieldUtil::SetFieldAccessWatch(jvmtiEnv* jenv, jclass klass, jfieldID
 
 jvmtiError FieldUtil::ClearFieldAccessWatch(jvmtiEnv* jenv, jclass klass, jfieldID field) {
   ArtJvmTiEnv* env = ArtJvmTiEnv::AsArtJvmTiEnv(jenv);
+  art::WriterMutexLock lk(art::Thread::Current(), env->event_info_mutex_);
   if (klass == nullptr) {
     return ERR(INVALID_CLASS);
   }
