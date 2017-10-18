@@ -87,6 +87,8 @@ class VdexFile {
 
   typedef uint32_t VdexChecksum;
 
+  explicit VdexFile(MemMap* mmap) : mmap_(mmap) {}
+
   // Returns nullptr if the vdex file cannot be opened or is not valid.
   static std::unique_ptr<VdexFile> Open(const std::string& vdex_filename,
                                         bool writable,
@@ -143,8 +145,12 @@ class VdexFile {
                        std::string* error_msg);
 
   // In-place unquicken the given `dex_files` based on `quickening_info`.
+  // `decompile_return_instruction` controls if RETURN_VOID_BARRIER instructions are
+  // decompiled to RETURN_VOID instructions using the slower ClassDataItemIterator
+  // instead of the faster QuickeningInfoIterator.
   static void Unquicken(const std::vector<const DexFile*>& dex_files,
-                        const ArrayRef<const uint8_t>& quickening_info);
+                        const ArrayRef<const uint8_t>& quickening_info,
+                        bool decompile_return_instruction);
 
   // Fully unquicken `target_dex_file` based on quickening info stored
   // in this vdex file for `original_dex_file`.
@@ -155,8 +161,6 @@ class VdexFile {
   const uint8_t* GetQuickenedInfoOf(const DexFile& dex_file, uint32_t code_item_offset) const;
 
  private:
-  explicit VdexFile(MemMap* mmap) : mmap_(mmap) {}
-
   bool HasDexSection() const {
     return GetHeader().GetDexSize() != 0;
   }
