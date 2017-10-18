@@ -783,7 +783,12 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     .balign 128
 .L_op_const_string: /* 0x1a */
 /* File: x86/op_const_string.S */
-    /* const/string vAA, String@BBBB */
+/* File: x86/const.S */
+    /* const/class vAA, type@BBBB */
+    /* const/method-handle vAA, method_handle@BBBB */
+    /* const/method-type vAA, proto@BBBB */
+    /* const/string vAA, string@@BBBB */
+    .extern MterpConstString
     EXPORT_PC
     movzwl  2(rPC), %eax                    # eax <- BBBB
     movl    %eax, OUT_ARG0(%esp)
@@ -792,11 +797,12 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     movl    %eax, OUT_ARG2(%esp)
     movl    rSELF, %eax
     movl    %eax, OUT_ARG3(%esp)
-    call    SYMBOL(MterpConstString)        # (index, tgt_reg, shadow_frame, self)
+    call    SYMBOL(MterpConstString)                 # (index, tgt_reg, shadow_frame, self)
     RESTORE_IBASE
     testb   %al, %al
     jnz     MterpPossibleException
     ADVANCE_PC_FETCH_AND_GOTO_NEXT 2
+
 
 /* ------------------------------ */
     .balign 128
@@ -821,20 +827,26 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     .balign 128
 .L_op_const_class: /* 0x1c */
 /* File: x86/op_const_class.S */
-    /* const/class vAA, Class@BBBB */
+/* File: x86/const.S */
+    /* const/class vAA, type@BBBB */
+    /* const/method-handle vAA, method_handle@BBBB */
+    /* const/method-type vAA, proto@BBBB */
+    /* const/string vAA, string@@BBBB */
+    .extern MterpConstClass
     EXPORT_PC
-    movzwl  2(rPC), %eax                    # eax<- BBBB
+    movzwl  2(rPC), %eax                    # eax <- BBBB
     movl    %eax, OUT_ARG0(%esp)
     movl    rINST, OUT_ARG1(%esp)
     leal    OFF_FP_SHADOWFRAME(rFP), %eax
     movl    %eax, OUT_ARG2(%esp)
     movl    rSELF, %eax
     movl    %eax, OUT_ARG3(%esp)
-    call    SYMBOL(MterpConstClass)         # (index, tgt_reg, shadow_frame, self)
+    call    SYMBOL(MterpConstClass)                 # (index, tgt_reg, shadow_frame, self)
     RESTORE_IBASE
     testb   %al, %al
     jnz     MterpPossibleException
     ADVANCE_PC_FETCH_AND_GOTO_NEXT 2
+
 
 /* ------------------------------ */
     .balign 128
@@ -6281,51 +6293,175 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
 /* ------------------------------ */
     .balign 128
 .L_op_invoke_polymorphic: /* 0xfa */
-/* Transfer stub to alternate interpreter */
-    jmp     MterpFallback
+/* File: x86/op_invoke_polymorphic.S */
+/* File: x86/invoke_polymorphic.S */
+    /*
+     * invoke-polymorphic handler wrapper.
+     */
+    /* op {vC, vD, vE, vF, vG}, meth@BBBB, proto@HHHH */
+    /* op {vCCCC..v(CCCC+AA-1)}, meth@BBBB, proto@HHHH */
+    .extern MterpInvokePolymorphic
+    EXPORT_PC
+    movl    rSELF, %ecx
+    movl    %ecx, OUT_ARG0(%esp)
+    leal    OFF_FP_SHADOWFRAME(rFP), %eax
+    movl    %eax, OUT_ARG1(%esp)
+    movl    rPC, OUT_ARG2(%esp)
+    REFRESH_INST 250
+    movl    rINST, OUT_ARG3(%esp)
+    call    SYMBOL(MterpInvokePolymorphic)
+    testb   %al, %al
+    jz      MterpException
+    ADVANCE_PC 4
+    call    SYMBOL(MterpShouldSwitchInterpreters)
+    testb   %al, %al
+    jnz     MterpFallback
+    RESTORE_IBASE
+    FETCH_INST
+    GOTO_NEXT
 
 
 /* ------------------------------ */
     .balign 128
 .L_op_invoke_polymorphic_range: /* 0xfb */
-/* Transfer stub to alternate interpreter */
-    jmp     MterpFallback
+/* File: x86/op_invoke_polymorphic_range.S */
+/* File: x86/invoke_polymorphic.S */
+    /*
+     * invoke-polymorphic handler wrapper.
+     */
+    /* op {vC, vD, vE, vF, vG}, meth@BBBB, proto@HHHH */
+    /* op {vCCCC..v(CCCC+AA-1)}, meth@BBBB, proto@HHHH */
+    .extern MterpInvokePolymorphicRange
+    EXPORT_PC
+    movl    rSELF, %ecx
+    movl    %ecx, OUT_ARG0(%esp)
+    leal    OFF_FP_SHADOWFRAME(rFP), %eax
+    movl    %eax, OUT_ARG1(%esp)
+    movl    rPC, OUT_ARG2(%esp)
+    REFRESH_INST 251
+    movl    rINST, OUT_ARG3(%esp)
+    call    SYMBOL(MterpInvokePolymorphicRange)
+    testb   %al, %al
+    jz      MterpException
+    ADVANCE_PC 4
+    call    SYMBOL(MterpShouldSwitchInterpreters)
+    testb   %al, %al
+    jnz     MterpFallback
+    RESTORE_IBASE
+    FETCH_INST
+    GOTO_NEXT
 
 
 /* ------------------------------ */
     .balign 128
 .L_op_invoke_custom: /* 0xfc */
-/* Transfer stub to alternate interpreter */
-    jmp     MterpFallback
+/* File: x86/op_invoke_custom.S */
+/* File: x86/invoke.S */
+/*
+ * Generic invoke handler wrapper.
+ */
+    /* op vB, {vD, vE, vF, vG, vA}, class@CCCC */
+    /* op {vCCCC..v(CCCC+AA-1)}, meth@BBBB */
+    .extern MterpInvokeCustom
+    EXPORT_PC
+    movl    rSELF, %ecx
+    movl    %ecx, OUT_ARG0(%esp)
+    leal    OFF_FP_SHADOWFRAME(rFP), %eax
+    movl    %eax, OUT_ARG1(%esp)
+    movl    rPC, OUT_ARG2(%esp)
+    REFRESH_INST 252
+    movl    rINST, OUT_ARG3(%esp)
+    call    SYMBOL(MterpInvokeCustom)
+    testb   %al, %al
+    jz      MterpException
+    ADVANCE_PC 3
+    call    SYMBOL(MterpShouldSwitchInterpreters)
+    testb   %al, %al
+    jnz     MterpFallback
+    RESTORE_IBASE
+    FETCH_INST
+    GOTO_NEXT
 
 
 /* ------------------------------ */
     .balign 128
 .L_op_invoke_custom_range: /* 0xfd */
-/* Transfer stub to alternate interpreter */
-    jmp     MterpFallback
+/* File: x86/op_invoke_custom_range.S */
+/* File: x86/invoke.S */
+/*
+ * Generic invoke handler wrapper.
+ */
+    /* op vB, {vD, vE, vF, vG, vA}, class@CCCC */
+    /* op {vCCCC..v(CCCC+AA-1)}, meth@BBBB */
+    .extern MterpInvokeCustomRange
+    EXPORT_PC
+    movl    rSELF, %ecx
+    movl    %ecx, OUT_ARG0(%esp)
+    leal    OFF_FP_SHADOWFRAME(rFP), %eax
+    movl    %eax, OUT_ARG1(%esp)
+    movl    rPC, OUT_ARG2(%esp)
+    REFRESH_INST 253
+    movl    rINST, OUT_ARG3(%esp)
+    call    SYMBOL(MterpInvokeCustomRange)
+    testb   %al, %al
+    jz      MterpException
+    ADVANCE_PC 3
+    call    SYMBOL(MterpShouldSwitchInterpreters)
+    testb   %al, %al
+    jnz     MterpFallback
+    RESTORE_IBASE
+    FETCH_INST
+    GOTO_NEXT
 
 
 /* ------------------------------ */
     .balign 128
-.L_op_unused_fe: /* 0xfe */
-/* File: x86/op_unused_fe.S */
-/* File: x86/unused.S */
-/*
- * Bail to reference interpreter to throw.
- */
-    jmp     MterpFallback
+.L_op_const_method_handle: /* 0xfe */
+/* File: x86/op_const_method_handle.S */
+/* File: x86/const.S */
+    /* const/class vAA, type@BBBB */
+    /* const/method-handle vAA, method_handle@BBBB */
+    /* const/method-type vAA, proto@BBBB */
+    /* const/string vAA, string@@BBBB */
+    .extern MterpConstMethodHandle
+    EXPORT_PC
+    movzwl  2(rPC), %eax                    # eax <- BBBB
+    movl    %eax, OUT_ARG0(%esp)
+    movl    rINST, OUT_ARG1(%esp)
+    leal    OFF_FP_SHADOWFRAME(rFP), %eax
+    movl    %eax, OUT_ARG2(%esp)
+    movl    rSELF, %eax
+    movl    %eax, OUT_ARG3(%esp)
+    call    SYMBOL(MterpConstMethodHandle)                 # (index, tgt_reg, shadow_frame, self)
+    RESTORE_IBASE
+    testb   %al, %al
+    jnz     MterpPossibleException
+    ADVANCE_PC_FETCH_AND_GOTO_NEXT 2
 
 
 /* ------------------------------ */
     .balign 128
-.L_op_unused_ff: /* 0xff */
-/* File: x86/op_unused_ff.S */
-/* File: x86/unused.S */
-/*
- * Bail to reference interpreter to throw.
- */
-    jmp     MterpFallback
+.L_op_const_method_type: /* 0xff */
+/* File: x86/op_const_method_type.S */
+/* File: x86/const.S */
+    /* const/class vAA, type@BBBB */
+    /* const/method-handle vAA, method_handle@BBBB */
+    /* const/method-type vAA, proto@BBBB */
+    /* const/string vAA, string@@BBBB */
+    .extern MterpConstMethodType
+    EXPORT_PC
+    movzwl  2(rPC), %eax                    # eax <- BBBB
+    movl    %eax, OUT_ARG0(%esp)
+    movl    rINST, OUT_ARG1(%esp)
+    leal    OFF_FP_SHADOWFRAME(rFP), %eax
+    movl    %eax, OUT_ARG2(%esp)
+    movl    rSELF, %eax
+    movl    %eax, OUT_ARG3(%esp)
+    call    SYMBOL(MterpConstMethodType)                 # (index, tgt_reg, shadow_frame, self)
+    RESTORE_IBASE
+    testb   %al, %al
+    jnz     MterpPossibleException
+    ADVANCE_PC_FETCH_AND_GOTO_NEXT 2
 
 
     .balign 128
@@ -12452,7 +12588,7 @@ SYMBOL(artMterpAsmAltInstructionStart) = .L_ALT_op_nop
 
 /* ------------------------------ */
     .balign 128
-.L_ALT_op_unused_fe: /* 0xfe */
+.L_ALT_op_const_method_handle: /* 0xfe */
 /* File: x86/alt_stub.S */
 /*
  * Inter-instruction transfer stub.  Call out to MterpCheckBefore to handle
@@ -12476,7 +12612,7 @@ SYMBOL(artMterpAsmAltInstructionStart) = .L_ALT_op_nop
 
 /* ------------------------------ */
     .balign 128
-.L_ALT_op_unused_ff: /* 0xff */
+.L_ALT_op_const_method_type: /* 0xff */
 /* File: x86/alt_stub.S */
 /*
  * Inter-instruction transfer stub.  Call out to MterpCheckBefore to handle
