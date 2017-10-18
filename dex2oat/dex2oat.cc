@@ -84,7 +84,6 @@
 #include "mirror/class_loader.h"
 #include "mirror/object-inl.h"
 #include "mirror/object_array-inl.h"
-#include "nativehelper/ScopedLocalRef.h"
 #include "oat_file.h"
 #include "oat_file_assistant.h"
 #include "os.h"
