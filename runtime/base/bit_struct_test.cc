@@ -70,17 +70,10 @@ struct CustomBitStruct {
   int8_t data;
 };
 
-template <typename T>
-void ZeroInitialize(T& value) {
-  memset(&value, 0, sizeof(T));
-  // TODO: replace with value initialization
-}
-
 TEST(BitStructs, Custom) {
   CustomBitStruct expected(0b1111);
 
-  BitStructField<CustomBitStruct, /*lsb*/4, /*width*/4> f;
-  ZeroInitialize(f);
+  BitStructField<CustomBitStruct, /*lsb*/4, /*width*/4> f{};  // NOLINT
 
   EXPECT_EQ(1u, sizeof(f));
 
@@ -102,8 +95,7 @@ TEST(BitStructs, TwoCustom) {
 
   VALIDATE_BITSTRUCT_SIZE(TestTwoCustom);
 
-  TestTwoCustom cst;
-  ZeroInitialize(cst);
+  TestTwoCustom cst{};  // NOLINT
 
   // Test the write to most-significant field doesn't clobber least-significant.
   cst.f4_a = CustomBitStruct(0b0110);
@@ -130,8 +122,7 @@ TEST(BitStructs, TwoCustom) {
 }
 
 TEST(BitStructs, Number) {
-  BitStructNumber<uint16_t, /*lsb*/4, /*width*/4> bsn;
-  ZeroInitialize(bsn);
+  BitStructNumber<uint16_t, /*lsb*/4, /*width*/4> bsn{};  // NOLINT
   EXPECT_EQ(2u, sizeof(bsn));
 
   bsn = 0b1111;
@@ -163,8 +154,7 @@ TEST(BitStructs, Test1) {
     EXPECT_EQ(1u, sizeof(u4));
     EXPECT_EQ(1u, sizeof(alias_all));
   }
-  TestBitStruct tst;
-  ZeroInitialize(tst);
+  TestBitStruct tst{};  // NOLINT
 
   // Check minimal size selection is correct.
   EXPECT_EQ(1u, sizeof(TestBitStruct));
@@ -239,8 +229,7 @@ BITSTRUCT_DEFINE_END(MixedSizeBitStruct);
 TEST(BitStructs, Mixed) {
   EXPECT_EQ(4u, sizeof(MixedSizeBitStruct));
 
-  MixedSizeBitStruct tst;
-  ZeroInitialize(tst);
+  MixedSizeBitStruct tst{};  // NOLINT
 
   // Check operator assignment.
   tst.u3 = 0b111u;

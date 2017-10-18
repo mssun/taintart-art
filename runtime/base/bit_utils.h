@@ -388,7 +388,8 @@ inline static constexpr std::make_unsigned_t<T> MaskLeastSignificant(size_t bits
   if (bits >= BitSizeOf<T>()) {
     return std::numeric_limits<unsigned_T>::max();
   } else {
-    return static_cast<unsigned_T>((1 << bits) - 1);
+    auto kOne = static_cast<unsigned_T>(1);  // Do not truncate for T>size_t.
+    return static_cast<unsigned_T>((kOne << bits) - kOne);
   }
 }
 
