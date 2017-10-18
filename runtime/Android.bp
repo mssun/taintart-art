@@ -509,6 +509,7 @@ art_cc_library {
         "libartd",
         "libbase",
         "libbacktrace",
+        "libnativehelper",
     ],
 }
 
