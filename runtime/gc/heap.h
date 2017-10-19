@@ -25,6 +25,7 @@
 #include "allocator_type.h"
 #include "arch/instruction_set.h"
 #include "atomic.h"
+#include "base/logging.h"
 #include "base/mutex.h"
 #include "base/time_utils.h"
 #include "gc/collector/gc_type.h"
@@ -155,6 +156,9 @@ class Heap {
   static constexpr uint64_t kHeapTrimWait = MsToNs(5000);
   // How long we wait after a transition request to perform a collector transition (nanoseconds).
   static constexpr uint64_t kCollectorTransitionWait = MsToNs(5000);
+  // Whether the transition-wait applies or not. Zero wait will stress the
+  // transition code and collector, but increases jank probability.
+  DECLARE_RUNTIME_DEBUG_FLAG(kStressCollectorTransition);
 
   // Create a heap with the requested sizes. The possible empty
   // image_file_names names specify Spaces to load based on

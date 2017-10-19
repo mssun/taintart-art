@@ -93,6 +93,9 @@ namespace gc {
 
 static constexpr size_t kCollectorTransitionStressIterations = 0;
 static constexpr size_t kCollectorTransitionStressWait = 10 * 1000;  // Microseconds
+
+DEFINE_RUNTIME_DEBUG_FLAG(Heap, kStressCollectorTransition);
+
 // Minimum amount of remaining bytes before a concurrent GC is triggered.
 static constexpr size_t kMinConcurrentRemainingBytes = 128 * KB;
 static constexpr size_t kMaxConcurrentRemainingBytes = 512 * KB;
@@ -889,7 +892,9 @@ void Heap::UpdateProcessState(ProcessState old_process_state, ProcessState new_p
       // the collector. Similarly, we invoke a full compaction for kCollectorTypeCC but don't
       // transition the collector.
       RequestCollectorTransition(background_collector_type_,
-                                 kIsDebugBuild ? 0 : kCollectorTransitionWait);
+                                 kStressCollectorTransition
+                                     ? 0
+                                     : kCollectorTransitionWait);
     }
   }
 }
