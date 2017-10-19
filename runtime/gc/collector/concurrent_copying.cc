@@ -2153,14 +2153,18 @@ void ConcurrentCopying::FillWithDummyObject(mirror::Object* dummy_obj, size_t by
   mirror::Class* int_array_class = down_cast<mirror::Class*>(
       Mark(mirror::IntArray::GetArrayClass<kWithoutReadBarrier>()));
   CHECK(int_array_class != nullptr);
-  AssertToSpaceInvariant(nullptr, MemberOffset(0), int_array_class);
+  if (ReadBarrier::kEnableToSpaceInvariantChecks) {
+    AssertToSpaceInvariant(nullptr, MemberOffset(0), int_array_class);
+  }
   size_t component_size = int_array_class->GetComponentSize<kWithoutReadBarrier>();
   CHECK_EQ(component_size, sizeof(int32_t));
   size_t data_offset = mirror::Array::DataOffset(component_size).SizeValue();
   if (data_offset > byte_size) {
     // An int array is too big. Use java.lang.Object.
     CHECK(java_lang_Object_ != nullptr);
-    AssertToSpaceInvariant(nullptr, MemberOffset(0), java_lang_Object_);
+    if (ReadBarrier::kEnableToSpaceInvariantChecks) {
+      AssertToSpaceInvariant(nullptr, MemberOffset(0), java_lang_Object_);
+    }
     CHECK_EQ(byte_size, (java_lang_Object_->GetObjectSize<kVerifyNone, kWithoutReadBarrier>()));
     dummy_obj->SetClass(java_lang_Object_);
     CHECK_EQ(byte_size, (dummy_obj->SizeOf<kVerifyNone>()));
