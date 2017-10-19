@@ -28,9 +28,17 @@ public class Main {
     }
   }
 
+  /// CHECK-START-ARM: int Main.and254(int) disassembly (after)
+  /// CHECK-NOT:            movs {{r\d+}}, #254
+  /// CHECK:                and {{r\d+}}, {{r\d+}}, #0xfe
+
+  public static int and254(int arg) {
+    return arg & 254;
+  }
+
   /// CHECK-START-ARM: int Main.and255(int) disassembly (after)
   /// CHECK-NOT:            movs {{r\d+}}, #255
-  /// CHECK:                and {{r\d+}}, {{r\d+}}, #0xff
+  /// CHECK:                ubfx {{r\d+}}, {{r\d+}}, #0, #8
 
   public static int and255(int arg) {
     return arg & 255;
@@ -648,6 +656,7 @@ public class Main {
 
   public static void main(String[] args) {
     int arg = 0x87654321;
+    assertIntEquals(and254(arg), 0x20);
     assertIntEquals(and255(arg), 0x21);
     assertIntEquals(and511(arg), 0x121);
     assertIntEquals(andF00D(arg), 0x4001);

@@ -4674,7 +4674,8 @@ void LocationsBuilderMIPS64::HandleFieldGet(HInstruction* instruction,
 
 void InstructionCodeGeneratorMIPS64::HandleFieldGet(HInstruction* instruction,
                                                     const FieldInfo& field_info) {
-  DataType::Type type = field_info.GetFieldType();
+  DCHECK_EQ(DataType::Size(field_info.GetFieldType()), DataType::Size(instruction->GetType()));
+  DataType::Type type = instruction->GetType();
   LocationSummary* locations = instruction->GetLocations();
   Location obj_loc = locations->InAt(0);
   GpuRegister obj = obj_loc.AsRegister<GpuRegister>();

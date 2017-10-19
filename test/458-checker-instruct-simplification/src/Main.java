@@ -218,6 +218,28 @@ public class Main {
     return (arg >> 24) & 255;
   }
 
+  /// CHECK-START: int Main.$noinline$Shr25And127(int) instruction_simplifier (before)
+  /// CHECK-DAG:     <<Arg:i\d+>>      ParameterValue
+  /// CHECK-DAG:     <<Const25:i\d+>>  IntConstant 25
+  /// CHECK-DAG:     <<Const127:i\d+>> IntConstant 127
+  /// CHECK-DAG:     <<Shr:i\d+>>      Shr [<<Arg>>,<<Const25>>]
+  /// CHECK-DAG:     <<And:i\d+>>      And [<<Shr>>,<<Const127>>]
+  /// CHECK-DAG:                       Return [<<And>>]
+
+  /// CHECK-START: int Main.$noinline$Shr25And127(int) instruction_simplifier (after)
+  /// CHECK-DAG:     <<Arg:i\d+>>      ParameterValue
+  /// CHECK-DAG:     <<Const25:i\d+>>  IntConstant 25
+  /// CHECK-DAG:     <<UShr:i\d+>>     UShr [<<Arg>>,<<Const25>>]
+  /// CHECK-DAG:                       Return [<<UShr>>]
+
+  /// CHECK-START: int Main.$noinline$Shr25And127(int) instruction_simplifier (after)
+  /// CHECK-NOT:                       Shr
+  /// CHECK-NOT:                       And
+
+  public static int $noinline$Shr25And127(int arg) {
+    return (arg >> 25) & 127;
+  }
+
   /// CHECK-START: long Main.$noinline$Shr56And255(long) instruction_simplifier (before)
   /// CHECK-DAG:     <<Arg:j\d+>>      ParameterValue
   /// CHECK-DAG:     <<Const56:i\d+>>  IntConstant 56
@@ -238,6 +260,28 @@ public class Main {
 
   public static long $noinline$Shr56And255(long arg) {
     return (arg >> 56) & 255;
+  }
+
+  /// CHECK-START: long Main.$noinline$Shr57And127(long) instruction_simplifier (before)
+  /// CHECK-DAG:     <<Arg:j\d+>>      ParameterValue
+  /// CHECK-DAG:     <<Const57:i\d+>>  IntConstant 57
+  /// CHECK-DAG:     <<Const127:j\d+>> LongConstant 127
+  /// CHECK-DAG:     <<Shr:j\d+>>      Shr [<<Arg>>,<<Const57>>]
+  /// CHECK-DAG:     <<And:j\d+>>      And [<<Shr>>,<<Const127>>]
+  /// CHECK-DAG:                       Return [<<And>>]
+
+  /// CHECK-START: long Main.$noinline$Shr57And127(long) instruction_simplifier (after)
+  /// CHECK-DAG:     <<Arg:j\d+>>      ParameterValue
+  /// CHECK-DAG:     <<Const57:i\d+>>  IntConstant 57
+  /// CHECK-DAG:     <<UShr:j\d+>>     UShr [<<Arg>>,<<Const57>>]
+  /// CHECK-DAG:                       Return [<<UShr>>]
+
+  /// CHECK-START: long Main.$noinline$Shr57And127(long) instruction_simplifier (after)
+  /// CHECK-NOT:                       Shr
+  /// CHECK-NOT:                       And
+
+  public static long $noinline$Shr57And127(long arg) {
+    return (arg >> 57) & 127;
   }
 
   /// CHECK-START: int Main.$noinline$Shr24And127(int) instruction_simplifier (before)
@@ -2222,7 +2266,279 @@ public class Main {
     return y + sub;
   }
 
- public static void main(String[] args) {
+  /// CHECK-START: int Main.$noinline$getUint8FromInstanceByteField(Main) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Const255:i\d+>> IntConstant 255
+  /// CHECK-DAG:      <<Get:b\d+>>      InstanceFieldGet
+  /// CHECK-DAG:      <<And:i\d+>>      And [<<Get>>,<<Const255>>]
+  /// CHECK-DAG:                        Return [<<And>>]
+
+  /// CHECK-START: int Main.$noinline$getUint8FromInstanceByteField(Main) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Get:a\d+>>      InstanceFieldGet
+  /// CHECK-DAG:                        Return [<<Get>>]
+
+  /// CHECK-START: int Main.$noinline$getUint8FromInstanceByteField(Main) instruction_simplifier (after)
+  /// CHECK-NOT:                        And
+  /// CHECK-NOT:                        TypeConversion
+  public static int $noinline$getUint8FromInstanceByteField(Main m) {
+    return m.instanceByteField & 0xff;
+  }
+
+  /// CHECK-START: int Main.$noinline$getUint8FromStaticByteField() instruction_simplifier (before)
+  /// CHECK-DAG:      <<Const255:i\d+>> IntConstant 255
+  /// CHECK-DAG:      <<Get:b\d+>>      StaticFieldGet
+  /// CHECK-DAG:      <<And:i\d+>>      And [<<Get>>,<<Const255>>]
+  /// CHECK-DAG:                        Return [<<And>>]
+
+  /// CHECK-START: int Main.$noinline$getUint8FromStaticByteField() instruction_simplifier (after)
+  /// CHECK-DAG:      <<Get:a\d+>>      StaticFieldGet
+  /// CHECK-DAG:                        Return [<<Get>>]
+
+  /// CHECK-START: int Main.$noinline$getUint8FromStaticByteField() instruction_simplifier (after)
+  /// CHECK-NOT:                        And
+  /// CHECK-NOT:                        TypeConversion
+  public static int $noinline$getUint8FromStaticByteField() {
+    return staticByteField & 0xff;
+  }
+
+  /// CHECK-START: int Main.$noinline$getUint8FromByteArray(byte[]) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Const255:i\d+>> IntConstant 255
+  /// CHECK-DAG:      <<Get:b\d+>>      ArrayGet
+  /// CHECK-DAG:      <<And:i\d+>>      And [<<Get>>,<<Const255>>]
+  /// CHECK-DAG:                        Return [<<And>>]
+
+  /// CHECK-START: int Main.$noinline$getUint8FromByteArray(byte[]) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Get:a\d+>>      ArrayGet
+  /// CHECK-DAG:                        Return [<<Get>>]
+
+  /// CHECK-START: int Main.$noinline$getUint8FromByteArray(byte[]) instruction_simplifier (after)
+  /// CHECK-NOT:                        And
+  /// CHECK-NOT:                        TypeConversion
+  public static int $noinline$getUint8FromByteArray(byte[] a) {
+    return a[0] & 0xff;
+  }
+
+  /// CHECK-START: int Main.$noinline$getUint16FromInstanceShortField(Main) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Cst65535:i\d+>> IntConstant 65535
+  /// CHECK-DAG:      <<Get:s\d+>>      InstanceFieldGet
+  /// CHECK-DAG:      <<And:i\d+>>      And [<<Get>>,<<Cst65535>>]
+  /// CHECK-DAG:                        Return [<<And>>]
+
+  /// CHECK-START: int Main.$noinline$getUint16FromInstanceShortField(Main) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Get:c\d+>>      InstanceFieldGet
+  /// CHECK-DAG:                        Return [<<Get>>]
+
+  /// CHECK-START: int Main.$noinline$getUint16FromInstanceShortField(Main) instruction_simplifier (after)
+  /// CHECK-NOT:                        And
+  /// CHECK-NOT:                        TypeConversion
+  public static int $noinline$getUint16FromInstanceShortField(Main m) {
+    return m.instanceShortField & 0xffff;
+  }
+
+  /// CHECK-START: int Main.$noinline$getUint16FromStaticShortField() instruction_simplifier (before)
+  /// CHECK-DAG:      <<Cst65535:i\d+>> IntConstant 65535
+  /// CHECK-DAG:      <<Get:s\d+>>      StaticFieldGet
+  /// CHECK-DAG:      <<And:i\d+>>      And [<<Get>>,<<Cst65535>>]
+  /// CHECK-DAG:                        Return [<<And>>]
+
+  /// CHECK-START: int Main.$noinline$getUint16FromStaticShortField() instruction_simplifier (after)
+  /// CHECK-DAG:      <<Get:c\d+>>      StaticFieldGet
+  /// CHECK-DAG:                        Return [<<Get>>]
+
+  /// CHECK-START: int Main.$noinline$getUint16FromStaticShortField() instruction_simplifier (after)
+  /// CHECK-NOT:                        And
+  /// CHECK-NOT:                        TypeConversion
+  public static int $noinline$getUint16FromStaticShortField() {
+    return staticShortField & 0xffff;
+  }
+
+  /// CHECK-START: int Main.$noinline$getUint16FromShortArray(short[]) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Cst65535:i\d+>> IntConstant 65535
+  /// CHECK-DAG:      <<Get:s\d+>>      ArrayGet
+  /// CHECK-DAG:      <<And:i\d+>>      And [<<Get>>,<<Cst65535>>]
+  /// CHECK-DAG:                        Return [<<And>>]
+
+  /// CHECK-START: int Main.$noinline$getUint16FromShortArray(short[]) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Get:c\d+>>      ArrayGet
+  /// CHECK-DAG:                        Return [<<Get>>]
+
+  /// CHECK-START: int Main.$noinline$getUint16FromShortArray(short[]) instruction_simplifier (after)
+  /// CHECK-NOT:                        And
+  /// CHECK-NOT:                        TypeConversion
+  public static int $noinline$getUint16FromShortArray(short[] a) {
+    return a[0] & 0xffff;
+  }
+
+  /// CHECK-START: int Main.$noinline$getInt16FromInstanceCharField(Main) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Get:c\d+>>      InstanceFieldGet
+  /// CHECK-DAG:      <<Conv:s\d+>>     TypeConversion [<<Get>>]
+  /// CHECK-DAG:                        Return [<<Conv>>]
+
+  /// CHECK-START: int Main.$noinline$getInt16FromInstanceCharField(Main) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Get:s\d+>>      InstanceFieldGet
+  /// CHECK-DAG:                        Return [<<Get>>]
+
+  /// CHECK-START: int Main.$noinline$getInt16FromInstanceCharField(Main) instruction_simplifier (after)
+  /// CHECK-NOT:                        And
+  /// CHECK-NOT:                        TypeConversion
+  public static int $noinline$getInt16FromInstanceCharField(Main m) {
+    return (short) m.instanceCharField;
+  }
+
+  /// CHECK-START: int Main.$noinline$getInt16FromStaticCharField() instruction_simplifier (before)
+  /// CHECK-DAG:      <<Get:c\d+>>      StaticFieldGet
+  /// CHECK-DAG:      <<Conv:s\d+>>     TypeConversion [<<Get>>]
+  /// CHECK-DAG:                        Return [<<Conv>>]
+
+  /// CHECK-START: int Main.$noinline$getInt16FromStaticCharField() instruction_simplifier (after)
+  /// CHECK-DAG:      <<Get:s\d+>>      StaticFieldGet
+  /// CHECK-DAG:                        Return [<<Get>>]
+
+  /// CHECK-START: int Main.$noinline$getInt16FromStaticCharField() instruction_simplifier (after)
+  /// CHECK-NOT:                        And
+  /// CHECK-NOT:                        TypeConversion
+  public static int $noinline$getInt16FromStaticCharField() {
+    return (short) staticCharField;
+  }
+
+  /// CHECK-START: int Main.$noinline$getInt16FromCharArray(char[]) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Get:c\d+>>      ArrayGet
+  /// CHECK-DAG:      <<Conv:s\d+>>     TypeConversion [<<Get>>]
+  /// CHECK-DAG:                        Return [<<Conv>>]
+
+  /// CHECK-START: int Main.$noinline$getInt16FromCharArray(char[]) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Get:s\d+>>      ArrayGet
+  /// CHECK-DAG:                        Return [<<Get>>]
+
+  /// CHECK-START: int Main.$noinline$getInt16FromCharArray(char[]) instruction_simplifier (after)
+  /// CHECK-NOT:                        And
+  /// CHECK-NOT:                        TypeConversion
+  public static int $noinline$getInt16FromCharArray(char[] a) {
+    return (short) a[0];
+  }
+
+  /// CHECK-START: int Main.$noinline$byteToUint8AndBack() instruction_simplifier (before)
+  /// CHECK-DAG:      <<Const255:i\d+>> IntConstant 255
+  /// CHECK-DAG:      <<Get:b\d+>>      StaticFieldGet
+  /// CHECK-DAG:      <<And:i\d+>>      And [<<Get>>,<<Const255>>]
+  /// CHECK-DAG:      <<Invoke:i\d+>>   InvokeStaticOrDirect [<<And>>{{(,[ij]\d+)?}}]
+  /// CHECK-DAG:                        Return [<<Invoke>>]
+
+  /// CHECK-START: int Main.$noinline$byteToUint8AndBack() instruction_simplifier (after)
+  /// CHECK-DAG:      <<Get:a\d+>>      StaticFieldGet
+  /// CHECK-DAG:      <<Invoke:i\d+>>   InvokeStaticOrDirect [<<Get>>{{(,[ij]\d+)?}}]
+  /// CHECK-DAG:                        Return [<<Invoke>>]
+
+  /// CHECK-START: int Main.$noinline$byteToUint8AndBack() instruction_simplifier$after_inlining (before)
+  /// CHECK-DAG:      <<Get:a\d+>>      StaticFieldGet
+  /// CHECK-DAG:      <<Conv:b\d+>>     TypeConversion [<<Get>>]
+  /// CHECK-DAG:                        Return [<<Conv>>]
+
+  /// CHECK-START: int Main.$noinline$byteToUint8AndBack() instruction_simplifier$after_inlining (after)
+  /// CHECK-DAG:      <<Get:b\d+>>      StaticFieldGet
+  /// CHECK-DAG:                        Return [<<Get>>]
+  public static int $noinline$byteToUint8AndBack() {
+    return $inline$toByte(staticByteField & 0xff);
+  }
+
+  public static int $inline$toByte(int value) {
+    return (byte) value;
+  }
+
+  /// CHECK-START: int Main.$noinline$getStaticCharFieldAnd0xff() instruction_simplifier (before)
+  /// CHECK-DAG:      <<Const255:i\d+>> IntConstant 255
+  /// CHECK-DAG:      <<Get:c\d+>>      StaticFieldGet
+  /// CHECK-DAG:      <<And:i\d+>>      And [<<Get>>,<<Const255>>]
+  /// CHECK-DAG:                        Return [<<And>>]
+
+  /// CHECK-START: int Main.$noinline$getStaticCharFieldAnd0xff() instruction_simplifier (after)
+  /// CHECK-DAG:      <<Const255:i\d+>> IntConstant 255
+  /// CHECK-DAG:      <<Get:c\d+>>      StaticFieldGet
+  /// CHECK-DAG:      <<Cnv:a\d+>>      TypeConversion [<<Get>>]
+  /// CHECK-DAG:                        Return [<<Cnv>>]
+
+  /// CHECK-START: int Main.$noinline$getStaticCharFieldAnd0xff() instruction_simplifier (after)
+  /// CHECK-NOT:      {{a\d+}}          StaticFieldGet
+  public static int $noinline$getStaticCharFieldAnd0xff() {
+    return staticCharField & 0xff;
+  }
+
+  /// CHECK-START: int Main.$noinline$getUint8FromInstanceByteFieldWithAnotherUse(Main) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Const8:i\d+>>   IntConstant 8
+  /// CHECK-DAG:      <<Const255:i\d+>> IntConstant 255
+  /// CHECK-DAG:      <<Get:b\d+>>      InstanceFieldGet
+  /// CHECK-DAG:      <<And:i\d+>>      And [<<Get>>,<<Const255>>]
+  /// CHECK-DAG:      <<Shl:i\d+>>      Shl [<<Get>>,<<Const8>>]
+  /// CHECK-DAG:      <<Add:i\d+>>      Add [<<And>>,<<Shl>>]
+  /// CHECK-DAG:                        Return [<<Add>>]
+
+  /// CHECK-START: int Main.$noinline$getUint8FromInstanceByteFieldWithAnotherUse(Main) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Const8:i\d+>>   IntConstant 8
+  /// CHECK-DAG:      <<Const255:i\d+>> IntConstant 255
+  /// CHECK-DAG:      <<Get:b\d+>>      InstanceFieldGet
+  /// CHECK-DAG:      <<Cnv:a\d+>>      TypeConversion [<<Get>>]
+  /// CHECK-DAG:      <<Shl:i\d+>>      Shl [<<Get>>,<<Const8>>]
+  /// CHECK-DAG:      <<Add:i\d+>>      Add [<<Cnv>>,<<Shl>>]
+  /// CHECK-DAG:                        Return [<<Add>>]
+
+  /// CHECK-START: int Main.$noinline$getUint8FromInstanceByteFieldWithAnotherUse(Main) instruction_simplifier (after)
+  /// CHECK-NOT:      {{a\d+}}          InstanceFieldGet
+  public static int $noinline$getUint8FromInstanceByteFieldWithAnotherUse(Main m) {
+    byte b = m.instanceByteField;
+    int v1 = b & 0xff;
+    int v2 = (b << 8);
+    return v1 + v2;
+  }
+
+  /// CHECK-START: int Main.$noinline$intAnd0xffToChar(int) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Arg:i\d+>>      ParameterValue
+  /// CHECK-DAG:      <<Const255:i\d+>> IntConstant 255
+  /// CHECK-DAG:      <<And:i\d+>>      And [<<Arg>>,<<Const255>>]
+  /// CHECK-DAG:      <<Conv:c\d+>>     TypeConversion [<<And>>]
+  /// CHECK-DAG:                        Return [<<Conv>>]
+
+  /// CHECK-START: int Main.$noinline$intAnd0xffToChar(int) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Arg:i\d+>>      ParameterValue
+  /// CHECK-DAG:      <<Conv:a\d+>>     TypeConversion [<<Arg>>]
+  /// CHECK-DAG:                        Return [<<Conv>>]
+  public static int $noinline$intAnd0xffToChar(int value) {
+    return (char) (value & 0xff);
+  }
+
+  /// CHECK-START: int Main.$noinline$intAnd0x1ffToChar(int) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Arg:i\d+>>      ParameterValue
+  /// CHECK-DAG:      <<Const511:i\d+>> IntConstant 511
+  /// CHECK-DAG:      <<And:i\d+>>      And [<<Arg>>,<<Const511>>]
+  /// CHECK-DAG:      <<Conv:c\d+>>     TypeConversion [<<And>>]
+  /// CHECK-DAG:                        Return [<<Conv>>]
+
+  // TODO: Simplify this. Unlike the $noinline$intAnd0xffToChar(), the TypeConversion
+  // to `char` is not eliminated despite the result of the And being within the `char` range.
+
+  // CHECK-START: int Main.$noinline$intAnd0x1ffToChar(int) instruction_simplifier (after)
+  // CHECK-DAG:      <<Arg:i\d+>>      ParameterValue
+  // CHECK-DAG:      <<Const511:i\d+>> IntConstant 511
+  // CHECK-DAG:      <<And:i\d+>>      And [<<Arg>>,<<Const511>>]
+  // CHECK-DAG:                        Return [<<And>>]
+  public static int $noinline$intAnd0x1ffToChar(int value) {
+    return (char) (value & 0x1ff);
+  }
+
+  /// CHECK-START: int Main.$noinline$getInstanceCharFieldAnd0x1ffff(Main) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Cst1ffff:i\d+>> IntConstant 131071
+  /// CHECK-DAG:      <<Get:c\d+>>      InstanceFieldGet
+  /// CHECK-DAG:      <<And:i\d+>>      And [<<Get>>,<<Cst1ffff>>]
+  /// CHECK-DAG:                        Return [<<And>>]
+
+  // TODO: Simplify this. The And is useless.
+
+  // CHECK-START: int Main.$noinline$getInstanceCharFieldAnd0x1ffff(Main) instruction_simplifier (after)
+  // CHECK-DAG:      <<Get:c\d+>>      InstanceFieldGet
+  // CHECK-DAG:                        Return [<<Get>>]
+  public static int $noinline$getInstanceCharFieldAnd0x1ffff(Main m) {
+    return m.instanceCharField & 0x1ffff;
+  }
+
+  public static void main(String[] args) {
     int arg = 123456;
     float floatArg = 123456.125f;
 
@@ -2282,7 +2598,9 @@ public class Main {
     assertIntEquals(0x4, $noinline$UShr28And7(0xc1234567));
     assertLongEquals(0x4L, $noinline$UShr60And7(0xc123456787654321L));
     assertIntEquals(0xc1, $noinline$Shr24And255(0xc1234567));
+    assertIntEquals(0x60, $noinline$Shr25And127(0xc1234567));
     assertLongEquals(0xc1L, $noinline$Shr56And255(0xc123456787654321L));
+    assertLongEquals(0x60L, $noinline$Shr57And127(0xc123456787654321L));
     assertIntEquals(0x41, $noinline$Shr24And127(0xc1234567));
     assertLongEquals(0x41L, $noinline$Shr56And127(0xc123456787654321L));
     assertIntEquals(0, $noinline$mulPow2Plus1(0));
@@ -2422,10 +2740,50 @@ public class Main {
     assertFloatEquals(floatArg, $noinline$floatAddSubSimplifyArg2(floatArg, 654321.125f));
     assertFloatEquals(floatArg, $noinline$floatSubAddSimplifyLeft(floatArg, 654321.125f));
     assertFloatEquals(floatArg, $noinline$floatSubAddSimplifyRight(floatArg, 654321.125f));
+
+    Main m = new Main();
+    m.instanceByteField = -1;
+    assertIntEquals(0xff, $noinline$getUint8FromInstanceByteField(m));
+    staticByteField = -2;
+    assertIntEquals(0xfe, $noinline$getUint8FromStaticByteField());
+    assertIntEquals(0xfd, $noinline$getUint8FromByteArray(new byte[] { -3 }));
+    m.instanceShortField = -4;
+    assertIntEquals(0xfffc, $noinline$getUint16FromInstanceShortField(m));
+    staticShortField = -5;
+    assertIntEquals(0xfffb, $noinline$getUint16FromStaticShortField());
+    assertIntEquals(0xfffa, $noinline$getUint16FromShortArray(new short[] { -6 }));
+    m.instanceCharField = 0xfff9;
+    assertIntEquals(-7, $noinline$getInt16FromInstanceCharField(m));
+    staticCharField = 0xfff8;
+    assertIntEquals(-8, $noinline$getInt16FromStaticCharField());
+    assertIntEquals(-9, $noinline$getInt16FromCharArray(new char[] { 0xfff7 }));
+
+    staticCharField = 0xfff6;
+    assertIntEquals(0xf6, $noinline$getStaticCharFieldAnd0xff());
+
+    staticByteField = -11;
+    assertIntEquals(-11, $noinline$byteToUint8AndBack());
+
+    m.instanceByteField = -12;
+    assertIntEquals(0xfffff4f4, $noinline$getUint8FromInstanceByteFieldWithAnotherUse(m));
+
+    assertIntEquals(0x21, $noinline$intAnd0xffToChar(0x87654321));
+    assertIntEquals(0x121, $noinline$intAnd0x1ffToChar(0x87654321));
+
+    m.instanceCharField = 'x';
+    assertIntEquals('x', $noinline$getInstanceCharFieldAnd0x1ffff(m));
   }
 
   private static boolean $inline$true() { return true; }
   private static boolean $inline$false() { return false; }
 
   public static boolean booleanField;
+
+  public static byte staticByteField;
+  public static char staticCharField;
+  public static short staticShortField;
+
+  public byte instanceByteField;
+  public char instanceCharField;
+  public short instanceShortField;
 }
