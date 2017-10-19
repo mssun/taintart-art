@@ -22,13 +22,6 @@
   name: "org.apache.harmony.jpda.tests.jdwp.ReferenceType.GetValues006Test#testGetValues006"
 },
 {
-  description: "Tests fail due to using the not yet supported interrupt thread functions",
-  result: EXEC_FAILED,
-  bug: 34415266,
-  names: [ "org.apache.harmony.jpda.tests.jdwp.ThreadReference.CurrentContendedMonitorTest#testCurrentContendedMonitor001",
-           "org.apache.harmony.jpda.tests.jdwp.ThreadReference.InterruptTest#testInterrupt001" ]
-},
-{
   description: "Tests fail with assertion error on slot number",
   result: EXEC_FAILED,
   bug: 66905468,
