@@ -239,6 +239,11 @@ static Parser CreateArgumentParser() {
       .Define("--class-loader-context=_")
           .WithType<std::string>()
           .IntoKey(M::ClassLoaderContext)
+      .Define("--compact-dex-level=_")
+          .WithType<CompactDexLevel>()
+          .WithValueMap({{"none", CompactDexLevel::kCompactDexLevelNone},
+                         {"fast", CompactDexLevel::kCompactDexLevelFast}})
+          .IntoKey(M::CompactDexLevel)
       .Define("--runtime-arg _")
           .WithType<std::vector<std::string>>().AppendValues()
           .IntoKey(M::RuntimeOptions);
