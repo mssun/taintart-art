@@ -1024,9 +1024,12 @@ jvmtiError StackUtil::NotifyFramePop(jvmtiEnv* env, jthread thread, jint depth) 
                                                              method,
                                                              visitor.GetDexPc());
     }
-    // Mark shadow frame as needs_notify_pop_
-    shadow_frame->SetNotifyPop(true);
-    tienv->notify_frames.insert(shadow_frame);
+    {
+      art::WriterMutexLock lk(self, tienv->event_info_mutex_);
+      // Mark shadow frame as needs_notify_pop_
+      shadow_frame->SetNotifyPop(true);
+      tienv->notify_frames.insert(shadow_frame);
+    }
     // Make sure can we will go to the interpreter and use the shadow frames.
     if (needs_instrument) {
       art::Runtime::Current()->GetInstrumentation()->InstrumentThreadStack(target);
