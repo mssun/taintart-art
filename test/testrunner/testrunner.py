@@ -60,6 +60,7 @@ import time
 
 import env
 from target_config import target_config
+from device_config import device_config
 
 # timeout for individual tests.
 # TODO: make it adjustable per tests and for buildbots
@@ -115,6 +116,9 @@ gdb_arg = ''
 stop_testrunner = False
 dex2oat_jobs = -1   # -1 corresponds to default threads for dex2oat
 run_all_configs = False
+
+# Dict containing extra arguments
+extra_arguments = { "host" : [], "target" : [] }
 
 # Dict to store user requested test variants.
 # key: variant_type.
@@ -239,6 +243,10 @@ def setup_test_env():
       n_thread = get_default_threads('host')
     print_text("Concurrency: " + str(n_thread) + "\n")
 
+  global extra_arguments
+  for target in _user_input_variants['target']:
+    extra_arguments[target] = find_extra_device_arguments(target)
+
   global semaphore
   semaphore = threading.Semaphore(n_thread)
 
@@ -252,6 +260,33 @@ def setup_test_env():
     COLOR_SKIP = ''
     COLOR_NORMAL = ''
 
+def find_extra_device_arguments(target):
+  """
+  Gets any extra arguments from the device_config.
+  """
+  if target == 'host':
+    return device_config.get(target, [])
+  else:
+    device = get_device_name()
+    return device_config.get(device, [])
+
+def get_device_name():
+  """
+  Gets the value of ro.product.name from remote device.
+  """
+  proc = subprocess.Popen(['adb', 'shell', 'getprop', 'ro.product.name'],
+                          stderr=subprocess.STDOUT,
+                          stdout = subprocess.PIPE,
+                          universal_newlines=True)
+  # only wait 2 seconds.
+  output = proc.communicate(timeout = 2)[0]
+  success = not proc.wait()
+  if success:
+    return output.strip()
+  else:
+    print_text("Unable to determine device type!\n")
+    print_text("Continuing anyway.\n")
+    return "UNKNOWN_TARGET"
 
 def run_tests(tests):
   """Creates thread workers to run the tests.
@@ -434,7 +469,7 @@ def run_tests(tests):
           tempfile.mkdtemp(dir=env.ART_HOST_TEST_DIR)) + options_test
 
       run_test_sh = env.ANDROID_BUILD_TOP + '/art/test/run-test'
-      command = run_test_sh + ' ' + options_test + ' ' + test
+      command = ' '.join((run_test_sh, options_test, ' '.join(extra_arguments[target]), test))
 
       semaphore.acquire()
       worker = threading.Thread(target=run_test, args=(command, test, variant_set, test_name))
