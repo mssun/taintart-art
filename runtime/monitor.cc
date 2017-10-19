@@ -44,7 +44,8 @@ namespace art {
 
 using android::base::StringPrintf;
 
-static constexpr uint64_t kLongWaitMs = 100;
+static constexpr uint64_t kDebugThresholdFudgeFactor = kIsDebugBuild ? 10 : 1;
+static constexpr uint64_t kLongWaitMs = 100 * kDebugThresholdFudgeFactor;
 
 /*
  * Every Object has a monitor associated with it, but not every Object is actually locked.  Even
@@ -78,8 +79,12 @@ uint32_t Monitor::stack_dump_lock_profiling_threshold_ = 0;
 
 void Monitor::Init(uint32_t lock_profiling_threshold,
                    uint32_t stack_dump_lock_profiling_threshold) {
-  lock_profiling_threshold_ = lock_profiling_threshold;
-  stack_dump_lock_profiling_threshold_ = stack_dump_lock_profiling_threshold;
+  // It isn't great to always include the debug build fudge factor for command-
+  // line driven arguments, but it's easier to adjust here than in the build.
+  lock_profiling_threshold_ =
+      lock_profiling_threshold * kDebugThresholdFudgeFactor;
+  stack_dump_lock_profiling_threshold_ =
+      stack_dump_lock_profiling_threshold * kDebugThresholdFudgeFactor;
 }
 
 Monitor::Monitor(Thread* self, Thread* owner, mirror::Object* obj, int32_t hash_code)
