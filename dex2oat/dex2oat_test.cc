@@ -678,7 +678,8 @@ class Dex2oatLayoutTest : public Dex2oatTest {
     const char* location = dex_location.c_str();
     std::string error_msg;
     std::vector<std::unique_ptr<const DexFile>> dex_files;
-    ASSERT_TRUE(DexFileLoader::Open(location, location, true, &error_msg, &dex_files));
+    ASSERT_TRUE(DexFileLoader::Open(
+        location, location, /* verify */ true, /* verify_checksum */ true, &error_msg, &dex_files));
     EXPECT_EQ(dex_files.size(), 1U);
     std::unique_ptr<const DexFile>& dex_file = dex_files[0];
     GenerateProfile(profile_location,
@@ -812,7 +813,8 @@ class Dex2oatLayoutTest : public Dex2oatTest {
 
     const char* location = dex_location.c_str();
     std::vector<std::unique_ptr<const DexFile>> dex_files;
-    ASSERT_TRUE(DexFileLoader::Open(location, location, true, &error_msg, &dex_files));
+    ASSERT_TRUE(DexFileLoader::Open(
+        location, location, /* verify */ true, /* verify_checksum */ true, &error_msg, &dex_files));
     EXPECT_EQ(dex_files.size(), 1U);
     std::unique_ptr<const DexFile>& old_dex_file = dex_files[0];
 

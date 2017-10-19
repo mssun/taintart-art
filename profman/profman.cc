@@ -331,6 +331,7 @@ class ProfMan FINAL {
       if (use_apk_fd_list) {
         if (DexFileLoader::OpenZip(apks_fd_[i],
                                    dex_locations_[i],
+                                   /* verify */ true,
                                    kVerifyChecksum,
                                    &error_msg,
                                    &dex_files_for_location)) {
@@ -341,6 +342,7 @@ class ProfMan FINAL {
       } else {
         if (DexFileLoader::Open(apk_files_[i].c_str(),
                                 dex_locations_[i],
+                                /* verify */ true,
                                 kVerifyChecksum,
                                 &error_msg,
                                 &dex_files_for_location)) {
