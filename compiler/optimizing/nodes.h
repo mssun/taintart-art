@@ -5345,6 +5345,13 @@ class HInstanceFieldGet FINAL : public HExpression<1> {
   DataType::Type GetFieldType() const { return field_info_.GetFieldType(); }
   bool IsVolatile() const { return field_info_.IsVolatile(); }
 
+  void SetType(DataType::Type new_type) {
+    DCHECK(DataType::IsIntegralType(GetType()));
+    DCHECK(DataType::IsIntegralType(new_type));
+    DCHECK_EQ(DataType::Size(GetType()), DataType::Size(new_type));
+    SetPackedField<TypeField>(new_type);
+  }
+
   DECLARE_INSTRUCTION(InstanceFieldGet);
 
  private:
@@ -5467,6 +5474,13 @@ class HArrayGet FINAL : public HExpression<2> {
 
   HInstruction* GetArray() const { return InputAt(0); }
   HInstruction* GetIndex() const { return InputAt(1); }
+
+  void SetType(DataType::Type new_type) {
+    DCHECK(DataType::IsIntegralType(GetType()));
+    DCHECK(DataType::IsIntegralType(new_type));
+    DCHECK_EQ(DataType::Size(GetType()), DataType::Size(new_type));
+    SetPackedField<TypeField>(new_type);
+  }
 
   DECLARE_INSTRUCTION(ArrayGet);
 
@@ -6141,6 +6155,13 @@ class HStaticFieldGet FINAL : public HExpression<1> {
   MemberOffset GetFieldOffset() const { return field_info_.GetFieldOffset(); }
   DataType::Type GetFieldType() const { return field_info_.GetFieldType(); }
   bool IsVolatile() const { return field_info_.IsVolatile(); }
+
+  void SetType(DataType::Type new_type) {
+    DCHECK(DataType::IsIntegralType(GetType()));
+    DCHECK(DataType::IsIntegralType(new_type));
+    DCHECK_EQ(DataType::Size(GetType()), DataType::Size(new_type));
+    SetPackedField<TypeField>(new_type);
+  }
 
   DECLARE_INSTRUCTION(StaticFieldGet);
 

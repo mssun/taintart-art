@@ -2305,11 +2305,12 @@ void InstructionCodeGeneratorARM64::HandleFieldGet(HInstruction* instruction,
   Location base_loc = locations->InAt(0);
   Location out = locations->Out();
   uint32_t offset = field_info.GetFieldOffset().Uint32Value();
-  DataType::Type field_type = field_info.GetFieldType();
+  DCHECK_EQ(DataType::Size(field_info.GetFieldType()), DataType::Size(instruction->GetType()));
+  DataType::Type load_type = instruction->GetType();
   MemOperand field = HeapOperand(InputRegisterAt(instruction, 0), field_info.GetFieldOffset());
 
   if (kEmitCompilerReadBarrier && kUseBakerReadBarrier &&
-      field_type == DataType::Type::kReference) {
+      load_type == DataType::Type::kReference) {
     // Object FieldGet with Baker's read barrier case.
     // /* HeapReference<Object> */ out = *(base + offset)
     Register base = RegisterFrom(base_loc, DataType::Type::kReference);
@@ -2336,10 +2337,10 @@ void InstructionCodeGeneratorARM64::HandleFieldGet(HInstruction* instruction,
     } else {
       // Ensure that between load and MaybeRecordImplicitNullCheck there are no pools emitted.
       EmissionCheckScope guard(GetVIXLAssembler(), kMaxMacroInstructionSizeInBytes);
-      codegen_->Load(field_type, OutputCPURegister(instruction), field);
+      codegen_->Load(load_type, OutputCPURegister(instruction), field);
       codegen_->MaybeRecordImplicitNullCheck(instruction);
     }
-    if (field_type == DataType::Type::kReference) {
+    if (load_type == DataType::Type::kReference) {
       // If read barriers are enabled, emit read barriers other than
       // Baker's using a slow path (and also unpoison the loaded
       // reference, if heap poisoning is enabled).

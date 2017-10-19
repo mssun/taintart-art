@@ -1041,7 +1041,8 @@ void LocationsBuilderARM64::VisitVecSADAccumulate(HVecSADAccumulate* instruction
   LocationSummary* locations = instruction->GetLocations();
   HVecOperation* a = instruction->InputAt(1)->AsVecOperation();
   HVecOperation* b = instruction->InputAt(2)->AsVecOperation();
-  DCHECK_EQ(a->GetPackedType(), b->GetPackedType());
+  DCHECK_EQ(HVecOperation::ToSignedType(a->GetPackedType()),
+            HVecOperation::ToSignedType(b->GetPackedType()));
   switch (a->GetPackedType()) {
     case DataType::Type::kUint8:
     case DataType::Type::kInt8:
@@ -1087,7 +1088,8 @@ void InstructionCodeGeneratorARM64::VisitVecSADAccumulate(HVecSADAccumulate* ins
   // Handle all feasible acc_T += sad(a_S, b_S) type combinations (T x S).
   HVecOperation* a = instruction->InputAt(1)->AsVecOperation();
   HVecOperation* b = instruction->InputAt(2)->AsVecOperation();
-  DCHECK_EQ(a->GetPackedType(), b->GetPackedType());
+  DCHECK_EQ(HVecOperation::ToSignedType(a->GetPackedType()),
+            HVecOperation::ToSignedType(b->GetPackedType()));
   switch (a->GetPackedType()) {
     case DataType::Type::kUint8:
     case DataType::Type::kInt8:
