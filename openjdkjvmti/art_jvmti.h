@@ -43,6 +43,7 @@
 #include "base/logging.h"
 #include "base/macros.h"
 #include "base/strlcpy.h"
+#include "base/mutex.h"
 #include "events.h"
 #include "java_vm_ext.h"
 #include "jni_env_ext.h"
@@ -58,6 +59,9 @@ class ShadowFrame;
 namespace openjdkjvmti {
 
 class ObjectTagTable;
+
+// Make sure that the DEFAULT_MUTEX_ACQUIRED_AFTER macro works.
+using art::Locks;
 
 // A structure that is a jvmtiEnv with additional information for the runtime.
 struct ArtJvmTiEnv : public jvmtiEnv {
@@ -77,12 +81,15 @@ struct ArtJvmTiEnv : public jvmtiEnv {
   // or by putting a list in the ClassExt of a field's DeclaringClass.
   // TODO Maybe just have an extension to let one put a watch on every field, that would probably be
   // good enough maybe since you probably want either a few or all/almost all of them.
-  std::unordered_set<art::ArtField*> access_watched_fields;
-  std::unordered_set<art::ArtField*> modify_watched_fields;
+  std::unordered_set<art::ArtField*> access_watched_fields GUARDED_BY(event_info_mutex_);
+  std::unordered_set<art::ArtField*> modify_watched_fields GUARDED_BY(event_info_mutex_);
 
   // Set of breakpoints is unique to each jvmtiEnv.
-  std::unordered_set<Breakpoint> breakpoints;
-  std::unordered_set<const art::ShadowFrame*> notify_frames;
+  std::unordered_set<Breakpoint> breakpoints GUARDED_BY(event_info_mutex_);
+  std::unordered_set<const art::ShadowFrame*> notify_frames GUARDED_BY(event_info_mutex_);
+
+  // RW lock to protect access to all of the event data.
+  art::ReaderWriterMutex event_info_mutex_ DEFAULT_MUTEX_ACQUIRED_AFTER;
 
   ArtJvmTiEnv(art::JavaVMExt* runtime, EventHandler* event_handler);
 

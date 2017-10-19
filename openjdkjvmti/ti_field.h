@@ -35,6 +35,8 @@
 #include "jni.h"
 #include "jvmti.h"
 
+#include "art_jvmti.h"
+
 namespace openjdkjvmti {
 
 class FieldUtil {
@@ -61,10 +63,14 @@ class FieldUtil {
                                      jfieldID field,
                                      jboolean* is_synthetic_ptr);
 
-  static jvmtiError SetFieldModificationWatch(jvmtiEnv* env, jclass klass, jfieldID field);
-  static jvmtiError ClearFieldModificationWatch(jvmtiEnv* env, jclass klass, jfieldID field);
-  static jvmtiError SetFieldAccessWatch(jvmtiEnv* env, jclass klass, jfieldID field);
-  static jvmtiError ClearFieldAccessWatch(jvmtiEnv* env, jclass klass, jfieldID field);
+  static jvmtiError SetFieldModificationWatch(jvmtiEnv* env, jclass klass, jfieldID field)
+      REQUIRES(!ArtJvmTiEnv::event_info_mutex_);
+  static jvmtiError ClearFieldModificationWatch(jvmtiEnv* env, jclass klass, jfieldID field)
+      REQUIRES(!ArtJvmTiEnv::event_info_mutex_);
+  static jvmtiError SetFieldAccessWatch(jvmtiEnv* env, jclass klass, jfieldID field)
+      REQUIRES(!ArtJvmTiEnv::event_info_mutex_);
+  static jvmtiError ClearFieldAccessWatch(jvmtiEnv* env, jclass klass, jfieldID field)
+      REQUIRES(!ArtJvmTiEnv::event_info_mutex_);
 };
 
 }  // namespace openjdkjvmti
