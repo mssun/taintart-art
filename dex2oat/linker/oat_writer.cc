@@ -417,7 +417,7 @@ bool OatWriter::AddDexFileSource(const char* filename,
   if (fd.Fd() == -1) {
     PLOG(ERROR) << "Failed to read magic number from dex file: '" << filename << "'";
     return false;
-  } else if (DexFileLoader::IsValidMagic(magic)) {
+  } else if (DexFileLoader::IsMagicValid(magic)) {
     // The file is open for reading, not writing, so it's OK to let the File destructor
     // close it without checking for explicit Close(), so pass checkUsage = false.
     raw_dex_files_.emplace_back(new File(fd.Release(), location, /* checkUsage */ false));
@@ -481,7 +481,7 @@ bool OatWriter::AddVdexDexFilesSource(const VdexFile& vdex_file,
       return false;
     }
 
-    if (!DexFileLoader::IsValidMagic(current_dex_data)) {
+    if (!DexFileLoader::IsMagicValid(current_dex_data)) {
       LOG(ERROR) << "Invalid magic in vdex file created from " << location;
       return false;
     }
@@ -3110,12 +3110,12 @@ bool OatWriter::ReadDexFileHeader(File* file, OatDexFile* oat_dex_file) {
 }
 
 bool OatWriter::ValidateDexFileHeader(const uint8_t* raw_header, const char* location) {
-  const bool valid_standard_dex_magic = StandardDexFile::IsMagicValid(raw_header);
+  const bool valid_standard_dex_magic = DexFileLoader::IsMagicValid(raw_header);
   if (!valid_standard_dex_magic) {
     LOG(ERROR) << "Invalid magic number in dex file header. " << " File: " << location;
     return false;
   }
-  if (!StandardDexFile::IsVersionValid(raw_header)) {
+  if (!DexFileLoader::IsVersionAndMagicValid(raw_header)) {
     LOG(ERROR) << "Invalid version number in dex file header. " << " File: " << location;
     return false;
   }

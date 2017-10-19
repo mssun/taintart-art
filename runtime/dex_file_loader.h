@@ -39,8 +39,11 @@ class DexFileLoader {
   static constexpr char kMultiDexSeparator = '!';
 
   // Return true if the magic is valid for dex or cdex.
-  static bool IsValidMagic(uint32_t magic);
-  static bool IsValidMagic(const uint8_t* magic);
+  static bool IsMagicValid(uint32_t magic);
+  static bool IsMagicValid(const uint8_t* magic);
+
+  // Return true if the corresponding version and magic is valid.
+  static bool IsVersionAndMagicValid(const uint8_t* magic);
 
   // Returns the checksums of a file for comparison with GetLocationChecksum().
   // For .dex files, this is the single header checksum.
