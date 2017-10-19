@@ -22,6 +22,7 @@
 
 #include "arch/instruction_set.h"
 #include "art_method-inl.h"
+#include "base/logging.h"
 #include "debugger.h"
 #include "java_vm_ext.h"
 #include "jit/jit.h"
@@ -49,7 +50,8 @@ namespace art {
 
 // Set to true to always determine the non-debuggable classes even if we would not allow a debugger
 // to actually attach.
-static constexpr bool kAlwaysCollectNonDebuggableClasses = kIsDebugBuild;
+static bool kAlwaysCollectNonDebuggableClasses =
+    RegisterRuntimeDebugFlag(&kAlwaysCollectNonDebuggableClasses);
 
 using android::base::StringPrintf;
 
