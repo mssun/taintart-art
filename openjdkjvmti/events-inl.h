@@ -21,6 +21,7 @@
 #include <type_traits>
 #include <tuple>
 
+#include "base/mutex-inl.h"
 #include "events.h"
 #include "jni_internal.h"
 #include "nativehelper/ScopedLocalRef.h"
@@ -276,6 +277,7 @@ inline bool EventHandler::ShouldDispatch<ArtJvmtiEvent::kBreakpoint>(
     jthread jni_thread ATTRIBUTE_UNUSED,
     jmethodID jmethod,
     jlocation location) const {
+  art::ReaderMutexLock lk(art::Thread::Current(), env->event_info_mutex_);
   art::ArtMethod* method = art::jni::DecodeArtMethod(jmethod);
   return ShouldDispatchOnThread<ArtJvmtiEvent::kBreakpoint>(env, thread) &&
       env->breakpoints.find({method, location}) != env->breakpoints.end();
@@ -292,6 +294,7 @@ inline bool EventHandler::ShouldDispatch<ArtJvmtiEvent::kFramePop>(
     const art::ShadowFrame* frame) const {
   // Search for the frame. Do this before checking if we need to send the event so that we don't
   // have to deal with use-after-free or the frames being reallocated later.
+  art::WriterMutexLock lk(art::Thread::Current(), env->event_info_mutex_);
   return env->notify_frames.erase(frame) != 0 &&
       ShouldDispatchOnThread<ArtJvmtiEvent::kFramePop>(env, thread);
 }
@@ -313,6 +316,7 @@ inline bool EventHandler::ShouldDispatch<ArtJvmtiEvent::kFieldModification>(
     jfieldID field,
     char type_char ATTRIBUTE_UNUSED,
     jvalue val ATTRIBUTE_UNUSED) const {
+  art::ReaderMutexLock lk(art::Thread::Current(), env->event_info_mutex_);
   return ShouldDispatchOnThread<ArtJvmtiEvent::kFieldModification>(env, thread) &&
       env->modify_watched_fields.find(
           art::jni::DecodeArtField(field)) != env->modify_watched_fields.end();
@@ -329,6 +333,7 @@ inline bool EventHandler::ShouldDispatch<ArtJvmtiEvent::kFieldAccess>(
     jclass field_klass ATTRIBUTE_UNUSED,
     jobject object ATTRIBUTE_UNUSED,
     jfieldID field) const {
+  art::ReaderMutexLock lk(art::Thread::Current(), env->event_info_mutex_);
   return ShouldDispatchOnThread<ArtJvmtiEvent::kFieldAccess>(env, thread) &&
       env->access_watched_fields.find(
           art::jni::DecodeArtField(field)) != env->access_watched_fields.end();
