@@ -123,7 +123,7 @@ static bool IsSignExtensionAndGet(HInstruction* instruction,
                                   /*out*/ HInstruction** operand) {
   // Accept any already wider constant that would be handled properly by sign
   // extension when represented in the *width* of the given narrower data type
-  // (the fact that Uint16 normally zero extends does not matter here).
+  // (the fact that Uint8/Uint16 normally zero extend does not matter here).
   int64_t value = 0;
   if (IsInt64AndGet(instruction, /*out*/ &value)) {
     switch (type) {
@@ -221,31 +221,6 @@ static bool IsZeroExtensionAndGet(HInstruction* instruction,
         return false;
     }
   }
-  // A sign (or zero) extension followed by an explicit removal of just the
-  // higher sign bits is equivalent to a zero extension of the underlying operand.
-  //
-  // TODO: move this into simplifier and use new type system instead.
-  //
-  if (instruction->IsAnd()) {
-    int64_t mask = 0;
-    HInstruction* a = instruction->InputAt(0);
-    HInstruction* b = instruction->InputAt(1);
-    // In (a & b) find (mask & b) or (a & mask) with sign or zero extension on the non-mask.
-    if ((IsInt64AndGet(a, /*out*/ &mask) && (IsSignExtensionAndGet(b, type, /*out*/ operand) ||
-                                             IsZeroExtensionAndGet(b, type, /*out*/ operand))) ||
-        (IsInt64AndGet(b, /*out*/ &mask) && (IsSignExtensionAndGet(a, type, /*out*/ operand) ||
-                                             IsZeroExtensionAndGet(a, type, /*out*/ operand)))) {
-      switch ((*operand)->GetType()) {
-        case DataType::Type::kUint8:
-        case DataType::Type::kInt8:
-          return mask == std::numeric_limits<uint8_t>::max();
-        case DataType::Type::kUint16:
-        case DataType::Type::kInt16:
-          return mask == std::numeric_limits<uint16_t>::max();
-        default: return false;
-      }
-    }
-  }
   // An explicit widening conversion of an unsigned expression zero-extends.
   if (instruction->IsTypeConversion()) {
     HInstruction* conv = instruction->InputAt(0);
@@ -277,10 +252,15 @@ static bool IsNarrowerOperands(HInstruction* a,
                                /*out*/ HInstruction** r,
                                /*out*/ HInstruction** s,
                                /*out*/ bool* is_unsigned) {
-  if (IsSignExtensionAndGet(a, type, r) && IsSignExtensionAndGet(b, type, s)) {
+  // Look for a matching sign extension.
+  DataType::Type stype = HVecOperation::ToSignedType(type);
+  if (IsSignExtensionAndGet(a, stype, r) && IsSignExtensionAndGet(b, stype, s)) {
     *is_unsigned = false;
     return true;
-  } else if (IsZeroExtensionAndGet(a, type, r) && IsZeroExtensionAndGet(b, type, s)) {
+  }
+  // Look for a matching zero extension.
+  DataType::Type utype = HVecOperation::ToUnsignedType(type);
+  if (IsZeroExtensionAndGet(a, utype, r) && IsZeroExtensionAndGet(b, utype, s)) {
     *is_unsigned = true;
     return true;
   }
@@ -292,10 +272,15 @@ static bool IsNarrowerOperand(HInstruction* a,
                               DataType::Type type,
                               /*out*/ HInstruction** r,
                               /*out*/ bool* is_unsigned) {
-  if (IsSignExtensionAndGet(a, type, r)) {
+  // Look for a matching sign extension.
+  DataType::Type stype = HVecOperation::ToSignedType(type);
+  if (IsSignExtensionAndGet(a, stype, r)) {
     *is_unsigned = false;
     return true;
-  } else if (IsZeroExtensionAndGet(a, type, r)) {
+  }
+  // Look for a matching zero extension.
+  DataType::Type utype = HVecOperation::ToUnsignedType(type);
+  if (IsZeroExtensionAndGet(a, utype, r)) {
     *is_unsigned = true;
     return true;
   }
@@ -1162,7 +1147,6 @@ bool HLoopOptimization::VectorizeUse(LoopNode* node,
       size_t size_vec = DataType::Size(type);
       size_t size_from = DataType::Size(from);
       size_t size_to = DataType::Size(to);
-      DataType::Type ctype = size_from == size_vec ? from : type;
       // Accept an integral conversion
       // (1a) narrowing into vector type, "wider" operations cannot bring in higher order bits, or
       // (1b) widening from at least vector type, and
@@ -1172,7 +1156,7 @@ bool HLoopOptimization::VectorizeUse(LoopNode* node,
            VectorizeUse(node, opa, generate_code, type, restrictions | kNoHiBits)) ||
           (size_to >= size_from &&
            size_from >= size_vec &&
-           VectorizeUse(node, opa, generate_code, ctype, restrictions))) {
+           VectorizeUse(node, opa, generate_code, type, restrictions))) {
         if (generate_code) {
           if (vector_mode_ == kVector) {
             vector_map_->Put(instruction, vector_map_->Get(opa));  // operand pass-through
@@ -1578,12 +1562,13 @@ void HLoopOptimization::GenerateVecMem(HInstruction* org,
     // Scalar store or load.
     DCHECK(vector_mode_ == kSequential);
     if (opb != nullptr) {
+      DataType::Type component_type = org->AsArraySet()->GetComponentType();
       vector = new (global_allocator_) HArraySet(
-          org->InputAt(0), opa, opb, type, org->GetSideEffects(), dex_pc);
+          org->InputAt(0), opa, opb, component_type, org->GetSideEffects(), dex_pc);
     } else  {
       bool is_string_char_at = org->AsArrayGet()->IsStringCharAt();
       vector = new (global_allocator_) HArrayGet(
-          org->InputAt(0), opa, type, org->GetSideEffects(), dex_pc, is_string_char_at);
+          org->InputAt(0), opa, org->GetType(), org->GetSideEffects(), dex_pc, is_string_char_at);
     }
   }
   vector_map_->Put(org, vector);
