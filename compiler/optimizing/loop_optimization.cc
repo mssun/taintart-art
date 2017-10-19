@@ -34,7 +34,7 @@ namespace art {
 static constexpr bool kEnableVectorization = true;
 
 // Enables scalar loop unrolling in the loop optimizer.
-static constexpr bool kEnableScalarUnrolling = false;
+static constexpr bool kEnableScalarPeelingUnrolling = false;
 
 //
 // Static helpers.
@@ -533,6 +533,43 @@ static bool CheckInductionSetFullyRemoved(ScopedArenaSet<HInstruction*>* iset) {
   return true;
 }
 
+// Tries to statically evaluate condition of the specified "HIf" for other condition checks.
+static void TryToEvaluateIfCondition(HIf* instruction, HGraph* graph) {
+  HInstruction* cond = instruction->InputAt(0);
+
+  // If a condition 'cond' is evaluated in an HIf instruction then in the successors of the
+  // IF_BLOCK we statically know the value of the condition 'cond' (TRUE in TRUE_SUCC, FALSE in
+  // FALSE_SUCC). Using that we can replace another evaluation (use) EVAL of the same 'cond'
+  // with TRUE value (FALSE value) if every path from the ENTRY_BLOCK to EVAL_BLOCK contains the
+  // edge HIF_BLOCK->TRUE_SUCC (HIF_BLOCK->FALSE_SUCC).
+  //     if (cond) {               if(cond) {
+  //       if (cond) {}              if (1) {}
+  //     } else {        =======>  } else {
+  //       if (cond) {}              if (0) {}
+  //     }                         }
+  if (!cond->IsConstant()) {
+    HBasicBlock* true_succ = instruction->IfTrueSuccessor();
+    HBasicBlock* false_succ = instruction->IfFalseSuccessor();
+
+    DCHECK_EQ(true_succ->GetPredecessors().size(), 1u);
+    DCHECK_EQ(false_succ->GetPredecessors().size(), 1u);
+
+    const HUseList<HInstruction*>& uses = cond->GetUses();
+    for (auto it = uses.begin(), end = uses.end(); it != end; /* ++it below */) {
+      HInstruction* user = it->GetUser();
+      size_t index = it->GetIndex();
+      HBasicBlock* user_block = user->GetBlock();
+      // Increment `it` now because `*it` may disappear thanks to user->ReplaceInput().
+      ++it;
+      if (true_succ->Dominates(user_block)) {
+        user->ReplaceInput(graph->GetIntConstant(1), index);
+     } else if (false_succ->Dominates(user_block)) {
+        user->ReplaceInput(graph->GetIntConstant(0), index);
+      }
+    }
+  }
+}
+
 //
 // Public methods.
 //
@@ -851,40 +888,24 @@ bool HLoopOptimization::TryOptimizeInnerLoopFinite(LoopNode* node) {
 
 bool HLoopOptimization::OptimizeInnerLoop(LoopNode* node) {
   return TryOptimizeInnerLoopFinite(node) ||
+         TryPeelingForLoopInvariantExitsElimination(node) ||
          TryUnrollingForBranchPenaltyReduction(node);
 }
 
-void HLoopOptimization::PeelOrUnrollOnce(LoopNode* loop_node,
-                                         bool do_unrolling,
-                                         SuperblockCloner::HBasicBlockMap* bb_map,
-                                         SuperblockCloner::HInstructionMap* hir_map) {
-  // TODO: peel loop nests.
-  DCHECK(loop_node->inner == nullptr);
 
-  // Check that loop info is up-to-date.
-  HLoopInformation* loop_info = loop_node->loop_info;
-  HBasicBlock* header = loop_info->GetHeader();
-  DCHECK(loop_info == header->GetLoopInformation());
-
-  PeelUnrollHelper helper(loop_info, bb_map, hir_map);
-  DCHECK(helper.IsLoopClonable());
-  HBasicBlock* new_header = do_unrolling ? helper.DoUnrolling() : helper.DoPeeling();
-  DCHECK(header == new_header);
-  DCHECK(loop_info == new_header->GetLoopInformation());
-}
 
 //
 // Loop unrolling: generic part methods.
 //
 
-bool HLoopOptimization::TryUnrollingForBranchPenaltyReduction(LoopNode* loop_node) {
+bool HLoopOptimization::TryUnrollingForBranchPenaltyReduction(LoopNode* node) {
   // Don't run peeling/unrolling if compiler_driver_ is nullptr (i.e., running under tests)
   // as InstructionSet is needed.
-  if (!kEnableScalarUnrolling || compiler_driver_ == nullptr) {
+  if (!kEnableScalarPeelingUnrolling || compiler_driver_ == nullptr) {
     return false;
   }
 
-  HLoopInformation* loop_info = loop_node->loop_info;
+  HLoopInformation* loop_info = node->loop_info;
   int64_t trip_count = 0;
   // Only unroll loops with a known tripcount.
   if (!induction_range_.HasKnownTripCount(loop_info, &trip_count)) {
@@ -900,7 +921,7 @@ bool HLoopOptimization::TryUnrollingForBranchPenaltyReduction(LoopNode* loop_nod
   LoopAnalysis::CalculateLoopBasicProperties(loop_info, &loop_analysis_info);
 
   // Check "IsLoopClonable" last as it can be time-consuming.
-  if (arch_loop_helper_->IsLoopTooBigForScalarUnrolling(&loop_analysis_info) ||
+  if (arch_loop_helper_->IsLoopTooBigForScalarPeelingUnrolling(&loop_analysis_info) ||
       (loop_analysis_info.GetNumberOfExits() > 1) ||
       loop_analysis_info.HasInstructionsPreventingScalarUnrolling() ||
       !PeelUnrollHelper::IsLoopClonable(loop_info)) {
@@ -911,17 +932,53 @@ bool HLoopOptimization::TryUnrollingForBranchPenaltyReduction(LoopNode* loop_nod
   DCHECK_EQ(unrolling_factor, 2u);
 
   // Perform unrolling.
-  ArenaAllocator* arena = loop_info->GetHeader()->GetGraph()->GetAllocator();
-  SuperblockCloner::HBasicBlockMap bb_map(
-      std::less<HBasicBlock*>(), arena->Adapter(kArenaAllocSuperblockCloner));
-  SuperblockCloner::HInstructionMap hir_map(
-      std::less<HInstruction*>(), arena->Adapter(kArenaAllocSuperblockCloner));
-  PeelOrUnrollOnce(loop_node, /* unrolling */ true, &bb_map, &hir_map);
+  PeelUnrollSimpleHelper helper(loop_info);
+  helper.DoUnrolling();
 
   // Remove the redundant loop check after unrolling.
-  HIf* copy_hif = bb_map.Get(loop_info->GetHeader())->GetLastInstruction()->AsIf();
+  HIf* copy_hif =
+      helper.GetBasicBlockMap()->Get(loop_info->GetHeader())->GetLastInstruction()->AsIf();
   int32_t constant = loop_info->Contains(*copy_hif->IfTrueSuccessor()) ? 1 : 0;
   copy_hif->ReplaceInput(graph_->GetIntConstant(constant), 0u);
+
+  return true;
+}
+
+bool HLoopOptimization::TryPeelingForLoopInvariantExitsElimination(LoopNode* node) {
+  // Don't run peeling/unrolling if compiler_driver_ is nullptr (i.e., running under tests)
+  // as InstructionSet is needed.
+  if (!kEnableScalarPeelingUnrolling || compiler_driver_ == nullptr) {
+    return false;
+  }
+
+  HLoopInformation* loop_info = node->loop_info;
+  // Check 'IsLoopClonable' the last as it might be time-consuming.
+  if (!arch_loop_helper_->IsLoopPeelingEnabled()) {
+    return false;
+  }
+
+  LoopAnalysisInfo loop_analysis_info(loop_info);
+  LoopAnalysis::CalculateLoopBasicProperties(loop_info, &loop_analysis_info);
+
+  // Check "IsLoopClonable" last as it can be time-consuming.
+  if (arch_loop_helper_->IsLoopTooBigForScalarPeelingUnrolling(&loop_analysis_info) ||
+      loop_analysis_info.HasInstructionsPreventingScalarPeeling() ||
+      !LoopAnalysis::HasLoopAtLeastOneInvariantExit(loop_info) ||
+      !PeelUnrollHelper::IsLoopClonable(loop_info)) {
+    return false;
+  }
+
+  // Perform peeling.
+  PeelUnrollSimpleHelper helper(loop_info);
+  helper.DoPeeling();
+
+  const SuperblockCloner::HInstructionMap* hir_map = helper.GetInstructionMap();
+  for (auto entry : *hir_map) {
+    HInstruction* copy = entry.second;
+    if (copy->IsIf()) {
+      TryToEvaluateIfCondition(copy->AsIf(), graph_);
+    }
+  }
 
   return true;
 }

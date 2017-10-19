@@ -33,12 +33,17 @@ class LoopAnalysisInfo : public ValueObject {
       : bb_num_(0),
         instr_num_(0),
         exits_num_(0),
+        has_instructions_preventing_scalar_peeling_(false),
         has_instructions_preventing_scalar_unrolling_(false),
         loop_info_(loop_info) {}
 
   size_t GetNumberOfBasicBlocks() const { return bb_num_; }
   size_t GetNumberOfInstructions() const { return instr_num_; }
   size_t GetNumberOfExits() const { return exits_num_; }
+
+  bool HasInstructionsPreventingScalarPeeling() const {
+    return has_instructions_preventing_scalar_peeling_;
+  }
 
   bool HasInstructionsPreventingScalarUnrolling() const {
     return has_instructions_preventing_scalar_unrolling_;
@@ -53,6 +58,8 @@ class LoopAnalysisInfo : public ValueObject {
   size_t instr_num_;
   // Number of loop's exits.
   size_t exits_num_;
+  // Whether the loop has instructions which make scalar loop peeling non-beneficial.
+  bool has_instructions_preventing_scalar_peeling_;
   // Whether the loop has instructions which make scalar loop unrolling non-beneficial.
   bool has_instructions_preventing_scalar_unrolling_;
 
@@ -71,22 +78,35 @@ class LoopAnalysis : public ValueObject {
   static void CalculateLoopBasicProperties(HLoopInformation* loop_info,
                                            LoopAnalysisInfo* analysis_results);
 
+  // Returns whether the loop has at least one loop invariant exit.
+  static bool HasLoopAtLeastOneInvariantExit(HLoopInformation* loop_info);
+
+  // Returns whether HIf's true or false successor is outside the specified loop.
+  //
+  // Prerequisite: HIf must be in the specified loop.
+  static bool IsLoopExit(HLoopInformation* loop_info, const HIf* hif) {
+    DCHECK(loop_info->Contains(*hif->GetBlock()));
+    HBasicBlock* true_succ = hif->IfTrueSuccessor();
+    HBasicBlock* false_succ = hif->IfFalseSuccessor();
+    return (!loop_info->Contains(*true_succ) || !loop_info->Contains(*false_succ));
+  }
+
  private:
-  // Returns whether an instruction makes scalar loop unrolling non-beneficial.
+  // Returns whether an instruction makes scalar loop peeling/unrolling non-beneficial.
   //
   // If in the loop body we have a dex/runtime call then its contribution to the whole
-  // loop performance will probably prevail. So unrolling optimization will not bring
-  // any noticeable performance improvement however will increase the code size.
-  static bool MakesScalarUnrollingNonBeneficial(HInstruction* instruction) {
+  // loop performance will probably prevail. So peeling/unrolling optimization will not bring
+  // any noticeable performance improvement. It will increase the code size.
+  static bool MakesScalarPeelingUnrollingNonBeneficial(HInstruction* instruction) {
     return (instruction->IsNewArray() ||
         instruction->IsNewInstance() ||
         instruction->IsUnresolvedInstanceFieldGet() ||
         instruction->IsUnresolvedInstanceFieldSet() ||
         instruction->IsUnresolvedStaticFieldGet() ||
         instruction->IsUnresolvedStaticFieldSet() ||
-        // TODO: Unroll loops with intrinsified invokes.
+        // TODO: Support loops with intrinsified invokes.
         instruction->IsInvoke() ||
-        // TODO: Unroll loops with ClinitChecks.
+        // TODO: Support loops with ClinitChecks.
         instruction->IsClinitCheck());
   }
 };
@@ -105,14 +125,14 @@ class ArchDefaultLoopHelper : public ArenaObject<kArenaAllocOptimization> {
   // doesn't support loop peeling and unrolling.
   static ArchDefaultLoopHelper* Create(InstructionSet isa, ArenaAllocator* allocator);
 
-  // Returns whether the loop is too big for loop unrolling by checking its total number of
+  // Returns whether the loop is too big for loop peeling/unrolling by checking its total number of
   // basic blocks and instructions.
   //
-  // If the loop body has too many instructions then unrolling optimization will not bring
+  // If the loop body has too many instructions then peeling/unrolling optimization will not bring
   // any noticeable performance improvement however will increase the code size.
   //
   // Returns 'true' by default, should be overridden by particular target loop helper.
-  virtual bool IsLoopTooBigForScalarUnrolling(
+  virtual bool IsLoopTooBigForScalarPeelingUnrolling(
       LoopAnalysisInfo* loop_analysis_info ATTRIBUTE_UNUSED) const { return true; }
 
   // Returns optimal scalar unrolling factor for the loop.
@@ -122,6 +142,11 @@ class ArchDefaultLoopHelper : public ArenaObject<kArenaAllocOptimization> {
                                             uint64_t trip_count ATTRIBUTE_UNUSED) const {
     return kNoUnrollingFactor;
   }
+
+  // Returns whether scalar loop peeling is enabled,
+  //
+  // Returns 'false' by default, should be overridden by particular target loop helper.
+  virtual bool IsLoopPeelingEnabled() const { return false; }
 
   // Returns optimal SIMD unrolling factor for the loop.
   //

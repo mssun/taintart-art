@@ -145,18 +145,13 @@ class HLoopOptimization : public HOptimization {
   // Performs optimizations specific to inner loop. Returns true if anything changed.
   bool OptimizeInnerLoop(LoopNode* node);
 
-  // Performs loop peeling/unrolling once (depends on the 'do_unrolling'); the transformation
-  // preserves the header and the loop info.
-  //
-  // Note: the function records copying information about blocks and instructions.
-  void PeelOrUnrollOnce(LoopNode* loop_node,
-                        bool do_unrolling,
-                        SuperblockCloner::HBasicBlockMap* bb_map,
-                        SuperblockCloner::HInstructionMap* hir_map);
-
   // Tries to apply loop unrolling for branch penalty reduction and better instruction scheduling
   // opportunities. Returns whether transformation happened.
   bool TryUnrollingForBranchPenaltyReduction(LoopNode* loop_node);
+
+  // Tries to apply loop peeling for loop invariant exits elimination. Returns whether
+  // transformation happened.
+  bool TryPeelingForLoopInvariantExitsElimination(LoopNode* loop_node);
 
   //
   // Vectorization analysis and synthesis.
