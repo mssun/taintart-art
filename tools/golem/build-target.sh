@@ -147,12 +147,8 @@ get_build_var() {
   [[ -n $target_product ]] && extras+=" TARGET_PRODUCT=$target_product"
   [[ -n $target_build_variant ]] && extras+=" TARGET_BUILD_VARIANT=$target_build_variant"
 
-  # call dumpvar-$name from the makefile system.
-  (\cd "$(gettop)";
-  CALLED_FROM_SETUP=true BUILD_SYSTEM=build/core \
-    command make --no-print-directory -f build/core/config.mk \
-    $extras \
-    dumpvar-$varname)
+  # call dumpvar from the build system.
+  (\cd "$(gettop)"; env $extras build/soong/soong_ui.bash --dumpvar-mode $varname)
 }
 
 # Defaults from command-line.
@@ -160,7 +156,7 @@ get_build_var() {
 mode=""  # blank or 'golem' if --golem was specified.
 golem_target="" # --golem=$golem_target
 config="" # --machine-type=$config
-j_arg="-j8"
+j_arg=""
 showcommands=""
 simulate=""
 make_tarball=""
@@ -353,7 +349,7 @@ fi
 #  and maybe calls lunch).
 #
 
-execute make "${j_arg}" "${make_target}"
+execute build/soong/soong_ui.bash --make-mode "${j_arg}" "${make_target}"
 
 if $strip_symbols; then
   # Further reduce size by stripping symbols.
