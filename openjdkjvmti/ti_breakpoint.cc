@@ -36,6 +36,7 @@
 #include "art_jvmti.h"
 #include "art_method-inl.h"
 #include "base/enums.h"
+#include "base/mutex-inl.h"
 #include "dex_file_annotations.h"
 #include "events-inl.h"
 #include "jni_internal.h"
@@ -62,6 +63,7 @@ Breakpoint::Breakpoint(art::ArtMethod* m, jlocation loc) : method_(m), location_
 }
 
 void BreakpointUtil::RemoveBreakpointsInClass(ArtJvmTiEnv* env, art::mirror::Class* klass) {
+  art::WriterMutexLock lk(art::Thread::Current(), env->event_info_mutex_);
   std::vector<Breakpoint> to_remove;
   for (const Breakpoint& b : env->breakpoints) {
     if (b.GetMethod()->GetDeclaringClass() == klass) {
@@ -83,6 +85,7 @@ jvmtiError BreakpointUtil::SetBreakpoint(jvmtiEnv* jenv, jmethodID method, jloca
   // Need to get mutator_lock_ so we can find the interface version of any default methods.
   art::ScopedObjectAccess soa(art::Thread::Current());
   art::ArtMethod* art_method = art::jni::DecodeArtMethod(method)->GetCanonicalMethod();
+  art::WriterMutexLock lk(art::Thread::Current(), env->event_info_mutex_);
   if (location < 0 || static_cast<uint32_t>(location) >=
       art_method->GetCodeItem()->insns_size_in_code_units_) {
     return ERR(INVALID_LOCATION);
@@ -102,8 +105,9 @@ jvmtiError BreakpointUtil::ClearBreakpoint(jvmtiEnv* jenv, jmethodID method, jlo
   }
   // Need to get mutator_lock_ so we can find the interface version of any default methods.
   art::ScopedObjectAccess soa(art::Thread::Current());
-  auto pos = env->breakpoints.find(
-      /* Breakpoint */ {art::jni::DecodeArtMethod(method)->GetCanonicalMethod(), location});
+  art::ArtMethod* art_method = art::jni::DecodeArtMethod(method)->GetCanonicalMethod();
+  art::WriterMutexLock lk(art::Thread::Current(), env->event_info_mutex_);
+  auto pos = env->breakpoints.find(/* Breakpoint */ {art_method, location});
   if (pos == env->breakpoints.end()) {
     return ERR(NOT_FOUND);
   }
