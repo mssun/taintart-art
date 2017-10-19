@@ -1372,9 +1372,19 @@ TEST_F(Dex2oatTest, LayoutSections) {
         EXPECT_LT(code_item_offset - section_startup_only.offset_, section_startup_only.size_);
         ++startup_count;
       } else {
-        // If no flags are set, the method should be unused.
-        EXPECT_LT(code_item_offset - section_unused.offset_, section_unused.size_);
-        ++unused_count;
+        if (code_item_offset - section_unused.offset_ < section_unused.size_) {
+          // If no flags are set, the method should be unused ...
+          ++unused_count;
+        } else {
+          // or this method is part of the last code item and the end is 4 byte aligned.
+          ClassDataItemIterator it2(*dex_file, dex_file->GetClassData(*class_def));
+          it2.SkipAllFields();
+          for (; it2.HasNextDirectMethod() || it2.HasNextVirtualMethod(); it2.Next()) {
+              EXPECT_LE(it2.GetMethodCodeItemOffset(), code_item_offset);
+          }
+          uint32_t code_item_size = dex_file->FindCodeItemOffset(*class_def, method_idx);
+          EXPECT_EQ((code_item_offset + code_item_size) % 4, 0u);
+        }
       }
     }
     DCHECK(!it.HasNext());
