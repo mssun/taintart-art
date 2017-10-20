@@ -70,5 +70,17 @@ TEST_F(OatDumpTest, TestSymbolizeStatic) {
   std::string error_msg;
   ASSERT_TRUE(Exec(kStatic, kModeSymbolize, {}, kListOnly, &error_msg)) << error_msg;
 }
+
+TEST_F(OatDumpTest, TestExportDex) {
+  std::string error_msg;
+  ASSERT_TRUE(Exec(kDynamic, kModeOat, {"--export-dex-to=" + tmp_dir_}, kListOnly, &error_msg))
+      << error_msg;
+}
+TEST_F(OatDumpTest, TestExportDexStatic) {
+  TEST_DISABLED_FOR_NON_STATIC_HOST_BUILDS();
+  std::string error_msg;
+  ASSERT_TRUE(Exec(kStatic, kModeOat, {"--export-dex-to=" + tmp_dir_}, kListOnly, &error_msg))
+      << error_msg;
+}
 #endif
 }  // namespace art

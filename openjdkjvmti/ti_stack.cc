@@ -220,28 +220,33 @@ jvmtiError StackUtil::GetStackTrace(jvmtiEnv* jvmti_env ATTRIBUTE_UNUSED,
   // It is not great that we have to hold these locks for so long, but it is necessary to ensure
   // that the thread isn't dying on us.
   art::ScopedObjectAccess soa(art::Thread::Current());
-  art::MutexLock mu(soa.Self(), *art::Locks::thread_list_lock_);
+  art::Locks::thread_list_lock_->ExclusiveLock(soa.Self());
 
   art::Thread* thread;
   jvmtiError thread_error = ERR(INTERNAL);
   if (!ThreadUtil::GetAliveNativeThread(java_thread, soa, &thread, &thread_error)) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(soa.Self());
     return thread_error;
   }
   DCHECK(thread != nullptr);
 
   art::ThreadState state = thread->GetState();
   if (state == art::ThreadState::kStarting || thread->IsStillStarting()) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(soa.Self());
     return ERR(THREAD_NOT_ALIVE);
   }
 
   if (max_frame_count < 0) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(soa.Self());
     return ERR(ILLEGAL_ARGUMENT);
   }
   if (frame_buffer == nullptr || count_ptr == nullptr) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(soa.Self());
     return ERR(NULL_POINTER);
   }
 
   if (max_frame_count == 0) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(soa.Self());
     *count_ptr = 0;
     return ERR(NONE);
   }
@@ -251,23 +256,29 @@ jvmtiError StackUtil::GetStackTrace(jvmtiEnv* jvmti_env ATTRIBUTE_UNUSED,
     GetStackTraceDirectClosure closure(frame_buffer,
                                        static_cast<size_t>(start_depth),
                                        static_cast<size_t>(max_frame_count));
-    thread->RequestSynchronousCheckpoint(&closure);
+    // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
+    if (!thread->RequestSynchronousCheckpoint(&closure)) {
+      return ERR(THREAD_NOT_ALIVE);
+    }
     *count_ptr = static_cast<jint>(closure.index);
     if (closure.index < static_cast<size_t>(start_depth)) {
       return ERR(ILLEGAL_ARGUMENT);
     }
     return ERR(NONE);
+  } else {
+    GetStackTraceVectorClosure closure(0, 0);
+    // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
+    if (!thread->RequestSynchronousCheckpoint(&closure)) {
+      return ERR(THREAD_NOT_ALIVE);
+    }
+
+    return TranslateFrameVector(closure.frames,
+                                start_depth,
+                                closure.start_result,
+                                max_frame_count,
+                                frame_buffer,
+                                count_ptr);
   }
-
-  GetStackTraceVectorClosure closure(0, 0);
-  thread->RequestSynchronousCheckpoint(&closure);
-
-  return TranslateFrameVector(closure.frames,
-                              start_depth,
-                              closure.start_result,
-                              max_frame_count,
-                              frame_buffer,
-                              count_ptr);
 }
 
 template <typename Data>
@@ -678,25 +689,29 @@ jvmtiError StackUtil::GetFrameCount(jvmtiEnv* env ATTRIBUTE_UNUSED,
   // It is not great that we have to hold these locks for so long, but it is necessary to ensure
   // that the thread isn't dying on us.
   art::ScopedObjectAccess soa(art::Thread::Current());
-  art::MutexLock mu(soa.Self(), *art::Locks::thread_list_lock_);
+  art::Locks::thread_list_lock_->ExclusiveLock(soa.Self());
 
   art::Thread* thread;
   jvmtiError thread_error = ERR(INTERNAL);
   if (!ThreadUtil::GetAliveNativeThread(java_thread, soa, &thread, &thread_error)) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(soa.Self());
     return thread_error;
   }
 
   DCHECK(thread != nullptr);
   art::ThreadState state = thread->GetState();
   if (state == art::ThreadState::kStarting || thread->IsStillStarting()) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(soa.Self());
     return ERR(THREAD_NOT_ALIVE);
   }
 
   if (count_ptr == nullptr) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(soa.Self());
     return ERR(NULL_POINTER);
   }
 
   GetFrameCountClosure closure;
+  // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
   if (!thread->RequestSynchronousCheckpoint(&closure)) {
     return ERR(THREAD_NOT_ALIVE);
   }
@@ -760,29 +775,36 @@ jvmtiError StackUtil::GetFrameLocation(jvmtiEnv* env ATTRIBUTE_UNUSED,
   // It is not great that we have to hold these locks for so long, but it is necessary to ensure
   // that the thread isn't dying on us.
   art::ScopedObjectAccess soa(art::Thread::Current());
-  art::MutexLock mu(soa.Self(), *art::Locks::thread_list_lock_);
+  art::Locks::thread_list_lock_->ExclusiveLock(soa.Self());
 
   art::Thread* thread;
   jvmtiError thread_error = ERR(INTERNAL);
   if (!ThreadUtil::GetAliveNativeThread(java_thread, soa, &thread, &thread_error)) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(soa.Self());
     return thread_error;
   }
   DCHECK(thread != nullptr);
 
   art::ThreadState state = thread->GetState();
   if (state == art::ThreadState::kStarting || thread->IsStillStarting()) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(soa.Self());
     return ERR(THREAD_NOT_ALIVE);
   }
 
   if (depth < 0) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(soa.Self());
     return ERR(ILLEGAL_ARGUMENT);
   }
   if (method_ptr == nullptr || location_ptr == nullptr) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(soa.Self());
     return ERR(NULL_POINTER);
   }
 
   GetLocationClosure closure(static_cast<size_t>(depth));
-  thread->RequestSynchronousCheckpoint(&closure);
+  // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
+  if (!thread->RequestSynchronousCheckpoint(&closure)) {
+    return ERR(THREAD_NOT_ALIVE);
+  }
 
   if (closure.method == nullptr) {
     return ERR(NO_MORE_FRAMES);
@@ -891,17 +913,21 @@ static jvmtiError GetOwnedMonitorInfoCommon(jthread thread, Fn handle_results) {
   MonitorInfoClosure<Fn> closure(soa, handle_results);
   bool called_method = false;
   {
-    art::MutexLock mu(self, *art::Locks::thread_list_lock_);
+    art::Locks::thread_list_lock_->ExclusiveLock(self);
     art::Thread* target = nullptr;
     jvmtiError err = ERR(INTERNAL);
     if (!ThreadUtil::GetAliveNativeThread(thread, soa, &target, &err)) {
+      art::Locks::thread_list_lock_->ExclusiveUnlock(self);
       return err;
     }
     if (target != self) {
       called_method = true;
+      // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
       if (!target->RequestSynchronousCheckpoint(&closure)) {
         return ERR(THREAD_NOT_ALIVE);
       }
+    } else {
+      art::Locks::thread_list_lock_->ExclusiveUnlock(self);
     }
   }
   // Cannot call the closure on the current thread if we have thread_list_lock since we need to call
@@ -1024,9 +1050,12 @@ jvmtiError StackUtil::NotifyFramePop(jvmtiEnv* env, jthread thread, jint depth) 
                                                              method,
                                                              visitor.GetDexPc());
     }
-    // Mark shadow frame as needs_notify_pop_
-    shadow_frame->SetNotifyPop(true);
-    tienv->notify_frames.insert(shadow_frame);
+    {
+      art::WriterMutexLock lk(self, tienv->event_info_mutex_);
+      // Mark shadow frame as needs_notify_pop_
+      shadow_frame->SetNotifyPop(true);
+      tienv->notify_frames.insert(shadow_frame);
+    }
     // Make sure can we will go to the interpreter and use the shadow frames.
     if (needs_instrument) {
       art::Runtime::Current()->GetInstrumentation()->InstrumentThreadStack(target);

@@ -1055,6 +1055,21 @@ static bool IsTypeConversionLossless(DataType::Type input_type, DataType::Type r
       !(result_type == DataType::Type::kInt64 && input_type == DataType::Type::kFloat32);
 }
 
+static inline bool TryReplaceFieldOrArrayGetType(HInstruction* maybe_get, DataType::Type new_type) {
+  if (maybe_get->IsInstanceFieldGet()) {
+    maybe_get->AsInstanceFieldGet()->SetType(new_type);
+    return true;
+  } else if (maybe_get->IsStaticFieldGet()) {
+    maybe_get->AsStaticFieldGet()->SetType(new_type);
+    return true;
+  } else if (maybe_get->IsArrayGet() && !maybe_get->AsArrayGet()->IsStringCharAt()) {
+    maybe_get->AsArrayGet()->SetType(new_type);
+    return true;
+  } else {
+    return false;
+  }
+}
+
 void InstructionSimplifierVisitor::VisitTypeConversion(HTypeConversion* instruction) {
   HInstruction* input = instruction->GetInput();
   DataType::Type input_type = input->GetType();
@@ -1129,6 +1144,18 @@ void InstructionSimplifierVisitor::VisitTypeConversion(HTypeConversion* instruct
           return;
         }
       }
+    }
+  } else if (input->HasOnlyOneNonEnvironmentUse() &&
+             ((input_type == DataType::Type::kInt8 && result_type == DataType::Type::kUint8) ||
+              (input_type == DataType::Type::kUint8 && result_type == DataType::Type::kInt8) ||
+              (input_type == DataType::Type::kInt16 && result_type == DataType::Type::kUint16) ||
+              (input_type == DataType::Type::kUint16 && result_type == DataType::Type::kInt16))) {
+    // Try to modify the type of the load to `result_type` and remove the explicit type conversion.
+    if (TryReplaceFieldOrArrayGetType(input, result_type)) {
+      instruction->ReplaceWith(input);
+      instruction->GetBlock()->RemoveInstruction(instruction);
+      RecordSimplification();
+      return;
     }
   }
 }
@@ -1220,6 +1247,7 @@ void InstructionSimplifierVisitor::VisitAdd(HAdd* instruction) {
 }
 
 void InstructionSimplifierVisitor::VisitAnd(HAnd* instruction) {
+  DCHECK(DataType::IsIntegralType(instruction->GetType()));
   HConstant* input_cst = instruction->GetConstantRight();
   HInstruction* input_other = instruction->GetLeastConstantLeft();
 
@@ -1292,6 +1320,25 @@ void InstructionSimplifierVisitor::VisitAnd(HAnd* instruction) {
         RecordSimplification();
         return;
       }
+    }
+    if ((value == 0xff || value == 0xffff) && instruction->GetType() != DataType::Type::kInt64) {
+      // Transform AND to a type conversion to Uint8/Uint16. If `input_other` is a field
+      // or array Get with only a single use, short-circuit the subsequent simplification
+      // of the Get+TypeConversion and change the Get's type to `new_type` instead.
+      DataType::Type new_type = (value == 0xff) ? DataType::Type::kUint8 : DataType::Type::kUint16;
+      DataType::Type find_type = (value == 0xff) ? DataType::Type::kInt8 : DataType::Type::kInt16;
+      if (input_other->GetType() == find_type &&
+          input_other->HasOnlyOneNonEnvironmentUse() &&
+          TryReplaceFieldOrArrayGetType(input_other, new_type)) {
+        instruction->ReplaceWith(input_other);
+        instruction->GetBlock()->RemoveInstruction(instruction);
+      } else {
+        HTypeConversion* type_conversion = new (GetGraph()->GetAllocator()) HTypeConversion(
+            new_type, input_other, instruction->GetDexPc());
+        instruction->GetBlock()->ReplaceAndRemoveInstructionWith(instruction, type_conversion);
+      }
+      RecordSimplification();
+      return;
     }
   }
 

@@ -1819,6 +1819,7 @@ bool ClassLinker::AddImageSpace(
   if (kIsDebugBuild && app_image) {
     // This verification needs to happen after the classes have been added to the class loader.
     // Since it ensures classes are in the class table.
+    ScopedTrace trace("VerifyAppImage");
     VerifyAppImage(header, class_loader, dex_caches, class_table, space);
   }
 

@@ -350,6 +350,8 @@ static_assert(MaskLeastSignificant(1) == 0b1, "TestMaskLeastSignificant#2");
 static_assert(MaskLeastSignificant(2) == 0b11, "TestMaskLeastSignificant#3");
 static_assert(MaskLeastSignificant<uint8_t>(8) == 0xFF, "TestMaskLeastSignificant#4");
 static_assert(MaskLeastSignificant<int8_t>(8) == 0xFF, "TestMaskLeastSignificant#5");
+static_assert(MaskLeastSignificant<uint64_t>(63) == (std::numeric_limits<uint64_t>::max() >> 1u),
+              "TestMaskLeastSignificant#6");
 
 static_assert(BitFieldClear(0xFF, /*lsb*/0, /*width*/0) == 0xFF, "TestBitFieldClear#1");
 static_assert(BitFieldClear(std::numeric_limits<uint32_t>::max(), /*lsb*/0, /*width*/32) == 0x0,

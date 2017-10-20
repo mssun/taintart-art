@@ -308,7 +308,7 @@ vogar $vm_command \
 vogar_exit_status=$?
 
 echo "Killing stalled dalvikvm processes..."
-if [[ $host == "yes" ]]; then
+if [[ $mode == "host" ]]; then
   pkill -9 -f /bin/dalvikvm
 else
   adb shell pkill -9 -f /bin/dalvikvm

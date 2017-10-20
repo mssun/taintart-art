@@ -75,7 +75,7 @@ TEST(DataType, IsTypeConversionImplicit) {
   const ArrayRef<const DataType::Type> kIntegralResultTypes = kIntegralInputTypes.SubArray(1u);
 
   static const bool kImplicitIntegralConversions[][arraysize(kIntegralTypes)] = {
-      //             Bool   Uint8   Int8 Uint16 Int16  Int32  Int64
+      //             Bool   Uint8   Int8 Uint16  Int16  Int32  Int64
       { /*   Bool    N/A */  true,  true,  true,  true,  true, false },
       { /*  Uint8    N/A */  true, false,  true,  true,  true, false },
       { /*   Int8    N/A */ false,  true, false,  true,  true, false },

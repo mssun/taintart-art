@@ -11,6 +11,8 @@ art_static_dependencies = [
     "libbacktrace",
     "libcutils",
     "libunwindbacktrace",
+    "libunwind",
+    "libunwindstack",
     "libutils",
     "libbase",
     "liblz4",

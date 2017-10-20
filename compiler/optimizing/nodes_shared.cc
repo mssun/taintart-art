@@ -54,6 +54,9 @@ void HDataProcWithShifterOp::GetOpInfoFromInstruction(HInstruction* instruction,
       // default encoding 'LSL 0'.
       *op_kind = kLSL;
       *shift_amount = 0;
+    } else if (result_type == DataType::Type::kUint8 ||
+               (input_type == DataType::Type::kUint8 && input_size < result_size)) {
+      *op_kind = kUXTB;
     } else if (result_type == DataType::Type::kUint16 ||
                (input_type == DataType::Type::kUint16 && input_size < result_size)) {
       *op_kind = kUXTH;

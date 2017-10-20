@@ -53,15 +53,13 @@ def _dump_many_vars(var_name):
   all_vars=" ".join(_DUMP_MANY_VARS_LIST)
 
   # The command is taken from build/envsetup.sh to fetch build variables.
-  command = ("CALLED_FROM_SETUP=true "  # Enable the 'dump-many-vars' make target.
-             "BUILD_SYSTEM=build/core " # Set up lookup path for make includes.
-             "make --no-print-directory -C \"%s\" -f build/core/config.mk "
-             "dump-many-vars DUMP_MANY_VARS=\"%s\"") % (ANDROID_BUILD_TOP, all_vars)
+  command = ("build/soong/soong_ui.bash --dumpvars-mode --vars=\"%s\"") % (all_vars)
 
   config = subprocess.Popen(command,
                             stdout=subprocess.PIPE,
                             universal_newlines=True,
-                            shell=True).communicate()[0] # read until EOF, select stdin
+                            shell=True,
+                            cwd=ANDROID_BUILD_TOP).communicate()[0] # read until EOF, select stdin
   # Prints out something like:
   # TARGET_ARCH='arm64'
   # HOST_ARCH='x86_64'
