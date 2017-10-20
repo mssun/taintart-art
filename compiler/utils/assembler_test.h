@@ -650,6 +650,24 @@ class AssemblerTest : public testing::Test {
   }
 
   template <typename ImmType>
+  std::string RepeatRVIb(void (Ass::*f)(Reg, VecReg, ImmType),
+                         int imm_bits,
+                         const std::string& fmt,
+                         int bias = 0,
+                         int multiplier = 1) {
+    return RepeatTemplatedRegistersImmBits<Reg, VecReg, ImmType>(
+        f,
+        imm_bits,
+        GetRegisters(),
+        GetVectorRegisters(),
+        &AssemblerTest::GetRegName<RegisterView::kUsePrimaryName>,
+        &AssemblerTest::GetVecRegName,
+        fmt,
+        bias,
+        multiplier);
+  }
+
+  template <typename ImmType>
   std::string RepeatVVIb(void (Ass::*f)(VecReg, VecReg, ImmType),
                          int imm_bits,
                          const std::string& fmt,
