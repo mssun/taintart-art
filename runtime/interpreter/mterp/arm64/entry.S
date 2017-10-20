@@ -25,12 +25,7 @@
  *  x3  JValue* result_register
  *
  */
-    .global ExecuteMterpImpl
-    .type   ExecuteMterpImpl, %function
-    .balign 16
-
-ExecuteMterpImpl:
-    .cfi_startproc
+ENTRY ExecuteMterpImpl
     SAVE_TWO_REGS_INCREASE_FRAME xPROFILE, x27, 80
     SAVE_TWO_REGS                xIBASE, xREFS, 16
     SAVE_TWO_REGS                xSELF, xINST, 32
