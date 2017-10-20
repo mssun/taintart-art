@@ -265,9 +265,13 @@ class Thread {
 
   bool RequestCheckpoint(Closure* function)
       REQUIRES(Locks::thread_suspend_count_lock_);
+
+  // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution. This is
+  // due to the fact that Thread::Current() needs to go to sleep to allow the targeted thread to
+  // execute the checkpoint for us if it is Runnable.
   bool RequestSynchronousCheckpoint(Closure* function)
       REQUIRES_SHARED(Locks::mutator_lock_)
-      REQUIRES(Locks::thread_list_lock_)
+      RELEASE(Locks::thread_list_lock_)
       REQUIRES(!Locks::thread_suspend_count_lock_);
   bool RequestEmptyCheckpoint()
       REQUIRES(Locks::thread_suspend_count_lock_);

@@ -334,10 +334,11 @@ jvmtiError MonitorUtil::GetCurrentContendedMonitor(jvmtiEnv* env ATTRIBUTE_UNUSE
   }
   art::Thread* self = art::Thread::Current();
   art::ScopedObjectAccess soa(self);
-  art::MutexLock mu(self, *art::Locks::thread_list_lock_);
+  art::Locks::thread_list_lock_->ExclusiveLock(self);
   art::Thread* target = nullptr;
   jvmtiError err = ERR(INTERNAL);
   if (!ThreadUtil::GetAliveNativeThread(thread, soa, &target, &err)) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(self);
     return err;
   }
   struct GetContendedMonitorClosure : public art::Closure {
@@ -393,6 +394,7 @@ jvmtiError MonitorUtil::GetCurrentContendedMonitor(jvmtiEnv* env ATTRIBUTE_UNUSE
     jobject* out_;
   };
   GetContendedMonitorClosure closure(self, monitor);
+  // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
   if (!target->RequestSynchronousCheckpoint(&closure)) {
     return ERR(THREAD_NOT_ALIVE);
   }
