@@ -1626,7 +1626,8 @@ void IntrinsicCodeGeneratorMIPS64::VisitStringCompareTo(HInvoke* invoke) {
   DCHECK(!invoke->CanDoImplicitNullCheckOn(invoke->InputAt(0)));
 
   GpuRegister argument = locations->InAt(1).AsRegister<GpuRegister>();
-  SlowPathCodeMIPS64* slow_path = new (GetAllocator()) IntrinsicSlowPathMIPS64(invoke);
+  SlowPathCodeMIPS64* slow_path =
+      new (codegen_->GetScopedAllocator()) IntrinsicSlowPathMIPS64(invoke);
   codegen_->AddSlowPath(slow_path);
   __ Beqzc(argument, slow_path->GetEntryLabel());
 
@@ -1754,7 +1755,6 @@ void IntrinsicCodeGeneratorMIPS64::VisitStringEquals(HInvoke* invoke) {
 static void GenerateStringIndexOf(HInvoke* invoke,
                                   Mips64Assembler* assembler,
                                   CodeGeneratorMIPS64* codegen,
-                                  ArenaAllocator* allocator,
                                   bool start_at_zero) {
   LocationSummary* locations = invoke->GetLocations();
   GpuRegister tmp_reg = start_at_zero ? locations->GetTemp(0).AsRegister<GpuRegister>() : TMP;
@@ -1771,7 +1771,7 @@ static void GenerateStringIndexOf(HInvoke* invoke,
       // Always needs the slow-path. We could directly dispatch to it,
       // but this case should be rare, so for simplicity just put the
       // full slow-path down and branch unconditionally.
-      slow_path = new (allocator) IntrinsicSlowPathMIPS64(invoke);
+      slow_path = new (codegen->GetScopedAllocator()) IntrinsicSlowPathMIPS64(invoke);
       codegen->AddSlowPath(slow_path);
       __ Bc(slow_path->GetEntryLabel());
       __ Bind(slow_path->GetExitLabel());
@@ -1780,7 +1780,7 @@ static void GenerateStringIndexOf(HInvoke* invoke,
   } else if (code_point->GetType() != DataType::Type::kUint16) {
     GpuRegister char_reg = locations->InAt(1).AsRegister<GpuRegister>();
     __ LoadConst32(tmp_reg, std::numeric_limits<uint16_t>::max());
-    slow_path = new (allocator) IntrinsicSlowPathMIPS64(invoke);
+    slow_path = new (codegen->GetScopedAllocator()) IntrinsicSlowPathMIPS64(invoke);
     codegen->AddSlowPath(slow_path);
     __ Bltuc(tmp_reg, char_reg, slow_path->GetEntryLabel());    // UTF-16 required
   }
@@ -1816,7 +1816,7 @@ void IntrinsicLocationsBuilderMIPS64::VisitStringIndexOf(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorMIPS64::VisitStringIndexOf(HInvoke* invoke) {
-  GenerateStringIndexOf(invoke, GetAssembler(), codegen_, GetAllocator(), /* start_at_zero */ true);
+  GenerateStringIndexOf(invoke, GetAssembler(), codegen_, /* start_at_zero */ true);
 }
 
 // int java.lang.String.indexOf(int ch, int fromIndex)
@@ -1834,8 +1834,7 @@ void IntrinsicLocationsBuilderMIPS64::VisitStringIndexOfAfter(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorMIPS64::VisitStringIndexOfAfter(HInvoke* invoke) {
-  GenerateStringIndexOf(
-      invoke, GetAssembler(), codegen_, GetAllocator(), /* start_at_zero */ false);
+  GenerateStringIndexOf(invoke, GetAssembler(), codegen_, /* start_at_zero */ false);
 }
 
 // java.lang.StringFactory.newStringFromBytes(byte[] data, int high, int offset, int byteCount)
@@ -1856,7 +1855,8 @@ void IntrinsicCodeGeneratorMIPS64::VisitStringNewStringFromBytes(HInvoke* invoke
   LocationSummary* locations = invoke->GetLocations();
 
   GpuRegister byte_array = locations->InAt(0).AsRegister<GpuRegister>();
-  SlowPathCodeMIPS64* slow_path = new (GetAllocator()) IntrinsicSlowPathMIPS64(invoke);
+  SlowPathCodeMIPS64* slow_path =
+      new (codegen_->GetScopedAllocator()) IntrinsicSlowPathMIPS64(invoke);
   codegen_->AddSlowPath(slow_path);
   __ Beqzc(byte_array, slow_path->GetEntryLabel());
 
@@ -1903,7 +1903,8 @@ void IntrinsicCodeGeneratorMIPS64::VisitStringNewStringFromString(HInvoke* invok
   LocationSummary* locations = invoke->GetLocations();
 
   GpuRegister string_to_copy = locations->InAt(0).AsRegister<GpuRegister>();
-  SlowPathCodeMIPS64* slow_path = new (GetAllocator()) IntrinsicSlowPathMIPS64(invoke);
+  SlowPathCodeMIPS64* slow_path =
+      new (codegen_->GetScopedAllocator()) IntrinsicSlowPathMIPS64(invoke);
   codegen_->AddSlowPath(slow_path);
   __ Beqzc(string_to_copy, slow_path->GetEntryLabel());
 
@@ -2160,7 +2161,8 @@ void IntrinsicCodeGeneratorMIPS64::VisitSystemArrayCopyChar(HInvoke* invoke) {
   GpuRegister src_base = locations->GetTemp(1).AsRegister<GpuRegister>();
   GpuRegister count = locations->GetTemp(2).AsRegister<GpuRegister>();
 
-  SlowPathCodeMIPS64* slow_path = new (GetAllocator()) IntrinsicSlowPathMIPS64(invoke);
+  SlowPathCodeMIPS64* slow_path =
+      new (codegen_->GetScopedAllocator()) IntrinsicSlowPathMIPS64(invoke);
   codegen_->AddSlowPath(slow_path);
 
   // Bail out if the source and destination are the same (to handle overlap).

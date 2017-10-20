@@ -32,7 +32,7 @@
 #include "optimizing_compiler_stats.h"
 #include "read_barrier_option.h"
 #include "stack.h"
-#include "stack_map_stream.h"
+#include "stack_map.h"
 #include "string_reference.h"
 #include "type_reference.h"
 #include "utils/label.h"
@@ -61,6 +61,7 @@ class Assembler;
 class CodeGenerator;
 class CompilerDriver;
 class CompilerOptions;
+class StackMapStream;
 class ParallelMoveResolver;
 
 namespace linker {
@@ -190,7 +191,7 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
                                                const InstructionSetFeatures& isa_features,
                                                const CompilerOptions& compiler_options,
                                                OptimizingCompilerStats* stats = nullptr);
-  virtual ~CodeGenerator() {}
+  virtual ~CodeGenerator();
 
   // Get the graph. This is the outermost graph, never the graph of a method being inlined.
   HGraph* GetGraph() const { return graph_; }
@@ -338,18 +339,16 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
   // TODO: Replace with a catch-entering instruction that records the environment.
   void RecordCatchBlockInfo();
 
-  // TODO: Avoid creating the `std::unique_ptr` here.
-  void AddSlowPath(SlowPathCode* slow_path) {
-    slow_paths_.push_back(std::unique_ptr<SlowPathCode>(slow_path));
-  }
+  // Get the ScopedArenaAllocator used for codegen memory allocation.
+  ScopedArenaAllocator* GetScopedAllocator();
+
+  void AddSlowPath(SlowPathCode* slow_path);
 
   void BuildStackMaps(MemoryRegion stack_map_region,
                       MemoryRegion method_info_region,
                       const DexFile::CodeItem& code_item);
   void ComputeStackMapAndMethodInfoSize(size_t* stack_map_size, size_t* method_info_size);
-  size_t GetNumberOfJitRoots() const {
-    return jit_string_roots_.size() + jit_class_roots_.size();
-  }
+  size_t GetNumberOfJitRoots() const;
 
   // Fills the `literals` array with literals collected during code generation.
   // Also emits literal patches.
@@ -600,38 +599,7 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
                 uint32_t core_callee_save_mask,
                 uint32_t fpu_callee_save_mask,
                 const CompilerOptions& compiler_options,
-                OptimizingCompilerStats* stats)
-      : frame_size_(0),
-        core_spill_mask_(0),
-        fpu_spill_mask_(0),
-        first_register_slot_in_slow_path_(0),
-        allocated_registers_(RegisterSet::Empty()),
-        blocked_core_registers_(graph->GetAllocator()->AllocArray<bool>(number_of_core_registers,
-                                                                        kArenaAllocCodeGenerator)),
-        blocked_fpu_registers_(graph->GetAllocator()->AllocArray<bool>(number_of_fpu_registers,
-                                                                       kArenaAllocCodeGenerator)),
-        number_of_core_registers_(number_of_core_registers),
-        number_of_fpu_registers_(number_of_fpu_registers),
-        number_of_register_pairs_(number_of_register_pairs),
-        core_callee_save_mask_(core_callee_save_mask),
-        fpu_callee_save_mask_(fpu_callee_save_mask),
-        stack_map_stream_(graph->GetAllocator(), graph->GetInstructionSet()),
-        block_order_(nullptr),
-        jit_string_roots_(StringReferenceValueComparator(),
-                          graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
-        jit_class_roots_(TypeReferenceValueComparator(),
-                         graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
-        disasm_info_(nullptr),
-        stats_(stats),
-        graph_(graph),
-        compiler_options_(compiler_options),
-        slow_paths_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
-        current_slow_path_(nullptr),
-        current_block_index_(0),
-        is_leaf_(true),
-        requires_current_method_(false) {
-    slow_paths_.reserve(8);
-  }
+                OptimizingCompilerStats* stats);
 
   virtual HGraphVisitor* GetLocationBuilder() = 0;
   virtual HGraphVisitor* GetInstructionVisitor() = 0;
@@ -687,12 +655,15 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
     return current_slow_path_;
   }
 
+  StackMapStream* GetStackMapStream();
+
+  void ReserveJitStringRoot(StringReference string_reference, Handle<mirror::String> string);
+  uint64_t GetJitStringRootIndex(StringReference string_reference);
+  void ReserveJitClassRoot(TypeReference type_reference, Handle<mirror::Class> klass);
+  uint64_t GetJitClassRootIndex(TypeReference type_reference);
+
   // Emit the patches assocatied with JIT roots. Only applies to JIT compiled code.
-  virtual void EmitJitRootPatches(uint8_t* code ATTRIBUTE_UNUSED,
-                                  const uint8_t* roots_data ATTRIBUTE_UNUSED) {
-    DCHECK_EQ(jit_string_roots_.size(), 0u);
-    DCHECK_EQ(jit_class_roots_.size(), 0u);
-  }
+  virtual void EmitJitRootPatches(uint8_t* code, const uint8_t* roots_data);
 
   // Frame size required for this method.
   uint32_t frame_size_;
@@ -714,24 +685,15 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
   const uint32_t core_callee_save_mask_;
   const uint32_t fpu_callee_save_mask_;
 
-  StackMapStream stack_map_stream_;
-
   // The order to use for code generation.
   const ArenaVector<HBasicBlock*>* block_order_;
-
-  // Maps a StringReference (dex_file, string_index) to the index in the literal table.
-  // Entries are intially added with a pointer in the handle zone, and `EmitJitRoots`
-  // will compute all the indices.
-  ArenaSafeMap<StringReference, uint64_t, StringReferenceValueComparator> jit_string_roots_;
-
-  // Maps a ClassReference (dex_file, type_index) to the index in the literal table.
-  // Entries are intially added with a pointer in the handle zone, and `EmitJitRoots`
-  // will compute all the indices.
-  ArenaSafeMap<TypeReference, uint64_t, TypeReferenceValueComparator> jit_class_roots_;
 
   DisassemblyInformation* disasm_info_;
 
  private:
+  class CodeGenerationData;
+
+  void InitializeCodeGenerationData();
   size_t GetStackOffsetOfSavedRegister(size_t index);
   void GenerateSlowPaths();
   void BlockIfInRegister(Location location, bool is_out = false) const;
@@ -741,8 +703,6 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
 
   HGraph* const graph_;
   const CompilerOptions& compiler_options_;
-
-  ArenaVector<std::unique_ptr<SlowPathCode>> slow_paths_;
 
   // The current slow-path that we're generating code for.
   SlowPathCode* current_slow_path_;
@@ -758,6 +718,12 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
   // TODO: Rename: this actually indicates that some instruction in the method
   // needs the environment including a valid stack frame.
   bool requires_current_method_;
+
+  // The CodeGenerationData contains a ScopedArenaAllocator intended for reusing the
+  // ArenaStack memory allocated in previous passes instead of adding to the memory
+  // held by the ArenaAllocator. This ScopedArenaAllocator is created in
+  // CodeGenerator::Compile() and remains alive until the CodeGenerator is destroyed.
+  std::unique_ptr<CodeGenerationData> code_generation_data_;
 
   friend class OptimizingCFITest;
 
@@ -863,7 +829,8 @@ class SlowPathGenerator {
                                 {{}, {graph_->GetAllocator()->Adapter(kArenaAllocSlowPaths)}});
     }
     // Cannot share: create and add new slow-path for this particular dex-pc.
-    SlowPathCodeType* slow_path = new (graph_->GetAllocator()) SlowPathCodeType(instruction);
+    SlowPathCodeType* slow_path =
+        new (codegen_->GetScopedAllocator()) SlowPathCodeType(instruction);
     iter->second.emplace_back(std::make_pair(instruction, slow_path));
     codegen_->AddSlowPath(slow_path);
     return slow_path;

@@ -70,15 +70,8 @@ class BitVector {
     struct begin_tag { };
     struct end_tag { };
 
-    IndexIterator(const BitVector* bit_vector, begin_tag)
-      : bit_storage_(bit_vector->GetRawStorage()),
-        storage_size_(bit_vector->storage_size_),
-        bit_index_(FindIndex(0u)) { }
-
-    IndexIterator(const BitVector* bit_vector, end_tag)
-      : bit_storage_(bit_vector->GetRawStorage()),
-        storage_size_(bit_vector->storage_size_),
-        bit_index_(BitSize()) { }
+    IndexIterator(const BitVector* bit_vector, begin_tag);
+    IndexIterator(const BitVector* bit_vector, end_tag);
 
     uint32_t BitSize() const {
       return storage_size_ * kWordBits;
@@ -99,13 +92,8 @@ class BitVector {
    public:
     explicit IndexContainer(const BitVector* bit_vector) : bit_vector_(bit_vector) { }
 
-    IndexIterator begin() const {
-      return IndexIterator(bit_vector_, IndexIterator::begin_tag());
-    }
-
-    IndexIterator end() const {
-      return IndexIterator(bit_vector_, IndexIterator::end_tag());
-    }
+    IndexIterator begin() const;
+    IndexIterator end() const;
 
    private:
     const BitVector* const bit_vector_;
