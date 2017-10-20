@@ -785,6 +785,17 @@ class Mips64Assembler FINAL : public Assembler, public JNIMacroAssembler<Pointer
   void SplatiH(VectorRegister wd, VectorRegister ws, int n3);
   void SplatiW(VectorRegister wd, VectorRegister ws, int n2);
   void SplatiD(VectorRegister wd, VectorRegister ws, int n1);
+  void Copy_sB(GpuRegister rd, VectorRegister ws, int n4);
+  void Copy_sH(GpuRegister rd, VectorRegister ws, int n3);
+  void Copy_sW(GpuRegister rd, VectorRegister ws, int n2);
+  void Copy_sD(GpuRegister rd, VectorRegister ws, int n1);
+  void Copy_uB(GpuRegister rd, VectorRegister ws, int n4);
+  void Copy_uH(GpuRegister rd, VectorRegister ws, int n3);
+  void Copy_uW(GpuRegister rd, VectorRegister ws, int n2);
+  void InsertB(VectorRegister wd, GpuRegister rs, int n4);
+  void InsertH(VectorRegister wd, GpuRegister rs, int n3);
+  void InsertW(VectorRegister wd, GpuRegister rs, int n2);
+  void InsertD(VectorRegister wd, GpuRegister rs, int n1);
   void FillB(VectorRegister wd, GpuRegister rs);
   void FillH(VectorRegister wd, GpuRegister rs);
   void FillW(VectorRegister wd, GpuRegister rs);
@@ -803,10 +814,22 @@ class Mips64Assembler FINAL : public Assembler, public JNIMacroAssembler<Pointer
   void StW(VectorRegister wd, GpuRegister rs, int offset);
   void StD(VectorRegister wd, GpuRegister rs, int offset);
 
+  void IlvlB(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void IlvlH(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void IlvlW(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void IlvlD(VectorRegister wd, VectorRegister ws, VectorRegister wt);
   void IlvrB(VectorRegister wd, VectorRegister ws, VectorRegister wt);
   void IlvrH(VectorRegister wd, VectorRegister ws, VectorRegister wt);
   void IlvrW(VectorRegister wd, VectorRegister ws, VectorRegister wt);
   void IlvrD(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void IlvevB(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void IlvevH(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void IlvevW(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void IlvevD(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void IlvodB(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void IlvodH(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void IlvodW(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void IlvodD(VectorRegister wd, VectorRegister ws, VectorRegister wt);
 
   void MaddvB(VectorRegister wd, VectorRegister ws, VectorRegister wt);
   void MaddvH(VectorRegister wd, VectorRegister ws, VectorRegister wt);
@@ -820,6 +843,13 @@ class Mips64Assembler FINAL : public Assembler, public JNIMacroAssembler<Pointer
   void FmaddD(VectorRegister wd, VectorRegister ws, VectorRegister wt);
   void FmsubW(VectorRegister wd, VectorRegister ws, VectorRegister wt);
   void FmsubD(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+
+  void Hadd_sH(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void Hadd_sW(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void Hadd_sD(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void Hadd_uH(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void Hadd_uW(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void Hadd_uD(VectorRegister wd, VectorRegister ws, VectorRegister wt);
 
   // Helper for replicating floating point value in all destination elements.
   void ReplicateFPToVectorRegister(VectorRegister dst, FpuRegister src, bool is_double);
