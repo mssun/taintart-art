@@ -51,6 +51,7 @@ CompilerOptions::CompilerOptions()
       compile_pic_(false),
       verbose_methods_(),
       abort_on_hard_verifier_failure_(false),
+      abort_on_soft_verifier_failure_(false),
       init_failure_output_(nullptr),
       dump_cfg_file_name_(""),
       dump_cfg_append_(false),
