@@ -284,7 +284,6 @@ def loadAndEmitOpcodes():
 
     # point MterpAsmInstructionStart at the first handler or stub
     asm_fp.write("\n    .global %s\n" % start_label)
-    asm_fp.write("    " + (function_type_format % start_label) + "\n");
     asm_fp.write("%s = " % start_label + label_prefix + "_op_nop\n")
     asm_fp.write("    .text\n\n")
 
@@ -310,7 +309,6 @@ def loadAndEmitOpcodes():
         asm_fp.write(label_prefix + "_op_nop:   /* dummy */\n");
 
     emitAlign()
-    asm_fp.write("    " + (function_size_format % (start_label, start_label)) + "\n")
     asm_fp.write("    .global %s\n" % end_label)
     asm_fp.write("%s:\n" % end_label)
 
@@ -319,12 +317,10 @@ def loadAndEmitOpcodes():
         end_sister_label = global_name_format % "artMterpAsmSisterEnd"
         emitSectionComment("Sister implementations", asm_fp)
         asm_fp.write("    .global %s\n" % start_sister_label)
-        asm_fp.write("    " + (function_type_format % start_sister_label) + "\n");
         asm_fp.write("    .text\n")
         asm_fp.write("    .balign 4\n")
         asm_fp.write("%s:\n" % start_sister_label)
         asm_fp.writelines(sister_list)
-        asm_fp.write("\n    " + (function_size_format % (start_sister_label, start_sister_label)) + "\n")
         asm_fp.write("    .global %s\n" % end_sister_label)
         asm_fp.write("%s:\n\n" % end_sister_label)
 
@@ -351,7 +347,6 @@ def loadAndEmitAltOpcodes():
 
     # point MterpAsmInstructionStart at the first handler or stub
     asm_fp.write("\n    .global %s\n" % start_label)
-    asm_fp.write("    " + (function_type_format % start_label) + "\n");
     asm_fp.write("    .text\n\n")
     asm_fp.write("%s = " % start_label + label_prefix + "_ALT_op_nop\n")
 
@@ -364,7 +359,6 @@ def loadAndEmitAltOpcodes():
         loadAndEmitAltStub(source, i)
 
     emitAlign()
-    asm_fp.write("    " + (function_size_format % (start_label, start_label)) + "\n")
     asm_fp.write("    .global %s\n" % end_label)
     asm_fp.write("%s:\n" % end_label)
 
