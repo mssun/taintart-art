@@ -42,6 +42,7 @@
 
 #include "base/bit_utils.h"
 #include "base/bit_utils_iterator.h"
+#include "base/casts.h"
 #include "bytecode_utils.h"
 #include "class_linker.h"
 #include "compiled_method.h"
@@ -59,6 +60,7 @@
 #include "parallel_move_resolver.h"
 #include "scoped_thread_state_change-inl.h"
 #include "ssa_liveness_analysis.h"
+#include "stack_map_stream.h"
 #include "thread-current-inl.h"
 #include "utils/assembler.h"
 
@@ -141,6 +143,158 @@ static bool CheckTypeConsistency(HInstruction* instruction) {
   return true;
 }
 
+class CodeGenerator::CodeGenerationData : public DeletableArenaObject<kArenaAllocCodeGenerator> {
+ public:
+  static std::unique_ptr<CodeGenerationData> Create(ArenaStack* arena_stack,
+                                                    InstructionSet instruction_set) {
+    ScopedArenaAllocator allocator(arena_stack);
+    void* memory = allocator.Alloc<CodeGenerationData>(kArenaAllocCodeGenerator);
+    return std::unique_ptr<CodeGenerationData>(
+        ::new (memory) CodeGenerationData(std::move(allocator), instruction_set));
+  }
+
+  ScopedArenaAllocator* GetScopedAllocator() {
+    return &allocator_;
+  }
+
+  void AddSlowPath(SlowPathCode* slow_path) {
+    slow_paths_.emplace_back(std::unique_ptr<SlowPathCode>(slow_path));
+  }
+
+  ArrayRef<const std::unique_ptr<SlowPathCode>> GetSlowPaths() const {
+    return ArrayRef<const std::unique_ptr<SlowPathCode>>(slow_paths_);
+  }
+
+  StackMapStream* GetStackMapStream() { return &stack_map_stream_; }
+
+  void ReserveJitStringRoot(StringReference string_reference, Handle<mirror::String> string) {
+    jit_string_roots_.Overwrite(string_reference,
+                                reinterpret_cast64<uint64_t>(string.GetReference()));
+  }
+
+  uint64_t GetJitStringRootIndex(StringReference string_reference) const {
+    return jit_string_roots_.Get(string_reference);
+  }
+
+  size_t GetNumberOfJitStringRoots() const {
+    return jit_string_roots_.size();
+  }
+
+  void ReserveJitClassRoot(TypeReference type_reference, Handle<mirror::Class> klass) {
+    jit_class_roots_.Overwrite(type_reference, reinterpret_cast64<uint64_t>(klass.GetReference()));
+  }
+
+  uint64_t GetJitClassRootIndex(TypeReference type_reference) const {
+    return jit_class_roots_.Get(type_reference);
+  }
+
+  size_t GetNumberOfJitClassRoots() const {
+    return jit_class_roots_.size();
+  }
+
+  size_t GetNumberOfJitRoots() const {
+    return GetNumberOfJitStringRoots() + GetNumberOfJitClassRoots();
+  }
+
+  void EmitJitRoots(Handle<mirror::ObjectArray<mirror::Object>> roots)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
+ private:
+  CodeGenerationData(ScopedArenaAllocator&& allocator, InstructionSet instruction_set)
+      : allocator_(std::move(allocator)),
+        stack_map_stream_(&allocator_, instruction_set),
+        slow_paths_(allocator_.Adapter(kArenaAllocCodeGenerator)),
+        jit_string_roots_(StringReferenceValueComparator(),
+                          allocator_.Adapter(kArenaAllocCodeGenerator)),
+        jit_class_roots_(TypeReferenceValueComparator(),
+                         allocator_.Adapter(kArenaAllocCodeGenerator)) {
+    slow_paths_.reserve(kDefaultSlowPathsCapacity);
+  }
+
+  static constexpr size_t kDefaultSlowPathsCapacity = 8;
+
+  ScopedArenaAllocator allocator_;
+  StackMapStream stack_map_stream_;
+  ScopedArenaVector<std::unique_ptr<SlowPathCode>> slow_paths_;
+
+  // Maps a StringReference (dex_file, string_index) to the index in the literal table.
+  // Entries are intially added with a pointer in the handle zone, and `EmitJitRoots`
+  // will compute all the indices.
+  ScopedArenaSafeMap<StringReference, uint64_t, StringReferenceValueComparator> jit_string_roots_;
+
+  // Maps a ClassReference (dex_file, type_index) to the index in the literal table.
+  // Entries are intially added with a pointer in the handle zone, and `EmitJitRoots`
+  // will compute all the indices.
+  ScopedArenaSafeMap<TypeReference, uint64_t, TypeReferenceValueComparator> jit_class_roots_;
+};
+
+void CodeGenerator::CodeGenerationData::EmitJitRoots(
+    Handle<mirror::ObjectArray<mirror::Object>> roots) {
+  DCHECK_EQ(static_cast<size_t>(roots->GetLength()), GetNumberOfJitRoots());
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  size_t index = 0;
+  for (auto& entry : jit_string_roots_) {
+    // Update the `roots` with the string, and replace the address temporarily
+    // stored to the index in the table.
+    uint64_t address = entry.second;
+    roots->Set(index, reinterpret_cast<StackReference<mirror::String>*>(address)->AsMirrorPtr());
+    DCHECK(roots->Get(index) != nullptr);
+    entry.second = index;
+    // Ensure the string is strongly interned. This is a requirement on how the JIT
+    // handles strings. b/32995596
+    class_linker->GetInternTable()->InternStrong(
+        reinterpret_cast<mirror::String*>(roots->Get(index)));
+    ++index;
+  }
+  for (auto& entry : jit_class_roots_) {
+    // Update the `roots` with the class, and replace the address temporarily
+    // stored to the index in the table.
+    uint64_t address = entry.second;
+    roots->Set(index, reinterpret_cast<StackReference<mirror::Class>*>(address)->AsMirrorPtr());
+    DCHECK(roots->Get(index) != nullptr);
+    entry.second = index;
+    ++index;
+  }
+}
+
+ScopedArenaAllocator* CodeGenerator::GetScopedAllocator() {
+  DCHECK(code_generation_data_ != nullptr);
+  return code_generation_data_->GetScopedAllocator();
+}
+
+StackMapStream* CodeGenerator::GetStackMapStream() {
+  DCHECK(code_generation_data_ != nullptr);
+  return code_generation_data_->GetStackMapStream();
+}
+
+void CodeGenerator::ReserveJitStringRoot(StringReference string_reference,
+                                         Handle<mirror::String> string) {
+  DCHECK(code_generation_data_ != nullptr);
+  code_generation_data_->ReserveJitStringRoot(string_reference, string);
+}
+
+uint64_t CodeGenerator::GetJitStringRootIndex(StringReference string_reference) {
+  DCHECK(code_generation_data_ != nullptr);
+  return code_generation_data_->GetJitStringRootIndex(string_reference);
+}
+
+void CodeGenerator::ReserveJitClassRoot(TypeReference type_reference, Handle<mirror::Class> klass) {
+  DCHECK(code_generation_data_ != nullptr);
+  code_generation_data_->ReserveJitClassRoot(type_reference, klass);
+}
+
+uint64_t CodeGenerator::GetJitClassRootIndex(TypeReference type_reference) {
+  DCHECK(code_generation_data_ != nullptr);
+  return code_generation_data_->GetJitClassRootIndex(type_reference);
+}
+
+void CodeGenerator::EmitJitRootPatches(uint8_t* code ATTRIBUTE_UNUSED,
+                                       const uint8_t* roots_data ATTRIBUTE_UNUSED) {
+  DCHECK(code_generation_data_ != nullptr);
+  DCHECK_EQ(code_generation_data_->GetNumberOfJitStringRoots(), 0u);
+  DCHECK_EQ(code_generation_data_->GetNumberOfJitClassRoots(), 0u);
+}
+
 size_t CodeGenerator::GetCacheOffset(uint32_t index) {
   return sizeof(GcRoot<mirror::Object>) * index;
 }
@@ -210,9 +364,10 @@ class DisassemblyScope {
 
 
 void CodeGenerator::GenerateSlowPaths() {
+  DCHECK(code_generation_data_ != nullptr);
   size_t code_start = 0;
-  for (const std::unique_ptr<SlowPathCode>& slow_path_unique_ptr : slow_paths_) {
-    SlowPathCode* slow_path = slow_path_unique_ptr.get();
+  for (const std::unique_ptr<SlowPathCode>& slow_path_ptr : code_generation_data_->GetSlowPaths()) {
+    SlowPathCode* slow_path = slow_path_ptr.get();
     current_slow_path_ = slow_path;
     if (disasm_info_ != nullptr) {
       code_start = GetAssembler()->CodeSize();
@@ -227,7 +382,14 @@ void CodeGenerator::GenerateSlowPaths() {
   current_slow_path_ = nullptr;
 }
 
+void CodeGenerator::InitializeCodeGenerationData() {
+  DCHECK(code_generation_data_ == nullptr);
+  code_generation_data_ = CodeGenerationData::Create(graph_->GetArenaStack(), GetInstructionSet());
+}
+
 void CodeGenerator::Compile(CodeAllocator* allocator) {
+  InitializeCodeGenerationData();
+
   // The register allocator already called `InitializeCodeGeneration`,
   // where the frame size has been computed.
   DCHECK(block_order_ != nullptr);
@@ -667,12 +829,54 @@ std::unique_ptr<CodeGenerator> CodeGenerator::Create(HGraph* graph,
   }
 }
 
+CodeGenerator::CodeGenerator(HGraph* graph,
+                             size_t number_of_core_registers,
+                             size_t number_of_fpu_registers,
+                             size_t number_of_register_pairs,
+                             uint32_t core_callee_save_mask,
+                             uint32_t fpu_callee_save_mask,
+                             const CompilerOptions& compiler_options,
+                             OptimizingCompilerStats* stats)
+    : frame_size_(0),
+      core_spill_mask_(0),
+      fpu_spill_mask_(0),
+      first_register_slot_in_slow_path_(0),
+      allocated_registers_(RegisterSet::Empty()),
+      blocked_core_registers_(graph->GetAllocator()->AllocArray<bool>(number_of_core_registers,
+                                                                      kArenaAllocCodeGenerator)),
+      blocked_fpu_registers_(graph->GetAllocator()->AllocArray<bool>(number_of_fpu_registers,
+                                                                     kArenaAllocCodeGenerator)),
+      number_of_core_registers_(number_of_core_registers),
+      number_of_fpu_registers_(number_of_fpu_registers),
+      number_of_register_pairs_(number_of_register_pairs),
+      core_callee_save_mask_(core_callee_save_mask),
+      fpu_callee_save_mask_(fpu_callee_save_mask),
+      block_order_(nullptr),
+      disasm_info_(nullptr),
+      stats_(stats),
+      graph_(graph),
+      compiler_options_(compiler_options),
+      current_slow_path_(nullptr),
+      current_block_index_(0),
+      is_leaf_(true),
+      requires_current_method_(false),
+      code_generation_data_() {
+}
+
+CodeGenerator::~CodeGenerator() {}
+
 void CodeGenerator::ComputeStackMapAndMethodInfoSize(size_t* stack_map_size,
                                                      size_t* method_info_size) {
   DCHECK(stack_map_size != nullptr);
   DCHECK(method_info_size != nullptr);
-  *stack_map_size = stack_map_stream_.PrepareForFillIn();
-  *method_info_size = stack_map_stream_.ComputeMethodInfoSize();
+  StackMapStream* stack_map_stream = GetStackMapStream();
+  *stack_map_size = stack_map_stream->PrepareForFillIn();
+  *method_info_size = stack_map_stream->ComputeMethodInfoSize();
+}
+
+size_t CodeGenerator::GetNumberOfJitRoots() const {
+  DCHECK(code_generation_data_ != nullptr);
+  return code_generation_data_->GetNumberOfJitRoots();
 }
 
 static void CheckCovers(uint32_t dex_pc,
@@ -740,8 +944,9 @@ static void CheckLoopEntriesCanBeUsedForOsr(const HGraph& graph,
 void CodeGenerator::BuildStackMaps(MemoryRegion stack_map_region,
                                    MemoryRegion method_info_region,
                                    const DexFile::CodeItem& code_item) {
-  stack_map_stream_.FillInCodeInfo(stack_map_region);
-  stack_map_stream_.FillInMethodInfo(method_info_region);
+  StackMapStream* stack_map_stream = GetStackMapStream();
+  stack_map_stream->FillInCodeInfo(stack_map_region);
+  stack_map_stream->FillInMethodInfo(method_info_region);
   if (kIsDebugBuild) {
     CheckLoopEntriesCanBeUsedForOsr(*graph_, CodeInfo(stack_map_region), code_item);
   }
@@ -791,11 +996,12 @@ void CodeGenerator::RecordPcInfo(HInstruction* instruction,
   // Collect PC infos for the mapping table.
   uint32_t native_pc = GetAssembler()->CodePosition();
 
+  StackMapStream* stack_map_stream = GetStackMapStream();
   if (instruction == nullptr) {
     // For stack overflow checks and native-debug-info entries without dex register
     // mapping (i.e. start of basic block or start of slow path).
-    stack_map_stream_.BeginStackMapEntry(outer_dex_pc, native_pc, 0, 0, 0, 0);
-    stack_map_stream_.EndStackMapEntry();
+    stack_map_stream->BeginStackMapEntry(outer_dex_pc, native_pc, 0, 0, 0, 0);
+    stack_map_stream->EndStackMapEntry();
     return;
   }
   LocationSummary* locations = instruction->GetLocations();
@@ -814,7 +1020,7 @@ void CodeGenerator::RecordPcInfo(HInstruction* instruction,
     // The register mask must be a subset of callee-save registers.
     DCHECK_EQ(register_mask & core_callee_save_mask_, register_mask);
   }
-  stack_map_stream_.BeginStackMapEntry(outer_dex_pc,
+  stack_map_stream->BeginStackMapEntry(outer_dex_pc,
                                        native_pc,
                                        register_mask,
                                        locations->GetStackMask(),
@@ -830,10 +1036,10 @@ void CodeGenerator::RecordPcInfo(HInstruction* instruction,
         instruction->IsInvoke() &&
         instruction->IsInvokeStaticOrDirect()) {
       HInvoke* const invoke = instruction->AsInvoke();
-      stack_map_stream_.AddInvoke(invoke->GetInvokeType(), invoke->GetDexMethodIndex());
+      stack_map_stream->AddInvoke(invoke->GetInvokeType(), invoke->GetDexMethodIndex());
     }
   }
-  stack_map_stream_.EndStackMapEntry();
+  stack_map_stream->EndStackMapEntry();
 
   HLoopInformation* info = instruction->GetBlock()->GetLoopInformation();
   if (instruction->IsSuspendCheck() &&
@@ -844,10 +1050,10 @@ void CodeGenerator::RecordPcInfo(HInstruction* instruction,
     // We duplicate the stack map as a marker that this stack map can be an OSR entry.
     // Duplicating it avoids having the runtime recognize and skip an OSR stack map.
     DCHECK(info->IsIrreducible());
-    stack_map_stream_.BeginStackMapEntry(
+    stack_map_stream->BeginStackMapEntry(
         dex_pc, native_pc, register_mask, locations->GetStackMask(), outer_environment_size, 0);
     EmitEnvironment(instruction->GetEnvironment(), slow_path);
-    stack_map_stream_.EndStackMapEntry();
+    stack_map_stream->EndStackMapEntry();
     if (kIsDebugBuild) {
       for (size_t i = 0, environment_size = environment->Size(); i < environment_size; ++i) {
         HInstruction* in_environment = environment->GetInstructionAt(i);
@@ -867,21 +1073,22 @@ void CodeGenerator::RecordPcInfo(HInstruction* instruction,
   } else if (kIsDebugBuild) {
     // Ensure stack maps are unique, by checking that the native pc in the stack map
     // last emitted is different than the native pc of the stack map just emitted.
-    size_t number_of_stack_maps = stack_map_stream_.GetNumberOfStackMaps();
+    size_t number_of_stack_maps = stack_map_stream->GetNumberOfStackMaps();
     if (number_of_stack_maps > 1) {
-      DCHECK_NE(stack_map_stream_.GetStackMap(number_of_stack_maps - 1).native_pc_code_offset,
-                stack_map_stream_.GetStackMap(number_of_stack_maps - 2).native_pc_code_offset);
+      DCHECK_NE(stack_map_stream->GetStackMap(number_of_stack_maps - 1).native_pc_code_offset,
+                stack_map_stream->GetStackMap(number_of_stack_maps - 2).native_pc_code_offset);
     }
   }
 }
 
 bool CodeGenerator::HasStackMapAtCurrentPc() {
   uint32_t pc = GetAssembler()->CodeSize();
-  size_t count = stack_map_stream_.GetNumberOfStackMaps();
+  StackMapStream* stack_map_stream = GetStackMapStream();
+  size_t count = stack_map_stream->GetNumberOfStackMaps();
   if (count == 0) {
     return false;
   }
-  CodeOffset native_pc_offset = stack_map_stream_.GetStackMap(count - 1).native_pc_code_offset;
+  CodeOffset native_pc_offset = stack_map_stream->GetStackMap(count - 1).native_pc_code_offset;
   return (native_pc_offset.Uint32Value(GetInstructionSet()) == pc);
 }
 
@@ -899,6 +1106,7 @@ void CodeGenerator::MaybeRecordNativeDebugInfo(HInstruction* instruction,
 
 void CodeGenerator::RecordCatchBlockInfo() {
   ArenaAllocator* allocator = graph_->GetAllocator();
+  StackMapStream* stack_map_stream = GetStackMapStream();
 
   for (HBasicBlock* block : *block_order_) {
     if (!block->IsCatchBlock()) {
@@ -915,7 +1123,7 @@ void CodeGenerator::RecordCatchBlockInfo() {
     ArenaBitVector* stack_mask =
         ArenaBitVector::Create(allocator, 0, /* expandable */ true, kArenaAllocCodeGenerator);
 
-    stack_map_stream_.BeginStackMapEntry(dex_pc,
+    stack_map_stream->BeginStackMapEntry(dex_pc,
                                          native_pc,
                                          register_mask,
                                          stack_mask,
@@ -933,19 +1141,19 @@ void CodeGenerator::RecordCatchBlockInfo() {
     }
 
       if (current_phi == nullptr || current_phi->AsPhi()->GetRegNumber() != vreg) {
-        stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kNone, 0);
+        stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kNone, 0);
       } else {
         Location location = current_phi->GetLocations()->Out();
         switch (location.GetKind()) {
           case Location::kStackSlot: {
-            stack_map_stream_.AddDexRegisterEntry(
+            stack_map_stream->AddDexRegisterEntry(
                 DexRegisterLocation::Kind::kInStack, location.GetStackIndex());
             break;
           }
           case Location::kDoubleStackSlot: {
-            stack_map_stream_.AddDexRegisterEntry(
+            stack_map_stream->AddDexRegisterEntry(
                 DexRegisterLocation::Kind::kInStack, location.GetStackIndex());
-            stack_map_stream_.AddDexRegisterEntry(
+            stack_map_stream->AddDexRegisterEntry(
                 DexRegisterLocation::Kind::kInStack, location.GetHighStackIndex(kVRegSize));
             ++vreg;
             DCHECK_LT(vreg, num_vregs);
@@ -960,17 +1168,23 @@ void CodeGenerator::RecordCatchBlockInfo() {
       }
     }
 
-    stack_map_stream_.EndStackMapEntry();
+    stack_map_stream->EndStackMapEntry();
   }
+}
+
+void CodeGenerator::AddSlowPath(SlowPathCode* slow_path) {
+  DCHECK(code_generation_data_ != nullptr);
+  code_generation_data_->AddSlowPath(slow_path);
 }
 
 void CodeGenerator::EmitEnvironment(HEnvironment* environment, SlowPathCode* slow_path) {
   if (environment == nullptr) return;
 
+  StackMapStream* stack_map_stream = GetStackMapStream();
   if (environment->GetParent() != nullptr) {
     // We emit the parent environment first.
     EmitEnvironment(environment->GetParent(), slow_path);
-    stack_map_stream_.BeginInlineInfoEntry(environment->GetMethod(),
+    stack_map_stream->BeginInlineInfoEntry(environment->GetMethod(),
                                            environment->GetDexPc(),
                                            environment->Size(),
                                            &graph_->GetDexFile());
@@ -980,7 +1194,7 @@ void CodeGenerator::EmitEnvironment(HEnvironment* environment, SlowPathCode* slo
   for (size_t i = 0, environment_size = environment->Size(); i < environment_size; ++i) {
     HInstruction* current = environment->GetInstructionAt(i);
     if (current == nullptr) {
-      stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kNone, 0);
+      stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kNone, 0);
       continue;
     }
 
@@ -990,43 +1204,43 @@ void CodeGenerator::EmitEnvironment(HEnvironment* environment, SlowPathCode* slo
         DCHECK_EQ(current, location.GetConstant());
         if (current->IsLongConstant()) {
           int64_t value = current->AsLongConstant()->GetValue();
-          stack_map_stream_.AddDexRegisterEntry(
+          stack_map_stream->AddDexRegisterEntry(
               DexRegisterLocation::Kind::kConstant, Low32Bits(value));
-          stack_map_stream_.AddDexRegisterEntry(
+          stack_map_stream->AddDexRegisterEntry(
               DexRegisterLocation::Kind::kConstant, High32Bits(value));
           ++i;
           DCHECK_LT(i, environment_size);
         } else if (current->IsDoubleConstant()) {
           int64_t value = bit_cast<int64_t, double>(current->AsDoubleConstant()->GetValue());
-          stack_map_stream_.AddDexRegisterEntry(
+          stack_map_stream->AddDexRegisterEntry(
               DexRegisterLocation::Kind::kConstant, Low32Bits(value));
-          stack_map_stream_.AddDexRegisterEntry(
+          stack_map_stream->AddDexRegisterEntry(
               DexRegisterLocation::Kind::kConstant, High32Bits(value));
           ++i;
           DCHECK_LT(i, environment_size);
         } else if (current->IsIntConstant()) {
           int32_t value = current->AsIntConstant()->GetValue();
-          stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kConstant, value);
+          stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kConstant, value);
         } else if (current->IsNullConstant()) {
-          stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kConstant, 0);
+          stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kConstant, 0);
         } else {
           DCHECK(current->IsFloatConstant()) << current->DebugName();
           int32_t value = bit_cast<int32_t, float>(current->AsFloatConstant()->GetValue());
-          stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kConstant, value);
+          stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kConstant, value);
         }
         break;
       }
 
       case Location::kStackSlot: {
-        stack_map_stream_.AddDexRegisterEntry(
+        stack_map_stream->AddDexRegisterEntry(
             DexRegisterLocation::Kind::kInStack, location.GetStackIndex());
         break;
       }
 
       case Location::kDoubleStackSlot: {
-        stack_map_stream_.AddDexRegisterEntry(
+        stack_map_stream->AddDexRegisterEntry(
             DexRegisterLocation::Kind::kInStack, location.GetStackIndex());
-        stack_map_stream_.AddDexRegisterEntry(
+        stack_map_stream->AddDexRegisterEntry(
             DexRegisterLocation::Kind::kInStack, location.GetHighStackIndex(kVRegSize));
         ++i;
         DCHECK_LT(i, environment_size);
@@ -1037,17 +1251,17 @@ void CodeGenerator::EmitEnvironment(HEnvironment* environment, SlowPathCode* slo
         int id = location.reg();
         if (slow_path != nullptr && slow_path->IsCoreRegisterSaved(id)) {
           uint32_t offset = slow_path->GetStackOffsetOfCoreRegister(id);
-          stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInStack, offset);
+          stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kInStack, offset);
           if (current->GetType() == DataType::Type::kInt64) {
-            stack_map_stream_.AddDexRegisterEntry(
+            stack_map_stream->AddDexRegisterEntry(
                 DexRegisterLocation::Kind::kInStack, offset + kVRegSize);
             ++i;
             DCHECK_LT(i, environment_size);
           }
         } else {
-          stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInRegister, id);
+          stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kInRegister, id);
           if (current->GetType() == DataType::Type::kInt64) {
-            stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInRegisterHigh, id);
+            stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kInRegisterHigh, id);
             ++i;
             DCHECK_LT(i, environment_size);
           }
@@ -1059,17 +1273,17 @@ void CodeGenerator::EmitEnvironment(HEnvironment* environment, SlowPathCode* slo
         int id = location.reg();
         if (slow_path != nullptr && slow_path->IsFpuRegisterSaved(id)) {
           uint32_t offset = slow_path->GetStackOffsetOfFpuRegister(id);
-          stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInStack, offset);
+          stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kInStack, offset);
           if (current->GetType() == DataType::Type::kFloat64) {
-            stack_map_stream_.AddDexRegisterEntry(
+            stack_map_stream->AddDexRegisterEntry(
                 DexRegisterLocation::Kind::kInStack, offset + kVRegSize);
             ++i;
             DCHECK_LT(i, environment_size);
           }
         } else {
-          stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInFpuRegister, id);
+          stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kInFpuRegister, id);
           if (current->GetType() == DataType::Type::kFloat64) {
-            stack_map_stream_.AddDexRegisterEntry(
+            stack_map_stream->AddDexRegisterEntry(
                 DexRegisterLocation::Kind::kInFpuRegisterHigh, id);
             ++i;
             DCHECK_LT(i, environment_size);
@@ -1083,16 +1297,16 @@ void CodeGenerator::EmitEnvironment(HEnvironment* environment, SlowPathCode* slo
         int high = location.high();
         if (slow_path != nullptr && slow_path->IsFpuRegisterSaved(low)) {
           uint32_t offset = slow_path->GetStackOffsetOfFpuRegister(low);
-          stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInStack, offset);
+          stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kInStack, offset);
         } else {
-          stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInFpuRegister, low);
+          stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kInFpuRegister, low);
         }
         if (slow_path != nullptr && slow_path->IsFpuRegisterSaved(high)) {
           uint32_t offset = slow_path->GetStackOffsetOfFpuRegister(high);
-          stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInStack, offset);
+          stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kInStack, offset);
           ++i;
         } else {
-          stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInFpuRegister, high);
+          stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kInFpuRegister, high);
           ++i;
         }
         DCHECK_LT(i, environment_size);
@@ -1104,15 +1318,15 @@ void CodeGenerator::EmitEnvironment(HEnvironment* environment, SlowPathCode* slo
         int high = location.high();
         if (slow_path != nullptr && slow_path->IsCoreRegisterSaved(low)) {
           uint32_t offset = slow_path->GetStackOffsetOfCoreRegister(low);
-          stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInStack, offset);
+          stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kInStack, offset);
         } else {
-          stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInRegister, low);
+          stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kInRegister, low);
         }
         if (slow_path != nullptr && slow_path->IsCoreRegisterSaved(high)) {
           uint32_t offset = slow_path->GetStackOffsetOfCoreRegister(high);
-          stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInStack, offset);
+          stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kInStack, offset);
         } else {
-          stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kInRegister, high);
+          stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kInRegister, high);
         }
         ++i;
         DCHECK_LT(i, environment_size);
@@ -1120,7 +1334,7 @@ void CodeGenerator::EmitEnvironment(HEnvironment* environment, SlowPathCode* slo
       }
 
       case Location::kInvalid: {
-        stack_map_stream_.AddDexRegisterEntry(DexRegisterLocation::Kind::kNone, 0);
+        stack_map_stream->AddDexRegisterEntry(DexRegisterLocation::Kind::kNone, 0);
         break;
       }
 
@@ -1130,7 +1344,7 @@ void CodeGenerator::EmitEnvironment(HEnvironment* environment, SlowPathCode* slo
   }
 
   if (environment->GetParent() != nullptr) {
-    stack_map_stream_.EndInlineInfoEntry();
+    stack_map_stream->EndInlineInfoEntry();
   }
 }
 
@@ -1408,31 +1622,7 @@ void CodeGenerator::CreateSystemArrayCopyLocationSummary(HInvoke* invoke) {
 void CodeGenerator::EmitJitRoots(uint8_t* code,
                                  Handle<mirror::ObjectArray<mirror::Object>> roots,
                                  const uint8_t* roots_data) {
-  DCHECK_EQ(static_cast<size_t>(roots->GetLength()), GetNumberOfJitRoots());
-  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  size_t index = 0;
-  for (auto& entry : jit_string_roots_) {
-    // Update the `roots` with the string, and replace the address temporarily
-    // stored to the index in the table.
-    uint64_t address = entry.second;
-    roots->Set(index, reinterpret_cast<StackReference<mirror::String>*>(address)->AsMirrorPtr());
-    DCHECK(roots->Get(index) != nullptr);
-    entry.second = index;
-    // Ensure the string is strongly interned. This is a requirement on how the JIT
-    // handles strings. b/32995596
-    class_linker->GetInternTable()->InternStrong(
-        reinterpret_cast<mirror::String*>(roots->Get(index)));
-    ++index;
-  }
-  for (auto& entry : jit_class_roots_) {
-    // Update the `roots` with the class, and replace the address temporarily
-    // stored to the index in the table.
-    uint64_t address = entry.second;
-    roots->Set(index, reinterpret_cast<StackReference<mirror::Class>*>(address)->AsMirrorPtr());
-    DCHECK(roots->Get(index) != nullptr);
-    entry.second = index;
-    ++index;
-  }
+  code_generation_data_->EmitJitRoots(roots);
   EmitJitRootPatches(code, roots_data);
 }
 
