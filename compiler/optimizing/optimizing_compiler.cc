@@ -1142,6 +1142,7 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
       method = Emit(&allocator, &code_allocator, codegen.get(), compiler_driver, code_item);
 
       if (kArenaAllocatorCountAllocations) {
+        codegen.reset();  // Release codegen's ScopedArenaAllocator for memory accounting.
         size_t total_allocated = allocator.BytesAllocated() + arena_stack.PeakBytesAllocated();
         if (total_allocated > kArenaAllocatorMemoryReportThreshold) {
           MemStats mem_stats(allocator.GetMemStats());
@@ -1251,18 +1252,6 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     if (codegen.get() == nullptr) {
       return false;
     }
-
-    if (kArenaAllocatorCountAllocations) {
-      size_t total_allocated = allocator.BytesAllocated() + arena_stack.PeakBytesAllocated();
-      if (total_allocated > kArenaAllocatorMemoryReportThreshold) {
-        MemStats mem_stats(allocator.GetMemStats());
-        MemStats peak_stats(arena_stack.GetPeakStats());
-        LOG(INFO) << "Used " << total_allocated << " bytes of arena memory for compiling "
-                  << dex_file->PrettyMethod(method_idx)
-                  << "\n" << Dumpable<MemStats>(mem_stats)
-                  << "\n" << Dumpable<MemStats>(peak_stats);
-      }
-    }
   }
 
   size_t stack_map_size = 0;
@@ -1355,6 +1344,19 @@ bool OptimizingCompiler::JitCompile(Thread* self,
   Runtime::Current()->GetJit()->AddMemoryUsage(method, allocator.BytesUsed());
   if (jit_logger != nullptr) {
     jit_logger->WriteLog(code, code_allocator.GetSize(), method);
+  }
+
+  if (kArenaAllocatorCountAllocations) {
+    codegen.reset();  // Release codegen's ScopedArenaAllocator for memory accounting.
+    size_t total_allocated = allocator.BytesAllocated() + arena_stack.PeakBytesAllocated();
+    if (total_allocated > kArenaAllocatorMemoryReportThreshold) {
+      MemStats mem_stats(allocator.GetMemStats());
+      MemStats peak_stats(arena_stack.GetPeakStats());
+      LOG(INFO) << "Used " << total_allocated << " bytes of arena memory for compiling "
+                << dex_file->PrettyMethod(method_idx)
+                << "\n" << Dumpable<MemStats>(mem_stats)
+                << "\n" << Dumpable<MemStats>(peak_stats);
+    }
   }
 
   return true;

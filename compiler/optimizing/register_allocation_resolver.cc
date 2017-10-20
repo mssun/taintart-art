@@ -16,6 +16,7 @@
 
 #include "register_allocation_resolver.h"
 
+#include "base/bit_vector-inl.h"
 #include "code_generator.h"
 #include "linear_order.h"
 #include "ssa_liveness_analysis.h"

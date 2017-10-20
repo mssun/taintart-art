@@ -94,11 +94,19 @@ class DebugStackReferenceImpl {
   DebugStackReferenceImpl(const DebugStackReferenceImpl& other)
     : counter_(other.counter_), ref_count_(counter_->IncrementRefCount()) {
   }
+  DebugStackReferenceImpl(DebugStackReferenceImpl&& other)
+    : counter_(other.counter_), ref_count_(other.ref_count_) {
+    other.counter_ = nullptr;
+  }
   DebugStackReferenceImpl& operator=(const DebugStackReferenceImpl& other) {
     CHECK(counter_ == other.counter_);
     return *this;
   }
-  ~DebugStackReferenceImpl() { counter_->DecrementRefCount(); }
+  ~DebugStackReferenceImpl() {
+    if (counter_ != nullptr) {
+      counter_->DecrementRefCount();
+    }
+  }
   void CheckTop() { CHECK_EQ(counter_->GetRefCount(), ref_count_); }
 
  private:
