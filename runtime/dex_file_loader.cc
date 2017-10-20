@@ -464,8 +464,8 @@ std::unique_ptr<DexFile> DexFileLoader::OpenCommon(const uint8_t* base,
   std::unique_ptr<DexFile> dex_file;
   if (StandardDexFile::IsMagicValid(base)) {
     dex_file.reset(new StandardDexFile(base, size, location, location_checksum, oat_dex_file));
-  } else {
-    return nullptr;
+  } else if (CompactDexFile::IsMagicValid(base)) {
+    dex_file.reset(new CompactDexFile(base, size, location, location_checksum, oat_dex_file));
   }
   if (dex_file == nullptr) {
     *error_msg = StringPrintf("Failed to open dex file '%s' from memory: %s", location.c_str(),

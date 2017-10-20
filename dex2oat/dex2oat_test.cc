@@ -1395,6 +1395,41 @@ TEST_F(Dex2oatTest, LayoutSections) {
   }
 }
 
+// Test that generating compact dex works.
+TEST_F(Dex2oatTest, GenerateCompactDex) {
+  std::unique_ptr<const DexFile> dex(OpenTestDexFile("ManyMethods"));
+  // Generate a compact dex based odex.
+  const std::string dir = GetScratchDir();
+  const std::string oat_filename = dir + "/base.oat";
+  const std::string vdex_filename = dir + "/base.vdex";
+  std::string error_msg;
+  const int res = GenerateOdexForTestWithStatus(
+      {dex->GetLocation()},
+      oat_filename,
+      CompilerFilter::Filter::kQuicken,
+      &error_msg,
+      {"--compact-dex-level=fast"});
+  EXPECT_EQ(res, 0);
+  // Open our generated oat file.
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(oat_filename.c_str(),
+                                                   oat_filename.c_str(),
+                                                   nullptr,
+                                                   nullptr,
+                                                   false,
+                                                   /*low_4gb*/false,
+                                                   dex->GetLocation().c_str(),
+                                                   &error_msg));
+  ASSERT_TRUE(odex_file != nullptr);
+  std::vector<const OatDexFile*> oat_dex_files = odex_file->GetOatDexFiles();
+  ASSERT_EQ(oat_dex_files.size(), 1u);
+  // Check that each dex is a compact dex.
+  for (const OatDexFile* oat_dex : oat_dex_files) {
+    std::unique_ptr<const DexFile> dex_file(oat_dex->OpenDexFile(&error_msg));
+    ASSERT_TRUE(dex_file != nullptr) << error_msg;
+    ASSERT_TRUE(dex_file->IsCompactDexFile());
+  }
+}
+
 class Dex2oatVerifierAbort : public Dex2oatTest {};
 
 TEST_F(Dex2oatVerifierAbort, HardFail) {

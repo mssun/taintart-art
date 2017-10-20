@@ -40,6 +40,10 @@ class StandardDexFile : public DexFile {
   static bool IsVersionValid(const uint8_t* magic);
   virtual bool IsVersionValid() const OVERRIDE;
 
+  bool IsStandardDexFile() const OVERRIDE {
+    return true;
+  }
+
  private:
   StandardDexFile(const uint8_t* base,
                   size_t size,

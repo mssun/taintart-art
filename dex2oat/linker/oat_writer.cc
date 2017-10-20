@@ -330,7 +330,10 @@ class OatWriter::OatDexFile {
   DCHECK_EQ(static_cast<off_t>(file_offset + offset_), out->Seek(0, kSeekCurrent)) \
     << "file_offset=" << file_offset << " offset_=" << offset_
 
-OatWriter::OatWriter(bool compiling_boot_image, TimingLogger* timings, ProfileCompilationInfo* info)
+OatWriter::OatWriter(bool compiling_boot_image,
+                     TimingLogger* timings,
+                     ProfileCompilationInfo* info,
+                     CompactDexLevel compact_dex_level)
   : write_state_(WriteState::kAddingDexFileSources),
     timings_(timings),
     raw_dex_files_(),
@@ -404,7 +407,8 @@ OatWriter::OatWriter(bool compiling_boot_image, TimingLogger* timings, ProfileCo
     size_method_bss_mappings_(0u),
     relative_patcher_(nullptr),
     absolute_patch_locations_(),
-    profile_compilation_info_(info) {
+    profile_compilation_info_(info),
+    compact_dex_level_(compact_dex_level) {
 }
 
 bool OatWriter::AddDexFileSource(const char* filename,
@@ -3160,7 +3164,8 @@ bool OatWriter::WriteDexFile(OutputStream* out,
   if (!SeekToDexFile(out, file, oat_dex_file)) {
     return false;
   }
-  if (profile_compilation_info_ != nullptr) {
+  if (profile_compilation_info_ != nullptr ||
+          compact_dex_level_ != CompactDexLevel::kCompactDexLevelNone) {
     CHECK(!update_input_vdex) << "We should never update the input vdex when doing dexlayout";
     if (!LayoutAndWriteDexFile(out, oat_dex_file)) {
       return false;
@@ -3286,6 +3291,7 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
   }
   Options options;
   options.output_to_memmap_ = true;
+  options.compact_dex_level_ = compact_dex_level_;
   DexLayout dex_layout(options, profile_compilation_info_, nullptr);
   dex_layout.ProcessDexFile(location.c_str(), dex_file.get(), 0);
   std::unique_ptr<MemMap> mem_map(dex_layout.GetAndReleaseMemMap());
