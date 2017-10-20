@@ -453,7 +453,7 @@ void Monitor::Lock(Thread* self) {
             // Acquire thread-list lock to find thread and keep it from dying until we've got all
             // the info we need.
             {
-              MutexLock mu2(Thread::Current(), *Locks::thread_list_lock_);
+              Locks::thread_list_lock_->ExclusiveLock(Thread::Current());
 
               // Re-find the owner in case the thread got killed.
               Thread* original_owner = Runtime::Current()->GetThreadList()->FindThreadByThreadId(
@@ -475,9 +475,15 @@ void Monitor::Lock(Thread* self) {
                     std::ostringstream oss;
                   };
                   CollectStackTrace owner_trace;
+                  // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its
+                  // execution.
                   original_owner->RequestSynchronousCheckpoint(&owner_trace);
                   owner_stack_dump = owner_trace.oss.str();
+                } else {
+                  Locks::thread_list_lock_->ExclusiveUnlock(Thread::Current());
                 }
+              } else {
+                Locks::thread_list_lock_->ExclusiveUnlock(Thread::Current());
               }
               // This is all the data we need. Now drop the thread-list lock, it's OK for the
               // owner to go away now.
