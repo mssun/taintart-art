@@ -662,10 +662,10 @@ class CodeGeneratorMIPS : public CodeGenerator {
                        const JitPatchInfo& info,
                        uint64_t index_in_table) const;
   JitPatchInfo* NewJitRootStringPatch(const DexFile& dex_file,
-                                      dex::StringIndex dex_index,
+                                      dex::StringIndex string_index,
                                       Handle<mirror::String> handle);
   JitPatchInfo* NewJitRootClassPatch(const DexFile& dex_file,
-                                     dex::TypeIndex dex_index,
+                                     dex::TypeIndex type_index,
                                      Handle<mirror::Class> handle);
 
  private:

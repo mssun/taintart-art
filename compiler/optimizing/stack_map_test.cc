@@ -47,7 +47,8 @@ using Kind = DexRegisterLocation::Kind;
 
 TEST(StackMapTest, Test1) {
   ArenaPool pool;
-  ArenaAllocator allocator(&pool);
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
 
   ArenaBitVector sp_mask(&allocator, 0, false);
@@ -128,7 +129,8 @@ TEST(StackMapTest, Test1) {
 
 TEST(StackMapTest, Test2) {
   ArenaPool pool;
-  ArenaAllocator allocator(&pool);
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
   ArtMethod art_method;
 
@@ -412,7 +414,8 @@ TEST(StackMapTest, Test2) {
 
 TEST(StackMapTest, TestDeduplicateInlineInfoDexRegisterMap) {
   ArenaPool pool;
-  ArenaAllocator allocator(&pool);
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
   ArtMethod art_method;
 
@@ -506,7 +509,8 @@ TEST(StackMapTest, TestDeduplicateInlineInfoDexRegisterMap) {
 
 TEST(StackMapTest, TestNonLiveDexRegisters) {
   ArenaPool pool;
-  ArenaAllocator allocator(&pool);
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
 
   ArenaBitVector sp_mask(&allocator, 0, false);
@@ -585,7 +589,8 @@ TEST(StackMapTest, TestNonLiveDexRegisters) {
 // not treat it as kNoDexRegisterMap.
 TEST(StackMapTest, DexRegisterMapOffsetOverflow) {
   ArenaPool pool;
-  ArenaAllocator allocator(&pool);
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
 
   ArenaBitVector sp_mask(&allocator, 0, false);
@@ -648,7 +653,8 @@ TEST(StackMapTest, DexRegisterMapOffsetOverflow) {
 
 TEST(StackMapTest, TestShareDexRegisterMap) {
   ArenaPool pool;
-  ArenaAllocator allocator(&pool);
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
 
   ArenaBitVector sp_mask(&allocator, 0, false);
@@ -706,7 +712,8 @@ TEST(StackMapTest, TestShareDexRegisterMap) {
 
 TEST(StackMapTest, TestNoDexRegisterMap) {
   ArenaPool pool;
-  ArenaAllocator allocator(&pool);
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
 
   ArenaBitVector sp_mask(&allocator, 0, false);
@@ -755,7 +762,8 @@ TEST(StackMapTest, TestNoDexRegisterMap) {
 
 TEST(StackMapTest, InlineTest) {
   ArenaPool pool;
-  ArenaAllocator allocator(&pool);
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
   ArtMethod art_method;
 
@@ -936,7 +944,8 @@ TEST(StackMapTest, CodeOffsetTest) {
 
 TEST(StackMapTest, TestDeduplicateStackMask) {
   ArenaPool pool;
-  ArenaAllocator allocator(&pool);
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
 
   ArenaBitVector sp_mask(&allocator, 0, true);
@@ -964,7 +973,8 @@ TEST(StackMapTest, TestDeduplicateStackMask) {
 
 TEST(StackMapTest, TestInvokeInfo) {
   ArenaPool pool;
-  ArenaAllocator allocator(&pool);
+  ArenaStack arena_stack(&pool);
+  ScopedArenaAllocator allocator(&arena_stack);
   StackMapStream stream(&allocator, kRuntimeISA);
 
   ArenaBitVector sp_mask(&allocator, 0, true);

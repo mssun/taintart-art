@@ -43,9 +43,12 @@ void StackMapStream::BeginStackMapEntry(uint32_t dex_pc,
   current_entry_.dex_method_index = dex::kDexNoIndex;
   current_entry_.dex_register_entry.num_dex_registers = num_dex_registers;
   current_entry_.dex_register_entry.locations_start_index = dex_register_locations_.size();
-  current_entry_.dex_register_entry.live_dex_registers_mask = (num_dex_registers != 0)
-      ? ArenaBitVector::Create(allocator_, num_dex_registers, true, kArenaAllocStackMapStream)
-      : nullptr;
+  current_entry_.dex_register_entry.live_dex_registers_mask = nullptr;
+  if (num_dex_registers != 0u) {
+    current_entry_.dex_register_entry.live_dex_registers_mask =
+        ArenaBitVector::Create(allocator_, num_dex_registers, true, kArenaAllocStackMapStream);
+    current_entry_.dex_register_entry.live_dex_registers_mask->ClearAllBits();
+  }
   if (sp_mask != nullptr) {
     stack_mask_max_ = std::max(stack_mask_max_, sp_mask->GetHighestBitSet());
   }
@@ -121,9 +124,12 @@ void StackMapStream::BeginInlineInfoEntry(ArtMethod* method,
   current_inline_info_.dex_pc = dex_pc;
   current_inline_info_.dex_register_entry.num_dex_registers = num_dex_registers;
   current_inline_info_.dex_register_entry.locations_start_index = dex_register_locations_.size();
-  current_inline_info_.dex_register_entry.live_dex_registers_mask = (num_dex_registers != 0)
-      ? ArenaBitVector::Create(allocator_, num_dex_registers, true, kArenaAllocStackMapStream)
-      : nullptr;
+  current_inline_info_.dex_register_entry.live_dex_registers_mask = nullptr;
+  if (num_dex_registers != 0) {
+    current_inline_info_.dex_register_entry.live_dex_registers_mask =
+        ArenaBitVector::Create(allocator_, num_dex_registers, true, kArenaAllocStackMapStream);
+    current_inline_info_.dex_register_entry.live_dex_registers_mask->ClearAllBits();
+  }
   current_dex_register_ = 0;
 }
 
@@ -468,7 +474,7 @@ size_t StackMapStream::AddDexRegisterMapEntry(const DexRegisterMapEntry& entry) 
   if (entries_it == dex_map_hash_to_stack_map_indices_.end()) {
     // We don't have a perfect hash functions so we need a list to collect all stack maps
     // which might have the same dex register map.
-    ArenaVector<uint32_t> stack_map_indices(allocator_->Adapter(kArenaAllocStackMapStream));
+    ScopedArenaVector<uint32_t> stack_map_indices(allocator_->Adapter(kArenaAllocStackMapStream));
     stack_map_indices.push_back(current_entry_index);
     dex_map_hash_to_stack_map_indices_.Put(entry.hash, std::move(stack_map_indices));
   } else {
@@ -546,7 +552,7 @@ void StackMapStream::CheckDexRegisterMap(const CodeInfo& code_info,
 
 size_t StackMapStream::PrepareRegisterMasks() {
   register_masks_.resize(stack_maps_.size(), 0u);
-  ArenaUnorderedMap<uint32_t, size_t> dedupe(allocator_->Adapter(kArenaAllocStackMapStream));
+  ScopedArenaUnorderedMap<uint32_t, size_t> dedupe(allocator_->Adapter(kArenaAllocStackMapStream));
   for (StackMapEntry& stack_map : stack_maps_) {
     const size_t index = dedupe.size();
     stack_map.register_mask_index = dedupe.emplace(stack_map.register_mask, index).first->second;
@@ -558,7 +564,7 @@ size_t StackMapStream::PrepareRegisterMasks() {
 void StackMapStream::PrepareMethodIndices() {
   CHECK(method_indices_.empty());
   method_indices_.resize(stack_maps_.size() + inline_infos_.size());
-  ArenaUnorderedMap<uint32_t, size_t> dedupe(allocator_->Adapter(kArenaAllocStackMapStream));
+  ScopedArenaUnorderedMap<uint32_t, size_t> dedupe(allocator_->Adapter(kArenaAllocStackMapStream));
   for (StackMapEntry& stack_map : stack_maps_) {
     const size_t index = dedupe.size();
     const uint32_t method_index = stack_map.dex_method_index;
@@ -584,11 +590,11 @@ size_t StackMapStream::PrepareStackMasks(size_t entry_size_in_bits) {
   stack_masks_.resize(byte_entry_size * stack_maps_.size(), 0u);
   // For deduplicating we store the stack masks as byte packed for simplicity. We can bit pack later
   // when copying out from stack_masks_.
-  ArenaUnorderedMap<MemoryRegion,
-                    size_t,
-                    FNVHash<MemoryRegion>,
-                    MemoryRegion::ContentEquals> dedup(
-                        stack_maps_.size(), allocator_->Adapter(kArenaAllocStackMapStream));
+  ScopedArenaUnorderedMap<MemoryRegion,
+                          size_t,
+                          FNVHash<MemoryRegion>,
+                          MemoryRegion::ContentEquals> dedup(
+                              stack_maps_.size(), allocator_->Adapter(kArenaAllocStackMapStream));
   for (StackMapEntry& stack_map : stack_maps_) {
     size_t index = dedup.size();
     MemoryRegion stack_mask(stack_masks_.data() + index * byte_entry_size, byte_entry_size);
