@@ -24,7 +24,7 @@
 /*
  * On entry:
  *  0  Thread* self
- *  1  code_item
+ *  1  insns_
  *  2  ShadowFrame
  *  3  JValue* result_register
  *
@@ -61,6 +61,7 @@ SYMBOL(ExecuteMterpImpl):
     leal    (rFP, %eax, 4), rREFS
     movl    SHADOWFRAME_DEX_PC_OFFSET(%edx), %eax
     lea     (%ecx, %eax, 2), rPC
+    .cfi_register DPC_PSEUDO_REG, rPC
     EXPORT_PC
 
     /* Set up for backwards branches & osr profiling */

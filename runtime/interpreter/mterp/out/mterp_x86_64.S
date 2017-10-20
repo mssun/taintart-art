@@ -91,6 +91,7 @@ unspecified registers or condition codes.
  * to expand the macros into assembler assignment statements.
  */
 #include "asm_support.h"
+#include "interpreter/mterp/cfi_asm_support.h"
 
 /*
  * Handle mac compiler specific
@@ -328,7 +329,7 @@ unspecified registers or condition codes.
 /*
  * On entry:
  *  0  Thread* self
- *  1  code_item
+ *  1  insns_
  *  2  ShadowFrame
  *  3  JValue* result_register
  *
@@ -362,6 +363,7 @@ SYMBOL(ExecuteMterpImpl):
     leaq    (rFP, %rax, 4), rREFS
     movl    SHADOWFRAME_DEX_PC_OFFSET(IN_ARG2), %eax
     leaq    (IN_ARG1, %rax, 2), rPC
+    .cfi_register DPC_PSEUDO_REG, rPC
     EXPORT_PC
 
     /* Starting ibase */
