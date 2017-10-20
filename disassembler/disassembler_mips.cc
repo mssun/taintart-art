@@ -479,15 +479,23 @@ static const MipsInstruction gMipsInstructions[] = {
   { kMsaMask | (0x7 << 23), kMsa | (0x2 << 23) | 0x9, "srli", "kmW" },
   { kMsaMask | (0x3ff << 16), kMsa | (0xbe << 16) | 0x19, "move.v", "km" },
   { kMsaMask | (0xf << 22), kMsa | (0x1 << 22) | 0x19, "splati", "kX" },
+  { kMsaMask | (0xf << 22), kMsa | (0x2 << 22) | 0x19, "copy_s", "yX" },
+  { kMsaMask | (0xf << 22), kMsa | (0x3 << 22) | 0x19, "copy_u", "yX" },
+  { kMsaMask | (0xf << 22), kMsa | (0x4 << 22) | 0x19, "insert", "YD" },
   { kMsaMask | (0xff << 18), kMsa | (0xc0 << 18) | 0x1e, "fill", "vkD" },
   { kMsaMask | (0x7 << 23), kMsa | (0x6 << 23) | 0x7, "ldi", "kx" },
   { kMsaSpecialMask | (0xf << 2), kMsa | (0x8 << 2), "ld", "kw" },
   { kMsaSpecialMask | (0xf << 2), kMsa | (0x9 << 2), "st", "kw" },
+  { kMsaMask | (0x7 << 23), kMsa | (0x4 << 23) | 0x14, "ilvl", "Vkmn" },
   { kMsaMask | (0x7 << 23), kMsa | (0x5 << 23) | 0x14, "ilvr", "Vkmn" },
+  { kMsaMask | (0x7 << 23), kMsa | (0x6 << 23) | 0x14, "ilvev", "Vkmn" },
+  { kMsaMask | (0x7 << 23), kMsa | (0x7 << 23) | 0x14, "ilvod", "Vkmn" },
   { kMsaMask | (0x7 << 23), kMsa | (0x1 << 23) | 0x12, "maddv", "Vkmn" },
   { kMsaMask | (0x7 << 23), kMsa | (0x2 << 23) | 0x12, "msubv", "Vkmn" },
   { kMsaMask | (0xf << 22), kMsa | (0x4 << 22) | 0x1b, "fmadd", "Ukmn" },
   { kMsaMask | (0xf << 22), kMsa | (0x5 << 22) | 0x1b, "fmsub", "Ukmn" },
+  { kMsaMask | (0x7 << 23), kMsa | (0x4 << 23) | 0x15, "hadd_s", "Vkmn" },
+  { kMsaMask | (0x7 << 23), kMsa | (0x5 << 23) | 0x15, "hadd_u", "Vkmn" },
 };
 
 static uint32_t ReadU32(const uint8_t* ptr) {
@@ -760,6 +768,31 @@ size_t DisassemblerMips::Dump(std::ostream& os, const uint8_t* instr_ptr) {
               args << i10;
               break;
             }
+          case 'Y':  // MSA df/n - wd[x].
+            {
+              int32_t df_n = (instruction >> 16) & 0x3f;
+              if ((df_n & (0x3 << 4)) == 0) {
+                opcode += ".b";
+                args << 'w' << sa << '[' << (df_n & 0xf) << ']';
+                break;
+              }
+              if ((df_n & (0x3 << 3)) == 0) {
+                opcode += ".h";
+                args << 'w' << sa << '[' << (df_n & 0x7) << ']';
+                break;
+              }
+              if ((df_n & (0x3 << 2)) == 0) {
+                opcode += ".w";
+                args << 'w' << sa << '[' << (df_n & 0x3) << ']';
+                break;
+              }
+              if ((df_n & (0x3 << 1)) == 0) {
+                opcode += ".d";
+                args << 'w' << sa << '[' << (df_n & 0x1) << ']';
+              }
+              break;
+            }
+          case 'y': args << RegName(sa); break;
         }
         if (*(args_fmt + 1)) {
           args << ", ";
