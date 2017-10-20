@@ -448,6 +448,9 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("  --dirty-image-objects=<directory-path>: list of known dirty objects in the image.");
   UsageError("      The image writer will group them together.");
   UsageError("");
+  UsageError("  --compact-dex-level=none|fast: None avoids generating compact dex, fast");
+  UsageError("      generates compact dex with fast optimiations.");
+  UsageError("");
   std::cerr << "See log for usage error information\n";
   exit(EXIT_FAILURE);
 }
@@ -1163,6 +1166,7 @@ class Dex2Oat FINAL {
 
     std::unique_ptr<ParserOptions> parser_options(new ParserOptions());
 
+    AssignIfExists(args, M::CompactDexLevel, &compact_dex_level_);
     AssignIfExists(args, M::DexFiles, &dex_filenames_);
     AssignIfExists(args, M::DexLocations, &dex_locations_);
     AssignIfExists(args, M::OatFiles, &oat_filenames_);
@@ -2226,8 +2230,12 @@ class Dex2Oat FINAL {
     return UseProfile();
   }
 
+  bool DoGenerateCompactDex() const {
+    return compact_dex_level_ != CompactDexLevel::kCompactDexLevelNone;
+  }
+
   bool DoDexLayoutOptimizations() const {
-    return DoProfileGuidedOptimizations();
+    return DoProfileGuidedOptimizations() || DoGenerateCompactDex();
   }
 
   bool DoOatLayoutOptimizations() const {
@@ -2814,6 +2822,7 @@ class Dex2Oat FINAL {
   // Dex files we are compiling, does not include the class path dex files.
   std::vector<const DexFile*> dex_files_;
   std::string no_inline_from_string_;
+  CompactDexLevel compact_dex_level_ = CompactDexLevel::kCompactDexLevelNone;
 
   std::vector<std::unique_ptr<linker::ElfWriter>> elf_writers_;
   std::vector<std::unique_ptr<linker::OatWriter>> oat_writers_;
