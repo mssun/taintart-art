@@ -401,7 +401,6 @@ SYMBOL(ExecuteMterpImpl):
 
 
     .global SYMBOL(artMterpAsmInstructionStart)
-    FUNCTION_TYPE(SYMBOL(artMterpAsmInstructionStart))
 SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
     .text
 
@@ -6465,7 +6464,6 @@ SYMBOL(artMterpAsmInstructionStart) = .L_op_nop
 
 
     .balign 128
-    SIZE(SYMBOL(artMterpAsmInstructionStart),SYMBOL(artMterpAsmInstructionStart))
     .global SYMBOL(artMterpAsmInstructionEnd)
 SYMBOL(artMterpAsmInstructionEnd):
 
@@ -6475,18 +6473,14 @@ SYMBOL(artMterpAsmInstructionEnd):
  * ===========================================================================
  */
     .global SYMBOL(artMterpAsmSisterStart)
-    FUNCTION_TYPE(SYMBOL(artMterpAsmSisterStart))
     .text
     .balign 4
 SYMBOL(artMterpAsmSisterStart):
-
-    SIZE(SYMBOL(artMterpAsmSisterStart),SYMBOL(artMterpAsmSisterStart))
     .global SYMBOL(artMterpAsmSisterEnd)
 SYMBOL(artMterpAsmSisterEnd):
 
 
     .global SYMBOL(artMterpAsmAltInstructionStart)
-    FUNCTION_TYPE(SYMBOL(artMterpAsmAltInstructionStart))
     .text
 
 SYMBOL(artMterpAsmAltInstructionStart) = .L_ALT_op_nop
@@ -12635,7 +12629,6 @@ SYMBOL(artMterpAsmAltInstructionStart) = .L_ALT_op_nop
     jmp     .L_op_nop+(255*128)
 
     .balign 128
-    SIZE(SYMBOL(artMterpAsmAltInstructionStart),SYMBOL(artMterpAsmAltInstructionStart))
     .global SYMBOL(artMterpAsmAltInstructionEnd)
 SYMBOL(artMterpAsmAltInstructionEnd):
 /* File: x86/footer.S */
