@@ -54,7 +54,7 @@ public class SuperRoot extends AhatInstance implements DominatorsComputation.Nod
       @Override
       public Reference get(int index) {
         String field = ".roots[" + Integer.toString(index) + "]";
-        return new Reference(null, field, mRoots.get(index), true);
+        return new Reference(SuperRoot.this, field, mRoots.get(index), true);
       }
     };
   }
