@@ -2800,6 +2800,74 @@ void MipsAssembler::SplatiD(VectorRegister wd, VectorRegister ws, int n1) {
                 static_cast<FRegister>(ws));
 }
 
+void MipsAssembler::Copy_sB(Register rd, VectorRegister ws, int n4) {
+  CHECK(HasMsa());
+  CHECK(IsUint<4>(n4)) << n4;
+  DsFsmInstrRf(EmitMsaELM(0x2, n4 | kMsaDfNByteMask, ws, static_cast<VectorRegister>(rd), 0x19),
+               rd,
+               static_cast<FRegister>(ws));
+}
+
+void MipsAssembler::Copy_sH(Register rd, VectorRegister ws, int n3) {
+  CHECK(HasMsa());
+  CHECK(IsUint<3>(n3)) << n3;
+  DsFsmInstrRf(EmitMsaELM(0x2, n3 | kMsaDfNHalfwordMask, ws, static_cast<VectorRegister>(rd), 0x19),
+               rd,
+               static_cast<FRegister>(ws));
+}
+
+void MipsAssembler::Copy_sW(Register rd, VectorRegister ws, int n2) {
+  CHECK(HasMsa());
+  CHECK(IsUint<2>(n2)) << n2;
+  DsFsmInstrRf(EmitMsaELM(0x2, n2 | kMsaDfNWordMask, ws, static_cast<VectorRegister>(rd), 0x19),
+               rd,
+               static_cast<FRegister>(ws));
+}
+
+void MipsAssembler::Copy_uB(Register rd, VectorRegister ws, int n4) {
+  CHECK(HasMsa());
+  CHECK(IsUint<4>(n4)) << n4;
+  DsFsmInstrRf(EmitMsaELM(0x3, n4 | kMsaDfNByteMask, ws, static_cast<VectorRegister>(rd), 0x19),
+               rd,
+               static_cast<FRegister>(ws));
+}
+
+void MipsAssembler::Copy_uH(Register rd, VectorRegister ws, int n3) {
+  CHECK(HasMsa());
+  CHECK(IsUint<3>(n3)) << n3;
+  DsFsmInstrRf(EmitMsaELM(0x3, n3 | kMsaDfNHalfwordMask, ws, static_cast<VectorRegister>(rd), 0x19),
+               rd,
+               static_cast<FRegister>(ws));
+}
+
+void MipsAssembler::InsertB(VectorRegister wd, Register rs, int n4) {
+  CHECK(HasMsa());
+  CHECK(IsUint<4>(n4)) << n4;
+  DsFsmInstrFffr(EmitMsaELM(0x4, n4 | kMsaDfNByteMask, static_cast<VectorRegister>(rs), wd, 0x19),
+                 static_cast<FRegister>(wd),
+                 static_cast<FRegister>(wd),
+                 rs);
+}
+
+void MipsAssembler::InsertH(VectorRegister wd, Register rs, int n3) {
+  CHECK(HasMsa());
+  CHECK(IsUint<3>(n3)) << n3;
+  DsFsmInstrFffr(
+      EmitMsaELM(0x4, n3 | kMsaDfNHalfwordMask, static_cast<VectorRegister>(rs), wd, 0x19),
+      static_cast<FRegister>(wd),
+      static_cast<FRegister>(wd),
+      rs);
+}
+
+void MipsAssembler::InsertW(VectorRegister wd, Register rs, int n2) {
+  CHECK(HasMsa());
+  CHECK(IsUint<2>(n2)) << n2;
+  DsFsmInstrFffr(EmitMsaELM(0x4, n2 | kMsaDfNWordMask, static_cast<VectorRegister>(rs), wd, 0x19),
+                 static_cast<FRegister>(wd),
+                 static_cast<FRegister>(wd),
+                 rs);
+}
+
 void MipsAssembler::FillB(VectorRegister wd, Register rs) {
   CHECK(HasMsa());
   DsFsmInstrFr(EmitMsa2R(0xc0, 0x0, static_cast<VectorRegister>(rs), wd, 0x1e),
@@ -2921,6 +2989,38 @@ void MipsAssembler::StD(VectorRegister wd, Register rs, int offset) {
                rs);
 }
 
+void MipsAssembler::IlvlB(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x4, 0x0, wt, ws, wd, 0x14),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
+void MipsAssembler::IlvlH(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x4, 0x1, wt, ws, wd, 0x14),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
+void MipsAssembler::IlvlW(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x4, 0x2, wt, ws, wd, 0x14),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
+void MipsAssembler::IlvlD(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x4, 0x3, wt, ws, wd, 0x14),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
 void MipsAssembler::IlvrB(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
   CHECK(HasMsa());
   DsFsmInstrFff(EmitMsa3R(0x5, 0x0, wt, ws, wd, 0x14),
@@ -2948,6 +3048,70 @@ void MipsAssembler::IlvrW(VectorRegister wd, VectorRegister ws, VectorRegister w
 void MipsAssembler::IlvrD(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
   CHECK(HasMsa());
   DsFsmInstrFff(EmitMsa3R(0x5, 0x3, wt, ws, wd, 0x14),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
+void MipsAssembler::IlvevB(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x6, 0x0, wt, ws, wd, 0x14),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
+void MipsAssembler::IlvevH(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x6, 0x1, wt, ws, wd, 0x14),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
+void MipsAssembler::IlvevW(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x6, 0x2, wt, ws, wd, 0x14),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
+void MipsAssembler::IlvevD(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x6, 0x3, wt, ws, wd, 0x14),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
+void MipsAssembler::IlvodB(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x7, 0x0, wt, ws, wd, 0x14),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
+void MipsAssembler::IlvodH(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x7, 0x1, wt, ws, wd, 0x14),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
+void MipsAssembler::IlvodW(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x7, 0x2, wt, ws, wd, 0x14),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
+void MipsAssembler::IlvodD(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x7, 0x3, wt, ws, wd, 0x14),
                 static_cast<FRegister>(wd),
                 static_cast<FRegister>(ws),
                 static_cast<FRegister>(wt));
@@ -3044,6 +3208,54 @@ void MipsAssembler::FmsubW(VectorRegister wd, VectorRegister ws, VectorRegister 
 void MipsAssembler::FmsubD(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
   CHECK(HasMsa());
   DsFsmInstrFff(EmitMsa3R(0x2, 0x3, wt, ws, wd, 0x1b),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
+void MipsAssembler::Hadd_sH(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x4, 0x1, wt, ws, wd, 0x15),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
+void MipsAssembler::Hadd_sW(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x4, 0x2, wt, ws, wd, 0x15),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
+void MipsAssembler::Hadd_sD(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x4, 0x3, wt, ws, wd, 0x15),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
+void MipsAssembler::Hadd_uH(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x5, 0x1, wt, ws, wd, 0x15),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
+void MipsAssembler::Hadd_uW(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x5, 0x2, wt, ws, wd, 0x15),
+                static_cast<FRegister>(wd),
+                static_cast<FRegister>(ws),
+                static_cast<FRegister>(wt));
+}
+
+void MipsAssembler::Hadd_uD(VectorRegister wd, VectorRegister ws, VectorRegister wt) {
+  CHECK(HasMsa());
+  DsFsmInstrFff(EmitMsa3R(0x5, 0x3, wt, ws, wd, 0x15),
                 static_cast<FRegister>(wd),
                 static_cast<FRegister>(ws),
                 static_cast<FRegister>(wt));

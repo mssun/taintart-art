@@ -3399,6 +3399,61 @@ TEST_F(AssemblerMIPS64Test, SplatiD) {
             "splati.d");
 }
 
+TEST_F(AssemblerMIPS64Test, Copy_sB) {
+  DriverStr(RepeatRVIb(&mips64::Mips64Assembler::Copy_sB, 4, "copy_s.b ${reg1}, ${reg2}[{imm}]"),
+            "copy_s.b");
+}
+
+TEST_F(AssemblerMIPS64Test, Copy_sH) {
+  DriverStr(RepeatRVIb(&mips64::Mips64Assembler::Copy_sH, 3, "copy_s.h ${reg1}, ${reg2}[{imm}]"),
+            "copy_s.h");
+}
+
+TEST_F(AssemblerMIPS64Test, Copy_sW) {
+  DriverStr(RepeatRVIb(&mips64::Mips64Assembler::Copy_sW, 2, "copy_s.w ${reg1}, ${reg2}[{imm}]"),
+            "copy_s.w");
+}
+
+TEST_F(AssemblerMIPS64Test, Copy_sD) {
+  DriverStr(RepeatRVIb(&mips64::Mips64Assembler::Copy_sD, 1, "copy_s.d ${reg1}, ${reg2}[{imm}]"),
+            "copy_s.d");
+}
+
+TEST_F(AssemblerMIPS64Test, Copy_uB) {
+  DriverStr(RepeatRVIb(&mips64::Mips64Assembler::Copy_uB, 4, "copy_u.b ${reg1}, ${reg2}[{imm}]"),
+            "copy_u.b");
+}
+
+TEST_F(AssemblerMIPS64Test, Copy_uH) {
+  DriverStr(RepeatRVIb(&mips64::Mips64Assembler::Copy_uH, 3, "copy_u.h ${reg1}, ${reg2}[{imm}]"),
+            "copy_u.h");
+}
+
+TEST_F(AssemblerMIPS64Test, Copy_uW) {
+  DriverStr(RepeatRVIb(&mips64::Mips64Assembler::Copy_uW, 2, "copy_u.w ${reg1}, ${reg2}[{imm}]"),
+            "copy_u.w");
+}
+
+TEST_F(AssemblerMIPS64Test, InsertB) {
+  DriverStr(RepeatVRIb(&mips64::Mips64Assembler::InsertB, 4, "insert.b ${reg1}[{imm}], ${reg2}"),
+            "insert.b");
+}
+
+TEST_F(AssemblerMIPS64Test, InsertH) {
+  DriverStr(RepeatVRIb(&mips64::Mips64Assembler::InsertH, 3, "insert.h ${reg1}[{imm}], ${reg2}"),
+            "insert.h");
+}
+
+TEST_F(AssemblerMIPS64Test, InsertW) {
+  DriverStr(RepeatVRIb(&mips64::Mips64Assembler::InsertW, 2, "insert.w ${reg1}[{imm}], ${reg2}"),
+            "insert.w");
+}
+
+TEST_F(AssemblerMIPS64Test, InsertD) {
+  DriverStr(RepeatVRIb(&mips64::Mips64Assembler::InsertD, 1, "insert.d ${reg1}[{imm}], ${reg2}"),
+            "insert.d");
+}
+
 TEST_F(AssemblerMIPS64Test, FillB) {
   DriverStr(RepeatVR(&mips64::Mips64Assembler::FillB, "fill.b ${reg1}, ${reg2}"), "fill.b");
 }
@@ -3469,6 +3524,26 @@ TEST_F(AssemblerMIPS64Test, StD) {
             "st.d");
 }
 
+TEST_F(AssemblerMIPS64Test, IlvlB) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::IlvlB, "ilvl.b ${reg1}, ${reg2}, ${reg3}"),
+            "ilvl.b");
+}
+
+TEST_F(AssemblerMIPS64Test, IlvlH) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::IlvlH, "ilvl.h ${reg1}, ${reg2}, ${reg3}"),
+            "ilvl.h");
+}
+
+TEST_F(AssemblerMIPS64Test, IlvlW) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::IlvlW, "ilvl.w ${reg1}, ${reg2}, ${reg3}"),
+            "ilvl.w");
+}
+
+TEST_F(AssemblerMIPS64Test, IlvlD) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::IlvlD, "ilvl.d ${reg1}, ${reg2}, ${reg3}"),
+            "ilvl.d");
+}
+
 TEST_F(AssemblerMIPS64Test, IlvrB) {
   DriverStr(RepeatVVV(&mips64::Mips64Assembler::IlvrB, "ilvr.b ${reg1}, ${reg2}, ${reg3}"),
             "ilvr.b");
@@ -3489,6 +3564,46 @@ TEST_F(AssemblerMIPS64Test, IlvrD) {
             "ilvr.d");
 }
 
+TEST_F(AssemblerMIPS64Test, IlvevB) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::IlvevB, "ilvev.b ${reg1}, ${reg2}, ${reg3}"),
+            "ilvev.b");
+}
+
+TEST_F(AssemblerMIPS64Test, IlvevH) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::IlvevH, "ilvev.h ${reg1}, ${reg2}, ${reg3}"),
+            "ilvev.h");
+}
+
+TEST_F(AssemblerMIPS64Test, IlvevW) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::IlvevW, "ilvev.w ${reg1}, ${reg2}, ${reg3}"),
+            "ilvev.w");
+}
+
+TEST_F(AssemblerMIPS64Test, IlvevD) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::IlvevD, "ilvev.d ${reg1}, ${reg2}, ${reg3}"),
+            "ilvev.d");
+}
+
+TEST_F(AssemblerMIPS64Test, IlvodB) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::IlvodB, "ilvod.b ${reg1}, ${reg2}, ${reg3}"),
+            "ilvod.b");
+}
+
+TEST_F(AssemblerMIPS64Test, IlvodH) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::IlvodH, "ilvod.h ${reg1}, ${reg2}, ${reg3}"),
+            "ilvod.h");
+}
+
+TEST_F(AssemblerMIPS64Test, IlvodW) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::IlvodW, "ilvod.w ${reg1}, ${reg2}, ${reg3}"),
+            "ilvod.w");
+}
+
+TEST_F(AssemblerMIPS64Test, IlvodD) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::IlvodD, "ilvod.d ${reg1}, ${reg2}, ${reg3}"),
+            "ilvod.d");
+}
+
 TEST_F(AssemblerMIPS64Test, MaddvB) {
   DriverStr(RepeatVVV(&mips64::Mips64Assembler::MaddvB, "maddv.b ${reg1}, ${reg2}, ${reg3}"),
             "maddv.b");
@@ -3507,6 +3622,36 @@ TEST_F(AssemblerMIPS64Test, MaddvW) {
 TEST_F(AssemblerMIPS64Test, MaddvD) {
   DriverStr(RepeatVVV(&mips64::Mips64Assembler::MaddvD, "maddv.d ${reg1}, ${reg2}, ${reg3}"),
             "maddv.d");
+}
+
+TEST_F(AssemblerMIPS64Test, Hadd_sH) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::Hadd_sH, "hadd_s.h ${reg1}, ${reg2}, ${reg3}"),
+            "hadd_s.h");
+}
+
+TEST_F(AssemblerMIPS64Test, Hadd_sW) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::Hadd_sW, "hadd_s.w ${reg1}, ${reg2}, ${reg3}"),
+            "hadd_s.w");
+}
+
+TEST_F(AssemblerMIPS64Test, Hadd_sD) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::Hadd_sD, "hadd_s.d ${reg1}, ${reg2}, ${reg3}"),
+            "hadd_s.d");
+}
+
+TEST_F(AssemblerMIPS64Test, Hadd_uH) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::Hadd_uH, "hadd_u.h ${reg1}, ${reg2}, ${reg3}"),
+            "hadd_u.h");
+}
+
+TEST_F(AssemblerMIPS64Test, Hadd_uW) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::Hadd_uW, "hadd_u.w ${reg1}, ${reg2}, ${reg3}"),
+            "hadd_u.w");
+}
+
+TEST_F(AssemblerMIPS64Test, Hadd_uD) {
+  DriverStr(RepeatVVV(&mips64::Mips64Assembler::Hadd_uD, "hadd_u.d ${reg1}, ${reg2}, ${reg3}"),
+            "hadd_u.d");
 }
 
 TEST_F(AssemblerMIPS64Test, MsubvB) {
