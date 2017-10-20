@@ -60,6 +60,7 @@ inline bool ReadCompilerOptions(Base& map, CompilerOptions* options, std::string
   }
   map.AssignIfExists(Base::TopKProfileThreshold, &options->top_k_profile_threshold_);
   map.AssignIfExists(Base::AbortOnHardVerifierFailure, &options->abort_on_hard_verifier_failure_);
+  map.AssignIfExists(Base::AbortOnSoftVerifierFailure, &options->abort_on_soft_verifier_failure_);
   if (map.Exists(Base::DumpInitFailures)) {
     if (!options->ParseDumpInitFailures(*map.Get(Base::DumpInitFailures), error_msg)) {
       return false;
@@ -132,6 +133,9 @@ inline void AddCompilerOptionsArgumentParserOptions(Builder& b) {
       .Define({"--abort-on-hard-verifier-error", "--no-abort-on-hard-verifier-error"})
           .WithValues({true, false})
           .IntoKey(Map::AbortOnHardVerifierFailure)
+      .Define({"--abort-on-soft-verifier-error", "--no-abort-on-soft-verifier-error"})
+          .WithValues({true, false})
+          .IntoKey(Map::AbortOnSoftVerifierFailure)
 
       .Define("--dump-init-failures=_")
           .template WithType<std::string>()

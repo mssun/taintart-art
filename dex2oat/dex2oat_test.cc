@@ -1395,4 +1395,52 @@ TEST_F(Dex2oatTest, LayoutSections) {
   }
 }
 
+class Dex2oatVerifierAbort : public Dex2oatTest {};
+
+TEST_F(Dex2oatVerifierAbort, HardFail) {
+  // Use VerifierDeps as it has hard-failing classes.
+  std::unique_ptr<const DexFile> dex(OpenTestDexFile("VerifierDeps"));
+  std::string out_dir = GetScratchDir();
+  const std::string base_oat_name = out_dir + "/base.oat";
+  std::string error_msg;
+  const int res_fail = GenerateOdexForTestWithStatus(
+        {dex->GetLocation()},
+        base_oat_name,
+        CompilerFilter::Filter::kQuicken,
+        &error_msg,
+        {"--abort-on-hard-verifier-error"});
+  EXPECT_NE(0, res_fail);
+
+  const int res_no_fail = GenerateOdexForTestWithStatus(
+        {dex->GetLocation()},
+        base_oat_name,
+        CompilerFilter::Filter::kQuicken,
+        &error_msg,
+        {"--no-abort-on-hard-verifier-error"});
+  EXPECT_EQ(0, res_no_fail);
+}
+
+TEST_F(Dex2oatVerifierAbort, SoftFail) {
+  // Use VerifierDepsMulti as it has hard-failing classes.
+  std::unique_ptr<const DexFile> dex(OpenTestDexFile("VerifierDepsMulti"));
+  std::string out_dir = GetScratchDir();
+  const std::string base_oat_name = out_dir + "/base.oat";
+  std::string error_msg;
+  const int res_fail = GenerateOdexForTestWithStatus(
+        {dex->GetLocation()},
+        base_oat_name,
+        CompilerFilter::Filter::kQuicken,
+        &error_msg,
+        {"--abort-on-soft-verifier-error"});
+  EXPECT_NE(0, res_fail);
+
+  const int res_no_fail = GenerateOdexForTestWithStatus(
+        {dex->GetLocation()},
+        base_oat_name,
+        CompilerFilter::Filter::kQuicken,
+        &error_msg,
+        {"--no-abort-on-soft-verifier-error"});
+  EXPECT_EQ(0, res_no_fail);
+}
+
 }  // namespace art
