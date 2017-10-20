@@ -305,6 +305,3 @@ MterpProfileActive:
     RESTORE_TWO_REGS_DECREASE_FRAME xPROFILE, x27, 80
     ret
 
-    .cfi_endproc
-    .size   ExecuteMterpImpl, .-ExecuteMterpImpl
-

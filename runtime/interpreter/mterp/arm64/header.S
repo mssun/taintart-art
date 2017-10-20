@@ -330,3 +330,20 @@ codes.
     .cfi_restore \reg2
     .cfi_adjust_cfa_offset -(\frame_adjustment)
 .endm
+
+/*
+ * cfi support macros.
+ */
+.macro ENTRY name
+    .type \name, #function
+    .global \name
+    /* Cache alignment for function entry */
+    .balign 16
+\name:
+    .cfi_startproc
+.endm
+
+.macro END name
+    .cfi_endproc
+    .size \name, .-\name
+.endm
