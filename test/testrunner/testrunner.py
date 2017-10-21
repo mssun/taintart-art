@@ -948,6 +948,7 @@ def main():
     if 'target' in _user_input_variants['target']:
       build_targets += 'test-art-target-run-test-dependencies'
     build_command = 'make'
+    build_command += ' DX='
     build_command += ' -j'
     build_command += ' -C ' + env.ANDROID_BUILD_TOP
     build_command += ' ' + build_targets
