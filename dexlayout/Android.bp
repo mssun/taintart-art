@@ -37,7 +37,10 @@ art_cc_library {
 
 art_cc_library {
     name: "libartd-dexlayout",
-    defaults: ["libart-dexlayout-defaults"],
+    defaults: [
+      "libart-dexlayout-defaults",
+      "art_debug_defaults",
+    ],
     shared_libs: ["libartd"],
 }
 
