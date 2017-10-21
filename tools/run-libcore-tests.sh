@@ -149,7 +149,7 @@ vogar_args="$vogar_args --timeout 480"
 if [[ $using_jack == "true" ]]; then
   vogar_args="$vogar_args --toolchain jack --language JO"
 else
-  vogar_args="$vogar_args --toolchain jdk --language CUR"
+  vogar_args="$vogar_args --toolchain dx --language CUR"
 fi
 
 # JIT settings.
