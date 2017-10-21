@@ -301,3 +301,6 @@ asm-alt-stub arm64/alt_stub.S
 
 # emit alternate entry stubs
 alt-ops
+
+# finish by closing .cfi info
+import arm64/close_cfi.S

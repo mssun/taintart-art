@@ -17,9 +17,9 @@
 #ifndef ART_COMPILER_OPTIMIZING_STACK_MAP_STREAM_H_
 #define ART_COMPILER_OPTIMIZING_STACK_MAP_STREAM_H_
 
-#include "base/arena_containers.h"
 #include "base/bit_vector-inl.h"
 #include "base/hash_map.h"
+#include "base/scoped_arena_containers.h"
 #include "base/value_object.h"
 #include "memory_region.h"
 #include "method_info.h"
@@ -60,8 +60,7 @@ class DexRegisterLocationHashFn {
  */
 class StackMapStream : public ValueObject {
  public:
-  explicit StackMapStream(ArenaAllocator* allocator,
-                          InstructionSet instruction_set)
+  explicit StackMapStream(ScopedArenaAllocator* allocator, InstructionSet instruction_set)
       : allocator_(allocator),
         instruction_set_(instruction_set),
         stack_maps_(allocator->Adapter(kArenaAllocStackMapStream)),
@@ -223,37 +222,37 @@ class StackMapStream : public ValueObject {
                            size_t dex_register_locations_index) const;
   void CheckCodeInfo(MemoryRegion region) const;
 
-  ArenaAllocator* const allocator_;
+  ScopedArenaAllocator* const allocator_;
   const InstructionSet instruction_set_;
-  ArenaVector<StackMapEntry> stack_maps_;
+  ScopedArenaVector<StackMapEntry> stack_maps_;
 
   // A catalog of unique [location_kind, register_value] pairs (per method).
-  ArenaVector<DexRegisterLocation> location_catalog_entries_;
+  ScopedArenaVector<DexRegisterLocation> location_catalog_entries_;
   // Map from Dex register location catalog entries to their indices in the
   // location catalog.
-  using LocationCatalogEntriesIndices = ArenaHashMap<DexRegisterLocation,
-                                                     size_t,
-                                                     LocationCatalogEntriesIndicesEmptyFn,
-                                                     DexRegisterLocationHashFn>;
+  using LocationCatalogEntriesIndices = ScopedArenaHashMap<DexRegisterLocation,
+                                                           size_t,
+                                                           LocationCatalogEntriesIndicesEmptyFn,
+                                                           DexRegisterLocationHashFn>;
   LocationCatalogEntriesIndices location_catalog_entries_indices_;
 
   // A set of concatenated maps of Dex register locations indices to `location_catalog_entries_`.
-  ArenaVector<size_t> dex_register_locations_;
-  ArenaVector<InlineInfoEntry> inline_infos_;
-  ArenaVector<uint8_t> stack_masks_;
-  ArenaVector<uint32_t> register_masks_;
-  ArenaVector<uint32_t> method_indices_;
-  ArenaVector<DexRegisterMapEntry> dex_register_entries_;
+  ScopedArenaVector<size_t> dex_register_locations_;
+  ScopedArenaVector<InlineInfoEntry> inline_infos_;
+  ScopedArenaVector<uint8_t> stack_masks_;
+  ScopedArenaVector<uint32_t> register_masks_;
+  ScopedArenaVector<uint32_t> method_indices_;
+  ScopedArenaVector<DexRegisterMapEntry> dex_register_entries_;
   int stack_mask_max_;
   uint32_t dex_pc_max_;
   uint32_t register_mask_max_;
   size_t number_of_stack_maps_with_inline_info_;
 
-  ArenaSafeMap<uint32_t, ArenaVector<uint32_t>> dex_map_hash_to_stack_map_indices_;
+  ScopedArenaSafeMap<uint32_t, ScopedArenaVector<uint32_t>> dex_map_hash_to_stack_map_indices_;
 
   StackMapEntry current_entry_;
   InlineInfoEntry current_inline_info_;
-  ArenaVector<uint8_t> code_info_encoding_;
+  ScopedArenaVector<uint8_t> code_info_encoding_;
   size_t needed_size_;
   uint32_t current_dex_register_;
   bool in_inline_frame_;

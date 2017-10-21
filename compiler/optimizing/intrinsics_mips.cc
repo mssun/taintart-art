@@ -2053,7 +2053,7 @@ void IntrinsicCodeGeneratorMIPS::VisitStringCompareTo(HInvoke* invoke) {
   DCHECK(!invoke->CanDoImplicitNullCheckOn(invoke->InputAt(0)));
 
   Register argument = locations->InAt(1).AsRegister<Register>();
-  SlowPathCodeMIPS* slow_path = new (GetAllocator()) IntrinsicSlowPathMIPS(invoke);
+  SlowPathCodeMIPS* slow_path = new (codegen_->GetScopedAllocator()) IntrinsicSlowPathMIPS(invoke);
   codegen_->AddSlowPath(slow_path);
   __ Beqz(argument, slow_path->GetEntryLabel());
   codegen_->InvokeRuntime(kQuickStringCompareTo, invoke, invoke->GetDexPc(), slow_path);
@@ -2185,8 +2185,7 @@ void IntrinsicCodeGeneratorMIPS::VisitStringEquals(HInvoke* invoke) {
 static void GenerateStringIndexOf(HInvoke* invoke,
                                   bool start_at_zero,
                                   MipsAssembler* assembler,
-                                  CodeGeneratorMIPS* codegen,
-                                  ArenaAllocator* allocator) {
+                                  CodeGeneratorMIPS* codegen) {
   LocationSummary* locations = invoke->GetLocations();
   Register tmp_reg = start_at_zero ? locations->GetTemp(0).AsRegister<Register>() : TMP;
 
@@ -2202,7 +2201,7 @@ static void GenerateStringIndexOf(HInvoke* invoke,
       // Always needs the slow-path. We could directly dispatch to it,
       // but this case should be rare, so for simplicity just put the
       // full slow-path down and branch unconditionally.
-      slow_path = new (allocator) IntrinsicSlowPathMIPS(invoke);
+      slow_path = new (codegen->GetScopedAllocator()) IntrinsicSlowPathMIPS(invoke);
       codegen->AddSlowPath(slow_path);
       __ B(slow_path->GetEntryLabel());
       __ Bind(slow_path->GetExitLabel());
@@ -2219,7 +2218,7 @@ static void GenerateStringIndexOf(HInvoke* invoke,
     // two halfwords so we fallback to using the generic implementation
     // of indexOf().
     __ LoadConst32(tmp_reg, std::numeric_limits<uint16_t>::max());
-    slow_path = new (allocator) IntrinsicSlowPathMIPS(invoke);
+    slow_path = new (codegen->GetScopedAllocator()) IntrinsicSlowPathMIPS(invoke);
     codegen->AddSlowPath(slow_path);
     __ Bltu(tmp_reg, char_reg, slow_path->GetEntryLabel());
   }
@@ -2253,11 +2252,7 @@ void IntrinsicLocationsBuilderMIPS::VisitStringIndexOf(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitStringIndexOf(HInvoke* invoke) {
-  GenerateStringIndexOf(invoke,
-                        /* start_at_zero */ true,
-                        GetAssembler(),
-                        codegen_,
-                        GetAllocator());
+  GenerateStringIndexOf(invoke, /* start_at_zero */ true, GetAssembler(), codegen_);
 }
 
 // int java.lang.String.indexOf(int ch, int fromIndex)
@@ -2278,11 +2273,7 @@ void IntrinsicLocationsBuilderMIPS::VisitStringIndexOfAfter(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitStringIndexOfAfter(HInvoke* invoke) {
-  GenerateStringIndexOf(invoke,
-                        /* start_at_zero */ false,
-                        GetAssembler(),
-                        codegen_,
-                        GetAllocator());
+  GenerateStringIndexOf(invoke, /* start_at_zero */ false, GetAssembler(), codegen_);
 }
 
 // java.lang.StringFactory.newStringFromBytes(byte[] data, int high, int offset, int byteCount)
@@ -2303,7 +2294,7 @@ void IntrinsicCodeGeneratorMIPS::VisitStringNewStringFromBytes(HInvoke* invoke) 
   LocationSummary* locations = invoke->GetLocations();
 
   Register byte_array = locations->InAt(0).AsRegister<Register>();
-  SlowPathCodeMIPS* slow_path = new (GetAllocator()) IntrinsicSlowPathMIPS(invoke);
+  SlowPathCodeMIPS* slow_path = new (codegen_->GetScopedAllocator()) IntrinsicSlowPathMIPS(invoke);
   codegen_->AddSlowPath(slow_path);
   __ Beqz(byte_array, slow_path->GetEntryLabel());
   codegen_->InvokeRuntime(kQuickAllocStringFromBytes, invoke, invoke->GetDexPc(), slow_path);
@@ -2347,7 +2338,7 @@ void IntrinsicCodeGeneratorMIPS::VisitStringNewStringFromString(HInvoke* invoke)
   LocationSummary* locations = invoke->GetLocations();
 
   Register string_to_copy = locations->InAt(0).AsRegister<Register>();
-  SlowPathCodeMIPS* slow_path = new (GetAllocator()) IntrinsicSlowPathMIPS(invoke);
+  SlowPathCodeMIPS* slow_path = new (codegen_->GetScopedAllocator()) IntrinsicSlowPathMIPS(invoke);
   codegen_->AddSlowPath(slow_path);
   __ Beqz(string_to_copy, slow_path->GetEntryLabel());
   codegen_->InvokeRuntime(kQuickAllocStringFromString, invoke, invoke->GetDexPc());
@@ -3059,7 +3050,7 @@ void IntrinsicCodeGeneratorMIPS::VisitSystemArrayCopyChar(HInvoke* invoke) {
   Register src_base = locations->GetTemp(1).AsRegister<Register>();
   Register count = locations->GetTemp(2).AsRegister<Register>();
 
-  SlowPathCodeMIPS* slow_path = new (GetAllocator()) IntrinsicSlowPathMIPS(invoke);
+  SlowPathCodeMIPS* slow_path = new (codegen_->GetScopedAllocator()) IntrinsicSlowPathMIPS(invoke);
   codegen_->AddSlowPath(slow_path);
 
   // Bail out if the source and destination are the same (to handle overlap).

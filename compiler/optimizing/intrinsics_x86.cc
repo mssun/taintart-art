@@ -1253,7 +1253,7 @@ void IntrinsicCodeGeneratorX86::VisitSystemArrayCopyChar(HInvoke* invoke) {
   Register count = locations->GetTemp(2).AsRegister<Register>();
   DCHECK_EQ(count, ECX);
 
-  SlowPathCode* slow_path = new (GetAllocator()) IntrinsicSlowPathX86(invoke);
+  SlowPathCode* slow_path = new (codegen_->GetScopedAllocator()) IntrinsicSlowPathX86(invoke);
   codegen_->AddSlowPath(slow_path);
 
   // Bail out if the source and destination are the same (to handle overlap).
@@ -1336,7 +1336,7 @@ void IntrinsicCodeGeneratorX86::VisitStringCompareTo(HInvoke* invoke) {
 
   Register argument = locations->InAt(1).AsRegister<Register>();
   __ testl(argument, argument);
-  SlowPathCode* slow_path = new (GetAllocator()) IntrinsicSlowPathX86(invoke);
+  SlowPathCode* slow_path = new (codegen_->GetScopedAllocator()) IntrinsicSlowPathX86(invoke);
   codegen_->AddSlowPath(slow_path);
   __ j(kEqual, slow_path->GetEntryLabel());
 
@@ -1485,7 +1485,6 @@ static void CreateStringIndexOfLocations(HInvoke* invoke,
 static void GenerateStringIndexOf(HInvoke* invoke,
                                   X86Assembler* assembler,
                                   CodeGeneratorX86* codegen,
-                                  ArenaAllocator* allocator,
                                   bool start_at_zero) {
   LocationSummary* locations = invoke->GetLocations();
 
@@ -1515,7 +1514,7 @@ static void GenerateStringIndexOf(HInvoke* invoke,
     std::numeric_limits<uint16_t>::max()) {
       // Always needs the slow-path. We could directly dispatch to it, but this case should be
       // rare, so for simplicity just put the full slow-path down and branch unconditionally.
-      slow_path = new (allocator) IntrinsicSlowPathX86(invoke);
+      slow_path = new (codegen->GetScopedAllocator()) IntrinsicSlowPathX86(invoke);
       codegen->AddSlowPath(slow_path);
       __ jmp(slow_path->GetEntryLabel());
       __ Bind(slow_path->GetExitLabel());
@@ -1523,7 +1522,7 @@ static void GenerateStringIndexOf(HInvoke* invoke,
     }
   } else if (code_point->GetType() != DataType::Type::kUint16) {
     __ cmpl(search_value, Immediate(std::numeric_limits<uint16_t>::max()));
-    slow_path = new (allocator) IntrinsicSlowPathX86(invoke);
+    slow_path = new (codegen->GetScopedAllocator()) IntrinsicSlowPathX86(invoke);
     codegen->AddSlowPath(slow_path);
     __ j(kAbove, slow_path->GetEntryLabel());
   }
@@ -1640,7 +1639,7 @@ void IntrinsicLocationsBuilderX86::VisitStringIndexOf(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorX86::VisitStringIndexOf(HInvoke* invoke) {
-  GenerateStringIndexOf(invoke, GetAssembler(), codegen_, GetAllocator(), /* start_at_zero */ true);
+  GenerateStringIndexOf(invoke, GetAssembler(), codegen_, /* start_at_zero */ true);
 }
 
 void IntrinsicLocationsBuilderX86::VisitStringIndexOfAfter(HInvoke* invoke) {
@@ -1648,8 +1647,7 @@ void IntrinsicLocationsBuilderX86::VisitStringIndexOfAfter(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorX86::VisitStringIndexOfAfter(HInvoke* invoke) {
-  GenerateStringIndexOf(
-      invoke, GetAssembler(), codegen_, GetAllocator(), /* start_at_zero */ false);
+  GenerateStringIndexOf(invoke, GetAssembler(), codegen_, /* start_at_zero */ false);
 }
 
 void IntrinsicLocationsBuilderX86::VisitStringNewStringFromBytes(HInvoke* invoke) {
@@ -1669,7 +1667,7 @@ void IntrinsicCodeGeneratorX86::VisitStringNewStringFromBytes(HInvoke* invoke) {
 
   Register byte_array = locations->InAt(0).AsRegister<Register>();
   __ testl(byte_array, byte_array);
-  SlowPathCode* slow_path = new (GetAllocator()) IntrinsicSlowPathX86(invoke);
+  SlowPathCode* slow_path = new (codegen_->GetScopedAllocator()) IntrinsicSlowPathX86(invoke);
   codegen_->AddSlowPath(slow_path);
   __ j(kEqual, slow_path->GetEntryLabel());
 
@@ -1713,7 +1711,7 @@ void IntrinsicCodeGeneratorX86::VisitStringNewStringFromString(HInvoke* invoke) 
 
   Register string_to_copy = locations->InAt(0).AsRegister<Register>();
   __ testl(string_to_copy, string_to_copy);
-  SlowPathCode* slow_path = new (GetAllocator()) IntrinsicSlowPathX86(invoke);
+  SlowPathCode* slow_path = new (codegen_->GetScopedAllocator()) IntrinsicSlowPathX86(invoke);
   codegen_->AddSlowPath(slow_path);
   __ j(kEqual, slow_path->GetEntryLabel());
 
@@ -2901,7 +2899,8 @@ void IntrinsicCodeGeneratorX86::VisitSystemArrayCopy(HInvoke* invoke) {
   Location temp2_loc = locations->GetTemp(1);
   Register temp2 = temp2_loc.AsRegister<Register>();
 
-  SlowPathCode* intrinsic_slow_path = new (GetAllocator()) IntrinsicSlowPathX86(invoke);
+  SlowPathCode* intrinsic_slow_path =
+      new (codegen_->GetScopedAllocator()) IntrinsicSlowPathX86(invoke);
   codegen_->AddSlowPath(intrinsic_slow_path);
 
   NearLabel conditions_on_positions_validated;
@@ -3215,7 +3214,7 @@ void IntrinsicCodeGeneratorX86::VisitSystemArrayCopy(HInvoke* invoke) {
 
     // Slow path used to copy array when `src` is gray.
     SlowPathCode* read_barrier_slow_path =
-        new (GetAllocator()) ReadBarrierSystemArrayCopySlowPathX86(invoke);
+        new (codegen_->GetScopedAllocator()) ReadBarrierSystemArrayCopySlowPathX86(invoke);
     codegen_->AddSlowPath(read_barrier_slow_path);
 
     // We have done the "if" of the gray bit check above, now branch based on the flags.

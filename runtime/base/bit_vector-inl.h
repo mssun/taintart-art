@@ -65,6 +65,24 @@ inline uint32_t BitVector::IndexIterator::FindIndex(uint32_t start_index) const 
   return word_index * 32u + CTZ(word);
 }
 
+inline BitVector::IndexIterator::IndexIterator(const BitVector* bit_vector, begin_tag)
+  : bit_storage_(bit_vector->GetRawStorage()),
+    storage_size_(bit_vector->storage_size_),
+    bit_index_(FindIndex(0u)) { }
+
+inline BitVector::IndexIterator::IndexIterator(const BitVector* bit_vector, end_tag)
+  : bit_storage_(bit_vector->GetRawStorage()),
+    storage_size_(bit_vector->storage_size_),
+    bit_index_(BitSize()) { }
+
+inline BitVector::IndexIterator BitVector::IndexContainer::begin() const {
+  return IndexIterator(bit_vector_, IndexIterator::begin_tag());
+}
+
+inline BitVector::IndexIterator BitVector::IndexContainer::end() const {
+  return IndexIterator(bit_vector_, IndexIterator::end_tag());
+}
+
 inline void BitVector::ClearAllBits() {
   memset(storage_, 0, storage_size_ * kWordBytes);
 }

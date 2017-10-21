@@ -265,10 +265,10 @@ def find_extra_device_arguments(target):
   Gets any extra arguments from the device_config.
   """
   if target == 'host':
-    return device_config.get(target, [])
+    return device_config.get(target, { 'run-test-args' : [] })['run-test-args']
   else:
     device = get_device_name()
-    return device_config.get(device, [])
+    return device_config.get(device, { 'run-test-args' : [] })['run-test-args']
 
 def get_device_name():
   """

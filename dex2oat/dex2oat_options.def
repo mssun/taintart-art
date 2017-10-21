@@ -34,6 +34,7 @@
 //
 
 // Parse-able keys from the command line.
+DEX2OAT_OPTIONS_KEY (CompactDexLevel,                CompactDexLevel)
 DEX2OAT_OPTIONS_KEY (std::vector<std::string>,       DexFiles)
 DEX2OAT_OPTIONS_KEY (std::vector<std::string>,       DexLocations)
 DEX2OAT_OPTIONS_KEY (int,                            ZipFd)
