@@ -64,6 +64,7 @@ os.environ.update(custom_env)
 
 if target.has_key('make'):
   build_command = 'make'
+  build_command += ' DX='
   build_command += ' -j' + str(n_threads)
   build_command += ' -C ' + env.ANDROID_BUILD_TOP
   build_command += ' ' + target.get('make')
