@@ -853,12 +853,16 @@ class DexFile {
         : reinterpret_cast<const AnnotationSetRefList*>(begin_ + offset);
   }
 
-  const AnnotationItem* GetAnnotationItem(const AnnotationSetItem* set_item, uint32_t index) const {
-    DCHECK_LE(index, set_item->size_);
-    uint32_t offset = set_item->entries_[index];
+  ALWAYS_INLINE const AnnotationItem* GetAnnotationItemAtOffset(uint32_t offset) const {
+    DCHECK_LE(offset, Size());
     return (offset == 0)
         ? nullptr
         : reinterpret_cast<const AnnotationItem*>(begin_ + offset);
+  }
+
+  const AnnotationItem* GetAnnotationItem(const AnnotationSetItem* set_item, uint32_t index) const {
+    DCHECK_LE(index, set_item->size_);
+    return GetAnnotationItemAtOffset(set_item->entries_[index]);
   }
 
   const AnnotationSetItem* GetSetRefItemItem(const AnnotationSetRefItem* anno_item) const {
