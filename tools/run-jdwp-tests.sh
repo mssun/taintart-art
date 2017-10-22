@@ -285,7 +285,7 @@ fi
 if [[ $using_jack == "true" ]]; then
   toolchain_args="--toolchain jack --language JN --jack-arg -g"
 else
-  toolchain_args="--toolchain jdk --language CUR"
+  toolchain_args="--toolchain dx --language CUR"
 fi
 
 # Run the tests using vogar.
