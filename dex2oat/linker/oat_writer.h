@@ -24,6 +24,7 @@
 
 #include "base/array_ref.h"
 #include "base/dchecked_vector.h"
+#include "cdex/compact_dex_level.h"
 #include "linker/relative_patcher.h"  // For RelativePatcherTargetProvider.
 #include "mem_map.h"
 #include "method_reference.h"
@@ -114,7 +115,10 @@ class OatWriter {
     kDefault = kCreate
   };
 
-  OatWriter(bool compiling_boot_image, TimingLogger* timings, ProfileCompilationInfo* info);
+  OatWriter(bool compiling_boot_image,
+            TimingLogger* timings,
+            ProfileCompilationInfo* info,
+            CompactDexLevel compact_dex_level);
 
   // To produce a valid oat file, the user must first add sources with any combination of
   //   - AddDexFileSource(),
@@ -490,6 +494,9 @@ class OatWriter {
 
   // Profile info used to generate new layout of files.
   ProfileCompilationInfo* profile_compilation_info_;
+
+  // Compact dex level that is generated.
+  CompactDexLevel compact_dex_level_;
 
   using OrderedMethodList = std::vector<OrderedMethodData>;
 

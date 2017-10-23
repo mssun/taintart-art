@@ -27,6 +27,12 @@ class CompactDexFile : public DexFile {
   static constexpr uint8_t kDexMagic[kDexMagicSize] = { 'c', 'd', 'e', 'x' };
   static constexpr uint8_t kDexMagicVersion[] = {'0', '0', '1', '\0'};
 
+  // Write the compact dex specific magic.
+  static void WriteMagic(uint8_t* magic);
+
+  // Write the current version, note that the input is the address of the magic.
+  static void WriteCurrentVersion(uint8_t* magic);
+
   // Returns true if the byte string points to the magic value.
   static bool IsMagicValid(const uint8_t* magic);
   virtual bool IsMagicValid() const OVERRIDE;
@@ -34,6 +40,10 @@ class CompactDexFile : public DexFile {
   // Returns true if the byte string after the magic is the correct value.
   static bool IsVersionValid(const uint8_t* magic);
   virtual bool IsVersionValid() const OVERRIDE;
+
+  bool IsCompactDexFile() const OVERRIDE {
+    return true;
+  }
 
  private:
   // Not supported yet.
@@ -45,6 +55,7 @@ class CompactDexFile : public DexFile {
       : DexFile(base, size, location, location_checksum, oat_dex_file) {}
 
   friend class DexFile;
+  friend class DexFileLoader;
 
   DISALLOW_COPY_AND_ASSIGN(CompactDexFile);
 };

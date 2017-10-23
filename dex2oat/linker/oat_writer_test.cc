@@ -127,7 +127,8 @@ class OatTest : public CommonCompilerTest {
     TimingLogger timings("WriteElf", false, false);
     OatWriter oat_writer(/*compiling_boot_image*/false,
                          &timings,
-                         /*profile_compilation_info*/nullptr);
+                         /*profile_compilation_info*/nullptr,
+                         CompactDexLevel::kCompactDexLevelNone);
     for (const DexFile* dex_file : dex_files) {
       ArrayRef<const uint8_t> raw_dex_file(
           reinterpret_cast<const uint8_t*>(&dex_file->GetHeader()),
@@ -148,7 +149,10 @@ class OatTest : public CommonCompilerTest {
                 bool verify,
                 ProfileCompilationInfo* profile_compilation_info) {
     TimingLogger timings("WriteElf", false, false);
-    OatWriter oat_writer(/*compiling_boot_image*/false, &timings, profile_compilation_info);
+    OatWriter oat_writer(/*compiling_boot_image*/false,
+                         &timings,
+                         profile_compilation_info,
+                         CompactDexLevel::kCompactDexLevelNone);
     for (const char* dex_filename : dex_filenames) {
       if (!oat_writer.AddDexFileSource(dex_filename, dex_filename)) {
         return false;
@@ -166,7 +170,8 @@ class OatTest : public CommonCompilerTest {
     TimingLogger timings("WriteElf", false, false);
     OatWriter oat_writer(/*compiling_boot_image*/false,
                          &timings,
-                         /*profile_compilation_info*/nullptr);
+                         /*profile_compilation_info*/nullptr,
+                         CompactDexLevel::kCompactDexLevelNone);
     if (!oat_writer.AddZippedDexFilesSource(std::move(zip_fd), location)) {
       return false;
     }
