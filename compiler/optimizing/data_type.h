@@ -123,7 +123,7 @@ class DataType {
   }
 
   static bool IsUnsignedType(Type type) {
-    return type == Type::kUint8 || type == Type::kUint16;
+    return type == Type::kBool || type == Type::kUint8 || type == Type::kUint16;
   }
 
   // Return the general kind of `type`, fusing integer-like types as Type::kInt.
