@@ -311,6 +311,12 @@ class CheckJniAbortCatcher {
     printf("WARNING: TEST DISABLED FOR COMPACT DEX\n"); \
     return; \
   }
+
+#define TEST_DISABLED_FOR_HEAP_POISONING() \
+  if (kPoisonHeapReferences) { \
+    printf("WARNING: TEST DISABLED FOR HEAP POISONING\n"); \
+    return; \
+  }
 }  // namespace art
 
 #endif  // ART_RUNTIME_COMMON_RUNTIME_TEST_H_
