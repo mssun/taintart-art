@@ -81,6 +81,16 @@ public class Main {
   /// CHECK-DAG:                 Add [<<I>>,<<Cons4>>]         loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Red:d\d+>>    VecReduce [<<Phi>>]           loop:none
   /// CHECK-DAG: <<Extr:i\d+>>   VecExtractScalar [<<Red>>]    loop:none
+  //
+  /// CHECK-START-MIPS64: int Main.reductionInt(int[]) loop_optimization (after)
+  /// CHECK-DAG: <<Cons4:i\d+>>  IntConstant 4                 loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [{{i\d+}}]      loop:none
+  /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]        loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Load:d\d+>>   VecLoad [{{l\d+}},<<I:i\d+>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 VecAdd [<<Phi>>,<<Load>>]     loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Add [<<I>>,<<Cons4>>]         loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Red:d\d+>>    VecReduce [<<Phi>>]           loop:none
+  /// CHECK-DAG: <<Extr:i\d+>>   VecExtractScalar [<<Red>>]    loop:none
   private static int reductionInt(int[] x) {
     int sum = 0;
     for (int i = 0; i < x.length; i++) {
@@ -144,6 +154,25 @@ public class Main {
   //
   /// CHECK-EVAL: "<<Loop1>>" != "<<Loop2>>"
   //
+  /// CHECK-START-MIPS64: int Main.reductionIntChain() loop_optimization (after)
+  /// CHECK-DAG: <<Cons4:i\d+>>  IntConstant 4                  loop:none
+  /// CHECK-DAG: <<Set1:d\d+>>   VecSetScalars [{{i\d+}}]       loop:none
+  /// CHECK-DAG: <<Phi1:d\d+>>   Phi [<<Set1>>,{{d\d+}}]        loop:<<Loop1:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Load1:d\d+>>  VecLoad [{{l\d+}},<<I1:i\d+>>] loop:<<Loop1>>      outer_loop:none
+  /// CHECK-DAG:                 VecAdd [<<Phi1>>,<<Load1>>]    loop:<<Loop1>>      outer_loop:none
+  /// CHECK-DAG:                 Add [<<I1>>,<<Cons4>>]         loop:<<Loop1>>      outer_loop:none
+  /// CHECK-DAG: <<Red1:d\d+>>   VecReduce [<<Phi1>>]           loop:none
+  /// CHECK-DAG: <<Extr1:i\d+>>  VecExtractScalar [<<Red1>>]    loop:none
+  /// CHECK-DAG: <<Set2:d\d+>>   VecSetScalars [{{i\d+}}]       loop:none
+  /// CHECK-DAG: <<Phi2:d\d+>>   Phi [<<Set2>>,{{d\d+}}]        loop:<<Loop2:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Load2:d\d+>>  VecLoad [{{l\d+}},<<I2:i\d+>>] loop:<<Loop2>>      outer_loop:none
+  /// CHECK-DAG:                 VecAdd [<<Phi2>>,<<Load2>>]    loop:<<Loop2>>      outer_loop:none
+  /// CHECK-DAG:                 Add [<<I2>>,<<Cons4>>]         loop:<<Loop2>>      outer_loop:none
+  /// CHECK-DAG: <<Red2:d\d+>>   VecReduce [<<Phi2>>]           loop:none
+  /// CHECK-DAG: <<Extr2:i\d+>>  VecExtractScalar [<<Red2>>]    loop:none
+  //
+  /// CHECK-EVAL: "<<Loop1>>" != "<<Loop2>>"
+  //
   // NOTE: pattern is robust with respect to vector loop unrolling and peeling.
   private static int reductionIntChain() {
     int[] x = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
@@ -189,6 +218,16 @@ public class Main {
   /// CHECK-DAG:                 Add [<<I>>,<<Cons4>>]         loop:<<Loop1>>      outer_loop:none
   /// CHECK-DAG: <<Red:d\d+>>    VecReduce [<<Phi>>]           loop:none
   /// CHECK-DAG: <<Extr:i\d+>>   VecExtractScalar [<<Red>>]    loop:none
+  //
+  /// CHECK-START-MIPS64: int Main.reductionIntToLoop(int[]) loop_optimization (after)
+  /// CHECK-DAG: <<Cons4:i\d+>>  IntConstant 4                 loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [{{i\d+}}]      loop:none
+  /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]        loop:<<Loop1:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Load:d\d+>>   VecLoad [{{l\d+}},<<I:i\d+>>] loop:<<Loop1>>      outer_loop:none
+  /// CHECK-DAG:                 VecAdd [<<Phi>>,<<Load>>]     loop:<<Loop1>>      outer_loop:none
+  /// CHECK-DAG:                 Add [<<I>>,<<Cons4>>]         loop:<<Loop1>>      outer_loop:none
+  /// CHECK-DAG: <<Red:d\d+>>    VecReduce [<<Phi>>]           loop:none
+  /// CHECK-DAG: <<Extr:i\d+>>   VecExtractScalar [<<Red>>]    loop:none
   private static int reductionIntToLoop(int[] x) {
     int r = 0;
     for (int i = 0; i < 4; i++) {
@@ -212,6 +251,16 @@ public class Main {
   /// CHECK-DAG:                 Return [<<Phi2>>]             loop:none
   //
   /// CHECK-START-ARM64: long Main.reductionLong(long[]) loop_optimization (after)
+  /// CHECK-DAG: <<Cons2:i\d+>>  IntConstant 2                 loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [{{j\d+}}]      loop:none
+  /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]        loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Load:d\d+>>   VecLoad [{{l\d+}},<<I:i\d+>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 VecAdd [<<Phi>>,<<Load>>]     loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Add [<<I>>,<<Cons2>>]         loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Red:d\d+>>    VecReduce [<<Phi>>]           loop:none
+  /// CHECK-DAG: <<Extr:j\d+>>   VecExtractScalar [<<Red>>]    loop:none
+  //
+  /// CHECK-START-MIPS64: long Main.reductionLong(long[]) loop_optimization (after)
   /// CHECK-DAG: <<Cons2:i\d+>>  IntConstant 2                 loop:none
   /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [{{j\d+}}]      loop:none
   /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]        loop:<<Loop:B\d+>> outer_loop:none
@@ -282,6 +331,16 @@ public class Main {
   /// CHECK-DAG:                 Add [<<I>>,<<Cons4>>]         loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Red:d\d+>>    VecReduce [<<Phi>>]           loop:none
   /// CHECK-DAG: <<Extr:i\d+>>   VecExtractScalar [<<Red>>]    loop:none
+  //
+  /// CHECK-START-MIPS64: int Main.reductionIntM1(int[]) loop_optimization (after)
+  /// CHECK-DAG: <<Cons4:i\d+>>  IntConstant 4                 loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [{{i\d+}}]      loop:none
+  /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]        loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Load:d\d+>>   VecLoad [{{l\d+}},<<I:i\d+>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 VecAdd [<<Phi>>,<<Load>>]     loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Add [<<I>>,<<Cons4>>]         loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Red:d\d+>>    VecReduce [<<Phi>>]           loop:none
+  /// CHECK-DAG: <<Extr:i\d+>>   VecExtractScalar [<<Red>>]    loop:none
   private static int reductionIntM1(int[] x) {
     int sum = -1;
     for (int i = 0; i < x.length; i++) {
@@ -302,6 +361,16 @@ public class Main {
   /// CHECK-DAG:                 Return [<<Phi2>>]             loop:none
   //
   /// CHECK-START-ARM64: long Main.reductionLongM1(long[]) loop_optimization (after)
+  /// CHECK-DAG: <<Cons2:i\d+>>  IntConstant 2                 loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [{{j\d+}}]      loop:none
+  /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]        loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Load:d\d+>>   VecLoad [{{l\d+}},<<I:i\d+>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 VecAdd [<<Phi>>,<<Load>>]     loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Add [<<I>>,<<Cons2>>]         loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Red:d\d+>>    VecReduce [<<Phi>>]           loop:none
+  /// CHECK-DAG: <<Extr:j\d+>>   VecExtractScalar [<<Red>>]    loop:none
+  //
+  /// CHECK-START-MIPS64: long Main.reductionLongM1(long[]) loop_optimization (after)
   /// CHECK-DAG: <<Cons2:i\d+>>  IntConstant 2                 loop:none
   /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [{{j\d+}}]      loop:none
   /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]        loop:<<Loop:B\d+>> outer_loop:none
@@ -371,6 +440,16 @@ public class Main {
   /// CHECK-DAG:                 Add [<<I>>,<<Cons4>>]         loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Red:d\d+>>    VecReduce [<<Phi>>]           loop:none
   /// CHECK-DAG: <<Extr:i\d+>>   VecExtractScalar [<<Red>>]    loop:none
+  //
+  /// CHECK-START-MIPS64: int Main.reductionMinusInt(int[]) loop_optimization (after)
+  /// CHECK-DAG: <<Cons4:i\d+>>  IntConstant 4                 loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [{{i\d+}}]      loop:none
+  /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]        loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Load:d\d+>>   VecLoad [{{l\d+}},<<I:i\d+>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 VecSub [<<Phi>>,<<Load>>]     loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Add [<<I>>,<<Cons4>>]         loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Red:d\d+>>    VecReduce [<<Phi>>]           loop:none
+  /// CHECK-DAG: <<Extr:i\d+>>   VecExtractScalar [<<Red>>]    loop:none
   private static int reductionMinusInt(int[] x) {
     int sum = 0;
     for (int i = 0; i < x.length; i++) {
@@ -391,6 +470,16 @@ public class Main {
   /// CHECK-DAG:                 Return [<<Phi2>>]             loop:none
   //
   /// CHECK-START-ARM64: long Main.reductionMinusLong(long[]) loop_optimization (after)
+  /// CHECK-DAG: <<Cons2:i\d+>>  IntConstant 2                 loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [{{j\d+}}]      loop:none
+  /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]        loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Load:d\d+>>   VecLoad [{{l\d+}},<<I:i\d+>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 VecSub [<<Phi>>,<<Load>>]     loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Add [<<I>>,<<Cons2>>]         loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Red:d\d+>>    VecReduce [<<Phi>>]           loop:none
+  /// CHECK-DAG: <<Extr:j\d+>>   VecExtractScalar [<<Red>>]    loop:none
+  //
+  /// CHECK-START-MIPS64: long Main.reductionMinusLong(long[]) loop_optimization (after)
   /// CHECK-DAG: <<Cons2:i\d+>>  IntConstant 2                 loop:none
   /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [{{j\d+}}]      loop:none
   /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]        loop:<<Loop:B\d+>> outer_loop:none
@@ -461,6 +550,16 @@ public class Main {
   /// CHECK-DAG:                 Add [<<I>>,<<Cons4>>]         loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Red:d\d+>>    VecReduce [<<Phi>>]           loop:none
   /// CHECK-DAG: <<Extr:i\d+>>   VecExtractScalar [<<Red>>]    loop:none
+  //
+  /// CHECK-START-MIPS64: int Main.reductionMinInt(int[]) loop_optimization (after)
+  /// CHECK-DAG: <<Cons4:i\d+>>  IntConstant 4                 loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecReplicateScalar [{{i\d+}}] loop:none
+  /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]        loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Load:d\d+>>   VecLoad [{{l\d+}},<<I:i\d+>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 VecMin [<<Phi>>,<<Load>>]     loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Add [<<I>>,<<Cons4>>]         loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Red:d\d+>>    VecReduce [<<Phi>>]           loop:none
+  /// CHECK-DAG: <<Extr:i\d+>>   VecExtractScalar [<<Red>>]    loop:none
   private static int reductionMinInt(int[] x) {
     int min = Integer.MAX_VALUE;
     for (int i = 0; i < x.length; i++) {
@@ -523,6 +622,16 @@ public class Main {
   /// CHECK-DAG: <<Extr:i\d+>>   VecExtractScalar [<<Red>>]    loop:none
   //
   /// CHECK-START-ARM64: int Main.reductionMaxInt(int[]) loop_optimization (after)
+  /// CHECK-DAG: <<Cons4:i\d+>>  IntConstant 4                 loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecReplicateScalar [{{i\d+}}] loop:none
+  /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]        loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Load:d\d+>>   VecLoad [{{l\d+}},<<I:i\d+>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 VecMax [<<Phi>>,<<Load>>]     loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Add [<<I>>,<<Cons4>>]         loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Red:d\d+>>    VecReduce [<<Phi>>]           loop:none
+  /// CHECK-DAG: <<Extr:i\d+>>   VecExtractScalar [<<Red>>]    loop:none
+  //
+  /// CHECK-START-MIPS64: int Main.reductionMaxInt(int[]) loop_optimization (after)
   /// CHECK-DAG: <<Cons4:i\d+>>  IntConstant 4                 loop:none
   /// CHECK-DAG: <<Set:d\d+>>    VecReplicateScalar [{{i\d+}}] loop:none
   /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]        loop:<<Loop:B\d+>> outer_loop:none
