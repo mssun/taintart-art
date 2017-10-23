@@ -325,7 +325,8 @@ class DexLayoutTest : public CommonRuntimeTest {
     std::string error_msg;
     bool result = DexFileLoader::Open(input_dex.c_str(),
                                       input_dex,
-                                      false,
+                                      /*verify*/ true,
+                                      /*verify_checksum*/ false,
                                       &error_msg,
                                       &dex_files);
 

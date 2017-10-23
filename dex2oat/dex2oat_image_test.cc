@@ -65,6 +65,7 @@ class Dex2oatImageTest : public CommonRuntimeTest {
       std::string error_msg;
       CHECK(DexFileLoader::Open(dex.c_str(),
                                 dex,
+                                /*verify*/ true,
                                 /*verify_checksum*/ false,
                                 &error_msg,
                                 &dex_files))

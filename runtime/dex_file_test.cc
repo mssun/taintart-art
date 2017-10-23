@@ -236,7 +236,8 @@ static bool OpenDexFilesBase64(const char* base64,
   ScopedObjectAccess soa(Thread::Current());
   static constexpr bool kVerifyChecksum = true;
   std::vector<std::unique_ptr<const DexFile>> tmp;
-  bool success = DexFileLoader::Open(location, location, kVerifyChecksum, error_msg, &tmp);
+  bool success = DexFileLoader::Open(
+      location, location, /* verify */ true, kVerifyChecksum, error_msg, &tmp);
   if (success) {
     for (std::unique_ptr<const DexFile>& dex_file : tmp) {
       EXPECT_EQ(PROT_READ, dex_file->GetPermissions());
@@ -366,7 +367,8 @@ TEST_F(DexFileTest, Version40Rejected) {
   static constexpr bool kVerifyChecksum = true;
   std::string error_msg;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  ASSERT_FALSE(DexFileLoader::Open(location, location, kVerifyChecksum, &error_msg, &dex_files));
+  ASSERT_FALSE(DexFileLoader::Open(
+      location, location, /* verify */ true, kVerifyChecksum, &error_msg, &dex_files));
 }
 
 TEST_F(DexFileTest, Version41Rejected) {
@@ -378,7 +380,8 @@ TEST_F(DexFileTest, Version41Rejected) {
   static constexpr bool kVerifyChecksum = true;
   std::string error_msg;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  ASSERT_FALSE(DexFileLoader::Open(location, location, kVerifyChecksum, &error_msg, &dex_files));
+  ASSERT_FALSE(DexFileLoader::Open(
+      location, location, /* verify */ true, kVerifyChecksum, &error_msg, &dex_files));
 }
 
 TEST_F(DexFileTest, ZeroLengthDexRejected) {
@@ -390,7 +393,8 @@ TEST_F(DexFileTest, ZeroLengthDexRejected) {
   static constexpr bool kVerifyChecksum = true;
   std::string error_msg;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  ASSERT_FALSE(DexFileLoader::Open(location, location, kVerifyChecksum, &error_msg, &dex_files));
+  ASSERT_FALSE(DexFileLoader::Open(
+      location, location, /* verify */ true, kVerifyChecksum, &error_msg, &dex_files));
 }
 
 TEST_F(DexFileTest, GetLocationChecksum) {

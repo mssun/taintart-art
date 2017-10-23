@@ -1026,7 +1026,8 @@ static size_t OpenDexFiles(const std::vector<std::string>& dex_filenames,
       LOG(WARNING) << "Skipping non-existent dex file '" << dex_filename << "'";
       continue;
     }
-    if (!DexFileLoader::Open(dex_filename, dex_location, kVerifyChecksum, &error_msg, dex_files)) {
+    if (!DexFileLoader::Open(
+          dex_filename, dex_location, /* verify */ true, kVerifyChecksum, &error_msg, dex_files)) {
       LOG(WARNING) << "Failed to open .dex from file '" << dex_filename << "': " << error_msg;
       ++failure_count;
     }
