@@ -238,14 +238,14 @@ TEST_F(EmitSwapMipsTest, TwoStackSlots) {
       DataType::Type::kInt32,
       nullptr);
   const char* expected =
-      "addiu $sp, $sp, -4\n"
+      "addiu $sp, $sp, -16\n"
       "sw $v0, 0($sp)\n"
-      "lw $v0, 56($sp)\n"
-      "lw $t8, 52($sp)\n"
-      "sw $v0, 52($sp)\n"
-      "sw $t8, 56($sp)\n"
+      "lw $v0, 68($sp)\n"
+      "lw $t8, 64($sp)\n"
+      "sw $v0, 64($sp)\n"
+      "sw $t8, 68($sp)\n"
       "lw $v0, 0($sp)\n"
-      "addiu $sp, $sp, 4\n";
+      "addiu $sp, $sp, 16\n";
   DriverWrapper(moves_, expected, "TwoStackSlots");
 }
 
@@ -261,18 +261,18 @@ TEST_F(EmitSwapMipsTest, TwoDoubleStackSlots) {
       DataType::Type::kInt64,
       nullptr);
   const char* expected =
-      "addiu $sp, $sp, -4\n"
+      "addiu $sp, $sp, -16\n"
       "sw $v0, 0($sp)\n"
-      "lw $v0, 60($sp)\n"
-      "lw $t8, 52($sp)\n"
-      "sw $v0, 52($sp)\n"
-      "sw $t8, 60($sp)\n"
-      "lw $v0, 64($sp)\n"
-      "lw $t8, 56($sp)\n"
-      "sw $v0, 56($sp)\n"
-      "sw $t8, 64($sp)\n"
+      "lw $v0, 72($sp)\n"
+      "lw $t8, 64($sp)\n"
+      "sw $v0, 64($sp)\n"
+      "sw $t8, 72($sp)\n"
+      "lw $v0, 76($sp)\n"
+      "lw $t8, 68($sp)\n"
+      "sw $v0, 68($sp)\n"
+      "sw $t8, 76($sp)\n"
       "lw $v0, 0($sp)\n"
-      "addiu $sp, $sp, 4\n";
+      "addiu $sp, $sp, 16\n";
   DriverWrapper(moves_, expected, "TwoDoubleStackSlots");
 }
 
