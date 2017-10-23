@@ -2803,7 +2803,7 @@ TEST_F(AssemblerMIPSTest, LongBranchReorder) {
   oss <<
       ".set noreorder\n"
       "addiu $t0, $t1, 0x5678\n"
-      "addiu $sp, $sp, -4\n"
+      "addiu $sp, $sp, -16\n"
       "sw $ra, 0($sp)\n"
       "bltzal $zero, .+4\n"
       "lui $at, 0x" << std::hex << High16Bits(offset_forward) << "\n"
@@ -2811,11 +2811,11 @@ TEST_F(AssemblerMIPSTest, LongBranchReorder) {
       "addu $at, $at, $ra\n"
       "lw $ra, 0($sp)\n"
       "jalr $zero, $at\n"
-      "addiu $sp, $sp, 4\n" <<
+      "addiu $sp, $sp, 16\n" <<
       RepeatInsn(kAdduCount1, "addu $zero, $zero, $zero\n") <<
       RepeatInsn(kAdduCount2, "addu $zero, $zero, $zero\n") <<
       "addiu $t0, $t1, 0x5678\n"
-      "addiu $sp, $sp, -4\n"
+      "addiu $sp, $sp, -16\n"
       "sw $ra, 0($sp)\n"
       "bltzal $zero, .+4\n"
       "lui $at, 0x" << std::hex << High16Bits(offset_back) << "\n"
@@ -2823,7 +2823,7 @@ TEST_F(AssemblerMIPSTest, LongBranchReorder) {
       "addu $at, $at, $ra\n"
       "lw $ra, 0($sp)\n"
       "jalr $zero, $at\n"
-      "addiu $sp, $sp, 4\n";
+      "addiu $sp, $sp, 16\n";
   std::string expected = oss.str();
   DriverStr(expected, "LongBranchReorder");
   EXPECT_EQ(__ GetLabelLocation(&patcher_label1), 0 * 4u);
