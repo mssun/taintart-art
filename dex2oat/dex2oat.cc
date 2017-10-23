@@ -449,7 +449,7 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("      The image writer will group them together.");
   UsageError("");
   UsageError("  --compact-dex-level=none|fast: None avoids generating compact dex, fast");
-  UsageError("      generates compact dex with fast optimiations.");
+  UsageError("      generates compact dex with fast optimizations.");
   UsageError("");
   std::cerr << "See log for usage error information\n";
   exit(EXIT_FAILURE);
@@ -2458,7 +2458,8 @@ class Dex2Oat FINAL {
       oat_writers_.emplace_back(new linker::OatWriter(
           IsBootImage(),
           timings_,
-          do_oat_writer_layout ? profile_compilation_info_.get() : nullptr));
+          do_oat_writer_layout ? profile_compilation_info_.get() : nullptr,
+          compact_dex_level_));
     }
   }
 
