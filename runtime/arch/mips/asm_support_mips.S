@@ -173,4 +173,30 @@
   .set pop
 .endm
 
+// This utility macro is used to check whether the address contained in
+// a register is suitably aligned. Default usage is confirm that the
+// address stored in $sp is a multiple of 16. It can be used for other
+// alignments, and for other base address registers, if needed.
+//
+// Enable this macro by running the shell command:
+//
+//    export ART_MIPS32_CHECK_ALIGNMENT=true
+//
+// NOTE: The value of alignment must be a power of 2, and must fit in an
+// unsigned 15-bit integer. The macro won't behave as expected if these
+// conditions aren't met.
+//
+.macro CHECK_ALIGNMENT ba=$sp, tmp=$at, alignment=16
+#ifdef ART_MIPS32_CHECK_ALIGNMENT
+    .set push
+    .set noat
+    .set noreorder
+    andi  \tmp, \ba, \alignment-1
+    beqz  \tmp, .+12    # Skip break instruction if base address register (ba) is aligned
+    nop
+    break
+    .set pop
+#endif
+.endm
+
 #endif  // ART_RUNTIME_ARCH_MIPS_ASM_SUPPORT_MIPS_S_
