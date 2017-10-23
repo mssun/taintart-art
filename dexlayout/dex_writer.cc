@@ -23,7 +23,9 @@
 #include <queue>
 #include <vector>
 
+#include "cdex/compact_dex_file.h"
 #include "dex_file_types.h"
+#include "standard_dex_file.h"
 #include "utf.h"
 
 namespace art {
@@ -630,7 +632,18 @@ void DexWriter::WriteHeader() {
   uint32_t buffer[20];
   dex_ir::Collections& collections = header_->GetCollections();
   size_t offset = 0;
-  offset += Write(header_->Magic(), 8 * sizeof(uint8_t), offset);
+  if (compact_dex_level_ != CompactDexLevel::kCompactDexLevelNone) {
+    static constexpr size_t kMagicAndVersionLen =
+        CompactDexFile::kDexMagicSize + CompactDexFile::kDexVersionLen;
+    uint8_t magic_and_version[kMagicAndVersionLen] = {};
+    CompactDexFile::WriteMagic(&magic_and_version[0]);
+    CompactDexFile::WriteCurrentVersion(&magic_and_version[0]);
+    offset += Write(magic_and_version, kMagicAndVersionLen * sizeof(uint8_t), offset);
+  } else {
+    static constexpr size_t kMagicAndVersionLen =
+        StandardDexFile::kDexMagicSize + StandardDexFile::kDexVersionLen;
+    offset += Write(header_->Magic(), kMagicAndVersionLen * sizeof(uint8_t), offset);
+  }
   buffer[0] = header_->Checksum();
   offset += Write(buffer, sizeof(uint32_t), offset);
   offset += Write(header_->Signature(), 20 * sizeof(uint8_t), offset);
@@ -681,8 +694,8 @@ void DexWriter::WriteMemMap() {
   WriteHeader();
 }
 
-void DexWriter::Output(dex_ir::Header* header, MemMap* mem_map) {
-  DexWriter dex_writer(header, mem_map);
+void DexWriter::Output(dex_ir::Header* header, MemMap* mem_map, CompactDexLevel compact_dex_level) {
+  DexWriter dex_writer(header, mem_map, compact_dex_level);
   dex_writer.WriteMemMap();
 }
 
