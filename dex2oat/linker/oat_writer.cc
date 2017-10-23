@@ -3259,7 +3259,8 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
       PLOG(ERROR) << "Failed to dup dex file descriptor (" << raw_file->Fd() << ") at " << location;
       return false;
     }
-    dex_file = DexFileLoader::OpenDex(dup_fd, location, /* verify_checksum */ true, &error_msg);
+    dex_file = DexFileLoader::OpenDex(
+        dup_fd, location, /* verify */ true, /* verify_checksum */ true, &error_msg);
   } else {
     // The source data is a vdex file.
     CHECK(oat_dex_file->source_.IsRawData())
