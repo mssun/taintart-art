@@ -706,7 +706,7 @@ static void* AgentCallback(void* arg) {
 
   // We already have a peer. So call our special Attach function.
   art::Thread* self = art::Thread::Attach("JVMTI Agent thread", true, data->thread);
-  CHECK(self != nullptr);
+  CHECK(self != nullptr) << "threads_being_born_ should have ensured thread could be attached.";
   // The name in Attach() is only for logging. Set the thread name. This is important so
   // that the thread is no longer seen as starting up.
   {
@@ -718,6 +718,13 @@ static void* AgentCallback(void* arg) {
   JNIEnv* env = self->GetJniEnv();
   env->DeleteGlobalRef(data->thread);
   data->thread = nullptr;
+
+  {
+    // The StartThreadBirth was called in the parent thread. We let the runtime know we are up
+    // before going into the provided code.
+    art::MutexLock mu(art::Thread::Current(), *art::Locks::runtime_shutdown_lock_);
+    art::Runtime::Current()->EndThreadBirth();
+  }
 
   // Run the agent code.
   data->proc(data->jvmti_env, env, const_cast<void*>(data->arg));
@@ -748,6 +755,21 @@ jvmtiError ThreadUtil::RunAgentThread(jvmtiEnv* jvmti_env,
     return ERR(NULL_POINTER);
   }
 
+  {
+    art::Runtime* runtime = art::Runtime::Current();
+    art::MutexLock mu(art::Thread::Current(), *art::Locks::runtime_shutdown_lock_);
+    if (runtime->IsShuttingDownLocked()) {
+      // The runtime is shutting down so we cannot create new threads.
+      // TODO It's not fully clear from the spec what we should do here. We aren't yet in
+      // JVMTI_PHASE_DEAD so we cannot return ERR(WRONG_PHASE) but creating new threads is now
+      // impossible. Existing agents don't seem to generally do anything with this return value so
+      // it doesn't matter too much. We could do something like sending a fake ThreadStart event
+      // even though code is never actually run.
+      return ERR(INTERNAL);
+    }
+    runtime->StartThreadBirth();
+  }
+
   std::unique_ptr<AgentData> data(new AgentData);
   data->arg = arg;
   data->proc = proc;
@@ -759,10 +781,14 @@ jvmtiError ThreadUtil::RunAgentThread(jvmtiEnv* jvmti_env,
 
   pthread_t pthread;
   int pthread_create_result = pthread_create(&pthread,
-                                             nullptr,
-                                             &AgentCallback,
-                                             reinterpret_cast<void*>(data.get()));
+                                            nullptr,
+                                            &AgentCallback,
+                                            reinterpret_cast<void*>(data.get()));
   if (pthread_create_result != 0) {
+    // If the create succeeded the other thread will call EndThreadBirth.
+    art::Runtime* runtime = art::Runtime::Current();
+    art::MutexLock mu(art::Thread::Current(), *art::Locks::runtime_shutdown_lock_);
+    runtime->EndThreadBirth();
     return ERR(INTERNAL);
   }
   data.release();
