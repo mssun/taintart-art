@@ -976,6 +976,14 @@ class DexFile {
   // Returns a human-readable form of the type at an index.
   std::string PrettyType(dex::TypeIndex type_idx) const;
 
+  // Helper functions.
+  virtual bool IsCompactDexFile() const {
+    return false;
+  }
+  virtual bool IsStandardDexFile() const {
+    return false;
+  }
+
  protected:
   DexFile(const uint8_t* base,
           size_t size,
