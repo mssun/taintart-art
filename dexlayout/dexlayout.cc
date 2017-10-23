@@ -1986,7 +1986,7 @@ void DexLayout::OutputDexFile(const DexFile* dex_file) {
     }
     return;
   }
-  DexWriter::Output(header_, mem_map_.get());
+  DexWriter::Output(header_, mem_map_.get(), options_.compact_dex_level_);
   if (new_file != nullptr) {
     UNUSED(new_file->FlushCloseOrErase());
   }

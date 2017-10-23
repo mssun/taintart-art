@@ -247,7 +247,8 @@ inline void CompilationHelper::Compile(CompilerDriver* driver,
         elf_writers.back()->Start();
         oat_writers.emplace_back(new OatWriter(/*compiling_boot_image*/true,
                                                &timings,
-                                               /*profile_compilation_info*/nullptr));
+                                               /*profile_compilation_info*/nullptr,
+                                               CompactDexLevel::kCompactDexLevelNone));
       }
 
       std::vector<OutputStream*> rodata;
