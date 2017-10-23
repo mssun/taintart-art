@@ -89,27 +89,26 @@ public class Main {
   /// CHECK-DAG: <<Cnv:s\d+>>  TypeConversion [<<UShr>>]           loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
-  // FIXME: Pattern currently not detected. b/67935418
-  // CHECK-START-ARM: void Main.halving_add_unsigned(short[], short[], short[]) loop_optimization (after)
-  // CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
-  // CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
-  // CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
-  // CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get1>>,<<Get2>>] packed_type:Uint16 rounded:false loop:<<Loop>> outer_loop:none
-  // CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-START-ARM: void Main.halving_add_unsigned(short[], short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get1>>,<<Get2>>] packed_type:Uint16 rounded:false loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
   //
-  // CHECK-START-ARM64: void Main.halving_add_unsigned(short[], short[], short[]) loop_optimization (after)
-  // CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
-  // CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
-  // CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
-  // CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get1>>,<<Get2>>] packed_type:Uint16 rounded:false loop:<<Loop>> outer_loop:none
-  // CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-START-ARM64: void Main.halving_add_unsigned(short[], short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get1>>,<<Get2>>] packed_type:Uint16 rounded:false loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
   //
-  // CHECK-START-MIPS64: void Main.halving_add_unsigned(short[], short[], short[]) loop_optimization (after)
-  // CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
-  // CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
-  // CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
-  // CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get1>>,<<Get2>>] packed_type:Uint16 rounded:false loop:<<Loop>> outer_loop:none
-  // CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-START-MIPS64: void Main.halving_add_unsigned(short[], short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get1>>,<<Get2>>] packed_type:Uint16 rounded:false loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
   private static void halving_add_unsigned(short[] b1, short[] b2, short[] bo) {
     int min_length = Math.min(bo.length, Math.min(b1.length, b2.length));
     for (int i = 0; i < min_length; i++) {
@@ -180,27 +179,26 @@ public class Main {
   /// CHECK-DAG: <<Cnv:s\d+>>  TypeConversion [<<UShr>>]           loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
-  // FIXME: Pattern currently not detected. b/67935418
-  // CHECK-START-ARM: void Main.rounding_halving_add_unsigned(short[], short[], short[]) loop_optimization (after)
-  // CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
-  // CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
-  // CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
-  // CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get1>>,<<Get2>>] packed_type:Uint16 rounded:true loop:<<Loop>> outer_loop:none
-  // CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-START-ARM: void Main.rounding_halving_add_unsigned(short[], short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get1>>,<<Get2>>] packed_type:Uint16 rounded:true loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
   //
-  // CHECK-START-ARM64: void Main.rounding_halving_add_unsigned(short[], short[], short[]) loop_optimization (after)
-  // CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
-  // CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
-  // CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
-  // CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get1>>,<<Get2>>] packed_type:Uint16 rounded:true loop:<<Loop>> outer_loop:none
-  // CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-START-ARM64: void Main.rounding_halving_add_unsigned(short[], short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get1>>,<<Get2>>] packed_type:Uint16 rounded:true loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
   //
-  // CHECK-START-MIPS64: void Main.rounding_halving_add_unsigned(short[], short[], short[]) loop_optimization (after)
-  // CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
-  // CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
-  // CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
-  // CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get1>>,<<Get2>>] packed_type:Uint16 rounded:true loop:<<Loop>> outer_loop:none
-  // CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-START-MIPS64: void Main.rounding_halving_add_unsigned(short[], short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get1>>,<<Get2>>] packed_type:Uint16 rounded:true loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
   private static void rounding_halving_add_unsigned(short[] b1, short[] b2, short[] bo) {
     int min_length = Math.min(bo.length, Math.min(b1.length, b2.length));
     for (int i = 0; i < min_length; i++) {
@@ -269,30 +267,29 @@ public class Main {
   /// CHECK-DAG: <<Cnv:s\d+>>  TypeConversion [<<UShr>>]           loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
-  // FIXME: Pattern currently not detected. b/67935418
-  // CHECK-START-ARM: void Main.halving_add_unsigned_constant(short[], short[]) loop_optimization (after)
-  // CHECK-DAG: <<UMAX:i\d+>> IntConstant 65535                    loop:none
-  // CHECK-DAG: <<Repl:d\d+>> VecReplicateScalar [<<UMAX>>]        loop:none
-  // CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
-  // CHECK-DAG: <<Get:d\d+>>  VecLoad                              loop:<<Loop>>      outer_loop:none
-  // CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get>>,<<Repl>>] packed_type:Uint16 rounded:false loop:<<Loop>> outer_loop:none
-  // CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-START-ARM: void Main.halving_add_unsigned_constant(short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<UMAX:i\d+>> IntConstant 65535                    loop:none
+  /// CHECK-DAG: <<Repl:d\d+>> VecReplicateScalar [<<UMAX>>]        loop:none
+  /// CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get:d\d+>>  VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get>>,<<Repl>>] packed_type:Uint16 rounded:false loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
   //
-  // CHECK-START-ARM64: void Main.halving_add_unsigned_constant(short[], short[]) loop_optimization (after)
-  // CHECK-DAG: <<UMAX:i\d+>> IntConstant 65535                    loop:none
-  // CHECK-DAG: <<Repl:d\d+>> VecReplicateScalar [<<UMAX>>]        loop:none
-  // CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
-  // CHECK-DAG: <<Get:d\d+>>  VecLoad                              loop:<<Loop>>      outer_loop:none
-  // CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get>>,<<Repl>>] packed_type:Uint16 rounded:false loop:<<Loop>> outer_loop:none
-  // CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-START-ARM64: void Main.halving_add_unsigned_constant(short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<UMAX:i\d+>> IntConstant 65535                    loop:none
+  /// CHECK-DAG: <<Repl:d\d+>> VecReplicateScalar [<<UMAX>>]        loop:none
+  /// CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get:d\d+>>  VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get>>,<<Repl>>] packed_type:Uint16 rounded:false loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
   //
-  // CHECK-START-MIPS64: void Main.halving_add_unsigned_constant(short[], short[]) loop_optimization (after)
-  // CHECK-DAG: <<UMAX:i\d+>> IntConstant 65535                    loop:none
-  // CHECK-DAG: <<Repl:d\d+>> VecReplicateScalar [<<UMAX>>]        loop:none
-  // CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
-  // CHECK-DAG: <<Get:d\d+>>  VecLoad                              loop:<<Loop>>      outer_loop:none
-  // CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get>>,<<Repl>>] packed_type:Uint16 rounded:false loop:<<Loop>> outer_loop:none
-  // CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-START-MIPS64: void Main.halving_add_unsigned_constant(short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<UMAX:i\d+>> IntConstant 65535                    loop:none
+  /// CHECK-DAG: <<Repl:d\d+>> VecReplicateScalar [<<UMAX>>]        loop:none
+  /// CHECK-DAG: <<Phi:i\d+>>  Phi                                  loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get:d\d+>>  VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<HAdd:d\d+>> VecHalvingAdd [<<Get>>,<<Repl>>] packed_type:Uint16 rounded:false loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<HAdd>>] loop:<<Loop>>      outer_loop:none
   private static void halving_add_unsigned_constant(short[] b1, short[] bo) {
     int min_length = Math.min(bo.length, b1.length);
     for (int i = 0; i < min_length; i++) {

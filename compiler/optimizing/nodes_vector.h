@@ -136,6 +136,20 @@ class HVecOperation : public HVariableInputSizeInstruction {
     }
   }
 
+  // Maps an integral type to the same-size unsigned type and leaves other types alone.
+  static DataType::Type ToUnsignedType(DataType::Type type) {
+    switch (type) {
+      case DataType::Type::kBool:  // 1-byte storage unit
+      case DataType::Type::kInt8:
+        return DataType::Type::kUint8;
+      case DataType::Type::kInt16:
+        return DataType::Type::kUint16;
+      default:
+        DCHECK(type != DataType::Type::kVoid && type != DataType::Type::kReference) << type;
+        return type;
+    }
+  }
+
   DECLARE_ABSTRACT_INSTRUCTION(VecOperation);
 
  protected:
@@ -254,6 +268,8 @@ inline static bool HasConsistentPackedTypes(HInstruction* input, DataType::Type 
   }
   DCHECK(input->IsVecOperation());
   DataType::Type input_type = input->AsVecOperation()->GetPackedType();
+  DCHECK_EQ(HVecOperation::ToUnsignedType(input_type) == HVecOperation::ToUnsignedType(type),
+            HVecOperation::ToSignedType(input_type) == HVecOperation::ToSignedType(type));
   return HVecOperation::ToSignedType(input_type) == HVecOperation::ToSignedType(type);
 }
 
