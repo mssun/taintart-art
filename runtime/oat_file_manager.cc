@@ -597,8 +597,12 @@ std::vector<std::unique_ptr<const DexFile>> OatFileManager::OpenDexFilesFromOat(
     if (oat_file_assistant.HasOriginalDexFiles()) {
       if (Runtime::Current()->IsDexFileFallbackEnabled()) {
         static constexpr bool kVerifyChecksum = true;
-        if (!DexFileLoader::Open(
-            dex_location, dex_location, kVerifyChecksum, /*out*/ &error_msg, &dex_files)) {
+        if (!DexFileLoader::Open(dex_location,
+                                 dex_location,
+                                 /*verify*/ true,
+                                 kVerifyChecksum,
+                                 /*out*/ &error_msg,
+                                 &dex_files)) {
           LOG(WARNING) << error_msg;
           error_msgs->push_back("Failed to open dex files from " + std::string(dex_location)
                                 + " because: " + error_msg);

@@ -186,6 +186,7 @@ std::unique_ptr<const DexFile> DexFileLoader::Open(const std::string& location,
 
 bool DexFileLoader::Open(const char* filename,
                          const std::string& location,
+                         bool verify,
                          bool verify_checksum,
                          std::string* error_msg,
                          std::vector<std::unique_ptr<const DexFile>>* dex_files) {
@@ -198,12 +199,12 @@ bool DexFileLoader::Open(const char* filename,
     return false;
   }
   if (IsZipMagic(magic)) {
-    return OpenZip(fd.Release(), location, verify_checksum, error_msg, dex_files);
+    return OpenZip(fd.Release(), location, verify, verify_checksum, error_msg, dex_files);
   }
   if (IsMagicValid(magic)) {
     std::unique_ptr<const DexFile> dex_file(OpenFile(fd.Release(),
                                                      location,
-                                                     /* verify */ true,
+                                                     verify,
                                                      verify_checksum,
                                                      error_msg));
     if (dex_file.get() != nullptr) {
@@ -219,14 +220,16 @@ bool DexFileLoader::Open(const char* filename,
 
 std::unique_ptr<const DexFile> DexFileLoader::OpenDex(int fd,
                                                       const std::string& location,
+                                                      bool verify,
                                                       bool verify_checksum,
                                                       std::string* error_msg) {
   ScopedTrace trace("Open dex file " + std::string(location));
-  return OpenFile(fd, location, true /* verify */, verify_checksum, error_msg);
+  return OpenFile(fd, location, verify, verify_checksum, error_msg);
 }
 
 bool DexFileLoader::OpenZip(int fd,
                             const std::string& location,
+                            bool verify,
                             bool verify_checksum,
                             std::string* error_msg,
                             std::vector<std::unique_ptr<const DexFile>>* dex_files) {
@@ -237,7 +240,8 @@ bool DexFileLoader::OpenZip(int fd,
     DCHECK(!error_msg->empty());
     return false;
   }
-  return OpenAllDexFilesFromZip(*zip_archive, location, verify_checksum, error_msg, dex_files);
+  return OpenAllDexFilesFromZip(
+      *zip_archive, location, verify, verify_checksum, error_msg, dex_files);
 }
 
 std::unique_ptr<const DexFile> DexFileLoader::OpenFile(int fd,
@@ -304,6 +308,7 @@ std::unique_ptr<const DexFile> DexFileLoader::OpenOneDexFileFromZip(
     const ZipArchive& zip_archive,
     const char* entry_name,
     const std::string& location,
+    bool verify,
     bool verify_checksum,
     std::string* error_msg,
     ZipOpenErrorCode* error_code) {
@@ -357,7 +362,7 @@ std::unique_ptr<const DexFile> DexFileLoader::OpenOneDexFileFromZip(
                                                  location,
                                                  zip_entry->GetCrc32(),
                                                  kNoOatDexFile,
-                                                 /* verify */ true,
+                                                 verify,
                                                  verify_checksum,
                                                  error_msg,
                                                  &verify_result);
@@ -391,16 +396,18 @@ std::unique_ptr<const DexFile> DexFileLoader::OpenOneDexFileFromZip(
 static constexpr size_t kWarnOnManyDexFilesThreshold = 100;
 
 bool DexFileLoader::OpenAllDexFilesFromZip(const ZipArchive& zip_archive,
-                                          const std::string& location,
-                                          bool verify_checksum,
-                                          std::string* error_msg,
-                                          std::vector<std::unique_ptr<const DexFile>>* dex_files) {
+                                           const std::string& location,
+                                           bool verify,
+                                           bool verify_checksum,
+                                           std::string* error_msg,
+                                           std::vector<std::unique_ptr<const DexFile>>* dex_files) {
   ScopedTrace trace("Dex file open from Zip " + std::string(location));
   DCHECK(dex_files != nullptr) << "DexFile::OpenFromZip: out-param is nullptr";
   ZipOpenErrorCode error_code;
   std::unique_ptr<const DexFile> dex_file(OpenOneDexFileFromZip(zip_archive,
                                                                 kClassesDex,
                                                                 location,
+                                                                verify,
                                                                 verify_checksum,
                                                                 error_msg,
                                                                 &error_code));
@@ -421,6 +428,7 @@ bool DexFileLoader::OpenAllDexFilesFromZip(const ZipArchive& zip_archive,
       std::unique_ptr<const DexFile> next_dex_file(OpenOneDexFileFromZip(zip_archive,
                                                                          name.c_str(),
                                                                          fake_location,
+                                                                         verify,
                                                                          verify_checksum,
                                                                          error_msg,
                                                                          &error_code));
