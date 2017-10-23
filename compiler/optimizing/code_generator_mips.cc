@@ -1300,7 +1300,7 @@ void ParallelMoveResolverMIPS::Exchange(int index1, int index2, bool double_slot
   // automatically unspilled when the scratch scope object is destroyed).
   ScratchRegisterScope ensure_scratch(this, TMP, V0, codegen_->GetNumberOfCoreRegisters());
   // If V0 spills onto the stack, SP-relative offsets need to be adjusted.
-  int stack_offset = ensure_scratch.IsSpilled() ? kMipsWordSize : 0;
+  int stack_offset = ensure_scratch.IsSpilled() ? kStackAlignment : 0;
   for (int i = 0; i <= (double_slot ? 1 : 0); i++, stack_offset += kMipsWordSize) {
     __ LoadFromOffset(kLoadWord,
                       Register(ensure_scratch.GetRegister()),

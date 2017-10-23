@@ -35,8 +35,24 @@ static constexpr uint32_t kMipsCalleeSaveRefSpills =
 static constexpr uint32_t kMipsCalleeSaveArgSpills =
     (1 << art::mips::A1) | (1 << art::mips::A2) | (1 << art::mips::A3) | (1 << art::mips::T0) |
     (1 << art::mips::T1);
+// We want to save all floating point register pairs at addresses
+// which are multiples of 8 so that we can eliminate use of the
+// SDu/LDu macros by using sdc1/ldc1 to store/load floating
+// register values using a single instruction. Because integer
+// registers are stored at the top of the frame, to achieve having
+// the floating point register pairs aligned on multiples of 8 the
+// number of integer registers saved must be even. Previously, the
+// only case in which we saved floating point registers beneath an
+// odd number of integer registers was when "type" is
+// CalleeSaveType::kSaveAllCalleeSaves. (There are other cases in
+// which an odd number of integer registers are saved but those
+// cases don't save any floating point registers. If no floating
+// point registers are saved we don't care if the number of integer
+// registers saved is odd or even). To save an even number of
+// integer registers in this particular case we add the ZERO
+// register to the list of registers which get saved.
 static constexpr uint32_t kMipsCalleeSaveAllSpills =
-    (1 << art::mips::S0) | (1 << art::mips::S1);
+    (1 << art::mips::ZERO) | (1 << art::mips::S0) | (1 << art::mips::S1);
 static constexpr uint32_t kMipsCalleeSaveEverythingSpills =
     (1 << art::mips::AT) | (1 << art::mips::V0) | (1 << art::mips::V1) |
     (1 << art::mips::A0) | (1 << art::mips::A1) | (1 << art::mips::A2) | (1 << art::mips::A3) |

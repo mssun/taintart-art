@@ -37,45 +37,49 @@
      * Reserves FRAME_SIZE_SAVE_ALL_CALLEE_SAVES + ARG_SLOT_SIZE bytes on the stack
      */
 .macro SETUP_SAVE_ALL_CALLEE_SAVES_FRAME
-    addiu  $sp, $sp, -96
-    .cfi_adjust_cfa_offset 96
+    addiu  $sp, $sp, -112
+    .cfi_adjust_cfa_offset 112
 
      // Ugly compile-time check, but we only have the preprocessor.
-#if (FRAME_SIZE_SAVE_ALL_CALLEE_SAVES != 96)
+#if (FRAME_SIZE_SAVE_ALL_CALLEE_SAVES != 112)
 #error "FRAME_SIZE_SAVE_ALL_CALLEE_SAVES(MIPS) size not as expected."
 #endif
 
-    sw     $ra, 92($sp)
-    .cfi_rel_offset 31, 92
-    sw     $s8, 88($sp)
-    .cfi_rel_offset 30, 88
-    sw     $gp, 84($sp)
-    .cfi_rel_offset 28, 84
-    sw     $s7, 80($sp)
-    .cfi_rel_offset 23, 80
-    sw     $s6, 76($sp)
-    .cfi_rel_offset 22, 76
-    sw     $s5, 72($sp)
-    .cfi_rel_offset 21, 72
-    sw     $s4, 68($sp)
-    .cfi_rel_offset 20, 68
-    sw     $s3, 64($sp)
-    .cfi_rel_offset 19, 64
-    sw     $s2, 60($sp)
-    .cfi_rel_offset 18, 60
-    sw     $s1, 56($sp)
-    .cfi_rel_offset 17, 56
-    sw     $s0, 52($sp)
-    .cfi_rel_offset 16, 52
+    sw     $ra, 108($sp)
+    .cfi_rel_offset 31, 108
+    sw     $s8, 104($sp)
+    .cfi_rel_offset 30, 104
+    sw     $gp, 100($sp)
+    .cfi_rel_offset 28, 100
+    sw     $s7, 96($sp)
+    .cfi_rel_offset 23, 96
+    sw     $s6, 92($sp)
+    .cfi_rel_offset 22, 92
+    sw     $s5, 88($sp)
+    .cfi_rel_offset 21, 88
+    sw     $s4, 84($sp)
+    .cfi_rel_offset 20, 84
+    sw     $s3, 80($sp)
+    .cfi_rel_offset 19, 80
+    sw     $s2, 76($sp)
+    .cfi_rel_offset 18, 76
+    sw     $s1, 72($sp)
+    .cfi_rel_offset 17, 72
+    sw     $s0, 68($sp)
+    .cfi_rel_offset 16, 68
+    // 4-byte placeholder for register $zero, serving for alignment
+    // of the following double precision floating point registers.
 
-    SDu $f30, $f31, 44, $sp, $t1
-    SDu $f28, $f29, 36, $sp, $t1
-    SDu $f26, $f27, 28, $sp, $t1
-    SDu $f24, $f25, 20, $sp, $t1
-    SDu $f22, $f23, 12, $sp, $t1
-    SDu $f20, $f21, 4,  $sp, $t1
+    CHECK_ALIGNMENT $sp, $t1
+    sdc1   $f30, 56($sp)
+    sdc1   $f28, 48($sp)
+    sdc1   $f26, 40($sp)
+    sdc1   $f24, 32($sp)
+    sdc1   $f22, 24($sp)
+    sdc1   $f20, 16($sp)
 
-    # 1 word for holding Method*
+    # 1 word for holding Method* plus 12 bytes padding to keep contents of SP
+    # a multiple of 16.
 
     lw $t0, %got(_ZN3art7Runtime9instance_E)($gp)
     lw $t0, 0($t0)
@@ -216,12 +220,13 @@
     .cfi_rel_offset 6, 60
     sw      $a1, 56($sp)
     .cfi_rel_offset 5, 56
-    SDu     $f18, $f19, 48, $sp, $t8
-    SDu     $f16, $f17, 40, $sp, $t8
-    SDu     $f14, $f15, 32, $sp, $t8
-    SDu     $f12, $f13, 24, $sp, $t8
-    SDu     $f10, $f11, 16, $sp, $t8
-    SDu     $f8, $f9, 8, $sp, $t8
+    CHECK_ALIGNMENT $sp, $t8
+    sdc1    $f18, 48($sp)
+    sdc1    $f16, 40($sp)
+    sdc1    $f14, 32($sp)
+    sdc1    $f12, 24($sp)
+    sdc1    $f10, 16($sp)
+    sdc1    $f8,   8($sp)
     # bottom will hold Method*
 .endm
 
@@ -320,12 +325,13 @@
     lw      $a2, 60($sp)
     .cfi_restore 6
     RESTORE_SAVE_REFS_AND_ARGS_FRAME_A1
-    LDu     $f18, $f19, 48, $sp, $t8
-    LDu     $f16, $f17, 40, $sp, $t8
-    LDu     $f14, $f15, 32, $sp, $t8
-    LDu     $f12, $f13, 24, $sp, $t8
-    LDu     $f10, $f11, 16, $sp, $t8
-    LDu     $f8, $f9, 8, $sp, $t8
+    CHECK_ALIGNMENT $sp, $t8
+    ldc1    $f18, 48($sp)
+    ldc1    $f16, 40($sp)
+    ldc1    $f14, 32($sp)
+    ldc1    $f12, 24($sp)
+    ldc1    $f10, 16($sp)
+    ldc1    $f8,   8($sp)
     addiu   $sp, $sp, 112                           # Pop frame.
     .cfi_adjust_cfa_offset -112
 .endm
@@ -412,22 +418,23 @@
 1:
     .cpload $ra
 
-    SDu $f30, $f31, 136, $sp, $t1
-    SDu $f28, $f29, 128, $sp, $t1
-    SDu $f26, $f27, 120, $sp, $t1
-    SDu $f24, $f25, 112, $sp, $t1
-    SDu $f22, $f23, 104, $sp, $t1
-    SDu $f20, $f21, 96,  $sp, $t1
-    SDu $f18, $f19, 88,  $sp, $t1
-    SDu $f16, $f17, 80,  $sp, $t1
-    SDu $f14, $f15, 72,  $sp, $t1
-    SDu $f12, $f13, 64,  $sp, $t1
-    SDu $f10, $f11, 56,  $sp, $t1
-    SDu $f8, $f9, 48,  $sp, $t1
-    SDu $f6, $f7, 40,  $sp, $t1
-    SDu $f4, $f5, 32,  $sp, $t1
-    SDu $f2, $f3, 24,  $sp, $t1
-    SDu $f0, $f1, 16,  $sp, $t1
+    CHECK_ALIGNMENT $sp, $t1
+    sdc1   $f30, 136($sp)
+    sdc1   $f28, 128($sp)
+    sdc1   $f26, 120($sp)
+    sdc1   $f24, 112($sp)
+    sdc1   $f22, 104($sp)
+    sdc1   $f20,  96($sp)
+    sdc1   $f18,  88($sp)
+    sdc1   $f16,  80($sp)
+    sdc1   $f14,  72($sp)
+    sdc1   $f12,  64($sp)
+    sdc1   $f10,  56($sp)
+    sdc1   $f8,   48($sp)
+    sdc1   $f6,   40($sp)
+    sdc1   $f4,   32($sp)
+    sdc1   $f2,   24($sp)
+    sdc1   $f0,   16($sp)
 
     # 3 words padding and 1 word for holding Method*
 
@@ -460,22 +467,23 @@
     addiu  $sp, $sp, ARG_SLOT_SIZE                # remove argument slots on the stack
     .cfi_adjust_cfa_offset -ARG_SLOT_SIZE
 
-    LDu $f30, $f31, 136, $sp, $t1
-    LDu $f28, $f29, 128, $sp, $t1
-    LDu $f26, $f27, 120, $sp, $t1
-    LDu $f24, $f25, 112, $sp, $t1
-    LDu $f22, $f23, 104, $sp, $t1
-    LDu $f20, $f21, 96,  $sp, $t1
-    LDu $f18, $f19, 88,  $sp, $t1
-    LDu $f16, $f17, 80,  $sp, $t1
-    LDu $f14, $f15, 72,  $sp, $t1
-    LDu $f12, $f13, 64,  $sp, $t1
-    LDu $f10, $f11, 56,  $sp, $t1
-    LDu $f8, $f9, 48,  $sp, $t1
-    LDu $f6, $f7, 40,  $sp, $t1
-    LDu $f4, $f5, 32,  $sp, $t1
-    LDu $f2, $f3, 24,  $sp, $t1
-    LDu $f0, $f1, 16,  $sp, $t1
+    CHECK_ALIGNMENT $sp, $t1
+    ldc1   $f30, 136($sp)
+    ldc1   $f28, 128($sp)
+    ldc1   $f26, 120($sp)
+    ldc1   $f24, 112($sp)
+    ldc1   $f22, 104($sp)
+    ldc1   $f20,  96($sp)
+    ldc1   $f18,  88($sp)
+    ldc1   $f16,  80($sp)
+    ldc1   $f14,  72($sp)
+    ldc1   $f12,  64($sp)
+    ldc1   $f10,  56($sp)
+    ldc1   $f8,   48($sp)
+    ldc1   $f6,   40($sp)
+    ldc1   $f4,   32($sp)
+    ldc1   $f2,   24($sp)
+    ldc1   $f0,   16($sp)
 
     lw     $ra, 252($sp)
     .cfi_restore 31
@@ -665,7 +673,8 @@ ENTRY art_quick_osr_stub
     b      .Losr_exit
     sw     $v1, 4($a2)                     # store v0/v1 into result
 .Losr_fp_result:
-    SDu    $f0, $f1, 0, $a2, $t0           # store f0/f1 into result
+    CHECK_ALIGNMENT $a2, $t0, 8
+    sdc1   $f0, 0($a2)                     # store f0/f1 into result
 .Losr_exit:
     lw     $ra, 44($sp)
     .cfi_restore 31
@@ -701,26 +710,28 @@ ENTRY art_quick_osr_stub
 END art_quick_osr_stub
 
     /*
-     * On entry $a0 is uint32_t* gprs_ and $a1 is uint32_t* fprs_
+     * On entry $a0 is uint32_t* gprs_ and $a1 is uint32_t* fprs_.
+     * Note that fprs_ is expected to be an address that is a multiple of 8.
      * FIXME: just guessing about the shape of the jmpbuf.  Where will pc be?
      */
 ENTRY art_quick_do_long_jump
-    LDu  $f0,  $f1,   0*8, $a1, $t1
-    LDu  $f2,  $f3,   1*8, $a1, $t1
-    LDu  $f4,  $f5,   2*8, $a1, $t1
-    LDu  $f6,  $f7,   3*8, $a1, $t1
-    LDu  $f8,  $f9,   4*8, $a1, $t1
-    LDu  $f10, $f11,  5*8, $a1, $t1
-    LDu  $f12, $f13,  6*8, $a1, $t1
-    LDu  $f14, $f15,  7*8, $a1, $t1
-    LDu  $f16, $f17,  8*8, $a1, $t1
-    LDu  $f18, $f19,  9*8, $a1, $t1
-    LDu  $f20, $f21, 10*8, $a1, $t1
-    LDu  $f22, $f23, 11*8, $a1, $t1
-    LDu  $f24, $f25, 12*8, $a1, $t1
-    LDu  $f26, $f27, 13*8, $a1, $t1
-    LDu  $f28, $f29, 14*8, $a1, $t1
-    LDu  $f30, $f31, 15*8, $a1, $t1
+    CHECK_ALIGNMENT $a1, $t1, 8
+    ldc1    $f0,   0*8($a1)
+    ldc1    $f2,   1*8($a1)
+    ldc1    $f4,   2*8($a1)
+    ldc1    $f6,   3*8($a1)
+    ldc1    $f8,   4*8($a1)
+    ldc1    $f10,  5*8($a1)
+    ldc1    $f12,  6*8($a1)
+    ldc1    $f14,  7*8($a1)
+    ldc1    $f16,  8*8($a1)
+    ldc1    $f18,  9*8($a1)
+    ldc1    $f20, 10*8($a1)
+    ldc1    $f22, 11*8($a1)
+    ldc1    $f24, 12*8($a1)
+    ldc1    $f26, 13*8($a1)
+    ldc1    $f28, 14*8($a1)
+    ldc1    $f30, 15*8($a1)
 
     .set push
     .set nomacro
@@ -1067,7 +1078,8 @@ loopEnd:
     jalr  $zero, $ra
     sw    $v1, 4($t0)           # store the other half of the result
 5:
-    SDu   $f0, $f1, 0, $t0, $t1 # store floating point result
+    CHECK_ALIGNMENT $t0, $t1, 8
+    sdc1  $f0, 0($t0)           # store floating point result
     jalr  $zero, $ra
     nop
 
@@ -1225,7 +1237,8 @@ loopEndS:
     jalr  $zero, $ra
     sw    $v1, 4($t0)           # store the other half of the result
 6:
-    SDu   $f0, $f1, 0, $t0, $t1 # store floating point result
+    CHECK_ALIGNMENT $t0, $t1, 8
+    sdc1  $f0, 0($t0)           # store floating point result
     jalr  $zero, $ra
     nop
 
@@ -2252,7 +2265,7 @@ ENTRY art_quick_generic_jni_trampoline
     move    $a0, rSELF             # pass Thread::Current
     move    $a2, $v0               # pass result
     move    $a3, $v1
-    addiu   $sp, $sp, -24          # reserve arg slots
+    addiu   $sp, $sp, -32          # reserve arg slots
     la      $t9, artQuickGenericJniEndTrampoline
     jalr    $t9
     s.d     $f0, 16($sp)           # pass result_f
@@ -3243,7 +3256,8 @@ ENTRY art_quick_invoke_polymorphic
     lhu   $v0, 16($sp)                        # Move char from JValue result to return value register.
 .Lstore_double_result:
 .Lstore_float_result:
-    LDu   $f0, $f1, 16, $sp, $t0              # Move double/float from JValue result to return value register.
+    CHECK_ALIGNMENT $sp, $t0
+    ldc1  $f0, 16($sp)                        # Move double/float from JValue result to return value register.
     b .Lcleanup_and_return
     nop
 .Lstore_long_result:

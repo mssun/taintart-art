@@ -97,6 +97,11 @@ func globalFlags(ctx android.BaseContext) ([]string, []string) {
 		asflags = append(asflags, "-DART_ENABLE_ADDRESS_SANITIZER=1")
 	}
 
+	if envTrue(ctx, "ART_MIPS32_CHECK_ALIGNMENT") {
+		// Enable the use of MIPS32 CHECK_ALIGNMENT macro for debugging purposes
+		asflags = append(asflags, "-DART_MIPS32_CHECK_ALIGNMENT")
+	}
+
 	return cflags, asflags
 }
 
