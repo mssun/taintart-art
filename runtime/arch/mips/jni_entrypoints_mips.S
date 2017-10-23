@@ -28,8 +28,9 @@ ENTRY art_jni_dlsym_lookup_stub
     .cfi_adjust_cfa_offset 48
     sw    $ra, 32($sp)
     .cfi_rel_offset 31, 32
-    SDu   $f14, $f15, 24, $sp, $t0
-    SDu   $f12, $f13, 16, $sp, $t0
+    CHECK_ALIGNMENT $sp, $t0
+    sdc1  $f14, 24($sp)
+    sdc1  $f12, 16($sp)
     sw    $a3, 12($sp)
     .cfi_rel_offset 7, 12
     sw    $a2, 8($sp)
@@ -45,8 +46,9 @@ ENTRY art_jni_dlsym_lookup_stub
     lw    $a1, 4($sp)
     lw    $a2, 8($sp)
     lw    $a3, 12($sp)
-    LDu   $f12, $f13, 16, $sp, $t0
-    LDu   $f14, $f15, 24, $sp, $t0
+    CHECK_ALIGNMENT $sp, $t0
+    ldc1  $f12, 16($sp)
+    ldc1  $f14, 24($sp)
     lw    $ra, 32($sp)
     beq   $v0, $zero, .Lno_native_code_found
     addiu $sp, $sp, 48          # restore the stack
