@@ -136,6 +136,7 @@ const DexFile::AnnotationSetItem* FindAnnotationSetForField(ArtField* field)
   ObjPtr<mirror::Class> klass = field->GetDeclaringClass();
   const DexFile::ClassDef* class_def = klass->GetClassDef();
   if (class_def == nullptr) {
+    DCHECK(klass->IsProxyClass());
     return nullptr;
   }
   const DexFile::AnnotationsDirectoryItem* annotations_dir =
@@ -314,6 +315,7 @@ const DexFile::AnnotationSetItem* FindAnnotationSetForClass(const ClassData& kla
   const DexFile& dex_file = klass.GetDexFile();
   const DexFile::ClassDef* class_def = klass.GetClassDef();
   if (class_def == nullptr) {
+    DCHECK(klass.GetRealClass()->IsProxyClass());
     return nullptr;
   }
   const DexFile::AnnotationsDirectoryItem* annotations_dir =
