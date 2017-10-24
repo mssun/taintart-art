@@ -37,17 +37,24 @@ File OpenAndReadMagic(const char* filename, uint32_t* magic, std::string* error_
     *error_msg = StringPrintf("Unable to open '%s' : %s", filename, strerror(errno));
     return File();
   }
-  int n = TEMP_FAILURE_RETRY(read(fd.Fd(), magic, sizeof(*magic)));
-  if (n != sizeof(*magic)) {
-    *error_msg = StringPrintf("Failed to find magic in '%s'", filename);
-    return File();
-  }
-  if (lseek(fd.Fd(), 0, SEEK_SET) != 0) {
-    *error_msg = StringPrintf("Failed to seek to beginning of file '%s' : %s", filename,
-                              strerror(errno));
+  if (!ReadMagicAndReset(fd.Fd(), magic, error_msg)) {
+    StringPrintf("Error in reading magic from file %s: %s", filename, error_msg->c_str());
     return File();
   }
   return fd;
+}
+
+bool ReadMagicAndReset(int fd, uint32_t* magic, std::string* error_msg) {
+  int n = TEMP_FAILURE_RETRY(read(fd, magic, sizeof(*magic)));
+  if (n != sizeof(*magic)) {
+    *error_msg = StringPrintf("Failed to find magic");
+    return false;
+  }
+  if (lseek(fd, 0, SEEK_SET) != 0) {
+    *error_msg = StringPrintf("Failed to seek to beginning of file : %s", strerror(errno));
+    return false;
+  }
+  return true;
 }
 
 bool IsZipMagic(uint32_t magic) {

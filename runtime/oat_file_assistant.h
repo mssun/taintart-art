@@ -121,9 +121,17 @@ class OatFileAssistant {
   // executable code for this dex location.
   OatFileAssistant(const char* dex_location,
                    const InstructionSet isa,
+                   bool load_executable);
+
+  // Similar to this(const char*, const InstructionSet, bool), however, if a valid zip_fd is
+  // provided, vdex, oat, and zip files will be read from vdex_fd, oat_fd and zip_fd respectively.
+  // Otherwise, dex_location will be used to construct necessary filenames.
+  OatFileAssistant(const char* dex_location,
+                   const InstructionSet isa,
                    bool load_executable,
-                   int vdex_fd = -1,
-                   int oat_fd = -1);
+                   int vdex_fd,
+                   int oat_fd,
+                   int zip_fd);
 
   ~OatFileAssistant();
 
@@ -351,7 +359,7 @@ class OatFileAssistant {
 
     // Clear any cached information and switch to getting info about the oat
     // file with the given filename.
-    void Reset(const std::string& filename, int vdex_fd = -1, int oat_fd = -1);
+    void Reset(const std::string& filename, bool use_fd, int vdex_fd = -1, int oat_fd = -1);
 
     // Release the loaded oat file for runtime use.
     // Returns null if the oat file hasn't been loaded or is out of date.
@@ -390,6 +398,7 @@ class OatFileAssistant {
 
     int oat_fd_ = -1;
     int vdex_fd_ = -1;
+    bool use_fd_ = false;
 
     bool load_attempted_ = false;
     std::unique_ptr<OatFile> file_;
@@ -419,6 +428,12 @@ class OatFileAssistant {
 
   // Return info for the best oat file.
   OatFileInfo& GetBestInfo();
+
+  // Returns true when vdex/oat/odex files should be read from file descriptors.
+  // The method checks the value of zip_fd_, and if the value is valid, returns
+  // true. This is required to have a deterministic behavior around how different
+  // files are being read.
+  bool UseFdToReadFiles();
 
   // Returns true if the dex checksums in the given vdex file are up to date
   // with respect to the dex location. If the dex checksums are not up to
@@ -481,6 +496,9 @@ class OatFileAssistant {
 
   OatFileInfo odex_;
   OatFileInfo oat_;
+
+  // File descriptor corresponding to apk, dex file, or zip.
+  int zip_fd_;
 
   // Cached value of the image info.
   // Use the GetImageInfo method rather than accessing these directly.
