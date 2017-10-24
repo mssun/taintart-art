@@ -16,20 +16,20 @@
 
 package art;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.Arrays;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.util.List;
-import java.util.Set;
-import java.util.Spliterator;
-import java.util.Spliterators;
-import java.util.Collection;
+
+import java.time.Duration;
+
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.function.IntUnaryOperator;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.Random;
+import java.util.Stack;
+import java.util.Vector;
+
 import java.util.function.Supplier;
 
 public class Test993 {
@@ -120,7 +120,13 @@ public class Test993 {
   }
 
   public static void notifyBreakpointReached(Thread thr, Executable e, long loc) {
-    System.out.println("\t\t\tBreakpoint: " + e + " @ line=" + Breakpoint.locationToLine(e, loc));
+    String line;
+    if (e.getDeclaringClass().getPackage().equals(Test993.class.getPackage())) {
+      line = Integer.valueOf(Breakpoint.locationToLine(e, loc)).toString();
+    } else {
+      line = "<NON-DETERMINISTIC>";
+    }
+    System.out.println("\t\t\tBreakpoint: " + e + " @ line=" + line);
   }
 
   public static interface ThrowRunnable extends Runnable {
@@ -179,6 +185,57 @@ public class Test993 {
   }
 
   public static native void invokeNative(Method m, Class<?> clazz, Object thizz);
+
+  public static class InvokeNativeBool implements Runnable {
+    Method m;
+    Object this_arg;
+    public InvokeNativeBool(Method m, Object this_arg) {
+      this.m = m;
+      this.this_arg = this_arg;
+    }
+
+    @Override
+    public void run() {
+      System.out.println("\t\tNative invoking: " + m + " args: [this: " + this_arg + "]");
+      invokeNativeBool(m, m.getDeclaringClass(), this_arg);
+    }
+  }
+
+  public static native void invokeNativeBool(Method m, Class<?> clazz, Object thizz);
+
+  public static class InvokeNativeObject implements Runnable {
+    Method m;
+    Object this_arg;
+    public InvokeNativeObject(Method m, Object this_arg) {
+      this.m = m;
+      this.this_arg = this_arg;
+    }
+
+    @Override
+    public void run() {
+      System.out.println("\t\tNative invoking: " + m + " args: [this: " + this_arg + "]");
+      invokeNativeObject(m, m.getDeclaringClass(), this_arg);
+    }
+  }
+
+  public static native void invokeNativeObject(Method m, Class<?> clazz, Object thizz);
+
+  public static class InvokeNativeLong implements Runnable {
+    Method m;
+    Object this_arg;
+    public InvokeNativeLong(Method m, Object this_arg) {
+      this.m = m;
+      this.this_arg = this_arg;
+    }
+
+    @Override
+    public void run() {
+      System.out.println("\t\tNative invoking: " + m + " args: [this: " + this_arg + "]");
+      invokeNativeLong(m, m.getDeclaringClass(), this_arg);
+    }
+  }
+
+  public static native void invokeNativeLong(Method m, Class<?> clazz, Object thizz);
 
   public static class ConstructDirect implements Runnable {
     String msg;
@@ -258,7 +315,15 @@ public class Test993 {
   }
 
   private static Breakpoint.Manager.BP BP(Executable m) {
-    return new Breakpoint.Manager.BP(m);
+    return new Breakpoint.Manager.BP(m) {
+      public String toString() {
+        if (method.getDeclaringClass().getPackage().equals(Test993.class.getPackage())) {
+          return super.toString();
+        } else {
+          return method.toString() + " @ <NON-DETERMINISTIC>";
+        }
+      }
+    };
   }
 
   public static void run() throws Exception {
@@ -271,6 +336,7 @@ public class Test993 {
         Thread.currentThread());
 
     runMethodTests();
+    runBCPMethodTests();
     runConstructorTests();
 
     Breakpoint.stopBreakpointWatch(Thread.currentThread());
@@ -300,6 +366,94 @@ public class Test993 {
       BP(tc1_construct), BP(tc1ext_construct),
     };
     runTestGroups("TestClass1ext constructor", tc1ext_constructors, tc1ext_bps);
+  }
+
+  // These test to make sure we are able to break on functions that might have been quickened or
+  // inlined from the boot-image. These were all chosen for being in the bootclasspath, not being
+  // long enough to prevent inlining, and not being used for the testing framework.
+  public static void runBCPMethodTests() throws Exception {
+    // The methods we will be breaking on.
+    Method bcp_private_method = Duration.class.getDeclaredMethod("toSeconds");
+    Method bcp_virtual_method = Optional.class.getDeclaredMethod("isPresent");
+    Method bcp_static_method = Optional.class.getDeclaredMethod("empty");
+    Method bcp_private_static_method = Random.class.getDeclaredMethod("seedUniquifier");
+
+    // Some constructors we will break on.
+    Constructor<?> bcp_stack_constructor = Stack.class.getConstructor();
+    Constructor<?> bcp_vector_constructor = Vector.class.getConstructor();
+    if (!(Vector.class.isAssignableFrom(Stack.class))) {
+      throw new Error("Expected Stack to extend Vector!");
+    }
+
+    // BCP constructors.
+    Runnable[] vector_constructors = new Runnable[] {
+      new ConstructNative(bcp_vector_constructor),
+      new ConstructReflect(bcp_vector_constructor),
+      new ConstructDirect("new Vector()", Vector::new),
+    };
+    Breakpoint.Manager.BP[] vector_breakpoints = new Breakpoint.Manager.BP[] {
+      BP(bcp_vector_constructor),
+    };
+    runTestGroups("Vector constructor", vector_constructors, vector_breakpoints);
+
+    Runnable[] stack_constructors = new Runnable[] {
+      new ConstructNative(bcp_stack_constructor),
+      new ConstructReflect(bcp_stack_constructor),
+      new ConstructDirect("new Stack()", Stack::new),
+    };
+    Breakpoint.Manager.BP[] stack_breakpoints = new Breakpoint.Manager.BP[] {
+      BP(bcp_stack_constructor), BP(bcp_vector_constructor),
+    };
+    runTestGroups("Stack constructor", stack_constructors, stack_breakpoints);
+
+    // Static function
+    Runnable[] static_invokes = new Runnable[] {
+      new InvokeNativeObject(bcp_static_method, null),
+
+      new InvokeReflect(bcp_static_method, null),
+
+      new InvokeDirect("Optional::empty", () -> { Optional.empty(); }),
+    };
+    Breakpoint.Manager.BP[] static_breakpoints = new Breakpoint.Manager.BP[] {
+      BP(bcp_static_method)
+    };
+    runTestGroups("bcp static invoke", static_invokes, static_breakpoints);
+
+    // Static private class function
+    Runnable[] private_static_invokes = new Runnable[] {
+      new InvokeNativeLong(bcp_private_static_method, null),
+
+      new InvokeDirect("Random::seedUniquifier", () -> { new Random(); }),
+    };
+    Breakpoint.Manager.BP[] private_static_breakpoints = new Breakpoint.Manager.BP[] {
+      BP(bcp_private_static_method)
+    };
+    runTestGroups("bcp private static invoke", private_static_invokes, private_static_breakpoints);
+
+    // private class method
+    Duration test_duration = Duration.ofDays(14);
+    Runnable[] private_invokes = new Runnable[] {
+      new InvokeNativeObject(bcp_private_method, test_duration),
+
+      new InvokeDirect("Duration::toSeconds", () -> { test_duration.multipliedBy(2); }),
+    };
+    Breakpoint.Manager.BP[] private_breakpoints = new Breakpoint.Manager.BP[] {
+      BP(bcp_private_method)
+    };
+    runTestGroups("bcp private invoke", private_invokes, private_breakpoints);
+
+    // class method
+    Runnable[] public_invokes = new Runnable[] {
+      new InvokeNativeBool(bcp_virtual_method, Optional.of("test")),
+
+      new InvokeReflect(bcp_virtual_method, Optional.of("test2")),
+
+      new InvokeDirect("Optional::isPresent", () -> { Optional.of("test3").isPresent(); }),
+    };
+    Breakpoint.Manager.BP[] public_breakpoints = new Breakpoint.Manager.BP[] {
+      BP(bcp_virtual_method)
+    };
+    runTestGroups("bcp invoke", public_invokes, public_breakpoints);
   }
 
   public static void runMethodTests() throws Exception {

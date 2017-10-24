@@ -55,6 +55,7 @@ class Thread;
 struct DebuggerActiveMethodInspectionCallback : public MethodInspectionCallback {
   bool IsMethodBeingInspected(ArtMethod* m ATTRIBUTE_UNUSED)
       OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
+  bool IsMethodSafeToJit(ArtMethod* m) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
 };
 
 
