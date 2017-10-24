@@ -1300,7 +1300,7 @@ void ParallelMoveResolverMIPS::Exchange(int index1, int index2, bool double_slot
   // automatically unspilled when the scratch scope object is destroyed).
   ScratchRegisterScope ensure_scratch(this, TMP, V0, codegen_->GetNumberOfCoreRegisters());
   // If V0 spills onto the stack, SP-relative offsets need to be adjusted.
-  int stack_offset = ensure_scratch.IsSpilled() ? kMipsWordSize : 0;
+  int stack_offset = ensure_scratch.IsSpilled() ? kStackAlignment : 0;
   for (int i = 0; i <= (double_slot ? 1 : 0); i++, stack_offset += kMipsWordSize) {
     __ LoadFromOffset(kLoadWord,
                       Register(ensure_scratch.GetRegister()),
@@ -6244,8 +6244,11 @@ void InstructionCodeGeneratorMIPS::HandleFieldGet(HInstruction* instruction,
     InvokeRuntimeCallingConvention calling_convention;
     __ Addiu32(locations->GetTemp(0).AsRegister<Register>(), obj, offset);
     // Do implicit Null check
-    __ Lw(ZERO, locations->GetTemp(0).AsRegister<Register>(), 0);
-    codegen_->RecordPcInfo(instruction, instruction->GetDexPc());
+    __ LoadFromOffset(kLoadWord,
+                      ZERO,
+                      locations->GetTemp(0).AsRegister<Register>(),
+                      0,
+                      null_checker);
     codegen_->InvokeRuntime(kQuickA64Load, instruction, dex_pc);
     CheckEntrypointTypes<kQuickA64Load, int64_t, volatile const int64_t*>();
     if (type == DataType::Type::kFloat64) {
@@ -6398,8 +6401,11 @@ void InstructionCodeGeneratorMIPS::HandleFieldSet(HInstruction* instruction,
     InvokeRuntimeCallingConvention calling_convention;
     __ Addiu32(locations->GetTemp(0).AsRegister<Register>(), obj, offset);
     // Do implicit Null check.
-    __ Lw(ZERO, locations->GetTemp(0).AsRegister<Register>(), 0);
-    codegen_->RecordPcInfo(instruction, instruction->GetDexPc());
+    __ LoadFromOffset(kLoadWord,
+                      ZERO,
+                      locations->GetTemp(0).AsRegister<Register>(),
+                      0,
+                      null_checker);
     if (type == DataType::Type::kFloat64) {
       // Pass FP parameters in core registers.
       if (value_location.IsFpuRegister()) {

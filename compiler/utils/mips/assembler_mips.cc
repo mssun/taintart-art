@@ -1863,20 +1863,20 @@ void MipsAssembler::Not(Register rd, Register rs) {
 }
 
 void MipsAssembler::Push(Register rs) {
-  IncreaseFrameSize(kMipsWordSize);
+  IncreaseFrameSize(kStackAlignment);
   Sw(rs, SP, 0);
 }
 
 void MipsAssembler::Pop(Register rd) {
   Lw(rd, SP, 0);
-  DecreaseFrameSize(kMipsWordSize);
+  DecreaseFrameSize(kStackAlignment);
 }
 
 void MipsAssembler::PopAndReturn(Register rd, Register rt) {
   bool reordering = SetReorder(false);
   Lw(rd, SP, 0);
   Jr(rt);
-  DecreaseFrameSize(kMipsWordSize);  // Single instruction in delay slot.
+  DecreaseFrameSize(kStackAlignment);  // Single instruction in delay slot.
   SetReorder(reordering);
 }
 
@@ -4588,7 +4588,7 @@ void MipsAssembler::EmitBranch(uint32_t branch_id) {
       Addu(AT, AT, RA);
       Lw(RA, SP, 0);
       Jr(AT);
-      DecreaseFrameSize(kMipsWordSize);
+      DecreaseFrameSize(kStackAlignment);
       break;
     case Branch::kLongCondBranch:
       // The comment on case 'Branch::kLongUncondBranch' applies here as well.
@@ -4608,7 +4608,7 @@ void MipsAssembler::EmitBranch(uint32_t branch_id) {
       Addu(AT, AT, RA);
       Lw(RA, SP, 0);
       Jr(AT);
-      DecreaseFrameSize(kMipsWordSize);
+      DecreaseFrameSize(kStackAlignment);
       break;
     case Branch::kLongCall:
       DCHECK_NE(delayed_instruction, Branch::kUnfillableDelaySlot);

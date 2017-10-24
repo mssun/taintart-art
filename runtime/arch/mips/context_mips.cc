@@ -42,7 +42,16 @@ void MipsContext::FillCalleeSaves(uint8_t* frame, const QuickMethodFrameInfo& fr
 
   // Core registers come first, from the highest down to the lowest.
   for (uint32_t core_reg : HighToLowBits(frame_info.CoreSpillMask())) {
-    gprs_[core_reg] = CalleeSaveAddress(frame, spill_pos, frame_info.FrameSizeInBytes());
+    // If the $ZERO register shows up in the list of registers to
+    // be saved this was only done to properly align the floating
+    // point register save locations to addresses which are
+    // multiples of 8. We only store the address of a register in
+    // gprs_ if the register is not the $ZERO register.  The $ZERO
+    // register is read-only so there's never a reason to save it
+    // on the stack.
+    if (core_reg != 0u) {
+      gprs_[core_reg] = CalleeSaveAddress(frame, spill_pos, frame_info.FrameSizeInBytes());
+    }
     ++spill_pos;
   }
   DCHECK_EQ(spill_pos, POPCOUNT(frame_info.CoreSpillMask()));
@@ -97,7 +106,9 @@ extern "C" NO_RETURN void art_quick_do_long_jump(uint32_t*, uint32_t*);
 
 void MipsContext::DoLongJump() {
   uintptr_t gprs[kNumberOfCoreRegisters];
-  uint32_t fprs[kNumberOfFRegisters];
+  // Align fprs[] so that art_quick_do_long_jump() can load FPU
+  // registers from it using the ldc1 instruction.
+  uint32_t fprs[kNumberOfFRegisters] __attribute__((aligned(8)));
   for (size_t i = 0; i < kNumberOfCoreRegisters; ++i) {
     gprs[i] = gprs_[i] != nullptr ? *gprs_[i] : MipsContext::kBadGprBase + i;
   }

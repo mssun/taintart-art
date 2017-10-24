@@ -32,12 +32,10 @@ TEST_F(CompactDexFileTest, MagicAndVersion) {
       const bool valid_magic = (i & 1) == 0;
       const bool valid_version = (j & 1) == 0;
       if (valid_magic) {
-        std::copy_n(CompactDexFile::kDexMagic, CompactDexFile::kDexMagicSize, header);
+        CompactDexFile::WriteMagic(header);
       }
       if (valid_version) {
-        std::copy_n(CompactDexFile::kDexMagicVersion,
-                    CompactDexFile::kDexVersionLen,
-                    header + CompactDexFile::kDexMagicSize);
+        CompactDexFile::WriteCurrentVersion(header);
       }
       EXPECT_EQ(valid_magic, CompactDexFile::IsMagicValid(header));
       EXPECT_EQ(valid_version, CompactDexFile::IsVersionValid(header));

@@ -1986,7 +1986,7 @@ void DexLayout::OutputDexFile(const DexFile* dex_file) {
     }
     return;
   }
-  DexWriter::Output(header_, mem_map_.get());
+  DexWriter::Output(header_, mem_map_.get(), options_.compact_dex_level_);
   if (new_file != nullptr) {
     UNUSED(new_file->FlushCloseOrErase());
   }
@@ -2063,7 +2063,8 @@ int DexLayout::ProcessFile(const char* file_name) {
   const bool verify_checksum = !options_.ignore_bad_checksum_;
   std::string error_msg;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  if (!DexFileLoader::Open(file_name, file_name, verify_checksum, &error_msg, &dex_files)) {
+  if (!DexFileLoader::Open(
+        file_name, file_name, /* verify */ true, verify_checksum, &error_msg, &dex_files)) {
     // Display returned error message to user. Note that this error behavior
     // differs from the error messages shown by the original Dalvik dexdump.
     fputs(error_msg.c_str(), stderr);

@@ -17,10 +17,20 @@
 #ifndef ART_RUNTIME_COMMON_DEX_OPERATIONS_H_
 #define ART_RUNTIME_COMMON_DEX_OPERATIONS_H_
 
+#include "android-base/logging.h"
 #include "art_field.h"
 #include "art_method.h"
+#include "base/macros.h"
+#include "base/mutex.h"
 #include "class_linker.h"
+#include "handle_scope-inl.h"
+#include "instrumentation.h"
+#include "interpreter/shadow_frame.h"
 #include "interpreter/unstarted_runtime.h"
+#include "mirror/class.h"
+#include "mirror/object.h"
+#include "obj_ptr-inl.h"
+#include "primitive.h"
 #include "runtime.h"
 #include "stack.h"
 #include "thread.h"
@@ -61,6 +71,18 @@ inline void PerformCall(Thread* self,
   }
 }
 
+template <typename T>
+inline void DCheckStaticState(Thread* self, T* entity) REQUIRES_SHARED(Locks::mutator_lock_) {
+  if (kIsDebugBuild) {
+    ObjPtr<mirror::Class> klass = entity->GetDeclaringClass();
+    if (entity->IsStatic()) {
+      klass->AssertInitializedOrInitializingInThread(self);
+    } else {
+      CHECK(klass->IsInitializing() || klass->IsErroneousResolved());
+    }
+  }
+}
+
 template<Primitive::Type field_type>
 static ALWAYS_INLINE bool DoFieldGetCommon(Thread* self,
                                            const ShadowFrame& shadow_frame,
@@ -68,7 +90,7 @@ static ALWAYS_INLINE bool DoFieldGetCommon(Thread* self,
                                            ArtField* field,
                                            JValue* result)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  field->GetDeclaringClass()->AssertInitializedOrInitializingInThread(self);
+  DCheckStaticState(self, field);
 
   // Report this field access to instrumentation if needed.
   instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
@@ -126,7 +148,7 @@ ALWAYS_INLINE bool DoFieldPutCommon(Thread* self,
                                     ArtField* field,
                                     JValue& value)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  field->GetDeclaringClass()->AssertInitializedOrInitializingInThread(self);
+  DCheckStaticState(self, field);
 
   // Report this field access to instrumentation if needed. Since we only have the offset of
   // the field from the base of the object, we need to look for it first.

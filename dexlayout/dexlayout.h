@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "cdex/compact_dex_level.h"
 #include "dex_file_layout.h"
 #include "dex_ir.h"
 #include "mem_map.h"
@@ -61,6 +62,7 @@ class Options {
   bool verbose_ = false;
   bool verify_output_ = false;
   bool visualize_pattern_ = false;
+  CompactDexLevel compact_dex_level_ = CompactDexLevel::kCompactDexLevelNone;
   OutputFormat output_format_ = kOutputPlain;
   const char* output_dex_directory_ = nullptr;
   const char* output_file_name_ = nullptr;
