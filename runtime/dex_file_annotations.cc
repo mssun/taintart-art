@@ -134,8 +134,12 @@ const DexFile::AnnotationSetItem* FindAnnotationSetForField(ArtField* field)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   const DexFile* dex_file = field->GetDexFile();
   ObjPtr<mirror::Class> klass = field->GetDeclaringClass();
+  const DexFile::ClassDef* class_def = klass->GetClassDef();
+  if (class_def == nullptr) {
+    return nullptr;
+  }
   const DexFile::AnnotationsDirectoryItem* annotations_dir =
-      dex_file->GetAnnotationsDirectory(*klass->GetClassDef());
+      dex_file->GetAnnotationsDirectory(*class_def);
   if (annotations_dir == nullptr) {
     return nullptr;
   }
@@ -258,6 +262,9 @@ const uint8_t* SearchEncodedAnnotation(const DexFile& dex_file,
 
 const DexFile::AnnotationSetItem* FindAnnotationSetForMethod(ArtMethod* method)
     REQUIRES_SHARED(Locks::mutator_lock_) {
+  if (method->IsProxyMethod()) {
+    return nullptr;
+  }
   const DexFile* dex_file = method->GetDexFile();
   const DexFile::AnnotationsDirectoryItem* annotations_dir =
       dex_file->GetAnnotationsDirectory(method->GetClassDef());
@@ -305,8 +312,12 @@ const DexFile::ParameterAnnotationsItem* FindAnnotationsItemForMethod(ArtMethod*
 const DexFile::AnnotationSetItem* FindAnnotationSetForClass(const ClassData& klass)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   const DexFile& dex_file = klass.GetDexFile();
+  const DexFile::ClassDef* class_def = klass.GetClassDef();
+  if (class_def == nullptr) {
+    return nullptr;
+  }
   const DexFile::AnnotationsDirectoryItem* annotations_dir =
-      dex_file.GetAnnotationsDirectory(*klass.GetClassDef());
+      dex_file.GetAnnotationsDirectory(*class_def);
   if (annotations_dir == nullptr) {
     return nullptr;
   }
