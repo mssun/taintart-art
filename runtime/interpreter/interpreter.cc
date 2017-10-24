@@ -18,6 +18,7 @@
 
 #include <limits>
 
+#include "common_dex_operations.h"
 #include "common_throws.h"
 #include "dex_file_types.h"
 #include "interpreter_common.h"
@@ -287,11 +288,12 @@ static inline JValue Execute(
     }
   }
 
-  shadow_frame.GetMethod()->GetDeclaringClass()->AssertInitializedOrInitializingInThread(self);
+  ArtMethod* method = shadow_frame.GetMethod();
+
+  DCheckStaticState(self, method);
 
   // Lock counting is a special version of accessibility checks, and for simplicity and
   // reduction of template parameters, we gate it behind access-checks mode.
-  ArtMethod* method = shadow_frame.GetMethod();
   DCHECK(!method->SkipAccessChecks() || !method->MustCountLocks());
 
   bool transaction_active = Runtime::Current()->IsActiveTransaction();
