@@ -16,6 +16,7 @@ BOOT_IMAGE=""
 COMPILE_FLAGS=""
 DALVIKVM="dalvikvm32"
 DEBUGGER="n"
+WITH_AGENT=""
 DEBUGGER_AGENT=""
 WRAP_DEBUGGER_AGENT="n"
 DEV_MODE="n"
@@ -227,6 +228,11 @@ while true; do
         # the dump of the first one).
         FLAGS="${FLAGS} -Xcompiler-option --dump-cfg-append"
         COMPILE_FLAGS="${COMPILE_FLAGS} --dump-cfg-append"
+        shift
+    elif [ "x$1" = "x--with-agent" ]; then
+        shift
+        USE_JVMTI="y"
+        WITH_AGENT="$1"
         shift
     elif [ "x$1" = "x--debug-wrap-agent" ]; then
         WRAP_DEBUGGER_AGENT="y"
@@ -440,6 +446,10 @@ elif [ "$DEBUGGER" = "agent" ]; then
   fi
   msg "Connect to localhost:$PORT"
   DEBUGGER_OPTS="-agentpath:${AGENTPATH}=transport=dt_socket,address=$PORT,server=y,suspend=y"
+fi
+
+if [ "x$WITH_AGENT" != "x" ]; then
+  FLAGS="${FLAGS} -agentpath:${WITH_AGENT}"
 fi
 
 if [ "$USE_JVMTI" = "y" ]; then
