@@ -1044,12 +1044,14 @@ void InstructionSimplifierVisitor::VisitArraySet(HArraySet* instruction) {
 }
 
 static bool IsTypeConversionLossless(DataType::Type input_type, DataType::Type result_type) {
+  // Make sure all implicit conversions have been simplified and no new ones have been introduced.
+  DCHECK(!DataType::IsTypeConversionImplicit(input_type, result_type))
+      << input_type << "," << result_type;
   // The conversion to a larger type is loss-less with the exception of two cases,
   //   - conversion to the unsigned type Uint16, where we may lose some bits, and
   //   - conversion from float to long, the only FP to integral conversion with smaller FP type.
   // For integral to FP conversions this holds because the FP mantissa is large enough.
   // Note: The size check excludes Uint8 as the result type.
-  DCHECK(!DataType::IsTypeConversionImplicit(input_type, result_type));
   return DataType::Size(result_type) > DataType::Size(input_type) &&
       result_type != DataType::Type::kUint16 &&
       !(result_type == DataType::Type::kInt64 && input_type == DataType::Type::kFloat32);
@@ -1253,7 +1255,10 @@ void InstructionSimplifierVisitor::VisitAnd(HAnd* instruction) {
 
   if (input_cst != nullptr) {
     int64_t value = Int64FromConstant(input_cst);
-    if (value == -1) {
+    if (value == -1 ||
+        // Similar cases under zero extension.
+        (DataType::IsUnsignedType(input_other->GetType()) &&
+         ((DataType::MaxValueOfIntegralType(input_other->GetType()) & ~value) == 0))) {
       // Replace code looking like
       //    AND dst, src, 0xFFF...FF
       // with
@@ -1330,6 +1335,9 @@ void InstructionSimplifierVisitor::VisitAnd(HAnd* instruction) {
       if (input_other->GetType() == find_type &&
           input_other->HasOnlyOneNonEnvironmentUse() &&
           TryReplaceFieldOrArrayGetType(input_other, new_type)) {
+        instruction->ReplaceWith(input_other);
+        instruction->GetBlock()->RemoveInstruction(instruction);
+      } else if (DataType::IsTypeConversionImplicit(input_other->GetType(), new_type)) {
         instruction->ReplaceWith(input_other);
         instruction->GetBlock()->RemoveInstruction(instruction);
       } else {
