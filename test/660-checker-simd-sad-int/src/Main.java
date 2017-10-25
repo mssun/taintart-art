@@ -32,26 +32,22 @@ public class Main {
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
   //
   /// CHECK-START-ARM: int Main.sadInt2Int(int[], int[]) loop_optimization (after)
-  /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
-  /// CHECK-DAG: <<Cons2:i\d+>>  IntConstant 2                  loop:none
-  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [<<Cons0>>]      loop:none
-  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Phi2:d\d+>>   Phi [<<Set>>,{{d\d+}}]         loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Load1:d\d+>>  VecLoad [{{l\d+}},<<Phi1>>]    loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Load2:d\d+>>  VecLoad [{{l\d+}},<<Phi1>>]    loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<SAD:d\d+>>    VecSADAccumulate [<<Phi2>>,<<Load1>>,<<Load2>>] loop:<<Loop>> outer_loop:none
-  /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons2>>]       loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Cons2:i\d+>>  IntConstant 2                              loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [{{i\d+}}]                   loop:none
+  /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]                     loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Ld1:d\d+>>    VecLoad [{{l\d+}},<<I:i\d+>>]              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Ld2:d\d+>>    VecLoad [{{l\d+}},<<I>>]                   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<SAD:d\d+>>    VecSADAccumulate [<<Phi>>,<<Ld1>>,<<Ld2>>] loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:                 Add [<<I>>,<<Cons2>>]                      loop:<<Loop>> outer_loop:none
   //
   /// CHECK-START-ARM64: int Main.sadInt2Int(int[], int[]) loop_optimization (after)
-  /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
-  /// CHECK-DAG: <<Cons4:i\d+>>  IntConstant 4                  loop:none
-  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [<<Cons0>>]      loop:none
-  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Phi2:d\d+>>   Phi [<<Set>>,{{d\d+}}]         loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Load1:d\d+>>  VecLoad [{{l\d+}},<<Phi1>>]    loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Load2:d\d+>>  VecLoad [{{l\d+}},<<Phi1>>]    loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<SAD:d\d+>>    VecSADAccumulate [<<Phi2>>,<<Load1>>,<<Load2>>] loop:<<Loop>> outer_loop:none
-  /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons4>>]       loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Cons4:i\d+>>  IntConstant 4                              loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [{{i\d+}}]                   loop:none
+  /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]                     loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Ld1:d\d+>>    VecLoad [{{l\d+}},<<I:i\d+>>]              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Ld2:d\d+>>    VecLoad [{{l\d+}},<<I>>]                   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<SAD:d\d+>>    VecSADAccumulate [<<Phi>>,<<Ld1>>,<<Ld2>>] loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:                 Add [<<I>>,<<Cons4>>]                      loop:<<Loop>> outer_loop:none
   private static int sadInt2Int(int[] x, int[] y) {
     int min_length = Math.min(x.length, y.length);
     int sad = 0;
@@ -105,26 +101,22 @@ public class Main {
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
   //
   /// CHECK-START-ARM: int Main.sadInt2IntAlt2(int[], int[]) loop_optimization (after)
-  /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
-  /// CHECK-DAG: <<Cons2:i\d+>>  IntConstant 2                  loop:none
-  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [<<Cons0>>]      loop:none
-  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Phi2:d\d+>>   Phi [<<Set>>,{{d\d+}}]         loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Load1:d\d+>>  VecLoad [{{l\d+}},<<Phi1>>]    loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Load2:d\d+>>  VecLoad [{{l\d+}},<<Phi1>>]    loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<SAD:d\d+>>    VecSADAccumulate [<<Phi2>>,<<Load1>>,<<Load2>>] loop:<<Loop>> outer_loop:none
-  /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons2>>]       loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Cons2:i\d+>>  IntConstant 2                              loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [{{i\d+}}]                   loop:none
+  /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]                     loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Ld1:d\d+>>    VecLoad [{{l\d+}},<<I:i\d+>>]              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Ld2:d\d+>>    VecLoad [{{l\d+}},<<I>>]                   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<SAD:d\d+>>    VecSADAccumulate [<<Phi>>,<<Ld1>>,<<Ld2>>] loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:                 Add [<<I>>,<<Cons2>>]                      loop:<<Loop>> outer_loop:none
   //
   /// CHECK-START-ARM64: int Main.sadInt2IntAlt2(int[], int[]) loop_optimization (after)
-  /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
-  /// CHECK-DAG: <<Cons4:i\d+>>  IntConstant 4                  loop:none
-  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [<<Cons0>>]      loop:none
-  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Phi2:d\d+>>   Phi [<<Set>>,{{d\d+}}]         loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Load1:d\d+>>  VecLoad [{{l\d+}},<<Phi1>>]    loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Load2:d\d+>>  VecLoad [{{l\d+}},<<Phi1>>]    loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<SAD:d\d+>>    VecSADAccumulate [<<Phi2>>,<<Load1>>,<<Load2>>] loop:<<Loop>> outer_loop:none
-  /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons4>>]       loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Cons4:i\d+>>  IntConstant 4                              loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [{{i\d+}}]                   loop:none
+  /// CHECK-DAG: <<Phi:d\d+>>    Phi [<<Set>>,{{d\d+}}]                     loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Ld1:d\d+>>    VecLoad [{{l\d+}},<<I:i\d+>>]              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Ld2:d\d+>>    VecLoad [{{l\d+}},<<I>>]                   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<SAD:d\d+>>    VecSADAccumulate [<<Phi>>,<<Ld1>>,<<Ld2>>] loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:                 Add [<<I>>,<<Cons4>>]                      loop:<<Loop>> outer_loop:none
   private static int sadInt2IntAlt2(int[] x, int[] y) {
     int min_length = Math.min(x.length, y.length);
     int sad = 0;
