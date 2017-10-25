@@ -2529,13 +2529,77 @@ public class Main {
   /// CHECK-DAG:      <<And:i\d+>>      And [<<Get>>,<<Cst1ffff>>]
   /// CHECK-DAG:                        Return [<<And>>]
 
-  // TODO: Simplify this. The And is useless.
-
-  // CHECK-START: int Main.$noinline$getInstanceCharFieldAnd0x1ffff(Main) instruction_simplifier (after)
-  // CHECK-DAG:      <<Get:c\d+>>      InstanceFieldGet
-  // CHECK-DAG:                        Return [<<Get>>]
+  /// CHECK-START: int Main.$noinline$getInstanceCharFieldAnd0x1ffff(Main) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Get:c\d+>>      InstanceFieldGet
+  /// CHECK-DAG:                        Return [<<Get>>]
   public static int $noinline$getInstanceCharFieldAnd0x1ffff(Main m) {
     return m.instanceCharField & 0x1ffff;
+  }
+
+  /// CHECK-START: int Main.$noinline$bug68142795Byte(byte) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Arg:b\d+>>      ParameterValue
+  /// CHECK-DAG:      <<Const:i\d+>>    IntConstant 255
+  /// CHECK-DAG:      <<And1:i\d+>>     And [<<Arg>>,<<Const>>]
+  /// CHECK-DAG:      <<And2:i\d+>>     And [<<And1>>,<<Const>>]
+  /// CHECK-DAG:      <<Conv:b\d+>>     TypeConversion [<<And2>>]
+  /// CHECK-DAG:                        Return [<<Conv>>]
+
+  /// CHECK-START: int Main.$noinline$bug68142795Byte(byte) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Arg:b\d+>>      ParameterValue
+  /// CHECK-DAG:                        Return [<<Arg>>]
+  public static int $noinline$bug68142795Byte(byte b) {
+    return (byte)(0xff & (b & 0xff));
+  }
+
+  /// CHECK-START: int Main.$noinline$bug68142795Short(short) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Arg:s\d+>>      ParameterValue
+  /// CHECK-DAG:      <<Const:i\d+>>    IntConstant 65535
+  /// CHECK-DAG:      <<And1:i\d+>>     And [<<Arg>>,<<Const>>]
+  /// CHECK-DAG:      <<And2:i\d+>>     And [<<And1>>,<<Const>>]
+  /// CHECK-DAG:      <<Conv:s\d+>>     TypeConversion [<<And2>>]
+  /// CHECK-DAG:                        Return [<<Conv>>]
+
+  /// CHECK-START: int Main.$noinline$bug68142795Short(short) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Arg:s\d+>>      ParameterValue
+  /// CHECK-DAG:                        Return [<<Arg>>]
+  public static int $noinline$bug68142795Short(short s) {
+    return (short)(0xffff & (s & 0xffff));
+  }
+
+  /// CHECK-START: int Main.$noinline$bug68142795Boolean(boolean) instruction_simplifier$after_inlining (before)
+  /// CHECK-DAG:      <<Arg:z\d+>>      ParameterValue
+  /// CHECK-DAG:      <<Const0:i\d+>>   IntConstant 0
+  /// CHECK-DAG:      <<Const1:i\d+>>   IntConstant 1
+  /// CHECK-DAG:      <<Const255:i\d+>> IntConstant 255
+  /// CHECK-DAG:      <<Select:i\d+>>   Select [<<Const0>>,<<Const1>>,<<Arg>>]
+  /// CHECK-DAG:      <<And:i\d+>>      And [<<Const255>>,<<Select>>]
+  /// CHECK-DAG:      <<Conv:b\d+>>     TypeConversion [<<And>>]
+  /// CHECK-DAG:                        Return [<<Conv>>]
+
+  /// CHECK-START: int Main.$noinline$bug68142795Boolean(boolean) instruction_simplifier$after_inlining (after)
+  /// CHECK-DAG:      <<Arg:z\d+>>      ParameterValue
+  /// CHECK-DAG:                        Return [<<Arg>>]
+  public static int $noinline$bug68142795Boolean(boolean b) {
+    int v = b ? 1 : 0;  // Should be simplified to "b" after inlining.
+    return (byte)($inline$get255() & v);
+  }
+
+  /// CHECK-START: int Main.$noinline$bug68142795Elaborate(byte) instruction_simplifier (before)
+  /// CHECK-DAG:      <<Arg:b\d+>>      ParameterValue
+  /// CHECK-DAG:      <<Int255:i\d+>>   IntConstant 255
+  /// CHECK-DAG:      <<Long255:j\d+>>  LongConstant 255
+  /// CHECK-DAG:      <<And1:i\d+>>     And [<<Arg>>,<<Int255>>]
+  /// CHECK-DAG:      <<Conv1:j\d+>>    TypeConversion [<<And1>>]
+  /// CHECK-DAG:      <<And2:j\d+>>     And [<<Conv1>>,<<Long255>>]
+  /// CHECK-DAG:      <<Conv2:i\d+>>    TypeConversion [<<And2>>]
+  /// CHECK-DAG:      <<Conv3:b\d+>>    TypeConversion [<<Conv2>>]
+  /// CHECK-DAG:                        Return [<<Conv3>>]
+
+  /// CHECK-START: int Main.$noinline$bug68142795Elaborate(byte) instruction_simplifier (after)
+  /// CHECK-DAG:      <<Arg:b\d+>>      ParameterValue
+  /// CHECK-DAG:                        Return [<<Arg>>]
+  public static int $noinline$bug68142795Elaborate(byte b) {
+    return (byte)((int)(((long)(b & 0xff)) & 255L));
   }
 
   public static void main(String[] args) {
@@ -2772,10 +2836,20 @@ public class Main {
 
     m.instanceCharField = 'x';
     assertIntEquals('x', $noinline$getInstanceCharFieldAnd0x1ffff(m));
+
+    assertIntEquals(0x7f, $noinline$bug68142795Byte((byte) 0x7f));
+    assertIntEquals((byte) 0x80, $noinline$bug68142795Byte((byte) 0x80));
+    assertIntEquals(0x7fff, $noinline$bug68142795Short((short) 0x7fff));
+    assertIntEquals((short) 0x8000, $noinline$bug68142795Short((short) 0x8000));
+    assertIntEquals(0, $noinline$bug68142795Boolean(false));
+    assertIntEquals(1, $noinline$bug68142795Boolean(true));
+    assertIntEquals(0x7f, $noinline$bug68142795Elaborate((byte) 0x7f));
+    assertIntEquals((byte) 0x80, $noinline$bug68142795Elaborate((byte) 0x80));
   }
 
   private static boolean $inline$true() { return true; }
   private static boolean $inline$false() { return false; }
+  private static int $inline$get255() { return 255; }
 
   public static boolean booleanField;
 
