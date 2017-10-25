@@ -968,6 +968,7 @@ class Dex2oatWatchdogTest : public Dex2oatTest {
 
     std::string swap_location = GetOdexDir() + "/Dex2OatSwapTest.odex.swap";
     copy.push_back("--swap-file=" + swap_location);
+    copy.push_back("-j512");  // Excessive idle threads just slow down dex2oat.
     GenerateOdexForTest(dex_location,
                         odex_location,
                         CompilerFilter::kSpeed,
