@@ -7708,12 +7708,6 @@ mirror::Class* ClassLinker::ResolveType(const DexFile& dex_file,
   Thread::PoisonObjectPointersIfDebug();
   ObjPtr<mirror::Class> resolved = dex_cache->GetResolvedType(type_idx);
   if (resolved == nullptr) {
-    // TODO: Avoid this lookup as it duplicates work done in FindClass(). It is here
-    // as a workaround for FastNative JNI to avoid AssertNoPendingException() when
-    // trying to resolve annotations while an exception may be pending. Bug: 34659969
-    resolved = LookupResolvedType(dex_file, type_idx, dex_cache.Get(), class_loader.Get());
-  }
-  if (resolved == nullptr) {
     Thread* self = Thread::Current();
     const char* descriptor = dex_file.StringByTypeIdx(type_idx);
     resolved = FindClass(self, descriptor, class_loader);
