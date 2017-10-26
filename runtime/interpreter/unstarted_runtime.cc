@@ -47,7 +47,7 @@
 #include "mirror/object-inl.h"
 #include "mirror/object_array-inl.h"
 #include "mirror/string-inl.h"
-#include "nativehelper/ScopedLocalRef.h"
+#include "nativehelper/scoped_local_ref.h"
 #include "nth_caller_visitor.h"
 #include "reflection.h"
 #include "thread-inl.h"

@@ -38,7 +38,7 @@
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
 #include "monitor.h"
-#include "nativehelper/ScopedLocalRef.h"
+#include "nativehelper/scoped_local_ref.h"
 #include "obj_ptr.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"

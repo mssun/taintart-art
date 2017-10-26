@@ -77,7 +77,7 @@
 #include "mirror/object-refvisitor-inl.h"
 #include "mirror/object_array-inl.h"
 #include "mirror/reference-inl.h"
-#include "nativehelper/ScopedLocalRef.h"
+#include "nativehelper/scoped_local_ref.h"
 #include "obj_ptr-inl.h"
 #include "os.h"
 #include "reflection.h"

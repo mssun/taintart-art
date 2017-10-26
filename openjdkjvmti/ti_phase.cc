@@ -34,7 +34,7 @@
 #include "art_jvmti.h"
 #include "base/macros.h"
 #include "events-inl.h"
-#include "nativehelper/ScopedLocalRef.h"
+#include "nativehelper/scoped_local_ref.h"
 #include "runtime.h"
 #include "runtime_callbacks.h"
 #include "scoped_thread_state_change-inl.h"
