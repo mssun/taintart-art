@@ -191,11 +191,11 @@ art_cc_defaults {
     shared_libs: [
         "libbase",
         "liblzma",
-        "libnativehelper",
     ],
     include_dirs: ["art/disassembler"],
     header_libs: [
         "art_cmdlineparser_headers",  // For compiler_options.
+        "libnativehelper_header_only",
     ],
 
     export_include_dirs: ["."],
@@ -407,7 +407,10 @@ art_cc_test {
         },
     },
 
-    header_libs: ["libart_simulator_headers"],
+    header_libs: [
+        "libart_simulator_headers",
+        "libnativehelper_header_only",
+    ],
 
     shared_libs: [
         "libartd-compiler",
@@ -416,7 +419,6 @@ art_cc_test {
         "libvixld-arm64",
 
         "libbacktrace",
-        "libnativehelper",
         "libnativeloader",
     ],
 

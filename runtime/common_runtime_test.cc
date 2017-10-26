@@ -21,7 +21,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <cstdio>
-#include "nativehelper/ScopedLocalRef.h"
+#include "nativehelper/scoped_local_ref.h"
 
 #include "../../external/icu/icu4c/source/common/unicode/uvernum.h"
 #include "android-base/stringprintf.h"

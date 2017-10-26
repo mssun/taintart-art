@@ -29,7 +29,7 @@
 #include "jvalue-inl.h"
 #include "mirror/string-inl.h"
 #include "mterp/mterp.h"
-#include "nativehelper/ScopedLocalRef.h"
+#include "nativehelper/scoped_local_ref.h"
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
 #include "thread-inl.h"

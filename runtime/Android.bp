@@ -406,6 +406,7 @@ cc_defaults {
     ],
     header_libs: [
         "art_cmdlineparser_headers",
+        "libnativehelper_header_only",
     ],
     shared_libs: [
         "libnativehelper",
@@ -510,7 +511,9 @@ art_cc_library {
         "libartd",
         "libbase",
         "libbacktrace",
-        "libnativehelper",
+    ],
+    header_libs: [
+        "libnativehelper_header_only",
     ],
 }
 

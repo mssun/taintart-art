@@ -43,7 +43,7 @@
 #include "mirror/class-inl.h"
 #include "mirror/object_array-inl.h"
 #include "modifiers.h"
-#include "nativehelper/ScopedLocalRef.h"
+#include "nativehelper/scoped_local_ref.h"
 #include "runtime_callbacks.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
