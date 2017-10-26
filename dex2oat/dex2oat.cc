@@ -449,7 +449,7 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("      The image writer will group them together.");
   UsageError("");
   UsageError("  --compact-dex-level=none|fast: None avoids generating compact dex, fast");
-  UsageError("      generates compact dex with fast optimizations.");
+  UsageError("      generates compact dex with low compile time.");
   UsageError("");
   std::cerr << "See log for usage error information\n";
   exit(EXIT_FAILURE);
