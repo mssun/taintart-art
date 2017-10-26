@@ -403,8 +403,23 @@ EncodedArrayItem* Collections::CreateEncodedArrayItem(const uint8_t* static_data
   return encoded_array_item;
 }
 
-AnnotationItem* Collections::CreateAnnotationItem(const DexFile::AnnotationItem* annotation,
-                                                  uint32_t offset) {
+void Collections::AddAnnotationsFromMapListSection(const DexFile& dex_file,
+                                                   uint32_t start_offset,
+                                                   uint32_t count) {
+  uint32_t current_offset = start_offset;
+  for (size_t i = 0; i < count; ++i) {
+    // Annotation that we didn't process already, add it to the set.
+    const DexFile::AnnotationItem* annotation = dex_file.GetAnnotationItemAtOffset(current_offset);
+    AnnotationItem* annotation_item = CreateAnnotationItem(dex_file, annotation);
+    DCHECK(annotation_item != nullptr);
+    current_offset += annotation_item->GetSize();
+  }
+}
+
+AnnotationItem* Collections::CreateAnnotationItem(const DexFile& dex_file,
+                                                  const DexFile::AnnotationItem* annotation) {
+  const uint8_t* const start_data = reinterpret_cast<const uint8_t*>(annotation);
+  const uint32_t offset = start_data - dex_file.Begin();
   auto found_annotation_item = AnnotationItems().find(offset);
   if (found_annotation_item != AnnotationItems().end()) {
     return found_annotation_item->second.get();
@@ -413,10 +428,11 @@ AnnotationItem* Collections::CreateAnnotationItem(const DexFile::AnnotationItem*
   const uint8_t* annotation_data = annotation->annotation_;
   std::unique_ptr<EncodedValue> encoded_value(
       ReadEncodedValue(&annotation_data, DexFile::kDexAnnotationAnnotation, 0));
-  // TODO: Calculate the size of the annotation.
   AnnotationItem* annotation_item =
       new AnnotationItem(visibility, encoded_value->ReleaseEncodedAnnotation());
-  annotation_items_.AddItem(annotation_item, offset);
+  annotation_item->SetOffset(offset);
+  annotation_item->SetSize(annotation_data - start_data);
+  annotation_items_.AddItem(annotation_item, annotation_item->GetOffset());
   return annotation_item;
 }
 
@@ -437,8 +453,7 @@ AnnotationSetItem* Collections::CreateAnnotationSetItem(const DexFile& dex_file,
     if (annotation == nullptr) {
       continue;
     }
-    AnnotationItem* annotation_item =
-        CreateAnnotationItem(annotation, disk_annotations_item->entries_[i]);
+    AnnotationItem* annotation_item = CreateAnnotationItem(dex_file, annotation);
     items->push_back(annotation_item);
   }
   AnnotationSetItem* annotation_set_item = new AnnotationSetItem(items);
