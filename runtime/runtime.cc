@@ -136,7 +136,7 @@
 #include "native_stack_dump.h"
 #include "nativehelper/JniConstants.h"
 #include "nativehelper/JniConstants-priv.h"
-#include "nativehelper/ScopedLocalRef.h"
+#include "nativehelper/scoped_local_ref.h"
 #include "oat_file.h"
 #include "oat_file_manager.h"
 #include "object_callbacks.h"

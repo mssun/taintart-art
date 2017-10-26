@@ -44,7 +44,7 @@
 #include "mirror/class-inl.h"
 #include "mirror/object.h"
 #include "mirror/string.h"
-#include "nativehelper/ScopedLocalRef.h"
+#include "nativehelper/scoped_local_ref.h"
 #include "obj_ptr-inl.h"
 #include "runtime.h"
 #include "runtime_callbacks.h"
