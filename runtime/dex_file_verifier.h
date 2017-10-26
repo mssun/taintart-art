@@ -97,7 +97,7 @@ class DexFileVerifier {
                                 const DexFile::ClassDef** class_def);
   bool CheckStaticFieldTypes(const DexFile::ClassDef* class_def);
 
-  bool CheckPadding(size_t offset, uint32_t aligned_offset);
+  bool CheckPadding(size_t offset, uint32_t aligned_offset, DexFile::MapItemType type);
   bool CheckEncodedValue();
   bool CheckEncodedArray();
   bool CheckEncodedAnnotation();
