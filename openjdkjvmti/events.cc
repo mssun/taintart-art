@@ -49,7 +49,7 @@
 #include "mirror/class.h"
 #include "mirror/object-inl.h"
 #include "monitor.h"
-#include "nativehelper/ScopedLocalRef.h"
+#include "nativehelper/scoped_local_ref.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"

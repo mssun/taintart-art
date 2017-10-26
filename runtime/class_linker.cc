@@ -99,7 +99,7 @@
 #include "mirror/stack_trace_element.h"
 #include "mirror/string-inl.h"
 #include "native/dalvik_system_DexFile.h"
-#include "nativehelper/ScopedLocalRef.h"
+#include "nativehelper/scoped_local_ref.h"
 #include "oat.h"
 #include "oat_file-inl.h"
 #include "oat_file.h"

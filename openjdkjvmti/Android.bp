@@ -50,10 +50,12 @@ cc_defaults {
         "ti_timers.cc",
         "transform.cc",
     ],
-    header_libs: ["libopenjdkjvmti_headers"],
+    header_libs: [
+        "libnativehelper_header_only",
+        "libopenjdkjvmti_headers",
+    ],
     shared_libs: [
         "libbase",
-        "libnativehelper",
     ],
 }
 
