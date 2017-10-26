@@ -208,7 +208,8 @@ class Collections {
 
   TypeList* CreateTypeList(const DexFile::TypeList* type_list, uint32_t offset);
   EncodedArrayItem* CreateEncodedArrayItem(const uint8_t* static_data, uint32_t offset);
-  AnnotationItem* CreateAnnotationItem(const DexFile::AnnotationItem* annotation, uint32_t offset);
+  AnnotationItem* CreateAnnotationItem(const DexFile& dex_file,
+                                       const DexFile::AnnotationItem* annotation);
   AnnotationSetItem* CreateAnnotationSetItem(const DexFile& dex_file,
       const DexFile::AnnotationSetItem* disk_annotations_item, uint32_t offset);
   AnnotationsDirectoryItem* CreateAnnotationsDirectoryItem(const DexFile& dex_file,
@@ -216,6 +217,9 @@ class Collections {
   CodeItem* CreateCodeItem(
       const DexFile& dex_file, const DexFile::CodeItem& disk_code_item, uint32_t offset);
   ClassData* CreateClassData(const DexFile& dex_file, const uint8_t* encoded_data, uint32_t offset);
+  void AddAnnotationsFromMapListSection(const DexFile& dex_file,
+                                        uint32_t start_offset,
+                                        uint32_t count);
 
   StringId* GetStringId(uint32_t index) {
     CHECK_LT(index, StringIdsSize());

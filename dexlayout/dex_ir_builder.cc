@@ -152,6 +152,7 @@ static void CheckAndSetRemainingOffsets(const DexFile& dex_file, Collections* co
         break;
       case DexFile::kDexTypeAnnotationItem:
         collections->SetAnnotationItemsOffset(item->offset_);
+        collections->AddAnnotationsFromMapListSection(dex_file, item->offset_, item->size_);
         break;
       case DexFile::kDexTypeEncodedArrayItem:
         collections->SetEncodedArrayItemsOffset(item->offset_);
