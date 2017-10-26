@@ -39,13 +39,14 @@ static HInstruction* const kUnknownHeapValue =
 static HInstruction* const kDefaultHeapValue =
     reinterpret_cast<HInstruction*>(static_cast<uintptr_t>(-2));
 
-class LSEVisitor : public HGraphVisitor {
+// Use HGraphDelegateVisitor for which all VisitInvokeXXX() delegate to VisitInvoke().
+class LSEVisitor : public HGraphDelegateVisitor {
  public:
   LSEVisitor(HGraph* graph,
              const HeapLocationCollector& heap_locations_collector,
              const SideEffectsAnalysis& side_effects,
              OptimizingCompilerStats* stats)
-      : HGraphVisitor(graph, stats),
+      : HGraphDelegateVisitor(graph, stats),
         heap_location_collector_(heap_locations_collector),
         side_effects_(side_effects),
         allocator_(graph->GetArenaStack()),
@@ -540,23 +541,7 @@ class LSEVisitor : public HGraphVisitor {
     }
   }
 
-  void VisitInvokeStaticOrDirect(HInvokeStaticOrDirect* invoke) OVERRIDE {
-    HandleInvoke(invoke);
-  }
-
-  void VisitInvokeVirtual(HInvokeVirtual* invoke) OVERRIDE {
-    HandleInvoke(invoke);
-  }
-
-  void VisitInvokeInterface(HInvokeInterface* invoke) OVERRIDE {
-    HandleInvoke(invoke);
-  }
-
-  void VisitInvokeUnresolved(HInvokeUnresolved* invoke) OVERRIDE {
-    HandleInvoke(invoke);
-  }
-
-  void VisitInvokePolymorphic(HInvokePolymorphic* invoke) OVERRIDE {
+  void VisitInvoke(HInvoke* invoke) OVERRIDE {
     HandleInvoke(invoke);
   }
 
