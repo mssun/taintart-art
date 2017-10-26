@@ -599,7 +599,7 @@ std::vector<std::unique_ptr<const DexFile>> OatFileManager::OpenDexFilesFromOat(
         static constexpr bool kVerifyChecksum = true;
         if (!DexFileLoader::Open(dex_location,
                                  dex_location,
-                                 /*verify*/ true,
+                                 Runtime::Current()->IsVerificationEnabled(),
                                  kVerifyChecksum,
                                  /*out*/ &error_msg,
                                  &dex_files)) {
