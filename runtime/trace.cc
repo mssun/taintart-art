@@ -39,7 +39,7 @@
 #include "mirror/dex_cache-inl.h"
 #include "mirror/object-inl.h"
 #include "mirror/object_array-inl.h"
-#include "nativehelper/ScopedLocalRef.h"
+#include "nativehelper/scoped_local_ref.h"
 #include "os.h"
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"

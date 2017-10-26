@@ -24,8 +24,8 @@
 
 #include "android-base/stringprintf.h"
 #include "backtrace/BacktraceMap.h"
-#include "nativehelper/ScopedLocalRef.h"
-#include "nativehelper/ScopedUtfChars.h"
+#include "nativehelper/scoped_local_ref.h"
+#include "nativehelper/scoped_utf_chars.h"
 
 #include "base/histogram-inl.h"
 #include "base/mutex-inl.h"
