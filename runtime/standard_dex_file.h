@@ -49,8 +49,9 @@ class StandardDexFile : public DexFile {
                   size_t size,
                   const std::string& location,
                   uint32_t location_checksum,
-                  const OatDexFile* oat_dex_file)
-      : DexFile(base, size, location, location_checksum, oat_dex_file) {}
+                  const OatDexFile* oat_dex_file,
+                  DexFileContainer* container)
+      : DexFile(base, size, location, location_checksum, oat_dex_file, container) {}
 
   friend class DexFileLoader;
   friend class DexFileVerifierTest;
