@@ -101,6 +101,7 @@ enum LockLevel {
   kClassLinkerClassesLock,  // TODO rename.
   kJitCodeCacheLock,
   kCHALock,
+  kSubtypeCheckLock,
   kBreakpointLock,
   kMonitorLock,
   kMonitorListLock,
@@ -646,9 +647,15 @@ class Locks {
   // Guards Class Hierarchy Analysis (CHA).
   static Mutex* cha_lock_ ACQUIRED_AFTER(deoptimization_lock_);
 
+  // Guard the update of the SubtypeCheck data stores in each Class::status_ field.
+  // This lock is used in SubtypeCheck methods which are the interface for
+  // any SubtypeCheck-mutating methods.
+  // In Class::IsSubClass, the lock is not required since it does not update the SubtypeCheck data.
+  static Mutex* subtype_check_lock_ ACQUIRED_AFTER(cha_lock_);
+
   // The thread_list_lock_ guards ThreadList::list_. It is also commonly held to stop threads
   // attaching and detaching.
-  static Mutex* thread_list_lock_ ACQUIRED_AFTER(cha_lock_);
+  static Mutex* thread_list_lock_ ACQUIRED_AFTER(subtype_check_lock_);
 
   // Signaled when threads terminate. Used to determine when all non-daemons have terminated.
   static ConditionVariable* thread_exit_cond_ GUARDED_BY(Locks::thread_list_lock_);
