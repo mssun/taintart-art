@@ -49,6 +49,7 @@
 #include "image-inl.h"
 #include "imtable-inl.h"
 #include "indenter.h"
+#include "subtype_check.h"
 #include "interpreter/unstarted_runtime.h"
 #include "linker/buffered_output_stream.h"
 #include "linker/elf_builder.h"
@@ -2348,6 +2349,11 @@ class ImageDumper {
       }
     } else if (obj->IsClass()) {
       mirror::Class* klass = obj->AsClass();
+
+      os << "SUBTYPE_CHECK_BITS: ";
+      SubtypeCheck<mirror::Class*>::Dump(klass, os);
+      os << "\n";
+
       if (klass->NumStaticFields() != 0) {
         os << "STATICS:\n";
         ScopedIndentation indent2(&vios_);

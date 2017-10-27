@@ -246,6 +246,11 @@ struct BitString {
     return !(*this == other);
   }
 
+  // Does this bitstring contain exactly 0 characters?
+  bool IsEmpty() const {
+    return (*this) == BitString{};  // NOLINT
+  }
+
   // Remove all BitStringChars starting at end.
   // Returns the BitString[0..end) substring as a copy.
   // See also "BitString[I..N)" in the doc header.
