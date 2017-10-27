@@ -93,6 +93,8 @@ public class Main {
       null};
     public Reference aLongStrongPathToSamplePathObject;
     public WeakReference aShortWeakPathToSamplePathObject;
+    public WeakReference aWeakRefToGcRoot = new WeakReference(Main.class);
+    public SoftReference aWeakChain = new SoftReference(new Reference(new Reference(new Object())));
     public Object[] basicStringRef;
     public AddedObject addedObject;
     public UnchangedObject unchangedObject = new UnchangedObject();
@@ -126,10 +128,11 @@ public class Main {
           Main.class.getClassLoader(), 0x12345, 50000);
       registry.registerNativeAllocation(anObject, 0xABCDABCD);
 
-      aLongStrongPathToSamplePathObject = new Reference(new Reference(new Object()));
-      aShortWeakPathToSamplePathObject = new WeakReference(
-          ((Reference)aLongStrongPathToSamplePathObject.referent).referent,
-          referenceQueue);
+      {
+        Object object = new Object();
+        aLongStrongPathToSamplePathObject = new Reference(new Reference(new Reference(object)));
+        aShortWeakPathToSamplePathObject = new WeakReference(new Reference(object));
+      }
 
       addedObject = baseline ? null : new AddedObject();
       removedObject = baseline ? new RemovedObject() : null;
