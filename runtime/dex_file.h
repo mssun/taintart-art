@@ -39,6 +39,21 @@ class Signature;
 class StringPiece;
 class ZipArchive;
 
+// Some instances of DexFile own the storage referred to by DexFile.  Clients who create
+// such management do so by subclassing Container.
+class DexFileContainer {
+ public:
+  DexFileContainer() { }
+  virtual ~DexFileContainer() { }
+  virtual int GetPermissions() = 0;
+  virtual bool IsReadOnly() = 0;
+  virtual bool EnableWrite() = 0;
+  virtual bool DisableWrite() = 0;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(DexFileContainer);
+};
+
 // Dex file is the API that exposes native dex files (ordinary dex files) and CompactDex.
 // Originally, the dex file format used by ART was mostly the same as APKs. The only change was
 // quickened opcodes and layout optimizations.
@@ -993,7 +1008,8 @@ class DexFile {
           size_t size,
           const std::string& location,
           uint32_t location_checksum,
-          const OatDexFile* oat_dex_file);
+          const OatDexFile* oat_dex_file,
+          DexFileContainer* container);
 
   // Top-level initializer that calls other Init methods.
   bool Init(std::string* error_msg);
@@ -1017,9 +1033,6 @@ class DexFile {
   const std::string location_;
 
   const uint32_t location_checksum_;
-
-  // Manages the underlying memory allocation.
-  std::unique_ptr<MemMap> mem_map_;
 
   // Points to the header section.
   const Header* const header_;
@@ -1058,6 +1071,9 @@ class DexFile {
   // pointer to the OatDexFile it was loaded from. Otherwise oat_dex_file_ is
   // null.
   mutable const OatDexFile* oat_dex_file_;
+
+  // Manages the underlying memory allocation.
+  std::unique_ptr<DexFileContainer> container_;
 
   friend class DexFileLoader;
   friend class DexFileVerifierTest;
