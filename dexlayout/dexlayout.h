@@ -60,7 +60,7 @@ class Options {
   bool show_section_headers_ = false;
   bool show_section_statistics_ = false;
   bool verbose_ = false;
-  bool verify_output_ = false;
+  bool verify_output_ = kIsDebugBuild;
   bool visualize_pattern_ = false;
   CompactDexLevel compact_dex_level_ = CompactDexLevel::kCompactDexLevelNone;
   OutputFormat output_format_ = kOutputPlain;
