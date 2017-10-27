@@ -274,12 +274,20 @@ public class InstanceTest {
   public void gcRootPathNotWeak() throws IOException {
     TestDump dump = TestDump.getTestDump();
 
-    AhatInstance strong = dump.getDumpedAhatInstance("aLongStrongPathToSamplePathObject");
-    AhatInstance strong2 = strong.getField("referent").asAhatInstance();
-    AhatInstance object = strong2.getField("referent").asAhatInstance();
+    // The test dump is set up to have the following graph:
+    //  -S-> strong1 -S-> strong2 -S-> strong3 -S-> object
+    //  -S-> weak1 -W-> weak2 ------------------S->-/
+    // The gc root path should go through the longer chain of strong
+    // references, not the shorter chain with weak references (even though the
+    // last element in the shorter chain is a strong reference).
+
+    AhatInstance strong1 = dump.getDumpedAhatInstance("aLongStrongPathToSamplePathObject");
+    AhatInstance strong2 = strong1.getField("referent").asAhatInstance();
+    AhatInstance strong3 = strong2.getField("referent").asAhatInstance();
+    AhatInstance object = strong3.getField("referent").asAhatInstance();
 
     List<PathElement> path = object.getPathFromGcRoot();
-    assertEquals(strong2, path.get(path.size() - 2).instance);
+    assertEquals(strong3, path.get(path.size() - 2).instance);
   }
 
   @Test
@@ -365,6 +373,39 @@ public class InstanceTest {
     AhatInstance obj = dump.getDumpedAhatInstance("anObject");
     assertFalse(obj.isRoot());
     assertNull(obj.getRootTypes());
+  }
+
+  @Test
+  public void weakRefToGcRoot() throws IOException {
+    TestDump dump = TestDump.getTestDump();
+    AhatInstance ref = dump.getDumpedAhatInstance("aWeakRefToGcRoot");
+
+    // The weak reference points to Main.class, which we expect will be marked
+    // as a GC root. In theory Main.class doesn't have to be a GC root, in
+    // which case this test case will need to be revised.
+    AhatInstance root = ref.getField("referent").asAhatInstance();
+    assertTrue(root.isRoot());
+
+    // We had a bug in the past where weak references to GC roots caused the
+    // roots to be incorrectly be considered weakly reachable.
+    assertTrue(root.isStronglyReachable());
+    assertFalse(root.isWeaklyReachable());
+  }
+
+  @Test
+  public void weakReferenceChain() throws IOException {
+    // If the only reference to a chain of strongly referenced objects is a
+    // weak reference, then all of the objects should be considered weakly
+    // reachable.
+    TestDump dump = TestDump.getTestDump();
+    AhatInstance ref = dump.getDumpedAhatInstance("aWeakChain");
+    AhatInstance weak1 = ref.getField("referent").asAhatInstance();
+    AhatInstance weak2 = weak1.getField("referent").asAhatInstance();
+    AhatInstance weak3 = weak2.getField("referent").asAhatInstance();
+    assertTrue(ref.isStronglyReachable());
+    assertTrue(weak1.isWeaklyReachable());
+    assertTrue(weak2.isWeaklyReachable());
+    assertTrue(weak3.isWeaklyReachable());
   }
 
   @Test
