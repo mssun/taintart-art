@@ -291,6 +291,11 @@ while true; do
     elif [ "x$1" = "x--debug-wrap-agent" ]; then
         run_args="${run_args} --debug-wrap-agent"
         shift
+    elif [ "x$1" = "x--with-agent" ]; then
+        shift
+        option="$1"
+        run_args="${run_args} --with-agent $1"
+        shift
     elif [ "x$1" = "x--debug-agent" ]; then
         shift
         option="$1"
@@ -661,6 +666,7 @@ if [ "$usage" = "yes" ]; then
         echo "                          only supported on host."
         echo "    --debug-wrap-agent    use libwrapagentproperties and tools/libjdwp-compat.props"
         echo "                          to load the debugger agent specified by --debug-agent."
+        echo "    --with-agent <agent>  Run the test with the given agent loaded with -agentpath:"
         echo "    --debuggable          Whether to compile Java code for a debugger."
         echo "    --gdb                 Run under gdb; incompatible with some tests."
         echo "    --gdb-arg             Pass an option to gdb."
