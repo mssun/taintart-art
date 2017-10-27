@@ -230,7 +230,7 @@ bool ClassLoaderContext::OpenDexFiles(InstructionSet isa, const std::string& cla
       // contents. So pass true to verify_checksum.
       if (!DexFileLoader::Open(location.c_str(),
                                location.c_str(),
-                               /*verify*/ true,
+                               Runtime::Current()->IsVerificationEnabled(),
                                /*verify_checksum*/ true,
                                &error_msg,
                                &info.opened_dex_files)) {
