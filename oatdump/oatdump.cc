@@ -1000,16 +1000,16 @@ class OatDumper {
         dex_code_bytes_ += code_item->insns_size_in_code_units_ * sizeof(code_ptr[0]);
       }
 
-      for (const Instruction& inst : code_item->Instructions()) {
-        switch (inst.Opcode()) {
+      for (const DexInstructionPcPair& inst : code_item->Instructions()) {
+        switch (inst->Opcode()) {
           case Instruction::CONST_STRING: {
-            const dex::StringIndex string_index(inst.VRegB_21c());
+            const dex::StringIndex string_index(inst->VRegB_21c());
             unique_string_ids_from_code_.insert(StringReference(&dex_file, string_index));
             ++num_string_ids_from_code_;
             break;
           }
           case Instruction::CONST_STRING_JUMBO: {
-            const dex::StringIndex string_index(inst.VRegB_31c());
+            const dex::StringIndex string_index(inst->VRegB_31c());
             unique_string_ids_from_code_.insert(StringReference(&dex_file, string_index));
             ++num_string_ids_from_code_;
             break;
@@ -1624,11 +1624,9 @@ class OatDumper {
 
   void DumpDexCode(std::ostream& os, const DexFile& dex_file, const DexFile::CodeItem* code_item) {
     if (code_item != nullptr) {
-      IterationRange<DexInstructionIterator> instructions = code_item->Instructions();
-      for (auto it = instructions.begin(); it != instructions.end(); ++it) {
-        const size_t dex_pc = it.GetDexPC(instructions.begin());
-        os << StringPrintf("0x%04zx: ", dex_pc) << it->DumpHexLE(5)
-           << StringPrintf("\t| %s\n", it->DumpString(&dex_file).c_str());
+      for (const DexInstructionPcPair& inst : code_item->Instructions()) {
+        os << StringPrintf("0x%04x: ", inst.DexPc()) << inst->DumpHexLE(5)
+           << StringPrintf("\t| %s\n", inst->DumpString(&dex_file).c_str());
       }
     }
   }

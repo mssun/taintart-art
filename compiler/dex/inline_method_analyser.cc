@@ -302,7 +302,8 @@ bool DoAnalyseConstructor(const DexFile::CodeItem* code_item,
   uint16_t this_vreg = code_item->registers_size_ - code_item->ins_size_;
   uint16_t zero_vreg_mask = 0u;
 
-  for (const Instruction& instruction : code_item->Instructions()) {
+  for (const DexInstructionPcPair& pair : code_item->Instructions()) {
+    const Instruction& instruction = pair.Inst();
     if (instruction.Opcode() == Instruction::RETURN_VOID) {
       break;
     } else if (instruction.Opcode() == Instruction::INVOKE_DIRECT) {

@@ -173,11 +173,11 @@ static bool GetIdsFromByteCode(Collections& collections,
     // In case the instruction goes past the end of the code item, make sure to not process it.
     SafeDexInstructionIterator next = it;
     ++next;
-    if (next.IsErrorState() || next > instructions.end()) {
+    if (next.IsErrorState()) {
       break;
     }
     has_id |= GetIdFromInstruction(collections,
-                                   it.Inst(),
+                                   &it.Inst(),
                                    type_ids,
                                    string_ids,
                                    method_ids,
