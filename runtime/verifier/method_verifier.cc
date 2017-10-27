@@ -987,9 +987,17 @@ bool MethodVerifier::ComputeWidthsAndCountOps() {
   size_t monitor_enter_count = 0;
 
   IterationRange<DexInstructionIterator> instructions = code_item_->Instructions();
-  DexInstructionIterator inst = instructions.begin();
-  for ( ; inst < instructions.end(); ++inst) {
-    Instruction::Code opcode = inst->Opcode();
+  // We can't assume the instruction is well formed, handle the case where calculating the size
+  // goes past the end of the code item.
+  SafeDexInstructionIterator it(instructions.begin(), instructions.end());
+  for ( ; !it.IsErrorState() && it < instructions.end(); ++it) {
+    // In case the instruction goes past the end of the code item, make sure to not process it.
+    SafeDexInstructionIterator next = it;
+    ++next;
+    if (next.IsErrorState() || next > instructions.end()) {
+      break;
+    }
+    Instruction::Code opcode = it->Opcode();
     switch (opcode) {
       case Instruction::APUT_OBJECT:
       case Instruction::CHECK_CAST:
@@ -1010,13 +1018,13 @@ bool MethodVerifier::ComputeWidthsAndCountOps() {
       default:
         break;
     }
-    GetInstructionFlags(inst.GetDexPC(instructions.begin())).SetIsOpcode();
+    GetInstructionFlags(it.GetDexPC(instructions.begin())).SetIsOpcode();
   }
 
-  if (inst != instructions.end()) {
+  if (it != instructions.end()) {
     const size_t insns_size = code_item_->insns_size_in_code_units_;
     Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "code did not end where expected ("
-                                      << inst.GetDexPC(instructions.begin()) << " vs. "
+                                      << it.GetDexPC(instructions.begin()) << " vs. "
                                       << insns_size << ")";
     return false;
   }
