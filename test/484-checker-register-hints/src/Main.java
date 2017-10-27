@@ -98,18 +98,6 @@ public class Main {
   /// CHECK:       name "B0"
   /// CHECK-NOT:     ParallelMove
   /// CHECK:       name "B1"
-  /// CHECK-NOT:   end_block
-  /// CHECK:         If
-  /// CHECK-NOT:     ParallelMove
-  /// CHECK:       name "B6"
-  /// CHECK-NOT:   end_block
-  /// CHECK:         InstanceFieldSet
-  // We could check here that there is a parallel move, but it's only valid
-  // for some architectures (for example x86), as other architectures may
-  // not do move at all.
-  /// CHECK:       end_block
-  /// CHECK-NOT:     ParallelMove
-
   public static void test3(boolean z, int a, int b, int c, int d, int m) {
     // Same version as test2, but with branches reversed, to ensure
     // whatever linear order is computed, we will get the same results.
