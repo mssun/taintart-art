@@ -41,6 +41,7 @@ subdirs = [
     "sigchainlib",
     "simulator",
     "test",
+    "tools/breakpoint-logger",
     "tools/cpp-define-generator",
     "tools/dmtracedump",
     "tools/titrace",
