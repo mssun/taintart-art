@@ -3340,6 +3340,11 @@ void ClassLinker::LoadMethod(const DexFile& dex_file,
       }
     }
   }
+  if (UNLIKELY((access_flags & kAccNative) != 0u)) {
+    // Check if the native method is annotated with @FastNative or @CriticalNative.
+    access_flags |= annotations::GetNativeMethodAnnotationAccessFlags(
+        dex_file, dst->GetClassDef(), dex_method_idx);
+  }
   dst->SetAccessFlags(access_flags);
 }
 
@@ -7048,6 +7053,7 @@ void ClassLinker::LinkInterfaceMethodsHelper::ReallocMethods() {
       // verified yet it shouldn't have methods that are skipping access checks.
       // TODO This is rather arbitrary. We should maybe support classes where only some of its
       // methods are skip_access_checks.
+      DCHECK_EQ(new_method.GetAccessFlags() & kAccNative, 0u);
       constexpr uint32_t kSetFlags = kAccDefault | kAccCopied;
       constexpr uint32_t kMaskFlags = ~kAccSkipAccessChecks;
       new_method.SetAccessFlags((new_method.GetAccessFlags() | kSetFlags) & kMaskFlags);
@@ -7070,6 +7076,7 @@ void ClassLinker::LinkInterfaceMethodsHelper::ReallocMethods() {
       // mark this as a default, non-abstract method, since thats what it is. Also clear the
       // kAccSkipAccessChecks bit since this class hasn't been verified yet it shouldn't have
       // methods that are skipping access checks.
+      DCHECK_EQ(new_method.GetAccessFlags() & kAccNative, 0u);
       constexpr uint32_t kSetFlags = kAccDefault | kAccDefaultConflict | kAccCopied;
       constexpr uint32_t kMaskFlags = ~(kAccAbstract | kAccSkipAccessChecks);
       new_method.SetAccessFlags((new_method.GetAccessFlags() | kSetFlags) & kMaskFlags);
