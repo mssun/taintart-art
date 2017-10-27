@@ -21,6 +21,7 @@
 #include <unistd.h>
 
 #include <sstream>
+#include <vector>
 
 #include "android-base/stringprintf.h"
 #include "backtrace/BacktraceMap.h"
@@ -204,7 +205,11 @@ class DumpCheckpoint FINAL : public Closure {
       : os_(os),
         barrier_(0),
         backtrace_map_(dump_native_stack ? BacktraceMap::Create(getpid()) : nullptr),
-        dump_native_stack_(dump_native_stack) {}
+        dump_native_stack_(dump_native_stack) {
+    if (backtrace_map_ != nullptr) {
+      backtrace_map_->SetSuffixesToIgnore(std::vector<std::string> { "oat", "odex" });
+    }
+  }
 
   void Run(Thread* thread) OVERRIDE {
     // Note thread and self may not be equal if thread was already suspended at the point of the
