@@ -25,6 +25,7 @@
 namespace art {
 
 class DexFile;
+class DexFileContainer;
 class MemMap;
 class OatDexFile;
 class ZipArchive;
@@ -190,7 +191,8 @@ class DexFileLoader {
                                              bool verify,
                                              bool verify_checksum,
                                              std::string* error_msg,
-                                             VerifyResult* verify_result = nullptr);
+                                             DexFileContainer* container,
+                                             VerifyResult* verify_result);
 };
 
 }  // namespace art
