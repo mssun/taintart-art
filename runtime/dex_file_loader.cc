@@ -33,6 +33,50 @@
 
 namespace art {
 
+namespace {
+
+class MemMapContainer : public DexFileContainer {
+ public:
+  explicit MemMapContainer(std::unique_ptr<MemMap>&& mem_map) : mem_map_(std::move(mem_map)) { }
+  virtual ~MemMapContainer() OVERRIDE { }
+
+  int GetPermissions() OVERRIDE {
+    if (mem_map_.get() == nullptr) {
+      return 0;
+    } else {
+      return mem_map_->GetProtect();
+    }
+  }
+
+  bool IsReadOnly() OVERRIDE {
+    return GetPermissions() == PROT_READ;
+  }
+
+  bool EnableWrite() OVERRIDE {
+    CHECK(IsReadOnly());
+    if (mem_map_.get() == nullptr) {
+      return false;
+    } else {
+      return mem_map_->Protect(PROT_READ | PROT_WRITE);
+    }
+  }
+
+  bool DisableWrite() OVERRIDE {
+    CHECK(!IsReadOnly());
+    if (mem_map_.get() == nullptr) {
+      return false;
+    } else {
+      return mem_map_->Protect(PROT_READ);
+    }
+  }
+
+ private:
+  std::unique_ptr<MemMap> mem_map_;
+  DISALLOW_COPY_AND_ASSIGN(MemMapContainer);
+};
+
+}  // namespace
+
 using android::base::StringPrintf;
 
 static constexpr OatDexFile* kNoOatDexFile = nullptr;
@@ -151,7 +195,9 @@ std::unique_ptr<const DexFile> DexFileLoader::Open(const uint8_t* base,
                     oat_dex_file,
                     verify,
                     verify_checksum,
-                    error_msg);
+                    error_msg,
+                    /*container*/ nullptr,
+                    /*verify_result*/ nullptr);
 }
 
 std::unique_ptr<const DexFile> DexFileLoader::Open(const std::string& location,
@@ -177,10 +223,9 @@ std::unique_ptr<const DexFile> DexFileLoader::Open(const std::string& location,
                                                  kNoOatDexFile,
                                                  verify,
                                                  verify_checksum,
-                                                 error_msg);
-  if (dex_file != nullptr) {
-    dex_file->mem_map_ = std::move(map);
-  }
+                                                 error_msg,
+                                                 new MemMapContainer(std::move(map)),
+                                                 /*verify_result*/ nullptr);
   return dex_file;
 }
 
@@ -296,10 +341,9 @@ std::unique_ptr<const DexFile> DexFileLoader::OpenFile(int fd,
                                                  kNoOatDexFile,
                                                  verify,
                                                  verify_checksum,
-                                                 error_msg);
-  if (dex_file != nullptr) {
-    dex_file->mem_map_ = std::move(map);
-  }
+                                                 error_msg,
+                                                 new MemMapContainer(std::move(map)),
+                                                 /*verify_result*/ nullptr);
 
   return dex_file;
 }
@@ -365,6 +409,7 @@ std::unique_ptr<const DexFile> DexFileLoader::OpenOneDexFileFromZip(
                                                  verify,
                                                  verify_checksum,
                                                  error_msg,
+                                                 new MemMapContainer(std::move(map)),
                                                  &verify_result);
   if (dex_file == nullptr) {
     if (verify_result == VerifyResult::kVerifyNotAttempted) {
@@ -374,7 +419,6 @@ std::unique_ptr<const DexFile> DexFileLoader::OpenOneDexFileFromZip(
     }
     return nullptr;
   }
-  dex_file->mem_map_ = std::move(map);
   if (!dex_file->DisableWrite()) {
     *error_msg = StringPrintf("Failed to make dex file '%s' read only", location.c_str());
     *error_code = ZipOpenErrorCode::kMakeReadOnlyError;
@@ -465,15 +509,18 @@ std::unique_ptr<DexFile> DexFileLoader::OpenCommon(const uint8_t* base,
                                                    bool verify,
                                                    bool verify_checksum,
                                                    std::string* error_msg,
+                                                   DexFileContainer* container,
                                                    VerifyResult* verify_result) {
   if (verify_result != nullptr) {
     *verify_result = VerifyResult::kVerifyNotAttempted;
   }
   std::unique_ptr<DexFile> dex_file;
   if (StandardDexFile::IsMagicValid(base)) {
-    dex_file.reset(new StandardDexFile(base, size, location, location_checksum, oat_dex_file));
+    dex_file.reset(
+        new StandardDexFile(base, size, location, location_checksum, oat_dex_file, container));
   } else if (CompactDexFile::IsMagicValid(base)) {
-    dex_file.reset(new CompactDexFile(base, size, location, location_checksum, oat_dex_file));
+    dex_file.reset(
+        new CompactDexFile(base, size, location, location_checksum, oat_dex_file, container));
   }
   if (dex_file == nullptr) {
     *error_msg = StringPrintf("Failed to open dex file '%s' from memory: %s", location.c_str(),

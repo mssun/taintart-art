@@ -16,13 +16,10 @@
 
 #include "dex_file.h"
 
-#include <fcntl.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/file.h>
-#include <sys/mman.h>  // For the PROT_* and MAP_* constants.
 #include <zlib.h>
 
 #include <memory>
@@ -35,11 +32,7 @@
 #include "base/logging.h"
 #include "base/stl_util.h"
 #include "dex_file-inl.h"
-#include "dex_file_loader.h"
-#include "jvalue.h"
 #include "leb128.h"
-#include "mem_map.h"
-#include "os.h"
 #include "standard_dex_file.h"
 #include "utf-inl.h"
 #include "utils.h"
@@ -59,46 +52,32 @@ uint32_t DexFile::CalculateChecksum() const {
   return adler32(adler32(0L, Z_NULL, 0), non_sum_ptr, Size() - non_sum);
 }
 
-struct DexFile::AnnotationValue {
-  JValue value_;
-  uint8_t type_;
-};
-
 int DexFile::GetPermissions() const {
-  if (mem_map_.get() == nullptr) {
-    return 0;
-  } else {
-    return mem_map_->GetProtect();
-  }
+  CHECK(container_.get() != nullptr);
+  return container_->GetPermissions();
 }
 
 bool DexFile::IsReadOnly() const {
-  return GetPermissions() == PROT_READ;
+  CHECK(container_.get() != nullptr);
+  return container_->IsReadOnly();
 }
 
 bool DexFile::EnableWrite() const {
-  CHECK(IsReadOnly());
-  if (mem_map_.get() == nullptr) {
-    return false;
-  } else {
-    return mem_map_->Protect(PROT_READ | PROT_WRITE);
-  }
+  CHECK(container_.get() != nullptr);
+  return container_->EnableWrite();
 }
 
 bool DexFile::DisableWrite() const {
-  CHECK(!IsReadOnly());
-  if (mem_map_.get() == nullptr) {
-    return false;
-  } else {
-    return mem_map_->Protect(PROT_READ);
-  }
+  CHECK(container_.get() != nullptr);
+  return container_->DisableWrite();
 }
 
 DexFile::DexFile(const uint8_t* base,
                  size_t size,
                  const std::string& location,
                  uint32_t location_checksum,
-                 const OatDexFile* oat_dex_file)
+                 const OatDexFile* oat_dex_file,
+                 DexFileContainer* container)
     : begin_(base),
       size_(size),
       location_(location),
@@ -114,7 +93,8 @@ DexFile::DexFile(const uint8_t* base,
       num_method_handles_(0),
       call_site_ids_(nullptr),
       num_call_site_ids_(0),
-      oat_dex_file_(oat_dex_file) {
+      oat_dex_file_(oat_dex_file),
+      container_(container) {
   CHECK(begin_ != nullptr) << GetLocation();
   CHECK_GT(size_, 0U) << GetLocation();
   // Check base (=header) alignment.
