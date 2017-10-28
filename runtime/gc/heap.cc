@@ -28,6 +28,7 @@
 #include "base/allocator.h"
 #include "base/arena_allocator.h"
 #include "base/dumpable.h"
+#include "base/file_utils.h"
 #include "base/histogram-inl.h"
 #include "base/memory_tool.h"
 #include "base/stl_util.h"

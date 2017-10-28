@@ -18,6 +18,7 @@
 
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
+#include "base/file_utils.h"
 #include "compiler_filter.h"
 #include "dex_file.h"
 #include "noop_compiler_callbacks.h"

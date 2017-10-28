@@ -35,6 +35,7 @@ cc_defaults {
         "base/arena_bit_vector.cc",
         "base/bit_vector.cc",
         "base/file_magic.cc",
+        "base/file_utils.cc",
         "base/hex_dump.cc",
         "base/logging.cc",
         "base/mutex.cc",
