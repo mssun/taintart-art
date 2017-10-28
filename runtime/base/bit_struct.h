@@ -130,6 +130,18 @@ struct BitStructField {
     return kBitWidth;
   }
 
+  BitStructField& operator=(const BitStructField& other) {
+    // Warning. The default operator= will overwrite the entire storage!
+    return *this = static_cast<T>(other);
+  }
+
+  BitStructField(const BitStructField& other) {
+    Assign(*this, static_cast<T>(other));
+  }
+
+  BitStructField() = default;
+  ~BitStructField() = default;
+
  protected:
   template <typename T2>
   T2& Assign(T2& what, T value) {
@@ -265,7 +277,11 @@ using BitStructUint =
 #define BITSTRUCT_DEFINE_START(name, bitwidth)                                 \
     union name {                                                               \
       art::detail::DefineBitStructSize<(bitwidth)> _;                          \
-      static constexpr size_t BitStructSizeOf() { return (bitwidth); }
+      static constexpr size_t BitStructSizeOf() { return (bitwidth); }         \
+      name& operator=(const name& other) { _ = other._; return *this; }        \
+      name(const name& other) : _(other._) {}                                  \
+      name() = default;                                                        \
+      ~name() = default;
 
 // End the definition of a bitstruct, and insert a sanity check
 // to ensure that the bitstruct did not exceed the specified size.
