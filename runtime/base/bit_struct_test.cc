@@ -255,4 +255,68 @@ TEST(BitStructs, Mixed) {
   EXPECT_EQ(0b10101010101010101011111010100111u, AsUint(tst));
 }
 
+BITSTRUCT_DEFINE_START(TestBitStruct_u8, /* size */ 8)
+  BitStructInt</*lsb*/0, /*width*/3> i3;
+  BitStructUint</*lsb*/3, /*width*/4> u4;
+
+  BitStructUint</*lsb*/0, /*width*/8> alias_all;
+BITSTRUCT_DEFINE_END(TestBitStruct_u8);
+
+TEST(BitStructs, FieldAssignment) {
+  TestBitStruct_u8 all_1s{};  // NOLINT
+  all_1s.alias_all = 0xffu;
+
+  {
+    TestBitStruct_u8 tst{};  // NOLINT
+    tst.i3 = all_1s.i3;
+
+    // Copying a single bitfield does not copy all bitfields.
+    EXPECT_EQ(0b111, tst.alias_all);
+  }
+
+  {
+    TestBitStruct_u8 tst{};  // NOLINT
+    tst.u4 = all_1s.u4;
+
+    // Copying a single bitfield does not copy all bitfields.
+    EXPECT_EQ(0b1111000, tst.alias_all);
+  }
+}
+
+BITSTRUCT_DEFINE_START(NestedStruct, /* size */ 64)
+  BitStructField<MixedSizeBitStruct, /*lsb*/0> mixed_lower;
+  BitStructField<MixedSizeBitStruct, /*lsb*/32> mixed_upper;
+
+  BitStructUint</*lsb*/0, /*width*/64> alias_all;
+BITSTRUCT_DEFINE_END(NestedStruct);
+
+TEST(BitStructs, NestedFieldAssignment) {
+  MixedSizeBitStruct mixed_all_1s{};  // NOLINT
+  mixed_all_1s.alias_all = 0xFFFFFFFFu;
+
+  {
+    NestedStruct xyz{};  // NOLINT
+
+    NestedStruct other{};  // NOLINT
+    other.mixed_upper = mixed_all_1s;
+    other.mixed_lower = mixed_all_1s;
+
+    // Copying a single bitfield does not copy all bitfields.
+    xyz.mixed_lower = other.mixed_lower;
+    EXPECT_EQ(0xFFFFFFFFu, xyz.alias_all);
+  }
+
+  {
+    NestedStruct xyz{};  // NOLINT
+
+    NestedStruct other{};  // NOLINT
+    other.mixed_upper = mixed_all_1s;
+    other.mixed_lower = mixed_all_1s;
+
+    // Copying a single bitfield does not copy all bitfields.
+    xyz.mixed_upper = other.mixed_upper;
+    EXPECT_EQ(0xFFFFFFFF00000000u, xyz.alias_all);
+  }
+}
+
 }  // namespace art
