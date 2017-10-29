@@ -428,8 +428,7 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
    * Returns null if the given instance has no next instance to the gc root.
    */
   private static PathElement getNextPathElementToGcRoot(AhatInstance inst) {
-    AhatInstance parent = inst.mNextInstanceToGcRoot;
-    if (parent == null) {
+    if (inst.isRoot()) {
       return null;
     }
     return new PathElement(inst.mNextInstanceToGcRoot, inst.mNextInstanceToGcRootField);
@@ -487,40 +486,64 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
    *   mHardReverseReferences
    *   mSoftReverseReferences
    */
-  static void computeReverseReferences(AhatInstance root) {
-    // Do a breadth first search to visit the nodes.
-    Queue<Reference> bfs = new ArrayDeque<Reference>();
-    for (Reference ref : root.getReferences()) {
-      bfs.add(ref);
-    }
-    while (!bfs.isEmpty()) {
-      Reference ref = bfs.poll();
+  static void computeReverseReferences(SuperRoot root) {
+    // Start by doing a breadth first search through strong references.
+    // Then continue the breadth first search through weak references.
+    Queue<Reference> strong = new ArrayDeque<Reference>();
+    Queue<Reference> weak = new ArrayDeque<Reference>();
 
-      if (ref.ref.mHardReverseReferences == null && ref.strong) {
-        // This is the first time we are seeing ref.ref through a strong
-        // reference.
+    for (Reference ref : root.getReferences()) {
+      strong.add(ref);
+    }
+
+    while (!strong.isEmpty()) {
+      Reference ref = strong.poll();
+      assert ref.strong;
+
+      if (ref.ref.mNextInstanceToGcRoot == null) {
+        // This is the first time we have seen ref.ref.
         ref.ref.mNextInstanceToGcRoot = ref.src;
         ref.ref.mNextInstanceToGcRootField = ref.field;
         ref.ref.mHardReverseReferences = new ArrayList<AhatInstance>();
+
         for (Reference childRef : ref.ref.getReferences()) {
-          bfs.add(childRef);
+          if (childRef.strong) {
+            strong.add(childRef);
+          } else {
+            weak.add(childRef);
+          }
         }
       }
 
-      // Note: ref.src is null when the src is the SuperRoot.
-      if (ref.src != null) {
-        if (ref.strong) {
-          ref.ref.mHardReverseReferences.add(ref.src);
-        } else {
-          if (ref.ref.mSoftReverseReferences == null) {
-            ref.ref.mSoftReverseReferences = new ArrayList<AhatInstance>();
-            if (ref.ref.mNextInstanceToGcRoot == null) {
-              ref.ref.mNextInstanceToGcRoot = ref.src;
-              ref.ref.mNextInstanceToGcRootField = ref.field;
-            }
-          }
-          ref.ref.mSoftReverseReferences.add(ref.src);
+      // Note: We specifically exclude 'root' from the reverse references
+      // because it is a fake SuperRoot instance not present in the original
+      // heap dump.
+      if (ref.src != root) {
+        ref.ref.mHardReverseReferences.add(ref.src);
+      }
+    }
+
+    while (!weak.isEmpty()) {
+      Reference ref = weak.poll();
+
+      if (ref.ref.mNextInstanceToGcRoot == null) {
+        // This is the first time we have seen ref.ref.
+        ref.ref.mNextInstanceToGcRoot = ref.src;
+        ref.ref.mNextInstanceToGcRootField = ref.field;
+        ref.ref.mHardReverseReferences = new ArrayList<AhatInstance>();
+
+        for (Reference childRef : ref.ref.getReferences()) {
+          weak.add(childRef);
         }
+      }
+
+      if (ref.strong) {
+        ref.ref.mHardReverseReferences.add(ref.src);
+      } else {
+        if (ref.ref.mSoftReverseReferences == null) {
+          ref.ref.mSoftReverseReferences = new ArrayList<AhatInstance>();
+        }
+        ref.ref.mSoftReverseReferences.add(ref.src);
       }
     }
   }

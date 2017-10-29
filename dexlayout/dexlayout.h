@@ -60,7 +60,7 @@ class Options {
   bool show_section_headers_ = false;
   bool show_section_statistics_ = false;
   bool verbose_ = false;
-  bool verify_output_ = false;
+  bool verify_output_ = kIsDebugBuild;
   bool visualize_pattern_ = false;
   CompactDexLevel compact_dex_level_ = CompactDexLevel::kCompactDexLevelNone;
   OutputFormat output_format_ = kOutputPlain;
@@ -123,7 +123,7 @@ class DexLayout {
   std::vector<dex_ir::ClassData*> LayoutClassDefsAndClassData(const DexFile* dex_file);
   int32_t LayoutCodeItems(const DexFile* dex_file,
                           std::vector<dex_ir::ClassData*> new_class_data_order);
-  void LayoutStringData(const DexFile* dex_file);
+  int32_t LayoutStringData(const DexFile* dex_file);
   bool IsNextSectionCodeItemAligned(uint32_t offset);
   template<class T> void FixupSection(std::map<uint32_t, std::unique_ptr<T>>& map, uint32_t diff);
   void FixupSections(uint32_t offset, uint32_t diff);

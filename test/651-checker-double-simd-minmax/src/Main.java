@@ -30,11 +30,10 @@ public class Main {
   // TODO MIPS64: min(x, NaN)?
   //
   /// CHECK-START-ARM64: void Main.doitMin(double[], double[], double[]) loop_optimization (after)
-  /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Get1:d\d+>> VecLoad                             loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Get2:d\d+>> VecLoad                             loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Min:d\d+>>  VecMin [<<Get1>>,<<Get2>>]          loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Min>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Min:d\d+>>  VecMin [<<Get1>>,<<Get2>>]           loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},{{i\d+}},<<Min>>] loop:<<Loop>>      outer_loop:none
   private static void doitMin(double[] x, double[] y, double[] z) {
     int min = Math.min(x.length, Math.min(y.length, z.length));
     for (int i = 0; i < min; i++) {
@@ -53,11 +52,10 @@ public class Main {
   // TODO MIPS64: max(x, NaN)?
   //
   /// CHECK-START-ARM64: void Main.doitMax(double[], double[], double[]) loop_optimization (after)
-  /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Get1:d\d+>> VecLoad                             loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Get2:d\d+>> VecLoad                             loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Max:d\d+>>  VecMax [<<Get1>>,<<Get2>>]          loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Max>>] loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Max:d\d+>>  VecMax [<<Get1>>,<<Get2>>]           loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},{{i\d+}},<<Max>>] loop:<<Loop>>      outer_loop:none
   private static void doitMax(double[] x, double[] y, double[] z) {
     int min = Math.min(x.length, Math.min(y.length, z.length));
     for (int i = 0; i < min; i++) {

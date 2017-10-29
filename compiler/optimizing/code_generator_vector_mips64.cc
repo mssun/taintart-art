@@ -94,17 +94,58 @@ void InstructionCodeGeneratorMIPS64::VisitVecReplicateScalar(HVecReplicateScalar
 }
 
 void LocationsBuilderMIPS64::VisitVecExtractScalar(HVecExtractScalar* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
+  switch (instruction->GetPackedType()) {
+    case DataType::Type::kBool:
+    case DataType::Type::kUint8:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetOut(Location::RequiresRegister());
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetOut(Location::SameAsFirstInput());
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecExtractScalar(HVecExtractScalar* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+  LocationSummary* locations = instruction->GetLocations();
+  VectorRegister src = VectorRegisterFrom(locations->InAt(0));
+  switch (instruction->GetPackedType()) {
+    case DataType::Type::kInt32:
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      __ Copy_sW(locations->Out().AsRegister<GpuRegister>(), src, 0);
+      break;
+    case DataType::Type::kInt64:
+      DCHECK_EQ(2u, instruction->GetVectorLength());
+      __ Copy_sD(locations->Out().AsRegister<GpuRegister>(), src, 0);
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      DCHECK_LE(2u, instruction->GetVectorLength());
+      DCHECK_LE(instruction->GetVectorLength(), 4u);
+      DCHECK(locations->InAt(0).Equals(locations->Out()));  // no code required
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
 }
 
 // Helper to set up locations for vector unary operations.
 static void CreateVecUnOpLocations(ArenaAllocator* allocator, HVecUnaryOperation* instruction) {
   LocationSummary* locations = new (allocator) LocationSummary(instruction);
-  switch (instruction->GetPackedType()) {
+  DataType::Type type = instruction->GetPackedType();
+  switch (type) {
     case DataType::Type::kBool:
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetOut(Location::RequiresFpuRegister(),
@@ -121,7 +162,8 @@ static void CreateVecUnOpLocations(ArenaAllocator* allocator, HVecUnaryOperation
     case DataType::Type::kFloat64:
       locations->SetInAt(0, Location::RequiresFpuRegister());
       locations->SetOut(Location::RequiresFpuRegister(),
-                        (instruction->IsVecNeg() || instruction->IsVecAbs())
+                        (instruction->IsVecNeg() || instruction->IsVecAbs() ||
+                            (instruction->IsVecReduce() && type == DataType::Type::kInt64))
                             ? Location::kOutputOverlap
                             : Location::kNoOutputOverlap);
       break;
@@ -136,7 +178,54 @@ void LocationsBuilderMIPS64::VisitVecReduce(HVecReduce* instruction) {
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecReduce(HVecReduce* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+  LocationSummary* locations = instruction->GetLocations();
+  VectorRegister src = VectorRegisterFrom(locations->InAt(0));
+  VectorRegister dst = VectorRegisterFrom(locations->Out());
+  VectorRegister tmp = static_cast<VectorRegister>(FTMP);
+  switch (instruction->GetPackedType()) {
+    case DataType::Type::kInt32:
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      switch (instruction->GetKind()) {
+        case HVecReduce::kSum:
+          __ Hadd_sD(tmp, src, src);
+          __ IlvlD(dst, tmp, tmp);
+          __ AddvW(dst, dst, tmp);
+          break;
+        case HVecReduce::kMin:
+          __ IlvodW(tmp, src, src);
+          __ Min_sW(tmp, src, tmp);
+          __ IlvlW(dst, tmp, tmp);
+          __ Min_sW(dst, dst, tmp);
+          break;
+        case HVecReduce::kMax:
+          __ IlvodW(tmp, src, src);
+          __ Max_sW(tmp, src, tmp);
+          __ IlvlW(dst, tmp, tmp);
+          __ Max_sW(dst, dst, tmp);
+          break;
+      }
+      break;
+    case DataType::Type::kInt64:
+      DCHECK_EQ(2u, instruction->GetVectorLength());
+      switch (instruction->GetKind()) {
+        case HVecReduce::kSum:
+          __ IlvlD(dst, src, src);
+          __ AddvD(dst, dst, src);
+          break;
+        case HVecReduce::kMin:
+          __ IlvlD(dst, src, src);
+          __ Min_sD(dst, dst, src);
+          break;
+        case HVecReduce::kMax:
+          __ IlvlD(dst, src, src);
+          __ Max_sD(dst, dst, src);
+          break;
+      }
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
 }
 
 void LocationsBuilderMIPS64::VisitVecCnv(HVecCnv* instruction) {
@@ -835,11 +924,76 @@ void InstructionCodeGeneratorMIPS64::VisitVecUShr(HVecUShr* instruction) {
 }
 
 void LocationsBuilderMIPS64::VisitVecSetScalars(HVecSetScalars* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(instruction);
+
+  DCHECK_EQ(1u, instruction->InputCount());  // only one input currently implemented
+
+  HInstruction* input = instruction->InputAt(0);
+  bool is_zero = IsZeroBitPattern(input);
+
+  switch (instruction->GetPackedType()) {
+    case DataType::Type::kBool:
+    case DataType::Type::kUint8:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+      locations->SetInAt(0, is_zero ? Location::ConstantLocation(input->AsConstant())
+                                    : Location::RequiresRegister());
+      locations->SetOut(Location::RequiresFpuRegister());
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      locations->SetInAt(0, is_zero ? Location::ConstantLocation(input->AsConstant())
+                                    : Location::RequiresFpuRegister());
+      locations->SetOut(Location::RequiresFpuRegister());
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
 }
 
 void InstructionCodeGeneratorMIPS64::VisitVecSetScalars(HVecSetScalars* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
+  LocationSummary* locations = instruction->GetLocations();
+  VectorRegister dst = VectorRegisterFrom(locations->Out());
+
+  DCHECK_EQ(1u, instruction->InputCount());  // only one input currently implemented
+
+  // Zero out all other elements first.
+  __ FillW(dst, ZERO);
+
+  // Shorthand for any type of zero.
+  if (IsZeroBitPattern(instruction->InputAt(0))) {
+    return;
+  }
+
+  // Set required elements.
+  switch (instruction->GetPackedType()) {
+    case DataType::Type::kBool:
+    case DataType::Type::kUint8:
+    case DataType::Type::kInt8:
+      DCHECK_EQ(16u, instruction->GetVectorLength());
+      __ InsertB(dst, locations->InAt(0).AsRegister<GpuRegister>(), 0);
+      break;
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+      DCHECK_EQ(8u, instruction->GetVectorLength());
+      __ InsertH(dst, locations->InAt(0).AsRegister<GpuRegister>(), 0);
+      break;
+    case DataType::Type::kInt32:
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      __ InsertW(dst, locations->InAt(0).AsRegister<GpuRegister>(), 0);
+      break;
+    case DataType::Type::kInt64:
+      DCHECK_EQ(2u, instruction->GetVectorLength());
+      __ InsertD(dst, locations->InAt(0).AsRegister<GpuRegister>(), 0);
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
 }
 
 // Helper to set up locations for vector accumulations.

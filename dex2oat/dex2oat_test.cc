@@ -825,13 +825,13 @@ class Dex2oatLayoutTest : public Dex2oatTest {
       ASSERT_LT(class_def_count, std::numeric_limits<uint16_t>::max());
       ASSERT_GE(class_def_count, 2U);
 
-      // The new layout swaps the classes at indexes 0 and 1.
+      // Make sure the indexes stay the same.
       std::string old_class0 = old_dex_file->PrettyType(old_dex_file->GetClassDef(0).class_idx_);
       std::string old_class1 = old_dex_file->PrettyType(old_dex_file->GetClassDef(1).class_idx_);
       std::string new_class0 = new_dex_file->PrettyType(new_dex_file->GetClassDef(0).class_idx_);
       std::string new_class1 = new_dex_file->PrettyType(new_dex_file->GetClassDef(1).class_idx_);
-      EXPECT_EQ(old_class0, new_class1);
-      EXPECT_EQ(old_class1, new_class0);
+      EXPECT_EQ(old_class0, new_class0);
+      EXPECT_EQ(old_class1, new_class1);
     }
 
     EXPECT_EQ(odex_file->GetCompilerFilter(), CompilerFilter::kSpeedProfile);
