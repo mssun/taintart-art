@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * An Html implementation of Doc.
  */
-public class HtmlDoc implements Doc {
+class HtmlDoc implements Doc {
   private PrintStream ps;
   private Column[] mCurrentTableColumns;
 

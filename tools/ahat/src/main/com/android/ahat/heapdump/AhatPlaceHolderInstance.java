@@ -25,7 +25,7 @@ import java.util.List;
  *
  * This should be created through a call to AhatInstance.newPlaceHolder();
  */
-public class AhatPlaceHolderInstance extends AhatInstance {
+class AhatPlaceHolderInstance extends AhatInstance {
   AhatPlaceHolderInstance(AhatInstance baseline) {
     super(-1);
     setBaseline(baseline);
@@ -36,7 +36,7 @@ public class AhatPlaceHolderInstance extends AhatInstance {
     return Size.ZERO;
   }
 
-  @Override protected long getExtraJavaSize() {
+  @Override long getExtraJavaSize() {
     return 0;
   }
 
