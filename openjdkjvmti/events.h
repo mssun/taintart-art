@@ -232,6 +232,7 @@ class EventHandler {
 
   void HandleEventType(ArtJvmtiEvent event, bool enable);
   void HandleLocalAccessCapabilityAdded();
+  void HandleBreakpointEventsChanged(bool enable);
 
   bool OtherMonitorEventsEnabledAnywhere(ArtJvmtiEvent event);
 
