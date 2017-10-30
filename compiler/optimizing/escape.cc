@@ -36,6 +36,12 @@ void CalculateEscape(HInstruction* reference,
   *is_singleton = true;
   *is_singleton_and_not_returned = true;
   *is_singleton_and_not_deopt_visible = true;
+
+  if (reference->IsNewInstance() && reference->AsNewInstance()->IsFinalizable()) {
+    // Finalizable reference is treated as being returned in the end.
+    *is_singleton_and_not_returned = false;
+  }
+
   // Visit all uses to determine if this reference can escape into the heap,
   // a method call, an alias, etc.
   for (const HUseListNode<HInstruction*>& use : reference->GetUses()) {
