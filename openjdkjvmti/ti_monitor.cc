@@ -395,7 +395,7 @@ jvmtiError MonitorUtil::GetCurrentContendedMonitor(jvmtiEnv* env ATTRIBUTE_UNUSE
   };
   GetContendedMonitorClosure closure(self, monitor);
   // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
-  if (!target->RequestSynchronousCheckpoint(&closure)) {
+  if (!ThreadUtil::RequestGCSafeSynchronousCheckpoint(target, &closure)) {
     return ERR(THREAD_NOT_ALIVE);
   }
   return OK;

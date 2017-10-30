@@ -38,6 +38,9 @@
 #include "base/mutex.h"
 #include "events-inl.h"
 #include "gc/system_weak.h"
+#include "gc/collector_type.h"
+#include "gc/gc_cause.h"
+#include "gc/scoped_gc_critical_section.h"
 #include "gc_root-inl.h"
 #include "jni_internal.h"
 #include "mirror/class.h"
@@ -1061,7 +1064,7 @@ jvmtiError ThreadUtil::StopThread(jvmtiEnv* env ATTRIBUTE_UNUSED,
   };
   StopThreadClosure c(exc);
   // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
-  if (target->RequestSynchronousCheckpoint(&c)) {
+  if (RequestGCSafeSynchronousCheckpoint(target, &c)) {
     return OK;
   } else {
     // Something went wrong, probably the thread died.
@@ -1082,6 +1085,31 @@ jvmtiError ThreadUtil::InterruptThread(jvmtiEnv* env ATTRIBUTE_UNUSED, jthread t
   }
   target->Interrupt(self);
   return OK;
+}
+
+class GcCriticalSectionClosure : public art::Closure {
+ public:
+  explicit GcCriticalSectionClosure(art::Closure* wrapped) : wrapped_(wrapped) {}
+
+  void Run(art::Thread* self) OVERRIDE {
+    if (art::kIsDebugBuild) {
+      art::Locks::thread_list_lock_->AssertNotHeld(art::Thread::Current());
+    }
+    // This might block as it waits for any in-progress GCs to finish but this is fine since we
+    // released the Thread-list-lock prior to calling this in RequestSynchronousCheckpoint.
+    art::gc::ScopedGCCriticalSection sgccs(art::Thread::Current(),
+                                           art::gc::kGcCauseDebugger,
+                                           art::gc::kCollectorTypeDebugger);
+    wrapped_->Run(self);
+  }
+
+ private:
+  art::Closure* wrapped_;
+};
+
+bool ThreadUtil::RequestGCSafeSynchronousCheckpoint(art::Thread* thr, art::Closure* function) {
+  GcCriticalSectionClosure gccsc(function);
+  return thr->RequestSynchronousCheckpoint(&gccsc);
 }
 
 }  // namespace openjdkjvmti
