@@ -7144,5 +7144,15 @@ void InstructionCodeGeneratorMIPS64::VisitClassTableGet(HClassTableGet* instruct
   }
 }
 
+void LocationsBuilderMIPS64::VisitIntermediateAddress(HIntermediateAddress* instruction
+                                                      ATTRIBUTE_UNUSED) {
+  LOG(FATAL) << "Unreachable";
+}
+
+void InstructionCodeGeneratorMIPS64::VisitIntermediateAddress(HIntermediateAddress* instruction
+                                                              ATTRIBUTE_UNUSED) {
+  LOG(FATAL) << "Unreachable";
+}
+
 }  // namespace mips64
 }  // namespace art

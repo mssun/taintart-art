@@ -9243,6 +9243,16 @@ void InstructionCodeGeneratorMIPS::VisitClassTableGet(HClassTableGet* instructio
   }
 }
 
+void LocationsBuilderMIPS::VisitIntermediateAddress(HIntermediateAddress* instruction
+                                                    ATTRIBUTE_UNUSED) {
+  LOG(FATAL) << "Unreachable";
+}
+
+void InstructionCodeGeneratorMIPS::VisitIntermediateAddress(HIntermediateAddress* instruction
+                                                            ATTRIBUTE_UNUSED) {
+  LOG(FATAL) << "Unreachable";
+}
+
 #undef __
 #undef QUICK_ENTRY_POINT
 

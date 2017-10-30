@@ -6833,6 +6833,16 @@ void InstructionCodeGeneratorX86_64::VisitPackedSwitch(HPackedSwitch* switch_ins
   __ jmp(temp_reg);
 }
 
+void LocationsBuilderX86_64::VisitIntermediateAddress(HIntermediateAddress* instruction
+                                                      ATTRIBUTE_UNUSED) {
+  LOG(FATAL) << "Unreachable";
+}
+
+void InstructionCodeGeneratorX86_64::VisitIntermediateAddress(HIntermediateAddress* instruction
+                                                              ATTRIBUTE_UNUSED) {
+  LOG(FATAL) << "Unreachable";
+}
+
 void CodeGeneratorX86_64::Load32BitValue(CpuRegister dest, int32_t value) {
   if (value == 0) {
     __ xorl(dest, dest);
