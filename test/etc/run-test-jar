@@ -13,6 +13,7 @@ ARCHITECTURES_32="(arm|x86|mips|none)"
 ARCHITECTURES_64="(arm64|x86_64|mips64|none)"
 ARCHITECTURES_PATTERN="${ARCHITECTURES_32}"
 BOOT_IMAGE=""
+CHROOT=
 COMPILE_FLAGS=""
 DALVIKVM="dalvikvm32"
 DEBUGGER="n"
@@ -299,6 +300,10 @@ while true; do
     elif [ "x$1" = "x--no-optimize" ]; then
         OPTIMIZE="n"
         shift
+    elif [ "x$1" = "x--chroot" ]; then
+        shift
+        CHROOT="$1"
+        shift
     elif [ "x$1" = "x--android-root" ]; then
         shift
         ANDROID_ROOT="$1"
@@ -366,6 +371,9 @@ while true; do
         break
     fi
 done
+
+# The DEX_LOCATION with the chroot prefix, if any.
+CHROOT_DEX_LOCATION="$CHROOT$DEX_LOCATION"
 
 if [ "$USE_JVM" = "n" ]; then
     FLAGS="${FLAGS} ${ANDROID_FLAGS}"
@@ -817,28 +825,28 @@ if [ "$HOST" = "n" ]; then
     adb root > /dev/null
     adb wait-for-device
     if [ "$QUIET" = "n" ]; then
-      adb shell rm -rf $DEX_LOCATION
-      adb shell mkdir -p $DEX_LOCATION
-      adb push $TEST_NAME.jar $DEX_LOCATION
-      adb push $TEST_NAME-ex.jar $DEX_LOCATION
+      adb shell rm -rf $CHROOT_DEX_LOCATION
+      adb shell mkdir -p $CHROOT_DEX_LOCATION
+      adb push $TEST_NAME.jar $CHROOT_DEX_LOCATION
+      adb push $TEST_NAME-ex.jar $CHROOT_DEX_LOCATION
       if [ "$PROFILE" = "y" ] || [ "$RANDOM_PROFILE" = "y" ]; then
-        adb push profile $DEX_LOCATION
+        adb push profile $CHROOT_DEX_LOCATION
       fi
       # Copy resource folder
       if [ -d res ]; then
-        adb push res $DEX_LOCATION
+        adb push res $CHROOT_DEX_LOCATION
       fi
     else
-      adb shell rm -r $DEX_LOCATION >/dev/null 2>&1
-      adb shell mkdir -p $DEX_LOCATION >/dev/null 2>&1
-      adb push $TEST_NAME.jar $DEX_LOCATION >/dev/null 2>&1
-      adb push $TEST_NAME-ex.jar $DEX_LOCATION >/dev/null 2>&1
+      adb shell rm -rf $CHROOT_DEX_LOCATION >/dev/null 2>&1
+      adb shell mkdir -p $CHROOT_DEX_LOCATION >/dev/null 2>&1
+      adb push $TEST_NAME.jar $CHROOT_DEX_LOCATION >/dev/null 2>&1
+      adb push $TEST_NAME-ex.jar $CHROOT_DEX_LOCATION >/dev/null 2>&1
       if [ "$PROFILE" = "y" ] || [ "$RANDOM_PROFILE" = "y" ]; then
-        adb push profile $DEX_LOCATION >/dev/null 2>&1
+        adb push profile $CHROOT_DEX_LOCATION >/dev/null 2>&1
       fi
       # Copy resource folder
       if [ -d res ]; then
-        adb push res $DEX_LOCATION >/dev/null 2>&1
+        adb push res $CHROOT_DEX_LOCATION >/dev/null 2>&1
       fi
     fi
 
@@ -847,7 +855,7 @@ if [ "$HOST" = "n" ]; then
       # Current default installation is dalvikvm 64bits and dex2oat 32bits,
       # so we can only use LD_LIBRARY_PATH when testing on a local
       # installation.
-      LD_LIBRARY_PATH=$ANDROID_ROOT/$LIBRARY_DIRECTORY:$LD_LIBRARY_PATH
+      LD_LIBRARY_PATH="$ANDROID_ROOT/$LIBRARY_DIRECTORY:$LD_LIBRARY_PATH"
     fi
 
     # System libraries needed by libarttestd.so
@@ -889,14 +897,18 @@ if [ "$HOST" = "n" ]; then
     fi
 
     if [ "$QUIET" = "n" ]; then
-      adb push $cmdfile $DEX_LOCATION/cmdline.sh
+      adb push $cmdfile $CHROOT_DEX_LOCATION/cmdline.sh
     else
-      adb push $cmdfile $DEX_LOCATION/cmdline.sh > /dev/null 2>&1
+      adb push $cmdfile $CHROOT_DEX_LOCATION/cmdline.sh >/dev/null 2>&1
     fi
 
     exit_status=0
     if [ "$DRY_RUN" != "y" ]; then
-      adb shell sh $DEX_LOCATION/cmdline.sh
+      if [ -n "$CHROOT" ]; then
+        adb shell chroot "$CHROOT" sh $DEX_LOCATION/cmdline.sh
+      else
+        adb shell sh $DEX_LOCATION/cmdline.sh
+      fi
       exit_status=$?
     fi
 

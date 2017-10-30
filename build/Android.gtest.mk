@@ -472,17 +472,29 @@ define define-art-gtest-rule-target
 
 $$(gtest_rule) valgrind-$$(gtest_rule): PRIVATE_TARGET_EXE := $$(gtest_target_exe)
 
+ifeq ($(ART_TEST_CHROOT),)
+# Non-chroot configuration.
+maybe_art_test_chroot :=
+maybe_chroot_command :=
+else
+# Chroot configuration.
+maybe_art_test_chroot := $(ART_TEST_CHROOT)/
+maybe_chroot_command := chroot $(ART_TEST_CHROOT)
+endif
+
+# File witnessing the success of the gtest, the presence of which means the gtest's success.
+gtest_witness := $(maybe_art_test_chroot)$(ART_TARGET_TEST_DIR)/$(TARGET_$(3)ARCH)/$$@-$$$$PPID
+
 .PHONY: $$(gtest_rule)
 $$(gtest_rule): test-art-target-sync
-	$(hide) adb shell touch $(ART_TARGET_TEST_DIR)/$(TARGET_$(3)ARCH)/$$@-$$$$PPID
-	$(hide) adb shell rm $(ART_TARGET_TEST_DIR)/$(TARGET_$(3)ARCH)/$$@-$$$$PPID
-	$(hide) adb shell chmod 755 $$(PRIVATE_TARGET_EXE)
+	$(hide) adb shell touch $(gtest_witness)
+	$(hide) adb shell rm $(gtest_witness)
+	$(hide) adb shell chmod 755 $(maybe_art_test_chroot)$$(PRIVATE_TARGET_EXE)
 	$(hide) $$(call ART_TEST_SKIP,$$@) && \
-	  (adb shell "env $(GCOV_ENV) LD_LIBRARY_PATH=$(4) \
+	  (adb shell "$(maybe_chroot_command) env $(GCOV_ENV) LD_LIBRARY_PATH=$(4) \
 	       ANDROID_ROOT=$(ART_GTEST_TARGET_ANDROID_ROOT) $$(PRIVATE_TARGET_EXE) \
-	     && touch $(ART_TARGET_TEST_DIR)/$(TARGET_$(3)ARCH)/$$@-$$$$PPID" \
-	   && (adb pull $(ART_TARGET_TEST_DIR)/$(TARGET_$(3)ARCH)/$$@-$$$$PPID /tmp/ \
-	       && $$(call ART_TEST_PASSED,$$@)) \
+	     && touch $(gtest_witness)" \
+	   && (adb pull $(gtest_witness) /tmp/ && $$(call ART_TEST_PASSED,$$@)) \
 	   || $$(call ART_TEST_FAILED,$$@))
 	$(hide) rm -f /tmp/$$@-$$$$PPID
 
@@ -492,19 +504,18 @@ $$(gtest_rule): test-art-target-sync
 
 .PHONY: valgrind-$$(gtest_rule)
 valgrind-$$(gtest_rule): $(ART_VALGRIND_TARGET_DEPENDENCIES) test-art-target-sync
-	$(hide) adb shell touch $(ART_TARGET_TEST_DIR)/$(TARGET_$(3)ARCH)/$$@-$$$$PPID
-	$(hide) adb shell rm $(ART_TARGET_TEST_DIR)/$(TARGET_$(3)ARCH)/$$@-$$$$PPID
-	$(hide) adb shell chmod 755 $$(PRIVATE_TARGET_EXE)
+	$(hide) adb shell touch $(gtest_witness)
+	$(hide) adb shell rm $(gtest_witness)
+	$(hide) adb shell chmod 755 $(maybe_art_test_chroot)$$(PRIVATE_TARGET_EXE)
 	$(hide) $$(call ART_TEST_SKIP,$$@) && \
-	  (adb shell "env $(GCOV_ENV) LD_LIBRARY_PATH=$(4) \
+	  (adb shell "$(maybe_chroot_command) env $(GCOV_ENV) LD_LIBRARY_PATH=$(4) \
 	       ANDROID_ROOT=$(ART_GTEST_TARGET_ANDROID_ROOT) \
 	       $$$$ANDROID_ROOT/bin/valgrind \
 	       --leak-check=full --error-exitcode=1 --workaround-gcc296-bugs=yes \
 	       --suppressions=$(ART_TARGET_TEST_DIR)/valgrind-target-suppressions.txt \
 	       --num-callers=50 --show-mismatched-frees=no $$(PRIVATE_TARGET_EXE) \
-	     && touch $(ART_TARGET_TEST_DIR)/$(TARGET_$(3)ARCH)/$$@-$$$$PPID" \
-	   && (adb pull $(ART_TARGET_TEST_DIR)/$(TARGET_$(3)ARCH)/$$@-$$$$PPID /tmp/ \
-	       && $$(call ART_TEST_PASSED,$$@)) \
+	     && touch $(gtest_witness)" \
+	   && (adb pull $(gtest_witness) /tmp/ && $$(call ART_TEST_PASSED,$$@)) \
 	   || $$(call ART_TEST_FAILED,$$@))
 	$(hide) rm -f /tmp/$$@-$$$$PPID
 
@@ -514,10 +525,12 @@ valgrind-$$(gtest_rule): $(ART_VALGRIND_TARGET_DEPENDENCIES) test-art-target-syn
   ART_TEST_TARGET_VALGRIND_GTEST_$(1)_RULES += valgrind-$$(gtest_rule)
 
   # Clear locally defined variables.
-  valgrind_gtest_rule :=
-  gtest_rule :=
-  gtest_exe :=
+  gtest_witness :=
+  maybe_chroot_command :=
+  maybe_art_test_chroot :=
   gtest_target_exe :=
+  gtest_exe :=
+  gtest_rule :=
 endef  # define-art-gtest-rule-target
 
 ART_VALGRIND_DEPENDENCIES := \
@@ -595,10 +608,9 @@ valgrind-$$(gtest_rule): $$(gtest_exe) $$(gtest_deps) $(ART_VALGRIND_DEPENDENCIE
   ART_TEST_HOST_VALGRIND_GTEST_$(1)_RULES += valgrind-$$(gtest_rule)
 
   # Clear locally defined variables.
-  valgrind_gtest_rule :=
-  gtest_rule :=
-  gtest_exe :=
   gtest_deps :=
+  gtest_exe :=
+  gtest_rule :=
 endef  # define-art-gtest-rule-host
 
 # Define the rules to build and run host and target gtests.
