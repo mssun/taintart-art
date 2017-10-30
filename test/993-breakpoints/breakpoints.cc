@@ -49,6 +49,57 @@ jobject JNICALL Java_art_Test993_constructNative(JNIEnv* env,
 }
 
 extern "C" JNIEXPORT
+void JNICALL Java_art_Test993_invokeNativeObject(JNIEnv* env,
+                                                 jclass klass ATTRIBUTE_UNUSED,
+                                                 jobject target,
+                                                 jclass clazz,
+                                                 jobject thizz) {
+  jmethodID method = env->FromReflectedMethod(target);
+  if (env->ExceptionCheck()) {
+    return;
+  }
+  if (thizz == nullptr) {
+    env->CallStaticObjectMethod(clazz, method);
+  } else {
+    env->CallObjectMethod(thizz, method);
+  }
+}
+
+extern "C" JNIEXPORT
+void JNICALL Java_art_Test993_invokeNativeBool(JNIEnv* env,
+                                               jclass klass ATTRIBUTE_UNUSED,
+                                               jobject target,
+                                               jclass clazz,
+                                               jobject thizz) {
+  jmethodID method = env->FromReflectedMethod(target);
+  if (env->ExceptionCheck()) {
+    return;
+  }
+  if (thizz == nullptr) {
+    env->CallStaticBooleanMethod(clazz, method);
+  } else {
+    env->CallBooleanMethod(thizz, method);
+  }
+}
+
+extern "C" JNIEXPORT
+void JNICALL Java_art_Test993_invokeNativeLong(JNIEnv* env,
+                                               jclass klass ATTRIBUTE_UNUSED,
+                                               jobject target,
+                                               jclass clazz,
+                                               jobject thizz) {
+  jmethodID method = env->FromReflectedMethod(target);
+  if (env->ExceptionCheck()) {
+    return;
+  }
+  if (thizz == nullptr) {
+    env->CallStaticLongMethod(clazz, method);
+  } else {
+    env->CallLongMethod(thizz, method);
+  }
+}
+
+extern "C" JNIEXPORT
 void JNICALL Java_art_Test993_invokeNative(JNIEnv* env,
                                            jclass klass ATTRIBUTE_UNUSED,
                                            jobject target,

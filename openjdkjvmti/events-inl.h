@@ -480,6 +480,7 @@ inline bool EventHandler::NeedsEventUpdate(ArtJvmTiEnv* env,
   ArtJvmtiEvent event = added ? ArtJvmtiEvent::kClassFileLoadHookNonRetransformable
                               : ArtJvmtiEvent::kClassFileLoadHookRetransformable;
   return (added && caps.can_access_local_variables == 1) ||
+      caps.can_generate_breakpoint_events == 1 ||
       (caps.can_retransform_classes == 1 &&
        IsEventEnabledAnywhere(event) &&
        env->event_masks.IsEnabledAnywhere(event));
@@ -496,6 +497,9 @@ inline void EventHandler::HandleChangedCapabilities(ArtJvmTiEnv* env,
     }
     if (added && caps.can_access_local_variables == 1) {
       HandleLocalAccessCapabilityAdded();
+    }
+    if (caps.can_generate_breakpoint_events == 1) {
+      HandleBreakpointEventsChanged(added);
     }
   }
 }
