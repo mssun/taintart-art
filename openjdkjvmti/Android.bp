@@ -24,6 +24,7 @@ cc_defaults {
     defaults: ["art_defaults"],
     host_supported: true,
     srcs: [
+        "deopt_manager.cc",
         "events.cc",
         "fixed_up_dex_file.cc",
         "object_tagging.cc",

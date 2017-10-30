@@ -552,6 +552,107 @@ Running private instance invoke
 			Breakpoint: private void art.Test993$TestClass4.privateMethod() @ line=118
 		Invoking "new TestClass4().callPrivateMethod()"
 			Breakpoint: private void art.Test993$TestClass4.privateMethod() @ line=118
+Running Vector constructor
+	Breaking on []
+		Native constructor: public java.util.Vector(), type: class java.util.Vector
+			Created: []
+		Reflective constructor: public java.util.Vector()
+			Created: []
+		Constructing: new Vector()
+			Created: []
+	Breaking on [public java.util.Vector() @ <NON-DETERMINISTIC>]
+		Native constructor: public java.util.Vector(), type: class java.util.Vector
+			Breakpoint: public java.util.Vector() @ line=<NON-DETERMINISTIC>
+			Created: []
+		Reflective constructor: public java.util.Vector()
+			Breakpoint: public java.util.Vector() @ line=<NON-DETERMINISTIC>
+			Created: []
+		Constructing: new Vector()
+			Breakpoint: public java.util.Vector() @ line=<NON-DETERMINISTIC>
+			Created: []
+Running Stack constructor
+	Breaking on []
+		Native constructor: public java.util.Stack(), type: class java.util.Stack
+			Created: []
+		Reflective constructor: public java.util.Stack()
+			Created: []
+		Constructing: new Stack()
+			Created: []
+	Breaking on [public java.util.Stack() @ <NON-DETERMINISTIC>]
+		Native constructor: public java.util.Stack(), type: class java.util.Stack
+			Breakpoint: public java.util.Stack() @ line=<NON-DETERMINISTIC>
+			Created: []
+		Reflective constructor: public java.util.Stack()
+			Breakpoint: public java.util.Stack() @ line=<NON-DETERMINISTIC>
+			Created: []
+		Constructing: new Stack()
+			Breakpoint: public java.util.Stack() @ line=<NON-DETERMINISTIC>
+			Created: []
+	Breaking on [public java.util.Vector() @ <NON-DETERMINISTIC>]
+		Native constructor: public java.util.Stack(), type: class java.util.Stack
+			Breakpoint: public java.util.Vector() @ line=<NON-DETERMINISTIC>
+			Created: []
+		Reflective constructor: public java.util.Stack()
+			Breakpoint: public java.util.Vector() @ line=<NON-DETERMINISTIC>
+			Created: []
+		Constructing: new Stack()
+			Breakpoint: public java.util.Vector() @ line=<NON-DETERMINISTIC>
+			Created: []
+	Breaking on [public java.util.Stack() @ <NON-DETERMINISTIC>, public java.util.Vector() @ <NON-DETERMINISTIC>]
+		Native constructor: public java.util.Stack(), type: class java.util.Stack
+			Breakpoint: public java.util.Stack() @ line=<NON-DETERMINISTIC>
+			Breakpoint: public java.util.Vector() @ line=<NON-DETERMINISTIC>
+			Created: []
+		Reflective constructor: public java.util.Stack()
+			Breakpoint: public java.util.Stack() @ line=<NON-DETERMINISTIC>
+			Breakpoint: public java.util.Vector() @ line=<NON-DETERMINISTIC>
+			Created: []
+		Constructing: new Stack()
+			Breakpoint: public java.util.Stack() @ line=<NON-DETERMINISTIC>
+			Breakpoint: public java.util.Vector() @ line=<NON-DETERMINISTIC>
+			Created: []
+Running bcp static invoke
+	Breaking on []
+		Native invoking: public static java.util.Optional java.util.Optional.empty() args: [this: null]
+		Reflective invoking: public static java.util.Optional java.util.Optional.empty() args: [this: null]
+		Invoking "Optional::empty"
+	Breaking on [public static java.util.Optional java.util.Optional.empty() @ <NON-DETERMINISTIC>]
+		Native invoking: public static java.util.Optional java.util.Optional.empty() args: [this: null]
+			Breakpoint: public static java.util.Optional java.util.Optional.empty() @ line=<NON-DETERMINISTIC>
+		Reflective invoking: public static java.util.Optional java.util.Optional.empty() args: [this: null]
+			Breakpoint: public static java.util.Optional java.util.Optional.empty() @ line=<NON-DETERMINISTIC>
+		Invoking "Optional::empty"
+			Breakpoint: public static java.util.Optional java.util.Optional.empty() @ line=<NON-DETERMINISTIC>
+Running bcp private static invoke
+	Breaking on []
+		Native invoking: private static long java.util.Random.seedUniquifier() args: [this: null]
+		Invoking "Random::seedUniquifier"
+	Breaking on [private static long java.util.Random.seedUniquifier() @ <NON-DETERMINISTIC>]
+		Native invoking: private static long java.util.Random.seedUniquifier() args: [this: null]
+			Breakpoint: private static long java.util.Random.seedUniquifier() @ line=<NON-DETERMINISTIC>
+		Invoking "Random::seedUniquifier"
+			Breakpoint: private static long java.util.Random.seedUniquifier() @ line=<NON-DETERMINISTIC>
+Running bcp private invoke
+	Breaking on []
+		Native invoking: private java.math.BigDecimal java.time.Duration.toSeconds() args: [this: PT336H]
+		Invoking "Duration::toSeconds"
+	Breaking on [private java.math.BigDecimal java.time.Duration.toSeconds() @ <NON-DETERMINISTIC>]
+		Native invoking: private java.math.BigDecimal java.time.Duration.toSeconds() args: [this: PT336H]
+			Breakpoint: private java.math.BigDecimal java.time.Duration.toSeconds() @ line=<NON-DETERMINISTIC>
+		Invoking "Duration::toSeconds"
+			Breakpoint: private java.math.BigDecimal java.time.Duration.toSeconds() @ line=<NON-DETERMINISTIC>
+Running bcp invoke
+	Breaking on []
+		Native invoking: public boolean java.util.Optional.isPresent() args: [this: Optional[test]]
+		Reflective invoking: public boolean java.util.Optional.isPresent() args: [this: Optional[test2]]
+		Invoking "Optional::isPresent"
+	Breaking on [public boolean java.util.Optional.isPresent() @ <NON-DETERMINISTIC>]
+		Native invoking: public boolean java.util.Optional.isPresent() args: [this: Optional[test]]
+			Breakpoint: public boolean java.util.Optional.isPresent() @ line=<NON-DETERMINISTIC>
+		Reflective invoking: public boolean java.util.Optional.isPresent() args: [this: Optional[test2]]
+			Breakpoint: public boolean java.util.Optional.isPresent() @ line=<NON-DETERMINISTIC>
+		Invoking "Optional::isPresent"
+			Breakpoint: public boolean java.util.Optional.isPresent() @ line=<NON-DETERMINISTIC>
 Running TestClass1 constructor
 	Breaking on []
 		Native constructor: public art.Test993$TestClass1(), type: class art.Test993$TestClass1

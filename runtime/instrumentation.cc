@@ -137,11 +137,12 @@ static void UpdateEntrypoints(ArtMethod* method, const void* quick_code)
   method->SetEntryPointFromQuickCompiledCode(quick_code);
 }
 
-bool Instrumentation::NeedDebugVersionFor(ArtMethod* method) const REQUIRES_SHARED(Locks::mutator_lock_) {
-  return Dbg::IsDebuggerActive() &&
-         Runtime::Current()->IsJavaDebuggable() &&
+bool Instrumentation::NeedDebugVersionFor(ArtMethod* method) const
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  return Runtime::Current()->IsJavaDebuggable() &&
          !method->IsNative() &&
-         !method->IsProxyMethod();
+         !method->IsProxyMethod() &&
+         Runtime::Current()->GetRuntimeCallbacks()->IsMethodBeingInspected(method);
 }
 
 void Instrumentation::InstallStubsForMethod(ArtMethod* method) {
