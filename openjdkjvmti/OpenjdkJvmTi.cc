@@ -71,6 +71,7 @@
 namespace openjdkjvmti {
 
 EventHandler gEventHandler;
+DeoptManager gDeoptManager;
 
 #define ENSURE_NON_NULL(n)      \
   do {                          \
@@ -1711,6 +1712,7 @@ static jint GetEnvHandler(art::JavaVMExt* vm, /*out*/void** env, jint version) {
 extern "C" bool ArtPlugin_Initialize() {
   art::Runtime* runtime = art::Runtime::Current();
 
+  gDeoptManager.Setup();
   if (runtime->IsStarted()) {
     PhaseUtil::SetToLive();
   } else {
@@ -1731,6 +1733,7 @@ extern "C" bool ArtPlugin_Initialize() {
 
 extern "C" bool ArtPlugin_Deinitialize() {
   gEventHandler.Shutdown();
+  gDeoptManager.Shutdown();
   PhaseUtil::Unregister();
   ThreadUtil::Unregister();
   ClassUtil::Unregister();

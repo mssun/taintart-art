@@ -104,6 +104,11 @@ class MethodInspectionCallback {
   // Returns true if the method is being inspected currently and the runtime should not modify it in
   // potentially dangerous ways (i.e. replace with compiled version, JIT it, etc).
   virtual bool IsMethodBeingInspected(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_) = 0;
+
+  // Returns true if the method is safe to Jit, false otherwise.
+  // Note that '!IsMethodSafeToJit(m) implies IsMethodBeingInspected(m)'. That is that if this
+  // method returns false IsMethodBeingInspected must return true.
+  virtual bool IsMethodSafeToJit(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_) = 0;
 };
 
 class RuntimeCallbacks {
@@ -166,6 +171,11 @@ class RuntimeCallbacks {
   // Returns true if some MethodInspectionCallback indicates the method is being inspected/depended
   // on by some code.
   bool IsMethodBeingInspected(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Returns false if some MethodInspectionCallback indicates the method cannot be safetly jitted
+  // (which implies that it is being Inspected). Returns true otherwise. If it returns false the
+  // entrypoint should not be changed to JITed code.
+  bool IsMethodSafeToJit(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_);
 
   void AddMethodInspectionCallback(MethodInspectionCallback* cb)
       REQUIRES_SHARED(Locks::mutator_lock_);

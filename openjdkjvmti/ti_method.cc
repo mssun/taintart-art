@@ -86,21 +86,6 @@ struct TiMethodCallback : public art::MethodCallback {
 
 TiMethodCallback gMethodCallback;
 
-// TODO We should make this much more selective in the future so we only return true when we
-// actually care about the method (i.e. had locals changed, have breakpoints, etc.). For now though
-// we can just assume that we care we are loaded at all.
-//
-// Even if we don't keep track of this at the method level we might want to keep track of it at the
-// level of enabled capabilities.
-struct TiMethodInspectionCallback : public art::MethodInspectionCallback {
-  bool IsMethodBeingInspected(art::ArtMethod* method ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
-    return true;
-  }
-};
-
-TiMethodInspectionCallback gMethodInspectionCallback;
-
 void MethodUtil::Register(EventHandler* handler) {
   gMethodCallback.event_handler = handler;
   art::ScopedThreadStateChange stsc(art::Thread::Current(),
@@ -108,7 +93,6 @@ void MethodUtil::Register(EventHandler* handler) {
   art::ScopedSuspendAll ssa("Add method callback");
   art::RuntimeCallbacks* callbacks = art::Runtime::Current()->GetRuntimeCallbacks();
   callbacks->AddMethodCallback(&gMethodCallback);
-  callbacks->AddMethodInspectionCallback(&gMethodInspectionCallback);
 }
 
 void MethodUtil::Unregister() {
@@ -117,7 +101,6 @@ void MethodUtil::Unregister() {
   art::ScopedSuspendAll ssa("Remove method callback");
   art::RuntimeCallbacks* callbacks = art::Runtime::Current()->GetRuntimeCallbacks();
   callbacks->RemoveMethodCallback(&gMethodCallback);
-  callbacks->AddMethodInspectionCallback(&gMethodInspectionCallback);
 }
 
 jvmtiError MethodUtil::GetBytecodes(jvmtiEnv* env,

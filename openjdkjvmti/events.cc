@@ -37,6 +37,7 @@
 #include "art_jvmti.h"
 #include "art_method-inl.h"
 #include "base/logging.h"
+#include "deopt_manager.h"
 #include "dex_file_types.h"
 #include "gc/allocation_listener.h"
 #include "gc/gc_pause_listener.h"
@@ -810,9 +811,49 @@ static uint32_t GetInstrumentationEventsFor(ArtJvmtiEvent event) {
   }
 }
 
+static bool EventNeedsFullDeopt(ArtJvmtiEvent event) {
+  switch (event) {
+    case ArtJvmtiEvent::kBreakpoint:
+    case ArtJvmtiEvent::kException:
+      return false;
+    // TODO We should support more of these or at least do something to make them discriminate by
+    // thread.
+    case ArtJvmtiEvent::kMethodEntry:
+    case ArtJvmtiEvent::kExceptionCatch:
+    case ArtJvmtiEvent::kMethodExit:
+    case ArtJvmtiEvent::kFieldModification:
+    case ArtJvmtiEvent::kFieldAccess:
+    case ArtJvmtiEvent::kSingleStep:
+    case ArtJvmtiEvent::kFramePop:
+      return true;
+    default:
+      LOG(FATAL) << "Unexpected event type!";
+      UNREACHABLE();
+  }
+}
+
 static void SetupTraceListener(JvmtiMethodTraceListener* listener,
                                ArtJvmtiEvent event,
                                bool enable) {
+  bool needs_full_deopt = EventNeedsFullDeopt(event);
+  // Make sure we can deopt.
+  {
+    art::ScopedObjectAccess soa(art::Thread::Current());
+    DeoptManager* deopt_manager = DeoptManager::Get();
+    if (enable) {
+      deopt_manager->AddDeoptimizationRequester();
+      if (needs_full_deopt) {
+        deopt_manager->AddDeoptimizeAllMethods();
+      }
+    } else {
+      if (needs_full_deopt) {
+        deopt_manager->RemoveDeoptimizeAllMethods();
+      }
+      deopt_manager->RemoveDeoptimizationRequester();
+    }
+  }
+
+  // Add the actual listeners.
   art::ScopedThreadStateChange stsc(art::Thread::Current(), art::ThreadState::kNative);
   uint32_t new_events = GetInstrumentationEventsFor(event);
   art::instrumentation::Instrumentation* instr = art::Runtime::Current()->GetInstrumentation();
@@ -821,11 +862,6 @@ static void SetupTraceListener(JvmtiMethodTraceListener* listener,
                                        art::gc::kCollectorTypeInstrumentation);
   art::ScopedSuspendAll ssa("jvmti method tracing installation");
   if (enable) {
-    // TODO Depending on the features being used we should be able to avoid deoptimizing everything
-    // like we do here.
-    if (!instr->AreAllMethodsDeoptimized()) {
-      instr->EnableMethodTracing("jvmti-tracing", /*needs_interpreter*/true);
-    }
     instr->AddListener(listener, new_events);
   } else {
     instr->RemoveListener(listener, new_events);
@@ -910,6 +946,7 @@ void EventHandler::HandleEventType(ArtJvmtiEvent event, bool enable) {
     }
     // FramePop can never be disabled once it's been turned on since we would either need to deal
     // with dangling pointers or have missed events.
+    // TODO We really need to make this not the case anymore.
     case ArtJvmtiEvent::kFramePop:
       if (!enable || (enable && frame_pop_enabled)) {
         break;
@@ -1044,6 +1081,14 @@ jvmtiError EventHandler::SetEvent(ArtJvmTiEnv* env,
   }
 
   return ERR(NONE);
+}
+
+void EventHandler::HandleBreakpointEventsChanged(bool added) {
+  if (added) {
+    DeoptManager::Get()->AddDeoptimizationRequester();
+  } else {
+    DeoptManager::Get()->RemoveDeoptimizationRequester();
+  }
 }
 
 void EventHandler::Shutdown() {
