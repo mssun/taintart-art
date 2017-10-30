@@ -30,6 +30,143 @@
     return-void
 .end method
 
+##  CHECK-START: byte SmaliTests.booleanToByte(boolean) builder (after)
+##  CHECK:         <<Arg:z\d+>>           ParameterValue
+##  CHECK-DAG:     <<Zero:i\d+>>          IntConstant 0
+##  CHECK-DAG:     <<One:i\d+>>           IntConstant 1
+##  CHECK-DAG:     <<Cond:z\d+>>          Equal [<<Arg>>,<<Zero>>]
+##  CHECK-DAG:                            If [<<Cond>>]
+##  CHECK-DAG:     <<Phi:i\d+>>           Phi [<<One>>,<<Zero>>]
+##  CHECK-DAG:     <<IToS:b\d+>>          TypeConversion [<<Phi>>]
+##  CHECK-DAG:                            Return [<<IToS>>]
+
+##  CHECK-START: byte SmaliTests.booleanToByte(boolean) select_generator (after)
+##  CHECK:         <<Arg:z\d+>>           ParameterValue
+##  CHECK-DAG:     <<Zero:i\d+>>          IntConstant 0
+##  CHECK-DAG:     <<One:i\d+>>           IntConstant 1
+##  CHECK-DAG:     <<Sel:i\d+>>           Select [<<Zero>>,<<One>>,<<Arg>>]
+##  CHECK-DAG:     <<IToS:b\d+>>          TypeConversion [<<Sel>>]
+##  CHECK-DAG:                            Return [<<IToS>>]
+
+##  CHECK-START: byte SmaliTests.booleanToByte(boolean) instruction_simplifier$after_bce (after)
+##  CHECK:         <<Arg:z\d+>>           ParameterValue
+##  CHECK-DAG:                            Return [<<Arg>>]
+.method static booleanToByte(Z)B
+    .registers 2
+    if-eqz p0, :cond_5
+    const/4 v0, 0x1
+
+    :goto_3
+    int-to-byte v0, v0
+    return v0
+
+    :cond_5
+    const/4 v0, 0x0
+    goto :goto_3
+.end method
+
+##  CHECK-START: short SmaliTests.booleanToShort(boolean) builder (after)
+##  CHECK:         <<Arg:z\d+>>           ParameterValue
+##  CHECK-DAG:     <<Zero:i\d+>>          IntConstant 0
+##  CHECK-DAG:     <<One:i\d+>>           IntConstant 1
+##  CHECK-DAG:     <<Cond:z\d+>>          Equal [<<Arg>>,<<Zero>>]
+##  CHECK-DAG:                            If [<<Cond>>]
+##  CHECK-DAG:     <<Phi:i\d+>>           Phi [<<One>>,<<Zero>>]
+##  CHECK-DAG:     <<IToS:s\d+>>          TypeConversion [<<Phi>>]
+##  CHECK-DAG:                            Return [<<IToS>>]
+
+##  CHECK-START: short SmaliTests.booleanToShort(boolean) select_generator (after)
+##  CHECK:         <<Arg:z\d+>>           ParameterValue
+##  CHECK-DAG:     <<Zero:i\d+>>          IntConstant 0
+##  CHECK-DAG:     <<One:i\d+>>           IntConstant 1
+##  CHECK-DAG:     <<Sel:i\d+>>           Select [<<Zero>>,<<One>>,<<Arg>>]
+##  CHECK-DAG:     <<IToS:s\d+>>          TypeConversion [<<Sel>>]
+##  CHECK-DAG:                            Return [<<IToS>>]
+
+##  CHECK-START: short SmaliTests.booleanToShort(boolean) instruction_simplifier$after_bce (after)
+##  CHECK:         <<Arg:z\d+>>           ParameterValue
+##  CHECK-DAG:                            Return [<<Arg>>]
+.method static booleanToShort(Z)S
+    .registers 2
+    if-eqz p0, :cond_5
+    const/4 v0, 0x1
+
+    :goto_3
+    int-to-short v0, v0
+    return v0
+
+    :cond_5
+    const/4 v0, 0x0
+    goto :goto_3
+.end method
+
+##  CHECK-START: char SmaliTests.booleanToChar(boolean) builder (after)
+##  CHECK:         <<Arg:z\d+>>           ParameterValue
+##  CHECK-DAG:     <<Zero:i\d+>>          IntConstant 0
+##  CHECK-DAG:     <<One:i\d+>>           IntConstant 1
+##  CHECK-DAG:     <<Cond:z\d+>>          Equal [<<Arg>>,<<Zero>>]
+##  CHECK-DAG:                            If [<<Cond>>]
+##  CHECK-DAG:     <<Phi:i\d+>>           Phi [<<One>>,<<Zero>>]
+##  CHECK-DAG:     <<IToC:c\d+>>          TypeConversion [<<Phi>>]
+##  CHECK-DAG:                            Return [<<IToC>>]
+
+##  CHECK-START: char SmaliTests.booleanToChar(boolean) select_generator (after)
+##  CHECK:         <<Arg:z\d+>>           ParameterValue
+##  CHECK-DAG:     <<Zero:i\d+>>          IntConstant 0
+##  CHECK-DAG:     <<One:i\d+>>           IntConstant 1
+##  CHECK-DAG:     <<Sel:i\d+>>           Select [<<Zero>>,<<One>>,<<Arg>>]
+##  CHECK-DAG:     <<IToC:c\d+>>          TypeConversion [<<Sel>>]
+##  CHECK-DAG:                            Return [<<IToC>>]
+
+##  CHECK-START: char SmaliTests.booleanToChar(boolean) instruction_simplifier$after_bce (after)
+##  CHECK:         <<Arg:z\d+>>           ParameterValue
+##  CHECK-DAG:                            Return [<<Arg>>]
+.method static booleanToChar(Z)C
+    .registers 2
+    if-eqz p0, :cond_5
+    const/4 v0, 0x1
+
+    :goto_3
+    int-to-char v0, v0
+    return v0
+
+    :cond_5
+    const/4 v0, 0x0
+    goto :goto_3
+.end method
+
+##  CHECK-START: int SmaliTests.booleanToInt(boolean) builder (after)
+##  CHECK:         <<Arg:z\d+>>           ParameterValue
+##  CHECK-DAG:     <<Zero:i\d+>>          IntConstant 0
+##  CHECK-DAG:     <<One:i\d+>>           IntConstant 1
+##  CHECK-DAG:     <<Cond:z\d+>>          Equal [<<Arg>>,<<Zero>>]
+##  CHECK-DAG:                            If [<<Cond>>]
+##  CHECK-DAG:     <<Phi:i\d+>>           Phi [<<One>>,<<Zero>>]
+##  CHECK-DAG:                            Return [<<Phi>>]
+
+##  CHECK-START: int SmaliTests.booleanToInt(boolean) select_generator (after)
+##  CHECK:         <<Arg:z\d+>>           ParameterValue
+##  CHECK-DAG:     <<Zero:i\d+>>          IntConstant 0
+##  CHECK-DAG:     <<One:i\d+>>           IntConstant 1
+##  CHECK-DAG:     <<Sel:i\d+>>           Select [<<Zero>>,<<One>>,<<Arg>>]
+##  CHECK-DAG:                            Return [<<Sel>>]
+
+##  CHECK-START: int SmaliTests.booleanToInt(boolean) instruction_simplifier$after_bce (after)
+##  CHECK:         <<Arg:z\d+>>           ParameterValue
+##  CHECK-DAG:                            Return [<<Arg>>]
+.method static booleanToInt(Z)I
+    .registers 2
+    if-eqz p0, :cond_4
+    const/4 v0, 0x1
+
+    :goto_3
+    return v0
+
+    :cond_4
+    const/4 v0, 0x0
+    goto :goto_3
+.end method
+
 ## CHECK-START: long SmaliTests.booleanToLong(boolean) builder (after)
 ## CHECK-DAG:     <<Arg:z\d+>>           ParameterValue
 ## CHECK-DAG:     <<Zero:i\d+>>          IntConstant 0
