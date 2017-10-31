@@ -24,6 +24,7 @@
 #include "data_type-inl.h"
 #include "dex/verified_method.h"
 #include "driver/compiler_options.h"
+#include "driver/dex_compilation_unit.h"
 #include "instruction_builder.h"
 #include "mirror/class_loader.h"
 #include "mirror/dex_cache.h"
@@ -36,6 +37,7 @@
 namespace art {
 
 HGraphBuilder::HGraphBuilder(HGraph* graph,
+                             const DexFile::CodeItem* code_item,
                              const DexCompilationUnit* dex_compilation_unit,
                              const DexCompilationUnit* outer_compilation_unit,
                              CompilerDriver* driver,
@@ -45,7 +47,7 @@ HGraphBuilder::HGraphBuilder(HGraph* graph,
                              VariableSizedHandleScope* handles)
     : graph_(graph),
       dex_file_(&graph->GetDexFile()),
-      code_item_(*dex_compilation_unit->GetCodeItem()),
+      code_item_(code_item),
       dex_compilation_unit_(dex_compilation_unit),
       outer_compilation_unit_(outer_compilation_unit),
       compiler_driver_(driver),
@@ -67,23 +69,21 @@ bool HGraphBuilder::SkipCompilation(size_t number_of_branches) {
     return false;
   }
 
-  if (compiler_options.IsHugeMethod(code_item_.insns_size_in_code_units_)) {
+  if (compiler_options.IsHugeMethod(code_item_->insns_size_in_code_units_)) {
     VLOG(compiler) << "Skip compilation of huge method "
                    << dex_file_->PrettyMethod(dex_compilation_unit_->GetDexMethodIndex())
-                   << ": " << code_item_.insns_size_in_code_units_ << " code units";
-    MaybeRecordStat(compilation_stats_,
-                    MethodCompilationStat::kNotCompiledHugeMethod);
+                   << ": " << code_item_->insns_size_in_code_units_ << " code units";
+    MaybeRecordStat(compilation_stats_, MethodCompilationStat::kNotCompiledHugeMethod);
     return true;
   }
 
   // If it's large and contains no branches, it's likely to be machine generated initialization.
-  if (compiler_options.IsLargeMethod(code_item_.insns_size_in_code_units_)
+  if (compiler_options.IsLargeMethod(code_item_->insns_size_in_code_units_)
       && (number_of_branches == 0)) {
     VLOG(compiler) << "Skip compilation of large method with no branch "
                    << dex_file_->PrettyMethod(dex_compilation_unit_->GetDexMethodIndex())
-                   << ": " << code_item_.insns_size_in_code_units_ << " code units";
-    MaybeRecordStat(compilation_stats_,
-                    MethodCompilationStat::kNotCompiledLargeMethodNoBranches);
+                   << ": " << code_item_->insns_size_in_code_units_ << " code units";
+    MaybeRecordStat(compilation_stats_, MethodCompilationStat::kNotCompiledLargeMethodNoBranches);
     return true;
   }
 
@@ -91,12 +91,13 @@ bool HGraphBuilder::SkipCompilation(size_t number_of_branches) {
 }
 
 GraphAnalysisResult HGraphBuilder::BuildGraph() {
+  DCHECK(code_item_ != nullptr);
   DCHECK(graph_->GetBlocks().empty());
 
-  graph_->SetNumberOfVRegs(code_item_.registers_size_);
-  graph_->SetNumberOfInVRegs(code_item_.ins_size_);
-  graph_->SetMaximumNumberOfOutVRegs(code_item_.outs_size_);
-  graph_->SetHasTryCatch(code_item_.tries_size_ != 0);
+  graph_->SetNumberOfVRegs(code_item_->registers_size_);
+  graph_->SetNumberOfInVRegs(code_item_->ins_size_);
+  graph_->SetMaximumNumberOfOutVRegs(code_item_->outs_size_);
+  graph_->SetHasTryCatch(code_item_->tries_size_ != 0);
 
   // Use ScopedArenaAllocator for all local allocations.
   ScopedArenaAllocator local_allocator(graph_->GetArenaStack());
@@ -146,6 +147,63 @@ GraphAnalysisResult HGraphBuilder::BuildGraph() {
 
   // 5) Type the graph and eliminate dead/redundant phis.
   return ssa_builder.BuildSsa();
+}
+
+void HGraphBuilder::BuildIntrinsicGraph(ArtMethod* method) {
+  DCHECK(code_item_ == nullptr);
+  DCHECK(graph_->GetBlocks().empty());
+
+  // Determine the number of arguments and associated vregs.
+  uint32_t method_idx = dex_compilation_unit_->GetDexMethodIndex();
+  const char* shorty = dex_file_->GetMethodShorty(dex_file_->GetMethodId(method_idx));
+  size_t num_args = strlen(shorty + 1);
+  size_t num_wide_args = std::count(shorty + 1, shorty + 1 + num_args, 'J') +
+                         std::count(shorty + 1, shorty + 1 + num_args, 'D');
+  size_t num_arg_vregs = num_args + num_wide_args + (dex_compilation_unit_->IsStatic() ? 0u : 1u);
+
+  // For simplicity, reserve 2 vregs (the maximum) for return value regardless of the return type.
+  size_t return_vregs = 2u;
+  graph_->SetNumberOfVRegs(return_vregs + num_arg_vregs);
+  graph_->SetNumberOfInVRegs(num_arg_vregs);
+  graph_->SetMaximumNumberOfOutVRegs(num_arg_vregs);
+  graph_->SetHasTryCatch(false);
+
+  // Use ScopedArenaAllocator for all local allocations.
+  ScopedArenaAllocator local_allocator(graph_->GetArenaStack());
+  HBasicBlockBuilder block_builder(graph_, dex_file_, /* code_item */ nullptr, &local_allocator);
+  SsaBuilder ssa_builder(graph_,
+                         dex_compilation_unit_->GetClassLoader(),
+                         dex_compilation_unit_->GetDexCache(),
+                         handles_,
+                         &local_allocator);
+  HInstructionBuilder instruction_builder(graph_,
+                                          &block_builder,
+                                          &ssa_builder,
+                                          dex_file_,
+                                          /* code_item */ nullptr,
+                                          return_type_,
+                                          dex_compilation_unit_,
+                                          outer_compilation_unit_,
+                                          compiler_driver_,
+                                          code_generator_,
+                                          interpreter_metadata_,
+                                          compilation_stats_,
+                                          handles_,
+                                          &local_allocator);
+
+  // 1) Create basic blocks for the intrinsic and link them together.
+  block_builder.BuildIntrinsic();
+
+  // 2) Build the trivial dominator tree.
+  GraphAnalysisResult bdt_result = graph_->BuildDominatorTree();
+  DCHECK_EQ(bdt_result, kAnalysisSuccess);
+
+  // 3) Populate basic blocks with instructions for the intrinsic.
+  instruction_builder.BuildIntrinsic(method);
+
+  // 4) Type the graph (no dead/redundant phis to eliminate).
+  GraphAnalysisResult build_ssa_result = ssa_builder.BuildSsa();
+  DCHECK_EQ(build_ssa_result, kAnalysisSuccess);
 }
 
 }  // namespace art
