@@ -119,6 +119,26 @@ size_t Instruction::SizeInCodeUnitsComplexOpcode() const {
   }
 }
 
+size_t Instruction::CodeUnitsRequiredForSizeOfComplexOpcode() const {
+  const uint16_t* insns = reinterpret_cast<const uint16_t*>(this);
+  // Handle special NOP encoded variable length sequences.
+  switch (*insns) {
+    case kPackedSwitchSignature:
+      FALLTHROUGH_INTENDED;
+    case kSparseSwitchSignature:
+      return 2;
+    case kArrayDataSignature:
+      return 4;
+    default:
+      if ((*insns & 0xFF) == 0) {
+        return 1;  // NOP.
+      } else {
+        LOG(FATAL) << "Unreachable: " << DumpString(nullptr);
+        UNREACHABLE();
+      }
+  }
+}
+
 std::string Instruction::DumpHex(size_t code_units) const {
   size_t inst_length = SizeInCodeUnits();
   if (inst_length > code_units) {
