@@ -39,6 +39,7 @@
 
 #include <jni.h>
 
+#include "deopt_manager.h"
 #include "base/casts.h"
 #include "base/logging.h"
 #include "base/macros.h"
@@ -59,9 +60,6 @@ class ShadowFrame;
 namespace openjdkjvmti {
 
 class ObjectTagTable;
-
-// Make sure that the DEFAULT_MUTEX_ACQUIRED_AFTER macro works.
-using art::Locks;
 
 // A structure that is a jvmtiEnv with additional information for the runtime.
 struct ArtJvmTiEnv : public jvmtiEnv {

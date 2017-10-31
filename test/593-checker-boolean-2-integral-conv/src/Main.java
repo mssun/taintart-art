@@ -32,24 +32,6 @@ public class Main {
     System.out.println("passed");
   }
 
-  /// CHECK-START: byte Main.booleanToByte(boolean) builder (after)
-  /// CHECK:         <<Arg:z\d+>>           ParameterValue
-  /// CHECK-DAG:     <<Zero:i\d+>>          IntConstant 0
-  /// CHECK-DAG:     <<One:i\d+>>           IntConstant 1
-  /// CHECK-DAG:     <<Cond:z\d+>>          Equal [<<Arg>>,<<Zero>>]
-  /// CHECK-DAG:                            If [<<Cond>>]
-  /// CHECK-DAG:     <<Phi:i\d+>>           Phi [<<One>>,<<Zero>>]
-  /// CHECK-DAG:     <<IToS:b\d+>>          TypeConversion [<<Phi>>]
-  /// CHECK-DAG:                            Return [<<IToS>>]
-
-  /// CHECK-START: byte Main.booleanToByte(boolean) select_generator (after)
-  /// CHECK:         <<Arg:z\d+>>           ParameterValue
-  /// CHECK-DAG:     <<Zero:i\d+>>          IntConstant 0
-  /// CHECK-DAG:     <<One:i\d+>>           IntConstant 1
-  /// CHECK-DAG:     <<Sel:i\d+>>           Select [<<Zero>>,<<One>>,<<Arg>>]
-  /// CHECK-DAG:     <<IToS:b\d+>>          TypeConversion [<<Sel>>]
-  /// CHECK-DAG:                            Return [<<IToS>>]
-
   /// CHECK-START: byte Main.booleanToByte(boolean) instruction_simplifier$after_bce (after)
   /// CHECK:         <<Arg:z\d+>>           ParameterValue
   /// CHECK-DAG:                            Return [<<Arg>>]
@@ -57,24 +39,6 @@ public class Main {
   static byte booleanToByte(boolean b) {
     return (byte)(b ? 1 : 0);
   }
-
-  /// CHECK-START: short Main.booleanToShort(boolean) builder (after)
-  /// CHECK:         <<Arg:z\d+>>           ParameterValue
-  /// CHECK-DAG:     <<Zero:i\d+>>          IntConstant 0
-  /// CHECK-DAG:     <<One:i\d+>>           IntConstant 1
-  /// CHECK-DAG:     <<Cond:z\d+>>          Equal [<<Arg>>,<<Zero>>]
-  /// CHECK-DAG:                            If [<<Cond>>]
-  /// CHECK-DAG:     <<Phi:i\d+>>           Phi [<<One>>,<<Zero>>]
-  /// CHECK-DAG:     <<IToS:s\d+>>          TypeConversion [<<Phi>>]
-  /// CHECK-DAG:                            Return [<<IToS>>]
-
-  /// CHECK-START: short Main.booleanToShort(boolean) select_generator (after)
-  /// CHECK:         <<Arg:z\d+>>           ParameterValue
-  /// CHECK-DAG:     <<Zero:i\d+>>          IntConstant 0
-  /// CHECK-DAG:     <<One:i\d+>>           IntConstant 1
-  /// CHECK-DAG:     <<Sel:i\d+>>           Select [<<Zero>>,<<One>>,<<Arg>>]
-  /// CHECK-DAG:     <<IToS:s\d+>>          TypeConversion [<<Sel>>]
-  /// CHECK-DAG:                            Return [<<IToS>>]
 
   /// CHECK-START: short Main.booleanToShort(boolean) instruction_simplifier$after_bce (after)
   /// CHECK:         <<Arg:z\d+>>           ParameterValue
@@ -84,24 +48,6 @@ public class Main {
     return (short)(b ? 1 : 0);
   }
 
-  /// CHECK-START: char Main.booleanToChar(boolean) builder (after)
-  /// CHECK:         <<Arg:z\d+>>           ParameterValue
-  /// CHECK-DAG:     <<Zero:i\d+>>          IntConstant 0
-  /// CHECK-DAG:     <<One:i\d+>>           IntConstant 1
-  /// CHECK-DAG:     <<Cond:z\d+>>          Equal [<<Arg>>,<<Zero>>]
-  /// CHECK-DAG:                            If [<<Cond>>]
-  /// CHECK-DAG:     <<Phi:i\d+>>           Phi [<<One>>,<<Zero>>]
-  /// CHECK-DAG:     <<IToC:c\d+>>          TypeConversion [<<Phi>>]
-  /// CHECK-DAG:                            Return [<<IToC>>]
-
-  /// CHECK-START: char Main.booleanToChar(boolean) select_generator (after)
-  /// CHECK:         <<Arg:z\d+>>           ParameterValue
-  /// CHECK-DAG:     <<Zero:i\d+>>          IntConstant 0
-  /// CHECK-DAG:     <<One:i\d+>>           IntConstant 1
-  /// CHECK-DAG:     <<Sel:i\d+>>           Select [<<Zero>>,<<One>>,<<Arg>>]
-  /// CHECK-DAG:     <<IToC:c\d+>>          TypeConversion [<<Sel>>]
-  /// CHECK-DAG:                            Return [<<IToC>>]
-
   /// CHECK-START: char Main.booleanToChar(boolean) instruction_simplifier$after_bce (after)
   /// CHECK:         <<Arg:z\d+>>           ParameterValue
   /// CHECK-DAG:                            Return [<<Arg>>]
@@ -109,22 +55,6 @@ public class Main {
   static char booleanToChar(boolean b) {
     return (char)(b ? 1 : 0);
   }
-
-  /// CHECK-START: int Main.booleanToInt(boolean) builder (after)
-  /// CHECK:         <<Arg:z\d+>>           ParameterValue
-  /// CHECK-DAG:     <<Zero:i\d+>>          IntConstant 0
-  /// CHECK-DAG:     <<One:i\d+>>           IntConstant 1
-  /// CHECK-DAG:     <<Cond:z\d+>>          Equal [<<Arg>>,<<Zero>>]
-  /// CHECK-DAG:                            If [<<Cond>>]
-  /// CHECK-DAG:     <<Phi:i\d+>>           Phi [<<One>>,<<Zero>>]
-  /// CHECK-DAG:                            Return [<<Phi>>]
-
-  /// CHECK-START: int Main.booleanToInt(boolean) select_generator (after)
-  /// CHECK:         <<Arg:z\d+>>           ParameterValue
-  /// CHECK-DAG:     <<Zero:i\d+>>          IntConstant 0
-  /// CHECK-DAG:     <<One:i\d+>>           IntConstant 1
-  /// CHECK-DAG:     <<Sel:i\d+>>           Select [<<Zero>>,<<One>>,<<Arg>>]
-  /// CHECK-DAG:                            Return [<<Sel>>]
 
   /// CHECK-START: int Main.booleanToInt(boolean) instruction_simplifier$after_bce (after)
   /// CHECK:         <<Arg:z\d+>>           ParameterValue

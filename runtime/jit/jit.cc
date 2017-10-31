@@ -272,9 +272,12 @@ bool Jit::CompileMethod(ArtMethod* method, Thread* self, bool osr) {
   DCHECK(Runtime::Current()->UseJitCompilation());
   DCHECK(!method->IsRuntimeMethod());
 
+  RuntimeCallbacks* cb = Runtime::Current()->GetRuntimeCallbacks();
   // Don't compile the method if it has breakpoints.
-  if (Dbg::IsDebuggerActive() && Dbg::MethodHasAnyBreakpoints(method)) {
-    VLOG(jit) << "JIT not compiling " << method->PrettyMethod() << " due to breakpoint";
+  if (cb->IsMethodBeingInspected(method) && !cb->IsMethodSafeToJit(method)) {
+    VLOG(jit) << "JIT not compiling " << method->PrettyMethod()
+              << " due to not being safe to jit according to runtime-callbacks. For example, there"
+              << " could be breakpoints in this method.";
     return false;
   }
 
