@@ -34,30 +34,6 @@
   bug: 66904725,
   name: "org.apache.harmony.jpda.tests.jdwp.Events.VMDeath002Test#testVMDeathRequest"
 },
-{
-  description: "Test fails with OPAQUE_FRAME error due to attempting a GetLocalReference on a proxy frame instead of GetLocalInstance!",
-  result: EXEC_FAILED,
-  bug: 66903662,
-  name: "org.apache.harmony.jpda.tests.jdwp.StackFrame.ProxyThisObjectTest#testThisObject"
-},
-{
-  description: "Test fails with unexpected TYPE_MISMATCH error",
-  result: EXEC_FAILED,
-  bug: 66904008,
-  name: "org.apache.harmony.jpda.tests.jdwp.StackFrame.ThisObjectTest#testThisObjectTest001"
-},
-{
-  description: "Tests that fail only on ART with INVALID_SLOT error",
-  result: EXEC_FAILED,
-  bug: 66903181,
-  names: [ "org.apache.harmony.jpda.tests.jdwp.EventModifiers.InstanceOnlyModifierTest#testBreakpoint",
-           "org.apache.harmony.jpda.tests.jdwp.EventModifiers.InstanceOnlyModifierTest#testException",
-           "org.apache.harmony.jpda.tests.jdwp.EventModifiers.InstanceOnlyModifierTest#testFieldAccess",
-           "org.apache.harmony.jpda.tests.jdwp.EventModifiers.InstanceOnlyModifierTest#testFieldModification",
-           "org.apache.harmony.jpda.tests.jdwp.EventModifiers.InstanceOnlyModifierTest#testMethodEntry",
-           "org.apache.harmony.jpda.tests.jdwp.EventModifiers.InstanceOnlyModifierTest#testMethodExit",
-           "org.apache.harmony.jpda.tests.jdwp.EventModifiers.InstanceOnlyModifierTest#testMethodExitWithReturnValue" ]
-},
 /* TODO Categorize these failures more. */
 {
   description: "Tests that fail on both ART and RI. These tests are likely incorrect",
