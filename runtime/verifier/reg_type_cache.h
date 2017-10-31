@@ -61,7 +61,7 @@ static constexpr size_t kDefaultArenaBitVectorBytes = 8;
 
 class RegTypeCache {
  public:
-  RegTypeCache(bool can_load_classes, ScopedArenaAllocator& allocator, bool can_suspend = true);
+  explicit RegTypeCache(bool can_load_classes, ScopedArenaAllocator& allocator);
   ~RegTypeCache();
   static void Init() REQUIRES_SHARED(Locks::mutator_lock_) {
     if (!RegTypeCache::primitive_initialized_) {
