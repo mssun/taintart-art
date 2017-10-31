@@ -167,10 +167,17 @@ static bool GetIdsFromByteCode(Collections& collections,
                                std::vector<MethodId*>* method_ids,
                                std::vector<FieldId*>* field_ids) {
   bool has_id = false;
-  for (const Instruction& instruction : code->Instructions()) {
-    CHECK_GT(instruction.SizeInCodeUnits(), 0u);
+  IterationRange<DexInstructionIterator> instructions = code->Instructions();
+  SafeDexInstructionIterator it(instructions.begin(), instructions.end());
+  for (; !it.IsErrorState() && it < instructions.end(); ++it) {
+    // In case the instruction goes past the end of the code item, make sure to not process it.
+    SafeDexInstructionIterator next = it;
+    ++next;
+    if (next.IsErrorState() || next > instructions.end()) {
+      break;
+    }
     has_id |= GetIdFromInstruction(collections,
-                                   &instruction,
+                                   it.Inst(),
                                    type_ids,
                                    string_ids,
                                    method_ids,
