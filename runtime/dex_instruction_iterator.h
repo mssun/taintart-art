@@ -24,19 +24,68 @@
 
 namespace art {
 
-class DexInstructionIterator : public std::iterator<std::forward_iterator_tag, Instruction> {
+// Base helper class to prevent duplicated comparators.
+class DexInstructionIteratorBase : public std::iterator<std::forward_iterator_tag, Instruction> {
  public:
   using value_type = std::iterator<std::forward_iterator_tag, Instruction>::value_type;
   using difference_type = std::iterator<std::forward_iterator_tag, value_type>::difference_type;
 
-  DexInstructionIterator() = default;
-  DexInstructionIterator(const DexInstructionIterator&) = default;
-  DexInstructionIterator(DexInstructionIterator&&) = default;
-  DexInstructionIterator& operator=(const DexInstructionIterator&) = default;
-  DexInstructionIterator& operator=(DexInstructionIterator&&) = default;
+  DexInstructionIteratorBase() = default;
+  explicit DexInstructionIteratorBase(const value_type* inst) : inst_(inst) {}
 
-  explicit DexInstructionIterator(const value_type* inst) : inst_(inst) {}
-  explicit DexInstructionIterator(const uint16_t* inst) : inst_(value_type::At(inst)) {}
+  const value_type* Inst() const {
+    return inst_;
+  }
+
+  // Return the dex pc for an iterator compared to the code item begin.
+  uint32_t GetDexPC(const DexInstructionIteratorBase& code_item_begin) {
+    return reinterpret_cast<const uint16_t*>(inst_) -
+        reinterpret_cast<const uint16_t*>(code_item_begin.inst_);
+  }
+
+ protected:
+  const value_type* inst_ = nullptr;
+};
+
+
+static ALWAYS_INLINE inline bool operator==(const DexInstructionIteratorBase& lhs,
+                                            const DexInstructionIteratorBase& rhs) {
+  return lhs.Inst() == rhs.Inst();
+}
+
+static inline bool operator!=(const DexInstructionIteratorBase& lhs,
+                              const DexInstructionIteratorBase& rhs) {
+  return !(lhs == rhs);
+}
+
+static inline bool operator<(const DexInstructionIteratorBase& lhs,
+                             const DexInstructionIteratorBase& rhs) {
+  return lhs.Inst() < rhs.Inst();
+}
+
+static inline bool operator>(const DexInstructionIteratorBase& lhs,
+                             const DexInstructionIteratorBase& rhs) {
+  return rhs < lhs;
+}
+
+static inline bool operator<=(const DexInstructionIteratorBase& lhs,
+                              const DexInstructionIteratorBase& rhs) {
+  return !(rhs < lhs);
+}
+
+static inline bool operator>=(const DexInstructionIteratorBase& lhs,
+                              const DexInstructionIteratorBase& rhs) {
+  return !(lhs < rhs);
+}
+
+class DexInstructionIterator : public DexInstructionIteratorBase {
+ public:
+  using value_type = std::iterator<std::forward_iterator_tag, Instruction>::value_type;
+  using difference_type = std::iterator<std::forward_iterator_tag, value_type>::difference_type;
+  using DexInstructionIteratorBase::DexInstructionIteratorBase;
+
+  explicit DexInstructionIterator(const uint16_t* inst)
+      : DexInstructionIteratorBase(value_type::At(inst)) {}
 
   // Value after modification.
   DexInstructionIterator& operator++() {
@@ -58,50 +107,62 @@ class DexInstructionIterator : public std::iterator<std::forward_iterator_tag, I
   const value_type* operator->() const {
     return &**this;
   }
+};
 
-  // Return the dex pc for an iterator compared to the code item begin.
-  uint32_t GetDexPC(const DexInstructionIterator& code_item_begin) {
-    return reinterpret_cast<const uint16_t*>(inst_) -
-        reinterpret_cast<const uint16_t*>(code_item_begin.inst_);
+class SafeDexInstructionIterator : public DexInstructionIteratorBase {
+ public:
+  explicit SafeDexInstructionIterator(const DexInstructionIteratorBase& start,
+                                      const DexInstructionIteratorBase& end)
+      : DexInstructionIteratorBase(start.Inst())
+      , end_(end.Inst()) {}
+
+  // Value after modification, does not read past the end of the allowed region. May increment past
+  // the end of the code item though.
+  SafeDexInstructionIterator& operator++() {
+    AssertValid();
+    const size_t size_code_units = Inst()->CodeUnitsRequiredForSizeComputation();
+    const size_t available = reinterpret_cast<const uint16_t*>(end_) -
+        reinterpret_cast<const uint16_t*>(Inst());
+    if (size_code_units > available) {
+      error_state_ = true;
+    } else {
+      inst_ = inst_->Next();
+    }
+    return *this;
   }
 
-  const value_type* Inst() const {
-    return inst_;
+  // Value before modification.
+  SafeDexInstructionIterator operator++(int) {
+    SafeDexInstructionIterator temp = *this;
+    ++*this;
+    return temp;
+  }
+
+  const value_type& operator*() const {
+    AssertValid();
+    return *inst_;
+  }
+
+  const value_type* operator->() const {
+    AssertValid();
+    return &**this;
+  }
+
+  // Returns true if the iterator is in an error state. This occurs when an instruction couldn't
+  // have its size computed without reading past the end iterator.
+  bool IsErrorState() const {
+    return error_state_;
   }
 
  private:
-  const value_type* inst_ = nullptr;
+  ALWAYS_INLINE void AssertValid() const {
+    DCHECK(!IsErrorState());
+    DCHECK_LT(Inst(), end_);
+  }
+
+  const value_type* end_ = nullptr;
+  bool error_state_ = false;
 };
-
-static ALWAYS_INLINE inline bool operator==(const DexInstructionIterator& lhs,
-                                            const DexInstructionIterator& rhs) {
-  return lhs.Inst() == rhs.Inst();
-}
-
-static inline bool operator!=(const DexInstructionIterator& lhs,
-                              const DexInstructionIterator& rhs) {
-  return !(lhs == rhs);
-}
-
-static inline bool operator<(const DexInstructionIterator& lhs,
-                             const DexInstructionIterator& rhs) {
-  return lhs.Inst() < rhs.Inst();
-}
-
-static inline bool operator>(const DexInstructionIterator& lhs,
-                             const DexInstructionIterator& rhs) {
-  return rhs < lhs;
-}
-
-static inline bool operator<=(const DexInstructionIterator& lhs,
-                              const DexInstructionIterator& rhs) {
-  return !(rhs < lhs);
-}
-
-static inline bool operator>=(const DexInstructionIterator& lhs,
-                              const DexInstructionIterator& rhs) {
-  return !(lhs < rhs);
-}
 
 }  // namespace art
 
