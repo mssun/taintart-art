@@ -5411,6 +5411,15 @@ void InstructionCodeGeneratorARM64::VisitStaticFieldSet(HStaticFieldSet* instruc
   HandleFieldSet(instruction, instruction->GetFieldInfo(), instruction->GetValueCanBeNull());
 }
 
+void LocationsBuilderARM64::VisitStringBuilderAppend(HStringBuilderAppend* instruction) {
+  codegen_->CreateStringBuilderAppendLocations(instruction, LocationFrom(x0));
+}
+
+void InstructionCodeGeneratorARM64::VisitStringBuilderAppend(HStringBuilderAppend* instruction) {
+  __ Mov(w0, instruction->GetFormat()->GetValue());
+  codegen_->InvokeRuntime(kQuickStringBuilderAppend, instruction, instruction->GetDexPc());
+}
+
 void LocationsBuilderARM64::VisitUnresolvedInstanceFieldGet(
     HUnresolvedInstanceFieldGet* instruction) {
   FieldAccessCallingConventionARM64 calling_convention;

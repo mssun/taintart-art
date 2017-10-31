@@ -2201,6 +2201,16 @@ DEFINE_FUNCTION art_quick_instance_of
     ret
 END_FUNCTION art_quick_instance_of
 
+DEFINE_FUNCTION art_quick_string_builder_append
+    SETUP_SAVE_REFS_ONLY_FRAME                // save ref containing registers for GC
+    // Outgoing argument set up
+    leaq FRAME_SIZE_SAVE_REFS_ONLY + __SIZEOF_POINTER__(%rsp), %rsi  // pass args
+    movq %gs:THREAD_SELF_OFFSET, %rdx         // pass Thread::Current()
+    call artStringBuilderAppend               // (uint32_t, const unit32_t*, Thread*)
+    RESTORE_SAVE_REFS_ONLY_FRAME              // restore frame up to return address
+    RETURN_IF_RESULT_IS_NON_ZERO_OR_DELIVER   // return or deliver exception
+END_FUNCTION art_quick_string_builder_append
+
 // Create a function `name` calling the ReadBarrier::Mark routine,
 // getting its argument and returning its result through register
 // `reg`, saving and restoring all caller-save registers.

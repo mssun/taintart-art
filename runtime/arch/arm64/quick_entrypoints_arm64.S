@@ -2468,6 +2468,17 @@ ENTRY art_quick_indexof
 #endif
 END art_quick_indexof
 
+    .extern artStringBuilderAppend
+ENTRY art_quick_string_builder_append
+    SETUP_SAVE_REFS_ONLY_FRAME          // save callee saves in case of GC
+    add    x1, sp, #(FRAME_SIZE_SAVE_REFS_ONLY + __SIZEOF_POINTER__)  // pass args
+    mov    x2, xSELF                    // pass Thread::Current
+    bl     artStringBuilderAppend       // (uint32_t, const unit32_t*, Thread*)
+    RESTORE_SAVE_REFS_ONLY_FRAME
+    REFRESH_MARKING_REGISTER
+    RETURN_IF_RESULT_IS_NON_ZERO_OR_DELIVER
+END art_quick_string_builder_append
+
     /*
      * Create a function `name` calling the ReadBarrier::Mark routine,
      * getting its argument and returning its result through W register

@@ -2246,6 +2246,25 @@ DEFINE_FUNCTION art_quick_string_compareto
     ret
 END_FUNCTION art_quick_string_compareto
 
+DEFINE_FUNCTION art_quick_string_builder_append
+    SETUP_SAVE_REFS_ONLY_FRAME ebx, ebx       // save ref containing registers for GC
+    // Outgoing argument set up
+    leal FRAME_SIZE_SAVE_REFS_ONLY + __SIZEOF_POINTER__(%esp), %edi  // prepare args
+    push %eax                                 // push padding
+    CFI_ADJUST_CFA_OFFSET(4)
+    pushl %fs:THREAD_SELF_OFFSET              // pass Thread::Current()
+    CFI_ADJUST_CFA_OFFSET(4)
+    push %edi                                 // pass args
+    CFI_ADJUST_CFA_OFFSET(4)
+    push %eax                                 // pass format
+    CFI_ADJUST_CFA_OFFSET(4)
+    call SYMBOL(artStringBuilderAppend)       // (uint32_t, const unit32_t*, Thread*)
+    addl MACRO_LITERAL(16), %esp              // pop arguments
+    CFI_ADJUST_CFA_OFFSET(-16)
+    RESTORE_SAVE_REFS_ONLY_FRAME              // restore frame up to return address
+    RETURN_IF_RESULT_IS_NON_ZERO_OR_DELIVER   // return or deliver exception
+END_FUNCTION art_quick_string_builder_append
+
 // Create a function `name` calling the ReadBarrier::Mark routine,
 // getting its argument and returning its result through register
 // `reg`, saving and restoring all caller-save registers.

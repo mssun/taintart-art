@@ -7148,6 +7148,15 @@ void InstructionCodeGeneratorMIPS64::VisitStaticFieldSet(HStaticFieldSet* instru
   HandleFieldSet(instruction, instruction->GetFieldInfo(), instruction->GetValueCanBeNull());
 }
 
+void LocationsBuilderMIPS64::VisitStringBuilderAppend(HStringBuilderAppend* instruction) {
+  codegen_->CreateStringBuilderAppendLocations(instruction, Location::RegisterLocation(V0));
+}
+
+void InstructionCodeGeneratorMIPS64::VisitStringBuilderAppend(HStringBuilderAppend* instruction) {
+  __ LoadConst32(A0, instruction->GetFormat()->GetValue());
+  codegen_->InvokeRuntime(kQuickStringBuilderAppend, instruction, instruction->GetDexPc());
+}
+
 void LocationsBuilderMIPS64::VisitUnresolvedInstanceFieldGet(
     HUnresolvedInstanceFieldGet* instruction) {
   FieldAccessCallingConventionMIPS64 calling_convention;

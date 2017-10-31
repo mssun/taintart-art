@@ -5722,6 +5722,15 @@ void InstructionCodeGeneratorARMVIXL::VisitStaticFieldSet(HStaticFieldSet* instr
   HandleFieldSet(instruction, instruction->GetFieldInfo(), instruction->GetValueCanBeNull());
 }
 
+void LocationsBuilderARMVIXL::VisitStringBuilderAppend(HStringBuilderAppend* instruction) {
+  codegen_->CreateStringBuilderAppendLocations(instruction, LocationFrom(r0));
+}
+
+void InstructionCodeGeneratorARMVIXL::VisitStringBuilderAppend(HStringBuilderAppend* instruction) {
+  __ Mov(r0, instruction->GetFormat()->GetValue());
+  codegen_->InvokeRuntime(kQuickStringBuilderAppend, instruction, instruction->GetDexPc());
+}
+
 void LocationsBuilderARMVIXL::VisitUnresolvedInstanceFieldGet(
     HUnresolvedInstanceFieldGet* instruction) {
   FieldAccessCallingConventionARMVIXL calling_convention;

@@ -34,6 +34,7 @@ class Array;
 class Class;
 template<class MirrorType> class CompressedReference;
 class Object;
+class String;
 }  // namespace mirror
 
 class ArtMethod;
@@ -77,6 +78,11 @@ extern mirror::Object* JniMethodEndWithReferenceSynchronized(jobject result,
                                                              uint32_t saved_local_ref_cookie,
                                                              jobject locked, Thread* self)
     NO_THREAD_SAFETY_ANALYSIS HOT_ATTR;
+
+extern "C" mirror::String* artStringBuilderAppend(uint32_t format,
+                                                  const uint32_t* args,
+                                                  Thread* self)
+    REQUIRES_SHARED(Locks::mutator_lock_) HOT_ATTR;
 
 extern void ReadBarrierJni(mirror::CompressedReference<mirror::Object>* handle_on_stack,
                            Thread* self)

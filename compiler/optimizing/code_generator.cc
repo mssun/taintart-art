@@ -64,6 +64,7 @@
 #include "ssa_liveness_analysis.h"
 #include "stack_map.h"
 #include "stack_map_stream.h"
+#include "string_builder_append.h"
 #include "thread-current-inl.h"
 #include "utils/assembler.h"
 
@@ -597,6 +598,57 @@ void CodeGenerator::GenerateInvokeCustomCall(HInvokeCustom* invoke) {
   MoveConstant(invoke->GetLocations()->GetTemp(0), invoke->GetCallSiteIndex());
   QuickEntrypointEnum entrypoint = kQuickInvokeCustom;
   InvokeRuntime(entrypoint, invoke, invoke->GetDexPc(), nullptr);
+}
+
+void CodeGenerator::CreateStringBuilderAppendLocations(HStringBuilderAppend* instruction,
+                                                       Location out) {
+  ArenaAllocator* allocator = GetGraph()->GetAllocator();
+  LocationSummary* locations =
+      new (allocator) LocationSummary(instruction, LocationSummary::kCallOnMainOnly);
+  locations->SetOut(out);
+  instruction->GetLocations()->SetInAt(instruction->FormatIndex(),
+                                       Location::ConstantLocation(instruction->GetFormat()));
+
+  uint32_t format = static_cast<uint32_t>(instruction->GetFormat()->GetValue());
+  uint32_t f = format;
+  PointerSize pointer_size = InstructionSetPointerSize(GetInstructionSet());
+  size_t stack_offset = static_cast<size_t>(pointer_size);  // Start after the ArtMethod*.
+  for (size_t i = 0, num_args = instruction->GetNumberOfArguments(); i != num_args; ++i) {
+    StringBuilderAppend::Argument arg_type =
+        static_cast<StringBuilderAppend::Argument>(f & StringBuilderAppend::kArgMask);
+    switch (arg_type) {
+      case StringBuilderAppend::Argument::kStringBuilder:
+      case StringBuilderAppend::Argument::kString:
+      case StringBuilderAppend::Argument::kCharArray:
+        static_assert(sizeof(StackReference<mirror::Object>) == sizeof(uint32_t), "Size check.");
+        FALLTHROUGH_INTENDED;
+      case StringBuilderAppend::Argument::kBoolean:
+      case StringBuilderAppend::Argument::kChar:
+      case StringBuilderAppend::Argument::kInt:
+      case StringBuilderAppend::Argument::kFloat:
+        locations->SetInAt(i, Location::StackSlot(stack_offset));
+        break;
+      case StringBuilderAppend::Argument::kLong:
+      case StringBuilderAppend::Argument::kDouble:
+        stack_offset = RoundUp(stack_offset, sizeof(uint64_t));
+        locations->SetInAt(i, Location::DoubleStackSlot(stack_offset));
+        // Skip the low word, let the common code skip the high word.
+        stack_offset += sizeof(uint32_t);
+        break;
+      default:
+        LOG(FATAL) << "Unexpected arg format: 0x" << std::hex
+            << (f & StringBuilderAppend::kArgMask) << " full format: 0x" << format;
+        UNREACHABLE();
+    }
+    f >>= StringBuilderAppend::kBitsPerArg;
+    stack_offset += sizeof(uint32_t);
+  }
+  DCHECK_EQ(f, 0u);
+
+  size_t param_size = stack_offset - static_cast<size_t>(pointer_size);
+  DCHECK_ALIGNED(param_size, kVRegSize);
+  size_t num_vregs = param_size / kVRegSize;
+  graph_->UpdateMaximumNumberOfOutVRegs(num_vregs);
 }
 
 void CodeGenerator::CreateUnresolvedFieldLocationSummary(

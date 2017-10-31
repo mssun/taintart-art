@@ -2694,6 +2694,16 @@ ENTRY_NO_GP art_quick_string_compareto
     subu   $v0, $t0, $t1  # return (this.charAt(i) - anotherString.charAt(i))
 END art_quick_string_compareto
 
+    .extern artStringBuilderAppend
+ENTRY art_quick_string_builder_append
+    SETUP_SAVE_REFS_ONLY_FRAME        # save callee saves in case of GC
+    la      $t9, artStringBuilderAppend
+    addiu   $a1, $sp, ARG_SLOT_SIZE + FRAME_SIZE_SAVE_REFS_ONLY + __SIZEOF_POINTER__ # pass args
+    jalr    $t9                       # (uint32_t, const unit32_t*, Thread*)
+    move    $a2, rSELF                # pass Thread::Current
+    RETURN_IF_RESULT_IS_NON_ZERO_OR_DELIVER
+END art_quick_string_builder_append
+
     /*
      * Create a function `name` calling the ReadBarrier::Mark routine,
      * getting its argument and returning its result through register

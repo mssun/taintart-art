@@ -1438,6 +1438,7 @@ class HLoopInformationOutwardIterator : public ValueObject {
   M(Shr, BinaryOperation)                                               \
   M(StaticFieldGet, Instruction)                                        \
   M(StaticFieldSet, Instruction)                                        \
+  M(StringBuilderAppend, Instruction)                                   \
   M(UnresolvedInstanceFieldGet, Instruction)                            \
   M(UnresolvedInstanceFieldSet, Instruction)                            \
   M(UnresolvedStaticFieldGet, Instruction)                              \
@@ -6887,6 +6888,55 @@ class HStaticFieldSet final : public HExpression<2> {
                 "Too many packed fields.");
 
   const FieldInfo field_info_;
+};
+
+class HStringBuilderAppend final : public HVariableInputSizeInstruction {
+ public:
+  HStringBuilderAppend(HIntConstant* format,
+                       uint32_t number_of_arguments,
+                       ArenaAllocator* allocator,
+                       uint32_t dex_pc)
+      : HVariableInputSizeInstruction(
+            kStringBuilderAppend,
+            DataType::Type::kReference,
+            // The runtime call may read memory from inputs. It never writes outside
+            // of the newly allocated result object (or newly allocated helper objects).
+            SideEffects::AllReads().Union(SideEffects::CanTriggerGC()),
+            dex_pc,
+            allocator,
+            number_of_arguments + /* format */ 1u,
+            kArenaAllocInvokeInputs) {
+    DCHECK_GE(number_of_arguments, 1u);  // There must be something to append.
+    SetRawInputAt(FormatIndex(), format);
+  }
+
+  void SetArgumentAt(size_t index, HInstruction* argument) {
+    DCHECK_LE(index, GetNumberOfArguments());
+    SetRawInputAt(index, argument);
+  }
+
+  // Return the number of arguments, excluding the format.
+  size_t GetNumberOfArguments() const {
+    DCHECK_GE(InputCount(), 1u);
+    return InputCount() - 1u;
+  }
+
+  size_t FormatIndex() const {
+    return GetNumberOfArguments();
+  }
+
+  HIntConstant* GetFormat() {
+    return InputAt(FormatIndex())->AsIntConstant();
+  }
+
+  bool NeedsEnvironment() const override { return true; }
+
+  bool CanThrow() const override { return true; }
+
+  DECLARE_INSTRUCTION(StringBuilderAppend);
+
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(StringBuilderAppend);
 };
 
 class HUnresolvedInstanceFieldGet final : public HExpression<1> {

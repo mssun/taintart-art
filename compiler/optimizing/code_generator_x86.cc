@@ -5510,6 +5510,15 @@ void InstructionCodeGeneratorX86::VisitInstanceFieldGet(HInstanceFieldGet* instr
   HandleFieldGet(instruction, instruction->GetFieldInfo());
 }
 
+void LocationsBuilderX86::VisitStringBuilderAppend(HStringBuilderAppend* instruction) {
+  codegen_->CreateStringBuilderAppendLocations(instruction, Location::RegisterLocation(EAX));
+}
+
+void InstructionCodeGeneratorX86::VisitStringBuilderAppend(HStringBuilderAppend* instruction) {
+  __ movl(EAX, Immediate(instruction->GetFormat()->GetValue()));
+  codegen_->InvokeRuntime(kQuickStringBuilderAppend, instruction, instruction->GetDexPc());
+}
+
 void LocationsBuilderX86::VisitUnresolvedInstanceFieldGet(
     HUnresolvedInstanceFieldGet* instruction) {
   FieldAccessCallingConventionX86 calling_convention;

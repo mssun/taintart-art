@@ -87,6 +87,8 @@ static inline const void* GetQuickInstrumentationExitPc() {
   return reinterpret_cast<const void*>(art_quick_instrumentation_exit);
 }
 
+extern "C" void* art_quick_string_builder_append(uint32_t format);
+
 }  // namespace art
 
 #endif  // ART_RUNTIME_ENTRYPOINTS_RUNTIME_ASM_ENTRYPOINTS_H_

@@ -9529,6 +9529,15 @@ void InstructionCodeGeneratorMIPS::VisitStaticFieldSet(HStaticFieldSet* instruct
                  instruction->GetValueCanBeNull());
 }
 
+void LocationsBuilderMIPS::VisitStringBuilderAppend(HStringBuilderAppend* instruction) {
+  codegen_->CreateStringBuilderAppendLocations(instruction, Location::RegisterLocation(V0));
+}
+
+void InstructionCodeGeneratorMIPS::VisitStringBuilderAppend(HStringBuilderAppend* instruction) {
+  __ LoadConst32(A0, instruction->GetFormat()->GetValue());
+  codegen_->InvokeRuntime(kQuickStringBuilderAppend, instruction, instruction->GetDexPc());
+}
+
 void LocationsBuilderMIPS::VisitUnresolvedInstanceFieldGet(
     HUnresolvedInstanceFieldGet* instruction) {
   FieldAccessCallingConventionMIPS calling_convention;

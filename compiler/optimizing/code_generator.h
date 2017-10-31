@@ -546,6 +546,8 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
 
   void GenerateInvokeCustomCall(HInvokeCustom* invoke);
 
+  void CreateStringBuilderAppendLocations(HStringBuilderAppend* instruction, Location out);
+
   void CreateUnresolvedFieldLocationSummary(
       HInstruction* field_access,
       DataType::Type field_type,
