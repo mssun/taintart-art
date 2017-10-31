@@ -30,6 +30,10 @@ LOCAL_MODULE := ahat
 # Let users with Java 7 run ahat (b/28303627)
 LOCAL_JAVA_LANGUAGE_VERSION := 1.7
 
+# Make this available on the classpath of the general-tests tradefed suite.
+# It is used by libcore tests that run there.
+LOCAL_COMPATIBILITY_SUITE := general-tests
+
 include $(BUILD_HOST_JAVA_LIBRARY)
 
 # --- ahat script ----------------
