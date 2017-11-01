@@ -26,6 +26,7 @@
 
 #include "android-base/stringprintf.h"
 
+#include "base/file_utils.h"
 #include "base/logging.h"
 #include "base/stringpiece.h"
 #include "noop_compiler_callbacks.h"

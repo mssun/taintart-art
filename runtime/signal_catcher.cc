@@ -34,6 +34,7 @@
 #endif
 
 #include "arch/instruction_set.h"
+#include "base/file_utils.h"
 #include "base/time_utils.h"
 #include "base/unix_file/fd_file.h"
 #include "class_linker.h"

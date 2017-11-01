@@ -16,6 +16,7 @@
 
 #include "elf_file.h"
 
+#include "base/file_utils.h"
 #include "base/unix_file/fd_file.h"
 #include "common_compiler_test.h"
 #include "elf_file.h"
