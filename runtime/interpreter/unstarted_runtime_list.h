@@ -80,6 +80,7 @@
 
 // Methods that are native.
 #define UNSTARTED_RUNTIME_JNI_LIST(V)           \
+  V(VMRuntimeIs64Bit, "boolean dalvik.system.VMRuntime.is64Bit()") \
   V(VMRuntimeNewUnpaddedArray, "java.lang.Object dalvik.system.VMRuntime.newUnpaddedArray(java.lang.Class, int)") \
   V(VMStackGetCallingClassLoader, "java.lang.ClassLoader dalvik.system.VMStack.getCallingClassLoader()") \
   V(VMStackGetStackClass2, "java.lang.Class dalvik.system.VMStack.getStackClass2()") \
