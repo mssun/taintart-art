@@ -1346,36 +1346,26 @@ void Thread::ClearSuspendBarrier(AtomicInteger* target) {
 }
 
 void Thread::RunCheckpointFunction() {
-  bool done = false;
-  do {
-    // Grab the suspend_count lock and copy the checkpoints one by one. When the last checkpoint is
-    // copied, clear the list and the flag. The RequestCheckpoint function will also grab this lock
-    // to prevent a race between setting the kCheckpointRequest flag and clearing it.
-    Closure* checkpoint = nullptr;
-    {
-      MutexLock mu(this, *Locks::thread_suspend_count_lock_);
-      if (tlsPtr_.checkpoint_function != nullptr) {
-        checkpoint = tlsPtr_.checkpoint_function;
-        if (!checkpoint_overflow_.empty()) {
-          // Overflow list not empty, copy the first one out and continue.
-          tlsPtr_.checkpoint_function = checkpoint_overflow_.front();
-          checkpoint_overflow_.pop_front();
-        } else {
-          // No overflow checkpoints, this means that we are on the last pending checkpoint.
-          tlsPtr_.checkpoint_function = nullptr;
-          AtomicClearFlag(kCheckpointRequest);
-          done = true;
-        }
-      } else {
-        LOG(FATAL) << "Checkpoint flag set without pending checkpoint";
-      }
+  // Grab the suspend_count lock, get the next checkpoint and update all the checkpoint fields. If
+  // there are no more checkpoints we will also clear the kCheckpointRequest flag.
+  Closure* checkpoint;
+  {
+    MutexLock mu(this, *Locks::thread_suspend_count_lock_);
+    checkpoint = tlsPtr_.checkpoint_function;
+    if (!checkpoint_overflow_.empty()) {
+      // Overflow list not empty, copy the first one out and continue.
+      tlsPtr_.checkpoint_function = checkpoint_overflow_.front();
+      checkpoint_overflow_.pop_front();
+    } else {
+      // No overflow checkpoints. Clear the kCheckpointRequest flag
+      tlsPtr_.checkpoint_function = nullptr;
+      AtomicClearFlag(kCheckpointRequest);
     }
-
-    // Outside the lock, run the checkpoint functions that we collected.
-    ScopedTrace trace("Run checkpoint function");
-    DCHECK(checkpoint != nullptr);
-    checkpoint->Run(this);
-  } while (!done);
+  }
+  // Outside the lock, run the checkpoint function.
+  ScopedTrace trace("Run checkpoint function");
+  CHECK(checkpoint != nullptr) << "Checkpoint flag set without pending checkpoint";
+  checkpoint->Run(this);
 }
 
 void Thread::RunEmptyCheckpoint() {
