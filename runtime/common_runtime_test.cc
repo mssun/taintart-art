@@ -27,6 +27,7 @@
 #include "android-base/stringprintf.h"
 
 #include "art_field-inl.h"
+#include "base/file_utils.h"
 #include "base/logging.h"
 #include "base/macros.h"
 #include "base/stl_util.h"

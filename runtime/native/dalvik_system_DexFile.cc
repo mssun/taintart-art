@@ -20,6 +20,7 @@
 
 #include "android-base/stringprintf.h"
 
+#include "base/file_utils.h"
 #include "base/logging.h"
 #include "base/stl_util.h"
 #include "class_linker.h"
