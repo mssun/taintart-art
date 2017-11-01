@@ -123,11 +123,16 @@ class SafeDexInstructionIterator : public DexInstructionIteratorBase {
     const size_t size_code_units = Inst()->CodeUnitsRequiredForSizeComputation();
     const size_t available = reinterpret_cast<const uint16_t*>(end_) -
         reinterpret_cast<const uint16_t*>(Inst());
-    if (size_code_units > available) {
+    if (UNLIKELY(size_code_units > available)) {
       error_state_ = true;
-    } else {
-      inst_ = inst_->Next();
+      return *this;
     }
+    const size_t instruction_size = inst_->SizeInCodeUnits();
+    if (UNLIKELY(instruction_size > available)) {
+      error_state_ = true;
+      return *this;
+    }
+    inst_ = inst_->RelativeAt(instruction_size);
     return *this;
   }
 
