@@ -527,6 +527,10 @@ class HGraphVisualizerPrinter : public HGraphDelegateVisitor {
     StartAttributeStream("packed_type") << vec_operation->GetPackedType();
   }
 
+  void VisitVecMemoryOperation(HVecMemoryOperation* vec_mem_operation) OVERRIDE {
+    StartAttributeStream("alignment") << vec_mem_operation->GetAlignment().ToString();
+  }
+
   void VisitVecHalvingAdd(HVecHalvingAdd* hadd) OVERRIDE {
     VisitVecBinaryOperation(hadd);
     StartAttributeStream("unsigned") << std::boolalpha << hadd->IsUnsigned() << std::noboolalpha;
