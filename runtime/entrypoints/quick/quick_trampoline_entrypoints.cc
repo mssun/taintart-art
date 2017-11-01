@@ -2574,7 +2574,7 @@ extern "C" TwoWordReturn artInvokeInterfaceTrampoline(ArtMethod* interface_metho
 // each type.
 extern "C" uintptr_t artInvokePolymorphic(
     JValue* result,
-    mirror::Object* raw_method_handle,
+    mirror::Object* raw_receiver,
     Thread* self,
     ArtMethod** sp)
     REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -2602,25 +2602,28 @@ extern "C" uintptr_t artInvokePolymorphic(
   RememberForGcArgumentVisitor gc_visitor(sp, kMethodIsStatic, shorty, shorty_length, &soa);
   gc_visitor.VisitArguments();
 
-  // Wrap raw_method_handle in a Handle for safety.
-  StackHandleScope<2> hs(self);
-  Handle<mirror::MethodHandle> method_handle(
-      hs.NewHandle(ObjPtr<mirror::MethodHandle>::DownCast(MakeObjPtr(raw_method_handle))));
-  raw_method_handle = nullptr;
+  // Wrap raw_receiver in a Handle for safety.
+  StackHandleScope<3> hs(self);
+  Handle<mirror::Object> receiver_handle(hs.NewHandle(raw_receiver));
+  raw_receiver = nullptr;
   self->EndAssertNoThreadSuspension(old_cause);
 
-  // Resolve method - it's either MethodHandle.invoke() or MethodHandle.invokeExact().
+  // Resolve method.
   ClassLinker* linker = Runtime::Current()->GetClassLinker();
   ArtMethod* resolved_method = linker->ResolveMethod<ClassLinker::ResolveMode::kCheckICCEAndIAE>(
       self, inst.VRegB(), caller_method, kVirtual);
-  DCHECK((resolved_method ==
-          jni::DecodeArtMethod(WellKnownClasses::java_lang_invoke_MethodHandle_invokeExact)) ||
-         (resolved_method ==
-          jni::DecodeArtMethod(WellKnownClasses::java_lang_invoke_MethodHandle_invoke)));
-  if (UNLIKELY(method_handle.IsNull())) {
+
+  if (UNLIKELY(receiver_handle.IsNull())) {
     ThrowNullPointerExceptionForMethodAccess(resolved_method, InvokeType::kVirtual);
     return static_cast<uintptr_t>('V');
   }
+
+  // TODO(oth): Ensure this path isn't taken for VarHandle accessors (b/65872996).
+  DCHECK_EQ(resolved_method->GetDeclaringClass(),
+            WellKnownClasses::ToClass(WellKnownClasses::java_lang_invoke_MethodHandle));
+
+  Handle<mirror::MethodHandle> method_handle(hs.NewHandle(
+      ObjPtr<mirror::MethodHandle>::DownCast(MakeObjPtr(receiver_handle.Get()))));
 
   Handle<mirror::MethodType> method_type(
       hs.NewHandle(linker->ResolveMethodType(self, proto_idx, caller_method)));
@@ -2662,16 +2665,28 @@ extern "C" uintptr_t artInvokePolymorphic(
   // consecutive order.
   uint32_t unused_args[Instruction::kMaxVarArgRegs] = {};
   uint32_t first_callee_arg = first_arg + 1;
-  if (!DoInvokePolymorphic<true /* is_range */>(self,
-                                                resolved_method,
-                                                *shadow_frame,
-                                                method_handle,
-                                                method_type,
-                                                unused_args,
-                                                first_callee_arg,
-                                                result)) {
-    DCHECK(self->IsExceptionPending());
+
+  bool isExact = (jni::EncodeArtMethod(resolved_method) ==
+                  WellKnownClasses::java_lang_invoke_MethodHandle_invokeExact);
+  bool success = false;
+  if (isExact) {
+    success = MethodHandleInvokeExact<true/*is_range*/>(self,
+                                                        *shadow_frame,
+                                                        method_handle,
+                                                        method_type,
+                                                        unused_args,
+                                                        first_callee_arg,
+                                                        result);
+  } else {
+    success = MethodHandleInvoke<true/*is_range*/>(self,
+                                                   *shadow_frame,
+                                                   method_handle,
+                                                   method_type,
+                                                   unused_args,
+                                                   first_callee_arg,
+                                                   result);
   }
+  DCHECK(success || self->IsExceptionPending());
 
   // Pop transition record.
   self->PopManagedStackFragment(fragment);

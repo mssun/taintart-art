@@ -2921,7 +2921,7 @@ ENTRY art_quick_invoke_polymorphic
     INCREASE_FRAME 16                             // Reserve space for JValue result.
     str     xzr, [sp, #0]                         // Initialize result to zero.
     mov     x0, sp                                // Set r0 to point to result.
-    bl      artInvokePolymorphic                  // ArtInvokePolymorphic(result, receiver, thread, save_area)
+    bl      artInvokePolymorphic                  // artInvokePolymorphic(result, receiver, thread, save_area)
     uxtb    w0, w0                                // Result is the return type descriptor as a char.
     sub     w0, w0, 'A'                           // Convert to zero based index.
     cmp     w0, 'Z' - 'A'

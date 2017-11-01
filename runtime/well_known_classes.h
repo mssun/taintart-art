@@ -64,6 +64,7 @@ struct WellKnownClasses {
   static jclass java_lang_Error;
   static jclass java_lang_IllegalAccessError;
   static jclass java_lang_invoke_MethodHandle;
+  static jclass java_lang_invoke_MethodHandle_PolymorphicSignature;
   static jclass java_lang_NoClassDefFoundError;
   static jclass java_lang_Object;
   static jclass java_lang_OutOfMemoryError;
