@@ -1168,12 +1168,13 @@ bool OatFileAssistant::OatFileInfo::ClassLoaderContextIsOkay(ClassLoaderContext*
 
   const OatFile* file = GetFile();
   if (file == nullptr) {
-    return false;
+    // No oat file means we have nothing to verify.
+    return true;
   }
 
-  size_t dir_index = file->GetLocation().rfind('/');
+  size_t dir_index = oat_file_assistant_->dex_location_.rfind('/');
   std::string classpath_dir = (dir_index != std::string::npos)
-      ? file->GetLocation().substr(0, dir_index)
+      ? oat_file_assistant_->dex_location_.substr(0, dir_index)
       : "";
 
   if (!context->OpenDexFiles(oat_file_assistant_->isa_, classpath_dir)) {

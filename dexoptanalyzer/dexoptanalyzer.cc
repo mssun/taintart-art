@@ -19,6 +19,7 @@
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 #include "compiler_filter.h"
+#include "class_loader_context.h"
 #include "dex_file.h"
 #include "noop_compiler_callbacks.h"
 #include "oat_file_assistant.h"
@@ -175,7 +176,15 @@ class DexoptAnalyzer FINAL {
         oat_fd_ = std::stoi(option.substr(strlen("--oat-fd=")).ToString(), nullptr, 0);
       } else if (option.starts_with("--vdex-fd")) {
         vdex_fd_ = std::stoi(option.substr(strlen("--vdex-fd=")).ToString(), nullptr, 0);
-      } else { Usage("Unknown argument '%s'", option.data()); }
+      } else if (option.starts_with("--class-loader-context=")) {
+        std::string context_str = option.substr(strlen("--class-loader-context=")).ToString();
+        class_loader_context_ = ClassLoaderContext::Create(context_str);
+        if (class_loader_context_ == nullptr) {
+          Usage("Invalid --class-loader-context '%s'", context_str.c_str());
+        }
+      } else {
+        Usage("Unknown argument '%s'", option.data());
+      }
     }
 
     if (image_.empty()) {
@@ -255,9 +264,8 @@ class DexoptAnalyzer FINAL {
       return kNoDexOptNeeded;
     }
 
-    // TODO(calin): Pass the class loader context as an argument to dexoptanalyzer. b/62269291.
     int dexoptNeeded = oat_file_assistant->GetDexOptNeeded(
-        compiler_filter_, assume_profile_changed_, downgrade_);
+        compiler_filter_, assume_profile_changed_, downgrade_, class_loader_context_.get());
 
     // Convert OatFileAssitant codes to dexoptanalyzer codes.
     switch (dexoptNeeded) {
@@ -280,6 +288,7 @@ class DexoptAnalyzer FINAL {
   std::string dex_file_;
   InstructionSet isa_;
   CompilerFilter::Filter compiler_filter_;
+  std::unique_ptr<ClassLoaderContext> class_loader_context_;
   bool assume_profile_changed_;
   bool downgrade_;
   std::string image_;
