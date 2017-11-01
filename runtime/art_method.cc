@@ -166,6 +166,8 @@ InvokeType ArtMethod::GetInvokeType() {
     return kInterface;
   } else if (IsDirect()) {
     return kDirect;
+  } else if (IsPolymorphicSignature()) {
+    return kPolymorphic;
   } else {
     return kVirtual;
   }
@@ -424,6 +426,12 @@ bool ArtMethod::IsAnnotatedWithFastNative() {
 bool ArtMethod::IsAnnotatedWithCriticalNative() {
   return IsAnnotatedWith(WellKnownClasses::dalvik_annotation_optimization_CriticalNative,
                          DexFile::kDexVisibilityBuild,
+                         /* lookup_in_resolved_boot_classes */ true);
+}
+
+bool ArtMethod::IsAnnotatedWithPolymorphicSignature() {
+  return IsAnnotatedWith(WellKnownClasses::java_lang_invoke_MethodHandle_PolymorphicSignature,
+                         DexFile::kDexVisibilityRuntime,
                          /* lookup_in_resolved_boot_classes */ true);
 }
 

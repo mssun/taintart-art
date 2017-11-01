@@ -1636,6 +1636,18 @@ void UnstartedRuntime::UnstartedSystemIdentityHashCode(
   result->SetI((obj != nullptr) ? obj->IdentityHashCode() : 0);
 }
 
+// Checks whether the runtime is s64-bit. This is needed for the clinit of
+// java.lang.invoke.VarHandle clinit. The clinit determines sets of
+// available VarHandle accessors and these differ based on machine
+// word size.
+void UnstartedRuntime::UnstartedJNIVMRuntimeIs64Bit(
+    Thread* self ATTRIBUTE_UNUSED, ArtMethod* method ATTRIBUTE_UNUSED,
+    mirror::Object* receiver ATTRIBUTE_UNUSED, uint32_t* args ATTRIBUTE_UNUSED, JValue* result) {
+  PointerSize pointer_size = Runtime::Current()->GetClassLinker()->GetImagePointerSize();
+  jboolean is64bit = (pointer_size == PointerSize::k64) ? JNI_TRUE : JNI_FALSE;
+  result->SetZ(is64bit);
+}
+
 void UnstartedRuntime::UnstartedJNIVMRuntimeNewUnpaddedArray(
     Thread* self, ArtMethod* method ATTRIBUTE_UNUSED, mirror::Object* receiver ATTRIBUTE_UNUSED,
     uint32_t* args, JValue* result) {
