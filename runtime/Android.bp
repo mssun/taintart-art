@@ -404,6 +404,7 @@ cc_defaults {
     export_generated_headers: ["cpp-define-generator-asm-support"],
     include_dirs: [
         "art/sigchainlib",
+        "external/icu/icu4c/source/common",
     ],
     header_libs: [
         "art_cmdlineparser_headers",
@@ -515,6 +516,9 @@ art_cc_library {
     ],
     header_libs: [
         "libnativehelper_header_only",
+    ],
+    include_dirs: [
+        "external/icu/icu4c/source/common",
     ],
 }
 
