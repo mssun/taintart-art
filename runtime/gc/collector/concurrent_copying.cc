@@ -18,6 +18,7 @@
 
 #include "art_field-inl.h"
 #include "base/enums.h"
+#include "base/file_utils.h"
 #include "base/histogram-inl.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"

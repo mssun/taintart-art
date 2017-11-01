@@ -20,12 +20,8 @@
 #include <pthread.h>
 #include <stdlib.h>
 
-#include <limits>
-#include <memory>
 #include <random>
 #include <string>
-#include <type_traits>
-#include <vector>
 
 #include "arch/instruction_set.h"
 #include "base/casts.h"
@@ -118,9 +114,6 @@ bool IsValidDescriptor(const char* s);       // "Ljava/lang/String;"
 // additionally allowing names that begin with '<' and end with '>'.
 bool IsValidMemberName(const char* s);
 
-bool ReadFileToString(const std::string& file_name, std::string* result);
-bool PrintFileToLog(const std::string& file_name, LogSeverity level);
-
 // Splits a string using the given separator character into a vector of
 // strings. Empty strings will be omitted.
 void Split(const std::string& s, char separator, std::vector<std::string>* result);
@@ -131,58 +124,12 @@ pid_t GetTid();
 // Returns the given thread's name.
 std::string GetThreadName(pid_t tid);
 
-// Reads data from "/proc/self/task/${tid}/stat".
-void GetTaskStats(pid_t tid, char* state, int* utime, int* stime, int* task_cpu);
-
 // Sets the name of the current thread. The name may be truncated to an
 // implementation-defined limit.
 void SetThreadName(const char* thread_name);
 
-// Find $ANDROID_ROOT, /system, or abort.
-std::string GetAndroidRoot();
-// Find $ANDROID_ROOT, /system, or return an empty string.
-std::string GetAndroidRootSafe(std::string* error_msg);
-
-// Find $ANDROID_DATA, /data, or abort.
-const char* GetAndroidData();
-// Find $ANDROID_DATA, /data, or return null.
-const char* GetAndroidDataSafe(std::string* error_msg);
-
-// Returns the default boot image location (ANDROID_ROOT/framework/boot.art).
-// Returns an empty string if ANDROID_ROOT is not set.
-std::string GetDefaultBootImageLocation(std::string* error_msg);
-
-// Returns the dalvik-cache location, with subdir appended. Returns the empty string if the cache
-// could not be found.
-std::string GetDalvikCache(const char* subdir);
-// Return true if we found the dalvik cache and stored it in the dalvik_cache argument.
-// have_android_data will be set to true if we have an ANDROID_DATA that exists,
-// dalvik_cache_exists will be true if there is a dalvik-cache directory that is present.
-// The flag is_global_cache tells whether this cache is /data/dalvik-cache.
-void GetDalvikCache(const char* subdir, bool create_if_absent, std::string* dalvik_cache,
-                    bool* have_android_data, bool* dalvik_cache_exists, bool* is_global_cache);
-
-// Returns the absolute dalvik-cache path for a DexFile or OatFile. The path returned will be
-// rooted at cache_location.
-bool GetDalvikCacheFilename(const char* file_location, const char* cache_location,
-                            std::string* filename, std::string* error_msg);
-
-// Returns the system location for an image
-std::string GetSystemImageFilename(const char* location, InstructionSet isa);
-
-// Returns the vdex filename for the given oat filename.
-std::string GetVdexFilename(const std::string& oat_filename);
-
-// Returns true if the file exists.
-bool FileExists(const std::string& filename);
-bool FileExistsAndNotEmpty(const std::string& filename);
-
-// Returns `filename` with the text after the last occurrence of '.' replaced with
-// `extension`. If `filename` does not contain a period, returns a string containing `filename`,
-// a period, and `new_extension`.
-// Example: ReplaceFileExtension("foo.bar", "abc") == "foo.abc"
-//          ReplaceFileExtension("foo", "abc") == "foo.abc"
-std::string ReplaceFileExtension(const std::string& filename, const std::string& new_extension);
+// Reads data from "/proc/self/task/${tid}/stat".
+void GetTaskStats(pid_t tid, char* state, int* utime, int* stime, int* task_cpu);
 
 class VoidFunctor {
  public:
@@ -273,9 +220,6 @@ static T GetRandomNumber(T min, T max) {
   return dist(rng);
 }
 
-// Return the file size in bytes or -1 if the file does not exists.
-int64_t GetFileSizeBytes(const std::string& filename);
-
 // Sleep forever and never come back.
 NO_RETURN void SleepForever();
 
@@ -334,9 +278,6 @@ template <typename T>
 inline static int32_t Signum(T opnd) {
   return (opnd < 0) ? -1 : ((opnd == 0) ? 0 : 1);
 }
-
-// Madvise the largest page aligned region within begin and end.
-int MadviseLargestPageAlignedRegion(const uint8_t* begin, const uint8_t* end, int advice);
 
 template <typename Func, typename... Args>
 static inline void CheckedCall(const Func& function, const char* what, Args... args) {

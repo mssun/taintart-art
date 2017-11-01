@@ -18,6 +18,7 @@
 
 #include <sstream>
 
+#include "base/file_utils.h"
 #include "base/logging.h"
 #include "base/stringpiece.h"
 #include "debugger.h"

@@ -34,6 +34,7 @@
 
 #include "base/arena_allocator.h"
 #include "base/dumpable.h"
+#include "base/file_utils.h"
 #include "base/mutex.h"
 #include "base/scoped_flock.h"
 #include "base/stl_util.h"
