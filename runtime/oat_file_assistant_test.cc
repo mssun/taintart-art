@@ -1466,6 +1466,33 @@ TEST_F(OatFileAssistantTest, GetDexOptNeededWithOutOfDateContext) {
                   default_filter, false, false, updated_context.get()));
 }
 
+TEST_F(OatFileAssistantTest, GetDexOptNeededWithUpToDateContextRelative) {
+  std::string dex_location = GetScratchDir() + "/TestDex.jar";
+  std::string context_location = GetScratchDir() + "/ContextDex.jar";
+  Copy(GetDexSrc1(), dex_location);
+  Copy(GetDexSrc2(), context_location);
+
+  OatFileAssistant oat_file_assistant(dex_location.c_str(), kRuntimeISA, false);
+
+  const CompilerFilter::Filter default_filter =
+      OatFileAssistant::kDefaultCompilerFilterForDexLoading;
+  std::string error_msg;
+  std::string context_str = "PCL[" + context_location + "]";
+  std::unique_ptr<ClassLoaderContext> context = ClassLoaderContext::Create(context_str);
+  ASSERT_TRUE(context != nullptr);
+  ASSERT_TRUE(context->OpenDexFiles(kRuntimeISA, ""));
+
+  int status = oat_file_assistant.MakeUpToDate(false, context.get(), &error_msg);
+  EXPECT_EQ(OatFileAssistant::kUpdateSucceeded, status) << error_msg;
+
+  // A relative context simulates a dependent split context.
+  std::unique_ptr<ClassLoaderContext> relative_context =
+      ClassLoaderContext::Create("PCL[ContextDex.jar]");
+  EXPECT_EQ(-OatFileAssistant::kNoDexOptNeeded,
+            oat_file_assistant.GetDexOptNeeded(
+                default_filter, false, false, relative_context.get()));
+}
+
 // TODO: More Tests:
 //  * Test class linker falls back to unquickened dex for DexNoOat
 //  * Test class linker falls back to unquickened dex for MultiDexNoOat
