@@ -14,22 +14,38 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_INTRINSICS_LIST_H_
-#define ART_COMPILER_INTRINSICS_LIST_H_
+#ifndef ART_RUNTIME_INTRINSICS_LIST_H_
+#define ART_RUNTIME_INTRINSICS_LIST_H_
 
-// All intrinsics supported by ART. Format is name, then whether it is expected
-// to be a HInvokeStaticOrDirect node (compared to HInvokeVirtual), then whether it requires an
-// environment, may have side effects, or may throw exceptions.
-
+// This file defines the set of intrinsics that are supported by ART
+// in the compiler and runtime. Neither compiler nor runtime has
+// intrinsics for all methods here.
+//
+// The entries in the INTRINSICS_LIST below have the following format:
+//
+//   1. name
+//   2. invocation-type (art::InvokeType value).
+//   3. needs-environment (art::IntrinsicNeedsEnvironmentOrCache value)
+//   4. side-effects (art::IntrinsicSideEffects value)
+//   5. exception-info (art::::IntrinsicExceptions value)
+//   6. declaring class descriptor
+//   7. method name
+//   8. method descriptor
+//
+// The needs-environment, side-effects and exception-info are compiler
+// related properties (compiler/optimizing/nodes.h) that should not be
+// used outside of the compiler.
+//
 // Note: adding a new intrinsic requires an art image version change,
 // as the modifiers flag for some ArtMethods will need to be changed.
-
-// Note: j.l.Integer.valueOf says kNoThrow even though it could throw an OOME.
-// The kNoThrow should be renamed to kNoVisibleThrow, as it is ok to GVN Integer.valueOf
-// (kNoSideEffects), and it is also OK to remove it if it's unused.
-
-// Note: Thread.interrupted is marked with kAllSideEffects due to the lack of finer grain
-// side effects representation.
+//
+// Note: j.l.Integer.valueOf says kNoThrow even though it could throw an
+// OOME. The kNoThrow should be renamed to kNoVisibleThrow, as it is ok to
+// GVN Integer.valueOf (kNoSideEffects), and it is also OK to remove it if
+// it's unused.
+//
+// Note: Thread.interrupted is marked with kAllSideEffects due to the lack
+// of finer grain side effects representation.
 
 #define INTRINSICS_LIST(V) \
   V(DoubleDoubleToRawLongBits, kStatic, kNeedsEnvironmentOrCache, kNoSideEffects, kNoThrow, "Ljava/lang/Double;", "doubleToRawLongBits", "(D)J") \
@@ -163,7 +179,7 @@
   V(VarHandleAcquireFence, kStatic, kNeedsEnvironmentOrCache, kWriteSideEffects, kNoThrow, "Ljava/lang/invoke/VarHandle;", "acquireFence", "()V") \
   V(VarHandleReleaseFence, kStatic, kNeedsEnvironmentOrCache, kWriteSideEffects, kNoThrow, "Ljava/lang/invoke/VarHandle;", "releaseFence", "()V") \
   V(VarHandleLoadLoadFence, kStatic, kNeedsEnvironmentOrCache, kWriteSideEffects, kNoThrow, "Ljava/lang/invoke/VarHandle;", "loadLoadFence", "()V") \
-  V(VarHandleStoreStoreFence, kStatic, kNeedsEnvironmentOrCache, kReadSideEffects, kNoThrow, "Ljava/lang/invoke/VarHandle;", "storeStoreFence", "()V") \
+  V(VarHandleStoreStoreFence, kStatic, kNeedsEnvironmentOrCache, kReadSideEffects, kNoThrow, "Ljava/lang/invoke/VarHandle;", "storeStoreFence", "()V")
 
-#endif  // ART_COMPILER_INTRINSICS_LIST_H_
-#undef ART_COMPILER_INTRINSICS_LIST_H_   // #define is only for lint.
+#endif  // ART_RUNTIME_INTRINSICS_LIST_H_
+#undef ART_RUNTIME_INTRINSICS_LIST_H_   // #define is only for lint.

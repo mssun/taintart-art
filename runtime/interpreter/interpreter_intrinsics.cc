@@ -16,8 +16,8 @@
 
 #include "interpreter/interpreter_intrinsics.h"
 
-#include "compiler/intrinsics_enum.h"
 #include "dex_instruction.h"
+#include "intrinsics_enum.h"
 #include "interpreter/interpreter_common.h"
 
 namespace art {
