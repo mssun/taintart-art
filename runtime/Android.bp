@@ -403,7 +403,6 @@ cc_defaults {
     export_generated_headers: ["cpp-define-generator-asm-support"],
     include_dirs: [
         "art/sigchainlib",
-        "art",
     ],
     header_libs: [
         "art_cmdlineparser_headers",
