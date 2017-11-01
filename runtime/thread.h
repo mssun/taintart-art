@@ -1356,6 +1356,9 @@ class Thread {
       WARN_UNUSED
       REQUIRES(Locks::thread_suspend_count_lock_);
 
+  // Runs a single checkpoint function. If there are no more pending checkpoint functions it will
+  // clear the kCheckpointRequest flag. The caller is responsible for calling this in a loop until
+  // the kCheckpointRequest flag is cleared.
   void RunCheckpointFunction();
   void RunEmptyCheckpoint();
 
