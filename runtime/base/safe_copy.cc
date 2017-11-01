@@ -24,7 +24,7 @@
 
 #include <android-base/macros.h>
 
-#include "runtime/base/bit_utils.h"
+#include "bit_utils.h"
 
 namespace art {
 
