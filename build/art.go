@@ -19,6 +19,8 @@ import (
 	"android/soong/cc"
 	"fmt"
 	"sync"
+
+	"github.com/google/blueprint/proptools"
 )
 
 var supportedArches = []string{"arm", "arm64", "mips", "mips64", "x86", "x86_64"}
@@ -210,31 +212,33 @@ func debugDefaults(ctx android.LoadHookContext) {
 
 func customLinker(ctx android.LoadHookContext) {
 	linker := envDefault(ctx, "CUSTOM_TARGET_LINKER", "")
-	if linker != "" {
-		type props struct {
-			DynamicLinker string
-		}
-
-		p := &props{}
-		p.DynamicLinker = linker
-		ctx.AppendProperties(p)
+	type props struct {
+		DynamicLinker string
 	}
+
+	p := &props{}
+	if linker != "" {
+		p.DynamicLinker = linker
+	}
+
+	ctx.AppendProperties(p)
 }
 
 func prefer32Bit(ctx android.LoadHookContext) {
-	if envTrue(ctx, "HOST_PREFER_32_BIT") {
-		type props struct {
-			Target struct {
-				Host struct {
-					Compile_multilib string
-				}
+	type props struct {
+		Target struct {
+			Host struct {
+				Compile_multilib *string
 			}
 		}
-
-		p := &props{}
-		p.Target.Host.Compile_multilib = "prefer32"
-		ctx.AppendProperties(p)
 	}
+
+	p := &props{}
+	if envTrue(ctx, "HOST_PREFER_32_BIT") {
+		p.Target.Host.Compile_multilib = proptools.StringPtr("prefer32")
+	}
+
+	ctx.AppendProperties(p)
 }
 
 func testMap(config android.Config) map[string][]string {
