@@ -28,8 +28,8 @@ import sys
 
 from string import Template
 
-# Relative path to art/compiler/intrinsics_list.h
-INTRINSICS_LIST_H = os.path.dirname(os.path.realpath(__file__)) + "/../../compiler/intrinsics_list.h"
+# Relative path to art/runtime/intrinsics_list.h
+INTRINSICS_LIST_H = os.path.dirname(os.path.realpath(__file__)) + "/../../runtime/intrinsics_list.h"
 
 # Macro parameter index to V(). Negative means from the end.
 IDX_STATIC_OR_VIRTUAL = 1
@@ -90,7 +90,7 @@ $initialize_classes
   }
 
   static void test() {
-    // Call each intrinsic from art/compiler/intrinsics_list.h to make sure they are traced.
+    // Call each intrinsic from art/runtime/intrinsics_list.h to make sure they are traced.
 $test_body
   }
 }
