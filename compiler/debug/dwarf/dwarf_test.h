@@ -60,7 +60,8 @@ class DwarfTest : public CommonRuntimeTest {
   template<typename ElfTypes>
   std::vector<std::string> Objdump(const char* args) {
     // Write simple elf file with just the DWARF sections.
-    InstructionSet isa = (sizeof(typename ElfTypes::Addr) == 8) ? kX86_64 : kX86;
+    InstructionSet isa =
+        (sizeof(typename ElfTypes::Addr) == 8) ? InstructionSet::kX86_64 : InstructionSet::kX86;
     ScratchFile file;
     linker::FileOutputStream output_stream(file.GetFile());
     linker::ElfBuilder<ElfTypes> builder(isa, nullptr, &output_stream);

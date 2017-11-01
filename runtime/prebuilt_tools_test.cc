@@ -50,7 +50,7 @@ TEST_F(PrebuiltToolsTest, CheckHostTools) {
 
 TEST_F(PrebuiltToolsTest, CheckTargetTools) {
   // Other prebuilts are missing from the build server's repo manifest.
-  InstructionSet isas[] = { kThumb2 };  // NOLINT
+  InstructionSet isas[] = { InstructionSet::kThumb2 };  // NOLINT
   for (InstructionSet isa : isas) {
     std::string tools_dir = GetAndroidTargetToolsDir(isa);
     if (tools_dir.empty()) {

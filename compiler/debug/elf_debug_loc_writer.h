@@ -33,20 +33,20 @@ using Reg = dwarf::Reg;
 
 static Reg GetDwarfCoreReg(InstructionSet isa, int machine_reg) {
   switch (isa) {
-    case kArm:
-    case kThumb2:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
       return Reg::ArmCore(machine_reg);
-    case kArm64:
+    case InstructionSet::kArm64:
       return Reg::Arm64Core(machine_reg);
-    case kX86:
+    case InstructionSet::kX86:
       return Reg::X86Core(machine_reg);
-    case kX86_64:
+    case InstructionSet::kX86_64:
       return Reg::X86_64Core(machine_reg);
-    case kMips:
+    case InstructionSet::kMips:
       return Reg::MipsCore(machine_reg);
-    case kMips64:
+    case InstructionSet::kMips64:
       return Reg::Mips64Core(machine_reg);
-    case kNone:
+    case InstructionSet::kNone:
       LOG(FATAL) << "No instruction set";
   }
   UNREACHABLE();
@@ -54,20 +54,20 @@ static Reg GetDwarfCoreReg(InstructionSet isa, int machine_reg) {
 
 static Reg GetDwarfFpReg(InstructionSet isa, int machine_reg) {
   switch (isa) {
-    case kArm:
-    case kThumb2:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
       return Reg::ArmFp(machine_reg);
-    case kArm64:
+    case InstructionSet::kArm64:
       return Reg::Arm64Fp(machine_reg);
-    case kX86:
+    case InstructionSet::kX86:
       return Reg::X86Fp(machine_reg);
-    case kX86_64:
+    case InstructionSet::kX86_64:
       return Reg::X86_64Fp(machine_reg);
-    case kMips:
+    case InstructionSet::kMips:
       return Reg::MipsFp(machine_reg);
-    case kMips64:
+    case InstructionSet::kMips64:
       return Reg::Mips64Fp(machine_reg);
-    case kNone:
+    case InstructionSet::kNone:
       LOG(FATAL) << "No instruction set";
   }
   UNREACHABLE();
@@ -230,7 +230,7 @@ static void WriteDebugLocEntry(const MethodDebugInfo* method_info,
           break;  // the high word is correctly implied by the low word.
         }
       } else if (kind == Kind::kInFpuRegister) {
-        if ((isa == kArm || isa == kThumb2) &&
+        if ((isa == InstructionSet::kArm || isa == InstructionSet::kThumb2) &&
             piece == 0 && reg_hi.GetKind() == Kind::kInFpuRegister &&
             reg_hi.GetValue() == value + 1 && value % 2 == 0) {
           // Translate S register pair to D register (e.g. S4+S5 to D2).

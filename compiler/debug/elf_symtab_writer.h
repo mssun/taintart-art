@@ -89,7 +89,7 @@ static void WriteDebugSymbols(linker::ElfBuilder<ElfTypes>* builder,
     // instructions, so that disassembler tools can correctly disassemble.
     // Note that even if we generate just a single mapping symbol, ARM's Streamline
     // requires it to match function symbol.  Just address 0 does not work.
-    if (info.isa == kThumb2) {
+    if (info.isa == InstructionSet::kThumb2) {
       if (address < mapping_symbol_address || !kGenerateSingleArmMappingSymbol) {
         symtab->Add(strtab->Write("$t"), text, address & ~1, 0, STB_LOCAL, STT_NOTYPE);
         mapping_symbol_address = address;

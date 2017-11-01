@@ -52,7 +52,7 @@ void FaultManager::GetMethodAndReturnPcAndSp(siginfo_t* siginfo, void* context,
   // get the method from the top of the stack.  However it's in r0.
   uintptr_t* fault_addr = reinterpret_cast<uintptr_t*>(siginfo->si_addr);  // BVA addr
   uintptr_t* overflow_addr = reinterpret_cast<uintptr_t*>(
-      reinterpret_cast<uint8_t*>(*out_sp) - GetStackOverflowReservedBytes(kMips64));
+      reinterpret_cast<uint8_t*>(*out_sp) - GetStackOverflowReservedBytes(InstructionSet::kMips64));
   if (overflow_addr == fault_addr) {
     *out_method = reinterpret_cast<ArtMethod*>(sc->sc_regs[mips64::A0]);
   } else {
@@ -126,7 +126,7 @@ bool StackOverflowHandler::Action(int sig ATTRIBUTE_UNUSED, siginfo_t* info, voi
   VLOG(signals) << "checking for stack overflow, sp: " << std::hex << sp <<
     ", fault_addr: " << fault_addr;
 
-  uintptr_t overflow_addr = sp - GetStackOverflowReservedBytes(kMips64);
+  uintptr_t overflow_addr = sp - GetStackOverflowReservedBytes(InstructionSet::kMips64);
 
   // Check that the fault address is the value expected for a stack overflow.
   if (fault_addr != overflow_addr) {

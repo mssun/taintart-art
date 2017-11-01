@@ -33,21 +33,21 @@ namespace art {
 std::unique_ptr<const InstructionSetFeatures> InstructionSetFeatures::FromVariant(
     InstructionSet isa, const std::string& variant, std::string* error_msg) {
   switch (isa) {
-    case kArm:
-    case kThumb2:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
       return ArmInstructionSetFeatures::FromVariant(variant, error_msg);
-    case kArm64:
+    case InstructionSet::kArm64:
       return Arm64InstructionSetFeatures::FromVariant(variant, error_msg);
-    case kMips:
+    case InstructionSet::kMips:
       return MipsInstructionSetFeatures::FromVariant(variant, error_msg);
-    case kMips64:
+    case InstructionSet::kMips64:
       return Mips64InstructionSetFeatures::FromVariant(variant, error_msg);
-    case kX86:
+    case InstructionSet::kX86:
       return X86InstructionSetFeatures::FromVariant(variant, error_msg);
-    case kX86_64:
+    case InstructionSet::kX86_64:
       return X86_64InstructionSetFeatures::FromVariant(variant, error_msg);
 
-    case kNone:
+    case InstructionSet::kNone:
       break;
   }
   UNIMPLEMENTED(FATAL) << isa;
@@ -58,27 +58,27 @@ std::unique_ptr<const InstructionSetFeatures> InstructionSetFeatures::FromBitmap
                                                                                  uint32_t bitmap) {
   std::unique_ptr<const InstructionSetFeatures> result;
   switch (isa) {
-    case kArm:
-    case kThumb2:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
       result = ArmInstructionSetFeatures::FromBitmap(bitmap);
       break;
-    case kArm64:
+    case InstructionSet::kArm64:
       result = Arm64InstructionSetFeatures::FromBitmap(bitmap);
       break;
-    case kMips:
+    case InstructionSet::kMips:
       result = MipsInstructionSetFeatures::FromBitmap(bitmap);
       break;
-    case kMips64:
+    case InstructionSet::kMips64:
       result = Mips64InstructionSetFeatures::FromBitmap(bitmap);
       break;
-    case kX86:
+    case InstructionSet::kX86:
       result = X86InstructionSetFeatures::FromBitmap(bitmap);
       break;
-    case kX86_64:
+    case InstructionSet::kX86_64:
       result = X86_64InstructionSetFeatures::FromBitmap(bitmap);
       break;
 
-    case kNone:
+    case InstructionSet::kNone:
     default:
       UNIMPLEMENTED(FATAL) << isa;
       UNREACHABLE();
@@ -89,21 +89,21 @@ std::unique_ptr<const InstructionSetFeatures> InstructionSetFeatures::FromBitmap
 
 std::unique_ptr<const InstructionSetFeatures> InstructionSetFeatures::FromCppDefines() {
   switch (kRuntimeISA) {
-    case kArm:
-    case kThumb2:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
       return ArmInstructionSetFeatures::FromCppDefines();
-    case kArm64:
+    case InstructionSet::kArm64:
       return Arm64InstructionSetFeatures::FromCppDefines();
-    case kMips:
+    case InstructionSet::kMips:
       return MipsInstructionSetFeatures::FromCppDefines();
-    case kMips64:
+    case InstructionSet::kMips64:
       return Mips64InstructionSetFeatures::FromCppDefines();
-    case kX86:
+    case InstructionSet::kX86:
       return X86InstructionSetFeatures::FromCppDefines();
-    case kX86_64:
+    case InstructionSet::kX86_64:
       return X86_64InstructionSetFeatures::FromCppDefines();
 
-    case kNone:
+    case InstructionSet::kNone:
       break;
   }
   UNIMPLEMENTED(FATAL) << kRuntimeISA;
@@ -113,21 +113,21 @@ std::unique_ptr<const InstructionSetFeatures> InstructionSetFeatures::FromCppDef
 
 std::unique_ptr<const InstructionSetFeatures> InstructionSetFeatures::FromCpuInfo() {
   switch (kRuntimeISA) {
-    case kArm:
-    case kThumb2:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
       return ArmInstructionSetFeatures::FromCpuInfo();
-    case kArm64:
+    case InstructionSet::kArm64:
       return Arm64InstructionSetFeatures::FromCpuInfo();
-    case kMips:
+    case InstructionSet::kMips:
       return MipsInstructionSetFeatures::FromCpuInfo();
-    case kMips64:
+    case InstructionSet::kMips64:
       return Mips64InstructionSetFeatures::FromCpuInfo();
-    case kX86:
+    case InstructionSet::kX86:
       return X86InstructionSetFeatures::FromCpuInfo();
-    case kX86_64:
+    case InstructionSet::kX86_64:
       return X86_64InstructionSetFeatures::FromCpuInfo();
 
-    case kNone:
+    case InstructionSet::kNone:
       break;
   }
   UNIMPLEMENTED(FATAL) << kRuntimeISA;
@@ -136,21 +136,21 @@ std::unique_ptr<const InstructionSetFeatures> InstructionSetFeatures::FromCpuInf
 
 std::unique_ptr<const InstructionSetFeatures> InstructionSetFeatures::FromHwcap() {
   switch (kRuntimeISA) {
-    case kArm:
-    case kThumb2:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
       return ArmInstructionSetFeatures::FromHwcap();
-    case kArm64:
+    case InstructionSet::kArm64:
       return Arm64InstructionSetFeatures::FromHwcap();
-    case kMips:
+    case InstructionSet::kMips:
       return MipsInstructionSetFeatures::FromHwcap();
-    case kMips64:
+    case InstructionSet::kMips64:
       return Mips64InstructionSetFeatures::FromHwcap();
-    case kX86:
+    case InstructionSet::kX86:
       return X86InstructionSetFeatures::FromHwcap();
-    case kX86_64:
+    case InstructionSet::kX86_64:
       return X86_64InstructionSetFeatures::FromHwcap();
 
-    case kNone:
+    case InstructionSet::kNone:
       break;
   }
   UNIMPLEMENTED(FATAL) << kRuntimeISA;
@@ -159,21 +159,21 @@ std::unique_ptr<const InstructionSetFeatures> InstructionSetFeatures::FromHwcap(
 
 std::unique_ptr<const InstructionSetFeatures> InstructionSetFeatures::FromAssembly() {
   switch (kRuntimeISA) {
-    case kArm:
-    case kThumb2:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
       return ArmInstructionSetFeatures::FromAssembly();
-    case kArm64:
+    case InstructionSet::kArm64:
       return Arm64InstructionSetFeatures::FromAssembly();
-    case kMips:
+    case InstructionSet::kMips:
       return MipsInstructionSetFeatures::FromAssembly();
-    case kMips64:
+    case InstructionSet::kMips64:
       return Mips64InstructionSetFeatures::FromAssembly();
-    case kX86:
+    case InstructionSet::kX86:
       return X86InstructionSetFeatures::FromAssembly();
-    case kX86_64:
+    case InstructionSet::kX86_64:
       return X86_64InstructionSetFeatures::FromAssembly();
 
-    case kNone:
+    case InstructionSet::kNone:
       break;
   }
   UNIMPLEMENTED(FATAL) << kRuntimeISA;
@@ -222,32 +222,33 @@ std::unique_ptr<const InstructionSetFeatures> InstructionSetFeatures::AddFeature
 }
 
 const ArmInstructionSetFeatures* InstructionSetFeatures::AsArmInstructionSetFeatures() const {
-  DCHECK_EQ(kArm, GetInstructionSet());
+  DCHECK_EQ(InstructionSet::kArm, GetInstructionSet());
   return down_cast<const ArmInstructionSetFeatures*>(this);
 }
 
 const Arm64InstructionSetFeatures* InstructionSetFeatures::AsArm64InstructionSetFeatures() const {
-  DCHECK_EQ(kArm64, GetInstructionSet());
+  DCHECK_EQ(InstructionSet::kArm64, GetInstructionSet());
   return down_cast<const Arm64InstructionSetFeatures*>(this);
 }
 
 const MipsInstructionSetFeatures* InstructionSetFeatures::AsMipsInstructionSetFeatures() const {
-  DCHECK_EQ(kMips, GetInstructionSet());
+  DCHECK_EQ(InstructionSet::kMips, GetInstructionSet());
   return down_cast<const MipsInstructionSetFeatures*>(this);
 }
 
 const Mips64InstructionSetFeatures* InstructionSetFeatures::AsMips64InstructionSetFeatures() const {
-  DCHECK_EQ(kMips64, GetInstructionSet());
+  DCHECK_EQ(InstructionSet::kMips64, GetInstructionSet());
   return down_cast<const Mips64InstructionSetFeatures*>(this);
 }
 
 const X86InstructionSetFeatures* InstructionSetFeatures::AsX86InstructionSetFeatures() const {
-  DCHECK(kX86 == GetInstructionSet() || kX86_64 == GetInstructionSet());
+  DCHECK(InstructionSet::kX86 == GetInstructionSet() ||
+         InstructionSet::kX86_64 == GetInstructionSet());
   return down_cast<const X86InstructionSetFeatures*>(this);
 }
 
 const X86_64InstructionSetFeatures* InstructionSetFeatures::AsX86_64InstructionSetFeatures() const {
-  DCHECK_EQ(kX86_64, GetInstructionSet());
+  DCHECK_EQ(InstructionSet::kX86_64, GetInstructionSet());
   return down_cast<const X86_64InstructionSetFeatures*>(this);
 }
 

@@ -2568,7 +2568,7 @@ void CodeGeneratorARMVIXL::GenerateFrameEntry() {
   if (!skip_overflow_check) {
     UseScratchRegisterScope temps(GetVIXLAssembler());
     vixl32::Register temp = temps.Acquire();
-    __ Sub(temp, sp, Operand::From(GetStackOverflowReservedBytes(kArm)));
+    __ Sub(temp, sp, Operand::From(GetStackOverflowReservedBytes(InstructionSet::kArm)));
     // The load must immediately precede RecordPcInfo.
     ExactAssemblyScope aas(GetVIXLAssembler(),
                            vixl32::kMaxInstructionSizeInBytes,
@@ -5303,7 +5303,7 @@ void InstructionCodeGeneratorARMVIXL::VisitCompare(HCompare* compare) {
   vixl32::Label less, greater, done;
   vixl32::Label* final_label = codegen_->GetFinalLabel(compare, &done);
   DataType::Type type = compare->InputAt(0)->GetType();
-  vixl32::Condition less_cond = vixl32::Condition(kNone);
+  vixl32::Condition less_cond = vixl32::Condition::None();
   switch (type) {
     case DataType::Type::kBool:
     case DataType::Type::kUint8:

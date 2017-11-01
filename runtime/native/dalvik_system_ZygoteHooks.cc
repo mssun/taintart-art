@@ -332,7 +332,7 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
     ScopedUtfChars isa_string(env, instruction_set);
     InstructionSet isa = GetInstructionSetFromString(isa_string.c_str());
     Runtime::NativeBridgeAction action = Runtime::NativeBridgeAction::kUnload;
-    if (isa != kNone && isa != kRuntimeISA) {
+    if (isa != InstructionSet::kNone && isa != kRuntimeISA) {
       action = Runtime::NativeBridgeAction::kInitialize;
     }
     Runtime::Current()->InitNonZygoteOrPostFork(

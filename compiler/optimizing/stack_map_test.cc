@@ -928,18 +928,24 @@ TEST(StackMapTest, InlineTest) {
 
 TEST(StackMapTest, CodeOffsetTest) {
   // Test minimum alignments, encoding, and decoding.
-  CodeOffset offset_thumb2 = CodeOffset::FromOffset(kThumb2InstructionAlignment, kThumb2);
-  CodeOffset offset_arm64 = CodeOffset::FromOffset(kArm64InstructionAlignment, kArm64);
-  CodeOffset offset_x86 = CodeOffset::FromOffset(kX86InstructionAlignment, kX86);
-  CodeOffset offset_x86_64 = CodeOffset::FromOffset(kX86_64InstructionAlignment, kX86_64);
-  CodeOffset offset_mips = CodeOffset::FromOffset(kMipsInstructionAlignment, kMips);
-  CodeOffset offset_mips64 = CodeOffset::FromOffset(kMips64InstructionAlignment, kMips64);
-  EXPECT_EQ(offset_thumb2.Uint32Value(kThumb2), kThumb2InstructionAlignment);
-  EXPECT_EQ(offset_arm64.Uint32Value(kArm64), kArm64InstructionAlignment);
-  EXPECT_EQ(offset_x86.Uint32Value(kX86), kX86InstructionAlignment);
-  EXPECT_EQ(offset_x86_64.Uint32Value(kX86_64), kX86_64InstructionAlignment);
-  EXPECT_EQ(offset_mips.Uint32Value(kMips), kMipsInstructionAlignment);
-  EXPECT_EQ(offset_mips64.Uint32Value(kMips64), kMips64InstructionAlignment);
+  CodeOffset offset_thumb2 =
+      CodeOffset::FromOffset(kThumb2InstructionAlignment, InstructionSet::kThumb2);
+  CodeOffset offset_arm64 =
+      CodeOffset::FromOffset(kArm64InstructionAlignment, InstructionSet::kArm64);
+  CodeOffset offset_x86 =
+      CodeOffset::FromOffset(kX86InstructionAlignment, InstructionSet::kX86);
+  CodeOffset offset_x86_64 =
+      CodeOffset::FromOffset(kX86_64InstructionAlignment, InstructionSet::kX86_64);
+  CodeOffset offset_mips =
+      CodeOffset::FromOffset(kMipsInstructionAlignment, InstructionSet::kMips);
+  CodeOffset offset_mips64 =
+      CodeOffset::FromOffset(kMips64InstructionAlignment, InstructionSet::kMips64);
+  EXPECT_EQ(offset_thumb2.Uint32Value(InstructionSet::kThumb2), kThumb2InstructionAlignment);
+  EXPECT_EQ(offset_arm64.Uint32Value(InstructionSet::kArm64), kArm64InstructionAlignment);
+  EXPECT_EQ(offset_x86.Uint32Value(InstructionSet::kX86), kX86InstructionAlignment);
+  EXPECT_EQ(offset_x86_64.Uint32Value(InstructionSet::kX86_64), kX86_64InstructionAlignment);
+  EXPECT_EQ(offset_mips.Uint32Value(InstructionSet::kMips), kMipsInstructionAlignment);
+  EXPECT_EQ(offset_mips64.Uint32Value(InstructionSet::kMips64), kMips64InstructionAlignment);
 }
 
 TEST(StackMapTest, TestDeduplicateStackMask) {

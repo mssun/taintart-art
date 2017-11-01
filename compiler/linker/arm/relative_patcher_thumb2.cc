@@ -47,7 +47,7 @@ constexpr uint32_t kMaxBcondPositiveDisplacement = (1u << 20) - 2u + kPcDisplace
 constexpr uint32_t kMaxBcondNegativeDisplacement = (1u << 20) - kPcDisplacement;
 
 Thumb2RelativePatcher::Thumb2RelativePatcher(RelativePatcherTargetProvider* provider)
-    : ArmBaseRelativePatcher(provider, kThumb2) {
+    : ArmBaseRelativePatcher(provider, InstructionSet::kThumb2) {
 }
 
 void Thumb2RelativePatcher::PatchCall(std::vector<uint8_t>* code,

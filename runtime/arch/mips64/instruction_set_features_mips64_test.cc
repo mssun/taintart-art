@@ -23,9 +23,9 @@ namespace art {
 TEST(Mips64InstructionSetFeaturesTest, Mips64FeaturesFromDefaultVariant) {
   std::string error_msg;
   std::unique_ptr<const InstructionSetFeatures> mips64_features(
-      InstructionSetFeatures::FromVariant(kMips64, "default", &error_msg));
+      InstructionSetFeatures::FromVariant(InstructionSet::kMips64, "default", &error_msg));
   ASSERT_TRUE(mips64_features.get() != nullptr) << error_msg;
-  EXPECT_EQ(mips64_features->GetInstructionSet(), kMips64);
+  EXPECT_EQ(mips64_features->GetInstructionSet(), InstructionSet::kMips64);
   EXPECT_TRUE(mips64_features->Equals(mips64_features.get()));
   EXPECT_STREQ("msa", mips64_features->GetFeatureString().c_str());
   EXPECT_EQ(mips64_features->AsBitmap(), 1U);
@@ -34,15 +34,15 @@ TEST(Mips64InstructionSetFeaturesTest, Mips64FeaturesFromDefaultVariant) {
 TEST(Mips64InstructionSetFeaturesTest, Mips64FeaturesFromR6Variant) {
   std::string error_msg;
   std::unique_ptr<const InstructionSetFeatures> mips64r6_features(
-      InstructionSetFeatures::FromVariant(kMips64, "mips64r6", &error_msg));
+      InstructionSetFeatures::FromVariant(InstructionSet::kMips64, "mips64r6", &error_msg));
   ASSERT_TRUE(mips64r6_features.get() != nullptr) << error_msg;
-  EXPECT_EQ(mips64r6_features->GetInstructionSet(), kMips64);
+  EXPECT_EQ(mips64r6_features->GetInstructionSet(), InstructionSet::kMips64);
   EXPECT_TRUE(mips64r6_features->Equals(mips64r6_features.get()));
   EXPECT_STREQ("msa", mips64r6_features->GetFeatureString().c_str());
   EXPECT_EQ(mips64r6_features->AsBitmap(), 1U);
 
   std::unique_ptr<const InstructionSetFeatures> mips64_default_features(
-      InstructionSetFeatures::FromVariant(kMips64, "default", &error_msg));
+      InstructionSetFeatures::FromVariant(InstructionSet::kMips64, "default", &error_msg));
   ASSERT_TRUE(mips64_default_features.get() != nullptr) << error_msg;
   EXPECT_TRUE(mips64r6_features->Equals(mips64_default_features.get()));
 }

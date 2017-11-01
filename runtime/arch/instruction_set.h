@@ -25,7 +25,7 @@
 
 namespace art {
 
-enum InstructionSet {
+enum class InstructionSet {
   kNone,
   kArm,
   kArm64,
@@ -33,24 +33,25 @@ enum InstructionSet {
   kX86,
   kX86_64,
   kMips,
-  kMips64
+  kMips64,
+  kLast = kMips64
 };
 std::ostream& operator<<(std::ostream& os, const InstructionSet& rhs);
 
 #if defined(__arm__)
-static constexpr InstructionSet kRuntimeISA = kArm;
+static constexpr InstructionSet kRuntimeISA = InstructionSet::kArm;
 #elif defined(__aarch64__)
-static constexpr InstructionSet kRuntimeISA = kArm64;
+static constexpr InstructionSet kRuntimeISA = InstructionSet::kArm64;
 #elif defined(__mips__) && !defined(__LP64__)
-static constexpr InstructionSet kRuntimeISA = kMips;
+static constexpr InstructionSet kRuntimeISA = InstructionSet::kMips;
 #elif defined(__mips__) && defined(__LP64__)
-static constexpr InstructionSet kRuntimeISA = kMips64;
+static constexpr InstructionSet kRuntimeISA = InstructionSet::kMips64;
 #elif defined(__i386__)
-static constexpr InstructionSet kRuntimeISA = kX86;
+static constexpr InstructionSet kRuntimeISA = InstructionSet::kX86;
 #elif defined(__x86_64__)
-static constexpr InstructionSet kRuntimeISA = kX86_64;
+static constexpr InstructionSet kRuntimeISA = InstructionSet::kX86_64;
 #else
-static constexpr InstructionSet kRuntimeISA = kNone;
+static constexpr InstructionSet kRuntimeISA = InstructionSet::kNone;
 #endif
 
 // Architecture-specific pointer sizes
@@ -95,22 +96,22 @@ NO_RETURN void InstructionSetAbort(InstructionSet isa);
 
 constexpr PointerSize GetInstructionSetPointerSize(InstructionSet isa) {
   switch (isa) {
-    case kArm:
+    case InstructionSet::kArm:
       // Fall-through.
-    case kThumb2:
+    case InstructionSet::kThumb2:
       return kArmPointerSize;
-    case kArm64:
+    case InstructionSet::kArm64:
       return kArm64PointerSize;
-    case kX86:
+    case InstructionSet::kX86:
       return kX86PointerSize;
-    case kX86_64:
+    case InstructionSet::kX86_64:
       return kX86_64PointerSize;
-    case kMips:
+    case InstructionSet::kMips:
       return kMipsPointerSize;
-    case kMips64:
+    case InstructionSet::kMips64:
       return kMips64PointerSize;
 
-    case kNone:
+    case InstructionSet::kNone:
       break;
   }
   InstructionSetAbort(isa);
@@ -118,22 +119,22 @@ constexpr PointerSize GetInstructionSetPointerSize(InstructionSet isa) {
 
 constexpr size_t GetInstructionSetInstructionAlignment(InstructionSet isa) {
   switch (isa) {
-    case kArm:
+    case InstructionSet::kArm:
       // Fall-through.
-    case kThumb2:
+    case InstructionSet::kThumb2:
       return kThumb2InstructionAlignment;
-    case kArm64:
+    case InstructionSet::kArm64:
       return kArm64InstructionAlignment;
-    case kX86:
+    case InstructionSet::kX86:
       return kX86InstructionAlignment;
-    case kX86_64:
+    case InstructionSet::kX86_64:
       return kX86_64InstructionAlignment;
-    case kMips:
+    case InstructionSet::kMips:
       return kMipsInstructionAlignment;
-    case kMips64:
+    case InstructionSet::kMips64:
       return kMips64InstructionAlignment;
 
-    case kNone:
+    case InstructionSet::kNone:
       break;
   }
   InstructionSetAbort(isa);
@@ -141,16 +142,16 @@ constexpr size_t GetInstructionSetInstructionAlignment(InstructionSet isa) {
 
 constexpr bool IsValidInstructionSet(InstructionSet isa) {
   switch (isa) {
-    case kArm:
-    case kThumb2:
-    case kArm64:
-    case kX86:
-    case kX86_64:
-    case kMips:
-    case kMips64:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
+    case InstructionSet::kArm64:
+    case InstructionSet::kX86:
+    case InstructionSet::kX86_64:
+    case InstructionSet::kMips:
+    case InstructionSet::kMips64:
       return true;
 
-    case kNone:
+    case InstructionSet::kNone:
       return false;
   }
   return false;
@@ -160,18 +161,18 @@ size_t GetInstructionSetAlignment(InstructionSet isa);
 
 constexpr bool Is64BitInstructionSet(InstructionSet isa) {
   switch (isa) {
-    case kArm:
-    case kThumb2:
-    case kX86:
-    case kMips:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
+    case InstructionSet::kX86:
+    case InstructionSet::kMips:
       return false;
 
-    case kArm64:
-    case kX86_64:
-    case kMips64:
+    case InstructionSet::kArm64:
+    case InstructionSet::kX86_64:
+    case InstructionSet::kMips64:
       return true;
 
-    case kNone:
+    case InstructionSet::kNone:
       break;
   }
   InstructionSetAbort(isa);
@@ -183,22 +184,22 @@ constexpr PointerSize InstructionSetPointerSize(InstructionSet isa) {
 
 constexpr size_t GetBytesPerGprSpillLocation(InstructionSet isa) {
   switch (isa) {
-    case kArm:
+    case InstructionSet::kArm:
       // Fall-through.
-    case kThumb2:
+    case InstructionSet::kThumb2:
       return 4;
-    case kArm64:
+    case InstructionSet::kArm64:
       return 8;
-    case kX86:
+    case InstructionSet::kX86:
       return 4;
-    case kX86_64:
+    case InstructionSet::kX86_64:
       return 8;
-    case kMips:
+    case InstructionSet::kMips:
       return 4;
-    case kMips64:
+    case InstructionSet::kMips64:
       return 8;
 
-    case kNone:
+    case InstructionSet::kNone:
       break;
   }
   InstructionSetAbort(isa);
@@ -206,22 +207,22 @@ constexpr size_t GetBytesPerGprSpillLocation(InstructionSet isa) {
 
 constexpr size_t GetBytesPerFprSpillLocation(InstructionSet isa) {
   switch (isa) {
-    case kArm:
+    case InstructionSet::kArm:
       // Fall-through.
-    case kThumb2:
+    case InstructionSet::kThumb2:
       return 4;
-    case kArm64:
+    case InstructionSet::kArm64:
       return 8;
-    case kX86:
+    case InstructionSet::kX86:
       return 8;
-    case kX86_64:
+    case InstructionSet::kX86_64:
       return 8;
-    case kMips:
+    case InstructionSet::kMips:
       return 4;
-    case kMips64:
+    case InstructionSet::kMips64:
       return 8;
 
-    case kNone:
+    case InstructionSet::kNone:
       break;
   }
   InstructionSetAbort(isa);

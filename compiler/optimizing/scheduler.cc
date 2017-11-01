@@ -796,7 +796,7 @@ void HInstructionScheduling::Run(bool only_optimize_loop_blocks,
 
   switch (instruction_set_) {
 #ifdef ART_ENABLE_CODEGEN_arm64
-    case kArm64: {
+    case InstructionSet::kArm64: {
       arm64::HSchedulerARM64 scheduler(&allocator, selector);
       scheduler.SetOnlyOptimizeLoopBlocks(only_optimize_loop_blocks);
       scheduler.Schedule(graph_);
@@ -804,8 +804,8 @@ void HInstructionScheduling::Run(bool only_optimize_loop_blocks,
     }
 #endif
 #if defined(ART_ENABLE_CODEGEN_arm)
-    case kThumb2:
-    case kArm: {
+    case InstructionSet::kThumb2:
+    case InstructionSet::kArm: {
       arm::SchedulingLatencyVisitorARM arm_latency_visitor(codegen_);
       arm::HSchedulerARM scheduler(&allocator, selector, &arm_latency_visitor);
       scheduler.SetOnlyOptimizeLoopBlocks(only_optimize_loop_blocks);

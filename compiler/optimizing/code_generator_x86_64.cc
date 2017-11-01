@@ -1277,8 +1277,8 @@ void CodeGeneratorX86_64::GenerateFrameEntry() {
   DCHECK(GetCompilerOptions().GetImplicitStackOverflowChecks());
 
   if (!skip_overflow_check) {
-    __ testq(CpuRegister(RAX), Address(
-        CpuRegister(RSP), -static_cast<int32_t>(GetStackOverflowReservedBytes(kX86_64))));
+    size_t reserved_bytes = GetStackOverflowReservedBytes(InstructionSet::kX86_64);
+    __ testq(CpuRegister(RAX), Address(CpuRegister(RSP), -static_cast<int32_t>(reserved_bytes)));
     RecordPcInfo(nullptr, 0);
   }
 

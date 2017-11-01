@@ -36,17 +36,17 @@ Disassembler::Disassembler(DisassemblerOptions* disassembler_options)
 }
 
 Disassembler* Disassembler::Create(InstructionSet instruction_set, DisassemblerOptions* options) {
-  if (instruction_set == kArm || instruction_set == kThumb2) {
+  if (instruction_set == InstructionSet::kArm || instruction_set == InstructionSet::kThumb2) {
     return new arm::DisassemblerArm(options);
-  } else if (instruction_set == kArm64) {
+  } else if (instruction_set == InstructionSet::kArm64) {
     return new arm64::DisassemblerArm64(options);
-  } else if (instruction_set == kMips) {
+  } else if (instruction_set == InstructionSet::kMips) {
     return new mips::DisassemblerMips(options, /* is_o32_abi */ true);
-  } else if (instruction_set == kMips64) {
+  } else if (instruction_set == InstructionSet::kMips64) {
     return new mips::DisassemblerMips(options, /* is_o32_abi */ false);
-  } else if (instruction_set == kX86) {
+  } else if (instruction_set == InstructionSet::kX86) {
     return new x86::DisassemblerX86(options, false);
-  } else if (instruction_set == kX86_64) {
+  } else if (instruction_set == InstructionSet::kX86_64) {
     return new x86::DisassemblerX86(options, true);
   } else {
     UNIMPLEMENTED(FATAL) << static_cast<uint32_t>(instruction_set);
