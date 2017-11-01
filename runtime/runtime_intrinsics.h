@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2017 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_INTRINSICS_ENUM_H_
-#define ART_COMPILER_INTRINSICS_ENUM_H_
+#ifndef ART_RUNTIME_RUNTIME_INTRINSICS_H_
+#define ART_RUNTIME_RUNTIME_INTRINSICS_H_
 
 namespace art {
 
-enum class Intrinsics {
-#define OPTIMIZING_INTRINSICS(Name, ...) \
-  k ## Name,
-#include "intrinsics_list.h"
-  kNone,
-  INTRINSICS_LIST(OPTIMIZING_INTRINSICS)
-#undef INTRINSICS_LIST
-#undef OPTIMIZING_INTRINSICS
-};
-std::ostream& operator<<(std::ostream& os, const Intrinsics& intrinsic);
+void InitializeIntrinsics();
 
 }  // namespace art
 
-#endif  // ART_COMPILER_INTRINSICS_ENUM_H_
+#endif  // ART_RUNTIME_RUNTIME_INTRINSICS_H_

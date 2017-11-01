@@ -66,6 +66,7 @@
 #include "nativehelper/ScopedLocalRef.h"
 #include "object_lock.h"
 #include "runtime.h"
+#include "runtime_intrinsics.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread.h"
 #include "thread_list.h"
@@ -365,28 +366,6 @@ std::unique_ptr<const std::vector<uint8_t>> CompilerDriver::CreateQuickToInterpr
 }
 #undef CREATE_TRAMPOLINE
 
-static void SetupIntrinsic(Thread* self,
-                           Intrinsics intrinsic,
-                           InvokeType invoke_type,
-                           const char* class_name,
-                           const char* method_name,
-                           const char* signature)
-      REQUIRES_SHARED(Locks::mutator_lock_) {
-  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  PointerSize image_size = class_linker->GetImagePointerSize();
-  ObjPtr<mirror::Class> cls = class_linker->FindSystemClass(self, class_name);
-  if (cls == nullptr) {
-    LOG(FATAL) << "Could not find class of intrinsic " << class_name;
-  }
-  ArtMethod* method = cls->FindClassMethod(method_name, signature, image_size);
-  if (method == nullptr || method->GetDeclaringClass() != cls) {
-    LOG(FATAL) << "Could not find method of intrinsic "
-               << class_name << " " << method_name << " " << signature;
-  }
-  DCHECK_EQ(method->GetInvokeType(), invoke_type);
-  method->SetIntrinsic(static_cast<uint32_t>(intrinsic));
-}
-
 void CompilerDriver::CompileAll(jobject class_loader,
                                 const std::vector<const DexFile*>& dex_files,
                                 TimingLogger* timings) {
@@ -405,14 +384,7 @@ void CompilerDriver::CompileAll(jobject class_loader,
     // We don't need to setup the intrinsics for non boot image compilation, as
     // those compilations will pick up a boot image that have the ArtMethod already
     // set with the intrinsics flag.
-    ScopedObjectAccess soa(Thread::Current());
-#define SETUP_INTRINSICS(Name, InvokeType, NeedsEnvironmentOrCache, SideEffects, Exceptions, \
-                         ClassName, MethodName, Signature) \
-  SetupIntrinsic(soa.Self(), Intrinsics::k##Name, InvokeType, ClassName, MethodName, Signature);
-#include "intrinsics_list.h"
-    INTRINSICS_LIST(SETUP_INTRINSICS)
-#undef INTRINSICS_LIST
-#undef SETUP_INTRINSICS
+    InitializeIntrinsics();
   }
   // Compile:
   // 1) Compile all classes and methods enabled for compilation. May fall back to dex-to-dex

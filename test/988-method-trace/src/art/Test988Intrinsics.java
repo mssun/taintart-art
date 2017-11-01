@@ -44,7 +44,7 @@ class Test988Intrinsics {
   }
 
   static void test() {
-    // Call each intrinsic from art/compiler/intrinsics_list.h to make sure they are traced.
+    // Call each intrinsic from art/runtime/intrinsics_list.h to make sure they are traced.
     java.lang.Double.doubleToRawLongBits(0.0);
     java.lang.Double.doubleToLongBits(0.0);
     java.lang.Double.isInfinite(0.0);
