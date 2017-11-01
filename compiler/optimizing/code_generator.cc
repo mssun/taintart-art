@@ -536,6 +536,7 @@ void CodeGenerator::GenerateInvokeStaticOrDirectRuntimeCall(
       break;
     case kVirtual:
     case kInterface:
+    case kPolymorphic:
       LOG(FATAL) << "Unexpected invoke type: " << invoke->GetInvokeType();
       UNREACHABLE();
   }
@@ -563,6 +564,9 @@ void CodeGenerator::GenerateInvokeUnresolvedRuntimeCall(HInvokeUnresolved* invok
     case kInterface:
       entrypoint = kQuickInvokeInterfaceTrampolineWithAccessCheck;
       break;
+    case kPolymorphic:
+      LOG(FATAL) << "Unexpected invoke type: " << invoke->GetInvokeType();
+      UNREACHABLE();
   }
   InvokeRuntime(entrypoint, invoke, invoke->GetDexPc(), nullptr);
 }

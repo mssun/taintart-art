@@ -3028,7 +3028,7 @@ ENTRY art_quick_invoke_polymorphic
     daddiu $sp, $sp, -8                        # Reserve space for JValue result.
     .cfi_adjust_cfa_offset 8
     sd     $zero, 0($sp)                       # Initialize JValue result.
-    jal    artInvokePolymorphic                # (result, receiver, Thread*, context)
+    jal    artInvokePolymorphic                # artInvokePolymorphic(result, receiver, Thread*, context)
     move   $a0, $sp                            # Make $a0 a pointer to the JValue result
 .macro MATCH_RETURN_TYPE c, handler
     li     $t0, \c

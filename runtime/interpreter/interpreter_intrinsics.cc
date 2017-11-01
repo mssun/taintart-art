@@ -323,14 +323,14 @@ static ALWAYS_INLINE bool MterpStringEquals(ShadowFrame* shadow_frame,
   return true;
 }
 
-#define VARHANDLE_FENCE_INTRINSIC(name, std_memory_operation)   \
-static ALWAYS_INLINE bool name(ShadowFrame* /* shadow_frame */, \
-                               const Instruction* /* inst */,   \
-                               uint16_t /* inst_data */,        \
-                               JValue* /* result_register */)   \
-    REQUIRES_SHARED(Locks::mutator_lock_) {                     \
-    std::atomic_thread_fence(std_memory_operation);             \
-    return true;                                                \
+#define VARHANDLE_FENCE_INTRINSIC(name, std_memory_operation)              \
+static ALWAYS_INLINE bool name(ShadowFrame* shadow_frame ATTRIBUTE_UNUSED, \
+                               const Instruction* inst ATTRIBUTE_UNUSED,   \
+                               uint16_t inst_data ATTRIBUTE_UNUSED,        \
+                               JValue* result_register ATTRIBUTE_UNUSED)   \
+    REQUIRES_SHARED(Locks::mutator_lock_) {                                \
+  std::atomic_thread_fence(std_memory_operation);                          \
+  return true;                                                             \
 }
 
 // The VarHandle fence methods are static (unlike sun.misc.Unsafe versions).
@@ -341,6 +341,63 @@ VARHANDLE_FENCE_INTRINSIC(MterpVarHandleAcquireFence, std::memory_order_acquire)
 VARHANDLE_FENCE_INTRINSIC(MterpVarHandleReleaseFence, std::memory_order_release)
 VARHANDLE_FENCE_INTRINSIC(MterpVarHandleLoadLoadFence, std::memory_order_acquire)
 VARHANDLE_FENCE_INTRINSIC(MterpVarHandleStoreStoreFence, std::memory_order_release)
+
+#define METHOD_HANDLE_INVOKE_INTRINSIC(name)                                                      \
+static ALWAYS_INLINE bool Mterp##name(ShadowFrame* shadow_frame,                                  \
+                               const Instruction* inst,                                           \
+                               uint16_t inst_data,                                                \
+                               JValue* result)                                                    \
+    REQUIRES_SHARED(Locks::mutator_lock_) {                                                       \
+  if (inst->Opcode() == Instruction::INVOKE_POLYMORPHIC) {                                        \
+    return DoInvokePolymorphic<false>(Thread::Current(), *shadow_frame, inst, inst_data, result); \
+  } else {                                                                                        \
+    return DoInvokePolymorphic<true>(Thread::Current(), *shadow_frame, inst, inst_data, result);  \
+  }                                                                                               \
+}
+
+METHOD_HANDLE_INVOKE_INTRINSIC(MethodHandleInvokeExact)
+METHOD_HANDLE_INVOKE_INTRINSIC(MethodHandleInvoke)
+
+#define VAR_HANDLE_ACCESSOR_INTRINSIC(name)                                   \
+static ALWAYS_INLINE bool Mterp##name(ShadowFrame* shadow_frame,              \
+                               const Instruction* inst,                       \
+                               uint16_t inst_data,                            \
+                               JValue* result)                                \
+    REQUIRES_SHARED(Locks::mutator_lock_) {                                   \
+  return Do##name(Thread::Current(), *shadow_frame, inst, inst_data, result); \
+}
+
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleCompareAndExchange)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleCompareAndExchangeAcquire)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleCompareAndExchangeRelease)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleCompareAndSet)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGet);
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetAcquire)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetAndAdd)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetAndAddAcquire)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetAndAddRelease)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetAndBitwiseAnd)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetAndBitwiseAndAcquire)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetAndBitwiseAndRelease)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetAndBitwiseOr)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetAndBitwiseOrAcquire)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetAndBitwiseOrRelease)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetAndBitwiseXor)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetAndBitwiseXorAcquire)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetAndBitwiseXorRelease)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetAndSet)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetAndSetAcquire)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetAndSetRelease)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetOpaque)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleGetVolatile)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleSet)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleSetOpaque)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleSetRelease)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleSetVolatile)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleWeakCompareAndSet)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleWeakCompareAndSetAcquire)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleWeakCompareAndSetPlain)
+VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleWeakCompareAndSetRelease)
 
 // Macro to help keep track of what's left to implement.
 #define UNIMPLEMENTED_CASE(name)    \
@@ -494,6 +551,39 @@ bool MterpHandleIntrinsic(ShadowFrame* shadow_frame,
     INTRINSIC_CASE(VarHandleReleaseFence)
     INTRINSIC_CASE(VarHandleLoadLoadFence)
     INTRINSIC_CASE(VarHandleStoreStoreFence)
+    INTRINSIC_CASE(MethodHandleInvokeExact)
+    INTRINSIC_CASE(MethodHandleInvoke)
+    INTRINSIC_CASE(VarHandleCompareAndExchange)
+    INTRINSIC_CASE(VarHandleCompareAndExchangeAcquire)
+    INTRINSIC_CASE(VarHandleCompareAndExchangeRelease)
+    INTRINSIC_CASE(VarHandleCompareAndSet)
+    INTRINSIC_CASE(VarHandleGet)
+    INTRINSIC_CASE(VarHandleGetAcquire)
+    INTRINSIC_CASE(VarHandleGetAndAdd)
+    INTRINSIC_CASE(VarHandleGetAndAddAcquire)
+    INTRINSIC_CASE(VarHandleGetAndAddRelease)
+    INTRINSIC_CASE(VarHandleGetAndBitwiseAnd)
+    INTRINSIC_CASE(VarHandleGetAndBitwiseAndAcquire)
+    INTRINSIC_CASE(VarHandleGetAndBitwiseAndRelease)
+    INTRINSIC_CASE(VarHandleGetAndBitwiseOr)
+    INTRINSIC_CASE(VarHandleGetAndBitwiseOrAcquire)
+    INTRINSIC_CASE(VarHandleGetAndBitwiseOrRelease)
+    INTRINSIC_CASE(VarHandleGetAndBitwiseXor)
+    INTRINSIC_CASE(VarHandleGetAndBitwiseXorAcquire)
+    INTRINSIC_CASE(VarHandleGetAndBitwiseXorRelease)
+    INTRINSIC_CASE(VarHandleGetAndSet)
+    INTRINSIC_CASE(VarHandleGetAndSetAcquire)
+    INTRINSIC_CASE(VarHandleGetAndSetRelease)
+    INTRINSIC_CASE(VarHandleGetOpaque)
+    INTRINSIC_CASE(VarHandleGetVolatile)
+    INTRINSIC_CASE(VarHandleSet)
+    INTRINSIC_CASE(VarHandleSetOpaque)
+    INTRINSIC_CASE(VarHandleSetRelease)
+    INTRINSIC_CASE(VarHandleSetVolatile)
+    INTRINSIC_CASE(VarHandleWeakCompareAndSet)
+    INTRINSIC_CASE(VarHandleWeakCompareAndSetAcquire)
+    INTRINSIC_CASE(VarHandleWeakCompareAndSetPlain)
+    INTRINSIC_CASE(VarHandleWeakCompareAndSetRelease)
     case Intrinsics::kNone:
       res = false;
       break;

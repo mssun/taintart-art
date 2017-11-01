@@ -222,7 +222,18 @@ static inline mirror::MethodType* ResolveMethodType(Thread* self,
   return class_linker->ResolveMethodType(self, method_type_index, referrer);
 }
 
-// Performs a signature polymorphic invoke (invoke-polymorphic/invoke-polymorphic-range).
+#define DECLARE_SIGNATURE_POLYMORPHIC_HANDLER(Name, ...)              \
+bool Do ## Name(Thread* self,                                         \
+                ShadowFrame& shadow_frame,                            \
+                const Instruction* inst,                              \
+                uint16_t inst_data,                                   \
+                JValue* result) REQUIRES_SHARED(Locks::mutator_lock_);
+#include "intrinsics_list.h"
+INTRINSICS_LIST(DECLARE_SIGNATURE_POLYMORPHIC_HANDLER)
+#undef INTRINSICS_LIST
+#undef DECLARE_SIGNATURE_POLYMORPHIC_HANDLER
+
+// Performs a invoke-polymorphic or invoke-polymorphic-range.
 template<bool is_range>
 bool DoInvokePolymorphic(Thread* self,
                          ShadowFrame& shadow_frame,

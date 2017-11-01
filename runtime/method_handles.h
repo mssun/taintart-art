@@ -202,14 +202,23 @@ class ShadowFrameSetter {
 };
 
 template <bool is_range>
-bool DoInvokePolymorphic(Thread* self,
-                         ArtMethod* invoke_method,
-                         ShadowFrame& shadow_frame,
-                         Handle<mirror::MethodHandle> method_handle,
-                         Handle<mirror::MethodType> callsite_type,
-                         const uint32_t (&args)[Instruction::kMaxVarArgRegs],
-                         uint32_t first_arg,
-                         JValue* result)
+bool MethodHandleInvoke(Thread* self,
+                        ShadowFrame& shadow_frame,
+                        Handle<mirror::MethodHandle> method_handle,
+                        Handle<mirror::MethodType> callsite_type,
+                        const uint32_t (&args)[Instruction::kMaxVarArgRegs],
+                        uint32_t first_arg,
+                        JValue* result)
+    REQUIRES_SHARED(Locks::mutator_lock_);
+
+template <bool is_range>
+bool MethodHandleInvokeExact(Thread* self,
+                             ShadowFrame& shadow_frame,
+                             Handle<mirror::MethodHandle> method_handle,
+                             Handle<mirror::MethodType> callsite_type,
+                             const uint32_t (&args)[Instruction::kMaxVarArgRegs],
+                             uint32_t first_arg,
+                             JValue* result)
     REQUIRES_SHARED(Locks::mutator_lock_);
 
 }  // namespace art

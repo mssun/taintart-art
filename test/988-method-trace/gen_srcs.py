@@ -39,7 +39,8 @@ IDX_CLASS_NAME = -3
 
 # Exclude all hidden API.
 KLASS_BLACK_LIST = ['sun.misc.Unsafe', 'libcore.io.Memory', 'java.lang.StringFactory',
-                    'java.lang.invoke.VarHandle' ]  # TODO(b/65872996): Enable when VarHandle is visible.
+                    'java.lang.invoke.MethodHandle', # invokes are tested by 956-method-handles
+                    'java.lang.invoke.VarHandle' ]  # TODO(b/65872996): will tested separately
 METHOD_BLACK_LIST = [('java.lang.ref.Reference', 'getReferent'),
                      ('java.lang.String', 'getCharsNoCheck'),
                      ('java.lang.System', 'arraycopy')]  # arraycopy has a manual test.
