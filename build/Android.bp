@@ -127,7 +127,6 @@ art_global_defaults {
     },
 
     include_dirs: [
-        "external/lz4/lib",
         "external/valgrind/include",
         "external/valgrind",
         "external/vixl/src",

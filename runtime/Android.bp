@@ -405,6 +405,7 @@ cc_defaults {
     include_dirs: [
         "art/sigchainlib",
         "external/icu/icu4c/source/common",
+        "external/lz4/lib",
     ],
     header_libs: [
         "art_cmdlineparser_headers",

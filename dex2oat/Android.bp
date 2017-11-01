@@ -39,6 +39,9 @@ art_cc_defaults {
         "liblz4",
         "liblzma",
     ],
+    include_dirs: [
+        "external/lz4/lib",
+    ],
     export_include_dirs: ["."],
 
     // For SHA-1 checksumming of build ID
