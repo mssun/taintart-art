@@ -257,7 +257,7 @@ jvmtiError StackUtil::GetStackTrace(jvmtiEnv* jvmti_env ATTRIBUTE_UNUSED,
                                        static_cast<size_t>(start_depth),
                                        static_cast<size_t>(max_frame_count));
     // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
-    if (!thread->RequestSynchronousCheckpoint(&closure)) {
+    if (!ThreadUtil::RequestGCSafeSynchronousCheckpoint(thread, &closure)) {
       return ERR(THREAD_NOT_ALIVE);
     }
     *count_ptr = static_cast<jint>(closure.index);
@@ -268,7 +268,7 @@ jvmtiError StackUtil::GetStackTrace(jvmtiEnv* jvmti_env ATTRIBUTE_UNUSED,
   } else {
     GetStackTraceVectorClosure closure(0, 0);
     // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
-    if (!thread->RequestSynchronousCheckpoint(&closure)) {
+    if (!ThreadUtil::RequestGCSafeSynchronousCheckpoint(thread, &closure)) {
       return ERR(THREAD_NOT_ALIVE);
     }
 
@@ -712,7 +712,7 @@ jvmtiError StackUtil::GetFrameCount(jvmtiEnv* env ATTRIBUTE_UNUSED,
 
   GetFrameCountClosure closure;
   // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
-  if (!thread->RequestSynchronousCheckpoint(&closure)) {
+  if (!ThreadUtil::RequestGCSafeSynchronousCheckpoint(thread, &closure)) {
     return ERR(THREAD_NOT_ALIVE);
   }
 
@@ -802,7 +802,7 @@ jvmtiError StackUtil::GetFrameLocation(jvmtiEnv* env ATTRIBUTE_UNUSED,
 
   GetLocationClosure closure(static_cast<size_t>(depth));
   // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
-  if (!thread->RequestSynchronousCheckpoint(&closure)) {
+  if (!ThreadUtil::RequestGCSafeSynchronousCheckpoint(thread, &closure)) {
     return ERR(THREAD_NOT_ALIVE);
   }
 
@@ -923,7 +923,7 @@ static jvmtiError GetOwnedMonitorInfoCommon(jthread thread, Fn handle_results) {
     if (target != self) {
       called_method = true;
       // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
-      if (!target->RequestSynchronousCheckpoint(&closure)) {
+      if (!ThreadUtil::RequestGCSafeSynchronousCheckpoint(target, &closure)) {
         return ERR(THREAD_NOT_ALIVE);
       }
     } else {

@@ -771,7 +771,7 @@ jvmtiError MethodUtil::GetLocalVariableGeneric(jvmtiEnv* env ATTRIBUTE_UNUSED,
   }
   GetLocalVariableClosure c(self, depth, slot, type, val);
   // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
-  if (!target->RequestSynchronousCheckpoint(&c)) {
+  if (!ThreadUtil::RequestGCSafeSynchronousCheckpoint(target, &c)) {
     return ERR(THREAD_NOT_ALIVE);
   } else {
     return c.GetResult();
@@ -900,7 +900,7 @@ jvmtiError MethodUtil::SetLocalVariableGeneric(jvmtiEnv* env ATTRIBUTE_UNUSED,
   }
   SetLocalVariableClosure c(self, depth, slot, type, val);
   // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
-  if (!target->RequestSynchronousCheckpoint(&c)) {
+  if (!ThreadUtil::RequestGCSafeSynchronousCheckpoint(target, &c)) {
     return ERR(THREAD_NOT_ALIVE);
   } else {
     return c.GetResult();
@@ -959,7 +959,7 @@ jvmtiError MethodUtil::GetLocalInstance(jvmtiEnv* env ATTRIBUTE_UNUSED,
   }
   GetLocalInstanceClosure c(self, depth, data);
   // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
-  if (!target->RequestSynchronousCheckpoint(&c)) {
+  if (!ThreadUtil::RequestGCSafeSynchronousCheckpoint(target, &c)) {
     return ERR(THREAD_NOT_ALIVE);
   } else {
     return c.GetResult();
