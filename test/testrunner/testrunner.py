@@ -963,7 +963,12 @@ def main():
   test_runner_thread.daemon = True
   try:
     test_runner_thread.start()
-    while threading.active_count() > 1:
+    # This loops waits for all the threads to finish, unless
+    # stop_testrunner is set to True. When ART_TEST_KEEP_GOING
+    # is set to false, stop_testrunner is set to True as soon as
+    # a test fails to signal the parent thread  to stop
+    # the execution of the testrunner.
+    while threading.active_count() > 1 and not stop_testrunner:
       time.sleep(0.1)
     print_analysis()
   except Exception as e:
