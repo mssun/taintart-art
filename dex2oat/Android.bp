@@ -41,6 +41,7 @@ art_cc_defaults {
     ],
     include_dirs: [
         "external/lz4/lib",
+        "external/zlib",
     ],
     export_include_dirs: ["."],
 
@@ -223,6 +224,9 @@ art_cc_test {
         "linker/oat_writer_test.cc",
     ],
     header_libs: ["dex2oat_headers"],
+    include_dirs: [
+        "external/zlib",
+    ],
     shared_libs: [
         "libartd-compiler",
         "libartd-dexlayout",

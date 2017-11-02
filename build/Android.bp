@@ -130,7 +130,6 @@ art_global_defaults {
         "external/valgrind/include",
         "external/valgrind",
         "external/vixl/src",
-        "external/zlib",
     ],
     header_libs: [
         "jni_platform_headers",
