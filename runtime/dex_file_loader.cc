@@ -103,11 +103,19 @@ bool DexFileLoader::IsVersionAndMagicValid(const uint8_t* magic) {
 
 bool DexFileLoader::GetMultiDexChecksums(const char* filename,
                                          std::vector<uint32_t>* checksums,
-                                         std::string* error_msg) {
+                                         std::string* error_msg,
+                                         int zip_fd) {
   CHECK(checksums != nullptr);
   uint32_t magic;
 
-  File fd = OpenAndReadMagic(filename, &magic, error_msg);
+  File fd;
+  if (zip_fd != -1) {
+     if (ReadMagicAndReset(zip_fd, &magic, error_msg)) {
+       fd = File(zip_fd, false /* check_usage */);
+     }
+  } else {
+    fd = OpenAndReadMagic(filename, &magic, error_msg);
+  }
   if (fd.Fd() == -1) {
     DCHECK(!error_msg->empty());
     return false;
