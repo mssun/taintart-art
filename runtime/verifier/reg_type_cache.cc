@@ -268,12 +268,13 @@ const RegType& RegTypeCache::FromClass(const char* descriptor, mirror::Class* kl
   return *reg_type;
 }
 
-RegTypeCache::RegTypeCache(bool can_load_classes, ScopedArenaAllocator& allocator)
+RegTypeCache::RegTypeCache(bool can_load_classes, ScopedArenaAllocator& allocator, bool can_suspend)
     : entries_(allocator.Adapter(kArenaAllocVerifier)),
       klass_entries_(allocator.Adapter(kArenaAllocVerifier)),
       can_load_classes_(can_load_classes),
       allocator_(allocator) {
-  if (kIsDebugBuild) {
+  DCHECK(can_suspend || !can_load_classes) << "Cannot load classes is suspension is disabled!";
+  if (kIsDebugBuild && can_suspend) {
     Thread::Current()->AssertThreadSuspensionIsAllowable(gAborting == 0);
   }
   // The klass_entries_ array does not have primitives or small constants.
