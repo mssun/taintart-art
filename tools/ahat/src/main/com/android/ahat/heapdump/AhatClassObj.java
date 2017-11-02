@@ -29,7 +29,7 @@ public class AhatClassObj extends AhatInstance {
   private long mStaticFieldsSize;
   private long mInstanceSize;
 
-  public AhatClassObj(long id, String className) {
+  AhatClassObj(long id, String className) {
     super(id);
     mClassName = className;
   }
@@ -50,7 +50,7 @@ public class AhatClassObj extends AhatInstance {
   }
 
   @Override
-  protected long getExtraJavaSize() {
+  long getExtraJavaSize() {
     return mStaticFieldsSize;
   }
 

@@ -64,7 +64,7 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   // 2. During dominators computation, to store the dominators computation state.
   private Object mTemporaryUserData;
 
-  public AhatInstance(long id) {
+  AhatInstance(long id) {
     mId = id;
     mBaseline = this;
   }
@@ -101,7 +101,7 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
    * For example, class objects will have extra size for static fields and
    * array objects will have extra size for the array elements.
    */
-  protected abstract long getExtraJavaSize();
+  abstract long getExtraJavaSize();
 
   /**
    * Returns the number of bytes belonging to the given heap that this instance
@@ -388,7 +388,7 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
     return null;
   }
 
-  public static class RegisteredNativeAllocation {
+  static class RegisteredNativeAllocation {
     public AhatInstance referent;
     public long size;
   };
@@ -397,7 +397,7 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
    * Return the registered native allocation that this instance represents, if
    * any. This is relevant for instances of sun.misc.Cleaner.
    */
-  public RegisteredNativeAllocation asRegisteredNativeAllocation() {
+  RegisteredNativeAllocation asRegisteredNativeAllocation() {
     return null;
   }
 
@@ -451,7 +451,7 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
     return null;
   }
 
-  public void setBaseline(AhatInstance baseline) {
+  void setBaseline(AhatInstance baseline) {
     mBaseline = baseline;
   }
 
@@ -470,11 +470,11 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
     return new AhatPlaceHolderInstance(this);
   }
 
-  public void setTemporaryUserData(Object state) {
+  void setTemporaryUserData(Object state) {
     mTemporaryUserData = state;
   }
 
-  public Object getTemporaryUserData() {
+  Object getTemporaryUserData() {
     return mTemporaryUserData;
   }
 

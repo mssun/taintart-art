@@ -34,7 +34,7 @@ public class AhatArrayInstance extends AhatInstance {
   private byte[] mByteArray;    // null if not a byte array.
   private char[] mCharArray;    // null if not a char array.
 
-  public AhatArrayInstance(long id) {
+  AhatArrayInstance(long id) {
     super(id);
   }
 
@@ -176,7 +176,7 @@ public class AhatArrayInstance extends AhatInstance {
   }
 
   @Override
-  protected long getExtraJavaSize() {
+  long getExtraJavaSize() {
     int length = getLength();
     if (length == 0) {
       return 0;
