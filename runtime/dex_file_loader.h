@@ -50,10 +50,15 @@ class DexFileLoader {
   // For .dex files, this is the single header checksum.
   // For zip files, this is the zip entry CRC32 checksum for classes.dex and
   // each additional multidex entry classes2.dex, classes3.dex, etc.
+  // If a valid zip_fd is provided the file content will be read directly from
+  // the descriptor and `filename` will be used as alias for error logging. If
+  // zip_fd is -1, the method will try to open the `filename` and read the
+  // content from it.
   // Return true if the checksums could be found, false otherwise.
   static bool GetMultiDexChecksums(const char* filename,
                                    std::vector<uint32_t>* checksums,
-                                   std::string* error_msg);
+                                   std::string* error_msg,
+                                   int zip_fd = -1);
 
   // Check whether a location denotes a multidex dex file. This is a very simple check: returns
   // whether the string contains the separator character.
