@@ -727,6 +727,13 @@ TEST_F(DexLayoutTest, CodeItemOverrun) {
               const_cast<Instruction*>(last_instruction.Inst())->SetOpcode(
                   Instruction::CONST_STRING_JUMBO);
               mutated_successfully = true;
+              // Test that the safe iterator doesn't go past the end.
+              SafeDexInstructionIterator it2(instructions.begin(), instructions.end());
+              while (!it2.IsErrorState()) {
+                ++it2;
+              }
+              EXPECT_TRUE(it2 == last_instruction);
+              EXPECT_TRUE(it2 < instructions.end());
             }
           }
         }

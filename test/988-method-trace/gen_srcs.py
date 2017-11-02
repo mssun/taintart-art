@@ -28,8 +28,8 @@ import sys
 
 from string import Template
 
-# Relative path to art/compiler/intrinsics_list.h
-INTRINSICS_LIST_H = os.path.dirname(os.path.realpath(__file__)) + "/../../compiler/intrinsics_list.h"
+# Relative path to art/runtime/intrinsics_list.h
+INTRINSICS_LIST_H = os.path.dirname(os.path.realpath(__file__)) + "/../../runtime/intrinsics_list.h"
 
 # Macro parameter index to V(). Negative means from the end.
 IDX_STATIC_OR_VIRTUAL = 1
@@ -39,7 +39,8 @@ IDX_CLASS_NAME = -3
 
 # Exclude all hidden API.
 KLASS_BLACK_LIST = ['sun.misc.Unsafe', 'libcore.io.Memory', 'java.lang.StringFactory',
-                    'java.lang.invoke.VarHandle' ]  # TODO(b/65872996): Enable when VarHandle is visible.
+                    'java.lang.invoke.MethodHandle', # invokes are tested by 956-method-handles
+                    'java.lang.invoke.VarHandle' ]  # TODO(b/65872996): will tested separately
 METHOD_BLACK_LIST = [('java.lang.ref.Reference', 'getReferent'),
                      ('java.lang.String', 'getCharsNoCheck'),
                      ('java.lang.System', 'arraycopy')]  # arraycopy has a manual test.
@@ -90,7 +91,7 @@ $initialize_classes
   }
 
   static void test() {
-    // Call each intrinsic from art/compiler/intrinsics_list.h to make sure they are traced.
+    // Call each intrinsic from art/runtime/intrinsics_list.h to make sure they are traced.
 $test_body
   }
 }

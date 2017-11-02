@@ -60,6 +60,7 @@
 #include "base/arena_allocator.h"
 #include "base/dumpable.h"
 #include "base/enums.h"
+#include "base/file_utils.h"
 #include "base/memory_tool.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
@@ -143,6 +144,7 @@
 #include "quick/quick_method_frame_info.h"
 #include "reflection.h"
 #include "runtime_callbacks.h"
+#include "runtime_intrinsics.h"
 #include "runtime_options.h"
 #include "scoped_thread_state_change-inl.h"
 #include "sigchain.h"
@@ -737,6 +739,11 @@ bool Runtime::Start() {
     ScopedTrace trace2("InitNativeMethods");
     InitNativeMethods();
   }
+
+  // IntializeIntrinsics needs to be called after the WellKnownClasses::Init in InitNativeMethods
+  // because in checking the invocation types of intrinsic methods ArtMethod::GetInvokeType()
+  // needs the SignaturePolymorphic annotation class which is initialized in WellKnownClasses::Init.
+  InitializeIntrinsics();
 
   // Initialize well known thread group values that may be accessed threads while attaching.
   InitThreadGroups(self);

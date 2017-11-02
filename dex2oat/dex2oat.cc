@@ -43,6 +43,7 @@
 #include "art_method-inl.h"
 #include "base/callee_save_type.h"
 #include "base/dumpable.h"
+#include "base/file_utils.h"
 #include "base/macros.h"
 #include "base/scoped_flock.h"
 #include "base/stl_util.h"

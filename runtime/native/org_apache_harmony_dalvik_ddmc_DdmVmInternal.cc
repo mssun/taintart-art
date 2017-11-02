@@ -16,6 +16,7 @@
 
 #include "org_apache_harmony_dalvik_ddmc_DdmVmInternal.h"
 
+#include "base/file_utils.h"
 #include "base/logging.h"
 #include "base/mutex.h"
 #include "debugger.h"

@@ -14,23 +14,76 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_INTRINSICS_LIST_H_
-#define ART_COMPILER_INTRINSICS_LIST_H_
+#ifndef ART_RUNTIME_INTRINSICS_LIST_H_
+#define ART_RUNTIME_INTRINSICS_LIST_H_
 
-// All intrinsics supported by ART. Format is name, then whether it is expected
-// to be a HInvokeStaticOrDirect node (compared to HInvokeVirtual), then whether it requires an
-// environment, may have side effects, or may throw exceptions.
-
+// This file defines the set of intrinsics that are supported by ART
+// in the compiler and runtime. Neither compiler nor runtime has
+// intrinsics for all methods here.
+//
+// The entries in the INTRINSICS_LIST below have the following format:
+//
+//   1. name
+//   2. invocation-type (art::InvokeType value).
+//   3. needs-environment (art::IntrinsicNeedsEnvironmentOrCache value)
+//   4. side-effects (art::IntrinsicSideEffects value)
+//   5. exception-info (art::::IntrinsicExceptions value)
+//   6. declaring class descriptor
+//   7. method name
+//   8. method descriptor
+//
+// The needs-environment, side-effects and exception-info are compiler
+// related properties (compiler/optimizing/nodes.h) that should not be
+// used outside of the compiler.
+//
 // Note: adding a new intrinsic requires an art image version change,
 // as the modifiers flag for some ArtMethods will need to be changed.
+//
+// Note: j.l.Integer.valueOf says kNoThrow even though it could throw an
+// OOME. The kNoThrow should be renamed to kNoVisibleThrow, as it is ok to
+// GVN Integer.valueOf (kNoSideEffects), and it is also OK to remove it if
+// it's unused.
+//
+// Note: Thread.interrupted is marked with kAllSideEffects due to the lack
+// of finer grain side effects representation.
 
-// Note: j.l.Integer.valueOf says kNoThrow even though it could throw an OOME.
-// The kNoThrow should be renamed to kNoVisibleThrow, as it is ok to GVN Integer.valueOf
-// (kNoSideEffects), and it is also OK to remove it if it's unused.
+// Intrinsics for methods with signature polymorphic behaviours.
+#define SIGNATURE_POLYMORPHIC_INTRINSICS_LIST(V) \
+  V(MethodHandleInvokeExact, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/MethodHandle;", "invokeExact", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(MethodHandleInvoke, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/MethodHandle;", "invoke", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleCompareAndExchange, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "compareAndExchange", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleCompareAndExchangeAcquire, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "compareAndExchangeAcquire", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleCompareAndExchangeRelease, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "compareAndExchangeRelease", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleCompareAndSet, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "compareAndSet", "([Ljava/lang/Object;)Z") \
+  V(VarHandleGet, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "get", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetAcquire, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getAcquire", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetAndAdd, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getAndAdd", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetAndAddAcquire, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getAndAddAcquire", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetAndAddRelease, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getAndAddRelease", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetAndBitwiseAnd, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getAndBitwiseAnd", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetAndBitwiseAndAcquire, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getAndBitwiseAndAcquire", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetAndBitwiseAndRelease, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getAndBitwiseAndRelease", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetAndBitwiseOr, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getAndBitwiseOr", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetAndBitwiseOrAcquire, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getAndBitwiseOrAcquire", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetAndBitwiseOrRelease, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getAndBitwiseOrRelease", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetAndBitwiseXor, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getAndBitwiseXor", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetAndBitwiseXorAcquire, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getAndBitwiseXorAcquire", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetAndBitwiseXorRelease, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getAndBitwiseXorRelease", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetAndSet, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getAndSet", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetAndSetAcquire, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getAndSetAcquire", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetAndSetRelease, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getAndSetRelease", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetOpaque, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getOpaque", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleGetVolatile, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "getVolatile", "([Ljava/lang/Object;)Ljava/lang/Object;") \
+  V(VarHandleSet, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "set", "([Ljava/lang/Object;)V") \
+  V(VarHandleSetOpaque, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "setOpaque", "([Ljava/lang/Object;)V") \
+  V(VarHandleSetRelease, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "setRelease", "([Ljava/lang/Object;)V") \
+  V(VarHandleSetVolatile, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "setVolatile", "([Ljava/lang/Object;)V") \
+  V(VarHandleWeakCompareAndSet, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "weakCompareAndSet", "([Ljava/lang/Object;)Z") \
+  V(VarHandleWeakCompareAndSetAcquire, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "weakCompareAndSetAcquire", "([Ljava/lang/Object;)Z") \
+  V(VarHandleWeakCompareAndSetPlain, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "weakCompareAndSetPlain", "([Ljava/lang/Object;)Z") \
+  V(VarHandleWeakCompareAndSetRelease, kPolymorphic, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/invoke/VarHandle;", "weakCompareAndSetRelease", "([Ljava/lang/Object;)Z")
 
-// Note: Thread.interrupted is marked with kAllSideEffects due to the lack of finer grain
-// side effects representation.
-
+// The complete list of intrinsics.
 #define INTRINSICS_LIST(V) \
   V(DoubleDoubleToRawLongBits, kStatic, kNeedsEnvironmentOrCache, kNoSideEffects, kNoThrow, "Ljava/lang/Double;", "doubleToRawLongBits", "(D)J") \
   V(DoubleDoubleToLongBits, kStatic, kNeedsEnvironmentOrCache, kNoSideEffects, kNoThrow, "Ljava/lang/Double;", "doubleToLongBits", "(D)J") \
@@ -164,6 +217,7 @@
   V(VarHandleReleaseFence, kStatic, kNeedsEnvironmentOrCache, kWriteSideEffects, kNoThrow, "Ljava/lang/invoke/VarHandle;", "releaseFence", "()V") \
   V(VarHandleLoadLoadFence, kStatic, kNeedsEnvironmentOrCache, kWriteSideEffects, kNoThrow, "Ljava/lang/invoke/VarHandle;", "loadLoadFence", "()V") \
   V(VarHandleStoreStoreFence, kStatic, kNeedsEnvironmentOrCache, kReadSideEffects, kNoThrow, "Ljava/lang/invoke/VarHandle;", "storeStoreFence", "()V") \
+  SIGNATURE_POLYMORPHIC_INTRINSICS_LIST(V)
 
-#endif  // ART_COMPILER_INTRINSICS_LIST_H_
-#undef ART_COMPILER_INTRINSICS_LIST_H_   // #define is only for lint.
+#endif  // ART_RUNTIME_INTRINSICS_LIST_H_
+#undef ART_RUNTIME_INTRINSICS_LIST_H_   // #define is only for lint.

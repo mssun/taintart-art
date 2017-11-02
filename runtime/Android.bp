@@ -35,6 +35,7 @@ cc_defaults {
         "base/arena_bit_vector.cc",
         "base/bit_vector.cc",
         "base/file_magic.cc",
+        "base/file_utils.cc",
         "base/hex_dump.cc",
         "base/logging.cc",
         "base/mutex.cc",
@@ -203,6 +204,7 @@ cc_defaults {
         "runtime.cc",
         "runtime_callbacks.cc",
         "runtime_common.cc",
+        "runtime_intrinsics.cc",
         "runtime_options.cc",
         "scoped_thread_state_change.cc",
         "signal_catcher.cc",
@@ -402,7 +404,6 @@ cc_defaults {
     export_generated_headers: ["cpp-define-generator-asm-support"],
     include_dirs: [
         "art/sigchainlib",
-        "art",
     ],
     header_libs: [
         "art_cmdlineparser_headers",

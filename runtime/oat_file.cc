@@ -38,6 +38,7 @@
 #include "art_method.h"
 #include "base/bit_vector.h"
 #include "base/enums.h"
+#include "base/file_utils.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/unix_file/fd_file.h"
