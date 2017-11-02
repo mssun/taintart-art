@@ -131,9 +131,6 @@ art_global_defaults {
         "external/valgrind",
         "external/vixl/src",
     ],
-    header_libs: [
-        "jni_platform_headers",
-    ],
 
     tidy_checks: [
         "-google-default-arguments",
