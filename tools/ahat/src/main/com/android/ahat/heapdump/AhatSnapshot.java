@@ -122,7 +122,7 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
     return site == null ? mRootSite : site;
   }
 
-  public void setBaseline(AhatSnapshot baseline) {
+  void setBaseline(AhatSnapshot baseline) {
     mBaseline = baseline;
   }
 
