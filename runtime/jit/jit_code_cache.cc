@@ -1223,8 +1223,8 @@ bool JitCodeCache::CheckLiveCompiledCodeHasProfilingInfo() {
 }
 
 OatQuickMethodHeader* JitCodeCache::LookupMethodHeader(uintptr_t pc, ArtMethod* method) {
-  static_assert(kRuntimeISA != kThumb2, "kThumb2 cannot be a runtime ISA");
-  if (kRuntimeISA == kArm) {
+  static_assert(kRuntimeISA != InstructionSet::kThumb2, "kThumb2 cannot be a runtime ISA");
+  if (kRuntimeISA == InstructionSet::kArm) {
     // On Thumb-2, the pc is offset by one.
     --pc;
   }

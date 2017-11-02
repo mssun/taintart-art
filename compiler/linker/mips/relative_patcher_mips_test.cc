@@ -23,7 +23,7 @@ namespace linker {
 
 class MipsRelativePatcherTest : public RelativePatcherTest {
  public:
-  MipsRelativePatcherTest() : RelativePatcherTest(kMips, "mips32r2") {}
+  MipsRelativePatcherTest() : RelativePatcherTest(InstructionSet::kMips, "mips32r2") {}
 
  protected:
   static const uint8_t kUnpatchedPcRelativeRawCode[];

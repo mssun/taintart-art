@@ -25,6 +25,7 @@
 #include "aarch64/simulator-aarch64.h"
 #pragma GCC diagnostic pop
 
+#include "arch/instruction_set.h"
 #include "code_simulator.h"
 
 namespace art {
@@ -48,7 +49,7 @@ class CodeSimulatorArm64 : public CodeSimulator {
   vixl::aarch64::Simulator* simulator_;
 
   // TODO: Enable CodeSimulatorArm64 for more host ISAs once Simulator supports them.
-  static constexpr bool kCanSimulate = (kRuntimeISA == kX86_64);
+  static constexpr bool kCanSimulate = (kRuntimeISA == InstructionSet::kX86_64);
 
   DISALLOW_COPY_AND_ASSIGN(CodeSimulatorArm64);
 };

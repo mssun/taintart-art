@@ -98,7 +98,7 @@ class ExceptionTest : public CommonRuntimeTest {
              static_cast<const void*>(fake_header_code_and_maps_.data() +
                                           (fake_header_code_and_maps_.size() - code_size)));
 
-    if (kRuntimeISA == kArm) {
+    if (kRuntimeISA == InstructionSet::kArm) {
       // Check that the Thumb2 adjustment will be a NOP, see EntryPointToCodePointer().
       CHECK_ALIGNED(stack_maps_offset, 2);
     }

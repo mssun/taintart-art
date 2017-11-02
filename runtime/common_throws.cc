@@ -433,7 +433,8 @@ void ThrowNullPointerExceptionForMethodAccess(ArtMethod* method,
 static bool IsValidReadBarrierImplicitCheck(uintptr_t addr) {
   DCHECK(kEmitCompilerReadBarrier);
   uint32_t monitor_offset = mirror::Object::MonitorOffset().Uint32Value();
-  if (kUseBakerReadBarrier && (kRuntimeISA == kX86 || kRuntimeISA == kX86_64)) {
+  if (kUseBakerReadBarrier &&
+      (kRuntimeISA == InstructionSet::kX86 || kRuntimeISA == InstructionSet::kX86_64)) {
     constexpr uint32_t gray_byte_position = LockWord::kReadBarrierStateShift / kBitsPerByte;
     monitor_offset += gray_byte_position;
   }

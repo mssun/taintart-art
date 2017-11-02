@@ -50,7 +50,7 @@ class Arm64InstructionSetFeatures FINAL : public InstructionSetFeatures {
   bool Equals(const InstructionSetFeatures* other) const OVERRIDE;
 
   InstructionSet GetInstructionSet() const OVERRIDE {
-    return kArm64;
+    return InstructionSet::kArm64;
   }
 
   uint32_t AsBitmap() const OVERRIDE;

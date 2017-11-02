@@ -197,7 +197,7 @@ class X86_64JNIMacroAssembler FINAL : public JNIMacroAssemblerFwd<X86_64Assemble
 class X86_64JNIMacroLabel FINAL
     : public JNIMacroLabelCommon<X86_64JNIMacroLabel,
                                  art::Label,
-                                 kX86_64> {
+                                 InstructionSet::kX86_64> {
  public:
   art::Label* AsX86_64() {
     return AsPlatformLabel();

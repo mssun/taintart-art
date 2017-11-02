@@ -60,7 +60,7 @@ class X86_64InstructionSetFeatures FINAL : public X86InstructionSetFeatures {
   }
 
   InstructionSet GetInstructionSet() const OVERRIDE {
-    return kX86_64;
+    return InstructionSet::kX86_64;
   }
 
   virtual ~X86_64InstructionSetFeatures() {}

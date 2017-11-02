@@ -417,10 +417,10 @@ class ElfBuilder FINAL {
                     InstructionSet isa,
                     const InstructionSetFeatures* features)
         : Section(owner, name, type, flags, link, info, align, entsize) {
-      if (isa == kMips || isa == kMips64) {
+      if (isa == InstructionSet::kMips || isa == InstructionSet::kMips64) {
         bool fpu32 = false;    // assume mips64 values
         uint8_t isa_rev = 6;   // assume mips64 values
-        if (isa == kMips) {
+        if (isa == InstructionSet::kMips) {
           // adjust for mips32 values
           fpu32 = features->AsMipsInstructionSetFeatures()->Is32BitFloatingPoint();
           isa_rev = features->AsMipsInstructionSetFeatures()->IsR6()
@@ -430,14 +430,15 @@ class ElfBuilder FINAL {
                   : 1;
         }
         abiflags_.version = 0;  // version of flags structure
-        abiflags_.isa_level = (isa == kMips) ? 32 : 64;
+        abiflags_.isa_level = (isa == InstructionSet::kMips) ? 32 : 64;
         abiflags_.isa_rev = isa_rev;
-        abiflags_.gpr_size = (isa == kMips) ? MIPS_AFL_REG_32 : MIPS_AFL_REG_64;
+        abiflags_.gpr_size = (isa == InstructionSet::kMips) ? MIPS_AFL_REG_32 : MIPS_AFL_REG_64;
         abiflags_.cpr1_size = fpu32 ? MIPS_AFL_REG_32 : MIPS_AFL_REG_64;
         abiflags_.cpr2_size = MIPS_AFL_REG_NONE;
         // Set the fp_abi to MIPS_ABI_FP_64A for mips32 with 64-bit FPUs (ie: mips32 R5 and R6).
         // Otherwise set to MIPS_ABI_FP_DOUBLE.
-        abiflags_.fp_abi = (isa == kMips && !fpu32) ? MIPS_ABI_FP_64A : MIPS_ABI_FP_DOUBLE;
+        abiflags_.fp_abi =
+            (isa == InstructionSet::kMips && !fpu32) ? MIPS_ABI_FP_64A : MIPS_ABI_FP_DOUBLE;
         abiflags_.isa_ext = 0;
         abiflags_.ases = 0;
         // To keep the code simple, we are not using odd FP reg for single floats for both
@@ -689,7 +690,7 @@ class ElfBuilder FINAL {
     Elf_Word bss_address = RoundUp(text_address + text_size, kPageSize);
     Elf_Word abiflags_address = RoundUp(bss_address + bss_size, kPageSize);
     Elf_Word abiflags_size = 0;
-    if (isa_ == kMips || isa_ == kMips64) {
+    if (isa_ == InstructionSet::kMips || isa_ == InstructionSet::kMips64) {
       abiflags_size = abiflags_.GetSize();
     }
     Elf_Word dynstr_address = RoundUp(abiflags_address + abiflags_size, kPageSize);
@@ -835,29 +836,29 @@ class ElfBuilder FINAL {
   static Elf_Ehdr MakeElfHeader(InstructionSet isa, const InstructionSetFeatures* features) {
     Elf_Ehdr elf_header = Elf_Ehdr();
     switch (isa) {
-      case kArm:
+      case InstructionSet::kArm:
         // Fall through.
-      case kThumb2: {
+      case InstructionSet::kThumb2: {
         elf_header.e_machine = EM_ARM;
         elf_header.e_flags = EF_ARM_EABI_VER5;
         break;
       }
-      case kArm64: {
+      case InstructionSet::kArm64: {
         elf_header.e_machine = EM_AARCH64;
         elf_header.e_flags = 0;
         break;
       }
-      case kX86: {
+      case InstructionSet::kX86: {
         elf_header.e_machine = EM_386;
         elf_header.e_flags = 0;
         break;
       }
-      case kX86_64: {
+      case InstructionSet::kX86_64: {
         elf_header.e_machine = EM_X86_64;
         elf_header.e_flags = 0;
         break;
       }
-      case kMips: {
+      case InstructionSet::kMips: {
         elf_header.e_machine = EM_MIPS;
         elf_header.e_flags = (EF_MIPS_NOREORDER |
                               EF_MIPS_PIC       |
@@ -868,7 +869,7 @@ class ElfBuilder FINAL {
                                    : EF_MIPS_ARCH_32R2));
         break;
       }
-      case kMips64: {
+      case InstructionSet::kMips64: {
         elf_header.e_machine = EM_MIPS;
         elf_header.e_flags = (EF_MIPS_NOREORDER |
                               EF_MIPS_PIC       |
@@ -876,7 +877,7 @@ class ElfBuilder FINAL {
                               EF_MIPS_ARCH_64R6);
         break;
       }
-      case kNone: {
+      case InstructionSet::kNone: {
         LOG(FATAL) << "No instruction set";
         break;
       }

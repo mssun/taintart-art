@@ -23,7 +23,7 @@ namespace linker {
 
 class Mips64RelativePatcherTest : public RelativePatcherTest {
  public:
-  Mips64RelativePatcherTest() : RelativePatcherTest(kMips64, "default") {}
+  Mips64RelativePatcherTest() : RelativePatcherTest(InstructionSet::kMips64, "default") {}
 
  protected:
   static const uint8_t kUnpatchedPcRelativeRawCode[];

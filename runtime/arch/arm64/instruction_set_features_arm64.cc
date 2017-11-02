@@ -98,7 +98,7 @@ Arm64FeaturesUniquePtr Arm64InstructionSetFeatures::FromAssembly() {
 }
 
 bool Arm64InstructionSetFeatures::Equals(const InstructionSetFeatures* other) const {
-  if (kArm64 != other->GetInstructionSet()) {
+  if (InstructionSet::kArm64 != other->GetInstructionSet()) {
     return false;
   }
   const Arm64InstructionSetFeatures* other_as_arm64 = other->AsArm64InstructionSetFeatures();

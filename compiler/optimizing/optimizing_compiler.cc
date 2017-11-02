@@ -437,13 +437,13 @@ bool OptimizingCompiler::CanCompileMethod(uint32_t method_idx ATTRIBUTE_UNUSED,
 }
 
 static bool IsInstructionSetSupported(InstructionSet instruction_set) {
-  return instruction_set == kArm
-      || instruction_set == kArm64
-      || instruction_set == kThumb2
-      || instruction_set == kMips
-      || instruction_set == kMips64
-      || instruction_set == kX86
-      || instruction_set == kX86_64;
+  return instruction_set == InstructionSet::kArm
+      || instruction_set == InstructionSet::kArm64
+      || instruction_set == InstructionSet::kThumb2
+      || instruction_set == InstructionSet::kMips
+      || instruction_set == InstructionSet::kMips64
+      || instruction_set == InstructionSet::kX86
+      || instruction_set == InstructionSet::kX86_64;
 }
 
 // Strip pass name suffix to get optimization name.
@@ -637,8 +637,8 @@ void OptimizingCompiler::RunArchOptimizations(InstructionSet instruction_set,
   ArenaAllocator* allocator = graph->GetAllocator();
   switch (instruction_set) {
 #if defined(ART_ENABLE_CODEGEN_arm)
-    case kThumb2:
-    case kArm: {
+    case InstructionSet::kThumb2:
+    case InstructionSet::kArm: {
       arm::InstructionSimplifierArm* simplifier =
           new (allocator) arm::InstructionSimplifierArm(graph, stats);
       SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
@@ -657,7 +657,7 @@ void OptimizingCompiler::RunArchOptimizations(InstructionSet instruction_set,
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_arm64
-    case kArm64: {
+    case InstructionSet::kArm64: {
       arm64::InstructionSimplifierArm64* simplifier =
           new (allocator) arm64::InstructionSimplifierArm64(graph, stats);
       SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
@@ -676,7 +676,7 @@ void OptimizingCompiler::RunArchOptimizations(InstructionSet instruction_set,
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips
-    case kMips: {
+    case InstructionSet::kMips: {
       mips::InstructionSimplifierMips* simplifier =
           new (allocator) mips::InstructionSimplifierMips(graph, codegen, stats);
       SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
@@ -695,7 +695,7 @@ void OptimizingCompiler::RunArchOptimizations(InstructionSet instruction_set,
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips64
-    case kMips64: {
+    case InstructionSet::kMips64: {
       SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
       GVNOptimization* gvn =
           new (allocator) GVNOptimization(graph, *side_effects, "GVN$after_arch");
@@ -708,7 +708,7 @@ void OptimizingCompiler::RunArchOptimizations(InstructionSet instruction_set,
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86
-    case kX86: {
+    case InstructionSet::kX86: {
       SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
       GVNOptimization* gvn =
           new (allocator) GVNOptimization(graph, *side_effects, "GVN$after_arch");
@@ -727,7 +727,7 @@ void OptimizingCompiler::RunArchOptimizations(InstructionSet instruction_set,
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86_64
-    case kX86_64: {
+    case InstructionSet::kX86_64: {
       SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
       GVNOptimization* gvn =
           new (allocator) GVNOptimization(graph, *side_effects, "GVN$after_arch");
@@ -949,7 +949,7 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
 
   // Always use the Thumb-2 assembler: some runtime functionality
   // (like implicit stack overflow checks) assume Thumb-2.
-  DCHECK_NE(instruction_set, kArm);
+  DCHECK_NE(instruction_set, InstructionSet::kArm);
 
   // Do not attempt to compile on architectures we do not support.
   if (!IsInstructionSetSupported(instruction_set)) {

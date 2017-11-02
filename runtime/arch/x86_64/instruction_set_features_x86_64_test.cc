@@ -23,9 +23,9 @@ namespace art {
 TEST(X86_64InstructionSetFeaturesTest, X86Features) {
   std::string error_msg;
   std::unique_ptr<const InstructionSetFeatures> x86_64_features(
-      InstructionSetFeatures::FromVariant(kX86_64, "default", &error_msg));
+      InstructionSetFeatures::FromVariant(InstructionSet::kX86_64, "default", &error_msg));
   ASSERT_TRUE(x86_64_features.get() != nullptr) << error_msg;
-  EXPECT_EQ(x86_64_features->GetInstructionSet(), kX86_64);
+  EXPECT_EQ(x86_64_features->GetInstructionSet(), InstructionSet::kX86_64);
   EXPECT_TRUE(x86_64_features->Equals(x86_64_features.get()));
   EXPECT_STREQ("-ssse3,-sse4.1,-sse4.2,-avx,-avx2,-popcnt",
                x86_64_features->GetFeatureString().c_str());
