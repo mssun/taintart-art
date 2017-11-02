@@ -90,13 +90,13 @@ bool TrySimpleMultiplyAccumulatePatterns(HMul* mul,
 bool TryCombineMultiplyAccumulate(HMul* mul, InstructionSet isa) {
   DataType::Type type = mul->GetType();
   switch (isa) {
-    case kArm:
-    case kThumb2:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
       if (type != DataType::Type::kInt32) {
         return false;
       }
       break;
-    case kArm64:
+    case InstructionSet::kArm64:
       if (!DataType::IsIntOrLongType(type)) {
         return false;
       }
@@ -148,7 +148,7 @@ bool TryCombineMultiplyAccumulate(HMul* mul, InstructionSet isa) {
         mul->GetBlock()->RemoveInstruction(mul);
         return true;
       }
-    } else if (use->IsNeg() && isa != kArm) {
+    } else if (use->IsNeg() && isa != InstructionSet::kArm) {
       HMultiplyAccumulate* mulacc =
           new (allocator) HMultiplyAccumulate(type,
                                               HInstruction::kSub,

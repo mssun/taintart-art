@@ -76,7 +76,8 @@ inline uint32_t MaxExtraSpace(size_t num_adrp, size_t code_size) {
   if (num_adrp == 0u) {
     return 0u;
   }
-  uint32_t alignment_bytes = CompiledMethod::AlignCode(code_size, kArm64) - code_size;
+  uint32_t alignment_bytes =
+      CompiledMethod::AlignCode(code_size, InstructionSet::kArm64) - code_size;
   return kAdrpThunkSize * num_adrp + alignment_bytes;
 }
 
@@ -84,7 +85,7 @@ inline uint32_t MaxExtraSpace(size_t num_adrp, size_t code_size) {
 
 Arm64RelativePatcher::Arm64RelativePatcher(RelativePatcherTargetProvider* provider,
                                            const Arm64InstructionSetFeatures* features)
-    : ArmBaseRelativePatcher(provider, kArm64),
+    : ArmBaseRelativePatcher(provider, InstructionSet::kArm64),
       fix_cortex_a53_843419_(features->NeedFixCortexA53_843419()),
       reserved_adrp_thunks_(0u),
       processed_adrp_thunks_(0u) {
@@ -105,7 +106,8 @@ uint32_t Arm64RelativePatcher::ReserveSpace(uint32_t offset,
   // Add thunks for previous method if any.
   if (reserved_adrp_thunks_ != adrp_thunk_locations_.size()) {
     size_t num_adrp_thunks = adrp_thunk_locations_.size() - reserved_adrp_thunks_;
-    offset = CompiledMethod::AlignCode(offset, kArm64) + kAdrpThunkSize * num_adrp_thunks;
+    offset = CompiledMethod::AlignCode(offset, InstructionSet::kArm64) +
+             kAdrpThunkSize * num_adrp_thunks;
     reserved_adrp_thunks_ = adrp_thunk_locations_.size();
   }
 
@@ -149,7 +151,8 @@ uint32_t Arm64RelativePatcher::ReserveSpaceEnd(uint32_t offset) {
     // Add thunks for the last method if any.
     if (reserved_adrp_thunks_ != adrp_thunk_locations_.size()) {
       size_t num_adrp_thunks = adrp_thunk_locations_.size() - reserved_adrp_thunks_;
-      offset = CompiledMethod::AlignCode(offset, kArm64) + kAdrpThunkSize * num_adrp_thunks;
+      offset = CompiledMethod::AlignCode(offset, InstructionSet::kArm64) +
+               kAdrpThunkSize * num_adrp_thunks;
       reserved_adrp_thunks_ = adrp_thunk_locations_.size();
     }
   }
@@ -159,7 +162,7 @@ uint32_t Arm64RelativePatcher::ReserveSpaceEnd(uint32_t offset) {
 uint32_t Arm64RelativePatcher::WriteThunks(OutputStream* out, uint32_t offset) {
   if (fix_cortex_a53_843419_) {
     if (!current_method_thunks_.empty()) {
-      uint32_t aligned_offset = CompiledMethod::AlignCode(offset, kArm64);
+      uint32_t aligned_offset = CompiledMethod::AlignCode(offset, InstructionSet::kArm64);
       if (kIsDebugBuild) {
         CHECK_ALIGNED(current_method_thunks_.size(), kAdrpThunkSize);
         size_t num_thunks = current_method_thunks_.size() / kAdrpThunkSize;

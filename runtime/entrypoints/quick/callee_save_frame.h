@@ -68,28 +68,50 @@ class ScopedQuickEntrypointChecks {
 };
 
 static constexpr size_t GetCalleeSaveFrameSize(InstructionSet isa, CalleeSaveType type) {
-  // constexpr must be a return statement.
-  return (isa == kArm || isa == kThumb2) ? arm::ArmCalleeSaveFrameSize(type) :
-         isa == kArm64 ? arm64::Arm64CalleeSaveFrameSize(type) :
-         isa == kMips ? mips::MipsCalleeSaveFrameSize(type) :
-         isa == kMips64 ? mips64::Mips64CalleeSaveFrameSize(type) :
-         isa == kX86 ? x86::X86CalleeSaveFrameSize(type) :
-         isa == kX86_64 ? x86_64::X86_64CalleeSaveFrameSize(type) :
-         isa == kNone ? (LOG(FATAL) << "kNone has no frame size", 0) :
-         (LOG(FATAL) << "Unknown instruction set" << isa, 0);
+  switch (isa) {
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
+      return arm::ArmCalleeSaveFrameSize(type);
+    case InstructionSet::kArm64:
+      return arm64::Arm64CalleeSaveFrameSize(type);
+    case InstructionSet::kMips:
+      return mips::MipsCalleeSaveFrameSize(type);
+    case InstructionSet::kMips64:
+      return mips64::Mips64CalleeSaveFrameSize(type);
+    case InstructionSet::kX86:
+      return x86::X86CalleeSaveFrameSize(type);
+    case InstructionSet::kX86_64:
+      return x86_64::X86_64CalleeSaveFrameSize(type);
+    case InstructionSet::kNone:
+      LOG(FATAL) << "kNone has no frame size";
+      UNREACHABLE();
+  }
+  LOG(FATAL) << "Unknown ISA " << isa;
+  UNREACHABLE();
 }
 
 // Note: this specialized statement is sanity-checked in the quick-trampoline gtest.
 static constexpr PointerSize GetConstExprPointerSize(InstructionSet isa) {
-  // constexpr must be a return statement.
-  return (isa == kArm || isa == kThumb2) ? kArmPointerSize :
-         isa == kArm64 ? kArm64PointerSize :
-         isa == kMips ? kMipsPointerSize :
-         isa == kMips64 ? kMips64PointerSize :
-         isa == kX86 ? kX86PointerSize :
-         isa == kX86_64 ? kX86_64PointerSize :
-         isa == kNone ? (LOG(FATAL) << "kNone has no pointer size", PointerSize::k32) :
-         (LOG(FATAL) << "Unknown instruction set" << isa, PointerSize::k32);
+  switch (isa) {
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
+      return kArmPointerSize;
+    case InstructionSet::kArm64:
+      return kArm64PointerSize;
+    case InstructionSet::kMips:
+      return kMipsPointerSize;
+    case InstructionSet::kMips64:
+      return kMips64PointerSize;
+    case InstructionSet::kX86:
+      return kX86PointerSize;
+    case InstructionSet::kX86_64:
+      return kX86_64PointerSize;
+    case InstructionSet::kNone:
+      LOG(FATAL) << "kNone has no pointer size";
+      UNREACHABLE();
+  }
+  LOG(FATAL) << "Unknown ISA " << isa;
+  UNREACHABLE();
 }
 
 // Note: this specialized statement is sanity-checked in the quick-trampoline gtest.

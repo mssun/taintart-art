@@ -22,7 +22,7 @@ namespace art {
 
 CodeSimulator* CodeSimulator::CreateCodeSimulator(InstructionSet target_isa) {
   switch (target_isa) {
-    case kArm64:
+    case InstructionSet::kArm64:
       return arm64::CodeSimulatorArm64::CreateCodeSimulatorArm64();
     default:
       return nullptr;

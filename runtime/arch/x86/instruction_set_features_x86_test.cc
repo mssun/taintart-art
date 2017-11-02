@@ -23,9 +23,9 @@ namespace art {
 TEST(X86InstructionSetFeaturesTest, X86FeaturesFromDefaultVariant) {
   std::string error_msg;
   std::unique_ptr<const InstructionSetFeatures> x86_features(
-      InstructionSetFeatures::FromVariant(kX86, "default", &error_msg));
+      InstructionSetFeatures::FromVariant(InstructionSet::kX86, "default", &error_msg));
   ASSERT_TRUE(x86_features.get() != nullptr) << error_msg;
-  EXPECT_EQ(x86_features->GetInstructionSet(), kX86);
+  EXPECT_EQ(x86_features->GetInstructionSet(), InstructionSet::kX86);
   EXPECT_TRUE(x86_features->Equals(x86_features.get()));
   EXPECT_STREQ("-ssse3,-sse4.1,-sse4.2,-avx,-avx2,-popcnt",
                x86_features->GetFeatureString().c_str());
@@ -36,9 +36,9 @@ TEST(X86InstructionSetFeaturesTest, X86FeaturesFromAtomVariant) {
   // Build features for a 32-bit x86 atom processor.
   std::string error_msg;
   std::unique_ptr<const InstructionSetFeatures> x86_features(
-      InstructionSetFeatures::FromVariant(kX86, "atom", &error_msg));
+      InstructionSetFeatures::FromVariant(InstructionSet::kX86, "atom", &error_msg));
   ASSERT_TRUE(x86_features.get() != nullptr) << error_msg;
-  EXPECT_EQ(x86_features->GetInstructionSet(), kX86);
+  EXPECT_EQ(x86_features->GetInstructionSet(), InstructionSet::kX86);
   EXPECT_TRUE(x86_features->Equals(x86_features.get()));
   EXPECT_STREQ("ssse3,-sse4.1,-sse4.2,-avx,-avx2,-popcnt",
                x86_features->GetFeatureString().c_str());
@@ -46,9 +46,9 @@ TEST(X86InstructionSetFeaturesTest, X86FeaturesFromAtomVariant) {
 
   // Build features for a 32-bit x86 default processor.
   std::unique_ptr<const InstructionSetFeatures> x86_default_features(
-      InstructionSetFeatures::FromVariant(kX86, "default", &error_msg));
+      InstructionSetFeatures::FromVariant(InstructionSet::kX86, "default", &error_msg));
   ASSERT_TRUE(x86_default_features.get() != nullptr) << error_msg;
-  EXPECT_EQ(x86_default_features->GetInstructionSet(), kX86);
+  EXPECT_EQ(x86_default_features->GetInstructionSet(), InstructionSet::kX86);
   EXPECT_TRUE(x86_default_features->Equals(x86_default_features.get()));
   EXPECT_STREQ("-ssse3,-sse4.1,-sse4.2,-avx,-avx2,-popcnt",
                x86_default_features->GetFeatureString().c_str());
@@ -56,9 +56,9 @@ TEST(X86InstructionSetFeaturesTest, X86FeaturesFromAtomVariant) {
 
   // Build features for a 64-bit x86-64 atom processor.
   std::unique_ptr<const InstructionSetFeatures> x86_64_features(
-      InstructionSetFeatures::FromVariant(kX86_64, "atom", &error_msg));
+      InstructionSetFeatures::FromVariant(InstructionSet::kX86_64, "atom", &error_msg));
   ASSERT_TRUE(x86_64_features.get() != nullptr) << error_msg;
-  EXPECT_EQ(x86_64_features->GetInstructionSet(), kX86_64);
+  EXPECT_EQ(x86_64_features->GetInstructionSet(), InstructionSet::kX86_64);
   EXPECT_TRUE(x86_64_features->Equals(x86_64_features.get()));
   EXPECT_STREQ("ssse3,-sse4.1,-sse4.2,-avx,-avx2,-popcnt",
                x86_64_features->GetFeatureString().c_str());
@@ -73,9 +73,9 @@ TEST(X86InstructionSetFeaturesTest, X86FeaturesFromSandybridgeVariant) {
   // Build features for a 32-bit x86 sandybridge processor.
   std::string error_msg;
   std::unique_ptr<const InstructionSetFeatures> x86_features(
-      InstructionSetFeatures::FromVariant(kX86, "sandybridge", &error_msg));
+      InstructionSetFeatures::FromVariant(InstructionSet::kX86, "sandybridge", &error_msg));
   ASSERT_TRUE(x86_features.get() != nullptr) << error_msg;
-  EXPECT_EQ(x86_features->GetInstructionSet(), kX86);
+  EXPECT_EQ(x86_features->GetInstructionSet(), InstructionSet::kX86);
   EXPECT_TRUE(x86_features->Equals(x86_features.get()));
   EXPECT_STREQ("ssse3,sse4.1,sse4.2,-avx,-avx2,popcnt",
                x86_features->GetFeatureString().c_str());
@@ -83,9 +83,9 @@ TEST(X86InstructionSetFeaturesTest, X86FeaturesFromSandybridgeVariant) {
 
   // Build features for a 32-bit x86 default processor.
   std::unique_ptr<const InstructionSetFeatures> x86_default_features(
-      InstructionSetFeatures::FromVariant(kX86, "default", &error_msg));
+      InstructionSetFeatures::FromVariant(InstructionSet::kX86, "default", &error_msg));
   ASSERT_TRUE(x86_default_features.get() != nullptr) << error_msg;
-  EXPECT_EQ(x86_default_features->GetInstructionSet(), kX86);
+  EXPECT_EQ(x86_default_features->GetInstructionSet(), InstructionSet::kX86);
   EXPECT_TRUE(x86_default_features->Equals(x86_default_features.get()));
   EXPECT_STREQ("-ssse3,-sse4.1,-sse4.2,-avx,-avx2,-popcnt",
                x86_default_features->GetFeatureString().c_str());
@@ -93,9 +93,9 @@ TEST(X86InstructionSetFeaturesTest, X86FeaturesFromSandybridgeVariant) {
 
   // Build features for a 64-bit x86-64 sandybridge processor.
   std::unique_ptr<const InstructionSetFeatures> x86_64_features(
-      InstructionSetFeatures::FromVariant(kX86_64, "sandybridge", &error_msg));
+      InstructionSetFeatures::FromVariant(InstructionSet::kX86_64, "sandybridge", &error_msg));
   ASSERT_TRUE(x86_64_features.get() != nullptr) << error_msg;
-  EXPECT_EQ(x86_64_features->GetInstructionSet(), kX86_64);
+  EXPECT_EQ(x86_64_features->GetInstructionSet(), InstructionSet::kX86_64);
   EXPECT_TRUE(x86_64_features->Equals(x86_64_features.get()));
   EXPECT_STREQ("ssse3,sse4.1,sse4.2,-avx,-avx2,popcnt",
                x86_64_features->GetFeatureString().c_str());
@@ -110,9 +110,9 @@ TEST(X86InstructionSetFeaturesTest, X86FeaturesFromSilvermontVariant) {
   // Build features for a 32-bit x86 silvermont processor.
   std::string error_msg;
   std::unique_ptr<const InstructionSetFeatures> x86_features(
-      InstructionSetFeatures::FromVariant(kX86, "silvermont", &error_msg));
+      InstructionSetFeatures::FromVariant(InstructionSet::kX86, "silvermont", &error_msg));
   ASSERT_TRUE(x86_features.get() != nullptr) << error_msg;
-  EXPECT_EQ(x86_features->GetInstructionSet(), kX86);
+  EXPECT_EQ(x86_features->GetInstructionSet(), InstructionSet::kX86);
   EXPECT_TRUE(x86_features->Equals(x86_features.get()));
   EXPECT_STREQ("ssse3,sse4.1,sse4.2,-avx,-avx2,popcnt",
                x86_features->GetFeatureString().c_str());
@@ -120,9 +120,9 @@ TEST(X86InstructionSetFeaturesTest, X86FeaturesFromSilvermontVariant) {
 
   // Build features for a 32-bit x86 default processor.
   std::unique_ptr<const InstructionSetFeatures> x86_default_features(
-      InstructionSetFeatures::FromVariant(kX86, "default", &error_msg));
+      InstructionSetFeatures::FromVariant(InstructionSet::kX86, "default", &error_msg));
   ASSERT_TRUE(x86_default_features.get() != nullptr) << error_msg;
-  EXPECT_EQ(x86_default_features->GetInstructionSet(), kX86);
+  EXPECT_EQ(x86_default_features->GetInstructionSet(), InstructionSet::kX86);
   EXPECT_TRUE(x86_default_features->Equals(x86_default_features.get()));
   EXPECT_STREQ("-ssse3,-sse4.1,-sse4.2,-avx,-avx2,-popcnt",
                x86_default_features->GetFeatureString().c_str());
@@ -130,9 +130,9 @@ TEST(X86InstructionSetFeaturesTest, X86FeaturesFromSilvermontVariant) {
 
   // Build features for a 64-bit x86-64 silvermont processor.
   std::unique_ptr<const InstructionSetFeatures> x86_64_features(
-      InstructionSetFeatures::FromVariant(kX86_64, "silvermont", &error_msg));
+      InstructionSetFeatures::FromVariant(InstructionSet::kX86_64, "silvermont", &error_msg));
   ASSERT_TRUE(x86_64_features.get() != nullptr) << error_msg;
-  EXPECT_EQ(x86_64_features->GetInstructionSet(), kX86_64);
+  EXPECT_EQ(x86_64_features->GetInstructionSet(), InstructionSet::kX86_64);
   EXPECT_TRUE(x86_64_features->Equals(x86_64_features.get()));
   EXPECT_STREQ("ssse3,sse4.1,sse4.2,-avx,-avx2,popcnt",
                x86_64_features->GetFeatureString().c_str());

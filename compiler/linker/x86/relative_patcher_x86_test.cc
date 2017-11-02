@@ -23,7 +23,7 @@ namespace linker {
 
 class X86RelativePatcherTest : public RelativePatcherTest {
  public:
-  X86RelativePatcherTest() : RelativePatcherTest(kX86, "default") { }
+  X86RelativePatcherTest() : RelativePatcherTest(InstructionSet::kX86, "default") { }
 
  protected:
   static const uint8_t kCallRawCode[];
