@@ -97,3 +97,4 @@ JNI_OnLoad called
 callback
 Found constructor.
 Found constructors with 0 exceptions
+Received OOME
