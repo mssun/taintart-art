@@ -16,7 +16,7 @@
 
 package com.android.ahat;
 
-public class HtmlEscaper {
+class HtmlEscaper {
   /**
    * Escape html characters in the input string.
    */

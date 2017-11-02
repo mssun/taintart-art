@@ -27,7 +27,7 @@ public class AhatClassInstance extends AhatInstance {
   // the field types and names to save memory.
   private Value[] mFields;
 
-  public AhatClassInstance(long id) {
+  AhatClassInstance(long id) {
     super(id);
   }
 
@@ -36,7 +36,7 @@ public class AhatClassInstance extends AhatInstance {
   }
 
   @Override
-  protected long getExtraJavaSize() {
+  long getExtraJavaSize() {
     return 0;
   }
 
@@ -244,7 +244,7 @@ public class AhatClassInstance extends AhatInstance {
   }
 
   @Override
-  public RegisteredNativeAllocation asRegisteredNativeAllocation() {
+  RegisteredNativeAllocation asRegisteredNativeAllocation() {
     if (!isInstanceOfClass("sun.misc.Cleaner")) {
       return null;
     }

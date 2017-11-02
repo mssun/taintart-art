@@ -17,11 +17,11 @@
 package com.android.ahat.heapdump;
 
 public class HprofFormatException extends Exception {
-  public HprofFormatException(String msg) {
+  HprofFormatException(String msg) {
     super(msg);
   }
 
-  public HprofFormatException(String msg, Exception cause) {
+  HprofFormatException(String msg, Exception cause) {
     super(msg, cause);
   }
 }

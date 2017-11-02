@@ -23,7 +23,7 @@ package com.android.ahat.heapdump;
  * 'strong' is true if this is a strong reference, false if it is a
  * weak/soft/other reference.
  */
-public class Reference {
+class Reference {
   public final AhatInstance src;
   public final String field;
   public final AhatInstance ref;
