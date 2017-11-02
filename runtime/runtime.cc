@@ -208,7 +208,7 @@ Runtime::Runtime()
     : resolution_method_(nullptr),
       imt_conflict_method_(nullptr),
       imt_unimplemented_method_(nullptr),
-      instruction_set_(kNone),
+      instruction_set_(InstructionSet::kNone),
       compiler_callbacks_(nullptr),
       is_zygote_(false),
       must_relocate_(false),
@@ -1252,13 +1252,13 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
 
   // Change the implicit checks flags based on runtime architecture.
   switch (kRuntimeISA) {
-    case kArm:
-    case kThumb2:
-    case kX86:
-    case kArm64:
-    case kX86_64:
-    case kMips:
-    case kMips64:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
+    case InstructionSet::kX86:
+    case InstructionSet::kArm64:
+    case InstructionSet::kX86_64:
+    case InstructionSet::kMips:
+    case InstructionSet::kMips64:
       implicit_null_checks_ = true;
       // Installing stack protection does not play well with valgrind.
       implicit_so_checks_ = !(RUNNING_ON_MEMORY_TOOL && kMemoryToolIsValgrind);
@@ -1969,7 +1969,7 @@ ArtMethod* Runtime::CreateCalleeSaveMethod() {
   auto* method = CreateRuntimeMethod(GetClassLinker(), GetLinearAlloc());
   PointerSize pointer_size = GetInstructionSetPointerSize(instruction_set_);
   method->SetEntryPointFromQuickCompiledCodePtrSize(nullptr, pointer_size);
-  DCHECK_NE(instruction_set_, kNone);
+  DCHECK_NE(instruction_set_, InstructionSet::kNone);
   DCHECK(method->IsRuntimeMethod());
   return method;
 }
@@ -2026,32 +2026,32 @@ void Runtime::BroadcastForNewSystemWeaks(bool broadcast_for_checkpoint) {
 
 void Runtime::SetInstructionSet(InstructionSet instruction_set) {
   instruction_set_ = instruction_set;
-  if ((instruction_set_ == kThumb2) || (instruction_set_ == kArm)) {
+  if ((instruction_set_ == InstructionSet::kThumb2) || (instruction_set_ == InstructionSet::kArm)) {
     for (int i = 0; i != kCalleeSaveSize; ++i) {
       CalleeSaveType type = static_cast<CalleeSaveType>(i);
       callee_save_method_frame_infos_[i] = arm::ArmCalleeSaveMethodFrameInfo(type);
     }
-  } else if (instruction_set_ == kMips) {
+  } else if (instruction_set_ == InstructionSet::kMips) {
     for (int i = 0; i != kCalleeSaveSize; ++i) {
       CalleeSaveType type = static_cast<CalleeSaveType>(i);
       callee_save_method_frame_infos_[i] = mips::MipsCalleeSaveMethodFrameInfo(type);
     }
-  } else if (instruction_set_ == kMips64) {
+  } else if (instruction_set_ == InstructionSet::kMips64) {
     for (int i = 0; i != kCalleeSaveSize; ++i) {
       CalleeSaveType type = static_cast<CalleeSaveType>(i);
       callee_save_method_frame_infos_[i] = mips64::Mips64CalleeSaveMethodFrameInfo(type);
     }
-  } else if (instruction_set_ == kX86) {
+  } else if (instruction_set_ == InstructionSet::kX86) {
     for (int i = 0; i != kCalleeSaveSize; ++i) {
       CalleeSaveType type = static_cast<CalleeSaveType>(i);
       callee_save_method_frame_infos_[i] = x86::X86CalleeSaveMethodFrameInfo(type);
     }
-  } else if (instruction_set_ == kX86_64) {
+  } else if (instruction_set_ == InstructionSet::kX86_64) {
     for (int i = 0; i != kCalleeSaveSize; ++i) {
       CalleeSaveType type = static_cast<CalleeSaveType>(i);
       callee_save_method_frame_infos_[i] = x86_64::X86_64CalleeSaveMethodFrameInfo(type);
     }
-  } else if (instruction_set_ == kArm64) {
+  } else if (instruction_set_ == InstructionSet::kArm64) {
     for (int i = 0; i != kCalleeSaveSize; ++i) {
       CalleeSaveType type = static_cast<CalleeSaveType>(i);
       callee_save_method_frame_infos_[i] = arm64::Arm64CalleeSaveMethodFrameInfo(type);

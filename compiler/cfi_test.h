@@ -68,7 +68,7 @@ class CFITest : public dwarf::DwarfTest {
                                              : &Thread::DumpThreadOffset<PointerSize::k32>);
     std::unique_ptr<Disassembler> disasm(Disassembler::Create(isa, opts));
     std::stringstream stream;
-    const uint8_t* base = actual_asm.data() + (isa == kThumb2 ? 1 : 0);
+    const uint8_t* base = actual_asm.data() + (isa == InstructionSet::kThumb2 ? 1 : 0);
     disasm->Dump(stream, base, base + actual_asm.size());
     ReformatAsm(&stream, &lines);
     // Print CFI and assembly interleaved.

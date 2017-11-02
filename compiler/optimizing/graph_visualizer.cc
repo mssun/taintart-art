@@ -153,7 +153,7 @@ class HGraphVisualizerDisassembler {
     }
 
     const uint8_t* base = disassembler_->GetDisassemblerOptions()->base_address_;
-    if (instruction_set_ == kThumb2) {
+    if (instruction_set_ == InstructionSet::kThumb2) {
       // ARM and Thumb-2 use the same disassembler. The bottom bit of the
       // address is used to distinguish between the two.
       base += 1;

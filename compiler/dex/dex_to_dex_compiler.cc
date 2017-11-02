@@ -381,9 +381,9 @@ CompiledMethod* ArtCompileDEX(
       quicken_data.push_back(static_cast<uint8_t>(info.dex_member_index >> 8));
     }
     InstructionSet instruction_set = driver->GetInstructionSet();
-    if (instruction_set == kThumb2) {
+    if (instruction_set == InstructionSet::kThumb2) {
       // Don't use the thumb2 instruction set to avoid the one off code delta.
-      instruction_set = kArm;
+      instruction_set = InstructionSet::kArm;
     }
     return CompiledMethod::SwapAllocCompiledMethod(
         driver,

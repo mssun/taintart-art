@@ -47,7 +47,7 @@ class Mutex;
 class QuasiAtomic {
   static constexpr bool NeedSwapMutexes(InstructionSet isa) {
     // TODO - mips64 still need this for Cas64 ???
-    return (isa == kMips) || (isa == kMips64);
+    return (isa == InstructionSet::kMips) || (isa == InstructionSet::kMips64);
   }
 
  public:

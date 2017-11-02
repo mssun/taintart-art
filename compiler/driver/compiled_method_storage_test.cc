@@ -31,7 +31,7 @@ TEST(CompiledMethodStorage, Deduplicate) {
   CompilerDriver driver(&compiler_options,
                         &verification_results,
                         Compiler::kOptimizing,
-                        /* instruction_set_ */ kNone,
+                        /* instruction_set_ */ InstructionSet::kNone,
                         /* instruction_set_features */ nullptr,
                         /* image_classes */ nullptr,
                         /* compiled_classes */ nullptr,
@@ -91,7 +91,7 @@ TEST(CompiledMethodStorage, Deduplicate) {
         for (auto&& f : cfi_info) {
           for (auto&& p : patches) {
             compiled_methods.push_back(CompiledMethod::SwapAllocCompiledMethod(
-                &driver, kNone, c, 0u, 0u, 0u, s, v, f, p));
+                &driver, InstructionSet::kNone, c, 0u, 0u, 0u, s, v, f, p));
           }
         }
       }

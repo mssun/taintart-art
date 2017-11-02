@@ -153,15 +153,15 @@ class OptimizingCFITest : public CFITest {
   InternalCodeAllocator code_allocator_;
 };
 
-#define TEST_ISA(isa)                                         \
-  TEST_F(OptimizingCFITest, isa) {                            \
-    std::vector<uint8_t> expected_asm(                        \
-        expected_asm_##isa,                                   \
-        expected_asm_##isa + arraysize(expected_asm_##isa));  \
-    std::vector<uint8_t> expected_cfi(                        \
-        expected_cfi_##isa,                                   \
-        expected_cfi_##isa + arraysize(expected_cfi_##isa));  \
-    TestImpl(isa, #isa, expected_asm, expected_cfi);          \
+#define TEST_ISA(isa)                                                 \
+  TEST_F(OptimizingCFITest, isa) {                                    \
+    std::vector<uint8_t> expected_asm(                                \
+        expected_asm_##isa,                                           \
+        expected_asm_##isa + arraysize(expected_asm_##isa));          \
+    std::vector<uint8_t> expected_cfi(                                \
+        expected_cfi_##isa,                                           \
+        expected_cfi_##isa + arraysize(expected_cfi_##isa));          \
+    TestImpl(InstructionSet::isa, #isa, expected_asm, expected_cfi);  \
   }
 
 #ifdef ART_ENABLE_CODEGEN_arm
@@ -204,7 +204,7 @@ TEST_F(OptimizingCFITest, kThumb2Adjust) {
   std::vector<uint8_t> expected_cfi(
       expected_cfi_kThumb2_adjust,
       expected_cfi_kThumb2_adjust + arraysize(expected_cfi_kThumb2_adjust));
-  SetUpFrame(kThumb2);
+  SetUpFrame(InstructionSet::kThumb2);
 #define __ down_cast<arm::ArmVIXLAssembler*>(GetCodeGenerator() \
     ->GetAssembler())->GetVIXLAssembler()->
   vixl32::Label target;
@@ -216,7 +216,7 @@ TEST_F(OptimizingCFITest, kThumb2Adjust) {
   __ Bind(&target);
 #undef __
   Finish();
-  Check(kThumb2, "kThumb2_adjust", expected_asm, expected_cfi);
+  Check(InstructionSet::kThumb2, "kThumb2_adjust", expected_asm, expected_cfi);
 }
 #endif
 
@@ -235,7 +235,7 @@ TEST_F(OptimizingCFITest, kMipsAdjust) {
   std::vector<uint8_t> expected_cfi(
       expected_cfi_kMips_adjust,
       expected_cfi_kMips_adjust + arraysize(expected_cfi_kMips_adjust));
-  SetUpFrame(kMips);
+  SetUpFrame(InstructionSet::kMips);
 #define __ down_cast<mips::MipsAssembler*>(GetCodeGenerator()->GetAssembler())->
   mips::MipsLabel target;
   __ Beqz(mips::A0, &target);
@@ -246,7 +246,7 @@ TEST_F(OptimizingCFITest, kMipsAdjust) {
   __ Bind(&target);
 #undef __
   Finish();
-  Check(kMips, "kMips_adjust", expected_asm, expected_cfi);
+  Check(InstructionSet::kMips, "kMips_adjust", expected_asm, expected_cfi);
 }
 #endif
 
@@ -265,7 +265,7 @@ TEST_F(OptimizingCFITest, kMips64Adjust) {
   std::vector<uint8_t> expected_cfi(
       expected_cfi_kMips64_adjust,
       expected_cfi_kMips64_adjust + arraysize(expected_cfi_kMips64_adjust));
-  SetUpFrame(kMips64);
+  SetUpFrame(InstructionSet::kMips64);
 #define __ down_cast<mips64::Mips64Assembler*>(GetCodeGenerator()->GetAssembler())->
   mips64::Mips64Label target;
   __ Beqc(mips64::A1, mips64::A2, &target);
@@ -276,7 +276,7 @@ TEST_F(OptimizingCFITest, kMips64Adjust) {
   __ Bind(&target);
 #undef __
   Finish();
-  Check(kMips64, "kMips64_adjust", expected_asm, expected_cfi);
+  Check(InstructionSet::kMips64, "kMips64_adjust", expected_asm, expected_cfi);
 }
 #endif
 

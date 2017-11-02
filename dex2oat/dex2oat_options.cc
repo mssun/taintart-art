@@ -27,7 +27,7 @@ template<>
 struct CmdlineType<InstructionSet> : CmdlineTypeParser<InstructionSet> {
   Result Parse(const std::string& option) {
     InstructionSet set = GetInstructionSetFromString(option.c_str());
-    if (set == kNone) {
+    if (set == InstructionSet::kNone) {
       return Result::Failure(std::string("Not a valid instruction set: '") + option + "'");
     }
     return Result::Success(set);

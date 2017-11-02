@@ -94,7 +94,7 @@ OatHeader::OatHeader(InstructionSet instruction_set,
   memcpy(magic_, kOatMagic, sizeof(kOatMagic));
   memcpy(version_, kOatVersion, sizeof(kOatVersion));
 
-  CHECK_NE(instruction_set, kNone);
+  CHECK_NE(instruction_set, InstructionSet::kNone);
 
   // Flatten the map. Will also update variable_size_data_size_.
   Flatten(variable_data);

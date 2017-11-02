@@ -129,7 +129,7 @@ bool PatchOat::Patch(const std::string& image_location,
 
   TimingLogger::ScopedTiming t("Runtime Setup", timings);
 
-  CHECK_NE(isa, kNone);
+  CHECK_NE(isa, InstructionSet::kNone);
   const char* isa_name = GetInstructionSetString(isa);
 
   // Set up the runtime
@@ -807,7 +807,7 @@ static int patchoat(int argc, char **argv) {
 
   // cmd line args
   bool isa_set = false;
-  InstructionSet isa = kNone;
+  InstructionSet isa = InstructionSet::kNone;
   std::string input_image_location;
   std::string output_image_filename;
   off_t base_delta = 0;
@@ -824,7 +824,7 @@ static int patchoat(int argc, char **argv) {
       isa_set = true;
       const char* isa_str = option.substr(strlen("--instruction-set=")).data();
       isa = GetInstructionSetFromString(isa_str);
-      if (isa == kNone) {
+      if (isa == InstructionSet::kNone) {
         Usage("Unknown or invalid instruction set %s", isa_str);
       }
     } else if (option.starts_with("--input-image-location=")) {

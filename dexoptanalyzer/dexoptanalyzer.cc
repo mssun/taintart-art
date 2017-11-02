@@ -161,7 +161,7 @@ class DexoptAnalyzer FINAL {
       } else if (option.starts_with("--isa=")) {
         std::string isa_str = option.substr(strlen("--isa=")).ToString();
         isa_ = GetInstructionSetFromString(isa_str.c_str());
-        if (isa_ == kNone) {
+        if (isa_ == InstructionSet::kNone) {
           Usage("Invalid isa '%s'", option.data());
         }
       } else if (option.starts_with("--image=")) {

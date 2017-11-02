@@ -54,38 +54,38 @@ std::unique_ptr<ManagedRuntimeCallingConvention> ManagedRuntimeCallingConvention
     InstructionSet instruction_set) {
   switch (instruction_set) {
 #ifdef ART_ENABLE_CODEGEN_arm
-    case kArm:
-    case kThumb2:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
       return std::unique_ptr<ManagedRuntimeCallingConvention>(
           new (allocator) arm::ArmManagedRuntimeCallingConvention(
               is_static, is_synchronized, shorty));
 #endif
 #ifdef ART_ENABLE_CODEGEN_arm64
-    case kArm64:
+    case InstructionSet::kArm64:
       return std::unique_ptr<ManagedRuntimeCallingConvention>(
           new (allocator) arm64::Arm64ManagedRuntimeCallingConvention(
               is_static, is_synchronized, shorty));
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips
-    case kMips:
+    case InstructionSet::kMips:
       return std::unique_ptr<ManagedRuntimeCallingConvention>(
           new (allocator) mips::MipsManagedRuntimeCallingConvention(
               is_static, is_synchronized, shorty));
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips64
-    case kMips64:
+    case InstructionSet::kMips64:
       return std::unique_ptr<ManagedRuntimeCallingConvention>(
           new (allocator) mips64::Mips64ManagedRuntimeCallingConvention(
               is_static, is_synchronized, shorty));
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86
-    case kX86:
+    case InstructionSet::kX86:
       return std::unique_ptr<ManagedRuntimeCallingConvention>(
           new (allocator) x86::X86ManagedRuntimeCallingConvention(
               is_static, is_synchronized, shorty));
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86_64
-    case kX86_64:
+    case InstructionSet::kX86_64:
       return std::unique_ptr<ManagedRuntimeCallingConvention>(
           new (allocator) x86_64::X86_64ManagedRuntimeCallingConvention(
               is_static, is_synchronized, shorty));
@@ -156,38 +156,38 @@ std::unique_ptr<JniCallingConvention> JniCallingConvention::Create(ArenaAllocato
                                                                    InstructionSet instruction_set) {
   switch (instruction_set) {
 #ifdef ART_ENABLE_CODEGEN_arm
-    case kArm:
-    case kThumb2:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
       return std::unique_ptr<JniCallingConvention>(
           new (allocator) arm::ArmJniCallingConvention(
               is_static, is_synchronized, is_critical_native, shorty));
 #endif
 #ifdef ART_ENABLE_CODEGEN_arm64
-    case kArm64:
+    case InstructionSet::kArm64:
       return std::unique_ptr<JniCallingConvention>(
           new (allocator) arm64::Arm64JniCallingConvention(
               is_static, is_synchronized, is_critical_native, shorty));
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips
-    case kMips:
+    case InstructionSet::kMips:
       return std::unique_ptr<JniCallingConvention>(
           new (allocator) mips::MipsJniCallingConvention(
               is_static, is_synchronized, is_critical_native, shorty));
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips64
-    case kMips64:
+    case InstructionSet::kMips64:
       return std::unique_ptr<JniCallingConvention>(
           new (allocator) mips64::Mips64JniCallingConvention(
               is_static, is_synchronized, is_critical_native, shorty));
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86
-    case kX86:
+    case InstructionSet::kX86:
       return std::unique_ptr<JniCallingConvention>(
           new (allocator) x86::X86JniCallingConvention(
               is_static, is_synchronized, is_critical_native, shorty));
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86_64
-    case kX86_64:
+    case InstructionSet::kX86_64:
       return std::unique_ptr<JniCallingConvention>(
           new (allocator) x86_64::X86_64JniCallingConvention(
               is_static, is_synchronized, is_critical_native, shorty));

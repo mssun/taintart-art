@@ -89,7 +89,7 @@ Mips64FeaturesUniquePtr Mips64InstructionSetFeatures::FromAssembly() {
 }
 
 bool Mips64InstructionSetFeatures::Equals(const InstructionSetFeatures* other) const {
-  if (kMips64 != other->GetInstructionSet()) {
+  if (InstructionSet::kMips64 != other->GetInstructionSet()) {
     return false;
   }
   const Mips64InstructionSetFeatures* other_as_mips64 = other->AsMips64InstructionSetFeatures();

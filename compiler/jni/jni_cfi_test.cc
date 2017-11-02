@@ -102,13 +102,13 @@ class JNICFITest : public CFITest {
   }
 };
 
-#define TEST_ISA(isa) \
-  TEST_F(JNICFITest, isa) { \
-    std::vector<uint8_t> expected_asm(expected_asm_##isa, \
-        expected_asm_##isa + arraysize(expected_asm_##isa)); \
-    std::vector<uint8_t> expected_cfi(expected_cfi_##isa, \
-        expected_cfi_##isa + arraysize(expected_cfi_##isa)); \
-    TestImpl(isa, #isa, expected_asm, expected_cfi); \
+#define TEST_ISA(isa)                                                 \
+  TEST_F(JNICFITest, isa) {                                           \
+    std::vector<uint8_t> expected_asm(expected_asm_##isa,             \
+        expected_asm_##isa + arraysize(expected_asm_##isa));          \
+    std::vector<uint8_t> expected_cfi(expected_cfi_##isa,             \
+        expected_cfi_##isa + arraysize(expected_cfi_##isa));          \
+    TestImpl(InstructionSet::isa, #isa, expected_asm, expected_cfi);  \
   }
 
 #ifdef ART_ENABLE_CODEGEN_arm

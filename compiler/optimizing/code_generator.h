@@ -626,7 +626,7 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
 
   bool CallPushesPC() const {
     InstructionSet instruction_set = GetInstructionSet();
-    return instruction_set == kX86 || instruction_set == kX86_64;
+    return instruction_set == InstructionSet::kX86 || instruction_set == InstructionSet::kX86_64;
   }
 
   // Arm64 has its own type for a label, so we need to templatize these methods
