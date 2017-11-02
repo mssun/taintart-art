@@ -48,6 +48,7 @@
 #include "mirror/reference.h"
 #include "mirror/stack_trace_element.h"
 #include "mirror/string-inl.h"
+#include "mirror/var_handle.h"
 #include "scoped_thread_state_change-inl.h"
 #include "standard_dex_file.h"
 #include "thread-current-inl.h"
@@ -777,6 +778,39 @@ struct CallSiteOffsets : public CheckOffsets<mirror::CallSite> {
   }
 };
 
+struct VarHandleOffsets : public CheckOffsets<mirror::VarHandle> {
+  VarHandleOffsets() : CheckOffsets<mirror::VarHandle>(
+      false, "Ljava/lang/invoke/VarHandle;") {
+    addOffset(OFFSETOF_MEMBER(mirror::VarHandle, access_modes_bit_mask_), "accessModesBitMask");
+    addOffset(OFFSETOF_MEMBER(mirror::VarHandle, coordinate_type0_), "coordinateType0");
+    addOffset(OFFSETOF_MEMBER(mirror::VarHandle, coordinate_type1_), "coordinateType1");
+    addOffset(OFFSETOF_MEMBER(mirror::VarHandle, var_type_), "varType");
+  }
+};
+
+struct FieldVarHandleOffsets : public CheckOffsets<mirror::FieldVarHandle> {
+  FieldVarHandleOffsets() : CheckOffsets<mirror::FieldVarHandle>(
+      false, "Ljava/lang/invoke/FieldVarHandle;") {
+    addOffset(OFFSETOF_MEMBER(mirror::FieldVarHandle, art_field_), "artField");
+  }
+};
+
+struct ByteArrayViewVarHandleOffsets : public CheckOffsets<mirror::ByteArrayViewVarHandle> {
+  ByteArrayViewVarHandleOffsets() : CheckOffsets<mirror::ByteArrayViewVarHandle>(
+      false, "Ljava/lang/invoke/ByteArrayViewVarHandle;") {
+    addOffset(OFFSETOF_MEMBER(mirror::ByteArrayViewVarHandle, native_byte_order_),
+              "nativeByteOrder");
+  }
+};
+
+struct ByteBufferViewVarHandleOffsets : public CheckOffsets<mirror::ByteBufferViewVarHandle> {
+  ByteBufferViewVarHandleOffsets() : CheckOffsets<mirror::ByteBufferViewVarHandle>(
+      false, "Ljava/lang/invoke/ByteBufferViewVarHandle;") {
+    addOffset(OFFSETOF_MEMBER(mirror::ByteBufferViewVarHandle, native_byte_order_),
+              "nativeByteOrder");
+  }
+};
+
 // C++ fields must exactly match the fields in the Java classes. If this fails,
 // reorder the fields in the C++ class. Managed class fields are ordered by
 // ClassLinker::LinkFields.
@@ -802,6 +836,10 @@ TEST_F(ClassLinkerTest, ValidateFieldOrderOfJavaCppUnionClasses) {
   EXPECT_TRUE(MethodHandlesLookupOffsets().Check());
   EXPECT_TRUE(EmulatedStackFrameOffsets().Check());
   EXPECT_TRUE(CallSiteOffsets().Check());
+  EXPECT_TRUE(VarHandleOffsets().Check());
+  EXPECT_TRUE(FieldVarHandleOffsets().Check());
+  EXPECT_TRUE(ByteArrayViewVarHandleOffsets().Check());
+  EXPECT_TRUE(ByteBufferViewVarHandleOffsets().Check());
 }
 
 TEST_F(ClassLinkerTest, FindClassNonexistent) {
