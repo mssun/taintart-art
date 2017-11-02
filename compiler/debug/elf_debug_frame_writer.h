@@ -37,8 +37,8 @@ static void WriteCIE(InstructionSet isa,
   // debugger that its value in the previous frame is not recoverable.
   bool is64bit = Is64BitInstructionSet(isa);
   switch (isa) {
-    case kArm:
-    case kThumb2: {
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2: {
       dwarf::DebugFrameOpCodeWriter<> opcodes;
       opcodes.DefCFA(Reg::ArmCore(13), 0);  // R13(SP).
       // core registers.
@@ -61,7 +61,7 @@ static void WriteCIE(InstructionSet isa,
       WriteCIE(is64bit, return_reg, opcodes, format, buffer);
       return;
     }
-    case kArm64: {
+    case InstructionSet::kArm64: {
       dwarf::DebugFrameOpCodeWriter<> opcodes;
       opcodes.DefCFA(Reg::Arm64Core(31), 0);  // R31(SP).
       // core registers.
@@ -84,8 +84,8 @@ static void WriteCIE(InstructionSet isa,
       WriteCIE(is64bit, return_reg, opcodes, format, buffer);
       return;
     }
-    case kMips:
-    case kMips64: {
+    case InstructionSet::kMips:
+    case InstructionSet::kMips64: {
       dwarf::DebugFrameOpCodeWriter<> opcodes;
       opcodes.DefCFA(Reg::MipsCore(29), 0);  // R29(SP).
       // core registers.
@@ -108,7 +108,7 @@ static void WriteCIE(InstructionSet isa,
       WriteCIE(is64bit, return_reg, opcodes, format, buffer);
       return;
     }
-    case kX86: {
+    case InstructionSet::kX86: {
       // FIXME: Add fp registers once libunwind adds support for them. Bug: 20491296
       constexpr bool generate_opcodes_for_x86_fp = false;
       dwarf::DebugFrameOpCodeWriter<> opcodes;
@@ -134,7 +134,7 @@ static void WriteCIE(InstructionSet isa,
       WriteCIE(is64bit, return_reg, opcodes, format, buffer);
       return;
     }
-    case kX86_64: {
+    case InstructionSet::kX86_64: {
       dwarf::DebugFrameOpCodeWriter<> opcodes;
       opcodes.DefCFA(Reg::X86_64Core(4), 8);  // R4(RSP).
       opcodes.Offset(Reg::X86_64Core(16), -8);  // R16(RIP).
@@ -160,7 +160,7 @@ static void WriteCIE(InstructionSet isa,
       WriteCIE(is64bit, return_reg, opcodes, format, buffer);
       return;
     }
-    case kNone:
+    case InstructionSet::kNone:
       break;
   }
   LOG(FATAL) << "Cannot write CIE frame for ISA " << isa;

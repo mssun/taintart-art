@@ -1132,7 +1132,7 @@ void CodeGeneratorMIPS::Finalize(CodeAllocator* allocator) {
   StackMapStream* stack_map_stream = GetStackMapStream();
   for (size_t i = 0, num = stack_map_stream->GetNumberOfStackMaps(); i != num; ++i) {
     uint32_t old_position =
-        stack_map_stream->GetStackMap(i).native_pc_code_offset.Uint32Value(kMips);
+        stack_map_stream->GetStackMap(i).native_pc_code_offset.Uint32Value(InstructionSet::kMips);
     uint32_t new_position = __ GetAdjustedPosition(old_position);
     DCHECK_GE(new_position, old_position);
     stack_map_stream->SetStackMapNativePcOffset(i, new_position);
@@ -1347,13 +1347,14 @@ static dwarf::Reg DWARFReg(Register reg) {
 void CodeGeneratorMIPS::GenerateFrameEntry() {
   __ Bind(&frame_entry_label_);
 
-  bool do_overflow_check = FrameNeedsStackCheck(GetFrameSize(), kMips) || !IsLeafMethod();
+  bool do_overflow_check =
+      FrameNeedsStackCheck(GetFrameSize(), InstructionSet::kMips) || !IsLeafMethod();
 
   if (do_overflow_check) {
     __ LoadFromOffset(kLoadWord,
                       ZERO,
                       SP,
-                      -static_cast<int32_t>(GetStackOverflowReservedBytes(kMips)));
+                      -static_cast<int32_t>(GetStackOverflowReservedBytes(InstructionSet::kMips)));
     RecordPcInfo(nullptr, 0);
   }
 
@@ -1365,8 +1366,9 @@ void CodeGeneratorMIPS::GenerateFrameEntry() {
   }
 
   // Make sure the frame size isn't unreasonably large.
-  if (GetFrameSize() > GetStackOverflowReservedBytes(kMips)) {
-    LOG(FATAL) << "Stack frame larger than " << GetStackOverflowReservedBytes(kMips) << " bytes";
+  if (GetFrameSize() > GetStackOverflowReservedBytes(InstructionSet::kMips)) {
+    LOG(FATAL) << "Stack frame larger than "
+        << GetStackOverflowReservedBytes(InstructionSet::kMips) << " bytes";
   }
 
   // Spill callee-saved registers.

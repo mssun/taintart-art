@@ -342,7 +342,7 @@ inline vixl::aarch64::Extend ExtendFromOpKind(HDataProcWithShifterOp::OpKind op_
 }
 
 inline bool ShifterOperandSupportsExtension(HInstruction* instruction) {
-  DCHECK(HasShifterOperand(instruction, kArm64));
+  DCHECK(HasShifterOperand(instruction, InstructionSet::kArm64));
   // Although the `neg` instruction is an alias of the `sub` instruction, `HNeg`
   // does *not* support extension. This is because the `extended register` form
   // of the `sub` instruction interprets the left register with code 31 as the

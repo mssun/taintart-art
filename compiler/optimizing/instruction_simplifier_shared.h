@@ -41,7 +41,8 @@ inline bool CanFitInShifterOperand(HInstruction* instruction) {
 inline bool HasShifterOperand(HInstruction* instr, InstructionSet isa) {
   // On ARM64 `neg` instructions are an alias of `sub` using the zero register
   // as the first register input.
-  bool res = instr->IsAdd() || instr->IsAnd() || (isa == kArm64 && instr->IsNeg()) ||
+  bool res = instr->IsAdd() || instr->IsAnd() ||
+      (isa == InstructionSet::kArm64 && instr->IsNeg()) ||
       instr->IsOr() || instr->IsSub() || instr->IsXor();
   return res;
 }

@@ -68,19 +68,19 @@ class ElfDebugLineWriter {
     int code_factor_bits_ = 0;
     int dwarf_isa = -1;
     switch (isa) {
-      case kArm:  // arm actually means thumb2.
-      case kThumb2:
+      case InstructionSet::kArm:  // arm actually means thumb2.
+      case InstructionSet::kThumb2:
         code_factor_bits_ = 1;  // 16-bit instuctions
         dwarf_isa = 1;  // DW_ISA_ARM_thumb.
         break;
-      case kArm64:
-      case kMips:
-      case kMips64:
+      case InstructionSet::kArm64:
+      case InstructionSet::kMips:
+      case InstructionSet::kMips64:
         code_factor_bits_ = 2;  // 32-bit instructions
         break;
-      case kNone:
-      case kX86:
-      case kX86_64:
+      case InstructionSet::kNone:
+      case InstructionSet::kX86:
+      case InstructionSet::kX86_64:
         break;
     }
     std::unordered_set<uint64_t> seen_addresses(compilation_unit.methods.size());

@@ -292,7 +292,7 @@ TEST_F(UtilsTest, GetDalvikCache) {
 
 TEST_F(UtilsTest, GetSystemImageFilename) {
   EXPECT_STREQ("/system/framework/arm/boot.art",
-               GetSystemImageFilename("/system/framework/boot.art", kArm).c_str());
+               GetSystemImageFilename("/system/framework/boot.art", InstructionSet::kArm).c_str());
 }
 
 TEST_F(UtilsTest, ExecSuccess) {

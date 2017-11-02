@@ -290,7 +290,8 @@ CompilerDriver::CompilerDriver(
       verification_results_(verification_results),
       compiler_(Compiler::Create(this, compiler_kind)),
       compiler_kind_(compiler_kind),
-      instruction_set_(instruction_set == kArm ? kThumb2 : instruction_set),
+      instruction_set_(
+          instruction_set == InstructionSet::kArm ? InstructionSet::kThumb2 : instruction_set),
       instruction_set_features_(instruction_set_features),
       requires_constructor_barrier_lock_("constructor barrier lock"),
       non_relative_linker_patch_count_(0u),
@@ -451,13 +452,13 @@ static optimizer::DexToDexCompilationLevel GetDexToDexCompilationLevel(
 // GetQuickGenericJniStub allowing down calls that aren't compiled using a JNI compiler?
 static bool InstructionSetHasGenericJniStub(InstructionSet isa) {
   switch (isa) {
-    case kArm:
-    case kArm64:
-    case kThumb2:
-    case kMips:
-    case kMips64:
-    case kX86:
-    case kX86_64: return true;
+    case InstructionSet::kArm:
+    case InstructionSet::kArm64:
+    case InstructionSet::kThumb2:
+    case InstructionSet::kMips:
+    case InstructionSet::kMips64:
+    case InstructionSet::kX86:
+    case InstructionSet::kX86_64: return true;
     default: return false;
   }
 }

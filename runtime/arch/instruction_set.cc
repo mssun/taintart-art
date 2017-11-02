@@ -26,14 +26,14 @@ namespace art {
 
 void InstructionSetAbort(InstructionSet isa) {
   switch (isa) {
-    case kArm:
-    case kThumb2:
-    case kArm64:
-    case kX86:
-    case kX86_64:
-    case kMips:
-    case kMips64:
-    case kNone:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
+    case InstructionSet::kArm64:
+    case InstructionSet::kX86:
+    case InstructionSet::kX86_64:
+    case InstructionSet::kMips:
+    case InstructionSet::kMips64:
+    case InstructionSet::kNone:
       LOG(FATAL) << "Unsupported instruction set " << isa;
       UNREACHABLE();
   }
@@ -43,20 +43,20 @@ void InstructionSetAbort(InstructionSet isa) {
 
 const char* GetInstructionSetString(InstructionSet isa) {
   switch (isa) {
-    case kArm:
-    case kThumb2:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
       return "arm";
-    case kArm64:
+    case InstructionSet::kArm64:
       return "arm64";
-    case kX86:
+    case InstructionSet::kX86:
       return "x86";
-    case kX86_64:
+    case InstructionSet::kX86_64:
       return "x86_64";
-    case kMips:
+    case InstructionSet::kMips:
       return "mips";
-    case kMips64:
+    case InstructionSet::kMips64:
       return "mips64";
-    case kNone:
+    case InstructionSet::kNone:
       return "none";
   }
   LOG(FATAL) << "Unknown ISA " << isa;
@@ -67,62 +67,62 @@ InstructionSet GetInstructionSetFromString(const char* isa_str) {
   CHECK(isa_str != nullptr);
 
   if (strcmp("arm", isa_str) == 0) {
-    return kArm;
+    return InstructionSet::kArm;
   } else if (strcmp("arm64", isa_str) == 0) {
-    return kArm64;
+    return InstructionSet::kArm64;
   } else if (strcmp("x86", isa_str) == 0) {
-    return kX86;
+    return InstructionSet::kX86;
   } else if (strcmp("x86_64", isa_str) == 0) {
-    return kX86_64;
+    return InstructionSet::kX86_64;
   } else if (strcmp("mips", isa_str) == 0) {
-    return kMips;
+    return InstructionSet::kMips;
   } else if (strcmp("mips64", isa_str) == 0) {
-    return kMips64;
+    return InstructionSet::kMips64;
   }
 
-  return kNone;
+  return InstructionSet::kNone;
 }
 
 InstructionSet GetInstructionSetFromELF(uint16_t e_machine, uint32_t e_flags) {
   switch (e_machine) {
     case EM_ARM:
-      return kArm;
+      return InstructionSet::kArm;
     case EM_AARCH64:
-      return kArm64;
+      return InstructionSet::kArm64;
     case EM_386:
-      return kX86;
+      return InstructionSet::kX86;
     case EM_X86_64:
-      return kX86_64;
+      return InstructionSet::kX86_64;
     case EM_MIPS: {
       if ((e_flags & EF_MIPS_ARCH) == EF_MIPS_ARCH_32R2 ||
           (e_flags & EF_MIPS_ARCH) == EF_MIPS_ARCH_32R6) {
-        return kMips;
+        return InstructionSet::kMips;
       } else if ((e_flags & EF_MIPS_ARCH) == EF_MIPS_ARCH_64R6) {
-        return kMips64;
+        return InstructionSet::kMips64;
       }
       break;
     }
   }
-  return kNone;
+  return InstructionSet::kNone;
 }
 
 size_t GetInstructionSetAlignment(InstructionSet isa) {
   switch (isa) {
-    case kArm:
+    case InstructionSet::kArm:
       // Fall-through.
-    case kThumb2:
+    case InstructionSet::kThumb2:
       return kArmAlignment;
-    case kArm64:
+    case InstructionSet::kArm64:
       return kArm64Alignment;
-    case kX86:
+    case InstructionSet::kX86:
       // Fall-through.
-    case kX86_64:
+    case InstructionSet::kX86_64:
       return kX86Alignment;
-    case kMips:
+    case InstructionSet::kMips:
       // Fall-through.
-    case kMips64:
+    case InstructionSet::kMips64:
       return kMipsAlignment;
-    case kNone:
+    case InstructionSet::kNone:
       LOG(FATAL) << "ISA kNone does not have alignment.";
       UNREACHABLE();
   }
@@ -171,26 +171,26 @@ static_assert(ART_FRAME_SIZE_LIMIT < kX86_64StackOverflowReservedBytes,
 
 size_t GetStackOverflowReservedBytes(InstructionSet isa) {
   switch (isa) {
-    case kArm:      // Intentional fall-through.
-    case kThumb2:
+    case InstructionSet::kArm:      // Intentional fall-through.
+    case InstructionSet::kThumb2:
       return kArmStackOverflowReservedBytes;
 
-    case kArm64:
+    case InstructionSet::kArm64:
       return kArm64StackOverflowReservedBytes;
 
-    case kMips:
+    case InstructionSet::kMips:
       return kMipsStackOverflowReservedBytes;
 
-    case kMips64:
+    case InstructionSet::kMips64:
       return kMips64StackOverflowReservedBytes;
 
-    case kX86:
+    case InstructionSet::kX86:
       return kX86StackOverflowReservedBytes;
 
-    case kX86_64:
+    case InstructionSet::kX86_64:
       return kX86_64StackOverflowReservedBytes;
 
-    case kNone:
+    case InstructionSet::kNone:
       LOG(FATAL) << "kNone has no stack overflow size";
       UNREACHABLE();
   }

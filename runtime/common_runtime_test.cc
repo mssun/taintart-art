@@ -334,26 +334,26 @@ std::string CommonRuntimeTestImpl::GetAndroidHostToolsDir() {
 
 std::string CommonRuntimeTestImpl::GetAndroidTargetToolsDir(InstructionSet isa) {
   switch (isa) {
-    case kArm:
-    case kThumb2:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
       return GetAndroidToolsDir("prebuilts/gcc/linux-x86/arm",
                                 "arm-linux-androideabi",
                                 "arm-linux-androideabi");
-    case kArm64:
+    case InstructionSet::kArm64:
       return GetAndroidToolsDir("prebuilts/gcc/linux-x86/aarch64",
                                 "aarch64-linux-android",
                                 "aarch64-linux-android");
-    case kX86:
-    case kX86_64:
+    case InstructionSet::kX86:
+    case InstructionSet::kX86_64:
       return GetAndroidToolsDir("prebuilts/gcc/linux-x86/x86",
                                 "x86_64-linux-android",
                                 "x86_64-linux-android");
-    case kMips:
-    case kMips64:
+    case InstructionSet::kMips:
+    case InstructionSet::kMips64:
       return GetAndroidToolsDir("prebuilts/gcc/linux-x86/mips",
                                 "mips64el-linux-android",
                                 "mips64el-linux-android");
-    case kNone:
+    case InstructionSet::kNone:
       break;
   }
   ADD_FAILURE() << "Invalid isa " << isa;

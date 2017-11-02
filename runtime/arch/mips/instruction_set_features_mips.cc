@@ -168,7 +168,7 @@ MipsFeaturesUniquePtr MipsInstructionSetFeatures::FromAssembly() {
 }
 
 bool MipsInstructionSetFeatures::Equals(const InstructionSetFeatures* other) const {
-  if (kMips != other->GetInstructionSet()) {
+  if (InstructionSet::kMips != other->GetInstructionSet()) {
     return false;
   }
   const MipsInstructionSetFeatures* other_as_mips = other->AsMipsInstructionSetFeatures();

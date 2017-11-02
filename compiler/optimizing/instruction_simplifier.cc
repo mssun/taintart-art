@@ -250,7 +250,7 @@ bool InstructionSimplifierVisitor::TryCombineVecMultiplyAccumulate(HVecMul* mul)
   DataType::Type type = mul->GetPackedType();
   InstructionSet isa = codegen_->GetInstructionSet();
   switch (isa) {
-    case kArm64:
+    case InstructionSet::kArm64:
       if (!(type == DataType::Type::kUint8 ||
             type == DataType::Type::kInt8 ||
             type == DataType::Type::kUint16 ||
@@ -259,8 +259,8 @@ bool InstructionSimplifierVisitor::TryCombineVecMultiplyAccumulate(HVecMul* mul)
         return false;
       }
       break;
-    case kMips:
-    case kMips64:
+    case InstructionSet::kMips:
+    case InstructionSet::kMips64:
       if (!(type == DataType::Type::kUint8 ||
             type == DataType::Type::kInt8 ||
             type == DataType::Type::kUint16 ||

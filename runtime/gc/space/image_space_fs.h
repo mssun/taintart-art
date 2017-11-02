@@ -89,7 +89,7 @@ static void DeleteDirectoryContents(const std::string& dir, bool recurse) {
 // Adapted from prune_dex_cache(const char* subdir) in frameworks/native/cmds/installd/commands.c
 // Note this should only be used during first boot.
 static void PruneDalvikCache(InstructionSet isa) {
-  CHECK_NE(isa, kNone);
+  CHECK_NE(isa, InstructionSet::kNone);
   // Prune the base /data/dalvik-cache.
   // Note: GetDalvikCache may return the empty string if the directory doesn't
   // exist. It is safe to pass "" to DeleteDirectoryContents, so this is okay.

@@ -29,7 +29,7 @@ namespace linker {
 class Arm64RelativePatcherTest : public RelativePatcherTest {
  public:
   explicit Arm64RelativePatcherTest(const std::string& variant)
-      : RelativePatcherTest(kArm64, variant) { }
+      : RelativePatcherTest(InstructionSet::kArm64, variant) { }
 
  protected:
   static const uint8_t kCallRawCode[];
@@ -153,7 +153,8 @@ class Arm64RelativePatcherTest : public RelativePatcherTest {
     // There may be a thunk before method2.
     if (last_result.second != last_method_offset) {
       // Thunk present. Check that there's only one.
-      uint32_t thunk_end = CompiledCode::AlignCode(gap_end, kArm64) + MethodCallThunkSize();
+      uint32_t thunk_end =
+          CompiledCode::AlignCode(gap_end, InstructionSet::kArm64) + MethodCallThunkSize();
       uint32_t header_offset = thunk_end + CodeAlignmentSize(thunk_end);
       CHECK_EQ(last_result.second, header_offset + sizeof(OatQuickMethodHeader));
     }
@@ -347,7 +348,8 @@ class Arm64RelativePatcherTest : public RelativePatcherTest {
     CHECK_EQ(compiled_method_refs_[0].index, 1u);
     CHECK_EQ(compiled_method_refs_.size(), compiled_methods_.size());
     uint32_t method1_size = compiled_methods_[0]->GetQuickCode().size();
-    uint32_t thunk_offset = CompiledCode::AlignCode(method1_offset + method1_size, kArm64);
+    uint32_t thunk_offset =
+        CompiledCode::AlignCode(method1_offset + method1_size, InstructionSet::kArm64);
     uint32_t b_diff = thunk_offset - (method1_offset + num_nops * 4u);
     CHECK_ALIGNED(b_diff, 4u);
     ASSERT_LT(b_diff, 128 * MB);
@@ -602,7 +604,7 @@ TEST_F(Arm64RelativePatcherTestDefault, CallTrampolineTooFar) {
 
   // Check linked code.
   uint32_t thunk_offset =
-      CompiledCode::AlignCode(last_method_offset + last_method_code.size(), kArm64);
+      CompiledCode::AlignCode(last_method_offset + last_method_code.size(), InstructionSet::kArm64);
   uint32_t diff = thunk_offset - (last_method_offset + bl_offset_in_last_method);
   CHECK_ALIGNED(diff, 4u);
   ASSERT_LT(diff, 128 * MB);
@@ -688,8 +690,7 @@ TEST_F(Arm64RelativePatcherTestDefault, CallOtherJustTooFarAfter) {
   ASSERT_TRUE(IsAligned<kArm64Alignment>(last_method_offset));
   uint32_t last_method_header_offset = last_method_offset - sizeof(OatQuickMethodHeader);
   uint32_t thunk_size = MethodCallThunkSize();
-  uint32_t thunk_offset =
-      RoundDown(last_method_header_offset - thunk_size, GetInstructionSetAlignment(kArm64));
+  uint32_t thunk_offset = RoundDown(last_method_header_offset - thunk_size, kArm64Alignment);
   DCHECK_EQ(thunk_offset + thunk_size + CodeAlignmentSize(thunk_offset + thunk_size),
             last_method_header_offset);
   uint32_t diff = thunk_offset - (method1_offset + bl_offset_in_method1);
@@ -721,7 +722,7 @@ TEST_F(Arm64RelativePatcherTestDefault, CallOtherJustTooFarBefore) {
 
   // Check linked code.
   uint32_t thunk_offset =
-      CompiledCode::AlignCode(last_method_offset + last_method_code.size(), kArm64);
+      CompiledCode::AlignCode(last_method_offset + last_method_code.size(), InstructionSet::kArm64);
   uint32_t diff = thunk_offset - (last_method_offset + bl_offset_in_last_method);
   CHECK_ALIGNED(diff, 4u);
   ASSERT_LT(diff, 128 * MB);

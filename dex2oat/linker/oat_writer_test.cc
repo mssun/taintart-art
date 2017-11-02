@@ -392,7 +392,7 @@ TEST_F(OatTest, WriteRead) {
 
   // TODO: make selectable.
   Compiler::Kind compiler_kind = Compiler::kQuick;
-  InstructionSet insn_set = kIsTargetBuild ? kThumb2 : kX86;
+  InstructionSet insn_set = kIsTargetBuild ? InstructionSet::kThumb2 : InstructionSet::kX86;
   std::string error_msg;
   SetupCompiler(compiler_kind, insn_set, std::vector<std::string>(), /*out*/ &error_msg);
 
@@ -491,7 +491,7 @@ TEST_F(OatTest, OatHeaderSizeCheck) {
 }
 
 TEST_F(OatTest, OatHeaderIsValid) {
-  InstructionSet insn_set = kX86;
+  InstructionSet insn_set = InstructionSet::kX86;
   std::string error_msg;
   std::unique_ptr<const InstructionSetFeatures> insn_features(
     InstructionSetFeatures::FromVariant(insn_set, "default", &error_msg));
@@ -516,7 +516,7 @@ TEST_F(OatTest, EmptyTextSection) {
   // TODO: make selectable.
   Compiler::Kind compiler_kind = Compiler::kQuick;
   InstructionSet insn_set = kRuntimeISA;
-  if (insn_set == kArm) insn_set = kThumb2;
+  if (insn_set == InstructionSet::kArm) insn_set = InstructionSet::kThumb2;
   std::string error_msg;
   std::vector<std::string> compiler_options;
   compiler_options.push_back("--compiler-filter=extract");
@@ -844,7 +844,7 @@ TEST_F(OatTest, ZipFileInputWithEmptyDex) {
 }
 
 TEST_F(OatTest, UpdateChecksum) {
-  InstructionSet insn_set = kX86;
+  InstructionSet insn_set = InstructionSet::kX86;
   std::string error_msg;
   std::unique_ptr<const InstructionSetFeatures> insn_features(
     InstructionSetFeatures::FromVariant(insn_set, "default", &error_msg));

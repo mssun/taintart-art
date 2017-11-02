@@ -171,7 +171,7 @@ class X86JNIMacroAssembler FINAL : public JNIMacroAssemblerFwd<X86Assembler, Poi
 class X86JNIMacroLabel FINAL
     : public JNIMacroLabelCommon<X86JNIMacroLabel,
                                  art::Label,
-                                 kX86> {
+                                 InstructionSet::kX86> {
  public:
   art::Label* AsX86() {
     return AsPlatformLabel();

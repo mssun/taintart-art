@@ -467,7 +467,7 @@ class OatFileAssistant {
 
   // In a properly constructed OatFileAssistant object, isa_ should be either
   // the 32 or 64 bit variant for the current device.
-  const InstructionSet isa_ = kNone;
+  const InstructionSet isa_ = InstructionSet::kNone;
 
   // Whether we will attempt to load oat files executable.
   bool load_executable_ = false;

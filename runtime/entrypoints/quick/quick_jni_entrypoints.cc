@@ -232,7 +232,7 @@ extern uint64_t GenericJniMethodEnd(Thread* self,
     }
     switch (return_shorty_char) {
       case 'F': {
-        if (kRuntimeISA == kX86) {
+        if (kRuntimeISA == InstructionSet::kX86) {
           // Convert back the result to float.
           double d = bit_cast<double, uint64_t>(result_f);
           return bit_cast<uint32_t, float>(static_cast<float>(d));

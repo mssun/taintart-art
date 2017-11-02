@@ -168,7 +168,7 @@ class OatSymbolizer FINAL {
       bss->WriteNoBitsSection(oat_file_->BssSize());
     }
 
-    if (isa == kMips || isa == kMips64) {
+    if (isa == InstructionSet::kMips || isa == InstructionSet::kMips64) {
       builder_->WriteMIPSabiflagsSection();
     }
     builder_->PrepareDynamicSection(elf_file->GetPath(),
@@ -916,7 +916,7 @@ class OatDumper {
 
   void AddOffsets(const OatFile::OatMethod& oat_method) {
     uint32_t code_offset = oat_method.GetCodeOffset();
-    if (oat_file_.GetOatHeader().GetInstructionSet() == kThumb2) {
+    if (oat_file_.GetOatHeader().GetInstructionSet() == InstructionSet::kThumb2) {
       code_offset &= ~0x1;
     }
     offsets_.insert(code_offset);
@@ -2269,7 +2269,7 @@ class ImageDumper {
     if (Runtime::Current()->GetClassLinker()->IsQuickResolutionStub(quick_code)) {
       quick_code = oat_dumper_->GetQuickOatCode(m);
     }
-    if (oat_dumper_->GetInstructionSet() == kThumb2) {
+    if (oat_dumper_->GetInstructionSet() == InstructionSet::kThumb2) {
       quick_code = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(quick_code) & ~0x1);
     }
     return quick_code;

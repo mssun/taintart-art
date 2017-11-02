@@ -235,7 +235,7 @@ class Arm64JNIMacroAssembler FINAL : public JNIMacroAssemblerFwd<Arm64Assembler,
 class Arm64JNIMacroLabel FINAL
     : public JNIMacroLabelCommon<Arm64JNIMacroLabel,
                                  vixl::aarch64::Label,
-                                 kArm64> {
+                                 InstructionSet::kArm64> {
  public:
   vixl::aarch64::Label* AsArm64() {
     return AsPlatformLabel();

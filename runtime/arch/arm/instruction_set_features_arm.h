@@ -52,7 +52,7 @@ class ArmInstructionSetFeatures FINAL : public InstructionSetFeatures {
   bool HasAtLeast(const InstructionSetFeatures* other) const OVERRIDE;
 
   InstructionSet GetInstructionSet() const OVERRIDE {
-    return kArm;
+    return InstructionSet::kArm;
   }
 
   uint32_t AsBitmap() const OVERRIDE;

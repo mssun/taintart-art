@@ -148,7 +148,7 @@ struct CmdlineArgs {
       } else if (option.starts_with("--instruction-set=")) {
         StringPiece instruction_set_str = option.substr(strlen("--instruction-set=")).data();
         instruction_set_ = GetInstructionSetFromString(instruction_set_str.data());
-        if (instruction_set_ == kNone) {
+        if (instruction_set_ == InstructionSet::kNone) {
           fprintf(stderr, "Unsupported instruction set %s\n", instruction_set_str.data());
           PrintUsage();
           return false;
@@ -263,7 +263,7 @@ struct CmdlineArgs {
 
         DBG_LOG << "boot_image_location parent_dir_name was " << parent_dir_name;
 
-        if (GetInstructionSetFromString(parent_dir_name.c_str()) != kNone) {
+        if (GetInstructionSetFromString(parent_dir_name.c_str()) != InstructionSet::kNone) {
           *error_msg = "Do not specify the architecture as part of the boot image location";
           return false;
         }

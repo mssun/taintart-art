@@ -70,13 +70,13 @@ RegisterAllocator::~RegisterAllocator() {
 
 bool RegisterAllocator::CanAllocateRegistersFor(const HGraph& graph ATTRIBUTE_UNUSED,
                                                 InstructionSet instruction_set) {
-  return instruction_set == kArm
-      || instruction_set == kArm64
-      || instruction_set == kMips
-      || instruction_set == kMips64
-      || instruction_set == kThumb2
-      || instruction_set == kX86
-      || instruction_set == kX86_64;
+  return instruction_set == InstructionSet::kArm
+      || instruction_set == InstructionSet::kArm64
+      || instruction_set == InstructionSet::kMips
+      || instruction_set == InstructionSet::kMips64
+      || instruction_set == InstructionSet::kThumb2
+      || instruction_set == InstructionSet::kX86
+      || instruction_set == InstructionSet::kX86_64;
 }
 
 class AllRangesIterator : public ValueObject {

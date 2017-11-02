@@ -247,15 +247,15 @@ std::unique_ptr<const std::vector<uint8_t>> CreateTrampoline64(InstructionSet is
   ArenaAllocator allocator(&pool);
   switch (isa) {
 #ifdef ART_ENABLE_CODEGEN_arm64
-    case kArm64:
+    case InstructionSet::kArm64:
       return arm64::CreateTrampoline(&allocator, abi, offset);
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips64
-    case kMips64:
+    case InstructionSet::kMips64:
       return mips64::CreateTrampoline(&allocator, abi, offset);
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86_64
-    case kX86_64:
+    case InstructionSet::kX86_64:
       return x86_64::CreateTrampoline(&allocator, offset);
 #endif
     default:
@@ -273,16 +273,16 @@ std::unique_ptr<const std::vector<uint8_t>> CreateTrampoline32(InstructionSet is
   ArenaAllocator allocator(&pool);
   switch (isa) {
 #ifdef ART_ENABLE_CODEGEN_arm
-    case kArm:
-    case kThumb2:
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2:
       return arm::CreateTrampoline(&allocator, abi, offset);
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips
-    case kMips:
+    case InstructionSet::kMips:
       return mips::CreateTrampoline(&allocator, abi, offset);
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86
-    case kX86:
+    case InstructionSet::kX86:
       UNUSED(abi);
       return x86::CreateTrampoline(&allocator, offset);
 #endif

@@ -84,7 +84,7 @@ class InstructionSimplifierArmVisitor : public HGraphVisitor {
 bool InstructionSimplifierArmVisitor::TryMergeIntoShifterOperand(HInstruction* use,
                                                                  HInstruction* bitfield_op,
                                                                  bool do_merge) {
-  DCHECK(HasShifterOperand(use, kArm));
+  DCHECK(HasShifterOperand(use, InstructionSet::kArm));
   DCHECK(use->IsBinaryOperation());
   DCHECK(CanFitInShifterOperand(bitfield_op));
   DCHECK(!bitfield_op->HasEnvironmentUses());
@@ -166,7 +166,7 @@ bool InstructionSimplifierArmVisitor::TryMergeIntoUsersShifterOperand(HInstructi
   // Check whether we can merge the instruction in all its users' shifter operand.
   for (const HUseListNode<HInstruction*>& use : uses) {
     HInstruction* user = use.GetUser();
-    if (!HasShifterOperand(user, kArm)) {
+    if (!HasShifterOperand(user, InstructionSet::kArm)) {
       return false;
     }
     if (!CanMergeIntoShifterOperand(user, bitfield_op)) {
@@ -242,7 +242,7 @@ void InstructionSimplifierArmVisitor::VisitArraySet(HArraySet* instruction) {
 }
 
 void InstructionSimplifierArmVisitor::VisitMul(HMul* instruction) {
-  if (TryCombineMultiplyAccumulate(instruction, kArm)) {
+  if (TryCombineMultiplyAccumulate(instruction, InstructionSet::kArm)) {
     RecordSimplification();
   }
 }
