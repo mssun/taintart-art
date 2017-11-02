@@ -27,6 +27,9 @@ namespace art {
 // Open file and read magic number
 File OpenAndReadMagic(const char* filename, uint32_t* magic, std::string* error_msg);
 
+// Read magic number and reset pointer to SEEK_SET.
+bool ReadMagicAndReset(int fd, uint32_t* magic, std::string* error_msg);
+
 // Check whether the given magic matches a known file type.
 bool IsZipMagic(uint32_t magic);
 
