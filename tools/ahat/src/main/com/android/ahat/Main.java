@@ -31,8 +31,10 @@ import java.text.ParseException;
 import java.util.concurrent.Executors;
 
 public class Main {
+  private Main() {
+  }
 
-  public static void help(PrintStream out) {
+  private static void help(PrintStream out) {
     out.println("java -jar ahat.jar [OPTIONS] FILE");
     out.println("  Launch an http server for viewing the given Android heap dump FILE.");
     out.println("");

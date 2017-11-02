@@ -28,7 +28,7 @@ public enum Type {
   LONG("long", 8);
 
   public final String name;
-  public final int size;
+  final int size;
 
   Type(String name, int size) {
     this.name = name;

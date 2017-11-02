@@ -101,7 +101,7 @@ public class ProguardMap {
   private Map<String, ClassData> mClassesFromObfuscatedName = new HashMap<String, ClassData>();
 
   public static class Frame {
-    public Frame(String method, String signature, String filename, int line) {
+    Frame(String method, String signature, String filename, int line) {
       this.method = method;
       this.signature = signature;
       this.filename = filename;
