@@ -71,14 +71,33 @@ std::ostream& operator << (std::ostream& stream, const OatFileAssistant::OatStat
 
 OatFileAssistant::OatFileAssistant(const char* dex_location,
                                    const InstructionSet isa,
+                                   bool load_executable)
+    : OatFileAssistant(dex_location,
+                       isa, load_executable,
+                       -1 /* vdex_fd */,
+                       -1 /* oat_fd */,
+                       -1 /* zip_fd */) {}
+
+
+OatFileAssistant::OatFileAssistant(const char* dex_location,
+                                   const InstructionSet isa,
                                    bool load_executable,
                                    int vdex_fd,
-                                   int oat_fd)
+                                   int oat_fd,
+                                   int zip_fd)
     : isa_(isa),
       load_executable_(load_executable),
       odex_(this, /*is_oat_location*/ false),
-      oat_(this, /*is_oat_location*/ true) {
+      oat_(this, /*is_oat_location*/ true),
+      zip_fd_(zip_fd) {
   CHECK(dex_location != nullptr) << "OatFileAssistant: null dex location";
+
+  if (zip_fd < 0) {
+    CHECK_LE(oat_fd, 0) << "zip_fd must be provided with valid oat_fd. zip_fd=" << zip_fd
+      << " oat_fd=" << oat_fd;
+    CHECK_LE(vdex_fd, 0) << "zip_fd must be provided with valid vdex_fd. zip_fd=" << zip_fd
+      << " vdex_fd=" << vdex_fd;;
+  }
 
   // Try to get the realpath for the dex location.
   //
@@ -113,18 +132,20 @@ OatFileAssistant::OatFileAssistant(const char* dex_location,
   std::string error_msg;
   std::string odex_file_name;
   if (DexLocationToOdexFilename(dex_location_, isa_, &odex_file_name, &error_msg)) {
-    odex_.Reset(odex_file_name, vdex_fd, oat_fd);
+    odex_.Reset(odex_file_name, UseFdToReadFiles(), vdex_fd, oat_fd);
   } else {
     LOG(WARNING) << "Failed to determine odex file name: " << error_msg;
   }
 
-  // Get the oat filename.
-  std::string oat_file_name;
-  if (DexLocationToOatFilename(dex_location_, isa_, &oat_file_name, &error_msg)) {
-    oat_.Reset(oat_file_name);
-  } else {
-    LOG(WARNING) << "Failed to determine oat file name for dex location "
-        << dex_location_ << ": " << error_msg;
+  if (!UseFdToReadFiles()) {
+    // Get the oat filename.
+    std::string oat_file_name;
+    if (DexLocationToOatFilename(dex_location_, isa_, &oat_file_name, &error_msg)) {
+      oat_.Reset(oat_file_name, false /* use_fd */);
+    } else {
+      LOG(WARNING) << "Failed to determine oat file name for dex location "
+                   << dex_location_ << ": " << error_msg;
+    }
   }
 
   // Check if the dex directory is writable.
@@ -134,9 +155,11 @@ OatFileAssistant::OatFileAssistant(const char* dex_location,
   size_t pos = dex_location_.rfind('/');
   if (pos == std::string::npos) {
     LOG(WARNING) << "Failed to determine dex file parent directory: " << dex_location_;
-  } else {
+  } else if (!UseFdToReadFiles()) {
+    // We cannot test for parent access when using file descriptors. That's ok
+    // because in this case we will always pick the odex file anyway.
     std::string parent = dex_location_.substr(0, pos);
-    if (access(parent.c_str(), W_OK) == 0 || oat_fd > 0) {
+    if (access(parent.c_str(), W_OK) == 0) {
       dex_parent_writable_ = true;
     } else {
       VLOG(oat) << "Dex parent of " << dex_location_ << " is not writable: " << strerror(errno);
@@ -149,6 +172,10 @@ OatFileAssistant::~OatFileAssistant() {
   if (flock_.get() != nullptr) {
     unlink(flock_->GetPath().c_str());
   }
+}
+
+bool OatFileAssistant::UseFdToReadFiles() {
+  return zip_fd_ >= 0;
 }
 
 bool OatFileAssistant::IsInBootClassPath() {
@@ -237,6 +264,9 @@ OatFileAssistant::ResultOfAttemptToUpdate
 OatFileAssistant::MakeUpToDate(bool profile_changed,
                                ClassLoaderContext* class_loader_context,
                                std::string* error_msg) {
+  // The method doesn't use zip_fd_ and directly opens dex files at dex_locations_.
+  CHECK_EQ(-1, zip_fd_) << "MakeUpToDate should not be called with zip_fd";
+
   CompilerFilter::Filter target;
   if (!GetRuntimeCompilerFilterOption(&target, error_msg)) {
     return kUpdateNotAttempted;
@@ -869,7 +899,8 @@ const std::vector<uint32_t>* OatFileAssistant::GetRequiredDexChecksums() {
     std::string error_msg;
     if (DexFileLoader::GetMultiDexChecksums(dex_location_.c_str(),
                                             &cached_required_dex_checksums_,
-                                            &error_msg)) {
+                                            &error_msg,
+                                            zip_fd_)) {
       required_dex_checksums_found_ = true;
       has_original_dex_files_ = true;
     } else {
@@ -932,7 +963,7 @@ const OatFileAssistant::ImageInfo* OatFileAssistant::GetImageInfo() {
 OatFileAssistant::OatFileInfo& OatFileAssistant::GetBestInfo() {
   // TODO(calin): Document the side effects of class loading when
   // running dalvikvm command line.
-  if (dex_parent_writable_) {
+  if (dex_parent_writable_ || UseFdToReadFiles()) {
     // If the parent of the dex file is writable it means that we can
     // create the odex file. In this case we unconditionally pick the odex
     // as the best oat file. This corresponds to the regular use case when
@@ -1021,26 +1052,28 @@ OatFileAssistant::OatStatus OatFileAssistant::OatFileInfo::Status() {
       std::string error_msg;
       std::string vdex_filename = GetVdexFilename(filename_);
       std::unique_ptr<VdexFile> vdex;
-      if (vdex_fd_ == -1) {
+      if (use_fd_) {
+        if (vdex_fd_ >= 0) {
+          struct stat s;
+          int rc = TEMP_FAILURE_RETRY(fstat(vdex_fd_, &s));
+          if (rc == -1) {
+            error_msg = StringPrintf("Failed getting length of the vdex file %s.", strerror(errno));
+          } else {
+            vdex = VdexFile::Open(vdex_fd_,
+                                  s.st_size,
+                                  vdex_filename,
+                                  false /*writable*/,
+                                  false /*low_4gb*/,
+                                  false /* unquicken */,
+                                  &error_msg);
+          }
+        }
+      } else {
         vdex = VdexFile::Open(vdex_filename,
                               false /*writeable*/,
                               false /*low_4gb*/,
                               false /*unquicken*/,
                               &error_msg);
-      } else {
-        struct stat s;
-        int rc = TEMP_FAILURE_RETRY(fstat(vdex_fd_, &s));
-        if (rc == -1) {
-          PLOG(WARNING) << "Failed getting length of vdex file";
-        } else {
-          vdex = VdexFile::Open(vdex_fd_,
-                                s.st_size,
-                                vdex_filename,
-                                false /*writable*/,
-                                false /*low_4gb*/,
-                                false /* unquicken */,
-                                &error_msg);
-        }
       }
       if (vdex == nullptr) {
         status_ = kOatCannotOpen;
@@ -1116,16 +1149,18 @@ const OatFile* OatFileAssistant::OatFileInfo::GetFile() {
     load_attempted_ = true;
     if (filename_provided_) {
       std::string error_msg;
-      if (oat_fd_ != -1 && vdex_fd_ != -1) {
-        file_.reset(OatFile::Open(vdex_fd_,
-                                  oat_fd_,
-                                  filename_.c_str(),
-                                  nullptr,
-                                  nullptr,
-                                  oat_file_assistant_->load_executable_,
-                                  false /* low_4gb */,
-                                  oat_file_assistant_->dex_location_.c_str(),
-                                  &error_msg));
+      if (use_fd_) {
+        if (oat_fd_ >= 0 && vdex_fd_ >= 0) {
+          file_.reset(OatFile::Open(vdex_fd_,
+                                    oat_fd_,
+                                    filename_.c_str(),
+                                    nullptr,
+                                    nullptr,
+                                    oat_file_assistant_->load_executable_,
+                                    false /* low_4gb */,
+                                    oat_file_assistant_->dex_location_.c_str(),
+                                    &error_msg));
+        }
       } else {
         file_.reset(OatFile::Open(filename_.c_str(),
                                   filename_.c_str(),
@@ -1203,10 +1238,11 @@ void OatFileAssistant::OatFileInfo::Reset() {
   status_attempted_ = false;
 }
 
-void OatFileAssistant::OatFileInfo::Reset(const std::string& filename, int vdex_fd,
+void OatFileAssistant::OatFileInfo::Reset(const std::string& filename, bool use_fd, int vdex_fd,
                                           int oat_fd) {
   filename_provided_ = true;
   filename_ = filename;
+  use_fd_ = use_fd;
   vdex_fd_ = vdex_fd;
   oat_fd_ = oat_fd;
   Reset();
