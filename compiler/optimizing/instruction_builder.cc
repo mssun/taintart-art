@@ -382,16 +382,18 @@ ArenaBitVector* HInstructionBuilder::FindNativeDebugInfoLocations() {
   dex_file_->DecodeDebugPositionInfo(&code_item_, Callback::Position, locations);
   // Instruction-specific tweaks.
   IterationRange<DexInstructionIterator> instructions = code_item_.Instructions();
-  for (const Instruction& inst : instructions) {
-    switch (inst.Opcode()) {
+  for (DexInstructionIterator it = instructions.begin(); it != instructions.end(); ++it) {
+    switch (it->Opcode()) {
       case Instruction::MOVE_EXCEPTION: {
         // Stop in native debugger after the exception has been moved.
         // The compiler also expects the move at the start of basic block so
         // we do not want to interfere by inserting native-debug-info before it.
-        locations->ClearBit(inst.GetDexPc(code_item_.insns_));
-        const Instruction* next = inst.Next();
-        if (DexInstructionIterator(next) != instructions.end()) {
-          locations->SetBit(next->GetDexPc(code_item_.insns_));
+        locations->ClearBit(it.DexPc());
+        DexInstructionIterator next = it;
+        ++next;
+        DCHECK(next != it);
+        if (next != instructions.end()) {
+          locations->SetBit(next.DexPc());
         }
         break;
       }

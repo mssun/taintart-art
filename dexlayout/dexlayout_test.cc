@@ -724,7 +724,7 @@ TEST_F(DexLayoutTest, CodeItemOverrun) {
             }
             if (last_instruction->SizeInCodeUnits() == 1) {
               // Set the opcode to something that will go past the end of the code item.
-              const_cast<Instruction*>(last_instruction.Inst())->SetOpcode(
+              const_cast<Instruction&>(last_instruction.Inst()).SetOpcode(
                   Instruction::CONST_STRING_JUMBO);
               mutated_successfully = true;
               // Test that the safe iterator doesn't go past the end.
