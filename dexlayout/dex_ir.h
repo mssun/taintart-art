@@ -952,8 +952,8 @@ class CodeItem : public Item {
   void Accept(AbstractDispatcher* dispatch) { dispatch->Dispatch(this); }
 
   IterationRange<DexInstructionIterator> Instructions() const {
-    return MakeIterationRange(DexInstructionIterator(Insns()),
-                              DexInstructionIterator(Insns() + InsnsSize()));
+    return MakeIterationRange(DexInstructionIterator(Insns(), 0u),
+                              DexInstructionIterator(Insns(), InsnsSize()));
   }
 
  private:
