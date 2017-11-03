@@ -276,6 +276,83 @@ public class Main {
     }
   }
 
+  // This case tests a bug found in LSA where LSA doesn't understand IntermediateAddress,
+  // and incorrectly reported no alias between ArraySet1 and ArrayGet2,
+  // thus ArrayGet2 is scheduled above ArraySet1 incorrectly.
+
+  /// CHECK-START-ARM64: void Main.CrossOverLoop(int[], int[]) scheduler (before)
+  /// CHECK:     <<ParamA:l\d+>>       ParameterValue                           loop:none
+  /// CHECK:     <<ParamB:l\d+>>       ParameterValue                           loop:none
+  /// CHECK:     <<NullB:l\d+>>        NullCheck [<<ParamB>>]                   loop:none
+  /// CHECK:     <<NullA:l\d+>>        NullCheck [<<ParamA>>]                   loop:none
+  /// CHECK:                           Phi                                      loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK:     <<ArrayGet1:i\d+>>    ArrayGet [<<NullB>>,{{i\d+}}]            loop:<<Loop>>      outer_loop:none
+  /// CHECK:                           Add                                      loop:<<Loop>>      outer_loop:none
+  /// CHECK:     <<Addr1:i\d+>>        IntermediateAddress [<<NullA>>,{{i\d+}}] loop:<<Loop>>      outer_loop:none
+  /// CHECK:     <<ArraySet1:v\d+>>    ArraySet [<<Addr1>>,{{i\d+}},{{i\d+}}]   loop:<<Loop>>      outer_loop:none
+  /// CHECK:     <<ArrayGet2:i\d+>>    ArrayGet [<<NullB>>,{{i\d+}}]            loop:<<Loop>>      outer_loop:none
+  /// CHECK:                           Add                                      loop:<<Loop>>      outer_loop:none
+  /// CHECK:     <<Addr2:i\d+>>        IntermediateAddress [<<NullA>>,{{i\d+}}] loop:<<Loop>>      outer_loop:none
+  /// CHECK:     <<ArraySet2:v\d+>>    ArraySet [<<Addr2>>,{{i\d+}},{{i\d+}}]   loop:<<Loop>>      outer_loop:none
+  /// CHECK:                           Add                                      loop:<<Loop>>      outer_loop:none
+
+  /// CHECK-START-ARM64: void Main.CrossOverLoop(int[], int[]) scheduler (after)
+  /// CHECK:     <<ParamA:l\d+>>       ParameterValue                           loop:none
+  /// CHECK:     <<ParamB:l\d+>>       ParameterValue                           loop:none
+  /// CHECK:     <<NullB:l\d+>>        NullCheck [<<ParamB>>]                   loop:none
+  /// CHECK:     <<NullA:l\d+>>        NullCheck [<<ParamA>>]                   loop:none
+  /// CHECK:                           Phi                                      loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK:     <<ArrayGet1:i\d+>>    ArrayGet [<<NullB>>,{{i\d+}}]            loop:<<Loop>>      outer_loop:none
+  /// CHECK:                           Add                                      loop:<<Loop>>      outer_loop:none
+  /// CHECK:     <<Addr1:i\d+>>        IntermediateAddress [<<NullA>>,{{i\d+}}] loop:<<Loop>>      outer_loop:none
+  /// CHECK:     <<ArraySet1:v\d+>>    ArraySet [<<Addr1>>,{{i\d+}},{{i\d+}}]   loop:<<Loop>>      outer_loop:none
+  /// CHECK:     <<ArrayGet2:i\d+>>    ArrayGet [<<NullB>>,{{i\d+}}]            loop:<<Loop>>      outer_loop:none
+  /// CHECK:                           Add                                      loop:<<Loop>>      outer_loop:none
+  /// CHECK:     <<Addr2:i\d+>>        IntermediateAddress [<<NullA>>,{{i\d+}}] loop:<<Loop>>      outer_loop:none
+  /// CHECK:     <<ArraySet2:v\d+>>    ArraySet [<<Addr2>>,{{i\d+}},{{i\d+}}]   loop:<<Loop>>      outer_loop:none
+  /// CHECK:                           Add                                      loop:<<Loop>>      outer_loop:none
+  private static void CrossOverLoop(int a[], int b[]) {
+    b[20] = 99;
+    for (int i = 0; i < a.length; i++) {
+      a[i] = b[20] - 7;
+      i++;
+      a[i] = b[20] - 7;
+    }
+  }
+
+  // This test case is similar to above cross over loop,
+  // but has more complex chains of transforming the original references:
+  // ParameterValue --> BoundType --> NullCheck --> ArrayGet.
+  // ParameterValue --> BoundType --> NullCheck --> IntermediateAddress --> ArraySet.
+  // After using LSA to analyze the orginal references, the scheduler should be able
+  // to find out that 'a' and 'b' may alias, hence unable to schedule these ArraGet/Set.
+
+  /// CHECK-START-ARM64: void Main.CrossOverLoop2(java.lang.Object, java.lang.Object) scheduler (before)
+  /// CHECK:  Phi        loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK:  ArrayGet   loop:<<Loop>>      outer_loop:none
+  /// CHECK:  Add        loop:<<Loop>>      outer_loop:none
+  /// CHECK:  ArraySet   loop:<<Loop>>      outer_loop:none
+  /// CHECK:  ArrayGet   loop:<<Loop>>      outer_loop:none
+  /// CHECK:  Add        loop:<<Loop>>      outer_loop:none
+  /// CHECK:  ArraySet   loop:<<Loop>>      outer_loop:none
+
+  /// CHECK-START-ARM64: void Main.CrossOverLoop2(java.lang.Object, java.lang.Object) scheduler (after)
+  /// CHECK:  Phi        loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK:  ArrayGet   loop:<<Loop>>      outer_loop:none
+  /// CHECK:  Add        loop:<<Loop>>      outer_loop:none
+  /// CHECK:  ArraySet   loop:<<Loop>>      outer_loop:none
+  /// CHECK:  ArrayGet   loop:<<Loop>>      outer_loop:none
+  /// CHECK:  Add        loop:<<Loop>>      outer_loop:none
+  /// CHECK:  ArraySet   loop:<<Loop>>      outer_loop:none
+  private static void CrossOverLoop2(Object a, Object b) {
+    ((int[])b)[20] = 99;
+    for (int i = 0; i < ((int[])a).length; i++) {
+      ((int[])a)[i] = ((int[])b)[20] - 7;
+      i++;
+      ((int[])a)[i] = ((int[])b)[20] - 7;
+    }
+  }
+
   /// CHECK-START-ARM: void Main.accessFields() scheduler (before)
   /// CHECK:            InstanceFieldGet
   /// CHECK:            Add
