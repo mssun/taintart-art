@@ -32,6 +32,7 @@ public class Main {
         FloatSelect.main(null);
         NativeProxy.main(args);
         ConstructorProxy.main();
+        OOMEOnDispatch.main(args);
     }
 
     // The following code maps from the actual proxy class names (eg $Proxy2) to their test output
