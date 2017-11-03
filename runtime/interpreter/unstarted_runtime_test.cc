@@ -393,7 +393,6 @@ TEST_F(UnstartedRuntimeTest, StringInit) {
 
   // create instruction data for invoke-direct {v0, v1} of method with fake index
   uint16_t inst_data[3] = { 0x2070, 0x0000, 0x0010 };
-  DexInstructionIterator inst(inst_data);
 
   JValue result;
   ShadowFrame* shadow_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, method, 0);
@@ -403,7 +402,12 @@ TEST_F(UnstartedRuntimeTest, StringInit) {
   shadow_frame->SetVRegReference(0, reference_empty_string);
   shadow_frame->SetVRegReference(1, string_arg);
 
-  interpreter::DoCall<false, false>(method, self, *shadow_frame, &*inst, inst_data[0], &result);
+  interpreter::DoCall<false, false>(method,
+                                    self,
+                                    *shadow_frame,
+                                    Instruction::At(inst_data),
+                                    inst_data[0],
+                                    &result);
   mirror::String* string_result = reinterpret_cast<mirror::String*>(result.GetL());
   EXPECT_EQ(string_arg->GetLength(), string_result->GetLength());
 
@@ -1027,12 +1031,16 @@ TEST_F(UnstartedRuntimeTest, FloatConversion) {
 
   // create instruction data for invoke-direct {v0, v1} of method with fake index
   uint16_t inst_data[3] = { 0x2070, 0x0000, 0x0010 };
-  DexInstructionIterator inst(inst_data);
 
   JValue result;
   ShadowFrame* shadow_frame = ShadowFrame::CreateDeoptimizedFrame(10, nullptr, method, 0);
   shadow_frame->SetVRegDouble(0, 1.23);
-  interpreter::DoCall<false, false>(method, self, *shadow_frame, &*inst, inst_data[0], &result);
+  interpreter::DoCall<false, false>(method,
+                                    self,
+                                    *shadow_frame,
+                                    Instruction::At(inst_data),
+                                    inst_data[0],
+                                    &result);
   ObjPtr<mirror::String> string_result = reinterpret_cast<mirror::String*>(result.GetL());
   ASSERT_TRUE(string_result != nullptr);
 
@@ -1187,12 +1195,11 @@ class UnstartedClassForNameTest : public UnstartedRuntimeTest {
 
       // create instruction data for invoke-direct {v0} of method with fake index
       uint16_t inst_data[3] = { 0x1070, 0x0000, 0x0010 };
-      DexInstructionIterator inst(inst_data);
 
       interpreter::DoCall<false, false>(boot_cp_init,
                                         self,
                                         *shadow_frame,
-                                        &*inst,
+                                        Instruction::At(inst_data),
                                         inst_data[0],
                                         &result);
       CHECK(!self->IsExceptionPending());
