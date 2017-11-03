@@ -24,6 +24,9 @@ namespace art {
 // CompactDex is a currently ART internal dex file format that aims to reduce storage/RAM usage.
 class CompactDexFile : public DexFile {
  public:
+  class Header : public DexFile::Header {
+    // Same for now.
+  };
   static constexpr uint8_t kDexMagic[kDexMagicSize] = { 'c', 'd', 'e', 'x' };
   static constexpr uint8_t kDexMagicVersion[] = {'0', '0', '1', '\0'};
 
