@@ -196,8 +196,12 @@ class HeapLocationCollector : public HGraphVisitor {
   }
 
   HInstruction* HuntForOriginalReference(HInstruction* ref) const {
+    // An original reference can be transformed by instructions like:
+    //   i0 NewArray
+    //   i1 HInstruction(i0)  <-- NullCheck, BoundType, IntermediateAddress.
+    //   i2 ArrayGet(i1, index)
     DCHECK(ref != nullptr);
-    while (ref->IsNullCheck() || ref->IsBoundType()) {
+    while (ref->IsNullCheck() || ref->IsBoundType() || ref->IsIntermediateAddress()) {
       ref = ref->InputAt(0);
     }
     return ref;

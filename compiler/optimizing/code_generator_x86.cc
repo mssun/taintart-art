@@ -7825,6 +7825,16 @@ void CodeGeneratorX86::EmitJitRootPatches(uint8_t* code, const uint8_t* roots_da
   }
 }
 
+void LocationsBuilderX86::VisitIntermediateAddress(HIntermediateAddress* instruction
+                                                   ATTRIBUTE_UNUSED) {
+  LOG(FATAL) << "Unreachable";
+}
+
+void InstructionCodeGeneratorX86::VisitIntermediateAddress(HIntermediateAddress* instruction
+                                                           ATTRIBUTE_UNUSED) {
+  LOG(FATAL) << "Unreachable";
+}
+
 #undef __
 
 }  // namespace x86

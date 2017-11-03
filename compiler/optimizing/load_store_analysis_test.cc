@@ -389,4 +389,68 @@ TEST_F(LoadStoreAnalysisTest, ArrayIndexCalculationOverflowTest) {
   ASSERT_FALSE(heap_location_collector.MayAlias(loc1, loc2));
 }
 
+TEST_F(LoadStoreAnalysisTest, TestHuntOriginalRef) {
+  HBasicBlock* entry = new (GetAllocator()) HBasicBlock(graph_);
+  graph_->AddBlock(entry);
+  graph_->SetEntryBlock(entry);
+
+  // Different ways where orignal array reference are transformed & passed to ArrayGet.
+  // ParameterValue --> ArrayGet
+  // ParameterValue --> BoundType --> ArrayGet
+  // ParameterValue --> BoundType --> NullCheck --> ArrayGet
+  // ParameterValue --> BoundType --> NullCheck --> IntermediateAddress --> ArrayGet
+  HInstruction* c1 = graph_->GetIntConstant(1);
+  HInstruction* array = new (GetAllocator()) HParameterValue(graph_->GetDexFile(),
+                                                             dex::TypeIndex(0),
+                                                             0,
+                                                             DataType::Type::kReference);
+  HInstruction* array_get1 = new (GetAllocator()) HArrayGet(array,
+                                                            c1,
+                                                            DataType::Type::kInt32,
+                                                            0);
+
+  HInstruction* bound_type = new (GetAllocator()) HBoundType(array);
+  HInstruction* array_get2 = new (GetAllocator()) HArrayGet(bound_type,
+                                                            c1,
+                                                            DataType::Type::kInt32,
+                                                            0);
+
+  HInstruction* null_check = new (GetAllocator()) HNullCheck(bound_type, 0);
+  HInstruction* array_get3 = new (GetAllocator()) HArrayGet(null_check,
+                                                            c1,
+                                                            DataType::Type::kInt32,
+                                                            0);
+
+  HInstruction* inter_addr = new (GetAllocator()) HIntermediateAddress(null_check, c1, 0);
+  HInstruction* array_get4 = new (GetAllocator()) HArrayGet(inter_addr,
+                                                            c1,
+                                                            DataType::Type::kInt32,
+                                                            0);
+  entry->AddInstruction(array);
+  entry->AddInstruction(array_get1);
+  entry->AddInstruction(bound_type);
+  entry->AddInstruction(array_get2);
+  entry->AddInstruction(null_check);
+  entry->AddInstruction(array_get3);
+  entry->AddInstruction(inter_addr);
+  entry->AddInstruction(array_get4);
+
+  HeapLocationCollector heap_location_collector(graph_);
+  heap_location_collector.VisitBasicBlock(entry);
+
+  // Test that the HeapLocationCollector should be able to tell
+  // that there is only ONE array location, no matter how many
+  // times the original reference has been transformed by BoundType,
+  // NullCheck, IntermediateAddress, etc.
+  ASSERT_EQ(heap_location_collector.GetNumberOfHeapLocations(), 1U);
+  size_t loc1 = heap_location_collector.GetArrayAccessHeapLocation(array, c1);
+  size_t loc2 = heap_location_collector.GetArrayAccessHeapLocation(bound_type, c1);
+  size_t loc3 = heap_location_collector.GetArrayAccessHeapLocation(null_check, c1);
+  size_t loc4 = heap_location_collector.GetArrayAccessHeapLocation(inter_addr, c1);
+  ASSERT_TRUE(loc1 != HeapLocationCollector::kHeapLocationNotFound);
+  ASSERT_EQ(loc1, loc2);
+  ASSERT_EQ(loc1, loc3);
+  ASSERT_EQ(loc1, loc4);
+}
+
 }  // namespace art
