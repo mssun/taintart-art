@@ -64,12 +64,11 @@ void VerifiedMethod::GenerateSafeCastSet(verifier::MethodVerifier* method_verifi
   if (method_verifier->HasFailures()) {
     return;
   }
-  IterationRange<DexInstructionIterator> instructions = method_verifier->CodeItem()->Instructions();
-  for (auto it = instructions.begin(); it != instructions.end(); ++it) {
-    const Instruction& inst = *it;
+  for (const DexInstructionPcPair& pair : method_verifier->CodeItem()->Instructions()) {
+    const Instruction& inst = pair.Inst();
     const Instruction::Code code = inst.Opcode();
     if (code == Instruction::CHECK_CAST) {
-      const uint32_t dex_pc = it.GetDexPC(instructions.begin());
+      const uint32_t dex_pc = pair.DexPc();
       if (!method_verifier->GetInstructionFlags(dex_pc).IsVisited()) {
         // Do not attempt to quicken this instruction, it's unreachable anyway.
         continue;

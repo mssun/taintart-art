@@ -919,10 +919,9 @@ static void CheckLoopEntriesCanBeUsedForOsr(const HGraph& graph,
   }
   ArenaVector<size_t> covered(
       loop_headers.size(), 0, graph.GetAllocator()->Adapter(kArenaAllocMisc));
-  IterationRange<DexInstructionIterator> instructions = code_item.Instructions();
-  for (auto it = instructions.begin(); it != instructions.end(); ++it) {
-    const uint32_t dex_pc = it.GetDexPC(instructions.begin());
-    const Instruction& instruction = *it;
+  for (const DexInstructionPcPair& pair : code_item.Instructions()) {
+    const uint32_t dex_pc = pair.DexPc();
+    const Instruction& instruction = pair.Inst();
     if (instruction.IsBranch()) {
       uint32_t target = dex_pc + instruction.GetTargetOffset();
       CheckCovers(target, graph, code_info, loop_headers, &covered);

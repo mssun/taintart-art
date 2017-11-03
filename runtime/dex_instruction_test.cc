@@ -74,7 +74,7 @@ TEST(Instruction, PropertiesOf45cc) {
   Build45cc(4u /* num_vregs */, 16u /* method_idx */, 32u /* proto_idx */,
             0xcafe /* arg_regs */, instruction);
 
-  DexInstructionIterator ins(instruction);
+  DexInstructionIterator ins(instruction, /*dex_pc*/ 0u);
   ASSERT_EQ(4u, ins->SizeInCodeUnits());
 
   ASSERT_TRUE(ins->HasVRegA());
@@ -109,7 +109,7 @@ TEST(Instruction, PropertiesOf4rcc) {
   Build4rcc(4u /* num_vregs */, 16u /* method_idx */, 32u /* proto_idx */,
             0xcafe /* arg_regs */, instruction);
 
-  DexInstructionIterator ins(instruction);
+  DexInstructionIterator ins(instruction, /*dex_pc*/ 0u);
   ASSERT_EQ(4u, ins->SizeInCodeUnits());
 
   ASSERT_TRUE(ins->HasVRegA());
@@ -155,7 +155,7 @@ static std::string DumpInst35c(Instruction::Code code,
                                std::vector<uint16_t> args) {
   uint16_t inst[6] = {};
   Build35c(inst, code, method_idx, args);
-  return DexInstructionIterator(inst)->DumpString(nullptr);
+  return Instruction::At(inst)->DumpString(nullptr);
 }
 
 TEST(Instruction, DumpString) {
