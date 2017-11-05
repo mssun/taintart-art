@@ -553,7 +553,7 @@ MethodVerifier::MethodVerifier(Thread* self,
     : self_(self),
       arena_stack_(Runtime::Current()->GetArenaPool()),
       allocator_(&arena_stack_),
-      reg_types_(can_load_classes, allocator_),
+      reg_types_(can_load_classes, allocator_, allow_thread_suspension),
       reg_table_(allocator_),
       work_insn_idx_(dex::kDexNoIndex),
       dex_method_idx_(dex_method_idx),
@@ -617,8 +617,8 @@ void MethodVerifier::FindLocksAtDexPc(ArtMethod* m, uint32_t dex_pc,
 }
 
 static bool HasMonitorEnterInstructions(const DexFile::CodeItem* const code_item) {
-  for (const Instruction& inst : code_item->Instructions()) {
-    if (inst.Opcode() == Instruction::MONITOR_ENTER) {
+  for (const DexInstructionPcPair& inst : code_item->Instructions()) {
+    if (inst->Opcode() == Instruction::MONITOR_ENTER) {
       return true;
     }
   }
@@ -1018,14 +1018,13 @@ bool MethodVerifier::ComputeWidthsAndCountOps() {
       default:
         break;
     }
-    GetInstructionFlags(it.GetDexPC(instructions.begin())).SetIsOpcode();
+    GetInstructionFlags(it.DexPc()).SetIsOpcode();
   }
 
   if (it != instructions.end()) {
     const size_t insns_size = code_item_->insns_size_in_code_units_;
     Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "code did not end where expected ("
-                                      << it.GetDexPC(instructions.begin()) << " vs. "
-                                      << insns_size << ")";
+                                      << it.DexPc() << " vs. " << insns_size << ")";
     return false;
   }
 
@@ -1106,10 +1105,9 @@ bool MethodVerifier::VerifyInstructions() {
   /* Flag the start of the method as a branch target, and a GC point due to stack overflow errors */
   GetInstructionFlags(0).SetBranchTarget();
   GetInstructionFlags(0).SetCompileTimeInfoPoint();
-  IterationRange<DexInstructionIterator> instructions = code_item_->Instructions();
-  for (auto inst = instructions.begin(); inst != instructions.end(); ++inst) {
-    const uint32_t dex_pc = inst.GetDexPC(instructions.begin());
-    if (!VerifyInstruction<kAllowRuntimeOnlyInstructions>(&*inst, dex_pc)) {
+  for (const DexInstructionPcPair& inst : code_item_->Instructions()) {
+    const uint32_t dex_pc = inst.DexPc();
+    if (!VerifyInstruction<kAllowRuntimeOnlyInstructions>(&inst.Inst(), dex_pc)) {
       DCHECK_NE(failures_.size(), 0U);
       return false;
     }
@@ -1695,9 +1693,8 @@ void MethodVerifier::Dump(VariableIndentationOutputStream* vios) {
   vios->Stream() << "Dumping instructions and register lines:\n";
   ScopedIndentation indent1(vios);
 
-  IterationRange<DexInstructionIterator> instructions = code_item_->Instructions();
-  for (auto inst = instructions.begin(); inst != instructions.end(); ++inst) {
-    const size_t dex_pc = inst.GetDexPC(instructions.begin());
+  for (const DexInstructionPcPair& inst : code_item_->Instructions()) {
+    const size_t dex_pc = inst.DexPc();
     RegisterLine* reg_line = reg_table_.GetLine(dex_pc);
     if (reg_line != nullptr) {
       vios->Stream() << reg_line->Dump(this) << "\n";
@@ -1963,9 +1960,8 @@ bool MethodVerifier::CodeFlowVerifyMethod() {
      */
     int dead_start = -1;
 
-    IterationRange<DexInstructionIterator> instructions = code_item_->Instructions();
-    for (auto inst = instructions.begin(); inst != instructions.end(); ++inst) {
-      const uint32_t insn_idx = inst.GetDexPC(instructions.begin());
+    for (const DexInstructionPcPair& inst : code_item_->Instructions()) {
+      const uint32_t insn_idx = inst.DexPc();
       /*
        * Switch-statement data doesn't get "visited" by scanner. It
        * may or may not be preceded by a padding NOP (for alignment).
@@ -1993,7 +1989,7 @@ bool MethodVerifier::CodeFlowVerifyMethod() {
     if (dead_start >= 0) {
       LogVerifyInfo()
           << "dead code " << reinterpret_cast<void*>(dead_start)
-          << "-" << reinterpret_cast<void*>(instructions.end().GetDexPC(instructions.begin()) - 1);
+          << "-" << reinterpret_cast<void*>(code_item_->insns_size_in_code_units_ - 1);
     }
     // To dump the state of the verify after a method, do something like:
     // if (dex_file_->PrettyMethod(dex_method_idx_) ==

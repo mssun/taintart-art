@@ -630,7 +630,7 @@ public class Parser {
     }
 
     @Override
-    protected Type getType() {
+    Type getType() {
       return Type.OBJECT;
     }
 

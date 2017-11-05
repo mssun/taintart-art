@@ -103,7 +103,7 @@ public class Site implements Diffable<Site> {
   /**
    * Construct a root site.
    */
-  public Site(String name) {
+  Site(String name) {
     this(null, name, "", "", 0);
   }
 

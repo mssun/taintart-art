@@ -43,22 +43,22 @@ static ::std::vector<CodegenTargetConfig> GetTargetConfigs() {
   ::std::vector<CodegenTargetConfig> test_config_candidates = {
 #ifdef ART_ENABLE_CODEGEN_arm
     // TODO: Should't this be `kThumb2` instead of `kArm` here?
-    CodegenTargetConfig(kArm, create_codegen_arm_vixl32),
+    CodegenTargetConfig(InstructionSet::kArm, create_codegen_arm_vixl32),
 #endif
 #ifdef ART_ENABLE_CODEGEN_arm64
-    CodegenTargetConfig(kArm64, create_codegen_arm64),
+    CodegenTargetConfig(InstructionSet::kArm64, create_codegen_arm64),
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86
-    CodegenTargetConfig(kX86, create_codegen_x86),
+    CodegenTargetConfig(InstructionSet::kX86, create_codegen_x86),
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86_64
-    CodegenTargetConfig(kX86_64, create_codegen_x86_64),
+    CodegenTargetConfig(InstructionSet::kX86_64, create_codegen_x86_64),
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips
-    CodegenTargetConfig(kMips, create_codegen_mips),
+    CodegenTargetConfig(InstructionSet::kMips, create_codegen_mips),
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips64
-    CodegenTargetConfig(kMips64, create_codegen_mips64)
+    CodegenTargetConfig(InstructionSet::kMips64, create_codegen_mips64)
 #endif
   };
 

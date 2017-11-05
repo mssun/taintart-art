@@ -103,23 +103,29 @@ TEST_F(QuickTrampolineEntrypointsTest, FrameSize) {
                  GetCalleeSaveFrameSize(                                             \
                      isa, CalleeSaveType::kSaveEverythingForSuspendCheck))
 
-  CHECK_FRAME_SIZE(kArm);
-  CHECK_FRAME_SIZE(kArm64);
-  CHECK_FRAME_SIZE(kMips);
-  CHECK_FRAME_SIZE(kMips64);
-  CHECK_FRAME_SIZE(kX86);
-  CHECK_FRAME_SIZE(kX86_64);
+  CHECK_FRAME_SIZE(InstructionSet::kArm);
+  CHECK_FRAME_SIZE(InstructionSet::kArm64);
+  CHECK_FRAME_SIZE(InstructionSet::kMips);
+  CHECK_FRAME_SIZE(InstructionSet::kMips64);
+  CHECK_FRAME_SIZE(InstructionSet::kX86);
+  CHECK_FRAME_SIZE(InstructionSet::kX86_64);
 }
 
 // This test ensures that GetConstExprPointerSize is correct with respect to
 // GetInstructionSetPointerSize.
 TEST_F(QuickTrampolineEntrypointsTest, PointerSize) {
-  EXPECT_EQ(GetInstructionSetPointerSize(kArm), GetConstExprPointerSize(kArm));
-  EXPECT_EQ(GetInstructionSetPointerSize(kArm64), GetConstExprPointerSize(kArm64));
-  EXPECT_EQ(GetInstructionSetPointerSize(kMips), GetConstExprPointerSize(kMips));
-  EXPECT_EQ(GetInstructionSetPointerSize(kMips64), GetConstExprPointerSize(kMips64));
-  EXPECT_EQ(GetInstructionSetPointerSize(kX86), GetConstExprPointerSize(kX86));
-  EXPECT_EQ(GetInstructionSetPointerSize(kX86_64), GetConstExprPointerSize(kX86_64));
+  EXPECT_EQ(GetInstructionSetPointerSize(InstructionSet::kArm),
+            GetConstExprPointerSize(InstructionSet::kArm));
+  EXPECT_EQ(GetInstructionSetPointerSize(InstructionSet::kArm64),
+            GetConstExprPointerSize(InstructionSet::kArm64));
+  EXPECT_EQ(GetInstructionSetPointerSize(InstructionSet::kMips),
+            GetConstExprPointerSize(InstructionSet::kMips));
+  EXPECT_EQ(GetInstructionSetPointerSize(InstructionSet::kMips64),
+            GetConstExprPointerSize(InstructionSet::kMips64));
+  EXPECT_EQ(GetInstructionSetPointerSize(InstructionSet::kX86),
+            GetConstExprPointerSize(InstructionSet::kX86));
+  EXPECT_EQ(GetInstructionSetPointerSize(InstructionSet::kX86_64),
+            GetConstExprPointerSize(InstructionSet::kX86_64));
 }
 
 // This test ensures that the constexpr specialization of the return PC offset computation in

@@ -155,7 +155,7 @@ void Thread::InitTlsEntryPoints() {
 }
 
 void Thread::ResetQuickAllocEntryPointsForThread(bool is_marking) {
-  if (kUseReadBarrier && kRuntimeISA != kX86_64) {
+  if (kUseReadBarrier && kRuntimeISA != InstructionSet::kX86_64) {
     // Allocation entrypoint switching is currently only implemented for X86_64.
     is_marking = true;
   }
@@ -1114,7 +1114,7 @@ bool Thread::InitStackHwm() {
   // effectively disable stack overflow checks (we'll get segfaults, potentially) by setting
   // stack_begin to 0.
   const bool valgrind_on_arm =
-      (kRuntimeISA == kArm || kRuntimeISA == kArm64) &&
+      (kRuntimeISA == InstructionSet::kArm || kRuntimeISA == InstructionSet::kArm64) &&
       kMemoryToolIsValgrind &&
       RUNNING_ON_MEMORY_TOOL != 0;
   if (valgrind_on_arm) {

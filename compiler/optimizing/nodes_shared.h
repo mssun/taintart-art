@@ -118,38 +118,6 @@ class HBitwiseNegatedRight FINAL : public HBinaryOperation {
   DISALLOW_COPY_AND_ASSIGN(HBitwiseNegatedRight);
 };
 
-
-// This instruction computes an intermediate address pointing in the 'middle' of an object. The
-// result pointer cannot be handled by GC, so extra care is taken to make sure that this value is
-// never used across anything that can trigger GC.
-// The result of this instruction is not a pointer in the sense of `DataType::Type::kreference`.
-// So we represent it by the type `DataType::Type::kInt`.
-class HIntermediateAddress FINAL : public HExpression<2> {
- public:
-  HIntermediateAddress(HInstruction* base_address, HInstruction* offset, uint32_t dex_pc)
-      : HExpression(DataType::Type::kInt32, SideEffects::DependsOnGC(), dex_pc) {
-        DCHECK_EQ(DataType::Size(DataType::Type::kInt32),
-                  DataType::Size(DataType::Type::kReference))
-            << "kPrimInt and kPrimNot have different sizes.";
-    SetRawInputAt(0, base_address);
-    SetRawInputAt(1, offset);
-  }
-
-  bool CanBeMoved() const OVERRIDE { return true; }
-  bool InstructionDataEquals(const HInstruction* other ATTRIBUTE_UNUSED) const OVERRIDE {
-    return true;
-  }
-  bool IsActualObject() const OVERRIDE { return false; }
-
-  HInstruction* GetBaseAddress() const { return InputAt(0); }
-  HInstruction* GetOffset() const { return InputAt(1); }
-
-  DECLARE_INSTRUCTION(IntermediateAddress);
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(HIntermediateAddress);
-};
-
 // This instruction computes part of the array access offset (data and index offset).
 //
 // For array accesses the element address has the following structure:

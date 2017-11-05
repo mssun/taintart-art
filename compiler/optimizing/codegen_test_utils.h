@@ -207,7 +207,7 @@ class InternalCodeAllocator : public CodeAllocator {
 static bool CanExecuteOnHardware(InstructionSet target_isa) {
   return (target_isa == kRuntimeISA)
       // Handle the special case of ARM, with two instructions sets (ARM32 and Thumb-2).
-      || (kRuntimeISA == kArm && target_isa == kThumb2);
+      || (kRuntimeISA == InstructionSet::kArm && target_isa == InstructionSet::kThumb2);
 }
 
 static bool CanExecute(InstructionSet target_isa) {
@@ -271,7 +271,7 @@ static void Run(const InternalCodeAllocator& allocator,
   typedef Expected (*fptr)();
   CommonCompilerTest::MakeExecutable(allocator.GetMemory(), allocator.GetSize());
   fptr f = reinterpret_cast<fptr>(allocator.GetMemory());
-  if (target_isa == kThumb2) {
+  if (target_isa == InstructionSet::kThumb2) {
     // For thumb we need the bottom bit set.
     f = reinterpret_cast<fptr>(reinterpret_cast<uintptr_t>(f) + 1);
   }

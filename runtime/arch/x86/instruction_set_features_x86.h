@@ -54,7 +54,7 @@ class X86InstructionSetFeatures : public InstructionSetFeatures {
   bool HasAtLeast(const InstructionSetFeatures* other) const OVERRIDE;
 
   virtual InstructionSet GetInstructionSet() const OVERRIDE {
-    return kX86;
+    return InstructionSet::kX86;
   }
 
   uint32_t AsBitmap() const OVERRIDE;

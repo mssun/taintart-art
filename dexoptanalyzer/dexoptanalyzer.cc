@@ -103,6 +103,8 @@ NO_RETURN static void Usage(const char *fmt, ...) {
   UsageError("");
   UsageError("  --vdex-fd=number: file descriptor of the vdex file corresponding to the oat file");
   UsageError("");
+  UsageError("  --zip-fd=number: specifies a file descriptor corresponding to the dex file.");
+  UsageError("");
   UsageError("  --downgrade: optional, if the purpose of dexopt is to downgrade the dex file");
   UsageError("       By default, dexopt considers upgrade case.");
   UsageError("");
@@ -161,7 +163,7 @@ class DexoptAnalyzer FINAL {
       } else if (option.starts_with("--isa=")) {
         std::string isa_str = option.substr(strlen("--isa=")).ToString();
         isa_ = GetInstructionSetFromString(isa_str.c_str());
-        if (isa_ == kNone) {
+        if (isa_ == InstructionSet::kNone) {
           Usage("Invalid isa '%s'", option.data());
         }
       } else if (option.starts_with("--image=")) {
@@ -175,8 +177,19 @@ class DexoptAnalyzer FINAL {
         downgrade_ = true;
       } else if (option.starts_with("--oat-fd")) {
         oat_fd_ = std::stoi(option.substr(strlen("--oat-fd=")).ToString(), nullptr, 0);
+        if (oat_fd_ < 0) {
+          Usage("Invalid --oat-fd %d", oat_fd_);
+        }
       } else if (option.starts_with("--vdex-fd")) {
         vdex_fd_ = std::stoi(option.substr(strlen("--vdex-fd=")).ToString(), nullptr, 0);
+        if (vdex_fd_ < 0) {
+          Usage("Invalid --vdex-fd %d", vdex_fd_);
+        }
+      } else if (option.starts_with("--zip-fd")) {
+          zip_fd_ = std::stoi(option.substr(strlen("--zip-fd=")).ToString(), nullptr, 0);
+          if (zip_fd_ < 0) {
+            Usage("Invalid --zip-fd %d", zip_fd_);
+          }
       } else if (option.starts_with("--class-loader-context=")) {
         std::string context_str = option.substr(strlen("--class-loader-context=")).ToString();
         class_loader_context_ = ClassLoaderContext::Create(context_str);
@@ -198,12 +211,6 @@ class DexoptAnalyzer FINAL {
         LOG(ERROR) << error_msg;
         Usage("--image unspecified and ANDROID_ROOT not set or image file does not exist.");
       }
-    }
-    if (oat_fd_ > 0 && vdex_fd_ < 0) {
-      Usage("A valid --vdex-fd must also be provided with --oat-fd.");
-    }
-    if (oat_fd_ < 0 && vdex_fd_ > 0) {
-      Usage("A valid --oat-fd must also be provided with --vdex-fd.");
     }
   }
 
@@ -248,17 +255,12 @@ class DexoptAnalyzer FINAL {
     std::unique_ptr<Runtime> runtime(Runtime::Current());
 
     std::unique_ptr<OatFileAssistant> oat_file_assistant;
-    if (oat_fd_ != -1 && vdex_fd_ != -1) {
-      oat_file_assistant = std::make_unique<OatFileAssistant>(dex_file_.c_str(),
-                                                              isa_,
-                                                              false /*load_executable*/,
-                                                              vdex_fd_,
-                                                              oat_fd_);
-    } else {
-      oat_file_assistant = std::make_unique<OatFileAssistant>(dex_file_.c_str(),
-                                                              isa_,
-                                                              false /*load_executable*/);
-    }
+    oat_file_assistant = std::make_unique<OatFileAssistant>(dex_file_.c_str(),
+                                                            isa_,
+                                                            false /*load_executable*/,
+                                                            vdex_fd_,
+                                                            oat_fd_,
+                                                            zip_fd_);
     // Always treat elements of the bootclasspath as up-to-date.
     // TODO(calin): this check should be in OatFileAssistant.
     if (oat_file_assistant->IsInBootClassPath()) {
@@ -295,6 +297,8 @@ class DexoptAnalyzer FINAL {
   std::string image_;
   int oat_fd_ = -1;
   int vdex_fd_ = -1;
+  // File descriptor corresponding to apk, dex_file, or zip.
+  int zip_fd_ = -1;
 };
 
 static int dexoptAnalyze(int argc, char** argv) {

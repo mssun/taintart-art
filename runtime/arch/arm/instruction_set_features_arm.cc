@@ -266,7 +266,7 @@ ArmFeaturesUniquePtr ArmInstructionSetFeatures::FromAssembly() {
 }
 
 bool ArmInstructionSetFeatures::Equals(const InstructionSetFeatures* other) const {
-  if (kArm != other->GetInstructionSet()) {
+  if (InstructionSet::kArm != other->GetInstructionSet()) {
     return false;
   }
   const ArmInstructionSetFeatures* other_as_arm = other->AsArmInstructionSetFeatures();
@@ -276,7 +276,7 @@ bool ArmInstructionSetFeatures::Equals(const InstructionSetFeatures* other) cons
 }
 
 bool ArmInstructionSetFeatures::HasAtLeast(const InstructionSetFeatures* other) const {
-  if (kArm != other->GetInstructionSet()) {
+  if (InstructionSet::kArm != other->GetInstructionSet()) {
     return false;
   }
   const ArmInstructionSetFeatures* other_as_arm = other->AsArmInstructionSetFeatures();

@@ -81,7 +81,7 @@ std::string GetToolsDir() {
 
   if (toolsdir.empty()) {
     setup_results();
-    toolsdir = CommonRuntimeTest::GetAndroidTargetToolsDir(kThumb2);
+    toolsdir = CommonRuntimeTest::GetAndroidTargetToolsDir(InstructionSet::kThumb2);
     SetAndroidData();
   }
 
@@ -215,10 +215,10 @@ TEST_F(ArmVIXLAssemblerTest, VixlJniHelpers) {
                                    is_synchronized,
                                    is_critical_native,
                                    shorty,
-                                   kThumb2));
+                                   InstructionSet::kThumb2));
   std::unique_ptr<ManagedRuntimeCallingConvention> mr_conv(
       ManagedRuntimeCallingConvention::Create(
-          &allocator, is_static, is_synchronized, shorty, kThumb2));
+          &allocator, is_static, is_synchronized, shorty, InstructionSet::kThumb2));
   const int frame_size(jni_conv->FrameSize());
   ArrayRef<const ManagedRegister> callee_save_regs = jni_conv->CalleeSaveRegisters();
 

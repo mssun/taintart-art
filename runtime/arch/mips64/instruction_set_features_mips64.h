@@ -51,7 +51,7 @@ class Mips64InstructionSetFeatures FINAL : public InstructionSetFeatures {
   bool Equals(const InstructionSetFeatures* other) const OVERRIDE;
 
   InstructionSet GetInstructionSet() const OVERRIDE {
-    return kMips64;
+    return InstructionSet::kMips64;
   }
 
   uint32_t AsBitmap() const OVERRIDE;

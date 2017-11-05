@@ -21,20 +21,20 @@ import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SuperRoot extends AhatInstance implements DominatorsComputation.Node {
+class SuperRoot extends AhatInstance implements DominatorsComputation.Node {
   private List<AhatInstance> mRoots = new ArrayList<AhatInstance>();
   private Object mDominatorsComputationState;
 
-  public SuperRoot() {
+  SuperRoot() {
     super(0);
   }
 
-  public void addRoot(AhatInstance root) {
+  void addRoot(AhatInstance root) {
     mRoots.add(root);
   }
 
   @Override
-  protected long getExtraJavaSize() {
+  long getExtraJavaSize() {
     return 0;
   }
 

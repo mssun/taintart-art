@@ -67,7 +67,7 @@ public abstract class Value {
   /**
    * Return the type of the given value.
    */
-  protected abstract Type getType();
+  abstract Type getType();
 
   /**
    * Returns true if the Value is an AhatInstance, as opposed to a Java
@@ -153,7 +153,7 @@ public abstract class Value {
     }
 
     @Override
-    protected Type getType() {
+    Type getType() {
       return Type.BOOLEAN;
     }
 
@@ -184,7 +184,7 @@ public abstract class Value {
     }
 
     @Override
-    protected Type getType() {
+    Type getType() {
       return Type.BYTE;
     }
 
@@ -215,7 +215,7 @@ public abstract class Value {
     }
 
     @Override
-    protected Type getType() {
+    Type getType() {
       return Type.CHAR;
     }
 
@@ -241,7 +241,7 @@ public abstract class Value {
     }
 
     @Override
-    protected Type getType() {
+    Type getType() {
       return Type.DOUBLE;
     }
 
@@ -267,7 +267,7 @@ public abstract class Value {
     }
 
     @Override
-    protected Type getType() {
+    Type getType() {
       return Type.FLOAT;
     }
 
@@ -304,7 +304,7 @@ public abstract class Value {
     }
 
     @Override
-    protected Type getType() {
+    Type getType() {
       return Type.OBJECT;
     }
 
@@ -345,7 +345,7 @@ public abstract class Value {
     }
 
     @Override
-    protected Type getType() {
+    Type getType() {
       return Type.INT;
     }
 
@@ -381,7 +381,7 @@ public abstract class Value {
     }
 
     @Override
-    protected Type getType() {
+    Type getType() {
       return Type.LONG;
     }
 
@@ -407,7 +407,7 @@ public abstract class Value {
     }
 
     @Override
-    protected Type getType() {
+    Type getType() {
       return Type.SHORT;
     }
 

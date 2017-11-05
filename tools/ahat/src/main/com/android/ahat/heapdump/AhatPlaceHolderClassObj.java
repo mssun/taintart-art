@@ -22,7 +22,7 @@ package com.android.ahat.heapdump;
  *
  * This should be created through a call to newPlaceHolder();
  */
-public class AhatPlaceHolderClassObj extends AhatClassObj {
+class AhatPlaceHolderClassObj extends AhatClassObj {
   AhatPlaceHolderClassObj(AhatClassObj baseline) {
     super(-1, baseline.getClassName());
     setBaseline(baseline);

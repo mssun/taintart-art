@@ -961,9 +961,13 @@ extern "C" uint64_t artQuickProxyInvokeHandler(
   self->EndAssertNoThreadSuspension(old_cause);
   DCHECK_EQ(Runtime::Current()->GetClassLinker()->GetImagePointerSize(), kRuntimePointerSize);
   DCHECK(!Runtime::Current()->IsActiveTransaction());
-  jobject interface_method_jobj = soa.AddLocalReference<jobject>(
-      mirror::Method::CreateFromArtMethod<kRuntimePointerSize, false>(soa.Self(),
-                                                                      interface_method));
+  ObjPtr<mirror::Method> interface_reflect_method =
+      mirror::Method::CreateFromArtMethod<kRuntimePointerSize, false>(soa.Self(), interface_method);
+  if (interface_reflect_method == nullptr) {
+    soa.Self()->AssertPendingOOMException();
+    return 0;
+  }
+  jobject interface_method_jobj = soa.AddLocalReference<jobject>(interface_reflect_method);
 
   // All naked Object*s should now be in jobjects, so its safe to go into the main invoke code
   // that performs allocations.

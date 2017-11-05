@@ -232,7 +232,7 @@ class ArmVIXLJNIMacroAssembler FINAL
 class ArmVIXLJNIMacroLabel FINAL
     : public JNIMacroLabelCommon<ArmVIXLJNIMacroLabel,
                                  vixl32::Label,
-                                 kArm> {
+                                 InstructionSet::kArm> {
  public:
   vixl32::Label* AsArm() {
     return AsPlatformLabel();

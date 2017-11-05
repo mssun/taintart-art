@@ -32,7 +32,7 @@ public enum RootType {
   JNI_MONITOR     (1 << 12),
   FINALIZING      (1 << 13);
 
-  public final int mask;
+  final int mask;
 
   RootType(int mask) {
     this.mask = mask;

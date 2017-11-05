@@ -323,7 +323,7 @@ static CompiledMethod* ArtJniCompileMethodInternal(CompilerDriver* driver,
   // Note that we always have outgoing param space available for at least two params.
   if (kUseReadBarrier && is_static && !is_critical_native) {
     const bool kReadBarrierFastPath =
-        (instruction_set != kMips) && (instruction_set != kMips64);
+        (instruction_set != InstructionSet::kMips) && (instruction_set != InstructionSet::kMips64);
     std::unique_ptr<JNIMacroLabel> skip_cold_path_label;
     if (kReadBarrierFastPath) {
       skip_cold_path_label = __ CreateLabel();
@@ -531,7 +531,8 @@ static CompiledMethod* ArtJniCompileMethodInternal(CompilerDriver* driver,
     if (LIKELY(!is_critical_native)) {
       // For normal JNI, store the return value on the stack because the call to
       // JniMethodEnd will clobber the return value. It will be restored in (13).
-      if ((instruction_set == kMips || instruction_set == kMips64) &&
+      if ((instruction_set == InstructionSet::kMips ||
+           instruction_set == InstructionSet::kMips64) &&
           main_jni_conv->GetReturnType() == Primitive::kPrimDouble &&
           return_save_location.Uint32Value() % 8 != 0) {
         // Ensure doubles are 8-byte aligned for MIPS

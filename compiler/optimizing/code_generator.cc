@@ -786,43 +786,43 @@ std::unique_ptr<CodeGenerator> CodeGenerator::Create(HGraph* graph,
   ArenaAllocator* allocator = graph->GetAllocator();
   switch (instruction_set) {
 #ifdef ART_ENABLE_CODEGEN_arm
-    case kArm:
-    case kThumb2: {
+    case InstructionSet::kArm:
+    case InstructionSet::kThumb2: {
       return std::unique_ptr<CodeGenerator>(
           new (allocator) arm::CodeGeneratorARMVIXL(
               graph, *isa_features.AsArmInstructionSetFeatures(), compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_arm64
-    case kArm64: {
+    case InstructionSet::kArm64: {
       return std::unique_ptr<CodeGenerator>(
           new (allocator) arm64::CodeGeneratorARM64(
               graph, *isa_features.AsArm64InstructionSetFeatures(), compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips
-    case kMips: {
+    case InstructionSet::kMips: {
       return std::unique_ptr<CodeGenerator>(
           new (allocator) mips::CodeGeneratorMIPS(
               graph, *isa_features.AsMipsInstructionSetFeatures(), compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips64
-    case kMips64: {
+    case InstructionSet::kMips64: {
       return std::unique_ptr<CodeGenerator>(
           new (allocator) mips64::CodeGeneratorMIPS64(
               graph, *isa_features.AsMips64InstructionSetFeatures(), compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86
-    case kX86: {
+    case InstructionSet::kX86: {
       return std::unique_ptr<CodeGenerator>(
           new (allocator) x86::CodeGeneratorX86(
               graph, *isa_features.AsX86InstructionSetFeatures(), compiler_options, stats));
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86_64
-    case kX86_64: {
+    case InstructionSet::kX86_64: {
       return std::unique_ptr<CodeGenerator>(
           new (allocator) x86_64::CodeGeneratorX86_64(
               graph, *isa_features.AsX86_64InstructionSetFeatures(), compiler_options, stats));
@@ -919,10 +919,9 @@ static void CheckLoopEntriesCanBeUsedForOsr(const HGraph& graph,
   }
   ArenaVector<size_t> covered(
       loop_headers.size(), 0, graph.GetAllocator()->Adapter(kArenaAllocMisc));
-  IterationRange<DexInstructionIterator> instructions = code_item.Instructions();
-  for (auto it = instructions.begin(); it != instructions.end(); ++it) {
-    const uint32_t dex_pc = it.GetDexPC(instructions.begin());
-    const Instruction& instruction = *it;
+  for (const DexInstructionPcPair& pair : code_item.Instructions()) {
+    const uint32_t dex_pc = pair.DexPc();
+    const Instruction& instruction = pair.Inst();
     if (instruction.IsBranch()) {
       uint32_t target = dex_pc + instruction.GetTargetOffset();
       CheckCovers(target, graph, code_info, loop_headers, &covered);

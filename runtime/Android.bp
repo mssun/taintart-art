@@ -153,6 +153,7 @@ cc_defaults {
         "mirror/stack_trace_element.cc",
         "mirror/string.cc",
         "mirror/throwable.cc",
+        "mirror/var_handle.cc",
         "monitor.cc",
         "native_bridge_art_interface.cc",
         "native_stack_dump.cc",
@@ -404,6 +405,9 @@ cc_defaults {
     export_generated_headers: ["cpp-define-generator-asm-support"],
     include_dirs: [
         "art/sigchainlib",
+        "external/icu/icu4c/source/common",
+        "external/lz4/lib",
+        "external/zlib",
     ],
     header_libs: [
         "art_cmdlineparser_headers",
@@ -516,6 +520,9 @@ art_cc_library {
     header_libs: [
         "libnativehelper_header_only",
     ],
+    include_dirs: [
+        "external/icu/icu4c/source/common",
+    ],
 }
 
 art_cc_test {
@@ -538,6 +545,7 @@ art_cc_test {
         "barrier_test.cc",
         "base/arena_allocator_test.cc",
         "base/bit_field_test.cc",
+        "base/bit_string_test.cc",
         "base/bit_struct_test.cc",
         "base/bit_utils_test.cc",
         "base/bit_vector_test.cc",
@@ -599,6 +607,7 @@ art_cc_test {
         "mirror/dex_cache_test.cc",
         "mirror/method_type_test.cc",
         "mirror/object_test.cc",
+        "mirror/var_handle_test.cc",
         "monitor_pool_test.cc",
         "monitor_test.cc",
         "oat_file_test.cc",
@@ -607,6 +616,7 @@ art_cc_test {
         "prebuilt_tools_test.cc",
         "reference_table_test.cc",
         "runtime_callbacks_test.cc",
+        "subtype_check_info_test.cc",
         "thread_pool_test.cc",
         "transaction_test.cc",
         "type_lookup_table_test.cc",
@@ -622,6 +632,9 @@ art_cc_test {
     ],
     header_libs: [
         "art_cmdlineparser_headers", // For parsed_options_test.
+    ],
+    include_dirs: [
+        "external/zlib",
     ],
 }
 

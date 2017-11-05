@@ -23,34 +23,40 @@
 namespace art {
 
 TEST(InstructionSetTest, GetInstructionSetFromString) {
-  EXPECT_EQ(kArm, GetInstructionSetFromString("arm"));
-  EXPECT_EQ(kArm64, GetInstructionSetFromString("arm64"));
-  EXPECT_EQ(kX86, GetInstructionSetFromString("x86"));
-  EXPECT_EQ(kX86_64, GetInstructionSetFromString("x86_64"));
-  EXPECT_EQ(kMips, GetInstructionSetFromString("mips"));
-  EXPECT_EQ(kMips64, GetInstructionSetFromString("mips64"));
-  EXPECT_EQ(kNone, GetInstructionSetFromString("none"));
-  EXPECT_EQ(kNone, GetInstructionSetFromString("random-string"));
+  EXPECT_EQ(InstructionSet::kArm, GetInstructionSetFromString("arm"));
+  EXPECT_EQ(InstructionSet::kArm64, GetInstructionSetFromString("arm64"));
+  EXPECT_EQ(InstructionSet::kX86, GetInstructionSetFromString("x86"));
+  EXPECT_EQ(InstructionSet::kX86_64, GetInstructionSetFromString("x86_64"));
+  EXPECT_EQ(InstructionSet::kMips, GetInstructionSetFromString("mips"));
+  EXPECT_EQ(InstructionSet::kMips64, GetInstructionSetFromString("mips64"));
+  EXPECT_EQ(InstructionSet::kNone, GetInstructionSetFromString("none"));
+  EXPECT_EQ(InstructionSet::kNone, GetInstructionSetFromString("random-string"));
 }
 
 TEST(InstructionSetTest, GetInstructionSetString) {
-  EXPECT_STREQ("arm", GetInstructionSetString(kArm));
-  EXPECT_STREQ("arm", GetInstructionSetString(kThumb2));
-  EXPECT_STREQ("arm64", GetInstructionSetString(kArm64));
-  EXPECT_STREQ("x86", GetInstructionSetString(kX86));
-  EXPECT_STREQ("x86_64", GetInstructionSetString(kX86_64));
-  EXPECT_STREQ("mips", GetInstructionSetString(kMips));
-  EXPECT_STREQ("mips64", GetInstructionSetString(kMips64));
-  EXPECT_STREQ("none", GetInstructionSetString(kNone));
+  EXPECT_STREQ("arm", GetInstructionSetString(InstructionSet::kArm));
+  EXPECT_STREQ("arm", GetInstructionSetString(InstructionSet::kThumb2));
+  EXPECT_STREQ("arm64", GetInstructionSetString(InstructionSet::kArm64));
+  EXPECT_STREQ("x86", GetInstructionSetString(InstructionSet::kX86));
+  EXPECT_STREQ("x86_64", GetInstructionSetString(InstructionSet::kX86_64));
+  EXPECT_STREQ("mips", GetInstructionSetString(InstructionSet::kMips));
+  EXPECT_STREQ("mips64", GetInstructionSetString(InstructionSet::kMips64));
+  EXPECT_STREQ("none", GetInstructionSetString(InstructionSet::kNone));
 }
 
 TEST(InstructionSetTest, GetInstructionSetInstructionAlignment) {
-  EXPECT_EQ(GetInstructionSetInstructionAlignment(kThumb2), kThumb2InstructionAlignment);
-  EXPECT_EQ(GetInstructionSetInstructionAlignment(kArm64), kArm64InstructionAlignment);
-  EXPECT_EQ(GetInstructionSetInstructionAlignment(kX86), kX86InstructionAlignment);
-  EXPECT_EQ(GetInstructionSetInstructionAlignment(kX86_64), kX86_64InstructionAlignment);
-  EXPECT_EQ(GetInstructionSetInstructionAlignment(kMips), kMipsInstructionAlignment);
-  EXPECT_EQ(GetInstructionSetInstructionAlignment(kMips64), kMips64InstructionAlignment);
+  EXPECT_EQ(GetInstructionSetInstructionAlignment(InstructionSet::kThumb2),
+            kThumb2InstructionAlignment);
+  EXPECT_EQ(GetInstructionSetInstructionAlignment(InstructionSet::kArm64),
+            kArm64InstructionAlignment);
+  EXPECT_EQ(GetInstructionSetInstructionAlignment(InstructionSet::kX86),
+            kX86InstructionAlignment);
+  EXPECT_EQ(GetInstructionSetInstructionAlignment(InstructionSet::kX86_64),
+            kX86_64InstructionAlignment);
+  EXPECT_EQ(GetInstructionSetInstructionAlignment(InstructionSet::kMips),
+            kMipsInstructionAlignment);
+  EXPECT_EQ(GetInstructionSetInstructionAlignment(InstructionSet::kMips64),
+            kMips64InstructionAlignment);
 }
 
 TEST(InstructionSetTest, TestRoundTrip) {

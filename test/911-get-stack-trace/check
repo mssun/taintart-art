@@ -19,4 +19,18 @@ if [[ "$USE_JACK" == true ]]; then
   patch -p0 expected.txt < expected_jack.diff
 fi
 
+if [[ "$DX" == 'd8' ]]; then
+  patch -p0 expected.txt < expected_d8.diff
+fi
+
+./default-check "$@"
+if [[ "$?" == "0" ]]; then
+  exit 0;
+fi
+
+# We cannot always correctly determine if D8 was used because of (b/68406220).
+# So we are just going to try to see it matches the expect output of D8 no
+# matter what.
+patch -p0 expected.txt < expected_d8.diff
+
 ./default-check "$@"
