@@ -98,10 +98,9 @@ MterpException:
     call    SYMBOL(MterpHandleException)
     testb   %al, %al
     jz      MterpExceptionReturn
-    movq    OFF_FP_CODE_ITEM(rFP), %rax
+    movq    OFF_FP_DEX_INSTRUCTIONS(rFP), %rax
     mov     OFF_FP_DEX_PC(rFP), %ecx
-    leaq    CODEITEM_INSNS_OFFSET(%rax), rPC
-    leaq    (rPC, %rcx, 2), rPC
+    leaq    (%rax, %rcx, 2), rPC
     movq    rPC, OFF_FP_DEX_PC_PTR(rFP)
     /* Do we need to switch interpreters? */
     call    SYMBOL(MterpShouldSwitchInterpreters)
