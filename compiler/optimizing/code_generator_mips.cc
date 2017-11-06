@@ -461,6 +461,10 @@ class SuspendCheckSlowPathMIPS : public SlowPathCodeMIPS {
 
   const char* GetDescription() const OVERRIDE { return "SuspendCheckSlowPathMIPS"; }
 
+  HBasicBlock* GetSuccessor() const {
+    return successor_;
+  }
+
  private:
   // If not null, the block to branch to after the suspend check.
   HBasicBlock* const successor_;
@@ -1996,8 +2000,19 @@ void InstructionCodeGeneratorMIPS::GenerateMemoryBarrier(MemBarrierKind kind ATT
 void InstructionCodeGeneratorMIPS::GenerateSuspendCheck(HSuspendCheck* instruction,
                                                         HBasicBlock* successor) {
   SuspendCheckSlowPathMIPS* slow_path =
-    new (codegen_->GetScopedAllocator()) SuspendCheckSlowPathMIPS(instruction, successor);
-  codegen_->AddSlowPath(slow_path);
+      down_cast<SuspendCheckSlowPathMIPS*>(instruction->GetSlowPath());
+
+  if (slow_path == nullptr) {
+    slow_path =
+        new (codegen_->GetScopedAllocator()) SuspendCheckSlowPathMIPS(instruction, successor);
+    instruction->SetSlowPath(slow_path);
+    codegen_->AddSlowPath(slow_path);
+    if (successor != nullptr) {
+      DCHECK(successor->IsLoopHeader());
+    }
+  } else {
+    DCHECK_EQ(slow_path->GetSuccessor(), successor);
+  }
 
   __ LoadFromOffset(kLoadUnsignedHalfword,
                     TMP,
