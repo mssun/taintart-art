@@ -52,7 +52,7 @@ jclass WellKnownClasses::java_lang_ClassNotFoundException;
 jclass WellKnownClasses::java_lang_Daemons;
 jclass WellKnownClasses::java_lang_Error;
 jclass WellKnownClasses::java_lang_invoke_MethodHandle;
-jclass WellKnownClasses::java_lang_invoke_MethodHandle_PolymorphicSignature;
+jclass WellKnownClasses::java_lang_invoke_VarHandle;
 jclass WellKnownClasses::java_lang_IllegalAccessError;
 jclass WellKnownClasses::java_lang_NoClassDefFoundError;
 jclass WellKnownClasses::java_lang_Object;
@@ -299,7 +299,7 @@ void WellKnownClasses::Init(JNIEnv* env) {
   java_lang_Error = CacheClass(env, "java/lang/Error");
   java_lang_IllegalAccessError = CacheClass(env, "java/lang/IllegalAccessError");
   java_lang_invoke_MethodHandle = CacheClass(env, "java/lang/invoke/MethodHandle");
-  java_lang_invoke_MethodHandle_PolymorphicSignature = CacheClass(env, "java/lang/invoke/MethodHandle$PolymorphicSignature");
+  java_lang_invoke_VarHandle = CacheClass(env, "java/lang/invoke/VarHandle");
   java_lang_NoClassDefFoundError = CacheClass(env, "java/lang/NoClassDefFoundError");
   java_lang_reflect_Constructor = CacheClass(env, "java/lang/reflect/Constructor");
   java_lang_reflect_Executable = CacheClass(env, "java/lang/reflect/Executable");
@@ -437,7 +437,7 @@ void WellKnownClasses::Clear() {
   java_lang_Error = nullptr;
   java_lang_IllegalAccessError = nullptr;
   java_lang_invoke_MethodHandle = nullptr;
-  java_lang_invoke_MethodHandle_PolymorphicSignature = nullptr;
+  java_lang_invoke_VarHandle = nullptr;
   java_lang_NoClassDefFoundError = nullptr;
   java_lang_Object = nullptr;
   java_lang_OutOfMemoryError = nullptr;

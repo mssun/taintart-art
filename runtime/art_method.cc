@@ -417,6 +417,17 @@ bool ArtMethod::IsOverridableByDefaultMethod() {
   return GetDeclaringClass()->IsInterface();
 }
 
+bool ArtMethod::IsPolymorphicSignature() {
+  // Methods with a polymorphic signature have constraints that they
+  // are native and varargs and belong to either MethodHandle or VarHandle.
+  if (!IsNative() || !IsVarargs()) {
+    return false;
+  }
+  mirror::Class* cls = GetDeclaringClass();
+  return (cls == WellKnownClasses::ToClass(WellKnownClasses::java_lang_invoke_MethodHandle) ||
+          cls == WellKnownClasses::ToClass(WellKnownClasses::java_lang_invoke_VarHandle));
+}
+
 bool ArtMethod::IsAnnotatedWithFastNative() {
   return IsAnnotatedWith(WellKnownClasses::dalvik_annotation_optimization_FastNative,
                          DexFile::kDexVisibilityBuild,
@@ -426,12 +437,6 @@ bool ArtMethod::IsAnnotatedWithFastNative() {
 bool ArtMethod::IsAnnotatedWithCriticalNative() {
   return IsAnnotatedWith(WellKnownClasses::dalvik_annotation_optimization_CriticalNative,
                          DexFile::kDexVisibilityBuild,
-                         /* lookup_in_resolved_boot_classes */ true);
-}
-
-bool ArtMethod::IsAnnotatedWithPolymorphicSignature() {
-  return IsAnnotatedWith(WellKnownClasses::java_lang_invoke_MethodHandle_PolymorphicSignature,
-                         DexFile::kDexVisibilityRuntime,
                          /* lookup_in_resolved_boot_classes */ true);
 }
 
