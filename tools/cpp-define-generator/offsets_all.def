@@ -40,7 +40,6 @@
 #include "offset_thread.def"
 // TODO: SHADOW_FRAME depends on __SIZEOF__POINTER__
 // #include "offset_shadow_frame.def"
-#include "offset_codeitem.def"
 // TODO: MIRROR_OBJECT_HEADER_SIZE (depends on #ifdef read barrier)
 #include "offset_mirror_class.def"
 #include "offset_mirror_dex_cache.def"

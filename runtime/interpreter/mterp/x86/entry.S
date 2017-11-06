@@ -53,15 +53,14 @@ SYMBOL(ExecuteMterpImpl):
 
     /* Remember the code_item */
     movl    IN_ARG1(%esp), %ecx
-    movl    %ecx, SHADOWFRAME_CODE_ITEM_OFFSET(%edx)
+    movl    %ecx, SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET(%edx)
 
     /* set up "named" registers */
     movl    SHADOWFRAME_NUMBER_OF_VREGS_OFFSET(%edx), %eax
     leal    SHADOWFRAME_VREGS_OFFSET(%edx), rFP
     leal    (rFP, %eax, 4), rREFS
     movl    SHADOWFRAME_DEX_PC_OFFSET(%edx), %eax
-    lea     CODEITEM_INSNS_OFFSET(%ecx), rPC
-    lea     (rPC, %eax, 2), rPC
+    lea     (%ecx, %eax, 2), rPC
     EXPORT_PC
 
     /* Set up for backwards branches & osr profiling */

@@ -32,7 +32,7 @@ namespace interpreter {
 
 // Mterp does not support transactions or access check, thus no templated versions.
 extern "C" bool ExecuteMterpImpl(Thread* self,
-                                 const DexFile::CodeItem* code_item,
+                                 const uint16_t* dex_instructions,
                                  ShadowFrame* shadow_frame,
                                  JValue* result_register) REQUIRES_SHARED(Locks::mutator_lock_);
 
