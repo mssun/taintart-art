@@ -28,6 +28,10 @@ class OatDexFile;
 // Standard dex file. This is the format that is packaged in APKs and produced by tools.
 class StandardDexFile : public DexFile {
  public:
+  class Header : public DexFile::Header {
+    // Same for now.
+  };
+
   static const uint8_t kDexMagic[kDexMagicSize];
   static constexpr size_t kNumDexVersions = 4;
   static const uint8_t kDexMagicVersions[kNumDexVersions][kDexVersionLen];
