@@ -23,6 +23,7 @@ import java.io.IOException;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 
 public class SiteTest {
@@ -31,36 +32,54 @@ public class SiteTest {
     TestDump dump = TestDump.getTestDump();
     AhatSnapshot snapshot = dump.getAhatSnapshot();
 
-    AhatInstance obj1 = dump.getDumpedAhatInstance("objectAllocatedAtKnownSite1");
-    AhatInstance obj2 = dump.getDumpedAhatInstance("objectAllocatedAtKnownSite2");
-    Site s2 = obj2.getSite();
-    Site s1b = s2.getParent();
-    Site s1a = obj1.getSite();
-    Site s = s1a.getParent();
+    AhatInstance oKnownSite = dump.getDumpedAhatInstance("objectAllocatedAtKnownSite");
+    Site sKnownSite = oKnownSite.getSite();
+    assertEquals("DumpedStuff.java", sKnownSite.getFilename());
+    assertEquals("allocateObjectAtKnownSite", sKnownSite.getMethodName());
+    assertEquals(29, sKnownSite.getLineNumber());
+    assertSame(sKnownSite, snapshot.getSite(sKnownSite.getId()));
 
-    // TODO: The following commented out assertion fails due to a problem with
-    //       proguard deobfuscation. That bug should be fixed.
-    // assertEquals("Main.java", s.getFilename());
+    AhatInstance oKnownSubSite = dump.getDumpedAhatInstance("objectAllocatedAtKnownSubSite");
+    Site sKnownSubSite = oKnownSubSite.getSite();
+    assertEquals("DumpedStuff.java", sKnownSubSite.getFilename());
+    assertEquals("allocateObjectAtKnownSubSite", sKnownSubSite.getMethodName());
+    assertEquals(37, sKnownSubSite.getLineNumber());
+    assertSame(sKnownSubSite, snapshot.getSite(sKnownSubSite.getId()));
 
-    assertEquals("Main.java", s1a.getFilename());
-    assertEquals("Main.java", s1b.getFilename());
-    assertEquals("Main.java", s2.getFilename());
+    Site sKnownSubSiteParent = sKnownSubSite.getParent();
+    assertEquals("DumpedStuff.java", sKnownSubSiteParent.getFilename());
+    assertEquals("allocateObjectAtKnownSite", sKnownSubSiteParent.getMethodName());
+    assertEquals(30, sKnownSubSiteParent.getLineNumber());
+    assertSame(sKnownSubSiteParent, snapshot.getSite(sKnownSubSiteParent.getId()));
 
-    assertEquals("allocateObjectAtKnownSite1", s1a.getMethodName());
-    assertEquals("allocateObjectAtKnownSite1", s1b.getMethodName());
-    assertEquals("allocateObjectAtKnownSite2", s2.getMethodName());
+    assertNotSame(sKnownSite, sKnownSubSiteParent);
+    assertSame(sKnownSite.getParent(), sKnownSubSiteParent.getParent());
 
-    // TODO: The following commented out assertion fails due to a problem with
-    //       stack frame line numbers - we don't get different line numbers
-    //       for the different sites, so they are indistiguishable. The
-    //       problem with line numbers should be understood and fixed.
-    // assertNotSame(s1a, s1b);
+    Site sKnownSiteParent = sKnownSite.getParent();
+    assertEquals("DumpedStuff.java", sKnownSiteParent.getFilename());
+    assertEquals("<init>", sKnownSiteParent.getMethodName());
+    assertEquals(45, sKnownSiteParent.getLineNumber());
+    assertSame(sKnownSiteParent, snapshot.getSite(sKnownSiteParent.getId()));
 
-    assertSame(s1a.getParent(), s1b.getParent());
+    AhatInstance oObfSuperSite = dump.getDumpedAhatInstance("objectAllocatedAtObfSuperSite");
+    Site sObfSuperSite = oObfSuperSite.getSite();
+    assertEquals("SuperDumpedStuff.java", sObfSuperSite.getFilename());
+    assertEquals("allocateObjectAtObfSuperSite", sObfSuperSite.getMethodName());
+    assertEquals(22, sObfSuperSite.getLineNumber());
+    assertSame(sObfSuperSite, snapshot.getSite(sObfSuperSite.getId()));
 
-    assertSame(s, snapshot.getSite(s.getId()));
-    assertSame(s1a, snapshot.getSite(s1a.getId()));
-    assertSame(s1b, snapshot.getSite(s1b.getId()));
-    assertSame(s2, snapshot.getSite(s2.getId()));
+    AhatInstance oUnObfSuperSite = dump.getDumpedAhatInstance("objectAllocatedAtUnObfSuperSite");
+    Site sUnObfSuperSite = oUnObfSuperSite.getSite();
+    assertEquals("SuperDumpedStuff.java", sUnObfSuperSite.getFilename());
+    assertEquals("allocateObjectAtUnObfSuperSite", sUnObfSuperSite.getMethodName());
+    assertEquals(26, sUnObfSuperSite.getLineNumber());
+    assertSame(sUnObfSuperSite, snapshot.getSite(sUnObfSuperSite.getId()));
+
+    AhatInstance oOverriddenSite = dump.getDumpedAhatInstance("objectAllocatedAtOverriddenSite");
+    Site sOverriddenSite = oOverriddenSite.getSite();
+    assertEquals("DumpedStuff.java", sOverriddenSite.getFilename());
+    assertEquals("allocateObjectAtOverriddenSite", sOverriddenSite.getMethodName());
+    assertEquals(41, sOverriddenSite.getLineNumber());
+    assertSame(sOverriddenSite, snapshot.getSite(sOverriddenSite.getId()));
   }
 }
