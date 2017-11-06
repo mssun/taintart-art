@@ -2586,6 +2586,26 @@ void IntrinsicCodeGeneratorMIPS64::VisitIntegerValueOf(HInvoke* invoke) {
   }
 }
 
+// static boolean java.lang.Thread.interrupted()
+void IntrinsicLocationsBuilderMIPS64::VisitThreadInterrupted(HInvoke* invoke) {
+  LocationSummary* locations =
+      new (allocator_) LocationSummary(invoke, LocationSummary::kNoCall, kIntrinsified);
+  locations->SetOut(Location::RequiresRegister());
+}
+
+void IntrinsicCodeGeneratorMIPS64::VisitThreadInterrupted(HInvoke* invoke) {
+  Mips64Assembler* assembler = GetAssembler();
+  GpuRegister out = invoke->GetLocations()->Out().AsRegister<GpuRegister>();
+  int32_t offset = Thread::InterruptedOffset<kMips64PointerSize>().Int32Value();
+  __ LoadFromOffset(kLoadWord, out, TR, offset);
+  Mips64Label done;
+  __ Beqzc(out, &done);
+  __ Sync(0);
+  __ StoreToOffset(kStoreWord, ZERO, TR, offset);
+  __ Sync(0);
+  __ Bind(&done);
+}
+
 UNIMPLEMENTED_INTRINSIC(MIPS64, ReferenceGetReferent)
 UNIMPLEMENTED_INTRINSIC(MIPS64, SystemArrayCopy)
 
@@ -2604,8 +2624,6 @@ UNIMPLEMENTED_INTRINSIC(MIPS64, UnsafeGetAndAddLong)
 UNIMPLEMENTED_INTRINSIC(MIPS64, UnsafeGetAndSetInt)
 UNIMPLEMENTED_INTRINSIC(MIPS64, UnsafeGetAndSetLong)
 UNIMPLEMENTED_INTRINSIC(MIPS64, UnsafeGetAndSetObject)
-
-UNIMPLEMENTED_INTRINSIC(MIPS64, ThreadInterrupted)
 
 UNREACHABLE_INTRINSICS(MIPS64)
 

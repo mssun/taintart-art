@@ -3203,6 +3203,26 @@ void IntrinsicCodeGeneratorMIPS::VisitIntegerValueOf(HInvoke* invoke) {
   }
 }
 
+// static boolean java.lang.Thread.interrupted()
+void IntrinsicLocationsBuilderMIPS::VisitThreadInterrupted(HInvoke* invoke) {
+  LocationSummary* locations =
+      new (allocator_) LocationSummary(invoke, LocationSummary::kNoCall, kIntrinsified);
+  locations->SetOut(Location::RequiresRegister());
+}
+
+void IntrinsicCodeGeneratorMIPS::VisitThreadInterrupted(HInvoke* invoke) {
+  MipsAssembler* assembler = GetAssembler();
+  Register out = invoke->GetLocations()->Out().AsRegister<Register>();
+  int32_t offset = Thread::InterruptedOffset<kMipsPointerSize>().Int32Value();
+  __ LoadFromOffset(kLoadWord, out, TR, offset);
+  MipsLabel done;
+  __ Beqz(out, &done);
+  __ Sync(0);
+  __ StoreToOffset(kStoreWord, ZERO, TR, offset);
+  __ Sync(0);
+  __ Bind(&done);
+}
+
 // Unimplemented intrinsics.
 
 UNIMPLEMENTED_INTRINSIC(MIPS, MathCeil)
@@ -3231,8 +3251,6 @@ UNIMPLEMENTED_INTRINSIC(MIPS, UnsafeGetAndAddLong)
 UNIMPLEMENTED_INTRINSIC(MIPS, UnsafeGetAndSetInt)
 UNIMPLEMENTED_INTRINSIC(MIPS, UnsafeGetAndSetLong)
 UNIMPLEMENTED_INTRINSIC(MIPS, UnsafeGetAndSetObject)
-
-UNIMPLEMENTED_INTRINSIC(MIPS, ThreadInterrupted)
 
 UNREACHABLE_INTRINSICS(MIPS)
 
