@@ -92,7 +92,7 @@ class ShadowFrame {
   }
 
   uint32_t GetDexPC() const {
-    return (dex_pc_ptr_ == nullptr) ? dex_pc_ : dex_pc_ptr_ - code_item_->insns_;
+    return (dex_pc_ptr_ == nullptr) ? dex_pc_ : dex_pc_ptr_ - dex_instructions_;
   }
 
   int16_t GetCachedHotnessCountdown() const {
@@ -146,12 +146,8 @@ class ShadowFrame {
     return &vregs_[i + NumberOfVRegs()];
   }
 
-  void SetCodeItem(const DexFile::CodeItem* code_item) {
-    code_item_ = code_item;
-  }
-
-  const DexFile::CodeItem* GetCodeItem() const {
-    return code_item_;
+  const uint16_t* GetDexInstructions() const {
+    return dex_instructions_;
   }
 
   float GetVRegFloat(size_t i) const {
@@ -324,8 +320,8 @@ class ShadowFrame {
     return OFFSETOF_MEMBER(ShadowFrame, dex_pc_ptr_);
   }
 
-  static size_t CodeItemOffset() {
-    return OFFSETOF_MEMBER(ShadowFrame, code_item_);
+  static size_t DexInstructionsOffset() {
+    return OFFSETOF_MEMBER(ShadowFrame, dex_instructions_);
   }
 
   static size_t CachedHotnessCountdownOffset() {
@@ -372,7 +368,7 @@ class ShadowFrame {
         method_(method),
         result_register_(nullptr),
         dex_pc_ptr_(nullptr),
-        code_item_(nullptr),
+        dex_instructions_(nullptr),
         number_of_vregs_(num_vregs),
         dex_pc_(dex_pc),
         cached_hotness_countdown_(0),
@@ -403,7 +399,8 @@ class ShadowFrame {
   ArtMethod* method_;
   JValue* result_register_;
   const uint16_t* dex_pc_ptr_;
-  const DexFile::CodeItem* code_item_;
+  // Dex instruction base of the code item.
+  const uint16_t* dex_instructions_;
   LockCountData lock_count_data_;  // This may contain GC roots when lock counting is active.
   const uint32_t number_of_vregs_;
   uint32_t dex_pc_;

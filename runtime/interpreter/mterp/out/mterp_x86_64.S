@@ -131,7 +131,7 @@ unspecified registers or condition codes.
 #define OFF_FP_METHOD OFF_FP(SHADOWFRAME_METHOD_OFFSET)
 #define OFF_FP_RESULT_REGISTER OFF_FP(SHADOWFRAME_RESULT_REGISTER_OFFSET)
 #define OFF_FP_DEX_PC_PTR OFF_FP(SHADOWFRAME_DEX_PC_PTR_OFFSET)
-#define OFF_FP_CODE_ITEM OFF_FP(SHADOWFRAME_CODE_ITEM_OFFSET)
+#define OFF_FP_DEX_INSTRUCTIONS OFF_FP(SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET)
 #define OFF_FP_COUNTDOWN_OFFSET OFF_FP(SHADOWFRAME_HOTNESS_COUNTDOWN_OFFSET)
 #define OFF_FP_SHADOWFRAME (-SHADOWFRAME_VREGS_OFFSET)
 
@@ -354,15 +354,14 @@ SYMBOL(ExecuteMterpImpl):
     movq    IN_ARG3, SHADOWFRAME_RESULT_REGISTER_OFFSET(IN_ARG2)
 
     /* Remember the code_item */
-    movq    IN_ARG1, SHADOWFRAME_CODE_ITEM_OFFSET(IN_ARG2)
+    movq    IN_ARG1, SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET(IN_ARG2)
 
     /* set up "named" registers */
     movl    SHADOWFRAME_NUMBER_OF_VREGS_OFFSET(IN_ARG2), %eax
     leaq    SHADOWFRAME_VREGS_OFFSET(IN_ARG2), rFP
     leaq    (rFP, %rax, 4), rREFS
     movl    SHADOWFRAME_DEX_PC_OFFSET(IN_ARG2), %eax
-    leaq    CODEITEM_INSNS_OFFSET(IN_ARG1), rPC
-    leaq    (rPC, %rax, 2), rPC
+    leaq    (IN_ARG1, %rax, 2), rPC
     EXPORT_PC
 
     /* Starting ibase */
@@ -11967,10 +11966,9 @@ MterpException:
     call    SYMBOL(MterpHandleException)
     testb   %al, %al
     jz      MterpExceptionReturn
-    movq    OFF_FP_CODE_ITEM(rFP), %rax
+    movq    OFF_FP_DEX_INSTRUCTIONS(rFP), %rax
     mov     OFF_FP_DEX_PC(rFP), %ecx
-    leaq    CODEITEM_INSNS_OFFSET(%rax), rPC
-    leaq    (rPC, %rcx, 2), rPC
+    leaq    (%rax, %rcx, 2), rPC
     movq    rPC, OFF_FP_DEX_PC_PTR(rFP)
     /* Do we need to switch interpreters? */
     call    SYMBOL(MterpShouldSwitchInterpreters)

@@ -97,11 +97,10 @@ MterpException:
     bl      MterpHandleException                    @ (self, shadow_frame)
     cmp     r0, #0
     beq     MterpExceptionReturn                    @ no local catch, back to caller.
-    ldr     r0, [rFP, #OFF_FP_CODE_ITEM]
+    ldr     r0, [rFP, #OFF_FP_DEX_INSTRUCTIONS]
     ldr     r1, [rFP, #OFF_FP_DEX_PC]
     ldr     rIBASE, [rSELF, #THREAD_CURRENT_IBASE_OFFSET]
-    add     rPC, r0, #CODEITEM_INSNS_OFFSET
-    add     rPC, rPC, r1, lsl #1                    @ generate new dex_pc_ptr
+    add     rPC, r0, r1, lsl #1                     @ generate new dex_pc_ptr
     /* Do we need to switch interpreters? */
     bl      MterpShouldSwitchInterpreters
     cmp     r0, #0

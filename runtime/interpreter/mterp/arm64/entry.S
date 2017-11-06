@@ -36,8 +36,8 @@ ENTRY ExecuteMterpImpl
     /* Remember the return register */
     str     x3, [x2, #SHADOWFRAME_RESULT_REGISTER_OFFSET]
 
-    /* Remember the code_item */
-    str     x1, [x2, #SHADOWFRAME_CODE_ITEM_OFFSET]
+    /* Remember the dex instruction pointer */
+    str     x1, [x2, #SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET]
 
     /* set up "named" registers */
     mov     xSELF, x0
@@ -45,8 +45,7 @@ ENTRY ExecuteMterpImpl
     add     xFP, x2, #SHADOWFRAME_VREGS_OFFSET     // point to vregs.
     add     xREFS, xFP, w0, lsl #2                 // point to reference array in shadow frame
     ldr     w0, [x2, #SHADOWFRAME_DEX_PC_OFFSET]   // Get starting dex_pc.
-    add     xPC, x1, #CODEITEM_INSNS_OFFSET        // Point to base of insns[]
-    add     xPC, xPC, w0, lsl #1                   // Create direct pointer to 1st dex opcode
+    add     xPC, x1, w0, lsl #1                    // Create direct pointer to 1st dex opcode
     EXPORT_PC
 
     /* Starting ibase */
