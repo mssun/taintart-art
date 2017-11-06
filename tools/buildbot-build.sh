@@ -35,7 +35,7 @@ fi
 using_jack=$(get_build_var ANDROID_COMPILE_WITH_JACK)
 
 java_libraries_dir=${out_dir}/target/common/obj/JAVA_LIBRARIES
-common_targets="vogar core-tests apache-harmony-jdwp-tests-hostdex jsr166-tests mockito-target"
+common_targets="vogar core-tests apache-harmony-jdwp-tests-hostdex jsr166-tests mockito-target libjdwp"
 mode="target"
 j_arg="-j$(nproc)"
 showcommands=
