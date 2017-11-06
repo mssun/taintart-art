@@ -38,8 +38,10 @@ void InitMterpTls(Thread* self) {
 /*
  * The platform-specific implementation must provide this.
  */
-extern "C" bool ExecuteMterpImpl(Thread* self, const DexFile::CodeItem* code_item,
-                                 ShadowFrame* shadow_frame, JValue* result_register)
+extern "C" bool ExecuteMterpImpl(Thread* self,
+                                 const uint16_t* dex_instructions,
+                                 ShadowFrame* shadow_frame,
+                                 JValue* result_register)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   UNUSED(self); UNUSED(shadow_frame); UNUSED(code_item); UNUSED(result_register);
   UNIMPLEMENTED(art::FATAL);
