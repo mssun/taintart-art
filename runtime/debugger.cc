@@ -1931,7 +1931,7 @@ static JDWP::JdwpError SetArtFieldValue(ArtField* f, mirror::Object* o, uint64_t
           StackHandleScope<2> hs(Thread::Current());
           HandleWrapper<mirror::Object> h_v(hs.NewHandleWrapper(&v));
           HandleWrapper<mirror::Object> h_o(hs.NewHandleWrapper(&o));
-          field_type = f->GetType<true>();
+          field_type = f->ResolveType();
         }
         if (!field_type->IsAssignableFrom(v->GetClass())) {
           return JDWP::ERR_INVALID_OBJECT;

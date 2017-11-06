@@ -201,7 +201,7 @@ ALWAYS_INLINE bool DoFieldPutCommon(Thread* self,
           StackHandleScope<2> hs(self);
           HandleWrapperObjPtr<mirror::Object> h_reg(hs.NewHandleWrapper(&reg));
           HandleWrapperObjPtr<mirror::Object> h_obj(hs.NewHandleWrapper(&obj));
-          field_class = field->GetType<true>();
+          field_class = field->ResolveType();
         }
         if (!reg->VerifierInstanceOf(field_class.Ptr())) {
           // This should never happen.

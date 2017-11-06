@@ -103,6 +103,7 @@ inline uint32_t ArtMethod::GetDexMethodIndex() {
 }
 
 inline ObjPtr<mirror::Class> ArtMethod::LookupResolvedClassFromTypeIndex(dex::TypeIndex type_idx) {
+  ScopedAssertNoThreadSuspension ants(__FUNCTION__);
   ObjPtr<mirror::DexCache> dex_cache = GetDexCache();
   ObjPtr<mirror::Class> type = dex_cache->GetResolvedType(type_idx);
   if (UNLIKELY(type == nullptr)) {

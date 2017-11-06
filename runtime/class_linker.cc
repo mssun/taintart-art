@@ -8159,23 +8159,23 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForField(
   Handle<mirror::Class> return_type;
   switch (handle_type) {
     case DexFile::MethodHandleType::kStaticPut: {
-      method_params->Set(0, target_field->GetType<true>());
+      method_params->Set(0, target_field->ResolveType());
       return_type = hs.NewHandle(FindPrimitiveClass('V'));
       break;
     }
     case DexFile::MethodHandleType::kStaticGet: {
-      return_type = hs.NewHandle(target_field->GetType<true>());
+      return_type = hs.NewHandle(target_field->ResolveType());
       break;
     }
     case DexFile::MethodHandleType::kInstancePut: {
       method_params->Set(0, target_field->GetDeclaringClass());
-      method_params->Set(1, target_field->GetType<true>());
+      method_params->Set(1, target_field->ResolveType());
       return_type = hs.NewHandle(FindPrimitiveClass('V'));
       break;
     }
     case DexFile::MethodHandleType::kInstanceGet: {
       method_params->Set(0, target_field->GetDeclaringClass());
-      return_type = hs.NewHandle(target_field->GetType<true>());
+      return_type = hs.NewHandle(target_field->ResolveType());
       break;
     }
     case DexFile::MethodHandleType::kInvokeStatic:
@@ -8582,7 +8582,7 @@ jobject ClassLinker::CreateWellKnownClassLoader(Thread* self,
   ArtField* dex_elements_field =
       jni::DecodeArtField(WellKnownClasses::dalvik_system_DexPathList_dexElements);
 
-  Handle<mirror::Class> dex_elements_class(hs.NewHandle(dex_elements_field->GetType<true>()));
+  Handle<mirror::Class> dex_elements_class(hs.NewHandle(dex_elements_field->ResolveType()));
   DCHECK(dex_elements_class != nullptr);
   DCHECK(dex_elements_class->IsArrayClass());
   Handle<mirror::ObjectArray<mirror::Object>> h_dex_elements(hs.NewHandle(
@@ -8597,10 +8597,10 @@ jobject ClassLinker::CreateWellKnownClassLoader(Thread* self,
   DCHECK_EQ(h_dex_element_class.Get(), element_file_field->GetDeclaringClass());
 
   ArtField* cookie_field = jni::DecodeArtField(WellKnownClasses::dalvik_system_DexFile_cookie);
-  DCHECK_EQ(cookie_field->GetDeclaringClass(), element_file_field->GetType<false>());
+  DCHECK_EQ(cookie_field->GetDeclaringClass(), element_file_field->LookupType());
 
   ArtField* file_name_field = jni::DecodeArtField(WellKnownClasses::dalvik_system_DexFile_fileName);
-  DCHECK_EQ(file_name_field->GetDeclaringClass(), element_file_field->GetType<false>());
+  DCHECK_EQ(file_name_field->GetDeclaringClass(), element_file_field->LookupType());
 
   // Fill the elements array.
   int32_t index = 0;
