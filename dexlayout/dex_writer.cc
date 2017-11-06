@@ -12,8 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
- * Header file of an in-memory representation of DEX files.
  */
 
 #include "dex_writer.h"
@@ -24,6 +22,7 @@
 #include <vector>
 
 #include "cdex/compact_dex_file.h"
+#include "compact_dex_writer.h"
 #include "dex_file_types.h"
 #include "standard_dex_file.h"
 #include "utf.h"
@@ -629,48 +628,36 @@ void DexWriter::WriteMapItem() {
 }
 
 void DexWriter::WriteHeader() {
-  uint32_t buffer[20];
-  dex_ir::Collections& collections = header_->GetCollections();
-  size_t offset = 0;
-  if (compact_dex_level_ != CompactDexLevel::kCompactDexLevelNone) {
-    static constexpr size_t kMagicAndVersionLen =
-        CompactDexFile::kDexMagicSize + CompactDexFile::kDexVersionLen;
-    uint8_t magic_and_version[kMagicAndVersionLen] = {};
-    CompactDexFile::WriteMagic(&magic_and_version[0]);
-    CompactDexFile::WriteCurrentVersion(&magic_and_version[0]);
-    offset += Write(magic_and_version, kMagicAndVersionLen * sizeof(uint8_t), offset);
-  } else {
-    static constexpr size_t kMagicAndVersionLen =
-        StandardDexFile::kDexMagicSize + StandardDexFile::kDexVersionLen;
-    offset += Write(header_->Magic(), kMagicAndVersionLen * sizeof(uint8_t), offset);
-  }
-  buffer[0] = header_->Checksum();
-  offset += Write(buffer, sizeof(uint32_t), offset);
-  offset += Write(header_->Signature(), 20 * sizeof(uint8_t), offset);
-  uint32_t file_size = header_->FileSize();
-  buffer[0] = file_size;
-  buffer[1] = header_->GetSize();
-  buffer[2] = header_->EndianTag();
-  buffer[3] = header_->LinkSize();
-  buffer[4] = header_->LinkOffset();
-  buffer[5] = collections.MapListOffset();
-  buffer[6] = collections.StringIdsSize();
-  buffer[7] = collections.StringIdsOffset();
-  buffer[8] = collections.TypeIdsSize();
-  buffer[9] = collections.TypeIdsOffset();
-  buffer[10] = collections.ProtoIdsSize();
-  buffer[11] = collections.ProtoIdsOffset();
-  buffer[12] = collections.FieldIdsSize();
-  buffer[13] = collections.FieldIdsOffset();
-  buffer[14] = collections.MethodIdsSize();
-  buffer[15] = collections.MethodIdsOffset();
-  uint32_t class_defs_size = collections.ClassDefsSize();
-  uint32_t class_defs_off = collections.ClassDefsOffset();
-  buffer[16] = class_defs_size;
-  buffer[17] = class_defs_off;
-  buffer[18] = header_->DataSize();
-  buffer[19] = header_->DataOffset();
-  Write(buffer, 20 * sizeof(uint32_t), offset);
+  StandardDexFile::Header header;
+  static constexpr size_t kMagicAndVersionLen =
+      StandardDexFile::kDexMagicSize + StandardDexFile::kDexVersionLen;
+  std::copy_n(header_->Magic(), kMagicAndVersionLen, header.magic_);
+  header.checksum_ = header_->Checksum();
+  std::copy_n(header_->Signature(), DexFile::kSha1DigestSize, header.signature_);
+  header.file_size_ = header_->FileSize();
+  header.header_size_ = header_->GetSize();
+  header.endian_tag_ = header_->EndianTag();
+  header.link_size_ = header_->LinkSize();
+  header.link_off_ = header_->LinkOffset();
+  const dex_ir::Collections& collections = header_->GetCollections();
+  header.map_off_ = collections.MapListOffset();
+  header.string_ids_size_ = collections.StringIdsSize();
+  header.string_ids_off_ = collections.StringIdsOffset();
+  header.type_ids_size_ = collections.TypeIdsSize();
+  header.type_ids_off_ = collections.TypeIdsOffset();
+  header.proto_ids_size_ = collections.ProtoIdsSize();
+  header.proto_ids_off_ = collections.ProtoIdsOffset();
+  header.field_ids_size_ = collections.FieldIdsSize();
+  header.field_ids_off_ = collections.FieldIdsOffset();
+  header.method_ids_size_ = collections.MethodIdsSize();
+  header.method_ids_off_ = collections.MethodIdsOffset();
+  header.class_defs_size_ = collections.ClassDefsSize();
+  header.class_defs_off_ = collections.ClassDefsOffset();
+  header.data_size_ = header_->DataSize();
+  header.data_off_ = header_->DataOffset();
+
+  static_assert(sizeof(header) == 0x70, "Size doesn't match dex spec");
+  Write(reinterpret_cast<uint8_t*>(&header), sizeof(header), 0u);
 }
 
 void DexWriter::WriteMemMap() {
@@ -695,8 +682,13 @@ void DexWriter::WriteMemMap() {
 }
 
 void DexWriter::Output(dex_ir::Header* header, MemMap* mem_map, CompactDexLevel compact_dex_level) {
-  DexWriter dex_writer(header, mem_map, compact_dex_level);
-  dex_writer.WriteMemMap();
+  std::unique_ptr<DexWriter> writer;
+  if (compact_dex_level != CompactDexLevel::kCompactDexLevelNone) {
+    writer.reset(new CompactDexWriter(header, mem_map, compact_dex_level));
+  } else {
+    writer.reset(new DexWriter(header, mem_map));
+  }
+  writer->WriteMemMap();
 }
 
 }  // namespace art
