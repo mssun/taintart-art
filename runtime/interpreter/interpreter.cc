@@ -314,7 +314,10 @@ static inline JValue Execute(
             return ExecuteSwitchImpl<false, false>(self, code_item, shadow_frame, result_register,
                                                    false);
           }
-          bool returned = ExecuteMterpImpl(self, code_item, &shadow_frame, &result_register);
+          bool returned = ExecuteMterpImpl(self,
+                                           code_item->insns_,
+                                           &shadow_frame,
+                                           &result_register);
           if (returned) {
             return result_register;
           } else {

@@ -135,7 +135,7 @@ unspecified registers or condition codes.
 #define OFF_FP_METHOD OFF_FP(SHADOWFRAME_METHOD_OFFSET)
 #define OFF_FP_RESULT_REGISTER OFF_FP(SHADOWFRAME_RESULT_REGISTER_OFFSET)
 #define OFF_FP_DEX_PC_PTR OFF_FP(SHADOWFRAME_DEX_PC_PTR_OFFSET)
-#define OFF_FP_CODE_ITEM OFF_FP(SHADOWFRAME_CODE_ITEM_OFFSET)
+#define OFF_FP_DEX_INSTRUCTIONS OFF_FP(SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET)
 #define OFF_FP_COUNTDOWN_OFFSET OFF_FP(SHADOWFRAME_HOTNESS_COUNTDOWN_OFFSET)
 #define OFF_FP_SHADOWFRAME OFF_FP(0)
 
@@ -371,15 +371,14 @@ SYMBOL(ExecuteMterpImpl):
 
     /* Remember the code_item */
     movl    IN_ARG1(%esp), %ecx
-    movl    %ecx, SHADOWFRAME_CODE_ITEM_OFFSET(%edx)
+    movl    %ecx, SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET(%edx)
 
     /* set up "named" registers */
     movl    SHADOWFRAME_NUMBER_OF_VREGS_OFFSET(%edx), %eax
     leal    SHADOWFRAME_VREGS_OFFSET(%edx), rFP
     leal    (rFP, %eax, 4), rREFS
     movl    SHADOWFRAME_DEX_PC_OFFSET(%edx), %eax
-    lea     CODEITEM_INSNS_OFFSET(%ecx), rPC
-    lea     (rPC, %eax, 2), rPC
+    lea     (%ecx, %eax, 2), rPC
     EXPORT_PC
 
     /* Set up for backwards branches & osr profiling */
@@ -12749,10 +12748,9 @@ MterpException:
     call    SYMBOL(MterpHandleException)
     testb   %al, %al
     jz      MterpExceptionReturn
-    movl    OFF_FP_CODE_ITEM(rFP), %eax
+    movl    OFF_FP_DEX_INSTRUCTIONS(rFP), %eax
     movl    OFF_FP_DEX_PC(rFP), %ecx
-    lea     CODEITEM_INSNS_OFFSET(%eax), rPC
-    lea     (rPC, %ecx, 2), rPC
+    lea     (%eax, %ecx, 2), rPC
     movl    rPC, OFF_FP_DEX_PC_PTR(rFP)
     /* Do we need to switch interpreters? */
     call    SYMBOL(MterpShouldSwitchInterpreters)
