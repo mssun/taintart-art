@@ -177,6 +177,42 @@ bool Monitor::Install(Thread* self) {
     // Do not abort on dex pc errors. This can easily happen when we want to dump a stack trace on
     // abort.
     locking_method_ = owner_->GetCurrentMethod(&locking_dex_pc_, false);
+    if (locking_method_ != nullptr && UNLIKELY(locking_method_->IsProxyMethod())) {
+      // Grab another frame. Proxy methods are not helpful for lock profiling. This should be rare
+      // enough that it's OK to walk the stack twice.
+      struct NextMethodVisitor FINAL : public StackVisitor {
+        explicit NextMethodVisitor(Thread* thread) REQUIRES_SHARED(Locks::mutator_lock_)
+            : StackVisitor(thread,
+                           nullptr,
+                           StackVisitor::StackWalkKind::kIncludeInlinedFrames,
+                           false),
+              count_(0),
+              method_(nullptr),
+              dex_pc_(0) {}
+        bool VisitFrame() OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_) {
+          ArtMethod* m = GetMethod();
+          if (m->IsRuntimeMethod()) {
+            // Continue if this is a runtime method.
+            return true;
+          }
+          count_++;
+          if (count_ == 2u) {
+            method_ = m;
+            dex_pc_ = GetDexPc(false);
+            return false;
+          }
+          return true;
+        }
+        size_t count_;
+        ArtMethod* method_;
+        uint32_t dex_pc_;
+      };
+      NextMethodVisitor nmv(owner_);
+      nmv.WalkStack();
+      locking_method_ = nmv.method_;
+      locking_dex_pc_ = nmv.dex_pc_;
+    }
+    DCHECK(locking_method_ == nullptr || !locking_method_->IsProxyMethod());
   }
   return success;
 }
@@ -337,6 +373,8 @@ bool Monitor::TryLockLocked(Thread* self) {
     // acquisition failures to use in sampled logging.
     if (lock_profiling_threshold_ != 0) {
       locking_method_ = self->GetCurrentMethod(&locking_dex_pc_);
+      // We don't expect a proxy method here.
+      DCHECK(locking_method_ == nullptr || !locking_method_->IsProxyMethod());
     }
   } else if (owner_ == self) {  // Recursive.
     lock_count_++;
