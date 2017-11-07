@@ -121,7 +121,7 @@ The following registers have fixed assignments:
 #define OFF_FP_METHOD OFF_FP(SHADOWFRAME_METHOD_OFFSET)
 #define OFF_FP_RESULT_REGISTER OFF_FP(SHADOWFRAME_RESULT_REGISTER_OFFSET)
 #define OFF_FP_DEX_PC_PTR OFF_FP(SHADOWFRAME_DEX_PC_PTR_OFFSET)
-#define OFF_FP_CODE_ITEM OFF_FP(SHADOWFRAME_CODE_ITEM_OFFSET)
+#define OFF_FP_DEX_INSTRUCTIONS OFF_FP(SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET)
 #define OFF_FP_SHADOWFRAME OFF_FP(0)
 
 #define MTERP_PROFILE_BRANCHES 1
@@ -361,7 +361,7 @@ The following registers have fixed assignments:
 /*
  * On entry:
  *  a0  Thread* self
- *  a1  code_item
+ *  a1  dex_instructions
  *  a2  ShadowFrame
  *  a3  JValue* result_register
  *
@@ -397,17 +397,16 @@ ExecuteMterpImpl:
     /* Remember the return register */
     sd      a3, SHADOWFRAME_RESULT_REGISTER_OFFSET(a2)
 
-    /* Remember the code_item */
-    sd      a1, SHADOWFRAME_CODE_ITEM_OFFSET(a2)
+    /* Remember the dex instruction pointer */
+    sd      a1, SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET(a2)
 
     /* set up "named" registers */
     move    rSELF, a0
     daddu   rFP, a2, SHADOWFRAME_VREGS_OFFSET
     lw      v0, SHADOWFRAME_NUMBER_OF_VREGS_OFFSET(a2)
     dlsa    rREFS, v0, rFP, 2
-    daddu   rPC, a1, CODEITEM_INSNS_OFFSET
     lw      v0, SHADOWFRAME_DEX_PC_OFFSET(a2)
-    dlsa    rPC, v0, rPC, 1
+    dlsa    rPC, v0, a1, 1
     EXPORT_PC
 
     /* Starting ibase */
@@ -12241,11 +12240,10 @@ MterpException:
     daddu   a1, rFP, OFF_FP_SHADOWFRAME
     jal     MterpHandleException                    # (self, shadow_frame)
     beqzc   v0, MterpExceptionReturn                # no local catch, back to caller.
-    ld      a0, OFF_FP_CODE_ITEM(rFP)
+    ld      a0, OFF_FP_DEX_INSTRUCTIONS(rFP)
     lwu     a1, OFF_FP_DEX_PC(rFP)
     REFRESH_IBASE
-    daddu   rPC, a0, CODEITEM_INSNS_OFFSET
-    dlsa    rPC, a1, rPC, 1                         # generate new dex_pc_ptr
+    dlsa    rPC, a1, a0, 1                          # generate new dex_pc_ptr
     /* Do we need to switch interpreters? */
     jal     MterpShouldSwitchInterpreters
     bnezc   v0, MterpFallback
