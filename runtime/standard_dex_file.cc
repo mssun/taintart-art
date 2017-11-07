@@ -31,6 +31,16 @@ const uint8_t StandardDexFile::kDexMagicVersions[StandardDexFile::kNumDexVersion
   {'0', '3', '9', '\0'},
 };
 
+void StandardDexFile::WriteMagic(uint8_t* magic) {
+  std::copy_n(kDexMagic, kDexMagicSize, magic);
+}
+
+void StandardDexFile::WriteCurrentVersion(uint8_t* magic) {
+  std::copy_n(kDexMagicVersions[StandardDexFile::kDexVersionLen - 1],
+              kDexVersionLen,
+              magic + kDexMagicSize);
+}
+
 bool StandardDexFile::IsMagicValid(const uint8_t* magic) {
   return (memcmp(magic, kDexMagic, sizeof(kDexMagic)) == 0);
 }

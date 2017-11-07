@@ -32,10 +32,12 @@
 
 namespace art {
 
+class CompactDexFile;
 enum InvokeType : uint32_t;
 class MemMap;
 class OatDexFile;
 class Signature;
+class StandardDexFile;
 class StringPiece;
 class ZipArchive;
 
@@ -993,13 +995,15 @@ class DexFile {
   // Returns a human-readable form of the type at an index.
   std::string PrettyType(dex::TypeIndex type_idx) const;
 
-  // Helper functions.
-  virtual bool IsCompactDexFile() const {
-    return false;
+  // Not virtual for performance reasons.
+  ALWAYS_INLINE bool IsCompactDexFile() const {
+    return is_compact_dex_;
   }
-  virtual bool IsStandardDexFile() const {
-    return false;
+  ALWAYS_INLINE bool IsStandardDexFile() const {
+    return !is_compact_dex_;
   }
+  ALWAYS_INLINE const StandardDexFile* AsStandardDexFile() const;
+  ALWAYS_INLINE const CompactDexFile* AsCompactDexFile() const;
 
  protected:
   DexFile(const uint8_t* base,
@@ -1007,7 +1011,8 @@ class DexFile {
           const std::string& location,
           uint32_t location_checksum,
           const OatDexFile* oat_dex_file,
-          DexFileContainer* container);
+          DexFileContainer* container,
+          bool is_compact_dex);
 
   // Top-level initializer that calls other Init methods.
   bool Init(std::string* error_msg);
@@ -1072,6 +1077,9 @@ class DexFile {
 
   // Manages the underlying memory allocation.
   std::unique_ptr<DexFileContainer> container_;
+
+  // If the dex file is a compact dex file. If false then the dex file is a standard dex file.
+  const bool is_compact_dex_;
 
   friend class DexFileLoader;
   friend class DexFileVerifierTest;
