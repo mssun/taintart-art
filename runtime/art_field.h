@@ -205,8 +205,8 @@ class ArtField FINAL {
 
   bool IsPrimitiveType() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  template <bool kResolve>
-  ObjPtr<mirror::Class> GetType() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<mirror::Class> LookupType() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<mirror::Class> ResolveType() REQUIRES_SHARED(Locks::mutator_lock_);
 
   size_t FieldSize() REQUIRES_SHARED(Locks::mutator_lock_);
 
