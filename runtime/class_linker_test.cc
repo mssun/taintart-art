@@ -253,7 +253,7 @@ class ClassLinkerTest : public CommonRuntimeTest {
     EXPECT_TRUE(field != nullptr);
     EXPECT_OBJ_PTR_EQ(klass, field->GetDeclaringClass());
     EXPECT_TRUE(field->GetName() != nullptr);
-    EXPECT_TRUE(field->GetType<true>() != nullptr);
+    EXPECT_TRUE(field->ResolveType() != nullptr);
   }
 
   void AssertClass(const std::string& descriptor, Handle<mirror::Class> klass)
@@ -362,7 +362,7 @@ class ClassLinkerTest : public CommonRuntimeTest {
     MemberOffset current_ref_offset = start_ref_offset;
     for (size_t i = 0; i < klass->NumInstanceFields(); i++) {
       ArtField* field = klass->GetInstanceField(i);
-      ObjPtr<mirror::Class> field_type = field->GetType<true>();
+      ObjPtr<mirror::Class> field_type = field->ResolveType();
       ASSERT_TRUE(field_type != nullptr);
       if (!field->IsPrimitiveType()) {
         ASSERT_TRUE(!field_type->IsPrimitive());
