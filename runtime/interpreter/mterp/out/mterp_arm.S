@@ -117,7 +117,7 @@ unspecified registers or condition codes.
 #define OFF_FP_METHOD OFF_FP(SHADOWFRAME_METHOD_OFFSET)
 #define OFF_FP_RESULT_REGISTER OFF_FP(SHADOWFRAME_RESULT_REGISTER_OFFSET)
 #define OFF_FP_DEX_PC_PTR OFF_FP(SHADOWFRAME_DEX_PC_PTR_OFFSET)
-#define OFF_FP_CODE_ITEM OFF_FP(SHADOWFRAME_CODE_ITEM_OFFSET)
+#define OFF_FP_DEX_INSTRUCTIONS OFF_FP(SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET)
 #define OFF_FP_SHADOWFRAME OFF_FP(0)
 
 /*
@@ -137,9 +137,8 @@ unspecified registers or condition codes.
 .endm
 
 .macro EXPORT_DEX_PC tmp
-    ldr  \tmp, [rFP, #OFF_FP_CODE_ITEM]
+    ldr  \tmp, [rFP, #OFF_FP_DEX_INSTRUCTIONS]
     str  rPC, [rFP, #OFF_FP_DEX_PC_PTR]
-    add  \tmp, #CODEITEM_INSNS_OFFSET
     sub  \tmp, rPC, \tmp
     asr  \tmp, #1
     str  \tmp, [rFP, #OFF_FP_DEX_PC]
@@ -365,8 +364,8 @@ ENTRY ExecuteMterpImpl
     /* Remember the return register */
     str     r3, [r2, #SHADOWFRAME_RESULT_REGISTER_OFFSET]
 
-    /* Remember the code_item */
-    str     r1, [r2, #SHADOWFRAME_CODE_ITEM_OFFSET]
+    /* Remember the dex instruction pointer */
+    str     r1, [r2, #SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET]
 
     /* set up "named" registers */
     mov     rSELF, r0
@@ -374,8 +373,7 @@ ENTRY ExecuteMterpImpl
     add     rFP, r2, #SHADOWFRAME_VREGS_OFFSET     @ point to vregs.
     VREG_INDEX_TO_ADDR rREFS, r0                   @ point to reference array in shadow frame
     ldr     r0, [r2, #SHADOWFRAME_DEX_PC_OFFSET]   @ Get starting dex_pc.
-    add     rPC, r1, #CODEITEM_INSNS_OFFSET        @ Point to base of insns[]
-    add     rPC, rPC, r0, lsl #1                   @ Create direct pointer to 1st dex opcode
+    add     rPC, r1, r0, lsl #1                    @ Create direct pointer to 1st dex opcode
     EXPORT_PC
 
     /* Starting ibase */
@@ -1836,7 +1834,6 @@ artMterpAsmInstructionStart = .L_op_nop
     mov     r3, r0, lsr #8              @ r3<- CC
     GET_VREG r0, r2                     @ r0<- vBB (array object)
     GET_VREG r1, r3                     @ r1<- vCC (requested index)
-    CLEAR_SHADOW_PAIR r9, r2, r3        @ Zero out the shadow regs
     cmp     r0, #0                      @ null array object?
     beq     common_errNullObject        @ yes, bail
     ldr     r3, [r0, #MIRROR_ARRAY_LENGTH_OFFSET]    @ r3<- arrayObj->length
@@ -1844,6 +1841,7 @@ artMterpAsmInstructionStart = .L_op_nop
     cmp     r1, r3                      @ compare unsigned index, length
     bcs     common_errArrayIndex        @ index >= length, bail
     FETCH_ADVANCE_INST 2                @ advance rPC, load rINST
+    CLEAR_SHADOW_PAIR r9, lr, ip        @ Zero out the shadow regs
     ldrd    r2, [r0, #MIRROR_WIDE_ARRAY_DATA_OFFSET]  @ r2/r3<- vBB[vCC]
     VREG_INDEX_TO_ADDR r9, r9           @ r9<- &fp[AA]
     GET_INST_OPCODE ip                  @ extract opcode from rINST
@@ -12044,11 +12042,10 @@ MterpException:
     bl      MterpHandleException                    @ (self, shadow_frame)
     cmp     r0, #0
     beq     MterpExceptionReturn                    @ no local catch, back to caller.
-    ldr     r0, [rFP, #OFF_FP_CODE_ITEM]
+    ldr     r0, [rFP, #OFF_FP_DEX_INSTRUCTIONS]
     ldr     r1, [rFP, #OFF_FP_DEX_PC]
     ldr     rIBASE, [rSELF, #THREAD_CURRENT_IBASE_OFFSET]
-    add     rPC, r0, #CODEITEM_INSNS_OFFSET
-    add     rPC, rPC, r1, lsl #1                    @ generate new dex_pc_ptr
+    add     rPC, r0, r1, lsl #1                     @ generate new dex_pc_ptr
     /* Do we need to switch interpreters? */
     bl      MterpShouldSwitchInterpreters
     cmp     r0, #0

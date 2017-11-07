@@ -123,7 +123,7 @@ codes.
 #define OFF_FP_METHOD OFF_FP(SHADOWFRAME_METHOD_OFFSET)
 #define OFF_FP_RESULT_REGISTER OFF_FP(SHADOWFRAME_RESULT_REGISTER_OFFSET)
 #define OFF_FP_DEX_PC_PTR OFF_FP(SHADOWFRAME_DEX_PC_PTR_OFFSET)
-#define OFF_FP_CODE_ITEM OFF_FP(SHADOWFRAME_CODE_ITEM_OFFSET)
+#define OFF_FP_DEX_INSTRUCTIONS OFF_FP(SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET)
 #define OFF_FP_SHADOWFRAME OFF_FP(0)
 
 /*
@@ -394,8 +394,8 @@ ENTRY ExecuteMterpImpl
     /* Remember the return register */
     str     x3, [x2, #SHADOWFRAME_RESULT_REGISTER_OFFSET]
 
-    /* Remember the code_item */
-    str     x1, [x2, #SHADOWFRAME_CODE_ITEM_OFFSET]
+    /* Remember the dex instruction pointer */
+    str     x1, [x2, #SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET]
 
     /* set up "named" registers */
     mov     xSELF, x0
@@ -403,8 +403,7 @@ ENTRY ExecuteMterpImpl
     add     xFP, x2, #SHADOWFRAME_VREGS_OFFSET     // point to vregs.
     add     xREFS, xFP, w0, lsl #2                 // point to reference array in shadow frame
     ldr     w0, [x2, #SHADOWFRAME_DEX_PC_OFFSET]   // Get starting dex_pc.
-    add     xPC, x1, #CODEITEM_INSNS_OFFSET        // Point to base of insns[]
-    add     xPC, xPC, w0, lsl #1                   // Create direct pointer to 1st dex opcode
+    add     xPC, x1, w0, lsl #1                    // Create direct pointer to 1st dex opcode
     EXPORT_PC
 
     /* Starting ibase */
@@ -7182,11 +7181,10 @@ MterpException:
     add     x1, xFP, #OFF_FP_SHADOWFRAME
     bl      MterpHandleException                    // (self, shadow_frame)
     cbz     w0, MterpExceptionReturn                // no local catch, back to caller.
-    ldr     x0, [xFP, #OFF_FP_CODE_ITEM]
+    ldr     x0, [xFP, #OFF_FP_DEX_INSTRUCTIONS]
     ldr     w1, [xFP, #OFF_FP_DEX_PC]
     ldr     xIBASE, [xSELF, #THREAD_CURRENT_IBASE_OFFSET]
-    add     xPC, x0, #CODEITEM_INSNS_OFFSET
-    add     xPC, xPC, x1, lsl #1                    // generate new dex_pc_ptr
+    add     xPC, x0, x1, lsl #1                     // generate new dex_pc_ptr
     /* Do we need to switch interpreters? */
     bl      MterpShouldSwitchInterpreters
     cbnz    w0, MterpFallback

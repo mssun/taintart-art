@@ -577,7 +577,7 @@ extern "C" void MterpCheckBefore(Thread* self, ShadowFrame* shadow_frame, uint16
     self->AssertNoPendingException();
   }
   if (kTraceExecutionEnabled) {
-    uint32_t dex_pc = dex_pc_ptr - shadow_frame->GetCodeItem()->insns_;
+    uint32_t dex_pc = dex_pc_ptr - shadow_frame->GetDexInstructions();
     TraceExecution(*shadow_frame, inst, dex_pc);
   }
   if (kTestExportPC) {

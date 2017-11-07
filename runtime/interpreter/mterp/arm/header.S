@@ -110,7 +110,7 @@ unspecified registers or condition codes.
 #define OFF_FP_METHOD OFF_FP(SHADOWFRAME_METHOD_OFFSET)
 #define OFF_FP_RESULT_REGISTER OFF_FP(SHADOWFRAME_RESULT_REGISTER_OFFSET)
 #define OFF_FP_DEX_PC_PTR OFF_FP(SHADOWFRAME_DEX_PC_PTR_OFFSET)
-#define OFF_FP_CODE_ITEM OFF_FP(SHADOWFRAME_CODE_ITEM_OFFSET)
+#define OFF_FP_DEX_INSTRUCTIONS OFF_FP(SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET)
 #define OFF_FP_SHADOWFRAME OFF_FP(0)
 
 /*
@@ -130,9 +130,8 @@ unspecified registers or condition codes.
 .endm
 
 .macro EXPORT_DEX_PC tmp
-    ldr  \tmp, [rFP, #OFF_FP_CODE_ITEM]
+    ldr  \tmp, [rFP, #OFF_FP_DEX_INSTRUCTIONS]
     str  rPC, [rFP, #OFF_FP_DEX_PC_PTR]
-    add  \tmp, #CODEITEM_INSNS_OFFSET
     sub  \tmp, rPC, \tmp
     asr  \tmp, #1
     str  \tmp, [rFP, #OFF_FP_DEX_PC]

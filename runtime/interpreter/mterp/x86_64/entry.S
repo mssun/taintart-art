@@ -50,15 +50,14 @@ SYMBOL(ExecuteMterpImpl):
     movq    IN_ARG3, SHADOWFRAME_RESULT_REGISTER_OFFSET(IN_ARG2)
 
     /* Remember the code_item */
-    movq    IN_ARG1, SHADOWFRAME_CODE_ITEM_OFFSET(IN_ARG2)
+    movq    IN_ARG1, SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET(IN_ARG2)
 
     /* set up "named" registers */
     movl    SHADOWFRAME_NUMBER_OF_VREGS_OFFSET(IN_ARG2), %eax
     leaq    SHADOWFRAME_VREGS_OFFSET(IN_ARG2), rFP
     leaq    (rFP, %rax, 4), rREFS
     movl    SHADOWFRAME_DEX_PC_OFFSET(IN_ARG2), %eax
-    leaq    CODEITEM_INSNS_OFFSET(IN_ARG1), rPC
-    leaq    (rPC, %rax, 2), rPC
+    leaq    (IN_ARG1, %rax, 2), rPC
     EXPORT_PC
 
     /* Starting ibase */
