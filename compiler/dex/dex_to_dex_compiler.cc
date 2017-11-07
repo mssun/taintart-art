@@ -112,9 +112,10 @@ class DexCompiler {
 
 void DexCompiler::Compile() {
   DCHECK_EQ(dex_to_dex_compilation_level_, DexToDexCompilationLevel::kOptimize);
-  for (CodeItemIterator it(*unit_.GetCodeItem()); !it.Done(); it.Advance()) {
-    Instruction* inst = const_cast<Instruction*>(&it.CurrentInstruction());
-    const uint32_t dex_pc = it.CurrentDexPc();
+  IterationRange<DexInstructionIterator> instructions = unit_.GetCodeItem()->Instructions();
+  for (DexInstructionIterator it = instructions.begin(); it != instructions.end(); ++it) {
+    const uint32_t dex_pc = it.DexPc();
+    Instruction* inst = const_cast<Instruction*>(&it.Inst());
     switch (inst->Opcode()) {
       case Instruction::RETURN_VOID:
         CompileReturnVoid(inst, dex_pc);
@@ -125,7 +126,7 @@ void DexCompiler::Compile() {
         if (inst->Opcode() == Instruction::NOP) {
           // We turned the CHECK_CAST into two NOPs, avoid visiting the second NOP twice since this
           // would add 2 quickening info entries.
-          it.Advance();
+          ++it;
         }
         break;
 
@@ -362,8 +363,8 @@ CompiledMethod* ArtCompileDEX(
     if (kIsDebugBuild) {
       // Double check that the counts line up with the size of the quicken info.
       size_t quicken_count = 0;
-      for (CodeItemIterator it(*code_item); !it.Done(); it.Advance()) {
-        if (QuickenInfoTable::NeedsIndexForInstruction(&it.CurrentInstruction())) {
+      for (const DexInstructionPcPair& pair : code_item->Instructions()) {
+        if (QuickenInfoTable::NeedsIndexForInstruction(&pair.Inst())) {
           ++quicken_count;
         }
       }
