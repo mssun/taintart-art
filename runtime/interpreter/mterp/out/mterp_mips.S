@@ -223,7 +223,7 @@
 #define OFF_FP_METHOD OFF_FP(SHADOWFRAME_METHOD_OFFSET)
 #define OFF_FP_RESULT_REGISTER OFF_FP(SHADOWFRAME_RESULT_REGISTER_OFFSET)
 #define OFF_FP_DEX_PC_PTR OFF_FP(SHADOWFRAME_DEX_PC_PTR_OFFSET)
-#define OFF_FP_CODE_ITEM OFF_FP(SHADOWFRAME_CODE_ITEM_OFFSET)
+#define OFF_FP_DEX_INSTRUCTIONS OFF_FP(SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET)
 #define OFF_FP_SHADOWFRAME OFF_FP(0)
 
 #define MTERP_PROFILE_BRANCHES 1
@@ -245,9 +245,8 @@
     sw        rPC, OFF_FP_DEX_PC_PTR(rFP)
 
 #define EXPORT_DEX_PC(tmp) \
-    lw        tmp, OFF_FP_CODE_ITEM(rFP); \
+    lw        tmp, OFF_FP_DEX_INSTRUCTIONS(rFP); \
     sw        rPC, OFF_FP_DEX_PC_PTR(rFP); \
-    addu      tmp, CODEITEM_INSNS_OFFSET; \
     subu      tmp, rPC, tmp; \
     sra       tmp, tmp, 1; \
     sw        tmp, OFF_FP_DEX_PC(rFP)
@@ -759,7 +758,7 @@
 /*
  * On entry:
  *  a0  Thread* self
- *  a1  code_item
+ *  a1  dex_instructions
  *  a2  ShadowFrame
  *  a3  JValue* result_register
  *
@@ -777,8 +776,8 @@ ExecuteMterpImpl:
     /* Remember the return register */
     sw      a3, SHADOWFRAME_RESULT_REGISTER_OFFSET(a2)
 
-    /* Remember the code_item */
-    sw      a1, SHADOWFRAME_CODE_ITEM_OFFSET(a2)
+    /* Remember the dex instruction pointer */
+    sw      a1, SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET(a2)
 
     /* set up "named" registers */
     move    rSELF, a0
@@ -786,8 +785,7 @@ ExecuteMterpImpl:
     addu    rFP, a2, SHADOWFRAME_VREGS_OFFSET     # point to vregs.
     EAS2(rREFS, rFP, a0)                          # point to reference array in shadow frame
     lw      a0, SHADOWFRAME_DEX_PC_OFFSET(a2)     # Get starting dex_pc
-    addu    rPC, a1, CODEITEM_INSNS_OFFSET        # Point to base of insns[]
-    EAS1(rPC, rPC, a0)                            # Create direct pointer to 1st dex opcode
+    EAS1(rPC, a1, a0)                             # Create direct pointer to 1st dex opcode
 
     EXPORT_PC()
 
@@ -12655,12 +12653,10 @@ MterpException:
     addu    a1, rFP, OFF_FP_SHADOWFRAME
     JAL(MterpHandleException)                    # (self, shadow_frame)
     beqz    v0, MterpExceptionReturn             # no local catch, back to caller.
-    lw      a0, OFF_FP_CODE_ITEM(rFP)
+    lw      a0, OFF_FP_DEX_INSTRUCTIONS(rFP)
     lw      a1, OFF_FP_DEX_PC(rFP)
     lw      rIBASE, THREAD_CURRENT_IBASE_OFFSET(rSELF)
-    addu    rPC, a0, CODEITEM_INSNS_OFFSET
-    sll     a1, a1, 1
-    addu    rPC, rPC, a1                         # generate new dex_pc_ptr
+    EAS1(rPC, a0, a1)                            # generate new dex_pc_ptr
     /* Do we need to switch interpreters? */
     JAL(MterpShouldSwitchInterpreters)
     bnez    v0, MterpFallback
