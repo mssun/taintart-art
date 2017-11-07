@@ -35,7 +35,7 @@ _DUMP_MANY_VARS_LIST = ['HOST_2ND_ARCH_PREFIX',
                         'HOST_OUT_EXECUTABLES',
                         'ANDROID_JAVA_TOOLCHAIN',
                         'ANDROID_COMPILE_WITH_JACK',
-                        'USE_D8_BY_DEFAULT']
+                        'USE_D8']
 _DUMP_MANY_VARS = None  # To be set to a dictionary with above list being the keys,
                         # and the build variable being the value.
 def _dump_many_vars(var_name):
@@ -109,7 +109,7 @@ ANDROID_BUILD_TOP = _get_android_build_top()
 ANDROID_COMPILE_WITH_JACK = _get_build_var_boolean('ANDROID_COMPILE_WITH_JACK', 'default')
 
 # Follow the build system's D8 usage.
-USE_D8_BY_DEFAULT = _get_build_var_boolean('USE_D8_BY_DEFAULT', False)
+USE_D8 = _get_build_var_boolean('USE_D8', False)
 
 # Directory used for temporary test files on the host.
 ART_HOST_TEST_DIR = tempfile.mkdtemp(prefix = 'test-art-')
