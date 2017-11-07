@@ -24,6 +24,12 @@ TEST_ART_RUN_TEST_DEPENDENCIES := \
   $(HOST_OUT_EXECUTABLES)/smali \
   $(HOST_OUT_EXECUTABLES)/dexmerger
 
+# Add d8 dependency, if enabled.
+ifeq ($(USE_D8),true)
+TEST_ART_RUN_TEST_DEPENDENCIES += \
+  $(HOST_OUT_EXECUTABLES)/d8
+endif
+
 # Convert's a rule name to the form used in variables, e.g. no-relocate to NO_RELOCATE
 define name-to-var
 $(shell echo $(1) | tr '[:lower:]' '[:upper:]' | tr '-' '_')
