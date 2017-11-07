@@ -320,6 +320,8 @@ CompilerDriver::CompilerDriver(
   if (GetCompilerOptions().IsBootImage()) {
     CHECK(image_classes_.get() != nullptr) << "Expected image classes for boot image";
   }
+
+  compiled_method_storage_.SetDedupeEnabled(compiler_options_->DeduplicateCode());
 }
 
 CompilerDriver::~CompilerDriver() {
