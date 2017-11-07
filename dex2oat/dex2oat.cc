@@ -452,6 +452,9 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("  --compact-dex-level=none|fast: None avoids generating compact dex, fast");
   UsageError("      generates compact dex with low compile time.");
   UsageError("");
+  UsageError("  --deduplicate-code|--no-deduplicate-code: enable|disable code deduplication.");
+  UsageError("      Deduplicated code will have an arbitrary symbol tagged with [DEDUPED].");
+  UsageError("");
   std::cerr << "See log for usage error information\n";
   exit(EXIT_FAILURE);
 }
