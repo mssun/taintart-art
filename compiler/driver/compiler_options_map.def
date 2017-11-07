@@ -57,5 +57,6 @@ COMPILER_OPTIONS_KEY (Unit,                        DumpCFGAppend)
 // TODO: Add type parser.
 COMPILER_OPTIONS_KEY (std::string,                 RegisterAllocationStrategy)
 COMPILER_OPTIONS_KEY (ParseStringList<','>,        VerboseMethods)
+COMPILER_OPTIONS_KEY (bool,                        DeduplicateCode,        true)
 
 #undef COMPILER_OPTIONS_KEY
