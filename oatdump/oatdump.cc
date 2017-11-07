@@ -2229,7 +2229,7 @@ class ImageDumper {
           os << StringPrintf("null   %s\n", PrettyDescriptor(field->GetTypeDescriptor()).c_str());
         } else {
           // Grab the field type without causing resolution.
-          ObjPtr<mirror::Class> field_type = field->GetType<false>();
+          ObjPtr<mirror::Class> field_type = field->LookupType();
           if (field_type != nullptr) {
             PrettyObjectValue(os, field_type, value);
           } else {
