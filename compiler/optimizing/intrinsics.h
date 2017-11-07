@@ -203,6 +203,7 @@ class StringEqualsOptimizations : public IntrinsicOptimizations {
 
   INTRINSIC_OPTIMIZATION(ArgumentNotNull, 0);
   INTRINSIC_OPTIMIZATION(ArgumentIsString, 1);
+  INTRINSIC_OPTIMIZATION(NoReadBarrierForStringClass, 2);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(StringEqualsOptimizations);
