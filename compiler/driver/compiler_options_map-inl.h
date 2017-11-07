@@ -76,6 +76,7 @@ inline bool ReadCompilerOptions(Base& map, CompilerOptions* options, std::string
     }
   }
   map.AssignIfExists(Base::VerboseMethods, &options->verbose_methods_);
+  options->deduplicate_code_ = map.GetOrDefault(Base::DeduplicateCode);
 
   return true;
 }
@@ -122,6 +123,11 @@ inline void AddCompilerOptionsArgumentParserOptions(Builder& b) {
       .Define({"--generate-build-id", "--no-generate-build-id"})
           .WithValues({true, false})
           .IntoKey(Map::GenerateBuildID)
+
+      .Define({"--deduplicate-code=_"})
+          .template WithType<bool>()
+          .WithValueMap({{"false", false}, {"true", true}})
+          .IntoKey(Map::DeduplicateCode)
 
       .Define("--debuggable")
           .IntoKey(Map::Debuggable)
