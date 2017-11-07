@@ -27,7 +27,7 @@
 /*
  * On entry:
  *  a0  Thread* self
- *  a1  code_item
+ *  a1  dex_instructions
  *  a2  ShadowFrame
  *  a3  JValue* result_register
  *
@@ -63,17 +63,16 @@ ExecuteMterpImpl:
     /* Remember the return register */
     sd      a3, SHADOWFRAME_RESULT_REGISTER_OFFSET(a2)
 
-    /* Remember the code_item */
-    sd      a1, SHADOWFRAME_CODE_ITEM_OFFSET(a2)
+    /* Remember the dex instruction pointer */
+    sd      a1, SHADOWFRAME_DEX_INSTRUCTIONS_OFFSET(a2)
 
     /* set up "named" registers */
     move    rSELF, a0
     daddu   rFP, a2, SHADOWFRAME_VREGS_OFFSET
     lw      v0, SHADOWFRAME_NUMBER_OF_VREGS_OFFSET(a2)
     dlsa    rREFS, v0, rFP, 2
-    daddu   rPC, a1, CODEITEM_INSNS_OFFSET
     lw      v0, SHADOWFRAME_DEX_PC_OFFSET(a2)
-    dlsa    rPC, v0, rPC, 1
+    dlsa    rPC, v0, a1, 1
     EXPORT_PC
 
     /* Starting ibase */
