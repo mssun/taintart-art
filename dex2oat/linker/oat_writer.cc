@@ -1185,18 +1185,6 @@ class OatWriter::LayoutReserveOffsetCodeMethodVisitor : public OrderedMethodVisi
         quick_code_offset = NewQuickCodeOffset(compiled_method, method_ref, thumb_offset);
         deduped = false;
       }
-
-      if (code_size != 0) {
-        if (relative_patcher_->GetOffset(method_ref) != 0u) {
-          // TODO: Should this be a hard failure?
-          LOG(WARNING) << "Multiple definitions of "
-              << method_ref.dex_file->PrettyMethod(method_ref.index)
-              << " offsets " << relative_patcher_->GetOffset(method_ref)
-              << " " << quick_code_offset;
-        } else {
-          relative_patcher_->SetOffset(method_ref, quick_code_offset);
-        }
-      }
     } else {
       quick_code_offset = dedupe_map_.GetOrCreate(
           compiled_method,
