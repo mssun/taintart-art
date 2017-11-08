@@ -169,6 +169,7 @@ while true; do
     elif [ "x$1" = "x--no-dex2oat" ]; then
         DEX2OAT="-Xcompiler:${FALSE_BIN}"
         USE_DEX2OAT_AND_PATCHOAT="n"
+        PREBUILD="n" # Do not use prebuilt odex, either.
         shift
     elif [ "x$1" = "x--no-patchoat" ]; then
         PATCHOAT="-Xpatchoat:${FALSE_BIN}"
