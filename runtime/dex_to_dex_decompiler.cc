@@ -89,8 +89,8 @@ bool DexDecompiler::Decompile() {
   // because the RETURN_VOID quickening is not encoded in the quickening data. Because
   // unquickening is a rare need and not performance sensitive, it is not worth the
   // added storage to also add the RETURN_VOID quickening in the quickened data.
-  for (CodeItemIterator it(code_item_); !it.Done(); it.Advance()) {
-    Instruction* inst = const_cast<Instruction*>(&it.CurrentInstruction());
+  for (const DexInstructionPcPair& pair : code_item_.Instructions()) {
+    Instruction* inst = const_cast<Instruction*>(&pair.Inst());
 
     switch (inst->Opcode()) {
       case Instruction::RETURN_VOID_NO_BARRIER:

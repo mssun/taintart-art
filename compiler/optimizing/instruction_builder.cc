@@ -321,19 +321,19 @@ bool HInstructionBuilder::Build() {
       quicken_index = block_builder_->GetQuickenIndex(block_dex_pc);
     }
 
-    for (CodeItemIterator it(code_item_, block_dex_pc); !it.Done(); it.Advance()) {
+    for (const DexInstructionPcPair& pair : code_item_.Instructions(block_dex_pc)) {
       if (current_block_ == nullptr) {
         // The previous instruction ended this block.
         break;
       }
 
-      uint32_t dex_pc = it.CurrentDexPc();
+      const uint32_t dex_pc = pair.DexPc();
       if (dex_pc != block_dex_pc && FindBlockStartingAt(dex_pc) != nullptr) {
         // This dex_pc starts a new basic block.
         break;
       }
 
-      if (current_block_->IsTryBlock() && IsThrowingDexInstruction(it.CurrentInstruction())) {
+      if (current_block_->IsTryBlock() && IsThrowingDexInstruction(pair.Inst())) {
         PropagateLocalsToCatchBlocks();
       }
 
@@ -341,11 +341,11 @@ bool HInstructionBuilder::Build() {
         AppendInstruction(new (allocator_) HNativeDebugInfo(dex_pc));
       }
 
-      if (!ProcessDexInstruction(it.CurrentInstruction(), dex_pc, quicken_index)) {
+      if (!ProcessDexInstruction(pair.Inst(), dex_pc, quicken_index)) {
         return false;
       }
 
-      if (QuickenInfoTable::NeedsIndexForInstruction(&it.CurrentInstruction())) {
+      if (QuickenInfoTable::NeedsIndexForInstruction(&pair.Inst())) {
         ++quicken_index;
       }
     }
@@ -382,16 +382,15 @@ ArenaBitVector* HInstructionBuilder::FindNativeDebugInfoLocations() {
   dex_file_->DecodeDebugPositionInfo(&code_item_, Callback::Position, locations);
   // Instruction-specific tweaks.
   IterationRange<DexInstructionIterator> instructions = code_item_.Instructions();
-  for (DexInstructionIterator it = instructions.begin(); it != instructions.end(); ++it) {
-    switch (it->Opcode()) {
+  for (const DexInstructionPcPair& inst : instructions) {
+    switch (inst->Opcode()) {
       case Instruction::MOVE_EXCEPTION: {
         // Stop in native debugger after the exception has been moved.
         // The compiler also expects the move at the start of basic block so
         // we do not want to interfere by inserting native-debug-info before it.
-        locations->ClearBit(it.DexPc());
-        DexInstructionIterator next = it;
-        ++next;
-        DCHECK(next != it);
+        locations->ClearBit(inst.DexPc());
+        DexInstructionIterator next = std::next(DexInstructionIterator(inst));
+        DCHECK(next.DexPc() != inst.DexPc());
         if (next != instructions.end()) {
           locations->SetBit(next.DexPc());
         }
