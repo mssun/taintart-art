@@ -76,9 +76,10 @@ bool HBasicBlockBuilder::CreateBranchTargets() {
 
   // Iterate over all instructions and find branching instructions. Create blocks for
   // the locations these instructions branch to.
-  for (CodeItemIterator it(code_item_); !it.Done(); it.Advance()) {
-    uint32_t dex_pc = it.CurrentDexPc();
-    const Instruction& instruction = it.CurrentInstruction();
+  IterationRange<DexInstructionIterator> instructions = code_item_.Instructions();
+  for (const DexInstructionPcPair& pair : instructions) {
+    const uint32_t dex_pc = pair.DexPc();
+    const Instruction& instruction = pair.Inst();
 
     if (instruction.IsBranch()) {
       number_of_branches_++;
@@ -105,13 +106,13 @@ bool HBasicBlockBuilder::CreateBranchTargets() {
     }
 
     if (instruction.CanFlowThrough()) {
-      if (it.IsLast()) {
+      DexInstructionIterator next(std::next(DexInstructionIterator(pair)));
+      if (next == instructions.end()) {
         // In the normal case we should never hit this but someone can artificially forge a dex
         // file to fall-through out the method code. In this case we bail out compilation.
         return false;
-      } else {
-        MaybeCreateBlockAt(dex_pc + it.CurrentInstruction().SizeInCodeUnits());
       }
+      MaybeCreateBlockAt(next.DexPc());
     }
   }
 
@@ -126,8 +127,9 @@ void HBasicBlockBuilder::ConnectBasicBlocks() {
   bool is_throwing_block = false;
   // Calculate the qucikening index here instead of CreateBranchTargets since it's easier to
   // calculate in dex_pc order.
-  for (CodeItemIterator it(code_item_); !it.Done(); it.Advance()) {
-    uint32_t dex_pc = it.CurrentDexPc();
+  for (const DexInstructionPcPair& pair : code_item_.Instructions()) {
+    const uint32_t dex_pc = pair.DexPc();
+    const Instruction& instruction = pair.Inst();
 
     // Check if this dex_pc address starts a new basic block.
     HBasicBlock* next_block = GetBlockAt(dex_pc);
@@ -144,7 +146,7 @@ void HBasicBlockBuilder::ConnectBasicBlocks() {
       graph_->AddBlock(block);
     }
     // Make sure to increment this before the continues.
-    if (QuickenInfoTable::NeedsIndexForInstruction(&it.CurrentInstruction())) {
+    if (QuickenInfoTable::NeedsIndexForInstruction(&instruction)) {
       ++quicken_index;
     }
 
@@ -152,8 +154,6 @@ void HBasicBlockBuilder::ConnectBasicBlocks() {
       // Ignore dead code.
       continue;
     }
-
-    const Instruction& instruction = it.CurrentInstruction();
 
     if (!is_throwing_block && IsThrowingDexInstruction(instruction)) {
       DCHECK(!ContainsElement(throwing_blocks_, block));
@@ -185,9 +185,9 @@ void HBasicBlockBuilder::ConnectBasicBlocks() {
       continue;
     }
 
+    // Go to the next instruction in case we read dex PC below.
     if (instruction.CanFlowThrough()) {
-      uint32_t next_dex_pc = dex_pc + instruction.SizeInCodeUnits();
-      block->AddSuccessor(GetBlockAt(next_dex_pc));
+      block->AddSuccessor(GetBlockAt(std::next(DexInstructionIterator(pair)).DexPc()));
     }
 
     // The basic block ends here. Do not add any more instructions.
@@ -229,7 +229,7 @@ bool HBasicBlockBuilder::MightHaveLiveNormalPredecessors(HBasicBlock* catch_bloc
     }
   }
 
-  const Instruction& first = GetDexInstructionAt(code_item_, catch_block->GetDexPc());
+  const Instruction& first = code_item_.InstructionAt(catch_block->GetDexPc());
   if (first.Opcode() == Instruction::MOVE_EXCEPTION) {
     // Verifier guarantees that if a catch block begins with MOVE_EXCEPTION then
     // it has no live normal predecessors.

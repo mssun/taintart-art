@@ -24,35 +24,6 @@
 
 namespace art {
 
-class CodeItemIterator : public ValueObject {
- public:
-  explicit CodeItemIterator(const DexFile::CodeItem& code_item) : CodeItemIterator(code_item, 0u) {}
-  CodeItemIterator(const DexFile::CodeItem& code_item, uint32_t start_dex_pc)
-      : code_ptr_(code_item.insns_ + start_dex_pc),
-        code_end_(code_item.insns_ + code_item.insns_size_in_code_units_),
-        dex_pc_(start_dex_pc) {}
-
-  bool Done() const { return code_ptr_ >= code_end_; }
-  bool IsLast() const { return code_ptr_ + CurrentInstruction().SizeInCodeUnits() >= code_end_; }
-
-  const Instruction& CurrentInstruction() const { return *Instruction::At(code_ptr_); }
-  uint32_t CurrentDexPc() const { return dex_pc_; }
-
-  void Advance() {
-    DCHECK(!Done());
-    size_t instruction_size = CurrentInstruction().SizeInCodeUnits();
-    code_ptr_ += instruction_size;
-    dex_pc_ += instruction_size;
-  }
-
- private:
-  const uint16_t* code_ptr_;
-  const uint16_t* const code_end_;
-  uint32_t dex_pc_;
-
-  DISALLOW_COPY_AND_ASSIGN(CodeItemIterator);
-};
-
 class DexSwitchTable : public ValueObject {
  public:
   DexSwitchTable(const Instruction& instruction, uint32_t dex_pc)
@@ -163,10 +134,6 @@ class DexSwitchTableIterator {
 
   size_t index_;
 };
-
-inline const Instruction& GetDexInstructionAt(const DexFile::CodeItem& code_item, uint32_t dex_pc) {
-  return CodeItemIterator(code_item, dex_pc).CurrentInstruction();
-}
 
 inline bool IsThrowingDexInstruction(const Instruction& instruction) {
   // Special-case MONITOR_EXIT which is a throwing instruction but the verifier
