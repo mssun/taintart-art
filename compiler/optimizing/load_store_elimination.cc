@@ -183,7 +183,6 @@ class LSEVisitor : public HGraphDelegateVisitor {
             !location->IsValueKilledByLoopSideEffects()) {
           // A removable singleton's field that's not stored into inside a loop is
           // invariant throughout the loop. Nothing to do.
-          DCHECK(ref_info->IsSingletonAndRemovable());
         } else {
           // heap value is killed by loop side effects (stored into directly, or
           // due to aliasing). Or the heap value may be needed after method return
@@ -386,7 +385,7 @@ class LSEVisitor : public HGraphDelegateVisitor {
     } else if (index != nullptr && ref_info->HasIndexAliasing()) {
       // For array element, don't eliminate stores if the index can be aliased.
     } else if (ref_info->IsSingleton()) {
-      // Store into a field of a singleton. The value cannot be killed due to
+      // Store into a field/element of a singleton. The value cannot be killed due to
       // aliasing/invocation. It can be redundant since future loads can
       // directly get the value set by this instruction. The value can still be killed due to
       // merging or loop side effects. Stores whose values are killed due to merging/loop side
@@ -394,24 +393,18 @@ class LSEVisitor : public HGraphDelegateVisitor {
       // Stores whose values may be needed after method return or deoptimization
       // are also removed from possibly_removed_stores_ when that is detected.
       possibly_redundant = true;
-      HNewInstance* new_instance = ref_info->GetReference()->AsNewInstance();
-      if (new_instance != nullptr && new_instance->IsFinalizable()) {
-        // Finalizable objects escape globally. Need to keep the store.
-        possibly_redundant = false;
-      } else {
-        HLoopInformation* loop_info = instruction->GetBlock()->GetLoopInformation();
-        if (loop_info != nullptr) {
-          // instruction is a store in the loop so the loop must does write.
-          DCHECK(side_effects_.GetLoopEffects(loop_info->GetHeader()).DoesAnyWrite());
+      HLoopInformation* loop_info = instruction->GetBlock()->GetLoopInformation();
+      if (loop_info != nullptr) {
+        // instruction is a store in the loop so the loop must does write.
+        DCHECK(side_effects_.GetLoopEffects(loop_info->GetHeader()).DoesAnyWrite());
 
-          if (loop_info->IsDefinedOutOfTheLoop(original_ref)) {
-            DCHECK(original_ref->GetBlock()->Dominates(loop_info->GetPreHeader()));
-            // Keep the store since its value may be needed at the loop header.
-            possibly_redundant = false;
-          } else {
-            // The singleton is created inside the loop. Value stored to it isn't needed at
-            // the loop header. This is true for outer loops also.
-          }
+        if (loop_info->IsDefinedOutOfTheLoop(original_ref)) {
+          DCHECK(original_ref->GetBlock()->Dominates(loop_info->GetPreHeader()));
+          // Keep the store since its value may be needed at the loop header.
+          possibly_redundant = false;
+        } else {
+          // The singleton is created inside the loop. Value stored to it isn't needed at
+          // the loop header. This is true for outer loops also.
         }
       }
     }
@@ -575,9 +568,8 @@ class LSEVisitor : public HGraphDelegateVisitor {
       // new_instance isn't used for field accesses. No need to process it.
       return;
     }
-    if (ref_info->IsSingletonAndRemovable() &&
-        !new_instance->IsFinalizable() &&
-        !new_instance->NeedsChecks()) {
+    if (ref_info->IsSingletonAndRemovable() && !new_instance->NeedsChecks()) {
+      DCHECK(!new_instance->IsFinalizable());
       singleton_new_instances_.push_back(new_instance);
     }
     ScopedArenaVector<HInstruction*>& heap_values =
