@@ -55,11 +55,10 @@ MterpException:
     daddu   a1, rFP, OFF_FP_SHADOWFRAME
     jal     MterpHandleException                    # (self, shadow_frame)
     beqzc   v0, MterpExceptionReturn                # no local catch, back to caller.
-    ld      a0, OFF_FP_CODE_ITEM(rFP)
+    ld      a0, OFF_FP_DEX_INSTRUCTIONS(rFP)
     lwu     a1, OFF_FP_DEX_PC(rFP)
     REFRESH_IBASE
-    daddu   rPC, a0, CODEITEM_INSNS_OFFSET
-    dlsa    rPC, a1, rPC, 1                         # generate new dex_pc_ptr
+    dlsa    rPC, a1, a0, 1                          # generate new dex_pc_ptr
     /* Do we need to switch interpreters? */
     jal     MterpShouldSwitchInterpreters
     bnezc   v0, MterpFallback

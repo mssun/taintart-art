@@ -49,6 +49,7 @@
 #include "image-inl.h"
 #include "imtable-inl.h"
 #include "indenter.h"
+#include "subtype_check.h"
 #include "interpreter/unstarted_runtime.h"
 #include "linker/buffered_output_stream.h"
 #include "linker/elf_builder.h"
@@ -2229,7 +2230,7 @@ class ImageDumper {
           os << StringPrintf("null   %s\n", PrettyDescriptor(field->GetTypeDescriptor()).c_str());
         } else {
           // Grab the field type without causing resolution.
-          ObjPtr<mirror::Class> field_type = field->GetType<false>();
+          ObjPtr<mirror::Class> field_type = field->LookupType();
           if (field_type != nullptr) {
             PrettyObjectValue(os, field_type, value);
           } else {
@@ -2346,6 +2347,11 @@ class ImageDumper {
       }
     } else if (obj->IsClass()) {
       mirror::Class* klass = obj->AsClass();
+
+      os << "SUBTYPE_CHECK_BITS: ";
+      SubtypeCheck<mirror::Class*>::Dump(klass, os);
+      os << "\n";
+
       if (klass->NumStaticFields() != 0) {
         os << "STATICS:\n";
         ScopedIndentation indent2(&vios_);

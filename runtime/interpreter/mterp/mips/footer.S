@@ -95,12 +95,10 @@ MterpException:
     addu    a1, rFP, OFF_FP_SHADOWFRAME
     JAL(MterpHandleException)                    # (self, shadow_frame)
     beqz    v0, MterpExceptionReturn             # no local catch, back to caller.
-    lw      a0, OFF_FP_CODE_ITEM(rFP)
+    lw      a0, OFF_FP_DEX_INSTRUCTIONS(rFP)
     lw      a1, OFF_FP_DEX_PC(rFP)
     lw      rIBASE, THREAD_CURRENT_IBASE_OFFSET(rSELF)
-    addu    rPC, a0, CODEITEM_INSNS_OFFSET
-    sll     a1, a1, 1
-    addu    rPC, rPC, a1                         # generate new dex_pc_ptr
+    EAS1(rPC, a0, a1)                            # generate new dex_pc_ptr
     /* Do we need to switch interpreters? */
     JAL(MterpShouldSwitchInterpreters)
     bnez    v0, MterpFallback

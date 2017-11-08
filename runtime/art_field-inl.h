@@ -299,10 +299,26 @@ inline bool ArtField::IsPrimitiveType() REQUIRES_SHARED(Locks::mutator_lock_) {
   return GetTypeAsPrimitiveType() != Primitive::kPrimNot;
 }
 
-template <bool kResolve>
-inline ObjPtr<mirror::Class> ArtField::GetType() {
-  // TODO: Refactor this function into two functions, ResolveType() and LookupType()
-  // so that we can properly annotate it with no-suspension possible / suspension possible.
+inline ObjPtr<mirror::Class> ArtField::LookupType() {
+  ScopedAssertNoThreadSuspension ants(__FUNCTION__);
+  const uint32_t field_index = GetDexFieldIndex();
+  ObjPtr<mirror::Class> declaring_class = GetDeclaringClass();
+  if (UNLIKELY(declaring_class->IsProxyClass())) {
+    return ProxyFindSystemClass(GetTypeDescriptor());
+  }
+  ObjPtr<mirror::DexCache>  dex_cache = declaring_class->GetDexCache();
+  const DexFile* const dex_file = dex_cache->GetDexFile();
+  dex::TypeIndex type_idx = dex_file->GetFieldId(field_index).type_idx_;
+  ObjPtr<mirror::Class> type = dex_cache->GetResolvedType(type_idx);
+  if (UNLIKELY(type == nullptr)) {
+    type = Runtime::Current()->GetClassLinker()->LookupResolvedType(
+        *dex_file, type_idx, dex_cache, declaring_class->GetClassLoader());
+    DCHECK(!Thread::Current()->IsExceptionPending());
+  }
+  return type.Ptr();
+}
+
+inline ObjPtr<mirror::Class> ArtField::ResolveType() {
   const uint32_t field_index = GetDexFieldIndex();
   ObjPtr<mirror::Class> declaring_class = GetDeclaringClass();
   if (UNLIKELY(declaring_class->IsProxyClass())) {
@@ -310,18 +326,12 @@ inline ObjPtr<mirror::Class> ArtField::GetType() {
   }
   auto* dex_cache = declaring_class->GetDexCache();
   const DexFile* const dex_file = dex_cache->GetDexFile();
-  const DexFile::FieldId& field_id = dex_file->GetFieldId(field_index);
-  ObjPtr<mirror::Class> type = dex_cache->GetResolvedType(field_id.type_idx_);
+  dex::TypeIndex type_idx = dex_file->GetFieldId(field_index).type_idx_;
+  ObjPtr<mirror::Class> type = dex_cache->GetResolvedType(type_idx);
   if (UNLIKELY(type == nullptr)) {
     ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-    if (kResolve) {
-      type = class_linker->ResolveType(*dex_file, field_id.type_idx_, declaring_class);
-      CHECK(type != nullptr || Thread::Current()->IsExceptionPending());
-    } else {
-      type = class_linker->LookupResolvedType(
-          *dex_file, field_id.type_idx_, dex_cache, declaring_class->GetClassLoader());
-      DCHECK(!Thread::Current()->IsExceptionPending());
-    }
+    type = class_linker->ResolveType(*dex_file, type_idx, declaring_class);
+    DCHECK_EQ(type == nullptr, Thread::Current()->IsExceptionPending());
   }
   return type;
 }

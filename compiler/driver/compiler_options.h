@@ -254,6 +254,10 @@ class CompilerOptions FINAL {
     return force_determinism_;
   }
 
+  bool DeduplicateCode() const {
+    return deduplicate_code_;
+  }
+
   RegisterAllocator::Strategy GetRegisterAllocationStrategy() const {
     return register_allocation_strategy_;
   }
@@ -318,6 +322,9 @@ class CompilerOptions FINAL {
   // Whether the compiler should trade performance for determinism to guarantee exactly reproducible
   // outcomes.
   bool force_determinism_;
+
+  // Whether code should be deduplicated.
+  bool deduplicate_code_;
 
   RegisterAllocator::Strategy register_allocation_strategy_;
 

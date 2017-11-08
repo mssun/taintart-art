@@ -7255,7 +7255,7 @@ void InstructionCodeGeneratorARMVIXL::GenerateClassInitializationCheck(
     LoadClassSlowPathARMVIXL* slow_path, vixl32::Register class_reg) {
   UseScratchRegisterScope temps(GetVIXLAssembler());
   vixl32::Register temp = temps.Acquire();
-  GetAssembler()->LoadFromOffset(kLoadWord,
+  GetAssembler()->LoadFromOffset(kLoadSignedByte,
                                  temp,
                                  class_reg,
                                  mirror::Class::StatusOffset().Int32Value());

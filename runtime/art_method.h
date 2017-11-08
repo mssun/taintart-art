@@ -271,11 +271,7 @@ class ArtMethod FINAL {
 
   bool IsProxyMethod() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  bool IsPolymorphicSignature() REQUIRES_SHARED(Locks::mutator_lock_) {
-    // Methods with a polymorphic signature have constraints that they
-    // are native and varargs. Check these first before possibly expensive call.
-    return IsNative() && IsVarargs() && IsAnnotatedWithPolymorphicSignature();
-  }
+  bool IsPolymorphicSignature() REQUIRES_SHARED(Locks::mutator_lock_);
 
   bool SkipAccessChecks() {
     return (GetAccessFlags() & kAccSkipAccessChecks) != 0;
@@ -321,10 +317,6 @@ class ArtMethod FINAL {
   // Checks to see if the method was annotated with @dalvik.annotation.optimization.CriticalNative
   // -- Unrelated to the GC notion of "critical".
   bool IsAnnotatedWithCriticalNative();
-
-  // Checks to see if the method was annotated with
-  // @java.lang.invoke.MethodHandle.PolymorphicSignature.
-  bool IsAnnotatedWithPolymorphicSignature();
 
   // Returns true if this method could be overridden by a default method.
   bool IsOverridableByDefaultMethod() REQUIRES_SHARED(Locks::mutator_lock_);
