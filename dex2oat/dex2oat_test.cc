@@ -940,8 +940,8 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
                class_it.HasNext();
                class_it.Next()) {
             if (class_it.IsAtMethod() && class_it.GetMethodCodeItem() != nullptr) {
-              for (CodeItemIterator it(*class_it.GetMethodCodeItem()); !it.Done(); it.Advance()) {
-                Instruction* inst = const_cast<Instruction*>(&it.CurrentInstruction());
+              for (const DexInstructionPcPair& inst :
+                  class_it.GetMethodCodeItem()->Instructions()) {
                 ASSERT_FALSE(inst->IsQuickened());
               }
             }

@@ -301,8 +301,9 @@ class DexFile {
 
   // Raw code_item.
   struct CodeItem {
-    IterationRange<DexInstructionIterator> Instructions() const {
-      return { DexInstructionIterator(insns_, 0u),
+    IterationRange<DexInstructionIterator> Instructions(uint32_t start_dex_pc = 0u) const {
+      DCHECK_LE(start_dex_pc, insns_size_in_code_units_);
+      return { DexInstructionIterator(insns_, start_dex_pc),
                DexInstructionIterator(insns_, insns_size_in_code_units_) };
     }
 

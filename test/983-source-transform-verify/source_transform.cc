@@ -89,13 +89,13 @@ void JNICALL CheckDexFileHook(jvmtiEnv* jvmti_env ATTRIBUTE_UNUSED,
       if (!it.IsAtMethod() || it.GetMethodCodeItem() == nullptr) {
         continue;
       }
-      for (CodeItemIterator code_it(*it.GetMethodCodeItem()); !code_it.Done(); code_it.Advance()) {
-        const Instruction& inst = code_it.CurrentInstruction();
+      for (const DexInstructionPcPair& pair : it.GetMethodCodeItem()->Instructions()) {
+        const Instruction& inst = pair.Inst();
         int forbiden_flags = (Instruction::kVerifyError | Instruction::kVerifyRuntimeOnly);
         if (inst.Opcode() == Instruction::RETURN_VOID_NO_BARRIER ||
             (inst.GetVerifyExtraFlags() & forbiden_flags) != 0) {
           std::cout << "Unexpected instruction found in " << dex->PrettyMethod(it.GetMemberIndex())
-                    << " [Dex PC: 0x" << std::hex << code_it.CurrentDexPc() << std::dec << "] : "
+                    << " [Dex PC: 0x" << std::hex << pair.DexPc() << std::dec << "] : "
                     << inst.DumpString(dex.get()) << std::endl;
           continue;
         }
