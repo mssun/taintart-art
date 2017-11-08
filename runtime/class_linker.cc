@@ -454,6 +454,19 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
                                                          java_lang_Object->GetObjectSize(),
                                                          VoidFunctor()));
 
+  // Initialize the SubtypeCheck bitstring for java.lang.Object and java.lang.Class.
+  {
+    // It might seem the lock here is unnecessary, however all the SubtypeCheck
+    // functions are annotated to require locks all the way down.
+    //
+    // We take the lock here to avoid using NO_THREAD_SAFETY_ANALYSIS.
+    MutexLock subtype_check_lock(Thread::Current(), *Locks::subtype_check_lock_);
+    mirror::Class* java_lang_Object_ptr = java_lang_Object.Get();
+    SubtypeCheck<mirror::Class*>::EnsureInitialized(java_lang_Object_ptr);
+    mirror::Class* java_lang_Class_ptr =  java_lang_Class.Get();
+    SubtypeCheck<mirror::Class*>::EnsureInitialized(java_lang_Class_ptr);
+  }
+
   // Object[] next to hold class roots.
   Handle<mirror::Class> object_array_class(hs.NewHandle(
       AllocClass(self, java_lang_Class.Get(),
@@ -1842,11 +1855,32 @@ bool ClassLinker::AddImageSpace(
     for (const ClassTable::TableSlot& root : temp_set) {
       visitor(root.Read());
     }
+
+    {
+      // Every class in the app image has initially SubtypeCheckInfo in the
+      // Uninitialized state.
+      //
+      // The SubtypeCheck invariants imply that a SubtypeCheckInfo is at least Initialized
+      // after class initialization is complete. The app image ClassStatus as-is
+      // are almost all ClassStatus::Initialized, and being in the
+      // SubtypeCheckInfo::kUninitialized state is violating that invariant.
+      //
+      // Force every app image class's SubtypeCheck to be at least kIninitialized.
+      //
+      // See also ImageWriter::FixupClass.
+      ScopedTrace trace("Recalculate app image SubtypeCheck bitstrings");
+      MutexLock subtype_check_lock(Thread::Current(), *Locks::subtype_check_lock_);
+      for (const ClassTable::TableSlot& root : temp_set) {
+        mirror::Class* root_klass = root.Read();
+        SubtypeCheck<mirror::Class*>::EnsureInitialized(root_klass);
+      }
+    }
   }
   if (!oat_file->GetBssGcRoots().empty()) {
     // Insert oat file to class table for visiting .bss GC roots.
     class_table->InsertOatFile(oat_file);
   }
+
   if (added_class_table) {
     WriterMutexLock mu(self, *Locks::classlinker_classes_lock_);
     class_table->AddClassSet(std::move(temp_set));
@@ -5164,10 +5198,27 @@ bool ClassLinker::EnsureInitialized(Thread* self,
                                     bool can_init_fields,
                                     bool can_init_parents) {
   DCHECK(c != nullptr);
+
   if (c->IsInitialized()) {
     EnsureSkipAccessChecksMethods(c, image_pointer_size_);
     self->AssertNoPendingException();
     return true;
+  }
+  // SubtypeCheckInfo::Initialized must happen-before any new-instance for that type.
+  //
+  // Ensure the bitstring is initialized before any of the class initialization
+  // logic occurs. Once a class initializer starts running, objects can
+  // escape into the heap and use the subtype checking code.
+  //
+  // Note: A class whose SubtypeCheckInfo is at least Initialized means it
+  // can be used as a source for the IsSubClass check, and that all ancestors
+  // of the class are Assigned (can be used as a target for IsSubClass check)
+  // or Overflowed (can be used as a source for IsSubClass check).
+  {
+    MutexLock subtype_check_lock(Thread::Current(), *Locks::subtype_check_lock_);
+    ObjPtr<mirror::Class> c_ptr(c.Get());
+    SubtypeCheck<ObjPtr<mirror::Class>>::EnsureInitialized(c_ptr);
+    // TODO: Avoid taking subtype_check_lock_ if SubtypeCheck is already initialized.
   }
   const bool success = InitializeClass(self, c, can_init_fields, can_init_parents);
   if (!success) {

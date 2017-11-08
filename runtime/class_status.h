@@ -18,6 +18,7 @@
 #define ART_RUNTIME_CLASS_STATUS_H_
 
 #include <iosfwd>
+#include <stdint.h>
 
 namespace art {
 
@@ -70,7 +71,7 @@ namespace art {
 // again at runtime.
 //
 // TODO: Explain the other states
-enum ClassStatus {
+enum ClassStatus : int8_t {
   kStatusRetired = -3,  // Retired, should not be used. Use the newly cloned one instead.
   kStatusErrorResolved = -2,
   kStatusErrorUnresolved = -1,
