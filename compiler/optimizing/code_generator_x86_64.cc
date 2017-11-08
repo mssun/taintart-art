@@ -5403,7 +5403,7 @@ void ParallelMoveResolverX86_64::RestoreScratch(int reg) {
 
 void InstructionCodeGeneratorX86_64::GenerateClassInitializationCheck(
     SlowPathCode* slow_path, CpuRegister class_reg) {
-  __ cmpl(Address(class_reg,  mirror::Class::StatusOffset().Int32Value()),
+  __ cmpb(Address(class_reg,  mirror::Class::StatusOffset().Int32Value()),
           Immediate(mirror::Class::kStatusInitialized));
   __ j(kLess, slow_path->GetEntryLabel());
   __ Bind(slow_path->GetExitLabel());

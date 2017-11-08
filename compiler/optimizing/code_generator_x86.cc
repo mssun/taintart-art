@@ -6212,7 +6212,7 @@ void InstructionCodeGeneratorX86::VisitClinitCheck(HClinitCheck* check) {
 
 void InstructionCodeGeneratorX86::GenerateClassInitializationCheck(
     SlowPathCode* slow_path, Register class_reg) {
-  __ cmpl(Address(class_reg,  mirror::Class::StatusOffset().Int32Value()),
+  __ cmpb(Address(class_reg,  mirror::Class::StatusOffset().Int32Value()),
           Immediate(mirror::Class::kStatusInitialized));
   __ j(kLess, slow_path->GetEntryLabel());
   __ Bind(slow_path->GetExitLabel());

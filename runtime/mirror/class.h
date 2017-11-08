@@ -101,9 +101,10 @@ class MANAGED Class FINAL : public Object {
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   Status GetStatus() REQUIRES_SHARED(Locks::mutator_lock_) {
-    static_assert(sizeof(Status) == sizeof(uint32_t), "Size of status not equal to uint32");
-    return static_cast<Status>(
-        GetField32Volatile<kVerifyFlags>(OFFSET_OF_OBJECT_MEMBER(Class, status_)));
+    // Avoid including "subtype_check_bits_and_status.h" to get the field.
+    // The ClassStatus is always in the least-significant bits of status_.
+    return static_cast<Status>(static_cast<uint8_t>(
+        static_cast<uint32_t>(GetField32Volatile<kVerifyFlags>(StatusOffset())) & 0xff));
   }
 
   // This is static because 'this' may be moved by GC.
@@ -111,7 +112,7 @@ class MANAGED Class FINAL : public Object {
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
   static MemberOffset StatusOffset() {
-    return OFFSET_OF_OBJECT_MEMBER(Class, status_);
+    return MemberOffset(OFFSET_OF_OBJECT_MEMBER(Class, status_));
   }
 
   // Returns true if the class has been retired.
@@ -1481,8 +1482,9 @@ class MANAGED Class FINAL : public Object {
   // Bitmap of offsets of ifields.
   uint32_t reference_instance_offsets_;
 
-  // State of class initialization.
-  Status status_;
+  // See the real definition in subtype_check_bits_and_status.h
+  // typeof(status_) is actually SubtypeCheckBitsAndStatus.
+  uint32_t status_;
 
   // The offset of the first virtual method that is copied from an interface. This includes miranda,
   // default, and default-conflict methods. Having a hard limit of ((2 << 16) - 1) for methods
