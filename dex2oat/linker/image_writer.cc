@@ -51,6 +51,7 @@
 #include "handle_scope-inl.h"
 #include "image.h"
 #include "imt_conflict_table.h"
+#include "subtype_check.h"
 #include "jni_internal.h"
 #include "linear_alloc.h"
 #include "lock_word.h"
@@ -2358,6 +2359,27 @@ void ImageWriter::FixupClass(mirror::Class* orig, mirror::Class* copy) {
   orig->FixupNativePointers(copy, target_ptr_size_, NativeLocationVisitor(this));
   FixupClassVisitor visitor(this, copy);
   ObjPtr<mirror::Object>(orig)->VisitReferences(visitor, visitor);
+
+  if (compile_app_image_) {
+    // When we call SubtypeCheck::EnsureInitialize, it Assigns new bitstring
+    // values to the parent of that class.
+    //
+    // Every time this happens, the parent class has to mutate to increment
+    // the "Next" value.
+    //
+    // If any of these parents are in the boot image, the changes [in the parents]
+    // would be lost when the app image is reloaded.
+    //
+    // To prevent newly loaded classes (not in the app image) from being reassigned
+    // the same bitstring value as an existing app image class, uninitialize
+    // all the classes in the app image.
+    //
+    // On startup, the class linker will then re-initialize all the app
+    // image bitstrings. See also ClassLinker::AddImageSpace.
+    MutexLock subtype_check_lock(Thread::Current(), *Locks::subtype_check_lock_);
+    // Lock every time to prevent a dcheck failure when we suspend with the lock held.
+    SubtypeCheck<mirror::Class*>::ForceUninitialize(copy);
+  }
 
   // Remove the clinitThreadId. This is required for image determinism.
   copy->SetClinitThreadId(static_cast<pid_t>(0));
