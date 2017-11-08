@@ -810,6 +810,23 @@ public class Main {
     return arr[0] + arr[1] + arr[2] + arr[3];
   }
 
+  /// CHECK-START: int Main.testNoSideEffects(int[]) load_store_elimination (before)
+  /// CHECK: ArraySet
+  /// CHECK: ArraySet
+  /// CHECK: ArrayGet
+
+  /// CHECK-START: int Main.testNoSideEffects(int[]) load_store_elimination (after)
+  /// CHECK: ArraySet
+  /// CHECK: ArraySet
+  /// CHECK-NOT: ArrayGet
+
+  private static int testNoSideEffects(int[] array) {
+    array[0] = 101;
+    int bitCount = Integer.bitCount(0x3456);
+    array[1] = array[0] + 1;
+    return array[0] + bitCount;
+  }
+
   /// CHECK-START: double Main.getCircleArea(double, boolean) load_store_elimination (before)
   /// CHECK: NewInstance
 
@@ -1017,6 +1034,11 @@ public class Main {
     assertIntEquals(testStoreStore().i, 41);
     assertIntEquals(testStoreStore().j, 43);
     assertIntEquals(testStoreStoreWithDeoptimize(new int[4]), 4);
+
+    int ret = testNoSideEffects(iarray);
+    assertIntEquals(iarray[0], 101);
+    assertIntEquals(iarray[1], 102);
+    assertIntEquals(ret, 108);
   }
 
   static boolean sFlag;
