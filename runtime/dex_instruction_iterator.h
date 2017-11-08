@@ -123,6 +123,9 @@ class DexInstructionIterator : public DexInstructionIteratorBase {
   explicit DexInstructionIterator(const uint16_t* inst, uint32_t dex_pc)
       : DexInstructionIteratorBase(Instruction::At(inst), dex_pc) {}
 
+  explicit DexInstructionIterator(const DexInstructionPcPair& pair)
+      : DexInstructionIterator(pair.Instructions(), pair.DexPc()) {}
+
   // Value after modification.
   DexInstructionIterator& operator++() {
     data_.dex_pc_ += Inst().SizeInCodeUnits();

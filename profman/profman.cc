@@ -725,15 +725,15 @@ class ProfMan FINAL {
     const DexFile::CodeItem* code_item = dex_file->GetCodeItem(offset);
 
     bool found_invoke = false;
-    for (CodeItemIterator it(*code_item); !it.Done(); it.Advance()) {
-      if (it.CurrentInstruction().Opcode() == Instruction::INVOKE_VIRTUAL) {
+    for (const DexInstructionPcPair& inst : code_item->Instructions()) {
+      if (inst->Opcode() == Instruction::INVOKE_VIRTUAL) {
         if (found_invoke) {
           LOG(ERROR) << "Multiple invoke INVOKE_VIRTUAL found: "
                      << dex_file->PrettyMethod(method_index);
           return false;
         }
         found_invoke = true;
-        *dex_pc = it.CurrentDexPc();
+        *dex_pc = inst.DexPc();
       }
     }
     if (!found_invoke) {
