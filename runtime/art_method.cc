@@ -429,30 +429,15 @@ bool ArtMethod::IsPolymorphicSignature() {
 }
 
 bool ArtMethod::IsAnnotatedWithFastNative() {
-  return IsAnnotatedWith(WellKnownClasses::dalvik_annotation_optimization_FastNative,
-                         DexFile::kDexVisibilityBuild,
-                         /* lookup_in_resolved_boot_classes */ true);
+  ScopedObjectAccess soa(Thread::Current());
+  return annotations::HasFastNativeMethodBuildAnnotation(
+      *GetDexFile(), GetClassDef(), GetDexMethodIndex());
 }
 
 bool ArtMethod::IsAnnotatedWithCriticalNative() {
-  return IsAnnotatedWith(WellKnownClasses::dalvik_annotation_optimization_CriticalNative,
-                         DexFile::kDexVisibilityBuild,
-                         /* lookup_in_resolved_boot_classes */ true);
-}
-
-bool ArtMethod::IsAnnotatedWith(jclass klass,
-                                uint32_t visibility,
-                                bool lookup_in_resolved_boot_classes) {
-  Thread* self = Thread::Current();
-  ScopedObjectAccess soa(self);
-  StackHandleScope<1> shs(self);
-
-  ObjPtr<mirror::Class> annotation = soa.Decode<mirror::Class>(klass);
-  DCHECK(annotation->IsAnnotation());
-  Handle<mirror::Class> annotation_handle(shs.NewHandle(annotation));
-
-  return annotations::IsMethodAnnotationPresent(
-      this, annotation_handle, visibility, lookup_in_resolved_boot_classes);
+  ScopedObjectAccess soa(Thread::Current());
+  return annotations::HasCriticalNativeMethodBuildAnnotation(
+      *GetDexFile(), GetClassDef(), GetDexMethodIndex());
 }
 
 static uint32_t GetOatMethodIndexFromMethodIndex(const DexFile& dex_file,
