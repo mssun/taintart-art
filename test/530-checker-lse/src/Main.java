@@ -62,11 +62,12 @@ class TestClass3 {
 
 class Finalizable {
   static boolean sVisited = false;
-  static final int VALUE = 0xbeef;
+  static final int VALUE1 = 0xbeef;
+  static final int VALUE2 = 0xcafe;
   int i;
 
   protected void finalize() {
-    if (i != VALUE) {
+    if (i != VALUE1) {
       System.out.println("Where is the beef?");
     }
     sVisited = true;
@@ -620,15 +621,18 @@ public class Main {
   /// CHECK-START: void Main.testFinalizable() load_store_elimination (before)
   /// CHECK: NewInstance
   /// CHECK: InstanceFieldSet
+  /// CHECK: InstanceFieldSet
 
   /// CHECK-START: void Main.testFinalizable() load_store_elimination (after)
   /// CHECK: NewInstance
   /// CHECK: InstanceFieldSet
+  /// CHECK-NOT: InstanceFieldSet
 
-  // Allocations and stores into finalizable objects cannot be eliminated.
+  // Allocations of finalizable objects cannot be eliminated.
   static void testFinalizable() {
     Finalizable finalizable = new Finalizable();
-    finalizable.i = Finalizable.VALUE;
+    finalizable.i = Finalizable.VALUE2;
+    finalizable.i = Finalizable.VALUE1;
   }
 
   static java.lang.ref.WeakReference<Object> getWeakReference() {
