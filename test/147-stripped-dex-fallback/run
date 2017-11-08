@@ -21,4 +21,4 @@ if [[ "${flags}" == *--no-prebuild* ]] ; then
   exit 1
 fi
 
-${RUN} ${flags} --strip-dex --no-dex2oat
+${RUN} ${flags} --strip-dex --runtime-option -Xnodex2oat
