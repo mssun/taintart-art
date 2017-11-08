@@ -24,8 +24,8 @@
 namespace art {
 
 namespace mirror {
-  class ClassLoader;
-  class DexCache;
+class ClassLoader;
+class DexCache;
 }  // namespace mirror
 class ArtField;
 class ArtMethod;

@@ -209,7 +209,7 @@ TEST_F(ImmuneSpacesTest, AppendAfterImage) {
   ImmuneSpaces spaces;
   constexpr size_t kImageSize = 123 * kPageSize;
   constexpr size_t kImageOatSize = 321 * kPageSize;
-  constexpr size_t kOtherSpaceSize= 100 * kPageSize;
+  constexpr size_t kOtherSpaceSize = 100 * kPageSize;
 
   uint8_t* memory = GetContinuousMemoryRegion(kImageSize + kImageOatSize + kOtherSpaceSize);
 

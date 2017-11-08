@@ -30,7 +30,7 @@
 #include <string.h>
 
 #include <initializer_list>
-#include <mutex>
+#include <mutex>  // NOLINT [build/c++11] [5]
 #include <utility>
 
 #include "sigchain.h"

@@ -21,83 +21,82 @@
 #include <utils.h>
 
 namespace art {
-  // Result of an attempt to process the command line arguments. If fails, specifies
-  // the specific error code and an error message.
-  // Use the value-carrying CmdlineParseResult<T> to get an additional value out in a success case.
-  struct CmdlineResult {
-    enum Status {
-      kSuccess,
-      // Error codes:
-      kUsage,
-      kFailure,
-      kOutOfRange,
-      kUnknown,
-    };
-
-    // Short-hand for checking if the result was successful.
-    operator bool() const {
-      return IsSuccess();
-    }
-
-    // Check if the operation has succeeded.
-    bool IsSuccess() const { return status_ == kSuccess; }
-    // Check if the operation was not a success.
-    bool IsError() const { return status_ != kSuccess; }
-    // Get the specific status, regardless of whether it's failure or success.
-    Status GetStatus() const { return status_; }
-
-    // Get the error message, *must* only be called for error status results.
-    const std::string& GetMessage() const { assert(IsError()); return message_; }
-
-    // Constructor any status. No message.
-    explicit CmdlineResult(Status status) : status_(status) {}
-
-    // Constructor with an error status, copying the message.
-    CmdlineResult(Status status, const std::string& message)
-      : status_(status), message_(message) {
-      assert(status != kSuccess);
-    }
-
-    // Constructor with an error status, taking over the message.
-    CmdlineResult(Status status, std::string&& message)
-      : status_(status), message_(message) {
-      assert(status != kSuccess);
-    }
-
-    // Make sure copying exists
-    CmdlineResult(const CmdlineResult&) = default;
-    // Make sure moving is cheap
-    CmdlineResult(CmdlineResult&&) = default;
-
-  private:
-    const Status status_;
-    const std::string message_;
+// Result of an attempt to process the command line arguments. If fails, specifies
+// the specific error code and an error message.
+// Use the value-carrying CmdlineParseResult<T> to get an additional value out in a success case.
+struct CmdlineResult {
+  enum Status {
+    kSuccess,
+    // Error codes:
+    kUsage,
+    kFailure,
+    kOutOfRange,
+    kUnknown,
   };
 
-  // TODO: code-generate this
-  static inline std::ostream& operator<<(std::ostream& stream, CmdlineResult::Status status) {
-    switch (status) {
-      case CmdlineResult::kSuccess:
-        stream << "kSuccess";
-        break;
-      case CmdlineResult::kUsage:
-        stream << "kUsage";
-        break;
-      case CmdlineResult::kFailure:
-        stream << "kFailure";
-        break;
-      case CmdlineResult::kOutOfRange:
-        stream << "kOutOfRange";
-        break;
-      case CmdlineResult::kUnknown:
-        stream << "kUnknown";
-        break;
-      default:
-        UNREACHABLE();
-    }
-    return stream;
+  // Short-hand for checking if the result was successful.
+  operator bool() const {
+    return IsSuccess();
   }
 
+  // Check if the operation has succeeded.
+  bool IsSuccess() const { return status_ == kSuccess; }
+  // Check if the operation was not a success.
+  bool IsError() const { return status_ != kSuccess; }
+  // Get the specific status, regardless of whether it's failure or success.
+  Status GetStatus() const { return status_; }
+
+  // Get the error message, *must* only be called for error status results.
+  const std::string& GetMessage() const { assert(IsError()); return message_; }
+
+  // Constructor any status. No message.
+  explicit CmdlineResult(Status status) : status_(status) {}
+
+  // Constructor with an error status, copying the message.
+  CmdlineResult(Status status, const std::string& message)
+    : status_(status), message_(message) {
+    assert(status != kSuccess);
+  }
+
+  // Constructor with an error status, taking over the message.
+  CmdlineResult(Status status, std::string&& message)
+    : status_(status), message_(message) {
+    assert(status != kSuccess);
+  }
+
+  // Make sure copying exists
+  CmdlineResult(const CmdlineResult&) = default;
+  // Make sure moving is cheap
+  CmdlineResult(CmdlineResult&&) = default;
+
+ private:
+  const Status status_;
+  const std::string message_;
+};
+
+// TODO: code-generate this
+static inline std::ostream& operator<<(std::ostream& stream, CmdlineResult::Status status) {
+  switch (status) {
+    case CmdlineResult::kSuccess:
+      stream << "kSuccess";
+      break;
+    case CmdlineResult::kUsage:
+      stream << "kUsage";
+      break;
+    case CmdlineResult::kFailure:
+      stream << "kFailure";
+      break;
+    case CmdlineResult::kOutOfRange:
+      stream << "kOutOfRange";
+      break;
+    case CmdlineResult::kUnknown:
+      stream << "kUnknown";
+      break;
+    default:
+      UNREACHABLE();
+  }
+  return stream;
+}
 }  // namespace art
 
 #endif  // ART_CMDLINE_CMDLINE_RESULT_H_

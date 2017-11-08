@@ -37,7 +37,7 @@ class MarkObjectVisitor;
 
 namespace gc {
 namespace space {
-  class ContinuousSpace;
+class ContinuousSpace;
 }  // namespace space
 
 class Heap;

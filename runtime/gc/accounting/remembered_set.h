@@ -28,11 +28,11 @@ namespace art {
 namespace gc {
 
 namespace collector {
-  class GarbageCollector;
-  class MarkSweep;
+class GarbageCollector;
+class MarkSweep;
 }  // namespace collector
 namespace space {
-  class ContinuousSpace;
+class ContinuousSpace;
 }  // namespace space
 
 class Heap;

@@ -32,10 +32,10 @@
 namespace art {
 
 namespace mirror {
-  class Array;
-  class Class;
-  class Object;
-  class String;
+class Array;
+class Class;
+class Object;
+class String;
 }  // namespace mirror
 
 class ArtField;

@@ -40,9 +40,9 @@ union JValue;
 class Thread;
 
 namespace mirror {
-  class Class;
-  class Object;
-  class Throwable;
+class Class;
+class Object;
+class Throwable;
 }  // namespace mirror
 class Thread;
 

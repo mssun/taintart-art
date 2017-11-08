@@ -21,8 +21,8 @@
 
 namespace art {
 namespace mirror {
-  class Object;
-  template<class MirrorType> class HeapReference;
+class Object;
+template<class MirrorType> class HeapReference;
 }  // namespace mirror
 
 class IsMarkedVisitor {

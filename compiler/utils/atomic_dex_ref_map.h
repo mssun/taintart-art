@@ -29,7 +29,7 @@ class DexFile;
 template <typename DexFileReferenceType, typename Value>
 class AtomicDexRefMap {
  public:
-  explicit AtomicDexRefMap() {}
+  AtomicDexRefMap() {}
   ~AtomicDexRefMap() {}
 
   // Atomically swap the element in if the existing value matches expected.
