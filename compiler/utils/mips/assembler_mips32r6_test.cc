@@ -1757,6 +1757,46 @@ TEST_F(AssemblerMIPS32r6Test, SubvD) {
   DriverStr(RepeatVVV(&mips::MipsAssembler::SubvD, "subv.d ${reg1}, ${reg2}, ${reg3}"), "subv.d");
 }
 
+TEST_F(AssemblerMIPS32r6Test, Asub_sB) {
+  DriverStr(RepeatVVV(&mips::MipsAssembler::Asub_sB, "asub_s.b ${reg1}, ${reg2}, ${reg3}"),
+            "asub_s.b");
+}
+
+TEST_F(AssemblerMIPS32r6Test, Asub_sH) {
+  DriverStr(RepeatVVV(&mips::MipsAssembler::Asub_sH, "asub_s.h ${reg1}, ${reg2}, ${reg3}"),
+            "asub_s.h");
+}
+
+TEST_F(AssemblerMIPS32r6Test, Asub_sW) {
+  DriverStr(RepeatVVV(&mips::MipsAssembler::Asub_sW, "asub_s.w ${reg1}, ${reg2}, ${reg3}"),
+            "asub_s.w");
+}
+
+TEST_F(AssemblerMIPS32r6Test, Asub_sD) {
+  DriverStr(RepeatVVV(&mips::MipsAssembler::Asub_sD, "asub_s.d ${reg1}, ${reg2}, ${reg3}"),
+            "asub_s.d");
+}
+
+TEST_F(AssemblerMIPS32r6Test, Asub_uB) {
+  DriverStr(RepeatVVV(&mips::MipsAssembler::Asub_uB, "asub_u.b ${reg1}, ${reg2}, ${reg3}"),
+            "asub_u.b");
+}
+
+TEST_F(AssemblerMIPS32r6Test, Asub_uH) {
+  DriverStr(RepeatVVV(&mips::MipsAssembler::Asub_uH, "asub_u.h ${reg1}, ${reg2}, ${reg3}"),
+            "asub_u.h");
+}
+
+TEST_F(AssemblerMIPS32r6Test, Asub_uW) {
+  DriverStr(RepeatVVV(&mips::MipsAssembler::Asub_uW, "asub_u.w ${reg1}, ${reg2}, ${reg3}"),
+            "asub_u.w");
+}
+
+TEST_F(AssemblerMIPS32r6Test, Asub_uD) {
+  DriverStr(RepeatVVV(&mips::MipsAssembler::Asub_uD, "asub_u.d ${reg1}, ${reg2}, ${reg3}"),
+            "asub_u.d");
+}
+
 TEST_F(AssemblerMIPS32r6Test, MulvB) {
   DriverStr(RepeatVVV(&mips::MipsAssembler::MulvB, "mulv.b ${reg1}, ${reg2}, ${reg3}"), "mulv.b");
 }
