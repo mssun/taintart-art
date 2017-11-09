@@ -1637,6 +1637,13 @@ void IntrinsicCodeGeneratorMIPS64::VisitStringCompareTo(HInvoke* invoke) {
 
 // boolean java.lang.String.equals(Object anObject)
 void IntrinsicLocationsBuilderMIPS64::VisitStringEquals(HInvoke* invoke) {
+  if (kEmitCompilerReadBarrier &&
+      !StringEqualsOptimizations(invoke).GetArgumentIsString() &&
+      !StringEqualsOptimizations(invoke).GetNoReadBarrierForStringClass()) {
+    // No support for this odd case (String class is moveable, not in the boot image).
+    return;
+  }
+
   LocationSummary* locations =
       new (allocator_) LocationSummary(invoke, LocationSummary::kNoCall, kIntrinsified);
   locations->SetInAt(0, Location::RequiresRegister());
