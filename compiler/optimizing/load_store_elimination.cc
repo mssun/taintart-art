@@ -521,15 +521,21 @@ class LSEVisitor : public HGraphDelegateVisitor {
     }
   }
 
-  void HandleInvoke(HInstruction* invoke) {
+  void HandleInvoke(HInstruction* instruction) {
+    SideEffects side_effects = instruction->GetSideEffects();
     ScopedArenaVector<HInstruction*>& heap_values =
-        heap_values_for_[invoke->GetBlock()->GetBlockId()];
+        heap_values_for_[instruction->GetBlock()->GetBlockId()];
     for (size_t i = 0; i < heap_values.size(); i++) {
       ReferenceInfo* ref_info = heap_location_collector_.GetHeapLocation(i)->GetReferenceInfo();
       if (ref_info->IsSingleton()) {
         // Singleton references cannot be seen by the callee.
       } else {
-        heap_values[i] = kUnknownHeapValue;
+        if (side_effects.DoesAnyRead()) {
+          KeepIfIsStore(heap_values[i]);
+        }
+        if (side_effects.DoesAnyWrite()) {
+          heap_values[i] = kUnknownHeapValue;
+        }
       }
     }
   }
