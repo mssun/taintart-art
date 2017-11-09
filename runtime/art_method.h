@@ -751,11 +751,6 @@ class ArtMethod FINAL {
  private:
   uint16_t FindObsoleteDexClassDefIndex() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // If `lookup_in_resolved_boot_classes` is true, look up any of the
-  // method's annotations' classes in the bootstrap class loader's
-  // resolved types; otherwise, resolve them as a side effect.
-  bool IsAnnotatedWith(jclass klass, uint32_t visibility, bool lookup_in_resolved_boot_classes);
-
   static constexpr size_t PtrSizedFieldsOffset(PointerSize pointer_size) {
     // Round up to pointer size for padding field. Tested in art_method.cc.
     return RoundUp(offsetof(ArtMethod, hotness_count_) + sizeof(hotness_count_),
