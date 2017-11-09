@@ -16,7 +16,10 @@
 
 #include <gtest/gtest.h>
 
+#include "android-base/stringprintf.h"
+
 #include "dexopt_test.h"
+#include "noop_compiler_callbacks.h"
 
 namespace art {
 namespace gc {
@@ -104,6 +107,47 @@ TEST_F(DexoptTest, ValidateOatFile) {
   // Remove the multidex file.
   EXPECT_EQ(0, unlink(multidex1.c_str()));
   EXPECT_FALSE(ImageSpace::ValidateOatFile(*oat, &error_msg));
+}
+
+template <bool kImage, bool kRelocate, bool kPatchoat, bool kImageDex2oat>
+class ImageSpaceLoadingTest : public CommonRuntimeTest {
+ protected:
+  void SetUpRuntimeOptions(RuntimeOptions* options) OVERRIDE {
+    if (kImage) {
+      options->emplace_back(android::base::StringPrintf("-Ximage:%s", GetCoreArtLocation().c_str()),
+                            nullptr);
+    }
+    options->emplace_back(kRelocate ? "-Xrelocate" : "-Xnorelocate", nullptr);
+    if (!kPatchoat) {
+      options->emplace_back("-Xpatchoat:false", nullptr);
+    }
+    options->emplace_back(kImageDex2oat ? "-Ximage-dex2oat" : "-Xnoimage-dex2oat", nullptr);
+
+    // We want to test the relocation behavior of ImageSpace. As such, don't pretend we're a
+    // compiler.
+    callbacks_.reset();
+  }
+};
+
+using ImageSpacePatchoatTest = ImageSpaceLoadingTest<true, true, true, true>;
+TEST_F(ImageSpacePatchoatTest, Test) {
+  EXPECT_FALSE(Runtime::Current()->GetHeap()->GetBootImageSpaces().empty());
+}
+
+using ImageSpaceDex2oatTest = ImageSpaceLoadingTest<false, true, false, true>;
+TEST_F(ImageSpaceDex2oatTest, Test) {
+  EXPECT_FALSE(Runtime::Current()->GetHeap()->GetBootImageSpaces().empty());
+}
+
+// Disabled for b/63622587.
+// using ImageSpaceNoDex2oatNoPatchoatTest = ImageSpaceLoadingTest<true, true, false, false>;
+// TEST_F(ImageSpaceNoDex2oatNoPatchoatTest, Test) {
+//   EXPECT_TRUE(Runtime::Current()->GetHeap()->GetBootImageSpaces().empty());
+// }
+
+using ImageSpaceNoRelocateNoDex2oatNoPatchoatTest = ImageSpaceLoadingTest<true, false, false, false>;
+TEST_F(ImageSpaceNoRelocateNoDex2oatNoPatchoatTest, Test) {
+  EXPECT_FALSE(Runtime::Current()->GetHeap()->GetBootImageSpaces().empty());
 }
 
 }  // namespace space
