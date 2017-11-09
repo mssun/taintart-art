@@ -55,7 +55,7 @@ class JNIMacroAssemblerTest : public testing::Test {
   }
 
  protected:
-  explicit JNIMacroAssemblerTest() {}
+  JNIMacroAssemblerTest() {}
 
   void SetUp() OVERRIDE {
     allocator_.reset(new ArenaAllocator(&pool_));

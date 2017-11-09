@@ -965,7 +965,7 @@ class OatDumper {
       os << "Total number of dex code bytes: " << dex_code_bytes_ << "\n";
     }
 
-  private:
+   private:
     // All of the elements from one container to another.
     template <typename Dest, typename Src>
     static void AddAll(Dest& dest, const Src& src) {

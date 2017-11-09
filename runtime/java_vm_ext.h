@@ -28,7 +28,7 @@
 namespace art {
 
 namespace mirror {
-  class Array;
+class Array;
 }  // namespace mirror
 
 class ArtMethod;

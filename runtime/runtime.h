@@ -44,31 +44,31 @@
 namespace art {
 
 namespace gc {
-  class AbstractSystemWeakHolder;
-  class Heap;
+class AbstractSystemWeakHolder;
+class Heap;
 }  // namespace gc
 
 namespace jit {
-  class Jit;
-  class JitOptions;
+class Jit;
+class JitOptions;
 }  // namespace jit
 
 namespace mirror {
-  class Array;
-  class ClassLoader;
-  class DexCache;
-  template<class T> class ObjectArray;
-  template<class T> class PrimitiveArray;
-  typedef PrimitiveArray<int8_t> ByteArray;
-  class String;
-  class Throwable;
+class Array;
+class ClassLoader;
+class DexCache;
+template<class T> class ObjectArray;
+template<class T> class PrimitiveArray;
+typedef PrimitiveArray<int8_t> ByteArray;
+class String;
+class Throwable;
 }  // namespace mirror
 namespace ti {
-  class Agent;
+class Agent;
 }  // namespace ti
 namespace verifier {
-  class MethodVerifier;
-  enum class VerifyMode : int8_t;
+class MethodVerifier;
+enum class VerifyMode : int8_t;
 }  // namespace verifier
 class ArenaPool;
 class ArtMethod;

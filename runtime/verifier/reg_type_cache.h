@@ -28,8 +28,8 @@
 
 namespace art {
 namespace mirror {
-  class Class;
-  class ClassLoader;
+class Class;
+class ClassLoader;
 }  // namespace mirror
 class ScopedArenaAllocator;
 class StringPiece;

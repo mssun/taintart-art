@@ -26,7 +26,7 @@ namespace art {
 
 class MallocAllocator FINAL : public Allocator {
  public:
-  explicit MallocAllocator() {}
+  MallocAllocator() {}
   ~MallocAllocator() {}
 
   void* Alloc(size_t size) {
@@ -45,7 +45,7 @@ MallocAllocator g_malloc_allocator;
 
 class NoopAllocator FINAL : public Allocator {
  public:
-  explicit NoopAllocator() {}
+  NoopAllocator() {}
   ~NoopAllocator() {}
 
   void* Alloc(size_t size ATTRIBUTE_UNUSED) {

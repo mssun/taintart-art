@@ -16,8 +16,8 @@
 
 #include <stdio.h>
 
-#include <condition_variable>
-#include <mutex>
+#include <condition_variable>  // NOLINT [build/c++11] [5]
+#include <mutex>               // NOLINT [build/c++11] [5]
 #include <vector>
 
 #include "android-base/macros.h"
@@ -362,7 +362,7 @@ class ClassLoadPreparePrinter {
 
   static std::string thread_name_filter_;
 };
-std::string ClassLoadPreparePrinter::thread_name_filter_;
+std::string ClassLoadPreparePrinter::thread_name_filter_;  // NOLINT [runtime/string] [4]
 
 extern "C" JNIEXPORT void JNICALL Java_art_Test912_enableClassLoadPreparePrintEvents(
     JNIEnv* env, jclass Main_klass ATTRIBUTE_UNUSED, jboolean enable, jthread thread) {

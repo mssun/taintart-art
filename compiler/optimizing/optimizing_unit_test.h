@@ -161,7 +161,7 @@ typedef std::list<std::pair<std::string, std::string>> diff_t;
 
 // An alias for the empty string used to make it clear that a line is
 // removed in a diff.
-static const std::string removed = "";
+static const std::string removed = "";  // NOLINT [runtime/string] [4]
 
 // Naive patch command: apply a diff to a string.
 inline std::string Patch(const std::string& original, const diff_t& diff) {

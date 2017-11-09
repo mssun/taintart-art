@@ -30,7 +30,7 @@
 namespace art {
 
 namespace verifier {
-  class VerifierDepsTest;
+class VerifierDepsTest;
 }  // namespace verifier
 
 class DexFile;

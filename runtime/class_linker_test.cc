@@ -564,7 +564,7 @@ struct ObjectOffsets : public CheckOffsets<mirror::Object> {
     addOffset(OFFSETOF_MEMBER(mirror::Object, x_rb_ptr_), "shadow$_x_rb_ptr_");
     addOffset(OFFSETOF_MEMBER(mirror::Object, x_xpadding_), "shadow$_x_xpadding_");
 #endif
-  };
+  }
 };
 
 struct ClassOffsets : public CheckOffsets<mirror::Class> {
@@ -599,7 +599,7 @@ struct ClassOffsets : public CheckOffsets<mirror::Class> {
     addOffset(OFFSETOF_MEMBER(mirror::Class, super_class_), "superClass");
     addOffset(OFFSETOF_MEMBER(mirror::Class, virtual_methods_offset_), "virtualMethodsOffset");
     addOffset(OFFSETOF_MEMBER(mirror::Class, vtable_), "vtable");
-  };
+  }
 };
 
 struct ClassExtOffsets : public CheckOffsets<mirror::ClassExt> {
@@ -615,7 +615,7 @@ struct StringOffsets : public CheckOffsets<mirror::String> {
   StringOffsets() : CheckOffsets<mirror::String>(false, "Ljava/lang/String;") {
     addOffset(OFFSETOF_MEMBER(mirror::String, count_), "count");
     addOffset(OFFSETOF_MEMBER(mirror::String, hash_code_), "hash");
-  };
+  }
 };
 
 struct ThrowableOffsets : public CheckOffsets<mirror::Throwable> {
@@ -625,7 +625,7 @@ struct ThrowableOffsets : public CheckOffsets<mirror::Throwable> {
     addOffset(OFFSETOF_MEMBER(mirror::Throwable, detail_message_), "detailMessage");
     addOffset(OFFSETOF_MEMBER(mirror::Throwable, stack_trace_), "stackTrace");
     addOffset(OFFSETOF_MEMBER(mirror::Throwable, suppressed_exceptions_), "suppressedExceptions");
-  };
+  }
 };
 
 struct StackTraceElementOffsets : public CheckOffsets<mirror::StackTraceElement> {
@@ -635,7 +635,7 @@ struct StackTraceElementOffsets : public CheckOffsets<mirror::StackTraceElement>
     addOffset(OFFSETOF_MEMBER(mirror::StackTraceElement, file_name_), "fileName");
     addOffset(OFFSETOF_MEMBER(mirror::StackTraceElement, line_number_), "lineNumber");
     addOffset(OFFSETOF_MEMBER(mirror::StackTraceElement, method_name_), "methodName");
-  };
+  }
 };
 
 struct ClassLoaderOffsets : public CheckOffsets<mirror::ClassLoader> {
@@ -645,13 +645,13 @@ struct ClassLoaderOffsets : public CheckOffsets<mirror::ClassLoader> {
     addOffset(OFFSETOF_MEMBER(mirror::ClassLoader, packages_), "packages");
     addOffset(OFFSETOF_MEMBER(mirror::ClassLoader, parent_), "parent");
     addOffset(OFFSETOF_MEMBER(mirror::ClassLoader, proxyCache_), "proxyCache");
-  };
+  }
 };
 
 struct ProxyOffsets : public CheckOffsets<mirror::Proxy> {
   ProxyOffsets() : CheckOffsets<mirror::Proxy>(false, "Ljava/lang/reflect/Proxy;") {
     addOffset(OFFSETOF_MEMBER(mirror::Proxy, h_), "h");
-  };
+  }
 };
 
 struct DexCacheOffsets : public CheckOffsets<mirror::DexCache> {
@@ -670,7 +670,7 @@ struct DexCacheOffsets : public CheckOffsets<mirror::DexCache> {
     addOffset(OFFSETOF_MEMBER(mirror::DexCache, resolved_methods_), "resolvedMethods");
     addOffset(OFFSETOF_MEMBER(mirror::DexCache, resolved_types_), "resolvedTypes");
     addOffset(OFFSETOF_MEMBER(mirror::DexCache, strings_), "strings");
-  };
+  }
 };
 
 struct ReferenceOffsets : public CheckOffsets<mirror::Reference> {
@@ -679,7 +679,7 @@ struct ReferenceOffsets : public CheckOffsets<mirror::Reference> {
     addOffset(OFFSETOF_MEMBER(mirror::Reference, queue_), "queue");
     addOffset(OFFSETOF_MEMBER(mirror::Reference, queue_next_), "queueNext");
     addOffset(OFFSETOF_MEMBER(mirror::Reference, referent_), "referent");
-  };
+  }
 };
 
 struct FinalizerReferenceOffsets : public CheckOffsets<mirror::FinalizerReference> {
@@ -688,14 +688,14 @@ struct FinalizerReferenceOffsets : public CheckOffsets<mirror::FinalizerReferenc
     addOffset(OFFSETOF_MEMBER(mirror::FinalizerReference, next_), "next");
     addOffset(OFFSETOF_MEMBER(mirror::FinalizerReference, prev_), "prev");
     addOffset(OFFSETOF_MEMBER(mirror::FinalizerReference, zombie_), "zombie");
-  };
+  }
 };
 
 struct AccessibleObjectOffsets : public CheckOffsets<mirror::AccessibleObject> {
   AccessibleObjectOffsets() : CheckOffsets<mirror::AccessibleObject>(
       false, "Ljava/lang/reflect/AccessibleObject;") {
     addOffset(mirror::AccessibleObject::FlagOffset().Uint32Value(), "override");
-  };
+  }
 };
 
 struct FieldOffsets : public CheckOffsets<mirror::Field> {
@@ -705,7 +705,7 @@ struct FieldOffsets : public CheckOffsets<mirror::Field> {
     addOffset(OFFSETOF_MEMBER(mirror::Field, dex_field_index_), "dexFieldIndex");
     addOffset(OFFSETOF_MEMBER(mirror::Field, offset_), "offset");
     addOffset(OFFSETOF_MEMBER(mirror::Field, type_), "type");
-  };
+  }
 };
 
 struct ExecutableOffsets : public CheckOffsets<mirror::Executable> {
@@ -720,7 +720,7 @@ struct ExecutableOffsets : public CheckOffsets<mirror::Executable> {
     addOffset(OFFSETOF_MEMBER(mirror::Executable, has_real_parameter_data_),
               "hasRealParameterData");
     addOffset(OFFSETOF_MEMBER(mirror::Executable, parameters_), "parameters");
-  };
+  }
 };
 
 struct MethodTypeOffsets : public CheckOffsets<mirror::MethodType> {

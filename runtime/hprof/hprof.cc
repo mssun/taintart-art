@@ -1088,7 +1088,7 @@ void Hprof::DumpHeapObject(mirror::Object* obj) {
 
   class RootCollector {
    public:
-    explicit RootCollector() {}
+    RootCollector() {}
 
     void operator()(mirror::Object*, MemberOffset, bool) const {}
 

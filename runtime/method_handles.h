@@ -28,8 +28,8 @@
 namespace art {
 
 namespace mirror {
-  class MethodHandle;
-  class MethodType;
+class MethodHandle;
+class MethodType;
 }  // namespace mirror
 
 // Returns true if there is a possible conversion from |from| to |to|

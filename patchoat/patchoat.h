@@ -150,7 +150,7 @@ class PatchOat {
   // Walks through the old image and patches the mmap'd copy of it to the new offset. It does not
   // change the heap.
   class PatchVisitor {
-  public:
+   public:
     PatchVisitor(PatchOat* patcher, mirror::Object* copy) : patcher_(patcher), copy_(copy) {}
     ~PatchVisitor() {}
     void operator() (ObjPtr<mirror::Object> obj, MemberOffset off, bool b) const
@@ -163,7 +163,7 @@ class PatchOat {
         const {}
     void VisitRoot(mirror::CompressedReference<mirror::Object>* root ATTRIBUTE_UNUSED) const {}
 
-  private:
+   private:
     PatchOat* const patcher_;
     mirror::Object* const copy_;
   };

@@ -30,9 +30,9 @@
 
 namespace art {
 namespace mirror {
-  class Class;
-  class Object;
-  class Throwable;
+class Class;
+class Object;
+class Throwable;
 }  // namespace mirror
 class ArtField;
 class ArtMethod;

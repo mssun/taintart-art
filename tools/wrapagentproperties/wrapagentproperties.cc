@@ -24,7 +24,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <memory>
-#include <mutex>
+#include <mutex>                                                         // NOLINT [build/c++11] [5]
 #include <sstream>
 #include <string>
 #include <vector>
@@ -34,7 +34,7 @@ namespace wrapagentproperties {
 using PropMap = std::unordered_map<std::string, std::string>;
 static constexpr const char* kOnLoad = "Agent_OnLoad";
 static constexpr const char* kOnAttach = "Agent_OnAttach";
-static constexpr const char* kOnUnload= "Agent_OnUnload";
+static constexpr const char* kOnUnload = "Agent_OnUnload";
 struct ProxyJavaVM;
 using AgentLoadFunction = jint (*)(ProxyJavaVM*, const char*, void*);
 using AgentUnloadFunction = jint (*)(JavaVM*);
