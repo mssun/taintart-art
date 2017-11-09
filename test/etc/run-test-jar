@@ -545,9 +545,17 @@ if [ "$HAVE_IMAGE" = "n" ]; then
     bpath="${bpath}:${framework}/bouncycastle${bpath_suffix}.jar"
     # Pass down the bootclasspath
     FLAGS="${FLAGS} -Xbootclasspath:${bpath}"
-    # Add 5 minutes to give some time to generate the boot image.
-    TIME_OUT_VALUE=$((${TIME_OUT_VALUE} + 300))
-    DALVIKVM_BOOT_OPT="-Ximage:/system/non-existant/core.art"
+    # Disable image dex2oat - this will forbid the runtime to patch or compile an image.
+    FLAGS="${FLAGS} -Xnoimage-dex2oat"
+
+    # We'll abuse a second flag here to test different behavior. If --relocate, use the
+    # existing image - relocation will fail as patching is disallowed. If --no-relocate,
+    # pass a non-existent image - compilation will fail as dex2oat is disallowed.
+    if [ "${RELOCATE}" = "y" ] ; then
+      DALVIKVM_BOOT_OPT="-Ximage:${BOOT_IMAGE}"
+    else
+      DALVIKVM_BOOT_OPT="-Ximage:/system/non-existant/core.art"
+    fi
 else
     DALVIKVM_BOOT_OPT="-Ximage:${BOOT_IMAGE}"
 fi
@@ -934,6 +942,10 @@ else
       elif [ "$USE_DEX2OAT_AND_PATCHOAT" = "n" ]; then
           # All tests would log the error of failing dex2oat/patchoat. Be silent here and only
           # log fatal events.
+          export ANDROID_LOG_TAGS='*:s'
+      elif [ "$HAVE_IMAGE" = "n" ]; then
+          # All tests would log the error of missing image. Be silent here and only log fatal
+          # events.
           export ANDROID_LOG_TAGS='*:s'
       else
           # We are interested in LOG(ERROR) output.
