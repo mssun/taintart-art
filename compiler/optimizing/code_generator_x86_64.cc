@@ -970,7 +970,7 @@ inline Condition X86_64FPCondition(IfCondition cond) {
     case kCondGT: return kAbove;
     case kCondGE: return kAboveEqual;
     default:      break;  // should not happen
-  };
+  }
   LOG(FATAL) << "Unreachable";
   UNREACHABLE();
 }
@@ -2635,7 +2635,7 @@ void LocationsBuilderX86_64::VisitTypeConversion(HTypeConversion* conversion) {
         default:
           LOG(FATAL) << "Unexpected type conversion from " << input_type
                      << " to " << result_type;
-      };
+      }
       break;
 
     case DataType::Type::kFloat64:
@@ -2948,7 +2948,7 @@ void InstructionCodeGeneratorX86_64::VisitTypeConversion(HTypeConversion* conver
         default:
           LOG(FATAL) << "Unexpected type conversion from " << input_type
                      << " to " << result_type;
-      };
+      }
       break;
 
     case DataType::Type::kFloat64:
@@ -3000,7 +3000,7 @@ void InstructionCodeGeneratorX86_64::VisitTypeConversion(HTypeConversion* conver
         default:
           LOG(FATAL) << "Unexpected type conversion from " << input_type
                      << " to " << result_type;
-      };
+      }
       break;
 
     default:

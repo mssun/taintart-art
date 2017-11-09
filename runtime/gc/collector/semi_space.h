@@ -34,8 +34,8 @@ namespace art {
 class Thread;
 
 namespace mirror {
-  class Class;
-  class Object;
+class Class;
+class Object;
 }  // namespace mirror
 
 namespace gc {
@@ -43,13 +43,13 @@ namespace gc {
 class Heap;
 
 namespace accounting {
-  template <typename T> class AtomicStack;
-  typedef AtomicStack<mirror::Object> ObjectStack;
+template <typename T> class AtomicStack;
+typedef AtomicStack<mirror::Object> ObjectStack;
 }  // namespace accounting
 
 namespace space {
-  class ContinuousMemMapAllocSpace;
-  class ContinuousSpace;
+class ContinuousMemMapAllocSpace;
+class ContinuousSpace;
 }  // namespace space
 
 namespace collector {

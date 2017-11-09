@@ -683,7 +683,7 @@ HInductionVarAnalysis::InductionInfo* HInductionVarAnalysis::SolveOp(HLoopInform
                                    CreateConstant(0, type_),
                                    c->fetch,
                                    type_);
-          };
+          }
           break;
         case kRem:
           // Idiomatic MOD wrap-around induction.

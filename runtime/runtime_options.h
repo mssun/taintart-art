@@ -43,37 +43,37 @@ struct BackgroundGcOption;
 
 #define DECLARE_KEY(Type, Name) static const Key<Type> Name
 
-  // Define a key that is usable with a RuntimeArgumentMap.
-  // This key will *not* work with other subtypes of VariantMap.
+// Define a key that is usable with a RuntimeArgumentMap.
+// This key will *not* work with other subtypes of VariantMap.
+template <typename TValue>
+struct RuntimeArgumentMapKey : VariantMapKey<TValue> {
+  RuntimeArgumentMapKey() {}
+  explicit RuntimeArgumentMapKey(TValue default_value)
+    : VariantMapKey<TValue>(std::move(default_value)) {}
+  // Don't ODR-use constexpr default values, which means that Struct::Fields
+  // that are declared 'static constexpr T Name = Value' don't need to have a matching definition.
+};
+
+// Defines a type-safe heterogeneous key->value map.
+// Use the VariantMap interface to look up or to store a RuntimeArgumentMapKey,Value pair.
+//
+// Example:
+//    auto map = RuntimeArgumentMap();
+//    map.Set(RuntimeArgumentMap::HeapTargetUtilization, 5.0);
+//    double *target_utilization = map.Get(RuntimeArgumentMap);
+//
+struct RuntimeArgumentMap : VariantMap<RuntimeArgumentMap, RuntimeArgumentMapKey> {
+  // This 'using' line is necessary to inherit the variadic constructor.
+  using VariantMap<RuntimeArgumentMap, RuntimeArgumentMapKey>::VariantMap;
+
+  // Make the next many usages of Key slightly shorter to type.
   template <typename TValue>
-  struct RuntimeArgumentMapKey : VariantMapKey<TValue> {
-    RuntimeArgumentMapKey() {}
-    explicit RuntimeArgumentMapKey(TValue default_value)
-      : VariantMapKey<TValue>(std::move(default_value)) {}
-    // Don't ODR-use constexpr default values, which means that Struct::Fields
-    // that are declared 'static constexpr T Name = Value' don't need to have a matching definition.
-  };
+  using Key = RuntimeArgumentMapKey<TValue>;
 
-  // Defines a type-safe heterogeneous key->value map.
-  // Use the VariantMap interface to look up or to store a RuntimeArgumentMapKey,Value pair.
-  //
-  // Example:
-  //    auto map = RuntimeArgumentMap();
-  //    map.Set(RuntimeArgumentMap::HeapTargetUtilization, 5.0);
-  //    double *target_utilization = map.Get(RuntimeArgumentMap);
-  //
-  struct RuntimeArgumentMap : VariantMap<RuntimeArgumentMap, RuntimeArgumentMapKey> {
-    // This 'using' line is necessary to inherit the variadic constructor.
-    using VariantMap<RuntimeArgumentMap, RuntimeArgumentMapKey>::VariantMap;
-
-    // Make the next many usages of Key slightly shorter to type.
-    template <typename TValue>
-    using Key = RuntimeArgumentMapKey<TValue>;
-
-    // List of key declarations, shorthand for 'static const Key<T> Name'
+  // List of key declarations, shorthand for 'static const Key<T> Name'
 #define RUNTIME_OPTIONS_KEY(Type, Name, ...) static const Key<Type> (Name);
 #include "runtime_options.def"
-  };
+};
 
 #undef DECLARE_KEY
 

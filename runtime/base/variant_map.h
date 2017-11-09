@@ -74,62 +74,62 @@ namespace art {
 
 // Implementation details for VariantMap.
 namespace detail {
-  // Allocate a unique counter value each time it's called.
-  struct VariantMapKeyCounterAllocator {
-    static size_t AllocateCounter() {
-      static size_t counter = 0;
-      counter++;
+// Allocate a unique counter value each time it's called.
+struct VariantMapKeyCounterAllocator {
+  static size_t AllocateCounter() {
+    static size_t counter = 0;
+    counter++;
 
-      return counter;
+    return counter;
+  }
+};
+
+// Type-erased version of VariantMapKey<T>
+struct VariantMapKeyRaw {
+  // TODO: this may need to call a virtual function to support string comparisons
+  bool operator<(const VariantMapKeyRaw& other) const {
+    return key_counter_ < other.key_counter_;
+  }
+
+  // The following functions need to be virtual since we don't know the compile-time type anymore:
+
+  // Clone the key, creating a copy of the contents.
+  virtual VariantMapKeyRaw* Clone() const = 0;
+
+  // Delete a value whose runtime type is that of the non-erased key's TValue.
+  virtual void ValueDelete(void* value) const = 0;
+
+  // Clone a value whose runtime type is that of the non-erased key's TValue.
+  virtual void* ValueClone(void* value) const = 0;
+
+  // Compare one key to another (same as operator<).
+  virtual bool Compare(const VariantMapKeyRaw* other) const {
+    if (other == nullptr) {
+      return false;
     }
-  };
+    return key_counter_ < other->key_counter_;
+  }
 
-  // Type-erased version of VariantMapKey<T>
-  struct VariantMapKeyRaw {
-    // TODO: this may need to call a virtual function to support string comparisons
-    bool operator<(const VariantMapKeyRaw& other) const {
-      return key_counter_ < other.key_counter_;
-    }
+  virtual ~VariantMapKeyRaw() {}
 
-    // The following functions need to be virtual since we don't know the compile-time type anymore:
+ protected:
+  VariantMapKeyRaw()
+      : key_counter_(VariantMapKeyCounterAllocator::AllocateCounter()) {}
+  // explicit VariantMapKeyRaw(size_t counter)
+  //     : key_counter_(counter) {}
 
-    // Clone the key, creating a copy of the contents.
-    virtual VariantMapKeyRaw* Clone() const = 0;
+  size_t GetCounter() const {
+    return key_counter_;
+  }
 
-    // Delete a value whose runtime type is that of the non-erased key's TValue.
-    virtual void ValueDelete(void* value) const = 0;
+ protected:
+  // Avoid the object slicing problem; use Clone() instead.
+  VariantMapKeyRaw(const VariantMapKeyRaw&) = default;
+  VariantMapKeyRaw(VariantMapKeyRaw&&) = default;
 
-    // Clone a value whose runtime type is that of the non-erased key's TValue.
-    virtual void* ValueClone(void* value) const = 0;
-
-    // Compare one key to another (same as operator<).
-    virtual bool Compare(const VariantMapKeyRaw* other) const {
-      if (other == nullptr) {
-        return false;
-      }
-      return key_counter_ < other->key_counter_;
-    }
-
-    virtual ~VariantMapKeyRaw() {}
-
-   protected:
-    VariantMapKeyRaw()
-        : key_counter_(VariantMapKeyCounterAllocator::AllocateCounter()) {}
-    // explicit VariantMapKeyRaw(size_t counter)
-    //     : key_counter_(counter) {}
-
-    size_t GetCounter() const {
-      return key_counter_;
-    }
-
-   protected:
-    // Avoid the object slicing problem; use Clone() instead.
-    VariantMapKeyRaw(const VariantMapKeyRaw&) = default;
-    VariantMapKeyRaw(VariantMapKeyRaw&&) = default;
-
-   private:
-    size_t key_counter_;  // Runtime type ID. Unique each time a new type is reified.
-  };
+ private:
+  size_t key_counter_;  // Runtime type ID. Unique each time a new type is reified.
+};
 }  // namespace detail
 
 // The base type for keys used by the VariantMap. Users must subclass this type.
@@ -189,9 +189,9 @@ struct VariantMapKey : detail::VariantMapKeyRaw {
 
 // Implementation details for a stringified VariantMapStringKey.
 namespace detail {
-  struct VariantMapStringKeyRegistry {
-    // TODO
-  };
+struct VariantMapStringKeyRegistry {
+  // TODO
+};
 }  // namespace detail
 
 // Alternative base type for all keys used by VariantMap, supports runtime strings as the name.
@@ -329,7 +329,7 @@ struct VariantMap {
   }
 
   // Construct an empty map.
-  explicit VariantMap() {}
+  VariantMap() {}
 
   template <typename ... TKeyValue>
   explicit VariantMap(const TKeyValue& ... key_value_list) {

@@ -192,6 +192,6 @@ void InitEntryPoints(JniEntryPoints* jpoints, QuickEntryPoints* qpoints) {
   UpdateReadBarrierEntrypoints(qpoints, /*is_active*/ false);
   qpoints->pReadBarrierSlow = artReadBarrierSlow;
   qpoints->pReadBarrierForRootSlow = artReadBarrierForRootSlow;
-};
+}
 
 }  // namespace art

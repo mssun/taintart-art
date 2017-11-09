@@ -41,9 +41,9 @@ class OatWriter;
 }  // namespace linker
 
 namespace mirror {
-  class Class;
-  class ClassLoader;
-  class Object;
+class Class;
+class ClassLoader;
+class Object;
 }  // namespace mirror
 
 // Each loader has a ClassTable

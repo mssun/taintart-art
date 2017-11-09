@@ -512,7 +512,7 @@ class AssemblerArmTest : public AssemblerTest<Ass, Reg, FPReg, Imm> {
   }
 
  protected:
-  explicit AssemblerArmTest() {}
+  AssemblerArmTest() {}
 
   virtual std::vector<Cond>& GetConditions() = 0;
   virtual std::string GetConditionString(Cond c) = 0;

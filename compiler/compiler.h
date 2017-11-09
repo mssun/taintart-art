@@ -24,12 +24,12 @@
 namespace art {
 
 namespace jit {
-  class JitCodeCache;
-  class JitLogger;
+class JitCodeCache;
+class JitLogger;
 }  // namespace jit
 namespace mirror {
-  class ClassLoader;
-  class DexCache;
+class ClassLoader;
+class DexCache;
 }  // namespace mirror
 
 class ArtMethod;

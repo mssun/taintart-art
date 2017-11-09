@@ -16,7 +16,7 @@
 
 #include "reference_table.h"
 
-#include <regex>
+#include <regex>  // NOLINT [build/c++11] [5]
 
 #include "android-base/stringprintf.h"
 

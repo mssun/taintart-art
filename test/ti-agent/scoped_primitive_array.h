@@ -43,7 +43,7 @@ namespace art {
 // access and should be used by default.
 #define INSTANTIATE_SCOPED_PRIMITIVE_ARRAY_RO(PRIMITIVE_TYPE, NAME) \
     class Scoped ## NAME ## ArrayRO { \
-    public: \
+     public: \
         explicit Scoped ## NAME ## ArrayRO(JNIEnv* env) \
         : mEnv(env), mJavaArray(nullptr), mRawArray(nullptr), mSize(0) {} \
         Scoped ## NAME ## ArrayRO(JNIEnv* env, PRIMITIVE_TYPE ## Array javaArray) \
@@ -76,7 +76,7 @@ namespace art {
         PRIMITIVE_TYPE ## Array getJavaArray() const { return mJavaArray; } \
         const PRIMITIVE_TYPE& operator[](size_t n) const { return mRawArray[n]; } \
         size_t size() const { return mSize; } \
-    private: \
+     private: \
         static constexpr jsize kBufferSize = 1024; \
         JNIEnv* const mEnv; \
         PRIMITIVE_TYPE ## Array mJavaArray; \
@@ -103,7 +103,7 @@ INSTANTIATE_SCOPED_PRIMITIVE_ARRAY_RO(jshort, Short);
 // since they entail a copy back onto the Java heap, and should only be used when necessary.
 #define INSTANTIATE_SCOPED_PRIMITIVE_ARRAY_RW(PRIMITIVE_TYPE, NAME) \
     class Scoped ## NAME ## ArrayRW { \
-    public: \
+     public: \
         explicit Scoped ## NAME ## ArrayRW(JNIEnv* env) \
         : mEnv(env), mJavaArray(nullptr), mRawArray(nullptr) {} \
         Scoped ## NAME ## ArrayRW(JNIEnv* env, PRIMITIVE_TYPE ## Array javaArray) \
@@ -129,7 +129,7 @@ INSTANTIATE_SCOPED_PRIMITIVE_ARRAY_RO(jshort, Short);
         POINTER_TYPE(PRIMITIVE_TYPE) get() { return mRawArray; }  \
         REFERENCE_TYPE(PRIMITIVE_TYPE) operator[](size_t n) { return mRawArray[n]; } \
         size_t size() const { return mEnv->GetArrayLength(mJavaArray); } \
-    private: \
+     private: \
         JNIEnv* const mEnv; \
         PRIMITIVE_TYPE ## Array mJavaArray; \
         POINTER_TYPE(PRIMITIVE_TYPE) mRawArray; \
