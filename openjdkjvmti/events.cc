@@ -60,6 +60,45 @@
 
 namespace openjdkjvmti {
 
+void ArtJvmtiEventCallbacks::CopyExtensionsFrom(const ArtJvmtiEventCallbacks* cb) {
+  if (art::kIsDebugBuild) {
+    ArtJvmtiEventCallbacks clean;
+    DCHECK_EQ(memcmp(&clean, this, sizeof(clean)), 0)
+        << "CopyExtensionsFrom called with initialized eventsCallbacks!";
+  }
+  if (cb != nullptr) {
+    memcpy(this, cb, sizeof(*this));
+  } else {
+    memset(this, 0, sizeof(*this));
+  }
+}
+
+jvmtiError ArtJvmtiEventCallbacks::Set(jint index, jvmtiExtensionEvent cb) {
+  switch (index) {
+    case static_cast<jint>(ArtJvmtiEvent::kDdmPublishChunk):
+      DdmPublishChunk = reinterpret_cast<ArtJvmtiEventDdmPublishChunk>(cb);
+      return OK;
+    default:
+      return ERR(ILLEGAL_ARGUMENT);
+  }
+}
+
+
+bool IsExtensionEvent(jint e) {
+  return e >= static_cast<jint>(ArtJvmtiEvent::kMinEventTypeVal) &&
+      e <= static_cast<jint>(ArtJvmtiEvent::kMaxEventTypeVal) &&
+      IsExtensionEvent(static_cast<ArtJvmtiEvent>(e));
+}
+
+bool IsExtensionEvent(ArtJvmtiEvent e) {
+  switch (e) {
+    case ArtJvmtiEvent::kDdmPublishChunk:
+      return true;
+    default:
+      return false;
+  }
+}
+
 bool EventMasks::IsEnabledAnywhere(ArtJvmtiEvent event) {
   return global_event_mask.Test(event) || unioned_thread_event_mask.Test(event);
 }
@@ -212,6 +251,38 @@ static void RunEventCallback(EventHandler* handler,
                                  thread_jni.get(),
                                  args...);
 }
+
+static void SetupDdmTracking(art::DdmCallback* listener, bool enable) {
+  art::ScopedObjectAccess soa(art::Thread::Current());
+  if (enable) {
+    art::Runtime::Current()->GetRuntimeCallbacks()->AddDdmCallback(listener);
+  } else {
+    art::Runtime::Current()->GetRuntimeCallbacks()->RemoveDdmCallback(listener);
+  }
+}
+
+class JvmtiDdmChunkListener : public art::DdmCallback {
+ public:
+  explicit JvmtiDdmChunkListener(EventHandler* handler) : handler_(handler) {}
+
+  void DdmPublishChunk(uint32_t type, const art::ArrayRef<const uint8_t>& data)
+      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
+    if (handler_->IsEventEnabledAnywhere(ArtJvmtiEvent::kDdmPublishChunk)) {
+      art::Thread* self = art::Thread::Current();
+      handler_->DispatchEvent<ArtJvmtiEvent::kDdmPublishChunk>(
+          self,
+          static_cast<JNIEnv*>(self->GetJniEnv()),
+          static_cast<jint>(type),
+          static_cast<jint>(data.size()),
+          reinterpret_cast<const jbyte*>(data.data()));
+    }
+  }
+
+ private:
+  EventHandler* handler_;
+
+  DISALLOW_COPY_AND_ASSIGN(JvmtiDdmChunkListener);
+};
 
 class JvmtiAllocationListener : public art::gc::AllocationListener {
  public:
@@ -924,6 +995,9 @@ bool EventHandler::OtherMonitorEventsEnabledAnywhere(ArtJvmtiEvent event) {
 // Handle special work for the given event type, if necessary.
 void EventHandler::HandleEventType(ArtJvmtiEvent event, bool enable) {
   switch (event) {
+    case ArtJvmtiEvent::kDdmPublishChunk:
+      SetupDdmTracking(ddm_listener_.get(), enable);
+      return;
     case ArtJvmtiEvent::kVmObjectAlloc:
       SetupObjectAllocationTracking(alloc_listener_.get(), enable);
       return;
@@ -1104,6 +1178,7 @@ void EventHandler::Shutdown() {
 
 EventHandler::EventHandler() {
   alloc_listener_.reset(new JvmtiAllocationListener(this));
+  ddm_listener_.reset(new JvmtiDdmChunkListener(this));
   gc_pause_listener_.reset(new JvmtiGcPauseListener(this));
   method_trace_listener_.reset(new JvmtiMethodTraceListener(this));
   monitor_listener_.reset(new JvmtiMonitorListener(this));
