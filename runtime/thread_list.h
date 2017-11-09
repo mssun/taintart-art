@@ -31,10 +31,10 @@
 
 namespace art {
 namespace gc {
-  namespace collector {
-    class GarbageCollector;
-  }  // namespace collector
-  class GcPauseListener;
+namespace collector {
+class GarbageCollector;
+}  // namespace collector
+class GcPauseListener;
 }  // namespace gc
 class Closure;
 class RootVisitor;

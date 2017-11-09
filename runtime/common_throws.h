@@ -22,9 +22,9 @@
 
 namespace art {
 namespace mirror {
-  class Class;
-  class Object;
-  class MethodType;
+class Class;
+class Object;
+class MethodType;
 }  // namespace mirror
 class ArtField;
 class ArtMethod;

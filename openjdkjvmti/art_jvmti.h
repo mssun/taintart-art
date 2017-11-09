@@ -135,7 +135,7 @@ class JvmtiDeleter {
 
 template <typename T>
 class JvmtiDeleter<T[]> {
-  public:
+ public:
   JvmtiDeleter() : env_(nullptr) {}
   explicit JvmtiDeleter(jvmtiEnv* env) : env_(env) {}
 

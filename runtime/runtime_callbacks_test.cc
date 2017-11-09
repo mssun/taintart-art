@@ -22,7 +22,7 @@
 
 #include <initializer_list>
 #include <memory>
-#include <mutex>
+#include <mutex>  // NOLINT [build/c++11] [5]
 #include <string>
 
 #include "jni.h"

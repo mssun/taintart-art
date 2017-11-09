@@ -37,7 +37,7 @@ static constexpr bool kKeepDisassembledFiles = false;
 
 // Use a glocal static variable to keep the same name for all test data. Else we'll just spam the
 // temp directory.
-static std::string tmpnam_;
+static std::string tmpnam_;  // NOLINT [runtime/string] [4]
 
 // We put this into a class as gtests are self-contained, so this helper needs to be in an h-file.
 class AssemblerTestInfrastructure {

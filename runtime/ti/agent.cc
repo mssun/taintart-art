@@ -100,7 +100,7 @@ Agent::LoadError Agent::DoDlOpen(/*out*/std::string* error_msg) {
   if (onattach_ == nullptr) {
     VLOG(agents) << "Unable to find 'Agent_OnAttach' symbol in " << this;
   }
-  onunload_= reinterpret_cast<AgentOnUnloadFunction>(FindSymbol(AGENT_ON_UNLOAD_FUNCTION_NAME));
+  onunload_ = reinterpret_cast<AgentOnUnloadFunction>(FindSymbol(AGENT_ON_UNLOAD_FUNCTION_NAME));
   if (onunload_ == nullptr) {
     VLOG(agents) << "Unable to find 'Agent_OnUnload' symbol in " << this;
   }

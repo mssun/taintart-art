@@ -29,7 +29,7 @@ constexpr size_t BitString::kCapacity;
 using namespace art;  // NOLINT
 
 struct MockClass {
-  MockClass(MockClass* parent, size_t x = 0, size_t y = 0) {
+  explicit MockClass(MockClass* parent, size_t x = 0, size_t y = 0) {
     parent_ = parent;
     memset(&subtype_check_info_and_status_, 0u, sizeof(subtype_check_info_and_status_));
 
@@ -274,7 +274,7 @@ struct MockSubtypeCheck {
     SC::Dump(tree.klass_, os);
     os << ", class: " << tree.klass_->PrettyClass() << ")";
     return os;
-  };
+  }
 
   // Additional convenience functions.
   SubtypeCheckInfo::State GetState() const
@@ -826,7 +826,7 @@ bool IsTooWide(MockClass* kls) {
     }
   }
   return IsTooWide(kls->GetParent());
-};
+}
 
 // Either itself is too deep, or any of the parents were too deep.
 bool IsTooDeep(MockClass* kls) {
@@ -839,7 +839,7 @@ bool IsTooDeep(MockClass* kls) {
     }
   }
   return false;
-};
+}
 
 TEST_F(SubtypeCheckTest, EnsureInitialized_TooWide) {
   auto transitions = [](MockClass* kls) {

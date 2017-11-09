@@ -55,7 +55,7 @@ class JvmtiAllocator<void> {
   };
 
   explicit JvmtiAllocator(jvmtiEnv* env) : env_(env) {}
-  explicit JvmtiAllocator() : env_(nullptr) {}
+  JvmtiAllocator() : env_(nullptr) {}
 
   template <typename U>
   JvmtiAllocator(const JvmtiAllocator<U>& other)  // NOLINT, implicit
@@ -92,7 +92,7 @@ class JvmtiAllocator {
   };
 
   explicit JvmtiAllocator(jvmtiEnv* env) : env_(env) {}
-  explicit JvmtiAllocator() : env_(nullptr) {}
+  JvmtiAllocator() : env_(nullptr) {}
 
   template <typename U>
   JvmtiAllocator(const JvmtiAllocator<U>& other)  // NOLINT, implicit

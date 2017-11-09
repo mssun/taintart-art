@@ -27,23 +27,23 @@ class AssemblerBuffer;
 class AssemblerFixup;
 
 namespace arm64 {
-  class Arm64Assembler;
+class Arm64Assembler;
 }  // namespace arm64
 namespace mips {
-  class MipsAssembler;
-  class MipsLabel;
+class MipsAssembler;
+class MipsLabel;
 }  // namespace mips
 namespace mips64 {
-  class Mips64Assembler;
-  class Mips64Label;
+class Mips64Assembler;
+class Mips64Label;
 }  // namespace mips64
 namespace x86 {
-  class X86Assembler;
-  class NearLabel;
+class X86Assembler;
+class NearLabel;
 }  // namespace x86
 namespace x86_64 {
-  class X86_64Assembler;
-  class NearLabel;
+class X86_64Assembler;
+class NearLabel;
 }  // namespace x86_64
 
 class ExternalLabel {

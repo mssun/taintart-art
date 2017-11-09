@@ -765,7 +765,7 @@ bool HLoopOptimization::ShouldVectorize(LoopNode* node, HBasicBlock* block, int6
   vector_static_peeling_factor_ = 0;
   vector_dynamic_peeling_candidate_ = nullptr;
   vector_runtime_test_a_ =
-  vector_runtime_test_b_= nullptr;
+  vector_runtime_test_b_ = nullptr;
 
   // Phis in the loop-body prevent vectorization.
   if (!block->GetPhis().IsEmpty()) {
