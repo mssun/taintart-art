@@ -69,9 +69,7 @@ fi
 use_jit=true
 
 # Packages that currently work correctly with the expectation files.
-working_packages=("dalvik.system"
-                  "libcore.icu"
-                  "libcore.io"
+working_packages=("libcore.dalvik.system"
                   "libcore.java.lang"
                   "libcore.java.math"
                   "libcore.java.text"
@@ -80,9 +78,11 @@ working_packages=("dalvik.system"
                   "libcore.javax.security"
                   "libcore.javax.sql"
                   "libcore.javax.xml"
-                  "libcore.net"
-                  "libcore.reflect"
-                  "libcore.util"
+                  "libcore.libcore.icu"
+                  "libcore.libcore.io"
+                  "libcore.libcore.net"
+                  "libcore.libcore.reflect"
+                  "libcore.libcore.util"
                   "org.apache.harmony.annotation"
                   "org.apache.harmony.crypto"
                   "org.apache.harmony.luni"
@@ -169,4 +169,4 @@ fi
 # Run the tests using vogar.
 echo "Running tests for the following test packages:"
 echo ${working_packages[@]} | tr " " "\n"
-vogar $vogar_args $expectations $(cparg $DEPS) ${working_packages[@]}
+vogar --no-stream $vogar_args $expectations $(cparg $DEPS) ${working_packages[@]}
