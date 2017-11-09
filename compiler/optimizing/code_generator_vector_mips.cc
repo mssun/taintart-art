@@ -68,8 +68,12 @@ void InstructionCodeGeneratorMIPS::VisitVecReplicateScalar(HVecReplicateScalar* 
       break;
     case DataType::Type::kInt64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      __ Mtc1(locations->InAt(0).AsRegisterPairLow<Register>(), FTMP);
-      __ MoveToFpuHigh(locations->InAt(0).AsRegisterPairHigh<Register>(), FTMP);
+      __ InsertW(static_cast<VectorRegister>(FTMP),
+                 locations->InAt(0).AsRegisterPairLow<Register>(),
+                 0);
+      __ InsertW(static_cast<VectorRegister>(FTMP),
+                 locations->InAt(0).AsRegisterPairHigh<Register>(),
+                 1);
       __ ReplicateFPToVectorRegister(dst, FTMP, /* is_double */ true);
       break;
     case DataType::Type::kFloat32:
@@ -124,10 +128,8 @@ void InstructionCodeGeneratorMIPS::VisitVecExtractScalar(HVecExtractScalar* inst
       break;
     case DataType::Type::kInt64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      __ Mfc1(locations->Out().AsRegisterPairLow<Register>(),
-              locations->InAt(0).AsFpuRegister<FRegister>());
-      __ MoveFromFpuHigh(locations->Out().AsRegisterPairHigh<Register>(),
-                         locations->InAt(0).AsFpuRegister<FRegister>());
+      __ Copy_sW(locations->Out().AsRegisterPairLow<Register>(), src, 0);
+      __ Copy_sW(locations->Out().AsRegisterPairHigh<Register>(), src, 1);
       break;
     case DataType::Type::kFloat32:
     case DataType::Type::kFloat64:
@@ -987,10 +989,8 @@ void InstructionCodeGeneratorMIPS::VisitVecSetScalars(HVecSetScalars* instructio
       break;
     case DataType::Type::kInt64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      __ Mtc1(locations->InAt(0).AsRegisterPairLow<Register>(),
-              locations->Out().AsFpuRegister<FRegister>());
-      __ MoveToFpuHigh(locations->InAt(0).AsRegisterPairHigh<Register>(),
-                         locations->Out().AsFpuRegister<FRegister>());
+      __ InsertW(dst, locations->InAt(0).AsRegisterPairLow<Register>(), 0);
+      __ InsertW(dst, locations->InAt(0).AsRegisterPairHigh<Register>(), 1);
       break;
     default:
       LOG(FATAL) << "Unsupported SIMD type";

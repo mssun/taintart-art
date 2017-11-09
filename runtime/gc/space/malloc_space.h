@@ -26,7 +26,7 @@ namespace art {
 namespace gc {
 
 namespace collector {
-  class MarkSweep;
+class MarkSweep;
 }  // namespace collector
 
 namespace space {

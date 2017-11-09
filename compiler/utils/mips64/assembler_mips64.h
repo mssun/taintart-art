@@ -678,6 +678,14 @@ class Mips64Assembler FINAL : public Assembler, public JNIMacroAssembler<Pointer
   void SubvH(VectorRegister wd, VectorRegister ws, VectorRegister wt);
   void SubvW(VectorRegister wd, VectorRegister ws, VectorRegister wt);
   void SubvD(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void Asub_sB(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void Asub_sH(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void Asub_sW(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void Asub_sD(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void Asub_uB(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void Asub_uH(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void Asub_uW(VectorRegister wd, VectorRegister ws, VectorRegister wt);
+  void Asub_uD(VectorRegister wd, VectorRegister ws, VectorRegister wt);
   void MulvB(VectorRegister wd, VectorRegister ws, VectorRegister wt);
   void MulvH(VectorRegister wd, VectorRegister ws, VectorRegister wt);
   void MulvW(VectorRegister wd, VectorRegister ws, VectorRegister wt);

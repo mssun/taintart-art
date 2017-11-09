@@ -384,6 +384,12 @@
         "variant": "jvmti-stress & jit | redefine-stress & jit"
     },
     {
+        "test_patterns": ["616-cha"],
+        "description": ["The test assumes a boot image exists."],
+        "bug": "http://b/34193647",
+        "variant": "no-image"
+    },
+    {
         "tests": [ "663-odd-dex-size",
                    "663-odd-dex-size2",
                    "663-odd-dex-size3",

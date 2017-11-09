@@ -23,27 +23,27 @@
 namespace art {
 
 namespace {
+template <typename TValue>
+struct FruitMapKey : VariantMapKey<TValue> {
+  FruitMapKey() {}
+};
+
+struct FruitMap : VariantMap<FruitMap, FruitMapKey> {
+  // This 'using' line is necessary to inherit the variadic constructor.
+  using VariantMap<FruitMap, FruitMapKey>::VariantMap;
+
+  // Make the next '4' usages of Key slightly shorter to type.
   template <typename TValue>
-  struct FruitMapKey : VariantMapKey<TValue> {
-    FruitMapKey() {}
-  };
+  using Key = FruitMapKey<TValue>;
 
-  struct FruitMap : VariantMap<FruitMap, FruitMapKey> {
-    // This 'using' line is necessary to inherit the variadic constructor.
-    using VariantMap<FruitMap, FruitMapKey>::VariantMap;
+  static const Key<int> Apple;
+  static const Key<double> Orange;
+  static const Key<std::string> Label;
+};
 
-    // Make the next '4' usages of Key slightly shorter to type.
-    template <typename TValue>
-    using Key = FruitMapKey<TValue>;
-
-    static const Key<int> Apple;
-    static const Key<double> Orange;
-    static const Key<std::string> Label;
-  };
-
-  const FruitMap::Key<int> FruitMap::Apple;
-  const FruitMap::Key<double> FruitMap::Orange;
-  const FruitMap::Key<std::string> FruitMap::Label;
+const FruitMap::Key<int> FruitMap::Apple;
+const FruitMap::Key<double> FruitMap::Orange;
+const FruitMap::Key<std::string> FruitMap::Label;
 }  // namespace
 
 TEST(VariantMaps, BasicReadWrite) {

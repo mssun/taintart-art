@@ -16,7 +16,7 @@
 
 #include <stdio.h>
 
-#include <mutex>
+#include <mutex>  // NOLINT [build/c++11] [5]
 #include <vector>
 
 #include "android-base/macros.h"

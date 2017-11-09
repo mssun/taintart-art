@@ -31,8 +31,8 @@
 namespace art {
 
 namespace mirror {
-  class Object;
-  class Class;
+class Object;
+class Class;
 }  // namespace mirror
 
 struct ObjectRegistryEntry {

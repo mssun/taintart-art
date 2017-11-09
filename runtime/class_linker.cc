@@ -284,7 +284,7 @@ struct FieldGap {
   uint32_t size;  // The gap size of 1, 2, or 4 bytes.
 };
 struct FieldGapsComparator {
-  explicit FieldGapsComparator() {
+  FieldGapsComparator() {
   }
   bool operator() (const FieldGap& lhs, const FieldGap& rhs)
       NO_THREAD_SAFETY_ANALYSIS {
@@ -3898,7 +3898,7 @@ mirror::Class* ClassLinker::LookupClass(Thread* self,
 
 class MoveClassTableToPreZygoteVisitor : public ClassLoaderVisitor {
  public:
-  explicit MoveClassTableToPreZygoteVisitor() {}
+  MoveClassTableToPreZygoteVisitor() {}
 
   void Visit(ObjPtr<mirror::ClassLoader> class_loader)
       REQUIRES(Locks::classlinker_classes_lock_)
@@ -7468,7 +7468,7 @@ bool ClassLinker::LinkStaticFields(Thread* self, Handle<mirror::Class> klass, si
 }
 
 struct LinkFieldsComparator {
-  explicit LinkFieldsComparator() REQUIRES_SHARED(Locks::mutator_lock_) {
+  LinkFieldsComparator() REQUIRES_SHARED(Locks::mutator_lock_) {
   }
   // No thread safety analysis as will be called from STL. Checked lock held in constructor.
   bool operator()(ArtField* field1, ArtField* field2)

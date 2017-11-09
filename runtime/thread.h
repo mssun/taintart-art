@@ -51,29 +51,29 @@ namespace art {
 
 namespace gc {
 namespace accounting {
-  template<class T> class AtomicStack;
+template<class T> class AtomicStack;
 }  // namespace accounting
 namespace collector {
-  class SemiSpace;
+class SemiSpace;
 }  // namespace collector
 }  // namespace gc
 
 namespace mirror {
-  class Array;
-  class Class;
-  class ClassLoader;
-  class Object;
-  template<class T> class ObjectArray;
-  template<class T> class PrimitiveArray;
-  typedef PrimitiveArray<int32_t> IntArray;
-  class StackTraceElement;
-  class String;
-  class Throwable;
+class Array;
+class Class;
+class ClassLoader;
+class Object;
+template<class T> class ObjectArray;
+template<class T> class PrimitiveArray;
+typedef PrimitiveArray<int32_t> IntArray;
+class StackTraceElement;
+class String;
+class Throwable;
 }  // namespace mirror
 
 namespace verifier {
-  class MethodVerifier;
-  class VerifierDeps;
+class MethodVerifier;
+class VerifierDeps;
 }  // namespace verifier
 
 class ArtMethod;

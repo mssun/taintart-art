@@ -25,16 +25,16 @@
 #endif
 
 namespace art {
-  // Implementation details for some template querying. Don't look inside if you hate templates.
-  namespace detail {
-    struct debug_log_ignore {
-      // Ignore most of the normal operator<< usage.
-      template <typename T>
-      debug_log_ignore& operator<<(const T&) { return *this; }
-      // Ignore std::endl and the like.
-      debug_log_ignore& operator<<(std::ostream& (*)(std::ostream&) ) { return *this; }
-    };
-  }  // namespace detail  // NOLINT [readability/namespace] [5]
+// Implementation details for some template querying. Don't look inside if you hate templates.
+namespace detail {
+struct debug_log_ignore {
+  // Ignore most of the normal operator<< usage.
+  template <typename T>
+  debug_log_ignore& operator<<(const T&) { return *this; }
+  // Ignore std::endl and the like.
+  debug_log_ignore& operator<<(std::ostream& (*)(std::ostream&) ) { return *this; }
+};
+}  // namespace detail  // NOLINT [readability/namespace] [5]
 }  // namespace art
 
 #endif  // ART_CMDLINE_DETAIL_CMDLINE_DEBUG_DETAIL_H_

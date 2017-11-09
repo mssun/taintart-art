@@ -249,7 +249,7 @@ class ImageWriter FINAL {
     // Comparison operator for map support
     bool operator<(const BinSlot& other) const  { return lockword_ < other.lockword_; }
 
-  private:
+   private:
     // Must be the same size as LockWord, any larger and we would truncate the data.
     const uint32_t lockword_;
   };

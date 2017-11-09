@@ -45,7 +45,7 @@ class Heap;
 // Used to process java.lang.ref.Reference instances concurrently or paused.
 class ReferenceProcessor {
  public:
-  explicit ReferenceProcessor();
+  ReferenceProcessor();
   void ProcessReferences(bool concurrent,
                          TimingLogger* timings,
                          bool clear_soft_references,

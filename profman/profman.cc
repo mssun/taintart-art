@@ -157,11 +157,11 @@ static constexpr uint16_t kDefaultTestProfileMethodPercentage = 5;
 static constexpr uint16_t kDefaultTestProfileClassPercentage = 5;
 
 // Separators used when parsing human friendly representation of profiles.
-static const std::string kMethodSep = "->";
-static const std::string kMissingTypesMarker = "missing_types";
-static const std::string kInvalidClassDescriptor = "invalid_class";
-static const std::string kInvalidMethod = "invalid_method";
-static const std::string kClassAllMethods = "*";
+static const std::string kMethodSep = "->";  // NOLINT [runtime/string] [4]
+static const std::string kMissingTypesMarker = "missing_types";  // NOLINT [runtime/string] [4]
+static const std::string kInvalidClassDescriptor = "invalid_class";  // NOLINT [runtime/string] [4]
+static const std::string kInvalidMethod = "invalid_method";  // NOLINT [runtime/string] [4]
+static const std::string kClassAllMethods = "*";  // NOLINT [runtime/string] [4]
 static constexpr char kProfileParsingInlineChacheSep = '+';
 static constexpr char kProfileParsingTypeSep = ',';
 static constexpr char kProfileParsingFirstCharInSignature = '(';
@@ -725,15 +725,15 @@ class ProfMan FINAL {
     const DexFile::CodeItem* code_item = dex_file->GetCodeItem(offset);
 
     bool found_invoke = false;
-    for (CodeItemIterator it(*code_item); !it.Done(); it.Advance()) {
-      if (it.CurrentInstruction().Opcode() == Instruction::INVOKE_VIRTUAL) {
+    for (const DexInstructionPcPair& inst : code_item->Instructions()) {
+      if (inst->Opcode() == Instruction::INVOKE_VIRTUAL) {
         if (found_invoke) {
           LOG(ERROR) << "Multiple invoke INVOKE_VIRTUAL found: "
                      << dex_file->PrettyMethod(method_index);
           return false;
         }
         found_invoke = true;
-        *dex_pc = it.CurrentDexPc();
+        *dex_pc = inst.DexPc();
       }
     }
     if (!found_invoke) {

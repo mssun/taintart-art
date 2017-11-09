@@ -261,7 +261,7 @@ class HashSet {
   }
 
   HashSet& operator=(HashSet&& other) noexcept {
-    HashSet(std::move(other)).swap(*this);
+    HashSet(std::move(other)).swap(*this);  // NOLINT [runtime/explicit] [5]
     return *this;
   }
 

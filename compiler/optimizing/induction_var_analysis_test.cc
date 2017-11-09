@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <regex>
+#include <regex>  // NOLINT [build/c++11] [5]
 
 #include "base/arena_allocator.h"
 #include "builder.h"

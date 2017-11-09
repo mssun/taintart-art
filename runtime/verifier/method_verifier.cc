@@ -1071,7 +1071,7 @@ bool MethodVerifier::ScanTryCatchBlocks() {
   for (uint32_t idx = 0; idx < handlers_size; idx++) {
     CatchHandlerIterator iterator(handlers_ptr);
     for (; iterator.HasNext(); iterator.Next()) {
-      uint32_t dex_pc= iterator.GetHandlerAddress();
+      uint32_t dex_pc = iterator.GetHandlerAddress();
       if (!GetInstructionFlags(dex_pc).IsOpcode()) {
         Fail(VERIFY_ERROR_BAD_CLASS_HARD)
             << "exception handler starts at bad address (" << dex_pc << ")";

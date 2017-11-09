@@ -392,7 +392,7 @@ class SchedulingNodeSelector : public ArenaObject<kArenaAllocScheduler> {
  */
 class RandomSchedulingNodeSelector : public SchedulingNodeSelector {
  public:
-  explicit RandomSchedulingNodeSelector() : seed_(0) {
+  RandomSchedulingNodeSelector() : seed_(0) {
     seed_  = static_cast<uint32_t>(NanoTime());
     srand(seed_);
   }

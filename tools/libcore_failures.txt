@@ -211,15 +211,15 @@
           "libcore.java.lang.ProcessBuilderTest#testRedirect_nullStreams"]
 },
 {
-  description: "Repeated annotations do not work in javac (OpenJDK8), fixed in OpenJDK9.
-                Blacklisted to support javac/dx build (b/36902714)",
-  result: EXEC_FAILED,
-  bug: 62408076,
-  names: ["libcore.java.lang.reflect.annotations.AnnotatedElementParameterTest#testImplicitConstructorParameters_singleAnnotation"]
-},
-{
   description: "java.io.IOException: Error writing ASN.1 encoding",
   result: EXEC_FAILED,
   names: ["libcore.javax.crypto.spec.AlgorithmParametersTestGCM#testEncoding"]
+},
+{
+  description: "Failure only on device. Blacklist it temporarily",
+  result: EXEC_FAILED,
+  modes: [device],
+  bug: 69023954,
+  names: ["libcore.io.OsTest#test_setgroups"]
 }
 ]

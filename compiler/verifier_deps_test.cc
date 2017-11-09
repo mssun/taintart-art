@@ -41,7 +41,7 @@ namespace verifier {
 
 class VerifierDepsCompilerCallbacks : public CompilerCallbacks {
  public:
-  explicit VerifierDepsCompilerCallbacks()
+  VerifierDepsCompilerCallbacks()
       : CompilerCallbacks(CompilerCallbacks::CallbackMode::kCompileApp),
         deps_(nullptr) {}
 

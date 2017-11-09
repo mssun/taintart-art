@@ -40,31 +40,31 @@ namespace art {
 
 namespace gc {
 namespace space {
-  class ImageSpace;
+class ImageSpace;
 }  // namespace space
 }  // namespace gc
 
 namespace linker {
-  struct CompilationHelper;
-  class ImageWriter;
-  class OatWriter;
+struct CompilationHelper;
+class ImageWriter;
+class OatWriter;
 }  // namespace linker
 
 namespace mirror {
-  class ClassLoader;
-  class DexCache;
-  class DexCachePointerArray;
-  class DexCacheMethodHandlesTest_Open_Test;
-  class DexCacheTest_Open_Test;
-  class IfTable;
-  class MethodHandle;
-  class MethodHandlesLookup;
-  class MethodType;
-  template<class T> class ObjectArray;
-  class StackTraceElement;
-  template <typename T> struct NativeDexCachePair;
-  using MethodDexCachePair = NativeDexCachePair<ArtMethod>;
-  using MethodDexCacheType = std::atomic<MethodDexCachePair>;
+class ClassLoader;
+class DexCache;
+class DexCachePointerArray;
+class DexCacheMethodHandlesTest_Open_Test;
+class DexCacheTest_Open_Test;
+class IfTable;
+class MethodHandle;
+class MethodHandlesLookup;
+class MethodType;
+template<class T> class ObjectArray;
+class StackTraceElement;
+template <typename T> struct NativeDexCachePair;
+using MethodDexCachePair = NativeDexCachePair<ArtMethod>;
+using MethodDexCacheType = std::atomic<MethodDexCachePair>;
 }  // namespace mirror
 
 class ClassHierarchyAnalysis;

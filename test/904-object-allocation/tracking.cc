@@ -18,7 +18,7 @@
 
 #include <cstdio>
 #include <iostream>
-#include <mutex>
+#include <mutex>     // NOLINT [build/c++11] [5]
 #include <vector>
 
 #include "android-base/logging.h"

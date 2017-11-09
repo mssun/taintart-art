@@ -32,9 +32,9 @@
 #include "ti_monitor.h"
 
 #include <atomic>
-#include <chrono>
-#include <condition_variable>
-#include <mutex>
+#include <chrono>                                       // NOLINT [build/c++11] [5]
+#include <condition_variable>                           // NOLINT [build/c++11] [5]
+#include <mutex>                                        // NOLINT [build/c++11] [5]
 
 #include "art_jvmti.h"
 #include "monitor.h"
