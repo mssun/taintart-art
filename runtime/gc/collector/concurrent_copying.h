@@ -39,16 +39,16 @@ class Object;
 namespace gc {
 
 namespace accounting {
-  template<typename T> class AtomicStack;
-  typedef AtomicStack<mirror::Object> ObjectStack;
-  template <size_t kAlignment> class SpaceBitmap;
-  typedef SpaceBitmap<kObjectAlignment> ContinuousSpaceBitmap;
-  class HeapBitmap;
-  class ReadBarrierTable;
+template<typename T> class AtomicStack;
+typedef AtomicStack<mirror::Object> ObjectStack;
+template <size_t kAlignment> class SpaceBitmap;
+typedef SpaceBitmap<kObjectAlignment> ContinuousSpaceBitmap;
+class HeapBitmap;
+class ReadBarrierTable;
 }  // namespace accounting
 
 namespace space {
-  class RegionSpace;
+class RegionSpace;
 }  // namespace space
 
 namespace collector {

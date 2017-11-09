@@ -734,7 +734,7 @@ class AssemblerTest : public testing::Test {
   }
 
  protected:
-  explicit AssemblerTest() {}
+  AssemblerTest() {}
 
   void SetUp() OVERRIDE {
     allocator_.reset(new ArenaAllocator(&pool_));

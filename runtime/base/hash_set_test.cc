@@ -294,7 +294,7 @@ size_t HashIntSequence(T begin, T end) {
     hash = hash * 2 + *iter;
   }
   return hash;
-};
+}
 
 struct VectorIntHashEquals {
   std::size_t operator()(const std::vector<int>& item) const {

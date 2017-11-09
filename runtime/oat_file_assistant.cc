@@ -696,7 +696,7 @@ class Dex2oatFileWrapper {
 
   void DisableUnlinkAtDestruction() {
     unlink_file_at_destruction_ = false;
-  };
+  }
 
  private:
   std::unique_ptr<File> file_;

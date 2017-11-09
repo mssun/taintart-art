@@ -27,7 +27,7 @@ namespace gc {
 class Heap;
 
 namespace collector {
-  class ConcurrentCopying;
+class ConcurrentCopying;
 }  // namespace collector
 
 namespace accounting {

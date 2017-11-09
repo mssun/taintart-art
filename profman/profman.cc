@@ -157,11 +157,11 @@ static constexpr uint16_t kDefaultTestProfileMethodPercentage = 5;
 static constexpr uint16_t kDefaultTestProfileClassPercentage = 5;
 
 // Separators used when parsing human friendly representation of profiles.
-static const std::string kMethodSep = "->";
-static const std::string kMissingTypesMarker = "missing_types";
-static const std::string kInvalidClassDescriptor = "invalid_class";
-static const std::string kInvalidMethod = "invalid_method";
-static const std::string kClassAllMethods = "*";
+static const std::string kMethodSep = "->";  // NOLINT [runtime/string] [4]
+static const std::string kMissingTypesMarker = "missing_types";  // NOLINT [runtime/string] [4]
+static const std::string kInvalidClassDescriptor = "invalid_class";  // NOLINT [runtime/string] [4]
+static const std::string kInvalidMethod = "invalid_method";  // NOLINT [runtime/string] [4]
+static const std::string kClassAllMethods = "*";  // NOLINT [runtime/string] [4]
 static constexpr char kProfileParsingInlineChacheSep = '+';
 static constexpr char kProfileParsingTypeSep = ',';
 static constexpr char kProfileParsingFirstCharInSignature = '(';

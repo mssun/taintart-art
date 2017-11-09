@@ -26,7 +26,7 @@
 
 namespace art {
 namespace mirror {
-  class Object;
+class Object;
 }  // namespace mirror
 
 class Monitor;

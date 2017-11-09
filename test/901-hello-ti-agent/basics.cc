@@ -16,7 +16,7 @@
 
 #include "901-hello-ti-agent/basics.h"
 
-#include <thread>
+#include <thread>  // NOLINT [build/c++11] [5]
 
 #include <jni.h>
 #include <stdio.h>

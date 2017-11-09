@@ -28,8 +28,8 @@
 
 namespace art {
 namespace mirror {
-  class Object;
-  template<typename MirrorType> class HeapReference;
+class Object;
+template<typename MirrorType> class HeapReference;
 }  // namespace mirror
 class ArtMethod;
 

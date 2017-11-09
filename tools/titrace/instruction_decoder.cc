@@ -23,11 +23,11 @@ namespace titrace {
 
 class ClassInstructionDecoder : public InstructionDecoder {
  public:
-  virtual size_t GetMaximumOpcode() override {
+  size_t GetMaximumOpcode() override {
     return 0xff;
   }
 
-  virtual const char* GetName(size_t opcode) override {
+  const char* GetName(size_t opcode) override {
     Bytecode::Opcode op = static_cast<Bytecode::Opcode>(opcode);
     return Bytecode::ToString(op);
   }
@@ -465,11 +465,11 @@ class ClassInstructionDecoder : public InstructionDecoder {
 
 class DexInstructionDecoder : public InstructionDecoder {
  public:
-  virtual size_t GetMaximumOpcode() override {
+  size_t GetMaximumOpcode() override {
     return 0xff;
   }
 
-  virtual const char* GetName(size_t opcode) override {
+  const char* GetName(size_t opcode) override {
     Bytecode::Opcode op = static_cast<Bytecode::Opcode>(opcode);
     return Bytecode::ToString(op);
   }

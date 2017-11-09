@@ -28,7 +28,7 @@
 
 namespace art {
 namespace mirror {
-  class ClassLoader;
+class ClassLoader;
 }  // namespace mirror
 
 class CompilerDriver;

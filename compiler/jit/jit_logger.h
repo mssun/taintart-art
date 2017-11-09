@@ -86,7 +86,7 @@ namespace jit {
 //         so that jitted code can be displayed in assembly view.
 //
 class JitLogger {
-  public:
+ public:
     JitLogger() : code_index_(0), marker_address_(nullptr) {}
 
     void OpenLog() {
@@ -105,7 +105,7 @@ class JitLogger {
       CloseJitDumpLog();
     }
 
-  private:
+ private:
     // For perf-map profiling
     void OpenPerfMapLog();
     void WritePerfMapLog(const void* ptr, size_t code_size, ArtMethod* method)

@@ -52,7 +52,7 @@ static constexpr size_t kJitStressDefaultCompileThreshold     = 100;    // Fast-
 static constexpr size_t kJitSlowStressDefaultCompileThreshold = 2;      // Slow-debug build.
 
 // JIT compiler
-void* Jit::jit_library_handle_= nullptr;
+void* Jit::jit_library_handle_ = nullptr;
 void* Jit::jit_compiler_handle_ = nullptr;
 void* (*Jit::jit_load_)(bool*) = nullptr;
 void (*Jit::jit_unload_)(void*) = nullptr;

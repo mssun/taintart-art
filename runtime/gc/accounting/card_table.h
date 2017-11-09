@@ -27,13 +27,13 @@ namespace art {
 class MemMap;
 
 namespace mirror {
-  class Object;
+class Object;
 }  // namespace mirror
 
 namespace gc {
 
 namespace space {
-  class ContinuousSpace;
+class ContinuousSpace;
 }  // namespace space
 
 class Heap;

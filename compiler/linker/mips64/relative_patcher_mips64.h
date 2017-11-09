@@ -24,7 +24,7 @@ namespace linker {
 
 class Mips64RelativePatcher FINAL : public RelativePatcher {
  public:
-  explicit Mips64RelativePatcher() {}
+  Mips64RelativePatcher() {}
 
   uint32_t ReserveSpace(uint32_t offset,
                         const CompiledMethod* compiled_method,

@@ -21,7 +21,7 @@
 #include <jvmti.h>
 #include <map>
 #include <memory>
-#include <mutex>
+#include <mutex>  // NOLINT [build/c++11] [5]
 
 // We could probably return a JNI_ERR here but lets crash instead if something fails.
 #define CHECK_JVMTI_ERROR(jvmti, errnum) \

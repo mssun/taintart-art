@@ -16,8 +16,8 @@
 
 #include "1919-vminit-thread-start-timing/vminit.h"
 
-#include <mutex>
-#include <thread>
+#include <mutex>        // NOLINT [build/c++11] [5]
+#include <thread>       // NOLINT [build/c++11] [5]
 #include <vector>
 
 #include <jni.h>

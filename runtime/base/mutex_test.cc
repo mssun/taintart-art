@@ -97,7 +97,7 @@ TEST_F(MutexTest, RecursiveTryLockUnlock) {
 
 
 struct RecursiveLockWait {
-  explicit RecursiveLockWait()
+  RecursiveLockWait()
       : mu("test mutex", kDefaultMutexLevel, true), cv("test condition variable", mu) {
   }
 

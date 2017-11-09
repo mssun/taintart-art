@@ -45,7 +45,7 @@ class Thread;
 typedef uint32_t MonitorId;
 
 namespace mirror {
-  class Object;
+class Object;
 }  // namespace mirror
 
 enum class LockReason {

@@ -40,7 +40,7 @@
 
 namespace art {
 
-static const std::string kSpecialSharedLibrary = "&";
+static const std::string kSpecialSharedLibrary = "&";  // NOLINT [runtime/string] [4]
 static ClassLoaderContext* kSpecialSharedLibraryContext = nullptr;
 
 class OatFileAssistantTest : public DexoptTest {};

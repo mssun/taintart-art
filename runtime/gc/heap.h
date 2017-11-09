@@ -55,8 +55,8 @@ class TimingLogger;
 class VariableSizedHandleScope;
 
 namespace mirror {
-  class Class;
-  class Object;
+class Class;
+class Object;
 }  // namespace mirror
 
 namespace gc {
@@ -69,40 +69,40 @@ class TaskProcessor;
 class Verification;
 
 namespace accounting {
-  template <typename T> class AtomicStack;
-  typedef AtomicStack<mirror::Object> ObjectStack;
-  class CardTable;
-  class HeapBitmap;
-  class ModUnionTable;
-  class ReadBarrierTable;
-  class RememberedSet;
+template <typename T> class AtomicStack;
+typedef AtomicStack<mirror::Object> ObjectStack;
+class CardTable;
+class HeapBitmap;
+class ModUnionTable;
+class ReadBarrierTable;
+class RememberedSet;
 }  // namespace accounting
 
 namespace collector {
-  class ConcurrentCopying;
-  class GarbageCollector;
-  class MarkCompact;
-  class MarkSweep;
-  class SemiSpace;
+class ConcurrentCopying;
+class GarbageCollector;
+class MarkCompact;
+class MarkSweep;
+class SemiSpace;
 }  // namespace collector
 
 namespace allocator {
-  class RosAlloc;
+class RosAlloc;
 }  // namespace allocator
 
 namespace space {
-  class AllocSpace;
-  class BumpPointerSpace;
-  class ContinuousMemMapAllocSpace;
-  class DiscontinuousSpace;
-  class DlMallocSpace;
-  class ImageSpace;
-  class LargeObjectSpace;
-  class MallocSpace;
-  class RegionSpace;
-  class RosAllocSpace;
-  class Space;
-  class ZygoteSpace;
+class AllocSpace;
+class BumpPointerSpace;
+class ContinuousMemMapAllocSpace;
+class DiscontinuousSpace;
+class DlMallocSpace;
+class ImageSpace;
+class LargeObjectSpace;
+class MallocSpace;
+class RegionSpace;
+class RosAllocSpace;
+class Space;
+class ZygoteSpace;
 }  // namespace space
 
 enum HomogeneousSpaceCompactResult {

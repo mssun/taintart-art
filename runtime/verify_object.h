@@ -25,8 +25,8 @@
 namespace art {
 
 namespace mirror {
-  class Class;
-  class Object;
+class Class;
+class Object;
 }  // namespace mirror
 
 // How we want to sanity check the heap's correctness.
