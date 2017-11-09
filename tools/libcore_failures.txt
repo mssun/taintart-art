@@ -33,15 +33,15 @@
                 777 all directories on path to socket (on device without su).",
   result: EXEC_FAILED,
   modes: [device],
-  names: ["libcore.io.OsTest#testUnixDomainSockets_in_file_system"]
+  names: ["libcore.libcore.io.OsTest#testUnixDomainSockets_in_file_system"]
 },
 {
   description: "TCP_USER_TIMEOUT is not defined on host's tcp.h (glibc-2.15-4.8).",
   result: EXEC_FAILED,
   modes: [host],
   names: ["libcore.android.system.OsConstantsTest#testTcpUserTimeoutIsDefined",
-          "libcore.io.OsTest#test_socket_tcpUserTimeout_setAndGet",
-          "libcore.io.OsTest#test_socket_tcpUserTimeout_doesNotWorkOnDatagramSocket"],
+          "libcore.libcore.io.OsTest#test_socket_tcpUserTimeout_setAndGet",
+          "libcore.libcore.io.OsTest#test_socket_tcpUserTimeout_doesNotWorkOnDatagramSocket"],
   bug: 30402085
 },
 {
@@ -113,7 +113,7 @@
 {
   description: "Needs kernel updates on host/device",
   result: EXEC_FAILED,
-  names: ["libcore.io.OsTest#test_socketPing"]
+  names: ["libcore.libcore.io.OsTest#test_socketPing"]
 },
 {
   description: "Linker issues in chrooted environment",
@@ -131,7 +131,7 @@
   description: "test_xattr fails on arm64 on the buildbots only: needs investigation",
   result: EXEC_FAILED,
   modes: [device],
-  names: ["libcore.io.OsTest#test_xattr"],
+  names: ["libcore.libcore.io.OsTest#test_xattr"],
   bug: 22258911
 },
 {
@@ -143,9 +143,9 @@
 {
   description: "Lack of IPv6 on some buildbot slaves",
   result: EXEC_FAILED,
-  names: ["libcore.io.OsTest#test_byteBufferPositions_sendto_recvfrom_af_inet6",
-          "libcore.io.OsTest#test_sendtoSocketAddress_af_inet6",
-          "libcore.io.OsTest#test_recvfrom_EmptyPacket"],
+  names: ["libcore.libcore.io.OsTest#test_byteBufferPositions_sendto_recvfrom_af_inet6",
+          "libcore.libcore.io.OsTest#test_sendtoSocketAddress_af_inet6",
+          "libcore.libcore.io.OsTest#test_recvfrom_EmptyPacket"],
   bug: 25178637
 },
 {
@@ -220,6 +220,6 @@
   result: EXEC_FAILED,
   modes: [device],
   bug: 69023954,
-  names: ["libcore.io.OsTest#test_setgroups"]
+  names: ["libcore.libcore.io.OsTest#test_setgroups"]
 }
 ]
