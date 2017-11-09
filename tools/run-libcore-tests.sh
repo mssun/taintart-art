@@ -169,4 +169,4 @@ fi
 # Run the tests using vogar.
 echo "Running tests for the following test packages:"
 echo ${working_packages[@]} | tr " " "\n"
-vogar --no-stream $vogar_args $expectations $(cparg $DEPS) ${working_packages[@]}
+vogar $vogar_args $expectations $(cparg $DEPS) ${working_packages[@]}
