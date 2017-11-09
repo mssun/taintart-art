@@ -57,7 +57,9 @@ void CalculateEscape(HInstruction* reference,
       *is_singleton_and_not_returned = false;
       *is_singleton_and_not_deopt_visible = false;
       return;
-    } else if (user->IsPhi() || user->IsSelect() || user->IsInvoke() ||
+    } else if (user->IsPhi() ||
+               user->IsSelect() ||
+               (user->IsInvoke() && user->GetSideEffects().DoesAnyWrite()) ||
                (user->IsInstanceFieldSet() && (reference == user->InputAt(1))) ||
                (user->IsUnresolvedInstanceFieldSet() && (reference == user->InputAt(1))) ||
                (user->IsStaticFieldSet() && (reference == user->InputAt(1))) ||
