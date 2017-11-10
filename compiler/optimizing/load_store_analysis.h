@@ -32,8 +32,7 @@ class ReferenceInfo : public ArenaObject<kArenaAllocLSA> {
         position_(pos),
         is_singleton_(true),
         is_singleton_and_not_returned_(true),
-        is_singleton_and_not_deopt_visible_(true),
-        has_index_aliasing_(false) {
+        is_singleton_and_not_deopt_visible_(true) {
     CalculateEscape(reference_,
                     nullptr,
                     &is_singleton_,
@@ -70,16 +69,6 @@ class ReferenceInfo : public ArenaObject<kArenaAllocLSA> {
            (!is_singleton_and_not_returned_ || !is_singleton_and_not_deopt_visible_);
   }
 
-  bool HasIndexAliasing() {
-    return has_index_aliasing_;
-  }
-
-  void SetHasIndexAliasing(bool has_index_aliasing) {
-    // Only allow setting to true.
-    DCHECK(has_index_aliasing);
-    has_index_aliasing_ = has_index_aliasing;
-  }
-
  private:
   HInstruction* const reference_;
   const size_t position_;  // position in HeapLocationCollector's ref_info_array_.
@@ -90,9 +79,6 @@ class ReferenceInfo : public ArenaObject<kArenaAllocLSA> {
   bool is_singleton_and_not_returned_;
   // Is singleton and not used as an environment local of HDeoptimize.
   bool is_singleton_and_not_deopt_visible_;
-  // Some heap locations with reference_ have array index aliasing,
-  // e.g. arr[i] and arr[j] may be the same location.
-  bool has_index_aliasing_;
 
   DISALLOW_COPY_AND_ASSIGN(ReferenceInfo);
 };
@@ -117,7 +103,8 @@ class HeapLocation : public ArenaObject<kArenaAllocLSA> {
         index_(index),
         vector_length_(vector_length),
         declaring_class_def_index_(declaring_class_def_index),
-        value_killed_by_loop_side_effects_(true) {
+        value_killed_by_loop_side_effects_(true),
+        has_aliased_locations_(false) {
     DCHECK(ref_info != nullptr);
     DCHECK((offset == kInvalidFieldOffset && index != nullptr) ||
            (offset != kInvalidFieldOffset && index == nullptr));
@@ -151,6 +138,14 @@ class HeapLocation : public ArenaObject<kArenaAllocLSA> {
     value_killed_by_loop_side_effects_ = val;
   }
 
+  bool HasAliasedLocations() const {
+    return has_aliased_locations_;
+  }
+
+  void SetHasAliasedLocations(bool val) {
+    has_aliased_locations_ = val;
+  }
+
  private:
   // Reference for instance/static field, array element or vector data.
   ReferenceInfo* const ref_info_;
@@ -172,6 +167,11 @@ class HeapLocation : public ArenaObject<kArenaAllocLSA> {
   // This gives better info on whether a singleton's location
   // value may be killed by loop side effects.
   bool value_killed_by_loop_side_effects_;
+
+  // Has aliased heap locations in the method, due to either the
+  // reference is aliased or the array element is aliased via different
+  // index names.
+  bool has_aliased_locations_;
 
   DISALLOW_COPY_AND_ASSIGN(HeapLocation);
 };
@@ -377,6 +377,7 @@ class HeapLocationCollector : public HGraphVisitor {
 
   // Compute if two locations may alias to each other.
   bool ComputeMayAlias(size_t index1, size_t index2) const {
+    DCHECK_NE(index1, index2);
     HeapLocation* loc1 = heap_locations_[index1];
     HeapLocation* loc2 = heap_locations_[index2];
     if (loc1->GetOffset() != loc2->GetOffset()) {
@@ -399,9 +400,9 @@ class HeapLocationCollector : public HGraphVisitor {
       if (!CanArrayElementsAlias(idx1, vector_length1, idx2, vector_length2)) {
         return false;
       }
-      ReferenceInfo* ref_info = loc1->GetReferenceInfo();
-      ref_info->SetHasIndexAliasing(true);
     }
+    loc1->SetHasAliasedLocations(true);
+    loc2->SetHasAliasedLocations(true);
     return true;
   }
 
