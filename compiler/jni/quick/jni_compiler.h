@@ -28,8 +28,7 @@ class CompiledMethod;
 CompiledMethod* ArtQuickJniCompileMethod(CompilerDriver* compiler,
                                          uint32_t access_flags,
                                          uint32_t method_idx,
-                                         const DexFile& dex_file,
-                                         Compiler::JniOptimizationFlags optimization_flags);
+                                         const DexFile& dex_file);
 
 }  // namespace art
 

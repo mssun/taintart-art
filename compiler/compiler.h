@@ -46,12 +46,6 @@ class Compiler {
     kOptimizing
   };
 
-  enum JniOptimizationFlags {
-    kNone                       = 0x0,
-    kFastNative                 = 0x1,
-    kCriticalNative             = 0x2,
-  };
-
   static Compiler* Create(CompilerDriver* driver, Kind kind);
 
   virtual void Init() = 0;
@@ -71,8 +65,7 @@ class Compiler {
 
   virtual CompiledMethod* JniCompile(uint32_t access_flags,
                                      uint32_t method_idx,
-                                     const DexFile& dex_file,
-                                     JniOptimizationFlags optimization_flags) const = 0;
+                                     const DexFile& dex_file) const = 0;
 
   virtual bool JitCompile(Thread* self ATTRIBUTE_UNUSED,
                           jit::JitCodeCache* code_cache ATTRIBUTE_UNUSED,

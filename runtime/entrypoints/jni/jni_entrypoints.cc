@@ -46,7 +46,7 @@ extern "C" const void* artFindNativeMethod(Thread* self) {
     return nullptr;
   }
   // Register so that future calls don't come here
-  return method->RegisterNative(native_code, false);
+  return method->RegisterNative(native_code);
 }
 
 }  // namespace art

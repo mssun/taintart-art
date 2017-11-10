@@ -1244,7 +1244,6 @@ ObjPtr<Method> Class::GetDeclaredMethodInternal(
   // still return a synthetic method to handle situations like
   // escalated visibility. We never return miranda methods that
   // were synthesized by the runtime.
-  constexpr uint32_t kSkipModifiers = kAccMiranda | kAccSynthetic;
   StackHandleScope<3> hs(self);
   auto h_method_name = hs.NewHandle(name);
   if (UNLIKELY(h_method_name == nullptr)) {
@@ -1264,11 +1263,10 @@ ObjPtr<Method> Class::GetDeclaredMethodInternal(
       }
       continue;
     }
-    auto modifiers = m.GetAccessFlags();
-    if ((modifiers & kSkipModifiers) == 0) {
-      return Method::CreateFromArtMethod<kPointerSize, kTransactionActive>(self, &m);
-    }
-    if ((modifiers & kAccMiranda) == 0) {
+    if (!m.IsMiranda()) {
+      if (!m.IsSynthetic()) {
+        return Method::CreateFromArtMethod<kPointerSize, kTransactionActive>(self, &m);
+      }
       result = &m;  // Remember as potential result if it's not a miranda method.
     }
   }
@@ -1291,11 +1289,11 @@ ObjPtr<Method> Class::GetDeclaredMethodInternal(
         }
         continue;
       }
-      if ((modifiers & kSkipModifiers) == 0) {
+      DCHECK(!m.IsMiranda());  // Direct methods cannot be miranda methods.
+      if ((modifiers & kAccSynthetic) == 0) {
         return Method::CreateFromArtMethod<kPointerSize, kTransactionActive>(self, &m);
       }
-      // Direct methods cannot be miranda methods, so this potential result must be synthetic.
-      result = &m;
+      result = &m;  // Remember as potential result.
     }
   }
   return result != nullptr

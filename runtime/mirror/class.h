@@ -286,7 +286,7 @@ class MANAGED Class FINAL : public Object {
   // This does not necessarily mean that access checks are avoidable,
   // since the class methods might still need to be run with access checks.
   bool WasVerificationAttempted() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return (GetAccessFlags() & kAccSkipAccessChecks) != 0;
+    return (GetAccessFlags() & kAccVerificationAttempted) != 0;
   }
 
   // Mark the class as having gone through a verification attempt.
