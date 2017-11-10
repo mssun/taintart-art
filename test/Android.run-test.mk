@@ -40,46 +40,22 @@ endef  # name-to-var
 TEST_ART_TARGET_SYNC_DEPS += $(ART_TARGET_EXECUTABLES) $(TARGET_CORE_IMG_OUTS)
 
 # Also need libartagent.
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_ARCH)_libartagent)
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_ARCH)_libartagentd)
-ifdef TARGET_2ND_ARCH
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_2ND_ARCH)_libartagent)
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_2ND_ARCH)_libartagentd)
-endif
+TEST_ART_TARGET_SYNC_DEPS += libartagent-target libartagentd-target
 
 # Also need libtiagent.
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_ARCH)_libtiagent)
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_ARCH)_libtiagentd)
-ifdef TARGET_2ND_ARCH
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_2ND_ARCH)_libtiagent)
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_2ND_ARCH)_libtiagentd)
-endif
+TEST_ART_TARGET_SYNC_DEPS += libtiagent-target libtiagentd-target
 
 # Also need libtistress.
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_ARCH)_libtistress)
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_ARCH)_libtistressd)
-ifdef TARGET_2ND_ARCH
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_2ND_ARCH)_libtistress)
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_2ND_ARCH)_libtistressd)
-endif
+TEST_ART_TARGET_SYNC_DEPS += libtistress-target libtistressd-target
 
 # Also need libarttest.
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_ARCH)_libarttest)
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_ARCH)_libarttestd)
-ifdef TARGET_2ND_ARCH
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_2ND_ARCH)_libarttest)
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_2ND_ARCH)_libarttestd)
-endif
+TEST_ART_TARGET_SYNC_DEPS += libarttest-target libarttestd-target
 
 # Also need libnativebridgetest.
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_ARCH)_libnativebridgetest)
-ifdef TARGET_2ND_ARCH
-TEST_ART_TARGET_SYNC_DEPS += $(OUT_DIR)/$(ART_TEST_LIST_device_$(TARGET_2ND_ARCH)_libnativebridgetest)
-endif
+TEST_ART_TARGET_SYNC_DEPS += libnativebridgetest-target
 
 # Also need libopenjdkjvmti.
-TEST_ART_TARGET_SYNC_DEPS += libopenjdkjvmti
-TEST_ART_TARGET_SYNC_DEPS += libopenjdkjvmtid
+TEST_ART_TARGET_SYNC_DEPS += libopenjdkjvmti-target libopenjdkjvmtid-target
 
 TEST_ART_TARGET_SYNC_DEPS += $(TARGET_OUT_JAVA_LIBRARIES)/core-libart-testdex.jar
 TEST_ART_TARGET_SYNC_DEPS += $(TARGET_OUT_JAVA_LIBRARIES)/core-oj-testdex.jar
