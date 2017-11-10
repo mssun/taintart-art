@@ -26,7 +26,7 @@
 namespace art {
 
 const uint8_t ImageHeader::kImageMagic[] = { 'a', 'r', 't', '\n' };
-const uint8_t ImageHeader::kImageVersion[] = { '0', '5', '0', '\0' };  // strcmp() @FastNative.
+const uint8_t ImageHeader::kImageVersion[] = { '0', '5', '1', '\0' };  // @FastNative access flags.
 
 ImageHeader::ImageHeader(uint32_t image_begin,
                          uint32_t image_size,
