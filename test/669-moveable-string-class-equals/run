@@ -16,4 +16,4 @@
 
 # Run without image, so that String.class is moveable.
 # Reduce heap size to force more frequent GCs.
-${RUN} --no-image --no-dex2oat --runtime-option -Xmx16m "$@"
+${RUN} --no-image --runtime-option -Xmx16m "$@"
