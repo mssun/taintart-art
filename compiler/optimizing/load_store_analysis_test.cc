@@ -78,11 +78,12 @@ TEST_F(LoadStoreAnalysisTest, ArrayHeapLocations) {
 
   // Test queries on HeapLocationCollector's ref info and index records.
   ReferenceInfo* ref = heap_location_collector.FindReferenceInfoOf(array);
-  size_t field_off = HeapLocation::kInvalidFieldOffset;
+  size_t field = HeapLocation::kInvalidFieldOffset;
+  size_t vec = HeapLocation::kScalar;
   size_t class_def = HeapLocation::kDeclaringClassDefIndexForArrays;
-  size_t loc1 = heap_location_collector.FindHeapLocationIndex(ref, field_off, c1, class_def);
-  size_t loc2 = heap_location_collector.FindHeapLocationIndex(ref, field_off, c2, class_def);
-  size_t loc3 = heap_location_collector.FindHeapLocationIndex(ref, field_off, index, class_def);
+  size_t loc1 = heap_location_collector.FindHeapLocationIndex(ref, field, c1, vec, class_def);
+  size_t loc2 = heap_location_collector.FindHeapLocationIndex(ref, field, c2, vec, class_def);
+  size_t loc3 = heap_location_collector.FindHeapLocationIndex(ref, field, index, vec, class_def);
   // must find this reference info for array in HeapLocationCollector.
   ASSERT_TRUE(ref != nullptr);
   // must find these heap locations;
@@ -167,10 +168,8 @@ TEST_F(LoadStoreAnalysisTest, FieldHeapLocations) {
 
   // Test queries on HeapLocationCollector's ref info and index records.
   ReferenceInfo* ref = heap_location_collector.FindReferenceInfoOf(object);
-  size_t loc1 = heap_location_collector.FindHeapLocationIndex(
-      ref, 10, nullptr, kUnknownClassDefIndex);
-  size_t loc2 = heap_location_collector.FindHeapLocationIndex(
-      ref, 20, nullptr, kUnknownClassDefIndex);
+  size_t loc1 = heap_location_collector.GetFieldHeapLocation(object, &get_field10->GetFieldInfo());
+  size_t loc2 = heap_location_collector.GetFieldHeapLocation(object, &get_field20->GetFieldInfo());
   // must find references info for object and in HeapLocationCollector.
   ASSERT_TRUE(ref != nullptr);
   // must find these heap locations.
@@ -247,29 +246,234 @@ TEST_F(LoadStoreAnalysisTest, ArrayIndexAliasingTest) {
   size_t loc2 = HeapLocationCollector::kHeapLocationNotFound;
 
   // Test alias: array[0] and array[1]
-  loc1 = heap_location_collector.GetArrayAccessHeapLocation(array, c0);
-  loc2 = heap_location_collector.GetArrayAccessHeapLocation(array, c1);
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, c0);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, c1);
   ASSERT_FALSE(heap_location_collector.MayAlias(loc1, loc2));
 
   // Test alias: array[i+0] and array[i-0]
-  loc1 = heap_location_collector.GetArrayAccessHeapLocation(array, add0);
-  loc2 = heap_location_collector.GetArrayAccessHeapLocation(array, sub0);
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, add0);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, sub0);
   ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
 
   // Test alias: array[i+1] and array[i-1]
-  loc1 = heap_location_collector.GetArrayAccessHeapLocation(array, add1);
-  loc2 = heap_location_collector.GetArrayAccessHeapLocation(array, sub1);
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, add1);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, sub1);
   ASSERT_FALSE(heap_location_collector.MayAlias(loc1, loc2));
 
   // Test alias: array[i+1] and array[1-i]
-  loc1 = heap_location_collector.GetArrayAccessHeapLocation(array, add1);
-  loc2 = heap_location_collector.GetArrayAccessHeapLocation(array, rev_sub1);
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, add1);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, rev_sub1);
   ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
 
   // Test alias: array[i+1] and array[i-(-1)]
-  loc1 = heap_location_collector.GetArrayAccessHeapLocation(array, add1);
-  loc2 = heap_location_collector.GetArrayAccessHeapLocation(array, sub_neg1);
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, add1);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, sub_neg1);
   ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
+}
+
+TEST_F(LoadStoreAnalysisTest, ArrayAliasingTest) {
+  HBasicBlock* entry = new (GetAllocator()) HBasicBlock(graph_);
+  graph_->AddBlock(entry);
+  graph_->SetEntryBlock(entry);
+  graph_->BuildDominatorTree();
+
+  HInstruction* array = new (GetAllocator()) HParameterValue(
+      graph_->GetDexFile(), dex::TypeIndex(0), 0, DataType::Type::kReference);
+  HInstruction* index = new (GetAllocator()) HParameterValue(
+      graph_->GetDexFile(), dex::TypeIndex(1), 1, DataType::Type::kInt32);
+  HInstruction* c0 = graph_->GetIntConstant(0);
+  HInstruction* c1 = graph_->GetIntConstant(1);
+  HInstruction* c6 = graph_->GetIntConstant(6);
+  HInstruction* c8 = graph_->GetIntConstant(8);
+
+  HInstruction* arr_set_0 = new (GetAllocator()) HArraySet(array,
+                                                           c0,
+                                                           c0,
+                                                           DataType::Type::kInt32,
+                                                           0);
+  HInstruction* arr_set_1 = new (GetAllocator()) HArraySet(array,
+                                                           c1,
+                                                           c0,
+                                                           DataType::Type::kInt32,
+                                                           0);
+  HInstruction* arr_set_i = new (GetAllocator()) HArraySet(array,
+                                                           index,
+                                                           c0,
+                                                           DataType::Type::kInt32,
+                                                           0);
+
+  HVecOperation* v1 = new (GetAllocator()) HVecReplicateScalar(GetAllocator(),
+                                                               c1,
+                                                               DataType::Type::kInt32,
+                                                               4,
+                                                               kNoDexPc);
+  HVecOperation* v2 = new (GetAllocator()) HVecReplicateScalar(GetAllocator(),
+                                                               c1,
+                                                               DataType::Type::kInt32,
+                                                               2,
+                                                               kNoDexPc);
+  HInstruction* i_add6 = new (GetAllocator()) HAdd(DataType::Type::kInt32, index, c6);
+  HInstruction* i_add8 = new (GetAllocator()) HAdd(DataType::Type::kInt32, index, c8);
+
+  HInstruction* vstore_0 = new (GetAllocator()) HVecStore(
+      GetAllocator(),
+      array,
+      c0,
+      v1,
+      DataType::Type::kInt32,
+      SideEffects::ArrayWriteOfType(DataType::Type::kInt32),
+      4,
+      kNoDexPc);
+  HInstruction* vstore_1 = new (GetAllocator()) HVecStore(
+      GetAllocator(),
+      array,
+      c1,
+      v1,
+      DataType::Type::kInt32,
+      SideEffects::ArrayWriteOfType(DataType::Type::kInt32),
+      4,
+      kNoDexPc);
+  HInstruction* vstore_8 = new (GetAllocator()) HVecStore(
+      GetAllocator(),
+      array,
+      c8,
+      v1,
+      DataType::Type::kInt32,
+      SideEffects::ArrayWriteOfType(DataType::Type::kInt32),
+      4,
+      kNoDexPc);
+  HInstruction* vstore_i = new (GetAllocator()) HVecStore(
+      GetAllocator(),
+      array,
+      index,
+      v1,
+      DataType::Type::kInt32,
+      SideEffects::ArrayWriteOfType(DataType::Type::kInt32),
+      4,
+      kNoDexPc);
+  HInstruction* vstore_i_add6 = new (GetAllocator()) HVecStore(
+      GetAllocator(),
+      array,
+      i_add6,
+      v1,
+      DataType::Type::kInt32,
+      SideEffects::ArrayWriteOfType(DataType::Type::kInt32),
+      4,
+      kNoDexPc);
+  HInstruction* vstore_i_add8 = new (GetAllocator()) HVecStore(
+      GetAllocator(),
+      array,
+      i_add8,
+      v1,
+      DataType::Type::kInt32,
+      SideEffects::ArrayWriteOfType(DataType::Type::kInt32),
+      4,
+      kNoDexPc);
+  HInstruction* vstore_i_add6_vlen2 = new (GetAllocator()) HVecStore(
+      GetAllocator(),
+      array,
+      i_add6,
+      v2,
+      DataType::Type::kInt32,
+      SideEffects::ArrayWriteOfType(DataType::Type::kInt32),
+      2,
+      kNoDexPc);
+
+  entry->AddInstruction(array);
+  entry->AddInstruction(index);
+
+  entry->AddInstruction(arr_set_0);
+  entry->AddInstruction(arr_set_1);
+  entry->AddInstruction(arr_set_i);
+  entry->AddInstruction(v1);
+  entry->AddInstruction(v2);
+  entry->AddInstruction(i_add6);
+  entry->AddInstruction(i_add8);
+  entry->AddInstruction(vstore_0);
+  entry->AddInstruction(vstore_1);
+  entry->AddInstruction(vstore_8);
+  entry->AddInstruction(vstore_i);
+  entry->AddInstruction(vstore_i_add6);
+  entry->AddInstruction(vstore_i_add8);
+  entry->AddInstruction(vstore_i_add6_vlen2);
+
+  LoadStoreAnalysis lsa(graph_);
+  lsa.Run();
+  const HeapLocationCollector& heap_location_collector = lsa.GetHeapLocationCollector();
+
+  // LSA/HeapLocationCollector should see those instructions.
+  ASSERT_EQ(heap_location_collector.GetNumberOfHeapLocations(), 10U);
+  ASSERT_TRUE(heap_location_collector.HasHeapStores());
+
+  // Test queries on HeapLocationCollector's aliasing matrix after load store analysis.
+  size_t loc1, loc2;
+
+  // Test alias: array[0] and array[0,1,2,3]
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, c0);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, c0, 4);
+  ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
+
+  // Test alias: array[0] and array[8,9,10,11]
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, c0);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, c8, 4);
+  ASSERT_FALSE(heap_location_collector.MayAlias(loc1, loc2));
+
+  // Test alias: array[1] and array[8,9,10,11]
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, c1);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, c8, 4);
+  ASSERT_FALSE(heap_location_collector.MayAlias(loc1, loc2));
+
+  // Test alias: array[1] and array[0,1,2,3]
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, c1);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, c0, 4);
+  ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
+
+  // Test alias: array[0,1,2,3] and array[8,9,10,11]
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, c0, 4);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, c8, 4);
+  ASSERT_FALSE(heap_location_collector.MayAlias(loc1, loc2));
+
+  // Test alias: array[0,1,2,3] and array[1,2,3,4]
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, c1, 4);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, c0, 4);
+  ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
+
+  // Test alias: array[0] and array[i,i+1,i+2,i+3]
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, c0);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, index, 4);
+  ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
+
+  // Test alias: array[i] and array[0,1,2,3]
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, index);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, c0, 4);
+  ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
+
+  // Test alias: array[i] and array[i,i+1,i+2,i+3]
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, index);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, index, 4);
+  ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
+
+  // Test alias: array[i] and array[i+8,i+9,i+10,i+11]
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, index);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, i_add8, 4);
+  ASSERT_FALSE(heap_location_collector.MayAlias(loc1, loc2));
+
+  // Test alias: array[i+6,i+7,i+8,i+9] and array[i+8,i+9,i+10,i+11]
+  // Test partial overlap.
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, i_add6, 4);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, i_add8, 4);
+  ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
+
+  // Test alias: array[i+6,i+7] and array[i,i+1,i+2,i+3]
+  // Test different vector lengths.
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, i_add6, 2);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, index, 4);
+  ASSERT_FALSE(heap_location_collector.MayAlias(loc1, loc2));
+
+  // Test alias: array[i+6,i+7] and array[i+8,i+9,i+10,i+11]
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, i_add6, 2);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, i_add8, 4);
+  ASSERT_FALSE(heap_location_collector.MayAlias(loc1, loc2));
 }
 
 TEST_F(LoadStoreAnalysisTest, ArrayIndexCalculationOverflowTest) {
@@ -359,33 +563,33 @@ TEST_F(LoadStoreAnalysisTest, ArrayIndexCalculationOverflowTest) {
   size_t loc2 = HeapLocationCollector::kHeapLocationNotFound;
 
   // Test alias: array[i+0x80000000] and array[i-0x80000000]
-  loc1 = heap_location_collector.GetArrayAccessHeapLocation(array, add_0x80000000);
-  loc2 = heap_location_collector.GetArrayAccessHeapLocation(array, sub_0x80000000);
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, add_0x80000000);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, sub_0x80000000);
   ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
 
   // Test alias: array[i+0x10] and array[i-0xFFFFFFF0]
-  loc1 = heap_location_collector.GetArrayAccessHeapLocation(array, add_0x10);
-  loc2 = heap_location_collector.GetArrayAccessHeapLocation(array, sub_0xFFFFFFF0);
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, add_0x10);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, sub_0xFFFFFFF0);
   ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
 
   // Test alias: array[i+0x7FFFFFFF] and array[i-0x80000001]
-  loc1 = heap_location_collector.GetArrayAccessHeapLocation(array, add_0x7FFFFFFF);
-  loc2 = heap_location_collector.GetArrayAccessHeapLocation(array, sub_0x80000001);
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, add_0x7FFFFFFF);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, sub_0x80000001);
   ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
 
   // Test alias: array[i+0] and array[i-0]
-  loc1 = heap_location_collector.GetArrayAccessHeapLocation(array, add_0);
-  loc2 = heap_location_collector.GetArrayAccessHeapLocation(array, sub_0);
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, add_0);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, sub_0);
   ASSERT_TRUE(heap_location_collector.MayAlias(loc1, loc2));
 
   // Should not alias:
-  loc1 = heap_location_collector.GetArrayAccessHeapLocation(array, sub_0x80000000);
-  loc2 = heap_location_collector.GetArrayAccessHeapLocation(array, sub_0x80000001);
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, sub_0x80000000);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, sub_0x80000001);
   ASSERT_FALSE(heap_location_collector.MayAlias(loc1, loc2));
 
   // Should not alias:
-  loc1 = heap_location_collector.GetArrayAccessHeapLocation(array, add_0);
-  loc2 = heap_location_collector.GetArrayAccessHeapLocation(array, sub_0x80000000);
+  loc1 = heap_location_collector.GetArrayHeapLocation(array, add_0);
+  loc2 = heap_location_collector.GetArrayHeapLocation(array, sub_0x80000000);
   ASSERT_FALSE(heap_location_collector.MayAlias(loc1, loc2));
 }
 
@@ -443,10 +647,10 @@ TEST_F(LoadStoreAnalysisTest, TestHuntOriginalRef) {
   // times the original reference has been transformed by BoundType,
   // NullCheck, IntermediateAddress, etc.
   ASSERT_EQ(heap_location_collector.GetNumberOfHeapLocations(), 1U);
-  size_t loc1 = heap_location_collector.GetArrayAccessHeapLocation(array, c1);
-  size_t loc2 = heap_location_collector.GetArrayAccessHeapLocation(bound_type, c1);
-  size_t loc3 = heap_location_collector.GetArrayAccessHeapLocation(null_check, c1);
-  size_t loc4 = heap_location_collector.GetArrayAccessHeapLocation(inter_addr, c1);
+  size_t loc1 = heap_location_collector.GetArrayHeapLocation(array, c1);
+  size_t loc2 = heap_location_collector.GetArrayHeapLocation(bound_type, c1);
+  size_t loc3 = heap_location_collector.GetArrayHeapLocation(null_check, c1);
+  size_t loc4 = heap_location_collector.GetArrayHeapLocation(inter_addr, c1);
   ASSERT_TRUE(loc1 != HeapLocationCollector::kHeapLocationNotFound);
   ASSERT_EQ(loc1, loc2);
   ASSERT_EQ(loc1, loc3);
