@@ -307,6 +307,8 @@ NO_RETURN static void UnsafeLogFatalForThreadSuspendAllTimeout() {
 // Unlike suspending all threads where we can wait to acquire the mutator_lock_, suspending an
 // individual thread requires polling. delay_us is the requested sleep wait. If delay_us is 0 then
 // we use sched_yield instead of calling usleep.
+// Although there is the possibility, here and elsewhere, that usleep could return -1 and
+// errno = EINTR, there should be no problem if interrupted, so we do not check.
 static void ThreadSuspendSleep(useconds_t delay_us) {
   if (delay_us == 0) {
     sched_yield();
