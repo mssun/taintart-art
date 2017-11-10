@@ -241,8 +241,8 @@ static void WriteFileBase64(const char* base64, const char* location) {
 
 class DexLayoutTest : public CommonRuntimeTest {
  protected:
-  virtual void SetUp() {
-    CommonRuntimeTest::SetUp();
+  std::string GetDexLayoutPath() {
+    return GetTestAndroidRoot() + "/bin/dexlayoutd";
   }
 
   // Runs FullPlainOutput test.
@@ -255,18 +255,16 @@ class DexLayoutTest : public CommonRuntimeTest {
 
     ScratchFile dexlayout_output;
     const std::string& dexlayout_filename = dexlayout_output.GetFilename();
-    std::string dexlayout = GetTestAndroidRoot() + "/bin/dexlayout";
-    EXPECT_TRUE(OS::FileExists(dexlayout.c_str())) << dexlayout << " should be a valid file path";
 
     for (const std::string &dex_file : GetLibCoreDexFileNames()) {
       std::vector<std::string> dexdump_exec_argv =
           { dexdump, "-d", "-f", "-h", "-l", "plain", "-o", dexdump_filename, dex_file };
-      std::vector<std::string> dexlayout_exec_argv =
-          { dexlayout, "-d", "-f", "-h", "-l", "plain", "-o", dexlayout_filename, dex_file };
+      std::vector<std::string> dexlayout_args =
+          { "-d", "-f", "-h", "-l", "plain", "-o", dexlayout_filename, dex_file };
       if (!::art::Exec(dexdump_exec_argv, error_msg)) {
         return false;
       }
-      if (!::art::Exec(dexlayout_exec_argv, error_msg)) {
+      if (!DexLayoutExec(dexlayout_args, error_msg)) {
         return false;
       }
       std::vector<std::string> diff_exec_argv =
@@ -284,13 +282,11 @@ class DexLayoutTest : public CommonRuntimeTest {
     const std::string& tmp_name = tmp_file.GetFilename();
     size_t tmp_last_slash = tmp_name.rfind('/');
     std::string tmp_dir = tmp_name.substr(0, tmp_last_slash + 1);
-    std::string dexlayout = GetTestAndroidRoot() + "/bin/dexlayout";
-    EXPECT_TRUE(OS::FileExists(dexlayout.c_str())) << dexlayout << " should be a valid file path";
 
     for (const std::string &dex_file : GetLibCoreDexFileNames()) {
-      std::vector<std::string> dexlayout_exec_argv =
-          { dexlayout, "-w", tmp_dir, "-o", tmp_name, dex_file };
-      if (!::art::Exec(dexlayout_exec_argv, error_msg)) {
+      std::vector<std::string> dexlayout_args =
+          { "-w", tmp_dir, "-o", tmp_name, dex_file };
+      if (!DexLayoutExec(dexlayout_args, error_msg)) {
         return false;
       }
       size_t dex_file_last_slash = dex_file.rfind('/');
@@ -418,12 +414,9 @@ class DexLayoutTest : public CommonRuntimeTest {
     // WriteFileBase64(kDexFileLayoutInputProfile, profile_file.c_str());
     std::string output_dex = tmp_dir + "classes.dex.new";
 
-    std::string dexlayout = GetTestAndroidRoot() + "/bin/dexlayout";
-    EXPECT_TRUE(OS::FileExists(dexlayout.c_str())) << dexlayout << " should be a valid file path";
-
-    std::vector<std::string> dexlayout_exec_argv =
-        { dexlayout, "-v", "-w", tmp_dir, "-o", tmp_name, "-p", profile_file, dex_file };
-    if (!::art::Exec(dexlayout_exec_argv, error_msg)) {
+    std::vector<std::string> dexlayout_args =
+        { "-v", "-w", tmp_dir, "-o", tmp_name, "-p", profile_file, dex_file };
+    if (!DexLayoutExec(dexlayout_args, error_msg)) {
       return false;
     }
 
@@ -466,13 +459,10 @@ class DexLayoutTest : public CommonRuntimeTest {
     std::string output_dex = tmp_dir + "classes.dex.new";
     std::string second_output_dex = tmp_dir + "classes.dex.new.new";
 
-    std::string dexlayout = GetTestAndroidRoot() + "/bin/dexlayout";
-    EXPECT_TRUE(OS::FileExists(dexlayout.c_str())) << dexlayout << " should be a valid file path";
-
     // -v makes sure that the layout did not corrupt the dex file.
-    std::vector<std::string> dexlayout_exec_argv =
-        { dexlayout, "-i", "-v", "-w", tmp_dir, "-o", tmp_name, "-p", profile_file, dex_file };
-    if (!::art::Exec(dexlayout_exec_argv, error_msg)) {
+    std::vector<std::string> dexlayout_args =
+        { "-i", "-v", "-w", tmp_dir, "-o", tmp_name, "-p", profile_file, dex_file };
+    if (!DexLayoutExec(dexlayout_args, error_msg)) {
       return false;
     }
 
@@ -482,9 +472,9 @@ class DexLayoutTest : public CommonRuntimeTest {
 
     // -v makes sure that the layout did not corrupt the dex file.
     // -i since the checksum won't match from the first layout.
-    std::vector<std::string> second_dexlayout_exec_argv =
-        { dexlayout, "-i", "-v", "-w", tmp_dir, "-o", tmp_name, "-p", profile_file, output_dex };
-    if (!::art::Exec(second_dexlayout_exec_argv, error_msg)) {
+    std::vector<std::string> second_dexlayout_args =
+        { "-i", "-v", "-w", tmp_dir, "-o", tmp_name, "-p", profile_file, output_dex };
+    if (!DexLayoutExec(second_dexlayout_args, error_msg)) {
       return false;
     }
 
@@ -516,12 +506,8 @@ class DexLayoutTest : public CommonRuntimeTest {
     WriteFileBase64(filename, input_dex.c_str());
     std::string output_dex = tmp_dir + "classes.dex.new";
 
-    std::string dexlayout = GetTestAndroidRoot() + "/bin/dexlayout";
-    EXPECT_TRUE(OS::FileExists(dexlayout.c_str())) << dexlayout << " should be a valid file path";
-
-    std::vector<std::string> dexlayout_exec_argv =
-        { dexlayout, "-w", tmp_dir, "-o", "/dev/null", input_dex };
-    if (!::art::Exec(dexlayout_exec_argv, error_msg)) {
+    std::vector<std::string> dexlayout_args = { "-w", tmp_dir, "-o", "/dev/null", input_dex };
+    if (!DexLayoutExec(dexlayout_args, error_msg)) {
       return false;
     }
 
@@ -541,7 +527,7 @@ class DexLayoutTest : public CommonRuntimeTest {
   bool DexLayoutExec(ScratchFile* dex_file,
                      const char* dex_filename,
                      ScratchFile* profile_file,
-                     std::vector<std::string>& dexlayout_exec_argv) {
+                     const std::vector<std::string>& dexlayout_args) {
     if (dex_filename != nullptr) {
       WriteBase64ToFile(dex_filename, dex_file->GetFile());
       EXPECT_EQ(dex_file->GetFile()->Flush(), 0);
@@ -549,13 +535,26 @@ class DexLayoutTest : public CommonRuntimeTest {
     if (profile_file != nullptr) {
       CreateProfile(dex_file->GetFilename(), profile_file->GetFilename(), dex_file->GetFilename());
     }
+
     std::string error_msg;
-    const bool result = ::art::Exec(dexlayout_exec_argv, &error_msg);
+    const bool result = DexLayoutExec(dexlayout_args, &error_msg);
     if (!result) {
       LOG(ERROR) << "Error: " << error_msg;
       return false;
     }
     return true;
+  }
+
+  bool DexLayoutExec(const std::vector<std::string>& dexlayout_args, std::string* error_msg) {
+    std::vector<std::string> argv;
+
+    std::string dexlayout = GetDexLayoutPath();
+    CHECK(OS::FileExists(dexlayout.c_str())) << dexlayout << " should be a valid file path";
+    argv.push_back(dexlayout);
+
+    argv.insert(argv.end(), dexlayout_args.begin(), dexlayout_args.end());
+
+    return ::art::Exec(argv, error_msg);
   }
 };
 
@@ -614,89 +613,72 @@ TEST_F(DexLayoutTest, UnreferencedEndingCatchHandler) {
 
 TEST_F(DexLayoutTest, DuplicateOffset) {
   ScratchFile temp_dex;
-  std::string dexlayout = GetTestAndroidRoot() + "/bin/dexlayout";
-  EXPECT_TRUE(OS::FileExists(dexlayout.c_str())) << dexlayout << " should be a valid file path";
-  std::vector<std::string> dexlayout_exec_argv =
-      { dexlayout, "-a", "-i", "-o", "/dev/null", temp_dex.GetFilename() };
+  std::vector<std::string> dexlayout_args =
+      { "-a", "-i", "-o", "/dev/null", temp_dex.GetFilename() };
   ASSERT_TRUE(DexLayoutExec(&temp_dex,
                             kDexFileDuplicateOffset,
                             nullptr /* profile_file */,
-                            dexlayout_exec_argv));
+                            dexlayout_args));
 }
 
 TEST_F(DexLayoutTest, NullSetRefListElement) {
   ScratchFile temp_dex;
-  std::string dexlayout = GetTestAndroidRoot() + "/bin/dexlayout";
-  EXPECT_TRUE(OS::FileExists(dexlayout.c_str())) << dexlayout << " should be a valid file path";
-  std::vector<std::string> dexlayout_exec_argv =
-      { dexlayout, "-o", "/dev/null", temp_dex.GetFilename() };
+  std::vector<std::string> dexlayout_args = { "-o", "/dev/null", temp_dex.GetFilename() };
   ASSERT_TRUE(DexLayoutExec(&temp_dex,
                             kNullSetRefListElementInputDex,
                             nullptr /* profile_file */,
-                            dexlayout_exec_argv));
+                            dexlayout_args));
 }
 
 TEST_F(DexLayoutTest, MultiClassData) {
   ScratchFile temp_dex;
   ScratchFile temp_profile;
-  std::string dexlayout = GetTestAndroidRoot() + "/bin/dexlayout";
-  EXPECT_TRUE(OS::FileExists(dexlayout.c_str())) << dexlayout << " should be a valid file path";
-  std::vector<std::string> dexlayout_exec_argv =
-      { dexlayout, "-p", temp_profile.GetFilename(), "-o", "/dev/null", temp_dex.GetFilename() };
+  std::vector<std::string> dexlayout_args =
+      { "-p", temp_profile.GetFilename(), "-o", "/dev/null", temp_dex.GetFilename() };
   ASSERT_TRUE(DexLayoutExec(&temp_dex,
                             kMultiClassDataInputDex,
                             &temp_profile,
-                            dexlayout_exec_argv));
+                            dexlayout_args));
 }
 
 TEST_F(DexLayoutTest, UnalignedCodeInfo) {
   ScratchFile temp_dex;
   ScratchFile temp_profile;
-  std::string dexlayout = GetTestAndroidRoot() + "/bin/dexlayout";
-  EXPECT_TRUE(OS::FileExists(dexlayout.c_str())) << dexlayout << " should be a valid file path";
-  std::vector<std::string> dexlayout_exec_argv =
-      { dexlayout, "-p", temp_profile.GetFilename(), "-o", "/dev/null", temp_dex.GetFilename() };
+  std::vector<std::string> dexlayout_args =
+      { "-p", temp_profile.GetFilename(), "-o", "/dev/null", temp_dex.GetFilename() };
   ASSERT_TRUE(DexLayoutExec(&temp_dex,
                             kUnalignedCodeInfoInputDex,
                             &temp_profile,
-                            dexlayout_exec_argv));
+                            dexlayout_args));
 }
 
 TEST_F(DexLayoutTest, ClassDataBeforeCode) {
   ScratchFile temp_dex;
   ScratchFile temp_profile;
-  std::string dexlayout = GetTestAndroidRoot() + "/bin/dexlayout";
-  EXPECT_TRUE(OS::FileExists(dexlayout.c_str())) << dexlayout << " should be a valid file path";
-  std::vector<std::string> dexlayout_exec_argv =
-      { dexlayout, "-p", temp_profile.GetFilename(), "-o", "/dev/null", temp_dex.GetFilename() };
+  std::vector<std::string> dexlayout_args =
+      { "-p", temp_profile.GetFilename(), "-o", "/dev/null", temp_dex.GetFilename() };
   ASSERT_TRUE(DexLayoutExec(&temp_dex,
                             kClassDataBeforeCodeInputDex,
                             &temp_profile,
-                            dexlayout_exec_argv));
+                            dexlayout_args));
 }
 
 TEST_F(DexLayoutTest, UnknownTypeDebugInfo) {
   ScratchFile temp_dex;
-  std::string dexlayout = GetTestAndroidRoot() + "/bin/dexlayout";
-  EXPECT_TRUE(OS::FileExists(dexlayout.c_str())) << dexlayout << " should be a valid file path";
-  std::vector<std::string> dexlayout_exec_argv =
-      { dexlayout, "-o", "/dev/null", temp_dex.GetFilename() };
+  std::vector<std::string> dexlayout_args = { "-o", "/dev/null", temp_dex.GetFilename() };
   ASSERT_TRUE(DexLayoutExec(&temp_dex,
                             kUnknownTypeDebugInfoInputDex,
                             nullptr /* profile_file */,
-                            dexlayout_exec_argv));
+                            dexlayout_args));
 }
 
 TEST_F(DexLayoutTest, DuplicateCodeItem) {
   ScratchFile temp_dex;
-  std::string dexlayout = GetTestAndroidRoot() + "/bin/dexlayout";
-  EXPECT_TRUE(OS::FileExists(dexlayout.c_str())) << dexlayout << " should be a valid file path";
-  std::vector<std::string> dexlayout_exec_argv =
-      { dexlayout, "-o", "/dev/null", temp_dex.GetFilename() };
+  std::vector<std::string> dexlayout_args = { "-o", "/dev/null", temp_dex.GetFilename() };
   ASSERT_TRUE(DexLayoutExec(&temp_dex,
                             kDuplicateCodeItemInputDex,
                             nullptr /* profile_file */,
-                            dexlayout_exec_argv));
+                            dexlayout_args));
 }
 
 // Test that instructions that go past the end of the code items don't cause crashes.
@@ -743,14 +725,11 @@ TEST_F(DexLayoutTest, CodeItemOverrun) {
     CHECK(mutated_successfully)
         << "Failed to find candidate code item with only one code unit in last instruction.";
   });
-  std::string dexlayout = GetTestAndroidRoot() + "/bin/dexlayout";
-  EXPECT_TRUE(OS::FileExists(dexlayout.c_str())) << dexlayout << " should be a valid file path";
-  std::vector<std::string> dexlayout_exec_argv =
-      { dexlayout, "-i", "-o", "/dev/null", temp_dex.GetFilename() };
+  std::vector<std::string> dexlayout_args = { "-i", "-o", "/dev/null", temp_dex.GetFilename() };
   ASSERT_TRUE(DexLayoutExec(&temp_dex,
                             /*dex_filename*/ nullptr,
                             nullptr /* profile_file */,
-                            dexlayout_exec_argv));
+                            dexlayout_args));
 }
 
 }  // namespace art
