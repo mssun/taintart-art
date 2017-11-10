@@ -60,7 +60,8 @@ static void DoDexUnquicken(const art::DexFile& new_dex_file, const art::DexFile&
   if (vdex == nullptr) {
     return;
   }
-  vdex->FullyUnquickenDexFile(new_dex_file, original_dex_file);
+  art::VdexFile::UnquickenDexFile(
+      new_dex_file, vdex->GetQuickeningInfo(), /* decompile_return_instruction */true);
 }
 
 std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& original) {
