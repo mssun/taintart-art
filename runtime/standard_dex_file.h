@@ -32,6 +32,18 @@ class StandardDexFile : public DexFile {
     // Same for now.
   };
 
+  struct CodeItem : public DexFile::CodeItem {
+   private:
+    // TODO: Insert standard dex specific fields here.
+    DISALLOW_COPY_AND_ASSIGN(CodeItem);
+  };
+
+  // Write the standard dex specific magic.
+  static void WriteMagic(uint8_t* magic);
+
+  // Write the current version, note that the input is the address of the magic.
+  static void WriteCurrentVersion(uint8_t* magic);
+
   static const uint8_t kDexMagic[kDexMagicSize];
   static constexpr size_t kNumDexVersions = 4;
   static const uint8_t kDexMagicVersions[kNumDexVersions][kDexVersionLen];
@@ -44,10 +56,6 @@ class StandardDexFile : public DexFile {
   static bool IsVersionValid(const uint8_t* magic);
   virtual bool IsVersionValid() const OVERRIDE;
 
-  bool IsStandardDexFile() const OVERRIDE {
-    return true;
-  }
-
  private:
   StandardDexFile(const uint8_t* base,
                   size_t size,
@@ -55,7 +63,13 @@ class StandardDexFile : public DexFile {
                   uint32_t location_checksum,
                   const OatDexFile* oat_dex_file,
                   DexFileContainer* container)
-      : DexFile(base, size, location, location_checksum, oat_dex_file, container) {}
+      : DexFile(base,
+                size,
+                location,
+                location_checksum,
+                oat_dex_file,
+                container,
+                /*is_compact_dex*/ false) {}
 
   friend class DexFileLoader;
   friend class DexFileVerifierTest;
