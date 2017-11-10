@@ -392,8 +392,10 @@ class LSEVisitor : public HGraphDelegateVisitor {
     if (Equal(heap_value, value)) {
       // Store into the heap location with the same value.
       same_value = true;
-    } else if (index != nullptr && ref_info->HasIndexAliasing()) {
-      // For array element, don't eliminate stores if the index can be aliased.
+    } else if (index != nullptr &&
+               heap_location_collector_.GetHeapLocation(idx)->HasAliasedLocations()) {
+      // For array element, don't eliminate stores if the location can be aliased
+      // (due to either ref or index aliasing).
     } else if (ref_info->IsSingleton()) {
       // Store into a field/element of a singleton. The value cannot be killed due to
       // aliasing/invocation. It can be redundant since future loads can
