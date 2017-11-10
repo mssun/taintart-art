@@ -45,16 +45,34 @@ art_cc_library {
     shared_libs: ["libartd"],
 }
 
-art_cc_binary {
-    name: "dexlayout",
+cc_defaults {
+    name: "dexlayout-defaults",
     defaults: ["art_defaults"],
     host_supported: true,
     srcs: ["dexlayout_main.cc"],
-    cflags: ["-Wall"],
+    shared_libs: [
+        "libbase",
+    ],
+}
+
+art_cc_binary {
+    name: "dexlayout",
+    defaults: ["dexlayout-defaults"],
     shared_libs: [
         "libart",
         "libart-dexlayout",
-        "libbase",
+    ],
+}
+
+art_cc_binary {
+    name: "dexlayoutd",
+    defaults: [
+        "art_debug_defaults",
+        "dexlayout-defaults",
+    ],
+    shared_libs: [
+        "libartd",
+        "libartd-dexlayout",
     ],
 }
 
