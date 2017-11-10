@@ -35,14 +35,12 @@ class MANAGED EmulatedStackFrame : public Object {
  public:
   // Creates an emulated stack frame whose type is |frame_type| from
   // a shadow frame.
-  template <bool is_range>
   static mirror::EmulatedStackFrame* CreateFromShadowFrameAndArgs(
       Thread* self,
       Handle<mirror::MethodType> args_type,
       Handle<mirror::MethodType> frame_type,
       const ShadowFrame& caller_frame,
-      const uint32_t first_src_reg,
-      const uint32_t (&arg)[Instruction::kMaxVarArgRegs]) REQUIRES_SHARED(Locks::mutator_lock_);
+      const InstructionOperands* const operands) REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Writes the contents of this emulated stack frame to the |callee_frame|
   // whose type is |callee_type|, starting at |first_dest_reg|.

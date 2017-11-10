@@ -689,6 +689,53 @@ std::ostream& operator<<(std::ostream& os, const Instruction::Format& format);
 std::ostream& operator<<(std::ostream& os, const Instruction::Flags& flags);
 std::ostream& operator<<(std::ostream& os, const Instruction::VerifyFlag& vflags);
 
+// Base class for accessing instruction operands. Unifies operand
+// access for instructions that have range and varargs forms
+// (e.g. invoke-polymoprhic/range and invoke-polymorphic).
+class InstructionOperands {
+ public:
+  explicit InstructionOperands(size_t num_operands) : num_operands_(num_operands) {}
+  virtual ~InstructionOperands() {}
+  virtual uint32_t GetOperand(size_t index) const = 0;
+  size_t GetNumberOfOperands() const { return num_operands_; }
+
+ private:
+  size_t num_operands_;
+
+  DISALLOW_IMPLICIT_CONSTRUCTORS(InstructionOperands);
+};
+
+// Class for accessing operands for instructions with a range format
+// (e.g. 3rc and 4rcc).
+class RangeInstructionOperands FINAL : public InstructionOperands {
+ public:
+  RangeInstructionOperands(uint32_t first_operand, size_t num_operands)
+      : InstructionOperands(num_operands), first_operand_(first_operand) {}
+  ~RangeInstructionOperands() {}
+  uint32_t GetOperand(size_t operand_index) const OVERRIDE;
+
+ private:
+  const uint32_t first_operand_;
+
+  DISALLOW_IMPLICIT_CONSTRUCTORS(RangeInstructionOperands);
+};
+
+// Class for accessing operands for instructions with a variable
+// number of arguments format (e.g. 35c and 45cc).
+class VarArgsInstructionOperands FINAL : public InstructionOperands {
+ public:
+  VarArgsInstructionOperands(const uint32_t (&operands)[Instruction::kMaxVarArgRegs],
+                             size_t num_operands)
+      : InstructionOperands(num_operands), operands_(operands) {}
+  ~VarArgsInstructionOperands() {}
+  uint32_t GetOperand(size_t operand_index) const OVERRIDE;
+
+ private:
+  const uint32_t (&operands_)[Instruction::kMaxVarArgRegs];
+
+  DISALLOW_IMPLICIT_CONSTRUCTORS(VarArgsInstructionOperands);
+};
+
 }  // namespace art
 
 #endif  // ART_RUNTIME_DEX_INSTRUCTION_H_

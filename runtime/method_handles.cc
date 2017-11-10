@@ -299,17 +299,14 @@ bool ConvertJValueCommon(
 
 namespace {
 
-template <bool is_range>
 inline void CopyArgumentsFromCallerFrame(const ShadowFrame& caller_frame,
                                          ShadowFrame* callee_frame,
-                                         const uint32_t (&args)[Instruction::kMaxVarArgRegs],
-                                         uint32_t first_arg,
-                                         const size_t first_dst_reg,
-                                         const size_t num_regs)
+                                         const InstructionOperands* const operands,
+                                         const size_t first_dst_reg)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  for (size_t i = 0; i < num_regs; ++i) {
+  for (size_t i = 0; i < operands->GetNumberOfOperands(); ++i) {
     size_t dst_reg = first_dst_reg + i;
-    size_t src_reg = is_range ? (first_arg + i) : args[i];
+    size_t src_reg = operands->GetOperand(i);
     // Uint required, so that sign extension does not make this wrong on 64-bit systems
     uint32_t src_value = caller_frame.GetVReg(src_reg);
     ObjPtr<mirror::Object> o = caller_frame.GetVRegReference<kVerifyNone>(src_reg);
@@ -324,15 +321,13 @@ inline void CopyArgumentsFromCallerFrame(const ShadowFrame& caller_frame,
   }
 }
 
-template <bool is_range>
 inline bool ConvertAndCopyArgumentsFromCallerFrame(
     Thread* self,
     Handle<mirror::MethodType> callsite_type,
     Handle<mirror::MethodType> callee_type,
     const ShadowFrame& caller_frame,
-    const uint32_t (&args)[Instruction::kMaxVarArgRegs],
-    uint32_t first_arg,
-    uint32_t first_dst_reg,
+    uint32_t first_dest_reg,
+    const InstructionOperands* const operands,
     ShadowFrame* callee_frame)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ObjPtr<mirror::ObjectArray<mirror::Class>> from_types(callsite_type->GetPTypes());
@@ -344,15 +339,14 @@ inline bool ConvertAndCopyArgumentsFromCallerFrame(
     return false;
   }
 
-  ShadowFrameGetter<is_range> getter(first_arg, args, caller_frame);
-  ShadowFrameSetter setter(callee_frame, first_dst_reg);
-
-  return PerformConversions<ShadowFrameGetter<is_range>, ShadowFrameSetter>(self,
-                                                                            callsite_type,
-                                                                            callee_type,
-                                                                            &getter,
-                                                                            &setter,
-                                                                            num_method_params);
+  ShadowFrameGetter getter(operands, caller_frame);
+  ShadowFrameSetter setter(callee_frame, first_dest_reg);
+  return PerformConversions<ShadowFrameGetter, ShadowFrameSetter>(self,
+                                                                  callsite_type,
+                                                                  callee_type,
+                                                                  &getter,
+                                                                  &setter,
+                                                                  num_method_params);
 }
 
 inline bool IsInvoke(const mirror::MethodHandle::Kind handle_kind) {
@@ -406,14 +400,12 @@ static inline bool IsCallerTransformer(Handle<mirror::MethodType> callsite_type)
   return false;
 }
 
-template <bool is_range>
 static inline bool MethodHandleInvokeMethod(ArtMethod* called_method,
                                             Handle<mirror::MethodType> callsite_type,
                                             Handle<mirror::MethodType> target_type,
                                             Thread* self,
                                             ShadowFrame& shadow_frame,
-                                            const uint32_t (&args)[Instruction::kMaxVarArgRegs],
-                                            uint32_t first_arg,
+                                            const InstructionOperands* const operands,
                                             JValue* result) REQUIRES_SHARED(Locks::mutator_lock_) {
   // Compute method information.
   const DexFile::CodeItem* code_item = called_method->GetCodeItem();
@@ -455,12 +447,10 @@ static inline bool MethodHandleInvokeMethod(ArtMethod* called_method,
     if (callsite_type->IsExactMatch(target_type.Get())) {
       // This is an exact invoke, we can take the fast path of just copying all
       // registers without performing any argument conversions.
-      CopyArgumentsFromCallerFrame<is_range>(shadow_frame,
-                                             new_shadow_frame,
-                                             args,
-                                             first_arg,
-                                             first_dest_reg,
-                                             num_input_regs);
+      CopyArgumentsFromCallerFrame(shadow_frame,
+                                   new_shadow_frame,
+                                   operands,
+                                   first_dest_reg);
     } else {
       // This includes the case where we're entering this invoke-polymorphic
       // from a transformer method. In that case, the callsite_type will contain
@@ -471,7 +461,7 @@ static inline bool MethodHandleInvokeMethod(ArtMethod* called_method,
         is_caller_transformer = true;
         // The emulated stack frame is the first and only argument when we're coming
         // through from a transformer.
-        size_t first_arg_register = (is_range) ? first_arg : args[0];
+        size_t first_arg_register = operands->GetOperand(0);
         ObjPtr<mirror::EmulatedStackFrame> emulated_stack_frame(
             reinterpret_cast<mirror::EmulatedStackFrame*>(
                 shadow_frame.GetVRegReference(first_arg_register)));
@@ -488,14 +478,13 @@ static inline bool MethodHandleInvokeMethod(ArtMethod* called_method,
           ThrowWrongMethodTypeException(target_type.Get(), callsite_type.Get());
           return false;
         }
-        if (!ConvertAndCopyArgumentsFromCallerFrame<is_range>(self,
-                                                              callsite_type,
-                                                              target_type,
-                                                              shadow_frame,
-                                                              args,
-                                                              first_arg,
-                                                              first_dest_reg,
-                                                              new_shadow_frame)) {
+        if (!ConvertAndCopyArgumentsFromCallerFrame(self,
+                                                    callsite_type,
+                                                    target_type,
+                                                    shadow_frame,
+                                                    first_dest_reg,
+                                                    operands,
+                                                    new_shadow_frame)) {
           DCHECK(self->IsExceptionPending());
           result->SetL(0);
           return false;
@@ -521,7 +510,7 @@ static inline bool MethodHandleInvokeMethod(ArtMethod* called_method,
   // we need to copy the result back out to the emulated stack frame.
   if (is_caller_transformer) {
     StackHandleScope<2> hs(self);
-    size_t first_callee_register = is_range ? (first_arg) : args[0];
+    size_t first_callee_register = operands->GetOperand(0);
     Handle<mirror::EmulatedStackFrame> emulated_stack_frame(
         hs.NewHandle(reinterpret_cast<mirror::EmulatedStackFrame*>(
             shadow_frame.GetVRegReference(first_callee_register))));
@@ -541,15 +530,13 @@ static inline bool MethodHandleInvokeMethod(ArtMethod* called_method,
   return ConvertReturnValue(callsite_type, target_type, result);
 }
 
-template <bool is_range>
 static inline bool MethodHandleInvokeTransform(ArtMethod* called_method,
                                                Handle<mirror::MethodType> callsite_type,
                                                Handle<mirror::MethodType> callee_type,
                                                Thread* self,
                                                ShadowFrame& shadow_frame,
                                                Handle<mirror::MethodHandle> receiver,
-                                               const uint32_t (&args)[Instruction::kMaxVarArgRegs],
-                                               uint32_t first_arg,
+                                               const InstructionOperands* const operands,
                                                JValue* result)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   // This can be fixed to two, because the method we're calling here
@@ -578,16 +565,15 @@ static inline bool MethodHandleInvokeTransform(ArtMethod* called_method,
     // If we're entering this transformer from another transformer, we can pass
     // through the handle directly to the callee, instead of having to
     // instantiate a new stack frame based on the shadow frame.
-    size_t first_callee_register = is_range ? first_arg : args[0];
+    size_t first_callee_register = operands->GetOperand(0);
     sf.Assign(reinterpret_cast<mirror::EmulatedStackFrame*>(
         shadow_frame.GetVRegReference(first_callee_register)));
   } else {
-    sf.Assign(mirror::EmulatedStackFrame::CreateFromShadowFrameAndArgs<is_range>(self,
-                                                                                 callsite_type,
-                                                                                 callee_type,
-                                                                                 shadow_frame,
-                                                                                 first_arg,
-                                                                                 args));
+    sf.Assign(mirror::EmulatedStackFrame::CreateFromShadowFrameAndArgs(self,
+                                                                       callsite_type,
+                                                                       callee_type,
+                                                                       shadow_frame,
+                                                                       operands));
 
     // Something went wrong while creating the emulated stack frame, we should
     // throw the pending exception.
@@ -699,13 +685,11 @@ ArtMethod* RefineTargetMethod(Thread* self,
   return target_method;
 }
 
-template <bool is_range>
 bool DoInvokePolymorphicMethod(Thread* self,
                                ShadowFrame& shadow_frame,
                                Handle<mirror::MethodHandle> method_handle,
                                Handle<mirror::MethodType> callsite_type,
-                               const uint32_t (&args)[Instruction::kMaxVarArgRegs],
-                               uint32_t first_arg,
+                               const InstructionOperands* const operands,
                                JValue* result)
   REQUIRES_SHARED(Locks::mutator_lock_) {
   StackHandleScope<1> hs(self);
@@ -718,7 +702,7 @@ bool DoInvokePolymorphicMethod(Thread* self,
   // point because they would have been performed on our behalf at the point
   // of creation of the method handle.
   ArtMethod* target_method = method_handle->GetTargetMethod();
-  uint32_t receiver_reg = is_range ? first_arg: args[0];
+  uint32_t receiver_reg = (operands->GetNumberOfOperands() > 0) ? operands->GetOperand(0) : 0u;
   ArtMethod* called_method = RefineTargetMethod(self,
                                                 shadow_frame,
                                                 handle_kind,
@@ -743,24 +727,22 @@ bool DoInvokePolymorphicMethod(Thread* self,
     Handle<mirror::MethodType> callee_type =
         (handle_kind == mirror::MethodHandle::Kind::kInvokeCallSiteTransform) ? callsite_type
         : handle_type;
-    return MethodHandleInvokeTransform<is_range>(called_method,
-                                                 callsite_type,
-                                                 callee_type,
-                                                 self,
-                                                 shadow_frame,
-                                                 method_handle /* receiver */,
-                                                 args,
-                                                 first_arg,
-                                                 result);
+    return MethodHandleInvokeTransform(called_method,
+                                       callsite_type,
+                                       callee_type,
+                                       self,
+                                       shadow_frame,
+                                       method_handle /* receiver */,
+                                       operands,
+                                       result);
   } else {
-    return MethodHandleInvokeMethod<is_range>(called_method,
-                                              callsite_type,
-                                              handle_type,
-                                              self,
-                                              shadow_frame,
-                                              args,
-                                              first_arg,
-                                              result);
+    return MethodHandleInvokeMethod(called_method,
+                                    callsite_type,
+                                    handle_type,
+                                    self,
+                                    shadow_frame,
+                                    operands,
+                                    result);
   }
 }
 
@@ -884,23 +866,21 @@ static JValue GetValueFromShadowFrame(const ShadowFrame& shadow_frame,
   return field_value;
 }
 
-template <bool is_range, bool do_conversions>
+template <bool do_conversions>
 bool MethodHandleFieldAccess(Thread* self,
                              ShadowFrame& shadow_frame,
                              Handle<mirror::MethodHandle> method_handle,
                              Handle<mirror::MethodType> callsite_type,
-                             const uint32_t (&args)[Instruction::kMaxVarArgRegs],
-                             uint32_t first_arg,
+                             const InstructionOperands* const operands,
                              JValue* result) REQUIRES_SHARED(Locks::mutator_lock_) {
   StackHandleScope<1> hs(self);
   Handle<mirror::MethodType> handle_type(hs.NewHandle(method_handle->GetMethodType()));
   const mirror::MethodHandle::Kind handle_kind = method_handle->GetHandleKind();
   ArtField* field = method_handle->GetTargetField();
   Primitive::Type field_type = field->GetTypeAsPrimitiveType();
-
   switch (handle_kind) {
     case mirror::MethodHandle::kInstanceGet: {
-      size_t obj_reg = is_range ? first_arg : args[0];
+      size_t obj_reg = operands->GetOperand(0);
       ObjPtr<mirror::Object> obj = shadow_frame.GetVRegReference(obj_reg);
       MethodHandleFieldGet(self, shadow_frame, obj, field, field_type, result);
       if (do_conversions && !ConvertReturnValue(callsite_type, handle_type, result)) {
@@ -923,8 +903,8 @@ bool MethodHandleFieldAccess(Thread* self,
       return true;
     }
     case mirror::MethodHandle::kInstancePut: {
-      size_t obj_reg = is_range ? first_arg : args[0];
-      size_t value_reg = is_range ? (first_arg + 1) : args[1];
+      size_t obj_reg = operands->GetOperand(0);
+      size_t value_reg = operands->GetOperand(1);
       const size_t kPTypeIndex = 1;
       // Use ptypes instead of field type since we may be unboxing a reference for a primitive
       // field. The field type is incorrect for this case.
@@ -948,7 +928,7 @@ bool MethodHandleFieldAccess(Thread* self,
         DCHECK(self->IsExceptionPending());
         return false;
       }
-      size_t value_reg = is_range ? first_arg : args[0];
+      size_t value_reg = operands->GetOperand(0);
       const size_t kPTypeIndex = 0;
       // Use ptypes instead of field type since we may be unboxing a reference for a primitive
       // field. The field type is incorrect for this case.
@@ -971,13 +951,11 @@ bool MethodHandleFieldAccess(Thread* self,
   }
 }
 
-template <bool is_range>
 static inline bool MethodHandleInvokeInternal(Thread* self,
                                               ShadowFrame& shadow_frame,
                                               Handle<mirror::MethodHandle> method_handle,
                                               Handle<mirror::MethodType> callsite_type,
-                                              const uint32_t (&args)[Instruction::kMaxVarArgRegs],
-                                              uint32_t first_arg,
+                                              const InstructionOperands* const operands,
                                               JValue* result)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   const mirror::MethodHandle::Kind handle_kind = method_handle->GetHandleKind();
@@ -989,32 +967,28 @@ static inline bool MethodHandleInvokeInternal(Thread* self,
       return false;
     }
     const bool do_convert = true;
-    return MethodHandleFieldAccess<is_range, do_convert>(
+    return MethodHandleFieldAccess<do_convert>(
         self,
         shadow_frame,
         method_handle,
         callsite_type,
-        args,
-        first_arg,
+        operands,
         result);
   }
-  return DoInvokePolymorphicMethod<is_range>(self,
-                                             shadow_frame,
-                                             method_handle,
-                                             callsite_type,
-                                             args,
-                                             first_arg,
-                                             result);
+  return DoInvokePolymorphicMethod(self,
+                                   shadow_frame,
+                                   method_handle,
+                                   callsite_type,
+                                   operands,
+                                   result);
 }
 
-template <bool is_range>
 static inline bool MethodHandleInvokeExactInternal(
     Thread* self,
     ShadowFrame& shadow_frame,
     Handle<mirror::MethodHandle> method_handle,
     Handle<mirror::MethodType> callsite_type,
-    const uint32_t (&args)[Instruction::kMaxVarArgRegs],
-    uint32_t first_arg,
+    const InstructionOperands* const operands,
     JValue* result)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   StackHandleScope<1> hs(self);
@@ -1027,29 +1001,27 @@ static inline bool MethodHandleInvokeExactInternal(
   const mirror::MethodHandle::Kind handle_kind = method_handle->GetHandleKind();
   if (IsFieldAccess(handle_kind)) {
     const bool do_convert = false;
-    return MethodHandleFieldAccess<is_range, do_convert>(self,
-                                                         shadow_frame,
-                                                         method_handle,
-                                                         callsite_type,
-                                                         args,
-                                                         first_arg,
-                                                         result);
+    return MethodHandleFieldAccess<do_convert>(self,
+                                               shadow_frame,
+                                               method_handle,
+                                               callsite_type,
+                                               operands,
+                                               result);
   }
 
   // Slow-path check.
   if (IsInvokeTransform(handle_kind) || IsCallerTransformer(callsite_type)) {
-    return DoInvokePolymorphicMethod<is_range>(self,
-                                               shadow_frame,
-                                               method_handle,
-                                               callsite_type,
-                                               args,
-                                               first_arg,
-                                               result);
+    return DoInvokePolymorphicMethod(self,
+                                     shadow_frame,
+                                     method_handle,
+                                     callsite_type,
+                                     operands,
+                                     result);
   }
 
   // On the fast-path. This is equivalent to DoCallPolymoprhic without the conversion paths.
   ArtMethod* target_method = method_handle->GetTargetMethod();
-  uint32_t receiver_reg = is_range ? first_arg : args[0];
+  uint32_t receiver_reg = (operands->GetNumberOfOperands() > 0) ? operands->GetOperand(0) : 0u;
   ArtMethod* called_method = RefineTargetMethod(self,
                                                 shadow_frame,
                                                 handle_kind,
@@ -1085,12 +1057,10 @@ static inline bool MethodHandleInvokeExactInternal(
   ShadowFrameAllocaUniquePtr shadow_frame_unique_ptr =
       CREATE_SHADOW_FRAME(num_regs, &shadow_frame, called_method, /* dex pc */ 0);
   ShadowFrame* new_shadow_frame = shadow_frame_unique_ptr.get();
-  CopyArgumentsFromCallerFrame<is_range>(shadow_frame,
-                                         new_shadow_frame,
-                                         args,
-                                         first_arg,
-                                         first_dest_reg,
-                                         num_input_regs);
+  CopyArgumentsFromCallerFrame(shadow_frame,
+                               new_shadow_frame,
+                               operands,
+                               first_dest_reg);
   self->EndAssertNoThreadSuspension(old_cause);
 
   bool use_interpreter_entrypoint = ClassLinker::ShouldUseInterpreterEntrypoint(
@@ -1110,43 +1080,37 @@ static inline bool MethodHandleInvokeExactInternal(
 
 }  // namespace
 
-template <bool is_range>
-inline bool MethodHandleInvoke(Thread* self,
-                                 ShadowFrame& shadow_frame,
-                                 Handle<mirror::MethodHandle> method_handle,
-                                 Handle<mirror::MethodType> callsite_type,
-                                 const uint32_t (&args)[Instruction::kMaxVarArgRegs],
-                                 uint32_t first_arg,
-                                 JValue* result)
+bool MethodHandleInvoke(Thread* self,
+                       ShadowFrame& shadow_frame,
+                       Handle<mirror::MethodHandle> method_handle,
+                       Handle<mirror::MethodType> callsite_type,
+                       const InstructionOperands* const operands,
+                       JValue* result)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   if (UNLIKELY(callsite_type->IsExactMatch(method_handle->GetMethodType()))) {
     // A non-exact invoke that can be invoked exactly.
-    return MethodHandleInvokeExactInternal<is_range>(self,
-                                                     shadow_frame,
-                                                     method_handle,
-                                                     callsite_type,
-                                                     args,
-                                                     first_arg,
-                                                     result);
+    return MethodHandleInvokeExactInternal(self,
+                                           shadow_frame,
+                                           method_handle,
+                                           callsite_type,
+                                           operands,
+                                           result);
   } else {
-    return MethodHandleInvokeInternal<is_range>(self,
-                                                shadow_frame,
-                                                method_handle,
-                                                callsite_type,
-                                                args,
-                                                first_arg,
-                                                result);
+    return MethodHandleInvokeInternal(self,
+                                      shadow_frame,
+                                      method_handle,
+                                      callsite_type,
+                                      operands,
+                                      result);
   }
 }
 
-template <bool is_range>
 bool MethodHandleInvokeExact(Thread* self,
-                               ShadowFrame& shadow_frame,
-                               Handle<mirror::MethodHandle> method_handle,
-                               Handle<mirror::MethodType> callsite_type,
-                               const uint32_t (&args)[Instruction::kMaxVarArgRegs],
-                               uint32_t first_arg,
-                               JValue* result)
+                             ShadowFrame& shadow_frame,
+                             Handle<mirror::MethodHandle> method_handle,
+                             Handle<mirror::MethodType> callsite_type,
+                             const InstructionOperands* const operands,
+                             JValue* result)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   // We need to check the nominal type of the handle in addition to the
   // real type. The "nominal" type is present when MethodHandle.asType is
@@ -1160,39 +1124,20 @@ bool MethodHandleInvokeExact(Thread* self,
     }
     if (LIKELY(!nominal_type->IsExactMatch(method_handle->GetMethodType()))) {
       // Different nominal type means we have to treat as non-exact.
-      return MethodHandleInvokeInternal<is_range>(self,
-                                           shadow_frame,
-                                           method_handle,
-                                           callsite_type,
-                                           args,
-                                           first_arg,
-                                           result);
+      return MethodHandleInvokeInternal(self,
+                                        shadow_frame,
+                                        method_handle,
+                                        callsite_type,
+                                        operands,
+                                        result);
     }
   }
-  return MethodHandleInvokeExactInternal<is_range>(self,
-                                                   shadow_frame,
-                                                   method_handle,
-                                                   callsite_type,
-                                                   args,
-                                                   first_arg,
-                                                   result);
+  return MethodHandleInvokeExactInternal(self,
+                                         shadow_frame,
+                                         method_handle,
+                                         callsite_type,
+                                         operands,
+                                         result);
 }
-
-#define EXPLICIT_DO_METHOD_HANDLE_METHOD(_name, _is_range)       \
-  template REQUIRES_SHARED(Locks::mutator_lock_)                 \
-  bool MethodHandle##_name<_is_range>(                           \
-      Thread* self,                                              \
-      ShadowFrame& shadow_frame,                                 \
-      Handle<mirror::MethodHandle> method_handle,                \
-      Handle<mirror::MethodType> callsite_type,                  \
-      const uint32_t (&args)[Instruction::kMaxVarArgRegs],       \
-      uint32_t first_arg,                                        \
-      JValue* result)
-
-EXPLICIT_DO_METHOD_HANDLE_METHOD(Invoke, true);
-EXPLICIT_DO_METHOD_HANDLE_METHOD(Invoke, false);
-EXPLICIT_DO_METHOD_HANDLE_METHOD(InvokeExact, true);
-EXPLICIT_DO_METHOD_HANDLE_METHOD(InvokeExact, false);
-#undef EXPLICIT_DO_METHOD_HANDLE_METHOD
 
 }  // namespace art
