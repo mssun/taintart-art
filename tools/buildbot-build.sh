@@ -35,7 +35,7 @@ fi
 using_jack=$(get_build_var ANDROID_COMPILE_WITH_JACK)
 
 java_libraries_dir=${out_dir}/target/common/obj/JAVA_LIBRARIES
-common_targets="vogar core-tests apache-harmony-jdwp-tests-hostdex jsr166-tests mockito-target libjdwp"
+common_targets="vogar core-tests apache-harmony-jdwp-tests-hostdex jsr166-tests mockito-target"
 mode="target"
 j_arg="-j$(nproc)"
 showcommands=
@@ -70,16 +70,23 @@ fi
 extra_args=SOONG_ALLOW_MISSING_DEPENDENCIES=true
 
 if [[ $mode == "host" ]]; then
-  make_command="make $j_arg $extra_args $showcommands build-art-host-tests $common_targets dx-tests"
-  make_command+=" ${out_dir}/host/linux-x86/lib/libjavacoretests.so "
-  make_command+=" ${out_dir}/host/linux-x86/lib64/libjavacoretests.so"
-  make_command+=" libwrapagentpropertiesd libwrapagentproperties"
+  make_command="make $j_arg $extra_args $showcommands build-art-host-tests $common_targets"
+  make_command+=" dx-tests"
+  mode_suffix="-host"
 elif [[ $mode == "target" ]]; then
   make_command="make $j_arg $extra_args $showcommands build-art-target-tests $common_targets"
-  make_command+=" libjavacrypto libjavacoretests libnetd_client linker toybox toolbox sh"
+  make_command+=" libjavacrypto-target libnetd_client-target linker toybox toolbox sh"
   make_command+=" ${out_dir}/host/linux-x86/bin/adb libstdc++ "
   make_command+=" ${out_dir}/target/product/${TARGET_PRODUCT}/system/etc/public.libraries.txt"
+  mode_suffix="-target"
 fi
+
+mode_specific_libraries="libjavacoretests libjdwp libwrapagentproperties libwrapagentpropertiesd"
+for LIB in ${mode_specific_libraries} ; do
+  make_command+=" $LIB${mode_suffix}"
+done
+
+
 
 echo "Executing $make_command"
 $make_command
