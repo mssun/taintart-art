@@ -91,5 +91,11 @@
            "org.apache.harmony.jpda.tests.jdwp.ThreadGroupReference.NameTest#testName001_NullObject",
            "org.apache.harmony.jpda.tests.jdwp.ThreadGroupReference.ParentTest#testParent_NullObject",
            "org.apache.harmony.jpda.tests.jdwp.VirtualMachine.CapabilitiesNewTest#testCapabilitiesNew001" ]
+},
+{
+  description: "Test is flaky",
+  result: EXEC_FAILED,
+  bug: 69121056,
+  name: "org.apache.harmony.jpda.tests.jdwp.ObjectReference.IsCollectedTest#testIsCollected001"
 }
 ]
