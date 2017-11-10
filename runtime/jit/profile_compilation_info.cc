@@ -1034,7 +1034,7 @@ ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::ReadProfileLine
     return kProfileLoadBadData;
   }
   const uint8_t* base_ptr = buffer.GetCurrentPtr();
-  std::copy_n(base_ptr, bytes, &data->bitmap_storage[0]);
+  std::copy_n(base_ptr, bytes, data->bitmap_storage.data());
   buffer.Advance(bytes);
   // Read method bitmap.
   return kProfileLoadSuccess;
