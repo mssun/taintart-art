@@ -5176,6 +5176,7 @@ bool ClassLinker::LinkFields(Thread* self, Handle<mirror::Class> klass, bool is_
     field->SetOffset(field_offset);
     field_offset = MemberOffset(field_offset.Uint32Value() +
                                 sizeof(mirror::HeapReference<mirror::Object>));
+    // VLOG(taintart) << "field_offset: " << field_offset;
   }
   // Gaps are stored as a max heap which means that we must shuffle from largest to smallest
   // otherwise we could end up with suboptimal gap fills.

@@ -44,8 +44,13 @@ static constexpr int kCurrentMethodStackOffset = 0;
 // We unconditionally allocate R5 to ensure we can do long operations
 // with baseline.
 static constexpr Register kCoreSavedRegisterForBaseline = R5;
+#ifdef WITH_TAINTART
+static constexpr Register kCoreCalleeSaves[] =
+    { R6, R7, R8, R10, R11, PC };
+#else
 static constexpr Register kCoreCalleeSaves[] =
     { R5, R6, R7, R8, R10, R11, PC };
+#endif
 static constexpr SRegister kFpuCalleeSaves[] =
     { S16, S17, S18, S19, S20, S21, S22, S23, S24, S25, S26, S27, S28, S29, S30, S31 };
 
@@ -55,6 +60,45 @@ static constexpr DRegister DTMP = D31;
 
 #define __ reinterpret_cast<ArmAssembler*>(codegen->GetAssembler())->
 #define QUICK_ENTRY_POINT(x) QUICK_ENTRYPOINT_OFFSET(kArmWordSize, x).Int32Value()
+#define UNARY_TAINT_PROPAGATION(out, in, temp)                  \
+  do {                                                          \
+    __  mov(temp, ShifterOperand(R5));                          \
+    __  and_(temp, temp, ShifterOperand((3 << (in * 2))));      \
+    if ((out - in) * 2 > 0) {                                   \
+      __  mov(temp, ShifterOperand(temp, LSL, (out - in) * 2)); \
+    } else if ((out - in) * 2 < 0) {                            \
+      __  mov(temp, ShifterOperand(temp, LSR, (in - out) * 2)); \
+    }                                                           \
+    __ bic(R5, R5, ShifterOperand(3 << (out * 2)));             \
+    __ orr(R5, R5, ShifterOperand(temp));                       \
+  } while (0)
+
+#define BINARY_TAINT_PROPAGATION(out, first, second, temp1, temp2)  \
+  do {                                                              \
+    __ and_(temp1, R5, ShifterOperand(3 << (first * 2) ));          \
+    if (first != 0) {                                               \
+      __ mov(temp1, ShifterOperand(temp1, LSR, first * 2));         \
+    }                                                               \
+    __ and_(temp2, R5, ShifterOperand(3 << (second * 2) ));         \
+    if (second != 0) {                                              \
+      __ mov(temp2, ShifterOperand(temp2, LSR, second * 2));        \
+    }                                                               \
+    __ cmp(temp1, ShifterOperand(temp2));                           \
+    __ it(Condition::GT, kItElse);                                  \
+    __ mov(temp1, ShifterOperand(temp1), Condition::GT);            \
+    __ mov(temp1, ShifterOperand(temp2), Condition::LE);            \
+    __ bic(R5, R5, ShifterOperand(3 << (out * 2)));                 \
+    if (out != 0) {                                                 \
+      __ mov(temp2, ShifterOperand(temp1, LSL, out *  2));          \
+    }                                                               \
+    __ orr(R5, R5, ShifterOperand(temp2));                          \
+  } while (0)
+
+#define CLEAR_TAINT(dest) \
+  __ bic(R5, R5, ShifterOperand(3 << (dest * 2)));
+
+#define WITH_TAINTART
+
 
 class NullCheckSlowPathARM : public SlowPathCodeARM {
  public:
@@ -462,12 +506,18 @@ void CodeGeneratorARM::SetupBlockedRegisters(bool is_baseline) const {
   // Reserve temp register.
   blocked_core_registers_[IP] = true;
 
+  // Reserve R5 for taint storage
+  blocked_core_registers_[R5] = true;
+
   if (is_baseline) {
     for (size_t i = 0; i < arraysize(kCoreCalleeSaves); ++i) {
       blocked_core_registers_[kCoreCalleeSaves[i]] = true;
     }
 
+#ifdef WITH_TAINTART
+#else
     blocked_core_registers_[kCoreSavedRegisterForBaseline] = false;
+#endif
 
     for (size_t i = 0; i < arraysize(kFpuCalleeSaves); ++i) {
       blocked_fpu_registers_[kFpuCalleeSaves[i]] = true;
@@ -554,6 +604,9 @@ void CodeGeneratorARM::GenerateFrameEntry() {
   __ AddConstant(SP, -adjust);
   __ cfi().AdjustCFAOffset(adjust);
   __ StoreToOffset(kStoreWord, R0, SP, 0);
+#ifdef WITH_TAINTART
+  __ mov(R5, ShifterOperand(0));
+#endif
 }
 
 void CodeGeneratorARM::GenerateFrameExit() {
@@ -1945,6 +1998,9 @@ void LocationsBuilderARM::VisitAdd(HAdd* add) {
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RegisterOrConstant(add->InputAt(1)));
       locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
+#ifdef WITH_TAINTART
+      locations->AddTemp(Location::RequiresRegister());
+#endif
       break;
     }
 
@@ -1974,17 +2030,27 @@ void InstructionCodeGeneratorARM::VisitAdd(HAdd* add) {
   Location first = locations->InAt(0);
   Location second = locations->InAt(1);
   switch (add->GetResultType()) {
-    case Primitive::kPrimInt:
+    case Primitive::kPrimInt: {
+#ifdef WITH_TAINTART
+      Register temp1 = locations->GetTemp(0).AsRegister<Register>();
+#endif
       if (second.IsRegister()) {
         __ add(out.AsRegister<Register>(),
                first.AsRegister<Register>(),
                ShifterOperand(second.AsRegister<Register>()));
+#ifdef WITH_TAINTART
+        BINARY_TAINT_PROPAGATION(out.AsRegister<Register>(), first.AsRegister<Register>(), second.AsRegister<Register>(), temp1, IP);
+#endif
       } else {
         __ AddConstant(out.AsRegister<Register>(),
                        first.AsRegister<Register>(),
                        second.GetConstant()->AsIntConstant()->GetValue());
+#ifdef WITH_TAINTART
+        UNARY_TAINT_PROPAGATION(out.AsRegister<Register>(), first.AsRegister<Register>(), IP);
+#endif
       }
       break;
+    }
 
     case Primitive::kPrimLong: {
       DCHECK(second.IsRegisterPair());
@@ -2022,6 +2088,11 @@ void LocationsBuilderARM::VisitSub(HSub* sub) {
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RegisterOrConstant(sub->InputAt(1)));
       locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
+
+#ifdef WITH_TAINTART
+      locations->AddTemp(Location::RequiresRegister());
+#endif
+
       break;
     }
 
@@ -2050,14 +2121,23 @@ void InstructionCodeGeneratorARM::VisitSub(HSub* sub) {
   Location second = locations->InAt(1);
   switch (sub->GetResultType()) {
     case Primitive::kPrimInt: {
+#ifdef WITH_TAINTART
+      Register temp1 = locations->GetTemp(0).AsRegister<Register>();
+#endif
       if (second.IsRegister()) {
         __ sub(out.AsRegister<Register>(),
                first.AsRegister<Register>(),
                ShifterOperand(second.AsRegister<Register>()));
+#ifdef WITH_TAINTART
+        BINARY_TAINT_PROPAGATION(out.AsRegister<Register>(), first.AsRegister<Register>(), second.AsRegister<Register>(), temp1, IP);
+#endif
       } else {
         __ AddConstant(out.AsRegister<Register>(),
                        first.AsRegister<Register>(),
                        -second.GetConstant()->AsIntConstant()->GetValue());
+#ifdef WITH_TAINTART
+        UNARY_TAINT_PROPAGATION(out.AsRegister<Register>(), first.AsRegister<Register>(), IP);
+#endif
       }
       break;
     }
@@ -2102,6 +2182,9 @@ void LocationsBuilderARM::VisitMul(HMul* mul) {
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RequiresRegister());
       locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
+#ifdef WITH_TAINTART
+      locations->AddTemp(Location::RequiresRegister());
+#endif
       break;
     }
 
@@ -2128,6 +2211,10 @@ void InstructionCodeGeneratorARM::VisitMul(HMul* mul) {
       __ mul(out.AsRegister<Register>(),
              first.AsRegister<Register>(),
              second.AsRegister<Register>());
+#ifdef WITH_TAINTART
+      Register temp1 = locations->GetTemp(0).AsRegister<Register>();
+      BINARY_TAINT_PROPAGATION(out.AsRegister<Register>(), first.AsRegister<Register>(), second.AsRegister<Register>(), temp1, IP);
+#endif
       break;
     }
     case Primitive::kPrimLong: {
@@ -2199,6 +2286,9 @@ void LocationsBuilderARM::VisitDiv(HDiv* div) {
         locations->SetInAt(0, Location::RequiresRegister());
         locations->SetInAt(1, Location::RequiresRegister());
         locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
+#ifdef WITH_TAINTART
+        locations->AddTemp(Location::RequiresRegister());
+#endif
       } else {
         InvokeRuntimeCallingConvention calling_convention;
         locations->SetInAt(0, Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
@@ -2243,6 +2333,10 @@ void InstructionCodeGeneratorARM::VisitDiv(HDiv* div) {
         __ sdiv(out.AsRegister<Register>(),
                 first.AsRegister<Register>(),
                 second.AsRegister<Register>());
+#ifdef WITH_TAINTART
+        Register temp1 = locations->GetTemp(0).AsRegister<Register>();
+        BINARY_TAINT_PROPAGATION(out.AsRegister<Register>(), first.AsRegister<Register>(), second.AsRegister<Register>(), temp1, IP);
+#endif
       } else {
         InvokeRuntimeCallingConvention calling_convention;
         DCHECK_EQ(calling_convention.GetRegisterAt(0), first.AsRegister<Register>());
@@ -2306,6 +2400,7 @@ void LocationsBuilderARM::VisitRem(HRem* rem) {
         locations->SetInAt(1, Location::RequiresRegister());
         locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
         locations->AddTemp(Location::RequiresRegister());
+        locations->AddTemp(Location::RequiresRegister());
       } else {
         InvokeRuntimeCallingConvention calling_convention;
         locations->SetInAt(0, Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
@@ -2362,6 +2457,10 @@ void InstructionCodeGeneratorARM::VisitRem(HRem* rem) {
         Register reg1 = first.AsRegister<Register>();
         Register reg2 = second.AsRegister<Register>();
         Register temp = locations->GetTemp(0).AsRegister<Register>();
+        Register temp2 = locations->GetTemp(1).AsRegister<Register>();
+#ifdef WITH_TAINTART
+        BINARY_TAINT_PROPAGATION(out.AsRegister<Register>(), first.AsRegister<Register>(), second.AsRegister<Register>(), temp, temp2);
+#endif
 
         // temp = reg1 / reg2  (integer division)
         // temp = temp * reg2
@@ -2458,6 +2557,9 @@ void LocationsBuilderARM::HandleShift(HBinaryOperation* op) {
     case Primitive::kPrimInt: {
       locations->SetInAt(0, Location::RequiresRegister());
       locations->SetInAt(1, Location::RegisterOrConstant(op->InputAt(1)));
+#ifdef WITH_TAINTART
+      locations->AddTemp(Location::RequiresRegister());
+#endif
       // Make the output overlap, as it will be used to hold the masked
       // second input.
       locations->SetOut(Location::RequiresRegister(), Location::kOutputOverlap);
@@ -2499,6 +2601,10 @@ void InstructionCodeGeneratorARM::HandleShift(HBinaryOperation* op) {
         } else {
           __ Lsr(out_reg, first_reg, out_reg);
         }
+#ifdef WITH_TAINTART
+        Register temp = locations->GetTemp(0).AsRegister<Register>();
+        BINARY_TAINT_PROPAGATION(out.AsRegister<Register>(), first.AsRegister<Register>(), second.AsRegister<Register>(), temp, IP);
+#endif
       } else {
         int32_t cst = second.GetConstant()->AsIntConstant()->GetValue();
         uint32_t shift_value = static_cast<uint32_t>(cst & kMaxIntShiftValue);
@@ -2511,6 +2617,9 @@ void InstructionCodeGeneratorARM::HandleShift(HBinaryOperation* op) {
         } else {
           __ Lsr(out_reg, first_reg, shift_value);
         }
+#ifdef WITH_TAINTART
+        UNARY_TAINT_PROPAGATION(out.AsRegister<Register>(), first.AsRegister<Register>(), IP);
+#endif
       }
       break;
     }
@@ -3187,6 +3296,9 @@ void InstructionCodeGeneratorARM::VisitArrayGet(HArrayGet* instruction) {
         __ add(IP, obj, ShifterOperand(index.AsRegister<Register>()));
         __ LoadFromOffset(kLoadUnsignedByte, out, IP, data_offset);
       }
+#ifdef WITH_TAINTART
+      UNARY_TAINT_PROPAGATION(out, obj, IP);
+#endif
       break;
     }
 
@@ -3201,6 +3313,9 @@ void InstructionCodeGeneratorARM::VisitArrayGet(HArrayGet* instruction) {
         __ add(IP, obj, ShifterOperand(index.AsRegister<Register>()));
         __ LoadFromOffset(kLoadSignedByte, out, IP, data_offset);
       }
+#ifdef WITH_TAINTART
+      UNARY_TAINT_PROPAGATION(out, obj, IP);
+#endif
       break;
     }
 
@@ -3215,6 +3330,9 @@ void InstructionCodeGeneratorARM::VisitArrayGet(HArrayGet* instruction) {
         __ add(IP, obj, ShifterOperand(index.AsRegister<Register>(), LSL, TIMES_2));
         __ LoadFromOffset(kLoadSignedHalfword, out, IP, data_offset);
       }
+#ifdef WITH_TAINTART
+      UNARY_TAINT_PROPAGATION(out, obj, IP);
+#endif
       break;
     }
 
@@ -3229,6 +3347,9 @@ void InstructionCodeGeneratorARM::VisitArrayGet(HArrayGet* instruction) {
         __ add(IP, obj, ShifterOperand(index.AsRegister<Register>(), LSL, TIMES_2));
         __ LoadFromOffset(kLoadUnsignedHalfword, out, IP, data_offset);
       }
+#ifdef WITH_TAINTART
+      UNARY_TAINT_PROPAGATION(out, obj, IP);
+#endif
       break;
     }
 
@@ -3245,6 +3366,9 @@ void InstructionCodeGeneratorARM::VisitArrayGet(HArrayGet* instruction) {
         __ add(IP, obj, ShifterOperand(index.AsRegister<Register>(), LSL, TIMES_4));
         __ LoadFromOffset(kLoadWord, out, IP, data_offset);
       }
+#ifdef WITH_TAINTART
+      UNARY_TAINT_PROPAGATION(out, obj, IP);
+#endif
       break;
     }
 
@@ -3259,6 +3383,10 @@ void InstructionCodeGeneratorARM::VisitArrayGet(HArrayGet* instruction) {
         __ add(IP, obj, ShifterOperand(index.AsRegister<Register>(), LSL, TIMES_8));
         __ LoadFromOffset(kLoadWordPair, out.AsRegisterPairLow<Register>(), IP, data_offset);
       }
+#ifdef WITH_TAINTART
+      UNARY_TAINT_PROPAGATION(out.AsRegisterPairLow<Register>(), obj, IP);
+      UNARY_TAINT_PROPAGATION(out.AsRegisterPairHigh<Register>(), obj, IP);
+#endif
       break;
     }
 
@@ -3350,6 +3478,9 @@ void InstructionCodeGeneratorARM::VisitArraySet(HArraySet* instruction) {
         __ add(IP, obj, ShifterOperand(index.AsRegister<Register>()));
         __ StoreToOffset(kStoreByte, value, IP, data_offset);
       }
+#ifdef WITH_TAINTART
+      UNARY_TAINT_PROPAGATION(obj, value, IP);
+#endif
       break;
     }
 
@@ -3365,6 +3496,9 @@ void InstructionCodeGeneratorARM::VisitArraySet(HArraySet* instruction) {
         __ add(IP, obj, ShifterOperand(index.AsRegister<Register>(), LSL, TIMES_2));
         __ StoreToOffset(kStoreHalfword, value, IP, data_offset);
       }
+#ifdef WITH_TAINTART
+      UNARY_TAINT_PROPAGATION(obj, value, IP);
+#endif
       break;
     }
 
@@ -3389,12 +3523,16 @@ void InstructionCodeGeneratorARM::VisitArraySet(HArraySet* instruction) {
           Register card = locations->GetTemp(1).AsRegister<Register>();
           codegen_->MarkGCCard(temp, card, obj, value);
         }
+#ifdef WITH_TAINTART
+        UNARY_TAINT_PROPAGATION(obj, value, IP);
+#endif
       } else {
         DCHECK_EQ(value_type, Primitive::kPrimNot);
         codegen_->InvokeRuntime(QUICK_ENTRY_POINT(pAputObject),
                                 instruction,
                                 instruction->GetDexPc(),
                                 nullptr);
+        // TODO: needs to handle runtime invocation
       }
       break;
     }
@@ -3410,6 +3548,9 @@ void InstructionCodeGeneratorARM::VisitArraySet(HArraySet* instruction) {
         __ add(IP, obj, ShifterOperand(index.AsRegister<Register>(), LSL, TIMES_8));
         __ StoreToOffset(kStoreWordPair, value.AsRegisterPairLow<Register>(), IP, data_offset);
       }
+#ifdef WITH_TAINTART
+      UNARY_TAINT_PROPAGATION(obj, value.AsRegisterPairLow<Register>(), IP);
+#endif
       break;
     }
 
@@ -3578,6 +3719,10 @@ void ParallelMoveResolverARM::EmitMove(size_t index) {
   if (source.IsRegister()) {
     if (destination.IsRegister()) {
       __ Mov(destination.AsRegister<Register>(), source.AsRegister<Register>());
+// #ifdef WITH_TAINTART
+      // VLOG(taintart) << "EmitMove(): " << "dest: " << destination.AsRegister<Register>() << " src: " << source.AsRegister<Register>();
+      // UNARY_TAINT_PROPAGATION(destination.AsRegister<Register>(), source.AsRegister<Register>(), IP);
+// #endif
     } else {
       DCHECK(destination.IsStackSlot());
       __ StoreToOffset(kStoreWord, source.AsRegister<Register>(),
@@ -3609,6 +3754,7 @@ void ParallelMoveResolverARM::EmitMove(size_t index) {
       DCHECK(ExpectedPairLayout(destination));
       __ LoadFromOffset(
           kLoadWordPair, destination.AsRegisterPairLow<Register>(), SP, source.GetStackIndex());
+      // VLOG(taintart) << "EmitMove(): LoadFromOffset kLoadWordPair";
     } else {
       DCHECK(destination.IsFpuRegisterPair()) << destination;
       __ LoadDFromOffset(FromLowSToD(destination.AsFpuRegisterPairLow<SRegister>()),
@@ -3619,11 +3765,16 @@ void ParallelMoveResolverARM::EmitMove(size_t index) {
     if (destination.IsRegisterPair()) {
       __ Mov(destination.AsRegisterPairLow<Register>(), source.AsRegisterPairLow<Register>());
       __ Mov(destination.AsRegisterPairHigh<Register>(), source.AsRegisterPairHigh<Register>());
+// #ifdef WITH_TAINTART
+      // UNARY_TAINT_PROPAGATION(destination.AsRegisterPairLow<Register>(), source.AsRegisterPairLow<Register>(), IP);
+      // UNARY_TAINT_PROPAGATION(destination.AsRegisterPairHigh<Register>(), source.AsRegisterPairHigh<Register>(), IP);
+// #endif
     } else {
       DCHECK(destination.IsDoubleStackSlot()) << destination;
       DCHECK(ExpectedPairLayout(source));
       __ StoreToOffset(
           kStoreWordPair, source.AsRegisterPairLow<Register>(), SP, destination.GetStackIndex());
+      // VLOG(taintart) << "EmitMove(): StoreToOffset kStoreWordPair";
     }
   } else if (source.IsFpuRegisterPair()) {
     if (destination.IsFpuRegisterPair()) {
@@ -3642,6 +3793,9 @@ void ParallelMoveResolverARM::EmitMove(size_t index) {
       int32_t value = CodeGenerator::GetInt32ValueOf(constant);
       if (destination.IsRegister()) {
         __ LoadImmediate(destination.AsRegister<Register>(), value);
+// #ifdef WITH_TAINTART
+        // CLEAR_TAINT(destination.AsRegister<Register>());
+// #endif
       } else {
         DCHECK(destination.IsStackSlot());
         __ LoadImmediate(IP, value);
@@ -3652,6 +3806,10 @@ void ParallelMoveResolverARM::EmitMove(size_t index) {
       if (destination.IsRegisterPair()) {
         __ LoadImmediate(destination.AsRegisterPairLow<Register>(), Low32Bits(value));
         __ LoadImmediate(destination.AsRegisterPairHigh<Register>(), High32Bits(value));
+// #ifdef WITH_TAINTART
+//         CLEAR_TAINT(destination.AsRegisterPairLow<Register>());
+//         CLEAR_TAINT(destination.AsRegisterPairHigh<Register>());
+// #endif
       } else {
         DCHECK(destination.IsDoubleStackSlot()) << destination;
         __ LoadImmediate(IP, Low32Bits(value));
@@ -4008,6 +4166,9 @@ void LocationsBuilderARM::HandleBitwiseOperation(HBinaryOperation* instruction) 
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetInAt(1, Location::RequiresRegister());
   locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
+#ifdef WITH_TAINTART
+  locations->AddTemp(Location::RequiresRegister());
+#endif
 }
 
 void InstructionCodeGeneratorARM::VisitAnd(HAnd* instruction) {
@@ -4037,6 +4198,10 @@ void InstructionCodeGeneratorARM::HandleBitwiseOperation(HBinaryOperation* instr
       DCHECK(instruction->IsXor());
       __ eor(out, first, ShifterOperand(second));
     }
+#ifdef WITH_TAINTART
+    Register temp = locations->GetTemp(0).AsRegister<Register>();
+    BINARY_TAINT_PROPAGATION(out, first, second, temp, IP);
+#endif
   } else {
     DCHECK_EQ(instruction->GetResultType(), Primitive::kPrimLong);
     Location first = locations->InAt(0);
@@ -4065,6 +4230,13 @@ void InstructionCodeGeneratorARM::HandleBitwiseOperation(HBinaryOperation* instr
              first.AsRegisterPairHigh<Register>(),
              ShifterOperand(second.AsRegisterPairHigh<Register>()));
     }
+#ifdef WITH_TAINTART
+    Register temp = locations->GetTemp(0).AsRegister<Register>();
+    BINARY_TAINT_PROPAGATION(out.AsRegisterPairLow<Register>(), first.AsRegisterPairLow<Register>(), second.AsRegisterPairLow<Register>(), temp, IP);
+    BINARY_TAINT_PROPAGATION(out.AsRegisterPairHigh<Register>(), first.AsRegisterPairHigh<Register>(), second.AsRegisterPairHigh<Register>(), temp, IP);
+#endif
+    // VLOG(taintart) << "HandleBitwiseOperation(): out_lo: " << out.AsRegisterPairLow<Register>() << " first_lo" << first.AsRegisterPairLow<Register>() << " second_lo: " << second.AsRegisterPairLow<Register>();
+    // VLOG(taintart) << "HandleBitwiseOperation(): out_hi: " << out.AsRegisterPairHigh<Register>() << " first_hi" << first.AsRegisterPairHigh<Register>() << " second_hi: " << second.AsRegisterPairHigh<Register>();
   }
 }
 

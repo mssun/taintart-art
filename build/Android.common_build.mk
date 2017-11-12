@@ -188,16 +188,16 @@ art_cflags := \
   -std=gnu++11 \
   -ggdb3 \
   -Wall \
-  -Werror \
   -Wextra \
   -Wstrict-aliasing \
   -fstrict-aliasing \
   -Wunreachable-code \
   -Wredundant-decls \
   -Wshadow \
-  -Wunused \
   -fvisibility=protected \
   $(art_default_gc_type_cflags)
+  # -Wunused \
+  # -Werror \
 
 # Missing declarations: too many at the moment, as we use "extern" quite a bit.
 #  -Wmissing-declarations \

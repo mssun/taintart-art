@@ -84,7 +84,30 @@
   V(UnsafePutLong, kDirect) \
   V(UnsafePutLongOrdered, kDirect) \
   V(UnsafePutLongVolatile, kDirect) \
-  V(ReferenceGetReferent, kDirect)
+  V(ReferenceGetReferent, kDirect) \
+  V(AddTaintInt, kStatic) \
+  V(GetTaintInt, kStatic) \
+  V(AddTaintShort, kStatic) \
+  V(GetTaintShort, kStatic) \
+  V(AddTaintBoolean, kStatic) \
+  V(GetTaintBoolean, kStatic) \
+  V(AddTaintByte, kStatic) \
+  V(GetTaintByte, kStatic) \
+  V(GetTaintVoid, kStatic) \
+  V(AddTaintLong, kStatic) \
+  V(GetTaintLong, kStatic) \
+  V(AddTaintIntArray, kStatic) \
+  V(GetTaintIntArray, kStatic) \
+  V(AddTaintByteArray, kStatic) \
+  V(GetTaintByteArray, kStatic) \
+  V(AddTaintShortArray, kStatic) \
+  V(GetTaintShortArray, kStatic) \
+  V(AddTaintBooleanArray, kStatic) \
+  V(GetTaintBooleanArray, kStatic) \
+  V(AddTaintCharArray, kStatic) \
+  V(GetTaintCharArray, kStatic) \
+  V(AddTaintLongArray, kStatic) \
+  V(GetTaintLongArray, kStatic)
 
 #endif  // ART_COMPILER_OPTIMIZING_INTRINSICS_LIST_H_
 #undef ART_COMPILER_OPTIMIZING_INTRINSICS_LIST_H_   // #define is only for lint.

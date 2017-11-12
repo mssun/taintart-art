@@ -273,6 +273,52 @@ static Intrinsics GetIntrinsic(InlineMethod method) {
       }
       break;
     }
+  case kIntrinsicAddTaintInt:
+    return Intrinsics::kAddTaintInt;
+  case kIntrinsicGetTaintInt:
+    return Intrinsics::kGetTaintInt;
+  case kIntrinsicAddTaintShort:
+    return Intrinsics::kAddTaintShort;
+  case kIntrinsicGetTaintShort:
+    return Intrinsics::kGetTaintShort;
+  case kIntrinsicAddTaintBoolean:
+    return Intrinsics::kAddTaintBoolean;
+  case kIntrinsicGetTaintBoolean:
+    return Intrinsics::kGetTaintBoolean;
+  case kIntrinsicAddTaintByte:
+    return Intrinsics::kAddTaintByte;
+  case kIntrinsicGetTaintByte:
+    return Intrinsics::kGetTaintByte;
+  case kIntrinsicGetTaintVoid:
+    return Intrinsics::kGetTaintVoid;
+  case kIntrinsicAddTaintLong:
+    return Intrinsics::kAddTaintLong;
+  case kIntrinsicGetTaintLong:
+    return Intrinsics::kGetTaintLong;
+  case kIntrinsicAddTaintIntArray:
+    return Intrinsics::kAddTaintIntArray;
+  case kIntrinsicGetTaintIntArray:
+    return Intrinsics::kGetTaintIntArray;
+  case kIntrinsicAddTaintByteArray:
+    return Intrinsics::kAddTaintByteArray;
+  case kIntrinsicGetTaintByteArray:
+    return Intrinsics::kGetTaintByteArray;
+  case kIntrinsicAddTaintShortArray:
+    return Intrinsics::kAddTaintShortArray;
+  case kIntrinsicGetTaintShortArray:
+    return Intrinsics::kGetTaintShortArray;
+  case kIntrinsicAddTaintBooleanArray:
+    return Intrinsics::kAddTaintBooleanArray;
+  case kIntrinsicGetTaintBooleanArray:
+    return Intrinsics::kGetTaintBooleanArray;
+  case kIntrinsicAddTaintCharArray:
+    return Intrinsics::kAddTaintCharArray;
+  case kIntrinsicGetTaintCharArray:
+    return Intrinsics::kGetTaintCharArray;
+  case kIntrinsicAddTaintLongArray:
+    return Intrinsics::kAddTaintLongArray;
+  case kIntrinsicGetTaintLongArray:
+    return Intrinsics::kGetTaintLongArray;
 
     // Virtual cases.
 

@@ -1013,6 +1013,152 @@ void IntrinsicCodeGeneratorARM::VisitStringNewStringFromString(HInvoke* invoke) 
   __ Bind(slow_path->GetExitLabel());
 }
 
+void IntrinsicLocationsBuilderARM::VisitAddTaintInt(HInvoke* invoke) {
+  LocationSummary* locations = new (arena_) LocationSummary(invoke,
+                                                            LocationSummary::kCall,
+                                                            kIntrinsified);
+  locations->SetInAt(0, Location::RequiresRegister());
+  locations->SetInAt(1, Location::RequiresRegister());
+}
+
+#define ADD_TAINT(register, level)              \
+  __ bic(R5, R5, ShifterOperand(3 << (register * 2))); \
+  if (register == 0) {                          \
+    __ mov(IP, ShifterOperand(level));          \
+  } else {                                      \
+    __ mov(IP, ShifterOperand(level, LSL, register *  2)); \
+  }                                             \
+  __ orr(R5, R5, ShifterOperand(IP));
+
+void IntrinsicCodeGeneratorARM::VisitAddTaintInt(HInvoke* invoke) {
+  ArmAssembler* assembler = GetAssembler();
+  LocationSummary* locations = invoke->GetLocations();
+  Register in0 = locations->InAt(0).AsRegister<Register>();
+  Register in1 = locations->InAt(1).AsRegister<Register>();
+  ADD_TAINT(in0, in1);
+}
+
+
+void IntrinsicLocationsBuilderARM::VisitGetTaintInt(HInvoke* invoke) {
+  LocationSummary* locations = new (arena_) LocationSummary(invoke,
+                                                            LocationSummary::kCall,
+                                                            kIntrinsified);
+  locations->SetInAt(0, Location::RequiresRegister());
+  locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
+}
+
+void IntrinsicCodeGeneratorARM::VisitGetTaintInt(HInvoke* invoke) {
+  LocationSummary* locations = invoke->GetLocations();
+  ArmAssembler* assembler = GetAssembler();
+  // Register in = invoke->InputAt(0)->GetLocations()->Out().AsRegister<Register>();
+  Register in = locations->InAt(0).AsRegister<Register>();
+  // VLOG(taintart) << "VisitGetTaintInt: " << in;
+  Register output = locations->Out().AsRegister<Register>();
+  // __ mov(output, ShifterOperand(R5));
+  __ and_(output, R5, ShifterOperand(3 << (in * 2) ));
+  __ mov(output, ShifterOperand(output, LSR, in * 2));
+}
+
+void IntrinsicLocationsBuilderARM::VisitAddTaintShort(HInvoke* invoke) {VisitAddTaintInt(invoke);}
+void IntrinsicCodeGeneratorARM::VisitAddTaintShort(HInvoke* invoke) {VisitAddTaintInt(invoke);}
+void IntrinsicLocationsBuilderARM::VisitGetTaintShort(HInvoke* invoke) {VisitGetTaintInt(invoke);}
+void IntrinsicCodeGeneratorARM::VisitGetTaintShort(HInvoke* invoke) {VisitGetTaintInt(invoke);}
+
+void IntrinsicLocationsBuilderARM::VisitAddTaintBoolean(HInvoke* invoke) {VisitAddTaintInt(invoke);}
+void IntrinsicCodeGeneratorARM::VisitAddTaintBoolean(HInvoke* invoke) {VisitAddTaintInt(invoke);}
+void IntrinsicLocationsBuilderARM::VisitGetTaintBoolean(HInvoke* invoke) {VisitGetTaintInt(invoke);}
+void IntrinsicCodeGeneratorARM::VisitGetTaintBoolean(HInvoke* invoke) {VisitGetTaintInt(invoke);}
+
+void IntrinsicLocationsBuilderARM::VisitAddTaintByte(HInvoke* invoke) {VisitAddTaintInt(invoke);}
+void IntrinsicCodeGeneratorARM::VisitAddTaintByte(HInvoke* invoke) {VisitAddTaintInt(invoke);}
+void IntrinsicLocationsBuilderARM::VisitGetTaintByte(HInvoke* invoke) {VisitGetTaintInt(invoke);}
+void IntrinsicCodeGeneratorARM::VisitGetTaintByte(HInvoke* invoke) {VisitGetTaintInt(invoke);}
+
+void IntrinsicLocationsBuilderARM::VisitGetTaintVoid(HInvoke* invoke) {
+  LocationSummary* locations = new (arena_) LocationSummary(invoke,
+                                                            LocationSummary::kCall,
+                                                            kIntrinsified);
+  locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
+}
+
+void IntrinsicCodeGeneratorARM::VisitGetTaintVoid(HInvoke* invoke) {
+  LocationSummary* locations = invoke->GetLocations();
+  ArmAssembler* assembler = GetAssembler();
+  Register output = locations->Out().AsRegister<Register>();
+  __ mov(output, ShifterOperand(R5));
+}
+
+
+void IntrinsicLocationsBuilderARM::VisitAddTaintLong(HInvoke* invoke) {
+  LocationSummary* locations = new (arena_) LocationSummary(invoke,
+                                                            LocationSummary::kCall,
+                                                            kIntrinsified);
+  locations->SetInAt(0, Location::RequiresRegister());
+  locations->SetInAt(1, Location::RequiresRegister());
+  locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
+}
+
+void IntrinsicCodeGeneratorARM::VisitAddTaintLong(HInvoke* invoke) {
+  ArmAssembler* assembler = GetAssembler();
+  LocationSummary* locations = invoke->GetLocations();
+  Register in0_lo = locations->InAt(0).AsRegisterPairLow<Register>();
+  Register in0_hi = locations->InAt(0).AsRegisterPairHigh<Register>();
+  Register in1 = locations->InAt(1).AsRegister<Register>();
+  Register out_lo = locations->Out().AsRegisterPairLow<Register>();
+  Register out_hi = locations->Out().AsRegisterPairHigh<Register>();
+  ADD_TAINT(out_lo, in1);  // BOB: this can be optimized
+  ADD_TAINT(out_hi, in1);
+  __ mov(out_lo, ShifterOperand(in0_lo));
+  __ mov(out_hi, ShifterOperand(in0_hi));
+  VLOG(taintart) << "VisitAddTaintLong() lo: " << in0_lo << " hi: " << in0_hi << " out" << in1;
+}
+
+void IntrinsicLocationsBuilderARM::VisitGetTaintLong(HInvoke* invoke) {
+  LocationSummary* locations = new (arena_) LocationSummary(invoke,
+                                                            LocationSummary::kCall,
+                                                            kIntrinsified);
+  locations->SetInAt(0, Location::RequiresRegister());
+  locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
+}
+
+void IntrinsicCodeGeneratorARM::VisitGetTaintLong(HInvoke* invoke) {
+  LocationSummary* locations = invoke->GetLocations();
+  ArmAssembler* assembler = GetAssembler();
+  Register in_lo = locations->InAt(0).AsRegisterPairLow<Register>();
+  Register in_hi = locations->InAt(0).AsRegisterPairHigh<Register>();
+  Register output = locations->Out().AsRegister<Register>();
+  __ and_(output, R5, ShifterOperand(3 << (in_lo * 2) ));
+  __ mov(output, ShifterOperand(output, LSR, in_lo * 2));
+  UNUSED(in_hi);  // BOB: we only return taint in lo register
+}
+
+
+void IntrinsicLocationsBuilderARM::VisitAddTaintIntArray(HInvoke* invoke) {VisitAddTaintLong(invoke);}
+void IntrinsicCodeGeneratorARM::VisitAddTaintIntArray(HInvoke* invoke) {
+  ArmAssembler* assembler = GetAssembler();
+  LocationSummary* locations = invoke->GetLocations();
+  Register in0 = locations->InAt(0).AsRegister<Register>();
+  Register in1 = locations->InAt(1).AsRegister<Register>();
+  Register out = locations->Out().AsRegister<Register>();
+  ADD_TAINT(out, in1);
+  __ mov(out, ShifterOperand(in0));
+  UNUSED(in0);
+}
+void IntrinsicLocationsBuilderARM::VisitGetTaintIntArray(HInvoke* invoke) {VisitGetTaintInt(invoke);}
+void IntrinsicCodeGeneratorARM::VisitGetTaintIntArray(HInvoke* invoke) {VisitGetTaintInt(invoke);}
+
+#define VISIT_TAINT_INTRINSIC(type, visit_add_taint, visit_get_taint)                    \
+  void IntrinsicLocationsBuilderARM::VisitAddTaint ## type(HInvoke* invoke) {visit_add_taint(invoke);} \
+  void IntrinsicCodeGeneratorARM::VisitAddTaint ## type(HInvoke* invoke) {visit_add_taint(invoke);} \
+  void IntrinsicLocationsBuilderARM::VisitGetTaint ## type(HInvoke* invoke) {visit_get_taint(invoke);} \
+  void IntrinsicCodeGeneratorARM::VisitGetTaint ## type(HInvoke* invoke) {visit_get_taint(invoke);}
+
+VISIT_TAINT_INTRINSIC(ByteArray, VisitAddTaintIntArray, VisitGetTaintIntArray)
+VISIT_TAINT_INTRINSIC(ShortArray, VisitAddTaintIntArray, VisitGetTaintIntArray)
+VISIT_TAINT_INTRINSIC(BooleanArray, VisitAddTaintIntArray, VisitGetTaintIntArray)
+VISIT_TAINT_INTRINSIC(CharArray, VisitAddTaintIntArray, VisitGetTaintIntArray)
+VISIT_TAINT_INTRINSIC(LongArray, VisitAddTaintIntArray, VisitGetTaintIntArray)
+
 // Unimplemented intrinsics.
 
 #define UNIMPLEMENTED_INTRINSIC(Name)                                                  \

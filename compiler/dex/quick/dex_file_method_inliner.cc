@@ -68,6 +68,29 @@ static constexpr bool kIntrinsicIsStatic[] = {
     false,  // kIntrinsicUnsafeGet
     false,  // kIntrinsicUnsafePut
     true,   // kIntrinsicSystemArrayCopyCharArray
+    true,   // kIntrinsicAddTaintInt
+    true,   // kIntrinsicGetTaintInt
+    true,   // kIntrinsicAddTaintShort
+    true,   // kIntrinsicGetTaintShort
+    true,   // kIntrinsicAddTaintBoolean
+    true,   // kIntrinsicGetTaintBoolean
+    true,   // kIntrinsicAddTaintByte
+    true,   // kIntrinsicGetTaintByte
+    true,   // kIntrinsicGetTaintVoid
+    true,   // kIntrinsicAddTaintLong
+    true,   // kIntrinsicGetTaintLong
+    true,   // kIntrinsicAddTaintIntArray
+    true,   // kIntrinsicGetTaintIntArray
+    true,   // kIntrinsicAddTaintByteArray
+    true,   // kIntrinsicGetTaintByteArray
+    true,   // kIntrinsicAddTaintShortArray
+    true,   // kIntrinsicGetTaintShortArray
+    true,   // kIntrinsicAddTaintBooleanArray
+    true,   // kIntrinsicGetTaintBooleanArray
+    true,   // kIntrinsicAddTaintCharArray
+    true,   // kIntrinsicGetTaintCharArray
+    true,   // kIntrinsicAddTaintLongArray
+    true,   // kIntrinsicGetTaintLongArray
 };
 static_assert(arraysize(kIntrinsicIsStatic) == kInlineOpNop,
               "arraysize of kIntrinsicIsStatic unexpected");
@@ -109,6 +132,29 @@ static_assert(!kIntrinsicIsStatic[kIntrinsicUnsafeGet], "UnsafeGet_must_not_be_s
 static_assert(!kIntrinsicIsStatic[kIntrinsicUnsafePut], "UnsafePut must not be static");
 static_assert(kIntrinsicIsStatic[kIntrinsicSystemArrayCopyCharArray],
               "SystemArrayCopyCharArray must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicAddTaintInt], "AddTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicGetTaintInt], "SetTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicAddTaintShort], "AddTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicGetTaintShort], "SetTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicAddTaintBoolean], "AddTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicGetTaintBoolean], "SetTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicAddTaintByte], "AddTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicGetTaintByte], "SetTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicGetTaintVoid], "SetTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicAddTaintLong], "AddTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicGetTaintLong], "SetTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicAddTaintIntArray], "AddTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicGetTaintIntArray], "SetTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicAddTaintByteArray], "AddTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicGetTaintByteArray], "SetTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicAddTaintShortArray], "AddTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicGetTaintShortArray], "SetTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicAddTaintBooleanArray], "AddTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicGetTaintBooleanArray], "SetTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicAddTaintCharArray], "AddTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicGetTaintCharArray], "SetTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicAddTaintLongArray], "AddTaint must be static");
+static_assert(kIntrinsicIsStatic[kIntrinsicGetTaintLongArray], "SetTaint must be static");
 
 MIR* AllocReplacementMIR(MIRGraph* mir_graph, MIR* invoke) {
   MIR* insn = mir_graph->NewMIR();
@@ -151,6 +197,9 @@ const char* const DexFileMethodInliner::kClassCacheNames[] = {
     "[B",                      // kClassCacheJavaLangByteArray
     "[C",                      // kClassCacheJavaLangCharArray
     "[I",                      // kClassCacheJavaLangIntArray
+    "[S",                      // kClassCacheJavaLangShortArray
+    "[Z",                      // kClassCacheJavaLangBooleanArray
+    "[J",                      // kClassCacheJavaLangLongArray
     "Ljava/lang/Object;",      // kClassCacheJavaLangObject
     "Ljava/lang/ref/Reference;",   // kClassCacheJavaLangRefReference
     "Ljava/lang/String;",      // kClassCacheJavaLangString
@@ -169,6 +218,7 @@ const char* const DexFileMethodInliner::kClassCacheNames[] = {
     "Llibcore/io/Memory;",     // kClassCacheLibcoreIoMemory
     "Lsun/misc/Unsafe;",       // kClassCacheSunMiscUnsafe
     "Ljava/lang/System;",      // kClassCacheJavaLangSystem
+    "LTaint;",
 };
 
 const char* const DexFileMethodInliner::kNameCacheNames[] = {
@@ -225,6 +275,8 @@ const char* const DexFileMethodInliner::kNameCacheNames[] = {
     "putObjectVolatile",     // kNameCachePutObjectVolatile
     "putOrderedObject",      // kNameCachePutOrderedObject
     "arraycopy",             // kNameCacheArrayCopy
+    "addTaint",
+    "getTaint",
 };
 
 const DexFileMethodInliner::ProtoDef DexFileMethodInliner::kProtoCacheDefs[] = {
@@ -351,6 +403,50 @@ const DexFileMethodInliner::ProtoDef DexFileMethodInliner::kProtoCacheDefs[] = {
     { kClassCacheVoid, 1, { kClassCacheJavaLangStringBuffer } },
     // kProtoCacheStringBuilder_V
     { kClassCacheVoid, 1, { kClassCacheJavaLangStringBuilder } },
+    // kProtoCacheII_V
+    { kClassCacheVoid, 2, { kClassCacheInt, kClassCacheInt } },
+    // kProtoCacheSI_V,
+    { kClassCacheVoid, 2, { kClassCacheShort, kClassCacheInt } },
+    // kProtoCacheS_I,
+    { kClassCacheInt, 1, { kClassCacheShort} },
+    // kProtoCacheZI_V,
+    { kClassCacheVoid, 2, { kClassCacheBoolean, kClassCacheInt } },
+    // kProtoCacheZ_I,
+    { kClassCacheInt, 1, { kClassCacheBoolean} },
+    // kProtoCacheBI_V,
+    { kClassCacheVoid, 2, { kClassCacheByte, kClassCacheInt } },
+    // kProtoCacheB_I,
+    { kClassCacheInt, 1, { kClassCacheByte} },
+    // kProtoCacheV_I,
+    { kClassCacheInt, 0, { } },
+    // kProtoCacheJI_J
+    { kClassCacheLong, 2, { kClassCacheLong, kClassCacheInt } },
+    // kProtoCacheIntArrayI_V
+    { kClassCacheVoid, 2, { kClassCacheJavaLangIntArray, kClassCacheInt } },
+    // kProtoCacheIntArrayI_IntArray
+    { kClassCacheJavaLangIntArray, 2, { kClassCacheJavaLangIntArray, kClassCacheInt } },
+    // kProtoCacheIntArray_I
+    { kClassCacheInt, 1, { kClassCacheJavaLangIntArray } },
+    // kProtoCacheByteArrayI_ByteArray
+    { kClassCacheJavaLangByteArray, 2, { kClassCacheJavaLangByteArray, kClassCacheInt } },
+    // kProtoCacheByteArray_I
+    { kClassCacheInt, 1, { kClassCacheJavaLangByteArray } },
+    // kProtoCacheShortArrayI_ShortArray
+    { kClassCacheJavaLangShortArray, 2, { kClassCacheJavaLangShortArray, kClassCacheInt } },
+    // kProtoCacheShortArray_I
+    { kClassCacheInt, 1, { kClassCacheJavaLangShortArray } },
+    // kProtoCacheBooleanArrayI_BooleanArray
+    { kClassCacheJavaLangBooleanArray, 2, { kClassCacheJavaLangBooleanArray, kClassCacheInt } },
+    // kProtoCacheBooleanArray_I
+    { kClassCacheInt, 1, { kClassCacheJavaLangBooleanArray } },
+    // kProtoCacheCharArrayI_CharArray
+    { kClassCacheJavaLangCharArray, 2, { kClassCacheJavaLangCharArray, kClassCacheInt } },
+    // kProtoCacheCharArray_I
+    { kClassCacheInt, 1, { kClassCacheJavaLangCharArray } },
+    // kProtoCacheLongArrayI_LongArray
+    { kClassCacheJavaLangLongArray, 2, { kClassCacheJavaLangLongArray, kClassCacheInt } },
+    // kProtoCacheLongArray_I
+    { kClassCacheInt, 1, { kClassCacheJavaLangLongArray } },
 };
 
 const DexFileMethodInliner::IntrinsicDef DexFileMethodInliner::kIntrinsicMethods[] = {
@@ -454,6 +550,29 @@ const DexFileMethodInliner::IntrinsicDef DexFileMethodInliner::kIntrinsicMethods
 
     INTRINSIC(JavaLangSystem, ArrayCopy, CharArrayICharArrayII_V , kIntrinsicSystemArrayCopyCharArray,
               0),
+
+#define TAINT_INTRINSIC(type, code) \
+    INTRINSIC(Taint, AddTaint, code ## I_ ## code, kIntrinsicAddTaint ## type, 0), \
+    INTRINSIC(Taint, GetTaint, code ## _I, kIntrinsicGetTaint ## type, 0),
+
+    INTRINSIC(Taint, AddTaint, II_V, kIntrinsicAddTaintInt, 0),
+    INTRINSIC(Taint, GetTaint, I_I, kIntrinsicGetTaintInt, 0),
+    INTRINSIC(Taint, AddTaint, SI_V, kIntrinsicAddTaintShort, 0),
+    INTRINSIC(Taint, GetTaint, S_I, kIntrinsicGetTaintShort, 0),
+    INTRINSIC(Taint, AddTaint, ZI_V, kIntrinsicAddTaintBoolean, 0),
+    INTRINSIC(Taint, GetTaint, Z_I, kIntrinsicGetTaintBoolean, 0),
+    INTRINSIC(Taint, AddTaint, BI_V, kIntrinsicAddTaintByte, 0),
+    INTRINSIC(Taint, GetTaint, B_I, kIntrinsicGetTaintByte, 0),
+    INTRINSIC(Taint, GetTaint, _I, kIntrinsicGetTaintVoid, 0),
+    INTRINSIC(Taint, AddTaint, JI_J, kIntrinsicAddTaintLong, 0),
+    INTRINSIC(Taint, GetTaint, J_I, kIntrinsicGetTaintLong, 0),
+
+    TAINT_INTRINSIC(IntArray, IntArray)
+    TAINT_INTRINSIC(ByteArray, ByteArray)
+    TAINT_INTRINSIC(ShortArray, ShortArray)
+    TAINT_INTRINSIC(BooleanArray, BooleanArray)
+    TAINT_INTRINSIC(CharArray, CharArray)
+    TAINT_INTRINSIC(CharArray, LongArray)
 
 #undef INTRINSIC
 
@@ -614,6 +733,10 @@ bool DexFileMethodInliner::GenIntrinsic(Mir2Lir* backend, CallInfo* info) {
                                           intrinsic.d.data & kIntrinsicFlagIsOrdered);
     case kIntrinsicSystemArrayCopyCharArray:
       return backend->GenInlinedArrayCopyCharArray(info);
+      //    case kIntrinsicAddTaint:
+      //      return false;
+      //    case kIntrinsicGetTaint:
+      //      return false;
     default:
       LOG(FATAL) << "Unexpected intrinsic opcode: " << intrinsic.opcode;
       return false;  // avoid warning "control reaches end of non-void function"

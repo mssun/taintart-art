@@ -1317,7 +1317,6 @@ bool HGraphBuilder::AnalyzeDexInstruction(const Instruction& instruction, uint32
   if (current_block_ == nullptr) {
     return true;  // Dead code
   }
-
   switch (instruction.Opcode()) {
     case Instruction::CONST_4: {
       int32_t register_index = instruction.VRegA();

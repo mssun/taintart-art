@@ -125,6 +125,9 @@ class DexFileMethodInliner {
       kClassCacheJavaLangByteArray,
       kClassCacheJavaLangCharArray,
       kClassCacheJavaLangIntArray,
+      kClassCacheJavaLangShortArray,
+      kClassCacheJavaLangBooleanArray,
+      kClassCacheJavaLangLongArray,
       kClassCacheJavaLangObject,
       kClassCacheJavaLangRefReference,
       kClassCacheJavaLangString,
@@ -143,6 +146,7 @@ class DexFileMethodInliner {
       kClassCacheLibcoreIoMemory,
       kClassCacheSunMiscUnsafe,
       kClassCacheJavaLangSystem,
+      kClassCacheTaint,
       kClassCacheLast
     };
 
@@ -206,6 +210,8 @@ class DexFileMethodInliner {
       kNameCachePutObjectVolatile,
       kNameCachePutOrderedObject,
       kNameCacheArrayCopy,
+      kNameCacheAddTaint,
+      kNameCacheGetTaint,
       kNameCacheLast
     };
 
@@ -272,6 +278,28 @@ class DexFileMethodInliner {
       kProtoCacheString_V,
       kProtoCacheStringBuffer_V,
       kProtoCacheStringBuilder_V,
+      kProtoCacheII_V,
+      kProtoCacheSI_V,
+      kProtoCacheS_I,
+      kProtoCacheZI_V,
+      kProtoCacheZ_I,
+      kProtoCacheBI_V,
+      kProtoCacheB_I,
+      kProtoCacheV_I,
+      kProtoCacheJI_J,
+      kProtoCacheIntArrayI_V,
+      kProtoCacheIntArrayI_IntArray,
+      kProtoCacheIntArray_I,
+      kProtoCacheByteArrayI_ByteArray,
+      kProtoCacheByteArray_I,
+      kProtoCacheShortArrayI_ShortArray,
+      kProtoCacheShortArray_I,
+      kProtoCacheBooleanArrayI_BooleanArray,
+      kProtoCacheBooleanArray_I,
+      kProtoCacheCharArrayI_CharArray,
+      kProtoCacheCharArray_I,
+      kProtoCacheLongArrayI_LongArray,
+      kProtoCacheLongArray_I,
       kProtoCacheLast
     };
 
