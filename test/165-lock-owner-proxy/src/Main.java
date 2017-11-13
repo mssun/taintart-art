@@ -65,8 +65,13 @@ public class Main {
             int count = totalOperations;
             while (count > 0) {
                 synchronized (lockObject) {
-                    inf.foo(10000 - count, 11000 - count, 12000 - count, 13000 - count,
-                          14000 - count, 15000 - count);
+                    try {
+                        inf.foo(10000 - count, 11000 - count, 12000 - count, 13000 - count,
+                                14000 - count, 15000 - count);
+                    } catch (OutOfMemoryError e) {
+                        // Ignore errors. This is the test for b/69121347 - see an exception
+                        // instead of native abort.
+                    }
               }
               count--;
             }
@@ -96,7 +101,12 @@ public class Main {
             while (!finish) {
                 // Some random allocations adding up to almost 2M.
                 for (int i = 0; i < 188; i++) {
-                    byte b[] = new byte[i * 100 + 10];
+                    try {
+                        byte b[] = new byte[i * 100 + 10];
+                    } catch (OutOfMemoryError e) {
+                        // Ignore. This is just to improve chances that an OOME is thrown during
+                        // proxy invocation.
+                    }
                 }
                 try {
                     Thread.sleep(10);
