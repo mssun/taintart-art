@@ -249,7 +249,7 @@ static const uint8_t* FindMethodData(const DexFile* dex_file,
     it.Next();
   }
 
-  while (it.HasNextDirectMethod() || it.HasNextVirtualMethod()) {
+  while (it.HasNextMethod()) {
     uint32_t method_index = it.GetMemberIndex();
     dex::StringIndex name_index = dex_file->GetMethodId(method_index).name_idx_;
     const DexFile::StringId& string_id = dex_file->GetStringId(name_index);

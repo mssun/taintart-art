@@ -1970,7 +1970,7 @@ dex::TypeIndex DexFileVerifier::FindFirstClassDataDefiner(const uint8_t* ptr, bo
     return field->class_idx_;
   }
 
-  if (it.HasNextDirectMethod() || it.HasNextVirtualMethod()) {
+  if (it.HasNextMethod()) {
     LOAD_METHOD(method, it.GetMemberIndex(), "first_class_data_definer method_id",
                 *success = false; return dex::TypeIndex(DexFile::kDexNoIndex16))
     return method->class_idx_;
@@ -2566,7 +2566,7 @@ bool DexFileVerifier::CheckInterClassDataItem() {
       return false;
     }
   }
-  for (; it.HasNextDirectMethod() || it.HasNextVirtualMethod(); it.Next()) {
+  for (; it.HasNextMethod(); it.Next()) {
     uint32_t code_off = it.GetMethodCodeItemOffset();
     if (code_off != 0 && !CheckOffsetToTypeMap(code_off, DexFile::kDexTypeCodeItem)) {
       return false;

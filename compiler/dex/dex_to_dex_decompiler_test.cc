@@ -91,19 +91,7 @@ class DexToDexDecompilerTest : public CommonCompilerTest {
       it.SkipAllFields();
 
       // Unquicken each method.
-      while (it.HasNextDirectMethod()) {
-        uint32_t method_idx = it.GetMemberIndex();
-        CompiledMethod* compiled_method =
-            compiler_driver_->GetCompiledMethod(MethodReference(updated_dex_file, method_idx));
-        ArrayRef<const uint8_t> table;
-        if (compiled_method != nullptr) {
-          table = compiled_method->GetVmapTable();
-        }
-        optimizer::ArtDecompileDEX(
-            *it.GetMethodCodeItem(), table, /* decompile_return_instruction */ true);
-        it.Next();
-      }
-      while (it.HasNextVirtualMethod()) {
+      while (it.HasNextMethod()) {
         uint32_t method_idx = it.GetMemberIndex();
         CompiledMethod* compiled_method =
             compiler_driver_->GetCompiledMethod(MethodReference(updated_dex_file, method_idx));
