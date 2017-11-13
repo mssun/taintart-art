@@ -355,7 +355,6 @@ art_cc_test {
         "jni/jni_cfi_test.cc",
         "optimizing/codegen_test.cc",
         "optimizing/load_store_analysis_test.cc",
-        "optimizing/load_store_elimination_test.cc",
         "optimizing/optimizing_cfi_test.cc",
         "optimizing/scheduler_test.cc",
     ],
