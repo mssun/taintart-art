@@ -47,6 +47,7 @@
 #include "mirror/object-inl.h"
 #include "mirror/string.h"
 #include "nativehelper/scoped_local_ref.h"
+#include "nativehelper/scoped_utf_chars.h"
 #include "obj_ptr.h"
 #include "runtime.h"
 #include "runtime_callbacks.h"
@@ -701,6 +702,7 @@ struct AgentData {
   JavaVM* java_vm;
   jvmtiEnv* jvmti_env;
   jint priority;
+  std::string name;
 };
 
 static void* AgentCallback(void* arg) {
@@ -708,13 +710,13 @@ static void* AgentCallback(void* arg) {
   CHECK(data->thread != nullptr);
 
   // We already have a peer. So call our special Attach function.
-  art::Thread* self = art::Thread::Attach("JVMTI Agent thread", true, data->thread);
+  art::Thread* self = art::Thread::Attach(data->name.c_str(), true, data->thread);
   CHECK(self != nullptr) << "threads_being_born_ should have ensured thread could be attached.";
   // The name in Attach() is only for logging. Set the thread name. This is important so
   // that the thread is no longer seen as starting up.
   {
     art::ScopedObjectAccess soa(self);
-    self->SetThreadName("JVMTI Agent thread");
+    self->SetThreadName(data->name.c_str());
   }
 
   // Release the peer.
@@ -781,6 +783,16 @@ jvmtiError ThreadUtil::RunAgentThread(jvmtiEnv* jvmti_env,
   data->java_vm = art::Runtime::Current()->GetJavaVM();
   data->jvmti_env = jvmti_env;
   data->priority = priority;
+  ScopedLocalRef<jstring> s(
+      env,
+      reinterpret_cast<jstring>(
+          env->GetObjectField(thread, art::WellKnownClasses::java_lang_Thread_name)));
+  if (s == nullptr) {
+    data->name = "JVMTI Agent Thread";
+  } else {
+    ScopedUtfChars name(env, s.get());
+    data->name = name.c_str();
+  }
 
   pthread_t pthread;
   int pthread_create_result = pthread_create(&pthread,
