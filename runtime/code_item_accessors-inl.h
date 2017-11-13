@@ -113,16 +113,21 @@ inline CodeItemDataAccessor::CodeItemDataAccessor(const DexFile* dex_file,
 inline CodeItemDataAccessor::CodeItemDataAccessor(ArtMethod* method)
     : CodeItemDataAccessor(method->GetDexFile(), method->GetCodeItem()) {}
 
-inline CodeItemDataAccessor CodeItemDataAccessor::CreateNullable(ArtMethod* method) {
-  DCHECK(method != nullptr);
+inline CodeItemDataAccessor CodeItemDataAccessor::CreateNullable(
+    const DexFile* dex_file,
+    const DexFile::CodeItem* code_item) {
   CodeItemDataAccessor ret;
-  const DexFile::CodeItem* code_item = method->GetCodeItem();
   if (code_item != nullptr) {
-    ret.Init(method->GetDexFile(), code_item);
+    ret.Init(dex_file, code_item);
   } else {
     DCHECK(!ret.HasCodeItem()) << "Should be null initialized";
   }
   return ret;
+}
+
+inline CodeItemDataAccessor CodeItemDataAccessor::CreateNullable(ArtMethod* method) {
+  DCHECK(method != nullptr);
+  return CreateNullable(method->GetDexFile(), method->GetCodeItem());
 }
 
 }  // namespace art
