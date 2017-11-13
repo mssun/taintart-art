@@ -162,18 +162,9 @@ class MethodVerifier {
   };
   // Fills 'monitor_enter_dex_pcs' with the dex pcs of the monitor-enter instructions corresponding
   // to the locks held at 'dex_pc' in method 'm'.
+  // Note: this is the only situation where the verifier will visit quickened instructions.
   static void FindLocksAtDexPc(ArtMethod* m, uint32_t dex_pc,
                                std::vector<DexLockInfo>* monitor_enter_dex_pcs)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
-  // Returns the accessed field corresponding to the quick instruction's field
-  // offset at 'dex_pc' in method 'm'.
-  static ArtField* FindAccessedFieldAtDexPc(ArtMethod* m, uint32_t dex_pc)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
-  // Returns the invoked method corresponding to the quick instruction's vtable
-  // index at 'dex_pc' in method 'm'.
-  static ArtMethod* FindInvokedMethodAtDexPc(ArtMethod* m, uint32_t dex_pc)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   static void Init() REQUIRES_SHARED(Locks::mutator_lock_);
@@ -206,7 +197,7 @@ class MethodVerifier {
   ALWAYS_INLINE InstructionFlags& GetInstructionFlags(size_t index);
   mirror::ClassLoader* GetClassLoader() REQUIRES_SHARED(Locks::mutator_lock_);
   mirror::DexCache* GetDexCache() REQUIRES_SHARED(Locks::mutator_lock_);
-  ArtMethod* GetMethod() const REQUIRES_SHARED(Locks::mutator_lock_);
+  ArtMethod* GetMethod() const;
   MethodReference GetMethodReference() const;
   uint32_t GetAccessFlags() const;
   bool HasCheckCasts() const;
@@ -219,13 +210,11 @@ class MethodVerifier {
   const RegType& ResolveCheckedClass(dex::TypeIndex class_idx)
       REQUIRES_SHARED(Locks::mutator_lock_);
   // Returns the method of a quick invoke or null if it cannot be found.
-  ArtMethod* GetQuickInvokedMethod(const Instruction* inst, RegisterLine* reg_line,
-                                           bool is_range, bool allow_failure)
+  ArtMethod* GetQuickInvokedMethod(const Instruction* inst, bool is_range)
       REQUIRES_SHARED(Locks::mutator_lock_);
   // Returns the access field of a quick field access (iget/iput-quick) or null
   // if it cannot be found.
-  ArtField* GetQuickFieldAccess(const Instruction* inst, RegisterLine* reg_line)
-      REQUIRES_SHARED(Locks::mutator_lock_);
+  ArtField* GetQuickAccessedField() REQUIRES_SHARED(Locks::mutator_lock_);
 
   uint32_t GetEncounteredFailureTypes() {
     return encountered_failure_types_;
@@ -331,15 +320,6 @@ class MethodVerifier {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   void FindLocksAtDexPc() REQUIRES_SHARED(Locks::mutator_lock_);
-
-  ArtField* FindAccessedFieldAtDexPc(uint32_t dex_pc)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
-  ArtMethod* FindInvokedMethodAtDexPc(uint32_t dex_pc)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
-  SafeMap<uint32_t, std::set<uint32_t>>& FindStringInitMap()
-      REQUIRES_SHARED(Locks::mutator_lock_);
 
   /*
    * Compute the width of the instruction at each address in the instruction stream, and store it in
@@ -745,8 +725,7 @@ class MethodVerifier {
   RegisterLineArenaUniquePtr saved_line_;
 
   const uint32_t dex_method_idx_;  // The method we're working on.
-  // Its object representation if known.
-  ArtMethod* mirror_method_ GUARDED_BY(Locks::mutator_lock_);
+  ArtMethod* method_being_verified_;  // Its ArtMethod representation if known.
   const uint32_t method_access_flags_;  // Method's access flags.
   const RegType* return_type_;  // Lazily computed return type of the method.
   const DexFile* const dex_file_;  // The dex file containing the method.
