@@ -151,16 +151,8 @@ void dumpClass(const DexFile* pDexFile, u4 idx) {
   if (pEncodedData != nullptr) {
     ClassDataItemIterator pClassData(*pDexFile, pEncodedData);
     pClassData.SkipAllFields();
-    // Direct methods.
-    for (; pClassData.HasNextDirectMethod(); pClassData.Next()) {
-      dumpMethod(pDexFile, fileName,
-                 pClassData.GetMemberIndex(),
-                 pClassData.GetRawMemberAccessFlags(),
-                 pClassData.GetMethodCodeItem(),
-                 pClassData.GetMethodCodeItemOffset());
-    }
-    // Virtual methods.
-    for (; pClassData.HasNextVirtualMethod(); pClassData.Next()) {
+    // Direct and virtual methods.
+    for (; pClassData.HasNextMethod(); pClassData.Next()) {
       dumpMethod(pDexFile, fileName,
                  pClassData.GetMemberIndex(),
                  pClassData.GetRawMemberAccessFlags(),

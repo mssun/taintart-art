@@ -610,7 +610,7 @@ bool Redefiner::ClassRedefinition::CheckSameMethods() {
   // Check each of the methods. NB we don't need to specifically check for removals since the 2 dex
   // files have the same number of methods, which means there must be an equal amount of additions
   // and removals.
-  for (; new_iter.HasNextVirtualMethod() || new_iter.HasNextDirectMethod(); new_iter.Next()) {
+  for (; new_iter.HasNextMethod(); new_iter.Next()) {
     // Get the data on the method we are searching for
     const art::DexFile::MethodId& new_method_id = dex_file_->GetMethodId(new_iter.GetMemberIndex());
     const char* new_method_name = dex_file_->GetMethodName(new_method_id);

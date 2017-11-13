@@ -1244,7 +1244,7 @@ TEST_F(Dex2oatTest, LayoutSections) {
     ClassDataItemIterator it(*dex, dex->GetClassData(*class_def));
     it.SkipAllFields();
     std::set<size_t> code_item_offsets;
-    for (; it.HasNextDirectMethod() || it.HasNextVirtualMethod(); it.Next()) {
+    for (; it.HasNextMethod(); it.Next()) {
       const uint16_t method_idx = it.GetMemberIndex();
       const size_t code_item_offset = it.GetMethodCodeItemOffset();
       if (code_item_offsets.insert(code_item_offset).second) {
@@ -1356,7 +1356,7 @@ TEST_F(Dex2oatTest, LayoutSections) {
     // corresponding code item offsets to verify the layout.
     ClassDataItemIterator it(*dex_file, dex_file->GetClassData(*class_def));
     it.SkipAllFields();
-    for (; it.HasNextDirectMethod() || it.HasNextVirtualMethod(); it.Next()) {
+    for (; it.HasNextMethod(); it.Next()) {
       const size_t method_idx = it.GetMemberIndex();
       const size_t code_item_offset = it.GetMethodCodeItemOffset();
       const bool is_hot = ContainsElement(hot_methods, method_idx);
@@ -1382,7 +1382,7 @@ TEST_F(Dex2oatTest, LayoutSections) {
           // or this method is part of the last code item and the end is 4 byte aligned.
           ClassDataItemIterator it2(*dex_file, dex_file->GetClassData(*class_def));
           it2.SkipAllFields();
-          for (; it2.HasNextDirectMethod() || it2.HasNextVirtualMethod(); it2.Next()) {
+          for (; it2.HasNextMethod(); it2.Next()) {
               EXPECT_LE(it2.GetMethodCodeItemOffset(), code_item_offset);
           }
           uint32_t code_item_size = dex_file->FindCodeItemOffset(*class_def, method_idx);
