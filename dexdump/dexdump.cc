@@ -1391,16 +1391,10 @@ static void dumpCfg(const DexFile* dex_file, int idx) {
   }
   ClassDataItemIterator it(*dex_file, class_data);
   it.SkipAllFields();
-  while (it.HasNextDirectMethod()) {
+  while (it.HasNextMethod()) {
     dumpCfg(dex_file,
             it.GetMemberIndex(),
             it.GetMethodCodeItem());
-    it.Next();
-  }
-  while (it.HasNextVirtualMethod()) {
-    dumpCfg(dex_file,
-                it.GetMemberIndex(),
-                it.GetMethodCodeItem());
     it.Next();
   }
 }

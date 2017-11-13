@@ -275,7 +275,7 @@ class OatSymbolizer FINAL {
     ClassDataItemIterator it(dex_file, class_data);
     uint32_t class_method_idx = 0;
     it.SkipAllFields();
-    for (; it.HasNextDirectMethod() || it.HasNextVirtualMethod(); it.Next()) {
+    for (; it.HasNextMethod(); it.Next()) {
       WalkOatMethod(oat_class.GetOatMethod(class_method_idx++),
                     dex_file,
                     class_def_index,
@@ -894,11 +894,7 @@ class OatDumper {
           ClassDataItemIterator it(*dex_file, class_data);
           it.SkipAllFields();
           uint32_t class_method_index = 0;
-          while (it.HasNextDirectMethod()) {
-            AddOffsets(oat_class.GetOatMethod(class_method_index++));
-            it.Next();
-          }
-          while (it.HasNextVirtualMethod()) {
+          while (it.HasNextMethod()) {
             AddOffsets(oat_class.GetOatMethod(class_method_index++));
             it.Next();
           }
@@ -980,11 +976,7 @@ class OatDumper {
       }
       ClassDataItemIterator it(dex_file, class_data);
       it.SkipAllFields();
-      while (it.HasNextDirectMethod()) {
-        WalkCodeItem(dex_file, it.GetMethodCodeItem());
-        it.Next();
-      }
-      while (it.HasNextVirtualMethod()) {
+      while (it.HasNextMethod()) {
         WalkCodeItem(dex_file, it.GetMethodCodeItem());
         it.Next();
       }
@@ -1229,20 +1221,7 @@ class OatDumper {
     ClassDataItemIterator it(dex_file, class_data);
     it.SkipAllFields();
     uint32_t class_method_index = 0;
-    while (it.HasNextDirectMethod()) {
-      if (!DumpOatMethod(vios, class_def, class_method_index, oat_class, dex_file,
-                         it.GetMemberIndex(), it.GetMethodCodeItem(),
-                         it.GetRawMemberAccessFlags(), &addr_found)) {
-        success = false;
-      }
-      if (addr_found) {
-        *stop_analysis = true;
-        return success;
-      }
-      class_method_index++;
-      it.Next();
-    }
-    while (it.HasNextVirtualMethod()) {
+    while (it.HasNextMethod()) {
       if (!DumpOatMethod(vios, class_def, class_method_index, oat_class, dex_file,
                          it.GetMemberIndex(), it.GetMethodCodeItem(),
                          it.GetRawMemberAccessFlags(), &addr_found)) {

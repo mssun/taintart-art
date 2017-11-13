@@ -695,7 +695,7 @@ TEST_F(DexLayoutTest, CodeItemOverrun) {
       }
       ClassDataItemIterator it(*dex, data);
       it.SkipAllFields();
-      while (it.HasNextDirectMethod() || it.HasNextVirtualMethod()) {
+      while (it.HasNextMethod()) {
         DexFile::CodeItem* item = const_cast<DexFile::CodeItem*>(it.GetMethodCodeItem());
         if (item != nullptr) {
           IterationRange<DexInstructionIterator> instructions = item->Instructions();
