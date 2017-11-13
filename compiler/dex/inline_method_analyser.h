@@ -30,6 +30,8 @@
 
 namespace art {
 
+class CodeItemDataAccessor;
+
 namespace verifier {
 class MethodVerifier;
 }  // namespace verifier
@@ -121,21 +123,21 @@ class InlineMethodAnalyser {
   static bool IsSyntheticAccessor(MethodReference ref);
 
  private:
-  static bool AnalyseMethodCode(const DexFile::CodeItem* code_item,
+  static bool AnalyseMethodCode(const CodeItemDataAccessor* code_item,
                                 const MethodReference& method_ref,
                                 bool is_static,
                                 ArtMethod* method,
                                 InlineMethod* result)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  static bool AnalyseReturnMethod(const DexFile::CodeItem* code_item, InlineMethod* result);
-  static bool AnalyseConstMethod(const DexFile::CodeItem* code_item, InlineMethod* result);
-  static bool AnalyseIGetMethod(const DexFile::CodeItem* code_item,
+  static bool AnalyseReturnMethod(const CodeItemDataAccessor* code_item, InlineMethod* result);
+  static bool AnalyseConstMethod(const CodeItemDataAccessor* code_item, InlineMethod* result);
+  static bool AnalyseIGetMethod(const CodeItemDataAccessor* code_item,
                                 const MethodReference& method_ref,
                                 bool is_static,
                                 ArtMethod* method,
                                 InlineMethod* result)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  static bool AnalyseIPutMethod(const DexFile::CodeItem* code_item,
+  static bool AnalyseIPutMethod(const CodeItemDataAccessor* code_item,
                                 const MethodReference& method_ref,
                                 bool is_static,
                                 ArtMethod* method,
