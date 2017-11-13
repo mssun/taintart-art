@@ -28,10 +28,7 @@ namespace art {
 static_assert(sizeof(IRTSegmentState) == sizeof(uint32_t), "IRTSegmentState size unexpected");
 static_assert(std::is_trivial<IRTSegmentState>::value, "IRTSegmentState not trivial");
 
-static bool kEnableAnnotationChecks = RegisterRuntimeDebugFlag(&kEnableAnnotationChecks);
-
-template <bool kDynamicFast>
-static inline void GoToRunnableFast(Thread* self) NO_THREAD_SAFETY_ANALYSIS;
+static inline void GoToRunnableFast(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_);
 
 extern void ReadBarrierJni(mirror::CompressedReference<mirror::Object>* handle_on_stack,
                            Thread* self ATTRIBUTE_UNUSED) {
@@ -56,9 +53,9 @@ extern uint32_t JniMethodFastStart(Thread* self) {
   uint32_t saved_local_ref_cookie = bit_cast<uint32_t>(env->local_ref_cookie);
   env->local_ref_cookie = env->locals.GetSegmentState();
 
-  if (kIsDebugBuild && kEnableAnnotationChecks) {
+  if (kIsDebugBuild) {
     ArtMethod* native_method = *self->GetManagedStack()->GetTopQuickFrame();
-    CHECK(native_method->IsAnnotatedWithFastNative()) << native_method->PrettyMethod();
+    CHECK(native_method->IsFastNative()) << native_method->PrettyMethod();
   }
 
   return saved_local_ref_cookie;
@@ -71,6 +68,9 @@ extern uint32_t JniMethodStart(Thread* self) {
   uint32_t saved_local_ref_cookie = bit_cast<uint32_t>(env->local_ref_cookie);
   env->local_ref_cookie = env->locals.GetSegmentState();
   ArtMethod* native_method = *self->GetManagedStack()->GetTopQuickFrame();
+  // TODO: Introduce special entrypoint for synchronized @FastNative methods?
+  //       Or ban synchronized @FastNative outright to avoid the extra check here?
+  DCHECK(!native_method->IsFastNative() || native_method->IsSynchronized());
   if (!native_method->IsFastNative()) {
     // When not fast JNI we transition out of runnable.
     self->TransitionFromRunnableToSuspended(kNative);
@@ -90,25 +90,18 @@ static void GoToRunnable(Thread* self) NO_THREAD_SAFETY_ANALYSIS {
   if (!is_fast) {
     self->TransitionFromSuspendedToRunnable();
   } else {
-    GoToRunnableFast</*kDynamicFast*/true>(self);
+    GoToRunnableFast(self);
   }
 }
 
-// TODO: NO_THREAD_SAFETY_ANALYSIS due to different control paths depending on fast JNI.
-template <bool kDynamicFast>
-ALWAYS_INLINE static inline void GoToRunnableFast(Thread* self) NO_THREAD_SAFETY_ANALYSIS {
-  if (kIsDebugBuild && kEnableAnnotationChecks) {
-    // Should only enter here if the method is !Fast JNI or @FastNative.
+ALWAYS_INLINE static inline void GoToRunnableFast(Thread* self) {
+  if (kIsDebugBuild) {
+    // Should only enter here if the method is @FastNative.
     ArtMethod* native_method = *self->GetManagedStack()->GetTopQuickFrame();
-
-    if (kDynamicFast) {
-      CHECK(native_method->IsFastNative()) << native_method->PrettyMethod();
-    } else {
-      CHECK(native_method->IsAnnotatedWithFastNative()) << native_method->PrettyMethod();
-    }
+    CHECK(native_method->IsFastNative()) << native_method->PrettyMethod();
   }
 
-  // When we are in "fast" JNI or @FastNative, we are already Runnable.
+  // When we are in @FastNative, we are already Runnable.
   // Only do a suspend check on the way out of JNI.
   if (UNLIKELY(self->TestAllFlags())) {
     // In fast JNI mode we never transitioned out of runnable. Perform a suspend check if there
@@ -138,7 +131,7 @@ extern void JniMethodEnd(uint32_t saved_local_ref_cookie, Thread* self) {
 }
 
 extern void JniMethodFastEnd(uint32_t saved_local_ref_cookie, Thread* self) {
-  GoToRunnableFast</*kDynamicFast*/false>(self);
+  GoToRunnableFast(self);
   PopLocalReferences(saved_local_ref_cookie, self);
 }
 
@@ -175,7 +168,7 @@ static mirror::Object* JniMethodEndWithReferenceHandleResult(jobject result,
 extern mirror::Object* JniMethodFastEndWithReference(jobject result,
                                                      uint32_t saved_local_ref_cookie,
                                                      Thread* self) {
-  GoToRunnableFast</*kDynamicFast*/false>(self);
+  GoToRunnableFast(self);
   return JniMethodEndWithReferenceHandleResult(result, saved_local_ref_cookie, self);
 }
 
@@ -203,8 +196,8 @@ extern uint64_t GenericJniMethodEnd(Thread* self,
                                     HandleScope* handle_scope)
     // TODO: NO_THREAD_SAFETY_ANALYSIS as GoToRunnable() is NO_THREAD_SAFETY_ANALYSIS
     NO_THREAD_SAFETY_ANALYSIS {
-  bool critical_native = called->IsAnnotatedWithCriticalNative();
-  bool fast_native = called->IsAnnotatedWithFastNative();
+  bool critical_native = called->IsCriticalNative();
+  bool fast_native = called->IsFastNative();
   bool normal_native = !critical_native && !fast_native;
 
   // @Fast and @CriticalNative do not do a state transition.

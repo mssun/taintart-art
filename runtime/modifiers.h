@@ -49,17 +49,21 @@ static constexpr uint32_t kAccClassIsProxy =          0x00040000;  // class  (de
 // declaring class. This flag may only be applied to methods.
 static constexpr uint32_t kAccObsoleteMethod =        0x00040000;  // method (runtime)
 // Used by a method to denote that its execution does not need to go through slow path interpreter.
-static constexpr uint32_t kAccSkipAccessChecks =      0x00080000;  // method (dex only)
+static constexpr uint32_t kAccSkipAccessChecks =      0x00080000;  // method (runtime, not native)
 // Used by a class to denote that the verifier has attempted to check it at least once.
 static constexpr uint32_t kAccVerificationAttempted = 0x00080000;  // class (runtime)
-static constexpr uint32_t kAccFastNative =            0x00080000;  // method (dex only)
 // This is set by the class linker during LinkInterfaceMethods. It is used by a method to represent
 // that it was copied from its declaring class into another class. All methods marked kAccMiranda
 // and kAccDefaultConflict will have this bit set. Any kAccDefault method contained in the methods_
 // array of a concrete class will also have this bit set.
 static constexpr uint32_t kAccCopied =                0x00100000;  // method (runtime)
-static constexpr uint32_t kAccMiranda =               0x00200000;  // method (dex only)
+static constexpr uint32_t kAccMiranda =               0x00200000;  // method (runtime, not native)
 static constexpr uint32_t kAccDefault =               0x00400000;  // method (runtime)
+// Native method flags are set when linking the methods based on the presence of the
+// @dalvik.annotation.optimization.{Fast,Critical}Native annotations with build visibility.
+// Reuse the values of kAccSkipAccessChecks and kAccMiranda which are not used for native methods.
+static constexpr uint32_t kAccFastNative =            0x00080000;  // method (runtime; native only)
+static constexpr uint32_t kAccCriticalNative =        0x00200000;  // method (runtime; native only)
 
 // Set by the JIT when clearing profiling infos to denote that a method was previously warm.
 static constexpr uint32_t kAccPreviouslyWarm =        0x00800000;  // method (runtime)
@@ -106,8 +110,9 @@ static constexpr uint32_t kAccValidFieldFlags = kAccPublic | kAccPrivate | kAccP
 // Valid (meaningful) bits for a method.
 static constexpr uint32_t kAccValidMethodFlags = kAccPublic | kAccPrivate | kAccProtected |
     kAccStatic | kAccFinal | kAccSynchronized | kAccBridge | kAccVarargs | kAccNative |
-    kAccAbstract | kAccStrict | kAccSynthetic | kAccMiranda | kAccConstructor |
-    kAccDeclaredSynchronized | kAccPreviouslyWarm;
+    kAccAbstract | kAccStrict | kAccSynthetic | kAccConstructor | kAccDeclaredSynchronized;
+static_assert(((kAccIntrinsic | kAccIntrinsicBits) & kAccValidMethodFlags) == 0,
+              "Intrinsic bits and valid dex file method access flags must not overlap.");
 
 // Valid (meaningful) bits for a class (not interface).
 // Note 1. These are positive bits. Other bits may have to be zero.

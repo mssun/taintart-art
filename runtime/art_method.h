@@ -200,9 +200,9 @@ class ArtMethod FINAL {
   }
 
   bool IsMiranda() {
-    static_assert((kAccMiranda & (kAccIntrinsic | kAccIntrinsicBits)) == 0,
-                  "kAccMiranda conflicts with intrinsic modifier");
-    return (GetAccessFlags() & kAccMiranda) != 0;
+    // The kAccMiranda flag value is used with a different meaning for native methods,
+    // so we need to check the kAccNative flag as well.
+    return (GetAccessFlags() & (kAccNative | kAccMiranda)) == kAccMiranda;
   }
 
   // Returns true if invoking this method will not throw an AbstractMethodError or
@@ -213,6 +213,7 @@ class ArtMethod FINAL {
 
   bool IsCompilable() {
     if (IsIntrinsic()) {
+      // kAccCompileDontBother overlaps with kAccIntrinsicBits.
       return true;
     }
     return (GetAccessFlags() & kAccCompileDontBother) == 0;
@@ -252,8 +253,21 @@ class ArtMethod FINAL {
     return (GetAccessFlags<kReadBarrierOption>() & kAccNative) != 0;
   }
 
+  // Checks to see if the method was annotated with @dalvik.annotation.optimization.FastNative.
   bool IsFastNative() {
+    // The presence of the annotation is checked by ClassLinker and recorded in access flags.
+    // The kAccFastNative flag value is used with a different meaning for non-native methods,
+    // so we need to check the kAccNative flag as well.
     constexpr uint32_t mask = kAccFastNative | kAccNative;
+    return (GetAccessFlags() & mask) == mask;
+  }
+
+  // Checks to see if the method was annotated with @dalvik.annotation.optimization.CriticalNative.
+  bool IsCriticalNative() {
+    // The presence of the annotation is checked by ClassLinker and recorded in access flags.
+    // The kAccCriticalNative flag value is used with a different meaning for non-native methods,
+    // so we need to check the kAccNative flag as well.
+    constexpr uint32_t mask = kAccCriticalNative | kAccNative;
     return (GetAccessFlags() & mask) == mask;
   }
 
@@ -274,10 +288,14 @@ class ArtMethod FINAL {
   bool IsPolymorphicSignature() REQUIRES_SHARED(Locks::mutator_lock_);
 
   bool SkipAccessChecks() {
-    return (GetAccessFlags() & kAccSkipAccessChecks) != 0;
+    // The kAccSkipAccessChecks flag value is used with a different meaning for native methods,
+    // so we need to check the kAccNative flag as well.
+    return (GetAccessFlags() & (kAccSkipAccessChecks | kAccNative)) == kAccSkipAccessChecks;
   }
 
   void SetSkipAccessChecks() {
+    // SkipAccessChecks() is applicable only to non-native methods.
+    DCHECK(!IsNative<kWithoutReadBarrier>());
     AddAccessFlags(kAccSkipAccessChecks);
   }
 
@@ -309,14 +327,6 @@ class ArtMethod FINAL {
   void SetMustCountLocks() {
     AddAccessFlags(kAccMustCountLocks);
   }
-
-  // Checks to see if the method was annotated with @dalvik.annotation.optimization.FastNative
-  // -- Independent of kAccFastNative access flags.
-  bool IsAnnotatedWithFastNative();
-
-  // Checks to see if the method was annotated with @dalvik.annotation.optimization.CriticalNative
-  // -- Unrelated to the GC notion of "critical".
-  bool IsAnnotatedWithCriticalNative();
 
   // Returns true if this method could be overridden by a default method.
   bool IsOverridableByDefaultMethod() REQUIRES_SHARED(Locks::mutator_lock_);
@@ -417,7 +427,7 @@ class ArtMethod FINAL {
 
   // Registers the native method and returns the new entry point. NB The returned entry point might
   // be different from the native_method argument if some MethodCallback modifies it.
-  const void* RegisterNative(const void* native_method, bool is_fast)
+  const void* RegisterNative(const void* native_method)
       REQUIRES_SHARED(Locks::mutator_lock_) WARN_UNUSED;
 
   void UnregisterNative() REQUIRES_SHARED(Locks::mutator_lock_);
@@ -452,7 +462,7 @@ class ArtMethod FINAL {
     // where the declaring class is treated as a weak reference (accessing it with
     // a read barrier would either prevent unloading the class, or crash the runtime if
     // the GC wants to unload it).
-    DCHECK(!IsNative<kWithoutReadBarrier>());
+    DCHECK(!IsNative());
     if (UNLIKELY(IsProxyMethod())) {
       return nullptr;
     }
