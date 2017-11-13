@@ -269,7 +269,9 @@ void HBasicBlockBuilder::InsertTryBoundaryBlocks() {
     // loop for synchronized blocks.
     if (ContainsElement(throwing_blocks_, block)) {
       // Try to find a TryItem covering the block.
-      const int32_t try_item_idx = DexFile::FindTryItem(code_item_, block->GetDexPc());
+      const int32_t try_item_idx = DexFile::FindTryItem(DexFile::GetTryItems(code_item_, 0u),
+                                                        code_item_.tries_size_,
+                                                        block->GetDexPc());
       if (try_item_idx != -1) {
         // Block throwing and in a TryItem. Store the try block information.
         try_block_info.Put(block->GetBlockId(), DexFile::GetTryItems(code_item_, try_item_idx));

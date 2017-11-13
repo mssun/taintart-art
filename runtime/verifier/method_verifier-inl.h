@@ -27,10 +27,6 @@
 namespace art {
 namespace verifier {
 
-inline const DexFile::CodeItem* MethodVerifier::CodeItem() const {
-  return code_item_;
-}
-
 inline RegisterLine* MethodVerifier::GetRegLine(uint32_t dex_pc) {
   return reg_table_.GetLine(dex_pc);
 }
