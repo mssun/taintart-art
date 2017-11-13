@@ -90,7 +90,7 @@ void GenerateBootImageProfile(
           it.Next();
         }
         it.SkipInstanceFields();
-        while (it.HasNextDirectMethod() || it.HasNextVirtualMethod()) {
+        while (it.HasNextMethod()) {
           const uint32_t flags = it.GetMethodAccessFlags();
           if ((flags & kAccNative) != 0) {
             // Native method will get dirtied.

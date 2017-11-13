@@ -762,31 +762,17 @@ static void ResolveConstStrings(CompilerDriver* driver,
         continue;
       }
 
-      // Direct methods.
-      int64_t previous_direct_method_idx = -1;
-      while (it.HasNextDirectMethod()) {
+      // Direct and virtual methods.
+      int64_t previous_method_idx = -1;
+      while (it.HasNextMethod()) {
         uint32_t method_idx = it.GetMemberIndex();
-        if (method_idx == previous_direct_method_idx) {
+        if (method_idx == previous_method_idx) {
           // smali can create dex files with two encoded_methods sharing the same method_idx
           // http://code.google.com/p/smali/issues/detail?id=119
           it.Next();
           continue;
         }
-        previous_direct_method_idx = method_idx;
-        ResolveConstStrings(dex_cache, *dex_file, it.GetMethodCodeItem());
-        it.Next();
-      }
-      // Virtual methods.
-      int64_t previous_virtual_method_idx = -1;
-      while (it.HasNextVirtualMethod()) {
-        uint32_t method_idx = it.GetMemberIndex();
-        if (method_idx == previous_virtual_method_idx) {
-          // smali can create dex files with two encoded_methods sharing the same method_idx
-          // http://code.google.com/p/smali/issues/detail?id=119
-          it.Next();
-          continue;
-        }
-        previous_virtual_method_idx = method_idx;
+        previous_method_idx = method_idx;
         ResolveConstStrings(dex_cache, *dex_file, it.GetMethodCodeItem());
         it.Next();
       }
@@ -1702,16 +1688,7 @@ class ResolveClassFieldsAndMethodsVisitor : public CompilationVisitor {
         it.Next();
       }
       if (resolve_fields_and_methods) {
-        while (it.HasNextDirectMethod()) {
-          ArtMethod* method = class_linker->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
-              dex_file, it.GetMemberIndex(), dex_cache, class_loader, nullptr,
-              it.GetMethodInvokeType(class_def));
-          if (method == nullptr) {
-            CheckAndClearResolveException(soa.Self());
-          }
-          it.Next();
-        }
-        while (it.HasNextVirtualMethod()) {
+        while (it.HasNextMethod()) {
           ArtMethod* method = class_linker->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
               dex_file, it.GetMemberIndex(), dex_cache, class_loader, nullptr,
               it.GetMethodInvokeType(class_def));
@@ -1820,12 +1797,7 @@ static void PopulateVerifiedMethods(const DexFile& dex_file,
   ClassDataItemIterator it(dex_file, class_data);
   it.SkipAllFields();
 
-  while (it.HasNextDirectMethod()) {
-    verification_results->CreateVerifiedMethodFor(MethodReference(&dex_file, it.GetMemberIndex()));
-    it.Next();
-  }
-
-  while (it.HasNextVirtualMethod()) {
+  while (it.HasNextMethod()) {
     verification_results->CreateVerifiedMethodFor(MethodReference(&dex_file, it.GetMemberIndex()));
     it.Next();
   }
@@ -2752,44 +2724,20 @@ class CompileClassVisitor : public CompilationVisitor {
     bool compilation_enabled = driver->IsClassToCompile(
         dex_file.StringByTypeIdx(class_def.class_idx_));
 
-    // Compile direct methods
-    int64_t previous_direct_method_idx = -1;
-    while (it.HasNextDirectMethod()) {
+    // Compile direct and virtual methods.
+    int64_t previous_method_idx = -1;
+    while (it.HasNextMethod()) {
       uint32_t method_idx = it.GetMemberIndex();
-      if (method_idx == previous_direct_method_idx) {
+      if (method_idx == previous_method_idx) {
         // smali can create dex files with two encoded_methods sharing the same method_idx
         // http://code.google.com/p/smali/issues/detail?id=119
         it.Next();
         continue;
       }
-      previous_direct_method_idx = method_idx;
+      previous_method_idx = method_idx;
       CompileMethod(soa.Self(),
                     driver,
                     it.GetMethodCodeItem(),
-                    it.GetMethodAccessFlags(),
-                    it.GetMethodInvokeType(class_def),
-                    class_def_index,
-                    method_idx,
-                    class_loader,
-                    dex_file,
-                    dex_to_dex_compilation_level,
-                    compilation_enabled,
-                    dex_cache);
-      it.Next();
-    }
-    // Compile virtual methods
-    int64_t previous_virtual_method_idx = -1;
-    while (it.HasNextVirtualMethod()) {
-      uint32_t method_idx = it.GetMemberIndex();
-      if (method_idx == previous_virtual_method_idx) {
-        // smali can create dex files with two encoded_methods sharing the same method_idx
-        // http://code.google.com/p/smali/issues/detail?id=119
-        it.Next();
-        continue;
-      }
-      previous_virtual_method_idx = method_idx;
-      CompileMethod(soa.Self(),
-                    driver, it.GetMethodCodeItem(),
                     it.GetMethodAccessFlags(),
                     it.GetMethodInvokeType(class_def),
                     class_def_index,
