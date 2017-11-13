@@ -496,17 +496,10 @@ OatFileAssistant::OatStatus OatFileAssistant::GivenOatFileStatus(const OatFile& 
 
   // Verify the dex checksum.
   std::string error_msg;
-  if (kIsVdexEnabled) {
-    VdexFile* vdex = file.GetVdexFile();
-    if (!DexChecksumUpToDate(*vdex, &error_msg)) {
-      LOG(ERROR) << error_msg;
-      return kOatDexOutOfDate;
-    }
-  } else {
-    if (!DexChecksumUpToDate(file, &error_msg)) {
-      LOG(ERROR) << error_msg;
-      return kOatDexOutOfDate;
-    }
+  VdexFile* vdex = file.GetVdexFile();
+  if (!DexChecksumUpToDate(*vdex, &error_msg)) {
+    LOG(ERROR) << error_msg;
+    return kOatDexOutOfDate;
   }
 
   CompilerFilter::Filter current_compiler_filter = file.GetCompilerFilter();

@@ -193,7 +193,7 @@ OatFileBase* OatFileBase::OpenOatFile(const std::string& vdex_filename,
 
   ret->PreLoad();
 
-  if (kIsVdexEnabled && !ret->LoadVdex(vdex_filename, writable, low_4gb, error_msg)) {
+  if (!ret->LoadVdex(vdex_filename, writable, low_4gb, error_msg)) {
     return nullptr;
   }
 
@@ -233,7 +233,7 @@ OatFileBase* OatFileBase::OpenOatFile(int vdex_fd,
                                       std::string* error_msg) {
   std::unique_ptr<OatFileBase> ret(new kOatFileBaseSubType(oat_location, executable));
 
-  if (kIsVdexEnabled && !ret->LoadVdex(vdex_fd, vdex_location, writable, low_4gb, error_msg)) {
+  if (!ret->LoadVdex(vdex_fd, vdex_location, writable, low_4gb, error_msg)) {
     return nullptr;
   }
 
@@ -1275,7 +1275,7 @@ OatFile* OatFile::Open(const std::string& oat_filename,
   std::string vdex_filename = GetVdexFilename(oat_filename);
 
   // Check that the files even exist, fast-fail.
-  if (kIsVdexEnabled && !OS::FileExists(vdex_filename.c_str())) {
+  if (!OS::FileExists(vdex_filename.c_str())) {
     *error_msg = StringPrintf("File %s does not exist.", vdex_filename.c_str());
     return nullptr;
   } else if (!OS::FileExists(oat_filename.c_str())) {
@@ -1427,11 +1427,11 @@ const uint8_t* OatFile::BssEnd() const {
 }
 
 const uint8_t* OatFile::DexBegin() const {
-  return kIsVdexEnabled ? vdex_->Begin() : Begin();
+  return vdex_->Begin();
 }
 
 const uint8_t* OatFile::DexEnd() const {
-  return kIsVdexEnabled ? vdex_->End() : End();
+  return vdex_->End();
 }
 
 ArrayRef<ArtMethod*> OatFile::GetBssMethods() const {
