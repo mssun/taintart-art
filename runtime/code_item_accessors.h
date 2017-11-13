@@ -102,6 +102,9 @@ class CodeItemDataAccessor : public CodeItemInstructionAccessor {
   ALWAYS_INLINE static CodeItemDataAccessor CreateNullable(ArtMethod* method)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  ALWAYS_INLINE static CodeItemDataAccessor CreateNullable(const DexFile* dex_file,
+                                                           const DexFile::CodeItem* code_item);
+
  protected:
   CodeItemDataAccessor() = default;
 
