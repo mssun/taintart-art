@@ -208,12 +208,12 @@ ART_GTEST_dexdump_test_TARGET_DEPS := \
 ART_GTEST_dexlayout_test_HOST_DEPS := \
   $(HOST_CORE_IMAGE_DEFAULT_64) \
   $(HOST_CORE_IMAGE_DEFAULT_32) \
-  dexlayout-host \
+  dexlayoutd-host \
   dexdump2-host
 ART_GTEST_dexlayout_test_TARGET_DEPS := \
   $(TARGET_CORE_IMAGE_DEFAULT_64) \
   $(TARGET_CORE_IMAGE_DEFAULT_32) \
-  dexlayout-target \
+  dexlayoutd-target \
   dexdump2-target
 
 # The dexlist test requires an image and the dexlist utility.
@@ -253,7 +253,7 @@ ART_GTEST_oatdump_image_test_TARGET_DEPS := $(ART_GTEST_oatdump_test_TARGET_DEPS
 
 # Profile assistant tests requires profman utility.
 ART_GTEST_profile_assistant_test_HOST_DEPS := profmand-host
-ART_GTEST_profile_assistant_test_TARGET_DEPS := profman-target
+ART_GTEST_profile_assistant_test_TARGET_DEPS := profmand-target
 
 # The path for which all the source files are relative, not actually the current directory.
 LOCAL_PATH := art
