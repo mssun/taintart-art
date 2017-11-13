@@ -2474,6 +2474,7 @@ void InstructionCodeGeneratorMIPS::HandleShift(HBinaryOperation* instr) {
             }
           }
       } else {
+        const bool isR6 = codegen_->GetInstructionSetFeatures().IsR6();
         MipsLabel done;
         if (instr->IsShl()) {
           __ Sllv(dst_low, lhs_low, rhs_reg);
@@ -2483,9 +2484,14 @@ void InstructionCodeGeneratorMIPS::HandleShift(HBinaryOperation* instr) {
           __ Sllv(dst_high, lhs_high, rhs_reg);
           __ Or(dst_high, dst_high, TMP);
           __ Andi(TMP, rhs_reg, kMipsBitsPerWord);
-          __ Beqz(TMP, &done);
-          __ Move(dst_high, dst_low);
-          __ Move(dst_low, ZERO);
+          if (isR6) {
+            __ Beqzc(TMP, &done, /* is_bare */ true);
+            __ Move(dst_high, dst_low);
+            __ Move(dst_low, ZERO);
+          } else {
+            __ Movn(dst_high, dst_low, TMP);
+            __ Movn(dst_low, ZERO, TMP);
+          }
         } else if (instr->IsShr()) {
           __ Srav(dst_high, lhs_high, rhs_reg);
           __ Nor(AT, ZERO, rhs_reg);
@@ -2494,9 +2500,15 @@ void InstructionCodeGeneratorMIPS::HandleShift(HBinaryOperation* instr) {
           __ Srlv(dst_low, lhs_low, rhs_reg);
           __ Or(dst_low, dst_low, TMP);
           __ Andi(TMP, rhs_reg, kMipsBitsPerWord);
-          __ Beqz(TMP, &done);
-          __ Move(dst_low, dst_high);
-          __ Sra(dst_high, dst_high, 31);
+          if (isR6) {
+            __ Beqzc(TMP, &done, /* is_bare */ true);
+            __ Move(dst_low, dst_high);
+            __ Sra(dst_high, dst_high, 31);
+          } else {
+            __ Sra(AT, dst_high, 31);
+            __ Movn(dst_low, dst_high, TMP);
+            __ Movn(dst_high, AT, TMP);
+          }
         } else if (instr->IsUShr()) {
           __ Srlv(dst_high, lhs_high, rhs_reg);
           __ Nor(AT, ZERO, rhs_reg);
@@ -2505,10 +2517,15 @@ void InstructionCodeGeneratorMIPS::HandleShift(HBinaryOperation* instr) {
           __ Srlv(dst_low, lhs_low, rhs_reg);
           __ Or(dst_low, dst_low, TMP);
           __ Andi(TMP, rhs_reg, kMipsBitsPerWord);
-          __ Beqz(TMP, &done);
-          __ Move(dst_low, dst_high);
-          __ Move(dst_high, ZERO);
-        } else {
+          if (isR6) {
+            __ Beqzc(TMP, &done, /* is_bare */ true);
+            __ Move(dst_low, dst_high);
+            __ Move(dst_high, ZERO);
+          } else {
+            __ Movn(dst_low, dst_high, TMP);
+            __ Movn(dst_high, ZERO, TMP);
+          }
+        } else {  // Rotate.
           __ Nor(AT, ZERO, rhs_reg);
           __ Srlv(TMP, lhs_low, rhs_reg);
           __ Sll(dst_low, lhs_high, 1);
@@ -2519,10 +2536,16 @@ void InstructionCodeGeneratorMIPS::HandleShift(HBinaryOperation* instr) {
           __ Sllv(dst_high, dst_high, AT);
           __ Or(dst_high, dst_high, TMP);
           __ Andi(TMP, rhs_reg, kMipsBitsPerWord);
-          __ Beqz(TMP, &done);
-          __ Move(TMP, dst_high);
-          __ Move(dst_high, dst_low);
-          __ Move(dst_low, TMP);
+          if (isR6) {
+            __ Beqzc(TMP, &done, /* is_bare */ true);
+            __ Move(TMP, dst_high);
+            __ Move(dst_high, dst_low);
+            __ Move(dst_low, TMP);
+          } else {
+            __ Movn(AT, dst_high, TMP);
+            __ Movn(dst_high, dst_low, TMP);
+            __ Movn(dst_low, AT, TMP);
+          }
         }
         __ Bind(&done);
       }
