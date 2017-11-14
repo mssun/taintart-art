@@ -54,17 +54,17 @@ class TaskProcessor {
  public:
   TaskProcessor();
   virtual ~TaskProcessor();
-  void AddTask(Thread* self, HeapTask* task) REQUIRES(!*lock_);
-  HeapTask* GetTask(Thread* self) REQUIRES(!*lock_);
-  void Start(Thread* self) REQUIRES(!*lock_);
+  void AddTask(Thread* self, HeapTask* task) REQUIRES(!lock_);
+  HeapTask* GetTask(Thread* self) REQUIRES(!lock_);
+  void Start(Thread* self) REQUIRES(!lock_);
   // Stop tells the RunAllTasks to finish up the remaining tasks as soon as
   // possible then return.
-  void Stop(Thread* self) REQUIRES(!*lock_);
-  void RunAllTasks(Thread* self) REQUIRES(!*lock_);
-  bool IsRunning() const REQUIRES(!*lock_);
+  void Stop(Thread* self) REQUIRES(!lock_);
+  void RunAllTasks(Thread* self) REQUIRES(!lock_);
+  bool IsRunning() const REQUIRES(!lock_);
   void UpdateTargetRunTime(Thread* self, HeapTask* target_time, uint64_t new_target_time)
-      REQUIRES(!*lock_);
-  Thread* GetRunningThread() const REQUIRES(!*lock_);
+      REQUIRES(!lock_);
+  Thread* GetRunningThread() const REQUIRES(!lock_);
 
  private:
   class CompareByTargetRunTime {
@@ -74,9 +74,9 @@ class TaskProcessor {
     }
   };
 
-  mutable Mutex* lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
+  mutable Mutex lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
+  ConditionVariable cond_ GUARDED_BY(lock_);
   bool is_running_ GUARDED_BY(lock_);
-  std::unique_ptr<ConditionVariable> cond_ GUARDED_BY(lock_);
   std::multiset<HeapTask*, CompareByTargetRunTime> tasks_ GUARDED_BY(lock_);
   Thread* running_thread_ GUARDED_BY(lock_);
 
