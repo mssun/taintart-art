@@ -46,10 +46,6 @@ func globalFlags(ctx android.BaseContext) ([]string, []string) {
 		cflags = append(cflags, "-DART_USE_TLAB=1")
 	}
 
-	if !envFalse(ctx, "ART_ENABLE_VDEX") {
-		cflags = append(cflags, "-DART_ENABLE_VDEX")
-	}
-
 	imtSize := envDefault(ctx, "ART_IMT_SIZE", "43")
 	cflags = append(cflags, "-DIMT_SIZE="+imtSize)
 

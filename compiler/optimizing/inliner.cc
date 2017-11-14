@@ -1672,7 +1672,7 @@ bool HInliner::TryBuildAndInlineHelper(HInvoke* invoke_instruction,
                         compiler_driver_,
                         codegen_,
                         inline_stats_,
-                        resolved_method->GetQuickenedInfo(class_linker->GetImagePointerSize()),
+                        resolved_method->GetQuickenedInfo(),
                         handles_);
 
   if (builder.BuildGraph() != kAnalysisSuccess) {

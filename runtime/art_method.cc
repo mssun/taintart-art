@@ -563,23 +563,14 @@ bool ArtMethod::EqualParameters(Handle<mirror::ObjectArray<mirror::Class>> param
   return true;
 }
 
-const uint8_t* ArtMethod::GetQuickenedInfo(PointerSize pointer_size) {
-  if (kIsVdexEnabled) {
-    const DexFile& dex_file = GetDeclaringClass()->GetDexFile();
-    const OatFile::OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
-    if (oat_dex_file == nullptr || (oat_dex_file->GetOatFile() == nullptr)) {
-      return nullptr;
-    }
-    return oat_dex_file->GetOatFile()->GetVdexFile()->GetQuickenedInfoOf(
-        dex_file, GetCodeItemOffset());
-  } else {
-    bool found = false;
-    OatFile::OatMethod oat_method = FindOatMethodFor(this, pointer_size, &found);
-    if (!found || (oat_method.GetQuickCode() != nullptr)) {
-      return nullptr;
-    }
-    return oat_method.GetVmapTable();
+const uint8_t* ArtMethod::GetQuickenedInfo() {
+  const DexFile& dex_file = GetDeclaringClass()->GetDexFile();
+  const OatFile::OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
+  if (oat_dex_file == nullptr || (oat_dex_file->GetOatFile() == nullptr)) {
+    return nullptr;
   }
+  return oat_dex_file->GetOatFile()->GetVdexFile()->GetQuickenedInfoOf(
+      dex_file, GetCodeItemOffset());
 }
 
 const OatQuickMethodHeader* ArtMethod::GetOatQuickMethodHeader(uintptr_t pc) {
