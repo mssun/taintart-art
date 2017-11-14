@@ -644,52 +644,47 @@ static bool DoMethodHandleInvokeCommon(Thread* self,
   // arguments either from a range or an array of arguments depending
   // on whether the DEX instruction is invoke-polymorphic/range or
   // invoke-polymorphic. The array here is for the latter.
-  uint32_t args[Instruction::kMaxVarArgRegs] = {};
   if (UNLIKELY(is_range)) {
     // VRegC is the register holding the method handle. Arguments passed
     // to the method handle's target do not include the method handle.
-    uint32_t first_arg = inst->VRegC_4rcc() + 1;
-    static const bool kIsRange = true;
+    RangeInstructionOperands operands(inst->VRegC_4rcc() + 1, inst->VRegA_4rcc() - 1);
     if (invoke_exact) {
-      return art::MethodHandleInvokeExact<kIsRange>(self,
-                                                    shadow_frame,
-                                                    method_handle,
-                                                    callsite_type,
-                                                    args /* unused */,
-                                                    first_arg,
-                                                    result);
+      return MethodHandleInvokeExact(self,
+                                     shadow_frame,
+                                     method_handle,
+                                     callsite_type,
+                                     &operands,
+                                     result);
     } else {
-      return art::MethodHandleInvoke<kIsRange>(self,
-                                               shadow_frame,
-                                               method_handle,
-                                               callsite_type,
-                                               args /* unused */,
-                                               first_arg,
-                                               result);
+      return MethodHandleInvoke(self,
+                                shadow_frame,
+                                method_handle,
+                                callsite_type,
+                                &operands,
+                                result);
     }
   } else {
     // Get the register arguments for the invoke.
+    uint32_t args[Instruction::kMaxVarArgRegs] = {};
     inst->GetVarArgs(args, inst_data);
     // Drop the first register which is the method handle performing the invoke.
     memmove(args, args + 1, sizeof(args[0]) * (Instruction::kMaxVarArgRegs - 1));
     args[Instruction::kMaxVarArgRegs - 1] = 0;
-    static const bool kIsRange = false;
+    VarArgsInstructionOperands operands(args, inst->VRegA_45cc() - 1);
     if (invoke_exact) {
-      return art::MethodHandleInvokeExact<kIsRange>(self,
-                                                    shadow_frame,
-                                                    method_handle,
-                                                    callsite_type,
-                                                    args,
-                                                    args[0],
-                                                    result);
+      return MethodHandleInvokeExact(self,
+                                     shadow_frame,
+                                     method_handle,
+                                     callsite_type,
+                                     &operands,
+                                     result);
     } else {
-      return art::MethodHandleInvoke<kIsRange>(self,
-                                               shadow_frame,
-                                               method_handle,
-                                               callsite_type,
-                                               args,
-                                               args[0],
-                                               result);
+      return MethodHandleInvoke(self,
+                                shadow_frame,
+                                method_handle,
+                                callsite_type,
+                                &operands,
+                                result);
     }
   }
 }
@@ -1180,17 +1175,13 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
 
   // Invoke the bootstrap method handle.
   JValue result;
-
-  // This array of arguments is unused. DoMethodHandleInvokeExact() operates on either a
-  // an argument array or a range, but always takes an array argument.
-  uint32_t args_unused[Instruction::kMaxVarArgRegs];
-  bool invoke_success = art::MethodHandleInvokeExact<true /* is_range */>(self,
-                                                                          *bootstrap_frame,
-                                                                          bootstrap,
-                                                                          bootstrap_method_type,
-                                                                          args_unused,
-                                                                          0,
-                                                                          &result);
+  RangeInstructionOperands operands(0, vreg);
+  bool invoke_success = MethodHandleInvokeExact(self,
+                                                *bootstrap_frame,
+                                                bootstrap,
+                                                bootstrap_method_type,
+                                                &operands,
+                                                &result);
   if (!invoke_success) {
     DCHECK(self->IsExceptionPending());
     return nullptr;
@@ -1273,21 +1264,25 @@ bool DoInvokeCustom(Thread* self,
   Handle<mirror::MethodHandle> target = hs.NewHandle(call_site->GetTarget());
   Handle<mirror::MethodType> target_method_type = hs.NewHandle(target->GetMethodType());
   DCHECK_EQ(static_cast<size_t>(inst->VRegA()), target_method_type->NumberOfVRegs());
-
-  uint32_t args[Instruction::kMaxVarArgRegs];
   if (is_range) {
-    args[0] = inst->VRegC_3rc();
+    RangeInstructionOperands operands(inst->VRegC_3rc(), inst->VRegA_3rc());
+    return MethodHandleInvokeExact(self,
+                                   shadow_frame,
+                                   target,
+                                   target_method_type,
+                                   &operands,
+                                   result);
   } else {
+    uint32_t args[Instruction::kMaxVarArgRegs];
     inst->GetVarArgs(args, inst_data);
+    VarArgsInstructionOperands operands(args, inst->VRegA_35c());
+    return MethodHandleInvokeExact(self,
+                                   shadow_frame,
+                                   target,
+                                   target_method_type,
+                                   &operands,
+                                   result);
   }
-
-  return art::MethodHandleInvokeExact<is_range>(self,
-                                                shadow_frame,
-                                                target,
-                                                target_method_type,
-                                                args,
-                                                args[0],
-                                                result);
 }
 
 template <bool is_range>

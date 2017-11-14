@@ -139,14 +139,12 @@ class EmulatedStackFrameAccessor {
   DISALLOW_COPY_AND_ASSIGN(EmulatedStackFrameAccessor);
 };
 
-template <bool is_range>
 mirror::EmulatedStackFrame* EmulatedStackFrame::CreateFromShadowFrameAndArgs(
     Thread* self,
     Handle<mirror::MethodType> caller_type,
     Handle<mirror::MethodType> callee_type,
     const ShadowFrame& caller_frame,
-    const uint32_t first_src_reg,
-    const uint32_t (&arg)[Instruction::kMaxVarArgRegs]) {
+    const InstructionOperands* const operands) {
   StackHandleScope<6> hs(self);
 
   // Step 1: We must throw a WrongMethodTypeException if there's a mismatch in the
@@ -185,9 +183,9 @@ mirror::EmulatedStackFrame* EmulatedStackFrame::CreateFromShadowFrameAndArgs(
   }
 
   // Step 4 : Perform argument conversions (if required).
-  ShadowFrameGetter<is_range> getter(first_src_reg, arg, caller_frame);
+  ShadowFrameGetter getter(operands, caller_frame);
   EmulatedStackFrameAccessor setter(references, stack_frame, stack_frame->GetLength());
-  if (!PerformConversions<ShadowFrameGetter<is_range>, EmulatedStackFrameAccessor>(
+  if (!PerformConversions<ShadowFrameGetter, EmulatedStackFrameAccessor>(
           self, caller_type, callee_type, &getter, &setter, num_method_params)) {
     return nullptr;
   }
@@ -288,22 +286,6 @@ void EmulatedStackFrame::ResetClass() {
 void EmulatedStackFrame::VisitRoots(RootVisitor* visitor) {
   static_class_.VisitRootIfNonNull(visitor, RootInfo(kRootStickyClass));
 }
-
-// Explicit CreateFromShadowFrameAndArgs template function declarations.
-#define EXPLICIT_CREATE_FROM_SHADOW_FRAME_AND_ARGS_DECL(_is_range)                         \
-  template REQUIRES_SHARED(Locks::mutator_lock_)                                           \
-  mirror::EmulatedStackFrame* EmulatedStackFrame::CreateFromShadowFrameAndArgs<_is_range>( \
-    Thread* self,                                                                          \
-    Handle<mirror::MethodType> caller_type,                                                \
-    Handle<mirror::MethodType> callee_type,                                                \
-    const ShadowFrame& caller_frame,                                                       \
-    const uint32_t first_src_reg,                                                          \
-    const uint32_t (&arg)[Instruction::kMaxVarArgRegs])                                    \
-
-EXPLICIT_CREATE_FROM_SHADOW_FRAME_AND_ARGS_DECL(true);
-EXPLICIT_CREATE_FROM_SHADOW_FRAME_AND_ARGS_DECL(false);
-#undef EXPLICIT_CREATE_FROM_SHADOW_FRAME_AND_ARGS_DECL
-
 
 }  // namespace mirror
 }  // namespace art
