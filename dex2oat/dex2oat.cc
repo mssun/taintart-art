@@ -1565,7 +1565,7 @@ class Dex2Oat FINAL {
         // 2) when we have a vdex file, which means it was already verified.
         const bool verify = !DoDexLayoutOptimizations() && (input_vdex_file_ == nullptr);
         if (!oat_writers_[i]->WriteAndOpenDexFiles(
-            kIsVdexEnabled ? vdex_files_[i].get() : oat_files_[i].get(),
+            vdex_files_[i].get(),
             rodata_.back(),
             instruction_set_,
             instruction_set_features_.get(),
