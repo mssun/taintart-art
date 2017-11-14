@@ -125,12 +125,6 @@ static constexpr TraceClockSource kDefaultTraceClockSource = TraceClockSource::k
 
 static constexpr bool kDefaultMustRelocate = true;
 
-#ifdef ART_ENABLE_VDEX
-static constexpr bool kIsVdexEnabled = true;
-#else
-static constexpr bool kIsVdexEnabled = false;
-#endif
-
 // Size of a heap reference.
 static constexpr size_t kHeapReferenceSize = sizeof(uint32_t);
 
