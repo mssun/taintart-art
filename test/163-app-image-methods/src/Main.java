@@ -22,6 +22,9 @@ public class Main {
             // Allocate memory for the "AAA.Derived" class name before eating memory.
             String aaaDerivedName = "AAA.Derived";
             System.out.println("Eating all memory.");
+            // Resolve VMClassLoader before eating all the memory since we can not fail
+            // initializtaion of boot classpath classes.
+            Class.forName("java.lang.VMClassLoader");
             Object memory = eatAllMemory();
 
             // This test assumes that Derived is not yet resolved. In some configurations
