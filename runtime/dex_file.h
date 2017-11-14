@@ -753,17 +753,23 @@ class DexFile {
     return begin_ + call_site_id.data_off_;
   }
 
+  static const TryItem* GetTryItems(const DexInstructionIterator& code_item_end, uint32_t offset);
   static const TryItem* GetTryItems(const CodeItem& code_item, uint32_t offset);
 
   // Get the base of the encoded data for the given DexCode.
-  static const uint8_t* GetCatchHandlerData(const CodeItem& code_item, uint32_t offset) {
+  static const uint8_t* GetCatchHandlerData(const DexInstructionIterator& code_item_end,
+                                            uint32_t tries_size,
+                                            uint32_t offset) {
     const uint8_t* handler_data =
-        reinterpret_cast<const uint8_t*>(GetTryItems(code_item, code_item.tries_size_));
+        reinterpret_cast<const uint8_t*>(GetTryItems(code_item_end, tries_size));
     return handler_data + offset;
+  }
+  static const uint8_t* GetCatchHandlerData(const CodeItem& code_item, uint32_t offset) {
+    return GetCatchHandlerData(code_item.Instructions().end(), code_item.tries_size_, offset);
   }
 
   // Find which try region is associated with the given address (ie dex pc). Returns -1 if none.
-  static int32_t FindTryItem(const CodeItem &code_item, uint32_t address);
+  static int32_t FindTryItem(const TryItem* try_items, uint32_t tries_size, uint32_t address);
 
   // Find the handler offset associated with the given address (ie dex pc). Returns -1 if none.
   static int32_t FindCatchHandlerOffset(const CodeItem &code_item, uint32_t address);

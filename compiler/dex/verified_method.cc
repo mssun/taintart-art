@@ -20,6 +20,7 @@
 #include <memory>
 
 #include "base/logging.h"
+#include "code_item_accessors-inl.h"
 #include "dex_file.h"
 #include "dex_instruction-inl.h"
 #include "runtime.h"
@@ -64,7 +65,7 @@ void VerifiedMethod::GenerateSafeCastSet(verifier::MethodVerifier* method_verifi
   if (method_verifier->HasFailures()) {
     return;
   }
-  for (const DexInstructionPcPair& pair : method_verifier->CodeItem()->Instructions()) {
+  for (const DexInstructionPcPair& pair : method_verifier->CodeItem()) {
     const Instruction& inst = pair.Inst();
     const Instruction::Code code = inst.Opcode();
     if (code == Instruction::CHECK_CAST) {
