@@ -548,4 +548,14 @@ std::ostream& operator<<(std::ostream& os, const Instruction::Code& code) {
   return os << Instruction::Name(code);
 }
 
+uint32_t RangeInstructionOperands::GetOperand(size_t operand_index) const {
+  DCHECK_LT(operand_index, GetNumberOfOperands());
+  return first_operand_ + operand_index;
+}
+
+uint32_t VarArgsInstructionOperands::GetOperand(size_t operand_index) const {
+  DCHECK_LT(operand_index, GetNumberOfOperands());
+  return operands_[operand_index];
+}
+
 }  // namespace art
