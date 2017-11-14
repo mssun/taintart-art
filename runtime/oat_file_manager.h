@@ -45,7 +45,7 @@ class OatFile;
 // pointers returned from functions are always valid.
 class OatFileManager {
  public:
-  OatFileManager() : have_non_pic_oat_file_(false), only_use_system_oat_files_(false) {}
+  OatFileManager();
   ~OatFileManager();
 
   // Add an oat file to the internal accounting, std::aborts if there already exists an oat file
