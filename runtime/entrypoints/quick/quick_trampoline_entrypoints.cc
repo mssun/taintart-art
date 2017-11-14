@@ -2649,28 +2649,24 @@ extern "C" uintptr_t artInvokePolymorphic(
 
   // Call DoInvokePolymorphic with |is_range| = true, as shadow frame has argument registers in
   // consecutive order.
-  uint32_t unused_args[Instruction::kMaxVarArgRegs] = {};
-  uint32_t first_callee_arg = first_arg + 1;
-
+  RangeInstructionOperands operands(first_arg + 1, num_vregs - 1);
   bool isExact = (jni::EncodeArtMethod(resolved_method) ==
                   WellKnownClasses::java_lang_invoke_MethodHandle_invokeExact);
   bool success = false;
   if (isExact) {
-    success = MethodHandleInvokeExact<true/*is_range*/>(self,
-                                                        *shadow_frame,
-                                                        method_handle,
-                                                        method_type,
-                                                        unused_args,
-                                                        first_callee_arg,
-                                                        result);
+    success = MethodHandleInvokeExact(self,
+                                      *shadow_frame,
+                                      method_handle,
+                                      method_type,
+                                      &operands,
+                                      result);
   } else {
-    success = MethodHandleInvoke<true/*is_range*/>(self,
-                                                   *shadow_frame,
-                                                   method_handle,
-                                                   method_type,
-                                                   unused_args,
-                                                   first_callee_arg,
-                                                   result);
+    success = MethodHandleInvoke(self,
+                                 *shadow_frame,
+                                 method_handle,
+                                 method_type,
+                                 &operands,
+                                 result);
   }
   DCHECK(success || self->IsExceptionPending());
 
