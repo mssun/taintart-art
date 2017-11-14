@@ -284,8 +284,10 @@ fi
 
 if [[ $using_jack == "true" ]]; then
   toolchain_args="--toolchain jack --language JN --jack-arg -g"
-else
+elif [[ $mode != "ri" ]]; then
   toolchain_args="--toolchain dx --language CUR"
+else
+  toolchain_args="--toolchain javac --language CUR"
 fi
 
 # Run the tests using vogar.
