@@ -269,7 +269,7 @@ inline void CompilationHelper::Compile(CompilerDriver* driver,
         std::unique_ptr<MemMap> cur_opened_dex_files_map;
         std::vector<std::unique_ptr<const DexFile>> cur_opened_dex_files;
         bool dex_files_ok = oat_writers[i]->WriteAndOpenDexFiles(
-            kIsVdexEnabled ? vdex_files[i].GetFile() : oat_files[i].GetFile(),
+            vdex_files[i].GetFile(),
             rodata.back(),
             driver->GetInstructionSet(),
             driver->GetInstructionSetFeatures(),
@@ -293,14 +293,12 @@ inline void CompilationHelper::Compile(CompilerDriver* driver,
       bool image_space_ok = writer->PrepareImageAddressSpace();
       ASSERT_TRUE(image_space_ok);
 
-      if (kIsVdexEnabled) {
-        for (size_t i = 0, size = vdex_files.size(); i != size; ++i) {
-          std::unique_ptr<BufferedOutputStream> vdex_out =
-              std::make_unique<BufferedOutputStream>(
-                  std::make_unique<FileOutputStream>(vdex_files[i].GetFile()));
-          oat_writers[i]->WriteVerifierDeps(vdex_out.get(), nullptr);
-          oat_writers[i]->WriteChecksumsAndVdexHeader(vdex_out.get());
-        }
+      for (size_t i = 0, size = vdex_files.size(); i != size; ++i) {
+        std::unique_ptr<BufferedOutputStream> vdex_out =
+            std::make_unique<BufferedOutputStream>(
+                std::make_unique<FileOutputStream>(vdex_files[i].GetFile()));
+        oat_writers[i]->WriteVerifierDeps(vdex_out.get(), nullptr);
+        oat_writers[i]->WriteChecksumsAndVdexHeader(vdex_out.get());
       }
 
       for (size_t i = 0, size = oat_files.size(); i != size; ++i) {

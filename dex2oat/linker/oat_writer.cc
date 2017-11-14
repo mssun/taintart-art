@@ -571,10 +571,9 @@ bool OatWriter::WriteAndOpenDexFiles(
   std::vector<std::unique_ptr<const DexFile>> dex_files;
 
   // Initialize VDEX and OAT headers.
-  if (kIsVdexEnabled) {
-    // Reserve space for Vdex header and checksums.
-    vdex_size_ = sizeof(VdexFile::Header) + oat_dex_files_.size() * sizeof(VdexFile::VdexChecksum);
-  }
+
+  // Reserve space for Vdex header and checksums.
+  vdex_size_ = sizeof(VdexFile::Header) + oat_dex_files_.size() * sizeof(VdexFile::VdexChecksum);
   oat_size_ = InitOatHeader(instruction_set,
                             instruction_set_features,
                             dchecked_integral_cast<uint32_t>(oat_dex_files_.size()),
@@ -582,28 +581,12 @@ bool OatWriter::WriteAndOpenDexFiles(
 
   ChecksumUpdatingOutputStream checksum_updating_rodata(oat_rodata, oat_header_.get());
 
-  if (kIsVdexEnabled) {
-    std::unique_ptr<BufferedOutputStream> vdex_out =
-        std::make_unique<BufferedOutputStream>(std::make_unique<FileOutputStream>(vdex_file));
-    // Write DEX files into VDEX, mmap and open them.
-    if (!WriteDexFiles(vdex_out.get(), vdex_file, update_input_vdex) ||
-        !OpenDexFiles(vdex_file, verify, &dex_files_map, &dex_files)) {
-      return false;
-    }
-  } else {
-    DCHECK(!update_input_vdex);
-    // Write DEX files into OAT, mmap and open them.
-    if (!WriteDexFiles(oat_rodata, vdex_file, update_input_vdex) ||
-        !OpenDexFiles(vdex_file, verify, &dex_files_map, &dex_files)) {
-      return false;
-    }
-
-    // Do a bulk checksum update for Dex[]. Doing it piece by piece would be
-    // difficult because we're not using the OutputStream directly.
-    if (!oat_dex_files_.empty()) {
-      size_t size = oat_size_ - oat_dex_files_[0].dex_file_offset_;
-      oat_header_->UpdateChecksum(dex_files_map->Begin(), size);
-    }
+  std::unique_ptr<BufferedOutputStream> vdex_out =
+      std::make_unique<BufferedOutputStream>(std::make_unique<FileOutputStream>(vdex_file));
+  // Write DEX files into VDEX, mmap and open them.
+  if (!WriteDexFiles(vdex_out.get(), vdex_file, update_input_vdex) ||
+      !OpenDexFiles(vdex_file, verify, &dex_files_map, &dex_files)) {
+    return false;
   }
 
   // Write type lookup tables into the oat file.
@@ -755,13 +738,12 @@ class OatWriter::OatDexMethodVisitor : public DexMethodVisitor {
 };
 
 static bool HasCompiledCode(const CompiledMethod* method) {
-  // The dextodexcompiler puts the quickening info table into the CompiledMethod
-  // for simplicity. For such methods, we will emit an OatQuickMethodHeader
-  // only when vdex is disabled.
-  return method != nullptr && (!method->GetQuickCode().empty() || !kIsVdexEnabled);
+  return method != nullptr && !method->GetQuickCode().empty();
 }
 
 static bool HasQuickeningInfo(const CompiledMethod* method) {
+  // The dextodexcompiler puts the quickening info table into the CompiledMethod
+  // for simplicity.
   return method != nullptr && method->GetQuickCode().empty() && !method->GetVmapTable().empty();
 }
 
@@ -1214,22 +1196,16 @@ class OatWriter::LayoutReserveOffsetCodeMethodVisitor : public OrderedMethodVisi
     // The code offset was 0 when the mapping/vmap table offset was set, so it's set
     // to 0-offset and we need to adjust it by code_offset.
     uint32_t code_offset = quick_code_offset - thumb_offset;
-    if (!compiled_method->GetQuickCode().empty()) {
-      // If the code is compiled, we write the offset of the stack map relative
-      // to the code,
-      if (vmap_table_offset != 0u) {
-        vmap_table_offset += code_offset;
-        DCHECK_LT(vmap_table_offset, code_offset);
-      }
-      if (method_info_offset != 0u) {
-        method_info_offset += code_offset;
-        DCHECK_LT(method_info_offset, code_offset);
-      }
-    } else {
-      CHECK(!kIsVdexEnabled);
-      // We write the offset of the quickening info relative to the code.
+    CHECK(!compiled_method->GetQuickCode().empty());
+    // If the code is compiled, we write the offset of the stack map relative
+    // to the code.
+    if (vmap_table_offset != 0u) {
       vmap_table_offset += code_offset;
       DCHECK_LT(vmap_table_offset, code_offset);
+    }
+    if (method_info_offset != 0u) {
+      method_info_offset += code_offset;
+      DCHECK_LT(method_info_offset, code_offset);
     }
     uint32_t frame_size_in_bytes = compiled_method->GetFrameSizeInBytes();
     uint32_t core_spill_mask = compiled_method->GetCoreSpillMask();
@@ -2593,10 +2569,6 @@ class OatWriter::WriteQuickeningIndicesMethodVisitor {
 };
 
 bool OatWriter::WriteQuickeningInfo(OutputStream* vdex_out) {
-  if (!kIsVdexEnabled) {
-    return true;
-  }
-
   size_t initial_offset = vdex_size_;
   size_t start_offset = RoundUp(initial_offset, 4u);
 
@@ -2655,10 +2627,6 @@ bool OatWriter::WriteQuickeningInfo(OutputStream* vdex_out) {
 }
 
 bool OatWriter::WriteVerifierDeps(OutputStream* vdex_out, verifier::VerifierDeps* verifier_deps) {
-  if (!kIsVdexEnabled) {
-    return true;
-  }
-
   if (verifier_deps == nullptr) {
     // Nothing to write. Record the offset, but no need
     // for alignment.
@@ -3170,23 +3138,17 @@ bool OatWriter::WriteDexFile(OutputStream* out,
   }
 
   // Update current size and account for the written data.
-  if (kIsVdexEnabled) {
-    DCHECK_EQ(vdex_size_, oat_dex_file->dex_file_offset_);
-    vdex_size_ += oat_dex_file->dex_file_size_;
-  } else {
-    DCHECK(!update_input_vdex);
-    DCHECK_EQ(oat_size_, oat_dex_file->dex_file_offset_);
-    oat_size_ += oat_dex_file->dex_file_size_;
-  }
+  DCHECK_EQ(vdex_size_, oat_dex_file->dex_file_offset_);
+  vdex_size_ += oat_dex_file->dex_file_size_;
   size_dex_file_ += oat_dex_file->dex_file_size_;
   return true;
 }
 
 bool OatWriter::SeekToDexFile(OutputStream* out, File* file, OatDexFile* oat_dex_file) {
   // Dex files are required to be 4 byte aligned.
-  size_t initial_offset = kIsVdexEnabled ? vdex_size_ : oat_size_;
+  size_t initial_offset = vdex_size_;
   size_t start_offset = RoundUp(initial_offset, 4);
-  size_t file_offset = kIsVdexEnabled ? start_offset : (oat_data_offset_ + start_offset);
+  size_t file_offset = start_offset;
   size_dex_file_alignment_ += start_offset - initial_offset;
 
   // Seek to the start of the dex file and flush any pending operations in the stream.
@@ -3211,11 +3173,7 @@ bool OatWriter::SeekToDexFile(OutputStream* out, File* file, OatDexFile* oat_dex
     return false;
   }
 
-  if (kIsVdexEnabled) {
-    vdex_size_ = start_offset;
-  } else {
-    oat_size_ = start_offset;
-  }
+  vdex_size_ = start_offset;
   oat_dex_file->dex_file_offset_ = start_offset;
   return true;
 }
@@ -3291,7 +3249,7 @@ bool OatWriter::WriteDexFile(OutputStream* out,
                              File* file,
                              OatDexFile* oat_dex_file,
                              ZipEntry* dex_file) {
-  size_t start_offset = kIsVdexEnabled ? vdex_size_ : oat_data_offset_ + oat_size_;
+  size_t start_offset = vdex_size_;
   DCHECK_EQ(static_cast<off_t>(start_offset), out->Seek(0, kSeekCurrent));
 
   // Extract the dex file and get the extracted size.
@@ -3384,7 +3342,7 @@ bool OatWriter::WriteDexFile(OutputStream* out,
                              File* file,
                              OatDexFile* oat_dex_file,
                              File* dex_file) {
-  size_t start_offset = kIsVdexEnabled ? vdex_size_ : oat_data_offset_ + oat_size_;
+  size_t start_offset = vdex_size_;
   DCHECK_EQ(static_cast<off_t>(start_offset), out->Seek(0, kSeekCurrent));
 
   off_t input_offset = lseek(dex_file->Fd(), 0, SEEK_SET);
@@ -3480,7 +3438,7 @@ bool OatWriter::OpenDexFiles(
   }
 
   size_t map_offset = oat_dex_files_[0].dex_file_offset_;
-  size_t length = kIsVdexEnabled ? (vdex_size_ - map_offset) : (oat_size_ - map_offset);
+  size_t length = vdex_size_ - map_offset;
 
   std::string error_msg;
   std::unique_ptr<MemMap> dex_files_map(MemMap::MapFile(
@@ -3488,7 +3446,7 @@ bool OatWriter::OpenDexFiles(
       PROT_READ | PROT_WRITE,
       MAP_SHARED,
       file->Fd(),
-      kIsVdexEnabled ? map_offset : (oat_data_offset_ + map_offset),
+      map_offset,
       /* low_4gb */ false,
       file->GetPath().c_str(),
       &error_msg));
@@ -3692,9 +3650,6 @@ bool OatWriter::WriteDexLayoutSections(
 }
 
 bool OatWriter::WriteChecksumsAndVdexHeader(OutputStream* vdex_out) {
-  if (!kIsVdexEnabled) {
-    return true;
-  }
   // Write checksums
   off_t actual_offset = vdex_out->Seek(sizeof(VdexFile::Header), kSeekSet);
   if (actual_offset != sizeof(VdexFile::Header)) {

@@ -1007,7 +1007,7 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
   if (method != nullptr) {
     graph->SetArtMethod(method);
     ScopedObjectAccess soa(Thread::Current());
-    interpreter_metadata = method->GetQuickenedInfo(class_linker->GetImagePointerSize());
+    interpreter_metadata = method->GetQuickenedInfo();
   }
 
   std::unique_ptr<CodeGenerator> codegen(
