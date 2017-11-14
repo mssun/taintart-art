@@ -24,11 +24,18 @@ namespace art {
 // CompactDex is a currently ART internal dex file format that aims to reduce storage/RAM usage.
 class CompactDexFile : public DexFile {
  public:
+  static constexpr uint8_t kDexMagic[kDexMagicSize] = { 'c', 'd', 'e', 'x' };
+  static constexpr uint8_t kDexMagicVersion[] = {'0', '0', '1', '\0'};
+
   class Header : public DexFile::Header {
     // Same for now.
   };
-  static constexpr uint8_t kDexMagic[kDexMagicSize] = { 'c', 'd', 'e', 'x' };
-  static constexpr uint8_t kDexMagicVersion[] = {'0', '0', '1', '\0'};
+
+  struct CodeItem : public DexFile::CodeItem {
+   private:
+    // TODO: Insert compact dex specific fields here.
+    DISALLOW_COPY_AND_ASSIGN(CodeItem);
+  };
 
   // Write the compact dex specific magic.
   static void WriteMagic(uint8_t* magic);
@@ -44,10 +51,6 @@ class CompactDexFile : public DexFile {
   static bool IsVersionValid(const uint8_t* magic);
   virtual bool IsVersionValid() const OVERRIDE;
 
-  bool IsCompactDexFile() const OVERRIDE {
-    return true;
-  }
-
  private:
   // Not supported yet.
   CompactDexFile(const uint8_t* base,
@@ -56,7 +59,13 @@ class CompactDexFile : public DexFile {
                  uint32_t location_checksum,
                  const OatDexFile* oat_dex_file,
                  DexFileContainer* container)
-      : DexFile(base, size, location, location_checksum, oat_dex_file, container) {}
+      : DexFile(base,
+                size,
+                location,
+                location_checksum,
+                oat_dex_file,
+                container,
+                /*is_compact_dex*/ true) {}
 
   friend class DexFile;
   friend class DexFileLoader;

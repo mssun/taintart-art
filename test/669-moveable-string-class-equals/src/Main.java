@@ -43,6 +43,10 @@ public class Main {
       array[i] = "V" + i;
     }
 
+    // Continually check string equality between a newly allocated String and an
+    // already allocated String with the same contents while allocating over 128MiB
+    // memory (with heap size limited to 16MiB), ensuring we run GC and stress the
+    // instanceof check in the String.equals() implementation.
     for (int count = 0; count != 128 * 1024; ++count) {
       for (int i = 0; i != length; ++i) {
         allocateAtLeast1KiB();

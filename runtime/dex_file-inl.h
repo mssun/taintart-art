@@ -21,9 +21,11 @@
 #include "base/casts.h"
 #include "base/logging.h"
 #include "base/stringpiece.h"
+#include "cdex/compact_dex_file.h"
 #include "dex_file.h"
 #include "invoke_type.h"
 #include "leb128.h"
+#include "standard_dex_file.h"
 
 namespace art {
 
@@ -493,6 +495,16 @@ bool DexFile::DecodeDebugPositionInfo(const CodeItem* code_item,
                                  },
                                  position_functor,
                                  context);
+}
+
+inline const CompactDexFile* DexFile::AsCompactDexFile() const {
+  DCHECK(IsCompactDexFile());
+  return down_cast<const CompactDexFile*>(this);
+}
+
+inline const StandardDexFile* DexFile::AsStandardDexFile() const {
+  DCHECK(IsStandardDexFile());
+  return down_cast<const StandardDexFile*>(this);
 }
 
 }  // namespace art

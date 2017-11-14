@@ -610,7 +610,7 @@ bool Redefiner::ClassRedefinition::CheckSameMethods() {
   // Check each of the methods. NB we don't need to specifically check for removals since the 2 dex
   // files have the same number of methods, which means there must be an equal amount of additions
   // and removals.
-  for (; new_iter.HasNextVirtualMethod() || new_iter.HasNextDirectMethod(); new_iter.Next()) {
+  for (; new_iter.HasNextMethod(); new_iter.Next()) {
     // Get the data on the method we are searching for
     const art::DexFile::MethodId& new_method_id = dex_file_->GetMethodId(new_iter.GetMemberIndex());
     const char* new_method_name = dex_file_->GetMethodName(new_method_id);
@@ -629,8 +629,8 @@ bool Redefiner::ClassRedefinition::CheckSameMethods() {
     // Since direct methods have different flags than virtual ones (specifically direct methods must
     // have kAccPrivate or kAccStatic or kAccConstructor flags) we can tell if a method changes from
     // virtual to direct.
-    uint32_t new_flags = new_iter.GetMethodAccessFlags() & ~art::kAccPreviouslyWarm;
-    if (new_flags != (old_method->GetAccessFlags() & (art::kAccValidMethodFlags ^ art::kAccPreviouslyWarm))) {
+    uint32_t new_flags = new_iter.GetMethodAccessFlags();
+    if (new_flags != (old_method->GetAccessFlags() & art::kAccValidMethodFlags)) {
       RecordFailure(ERR(UNSUPPORTED_REDEFINITION_METHOD_MODIFIERS_CHANGED),
                     StringPrintf("method '%s' (sig: %s) had different access flags",
                                  new_method_name,

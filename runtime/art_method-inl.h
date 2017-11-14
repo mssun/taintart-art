@@ -23,6 +23,7 @@
 #include "base/callee_save_type.h"
 #include "base/logging.h"
 #include "class_linker-inl.h"
+#include "code_item_accessors-inl.h"
 #include "common_throws.h"
 #include "dex_file-inl.h"
 #include "dex_file_annotations.h"
@@ -392,6 +393,7 @@ inline void ArtMethod::SetIntrinsic(uint32_t intrinsic) {
     bool is_synchronized = IsSynchronized();
     bool skip_access_checks = SkipAccessChecks();
     bool is_fast_native = IsFastNative();
+    bool is_critical_native = IsCriticalNative();
     bool is_copied = IsCopied();
     bool is_miranda = IsMiranda();
     bool is_default = IsDefault();
@@ -404,6 +406,7 @@ inline void ArtMethod::SetIntrinsic(uint32_t intrinsic) {
     DCHECK_EQ(is_synchronized, IsSynchronized());
     DCHECK_EQ(skip_access_checks, SkipAccessChecks());
     DCHECK_EQ(is_fast_native, IsFastNative());
+    DCHECK_EQ(is_critical_native, IsCriticalNative());
     DCHECK_EQ(is_copied, IsCopied());
     DCHECK_EQ(is_miranda, IsMiranda());
     DCHECK_EQ(is_default, IsDefault());
@@ -455,6 +458,18 @@ inline void ArtMethod::UpdateEntrypoints(const Visitor& visitor, PointerSize poi
   if (old_code != new_code) {
     SetEntryPointFromQuickCompiledCodePtrSize(new_code, pointer_size);
   }
+}
+
+inline IterationRange<DexInstructionIterator> ArtMethod::DexInstructions() {
+  CodeItemInstructionAccessor accessor(this);
+  return { accessor.begin(),
+           accessor.end() };
+}
+
+inline IterationRange<DexInstructionIterator> ArtMethod::NullableDexInstructions() {
+  CodeItemInstructionAccessor accessor(CodeItemInstructionAccessor::CreateNullable(this));
+  return { accessor.begin(),
+           accessor.end() };
 }
 
 }  // namespace art

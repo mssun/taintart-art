@@ -77,6 +77,14 @@ inline To down_cast(From* f) {                   // so we only accept pointers
   return static_cast<To>(f);
 }
 
+template<typename To, typename From>     // use like this: down_cast<T&>(foo);
+inline To down_cast(From& f) {           // so we only accept references
+  static_assert(std::is_base_of<From, typename std::remove_reference<To>::type>::value,
+                "down_cast unsafe as To is not a subtype of From");
+
+  return static_cast<To>(f);
+}
+
 template <class Dest, class Source>
 inline Dest bit_cast(const Source& source) {
   // Compile time assertion: sizeof(Dest) == sizeof(Source)

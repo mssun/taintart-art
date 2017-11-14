@@ -288,12 +288,17 @@ void ThreadList::AssertThreadsAreSuspended(Thread* self, Thread* ignore1, Thread
 #if HAVE_TIMED_RWLOCK
 // Attempt to rectify locks so that we dump thread list with required locks before exiting.
 NO_RETURN static void UnsafeLogFatalForThreadSuspendAllTimeout() {
+  // Increment gAborting before doing the thread list dump since we don't want any failures from
+  // AssertThreadSuspensionIsAllowable in cases where thread suspension is not allowed.
+  // See b/69044468.
+  ++gAborting;
   Runtime* runtime = Runtime::Current();
   std::ostringstream ss;
   ss << "Thread suspend timeout\n";
   Locks::mutator_lock_->Dump(ss);
   ss << "\n";
   runtime->GetThreadList()->Dump(ss);
+  --gAborting;
   LOG(FATAL) << ss.str();
   exit(0);
 }
@@ -302,6 +307,8 @@ NO_RETURN static void UnsafeLogFatalForThreadSuspendAllTimeout() {
 // Unlike suspending all threads where we can wait to acquire the mutator_lock_, suspending an
 // individual thread requires polling. delay_us is the requested sleep wait. If delay_us is 0 then
 // we use sched_yield instead of calling usleep.
+// Although there is the possibility, here and elsewhere, that usleep could return -1 and
+// errno = EINTR, there should be no problem if interrupted, so we do not check.
 static void ThreadSuspendSleep(useconds_t delay_us) {
   if (delay_us == 0) {
     sched_yield();

@@ -22,111 +22,130 @@ namespace art {
 // The number of heap locations for most of the methods stays below this threshold.
 constexpr size_t kMaxNumberOfHeapLocations = 32;
 
-// Check if array indices array[idx1 +/- CONST] and array[idx2] MAY alias.
-static bool BinaryOpAndIndexMayAlias(const HBinaryOperation* idx1, const HInstruction* idx2) {
-  DCHECK(idx1 != nullptr);
-  DCHECK(idx2 != nullptr);
+// Test if two integer ranges [l1,h1] and [l2,h2] overlap.
+// Note that the ranges are inclusive on both ends.
+//       l1|------|h1
+//  l2|------|h2
+static bool CanIntegerRangesOverlap(int64_t l1, int64_t h1, int64_t l2, int64_t h2) {
+  return std::max(l1, l2) <= std::min(h1, h2);
+}
 
-  if (!idx1->IsAdd() && !idx1->IsSub()) {
+static bool IsAddOrSub(const HInstruction* instruction) {
+  return instruction->IsAdd() || instruction->IsSub();
+}
+
+static bool CanBinaryOpAndIndexAlias(const HBinaryOperation* idx1,
+                                     const size_t vector_length1,
+                                     const HInstruction* idx2,
+                                     const size_t vector_length2) {
+  if (!IsAddOrSub(idx1)) {
     // We currently only support Add and Sub operations.
     return true;
   }
-
-  HConstant* cst = idx1->GetConstantRight();
-  if (cst == nullptr || cst->IsArithmeticZero()) {
+  if (idx1->AsBinaryOperation()->GetLeastConstantLeft() != idx2) {
+    // Cannot analyze [i+CONST1] and [j].
+    return true;
+  }
+  if (!idx1->GetConstantRight()->IsIntConstant()) {
     return true;
   }
 
-  if (idx1->GetLeastConstantLeft() == idx2) {
-    // for example, array[idx1 + 1] and array[idx1]
-    return false;
-  }
-
-  return true;
+  // Since 'i' are the same in [i+CONST] and [i],
+  // further compare [CONST] and [0].
+  int64_t l1 = idx1->IsAdd() ?
+               idx1->GetConstantRight()->AsIntConstant()->GetValue() :
+               -idx1->GetConstantRight()->AsIntConstant()->GetValue();
+  int64_t l2 = 0;
+  int64_t h1 = l1 + (vector_length1 - 1);
+  int64_t h2 = l2 + (vector_length2 - 1);
+  return CanIntegerRangesOverlap(l1, h1, l2, h2);
 }
 
-// Check if Add and Sub MAY alias when used as indices in arrays.
-static bool BinaryOpsMayAlias(const HBinaryOperation* idx1, const HBinaryOperation* idx2) {
-  DCHECK(idx1!= nullptr);
-  DCHECK(idx2 != nullptr);
-
-  HConstant* idx1_cst = idx1->GetConstantRight();
-  HInstruction* idx1_other = idx1->GetLeastConstantLeft();
-  HConstant* idx2_cst = idx2->GetConstantRight();
-  HInstruction* idx2_other = idx2->GetLeastConstantLeft();
-
-  if (idx1_cst == nullptr || idx1_other == nullptr ||
-      idx2_cst == nullptr || idx2_other == nullptr) {
-    // We only analyze patterns like [i +/- CONST].
+static bool CanBinaryOpsAlias(const HBinaryOperation* idx1,
+                              const size_t vector_length1,
+                              const HBinaryOperation* idx2,
+                              const size_t vector_length2) {
+  if (!IsAddOrSub(idx1) || !IsAddOrSub(idx2)) {
+    // We currently only support Add and Sub operations.
+    return true;
+  }
+  if (idx1->AsBinaryOperation()->GetLeastConstantLeft() !=
+      idx2->AsBinaryOperation()->GetLeastConstantLeft()) {
+    // Cannot analyze [i+CONST1] and [j+CONST2].
+    return true;
+  }
+  if (!idx1->GetConstantRight()->IsIntConstant() ||
+      !idx2->GetConstantRight()->IsIntConstant()) {
     return true;
   }
 
-  if (idx1_other != idx2_other) {
-    // For example, [j+1] and [k+1] MAY alias.
-    return true;
-  }
-
-  if ((idx1->IsAdd() && idx2->IsAdd()) ||
-      (idx1->IsSub() && idx2->IsSub())) {
-    return idx1_cst->AsIntConstant()->GetValue() == idx2_cst->AsIntConstant()->GetValue();
-  }
-
-  if ((idx1->IsAdd() && idx2->IsSub()) ||
-      (idx1->IsSub() && idx2->IsAdd())) {
-    // [i + CONST1] and [i - CONST2] MAY alias iff CONST1 == -CONST2.
-    // By checking CONST1 == -CONST2, following cases are handled:
-    // - Zero constants case [i+0] and [i-0] is handled.
-    // - Overflow cases are handled, for example:
-    //   [i+0x80000000] and [i-0x80000000];
-    //   [i+0x10] and [i-0xFFFFFFF0].
-    // - Other cases [i+CONST1] and [i-CONST2] without any overflow is handled.
-    return idx1_cst->AsIntConstant()->GetValue() == -(idx2_cst->AsIntConstant()->GetValue());
-  }
-
-  // All other cases, MAY alias.
-  return true;
+  // Since 'i' are the same in [i+CONST1] and [i+CONST2],
+  // further compare [CONST1] and [CONST2].
+  int64_t l1 = idx1->IsAdd() ?
+               idx1->GetConstantRight()->AsIntConstant()->GetValue() :
+               -idx1->GetConstantRight()->AsIntConstant()->GetValue();
+  int64_t l2 = idx2->IsAdd() ?
+               idx2->GetConstantRight()->AsIntConstant()->GetValue() :
+               -idx2->GetConstantRight()->AsIntConstant()->GetValue();
+  int64_t h1 = l1 + (vector_length1 - 1);
+  int64_t h2 = l2 + (vector_length2 - 1);
+  return CanIntegerRangesOverlap(l1, h1, l2, h2);
 }
 
-// The following array index cases are handled:
-//   [i] and [i]
-//   [CONST1] and [CONST2]
-//   [i] and [i+CONST]
-//   [i] and [i-CONST]
-//   [i+CONST1] and [i+CONST2]
-//   [i-CONST1] and [i-CONST2]
-//   [i+CONST1] and [i-CONST2]
-//   [i-CONST1] and [i+CONST2]
-// For other complicated cases, we rely on other passes like GVN and simpilfier
-// to optimize these cases before this pass.
-// For example: [i+j+k+10] and [i+k+10+j] shall be optimized to [i7+10] and [i7+10].
-bool HeapLocationCollector::CanArrayIndicesAlias(const HInstruction* idx1,
-                                                 const HInstruction* idx2) const {
+bool HeapLocationCollector::CanArrayElementsAlias(const HInstruction* idx1,
+                                                  const size_t vector_length1,
+                                                  const HInstruction* idx2,
+                                                  const size_t vector_length2) const {
   DCHECK(idx1 != nullptr);
   DCHECK(idx2 != nullptr);
+  DCHECK_GE(vector_length1, HeapLocation::kScalar);
+  DCHECK_GE(vector_length2, HeapLocation::kScalar);
 
+  // [i] and [i].
   if (idx1 == idx2) {
-    // [i] and [i]
     return true;
   }
+
+  // [CONST1] and [CONST2].
   if (idx1->IsIntConstant() && idx2->IsIntConstant()) {
-    // [CONST1] and [CONST2]
-    return idx1->AsIntConstant()->GetValue() == idx2->AsIntConstant()->GetValue();
+    int64_t l1 = idx1->AsIntConstant()->GetValue();
+    int64_t l2 = idx2->AsIntConstant()->GetValue();
+    // To avoid any overflow in following CONST+vector_length calculation,
+    // use int64_t instead of int32_t.
+    int64_t h1 = l1 + (vector_length1 - 1);
+    int64_t h2 = l2 + (vector_length2 - 1);
+    return CanIntegerRangesOverlap(l1, h1, l2, h2);
   }
 
-  if (idx1->IsBinaryOperation() && !BinaryOpAndIndexMayAlias(idx1->AsBinaryOperation(), idx2)) {
-    // [i] and [i+/-CONST]
-    return false;
-  }
-  if (idx2->IsBinaryOperation() && !BinaryOpAndIndexMayAlias(idx2->AsBinaryOperation(), idx1)) {
-    // [i+/-CONST] and [i]
-    return false;
+  // [i+CONST] and [i].
+  if (idx1->IsBinaryOperation() &&
+      idx1->AsBinaryOperation()->GetConstantRight() != nullptr &&
+      idx1->AsBinaryOperation()->GetLeastConstantLeft() == idx2) {
+    return CanBinaryOpAndIndexAlias(idx1->AsBinaryOperation(),
+                                    vector_length1,
+                                    idx2,
+                                    vector_length2);
   }
 
-  if (idx1->IsBinaryOperation() && idx2->IsBinaryOperation()) {
-    // [i+/-CONST1] and [i+/-CONST2]
-    if (!BinaryOpsMayAlias(idx1->AsBinaryOperation(), idx2->AsBinaryOperation())) {
-      return false;
-    }
+  // [i] and [i+CONST].
+  if (idx2->IsBinaryOperation() &&
+      idx2->AsBinaryOperation()->GetConstantRight() != nullptr &&
+      idx2->AsBinaryOperation()->GetLeastConstantLeft() == idx1) {
+    return CanBinaryOpAndIndexAlias(idx2->AsBinaryOperation(),
+                                    vector_length2,
+                                    idx1,
+                                    vector_length1);
+  }
+
+  // [i+CONST1] and [i+CONST2].
+  if (idx1->IsBinaryOperation() &&
+      idx1->AsBinaryOperation()->GetConstantRight() != nullptr &&
+      idx2->IsBinaryOperation() &&
+      idx2->AsBinaryOperation()->GetConstantRight() != nullptr) {
+    return CanBinaryOpsAlias(idx1->AsBinaryOperation(),
+                             vector_length1,
+                             idx2->AsBinaryOperation(),
+                             vector_length2);
   }
 
   // By default, MAY alias.

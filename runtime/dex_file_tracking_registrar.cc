@@ -158,7 +158,7 @@ void DexFileTrackingRegistrar::SetAllCodeItemRegistration(bool should_poison) {
     if (class_data != nullptr) {
       ClassDataItemIterator cdit(*dex_file_, class_data);
       cdit.SkipAllFields();
-      while (cdit.HasNextDirectMethod()) {
+      while (cdit.HasNextMethod()) {
         const DexFile::CodeItem* code_item = cdit.GetMethodCodeItem();
         if (code_item != nullptr) {
           const void* code_item_begin = reinterpret_cast<const void*>(code_item);
@@ -178,7 +178,7 @@ void DexFileTrackingRegistrar::SetAllCodeItemStartRegistration(bool should_poiso
     if (class_data != nullptr) {
       ClassDataItemIterator cdit(*dex_file_, class_data);
       cdit.SkipAllFields();
-      while (cdit.HasNextDirectMethod()) {
+      while (cdit.HasNextMethod()) {
         const DexFile::CodeItem* code_item = cdit.GetMethodCodeItem();
         if (code_item != nullptr) {
           const void* code_item_begin = reinterpret_cast<const void*>(code_item);
@@ -200,7 +200,7 @@ void DexFileTrackingRegistrar::SetAllInsnsRegistration(bool should_poison) {
     if (class_data != nullptr) {
       ClassDataItemIterator cdit(*dex_file_, class_data);
       cdit.SkipAllFields();
-      while (cdit.HasNextDirectMethod()) {
+      while (cdit.HasNextMethod()) {
         const DexFile::CodeItem* code_item = cdit.GetMethodCodeItem();
         if (code_item != nullptr) {
           const void* insns_begin = reinterpret_cast<const void*>(&code_item->insns_);
@@ -221,7 +221,7 @@ void DexFileTrackingRegistrar::SetCodeItemRegistration(const char* class_name, b
     if (class_data != nullptr) {
       ClassDataItemIterator cdit(*dex_file_, class_data);
       cdit.SkipAllFields();
-      while (cdit.HasNextDirectMethod()) {
+      while (cdit.HasNextMethod()) {
         const DexFile::MethodId& methodid_item = dex_file_->GetMethodId(cdit.GetMemberIndex());
         const char * methodid_name = dex_file_->GetMethodName(methodid_item);
         const DexFile::CodeItem* code_item = cdit.GetMethodCodeItem();

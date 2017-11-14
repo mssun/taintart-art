@@ -1239,8 +1239,11 @@ static void DCheckNativeAnnotation(const char* descriptor, jclass cls) {
     ScopedObjectAccess soa(Thread::Current());
     ObjPtr<mirror::Class> klass = soa.Decode<mirror::Class>(cls);
     ClassLinker* linker = Runtime::Current()->GetClassLinker();
-    // Lookup using the boot class path loader should yield the annotation class.
-    CHECK_EQ(klass, linker->LookupClass(soa.Self(), descriptor, /* class_loader */ nullptr));
+    // WellKnownClasses may not be initialized yet, so `klass` may be null.
+    if (klass != nullptr) {
+      // Lookup using the boot class path loader should yield the annotation class.
+      CHECK_EQ(klass, linker->LookupClass(soa.Self(), descriptor, /* class_loader */ nullptr));
+    }
   }
 }
 
@@ -1266,30 +1269,31 @@ static bool IsMethodBuildAnnotationPresent(const DexFile& dex_file,
   return false;
 }
 
-uint32_t HasFastNativeMethodBuildAnnotation(const DexFile& dex_file,
-                                            const DexFile::ClassDef& class_def,
-                                            uint32_t method_index) {
+uint32_t GetNativeMethodAnnotationAccessFlags(const DexFile& dex_file,
+                                              const DexFile::ClassDef& class_def,
+                                              uint32_t method_index) {
   const DexFile::AnnotationSetItem* annotation_set =
       FindAnnotationSetForMethod(dex_file, class_def, method_index);
-  return annotation_set != nullptr &&
-         IsMethodBuildAnnotationPresent(
-             dex_file,
-             *annotation_set,
-             "Ldalvik/annotation/optimization/FastNative;",
-             WellKnownClasses::dalvik_annotation_optimization_FastNative);
-}
-
-uint32_t HasCriticalNativeMethodBuildAnnotation(const DexFile& dex_file,
-                                                const DexFile::ClassDef& class_def,
-                                                uint32_t method_index) {
-  const DexFile::AnnotationSetItem* annotation_set =
-      FindAnnotationSetForMethod(dex_file, class_def, method_index);
-  return annotation_set != nullptr &&
-         IsMethodBuildAnnotationPresent(
-             dex_file,
-             *annotation_set,
-             "Ldalvik/annotation/optimization/CriticalNative;",
-             WellKnownClasses::dalvik_annotation_optimization_CriticalNative);
+  if (annotation_set == nullptr) {
+    return 0u;
+  }
+  uint32_t access_flags = 0u;
+  if (IsMethodBuildAnnotationPresent(
+          dex_file,
+          *annotation_set,
+          "Ldalvik/annotation/optimization/FastNative;",
+          WellKnownClasses::dalvik_annotation_optimization_FastNative)) {
+    access_flags |= kAccFastNative;
+  }
+  if (IsMethodBuildAnnotationPresent(
+          dex_file,
+          *annotation_set,
+          "Ldalvik/annotation/optimization/CriticalNative;",
+          WellKnownClasses::dalvik_annotation_optimization_CriticalNative)) {
+    access_flags |= kAccCriticalNative;
+  }
+  CHECK_NE(access_flags, kAccFastNative | kAccCriticalNative);
+  return access_flags;
 }
 
 mirror::Object* GetAnnotationForClass(Handle<mirror::Class> klass,
