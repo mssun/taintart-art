@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 
 public class Main {
 
@@ -63,14 +65,17 @@ public class Main {
   /// CHECK:   name "B0"
   /// CHECK:       <<This:l\d+>>  ParameterValue
   /// CHECK: end_block
+
   /// CHECK: begin_block
-  /// CHECK:   successors "<<ThenBlock:B\d+>>" "<<ElseBlock:B\d+>>"
+  /// CHECK:  successors "<<ThenBlockA:B\d+>>" "<<ElseBlockA:B\d+>>"
+  /// CHECK:       <<CondA:z\d+>>  InstanceFieldGet [<<This>>] field_name:Main.conditionA
+  /// CHECK:                       If [<<CondA>>]
+  /// CHECK: end_block
+
+  /// CHECK: begin_block
+  /// CHECK:  successors "<<ThenBlockB:B\d+>>" "<<ElseBlockB:B\d+>>"
   /// CHECK:       <<CondB:z\d+>>  InstanceFieldGet [<<This>>] field_name:Main.conditionB
   /// CHECK:                       If [<<CondB>>]
-  /// CHECK:  end_block
-  /// CHECK: begin_block
-  /// CHECK:   name "<<ElseBlock>>"
-  /// CHECK:                      ParallelMove moves:[40(sp)->d0,24(sp)->32(sp),28(sp)->36(sp),d0->d3,d3->d4,d2->d5,d4->d6,d5->d7,d6->d18,d7->d19,d18->d20,d19->d21,d20->d22,d21->d23,d22->d10,d23->d11,16(sp)->24(sp),20(sp)->28(sp),d10->d14,d11->d12,d12->d13,d13->d1,d14->d2,32(sp)->16(sp),36(sp)->20(sp)]
   /// CHECK: end_block
 
   /// CHECK-START-ARM64: void Main.test() disassembly (after)
@@ -82,39 +87,6 @@ public class Main {
   /// CHECK:   successors "<<ThenBlock:B\d+>>" "<<ElseBlock:B\d+>>"
   /// CHECK:       <<CondB:z\d+>>  InstanceFieldGet [<<This>>] field_name:Main.conditionB
   /// CHECK:                       If [<<CondB>>]
-  /// CHECK:  end_block
-  /// CHECK: begin_block
-  /// CHECK:   name "<<ElseBlock>>"
-  /// CHECK:                      ParallelMove moves:[invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid,invalid->invalid]
-  /// CHECK:                        fmov d31, d2
-  /// CHECK:                        ldr s2, [sp, #36]
-  /// CHECK:                        ldr w16, [sp, #16]
-  /// CHECK:                        str w16, [sp, #36]
-  /// CHECK:                        str s14, [sp, #16]
-  /// CHECK:                        ldr s14, [sp, #28]
-  /// CHECK:                        str s1, [sp, #28]
-  /// CHECK:                        ldr s1, [sp, #32]
-  /// CHECK:                        str s31, [sp, #32]
-  /// CHECK:                        ldr s31, [sp, #20]
-  /// CHECK:                        str s31, [sp, #40]
-  /// CHECK:                        str s12, [sp, #20]
-  /// CHECK:                        fmov d12, d11
-  /// CHECK:                        fmov d11, d10
-  /// CHECK:                        fmov d10, d23
-  /// CHECK:                        fmov d23, d22
-  /// CHECK:                        fmov d22, d21
-  /// CHECK:                        fmov d21, d20
-  /// CHECK:                        fmov d20, d19
-  /// CHECK:                        fmov d19, d18
-  /// CHECK:                        fmov d18, d7
-  /// CHECK:                        fmov d7, d6
-  /// CHECK:                        fmov d6, d5
-  /// CHECK:                        fmov d5, d4
-  /// CHECK:                        fmov d4, d3
-  /// CHECK:                        fmov d3, d13
-  /// CHECK:                        ldr s13, [sp, #24]
-  /// CHECK:                        str s3, [sp, #24]
-  /// CHECK:                        ldr s3, pc+{{\d+}} (addr {{0x[0-9a-f]+}}) (100)
   /// CHECK: end_block
 
   public void test() {
@@ -289,9 +261,20 @@ public class Main {
     String res = s + r;
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     Main main = new Main();
     main.test();
+
+    Class<?> cl = Class.forName("Smali");
+    Constructor<?> cons = cl.getConstructor();
+    Object o = cons.newInstance();
+
+    Method test = cl.getMethod("test");
+    test.invoke(o);
+
+    Method testD8 = cl.getMethod("testD8");
+    testD8.invoke(o);
+
     System.out.println("passed");
   }
 }
