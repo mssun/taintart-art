@@ -30,6 +30,7 @@
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "gc/accounting/bitmap-inl.h"
 #include "gc/scoped_gc_critical_section.h"
+#include "handle.h"
 #include "intern_table.h"
 #include "jit/jit.h"
 #include "jit/profiling_info.h"
@@ -38,8 +39,10 @@
 #include "oat_file-inl.h"
 #include "oat_quick_method_header.h"
 #include "object_callbacks.h"
+#include "profile_compilation_info.h"
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
+#include "thread-current-inl.h"
 #include "thread_list.h"
 
 namespace art {
@@ -181,6 +184,8 @@ JitCodeCache::JitCodeCache(MemMap* code_map,
             << ", initial code size="
             << PrettySize(initial_code_capacity);
 }
+
+JitCodeCache::~JitCodeCache() {}
 
 bool JitCodeCache::ContainsPc(const void* ptr) const {
   return code_map_->Begin() <= ptr && ptr < code_map_->End();

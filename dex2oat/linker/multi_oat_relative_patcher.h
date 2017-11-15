@@ -26,7 +26,6 @@
 namespace art {
 
 class CompiledMethod;
-class LinkerPatch;
 class InstructionSetFeatures;
 
 namespace linker {

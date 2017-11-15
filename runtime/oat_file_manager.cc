@@ -144,6 +144,9 @@ const OatFile* OatFileManager::GetPrimaryOatFile() const {
   return nullptr;
 }
 
+OatFileManager::OatFileManager()
+    : have_non_pic_oat_file_(false), only_use_system_oat_files_(false) {}
+
 OatFileManager::~OatFileManager() {
   // Explicitly clear oat_files_ since the OatFile destructor calls back into OatFileManager for
   // UnRegisterOatFileLocation.
