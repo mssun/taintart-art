@@ -68,7 +68,7 @@ public class Main {
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-ARM64: int Main.sadChar2Int(char[], char[]) loop_optimization (after)
+  /// CHECK-START: int Main.sadChar2Int(char[], char[]) loop_optimization (after)
   /// CHECK-NOT: VecSADAccumulate
   private static int sadChar2Int(char[] s1, char[] s2) {
     int min_length = Math.min(s1.length, s2.length);
@@ -91,7 +91,7 @@ public class Main {
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-ARM64: int Main.sadChar2IntAlt(char[], char[]) loop_optimization (after)
+  /// CHECK-START: int Main.sadChar2IntAlt(char[], char[]) loop_optimization (after)
   /// CHECK-NOT: VecSADAccumulate
   private static int sadChar2IntAlt(char[] s1, char[] s2) {
     int min_length = Math.min(s1.length, s2.length);
@@ -116,7 +116,7 @@ public class Main {
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-ARM64: int Main.sadChar2IntAlt2(char[], char[]) loop_optimization (after)
+  /// CHECK-START: int Main.sadChar2IntAlt2(char[], char[]) loop_optimization (after)
   /// CHECK-NOT: VecSADAccumulate
   private static int sadChar2IntAlt2(char[] s1, char[] s2) {
     int min_length = Math.min(s1.length, s2.length);
@@ -146,7 +146,7 @@ public class Main {
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-ARM64: long Main.sadChar2Long(char[], char[]) loop_optimization (after)
+  /// CHECK-START: long Main.sadChar2Long(char[], char[]) loop_optimization (after)
   /// CHECK-NOT: VecSADAccumulate
   private static long sadChar2Long(char[] s1, char[] s2) {
     int min_length = Math.min(s1.length, s2.length);
@@ -174,7 +174,7 @@ public class Main {
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-ARM64: long Main.sadChar2LongAt1(char[], char[]) loop_optimization (after)
+  /// CHECK-START: long Main.sadChar2LongAt1(char[], char[]) loop_optimization (after)
   /// CHECK-NOT: VecSADAccumulate
   private static long sadChar2LongAt1(char[] s1, char[] s2) {
     int min_length = Math.min(s1.length, s2.length);
