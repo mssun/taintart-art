@@ -88,12 +88,10 @@ public class ProguardMap {
       String key = obfuscatedMethodName + clearSignature;
       FrameData frame = mFrames.get(key);
       if (frame == null) {
-        return new Frame(obfuscatedMethodName, clearSignature,
-            obfuscatedFilename, obfuscatedLine);
+        frame = new FrameData(obfuscatedMethodName, 0);
       }
       return new Frame(frame.clearMethodName, clearSignature,
-          getFileName(clearClassName, frame.clearMethodName),
-          obfuscatedLine - frame.lineDelta);
+          getFileName(clearClassName), obfuscatedLine - frame.lineDelta);
     }
   }
 
@@ -313,15 +311,10 @@ public class ProguardMap {
     return builder.toString();
   }
 
-  // Return a file name for the given clear class name and method.
-  private static String getFileName(String clearClass, String method) {
-    int dot = method.lastIndexOf('.');
-    if (dot != -1) {
-      clearClass = method.substring(0, dot);
-    }
-
+  // Return a file name for the given clear class name.
+  private static String getFileName(String clearClass) {
     String filename = clearClass;
-    dot = filename.lastIndexOf('.');
+    int dot = filename.lastIndexOf('.');
     if (dot != -1) {
       filename = filename.substring(dot + 1);
     }

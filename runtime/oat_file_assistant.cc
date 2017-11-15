@@ -99,28 +99,7 @@ OatFileAssistant::OatFileAssistant(const char* dex_location,
       << " vdex_fd=" << vdex_fd;;
   }
 
-  // Try to get the realpath for the dex location.
-  //
-  // This is OK with respect to dalvik cache naming scheme because we never
-  // generate oat files starting from symlinks which go into dalvik cache.
-  // (recall that the oat files in dalvik cache are encoded by replacing '/'
-  // with '@' in the path).
-  // The boot image oat files (which are symlinked in dalvik-cache) are not
-  // loaded via the oat file assistant.
-  //
-  // The only case when the dex location may resolve to a different path
-  // is for secondary dex files (e.g. /data/user/0 symlinks to /data/data and
-  // the app is free to create its own internal layout). Related to this it is
-  // worthwhile to mention that installd resolves the secondary dex location
-  // before calling dex2oat.
-  UniqueCPtr<const char[]> dex_location_real(realpath(dex_location, nullptr));
-  if (dex_location_real != nullptr) {
-    dex_location_.assign(dex_location_real.get());
-  } else {
-    // If we can't get the realpath of the location there's not much point in trying to move on.
-    PLOG(ERROR) << "Could not get the realpath of dex_location " << dex_location;
-    return;
-  }
+  dex_location_.assign(dex_location);
 
   if (load_executable_ && isa != kRuntimeISA) {
     LOG(WARNING) << "OatFileAssistant: Load executable specified, "
@@ -496,17 +475,10 @@ OatFileAssistant::OatStatus OatFileAssistant::GivenOatFileStatus(const OatFile& 
 
   // Verify the dex checksum.
   std::string error_msg;
-  if (kIsVdexEnabled) {
-    VdexFile* vdex = file.GetVdexFile();
-    if (!DexChecksumUpToDate(*vdex, &error_msg)) {
-      LOG(ERROR) << error_msg;
-      return kOatDexOutOfDate;
-    }
-  } else {
-    if (!DexChecksumUpToDate(file, &error_msg)) {
-      LOG(ERROR) << error_msg;
-      return kOatDexOutOfDate;
-    }
+  VdexFile* vdex = file.GetVdexFile();
+  if (!DexChecksumUpToDate(*vdex, &error_msg)) {
+    LOG(ERROR) << error_msg;
+    return kOatDexOutOfDate;
   }
 
   CompilerFilter::Filter current_compiler_filter = file.GetCompilerFilter();

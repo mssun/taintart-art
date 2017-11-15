@@ -21,6 +21,7 @@
 
 #include "art_method-inl.h"
 #include "cdex/compact_dex_file.h"
+#include "dex_file-inl.h"
 #include "standard_dex_file.h"
 
 namespace art {
@@ -128,6 +129,25 @@ inline CodeItemDataAccessor CodeItemDataAccessor::CreateNullable(
 inline CodeItemDataAccessor CodeItemDataAccessor::CreateNullable(ArtMethod* method) {
   DCHECK(method != nullptr);
   return CreateNullable(method->GetDexFile(), method->GetCodeItem());
+}
+
+inline IterationRange<const DexFile::TryItem*> CodeItemDataAccessor::TryItems() const {
+  const DexFile::TryItem* try_items = DexFile::GetTryItems(end(), 0u);
+  return {
+    try_items,
+    try_items + TriesSize() };
+}
+
+inline const uint8_t* CodeItemDataAccessor::GetCatchHandlerData(size_t offset) const {
+  return DexFile::GetCatchHandlerData(end(), TriesSize(), offset);
+}
+
+inline const DexFile::TryItem* CodeItemDataAccessor::FindTryItem(uint32_t try_dex_pc) const {
+  IterationRange<const DexFile::TryItem*> try_items(TryItems());
+  int32_t index = DexFile::FindTryItem(try_items.begin(),
+                                       try_items.end() - try_items.begin(),
+                                       try_dex_pc);
+  return index != -1 ? &try_items.begin()[index] : nullptr;
 }
 
 }  // namespace art

@@ -192,7 +192,7 @@ class OatTest : public CommonCompilerTest {
     OutputStream* oat_rodata = elf_writer->StartRoData();
     std::unique_ptr<MemMap> opened_dex_files_map;
     std::vector<std::unique_ptr<const DexFile>> opened_dex_files;
-    if (!oat_writer.WriteAndOpenDexFiles(kIsVdexEnabled ? vdex_file : oat_file,
+    if (!oat_writer.WriteAndOpenDexFiles(vdex_file,
                                          oat_rodata,
                                          compiler_driver_->GetInstructionSet(),
                                          compiler_driver_->GetInstructionSetFeatures(),
@@ -224,15 +224,13 @@ class OatTest : public CommonCompilerTest {
                                       oat_writer.GetBssMethodsOffset(),
                                       oat_writer.GetBssRootsOffset());
 
-    if (kIsVdexEnabled) {
-      std::unique_ptr<BufferedOutputStream> vdex_out =
-            std::make_unique<BufferedOutputStream>(std::make_unique<FileOutputStream>(vdex_file));
-      if (!oat_writer.WriteVerifierDeps(vdex_out.get(), nullptr)) {
-        return false;
-      }
-      if (!oat_writer.WriteChecksumsAndVdexHeader(vdex_out.get())) {
-        return false;
-      }
+    std::unique_ptr<BufferedOutputStream> vdex_out =
+        std::make_unique<BufferedOutputStream>(std::make_unique<FileOutputStream>(vdex_file));
+    if (!oat_writer.WriteVerifierDeps(vdex_out.get(), nullptr)) {
+      return false;
+    }
+    if (!oat_writer.WriteChecksumsAndVdexHeader(vdex_out.get())) {
+      return false;
     }
 
     if (!oat_writer.WriteRodata(oat_rodata)) {

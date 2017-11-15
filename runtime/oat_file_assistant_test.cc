@@ -351,58 +351,9 @@ TEST_F(OatFileAssistantTest, GetDexOptNeededWithInvalidOdexVdexFd) {
   EXPECT_EQ(OatFileAssistant::kOatCannotOpen, oat_file_assistant.OatFileStatus());
 }
 
-// Case: We have a DEX file and up-to-date OAT file for it. We load the dex file
-// via a symlink.
-// Expect: The status is kNoDexOptNeeded.
-TEST_F(OatFileAssistantTest, OatUpToDateSymLink) {
-  if (IsExecutedAsRoot()) {
-    // We cannot simulate non writable locations when executed as root: b/38000545.
-    LOG(ERROR) << "Test skipped because it's running as root";
-    return;
-  }
-
-  std::string real = GetScratchDir() + "/real";
-  ASSERT_EQ(0, mkdir(real.c_str(), 0700));
-  std::string link = GetScratchDir() + "/link";
-  ASSERT_EQ(0, symlink(real.c_str(), link.c_str()));
-
-  std::string dex_location = real + "/OatUpToDate.jar";
-
-  Copy(GetDexSrc1(), dex_location);
-  GenerateOatForTest(dex_location.c_str(), CompilerFilter::kSpeed);
-
-  // Update the dex location to point to the symlink.
-  dex_location = link + "/OatUpToDate.jar";
-
-  // For the use of oat location by making the dex parent not writable.
-  ScopedNonWritable scoped_non_writable(dex_location);
-  ASSERT_TRUE(scoped_non_writable.IsSuccessful());
-
-  OatFileAssistant oat_file_assistant(dex_location.c_str(), kRuntimeISA, false);
-
-  EXPECT_EQ(OatFileAssistant::kNoDexOptNeeded,
-      oat_file_assistant.GetDexOptNeeded(CompilerFilter::kSpeed));
-  EXPECT_EQ(OatFileAssistant::kNoDexOptNeeded,
-      oat_file_assistant.GetDexOptNeeded(CompilerFilter::kQuicken));
-  EXPECT_EQ(OatFileAssistant::kNoDexOptNeeded,
-      oat_file_assistant.GetDexOptNeeded(CompilerFilter::kExtract));
-  EXPECT_EQ(OatFileAssistant::kDex2OatForFilter,
-      oat_file_assistant.GetDexOptNeeded(CompilerFilter::kEverything));
-
-  EXPECT_FALSE(oat_file_assistant.IsInBootClassPath());
-  EXPECT_EQ(OatFileAssistant::kOatCannotOpen, oat_file_assistant.OdexFileStatus());
-  EXPECT_EQ(OatFileAssistant::kOatUpToDate, oat_file_assistant.OatFileStatus());
-  EXPECT_TRUE(oat_file_assistant.HasOriginalDexFiles());
-}
-
 // Case: We have a DEX file and up-to-date (ODEX) VDEX file for it, but no
 // ODEX file.
 TEST_F(OatFileAssistantTest, VdexUpToDateNoOdex) {
-  // This test case is only meaningful if vdex is enabled.
-  if (!kIsVdexEnabled) {
-    return;
-  }
-
   std::string dex_location = GetScratchDir() + "/VdexUpToDateNoOdex.jar";
   std::string odex_location = GetOdexDir() + "/VdexUpToDateNoOdex.oat";
 
@@ -446,10 +397,6 @@ TEST_F(OatFileAssistantTest, EmptyVdexOdex) {
 // Case: We have a DEX file and up-to-date (OAT) VDEX file for it, but no OAT
 // file.
 TEST_F(OatFileAssistantTest, VdexUpToDateNoOat) {
-  // This test case is only meaningful if vdex is enabled.
-  if (!kIsVdexEnabled) {
-    return;
-  }
   if (IsExecutedAsRoot()) {
     // We cannot simulate non writable locations when executed as root: b/38000545.
     LOG(ERROR) << "Test skipped because it's running as root";
@@ -668,11 +615,6 @@ TEST_F(OatFileAssistantTest, OatDexOutOfDate) {
 // Case: We have a DEX file and an (ODEX) VDEX file out of date with respect
 // to the dex checksum, but no ODEX file.
 TEST_F(OatFileAssistantTest, VdexDexOutOfDate) {
-  // This test case is only meaningful if vdex is enabled.
-  if (!kIsVdexEnabled) {
-    return;
-  }
-
   std::string dex_location = GetScratchDir() + "/VdexDexOutOfDate.jar";
   std::string odex_location = GetOdexDir() + "/VdexDexOutOfDate.oat";
 
@@ -690,11 +632,6 @@ TEST_F(OatFileAssistantTest, VdexDexOutOfDate) {
 // Case: We have a MultiDEX (ODEX) VDEX file where the non-main multidex entry
 // is out of date and there is no corresponding ODEX file.
 TEST_F(OatFileAssistantTest, VdexMultiDexNonMainOutOfDate) {
-  // This test case is only meaningful if vdex is enabled.
-  if (!kIsVdexEnabled) {
-    return;
-  }
-
   std::string dex_location = GetScratchDir() + "/VdexMultiDexNonMainOutOfDate.jar";
   std::string odex_location = GetOdexDir() + "/VdexMultiDexNonMainOutOfDate.odex";
 

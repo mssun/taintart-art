@@ -573,46 +573,36 @@ class OatDumper {
     }
 
     if (options_.export_dex_location_) {
-      if (kIsVdexEnabled) {
-        std::string error_msg;
-        std::string vdex_filename = GetVdexFilename(oat_file_.GetLocation());
-        if (!OS::FileExists(vdex_filename.c_str())) {
-          os << "File " << vdex_filename.c_str() << " does not exist\n";
-          return false;
-        }
+      std::string error_msg;
+      std::string vdex_filename = GetVdexFilename(oat_file_.GetLocation());
+      if (!OS::FileExists(vdex_filename.c_str())) {
+        os << "File " << vdex_filename.c_str() << " does not exist\n";
+        return false;
+      }
 
-        DexFileUniqV vdex_dex_files;
-        std::unique_ptr<const VdexFile> vdex_file = OpenVdexUnquicken(vdex_filename,
-                                                                      &vdex_dex_files,
-                                                                      &error_msg);
-        if (vdex_file.get() == nullptr) {
-          os << "Failed to open vdex file: " << error_msg << "\n";
-          return false;
-        }
-        if (oat_dex_files_.size() != vdex_dex_files.size()) {
-          os << "Dex files number in Vdex file does not match Dex files number in Oat file: "
-             << vdex_dex_files.size() << " vs " << oat_dex_files_.size() << '\n';
-          return false;
-        }
+      DexFileUniqV vdex_dex_files;
+      std::unique_ptr<const VdexFile> vdex_file = OpenVdexUnquicken(vdex_filename,
+                                                                    &vdex_dex_files,
+                                                                    &error_msg);
+      if (vdex_file.get() == nullptr) {
+        os << "Failed to open vdex file: " << error_msg << "\n";
+        return false;
+      }
+      if (oat_dex_files_.size() != vdex_dex_files.size()) {
+        os << "Dex files number in Vdex file does not match Dex files number in Oat file: "
+           << vdex_dex_files.size() << " vs " << oat_dex_files_.size() << '\n';
+        return false;
+      }
 
-        size_t i = 0;
-        for (const auto& vdex_dex_file : vdex_dex_files) {
-          const OatFile::OatDexFile* oat_dex_file = oat_dex_files_[i];
-          CHECK(oat_dex_file != nullptr);
-          CHECK(vdex_dex_file != nullptr);
-          if (!ExportDexFile(os, *oat_dex_file, vdex_dex_file.get())) {
-            success = false;
-          }
-          i++;
+      size_t i = 0;
+      for (const auto& vdex_dex_file : vdex_dex_files) {
+        const OatFile::OatDexFile* oat_dex_file = oat_dex_files_[i];
+        CHECK(oat_dex_file != nullptr);
+        CHECK(vdex_dex_file != nullptr);
+        if (!ExportDexFile(os, *oat_dex_file, vdex_dex_file.get())) {
+          success = false;
         }
-      } else {
-        for (size_t i = 0; i < oat_dex_files_.size(); i++) {
-          const OatFile::OatDexFile* oat_dex_file = oat_dex_files_[i];
-          CHECK(oat_dex_file != nullptr);
-          if (!ExportDexFile(os, *oat_dex_file, /* vdex_dex_file */ nullptr)) {
-            success = false;
-          }
-        }
+        i++;
       }
     }
 
@@ -1367,7 +1357,7 @@ class OatDumper {
       vios->Stream() << StringPrintf("(offset=0x%08x)\n", vmap_table_offset);
 
       size_t vmap_table_offset_limit =
-          (kIsVdexEnabled && IsMethodGeneratedByDexToDexCompiler(oat_method, code_item_accessor))
+          IsMethodGeneratedByDexToDexCompiler(oat_method, code_item_accessor)
               ? oat_file_.GetVdexFile()->Size()
               : method_header->GetCode() - oat_file_.Begin();
       if (vmap_table_offset >= vmap_table_offset_limit) {

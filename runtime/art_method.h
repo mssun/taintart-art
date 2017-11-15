@@ -464,7 +464,7 @@ class ArtMethod FINAL {
     // where the declaring class is treated as a weak reference (accessing it with
     // a read barrier would either prevent unloading the class, or crash the runtime if
     // the GC wants to unload it).
-    DCHECK(!IsNative());
+    DCHECK(!IsNative<kWithoutReadBarrier>());
     if (UNLIKELY(IsProxyMethod())) {
       return nullptr;
     }
@@ -657,7 +657,7 @@ class ArtMethod FINAL {
     return hotness_count_;
   }
 
-  const uint8_t* GetQuickenedInfo(PointerSize pointer_size) REQUIRES_SHARED(Locks::mutator_lock_);
+  const uint8_t* GetQuickenedInfo() REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns the method header for the compiled code containing 'pc'. Note that runtime
   // methods will return null for this method, as they are not oat based.
