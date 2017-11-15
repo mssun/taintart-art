@@ -28,8 +28,9 @@ class BoundsCheckElimination : public HOptimization {
  public:
   BoundsCheckElimination(HGraph* graph,
                          const SideEffectsAnalysis& side_effects,
-                         HInductionVarAnalysis* induction_analysis)
-      : HOptimization(graph, kBoundsCheckEliminationPassName),
+                         HInductionVarAnalysis* induction_analysis,
+                         const char* name = kBoundsCheckEliminationPassName)
+      : HOptimization(graph, name),
         side_effects_(side_effects),
         induction_analysis_(induction_analysis) {}
 

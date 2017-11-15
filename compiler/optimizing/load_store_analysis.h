@@ -564,8 +564,8 @@ class HeapLocationCollector : public HGraphVisitor {
 
 class LoadStoreAnalysis : public HOptimization {
  public:
-  explicit LoadStoreAnalysis(HGraph* graph)
-    : HOptimization(graph, kLoadStoreAnalysisPassName),
+  explicit LoadStoreAnalysis(HGraph* graph, const char* name = kLoadStoreAnalysisPassName)
+    : HOptimization(graph, name),
       heap_location_collector_(graph) {}
 
   const HeapLocationCollector& GetHeapLocationCollector() const {

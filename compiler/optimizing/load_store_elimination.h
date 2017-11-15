@@ -29,8 +29,9 @@ class LoadStoreElimination : public HOptimization {
   LoadStoreElimination(HGraph* graph,
                        const SideEffectsAnalysis& side_effects,
                        const LoadStoreAnalysis& lsa,
-                       OptimizingCompilerStats* stats)
-      : HOptimization(graph, kLoadStoreEliminationPassName, stats),
+                       OptimizingCompilerStats* stats,
+                       const char* name = kLoadStoreEliminationPassName)
+      : HOptimization(graph, name, stats),
         side_effects_(side_effects),
         lsa_(lsa) {}
 
