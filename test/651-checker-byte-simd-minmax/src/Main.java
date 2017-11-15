@@ -183,6 +183,13 @@ public class Main {
   /// CHECK-DAG: <<Get:d\d+>>  VecLoad                              loop:<<Loop:B\d+>>  outer_loop:none
   /// CHECK-DAG: <<Min:d\d+>>  VecMin [<<Get>>,<<Repl>>] packed_type:Int8 loop:<<Loop>> outer_loop:none
   /// CHECK-DAG:               VecStore [{{l\d+}},{{i\d+}},<<Min>>] loop:<<Loop>>       outer_loop:none
+  //
+  /// CHECK-START-MIPS64: void Main.doitMin100(byte[], byte[]) loop_optimization (after)
+  /// CHECK-DAG: <<I100:i\d+>> IntConstant 100                      loop:none
+  /// CHECK-DAG: <<Repl:d\d+>> VecReplicateScalar [<<I100>>]        loop:none
+  /// CHECK-DAG: <<Get:d\d+>>  VecLoad                              loop:<<Loop:B\d+>>  outer_loop:none
+  /// CHECK-DAG: <<Min:d\d+>>  VecMin [<<Get>>,<<Repl>>] packed_type:Int8 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},{{i\d+}},<<Min>>] loop:<<Loop>>       outer_loop:none
   private static void doitMin100(byte[] x, byte[] y) {
     int min = Math.min(x.length, y.length);
     for (int i = 0; i < min; i++) {
