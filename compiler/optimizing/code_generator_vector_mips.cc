@@ -1071,11 +1071,195 @@ void InstructionCodeGeneratorMIPS::VisitVecMultiplyAccumulate(HVecMultiplyAccumu
 
 void LocationsBuilderMIPS::VisitVecSADAccumulate(HVecSADAccumulate* instruction) {
   CreateVecAccumLocations(GetGraph()->GetAllocator(), instruction);
+  LocationSummary* locations = instruction->GetLocations();
+  // All conversions require at least one temporary register.
+  locations->AddTemp(Location::RequiresFpuRegister());
+  // Some conversions require a second temporary register.
+  HVecOperation* a = instruction->InputAt(1)->AsVecOperation();
+  HVecOperation* b = instruction->InputAt(2)->AsVecOperation();
+  DCHECK_EQ(HVecOperation::ToSignedType(a->GetPackedType()),
+            HVecOperation::ToSignedType(b->GetPackedType()));
+  switch (a->GetPackedType()) {
+    case DataType::Type::kInt32:
+      if (instruction->GetPackedType() == DataType::Type::kInt32) {
+        break;
+      }
+      FALLTHROUGH_INTENDED;
+    case DataType::Type::kUint8:
+    case DataType::Type::kInt8:
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+      locations->AddTemp(Location::RequiresFpuRegister());
+      break;
+    default:
+      break;
+  }
 }
 
 void InstructionCodeGeneratorMIPS::VisitVecSADAccumulate(HVecSADAccumulate* instruction) {
-  LOG(FATAL) << "No SIMD for " << instruction->GetId();
-  // TODO: implement this, location helper already filled out (shared with MulAcc).
+  LocationSummary* locations = instruction->GetLocations();
+  VectorRegister acc = VectorRegisterFrom(locations->InAt(0));
+  VectorRegister left = VectorRegisterFrom(locations->InAt(1));
+  VectorRegister right = VectorRegisterFrom(locations->InAt(2));
+  VectorRegister tmp = static_cast<VectorRegister>(FTMP);
+  VectorRegister tmp1 = VectorRegisterFrom(locations->GetTemp(0));
+
+  DCHECK(locations->InAt(0).Equals(locations->Out()));
+
+  // Handle all feasible acc_T += sad(a_S, b_S) type combinations (T x S).
+  HVecOperation* a = instruction->InputAt(1)->AsVecOperation();
+  HVecOperation* b = instruction->InputAt(2)->AsVecOperation();
+  DCHECK_EQ(HVecOperation::ToSignedType(a->GetPackedType()),
+            HVecOperation::ToSignedType(b->GetPackedType()));
+  switch (a->GetPackedType()) {
+    case DataType::Type::kUint8:
+    case DataType::Type::kInt8:
+      DCHECK_EQ(16u, a->GetVectorLength());
+      switch (instruction->GetPackedType()) {
+        case DataType::Type::kUint16:
+        case DataType::Type::kInt16: {
+          DCHECK_EQ(8u, instruction->GetVectorLength());
+          VectorRegister tmp2 = VectorRegisterFrom(locations->GetTemp(1));
+          __ FillB(tmp, ZERO);
+          __ Hadd_sH(tmp1, left, tmp);
+          __ Hadd_sH(tmp2, right, tmp);
+          __ Asub_sH(tmp1, tmp1, tmp2);
+          __ AddvH(acc, acc, tmp1);
+          __ Hadd_sH(tmp1, tmp, left);
+          __ Hadd_sH(tmp2, tmp, right);
+          __ Asub_sH(tmp1, tmp1, tmp2);
+          __ AddvH(acc, acc, tmp1);
+          break;
+        }
+        case DataType::Type::kInt32: {
+          DCHECK_EQ(4u, instruction->GetVectorLength());
+          VectorRegister tmp2 = VectorRegisterFrom(locations->GetTemp(1));
+          __ FillB(tmp, ZERO);
+          __ Hadd_sH(tmp1, left, tmp);
+          __ Hadd_sH(tmp2, right, tmp);
+          __ Asub_sH(tmp1, tmp1, tmp2);
+          __ Hadd_sW(tmp1, tmp1, tmp1);
+          __ AddvW(acc, acc, tmp1);
+          __ Hadd_sH(tmp1, tmp, left);
+          __ Hadd_sH(tmp2, tmp, right);
+          __ Asub_sH(tmp1, tmp1, tmp2);
+          __ Hadd_sW(tmp1, tmp1, tmp1);
+          __ AddvW(acc, acc, tmp1);
+          break;
+        }
+        case DataType::Type::kInt64: {
+          DCHECK_EQ(2u, instruction->GetVectorLength());
+          VectorRegister tmp2 = VectorRegisterFrom(locations->GetTemp(1));
+          __ FillB(tmp, ZERO);
+          __ Hadd_sH(tmp1, left, tmp);
+          __ Hadd_sH(tmp2, right, tmp);
+          __ Asub_sH(tmp1, tmp1, tmp2);
+          __ Hadd_sW(tmp1, tmp1, tmp1);
+          __ Hadd_sD(tmp1, tmp1, tmp1);
+          __ AddvD(acc, acc, tmp1);
+          __ Hadd_sH(tmp1, tmp, left);
+          __ Hadd_sH(tmp2, tmp, right);
+          __ Asub_sH(tmp1, tmp1, tmp2);
+          __ Hadd_sW(tmp1, tmp1, tmp1);
+          __ Hadd_sD(tmp1, tmp1, tmp1);
+          __ AddvD(acc, acc, tmp1);
+          break;
+        }
+        default:
+          LOG(FATAL) << "Unsupported SIMD type";
+          UNREACHABLE();
+      }
+      break;
+    case DataType::Type::kUint16:
+    case DataType::Type::kInt16:
+      DCHECK_EQ(8u, a->GetVectorLength());
+      switch (instruction->GetPackedType()) {
+        case DataType::Type::kInt32: {
+          DCHECK_EQ(4u, instruction->GetVectorLength());
+          VectorRegister tmp2 = VectorRegisterFrom(locations->GetTemp(1));
+          __ FillH(tmp, ZERO);
+          __ Hadd_sW(tmp1, left, tmp);
+          __ Hadd_sW(tmp2, right, tmp);
+          __ Asub_sW(tmp1, tmp1, tmp2);
+          __ AddvW(acc, acc, tmp1);
+          __ Hadd_sW(tmp1, tmp, left);
+          __ Hadd_sW(tmp2, tmp, right);
+          __ Asub_sW(tmp1, tmp1, tmp2);
+          __ AddvW(acc, acc, tmp1);
+          break;
+        }
+        case DataType::Type::kInt64: {
+          DCHECK_EQ(2u, instruction->GetVectorLength());
+          VectorRegister tmp2 = VectorRegisterFrom(locations->GetTemp(1));
+          __ FillH(tmp, ZERO);
+          __ Hadd_sW(tmp1, left, tmp);
+          __ Hadd_sW(tmp2, right, tmp);
+          __ Asub_sW(tmp1, tmp1, tmp2);
+          __ Hadd_sD(tmp1, tmp1, tmp1);
+          __ AddvD(acc, acc, tmp1);
+          __ Hadd_sW(tmp1, tmp, left);
+          __ Hadd_sW(tmp2, tmp, right);
+          __ Asub_sW(tmp1, tmp1, tmp2);
+          __ Hadd_sD(tmp1, tmp1, tmp1);
+          __ AddvD(acc, acc, tmp1);
+          break;
+        }
+        default:
+          LOG(FATAL) << "Unsupported SIMD type";
+          UNREACHABLE();
+      }
+      break;
+    case DataType::Type::kInt32:
+      DCHECK_EQ(4u, a->GetVectorLength());
+      switch (instruction->GetPackedType()) {
+        case DataType::Type::kInt32: {
+          DCHECK_EQ(4u, instruction->GetVectorLength());
+          __ FillW(tmp, ZERO);
+          __ SubvW(tmp1, left, right);
+          __ Add_aW(tmp1, tmp1, tmp);
+          __ AddvW(acc, acc, tmp1);
+          break;
+        }
+        case DataType::Type::kInt64: {
+          DCHECK_EQ(2u, instruction->GetVectorLength());
+          VectorRegister tmp2 = VectorRegisterFrom(locations->GetTemp(1));
+          __ FillW(tmp, ZERO);
+          __ Hadd_sD(tmp1, left, tmp);
+          __ Hadd_sD(tmp2, right, tmp);
+          __ Asub_sD(tmp1, tmp1, tmp2);
+          __ AddvD(acc, acc, tmp1);
+          __ Hadd_sD(tmp1, tmp, left);
+          __ Hadd_sD(tmp2, tmp, right);
+          __ Asub_sD(tmp1, tmp1, tmp2);
+          __ AddvD(acc, acc, tmp1);
+          break;
+        }
+        default:
+          LOG(FATAL) << "Unsupported SIMD type";
+          UNREACHABLE();
+      }
+      break;
+    case DataType::Type::kInt64: {
+      DCHECK_EQ(2u, a->GetVectorLength());
+      switch (instruction->GetPackedType()) {
+        case DataType::Type::kInt64: {
+          DCHECK_EQ(2u, instruction->GetVectorLength());
+          __ FillW(tmp, ZERO);
+          __ SubvD(tmp1, left, right);
+          __ Add_aD(tmp1, tmp1, tmp);
+          __ AddvD(acc, acc, tmp1);
+          break;
+        }
+        default:
+          LOG(FATAL) << "Unsupported SIMD type";
+          UNREACHABLE();
+      }
+      break;
+    }
+    default:
+      LOG(FATAL) << "Unsupported SIMD type";
+      UNREACHABLE();
+  }
 }
 
 // Helper to set up locations for vector memory operations.
