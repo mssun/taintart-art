@@ -21,17 +21,19 @@
 #include "dex_file-inl.h"
 #include "dex_file.h"
 #include "driver/compiler_driver.h"
-#include "driver/dex_compilation_unit.h"
 #include "nodes.h"
 
 namespace art {
 
+class ArtMethod;
 class CodeGenerator;
+class DexCompilationUnit;
 class OptimizingCompilerStats;
 
 class HGraphBuilder : public ValueObject {
  public:
   HGraphBuilder(HGraph* graph,
+                const DexFile::CodeItem* code_item,
                 const DexCompilationUnit* dex_compilation_unit,
                 const DexCompilationUnit* outer_compilation_unit,
                 CompilerDriver* driver,
@@ -47,8 +49,8 @@ class HGraphBuilder : public ValueObject {
                 VariableSizedHandleScope* handles,
                 DataType::Type return_type = DataType::Type::kInt32)
       : graph_(graph),
-        dex_file_(dex_compilation_unit->GetDexFile()),
-        code_item_(code_item),
+        dex_file_(&graph->GetDexFile()),
+        code_item_(&code_item),
         dex_compilation_unit_(dex_compilation_unit),
         outer_compilation_unit_(nullptr),
         compiler_driver_(nullptr),
@@ -59,6 +61,7 @@ class HGraphBuilder : public ValueObject {
         return_type_(return_type) {}
 
   GraphAnalysisResult BuildGraph();
+  void BuildIntrinsicGraph(ArtMethod* method);
 
   static constexpr const char* kBuilderPassName = "builder";
 
@@ -67,7 +70,7 @@ class HGraphBuilder : public ValueObject {
 
   HGraph* const graph_;
   const DexFile* const dex_file_;
-  const DexFile::CodeItem& code_item_;
+  const DexFile::CodeItem* const code_item_;  // null for intrinsic graph.
 
   // The compilation unit of the current method being compiled. Note that
   // it can be an inlined method.

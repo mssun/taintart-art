@@ -272,6 +272,7 @@ static bool IsBlockPopulated(HBasicBlock* block) {
 }
 
 bool HInstructionBuilder::Build() {
+  DCHECK(code_item_ != nullptr);
   locals_for_.resize(
       graph_->GetBlocks().size(),
       ScopedArenaVector<HInstruction*>(local_allocator_->Adapter(kArenaAllocGraphBuilder)));
@@ -321,7 +322,7 @@ bool HInstructionBuilder::Build() {
       quicken_index = block_builder_->GetQuickenIndex(block_dex_pc);
     }
 
-    for (const DexInstructionPcPair& pair : code_item_.Instructions(block_dex_pc)) {
+    for (const DexInstructionPcPair& pair : code_item_->Instructions(block_dex_pc)) {
       if (current_block_ == nullptr) {
         // The previous instruction ended this block.
         break;
@@ -364,6 +365,73 @@ bool HInstructionBuilder::Build() {
   return true;
 }
 
+void HInstructionBuilder::BuildIntrinsic(ArtMethod* method) {
+  DCHECK(code_item_ == nullptr);
+  DCHECK(method->IsIntrinsic());
+
+  locals_for_.resize(
+      graph_->GetBlocks().size(),
+      ScopedArenaVector<HInstruction*>(local_allocator_->Adapter(kArenaAllocGraphBuilder)));
+
+  // Fill the entry block. Do not add suspend check, we do not want a suspend
+  // check in intrinsics; intrinsic methods are supposed to be fast.
+  current_block_ = graph_->GetEntryBlock();
+  InitializeBlockLocals();
+  InitializeParameters();
+  AppendInstruction(new (allocator_) HGoto(0u));
+
+  // Fill the body.
+  current_block_ = current_block_->GetSingleSuccessor();
+  InitializeBlockLocals();
+  DCHECK(!IsBlockPopulated(current_block_));
+
+  // Add the invoke and return instruction. Use HInvokeStaticOrDirect even
+  // for methods that would normally use an HInvokeVirtual (sharpen the call).
+  size_t in_vregs = graph_->GetNumberOfInVRegs();
+  size_t number_of_arguments =
+      in_vregs - std::count(current_locals_->end() - in_vregs, current_locals_->end(), nullptr);
+  uint32_t method_idx = dex_compilation_unit_->GetDexMethodIndex();
+  MethodReference target_method(dex_file_, method_idx);
+  HInvokeStaticOrDirect::DispatchInfo dispatch_info = {
+      HInvokeStaticOrDirect::MethodLoadKind::kRuntimeCall,
+      HInvokeStaticOrDirect::CodePtrLocation::kCallArtMethod,
+      /* method_load_data */ 0u
+  };
+  InvokeType invoke_type = dex_compilation_unit_->IsStatic() ? kStatic : kDirect;
+  HInvokeStaticOrDirect* invoke = new (allocator_) HInvokeStaticOrDirect(
+      allocator_,
+      number_of_arguments,
+      return_type_,
+      kNoDexPc,
+      method_idx,
+      method,
+      dispatch_info,
+      invoke_type,
+      target_method,
+      HInvokeStaticOrDirect::ClinitCheckRequirement::kNone);
+  HandleInvoke(invoke,
+               in_vregs,
+               /* args */ nullptr,
+               graph_->GetNumberOfVRegs() - in_vregs,
+               /* is_range */ true,
+               dex_file_->GetMethodShorty(method_idx),
+               /* clinit_check */ nullptr,
+               /* is_unresolved */ false);
+
+  // Add the return instruction.
+  if (return_type_ == DataType::Type::kVoid) {
+    AppendInstruction(new (allocator_) HReturnVoid());
+  } else {
+    AppendInstruction(new (allocator_) HReturn(invoke));
+  }
+
+  // Fill the exit block.
+  DCHECK_EQ(current_block_->GetSingleSuccessor(), graph_->GetExitBlock());
+  current_block_ = graph_->GetExitBlock();
+  InitializeBlockLocals();
+  AppendInstruction(new (allocator_) HExit());
+}
+
 ArenaBitVector* HInstructionBuilder::FindNativeDebugInfoLocations() {
   // The callback gets called when the line number changes.
   // In other words, it marks the start of new java statement.
@@ -373,15 +441,15 @@ ArenaBitVector* HInstructionBuilder::FindNativeDebugInfoLocations() {
       return false;
     }
   };
-  const uint32_t num_instructions = code_item_.insns_size_in_code_units_;
+  const uint32_t num_instructions = code_item_->insns_size_in_code_units_;
   ArenaBitVector* locations = ArenaBitVector::Create(local_allocator_,
                                                      num_instructions,
                                                      /* expandable */ false,
                                                      kArenaAllocGraphBuilder);
   locations->ClearAllBits();
-  dex_file_->DecodeDebugPositionInfo(&code_item_, Callback::Position, locations);
+  dex_file_->DecodeDebugPositionInfo(code_item_, Callback::Position, locations);
   // Instruction-specific tweaks.
-  IterationRange<DexInstructionIterator> instructions = code_item_.Instructions();
+  IterationRange<DexInstructionIterator> instructions = code_item_->Instructions();
   for (const DexInstructionPcPair& inst : instructions) {
     switch (inst->Opcode()) {
       case Instruction::MOVE_EXCEPTION: {
@@ -1641,7 +1709,7 @@ void HInstructionBuilder::BuildFillArrayData(const Instruction& instruction, uin
 
   int32_t payload_offset = instruction.VRegB_31t() + dex_pc;
   const Instruction::ArrayDataPayload* payload =
-      reinterpret_cast<const Instruction::ArrayDataPayload*>(code_item_.insns_ + payload_offset);
+      reinterpret_cast<const Instruction::ArrayDataPayload*>(code_item_->insns_ + payload_offset);
   const uint8_t* data = payload->data;
   uint32_t element_count = payload->element_count;
 
