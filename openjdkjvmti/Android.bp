@@ -34,6 +34,7 @@ cc_defaults {
         "ti_class.cc",
         "ti_class_definition.cc",
         "ti_class_loader.cc",
+        "ti_ddms.cc",
         "ti_dump.cc",
         "ti_extension.cc",
         "ti_field.cc",

@@ -29,32 +29,25 @@
  * questions.
  */
 
-#ifndef ART_OPENJDKJVMTI_TI_EXTENSION_H_
-#define ART_OPENJDKJVMTI_TI_EXTENSION_H_
+#ifndef ART_OPENJDKJVMTI_TI_DDMS_H_
+#define ART_OPENJDKJVMTI_TI_DDMS_H_
 
 #include "jni.h"
 #include "jvmti.h"
 
 namespace openjdkjvmti {
 
-class EventHandler;
-
-class ExtensionUtil {
+class DDMSUtil {
  public:
-  static jvmtiError GetExtensionFunctions(jvmtiEnv* env,
-                                          jint* extension_count_ptr,
-                                          jvmtiExtensionFunctionInfo** extensions);
-
-  static jvmtiError GetExtensionEvents(jvmtiEnv* env,
-                                       jint* extension_count_ptr,
-                                       jvmtiExtensionEventInfo** extensions);
-
-  static jvmtiError SetExtensionEventCallback(jvmtiEnv* env,
-                                              jint extension_event_index,
-                                              jvmtiExtensionEvent callback,
-                                              EventHandler* event_handler);
+  static jvmtiError HandleChunk(jvmtiEnv* env,
+                                jint type_in,
+                                jint length_in,
+                                const jbyte* data_in,
+                                /*out*/ jint* type_out,
+                                /*out*/ jint* data_length_out,
+                                /*out*/ jbyte** data_out);
 };
 
 }  // namespace openjdkjvmti
 
-#endif  // ART_OPENJDKJVMTI_TI_EXTENSION_H_
+#endif  // ART_OPENJDKJVMTI_TI_DDMS_H_

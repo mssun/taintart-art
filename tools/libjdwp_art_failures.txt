@@ -97,5 +97,11 @@
   result: EXEC_FAILED,
   bug: 69121056,
   name: "org.apache.harmony.jpda.tests.jdwp.ObjectReference.IsCollectedTest#testIsCollected001"
+},
+{
+  description: "Test for ddms extensions that are not implemented for prebuilt-libjdwp",
+  result: EXEC_FAILED,
+  bug: 69169846,
+  name: "org.apache.harmony.jpda.tests.jdwp.DDM.DDMTest#testChunk001"
 }
 ]
