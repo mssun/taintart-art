@@ -28,14 +28,15 @@ class HBasicBlockBuilder : public ValueObject {
  public:
   HBasicBlockBuilder(HGraph* graph,
                      const DexFile* const dex_file,
-                     const DexFile::CodeItem& code_item,
+                     const DexFile::CodeItem* code_item,
                      ScopedArenaAllocator* local_allocator)
       : allocator_(graph->GetAllocator()),
         graph_(graph),
         dex_file_(dex_file),
         code_item_(code_item),
         local_allocator_(local_allocator),
-        branch_targets_(code_item.insns_size_in_code_units_,
+        branch_targets_(code_item != nullptr ? code_item->insns_size_in_code_units_
+                                             : /* fake dex_pc=0 for intrinsic graph */ 1u,
                         nullptr,
                         local_allocator->Adapter(kArenaAllocGraphBuilder)),
         throwing_blocks_(kDefaultNumberOfThrowingBlocks,
@@ -49,6 +50,9 @@ class HBasicBlockBuilder : public ValueObject {
   // TryBoundary blocks are inserted at positions where control-flow enters/
   // exits a try block.
   bool Build();
+
+  // Creates basic blocks in `graph_` for compiling an intrinsic.
+  void BuildIntrinsic();
 
   size_t GetNumberOfBranches() const { return number_of_branches_; }
   HBasicBlock* GetBlockAt(uint32_t dex_pc) const { return branch_targets_[dex_pc]; }
@@ -79,7 +83,7 @@ class HBasicBlockBuilder : public ValueObject {
   HGraph* const graph_;
 
   const DexFile* const dex_file_;
-  const DexFile::CodeItem& code_item_;
+  const DexFile::CodeItem* const code_item_;  // null for intrinsic graph.
 
   ScopedArenaAllocator* const local_allocator_;
   ScopedArenaVector<HBasicBlock*> branch_targets_;

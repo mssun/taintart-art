@@ -73,7 +73,7 @@ class StackMapStream : public ValueObject {
         method_indices_(allocator->Adapter(kArenaAllocStackMapStream)),
         dex_register_entries_(allocator->Adapter(kArenaAllocStackMapStream)),
         stack_mask_max_(-1),
-        dex_pc_max_(0),
+        dex_pc_max_(kNoDexPc),
         register_mask_max_(0),
         number_of_stack_maps_with_inline_info_(0),
         dex_map_hash_to_stack_map_indices_(std::less<uint32_t>(),
