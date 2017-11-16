@@ -40,20 +40,20 @@ bool HBasicBlockBuilder::CreateBranchTargets() {
   // Create the first block for the dex instructions, single successor of the entry block.
   MaybeCreateBlockAt(0u);
 
-  if (code_item_.tries_size_ != 0) {
+  if (code_item_->tries_size_ != 0) {
     // Create branch targets at the start/end of the TryItem range. These are
     // places where the program might fall through into/out of the a block and
     // where TryBoundary instructions will be inserted later. Other edges which
     // enter/exit the try blocks are a result of branches/switches.
-    for (size_t idx = 0; idx < code_item_.tries_size_; ++idx) {
-      const DexFile::TryItem* try_item = DexFile::GetTryItems(code_item_, idx);
+    for (size_t idx = 0; idx < code_item_->tries_size_; ++idx) {
+      const DexFile::TryItem* try_item = DexFile::GetTryItems(*code_item_, idx);
       uint32_t dex_pc_start = try_item->start_addr_;
       uint32_t dex_pc_end = dex_pc_start + try_item->insn_count_;
       MaybeCreateBlockAt(dex_pc_start);
-      if (dex_pc_end < code_item_.insns_size_in_code_units_) {
+      if (dex_pc_end < code_item_->insns_size_in_code_units_) {
         // TODO: Do not create block if the last instruction cannot fall through.
         MaybeCreateBlockAt(dex_pc_end);
-      } else if (dex_pc_end == code_item_.insns_size_in_code_units_) {
+      } else if (dex_pc_end == code_item_->insns_size_in_code_units_) {
         // The TryItem spans until the very end of the CodeItem and therefore
         // cannot have any code afterwards.
       } else {
@@ -63,7 +63,7 @@ bool HBasicBlockBuilder::CreateBranchTargets() {
     }
 
     // Create branch targets for exception handlers.
-    const uint8_t* handlers_ptr = DexFile::GetCatchHandlerData(code_item_, 0);
+    const uint8_t* handlers_ptr = DexFile::GetCatchHandlerData(*code_item_, 0);
     uint32_t handlers_size = DecodeUnsignedLeb128(&handlers_ptr);
     for (uint32_t idx = 0; idx < handlers_size; ++idx) {
       CatchHandlerIterator iterator(handlers_ptr);
@@ -76,7 +76,7 @@ bool HBasicBlockBuilder::CreateBranchTargets() {
 
   // Iterate over all instructions and find branching instructions. Create blocks for
   // the locations these instructions branch to.
-  IterationRange<DexInstructionIterator> instructions = code_item_.Instructions();
+  IterationRange<DexInstructionIterator> instructions = code_item_->Instructions();
   for (const DexInstructionPcPair& pair : instructions) {
     const uint32_t dex_pc = pair.DexPc();
     const Instruction& instruction = pair.Inst();
@@ -127,7 +127,7 @@ void HBasicBlockBuilder::ConnectBasicBlocks() {
   bool is_throwing_block = false;
   // Calculate the qucikening index here instead of CreateBranchTargets since it's easier to
   // calculate in dex_pc order.
-  for (const DexInstructionPcPair& pair : code_item_.Instructions()) {
+  for (const DexInstructionPcPair& pair : code_item_->Instructions()) {
     const uint32_t dex_pc = pair.DexPc();
     const Instruction& instruction = pair.Inst();
 
@@ -229,7 +229,7 @@ bool HBasicBlockBuilder::MightHaveLiveNormalPredecessors(HBasicBlock* catch_bloc
     }
   }
 
-  const Instruction& first = code_item_.InstructionAt(catch_block->GetDexPc());
+  const Instruction& first = code_item_->InstructionAt(catch_block->GetDexPc());
   if (first.Opcode() == Instruction::MOVE_EXCEPTION) {
     // Verifier guarantees that if a catch block begins with MOVE_EXCEPTION then
     // it has no live normal predecessors.
@@ -247,7 +247,7 @@ bool HBasicBlockBuilder::MightHaveLiveNormalPredecessors(HBasicBlock* catch_bloc
 }
 
 void HBasicBlockBuilder::InsertTryBoundaryBlocks() {
-  if (code_item_.tries_size_ == 0) {
+  if (code_item_->tries_size_ == 0) {
     return;
   }
 
@@ -269,12 +269,12 @@ void HBasicBlockBuilder::InsertTryBoundaryBlocks() {
     // loop for synchronized blocks.
     if (ContainsElement(throwing_blocks_, block)) {
       // Try to find a TryItem covering the block.
-      const int32_t try_item_idx = DexFile::FindTryItem(DexFile::GetTryItems(code_item_, 0u),
-                                                        code_item_.tries_size_,
+      const int32_t try_item_idx = DexFile::FindTryItem(DexFile::GetTryItems(*code_item_, 0u),
+                                                        code_item_->tries_size_,
                                                         block->GetDexPc());
       if (try_item_idx != -1) {
         // Block throwing and in a TryItem. Store the try block information.
-        try_block_info.Put(block->GetBlockId(), DexFile::GetTryItems(code_item_, try_item_idx));
+        try_block_info.Put(block->GetBlockId(), DexFile::GetTryItems(*code_item_, try_item_idx));
       }
     }
   }
@@ -285,7 +285,7 @@ void HBasicBlockBuilder::InsertTryBoundaryBlocks() {
 
   // Iterate over catch blocks, create artifical landing pads if necessary to
   // simplify the CFG, and set metadata.
-  const uint8_t* handlers_ptr = DexFile::GetCatchHandlerData(code_item_, 0);
+  const uint8_t* handlers_ptr = DexFile::GetCatchHandlerData(*code_item_, 0);
   uint32_t handlers_size = DecodeUnsignedLeb128(&handlers_ptr);
   for (uint32_t idx = 0; idx < handlers_size; ++idx) {
     CatchHandlerIterator iterator(handlers_ptr);
@@ -333,7 +333,7 @@ void HBasicBlockBuilder::InsertTryBoundaryBlocks() {
         HTryBoundary* try_entry = new (allocator_) HTryBoundary(
             HTryBoundary::BoundaryKind::kEntry, try_block->GetDexPc());
         try_block->CreateImmediateDominator()->AddInstruction(try_entry);
-        LinkToCatchBlocks(try_entry, code_item_, try_item, catch_blocks);
+        LinkToCatchBlocks(try_entry, *code_item_, try_item, catch_blocks);
         break;
       }
     }
@@ -361,12 +361,13 @@ void HBasicBlockBuilder::InsertTryBoundaryBlocks() {
       HTryBoundary* try_exit =
           new (allocator_) HTryBoundary(HTryBoundary::BoundaryKind::kExit, successor->GetDexPc());
       graph_->SplitEdge(try_block, successor)->AddInstruction(try_exit);
-      LinkToCatchBlocks(try_exit, code_item_, try_item, catch_blocks);
+      LinkToCatchBlocks(try_exit, *code_item_, try_item, catch_blocks);
     }
   }
 }
 
 bool HBasicBlockBuilder::Build() {
+  DCHECK(code_item_ != nullptr);
   DCHECK(graph_->GetBlocks().empty());
 
   graph_->SetEntryBlock(new (allocator_) HBasicBlock(graph_, kNoDexPc));
@@ -381,6 +382,27 @@ bool HBasicBlockBuilder::Build() {
   InsertTryBoundaryBlocks();
 
   return true;
+}
+
+void HBasicBlockBuilder::BuildIntrinsic() {
+  DCHECK(code_item_ == nullptr);
+  DCHECK(graph_->GetBlocks().empty());
+
+  // Create blocks.
+  HBasicBlock* entry_block = new (allocator_) HBasicBlock(graph_, kNoDexPc);
+  HBasicBlock* exit_block = new (allocator_) HBasicBlock(graph_, kNoDexPc);
+  HBasicBlock* body = MaybeCreateBlockAt(/* semantic_dex_pc */ kNoDexPc, /* store_dex_pc */ 0u);
+
+  // Add blocks to the graph.
+  graph_->AddBlock(entry_block);
+  graph_->AddBlock(body);
+  graph_->AddBlock(exit_block);
+  graph_->SetEntryBlock(entry_block);
+  graph_->SetExitBlock(exit_block);
+
+  // Connect blocks.
+  entry_block->AddSuccessor(body);
+  body->AddSuccessor(exit_block);
 }
 
 size_t HBasicBlockBuilder::GetQuickenIndex(uint32_t dex_pc) const {

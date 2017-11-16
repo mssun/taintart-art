@@ -50,7 +50,7 @@ class HInstructionBuilder : public ValueObject {
                       HBasicBlockBuilder* block_builder,
                       SsaBuilder* ssa_builder,
                       const DexFile* dex_file,
-                      const DexFile::CodeItem& code_item,
+                      const DexFile::CodeItem* code_item,
                       DataType::Type return_type,
                       const DexCompilationUnit* dex_compilation_unit,
                       const DexCompilationUnit* outer_compilation_unit,
@@ -85,6 +85,7 @@ class HInstructionBuilder : public ValueObject {
   }
 
   bool Build();
+  void BuildIntrinsic(ArtMethod* method);
 
  private:
   void InitializeBlockLocals();
@@ -327,7 +328,7 @@ class HInstructionBuilder : public ValueObject {
 
   // The dex file where the method being compiled is, and the bytecode data.
   const DexFile* const dex_file_;
-  const DexFile::CodeItem& code_item_;
+  const DexFile::CodeItem* const code_item_;  // null for intrinsic graph.
 
   // The return type of the method being compiled.
   const DataType::Type return_type_;

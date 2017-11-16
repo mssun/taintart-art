@@ -711,7 +711,11 @@ class StackMapEncoding {
     total_bit_size_ += MinimumBitsToStore(native_pc_max);
 
     dex_pc_bit_offset_ = total_bit_size_;
-    total_bit_size_ += MinimumBitsToStore(1 /* kNoDexPc */ + dex_pc_max);
+    // Note: We're not encoding the dex pc if there is none. That's the case
+    // for an intrinsified native method, such as String.charAt().
+    if (dex_pc_max != dex::kDexNoIndex) {
+      total_bit_size_ += MinimumBitsToStore(1 /* kNoDexPc */ + dex_pc_max);
+    }
 
     // We also need +1 for kNoDexRegisterMap, but since the size is strictly
     // greater than any offset we might try to encode, we already implicitly have it.

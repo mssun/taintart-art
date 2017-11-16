@@ -516,7 +516,8 @@ static void CompileMethod(Thread* self,
       access_flags |= annotations::GetNativeMethodAnnotationAccessFlags(
           dex_file, dex_file.GetClassDef(class_def_idx), method_idx);
 
-      compiled_method = driver->GetCompiler()->JniCompile(access_flags, method_idx, dex_file);
+      compiled_method = driver->GetCompiler()->JniCompile(
+          access_flags, method_idx, dex_file, dex_cache);
       CHECK(compiled_method != nullptr);
     }
   } else if ((access_flags & kAccAbstract) != 0) {
