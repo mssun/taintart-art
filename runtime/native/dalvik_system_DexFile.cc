@@ -744,6 +744,23 @@ static jobjectArray DexFile_getDexFileOutputPaths(JNIEnv* env,
   return result;
 }
 
+static jlong DexFile_getStaticSizeOfDexFile(JNIEnv* env, jclass, jobject cookie) {
+  const OatFile* oat_file = nullptr;
+  std::vector<const DexFile*> dex_files;
+  if (!ConvertJavaArrayToDexFiles(env, cookie, /*out */ dex_files, /* out */ oat_file)) {
+    DCHECK(env->ExceptionCheck());
+    return 0;
+  }
+
+  uint64_t file_size = 0;
+  for (auto& dex_file : dex_files) {
+    if (dex_file) {
+      file_size += dex_file->GetHeader().file_size_;
+    }
+  }
+  return static_cast<jlong>(file_size);
+}
+
 static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(DexFile, closeDexFile, "(Ljava/lang/Object;)Z"),
   NATIVE_METHOD(DexFile,
@@ -779,7 +796,8 @@ static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(DexFile, getDexFileStatus,
                 "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;"),
   NATIVE_METHOD(DexFile, getDexFileOutputPaths,
-                "(Ljava/lang/String;Ljava/lang/String;)[Ljava/lang/String;")
+                "(Ljava/lang/String;Ljava/lang/String;)[Ljava/lang/String;"),
+  NATIVE_METHOD(DexFile, getStaticSizeOfDexFile, "(Ljava/lang/Object;)J")
 };
 
 void register_dalvik_system_DexFile(JNIEnv* env) {
