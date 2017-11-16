@@ -27,7 +27,7 @@ TEST_ART_RUN_TEST_DEPENDENCIES := \
 # Add d8 dependency, if enabled.
 ifeq ($(USE_D8),true)
 TEST_ART_RUN_TEST_DEPENDENCIES += \
-  $(HOST_OUT_EXECUTABLES)/d8
+  $(HOST_OUT_EXECUTABLES)/d8-compat-dx
 endif
 
 # Convert's a rule name to the form used in variables, e.g. no-relocate to NO_RELOCATE
