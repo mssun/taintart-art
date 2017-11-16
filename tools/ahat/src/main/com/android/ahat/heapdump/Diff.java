@@ -25,9 +25,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * Provides a static method to diff two heap dumps.
+ */
 public class Diff {
+  private Diff() {
+  }
+
   /**
-   * Perform a diff between two heap lists.
+   * Performs a diff between two heap lists.
    *
    * Heaps are diffed based on heap name. PlaceHolder heaps will be added to
    * the given lists as necessary so that every heap in A has a corresponding
@@ -312,8 +318,16 @@ public class Diff {
   }
 
   /**
-   * Perform a diff of the two snapshots, setting each as the baseline for the
-   * other.
+   * Performs a diff of two snapshots.
+   * Each snapshot will be set as the baseline for the other snapshot.
+   * <p>
+   * The diff algorithm attempts to match instances in snapshot <code>a</code>
+   * to corresponding instances in snapshot <code>b</code>. The snapshots need
+   * not come from the same running process, application version, or platform
+   * version.
+   *
+   * @param a one of the snapshots to diff
+   * @param b the other of the snapshots to diff
    */
   public static void snapshots(AhatSnapshot a, AhatSnapshot b) {
     a.setBaseline(b);

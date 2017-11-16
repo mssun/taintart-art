@@ -17,48 +17,107 @@
 package com.android.ahat.heapdump;
 
 /**
- * Value represents a field value in a heap dump. The field value is either a
- * subclass of AhatInstance or a primitive Java type.
+ * A Java instance or primitive value from a parsed heap dump.
+ * Note: To save memory, a null Value is used to represent a null Java
+ * instance from the heap dump.
  */
 public abstract class Value {
+  /**
+   * Constructs a Value for an AhatInstance.
+   * Note: returns null for null <code>value</code>.
+   *
+   * @param value the AhatInstance to make into a value
+   * @return the constructed value.
+   */
   public static Value pack(AhatInstance value) {
     return value == null ? null : new InstanceValue(value);
   }
 
+  /**
+   * Constructs a Value for a boolean.
+   *
+   * @param value the boolean to make into a value
+   * @return the constructed value.
+   */
   public static Value pack(boolean value) {
     return new BooleanValue(value);
   }
 
+  /**
+   * Constructs a Value for a char.
+   *
+   * @param value the char to make into a value
+   * @return the constructed value.
+   */
   public static Value pack(char value) {
     return new CharValue(value);
   }
 
+  /**
+   * Constructs a Value for a float.
+   *
+   * @param value the float to make into a value
+   * @return the constructed value.
+   */
   public static Value pack(float value) {
     return new FloatValue(value);
   }
 
+  /**
+   * Constructs a Value for a double.
+   *
+   * @param value the double to make into a value
+   * @return the constructed value.
+   */
   public static Value pack(double value) {
     return new DoubleValue(value);
   }
 
+  /**
+   * Constructs a Value for a byte.
+   *
+   * @param value the byte to make into a value
+   * @return the constructed value.
+   */
   public static Value pack(byte value) {
     return new ByteValue(value);
   }
 
+  /**
+   * Constructs a Value for a short.
+   *
+   * @param value the short to make into a value
+   * @return the constructed value.
+   */
   public static Value pack(short value) {
     return new ShortValue(value);
   }
 
+  /**
+   * Constructs a Value for a int.
+   *
+   * @param value the int to make into a value
+   * @return the constructed value.
+   */
   public static Value pack(int value) {
     return new IntValue(value);
   }
 
+  /**
+   * Constructs a Value for a long.
+   *
+   * @param value the long to make into a value
+   * @return the constructed value.
+   */
   public static Value pack(long value) {
     return new LongValue(value);
   }
 
   /**
-   * Return the type of the given value.
+   * Returns the type of the given value.
+   *
+   * @param value the value to get the type of
+   * @return the value's type
    */
   public static Type getType(Value value) {
     return value == null ? Type.OBJECT : value.getType();
@@ -70,62 +129,78 @@ public abstract class Value {
   abstract Type getType();
 
   /**
-   * Returns true if the Value is an AhatInstance, as opposed to a Java
-   * primitive value.
+   * Returns true if the Value is an AhatInstance rather than a primitive
+   * value.
+   *
+   * @return true if the value is an AhatInstance
    */
   public boolean isAhatInstance() {
     return false;
   }
 
   /**
-   * Return the Value as an AhatInstance if it is one.
+   * Returns the Value as an AhatInstance if it is one.
    * Returns null if the Value represents a Java primitive value.
+   *
+   * @return the AhatInstance packed into this value
    */
   public AhatInstance asAhatInstance() {
     return null;
   }
 
   /**
-   * Returns true if the Value is an Integer.
+   * Returns true if the Value is an int.
+   *
+   * @return true if the value is an int.
    */
   public boolean isInteger() {
     return false;
   }
 
   /**
-   * Return the Value as an Integer if it is one.
-   * Returns null if the Value does not represent an Integer.
+   * Returns the Value as an int if it is one.
+   * Returns null if the Value does not represent an int.
+   *
+   * @return the int packed into this value
    */
   public Integer asInteger() {
     return null;
   }
 
   /**
-   * Returns true if the Value is an Long.
+   * Returns true if the Value is an long.
+   *
+   * @return true if the value is an long.
    */
   public boolean isLong() {
     return false;
   }
 
   /**
-   * Return the Value as an Long if it is one.
-   * Returns null if the Value does not represent an Long.
+   * Returns the Value as an long if it is one.
+   * Returns null if the Value does not represent an long.
+   *
+   * @return the long packed into this value
    */
   public Long asLong() {
     return null;
   }
 
   /**
-   * Return the Value as a Byte if it is one.
-   * Returns null if the Value does not represent a Byte.
+   * Returns the Value as an byte if it is one.
+   * Returns null if the Value does not represent an byte.
+   *
+   * @return the byte packed into this value
    */
   public Byte asByte() {
     return null;
   }
 
   /**
-   * Return the Value as a Char if it is one.
-   * Returns null if the Value does not represent a Char.
+   * Returns the Value as an char if it is one.
+   * Returns null if the Value does not represent an char.
+   *
+   * @return the char packed into this value
    */
   public Character asChar() {
     return null;
@@ -134,10 +209,18 @@ public abstract class Value {
   @Override
   public abstract String toString();
 
-  public Value getBaseline() {
+  private Value getBaseline() {
     return this;
   }
 
+  /**
+   * Returns the baseline of the given value for the purposes of diff.
+   * This method can be used to handle the case when the Value is null.
+   *
+   * @param value the value to get the baseline of
+   * @return the baseline of the value
+   * @see Diffable#getBaseline
+   */
   public static Value getBaseline(Value value) {
     return value == null ? null : value.getBaseline();
   }
@@ -313,7 +396,6 @@ public abstract class Value {
       return mInstance.toString();
     }
 
-    @Override
     public Value getBaseline() {
       return InstanceValue.pack(mInstance.getBaseline());
     }

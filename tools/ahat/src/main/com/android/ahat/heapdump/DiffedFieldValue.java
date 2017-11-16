@@ -18,25 +18,65 @@ package com.android.ahat.heapdump;
 
 import java.util.Objects;
 
-/** DiffedFieldValue is used by the DiffedField class to return the result of
- * diffing two collections of fields.
+/**
+ * Used by the DiffedField class to return the result of diffing two
+ * collections of fields.
  */
 public class DiffedFieldValue {
+  /**
+   * The name of the field.
+   */
   public final String name;
+
+  /**
+   * The type of the field.
+   */
   public final Type type;
+
+  /**
+   * The value of the field in the current heap dump.
+   */
   public final Value current;
+
+  /**
+   * The value of the field in the baseline heap dump.
+   */
   public final Value baseline;
 
+  /**
+   * Whether the field was added to, deleted from, or matched with a field in
+   * the baseline heap dump.
+   */
   public final Status status;
 
+  /**
+   * A status enum to indicate whether a field was added to, deleted from, or
+   * matched with a field in the baseline heap dump.
+   */
   public static enum Status {
-    ADDED,      // The current field has no matching baseline value.
-    MATCHED,    // The current field has a matching baseline value.
-    DELETED     // The baseline field has no matching current value.
+    /**
+     * The field exists in the current heap dump but not the baseline.
+     */
+    ADDED,
+
+    /**
+     * The field exists in both the current and baseline heap dumps.
+     */
+    MATCHED,
+
+    /**
+     * The field exists in the baseline heap dump but not the current.
+     */
+    DELETED
   };
 
   /**
-   * Return a DiffedFieldValue where there is both a current and baseline.
+   * Constructs a DiffedFieldValue where there are both current and baseline
+   * fields.
+   *
+   * @param current the current field
+   * @param baseline the baseline field
+   * @return the constructed DiffedFieldValue
    */
   public static DiffedFieldValue matched(FieldValue current, FieldValue baseline) {
     return new DiffedFieldValue(current.name,
@@ -47,14 +87,20 @@ public class DiffedFieldValue {
   }
 
   /**
-   * Return a DiffedFieldValue where there is no baseline.
+   * Constructs a DiffedFieldValue where there is no baseline field.
+   *
+   * @param current the current field
+   * @return the constructed DiffedFieldValue
    */
   public static DiffedFieldValue added(FieldValue current) {
     return new DiffedFieldValue(current.name, current.type, current.value, null, Status.ADDED);
   }
 
   /**
-   * Return a DiffedFieldValue where there is no current.
+   * Constructs a DiffedFieldValue where there is no current field.
+   *
+   * @param baseline the baseline field
+   * @return the constructed DiffedFieldValue
    */
   public static DiffedFieldValue deleted(FieldValue baseline) {
     return new DiffedFieldValue(baseline.name, baseline.type, null, baseline.value, Status.DELETED);
