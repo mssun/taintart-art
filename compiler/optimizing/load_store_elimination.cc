@@ -199,6 +199,12 @@ class LSEVisitor : public HGraphDelegateVisitor {
     if (predecessors.size() == 0) {
       return;
     }
+    if (block->IsExitBlock()) {
+      // Exit block doesn't really merge values since the control flow ends in
+      // its predecessors. Each predecessor needs to make sure stores are kept
+      // if necessary.
+      return;
+    }
 
     ScopedArenaVector<HInstruction*>& heap_values = heap_values_for_[block->GetBlockId()];
     for (size_t i = 0; i < heap_values.size(); i++) {
@@ -233,15 +239,23 @@ class LSEVisitor : public HGraphDelegateVisitor {
         }
       }
 
-      if (merged_value == kUnknownHeapValue || ref_info->IsSingletonAndNonRemovable()) {
-        // There are conflicting heap values from different predecessors,
-        // or the heap value may be needed after method return or deoptimization.
-        // Keep the last store in each predecessor since future loads cannot be eliminated.
-        for (HBasicBlock* predecessor : predecessors) {
-          ScopedArenaVector<HInstruction*>& pred_values =
-              heap_values_for_[predecessor->GetBlockId()];
-          KeepIfIsStore(pred_values[i]);
+      if (ref_info->IsSingleton()) {
+        if (ref_info->IsSingletonAndNonRemovable() ||
+            (merged_value == kUnknownHeapValue &&
+             !block->IsSingleReturnOrReturnVoidAllowingPhis())) {
+          // The heap value may be needed after method return or deoptimization,
+          // or there are conflicting heap values from different predecessors and
+          // this block is not a single return,
+          // keep the last store in each predecessor since future loads may not
+          // be eliminated.
+          for (HBasicBlock* predecessor : predecessors) {
+            ScopedArenaVector<HInstruction*>& pred_values =
+                heap_values_for_[predecessor->GetBlockId()];
+            KeepIfIsStore(pred_values[i]);
+          }
         }
+      } else {
+        // Currenctly we don't eliminate stores to non-singletons.
       }
 
       if ((merged_value == nullptr) || !from_all_predecessors) {
@@ -547,6 +561,31 @@ class LSEVisitor : public HGraphDelegateVisitor {
         }
       }
     }
+  }
+
+  // Keep necessary stores before exiting a method via return/throw.
+  void HandleExit(HBasicBlock* block) {
+    const ScopedArenaVector<HInstruction*>& heap_values =
+        heap_values_for_[block->GetBlockId()];
+    for (size_t i = 0; i < heap_values.size(); i++) {
+      HInstruction* heap_value = heap_values[i];
+      ReferenceInfo* ref_info = heap_location_collector_.GetHeapLocation(i)->GetReferenceInfo();
+      if (!ref_info->IsSingletonAndRemovable()) {
+        KeepIfIsStore(heap_value);
+      }
+    }
+  }
+
+  void VisitReturn(HReturn* instruction) OVERRIDE {
+    HandleExit(instruction->GetBlock());
+  }
+
+  void VisitReturnVoid(HReturnVoid* return_void) OVERRIDE {
+    HandleExit(return_void->GetBlock());
+  }
+
+  void VisitThrow(HThrow* throw_instruction) OVERRIDE {
+    HandleExit(throw_instruction->GetBlock());
   }
 
   void HandleInvoke(HInstruction* instruction) {
