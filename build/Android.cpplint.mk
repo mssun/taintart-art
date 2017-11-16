@@ -16,42 +16,46 @@
 
 include art/build/Android.common_build.mk
 
-ART_CPPLINT := $(LOCAL_PATH)/tools/cpplint.py
-ART_CPPLINT_FILTER := --filter=-whitespace/line_length,-build/include,-readability/function,-readability/streams,-readability/todo,-runtime/references,-runtime/sizeof,-runtime/threadsafe_fn,-runtime/printf
-# Use `pwd` instead of $TOP for root, $TOP is always . and --root doesn't seem
-# to work with a relative path (b/34787652).
-ART_CPPLINT_FLAGS := --root=`pwd`
-ART_CPPLINT_QUIET := --quiet
-ART_CPPLINT_INGORED := \
-    runtime/elf.h \
-    openjdkjvmti/include/jvmti.h
+# Use upstream cpplint (toolpath from .repo/manifests/GLOBAL-PREUPLOAD.cfg).
+ART_CPPLINT := external/google-styleguide/cpplint/cpplint.py
 
-# This:
-#  1) Gets a list of all .h & .cc files in the art directory.
+# This file previously configured many cpplint settings.
+# Everything that could be moved to CPPLINT.cfg has moved there.
+# Please add new settings to CPPLINT.cfg over adding new flags in this file.
+
+ART_CPPLINT_FLAGS :=
+# No output when there are no errors.
+ART_CPPLINT_QUIET := --quiet
+
+#  1) Get list of all .h & .cc files in the art directory.
 #  2) Prepends 'art/' to each of them to make the full name.
-#  3) removes art/runtime/elf.h from the list.
-ART_CPPLINT_SRC := $(filter-out $(patsubst %,$(LOCAL_PATH)/%,$(ART_CPPLINT_INGORED)), $(addprefix $(LOCAL_PATH)/, $(call all-subdir-named-files,*.h) $(call all-subdir-named-files,*$(ART_CPP_EXTENSION))))
+ART_CPPLINT_SRC := $(addprefix $(LOCAL_PATH)/, $(call all-subdir-named-files,*.h) $(call all-subdir-named-files,*$(ART_CPP_EXTENSION)))
+
+#  1) Get list of all CPPLINT.cfg files in the art directory.
+#  2) Prepends 'art/' to each of them to make the full name.
+ART_CPPLINT_CFG := $(addprefix $(LOCAL_PATH)/, $(call all-subdir-named-files,CPPLINT.cfg))
 
 # "mm cpplint-art" to verify we aren't regressing
+# - files not touched since the last build are skipped (quite fast).
 .PHONY: cpplint-art
-cpplint-art:
-	$(ART_CPPLINT) $(ART_CPPLINT_FLAGS) $(ART_CPPLINT_FILTER) $(ART_CPPLINT_SRC)
+cpplint-art: cpplint-art-phony
 
-# "mm cpplint-art-all" to see all warnings
+# "mm cpplint-art-all" to manually execute cpplint.py on all files (very slow).
 .PHONY: cpplint-art-all
 cpplint-art-all:
 	$(ART_CPPLINT) $(ART_CPPLINT_FLAGS) $(ART_CPPLINT_SRC)
 
 OUT_CPPLINT := $(TARGET_COMMON_OUT_ROOT)/cpplint
 
+# Build up the list of all targets for linting the ART source files.
 ART_CPPLINT_TARGETS :=
 
 define declare-art-cpplint-target
 art_cpplint_file := $(1)
 art_cpplint_touch := $$(OUT_CPPLINT)/$$(subst /,__,$$(art_cpplint_file))
 
-$$(art_cpplint_touch): $$(art_cpplint_file) $(ART_CPPLINT) art/build/Android.cpplint.mk
-	$(hide) $(ART_CPPLINT) $(ART_CPPLINT_QUIET) $(ART_CPPLINT_FLAGS) $(ART_CPPLINT_FILTER) $$<
+$$(art_cpplint_touch): $$(art_cpplint_file) $(ART_CPPLINT) $(ART_CPPLINT_CFG) art/build/Android.cpplint.mk
+	$(hide) $(ART_CPPLINT) $(ART_CPPLINT_QUIET) $(ART_CPPLINT_FLAGS) $$<
 	$(hide) mkdir -p $$(dir $$@)
 	$(hide) touch $$@
 

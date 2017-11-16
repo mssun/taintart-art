@@ -26,6 +26,7 @@
 #include "jit/profiling_info.h"
 #include "mirror/class-inl.h"
 #include "nativehelper/ScopedUtfChars.h"
+#include "oat_file.h"
 #include "oat_quick_method_header.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"

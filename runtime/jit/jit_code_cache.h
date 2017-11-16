@@ -24,23 +24,32 @@
 #include "base/histogram-inl.h"
 #include "base/macros.h"
 #include "base/mutex.h"
-#include "gc/accounting/bitmap.h"
 #include "gc_root.h"
-#include "jni.h"
 #include "method_reference.h"
-#include "oat_file.h"
-#include "profile_compilation_info.h"
 #include "safe_map.h"
-#include "thread_pool.h"
 
 namespace art {
 
 class ArtMethod;
+template<class T> class Handle;
 class LinearAlloc;
 class InlineCache;
 class IsMarkedVisitor;
 class OatQuickMethodHeader;
+struct ProfileMethodInfo;
 class ProfilingInfo;
+
+namespace gc {
+namespace accounting {
+template<size_t kAlignment> class MemoryRangeBitmap;
+}  // namespace accounting
+}  // namespace gc
+
+namespace mirror {
+class Class;
+class Object;
+template<class T> class ObjectArray;
+}  // namespace mirror
 
 namespace jit {
 
@@ -66,6 +75,7 @@ class JitCodeCache {
                               size_t max_capacity,
                               bool generate_debug_info,
                               std::string* error_msg);
+  ~JitCodeCache();
 
   // Number of bytes allocated in the code cache.
   size_t CodeCacheSize() REQUIRES(!lock_);
@@ -209,11 +219,6 @@ class JitCodeCache {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   uint64_t GetLastUpdateTimeNs() const;
-
-  size_t GetCurrentCapacity() REQUIRES(!lock_) {
-    MutexLock lock(Thread::Current(), lock_);
-    return current_capacity_;
-  }
 
   size_t GetMemorySizeOfCodePointer(const void* ptr) REQUIRES(!lock_);
 
