@@ -33,7 +33,7 @@
 
 #include "android-base/stringprintf.h"
 
-#include <mutex>  // NOLINT [build/c++11] [5]
+#include <mutex>
 #include <unordered_set>
 
 #include "art_jvmti.h"

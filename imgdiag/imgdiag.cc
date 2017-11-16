@@ -1610,7 +1610,7 @@ class ImgDiagDumper {
   // BacktraceMap used for finding the memory mapping of the image file.
   std::unique_ptr<BacktraceMap> proc_maps_;
   // Boot image mapping.
-  backtrace_map_t boot_map_{};  // NOLINT
+  backtrace_map_t boot_map_{};
   // The size of the boot image mapping.
   size_t boot_map_size_;
   // The contents of /proc/<image_diff_pid_>/maps.

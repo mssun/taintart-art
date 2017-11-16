@@ -718,7 +718,7 @@ void OatTest::TestZipFileInput(bool verify) {
   key_value_store.Put(OatHeader::kImageLocationKey, "test.art");
   {
     // Test using the AddDexFileSource() interface with the zip file.
-    std::vector<const char*> input_filenames { zip_file.GetFilename().c_str() };  // NOLINT [readability/braces] [4]
+    std::vector<const char*> input_filenames = { zip_file.GetFilename().c_str() };
 
     ScratchFile oat_file, vdex_file(oat_file, ".vdex");
     success = WriteElf(vdex_file.GetFile(), oat_file.GetFile(), input_filenames,
@@ -829,7 +829,7 @@ void OatTest::TestZipFileInputWithEmptyDex() {
 
   SafeMap<std::string, std::string> key_value_store;
   key_value_store.Put(OatHeader::kImageLocationKey, "test.art");
-  std::vector<const char*> input_filenames { zip_file.GetFilename().c_str() };  // NOLINT [readability/braces] [4]
+  std::vector<const char*> input_filenames = { zip_file.GetFilename().c_str() };
   ScratchFile oat_file, vdex_file(oat_file, ".vdex");
   std::unique_ptr<ProfileCompilationInfo> profile_compilation_info(new ProfileCompilationInfo());
   success = WriteElf(vdex_file.GetFile(), oat_file.GetFile(), input_filenames,

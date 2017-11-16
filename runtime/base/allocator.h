@@ -111,7 +111,7 @@ class TrackingAllocatorImpl : public std::allocator<T> {
 
   // Used internally by STL data structures.
   template <class U>
-  TrackingAllocatorImpl( // NOLINT, implicit
+  TrackingAllocatorImpl(
       const TrackingAllocatorImpl<U, kTag>& alloc ATTRIBUTE_UNUSED) noexcept {}
 
   // Used internally by STL data structures.

@@ -73,7 +73,7 @@ struct CustomBitStruct {
 TEST(BitStructs, Custom) {
   CustomBitStruct expected(0b1111);
 
-  BitStructField<CustomBitStruct, /*lsb*/4, /*width*/4> f{};  // NOLINT
+  BitStructField<CustomBitStruct, /*lsb*/4, /*width*/4> f{};
 
   EXPECT_EQ(1u, sizeof(f));
 
@@ -95,7 +95,7 @@ TEST(BitStructs, TwoCustom) {
 
   VALIDATE_BITSTRUCT_SIZE(TestTwoCustom);
 
-  TestTwoCustom cst{};  // NOLINT
+  TestTwoCustom cst{};
 
   // Test the write to most-significant field doesn't clobber least-significant.
   cst.f4_a = CustomBitStruct(0b0110);
@@ -122,7 +122,7 @@ TEST(BitStructs, TwoCustom) {
 }
 
 TEST(BitStructs, Number) {
-  BitStructNumber<uint16_t, /*lsb*/4, /*width*/4> bsn{};  // NOLINT
+  BitStructNumber<uint16_t, /*lsb*/4, /*width*/4> bsn{};
   EXPECT_EQ(2u, sizeof(bsn));
 
   bsn = 0b1111;
@@ -154,7 +154,7 @@ TEST(BitStructs, Test1) {
     EXPECT_EQ(1u, sizeof(u4));
     EXPECT_EQ(1u, sizeof(alias_all));
   }
-  TestBitStruct tst{};  // NOLINT
+  TestBitStruct tst{};
 
   // Check minimal size selection is correct.
   EXPECT_EQ(1u, sizeof(TestBitStruct));
@@ -229,7 +229,7 @@ BITSTRUCT_DEFINE_END(MixedSizeBitStruct);
 TEST(BitStructs, Mixed) {
   EXPECT_EQ(4u, sizeof(MixedSizeBitStruct));
 
-  MixedSizeBitStruct tst{};  // NOLINT
+  MixedSizeBitStruct tst{};
 
   // Check operator assignment.
   tst.u3 = 0b111u;
@@ -263,11 +263,11 @@ BITSTRUCT_DEFINE_START(TestBitStruct_u8, /* size */ 8)
 BITSTRUCT_DEFINE_END(TestBitStruct_u8);
 
 TEST(BitStructs, FieldAssignment) {
-  TestBitStruct_u8 all_1s{};  // NOLINT
+  TestBitStruct_u8 all_1s{};
   all_1s.alias_all = 0xffu;
 
   {
-    TestBitStruct_u8 tst{};  // NOLINT
+    TestBitStruct_u8 tst{};
     tst.i3 = all_1s.i3;
 
     // Copying a single bitfield does not copy all bitfields.
@@ -275,7 +275,7 @@ TEST(BitStructs, FieldAssignment) {
   }
 
   {
-    TestBitStruct_u8 tst{};  // NOLINT
+    TestBitStruct_u8 tst{};
     tst.u4 = all_1s.u4;
 
     // Copying a single bitfield does not copy all bitfields.
@@ -291,13 +291,13 @@ BITSTRUCT_DEFINE_START(NestedStruct, /* size */ 64)
 BITSTRUCT_DEFINE_END(NestedStruct);
 
 TEST(BitStructs, NestedFieldAssignment) {
-  MixedSizeBitStruct mixed_all_1s{};  // NOLINT
+  MixedSizeBitStruct mixed_all_1s{};
   mixed_all_1s.alias_all = 0xFFFFFFFFu;
 
   {
-    NestedStruct xyz{};  // NOLINT
+    NestedStruct xyz{};
 
-    NestedStruct other{};  // NOLINT
+    NestedStruct other{};
     other.mixed_upper = mixed_all_1s;
     other.mixed_lower = mixed_all_1s;
 
@@ -307,9 +307,9 @@ TEST(BitStructs, NestedFieldAssignment) {
   }
 
   {
-    NestedStruct xyz{};  // NOLINT
+    NestedStruct xyz{};
 
-    NestedStruct other{};  // NOLINT
+    NestedStruct other{};
     other.mixed_upper = mixed_all_1s;
     other.mixed_lower = mixed_all_1s;
 
