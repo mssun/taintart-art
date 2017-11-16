@@ -22,6 +22,8 @@
 #include <vector>
 
 #include "arch/instruction_set.h"
+#include "base/bit_field.h"
+#include "base/bit_utils.h"
 
 namespace art {
 
@@ -44,7 +46,7 @@ class CompiledCode {
   virtual ~CompiledCode();
 
   InstructionSet GetInstructionSet() const {
-    return instruction_set_;
+    return GetPackedField<InstructionSetField>();
   }
 
   ArrayRef<const uint8_t> GetQuickCode() const;
@@ -68,6 +70,11 @@ class CompiledCode {
   static const void* CodePointer(const void* code_pointer, InstructionSet instruction_set);
 
  protected:
+  static constexpr size_t kInstructionSetFieldSize =
+      MinimumBitsToStore(static_cast<size_t>(InstructionSet::kLast));
+  static constexpr size_t kNumberOfCompiledCodePackedBits = kInstructionSetFieldSize;
+  static constexpr size_t kMaxNumberOfPackedBits = sizeof(uint32_t) * kBitsPerByte;
+
   template <typename T>
   static ArrayRef<const T> GetArray(const LengthPrefixedArray<T>* array);
 
@@ -75,13 +82,26 @@ class CompiledCode {
     return compiler_driver_;
   }
 
+  template <typename BitFieldType>
+  typename BitFieldType::value_type GetPackedField() const {
+    return BitFieldType::Decode(packed_fields_);
+  }
+
+  template <typename BitFieldType>
+  void SetPackedField(typename BitFieldType::value_type value) {
+    DCHECK(IsUint<BitFieldType::size>(static_cast<uintptr_t>(value)));
+    packed_fields_ = BitFieldType::Update(value, packed_fields_);
+  }
+
  private:
+  using InstructionSetField = BitField<InstructionSet, 0u, kInstructionSetFieldSize>;
+
   CompilerDriver* const compiler_driver_;
 
-  const InstructionSet instruction_set_;
-
-  // Used to store the PIC code for Quick.
+  // Used to store the compiled code.
   const LengthPrefixedArray<uint8_t>* const quick_code_;
+
+  uint32_t packed_fields_;
 };
 
 class CompiledMethod FINAL : public CompiledCode {
@@ -116,6 +136,18 @@ class CompiledMethod FINAL : public CompiledCode {
 
   static void ReleaseSwapAllocatedCompiledMethod(CompilerDriver* driver, CompiledMethod* m);
 
+  bool IsIntrinsic() const {
+    return GetPackedField<IsIntrinsicField>();
+  }
+
+  // Marks the compiled method as being generated using an intrinsic codegen.
+  // Such methods have no relationships to their code items.
+  // This affects debug information generated at link time.
+  void MarkAsIntrinsic() {
+    DCHECK(!IsIntrinsic());
+    SetPackedField<IsIntrinsicField>(/* value */ true);
+  }
+
   size_t GetFrameSizeInBytes() const {
     return frame_size_in_bytes_;
   }
@@ -137,6 +169,14 @@ class CompiledMethod FINAL : public CompiledCode {
   ArrayRef<const linker::LinkerPatch> GetPatches() const;
 
  private:
+  static constexpr size_t kIsIntrinsicLsb = kNumberOfCompiledCodePackedBits;
+  static constexpr size_t kIsIntrinsicSize = 1u;
+  static constexpr size_t kNumberOfCompiledMethodPackedBits = kIsIntrinsicLsb + kIsIntrinsicSize;
+  static_assert(kNumberOfCompiledMethodPackedBits <= CompiledCode::kMaxNumberOfPackedBits,
+                "Too many packed fields.");
+
+  using IsIntrinsicField = BitField<bool, kIsIntrinsicLsb, kIsIntrinsicSize>;
+
   // For quick code, the size of the activation used by the code.
   const size_t frame_size_in_bytes_;
   // For quick code, a bit mask describing spilled GPR callee-save registers.

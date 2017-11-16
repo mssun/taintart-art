@@ -26,8 +26,8 @@ CompiledCode::CompiledCode(CompilerDriver* compiler_driver,
                            InstructionSet instruction_set,
                            const ArrayRef<const uint8_t>& quick_code)
     : compiler_driver_(compiler_driver),
-      instruction_set_(instruction_set),
-      quick_code_(compiler_driver_->GetCompiledMethodStorage()->DeduplicateCode(quick_code)) {
+      quick_code_(compiler_driver_->GetCompiledMethodStorage()->DeduplicateCode(quick_code)),
+      packed_fields_(InstructionSetField::Encode(instruction_set)) {
 }
 
 CompiledCode::~CompiledCode() {
@@ -48,7 +48,7 @@ bool CompiledCode::operator==(const CompiledCode& rhs) const {
 }
 
 size_t CompiledCode::AlignCode(size_t offset) const {
-  return AlignCode(offset, instruction_set_);
+  return AlignCode(offset, GetInstructionSet());
 }
 
 size_t CompiledCode::AlignCode(size_t offset, InstructionSet instruction_set) {
@@ -56,7 +56,7 @@ size_t CompiledCode::AlignCode(size_t offset, InstructionSet instruction_set) {
 }
 
 size_t CompiledCode::CodeDelta() const {
-  return CodeDelta(instruction_set_);
+  return CodeDelta(GetInstructionSet());
 }
 
 size_t CompiledCode::CodeDelta(InstructionSet instruction_set) {
