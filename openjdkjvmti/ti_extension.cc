@@ -34,8 +34,11 @@
 #include "ti_extension.h"
 
 #include "art_jvmti.h"
+#include "events.h"
 #include "ti_allocator.h"
+#include "ti_ddms.h"
 #include "ti_heap.h"
+#include "thread-inl.h"
 
 namespace openjdkjvmti {
 
@@ -202,6 +205,27 @@ jvmtiError ExtensionUtil::GetExtensionFunctions(jvmtiEnv* env,
     return error;
   }
 
+  // DDMS extension
+  error = add_extension(
+      reinterpret_cast<jvmtiExtensionFunction>(DDMSUtil::HandleChunk),
+      "com.android.art.internal.ddm.process_chunk",
+      "Handles a single ddms chunk request and returns a response. The reply data is in the ddms"
+      " chunk format. It returns the processed chunk. This is provided for backwards compatibility"
+      " reasons only. Agents should avoid making use of this extension when possible and instead"
+      " use the other JVMTI entrypoints explicitly.",
+      {                                                           // NOLINT[whitespace/braces] [4]
+        { "type_in", JVMTI_KIND_IN, JVMTI_TYPE_JINT, false },
+        { "length_in", JVMTI_KIND_IN, JVMTI_TYPE_JINT, false },
+        { "data_in", JVMTI_KIND_IN_BUF, JVMTI_TYPE_JBYTE, false },
+        { "type_out", JVMTI_KIND_OUT, JVMTI_TYPE_JINT, false },
+        { "data_len_out", JVMTI_KIND_OUT, JVMTI_TYPE_JINT, false },
+        { "data_out", JVMTI_KIND_ALLOC_BUF, JVMTI_TYPE_JBYTE, false }
+      },
+      { ERR(NULL_POINTER), ERR(ILLEGAL_ARGUMENT), ERR(OUT_OF_MEMORY) });
+  if (error != ERR(NONE)) {
+    return error;
+  }
+
   // Copy into output buffer.
 
   *extension_count_ptr = ext_vector.size();
@@ -230,20 +254,133 @@ jvmtiError ExtensionUtil::GetExtensionFunctions(jvmtiEnv* env,
 }
 
 
-jvmtiError ExtensionUtil::GetExtensionEvents(jvmtiEnv* env ATTRIBUTE_UNUSED,
+jvmtiError ExtensionUtil::GetExtensionEvents(jvmtiEnv* env,
                                              jint* extension_count_ptr,
                                              jvmtiExtensionEventInfo** extensions) {
-  // We don't have any extension events at the moment.
-  *extension_count_ptr = 0;
-  *extensions = nullptr;
+  std::vector<jvmtiExtensionEventInfo> ext_vector;
+
+  // Holders for allocated values.
+  std::vector<JvmtiUniquePtr<char[]>> char_buffers;
+  std::vector<JvmtiUniquePtr<jvmtiParamInfo[]>> param_buffers;
+
+  auto add_extension = [&](ArtJvmtiEvent extension_event_index,
+                           const char* id,
+                           const char* short_description,
+                           const std::vector<CParamInfo>& params) {
+    DCHECK(IsExtensionEvent(extension_event_index));
+    jvmtiExtensionEventInfo event_info;
+    jvmtiError error;
+
+    event_info.extension_event_index = static_cast<jint>(extension_event_index);
+
+    JvmtiUniquePtr<char[]> id_ptr = CopyString(env, id, &error);
+    if (id_ptr == nullptr) {
+      return error;
+    }
+    event_info.id = id_ptr.get();
+    char_buffers.push_back(std::move(id_ptr));
+
+    JvmtiUniquePtr<char[]> descr = CopyString(env, short_description, &error);
+    if (descr == nullptr) {
+      return error;
+    }
+    event_info.short_description = descr.get();
+    char_buffers.push_back(std::move(descr));
+
+    event_info.param_count = params.size();
+    if (!params.empty()) {
+      JvmtiUniquePtr<jvmtiParamInfo[]> params_ptr =
+          AllocJvmtiUniquePtr<jvmtiParamInfo[]>(env, params.size(), &error);
+      if (params_ptr == nullptr) {
+        return error;
+      }
+      event_info.params = params_ptr.get();
+      param_buffers.push_back(std::move(params_ptr));
+
+      for (jint i = 0; i != event_info.param_count; ++i) {
+        event_info.params[i] = params[i].ToParamInfo(env, &char_buffers, &error);
+        if (error != OK) {
+          return error;
+        }
+      }
+    } else {
+      event_info.params = nullptr;
+    }
+
+    ext_vector.push_back(event_info);
+
+    return ERR(NONE);
+  };
+
+  jvmtiError error;
+  error = add_extension(
+      ArtJvmtiEvent::kDdmPublishChunk,
+      "com.android.art.internal.ddm.publish_chunk",
+      "Called when there is new ddms information that the agent or other clients can use. The"
+      " agent is given the 'type' of the ddms chunk and a 'data_size' byte-buffer in 'data'."
+      " The 'data' pointer is only valid for the duration of the publish_chunk event. The agent"
+      " is responsible for interpreting the information present in the 'data' buffer. This is"
+      " provided for backwards-compatibility support only. Agents should prefer to use relevant"
+      " JVMTI events and functions above listening for this event.",
+      {                                                             // NOLINT[whitespace/braces] [4]
+        { "jni_env", JVMTI_KIND_IN_PTR, JVMTI_TYPE_JNIENV, false },
+        { "type", JVMTI_KIND_IN, JVMTI_TYPE_JINT, false },
+        { "data_size", JVMTI_KIND_IN, JVMTI_TYPE_JINT, false },
+        { "data",  JVMTI_KIND_IN_BUF, JVMTI_TYPE_JBYTE, false },
+      });
+  if (error != OK) {
+    return error;
+  }
+
+  // Copy into output buffer.
+
+  *extension_count_ptr = ext_vector.size();
+  JvmtiUniquePtr<jvmtiExtensionEventInfo[]> out_data =
+      AllocJvmtiUniquePtr<jvmtiExtensionEventInfo[]>(env, ext_vector.size(), &error);
+  if (out_data == nullptr) {
+    return error;
+  }
+  memcpy(out_data.get(),
+         ext_vector.data(),
+         ext_vector.size() * sizeof(jvmtiExtensionEventInfo));
+  *extensions = out_data.release();
+
+  // Release all the buffer holders, we're OK now.
+  for (auto& holder : char_buffers) {
+    holder.release();
+  }
+  for (auto& holder : param_buffers) {
+    holder.release();
+  }
+
   return OK;
 }
 
-jvmtiError ExtensionUtil::SetExtensionEventCallback(jvmtiEnv* env ATTRIBUTE_UNUSED,
-                                                    jint extension_event_index ATTRIBUTE_UNUSED,
-                                                    jvmtiExtensionEvent callback ATTRIBUTE_UNUSED) {
-  // We do not have any extension events, so any call is illegal.
-  return ERR(ILLEGAL_ARGUMENT);
+jvmtiError ExtensionUtil::SetExtensionEventCallback(jvmtiEnv* env,
+                                                    jint extension_event_index,
+                                                    jvmtiExtensionEvent callback,
+                                                    EventHandler* event_handler) {
+  if (!IsExtensionEvent(extension_event_index)) {
+    return ERR(ILLEGAL_ARGUMENT);
+  }
+  ArtJvmTiEnv* art_env = ArtJvmTiEnv::AsArtJvmTiEnv(env);
+  jvmtiEventMode mode = callback == nullptr ? JVMTI_DISABLE : JVMTI_ENABLE;
+  // Lock the event_info_mutex_ while we set the event to make sure it isn't lost by a concurrent
+  // change to the normal callbacks.
+  {
+    art::WriterMutexLock lk(art::Thread::Current(), art_env->event_info_mutex_);
+    if (art_env->event_callbacks.get() == nullptr) {
+      art_env->event_callbacks.reset(new ArtJvmtiEventCallbacks());
+    }
+    jvmtiError err = art_env->event_callbacks->Set(extension_event_index, callback);
+    if (err != OK) {
+      return err;
+    }
+  }
+  return event_handler->SetEvent(art_env,
+                                 /*event_thread*/nullptr,
+                                 static_cast<ArtJvmtiEvent>(extension_event_index),
+                                 mode);
 }
 
 }  // namespace openjdkjvmti

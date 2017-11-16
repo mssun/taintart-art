@@ -18,6 +18,7 @@
 
 #include <sys/uio.h>
 
+#include <functional>
 #include <memory>
 #include <set>
 #include <vector>
@@ -325,6 +326,7 @@ bool Dbg::gDebuggerActive = false;
 bool Dbg::gDisposed = false;
 ObjectRegistry* Dbg::gRegistry = nullptr;
 DebuggerActiveMethodInspectionCallback Dbg::gDebugActiveCallback;
+DebuggerDdmCallback Dbg::gDebugDdmCallback;
 
 // Deoptimization support.
 std::vector<DeoptimizationRequest> Dbg::deoptimization_requests_;
@@ -341,6 +343,10 @@ uint32_t Dbg::instrumentation_events_ = 0;
 
 Dbg::DbgThreadLifecycleCallback Dbg::thread_lifecycle_callback_;
 Dbg::DbgClassLoadCallback Dbg::class_load_callback_;
+
+void DebuggerDdmCallback::DdmPublishChunk(uint32_t type, const ArrayRef<const uint8_t>& data) {
+  Dbg::DdmSendChunk(type, data);
+}
 
 bool DebuggerActiveMethodInspectionCallback::IsMethodBeingInspected(ArtMethod* m ATTRIBUTE_UNUSED) {
   return Dbg::IsDebuggerActive();
@@ -530,6 +536,12 @@ void Dbg::StartJdwp() {
 
   CHECK(gRegistry == nullptr);
   gRegistry = new ObjectRegistry;
+
+  {
+    // Setup the Ddm listener
+    ScopedObjectAccess soa(Thread::Current());
+    Runtime::Current()->GetRuntimeCallbacks()->AddDdmCallback(&gDebugDdmCallback);
+  }
 
   // Init JDWP if the debugger is enabled. This may connect out to a
   // debugger, passively listen for a debugger, or block waiting for a
@@ -4285,47 +4297,28 @@ void Dbg::FinishInvokeMethod(DebugInvokeReq* pReq) {
   }
 }
 
-/*
- * "request" contains a full JDWP packet, possibly with multiple chunks.  We
- * need to process each, accumulate the replies, and ship the whole thing
- * back.
- *
- * Returns "true" if we have a reply.  The reply buffer is newly allocated,
- * and includes the chunk type/length, followed by the data.
- *
- * OLD-TODO: we currently assume that the request and reply include a single
- * chunk.  If this becomes inconvenient we will need to adapt.
- */
-bool Dbg::DdmHandlePacket(JDWP::Request* request, uint8_t** pReplyBuf, int* pReplyLen) {
-  Thread* self = Thread::Current();
-  JNIEnv* env = self->GetJniEnv();
-
-  uint32_t type = request->ReadUnsigned32("type");
-  uint32_t length = request->ReadUnsigned32("length");
-
-  // Create a byte[] corresponding to 'request'.
-  size_t request_length = request->size();
-  ScopedLocalRef<jbyteArray> dataArray(env, env->NewByteArray(request_length));
+bool Dbg::DdmHandleChunk(JNIEnv* env,
+                         uint32_t type,
+                         const ArrayRef<const jbyte>& data,
+                         /*out*/uint32_t* out_type,
+                         /*out*/std::vector<uint8_t>* out_data) {
+  ScopedLocalRef<jbyteArray> dataArray(env, env->NewByteArray(data.size()));
   if (dataArray.get() == nullptr) {
-    LOG(WARNING) << "byte[] allocation failed: " << request_length;
+    LOG(WARNING) << "byte[] allocation failed: " << data.size();
     env->ExceptionClear();
     return false;
   }
-  env->SetByteArrayRegion(dataArray.get(), 0, request_length,
-                          reinterpret_cast<const jbyte*>(request->data()));
-  request->Skip(request_length);
-
-  // Run through and find all chunks.  [Currently just find the first.]
-  ScopedByteArrayRO contents(env, dataArray.get());
-  if (length != request_length) {
-    LOG(WARNING) << StringPrintf("bad chunk found (len=%u pktLen=%zd)", length, request_length);
-    return false;
-  }
-
+  env->SetByteArrayRegion(dataArray.get(),
+                          0,
+                          data.size(),
+                          reinterpret_cast<const jbyte*>(data.data()));
   // Call "private static Chunk dispatch(int type, byte[] data, int offset, int length)".
-  ScopedLocalRef<jobject> chunk(env, env->CallStaticObjectMethod(WellKnownClasses::org_apache_harmony_dalvik_ddmc_DdmServer,
-                                                                 WellKnownClasses::org_apache_harmony_dalvik_ddmc_DdmServer_dispatch,
-                                                                 type, dataArray.get(), 0, length));
+  ScopedLocalRef<jobject> chunk(
+      env,
+      env->CallStaticObjectMethod(
+          WellKnownClasses::org_apache_harmony_dalvik_ddmc_DdmServer,
+          WellKnownClasses::org_apache_harmony_dalvik_ddmc_DdmServer_dispatch,
+          type, dataArray.get(), 0, data.size()));
   if (env->ExceptionCheck()) {
     LOG(INFO) << StringPrintf("Exception thrown by dispatcher for 0x%08x", type);
     env->ExceptionDescribe();
@@ -4349,30 +4342,78 @@ bool Dbg::DdmHandlePacket(JDWP::Request* request, uint8_t** pReplyBuf, int* pRep
    *
    * So we're pretty much stuck with copying data around multiple times.
    */
-  ScopedLocalRef<jbyteArray> replyData(env, reinterpret_cast<jbyteArray>(env->GetObjectField(chunk.get(), WellKnownClasses::org_apache_harmony_dalvik_ddmc_Chunk_data)));
-  jint offset = env->GetIntField(chunk.get(), WellKnownClasses::org_apache_harmony_dalvik_ddmc_Chunk_offset);
-  length = env->GetIntField(chunk.get(), WellKnownClasses::org_apache_harmony_dalvik_ddmc_Chunk_length);
-  type = env->GetIntField(chunk.get(), WellKnownClasses::org_apache_harmony_dalvik_ddmc_Chunk_type);
+  ScopedLocalRef<jbyteArray> replyData(
+      env,
+      reinterpret_cast<jbyteArray>(
+          env->GetObjectField(
+              chunk.get(), WellKnownClasses::org_apache_harmony_dalvik_ddmc_Chunk_data)));
+  jint offset = env->GetIntField(chunk.get(),
+                                 WellKnownClasses::org_apache_harmony_dalvik_ddmc_Chunk_offset);
+  jint length = env->GetIntField(chunk.get(),
+                                 WellKnownClasses::org_apache_harmony_dalvik_ddmc_Chunk_length);
+  *out_type = env->GetIntField(chunk.get(),
+                               WellKnownClasses::org_apache_harmony_dalvik_ddmc_Chunk_type);
 
-  VLOG(jdwp) << StringPrintf("DDM reply: type=0x%08x data=%p offset=%d length=%d", type, replyData.get(), offset, length);
+  VLOG(jdwp) << StringPrintf("DDM reply: type=0x%08x data=%p offset=%d length=%d",
+                             type,
+                             replyData.get(),
+                             offset,
+                             length);
   if (length == 0 || replyData.get() == nullptr) {
     return false;
   }
 
-  const int kChunkHdrLen = 8;
-  uint8_t* reply = new uint8_t[length + kChunkHdrLen];
-  if (reply == nullptr) {
-    LOG(WARNING) << "malloc failed: " << (length + kChunkHdrLen);
+  out_data->resize(length);
+  env->GetByteArrayRegion(replyData.get(),
+                          offset,
+                          length,
+                          reinterpret_cast<jbyte*>(out_data->data()));
+  return true;
+}
+
+/*
+ * "request" contains a full JDWP packet, possibly with multiple chunks.  We
+ * need to process each, accumulate the replies, and ship the whole thing
+ * back.
+ *
+ * Returns "true" if we have a reply.  The reply buffer is newly allocated,
+ * and includes the chunk type/length, followed by the data.
+ *
+ * OLD-TODO: we currently assume that the request and reply include a single
+ * chunk.  If this becomes inconvenient we will need to adapt.
+ */
+bool Dbg::DdmHandlePacket(JDWP::Request* request, uint8_t** pReplyBuf, int* pReplyLen) {
+  Thread* self = Thread::Current();
+  JNIEnv* env = self->GetJniEnv();
+
+  uint32_t type = request->ReadUnsigned32("type");
+  uint32_t length = request->ReadUnsigned32("length");
+
+  // Create a byte[] corresponding to 'request'.
+  size_t request_length = request->size();
+  // Run through and find all chunks.  [Currently just find the first.]
+  if (length != request_length) {
+    LOG(WARNING) << StringPrintf("bad chunk found (len=%u pktLen=%zd)", length, request_length);
     return false;
   }
-  JDWP::Set4BE(reply + 0, type);
-  JDWP::Set4BE(reply + 4, length);
-  env->GetByteArrayRegion(replyData.get(), offset, length, reinterpret_cast<jbyte*>(reply + kChunkHdrLen));
 
-  *pReplyBuf = reply;
-  *pReplyLen = length + kChunkHdrLen;
-
-  VLOG(jdwp) << StringPrintf("dvmHandleDdm returning type=%.4s %p len=%d", reinterpret_cast<char*>(reply), reply, length);
+  ArrayRef<const jbyte> data(reinterpret_cast<const jbyte*>(request->data()), request_length);
+  std::vector<uint8_t> out_data;
+  uint32_t out_type = 0;
+  request->Skip(request_length);
+  if (!DdmHandleChunk(env, type, data, &out_type, &out_data)) {
+    return false;
+  }
+  const uint32_t kDdmHeaderSize = 8;
+  *pReplyLen = out_data.size() + kDdmHeaderSize;
+  *pReplyBuf = new uint8_t[out_data.size() + kDdmHeaderSize];
+  memcpy((*pReplyBuf) + kDdmHeaderSize, out_data.data(), out_data.size());
+  JDWP::Set4BE(*pReplyBuf, out_type);
+  JDWP::Set4BE((*pReplyBuf) + 4, static_cast<uint32_t>(out_data.size()));
+  VLOG(jdwp)
+      << StringPrintf("dvmHandleDdm returning type=%.4s", reinterpret_cast<char*>(*pReplyBuf))
+      << "0x" << std::hex << reinterpret_cast<uintptr_t>(*pReplyBuf) << std::dec
+      << " len= " << out_data.size();
   return true;
 }
 
@@ -4480,6 +4521,10 @@ void Dbg::PostThreadStart(Thread* t) {
 
 void Dbg::PostThreadDeath(Thread* t) {
   Dbg::PostThreadStartOrStop(t, CHUNK_TYPE("THDE"));
+}
+
+void Dbg::DdmSendChunk(uint32_t type, const ArrayRef<const uint8_t>& data) {
+  DdmSendChunk(type, data.size(), data.data());
 }
 
 void Dbg::DdmSendChunk(uint32_t type, size_t byte_count, const uint8_t* buf) {
