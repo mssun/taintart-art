@@ -1014,14 +1014,21 @@ class JvmtiFunctions {
       return ERR(NONE);
     }
 
-    std::unique_ptr<jvmtiEventCallbacks> tmp(new jvmtiEventCallbacks());
-    memset(tmp.get(), 0, sizeof(jvmtiEventCallbacks));
+    // Lock the event_info_mutex_ while we replace the callbacks.
+    ArtJvmTiEnv* art_env = ArtJvmTiEnv::AsArtJvmTiEnv(env);
+    art::WriterMutexLock lk(art::Thread::Current(), art_env->event_info_mutex_);
+    std::unique_ptr<ArtJvmtiEventCallbacks> tmp(new ArtJvmtiEventCallbacks());
+    // Copy over the extension events.
+    tmp->CopyExtensionsFrom(art_env->event_callbacks.get());
+    // Never overwrite the extension events.
     size_t copy_size = std::min(sizeof(jvmtiEventCallbacks),
                                 static_cast<size_t>(size_of_callbacks));
     copy_size = art::RoundDown(copy_size, sizeof(void*));
+    // Copy non-extension events.
     memcpy(tmp.get(), callbacks, copy_size);
 
-    ArtJvmTiEnv::AsArtJvmTiEnv(env)->event_callbacks = std::move(tmp);
+    // replace the event table.
+    art_env->event_callbacks = std::move(tmp);
 
     return ERR(NONE);
   }
@@ -1077,8 +1084,10 @@ class JvmtiFunctions {
                                               jint extension_event_index,
                                               jvmtiExtensionEvent callback) {
     ENSURE_VALID_ENV(env);
-    // We do not have any extension events, so any call is illegal.
-    return ExtensionUtil::SetExtensionEventCallback(env, extension_event_index, callback);
+    return ExtensionUtil::SetExtensionEventCallback(env,
+                                                    extension_event_index,
+                                                    callback,
+                                                    &gEventHandler);
   }
 
   static jvmtiError GetPotentialCapabilities(jvmtiEnv* env, jvmtiCapabilities* capabilities_ptr) {
