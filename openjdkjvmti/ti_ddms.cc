@@ -34,8 +34,6 @@
 
 #include "ti_ddms.h"
 
-#include <endian.h>
-
 #include "art_jvmti.h"
 #include "base/array_ref.h"
 #include "debugger.h"
