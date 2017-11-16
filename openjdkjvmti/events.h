@@ -28,13 +28,14 @@ namespace openjdkjvmti {
 
 struct ArtJvmTiEnv;
 class JvmtiAllocationListener;
+class JvmtiDdmChunkListener;
 class JvmtiGcPauseListener;
 class JvmtiMethodTraceListener;
 class JvmtiMonitorListener;
 
 // an enum for ArtEvents. This differs from the JVMTI events only in that we distinguish between
 // retransformation capable and incapable loading
-enum class ArtJvmtiEvent {
+enum class ArtJvmtiEvent : jint {
     kMinEventTypeVal = JVMTI_MIN_EVENT_TYPE_VAL,
     kVmInit = JVMTI_EVENT_VM_INIT,
     kVmDeath = JVMTI_EVENT_VM_DEATH,
@@ -68,8 +69,32 @@ enum class ArtJvmtiEvent {
     kObjectFree = JVMTI_EVENT_OBJECT_FREE,
     kVmObjectAlloc = JVMTI_EVENT_VM_OBJECT_ALLOC,
     kClassFileLoadHookRetransformable = JVMTI_MAX_EVENT_TYPE_VAL + 1,
-    kMaxEventTypeVal = kClassFileLoadHookRetransformable,
+    kDdmPublishChunk = JVMTI_MAX_EVENT_TYPE_VAL + 2,
+    kMaxEventTypeVal = kDdmPublishChunk,
 };
+
+using ArtJvmtiEventDdmPublishChunk = void (*)(jvmtiEnv *jvmti_env,
+                                              JNIEnv* jni_env,
+                                              jint data_type,
+                                              jint data_len,
+                                              const jbyte* data);
+
+struct ArtJvmtiEventCallbacks : jvmtiEventCallbacks {
+  ArtJvmtiEventCallbacks() : DdmPublishChunk(nullptr) {
+    memset(this, 0, sizeof(jvmtiEventCallbacks));
+  }
+
+  // Copies extension functions from other callback struct if it exists. There must not have been
+  // any modifications to this struct when it is called.
+  void CopyExtensionsFrom(const ArtJvmtiEventCallbacks* cb);
+
+  jvmtiError Set(jint index, jvmtiExtensionEvent cb);
+
+  ArtJvmtiEventDdmPublishChunk DdmPublishChunk;
+};
+
+bool IsExtensionEvent(jint e);
+bool IsExtensionEvent(ArtJvmtiEvent e);
 
 // Convert a jvmtiEvent into a ArtJvmtiEvent
 ALWAYS_INLINE static inline ArtJvmtiEvent GetArtJvmtiEvent(ArtJvmTiEnv* env, jvmtiEvent e);
@@ -245,6 +270,7 @@ class EventHandler {
   EventMask global_mask;
 
   std::unique_ptr<JvmtiAllocationListener> alloc_listener_;
+  std::unique_ptr<JvmtiDdmChunkListener> ddm_listener_;
   std::unique_ptr<JvmtiGcPauseListener> gc_pause_listener_;
   std::unique_ptr<JvmtiMethodTraceListener> method_trace_listener_;
   std::unique_ptr<JvmtiMonitorListener> monitor_listener_;

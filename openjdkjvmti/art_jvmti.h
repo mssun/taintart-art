@@ -68,7 +68,7 @@ struct ArtJvmTiEnv : public jvmtiEnv {
   jvmtiCapabilities capabilities;
 
   EventMasks event_masks;
-  std::unique_ptr<jvmtiEventCallbacks> event_callbacks;
+  std::unique_ptr<ArtJvmtiEventCallbacks> event_callbacks;
 
   // Tagging is specific to the jvmtiEnv.
   std::unique_ptr<ObjectTagTable> object_tag_table;

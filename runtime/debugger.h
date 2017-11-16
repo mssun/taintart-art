@@ -27,6 +27,7 @@
 #include <string>
 #include <vector>
 
+#include "base/array_ref.h"
 #include "class_linker.h"
 #include "gc_root.h"
 #include "handle.h"
@@ -51,6 +52,11 @@ class ScopedObjectAccess;
 class ScopedObjectAccessUnchecked;
 class StackVisitor;
 class Thread;
+
+struct DebuggerDdmCallback : public DdmCallback {
+  void DdmPublishChunk(uint32_t type, const ArrayRef<const uint8_t>& data)
+      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
+};
 
 struct DebuggerActiveMethodInspectionCallback : public MethodInspectionCallback {
   bool IsMethodBeingInspected(ArtMethod* m ATTRIBUTE_UNUSED)
@@ -647,9 +653,17 @@ class Dbg {
       REQUIRES_SHARED(Locks::mutator_lock_);
   static void DdmSetThreadNotification(bool enable)
       REQUIRES(!Locks::thread_list_lock_);
+  static bool DdmHandleChunk(
+      JNIEnv* env,
+      uint32_t type,
+      const ArrayRef<const jbyte>& data,
+      /*out*/uint32_t* out_type,
+      /*out*/std::vector<uint8_t>* out_data);
   static bool DdmHandlePacket(JDWP::Request* request, uint8_t** pReplyBuf, int* pReplyLen);
   static void DdmConnected() REQUIRES_SHARED(Locks::mutator_lock_);
   static void DdmDisconnected() REQUIRES_SHARED(Locks::mutator_lock_);
+  static void DdmSendChunk(uint32_t type, const ArrayRef<const uint8_t>& bytes)
+      REQUIRES_SHARED(Locks::mutator_lock_);
   static void DdmSendChunk(uint32_t type, const std::vector<uint8_t>& bytes)
       REQUIRES_SHARED(Locks::mutator_lock_);
   static void DdmSendChunk(uint32_t type, size_t len, const uint8_t* buf)
@@ -782,6 +796,7 @@ class Dbg {
   static bool gDebuggerActive;
 
   static DebuggerActiveMethodInspectionCallback gDebugActiveCallback;
+  static DebuggerDdmCallback gDebugDdmCallback;
 
   // Indicates whether we should drop the JDWP connection because the runtime stops or the
   // debugger called VirtualMachine.Dispose.

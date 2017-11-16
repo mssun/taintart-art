@@ -80,16 +80,17 @@ namespace impl {
   fn(GarbageCollectionStart,  ArtJvmtiEvent::kGarbageCollectionStart)                \
   fn(GarbageCollectionFinish, ArtJvmtiEvent::kGarbageCollectionFinish)               \
   fn(ObjectFree,              ArtJvmtiEvent::kObjectFree)                            \
-  fn(VMObjectAlloc,           ArtJvmtiEvent::kVmObjectAlloc)
+  fn(VMObjectAlloc,           ArtJvmtiEvent::kVmObjectAlloc)                         \
+  fn(DdmPublishChunk,         ArtJvmtiEvent::kDdmPublishChunk)
 
 template <ArtJvmtiEvent kEvent>
 struct EventFnType {
 };
 
-#define EVENT_FN_TYPE(name, enum_name)               \
-template <>                                          \
-struct EventFnType<enum_name> {                      \
-  using type = decltype(jvmtiEventCallbacks().name); \
+#define EVENT_FN_TYPE(name, enum_name)                    \
+template <>                                               \
+struct EventFnType<enum_name> {                           \
+  using type = decltype(ArtJvmtiEventCallbacks().name);   \
 };
 
 FORALL_EVENT_TYPES(EVENT_FN_TYPE)
