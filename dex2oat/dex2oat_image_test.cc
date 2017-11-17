@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <regex>  // NOLINT [build/c++11] [5]
+#include <regex>
 #include <sstream>
 #include <string>
 #include <vector>

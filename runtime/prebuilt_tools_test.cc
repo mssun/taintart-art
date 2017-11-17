@@ -29,7 +29,7 @@ class PrebuiltToolsTest : public CommonRuntimeTest {
 };
 
 static void CheckToolsExist(const std::string& tools_dir) {
-  const char* tools[] { "as", "objcopy", "objdump" };  // NOLINT
+  const char* tools[] = { "as", "objcopy", "objdump" };
   for (const char* tool : tools) {
     struct stat exec_st;
     std::string exec_path = tools_dir + tool;
@@ -50,7 +50,7 @@ TEST_F(PrebuiltToolsTest, CheckHostTools) {
 
 TEST_F(PrebuiltToolsTest, CheckTargetTools) {
   // Other prebuilts are missing from the build server's repo manifest.
-  InstructionSet isas[] = { InstructionSet::kThumb2 };  // NOLINT
+  InstructionSet isas[] = { InstructionSet::kThumb2 };
   for (InstructionSet isa : isas) {
     std::string tools_dir = GetAndroidTargetToolsDir(isa);
     if (tools_dir.empty()) {

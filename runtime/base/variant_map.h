@@ -139,7 +139,7 @@ struct VariantMapKey : detail::VariantMapKeyRaw {
   // then that is used. Otherwise, the default value for the type TValue{} is returned.
   TValue CreateDefaultValue() const {
     if (default_value_ == nullptr) {
-      return TValue{};  // NOLINT [readability/braces] [4]
+      return TValue{};
     } else {
       return TValue(*default_value_);
     }

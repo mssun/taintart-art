@@ -383,7 +383,7 @@ static jint AgentStart(StartType start,
     return JNI_ERR;
   }
 
-  jvmtiCapabilities caps {};  // NOLINT [readability/braces]
+  jvmtiCapabilities caps{};
   caps.can_generate_breakpoint_events = JNI_TRUE;
   caps.can_get_line_numbers           = JNI_TRUE;
   caps.can_get_source_file_name       = JNI_TRUE;
@@ -394,7 +394,7 @@ static jint AgentStart(StartType start,
     return JNI_ERR;
   }
 
-  jvmtiEventCallbacks callbacks {};  // NOLINT [readability/braces]
+  jvmtiEventCallbacks callbacks{};
   callbacks.Breakpoint = &BreakpointCB;
   callbacks.VMInit = &VMInitCB;
 
