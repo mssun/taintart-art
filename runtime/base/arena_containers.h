@@ -143,7 +143,7 @@ class ArenaAllocatorAdapter<void> : private ArenaAllocatorAdapterKind {
         allocator_(allocator) {
   }
   template <typename U>
-  ArenaAllocatorAdapter(const ArenaAllocatorAdapter<U>& other)  // NOLINT, implicit
+  ArenaAllocatorAdapter(const ArenaAllocatorAdapter<U>& other)
       : ArenaAllocatorAdapterKind(other),
         allocator_(other.allocator_) {
   }
@@ -179,7 +179,7 @@ class ArenaAllocatorAdapter : private ArenaAllocatorAdapterKind {
         allocator_(allocator) {
   }
   template <typename U>
-  ArenaAllocatorAdapter(const ArenaAllocatorAdapter<U>& other)  // NOLINT, implicit
+  ArenaAllocatorAdapter(const ArenaAllocatorAdapter<U>& other)
       : ArenaAllocatorAdapterKind(other),
         allocator_(other.allocator_) {
   }

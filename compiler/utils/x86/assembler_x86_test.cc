@@ -90,7 +90,7 @@ class AssemblerX86Test : public AssemblerTest<x86::X86Assembler,
     }
     if (registers_.size() == 0) {
       registers_.insert(end(registers_),
-                        {  // NOLINT(whitespace/braces)
+                        {
                           new x86::Register(x86::EAX),
                           new x86::Register(x86::EBX),
                           new x86::Register(x86::ECX),
@@ -104,7 +104,7 @@ class AssemblerX86Test : public AssemblerTest<x86::X86Assembler,
 
     if (fp_registers_.size() == 0) {
       fp_registers_.insert(end(fp_registers_),
-                           {  // NOLINT(whitespace/braces)
+                           {
                              new x86::XmmRegister(x86::XMM0),
                              new x86::XmmRegister(x86::XMM1),
                              new x86::XmmRegister(x86::XMM2),

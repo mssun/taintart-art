@@ -72,7 +72,7 @@ class TransformArrayRef {
 
   template <typename OtherBT,
             typename = typename std::enable_if<std::is_same<BaseType, const OtherBT>::value>::type>
-  TransformArrayRef(const TransformArrayRef<OtherBT, Function>& other)  // NOLINT, implicit
+  TransformArrayRef(const TransformArrayRef<OtherBT, Function>& other)
       : TransformArrayRef(other.base(), other.GetFunction()) { }
 
   // Assignment operators.

@@ -274,7 +274,7 @@ struct SubtypeCheck {
     // more complicated (e.g. ObjPtr or Depth call) will fail dchecks.
 
     // OK. zero-initializing subtype_check_info_ puts us into the kUninitialized state.
-    SubtypeCheckBits scb_uninitialized = SubtypeCheckBits{};  // NOLINT
+    SubtypeCheckBits scb_uninitialized = SubtypeCheckBits{};
     WriteSubtypeCheckBits(klass, scb_uninitialized);
 
     // Do not use "SubtypeCheckInfo" API here since that requires Depth()

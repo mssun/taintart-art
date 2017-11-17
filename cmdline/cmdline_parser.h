@@ -340,7 +340,7 @@ struct CmdlineParser {
     typename std::enable_if<std::is_same<TArg, Unit>::value>::type
     InitializeTypedBuilder(ArgumentBuilder<TArg>* arg_builder) {
       // Every Unit argument implicitly maps to a runtime value of Unit{}
-      std::vector<Unit> values(names_.size(), Unit{});  // NOLINT [whitespace/braces] [5]
+      std::vector<Unit> values(names_.size(), Unit{});
       arg_builder->SetValuesInternal(std::move(values));
     }
 

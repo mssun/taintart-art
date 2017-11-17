@@ -47,7 +47,7 @@ BitStringChar MakeBitStringChar(size_t val) {
 BitString MakeBitString(std::initializer_list<size_t> values = {}) {
   CHECK_GE(BitString::kCapacity, values.size());
 
-  BitString bs{};  // NOLINT
+  BitString bs{};
 
   size_t i = 0;
   for (size_t val : values) {
@@ -68,7 +68,7 @@ size_t AsUint(const T& value) {
 // Make max bistring, e.g. BitString[4095,7,255] for {12,3,8}
 template <size_t kCount = BitString::kCapacity>
 BitString MakeBitStringMax() {
-  BitString bs{};  // NOLINT
+  BitString bs{};
 
   for (size_t i = 0; i < kCount; ++i) {
     bs.SetAt(i,
@@ -132,7 +132,7 @@ struct SubtypeCheckInfoTest : public ::testing::Test {
   // Create an SubtypeCheckInfo with the same depth, but with everything else reset.
   // Returns: SubtypeCheckInfo in the Uninitialized state.
   static SubtypeCheckInfo CopyCleared(SubtypeCheckInfo sc) {
-    SubtypeCheckInfo cleared_copy{};  // NOLINT
+    SubtypeCheckInfo cleared_copy{};
     cleared_copy.depth_ = sc.depth_;
     DCHECK_EQ(SubtypeCheckInfo::kUninitialized, cleared_copy.GetState());
     return cleared_copy;
@@ -260,7 +260,7 @@ TEST_F(SubtypeCheckInfoTest, EncodedPathToRoot) {
 
   SubtypeCheckInfo io =
       MakeSubtypeCheckInfo(/*path_to_root*/MakeBitStringMax(),
-                           /*next*/BitStringChar{},  // NOLINT
+                           /*next*/BitStringChar{},
                            /*overflow*/false,
                            /*depth*/BitString::kCapacity);
   // 0b11111...000 where MSB == 1, and leading 1s = the maximum bitstring representation.
@@ -329,7 +329,7 @@ TEST_F(SubtypeCheckInfoTest, CopyCleared) {
 
   // CopyCleared is just a thin wrapper around value-init and providing the depth.
   SubtypeCheckInfo cleared_copy_value =
-      SubtypeCheckInfo::Create(SubtypeCheckBits{}, /*depth*/1u);  // NOLINT
+      SubtypeCheckInfo::Create(SubtypeCheckBits{}, /*depth*/1u);
   EXPECT_EQ(SubtypeCheckInfo::kUninitialized, cleared_copy_value.GetState());
   EXPECT_EQ(MakeBitString({}), GetPathToRoot(cleared_copy_value));
 }

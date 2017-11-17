@@ -24,7 +24,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <memory>
-#include <mutex>                                                         // NOLINT [build/c++11] [5]
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <vector>

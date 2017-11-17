@@ -43,7 +43,7 @@ struct CmdlineType<InstructionSet> : CmdlineTypeParser<InstructionSet> {
 // Specify storage for the Dex2oatOptions keys.
 
 #define DEX2OAT_OPTIONS_KEY(Type, Name, ...) \
-  const Dex2oatArgumentMap::Key<Type> Dex2oatArgumentMap::Name {__VA_ARGS__};  // NOLINT [readability/braces] [4]
+  const Dex2oatArgumentMap::Key<Type> Dex2oatArgumentMap::Name {__VA_ARGS__};
 #include "dex2oat_options.def"
 
 #pragma GCC diagnostic push

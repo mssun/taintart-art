@@ -110,7 +110,7 @@ class ScopedArenaAllocatorAdapter<void>
         arena_stack_(allocator->arena_stack_) {
   }
   template <typename U>
-  ScopedArenaAllocatorAdapter(const ScopedArenaAllocatorAdapter<U>& other)  // NOLINT, implicit
+  ScopedArenaAllocatorAdapter(const ScopedArenaAllocatorAdapter<U>& other)
       : DebugStackReference(other),
         DebugStackIndirectTopRef(other),
         ArenaAllocatorAdapterKind(other),
@@ -153,7 +153,7 @@ class ScopedArenaAllocatorAdapter
         arena_stack_(allocator->arena_stack_) {
   }
   template <typename U>
-  ScopedArenaAllocatorAdapter(const ScopedArenaAllocatorAdapter<U>& other)  // NOLINT, implicit
+  ScopedArenaAllocatorAdapter(const ScopedArenaAllocatorAdapter<U>& other)
       : DebugStackReference(other),
         DebugStackIndirectTopRef(other),
         ArenaAllocatorAdapterKind(other),
