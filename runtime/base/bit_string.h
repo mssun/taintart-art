@@ -248,7 +248,7 @@ struct BitString {
 
   // Does this bitstring contain exactly 0 characters?
   bool IsEmpty() const {
-    return (*this) == BitString{};  // NOLINT
+    return (*this) == BitString{};
   }
 
   // Remove all BitStringChars starting at end.

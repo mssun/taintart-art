@@ -49,23 +49,22 @@ class ObjPtr {
 
   // Note: The following constructors allow implicit conversion. This simplifies code that uses
   //       them, e.g., for parameter passing. However, in general, implicit-conversion constructors
-  //       are discouraged and detected by cpplint and clang-tidy. So mark these constructors
-  //       as NOLINT (without category, as the categories are different).
+  //       are discouraged and detected by clang-tidy.
 
-  ALWAYS_INLINE ObjPtr(std::nullptr_t)  // NOLINT
+  ALWAYS_INLINE ObjPtr(std::nullptr_t)
       REQUIRES_SHARED(Locks::mutator_lock_)
       : reference_(0u) {}
 
   template <typename Type,
             typename = typename std::enable_if<std::is_base_of<MirrorType, Type>::value>::type>
-  ALWAYS_INLINE ObjPtr(Type* ptr)  // NOLINT
+  ALWAYS_INLINE ObjPtr(Type* ptr)
       REQUIRES_SHARED(Locks::mutator_lock_)
       : reference_(Encode(static_cast<MirrorType*>(ptr))) {
   }
 
   template <typename Type,
             typename = typename std::enable_if<std::is_base_of<MirrorType, Type>::value>::type>
-  ALWAYS_INLINE ObjPtr(const ObjPtr<Type>& other)  // NOLINT
+  ALWAYS_INLINE ObjPtr(const ObjPtr<Type>& other)
       REQUIRES_SHARED(Locks::mutator_lock_)
       : reference_(kObjPtrPoisoningValidateOnCopy
                        ? Encode(static_cast<MirrorType*>(other.Ptr()))
