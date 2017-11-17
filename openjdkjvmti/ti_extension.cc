@@ -54,7 +54,7 @@ struct CParamInfo {
     JvmtiUniquePtr<char[]> param_name = CopyString(env, name, err);
     char* name_ptr = param_name.get();
     char_buffers->push_back(std::move(param_name));
-    return jvmtiParamInfo { name_ptr, kind, base_type, null_ok }; // NOLINT [whitespace/braces] [4]
+    return jvmtiParamInfo{ name_ptr, kind, base_type, null_ok };
   }
 };
 
@@ -146,7 +146,7 @@ jvmtiError ExtensionUtil::GetExtensionFunctions(jvmtiEnv* env,
       "com.android.art.heap.get_object_heap_id",
       "Retrieve the heap id of the the object tagged with the given argument. An "
           "arbitrary object is chosen if multiple objects exist with the same tag.",
-      {                                                          // NOLINT [whitespace/braces] [4]
+      {
           { "tag", JVMTI_KIND_IN, JVMTI_TYPE_JLONG, false},
           { "heap_id", JVMTI_KIND_OUT, JVMTI_TYPE_JINT, false}
       },
@@ -159,7 +159,7 @@ jvmtiError ExtensionUtil::GetExtensionFunctions(jvmtiEnv* env,
       reinterpret_cast<jvmtiExtensionFunction>(HeapExtensions::GetHeapName),
       "com.android.art.heap.get_heap_name",
       "Retrieve the name of the heap with the given id.",
-      {                                                          // NOLINT [whitespace/braces] [4]
+      {
           { "heap_id", JVMTI_KIND_IN, JVMTI_TYPE_JINT, false},
           { "heap_name", JVMTI_KIND_ALLOC_BUF, JVMTI_TYPE_CCHAR, false}
       },
@@ -175,13 +175,13 @@ jvmtiError ExtensionUtil::GetExtensionFunctions(jvmtiEnv* env,
       " except for additionally passing the heap id of the current object. The jvmtiHeapCallbacks"
       " structure is reused, with the callbacks field overloaded to a signature of "
       "jint (*)(jlong, jlong, jlong*, jint length, void*, jint).",
-      {                                                          // NOLINT [whitespace/braces] [4]
+      {
           { "heap_filter", JVMTI_KIND_IN, JVMTI_TYPE_JINT, false},
           { "klass", JVMTI_KIND_IN, JVMTI_TYPE_JCLASS, true},
           { "callbacks", JVMTI_KIND_IN_PTR, JVMTI_TYPE_CVOID, false},
           { "user_data", JVMTI_KIND_IN_PTR, JVMTI_TYPE_CVOID, true}
       },
-      {                                                          // NOLINT [whitespace/braces] [4]
+      {
           ERR(MUST_POSSESS_CAPABILITY),
           ERR(INVALID_CLASS),
           ERR(NULL_POINTER),
@@ -197,7 +197,7 @@ jvmtiError ExtensionUtil::GetExtensionFunctions(jvmtiEnv* env,
       " 'Allocate' jvmti function. This does not include any memory that has been deallocated"
       " through the 'Deallocate' function. This number is approximate and might not correspond"
       " exactly to the sum of the sizes of all not freed allocations.",
-      {                                                          // NOLINT [whitespace/braces] [4]
+      {
           { "currently_allocated", JVMTI_KIND_OUT, JVMTI_TYPE_JLONG, false},
       },
       { ERR(NULL_POINTER) });
@@ -213,7 +213,7 @@ jvmtiError ExtensionUtil::GetExtensionFunctions(jvmtiEnv* env,
       " chunk format. It returns the processed chunk. This is provided for backwards compatibility"
       " reasons only. Agents should avoid making use of this extension when possible and instead"
       " use the other JVMTI entrypoints explicitly.",
-      {                                                           // NOLINT[whitespace/braces] [4]
+      {
         { "type_in", JVMTI_KIND_IN, JVMTI_TYPE_JINT, false },
         { "length_in", JVMTI_KIND_IN, JVMTI_TYPE_JINT, false },
         { "data_in", JVMTI_KIND_IN_BUF, JVMTI_TYPE_JBYTE, false },
@@ -322,7 +322,7 @@ jvmtiError ExtensionUtil::GetExtensionEvents(jvmtiEnv* env,
       " is responsible for interpreting the information present in the 'data' buffer. This is"
       " provided for backwards-compatibility support only. Agents should prefer to use relevant"
       " JVMTI events and functions above listening for this event.",
-      {                                                             // NOLINT[whitespace/braces] [4]
+      {
         { "jni_env", JVMTI_KIND_IN_PTR, JVMTI_TYPE_JNIENV, false },
         { "type", JVMTI_KIND_IN, JVMTI_TYPE_JINT, false },
         { "data_size", JVMTI_KIND_IN, JVMTI_TYPE_JINT, false },

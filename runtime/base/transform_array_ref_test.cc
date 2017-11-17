@@ -38,7 +38,7 @@ ATTRIBUTE_UNUSED bool operator==(const ValueHolder& lhs, const ValueHolder& rhs)
 }  // anonymous namespace
 
 TEST(TransformArrayRef, ConstRefAdd1) {
-  auto add1 = [](const ValueHolder& h) { return h.value + 1; };  // NOLINT [readability/braces]
+  auto add1 = [](const ValueHolder& h) { return h.value + 1; };
   std::vector<ValueHolder> input({ 7, 6, 4, 0 });
   std::vector<int> output;
 
@@ -79,7 +79,7 @@ TEST(TransformArrayRef, ConstRefAdd1) {
 }
 
 TEST(TransformArrayRef, NonConstRefSub1) {
-  auto sub1 = [](ValueHolder& h) { return h.value - 1; };  // NOLINT [readability/braces]
+  auto sub1 = [](ValueHolder& h) { return h.value - 1; };
   std::vector<ValueHolder> input({ 4, 4, 5, 7, 10 });
   std::vector<int> output;
 

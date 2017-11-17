@@ -16,8 +16,8 @@
 
 #include <stdio.h>
 
-#include <condition_variable>  // NOLINT [build/c++11] [5]
-#include <mutex>               // NOLINT [build/c++11] [5]
+#include <condition_variable>
+#include <mutex>
 #include <vector>
 
 #include "android-base/macros.h"

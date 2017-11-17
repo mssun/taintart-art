@@ -288,7 +288,7 @@ using BitStructUint =
 //
 // See top of file for usage example.
 #define BITSTRUCT_DEFINE_END(name)                                             \
-    };    /* NOLINT [readability/braces] [4] */                                \
+    };                                                                         \
     static_assert(art::detail::ValidateBitStructSize<name>(),                  \
                   #name "bitsize incorrect: "                                  \
                   "did you insert extra fields that weren't BitStructX, "      \

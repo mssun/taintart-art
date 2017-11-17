@@ -41,7 +41,7 @@ bool operator==(const ValueHolder& lhs, const ValueHolder& rhs) {
 }  // anonymous namespace
 
 TEST(TransformIterator, VectorAdd1) {
-  auto add1 = [](const ValueHolder& h) { return h.value + 1; };  // NOLINT [readability/braces]
+  auto add1 = [](const ValueHolder& h) { return h.value + 1; };
   std::vector<ValueHolder> input({ 1, 7, 3, 8 });
   std::vector<int> output;
 
@@ -144,7 +144,7 @@ TEST(TransformIterator, VectorAdd1) {
 }
 
 TEST(TransformIterator, ListSub1) {
-  auto sub1 = [](const ValueHolder& h) { return h.value - 1; };  // NOLINT [readability/braces]
+  auto sub1 = [](const ValueHolder& h) { return h.value - 1; };
   std::list<ValueHolder> input({ 2, 3, 5, 7, 11 });
   std::vector<int> output;
 
@@ -208,7 +208,7 @@ TEST(TransformIterator, ListSub1) {
 }
 
 TEST(TransformIterator, ForwardListSub1) {
-  auto mul3 = [](const ValueHolder& h) { return h.value * 3; };  // NOLINT [readability/braces]
+  auto mul3 = [](const ValueHolder& h) { return h.value * 3; };
   std::forward_list<ValueHolder> input({ 1, 1, 2, 3, 5, 8 });
   std::vector<int> output;
 
@@ -246,7 +246,7 @@ TEST(TransformIterator, ForwardListSub1) {
 }
 
 TEST(TransformIterator, VectorConstReference) {
-  auto ref = [](const ValueHolder& h) -> const int& { return h.value; };  // NOLINT [readability/braces]
+  auto ref = [](const ValueHolder& h) -> const int& { return h.value; };
   std::vector<ValueHolder> input({ 7, 3, 1, 2, 4, 8 });
   std::vector<int> output;
 
@@ -339,7 +339,7 @@ TEST(TransformIterator, VectorConstReference) {
 }
 
 TEST(TransformIterator, VectorNonConstReference) {
-  auto ref = [](ValueHolder& h) -> int& { return h.value; };  // NOLINT [readability/braces]
+  auto ref = [](ValueHolder& h) -> int& { return h.value; };
   std::vector<ValueHolder> input({ 7, 3, 1, 2, 4, 8 });
   std::vector<int> output;
 
@@ -519,7 +519,7 @@ TEST(TransformIterator, VectorConstAndNonConstReference) {
 }
 
 TEST(TransformIterator, TransformRange) {
-  auto ref = [](ValueHolder& h) -> int& { return h.value; };  // NOLINT [readability/braces]
+  auto ref = [](ValueHolder& h) -> int& { return h.value; };
   std::vector<ValueHolder> data({ 1, 0, 1, 3, 1, 0 });
 
   for (int& v : MakeTransformRange(data, ref)) {

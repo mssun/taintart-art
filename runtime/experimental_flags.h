@@ -30,10 +30,10 @@ struct ExperimentalFlags {
   };
 
   constexpr ExperimentalFlags() : value_(0x0000) {}
-  constexpr ExperimentalFlags(decltype(kNone) t)  // NOLINT, implicit
+  constexpr ExperimentalFlags(decltype(kNone) t)  // NOLINT [runtime/explicit]
       : value_(static_cast<uint32_t>(t)) {}
 
-  constexpr operator decltype(kNone)() const {  // NOLINT, implicit
+  constexpr operator decltype(kNone)() const {
     return static_cast<decltype(kNone)>(value_);
   }
 

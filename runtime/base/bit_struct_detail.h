@@ -79,7 +79,7 @@ struct HasUnderscoreField {
   using FalseT = std::integral_constant<bool, false>::type;
 
   template <typename C>
-  static constexpr auto Test(void*) -> decltype(std::declval<C>()._, TrueT{});  // NOLINT
+  static constexpr auto Test(void*) -> decltype(std::declval<C>()._, TrueT{});
 
   template <typename>
   static constexpr FalseT Test(...);

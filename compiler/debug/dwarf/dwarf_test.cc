@@ -125,7 +125,7 @@ TEST_F(DwarfTest, DebugFrame) {
   WriteCIE(is64bit, Reg(is64bit ? 16 : 8),
            initial_opcodes, kCFIFormat, &debug_frame_data_);
   std::vector<uintptr_t> debug_frame_patches;
-  std::vector<uintptr_t> expected_patches { 28 };  // NOLINT
+  std::vector<uintptr_t> expected_patches = { 28 };
   WriteFDE(is64bit, 0, 0, 0x01000000, 0x01000000, ArrayRef<const uint8_t>(*opcodes.data()),
            kCFIFormat, 0, &debug_frame_data_, &debug_frame_patches);
 
@@ -140,7 +140,7 @@ TEST_F(DwarfTest, DebugFrame64) {
            initial_opcodes, kCFIFormat, &debug_frame_data_);
   DebugFrameOpCodeWriter<> opcodes;
   std::vector<uintptr_t> debug_frame_patches;
-  std::vector<uintptr_t> expected_patches { 32 };  // NOLINT
+  std::vector<uintptr_t> expected_patches = { 32 };
   WriteFDE(is64bit, 0, 0, 0x0100000000000000, 0x0200000000000000,
            ArrayRef<const uint8_t>(*opcodes.data()),
                      kCFIFormat, 0, &debug_frame_data_, &debug_frame_patches);
@@ -237,7 +237,7 @@ TEST_F(DwarfTest, DebugLine) {
   DW_CHECK_NEXT("1\t0\t1000\t2000\tfile.c");
 
   std::vector<uintptr_t> debug_line_patches;
-  std::vector<uintptr_t> expected_patches { 87 };  // NOLINT
+  std::vector<uintptr_t> expected_patches = { 87 };
   WriteDebugLineTable(include_directories, files, opcodes,
                       0, &debug_line_data_, &debug_line_patches);
 
@@ -275,7 +275,7 @@ TEST_F(DwarfTest, DebugLineSpecialOpcodes) {
   EXPECT_LT(opcodes.data()->size(), num_rows * 3);
 
   std::vector<std::string> directories;
-  std::vector<FileEntry> files { { "file.c", 0, 1000, 2000 } };  // NOLINT
+  std::vector<FileEntry> files = { { "file.c", 0, 1000, 2000 } };
   std::vector<uintptr_t> debug_line_patches;
   WriteDebugLineTable(directories, files, opcodes,
                       0, &debug_line_data_, &debug_line_patches);
@@ -333,7 +333,7 @@ TEST_F(DwarfTest, DebugInfo) {
   DW_CHECK("3      DW_TAG_compile_unit    [no children]");
 
   std::vector<uintptr_t> debug_info_patches;
-  std::vector<uintptr_t> expected_patches { 16, 20, 29, 33, 42, 46 };  // NOLINT
+  std::vector<uintptr_t> expected_patches = { 16, 20, 29, 33, 42, 46 };
   dwarf::WriteDebugInfoCU(0 /* debug_abbrev_offset */, info,
                           0, &debug_info_data_, &debug_info_patches);
 
