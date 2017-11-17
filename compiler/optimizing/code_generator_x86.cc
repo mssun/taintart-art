@@ -240,13 +240,6 @@ class LoadStringSlowPathX86 : public SlowPathCode {
     x86_codegen->Move32(locations->Out(), Location::RegisterLocation(EAX));
     RestoreLiveRegisters(codegen, locations);
 
-    // Store the resolved String to the BSS entry.
-    Register method_address = locations->InAt(0).AsRegister<Register>();
-    __ movl(Address(method_address, CodeGeneratorX86::kDummy32BitOffset),
-            locations->Out().AsRegister<Register>());
-    Label* fixup_label = x86_codegen->NewStringBssEntryPatch(instruction_->AsLoadString());
-    __ Bind(fixup_label);
-
     __ jmp(GetExitLabel());
   }
 
@@ -293,16 +286,6 @@ class LoadClassSlowPathX86 : public SlowPathCode {
       x86_codegen->Move32(out, Location::RegisterLocation(EAX));
     }
     RestoreLiveRegisters(codegen, locations);
-    // For HLoadClass/kBssEntry, store the resolved Class to the BSS entry.
-    DCHECK_EQ(instruction_->IsLoadClass(), cls_ == instruction_);
-    if (cls_ == instruction_ && cls_->GetLoadKind() == HLoadClass::LoadKind::kBssEntry) {
-      DCHECK(out.IsValid());
-      Register method_address = locations->InAt(0).AsRegister<Register>();
-      __ movl(Address(method_address, CodeGeneratorX86::kDummy32BitOffset),
-              locations->Out().AsRegister<Register>());
-      Label* fixup_label = x86_codegen->NewTypeBssEntryPatch(cls_);
-      __ Bind(fixup_label);
-    }
     __ jmp(GetExitLabel());
   }
 

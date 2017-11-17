@@ -320,7 +320,6 @@ art_cc_test {
         "exception_test.cc",
         "jni/jni_compiler_test.cc",
         "linker/linker_patch_test.cc",
-        "linker/method_bss_mapping_encoder_test.cc",
         "linker/output_stream_test.cc",
         "optimizing/bounds_check_elimination_test.cc",
         "optimizing/data_type_test.cc",

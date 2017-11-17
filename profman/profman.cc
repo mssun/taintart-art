@@ -786,7 +786,7 @@ class ProfMan FINAL {
       method_str = line.substr(method_sep_index + kMethodSep.size());
     }
 
-    TypeReference class_ref;
+    TypeReference class_ref(/* dex_file */ nullptr, dex::TypeIndex());
     if (!FindClass(dex_files, klass, &class_ref)) {
       LOG(WARNING) << "Could not find class: " << klass;
       return false;
@@ -860,7 +860,8 @@ class ProfMan FINAL {
       if (!HasSingleInvoke(class_ref, method_index, &dex_pc)) {
         return false;
       }
-      std::vector<TypeReference> classes(inline_cache_elems.size());
+      std::vector<TypeReference> classes(inline_cache_elems.size(),
+                                         TypeReference(/* dex_file */ nullptr, dex::TypeIndex()));
       size_t class_it = 0;
       for (const std::string& ic_class : inline_cache_elems) {
         if (!FindClass(dex_files, ic_class, &(classes[class_it++]))) {
