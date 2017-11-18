@@ -94,6 +94,10 @@ struct ArtJvmTiEnv : public jvmtiEnv {
   static ArtJvmTiEnv* AsArtJvmTiEnv(jvmtiEnv* env) {
     return art::down_cast<ArtJvmTiEnv*>(env);
   }
+
+  // Top level lock. Nothing can be held when we get this except for mutator lock for full
+  // thread-suspension.
+  static art::Mutex *gEnvMutex ACQUIRED_AFTER(art::Locks::mutator_lock_);
 };
 
 // Macro and constexpr to make error values less annoying to write.
