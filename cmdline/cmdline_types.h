@@ -57,7 +57,7 @@ template <>
 struct CmdlineType<Unit> : CmdlineTypeParser<Unit> {
   Result Parse(const std::string& args) {
     if (args == "") {
-      return Result::Success(Unit{});  // NOLINT [whitespace/braces] [5]
+      return Result::Success(Unit{});
     }
     return Result::Failure("Unexpected extra characters " + args);
   }
@@ -532,7 +532,7 @@ struct XGcOption {
 template <>
 struct CmdlineType<XGcOption> : CmdlineTypeParser<XGcOption> {
   Result Parse(const std::string& option) {  // -Xgc: already stripped
-    XGcOption xgc{};  // NOLINT [readability/braces] [4]
+    XGcOption xgc{};
 
     std::vector<std::string> gc_options;
     Split(option, ',', &gc_options);

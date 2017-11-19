@@ -30,7 +30,7 @@ namespace art {
 
 // Specify storage for the RuntimeOptions keys.
 
-#define RUNTIME_OPTIONS_KEY(Type, Name, ...) const RuntimeArgumentMap::Key<Type> RuntimeArgumentMap::Name {__VA_ARGS__};  // NOLINT [readability/braces] [4]
+#define RUNTIME_OPTIONS_KEY(Type, Name, ...) const RuntimeArgumentMap::Key<Type> RuntimeArgumentMap::Name {__VA_ARGS__};
 #include "runtime_options.def"
 
 }  // namespace art

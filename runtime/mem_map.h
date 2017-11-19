@@ -21,7 +21,7 @@
 #include <sys/types.h>
 
 #include <map>
-#include <mutex>  // NOLINT [build/c++11] [5]
+#include <mutex>
 #include <string>
 
 #include "android-base/thread_annotations.h"

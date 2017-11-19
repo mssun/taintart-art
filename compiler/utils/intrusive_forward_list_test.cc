@@ -574,11 +574,11 @@ void IntrusiveForwardListTest::Remove() {
   ref.remove(4);
   ifl.remove(4);
   ASSERT_LISTS_EQUAL(ref, ifl);
-  auto odd = [](ValueType value) { return (value.value & 1) != 0; };  // NOLINT(readability/braces)
+  auto odd = [](ValueType value) { return (value.value & 1) != 0; };
   ref.remove_if(odd);
   ifl.remove_if(odd);
   ASSERT_LISTS_EQUAL(ref, ifl);
-  auto all = [](ValueType value ATTRIBUTE_UNUSED) { return true; };  // NOLINT(readability/braces)
+  auto all = [](ValueType value ATTRIBUTE_UNUSED) { return true; };
   ref.remove_if(all);
   ifl.remove_if(all);
   ASSERT_LISTS_EQUAL(ref, ifl);
@@ -721,7 +721,7 @@ void IntrusiveForwardListTest::ModifyValue() {
   ListType ifl(storage.begin(), storage.end());
   ASSERT_LISTS_EQUAL(ref, ifl);
 
-  auto add1 = [](const ValueType& value) { return value.value + 1; };  // NOLINT [readability/braces]
+  auto add1 = [](const ValueType& value) { return value.value + 1; };
   std::transform(ref.begin(), ref.end(), ref.begin(), add1);
   std::transform(ifl.begin(), ifl.end(), ifl.begin(), add1);
   ASSERT_LISTS_EQUAL(ref, ifl);

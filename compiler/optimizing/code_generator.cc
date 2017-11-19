@@ -946,12 +946,12 @@ static void CheckLoopEntriesCanBeUsedForOsr(const HGraph& graph,
 
 void CodeGenerator::BuildStackMaps(MemoryRegion stack_map_region,
                                    MemoryRegion method_info_region,
-                                   const DexFile::CodeItem& code_item) {
+                                   const DexFile::CodeItem* code_item_for_osr_check) {
   StackMapStream* stack_map_stream = GetStackMapStream();
   stack_map_stream->FillInCodeInfo(stack_map_region);
   stack_map_stream->FillInMethodInfo(method_info_region);
-  if (kIsDebugBuild) {
-    CheckLoopEntriesCanBeUsedForOsr(*graph_, CodeInfo(stack_map_region), code_item);
+  if (kIsDebugBuild && code_item_for_osr_check != nullptr) {
+    CheckLoopEntriesCanBeUsedForOsr(*graph_, CodeInfo(stack_map_region), *code_item_for_osr_check);
   }
 }
 

@@ -188,7 +188,7 @@ struct SubtypeCheckInfo {
   // Returns a new root SubtypeCheckInfo with a blank PathToRoot.
   // Post-condition: The return valued has an Assigned state.
   static SubtypeCheckInfo CreateRoot() {
-    SubtypeCheckInfo io{};  // NOLINT
+    SubtypeCheckInfo io{};
     io.depth_ = 0u;
     io.SetNext(io.GetNext() + 1u);
 
@@ -220,7 +220,7 @@ struct SubtypeCheckInfo {
     child.MaybeInitNext();
 
     // Always clear the inherited Parent's next Value on the child.
-    OverwriteNextValueFromParent(/*inout*/&child, BitStringChar{});  // NOLINT
+    OverwriteNextValueFromParent(/*inout*/&child, BitStringChar{});
 
     // The state is now Initialized | Overflowed.
     DCHECK_NE(kAssigned, child.GetState()) << child.GetBitString();
@@ -392,7 +392,7 @@ struct SubtypeCheckInfo {
       // Clearing out the "Next" value like this
       // is often an intermediate operation which temporarily
       // violates the invariants. Do not do the extra dchecks.
-      SetNextUnchecked(BitStringChar{});  // NOLINT
+      SetNextUnchecked(BitStringChar{});
       SetNextUnchecked(GetNext()+1u);
     }
   }

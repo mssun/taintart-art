@@ -47,7 +47,7 @@ BitStringChar MakeBitStringChar(size_t val) {
 BitString MakeBitString(std::initializer_list<size_t> values = {}) {
   CHECK_GE(BitString::kCapacity, values.size());
 
-  BitString bs{};  // NOLINT
+  BitString bs{};
 
   size_t i = 0;
   for (size_t val : values) {
@@ -68,7 +68,7 @@ size_t AsUint(const T& value) {
 // Make max bitstring, e.g. BitString[4095,7,255] for {12,3,8}
 template <size_t kCount = BitString::kCapacity>
 BitString MakeBitStringMax() {
-  BitString bs{};  // NOLINT
+  BitString bs{};
 
   for (size_t i = 0; i < kCount; ++i) {
     bs.SetAt(i,

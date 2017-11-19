@@ -1667,6 +1667,7 @@ bool HInliner::TryBuildAndInlineHelper(HInvoke* invoke_instruction,
     }
   }
   HGraphBuilder builder(callee_graph,
+                        code_item,
                         &dex_compilation_unit,
                         &outer_compilation_unit_,
                         compiler_driver_,

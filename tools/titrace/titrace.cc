@@ -21,7 +21,7 @@
 #include <jvmti.h>
 #include <map>
 #include <memory>
-#include <mutex>  // NOLINT [build/c++11] [5]
+#include <mutex>
 
 // We could probably return a JNI_ERR here but lets crash instead if something fails.
 #define CHECK_JVMTI_ERROR(jvmti, errnum) \
@@ -195,8 +195,8 @@ struct TraceStatistics {
 
   std::unique_ptr<InstructionDecoder> instruction_decoder_;
 
-  std::atomic<size_t> single_step_counter_{0u};  // NOLINT [readability/braces] [4] [whitespace/braces] [5]
-  std::atomic<size_t> instruction_counter_[256]{};  // NOLINT [whitespace/braces] [5]
+  std::atomic<size_t> single_step_counter_{0u};
+  std::atomic<size_t> instruction_counter_[256]{};
 
   // Cache the bytecode to avoid calling into JVMTI repeatedly.
   // TODO: invalidate if the bytecode was updated?
@@ -256,7 +256,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM* jvm,
     TraceStatistics::Initialize(jvmti);
   }
 
-  jvmtiError error{};  // NOLINT [readability/braces] [4] [whitespace/braces] [5]
+  jvmtiError error{};
 
   // Set capabilities.
   {
