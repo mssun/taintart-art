@@ -29,10 +29,15 @@ debug="no"
 has_variant="no"
 has_mode="no"
 mode="target"
+has_timeout="no"
 
 while true; do
   if [[ $1 == "--debug" ]]; then
     debug="yes"
+    shift
+  elif [[ $1 == --test-timeout-ms ]]; then
+    has_timeout="yes"
+    shift
     shift
   elif [[ "$1" == "--mode=jvm" ]]; then
     has_mode="yes"
@@ -58,6 +63,12 @@ fi
 
 if [[ "$has_variant" = "no" ]];  then
   args+=(--variant=X32)
+fi
+
+if [[ "$has_timeout" = "no" ]]; then
+  # Double the timeout to 20 seconds
+  args+=(--test-timeout-ms)
+  args+=(20000)
 fi
 
 # We don't use full paths since it is difficult to determine them for device
