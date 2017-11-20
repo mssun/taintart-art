@@ -732,4 +732,45 @@ TEST_F(DexLayoutTest, CodeItemOverrun) {
                             dexlayout_args));
 }
 
+// Test that link data is written out (or at least the header is updated).
+TEST_F(DexLayoutTest, LinkData) {
+  ScratchFile temp_dex;
+  size_t file_size = 0;
+  MutateDexFile(temp_dex.GetFile(), GetTestDexFileName("ManyMethods"), [&] (DexFile* dex) {
+    DexFile::Header& header = const_cast<DexFile::Header&>(dex->GetHeader());
+    header.link_off_ = header.file_size_;
+    header.link_size_ = 16 * KB;
+    header.file_size_ += header.link_size_;
+    file_size = header.file_size_;
+  });
+  TEMP_FAILURE_RETRY(temp_dex.GetFile()->SetLength(file_size));
+
+  std::string error_msg;
+
+  ScratchFile tmp_file;
+  const std::string& tmp_name = tmp_file.GetFilename();
+  size_t tmp_last_slash = tmp_name.rfind('/');
+  std::string tmp_dir = tmp_name.substr(0, tmp_last_slash + 1);
+  ScratchFile profile_file;
+
+  std::vector<std::string> dexlayout_args =
+      { "-i",
+        "-v",
+        "-w", tmp_dir,
+        "-o", tmp_name,
+        "-p", profile_file.GetFilename(),
+        temp_dex.GetFilename()
+      };
+  // -v makes sure that the layout did not corrupt the dex file.
+  ASSERT_TRUE(DexLayoutExec(&temp_dex,
+                            /*dex_filename*/ nullptr,
+                            &profile_file,
+                            dexlayout_args));
+
+  std::string output_dex = temp_dex.GetFilename() + ".new";
+  std::vector<std::string> rm_exec_argv =
+      { "/bin/rm", output_dex };
+  ASSERT_TRUE(::art::Exec(rm_exec_argv, &error_msg));
+}
+
 }  // namespace art
