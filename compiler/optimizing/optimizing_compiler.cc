@@ -22,23 +22,6 @@
 
 #include <stdint.h>
 
-#ifdef ART_ENABLE_CODEGEN_arm64
-#include "instruction_simplifier_arm64.h"
-#endif
-
-#ifdef ART_ENABLE_CODEGEN_mips
-#include "instruction_simplifier_mips.h"
-#include "pc_relative_fixups_mips.h"
-#endif
-
-#ifdef ART_ENABLE_CODEGEN_x86
-#include "pc_relative_fixups_x86.h"
-#endif
-
-#if defined(ART_ENABLE_CODEGEN_x86) || defined(ART_ENABLE_CODEGEN_x86_64)
-#include "x86_memory_gen.h"
-#endif
-
 #include "art_method-inl.h"
 #include "base/arena_allocator.h"
 #include "base/arena_containers.h"
@@ -47,16 +30,10 @@
 #include "base/mutex.h"
 #include "base/scoped_arena_allocator.h"
 #include "base/timing_logger.h"
-#include "bounds_check_elimination.h"
 #include "builder.h"
-#include "cha_guard_optimization.h"
 #include "code_generator.h"
-#include "code_sinking.h"
 #include "compiled_method.h"
 #include "compiler.h"
-#include "constant_folding.h"
-#include "constructor_fence_redundancy_elimination.h"
-#include "dead_code_elimination.h"
 #include "debug/elf_debug_writer.h"
 #include "debug/method_debug_info.h"
 #include "dex/verification_results.h"
@@ -67,31 +44,19 @@
 #include "driver/dex_compilation_unit.h"
 #include "graph_checker.h"
 #include "graph_visualizer.h"
-#include "gvn.h"
-#include "induction_var_analysis.h"
 #include "inliner.h"
-#include "instruction_simplifier.h"
-#include "instruction_simplifier_arm.h"
-#include "intrinsics.h"
 #include "jit/debugger_interface.h"
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"
 #include "jit/jit_logger.h"
 #include "jni/quick/jni_compiler.h"
-#include "licm.h"
 #include "linker/linker_patch.h"
-#include "load_store_analysis.h"
-#include "load_store_elimination.h"
-#include "loop_optimization.h"
 #include "nodes.h"
 #include "oat_quick_method_header.h"
 #include "prepare_for_register_allocation.h"
 #include "reference_type_propagation.h"
 #include "register_allocator_linear_scan.h"
-#include "scheduler.h"
 #include "select_generator.h"
-#include "sharpening.h"
-#include "side_effects_analysis.h"
 #include "ssa_builder.h"
 #include "ssa_liveness_analysis.h"
 #include "ssa_phi_elimination.h"
@@ -335,21 +300,52 @@ class OptimizingCompiler FINAL : public Compiler {
  private:
   void RunOptimizations(HGraph* graph,
                         CodeGenerator* codegen,
-                        CompilerDriver* driver,
+                        const DexCompilationUnit& dex_compilation_unit,
+                        PassObserver* pass_observer,
+                        VariableSizedHandleScope* handles,
+                        const OptimizationDef definitions[],
+                        size_t length) const {
+    // Convert definitions to optimization passes.
+    ArenaVector<HOptimization*> optimizations = ConstructOptimizations(
+        definitions,
+        length,
+        graph->GetAllocator(),
+        graph,
+        compilation_stats_.get(),
+        codegen,
+        GetCompilerDriver(),
+        dex_compilation_unit,
+        handles);
+    DCHECK_EQ(length, optimizations.size());
+    // Run the optimization passes one by one.
+    for (size_t i = 0; i < length; ++i) {
+      PassScope scope(optimizations[i]->GetPassName(), pass_observer);
+      optimizations[i]->Run();
+    }
+  }
+
+  template <size_t length> void RunOptimizations(
+      HGraph* graph,
+      CodeGenerator* codegen,
+      const DexCompilationUnit& dex_compilation_unit,
+      PassObserver* pass_observer,
+      VariableSizedHandleScope* handles,
+      const OptimizationDef (&definitions)[length]) const {
+    RunOptimizations(
+        graph, codegen, dex_compilation_unit, pass_observer, handles, definitions, length);
+  }
+
+  void RunOptimizations(HGraph* graph,
+                        CodeGenerator* codegen,
                         const DexCompilationUnit& dex_compilation_unit,
                         PassObserver* pass_observer,
                         VariableSizedHandleScope* handles) const;
-
-  void RunOptimizations(HOptimization* optimizations[],
-                        size_t length,
-                        PassObserver* pass_observer) const;
 
  private:
   // Create a 'CompiledMethod' for an optimized graph.
   CompiledMethod* Emit(ArenaAllocator* allocator,
                        CodeVectorAllocator* code_allocator,
                        CodeGenerator* codegen,
-                       CompilerDriver* driver,
                        const DexFile::CodeItem* item) const;
 
   // Try compiling a method and return the code generator used for
@@ -376,15 +372,15 @@ class OptimizingCompiler FINAL : public Compiler {
 
   void MaybeRunInliner(HGraph* graph,
                        CodeGenerator* codegen,
-                       CompilerDriver* driver,
                        const DexCompilationUnit& dex_compilation_unit,
                        PassObserver* pass_observer,
                        VariableSizedHandleScope* handles) const;
 
-  void RunArchOptimizations(InstructionSet instruction_set,
-                            HGraph* graph,
+  void RunArchOptimizations(HGraph* graph,
                             CodeGenerator* codegen,
-                            PassObserver* pass_observer) const;
+                            const DexCompilationUnit& dex_compilation_unit,
+                            PassObserver* pass_observer,
+                            VariableSizedHandleScope* handles) const;
 
   std::unique_ptr<OptimizingCompilerStats> compilation_stats_;
 
@@ -440,299 +436,130 @@ static bool IsInstructionSetSupported(InstructionSet instruction_set) {
       || instruction_set == InstructionSet::kX86_64;
 }
 
-// Strip pass name suffix to get optimization name.
-static std::string ConvertPassNameToOptimizationName(const std::string& pass_name) {
-  size_t pos = pass_name.find(kPassNameSeparator);
-  return pos == std::string::npos ? pass_name : pass_name.substr(0, pos);
-}
-
-static HOptimization* BuildOptimization(
-    const std::string& pass_name,
-    ArenaAllocator* allocator,
-    HGraph* graph,
-    OptimizingCompilerStats* stats,
-    CodeGenerator* codegen,
-    CompilerDriver* driver,
-    const DexCompilationUnit& dex_compilation_unit,
-    VariableSizedHandleScope* handles,
-    SideEffectsAnalysis* most_recent_side_effects,
-    HInductionVarAnalysis* most_recent_induction,
-    LoadStoreAnalysis* most_recent_lsa) {
-  std::string opt_name = ConvertPassNameToOptimizationName(pass_name);
-  if (opt_name == BoundsCheckElimination::kBoundsCheckEliminationPassName) {
-    CHECK(most_recent_side_effects != nullptr && most_recent_induction != nullptr);
-    return new (allocator) BoundsCheckElimination(graph,
-                                                  *most_recent_side_effects,
-                                                  most_recent_induction);
-  } else if (opt_name == GVNOptimization::kGlobalValueNumberingPassName) {
-    CHECK(most_recent_side_effects != nullptr);
-    return new (allocator) GVNOptimization(graph, *most_recent_side_effects, pass_name.c_str());
-  } else if (opt_name == HConstantFolding::kConstantFoldingPassName) {
-    return new (allocator) HConstantFolding(graph, pass_name.c_str());
-  } else if (opt_name == HDeadCodeElimination::kDeadCodeEliminationPassName) {
-    return new (allocator) HDeadCodeElimination(graph, stats, pass_name.c_str());
-  } else if (opt_name == HInliner::kInlinerPassName) {
-    size_t number_of_dex_registers = dex_compilation_unit.GetCodeItem()->registers_size_;
-    return new (allocator) HInliner(graph,                   // outer_graph
-                                    graph,                   // outermost_graph
-                                    codegen,
-                                    dex_compilation_unit,    // outer_compilation_unit
-                                    dex_compilation_unit,    // outermost_compilation_unit
-                                    driver,
-                                    handles,
-                                    stats,
-                                    number_of_dex_registers,
-                                    /* total_number_of_instructions */ 0,
-                                    /* parent */ nullptr);
-  } else if (opt_name == HSharpening::kSharpeningPassName) {
-    return new (allocator) HSharpening(graph, codegen, dex_compilation_unit, driver, handles);
-  } else if (opt_name == HSelectGenerator::kSelectGeneratorPassName) {
-    return new (allocator) HSelectGenerator(graph, handles, stats);
-  } else if (opt_name == HInductionVarAnalysis::kInductionPassName) {
-    return new (allocator) HInductionVarAnalysis(graph);
-  } else if (opt_name == InstructionSimplifier::kInstructionSimplifierPassName) {
-    return new (allocator) InstructionSimplifier(graph, codegen, driver, stats, pass_name.c_str());
-  } else if (opt_name == IntrinsicsRecognizer::kIntrinsicsRecognizerPassName) {
-    return new (allocator) IntrinsicsRecognizer(graph, stats);
-  } else if (opt_name == LICM::kLoopInvariantCodeMotionPassName) {
-    CHECK(most_recent_side_effects != nullptr);
-    return new (allocator) LICM(graph, *most_recent_side_effects, stats);
-  } else if (opt_name == LoadStoreAnalysis::kLoadStoreAnalysisPassName) {
-    return new (allocator) LoadStoreAnalysis(graph);
-  } else if (opt_name == LoadStoreElimination::kLoadStoreEliminationPassName) {
-    CHECK(most_recent_side_effects != nullptr);
-    CHECK(most_recent_lsa != nullptr);
-    return new (allocator) LoadStoreElimination(graph,
-                                                *most_recent_side_effects,
-                                                *most_recent_lsa, stats);
-  } else if (opt_name == SideEffectsAnalysis::kSideEffectsAnalysisPassName) {
-    return new (allocator) SideEffectsAnalysis(graph);
-  } else if (opt_name == HLoopOptimization::kLoopOptimizationPassName) {
-    return new (allocator) HLoopOptimization(graph, driver, most_recent_induction, stats);
-  } else if (opt_name == CHAGuardOptimization::kCHAGuardOptimizationPassName) {
-    return new (allocator) CHAGuardOptimization(graph);
-  } else if (opt_name == CodeSinking::kCodeSinkingPassName) {
-    return new (allocator) CodeSinking(graph, stats);
-  } else if (opt_name == ConstructorFenceRedundancyElimination::kPassName) {
-    return new (allocator) ConstructorFenceRedundancyElimination(graph, stats);
-#ifdef ART_ENABLE_CODEGEN_arm
-  } else if (opt_name == arm::InstructionSimplifierArm::kInstructionSimplifierArmPassName) {
-    return new (allocator) arm::InstructionSimplifierArm(graph, stats);
-#endif
-#ifdef ART_ENABLE_CODEGEN_arm64
-  } else if (opt_name == arm64::InstructionSimplifierArm64::kInstructionSimplifierArm64PassName) {
-    return new (allocator) arm64::InstructionSimplifierArm64(graph, stats);
-#endif
-#ifdef ART_ENABLE_CODEGEN_mips
-  } else if (opt_name == mips::PcRelativeFixups::kPcRelativeFixupsMipsPassName) {
-    return new (allocator) mips::PcRelativeFixups(graph, codegen, stats);
-  } else if (opt_name == mips::InstructionSimplifierMips::kInstructionSimplifierMipsPassName) {
-    return new (allocator) mips::InstructionSimplifierMips(graph, codegen, stats);
-#endif
-#ifdef ART_ENABLE_CODEGEN_x86
-  } else if (opt_name == x86::PcRelativeFixups::kPcRelativeFixupsX86PassName) {
-    return new (allocator) x86::PcRelativeFixups(graph, codegen, stats);
-  } else if (opt_name == x86::X86MemoryOperandGeneration::kX86MemoryOperandGenerationPassName) {
-    return new (allocator) x86::X86MemoryOperandGeneration(graph, codegen, stats);
-#endif
-  }
-  return nullptr;
-}
-
-static ArenaVector<HOptimization*> BuildOptimizations(
-    const std::vector<std::string>& pass_names,
-    ArenaAllocator* allocator,
-    HGraph* graph,
-    OptimizingCompilerStats* stats,
-    CodeGenerator* codegen,
-    CompilerDriver* driver,
-    const DexCompilationUnit& dex_compilation_unit,
-    VariableSizedHandleScope* handles) {
-  // Few HOptimizations constructors require SideEffectsAnalysis or HInductionVarAnalysis
-  // instances. This method assumes that each of them expects the nearest instance preceeding it
-  // in the pass name list.
-  SideEffectsAnalysis* most_recent_side_effects = nullptr;
-  HInductionVarAnalysis* most_recent_induction = nullptr;
-  LoadStoreAnalysis* most_recent_lsa = nullptr;
-  ArenaVector<HOptimization*> ret(allocator->Adapter());
-  for (const std::string& pass_name : pass_names) {
-    HOptimization* opt = BuildOptimization(
-        pass_name,
-        allocator,
-        graph,
-        stats,
-        codegen,
-        driver,
-        dex_compilation_unit,
-        handles,
-        most_recent_side_effects,
-        most_recent_induction,
-        most_recent_lsa);
-    CHECK(opt != nullptr) << "Couldn't build optimization: \"" << pass_name << "\"";
-    ret.push_back(opt);
-
-    std::string opt_name = ConvertPassNameToOptimizationName(pass_name);
-    if (opt_name == SideEffectsAnalysis::kSideEffectsAnalysisPassName) {
-      most_recent_side_effects = down_cast<SideEffectsAnalysis*>(opt);
-    } else if (opt_name == HInductionVarAnalysis::kInductionPassName) {
-      most_recent_induction = down_cast<HInductionVarAnalysis*>(opt);
-    } else if (opt_name == LoadStoreAnalysis::kLoadStoreAnalysisPassName) {
-      most_recent_lsa = down_cast<LoadStoreAnalysis*>(opt);
-    }
-  }
-  return ret;
-}
-
-void OptimizingCompiler::RunOptimizations(HOptimization* optimizations[],
-                                          size_t length,
-                                          PassObserver* pass_observer) const {
-  for (size_t i = 0; i < length; ++i) {
-    PassScope scope(optimizations[i]->GetPassName(), pass_observer);
-    optimizations[i]->Run();
-  }
-}
-
 void OptimizingCompiler::MaybeRunInliner(HGraph* graph,
                                          CodeGenerator* codegen,
-                                         CompilerDriver* driver,
                                          const DexCompilationUnit& dex_compilation_unit,
                                          PassObserver* pass_observer,
                                          VariableSizedHandleScope* handles) const {
-  OptimizingCompilerStats* stats = compilation_stats_.get();
-  const CompilerOptions& compiler_options = driver->GetCompilerOptions();
+  const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
   bool should_inline = (compiler_options.GetInlineMaxCodeUnits() > 0);
   if (!should_inline) {
     return;
   }
-  size_t number_of_dex_registers = dex_compilation_unit.GetCodeItem()->registers_size_;
-  HInliner* inliner = new (graph->GetAllocator()) HInliner(
-      graph,                   // outer_graph
-      graph,                   // outermost_graph
-      codegen,
-      dex_compilation_unit,    // outer_compilation_unit
-      dex_compilation_unit,    // outermost_compilation_unit
-      driver,
-      handles,
-      stats,
-      number_of_dex_registers,
-      /* total_number_of_instructions */ 0,
-      /* parent */ nullptr);
-  HOptimization* optimizations[] = { inliner };
-
-  RunOptimizations(optimizations, arraysize(optimizations), pass_observer);
+  OptimizationDef optimizations[] = {
+    OptDef(OptimizationPass::kInliner)
+  };
+  RunOptimizations(graph,
+                   codegen,
+                   dex_compilation_unit,
+                   pass_observer,
+                   handles,
+                   optimizations);
 }
 
-void OptimizingCompiler::RunArchOptimizations(InstructionSet instruction_set,
-                                              HGraph* graph,
+void OptimizingCompiler::RunArchOptimizations(HGraph* graph,
                                               CodeGenerator* codegen,
-                                              PassObserver* pass_observer) const {
-  UNUSED(codegen);  // To avoid compilation error when compiling for svelte
-  OptimizingCompilerStats* stats = compilation_stats_.get();
-  ArenaAllocator* allocator = graph->GetAllocator();
-  switch (instruction_set) {
+                                              const DexCompilationUnit& dex_compilation_unit,
+                                              PassObserver* pass_observer,
+                                              VariableSizedHandleScope* handles) const {
+  switch (GetCompilerDriver()->GetInstructionSet()) {
 #if defined(ART_ENABLE_CODEGEN_arm)
     case InstructionSet::kThumb2:
     case InstructionSet::kArm: {
-      arm::InstructionSimplifierArm* simplifier =
-          new (allocator) arm::InstructionSimplifierArm(graph, stats);
-      SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
-      GVNOptimization* gvn =
-          new (allocator) GVNOptimization(graph, *side_effects, "GVN$after_arch");
-      HInstructionScheduling* scheduling =
-          new (allocator) HInstructionScheduling(graph, instruction_set, codegen);
-      HOptimization* arm_optimizations[] = {
-        simplifier,
-        side_effects,
-        gvn,
-        scheduling,
+      OptimizationDef arm_optimizations[] = {
+        OptDef(OptimizationPass::kInstructionSimplifierArm),
+        OptDef(OptimizationPass::kSideEffectsAnalysis),
+        OptDef(OptimizationPass::kGlobalValueNumbering, "GVN$after_arch"),
+        OptDef(OptimizationPass::kScheduling)
       };
-      RunOptimizations(arm_optimizations, arraysize(arm_optimizations), pass_observer);
+      RunOptimizations(graph,
+                       codegen,
+                       dex_compilation_unit,
+                       pass_observer,
+                       handles,
+                       arm_optimizations);
       break;
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_arm64
     case InstructionSet::kArm64: {
-      arm64::InstructionSimplifierArm64* simplifier =
-          new (allocator) arm64::InstructionSimplifierArm64(graph, stats);
-      SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
-      GVNOptimization* gvn =
-          new (allocator) GVNOptimization(graph, *side_effects, "GVN$after_arch");
-      HInstructionScheduling* scheduling =
-          new (allocator) HInstructionScheduling(graph, instruction_set);
-      HOptimization* arm64_optimizations[] = {
-        simplifier,
-        side_effects,
-        gvn,
-        scheduling,
+      OptimizationDef arm64_optimizations[] = {
+        OptDef(OptimizationPass::kInstructionSimplifierArm64),
+        OptDef(OptimizationPass::kSideEffectsAnalysis),
+        OptDef(OptimizationPass::kGlobalValueNumbering, "GVN$after_arch"),
+        OptDef(OptimizationPass::kScheduling)
       };
-      RunOptimizations(arm64_optimizations, arraysize(arm64_optimizations), pass_observer);
+      RunOptimizations(graph,
+                       codegen,
+                       dex_compilation_unit,
+                       pass_observer,
+                       handles,
+                       arm64_optimizations);
       break;
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips
     case InstructionSet::kMips: {
-      mips::InstructionSimplifierMips* simplifier =
-          new (allocator) mips::InstructionSimplifierMips(graph, codegen, stats);
-      SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
-      GVNOptimization* gvn =
-          new (allocator) GVNOptimization(graph, *side_effects, "GVN$after_arch");
-      mips::PcRelativeFixups* pc_relative_fixups =
-          new (allocator) mips::PcRelativeFixups(graph, codegen, stats);
-      HOptimization* mips_optimizations[] = {
-          simplifier,
-          side_effects,
-          gvn,
-          pc_relative_fixups,
+      OptimizationDef mips_optimizations[] = {
+        OptDef(OptimizationPass::kInstructionSimplifierMips),
+        OptDef(OptimizationPass::kSideEffectsAnalysis),
+        OptDef(OptimizationPass::kGlobalValueNumbering, "GVN$after_arch"),
+        OptDef(OptimizationPass::kPcRelativeFixupsMips)
       };
-      RunOptimizations(mips_optimizations, arraysize(mips_optimizations), pass_observer);
+      RunOptimizations(graph,
+                       codegen,
+                       dex_compilation_unit,
+                       pass_observer,
+                       handles,
+                       mips_optimizations);
       break;
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips64
     case InstructionSet::kMips64: {
-      SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
-      GVNOptimization* gvn =
-          new (allocator) GVNOptimization(graph, *side_effects, "GVN$after_arch");
-      HOptimization* mips64_optimizations[] = {
-          side_effects,
-          gvn,
+      OptimizationDef mips64_optimizations[] = {
+        OptDef(OptimizationPass::kSideEffectsAnalysis),
+        OptDef(OptimizationPass::kGlobalValueNumbering, "GVN$after_arch")
       };
-      RunOptimizations(mips64_optimizations, arraysize(mips64_optimizations), pass_observer);
+      RunOptimizations(graph,
+                       codegen,
+                       dex_compilation_unit,
+                       pass_observer,
+                       handles,
+                       mips64_optimizations);
       break;
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86
     case InstructionSet::kX86: {
-      SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
-      GVNOptimization* gvn =
-          new (allocator) GVNOptimization(graph, *side_effects, "GVN$after_arch");
-      x86::PcRelativeFixups* pc_relative_fixups =
-          new (allocator) x86::PcRelativeFixups(graph, codegen, stats);
-      x86::X86MemoryOperandGeneration* memory_gen =
-          new (allocator) x86::X86MemoryOperandGeneration(graph, codegen, stats);
-      HOptimization* x86_optimizations[] = {
-          side_effects,
-          gvn,
-          pc_relative_fixups,
-          memory_gen
+      OptimizationDef x86_optimizations[] = {
+        OptDef(OptimizationPass::kSideEffectsAnalysis),
+        OptDef(OptimizationPass::kGlobalValueNumbering, "GVN$after_arch"),
+        OptDef(OptimizationPass::kPcRelativeFixupsX86),
+        OptDef(OptimizationPass::kX86MemoryOperandGeneration)
       };
-      RunOptimizations(x86_optimizations, arraysize(x86_optimizations), pass_observer);
+      RunOptimizations(graph,
+                       codegen,
+                       dex_compilation_unit,
+                       pass_observer,
+                       handles,
+                       x86_optimizations);
       break;
     }
 #endif
 #ifdef ART_ENABLE_CODEGEN_x86_64
     case InstructionSet::kX86_64: {
-      SideEffectsAnalysis* side_effects = new (allocator) SideEffectsAnalysis(graph);
-      GVNOptimization* gvn =
-          new (allocator) GVNOptimization(graph, *side_effects, "GVN$after_arch");
-      x86::X86MemoryOperandGeneration* memory_gen =
-          new (allocator) x86::X86MemoryOperandGeneration(graph, codegen, stats);
-      HOptimization* x86_64_optimizations[] = {
-          side_effects,
-          gvn,
-          memory_gen
+      OptimizationDef x86_64_optimizations[] = {
+        OptDef(OptimizationPass::kSideEffectsAnalysis),
+        OptDef(OptimizationPass::kGlobalValueNumbering, "GVN$after_arch"),
+        OptDef(OptimizationPass::kX86MemoryOperandGeneration)
       };
-      RunOptimizations(x86_64_optimizations, arraysize(x86_64_optimizations), pass_observer);
+      RunOptimizations(graph,
+                       codegen,
+                       dex_compilation_unit,
+                       pass_observer,
+                       handles,
+                       x86_64_optimizations);
       break;
     }
 #endif
@@ -768,110 +595,93 @@ static void AllocateRegisters(HGraph* graph,
   }
 }
 
+// Strip pass name suffix to get optimization name.
+static std::string ConvertPassNameToOptimizationName(const std::string& pass_name) {
+  size_t pos = pass_name.find(kPassNameSeparator);
+  return pos == std::string::npos ? pass_name : pass_name.substr(0, pos);
+}
+
 void OptimizingCompiler::RunOptimizations(HGraph* graph,
                                           CodeGenerator* codegen,
-                                          CompilerDriver* driver,
                                           const DexCompilationUnit& dex_compilation_unit,
                                           PassObserver* pass_observer,
                                           VariableSizedHandleScope* handles) const {
-  OptimizingCompilerStats* stats = compilation_stats_.get();
-  ArenaAllocator* allocator = graph->GetAllocator();
-  if (driver->GetCompilerOptions().GetPassesToRun() != nullptr) {
-    ArenaVector<HOptimization*> optimizations = BuildOptimizations(
-        *driver->GetCompilerOptions().GetPassesToRun(),
-        allocator,
-        graph,
-        stats,
-        codegen,
-        driver,
-        dex_compilation_unit,
-        handles);
-    RunOptimizations(optimizations.data(), optimizations.size(), pass_observer);
+  const std::vector<std::string>* pass_names =
+      GetCompilerDriver()->GetCompilerOptions().GetPassesToRun();
+  if (pass_names != nullptr) {
+    // If passes were defined on command-line, build the optimization
+    // passes and run these instead of the built-in optimizations.
+    const size_t length = pass_names->size();
+    std::vector<OptimizationDef> optimizations;
+    for (const std::string& pass_name : *pass_names) {
+      std::string opt_name = ConvertPassNameToOptimizationName(pass_name);
+      optimizations.push_back(OptDef(OptimizationPassByName(opt_name.c_str()), pass_name.c_str()));
+    }
+    RunOptimizations(graph,
+                     codegen,
+                     dex_compilation_unit,
+                     pass_observer,
+                     handles,
+                     optimizations.data(),
+                     length);
     return;
   }
 
-  HDeadCodeElimination* dce1 = new (allocator) HDeadCodeElimination(
-      graph, stats, "dead_code_elimination$initial");
-  HDeadCodeElimination* dce2 = new (allocator) HDeadCodeElimination(
-      graph, stats, "dead_code_elimination$after_inlining");
-  HDeadCodeElimination* dce3 = new (allocator) HDeadCodeElimination(
-      graph, stats, "dead_code_elimination$final");
-  HConstantFolding* fold1 = new (allocator) HConstantFolding(graph, "constant_folding");
-  InstructionSimplifier* simplify1 = new (allocator) InstructionSimplifier(
-      graph, codegen, driver, stats);
-  HSelectGenerator* select_generator = new (allocator) HSelectGenerator(graph, handles, stats);
-  HConstantFolding* fold2 = new (allocator) HConstantFolding(
-      graph, "constant_folding$after_inlining");
-  HConstantFolding* fold3 = new (allocator) HConstantFolding(graph, "constant_folding$after_bce");
-  SideEffectsAnalysis* side_effects1 = new (allocator) SideEffectsAnalysis(
-      graph, "side_effects$before_gvn");
-  SideEffectsAnalysis* side_effects2 = new (allocator) SideEffectsAnalysis(
-      graph, "side_effects$before_lse");
-  GVNOptimization* gvn = new (allocator) GVNOptimization(graph, *side_effects1);
-  LICM* licm = new (allocator) LICM(graph, *side_effects1, stats);
-  HInductionVarAnalysis* induction = new (allocator) HInductionVarAnalysis(graph);
-  BoundsCheckElimination* bce =
-      new (allocator) BoundsCheckElimination(graph, *side_effects1, induction);
-  HLoopOptimization* loop = new (allocator) HLoopOptimization(graph, driver, induction, stats);
-  LoadStoreAnalysis* lsa = new (allocator) LoadStoreAnalysis(graph);
-  LoadStoreElimination* lse =
-      new (allocator) LoadStoreElimination(graph, *side_effects2, *lsa, stats);
-  HSharpening* sharpening = new (allocator) HSharpening(
-      graph, codegen, dex_compilation_unit, driver, handles);
-  InstructionSimplifier* simplify2 = new (allocator) InstructionSimplifier(
-      graph, codegen, driver, stats, "instruction_simplifier$after_inlining");
-  InstructionSimplifier* simplify3 = new (allocator) InstructionSimplifier(
-      graph, codegen, driver, stats, "instruction_simplifier$after_bce");
-  InstructionSimplifier* simplify4 = new (allocator) InstructionSimplifier(
-      graph, codegen, driver, stats, "instruction_simplifier$before_codegen");
-  IntrinsicsRecognizer* intrinsics = new (allocator) IntrinsicsRecognizer(graph, stats);
-  CHAGuardOptimization* cha_guard = new (allocator) CHAGuardOptimization(graph);
-  CodeSinking* code_sinking = new (allocator) CodeSinking(graph, stats);
-  ConstructorFenceRedundancyElimination* cfre =
-      new (allocator) ConstructorFenceRedundancyElimination(graph, stats);
-
-  HOptimization* optimizations1[] = {
-    intrinsics,
-    sharpening,
-    fold1,
-    simplify1,
-    dce1,
+  OptimizationDef optimizations1[] = {
+    OptDef(OptimizationPass::kIntrinsicsRecognizer),
+    OptDef(OptimizationPass::kSharpening),
+    OptDef(OptimizationPass::kConstantFolding),
+    OptDef(OptimizationPass::kInstructionSimplifier),
+    OptDef(OptimizationPass::kDeadCodeElimination, "dead_code_elimination$initial")
   };
-  RunOptimizations(optimizations1, arraysize(optimizations1), pass_observer);
+  RunOptimizations(graph,
+                   codegen,
+                   dex_compilation_unit,
+                   pass_observer,
+                   handles,
+                   optimizations1);
 
-  MaybeRunInliner(graph, codegen, driver, dex_compilation_unit, pass_observer, handles);
+  MaybeRunInliner(graph, codegen, dex_compilation_unit, pass_observer, handles);
 
-  HOptimization* optimizations2[] = {
+  OptimizationDef optimizations2[] = {
     // SelectGenerator depends on the InstructionSimplifier removing
     // redundant suspend checks to recognize empty blocks.
-    select_generator,
-    fold2,  // TODO: if we don't inline we can also skip fold2.
-    simplify2,
-    dce2,
-    side_effects1,
-    gvn,
-    licm,
-    induction,
-    bce,
-    loop,
-    fold3,  // evaluates code generated by dynamic bce
-    simplify3,
-    side_effects2,
-    lsa,
-    lse,
-    cha_guard,
-    dce3,
-    code_sinking,
+    OptDef(OptimizationPass::kSelectGenerator),
+    // TODO: if we don't inline we can also skip fold2.
+    OptDef(OptimizationPass::kConstantFolding,       "constant_folding$after_inlining"),
+    OptDef(OptimizationPass::kInstructionSimplifier, "instruction_simplifier$after_inlining"),
+    OptDef(OptimizationPass::kDeadCodeElimination,   "dead_code_elimination$after_inlining"),
+    OptDef(OptimizationPass::kSideEffectsAnalysis,   "side_effects$before_gvn"),
+    OptDef(OptimizationPass::kGlobalValueNumbering),
+    OptDef(OptimizationPass::kInvariantCodeMotion),
+    OptDef(OptimizationPass::kInductionVarAnalysis),
+    OptDef(OptimizationPass::kBoundsCheckElimination),
+    OptDef(OptimizationPass::kLoopOptimization),
+    // Evaluates code generated by dynamic bce.
+    OptDef(OptimizationPass::kConstantFolding,       "constant_folding$after_bce"),
+    OptDef(OptimizationPass::kInstructionSimplifier, "instruction_simplifier$after_bce"),
+    OptDef(OptimizationPass::kSideEffectsAnalysis,   "side_effects$before_lse"),
+    OptDef(OptimizationPass::kLoadStoreAnalysis),
+    OptDef(OptimizationPass::kLoadStoreElimination),
+    OptDef(OptimizationPass::kCHAGuardOptimization),
+    OptDef(OptimizationPass::kDeadCodeElimination,   "dead_code_elimination$final"),
+    OptDef(OptimizationPass::kCodeSinking),
     // The codegen has a few assumptions that only the instruction simplifier
     // can satisfy. For example, the code generator does not expect to see a
     // HTypeConversion from a type to the same type.
-    simplify4,
-    cfre,  // Eliminate constructor fences after code sinking to avoid
-           // complicated sinking logic to split a fence with many inputs.
+    OptDef(OptimizationPass::kInstructionSimplifier, "instruction_simplifier$before_codegen"),
+    // Eliminate constructor fences after code sinking to avoid
+    // complicated sinking logic to split a fence with many inputs.
+    OptDef(OptimizationPass::kConstructorFenceRedundancyElimination)
   };
-  RunOptimizations(optimizations2, arraysize(optimizations2), pass_observer);
+  RunOptimizations(graph,
+                   codegen,
+                   dex_compilation_unit,
+                   pass_observer,
+                   handles,
+                   optimizations2);
 
-  RunArchOptimizations(driver->GetInstructionSet(), graph, codegen, pass_observer);
+  RunArchOptimizations(graph, codegen, dex_compilation_unit, pass_observer, handles);
 }
 
 static ArenaVector<linker::LinkerPatch> EmitAndSortLinkerPatches(CodeGenerator* codegen) {
@@ -890,7 +700,6 @@ static ArenaVector<linker::LinkerPatch> EmitAndSortLinkerPatches(CodeGenerator* 
 CompiledMethod* OptimizingCompiler::Emit(ArenaAllocator* allocator,
                                          CodeVectorAllocator* code_allocator,
                                          CodeGenerator* codegen,
-                                         CompilerDriver* compiler_driver,
                                          const DexFile::CodeItem* code_item_for_osr_check) const {
   ArenaVector<linker::LinkerPatch> linker_patches = EmitAndSortLinkerPatches(codegen);
   ArenaVector<uint8_t> stack_map(allocator->Adapter(kArenaAllocStackMaps));
@@ -905,7 +714,7 @@ CompiledMethod* OptimizingCompiler::Emit(ArenaAllocator* allocator,
                           code_item_for_osr_check);
 
   CompiledMethod* compiled_method = CompiledMethod::SwapAllocCompiledMethod(
-      compiler_driver,
+      GetCompilerDriver(),
       codegen->GetInstructionSet(),
       ArrayRef<const uint8_t>(code_allocator->GetMemory()),
       // Follow Quick's behavior and set the frame size to zero if it is
@@ -1049,7 +858,6 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
 
   RunOptimizations(graph,
                    codegen.get(),
-                   compiler_driver,
                    dex_compilation_unit,
                    &pass_observer,
                    handles);
@@ -1140,20 +948,20 @@ CodeGenerator* OptimizingCompiler::TryCompileIntrinsic(
     builder.BuildIntrinsicGraph(method);
   }
 
-  OptimizingCompilerStats* stats = compilation_stats_.get();
-  InstructionSimplifier* simplify = new (allocator) InstructionSimplifier(
-      graph, codegen.get(), compiler_driver, stats);
-  IntrinsicsRecognizer* intrinsics = new (allocator) IntrinsicsRecognizer(graph, stats);
-
-  HOptimization* optimizations[] = {
-      intrinsics,
-      // Some intrinsics are converted to HIR by the simplifier and the codegen also
-      // has a few assumptions that only the instruction simplifier can satisfy.
-      simplify,
+  OptimizationDef optimizations[] = {
+    OptDef(OptimizationPass::kIntrinsicsRecognizer),
+    // Some intrinsics are converted to HIR by the simplifier and the codegen also
+    // has a few assumptions that only the instruction simplifier can satisfy.
+    OptDef(OptimizationPass::kInstructionSimplifier),
   };
-  RunOptimizations(optimizations, arraysize(optimizations), &pass_observer);
+  RunOptimizations(graph,
+                   codegen.get(),
+                   dex_compilation_unit,
+                   &pass_observer,
+                   handles,
+                   optimizations);
 
-  RunArchOptimizations(compiler_driver->GetInstructionSet(), graph, codegen.get(), &pass_observer);
+  RunArchOptimizations(graph, codegen.get(), dex_compilation_unit, &pass_observer, handles);
 
   AllocateRegisters(graph,
                     codegen.get(),
@@ -1243,7 +1051,6 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
       compiled_method = Emit(&allocator,
                              &code_allocator,
                              codegen.get(),
-                             compiler_driver,
                              compiled_intrinsic ? nullptr : code_item);
       if (compiled_intrinsic) {
         compiled_method->MarkAsIntrinsic();
@@ -1325,7 +1132,6 @@ CompiledMethod* OptimizingCompiler::JniCompile(uint32_t access_flags,
         CompiledMethod* compiled_method = Emit(&allocator,
                                                &code_allocator,
                                                codegen.get(),
-                                               GetCompilerDriver(),
                                                /* code_item_for_osr_check */ nullptr);
         compiled_method->MarkAsIntrinsic();
         return compiled_method;

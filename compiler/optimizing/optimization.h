@@ -23,6 +23,10 @@
 
 namespace art {
 
+class CodeGenerator;
+class CompilerDriver;
+class DexCompilationUnit;
+
 /**
  * Abstraction to implement an optimization pass.
  */
@@ -57,6 +61,81 @@ class HOptimization : public ArenaObject<kArenaAllocOptimization> {
 
   DISALLOW_COPY_AND_ASSIGN(HOptimization);
 };
+
+// Optimization passes that can be constructed by the helper method below. An enum
+// field is preferred over a string lookup at places where performance matters.
+// TODO: generate this table and lookup methods below automatically?
+enum class OptimizationPass {
+  kBoundsCheckElimination,
+  kCHAGuardOptimization,
+  kCodeSinking,
+  kConstantFolding,
+  kConstructorFenceRedundancyElimination,
+  kDeadCodeElimination,
+  kGlobalValueNumbering,
+  kInductionVarAnalysis,
+  kInliner,
+  kInstructionSimplifier,
+  kIntrinsicsRecognizer,
+  kInvariantCodeMotion,
+  kLoadStoreAnalysis,
+  kLoadStoreElimination,
+  kLoopOptimization,
+  kScheduling,
+  kSelectGenerator,
+  kSharpening,
+  kSideEffectsAnalysis,
+#ifdef ART_ENABLE_CODEGEN_arm
+  kInstructionSimplifierArm,
+#endif
+#ifdef ART_ENABLE_CODEGEN_arm64
+  kInstructionSimplifierArm64,
+#endif
+#ifdef ART_ENABLE_CODEGEN_mips
+  kPcRelativeFixupsMips,
+  kInstructionSimplifierMips,
+#endif
+#ifdef ART_ENABLE_CODEGEN_x86
+  kPcRelativeFixupsX86,
+#endif
+#if defined(ART_ENABLE_CODEGEN_x86) || defined(ART_ENABLE_CODEGEN_x86_64)
+  kX86MemoryOperandGeneration,
+#endif
+};
+
+// Lookup name of optimization pass.
+const char* OptimizationPassName(OptimizationPass pass);
+
+// Lookup optimization pass by name.
+OptimizationPass OptimizationPassByName(const std::string& name);
+
+// Optimization definition consisting of an optimization pass
+// and an optional alternative name (nullptr denotes default).
+typedef std::pair<OptimizationPass, const char*> OptimizationDef;
+
+// Helper method for optimization definition array entries.
+inline OptimizationDef OptDef(OptimizationPass pass, const char* name = nullptr) {
+  return std::make_pair(pass, name);
+}
+
+// Helper method to construct series of optimization passes.
+// The array should consist of the requested optimizations
+// and optional alternative names for repeated passes.
+// Example:
+//    { OptPass(kConstantFolding),
+//      OptPass(Inliner),
+//      OptPass(kConstantFolding, "constant_folding$after_inlining")
+//    }
+ArenaVector<HOptimization*> ConstructOptimizations(
+    const OptimizationDef definitions[],
+    size_t length,
+    ArenaAllocator* allocator,
+    HGraph* graph,
+    OptimizingCompilerStats* stats,
+    CodeGenerator* codegen,
+    CompilerDriver* driver,
+    const DexCompilationUnit& dex_compilation_unit,
+    VariableSizedHandleScope* handles);
 
 }  // namespace art
 

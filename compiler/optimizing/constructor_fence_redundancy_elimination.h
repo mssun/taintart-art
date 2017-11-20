@@ -48,12 +48,13 @@ namespace art {
 class ConstructorFenceRedundancyElimination : public HOptimization {
  public:
   ConstructorFenceRedundancyElimination(HGraph* graph,
-                                        OptimizingCompilerStats* stats)
-      : HOptimization(graph, kPassName, stats) {}
+                                        OptimizingCompilerStats* stats,
+                                        const char* name = kCFREPassName)
+      : HOptimization(graph, name, stats) {}
 
   void Run() OVERRIDE;
 
-  static constexpr const char* kPassName = "constructor_fence_redundancy_elimination";
+  static constexpr const char* kCFREPassName = "constructor_fence_redundancy_elimination";
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ConstructorFenceRedundancyElimination);
