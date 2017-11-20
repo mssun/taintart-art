@@ -65,7 +65,8 @@ class HSelectGenerator : public HOptimization {
  public:
   HSelectGenerator(HGraph* graph,
                    VariableSizedHandleScope* handles,
-                   OptimizingCompilerStats* stats);
+                   OptimizingCompilerStats* stats,
+                   const char* name = kSelectGeneratorPassName);
 
   void Run() OVERRIDE;
 

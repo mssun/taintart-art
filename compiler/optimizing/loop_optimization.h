@@ -37,7 +37,8 @@ class HLoopOptimization : public HOptimization {
   HLoopOptimization(HGraph* graph,
                     CompilerDriver* compiler_driver,
                     HInductionVarAnalysis* induction_analysis,
-                    OptimizingCompilerStats* stats);
+                    OptimizingCompilerStats* stats,
+                    const char* name = kLoopOptimizationPassName);
 
   void Run() OVERRIDE;
 

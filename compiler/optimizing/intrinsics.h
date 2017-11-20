@@ -37,8 +37,10 @@ static constexpr uint64_t kNanDouble = 0x7ff8000000000000;
 // Recognize intrinsics from HInvoke nodes.
 class IntrinsicsRecognizer : public HOptimization {
  public:
-  IntrinsicsRecognizer(HGraph* graph, OptimizingCompilerStats* stats)
-      : HOptimization(graph, kIntrinsicsRecognizerPassName, stats) {}
+  IntrinsicsRecognizer(HGraph* graph,
+                       OptimizingCompilerStats* stats,
+                       const char* name = kIntrinsicsRecognizerPassName)
+      : HOptimization(graph, name, stats) {}
 
   void Run() OVERRIDE;
 

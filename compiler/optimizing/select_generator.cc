@@ -24,8 +24,9 @@ static constexpr size_t kMaxInstructionsInBranch = 1u;
 
 HSelectGenerator::HSelectGenerator(HGraph* graph,
                                    VariableSizedHandleScope* handles,
-                                   OptimizingCompilerStats* stats)
-    : HOptimization(graph, kSelectGeneratorPassName, stats),
+                                   OptimizingCompilerStats* stats,
+                                   const char* name)
+    : HOptimization(graph, name, stats),
       handle_scope_(handles) {
 }
 
