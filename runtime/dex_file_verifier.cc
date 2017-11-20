@@ -471,7 +471,9 @@ bool DexFileVerifier::CheckMap() {
     if (IsDataSectionType(item_type)) {
       uint32_t icount = item->size_;
       if (UNLIKELY(icount > data_items_left)) {
-        ErrorStringPrintf("Too many items in data section: %ud", data_item_count + icount);
+        ErrorStringPrintf("Too many items in data section: %ud item_type %zx",
+                          data_item_count + icount,
+                          static_cast<size_t>(item_type));
         return false;
       }
       data_items_left -= icount;

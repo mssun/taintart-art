@@ -186,22 +186,28 @@ static bool GetIdsFromByteCode(Collections& collections,
   return has_id;
 }
 
-EncodedValue* Collections::ReadEncodedValue(const uint8_t** data) {
+EncodedValue* Collections::ReadEncodedValue(const DexFile& dex_file, const uint8_t** data) {
   const uint8_t encoded_value = *(*data)++;
   const uint8_t type = encoded_value & 0x1f;
   EncodedValue* item = new EncodedValue(type);
-  ReadEncodedValue(data, type, encoded_value >> 5, item);
+  ReadEncodedValue(dex_file, data, type, encoded_value >> 5, item);
   return item;
 }
 
-EncodedValue* Collections::ReadEncodedValue(const uint8_t** data, uint8_t type, uint8_t length) {
+EncodedValue* Collections::ReadEncodedValue(const DexFile& dex_file,
+                                            const uint8_t** data,
+                                            uint8_t type,
+                                            uint8_t length) {
   EncodedValue* item = new EncodedValue(type);
-  ReadEncodedValue(data, type, length, item);
+  ReadEncodedValue(dex_file, data, type, length, item);
   return item;
 }
 
-void Collections::ReadEncodedValue(
-    const uint8_t** data, uint8_t type, uint8_t length, EncodedValue* item) {
+void Collections::ReadEncodedValue(const DexFile& dex_file,
+                                   const uint8_t** data,
+                                   uint8_t type,
+                                   uint8_t length,
+                                   EncodedValue* item) {
   switch (type) {
     case DexFile::kDexAnnotationByte:
       item->SetByte(static_cast<int8_t>(ReadVarWidth(data, length, false)));
@@ -271,12 +277,17 @@ void Collections::ReadEncodedValue(
     }
     case DexFile::kDexAnnotationArray: {
       EncodedValueVector* values = new EncodedValueVector();
+      const uint32_t offset = *data - dex_file.Begin();
       const uint32_t size = DecodeUnsignedLeb128(data);
       // Decode all elements.
       for (uint32_t i = 0; i < size; i++) {
-        values->push_back(std::unique_ptr<EncodedValue>(ReadEncodedValue(data)));
+        values->push_back(std::unique_ptr<EncodedValue>(ReadEncodedValue(dex_file, data)));
       }
-      item->SetEncodedArray(new EncodedArrayItem(values));
+      EncodedArrayItem* array_item = new EncodedArrayItem(values);
+      if (eagerly_assign_offsets_) {
+        array_item->SetOffset(offset);
+      }
+      item->SetEncodedArray(array_item);
       break;
     }
     case DexFile::kDexAnnotationAnnotation: {
@@ -287,7 +298,7 @@ void Collections::ReadEncodedValue(
       for (uint32_t i = 0; i < size; i++) {
         const uint32_t name_index = DecodeUnsignedLeb128(data);
         elements->push_back(std::unique_ptr<AnnotationElement>(
-            new AnnotationElement(GetStringId(name_index), ReadEncodedValue(data))));
+            new AnnotationElement(GetStringId(name_index), ReadEncodedValue(dex_file, data))));
       }
       item->SetEncodedAnnotation(new EncodedAnnotation(GetTypeId(type_idx), elements));
       break;
@@ -305,16 +316,16 @@ void Collections::ReadEncodedValue(
 void Collections::CreateStringId(const DexFile& dex_file, uint32_t i) {
   const DexFile::StringId& disk_string_id = dex_file.GetStringId(dex::StringIndex(i));
   StringData* string_data = new StringData(dex_file.GetStringData(disk_string_id));
-  string_datas_.AddItem(string_data, disk_string_id.string_data_off_);
+  AddItem(string_datas_map_, string_datas_, string_data, disk_string_id.string_data_off_);
 
   StringId* string_id = new StringId(string_data);
-  string_ids_.AddIndexedItem(string_id, StringIdsOffset() + i * StringId::ItemSize(), i);
+  AddIndexedItem(string_ids_, string_id, StringIdsOffset() + i * StringId::ItemSize(), i);
 }
 
 void Collections::CreateTypeId(const DexFile& dex_file, uint32_t i) {
   const DexFile::TypeId& disk_type_id = dex_file.GetTypeId(dex::TypeIndex(i));
   TypeId* type_id = new TypeId(GetStringId(disk_type_id.descriptor_idx_.index_));
-  type_ids_.AddIndexedItem(type_id, TypeIdsOffset() + i * TypeId::ItemSize(), i);
+  AddIndexedItem(type_ids_, type_id, TypeIdsOffset() + i * TypeId::ItemSize(), i);
 }
 
 void Collections::CreateProtoId(const DexFile& dex_file, uint32_t i) {
@@ -325,7 +336,7 @@ void Collections::CreateProtoId(const DexFile& dex_file, uint32_t i) {
   ProtoId* proto_id = new ProtoId(GetStringId(disk_proto_id.shorty_idx_.index_),
                                   GetTypeId(disk_proto_id.return_type_idx_.index_),
                                   parameter_type_list);
-  proto_ids_.AddIndexedItem(proto_id, ProtoIdsOffset() + i * ProtoId::ItemSize(), i);
+  AddIndexedItem(proto_ids_, proto_id, ProtoIdsOffset() + i * ProtoId::ItemSize(), i);
 }
 
 void Collections::CreateFieldId(const DexFile& dex_file, uint32_t i) {
@@ -333,7 +344,7 @@ void Collections::CreateFieldId(const DexFile& dex_file, uint32_t i) {
   FieldId* field_id = new FieldId(GetTypeId(disk_field_id.class_idx_.index_),
                                   GetTypeId(disk_field_id.type_idx_.index_),
                                   GetStringId(disk_field_id.name_idx_.index_));
-  field_ids_.AddIndexedItem(field_id, FieldIdsOffset() + i * FieldId::ItemSize(), i);
+  AddIndexedItem(field_ids_, field_id, FieldIdsOffset() + i * FieldId::ItemSize(), i);
 }
 
 void Collections::CreateMethodId(const DexFile& dex_file, uint32_t i) {
@@ -341,7 +352,7 @@ void Collections::CreateMethodId(const DexFile& dex_file, uint32_t i) {
   MethodId* method_id = new MethodId(GetTypeId(disk_method_id.class_idx_.index_),
                                      GetProtoId(disk_method_id.proto_idx_),
                                      GetStringId(disk_method_id.name_idx_.index_));
-  method_ids_.AddIndexedItem(method_id, MethodIdsOffset() + i * MethodId::ItemSize(), i);
+  AddIndexedItem(method_ids_, method_id, MethodIdsOffset() + i * MethodId::ItemSize(), i);
 }
 
 void Collections::CreateClassDef(const DexFile& dex_file, uint32_t i) {
@@ -365,48 +376,48 @@ void Collections::CreateClassDef(const DexFile& dex_file, uint32_t i) {
   // Static field initializers.
   const uint8_t* static_data = dex_file.GetEncodedStaticFieldValuesArray(disk_class_def);
   EncodedArrayItem* static_values =
-      CreateEncodedArrayItem(static_data, disk_class_def.static_values_off_);
+      CreateEncodedArrayItem(dex_file, static_data, disk_class_def.static_values_off_);
   ClassData* class_data = CreateClassData(
       dex_file, dex_file.GetClassData(disk_class_def), disk_class_def.class_data_off_);
   ClassDef* class_def = new ClassDef(class_type, access_flags, superclass, interfaces_type_list,
                                      source_file, annotations, static_values, class_data);
-  class_defs_.AddIndexedItem(class_def, ClassDefsOffset() + i * ClassDef::ItemSize(), i);
+  AddIndexedItem(class_defs_, class_def, ClassDefsOffset() + i * ClassDef::ItemSize(), i);
 }
 
 TypeList* Collections::CreateTypeList(const DexFile::TypeList* dex_type_list, uint32_t offset) {
   if (dex_type_list == nullptr) {
     return nullptr;
   }
-  auto found_type_list = TypeLists().find(offset);
-  if (found_type_list != TypeLists().end()) {
-    return found_type_list->second.get();
+  TypeList* type_list = type_lists_map_.GetExistingObject(offset);
+  if (type_list == nullptr) {
+    TypeIdVector* type_vector = new TypeIdVector();
+    uint32_t size = dex_type_list->Size();
+    for (uint32_t index = 0; index < size; ++index) {
+      type_vector->push_back(GetTypeId(dex_type_list->GetTypeItem(index).type_idx_.index_));
+    }
+    type_list = new TypeList(type_vector);
+    AddItem(type_lists_map_, type_lists_, type_list, offset);
   }
-  TypeIdVector* type_vector = new TypeIdVector();
-  uint32_t size = dex_type_list->Size();
-  for (uint32_t index = 0; index < size; ++index) {
-    type_vector->push_back(GetTypeId(dex_type_list->GetTypeItem(index).type_idx_.index_));
-  }
-  TypeList* new_type_list = new TypeList(type_vector);
-  type_lists_.AddItem(new_type_list, offset);
-  return new_type_list;
+  return type_list;
 }
 
-EncodedArrayItem* Collections::CreateEncodedArrayItem(const uint8_t* static_data, uint32_t offset) {
+EncodedArrayItem* Collections::CreateEncodedArrayItem(const DexFile& dex_file,
+                                                      const uint8_t* static_data,
+                                                      uint32_t offset) {
   if (static_data == nullptr) {
     return nullptr;
   }
-  auto found_encoded_array_item = EncodedArrayItems().find(offset);
-  if (found_encoded_array_item != EncodedArrayItems().end()) {
-    return found_encoded_array_item->second.get();
+  EncodedArrayItem* encoded_array_item = encoded_array_items_map_.GetExistingObject(offset);
+  if (encoded_array_item == nullptr) {
+    uint32_t size = DecodeUnsignedLeb128(&static_data);
+    EncodedValueVector* values = new EncodedValueVector();
+    for (uint32_t i = 0; i < size; ++i) {
+      values->push_back(std::unique_ptr<EncodedValue>(ReadEncodedValue(dex_file, &static_data)));
+    }
+    // TODO: Calculate the size of the encoded array.
+    encoded_array_item = new EncodedArrayItem(values);
+    AddItem(encoded_array_items_map_, encoded_array_items_, encoded_array_item, offset);
   }
-  uint32_t size = DecodeUnsignedLeb128(&static_data);
-  EncodedValueVector* values = new EncodedValueVector();
-  for (uint32_t i = 0; i < size; ++i) {
-    values->push_back(std::unique_ptr<EncodedValue>(ReadEncodedValue(&static_data)));
-  }
-  // TODO: Calculate the size of the encoded array.
-  EncodedArrayItem* encoded_array_item = new EncodedArrayItem(values);
-  encoded_array_items_.AddItem(encoded_array_item, offset);
   return encoded_array_item;
 }
 
@@ -427,19 +438,16 @@ AnnotationItem* Collections::CreateAnnotationItem(const DexFile& dex_file,
                                                   const DexFile::AnnotationItem* annotation) {
   const uint8_t* const start_data = reinterpret_cast<const uint8_t*>(annotation);
   const uint32_t offset = start_data - dex_file.Begin();
-  auto found_annotation_item = AnnotationItems().find(offset);
-  if (found_annotation_item != AnnotationItems().end()) {
-    return found_annotation_item->second.get();
+  AnnotationItem* annotation_item = annotation_items_map_.GetExistingObject(offset);
+  if (annotation_item == nullptr) {
+    uint8_t visibility = annotation->visibility_;
+    const uint8_t* annotation_data = annotation->annotation_;
+    std::unique_ptr<EncodedValue> encoded_value(
+        ReadEncodedValue(dex_file, &annotation_data, DexFile::kDexAnnotationAnnotation, 0));
+    annotation_item = new AnnotationItem(visibility, encoded_value->ReleaseEncodedAnnotation());
+    annotation_item->SetSize(annotation_data - start_data);
+    AddItem(annotation_items_map_, annotation_items_, annotation_item, offset);
   }
-  uint8_t visibility = annotation->visibility_;
-  const uint8_t* annotation_data = annotation->annotation_;
-  std::unique_ptr<EncodedValue> encoded_value(
-      ReadEncodedValue(&annotation_data, DexFile::kDexAnnotationAnnotation, 0));
-  AnnotationItem* annotation_item =
-      new AnnotationItem(visibility, encoded_value->ReleaseEncodedAnnotation());
-  annotation_item->SetOffset(offset);
-  annotation_item->SetSize(annotation_data - start_data);
-  annotation_items_.AddItem(annotation_item, annotation_item->GetOffset());
   return annotation_item;
 }
 
@@ -449,30 +457,30 @@ AnnotationSetItem* Collections::CreateAnnotationSetItem(const DexFile& dex_file,
   if (disk_annotations_item == nullptr || (disk_annotations_item->size_ == 0 && offset == 0)) {
     return nullptr;
   }
-  auto found_anno_set_item = AnnotationSetItems().find(offset);
-  if (found_anno_set_item != AnnotationSetItems().end()) {
-    return found_anno_set_item->second.get();
-  }
-  std::vector<AnnotationItem*>* items = new std::vector<AnnotationItem*>();
-  for (uint32_t i = 0; i < disk_annotations_item->size_; ++i) {
-    const DexFile::AnnotationItem* annotation =
-        dex_file.GetAnnotationItem(disk_annotations_item, i);
-    if (annotation == nullptr) {
-      continue;
+  AnnotationSetItem* annotation_set_item = annotation_set_items_map_.GetExistingObject(offset);
+  if (annotation_set_item == nullptr) {
+    std::vector<AnnotationItem*>* items = new std::vector<AnnotationItem*>();
+    for (uint32_t i = 0; i < disk_annotations_item->size_; ++i) {
+      const DexFile::AnnotationItem* annotation =
+          dex_file.GetAnnotationItem(disk_annotations_item, i);
+      if (annotation == nullptr) {
+        continue;
+      }
+      AnnotationItem* annotation_item = CreateAnnotationItem(dex_file, annotation);
+      items->push_back(annotation_item);
     }
-    AnnotationItem* annotation_item = CreateAnnotationItem(dex_file, annotation);
-    items->push_back(annotation_item);
+    annotation_set_item = new AnnotationSetItem(items);
+    AddItem(annotation_set_items_map_, annotation_set_items_, annotation_set_item, offset);
   }
-  AnnotationSetItem* annotation_set_item = new AnnotationSetItem(items);
-  annotation_set_items_.AddItem(annotation_set_item, offset);
   return annotation_set_item;
 }
 
 AnnotationsDirectoryItem* Collections::CreateAnnotationsDirectoryItem(const DexFile& dex_file,
     const DexFile::AnnotationsDirectoryItem* disk_annotations_item, uint32_t offset) {
-  auto found_anno_dir_item = AnnotationsDirectoryItems().find(offset);
-  if (found_anno_dir_item != AnnotationsDirectoryItems().end()) {
-    return found_anno_dir_item->second.get();
+  AnnotationsDirectoryItem* annotations_directory_item =
+      annotations_directory_items_map_.GetExistingObject(offset);
+  if (annotations_directory_item != nullptr) {
+    return annotations_directory_item;
   }
   const DexFile::AnnotationSetItem* class_set_item =
       dex_file.GetClassAnnotationSet(disk_annotations_item);
@@ -527,20 +535,19 @@ AnnotationsDirectoryItem* Collections::CreateAnnotationsDirectoryItem(const DexF
     }
   }
   // TODO: Calculate the size of the annotations directory.
-  AnnotationsDirectoryItem* annotations_directory_item = new AnnotationsDirectoryItem(
+annotations_directory_item = new AnnotationsDirectoryItem(
       class_annotation, field_annotations, method_annotations, parameter_annotations);
-  annotations_directory_items_.AddItem(annotations_directory_item, offset);
+  AddItem(annotations_directory_items_map_,
+          annotations_directory_items_,
+          annotations_directory_item,
+          offset);
   return annotations_directory_item;
 }
 
 ParameterAnnotation* Collections::GenerateParameterAnnotation(
     const DexFile& dex_file, MethodId* method_id,
     const DexFile::AnnotationSetRefList* annotation_set_ref_list, uint32_t offset) {
-  AnnotationSetRefList* set_ref_list = nullptr;
-  auto found_set_ref_list = AnnotationSetRefLists().find(offset);
-  if (found_set_ref_list != AnnotationSetRefLists().end()) {
-    set_ref_list = found_set_ref_list->second.get();
-  }
+  AnnotationSetRefList* set_ref_list = annotation_set_ref_lists_map_.GetExistingObject(offset);
   if (set_ref_list == nullptr) {
     std::vector<AnnotationSetItem*>* annotations = new std::vector<AnnotationSetItem*>();
     for (uint32_t i = 0; i < annotation_set_ref_list->size_; ++i) {
@@ -550,7 +557,7 @@ ParameterAnnotation* Collections::GenerateParameterAnnotation(
       annotations->push_back(CreateAnnotationSetItem(dex_file, annotation_set_item, set_offset));
     }
     set_ref_list = new AnnotationSetRefList(annotations);
-    annotation_set_ref_lists_.AddItem(set_ref_list, offset);
+    AddItem(annotation_set_ref_lists_map_, annotation_set_ref_lists_, set_ref_list, offset);
   }
   return new ParameterAnnotation(method_id, set_ref_list);
 }
@@ -566,13 +573,13 @@ CodeItem* Collections::CreateCodeItem(const DexFile& dex_file,
   const uint8_t* debug_info_stream = dex_file.GetDebugInfoStream(&disk_code_item);
   DebugInfoItem* debug_info = nullptr;
   if (debug_info_stream != nullptr) {
-    debug_info = debug_info_items_.GetExistingObject(disk_code_item.debug_info_off_);
+    debug_info = debug_info_items_map_.GetExistingObject(disk_code_item.debug_info_off_);
     if (debug_info == nullptr) {
       uint32_t debug_info_size = GetDebugInfoStreamSize(debug_info_stream);
       uint8_t* debug_info_buffer = new uint8_t[debug_info_size];
       memcpy(debug_info_buffer, debug_info_stream, debug_info_size);
       debug_info = new DebugInfoItem(debug_info_size, debug_info_buffer);
-      debug_info_items_.AddItem(debug_info, disk_code_item.debug_info_off_);
+      AddItem(debug_info_items_map_, debug_info_items_, debug_info, disk_code_item.debug_info_off_);
     }
   }
 
@@ -662,7 +669,7 @@ CodeItem* Collections::CreateCodeItem(const DexFile& dex_file,
   CodeItem* code_item = new CodeItem(
       registers_size, ins_size, outs_size, debug_info, insns_size, insns, tries, handler_list);
   code_item->SetSize(size);
-  code_items_.AddItem(code_item, offset);
+  AddItem(code_items_map_, code_items_, code_item, offset);
   // Add "fixup" references to types, strings, methods, and fields.
   // This is temporary, as we will probably want more detailed parsing of the
   // instructions here.
@@ -690,7 +697,7 @@ MethodItem* Collections::GenerateMethodItem(const DexFile& dex_file, ClassDataIt
   MethodId* method_id = GetMethodId(cdii.GetMemberIndex());
   uint32_t access_flags = cdii.GetRawMemberAccessFlags();
   const DexFile::CodeItem* disk_code_item = cdii.GetMethodCodeItem();
-  CodeItem* code_item = code_items_.GetExistingObject(cdii.GetMethodCodeItemOffset());
+  CodeItem* code_item = code_items_map_.GetExistingObject(cdii.GetMethodCodeItemOffset());
   DebugInfoItem* debug_info = nullptr;
   if (disk_code_item != nullptr) {
     if (code_item == nullptr) {
@@ -705,7 +712,7 @@ ClassData* Collections::CreateClassData(
     const DexFile& dex_file, const uint8_t* encoded_data, uint32_t offset) {
   // Read the fields and methods defined by the class, resolving the circular reference from those
   // to classes by setting class at the same time.
-  ClassData* class_data = class_datas_.GetExistingObject(offset);
+  ClassData* class_data = class_datas_map_.GetExistingObject(offset);
   if (class_data == nullptr && encoded_data != nullptr) {
     ClassDataItemIterator cdii(dex_file, encoded_data);
     // Static fields.
@@ -735,7 +742,7 @@ ClassData* Collections::CreateClassData(
     }
     class_data = new ClassData(static_fields, instance_fields, direct_methods, virtual_methods);
     class_data->SetSize(cdii.EndDataPointer() - encoded_data);
-    class_datas_.AddItem(class_data, offset);
+    AddItem(class_datas_map_, class_datas_, class_data, offset);
   }
   return class_data;
 }
@@ -771,10 +778,10 @@ void Collections::CreateCallSiteId(const DexFile& dex_file, uint32_t i) {
   const DexFile::CallSiteIdItem& disk_call_site_id = dex_file.GetCallSiteId(i);
   const uint8_t* disk_call_item_ptr = dex_file.Begin() + disk_call_site_id.data_off_;
   EncodedArrayItem* call_site_item =
-      CreateEncodedArrayItem(disk_call_item_ptr, disk_call_site_id.data_off_);
+      CreateEncodedArrayItem(dex_file, disk_call_item_ptr, disk_call_site_id.data_off_);
 
   CallSiteId* call_site_id = new CallSiteId(call_site_item);
-  call_site_ids_.AddIndexedItem(call_site_id, CallSiteIdsOffset() + i * CallSiteId::ItemSize(), i);
+  AddIndexedItem(call_site_ids_, call_site_id, CallSiteIdsOffset() + i * CallSiteId::ItemSize(), i);
 }
 
 void Collections::CreateMethodHandleItem(const DexFile& dex_file, uint32_t i) {
@@ -796,8 +803,23 @@ void Collections::CreateMethodHandleItem(const DexFile& dex_file, uint32_t i) {
     field_or_method_id = GetFieldId(index);
   }
   MethodHandleItem* method_handle = new MethodHandleItem(type, field_or_method_id);
-  method_handle_items_.AddIndexedItem(
-      method_handle, MethodHandleItemsOffset() + i * MethodHandleItem::ItemSize(), i);
+  AddIndexedItem(method_handle_items_,
+                 method_handle,
+                 MethodHandleItemsOffset() + i * MethodHandleItem::ItemSize(),
+                 i);
+}
+
+void Collections::SortVectorsByMapOrder() {
+  string_datas_map_.SortVectorByMapOrder(string_datas_);
+  type_lists_map_.SortVectorByMapOrder(type_lists_);
+  encoded_array_items_map_.SortVectorByMapOrder(encoded_array_items_);
+  annotation_items_map_.SortVectorByMapOrder(annotation_items_);
+  annotation_set_items_map_.SortVectorByMapOrder(annotation_set_items_);
+  annotation_set_ref_lists_map_.SortVectorByMapOrder(annotation_set_ref_lists_);
+  annotations_directory_items_map_.SortVectorByMapOrder(annotations_directory_items_);
+  debug_info_items_map_.SortVectorByMapOrder(debug_info_items_);
+  code_items_map_.SortVectorByMapOrder(code_items_);
+  class_datas_map_.SortVectorByMapOrder(class_datas_);
 }
 
 static uint32_t HeaderOffset(const dex_ir::Collections& collections ATTRIBUTE_UNUSED) {
