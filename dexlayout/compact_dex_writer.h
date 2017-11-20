@@ -25,9 +25,12 @@ namespace art {
 
 class CompactDexWriter : public DexWriter {
  public:
-  CompactDexWriter(dex_ir::Header* header, MemMap* mem_map, CompactDexLevel compact_dex_level)
-      : DexWriter(header, mem_map),
-        compact_dex_level_(compact_dex_level) { }
+  CompactDexWriter(dex_ir::Header* header,
+                   MemMap* mem_map,
+                   DexLayout* dex_layout,
+                   CompactDexLevel compact_dex_level)
+      : DexWriter(header, mem_map, dex_layout, /*compute_offsets*/ true),
+        compact_dex_level_(compact_dex_level) {}
 
  protected:
   void WriteHeader() OVERRIDE;
