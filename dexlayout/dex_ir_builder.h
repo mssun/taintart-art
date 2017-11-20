@@ -24,7 +24,9 @@
 namespace art {
 namespace dex_ir {
 
-dex_ir::Header* DexIrBuilder(const DexFile& dex_file);
+// Eagerly assign offsets assigns offsets based on the original offsets in the input dex file. If
+// this not done, dex_ir::Item::GetOffset will abort when reading uninitialized offsets.
+dex_ir::Header* DexIrBuilder(const DexFile& dex_file, bool eagerly_assign_offsets);
 
 }  // namespace dex_ir
 }  // namespace art

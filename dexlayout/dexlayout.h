@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <unordered_map>
 
 #include "cdex/compact_dex_level.h"
 #include "dex_file_layout.h"
@@ -69,6 +70,13 @@ class Options {
   const char* profile_file_name_ = nullptr;
 };
 
+// Hotness info
+class DexLayoutHotnessInfo {
+ public:
+  // Store layout information so that the offset calculation can specify the section sizes.
+  std::unordered_map<dex_ir::CodeItem*, LayoutType> code_item_layout_;
+};
+
 class DexLayout {
  public:
   DexLayout(Options& options,
@@ -86,8 +94,12 @@ class DexLayout {
 
   MemMap* GetAndReleaseMemMap() { return mem_map_.release(); }
 
-  const DexLayoutSections& GetSections() const {
+  DexLayoutSections& GetSections() {
     return dex_sections_;
+  }
+
+  const DexLayoutHotnessInfo& LayoutHotnessInfo() const {
+    return layout_hotness_info_;
   }
 
  private:
@@ -120,18 +132,14 @@ class DexLayout {
   void DumpSField(uint32_t idx, uint32_t flags, int i, dex_ir::EncodedValue* init);
   void DumpDexFile();
 
-  std::vector<dex_ir::ClassData*> LayoutClassDefsAndClassData(const DexFile* dex_file);
-  int32_t LayoutCodeItems(const DexFile* dex_file,
-                          std::vector<dex_ir::ClassData*> new_class_data_order);
-  int32_t LayoutStringData(const DexFile* dex_file);
-  bool IsNextSectionCodeItemAligned(uint32_t offset);
-  template<class T> void FixupSection(std::map<uint32_t, std::unique_ptr<T>>& map, uint32_t diff);
-  void FixupSections(uint32_t offset, uint32_t diff);
+  void LayoutClassDefsAndClassData(const DexFile* dex_file);
+  void LayoutCodeItems(const DexFile* dex_file);
+  void LayoutStringData(const DexFile* dex_file);
 
   // Creates a new layout for the dex file based on profile info.
   // Currently reorders ClassDefs, ClassDataItems, and CodeItems.
   void LayoutOutputFile(const DexFile* dex_file);
-  void OutputDexFile(const DexFile* dex_file);
+  void OutputDexFile(const DexFile* dex_file, bool compute_offsets);
 
   void DumpCFG(const DexFile* dex_file, int idx);
   void DumpCFG(const DexFile* dex_file, uint32_t dex_method_idx, const DexFile::CodeItem* code);
@@ -142,6 +150,8 @@ class DexLayout {
   dex_ir::Header* header_;
   std::unique_ptr<MemMap> mem_map_;
   DexLayoutSections dex_sections_;
+  // Layout hotness information is only calculated when dexlayout is enabled.
+  DexLayoutHotnessInfo layout_hotness_info_;
 
   DISALLOW_COPY_AND_ASSIGN(DexLayout);
 };
