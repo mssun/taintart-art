@@ -186,7 +186,7 @@ class OatTest : public CommonCompilerTest {
         oat_file);
     elf_writer->Start();
     OutputStream* oat_rodata = elf_writer->StartRoData();
-    std::unique_ptr<MemMap> opened_dex_files_map;
+    std::vector<std::unique_ptr<MemMap>> opened_dex_files_maps;
     std::vector<std::unique_ptr<const DexFile>> opened_dex_files;
     if (!oat_writer.WriteAndOpenDexFiles(vdex_file,
                                          oat_rodata,
@@ -195,7 +195,7 @@ class OatTest : public CommonCompilerTest {
                                          &key_value_store,
                                          verify,
                                          /* update_input_vdex */ false,
-                                         &opened_dex_files_map,
+                                         &opened_dex_files_maps,
                                          &opened_dex_files)) {
       return false;
     }
@@ -251,7 +251,9 @@ class OatTest : public CommonCompilerTest {
       return false;
     }
 
-    opened_dex_files_maps_.emplace_back(std::move(opened_dex_files_map));
+    for (std::unique_ptr<MemMap>& map : opened_dex_files_maps) {
+      opened_dex_files_maps_.emplace_back(std::move(map));
+    }
     for (std::unique_ptr<const DexFile>& dex_file : opened_dex_files) {
       opened_dex_files_.emplace_back(dex_file.release());
     }

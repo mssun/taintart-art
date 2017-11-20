@@ -379,7 +379,7 @@ std::unique_ptr<const DexFile> DexFileLoader::OpenOneDexFileFromZip(
 
   std::unique_ptr<MemMap> map;
   if (zip_entry->IsUncompressed()) {
-    if (!zip_entry->IsAlignedTo(alignof(DexFile::Header))) {
+    if (!zip_entry->IsAlignedToDexHeader()) {
       // Do not mmap unaligned ZIP entries because
       // doing so would fail dex verification which requires 4 byte alignment.
       LOG(WARNING) << "Can't mmap dex file " << location << "!" << entry_name << " directly; "

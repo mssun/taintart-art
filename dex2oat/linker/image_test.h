@@ -253,7 +253,7 @@ inline void CompilationHelper::Compile(CompilerDriver* driver,
       }
 
       std::vector<OutputStream*> rodata;
-      std::vector<std::unique_ptr<MemMap>> opened_dex_files_map;
+      std::vector<std::unique_ptr<MemMap>> opened_dex_files_maps;
       std::vector<std::unique_ptr<const DexFile>> opened_dex_files;
       // Now that we have finalized key_value_store_, start writing the oat file.
       for (size_t i = 0, size = oat_writers.size(); i != size; ++i) {
@@ -266,7 +266,7 @@ inline void CompilationHelper::Compile(CompilerDriver* driver,
                                             dex_file->GetLocation().c_str(),
                                             dex_file->GetLocationChecksum());
 
-        std::unique_ptr<MemMap> cur_opened_dex_files_map;
+        std::vector<std::unique_ptr<MemMap>> cur_opened_dex_files_maps;
         std::vector<std::unique_ptr<const DexFile>> cur_opened_dex_files;
         bool dex_files_ok = oat_writers[i]->WriteAndOpenDexFiles(
             vdex_files[i].GetFile(),
@@ -276,12 +276,14 @@ inline void CompilationHelper::Compile(CompilerDriver* driver,
             &key_value_store,
             /* verify */ false,           // Dex files may be dex-to-dex-ed, don't verify.
             /* update_input_vdex */ false,
-            &cur_opened_dex_files_map,
+            &cur_opened_dex_files_maps,
             &cur_opened_dex_files);
         ASSERT_TRUE(dex_files_ok);
 
-        if (cur_opened_dex_files_map != nullptr) {
-          opened_dex_files_map.push_back(std::move(cur_opened_dex_files_map));
+        if (!cur_opened_dex_files_maps.empty()) {
+          for (std::unique_ptr<MemMap>& cur_map : cur_opened_dex_files_maps) {
+            opened_dex_files_maps.push_back(std::move(cur_map));
+          }
           for (std::unique_ptr<const DexFile>& cur_dex_file : cur_opened_dex_files) {
             // dex_file_oat_index_map_.emplace(dex_file.get(), i);
             opened_dex_files.push_back(std::move(cur_dex_file));
