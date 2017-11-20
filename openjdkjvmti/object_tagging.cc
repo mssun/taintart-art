@@ -61,7 +61,8 @@ bool ObjectTagTable::DoesHandleNullOnSweep() {
   return event_handler_->IsEventEnabledAnywhere(ArtJvmtiEvent::kObjectFree);
 }
 void ObjectTagTable::HandleNullSweep(jlong tag) {
-  event_handler_->DispatchEventOnEnv<ArtJvmtiEvent::kObjectFree>(jvmti_env_, nullptr, tag);
+  event_handler_->DispatchEventOnEnv<ArtJvmtiEvent::kObjectFree>(
+      jvmti_env_, art::Thread::Current(), tag);
 }
 
 }  // namespace openjdkjvmti
