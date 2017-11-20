@@ -97,8 +97,8 @@ static DataType::Type ImplicitConversion(DataType::Type type) {
 // Class methods.
 //
 
-HInductionVarAnalysis::HInductionVarAnalysis(HGraph* graph)
-    : HOptimization(graph, kInductionPassName),
+HInductionVarAnalysis::HInductionVarAnalysis(HGraph* graph, const char* name)
+    : HOptimization(graph, name),
       global_depth_(0),
       stack_(graph->GetAllocator()->Adapter(kArenaAllocInductionVarAnalysis)),
       map_(std::less<HInstruction*>(),
