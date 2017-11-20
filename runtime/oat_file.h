@@ -109,10 +109,14 @@ class OatFile {
   static OatFile* OpenWritable(File* file, const std::string& location,
                                const char* abs_dex_location,
                                std::string* error_msg);
-  // Opens an oat file from an already opened File. Maps it PROT_READ, MAP_PRIVATE.
+  // Open an oat file from an already opened File. Maps it PROT_READ, MAP_PRIVATE.
   static OatFile* OpenReadable(File* file, const std::string& location,
                                const char* abs_dex_location,
                                std::string* error_msg);
+
+  // Return the debug info offset of the code item `item` located in `dex_file`.
+  static uint32_t GetDebugInfoOffset(const DexFile& dex_file,
+                                     const DexFile::CodeItem* item);
 
   virtual ~OatFile();
 

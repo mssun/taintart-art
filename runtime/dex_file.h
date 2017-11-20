@@ -698,6 +698,15 @@ class DexFile {
     return reinterpret_cast<const CodeItem*>(addr);
   }
 
+  uint32_t GetDebugInfoOffset(const CodeItem* code_item) const {
+    if (code_item == nullptr) {
+      return 0;
+    }
+    CHECK(oat_dex_file_ == nullptr)
+        << "Should only use GetDebugInfoOffset in a non runtime setup";
+    return code_item->debug_info_off_;
+  }
+
   const char* GetReturnTypeDescriptor(const ProtoId& proto_id) const;
 
   // Returns the number of prototype identifiers in the .dex file.
@@ -775,11 +784,10 @@ class DexFile {
   static int32_t FindCatchHandlerOffset(const CodeItem &code_item, uint32_t address);
 
   // Get the pointer to the start of the debugging data
-  const uint8_t* GetDebugInfoStream(const CodeItem* code_item) const {
+  const uint8_t* GetDebugInfoStream(uint32_t debug_info_off) const {
     // Check that the offset is in bounds.
     // Note that although the specification says that 0 should be used if there
     // is no debug information, some applications incorrectly use 0xFFFFFFFF.
-    const uint32_t debug_info_off = code_item->debug_info_off_;
     return (debug_info_off == 0 || debug_info_off >= size_) ? nullptr : begin_ + debug_info_off;
   }
 
@@ -936,6 +944,7 @@ class DexFile {
                                    void* context);
   template<typename NewLocalCallback>
   bool DecodeDebugLocalInfo(const CodeItem* code_item,
+                            uint32_t debug_info_offset,
                             bool is_static,
                             uint32_t method_idx,
                             NewLocalCallback new_local,
@@ -949,6 +958,7 @@ class DexFile {
                                       void* context);
   template<typename DexDebugNewPosition>
   bool DecodeDebugPositionInfo(const CodeItem* code_item,
+                               uint32_t debug_info_offset,
                                DexDebugNewPosition position_functor,
                                void* context) const;
 

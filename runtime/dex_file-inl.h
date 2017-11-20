@@ -386,6 +386,7 @@ bool DexFile::DecodeDebugLocalInfo(const uint8_t* stream,
 
 template<typename NewLocalCallback>
 bool DexFile::DecodeDebugLocalInfo(const CodeItem* code_item,
+                                   uint32_t debug_info_offset,
                                    bool is_static,
                                    uint32_t method_idx,
                                    NewLocalCallback new_local_callback,
@@ -398,7 +399,7 @@ bool DexFile::DecodeDebugLocalInfo(const CodeItem* code_item,
   for (; it.HasNext(); it.Next()) {
     arg_descriptors.push_back(it.GetDescriptor());
   }
-  return DecodeDebugLocalInfo(GetDebugInfoStream(code_item),
+  return DecodeDebugLocalInfo(GetDebugInfoStream(debug_info_offset),
                               GetLocation(),
                               GetMethodDeclaringClassDescriptor(GetMethodId(method_idx)),
                               arg_descriptors,
@@ -488,12 +489,13 @@ bool DexFile::DecodeDebugPositionInfo(const uint8_t* stream,
 
 template<typename DexDebugNewPosition>
 bool DexFile::DecodeDebugPositionInfo(const CodeItem* code_item,
+                                      uint32_t debug_info_offset,
                                       DexDebugNewPosition position_functor,
                                       void* context) const {
   if (code_item == nullptr) {
     return false;
   }
-  return DecodeDebugPositionInfo(GetDebugInfoStream(code_item),
+  return DecodeDebugPositionInfo(GetDebugInfoStream(debug_info_offset),
                                  [this](uint32_t idx) {
                                    return StringDataByIdx(dex::StringIndex(idx));
                                  },

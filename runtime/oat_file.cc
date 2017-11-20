@@ -1455,6 +1455,14 @@ ArrayRef<GcRoot<mirror::Object>> OatFile::GetBssGcRoots() const {
   }
 }
 
+uint32_t OatFile::GetDebugInfoOffset(const DexFile& dex_file ATTRIBUTE_UNUSED,
+                                     const DexFile::CodeItem* code_item) {
+  if (code_item == nullptr) {
+    return 0;
+  }
+  return code_item->debug_info_off_;
+}
+
 const OatFile::OatDexFile* OatFile::GetOatDexFile(const char* dex_location,
                                                   const uint32_t* dex_location_checksum,
                                                   std::string* error_msg) const {
