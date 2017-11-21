@@ -47,7 +47,7 @@ void CompactDexWriter::WriteHeader() {
   header.class_defs_off_ = collections.ClassDefsOffset();
   header.data_size_ = header_->DataSize();
   header.data_off_ = header_->DataOffset();
-  Write(reinterpret_cast<uint8_t*>(&header), sizeof(header), 0u);
+  UNUSED(Write(reinterpret_cast<uint8_t*>(&header), sizeof(header), 0u));
 }
 
 }  // namespace art

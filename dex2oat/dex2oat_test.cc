@@ -1332,10 +1332,10 @@ TEST_F(Dex2oatTest, LayoutSections) {
         code_section.parts_[static_cast<size_t>(LayoutType::kLayoutTypeUnused)];
 
     // All the sections should be non-empty.
-    EXPECT_GT(section_hot_code.size_, 0u);
-    EXPECT_GT(section_sometimes_used.size_, 0u);
-    EXPECT_GT(section_startup_only.size_, 0u);
-    EXPECT_GT(section_unused.size_, 0u);
+    EXPECT_GT(section_hot_code.Size(), 0u);
+    EXPECT_GT(section_sometimes_used.Size(), 0u);
+    EXPECT_GT(section_startup_only.Size(), 0u);
+    EXPECT_GT(section_unused.Size(), 0u);
 
     // Open the dex file since we need to peek at the code items to verify the layout matches what
     // we expect.
@@ -1364,18 +1364,18 @@ TEST_F(Dex2oatTest, LayoutSections) {
       const bool is_post_startup = ContainsElement(post_methods, method_idx);
       if (is_hot) {
         // Hot is highest precedence, check that the hot methods are in the hot section.
-        EXPECT_LT(code_item_offset - section_hot_code.offset_, section_hot_code.size_);
+        EXPECT_TRUE(section_hot_code.Contains(code_item_offset));
         ++hot_count;
       } else if (is_post_startup) {
         // Post startup is sometimes used section.
-        EXPECT_LT(code_item_offset - section_sometimes_used.offset_, section_sometimes_used.size_);
+        EXPECT_TRUE(section_sometimes_used.Contains(code_item_offset));
         ++post_startup_count;
       } else if (is_startup) {
         // Startup at this point means not hot or post startup, these must be startup only then.
-        EXPECT_LT(code_item_offset - section_startup_only.offset_, section_startup_only.size_);
+        EXPECT_TRUE(section_startup_only.Contains(code_item_offset));
         ++startup_count;
       } else {
-        if (code_item_offset - section_unused.offset_ < section_unused.size_) {
+        if (section_unused.Contains(code_item_offset)) {
           // If no flags are set, the method should be unused ...
           ++unused_count;
         } else {
