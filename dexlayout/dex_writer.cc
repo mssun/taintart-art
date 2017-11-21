@@ -878,7 +878,15 @@ void DexWriter::WriteMemMap() {
     }
   }
 
-  // TODO: Write link data?
+  // Write link data if it exists.
+  const std::vector<uint8_t>& link_data = collection.LinkData();
+  if (link_data.size() > 0) {
+    CHECK_EQ(header_->LinkSize(), static_cast<uint32_t>(link_data.size()));
+    if (compute_offsets_) {
+      header_->SetLinkOffset(offset);
+    }
+    offset += Write(&link_data[0], link_data.size(), header_->LinkOffset());
+  }
 
   // Write header last.
   if (compute_offsets_) {
