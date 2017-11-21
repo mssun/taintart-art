@@ -26,7 +26,7 @@ namespace dex_ir {
 
 static void CheckAndSetRemainingOffsets(const DexFile& dex_file, Collections* collections);
 
-Header* DexIrBuilder(const DexFile& dex_file) {
+Header* DexIrBuilder(const DexFile& dex_file, bool eagerly_assign_offsets) {
   const DexFile::Header& disk_header = dex_file.GetHeader();
   Header* header = new Header(disk_header.magic_,
                               disk_header.checksum_,
@@ -39,6 +39,7 @@ Header* DexIrBuilder(const DexFile& dex_file) {
                               disk_header.data_size_,
                               disk_header.data_off_);
   Collections& collections = header->GetCollections();
+  collections.SetEagerlyAssignOffsets(eagerly_assign_offsets);
   // Walk the rest of the header fields.
   // StringId table.
   collections.SetStringIdsOffset(disk_header.string_ids_off_);
@@ -74,8 +75,10 @@ Header* DexIrBuilder(const DexFile& dex_file) {
   collections.SetMapListOffset(disk_header.map_off_);
   // CallSiteIds and MethodHandleItems.
   collections.CreateCallSitesAndMethodHandles(dex_file);
-
   CheckAndSetRemainingOffsets(dex_file, &collections);
+
+  // Sort the vectors by the map order (same order as the file).
+  collections.SortVectorsByMapOrder();
 
   return header;
 }

@@ -44,8 +44,9 @@ class HInliner : public HOptimization {
            size_t total_number_of_dex_registers,
            size_t total_number_of_instructions,
            HInliner* parent,
-           size_t depth = 0)
-      : HOptimization(outer_graph, kInlinerPassName, stats),
+           size_t depth = 0,
+           const char* name = kInlinerPassName)
+      : HOptimization(outer_graph, name, stats),
         outermost_graph_(outermost_graph),
         outer_compilation_unit_(outer_compilation_unit),
         caller_compilation_unit_(caller_compilation_unit),

@@ -26,10 +26,10 @@ namespace art {
 
 void DexLayoutSection::Subsection::Madvise(const DexFile* dex_file, int advice) const {
   DCHECK(dex_file != nullptr);
-  DCHECK_LE(size_, dex_file->Size());
-  DCHECK_LE(offset_ + size_, dex_file->Size());
-  MadviseLargestPageAlignedRegion(dex_file->Begin() + offset_,
-                                  dex_file->Begin() + offset_ + size_,
+  DCHECK_LT(start_offset_, dex_file->Size());
+  DCHECK_LE(end_offset_, dex_file->Size());
+  MadviseLargestPageAlignedRegion(dex_file->Begin() + start_offset_,
+                                  dex_file->Begin() + end_offset_,
                                   advice);
 }
 
@@ -69,7 +69,7 @@ std::ostream& operator<<(std::ostream& os, const DexLayoutSection& section) {
   for (size_t i = 0; i < static_cast<size_t>(LayoutType::kLayoutTypeCount); ++i) {
     const DexLayoutSection::Subsection& part = section.parts_[i];
     os << static_cast<LayoutType>(i) << "("
-       << part.offset_ << "-" << part.offset_ + part.size_ << ") ";
+       << part.start_offset_ << "-" << part.end_offset_ << ") ";
   }
   return os;
 }
