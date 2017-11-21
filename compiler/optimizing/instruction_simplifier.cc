@@ -1159,6 +1159,16 @@ void InstructionSimplifierVisitor::VisitTypeConversion(HTypeConversion* instruct
       RecordSimplification();
       return;
     }
+  } else if (input->IsIntConstant()) {
+    // Try to eliminate type conversion on int constant whose value falls into
+    // the range of the result type.
+    int32_t value = input->AsIntConstant()->GetValue();
+    if (DataType::IsTypeConversionImplicit(value, result_type)) {
+      instruction->ReplaceWith(input);
+      instruction->GetBlock()->RemoveInstruction(instruction);
+      RecordSimplification();
+      return;
+    }
   }
 }
 

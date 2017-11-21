@@ -186,6 +186,7 @@ class DataType {
   }
 
   static bool IsTypeConversionImplicit(Type input_type, Type result_type);
+  static bool IsTypeConversionImplicit(int64_t value, Type result_type);
 
   static const char* PrettyDescriptor(Type type);
 
@@ -211,6 +212,18 @@ inline bool DataType::IsTypeConversionImplicit(Type input_type, Type result_type
           IsIntegralType(result_type) &&
           MinValueOfIntegralType(input_type) >= MinValueOfIntegralType(result_type) &&
           MaxValueOfIntegralType(input_type) <= MaxValueOfIntegralType(result_type));
+}
+
+inline bool DataType::IsTypeConversionImplicit(int64_t value, Type result_type) {
+  if (IsIntegralType(result_type) && result_type != Type::kInt64) {
+    // If the constant value falls in the range of the result_type, type
+    // conversion isn't needed.
+    return value >= MinValueOfIntegralType(result_type) &&
+           value <= MaxValueOfIntegralType(result_type);
+  }
+  // Conversion isn't implicit if it's into non-integer types, or 64-bit int
+  // which may have different number of registers.
+  return false;
 }
 
 }  // namespace art
