@@ -323,6 +323,7 @@ art_cc_test {
         "linker/method_bss_mapping_encoder_test.cc",
         "linker/output_stream_test.cc",
         "optimizing/bounds_check_elimination_test.cc",
+        "optimizing/cloner_test.cc",
         "optimizing/data_type_test.cc",
         "optimizing/dominator_test.cc",
         "optimizing/find_loops_test.cc",
