@@ -30,8 +30,8 @@ class HMipsComputeBaseMethodAddress : public HExpression<0> {
 
   DECLARE_INSTRUCTION(MipsComputeBaseMethodAddress);
 
- private:
-  DISALLOW_COPY_AND_ASSIGN(HMipsComputeBaseMethodAddress);
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(MipsComputeBaseMethodAddress);
 };
 
 // Mips version of HPackedSwitch that holds a pointer to the base method address.
@@ -62,11 +62,12 @@ class HMipsPackedSwitch FINAL : public HTemplateInstruction<2> {
 
   DECLARE_INSTRUCTION(MipsPackedSwitch);
 
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(MipsPackedSwitch);
+
  private:
   const int32_t start_value_;
   const int32_t num_entries_;
-
-  DISALLOW_COPY_AND_ASSIGN(HMipsPackedSwitch);
 };
 
 // This instruction computes part of the array access offset (index offset).
@@ -105,8 +106,8 @@ class HIntermediateArrayAddressIndex FINAL : public HExpression<2> {
 
   DECLARE_INSTRUCTION(IntermediateArrayAddressIndex);
 
- private:
-  DISALLOW_COPY_AND_ASSIGN(HIntermediateArrayAddressIndex);
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(IntermediateArrayAddressIndex);
 };
 
 }  // namespace art

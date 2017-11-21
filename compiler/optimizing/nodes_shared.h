@@ -38,6 +38,8 @@ class HMultiplyAccumulate FINAL : public HExpression<3> {
     SetRawInputAt(kInputMulRightIndex, mul_right);
   }
 
+  bool IsClonable() const OVERRIDE { return true; }
+
   static constexpr int kInputAccumulatorIndex = 0;
   static constexpr int kInputMulLeftIndex = 1;
   static constexpr int kInputMulRightIndex = 2;
@@ -51,11 +53,12 @@ class HMultiplyAccumulate FINAL : public HExpression<3> {
 
   DECLARE_INSTRUCTION(MultiplyAccumulate);
 
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(MultiplyAccumulate);
+
  private:
   // Indicates if this is a MADD or MSUB.
   const InstructionKind op_kind_;
-
-  DISALLOW_COPY_AND_ASSIGN(HMultiplyAccumulate);
 };
 
 class HBitwiseNegatedRight FINAL : public HBinaryOperation {
@@ -111,11 +114,12 @@ class HBitwiseNegatedRight FINAL : public HBinaryOperation {
 
   DECLARE_INSTRUCTION(BitwiseNegatedRight);
 
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(BitwiseNegatedRight);
+
  private:
   // Specifies the bitwise operation, which will be then negated.
   const InstructionKind op_kind_;
-
-  DISALLOW_COPY_AND_ASSIGN(HBitwiseNegatedRight);
 };
 
 // This instruction computes part of the array access offset (data and index offset).
@@ -145,6 +149,7 @@ class HIntermediateAddressIndex FINAL : public HExpression<3> {
     SetRawInputAt(2, shift);
   }
 
+  bool IsClonable() const OVERRIDE { return true; }
   bool CanBeMoved() const OVERRIDE { return true; }
   bool InstructionDataEquals(const HInstruction* other ATTRIBUTE_UNUSED) const OVERRIDE {
     return true;
@@ -157,8 +162,8 @@ class HIntermediateAddressIndex FINAL : public HExpression<3> {
 
   DECLARE_INSTRUCTION(IntermediateAddressIndex);
 
- private:
-  DISALLOW_COPY_AND_ASSIGN(HIntermediateAddressIndex);
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(IntermediateAddressIndex);
 };
 
 class HDataProcWithShifterOp FINAL : public HExpression<2> {
@@ -198,6 +203,7 @@ class HDataProcWithShifterOp FINAL : public HExpression<2> {
     SetRawInputAt(1, right);
   }
 
+  bool IsClonable() const OVERRIDE { return true; }
   bool CanBeMoved() const OVERRIDE { return true; }
   bool InstructionDataEquals(const HInstruction* other_instr) const OVERRIDE {
     const HDataProcWithShifterOp* other = other_instr->AsDataProcWithShifterOp();
@@ -225,14 +231,15 @@ class HDataProcWithShifterOp FINAL : public HExpression<2> {
 
   DECLARE_INSTRUCTION(DataProcWithShifterOp);
 
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(DataProcWithShifterOp);
+
  private:
   InstructionKind instr_kind_;
   OpKind op_kind_;
   int shift_amount_;
 
   friend std::ostream& operator<<(std::ostream& os, OpKind op);
-
-  DISALLOW_COPY_AND_ASSIGN(HDataProcWithShifterOp);
 };
 
 std::ostream& operator<<(std::ostream& os, const HDataProcWithShifterOp::OpKind op);
