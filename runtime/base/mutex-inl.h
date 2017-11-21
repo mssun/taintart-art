@@ -80,9 +80,7 @@ static inline void CheckUnattachedThread(LockLevel level) NO_THREAD_SAFETY_ANALY
           // (see Thread::TransitionFromSuspendedToRunnable).
           level == kThreadSuspendCountLock ||
           // Avoid recursive death.
-          level == kAbortLock ||
-          // Locks at the absolute top of the stack can be locked at any time.
-          level == kTopLockLevel) << level;
+          level == kAbortLock) << level;
   }
 }
 
