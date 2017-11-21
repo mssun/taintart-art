@@ -57,6 +57,7 @@ struct PhaseUtil::PhaseCallback : public art::RuntimePhaseCallback {
   }
 
   void NextRuntimePhase(RuntimePhase phase) REQUIRES_SHARED(art::Locks::mutator_lock_) OVERRIDE {
+    art::Thread* self = art::Thread::Current();
     switch (phase) {
       case RuntimePhase::kInitialAgents:
         PhaseUtil::current_phase_ = JVMTI_PHASE_PRIMORDIAL;
@@ -64,8 +65,7 @@ struct PhaseUtil::PhaseCallback : public art::RuntimePhaseCallback {
       case RuntimePhase::kStart:
         {
           PhaseUtil::current_phase_ = JVMTI_PHASE_START;
-          art::ScopedThreadSuspension sts(art::Thread::Current(), art::ThreadState::kNative);
-          event_handler->DispatchEvent<ArtJvmtiEvent::kVmStart>(nullptr, GetJniEnv());
+          event_handler->DispatchEvent<ArtJvmtiEvent::kVmStart>(self, GetJniEnv());
         }
         break;
       case RuntimePhase::kInit:
@@ -74,9 +74,7 @@ struct PhaseUtil::PhaseCallback : public art::RuntimePhaseCallback {
           PhaseUtil::current_phase_ = JVMTI_PHASE_LIVE;
           {
             ScopedLocalRef<jthread> thread(GetJniEnv(), GetCurrentJThread());
-            art::ScopedThreadSuspension sts(art::Thread::Current(), art::ThreadState::kNative);
-            event_handler->DispatchEvent<ArtJvmtiEvent::kVmInit>(
-                nullptr, GetJniEnv(), thread.get());
+            event_handler->DispatchEvent<ArtJvmtiEvent::kVmInit>(self, GetJniEnv(), thread.get());
           }
           // We need to have these events be ordered to match behavior expected by some real-world
           // agents. The spec does not really require this but compatibility is a useful property to
@@ -86,8 +84,7 @@ struct PhaseUtil::PhaseCallback : public art::RuntimePhaseCallback {
         break;
       case RuntimePhase::kDeath:
         {
-          art::ScopedThreadSuspension sts(art::Thread::Current(), art::ThreadState::kNative);
-          event_handler->DispatchEvent<ArtJvmtiEvent::kVmDeath>(nullptr, GetJniEnv());
+          event_handler->DispatchEvent<ArtJvmtiEvent::kVmDeath>(self, GetJniEnv());
           PhaseUtil::current_phase_ = JVMTI_PHASE_DEAD;
         }
         // TODO: Block events now.

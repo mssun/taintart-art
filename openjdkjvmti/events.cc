@@ -193,25 +193,21 @@ void EventMasks::HandleChangedCapabilities(const jvmtiCapabilities& caps, bool c
 }
 
 void EventHandler::RegisterArtJvmTiEnv(ArtJvmTiEnv* env) {
-  // Since we never shrink this array we might as well try to fill gaps.
-  auto it = std::find(envs.begin(), envs.end(), nullptr);
-  if (it != envs.end()) {
-    *it = env;
-  } else {
-    envs.push_back(env);
-  }
+  art::MutexLock mu(art::Thread::Current(), envs_lock_);
+  envs.push_back(env);
 }
 
 void EventHandler::RemoveArtJvmTiEnv(ArtJvmTiEnv* env) {
+  art::MutexLock mu(art::Thread::Current(), envs_lock_);
   // Since we might be currently iterating over the envs list we cannot actually erase elements.
   // Instead we will simply replace them with 'nullptr' and skip them manually.
   auto it = std::find(envs.begin(), envs.end(), env);
   if (it != envs.end()) {
-    *it = nullptr;
+    envs.erase(it);
     for (size_t i = static_cast<size_t>(ArtJvmtiEvent::kMinEventTypeVal);
          i <= static_cast<size_t>(ArtJvmtiEvent::kMaxEventTypeVal);
          ++i) {
-      RecalculateGlobalEventMask(static_cast<ArtJvmtiEvent>(i));
+      RecalculateGlobalEventMaskLocked(static_cast<ArtJvmtiEvent>(i));
     }
   }
 }
@@ -431,11 +427,11 @@ class JvmtiGcPauseListener : public art::gc::GcPauseListener {
         finish_enabled_(false) {}
 
   void StartPause() OVERRIDE {
-    handler_->DispatchEvent<ArtJvmtiEvent::kGarbageCollectionStart>(nullptr);
+    handler_->DispatchEvent<ArtJvmtiEvent::kGarbageCollectionStart>(art::Thread::Current());
   }
 
   void EndPause() OVERRIDE {
-    handler_->DispatchEvent<ArtJvmtiEvent::kGarbageCollectionFinish>(nullptr);
+    handler_->DispatchEvent<ArtJvmtiEvent::kGarbageCollectionFinish>(art::Thread::Current());
   }
 
   bool IsEnabled() {
@@ -1176,7 +1172,8 @@ void EventHandler::Shutdown() {
   art::Runtime::Current()->GetInstrumentation()->RemoveListener(method_trace_listener_.get(), ~0);
 }
 
-EventHandler::EventHandler() {
+EventHandler::EventHandler() : envs_lock_("JVMTI Environment List Lock",
+                                          art::LockLevel::kTopLockLevel) {
   alloc_listener_.reset(new JvmtiAllocationListener(this));
   ddm_listener_.reset(new JvmtiDdmChunkListener(this));
   gc_pause_listener_.reset(new JvmtiGcPauseListener(this));
