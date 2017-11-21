@@ -80,7 +80,9 @@ static inline void CheckUnattachedThread(LockLevel level) NO_THREAD_SAFETY_ANALY
           // (see Thread::TransitionFromSuspendedToRunnable).
           level == kThreadSuspendCountLock ||
           // Avoid recursive death.
-          level == kAbortLock) << level;
+          level == kAbortLock ||
+          // Locks at the absolute top of the stack can be locked at any time.
+          level == kTopLockLevel) << level;
   }
 }
 
@@ -92,10 +94,34 @@ inline void BaseMutex::RegisterAsLocked(Thread* self) {
   if (kDebugLocking) {
     // Check if a bad Mutex of this level or lower is held.
     bool bad_mutexes_held = false;
+    // Specifically allow a kTopLockLevel lock to be gained when the current thread holds the
+    // mutator_lock_ exclusive. This is because we suspending when holding locks at this level is
+    // not allowed and if we hold the mutator_lock_ exclusive we must unsuspend stuff eventually
+    // so there are no deadlocks.
+    if (level_ == kTopLockLevel &&
+        Locks::mutator_lock_->IsSharedHeld(self) &&
+        !Locks::mutator_lock_->IsExclusiveHeld(self)) {
+      LOG(ERROR) << "Lock level violation: holding \"" << Locks::mutator_lock_->name_ << "\" "
+                  << "(level " << kMutatorLock << " - " << static_cast<int>(kMutatorLock)
+                  << ") non-exclusive while locking \"" << name_ << "\" "
+                  << "(level " << level_ << " - " << static_cast<int>(level_) << ") a top level"
+                  << "mutex. This is not allowed.";
+      bad_mutexes_held = true;
+    } else if (this == Locks::mutator_lock_ && self->GetHeldMutex(kTopLockLevel) != nullptr) {
+      LOG(ERROR) << "Lock level violation. Locking mutator_lock_ while already having a "
+                 << "kTopLevelLock (" << self->GetHeldMutex(kTopLockLevel)->name_ << "held is "
+                 << "not allowed.";
+      bad_mutexes_held = true;
+    }
     for (int i = level_; i >= 0; --i) {
       LockLevel lock_level_i = static_cast<LockLevel>(i);
       BaseMutex* held_mutex = self->GetHeldMutex(lock_level_i);
-      if (UNLIKELY(held_mutex != nullptr) && lock_level_i != kAbortLock) {
+      if (level_ == kTopLockLevel &&
+          lock_level_i == kMutatorLock &&
+          Locks::mutator_lock_->IsExclusiveHeld(self)) {
+        // This is checked above.
+        continue;
+      } else if (UNLIKELY(held_mutex != nullptr) && lock_level_i != kAbortLock) {
         LOG(ERROR) << "Lock level violation: holding \"" << held_mutex->name_ << "\" "
                    << "(level " << lock_level_i << " - " << i
                    << ") while locking \"" << name_ << "\" "
