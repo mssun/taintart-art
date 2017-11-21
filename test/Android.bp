@@ -259,7 +259,6 @@ art_cc_defaults {
         "1932-monitor-events-misc/monitor_misc.cc",
         "1934-jvmti-signal-thread/signal_threads.cc",
         "1939-proxy-frames/local_instance.cc",
-        "1941-dispose-stress/dispose_stress.cc",
     ],
     shared_libs: [
         "libbase",

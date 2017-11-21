@@ -21,8 +21,6 @@
 #include "base/strlcpy.h"
 #include "java_vm_ext.h"
 #include "runtime.h"
-#include "thread-current-inl.h"
-#include "scoped_thread_state_change-inl.h"
 
 namespace art {
 namespace ti {
@@ -37,7 +35,6 @@ const char* AGENT_ON_UNLOAD_FUNCTION_NAME = "Agent_OnUnload";
 Agent::LoadError Agent::DoLoadHelper(bool attaching,
                                      /*out*/jint* call_res,
                                      /*out*/std::string* error_msg) {
-  ScopedThreadStateChange stsc(Thread::Current(), ThreadState::kNative);
   DCHECK(call_res != nullptr);
   DCHECK(error_msg != nullptr);
 
