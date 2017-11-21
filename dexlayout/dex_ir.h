@@ -396,6 +396,14 @@ class Collections {
     eagerly_assign_offsets_ = eagerly_assign_offsets;
   }
 
+  void SetLinkData(std::vector<uint8_t>&& link_data) {
+    link_data_ = std::move(link_data);
+  }
+
+  const std::vector<uint8_t>& LinkData() const {
+    return link_data_;
+  }
+
  private:
   EncodedValue* ReadEncodedValue(const DexFile& dex_file, const uint8_t** data);
   EncodedValue* ReadEncodedValue(const DexFile& dex_file,
@@ -451,6 +459,9 @@ class Collections {
   CollectionMap<ClassData> class_datas_map_;
 
   uint32_t map_list_offset_ = 0;
+
+  // Link data.
+  std::vector<uint8_t> link_data_;
 
   // If we eagerly assign offsets during IR building or later after layout. Must be false if
   // changing the layout is enabled.
