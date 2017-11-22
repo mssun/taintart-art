@@ -28,10 +28,10 @@
 #include "gc/accounting/card_table-inl.h"
 #include "imt_conflict_table.h"
 #include "imtable-inl.h"
+#include "index_bss_mapping.h"
 #include "instrumentation.h"
 #include "interpreter/interpreter.h"
 #include "linear_alloc.h"
-#include "method_bss_mapping.h"
 #include "method_handles.h"
 #include "method_reference.h"
 #include "mirror/class-inl.h"
@@ -1214,27 +1214,20 @@ extern "C" const void* artQuickResolutionTrampoline(
 
     // Update .bss entry in oat file if any.
     if (called != nullptr && called_method.dex_file->GetOatDexFile() != nullptr) {
-      const MethodBssMapping* mapping =
-          called_method.dex_file->GetOatDexFile()->GetMethodBssMapping();
-      if (mapping != nullptr) {
-        auto pp = std::partition_point(
-            mapping->begin(),
-            mapping->end(),
-            [called_method](const MethodBssMappingEntry& entry) {
-              return entry.method_index < called_method.index;
-            });
-        if (pp != mapping->end() && pp->CoversIndex(called_method.index)) {
-          size_t bss_offset = pp->GetBssOffset(called_method.index,
-                                               static_cast<size_t>(kRuntimePointerSize));
-          DCHECK_ALIGNED(bss_offset, static_cast<size_t>(kRuntimePointerSize));
-          const OatFile* oat_file = called_method.dex_file->GetOatDexFile()->GetOatFile();
-          ArtMethod** method_entry = reinterpret_cast<ArtMethod**>(const_cast<uint8_t*>(
-              oat_file->BssBegin() + bss_offset));
-          DCHECK_GE(method_entry, oat_file->GetBssMethods().data());
-          DCHECK_LT(method_entry,
-                    oat_file->GetBssMethods().data() + oat_file->GetBssMethods().size());
-          *method_entry = called;
-        }
+      size_t bss_offset = IndexBssMappingLookup::GetBssOffset(
+          called_method.dex_file->GetOatDexFile()->GetMethodBssMapping(),
+          called_method.index,
+          called_method.dex_file->NumMethodIds(),
+          static_cast<size_t>(kRuntimePointerSize));
+      if (bss_offset != IndexBssMappingLookup::npos) {
+        DCHECK_ALIGNED(bss_offset, static_cast<size_t>(kRuntimePointerSize));
+        const OatFile* oat_file = called_method.dex_file->GetOatDexFile()->GetOatFile();
+        ArtMethod** method_entry = reinterpret_cast<ArtMethod**>(const_cast<uint8_t*>(
+            oat_file->BssBegin() + bss_offset));
+        DCHECK_GE(method_entry, oat_file->GetBssMethods().data());
+        DCHECK_LT(method_entry,
+                  oat_file->GetBssMethods().data() + oat_file->GetBssMethods().size());
+        *method_entry = called;
       }
     }
   }
