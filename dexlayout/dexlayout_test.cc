@@ -734,6 +734,7 @@ TEST_F(DexLayoutTest, CodeItemOverrun) {
 
 // Test that link data is written out (or at least the header is updated).
 TEST_F(DexLayoutTest, LinkData) {
+  TEST_DISABLED_FOR_TARGET();
   ScratchFile temp_dex;
   size_t file_size = 0;
   MutateDexFile(temp_dex.GetFile(), GetTestDexFileName("ManyMethods"), [&] (DexFile* dex) {
