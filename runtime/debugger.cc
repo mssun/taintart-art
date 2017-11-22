@@ -345,7 +345,14 @@ Dbg::DbgThreadLifecycleCallback Dbg::thread_lifecycle_callback_;
 Dbg::DbgClassLoadCallback Dbg::class_load_callback_;
 
 void DebuggerDdmCallback::DdmPublishChunk(uint32_t type, const ArrayRef<const uint8_t>& data) {
-  Dbg::DdmSendChunk(type, data);
+  if (gJdwpState == nullptr) {
+    VLOG(jdwp) << "Debugger thread not active, ignoring DDM send: " << type;
+  } else {
+    iovec vec[1];
+    vec[0].iov_base = reinterpret_cast<void*>(const_cast<uint8_t*>(data.data()));
+    vec[0].iov_len = data.size();
+    gJdwpState->DdmSendChunkV(type, vec, 1);
+  }
 }
 
 bool DebuggerActiveMethodInspectionCallback::IsMethodBeingInspected(ArtMethod* m ATTRIBUTE_UNUSED) {
@@ -4458,10 +4465,11 @@ void Dbg::DdmSendThreadNotification(Thread* t, uint32_t type) {
     return;
   }
 
+  RuntimeCallbacks* cb = Runtime::Current()->GetRuntimeCallbacks();
   if (type == CHUNK_TYPE("THDE")) {
     uint8_t buf[4];
     JDWP::Set4BE(&buf[0], t->GetThreadId());
-    Dbg::DdmSendChunk(CHUNK_TYPE("THDE"), 4, buf);
+    cb->DdmPublishChunk(CHUNK_TYPE("THDE"), ArrayRef<const uint8_t>(buf));
   } else {
     CHECK(type == CHUNK_TYPE("THCR") || type == CHUNK_TYPE("THNM")) << type;
     ScopedObjectAccessUnchecked soa(Thread::Current());
@@ -4480,7 +4488,7 @@ void Dbg::DdmSendThreadNotification(Thread* t, uint32_t type) {
       JDWP::AppendUtf16BE(bytes, chars, char_count);
     }
     CHECK_EQ(bytes.size(), char_count*2 + sizeof(uint32_t)*2);
-    Dbg::DdmSendChunk(type, bytes);
+    cb->DdmPublishChunk(type, ArrayRef<const uint8_t>(bytes));
   }
 }
 
@@ -4521,30 +4529,6 @@ void Dbg::PostThreadStart(Thread* t) {
 
 void Dbg::PostThreadDeath(Thread* t) {
   Dbg::PostThreadStartOrStop(t, CHUNK_TYPE("THDE"));
-}
-
-void Dbg::DdmSendChunk(uint32_t type, const ArrayRef<const uint8_t>& data) {
-  DdmSendChunk(type, data.size(), data.data());
-}
-
-void Dbg::DdmSendChunk(uint32_t type, size_t byte_count, const uint8_t* buf) {
-  CHECK(buf != nullptr);
-  iovec vec[1];
-  vec[0].iov_base = reinterpret_cast<void*>(const_cast<uint8_t*>(buf));
-  vec[0].iov_len = byte_count;
-  Dbg::DdmSendChunkV(type, vec, 1);
-}
-
-void Dbg::DdmSendChunk(uint32_t type, const std::vector<uint8_t>& bytes) {
-  DdmSendChunk(type, bytes.size(), &bytes[0]);
-}
-
-void Dbg::DdmSendChunkV(uint32_t type, const iovec* iov, int iov_count) {
-  if (gJdwpState == nullptr) {
-    VLOG(jdwp) << "Debugger thread not active, ignoring DDM send: " << type;
-  } else {
-    gJdwpState->DdmSendChunkV(type, iov, iov_count);
-  }
 }
 
 JDWP::JdwpState* Dbg::GetJdwpState() {
@@ -4624,7 +4608,8 @@ void Dbg::DdmSendHeapInfo(HpifWhen reason) {
   JDWP::Append4BE(bytes, heap->GetBytesAllocated());
   JDWP::Append4BE(bytes, heap->GetObjectsAllocated());
   CHECK_EQ(bytes.size(), 4U + (heap_count * (4 + 8 + 1 + 4 + 4 + 4 + 4)));
-  Dbg::DdmSendChunk(CHUNK_TYPE("HPIF"), bytes);
+  Runtime::Current()->GetRuntimeCallbacks()->DdmPublishChunk(CHUNK_TYPE("HPIF"),
+                                                             ArrayRef<const uint8_t>(bytes));
 }
 
 enum HpsgSolidity {
@@ -4710,7 +4695,8 @@ class HeapChunkContext {
     CHECK_LE(pieceLenField_, p_);
     JDWP::Set4BE(pieceLenField_, totalAllocationUnits_);
 
-    Dbg::DdmSendChunk(type_, p_ - &buf_[0], &buf_[0]);
+    ArrayRef<const uint8_t> out(&buf_[0], p_ - &buf_[0]);
+    Runtime::Current()->GetRuntimeCallbacks()->DdmPublishChunk(type_, out);
     Reset();
   }
 
@@ -4892,6 +4878,7 @@ void Dbg::DdmSendHeapSegments(bool native) {
   if (when == HPSG_WHEN_NEVER) {
     return;
   }
+  RuntimeCallbacks* cb = Runtime::Current()->GetRuntimeCallbacks();
   // Figure out what kind of chunks we'll be sending.
   CHECK(what == HPSG_WHAT_MERGED_OBJECTS || what == HPSG_WHAT_DISTINCT_OBJECTS)
       << static_cast<int>(what);
@@ -4899,7 +4886,8 @@ void Dbg::DdmSendHeapSegments(bool native) {
   // First, send a heap start chunk.
   uint8_t heap_id[4];
   JDWP::Set4BE(&heap_id[0], 1);  // Heap id (bogus; we only have one heap).
-  Dbg::DdmSendChunk(native ? CHUNK_TYPE("NHST") : CHUNK_TYPE("HPST"), sizeof(heap_id), heap_id);
+  cb->DdmPublishChunk(native ? CHUNK_TYPE("NHST") : CHUNK_TYPE("HPST"),
+                      ArrayRef<const uint8_t>(heap_id));
   Thread* self = Thread::Current();
   Locks::mutator_lock_->AssertSharedHeld(self);
 
@@ -4958,7 +4946,8 @@ void Dbg::DdmSendHeapSegments(bool native) {
   }
 
   // Finally, send a heap end chunk.
-  Dbg::DdmSendChunk(native ? CHUNK_TYPE("NHEN") : CHUNK_TYPE("HPEN"), sizeof(heap_id), heap_id);
+  cb->DdmPublishChunk(native ? CHUNK_TYPE("NHEN") : CHUNK_TYPE("HPEN"),
+                      ArrayRef<const uint8_t>(heap_id));
 }
 
 void Dbg::SetAllocTrackingEnabled(bool enable) {
