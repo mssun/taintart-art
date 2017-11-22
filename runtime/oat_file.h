@@ -27,7 +27,7 @@
 #include "compiler_filter.h"
 #include "dex_file.h"
 #include "dex_file_layout.h"
-#include "method_bss_mapping.h"
+#include "index_bss_mapping.h"
 #include "mirror/class.h"
 #include "oat.h"
 #include "os.h"
@@ -440,8 +440,16 @@ class OatDexFile FINAL {
     return lookup_table_data_;
   }
 
-  const MethodBssMapping* GetMethodBssMapping() const {
+  const IndexBssMapping* GetMethodBssMapping() const {
     return method_bss_mapping_;
+  }
+
+  const IndexBssMapping* GetTypeBssMapping() const {
+    return type_bss_mapping_;
+  }
+
+  const IndexBssMapping* GetStringBssMapping() const {
+    return string_bss_mapping_;
   }
 
   const uint8_t* GetDexFilePointer() const {
@@ -478,7 +486,9 @@ class OatDexFile FINAL {
              uint32_t dex_file_checksum,
              const uint8_t* dex_file_pointer,
              const uint8_t* lookup_table_data,
-             const MethodBssMapping* method_bss_mapping,
+             const IndexBssMapping* method_bss_mapping,
+             const IndexBssMapping* type_bss_mapping,
+             const IndexBssMapping* string_bss_mapping,
              const uint32_t* oat_class_offsets_pointer,
              const DexLayoutSections* dex_layout_sections);
 
@@ -490,7 +500,9 @@ class OatDexFile FINAL {
   const uint32_t dex_file_location_checksum_ = 0u;
   const uint8_t* const dex_file_pointer_ = nullptr;
   const uint8_t* const lookup_table_data_ = nullptr;
-  const MethodBssMapping* const method_bss_mapping_ = nullptr;
+  const IndexBssMapping* const method_bss_mapping_ = nullptr;
+  const IndexBssMapping* const type_bss_mapping_ = nullptr;
+  const IndexBssMapping* const string_bss_mapping_ = nullptr;
   const uint32_t* const oat_class_offsets_pointer_ = 0u;
   mutable std::unique_ptr<TypeLookupTable> lookup_table_;
   const DexLayoutSections* const dex_layout_sections_ = nullptr;

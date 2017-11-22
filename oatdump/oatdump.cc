@@ -32,6 +32,7 @@
 #include "arch/instruction_set_features.h"
 #include "art_field-inl.h"
 #include "art_method-inl.h"
+#include "base/bit_utils_iterator.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "class_linker-inl.h"
@@ -51,6 +52,7 @@
 #include "imtable-inl.h"
 #include "indenter.h"
 #include "subtype_check.h"
+#include "index_bss_mapping.h"
 #include "interpreter/unstarted_runtime.h"
 #include "linker/buffered_output_stream.h"
 #include "linker/elf_builder.h"
@@ -535,6 +537,29 @@ class OatDumper {
       }
 
       cumulative.Add(data);
+
+      // Dump .bss entries.
+      DumpBssEntries(
+          os,
+          "ArtMethod",
+          oat_dex_file->GetMethodBssMapping(),
+          dex_file->NumMethodIds(),
+          static_cast<size_t>(GetInstructionSetPointerSize(instruction_set_)),
+          [=](uint32_t index) { return dex_file->PrettyMethod(index); });
+      DumpBssEntries(
+          os,
+          "Class",
+          oat_dex_file->GetTypeBssMapping(),
+          dex_file->NumTypeIds(),
+          sizeof(GcRoot<mirror::Class>),
+          [=](uint32_t index) { return dex_file->PrettyType(dex::TypeIndex(index)); });
+      DumpBssEntries(
+          os,
+          "String",
+          oat_dex_file->GetStringBssMapping(),
+          dex_file->NumStringIds(),
+          sizeof(GcRoot<mirror::Class>),
+          [=](uint32_t index) { return dex_file->StringDataByIdx(dex::StringIndex(index)); });
     }
     os << "Cumulative dex file data\n";
     cumulative.Dump(os);
@@ -1870,6 +1895,40 @@ class OatDumper {
         offset += disassembler_->Dump(vios->Stream(), quick_native_pc + offset);
       }
     }
+  }
+
+  template <typename NameGetter>
+  void DumpBssEntries(std::ostream& os,
+                      const char* slot_type,
+                      const IndexBssMapping* mapping,
+                      uint32_t number_of_indexes,
+                      size_t slot_size,
+                      NameGetter name) {
+    os << ".bss mapping for " << slot_type << ": ";
+    if (mapping == nullptr) {
+      os << "empty.\n";
+      return;
+    }
+    size_t index_bits = IndexBssMappingEntry::IndexBits(number_of_indexes);
+    size_t num_valid_indexes = 0u;
+    for (const IndexBssMappingEntry& entry : *mapping) {
+      num_valid_indexes += 1u + POPCOUNT(entry.GetMask(index_bits));
+    }
+    os << mapping->size() << " entries for " << num_valid_indexes << " valid indexes.\n";
+    os << std::hex;
+    for (const IndexBssMappingEntry& entry : *mapping) {
+      uint32_t index = entry.GetIndex(index_bits);
+      uint32_t mask = entry.GetMask(index_bits);
+      size_t bss_offset = entry.bss_offset - POPCOUNT(mask) * slot_size;
+      for (uint32_t n : LowToHighBits(mask)) {
+        size_t current_index = index - (32u - index_bits) + n;
+        os << "  0x" << bss_offset << ": " << slot_type << ": " << name(current_index) << "\n";
+        bss_offset += slot_size;
+      }
+      DCHECK_EQ(bss_offset, entry.bss_offset);
+      os << "  0x" << bss_offset << ": " << slot_type << ": " << name(index) << "\n";
+    }
+    os << std::dec;
   }
 
   const OatFile& oat_file_;
