@@ -144,6 +144,23 @@ static bool CheckInvokeType(Intrinsics intrinsic, HInvoke* invoke) {
   }
 }
 
+bool IntrinsicsRecognizer::Recognize(HInvoke* invoke, /*out*/ bool* wrong_invoke_type) {
+  ArtMethod* art_method = invoke->GetResolvedMethod();
+  if (art_method != nullptr && art_method->IsIntrinsic()) {
+    Intrinsics intrinsic = static_cast<Intrinsics>(art_method->GetIntrinsic());
+    if (CheckInvokeType(intrinsic, invoke)) {
+      invoke->SetIntrinsic(intrinsic,
+                           NeedsEnvironmentOrCache(intrinsic),
+                           GetSideEffects(intrinsic),
+                           GetExceptions(intrinsic));
+     return true;
+    } else {
+      *wrong_invoke_type = true;
+    }
+  }
+  return false;
+}
+
 void IntrinsicsRecognizer::Run() {
   ScopedObjectAccess soa(Thread::Current());
   for (HBasicBlock* block : graph_->GetReversePostOrder()) {
@@ -151,23 +168,14 @@ void IntrinsicsRecognizer::Run() {
          inst_it.Advance()) {
       HInstruction* inst = inst_it.Current();
       if (inst->IsInvoke()) {
-        HInvoke* invoke = inst->AsInvoke();
-        ArtMethod* art_method = invoke->GetResolvedMethod();
-        if (art_method != nullptr && art_method->IsIntrinsic()) {
-          Intrinsics intrinsic = static_cast<Intrinsics>(art_method->GetIntrinsic());
-          if (!CheckInvokeType(intrinsic, invoke)) {
-            LOG(WARNING) << "Found an intrinsic with unexpected invoke type: "
-                << static_cast<uint32_t>(intrinsic) << " for "
-                << art_method->PrettyMethod()
-                << invoke->DebugName();
-          } else {
-            invoke->SetIntrinsic(intrinsic,
-                                 NeedsEnvironmentOrCache(intrinsic),
-                                 GetSideEffects(intrinsic),
-                                 GetExceptions(intrinsic));
-            MaybeRecordStat(stats_,
-                            MethodCompilationStat::kIntrinsicRecognized);
-          }
+        bool wrong_invoke_type = false;
+        if (Recognize(inst->AsInvoke(), &wrong_invoke_type)) {
+          MaybeRecordStat(stats_, MethodCompilationStat::kIntrinsicRecognized);
+        } else if (wrong_invoke_type) {
+          LOG(WARNING)
+              << "Found an intrinsic with unexpected invoke type: "
+              << inst->AsInvoke()->GetResolvedMethod()->PrettyMethod() << " "
+              << inst->DebugName();
         }
       }
     }
