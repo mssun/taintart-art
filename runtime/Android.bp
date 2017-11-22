@@ -103,6 +103,7 @@ cc_defaults {
         "gc/verification.cc",
         "hprof/hprof.cc",
         "image.cc",
+        "index_bss_mapping.cc",
         "indirect_reference_table.cc",
         "instrumentation.cc",
         "intern_table.cc",
