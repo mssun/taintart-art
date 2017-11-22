@@ -346,9 +346,10 @@ class Heap {
       REQUIRES(!Locks::heap_bitmap_lock_, !*gc_complete_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Implements JDWP RT_Instances.
+  // Implements VMDebug.getInstancesOfClasses and JDWP RT_Instances.
   void GetInstances(VariableSizedHandleScope& scope,
                     Handle<mirror::Class> c,
+                    bool use_is_assignable_from,
                     int32_t max_count,
                     std::vector<Handle<mirror::Object>>& instances)
       REQUIRES(!Locks::heap_bitmap_lock_, !*gc_complete_lock_)

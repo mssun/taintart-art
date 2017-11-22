@@ -1796,19 +1796,25 @@ uint64_t Heap::GetBytesAllocatedEver() const {
   return GetBytesFreedEver() + GetBytesAllocated();
 }
 
+// Check whether the given object is an instance of the given class.
+static bool MatchesClass(mirror::Object* obj,
+                         Handle<mirror::Class> h_class,
+                         bool use_is_assignable_from) REQUIRES_SHARED(Locks::mutator_lock_) {
+  mirror::Class* instance_class = obj->GetClass();
+  CHECK(instance_class != nullptr);
+  ObjPtr<mirror::Class> klass = h_class.Get();
+  if (use_is_assignable_from) {
+    return klass != nullptr && klass->IsAssignableFrom(instance_class);
+  }
+  return instance_class == klass;
+}
+
 void Heap::CountInstances(const std::vector<Handle<mirror::Class>>& classes,
                           bool use_is_assignable_from,
                           uint64_t* counts) {
   auto instance_counter = [&](mirror::Object* obj) REQUIRES_SHARED(Locks::mutator_lock_) {
-    mirror::Class* instance_class = obj->GetClass();
-    CHECK(instance_class != nullptr);
     for (size_t i = 0; i < classes.size(); ++i) {
-      ObjPtr<mirror::Class> klass = classes[i].Get();
-      if (use_is_assignable_from) {
-        if (klass != nullptr && klass->IsAssignableFrom(instance_class)) {
-          ++counts[i];
-        }
-      } else if (instance_class == klass) {
+      if (MatchesClass(obj, classes[i], use_is_assignable_from)) {
         ++counts[i];
       }
     }
@@ -1818,11 +1824,12 @@ void Heap::CountInstances(const std::vector<Handle<mirror::Class>>& classes,
 
 void Heap::GetInstances(VariableSizedHandleScope& scope,
                         Handle<mirror::Class> h_class,
+                        bool use_is_assignable_from,
                         int32_t max_count,
                         std::vector<Handle<mirror::Object>>& instances) {
   DCHECK_GE(max_count, 0);
   auto instance_collector = [&](mirror::Object* obj) REQUIRES_SHARED(Locks::mutator_lock_) {
-    if (obj->GetClass() == h_class.Get()) {
+    if (MatchesClass(obj, h_class, use_is_assignable_from)) {
       if (max_count == 0 || instances.size() < static_cast<size_t>(max_count)) {
         instances.push_back(scope.NewHandle(obj));
       }
