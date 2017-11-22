@@ -662,14 +662,6 @@ class Dbg {
   static bool DdmHandlePacket(JDWP::Request* request, uint8_t** pReplyBuf, int* pReplyLen);
   static void DdmConnected() REQUIRES_SHARED(Locks::mutator_lock_);
   static void DdmDisconnected() REQUIRES_SHARED(Locks::mutator_lock_);
-  static void DdmSendChunk(uint32_t type, const ArrayRef<const uint8_t>& bytes)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-  static void DdmSendChunk(uint32_t type, const std::vector<uint8_t>& bytes)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-  static void DdmSendChunk(uint32_t type, size_t len, const uint8_t* buf)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-  static void DdmSendChunkV(uint32_t type, const iovec* iov, int iov_count)
-      REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Visit breakpoint roots, used to prevent unloading of methods with breakpoints.
   static void VisitRoots(RootVisitor* visitor)

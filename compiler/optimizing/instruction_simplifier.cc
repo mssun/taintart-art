@@ -27,6 +27,10 @@
 
 namespace art {
 
+// Whether to run an exhaustive test of individual HInstructions cloning when each instruction
+// is replaced with its copy if it is clonable.
+static constexpr bool kTestInstructionClonerExhaustively = false;
+
 class InstructionSimplifierVisitor : public HGraphDelegateVisitor {
  public:
   InstructionSimplifierVisitor(HGraph* graph,
@@ -130,6 +134,11 @@ class InstructionSimplifierVisitor : public HGraphDelegateVisitor {
 };
 
 void InstructionSimplifier::Run() {
+  if (kTestInstructionClonerExhaustively) {
+    CloneAndReplaceInstructionVisitor visitor(graph_);
+    visitor.VisitReversePostOrder();
+  }
+
   InstructionSimplifierVisitor visitor(graph_, codegen_, compiler_driver_, stats_);
   visitor.Run();
 }

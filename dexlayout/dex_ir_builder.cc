@@ -80,6 +80,11 @@ Header* DexIrBuilder(const DexFile& dex_file, bool eagerly_assign_offsets) {
   // Sort the vectors by the map order (same order as the file).
   collections.SortVectorsByMapOrder();
 
+  // Load the link data if it exists.
+  collections.SetLinkData(std::vector<uint8_t>(
+      dex_file.Begin() + dex_file.GetHeader().link_off_,
+      dex_file.Begin() + dex_file.GetHeader().link_off_ + dex_file.GetHeader().link_size_));
+
   return header;
 }
 
