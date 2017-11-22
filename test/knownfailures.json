@@ -202,6 +202,12 @@
         "bug": "http://b/34369284"
     },
     {
+        "tests": "1940-ddms-ext",
+        "description": ["Test expects to be able to start tracing but we cannot",
+                        "do that if tracing is already ongoing."],
+        "variant": "trace | stream"
+    },
+    {
         "tests": "137-cfi",
         "description": ["This test unrolls and expects managed frames, but",
                         "tracing means we run the interpreter."],
