@@ -45,8 +45,8 @@
 #include "image_writer.h"
 #include "linker/buffered_output_stream.h"
 #include "linker/file_output_stream.h"
+#include "linker/index_bss_mapping_encoder.h"
 #include "linker/linker_patch.h"
-#include "linker/method_bss_mapping_encoder.h"
 #include "linker/multi_oat_relative_patcher.h"
 #include "linker/output_stream.h"
 #include "mirror/array.h"
@@ -310,6 +310,8 @@ class OatWriter::OatDexFile {
   uint32_t class_offsets_offset_;
   uint32_t lookup_table_offset_;
   uint32_t method_bss_mapping_offset_;
+  uint32_t type_bss_mapping_offset_;
+  uint32_t string_bss_mapping_offset_;
   uint32_t dex_sections_layout_offset_;
 
   // Data to write to a separate section.
@@ -396,6 +398,8 @@ OatWriter::OatWriter(bool compiling_boot_image,
     size_oat_dex_file_dex_layout_sections_(0),
     size_oat_dex_file_dex_layout_sections_alignment_(0),
     size_oat_dex_file_method_bss_mapping_offset_(0),
+    size_oat_dex_file_type_bss_mapping_offset_(0),
+    size_oat_dex_file_string_bss_mapping_offset_(0),
     size_oat_lookup_table_alignment_(0),
     size_oat_lookup_table_(0),
     size_oat_class_offsets_alignment_(0),
@@ -405,6 +409,8 @@ OatWriter::OatWriter(bool compiling_boot_image,
     size_oat_class_method_bitmaps_(0),
     size_oat_class_method_offsets_(0),
     size_method_bss_mappings_(0u),
+    size_type_bss_mappings_(0u),
+    size_string_bss_mappings_(0u),
     relative_patcher_(nullptr),
     absolute_patch_locations_(),
     profile_compilation_info_(info),
@@ -632,8 +638,8 @@ void OatWriter::PrepareLayout(MultiOatRelativePatcher* relative_patcher) {
     offset = InitOatClasses(offset);
   }
   {
-    TimingLogger::ScopedTiming split("InitMethodBssMappings", timings_);
-    offset = InitMethodBssMappings(offset);
+    TimingLogger::ScopedTiming split("InitIndexBssMappings", timings_);
+    offset = InitIndexBssMappings(offset);
   }
   {
     TimingLogger::ScopedTiming split("InitOatMaps", timings_);
@@ -761,23 +767,22 @@ class OatWriter::InitBssLayoutMethodVisitor : public DexMethodVisitor {
       for (const LinkerPatch& patch : compiled_method->GetPatches()) {
         if (patch.GetType() == LinkerPatch::Type::kMethodBssEntry) {
           MethodReference target_method = patch.TargetMethod();
-          auto refs_it = writer_->bss_method_entry_references_.find(target_method.dex_file);
-          if (refs_it == writer_->bss_method_entry_references_.end()) {
-            refs_it = writer_->bss_method_entry_references_.Put(
-                target_method.dex_file,
-                BitVector(target_method.dex_file->NumMethodIds(),
-                          /* expandable */ false,
-                          Allocator::GetMallocAllocator()));
-            refs_it->second.ClearAllBits();
-          }
-          refs_it->second.SetBit(target_method.index);
+          AddBssReference(target_method,
+                          target_method.dex_file->NumMethodIds(),
+                          &writer_->bss_method_entry_references_);
           writer_->bss_method_entries_.Overwrite(target_method, /* placeholder */ 0u);
         } else if (patch.GetType() == LinkerPatch::Type::kTypeBssEntry) {
-          TypeReference ref(patch.TargetTypeDexFile(), patch.TargetTypeIndex());
-          writer_->bss_type_entries_.Overwrite(ref, /* placeholder */ 0u);
+          TypeReference target_type(patch.TargetTypeDexFile(), patch.TargetTypeIndex());
+          AddBssReference(target_type,
+                          target_type.dex_file->NumTypeIds(),
+                          &writer_->bss_type_entry_references_);
+          writer_->bss_type_entries_.Overwrite(target_type, /* placeholder */ 0u);
         } else if (patch.GetType() == LinkerPatch::Type::kStringBssEntry) {
-          StringReference ref(patch.TargetStringDexFile(), patch.TargetStringIndex());
-          writer_->bss_string_entries_.Overwrite(ref, /* placeholder */ 0u);
+          StringReference target_string(patch.TargetStringDexFile(), patch.TargetStringIndex());
+          AddBssReference(target_string,
+                          target_string.dex_file->NumStringIds(),
+                          &writer_->bss_string_entry_references_);
+          writer_->bss_string_entries_.Overwrite(target_string, /* placeholder */ 0u);
         } else if (patch.GetType() == LinkerPatch::Type::kStringInternTable ||
                    patch.GetType() == LinkerPatch::Type::kTypeClassTable) {
           writer_->map_boot_image_tables_to_bss_ = true;
@@ -787,6 +792,24 @@ class OatWriter::InitBssLayoutMethodVisitor : public DexMethodVisitor {
       DCHECK(compiled_method == nullptr || compiled_method->GetPatches().empty());
     }
     return true;
+  }
+
+ private:
+  void AddBssReference(const DexFileReference& ref,
+                       size_t number_of_indexes,
+                       /*inout*/ SafeMap<const DexFile*, BitVector>* references) {
+    // We currently support inlining of throwing instructions only when they originate in the
+    // same dex file as the outer method. All .bss references are used by throwing instructions.
+    DCHECK_EQ(dex_file_, ref.dex_file);
+
+    auto refs_it = references->find(ref.dex_file);
+    if (refs_it == references->end()) {
+      refs_it = references->Put(
+          ref.dex_file,
+          BitVector(number_of_indexes, /* expandable */ false, Allocator::GetMallocAllocator()));
+      refs_it->second.ClearAllBits();
+    }
+    refs_it->second.SetBit(ref.index);
   }
 };
 
@@ -2192,38 +2215,101 @@ size_t OatWriter::InitOatMaps(size_t offset) {
   return offset;
 }
 
-size_t OatWriter::InitMethodBssMappings(size_t offset) {
-  size_t number_of_dex_files = 0u;
-  for (size_t i = 0, size = dex_files_->size(); i != size; ++i) {
-    const DexFile* dex_file = (*dex_files_)[i];
-    auto it = bss_method_entry_references_.find(dex_file);
-    if (it != bss_method_entry_references_.end()) {
-      const BitVector& method_indexes = it->second;
-      ++number_of_dex_files;
-      // If there are any classes, the class offsets allocation aligns the offset
-      // and we cannot have method bss mappings without class offsets.
-      static_assert(alignof(MethodBssMapping) == 4u, "MethodBssMapping alignment check.");
-      DCHECK_ALIGNED(offset, 4u);
-      oat_dex_files_[i].method_bss_mapping_offset_ = offset;
-
-      MethodBssMappingEncoder encoder(
-          GetInstructionSetPointerSize(oat_header_->GetInstructionSet()));
-      size_t number_of_entries = 0u;
-      bool first_index = true;
-      for (uint32_t method_index : method_indexes.Indexes()) {
-        uint32_t bss_offset = bss_method_entries_.Get(MethodReference(dex_file, method_index));
-        if (first_index || !encoder.TryMerge(method_index, bss_offset)) {
-          encoder.Reset(method_index, bss_offset);
-          ++number_of_entries;
-          first_index = false;
-        }
-      }
-      DCHECK_NE(number_of_entries, 0u);
-      offset += MethodBssMapping::ComputeSize(number_of_entries);
+template <typename GetBssOffset>
+static size_t CalculateNumberOfIndexBssMappingEntries(size_t number_of_indexes,
+                                                      size_t slot_size,
+                                                      const BitVector& indexes,
+                                                      GetBssOffset get_bss_offset) {
+  IndexBssMappingEncoder encoder(number_of_indexes, slot_size);
+  size_t number_of_entries = 0u;
+  bool first_index = true;
+  for (uint32_t index : indexes.Indexes()) {
+    uint32_t bss_offset = get_bss_offset(index);
+    if (first_index || !encoder.TryMerge(index, bss_offset)) {
+      encoder.Reset(index, bss_offset);
+      ++number_of_entries;
+      first_index = false;
     }
   }
-  // Check that all dex files targeted by method bss entries are in `*dex_files_`.
-  CHECK_EQ(number_of_dex_files, bss_method_entry_references_.size());
+  DCHECK_NE(number_of_entries, 0u);
+  return number_of_entries;
+}
+
+template <typename GetBssOffset>
+static size_t CalculateIndexBssMappingSize(size_t number_of_indexes,
+                                           size_t slot_size,
+                                           const BitVector& indexes,
+                                           GetBssOffset get_bss_offset) {
+  size_t number_of_entries = CalculateNumberOfIndexBssMappingEntries(number_of_indexes,
+                                                                     slot_size,
+                                                                     indexes,
+                                                                     get_bss_offset);
+  return IndexBssMapping::ComputeSize(number_of_entries);
+}
+
+size_t OatWriter::InitIndexBssMappings(size_t offset) {
+  if (bss_method_entry_references_.empty() &&
+      bss_type_entry_references_.empty() &&
+      bss_string_entry_references_.empty()) {
+    return offset;
+  }
+  // If there are any classes, the class offsets allocation aligns the offset
+  // and we cannot have any index bss mappings without class offsets.
+  static_assert(alignof(IndexBssMapping) == 4u, "IndexBssMapping alignment check.");
+  DCHECK_ALIGNED(offset, 4u);
+
+  size_t number_of_method_dex_files = 0u;
+  size_t number_of_type_dex_files = 0u;
+  size_t number_of_string_dex_files = 0u;
+  PointerSize pointer_size = GetInstructionSetPointerSize(oat_header_->GetInstructionSet());
+  for (size_t i = 0, size = dex_files_->size(); i != size; ++i) {
+    const DexFile* dex_file = (*dex_files_)[i];
+    auto method_it = bss_method_entry_references_.find(dex_file);
+    if (method_it != bss_method_entry_references_.end()) {
+      const BitVector& method_indexes = method_it->second;
+      ++number_of_method_dex_files;
+      oat_dex_files_[i].method_bss_mapping_offset_ = offset;
+      offset += CalculateIndexBssMappingSize(
+          dex_file->NumMethodIds(),
+          static_cast<size_t>(pointer_size),
+          method_indexes,
+          [=](uint32_t index) {
+            return bss_method_entries_.Get({dex_file, index});
+          });
+    }
+
+    auto type_it = bss_type_entry_references_.find(dex_file);
+    if (type_it != bss_type_entry_references_.end()) {
+      const BitVector& type_indexes = type_it->second;
+      ++number_of_type_dex_files;
+      oat_dex_files_[i].type_bss_mapping_offset_ = offset;
+      offset += CalculateIndexBssMappingSize(
+          dex_file->NumTypeIds(),
+          sizeof(GcRoot<mirror::Class>),
+          type_indexes,
+          [=](uint32_t index) {
+            return bss_type_entries_.Get({dex_file, dex::TypeIndex(index)});
+          });
+    }
+
+    auto string_it = bss_string_entry_references_.find(dex_file);
+    if (string_it != bss_string_entry_references_.end()) {
+      const BitVector& string_indexes = string_it->second;
+      ++number_of_string_dex_files;
+      oat_dex_files_[i].string_bss_mapping_offset_ = offset;
+      offset += CalculateIndexBssMappingSize(
+          dex_file->NumStringIds(),
+          sizeof(GcRoot<mirror::String>),
+          string_indexes,
+          [=](uint32_t index) {
+            return bss_string_entries_.Get({dex_file, dex::StringIndex(index)});
+          });
+    }
+  }
+  // Check that all dex files targeted by bss entries are in `*dex_files_`.
+  CHECK_EQ(number_of_method_dex_files, bss_method_entry_references_.size());
+  CHECK_EQ(number_of_type_dex_files, bss_type_entry_references_.size());
+  CHECK_EQ(number_of_string_dex_files, bss_string_entry_references_.size());
   return offset;
 }
 
@@ -2423,7 +2509,7 @@ bool OatWriter::WriteRodata(OutputStream* out) {
     return false;
   }
 
-  relative_offset = WriteMethodBssMappings(out, file_offset, relative_offset);
+  relative_offset = WriteIndexBssMappings(out, file_offset, relative_offset);
   if (relative_offset == 0) {
     PLOG(ERROR) << "Failed to write method bss mappings to " << out->GetLocation();
     return false;
@@ -2744,6 +2830,8 @@ bool OatWriter::WriteCode(OutputStream* out) {
     DO_STAT(size_oat_dex_file_dex_layout_sections_);
     DO_STAT(size_oat_dex_file_dex_layout_sections_alignment_);
     DO_STAT(size_oat_dex_file_method_bss_mapping_offset_);
+    DO_STAT(size_oat_dex_file_type_bss_mapping_offset_);
+    DO_STAT(size_oat_dex_file_string_bss_mapping_offset_);
     DO_STAT(size_oat_lookup_table_alignment_);
     DO_STAT(size_oat_lookup_table_);
     DO_STAT(size_oat_class_offsets_alignment_);
@@ -2753,6 +2841,8 @@ bool OatWriter::WriteCode(OutputStream* out) {
     DO_STAT(size_oat_class_method_bitmaps_);
     DO_STAT(size_oat_class_method_offsets_);
     DO_STAT(size_method_bss_mappings_);
+    DO_STAT(size_type_bss_mappings_);
+    DO_STAT(size_string_bss_mappings_);
     #undef DO_STAT
 
     VLOG(compiler) << "size_total=" << PrettySize(size_total) << " (" << size_total << "B)";
@@ -2892,63 +2982,130 @@ size_t OatWriter::WriteMaps(OutputStream* out, size_t file_offset, size_t relati
   return relative_offset;
 }
 
-size_t OatWriter::WriteMethodBssMappings(OutputStream* out,
-                                         size_t file_offset,
-                                         size_t relative_offset) {
-  TimingLogger::ScopedTiming split("WriteMethodBssMappings", timings_);
 
+template <typename GetBssOffset>
+size_t WriteIndexBssMapping(OutputStream* out,
+                            size_t number_of_indexes,
+                            size_t slot_size,
+                            const BitVector& indexes,
+                            GetBssOffset get_bss_offset) {
+  // Allocate the IndexBssMapping.
+  size_t number_of_entries = CalculateNumberOfIndexBssMappingEntries(
+      number_of_indexes, slot_size, indexes, get_bss_offset);
+  size_t mappings_size = IndexBssMapping::ComputeSize(number_of_entries);
+  DCHECK_ALIGNED(mappings_size, sizeof(uint32_t));
+  std::unique_ptr<uint32_t[]> storage(new uint32_t[mappings_size / sizeof(uint32_t)]);
+  IndexBssMapping* mappings = new(storage.get()) IndexBssMapping(number_of_entries);
+  mappings->ClearPadding();
+  // Encode the IndexBssMapping.
+  IndexBssMappingEncoder encoder(number_of_indexes, slot_size);
+  auto init_it = mappings->begin();
+  bool first_index = true;
+  for (uint32_t index : indexes.Indexes()) {
+    size_t bss_offset = get_bss_offset(index);
+    if (first_index) {
+      first_index = false;
+      encoder.Reset(index, bss_offset);
+    } else if (!encoder.TryMerge(index, bss_offset)) {
+      *init_it = encoder.GetEntry();
+      ++init_it;
+      encoder.Reset(index, bss_offset);
+    }
+  }
+  // Store the last entry.
+  *init_it = encoder.GetEntry();
+  ++init_it;
+  DCHECK(init_it == mappings->end());
+
+  if (!out->WriteFully(storage.get(), mappings_size)) {
+    return 0u;
+  }
+  return mappings_size;
+}
+
+size_t OatWriter::WriteIndexBssMappings(OutputStream* out,
+                                        size_t file_offset,
+                                        size_t relative_offset) {
+  TimingLogger::ScopedTiming split("WriteMethodBssMappings", timings_);
+  if (bss_method_entry_references_.empty() &&
+      bss_type_entry_references_.empty() &&
+      bss_string_entry_references_.empty()) {
+    return relative_offset;
+  }
+  // If there are any classes, the class offsets allocation aligns the offset
+  // and we cannot have method bss mappings without class offsets.
+  static_assert(alignof(IndexBssMapping) == sizeof(uint32_t),
+                "IndexBssMapping alignment check.");
+  DCHECK_ALIGNED(relative_offset, sizeof(uint32_t));
+
+  PointerSize pointer_size = GetInstructionSetPointerSize(oat_header_->GetInstructionSet());
   for (size_t i = 0, size = dex_files_->size(); i != size; ++i) {
     const DexFile* dex_file = (*dex_files_)[i];
     OatDexFile* oat_dex_file = &oat_dex_files_[i];
-    auto it = bss_method_entry_references_.find(dex_file);
-    if (it != bss_method_entry_references_.end()) {
-      const BitVector& method_indexes = it->second;
-      // If there are any classes, the class offsets allocation aligns the offset
-      // and we cannot have method bss mappings without class offsets.
-      static_assert(alignof(MethodBssMapping) == sizeof(uint32_t),
-                    "MethodBssMapping alignment check.");
-      DCHECK_ALIGNED(relative_offset, sizeof(uint32_t));
-
-      MethodBssMappingEncoder encoder(
-          GetInstructionSetPointerSize(oat_header_->GetInstructionSet()));
-      // Allocate a sufficiently large MethodBssMapping.
-      size_t number_of_method_indexes = method_indexes.NumSetBits();
-      DCHECK_NE(number_of_method_indexes, 0u);
-      size_t max_mappings_size = MethodBssMapping::ComputeSize(number_of_method_indexes);
-      DCHECK_ALIGNED(max_mappings_size, sizeof(uint32_t));
-      std::unique_ptr<uint32_t[]> storage(new uint32_t[max_mappings_size / sizeof(uint32_t)]);
-      MethodBssMapping* mappings = new(storage.get()) MethodBssMapping(number_of_method_indexes);
-      mappings->ClearPadding();
-      // Encode the MethodBssMapping.
-      auto init_it = mappings->begin();
-      bool first_index = true;
-      for (uint32_t method_index : method_indexes.Indexes()) {
-        size_t bss_offset = bss_method_entries_.Get(MethodReference(dex_file, method_index));
-        if (first_index) {
-          first_index = false;
-          encoder.Reset(method_index, bss_offset);
-        } else if (!encoder.TryMerge(method_index, bss_offset)) {
-          *init_it = encoder.GetEntry();
-          ++init_it;
-          encoder.Reset(method_index, bss_offset);
-        }
-      }
-      // Store the last entry and shrink the mapping to the actual size.
-      *init_it = encoder.GetEntry();
-      ++init_it;
-      DCHECK(init_it <= mappings->end());
-      mappings->SetSize(std::distance(mappings->begin(), init_it));
-      size_t mappings_size = MethodBssMapping::ComputeSize(mappings->size());
-
+    auto method_it = bss_method_entry_references_.find(dex_file);
+    if (method_it != bss_method_entry_references_.end()) {
+      const BitVector& method_indexes = method_it->second;
       DCHECK_EQ(relative_offset, oat_dex_file->method_bss_mapping_offset_);
       DCHECK_OFFSET();
-      if (!out->WriteFully(storage.get(), mappings_size)) {
+      size_t method_mappings_size = WriteIndexBssMapping(
+          out,
+          dex_file->NumMethodIds(),
+          static_cast<size_t>(pointer_size),
+          method_indexes,
+          [=](uint32_t index) {
+            return bss_method_entries_.Get({dex_file, index});
+          });
+      if (method_mappings_size == 0u) {
         return 0u;
       }
-      size_method_bss_mappings_ += mappings_size;
-      relative_offset += mappings_size;
+      size_method_bss_mappings_ += method_mappings_size;
+      relative_offset += method_mappings_size;
     } else {
       DCHECK_EQ(0u, oat_dex_file->method_bss_mapping_offset_);
+    }
+
+    auto type_it = bss_type_entry_references_.find(dex_file);
+    if (type_it != bss_type_entry_references_.end()) {
+      const BitVector& type_indexes = type_it->second;
+      DCHECK_EQ(relative_offset, oat_dex_file->type_bss_mapping_offset_);
+      DCHECK_OFFSET();
+      size_t type_mappings_size = WriteIndexBssMapping(
+          out,
+          dex_file->NumTypeIds(),
+          sizeof(GcRoot<mirror::Class>),
+          type_indexes,
+          [=](uint32_t index) {
+            return bss_type_entries_.Get({dex_file, dex::TypeIndex(index)});
+          });
+      if (type_mappings_size == 0u) {
+        return 0u;
+      }
+      size_type_bss_mappings_ += type_mappings_size;
+      relative_offset += type_mappings_size;
+    } else {
+      DCHECK_EQ(0u, oat_dex_file->type_bss_mapping_offset_);
+    }
+
+    auto string_it = bss_string_entry_references_.find(dex_file);
+    if (string_it != bss_string_entry_references_.end()) {
+      const BitVector& string_indexes = string_it->second;
+      DCHECK_EQ(relative_offset, oat_dex_file->string_bss_mapping_offset_);
+      DCHECK_OFFSET();
+      size_t string_mappings_size = WriteIndexBssMapping(
+          out,
+          dex_file->NumStringIds(),
+          sizeof(GcRoot<mirror::String>),
+          string_indexes,
+          [=](uint32_t index) {
+            return bss_string_entries_.Get({dex_file, dex::StringIndex(index)});
+          });
+      if (string_mappings_size == 0u) {
+        return 0u;
+      }
+      size_string_bss_mappings_ += string_mappings_size;
+      relative_offset += string_mappings_size;
+    } else {
+      DCHECK_EQ(0u, oat_dex_file->string_bss_mapping_offset_);
     }
   }
   return relative_offset;
@@ -3748,6 +3905,8 @@ OatWriter::OatDexFile::OatDexFile(const char* dex_file_location,
       class_offsets_offset_(0u),
       lookup_table_offset_(0u),
       method_bss_mapping_offset_(0u),
+      type_bss_mapping_offset_(0u),
+      string_bss_mapping_offset_(0u),
       dex_sections_layout_offset_(0u),
       class_offsets_() {
 }
@@ -3760,6 +3919,8 @@ size_t OatWriter::OatDexFile::SizeOf() const {
           + sizeof(class_offsets_offset_)
           + sizeof(lookup_table_offset_)
           + sizeof(method_bss_mapping_offset_)
+          + sizeof(type_bss_mapping_offset_)
+          + sizeof(string_bss_mapping_offset_)
           + sizeof(dex_sections_layout_offset_);
 }
 
@@ -3814,6 +3975,18 @@ bool OatWriter::OatDexFile::Write(OatWriter* oat_writer, OutputStream* out) cons
     return false;
   }
   oat_writer->size_oat_dex_file_method_bss_mapping_offset_ += sizeof(method_bss_mapping_offset_);
+
+  if (!out->WriteFully(&type_bss_mapping_offset_, sizeof(type_bss_mapping_offset_))) {
+    PLOG(ERROR) << "Failed to write type bss mapping offset to " << out->GetLocation();
+    return false;
+  }
+  oat_writer->size_oat_dex_file_type_bss_mapping_offset_ += sizeof(type_bss_mapping_offset_);
+
+  if (!out->WriteFully(&string_bss_mapping_offset_, sizeof(string_bss_mapping_offset_))) {
+    PLOG(ERROR) << "Failed to write string bss mapping offset to " << out->GetLocation();
+    return false;
+  }
+  oat_writer->size_oat_dex_file_string_bss_mapping_offset_ += sizeof(string_bss_mapping_offset_);
 
   return true;
 }
