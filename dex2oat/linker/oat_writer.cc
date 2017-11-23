@@ -274,7 +274,9 @@ class OatWriter::OatDexFile {
  public:
   OatDexFile(const char* dex_file_location,
              DexFileSource source,
-             CreateTypeLookupTable create_type_lookup_table);
+             CreateTypeLookupTable create_type_lookup_table,
+             uint32_t dex_file_location_checksun,
+             size_t dex_file_size);
   OatDexFile(OatDexFile&& src) = default;
 
   const char* GetLocation() const {
@@ -295,31 +297,47 @@ class OatWriter::OatDexFile {
   // Whether to create the type lookup table.
   CreateTypeLookupTable create_type_lookup_table_;
 
-  // Dex file size. Initialized when writing the dex file.
+  // Dex file size. Passed in the constructor, but could be
+  // overwritten by LayoutAndWriteDexFile.
   size_t dex_file_size_;
 
   // Offset of start of OatDexFile from beginning of OatHeader. It is
   // used to validate file position when writing.
   size_t offset_;
 
-  // Data to write.
-  uint32_t dex_file_location_size_;
-  const char* dex_file_location_data_;
-  uint32_t dex_file_location_checksum_;
+  ///// Start of data to write to vdex/oat file.
+
+  const uint32_t dex_file_location_size_;
+  const char* const dex_file_location_data_;
+
+  // The checksum of the dex file.
+  const uint32_t dex_file_location_checksum_;
+
+  // Offset of the dex file in the vdex file. Set when writing dex files in
+  // SeekToDexFile.
   uint32_t dex_file_offset_;
-  uint32_t class_offsets_offset_;
+
+  // The lookup table offset in the oat file. Set in WriteTypeLookupTables.
   uint32_t lookup_table_offset_;
+
+  // Class and BSS offsets set in PrepareLayout.
+  uint32_t class_offsets_offset_;
   uint32_t method_bss_mapping_offset_;
   uint32_t type_bss_mapping_offset_;
   uint32_t string_bss_mapping_offset_;
+
+  // Offset of dex sections that will have different runtime madvise states.
+  // Set in WriteDexLayoutSections.
   uint32_t dex_sections_layout_offset_;
 
-  // Data to write to a separate section.
+  // Data to write to a separate section. We set the length
+  // of the vector in OpenDexFiles.
   dchecked_vector<uint32_t> class_offsets_;
 
   // Dex section layout info to serialize.
   DexLayoutSections dex_sections_layout_;
 
+  ///// End of data to write to vdex/oat file.
  private:
   DISALLOW_COPY_AND_ASSIGN(OatDexFile);
 };
@@ -417,6 +435,41 @@ OatWriter::OatWriter(bool compiling_boot_image,
     compact_dex_level_(compact_dex_level) {
 }
 
+static bool ValidateDexFileHeader(const uint8_t* raw_header, const char* location) {
+  const bool valid_standard_dex_magic = DexFileLoader::IsMagicValid(raw_header);
+  if (!valid_standard_dex_magic) {
+    LOG(ERROR) << "Invalid magic number in dex file header. " << " File: " << location;
+    return false;
+  }
+  if (!DexFileLoader::IsVersionAndMagicValid(raw_header)) {
+    LOG(ERROR) << "Invalid version number in dex file header. " << " File: " << location;
+    return false;
+  }
+  const UnalignedDexFileHeader* header = AsUnalignedDexFileHeader(raw_header);
+  if (header->file_size_ < sizeof(DexFile::Header)) {
+    LOG(ERROR) << "Dex file header specifies file size insufficient to contain the header."
+               << " File: " << location;
+    return false;
+  }
+  return true;
+}
+
+static const UnalignedDexFileHeader* GetDexFileHeader(File* file,
+                                                      uint8_t* raw_header,
+                                                      const char* location) {
+  // Read the dex file header and perform minimal verification.
+  if (!file->ReadFully(raw_header, sizeof(DexFile::Header))) {
+    PLOG(ERROR) << "Failed to read dex file header. Actual: "
+                << " File: " << location << " Output: " << file->GetPath();
+    return nullptr;
+  }
+  if (!ValidateDexFileHeader(raw_header, location)) {
+    return nullptr;
+  }
+
+  return AsUnalignedDexFileHeader(raw_header);
+}
+
 bool OatWriter::AddDexFileSource(const char* filename,
                                  const char* location,
                                  CreateTypeLookupTable create_type_lookup_table) {
@@ -428,12 +481,20 @@ bool OatWriter::AddDexFileSource(const char* filename,
     PLOG(ERROR) << "Failed to read magic number from dex file: '" << filename << "'";
     return false;
   } else if (DexFileLoader::IsMagicValid(magic)) {
+    uint8_t raw_header[sizeof(DexFile::Header)];
+    const UnalignedDexFileHeader* header = GetDexFileHeader(&fd, raw_header, location);
+    if (header == nullptr) {
+      return false;
+    }
     // The file is open for reading, not writing, so it's OK to let the File destructor
     // close it without checking for explicit Close(), so pass checkUsage = false.
     raw_dex_files_.emplace_back(new File(fd.Release(), location, /* checkUsage */ false));
-    oat_dex_files_.emplace_back(location,
-                                DexFileSource(raw_dex_files_.back().get()),
-                                create_type_lookup_table);
+    oat_dex_files_.emplace_back(/* OatDexFile */
+        location,
+        DexFileSource(raw_dex_files_.back().get()),
+        create_type_lookup_table,
+        header->checksum_,
+        header->file_size_);
   } else if (IsZipMagic(magic)) {
     if (!AddZippedDexFilesSource(std::move(fd), location, create_type_lookup_table)) {
       return false;
@@ -467,9 +528,13 @@ bool OatWriter::AddZippedDexFilesSource(File&& zip_fd,
     zipped_dex_files_.push_back(std::move(entry));
     zipped_dex_file_locations_.push_back(DexFileLoader::GetMultiDexLocation(i, location));
     const char* full_location = zipped_dex_file_locations_.back().c_str();
-    oat_dex_files_.emplace_back(full_location,
-                                DexFileSource(zipped_dex_files_.back().get()),
-                                create_type_lookup_table);
+    // We override the checksum from header with the CRC from ZIP entry.
+    oat_dex_files_.emplace_back(/* OatDexFile */
+        full_location,
+        DexFileSource(zipped_dex_files_.back().get()),
+        create_type_lookup_table,
+        zipped_dex_files_.back()->GetCrc32(),
+        zipped_dex_files_.back()->GetUncompressedLength());
   }
   if (zipped_dex_file_locations_.empty()) {
     LOG(ERROR) << "No dex files in zip file '" << location << "': " << error_msg;
@@ -498,10 +563,13 @@ bool OatWriter::AddVdexDexFilesSource(const VdexFile& vdex_file,
     // We used `zipped_dex_file_locations_` to keep the strings in memory.
     zipped_dex_file_locations_.push_back(DexFileLoader::GetMultiDexLocation(i, location));
     const char* full_location = zipped_dex_file_locations_.back().c_str();
-    oat_dex_files_.emplace_back(full_location,
-                                DexFileSource(current_dex_data),
-                                create_type_lookup_table);
-    oat_dex_files_.back().dex_file_location_checksum_ = vdex_file.GetLocationChecksum(i);
+    const UnalignedDexFileHeader* header = AsUnalignedDexFileHeader(current_dex_data);
+    oat_dex_files_.emplace_back(/* OatDexFile */
+        full_location,
+        DexFileSource(current_dex_data),
+        create_type_lookup_table,
+        vdex_file.GetLocationChecksum(i),
+        header->file_size_);
   }
 
   if (vdex_file.GetNextDexFileData(current_dex_data) != nullptr) {
@@ -537,8 +605,12 @@ bool OatWriter::AddRawDexFileSource(const ArrayRef<const uint8_t>& data,
     return false;
   }
 
-  oat_dex_files_.emplace_back(location, DexFileSource(data.data()), create_type_lookup_table);
-  oat_dex_files_.back().dex_file_location_checksum_ = location_checksum;
+  oat_dex_files_.emplace_back(/* OatDexFile */
+      location,
+      DexFileSource(data.data()),
+      create_type_lookup_table,
+      location_checksum,
+      header->file_size_);
   return true;
 }
 
@@ -3204,44 +3276,6 @@ bool OatWriter::RecordOatDataOffset(OutputStream* out) {
   return true;
 }
 
-bool OatWriter::ReadDexFileHeader(File* file, OatDexFile* oat_dex_file) {
-  // Read the dex file header and perform minimal verification.
-  uint8_t raw_header[sizeof(DexFile::Header)];
-  if (!file->ReadFully(&raw_header, sizeof(DexFile::Header))) {
-    PLOG(ERROR) << "Failed to read dex file header. Actual: "
-                << " File: " << oat_dex_file->GetLocation() << " Output: " << file->GetPath();
-    return false;
-  }
-  if (!ValidateDexFileHeader(raw_header, oat_dex_file->GetLocation())) {
-    return false;
-  }
-
-  const UnalignedDexFileHeader* header = AsUnalignedDexFileHeader(raw_header);
-  oat_dex_file->dex_file_size_ = header->file_size_;
-  oat_dex_file->dex_file_location_checksum_ = header->checksum_;
-  oat_dex_file->class_offsets_.resize(header->class_defs_size_);
-  return true;
-}
-
-bool OatWriter::ValidateDexFileHeader(const uint8_t* raw_header, const char* location) {
-  const bool valid_standard_dex_magic = DexFileLoader::IsMagicValid(raw_header);
-  if (!valid_standard_dex_magic) {
-    LOG(ERROR) << "Invalid magic number in dex file header. " << " File: " << location;
-    return false;
-  }
-  if (!DexFileLoader::IsVersionAndMagicValid(raw_header)) {
-    LOG(ERROR) << "Invalid version number in dex file header. " << " File: " << location;
-    return false;
-  }
-  const UnalignedDexFileHeader* header = AsUnalignedDexFileHeader(raw_header);
-  if (header->file_size_ < sizeof(DexFile::Header)) {
-    LOG(ERROR) << "Dex file header specifies file size insufficient to contain the header."
-               << " File: " << location;
-    return false;
-  }
-  return true;
-}
-
 bool OatWriter::WriteDexFiles(OutputStream* out, File* file, bool update_input_vdex) {
   TimingLogger::ScopedTiming split("Write Dex files", timings_);
 
@@ -3396,12 +3430,15 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
   DexLayout dex_layout(options, profile_compilation_info_, nullptr);
   dex_layout.ProcessDexFile(location.c_str(), dex_file.get(), 0);
   std::unique_ptr<MemMap> mem_map(dex_layout.GetAndReleaseMemMap());
+  oat_dex_file->dex_sections_layout_ = dex_layout.GetSections();
+  // Dex layout can affect the size of the dex file, so we update here what we have set
+  // when adding the dex file as a source.
+  const UnalignedDexFileHeader* header = AsUnalignedDexFileHeader(mem_map->Begin());
+  oat_dex_file->dex_file_size_ = header->file_size_;
   if (!WriteDexFile(out, oat_dex_file, mem_map->Begin(), /* update_input_vdex */ false)) {
     return false;
   }
-  oat_dex_file->dex_sections_layout_ = dex_layout.GetSections();
-  // Set the checksum of the new oat dex file to be the original file's checksum.
-  oat_dex_file->dex_file_location_checksum_ = dex_file->GetLocationChecksum();
+  CHECK_EQ(oat_dex_file->dex_file_location_checksum_, dex_file->GetLocationChecksum());
   return true;
 }
 
@@ -3451,18 +3488,12 @@ bool OatWriter::WriteDexFile(OutputStream* out,
                 << " File: " << oat_dex_file->GetLocation() << " Output: " << file->GetPath();
     return false;
   }
-  if (!ReadDexFileHeader(file, oat_dex_file)) {
-    return false;
-  }
   if (extracted_size < oat_dex_file->dex_file_size_) {
     LOG(ERROR) << "Extracted truncated dex file. Extracted size: " << extracted_size
                << " file size from header: " << oat_dex_file->dex_file_size_
                << " File: " << oat_dex_file->GetLocation();
     return false;
   }
-
-  // Override the checksum from header with the CRC from ZIP entry.
-  oat_dex_file->dex_file_location_checksum_ = dex_file->GetCrc32();
 
   // Seek both file and stream to the end offset.
   size_t end_offset = start_offset + oat_dex_file->dex_file_size_;
@@ -3510,9 +3541,6 @@ bool OatWriter::WriteDexFile(OutputStream* out,
     PLOG(ERROR) << "Failed to seek to dex file header. Actual: " << input_offset
                 << " Expected: 0"
                 << " File: " << oat_dex_file->GetLocation() << " Output: " << file->GetPath();
-    return false;
-  }
-  if (!ReadDexFileHeader(dex_file, oat_dex_file)) {
     return false;
   }
 
@@ -3576,12 +3604,6 @@ bool OatWriter::WriteDexFile(OutputStream* out,
       return false;
     }
   }
-
-  // Update dex file size and resize class offsets in the OatDexFile.
-  // Note: For raw data, the checksum is passed directly to AddRawDexFileSource().
-  // Note: For vdex, the checksum is copied from the existing vdex file.
-  oat_dex_file->dex_file_size_ = header->file_size_;
-  oat_dex_file->class_offsets_.resize(header->class_defs_size_);
   return true;
 }
 
@@ -3617,29 +3639,22 @@ bool OatWriter::OpenDexFiles(
   }
   std::vector<std::unique_ptr<const DexFile>> dex_files;
   for (OatDexFile& oat_dex_file : oat_dex_files_) {
-    // Make sure no one messed with input files while we were copying data.
-    // At the very least we need consistent file size and number of class definitions.
     const uint8_t* raw_dex_file =
         dex_files_map->Begin() + oat_dex_file.dex_file_offset_ - map_offset;
-    if (!ValidateDexFileHeader(raw_dex_file, oat_dex_file.GetLocation())) {
-      // Note: ValidateDexFileHeader() already logged an error message.
-      LOG(ERROR) << "Failed to verify written dex file header!"
+
+    if (kIsDebugBuild) {
+      // Sanity check our input files.
+      // Note that ValidateDexFileHeader() logs error messages.
+      CHECK(ValidateDexFileHeader(raw_dex_file, oat_dex_file.GetLocation()))
+          << "Failed to verify written dex file header!"
           << " Output: " << file->GetPath() << " ~ " << std::hex << map_offset
           << " ~ " << static_cast<const void*>(raw_dex_file);
-      return false;
-    }
-    const UnalignedDexFileHeader* header = AsUnalignedDexFileHeader(raw_dex_file);
-    if (header->file_size_ != oat_dex_file.dex_file_size_) {
-      LOG(ERROR) << "File size mismatch in written dex file header! Expected: "
+
+      const UnalignedDexFileHeader* header = AsUnalignedDexFileHeader(raw_dex_file);
+      CHECK_EQ(header->file_size_, oat_dex_file.dex_file_size_)
+          << "File size mismatch in written dex file header! Expected: "
           << oat_dex_file.dex_file_size_ << " Actual: " << header->file_size_
           << " Output: " << file->GetPath();
-      return false;
-    }
-    if (header->class_defs_size_ != oat_dex_file.class_offsets_.size()) {
-      LOG(ERROR) << "Class defs size mismatch in written dex file header! Expected: "
-          << oat_dex_file.class_offsets_.size() << " Actual: " << header->class_defs_size_
-          << " Output: " << file->GetPath();
-      return false;
     }
 
     // Now, open the dex file.
@@ -3656,6 +3671,10 @@ bool OatWriter::OpenDexFiles(
                  << " Error: " << error_msg;
       return false;
     }
+
+    // Set the class_offsets size now that we have easy access to the DexFile and
+    // it has been verified in DexFileLoader::Open.
+    oat_dex_file.class_offsets_.resize(dex_files.back()->GetHeader().class_defs_size_);
   }
 
   *opened_dex_files_map = std::move(dex_files_map);
@@ -3893,17 +3912,19 @@ void OatWriter::SetMultiOatRelativePatcherAdjustment() {
 
 OatWriter::OatDexFile::OatDexFile(const char* dex_file_location,
                                   DexFileSource source,
-                                  CreateTypeLookupTable create_type_lookup_table)
+                                  CreateTypeLookupTable create_type_lookup_table,
+                                  uint32_t dex_file_location_checksum,
+                                  size_t dex_file_size)
     : source_(source),
       create_type_lookup_table_(create_type_lookup_table),
-      dex_file_size_(0),
+      dex_file_size_(dex_file_size),
       offset_(0),
       dex_file_location_size_(strlen(dex_file_location)),
       dex_file_location_data_(dex_file_location),
-      dex_file_location_checksum_(0u),
+      dex_file_location_checksum_(dex_file_location_checksum),
       dex_file_offset_(0u),
-      class_offsets_offset_(0u),
       lookup_table_offset_(0u),
+      class_offsets_offset_(0u),
       method_bss_mapping_offset_(0u),
       type_bss_mapping_offset_(0u),
       string_bss_mapping_offset_(0u),
