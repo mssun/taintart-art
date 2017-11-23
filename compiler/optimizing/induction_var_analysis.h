@@ -195,9 +195,14 @@ class HInductionVarAnalysis : public HOptimization {
                                  HInstruction* entry_phi,
                                  HTypeConversion* conversion);
 
+  //
+  // Loop trip count analysis methods.
+  //
+
   // Trip count information.
   void VisitControl(HLoopInformation* loop);
   void VisitCondition(HLoopInformation* loop,
+                      HBasicBlock* body,
                       InductionInfo* a,
                       InductionInfo* b,
                       DataType::Type type,
@@ -219,6 +224,14 @@ class HInductionVarAnalysis : public HOptimization {
                            int64_t stride_value,
                            DataType::Type type,
                            IfCondition cmp);
+  bool RewriteBreakLoop(HLoopInformation* loop,
+                        HBasicBlock* body,
+                        int64_t stride_value,
+                        DataType::Type type);
+
+  //
+  // Helper methods.
+  //
 
   // Assign and lookup.
   void AssignInfo(HLoopInformation* loop, HInstruction* instruction, InductionInfo* info);

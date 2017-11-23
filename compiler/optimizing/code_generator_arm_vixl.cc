@@ -532,29 +532,12 @@ class LoadClassSlowPathARMVIXL : public SlowPathCodeARMVIXL {
   void EmitNativeCode(CodeGenerator* codegen) OVERRIDE {
     LocationSummary* locations = instruction_->GetLocations();
     Location out = locations->Out();
-    constexpr bool call_saves_everything_except_r0 = (!kUseReadBarrier || kUseBakerReadBarrier);
 
     CodeGeneratorARMVIXL* arm_codegen = down_cast<CodeGeneratorARMVIXL*>(codegen);
     __ Bind(GetEntryLabel());
     SaveLiveRegisters(codegen, locations);
 
     InvokeRuntimeCallingConventionARMVIXL calling_convention;
-    // For HLoadClass/kBssEntry/kSaveEverything, make sure we preserve the address of the entry.
-    DCHECK_EQ(instruction_->IsLoadClass(), cls_ == instruction_);
-    bool is_load_class_bss_entry =
-        (cls_ == instruction_) && (cls_->GetLoadKind() == HLoadClass::LoadKind::kBssEntry);
-    vixl32::Register entry_address;
-    if (is_load_class_bss_entry && call_saves_everything_except_r0) {
-      vixl32::Register temp = RegisterFrom(locations->GetTemp(0));
-      // In the unlucky case that the `temp` is R0, we preserve the address in `out` across
-      // the kSaveEverything call.
-      bool temp_is_r0 = temp.Is(calling_convention.GetRegisterAt(0));
-      entry_address = temp_is_r0 ? RegisterFrom(out) : temp;
-      DCHECK(!entry_address.Is(calling_convention.GetRegisterAt(0)));
-      if (temp_is_r0) {
-        __ Mov(entry_address, temp);
-      }
-    }
     dex::TypeIndex type_index = cls_->GetTypeIndex();
     __ Mov(calling_convention.GetRegisterAt(0), type_index.index_);
     QuickEntrypointEnum entrypoint = do_clinit_ ? kQuickInitializeStaticStorage
@@ -566,22 +549,6 @@ class LoadClassSlowPathARMVIXL : public SlowPathCodeARMVIXL {
       CheckEntrypointTypes<kQuickInitializeType, void*, uint32_t>();
     }
 
-    // For HLoadClass/kBssEntry, store the resolved Class to the BSS entry.
-    if (is_load_class_bss_entry) {
-      if (call_saves_everything_except_r0) {
-        // The class entry address was preserved in `entry_address` thanks to kSaveEverything.
-        __ Str(r0, MemOperand(entry_address));
-      } else {
-        // For non-Baker read barrier, we need to re-calculate the address of the string entry.
-        UseScratchRegisterScope temps(
-            down_cast<CodeGeneratorARMVIXL*>(codegen)->GetVIXLAssembler());
-        vixl32::Register temp = temps.Acquire();
-        CodeGeneratorARMVIXL::PcRelativePatchInfo* labels =
-            arm_codegen->NewTypeBssEntryPatch(cls_->GetDexFile(), type_index);
-        arm_codegen->EmitMovwMovtPlaceholder(labels, temp);
-        __ Str(r0, MemOperand(temp));
-      }
-    }
     // Move the class to the desired location.
     if (out.IsValid()) {
       DCHECK(out.IsRegister() && !locations->GetLiveRegisters()->ContainsCoreRegister(out.reg()));
@@ -616,47 +583,16 @@ class LoadStringSlowPathARMVIXL : public SlowPathCodeARMVIXL {
     DCHECK_EQ(instruction_->AsLoadString()->GetLoadKind(), HLoadString::LoadKind::kBssEntry);
     LocationSummary* locations = instruction_->GetLocations();
     DCHECK(!locations->GetLiveRegisters()->ContainsCoreRegister(locations->Out().reg()));
-    HLoadString* load = instruction_->AsLoadString();
-    const dex::StringIndex string_index = load->GetStringIndex();
-    vixl32::Register out = OutputRegister(load);
-    constexpr bool call_saves_everything_except_r0 = (!kUseReadBarrier || kUseBakerReadBarrier);
+    const dex::StringIndex string_index = instruction_->AsLoadString()->GetStringIndex();
 
     CodeGeneratorARMVIXL* arm_codegen = down_cast<CodeGeneratorARMVIXL*>(codegen);
     __ Bind(GetEntryLabel());
     SaveLiveRegisters(codegen, locations);
 
     InvokeRuntimeCallingConventionARMVIXL calling_convention;
-    // In the unlucky case that the `temp` is R0, we preserve the address in `out` across
-    // the kSaveEverything call.
-    vixl32::Register entry_address;
-    if (call_saves_everything_except_r0) {
-      vixl32::Register temp = RegisterFrom(locations->GetTemp(0));
-      bool temp_is_r0 = (temp.Is(calling_convention.GetRegisterAt(0)));
-      entry_address = temp_is_r0 ? out : temp;
-      DCHECK(!entry_address.Is(calling_convention.GetRegisterAt(0)));
-      if (temp_is_r0) {
-        __ Mov(entry_address, temp);
-      }
-    }
-
     __ Mov(calling_convention.GetRegisterAt(0), string_index.index_);
     arm_codegen->InvokeRuntime(kQuickResolveString, instruction_, instruction_->GetDexPc(), this);
     CheckEntrypointTypes<kQuickResolveString, void*, uint32_t>();
-
-    // Store the resolved String to the .bss entry.
-    if (call_saves_everything_except_r0) {
-      // The string entry address was preserved in `entry_address` thanks to kSaveEverything.
-      __ Str(r0, MemOperand(entry_address));
-    } else {
-      // For non-Baker read barrier, we need to re-calculate the address of the string entry.
-      UseScratchRegisterScope temps(
-          down_cast<CodeGeneratorARMVIXL*>(codegen)->GetVIXLAssembler());
-      vixl32::Register temp = temps.Acquire();
-      CodeGeneratorARMVIXL::PcRelativePatchInfo* labels =
-          arm_codegen->NewStringBssEntryPatch(load->GetDexFile(), string_index);
-      arm_codegen->EmitMovwMovtPlaceholder(labels, temp);
-      __ Str(r0, MemOperand(temp));
-    }
 
     arm_codegen->Move32(locations->Out(), LocationFrom(r0));
     RestoreLiveRegisters(codegen, locations);
@@ -7104,9 +7040,6 @@ void LocationsBuilderARMVIXL::VisitLoadClass(HLoadClass* cls) {
   if (load_kind == HLoadClass::LoadKind::kBssEntry) {
     if (!kUseReadBarrier || kUseBakerReadBarrier) {
       // Rely on the type resolution or initialization and marking to save everything we need.
-      // Note that IP may be clobbered by saving/restoring the live register (only one thanks
-      // to the custom calling convention) or by marking, so we request a different temp.
-      locations->AddTemp(Location::RequiresRegister());
       RegisterSet caller_saves = RegisterSet::Empty();
       InvokeRuntimeCallingConventionARMVIXL calling_convention;
       caller_saves.Add(LocationFrom(calling_convention.GetRegisterAt(0)));
@@ -7189,13 +7122,10 @@ void InstructionCodeGeneratorARMVIXL::VisitLoadClass(HLoadClass* cls) NO_THREAD_
       break;
     }
     case HLoadClass::LoadKind::kBssEntry: {
-      vixl32::Register temp = (!kUseReadBarrier || kUseBakerReadBarrier)
-          ? RegisterFrom(locations->GetTemp(0))
-          : out;
       CodeGeneratorARMVIXL::PcRelativePatchInfo* labels =
           codegen_->NewTypeBssEntryPatch(cls->GetDexFile(), cls->GetTypeIndex());
-      codegen_->EmitMovwMovtPlaceholder(labels, temp);
-      GenerateGcRootFieldLoad(cls, out_loc, temp, /* offset */ 0, read_barrier_option);
+      codegen_->EmitMovwMovtPlaceholder(labels, out);
+      GenerateGcRootFieldLoad(cls, out_loc, out, /* offset */ 0, read_barrier_option);
       generate_null_check = true;
       break;
     }
@@ -7296,9 +7226,6 @@ void LocationsBuilderARMVIXL::VisitLoadString(HLoadString* load) {
     if (load_kind == HLoadString::LoadKind::kBssEntry) {
       if (!kUseReadBarrier || kUseBakerReadBarrier) {
         // Rely on the pResolveString and marking to save everything we need, including temps.
-        // Note that IP may be clobbered by saving/restoring the live register (only one thanks
-        // to the custom calling convention) or by marking, so we request a different temp.
-        locations->AddTemp(Location::RequiresRegister());
         RegisterSet caller_saves = RegisterSet::Empty();
         InvokeRuntimeCallingConventionARMVIXL calling_convention;
         caller_saves.Add(LocationFrom(calling_convention.GetRegisterAt(0)));
@@ -7348,13 +7275,10 @@ void InstructionCodeGeneratorARMVIXL::VisitLoadString(HLoadString* load) NO_THRE
     }
     case HLoadString::LoadKind::kBssEntry: {
       DCHECK(!codegen_->GetCompilerOptions().IsBootImage());
-      vixl32::Register temp = (!kUseReadBarrier || kUseBakerReadBarrier)
-          ? RegisterFrom(locations->GetTemp(0))
-          : out;
       CodeGeneratorARMVIXL::PcRelativePatchInfo* labels =
           codegen_->NewStringBssEntryPatch(load->GetDexFile(), load->GetStringIndex());
-      codegen_->EmitMovwMovtPlaceholder(labels, temp);
-      GenerateGcRootFieldLoad(load, out_loc, temp, /* offset */ 0, kCompilerReadBarrierOption);
+      codegen_->EmitMovwMovtPlaceholder(labels, out);
+      GenerateGcRootFieldLoad(load, out_loc, out, /* offset */ 0, kCompilerReadBarrierOption);
       LoadStringSlowPathARMVIXL* slow_path =
           new (codegen_->GetScopedAllocator()) LoadStringSlowPathARMVIXL(load);
       codegen_->AddSlowPath(slow_path);
