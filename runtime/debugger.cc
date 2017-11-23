@@ -58,6 +58,7 @@
 #include "mirror/throwable.h"
 #include "nativehelper/scoped_local_ref.h"
 #include "nativehelper/scoped_primitive_array.h"
+#include "oat_file.h"
 #include "obj_ptr-inl.h"
 #include "reflection.h"
 #include "safe_map.h"
@@ -1680,7 +1681,9 @@ void Dbg::OutputLineTable(JDWP::RefTypeId, JDWP::MethodId method_id, JDWP::Expan
   context.pReply = pReply;
 
   if (code_item != nullptr) {
-    m->GetDexFile()->DecodeDebugPositionInfo(code_item, DebugCallbackContext::Callback, &context);
+    uint32_t debug_info_offset = OatFile::GetDebugInfoOffset(*(m->GetDexFile()), code_item);
+    m->GetDexFile()->DecodeDebugPositionInfo(
+        code_item, debug_info_offset, DebugCallbackContext::Callback, &context);
   }
 
   JDWP::Set4BE(expandBufGetBuffer(pReply) + numLinesOffset, context.numItems);
@@ -1737,9 +1740,10 @@ void Dbg::OutputVariableTable(JDWP::RefTypeId, JDWP::MethodId method_id, bool wi
 
   const DexFile::CodeItem* code_item = m->GetCodeItem();
   if (code_item != nullptr) {
+    uint32_t debug_info_offset = OatFile::GetDebugInfoOffset(*(m->GetDexFile()), code_item);
     m->GetDexFile()->DecodeDebugLocalInfo(
-        code_item, m->IsStatic(), m->GetDexMethodIndex(), DebugCallbackContext::Callback,
-        &context);
+        code_item, debug_info_offset, m->IsStatic(), m->GetDexMethodIndex(),
+        DebugCallbackContext::Callback, &context);
   }
 
   JDWP::Set4BE(expandBufGetBuffer(pReply) + variable_count_offset, context.variable_count);
@@ -3886,7 +3890,9 @@ JDWP::JdwpError Dbg::ConfigureStep(JDWP::ObjectId thread_id, JDWP::JdwpStepSize 
   if (m != nullptr && !m->IsNative()) {
     const DexFile::CodeItem* const code_item = m->GetCodeItem();
     DebugCallbackContext context(single_step_control, line_number, code_item);
-    m->GetDexFile()->DecodeDebugPositionInfo(code_item, DebugCallbackContext::Callback, &context);
+    uint32_t debug_info_offset = OatFile::GetDebugInfoOffset(*(m->GetDexFile()), code_item);
+    m->GetDexFile()->DecodeDebugPositionInfo(
+        code_item, debug_info_offset, DebugCallbackContext::Callback, &context);
   }
 
   // Activate single-step in the thread.
