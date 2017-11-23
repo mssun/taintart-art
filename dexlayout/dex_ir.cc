@@ -570,16 +570,17 @@ CodeItem* Collections::CreateCodeItem(const DexFile& dex_file,
   uint32_t tries_size = disk_code_item.tries_size_;
 
   // TODO: Calculate the size of the debug info.
-  const uint8_t* debug_info_stream = dex_file.GetDebugInfoStream(&disk_code_item);
+  uint32_t debug_info_offset = dex_file.GetDebugInfoOffset(&disk_code_item);
+  const uint8_t* debug_info_stream = dex_file.GetDebugInfoStream(debug_info_offset);
   DebugInfoItem* debug_info = nullptr;
   if (debug_info_stream != nullptr) {
-    debug_info = debug_info_items_map_.GetExistingObject(disk_code_item.debug_info_off_);
+    debug_info = debug_info_items_map_.GetExistingObject(debug_info_offset);
     if (debug_info == nullptr) {
       uint32_t debug_info_size = GetDebugInfoStreamSize(debug_info_stream);
       uint8_t* debug_info_buffer = new uint8_t[debug_info_size];
       memcpy(debug_info_buffer, debug_info_stream, debug_info_size);
       debug_info = new DebugInfoItem(debug_info_size, debug_info_buffer);
-      AddItem(debug_info_items_map_, debug_info_items_, debug_info, disk_code_item.debug_info_off_);
+      AddItem(debug_info_items_map_, debug_info_items_, debug_info, debug_info_offset);
     }
   }
 

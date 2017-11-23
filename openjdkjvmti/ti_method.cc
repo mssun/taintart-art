@@ -48,6 +48,7 @@
 #include "mirror/object_array-inl.h"
 #include "modifiers.h"
 #include "nativehelper/scoped_local_ref.h"
+#include "oat_file.h"
 #include "runtime_callbacks.h"
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
@@ -259,7 +260,9 @@ jvmtiError MethodUtil::GetLocalVariableTable(jvmtiEnv* env,
   };
 
   LocalVariableContext context(env);
+  uint32_t debug_info_offset = art::OatFile::GetDebugInfoOffset(*dex_file, code_item);
   if (!dex_file->DecodeDebugLocalInfo(code_item,
+                                      debug_info_offset,
                                       art_method->IsStatic(),
                                       art_method->GetDexMethodIndex(),
                                       LocalVariableContext::Callback,
@@ -480,7 +483,9 @@ jvmtiError MethodUtil::GetLineNumberTable(jvmtiEnv* env,
   }
 
   LineNumberContext context;
-  bool success = dex_file->DecodeDebugPositionInfo(code_item, CollectLineNumbers, &context);
+  uint32_t debug_info_offset = art::OatFile::GetDebugInfoOffset(*dex_file, code_item);
+  bool success = dex_file->DecodeDebugPositionInfo(
+      code_item, debug_info_offset, CollectLineNumbers, &context);
   if (!success) {
     return ERR(ABSENT_INFORMATION);
   }
@@ -648,7 +653,9 @@ class CommonLocalVariableClosure : public art::Closure {
     };
 
     GetLocalVariableInfoContext context(slot_, dex_pc, descriptor, type);
+    uint32_t debug_info_offset = art::OatFile::GetDebugInfoOffset(*dex_file, code_item);
     if (!dex_file->DecodeDebugLocalInfo(code_item,
+                                        debug_info_offset,
                                         method->IsStatic(),
                                         method->GetDexMethodIndex(),
                                         GetLocalVariableInfoContext::Callback,

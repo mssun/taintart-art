@@ -26,6 +26,7 @@
 #include "debug/src_map_elem.h"
 #include "dex_file-inl.h"
 #include "linker/elf_builder.h"
+#include "oat_file.h"
 #include "stack_map.h"
 
 namespace art {
@@ -158,7 +159,9 @@ class ElfDebugLineWriter {
       PositionInfos dex2line_map;
       DCHECK(mi->dex_file != nullptr);
       const DexFile* dex = mi->dex_file;
-      if (!dex->DecodeDebugPositionInfo(mi->code_item, PositionInfoCallback, &dex2line_map)) {
+      uint32_t debug_info_offset = OatFile::GetDebugInfoOffset(*dex, mi->code_item);
+      if (!dex->DecodeDebugPositionInfo(
+              mi->code_item, debug_info_offset, PositionInfoCallback, &dex2line_map)) {
         continue;
       }
 
