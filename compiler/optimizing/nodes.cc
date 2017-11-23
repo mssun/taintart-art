@@ -507,6 +507,7 @@ GraphAnalysisResult HGraph::AnalyzeLoops() const {
       if (block->IsCatchBlock()) {
         // TODO: Dealing with exceptional back edges could be tricky because
         //       they only approximate the real control flow. Bail out for now.
+        VLOG(compiler) << "Not compiled: Exceptional back edges";
         return kAnalysisFailThrowCatchLoop;
       }
       block->GetLoopInformation()->Populate();
