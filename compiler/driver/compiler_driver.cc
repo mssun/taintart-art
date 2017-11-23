@@ -2025,28 +2025,19 @@ class VerifyClassVisitor : public CompilationVisitor {
       ClassReference ref(manager_->GetDexFile(), class_def_index);
       manager_->GetCompiler()->RecordClassStatus(ref, klass->GetStatus());
 
-      // It is *very* problematic if there are verification errors in the boot classpath.
-      // For example, we rely on things working OK without verification when the decryption dialog
-      // is brought up. So abort in a debug build if we find this violated.
+      // It is *very* problematic if there are resolution errors in the boot classpath.
+      //
+      // It is also bad if classes fail verification. For example, we rely on things working
+      // OK without verification when the decryption dialog is brought up. It is thus highly
+      // recommended to compile the boot classpath with
+      //   --abort-on-hard-verifier-error --abort-on-soft-verifier-error
+      // which is the default build system configuration.
       if (kIsDebugBuild) {
         if (manager_->GetCompiler()->GetCompilerOptions().IsBootImage()) {
-          if (!klass->IsVerified()) {
-            // Re-run verification to get all failure messages if it soft-failed.
-            if (!klass->IsErroneous()) {
-              gLogVerbosity.verifier = true;
-              // Note: We can't call ClassLinker::VerifyClass, as it will elide the second
-              //       verification.
-              Runtime* runtime = Runtime::Current();
-              std::string v_error;
-              verifier::MethodVerifier::VerifyClass(soa.Self(),
-                                                    klass.Get(),
-                                                    runtime->GetCompilerCallbacks(),
-                                                    runtime->IsAotCompiler(),
-                                                    verifier::HardFailLogMode::kLogInternalFatal,
-                                                    &v_error);
-            }
+          if (!klass->IsResolved() || klass->IsErroneous()) {
             LOG(FATAL) << "Boot classpath class " << klass->PrettyClass()
-                       << " failed to fully verify: state= " << klass->GetStatus();
+                       << " failed to resolve/is erroneous: state= " << klass->GetStatus();
+            UNREACHABLE();
           }
         }
         if (klass->IsVerified()) {
