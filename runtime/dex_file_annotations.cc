@@ -28,6 +28,7 @@
 #include "jvalue-inl.h"
 #include "mirror/field.h"
 #include "mirror/method.h"
+#include "oat_file.h"
 #include "reflection.h"
 #include "thread.h"
 #include "well_known_classes.h"
@@ -1571,7 +1572,9 @@ int32_t GetLineNumFromPC(const DexFile* dex_file, ArtMethod* method, uint32_t re
 
   // A method with no line number info should return -1
   DexFile::LineNumFromPcContext context(rel_pc, -1);
-  dex_file->DecodeDebugPositionInfo(code_item, DexFile::LineNumForPcCb, &context);
+  uint32_t debug_info_offset = OatFile::GetDebugInfoOffset(*dex_file, code_item);
+  dex_file->DecodeDebugPositionInfo(
+      code_item, debug_info_offset, DexFile::LineNumForPcCb, &context);
   return context.line_num_;
 }
 
