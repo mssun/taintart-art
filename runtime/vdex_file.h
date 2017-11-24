@@ -39,14 +39,14 @@ class DexFile;
 //   DEX[1]              the bytecode may have been quickened
 //   ...
 //   DEX[D]
+//   VerifierDeps
+//      uint8[D][]                 verification dependencies
 //   QuickeningInfo
-//     uint8[]                     quickening data
-//     unaligned_uint32_t[2][]     table of offsets pair:
-//                                    uint32_t[0] contains code_item_offset
-//                                    uint32_t[1] contains quickening data offset from the start
+//     uint8[D][]                  quickening data
+//     unaligned_uint32_t[D][2][]  table of offsets pair:
+//                                   uint32_t[0] contains original CodeItem::debug_info_off_
+//                                   uint32_t[1] contains quickening data offset from the start
 //                                                of QuickeningInfo
-//     unalgined_uint32_t[D]       start offsets (from the start of QuickeningInfo) in previous
-//                                 table for each dex file
 
 class VdexFile {
  public:
@@ -72,8 +72,8 @@ class VdexFile {
 
    private:
     static constexpr uint8_t kVdexMagic[] = { 'v', 'd', 'e', 'x' };
-    // Last update: Use set for unverified_classes_.
-    static constexpr uint8_t kVdexVersion[] = { '0', '1', '0', '\0' };
+    // Last update: Lookup-friendly encoding for quickening info.
+    static constexpr uint8_t kVdexVersion[] = { '0', '1', '1', '\0' };
 
     uint8_t magic_[4];
     uint8_t version_[4];
@@ -149,16 +149,22 @@ class VdexFile {
   // decompiled to RETURN_VOID instructions using the slower ClassDataItemIterator
   // instead of the faster QuickeningInfoIterator.
   static void Unquicken(const std::vector<const DexFile*>& dex_files,
-                        const ArrayRef<const uint8_t>& quickening_info,
+                        ArrayRef<const uint8_t> quickening_info,
                         bool decompile_return_instruction);
 
-  // Fully unquicken `target_dex_file` based on quickening info stored
-  // in this vdex file for `original_dex_file`.
-  void FullyUnquickenDexFile(const DexFile& target_dex_file,
-                             const DexFile& original_dex_file) const;
+  // Fully unquicken `target_dex_file` based on `quickening_info`.
+  static void UnquickenDexFile(const DexFile& target_dex_file,
+                               ArrayRef<const uint8_t> quickening_info,
+                               bool decompile_return_instruction);
 
   // Return the quickening info of the given code item.
   const uint8_t* GetQuickenedInfoOf(const DexFile& dex_file, uint32_t code_item_offset) const;
+
+  uint32_t GetDebugInfoOffset(const DexFile& dex_file, uint32_t offset_in_code_item) const;
+
+  static bool CanEncodeQuickenedData(const DexFile& dex_file);
+
+  static constexpr uint32_t kNoQuickeningInfoOffset = -1;
 
  private:
   bool HasDexSection() const {

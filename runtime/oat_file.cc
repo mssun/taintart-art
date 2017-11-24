@@ -1499,12 +1499,23 @@ ArrayRef<GcRoot<mirror::Object>> OatFile::GetBssGcRoots() const {
   }
 }
 
-uint32_t OatFile::GetDebugInfoOffset(const DexFile& dex_file ATTRIBUTE_UNUSED,
+uint32_t OatFile::GetDebugInfoOffset(const DexFile& dex_file,
                                      const DexFile::CodeItem* code_item) {
   if (code_item == nullptr) {
     return 0;
   }
-  return code_item->debug_info_off_;
+  const uint32_t debug_info_off = code_item->debug_info_off_;
+  // Note that although the specification says that 0 should be used if there
+  // is no debug information, some applications incorrectly use 0xFFFFFFFF.
+  if (debug_info_off < dex_file.Size() || debug_info_off == 0xFFFFFFFF) {
+    return debug_info_off;
+  }
+  const OatFile::OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
+  if (oat_dex_file == nullptr || (oat_dex_file->GetOatFile() == nullptr)) {
+    return debug_info_off;
+  }
+  return oat_dex_file->GetOatFile()->GetVdexFile()->GetDebugInfoOffset(
+      dex_file, debug_info_off);
 }
 
 const OatFile::OatDexFile* OatFile::GetOatDexFile(const char* dex_location,
