@@ -2596,20 +2596,15 @@ class OatWriter::WriteQuickeningInfoMethodVisitor : public DexMethodVisitor {
 class OatWriter::WriteQuickeningIndicesMethodVisitor {
  public:
   WriteQuickeningIndicesMethodVisitor(OutputStream* out,
-                                      uint32_t indices_offset,
-                                      const SafeMap<const uint8_t*, uint32_t>& offset_map,
-                                      std::vector<uint32_t>* dex_files_offset)
+                                      uint32_t quickening_info_bytes,
+                                      const SafeMap<const uint8_t*, uint32_t>& offset_map)
       : out_(out),
-        indices_offset_(indices_offset),
+        quickening_info_bytes_(quickening_info_bytes),
         written_bytes_(0u),
-        dex_files_offset_(dex_files_offset),
         offset_map_(offset_map) {}
 
   bool VisitDexMethods(const std::vector<const DexFile*>& dex_files, const CompilerDriver& driver) {
     for (const DexFile* dex_file : dex_files) {
-      // Record the offset for this current dex file. It will be written in the vdex file
-      // later.
-      dex_files_offset_->push_back(indices_offset_ + GetNumberOfWrittenBytes());
       const size_t class_def_count = dex_file->NumClassDefs();
       for (size_t class_def_index = 0; class_def_index != class_def_count; ++class_def_index) {
         const DexFile::ClassDef& class_def = dex_file->GetClassDef(class_def_index);
@@ -2620,23 +2615,38 @@ class OatWriter::WriteQuickeningIndicesMethodVisitor {
         for (ClassDataItemIterator class_it(*dex_file, class_data);
              class_it.HasNext();
              class_it.Next()) {
-          if (!class_it.IsAtMethod()) {
+          if (!class_it.IsAtMethod() || class_it.GetMethodCodeItem() == nullptr) {
             continue;
           }
           uint32_t method_idx = class_it.GetMemberIndex();
           CompiledMethod* compiled_method =
               driver.GetCompiledMethod(MethodReference(dex_file, method_idx));
-          if (HasQuickeningInfo(compiled_method)) {
-            uint32_t code_item_offset = class_it.GetMethodCodeItemOffset();
-            uint32_t offset = offset_map_.Get(compiled_method->GetVmapTable().data());
-            if (!out_->WriteFully(&code_item_offset, sizeof(code_item_offset)) ||
-                !out_->WriteFully(&offset, sizeof(offset))) {
+          const DexFile::CodeItem* code_item = class_it.GetMethodCodeItem();
+          uint32_t existing_debug_info_offset = OatFile::GetDebugInfoOffset(*dex_file, code_item);
+          // If the existing offset is already out of bounds (and not magic marker 0xFFFFFFFF)
+          // we will pretend the method has been quickened.
+          bool existing_offset_out_of_bounds =
+              (existing_debug_info_offset >= dex_file->Size() &&
+               existing_debug_info_offset != 0xFFFFFFFF);
+          bool has_quickening_info = HasQuickeningInfo(compiled_method);
+          if (has_quickening_info || existing_offset_out_of_bounds) {
+            uint32_t new_debug_info_offset =
+                dex_file->Size() + quickening_info_bytes_ + written_bytes_;
+            // Abort if overflow.
+            CHECK_GE(new_debug_info_offset, dex_file->Size());
+            const_cast<DexFile::CodeItem*>(code_item)->SetDebugInfoOffset(new_debug_info_offset);
+            uint32_t quickening_offset = has_quickening_info
+                ? offset_map_.Get(compiled_method->GetVmapTable().data())
+                : VdexFile::kNoQuickeningInfoOffset;
+            if (!out_->WriteFully(&existing_debug_info_offset,
+                                  sizeof(existing_debug_info_offset)) ||
+                !out_->WriteFully(&quickening_offset, sizeof(quickening_offset))) {
               PLOG(ERROR) << "Failed to write quickening info for "
                           << dex_file->PrettyMethod(method_idx) << " to "
                           << out_->GetLocation();
               return false;
             }
-            written_bytes_ += sizeof(code_item_offset) + sizeof(offset);
+            written_bytes_ += sizeof(existing_debug_info_offset) + sizeof(quickening_offset);
           }
         }
       }
@@ -2650,9 +2660,8 @@ class OatWriter::WriteQuickeningIndicesMethodVisitor {
 
  private:
   OutputStream* const out_;
-  const uint32_t indices_offset_;
+  const uint32_t quickening_info_bytes_;
   size_t written_bytes_;
-  std::vector<uint32_t>* dex_files_offset_;
   // Maps quickening map to its offset in the file.
   const SafeMap<const uint8_t*, uint32_t>& offset_map_;
 };
@@ -2682,30 +2691,27 @@ bool OatWriter::WriteQuickeningInfo(OutputStream* vdex_out) {
       return false;
     }
 
-    WriteQuickeningIndicesMethodVisitor visitor2(vdex_out,
-                                                 visitor1.GetNumberOfWrittenBytes(),
-                                                 offset_map,
-                                                 &dex_files_indices);
-    if (!visitor2.VisitDexMethods(*dex_files_, *compiler_driver_)) {
-      PLOG(ERROR) << "Failed to write the vdex quickening info. File: " << vdex_out->GetLocation();
-      return false;
-    }
+    if (visitor1.GetNumberOfWrittenBytes() > 0) {
+      WriteQuickeningIndicesMethodVisitor visitor2(vdex_out,
+                                                   visitor1.GetNumberOfWrittenBytes(),
+                                                   offset_map);
+      if (!visitor2.VisitDexMethods(*dex_files_, *compiler_driver_)) {
+        PLOG(ERROR) << "Failed to write the vdex quickening info. File: "
+                    << vdex_out->GetLocation();
+        return false;
+      }
 
-    DCHECK_EQ(dex_files_->size(), dex_files_indices.size());
-    if (!vdex_out->WriteFully(
-            dex_files_indices.data(), sizeof(dex_files_indices[0]) * dex_files_indices.size())) {
-      PLOG(ERROR) << "Failed to write the vdex quickening info. File: " << vdex_out->GetLocation();
-      return false;
+      if (!vdex_out->Flush()) {
+        PLOG(ERROR) << "Failed to flush stream after writing quickening info."
+                    << " File: " << vdex_out->GetLocation();
+        return false;
+      }
+      size_quickening_info_ = visitor1.GetNumberOfWrittenBytes() +
+                              visitor2.GetNumberOfWrittenBytes();
+    } else {
+      // We know we did not quicken.
+      size_quickening_info_ = 0;
     }
-
-    if (!vdex_out->Flush()) {
-      PLOG(ERROR) << "Failed to flush stream after writing quickening info."
-                  << " File: " << vdex_out->GetLocation();
-      return false;
-    }
-    size_quickening_info_ = visitor1.GetNumberOfWrittenBytes() +
-                            visitor2.GetNumberOfWrittenBytes() +
-                            dex_files_->size() * sizeof(uint32_t);
   } else {
     // We know we did not quicken.
     size_quickening_info_ = 0;
