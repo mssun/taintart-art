@@ -211,6 +211,7 @@ gensrcs {
         "driver/compiler_options.h",
         "linker/linker_patch.h",
         "optimizing/locations.h",
+        "optimizing/optimizing_compiler_stats.h",
 
         "utils/arm/constants_arm.h",
         "utils/mips/assembler_mips.h",
