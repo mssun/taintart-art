@@ -29,6 +29,7 @@
 #include "driver/compiler_options.h"
 #include "imtable-inl.h"
 #include "mirror/dex_cache.h"
+#include "oat_file.h"
 #include "optimizing_compiler_stats.h"
 #include "quicken_info.h"
 #include "scoped_thread_state_change-inl.h"
@@ -447,7 +448,8 @@ ArenaBitVector* HInstructionBuilder::FindNativeDebugInfoLocations() {
                                                      /* expandable */ false,
                                                      kArenaAllocGraphBuilder);
   locations->ClearAllBits();
-  dex_file_->DecodeDebugPositionInfo(code_item_, Callback::Position, locations);
+  uint32_t debug_info_offset = OatFile::GetDebugInfoOffset(*dex_file_, code_item_);
+  dex_file_->DecodeDebugPositionInfo(code_item_, debug_info_offset, Callback::Position, locations);
   // Instruction-specific tweaks.
   IterationRange<DexInstructionIterator> instructions = code_item_->Instructions();
   for (const DexInstructionPcPair& inst : instructions) {

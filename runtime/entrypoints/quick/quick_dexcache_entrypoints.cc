@@ -104,6 +104,25 @@ static inline void StoreStringInBss(ArtMethod* outer_method,
   }
 }
 
+static ALWAYS_INLINE bool CanReferenceBss(ArtMethod* outer_method, ArtMethod* caller)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  // .bss references are used only for AOT-compiled code and only when the instruction
+  // originates from the outer method's dex file and the type or string index is tied to
+  // that dex file. As we do not want to check if the call is coming from AOT-compiled
+  // code (that could be expensive), simply check if the caller has the same dex file.
+  //
+  // If we've accepted running AOT-compiled code despite the runtime class loader
+  // resolving the caller to a different dex file, this check shall prevent us from
+  // filling the .bss slot and we shall keep going through the slow path. This is slow
+  // but correct; we do not really care that much about performance in this odd case.
+  //
+  // JIT can inline throwing instructions across dex files and this check prevents
+  // looking up the index in the wrong dex file in that case. If the caller and outer
+  // method have the same dex file, we may or may not find a .bss slot to update;
+  // if we do, this can still benefit AOT-compiled code executed later.
+  return outer_method->GetDexFile() == caller->GetDexFile();
+}
+
 extern "C" mirror::Class* artInitializeStaticStorageFromCode(uint32_t type_idx, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   // Called to ensure static storage base is initialized for direct static field reads and writes.
@@ -113,9 +132,12 @@ extern "C" mirror::Class* artInitializeStaticStorageFromCode(uint32_t type_idx, 
   auto caller_and_outer = GetCalleeSaveMethodCallerAndOuterMethod(
       self, CalleeSaveType::kSaveEverythingForClinit);
   ArtMethod* caller = caller_and_outer.caller;
-  mirror::Class* result =
-      ResolveVerifyAndClinit(dex::TypeIndex(type_idx), caller, self, true, false);
-  if (LIKELY(result != nullptr)) {
+  mirror::Class* result = ResolveVerifyAndClinit(dex::TypeIndex(type_idx),
+                                                 caller,
+                                                 self,
+                                                 /* can_run_clinit */ true,
+                                                 /* verify_access */ false);
+  if (LIKELY(result != nullptr) && CanReferenceBss(caller_and_outer.outer_method, caller)) {
     StoreTypeInBss(caller_and_outer.outer_method, dex::TypeIndex(type_idx), result);
   }
   return result;
@@ -128,9 +150,12 @@ extern "C" mirror::Class* artInitializeTypeFromCode(uint32_t type_idx, Thread* s
   auto caller_and_outer = GetCalleeSaveMethodCallerAndOuterMethod(
       self, CalleeSaveType::kSaveEverythingForClinit);
   ArtMethod* caller = caller_and_outer.caller;
-  mirror::Class* result =
-      ResolveVerifyAndClinit(dex::TypeIndex(type_idx), caller, self, false, false);
-  if (LIKELY(result != nullptr)) {
+  mirror::Class* result = ResolveVerifyAndClinit(dex::TypeIndex(type_idx),
+                                                 caller,
+                                                 self,
+                                                 /* can_run_clinit */ false,
+                                                 /* verify_access */ false);
+  if (LIKELY(result != nullptr) && CanReferenceBss(caller_and_outer.outer_method, caller)) {
     StoreTypeInBss(caller_and_outer.outer_method, dex::TypeIndex(type_idx), result);
   }
   return result;
@@ -143,8 +168,11 @@ extern "C" mirror::Class* artInitializeTypeAndVerifyAccessFromCode(uint32_t type
   auto caller_and_outer = GetCalleeSaveMethodCallerAndOuterMethod(self,
                                                                   CalleeSaveType::kSaveEverything);
   ArtMethod* caller = caller_and_outer.caller;
-  mirror::Class* result =
-      ResolveVerifyAndClinit(dex::TypeIndex(type_idx), caller, self, false, true);
+  mirror::Class* result = ResolveVerifyAndClinit(dex::TypeIndex(type_idx),
+                                                 caller,
+                                                 self,
+                                                 /* can_run_clinit */ false,
+                                                 /* verify_access */ true);
   // Do not StoreTypeInBss(); access check entrypoint is never used together with .bss.
   return result;
 }
@@ -156,7 +184,7 @@ extern "C" mirror::String* artResolveStringFromCode(int32_t string_idx, Thread* 
                                                                   CalleeSaveType::kSaveEverything);
   ArtMethod* caller = caller_and_outer.caller;
   mirror::String* result = ResolveStringFromCode(caller, dex::StringIndex(string_idx));
-  if (LIKELY(result != nullptr)) {
+  if (LIKELY(result != nullptr) && CanReferenceBss(caller_and_outer.outer_method, caller)) {
     StoreStringInBss(caller_and_outer.outer_method, dex::StringIndex(string_idx), result);
   }
   return result;
