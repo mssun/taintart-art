@@ -139,11 +139,10 @@ TEST_F(ImageSpaceDex2oatTest, Test) {
   EXPECT_FALSE(Runtime::Current()->GetHeap()->GetBootImageSpaces().empty());
 }
 
-// Disabled for b/63622587.
-// using ImageSpaceNoDex2oatNoPatchoatTest = ImageSpaceLoadingTest<true, true, false, false>;
-// TEST_F(ImageSpaceNoDex2oatNoPatchoatTest, Test) {
-//   EXPECT_TRUE(Runtime::Current()->GetHeap()->GetBootImageSpaces().empty());
-// }
+using ImageSpaceNoDex2oatNoPatchoatTest = ImageSpaceLoadingTest<true, true, false, false>;
+TEST_F(ImageSpaceNoDex2oatNoPatchoatTest, Test) {
+  EXPECT_TRUE(Runtime::Current()->GetHeap()->GetBootImageSpaces().empty());
+}
 
 using ImageSpaceNoRelocateNoDex2oatNoPatchoatTest = ImageSpaceLoadingTest<true, false, false, false>;
 TEST_F(ImageSpaceNoRelocateNoDex2oatNoPatchoatTest, Test) {
