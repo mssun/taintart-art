@@ -592,8 +592,10 @@ MethodVerifier::~MethodVerifier() {
   STLDeleteElements(&failure_messages_);
 }
 
-void MethodVerifier::FindLocksAtDexPc(ArtMethod* m, uint32_t dex_pc,
-                                      std::vector<uint32_t>* monitor_enter_dex_pcs) {
+void MethodVerifier::FindLocksAtDexPc(
+    ArtMethod* m,
+    uint32_t dex_pc,
+    std::vector<MethodVerifier::DexLockInfo>* monitor_enter_dex_pcs) {
   StackHandleScope<2> hs(Thread::Current());
   Handle<mirror::DexCache> dex_cache(hs.NewHandle(m->GetDexCache()));
   Handle<mirror::ClassLoader> class_loader(hs.NewHandle(m->GetClassLoader()));
@@ -2036,8 +2038,20 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
   // for a thread to be suspended).
   if (monitor_enter_dex_pcs_ != nullptr && work_insn_idx_ == interesting_dex_pc_) {
     monitor_enter_dex_pcs_->clear();  // The new work line is more accurate than the previous one.
-    for (size_t i = 0; i < work_line_->GetMonitorEnterCount(); ++i) {
-      monitor_enter_dex_pcs_->push_back(work_line_->GetMonitorEnterDexPc(i));
+
+    std::map<uint32_t, DexLockInfo> depth_to_lock_info;
+    auto collector = [&](uint32_t dex_reg, uint32_t depth) {
+      auto insert_pair = depth_to_lock_info.emplace(depth, DexLockInfo(depth));
+      auto it = insert_pair.first;
+      auto set_insert_pair = it->second.dex_registers.insert(dex_reg);
+      DCHECK(set_insert_pair.second);
+    };
+    work_line_->IterateRegToLockDepths(collector);
+    for (auto& pair : depth_to_lock_info) {
+      monitor_enter_dex_pcs_->push_back(pair.second);
+      // Map depth to dex PC.
+      (*monitor_enter_dex_pcs_)[monitor_enter_dex_pcs_->size() - 1].dex_pc =
+          work_line_->GetMonitorEnterDexPc(pair.second.dex_pc);
     }
   }
 
