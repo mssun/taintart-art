@@ -27,10 +27,13 @@
 
 namespace art {
 
-enum MethodCompilationStat {
-  kAttemptCompilation = 0,
+enum class MethodCompilationStat {
+  kAttemptBytecodeCompilation = 0,
+  kAttemptIntrinsicCompilation,
+  kCompiledNativeStub,
+  kCompiledIntrinsic,
+  kCompiledBytecode,
   kCHAInline,
-  kCompiled,
   kInlinedInvoke,
   kReplacedInvokeWithSimplePattern,
   kInstructionSimplifications,
@@ -94,8 +97,10 @@ enum MethodCompilationStat {
   kConstructorFenceRemovedLSE,
   kConstructorFenceRemovedPFRA,
   kConstructorFenceRemovedCFRE,
+  kJitOutOfMemoryForCommit,
   kLastStat
 };
+std::ostream& operator<<(std::ostream& os, const MethodCompilationStat& rhs);
 
 class OptimizingCompilerStats {
  public:
@@ -105,7 +110,15 @@ class OptimizingCompilerStats {
   }
 
   void RecordStat(MethodCompilationStat stat, uint32_t count = 1) {
-    compile_stats_[stat] += count;
+    size_t stat_index = static_cast<size_t>(stat);
+    DCHECK_LT(stat_index, arraysize(compile_stats_));
+    compile_stats_[stat_index] += count;
+  }
+
+  uint32_t GetStat(MethodCompilationStat stat) const {
+    size_t stat_index = static_cast<size_t>(stat);
+    DCHECK_LT(stat_index, arraysize(compile_stats_));
+    return compile_stats_[stat_index];
   }
 
   void Log() const {
@@ -114,18 +127,29 @@ class OptimizingCompilerStats {
       return;
     }
 
-    if (compile_stats_[kAttemptCompilation] == 0) {
+    uint32_t compiled_intrinsics = GetStat(MethodCompilationStat::kCompiledIntrinsic);
+    uint32_t compiled_native_stubs = GetStat(MethodCompilationStat::kCompiledNativeStub);
+    uint32_t bytecode_attempts =
+        GetStat(MethodCompilationStat::kAttemptBytecodeCompilation);
+    if (compiled_intrinsics == 0u && compiled_native_stubs == 0u && bytecode_attempts == 0u) {
       LOG(INFO) << "Did not compile any method.";
     } else {
-      float compiled_percent =
-          compile_stats_[kCompiled] * 100.0f / compile_stats_[kAttemptCompilation];
-      LOG(INFO) << "Attempted compilation of " << compile_stats_[kAttemptCompilation]
-          << " methods: " << std::fixed << std::setprecision(2)
-          << compiled_percent << "% (" << compile_stats_[kCompiled] << ") compiled.";
+      uint32_t compiled_bytecode_methods =
+          GetStat(MethodCompilationStat::kCompiledBytecode);
+      // Successful intrinsic compilation preempts other compilation attempts but failed intrinsic
+      // compilation shall still count towards bytecode or native stub compilation attempts.
+      uint32_t num_compilation_attempts =
+          compiled_intrinsics + compiled_native_stubs + bytecode_attempts;
+      uint32_t num_successful_compilations =
+          compiled_intrinsics + compiled_native_stubs + compiled_bytecode_methods;
+      float compiled_percent = num_successful_compilations * 100.0f / num_compilation_attempts;
+      LOG(INFO) << "Attempted compilation of "
+          << num_compilation_attempts << " methods: " << std::fixed << std::setprecision(2)
+          << compiled_percent << "% (" << num_successful_compilations << ") compiled.";
 
-      for (size_t i = 0; i < kLastStat; i++) {
+      for (size_t i = 0; i < arraysize(compile_stats_); ++i) {
         if (compile_stats_[i] != 0) {
-          LOG(INFO) << PrintMethodCompilationStat(static_cast<MethodCompilationStat>(i)) << ": "
+          LOG(INFO) << "OptStat#" << static_cast<MethodCompilationStat>(i) << ": "
               << compile_stats_[i];
         }
       }
@@ -133,7 +157,7 @@ class OptimizingCompilerStats {
   }
 
   void AddTo(OptimizingCompilerStats* other_stats) {
-    for (size_t i = 0; i != kLastStat; ++i) {
+    for (size_t i = 0; i != arraysize(compile_stats_); ++i) {
       uint32_t count = compile_stats_[i];
       if (count != 0) {
         other_stats->RecordStat(static_cast<MethodCompilationStat>(i), count);
@@ -142,91 +166,13 @@ class OptimizingCompilerStats {
   }
 
   void Reset() {
-    for (size_t i = 0; i != kLastStat; ++i) {
-      compile_stats_[i] = 0u;
+    for (std::atomic<uint32_t>& stat : compile_stats_) {
+      stat = 0u;
     }
   }
 
  private:
-  std::string PrintMethodCompilationStat(MethodCompilationStat stat) const {
-    std::string name;
-    switch (stat) {
-      case kAttemptCompilation : name = "AttemptCompilation"; break;
-      case kCHAInline : name = "CHAInline"; break;
-      case kCompiled : name = "Compiled"; break;
-      case kInlinedInvoke : name = "InlinedInvoke"; break;
-      case kReplacedInvokeWithSimplePattern: name = "ReplacedInvokeWithSimplePattern"; break;
-      case kInstructionSimplifications: name = "InstructionSimplifications"; break;
-      case kInstructionSimplificationsArch: name = "InstructionSimplificationsArch"; break;
-      case kUnresolvedMethod : name = "UnresolvedMethod"; break;
-      case kUnresolvedField : name = "UnresolvedField"; break;
-      case kUnresolvedFieldNotAFastAccess : name = "UnresolvedFieldNotAFastAccess"; break;
-      case kRemovedCheckedCast: name = "RemovedCheckedCast"; break;
-      case kRemovedDeadInstruction: name = "RemovedDeadInstruction"; break;
-      case kRemovedNullCheck: name = "RemovedNullCheck"; break;
-      case kNotCompiledSkipped: name = "NotCompiledSkipped"; break;
-      case kNotCompiledInvalidBytecode: name = "NotCompiledInvalidBytecode"; break;
-      case kNotCompiledThrowCatchLoop : name = "NotCompiledThrowCatchLoop"; break;
-      case kNotCompiledAmbiguousArrayOp : name = "NotCompiledAmbiguousArrayOp"; break;
-      case kNotCompiledHugeMethod : name = "NotCompiledHugeMethod"; break;
-      case kNotCompiledLargeMethodNoBranches : name = "NotCompiledLargeMethodNoBranches"; break;
-      case kNotCompiledMalformedOpcode : name = "NotCompiledMalformedOpcode"; break;
-      case kNotCompiledNoCodegen : name = "NotCompiledNoCodegen"; break;
-      case kNotCompiledPathological : name = "NotCompiledPathological"; break;
-      case kNotCompiledSpaceFilter : name = "NotCompiledSpaceFilter"; break;
-      case kNotCompiledUnhandledInstruction : name = "NotCompiledUnhandledInstruction"; break;
-      case kNotCompiledUnsupportedIsa : name = "NotCompiledUnsupportedIsa"; break;
-      case kNotCompiledVerificationError : name = "NotCompiledVerificationError"; break;
-      case kNotCompiledVerifyAtRuntime : name = "NotCompiledVerifyAtRuntime"; break;
-      case kInlinedMonomorphicCall: name = "InlinedMonomorphicCall"; break;
-      case kInlinedPolymorphicCall: name = "InlinedPolymorphicCall"; break;
-      case kMonomorphicCall: name = "MonomorphicCall"; break;
-      case kPolymorphicCall: name = "PolymorphicCall"; break;
-      case kMegamorphicCall: name = "MegamorphicCall"; break;
-      case kBooleanSimplified : name = "BooleanSimplified"; break;
-      case kIntrinsicRecognized : name = "IntrinsicRecognized"; break;
-      case kLoopInvariantMoved : name = "LoopInvariantMoved"; break;
-      case kLoopVectorized : name = "LoopVectorized"; break;
-      case kLoopVectorizedIdiom : name = "LoopVectorizedIdiom"; break;
-      case kSelectGenerated : name = "SelectGenerated"; break;
-      case kRemovedInstanceOf: name = "RemovedInstanceOf"; break;
-      case kInlinedInvokeVirtualOrInterface: name = "InlinedInvokeVirtualOrInterface"; break;
-      case kImplicitNullCheckGenerated: name = "ImplicitNullCheckGenerated"; break;
-      case kExplicitNullCheckGenerated: name = "ExplicitNullCheckGenerated"; break;
-      case kSimplifyIf: name = "SimplifyIf"; break;
-      case kInstructionSunk: name = "InstructionSunk"; break;
-      case kNotInlinedUnresolvedEntrypoint: name = "NotInlinedUnresolvedEntrypoint"; break;
-      case kNotInlinedDexCache: name = "NotInlinedDexCache"; break;
-      case kNotInlinedStackMaps: name = "NotInlinedStackMaps"; break;
-      case kNotInlinedEnvironmentBudget: name = "NotInlinedEnvironmentBudget"; break;
-      case kNotInlinedInstructionBudget: name = "NotInlinedInstructionBudget"; break;
-      case kNotInlinedLoopWithoutExit: name = "NotInlinedLoopWithoutExit"; break;
-      case kNotInlinedIrreducibleLoop: name = "NotInlinedIrreducibleLoop"; break;
-      case kNotInlinedAlwaysThrows: name = "NotInlinedAlwaysThrows"; break;
-      case kNotInlinedInfiniteLoop: name = "NotInlinedInfiniteLoop"; break;
-      case kNotInlinedTryCatch: name = "NotInlinedTryCatch"; break;
-      case kNotInlinedRegisterAllocator: name = "NotInlinedRegisterAllocator"; break;
-      case kNotInlinedCannotBuild: name = "NotInlinedCannotBuild"; break;
-      case kNotInlinedNotVerified: name = "NotInlinedNotVerified"; break;
-      case kNotInlinedCodeItem: name = "NotInlinedCodeItem"; break;
-      case kNotInlinedWont: name = "NotInlinedWont"; break;
-      case kNotInlinedRecursiveBudget: name = "NotInlinedRecursiveBudget"; break;
-      case kNotInlinedProxy: name = "NotInlinedProxy"; break;
-      case kConstructorFenceGeneratedNew: name = "ConstructorFenceGeneratedNew"; break;
-      case kConstructorFenceGeneratedFinal: name = "ConstructorFenceGeneratedFinal"; break;
-      case kConstructorFenceRemovedLSE: name = "ConstructorFenceRemovedLSE"; break;
-      case kConstructorFenceRemovedPFRA: name = "ConstructorFenceRemovedPFRA"; break;
-      case kConstructorFenceRemovedCFRE: name = "ConstructorFenceRemovedCFRE"; break;
-
-      case kLastStat:
-        LOG(FATAL) << "invalid stat "
-            << static_cast<std::underlying_type<MethodCompilationStat>::type>(stat);
-        UNREACHABLE();
-    }
-    return "OptStat#" + name;
-  }
-
-  std::atomic<uint32_t> compile_stats_[kLastStat];
+  std::atomic<uint32_t> compile_stats_[static_cast<size_t>(MethodCompilationStat::kLastStat)];
 
   DISALLOW_COPY_AND_ASSIGN(OptimizingCompilerStats);
 };
