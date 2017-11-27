@@ -1411,10 +1411,10 @@ LocationSummary* CodeGenerator::CreateThrowingSlowPathLocations(HInstruction* in
 
 void CodeGenerator::GenerateNullCheck(HNullCheck* instruction) {
   if (compiler_options_.GetImplicitNullChecks()) {
-    MaybeRecordStat(stats_, kImplicitNullCheckGenerated);
+    MaybeRecordStat(stats_, MethodCompilationStat::kImplicitNullCheckGenerated);
     GenerateImplicitNullCheck(instruction);
   } else {
-    MaybeRecordStat(stats_, kExplicitNullCheckGenerated);
+    MaybeRecordStat(stats_, MethodCompilationStat::kExplicitNullCheckGenerated);
     GenerateExplicitNullCheck(instruction);
   }
 }
