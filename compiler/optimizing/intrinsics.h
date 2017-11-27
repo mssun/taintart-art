@@ -44,6 +44,11 @@ class IntrinsicsRecognizer : public HOptimization {
 
   void Run() OVERRIDE;
 
+  // Static helper that recognizes intrinsic call. Returns true on success.
+  // If it fails due to invoke type mismatch, wrong_invoke_type is set.
+  // Useful to recognize intrinsics on invidual calls outside this full pass.
+  static bool Recognize(HInvoke* invoke, /*out*/ bool* wrong_invoke_type);
+
   static constexpr const char* kIntrinsicsRecognizerPassName = "intrinsics_recognition";
 
  private:
