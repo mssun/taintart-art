@@ -640,6 +640,11 @@ void OatTest::TestDexFileInput(bool verify, bool low_4gb, bool use_profile) {
   std::unique_ptr<const DexFile> opened_dex_file2 =
       opened_oat_file->GetOatDexFiles()[1]->OpenDexFile(&error_msg);
 
+  ASSERT_EQ(opened_oat_file->GetOatDexFiles()[0]->GetDexFileLocationChecksum(),
+            dex_file1_data->GetHeader().checksum_);
+  ASSERT_EQ(opened_oat_file->GetOatDexFiles()[1]->GetDexFileLocationChecksum(),
+            dex_file2_data->GetHeader().checksum_);
+
   ASSERT_EQ(dex_file1_data->GetHeader().file_size_, opened_dex_file1->GetHeader().file_size_);
   ASSERT_EQ(0, memcmp(&dex_file1_data->GetHeader(),
                       &opened_dex_file1->GetHeader(),
