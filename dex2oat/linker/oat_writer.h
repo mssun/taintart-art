@@ -325,8 +325,6 @@ class OatWriter {
   size_t WriteCodeDexFiles(OutputStream* out, size_t file_offset, size_t relative_offset);
 
   bool RecordOatDataOffset(OutputStream* out);
-  bool ReadDexFileHeader(File* oat_file, OatDexFile* oat_dex_file);
-  bool ValidateDexFileHeader(const uint8_t* raw_header, const char* location);
   bool WriteTypeLookupTables(OutputStream* oat_rodata,
                              const std::vector<std::unique_ptr<const DexFile>>& opened_dex_files);
   bool WriteDexLayoutSections(OutputStream* oat_rodata,
