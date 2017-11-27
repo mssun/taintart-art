@@ -1258,6 +1258,13 @@ bool HInliner::TryInlineAndReplace(HInvoke* invoke_instruction,
         new_invoke->SetReferenceTypeInfo(invoke_instruction->GetReferenceTypeInfo());
       }
       return_replacement = new_invoke;
+      // Directly check if the new virtual can be recognized as an intrinsic.
+      // This way, we avoid running a full recognition pass just to detect
+      // these relative rare cases.
+      bool wrong_invoke_type = false;
+      if (IntrinsicsRecognizer::Recognize(new_invoke, &wrong_invoke_type)) {
+        MaybeRecordStat(stats_, kIntrinsicRecognized);
+      }
     } else {
       // TODO: Consider sharpening an invoke virtual once it is not dependent on the
       // compiler driver.
