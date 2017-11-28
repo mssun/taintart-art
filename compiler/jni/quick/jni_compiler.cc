@@ -29,7 +29,6 @@
 #include "base/macros.h"
 #include "calling_convention.h"
 #include "class_linker.h"
-#include "compiled_method.h"
 #include "debug/dwarf/debug_frame_opcode_writer.h"
 #include "dex_file-inl.h"
 #include "driver/compiler_driver.h"
@@ -115,10 +114,10 @@ static ThreadOffset<kPointerSize> GetJniEntrypointThreadOffset(JniEntrypoint whi
 //   convention.
 //
 template <PointerSize kPointerSize>
-static CompiledMethod* ArtJniCompileMethodInternal(CompilerDriver* driver,
-                                                   uint32_t access_flags,
-                                                   uint32_t method_idx,
-                                                   const DexFile& dex_file) {
+static JniCompiledMethod ArtJniCompileMethodInternal(CompilerDriver* driver,
+                                                     uint32_t access_flags,
+                                                     uint32_t method_idx,
+                                                     const DexFile& dex_file) {
   const bool is_native = (access_flags & kAccNative) != 0;
   CHECK(is_native);
   const bool is_static = (access_flags & kAccStatic) != 0;
@@ -657,16 +656,12 @@ static CompiledMethod* ArtJniCompileMethodInternal(CompilerDriver* driver,
   MemoryRegion code(&managed_code[0], managed_code.size());
   __ FinalizeInstructions(code);
 
-  return CompiledMethod::SwapAllocCompiledMethod(driver,
-                                                 instruction_set,
-                                                 ArrayRef<const uint8_t>(managed_code),
-                                                 frame_size,
-                                                 main_jni_conv->CoreSpillMask(),
-                                                 main_jni_conv->FpSpillMask(),
-                                                 /* method_info */ ArrayRef<const uint8_t>(),
-                                                 /* vmap_table */ ArrayRef<const uint8_t>(),
-                                                 ArrayRef<const uint8_t>(*jni_asm->cfi().data()),
-                                                 ArrayRef<const linker::LinkerPatch>());
+  return JniCompiledMethod(instruction_set,
+                           std::move(managed_code),
+                           frame_size,
+                           main_jni_conv->CoreSpillMask(),
+                           main_jni_conv->FpSpillMask(),
+                           ArrayRef<const uint8_t>(*jni_asm->cfi().data()));
 }
 
 // Copy a single parameter from the managed to the JNI calling convention.
@@ -775,10 +770,10 @@ static void SetNativeParameter(JNIMacroAssembler<kPointerSize>* jni_asm,
   }
 }
 
-CompiledMethod* ArtQuickJniCompileMethod(CompilerDriver* compiler,
-                                         uint32_t access_flags,
-                                         uint32_t method_idx,
-                                         const DexFile& dex_file) {
+JniCompiledMethod ArtQuickJniCompileMethod(CompilerDriver* compiler,
+                                           uint32_t access_flags,
+                                           uint32_t method_idx,
+                                           const DexFile& dex_file) {
   if (Is64BitInstructionSet(compiler->GetInstructionSet())) {
     return ArtJniCompileMethodInternal<PointerSize::k64>(
         compiler, access_flags, method_idx, dex_file);

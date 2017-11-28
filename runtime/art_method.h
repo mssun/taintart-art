@@ -460,12 +460,11 @@ class ArtMethod FINAL {
   }
 
   ProfilingInfo* GetProfilingInfo(PointerSize pointer_size) REQUIRES_SHARED(Locks::mutator_lock_) {
-    // Don't do a read barrier in the DCHECK, as GetProfilingInfo is called in places
-    // where the declaring class is treated as a weak reference (accessing it with
-    // a read barrier would either prevent unloading the class, or crash the runtime if
-    // the GC wants to unload it).
-    DCHECK(!IsNative<kWithoutReadBarrier>());
-    if (UNLIKELY(IsProxyMethod())) {
+    // Don't do a read barrier in the DCHECK() inside GetAccessFlags() called by IsNative(),
+    // as GetProfilingInfo is called in places where the declaring class is treated as a weak
+    // reference (accessing it with a read barrier would either prevent unloading the class,
+    // or crash the runtime if the GC wants to unload it).
+    if (UNLIKELY(IsNative<kWithoutReadBarrier>()) || UNLIKELY(IsProxyMethod())) {
       return nullptr;
     }
     return reinterpret_cast<ProfilingInfo*>(GetDataPtrSize(pointer_size));
