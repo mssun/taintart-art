@@ -97,9 +97,6 @@ class CompilerDriver {
                  std::unordered_set<std::string>* compiled_classes,
                  std::unordered_set<std::string>* compiled_methods,
                  size_t thread_count,
-                 bool dump_stats,
-                 bool dump_passes,
-                 CumulativeLogger* timer,
                  int swap_fd,
                  const ProfileCompilationInfo* profile_compilation_info);
 
@@ -300,18 +297,6 @@ class CompilerDriver {
 
   size_t GetThreadCount() const {
     return parallel_thread_count_;
-  }
-
-  bool GetDumpStats() const {
-    return dump_stats_;
-  }
-
-  bool GetDumpPasses() const {
-    return dump_passes_;
-  }
-
-  CumulativeLogger* GetTimingsLogger() const {
-    return timings_logger_;
   }
 
   void SetDedupeEnabled(bool dedupe_enabled) {
@@ -535,11 +520,6 @@ class CompilerDriver {
 
   class AOTCompilationStats;
   std::unique_ptr<AOTCompilationStats> stats_;
-
-  bool dump_stats_;
-  const bool dump_passes_;
-
-  CumulativeLogger* const timings_logger_;
 
   typedef void (*CompilerCallbackFn)(CompilerDriver& driver);
   typedef MutexLock* (*CompilerMutexLockFn)(CompilerDriver& driver);

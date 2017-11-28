@@ -112,7 +112,7 @@ class PassObserver : public ValueObject {
                Mutex& dump_mutex)
       : graph_(graph),
         cached_method_name_(),
-        timing_logger_enabled_(compiler_driver->GetDumpPasses()),
+        timing_logger_enabled_(compiler_driver->GetCompilerOptions().GetDumpTimings()),
         timing_logger_(timing_logger_enabled_ ? GetMethodName() : "", true, true),
         disasm_info_(graph->GetAllocator()),
         visualizer_oss_(),
@@ -407,7 +407,7 @@ void OptimizingCompiler::Init() {
         driver->GetCompilerOptions().GetDumpCfgAppend() ? std::ofstream::app : std::ofstream::out;
     visualizer_output_.reset(new std::ofstream(cfg_file_name, cfg_file_mode));
   }
-  if (driver->GetDumpStats()) {
+  if (driver->GetCompilerOptions().GetDumpStats()) {
     compilation_stats_.reset(new OptimizingCompilerStats());
   }
 }

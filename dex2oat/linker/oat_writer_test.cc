@@ -102,7 +102,6 @@ class OatTest : public CommonCompilerTest {
     callbacks_.reset(new QuickCompilerCallbacks(CompilerCallbacks::CallbackMode::kCompileApp));
     callbacks_->SetVerificationResults(verification_results_.get());
     Runtime::Current()->SetCompilerCallbacks(callbacks_.get());
-    timer_.reset(new CumulativeLogger("Compilation times"));
     compiler_driver_.reset(new CompilerDriver(compiler_options_.get(),
                                               verification_results_.get(),
                                               compiler_kind,
@@ -112,9 +111,6 @@ class OatTest : public CommonCompilerTest {
                                               /* compiled_classes */ nullptr,
                                               /* compiled_methods */ nullptr,
                                               /* thread_count */ 2,
-                                              /* dump_stats */ true,
-                                              /* dump_passes */ true,
-                                              timer_.get(),
                                               /* swap_fd */ -1,
                                               /* profile_compilation_info */ nullptr));
   }
