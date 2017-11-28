@@ -24,7 +24,7 @@
 namespace art {
 
 inline ShadowFrame* ManagedStack::PushShadowFrame(ShadowFrame* new_top_frame) {
-  DCHECK(top_quick_frame_ == nullptr);
+  DCHECK(!HasTopQuickFrame());
   ShadowFrame* old_frame = top_shadow_frame_;
   top_shadow_frame_ = new_top_frame;
   new_top_frame->SetLink(old_frame);
@@ -32,7 +32,7 @@ inline ShadowFrame* ManagedStack::PushShadowFrame(ShadowFrame* new_top_frame) {
 }
 
 inline ShadowFrame* ManagedStack::PopShadowFrame() {
-  DCHECK(top_quick_frame_ == nullptr);
+  DCHECK(!HasTopQuickFrame());
   CHECK(top_shadow_frame_ != nullptr);
   ShadowFrame* frame = top_shadow_frame_;
   top_shadow_frame_ = frame->GetLink();

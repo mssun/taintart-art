@@ -1958,7 +1958,9 @@ DEFINE_FUNCTION art_quick_generic_jni_trampoline
     movq %rax, %xmm0
     ret
 .Lexception_in_native:
-    movq %gs:THREAD_TOP_QUICK_FRAME_OFFSET, %rsp
+    pushq %gs:THREAD_TOP_QUICK_FRAME_OFFSET
+    addq LITERAL(-1), (%rsp)  // Remove the GenericJNI tag.
+    movq (%rsp), %rsp
     CFI_DEF_CFA_REGISTER(rsp)
     // Do a call to push a new save-all frame required by the runtime.
     call .Lexception_call
