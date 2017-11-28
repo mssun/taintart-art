@@ -33,9 +33,7 @@ class InstructionSimplifierMipsVisitor : public HGraphVisitor {
 
  private:
   void RecordSimplification() {
-    if (stats_ != nullptr) {
-      stats_->RecordStat(kInstructionSimplificationsArch);
-    }
+    MaybeRecordStat(stats_, MethodCompilationStat::kInstructionSimplificationsArch);
   }
 
   bool TryExtractArrayAccessIndex(HInstruction* access,

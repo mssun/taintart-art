@@ -738,7 +738,7 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
                                               ArtMethod* method,
                                               bool osr,
                                               VariableSizedHandleScope* handles) const {
-  MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kAttemptCompilation);
+  MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kAttemptBytecodeCompilation);
   CompilerDriver* compiler_driver = GetCompilerDriver();
   InstructionSet instruction_set = compiler_driver->GetInstructionSet();
   const DexFile& dex_file = *dex_compilation_unit.GetDexFile();
@@ -757,8 +757,7 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
   }
 
   if (Compiler::IsPathologicalCase(*code_item, method_idx, dex_file)) {
-    MaybeRecordStat(compilation_stats_.get(),
-                    MethodCompilationStat::kNotCompiledPathological);
+    MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kNotCompiledPathological);
     return nullptr;
   }
 
@@ -768,8 +767,7 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
   const CompilerOptions& compiler_options = compiler_driver->GetCompilerOptions();
   if ((compiler_options.GetCompilerFilter() == CompilerFilter::kSpace)
       && (code_item->insns_size_in_code_units_ > kSpaceFilterOptimizingThreshold)) {
-    MaybeRecordStat(compilation_stats_.get(),
-                    MethodCompilationStat::kNotCompiledSpaceFilter);
+    MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kNotCompiledSpaceFilter);
     return nullptr;
   }
 
@@ -800,8 +798,7 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
                             compiler_driver->GetCompilerOptions(),
                             compilation_stats_.get()));
   if (codegen.get() == nullptr) {
-    MaybeRecordStat(compilation_stats_.get(),
-                    MethodCompilationStat::kNotCompiledNoCodegen);
+    MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kNotCompiledNoCodegen);
     return nullptr;
   }
   codegen->GetAssembler()->cfi().SetEnabled(
@@ -873,6 +870,7 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
   codegen->Compile(code_allocator);
   pass_observer.DumpDisassembly();
 
+  MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kCompiledBytecode);
   return codegen.release();
 }
 
@@ -883,6 +881,7 @@ CodeGenerator* OptimizingCompiler::TryCompileIntrinsic(
     const DexCompilationUnit& dex_compilation_unit,
     ArtMethod* method,
     VariableSizedHandleScope* handles) const {
+  MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kAttemptIntrinsicCompilation);
   CompilerDriver* compiler_driver = GetCompilerDriver();
   InstructionSet instruction_set = compiler_driver->GetInstructionSet();
   const DexFile& dex_file = *dex_compilation_unit.GetDexFile();
@@ -894,8 +893,6 @@ CodeGenerator* OptimizingCompiler::TryCompileIntrinsic(
 
   // Do not attempt to compile on architectures we do not support.
   if (!IsInstructionSetSupported(instruction_set)) {
-    MaybeRecordStat(compilation_stats_.get(),
-                    MethodCompilationStat::kNotCompiledUnsupportedIsa);
     return nullptr;
   }
 
@@ -920,8 +917,6 @@ CodeGenerator* OptimizingCompiler::TryCompileIntrinsic(
                             compiler_driver->GetCompilerOptions(),
                             compilation_stats_.get()));
   if (codegen.get() == nullptr) {
-    MaybeRecordStat(compilation_stats_.get(),
-                    MethodCompilationStat::kNotCompiledNoCodegen);
     return nullptr;
   }
   codegen->GetAssembler()->cfi().SetEnabled(
@@ -979,6 +974,7 @@ CodeGenerator* OptimizingCompiler::TryCompileIntrinsic(
 
   VLOG(compiler) << "Compiled intrinsic: " << method->GetIntrinsic()
       << " " << graph->PrettyMethod();
+  MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kCompiledIntrinsic);
   return codegen.release();
 }
 
@@ -1046,8 +1042,6 @@ CompiledMethod* OptimizingCompiler::Compile(const DexFile::CodeItem* code_item,
       }
     }
     if (codegen.get() != nullptr) {
-      MaybeRecordStat(compilation_stats_.get(),
-                      MethodCompilationStat::kCompiled);
       compiled_method = Emit(&allocator,
                              &code_allocator,
                              codegen.get(),
@@ -1139,10 +1133,12 @@ CompiledMethod* OptimizingCompiler::JniCompile(uint32_t access_flags,
     }
   }
 
-  return ArtQuickJniCompileMethod(GetCompilerDriver(),
-                                  access_flags,
-                                  method_idx,
-                                  dex_file);
+  CompiledMethod* compiled_method = ArtQuickJniCompileMethod(GetCompilerDriver(),
+                                                             access_flags,
+                                                             method_idx,
+                                                             dex_file);
+  MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kCompiledNativeStub);
+  return compiled_method;
 }
 
 Compiler* CreateOptimizingCompiler(CompilerDriver* driver) {
@@ -1237,6 +1233,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
           self, class_linker->GetClassRoot(ClassLinker::kObjectArrayClass), number_of_roots)));
   if (roots == nullptr) {
     // Out of memory, just clear the exception to avoid any Java exception uncaught problems.
+    MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kJitOutOfMemoryForCommit);
     DCHECK(self->IsExceptionPending());
     self->ClearException();
     return false;
@@ -1253,9 +1250,9 @@ bool OptimizingCompiler::JitCompile(Thread* self,
                                                &method_info_data,
                                                &roots_data);
   if (stack_map_data == nullptr || roots_data == nullptr) {
+    MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kJitOutOfMemoryForCommit);
     return false;
   }
-  MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kCompiled);
   codegen->BuildStackMaps(MemoryRegion(stack_map_data, stack_map_size),
                           MemoryRegion(method_info_data, method_info_size),
                           code_item);
@@ -1279,6 +1276,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
       codegen->GetGraph()->GetCHASingleImplementationList());
 
   if (code == nullptr) {
+    MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kJitOutOfMemoryForCommit);
     code_cache->ClearData(self, stack_map_data, roots_data);
     return false;
   }
