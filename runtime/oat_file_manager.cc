@@ -445,8 +445,13 @@ std::vector<std::unique_ptr<const DexFile>> OatFileManager::OpenDexFilesFromOat(
     // if it's in the class path). Note this trades correctness for performance
     // since the resulting slow down is unacceptable in some cases until b/64530081
     // is fixed.
+    // We still pass the class loader context when the classpath string of the runtime
+    // is not empty, which is the situation when ART is invoked standalone.
+    ClassLoaderContext* actual_context = Runtime::Current()->GetClassPathString().empty()
+        ? nullptr
+        : context.get();
     switch (oat_file_assistant.MakeUpToDate(/*profile_changed*/ false,
-                                            /*class_loader_context*/ nullptr,
+                                            actual_context,
                                             /*out*/ &error_msg)) {
       case OatFileAssistant::kUpdateFailed:
         LOG(WARNING) << error_msg;
