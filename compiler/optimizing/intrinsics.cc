@@ -139,26 +139,41 @@ static bool CheckInvokeType(Intrinsics intrinsic, HInvoke* invoke) {
       // Call might be devirtualized.
       return (invoke_type == kVirtual || invoke_type == kDirect);
 
-    default:
+    case kSuper:
+    case kInterface:
+    case kPolymorphic:
       return false;
   }
+  LOG(FATAL) << "Unknown intrinsic invoke type: " << intrinsic_type;
+  UNREACHABLE();
 }
 
 bool IntrinsicsRecognizer::Recognize(HInvoke* invoke, /*out*/ bool* wrong_invoke_type) {
   ArtMethod* art_method = invoke->GetResolvedMethod();
-  if (art_method != nullptr && art_method->IsIntrinsic()) {
-    Intrinsics intrinsic = static_cast<Intrinsics>(art_method->GetIntrinsic());
-    if (CheckInvokeType(intrinsic, invoke)) {
-      invoke->SetIntrinsic(intrinsic,
-                           NeedsEnvironmentOrCache(intrinsic),
-                           GetSideEffects(intrinsic),
-                           GetExceptions(intrinsic));
-     return true;
-    } else {
-      *wrong_invoke_type = true;
+  *wrong_invoke_type = false;
+  if (art_method == nullptr || !art_method->IsIntrinsic()) {
+    return false;
+  }
+
+  {
+    // TODO: b/65872996 Polymorphic signature methods should be compiler intrinsics.
+    ScopedObjectAccess soa(Thread::Current());
+    if (art_method->IsPolymorphicSignature()) {
+      return false;
     }
   }
-  return false;
+
+  Intrinsics intrinsic = static_cast<Intrinsics>(art_method->GetIntrinsic());
+  if (CheckInvokeType(intrinsic, invoke) == false) {
+    *wrong_invoke_type = true;
+    return false;
+  }
+
+  invoke->SetIntrinsic(intrinsic,
+                       NeedsEnvironmentOrCache(intrinsic),
+                       GetSideEffects(intrinsic),
+                       GetExceptions(intrinsic));
+  return true;
 }
 
 void IntrinsicsRecognizer::Run() {
