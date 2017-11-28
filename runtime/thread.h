@@ -474,16 +474,13 @@ class Thread {
     tlsPtr_.managed_stack.SetTopQuickFrame(top_method);
   }
 
-  void SetTopOfStackTagged(ArtMethod** top_method) {
-    tlsPtr_.managed_stack.SetTopQuickFrameTagged(top_method);
-  }
-
   void SetTopOfShadowStack(ShadowFrame* top) {
     tlsPtr_.managed_stack.SetTopShadowFrame(top);
   }
 
   bool HasManagedStack() const {
-    return tlsPtr_.managed_stack.HasTopQuickFrame() || tlsPtr_.managed_stack.HasTopShadowFrame();
+    return (tlsPtr_.managed_stack.GetTopQuickFrame() != nullptr) ||
+        (tlsPtr_.managed_stack.GetTopShadowFrame() != nullptr);
   }
 
   // If 'msg' is null, no detail message is set.
@@ -836,7 +833,7 @@ class Thread {
   static ThreadOffset<pointer_size> TopOfManagedStackOffset() {
     return ThreadOffsetFromTlsPtr<pointer_size>(
         OFFSETOF_MEMBER(tls_ptr_sized_values, managed_stack) +
-        ManagedStack::TaggedTopQuickFrameOffset());
+        ManagedStack::TopQuickFrameOffset());
   }
 
   const ManagedStack* GetManagedStack() const {
