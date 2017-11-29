@@ -51,6 +51,7 @@ const LongHiType* LongHiType::instance_ = nullptr;
 const DoubleLoType* DoubleLoType::instance_ = nullptr;
 const DoubleHiType* DoubleHiType::instance_ = nullptr;
 const IntegerType* IntegerType::instance_ = nullptr;
+const NullType* NullType::instance_ = nullptr;
 
 PrimitiveType::PrimitiveType(mirror::Class* klass, const StringPiece& descriptor, uint16_t cache_id)
     : RegType(klass, descriptor, cache_id) {
@@ -581,6 +582,10 @@ static const RegType& SelectNonConstant(const RegType& a, const RegType& b) {
   return a.IsConstantTypes() ? b : a;
 }
 
+static const RegType& SelectNonConstant2(const RegType& a, const RegType& b) {
+  return a.IsConstantTypes() ? (b.IsZero() ? a : b) : a;
+}
+
 const RegType& RegType::Merge(const RegType& incoming_type,
                               RegTypeCache* reg_types,
                               MethodVerifier* verifier) const {
@@ -695,8 +700,8 @@ const RegType& RegType::Merge(const RegType& incoming_type,
       // special. They may only ever be merged with themselves (must be taken care of by the
       // caller of Merge(), see the DCHECK on entry). So mark any other merge as conflicting here.
       return conflict;
-    } else if (IsZero() || incoming_type.IsZero()) {
-      return SelectNonConstant(*this, incoming_type);  // 0 MERGE ref => ref
+    } else if (IsZeroOrNull() || incoming_type.IsZeroOrNull()) {
+      return SelectNonConstant2(*this, incoming_type);  // 0 MERGE ref => ref
     } else if (IsJavaLangObject() || incoming_type.IsJavaLangObject()) {
       return reg_types->JavaLangObject(false);  // Object MERGE ref => Object
     } else if (IsUnresolvedTypes() || incoming_type.IsUnresolvedTypes()) {
@@ -963,6 +968,21 @@ bool RegType::CanAssignArray(const RegType& src,
     return false;
   }
   return cmp1.CanAssignArray(cmp2, reg_types, class_loader, verifier, soft_error);
+}
+
+const NullType* NullType::CreateInstance(mirror::Class* klass,
+                                         const StringPiece& descriptor,
+                                         uint16_t cache_id) {
+  CHECK(instance_ == nullptr);
+  instance_ = new NullType(klass, descriptor, cache_id);
+  return instance_;
+}
+
+void NullType::Destroy() {
+  if (NullType::instance_ != nullptr) {
+    delete instance_;
+    instance_ = nullptr;
+  }
 }
 
 
