@@ -104,20 +104,6 @@ static void MoreErrorInfo(pid_t pid, bool sig_quit_on_fail) {
 }
 #endif
 
-// Currently we have to fall back to our own loader for the boot image when it's compiled PIC
-// because its base is zero. Thus in-process unwinding through it won't work. This is a helper
-// detecting this.
-#if __linux__
-static bool IsPicImage() {
-  std::vector<gc::space::ImageSpace*> image_spaces =
-      Runtime::Current()->GetHeap()->GetBootImageSpaces();
-  CHECK(!image_spaces.empty());  // We should be running with an image.
-  const OatFile* oat_file = image_spaces[0]->GetOatFile();
-  CHECK(oat_file != nullptr);     // We should have an oat file to go with the image.
-  return oat_file->IsPic();
-}
-#endif
-
 extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindInProcess(
     JNIEnv*,
     jobject,
@@ -125,11 +111,6 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindInProcess(
     jint,
     jboolean) {
 #if __linux__
-  if (IsPicImage()) {
-    LOG(INFO) << "Image is pic, in-process unwinding check bypassed.";
-    return JNI_TRUE;
-  }
-
   // TODO: What to do on Valgrind?
 
   std::unique_ptr<Backtrace> bt(Backtrace::Create(BACKTRACE_CURRENT_PROCESS, GetTid()));
