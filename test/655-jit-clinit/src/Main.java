@@ -23,7 +23,7 @@ public class Main {
     Foo.hotMethod();
   }
 
-  public native static boolean isJitCompiled(Class<?> cls, String methodName);
+  public native static boolean hasJitCompiledEntrypoint(Class<?> cls, String methodName);
   private native static boolean hasJit();
 }
 
@@ -36,7 +36,7 @@ class Foo {
 
   static {
     array = new Object[10000];
-    while (!Main.isJitCompiled(Foo.class, "hotMethod")) {
+    while (!Main.hasJitCompiledEntrypoint(Foo.class, "hotMethod")) {
       Foo.hotMethod();
       try {
         // Sleep to give a chance for the JIT to compile `hotMethod`.

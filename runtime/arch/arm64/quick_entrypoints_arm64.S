@@ -2299,7 +2299,7 @@ ENTRY art_quick_generic_jni_trampoline
 .Lexception_in_native:
     // Move to x1 then sp to please assembler.
     ldr x1, [xSELF, # THREAD_TOP_QUICK_FRAME_OFFSET]
-    mov sp, x1
+    add sp, x1, #-1  // Remove the GenericJNI tag.
     .cfi_def_cfa_register sp
     # This will create a new save-all frame, required by the runtime.
     DELIVER_PENDING_EXCEPTION
