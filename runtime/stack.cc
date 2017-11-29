@@ -735,12 +735,19 @@ QuickMethodFrameInfo StackVisitor::GetCurrentQuickFrameInfo() const {
     return runtime->GetCalleeSaveMethodFrameInfo(CalleeSaveType::kSaveRefsAndArgs);
   }
 
-  // The only remaining case is if the method is native and uses the generic JNI stub.
+  // The only remaining case is if the method is native and uses the generic JNI stub,
+  // called either directly or through some (resolution, instrumentation) trampoline.
   DCHECK(method->IsNative());
-  ClassLinker* class_linker = runtime->GetClassLinker();
-  const void* entry_point = runtime->GetInstrumentation()->GetQuickCodeFor(method,
-                                                                           kRuntimePointerSize);
-  DCHECK(class_linker->IsQuickGenericJniStub(entry_point)) << method->PrettyMethod();
+  if (kIsDebugBuild) {
+    ClassLinker* class_linker = runtime->GetClassLinker();
+    const void* entry_point = runtime->GetInstrumentation()->GetQuickCodeFor(method,
+                                                                             kRuntimePointerSize);
+    CHECK(class_linker->IsQuickGenericJniStub(entry_point) ||
+          // The current entrypoint (after filtering out trampolines) may have changed
+          // from GenericJNI to JIT-compiled stub since we have entered this frame.
+          (runtime->GetJit() != nullptr &&
+           runtime->GetJit()->GetCodeCache()->ContainsPc(entry_point))) << method->PrettyMethod();
+  }
   // Generic JNI frame.
   uint32_t handle_refs = GetNumberOfReferenceArgsWithoutReceiver(method) + 1;
   size_t scope_size = HandleScope::SizeOf(handle_refs);
@@ -776,8 +783,48 @@ void StackVisitor::WalkStack(bool include_transitions) {
       // Can't be both a shadow and a quick fragment.
       DCHECK(current_fragment->GetTopShadowFrame() == nullptr);
       ArtMethod* method = *cur_quick_frame_;
+      DCHECK(method != nullptr);
+      bool header_retrieved = false;
+      if (method->IsNative()) {
+        // We do not have a PC for the first frame, so we cannot simply use
+        // ArtMethod::GetOatQuickMethodHeader() as we're unable to distinguish there
+        // between GenericJNI frame and JIT-compiled JNI stub; the entrypoint may have
+        // changed since the frame was entered. The top quick frame tag indicates
+        // GenericJNI here, otherwise it's either AOT-compiled or JNI-compiled JNI stub.
+        if (UNLIKELY(current_fragment->GetTopQuickFrameTag())) {
+          // The generic JNI does not have any method header.
+          cur_oat_quick_method_header_ = nullptr;
+        } else {
+          const void* existing_entry_point = method->GetEntryPointFromQuickCompiledCode();
+          CHECK(existing_entry_point != nullptr);
+          Runtime* runtime = Runtime::Current();
+          ClassLinker* class_linker = runtime->GetClassLinker();
+          // Check whether we can quickly get the header from the current entrypoint.
+          if (!class_linker->IsQuickGenericJniStub(existing_entry_point) &&
+              !class_linker->IsQuickResolutionStub(existing_entry_point) &&
+              existing_entry_point != GetQuickInstrumentationEntryPoint()) {
+            cur_oat_quick_method_header_ =
+                OatQuickMethodHeader::FromEntryPoint(existing_entry_point);
+          } else {
+            const void* code = method->GetOatMethodQuickCode(class_linker->GetImagePointerSize());
+            if (code != nullptr) {
+              cur_oat_quick_method_header_ = OatQuickMethodHeader::FromEntryPoint(code);
+            } else {
+              // This must be a JITted JNI stub frame.
+              CHECK(runtime->GetJit() != nullptr);
+              code = runtime->GetJit()->GetCodeCache()->GetJniStubCode(method);
+              CHECK(code != nullptr) << method->PrettyMethod();
+              cur_oat_quick_method_header_ = OatQuickMethodHeader::FromCodePointer(code);
+            }
+          }
+        }
+        header_retrieved = true;
+      }
       while (method != nullptr) {
-        cur_oat_quick_method_header_ = method->GetOatQuickMethodHeader(cur_quick_frame_pc_);
+        if (!header_retrieved) {
+          cur_oat_quick_method_header_ = method->GetOatQuickMethodHeader(cur_quick_frame_pc_);
+        }
+        header_retrieved = false;  // Force header retrieval in next iteration.
         SanityCheckFrame();
 
         if ((walk_kind_ == StackWalkKind::kIncludeInlinedFrames)
