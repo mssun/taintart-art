@@ -1783,7 +1783,9 @@ ENTRY art_quick_generic_jni_trampoline
     .cfi_adjust_cfa_offset FRAME_SIZE_SAVE_REFS_AND_ARGS-FRAME_SIZE_SAVE_REFS_ONLY
 
 .Lexception_in_native:
-    ldr sp, [r9, #THREAD_TOP_QUICK_FRAME_OFFSET]
+    ldr ip, [r9, #THREAD_TOP_QUICK_FRAME_OFFSET]
+    add ip, ip, #-1  // Remove the GenericJNI tag. ADD/SUB writing directly to SP is UNPREDICTABLE.
+    mov sp, ip
     .cfi_def_cfa_register sp
     # This will create a new save-all frame, required by the runtime.
     DELIVER_PENDING_EXCEPTION
