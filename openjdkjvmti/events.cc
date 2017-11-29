@@ -139,7 +139,9 @@ EventMask* EventMasks::GetEventMaskOrNull(art::Thread* thread) {
 }
 
 
-void EventMasks::EnableEvent(art::Thread* thread, ArtJvmtiEvent event) {
+void EventMasks::EnableEvent(ArtJvmTiEnv* env, art::Thread* thread, ArtJvmtiEvent event) {
+  DCHECK_EQ(&env->event_masks, this);
+  env->event_info_mutex_.AssertExclusiveHeld(art::Thread::Current());
   DCHECK(EventMask::EventIsInRange(event));
   GetEventMask(thread).Set(event);
   if (thread != nullptr) {
@@ -147,7 +149,9 @@ void EventMasks::EnableEvent(art::Thread* thread, ArtJvmtiEvent event) {
   }
 }
 
-void EventMasks::DisableEvent(art::Thread* thread, ArtJvmtiEvent event) {
+void EventMasks::DisableEvent(ArtJvmTiEnv* env, art::Thread* thread, ArtJvmtiEvent event) {
+  DCHECK_EQ(&env->event_masks, this);
+  env->event_info_mutex_.AssertExclusiveHeld(art::Thread::Current());
   DCHECK(EventMask::EventIsInRange(event));
   GetEventMask(thread).Set(event, false);
   if (thread != nullptr) {
@@ -1131,19 +1135,27 @@ jvmtiError EventHandler::SetEvent(ArtJvmTiEnv* env,
     return ERR(MUST_POSSESS_CAPABILITY);
   }
 
-  bool old_state = global_mask.Test(event);
+  bool old_state;
+  bool new_state;
 
-  if (mode == JVMTI_ENABLE) {
-    env->event_masks.EnableEvent(thread, event);
-    global_mask.Set(event);
-  } else {
-    DCHECK_EQ(mode, JVMTI_DISABLE);
+  {
+    // Change the event masks atomically.
+    art::Thread* self = art::Thread::Current();
+    art::MutexLock mu(self, envs_lock_);
+    art::WriterMutexLock mu_env_info(self, env->event_info_mutex_);
+    old_state = global_mask.Test(event);
+    if (mode == JVMTI_ENABLE) {
+      env->event_masks.EnableEvent(env, thread, event);
+      global_mask.Set(event);
+      new_state = true;
+    } else {
+      DCHECK_EQ(mode, JVMTI_DISABLE);
 
-    env->event_masks.DisableEvent(thread, event);
-    RecalculateGlobalEventMask(event);
+      env->event_masks.DisableEvent(env, thread, event);
+      RecalculateGlobalEventMaskLocked(event);
+      new_state = global_mask.Test(event);
+    }
   }
-
-  bool new_state = global_mask.Test(event);
 
   // Handle any special work required for the event type.
   if (new_state != old_state) {
