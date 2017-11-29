@@ -1884,9 +1884,7 @@ static bool ShouldShowNativeStack(const Thread* thread)
   }
 
   // Threads with no managed stack frames should be shown.
-  const ManagedStack* managed_stack = thread->GetManagedStack();
-  if (managed_stack == nullptr || (managed_stack->GetTopQuickFrame() == nullptr &&
-      managed_stack->GetTopShadowFrame() == nullptr)) {
+  if (!thread->HasManagedStack()) {
     return true;
   }
 
