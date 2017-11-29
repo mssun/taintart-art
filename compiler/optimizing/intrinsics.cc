@@ -104,7 +104,8 @@ static inline IntrinsicExceptions GetExceptions(Intrinsics i) {
   return kCanThrow;
 }
 
-static bool CheckInvokeType(Intrinsics intrinsic, HInvoke* invoke) {
+static bool CheckInvokeType(Intrinsics intrinsic, HInvoke* invoke)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
   // Whenever the intrinsic is marked as static, report an error if we find an InvokeVirtual.
   //
   // Whenever the intrinsic is marked as direct and we find an InvokeVirtual, a devirtualization
@@ -130,7 +131,6 @@ static bool CheckInvokeType(Intrinsics intrinsic, HInvoke* invoke) {
       }
       if (invoke_type == kVirtual) {
         ArtMethod* art_method = invoke->GetResolvedMethod();
-        ScopedObjectAccess soa(Thread::Current());
         return (art_method->IsFinal() || art_method->GetDeclaringClass()->IsFinal());
       }
       return false;
@@ -155,12 +155,10 @@ bool IntrinsicsRecognizer::Recognize(HInvoke* invoke, /*out*/ bool* wrong_invoke
     return false;
   }
 
-  {
-    // TODO: b/65872996 Polymorphic signature methods should be compiler intrinsics.
-    ScopedObjectAccess soa(Thread::Current());
-    if (art_method->IsPolymorphicSignature()) {
-      return false;
-    }
+  // TODO: b/65872996 The intent is that polymorphic signature methods should
+  // be compiler intrinsics. At present, they are only interpreter intrinsics.
+  if (art_method->IsPolymorphicSignature()) {
+    return false;
   }
 
   Intrinsics intrinsic = static_cast<Intrinsics>(art_method->GetIntrinsic());
