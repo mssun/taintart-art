@@ -245,7 +245,7 @@ ArtMethod* GetCalleeSaveMethodCaller(ArtMethod** sp, CalleeSaveType type, bool d
 CallerAndOuterMethod GetCalleeSaveMethodCallerAndOuterMethod(Thread* self, CalleeSaveType type) {
   CallerAndOuterMethod result;
   ScopedAssertNoThreadSuspension ants(__FUNCTION__);
-  ArtMethod** sp = self->GetManagedStack()->GetTopQuickFrame();
+  ArtMethod** sp = self->GetManagedStack()->GetTopQuickFrameKnownNotTagged();
   auto outer_caller_and_pc = DoGetCalleeSaveMethodOuterCallerAndPc(sp, type);
   result.outer_method = outer_caller_and_pc.first;
   uintptr_t caller_pc = outer_caller_and_pc.second;
@@ -256,7 +256,7 @@ CallerAndOuterMethod GetCalleeSaveMethodCallerAndOuterMethod(Thread* self, Calle
 
 ArtMethod* GetCalleeSaveOuterMethod(Thread* self, CalleeSaveType type) {
   ScopedAssertNoThreadSuspension ants(__FUNCTION__);
-  ArtMethod** sp = self->GetManagedStack()->GetTopQuickFrame();
+  ArtMethod** sp = self->GetManagedStack()->GetTopQuickFrameKnownNotTagged();
   return DoGetCalleeSaveMethodOuterCallerAndPc(sp, type).first;
 }
 
