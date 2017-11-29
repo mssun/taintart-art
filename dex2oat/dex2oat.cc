@@ -628,10 +628,6 @@ class Dex2Oat FINAL {
       opened_dex_files_maps_(),
       opened_dex_files_(),
       no_inline_from_dex_files_(),
-      dump_stats_(false),
-      dump_passes_(false),
-      dump_timing_(false),
-      dump_slow_timing_(kIsDebugBuild),
       avoid_storing_invocation_(false),
       swap_fd_(kInvalidFd),
       app_image_fd_(kInvalidFd),
@@ -1221,9 +1217,6 @@ class Dex2Oat FINAL {
     }
 
     AssignTrueIfExists(args, M::Host, &is_host_);
-    AssignTrueIfExists(args, M::DumpTiming, &dump_timing_);
-    AssignTrueIfExists(args, M::DumpPasses, &dump_passes_);
-    AssignTrueIfExists(args, M::DumpStats, &dump_stats_);
     AssignTrueIfExists(args, M::AvoidStoringInvocation, &avoid_storing_invocation_);
     AssignTrueIfExists(args, M::MultiImage, &multi_image_);
 
@@ -1726,7 +1719,6 @@ class Dex2Oat FINAL {
     ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
 
     TimingLogger::ScopedTiming t("dex2oat Compile", timings_);
-    compiler_phases_timings_.reset(new CumulativeLogger("compilation times"));
 
     // Find the dex files we should not inline from.
     std::vector<std::string> no_inline_filters;
@@ -1787,9 +1779,6 @@ class Dex2Oat FINAL {
                                      compiled_classes_.release(),
                                      compiled_methods_.release(),
                                      thread_count_,
-                                     dump_stats_,
-                                     dump_passes_,
-                                     compiler_phases_timings_.get(),
                                      swap_fd_,
                                      profile_compilation_info_.get()));
     driver_->SetDexFilesForOatFile(dex_files_);
@@ -2202,11 +2191,9 @@ class Dex2Oat FINAL {
   }
 
   void DumpTiming() {
-    if (dump_timing_ || (dump_slow_timing_ && timings_->GetTotalNs() > MsToNs(1000))) {
+    if (compiler_options_->GetDumpTimings() ||
+        (kIsDebugBuild && timings_->GetTotalNs() > MsToNs(1000))) {
       LOG(INFO) << Dumpable<TimingLogger>(*timings_);
-    }
-    if (dump_passes_) {
-      LOG(INFO) << Dumpable<CumulativeLogger>(*driver_->GetTimingsLogger());
     }
   }
 
@@ -2842,10 +2829,6 @@ class Dex2Oat FINAL {
   // Note that this might contain pointers owned by class_loader_context_.
   std::vector<const DexFile*> no_inline_from_dex_files_;
 
-  bool dump_stats_;
-  bool dump_passes_;
-  bool dump_timing_;
-  bool dump_slow_timing_;
   bool avoid_storing_invocation_;
   std::string swap_file_name_;
   int swap_fd_;
@@ -2858,7 +2841,6 @@ class Dex2Oat FINAL {
   int profile_file_fd_;
   std::unique_ptr<ProfileCompilationInfo> profile_compilation_info_;
   TimingLogger* timings_;
-  std::unique_ptr<CumulativeLogger> compiler_phases_timings_;
   std::vector<std::vector<const DexFile*>> dex_files_per_oat_file_;
   std::unordered_map<const DexFile*, size_t> dex_file_oat_index_map_;
 

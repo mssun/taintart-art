@@ -48,7 +48,6 @@ class JitCompiler {
 
  private:
   std::unique_ptr<CompilerOptions> compiler_options_;
-  std::unique_ptr<CumulativeLogger> cumulative_logger_;
   std::unique_ptr<CompilerDriver> compiler_driver_;
   std::unique_ptr<const InstructionSetFeatures> instruction_set_features_;
   std::unique_ptr<JitLogger> jit_logger_;
