@@ -130,7 +130,6 @@ JitCompiler::JitCompiler() {
   if (instruction_set_features_ == nullptr) {
     instruction_set_features_ = InstructionSetFeatures::FromCppDefines();
   }
-  cumulative_logger_.reset(new CumulativeLogger("jit times"));
   compiler_driver_.reset(new CompilerDriver(
       compiler_options_.get(),
       /* verification_results */ nullptr,
@@ -141,9 +140,6 @@ JitCompiler::JitCompiler() {
       /* compiled_classes */ nullptr,
       /* compiled_methods */ nullptr,
       /* thread_count */ 1,
-      /* dump_stats */ false,
-      /* dump_passes */ false,
-      cumulative_logger_.get(),
       /* swap_fd */ -1,
       /* profile_compilation_info */ nullptr));
   // Disable dedupe so we can remove compiled methods.

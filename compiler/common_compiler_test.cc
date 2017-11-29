@@ -174,7 +174,6 @@ void CommonCompilerTest::SetUp() {
       }
     }
 
-    timer_.reset(new CumulativeLogger("Compilation times"));
     CreateCompilerDriver(compiler_kind_, instruction_set);
   }
 }
@@ -193,9 +192,6 @@ void CommonCompilerTest::CreateCompilerDriver(Compiler::Kind kind,
                                             GetCompiledClasses(),
                                             GetCompiledMethods(),
                                             number_of_threads,
-                                            /* dump_stats */ true,
-                                            /* dump_passes */ true,
-                                            timer_.get(),
                                             /* swap_fd */ -1,
                                             GetProfileCompilationInfo()));
   // We typically don't generate an image in unit tests, disable this optimization by default.
@@ -227,7 +223,6 @@ InstructionSet CommonCompilerTest::GetInstructionSet() const {
 }
 
 void CommonCompilerTest::TearDown() {
-  timer_.reset();
   compiler_driver_.reset();
   callbacks_.reset();
   verification_results_.reset();

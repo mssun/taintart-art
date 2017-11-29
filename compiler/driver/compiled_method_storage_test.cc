@@ -37,9 +37,6 @@ TEST(CompiledMethodStorage, Deduplicate) {
                         /* compiled_classes */ nullptr,
                         /* compiled_methods */ nullptr,
                         /* thread_count */ 1u,
-                        /* dump_stats */ false,
-                        /* dump_passes */ false,
-                        /* timer */ nullptr,
                         /* swap_fd */ -1,
                         /* profile_compilation_info */ nullptr);
   CompiledMethodStorage* storage = driver.GetCompiledMethodStorage();
