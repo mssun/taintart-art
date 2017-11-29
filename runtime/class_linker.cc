@@ -5523,6 +5523,10 @@ bool ClassLinker::LinkSuperClass(Handle<mirror::Class> klass) {
     return false;
   }
   // Verify
+  if (klass->IsInterface() && super != GetClassRoot(kJavaLangObject)) {
+    ThrowClassFormatError(klass.Get(), "Interfaces must have java.lang.Object as superclass");
+    return false;
+  }
   if (super->IsFinal()) {
     ThrowVerifyError(klass.Get(),
                      "Superclass %s of %s is declared final",
