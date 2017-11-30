@@ -234,6 +234,8 @@ class EventHandler {
       REQUIRES(!envs_lock_);
 
  private:
+  void SetupTraceListener(JvmtiMethodTraceListener* listener, ArtJvmtiEvent event, bool enable);
+
   template <ArtJvmtiEvent kEvent, typename ...Args>
   ALWAYS_INLINE
   inline std::vector<impl::EventHandlerFunc<kEvent>> CollectEvents(art::Thread* thread,
