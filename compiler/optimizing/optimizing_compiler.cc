@@ -1196,7 +1196,69 @@ bool OptimizingCompiler::JitCompile(Thread* self,
 
   Runtime* runtime = Runtime::Current();
   ArenaAllocator allocator(runtime->GetJitArenaPool());
-  ArenaStack arena_stack(Runtime::Current()->GetJitArenaPool());
+
+  if (UNLIKELY(method->IsNative())) {
+    JniCompiledMethod jni_compiled_method = ArtQuickJniCompileMethod(
+        GetCompilerDriver(), access_flags, method_idx, *dex_file);
+    ScopedNullHandle<mirror::ObjectArray<mirror::Object>> roots;
+    ArenaSet<ArtMethod*, std::less<ArtMethod*>> cha_single_implementation_list(
+        allocator.Adapter(kArenaAllocCHA));
+    const void* code = code_cache->CommitCode(
+        self,
+        method,
+        /* stack_map_data */ nullptr,
+        /* method_info_data */ nullptr,
+        /* roots_data */ nullptr,
+        jni_compiled_method.GetFrameSize(),
+        jni_compiled_method.GetCoreSpillMask(),
+        jni_compiled_method.GetFpSpillMask(),
+        jni_compiled_method.GetCode().data(),
+        jni_compiled_method.GetCode().size(),
+        /* data_size */ 0u,
+        osr,
+        roots,
+        /* has_should_deoptimize_flag */ false,
+        cha_single_implementation_list);
+    if (code == nullptr) {
+      return false;
+    }
+
+    const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
+    if (compiler_options.GetGenerateDebugInfo()) {
+      const auto* method_header = reinterpret_cast<const OatQuickMethodHeader*>(code);
+      const uintptr_t code_address = reinterpret_cast<uintptr_t>(method_header->GetCode());
+      debug::MethodDebugInfo info = {};
+      DCHECK(info.trampoline_name.empty());
+      info.dex_file = dex_file;
+      info.class_def_index = class_def_idx;
+      info.dex_method_index = method_idx;
+      info.access_flags = access_flags;
+      info.code_item = code_item;
+      info.isa = jni_compiled_method.GetInstructionSet();
+      info.deduped = false;
+      info.is_native_debuggable = compiler_options.GetNativeDebuggable();
+      info.is_optimized = true;
+      info.is_code_address_text_relative = false;
+      info.code_address = code_address;
+      info.code_size = jni_compiled_method.GetCode().size();
+      info.frame_size_in_bytes = method_header->GetFrameSizeInBytes();
+      info.code_info = nullptr;
+      info.cfi = jni_compiled_method.GetCfi();
+      std::vector<uint8_t> elf_file = debug::WriteDebugElfFileForMethods(
+          GetCompilerDriver()->GetInstructionSet(),
+          GetCompilerDriver()->GetInstructionSetFeatures(),
+          ArrayRef<const debug::MethodDebugInfo>(&info, 1));
+      CreateJITCodeEntryForAddress(code_address, std::move(elf_file));
+    }
+
+    Runtime::Current()->GetJit()->AddMemoryUsage(method, allocator.BytesUsed());
+    if (jit_logger != nullptr) {
+      jit_logger->WriteLog(code, jni_compiled_method.GetCode().size(), method);
+    }
+    return true;
+  }
+
+  ArenaStack arena_stack(runtime->GetJitArenaPool());
   CodeVectorAllocator code_allocator(&allocator);
   VariableSizedHandleScope handles(self);
 
