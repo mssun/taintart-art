@@ -853,7 +853,7 @@ public class Parser {
     }
 
     public long getId() {
-      return mBuffer.getInt();
+      return mBuffer.getInt() & 0xFFFFFFFFL;
     }
 
     public boolean getBool() {
