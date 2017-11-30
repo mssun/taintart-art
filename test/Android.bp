@@ -364,8 +364,9 @@ cc_defaults {
         "141-class-unload/jni_unload.cc",
         "148-multithread-gc-annotations/gc_coverage.cc",
         "149-suspend-all-stress/suspend_all.cc",
-        "203-multi-checkpoint/multi_checkpoint.cc",
         "154-gc-loop/heap_interface.cc",
+        "167-visit-locks/visit_locks.cc",
+        "203-multi-checkpoint/multi_checkpoint.cc",
         "454-get-vreg/get_vreg_jni.cc",
         "457-regs/regs_jni.cc",
         "461-get-reference-vreg/get_reference_vreg_jni.cc",
@@ -384,6 +385,7 @@ cc_defaults {
         "656-annotation-lookup-generic-jni/test.cc",
         "661-oat-writer-layout/oat_writer_layout.cc",
         "664-aget-verifier/aget-verifier.cc",
+        "667-jit-jni-stub/jit_jni_stub_test.cc",
         "708-jit-cache-churn/jit.cc",
     ],
     shared_libs: [

@@ -282,9 +282,6 @@ CompilerDriver::CompilerDriver(
     std::unordered_set<std::string>* compiled_classes,
     std::unordered_set<std::string>* compiled_methods,
     size_t thread_count,
-    bool dump_stats,
-    bool dump_passes,
-    CumulativeLogger* timer,
     int swap_fd,
     const ProfileCompilationInfo* profile_compilation_info)
     : compiler_options_(compiler_options),
@@ -303,9 +300,6 @@ CompilerDriver::CompilerDriver(
       had_hard_verifier_failure_(false),
       parallel_thread_count_(thread_count),
       stats_(new AOTCompilationStats),
-      dump_stats_(dump_stats),
-      dump_passes_(dump_passes),
-      timings_logger_(timer),
       compiler_context_(nullptr),
       support_boot_image_fixup_(true),
       compiled_method_storage_(swap_fd),
@@ -396,7 +390,7 @@ void CompilerDriver::CompileAll(jobject class_loader,
   if (GetCompilerOptions().IsAnyCompilationEnabled()) {
     Compile(class_loader, dex_files, timings);
   }
-  if (dump_stats_) {
+  if (GetCompilerOptions().GetDumpStats()) {
     stats_->Dump();
   }
 

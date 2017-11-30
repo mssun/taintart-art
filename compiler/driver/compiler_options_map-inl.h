@@ -78,6 +78,14 @@ inline bool ReadCompilerOptions(Base& map, CompilerOptions* options, std::string
   map.AssignIfExists(Base::VerboseMethods, &options->verbose_methods_);
   options->deduplicate_code_ = map.GetOrDefault(Base::DeduplicateCode);
 
+  if (map.Exists(Base::DumpTimings)) {
+    options->dump_timings_ = true;
+  }
+
+  if (map.Exists(Base::DumpStats)) {
+    options->dump_stats_ = true;
+  }
+
   return true;
 }
 
@@ -128,6 +136,12 @@ inline void AddCompilerOptionsArgumentParserOptions(Builder& b) {
           .template WithType<bool>()
           .WithValueMap({{"false", false}, {"true", true}})
           .IntoKey(Map::DeduplicateCode)
+
+      .Define({"--dump-timings"})
+          .IntoKey(Map::DumpTimings)
+
+      .Define({"--dump-stats"})
+          .IntoKey(Map::DumpStats)
 
       .Define("--debuggable")
           .IntoKey(Map::Debuggable)
