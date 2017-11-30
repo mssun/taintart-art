@@ -874,7 +874,7 @@ def parse_option():
   global run_all_configs
 
   parser = argparse.ArgumentParser(description="Runs all or a subset of the ART test suite.")
-  parser.add_argument('-t', '--test', dest='test', help='name of the test')
+  parser.add_argument('-t', '--test', action='append', dest='tests', help='name(s) of the test(s)')
   parser.add_argument('-j', type=int, dest='n_thread')
   parser.add_argument('--timeout', default=timeout, type=int, dest='timeout')
   for variant in TOTAL_VARIANTS_SET:
@@ -906,10 +906,12 @@ def parse_option():
     options = setup_env_for_build_target(target_config[options['build_target']],
                                          parser, options)
 
-  test = ''
+  tests = None
   env.EXTRA_DISABLED_TESTS.update(set(options['skips']))
-  if options['test']:
-    test = parse_test_name(options['test'])
+  if options['tests']:
+    tests = set()
+    for test_name in options['tests']:
+      tests |= parse_test_name(test_name)
 
   for variant_type in VARIANT_TYPE_DICT:
     for variant in VARIANT_TYPE_DICT[variant_type]:
@@ -935,11 +937,11 @@ def parse_option():
   if options['run_all']:
     run_all_configs = True
 
-  return test
+  return tests
 
 def main():
   gather_test_info()
-  user_requested_test = parse_option()
+  user_requested_tests = parse_option()
   setup_test_env()
   if build:
     build_targets = ''
@@ -956,8 +958,8 @@ def main():
     build_command += ' dist'
     if subprocess.call(build_command.split()):
       sys.exit(1)
-  if user_requested_test:
-    test_runner_thread = threading.Thread(target=run_tests, args=(user_requested_test,))
+  if user_requested_tests:
+    test_runner_thread = threading.Thread(target=run_tests, args=(user_requested_tests,))
   else:
     test_runner_thread = threading.Thread(target=run_tests, args=(RUN_TEST_SET,))
   test_runner_thread.daemon = True
