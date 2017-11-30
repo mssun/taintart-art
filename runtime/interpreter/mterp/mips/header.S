@@ -32,6 +32,7 @@
  */
 
 #include "asm_support.h"
+#include "interpreter/mterp/cfi_asm_support.S"
 
 #if (__mips==32) && (__mips_isa_rev>=2)
 #define MIPS32REVGE2    /* mips32r2 and greater */
