@@ -999,6 +999,24 @@ public class Main {
     return res;
   }
 
+  /// CHECK-START: void Main.testStoreSameValue() load_store_elimination (before)
+  /// CHECK: NewArray
+  /// CHECK: ArrayGet
+  /// CHECK: ArraySet
+
+  /// CHECK-START: void Main.testStoreSameValue() load_store_elimination (after)
+  /// CHECK: NewArray
+  /// CHECK-NOT: ArrayGet
+  /// CHECK-NOT: ArraySet
+  private static void testStoreSameValue() {
+    Object[] array = new Object[2];
+    sArray = array;
+    Object obj = array[0];
+    array[1] = obj;    // store the same value as the defaut value.
+  }
+
+  static Object[] sArray;
+
   static void assertIntEquals(int result, int expected) {
     if (expected != result) {
       throw new Error("Expected: " + expected + ", found: " + result);

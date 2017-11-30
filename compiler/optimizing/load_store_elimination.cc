@@ -74,6 +74,18 @@ class LSEVisitor : public HGraphDelegateVisitor {
     HGraphVisitor::VisitBasicBlock(block);
   }
 
+  // Find an instruction's substitute if it should be removed.
+  // Return the same instruction if it should not be removed.
+  HInstruction* FindSubstitute(HInstruction* instruction) {
+    size_t size = removed_loads_.size();
+    for (size_t i = 0; i < size; i++) {
+      if (removed_loads_[i] == instruction) {
+        return substitute_instructions_for_loads_[i];
+      }
+    }
+    return instruction;
+  }
+
   // Remove recorded instructions that should be eliminated.
   void RemoveInstructions() {
     size_t size = removed_loads_.size();
@@ -86,12 +98,10 @@ class LSEVisitor : public HGraphDelegateVisitor {
              load->IsArrayGet());
       HInstruction* substitute = substitute_instructions_for_loads_[i];
       DCHECK(substitute != nullptr);
-      // Keep tracing substitute till one that's not removed.
-      HInstruction* sub_sub = FindSubstitute(substitute);
-      while (sub_sub != substitute) {
-        substitute = sub_sub;
-        sub_sub = FindSubstitute(substitute);
-      }
+      // We proactively retrieve the substitute for a removed load, so
+      // a load that has a substitute should not be observed as a heap
+      // location value.
+      DCHECK_EQ(FindSubstitute(substitute), substitute);
       load->ReplaceWith(substitute);
       load->GetBlock()->RemoveInstruction(load);
     }
@@ -342,6 +352,8 @@ class LSEVisitor : public HGraphDelegateVisitor {
         DCHECK(ref_info->IsSingleton());
         // Get the real heap value of the store.
         heap_value = heap_value->IsInstanceFieldSet() ? store->InputAt(1) : store->InputAt(2);
+        // heap_value may already have a substitute.
+        heap_value = FindSubstitute(heap_value);
       }
     }
     if (heap_value == kUnknownHeapValue) {
@@ -385,6 +397,8 @@ class LSEVisitor : public HGraphDelegateVisitor {
                         size_t vector_length,
                         int16_t declaring_class_def_index,
                         HInstruction* value) {
+    // value may already have a substitute.
+    value = FindSubstitute(value);
     HInstruction* original_ref = heap_location_collector_.HuntForOriginalReference(ref);
     ReferenceInfo* ref_info = heap_location_collector_.FindReferenceInfoOf(original_ref);
     size_t idx = heap_location_collector_.FindHeapLocationIndex(
@@ -677,18 +691,6 @@ class LSEVisitor : public HGraphDelegateVisitor {
         heap_values[i] = kDefaultHeapValue;
       }
     }
-  }
-
-  // Find an instruction's substitute if it should be removed.
-  // Return the same instruction if it should not be removed.
-  HInstruction* FindSubstitute(HInstruction* instruction) {
-    size_t size = removed_loads_.size();
-    for (size_t i = 0; i < size; i++) {
-      if (removed_loads_[i] == instruction) {
-        return substitute_instructions_for_loads_[i];
-      }
-    }
-    return instruction;
   }
 
   const HeapLocationCollector& heap_location_collector_;
