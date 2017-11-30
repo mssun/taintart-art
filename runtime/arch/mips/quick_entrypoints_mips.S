@@ -2283,8 +2283,7 @@ ENTRY art_quick_generic_jni_trampoline
     nop
 
 2:
-    lw      $t0, THREAD_TOP_QUICK_FRAME_OFFSET(rSELF)
-    addiu   $sp, $t0, -1  // Remove the GenericJNI tag.
+    lw      $sp, THREAD_TOP_QUICK_FRAME_OFFSET(rSELF)
     move    $gp, $s3               # restore $gp from $s3
     # This will create a new save-all frame, required by the runtime.
     DELIVER_PENDING_EXCEPTION
