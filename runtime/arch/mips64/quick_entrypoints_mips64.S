@@ -2158,7 +2158,8 @@ ENTRY art_quick_generic_jni_trampoline
     dmtc1   $v0, $f0               # place return value to FP return value
 
 1:
-    ld      $sp, THREAD_TOP_QUICK_FRAME_OFFSET(rSELF)
+    ld      $t0, THREAD_TOP_QUICK_FRAME_OFFSET(rSELF)
+    daddiu  $sp, $t0, -1  // Remove the GenericJNI tag.
     # This will create a new save-all frame, required by the runtime.
     DELIVER_PENDING_EXCEPTION
 END art_quick_generic_jni_trampoline
