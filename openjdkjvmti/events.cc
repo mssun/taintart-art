@@ -899,9 +899,9 @@ static bool EventNeedsFullDeopt(ArtJvmtiEvent event) {
   }
 }
 
-static void SetupTraceListener(JvmtiMethodTraceListener* listener,
-                               ArtJvmtiEvent event,
-                               bool enable) {
+void EventHandler::SetupTraceListener(JvmtiMethodTraceListener* listener,
+                                      ArtJvmtiEvent event,
+                                      bool enable) {
   bool needs_full_deopt = EventNeedsFullDeopt(event);
   // Make sure we can deopt.
   {
@@ -921,8 +921,21 @@ static void SetupTraceListener(JvmtiMethodTraceListener* listener,
   }
 
   // Add the actual listeners.
-  art::ScopedThreadStateChange stsc(art::Thread::Current(), art::ThreadState::kNative);
   uint32_t new_events = GetInstrumentationEventsFor(event);
+  if (new_events == art::instrumentation::Instrumentation::kDexPcMoved) {
+    // Need to skip adding the listeners if the event is breakpoint/single-step since those events
+    // share the same art-instrumentation underlying event. We need to give them their own deopt
+    // request though so the test waits until here.
+    DCHECK(event == ArtJvmtiEvent::kBreakpoint || event == ArtJvmtiEvent::kSingleStep);
+    ArtJvmtiEvent other = event == ArtJvmtiEvent::kBreakpoint ? ArtJvmtiEvent::kSingleStep
+                                                              : ArtJvmtiEvent::kBreakpoint;
+    if (IsEventEnabledAnywhere(other)) {
+      // The event needs to be kept around/is already enabled by the other jvmti event that uses the
+      // same instrumentation event.
+      return;
+    }
+  }
+  art::ScopedThreadStateChange stsc(art::Thread::Current(), art::ThreadState::kNative);
   art::instrumentation::Instrumentation* instr = art::Runtime::Current()->GetInstrumentation();
   art::gc::ScopedGCCriticalSection gcs(art::Thread::Current(),
                                        art::gc::kGcCauseInstrumentation,
@@ -1002,18 +1015,6 @@ void EventHandler::HandleEventType(ArtJvmtiEvent event, bool enable) {
     case ArtJvmtiEvent::kGarbageCollectionFinish:
       SetupGcPauseTracking(gc_pause_listener_.get(), event, enable);
       return;
-
-    case ArtJvmtiEvent::kBreakpoint:
-    case ArtJvmtiEvent::kSingleStep: {
-      ArtJvmtiEvent other = (event == ArtJvmtiEvent::kBreakpoint) ? ArtJvmtiEvent::kSingleStep
-                                                                  : ArtJvmtiEvent::kBreakpoint;
-      // We only need to do anything if there isn't already a listener installed/held-on by the
-      // other jvmti event that uses DexPcMoved.
-      if (!IsEventEnabledAnywhere(other)) {
-        SetupTraceListener(method_trace_listener_.get(), event, enable);
-      }
-      return;
-    }
     // FramePop can never be disabled once it's been turned on since we would either need to deal
     // with dangling pointers or have missed events.
     // TODO We really need to make this not the case anymore.
@@ -1030,6 +1031,8 @@ void EventHandler::HandleEventType(ArtJvmtiEvent event, bool enable) {
     case ArtJvmtiEvent::kFieldModification:
     case ArtJvmtiEvent::kException:
     case ArtJvmtiEvent::kExceptionCatch:
+    case ArtJvmtiEvent::kBreakpoint:
+    case ArtJvmtiEvent::kSingleStep:
       SetupTraceListener(method_trace_listener_.get(), event, enable);
       return;
     case ArtJvmtiEvent::kMonitorContendedEnter:
