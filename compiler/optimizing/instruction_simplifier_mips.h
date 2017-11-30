@@ -30,7 +30,7 @@ namespace mips {
 class InstructionSimplifierMips : public HOptimization {
  public:
   InstructionSimplifierMips(HGraph* graph, CodeGenerator* codegen, OptimizingCompilerStats* stats)
-      : HOptimization(graph, "instruction_simplifier_mips", stats),
+      : HOptimization(graph, kInstructionSimplifierMipsPassName, stats),
         codegen_(down_cast<CodeGeneratorMIPS*>(codegen)) {}
 
   static constexpr const char* kInstructionSimplifierMipsPassName = "instruction_simplifier_mips";
