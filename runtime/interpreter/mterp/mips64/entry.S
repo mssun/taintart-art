@@ -73,6 +73,7 @@ ExecuteMterpImpl:
     dlsa    rREFS, v0, rFP, 2
     lw      v0, SHADOWFRAME_DEX_PC_OFFSET(a2)
     dlsa    rPC, v0, a1, 1
+    .cfi_register DPC_PSEUDO_REG, rPC
     EXPORT_PC
 
     /* Starting ibase */

@@ -109,6 +109,7 @@ The following registers have fixed assignments:
  * to expand the macros into assembler assignment statements.
  */
 #include "asm_support.h"
+#include "interpreter/mterp/cfi_asm_support.h"
 
 /*
  * Instead of holding a pointer to the shadow frame, we keep rFP at the base of the vregs.  So,
@@ -407,6 +408,7 @@ ExecuteMterpImpl:
     dlsa    rREFS, v0, rFP, 2
     lw      v0, SHADOWFRAME_DEX_PC_OFFSET(a2)
     dlsa    rPC, v0, a1, 1
+    .cfi_register DPC_PSEUDO_REG, rPC
     EXPORT_PC
 
     /* Starting ibase */

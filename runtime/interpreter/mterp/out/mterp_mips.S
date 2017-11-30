@@ -39,6 +39,7 @@
  */
 
 #include "asm_support.h"
+#include "interpreter/mterp/cfi_asm_support.S"
 
 #if (__mips==32) && (__mips_isa_rev>=2)
 #define MIPS32REVGE2    /* mips32r2 and greater */
@@ -786,6 +787,7 @@ ExecuteMterpImpl:
     EAS2(rREFS, rFP, a0)                          # point to reference array in shadow frame
     lw      a0, SHADOWFRAME_DEX_PC_OFFSET(a2)     # Get starting dex_pc
     EAS1(rPC, a1, a0)                             # Create direct pointer to 1st dex opcode
+    .cfi_register DPC_PSEUDO_REG, rPC
 
     EXPORT_PC()
 

@@ -92,6 +92,7 @@ unspecified registers or condition codes.
  * to expand the macros into assembler assignment statements.
  */
 #include "asm_support.h"
+#include "interpreter/mterp/cfi_asm_support.h"
 
 #define MTERP_PROFILE_BRANCHES 1
 #define MTERP_LOGGING 0
@@ -341,7 +342,7 @@ unspecified registers or condition codes.
 /*
  * On entry:
  *  r0  Thread* self/
- *  r1  code_item
+ *  r1  insns_
  *  r2  ShadowFrame
  *  r3  JValue* result_register
  *
@@ -374,6 +375,7 @@ ENTRY ExecuteMterpImpl
     VREG_INDEX_TO_ADDR rREFS, r0                   @ point to reference array in shadow frame
     ldr     r0, [r2, #SHADOWFRAME_DEX_PC_OFFSET]   @ Get starting dex_pc.
     add     rPC, r1, r0, lsl #1                    @ Create direct pointer to 1st dex opcode
+    .cfi_register DPC_PSEUDO_REG, rPC
     EXPORT_PC
 
     /* Starting ibase */

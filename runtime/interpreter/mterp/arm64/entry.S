@@ -20,7 +20,7 @@
  * Interpreter entry point.
  * On entry:
  *  x0  Thread* self/
- *  x1  code_item
+ *  x1  insns_
  *  x2  ShadowFrame
  *  x3  JValue* result_register
  *
@@ -46,6 +46,7 @@ ENTRY ExecuteMterpImpl
     add     xREFS, xFP, w0, lsl #2                 // point to reference array in shadow frame
     ldr     w0, [x2, #SHADOWFRAME_DEX_PC_OFFSET]   // Get starting dex_pc.
     add     xPC, x1, w0, lsl #1                    // Create direct pointer to 1st dex opcode
+    .cfi_register DPC_PSEUDO_REG, xPC
     EXPORT_PC
 
     /* Starting ibase */
