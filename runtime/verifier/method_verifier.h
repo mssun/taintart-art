@@ -149,10 +149,21 @@ class MethodVerifier {
   void Dump(std::ostream& os) REQUIRES_SHARED(Locks::mutator_lock_);
   void Dump(VariableIndentationOutputStream* vios) REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Information structure for a lock held at a certain point in time.
+  struct DexLockInfo {
+    // The registers aliasing the lock.
+    std::set<uint32_t> dex_registers;
+    // The dex PC of the monitor-enter instruction.
+    uint32_t dex_pc;
+
+    explicit DexLockInfo(uint32_t dex_pc_in) {
+      dex_pc = dex_pc_in;
+    }
+  };
   // Fills 'monitor_enter_dex_pcs' with the dex pcs of the monitor-enter instructions corresponding
   // to the locks held at 'dex_pc' in method 'm'.
   static void FindLocksAtDexPc(ArtMethod* m, uint32_t dex_pc,
-                               std::vector<uint32_t>* monitor_enter_dex_pcs)
+                               std::vector<DexLockInfo>* monitor_enter_dex_pcs)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns the accessed field corresponding to the quick instruction's field
@@ -750,7 +761,7 @@ class MethodVerifier {
   uint32_t interesting_dex_pc_;
   // The container into which FindLocksAtDexPc should write the registers containing held locks,
   // null if we're not doing FindLocksAtDexPc.
-  std::vector<uint32_t>* monitor_enter_dex_pcs_;
+  std::vector<DexLockInfo>* monitor_enter_dex_pcs_;
 
   // The types of any error that occurs.
   std::vector<VerifyError> failures_;

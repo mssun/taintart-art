@@ -353,6 +353,23 @@ class RegisterLine {
     return monitors_[i];
   }
 
+  // We give access to the lock depth map to avoid an expensive poll loop for FindLocksAtDexPC.
+  template <typename T>
+  void IterateRegToLockDepths(T fn) const {
+    for (const auto& pair : reg_to_lock_depths_) {
+      const uint32_t reg = pair.first;
+      uint32_t depths = pair.second;
+      uint32_t depth = 0;
+      while (depths != 0) {
+        if ((depths & 1) != 0) {
+          fn(reg, depth);
+        }
+        depths >>= 1;
+        depth++;
+      }
+    }
+  }
+
  private:
   void CopyRegToLockDepth(size_t dst, size_t src) {
     auto it = reg_to_lock_depths_.find(src);
