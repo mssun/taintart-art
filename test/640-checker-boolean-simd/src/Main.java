@@ -29,17 +29,7 @@ public class Main {
   /// CHECK-DAG: ArrayGet loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: ArraySet loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-ARM: void Main.and(boolean) loop_optimization (after)
-  /// CHECK-DAG: VecLoad  loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: VecAnd   loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: VecStore loop:<<Loop>>      outer_loop:none
-  //
-  /// CHECK-START-ARM64: void Main.and(boolean) loop_optimization (after)
-  /// CHECK-DAG: VecLoad  loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: VecAnd   loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: VecStore loop:<<Loop>>      outer_loop:none
-  //
-  /// CHECK-START-MIPS64: void Main.and(boolean) loop_optimization (after)
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void Main.and(boolean) loop_optimization (after)
   /// CHECK-DAG: VecLoad  loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: VecAnd   loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: VecStore loop:<<Loop>>      outer_loop:none
@@ -52,17 +42,7 @@ public class Main {
   /// CHECK-DAG: ArrayGet loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: ArraySet loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-ARM: void Main.or(boolean) loop_optimization (after)
-  /// CHECK-DAG: VecLoad  loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: VecOr    loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: VecStore loop:<<Loop>>      outer_loop:none
-  //
-  /// CHECK-START-ARM64: void Main.or(boolean) loop_optimization (after)
-  /// CHECK-DAG: VecLoad  loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: VecOr    loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: VecStore loop:<<Loop>>      outer_loop:none
-  //
-  /// CHECK-START-MIPS64: void Main.or(boolean) loop_optimization (after)
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void Main.or(boolean) loop_optimization (after)
   /// CHECK-DAG: VecLoad  loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: VecOr    loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: VecStore loop:<<Loop>>      outer_loop:none
@@ -75,17 +55,7 @@ public class Main {
   /// CHECK-DAG: ArrayGet loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: ArraySet loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-ARM: void Main.xor(boolean) loop_optimization (after)
-  /// CHECK-DAG: VecLoad  loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: VecXor   loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: VecStore loop:<<Loop>>      outer_loop:none
-  //
-  /// CHECK-START-ARM64: void Main.xor(boolean) loop_optimization (after)
-  /// CHECK-DAG: VecLoad  loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: VecXor   loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: VecStore loop:<<Loop>>      outer_loop:none
-  //
-  /// CHECK-START-MIPS64: void Main.xor(boolean) loop_optimization (after)
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void Main.xor(boolean) loop_optimization (after)
   /// CHECK-DAG: VecLoad  loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: VecXor   loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: VecStore loop:<<Loop>>      outer_loop:none
@@ -98,17 +68,7 @@ public class Main {
   /// CHECK-DAG: ArrayGet loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: ArraySet loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-ARM: void Main.not() loop_optimization (after)
-  /// CHECK-DAG: VecLoad  loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: VecNot   loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: VecStore loop:<<Loop>>      outer_loop:none
-  //
-  /// CHECK-START-ARM64: void Main.not() loop_optimization (after)
-  /// CHECK-DAG: VecLoad  loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: VecNot   loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: VecStore loop:<<Loop>>      outer_loop:none
-  //
-  /// CHECK-START-MIPS64: void Main.not() loop_optimization (after)
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void Main.not() loop_optimization (after)
   /// CHECK-DAG: VecLoad  loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: VecNot   loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: VecStore loop:<<Loop>>      outer_loop:none
