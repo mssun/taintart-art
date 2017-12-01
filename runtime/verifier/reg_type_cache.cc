@@ -396,6 +396,9 @@ const RegType& RegTypeCache::FromUnresolvedMerge(const RegType& left,
   if (resolved_parts_merged.IsConflict()) {
     return Conflict();
   }
+  if (resolved_parts_merged.IsJavaLangObject()) {
+    return resolved_parts_merged;
+  }
 
   bool resolved_merged_is_array = resolved_parts_merged.IsArrayTypes();
   if (left_unresolved_is_array || right_unresolved_is_array || resolved_merged_is_array) {
