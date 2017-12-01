@@ -22,16 +22,36 @@ public class Main {
   class InnerClass {}
 
   public static void main(String[] args) throws Exception {
-    Class<?> c = Class.forName("NullArray");
-    Method m = c.getMethod("method");
-    Object[] arguments = { };
+    checkLoad("NullArrayFailInt2Object", true);
+    checkLoad("NullArrayFailObject2Int", true);
+    checkLoad("NullArraySuccessInt", false);
+    checkLoad("NullArraySuccessInt2Float", false);
+    checkLoad("NullArraySuccessShort", false);
+    checkLoad("NullArraySuccessRef", false);
+  }
+
+  private static void checkLoad(String className, boolean expectError) throws Exception {
+    Class<?> c;
     try {
-      m.invoke(null, arguments);
-      throw new Error("Expected an InvocationTargetException");
-    } catch (InvocationTargetException e) {
-      if (!(e.getCause() instanceof NullPointerException)) {
-        throw new Error("Expected a NullPointerException");
+      c = Class.forName(className);
+      if (expectError) {
+        throw new RuntimeException("Expected error for " + className);
       }
+      Method m = c.getMethod("method");
+      try {
+        m.invoke(null);
+        throw new RuntimeException("Expected an InvocationTargetException");
+      } catch (InvocationTargetException e) {
+        if (!(e.getCause() instanceof NullPointerException)) {
+          throw new RuntimeException("Expected a NullPointerException");
+        }
+        System.out.println(className);
+      }
+    } catch (VerifyError e) {
+      if (!expectError) {
+        throw new RuntimeException(e);
+      }
+      System.out.println(className);
     }
   }
 }
