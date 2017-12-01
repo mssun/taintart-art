@@ -16,6 +16,8 @@
 
 #include "reg_type_cache-inl.h"
 
+#include <type_traits>
+
 #include "base/arena_bit_vector.h"
 #include "base/bit_vector-inl.h"
 #include "base/casts.h"
@@ -51,6 +53,7 @@ ALWAYS_INLINE static inline bool MatchingPrecisionForClass(const RegType* entry,
 }
 
 void RegTypeCache::FillPrimitiveAndSmallConstantTypes() {
+  // Note: this must have the same order as CreatePrimitiveAndSmallConstantTypes.
   entries_.push_back(UndefinedType::GetInstance());
   entries_.push_back(ConflictType::GetInstance());
   entries_.push_back(BooleanType::GetInstance());
@@ -314,33 +317,54 @@ void RegTypeCache::ShutDown() {
   }
 }
 
-template <class Type>
-const Type* RegTypeCache::CreatePrimitiveTypeInstance(const std::string& descriptor) {
-  mirror::Class* klass = nullptr;
-  // Try loading the class from linker.
-  if (!descriptor.empty()) {
-    klass = art::Runtime::Current()->GetClassLinker()->FindSystemClass(Thread::Current(),
-                                                                       descriptor.c_str());
-    DCHECK(klass != nullptr);
-  }
-  const Type* entry = Type::CreateInstance(klass, descriptor, RegTypeCache::primitive_count_);
-  RegTypeCache::primitive_count_++;
-  return entry;
-}
+// Helper for create_primitive_type_instance lambda.
+namespace {
+template <typename T>
+struct TypeHelper {
+  using type = T;
+  static_assert(std::is_convertible<T*, RegType*>::value, "T must be a RegType");
+
+  const char* descriptor;
+
+  explicit TypeHelper(const char* d) : descriptor(d) {}
+};
+}  // namespace
 
 void RegTypeCache::CreatePrimitiveAndSmallConstantTypes() {
-  CreatePrimitiveTypeInstance<UndefinedType>("");
-  CreatePrimitiveTypeInstance<ConflictType>("");
-  CreatePrimitiveTypeInstance<BooleanType>("Z");
-  CreatePrimitiveTypeInstance<ByteType>("B");
-  CreatePrimitiveTypeInstance<ShortType>("S");
-  CreatePrimitiveTypeInstance<CharType>("C");
-  CreatePrimitiveTypeInstance<IntegerType>("I");
-  CreatePrimitiveTypeInstance<LongLoType>("J");
-  CreatePrimitiveTypeInstance<LongHiType>("J");
-  CreatePrimitiveTypeInstance<FloatType>("F");
-  CreatePrimitiveTypeInstance<DoubleLoType>("D");
-  CreatePrimitiveTypeInstance<DoubleHiType>("D");
+  // Note: this must have the same order as FillPrimitiveAndSmallConstantTypes.
+
+  // It is acceptable to pass on the const char* in type to CreateInstance, as all calls below are
+  // with compile-time constants that will have global lifetime. Use of the lambda ensures this
+  // code cannot leak to other users.
+  auto create_primitive_type_instance = [&](auto type) REQUIRES_SHARED(Locks::mutator_lock_) {
+    using Type = typename decltype(type)::type;
+    mirror::Class* klass = nullptr;
+    // Try loading the class from linker.
+    DCHECK(type.descriptor != nullptr);
+    if (strlen(type.descriptor) > 0) {
+      klass = art::Runtime::Current()->GetClassLinker()->FindSystemClass(Thread::Current(),
+                                                                         type.descriptor);
+      DCHECK(klass != nullptr);
+    }
+    const Type* entry = Type::CreateInstance(klass,
+                                             type.descriptor,
+                                             RegTypeCache::primitive_count_);
+    RegTypeCache::primitive_count_++;
+    return entry;
+  };
+  create_primitive_type_instance(TypeHelper<UndefinedType>(""));
+  create_primitive_type_instance(TypeHelper<ConflictType>(""));
+  create_primitive_type_instance(TypeHelper<BooleanType>("Z"));
+  create_primitive_type_instance(TypeHelper<ByteType>("B"));
+  create_primitive_type_instance(TypeHelper<ShortType>("S"));
+  create_primitive_type_instance(TypeHelper<CharType>("C"));
+  create_primitive_type_instance(TypeHelper<IntegerType>("I"));
+  create_primitive_type_instance(TypeHelper<LongLoType>("J"));
+  create_primitive_type_instance(TypeHelper<LongHiType>("J"));
+  create_primitive_type_instance(TypeHelper<FloatType>("F"));
+  create_primitive_type_instance(TypeHelper<DoubleLoType>("D"));
+  create_primitive_type_instance(TypeHelper<DoubleHiType>("D"));
+
   for (int32_t value = kMinSmallConstant; value <= kMaxSmallConstant; ++value) {
     PreciseConstType* type = new PreciseConstType(value, primitive_count_);
     small_precise_constants_[value - kMinSmallConstant] = type;
