@@ -33,6 +33,7 @@ public class Main {
         }
         testMethodTracing();
         testCountInstances();
+        testGetInstances();
         testRuntimeStat();
         testRuntimeStats();
     }
@@ -249,6 +250,59 @@ public class Main {
         System.out.println("Array counts assignable " + Arrays.toString(counts));
     }
 
+    static class ClassD {
+        public int mask;
+
+        public ClassD(int mask) {
+            this.mask = mask;
+        }
+    }
+
+    static class ClassE extends ClassD {
+        public ClassE(int mask) {
+            super(mask);
+        }
+    }
+
+    private static void testGetInstances() throws Exception {
+        ArrayList<Object> l = new ArrayList<Object>();
+        l.add(new ClassD(0x01));
+        l.add(new ClassE(0x02));
+        l.add(new ClassD(0x04));
+        l.add(new ClassD(0x08));
+        l.add(new ClassE(0x10));
+        Runtime.getRuntime().gc();
+        Class<?>[] classes = new Class<?>[] {ClassD.class, ClassE.class, null};
+        Object[][] instances = VMDebug.getInstancesOfClasses(classes, false);
+
+        int mask = 0;
+        for (Object instance : instances[0]) {
+            mask |= ((ClassD)instance).mask;
+        }
+        System.out.println("ClassD got " + instances[0].length + ", combined mask: " + mask);
+
+        mask = 0;
+        for (Object instance : instances[1]) {
+            mask |= ((ClassD)instance).mask;
+        }
+        System.out.println("ClassE got " + instances[1].length + ", combined mask: " + mask);
+        System.out.println("null got " + instances[2].length);
+
+        instances = VMDebug.getInstancesOfClasses(classes, true);
+        mask = 0;
+        for (Object instance : instances[0]) {
+            mask |= ((ClassD)instance).mask;
+        }
+        System.out.println("ClassD assignable got " + instances[0].length + ", combined mask: " + mask);
+
+        mask = 0;
+        for (Object instance : instances[1]) {
+            mask |= ((ClassD)instance).mask;
+        }
+        System.out.println("ClassE assignable got " + instances[1].length + ", combined mask: " + mask);
+        System.out.println("null assignable got " + instances[2].length);
+    }
+
     private static class VMDebug {
         private static final Method startMethodTracingMethod;
         private static final Method stopMethodTracingMethod;
@@ -257,6 +311,7 @@ public class Main {
         private static final Method getRuntimeStatsMethod;
         private static final Method countInstancesOfClassMethod;
         private static final Method countInstancesOfClassesMethod;
+        private static final Method getInstancesOfClassesMethod;
         static {
             try {
                 Class<?> c = Class.forName("dalvik.system.VMDebug");
@@ -269,6 +324,8 @@ public class Main {
                 countInstancesOfClassMethod = c.getDeclaredMethod("countInstancesOfClass",
                         Class.class, Boolean.TYPE);
                 countInstancesOfClassesMethod = c.getDeclaredMethod("countInstancesOfClasses",
+                        Class[].class, Boolean.TYPE);
+                getInstancesOfClassesMethod = c.getDeclaredMethod("getInstancesOfClasses",
                         Class[].class, Boolean.TYPE);
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -298,6 +355,10 @@ public class Main {
         public static long[] countInstancesofClasses(Class<?>[] classes, boolean assignable)
                 throws Exception {
             return (long[]) countInstancesOfClassesMethod.invoke(
+                    null, new Object[]{classes, assignable});
+        }
+        public static Object[][] getInstancesOfClasses(Class<?>[] classes, boolean assignable) throws Exception {
+            return (Object[][]) getInstancesOfClassesMethod.invoke(
                     null, new Object[]{classes, assignable});
         }
     }
