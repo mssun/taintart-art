@@ -151,8 +151,14 @@ extern "C" size_t MterpShouldSwitchInterpreters()
       Dbg::IsDebuggerActive() ||
       // An async exception has been thrown. We need to go to the switch interpreter. MTerp doesn't
       // know how to deal with these so we could end up never dealing with it if we are in an
-      // infinite loop.
-      UNLIKELY(Thread::Current()->IsAsyncExceptionPending());
+      // infinite loop. Since this can be called in a tight loop and getting the current thread
+      // requires a TLS read we instead first check a short-circuit runtime flag that will only be
+      // set if something tries to set an async exception. This will make this function faster in
+      // the common case where no async exception has ever been sent. We don't need to worry about
+      // synchronization on the runtime flag since it is only set in a checkpoint which will either
+      // take place on the current thread or act as a synchronization point.
+      (UNLIKELY(runtime->AreAsyncExceptionsThrown()) &&
+       Thread::Current()->IsAsyncExceptionPending());
 }
 
 
