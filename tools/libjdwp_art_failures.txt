@@ -64,6 +64,11 @@
            "org.apache.harmony.jpda.tests.jdwp.EventModifiers.InstanceOnlyModifierTest#testMethodExit",
            "org.apache.harmony.jpda.tests.jdwp.EventModifiers.InstanceOnlyModifierTest#testMethodExitWithReturnValue" ]
 },
+{
+  description: "Tests for VMDebug functionality not implemented in the upstream libjdwp",
+  result: EXEC_FAILED,
+  name: "org.apache.harmony.jpda.tests.jdwp.VMDebug.VMDebugTest#testVMDebug"
+},
 /* TODO Categorize these failures more. */
 {
   description: "Tests that fail on both ART and RI. These tests are likely incorrect",
