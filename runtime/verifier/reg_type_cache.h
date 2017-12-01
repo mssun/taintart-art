@@ -171,9 +171,6 @@ class RegTypeCache {
   // verifier.
   StringPiece AddString(const StringPiece& string_piece);
 
-  template <class Type>
-  static const Type* CreatePrimitiveTypeInstance(const std::string& descriptor)
-      REQUIRES_SHARED(Locks::mutator_lock_);
   static void CreatePrimitiveAndSmallConstantTypes() REQUIRES_SHARED(Locks::mutator_lock_);
 
   // A quick look up for popular small constants.
