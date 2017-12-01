@@ -4515,7 +4515,7 @@ std::string ClassLinker::GetDescriptorForProxy(ObjPtr<mirror::Class> proxy_class
 
 void ClassLinker::CreateProxyConstructor(Handle<mirror::Class> klass, ArtMethod* out) {
   // Create constructor for Proxy that must initialize the method.
-  CHECK_EQ(GetClassRoot(kJavaLangReflectProxy)->NumDirectMethods(), 23u);
+  CHECK_EQ(GetClassRoot(kJavaLangReflectProxy)->NumDirectMethods(), 21u);
 
   // Find the <init>(InvocationHandler)V method. The exact method offset varies depending
   // on which front-end compiler was used to build the libcore DEX files.
