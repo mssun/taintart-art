@@ -39,7 +39,7 @@
  */
 
 #include "asm_support.h"
-#include "interpreter/mterp/cfi_asm_support.S"
+#include "interpreter/mterp/cfi_asm_support.h"
 
 #if (__mips==32) && (__mips_isa_rev>=2)
 #define MIPS32REVGE2    /* mips32r2 and greater */
@@ -766,6 +766,7 @@
  */
 
 ExecuteMterpImpl:
+    .cfi_startproc
     .set noreorder
     .cpload t9
     .set reorder
@@ -12844,5 +12845,6 @@ MterpProfileActive:
     STACK_LOAD_FULL()
     jalr    zero, ra
 
+    .cfi_endproc
     .end ExecuteMterpImpl
 

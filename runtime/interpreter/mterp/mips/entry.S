@@ -32,6 +32,7 @@
  */
 
 ExecuteMterpImpl:
+    .cfi_startproc
     .set noreorder
     .cpload t9
     .set reorder
