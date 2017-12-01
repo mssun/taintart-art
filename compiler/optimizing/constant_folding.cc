@@ -113,7 +113,7 @@ void HConstantFoldingVisitor::VisitBinaryOperation(HBinaryOperation* inst) {
 void HConstantFoldingVisitor::VisitTypeConversion(HTypeConversion* inst) {
   // Constant folding: replace `TypeConversion(a)' with a constant at
   // compile time if `a' is a constant.
-  HConstant* constant = inst->AsTypeConversion()->TryStaticEvaluation();
+  HConstant* constant = inst->TryStaticEvaluation();
   if (constant != nullptr) {
     inst->ReplaceWith(constant);
     inst->GetBlock()->RemoveInstruction(inst);
