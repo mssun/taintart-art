@@ -284,4 +284,5 @@ MterpProfileActive:
     STACK_LOAD_FULL()
     jalr    zero, ra
 
+    .cfi_endproc
     .end ExecuteMterpImpl
