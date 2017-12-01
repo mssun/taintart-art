@@ -963,7 +963,11 @@ JDWP::JdwpError Dbg::GetInstances(JDWP::RefTypeId class_id, int32_t max_count,
   }
   VariableSizedHandleScope hs(Thread::Current());
   std::vector<Handle<mirror::Object>> raw_instances;
-  Runtime::Current()->GetHeap()->GetInstances(hs, hs.NewHandle(c), max_count, raw_instances);
+  Runtime::Current()->GetHeap()->GetInstances(hs,
+                                              hs.NewHandle(c),
+                                              /* use_is_assignable_from */ false,
+                                              max_count,
+                                              raw_instances);
   for (size_t i = 0; i < raw_instances.size(); ++i) {
     instances->push_back(gRegistry->Add(raw_instances[i].Get()));
   }
