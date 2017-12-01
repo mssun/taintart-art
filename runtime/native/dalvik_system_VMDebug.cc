@@ -319,6 +319,53 @@ static jlongArray VMDebug_countInstancesOfClasses(JNIEnv* env,
   return soa.AddLocalReference<jlongArray>(long_counts);
 }
 
+static jobjectArray VMDebug_getInstancesOfClasses(JNIEnv* env,
+                                                  jclass,
+                                                  jobjectArray javaClasses,
+                                                  jboolean includeAssignable) {
+  ScopedObjectAccess soa(env);
+  StackHandleScope<2> hs(soa.Self());
+  Handle<mirror::ObjectArray<mirror::Class>> classes = hs.NewHandle(
+      soa.Decode<mirror::ObjectArray<mirror::Class>>(javaClasses));
+  if (classes == nullptr) {
+    return nullptr;
+  }
+
+  jclass object_array_class = env->FindClass("[Ljava/lang/Object;");
+  if (env->ExceptionCheck() == JNI_TRUE) {
+    return nullptr;
+  }
+  CHECK(object_array_class != nullptr);
+
+  size_t num_classes = classes->GetLength();
+  jobjectArray result = env->NewObjectArray(num_classes, object_array_class, nullptr);
+  if (env->ExceptionCheck() == JNI_TRUE) {
+    return nullptr;
+  }
+
+  gc::Heap* const heap = Runtime::Current()->GetHeap();
+  MutableHandle<mirror::Class> h_class(hs.NewHandle<mirror::Class>(nullptr));
+  for (size_t i = 0; i < num_classes; ++i) {
+    h_class.Assign(classes->Get(i));
+
+    VariableSizedHandleScope hs2(soa.Self());
+    std::vector<Handle<mirror::Object>> raw_instances;
+    heap->GetInstances(hs2, h_class, includeAssignable, /* max_count */ 0, raw_instances);
+    jobjectArray array = env->NewObjectArray(raw_instances.size(),
+                                             WellKnownClasses::java_lang_Object,
+                                             nullptr);
+    if (env->ExceptionCheck() == JNI_TRUE) {
+      return nullptr;
+    }
+
+    for (size_t j = 0; j < raw_instances.size(); ++j) {
+      env->SetObjectArrayElement(array, j, raw_instances[j].ToJObject());
+    }
+    env->SetObjectArrayElement(result, i, array);
+  }
+  return result;
+}
+
 // We export the VM internal per-heap-space size/alloc/free metrics
 // for the zygote space, alloc space (application heap), and the large
 // object space for dumpsys meminfo. The other memory region data such
@@ -534,6 +581,7 @@ static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(VMDebug, dumpReferenceTables, "()V"),
   NATIVE_METHOD(VMDebug, getAllocCount, "(I)I"),
   NATIVE_METHOD(VMDebug, getHeapSpaceStats, "([J)V"),
+  NATIVE_METHOD(VMDebug, getInstancesOfClasses, "([Ljava/lang/Class;Z)[[Ljava/lang/Object;"),
   NATIVE_METHOD(VMDebug, getInstructionCount, "([I)V"),
   FAST_NATIVE_METHOD(VMDebug, getLoadedClassCount, "()I"),
   NATIVE_METHOD(VMDebug, getVmFeatureList, "()[Ljava/lang/String;"),
