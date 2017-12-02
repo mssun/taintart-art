@@ -2614,23 +2614,92 @@ void LocationsBuilderMIPS64::VisitBoundsCheck(HBoundsCheck* instruction) {
   caller_saves.Add(Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
   caller_saves.Add(Location::RegisterLocation(calling_convention.GetRegisterAt(1)));
   LocationSummary* locations = codegen_->CreateThrowingSlowPathLocations(instruction, caller_saves);
-  locations->SetInAt(0, Location::RequiresRegister());
-  locations->SetInAt(1, Location::RequiresRegister());
+
+  HInstruction* index = instruction->InputAt(0);
+  HInstruction* length = instruction->InputAt(1);
+
+  bool const_index = false;
+  bool const_length = false;
+
+  if (index->IsConstant()) {
+    if (length->IsConstant()) {
+      const_index = true;
+      const_length = true;
+    } else {
+      int32_t index_value = index->AsIntConstant()->GetValue();
+      if (index_value < 0 || IsInt<16>(index_value + 1)) {
+        const_index = true;
+      }
+    }
+  } else if (length->IsConstant()) {
+    int32_t length_value = length->AsIntConstant()->GetValue();
+    if (IsUint<15>(length_value)) {
+      const_length = true;
+    }
+  }
+
+  locations->SetInAt(0, const_index
+      ? Location::ConstantLocation(index->AsConstant())
+      : Location::RequiresRegister());
+  locations->SetInAt(1, const_length
+      ? Location::ConstantLocation(length->AsConstant())
+      : Location::RequiresRegister());
 }
 
 void InstructionCodeGeneratorMIPS64::VisitBoundsCheck(HBoundsCheck* instruction) {
   LocationSummary* locations = instruction->GetLocations();
-  BoundsCheckSlowPathMIPS64* slow_path =
-      new (codegen_->GetScopedAllocator()) BoundsCheckSlowPathMIPS64(instruction);
-  codegen_->AddSlowPath(slow_path);
+  Location index_loc = locations->InAt(0);
+  Location length_loc = locations->InAt(1);
 
-  GpuRegister index = locations->InAt(0).AsRegister<GpuRegister>();
-  GpuRegister length = locations->InAt(1).AsRegister<GpuRegister>();
+  if (length_loc.IsConstant()) {
+    int32_t length = length_loc.GetConstant()->AsIntConstant()->GetValue();
+    if (index_loc.IsConstant()) {
+      int32_t index = index_loc.GetConstant()->AsIntConstant()->GetValue();
+      if (index < 0 || index >= length) {
+        BoundsCheckSlowPathMIPS64* slow_path =
+            new (codegen_->GetScopedAllocator()) BoundsCheckSlowPathMIPS64(instruction);
+        codegen_->AddSlowPath(slow_path);
+        __ Bc(slow_path->GetEntryLabel());
+      } else {
+        // Nothing to be done.
+      }
+      return;
+    }
 
-  // length is limited by the maximum positive signed 32-bit integer.
-  // Unsigned comparison of length and index checks for index < 0
-  // and for length <= index simultaneously.
-  __ Bgeuc(index, length, slow_path->GetEntryLabel());
+    BoundsCheckSlowPathMIPS64* slow_path =
+        new (codegen_->GetScopedAllocator()) BoundsCheckSlowPathMIPS64(instruction);
+    codegen_->AddSlowPath(slow_path);
+    GpuRegister index = index_loc.AsRegister<GpuRegister>();
+    if (length == 0) {
+      __ Bc(slow_path->GetEntryLabel());
+    } else if (length == 1) {
+      __ Bnezc(index, slow_path->GetEntryLabel());
+    } else {
+      DCHECK(IsUint<15>(length)) << length;
+      __ Sltiu(TMP, index, length);
+      __ Beqzc(TMP, slow_path->GetEntryLabel());
+    }
+  } else {
+    GpuRegister length = length_loc.AsRegister<GpuRegister>();
+    BoundsCheckSlowPathMIPS64* slow_path =
+        new (codegen_->GetScopedAllocator()) BoundsCheckSlowPathMIPS64(instruction);
+    codegen_->AddSlowPath(slow_path);
+    if (index_loc.IsConstant()) {
+      int32_t index = index_loc.GetConstant()->AsIntConstant()->GetValue();
+      if (index < 0) {
+        __ Bc(slow_path->GetEntryLabel());
+      } else if (index == 0) {
+        __ Blezc(length, slow_path->GetEntryLabel());
+      } else {
+        DCHECK(IsInt<16>(index + 1)) << index;
+        __ Sltiu(TMP, length, index + 1);
+        __ Bnezc(TMP, slow_path->GetEntryLabel());
+      }
+    } else {
+      GpuRegister index = index_loc.AsRegister<GpuRegister>();
+      __ Bgeuc(index, length, slow_path->GetEntryLabel());
+    }
+  }
 }
 
 // Temp is used for read barrier.
