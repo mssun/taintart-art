@@ -149,8 +149,16 @@ struct EventMasks {
 
   EventMask& GetEventMask(art::Thread* thread);
   EventMask* GetEventMaskOrNull(art::Thread* thread);
-  void EnableEvent(art::Thread* thread, ArtJvmtiEvent event);
-  void DisableEvent(art::Thread* thread, ArtJvmtiEvent event);
+  // Circular dependencies mean we cannot see the definition of ArtJvmTiEnv so the mutex is simply
+  // asserted in the function.
+  // Note that the 'env' passed in must be the same env this EventMasks is associated with.
+  void EnableEvent(ArtJvmTiEnv* env, art::Thread* thread, ArtJvmtiEvent event);
+      // REQUIRES(env->event_info_mutex_);
+  // Circular dependencies mean we cannot see the definition of ArtJvmTiEnv so the mutex is simply
+  // asserted in the function.
+  // Note that the 'env' passed in must be the same env this EventMasks is associated with.
+  void DisableEvent(ArtJvmTiEnv* env, art::Thread* thread, ArtJvmtiEvent event);
+      // REQUIRES(env->event_info_mutex_);
   bool IsEnabledAnywhere(ArtJvmtiEvent event);
   // Make any changes to event masks needed for the given capability changes. If caps_added is true
   // then caps is all the newly set capabilities of the jvmtiEnv. If it is false then caps is the
