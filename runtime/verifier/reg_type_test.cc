@@ -690,6 +690,8 @@ TEST_F(RegTypeTest, MergeSemiLatticeRef) {
   //      |                              |               |        |         |        |         |
   //      |                              #---------------#--------#---------#--------#---------#
   //      |                                                       |
+  //      |                                                     null
+  //      |                                                       |
   //      #--------------------------#----------------------------#
   //                                 |
   //                                 0
@@ -707,6 +709,7 @@ TEST_F(RegTypeTest, MergeSemiLatticeRef) {
 
   const RegType& conflict = cache.Conflict();
   const RegType& zero = cache.Zero();
+  const RegType& null = cache.Null();
   const RegType& int_type = cache.Integer();
 
   const RegType& obj = cache.JavaLangObject(false);
@@ -799,6 +802,7 @@ TEST_F(RegTypeTest, MergeSemiLatticeRef) {
                                    plain_nonobj_arr_classes.begin(),
                                    plain_nonobj_arr_classes.end());
   all_minus_uninit_conflict.push_back(&zero);
+  all_minus_uninit_conflict.push_back(&null);
   all_minus_uninit_conflict.push_back(&obj);
 
   std::vector<const RegType*> all_minus_uninit;
@@ -853,10 +857,12 @@ TEST_F(RegTypeTest, MergeSemiLatticeRef) {
     ADD_EDGE(int_type, conflict);
   }
 
+  ADD_EDGE(zero, null);
+
   // Unresolved.
   {
-    ADD_EDGE(zero, unresolved_a);
-    ADD_EDGE(zero, unresolved_b);
+    ADD_EDGE(null, unresolved_a);
+    ADD_EDGE(null, unresolved_b);
     ADD_EDGE(unresolved_a, unresolved_ab);
     ADD_EDGE(unresolved_b, unresolved_ab);
 
@@ -887,7 +893,7 @@ TEST_F(RegTypeTest, MergeSemiLatticeRef) {
 
   // Classes.
   {
-    ADD_EDGE(zero, integer);
+    ADD_EDGE(null, integer);
     ADD_EDGE(integer, number);
     ADD_EDGE(number, obj);
   }
@@ -902,10 +908,10 @@ TEST_F(RegTypeTest, MergeSemiLatticeRef) {
     ADD_EDGE(char_arr, obj);
     ADD_EDGE(byte_arr, obj);
 
-    ADD_EDGE(zero, integer_arr);
-    ADD_EDGE(zero, number_arr_arr);
-    ADD_EDGE(zero, char_arr);
-    ADD_EDGE(zero, byte_arr);
+    ADD_EDGE(null, integer_arr);
+    ADD_EDGE(null, number_arr_arr);
+    ADD_EDGE(null, char_arr);
+    ADD_EDGE(null, byte_arr);
   }
 
   // Primitive.

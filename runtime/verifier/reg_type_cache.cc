@@ -56,6 +56,7 @@ void RegTypeCache::FillPrimitiveAndSmallConstantTypes() {
   // Note: this must have the same order as CreatePrimitiveAndSmallConstantTypes.
   entries_.push_back(UndefinedType::GetInstance());
   entries_.push_back(ConflictType::GetInstance());
+  entries_.push_back(NullType::GetInstance());
   entries_.push_back(BooleanType::GetInstance());
   entries_.push_back(ByteType::GetInstance());
   entries_.push_back(ShortType::GetInstance());
@@ -307,6 +308,7 @@ void RegTypeCache::ShutDown() {
     FloatType::Destroy();
     DoubleLoType::Destroy();
     DoubleHiType::Destroy();
+    NullType::Destroy();
     for (int32_t value = kMinSmallConstant; value <= kMaxSmallConstant; ++value) {
       const PreciseConstType* type = small_precise_constants_[value - kMinSmallConstant];
       delete type;
@@ -354,6 +356,7 @@ void RegTypeCache::CreatePrimitiveAndSmallConstantTypes() {
   };
   create_primitive_type_instance(TypeHelper<UndefinedType>(""));
   create_primitive_type_instance(TypeHelper<ConflictType>(""));
+  create_primitive_type_instance(TypeHelper<NullType>(""));
   create_primitive_type_instance(TypeHelper<BooleanType>("Z"));
   create_primitive_type_instance(TypeHelper<ByteType>("B"));
   create_primitive_type_instance(TypeHelper<ShortType>("S"));
