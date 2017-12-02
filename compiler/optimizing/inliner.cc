@@ -1211,11 +1211,49 @@ bool HInliner::TryInlineAndReplace(HInvoke* invoke_instruction,
                                    ReferenceTypeInfo receiver_type,
                                    bool do_rtp,
                                    bool cha_devirtualize) {
+  DCHECK(!invoke_instruction->IsIntrinsic());
   HInstruction* return_replacement = nullptr;
   uint32_t dex_pc = invoke_instruction->GetDexPc();
   HInstruction* cursor = invoke_instruction->GetPrevious();
   HBasicBlock* bb_cursor = invoke_instruction->GetBlock();
-  if (!TryBuildAndInline(invoke_instruction, method, receiver_type, &return_replacement)) {
+  bool should_remove_invoke_instruction = false;
+
+  // If invoke_instruction is devirtualized to a different method, give intrinsics
+  // another chance before we try to inline it.
+  bool wrong_invoke_type = false;
+  if (invoke_instruction->GetResolvedMethod() != method &&
+      IntrinsicsRecognizer::Recognize(invoke_instruction, method, &wrong_invoke_type)) {
+    MaybeRecordStat(stats_, MethodCompilationStat::kIntrinsicRecognized);
+    if (invoke_instruction->IsInvokeInterface()) {
+      // We don't intrinsify an invoke-interface directly.
+      // Replace the invoke-interface with an invoke-virtual.
+      HInvokeVirtual* new_invoke = new (graph_->GetAllocator()) HInvokeVirtual(
+          graph_->GetAllocator(),
+          invoke_instruction->GetNumberOfArguments(),
+          invoke_instruction->GetType(),
+          invoke_instruction->GetDexPc(),
+          invoke_instruction->GetDexMethodIndex(),  // Use interface method's dex method index.
+          method,
+          method->GetMethodIndex());
+      HInputsRef inputs = invoke_instruction->GetInputs();
+      for (size_t index = 0; index != inputs.size(); ++index) {
+        new_invoke->SetArgumentAt(index, inputs[index]);
+      }
+      invoke_instruction->GetBlock()->InsertInstructionBefore(new_invoke, invoke_instruction);
+      new_invoke->CopyEnvironmentFrom(invoke_instruction->GetEnvironment());
+      if (invoke_instruction->GetType() == DataType::Type::kReference) {
+        new_invoke->SetReferenceTypeInfo(invoke_instruction->GetReferenceTypeInfo());
+      }
+      // Run intrinsic recognizer again to set new_invoke's intrinsic.
+      IntrinsicsRecognizer::Recognize(new_invoke, method, &wrong_invoke_type);
+      DCHECK_NE(new_invoke->GetIntrinsic(), Intrinsics::kNone);
+      return_replacement = new_invoke;
+      // invoke_instruction is replaced with new_invoke.
+      should_remove_invoke_instruction = true;
+    } else {
+      // invoke_instruction is intrinsified and stays.
+    }
+  } else if (!TryBuildAndInline(invoke_instruction, method, receiver_type, &return_replacement)) {
     if (invoke_instruction->IsInvokeInterface()) {
       DCHECK(!method->IsProxyMethod());
       // Turn an invoke-interface into an invoke-virtual. An invoke-virtual is always
@@ -1258,26 +1296,27 @@ bool HInliner::TryInlineAndReplace(HInvoke* invoke_instruction,
         new_invoke->SetReferenceTypeInfo(invoke_instruction->GetReferenceTypeInfo());
       }
       return_replacement = new_invoke;
-      // Directly check if the new virtual can be recognized as an intrinsic.
-      // This way, we avoid running a full recognition pass just to detect
-      // these relative rare cases.
-      bool wrong_invoke_type = false;
-      if (IntrinsicsRecognizer::Recognize(new_invoke, &wrong_invoke_type)) {
-        MaybeRecordStat(stats_, MethodCompilationStat::kIntrinsicRecognized);
-      }
+      // invoke_instruction is replaced with new_invoke.
+      should_remove_invoke_instruction = true;
     } else {
       // TODO: Consider sharpening an invoke virtual once it is not dependent on the
       // compiler driver.
       return false;
     }
+  } else {
+    // invoke_instruction is inlined.
+    should_remove_invoke_instruction = true;
   }
+
   if (cha_devirtualize) {
     AddCHAGuard(invoke_instruction, dex_pc, cursor, bb_cursor);
   }
   if (return_replacement != nullptr) {
     invoke_instruction->ReplaceWith(return_replacement);
   }
-  invoke_instruction->GetBlock()->RemoveInstruction(invoke_instruction);
+  if (should_remove_invoke_instruction) {
+    invoke_instruction->GetBlock()->RemoveInstruction(invoke_instruction);
+  }
   FixUpReturnReferenceType(method, return_replacement);
   if (do_rtp && ReturnTypeMoreSpecific(invoke_instruction, return_replacement)) {
     // Actual return value has a more specific type than the method's declared
