@@ -32,6 +32,7 @@
  */
 
 ExecuteMterpImpl:
+    .cfi_startproc
     .set noreorder
     .cpload t9
     .set reorder
@@ -53,6 +54,7 @@ ExecuteMterpImpl:
     EAS2(rREFS, rFP, a0)                          # point to reference array in shadow frame
     lw      a0, SHADOWFRAME_DEX_PC_OFFSET(a2)     # Get starting dex_pc
     EAS1(rPC, a1, a0)                             # Create direct pointer to 1st dex opcode
+    .cfi_register DPC_PSEUDO_REG, rPC
 
     EXPORT_PC()
 

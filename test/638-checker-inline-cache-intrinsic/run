@@ -14,6 +14,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Disable AOT compilation of JNI stubs.
-# Ensure this test is not subject to unexpected code collection.
-${RUN} "${@}" --no-prebuild --no-dex2oat --runtime-option -Xjitinitialsize:32M
+exec ${RUN} --jit --runtime-option -Xjitthreshold:100 -Xcompiler-option --verbose-methods=inlineMonomorphic,knownReceiverType,stringEquals $@

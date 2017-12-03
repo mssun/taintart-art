@@ -1403,6 +1403,14 @@ HConstant* HTypeConversion::TryStaticEvaluation() const {
   if (GetInput()->IsIntConstant()) {
     int32_t value = GetInput()->AsIntConstant()->GetValue();
     switch (GetResultType()) {
+      case DataType::Type::kInt8:
+        return graph->GetIntConstant(static_cast<int8_t>(value), GetDexPc());
+      case DataType::Type::kUint8:
+        return graph->GetIntConstant(static_cast<uint8_t>(value), GetDexPc());
+      case DataType::Type::kInt16:
+        return graph->GetIntConstant(static_cast<int16_t>(value), GetDexPc());
+      case DataType::Type::kUint16:
+        return graph->GetIntConstant(static_cast<uint16_t>(value), GetDexPc());
       case DataType::Type::kInt64:
         return graph->GetLongConstant(static_cast<int64_t>(value), GetDexPc());
       case DataType::Type::kFloat32:
@@ -1415,6 +1423,14 @@ HConstant* HTypeConversion::TryStaticEvaluation() const {
   } else if (GetInput()->IsLongConstant()) {
     int64_t value = GetInput()->AsLongConstant()->GetValue();
     switch (GetResultType()) {
+      case DataType::Type::kInt8:
+        return graph->GetIntConstant(static_cast<int8_t>(value), GetDexPc());
+      case DataType::Type::kUint8:
+        return graph->GetIntConstant(static_cast<uint8_t>(value), GetDexPc());
+      case DataType::Type::kInt16:
+        return graph->GetIntConstant(static_cast<int16_t>(value), GetDexPc());
+      case DataType::Type::kUint16:
+        return graph->GetIntConstant(static_cast<uint16_t>(value), GetDexPc());
       case DataType::Type::kInt32:
         return graph->GetIntConstant(static_cast<int32_t>(value), GetDexPc());
       case DataType::Type::kFloat32:

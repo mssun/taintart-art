@@ -692,13 +692,15 @@ void ArtMethod::CopyFrom(ArtMethod* src, PointerSize image_pointer_size) {
   declaring_class_ = GcRoot<mirror::Class>(const_cast<ArtMethod*>(src)->GetDeclaringClass());
 
   // If the entry point of the method we are copying from is from JIT code, we just
-  // put the entry point of the new method to interpreter. We could set the entry point
-  // to the JIT code, but this would require taking the JIT code cache lock to notify
-  // it, which we do not want at this level.
+  // put the entry point of the new method to interpreter or GenericJNI. We could set
+  // the entry point to the JIT code, but this would require taking the JIT code cache
+  // lock to notify it, which we do not want at this level.
   Runtime* runtime = Runtime::Current();
   if (runtime->UseJitCompilation()) {
     if (runtime->GetJit()->GetCodeCache()->ContainsPc(GetEntryPointFromQuickCompiledCode())) {
-      SetEntryPointFromQuickCompiledCodePtrSize(GetQuickToInterpreterBridge(), image_pointer_size);
+      SetEntryPointFromQuickCompiledCodePtrSize(
+          src->IsNative() ? GetQuickGenericJniStub() : GetQuickToInterpreterBridge(),
+          image_pointer_size);
     }
   }
   // Clear the profiling info for the same reasons as the JIT code.

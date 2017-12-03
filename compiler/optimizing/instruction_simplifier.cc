@@ -1168,16 +1168,6 @@ void InstructionSimplifierVisitor::VisitTypeConversion(HTypeConversion* instruct
       RecordSimplification();
       return;
     }
-  } else if (input->IsIntConstant()) {
-    // Try to eliminate type conversion on int constant whose value falls into
-    // the range of the result type.
-    int32_t value = input->AsIntConstant()->GetValue();
-    if (DataType::IsTypeConversionImplicit(value, result_type)) {
-      instruction->ReplaceWith(input);
-      instruction->GetBlock()->RemoveInstruction(instruction);
-      RecordSimplification();
-      return;
-    }
   }
 }
 
@@ -2045,7 +2035,9 @@ void InstructionSimplifierVisitor::SimplifyStringEquals(HInvoke* instruction) {
       optimizations.SetArgumentIsString();
     } else if (kUseReadBarrier) {
       DCHECK(instruction->GetResolvedMethod() != nullptr);
-      DCHECK(instruction->GetResolvedMethod()->GetDeclaringClass()->IsStringClass());
+      DCHECK(instruction->GetResolvedMethod()->GetDeclaringClass()->IsStringClass() ||
+             // Object.equals() can be devirtualized to String.equals().
+             instruction->GetResolvedMethod()->GetDeclaringClass()->IsObjectClass());
       Runtime* runtime = Runtime::Current();
       // For AOT, we always assume that the boot image shall contain the String.class and
       // we do not need a read barrier for boot image classes as they are non-moveable.

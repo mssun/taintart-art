@@ -22,20 +22,15 @@ public class Main {
     }
   }
 
-  /// CHECK-START: byte Main.getByte1() instruction_simplifier (before)
+  /// CHECK-START: byte Main.getByte1() constant_folding (before)
   /// CHECK: TypeConversion
   /// CHECK: TypeConversion
   /// CHECK: Add
   /// CHECK: TypeConversion
 
-  /// CHECK-START: byte Main.getByte1() instruction_simplifier (after)
+  /// CHECK-START: byte Main.getByte1() constant_folding (after)
   /// CHECK-NOT: TypeConversion
-  /// CHECK: Add
-  /// CHECK: TypeConversion
-
-  /// CHECK-START: byte Main.getByte1() instruction_simplifier$before_codegen (after)
   /// CHECK-NOT: Add
-  /// CHECK-NOT: TypeConversion
 
   static byte getByte1() {
     int i = -2;
@@ -43,20 +38,15 @@ public class Main {
     return (byte)((byte)i + (byte)j);
   }
 
-  /// CHECK-START: byte Main.getByte2() instruction_simplifier (before)
+  /// CHECK-START: byte Main.getByte2() constant_folding (before)
   /// CHECK: TypeConversion
   /// CHECK: TypeConversion
   /// CHECK: Add
   /// CHECK: TypeConversion
 
-  /// CHECK-START: byte Main.getByte2() instruction_simplifier (after)
+  /// CHECK-START: byte Main.getByte2() constant_folding (after)
   /// CHECK-NOT: TypeConversion
-  /// CHECK: Add
-  /// CHECK: TypeConversion
-
-  /// CHECK-START: byte Main.getByte2() instruction_simplifier$before_codegen (after)
   /// CHECK-NOT: Add
-  /// CHECK: TypeConversion
 
   static byte getByte2() {
     int i = -100;
@@ -64,8 +54,24 @@ public class Main {
     return (byte)((byte)i + (byte)j);
   }
 
+  /// CHECK-START: byte Main.getByte3() constant_folding (before)
+  /// CHECK: TypeConversion
+  /// CHECK: TypeConversion
+  /// CHECK: Add
+  /// CHECK: TypeConversion
+
+  /// CHECK-START: byte Main.getByte2() constant_folding (after)
+  /// CHECK-NOT: TypeConversion
+  /// CHECK-NOT: Add
+
+  static byte getByte3() {
+    long i = 0xabcdabcdabcdL;
+    return (byte)((byte)i + (byte)i);
+  }
+
   public static void main(String[] args) {
     assertByteEquals(getByte1(), (byte)-5);
     assertByteEquals(getByte2(), (byte)(-201));
+    assertByteEquals(getByte3(), (byte)(0xcd + 0xcd));
   }
 }

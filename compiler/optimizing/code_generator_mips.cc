@@ -3103,23 +3103,92 @@ void LocationsBuilderMIPS::VisitBoundsCheck(HBoundsCheck* instruction) {
   caller_saves.Add(Location::RegisterLocation(calling_convention.GetRegisterAt(0)));
   caller_saves.Add(Location::RegisterLocation(calling_convention.GetRegisterAt(1)));
   LocationSummary* locations = codegen_->CreateThrowingSlowPathLocations(instruction, caller_saves);
-  locations->SetInAt(0, Location::RequiresRegister());
-  locations->SetInAt(1, Location::RequiresRegister());
+
+  HInstruction* index = instruction->InputAt(0);
+  HInstruction* length = instruction->InputAt(1);
+
+  bool const_index = false;
+  bool const_length = false;
+
+  if (index->IsConstant()) {
+    if (length->IsConstant()) {
+      const_index = true;
+      const_length = true;
+    } else {
+      int32_t index_value = index->AsIntConstant()->GetValue();
+      if (index_value < 0 || IsInt<16>(index_value + 1)) {
+        const_index = true;
+      }
+    }
+  } else if (length->IsConstant()) {
+    int32_t length_value = length->AsIntConstant()->GetValue();
+    if (IsUint<15>(length_value)) {
+      const_length = true;
+    }
+  }
+
+  locations->SetInAt(0, const_index
+      ? Location::ConstantLocation(index->AsConstant())
+      : Location::RequiresRegister());
+  locations->SetInAt(1, const_length
+      ? Location::ConstantLocation(length->AsConstant())
+      : Location::RequiresRegister());
 }
 
 void InstructionCodeGeneratorMIPS::VisitBoundsCheck(HBoundsCheck* instruction) {
   LocationSummary* locations = instruction->GetLocations();
-  BoundsCheckSlowPathMIPS* slow_path =
-      new (codegen_->GetScopedAllocator()) BoundsCheckSlowPathMIPS(instruction);
-  codegen_->AddSlowPath(slow_path);
+  Location index_loc = locations->InAt(0);
+  Location length_loc = locations->InAt(1);
 
-  Register index = locations->InAt(0).AsRegister<Register>();
-  Register length = locations->InAt(1).AsRegister<Register>();
+  if (length_loc.IsConstant()) {
+    int32_t length = length_loc.GetConstant()->AsIntConstant()->GetValue();
+    if (index_loc.IsConstant()) {
+      int32_t index = index_loc.GetConstant()->AsIntConstant()->GetValue();
+      if (index < 0 || index >= length) {
+        BoundsCheckSlowPathMIPS* slow_path =
+            new (codegen_->GetScopedAllocator()) BoundsCheckSlowPathMIPS(instruction);
+        codegen_->AddSlowPath(slow_path);
+        __ B(slow_path->GetEntryLabel());
+      } else {
+        // Nothing to be done.
+      }
+      return;
+    }
 
-  // length is limited by the maximum positive signed 32-bit integer.
-  // Unsigned comparison of length and index checks for index < 0
-  // and for length <= index simultaneously.
-  __ Bgeu(index, length, slow_path->GetEntryLabel());
+    BoundsCheckSlowPathMIPS* slow_path =
+        new (codegen_->GetScopedAllocator()) BoundsCheckSlowPathMIPS(instruction);
+    codegen_->AddSlowPath(slow_path);
+    Register index = index_loc.AsRegister<Register>();
+    if (length == 0) {
+      __ B(slow_path->GetEntryLabel());
+    } else if (length == 1) {
+      __ Bnez(index, slow_path->GetEntryLabel());
+    } else {
+      DCHECK(IsUint<15>(length)) << length;
+      __ Sltiu(TMP, index, length);
+      __ Beqz(TMP, slow_path->GetEntryLabel());
+    }
+  } else {
+    Register length = length_loc.AsRegister<Register>();
+    BoundsCheckSlowPathMIPS* slow_path =
+        new (codegen_->GetScopedAllocator()) BoundsCheckSlowPathMIPS(instruction);
+    codegen_->AddSlowPath(slow_path);
+    if (index_loc.IsConstant()) {
+      int32_t index = index_loc.GetConstant()->AsIntConstant()->GetValue();
+      if (index < 0) {
+        __ B(slow_path->GetEntryLabel());
+      } else if (index == 0) {
+        __ Blez(length, slow_path->GetEntryLabel());
+      } else {
+        DCHECK(IsInt<16>(index + 1)) << index;
+        __ Sltiu(TMP, length, index + 1);
+        __ Bnez(TMP, slow_path->GetEntryLabel());
+      }
+    } else {
+      Register index = index_loc.AsRegister<Register>();
+      __ Bgeu(index, length, slow_path->GetEntryLabel());
+    }
+  }
 }
 
 // Temp is used for read barrier.

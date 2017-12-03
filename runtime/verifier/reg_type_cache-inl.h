@@ -81,6 +81,9 @@ inline const UndefinedType& RegTypeCache::Undefined() {
 inline const ConflictType& RegTypeCache::Conflict() {
   return *ConflictType::GetInstance();
 }
+inline const NullType& RegTypeCache::Null() {
+  return *NullType::GetInstance();
+}
 
 inline const ImpreciseConstType& RegTypeCache::ByteConstant() {
   const ConstantType& result = FromCat1Const(std::numeric_limits<jbyte>::min(), false);

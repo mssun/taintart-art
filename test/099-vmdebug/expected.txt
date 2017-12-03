@@ -23,3 +23,9 @@ Instances of null 0
 Instances of ClassA assignable 3
 Array counts [2, 1, 0]
 Array counts assignable [3, 1, 0]
+ClassD got 3, combined mask: 13
+ClassE got 2, combined mask: 18
+null got 0
+ClassD assignable got 5, combined mask: 31
+ClassE assignable got 2, combined mask: 18
+null assignable got 0

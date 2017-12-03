@@ -664,6 +664,368 @@ TEST_F(RegTypeTest, MergingDouble) {
   }
 }
 
+TEST_F(RegTypeTest, MergeSemiLatticeRef) {
+  //  (Incomplete) semilattice:
+  //
+  //  Excluded for now: * category-2 types
+  //                    * interfaces
+  //                    * all of category-1 primitive types, including constants.
+  //  This is to demonstrate/codify the reference side, mostly.
+  //
+  //  Note: It is not a real semilattice because int = float makes this wonky. :-(
+  //
+  //                                       Conflict
+  //                                           |
+  //      #---------#--------------------------#-----------------------------#
+  //      |         |                                                        |
+  //      |         |                                                      Object
+  //      |         |                                                        |
+  //     int   uninit types              #---------------#--------#------------------#---------#
+  //      |                              |               |        |                  |         |
+  //      |                  unresolved-merge-types      |      Object[]           char[]   byte[]
+  //      |                              |    |  |       |        |                  |         |
+  //      |                  unresolved-types |  #------Number    #---------#        |         |
+  //      |                              |    |          |        |         |        |         |
+  //      |                              |    #--------Integer  Number[] Number[][]  |         |
+  //      |                              |               |        |         |        |         |
+  //      |                              #---------------#--------#---------#--------#---------#
+  //      |                                                       |
+  //      |                                                     null
+  //      |                                                       |
+  //      #--------------------------#----------------------------#
+  //                                 |
+  //                                 0
+
+  ArenaStack stack(Runtime::Current()->GetArenaPool());
+  ScopedArenaAllocator allocator(&stack);
+  ScopedObjectAccess soa(Thread::Current());
+
+  // We cannot allow moving GC. Otherwise we'd have to ensure the reg types are updated (reference
+  // reg types store a class pointer in a GCRoot, which is normally updated through active verifiers
+  // being registered with their thread), which is unnecessarily complex.
+  Runtime::Current()->GetHeap()->IncrementDisableMovingGC(soa.Self());
+
+  RegTypeCache cache(true, allocator);
+
+  const RegType& conflict = cache.Conflict();
+  const RegType& zero = cache.Zero();
+  const RegType& null = cache.Null();
+  const RegType& int_type = cache.Integer();
+
+  const RegType& obj = cache.JavaLangObject(false);
+  const RegType& obj_arr = cache.From(nullptr, "[Ljava/lang/Object;", false);
+  ASSERT_FALSE(obj_arr.IsUnresolvedReference());
+
+  const RegType& unresolved_a = cache.From(nullptr, "Ldoes/not/resolve/A;", false);
+  ASSERT_TRUE(unresolved_a.IsUnresolvedReference());
+  const RegType& unresolved_b = cache.From(nullptr, "Ldoes/not/resolve/B;", false);
+  ASSERT_TRUE(unresolved_b.IsUnresolvedReference());
+  const RegType& unresolved_ab = cache.FromUnresolvedMerge(unresolved_a, unresolved_b, nullptr);
+  ASSERT_TRUE(unresolved_ab.IsUnresolvedMergedReference());
+
+  const RegType& uninit_this = cache.UninitializedThisArgument(obj);
+  const RegType& uninit_obj_0 = cache.Uninitialized(obj, 0u);
+  const RegType& uninit_obj_1 = cache.Uninitialized(obj, 1u);
+
+  const RegType& uninit_unres_this = cache.UninitializedThisArgument(unresolved_a);
+  const RegType& uninit_unres_a_0 = cache.Uninitialized(unresolved_a, 0);
+  const RegType& uninit_unres_b_0 = cache.Uninitialized(unresolved_b, 0);
+
+  const RegType& number = cache.From(nullptr, "Ljava/lang/Number;", false);
+  ASSERT_FALSE(number.IsUnresolvedReference());
+  const RegType& integer = cache.From(nullptr, "Ljava/lang/Integer;", false);
+  ASSERT_FALSE(integer.IsUnresolvedReference());
+
+  const RegType& uninit_number_0 = cache.Uninitialized(number, 0u);
+  const RegType& uninit_integer_0 = cache.Uninitialized(integer, 0u);
+
+  const RegType& number_arr = cache.From(nullptr, "[Ljava/lang/Number;", false);
+  ASSERT_FALSE(number_arr.IsUnresolvedReference());
+  const RegType& integer_arr = cache.From(nullptr, "[Ljava/lang/Integer;", false);
+  ASSERT_FALSE(integer_arr.IsUnresolvedReference());
+
+  const RegType& number_arr_arr = cache.From(nullptr, "[[Ljava/lang/Number;", false);
+  ASSERT_FALSE(number_arr_arr.IsUnresolvedReference());
+
+  const RegType& char_arr = cache.From(nullptr, "[C", false);
+  ASSERT_FALSE(char_arr.IsUnresolvedReference());
+  const RegType& byte_arr = cache.From(nullptr, "[B", false);
+  ASSERT_FALSE(byte_arr.IsUnresolvedReference());
+
+  const RegType& unresolved_a_num = cache.FromUnresolvedMerge(unresolved_a, number, nullptr);
+  ASSERT_TRUE(unresolved_a_num.IsUnresolvedMergedReference());
+  const RegType& unresolved_b_num = cache.FromUnresolvedMerge(unresolved_b, number, nullptr);
+  ASSERT_TRUE(unresolved_b_num.IsUnresolvedMergedReference());
+  const RegType& unresolved_ab_num = cache.FromUnresolvedMerge(unresolved_ab, number, nullptr);
+  ASSERT_TRUE(unresolved_ab_num.IsUnresolvedMergedReference());
+
+  const RegType& unresolved_a_int = cache.FromUnresolvedMerge(unresolved_a, integer, nullptr);
+  ASSERT_TRUE(unresolved_a_int.IsUnresolvedMergedReference());
+  const RegType& unresolved_b_int = cache.FromUnresolvedMerge(unresolved_b, integer, nullptr);
+  ASSERT_TRUE(unresolved_b_int.IsUnresolvedMergedReference());
+  const RegType& unresolved_ab_int = cache.FromUnresolvedMerge(unresolved_ab, integer, nullptr);
+  ASSERT_TRUE(unresolved_ab_int.IsUnresolvedMergedReference());
+  std::vector<const RegType*> uninitialized_types = {
+      &uninit_this, &uninit_obj_0, &uninit_obj_1, &uninit_number_0, &uninit_integer_0
+  };
+  std::vector<const RegType*> unresolved_types = {
+      &unresolved_a,
+      &unresolved_b,
+      &unresolved_ab,
+      &unresolved_a_num,
+      &unresolved_b_num,
+      &unresolved_ab_num,
+      &unresolved_a_int,
+      &unresolved_b_int,
+      &unresolved_ab_int
+  };
+  std::vector<const RegType*> uninit_unresolved_types = {
+      &uninit_unres_this, &uninit_unres_a_0, &uninit_unres_b_0
+  };
+  std::vector<const RegType*> plain_nonobj_classes = { &number, &integer };
+  std::vector<const RegType*> plain_nonobj_arr_classes = {
+      &number_arr,
+      &number_arr_arr,
+      &integer_arr,
+      &char_arr,
+  };
+  // std::vector<const RegType*> others = { &conflict, &zero, &null, &obj, &int_type };
+
+  std::vector<const RegType*> all_minus_uninit_conflict;
+  all_minus_uninit_conflict.insert(all_minus_uninit_conflict.end(),
+                                   unresolved_types.begin(),
+                                   unresolved_types.end());
+  all_minus_uninit_conflict.insert(all_minus_uninit_conflict.end(),
+                                   plain_nonobj_classes.begin(),
+                                   plain_nonobj_classes.end());
+  all_minus_uninit_conflict.insert(all_minus_uninit_conflict.end(),
+                                   plain_nonobj_arr_classes.begin(),
+                                   plain_nonobj_arr_classes.end());
+  all_minus_uninit_conflict.push_back(&zero);
+  all_minus_uninit_conflict.push_back(&null);
+  all_minus_uninit_conflict.push_back(&obj);
+
+  std::vector<const RegType*> all_minus_uninit;
+  all_minus_uninit.insert(all_minus_uninit.end(),
+                          all_minus_uninit_conflict.begin(),
+                          all_minus_uninit_conflict.end());
+  all_minus_uninit.push_back(&conflict);
+
+
+  std::vector<const RegType*> all;
+  all.insert(all.end(), uninitialized_types.begin(), uninitialized_types.end());
+  all.insert(all.end(), uninit_unresolved_types.begin(), uninit_unresolved_types.end());
+  all.insert(all.end(), all_minus_uninit.begin(), all_minus_uninit.end());
+  all.push_back(&int_type);
+
+  auto check = [&](const RegType& in1, const RegType& in2, const RegType& expected_out)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    const RegType& merge_result = in1.SafeMerge(in2, &cache, nullptr);
+    EXPECT_EQ(&expected_out, &merge_result)
+        << in1.Dump() << " x " << in2.Dump() << " = " << merge_result.Dump()
+        << " != " << expected_out.Dump();
+  };
+
+  // Identity.
+  {
+    for (auto r : all) {
+      check(*r, *r, *r);
+    }
+  }
+
+  // Define a covering relation through a list of Edges. We'll then derive LUBs from this and
+  // create checks for every pair of types.
+
+  struct Edge {
+    const RegType& from;
+    const RegType& to;
+
+    Edge(const RegType& from_, const RegType& to_) : from(from_), to(to_) {}
+  };
+  std::vector<Edge> edges;
+#define ADD_EDGE(from, to) edges.emplace_back((from), (to))
+
+  // To Conflict.
+  {
+    for (auto r : uninitialized_types) {
+      ADD_EDGE(*r, conflict);
+    }
+    for (auto r : uninit_unresolved_types) {
+      ADD_EDGE(*r, conflict);
+    }
+    ADD_EDGE(obj, conflict);
+    ADD_EDGE(int_type, conflict);
+  }
+
+  ADD_EDGE(zero, null);
+
+  // Unresolved.
+  {
+    ADD_EDGE(null, unresolved_a);
+    ADD_EDGE(null, unresolved_b);
+    ADD_EDGE(unresolved_a, unresolved_ab);
+    ADD_EDGE(unresolved_b, unresolved_ab);
+
+    ADD_EDGE(number, unresolved_a_num);
+    ADD_EDGE(unresolved_a, unresolved_a_num);
+    ADD_EDGE(number, unresolved_b_num);
+    ADD_EDGE(unresolved_b, unresolved_b_num);
+    ADD_EDGE(number, unresolved_ab_num);
+    ADD_EDGE(unresolved_a_num, unresolved_ab_num);
+    ADD_EDGE(unresolved_b_num, unresolved_ab_num);
+    ADD_EDGE(unresolved_ab, unresolved_ab_num);
+
+    ADD_EDGE(integer, unresolved_a_int);
+    ADD_EDGE(unresolved_a, unresolved_a_int);
+    ADD_EDGE(integer, unresolved_b_int);
+    ADD_EDGE(unresolved_b, unresolved_b_int);
+    ADD_EDGE(integer, unresolved_ab_int);
+    ADD_EDGE(unresolved_a_int, unresolved_ab_int);
+    ADD_EDGE(unresolved_b_int, unresolved_ab_int);
+    ADD_EDGE(unresolved_ab, unresolved_ab_int);
+
+    ADD_EDGE(unresolved_a_int, unresolved_a_num);
+    ADD_EDGE(unresolved_b_int, unresolved_b_num);
+    ADD_EDGE(unresolved_ab_int, unresolved_ab_num);
+
+    ADD_EDGE(unresolved_ab_num, obj);
+  }
+
+  // Classes.
+  {
+    ADD_EDGE(null, integer);
+    ADD_EDGE(integer, number);
+    ADD_EDGE(number, obj);
+  }
+
+  // Arrays.
+  {
+    ADD_EDGE(integer_arr, number_arr);
+    ADD_EDGE(number_arr, obj_arr);
+    ADD_EDGE(obj_arr, obj);
+    ADD_EDGE(number_arr_arr, obj_arr);
+
+    ADD_EDGE(char_arr, obj);
+    ADD_EDGE(byte_arr, obj);
+
+    ADD_EDGE(null, integer_arr);
+    ADD_EDGE(null, number_arr_arr);
+    ADD_EDGE(null, char_arr);
+    ADD_EDGE(null, byte_arr);
+  }
+
+  // Primitive.
+  {
+    ADD_EDGE(zero, int_type);
+  }
+#undef ADD_EDGE
+
+  // Create merge triples by using the covering relation established by edges to derive the
+  // expected merge for any pair of types.
+
+  // Expect merge(in1, in2) == out.
+  struct MergeExpectation {
+    const RegType& in1;
+    const RegType& in2;
+    const RegType& out;
+
+    MergeExpectation(const RegType& in1_, const RegType& in2_, const RegType& out_)
+        : in1(in1_), in2(in2_), out(out_) {}
+  };
+  std::vector<MergeExpectation> expectations;
+
+  for (auto r1 : all) {
+    for (auto r2 : all) {
+      if (r1 == r2) {
+        continue;
+      }
+
+      // Very simple algorithm here that is usually used with adjacency lists. Our graph is
+      // small, it didn't make sense to have lists per node. Thus, the regular guarantees
+      // of O(n + |e|) don't apply, but that is acceptable.
+      //
+      // To compute r1 lub r2 = merge(r1, r2):
+      //   1) Generate the reachable set of r1, name it grey.
+      //   2) Mark all grey reachable nodes of r2 as black.
+      //   3) Find black nodes with no in-edges from other black nodes.
+      //   4) If |3)| == 1, that's the lub.
+
+      // Generic BFS of the graph induced by edges, starting at start. new_node will be called
+      // with any discovered node, in order.
+      auto bfs = [&](auto new_node, const RegType* start) {
+        std::unordered_set<const RegType*> seen;
+        std::queue<const RegType*> work_list;
+        work_list.push(start);
+        while (!work_list.empty()) {
+          const RegType* cur = work_list.front();
+          work_list.pop();
+          auto it = seen.find(cur);
+          if (it != seen.end()) {
+            continue;
+          }
+          seen.insert(cur);
+          new_node(cur);
+
+          for (const Edge& edge : edges) {
+            if (&edge.from == cur) {
+              work_list.push(&edge.to);
+            }
+          }
+        }
+      };
+
+      std::unordered_set<const RegType*> grey;
+      auto compute_grey = [&](const RegType* cur) {
+        grey.insert(cur);  // Mark discovered node as grey.
+      };
+      bfs(compute_grey, r1);
+
+      std::set<const RegType*> black;
+      auto compute_black = [&](const RegType* cur) {
+        // Mark discovered grey node as black.
+        if (grey.find(cur) != grey.end()) {
+          black.insert(cur);
+        }
+      };
+      bfs(compute_black, r2);
+
+      std::set<const RegType*> no_in_edge(black);  // Copy of black, remove nodes with in-edges.
+      for (auto r : black) {
+        for (Edge& e : edges) {
+          if (&e.from == r) {
+            no_in_edge.erase(&e.to);  // It doesn't matter whether "to" is black or not, just
+                                      // attempt to remove it.
+          }
+        }
+      }
+
+      // Helper to print sets when something went wrong.
+      auto print_set = [](auto& container) REQUIRES_SHARED(Locks::mutator_lock_) {
+        std::string result;
+        for (auto r : container) {
+          result.append(" + ");
+          result.append(r->Dump());
+        }
+        return result;
+      };
+      ASSERT_EQ(no_in_edge.size(), 1u) << r1->Dump() << " u " << r2->Dump()
+                                       << " grey=" << print_set(grey)
+                                       << " black=" << print_set(black)
+                                       << " no-in-edge=" << print_set(no_in_edge);
+      expectations.emplace_back(*r1, *r2, **no_in_edge.begin());
+    }
+  }
+
+  // Evaluate merge expectations. The merge is expected to be commutative.
+
+  for (auto& triple : expectations) {
+    check(triple.in1, triple.in2, triple.out);
+    check(triple.in2, triple.in1, triple.out);
+  }
+
+  Runtime::Current()->GetHeap()->DecrementDisableMovingGC(soa.Self());
+}
+
 TEST_F(RegTypeTest, ConstPrecision) {
   // Tests creating primitive types types.
   ArenaStack stack(Runtime::Current()->GetArenaPool());

@@ -41,6 +41,12 @@ static void StoreObjectInBss(ArtMethod* outer_method,
   static_assert(sizeof(GcRoot<mirror::String>) == sizeof(GcRoot<mirror::Object>), "Size check.");
   DCHECK_NE(bss_offset, IndexBssMappingLookup::npos);
   DCHECK_ALIGNED(bss_offset, sizeof(GcRoot<mirror::Object>));
+  if (UNLIKELY(!oat_file->IsExecutable())) {
+    // There are situations where we execute bytecode tied to an oat file opened
+    // as non-executable (i.e. the AOT-compiled code cannot be executed) and we
+    // can JIT that bytecode and get here without the .bss being mmapped.
+    return;
+  }
   GcRoot<mirror::Object>* slot = reinterpret_cast<GcRoot<mirror::Object>*>(
       const_cast<uint8_t*>(oat_file->BssBegin() + bss_offset));
   DCHECK_GE(slot, oat_file->GetBssGcRoots().data());

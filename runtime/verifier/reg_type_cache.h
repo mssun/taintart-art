@@ -49,6 +49,7 @@ class IntegerType;
 class LongHiType;
 class LongLoType;
 class MethodVerifier;
+class NullType;
 class PreciseConstType;
 class PreciseReferenceType;
 class RegType;
@@ -123,6 +124,7 @@ class RegTypeCache {
   const DoubleHiType& DoubleHi() REQUIRES_SHARED(Locks::mutator_lock_);
   const UndefinedType& Undefined() REQUIRES_SHARED(Locks::mutator_lock_);
   const ConflictType& Conflict();
+  const NullType& Null();
 
   const PreciseReferenceType& JavaLangClass() REQUIRES_SHARED(Locks::mutator_lock_);
   const PreciseReferenceType& JavaLangString() REQUIRES_SHARED(Locks::mutator_lock_);
@@ -171,9 +173,6 @@ class RegTypeCache {
   // verifier.
   StringPiece AddString(const StringPiece& string_piece);
 
-  template <class Type>
-  static const Type* CreatePrimitiveTypeInstance(const std::string& descriptor)
-      REQUIRES_SHARED(Locks::mutator_lock_);
   static void CreatePrimitiveAndSmallConstantTypes() REQUIRES_SHARED(Locks::mutator_lock_);
 
   // A quick look up for popular small constants.
@@ -183,7 +182,7 @@ class RegTypeCache {
                                                           kMinSmallConstant + 1];
 
   static constexpr size_t kNumPrimitivesAndSmallConstants =
-      12 + (kMaxSmallConstant - kMinSmallConstant + 1);
+      13 + (kMaxSmallConstant - kMinSmallConstant + 1);
 
   // Have the well known global primitives been created?
   static bool primitive_initialized_;

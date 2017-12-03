@@ -29,6 +29,8 @@ namespace art {
 namespace verifier {
 
 inline bool RegType::CanAccess(const RegType& other) const {
+  DCHECK(IsReferenceTypes());
+  DCHECK(!IsNull());
   if (Equals(other)) {
     return true;  // Trivial accessibility.
   } else {
@@ -45,7 +47,11 @@ inline bool RegType::CanAccess(const RegType& other) const {
 }
 
 inline bool RegType::CanAccessMember(ObjPtr<mirror::Class> klass, uint32_t access_flags) const {
+  DCHECK(IsReferenceTypes());
   if ((access_flags & kAccPublic) != 0) {
+    return true;
+  }
+  if (IsNull()) {
     return true;
   }
   if (!IsUnresolvedTypes()) {
@@ -92,7 +98,7 @@ inline bool RegType::AssignableFrom(const RegType& lhs,
         LOG(WARNING) << "RegType::AssignableFrom lhs is Conflict!";
         return false;
       case AssignmentType::kReference:
-        if (rhs.IsZero()) {
+        if (rhs.IsZeroOrNull()) {
           return true;  // All reference types can be assigned null.
         } else if (!rhs.IsReferenceTypes()) {
           return false;  // Expect rhs to be a reference type.
@@ -119,6 +125,7 @@ inline bool RegType::AssignableFrom(const RegType& lhs,
           return result;
         } else {
           // Unresolved types are only assignable for null and equality.
+          // Null cannot be the left-hand side.
           return false;
         }
       case AssignmentType::kNotAssignable:
@@ -195,6 +202,11 @@ inline const ConflictType* ConflictType::GetInstance() {
 }
 
 inline const UndefinedType* UndefinedType::GetInstance() {
+  DCHECK(instance_ != nullptr);
+  return instance_;
+}
+
+inline const NullType* NullType::GetInstance() {
   DCHECK(instance_ != nullptr);
   return instance_;
 }
