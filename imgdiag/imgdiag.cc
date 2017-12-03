@@ -1150,10 +1150,10 @@ class ImgDiagDumper {
 
     bool found_boot_map = false;
     // Find the memory map only for boot.art
-    for (const backtrace_map_t& map : *tmp_proc_maps) {
-      if (EndsWith(map.name, GetImageLocationBaseName())) {
-        if ((map.flags & PROT_WRITE) != 0) {
-          boot_map_ = map;
+    for (const backtrace_map_t* map : *tmp_proc_maps) {
+      if (EndsWith(map->name, GetImageLocationBaseName())) {
+        if ((map->flags & PROT_WRITE) != 0) {
+          boot_map_ = *map;
           found_boot_map = true;
           break;
         }

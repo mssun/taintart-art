@@ -218,10 +218,11 @@ void DexoptTest::ReserveImageSpace() {
 
   std::unique_ptr<BacktraceMap> map(BacktraceMap::Create(getpid(), true));
   ASSERT_TRUE(map.get() != nullptr) << "Failed to build process map";
-  for (BacktraceMap::const_iterator it = map->begin();
+  for (BacktraceMap::iterator it = map->begin();
       reservation_start < reservation_end && it != map->end(); ++it) {
-    ReserveImageSpaceChunk(reservation_start, std::min(it->start, reservation_end));
-    reservation_start = std::max(reservation_start, it->end);
+    const backtrace_map_t* entry = *it;
+    ReserveImageSpaceChunk(reservation_start, std::min(entry->start, reservation_end));
+    reservation_start = std::max(reservation_start, entry->end);
   }
   ReserveImageSpaceChunk(reservation_start, reservation_end);
 }
