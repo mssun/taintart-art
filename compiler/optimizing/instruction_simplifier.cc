@@ -2276,7 +2276,7 @@ void InstructionSimplifierVisitor::SimplifyStringCharAt(HInvoke* invoke) {
   HArrayLength* length = new (allocator) HArrayLength(str, dex_pc, /* is_string_length */ true);
   invoke->GetBlock()->InsertInstructionBefore(length, invoke);
   HBoundsCheck* bounds_check = new (allocator) HBoundsCheck(
-      index, length, dex_pc, invoke->GetDexMethodIndex());
+      index, length, dex_pc, /* is_string_char_at */ true);
   invoke->GetBlock()->InsertInstructionBefore(bounds_check, invoke);
   HArrayGet* array_get = new (allocator) HArrayGet(str,
                                                    bounds_check,
