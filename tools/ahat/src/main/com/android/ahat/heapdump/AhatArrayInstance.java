@@ -21,6 +21,12 @@ import java.util.AbstractList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * An array instance from a parsed heap dump.
+ * It is used for both object and primitive arrays. The class provides methods
+ * for accessing the length and elements of the array in addition to those
+ * methods inherited from {@link AhatInstance}.
+ */
 public class AhatArrayInstance extends AhatInstance {
   // To save space, we store arrays as primitive arrays or AhatInstance arrays
   // and provide a wrapper over the arrays to expose a list of Values.
@@ -186,21 +192,30 @@ public class AhatArrayInstance extends AhatInstance {
   }
 
   /**
-   * Returns the length of the array.
+   * Returns the number of elements in the array.
+   *
+   * @return number of elements in the array.
    */
   public int getLength() {
     return mValues.size();
   }
 
   /**
-   * Returns the array's values.
+   * Returns a list of all of the array's elements in order.
+   * The returned list does not support modification.
+   *
+   * @return list of the array's elements.
    */
   public List<Value> getValues() {
     return mValues;
   }
 
   /**
-   * Returns the object at the given index of this array.
+   * Returns the value at the given index of this array.
+   *
+   * @param index the index of the value to retrieve
+   * @return the value at the given index
+   * @throws IndexOutOfBoundsException if the index is out of range
    */
   public Value getValue(int index) {
     return mValues.get(index);

@@ -26,6 +26,11 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Queue;
 
+/**
+ * A Java instance from a parsed heap dump. It is the base class used for all
+ * kinds of Java instances, including normal Java objects, class objects, and
+ * arrays.
+ */
 public abstract class AhatInstance implements Diffable<AhatInstance>,
                                               DominatorsComputation.Node {
   // The id of this instance from the heap dump.
@@ -80,14 +85,20 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
-   * Returns a unique identifier for the instance.
+   * Returns a unique identifier for this instance.
+   *
+   * @return id of the instance
    */
   public long getId() {
     return mId;
   }
 
   /**
-   * Returns the shallow number of bytes this object takes up.
+   * Returns the number of bytes used for this object in the heap.
+   * The returned size is a shallow size for the object that does not include
+   * sizes of other objects dominated by this object.
+   *
+   * @return the shallow size of the object
    */
   public Size getSize() {
     return new Size(mClassObj.getInstanceSize() + getExtraJavaSize(), mRegisteredNativeSize);
@@ -104,8 +115,13 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   abstract long getExtraJavaSize();
 
   /**
-   * Returns the number of bytes belonging to the given heap that this instance
-   * retains.
+   * Returns the number of bytes retained by this object in the given heap.
+   * The returned size includes the shallow size of this object and the size
+   * of all objects directly or indirectly retained by this object. Only those
+   * objects allocated on the given heap are included in the reported size.
+   *
+   * @param heap the heap to get the retained size for
+   * @return the retained size of the object
    */
   public Size getRetainedSize(AhatHeap heap) {
     int index = heap.getIndex();
@@ -116,7 +132,11 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
-   * Returns the total number of bytes this instance retains.
+   * Returns the total number of bytes retained by this object. The returned
+   * size includes the shallow size of this object and the size of all objects
+   * directly or indirectly retained by this object.
+   *
+   * @return the total retained size of the object
    */
   public Size getTotalRetainedSize() {
     Size size = Size.ZERO;
@@ -136,7 +156,11 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
-   * Returns true if this object is strongly-reachable.
+   * Returns true if this object is strongly reachable. An object is strongly
+   * reachable if there exists a path of (strong) references from some root
+   * object to this object.
+   *
+   * @return true if the object is strongly reachable
    */
   public boolean isStronglyReachable() {
     return mImmediateDominator != null;
@@ -144,14 +168,28 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
 
   /**
    * Returns true if this object is reachable only through a
-   * soft/weak/phantom/finalizer reference.
+   * soft/weak/phantom/finalizer reference. An object is weakly reachable if
+   * it is not strongly reachable but there still exists a path of references
+   * from some root object to this object.  Because the object is not strongly
+   * reachable, any such path must contain a SoftReference, WeakReference,
+   * PhantomReference, or FinalizerReference somewhere along it.
+   * <p>
+   * Unlike a strongly reachable object, a weakly reachable object is allowed
+   * to be garbage collected.
+   *
+   * @return true if the object is weakly reachable
    */
   public boolean isWeaklyReachable() {
     return !isStronglyReachable() && mNextInstanceToGcRoot != null;
   }
 
   /**
-   * Returns true if this object is completely unreachable.
+   * Returns true if this object is completely unreachable. An object is
+   * completely unreachable if there is no path to the object from some root
+   * object, neither through strong nor soft/weak/phantom/finalizer
+   * references.
+   *
+   * @return true if the object is completely unreachable
    */
   public boolean isUnreachable() {
     return !isStronglyReachable() && !isWeaklyReachable();
@@ -159,6 +197,8 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
 
   /**
    * Returns the heap that this instance is allocated on.
+   *
+   * @return heap the instance is allocated on
    */
   public AhatHeap getHeap() {
     return mHeap;
@@ -171,7 +211,10 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   abstract Iterable<Reference> getReferences();
 
   /**
-   * Returns true if this instance is marked as a root instance.
+   * Returns true if this instance is a GC root.
+   *
+   * @return true if this instance is a GC root.
+   * @see getRootTypes
    */
   public boolean isRoot() {
     return mRootTypes != 0;
@@ -187,6 +230,8 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   /**
    * Returns a list of the root types of this object.
    * Returns null if this object is not a root.
+   *
+   * @return list of the objects root types
    */
   public Collection<RootType> getRootTypes() {
     if (!isRoot()) {
@@ -205,14 +250,17 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   /**
    * Returns the immediate dominator of this instance.
    * Returns null if this is a root instance.
+   *
+   * @return the immediate dominator of this instance
    */
   public AhatInstance getImmediateDominator() {
     return mImmediateDominator;
   }
 
   /**
-   * Returns a list of those objects immediately dominated by the given
-   * instance.
+   * Returns a list of objects immediately dominated by this instance.
+   *
+   * @return list of immediately dominated objects
    */
   public List<AhatInstance> getDominated() {
     return mDominated;
@@ -220,13 +268,17 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
 
   /**
    * Returns the site where this instance was allocated.
+   *
+   * @return the object's allocation site
    */
   public Site getSite() {
     return mSite;
   }
 
   /**
-   * Returns true if the given instance is a class object
+   * Returns true if this instance is a class object
+   *
+   * @return true if this instance is a class object
    */
   public boolean isClassObj() {
     // Overridden by AhatClassObj.
@@ -236,6 +288,8 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   /**
    * Returns this as an AhatClassObj if this is an AhatClassObj.
    * Returns null if this is not an AhatClassObj.
+   *
+   * @return this instance as a class object
    */
   public AhatClassObj asClassObj() {
     // Overridden by AhatClassObj.
@@ -243,7 +297,11 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
-   * Returns the class object instance for the class of this object.
+   * Returns the class object for this instance.
+   * For example, if this object is an instance of java.lang.String, this
+   * method returns the AhatClassObj for java.lang.String.
+   *
+   * @return the instance's class object
    */
   public AhatClassObj getClassObj() {
     return mClassObj;
@@ -251,6 +309,10 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
 
   /**
    * Returns the name of the class this object belongs to.
+   * For example, if this object is an instance of java.lang.String, returns
+   * "java.lang.String".
+   *
+   * @return the name of this instance's class
    */
   public String getClassName() {
     AhatClassObj classObj = getClassObj();
@@ -258,7 +320,9 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
-   * Returns true if the given instance is an array instance
+   * Returns true if the given instance is an array instance.
+   *
+   * @return true if the given instance is an array instance
    */
   public boolean isArrayInstance() {
     // Overridden by AhatArrayInstance.
@@ -268,6 +332,8 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   /**
    * Returns this as an AhatArrayInstance if this is an AhatArrayInstance.
    * Returns null if this is not an AhatArrayInstance.
+   *
+   * @return this instance as an array instance
    */
   public AhatArrayInstance asArrayInstance() {
     // Overridden by AhatArrayInstance.
@@ -275,7 +341,9 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
-   * Returns true if the given instance is a class instance
+   * Returns true if this instance is a class instance.
+   *
+   * @return true if this instance is a class instance
    */
   public boolean isClassInstance() {
     return false;
@@ -284,15 +352,20 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   /**
    * Returns this as an AhatClassInstance if this is an AhatClassInstance.
    * Returns null if this is not an AhatClassInstance.
+   *
+   * @return this instance as a class instance
    */
   public AhatClassInstance asClassInstance() {
     return null;
   }
 
   /**
-   * Return the referent associated with this instance.
-   * This is relevent for instances of java.lang.ref.Reference.
-   * Returns null if the instance has no referent associated with it.
+   * Returns the <code>referent</code> associated with this instance.
+   * This is only relevant for instances of java.lang.ref.Reference or its
+   * subclasses. Returns null if the instance has no referent associated with
+   * it.
+   *
+   * @return the referent associated with this instance
    */
   public AhatInstance getReferent() {
     // Overridden by AhatClassInstance.
@@ -300,7 +373,9 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
-   * Returns a list of objects with hard references to this object.
+   * Returns a list of objects with (strong) references to this object.
+   *
+   * @return the objects referencing this object
    */
   public List<AhatInstance> getHardReverseReferences() {
     if (mHardReverseReferences != null) {
@@ -310,7 +385,10 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
-   * Returns a list of objects with soft references to this object.
+   * Returns a list of objects with soft/weak/phantom/finalizer references to
+   * this object.
+   *
+   * @return the objects weakly referencing this object
    */
   public List<AhatInstance> getSoftReverseReferences() {
     if (mSoftReverseReferences != null) {
@@ -320,9 +398,12 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
-   * Returns the value of a field of an instance.
-   * Returns null if the field value is null, the field couldn't be read, or
-   * there are multiple fields with the same name.
+   * Returns the value of a field of this instance. Returns null if the field
+   * value is null, the field couldn't be read, or there are multiple fields
+   * with the same name.
+   *
+   * @param fieldName the name of the field to get the value of
+   * @return the field value
    */
   public Value getField(String fieldName) {
     // Overridden by AhatClassInstance.
@@ -330,8 +411,13 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
-   * Reads a reference field of this instance.
-   * Returns null if the field value is null, or if the field couldn't be read.
+   * Reads a reference field of this instance. Returns null if the field value
+   * is null, of primitive type, or if the field couldn't be read. There is no
+   * way using this method to distinguish between a reference field with value
+   * <code>null</code> and an invalid field.
+   *
+   * @param fieldName the name of the reference field to get the value of
+   * @return the reference field value
    */
   public AhatInstance getRefField(String fieldName) {
     // Overridden by AhatClassInstance.
@@ -339,30 +425,41 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
-   * Assuming inst represents a DexCache object, return the dex location for
-   * that dex cache. Returns null if the given instance doesn't represent a
-   * DexCache object or the location could not be found.
+   * Returns the dex location associated with this object. Only applies to
+   * instances of dalvik.system.DexCache. If this is an instance of DexCache,
+   * returns the dex location for that dex cache. Otherwise returns null.
    * If maxChars is non-negative, the returned location is truncated to
    * maxChars in length.
+   *
+   * @param maxChars the maximum length of the returned string
+   * @return the dex location associated with this object
    */
   public String getDexCacheLocation(int maxChars) {
     return null;
   }
 
   /**
-   * Return the bitmap instance associated with this object, or null if there
-   * is none. This works for android.graphics.Bitmap instances and their
-   * underlying Byte[] instances.
+   * Returns the android.graphics.Bitmap instance associated with this object.
+   * Instances of android.graphics.Bitmap return themselves. If this is a
+   * byte[] array containing pixel data for an instance of
+   * android.graphics.Bitmap, that instance of android.graphics.Bitmap is
+   * returned. Otherwise null is returned.
+   *
+   * @return the bitmap instance associated with this object
    */
   public AhatInstance getAssociatedBitmapInstance() {
     return null;
   }
 
   /**
-   * Read the string value from this instance.
-   * Returns null if this object can't be interpreted as a string.
-   * The returned string is truncated to maxChars characters.
-   * If maxChars is negative, the returned string is not truncated.
+   * Returns the (bounded-length) string associated with this instance.
+   * Applies to instances of java.lang.String, char[], and in some cases
+   * byte[]. Returns null if this object cannot be interpreted as a string.
+   * If maxChars is non-negative, the returned string is truncated to maxChars
+   * characters in length.
+   *
+   * @param maxChars the maximum length of the returned string
+   * @return the string associated with this instance
    */
   public String asString(int maxChars) {
     // By default instances can't be interpreted as a string. This method is
@@ -372,17 +469,23 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
-   * Reads the string value from an hprof Instance.
-   * Returns null if the object can't be interpreted as a string.
+   * Returns the string associated with this instance. Applies to instances of
+   * java.lang.String, char[], and in some cases byte[]. Returns null if this
+   * object cannot be interpreted as a string.
+   *
+   * @return the string associated with this instance
    */
   public String asString() {
     return asString(-1);
   }
 
   /**
-   * Return the bitmap associated with the given instance, if any.
+   * Returns the bitmap pixel data associated with this instance.
    * This is relevant for instances of android.graphics.Bitmap and byte[].
-   * Returns null if there is no bitmap associated with the given instance.
+   * Returns null if there is no bitmap pixel data associated with the given
+   * instance.
+   *
+   * @return the bitmap pixel data associated with this image
    */
   public BufferedImage asBitmap() {
     return null;
@@ -402,11 +505,23 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
   }
 
   /**
-   * Returns a sample path from a GC root to this instance.
-   * This instance is included as the last element of the path with an empty
-   * field description.
+   * Returns a sample path from a GC root to this instance. The first element
+   * of the returned path is a GC root object. This instance is included as
+   * the last element of the path with an empty field description.
+   * <p>
+   * If the instance is strongly reachable, a path of string references will
+   * be returned. If the instance is weakly reachable, the returned path will
+   * include a soft/weak/phantom/finalizer reference somewhere along it.
+   * Returns null if this instance is not reachable.
+   *
+   * @return sample path from a GC root to this instance
+   * @see PathElement
    */
   public List<PathElement> getPathFromGcRoot() {
+    if (isUnreachable()) {
+      return null;
+    }
+
     List<PathElement> path = new ArrayList<PathElement>();
 
     AhatInstance dom = this;
@@ -434,12 +549,15 @@ public abstract class AhatInstance implements Diffable<AhatInstance>,
     return new PathElement(inst.mNextInstanceToGcRoot, inst.mNextInstanceToGcRootField);
   }
 
-  /** Returns a human-readable identifier for this object.
+  /**
+   * Returns a human-readable identifier for this object.
    * For class objects, the string is the class name.
    * For class instances, the string is the class name followed by '@' and the
    * hex id of the instance.
    * For array instances, the string is the array type followed by the size in
    * square brackets, followed by '@' and the hex id of the instance.
+   *
+   * @return human-readable identifier for this object
    */
   @Override public abstract String toString();
 

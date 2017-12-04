@@ -16,10 +16,26 @@
 
 package com.android.ahat.heapdump;
 
+/**
+ * A description of a field from a heap dump.
+ */
 public class Field {
+  /**
+   * The name of the field.
+   */
   public final String name;
+
+  /**
+   * The type of the field.
+   */
   public final Type type;
 
+  /**
+   * Constructs a Field instance.
+   *
+   * @param name name of the field
+   * @param type type of the field
+   */
   public Field(String name, Type type) {
     this.name = name;
     this.type = type;
