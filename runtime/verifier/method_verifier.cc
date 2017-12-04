@@ -5155,10 +5155,11 @@ ArtField* MethodVerifier::GetQuickFieldAccess(const Instruction* inst, RegisterL
   }
   uint32_t field_offset = static_cast<uint32_t>(inst->VRegC_22c());
   ArtField* const f = ArtField::FindInstanceFieldWithOffset(object_type.GetClass(), field_offset);
-  DCHECK_EQ(f->GetOffset().Uint32Value(), field_offset);
   if (f == nullptr) {
     VLOG(verifier) << "Failed to find instance field at offset '" << field_offset
                    << "' from '" << mirror::Class::PrettyDescriptor(object_type.GetClass()) << "'";
+  } else {
+    DCHECK_EQ(f->GetOffset().Uint32Value(), field_offset);
   }
   return f;
 }
