@@ -237,7 +237,8 @@
         "tests": ["604-hot-static-interface",
                   "612-jit-dex-cache",
                   "613-inlining-dex-cache",
-                  "626-set-resolved-string"],
+                  "626-set-resolved-string",
+                  "638-checker-inline-cache-intrinsic"],
         "variant": "trace  | stream",
         "description": ["These tests expect JIT compilation, which is",
                         "suppressed when tracing."]
