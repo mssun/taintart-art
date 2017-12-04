@@ -23,6 +23,7 @@
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "debug/dwarf/dwarf_constants.h"
+#include "debug/debug_info.h"
 #include "linker/elf_builder.h"
 
 namespace art {
@@ -36,7 +37,7 @@ struct MethodDebugInfo;
 template <typename ElfTypes>
 void WriteDebugInfo(
     linker::ElfBuilder<ElfTypes>* builder,
-    const ArrayRef<const MethodDebugInfo>& method_infos,
+    const DebugInfo& debug_info,
     dwarf::CFIFormat cfi_format,
     bool write_oat_patches);
 
@@ -45,7 +46,9 @@ std::vector<uint8_t> MakeMiniDebugInfo(
     const InstructionSetFeatures* features,
     uint64_t text_section_address,
     size_t text_section_size,
-    const ArrayRef<const MethodDebugInfo>& method_infos);
+    uint64_t dex_section_address,
+    size_t dex_section_size,
+    const DebugInfo& debug_info);
 
 std::vector<uint8_t> MakeElfFileForJIT(
     InstructionSet isa,

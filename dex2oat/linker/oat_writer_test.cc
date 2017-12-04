@@ -250,7 +250,7 @@ class OatTest : public CommonCompilerTest {
     }
 
     elf_writer->WriteDynamicSection();
-    elf_writer->WriteDebugInfo(oat_writer.GetMethodDebugInfo());
+    elf_writer->WriteDebugInfo(oat_writer.GetDebugInfo());
 
     if (!elf_writer->End()) {
       return false;

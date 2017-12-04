@@ -4160,5 +4160,17 @@ const uint8_t* OatWriter::LookupBootImageClassTableSlot(const DexFile& dex_file,
   UNREACHABLE();
 }
 
+debug::DebugInfo OatWriter::GetDebugInfo() const {
+  debug::DebugInfo debug_info{};
+  debug_info.compiled_methods = ArrayRef<const debug::MethodDebugInfo>(method_info_);
+  if (dex_files_ != nullptr) {
+    for (auto dex_file : *dex_files_) {
+      uint32_t offset = vdex_dex_files_offset_ + (dex_file->Begin() - (*dex_files_)[0]->Begin());
+      debug_info.dex_files.emplace(offset, dex_file);
+    }
+  }
+  return debug_info;
+}
+
 }  // namespace linker
 }  // namespace art

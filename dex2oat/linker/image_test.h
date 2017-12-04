@@ -339,7 +339,7 @@ inline void CompilationHelper::Compile(CompilerDriver* driver,
         writer->UpdateOatFileHeader(i, oat_writer->GetOatHeader());
 
         elf_writer->WriteDynamicSection();
-        elf_writer->WriteDebugInfo(oat_writer->GetMethodDebugInfo());
+        elf_writer->WriteDebugInfo(oat_writer->GetDebugInfo());
 
         bool success = elf_writer->End();
         ASSERT_TRUE(success);
