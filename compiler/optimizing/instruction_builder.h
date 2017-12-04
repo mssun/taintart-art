@@ -175,8 +175,8 @@ class HInstructionBuilder : public ValueObject {
                                         uint32_t dex_pc,
                                         bool is_put,
                                         DataType::Type field_type);
-  // Builds a static field access node and returns whether the instruction is supported.
-  bool BuildStaticFieldAccess(const Instruction& instruction, uint32_t dex_pc, bool is_put);
+  // Builds a static field access node.
+  void BuildStaticFieldAccess(const Instruction& instruction, uint32_t dex_pc, bool is_put);
 
   void BuildArrayAccess(const Instruction& instruction,
                         uint32_t dex_pc,

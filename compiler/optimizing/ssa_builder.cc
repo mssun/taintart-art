@@ -328,6 +328,8 @@ bool SsaBuilder::FixAmbiguousArrayOps() {
       HInstruction* array = aget_int->GetArray();
       if (!array->GetReferenceTypeInfo().IsPrimitiveArrayClass()) {
         // RTP did not type the input array. Bail.
+        VLOG(compiler) << "Not compiled: Could not infer an array type for array operation at "
+                       << aget_int->GetDexPc();
         return false;
       }
 
@@ -368,6 +370,8 @@ bool SsaBuilder::FixAmbiguousArrayOps() {
       HInstruction* array = aset->GetArray();
       if (!array->GetReferenceTypeInfo().IsPrimitiveArrayClass()) {
         // RTP did not type the input array. Bail.
+        VLOG(compiler) << "Not compiled: Could not infer an array type for array operation at "
+                       << aset->GetDexPc();
         return false;
       }
 

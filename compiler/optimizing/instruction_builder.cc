@@ -1351,6 +1351,8 @@ bool HInstructionBuilder::BuildInstanceFieldAccess(const Instruction& instructio
   uint16_t field_index;
   if (instruction.IsQuickened()) {
     if (!CanDecodeQuickenedInfo()) {
+      VLOG(compiler) << "Not compiled: Could not decode quickened instruction "
+                     << instruction.Opcode();
       return false;
     }
     field_index = LookupQuickenedInfo(quicken_index);
@@ -1487,7 +1489,6 @@ ArtField* HInstructionBuilder::ResolveField(uint16_t field_idx, bool is_static, 
                                                         dex_compilation_unit_->GetDexCache(),
                                                         class_loader,
                                                         is_static);
-
   if (UNLIKELY(resolved_field == nullptr)) {
     // Clean up any exception left by type resolution.
     soa.Self()->ClearException();
@@ -1523,7 +1524,7 @@ ArtField* HInstructionBuilder::ResolveField(uint16_t field_idx, bool is_static, 
   return resolved_field;
 }
 
-bool HInstructionBuilder::BuildStaticFieldAccess(const Instruction& instruction,
+void HInstructionBuilder::BuildStaticFieldAccess(const Instruction& instruction,
                                                  uint32_t dex_pc,
                                                  bool is_put) {
   uint32_t source_or_dest_reg = instruction.VRegA_21c();
@@ -1537,7 +1538,7 @@ bool HInstructionBuilder::BuildStaticFieldAccess(const Instruction& instruction,
                     MethodCompilationStat::kUnresolvedField);
     DataType::Type field_type = GetFieldAccessType(*dex_file_, field_index);
     BuildUnresolvedStaticFieldAccess(instruction, dex_pc, is_put, field_type);
-    return true;
+    return;
   }
 
   DataType::Type field_type = GetFieldAccessType(*dex_file_, field_index);
@@ -1555,7 +1556,7 @@ bool HInstructionBuilder::BuildStaticFieldAccess(const Instruction& instruction,
     MaybeRecordStat(compilation_stats_,
                     MethodCompilationStat::kUnresolvedFieldNotAFastAccess);
     BuildUnresolvedStaticFieldAccess(instruction, dex_pc, is_put, field_type);
-    return true;
+    return;
   }
 
   HInstruction* cls = constant;
@@ -1591,7 +1592,6 @@ bool HInstructionBuilder::BuildStaticFieldAccess(const Instruction& instruction,
                                                        dex_pc));
     UpdateLocal(source_or_dest_reg, current_block_->GetLastInstruction());
   }
-  return true;
 }
 
 void HInstructionBuilder::BuildCheckedDivRem(uint16_t out_vreg,
@@ -2058,6 +2058,8 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
       uint16_t method_idx;
       if (instruction.Opcode() == Instruction::INVOKE_VIRTUAL_QUICK) {
         if (!CanDecodeQuickenedInfo()) {
+          VLOG(compiler) << "Not compiled: Could not decode quickened instruction "
+                         << instruction.Opcode();
           return false;
         }
         method_idx = LookupQuickenedInfo(quicken_index);
@@ -2083,6 +2085,8 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
       uint16_t method_idx;
       if (instruction.Opcode() == Instruction::INVOKE_VIRTUAL_RANGE_QUICK) {
         if (!CanDecodeQuickenedInfo()) {
+          VLOG(compiler) << "Not compiled: Could not decode quickened instruction "
+                         << instruction.Opcode();
           return false;
         }
         method_idx = LookupQuickenedInfo(quicken_index);
@@ -2758,7 +2762,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     case Instruction::IGET_CHAR_QUICK:
     case Instruction::IGET_SHORT:
     case Instruction::IGET_SHORT_QUICK: {
-      if (!BuildInstanceFieldAccess(instruction, dex_pc, false, quicken_index)) {
+      if (!BuildInstanceFieldAccess(instruction, dex_pc, /* is_put */ false, quicken_index)) {
         return false;
       }
       break;
@@ -2778,7 +2782,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     case Instruction::IPUT_CHAR_QUICK:
     case Instruction::IPUT_SHORT:
     case Instruction::IPUT_SHORT_QUICK: {
-      if (!BuildInstanceFieldAccess(instruction, dex_pc, true, quicken_index)) {
+      if (!BuildInstanceFieldAccess(instruction, dex_pc, /* is_put */ true, quicken_index)) {
         return false;
       }
       break;
@@ -2791,9 +2795,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     case Instruction::SGET_BYTE:
     case Instruction::SGET_CHAR:
     case Instruction::SGET_SHORT: {
-      if (!BuildStaticFieldAccess(instruction, dex_pc, false)) {
-        return false;
-      }
+      BuildStaticFieldAccess(instruction, dex_pc, /* is_put */ false);
       break;
     }
 
@@ -2804,9 +2806,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
     case Instruction::SPUT_BYTE:
     case Instruction::SPUT_CHAR:
     case Instruction::SPUT_SHORT: {
-      if (!BuildStaticFieldAccess(instruction, dex_pc, true)) {
-        return false;
-      }
+      BuildStaticFieldAccess(instruction, dex_pc, /* is_put */ true);
       break;
     }
 
