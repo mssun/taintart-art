@@ -19,6 +19,11 @@ package com.android.ahat.heapdump;
 import com.android.ahat.dominators.DominatorsComputation;
 import java.util.List;
 
+/**
+ * A parsed heap dump.
+ * It contains methods to access the heaps, allocation sites, roots, classes,
+ * and instances from the parsed heap dump.
+ */
 public class AhatSnapshot implements Diffable<AhatSnapshot> {
   private final Site mRootSite;
 
@@ -60,16 +65,24 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
   }
 
   /**
-   * Returns the instance with given id in this snapshot.
+   * Returns the instance with the given id in this snapshot.
+   * Where the id of an instance x is x.getId().
    * Returns null if no instance with the given id is found.
+   *
+   * @param id the id of the instance to find
+   * @return the instance with the given id
    */
   public AhatInstance findInstance(long id) {
     return mInstances.get(id);
   }
 
   /**
-   * Returns the AhatClassObj with given id in this snapshot.
+   * Returns the AhatClassObj with the given id in this snapshot.
+   * Where the id of a class object x is x.getId().
    * Returns null if no class object with the given id is found.
+   *
+   * @param id the id of the class object to find
+   * @return the class object with the given id
    */
   public AhatClassObj findClassObj(long id) {
     AhatInstance inst = findInstance(id);
@@ -77,8 +90,12 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
   }
 
   /**
-   * Returns the heap with the given name, if any.
+   * Returns the heap with the given name.
+   * Where the name of a heap x is x.getName().
    * Returns null if no heap with the given name could be found.
+   *
+   * @param name the name of the heap to get
+   * @return the heap with the given name
    */
   public AhatHeap getHeap(String name) {
     // We expect a small number of heaps (maybe 3 or 4 total), so a linear
@@ -93,30 +110,45 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
 
   /**
    * Returns a list of heaps in the snapshot in canonical order.
-   * Modifications to the returned list are visible to this AhatSnapshot,
-   * which is used by diff to insert place holder heaps.
+   * <p>
+   * Note: modifications to the returned list are visible to this
+   * AhatSnapshot, which is used by diff to insert place holder heaps.
+   *
+   * @return list of heaps
    */
   public List<AhatHeap> getHeaps() {
     return mHeaps;
   }
 
   /**
-   * Returns a collection of instances whose immediate dominator is the
-   * SENTINEL_ROOT.
+   * Returns a collection of "rooted" instances.
+   * An instance is "rooted" if it is a GC root, or if it is retained by more
+   * than one GC root. These are reachable instances that are not immediately
+   * dominated by any other instance in the heap.
+   *
+   * @return collection of rooted instances
    */
   public List<AhatInstance> getRooted() {
     return mSuperRoot.getDominated();
   }
 
   /**
-   * Returns the root site for this snapshot.
+   * Returns the root allocation site for this snapshot.
+   *
+   * @return the root allocation site
    */
   public Site getRootSite() {
     return mRootSite;
   }
 
-  // Get the site associated with the given id.
-  // Returns the root site if no such site found.
+  /**
+   * Returns the site associated with the given id.
+   * Where the id of a site x is x.getId().
+   * Returns the root site if no site with the given id is found.
+   *
+   * @param id the id of the site to get
+   * @return the site with the given id
+   */
   public Site getSite(long id) {
     Site site = mRootSite.findSite(id);
     return site == null ? mRootSite : site;
@@ -127,8 +159,10 @@ public class AhatSnapshot implements Diffable<AhatSnapshot> {
   }
 
   /**
-   * Returns true if this snapshot has been diffed against another, different
+   * Returns true if this snapshot has been diffed against a different
    * snapshot.
+   *
+   * @return true if the snapshot has been diffed
    */
   public boolean isDiffed() {
     return mBaseline != this;

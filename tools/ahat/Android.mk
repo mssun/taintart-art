@@ -23,6 +23,7 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES := $(call all-java-files-under, src/main)
 LOCAL_JAR_MANIFEST := etc/ahat.mf
 LOCAL_JAVA_RESOURCE_FILES := $(LOCAL_PATH)/etc/style.css
+LOCAL_JAVACFLAGS := -Xdoclint:all/protected
 LOCAL_IS_HOST_MODULE := true
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := ahat

@@ -30,6 +30,9 @@ import java.net.InetSocketAddress;
 import java.text.ParseException;
 import java.util.concurrent.Executors;
 
+/**
+ * Contains the main entry point for the ahat heap dump viewer.
+ */
 public class Main {
   private Main() {
   }
@@ -70,6 +73,14 @@ public class Main {
     throw new AssertionError("Unreachable");
   }
 
+  /**
+   * Main entry for ahat heap dump viewer.
+   * Launches an http server on localhost for viewing a given heap dump.
+   * See the ahat README or pass "--help" as one of the arguments to see a
+   * description of what arguments and options are expected.
+   *
+   * @param args the command line arguments
+   */
   public static void main(String[] args) {
     int port = 7100;
     for (String arg : args) {
