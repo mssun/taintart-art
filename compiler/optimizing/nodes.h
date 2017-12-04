@@ -5787,10 +5787,10 @@ class HBoundsCheck FINAL : public HExpression<2> {
   HBoundsCheck(HInstruction* index,
                HInstruction* length,
                uint32_t dex_pc,
-               bool string_char_at = false)
+               bool is_string_char_at = false)
       : HExpression(index->GetType(), SideEffects::CanTriggerGC(), dex_pc) {
     DCHECK_EQ(DataType::Type::kInt32, DataType::Kind(index->GetType()));
-    SetPackedFlag<kFlagIsStringCharAt>(string_char_at);
+    SetPackedFlag<kFlagIsStringCharAt>(is_string_char_at);
     SetRawInputAt(0, index);
     SetRawInputAt(1, length);
   }
