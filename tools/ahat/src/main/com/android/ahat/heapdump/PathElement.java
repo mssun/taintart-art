@@ -16,11 +16,51 @@
 
 package com.android.ahat.heapdump;
 
+/**
+ * A single element along a reference path from a GC root to an instance in
+ * the heap dump.
+ * <p>
+ * For example, assuming object A is a root a path to some object X might look
+ * like:
+ * <pre>
+ *   A.x --&gt; B.y --&gt; C.z --&gt; X
+ * </pre>
+ *
+ * A path element is a single node of that path, such as <code>B.y</code>.
+ * @see AhatInstance#getPathFromGcRoot
+ */
 public class PathElement implements Diffable<PathElement> {
+  /**
+   * The instance along the reference path that this PathElement is associated
+   * with.
+   */
   public final AhatInstance instance;
+
+  /**
+   * A human readable description of which field in <code>instance</code> is
+   * followed to reach the next element in the path.
+   * Some examples:
+   * <ul>
+   * <li> "mBlah" for a class instance
+   * <li> "[4]" for an array instance
+   * <li> "" for the last element of the path
+   * </ul>
+   */
   public final String field;
+
+  /**
+   * True if <code>instance</code> is a (not necessarily immediate) dominator
+   * of the final object in the path.
+   */
   public boolean isDominator;
 
+  /**
+   * Constructs a PathElement object.
+   * <code>isDominator</code> is set to false.
+   *
+   * @param instance the path element instance
+   * @param field the path element field
+   */
   public PathElement(AhatInstance instance, String field) {
     this.instance = instance;
     this.field = field;

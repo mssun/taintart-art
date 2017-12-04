@@ -26,7 +26,10 @@ import java.text.ParseException;
 import java.util.HashMap;
 import java.util.Map;
 
-// Class used to deobfuscate classes, fields, and stack frames.
+/**
+ * A representation of a proguard mapping for deobfuscating class names,
+ * field names, and stack frames.
+ */
 public class ProguardMap {
 
   private static final String ARRAY_SYMBOL = "[]";
@@ -98,6 +101,10 @@ public class ProguardMap {
   private Map<String, ClassData> mClassesFromClearName = new HashMap<String, ClassData>();
   private Map<String, ClassData> mClassesFromObfuscatedName = new HashMap<String, ClassData>();
 
+  /**
+   * Information associated with a stack frame that identifies a particular
+   * line of source code.
+   */
   public static class Frame {
     Frame(String method, String signature, String filename, int line) {
       this.method = method;
@@ -106,9 +113,28 @@ public class ProguardMap {
       this.line = line;
     }
 
+    /**
+     * The name of the method the stack frame belongs to.
+     * For example, "equals".
+     */
     public final String method;
+
+    /**
+     * The signature of the method the stack frame belongs to.
+     * For example, "(Ljava/lang/Object;)Z".
+     */
     public final String signature;
+
+    /**
+     * The name of the file with containing the line of source that the stack
+     * frame refers to.
+     */
     public final String filename;
+
+    /**
+     * The line number of the code in the source file that the stack frame
+     * refers to.
+     */
     public final int line;
   }
 
@@ -116,13 +142,44 @@ public class ProguardMap {
     throw new ParseException(msg, 0);
   }
 
-  // Read in proguard mapping information from the given file.
+  /**
+   * Creates a new empty proguard mapping.
+   * The {@link #readFromFile readFromFile} and
+   * {@link #readFromReader readFromReader} methods can be used to populate
+   * the proguard mapping with proguard mapping information.
+   */
+  public ProguardMap() {
+  }
+
+  /**
+   * Adds the proguard mapping information in <code>mapFile</code> to this
+   * proguard mapping.
+   * The <code>mapFile</code> should be a proguard mapping file generated with
+   * the <code>-printmapping</code> option when proguard was run.
+   *
+   * @param mapFile the name of a file with proguard mapping information
+   * @throws FileNotFoundException If the <code>mapFile</code> could not be
+   *                               found
+   * @throws IOException If an input exception occurred.
+   * @throws ParseException If the <code>mapFile</code> is not a properly
+   *                        formatted proguard mapping file.
+   */
   public void readFromFile(File mapFile)
     throws FileNotFoundException, IOException, ParseException {
     readFromReader(new FileReader(mapFile));
   }
 
-  // Read in proguard mapping information from the given Reader.
+  /**
+   * Adds the proguard mapping information read from <code>mapReader</code> to
+   * this proguard mapping.
+   * <code>mapReader</code> should be a Reader of a proguard mapping file
+   * generated with the <code>-printmapping</code> option when proguard was run.
+   *
+   * @param mapReader a Reader for reading the proguard mapping information
+   * @throws IOException If an input exception occurred.
+   * @throws ParseException If the <code>mapFile</code> is not a properly
+   *                        formatted proguard mapping file.
+   */
   public void readFromReader(Reader mapReader) throws IOException, ParseException {
     BufferedReader reader = new BufferedReader(mapReader);
     String line = reader.readLine();
@@ -207,8 +264,15 @@ public class ProguardMap {
     reader.close();
   }
 
-  // Returns the deobfuscated version of the given class name. If no
-  // deobfuscated version is known, the original string is returned.
+  /**
+   * Returns the deobfuscated version of the given obfuscated class name.
+   * If this proguard mapping does not include information about how to
+   * deobfuscate the obfuscated class name, the obfuscated class name
+   * is returned.
+   *
+   * @param obfuscatedClassName the obfuscated class name to deobfuscate
+   * @return the deobfuscated class name.
+   */
   public String getClassName(String obfuscatedClassName) {
     // Class names for arrays may have trailing [] that need to be
     // stripped before doing the lookup.
@@ -224,9 +288,17 @@ public class ProguardMap {
     return clearBaseName + arraySuffix;
   }
 
-  // Returns the deobfuscated version of the given field name for the given
-  // (clear) class name. If no deobfuscated version is known, the original
-  // string is returned.
+  /**
+   * Returns the deobfuscated version of the obfuscated field name for the
+   * given deobfuscated class name.
+   * If this proguard mapping does not include information about how to
+   * deobfuscate the obfuscated field name, the obfuscated field name is
+   * returned.
+   *
+   * @param clearClass the deobfuscated name of the class the field belongs to
+   * @param obfuscatedField the obfuscated field name to deobfuscate
+   * @return the deobfuscated field name.
+   */
   public String getFieldName(String clearClass, String obfuscatedField) {
     ClassData classData = mClassesFromClearName.get(clearClass);
     if (classData == null) {
@@ -235,8 +307,21 @@ public class ProguardMap {
     return classData.getField(obfuscatedField);
   }
 
-  // Returns the deobfuscated frame for the given obfuscated frame and (clear)
-  // class name. As much of the frame is deobfuscated as can be.
+  /**
+   * Returns the deobfuscated version of the obfuscated stack frame
+   * information for the given deobfuscated class name.
+   * If this proguard mapping does not include information about how to
+   * deobfuscate the obfuscated stack frame information, the obfuscated stack
+   * frame information is returned.
+   *
+   * @param clearClassName the deobfuscated name of the class the stack frame's
+   * method belongs to
+   * @param obfuscatedMethodName the obfuscated method name to deobfuscate
+   * @param obfuscatedSignature the obfuscated method signature to deobfuscate
+   * @param obfuscatedFilename the obfuscated file name to deobfuscate.
+   * @param obfuscatedLine the obfuscated line number to deobfuscate.
+   * @return the deobfuscated stack frame information.
+   */
   public Frame getFrame(String clearClassName, String obfuscatedMethodName,
       String obfuscatedSignature, String obfuscatedFilename, int obfuscatedLine) {
     String clearSignature = getSignature(obfuscatedSignature);

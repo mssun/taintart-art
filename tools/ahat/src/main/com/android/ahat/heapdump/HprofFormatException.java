@@ -16,6 +16,10 @@
 
 package com.android.ahat.heapdump;
 
+/**
+ * Exception thrown when the heap dump parser detects an improperly formatted
+ * heap dump file.
+ */
 public class HprofFormatException extends Exception {
   HprofFormatException(String msg) {
     super(msg);
