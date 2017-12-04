@@ -25,14 +25,14 @@ import java.util.List;
 /**
  * Provides Comparators and helper functions for sorting Instances, Sites, and
  * other things.
- *
+ * <p>
  * Note: The Comparators defined here impose orderings that are inconsistent
  * with equals. They should not be used for element lookup or search. They
  * should only be used for showing elements to the user in different orders.
  */
 public class Sort {
   /**
-   * Compare sizes by their total size.
+   * Compares sizes by their total size.
    * This sorts sizes from smaller total size to larger total size.
    */
   public static final Comparator<Size> SIZE_BY_SIZE = new Comparator<Size>() {
@@ -43,7 +43,7 @@ public class Sort {
   };
 
   /**
-   * Compare instances by their total retained size.
+   * Compares instances by their total retained size.
    * Different instances with the same total retained size are considered
    * equal for the purposes of comparison.
    * This sorts instances from larger retained size to smaller retained size.
@@ -57,12 +57,12 @@ public class Sort {
   };
 
   /**
-   * Compare instances by their retained size for a given heap index.
+   * Compares instances by their retained size for a given heap index.
    * Different instances with the same total retained size are considered
    * equal for the purposes of comparison.
    * This sorts instances from larger retained size to smaller retained size.
    */
-  public static class InstanceByHeapRetainedSize implements Comparator<AhatInstance> {
+  private static class InstanceByHeapRetainedSize implements Comparator<AhatInstance> {
     private AhatHeap mHeap;
 
     public InstanceByHeapRetainedSize(AhatHeap heap) {
@@ -76,16 +76,28 @@ public class Sort {
   }
 
   /**
-   * Compare objects based on a list of comparators, giving priority to the
+   * Compares objects based on a list of comparators, giving priority to the
    * earlier comparators in the list.
    */
-  public static class WithPriority<T> implements Comparator<T> {
+  private static class WithPriority<T> implements Comparator<T> {
     private List<Comparator<T>> mComparators;
 
+    /**
+     * Constructs a comparator giving sort priority to earlier comparators in
+     * the list.
+     *
+     * @param comparators the list of comparators to use for sorting
+     */
     public WithPriority(Comparator<T>... comparators) {
       mComparators = Arrays.asList(comparators);
     }
 
+    /**
+     * Constructs a comparator giving sort priority to earlier comparators in
+     * the list.
+     *
+     * @param comparators the list of comparators to use for sorting
+     */
     public WithPriority(List<Comparator<T>> comparators) {
       mComparators = comparators;
     }
@@ -101,6 +113,27 @@ public class Sort {
     }
   }
 
+  /**
+   * Returns a comparator that gives sort priority to earlier comparators in
+   * the list.
+   *
+   * @param <T> the type of object being sorted
+   * @param comparators the list of comparators to use for sorting
+   * @return the composite comparator
+   */
+  public static <T> Comparator<T> withPriority(Comparator<T>... comparators) {
+    return new WithPriority(comparators);
+  }
+
+  /**
+   * Returns a comparator that gives a default instance sort for the given
+   * snapshot.
+   * Objects are sorted by retained size, with priority given to the "app"
+   * heap if present.
+   *
+   * @param snapshot the snapshot to use the comparator with
+   * @return the default instance comparator
+   */
   public static Comparator<AhatInstance> defaultInstanceCompare(AhatSnapshot snapshot) {
     List<Comparator<AhatInstance>> comparators = new ArrayList<Comparator<AhatInstance>>();
 
@@ -116,14 +149,19 @@ public class Sort {
   }
 
   /**
-   * Compare Sites by the size of objects allocated on a given heap.
+   * Compares Sites by the size of objects allocated on a given heap.
    * Different object infos with the same size on the given heap are
    * considered equal for the purposes of comparison.
    * This sorts sites from larger size to smaller size.
    */
-  public static class SiteByHeapSize implements Comparator<Site> {
+  private static class SiteByHeapSize implements Comparator<Site> {
     AhatHeap mHeap;
 
+    /**
+     * Constructs a SiteByHeapSize comparator.
+     *
+     * @param heap the heap to use when comparing sizes
+     */
     public SiteByHeapSize(AhatHeap heap) {
       mHeap = heap;
     }
@@ -135,7 +173,7 @@ public class Sort {
   }
 
   /**
-   * Compare Sites by the total size of objects allocated.
+   * Compares Sites by the total size of objects allocated.
    * This sorts sites from larger size to smaller size.
    */
   public static final Comparator<Site> SITE_BY_TOTAL_SIZE = new Comparator<Site>() {
@@ -145,6 +183,14 @@ public class Sort {
     }
   };
 
+  /**
+   * Compares Sites using a default comparison order.
+   * This sorts sites from larger size to smaller size, giving preference to
+   * sites with more allocation on the "app" heap, if present.
+   *
+   * @param snapshot the snapshot to use the comparator with
+   * @return the default site comparator
+   */
   public static Comparator<Site> defaultSiteCompare(AhatSnapshot snapshot) {
     List<Comparator<Site>> comparators = new ArrayList<Comparator<Site>>();
 
@@ -174,7 +220,7 @@ public class Sort {
   };
 
   /**
-   * Compare Site.ObjectsInfo by heap name.
+   * Compares Site.ObjectsInfo by heap name.
    * Different object infos with the same heap name are considered equal for
    * the purposes of comparison.
    */
@@ -187,7 +233,7 @@ public class Sort {
   };
 
   /**
-   * Compare Site.ObjectsInfo by class name.
+   * Compares Site.ObjectsInfo by class name.
    * Different object infos with the same class name are considered equal for
    * the purposes of comparison.
    */
@@ -202,7 +248,7 @@ public class Sort {
   };
 
   /**
-   * Compare FieldValue by field name.
+   * Compares FieldValue by field name.
    */
   public static final Comparator<FieldValue> FIELD_VALUE_BY_NAME
     = new Comparator<FieldValue>() {
@@ -213,7 +259,7 @@ public class Sort {
   };
 
   /**
-   * Compare FieldValue by type name.
+   * Compares FieldValue by type name.
    */
   public static final Comparator<FieldValue> FIELD_VALUE_BY_TYPE
     = new Comparator<FieldValue>() {

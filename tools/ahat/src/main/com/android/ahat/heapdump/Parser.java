@@ -31,21 +31,43 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Provides methods for parsing heap dumps.
+ */
 public class Parser {
   private static final int ID_SIZE = 4;
 
+  private Parser() {
+  }
+
   /**
-   * Parse the given heap dump using the given proguard map for deobfuscation.
-   * We make the following assumptions about valid heap dumps:
-   * Class serial numbers, stack frames, and stack traces
-   * individually satisfy the following:
-   *  - all elements are defined before they are referenced.
-   *  - ids are densely packed in some range [a, b] where a is not
-   *    necessarily 0.
-   *  - there are not more than 2^31 elements defined.
-   * All classes are defined via a LOAD CLASS record before the first heap
-   * dump segment.
-   * The ID size used in the heap dump is 4 bytes.
+   * Parses a heap dump from a File.
+   * <p>
+   * The heap dump should be a heap dump in the J2SE HPROF format optionally
+   * with Android extensions and satisfying the following additional
+   * constraints:
+   * <ul>
+   * <li>
+   * Class serial numbers, stack frames, and stack traces individually satisfy
+   * the following:
+   * <ul>
+   *   <li> All elements are defined before they are referenced.
+   *   <li> Ids are densely packed in some range [a, b] where a is not necessarily 0.
+   *   <li> There are not more than 2^31 elements defined.
+   * </ul>
+   * <li> All classes are defined via a LOAD CLASS record before the first
+   * heap dump segment.
+   * <li> The ID size used in the heap dump is 4 bytes.
+   * </ul>
+   * <p>
+   * The given proguard map will be used to deobfuscate class names, field
+   * names, and stack traces in the heap dump.
+   *
+   * @param hprof the hprof file to parse
+   * @param map the proguard map for deobfuscation
+   * @return the parsed heap dump
+   * @throws IOException if the heap dump could not be read
+   * @throws HprofFormatException if the heap dump is not properly formatted
    */
   public static AhatSnapshot parseHeapDump(File hprof, ProguardMap map)
     throws IOException, HprofFormatException {
@@ -57,7 +79,33 @@ public class Parser {
   }
 
   /**
-   * Parse a heap dump from a byte buffer.
+   * Parses a heap dump from a byte buffer.
+   * <p>
+   * The heap dump should be a heap dump in the J2SE HPROF format optionally
+   * with Android extensions and satisfying the following additional
+   * constraints:
+   * <ul>
+   * <li>
+   * Class serial numbers, stack frames, and stack traces individually satisfy
+   * the following:
+   * <ul>
+   *   <li> All elements are defined before they are referenced.
+   *   <li> Ids are densely packed in some range [a, b] where a is not necessarily 0.
+   *   <li> There are not more than 2^31 elements defined.
+   * </ul>
+   * <li> All classes are defined via a LOAD CLASS record before the first
+   * heap dump segment.
+   * <li> The ID size used in the heap dump is 4 bytes.
+   * </ul>
+   * <p>
+   * The given proguard map will be used to deobfuscate class names, field
+   * names, and stack traces in the heap dump.
+   *
+   * @param hprof the bytes of the hprof file to parse
+   * @param map the proguard map for deobfuscation
+   * @return the parsed heap dump
+   * @throws IOException if the heap dump could not be read
+   * @throws HprofFormatException if the heap dump is not properly formatted
    */
   public static AhatSnapshot parseHeapDump(ByteBuffer hprof, ProguardMap map)
     throws IOException, HprofFormatException {

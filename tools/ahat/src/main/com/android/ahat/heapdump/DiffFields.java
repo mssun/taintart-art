@@ -22,12 +22,16 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * This class contains a routine for diffing two collections of static or
- * instance fields.
+ * Provides a routine for diffing two collections of static or instance
+ * fields.
  */
 public class DiffFields {
   /**
-   * Return the result of diffing two collections of field values.
+   * Returns the result of diffing two collections of field values.
+   *
+   * @param current a list of fields in the current heap dump
+   * @param baseline a list of fields in the baseline heap dump
+   * @return list of diffed fields
    */
   public static List<DiffedFieldValue> diff(Iterable<FieldValue> current,
                                             Iterable<FieldValue> baseline) {
@@ -85,5 +89,5 @@ public class DiffFields {
    * by field name and type.
    */
   private static final Comparator<FieldValue> FOR_DIFF
-    = new Sort.WithPriority(Sort.FIELD_VALUE_BY_NAME, Sort.FIELD_VALUE_BY_TYPE);
+    = Sort.withPriority(Sort.FIELD_VALUE_BY_NAME, Sort.FIELD_VALUE_BY_TYPE);
 }
