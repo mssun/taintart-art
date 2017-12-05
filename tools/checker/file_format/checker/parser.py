@@ -44,7 +44,33 @@ def __extractLine(prefix, line, arch = None, debuggable = False):
   else:
     return None
 
-def __processLine(line, lineNo, prefix, fileName):
+def __preprocessLineForStart(prefix, line, targetArch):
+  """ This function modifies a CHECK-START-{x,y,z} into a matching
+      CHECK-START-y line for matching targetArch y. If no matching
+      architecture is found, CHECK-START-x is returned arbitrarily
+      to ensure all following check lines are put into a test that
+      is skipped. Any other line is left unmodified.
+  """
+  if targetArch is not None:
+    if prefix in line:
+      # Find { } on the line and assume that defines the set.
+      s = line.find('{')
+      e = line.find('}')
+      if 0 < s and s < e:
+        archs = line[s+1:e].split(',')
+        # First verify that every archs is valid. Return the
+        # full line on failure to prompt error back to user.
+        for arch in archs:
+          if not arch in archs_list:
+            return line
+        # Now accept matching arch or arbitrarily return first.
+        if targetArch in archs:
+          return line[:s] + targetArch + line[e + 1:]
+        else:
+          return line[:s] + archs[0] + line[e + 1:]
+  return line
+
+def __processLine(line, lineNo, prefix, fileName, targetArch):
   """ This function is invoked on each line of the check file and returns a triplet
       which instructs the parser how the line should be handled. If the line is
       to be included in the current check group, it is returned in the first
@@ -56,10 +82,11 @@ def __processLine(line, lineNo, prefix, fileName):
     return None, None, None
 
   # Lines beginning with 'CHECK-START' start a new test case.
-  # We currently only consider the architecture suffix in "CHECK-START" lines.
+  # We currently only consider the architecture suffix(es) in "CHECK-START" lines.
   for debuggable in [True, False]:
+    sline = __preprocessLineForStart(prefix + "-START", line, targetArch)
     for arch in [None] + archs_list:
-      startLine = __extractLine(prefix + "-START", line, arch, debuggable)
+      startLine = __extractLine(prefix + "-START", sline, arch, debuggable)
       if startLine is not None:
         return None, startLine, (arch, debuggable)
 
@@ -164,9 +191,9 @@ def ParseCheckerAssertion(parent, line, variant, lineNo):
         assertion.addExpression(TestExpression.createPatternFromPlainText(text))
   return assertion
 
-def ParseCheckerStream(fileName, prefix, stream):
+def ParseCheckerStream(fileName, prefix, stream, targetArch = None):
   checkerFile = CheckerFile(fileName)
-  fnProcessLine = lambda line, lineNo: __processLine(line, lineNo, prefix, fileName)
+  fnProcessLine = lambda line, lineNo: __processLine(line, lineNo, prefix, fileName, targetArch)
   fnLineOutsideChunk = lambda line, lineNo: \
       Logger.fail("Checker line not inside a group", fileName, lineNo)
   for caseName, caseLines, startLineNo, testData in \
