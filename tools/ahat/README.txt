@@ -30,7 +30,6 @@ TODO:
  * Show somewhere where to send bugs.
  * Include a link to /objects in the overview and menu?
  * Turn on LOCAL_JAVACFLAGS := -Xlint:unchecked -Werror
- * Use hex for object ids in URLs?
 
  * [low priority] by site allocations won't line up if the stack has been
    truncated. Is there any way to manually line them up in that case?
@@ -54,7 +53,15 @@ Reported Issues:
  * Request to be able to sort tables by size.
 
 Release History:
- 1.5 Pending
+ 1.6 Pending
+
+ 1.5 December 05, 2017
+   Distinguish between weakly reachable and unreachable instances.
+   Allow hex ids to be used for objects in query parameters.
+   Restore old presentation of sample paths from gc roots.
+   Fix bug in selection of sample paths from gc root.
+   Fix bug in proguard deobfuscation of stack frames.
+   Tighten up and document ahat public API.
 
  1.4 October 03, 2017
    Give better error messages on failure to launch ahat.
