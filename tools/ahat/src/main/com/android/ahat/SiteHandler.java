@@ -88,7 +88,7 @@ class SiteHandler implements AhatHandler {
         new Column("Class"));
 
     List<Site.ObjectsInfo> infos = site.getObjectsInfos();
-    Comparator<Site.ObjectsInfo> compare = new Sort.WithPriority<Site.ObjectsInfo>(
+    Comparator<Site.ObjectsInfo> compare = Sort.withPriority(
         Sort.OBJECTS_INFO_BY_HEAP_NAME,
         Sort.OBJECTS_INFO_BY_SIZE,
         Sort.OBJECTS_INFO_BY_CLASS_NAME);

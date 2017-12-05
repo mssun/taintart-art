@@ -23,38 +23,72 @@ import java.util.List;
 import java.util.Queue;
 
 /**
- * Generic DominatorsComputation.
- *
- * To use the dominators computation, have your graph nodes implement the
- * DominatorsComputation.Node interface, then call
- * DominatorsComputation.computeDominators on the single root node.
+ * Provides a static method for computing the immediate dominators of a
+ * directed graph. It can be used with any directed graph data structure
+ * that implements the {@link DominatorsComputation.Node} interface and has
+ * some root node with no incoming edges.
  */
 public class DominatorsComputation {
+  private DominatorsComputation() {
+  }
+
   /**
-   * Interface for a directed graph to perform the dominators computation on.
+   * Interface for a directed graph to perform immediate dominators
+   * computation on.
+   * The dominators computation can be used with directed graph data
+   * structures that implement this <code>Node</code> interface. To use the
+   * dominators computation on your graph, you must make the following
+   * functionality available to the dominators computation:
+   * <ul>
+   * <li>Efficiently mapping from node to associated internal dominators
+   *     computation state using the
+   *     {@link #setDominatorsComputationState setDominatorsComputationState} and
+   *     {@link #getDominatorsComputationState getDominatorsComputationState} methods.
+   * <li>Iterating over all outgoing edges of an node using the
+   *     {@link #getReferencesForDominators getReferencesForDominators} method.
+   * <li>Setting the computed dominator for a node using the
+   *     {@link #setDominator setDominator} method.
+   * </ul>
    */
   public interface Node {
     /**
-     * Associate the given dominator state with this node.
+     * Associates the given dominator state with this node. Subsequent calls to
+     * {@link #getDominatorsComputationState getDominatorsComputationState} on
+     * this node should return the state given here. At the conclusion of the
+     * dominators computation, this method will be called for
+     * each node with <code>state</code> set to null.
+     *
+     * @param state the dominator state to associate with this node
      */
     void setDominatorsComputationState(Object state);
 
     /**
-     * Get the most recent dominator state associated with this node using
-     * setDominatorsComputationState. If setDominatorsComputationState has not
-     * yet been called, this should return null.
+     * Returns the dominator state most recently associated with this node
+     * by a call to {@link #setDominatorsComputationState setDominatorsComputationState}.
+     * If <code>setDominatorsComputationState</code> has not yet been called
+     * on this node for this dominators computation, this method should return
+     * null.
+     *
+     * @return the associated dominator state
      */
     Object getDominatorsComputationState();
 
     /**
-     * Return a collection of nodes referenced from this node, for the
-     * purposes of computing dominators.
+     * Returns a collection of nodes referenced from this node, for the
+     * purposes of computing dominators. This method will be called at most
+     * once for each node reachable from the root node of the dominators
+     * computation.
+     *
+     * @return an iterable collection of the nodes with an incoming edge from
+     *         this node.
      */
     Iterable<? extends Node> getReferencesForDominators();
 
     /**
-     * Update this node's dominator based on the results of the dominators
+     * Sets the dominator for this node based on the results of the dominators
      * computation.
+     *
+     * @param dominator the computed immediate dominator of this node
      */
     void setDominator(Node dominator);
   }
@@ -112,8 +146,14 @@ public class DominatorsComputation {
   }
 
   /**
-   * Compute the dominator tree rooted at the given node.
-   * There must not be any incoming references to the root node.
+   * Computes the immediate dominators of all nodes reachable from the <code>root</code> node.
+   * There must not be any incoming references to the <code>root</code> node.
+   * <p>
+   * The result of this function is to call the {@link Node#setDominator}
+   * function on every node reachable from the root node.
+   *
+   * @param root the root node of the dominators computation
+   * @see Node
    */
   public static void computeDominators(Node root) {
     long id = 0;

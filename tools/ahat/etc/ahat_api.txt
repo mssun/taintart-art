@@ -9,7 +9,6 @@ package com.android.ahat {
 package com.android.ahat.dominators {
 
   public class DominatorsComputation {
-    ctor public DominatorsComputation();
     method public static void computeDominators(com.android.ahat.dominators.DominatorsComputation.Node);
   }
 
@@ -109,7 +108,6 @@ package com.android.ahat.heapdump {
   }
 
   public class Diff {
-    ctor public Diff();
     method public static void snapshots(com.android.ahat.heapdump.AhatSnapshot, com.android.ahat.heapdump.AhatSnapshot);
   }
 
@@ -159,7 +157,6 @@ package com.android.ahat.heapdump {
   }
 
   public class Parser {
-    ctor public Parser();
     method public static com.android.ahat.heapdump.AhatSnapshot parseHeapDump(java.io.File, com.android.ahat.proguard.ProguardMap) throws com.android.ahat.heapdump.HprofFormatException, java.io.IOException;
     method public static com.android.ahat.heapdump.AhatSnapshot parseHeapDump(java.nio.ByteBuffer, com.android.ahat.proguard.ProguardMap) throws com.android.ahat.heapdump.HprofFormatException, java.io.IOException;
   }
@@ -210,11 +207,9 @@ package com.android.ahat.heapdump {
   }
 
   public static class Site.ObjectsInfo implements com.android.ahat.heapdump.Diffable {
-    ctor public Site.ObjectsInfo(com.android.ahat.heapdump.AhatHeap, com.android.ahat.heapdump.AhatClassObj);
     method public com.android.ahat.heapdump.Site.ObjectsInfo getBaseline();
     method public java.lang.String getClassName();
     method public boolean isPlaceHolder();
-    method public void setBaseline(com.android.ahat.heapdump.Site.ObjectsInfo);
     field public com.android.ahat.heapdump.AhatClassObj classObj;
     field public com.android.ahat.heapdump.AhatHeap heap;
     field public com.android.ahat.heapdump.Size numBytes;
@@ -236,6 +231,7 @@ package com.android.ahat.heapdump {
     ctor public Sort();
     method public static java.util.Comparator<com.android.ahat.heapdump.AhatInstance> defaultInstanceCompare(com.android.ahat.heapdump.AhatSnapshot);
     method public static java.util.Comparator<com.android.ahat.heapdump.Site> defaultSiteCompare(com.android.ahat.heapdump.AhatSnapshot);
+    method public static <T> java.util.Comparator<T> withPriority(java.util.Comparator<T>...);
     field public static final java.util.Comparator<com.android.ahat.heapdump.FieldValue> FIELD_VALUE_BY_NAME;
     field public static final java.util.Comparator<com.android.ahat.heapdump.FieldValue> FIELD_VALUE_BY_TYPE;
     field public static final java.util.Comparator<com.android.ahat.heapdump.AhatInstance> INSTANCE_BY_TOTAL_RETAINED_SIZE;
@@ -244,22 +240,6 @@ package com.android.ahat.heapdump {
     field public static final java.util.Comparator<com.android.ahat.heapdump.Site.ObjectsInfo> OBJECTS_INFO_BY_SIZE;
     field public static final java.util.Comparator<com.android.ahat.heapdump.Site> SITE_BY_TOTAL_SIZE;
     field public static final java.util.Comparator<com.android.ahat.heapdump.Size> SIZE_BY_SIZE;
-  }
-
-  public static class Sort.InstanceByHeapRetainedSize implements java.util.Comparator {
-    ctor public Sort.InstanceByHeapRetainedSize(com.android.ahat.heapdump.AhatHeap);
-    method public int compare(com.android.ahat.heapdump.AhatInstance, com.android.ahat.heapdump.AhatInstance);
-  }
-
-  public static class Sort.SiteByHeapSize implements java.util.Comparator {
-    ctor public Sort.SiteByHeapSize(com.android.ahat.heapdump.AhatHeap);
-    method public int compare(com.android.ahat.heapdump.Site, com.android.ahat.heapdump.Site);
-  }
-
-  public static class Sort.WithPriority<T> implements java.util.Comparator {
-    ctor public Sort.WithPriority(java.util.Comparator<T>...);
-    ctor public Sort.WithPriority(java.util.List<java.util.Comparator<T>>);
-    method public int compare(T, T);
   }
 
   public final class Type extends java.lang.Enum {
@@ -285,7 +265,6 @@ package com.android.ahat.heapdump {
     method public java.lang.Integer asInteger();
     method public java.lang.Long asLong();
     method public abstract boolean equals(java.lang.Object);
-    method public com.android.ahat.heapdump.Value getBaseline();
     method public static com.android.ahat.heapdump.Value getBaseline(com.android.ahat.heapdump.Value);
     method public static com.android.ahat.heapdump.Type getType(com.android.ahat.heapdump.Value);
     method public boolean isAhatInstance();

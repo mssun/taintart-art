@@ -17,12 +17,19 @@
 package com.android.ahat.heapdump;
 
 /**
- * An interface for objects that have corresponding objects in a baseline heap
- * dump.
+ * An interface for instances/sites/heaps/etc in a heap dump that can be
+ * related to corresponding instances/sites/heaps/etc in a second heap dump
+ * when the two heap dumps have been diffed.
  */
 public interface Diffable<T> {
   /**
-   * Return the baseline object that corresponds to this one.
+   * Returns the object in the other heap dump that corresponds to this object.
+   * When two heap dumps are diffed, diffable objects from the first heap dump
+   * will be matched to "baseline" objects from the second heap dump, and
+   * diffable objects from the second heap dump will be matched to "baseline"
+   * objects from the first heap dump.
+   *
+   * @return the matched object from the other heap dump
    */
   T getBaseline();
 
@@ -32,6 +39,8 @@ public interface Diffable<T> {
    * baseline heap dump that is not in this heap dump. In that case, we create
    * a dummy place holder object in this heap dump as an indicator of the
    * object removed from the baseline heap dump.
+   *
+   * @return true if the object is a placeholder
    */
   boolean isPlaceHolder();
 }

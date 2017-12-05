@@ -16,18 +16,63 @@
 
 package com.android.ahat.heapdump;
 
+/**
+ * Enum corresponding to basic types from the binary heap dump format.
+ */
 public enum Type {
+  /**
+   * Type used for any Java object.
+   */
   OBJECT("Object", 4),
+
+  /**
+   * The primitive boolean type.
+   */
   BOOLEAN("boolean", 1),
+
+  /**
+   * The primitive char type.
+   */
   CHAR("char", 2),
+
+  /**
+   * The primitive float type.
+   */
   FLOAT("float", 4),
+
+  /**
+   * The primitive double type.
+   */
   DOUBLE("double", 8),
+
+  /**
+   * The primitive byte type.
+   */
   BYTE("byte", 1),
+
+  /**
+   * The primitive short type.
+   */
   SHORT("short", 2),
+
+  /**
+   * The primitive int type.
+   */
   INT("int", 4),
+
+  /**
+   * The primitive long type.
+   */
   LONG("long", 8);
 
+  /**
+   * The name of the type.
+   */
   public final String name;
+
+  /**
+   * The number of bytes taken up by values of this type in the Java heap.
+   */
   final int size;
 
   Type(String name, int size) {

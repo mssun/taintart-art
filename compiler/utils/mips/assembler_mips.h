@@ -74,6 +74,81 @@ enum FPClassMaskType {
   kPositiveZero      = 0x200,
 };
 
+// Instruction description in terms of input and output registers.
+// Used for instruction reordering.
+struct InOutRegMasks {
+  InOutRegMasks()
+      : gpr_outs_(0), gpr_ins_(0), fpr_outs_(0), fpr_ins_(0), cc_outs_(0), cc_ins_(0) {}
+
+  inline InOutRegMasks& GprOuts(Register reg) {
+    gpr_outs_ |= (1u << reg);
+    gpr_outs_ &= ~1u;  // Ignore register ZERO.
+    return *this;
+  }
+  template<typename T, typename... Ts>
+  inline InOutRegMasks& GprOuts(T one, Ts... more) { GprOuts(one); GprOuts(more...); return *this; }
+
+  inline InOutRegMasks& GprIns(Register reg) {
+    gpr_ins_ |= (1u << reg);
+    gpr_ins_ &= ~1u;  // Ignore register ZERO.
+    return *this;
+  }
+  template<typename T, typename... Ts>
+  inline InOutRegMasks& GprIns(T one, Ts... more) { GprIns(one); GprIns(more...); return *this; }
+
+  inline InOutRegMasks& GprInOuts(Register reg) { GprIns(reg); GprOuts(reg); return *this; }
+  template<typename T, typename... Ts>
+  inline InOutRegMasks& GprInOuts(T one, Ts... more) {
+    GprInOuts(one);
+    GprInOuts(more...);
+    return *this;
+  }
+
+  inline InOutRegMasks& FprOuts(FRegister reg) { fpr_outs_ |= (1u << reg); return *this; }
+  inline InOutRegMasks& FprOuts(VectorRegister reg) { return FprOuts(static_cast<FRegister>(reg)); }
+  template<typename T, typename... Ts>
+  inline InOutRegMasks& FprOuts(T one, Ts... more) { FprOuts(one); FprOuts(more...); return *this; }
+
+  inline InOutRegMasks& FprIns(FRegister reg) { fpr_ins_ |= (1u << reg); return *this; }
+  inline InOutRegMasks& FprIns(VectorRegister reg) { return FprIns(static_cast<FRegister>(reg)); }
+  template<typename T, typename... Ts>
+  inline InOutRegMasks& FprIns(T one, Ts... more) { FprIns(one); FprIns(more...); return *this; }
+
+  inline InOutRegMasks& FprInOuts(FRegister reg) { FprIns(reg); FprOuts(reg); return *this; }
+  inline InOutRegMasks& FprInOuts(VectorRegister reg) {
+    return FprInOuts(static_cast<FRegister>(reg));
+  }
+  template<typename T, typename... Ts>
+  inline InOutRegMasks& FprInOuts(T one, Ts... more) {
+    FprInOuts(one);
+    FprInOuts(more...);
+    return *this;
+  }
+
+  inline InOutRegMasks& CcOuts(int cc) { cc_outs_ |= (1u << cc); return *this; }
+  template<typename T, typename... Ts>
+  inline InOutRegMasks& CcOuts(T one, Ts... more) { CcOuts(one); CcOuts(more...); return *this; }
+
+  inline InOutRegMasks& CcIns(int cc) { cc_ins_ |= (1u << cc); return *this; }
+  template<typename T, typename... Ts>
+  inline InOutRegMasks& CcIns(T one, Ts... more) { CcIns(one); CcIns(more...); return *this; }
+
+  // Mask of output GPRs for the instruction.
+  uint32_t gpr_outs_;
+  // Mask of input GPRs for the instruction.
+  uint32_t gpr_ins_;
+  // Mask of output FPRs for the instruction.
+  uint32_t fpr_outs_;
+  // Mask of input FPRs for the instruction.
+  uint32_t fpr_ins_;
+  // Mask of output FPU condition code flags for the instruction.
+  uint32_t cc_outs_;
+  // Mask of input FPU condition code flags for the instruction.
+  uint32_t cc_ins_;
+
+  // TODO: add LO and HI.
+};
+
 class MipsLabel : public Label {
  public:
   MipsLabel() : prev_branch_id_plus_one_(0) {}
@@ -462,6 +537,16 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
   void FloorWS(FRegister fd, FRegister fs);
   void FloorWD(FRegister fd, FRegister fs);
 
+  // Note, the 32 LSBs of a 64-bit value must be loaded into an FPR before the 32 MSBs
+  // when loading the value as 32-bit halves. This applies to all 32-bit FPR loads:
+  // Mtc1(), Mthc1(), MoveToFpuHigh(), Lwc1(). Even if you need two Mtc1()'s or two
+  // Lwc1()'s to load a pair of 32-bit FPRs and these loads do not interfere with one
+  // another (unlike Mtc1() and Mthc1() with 64-bit FPRs), maintain the order:
+  // low then high.
+  //
+  // Also, prefer MoveFromFpuHigh()/MoveToFpuHigh() over Mfhc1()/Mthc1() and Mfc1()/Mtc1().
+  // This will save you some if statements.
+  FRegister GetFpuRegLow(FRegister reg);
   void Mfc1(Register rt, FRegister fs);
   void Mtc1(Register rt, FRegister fs);
   void Mfhc1(Register rt, FRegister fs);
@@ -1337,23 +1422,13 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
   // Used to make the decision of moving the instruction into a delay slot.
   struct DelaySlot {
     DelaySlot();
+
     // Encoded instruction that may be used to fill the delay slot or 0
     // (0 conveniently represents NOP).
     uint32_t instruction_;
-    // Mask of output GPRs for the instruction.
-    uint32_t gpr_outs_mask_;
-    // Mask of input GPRs for the instruction.
-    uint32_t gpr_ins_mask_;
-    // Mask of output FPRs for the instruction.
-    uint32_t fpr_outs_mask_;
-    // Mask of input FPRs for the instruction.
-    uint32_t fpr_ins_mask_;
-    // Mask of output FPU condition code flags for the instruction.
-    uint32_t cc_outs_mask_;
-    // Mask of input FPU condition code flags for the instruction.
-    uint32_t cc_ins_mask_;
-    // Branches never operate on the LO and HI registers, hence there's
-    // no mask for LO and HI.
+
+    // Input/output register masks.
+    InOutRegMasks masks_;
 
     // Label for patchable instructions to allow moving them into delay slots.
     MipsLabel* patcher_label_;
@@ -1646,30 +1721,8 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
   void FinalizeLabeledBranch(MipsLabel* label);
 
   // Various helpers for branch delay slot management.
-  void DsFsmInstr(uint32_t instruction,
-                  uint32_t gpr_outs_mask,
-                  uint32_t gpr_ins_mask,
-                  uint32_t fpr_outs_mask,
-                  uint32_t fpr_ins_mask,
-                  uint32_t cc_outs_mask,
-                  uint32_t cc_ins_mask,
-                  MipsLabel* patcher_label = nullptr);
+  InOutRegMasks& DsFsmInstr(uint32_t instruction, MipsLabel* patcher_label = nullptr);
   void DsFsmInstrNop(uint32_t instruction);
-  void DsFsmInstrRrr(uint32_t instruction,
-                     Register out,
-                     Register in1,
-                     Register in2,
-                     MipsLabel* patcher_label = nullptr);
-  void DsFsmInstrRrrr(uint32_t instruction, Register in1_out, Register in2, Register in3);
-  void DsFsmInstrFff(uint32_t instruction, FRegister out, FRegister in1, FRegister in2);
-  void DsFsmInstrFfff(uint32_t instruction, FRegister in1_out, FRegister in2, FRegister in3);
-  void DsFsmInstrFffr(uint32_t instruction, FRegister in1_out, FRegister in2, Register in3);
-  void DsFsmInstrRf(uint32_t instruction, Register out, FRegister in);
-  void DsFsmInstrFr(uint32_t instruction, FRegister out, Register in);
-  void DsFsmInstrFR(uint32_t instruction, FRegister in1, Register in2);
-  void DsFsmInstrCff(uint32_t instruction, int cc_out, FRegister in1, FRegister in2);
-  void DsFsmInstrRrrc(uint32_t instruction, Register in1_out, Register in2, int cc_in);
-  void DsFsmInstrFffc(uint32_t instruction, FRegister in1_out, FRegister in2, int cc_in);
   void DsFsmLabel();
   void DsFsmCommitLabel();
   void DsFsmDropLabel();

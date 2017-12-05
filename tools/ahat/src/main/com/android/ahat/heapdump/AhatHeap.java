@@ -16,6 +16,13 @@
 
 package com.android.ahat.heapdump;
 
+/**
+ * Used to identify and access basic information about a particular
+ * heap from the heap dump. Standard Java heap dumps have a single heap,
+ * called the "default" heap. Android heap dumps distinguish among "zygote",
+ * "image", and "app" heaps. There will be a single instance of AhatHeap for
+ * each different heap in the heap dump.
+ */
 public class AhatHeap implements Diffable<AhatHeap> {
   private String mName;
   private Size mSize = Size.ZERO;
@@ -61,6 +68,9 @@ public class AhatHeap implements Diffable<AhatHeap> {
 
   /**
    * Returns the name of this heap.
+   * For example, "default", "app", "image", or "zygote".
+   *
+   * @return The name of the heap.
    */
   public String getName() {
     return mName;
@@ -68,6 +78,8 @@ public class AhatHeap implements Diffable<AhatHeap> {
 
   /**
    * Returns the total number of bytes allocated on this heap.
+   *
+   * @return the total number of bytes allocated on this heap.
    */
   public Size getSize() {
     return mSize;

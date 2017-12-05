@@ -20,6 +20,13 @@ import java.util.AbstractList;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * A class from a parsed heap dump.
+ * In addition to those methods inherited from {@link AhatInstance}, the class
+ * provides methods for accessing information about the class object, such as
+ * the class loader, superclass, static field values and instance field
+ * descriptors.
+ */
 public class AhatClassObj extends AhatInstance {
   private String mClassName;
   private AhatClassObj mSuperClassObj;
@@ -56,6 +63,9 @@ public class AhatClassObj extends AhatInstance {
 
   /**
    * Returns the name of the class this is a class object for.
+   * For example, "java.lang.String".
+   *
+   * @return the name of the class
    */
   public String getName() {
     return mClassName;
@@ -63,6 +73,8 @@ public class AhatClassObj extends AhatInstance {
 
   /**
    * Returns the superclass of this class object.
+   *
+   * @return the superclass object
    */
   public AhatClassObj getSuperClassObj() {
     return mSuperClassObj;
@@ -70,14 +82,18 @@ public class AhatClassObj extends AhatInstance {
 
   /**
    * Returns the class loader of this class object.
+   *
+   * @return the class loader object
    */
   public AhatInstance getClassLoader() {
     return mClassLoader;
   }
 
   /**
-   * Returns the size of instances of this object, as reported in the heap
-   * dump.
+   * Returns the size of instances of this object.
+   * The size returned is as reported in the heap dump.
+   *
+   * @return the class instance size
    */
   public long getInstanceSize() {
     return mInstanceSize;
@@ -85,6 +101,8 @@ public class AhatClassObj extends AhatInstance {
 
   /**
    * Returns the static field values for this class object.
+   *
+   * @return the static field values
    */
   public List<FieldValue> getStaticFieldValues() {
     return Arrays.asList(mStaticFieldValues);
@@ -92,6 +110,9 @@ public class AhatClassObj extends AhatInstance {
 
   /**
    * Returns the fields of instances of this class.
+   * Does not include fields from the super class of this class.
+   *
+   * @return the instance fields
    */
   public Field[] getInstanceFields() {
     return mInstanceFields;

@@ -24,6 +24,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Used to collection information about objects allocated at a particular
+ * allocation site.
+ */
 public class Site implements Diffable<Site> {
   // The site that this site was directly called from.
   // mParent is null for the root site.
@@ -61,18 +65,39 @@ public class Site implements Diffable<Site> {
 
   private Site mBaseline;
 
+  /**
+   * Summary information about instances allocated at a particular allocation
+   * site that are instances of a particular class and allocated on a
+   * particular heap.
+   */
   public static class ObjectsInfo implements Diffable<ObjectsInfo> {
+    /**
+     * The heap that the summarized objects belong to.
+     */
     public AhatHeap heap;
-    public AhatClassObj classObj;   // May be null.
+
+    /**
+     * The class of the summarized objects.
+     */
+    public AhatClassObj classObj;   // May be null. Not sure why.
+
+    /**
+     * The number of instances included in the summary.
+     */
     public long numInstances;
+
+    /**
+     * The sum of the shallow size of each instance included in the summary.
+     */
     public Size numBytes;
+
     private ObjectsInfo baseline;
 
     /**
-     * Construct a new, empty objects info for the given heap and class
+     * Constructs a new, empty objects info for the given heap and class
      * combination.
      */
-    public ObjectsInfo(AhatHeap heap, AhatClassObj classObj) {
+    ObjectsInfo(AhatHeap heap, AhatClassObj classObj) {
       this.heap = heap;
       this.classObj = classObj;
       this.numInstances = 0;
@@ -82,12 +107,14 @@ public class Site implements Diffable<Site> {
 
     /**
      * Returns the name of the class this ObjectsInfo is associated with.
+     *
+     * @return the name of this object info's class
      */
     public String getClassName() {
       return classObj == null ? "???" : classObj.getName();
     }
 
-    public void setBaseline(ObjectsInfo baseline) {
+    void setBaseline(ObjectsInfo baseline) {
       this.baseline = baseline;
     }
 
@@ -121,11 +148,11 @@ public class Site implements Diffable<Site> {
   }
 
   /**
-   * Get a child site of this site.
-   * Returns the site at which the instance was allocated.
-   * @param frames - The list of frames in the stack trace, starting with the
-   *                 inner-most frame. May be null, in which case this site is
-   *                 returned.
+   * Gets a child site of this site.
+   * @param frames the list of frames in the stack trace, starting with the
+   *               inner-most frame. May be null, in which case this site is
+   *               returned.
+   * @return the child site
    */
   Site getSite(ProguardMap.Frame[] frames) {
     return frames == null ? this : getSite(this, frames);
@@ -211,22 +238,29 @@ public class Site implements Diffable<Site> {
     return id;
   }
 
-  // Get the size of a site for a specific heap.
+  /**
+   * Returns the size of all objects on the given heap allocated at this site.
+   * Includes objects belonging to <code>heap</code> allocated at this and
+   * child sites.
+   *
+   * @param heap the heap to query the size for
+   * @return the total shallow size of objects in this site
+   */
   public Size getSize(AhatHeap heap) {
     return mSizesByHeap[heap.getIndex()];
   }
 
   /**
-   * Collect the objects allocated under this site, optionally filtered by
+   * Collects the objects allocated under this site, optionally filtered by
    * heap name or class name. Includes objects allocated in children sites.
-   * @param heapName - The name of the heap the collected objects should
-   *                   belong to. This may be null to indicate objects of
-   *                   every heap should be collected.
-   * @param className - The name of the class the collected objects should
-   *                    belong to. This may be null to indicate objects of
-   *                    every class should be collected.
-   * @param objects - Out parameter. A collection of objects that all
-   *                  collected objects should be added to.
+   * @param heapName the name of the heap the collected objects should
+   *                 belong to. This may be null to indicate objects of
+   *                 every heap should be collected.
+   * @param className the name of the class the collected objects should
+   *                  belong to. This may be null to indicate objects of
+   *                  every class should be collected.
+   * @param objects out parameter. A collection of objects that all
+   *                collected objects should be added to.
    */
   public void getObjects(String heapName, String className, Collection<AhatInstance> objects) {
     for (AhatInstance inst : mObjects) {
@@ -263,11 +297,24 @@ public class Site implements Diffable<Site> {
     return info;
   }
 
+  /**
+   * Return a summary breakdown of the objects allocated at this site.
+   * Objects are grouped by class and heap and summarized into a single
+   * {@link ObjectsInfo}. This method returns all the groups for this
+   * allocation site.
+   *
+   * @return all ObjectInfo summaries for instances allocated at this site
+   */
   public List<ObjectsInfo> getObjectsInfos() {
     return mObjectsInfos;
   }
 
-  // Get the combined size of the site for all heaps.
+  /**
+   * Returns the combined size of the site for all heaps.
+   * Includes all objects allocated at this and child sites.
+   *
+   * @return total shallow size of objects in this site
+   */
   public Size getTotalSize() {
     Size total = Size.ZERO;
     for (Size size : mSizesByHeap) {
@@ -277,39 +324,70 @@ public class Site implements Diffable<Site> {
   }
 
   /**
-   * Return the site this site was called from.
+   * Returns the site this site was called from.
    * Returns null for the root site.
+   *
+   * @return the site this site was called from
    */
   public Site getParent() {
     return mParent;
   }
 
+  /**
+   * Returns the name of the method this allocation site belongs to.
+   * For example, "equals".
+   *
+   * @return the method name of the allocation site
+   */
   public String getMethodName() {
     return mMethodName;
   }
 
+  /**
+   * Returns the signature of the method this allocation site belongs to.
+   * For example, "(Ljava/lang/Object;)Z".
+   *
+   * @return the signature of method the allocation site belongs to
+   */
   public String getSignature() {
     return mSignature;
   }
 
+  /**
+   * Returns the name of the Java file where this allocation site is found.
+   *
+   * @return the file the allocation site belongs to
+   */
   public String getFilename() {
     return mFilename;
   }
 
+  /**
+   * Returns the line number of the code in the source file that the
+   * allocation site refers to.
+   *
+   * @return the allocation site line number
+   */
   public int getLineNumber() {
     return mLineNumber;
   }
 
   /**
    * Returns the unique id of this site.
+   * This is an arbitrary unique id computed after processing the heap dump.
+   *
+   * @return the site id
    */
   public long getId() {
     return mId;
   }
 
   /**
-   * Find the child site with the given id.
+   * Returns the child site with the given id.
    * Returns null if no such site was found.
+   *
+   * @param id the id of the child site to find
+   * @return the found child site
    */
   public Site findSite(long id) {
     if (id == mId) {
@@ -341,6 +419,8 @@ public class Site implements Diffable<Site> {
 
   /**
    * Returns an unmodifiable list of this site's immediate children.
+   *
+   * @return this site's child sites
    */
   public List<Site> getChildren() {
     return Collections.unmodifiableList(mChildren);

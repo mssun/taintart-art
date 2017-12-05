@@ -20,6 +20,15 @@ import java.awt.image.BufferedImage;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
+/**
+ * A typical Java object from a parsed heap dump.
+ * Note that this is used for Java objects that are instances of classes (as
+ * opposed to arrays), not for class objects themselves.
+ * See {@link AhatClassObj } for the representation of class objects.
+ * <p>
+ * This class provides a method for iterating over the instance fields of the
+ * object in addition to those methods inherited from {@link AhatInstance}.
+ */
 public class AhatClassInstance extends AhatInstance {
   // Instance fields of the object. These are stored in order of the instance
   // field descriptors from the class object, starting with this class first,
@@ -84,6 +93,10 @@ public class AhatClassInstance extends AhatInstance {
 
   /**
    * Returns the list of class instance fields for this instance.
+   * Includes values of field inherited from the superclass of this instance.
+   * The fields are returned in no particular order.
+   *
+   * @return Iterable over the instance field values.
    */
   public Iterable<FieldValue> getInstanceFields() {
     return new InstanceFieldIterator(mFields, getClassObj());
@@ -220,7 +233,7 @@ public class AhatClassInstance extends AhatInstance {
 
   }
 
-  public BufferedImage asBitmap() {
+  @Override public BufferedImage asBitmap() {
     BitmapInfo info = getBitmapInfo();
     if (info == null) {
       return null;
