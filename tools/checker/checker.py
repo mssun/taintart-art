@@ -90,7 +90,8 @@ def RunTests(checkPrefix, checkPath, outputFilename, targetArch, debuggableMode)
   for checkFilename in FindCheckerFiles(checkPath):
     checkerFile = ParseCheckerStream(os.path.basename(checkFilename),
                                      checkPrefix,
-                                     open(checkFilename, "r"))
+                                     open(checkFilename, "r"),
+                                     targetArch)
     MatchFiles(checkerFile, c1File, targetArch, debuggableMode)
 
 
