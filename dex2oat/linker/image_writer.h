@@ -161,76 +161,82 @@ class ImageWriter FINAL {
 
   // Classify different kinds of bins that objects end up getting packed into during image writing.
   // Ordered from dirtiest to cleanest (until ArtMethods).
-  enum Bin {
-    kBinKnownDirty,               // Known dirty objects from --dirty-image-objects list
-    kBinMiscDirty,                // Dex caches, object locks, etc...
-    kBinClassVerified,            // Class verified, but initializers haven't been run
+  enum class Bin {
+    kKnownDirty,                  // Known dirty objects from --dirty-image-objects list
+    kMiscDirty,                   // Dex caches, object locks, etc...
+    kClassVerified,               // Class verified, but initializers haven't been run
     // Unknown mix of clean/dirty:
-    kBinRegular,
-    kBinClassInitialized,         // Class initializers have been run
+    kRegular,
+    kClassInitialized,            // Class initializers have been run
     // All classes get their own bins since their fields often dirty
-    kBinClassInitializedFinalStatics,  // Class initializers have been run, no non-final statics
+    kClassInitializedFinalStatics,  // Class initializers have been run, no non-final statics
     // Likely-clean:
-    kBinString,                        // [String] Almost always immutable (except for obj header).
+    kString,                      // [String] Almost always immutable (except for obj header).
     // Add more bins here if we add more segregation code.
     // Non mirror fields must be below.
     // ArtFields should be always clean.
-    kBinArtField,
+    kArtField,
     // If the class is initialized, then the ArtMethods are probably clean.
-    kBinArtMethodClean,
+    kArtMethodClean,
     // ArtMethods may be dirty if the class has native methods or a declaring class that isn't
     // initialized.
-    kBinArtMethodDirty,
+    kArtMethodDirty,
     // IMT (clean)
-    kBinImTable,
+    kImTable,
     // Conflict tables (clean).
-    kBinIMTConflictTable,
+    kIMTConflictTable,
     // Runtime methods (always clean, do not have a length prefix array).
-    kBinRuntimeMethod,
+    kRuntimeMethod,
     // Dex cache arrays have a special slot for PC-relative addressing. Since they are
     // huge, and as such their dirtiness is not important for the clean/dirty separation,
     // we arbitrarily keep them at the end of the native data.
-    kBinDexCacheArray,            // Arrays belonging to dex cache.
-    kBinSize,
+    kDexCacheArray,               // Arrays belonging to dex cache.
+    kLast = kDexCacheArray,
     // Number of bins which are for mirror objects.
-    kBinMirrorCount = kBinArtField,
+    kMirrorCount = kArtField,
   };
   friend std::ostream& operator<<(std::ostream& stream, const Bin& bin);
 
-  enum NativeObjectRelocationType {
-    kNativeObjectRelocationTypeArtField,
-    kNativeObjectRelocationTypeArtFieldArray,
-    kNativeObjectRelocationTypeArtMethodClean,
-    kNativeObjectRelocationTypeArtMethodArrayClean,
-    kNativeObjectRelocationTypeArtMethodDirty,
-    kNativeObjectRelocationTypeArtMethodArrayDirty,
-    kNativeObjectRelocationTypeRuntimeMethod,
-    kNativeObjectRelocationTypeIMTable,
-    kNativeObjectRelocationTypeIMTConflictTable,
-    kNativeObjectRelocationTypeDexCacheArray,
+  enum class NativeObjectRelocationType {
+    kArtField,
+    kArtFieldArray,
+    kArtMethodClean,
+    kArtMethodArrayClean,
+    kArtMethodDirty,
+    kArtMethodArrayDirty,
+    kRuntimeMethod,
+    kIMTable,
+    kIMTConflictTable,
+    kDexCacheArray,
   };
   friend std::ostream& operator<<(std::ostream& stream, const NativeObjectRelocationType& type);
 
-  enum OatAddress {
-    kOatAddressInterpreterToInterpreterBridge,
-    kOatAddressInterpreterToCompiledCodeBridge,
-    kOatAddressJNIDlsymLookup,
-    kOatAddressQuickGenericJNITrampoline,
-    kOatAddressQuickIMTConflictTrampoline,
-    kOatAddressQuickResolutionTrampoline,
-    kOatAddressQuickToInterpreterBridge,
-    // Number of elements in the enum.
-    kOatAddressCount,
+  enum class StubType {
+    kInterpreterToInterpreterBridge,
+    kInterpreterToCompiledCodeBridge,
+    kJNIDlsymLookup,
+    kQuickGenericJNITrampoline,
+    kQuickIMTConflictTrampoline,
+    kQuickResolutionTrampoline,
+    kQuickToInterpreterBridge,
+    kLast = kQuickToInterpreterBridge,
   };
-  friend std::ostream& operator<<(std::ostream& stream, const OatAddress& oat_address);
+  friend std::ostream& operator<<(std::ostream& stream, const StubType& stub_type);
 
-  static constexpr size_t kBinBits = MinimumBitsToStore<uint32_t>(kBinMirrorCount - 1);
+  static constexpr size_t kBinBits =
+      MinimumBitsToStore<uint32_t>(static_cast<size_t>(Bin::kMirrorCount) - 1);
   // uint32 = typeof(lockword_)
   // Subtract read barrier bits since we want these to remain 0, or else it may result in DCHECK
   // failures due to invalid read barrier bits during object field reads.
   static const size_t kBinShift = BitSizeOf<uint32_t>() - kBinBits - LockWord::kGCStateSize;
   // 111000.....0
   static const size_t kBinMask = ((static_cast<size_t>(1) << kBinBits) - 1) << kBinShift;
+
+  // Number of bins, including non-mirror bins.
+  static constexpr size_t kNumberOfBins = static_cast<size_t>(Bin::kLast) + 1u;
+
+  // Number of stub types.
+  static constexpr size_t kNumberOfStubTypes = static_cast<size_t>(StubType::kLast) + 1u;
 
   // We use the lock word to store the bin # and bin index of the object in the image.
   //
@@ -261,6 +267,39 @@ class ImageWriter FINAL {
     // Create the image sections into the out sections variable, returns the size of the image
     // excluding the bitmap.
     size_t CreateImageSections(ImageSection* out_sections, bool app_image) const;
+
+    size_t GetStubOffset(StubType stub_type) const {
+      DCHECK_LT(static_cast<size_t>(stub_type), kNumberOfStubTypes);
+      return stub_offsets_[static_cast<size_t>(stub_type)];
+    }
+
+    void SetStubOffset(StubType stub_type, size_t offset) {
+      DCHECK_LT(static_cast<size_t>(stub_type), kNumberOfStubTypes);
+      stub_offsets_[static_cast<size_t>(stub_type)] = offset;
+    }
+
+    size_t GetBinSlotOffset(Bin bin) const {
+      DCHECK_LT(static_cast<size_t>(bin), kNumberOfBins);
+      return bin_slot_offsets_[static_cast<size_t>(bin)];
+    }
+
+    void IncrementBinSlotSize(Bin bin, size_t size_to_add) {
+      DCHECK_LT(static_cast<size_t>(bin), kNumberOfBins);
+      bin_slot_sizes_[static_cast<size_t>(bin)] += size_to_add;
+    }
+
+    size_t GetBinSlotSize(Bin bin) const {
+      DCHECK_LT(static_cast<size_t>(bin), kNumberOfBins);
+      return bin_slot_sizes_[static_cast<size_t>(bin)];
+    }
+
+    void IncrementBinSlotCount(Bin bin, size_t count_to_add) {
+      DCHECK_LT(static_cast<size_t>(bin), kNumberOfBins);
+      bin_slot_count_[static_cast<size_t>(bin)] += count_to_add;
+    }
+
+    // Calculate the sum total of the bin slot sizes in [0, up_to). Defaults to all bins.
+    size_t GetBinSizeSum(Bin up_to) const;
 
     std::unique_ptr<MemMap> image_;  // Memory mapped for generating the image.
 
@@ -300,12 +339,12 @@ class ImageWriter FINAL {
     SafeMap<const DexFile*, size_t> dex_cache_array_starts_;
 
     // Offset from oat_data_begin_ to the stubs.
-    uint32_t oat_address_offsets_[kOatAddressCount] = {};
+    uint32_t stub_offsets_[kNumberOfStubTypes] = {};
 
     // Bin slot tracking for dirty object packing.
-    size_t bin_slot_sizes_[kBinSize] = {};  // Number of bytes in a bin.
-    size_t bin_slot_offsets_[kBinSize] = {};  // Number of bytes in previous bins.
-    size_t bin_slot_count_[kBinSize] = {};  // Number of objects in a bin.
+    size_t bin_slot_sizes_[kNumberOfBins] = {};  // Number of bytes in a bin.
+    size_t bin_slot_offsets_[kNumberOfBins] = {};  // Number of bytes in previous bins.
+    size_t bin_slot_count_[kNumberOfBins] = {};  // Number of objects in a bin.
 
     // Cached size of the intern table for when we allocate memory.
     size_t intern_table_bytes_ = 0;
@@ -367,7 +406,7 @@ class ImageWriter FINAL {
   }
 
   // Returns the address in the boot image if we are compiling the app image.
-  const uint8_t* GetOatAddress(OatAddress type) const;
+  const uint8_t* GetOatAddress(StubType type) const;
 
   const uint8_t* GetOatAddressForOffset(uint32_t offset, const ImageInfo& image_info) const {
     // With Quick, code is within the OatFile, as there are all in one
@@ -442,9 +481,6 @@ class ImageWriter FINAL {
                               const ImageInfo& image_info,
                               bool* quick_is_interpreted)
       REQUIRES_SHARED(Locks::mutator_lock_);
-
-  // Calculate the sum total of the bin slot sizes in [0, up_to). Defaults to all bins.
-  size_t GetBinSizeSum(ImageInfo& image_info, Bin up_to = kBinSize) const;
 
   // Return true if a method is likely to be dirtied at runtime.
   bool WillMethodBeDirty(ArtMethod* m) const REQUIRES_SHARED(Locks::mutator_lock_);
@@ -572,9 +608,9 @@ class ImageWriter FINAL {
     NativeObjectRelocationType type;
 
     bool IsArtMethodRelocation() const {
-      return type == kNativeObjectRelocationTypeArtMethodClean ||
-          type == kNativeObjectRelocationTypeArtMethodDirty ||
-          type == kNativeObjectRelocationTypeRuntimeMethod;
+      return type == NativeObjectRelocationType::kArtMethodClean ||
+          type == NativeObjectRelocationType::kArtMethodDirty ||
+          type == NativeObjectRelocationType::kRuntimeMethod;
     }
   };
   std::unordered_map<void*, NativeObjectRelocation> native_object_relocations_;
