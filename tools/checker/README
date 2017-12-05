@@ -76,3 +76,10 @@ Example:
   /// CHECK-START-ARM64: int MyClass.MyMethod() constant_folding (after)
   /// CHECK:         <<ID:i\d+>>  IntConstant {{11|22}}
   /// CHECK:                      Return [<<ID>>]
+
+For convenience, several architectures can be specified as set after the
+'CHECK-START' keyword. Any listed architecture will match in that case,
+thereby avoiding to repeat the check lines if some, but not all architectures
+match. An example line looks like:
+
+  /// CHECK-START-{MIPS,ARM,ARM64}: int MyClass.MyMethod() constant_folding (after)
