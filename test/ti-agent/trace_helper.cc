@@ -39,6 +39,18 @@ struct TraceData {
   bool in_callback;
   bool access_watch_on_load;
   bool modify_watch_on_load;
+  jrawMonitorID trace_mon;
+
+  jclass GetTestClass(jvmtiEnv* jvmti, JNIEnv* env) {
+    if (JvmtiErrorToException(env, jvmti, jvmti->RawMonitorEnter(trace_mon))) {
+      return nullptr;
+    }
+    jclass out = reinterpret_cast<jclass>(env->NewLocalRef(test_klass));
+    if (JvmtiErrorToException(env, jvmti, jvmti->RawMonitorExit(trace_mon))) {
+      return nullptr;
+    }
+    return out;
+  }
 };
 
 static void threadStartCB(jvmtiEnv* jvmti,
@@ -49,8 +61,12 @@ static void threadStartCB(jvmtiEnv* jvmti,
                             jvmti->GetEnvironmentLocalStorage(reinterpret_cast<void**>(&data)))) {
     return;
   }
+  ScopedLocalRef<jclass> klass(jnienv, data->GetTestClass(jvmti, jnienv));
+  if (klass.get() == nullptr) {
+    return;
+  }
   CHECK(data->thread_start != nullptr);
-  jnienv->CallStaticVoidMethod(data->test_klass, data->thread_start, thread);
+  jnienv->CallStaticVoidMethod(klass.get(), data->thread_start, thread);
 }
 static void threadEndCB(jvmtiEnv* jvmti,
                           JNIEnv* jnienv,
@@ -60,8 +76,12 @@ static void threadEndCB(jvmtiEnv* jvmti,
                             jvmti->GetEnvironmentLocalStorage(reinterpret_cast<void**>(&data)))) {
     return;
   }
+  ScopedLocalRef<jclass> klass(jnienv, data->GetTestClass(jvmti, jnienv));
+  if (klass.get() == nullptr) {
+    return;
+  }
   CHECK(data->thread_end != nullptr);
-  jnienv->CallStaticVoidMethod(data->test_klass, data->thread_end, thread);
+  jnienv->CallStaticVoidMethod(klass.get(), data->thread_end, thread);
 }
 
 static void singleStepCB(jvmtiEnv* jvmti,
@@ -77,10 +97,14 @@ static void singleStepCB(jvmtiEnv* jvmti,
   if (data->in_callback) {
     return;
   }
+  ScopedLocalRef<jclass> klass(jnienv, data->GetTestClass(jvmti, jnienv));
+  if (klass.get() == nullptr) {
+    return;
+  }
   CHECK(data->single_step != nullptr);
   data->in_callback = true;
   jobject method_arg = GetJavaMethod(jvmti, jnienv, method);
-  jnienv->CallStaticVoidMethod(data->test_klass,
+  jnienv->CallStaticVoidMethod(klass.get(),
                                data->single_step,
                                thread,
                                method_arg,
@@ -106,11 +130,15 @@ static void fieldAccessCB(jvmtiEnv* jvmti,
     // Don't do callback for either of these to prevent an infinite loop.
     return;
   }
+  ScopedLocalRef<jclass> klass(jnienv, data->GetTestClass(jvmti, jnienv));
+  if (klass.get() == nullptr) {
+    return;
+  }
   CHECK(data->field_access != nullptr);
   data->in_callback = true;
   jobject method_arg = GetJavaMethod(jvmti, jnienv, method);
   jobject field_arg = GetJavaField(jvmti, jnienv, field_klass, field);
-  jnienv->CallStaticVoidMethod(data->test_klass,
+  jnienv->CallStaticVoidMethod(klass.get(),
                                data->field_access,
                                method_arg,
                                static_cast<jlong>(location),
@@ -141,6 +169,10 @@ static void fieldModificationCB(jvmtiEnv* jvmti,
     // Don't do callback recursively to prevent an infinite loop.
     return;
   }
+  ScopedLocalRef<jclass> klass(jnienv, data->GetTestClass(jvmti, jnienv));
+  if (klass.get() == nullptr) {
+    return;
+  }
   CHECK(data->field_modify != nullptr);
   data->in_callback = true;
   jobject method_arg = GetJavaMethod(jvmti, jnienv, method);
@@ -152,7 +184,7 @@ static void fieldModificationCB(jvmtiEnv* jvmti,
     jnienv->DeleteLocalRef(field_arg);
     return;
   }
-  jnienv->CallStaticVoidMethod(data->test_klass,
+  jnienv->CallStaticVoidMethod(klass.get(),
                                data->field_modify,
                                method_arg,
                                static_cast<jlong>(location),
@@ -180,6 +212,10 @@ static void methodExitCB(jvmtiEnv* jvmti,
     // Don't do callback for either of these to prevent an infinite loop.
     return;
   }
+  ScopedLocalRef<jclass> klass(jnienv, data->GetTestClass(jvmti, jnienv));
+  if (klass.get() == nullptr) {
+    return;
+  }
   CHECK(data->exit_method != nullptr);
   data->in_callback = true;
   jobject method_arg = GetJavaMethod(jvmti, jnienv, method);
@@ -189,7 +225,7 @@ static void methodExitCB(jvmtiEnv* jvmti,
     data->in_callback = false;
     return;
   }
-  jnienv->CallStaticVoidMethod(data->test_klass,
+  jnienv->CallStaticVoidMethod(klass.get(),
                                data->exit_method,
                                method_arg,
                                was_popped_by_exception,
@@ -212,12 +248,16 @@ static void methodEntryCB(jvmtiEnv* jvmti,
     // Don't do callback for either of these to prevent an infinite loop.
     return;
   }
+  ScopedLocalRef<jclass> klass(jnienv, data->GetTestClass(jvmti, jnienv));
+  if (klass.get() == nullptr) {
+    return;
+  }
   data->in_callback = true;
   jobject method_arg = GetJavaMethod(jvmti, jnienv, method);
   if (jnienv->ExceptionCheck()) {
     return;
   }
-  jnienv->CallStaticVoidMethod(data->test_klass, data->enter_method, method_arg);
+  jnienv->CallStaticVoidMethod(klass.get(), data->enter_method, method_arg);
   jnienv->DeleteLocalRef(method_arg);
   data->in_callback = false;
 }
@@ -407,6 +447,10 @@ extern "C" JNIEXPORT void JNICALL Java_art_Trace_enableTracing2(
     return;
   }
   memset(data, 0, sizeof(TraceData));
+  if (JvmtiErrorToException(env, jvmti_env,
+                            jvmti_env->CreateRawMonitor("Trace monitor", &data->trace_mon))) {
+    return;
+  }
   data->test_klass = reinterpret_cast<jclass>(env->NewGlobalRef(klass));
   data->enter_method = enter != nullptr ? env->FromReflectedMethod(enter) : nullptr;
   data->exit_method = exit != nullptr ? env->FromReflectedMethod(exit) : nullptr;
@@ -537,41 +581,62 @@ extern "C" JNIEXPORT void JNICALL Java_art_Trace_disableTracing(
   if (data == nullptr || data->test_klass == nullptr) {
     return;
   }
-  env->DeleteGlobalRef(data->test_klass);
-  if (env->ExceptionCheck()) {
-    return;
-  }
-  // Clear test_klass so we know this isn't being used
-  data->test_klass = nullptr;
+  ScopedLocalRef<jthrowable> err(env, nullptr);
+  // First disable all the events.
   if (JvmtiErrorToException(env, jvmti_env,
                             jvmti_env->SetEventNotificationMode(JVMTI_DISABLE,
                                                                 JVMTI_EVENT_FIELD_ACCESS,
                                                                 thr))) {
-    return;
+    env->ExceptionDescribe();
+    err.reset(env->ExceptionOccurred());
+    env->ExceptionClear();
   }
   if (JvmtiErrorToException(env, jvmti_env,
                             jvmti_env->SetEventNotificationMode(JVMTI_DISABLE,
                                                                 JVMTI_EVENT_FIELD_MODIFICATION,
                                                                 thr))) {
-    return;
+    env->ExceptionDescribe();
+    err.reset(env->ExceptionOccurred());
+    env->ExceptionClear();
   }
   if (JvmtiErrorToException(env, jvmti_env,
                             jvmti_env->SetEventNotificationMode(JVMTI_DISABLE,
                                                                 JVMTI_EVENT_METHOD_ENTRY,
                                                                 thr))) {
-    return;
+    env->ExceptionDescribe();
+    err.reset(env->ExceptionOccurred());
+    env->ExceptionClear();
   }
   if (JvmtiErrorToException(env, jvmti_env,
                             jvmti_env->SetEventNotificationMode(JVMTI_DISABLE,
                                                                 JVMTI_EVENT_METHOD_EXIT,
                                                                 thr))) {
-    return;
+    env->ExceptionDescribe();
+    err.reset(env->ExceptionOccurred());
+    env->ExceptionClear();
   }
   if (JvmtiErrorToException(env, jvmti_env,
                             jvmti_env->SetEventNotificationMode(JVMTI_DISABLE,
                                                                 JVMTI_EVENT_SINGLE_STEP,
                                                                 thr))) {
+    env->ExceptionDescribe();
+    err.reset(env->ExceptionOccurred());
+    env->ExceptionClear();
+  }
+  if (JvmtiErrorToException(env, jvmti_env,
+                            jvmti_env->RawMonitorEnter(data->trace_mon))) {
     return;
+  }
+  // Clear test_klass so we know this isn't being used
+  env->DeleteGlobalRef(data->test_klass);
+  data->test_klass = nullptr;
+  if (JvmtiErrorToException(env,
+                            jvmti_env,
+                            jvmti_env->RawMonitorExit(data->trace_mon))) {
+    return;
+  }
+  if (err.get() != nullptr) {
+    env->Throw(err.get());
   }
 }
 
