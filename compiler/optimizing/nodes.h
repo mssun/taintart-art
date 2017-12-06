@@ -4614,7 +4614,6 @@ class HInvokeInterface FINAL : public HInvoke {
   }
 
   uint32_t GetImtIndex() const { return imt_index_; }
-  uint32_t GetDexMethodIndex() const { return dex_method_index_; }
 
   DECLARE_INSTRUCTION(InvokeInterface);
 
