@@ -1013,25 +1013,25 @@ using TryItemVector = std::vector<std::unique_ptr<const TryItem>>;
 
 class CodeFixups {
  public:
-  CodeFixups(std::vector<TypeId*>* type_ids,
-             std::vector<StringId*>* string_ids,
-             std::vector<MethodId*>* method_ids,
-             std::vector<FieldId*>* field_ids)
-      : type_ids_(type_ids),
-        string_ids_(string_ids),
-        method_ids_(method_ids),
-        field_ids_(field_ids) { }
+  CodeFixups(std::vector<TypeId*> type_ids,
+             std::vector<StringId*> string_ids,
+             std::vector<MethodId*> method_ids,
+             std::vector<FieldId*> field_ids)
+      : type_ids_(std::move(type_ids)),
+        string_ids_(std::move(string_ids)),
+        method_ids_(std::move(method_ids)),
+        field_ids_(std::move(field_ids)) { }
 
-  std::vector<TypeId*>* TypeIds() const { return type_ids_.get(); }
-  std::vector<StringId*>* StringIds() const { return string_ids_.get(); }
-  std::vector<MethodId*>* MethodIds() const { return method_ids_.get(); }
-  std::vector<FieldId*>* FieldIds() const { return field_ids_.get(); }
+  const std::vector<TypeId*>& TypeIds() const { return type_ids_; }
+  const std::vector<StringId*>& StringIds() const { return string_ids_; }
+  const std::vector<MethodId*>& MethodIds() const { return method_ids_; }
+  const std::vector<FieldId*>& FieldIds() const { return field_ids_; }
 
  private:
-  std::unique_ptr<std::vector<TypeId*>> type_ids_;
-  std::unique_ptr<std::vector<StringId*>> string_ids_;
-  std::unique_ptr<std::vector<MethodId*>> method_ids_;
-  std::unique_ptr<std::vector<FieldId*>> field_ids_;
+  std::vector<TypeId*> type_ids_;
+  std::vector<StringId*> string_ids_;
+  std::vector<MethodId*> method_ids_;
+  std::vector<FieldId*> field_ids_;
 
   DISALLOW_COPY_AND_ASSIGN(CodeFixups);
 };
