@@ -74,6 +74,20 @@ class LSEVisitor : public HGraphDelegateVisitor {
     HGraphVisitor::VisitBasicBlock(block);
   }
 
+  HTypeConversion* AddTypeConversionIfNecessary(HInstruction* instruction,
+                                                HInstruction* value,
+                                                DataType::Type expected_type) {
+    HTypeConversion* type_conversion = nullptr;
+    // Should never add type conversion into boolean value.
+    if (expected_type != DataType::Type::kBool &&
+        !DataType::IsTypeConversionImplicit(value->GetType(), expected_type)) {
+      type_conversion = new (GetGraph()->GetAllocator()) HTypeConversion(
+          expected_type, value, instruction->GetDexPc());
+      instruction->GetBlock()->InsertInstructionBefore(type_conversion, instruction);
+    }
+    return type_conversion;
+  }
+
   // Find an instruction's substitute if it should be removed.
   // Return the same instruction if it should not be removed.
   HInstruction* FindSubstitute(HInstruction* instruction) {
@@ -86,13 +100,59 @@ class LSEVisitor : public HGraphDelegateVisitor {
     return instruction;
   }
 
+  void AddRemovedLoad(HInstruction* load, HInstruction* heap_value) {
+    DCHECK_EQ(FindSubstitute(heap_value), heap_value) <<
+        "Unexpected heap_value that has a substitute " << heap_value->DebugName();
+    removed_loads_.push_back(load);
+    substitute_instructions_for_loads_.push_back(heap_value);
+  }
+
+  // Scan the list of removed loads to see if we can reuse `type_conversion`, if
+  // the other removed load has the same substitute and type and is dominated
+  // by `type_conversioni`.
+  void TryToReuseTypeConversion(HInstruction* type_conversion, size_t index) {
+    size_t size = removed_loads_.size();
+    HInstruction* load = removed_loads_[index];
+    HInstruction* substitute = substitute_instructions_for_loads_[index];
+    for (size_t j = index + 1; j < size; j++) {
+      HInstruction* load2 = removed_loads_[j];
+      HInstruction* substitute2 = substitute_instructions_for_loads_[j];
+      if (load2 == nullptr) {
+        DCHECK(substitute2->IsTypeConversion());
+        continue;
+      }
+      DCHECK(load2->IsInstanceFieldGet() ||
+             load2->IsStaticFieldGet() ||
+             load2->IsArrayGet());
+      DCHECK(substitute2 != nullptr);
+      if (substitute2 == substitute &&
+          load2->GetType() == load->GetType() &&
+          type_conversion->GetBlock()->Dominates(load2->GetBlock()) &&
+          // Don't share across irreducible loop headers.
+          // TODO: can be more fine-grained than this by testing each dominator.
+          (load2->GetBlock() == type_conversion->GetBlock() ||
+           !GetGraph()->HasIrreducibleLoops())) {
+        // The removed_loads_ are added in reverse post order.
+        DCHECK(type_conversion->StrictlyDominates(load2));
+        load2->ReplaceWith(type_conversion);
+        load2->GetBlock()->RemoveInstruction(load2);
+        removed_loads_[j] = nullptr;
+        substitute_instructions_for_loads_[j] = type_conversion;
+      }
+    }
+  }
+
   // Remove recorded instructions that should be eliminated.
   void RemoveInstructions() {
     size_t size = removed_loads_.size();
     DCHECK_EQ(size, substitute_instructions_for_loads_.size());
     for (size_t i = 0; i < size; i++) {
       HInstruction* load = removed_loads_[i];
-      DCHECK(load != nullptr);
+      if (load == nullptr) {
+        // The load has been handled in the scan for type conversion below.
+        DCHECK(substitute_instructions_for_loads_[i]->IsTypeConversion());
+        continue;
+      }
       DCHECK(load->IsInstanceFieldGet() ||
              load->IsStaticFieldGet() ||
              load->IsArrayGet());
@@ -102,7 +162,28 @@ class LSEVisitor : public HGraphDelegateVisitor {
       // a load that has a substitute should not be observed as a heap
       // location value.
       DCHECK_EQ(FindSubstitute(substitute), substitute);
-      load->ReplaceWith(substitute);
+
+      // The load expects to load the heap value as type load->GetType().
+      // However the tracked heap value may not be of that type. An explicit
+      // type conversion may be needed.
+      // There are actually three types involved here:
+      // (1) tracked heap value's type (type A)
+      // (2) heap location (field or element)'s type (type B)
+      // (3) load's type (type C)
+      // We guarantee that type A stored as type B and then fetched out as
+      // type C is the same as casting from type A to type C directly, since
+      // type B and type C will have the same size which is guarenteed in
+      // HInstanceFieldGet/HStaticFieldGet/HArrayGet's SetType().
+      // So we only need one type conversion from type A to type C.
+      HTypeConversion* type_conversion = AddTypeConversionIfNecessary(
+          load, substitute, load->GetType());
+      if (type_conversion != nullptr) {
+        TryToReuseTypeConversion(type_conversion, i);
+        load->ReplaceWith(type_conversion);
+        substitute_instructions_for_loads_[i] = type_conversion;
+      } else {
+        load->ReplaceWith(substitute);
+      }
       load->GetBlock()->RemoveInstruction(load);
     }
 
@@ -338,8 +419,7 @@ class LSEVisitor : public HGraphDelegateVisitor {
     HInstruction* heap_value = heap_values[idx];
     if (heap_value == kDefaultHeapValue) {
       HInstruction* constant = GetDefaultValue(instruction->GetType());
-      removed_loads_.push_back(instruction);
-      substitute_instructions_for_loads_.push_back(constant);
+      AddRemovedLoad(instruction, constant);
       heap_values[idx] = constant;
       return;
     }
@@ -374,8 +454,7 @@ class LSEVisitor : public HGraphDelegateVisitor {
         }
         return;
       }
-      removed_loads_.push_back(instruction);
-      substitute_instructions_for_loads_.push_back(heap_value);
+      AddRemovedLoad(instruction, heap_value);
       TryRemovingNullCheck(instruction);
     }
   }
