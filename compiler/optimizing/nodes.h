@@ -423,6 +423,17 @@ class HGraph : public ArenaObject<kArenaAllocGraph> {
 
   void SplitCriticalEdge(HBasicBlock* block, HBasicBlock* successor);
   void OrderLoopHeaderPredecessors(HBasicBlock* header);
+
+  // Transform a loop into a format with a single preheader.
+  //
+  // Each phi in the header should be split: original one in the header should only hold
+  // inputs reachable from the back edges and a single input from the preheader. The newly created
+  // phi in the preheader should collate the inputs from the original multiple incoming blocks.
+  //
+  // Loops in the graph typically have a single preheader, so this method is used to "repair" loops
+  // that no longer have this property.
+  void TransformLoopToSinglePreheaderFormat(HBasicBlock* header);
+
   void SimplifyLoop(HBasicBlock* header);
 
   int32_t GetNextInstructionId() {
