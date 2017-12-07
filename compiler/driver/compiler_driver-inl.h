@@ -32,13 +32,13 @@
 
 namespace art {
 
-inline mirror::Class* CompilerDriver::ResolveClass(
+inline ObjPtr<mirror::Class> CompilerDriver::ResolveClass(
     const ScopedObjectAccess& soa, Handle<mirror::DexCache> dex_cache,
     Handle<mirror::ClassLoader> class_loader, dex::TypeIndex cls_index,
     const DexCompilationUnit* mUnit) {
   DCHECK_EQ(dex_cache->GetDexFile(), mUnit->GetDexFile());
   DCHECK_EQ(class_loader.Get(), mUnit->GetClassLoader().Get());
-  mirror::Class* cls = mUnit->GetClassLinker()->ResolveType(
+  ObjPtr<mirror::Class> cls = mUnit->GetClassLinker()->ResolveType(
       *mUnit->GetDexFile(), cls_index, dex_cache, class_loader);
   DCHECK_EQ(cls == nullptr, soa.Self()->IsExceptionPending());
   if (UNLIKELY(cls == nullptr)) {
@@ -48,7 +48,7 @@ inline mirror::Class* CompilerDriver::ResolveClass(
   return cls;
 }
 
-inline mirror::Class* CompilerDriver::ResolveCompilingMethodsClass(
+inline ObjPtr<mirror::Class> CompilerDriver::ResolveCompilingMethodsClass(
     const ScopedObjectAccess& soa, Handle<mirror::DexCache> dex_cache,
     Handle<mirror::ClassLoader> class_loader, const DexCompilationUnit* mUnit) {
   DCHECK_EQ(dex_cache->GetDexFile(), mUnit->GetDexFile());
@@ -89,8 +89,10 @@ inline ArtField* CompilerDriver::ResolveField(
 }
 
 inline std::pair<bool, bool> CompilerDriver::IsFastInstanceField(
-    mirror::DexCache* dex_cache, mirror::Class* referrer_class,
-    ArtField* resolved_field, uint16_t field_idx) {
+    ObjPtr<mirror::DexCache> dex_cache,
+    ObjPtr<mirror::Class> referrer_class,
+    ArtField* resolved_field,
+    uint16_t field_idx) {
   DCHECK(!resolved_field->IsStatic());
   ObjPtr<mirror::Class> fields_class = resolved_field->GetDeclaringClass();
   bool fast_get = referrer_class != nullptr &&

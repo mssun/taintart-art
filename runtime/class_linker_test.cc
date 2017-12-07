@@ -1304,10 +1304,18 @@ TEST_F(ClassLinkerTest, ResolveVerifyAndClinit) {
   const DexFile::TypeId* type_id = dex_file->FindTypeId("LStaticsFromCode;");
   ASSERT_TRUE(type_id != nullptr);
   dex::TypeIndex type_idx = dex_file->GetIndexForTypeId(*type_id);
-  mirror::Class* uninit = ResolveVerifyAndClinit(type_idx, clinit, soa.Self(), true, false);
+  ObjPtr<mirror::Class> uninit = ResolveVerifyAndClinit(type_idx,
+                                                        clinit,
+                                                        soa.Self(),
+                                                        /* can_run_clinit */ true,
+                                                        /* verify_access */ false);
   EXPECT_TRUE(uninit != nullptr);
   EXPECT_FALSE(uninit->IsInitialized());
-  mirror::Class* init = ResolveVerifyAndClinit(type_idx, getS0, soa.Self(), true, false);
+  ObjPtr<mirror::Class> init = ResolveVerifyAndClinit(type_idx,
+                                                      getS0,
+                                                      soa.Self(),
+                                                      /* can_run_clinit */ true,
+                                                      /* verify_access */ false);
   EXPECT_TRUE(init != nullptr);
   EXPECT_TRUE(init->IsInitialized());
 }

@@ -575,7 +575,7 @@ class ArtMethod FINAL {
 
   ALWAYS_INLINE const char* GetName() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  mirror::String* GetNameAsString(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<mirror::String> GetNameAsString(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_);
 
   const DexFile::CodeItem* GetCodeItem() REQUIRES_SHARED(Locks::mutator_lock_);
 

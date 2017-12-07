@@ -138,15 +138,15 @@ extern "C" mirror::Class* artInitializeStaticStorageFromCode(uint32_t type_idx, 
   auto caller_and_outer = GetCalleeSaveMethodCallerAndOuterMethod(
       self, CalleeSaveType::kSaveEverythingForClinit);
   ArtMethod* caller = caller_and_outer.caller;
-  mirror::Class* result = ResolveVerifyAndClinit(dex::TypeIndex(type_idx),
-                                                 caller,
-                                                 self,
-                                                 /* can_run_clinit */ true,
-                                                 /* verify_access */ false);
+  ObjPtr<mirror::Class> result = ResolveVerifyAndClinit(dex::TypeIndex(type_idx),
+                                                        caller,
+                                                        self,
+                                                        /* can_run_clinit */ true,
+                                                        /* verify_access */ false);
   if (LIKELY(result != nullptr) && CanReferenceBss(caller_and_outer.outer_method, caller)) {
     StoreTypeInBss(caller_and_outer.outer_method, dex::TypeIndex(type_idx), result);
   }
-  return result;
+  return result.Ptr();
 }
 
 extern "C" mirror::Class* artInitializeTypeFromCode(uint32_t type_idx, Thread* self)
@@ -156,15 +156,15 @@ extern "C" mirror::Class* artInitializeTypeFromCode(uint32_t type_idx, Thread* s
   auto caller_and_outer = GetCalleeSaveMethodCallerAndOuterMethod(
       self, CalleeSaveType::kSaveEverythingForClinit);
   ArtMethod* caller = caller_and_outer.caller;
-  mirror::Class* result = ResolveVerifyAndClinit(dex::TypeIndex(type_idx),
-                                                 caller,
-                                                 self,
-                                                 /* can_run_clinit */ false,
-                                                 /* verify_access */ false);
+  ObjPtr<mirror::Class> result = ResolveVerifyAndClinit(dex::TypeIndex(type_idx),
+                                                        caller,
+                                                        self,
+                                                        /* can_run_clinit */ false,
+                                                        /* verify_access */ false);
   if (LIKELY(result != nullptr) && CanReferenceBss(caller_and_outer.outer_method, caller)) {
     StoreTypeInBss(caller_and_outer.outer_method, dex::TypeIndex(type_idx), result);
   }
-  return result;
+  return result.Ptr();
 }
 
 extern "C" mirror::Class* artInitializeTypeAndVerifyAccessFromCode(uint32_t type_idx, Thread* self)
@@ -174,13 +174,13 @@ extern "C" mirror::Class* artInitializeTypeAndVerifyAccessFromCode(uint32_t type
   auto caller_and_outer = GetCalleeSaveMethodCallerAndOuterMethod(self,
                                                                   CalleeSaveType::kSaveEverything);
   ArtMethod* caller = caller_and_outer.caller;
-  mirror::Class* result = ResolveVerifyAndClinit(dex::TypeIndex(type_idx),
-                                                 caller,
-                                                 self,
-                                                 /* can_run_clinit */ false,
-                                                 /* verify_access */ true);
+  ObjPtr<mirror::Class> result = ResolveVerifyAndClinit(dex::TypeIndex(type_idx),
+                                                        caller,
+                                                        self,
+                                                        /* can_run_clinit */ false,
+                                                        /* verify_access */ true);
   // Do not StoreTypeInBss(); access check entrypoint is never used together with .bss.
-  return result;
+  return result.Ptr();
 }
 
 extern "C" mirror::String* artResolveStringFromCode(int32_t string_idx, Thread* self)
@@ -189,11 +189,11 @@ extern "C" mirror::String* artResolveStringFromCode(int32_t string_idx, Thread* 
   auto caller_and_outer = GetCalleeSaveMethodCallerAndOuterMethod(self,
                                                                   CalleeSaveType::kSaveEverything);
   ArtMethod* caller = caller_and_outer.caller;
-  mirror::String* result = ResolveStringFromCode(caller, dex::StringIndex(string_idx));
+  ObjPtr<mirror::String> result = ResolveStringFromCode(caller, dex::StringIndex(string_idx));
   if (LIKELY(result != nullptr) && CanReferenceBss(caller_and_outer.outer_method, caller)) {
     StoreStringInBss(caller_and_outer.outer_method, dex::StringIndex(string_idx), result);
   }
-  return result;
+  return result.Ptr();
 }
 
 }  // namespace art
