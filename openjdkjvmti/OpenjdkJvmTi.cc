@@ -1437,6 +1437,7 @@ class JvmtiFunctions {
       art::gLogVerbosity.third_party_jni = val;
       art::gLogVerbosity.threads = val;
       art::gLogVerbosity.verifier = val;
+      // Do not set verifier-debug.
       art::gLogVerbosity.image = val;
 
       // Note: can't switch systrace_lock_logging. That requires changing entrypoints.
