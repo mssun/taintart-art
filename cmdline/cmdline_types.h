@@ -669,6 +669,8 @@ struct CmdlineType<LogVerbosity> : CmdlineTypeParser<LogVerbosity> {
         log_verbosity.threads = true;
       } else if (verbose_options[j] == "verifier") {
         log_verbosity.verifier = true;
+      } else if (verbose_options[j] == "verifier-debug") {
+        log_verbosity.verifier_debug = true;
       } else if (verbose_options[j] == "image") {
         log_verbosity.image = true;
       } else if (verbose_options[j] == "systrace-locks") {
