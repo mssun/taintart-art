@@ -33,6 +33,7 @@
 
 #include "android-base/stringprintf.h"
 
+#include "base/logging.h"  // For VLOG_IS_ON.
 #include "dex_file-inl.h"
 #include "dex_file_layout.h"
 #include "dex_file_loader.h"

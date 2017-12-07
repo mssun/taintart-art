@@ -17,7 +17,9 @@
 #ifndef ART_RUNTIME_READ_BARRIER_H_
 #define ART_RUNTIME_READ_BARRIER_H_
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
+#include "base/logging.h"  // For DECLARE_RUNTIME_DEBUG_FLAG.
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "gc_root.h"

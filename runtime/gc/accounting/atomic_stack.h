@@ -23,8 +23,9 @@
 #include <memory>
 #include <string>
 
+#include <android-base/logging.h>
+
 #include "atomic.h"
-#include "base/logging.h"
 #include "base/macros.h"
 #include "mem_map.h"
 #include "stack_reference.h"

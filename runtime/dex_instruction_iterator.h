@@ -19,8 +19,10 @@
 
 #include <iterator>
 
+#include <android-base/logging.h>
+
 #include "dex_instruction.h"
-#include "base/logging.h"
+#include "base/macros.h"
 
 namespace art {
 

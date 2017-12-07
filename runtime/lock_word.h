@@ -20,8 +20,9 @@
 #include <cstdint>
 #include <iosfwd>
 
+#include <android-base/logging.h>
+
 #include "base/bit_utils.h"
-#include "base/logging.h"
 #include "read_barrier.h"
 
 namespace art {

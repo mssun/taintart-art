@@ -21,8 +21,10 @@
 #include <string>
 #include <vector>
 
+#include <android-base/logging.h>
+
 #include "base/iteration_range.h"
-#include "base/logging.h"
+#include "base/macros.h"
 #include "base/value_object.h"
 #include "dex_file_types.h"
 #include "dex_instruction_iterator.h"

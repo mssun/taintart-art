@@ -35,6 +35,7 @@
 #include "base/allocator.h"
 #include "base/bit_utils.h"
 #include "base/file_utils.h"
+#include "base/logging.h"  // For VLOG_IS_ON.
 #include "base/memory_tool.h"
 #include "globals.h"
 #include "utils.h"

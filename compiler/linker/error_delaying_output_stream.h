@@ -19,7 +19,9 @@
 
 #include "output_stream.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
+#include "base/macros.h"
 
 namespace art {
 namespace linker {

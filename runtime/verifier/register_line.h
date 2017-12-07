@@ -20,6 +20,8 @@
 #include <memory>
 #include <vector>
 
+#include <android-base/logging.h>
+
 #include "base/scoped_arena_containers.h"
 #include "safe_map.h"
 
@@ -401,26 +403,7 @@ class RegisterLine {
     return true;
   }
 
-  void ClearRegToLockDepth(size_t reg, size_t depth) {
-    CHECK_LT(depth, 32u);
-    DCHECK(IsSetLockDepth(reg, depth));
-    auto it = reg_to_lock_depths_.find(reg);
-    DCHECK(it != reg_to_lock_depths_.end());
-    uint32_t depths = it->second ^ (1 << depth);
-    if (depths != 0) {
-      it->second = depths;
-    } else {
-      reg_to_lock_depths_.erase(it);
-    }
-    // Need to unlock every register at the same lock depth. These are aliased locks.
-    uint32_t mask = 1 << depth;
-    for (auto& pair : reg_to_lock_depths_) {
-      if ((pair.second & mask) != 0) {
-        VLOG(verifier) << "Also unlocking " << pair.first;
-        pair.second ^= mask;
-      }
-    }
-  }
+  void ClearRegToLockDepth(size_t reg, size_t depth);
 
   void ClearAllRegToLockDepths(size_t reg) {
     reg_to_lock_depths_.erase(reg);

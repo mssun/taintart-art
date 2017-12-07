@@ -23,6 +23,7 @@
 #include <map>
 #include <ostream>
 #include <set>
+#include <sstream>
 
 #include "dex_file-inl.h"
 #include "dex_instruction-inl.h"

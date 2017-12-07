@@ -16,7 +16,8 @@
 
 #include "calling_convention_mips.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
 #include "handle_scope-inl.h"
 #include "utils/mips/managed_register_mips.h"
 

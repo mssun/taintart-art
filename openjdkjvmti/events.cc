@@ -36,7 +36,6 @@
 #include "art_field-inl.h"
 #include "art_jvmti.h"
 #include "art_method-inl.h"
-#include "base/logging.h"
 #include "deopt_manager.h"
 #include "dex_file_types.h"
 #include "gc/allocation_listener.h"

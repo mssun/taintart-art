@@ -23,7 +23,7 @@
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "base/enums.h"
-#include "base/logging.h"
+#include "base/logging.h"  // For VLOG.
 #include "base/mutex-inl.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"

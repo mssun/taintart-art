@@ -17,10 +17,11 @@
 #ifndef ART_RUNTIME_BASE_SCOPED_ARENA_ALLOCATOR_H_
 #define ART_RUNTIME_BASE_SCOPED_ARENA_ALLOCATOR_H_
 
+#include <android-base/logging.h>
+
 #include "arena_allocator.h"
 #include "debug_stack.h"
 #include "globals.h"
-#include "logging.h"
 #include "macros.h"
 
 namespace art {

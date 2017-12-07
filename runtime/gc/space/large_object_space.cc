@@ -20,7 +20,9 @@
 
 #include <memory>
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
+#include "base/macros.h"
 #include "base/memory_tool.h"
 #include "base/mutex-inl.h"
 #include "base/stl_util.h"

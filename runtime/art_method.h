@@ -19,11 +19,14 @@
 
 #include <cstddef>
 
+#include <android-base/logging.h>
+
 #include "base/bit_utils.h"
 #include "base/casts.h"
 #include "base/enums.h"
 #include "base/iteration_range.h"
-#include "base/logging.h"
+#include "base/logging.h"  // For RUNTIME_DEBUG_FLAG.
+#include "base/macros.h"
 #include "dex_file.h"
 #include "dex_instruction_iterator.h"
 #include "gc_root.h"

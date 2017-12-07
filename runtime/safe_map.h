@@ -21,8 +21,9 @@
 #include <memory>
 #include <type_traits>
 
+#include <android-base/logging.h>
+
 #include "base/allocator.h"
-#include "base/logging.h"
 
 namespace art {
 

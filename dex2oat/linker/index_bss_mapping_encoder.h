@@ -17,9 +17,10 @@
 #ifndef ART_DEX2OAT_LINKER_INDEX_BSS_MAPPING_ENCODER_H_
 #define ART_DEX2OAT_LINKER_INDEX_BSS_MAPPING_ENCODER_H_
 
+#include <android-base/logging.h>
+
 #include "base/bit_utils.h"
 #include "base/bit_vector-inl.h"
-#include "base/logging.h"
 #include "index_bss_mapping.h"
 
 namespace art {

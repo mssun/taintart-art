@@ -17,8 +17,9 @@
 #ifndef ART_RUNTIME_ARCH_X86_CONTEXT_X86_H_
 #define ART_RUNTIME_ARCH_X86_CONTEXT_X86_H_
 
+#include <android-base/logging.h>
+
 #include "arch/context.h"
-#include "base/logging.h"
 #include "base/macros.h"
 #include "registers_x86.h"
 

@@ -20,8 +20,9 @@
 #include <iostream>
 #include <vector>
 
+#include <android-base/logging.h>
+
 #include "art_method-inl.h"
-#include "base/logging.h"
 #include "jni.h"
 
 namespace art {

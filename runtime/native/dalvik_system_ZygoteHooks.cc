@@ -18,11 +18,13 @@
 
 #include <stdlib.h>
 
-#include "android-base/stringprintf.h"
+#include <android-base/logging.h>
+#include <android-base/stringprintf.h>
 
 #include "arch/instruction_set.h"
 #include "art_method-inl.h"
-#include "base/logging.h"
+#include "base/macros.h"
+#include "base/mutex.h"
 #include "debugger.h"
 #include "java_vm_ext.h"
 #include "jit/jit.h"

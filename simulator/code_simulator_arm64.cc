@@ -16,7 +16,7 @@
 
 #include "code_simulator_arm64.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
 
 using namespace vixl::aarch64;  // NOLINT(build/namespaces)
 

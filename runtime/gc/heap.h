@@ -22,10 +22,13 @@
 #include <unordered_set>
 #include <vector>
 
+#include <android-base/logging.h>
+
 #include "allocator_type.h"
 #include "arch/instruction_set.h"
 #include "atomic.h"
-#include "base/logging.h"
+#include "base/logging.h"  // For DECLARE_RUNTIME_DEBUG_FLAG.
+#include "base/macros.h"
 #include "base/mutex.h"
 #include "base/time_utils.h"
 #include "gc/collector/gc_type.h"

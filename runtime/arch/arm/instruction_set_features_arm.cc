@@ -25,10 +25,9 @@
 
 #include <fstream>
 
-#include "android-base/stringprintf.h"
-#include "android-base/strings.h"
-
-#include "base/logging.h"
+#include <android-base/logging.h>
+#include <android-base/stringprintf.h>
+#include <android-base/strings.h>
 
 #if defined(__arm__)
 extern "C" bool artCheckForArmSdivInstruction();

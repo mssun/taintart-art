@@ -21,13 +21,14 @@
 
 #include <string>
 
+#include <android-base/logging.h>
+
 #include "arch/instruction_set.h"
-#include "base/logging.h"
 
 namespace art {
 
 bool ReadFileToString(const std::string& file_name, std::string* result);
-bool PrintFileToLog(const std::string& file_name, LogSeverity level);
+bool PrintFileToLog(const std::string& file_name, android::base::LogSeverity level);
 
 // Find $ANDROID_ROOT, /system, or abort.
 std::string GetAndroidRoot();

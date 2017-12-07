@@ -20,10 +20,11 @@
 #include <stdint.h>
 #include <type_traits>
 
+#include <android-base/logging.h>
+
 #include "arch/instruction_set.h"
 #include "base/bit_utils.h"
 #include "base/casts.h"
-#include "base/logging.h"
 #include "base/macros.h"
 #include "base/value_object.h"
 #include "globals.h"

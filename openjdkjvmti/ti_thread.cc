@@ -31,10 +31,11 @@
 
 #include "ti_thread.h"
 
-#include "android-base/strings.h"
+#include <android-base/logging.h>
+#include <android-base/strings.h>
+
 #include "art_field-inl.h"
 #include "art_jvmti.h"
-#include "base/logging.h"
 #include "base/mutex.h"
 #include "events-inl.h"
 #include "gc/system_weak.h"

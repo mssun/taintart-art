@@ -33,12 +33,13 @@
 #include <type_traits>
 #include <vector>
 
+#include <android-base/logging.h>
+
 #include <jni.h>
 
 #include "jvmti.h"
 
 #include "art_jvmti.h"
-#include "base/logging.h"
 #include "base/mutex.h"
 #include "events-inl.h"
 #include "jni_env_ext-inl.h"

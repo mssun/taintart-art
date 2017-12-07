@@ -19,7 +19,8 @@
 
 #include "art_field.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
 #include "class_linker.h"
 #include "dex_file-inl.h"
 #include "gc/accounting/card_table-inl.h"

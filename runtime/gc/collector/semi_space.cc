@@ -22,7 +22,7 @@
 #include <sstream>
 #include <vector>
 
-#include "base/logging.h"
+#include "base/logging.h"  // For VLOG.
 #include "base/macros.h"
 #include "base/mutex-inl.h"
 #include "base/timing_logger.h"
