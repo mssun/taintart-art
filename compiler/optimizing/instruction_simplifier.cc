@@ -1081,6 +1081,58 @@ static inline bool TryReplaceFieldOrArrayGetType(HInstruction* maybe_get, DataTy
   }
 }
 
+// The type conversion is only used for storing into a field/element of the
+// same/narrower size.
+static bool IsTypeConversionForStoringIntoNoWiderFieldOnly(HTypeConversion* type_conversion) {
+  if (type_conversion->HasEnvironmentUses()) {
+    return false;
+  }
+  DataType::Type input_type = type_conversion->GetInputType();
+  DataType::Type result_type = type_conversion->GetResultType();
+  if (!DataType::IsIntegralType(input_type) ||
+      !DataType::IsIntegralType(result_type) ||
+      input_type == DataType::Type::kInt64 ||
+      result_type == DataType::Type::kInt64) {
+    // Type conversion is needed if non-integer types are involved, or 64-bit
+    // types are involved, which may use different number of registers.
+    return false;
+  }
+  if (DataType::Size(input_type) >= DataType::Size(result_type)) {
+    // Type conversion is not necessary when storing to a field/element of the
+    // same/smaller size.
+  } else {
+    // We do not handle this case here.
+    return false;
+  }
+
+  // Check if the converted value is only used for storing into heap.
+  for (const HUseListNode<HInstruction*>& use : type_conversion->GetUses()) {
+    HInstruction* instruction = use.GetUser();
+    if (instruction->IsInstanceFieldSet() &&
+        instruction->AsInstanceFieldSet()->GetFieldType() == result_type) {
+      DCHECK_EQ(instruction->AsInstanceFieldSet()->GetValue(), type_conversion);
+      continue;
+    }
+    if (instruction->IsStaticFieldSet() &&
+        instruction->AsStaticFieldSet()->GetFieldType() == result_type) {
+      DCHECK_EQ(instruction->AsStaticFieldSet()->GetValue(), type_conversion);
+      continue;
+    }
+    if (instruction->IsArraySet() &&
+        instruction->AsArraySet()->GetComponentType() == result_type &&
+        // not index use.
+        instruction->AsArraySet()->GetIndex() != type_conversion) {
+      DCHECK_EQ(instruction->AsArraySet()->GetValue(), type_conversion);
+      continue;
+    }
+    // The use is not as a store value, or the field/element type is not the
+    // same as the result_type, keep the type conversion.
+    return false;
+  }
+  // Codegen automatically handles the type conversion during the store.
+  return true;
+}
+
 void InstructionSimplifierVisitor::VisitTypeConversion(HTypeConversion* instruction) {
   HInstruction* input = instruction->GetInput();
   DataType::Type input_type = input->GetType();
@@ -1168,6 +1220,13 @@ void InstructionSimplifierVisitor::VisitTypeConversion(HTypeConversion* instruct
       RecordSimplification();
       return;
     }
+  }
+
+  if (IsTypeConversionForStoringIntoNoWiderFieldOnly(instruction)) {
+    instruction->ReplaceWith(input);
+    instruction->GetBlock()->RemoveInstruction(instruction);
+    RecordSimplification();
+    return;
   }
 }
 
