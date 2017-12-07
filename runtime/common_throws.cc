@@ -441,7 +441,7 @@ static bool IsValidReadBarrierImplicitCheck(uintptr_t addr) {
   return addr == monitor_offset;
 }
 
-static bool IsValidImplicitCheck(uintptr_t addr, ArtMethod* method, const Instruction& instr)
+static bool IsValidImplicitCheck(uintptr_t addr, const Instruction& instr)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   if (!CanDoImplicitNullCheckOn(addr)) {
     return false;
@@ -483,9 +483,10 @@ static bool IsValidImplicitCheck(uintptr_t addr, ArtMethod* method, const Instru
     case Instruction::IPUT_BYTE:
     case Instruction::IPUT_CHAR:
     case Instruction::IPUT_SHORT: {
-      ArtField* field =
-          Runtime::Current()->GetClassLinker()->ResolveField(instr.VRegC_22c(), method, false);
-      return (addr == 0) || (addr == field->GetOffset().Uint32Value());
+      // We might be doing an implicit null check with an offset that doesn't correspond
+      // to the instruction, for example with two field accesses and the first one being
+      // eliminated or re-ordered.
+      return true;
     }
 
     case Instruction::IGET_OBJECT_QUICK:
@@ -506,7 +507,10 @@ static bool IsValidImplicitCheck(uintptr_t addr, ArtMethod* method, const Instru
     case Instruction::IPUT_SHORT_QUICK:
     case Instruction::IPUT_WIDE_QUICK:
     case Instruction::IPUT_OBJECT_QUICK: {
-      return (addr == 0u) || (addr == instr.VRegC_22c());
+      // We might be doing an implicit null check with an offset that doesn't correspond
+      // to the instruction, for example with two field accesses and the first one being
+      // eliminated or re-ordered.
+      return true;
     }
 
     case Instruction::AGET_OBJECT:
@@ -550,7 +554,7 @@ void ThrowNullPointerExceptionFromDexPC(bool check_address, uintptr_t addr) {
   const DexFile::CodeItem* code = method->GetCodeItem();
   CHECK_LT(throw_dex_pc, code->insns_size_in_code_units_);
   const Instruction* instr = Instruction::At(&code->insns_[throw_dex_pc]);
-  if (check_address && !IsValidImplicitCheck(addr, method, *instr)) {
+  if (check_address && !IsValidImplicitCheck(addr, *instr)) {
     const DexFile* dex_file = method->GetDeclaringClass()->GetDexCache()->GetDexFile();
     LOG(FATAL) << "Invalid address for an implicit NullPointerException check: "
                << "0x" << std::hex << addr << std::dec
