@@ -4691,12 +4691,19 @@ void MethodVerifier::VerifyAGet(const Instruction* inst,
   } else {
     const RegType& array_type = work_line_->GetRegisterType(this, inst->VRegB_23x());
     if (array_type.IsZeroOrNull()) {
-      have_pending_runtime_throw_failure_ = true;
       // Null array class; this code path will fail at runtime. Infer a merge-able type from the
-      // instruction type. TODO: have a proper notion of bottom here.
-      if (!is_primitive || insn_type.IsCategory1Types()) {
-        // Reference or category 1
-        work_line_->SetRegisterType<LockOp::kClear>(this, inst->VRegA_23x(), reg_types_.Zero());
+      // instruction type.
+      if (!is_primitive) {
+        work_line_->SetRegisterType<LockOp::kClear>(this, inst->VRegA_23x(), reg_types_.Null());
+      } else if (insn_type.IsInteger()) {
+        // Pick a non-zero constant (to distinguish with null) that can fit in any primitive.
+        // We cannot use 'insn_type' as it could be a float array or an int array.
+        work_line_->SetRegisterType<LockOp::kClear>(
+            this, inst->VRegA_23x(), DetermineCat1Constant(1, need_precise_constants_));
+      } else if (insn_type.IsCategory1Types()) {
+        // Category 1
+        // The 'insn_type' is exactly the type we need.
+        work_line_->SetRegisterType<LockOp::kClear>(this, inst->VRegA_23x(), insn_type);
       } else {
         // Category 2
         work_line_->SetRegisterTypeWide(this, inst->VRegA_23x(),
