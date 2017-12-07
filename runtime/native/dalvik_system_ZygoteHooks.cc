@@ -25,6 +25,7 @@
 #include "art_method-inl.h"
 #include "base/macros.h"
 #include "base/mutex.h"
+#include "base/runtime_debug.h"
 #include "debugger.h"
 #include "java_vm_ext.h"
 #include "jit/jit.h"

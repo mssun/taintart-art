@@ -23,6 +23,7 @@
 #include <android-base/logging.h>
 
 #include "art_method-inl.h"
+#include "base/runtime_debug.h"
 #include "jni.h"
 
 namespace art {
