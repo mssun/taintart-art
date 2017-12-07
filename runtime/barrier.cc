@@ -16,7 +16,9 @@
 
 #include "barrier.h"
 
-#include "base/logging.h"  // Required for gAborting.
+#include <android-base/logging.h>
+
+#include "base/aborting.h"
 #include "base/mutex.h"
 #include "base/time_utils.h"
 #include "thread.h"

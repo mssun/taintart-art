@@ -27,7 +27,7 @@
 #include <android-base/logging.h>
 
 #include "atomic.h"
-#include "base/logging.h"  // For gAborting.
+#include "base/aborting.h"
 #include "base/macros.h"
 #include "globals.h"
 

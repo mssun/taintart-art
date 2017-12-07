@@ -20,7 +20,8 @@
 #include <limits>
 #include <sstream>
 
-#include "base/mutex.h"
+#include "aborting.h"
+#include "mutex.h"
 #include "thread-current-inl.h"
 #include "utils.h"
 

@@ -40,8 +40,8 @@
 #include "android-base/stringprintf.h"
 
 #include "arch/instruction_set.h"
+#include "base/aborting.h"
 #include "base/file_utils.h"
-#include "base/logging.h"  // For gAborting.
 #include "base/memory_tool.h"
 #include "base/mutex.h"
 #include "base/unix_file/fd_file.h"

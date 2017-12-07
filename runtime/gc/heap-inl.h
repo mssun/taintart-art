@@ -20,6 +20,7 @@
 #include "heap.h"
 
 #include "allocation_listener.h"
+#include "base/logging.h"  // For VLOG.
 #include "base/time_utils.h"
 #include "gc/accounting/atomic_stack.h"
 #include "gc/accounting/card_table-inl.h"

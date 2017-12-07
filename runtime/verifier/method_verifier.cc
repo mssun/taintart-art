@@ -22,6 +22,7 @@
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
+#include "base/aborting.h"
 #include "base/enums.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/mutex-inl.h"
