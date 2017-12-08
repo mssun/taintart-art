@@ -6061,6 +6061,20 @@ class HLoadClass FINAL : public HInstruction {
 std::ostream& operator<<(std::ostream& os, HLoadClass::LoadKind rhs);
 
 // Note: defined outside class to see operator<<(., HLoadClass::LoadKind).
+inline void HLoadClass::SetLoadKind(LoadKind load_kind) {
+  // The load kind should be determined before inserting the instruction to the graph.
+  DCHECK(GetBlock() == nullptr);
+  DCHECK(GetEnvironment() == nullptr);
+  SetPackedField<LoadKindField>(load_kind);
+  if (load_kind != LoadKind::kRuntimeCall && load_kind != LoadKind::kReferrersClass) {
+    special_input_ = HUserRecord<HInstruction*>(nullptr);
+  }
+  if (!NeedsEnvironment()) {
+    SetSideEffects(SideEffects::None());
+  }
+}
+
+// Note: defined outside class to see operator<<(., HLoadClass::LoadKind).
 inline void HLoadClass::AddSpecialInput(HInstruction* special_input) {
   // The special input is used for PC-relative loads on some architectures,
   // including literal pool loads, which are PC-relative too.
@@ -6206,6 +6220,21 @@ class HLoadString FINAL : public HInstruction {
   Handle<mirror::String> string_;
 };
 std::ostream& operator<<(std::ostream& os, HLoadString::LoadKind rhs);
+
+// Note: defined outside class to see operator<<(., HLoadString::LoadKind).
+inline void HLoadString::SetLoadKind(LoadKind load_kind) {
+  // The load kind should be determined before inserting the instruction to the graph.
+  DCHECK(GetBlock() == nullptr);
+  DCHECK(GetEnvironment() == nullptr);
+  DCHECK_EQ(GetLoadKind(), LoadKind::kRuntimeCall);
+  SetPackedField<LoadKindField>(load_kind);
+  if (load_kind != LoadKind::kRuntimeCall) {
+    special_input_ = HUserRecord<HInstruction*>(nullptr);
+  }
+  if (!NeedsEnvironment()) {
+    SetSideEffects(SideEffects::None());
+  }
+}
 
 // Note: defined outside class to see operator<<(., HLoadString::LoadKind).
 inline void HLoadString::AddSpecialInput(HInstruction* special_input) {

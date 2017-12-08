@@ -502,10 +502,11 @@ TEST_F(TransactionTest, ResolveString) {
   ASSERT_TRUE(h_klass->IsInitialized());
   // Make sure the string got resolved by the transaction.
   {
-    mirror::String* s = class_linker_->LookupString(*dex_file, string_idx, h_dex_cache.Get());
+    ObjPtr<mirror::String> s =
+        class_linker_->LookupString(*dex_file, string_idx, h_dex_cache.Get());
     ASSERT_TRUE(s != nullptr);
     EXPECT_STREQ(s->ToModifiedUtf8().c_str(), kResolvedString);
-    EXPECT_EQ(s, h_dex_cache->GetResolvedString(string_idx));
+    EXPECT_EQ(s.Ptr(), h_dex_cache->GetResolvedString(string_idx));
   }
   Runtime::Current()->RollbackAndExitTransactionMode();
   // Check that the string did not stay resolved.
