@@ -225,6 +225,11 @@ while true; do
         run_args="${run_args} --prebuild"
         prebuild_mode="yes"
         shift;
+    elif [ "x$1" = "x--compact-dex-level" ]; then
+        option="$1"
+        shift
+        run_args="${run_args} $option $1"
+        shift;
     elif [ "x$1" = "x--strip-dex" ]; then
         run_args="${run_args} --strip-dex"
         shift;
@@ -660,6 +665,7 @@ if [ "$usage" = "yes" ]; then
         echo "    -Xcompiler-option     Pass an option to the compiler."
         echo "    --build-option        Pass an option to the build script."
         echo "    --runtime-option      Pass an option to the runtime."
+        echo "    --compact-dex-level   Specify a compact dex level to the compiler."
         echo "    --debug               Wait for the default debugger to attach."
         echo "    --debug-agent <agent-path>"
         echo "                          Wait for the given debugger agent to attach. Currently"
