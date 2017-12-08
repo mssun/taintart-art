@@ -181,15 +181,10 @@ art_cc_defaults {
             ],
         },
     },
-    target: {
-        android: {
-            // For atrace.
-            shared_libs: ["libcutils"],
-        },
-    },
     generated_sources: ["art_compiler_operator_srcs"],
     shared_libs: [
         "libbase",
+        "libcutils",  // for atrace.
         "liblzma",
     ],
     include_dirs: ["art/disassembler"],
