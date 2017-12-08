@@ -143,15 +143,16 @@ inline ArtMethod* FindMethodFast(uint32_t method_idx,
                                  ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_);
 
-inline mirror::Class* ResolveVerifyAndClinit(dex::TypeIndex type_idx,
-                                             ArtMethod* referrer,
-                                             Thread* self,
-                                             bool can_run_clinit,
-                                             bool verify_access)
+inline ObjPtr<mirror::Class> ResolveVerifyAndClinit(dex::TypeIndex type_idx,
+                                                    ArtMethod* referrer,
+                                                    Thread* self,
+                                                    bool can_run_clinit,
+                                                    bool verify_access)
     REQUIRES_SHARED(Locks::mutator_lock_)
     REQUIRES(!Roles::uninterruptible_);
 
-inline mirror::String* ResolveStringFromCode(ArtMethod* referrer, dex::StringIndex string_idx)
+inline ObjPtr<mirror::String> ResolveStringFromCode(ArtMethod* referrer,
+                                                    dex::StringIndex string_idx)
     REQUIRES_SHARED(Locks::mutator_lock_)
     REQUIRES(!Roles::uninterruptible_);
 

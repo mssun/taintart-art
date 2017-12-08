@@ -2831,21 +2831,6 @@ bool HLoadClass::InstructionDataEquals(const HInstruction* other) const {
   }
 }
 
-void HLoadClass::SetLoadKind(LoadKind load_kind) {
-  SetPackedField<LoadKindField>(load_kind);
-
-  if (load_kind != LoadKind::kRuntimeCall &&
-      load_kind != LoadKind::kReferrersClass) {
-    RemoveAsUserOfInput(0u);
-    SetRawInputAt(0u, nullptr);
-  }
-
-  if (!NeedsEnvironment()) {
-    RemoveEnvironment();
-    SetSideEffects(SideEffects::None());
-  }
-}
-
 std::ostream& operator<<(std::ostream& os, HLoadClass::LoadKind rhs) {
   switch (rhs) {
     case HLoadClass::LoadKind::kReferrersClass:
@@ -2885,21 +2870,6 @@ bool HLoadString::InstructionDataEquals(const HInstruction* other) const {
     }
     default:
       return IsSameDexFile(GetDexFile(), other_load_string->GetDexFile());
-  }
-}
-
-void HLoadString::SetLoadKind(LoadKind load_kind) {
-  // Once sharpened, the load kind should not be changed again.
-  DCHECK_EQ(GetLoadKind(), LoadKind::kRuntimeCall);
-  SetPackedField<LoadKindField>(load_kind);
-
-  if (load_kind != LoadKind::kRuntimeCall) {
-    RemoveAsUserOfInput(0u);
-    SetRawInputAt(0u, nullptr);
-  }
-  if (!NeedsEnvironment()) {
-    RemoveEnvironment();
-    SetSideEffects(SideEffects::None());
   }
 }
 

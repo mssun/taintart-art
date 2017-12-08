@@ -245,7 +245,7 @@ inline mirror::Class* CheckArrayAlloc(dex::TypeIndex type_idx,
     *slow_path = true;
     return nullptr;  // Failure
   }
-  mirror::Class* klass = method->GetDexCache()->GetResolvedType(type_idx);
+  ObjPtr<mirror::Class> klass = method->GetDexCache()->GetResolvedType(type_idx);
   if (UNLIKELY(klass == nullptr)) {  // Not in dex cache so try to resolve
     ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
     klass = class_linker->ResolveType(type_idx, method);
@@ -264,7 +264,7 @@ inline mirror::Class* CheckArrayAlloc(dex::TypeIndex type_idx,
       return nullptr;  // Failure
     }
   }
-  return klass;
+  return klass.Ptr();
 }
 
 // Given the context of a calling Method, use its DexCache to resolve a type to an array Class. If
@@ -500,7 +500,8 @@ inline ArtMethod* FindMethodFromCode(uint32_t method_idx,
       Handle<mirror::Class> h_referring_class(hs2.NewHandle(referrer->GetDeclaringClass()));
       const dex::TypeIndex method_type_idx =
           referrer->GetDexFile()->GetMethodId(method_idx).class_idx_;
-      mirror::Class* method_reference_class = class_linker->ResolveType(method_type_idx, referrer);
+      ObjPtr<mirror::Class> method_reference_class =
+          class_linker->ResolveType(method_type_idx, referrer);
       if (UNLIKELY(method_reference_class == nullptr)) {
         // Bad type idx.
         CHECK(self->IsExceptionPending());
@@ -711,13 +712,13 @@ inline ArtMethod* FindMethodFast(uint32_t method_idx,
   }
 }
 
-inline mirror::Class* ResolveVerifyAndClinit(dex::TypeIndex type_idx,
-                                             ArtMethod* referrer,
-                                             Thread* self,
-                                             bool can_run_clinit,
-                                             bool verify_access) {
+inline ObjPtr<mirror::Class> ResolveVerifyAndClinit(dex::TypeIndex type_idx,
+                                                    ArtMethod* referrer,
+                                                    Thread* self,
+                                                    bool can_run_clinit,
+                                                    bool verify_access) {
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  mirror::Class* klass = class_linker->ResolveType(type_idx, referrer);
+  ObjPtr<mirror::Class> klass = class_linker->ResolveType(type_idx, referrer);
   if (UNLIKELY(klass == nullptr)) {
     CHECK(self->IsExceptionPending());
     return nullptr;  // Failure - Indicate to caller to deliver exception
@@ -748,9 +749,9 @@ inline mirror::Class* ResolveVerifyAndClinit(dex::TypeIndex type_idx,
   return h_class.Get();
 }
 
-static inline mirror::String* ResolveString(ClassLinker* class_linker,
-                                            dex::StringIndex string_idx,
-                                            ArtMethod* referrer)
+static inline ObjPtr<mirror::String> ResolveString(ClassLinker* class_linker,
+                                                   dex::StringIndex string_idx,
+                                                   ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   Thread::PoisonObjectPointersIfDebug();
   ObjPtr<mirror::String> string = referrer->GetDexCache()->GetResolvedString(string_idx);
@@ -760,10 +761,11 @@ static inline mirror::String* ResolveString(ClassLinker* class_linker,
     const DexFile& dex_file = *dex_cache->GetDexFile();
     string = class_linker->ResolveString(dex_file, string_idx, dex_cache);
   }
-  return string.Ptr();
+  return string;
 }
 
-inline mirror::String* ResolveStringFromCode(ArtMethod* referrer, dex::StringIndex string_idx) {
+inline ObjPtr<mirror::String> ResolveStringFromCode(ArtMethod* referrer,
+                                                    dex::StringIndex string_idx) {
   Thread::PoisonObjectPointersIfDebug();
   ObjPtr<mirror::String> string = referrer->GetDexCache()->GetResolvedString(string_idx);
   if (UNLIKELY(string == nullptr)) {
@@ -773,7 +775,7 @@ inline mirror::String* ResolveStringFromCode(ArtMethod* referrer, dex::StringInd
     ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
     string = class_linker->ResolveString(dex_file, string_idx, dex_cache);
   }
-  return string.Ptr();
+  return string;
 }
 
 inline void UnlockJniSynchronizedMethod(jobject locked, Thread* self) {

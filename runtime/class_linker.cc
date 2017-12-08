@@ -7727,14 +7727,14 @@ void ClassLinker::CreateReferenceInstanceOffsets(Handle<mirror::Class> klass) {
   klass->SetReferenceInstanceOffsets(reference_offsets);
 }
 
-mirror::String* ClassLinker::ResolveString(const DexFile& dex_file,
-                                           dex::StringIndex string_idx,
-                                           Handle<mirror::DexCache> dex_cache) {
+ObjPtr<mirror::String> ClassLinker::ResolveString(const DexFile& dex_file,
+                                                  dex::StringIndex string_idx,
+                                                  Handle<mirror::DexCache> dex_cache) {
   DCHECK(dex_cache != nullptr);
   Thread::PoisonObjectPointersIfDebug();
   ObjPtr<mirror::String> resolved = dex_cache->GetResolvedString(string_idx);
   if (resolved != nullptr) {
-    return resolved.Ptr();
+    return resolved;
   }
   uint32_t utf16_length;
   const char* utf8_data = dex_file.StringDataAndUtf16LengthByIdx(string_idx, &utf16_length);
@@ -7742,16 +7742,16 @@ mirror::String* ClassLinker::ResolveString(const DexFile& dex_file,
   if (string != nullptr) {
     dex_cache->SetResolvedString(string_idx, string);
   }
-  return string.Ptr();
+  return string;
 }
 
-mirror::String* ClassLinker::LookupString(const DexFile& dex_file,
-                                          dex::StringIndex string_idx,
-                                          ObjPtr<mirror::DexCache> dex_cache) {
+ObjPtr<mirror::String> ClassLinker::LookupString(const DexFile& dex_file,
+                                                 dex::StringIndex string_idx,
+                                                 ObjPtr<mirror::DexCache> dex_cache) {
   DCHECK(dex_cache != nullptr);
   ObjPtr<mirror::String> resolved = dex_cache->GetResolvedString(string_idx);
   if (resolved != nullptr) {
-    return resolved.Ptr();
+    return resolved;
   }
   uint32_t utf16_length;
   const char* utf8_data = dex_file.StringDataAndUtf16LengthByIdx(string_idx, &utf16_length);
@@ -7760,7 +7760,7 @@ mirror::String* ClassLinker::LookupString(const DexFile& dex_file,
   if (string != nullptr) {
     dex_cache->SetResolvedString(string_idx, string);
   }
-  return string.Ptr();
+  return string;
 }
 
 ObjPtr<mirror::Class> ClassLinker::LookupResolvedType(const DexFile& dex_file,
@@ -7794,19 +7794,19 @@ ObjPtr<mirror::Class> ClassLinker::LookupResolvedType(const DexFile& dex_file,
   return type;
 }
 
-mirror::Class* ClassLinker::ResolveType(const DexFile& dex_file,
-                                        dex::TypeIndex type_idx,
-                                        ObjPtr<mirror::Class> referrer) {
+ObjPtr<mirror::Class> ClassLinker::ResolveType(const DexFile& dex_file,
+                                               dex::TypeIndex type_idx,
+                                               ObjPtr<mirror::Class> referrer) {
   StackHandleScope<2> hs(Thread::Current());
   Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
   Handle<mirror::ClassLoader> class_loader(hs.NewHandle(referrer->GetClassLoader()));
   return ResolveType(dex_file, type_idx, dex_cache, class_loader);
 }
 
-mirror::Class* ClassLinker::ResolveType(const DexFile& dex_file,
-                                        dex::TypeIndex type_idx,
-                                        Handle<mirror::DexCache> dex_cache,
-                                        Handle<mirror::ClassLoader> class_loader) {
+ObjPtr<mirror::Class> ClassLinker::ResolveType(const DexFile& dex_file,
+                                               dex::TypeIndex type_idx,
+                                               Handle<mirror::DexCache> dex_cache,
+                                               Handle<mirror::ClassLoader> class_loader) {
   DCHECK(dex_cache != nullptr);
   Thread::PoisonObjectPointersIfDebug();
   ObjPtr<mirror::Class> resolved = dex_cache->GetResolvedType(type_idx);
@@ -7835,7 +7835,7 @@ mirror::Class* ClassLinker::ResolveType(const DexFile& dex_file,
   }
   DCHECK((resolved == nullptr) || resolved->IsResolved())
       << resolved->PrettyDescriptor() << " " << resolved->GetStatus();
-  return resolved.Ptr();
+  return resolved;
 }
 
 std::string DescribeSpace(ObjPtr<mirror::Class> klass) REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -8516,7 +8516,7 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForMethod(
   DexFileParameterIterator it(*dex_file, target_method->GetPrototype());
   while (it.HasNext()) {
     const dex::TypeIndex type_idx = it.GetTypeIdx();
-    mirror::Class* klass = ResolveType(*dex_file, type_idx, dex_cache, class_loader);
+    ObjPtr<mirror::Class> klass = ResolveType(*dex_file, type_idx, dex_cache, class_loader);
     if (nullptr == klass) {
       DCHECK(self->IsExceptionPending());
       return nullptr;

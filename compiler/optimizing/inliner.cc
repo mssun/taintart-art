@@ -876,9 +876,9 @@ HInstruction* HInliner::AddTypeGuard(HInstruction* receiver,
       load_class, codegen_, compiler_driver_, caller_compilation_unit_);
   DCHECK(kind != HLoadClass::LoadKind::kInvalid)
       << "We should always be able to reference a class for inline caches";
-  // Insert before setting the kind, as setting the kind affects the inputs.
-  bb_cursor->InsertInstructionAfter(load_class, receiver_class);
+  // Load kind must be set before inserting the instruction into the graph.
   load_class->SetLoadKind(kind);
+  bb_cursor->InsertInstructionAfter(load_class, receiver_class);
   // In AOT mode, we will most likely load the class from BSS, which will involve a call
   // to the runtime. In this case, the load instruction will need an environment so copy
   // it from the invoke instruction.
@@ -1932,7 +1932,7 @@ void HInliner::RunOptimizations(HGraph* callee_graph,
   // optimization that could lead to a HDeoptimize. The following optimizations do not.
   HDeadCodeElimination dce(callee_graph, inline_stats_, "dead_code_elimination$inliner");
   HConstantFolding fold(callee_graph, "constant_folding$inliner");
-  HSharpening sharpening(callee_graph, codegen_, dex_compilation_unit, compiler_driver_, handles_);
+  HSharpening sharpening(callee_graph, codegen_, compiler_driver_);
   InstructionSimplifier simplify(callee_graph, codegen_, compiler_driver_, inline_stats_);
   IntrinsicsRecognizer intrinsics(callee_graph, inline_stats_);
 
