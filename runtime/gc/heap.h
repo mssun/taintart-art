@@ -1099,6 +1099,9 @@ class Heap {
 
   void TraceHeapSize(size_t heap_size);
 
+  // Remove a vlog code from heap-inl.h which is transitively included in half the world.
+  static void VlogHeapGrowth(size_t max_allowed_footprint, size_t new_footprint, size_t alloc_size);
+
   // All-known continuous spaces, where objects lie within fixed bounds.
   std::vector<space::ContinuousSpace*> continuous_spaces_ GUARDED_BY(Locks::mutator_lock_);
 

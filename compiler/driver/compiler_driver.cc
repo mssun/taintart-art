@@ -32,6 +32,7 @@
 #include "base/array_ref.h"
 #include "base/bit_vector.h"
 #include "base/enums.h"
+#include "base/logging.h"  // For VLOG
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/time_utils.h"

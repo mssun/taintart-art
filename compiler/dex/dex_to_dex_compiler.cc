@@ -21,6 +21,7 @@
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
+#include "base/logging.h"  // For VLOG
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "bytecode_utils.h"

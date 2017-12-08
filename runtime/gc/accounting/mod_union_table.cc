@@ -18,6 +18,7 @@
 
 #include <memory>
 
+#include "base/logging.h"  // For VLOG
 #include "base/stl_util.h"
 #include "bitmap-inl.h"
 #include "card_table-inl.h"

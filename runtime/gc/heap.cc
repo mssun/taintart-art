@@ -30,6 +30,7 @@
 #include "base/dumpable.h"
 #include "base/file_utils.h"
 #include "base/histogram-inl.h"
+#include "base/logging.h"  // For VLOG.
 #include "base/memory_tool.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
@@ -4154,6 +4155,11 @@ mirror::Object* Heap::AllocWithNewTLAB(Thread* self,
 
 const Verification* Heap::GetVerification() const {
   return verification_.get();
+}
+
+void Heap::VlogHeapGrowth(size_t max_allowed_footprint, size_t new_footprint, size_t alloc_size) {
+  VLOG(heap) << "Growing heap from " << PrettySize(max_allowed_footprint) << " to "
+             << PrettySize(new_footprint) << " for a " << PrettySize(alloc_size) << " allocation";
 }
 
 }  // namespace gc

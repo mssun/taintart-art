@@ -40,6 +40,7 @@
 #include "jvmti.h"
 
 #include "art_jvmti.h"
+#include "base/logging.h"  // For gLogVerbosity.
 #include "base/mutex.h"
 #include "events-inl.h"
 #include "jni_env_ext-inl.h"
