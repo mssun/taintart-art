@@ -385,13 +385,16 @@ bool DexFile::DecodeDebugLocalInfo(const uint8_t* stream,
 }
 
 template<typename NewLocalCallback>
-bool DexFile::DecodeDebugLocalInfo(const CodeItem* code_item,
+bool DexFile::DecodeDebugLocalInfo(uint32_t registers_size,
+                                   uint32_t ins_size,
+                                   uint32_t insns_size_in_code_units,
                                    uint32_t debug_info_offset,
                                    bool is_static,
                                    uint32_t method_idx,
                                    NewLocalCallback new_local_callback,
                                    void* context) const {
-  if (code_item == nullptr) {
+  const uint8_t* const stream = GetDebugInfoStream(debug_info_offset);
+  if (stream == nullptr) {
     return false;
   }
   std::vector<const char*> arg_descriptors;
@@ -399,15 +402,15 @@ bool DexFile::DecodeDebugLocalInfo(const CodeItem* code_item,
   for (; it.HasNext(); it.Next()) {
     arg_descriptors.push_back(it.GetDescriptor());
   }
-  return DecodeDebugLocalInfo(GetDebugInfoStream(debug_info_offset),
+  return DecodeDebugLocalInfo(stream,
                               GetLocation(),
                               GetMethodDeclaringClassDescriptor(GetMethodId(method_idx)),
                               arg_descriptors,
                               this->PrettyMethod(method_idx),
                               is_static,
-                              code_item->registers_size_,
-                              code_item->ins_size_,
-                              code_item->insns_size_in_code_units_,
+                              registers_size,
+                              ins_size,
+                              insns_size_in_code_units,
                               [this](uint32_t idx) {
                                 return StringDataByIdx(dex::StringIndex(idx));
                               },
@@ -488,13 +491,9 @@ bool DexFile::DecodeDebugPositionInfo(const uint8_t* stream,
 }
 
 template<typename DexDebugNewPosition>
-bool DexFile::DecodeDebugPositionInfo(const CodeItem* code_item,
-                                      uint32_t debug_info_offset,
+bool DexFile::DecodeDebugPositionInfo(uint32_t debug_info_offset,
                                       DexDebugNewPosition position_functor,
                                       void* context) const {
-  if (code_item == nullptr) {
-    return false;
-  }
   return DecodeDebugPositionInfo(GetDebugInfoStream(debug_info_offset),
                                  [this](uint32_t idx) {
                                    return StringDataByIdx(dex::StringIndex(idx));

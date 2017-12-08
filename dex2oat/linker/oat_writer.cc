@@ -2694,7 +2694,8 @@ class OatWriter::WriteQuickeningIndicesMethodVisitor {
           CompiledMethod* compiled_method =
               driver.GetCompiledMethod(MethodReference(dex_file, method_idx));
           const DexFile::CodeItem* code_item = class_it.GetMethodCodeItem();
-          uint32_t existing_debug_info_offset = OatFile::GetDebugInfoOffset(*dex_file, code_item);
+          CodeItemDebugInfoAccessor accessor(dex_file, code_item);
+          const uint32_t existing_debug_info_offset = accessor.DebugInfoOffset();
           // If the existing offset is already out of bounds (and not magic marker 0xFFFFFFFF)
           // we will pretend the method has been quickened.
           bool existing_offset_out_of_bounds =

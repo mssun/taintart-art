@@ -954,7 +954,9 @@ class DexFile {
                                    NewLocalCallback new_local,
                                    void* context);
   template<typename NewLocalCallback>
-  bool DecodeDebugLocalInfo(const CodeItem* code_item,
+  bool DecodeDebugLocalInfo(uint32_t registers_size,
+                            uint32_t ins_size,
+                            uint32_t insns_size_in_code_units,
                             uint32_t debug_info_offset,
                             bool is_static,
                             uint32_t method_idx,
@@ -968,8 +970,7 @@ class DexFile {
                                       DexDebugNewPosition position_functor,
                                       void* context);
   template<typename DexDebugNewPosition>
-  bool DecodeDebugPositionInfo(const CodeItem* code_item,
-                               uint32_t debug_info_offset,
+  bool DecodeDebugPositionInfo(uint32_t debug_info_offset,
                                DexDebugNewPosition position_functor,
                                void* context) const;
 

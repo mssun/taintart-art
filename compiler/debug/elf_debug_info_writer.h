@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "art_field-inl.h"
+#include "code_item_accessors-inl.h"
 #include "debug/dwarf/debug_abbrev_writer.h"
 #include "debug/dwarf/debug_info_entry_writer.h"
 #include "debug/elf_compilation_unit.h"
@@ -48,10 +49,10 @@ static void LocalInfoCallback(void* ctx, const DexFile::LocalInfo& entry) {
 
 static std::vector<const char*> GetParamNames(const MethodDebugInfo* mi) {
   std::vector<const char*> names;
-  if (mi->code_item != nullptr) {
+  CodeItemDebugInfoAccessor accessor(mi->dex_file, mi->code_item);
+  if (accessor.HasCodeItem()) {
     DCHECK(mi->dex_file != nullptr);
-    uint32_t debug_info_offset = OatFile::GetDebugInfoOffset(*mi->dex_file, mi->code_item);
-    const uint8_t* stream = mi->dex_file->GetDebugInfoStream(debug_info_offset);
+    const uint8_t* stream = mi->dex_file->GetDebugInfoStream(accessor.DebugInfoOffset());
     if (stream != nullptr) {
       DecodeUnsignedLeb128(&stream);  // line.
       uint32_t parameters_size = DecodeUnsignedLeb128(&stream);
@@ -162,7 +163,7 @@ class ElfCompilationUnitWriter {
     for (auto mi : compilation_unit.methods) {
       DCHECK(mi->dex_file != nullptr);
       const DexFile* dex = mi->dex_file;
-      const DexFile::CodeItem* dex_code = mi->code_item;
+      CodeItemDebugInfoAccessor accessor(dex, mi->code_item);
       const DexFile::MethodId& dex_method = dex->GetMethodId(mi->dex_method_index);
       const DexFile::ProtoId& dex_proto = dex->GetMethodPrototype(dex_method);
       const DexFile::TypeList* dex_params = dex->GetProtoParameters(dex_proto);
@@ -204,13 +205,13 @@ class ElfCompilationUnitWriter {
       // Decode dex register locations for all stack maps.
       // It might be expensive, so do it just once and reuse the result.
       std::vector<DexRegisterMap> dex_reg_maps;
-      if (dex_code != nullptr && mi->code_info != nullptr) {
+      if (accessor.HasCodeItem() && mi->code_info != nullptr) {
         const CodeInfo code_info(mi->code_info);
         CodeInfoEncoding encoding = code_info.ExtractEncoding();
         for (size_t s = 0; s < code_info.GetNumberOfStackMaps(encoding); ++s) {
           const StackMap& stack_map = code_info.GetStackMapAt(s, encoding);
           dex_reg_maps.push_back(code_info.GetDexRegisterMapOf(
-              stack_map, encoding, dex_code->registers_size_));
+              stack_map, encoding, accessor.RegistersSize()));
         }
       }
 
@@ -224,9 +225,9 @@ class ElfCompilationUnitWriter {
         WriteName("this");
         info_.WriteFlagPresent(DW_AT_artificial);
         WriteLazyType(dex_class_desc);
-        if (dex_code != nullptr) {
+        if (accessor.HasCodeItem()) {
           // Write the stack location of the parameter.
-          const uint32_t vreg = dex_code->registers_size_ - dex_code->ins_size_ + arg_reg;
+          const uint32_t vreg = accessor.RegistersSize() - accessor.InsSize() + arg_reg;
           const bool is64bitValue = false;
           WriteRegLocation(mi, dex_reg_maps, vreg, is64bitValue, compilation_unit.code_address);
         }
@@ -244,30 +245,31 @@ class ElfCompilationUnitWriter {
           const char* type_desc = dex->StringByTypeIdx(dex_params->GetTypeItem(i).type_idx_);
           WriteLazyType(type_desc);
           const bool is64bitValue = type_desc[0] == 'D' || type_desc[0] == 'J';
-          if (dex_code != nullptr) {
+          if (accessor.HasCodeItem()) {
             // Write the stack location of the parameter.
-            const uint32_t vreg = dex_code->registers_size_ - dex_code->ins_size_ + arg_reg;
+            const uint32_t vreg = accessor.RegistersSize() - accessor.InsSize() + arg_reg;
             WriteRegLocation(mi, dex_reg_maps, vreg, is64bitValue, compilation_unit.code_address);
           }
           arg_reg += is64bitValue ? 2 : 1;
           info_.EndTag();
         }
-        if (dex_code != nullptr) {
-          DCHECK_EQ(arg_reg, dex_code->ins_size_);
+        if (accessor.HasCodeItem()) {
+          DCHECK_EQ(arg_reg, accessor.InsSize());
         }
       }
 
       // Write local variables.
       LocalInfos local_infos;
-      uint32_t debug_info_offset = OatFile::GetDebugInfoOffset(*dex, dex_code);
-      if (dex->DecodeDebugLocalInfo(dex_code,
-                                    debug_info_offset,
+      if (dex->DecodeDebugLocalInfo(accessor.RegistersSize(),
+                                    accessor.InsSize(),
+                                    accessor.InsnsSizeInCodeUnits(),
+                                    accessor.DebugInfoOffset(),
                                     is_static,
                                     mi->dex_method_index,
                                     LocalInfoCallback,
                                     &local_infos)) {
         for (const DexFile::LocalInfo& var : local_infos) {
-          if (var.reg_ < dex_code->registers_size_ - dex_code->ins_size_) {
+          if (var.reg_ < accessor.RegistersSize() - accessor.InsSize()) {
             info_.StartTag(DW_TAG_variable);
             WriteName(var.name_);
             WriteLazyType(var.descriptor_);
