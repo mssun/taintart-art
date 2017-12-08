@@ -18,8 +18,9 @@
 
 #include <inttypes.h>
 
-#include "android-base/stringprintf.h"
-#include "base/logging.h"
+#include <android-base/macros.h>
+#include <android-base/stringprintf.h>
+
 #include "base/macros.h"
 #include "jni.h"
 #include "jvmti.h"

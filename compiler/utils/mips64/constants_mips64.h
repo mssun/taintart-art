@@ -19,8 +19,9 @@
 
 #include <iosfwd>
 
+#include <android-base/logging.h>
+
 #include "arch/mips64/registers_mips64.h"
-#include "base/logging.h"
 #include "base/macros.h"
 #include "globals.h"
 

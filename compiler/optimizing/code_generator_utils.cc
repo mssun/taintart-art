@@ -15,9 +15,10 @@
  */
 
 #include "code_generator_utils.h"
-#include "nodes.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
+#include "nodes.h"
 
 namespace art {
 

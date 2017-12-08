@@ -16,9 +16,10 @@
 
 #include "thread.h"
 
+#include <android-base/logging.h>
+
 #include "asm_support_mips64.h"
 #include "base/enums.h"
-#include "base/logging.h"
 
 namespace art {
 

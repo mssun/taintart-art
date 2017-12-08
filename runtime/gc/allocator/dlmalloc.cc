@@ -16,8 +16,9 @@
 
 #include "dlmalloc.h"
 
+#include <android-base/logging.h>
+
 #include "base/bit_utils.h"
-#include "base/logging.h"
 
 // ART specific morecore implementation defined in space.cc.
 static void* art_heap_morecore(void* m, intptr_t increment);

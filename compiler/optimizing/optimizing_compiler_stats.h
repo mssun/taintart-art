@@ -23,6 +23,7 @@
 #include <type_traits>
 
 #include "atomic.h"
+#include "base/logging.h"  // For VLOG_IS_ON.
 #include "globals.h"
 
 namespace art {

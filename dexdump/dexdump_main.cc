@@ -28,7 +28,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
+#include <base/logging.h>  // For InitLogging.
 #include "mem_map.h"
 #include "runtime.h"
 

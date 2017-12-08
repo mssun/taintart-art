@@ -17,10 +17,12 @@
 #ifndef ART_RUNTIME_GC_ACCOUNTING_CARD_TABLE_INL_H_
 #define ART_RUNTIME_GC_ACCOUNTING_CARD_TABLE_INL_H_
 
+#include "card_table.h"
+
+#include <android-base/logging.h>
+
 #include "atomic.h"
 #include "base/bit_utils.h"
-#include "base/logging.h"
-#include "card_table.h"
 #include "mem_map.h"
 #include "space_bitmap.h"
 

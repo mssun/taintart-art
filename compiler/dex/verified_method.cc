@@ -19,7 +19,8 @@
 #include <algorithm>
 #include <memory>
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
 #include "code_item_accessors-inl.h"
 #include "dex_file.h"
 #include "dex_instruction-inl.h"

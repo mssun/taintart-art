@@ -17,8 +17,9 @@
 #ifndef ART_RUNTIME_HANDLE_H_
 #define ART_RUNTIME_HANDLE_H_
 
+#include <android-base/logging.h>
+
 #include "base/casts.h"
-#include "base/logging.h"
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "base/value_object.h"

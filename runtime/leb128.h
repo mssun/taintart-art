@@ -19,8 +19,10 @@
 
 #include <vector>
 
+#include <android-base/logging.h>
+
 #include "base/bit_utils.h"
-#include "base/logging.h"
+#include "base/macros.h"
 #include "globals.h"
 
 namespace art {

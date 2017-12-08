@@ -24,7 +24,8 @@
 #include <set>
 #include <vector>
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
 #include "base/macros.h"
 #include "base/mutex.h"
 

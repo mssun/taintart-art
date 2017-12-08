@@ -19,7 +19,8 @@
 
 #include "compiled_method_storage.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
 #include "compiled_method.h"
 #include "linker/linker_patch.h"
 #include "thread-current-inl.h"

@@ -19,6 +19,8 @@
 
 #include "scoped_thread_state_change.h"
 
+#include <android-base/logging.h>
+
 #include "base/casts.h"
 #include "jni_env_ext-inl.h"
 #include "obj_ptr-inl.h"

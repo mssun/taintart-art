@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
+#include <android-base/logging.h>
+
 #include "art_method-inl.h"
 #include "base/casts.h"
-#include "base/logging.h"
 #include "entrypoints/entrypoint_utils-inl.h"
 #include "indirect_reference_table.h"
 #include "mirror/object-inl.h"

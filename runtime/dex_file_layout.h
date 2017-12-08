@@ -21,7 +21,7 @@
 #include <cstdint>
 #include <iosfwd>
 
-#include "base/logging.h"
+#include <android-base/logging.h>
 
 namespace art {
 

@@ -23,9 +23,10 @@
 #include <random>
 #include <string>
 
+#include <android-base/logging.h>
+
 #include "arch/instruction_set.h"
 #include "base/casts.h"
-#include "base/logging.h"
 #include "base/stringpiece.h"
 #include "globals.h"
 #include "primitive.h"

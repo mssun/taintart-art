@@ -25,8 +25,10 @@
 #include <type_traits>
 #include <utility>
 
+#include <android-base/logging.h>
+
 #include "bit_utils.h"
-#include "logging.h"
+#include "macros.h"
 
 namespace art {
 

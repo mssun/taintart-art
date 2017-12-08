@@ -23,7 +23,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
 #include "jdwp/jdwp.h"
 #include "jdwp/jdwp_bits.h"
 

@@ -16,7 +16,8 @@
 
 #include "utf.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
 #include "mirror/array.h"
 #include "mirror/object-inl.h"
 #include "utf-inl.h"

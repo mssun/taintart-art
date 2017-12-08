@@ -39,6 +39,7 @@
 #include "base/bit_vector.h"
 #include "base/enums.h"
 #include "base/file_utils.h"
+#include "base/logging.h"  // For VLOG_IS_ON.
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/unix_file/fd_file.h"
@@ -314,7 +315,7 @@ bool OatFileBase::ComputeFields(uint8_t* requested_base,
   if (requested_base != nullptr && begin_ != requested_base) {
     // Host can fail this check. Do not dump there to avoid polluting the output.
     if (kIsTargetBuild && (kIsDebugBuild || VLOG_IS_ON(oat))) {
-      PrintFileToLog("/proc/self/maps", LogSeverity::WARNING);
+      PrintFileToLog("/proc/self/maps", android::base::LogSeverity::WARNING);
     }
     *error_msg = StringPrintf("Failed to find oatdata symbol at expected address: "
         "oatdata=%p != expected=%p. See process maps in the log.",
@@ -1068,7 +1069,7 @@ void DlOpenOatFile::PreSetup(const std::string& elf_filename) {
     dl_iterate_context context0 = { Begin(), &dlopen_mmaps_, 0, 0};
     if (dl_iterate_phdr(dl_iterate_context::callback, &context0) == 0) {
       // OK, give up and print an error.
-      PrintFileToLog("/proc/self/maps", LogSeverity::WARNING);
+      PrintFileToLog("/proc/self/maps", android::base::LogSeverity::WARNING);
       LOG(ERROR) << "File " << elf_filename << " loaded with dlopen but cannot find its mmaps.";
     }
   }

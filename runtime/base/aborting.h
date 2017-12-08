@@ -14,23 +14,18 @@
  * limitations under the License.
  */
 
-#include "thread.h"
+#ifndef ART_RUNTIME_BASE_ABORTING_H_
+#define ART_RUNTIME_BASE_ABORTING_H_
 
-#include <android-base/logging.h>
-
-#include "asm_support_mips.h"
-#include "base/enums.h"
+#include <atomic>
 
 namespace art {
 
-void Thread::InitCpu() {
-  CHECK_EQ(THREAD_FLAGS_OFFSET, ThreadFlagsOffset<PointerSize::k32>().Int32Value());
-  CHECK_EQ(THREAD_CARD_TABLE_OFFSET, CardTableOffset<PointerSize::k32>().Int32Value());
-  CHECK_EQ(THREAD_EXCEPTION_OFFSET, ExceptionOffset<PointerSize::k32>().Int32Value());
-}
-
-void Thread::CleanupCpu() {
-  // Do nothing.
-}
+// 0 if not abort, non-zero if an abort is in progress. Used on fatal exit to prevents recursive
+// aborts. Global declaration allows us to disable some error checking to ensure fatal shutdown
+// makes forward progress.
+extern std::atomic<unsigned int> gAborting;
 
 }  // namespace art
+
+#endif  // ART_RUNTIME_BASE_ABORTING_H_

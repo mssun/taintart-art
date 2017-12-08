@@ -21,11 +21,12 @@
 
 #include <iomanip>
 
-#include "android-base/stringprintf.h"
+#include <android-base/logging.h>
+#include <android-base/stringprintf.h>
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
-#include "base/logging.h"
+#include "base/macros.h"
 #include "base/to_str.h"
 #include "class_linker-inl.h"
 #include "class_linker.h"

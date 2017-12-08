@@ -39,6 +39,7 @@ cc_defaults {
         "base/hex_dump.cc",
         "base/logging.cc",
         "base/mutex.cc",
+        "base/runtime_debug.cc",
         "base/safe_copy.cc",
         "base/scoped_arena_allocator.cc",
         "base/scoped_flock.cc",

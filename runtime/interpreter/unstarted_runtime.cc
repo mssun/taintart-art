@@ -26,12 +26,12 @@
 #include <locale>
 #include <unordered_map>
 
-#include "android-base/stringprintf.h"
+#include <android-base/logging.h>
+#include <android-base/stringprintf.h>
 
 #include "art_method-inl.h"
 #include "base/casts.h"
 #include "base/enums.h"
-#include "base/logging.h"
 #include "base/macros.h"
 #include "class_linker.h"
 #include "common_throws.h"
