@@ -245,31 +245,31 @@ class ClassLinker {
 
   // Resolve a String with the given index from the DexFile, storing the
   // result in the DexCache.
-  mirror::String* ResolveString(const DexFile& dex_file,
-                                dex::StringIndex string_idx,
-                                Handle<mirror::DexCache> dex_cache)
+  ObjPtr<mirror::String> ResolveString(const DexFile& dex_file,
+                                       dex::StringIndex string_idx,
+                                       Handle<mirror::DexCache> dex_cache)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Find a String with the given index from the DexFile, storing the
   // result in the DexCache if found. Return null if not found.
-  mirror::String* LookupString(const DexFile& dex_file,
-                               dex::StringIndex string_idx,
-                               ObjPtr<mirror::DexCache> dex_cache)
+  ObjPtr<mirror::String> LookupString(const DexFile& dex_file,
+                                      dex::StringIndex string_idx,
+                                      ObjPtr<mirror::DexCache> dex_cache)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Resolve a Type with the given index from the DexFile, storing the
   // result in the DexCache. The referrer is used to identify the
   // target DexCache and ClassLoader to use for resolution.
-  mirror::Class* ResolveType(const DexFile& dex_file,
-                             dex::TypeIndex type_idx,
-                             ObjPtr<mirror::Class> referrer)
+  ObjPtr<mirror::Class> ResolveType(const DexFile& dex_file,
+                                    dex::TypeIndex type_idx,
+                                    ObjPtr<mirror::Class> referrer)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
 
   // Resolve a Type with the given index from the DexFile, storing the
   // result in the DexCache. The referrer is used to identify the
   // target DexCache and ClassLoader to use for resolution.
-  mirror::Class* ResolveType(dex::TypeIndex type_idx, ArtMethod* referrer)
+  ObjPtr<mirror::Class> ResolveType(dex::TypeIndex type_idx, ArtMethod* referrer)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
 
@@ -289,10 +289,10 @@ class ClassLinker {
   // result in DexCache. The ClassLoader is used to search for the
   // type, since it may be referenced from but not contained within
   // the given DexFile.
-  mirror::Class* ResolveType(const DexFile& dex_file,
-                             dex::TypeIndex type_idx,
-                             Handle<mirror::DexCache> dex_cache,
-                             Handle<mirror::ClassLoader> class_loader)
+  ObjPtr<mirror::Class> ResolveType(const DexFile& dex_file,
+                                    dex::TypeIndex type_idx,
+                                    Handle<mirror::DexCache> dex_cache,
+                                    Handle<mirror::ClassLoader> class_loader)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
 

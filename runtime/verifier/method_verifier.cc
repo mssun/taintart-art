@@ -1076,9 +1076,9 @@ bool MethodVerifier::ScanTryCatchBlocks() {
       // Ensure exception types are resolved so that they don't need resolution to be delivered,
       // unresolved exception types will be ignored by exception delivery
       if (iterator.GetHandlerTypeIndex().IsValid()) {
-        mirror::Class* exception_type = linker->ResolveType(*dex_file_,
-                                                            iterator.GetHandlerTypeIndex(),
-                                                            dex_cache_, class_loader_);
+        ObjPtr<mirror::Class> exception_type = linker->ResolveType(*dex_file_,
+                                                                   iterator.GetHandlerTypeIndex(),
+                                                                   dex_cache_, class_loader_);
         if (exception_type == nullptr) {
           DCHECK(self_->IsExceptionPending());
           self_->ClearException();
@@ -3641,8 +3641,8 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
         has_catch_all_handler = true;
       } else {
         // It is also a catch-all if it is java.lang.Throwable.
-        mirror::Class* klass = linker->ResolveType(*dex_file_, handler_type_idx, dex_cache_,
-                                                   class_loader_);
+        ObjPtr<mirror::Class> klass =
+            linker->ResolveType(*dex_file_, handler_type_idx, dex_cache_, class_loader_);
         if (klass != nullptr) {
           if (klass == mirror::Throwable::GetJavaLangThrowable()) {
             has_catch_all_handler = true;
@@ -3760,16 +3760,16 @@ void MethodVerifier::UninstantiableError(const char* descriptor) {
                                            << "non-instantiable klass " << descriptor;
 }
 
-inline bool MethodVerifier::IsInstantiableOrPrimitive(mirror::Class* klass) {
+inline bool MethodVerifier::IsInstantiableOrPrimitive(ObjPtr<mirror::Class> klass) {
   return klass->IsInstantiable() || klass->IsPrimitive();
 }
 
 template <MethodVerifier::CheckAccess C>
 const RegType& MethodVerifier::ResolveClass(dex::TypeIndex class_idx) {
-  mirror::Class* klass = can_load_classes_
+  ObjPtr<mirror::Class> klass = can_load_classes_
       ? Runtime::Current()->GetClassLinker()->ResolveType(
           *dex_file_, class_idx, dex_cache_, class_loader_)
-      : ClassLinker::LookupResolvedType(class_idx, dex_cache_.Get(), class_loader_.Get()).Ptr();
+      : ClassLinker::LookupResolvedType(class_idx, dex_cache_.Get(), class_loader_.Get());
   if (can_load_classes_ && klass == nullptr) {
     DCHECK(self_->IsExceptionPending());
     self_->ClearException();
@@ -3782,10 +3782,10 @@ const RegType& MethodVerifier::ResolveClass(dex::TypeIndex class_idx) {
       UninstantiableError(descriptor);
       precise = false;
     }
-    result = reg_types_.FindClass(klass, precise);
+    result = reg_types_.FindClass(klass.Ptr(), precise);
     if (result == nullptr) {
       const char* descriptor = dex_file_->StringByTypeIdx(class_idx);
-      result = reg_types_.InsertClass(descriptor, klass, precise);
+      result = reg_types_.InsertClass(descriptor, klass.Ptr(), precise);
     }
   } else {
     const char* descriptor = dex_file_->StringByTypeIdx(class_idx);
@@ -3800,7 +3800,7 @@ const RegType& MethodVerifier::ResolveClass(dex::TypeIndex class_idx) {
   }
 
   // Record result of class resolution attempt.
-  VerifierDeps::MaybeRecordClassResolution(*dex_file_, class_idx, klass);
+  VerifierDeps::MaybeRecordClassResolution(*dex_file_, class_idx, klass.Ptr());
 
   // If requested, check if access is allowed. Unresolved types are included in this check, as the
   // interpreter only tests whether access is allowed when a class is not pre-verified and runs in

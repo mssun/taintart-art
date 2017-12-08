@@ -44,24 +44,11 @@ public class Main {
   /// CHECK-START: int Main.testSimple(int) sharpening (before)
   /// CHECK:                InvokeStaticOrDirect method_load_kind:RuntimeCall
 
-  /// CHECK-START-ARM: int Main.testSimple(int) sharpening (after)
+  /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: int Main.testSimple(int) sharpening (after)
   /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
 
-  /// CHECK-START-ARM64: int Main.testSimple(int) sharpening (after)
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
-
-  /// CHECK-START-MIPS: int Main.testSimple(int) sharpening (after)
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
-
-  /// CHECK-START-MIPS64: int Main.testSimple(int) sharpening (after)
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
-
-  /// CHECK-START-X86: int Main.testSimple(int) sharpening (after)
+  /// CHECK-START-X86: int Main.testSimple(int) pc_relative_fixups_x86 (before)
   /// CHECK-NOT:            X86ComputeBaseMethodAddress
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
-
-  /// CHECK-START-X86_64: int Main.testSimple(int) sharpening (after)
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
 
   /// CHECK-START-X86: int Main.testSimple(int) pc_relative_fixups_x86 (after)
   /// CHECK:                X86ComputeBaseMethodAddress
@@ -74,31 +61,14 @@ public class Main {
 
   /// CHECK-START: int Main.testDiamond(boolean, int) sharpening (before)
   /// CHECK:                InvokeStaticOrDirect method_load_kind:RuntimeCall
+  /// CHECK:                InvokeStaticOrDirect method_load_kind:RuntimeCall
 
-  /// CHECK-START-ARM: int Main.testDiamond(boolean, int) sharpening (after)
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
-
-  /// CHECK-START-ARM64: int Main.testDiamond(boolean, int) sharpening (after)
+  /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: int Main.testDiamond(boolean, int) sharpening (after)
   /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
   /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
 
-  /// CHECK-START-MIPS: int Main.testDiamond(boolean, int) sharpening (after)
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
-
-  /// CHECK-START-MIPS64: int Main.testDiamond(boolean, int) sharpening (after)
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
-
-  /// CHECK-START-X86: int Main.testDiamond(boolean, int) sharpening (after)
+  /// CHECK-START-X86: int Main.testDiamond(boolean, int) pc_relative_fixups_x86 (before)
   /// CHECK-NOT:            X86ComputeBaseMethodAddress
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
-
-  /// CHECK-START-X86_64: int Main.testDiamond(boolean, int) sharpening (after)
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
-  /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
 
   /// CHECK-START-X86: int Main.testDiamond(boolean, int) pc_relative_fixups_x86 (after)
   /// CHECK:                X86ComputeBaseMethodAddress
@@ -169,30 +139,7 @@ public class Main {
     return x;
   }
 
-  /// CHECK-START: java.lang.String Main.$noinline$getBootImageString() sharpening (before)
-  /// CHECK:                LoadString load_kind:RuntimeCall
-
-  /// CHECK-START-X86: java.lang.String Main.$noinline$getBootImageString() sharpening (after)
-  // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadString load_kind:{{BootImageAddress|BootImageInternTable}}
-
-  /// CHECK-START-X86_64: java.lang.String Main.$noinline$getBootImageString() sharpening (after)
-  // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadString load_kind:{{BootImageAddress|BootImageInternTable}}
-
-  /// CHECK-START-ARM: java.lang.String Main.$noinline$getBootImageString() sharpening (after)
-  // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadString load_kind:{{BootImageAddress|BootImageInternTable}}
-
-  /// CHECK-START-ARM64: java.lang.String Main.$noinline$getBootImageString() sharpening (after)
-  // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadString load_kind:{{BootImageAddress|BootImageInternTable}}
-
-  /// CHECK-START-MIPS: java.lang.String Main.$noinline$getBootImageString() sharpening (after)
-  // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadString load_kind:{{BootImageAddress|BootImageInternTable}}
-
-  /// CHECK-START-MIPS64: java.lang.String Main.$noinline$getBootImageString() sharpening (after)
+  /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: java.lang.String Main.$noinline$getBootImageString() builder (after)
   // Note: load kind depends on PIC/non-PIC
   /// CHECK:                LoadString load_kind:{{BootImageAddress|BootImageInternTable}}
 
@@ -203,30 +150,15 @@ public class Main {
     return "";
   }
 
-  /// CHECK-START: java.lang.String Main.$noinline$getNonBootImageString() sharpening (before)
-  /// CHECK:                LoadString load_kind:RuntimeCall
-
-  /// CHECK-START-X86: java.lang.String Main.$noinline$getNonBootImageString() sharpening (after)
+  /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: java.lang.String Main.$noinline$getNonBootImageString() builder (after)
   /// CHECK:                LoadString load_kind:BssEntry
+
+  /// CHECK-START-X86: java.lang.String Main.$noinline$getNonBootImageString() pc_relative_fixups_x86 (before)
+  /// CHECK-NOT:            X86ComputeBaseMethodAddress
 
   /// CHECK-START-X86: java.lang.String Main.$noinline$getNonBootImageString() pc_relative_fixups_x86 (after)
   /// CHECK-DAG:            X86ComputeBaseMethodAddress
   /// CHECK-DAG:            LoadString load_kind:BssEntry
-
-  /// CHECK-START-X86_64: java.lang.String Main.$noinline$getNonBootImageString() sharpening (after)
-  /// CHECK:                LoadString load_kind:BssEntry
-
-  /// CHECK-START-ARM: java.lang.String Main.$noinline$getNonBootImageString() sharpening (after)
-  /// CHECK:                LoadString load_kind:BssEntry
-
-  /// CHECK-START-ARM64: java.lang.String Main.$noinline$getNonBootImageString() sharpening (after)
-  /// CHECK:                LoadString load_kind:BssEntry
-
-  /// CHECK-START-MIPS: java.lang.String Main.$noinline$getNonBootImageString() sharpening (after)
-  /// CHECK:                LoadString load_kind:BssEntry
-
-  /// CHECK-START-MIPS64: java.lang.String Main.$noinline$getNonBootImageString() sharpening (after)
-  /// CHECK:                LoadString load_kind:BssEntry
 
   public static String $noinline$getNonBootImageString() {
     // Prevent inlining to avoid the string comparison being optimized away.
@@ -235,27 +167,7 @@ public class Main {
     return "non-boot-image-string";
   }
 
-  /// CHECK-START-X86: java.lang.Class Main.$noinline$getStringClass() sharpening (after)
-  // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BootImageClassTable}} class_name:java.lang.String
-
-  /// CHECK-START-X86_64: java.lang.Class Main.$noinline$getStringClass() sharpening (after)
-  // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BootImageClassTable}} class_name:java.lang.String
-
-  /// CHECK-START-ARM: java.lang.Class Main.$noinline$getStringClass() sharpening (after)
-  // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BootImageClassTable}} class_name:java.lang.String
-
-  /// CHECK-START-ARM64: java.lang.Class Main.$noinline$getStringClass() sharpening (after)
-  // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BootImageClassTable}} class_name:java.lang.String
-
-  /// CHECK-START-MIPS: java.lang.Class Main.$noinline$getStringClass() sharpening (after)
-  // Note: load kind depends on PIC/non-PIC
-  /// CHECK:                LoadClass load_kind:{{BootImageAddress|BootImageClassTable}} class_name:java.lang.String
-
-  /// CHECK-START-MIPS64: java.lang.Class Main.$noinline$getStringClass() sharpening (after)
+  /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: java.lang.Class Main.$noinline$getStringClass() builder (after)
   // Note: load kind depends on PIC/non-PIC
   /// CHECK:                LoadClass load_kind:{{BootImageAddress|BootImageClassTable}} class_name:java.lang.String
 
@@ -266,27 +178,15 @@ public class Main {
     return String.class;
   }
 
-  /// CHECK-START-X86: java.lang.Class Main.$noinline$getOtherClass() sharpening (after)
+  /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: java.lang.Class Main.$noinline$getOtherClass() builder (after)
   /// CHECK:                LoadClass load_kind:BssEntry class_name:Other
+
+  /// CHECK-START-X86: java.lang.Class Main.$noinline$getOtherClass() pc_relative_fixups_x86 (before)
+  /// CHECK-NOT:            X86ComputeBaseMethodAddress
 
   /// CHECK-START-X86: java.lang.Class Main.$noinline$getOtherClass() pc_relative_fixups_x86 (after)
   /// CHECK-DAG:            X86ComputeBaseMethodAddress
   /// CHECK-DAG:            LoadClass load_kind:BssEntry class_name:Other
-
-  /// CHECK-START-X86_64: java.lang.Class Main.$noinline$getOtherClass() sharpening (after)
-  /// CHECK:                LoadClass load_kind:BssEntry class_name:Other
-
-  /// CHECK-START-ARM: java.lang.Class Main.$noinline$getOtherClass() sharpening (after)
-  /// CHECK:                LoadClass load_kind:BssEntry class_name:Other
-
-  /// CHECK-START-ARM64: java.lang.Class Main.$noinline$getOtherClass() sharpening (after)
-  /// CHECK:                LoadClass load_kind:BssEntry class_name:Other
-
-  /// CHECK-START-MIPS: java.lang.Class Main.$noinline$getOtherClass() sharpening (after)
-  /// CHECK:                LoadClass load_kind:BssEntry class_name:Other
-
-  /// CHECK-START-MIPS64: java.lang.Class Main.$noinline$getOtherClass() sharpening (after)
-  /// CHECK:                LoadClass load_kind:BssEntry class_name:Other
 
   public static Class<?> $noinline$getOtherClass() {
     // Prevent inlining to avoid the string comparison being optimized away.

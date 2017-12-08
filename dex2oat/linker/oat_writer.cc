@@ -1951,20 +1951,22 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
         : class_linker_->FindDexCache(Thread::Current(), *target_dex_file);
   }
 
-  mirror::Class* GetTargetType(const LinkerPatch& patch) REQUIRES_SHARED(Locks::mutator_lock_) {
+  ObjPtr<mirror::Class> GetTargetType(const LinkerPatch& patch)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
     DCHECK(writer_->HasImage());
     ObjPtr<mirror::DexCache> dex_cache = GetDexCache(patch.TargetTypeDexFile());
     ObjPtr<mirror::Class> type =
         ClassLinker::LookupResolvedType(patch.TargetTypeIndex(), dex_cache, class_loader_);
     CHECK(type != nullptr);
-    return type.Ptr();
+    return type;
   }
 
-  mirror::String* GetTargetString(const LinkerPatch& patch) REQUIRES_SHARED(Locks::mutator_lock_) {
+  ObjPtr<mirror::String> GetTargetString(const LinkerPatch& patch)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
     ClassLinker* linker = Runtime::Current()->GetClassLinker();
-    mirror::String* string = linker->LookupString(*patch.TargetStringDexFile(),
-                                                  patch.TargetStringIndex(),
-                                                  GetDexCache(patch.TargetStringDexFile()));
+    ObjPtr<mirror::String> string = linker->LookupString(*patch.TargetStringDexFile(),
+                                                         patch.TargetStringIndex(),
+                                                         GetDexCache(patch.TargetStringDexFile()));
     DCHECK(string != nullptr);
     DCHECK(writer_->HasBootImage() ||
            Runtime::Current()->GetHeap()->ObjectIsInBootImageSpace(string));
@@ -1980,13 +1982,14 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
     return static_cast<uint32_t>(reinterpret_cast<uintptr_t>(method) - oat_data_begin);
   }
 
-  uint32_t GetTargetObjectOffset(mirror::Object* object) REQUIRES_SHARED(Locks::mutator_lock_) {
+  uint32_t GetTargetObjectOffset(ObjPtr<mirror::Object> object)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
     DCHECK(writer_->HasBootImage());
-    object = writer_->image_writer_->GetImageAddress(object);
+    object = writer_->image_writer_->GetImageAddress(object.Ptr());
     size_t oat_index = writer_->image_writer_->GetOatIndexForDexFile(dex_file_);
     uintptr_t oat_data_begin = writer_->image_writer_->GetOatDataBegin(oat_index);
     // TODO: Clean up offset types. The target offset must be treated as signed.
-    return static_cast<uint32_t>(reinterpret_cast<uintptr_t>(object) - oat_data_begin);
+    return static_cast<uint32_t>(reinterpret_cast<uintptr_t>(object.Ptr()) - oat_data_begin);
   }
 
   void PatchObjectAddress(std::vector<uint8_t>* code, uint32_t offset, mirror::Object* object)

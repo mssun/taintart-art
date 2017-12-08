@@ -73,7 +73,8 @@ inline ObjPtr<mirror::Class> ClassLinker::LookupResolvedType(
   return type;
 }
 
-inline mirror::Class* ClassLinker::ResolveType(dex::TypeIndex type_idx, ArtMethod* referrer) {
+inline ObjPtr<mirror::Class> ClassLinker::ResolveType(dex::TypeIndex type_idx,
+                                                      ArtMethod* referrer) {
   Thread::PoisonObjectPointersIfDebug();
   if (kIsDebugBuild) {
     Thread::Current()->AssertNoPendingException();
@@ -87,7 +88,7 @@ inline mirror::Class* ClassLinker::ResolveType(dex::TypeIndex type_idx, ArtMetho
     const DexFile& dex_file = *dex_cache->GetDexFile();
     resolved_type = ResolveType(dex_file, type_idx, dex_cache, class_loader);
   }
-  return resolved_type.Ptr();
+  return resolved_type;
 }
 
 template <bool kThrowOnError, typename ClassGetter>
