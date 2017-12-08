@@ -2742,10 +2742,6 @@ bool OatWriter::WriteQuickeningInfo(OutputStream* vdex_out) {
   size_t initial_offset = vdex_size_;
   size_t start_offset = RoundUp(initial_offset, 4u);
 
-  vdex_size_ = start_offset;
-  vdex_quickening_info_offset_ = vdex_size_;
-  size_quickening_info_alignment_ = start_offset - initial_offset;
-
   off_t actual_offset = vdex_out->Seek(start_offset, kSeekSet);
   if (actual_offset != static_cast<off_t>(start_offset)) {
     PLOG(ERROR) << "Failed to seek to quickening info section. Actual: " << actual_offset
@@ -2789,7 +2785,16 @@ bool OatWriter::WriteQuickeningInfo(OutputStream* vdex_out) {
     size_quickening_info_ = 0;
   }
 
-  vdex_size_ += size_quickening_info_;
+  if (size_quickening_info_ == 0) {
+    // Nothing was written. Leave `vdex_size_` untouched and unaligned.
+    vdex_quickening_info_offset_ = initial_offset;
+    size_quickening_info_alignment_ = 0;
+  } else {
+    vdex_size_ = start_offset + size_quickening_info_;
+    vdex_quickening_info_offset_ = start_offset;
+    size_quickening_info_alignment_ = start_offset - initial_offset;
+  }
+
   return true;
 }
 
@@ -3864,6 +3869,7 @@ bool OatWriter::WriteChecksumsAndVdexHeader(OutputStream* vdex_out) {
 
   DCHECK_NE(vdex_dex_files_offset_, 0u);
   DCHECK_NE(vdex_verifier_deps_offset_, 0u);
+  DCHECK_NE(vdex_quickening_info_offset_, 0u);
 
   size_t dex_section_size = vdex_verifier_deps_offset_ - vdex_dex_files_offset_;
   size_t verifier_deps_section_size = vdex_quickening_info_offset_ - vdex_verifier_deps_offset_;

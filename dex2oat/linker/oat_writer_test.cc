@@ -45,6 +45,7 @@
 #include "oat_writer.h"
 #include "scoped_thread_state_change-inl.h"
 #include "utils/test_dex_file_builder.h"
+#include "vdex_file.h"
 
 namespace art {
 namespace linker {
@@ -223,6 +224,9 @@ class OatTest : public CommonCompilerTest {
     std::unique_ptr<BufferedOutputStream> vdex_out =
         std::make_unique<BufferedOutputStream>(std::make_unique<FileOutputStream>(vdex_file));
     if (!oat_writer.WriteVerifierDeps(vdex_out.get(), nullptr)) {
+      return false;
+    }
+    if (!oat_writer.WriteQuickeningInfo(vdex_out.get())) {
       return false;
     }
     if (!oat_writer.WriteChecksumsAndVdexHeader(vdex_out.get())) {
@@ -652,6 +656,13 @@ void OatTest::TestDexFileInput(bool verify, bool low_4gb, bool use_profile) {
                       &opened_dex_file2->GetHeader(),
                       dex_file2_data->GetHeader().file_size_));
   ASSERT_EQ(dex_file2_data->GetLocation(), opened_dex_file2->GetLocation());
+
+  const VdexFile::Header &vdex_header = opened_oat_file->GetVdexFile()->GetHeader();
+  ASSERT_EQ(vdex_header.GetQuickeningInfoSize(), 0u);
+
+  int64_t actual_vdex_size = vdex_file.GetFile()->GetLength();
+  ASSERT_GE(actual_vdex_size, 0);
+  ASSERT_EQ((uint64_t) actual_vdex_size, vdex_header.GetComputedFileSize());
 }
 
 TEST_F(OatTest, DexFileInputCheckOutput) {
