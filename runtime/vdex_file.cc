@@ -57,11 +57,14 @@ VdexFile::Header::Header(uint32_t number_of_dex_files,
   DCHECK(IsVersionValid());
 }
 
-std::unique_ptr<VdexFile> VdexFile::Open(const std::string& vdex_filename,
-                                         bool writable,
-                                         bool low_4gb,
-                                         bool unquicken,
-                                         std::string* error_msg) {
+std::unique_ptr<VdexFile> VdexFile::OpenAtAddress(uint8_t* mmap_addr,
+                                                  size_t mmap_size,
+                                                  bool mmap_reuse,
+                                                  const std::string& vdex_filename,
+                                                  bool writable,
+                                                  bool low_4gb,
+                                                  bool unquicken,
+                                                  std::string* error_msg) {
   if (!OS::FileExists(vdex_filename.c_str())) {
     *error_msg = "File " + vdex_filename + " does not exist.";
     return nullptr;
@@ -85,23 +88,47 @@ std::unique_ptr<VdexFile> VdexFile::Open(const std::string& vdex_filename,
     return nullptr;
   }
 
-  return Open(vdex_file->Fd(), vdex_length, vdex_filename, writable, low_4gb, unquicken, error_msg);
+  return OpenAtAddress(mmap_addr,
+                       mmap_size,
+                       mmap_reuse,
+                       vdex_file->Fd(),
+                       vdex_length,
+                       vdex_filename,
+                       writable,
+                       low_4gb,
+                       unquicken,
+                       error_msg);
 }
 
-std::unique_ptr<VdexFile> VdexFile::Open(int file_fd,
-                                         size_t vdex_length,
-                                         const std::string& vdex_filename,
-                                         bool writable,
-                                         bool low_4gb,
-                                         bool unquicken,
-                                         std::string* error_msg) {
-  std::unique_ptr<MemMap> mmap(MemMap::MapFile(
+std::unique_ptr<VdexFile> VdexFile::OpenAtAddress(uint8_t* mmap_addr,
+                                                  size_t mmap_size,
+                                                  bool mmap_reuse,
+                                                  int file_fd,
+                                                  size_t vdex_length,
+                                                  const std::string& vdex_filename,
+                                                  bool writable,
+                                                  bool low_4gb,
+                                                  bool unquicken,
+                                                  std::string* error_msg) {
+  if (low_4gb) {
+    LOG(WARNING) << "Can not mmap vdex in low 4GB";  // TODO: Implement in MemMap.
+    mmap_addr = nullptr;
+    mmap_reuse = false;
+  }
+  if (mmap_addr != nullptr && mmap_size < vdex_length) {
+    LOG(WARNING) << "Insufficient pre-allocated space to mmap vdex.";
+    mmap_addr = nullptr;
+    mmap_reuse = false;
+  }
+  std::unique_ptr<MemMap> mmap(MemMap::MapFileAtAddress(
+      mmap_addr,
       vdex_length,
       (writable || unquicken) ? PROT_READ | PROT_WRITE : PROT_READ,
       unquicken ? MAP_PRIVATE : MAP_SHARED,
       file_fd,
       0 /* start offset */,
       low_4gb,
+      mmap_reuse,
       vdex_filename.c_str(),
       error_msg));
   if (mmap == nullptr) {

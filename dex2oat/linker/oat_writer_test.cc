@@ -219,7 +219,8 @@ class OatTest : public CommonCompilerTest {
                                       text_size,
                                       oat_writer.GetBssSize(),
                                       oat_writer.GetBssMethodsOffset(),
-                                      oat_writer.GetBssRootsOffset());
+                                      oat_writer.GetBssRootsOffset(),
+                                      oat_writer.GetVdexSize());
 
     std::unique_ptr<BufferedOutputStream> vdex_out =
         std::make_unique<BufferedOutputStream>(std::make_unique<FileOutputStream>(vdex_file));
