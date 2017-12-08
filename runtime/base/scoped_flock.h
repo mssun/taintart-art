@@ -20,9 +20,8 @@
 #include <memory>
 #include <string>
 
-#include "android-base/unique_fd.h"
+#include <android-base/unique_fd.h>
 
-#include "base/logging.h"
 #include "base/macros.h"
 #include "base/unix_file/fd_file.h"
 #include "os.h"

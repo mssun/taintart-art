@@ -18,6 +18,7 @@
 
 #include <type_traits>
 
+#include "base/aborting.h"
 #include "base/arena_bit_vector.h"
 #include "base/bit_vector-inl.h"
 #include "base/casts.h"

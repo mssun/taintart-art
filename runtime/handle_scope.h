@@ -19,8 +19,9 @@
 
 #include <stack>
 
+#include <android-base/logging.h>
+
 #include "base/enums.h"
-#include "base/logging.h"
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "handle.h"

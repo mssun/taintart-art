@@ -19,7 +19,7 @@
 #include <ostream>
 #include <utility>
 
-#include "logging.h"
+#include <android-base/logging.h>
 
 namespace art {
 

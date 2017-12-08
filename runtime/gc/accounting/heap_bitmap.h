@@ -17,8 +17,11 @@
 #ifndef ART_RUNTIME_GC_ACCOUNTING_HEAP_BITMAP_H_
 #define ART_RUNTIME_GC_ACCOUNTING_HEAP_BITMAP_H_
 
+#include <android-base/logging.h>
+
 #include "base/allocator.h"
-#include "base/logging.h"
+#include "base/macros.h"
+#include "base/mutex.h"
 #include "space_bitmap.h"
 
 namespace art {

@@ -17,8 +17,9 @@
 #ifndef ART_RUNTIME_BASE_DEBUG_STACK_H_
 #define ART_RUNTIME_BASE_DEBUG_STACK_H_
 
-#include "base/logging.h"
-#include "base/macros.h"
+#include <android-base/logging.h>
+#include <android-base/macros.h>
+
 #include "globals.h"
 
 namespace art {

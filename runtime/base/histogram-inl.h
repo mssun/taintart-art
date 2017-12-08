@@ -24,6 +24,8 @@
 
 #include "histogram.h"
 
+#include <android-base/logging.h>
+
 #include "base/bit_utils.h"
 #include "base/time_utils.h"
 #include "utils.h"

@@ -17,8 +17,10 @@
 #ifndef ART_COMPILER_UTILS_ARM_JNI_MACRO_ASSEMBLER_ARM_VIXL_H_
 #define ART_COMPILER_UTILS_ARM_JNI_MACRO_ASSEMBLER_ARM_VIXL_H_
 
+#include <android-base/logging.h>
+
 #include "base/arena_containers.h"
-#include "base/logging.h"
+#include "base/macros.h"
 #include "constants_arm.h"
 #include "offsets.h"
 #include "utils/arm/assembler_arm_shared.h"

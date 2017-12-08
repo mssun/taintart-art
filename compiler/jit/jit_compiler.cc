@@ -21,6 +21,7 @@
 #include "arch/instruction_set.h"
 #include "arch/instruction_set_features.h"
 #include "art_method-inl.h"
+#include "base/logging.h"  // For VLOG
 #include "base/stringpiece.h"
 #include "base/time_utils.h"
 #include "base/timing_logger.h"

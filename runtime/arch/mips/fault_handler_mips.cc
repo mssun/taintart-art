@@ -20,7 +20,7 @@
 #include "art_method.h"
 #include "base/callee_save_type.h"
 #include "base/hex_dump.h"
-#include "base/logging.h"
+#include "base/logging.h"  // For VLOG.
 #include "base/macros.h"
 #include "globals.h"
 #include "quick_method_frame_info_mips.h"

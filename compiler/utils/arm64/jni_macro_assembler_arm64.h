@@ -21,10 +21,12 @@
 #include <memory>
 #include <vector>
 
+#include <android-base/logging.h>
+
 #include "assembler_arm64.h"
 #include "base/arena_containers.h"
 #include "base/enums.h"
-#include "base/logging.h"
+#include "base/macros.h"
 #include "offsets.h"
 #include "utils/assembler.h"
 #include "utils/jni_macro_assembler.h"

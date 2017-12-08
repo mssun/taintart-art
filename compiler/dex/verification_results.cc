@@ -16,7 +16,8 @@
 
 #include "verification_results.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
 #include "base/mutex-inl.h"
 #include "base/stl_util.h"
 #include "driver/compiler_driver.h"

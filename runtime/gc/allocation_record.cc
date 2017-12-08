@@ -18,6 +18,7 @@
 
 #include "art_method-inl.h"
 #include "base/enums.h"
+#include "base/logging.h"  // For VLOG
 #include "base/stl_util.h"
 #include "obj_ptr-inl.h"
 #include "object_callbacks.h"

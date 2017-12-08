@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_ENTRYPOINTS_QUICK_QUICK_DEFAULT_INIT_ENTRYPOINTS_H_
 #define ART_RUNTIME_ENTRYPOINTS_QUICK_QUICK_DEFAULT_INIT_ENTRYPOINTS_H_
 
-#include "base/logging.h"
+#include "base/logging.h"  // FOR VLOG_IS_ON.
 #include "entrypoints/jni/jni_entrypoints.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "quick_alloc_entrypoints.h"

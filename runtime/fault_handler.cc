@@ -21,6 +21,7 @@
 #include <sys/ucontext.h>
 
 #include "art_method-inl.h"
+#include "base/logging.h"  // For VLOG
 #include "base/safe_copy.h"
 #include "base/stl_util.h"
 #include "dex_file_types.h"

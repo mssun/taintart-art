@@ -16,9 +16,11 @@
 
 #include <string>
 
+#include "base/logging.h"  // For InitLogging.
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 #include "base/file_utils.h"
+#include "base/logging.h"  // For InitLogging.
 #include "compiler_filter.h"
 #include "class_loader_context.h"
 #include "dex_file.h"

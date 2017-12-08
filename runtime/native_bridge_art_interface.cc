@@ -22,7 +22,7 @@
 
 #include "art_method-inl.h"
 #include "base/enums.h"
-#include "base/logging.h"
+#include "base/logging.h"  // For VLOG.
 #include "base/macros.h"
 #include "dex_file-inl.h"
 #include "jni_internal.h"

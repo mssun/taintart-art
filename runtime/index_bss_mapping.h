@@ -17,8 +17,9 @@
 #ifndef ART_RUNTIME_INDEX_BSS_MAPPING_H_
 #define ART_RUNTIME_INDEX_BSS_MAPPING_H_
 
+#include <android-base/logging.h>
+
 #include "base/bit_utils.h"
-#include "base/logging.h"
 
 namespace art {
 

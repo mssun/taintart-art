@@ -19,10 +19,10 @@
 
 #include <sys/cdefs.h>
 
+#include <android-base/logging.h>
+
 // Explicitly include our own elf.h to avoid Linux and other dependencies.
 #include "./elf.h"
-
-#include "base/logging.h"
 
 namespace art {
 

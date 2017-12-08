@@ -18,8 +18,9 @@
 
 #include "timing_logger.h"
 
+#include <android-base/logging.h>
+
 #include "base/histogram-inl.h"
-#include "base/logging.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/time_utils.h"

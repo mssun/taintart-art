@@ -22,7 +22,7 @@
 
 #include "base/dumpable.h"
 #include "base/histogram-inl.h"
-#include "base/logging.h"
+#include "base/logging.h"  // For VLOG_IS_ON.
 #include "base/mutex-inl.h"
 #include "base/systrace.h"
 #include "base/time_utils.h"

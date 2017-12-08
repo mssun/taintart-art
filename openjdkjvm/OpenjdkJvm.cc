@@ -40,9 +40,10 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include <android-base/logging.h>
+
 #include "../../libcore/ojluni/src/main/native/jvm.h"  // TODO(narayan): fix it
 
-#include "base/logging.h"
 #include "base/macros.h"
 #include "common_throws.h"
 #include "gc/heap.h"

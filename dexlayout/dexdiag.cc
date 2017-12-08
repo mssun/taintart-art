@@ -26,6 +26,7 @@
 
 #include "android-base/stringprintf.h"
 
+#include "base/logging.h"  // For InitLogging.
 #include "base/stringpiece.h"
 
 #include "dex_file.h"

@@ -21,7 +21,8 @@
 #include <memory>
 #include <string>
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
 #include "base/unix_file/random_access_file.h"
 #include "globals.h"
 #include "mem_map.h"

@@ -17,6 +17,7 @@
 
 #include "rosalloc_space-inl.h"
 
+#include "base/logging.h"  // For VLOG.
 #include "base/time_utils.h"
 #include "gc/accounting/card_table.h"
 #include "gc/accounting/space_bitmap-inl.h"

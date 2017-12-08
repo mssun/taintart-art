@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "base/logging.h"  // For InitLogging.
 #include "dex_file-inl.h"
 #include "dex_file_loader.h"
 #include "mem_map.h"

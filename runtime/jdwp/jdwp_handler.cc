@@ -24,7 +24,7 @@
 
 #include "atomic.h"
 #include "base/hex_dump.h"
-#include "base/logging.h"
+#include "base/logging.h"  // For VLOG.
 #include "base/macros.h"
 #include "debugger.h"
 #include "jdwp/jdwp_constants.h"

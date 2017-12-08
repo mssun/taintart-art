@@ -30,6 +30,7 @@
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "base/dumpable.h"
+#include "base/logging.h"  // For InitLogging.
 #include "base/memory_tool.h"
 #include "base/scoped_flock.h"
 #include "base/stringpiece.h"

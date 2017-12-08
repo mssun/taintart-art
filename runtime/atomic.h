@@ -22,8 +22,9 @@
 #include <limits>
 #include <vector>
 
+#include <android-base/logging.h>
+
 #include "arch/instruction_set.h"
-#include "base/logging.h"
 #include "base/macros.h"
 
 namespace art {

@@ -19,11 +19,11 @@
 #include <fstream>
 #include <sstream>
 
-#include "android-base/stringprintf.h"
-#include "android-base/strings.h"
+#include <android-base/logging.h>
+#include <android-base/stringprintf.h>
+#include <android-base/strings.h>
 
 #include "arch/x86_64/instruction_set_features_x86_64.h"
-#include "base/logging.h"
 
 namespace art {
 

@@ -401,8 +401,7 @@ inline bool Heap::IsOutOfMemoryOnAllocation(AllocatorType allocator_type,
         return true;
       }
       // TODO: Grow for allocation is racy, fix it.
-      VLOG(heap) << "Growing heap from " << PrettySize(max_allowed_footprint_) << " to "
-          << PrettySize(new_footprint) << " for a " << PrettySize(alloc_size) << " allocation";
+      VlogHeapGrowth(max_allowed_footprint_, new_footprint, alloc_size);
       max_allowed_footprint_ = new_footprint;
     }
   }

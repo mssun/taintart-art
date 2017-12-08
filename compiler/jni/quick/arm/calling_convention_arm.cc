@@ -16,7 +16,9 @@
 
 #include "calling_convention_arm.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
+#include "base/macros.h"
 #include "handle_scope-inl.h"
 #include "utils/arm/managed_register_arm.h"
 

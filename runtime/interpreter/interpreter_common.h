@@ -26,13 +26,14 @@
 #include <iostream>
 #include <sstream>
 
-#include "android-base/stringprintf.h"
+#include <android-base/logging.h>
+#include <android-base/stringprintf.h>
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "base/enums.h"
-#include "base/logging.h"
 #include "base/macros.h"
+#include "base/mutex.h"
 #include "class_linker-inl.h"
 #include "common_dex_operations.h"
 #include "common_throws.h"

@@ -16,7 +16,9 @@
 
 #include "compiler.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
+#include "base/macros.h"
 #include "driver/compiler_driver.h"
 #include "optimizing/optimizing_compiler.h"
 #include "utils.h"
