@@ -53,6 +53,7 @@ struct LogVerbosity {
   bool third_party_jni;  // Enabled with "-verbose:third-party-jni".
   bool threads;
   bool verifier;
+  bool verifier_debug;   // Only works in debug builds.
   bool image;
   bool systrace_lock_logging;  // Enabled with "-verbose:sys-locks".
   bool agents;

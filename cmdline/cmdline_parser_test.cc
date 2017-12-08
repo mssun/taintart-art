@@ -244,7 +244,7 @@ TEST_F(CmdlineParserTest, TestLogVerbosity) {
   {
     const char* log_args = "-verbose:"
         "class,compiler,gc,heap,jdwp,jni,monitor,profiler,signals,simulator,startup,"
-        "third-party-jni,threads,verifier";
+        "third-party-jni,threads,verifier,verifier-debug";
 
     LogVerbosity log_verbosity = LogVerbosity();
     log_verbosity.class_linker = true;
@@ -261,6 +261,7 @@ TEST_F(CmdlineParserTest, TestLogVerbosity) {
     log_verbosity.third_party_jni = true;
     log_verbosity.threads = true;
     log_verbosity.verifier = true;
+    log_verbosity.verifier_debug = true;
 
     EXPECT_SINGLE_PARSE_VALUE(log_verbosity, log_args, M::Verbose);
   }
