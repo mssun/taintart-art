@@ -29,7 +29,6 @@
 #include "android-base/stringprintf.h"
 
 #include "base/enums.h"
-#include "base/logging.h"
 #include "base/stl_util.h"
 #include "dex_file-inl.h"
 #include "leb128.h"

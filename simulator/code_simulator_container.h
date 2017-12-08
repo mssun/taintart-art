@@ -17,8 +17,9 @@
 #ifndef ART_SIMULATOR_CODE_SIMULATOR_CONTAINER_H_
 #define ART_SIMULATOR_CODE_SIMULATOR_CONTAINER_H_
 
+#include <android-base/logging.h>
+
 #include "arch/instruction_set.h"
-#include "base/logging.h"
 
 namespace art {
 

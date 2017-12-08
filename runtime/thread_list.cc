@@ -28,6 +28,7 @@
 #include "nativehelper/scoped_local_ref.h"
 #include "nativehelper/scoped_utf_chars.h"
 
+#include "base/aborting.h"
 #include "base/histogram-inl.h"
 #include "base/mutex-inl.h"
 #include "base/systrace.h"

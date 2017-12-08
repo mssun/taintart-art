@@ -28,7 +28,7 @@
 
 #include "android-base/stringprintf.h"
 
-#include "base/logging.h"
+#include "base/logging.h"  // For VLOG.
 #include "jdwp/jdwp_priv.h"
 
 namespace art {

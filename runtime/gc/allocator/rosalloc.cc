@@ -23,6 +23,7 @@
 
 #include "android-base/stringprintf.h"
 
+#include "base/logging.h"  // For VLOG
 #include "base/memory_tool.h"
 #include "base/mutex-inl.h"
 #include "gc/space/memory_tool_settings.h"

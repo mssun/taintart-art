@@ -19,8 +19,9 @@
 #include <inttypes.h>
 #include <stdlib.h>
 
+#include <android-base/logging.h>
+
 #include "atomic.h"
-#include "base/logging.h"
 
 namespace art {
 

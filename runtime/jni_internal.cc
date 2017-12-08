@@ -28,7 +28,7 @@
 #include "atomic.h"
 #include "base/allocator.h"
 #include "base/enums.h"
-#include "base/logging.h"
+#include "base/logging.h"  // For VLOG.
 #include "base/mutex.h"
 #include "base/stl_util.h"
 #include "class_linker-inl.h"

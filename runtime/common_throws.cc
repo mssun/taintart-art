@@ -18,11 +18,11 @@
 
 #include <sstream>
 
-#include "android-base/stringprintf.h"
+#include <android-base/logging.h>
+#include <android-base/stringprintf.h>
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
-#include "base/logging.h"
 #include "class_linker-inl.h"
 #include "dex_file-inl.h"
 #include "dex_instruction-inl.h"

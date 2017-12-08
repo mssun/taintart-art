@@ -17,7 +17,8 @@
 #ifndef ART_COMPILER_UTILS_ARM_MANAGED_REGISTER_ARM_H_
 #define ART_COMPILER_UTILS_ARM_MANAGED_REGISTER_ARM_H_
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
 #include "constants_arm.h"
 #include "debug/dwarf/register.h"
 #include "utils/managed_register.h"

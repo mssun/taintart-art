@@ -39,9 +39,10 @@
 
 #include <jni.h>
 
+#include <android-base/logging.h>
+
 #include "deopt_manager.h"
 #include "base/casts.h"
-#include "base/logging.h"
 #include "base/macros.h"
 #include "base/strlcpy.h"
 #include "base/mutex.h"

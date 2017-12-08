@@ -22,7 +22,6 @@
 #include <numeric>
 
 #include "base/bit_utils.h"
-#include "base/logging.h"
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "thread-current-inl.h"

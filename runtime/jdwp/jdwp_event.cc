@@ -25,7 +25,7 @@
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
-#include "base/logging.h"
+#include "base/logging.h"  // For VLOG.
 #include "debugger.h"
 #include "jdwp/jdwp_constants.h"
 #include "jdwp/jdwp_expand_buf.h"

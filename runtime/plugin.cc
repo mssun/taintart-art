@@ -20,8 +20,6 @@
 
 #include "android-base/stringprintf.h"
 
-#include "base/logging.h"
-
 namespace art {
 
 using android::base::StringPrintf;

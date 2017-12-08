@@ -17,7 +17,8 @@
 #ifndef ART_RUNTIME_QUICK_EXCEPTION_HANDLER_H_
 #define ART_RUNTIME_QUICK_EXCEPTION_HANDLER_H_
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "deoptimization_kind.h"

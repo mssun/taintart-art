@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "base/logging.h"
+#include "base/logging.h"  // For VLOG_IS_ON.
 #include "base/mutex.h"
 #include "base/systrace.h"
 #include "callee_save_frame.h"

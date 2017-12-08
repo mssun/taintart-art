@@ -21,8 +21,10 @@
 #include <memory>
 #include <vector>
 
+#include <android-base/logging.h>
+
 #include "base/arena_containers.h"
-#include "base/logging.h"
+#include "base/macros.h"
 #include "offsets.h"
 #include "utils/arm64/managed_register_arm64.h"
 #include "utils/assembler.h"

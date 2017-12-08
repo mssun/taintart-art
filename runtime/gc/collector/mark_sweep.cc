@@ -25,7 +25,7 @@
 #include "base/bounded_fifo.h"
 #include "base/enums.h"
 #include "base/file_utils.h"
-#include "base/logging.h"
+#include "base/logging.h"  // For VLOG.
 #include "base/macros.h"
 #include "base/mutex-inl.h"
 #include "base/systrace.h"

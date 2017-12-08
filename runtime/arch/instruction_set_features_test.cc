@@ -19,12 +19,11 @@
 #include <gtest/gtest.h>
 
 #ifdef ART_TARGET_ANDROID
-#include "android-base/properties.h"
+#include <android-base/properties.h>
 #endif
 
-#include "android-base/stringprintf.h"
-
-#include "base/logging.h"
+#include <android-base/logging.h>
+#include <android-base/stringprintf.h>
 
 namespace art {
 

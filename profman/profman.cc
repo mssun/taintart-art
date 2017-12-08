@@ -32,6 +32,7 @@
 #include "android-base/strings.h"
 
 #include "base/dumpable.h"
+#include "base/logging.h"  // For InitLogging.
 #include "base/scoped_flock.h"
 #include "base/stringpiece.h"
 #include "base/time_utils.h"

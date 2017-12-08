@@ -17,8 +17,9 @@
 #ifndef ART_RUNTIME_ARCH_MIPS_CONTEXT_MIPS_H_
 #define ART_RUNTIME_ARCH_MIPS_CONTEXT_MIPS_H_
 
+#include <android-base/logging.h>
+
 #include "arch/context.h"
-#include "base/logging.h"
 #include "base/macros.h"
 #include "registers_mips.h"
 

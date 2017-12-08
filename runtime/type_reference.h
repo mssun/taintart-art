@@ -19,7 +19,8 @@
 
 #include <stdint.h>
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
 #include "dex_file_types.h"
 #include "string_reference.h"
 

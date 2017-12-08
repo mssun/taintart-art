@@ -20,8 +20,9 @@
 #include <iosfwd>
 #include <stdint.h>
 
+#include <android-base/logging.h>
+
 #include "base/bit_utils.h"
-#include "base/logging.h"
 #include "method_reference.h"
 
 namespace art {

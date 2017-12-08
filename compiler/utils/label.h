@@ -17,8 +17,8 @@
 #ifndef ART_COMPILER_UTILS_LABEL_H_
 #define ART_COMPILER_UTILS_LABEL_H_
 
-#include "base/logging.h"
-#include "base/macros.h"
+#include <android-base/logging.h>
+#include <android-base/macros.h>
 
 namespace art {
 

@@ -19,7 +19,6 @@
 
 #include "base/bit_utils.h"
 #include "base/casts.h"
-#include "base/logging.h"
 #include "base/stringpiece.h"
 #include "cdex/compact_dex_file.h"
 #include "dex_file.h"

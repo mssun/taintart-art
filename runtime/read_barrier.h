@@ -17,9 +17,11 @@
 #ifndef ART_RUNTIME_READ_BARRIER_H_
 #define ART_RUNTIME_READ_BARRIER_H_
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
 #include "base/macros.h"
 #include "base/mutex.h"
+#include "base/runtime_debug.h"
 #include "gc_root.h"
 #include "jni.h"
 #include "mirror/object_reference.h"

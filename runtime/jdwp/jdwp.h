@@ -18,6 +18,7 @@
 #define ART_RUNTIME_JDWP_JDWP_H_
 
 #include "atomic.h"
+#include "base/logging.h"  // For VLOG.
 #include "base/mutex.h"
 #include "jdwp/jdwp_bits.h"
 #include "jdwp/jdwp_constants.h"

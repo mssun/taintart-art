@@ -25,7 +25,6 @@
 #include "android-base/strings.h"
 
 #include "arch/instruction_set.h"
-#include "base/logging.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "elf_file_impl.h"
