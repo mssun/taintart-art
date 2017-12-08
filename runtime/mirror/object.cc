@@ -240,7 +240,7 @@ void Object::CheckFieldAssignmentImpl(MemberOffset field_offset, ObjPtr<Object> 
         CHECK_NE(field.GetTypeAsPrimitiveType(), Primitive::kPrimNot);
         // TODO: resolve the field type for moving GC.
         ObjPtr<mirror::Class> field_type =
-            kMovingCollector ? field.LookupType() : field.ResolveType();
+            kMovingCollector ? field.LookupResolvedType() : field.ResolveType();
         if (field_type != nullptr) {
           CHECK(field_type->IsAssignableFrom(new_value->GetClass()));
         }
@@ -258,7 +258,7 @@ void Object::CheckFieldAssignmentImpl(MemberOffset field_offset, ObjPtr<Object> 
         CHECK_NE(field.GetTypeAsPrimitiveType(), Primitive::kPrimNot);
         // TODO: resolve the field type for moving GC.
         ObjPtr<mirror::Class> field_type =
-            kMovingCollector ? field.LookupType() : field.ResolveType();
+            kMovingCollector ? field.LookupResolvedType() : field.ResolveType();
         if (field_type != nullptr) {
           CHECK(field_type->IsAssignableFrom(new_value->GetClass()));
         }

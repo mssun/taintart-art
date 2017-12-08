@@ -5046,7 +5046,7 @@ void MethodVerifier::VerifyISFieldAccess(const Instruction* inst, const RegType&
     }
 
     ObjPtr<mirror::Class> field_type_class =
-        can_load_classes_ ? field->ResolveType() : field->LookupType();
+        can_load_classes_ ? field->ResolveType() : field->LookupResolvedType();
     if (field_type_class != nullptr) {
       field_type = &FromClass(field->GetTypeDescriptor(),
                               field_type_class.Ptr(),
@@ -5195,7 +5195,7 @@ void MethodVerifier::VerifyQuickFieldAccess(const Instruction* inst, const RegTy
   const RegType* field_type;
   {
     ObjPtr<mirror::Class> field_type_class =
-        can_load_classes_ ? field->ResolveType() : field->LookupType();
+        can_load_classes_ ? field->ResolveType() : field->LookupResolvedType();
 
     if (field_type_class != nullptr) {
       field_type = &FromClass(field->GetTypeDescriptor(),
