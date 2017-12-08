@@ -184,6 +184,10 @@ while true; do
     elif [ "x$1" = "x--prebuild" ]; then
         PREBUILD="y"
         shift
+    elif [ "x$1" = "x--compact-dex-level" ]; then
+        shift
+        COMPILE_FLAGS="${COMPILE_FLAGS} --compact-dex-level=$1"
+        shift
     elif [ "x$1" = "x--jvmti-redefine-stress" ]; then
         # APP_IMAGE doesn't really work with jvmti redefine stress
         USE_JVMTI="y"
