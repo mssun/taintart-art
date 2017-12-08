@@ -23,12 +23,20 @@
 
 #include <string>
 
+#include "android-base/stringprintf.h"
+
 namespace art {
 
 class ScopedTrace {
  public:
   explicit ScopedTrace(const char* name) {
     ATRACE_BEGIN(name);
+  }
+  template <typename Fn>
+  explicit ScopedTrace(Fn fn) {
+    if (ATRACE_ENABLED()) {
+      ATRACE_BEGIN(fn().c_str());
+    }
   }
 
   explicit ScopedTrace(const std::string& name) : ScopedTrace(name.c_str()) {}
@@ -37,6 +45,11 @@ class ScopedTrace {
     ATRACE_END();
   }
 };
+
+#define SCOPED_TRACE(fmtstr, ...) \
+  ::art::ScopedTrace trace ## __LINE__([&]() { \
+    return ::android::base::StringPrintf((fmtstr), __VA_ARGS__); \
+  })
 
 }  // namespace art
 
