@@ -258,8 +258,7 @@ ArenaVector<HOptimization*> ConstructOptimizations(
         break;
       }
       case OptimizationPass::kSharpening:
-        opt = new (allocator) HSharpening(
-            graph, codegen, dex_compilation_unit, driver, handles, name);
+        opt = new (allocator) HSharpening(graph, codegen, driver, name);
         break;
       case OptimizationPass::kSelectGenerator:
         opt = new (allocator) HSelectGenerator(graph, handles, stats, name);

@@ -717,7 +717,8 @@ static void ResolveConstStrings(Handle<mirror::DexCache> dex_cache,
         dex::StringIndex string_index((inst->Opcode() == Instruction::CONST_STRING)
             ? inst->VRegB_21c()
             : inst->VRegB_31c());
-        mirror::String* string = class_linker->ResolveString(dex_file, string_index, dex_cache);
+        ObjPtr<mirror::String> string =
+            class_linker->ResolveString(dex_file, string_index, dex_cache);
         CHECK(string != nullptr) << "Could not allocate a string when forcing determinism";
         break;
       }
@@ -1371,7 +1372,7 @@ ArtField* CompilerDriver::ComputeInstanceFieldInfo(uint32_t field_idx,
                                                    const ScopedObjectAccess& soa) {
   // Try to resolve the field and compiling method's class.
   ArtField* resolved_field;
-  mirror::Class* referrer_class;
+  ObjPtr<mirror::Class> referrer_class;
   Handle<mirror::DexCache> dex_cache(mUnit->GetDexCache());
   {
     Handle<mirror::ClassLoader> class_loader_handle = mUnit->GetClassLoader();
@@ -1542,7 +1543,7 @@ class ParallelCompilationManager {
 
 // A fast version of SkipClass above if the class pointer is available
 // that avoids the expensive FindInClassPath search.
-static bool SkipClass(jobject class_loader, const DexFile& dex_file, mirror::Class* klass)
+static bool SkipClass(jobject class_loader, const DexFile& dex_file, ObjPtr<mirror::Class> klass)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(klass != nullptr);
   const DexFile& original_dex_file = *klass->GetDexCache()->GetDexFile();
@@ -1636,8 +1637,8 @@ class ResolveClassFieldsAndMethodsVisitor : public CompilationVisitor {
     Handle<mirror::DexCache> dex_cache(hs.NewHandle(class_linker->FindDexCache(
         soa.Self(), dex_file)));
     // Resolve the class.
-    mirror::Class* klass = class_linker->ResolveType(dex_file, class_def.class_idx_, dex_cache,
-                                                     class_loader);
+    ObjPtr<mirror::Class> klass =
+        class_linker->ResolveType(dex_file, class_def.class_idx_, dex_cache, class_loader);
     bool resolve_fields_and_methods;
     if (klass == nullptr) {
       // Class couldn't be resolved, for example, super-class is in a different dex file. Don't

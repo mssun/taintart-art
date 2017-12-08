@@ -783,9 +783,8 @@ const DexFile::AnnotationItem* GetAnnotationItemFromAnnotationSet(
     uint32_t type_index = DecodeUnsignedLeb128(&annotation);
     ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
     Thread* self = Thread::Current();
-    mirror::Class* resolved_class;
     StackHandleScope<2> hs(self);
-    resolved_class = class_linker->ResolveType(
+    ObjPtr<mirror::Class> resolved_class = class_linker->ResolveType(
         klass.GetDexFile(),
         dex::TypeIndex(type_index),
         hs.NewHandle(klass.GetDexCache()),
@@ -1594,17 +1593,17 @@ void RuntimeEncodedStaticFieldValueIterator::ReadValueToField(ArtField* field) c
     case kDouble:  field->SetDouble<kTransactionActive>(field->GetDeclaringClass(), jval_.d); break;
     case kNull:    field->SetObject<kTransactionActive>(field->GetDeclaringClass(), nullptr); break;
     case kString: {
-      mirror::String* resolved = linker_->ResolveString(dex_file_,
-                                                        dex::StringIndex(jval_.i),
-                                                        *dex_cache_);
+      ObjPtr<mirror::String> resolved = linker_->ResolveString(dex_file_,
+                                                               dex::StringIndex(jval_.i),
+                                                               *dex_cache_);
       field->SetObject<kTransactionActive>(field->GetDeclaringClass(), resolved);
       break;
     }
     case kType: {
-      mirror::Class* resolved = linker_->ResolveType(dex_file_,
-                                                     dex::TypeIndex(jval_.i),
-                                                     *dex_cache_,
-                                                     *class_loader_);
+      ObjPtr<mirror::Class> resolved = linker_->ResolveType(dex_file_,
+                                                            dex::TypeIndex(jval_.i),
+                                                            *dex_cache_,
+                                                            *class_loader_);
       field->SetObject<kTransactionActive>(field->GetDeclaringClass(), resolved);
       break;
     }
