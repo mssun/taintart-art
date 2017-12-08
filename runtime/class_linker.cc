@@ -8184,11 +8184,11 @@ ArtField* ClassLinker::ResolveFieldJLS(uint32_t field_idx,
   return resolved;
 }
 
-mirror::MethodType* ClassLinker::ResolveMethodType(Thread* self,
-                                                   const DexFile& dex_file,
-                                                   uint32_t proto_idx,
-                                                   Handle<mirror::DexCache> dex_cache,
-                                                   Handle<mirror::ClassLoader> class_loader) {
+ObjPtr<mirror::MethodType> ClassLinker::ResolveMethodType(
+    Thread* self,
+    uint32_t proto_idx,
+    Handle<mirror::DexCache> dex_cache,
+    Handle<mirror::ClassLoader> class_loader) {
   DCHECK(Runtime::Current()->IsMethodHandlesEnabled());
   DCHECK(dex_cache != nullptr);
 
@@ -8200,6 +8200,7 @@ mirror::MethodType* ClassLinker::ResolveMethodType(Thread* self,
   StackHandleScope<4> hs(self);
 
   // First resolve the return type.
+  const DexFile& dex_file = *dex_cache->GetDexFile();
   const DexFile::ProtoId& proto_id = dex_file.GetProtoId(proto_idx);
   Handle<mirror::Class> return_type(hs.NewHandle(
       ResolveType(dex_file, proto_id.return_type_idx_, dex_cache, class_loader)));
@@ -8246,14 +8247,13 @@ mirror::MethodType* ClassLinker::ResolveMethodType(Thread* self,
   return type.Get();
 }
 
-mirror::MethodType* ClassLinker::ResolveMethodType(Thread* self,
-                                                   uint32_t proto_idx,
-                                                   ArtMethod* referrer) {
+ObjPtr<mirror::MethodType> ClassLinker::ResolveMethodType(Thread* self,
+                                                          uint32_t proto_idx,
+                                                          ArtMethod* referrer) {
   StackHandleScope<2> hs(self);
-  const DexFile* dex_file = referrer->GetDexFile();
   Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
   Handle<mirror::ClassLoader> class_loader(hs.NewHandle(referrer->GetClassLoader()));
-  return ResolveMethodType(self, *dex_file, proto_idx, dex_cache, class_loader);
+  return ResolveMethodType(self, proto_idx, dex_cache, class_loader);
 }
 
 mirror::MethodHandle* ClassLinker::ResolveMethodHandleForField(
@@ -8548,9 +8548,9 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForMethod(
   return mirror::MethodHandleImpl::Create(self, target, kind, method_type);
 }
 
-mirror::MethodHandle* ClassLinker::ResolveMethodHandle(Thread* self,
-                                                       uint32_t method_handle_idx,
-                                                       ArtMethod* referrer)
+ObjPtr<mirror::MethodHandle> ClassLinker::ResolveMethodHandle(Thread* self,
+                                                              uint32_t method_handle_idx,
+                                                              ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   const DexFile* const dex_file = referrer->GetDexFile();
   const DexFile::MethodHandleItem& method_handle = dex_file->GetMethodHandle(method_handle_idx);

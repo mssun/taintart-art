@@ -206,17 +206,17 @@ static inline bool DoInvoke(Thread* self,
   }
 }
 
-static inline mirror::MethodHandle* ResolveMethodHandle(Thread* self,
-                                                        uint32_t method_handle_index,
-                                                        ArtMethod* referrer)
+static inline ObjPtr<mirror::MethodHandle> ResolveMethodHandle(Thread* self,
+                                                               uint32_t method_handle_index,
+                                                               ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   return class_linker->ResolveMethodHandle(self, method_handle_index, referrer);
 }
 
-static inline mirror::MethodType* ResolveMethodType(Thread* self,
-                                                    uint32_t method_type_index,
-                                                    ArtMethod* referrer)
+static inline ObjPtr<mirror::MethodType> ResolveMethodType(Thread* self,
+                                                           uint32_t method_type_index,
+                                                           ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   return class_linker->ResolveMethodType(self, method_type_index, referrer);
