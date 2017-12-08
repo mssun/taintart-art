@@ -1749,7 +1749,8 @@ void HLoopOptimization::GenerateVecReductionPhiInputs(HPhi* phi, HInstruction* r
 HInstruction* HLoopOptimization::ReduceAndExtractIfNeeded(HInstruction* instruction) {
   if (instruction->IsPhi()) {
     HInstruction* input = instruction->InputAt(1);
-    if (input->IsVecOperation() && !input->IsVecExtractScalar()) {
+    if (HVecOperation::ReturnsSIMDValue(input)) {
+      DCHECK(!input->IsPhi());
       HVecOperation* input_vector = input->AsVecOperation();
       uint32_t vector_length = input_vector->GetVectorLength();
       DataType::Type type = input_vector->GetPackedType();

@@ -493,6 +493,95 @@ public class Main {
     }
   }
 
+  // Avoid bad scheduler-SIMD interaction.
+  static int doNotMoveSIMD() {
+    int sum = 0;
+    for (int j = 0; j <= 8; j++) {
+      int[] a = new int[17];    // a[i] = 0;
+                                // ConstructorFence ?
+      for (int i = 0; i < a.length; i++) {
+        a[i] += 1;              // a[i] = 1;
+      }
+      for (int i = 0; i < a.length; i++) {
+        sum += a[i];            // expect a[i] = 1;
+      }
+    }
+    return sum;
+  }
+
+  // Ensure spilling saves full SIMD values.
+  private static final int reduction32Values(int[] a, int[] b, int[] c, int[] d) {
+    int s0 = 0;
+    int s1 = 0;
+    int s2 = 0;
+    int s3 = 0;
+    int s4 = 0;
+    int s5 = 0;
+    int s6 = 0;
+    int s7 = 0;
+    int s8 = 0;
+    int s9 = 0;
+    int s10 = 0;
+    int s11 = 0;
+    int s12 = 0;
+    int s13 = 0;
+    int s14 = 0;
+    int s15 = 0;
+    int s16 = 0;
+    int s17 = 0;
+    int s18 = 0;
+    int s19 = 0;
+    int s20 = 0;
+    int s21 = 0;
+    int s22 = 0;
+    int s23 = 0;
+    int s24 = 0;
+    int s25 = 0;
+    int s26 = 0;
+    int s27 = 0;
+    int s28 = 0;
+    int s29 = 0;
+    int s30 = 0;
+    int s31 = 0;
+    for (int i = 1; i < 100; i++) {
+      s0 += a[i];
+      s1 += b[i];
+      s2 += c[i];
+      s3 += d[i];
+      s4 += a[i];
+      s5 += b[i];
+      s6 += c[i];
+      s7 += d[i];
+      s8 += a[i];
+      s9 += b[i];
+      s10 += c[i];
+      s11 += d[i];
+      s12 += a[i];
+      s13 += b[i];
+      s14 += c[i];
+      s15 += d[i];
+      s16 += a[i];
+      s17 += b[i];
+      s18 += c[i];
+      s19 += d[i];
+      s20 += a[i];
+      s21 += b[i];
+      s22 += c[i];
+      s23 += d[i];
+      s24 += a[i];
+      s25 += b[i];
+      s26 += c[i];
+      s27 += d[i];
+      s28 += a[i];
+      s29 += b[i];
+      s30 += c[i];
+      s31 += d[i];
+    }
+    return s0 + s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9 + s10 + s11 + s12 + s13 + s14 + s15 +
+           s16 + s17 + s18 + s19 + s20 + s21 + s22 + s23 +
+           s24 + s25 + s26 + s27 + s28 + s29 + s30 + s31;
+  }
+
   public static void main(String[] args) {
     expectEquals(10, earlyExitFirst(-1));
     for (int i = 0; i <= 10; i++) {
@@ -653,6 +742,22 @@ public class Main {
     castAndNarrow(b1, cx);
     for (int i = 0; i < 259; i++) {
       expectEquals((byte)((short) cx[i] + 1), b1[i]);
+    }
+
+    expectEquals(153, doNotMoveSIMD());
+
+    {
+      int[] a1 = new int[100];
+      int[] a2 = new int[100];
+      int[] a3 = new int[100];
+      int[] a4 = new int[100];
+      for (int i = 0; i < 100; i++) {
+        a1[i] = i;
+        a2[i] = 1;
+        a3[i] = 100 - i;
+        a4[i] = i % 16;
+      }
+      expectEquals(85800, reduction32Values(a1, a2, a3, a4));
     }
 
     System.out.println("passed");

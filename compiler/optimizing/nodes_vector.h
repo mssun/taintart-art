@@ -150,6 +150,19 @@ class HVecOperation : public HVariableInputSizeInstruction {
     }
   }
 
+  // Helper method to determine if an instruction returns a SIMD value.
+  // TODO: This method is needed until we introduce SIMD as proper type.
+  static bool ReturnsSIMDValue(HInstruction* instruction) {
+    if (instruction->IsVecOperation()) {
+      return !instruction->IsVecExtractScalar();  // only scalar returning vec op
+    } else if (instruction->IsPhi()) {
+      return
+          instruction->GetType() == kSIMDType &&
+          instruction->InputAt(1)->IsVecOperation();  // vectorizer does not go deeper
+    }
+    return false;
+  }
+
   DECLARE_ABSTRACT_INSTRUCTION(VecOperation);
 
  protected:
@@ -879,7 +892,7 @@ class HVecSetScalars FINAL : public HVecOperation {
                       vector_length,
                       dex_pc) {
     for (size_t i = 0; i < number_of_scalars; i++) {
-      DCHECK(!scalars[i]->IsVecOperation() || scalars[i]->IsVecExtractScalar());
+      DCHECK(!ReturnsSIMDValue(scalars[i]));
       SetRawInputAt(0, scalars[i]);
     }
   }
