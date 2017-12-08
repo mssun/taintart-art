@@ -4883,7 +4883,7 @@ ArtField* MethodVerifier::GetStaticField(int field_idx) {
     return nullptr;  // Can't resolve Class so no more to do here, will do checking at runtime.
   }
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  ArtField* field = class_linker->ResolveFieldJLS(*dex_file_, field_idx, dex_cache_, class_loader_);
+  ArtField* field = class_linker->ResolveFieldJLS(field_idx, dex_cache_, class_loader_);
 
   // Record result of the field resolution attempt.
   VerifierDeps::MaybeRecordFieldResolution(*dex_file_, field_idx, field);
@@ -4924,7 +4924,7 @@ ArtField* MethodVerifier::GetInstanceField(const RegType& obj_type, int field_id
     return nullptr;  // Can't resolve Class so no more to do here
   }
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-  ArtField* field = class_linker->ResolveFieldJLS(*dex_file_, field_idx, dex_cache_, class_loader_);
+  ArtField* field = class_linker->ResolveFieldJLS(field_idx, dex_cache_, class_loader_);
 
   // Record result of the field resolution attempt.
   VerifierDeps::MaybeRecordFieldResolution(*dex_file_, field_idx, field);

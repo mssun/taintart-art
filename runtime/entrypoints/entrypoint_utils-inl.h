@@ -349,8 +349,7 @@ inline ArtField* FindFieldFromCode(uint32_t field_idx,
     Handle<mirror::DexCache> h_dex_cache(hs.NewHandle(method->GetDexCache()));
     Handle<mirror::ClassLoader> h_class_loader(hs.NewHandle(method->GetClassLoader()));
 
-    resolved_field = class_linker->ResolveFieldJLS(*method->GetDexFile(),
-                                                   field_idx,
+    resolved_field = class_linker->ResolveFieldJLS(field_idx,
                                                    h_dex_cache,
                                                    h_class_loader);
   } else {

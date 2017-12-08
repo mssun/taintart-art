@@ -345,23 +345,22 @@ class ClassLinker {
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
 
-  // Resolve a field with a given ID from the DexFile, storing the
-  // result in DexCache. The ClassLinker and ClassLoader are used as
-  // in ResolveType. What is unique is the is_static argument which is
-  // used to determine if we are resolving a static or non-static
-  // field.
-  ArtField* ResolveField(const DexFile& dex_file, uint32_t field_idx,
+  // Resolve a field with a given ID from the DexFile associated with the given DexCache
+  // and ClassLoader, storing the result in DexCache. The ClassLinker and ClassLoader
+  // are used as in ResolveType. What is unique is the is_static argument which is used
+  // to determine if we are resolving a static or non-static field.
+  ArtField* ResolveField(uint32_t field_idx,
                          Handle<mirror::DexCache> dex_cache,
-                         Handle<mirror::ClassLoader> class_loader, bool is_static)
+                         Handle<mirror::ClassLoader> class_loader,
+                         bool is_static)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
 
-  // Resolve a field with a given ID from the DexFile, storing the
-  // result in DexCache. The ClassLinker and ClassLoader are used as
-  // in ResolveType. No is_static argument is provided so that Java
+  // Resolve a field with a given ID from the DexFile associated with the given DexCache
+  // and ClassLoader, storing the result in DexCache. The ClassLinker and ClassLoader
+  // are used as in ResolveType. No is_static argument is provided so that Java
   // field resolution semantics are followed.
-  ArtField* ResolveFieldJLS(const DexFile& dex_file,
-                            uint32_t field_idx,
+  ArtField* ResolveFieldJLS(uint32_t field_idx,
                             Handle<mirror::DexCache> dex_cache,
                             Handle<mirror::ClassLoader> class_loader)
       REQUIRES_SHARED(Locks::mutator_lock_)

@@ -4818,7 +4818,6 @@ bool ClassLinker::InitializeClass(Thread* self, Handle<mirror::Class> klass,
   if (num_static_fields > 0) {
     const DexFile::ClassDef* dex_class_def = klass->GetClassDef();
     CHECK(dex_class_def != nullptr);
-    const DexFile& dex_file = klass->GetDexFile();
     StackHandleScope<3> hs(self);
     Handle<mirror::ClassLoader> class_loader(hs.NewHandle(klass->GetClassLoader()));
     Handle<mirror::DexCache> dex_cache(hs.NewHandle(klass->GetDexCache()));
@@ -4836,11 +4835,11 @@ bool ClassLinker::InitializeClass(Thread* self, Handle<mirror::Class> klass,
       }
     }
 
-    annotations::RuntimeEncodedStaticFieldValueIterator value_it(dex_file,
-                                                                 &dex_cache,
-                                                                 &class_loader,
+    annotations::RuntimeEncodedStaticFieldValueIterator value_it(dex_cache,
+                                                                 class_loader,
                                                                  this,
                                                                  *dex_class_def);
+    const DexFile& dex_file = *dex_cache->GetDexFile();
     const uint8_t* class_data = dex_file.GetClassData(*dex_class_def);
     ClassDataItemIterator field_it(dex_file, class_data);
     if (value_it.HasNext()) {
@@ -4848,7 +4847,7 @@ bool ClassLinker::InitializeClass(Thread* self, Handle<mirror::Class> klass,
       CHECK(can_init_statics);
       for ( ; value_it.HasNext(); value_it.Next(), field_it.Next()) {
         ArtField* field = ResolveField(
-            dex_file, field_it.GetMemberIndex(), dex_cache, class_loader, true);
+            field_it.GetMemberIndex(), dex_cache, class_loader, /* is_static */ true);
         if (Runtime::Current()->IsActiveTransaction()) {
           value_it.ReadValueToField<true>(field);
         } else {
@@ -8114,8 +8113,7 @@ ArtField* ClassLinker::LookupResolvedField(uint32_t field_idx,
   return resolved_field;
 }
 
-ArtField* ClassLinker::ResolveField(const DexFile& dex_file,
-                                    uint32_t field_idx,
+ArtField* ClassLinker::ResolveField(uint32_t field_idx,
                                     Handle<mirror::DexCache> dex_cache,
                                     Handle<mirror::ClassLoader> class_loader,
                                     bool is_static) {
@@ -8125,6 +8123,7 @@ ArtField* ClassLinker::ResolveField(const DexFile& dex_file,
   if (resolved != nullptr) {
     return resolved;
   }
+  const DexFile& dex_file = *dex_cache->GetDexFile();
   const DexFile::FieldId& field_id = dex_file.GetFieldId(field_idx);
   Thread* const self = Thread::Current();
   ObjPtr<mirror::Class> klass = ResolveType(dex_file, field_id.class_idx_, dex_cache, class_loader);
@@ -8156,8 +8155,7 @@ ArtField* ClassLinker::ResolveField(const DexFile& dex_file,
   return resolved;
 }
 
-ArtField* ClassLinker::ResolveFieldJLS(const DexFile& dex_file,
-                                       uint32_t field_idx,
+ArtField* ClassLinker::ResolveFieldJLS(uint32_t field_idx,
                                        Handle<mirror::DexCache> dex_cache,
                                        Handle<mirror::ClassLoader> class_loader) {
   DCHECK(dex_cache != nullptr);
@@ -8166,6 +8164,7 @@ ArtField* ClassLinker::ResolveFieldJLS(const DexFile& dex_file,
   if (resolved != nullptr) {
     return resolved;
   }
+  const DexFile& dex_file = *dex_cache->GetDexFile();
   const DexFile::FieldId& field_id = dex_file.GetFieldId(field_idx);
   Thread* self = Thread::Current();
   ObjPtr<mirror::Class> klass(ResolveType(dex_file, field_id.class_idx_, dex_cache, class_loader));
