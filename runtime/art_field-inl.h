@@ -299,7 +299,7 @@ inline bool ArtField::IsPrimitiveType() REQUIRES_SHARED(Locks::mutator_lock_) {
   return GetTypeAsPrimitiveType() != Primitive::kPrimNot;
 }
 
-inline ObjPtr<mirror::Class> ArtField::LookupType() {
+inline ObjPtr<mirror::Class> ArtField::LookupResolvedType() {
   ScopedAssertNoThreadSuspension ants(__FUNCTION__);
   const uint32_t field_index = GetDexFieldIndex();
   ObjPtr<mirror::Class> declaring_class = GetDeclaringClass();
