@@ -7838,6 +7838,106 @@ mirror::Class* ClassLinker::ResolveType(const DexFile& dex_file,
   return resolved.Ptr();
 }
 
+std::string DescribeSpace(ObjPtr<mirror::Class> klass) REQUIRES_SHARED(Locks::mutator_lock_) {
+  std::ostringstream oss;
+  gc::Heap* heap = Runtime::Current()->GetHeap();
+  gc::space::ContinuousSpace* cs = heap->FindContinuousSpaceFromAddress(klass.Ptr());
+  if (cs != nullptr) {
+    if (cs->IsImageSpace()) {
+      oss << "image;" << cs->GetName() << ";" << cs->AsImageSpace()->GetImageFilename();
+    } else {
+      oss << "continuous;" << cs->GetName();
+    }
+  } else {
+    gc::space::DiscontinuousSpace* ds =
+        heap->FindDiscontinuousSpaceFromObject(klass, /* fail_ok */ true);
+    if (ds != nullptr) {
+      oss << "discontinuous;" << ds->GetName();
+    } else {
+      oss << "invalid";
+    }
+  }
+  return oss.str();
+}
+
+std::string DescribeLoaders(ObjPtr<mirror::ClassLoader> loader, const char* class_descriptor)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  std::ostringstream oss;
+  uint32_t hash = ComputeModifiedUtf8Hash(class_descriptor);
+  ObjPtr<mirror::Class> path_class_loader =
+      WellKnownClasses::ToClass(WellKnownClasses::dalvik_system_PathClassLoader);
+  ObjPtr<mirror::Class> dex_class_loader =
+      WellKnownClasses::ToClass(WellKnownClasses::dalvik_system_DexClassLoader);
+  ObjPtr<mirror::Class> delegate_last_class_loader =
+      WellKnownClasses::ToClass(WellKnownClasses::dalvik_system_DelegateLastClassLoader);
+
+  // Print the class loader chain.
+  bool found_class = false;
+  const char* loader_separator = "";
+  if (loader == nullptr) {
+    oss << "BootClassLoader";  // This would be unexpected.
+  }
+  for (; loader != nullptr; loader = loader->GetParent()) {
+    oss << loader_separator << loader->GetClass()->PrettyDescriptor();
+    loader_separator = ";";
+    // If we didn't find the interface yet, try to find it in the current class loader.
+    if (!found_class) {
+      ClassTable* table = Runtime::Current()->GetClassLinker()->ClassTableForClassLoader(loader);
+      ObjPtr<mirror::Class> klass =
+          (table != nullptr) ? table->Lookup(class_descriptor, hash) : nullptr;
+      if (klass != nullptr) {
+        found_class = true;
+        oss << "[hit:" << DescribeSpace(klass) << "]";
+      }
+    }
+
+    // For PathClassLoader, DexClassLoader or DelegateLastClassLoader
+    // also dump the dex file locations.
+    if (loader->GetClass() == path_class_loader ||
+        loader->GetClass() == dex_class_loader ||
+        loader->GetClass() == delegate_last_class_loader) {
+      ArtField* const cookie_field =
+          jni::DecodeArtField(WellKnownClasses::dalvik_system_DexFile_cookie);
+      ArtField* const dex_file_field =
+          jni::DecodeArtField(WellKnownClasses::dalvik_system_DexPathList__Element_dexFile);
+      ObjPtr<mirror::Object> dex_path_list =
+          jni::DecodeArtField(WellKnownClasses::dalvik_system_BaseDexClassLoader_pathList)->
+              GetObject(loader);
+      if (dex_path_list != nullptr && dex_file_field != nullptr && cookie_field != nullptr) {
+        ObjPtr<mirror::Object> dex_elements_obj =
+            jni::DecodeArtField(WellKnownClasses::dalvik_system_DexPathList_dexElements)->
+            GetObject(dex_path_list);
+        if (dex_elements_obj != nullptr) {
+          ObjPtr<mirror::ObjectArray<mirror::Object>> dex_elements =
+              dex_elements_obj->AsObjectArray<mirror::Object>();
+          oss << "(";
+          const char* path_separator = "";
+          for (int32_t i = 0; i != dex_elements->GetLength(); ++i) {
+            ObjPtr<mirror::Object> element = dex_elements->GetWithoutChecks(i);
+            ObjPtr<mirror::Object> dex_file =
+                (element != nullptr) ? dex_file_field->GetObject(element) : nullptr;
+            ObjPtr<mirror::LongArray> long_array =
+                (dex_file != nullptr) ? cookie_field->GetObject(dex_file)->AsLongArray() : nullptr;
+            if (long_array != nullptr) {
+              int32_t long_array_size = long_array->GetLength();
+              // First element is the oat file.
+              for (int32_t j = kDexFileIndexStart; j < long_array_size; ++j) {
+                const DexFile* cp_dex_file = reinterpret_cast<const DexFile*>(
+                    static_cast<uintptr_t>(long_array->GetWithoutChecks(j)));
+                oss << path_separator << cp_dex_file->GetLocation();
+                path_separator = ":";
+              }
+            }
+          }
+          oss << ")";
+        }
+      }
+    }
+  }
+
+  return oss.str();
+}
+
 template <ClassLinker::ResolveMode kResolveMode>
 ArtMethod* ClassLinker::ResolveMethod(const DexFile& dex_file,
                                       uint32_t method_idx,
@@ -7864,8 +7964,14 @@ ArtMethod* ClassLinker::ResolveMethod(const DexFile& dex_file,
     // We have a valid method from the DexCache but we need to perform ICCE and IAE checks.
     DCHECK(resolved->GetDeclaringClassUnchecked() != nullptr) << resolved->GetDexMethodIndex();
     klass = LookupResolvedType(dex_file, method_id.class_idx_, dex_cache.Get(), class_loader.Get());
-    CHECK(klass != nullptr) << resolved->PrettyMethod() << " " << resolved << " "
-                            << resolved->GetAccessFlags();
+    if (UNLIKELY(klass == nullptr)) {
+      const char* descriptor = dex_file.StringByTypeIdx(method_id.class_idx_);
+      LOG(FATAL) << "Check failed: klass != nullptr Bug: 64759619 Method: "
+          << resolved->PrettyMethod() << ";" << resolved
+          << "/0x" << std::hex << resolved->GetAccessFlags()
+          << " ReferencedClass: " << descriptor
+          << " ClassLoader: " << DescribeLoaders(class_loader.Get(), descriptor);
+    }
   } else {
     // The method was not in the DexCache, resolve the declaring class.
     klass = ResolveType(dex_file, method_id.class_idx_, dex_cache, class_loader);
