@@ -68,6 +68,18 @@ class VdexFile {
     uint32_t GetQuickeningInfoSize() const { return quickening_info_size_; }
     uint32_t GetNumberOfDexFiles() const { return number_of_dex_files_; }
 
+    size_t GetComputedFileSize() const {
+      return sizeof(Header) +
+             GetSizeOfChecksumsSection() +
+             GetDexSize() +
+             GetVerifierDepsSize() +
+             GetQuickeningInfoSize();
+    }
+
+    size_t GetSizeOfChecksumsSection() const {
+      return sizeof(VdexChecksum) * GetNumberOfDexFiles();
+    }
+
     static constexpr uint8_t kVdexInvalidMagic[] = { 'w', 'd', 'e', 'x' };
 
    private:
@@ -172,15 +184,11 @@ class VdexFile {
   }
 
   const uint8_t* DexBegin() const {
-    return Begin() + sizeof(Header) + GetSizeOfChecksumsSection();
+    return Begin() + sizeof(Header) + GetHeader().GetSizeOfChecksumsSection();
   }
 
   const uint8_t* DexEnd() const {
     return DexBegin() + GetHeader().GetDexSize();
-  }
-
-  size_t GetSizeOfChecksumsSection() const {
-    return sizeof(VdexChecksum) * GetHeader().GetNumberOfDexFiles();
   }
 
   uint32_t GetDexFileIndex(const DexFile& dex_file) const;
