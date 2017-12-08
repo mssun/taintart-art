@@ -243,17 +243,15 @@ class ClassLinker {
       REQUIRES(!Locks::classlinker_classes_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Resolve a String with the given index from the DexFile, storing the
-  // result in the DexCache.
-  ObjPtr<mirror::String> ResolveString(const DexFile& dex_file,
-                                       dex::StringIndex string_idx,
+  // Resolve a String with the given index from the DexFile associated with the given DexCache,
+  // storing the result in the DexCache.
+  ObjPtr<mirror::String> ResolveString(dex::StringIndex string_idx,
                                        Handle<mirror::DexCache> dex_cache)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Find a String with the given index from the DexFile, storing the
-  // result in the DexCache if found. Return null if not found.
-  ObjPtr<mirror::String> LookupString(const DexFile& dex_file,
-                                      dex::StringIndex string_idx,
+  // Find a String with the given index from the DexFile associated with the given DexCache,
+  // storing the result in the DexCache if found. Return null if not found.
+  ObjPtr<mirror::String> LookupString(dex::StringIndex string_idx,
                                       ObjPtr<mirror::DexCache> dex_cache)
       REQUIRES_SHARED(Locks::mutator_lock_);
 

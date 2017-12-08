@@ -1148,7 +1148,7 @@ void ImageWriter::PruneAndPreloadDexCache(ObjPtr<mirror::DexCache> dex_cache,
     uint32_t stored_index = pair.index;
     ObjPtr<mirror::String> string = pair.object.Read();
     if (string == nullptr || i < stored_index) {
-      string = class_linker->LookupString(dex_file, string_idx, dex_cache);
+      string = class_linker->LookupString(string_idx, dex_cache);
       DCHECK(string == nullptr || dex_cache->GetResolvedString(string_idx) == string);
     }
   }

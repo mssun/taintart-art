@@ -701,7 +701,6 @@ void CompilerDriver::Resolve(jobject class_loader,
 //       stable order.
 
 static void ResolveConstStrings(Handle<mirror::DexCache> dex_cache,
-                                const DexFile& dex_file,
                                 const DexFile::CodeItem* code_item)
       REQUIRES_SHARED(Locks::mutator_lock_) {
   if (code_item == nullptr) {
@@ -717,8 +716,7 @@ static void ResolveConstStrings(Handle<mirror::DexCache> dex_cache,
         dex::StringIndex string_index((inst->Opcode() == Instruction::CONST_STRING)
             ? inst->VRegB_21c()
             : inst->VRegB_31c());
-        ObjPtr<mirror::String> string =
-            class_linker->ResolveString(dex_file, string_index, dex_cache);
+        ObjPtr<mirror::String> string = class_linker->ResolveString(string_index, dex_cache);
         CHECK(string != nullptr) << "Could not allocate a string when forcing determinism";
         break;
       }
@@ -773,7 +771,7 @@ static void ResolveConstStrings(CompilerDriver* driver,
           continue;
         }
         previous_method_idx = method_idx;
-        ResolveConstStrings(dex_cache, *dex_file, it.GetMethodCodeItem());
+        ResolveConstStrings(dex_cache, it.GetMethodCodeItem());
         it.Next();
       }
       DCHECK(!it.HasNext());
@@ -2331,7 +2329,6 @@ class InitializeClassVisitor : public CompilationVisitor {
 
     StackHandleScope<1> hs(Thread::Current());
     Handle<mirror::DexCache> dex_cache = hs.NewHandle(klass->GetDexCache());
-    const DexFile* dex_file = manager_->GetDexFile();
     const DexFile::ClassDef* class_def = klass->GetClassDef();
     ClassLinker* class_linker = manager_->GetClassLinker();
 
@@ -2344,7 +2341,7 @@ class InitializeClassVisitor : public CompilationVisitor {
       if (value_it.GetValueType() == annotations::RuntimeEncodedStaticFieldValueIterator::kString) {
         // Resolve the string. This will intern the string.
         art::ObjPtr<mirror::String> resolved = class_linker->ResolveString(
-            *dex_file, dex::StringIndex(value_it.GetJavaValue().i), dex_cache);
+            dex::StringIndex(value_it.GetJavaValue().i), dex_cache);
         CHECK(resolved != nullptr);
       }
     }
@@ -2357,11 +2354,11 @@ class InitializeClassVisitor : public CompilationVisitor {
       for (const DexInstructionPcPair& inst : code_item->Instructions()) {
         if (inst->Opcode() == Instruction::CONST_STRING) {
           ObjPtr<mirror::String> s = class_linker->ResolveString(
-              *dex_file, dex::StringIndex(inst->VRegB_21c()), dex_cache);
+              dex::StringIndex(inst->VRegB_21c()), dex_cache);
           CHECK(s != nullptr);
         } else if (inst->Opcode() == Instruction::CONST_STRING_JUMBO) {
           ObjPtr<mirror::String> s = class_linker->ResolveString(
-              *dex_file, dex::StringIndex(inst->VRegB_31c()), dex_cache);
+              dex::StringIndex(inst->VRegB_31c()), dex_cache);
           CHECK(s != nullptr);
         }
       }

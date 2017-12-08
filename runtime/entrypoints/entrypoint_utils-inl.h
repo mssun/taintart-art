@@ -757,8 +757,7 @@ static inline ObjPtr<mirror::String> ResolveString(ClassLinker* class_linker,
   if (UNLIKELY(string == nullptr)) {
     StackHandleScope<1> hs(Thread::Current());
     Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
-    const DexFile& dex_file = *dex_cache->GetDexFile();
-    string = class_linker->ResolveString(dex_file, string_idx, dex_cache);
+    string = class_linker->ResolveString(string_idx, dex_cache);
   }
   return string;
 }
@@ -770,9 +769,8 @@ inline ObjPtr<mirror::String> ResolveStringFromCode(ArtMethod* referrer,
   if (UNLIKELY(string == nullptr)) {
     StackHandleScope<1> hs(Thread::Current());
     Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
-    const DexFile& dex_file = *dex_cache->GetDexFile();
     ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-    string = class_linker->ResolveString(dex_file, string_idx, dex_cache);
+    string = class_linker->ResolveString(string_idx, dex_cache);
   }
   return string;
 }

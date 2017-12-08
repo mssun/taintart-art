@@ -1062,7 +1062,7 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
   // The second parameter is the name to lookup.
   {
     dex::StringIndex name_idx(static_cast<uint32_t>(it.GetJavaValue().i));
-    ObjPtr<mirror::String> name = class_linker->ResolveString(*dex_file, name_idx, dex_cache);
+    ObjPtr<mirror::String> name = class_linker->ResolveString(name_idx, dex_cache);
     if (name.IsNull()) {
       DCHECK(self->IsExceptionPending());
       return nullptr;
@@ -1132,7 +1132,7 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
       }
       case EncodedArrayValueIterator::ValueType::kString: {
         dex::StringIndex idx(static_cast<uint32_t>(jvalue.i));
-        ObjPtr<mirror::String> ref = class_linker->ResolveString(*dex_file, idx, dex_cache);
+        ObjPtr<mirror::String> ref = class_linker->ResolveString(idx, dex_cache);
         if (ref.IsNull()) {
           DCHECK(self->IsExceptionPending());
           return nullptr;

@@ -458,7 +458,7 @@ bool ProcessAnnotationValue(const ClassData& klass,
       } else {
         StackHandleScope<1> hs(self);
         element_object = Runtime::Current()->GetClassLinker()->ResolveString(
-            klass.GetDexFile(), dex::StringIndex(index), hs.NewHandle(klass.GetDexCache()));
+            dex::StringIndex(index), hs.NewHandle(klass.GetDexCache()));
         set_object = true;
         if (element_object == nullptr) {
           return false;
@@ -1590,8 +1590,7 @@ void RuntimeEncodedStaticFieldValueIterator::ReadValueToField(ArtField* field) c
     case kDouble:  field->SetDouble<kTransactionActive>(field->GetDeclaringClass(), jval_.d); break;
     case kNull:    field->SetObject<kTransactionActive>(field->GetDeclaringClass(), nullptr); break;
     case kString: {
-      ObjPtr<mirror::String> resolved = linker_->ResolveString(dex_file_,
-                                                               dex::StringIndex(jval_.i),
+      ObjPtr<mirror::String> resolved = linker_->ResolveString(dex::StringIndex(jval_.i),
                                                                dex_cache_);
       field->SetObject<kTransactionActive>(field->GetDeclaringClass(), resolved);
       break;

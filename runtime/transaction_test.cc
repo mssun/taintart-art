@@ -493,7 +493,7 @@ TEST_F(TransactionTest, ResolveString) {
   dex::StringIndex string_idx = dex_file->GetIndexForStringId(*string_id);
   ASSERT_TRUE(string_idx.IsValid());
   // String should only get resolved by the initializer.
-  EXPECT_TRUE(class_linker_->LookupString(*dex_file, string_idx, h_dex_cache.Get()) == nullptr);
+  EXPECT_TRUE(class_linker_->LookupString(string_idx, h_dex_cache.Get()) == nullptr);
   EXPECT_TRUE(h_dex_cache->GetResolvedString(string_idx) == nullptr);
   // Do the transaction, then roll back.
   Runtime::Current()->EnterTransactionMode();
@@ -503,14 +503,14 @@ TEST_F(TransactionTest, ResolveString) {
   // Make sure the string got resolved by the transaction.
   {
     ObjPtr<mirror::String> s =
-        class_linker_->LookupString(*dex_file, string_idx, h_dex_cache.Get());
+        class_linker_->LookupString(string_idx, h_dex_cache.Get());
     ASSERT_TRUE(s != nullptr);
     EXPECT_STREQ(s->ToModifiedUtf8().c_str(), kResolvedString);
     EXPECT_EQ(s.Ptr(), h_dex_cache->GetResolvedString(string_idx));
   }
   Runtime::Current()->RollbackAndExitTransactionMode();
   // Check that the string did not stay resolved.
-  EXPECT_TRUE(class_linker_->LookupString(*dex_file, string_idx, h_dex_cache.Get()) == nullptr);
+  EXPECT_TRUE(class_linker_->LookupString(string_idx, h_dex_cache.Get()) == nullptr);
   EXPECT_TRUE(h_dex_cache->GetResolvedString(string_idx) == nullptr);
   ASSERT_FALSE(h_klass->IsInitialized());
   ASSERT_FALSE(soa.Self()->IsExceptionPending());
