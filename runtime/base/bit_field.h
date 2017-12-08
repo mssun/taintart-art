@@ -17,8 +17,9 @@
 #ifndef ART_RUNTIME_BASE_BIT_FIELD_H_
 #define ART_RUNTIME_BASE_BIT_FIELD_H_
 
+#include <android-base/logging.h>
+
 #include "globals.h"
-#include "logging.h"
 
 namespace art {
 

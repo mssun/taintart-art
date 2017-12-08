@@ -16,7 +16,9 @@
 
 #include "jni.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
+#include "base/mutex.h"
 #include "dex_file-inl.h"
 #include "jni_internal.h"
 #include "mirror/class-inl.h"

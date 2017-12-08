@@ -24,8 +24,7 @@
 #include <limits>
 #include <type_traits>
 
-#include "base/logging.h"
-#include "base/macros.h"
+#include <android-base/logging.h>
 
 namespace art {
 

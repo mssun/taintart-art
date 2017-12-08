@@ -16,7 +16,9 @@
 
 #include "dex_to_dex_decompiler.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
+#include "base/macros.h"
 #include "base/mutex.h"
 #include "bytecode_utils.h"
 #include "dex_file-inl.h"

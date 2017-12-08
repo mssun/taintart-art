@@ -21,9 +21,10 @@
 
 #include <iosfwd>
 
+#include <android-base/logging.h>
+
 #include "arch/arm/registers_arm.h"
 #include "base/casts.h"
-#include "base/logging.h"
 #include "globals.h"
 
 namespace art {

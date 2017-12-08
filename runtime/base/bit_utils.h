@@ -20,7 +20,8 @@
 #include <limits>
 #include <type_traits>
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
 #include "base/stl_util_identity.h"
 
 namespace art {

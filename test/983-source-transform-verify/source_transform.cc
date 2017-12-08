@@ -25,7 +25,6 @@
 #include "jni.h"
 #include "jvmti.h"
 
-#include "base/logging.h"
 #include "base/macros.h"
 #include "bytecode_utils.h"
 #include "dex_file.h"

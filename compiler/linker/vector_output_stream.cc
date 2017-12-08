@@ -16,7 +16,7 @@
 
 #include "vector_output_stream.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
 
 namespace art {
 namespace linker {

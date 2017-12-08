@@ -19,6 +19,8 @@
 #include <deque>
 #include <tuple>
 
+#include <android-base/logging.h>
+
 // For dex tracking through poisoning. Note: Requires forcing sanitization. This is the reason for
 // the ifdefs and early include.
 #ifdef ART_DEX_FILE_ACCESS_TRACKING
@@ -28,7 +30,6 @@
 #endif
 #include "base/memory_tool.h"
 
-#include "base/logging.h"
 #include "dex_file-inl.h"
 
 namespace art {

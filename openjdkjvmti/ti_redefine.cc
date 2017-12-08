@@ -33,13 +33,13 @@
 
 #include <limits>
 
-#include "android-base/stringprintf.h"
+#include <android-base/logging.h>
+#include <android-base/stringprintf.h>
 
 #include "art_field-inl.h"
 #include "art_jvmti.h"
 #include "art_method-inl.h"
 #include "base/array_ref.h"
-#include "base/logging.h"
 #include "base/stringpiece.h"
 #include "class_linker-inl.h"
 #include "debugger.h"

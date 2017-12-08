@@ -19,8 +19,10 @@
 
 #include <iosfwd>
 
+#include <android-base/logging.h>
+
 #include "base/bit_utils.h"
-#include "base/logging.h"
+#include "base/macros.h"
 #include "instruction_set.h"
 
 namespace art {

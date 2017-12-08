@@ -16,6 +16,7 @@
 
 #include "block_builder.h"
 
+#include "base/logging.h"  // FOR VLOG.
 #include "bytecode_utils.h"
 #include "quicken_info.h"
 

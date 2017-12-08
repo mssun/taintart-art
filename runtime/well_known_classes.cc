@@ -20,9 +20,9 @@
 
 #include <sstream>
 
-#include "android-base/stringprintf.h"
+#include <android-base/logging.h>
+#include <android-base/stringprintf.h>
 
-#include "base/logging.h"
 #include "entrypoints/quick/quick_entrypoints_enum.h"
 #include "jni_internal.h"
 #include "mirror/class.h"

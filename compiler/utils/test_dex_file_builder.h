@@ -24,8 +24,9 @@
 #include <set>
 #include <vector>
 
+#include <android-base/logging.h>
+
 #include "base/bit_utils.h"
-#include "base/logging.h"
 #include "dex_file_loader.h"
 #include "standard_dex_file.h"
 

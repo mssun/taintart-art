@@ -17,8 +17,9 @@
 #ifndef ART_COMPILER_UTILS_ARM64_MANAGED_REGISTER_ARM64_H_
 #define ART_COMPILER_UTILS_ARM64_MANAGED_REGISTER_ARM64_H_
 
+#include <android-base/logging.h>
+
 #include "arch/arm64/registers_arm64.h"
-#include "base/logging.h"
 #include "debug/dwarf/register.h"
 #include "utils/managed_register.h"
 

@@ -26,6 +26,7 @@
 #include "base/bit_vector-inl.h"
 #include "base/enums.h"
 #include "base/file_magic.h"
+#include "base/logging.h"  // For VLOG
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "class_linker.h"

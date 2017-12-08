@@ -18,8 +18,10 @@
 
 #include <sstream>
 
+#include <android-base/logging.h>
+
 #include "base/file_utils.h"
-#include "base/logging.h"
+#include "base/macros.h"
 #include "base/stringpiece.h"
 #include "debugger.h"
 #include "gc/heap.h"

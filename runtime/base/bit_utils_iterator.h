@@ -21,9 +21,10 @@
 #include <limits>
 #include <type_traits>
 
+#include <android-base/logging.h>
+
 #include "base/bit_utils.h"
 #include "base/iteration_range.h"
-#include "base/logging.h"
 #include "base/stl_util.h"
 
 namespace art {

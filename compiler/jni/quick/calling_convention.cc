@@ -16,7 +16,7 @@
 
 #include "calling_convention.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
 
 #ifdef ART_ENABLE_CODEGEN_arm
 #include "jni/quick/arm/calling_convention_arm.h"

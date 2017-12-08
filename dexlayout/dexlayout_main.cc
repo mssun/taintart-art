@@ -29,7 +29,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
+#include "base/logging.h"  // For InitLogging.
 #include "jit/profile_compilation_info.h"
 #include "mem_map.h"
 #include "runtime.h"

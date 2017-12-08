@@ -32,8 +32,9 @@
 #ifndef ART_OPENJDKJVMTI_JVMTI_ALLOCATOR_H_
 #define ART_OPENJDKJVMTI_JVMTI_ALLOCATOR_H_
 
-#include "base/logging.h"
-#include "base/macros.h"
+#include <android-base/logging.h>
+#include <android-base/macros.h>
+
 #include "jvmti.h"
 
 #include "ti_allocator.h"

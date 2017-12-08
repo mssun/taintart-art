@@ -23,8 +23,9 @@
 #include <memory>
 #include <type_traits>
 
+#include <android-base/logging.h>
+
 #include "base/casts.h"
-#include "base/logging.h"
 #include "base/macros.h"
 
 namespace art {

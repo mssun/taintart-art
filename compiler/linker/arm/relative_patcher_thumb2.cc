@@ -16,6 +16,8 @@
 
 #include "linker/arm/relative_patcher_thumb2.h"
 
+#include <sstream>
+
 #include "arch/arm/asm_support_arm.h"
 #include "art_method.h"
 #include "base/bit_utils.h"

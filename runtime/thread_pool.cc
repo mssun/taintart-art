@@ -22,11 +22,11 @@
 
 #include <pthread.h>
 
-#include "android-base/stringprintf.h"
+#include <android-base/logging.h>
+#include <android-base/stringprintf.h>
 
 #include "base/bit_utils.h"
 #include "base/casts.h"
-#include "base/logging.h"
 #include "base/stl_util.h"
 #include "base/time_utils.h"
 #include "runtime.h"

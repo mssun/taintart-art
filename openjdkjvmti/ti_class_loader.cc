@@ -33,11 +33,11 @@
 
 #include <limits>
 
-#include "android-base/stringprintf.h"
+#include <android-base/logging.h>
+#include <android-base/stringprintf.h>
 
 #include "art_field-inl.h"
 #include "art_jvmti.h"
-#include "base/logging.h"
 #include "dex_file.h"
 #include "dex_file_types.h"
 #include "events-inl.h"

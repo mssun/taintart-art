@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
+#include <android-base/logging.h>
+
 #include "base/casts.h"
-#include "base/logging.h"
 #include "jni.h"
 
 namespace art {

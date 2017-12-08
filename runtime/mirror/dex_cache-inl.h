@@ -19,11 +19,12 @@
 
 #include "dex_cache.h"
 
+#include <android-base/logging.h>
+
 #include "art_field.h"
 #include "art_method.h"
 #include "base/casts.h"
 #include "base/enums.h"
-#include "base/logging.h"
 #include "class_linker.h"
 #include "dex_file.h"
 #include "gc/heap-inl.h"

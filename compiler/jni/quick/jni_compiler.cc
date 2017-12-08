@@ -25,7 +25,7 @@
 #include "art_method.h"
 #include "base/arena_allocator.h"
 #include "base/enums.h"
-#include "base/logging.h"
+#include "base/logging.h"  // For VLOG.
 #include "base/macros.h"
 #include "calling_convention.h"
 #include "class_linker.h"

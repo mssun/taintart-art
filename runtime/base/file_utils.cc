@@ -89,7 +89,7 @@ bool ReadFileToString(const std::string& file_name, std::string* result) {
   }
 }
 
-bool PrintFileToLog(const std::string& file_name, LogSeverity level) {
+bool PrintFileToLog(const std::string& file_name, android::base::LogSeverity level) {
   File file(file_name, O_RDONLY, false);
   if (!file.IsOpened()) {
     return false;

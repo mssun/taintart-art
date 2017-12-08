@@ -17,8 +17,9 @@
 #ifndef ART_RUNTIME_ARCH_MIPS_INSTRUCTION_SET_FEATURES_MIPS_H_
 #define ART_RUNTIME_ARCH_MIPS_INSTRUCTION_SET_FEATURES_MIPS_H_
 
+#include <android-base/logging.h>
+
 #include "arch/instruction_set_features.h"
-#include "base/logging.h"
 #include "base/macros.h"
 
 namespace art {

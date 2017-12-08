@@ -20,6 +20,7 @@
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
+#include "base/logging.h"  // For VLOG.
 #include "class-inl.h"
 #include "class_ext.h"
 #include "class_linker-inl.h"

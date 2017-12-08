@@ -16,7 +16,9 @@
 
 #include "mark_compact.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
+#include "base/macros.h"
 #include "base/mutex-inl.h"
 #include "base/timing_logger.h"
 #include "gc/accounting/heap_bitmap-inl.h"
