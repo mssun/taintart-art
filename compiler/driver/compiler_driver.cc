@@ -1612,7 +1612,7 @@ class ResolveClassFieldsAndMethodsVisitor : public CompilationVisitor {
       : manager_(manager) {}
 
   void Visit(size_t class_def_index) OVERRIDE REQUIRES(!Locks::mutator_lock_) {
-    ATRACE_CALL();
+    ScopedTrace trace(__FUNCTION__);
     Thread* const self = Thread::Current();
     jobject jclass_loader = manager_->GetClassLoader();
     const DexFile& dex_file = *manager_->GetDexFile();
@@ -1957,7 +1957,7 @@ class VerifyClassVisitor : public CompilationVisitor {
      : manager_(manager), log_level_(log_level) {}
 
   virtual void Visit(size_t class_def_index) REQUIRES(!Locks::mutator_lock_) OVERRIDE {
-    ATRACE_CALL();
+    ScopedTrace trace(__FUNCTION__);
     ScopedObjectAccess soa(Thread::Current());
     const DexFile& dex_file = *manager_->GetDexFile();
     const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
@@ -2086,7 +2086,7 @@ class SetVerifiedClassVisitor : public CompilationVisitor {
   explicit SetVerifiedClassVisitor(const ParallelCompilationManager* manager) : manager_(manager) {}
 
   virtual void Visit(size_t class_def_index) REQUIRES(!Locks::mutator_lock_) OVERRIDE {
-    ATRACE_CALL();
+    ScopedTrace trace(__FUNCTION__);
     ScopedObjectAccess soa(Thread::Current());
     const DexFile& dex_file = *manager_->GetDexFile();
     const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
@@ -2150,7 +2150,7 @@ class InitializeClassVisitor : public CompilationVisitor {
   explicit InitializeClassVisitor(const ParallelCompilationManager* manager) : manager_(manager) {}
 
   void Visit(size_t class_def_index) OVERRIDE {
-    ATRACE_CALL();
+    ScopedTrace trace(__FUNCTION__);
     jobject jclass_loader = manager_->GetClassLoader();
     const DexFile& dex_file = *manager_->GetDexFile();
     const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
@@ -2666,7 +2666,7 @@ class CompileClassVisitor : public CompilationVisitor {
   explicit CompileClassVisitor(const ParallelCompilationManager* manager) : manager_(manager) {}
 
   virtual void Visit(size_t class_def_index) REQUIRES(!Locks::mutator_lock_) OVERRIDE {
-    ATRACE_CALL();
+    ScopedTrace trace(__FUNCTION__);
     const DexFile& dex_file = *manager_->GetDexFile();
     const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
     ClassLinker* class_linker = manager_->GetClassLinker();
