@@ -79,5 +79,11 @@
   result: EXEC_FAILED,
   bug: 69591477,
   name: "org.apache.harmony.jpda.tests.jdwp.VirtualMachine.ExitTest#testExit001"
+},
+{
+  description: "Test times out on fugu-debug",
+  result: EXEC_FAILED,
+  bug: 70459916,
+  name: "org.apache.harmony.jpda.tests.jdwp.VMDebug.VMDebugTest#testVMDebug"
 }
 ]
