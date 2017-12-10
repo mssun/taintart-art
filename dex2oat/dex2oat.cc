@@ -345,7 +345,7 @@ NO_RETURN static void Usage(const char* fmt, ...) {
              CompilerOptions::kDefaultInlineMaxCodeUnits);
   UsageError("      Default: %d", CompilerOptions::kDefaultInlineMaxCodeUnits);
   UsageError("");
-  UsageError("  --dump-timing: display a breakdown of where time was spent");
+  UsageError("  --dump-timings: display a breakdown of where time was spent");
   UsageError("");
   UsageError("  -g");
   UsageError("  --generate-debug-info: Generate debug information for native debugging,");
