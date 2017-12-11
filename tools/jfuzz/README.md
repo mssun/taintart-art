@@ -28,6 +28,8 @@ where
          (higher values yield deeper nested conditionals)
     -n : defines a fuzzing nest for for/while/do-while loops
          (higher values yield deeper nested loops)
+    -t : defines a fuzzing nest for try-catch-finally blocks
+         (higher values yield deeper nested try-catch-finally blocks)
     -v : prints version number and exits
     -h : prints help and exits
 
