@@ -376,15 +376,15 @@ extern "C" size_t MterpConstClass(uint32_t index,
                                   ShadowFrame* shadow_frame,
                                   Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  mirror::Class* c = ResolveVerifyAndClinit(dex::TypeIndex(index),
-                                            shadow_frame->GetMethod(),
-                                            self,
-                                            false,
-                                            false);
+  ObjPtr<mirror::Class> c = ResolveVerifyAndClinit(dex::TypeIndex(index),
+                                                   shadow_frame->GetMethod(),
+                                                   self,
+                                                   /* can_run_clinit */ false,
+                                                   /* verify_access */ false);
   if (UNLIKELY(c == nullptr)) {
     return true;
   }
-  shadow_frame->SetVRegReference(tgt_vreg, c);
+  shadow_frame->SetVRegReference(tgt_vreg, c.Ptr());
   return false;
 }
 
@@ -463,17 +463,17 @@ extern "C" size_t MterpNewInstance(ShadowFrame* shadow_frame, Thread* self, uint
     REQUIRES_SHARED(Locks::mutator_lock_) {
   const Instruction* inst = Instruction::At(shadow_frame->GetDexPCPtr());
   mirror::Object* obj = nullptr;
-  mirror::Class* c = ResolveVerifyAndClinit(dex::TypeIndex(inst->VRegB_21c()),
-                                            shadow_frame->GetMethod(),
-                                            self,
-                                            false,
-                                            false);
+  ObjPtr<mirror::Class> c = ResolveVerifyAndClinit(dex::TypeIndex(inst->VRegB_21c()),
+                                                   shadow_frame->GetMethod(),
+                                                   self,
+                                                   /* can_run_clinit */ false,
+                                                   /* verify_access */ false);
   if (LIKELY(c != nullptr)) {
     if (UNLIKELY(c->IsStringClass())) {
       gc::AllocatorType allocator_type = Runtime::Current()->GetHeap()->GetCurrentAllocator();
       obj = mirror::String::AllocEmptyString<true>(self, allocator_type);
     } else {
-      obj = AllocObjectFromCode<true>(c,
+      obj = AllocObjectFromCode<true>(c.Ptr(),
                                       self,
                                       Runtime::Current()->GetHeap()->GetCurrentAllocator());
     }

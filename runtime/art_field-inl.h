@@ -19,7 +19,8 @@
 
 #include "art_field.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
 #include "class_linker.h"
 #include "dex_file-inl.h"
 #include "gc/accounting/card_table-inl.h"
@@ -299,7 +300,7 @@ inline bool ArtField::IsPrimitiveType() REQUIRES_SHARED(Locks::mutator_lock_) {
   return GetTypeAsPrimitiveType() != Primitive::kPrimNot;
 }
 
-inline ObjPtr<mirror::Class> ArtField::LookupType() {
+inline ObjPtr<mirror::Class> ArtField::LookupResolvedType() {
   ScopedAssertNoThreadSuspension ants(__FUNCTION__);
   const uint32_t field_index = GetDexFieldIndex();
   ObjPtr<mirror::Class> declaring_class = GetDeclaringClass();

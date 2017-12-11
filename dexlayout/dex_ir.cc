@@ -674,20 +674,20 @@ CodeItem* Collections::CreateCodeItem(const DexFile& dex_file,
   // Add "fixup" references to types, strings, methods, and fields.
   // This is temporary, as we will probably want more detailed parsing of the
   // instructions here.
-  std::unique_ptr<std::vector<TypeId*>> type_ids(new std::vector<TypeId*>());
-  std::unique_ptr<std::vector<StringId*>> string_ids(new std::vector<StringId*>());
-  std::unique_ptr<std::vector<MethodId*>> method_ids(new std::vector<MethodId*>());
-  std::unique_ptr<std::vector<FieldId*>> field_ids(new std::vector<FieldId*>());
+  std::vector<TypeId*> type_ids;
+  std::vector<StringId*> string_ids;
+  std::vector<MethodId*> method_ids;
+  std::vector<FieldId*> field_ids;
   if (GetIdsFromByteCode(*this,
                          code_item,
-                         type_ids.get(),
-                         string_ids.get(),
-                         method_ids.get(),
-                         field_ids.get())) {
-    CodeFixups* fixups = new CodeFixups(type_ids.release(),
-                                        string_ids.release(),
-                                        method_ids.release(),
-                                        field_ids.release());
+                         /*out*/ &type_ids,
+                         /*out*/ &string_ids,
+                         /*out*/ &method_ids,
+                         /*out*/ &field_ids)) {
+    CodeFixups* fixups = new CodeFixups(std::move(type_ids),
+                                        std::move(string_ids),
+                                        std::move(method_ids),
+                                        std::move(field_ids));
     code_item->SetCodeFixups(fixups);
   }
 

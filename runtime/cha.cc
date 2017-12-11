@@ -17,6 +17,7 @@
 #include "cha.h"
 
 #include "art_method-inl.h"
+#include "base/logging.h"  // For VLOG
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"
 #include "linear_alloc.h"

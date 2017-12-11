@@ -20,7 +20,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "base/logging.h"
+#include <android-base/logging.h>
 
 namespace art {
 

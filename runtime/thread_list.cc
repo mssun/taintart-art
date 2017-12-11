@@ -28,6 +28,7 @@
 #include "nativehelper/scoped_local_ref.h"
 #include "nativehelper/scoped_utf_chars.h"
 
+#include "base/aborting.h"
 #include "base/histogram-inl.h"
 #include "base/mutex-inl.h"
 #include "base/systrace.h"
@@ -364,11 +365,11 @@ size_t ThreadList::RunCheckpoint(Closure* checkpoint_function, Closure* callback
   // Run the checkpoint on the suspended threads.
   for (const auto& thread : suspended_count_modified_threads) {
     if (!thread->IsSuspended()) {
-      if (ATRACE_ENABLED()) {
+      ScopedTrace trace([&]() {
         std::ostringstream oss;
         thread->ShortDump(oss);
-        ATRACE_BEGIN((std::string("Waiting for suspension of thread ") + oss.str()).c_str());
-      }
+        return std::string("Waiting for suspension of thread ") + oss.str();
+      });
       // Busy wait until the thread is suspended.
       const uint64_t start_time = NanoTime();
       do {
@@ -377,7 +378,6 @@ size_t ThreadList::RunCheckpoint(Closure* checkpoint_function, Closure* callback
       const uint64_t total_delay = NanoTime() - start_time;
       // Shouldn't need to wait for longer than 1000 microseconds.
       constexpr uint64_t kLongWaitThreshold = MsToNs(1);
-      ATRACE_END();
       if (UNLIKELY(total_delay > kLongWaitThreshold)) {
         LOG(WARNING) << "Long wait of " << PrettyDuration(total_delay) << " for "
             << *thread << " suspension!";

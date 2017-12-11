@@ -16,7 +16,7 @@
 
 #include "monitor_pool.h"
 
-#include "base/logging.h"
+#include "base/logging.h"  // For VLOG.
 #include "base/mutex-inl.h"
 #include "monitor.h"
 #include "thread-current-inl.h"

@@ -20,7 +20,10 @@
 #include <bitset>
 #include <vector>
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
+#include "base/macros.h"
+#include "base/mutex.h"
 #include "jvmti.h"
 #include "thread.h"
 

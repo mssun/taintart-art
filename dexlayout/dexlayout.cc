@@ -33,6 +33,7 @@
 
 #include "android-base/stringprintf.h"
 
+#include "base/logging.h"  // For VLOG_IS_ON.
 #include "dex_file-inl.h"
 #include "dex_file_layout.h"
 #include "dex_file_loader.h"
@@ -1656,11 +1657,11 @@ void DexLayout::LayoutStringData(const DexFile* dex_file) {
           continue;
         }
         // Add const-strings.
-        for (dex_ir::StringId* id : *fixups->StringIds()) {
+        for (dex_ir::StringId* id : fixups->StringIds()) {
           from_hot_method[id->GetIndex()] = true;
         }
         // Add field classes, names, and types.
-        for (dex_ir::FieldId* id : *fixups->FieldIds()) {
+        for (dex_ir::FieldId* id : fixups->FieldIds()) {
           // TODO: Only visit field ids from static getters and setters.
           from_hot_method[id->Class()->GetStringId()->GetIndex()] = true;
           from_hot_method[id->Name()->GetIndex()] = true;
@@ -1668,7 +1669,7 @@ void DexLayout::LayoutStringData(const DexFile* dex_file) {
         }
         // For clinits, add referenced method classes, names, and protos.
         if (is_clinit) {
-          for (dex_ir::MethodId* id : *fixups->MethodIds()) {
+          for (dex_ir::MethodId* id : fixups->MethodIds()) {
             from_hot_method[id->Class()->GetStringId()->GetIndex()] = true;
             from_hot_method[id->Name()->GetIndex()] = true;
             is_shorty[id->Proto()->Shorty()->GetIndex()] = true;

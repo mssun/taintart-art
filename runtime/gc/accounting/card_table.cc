@@ -18,7 +18,6 @@
 
 #include <sys/mman.h>
 
-#include "base/logging.h"
 #include "base/systrace.h"
 #include "card_table-inl.h"
 #include "gc/heap.h"

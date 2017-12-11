@@ -219,12 +219,12 @@ class CompilerDriver {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Resolve compiling method's class. Returns null on failure.
-  mirror::Class* ResolveCompilingMethodsClass(
+  ObjPtr<mirror::Class> ResolveCompilingMethodsClass(
       const ScopedObjectAccess& soa, Handle<mirror::DexCache> dex_cache,
       Handle<mirror::ClassLoader> class_loader, const DexCompilationUnit* mUnit)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  mirror::Class* ResolveClass(
+  ObjPtr<mirror::Class> ResolveClass(
       const ScopedObjectAccess& soa, Handle<mirror::DexCache> dex_cache,
       Handle<mirror::ClassLoader> class_loader, dex::TypeIndex type_index,
       const DexCompilationUnit* mUnit)
@@ -247,7 +247,8 @@ class CompilerDriver {
 
   // Can we fast-path an IGET/IPUT access to an instance field? If yes, compute the field offset.
   std::pair<bool, bool> IsFastInstanceField(
-      mirror::DexCache* dex_cache, mirror::Class* referrer_class,
+      ObjPtr<mirror::DexCache> dex_cache,
+      ObjPtr<mirror::Class> referrer_class,
       ArtField* resolved_field, uint16_t field_idx)
       REQUIRES_SHARED(Locks::mutator_lock_);
 

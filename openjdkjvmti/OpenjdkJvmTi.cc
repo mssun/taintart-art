@@ -33,12 +33,14 @@
 #include <type_traits>
 #include <vector>
 
+#include <android-base/logging.h>
+
 #include <jni.h>
 
 #include "jvmti.h"
 
 #include "art_jvmti.h"
-#include "base/logging.h"
+#include "base/logging.h"  // For gLogVerbosity.
 #include "base/mutex.h"
 #include "events-inl.h"
 #include "jni_env_ext-inl.h"
@@ -1437,6 +1439,7 @@ class JvmtiFunctions {
       art::gLogVerbosity.third_party_jni = val;
       art::gLogVerbosity.threads = val;
       art::gLogVerbosity.verifier = val;
+      // Do not set verifier-debug.
       art::gLogVerbosity.image = val;
 
       // Note: can't switch systrace_lock_logging. That requires changing entrypoints.

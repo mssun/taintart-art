@@ -36,8 +36,9 @@
 
 #include <limits>
 
+#include <android-base/logging.h>
+
 #include "art_jvmti.h"
-#include "base/logging.h"
 #include "gc/allocation_listener.h"
 #include "instrumentation.h"
 #include "jni_env_ext-inl.h"

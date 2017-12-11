@@ -19,9 +19,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "base/logging.h"
-#include "globals.h"
-
 namespace art {
 
 void MemoryRegion::CopyFrom(size_t offset, const MemoryRegion& from) const {

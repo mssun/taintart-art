@@ -20,8 +20,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <android-base/logging.h>
+
 #include "base/casts.h"
-#include "base/logging.h"
 #include "compiled_method.h"
 #include "debug/elf_debug_writer.h"
 #include "debug/method_debug_info.h"

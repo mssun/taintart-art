@@ -21,7 +21,9 @@
 #include "arch/instruction_set.h"
 #include "arch/instruction_set_features.h"
 #include "art_method-inl.h"
+#include "base/logging.h"  // For VLOG
 #include "base/stringpiece.h"
+#include "base/systrace.h"
 #include "base/time_utils.h"
 #include "base/timing_logger.h"
 #include "base/unix_file/fd_file.h"
@@ -162,6 +164,8 @@ JitCompiler::~JitCompiler() {
 }
 
 bool JitCompiler::CompileMethod(Thread* self, ArtMethod* method, bool osr) {
+  SCOPED_TRACE << "JIT compiling " << method->PrettyMethod();
+
   DCHECK(!method->IsProxyMethod());
   DCHECK(method->GetDeclaringClass()->IsResolved());
 

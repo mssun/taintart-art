@@ -19,6 +19,7 @@
 
 #include "register_line.h"
 
+#include "base/logging.h"  // For VLOG.
 #include "method_verifier.h"
 #include "reg_type_cache-inl.h"
 
@@ -190,6 +191,27 @@ inline RegisterLine::RegisterLine(size_t num_regs, MethodVerifier* verifier)
       this_initialized_(false) {
   std::uninitialized_fill_n(line_, num_regs_, 0u);
   SetResultTypeToUnknown(verifier);
+}
+
+inline void RegisterLine::ClearRegToLockDepth(size_t reg, size_t depth) {
+  CHECK_LT(depth, 32u);
+  DCHECK(IsSetLockDepth(reg, depth));
+  auto it = reg_to_lock_depths_.find(reg);
+  DCHECK(it != reg_to_lock_depths_.end());
+  uint32_t depths = it->second ^ (1 << depth);
+  if (depths != 0) {
+    it->second = depths;
+  } else {
+    reg_to_lock_depths_.erase(it);
+  }
+  // Need to unlock every register at the same lock depth. These are aliased locks.
+  uint32_t mask = 1 << depth;
+  for (auto& pair : reg_to_lock_depths_) {
+    if ((pair.second & mask) != 0) {
+      VLOG(verifier) << "Also unlocking " << pair.first;
+      pair.second ^= mask;
+    }
+  }
 }
 
 inline void RegisterLineArenaDelete::operator()(RegisterLine* ptr) const {

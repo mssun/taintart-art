@@ -18,7 +18,8 @@
 #define ART_RUNTIME_PLUGIN_H_
 
 #include <string>
-#include "base/logging.h"
+
+#include <android-base/logging.h>
 
 namespace art {
 

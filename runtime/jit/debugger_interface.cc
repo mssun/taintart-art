@@ -16,7 +16,8 @@
 
 #include "debugger_interface.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
 #include "base/mutex.h"
 #include "thread-current-inl.h"
 #include "thread.h"

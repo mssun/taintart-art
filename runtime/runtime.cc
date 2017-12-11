@@ -57,6 +57,7 @@
 #include "asm_support.h"
 #include "asm_support_check.h"
 #include "atomic.h"
+#include "base/aborting.h"
 #include "base/arena_allocator.h"
 #include "base/dumpable.h"
 #include "base/enums.h"

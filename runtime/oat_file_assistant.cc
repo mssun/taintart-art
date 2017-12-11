@@ -24,7 +24,7 @@
 #include "android-base/strings.h"
 
 #include "base/file_utils.h"
-#include "base/logging.h"
+#include "base/logging.h"  // For VLOG.
 #include "base/stl_util.h"
 #include "class_linker.h"
 #include "compiler_filter.h"

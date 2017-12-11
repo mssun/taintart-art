@@ -1,3 +1,9 @@
-Regression test for Quick and Optimizing that used
-to crash on an aget-object + int-to-byte sequence
-(accepted by the verifier in the case the array was null).
+Codifies that the verifier should reject type-unsafe
+instructions in dead code after aget on null, but pass
+type-safe dead code.
+
+Previously verification stopped after aget on null and
+punted the method to the interpreter in an effort to avoid
+compiler crashes. As broken code appears very uncommon,
+ensure verifier strictness and help the compilers see more
+code.

@@ -19,6 +19,7 @@
 
 #include "thread.h"
 
+#include "base/aborting.h"
 #include "base/casts.h"
 #include "base/mutex-inl.h"
 #include "base/time_utils.h"

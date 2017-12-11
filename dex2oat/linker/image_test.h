@@ -293,14 +293,7 @@ inline void CompilationHelper::Compile(CompilerDriver* driver,
       bool image_space_ok = writer->PrepareImageAddressSpace();
       ASSERT_TRUE(image_space_ok);
 
-      for (size_t i = 0, size = vdex_files.size(); i != size; ++i) {
-        std::unique_ptr<BufferedOutputStream> vdex_out =
-            std::make_unique<BufferedOutputStream>(
-                std::make_unique<FileOutputStream>(vdex_files[i].GetFile()));
-        oat_writers[i]->WriteVerifierDeps(vdex_out.get(), nullptr);
-        oat_writers[i]->WriteChecksumsAndVdexHeader(vdex_out.get());
-      }
-
+      DCHECK_EQ(vdex_files.size(), oat_files.size());
       for (size_t i = 0, size = oat_files.size(); i != size; ++i) {
         MultiOatRelativePatcher patcher(driver->GetInstructionSet(),
                                         driver->GetInstructionSetFeatures());
@@ -308,6 +301,14 @@ inline void CompilationHelper::Compile(CompilerDriver* driver,
         ElfWriter* const elf_writer = elf_writers[i].get();
         std::vector<const DexFile*> cur_dex_files(1u, class_path[i]);
         oat_writer->Initialize(driver, writer.get(), cur_dex_files);
+
+        std::unique_ptr<BufferedOutputStream> vdex_out =
+            std::make_unique<BufferedOutputStream>(
+                std::make_unique<FileOutputStream>(vdex_files[i].GetFile()));
+        oat_writer->WriteVerifierDeps(vdex_out.get(), nullptr);
+        oat_writer->WriteQuickeningInfo(vdex_out.get());
+        oat_writer->WriteChecksumsAndVdexHeader(vdex_out.get());
+
         oat_writer->PrepareLayout(&patcher);
         size_t rodata_size = oat_writer->GetOatHeader().GetExecutableOffset();
         size_t text_size = oat_writer->GetOatSize() - rodata_size;

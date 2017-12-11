@@ -188,20 +188,16 @@ class Dumper {
       DumpAddressRange(code_item, class_index);
       const dex_ir::CodeFixups* fixups = code_item->GetCodeFixups();
       if (fixups != nullptr) {
-        std::vector<dex_ir::TypeId*>* type_ids = fixups->TypeIds();
-        for (dex_ir::TypeId* type_id : *type_ids) {
+        for (dex_ir::TypeId* type_id : fixups->TypeIds()) {
           DumpTypeId(type_id, class_index);
         }
-        std::vector<dex_ir::StringId*>* string_ids = fixups->StringIds();
-        for (dex_ir::StringId* string_id : *string_ids) {
+        for (dex_ir::StringId* string_id : fixups->StringIds()) {
           DumpStringId(string_id, class_index);
         }
-        std::vector<dex_ir::MethodId*>* method_ids = fixups->MethodIds();
-        for (dex_ir::MethodId* method_id : *method_ids) {
+        for (dex_ir::MethodId* method_id : fixups->MethodIds()) {
           DumpMethodId(method_id, class_index);
         }
-        std::vector<dex_ir::FieldId*>* field_ids = fixups->FieldIds();
-        for (dex_ir::FieldId* field_id : *field_ids) {
+        for (dex_ir::FieldId* field_id : fixups->FieldIds()) {
           DumpFieldId(field_id, class_index);
         }
       }

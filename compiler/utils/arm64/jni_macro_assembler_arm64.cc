@@ -16,7 +16,6 @@
 
 #include "jni_macro_assembler_arm64.h"
 
-#include "base/logging.h"
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "managed_register_arm64.h"
 #include "offsets.h"

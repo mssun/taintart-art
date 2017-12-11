@@ -19,9 +19,11 @@
 
 #define ATRACE_TAG ATRACE_TAG_DALVIK
 #include <cutils/trace.h>
-#include <utils/Trace.h>
 
+#include <sstream>
 #include <string>
+
+#include "android-base/stringprintf.h"
 
 namespace art {
 
@@ -30,6 +32,12 @@ class ScopedTrace {
   explicit ScopedTrace(const char* name) {
     ATRACE_BEGIN(name);
   }
+  template <typename Fn>
+  explicit ScopedTrace(Fn fn) {
+    if (ATRACE_ENABLED()) {
+      ATRACE_BEGIN(fn().c_str());
+    }
+  }
 
   explicit ScopedTrace(const std::string& name) : ScopedTrace(name.c_str()) {}
 
@@ -37,6 +45,38 @@ class ScopedTrace {
     ATRACE_END();
   }
 };
+
+// Helper for the SCOPED_TRACE macro. Do not use directly.
+class ScopedTraceNoStart {
+ public:
+  ScopedTraceNoStart() {
+  }
+
+  ~ScopedTraceNoStart() {
+    ATRACE_END();
+  }
+
+  // Message helper for the macro. Do not use directly.
+  class ScopedTraceMessageHelper {
+   public:
+    ScopedTraceMessageHelper() {
+    }
+    ~ScopedTraceMessageHelper() {
+      ATRACE_BEGIN(buffer_.str().c_str());
+    }
+
+    std::ostream& stream() {
+      return buffer_;
+    }
+
+   private:
+    std::ostringstream buffer_;
+  };
+};
+
+#define SCOPED_TRACE \
+  ::art::ScopedTraceNoStart trace ## __LINE__; \
+  (ATRACE_ENABLED()) && ::art::ScopedTraceNoStart::ScopedTraceMessageHelper().stream()
 
 }  // namespace art
 

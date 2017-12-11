@@ -30,6 +30,7 @@
 #include "base/dumpable.h"
 #include "base/file_utils.h"
 #include "base/histogram-inl.h"
+#include "base/logging.h"  // For VLOG.
 #include "base/memory_tool.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
@@ -799,12 +800,11 @@ void Heap::IncrementDisableThreadFlip(Thread* self) {
   bool has_waited = false;
   uint64_t wait_start = NanoTime();
   if (thread_flip_running_) {
-    ATRACE_BEGIN("IncrementDisableThreadFlip");
+    ScopedTrace trace("IncrementDisableThreadFlip");
     while (thread_flip_running_) {
       has_waited = true;
       thread_flip_cond_->Wait(self);
     }
-    ATRACE_END();
   }
   ++disable_thread_flip_count_;
   if (has_waited) {
@@ -4154,6 +4154,11 @@ mirror::Object* Heap::AllocWithNewTLAB(Thread* self,
 
 const Verification* Heap::GetVerification() const {
   return verification_.get();
+}
+
+void Heap::VlogHeapGrowth(size_t max_allowed_footprint, size_t new_footprint, size_t alloc_size) {
+  VLOG(heap) << "Growing heap from " << PrettySize(max_allowed_footprint) << " to "
+             << PrettySize(new_footprint) << " for a " << PrettySize(alloc_size) << " allocation";
 }
 
 }  // namespace gc

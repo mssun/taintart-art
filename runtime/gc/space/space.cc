@@ -16,7 +16,9 @@
 
 #include "space.h"
 
-#include "base/logging.h"
+#include <android-base/logging.h>
+
+#include "base/macros.h"
 #include "gc/accounting/heap_bitmap.h"
 #include "gc/accounting/space_bitmap-inl.h"
 #include "gc/heap.h"

@@ -40,6 +40,7 @@
 #include "android-base/stringprintf.h"
 
 #include "arch/instruction_set.h"
+#include "base/aborting.h"
 #include "base/file_utils.h"
 #include "base/memory_tool.h"
 #include "base/mutex.h"

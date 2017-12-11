@@ -23,7 +23,7 @@
 #include "android-base/stringprintf.h"
 
 #include "base/file_utils.h"
-#include "base/logging.h"
+#include "base/logging.h"  // For VLOG.
 #include "base/macros.h"
 #include "base/unix_file/fd_file.h"
 #include "globals.h"

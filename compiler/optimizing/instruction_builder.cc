@@ -1128,7 +1128,7 @@ void HInstructionBuilder::BuildConstructorFenceForAllocation(HInstruction* alloc
       MethodCompilationStat::kConstructorFenceGeneratedNew);
 }
 
-static bool IsSubClass(mirror::Class* to_test, mirror::Class* super_class)
+static bool IsSubClass(ObjPtr<mirror::Class> to_test, ObjPtr<mirror::Class> super_class)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return to_test != nullptr && !to_test->IsInterface() && to_test->IsSubClass(super_class);
 }
@@ -1424,7 +1424,7 @@ bool HInstructionBuilder::BuildInstanceFieldAccess(const Instruction& instructio
   return true;
 }
 
-static mirror::Class* GetClassFrom(CompilerDriver* driver,
+static ObjPtr<mirror::Class> GetClassFrom(CompilerDriver* driver,
                                    const DexCompilationUnit& compilation_unit) {
   ScopedObjectAccess soa(Thread::Current());
   Handle<mirror::ClassLoader> class_loader = compilation_unit.GetClassLoader();
@@ -1433,11 +1433,11 @@ static mirror::Class* GetClassFrom(CompilerDriver* driver,
   return driver->ResolveCompilingMethodsClass(soa, dex_cache, class_loader, &compilation_unit);
 }
 
-mirror::Class* HInstructionBuilder::GetOutermostCompilingClass() const {
+ObjPtr<mirror::Class> HInstructionBuilder::GetOutermostCompilingClass() const {
   return GetClassFrom(compiler_driver_, *outer_compilation_unit_);
 }
 
-mirror::Class* HInstructionBuilder::GetCompilingClass() const {
+ObjPtr<mirror::Class> HInstructionBuilder::GetCompilingClass() const {
   return GetClassFrom(compiler_driver_, *dex_compilation_unit_);
 }
 
@@ -1799,6 +1799,17 @@ static TypeCheckKind ComputeTypeCheckKind(Handle<mirror::Class> cls)
   }
 }
 
+void HInstructionBuilder::BuildLoadString(dex::StringIndex string_index, uint32_t dex_pc) {
+  HLoadString* load_string =
+      new (allocator_) HLoadString(graph_->GetCurrentMethod(), string_index, *dex_file_, dex_pc);
+  HSharpening::ProcessLoadString(load_string,
+                                 code_generator_,
+                                 compiler_driver_,
+                                 *dex_compilation_unit_,
+                                 handles_);
+  AppendInstruction(load_string);
+}
+
 HLoadClass* HInstructionBuilder::BuildLoadClass(dex::TypeIndex type_index, uint32_t dex_pc) {
   ScopedObjectAccess soa(Thread::Current());
   const DexFile& dex_file = *dex_compilation_unit_->GetDexFile();
@@ -1811,7 +1822,7 @@ HLoadClass* HInstructionBuilder::BuildLoadClass(dex::TypeIndex type_index, uint3
     if (klass->IsPublic()) {
       needs_access_check = false;
     } else {
-      mirror::Class* compiling_class = GetCompilingClass();
+      ObjPtr<mirror::Class> compiling_class = GetCompilingClass();
       if (compiling_class != nullptr && compiling_class->CanAccess(klass.Get())) {
         needs_access_check = false;
       }
@@ -1856,9 +1867,9 @@ HLoadClass* HInstructionBuilder::BuildLoadClass(dex::TypeIndex type_index,
     // We actually cannot reference this class, we're forced to bail.
     return nullptr;
   }
-  // Append the instruction first, as setting the load kind affects the inputs.
-  AppendInstruction(load_class);
+  // Load kind must be set before inserting the instruction into the graph.
   load_class->SetLoadKind(load_kind);
+  AppendInstruction(load_class);
   return load_class;
 }
 
@@ -2837,20 +2848,14 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
 
     case Instruction::CONST_STRING: {
       dex::StringIndex string_index(instruction.VRegB_21c());
-      AppendInstruction(new (allocator_) HLoadString(graph_->GetCurrentMethod(),
-                                                     string_index,
-                                                     *dex_file_,
-                                                     dex_pc));
+      BuildLoadString(string_index, dex_pc);
       UpdateLocal(instruction.VRegA_21c(), current_block_->GetLastInstruction());
       break;
     }
 
     case Instruction::CONST_STRING_JUMBO: {
       dex::StringIndex string_index(instruction.VRegB_31c());
-      AppendInstruction(new (allocator_) HLoadString(graph_->GetCurrentMethod(),
-                                                     string_index,
-                                                     *dex_file_,
-                                                     dex_pc));
+      BuildLoadString(string_index, dex_pc);
       UpdateLocal(instruction.VRegA_31c(), current_block_->GetLastInstruction());
       break;
     }

@@ -21,6 +21,7 @@
 #include "android-base/stringprintf.h"
 
 #include "art_method-inl.h"
+#include "base/logging.h"  // For VLOG.
 #include "base/mutex.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"

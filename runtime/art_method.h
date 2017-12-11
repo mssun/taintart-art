@@ -19,11 +19,14 @@
 
 #include <cstddef>
 
+#include <android-base/logging.h>
+
 #include "base/bit_utils.h"
 #include "base/casts.h"
 #include "base/enums.h"
 #include "base/iteration_range.h"
-#include "base/logging.h"
+#include "base/macros.h"
+#include "base/runtime_debug.h"
 #include "dex_file.h"
 #include "dex_instruction_iterator.h"
 #include "gc_root.h"
@@ -575,7 +578,7 @@ class ArtMethod FINAL {
 
   ALWAYS_INLINE const char* GetName() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  mirror::String* GetNameAsString(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<mirror::String> GetNameAsString(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_);
 
   const DexFile::CodeItem* GetCodeItem() REQUIRES_SHARED(Locks::mutator_lock_);
 

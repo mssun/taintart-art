@@ -22,11 +22,11 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "android-base/stringprintf.h"
+#include <android-base/logging.h>
+#include <android-base/stringprintf.h>
 
 #include "common_runtime_test.h"
 
-#include "base/logging.h"
 #include "base/macros.h"
 #include "base/mutex-inl.h"
 #include "bytecode_utils.h"

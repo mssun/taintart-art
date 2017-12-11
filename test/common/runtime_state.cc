@@ -16,9 +16,11 @@
 
 #include "jni.h"
 
+#include <android-base/logging.h>
+#include <android-base/macros.h>
+
 #include "art_method-inl.h"
 #include "base/enums.h"
-#include "base/logging.h"
 #include "dex_file-inl.h"
 #include "instrumentation.h"
 #include "jit/jit.h"

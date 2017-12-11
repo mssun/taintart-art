@@ -22,8 +22,9 @@
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
+#include "base/aborting.h"
 #include "base/enums.h"
-#include "base/logging.h"
+#include "base/logging.h"  // For VLOG.
 #include "base/mutex-inl.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
@@ -61,8 +62,6 @@ namespace verifier {
 using android::base::StringPrintf;
 
 static constexpr bool kTimeVerifyMethod = !kIsDebugBuild;
-static constexpr bool kDebugVerify = false;
-// TODO: Add a constant to method_verifier to turn on verbose logging?
 
 // On VLOG(verifier), should we dump the whole state when we run into a hard failure?
 static constexpr bool kDumpRegLinesOnHardFailureIfVLOG = true;
@@ -284,7 +283,7 @@ FailureKind MethodVerifier::VerifyClass(Thread* self,
                                         bool allow_soft_failures,
                                         HardFailLogMode log_level,
                                         std::string* error) {
-  ScopedTrace trace(__FUNCTION__);
+  SCOPED_TRACE << "VerifyClass " << PrettyDescriptor(dex_file->GetClassDescriptor(class_def));
 
   // A class must not be abstract and final.
   if ((class_def.access_flags_ & (kAccAbstract | kAccFinal)) == (kAccAbstract | kAccFinal)) {
@@ -408,6 +407,10 @@ MethodVerifier::FailureData MethodVerifier::VerifyMethod(Thread* self,
         verifier.DumpFailures(VLOG_STREAM(verifier) << "Soft verification failures in "
                                                     << dex_file->PrettyMethod(method_idx) << "\n");
       }
+      if (VLOG_IS_ON(verifier_debug)) {
+        std::cout << "\n" << verifier.info_messages_.str();
+        verifier.Dump(std::cout);
+      }
       result.kind = FailureKind::kSoftFailure;
       if (method != nullptr &&
           !CanCompilerHandleVerificationFailure(verifier.encountered_failure_types_)) {
@@ -481,7 +484,7 @@ MethodVerifier::FailureData MethodVerifier::VerifyMethod(Thread* self,
         callbacks->ClassRejected(ref);
       }
     }
-    if (VLOG_IS_ON(verifier)) {
+    if (VLOG_IS_ON(verifier) || VLOG_IS_ON(verifier_debug)) {
       std::cout << "\n" << verifier.info_messages_.str();
       verifier.Dump(std::cout);
     }
@@ -1074,9 +1077,9 @@ bool MethodVerifier::ScanTryCatchBlocks() {
       // Ensure exception types are resolved so that they don't need resolution to be delivered,
       // unresolved exception types will be ignored by exception delivery
       if (iterator.GetHandlerTypeIndex().IsValid()) {
-        mirror::Class* exception_type = linker->ResolveType(*dex_file_,
-                                                            iterator.GetHandlerTypeIndex(),
-                                                            dex_cache_, class_loader_);
+        ObjPtr<mirror::Class> exception_type = linker->ResolveType(*dex_file_,
+                                                                   iterator.GetHandlerTypeIndex(),
+                                                                   dex_cache_, class_loader_);
         if (exception_type == nullptr) {
           DCHECK(self_->IsExceptionPending());
           self_->ClearException();
@@ -1935,7 +1938,7 @@ bool MethodVerifier::CodeFlowVerifyMethod() {
     GetInstructionFlags(insn_idx).ClearChanged();
   }
 
-  if (kDebugVerify) {
+  if (UNLIKELY(VLOG_IS_ON(verifier_debug))) {
     /*
      * Scan for dead code. There's nothing "evil" about dead code
      * (besides the wasted space), but it indicates a flaw somewhere
@@ -2079,7 +2082,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
 
   int32_t branch_target = 0;
   bool just_set_result = false;
-  if (kDebugVerify) {
+  if (UNLIKELY(VLOG_IS_ON(verifier_debug))) {
     // Generate processing back trace to debug verifier
     LogVerifyInfo() << "Processing " << inst->DumpString(dex_file_) << "\n"
                     << work_line_->Dump(this) << "\n";
@@ -3639,8 +3642,8 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
         has_catch_all_handler = true;
       } else {
         // It is also a catch-all if it is java.lang.Throwable.
-        mirror::Class* klass = linker->ResolveType(*dex_file_, handler_type_idx, dex_cache_,
-                                                   class_loader_);
+        ObjPtr<mirror::Class> klass =
+            linker->ResolveType(*dex_file_, handler_type_idx, dex_cache_, class_loader_);
         if (klass != nullptr) {
           if (klass == mirror::Throwable::GetJavaLangThrowable()) {
             has_catch_all_handler = true;
@@ -3758,16 +3761,16 @@ void MethodVerifier::UninstantiableError(const char* descriptor) {
                                            << "non-instantiable klass " << descriptor;
 }
 
-inline bool MethodVerifier::IsInstantiableOrPrimitive(mirror::Class* klass) {
+inline bool MethodVerifier::IsInstantiableOrPrimitive(ObjPtr<mirror::Class> klass) {
   return klass->IsInstantiable() || klass->IsPrimitive();
 }
 
 template <MethodVerifier::CheckAccess C>
 const RegType& MethodVerifier::ResolveClass(dex::TypeIndex class_idx) {
-  mirror::Class* klass = can_load_classes_
+  ObjPtr<mirror::Class> klass = can_load_classes_
       ? Runtime::Current()->GetClassLinker()->ResolveType(
           *dex_file_, class_idx, dex_cache_, class_loader_)
-      : ClassLinker::LookupResolvedType(class_idx, dex_cache_.Get(), class_loader_.Get()).Ptr();
+      : ClassLinker::LookupResolvedType(class_idx, dex_cache_.Get(), class_loader_.Get());
   if (can_load_classes_ && klass == nullptr) {
     DCHECK(self_->IsExceptionPending());
     self_->ClearException();
@@ -3780,10 +3783,10 @@ const RegType& MethodVerifier::ResolveClass(dex::TypeIndex class_idx) {
       UninstantiableError(descriptor);
       precise = false;
     }
-    result = reg_types_.FindClass(klass, precise);
+    result = reg_types_.FindClass(klass.Ptr(), precise);
     if (result == nullptr) {
       const char* descriptor = dex_file_->StringByTypeIdx(class_idx);
-      result = reg_types_.InsertClass(descriptor, klass, precise);
+      result = reg_types_.InsertClass(descriptor, klass.Ptr(), precise);
     }
   } else {
     const char* descriptor = dex_file_->StringByTypeIdx(class_idx);
@@ -3798,7 +3801,7 @@ const RegType& MethodVerifier::ResolveClass(dex::TypeIndex class_idx) {
   }
 
   // Record result of class resolution attempt.
-  VerifierDeps::MaybeRecordClassResolution(*dex_file_, class_idx, klass);
+  VerifierDeps::MaybeRecordClassResolution(*dex_file_, class_idx, klass.Ptr());
 
   // If requested, check if access is allowed. Unresolved types are included in this check, as the
   // interpreter only tests whether access is allowed when a class is not pre-verified and runs in
@@ -4691,12 +4694,19 @@ void MethodVerifier::VerifyAGet(const Instruction* inst,
   } else {
     const RegType& array_type = work_line_->GetRegisterType(this, inst->VRegB_23x());
     if (array_type.IsZeroOrNull()) {
-      have_pending_runtime_throw_failure_ = true;
       // Null array class; this code path will fail at runtime. Infer a merge-able type from the
-      // instruction type. TODO: have a proper notion of bottom here.
-      if (!is_primitive || insn_type.IsCategory1Types()) {
-        // Reference or category 1
-        work_line_->SetRegisterType<LockOp::kClear>(this, inst->VRegA_23x(), reg_types_.Zero());
+      // instruction type.
+      if (!is_primitive) {
+        work_line_->SetRegisterType<LockOp::kClear>(this, inst->VRegA_23x(), reg_types_.Null());
+      } else if (insn_type.IsInteger()) {
+        // Pick a non-zero constant (to distinguish with null) that can fit in any primitive.
+        // We cannot use 'insn_type' as it could be a float array or an int array.
+        work_line_->SetRegisterType<LockOp::kClear>(
+            this, inst->VRegA_23x(), DetermineCat1Constant(1, need_precise_constants_));
+      } else if (insn_type.IsCategory1Types()) {
+        // Category 1
+        // The 'insn_type' is exactly the type we need.
+        work_line_->SetRegisterType<LockOp::kClear>(this, inst->VRegA_23x(), insn_type);
       } else {
         // Category 2
         work_line_->SetRegisterTypeWide(this, inst->VRegA_23x(),
@@ -5039,7 +5049,7 @@ void MethodVerifier::VerifyISFieldAccess(const Instruction* inst, const RegType&
     }
 
     ObjPtr<mirror::Class> field_type_class =
-        can_load_classes_ ? field->ResolveType() : field->LookupType();
+        can_load_classes_ ? field->ResolveType() : field->LookupResolvedType();
     if (field_type_class != nullptr) {
       field_type = &FromClass(field->GetTypeDescriptor(),
                               field_type_class.Ptr(),
@@ -5188,7 +5198,7 @@ void MethodVerifier::VerifyQuickFieldAccess(const Instruction* inst, const RegTy
   const RegType* field_type;
   {
     ObjPtr<mirror::Class> field_type_class =
-        can_load_classes_ ? field->ResolveType() : field->LookupType();
+        can_load_classes_ ? field->ResolveType() : field->LookupResolvedType();
 
     if (field_type_class != nullptr) {
       field_type = &FromClass(field->GetTypeDescriptor(),
@@ -5343,7 +5353,7 @@ bool MethodVerifier::UpdateRegisters(uint32_t next_insn, RegisterLine* merge_lin
     }
   } else {
     RegisterLineArenaUniquePtr copy;
-    if (kDebugVerify) {
+    if (UNLIKELY(VLOG_IS_ON(verifier_debug))) {
       copy.reset(RegisterLine::Create(target_line->NumRegs(), this));
       copy->CopyFromLine(target_line);
     }
@@ -5351,7 +5361,7 @@ bool MethodVerifier::UpdateRegisters(uint32_t next_insn, RegisterLine* merge_lin
     if (have_pending_hard_failure_) {
       return false;
     }
-    if (kDebugVerify && changed) {
+    if (UNLIKELY(VLOG_IS_ON(verifier_debug)) && changed) {
       LogVerifyInfo() << "Merging at [" << reinterpret_cast<void*>(work_insn_idx_) << "]"
                       << " to [" << reinterpret_cast<void*>(next_insn) << "]: " << "\n"
                       << copy->Dump(this) << "  MERGE\n"

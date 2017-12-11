@@ -22,6 +22,8 @@
 
 #include <string>
 
+#include <android-base/logging.h>
+
 #include "arch/instruction_set.h"
 #include "base/mutex.h"
 #include "globals.h"
@@ -31,6 +33,9 @@
 #include "scoped_thread_state_change-inl.h"
 
 namespace art {
+
+using LogSeverity = android::base::LogSeverity;
+using ScopedLogSeverity = android::base::ScopedLogSeverity;
 
 // OBJ pointer helpers to avoid needing .Decode everywhere.
 #define EXPECT_OBJ_PTR_EQ(a, b) EXPECT_EQ(MakeObjPtr(a).Ptr(), MakeObjPtr(b).Ptr());

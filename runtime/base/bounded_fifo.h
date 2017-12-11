@@ -17,8 +17,9 @@
 #ifndef ART_RUNTIME_BASE_BOUNDED_FIFO_H_
 #define ART_RUNTIME_BASE_BOUNDED_FIFO_H_
 
+#include <android-base/logging.h>
+
 #include "base/bit_utils.h"
-#include "base/logging.h"
 
 namespace art {
 
