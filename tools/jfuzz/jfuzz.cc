@@ -30,6 +30,7 @@ namespace {
 /*
  * Operators.
  */
+
 static constexpr const char* kIncDecOps[]   = { "++", "--" };
 static constexpr const char* kIntUnaryOps[] = { "+", "-", "~" };
 static constexpr const char* kFpUnaryOps[]  = { "+", "-" };
