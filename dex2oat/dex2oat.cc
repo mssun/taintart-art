@@ -2814,7 +2814,7 @@ class Dex2Oat FINAL {
   // Dex files we are compiling, does not include the class path dex files.
   std::vector<const DexFile*> dex_files_;
   std::string no_inline_from_string_;
-  CompactDexLevel compact_dex_level_ = CompactDexLevel::kCompactDexLevelNone;
+  CompactDexLevel compact_dex_level_ = kDefaultCompactDexLevel;
 
   std::vector<std::unique_ptr<linker::ElfWriter>> elf_writers_;
   std::vector<std::unique_ptr<linker::OatWriter>> oat_writers_;
