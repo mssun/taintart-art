@@ -203,13 +203,13 @@ class ElfBuilder FINAL {
       if (section_index_ == 0) {
         std::vector<Section*>& sections = owner_->sections_;
         Elf_Word last = sections.empty() ? PF_R : sections.back()->phdr_flags_;
-        if (owner_->write_program_headers_ && phdr_flags_ != last) {
+        if (phdr_flags_ != last) {
           header_.sh_addralign = kPageSize;  // Page-align if R/W/X flags changed.
         }
         sections.push_back(this);
         section_index_ = sections.size();  // First ELF section has index 1.
       }
-      return header_.sh_addralign;
+      return owner_->write_program_headers_ ? header_.sh_addralign : 1;
     }
 
     ElfBuilder<ElfTypes>* owner_;

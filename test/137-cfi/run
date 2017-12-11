@@ -16,10 +16,15 @@
 
 # Test with full DWARF debugging information.
 # Check full signatures of methods.
+# The option jitthreshold:0 ensures that if we run the test in JIT mode,
+# there will be JITed frames on the callstack (it synchronously JITs on first use).
 ${RUN} "$@" -Xcompiler-option --generate-debug-info \
+  --runtime-option -Xjitthreshold:0 \
   --args --full-signatures --args --test-local --args --test-remote
 
 # Test with minimal compressed debugging information.
 # Check only method names (parameters are omitted to save space).
 # Check only remote unwinding since decompression is disabled in local unwinds (b/27391690).
-${RUN} "$@" -Xcompiler-option --generate-mini-debug-info --args --test-remote
+${RUN} "$@" -Xcompiler-option --generate-mini-debug-info \
+  --runtime-option -Xjitthreshold:0 \
+  --args --test-remote
