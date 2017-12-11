@@ -458,7 +458,7 @@ bool ProcessAnnotationValue(const ClassData& klass,
       } else {
         StackHandleScope<1> hs(self);
         element_object = Runtime::Current()->GetClassLinker()->ResolveString(
-            klass.GetDexFile(), dex::StringIndex(index), hs.NewHandle(klass.GetDexCache()));
+            dex::StringIndex(index), hs.NewHandle(klass.GetDexCache()));
         set_object = true;
         if (element_object == nullptr) {
           return false;
@@ -540,7 +540,6 @@ bool ProcessAnnotationValue(const ClassData& klass,
       } else {
         StackHandleScope<2> hs(self);
         ArtField* field = Runtime::Current()->GetClassLinker()->ResolveFieldJLS(
-            klass.GetDexFile(),
             index,
             hs.NewHandle(klass.GetDexCache()),
             hs.NewHandle(klass.GetClassLoader()));
@@ -569,7 +568,6 @@ bool ProcessAnnotationValue(const ClassData& klass,
       } else {
         StackHandleScope<3> hs(self);
         ArtField* enum_field = Runtime::Current()->GetClassLinker()->ResolveField(
-            klass.GetDexFile(),
             index,
             hs.NewHandle(klass.GetDexCache()),
             hs.NewHandle(klass.GetClassLoader()),
@@ -1580,7 +1578,6 @@ int32_t GetLineNumFromPC(const DexFile* dex_file, ArtMethod* method, uint32_t re
 template<bool kTransactionActive>
 void RuntimeEncodedStaticFieldValueIterator::ReadValueToField(ArtField* field) const {
   DCHECK(dex_cache_ != nullptr);
-  DCHECK(class_loader_ != nullptr);
   switch (type_) {
     case kBoolean: field->SetBoolean<kTransactionActive>(field->GetDeclaringClass(), jval_.z);
         break;
@@ -1593,17 +1590,16 @@ void RuntimeEncodedStaticFieldValueIterator::ReadValueToField(ArtField* field) c
     case kDouble:  field->SetDouble<kTransactionActive>(field->GetDeclaringClass(), jval_.d); break;
     case kNull:    field->SetObject<kTransactionActive>(field->GetDeclaringClass(), nullptr); break;
     case kString: {
-      ObjPtr<mirror::String> resolved = linker_->ResolveString(dex_file_,
-                                                               dex::StringIndex(jval_.i),
-                                                               *dex_cache_);
+      ObjPtr<mirror::String> resolved = linker_->ResolveString(dex::StringIndex(jval_.i),
+                                                               dex_cache_);
       field->SetObject<kTransactionActive>(field->GetDeclaringClass(), resolved);
       break;
     }
     case kType: {
       ObjPtr<mirror::Class> resolved = linker_->ResolveType(dex_file_,
                                                             dex::TypeIndex(jval_.i),
-                                                            *dex_cache_,
-                                                            *class_loader_);
+                                                            dex_cache_,
+                                                            class_loader_);
       field->SetObject<kTransactionActive>(field->GetDeclaringClass(), resolved);
       break;
     }

@@ -1965,9 +1965,8 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
   ObjPtr<mirror::String> GetTargetString(const LinkerPatch& patch)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     ClassLinker* linker = Runtime::Current()->GetClassLinker();
-    ObjPtr<mirror::String> string = linker->LookupString(*patch.TargetStringDexFile(),
-                                                         patch.TargetStringIndex(),
-                                                         GetDexCache(patch.TargetStringDexFile()));
+    ObjPtr<mirror::String> string =
+        linker->LookupString(patch.TargetStringIndex(), GetDexCache(patch.TargetStringDexFile()));
     DCHECK(string != nullptr);
     DCHECK(writer_->HasBootImage() ||
            Runtime::Current()->GetHeap()->ObjectIsInBootImageSpace(string));
