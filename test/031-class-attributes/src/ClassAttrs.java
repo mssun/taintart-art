@@ -107,9 +107,14 @@ public class ClassAttrs {
         inner.showMe();
 
         ClassAttrs attrs = new ClassAttrs();
-
-        /* anonymous, not local, not member */
-        printClassAttrs((new OtherClass() { int i = 5; }).getClass());
+        try {
+            /* anonymous, not local, not member */
+            printClassAttrs(Class.forName("ClassAttrs$1")); // ClassAttrs$1.j
+        } catch (ClassNotFoundException e) {
+            System.out.println("FAILED: " + e);
+            e.printStackTrace(System.out);
+            throw new AssertionError(e);
+        }
 
         /* member, not anonymous, not local */
         printClassAttrs(MemberClass.class);
