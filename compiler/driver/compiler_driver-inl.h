@@ -105,7 +105,7 @@ inline ArtMethod* CompilerDriver::ResolveMethod(
   DCHECK_EQ(class_loader.Get(), mUnit->GetClassLoader().Get());
   ArtMethod* resolved_method =
       mUnit->GetClassLinker()->ResolveMethod<ClassLinker::ResolveMode::kCheckICCEAndIAE>(
-          *dex_cache->GetDexFile(), method_idx, dex_cache, class_loader, nullptr, invoke_type);
+          method_idx, dex_cache, class_loader, /* referrer */ nullptr, invoke_type);
   if (UNLIKELY(resolved_method == nullptr)) {
     DCHECK(soa.Self()->IsExceptionPending());
     // Clean up any exception left by type resolution.

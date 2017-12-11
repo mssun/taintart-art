@@ -237,9 +237,7 @@ inline ArtMethod* ClassLinker::ResolveMethod(Thread* self,
     StackHandleScope<2> hs(self);
     Handle<mirror::DexCache> h_dex_cache(hs.NewHandle(referrer->GetDexCache()));
     Handle<mirror::ClassLoader> h_class_loader(hs.NewHandle(declaring_class->GetClassLoader()));
-    const DexFile* dex_file = h_dex_cache->GetDexFile();
-    resolved_method = ResolveMethod<kResolveMode>(*dex_file,
-                                                  method_idx,
+    resolved_method = ResolveMethod<kResolveMode>(method_idx,
                                                   h_dex_cache,
                                                   h_class_loader,
                                                   referrer,

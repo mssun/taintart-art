@@ -501,7 +501,6 @@ bool ProcessAnnotationValue(const ClassData& klass,
         ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
         StackHandleScope<2> hs(self);
         ArtMethod* method = class_linker->ResolveMethodWithoutInvokeType(
-            klass.GetDexFile(),
             index,
             hs.NewHandle(klass.GetDexCache()),
             hs.NewHandle(klass.GetClassLoader()));
@@ -1398,7 +1397,6 @@ mirror::Class* GetEnclosingClass(Handle<mirror::Class> klass) {
   }
   StackHandleScope<2> hs(Thread::Current());
   ArtMethod* method = Runtime::Current()->GetClassLinker()->ResolveMethodWithoutInvokeType(
-      data.GetDexFile(),
       annotation_value.value_.GetI(),
       hs.NewHandle(data.GetDexCache()),
       hs.NewHandle(data.GetClassLoader()));

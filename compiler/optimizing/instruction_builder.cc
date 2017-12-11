@@ -796,7 +796,6 @@ ArtMethod* HInstructionBuilder::ResolveMethod(uint16_t method_idx, InvokeType in
 
   ArtMethod* resolved_method =
       class_linker->ResolveMethod<ClassLinker::ResolveMode::kCheckICCEAndIAE>(
-          *dex_compilation_unit_->GetDexFile(),
           method_idx,
           dex_compilation_unit_->GetDexCache(),
           class_loader,

@@ -544,7 +544,7 @@ void ReferenceTypePropagation::RTPVisitor::SetClassAsTypeInfo(HInstruction* inst
       // the method is from the String class, the null loader is good enough.
       Handle<mirror::ClassLoader> loader(hs.NewHandle<mirror::ClassLoader>(nullptr));
       ArtMethod* method = cl->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
-          dex_file, invoke->GetDexMethodIndex(), dex_cache, loader, nullptr, kDirect);
+          invoke->GetDexMethodIndex(), dex_cache, loader, /* referrer */ nullptr, kDirect);
       DCHECK(method != nullptr);
       mirror::Class* declaring_class = method->GetDeclaringClass();
       DCHECK(declaring_class != nullptr);

@@ -307,14 +307,12 @@ class ClassLinker {
                                   ObjPtr<mirror::ClassLoader> class_loader)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Resolve a method with a given ID from the DexFile, storing the
-  // result in DexCache. The ClassLinker and ClassLoader are used as
-  // in ResolveType. What is unique is the method type argument which
-  // is used to determine if this method is a direct, static, or
-  // virtual method.
+  // Resolve a method with a given ID from the DexFile associated with the given DexCache
+  // and ClassLoader, storing the result in DexCache. The ClassLinker and ClassLoader are
+  // used as in ResolveType. What is unique is the method type argument which is used to
+  // determine if this method is a direct, static, or virtual method.
   template <ResolveMode kResolveMode>
-  ArtMethod* ResolveMethod(const DexFile& dex_file,
-                           uint32_t method_idx,
+  ArtMethod* ResolveMethod(uint32_t method_idx,
                            Handle<mirror::DexCache> dex_cache,
                            Handle<mirror::ClassLoader> class_loader,
                            ArtMethod* referrer,
@@ -330,8 +328,7 @@ class ClassLinker {
   ArtMethod* ResolveMethod(Thread* self, uint32_t method_idx, ArtMethod* referrer, InvokeType type)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
-  ArtMethod* ResolveMethodWithoutInvokeType(const DexFile& dex_file,
-                                            uint32_t method_idx,
+  ArtMethod* ResolveMethodWithoutInvokeType(uint32_t method_idx,
                                             Handle<mirror::DexCache> dex_cache,
                                             Handle<mirror::ClassLoader> class_loader)
       REQUIRES_SHARED(Locks::mutator_lock_)

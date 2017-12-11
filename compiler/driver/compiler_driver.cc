@@ -1690,7 +1690,10 @@ class ResolveClassFieldsAndMethodsVisitor : public CompilationVisitor {
       if (resolve_fields_and_methods) {
         while (it.HasNextMethod()) {
           ArtMethod* method = class_linker->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
-              dex_file, it.GetMemberIndex(), dex_cache, class_loader, nullptr,
+              it.GetMemberIndex(),
+              dex_cache,
+              class_loader,
+              /* referrer */ nullptr,
               it.GetMethodInvokeType(class_def));
           if (method == nullptr) {
             CheckAndClearResolveException(soa.Self());

@@ -1592,11 +1592,10 @@ class OatWriter::InitImageMethodVisitor : public OatDexMethodVisitor {
       ScopedObjectAccessUnchecked soa(self);
       StackHandleScope<1> hs(self);
       method = class_linker_->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
-          *dex_file_,
           it.GetMemberIndex(),
           hs.NewHandle(dex_cache),
           ScopedNullHandle<mirror::ClassLoader>(),
-          nullptr,
+          /* referrer */ nullptr,
           invoke_type);
       if (method == nullptr) {
         LOG(FATAL_WITHOUT_ABORT) << "Unexpected failure to resolve a method: "

@@ -230,7 +230,7 @@ MethodVerifier::FailureData MethodVerifier::VerifyMethods(Thread* self,
     previous_method_idx = method_idx;
     InvokeType type = it->GetMethodInvokeType(class_def);
     ArtMethod* method = linker->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
-        *dex_file, method_idx, dex_cache, class_loader, nullptr, type);
+        method_idx, dex_cache, class_loader, /* referrer */ nullptr, type);
     if (method == nullptr) {
       DCHECK(self->IsExceptionPending());
       // We couldn't resolve the method, but continue regardless.
