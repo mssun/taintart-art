@@ -243,17 +243,15 @@ class ClassLinker {
       REQUIRES(!Locks::classlinker_classes_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Resolve a String with the given index from the DexFile, storing the
-  // result in the DexCache.
-  ObjPtr<mirror::String> ResolveString(const DexFile& dex_file,
-                                       dex::StringIndex string_idx,
+  // Resolve a String with the given index from the DexFile associated with the given DexCache,
+  // storing the result in the DexCache.
+  ObjPtr<mirror::String> ResolveString(dex::StringIndex string_idx,
                                        Handle<mirror::DexCache> dex_cache)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Find a String with the given index from the DexFile, storing the
-  // result in the DexCache if found. Return null if not found.
-  ObjPtr<mirror::String> LookupString(const DexFile& dex_file,
-                                      dex::StringIndex string_idx,
+  // Find a String with the given index from the DexFile associated with the given DexCache,
+  // storing the result in the DexCache if found. Return null if not found.
+  ObjPtr<mirror::String> LookupString(dex::StringIndex string_idx,
                                       ObjPtr<mirror::DexCache> dex_cache)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -345,47 +343,47 @@ class ClassLinker {
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
 
-  // Resolve a field with a given ID from the DexFile, storing the
-  // result in DexCache. The ClassLinker and ClassLoader are used as
-  // in ResolveType. What is unique is the is_static argument which is
-  // used to determine if we are resolving a static or non-static
-  // field.
-  ArtField* ResolveField(const DexFile& dex_file, uint32_t field_idx,
+  // Resolve a field with a given ID from the DexFile associated with the given DexCache
+  // and ClassLoader, storing the result in DexCache. The ClassLinker and ClassLoader
+  // are used as in ResolveType. What is unique is the is_static argument which is used
+  // to determine if we are resolving a static or non-static field.
+  ArtField* ResolveField(uint32_t field_idx,
                          Handle<mirror::DexCache> dex_cache,
-                         Handle<mirror::ClassLoader> class_loader, bool is_static)
+                         Handle<mirror::ClassLoader> class_loader,
+                         bool is_static)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
 
-  // Resolve a field with a given ID from the DexFile, storing the
-  // result in DexCache. The ClassLinker and ClassLoader are used as
-  // in ResolveType. No is_static argument is provided so that Java
+  // Resolve a field with a given ID from the DexFile associated with the given DexCache
+  // and ClassLoader, storing the result in DexCache. The ClassLinker and ClassLoader
+  // are used as in ResolveType. No is_static argument is provided so that Java
   // field resolution semantics are followed.
-  ArtField* ResolveFieldJLS(const DexFile& dex_file,
-                            uint32_t field_idx,
+  ArtField* ResolveFieldJLS(uint32_t field_idx,
                             Handle<mirror::DexCache> dex_cache,
                             Handle<mirror::ClassLoader> class_loader)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
 
-  // Resolve a method type with a given ID from the DexFile, storing
-  // the result in the DexCache.
-  mirror::MethodType* ResolveMethodType(Thread* self,
-                                        const DexFile& dex_file,
-                                        uint32_t proto_idx,
-                                        Handle<mirror::DexCache> dex_cache,
-                                        Handle<mirror::ClassLoader> class_loader)
+  // Resolve a method type with a given ID from the DexFile associated with a given DexCache
+  // and ClassLoader, storing the result in the DexCache.
+  ObjPtr<mirror::MethodType> ResolveMethodType(Thread* self,
+                                               uint32_t proto_idx,
+                                               Handle<mirror::DexCache> dex_cache,
+                                               Handle<mirror::ClassLoader> class_loader)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
 
-  mirror::MethodType* ResolveMethodType(Thread* self, uint32_t proto_idx, ArtMethod* referrer)
+  ObjPtr<mirror::MethodType> ResolveMethodType(Thread* self,
+                                               uint32_t proto_idx,
+                                               ArtMethod* referrer)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Resolve a method handle with a given ID from the DexFile. The
   // result is not cached in the DexCache as the instance will only be
   // used once in most circumstances.
-  mirror::MethodHandle* ResolveMethodHandle(Thread* self,
-                                            uint32_t method_handle_idx,
-                                            ArtMethod* referrer)
+  ObjPtr<mirror::MethodHandle> ResolveMethodHandle(Thread* self,
+                                                   uint32_t method_handle_idx,
+                                                   ArtMethod* referrer)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns true on success, false if there's an exception pending.

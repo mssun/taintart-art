@@ -141,8 +141,7 @@ ObjPtr<mirror::String> ArtMethod::GetNameAsString(Thread* self) {
   auto* dex_file = dex_cache->GetDexFile();
   uint32_t dex_method_idx = GetDexMethodIndex();
   const DexFile::MethodId& method_id = dex_file->GetMethodId(dex_method_idx);
-  return Runtime::Current()->GetClassLinker()->ResolveString(*dex_file, method_id.name_idx_,
-                                                             dex_cache);
+  return Runtime::Current()->GetClassLinker()->ResolveString(method_id.name_idx_, dex_cache);
 }
 
 void ArtMethod::ThrowInvocationTimeError() {
