@@ -830,7 +830,6 @@ ArtMethod* HInstructionBuilder::ResolveMethod(uint16_t method_idx, InvokeType in
       return nullptr;
     }
     ObjPtr<mirror::Class> referenced_class = class_linker->LookupResolvedType(
-        *dex_compilation_unit_->GetDexFile(),
         dex_compilation_unit_->GetDexFile()->GetMethodId(method_idx).class_idx_,
         dex_compilation_unit_->GetDexCache().Get(),
         class_loader.Get());
@@ -1424,7 +1423,7 @@ bool HInstructionBuilder::BuildInstanceFieldAccess(const Instruction& instructio
 }
 
 static ObjPtr<mirror::Class> GetClassFrom(CompilerDriver* driver,
-                                   const DexCompilationUnit& compilation_unit) {
+                                          const DexCompilationUnit& compilation_unit) {
   ScopedObjectAccess soa(Thread::Current());
   Handle<mirror::ClassLoader> class_loader = compilation_unit.GetClassLoader();
   Handle<mirror::DexCache> dex_cache = compilation_unit.GetDexCache();
@@ -2933,7 +2932,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
 ObjPtr<mirror::Class> HInstructionBuilder::LookupResolvedType(
     dex::TypeIndex type_index,
     const DexCompilationUnit& compilation_unit) const {
-  return ClassLinker::LookupResolvedType(
+  return compilation_unit.GetClassLinker()->LookupResolvedType(
         type_index, compilation_unit.GetDexCache().Get(), compilation_unit.GetClassLoader().Get());
 }
 

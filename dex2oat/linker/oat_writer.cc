@@ -1956,7 +1956,7 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
     DCHECK(writer_->HasImage());
     ObjPtr<mirror::DexCache> dex_cache = GetDexCache(patch.TargetTypeDexFile());
     ObjPtr<mirror::Class> type =
-        ClassLinker::LookupResolvedType(patch.TargetTypeIndex(), dex_cache, class_loader_);
+        class_linker_->LookupResolvedType(patch.TargetTypeIndex(), dex_cache, class_loader_);
     CHECK(type != nullptr);
     return type;
   }

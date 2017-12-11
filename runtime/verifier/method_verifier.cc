@@ -1077,9 +1077,8 @@ bool MethodVerifier::ScanTryCatchBlocks() {
       // Ensure exception types are resolved so that they don't need resolution to be delivered,
       // unresolved exception types will be ignored by exception delivery
       if (iterator.GetHandlerTypeIndex().IsValid()) {
-        ObjPtr<mirror::Class> exception_type = linker->ResolveType(*dex_file_,
-                                                                   iterator.GetHandlerTypeIndex(),
-                                                                   dex_cache_, class_loader_);
+        ObjPtr<mirror::Class> exception_type =
+            linker->ResolveType(iterator.GetHandlerTypeIndex(), dex_cache_, class_loader_);
         if (exception_type == nullptr) {
           DCHECK(self_->IsExceptionPending());
           self_->ClearException();
@@ -2434,8 +2433,8 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
       const RegType& res_type = ResolveClass<CheckAccess::kYes>(type_idx);
       if (res_type.IsConflict()) {
         // If this is a primitive type, fail HARD.
-        ObjPtr<mirror::Class> klass =
-            ClassLinker::LookupResolvedType(type_idx, dex_cache_.Get(), class_loader_.Get());
+        ObjPtr<mirror::Class> klass = Runtime::Current()->GetClassLinker()->LookupResolvedType(
+            type_idx, dex_cache_.Get(), class_loader_.Get());
         if (klass != nullptr && klass->IsPrimitive()) {
           Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "using primitive type "
               << dex_file_->StringByTypeIdx(type_idx) << " in instanceof in "
@@ -3643,7 +3642,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
       } else {
         // It is also a catch-all if it is java.lang.Throwable.
         ObjPtr<mirror::Class> klass =
-            linker->ResolveType(*dex_file_, handler_type_idx, dex_cache_, class_loader_);
+            linker->ResolveType(handler_type_idx, dex_cache_, class_loader_);
         if (klass != nullptr) {
           if (klass == mirror::Throwable::GetJavaLangThrowable()) {
             has_catch_all_handler = true;
@@ -3767,10 +3766,10 @@ inline bool MethodVerifier::IsInstantiableOrPrimitive(ObjPtr<mirror::Class> klas
 
 template <MethodVerifier::CheckAccess C>
 const RegType& MethodVerifier::ResolveClass(dex::TypeIndex class_idx) {
+  ClassLinker* linker = Runtime::Current()->GetClassLinker();
   ObjPtr<mirror::Class> klass = can_load_classes_
-      ? Runtime::Current()->GetClassLinker()->ResolveType(
-          *dex_file_, class_idx, dex_cache_, class_loader_)
-      : ClassLinker::LookupResolvedType(class_idx, dex_cache_.Get(), class_loader_.Get());
+      ? linker->ResolveType(class_idx, dex_cache_, class_loader_)
+      : linker->LookupResolvedType(class_idx, dex_cache_.Get(), class_loader_.Get());
   if (can_load_classes_ && klass == nullptr) {
     DCHECK(self_->IsExceptionPending());
     self_->ClearException();
