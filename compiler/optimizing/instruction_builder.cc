@@ -1484,8 +1484,7 @@ ArtField* HInstructionBuilder::ResolveField(uint16_t field_idx, bool is_static, 
   Handle<mirror::ClassLoader> class_loader = dex_compilation_unit_->GetClassLoader();
   Handle<mirror::Class> compiling_class(hs.NewHandle(GetCompilingClass()));
 
-  ArtField* resolved_field = class_linker->ResolveField(*dex_compilation_unit_->GetDexFile(),
-                                                        field_idx,
+  ArtField* resolved_field = class_linker->ResolveField(field_idx,
                                                         dex_compilation_unit_->GetDexCache(),
                                                         class_loader,
                                                         is_static);

@@ -262,7 +262,7 @@ void HSharpening::ProcessLoadString(
       // Compiling boot image. Resolve the string and allocate it if needed, to ensure
       // the string will be added to the boot image.
       DCHECK(!runtime->UseJitCompilation());
-      string = class_linker->ResolveString(dex_file, string_index, dex_cache);
+      string = class_linker->ResolveString(string_index, dex_cache);
       CHECK(string != nullptr);
       if (compiler_driver->GetSupportBootImageFixup()) {
         DCHECK(ContainsElement(compiler_driver->GetDexFilesForOatFile(), &dex_file));
@@ -273,7 +273,7 @@ void HSharpening::ProcessLoadString(
       }
     } else if (runtime->UseJitCompilation()) {
       DCHECK(!codegen->GetCompilerOptions().GetCompilePic());
-      string = class_linker->LookupString(dex_file, string_index, dex_cache.Get());
+      string = class_linker->LookupString(string_index, dex_cache.Get());
       if (string != nullptr) {
         if (runtime->GetHeap()->ObjectIsInBootImageSpace(string)) {
           desired_load_kind = HLoadString::LoadKind::kBootImageAddress;
@@ -285,7 +285,7 @@ void HSharpening::ProcessLoadString(
       }
     } else {
       // AOT app compilation. Try to lookup the string without allocating if not found.
-      string = class_linker->LookupString(dex_file, string_index, dex_cache.Get());
+      string = class_linker->LookupString(string_index, dex_cache.Get());
       if (string != nullptr && runtime->GetHeap()->ObjectIsInBootImageSpace(string)) {
         if (codegen->GetCompilerOptions().GetCompilePic()) {
           desired_load_kind = HLoadString::LoadKind::kBootImageInternTable;
