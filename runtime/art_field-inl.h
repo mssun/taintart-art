@@ -307,16 +307,10 @@ inline ObjPtr<mirror::Class> ArtField::LookupResolvedType() {
   if (UNLIKELY(declaring_class->IsProxyClass())) {
     return ProxyFindSystemClass(GetTypeDescriptor());
   }
-  ObjPtr<mirror::DexCache>  dex_cache = declaring_class->GetDexCache();
-  const DexFile* const dex_file = dex_cache->GetDexFile();
-  dex::TypeIndex type_idx = dex_file->GetFieldId(field_index).type_idx_;
-  ObjPtr<mirror::Class> type = dex_cache->GetResolvedType(type_idx);
-  if (UNLIKELY(type == nullptr)) {
-    type = Runtime::Current()->GetClassLinker()->LookupResolvedType(
-        *dex_file, type_idx, dex_cache, declaring_class->GetClassLoader());
-    DCHECK(!Thread::Current()->IsExceptionPending());
-  }
-  return type.Ptr();
+  ObjPtr<mirror::Class> type = Runtime::Current()->GetClassLinker()->LookupResolvedType(
+      declaring_class->GetDexFile().GetFieldId(field_index).type_idx_, declaring_class);
+  DCHECK(!Thread::Current()->IsExceptionPending());
+  return type;
 }
 
 inline ObjPtr<mirror::Class> ArtField::ResolveType() {
@@ -325,15 +319,9 @@ inline ObjPtr<mirror::Class> ArtField::ResolveType() {
   if (UNLIKELY(declaring_class->IsProxyClass())) {
     return ProxyFindSystemClass(GetTypeDescriptor());
   }
-  auto* dex_cache = declaring_class->GetDexCache();
-  const DexFile* const dex_file = dex_cache->GetDexFile();
-  dex::TypeIndex type_idx = dex_file->GetFieldId(field_index).type_idx_;
-  ObjPtr<mirror::Class> type = dex_cache->GetResolvedType(type_idx);
-  if (UNLIKELY(type == nullptr)) {
-    ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
-    type = class_linker->ResolveType(*dex_file, type_idx, declaring_class);
-    DCHECK_EQ(type == nullptr, Thread::Current()->IsExceptionPending());
-  }
+  ObjPtr<mirror::Class> type = Runtime::Current()->GetClassLinker()->ResolveType(
+      declaring_class->GetDexFile().GetFieldId(field_index).type_idx_, declaring_class);
+  DCHECK_EQ(type == nullptr, Thread::Current()->IsExceptionPending());
   return type;
 }
 

@@ -296,7 +296,6 @@ void DexCompiler::CompileInvokeVirtual(Instruction* inst, uint32_t dex_pc,
   ClassLinker* class_linker = unit_.GetClassLinker();
   ArtMethod* resolved_method =
       class_linker->ResolveMethod<ClassLinker::ResolveMode::kCheckICCEAndIAE>(
-          GetDexFile(),
           method_idx,
           unit_.GetDexCache(),
           unit_.GetClassLoader(),

@@ -5466,7 +5466,7 @@ bool ClassLinker::LoadSuperAndInterfaces(Handle<mirror::Class> klass, const DexF
       return false;
     }
 
-    ObjPtr<mirror::Class> super_class = ResolveType(dex_file, super_class_idx, klass.Get());
+    ObjPtr<mirror::Class> super_class = ResolveType(super_class_idx, klass.Get());
     if (super_class == nullptr) {
       DCHECK(Thread::Current()->IsExceptionPending());
       return false;
@@ -5485,7 +5485,7 @@ bool ClassLinker::LoadSuperAndInterfaces(Handle<mirror::Class> klass, const DexF
   if (interfaces != nullptr) {
     for (size_t i = 0; i < interfaces->Size(); i++) {
       dex::TypeIndex idx = interfaces->GetTypeItem(i).type_idx_;
-      ObjPtr<mirror::Class> interface = ResolveType(dex_file, idx, klass.Get());
+      ObjPtr<mirror::Class> interface = ResolveType(idx, klass.Get());
       if (interface == nullptr) {
         DCHECK(Thread::Current()->IsExceptionPending());
         return false;
@@ -7762,74 +7762,56 @@ ObjPtr<mirror::String> ClassLinker::LookupString(dex::StringIndex string_idx,
   return string;
 }
 
-ObjPtr<mirror::Class> ClassLinker::LookupResolvedType(const DexFile& dex_file,
-                                                      dex::TypeIndex type_idx,
-                                                      ObjPtr<mirror::DexCache> dex_cache,
-                                                      ObjPtr<mirror::ClassLoader> class_loader) {
-  ObjPtr<mirror::Class> type = dex_cache->GetResolvedType(type_idx);
-  if (type == nullptr) {
-    const char* descriptor = dex_file.StringByTypeIdx(type_idx);
-    DCHECK_NE(*descriptor, '\0') << "descriptor is empty string";
-    if (descriptor[1] == '\0') {
-      // only the descriptors of primitive types should be 1 character long, also avoid class lookup
-      // for primitive classes that aren't backed by dex files.
-      type = FindPrimitiveClass(descriptor[0]);
+ObjPtr<mirror::Class> ClassLinker::DoLookupResolvedType(dex::TypeIndex type_idx,
+                                                        ObjPtr<mirror::DexCache> dex_cache,
+                                                        ObjPtr<mirror::ClassLoader> class_loader) {
+  const DexFile& dex_file = *dex_cache->GetDexFile();
+  const char* descriptor = dex_file.StringByTypeIdx(type_idx);
+  DCHECK_NE(*descriptor, '\0') << "descriptor is empty string";
+  ObjPtr<mirror::Class> type = nullptr;
+  if (descriptor[1] == '\0') {
+    // only the descriptors of primitive types should be 1 character long, also avoid class lookup
+    // for primitive classes that aren't backed by dex files.
+    type = FindPrimitiveClass(descriptor[0]);
+  } else {
+    Thread* const self = Thread::Current();
+    DCHECK(self != nullptr);
+    const size_t hash = ComputeModifiedUtf8Hash(descriptor);
+    // Find the class in the loaded classes table.
+    type = LookupClass(self, descriptor, hash, class_loader.Ptr());
+  }
+  if (type != nullptr) {
+    if (type->IsResolved()) {
+      dex_cache->SetResolvedType(type_idx, type);
     } else {
-      Thread* const self = Thread::Current();
-      DCHECK(self != nullptr);
-      const size_t hash = ComputeModifiedUtf8Hash(descriptor);
-      // Find the class in the loaded classes table.
-      type = LookupClass(self, descriptor, hash, class_loader.Ptr());
-    }
-    if (type != nullptr) {
-      if (type->IsResolved()) {
-        dex_cache->SetResolvedType(type_idx, type);
-      } else {
-        type = nullptr;
-      }
+      type = nullptr;
     }
   }
-  DCHECK(type == nullptr || type->IsResolved());
   return type;
 }
 
-ObjPtr<mirror::Class> ClassLinker::ResolveType(const DexFile& dex_file,
-                                               dex::TypeIndex type_idx,
-                                               ObjPtr<mirror::Class> referrer) {
-  StackHandleScope<2> hs(Thread::Current());
-  Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
-  Handle<mirror::ClassLoader> class_loader(hs.NewHandle(referrer->GetClassLoader()));
-  return ResolveType(dex_file, type_idx, dex_cache, class_loader);
-}
-
-ObjPtr<mirror::Class> ClassLinker::ResolveType(const DexFile& dex_file,
-                                               dex::TypeIndex type_idx,
-                                               Handle<mirror::DexCache> dex_cache,
-                                               Handle<mirror::ClassLoader> class_loader) {
-  DCHECK(dex_cache != nullptr);
-  Thread::PoisonObjectPointersIfDebug();
-  ObjPtr<mirror::Class> resolved = dex_cache->GetResolvedType(type_idx);
-  if (resolved == nullptr) {
-    Thread* self = Thread::Current();
-    const char* descriptor = dex_file.StringByTypeIdx(type_idx);
-    resolved = FindClass(self, descriptor, class_loader);
-    if (resolved != nullptr) {
-      // TODO: we used to throw here if resolved's class loader was not the
-      //       boot class loader. This was to permit different classes with the
-      //       same name to be loaded simultaneously by different loaders
-      dex_cache->SetResolvedType(type_idx, resolved);
-    } else {
-      CHECK(self->IsExceptionPending())
-          << "Expected pending exception for failed resolution of: " << descriptor;
-      // Convert a ClassNotFoundException to a NoClassDefFoundError.
-      StackHandleScope<1> hs(self);
-      Handle<mirror::Throwable> cause(hs.NewHandle(self->GetException()));
-      if (cause->InstanceOf(GetClassRoot(kJavaLangClassNotFoundException))) {
-        DCHECK(resolved == nullptr);  // No Handle needed to preserve resolved.
-        self->ClearException();
-        ThrowNoClassDefFoundError("Failed resolution of: %s", descriptor);
-        self->GetException()->SetCause(cause.Get());
-      }
+ObjPtr<mirror::Class> ClassLinker::DoResolveType(dex::TypeIndex type_idx,
+                                                 Handle<mirror::DexCache> dex_cache,
+                                                 Handle<mirror::ClassLoader> class_loader) {
+  Thread* self = Thread::Current();
+  const char* descriptor = dex_cache->GetDexFile()->StringByTypeIdx(type_idx);
+  ObjPtr<mirror::Class> resolved = FindClass(self, descriptor, class_loader);
+  if (resolved != nullptr) {
+    // TODO: we used to throw here if resolved's class loader was not the
+    //       boot class loader. This was to permit different classes with the
+    //       same name to be loaded simultaneously by different loaders
+    dex_cache->SetResolvedType(type_idx, resolved);
+  } else {
+    CHECK(self->IsExceptionPending())
+        << "Expected pending exception for failed resolution of: " << descriptor;
+    // Convert a ClassNotFoundException to a NoClassDefFoundError.
+    StackHandleScope<1> hs(self);
+    Handle<mirror::Throwable> cause(hs.NewHandle(self->GetException()));
+    if (cause->InstanceOf(GetClassRoot(kJavaLangClassNotFoundException))) {
+      DCHECK(resolved == nullptr);  // No Handle needed to preserve resolved.
+      self->ClearException();
+      ThrowNoClassDefFoundError("Failed resolution of: %s", descriptor);
+      self->GetException()->SetCause(cause.Get());
     }
   }
   DCHECK((resolved == nullptr) || resolved->IsResolved())
@@ -7938,8 +7920,7 @@ std::string DescribeLoaders(ObjPtr<mirror::ClassLoader> loader, const char* clas
 }
 
 template <ClassLinker::ResolveMode kResolveMode>
-ArtMethod* ClassLinker::ResolveMethod(const DexFile& dex_file,
-                                      uint32_t method_idx,
+ArtMethod* ClassLinker::ResolveMethod(uint32_t method_idx,
                                       Handle<mirror::DexCache> dex_cache,
                                       Handle<mirror::ClassLoader> class_loader,
                                       ArtMethod* referrer,
@@ -7957,12 +7938,13 @@ ArtMethod* ClassLinker::ResolveMethod(const DexFile& dex_file,
     DCHECK(resolved->GetDeclaringClassUnchecked() != nullptr) << resolved->GetDexMethodIndex();
     return resolved;
   }
+  const DexFile& dex_file = *dex_cache->GetDexFile();
   const DexFile::MethodId& method_id = dex_file.GetMethodId(method_idx);
   ObjPtr<mirror::Class> klass = nullptr;
   if (valid_dex_cache_method) {
     // We have a valid method from the DexCache but we need to perform ICCE and IAE checks.
     DCHECK(resolved->GetDeclaringClassUnchecked() != nullptr) << resolved->GetDexMethodIndex();
-    klass = LookupResolvedType(dex_file, method_id.class_idx_, dex_cache.Get(), class_loader.Get());
+    klass = LookupResolvedType(method_id.class_idx_, dex_cache.Get(), class_loader.Get());
     if (UNLIKELY(klass == nullptr)) {
       const char* descriptor = dex_file.StringByTypeIdx(method_id.class_idx_);
       LOG(FATAL) << "Check failed: klass != nullptr Bug: 64759619 Method: "
@@ -7973,7 +7955,7 @@ ArtMethod* ClassLinker::ResolveMethod(const DexFile& dex_file,
     }
   } else {
     // The method was not in the DexCache, resolve the declaring class.
-    klass = ResolveType(dex_file, method_id.class_idx_, dex_cache, class_loader);
+    klass = ResolveType(method_id.class_idx_, dex_cache, class_loader);
     if (klass == nullptr) {
       DCHECK(Thread::Current()->IsExceptionPending());
       return nullptr;
@@ -8048,8 +8030,7 @@ ArtMethod* ClassLinker::ResolveMethod(const DexFile& dex_file,
   }
 }
 
-ArtMethod* ClassLinker::ResolveMethodWithoutInvokeType(const DexFile& dex_file,
-                                                       uint32_t method_idx,
+ArtMethod* ClassLinker::ResolveMethodWithoutInvokeType(uint32_t method_idx,
                                                        Handle<mirror::DexCache> dex_cache,
                                                        Handle<mirror::ClassLoader> class_loader) {
   ArtMethod* resolved = dex_cache->GetResolvedMethod(method_idx, image_pointer_size_);
@@ -8060,9 +8041,8 @@ ArtMethod* ClassLinker::ResolveMethodWithoutInvokeType(const DexFile& dex_file,
     return resolved;
   }
   // Fail, get the declaring class.
-  const DexFile::MethodId& method_id = dex_file.GetMethodId(method_idx);
-  ObjPtr<mirror::Class> klass =
-      ResolveType(dex_file, method_id.class_idx_, dex_cache, class_loader);
+  const DexFile::MethodId& method_id = dex_cache->GetDexFile()->GetMethodId(method_idx);
+  ObjPtr<mirror::Class> klass = ResolveType(method_id.class_idx_, dex_cache, class_loader);
   if (klass == nullptr) {
     Thread::Current()->AssertPendingException();
     return nullptr;
@@ -8084,7 +8064,7 @@ ArtField* ClassLinker::LookupResolvedField(uint32_t field_idx,
   const DexFile::FieldId& field_id = dex_file.GetFieldId(field_idx);
   ObjPtr<mirror::Class> klass = dex_cache->GetResolvedType(field_id.class_idx_);
   if (klass == nullptr) {
-    klass = LookupResolvedType(dex_file, field_id.class_idx_, dex_cache, class_loader);
+    klass = LookupResolvedType(field_id.class_idx_, dex_cache, class_loader);
   }
   if (klass == nullptr) {
     // The class has not been resolved yet, so the field is also unresolved.
@@ -8126,7 +8106,7 @@ ArtField* ClassLinker::ResolveField(uint32_t field_idx,
   const DexFile& dex_file = *dex_cache->GetDexFile();
   const DexFile::FieldId& field_id = dex_file.GetFieldId(field_idx);
   Thread* const self = Thread::Current();
-  ObjPtr<mirror::Class> klass = ResolveType(dex_file, field_id.class_idx_, dex_cache, class_loader);
+  ObjPtr<mirror::Class> klass = ResolveType(field_id.class_idx_, dex_cache, class_loader);
   if (klass == nullptr) {
     DCHECK(Thread::Current()->IsExceptionPending());
     return nullptr;
@@ -8167,7 +8147,7 @@ ArtField* ClassLinker::ResolveFieldJLS(uint32_t field_idx,
   const DexFile& dex_file = *dex_cache->GetDexFile();
   const DexFile::FieldId& field_id = dex_file.GetFieldId(field_idx);
   Thread* self = Thread::Current();
-  ObjPtr<mirror::Class> klass(ResolveType(dex_file, field_id.class_idx_, dex_cache, class_loader));
+  ObjPtr<mirror::Class> klass = ResolveType(field_id.class_idx_, dex_cache, class_loader);
   if (klass == nullptr) {
     DCHECK(Thread::Current()->IsExceptionPending());
     return nullptr;
@@ -8203,7 +8183,7 @@ ObjPtr<mirror::MethodType> ClassLinker::ResolveMethodType(
   const DexFile& dex_file = *dex_cache->GetDexFile();
   const DexFile::ProtoId& proto_id = dex_file.GetProtoId(proto_idx);
   Handle<mirror::Class> return_type(hs.NewHandle(
-      ResolveType(dex_file, proto_id.return_type_idx_, dex_cache, class_loader)));
+      ResolveType(proto_id.return_type_idx_, dex_cache, class_loader)));
   if (return_type == nullptr) {
     DCHECK(self->IsExceptionPending());
     return nullptr;
@@ -8229,7 +8209,7 @@ ObjPtr<mirror::MethodType> ClassLinker::ResolveMethodType(
   MutableHandle<mirror::Class> param_class = hs.NewHandle<mirror::Class>(nullptr);
   for (; it.HasNext(); it.Next()) {
     const dex::TypeIndex type_idx = it.GetTypeIdx();
-    param_class.Assign(ResolveType(dex_file, type_idx, dex_cache, class_loader));
+    param_class.Assign(ResolveType(type_idx, dex_cache, class_loader));
     if (param_class == nullptr) {
       DCHECK(self->IsExceptionPending());
       return nullptr;
@@ -8431,8 +8411,7 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForMethod(
       // the invocation type to determine if the method is private. We
       // then resolve again specifying the intended invocation type to
       // force the appropriate checks.
-      target_method = ResolveMethodWithoutInvokeType(*dex_file,
-                                                     method_handle.field_or_method_idx_,
+      target_method = ResolveMethodWithoutInvokeType(method_handle.field_or_method_idx_,
                                                      hs.NewHandle(referrer->GetDexCache()),
                                                      hs.NewHandle(referrer->GetClassLoader()));
       if (UNLIKELY(target_method == nullptr)) {
@@ -8515,7 +8494,7 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForMethod(
   DexFileParameterIterator it(*dex_file, target_method->GetPrototype());
   while (it.HasNext()) {
     const dex::TypeIndex type_idx = it.GetTypeIdx();
-    ObjPtr<mirror::Class> klass = ResolveType(*dex_file, type_idx, dex_cache, class_loader);
+    ObjPtr<mirror::Class> klass = ResolveType(type_idx, dex_cache, class_loader);
     if (nullptr == klass) {
       DCHECK(self->IsExceptionPending());
       return nullptr;
@@ -9033,14 +9012,12 @@ mirror::IfTable* ClassLinker::AllocIfTable(Thread* self, size_t ifcount) {
 
 // Instantiate ResolveMethod.
 template ArtMethod* ClassLinker::ResolveMethod<ClassLinker::ResolveMode::kCheckICCEAndIAE>(
-    const DexFile& dex_file,
     uint32_t method_idx,
     Handle<mirror::DexCache> dex_cache,
     Handle<mirror::ClassLoader> class_loader,
     ArtMethod* referrer,
     InvokeType type);
 template ArtMethod* ClassLinker::ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
-    const DexFile& dex_file,
     uint32_t method_idx,
     Handle<mirror::DexCache> dex_cache,
     Handle<mirror::ClassLoader> class_loader,

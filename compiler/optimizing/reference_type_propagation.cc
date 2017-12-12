@@ -544,7 +544,7 @@ void ReferenceTypePropagation::RTPVisitor::SetClassAsTypeInfo(HInstruction* inst
       // the method is from the String class, the null loader is good enough.
       Handle<mirror::ClassLoader> loader(hs.NewHandle<mirror::ClassLoader>(nullptr));
       ArtMethod* method = cl->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
-          dex_file, invoke->GetDexMethodIndex(), dex_cache, loader, nullptr, kDirect);
+          invoke->GetDexMethodIndex(), dex_cache, loader, /* referrer */ nullptr, kDirect);
       DCHECK(method != nullptr);
       mirror::Class* declaring_class = method->GetDeclaringClass();
       DCHECK(declaring_class != nullptr);
@@ -576,8 +576,8 @@ void ReferenceTypePropagation::RTPVisitor::UpdateReferenceTypeInfo(HInstruction*
 
   ScopedObjectAccess soa(Thread::Current());
   ObjPtr<mirror::DexCache> dex_cache = FindDexCacheWithHint(soa.Self(), dex_file, hint_dex_cache_);
-  ObjPtr<mirror::Class> klass =
-      ClassLinker::LookupResolvedType(type_idx, dex_cache, class_loader_.Get());
+  ObjPtr<mirror::Class> klass = Runtime::Current()->GetClassLinker()->LookupResolvedType(
+      type_idx, dex_cache, class_loader_.Get());
   SetClassAsTypeInfo(instr, klass, is_exact);
 }
 

@@ -1143,8 +1143,7 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
       }
       case EncodedArrayValueIterator::ValueType::kType: {
         dex::TypeIndex idx(static_cast<uint32_t>(jvalue.i));
-        ObjPtr<mirror::Class> ref =
-            class_linker->ResolveType(*dex_file, idx, dex_cache, class_loader);
+        ObjPtr<mirror::Class> ref = class_linker->ResolveType(idx, dex_cache, class_loader);
         if (ref.IsNull()) {
           DCHECK(self->IsExceptionPending());
           return nullptr;

@@ -343,8 +343,7 @@ mirror::Object* ProcessEncodedAnnotation(const ClassData& klass, const uint8_t**
   StackHandleScope<4> hs(self);
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   Handle<mirror::Class> annotation_class(hs.NewHandle(
-      class_linker->ResolveType(klass.GetDexFile(),
-                                dex::TypeIndex(type_index),
+      class_linker->ResolveType(dex::TypeIndex(type_index),
                                 hs.NewHandle(klass.GetDexCache()),
                                 hs.NewHandle(klass.GetClassLoader()))));
   if (annotation_class == nullptr) {
@@ -474,7 +473,6 @@ bool ProcessAnnotationValue(const ClassData& klass,
         dex::TypeIndex type_index(index);
         StackHandleScope<2> hs(self);
         element_object = Runtime::Current()->GetClassLinker()->ResolveType(
-            klass.GetDexFile(),
             type_index,
             hs.NewHandle(klass.GetDexCache()),
             hs.NewHandle(klass.GetClassLoader()));
@@ -501,7 +499,6 @@ bool ProcessAnnotationValue(const ClassData& klass,
         ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
         StackHandleScope<2> hs(self);
         ArtMethod* method = class_linker->ResolveMethodWithoutInvokeType(
-            klass.GetDexFile(),
             index,
             hs.NewHandle(klass.GetDexCache()),
             hs.NewHandle(klass.GetClassLoader()));
@@ -783,7 +780,6 @@ const DexFile::AnnotationItem* GetAnnotationItemFromAnnotationSet(
     Thread* self = Thread::Current();
     StackHandleScope<2> hs(self);
     ObjPtr<mirror::Class> resolved_class = class_linker->ResolveType(
-        klass.GetDexFile(),
         dex::TypeIndex(type_index),
         hs.NewHandle(klass.GetDexCache()),
         hs.NewHandle(klass.GetClassLoader()));
@@ -1398,7 +1394,6 @@ mirror::Class* GetEnclosingClass(Handle<mirror::Class> klass) {
   }
   StackHandleScope<2> hs(Thread::Current());
   ArtMethod* method = Runtime::Current()->GetClassLinker()->ResolveMethodWithoutInvokeType(
-      data.GetDexFile(),
       annotation_value.value_.GetI(),
       hs.NewHandle(data.GetDexCache()),
       hs.NewHandle(data.GetClassLoader()));
@@ -1596,8 +1591,7 @@ void RuntimeEncodedStaticFieldValueIterator::ReadValueToField(ArtField* field) c
       break;
     }
     case kType: {
-      ObjPtr<mirror::Class> resolved = linker_->ResolveType(dex_file_,
-                                                            dex::TypeIndex(jval_.i),
+      ObjPtr<mirror::Class> resolved = linker_->ResolveType(dex::TypeIndex(jval_.i),
                                                             dex_cache_,
                                                             class_loader_);
       field->SetObject<kTransactionActive>(field->GetDeclaringClass(), resolved);
