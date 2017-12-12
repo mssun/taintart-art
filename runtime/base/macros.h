@@ -59,6 +59,10 @@ template<typename T> ART_FRIEND_TEST(test_set_name, individual_test)
 #define QUOTE(x) #x
 #define STRINGIFY(x) QUOTE(x)
 
+// Append tokens after evaluating.
+#define APPEND_TOKENS_AFTER_EVAL_2(a, b) a ## b
+#define APPEND_TOKENS_AFTER_EVAL(a, b) APPEND_TOKENS_AFTER_EVAL_2(a, b)
+
 #ifndef NDEBUG
 #define ALWAYS_INLINE
 #else

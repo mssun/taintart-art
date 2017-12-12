@@ -17,6 +17,9 @@
 #ifndef ART_RUNTIME_CDEX_COMPACT_DEX_LEVEL_H_
 #define ART_RUNTIME_CDEX_COMPACT_DEX_LEVEL_H_
 
+#include <string>
+
+#include "base/macros.h"
 #include "dex_file.h"
 
 namespace art {
@@ -28,6 +31,19 @@ enum class CompactDexLevel {
   // Level fast means optimizations that don't take many resources to perform.
   kCompactDexLevelFast,
 };
+
+#ifndef ART_DEFAULT_COMPACT_DEX_LEVEL
+#error ART_DEFAULT_COMPACT_DEX_LEVEL not specified.
+#else
+#define ART_DEFAULT_COMPACT_DEX_LEVEL_VALUE_fast CompactDexLevel::kCompactDexLevelFast
+#define ART_DEFAULT_COMPACT_DEX_LEVEL_VALUE_none CompactDexLevel::kCompactDexLevelNone
+
+#define ART_DEFAULT_COMPACT_DEX_LEVEL_DEFAULT APPEND_TOKENS_AFTER_EVAL( \
+    ART_DEFAULT_COMPACT_DEX_LEVEL_VALUE_, \
+    ART_DEFAULT_COMPACT_DEX_LEVEL)
+
+static constexpr CompactDexLevel kDefaultCompactDexLevel = ART_DEFAULT_COMPACT_DEX_LEVEL_DEFAULT;
+#endif
 
 }  // namespace art
 
