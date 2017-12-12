@@ -135,13 +135,16 @@ public class Main {
     int count = 0;
     while (!hasJitCompiledEntrypoint(Main.class, "callThrough")) {
       // If `call` is true, also exercise the `callThrough()` method to increase hotness.
-      int limit = call ? 1 << Math.min(count, 12) : 0;
+      // Ramp-up the number of calls we do up to 1 << 12.
+      final int rampUpCutOff = 12;
+      int limit = call ? 1 << Math.min(count, rampUpCutOff) : 0;
       for (int i = 0; i < limit; ++i) {
         callThrough(Main.class, "doNothing");
       }
       try {
-        // Sleep to give a chance for the JIT to compile `hasJit` stub.
-        Thread.sleep(100);
+        // Sleep to give a chance for the JIT to compile `callThrough` stub.
+        // After the ramp-up phase, give the JIT even more time to compile.
+        Thread.sleep(count >= rampUpCutOff ? 200 : 100);
       } catch (Exception e) {
         // Ignore
       }
