@@ -22,6 +22,7 @@
 #include "art_method-inl.h"
 #include "cdex/compact_dex_file.h"
 #include "dex_file-inl.h"
+#include "oat_file.h"
 #include "standard_dex_file.h"
 
 namespace art {
@@ -37,7 +38,7 @@ inline void CodeItemInstructionAccessor::Init(const StandardDexFile::CodeItem& c
 }
 
 inline void CodeItemInstructionAccessor::Init(const DexFile* dex_file,
-                                               const DexFile::CodeItem* code_item) {
+                                              const DexFile::CodeItem* code_item) {
   DCHECK(dex_file != nullptr);
   DCHECK(code_item != nullptr);
   if (dex_file->IsCompactDexFile()) {
@@ -148,6 +149,31 @@ inline const DexFile::TryItem* CodeItemDataAccessor::FindTryItem(uint32_t try_de
                                        try_items.end() - try_items.begin(),
                                        try_dex_pc);
   return index != -1 ? &try_items.begin()[index] : nullptr;
+}
+
+inline CodeItemDebugInfoAccessor::CodeItemDebugInfoAccessor(ArtMethod* method)
+    : CodeItemDebugInfoAccessor(method->GetDexFile(), method->GetCodeItem()) {}
+
+inline CodeItemDebugInfoAccessor::CodeItemDebugInfoAccessor(const DexFile* dex_file,
+                                                            const DexFile::CodeItem* code_item) {
+  if (code_item == nullptr) {
+    return;
+  }
+  debug_info_offset_ = OatFile::GetDebugInfoOffset(*dex_file, code_item);
+  if (dex_file->IsCompactDexFile()) {
+    Init(down_cast<const CompactDexFile::CodeItem&>(*code_item));
+  } else {
+    DCHECK(dex_file->IsStandardDexFile());
+    Init(down_cast<const StandardDexFile::CodeItem&>(*code_item));
+  }
+}
+
+inline void CodeItemDebugInfoAccessor::Init(const CompactDexFile::CodeItem& code_item) {
+  CodeItemDataAccessor::Init(code_item);
+}
+
+inline void CodeItemDebugInfoAccessor::Init(const StandardDexFile::CodeItem& code_item) {
+  CodeItemDataAccessor::Init(code_item);
 }
 
 }  // namespace art

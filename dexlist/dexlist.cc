@@ -122,7 +122,7 @@ static void dumpMethod(const DexFile* pDexFile,
   // Find the first line.
   int firstLine = -1;
   uint32_t debug_info_offset = pDexFile->GetDebugInfoOffset(pCode);
-  pDexFile->DecodeDebugPositionInfo(pCode, debug_info_offset, positionsCb, &firstLine);
+  pDexFile->DecodeDebugPositionInfo(debug_info_offset, positionsCb, &firstLine);
 
   // Method signature.
   const Signature signature = pDexFile->GetMethodSignature(pMethodId);

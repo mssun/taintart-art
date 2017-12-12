@@ -37,6 +37,7 @@
 #include "art_method-inl.h"
 #include "base/enums.h"
 #include "base/mutex-inl.h"
+#include "code_item_accessors-inl.h"
 #include "dex_file_annotations.h"
 #include "dex_file_types.h"
 #include "events-inl.h"
@@ -190,12 +191,17 @@ jvmtiError MethodUtil::GetLocalVariableTable(jvmtiEnv* env,
   }
 
   art::ScopedObjectAccess soa(art::Thread::Current());
-  const art::DexFile* dex_file = art_method->GetDexFile();
-  const art::DexFile::CodeItem* code_item = art_method->GetCodeItem();
-  // TODO code_item == nullptr means that the method is abstract (or native, but we check that
+
+  const art::DexFile* const dex_file = art_method->GetDexFile();
+  if (dex_file == nullptr) {
+    return ERR(ABSENT_INFORMATION);
+  }
+
+  // TODO HasCodeItem == false means that the method is abstract (or native, but we check that
   // earlier). We should check what is returned by the RI in this situation since it's not clear
   // what the appropriate return value is from the spec.
-  if (dex_file == nullptr || code_item == nullptr) {
+  art::CodeItemDebugInfoAccessor accessor(art_method);
+  if (!accessor.HasCodeItem()) {
     return ERR(ABSENT_INFORMATION);
   }
 
@@ -260,9 +266,10 @@ jvmtiError MethodUtil::GetLocalVariableTable(jvmtiEnv* env,
   };
 
   LocalVariableContext context(env);
-  uint32_t debug_info_offset = art::OatFile::GetDebugInfoOffset(*dex_file, code_item);
-  if (!dex_file->DecodeDebugLocalInfo(code_item,
-                                      debug_info_offset,
+  if (!dex_file->DecodeDebugLocalInfo(accessor.RegistersSize(),
+                                      accessor.InsSize(),
+                                      accessor.InsnsSizeInCodeUnits(),
+                                      accessor.DebugInfoOffset(),
                                       art_method->IsStatic(),
                                       art_method->GetDexMethodIndex(),
                                       LocalVariableContext::Callback,
@@ -462,7 +469,7 @@ jvmtiError MethodUtil::GetLineNumberTable(jvmtiEnv* env,
   art::ArtMethod* art_method = art::jni::DecodeArtMethod(method);
   DCHECK(!art_method->IsRuntimeMethod());
 
-  const art::DexFile::CodeItem* code_item;
+  art::CodeItemDebugInfoAccessor accessor;
   const art::DexFile* dex_file;
   {
     art::ScopedObjectAccess soa(art::Thread::Current());
@@ -477,15 +484,14 @@ jvmtiError MethodUtil::GetLineNumberTable(jvmtiEnv* env,
       return ERR(NULL_POINTER);
     }
 
-    code_item = art_method->GetCodeItem();
+    accessor = art::CodeItemDebugInfoAccessor(art_method);
     dex_file = art_method->GetDexFile();
-    DCHECK(code_item != nullptr) << art_method->PrettyMethod() << " " << dex_file->GetLocation();
+    DCHECK(accessor.HasCodeItem()) << art_method->PrettyMethod() << " " << dex_file->GetLocation();
   }
 
   LineNumberContext context;
-  uint32_t debug_info_offset = art::OatFile::GetDebugInfoOffset(*dex_file, code_item);
   bool success = dex_file->DecodeDebugPositionInfo(
-      code_item, debug_info_offset, CollectLineNumbers, &context);
+      accessor.DebugInfoOffset(), CollectLineNumbers, &context);
   if (!success) {
     return ERR(ABSENT_INFORMATION);
   }
@@ -613,8 +619,11 @@ class CommonLocalVariableClosure : public art::Closure {
                          /*out*/art::Primitive::Type* type)
       REQUIRES(art::Locks::mutator_lock_) {
     const art::DexFile* dex_file = method->GetDexFile();
-    const art::DexFile::CodeItem* code_item = method->GetCodeItem();
-    if (dex_file == nullptr || code_item == nullptr) {
+    if (dex_file == nullptr) {
+      return ERR(OPAQUE_FRAME);
+    }
+    art::CodeItemDebugInfoAccessor accessor(method);
+    if (!accessor.HasCodeItem()) {
       return ERR(OPAQUE_FRAME);
     }
 
@@ -653,9 +662,10 @@ class CommonLocalVariableClosure : public art::Closure {
     };
 
     GetLocalVariableInfoContext context(slot_, dex_pc, descriptor, type);
-    uint32_t debug_info_offset = art::OatFile::GetDebugInfoOffset(*dex_file, code_item);
-    if (!dex_file->DecodeDebugLocalInfo(code_item,
-                                        debug_info_offset,
+    if (!dex_file->DecodeDebugLocalInfo(accessor.RegistersSize(),
+                                        accessor.InsSize(),
+                                        accessor.InsnsSizeInCodeUnits(),
+                                        accessor.DebugInfoOffset(),
                                         method->IsStatic(),
                                         method->GetDexMethodIndex(),
                                         GetLocalVariableInfoContext::Callback,
