@@ -5732,24 +5732,18 @@ X86Assembler* ParallelMoveResolverX86::GetAssembler() const {
   return codegen_->GetAssembler();
 }
 
-void ParallelMoveResolverX86::MoveMemoryToMemory32(int dst, int src) {
+void ParallelMoveResolverX86::MoveMemoryToMemory(int dst, int src, int number_of_words) {
   ScratchRegisterScope ensure_scratch(
       this, kNoRegister, EAX, codegen_->GetNumberOfCoreRegisters());
   Register temp_reg = static_cast<Register>(ensure_scratch.GetRegister());
   int stack_offset = ensure_scratch.IsSpilled() ? kX86WordSize : 0;
-  __ movl(temp_reg, Address(ESP, src + stack_offset));
-  __ movl(Address(ESP, dst + stack_offset), temp_reg);
-}
 
-void ParallelMoveResolverX86::MoveMemoryToMemory64(int dst, int src) {
-  ScratchRegisterScope ensure_scratch(
-      this, kNoRegister, EAX, codegen_->GetNumberOfCoreRegisters());
-  Register temp_reg = static_cast<Register>(ensure_scratch.GetRegister());
-  int stack_offset = ensure_scratch.IsSpilled() ? kX86WordSize : 0;
-  __ movl(temp_reg, Address(ESP, src + stack_offset));
-  __ movl(Address(ESP, dst + stack_offset), temp_reg);
-  __ movl(temp_reg, Address(ESP, src + stack_offset + kX86WordSize));
-  __ movl(Address(ESP, dst + stack_offset + kX86WordSize), temp_reg);
+  // Now that temp register is available (possibly spilled), move blocks of memory.
+  for (int i = 0; i < number_of_words; i++) {
+    __ movl(temp_reg, Address(ESP, src + stack_offset));
+    __ movl(Address(ESP, dst + stack_offset), temp_reg);
+    stack_offset += kX86WordSize;
+  }
 }
 
 void ParallelMoveResolverX86::EmitMove(size_t index) {
@@ -5800,7 +5794,7 @@ void ParallelMoveResolverX86::EmitMove(size_t index) {
       __ movss(destination.AsFpuRegister<XmmRegister>(), Address(ESP, source.GetStackIndex()));
     } else {
       DCHECK(destination.IsStackSlot());
-      MoveMemoryToMemory32(destination.GetStackIndex(), source.GetStackIndex());
+      MoveMemoryToMemory(destination.GetStackIndex(), source.GetStackIndex(), 1);
     }
   } else if (source.IsDoubleStackSlot()) {
     if (destination.IsRegisterPair()) {
@@ -5811,11 +5805,15 @@ void ParallelMoveResolverX86::EmitMove(size_t index) {
       __ movsd(destination.AsFpuRegister<XmmRegister>(), Address(ESP, source.GetStackIndex()));
     } else {
       DCHECK(destination.IsDoubleStackSlot()) << destination;
-      MoveMemoryToMemory64(destination.GetStackIndex(), source.GetStackIndex());
+      MoveMemoryToMemory(destination.GetStackIndex(), source.GetStackIndex(), 2);
     }
   } else if (source.IsSIMDStackSlot()) {
-    DCHECK(destination.IsFpuRegister());
-    __ movups(destination.AsFpuRegister<XmmRegister>(), Address(ESP, source.GetStackIndex()));
+    if (destination.IsFpuRegister()) {
+      __ movups(destination.AsFpuRegister<XmmRegister>(), Address(ESP, source.GetStackIndex()));
+    } else {
+      DCHECK(destination.IsSIMDStackSlot());
+      MoveMemoryToMemory(destination.GetStackIndex(), source.GetStackIndex(), 4);
+    }
   } else if (source.IsConstant()) {
     HConstant* constant = source.GetConstant();
     if (constant->IsIntConstant() || constant->IsNullConstant()) {
@@ -5915,7 +5913,16 @@ void ParallelMoveResolverX86::Exchange32(XmmRegister reg, int mem) {
   __ movd(reg, temp_reg);
 }
 
-void ParallelMoveResolverX86::Exchange(int mem1, int mem2) {
+void ParallelMoveResolverX86::Exchange128(XmmRegister reg, int mem) {
+  size_t extra_slot = 4 * kX86WordSize;
+  __ subl(ESP, Immediate(extra_slot));
+  __ movups(Address(ESP, 0), XmmRegister(reg));
+  ExchangeMemory(0, mem + extra_slot, 4);
+  __ movups(XmmRegister(reg), Address(ESP, 0));
+  __ addl(ESP, Immediate(extra_slot));
+}
+
+void ParallelMoveResolverX86::ExchangeMemory(int mem1, int mem2, int number_of_words) {
   ScratchRegisterScope ensure_scratch1(
       this, kNoRegister, EAX, codegen_->GetNumberOfCoreRegisters());
 
@@ -5925,10 +5932,15 @@ void ParallelMoveResolverX86::Exchange(int mem1, int mem2) {
 
   int stack_offset = ensure_scratch1.IsSpilled() ? kX86WordSize : 0;
   stack_offset += ensure_scratch2.IsSpilled() ? kX86WordSize : 0;
-  __ movl(static_cast<Register>(ensure_scratch1.GetRegister()), Address(ESP, mem1 + stack_offset));
-  __ movl(static_cast<Register>(ensure_scratch2.GetRegister()), Address(ESP, mem2 + stack_offset));
-  __ movl(Address(ESP, mem2 + stack_offset), static_cast<Register>(ensure_scratch1.GetRegister()));
-  __ movl(Address(ESP, mem1 + stack_offset), static_cast<Register>(ensure_scratch2.GetRegister()));
+
+  // Now that temp registers are available (possibly spilled), exchange blocks of memory.
+  for (int i = 0; i < number_of_words; i++) {
+    __ movl(static_cast<Register>(ensure_scratch1.GetRegister()), Address(ESP, mem1 + stack_offset));
+    __ movl(static_cast<Register>(ensure_scratch2.GetRegister()), Address(ESP, mem2 + stack_offset));
+    __ movl(Address(ESP, mem2 + stack_offset), static_cast<Register>(ensure_scratch1.GetRegister()));
+    __ movl(Address(ESP, mem1 + stack_offset), static_cast<Register>(ensure_scratch2.GetRegister()));
+    stack_offset += kX86WordSize;
+  }
 }
 
 void ParallelMoveResolverX86::EmitSwap(size_t index) {
@@ -5947,7 +5959,7 @@ void ParallelMoveResolverX86::EmitSwap(size_t index) {
   } else if (source.IsStackSlot() && destination.IsRegister()) {
     Exchange(destination.AsRegister<Register>(), source.GetStackIndex());
   } else if (source.IsStackSlot() && destination.IsStackSlot()) {
-    Exchange(destination.GetStackIndex(), source.GetStackIndex());
+    ExchangeMemory(destination.GetStackIndex(), source.GetStackIndex(), 1);
   } else if (source.IsFpuRegister() && destination.IsFpuRegister()) {
     // Use XOR Swap algorithm to avoid a temporary.
     DCHECK_NE(source.reg(), destination.reg());
@@ -5983,8 +5995,13 @@ void ParallelMoveResolverX86::EmitSwap(size_t index) {
     // Move the high double to the low double.
     __ psrldq(reg, Immediate(8));
   } else if (destination.IsDoubleStackSlot() && source.IsDoubleStackSlot()) {
-    Exchange(destination.GetStackIndex(), source.GetStackIndex());
-    Exchange(destination.GetHighStackIndex(kX86WordSize), source.GetHighStackIndex(kX86WordSize));
+    ExchangeMemory(destination.GetStackIndex(), source.GetStackIndex(), 2);
+  } else if (source.IsSIMDStackSlot() && destination.IsSIMDStackSlot()) {
+    ExchangeMemory(destination.GetStackIndex(), source.GetStackIndex(), 4);
+  } else if (source.IsFpuRegister() && destination.IsSIMDStackSlot()) {
+    Exchange128(source.AsFpuRegister<XmmRegister>(), destination.GetStackIndex());
+  } else if (destination.IsFpuRegister() && source.IsSIMDStackSlot()) {
+    Exchange128(destination.AsFpuRegister<XmmRegister>(), source.GetStackIndex());
   } else {
     LOG(FATAL) << "Unimplemented: source: " << source << ", destination: " << destination;
   }
