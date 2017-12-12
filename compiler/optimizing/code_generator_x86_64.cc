@@ -344,7 +344,7 @@ class TypeCheckSlowPathX86_64 : public SlowPathCode {
       __ UnpoisonHeapReference(locations->InAt(1).AsRegister<CpuRegister>());
     }
 
-    if (!is_fatal_) {
+    if (!is_fatal_ || instruction_->CanThrowIntoCatchBlock()) {
       SaveLiveRegisters(codegen, locations);
     }
 
@@ -5763,11 +5763,12 @@ void LocationsBuilderX86_64::VisitInstanceOf(HInstanceOf* instruction) {
     case TypeCheckKind::kExactCheck:
     case TypeCheckKind::kAbstractClassCheck:
     case TypeCheckKind::kClassHierarchyCheck:
-    case TypeCheckKind::kArrayObjectCheck:
-      call_kind =
-          kEmitCompilerReadBarrier ? LocationSummary::kCallOnSlowPath : LocationSummary::kNoCall;
-      baker_read_barrier_slow_path = kUseBakerReadBarrier;
+    case TypeCheckKind::kArrayObjectCheck: {
+      bool needs_read_barrier = CodeGenerator::InstanceOfNeedsReadBarrier(instruction);
+      call_kind = needs_read_barrier ? LocationSummary::kCallOnSlowPath : LocationSummary::kNoCall;
+      baker_read_barrier_slow_path = kUseBakerReadBarrier && needs_read_barrier;
       break;
+    }
     case TypeCheckKind::kArrayCheck:
     case TypeCheckKind::kUnresolvedCheck:
     case TypeCheckKind::kInterfaceCheck:
@@ -5818,12 +5819,14 @@ void InstructionCodeGeneratorX86_64::VisitInstanceOf(HInstanceOf* instruction) {
 
   switch (type_check_kind) {
     case TypeCheckKind::kExactCheck: {
+      ReadBarrierOption read_barrier_option =
+          CodeGenerator::ReadBarrierOptionForInstanceOf(instruction);
       // /* HeapReference<Class> */ out = obj->klass_
       GenerateReferenceLoadTwoRegisters(instruction,
                                         out_loc,
                                         obj_loc,
                                         class_offset,
-                                        kCompilerReadBarrierOption);
+                                        read_barrier_option);
       if (cls.IsRegister()) {
         __ cmpl(out, cls.AsRegister<CpuRegister>());
       } else {
@@ -5844,12 +5847,14 @@ void InstructionCodeGeneratorX86_64::VisitInstanceOf(HInstanceOf* instruction) {
     }
 
     case TypeCheckKind::kAbstractClassCheck: {
+      ReadBarrierOption read_barrier_option =
+          CodeGenerator::ReadBarrierOptionForInstanceOf(instruction);
       // /* HeapReference<Class> */ out = obj->klass_
       GenerateReferenceLoadTwoRegisters(instruction,
                                         out_loc,
                                         obj_loc,
                                         class_offset,
-                                        kCompilerReadBarrierOption);
+                                        read_barrier_option);
       // If the class is abstract, we eagerly fetch the super class of the
       // object to avoid doing a comparison we know will fail.
       NearLabel loop, success;
@@ -5859,7 +5864,7 @@ void InstructionCodeGeneratorX86_64::VisitInstanceOf(HInstanceOf* instruction) {
                                        out_loc,
                                        super_offset,
                                        maybe_temp_loc,
-                                       kCompilerReadBarrierOption);
+                                       read_barrier_option);
       __ testl(out, out);
       // If `out` is null, we use it for the result, and jump to `done`.
       __ j(kEqual, &done);
@@ -5878,12 +5883,14 @@ void InstructionCodeGeneratorX86_64::VisitInstanceOf(HInstanceOf* instruction) {
     }
 
     case TypeCheckKind::kClassHierarchyCheck: {
+      ReadBarrierOption read_barrier_option =
+          CodeGenerator::ReadBarrierOptionForInstanceOf(instruction);
       // /* HeapReference<Class> */ out = obj->klass_
       GenerateReferenceLoadTwoRegisters(instruction,
                                         out_loc,
                                         obj_loc,
                                         class_offset,
-                                        kCompilerReadBarrierOption);
+                                        read_barrier_option);
       // Walk over the class hierarchy to find a match.
       NearLabel loop, success;
       __ Bind(&loop);
@@ -5899,7 +5906,7 @@ void InstructionCodeGeneratorX86_64::VisitInstanceOf(HInstanceOf* instruction) {
                                        out_loc,
                                        super_offset,
                                        maybe_temp_loc,
-                                       kCompilerReadBarrierOption);
+                                       read_barrier_option);
       __ testl(out, out);
       __ j(kNotEqual, &loop);
       // If `out` is null, we use it for the result, and jump to `done`.
@@ -5913,12 +5920,14 @@ void InstructionCodeGeneratorX86_64::VisitInstanceOf(HInstanceOf* instruction) {
     }
 
     case TypeCheckKind::kArrayObjectCheck: {
+      ReadBarrierOption read_barrier_option =
+          CodeGenerator::ReadBarrierOptionForInstanceOf(instruction);
       // /* HeapReference<Class> */ out = obj->klass_
       GenerateReferenceLoadTwoRegisters(instruction,
                                         out_loc,
                                         obj_loc,
                                         class_offset,
-                                        kCompilerReadBarrierOption);
+                                        read_barrier_option);
       // Do an exact check.
       NearLabel exact_check;
       if (cls.IsRegister()) {
@@ -5934,7 +5943,7 @@ void InstructionCodeGeneratorX86_64::VisitInstanceOf(HInstanceOf* instruction) {
                                        out_loc,
                                        component_offset,
                                        maybe_temp_loc,
-                                       kCompilerReadBarrierOption);
+                                       read_barrier_option);
       __ testl(out, out);
       // If `out` is null, we use it for the result, and jump to `done`.
       __ j(kEqual, &done);
@@ -6018,30 +6027,9 @@ void InstructionCodeGeneratorX86_64::VisitInstanceOf(HInstanceOf* instruction) {
   }
 }
 
-static bool IsTypeCheckSlowPathFatal(TypeCheckKind type_check_kind, bool throws_into_catch) {
-  switch (type_check_kind) {
-    case TypeCheckKind::kExactCheck:
-    case TypeCheckKind::kAbstractClassCheck:
-    case TypeCheckKind::kClassHierarchyCheck:
-    case TypeCheckKind::kArrayObjectCheck:
-      return !throws_into_catch && !kEmitCompilerReadBarrier;
-    case TypeCheckKind::kInterfaceCheck:
-      return !throws_into_catch && !kEmitCompilerReadBarrier;
-    case TypeCheckKind::kArrayCheck:
-    case TypeCheckKind::kUnresolvedCheck:
-      return false;
-  }
-  LOG(FATAL) << "Unreachable";
-  UNREACHABLE();
-}
-
 void LocationsBuilderX86_64::VisitCheckCast(HCheckCast* instruction) {
-  bool throws_into_catch = instruction->CanThrowIntoCatchBlock();
   TypeCheckKind type_check_kind = instruction->GetTypeCheckKind();
-  bool is_fatal_slow_path = IsTypeCheckSlowPathFatal(type_check_kind, throws_into_catch);
-  LocationSummary::CallKind call_kind = is_fatal_slow_path
-                                            ? LocationSummary::kNoCall
-                                            : LocationSummary::kCallOnSlowPath;
+  LocationSummary::CallKind call_kind = CodeGenerator::GetCheckCastCallKind(instruction);
   LocationSummary* locations =
       new (GetGraph()->GetAllocator()) LocationSummary(instruction, call_kind);
   locations->SetInAt(0, Location::RequiresRegister());
@@ -6082,11 +6070,7 @@ void InstructionCodeGeneratorX86_64::VisitCheckCast(HCheckCast* instruction) {
   const uint32_t object_array_data_offset =
       mirror::Array::DataOffset(kHeapReferenceSize).Uint32Value();
 
-  // Always false for read barriers since we may need to go to the entrypoint for non-fatal cases
-  // from false negatives. The false negatives may come from avoiding read barriers below. Avoiding
-  // read barriers is done for performance and code size reasons.
-  bool is_type_check_slow_path_fatal =
-      IsTypeCheckSlowPathFatal(type_check_kind, instruction->CanThrowIntoCatchBlock());
+  bool is_type_check_slow_path_fatal = CodeGenerator::IsTypeCheckSlowPathFatal(instruction);
   SlowPathCode* type_check_slow_path =
       new (codegen_->GetScopedAllocator()) TypeCheckSlowPathX86_64(
           instruction, is_type_check_slow_path_fatal);

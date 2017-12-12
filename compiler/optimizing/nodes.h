@@ -6600,7 +6600,7 @@ std::ostream& operator<<(std::ostream& os, TypeCheckKind rhs);
 class HInstanceOf FINAL : public HExpression<2> {
  public:
   HInstanceOf(HInstruction* object,
-              HLoadClass* constant,
+              HLoadClass* target_class,
               TypeCheckKind check_kind,
               uint32_t dex_pc)
       : HExpression(DataType::Type::kBool,
@@ -6609,7 +6609,13 @@ class HInstanceOf FINAL : public HExpression<2> {
     SetPackedField<TypeCheckKindField>(check_kind);
     SetPackedFlag<kFlagMustDoNullCheck>(true);
     SetRawInputAt(0, object);
-    SetRawInputAt(1, constant);
+    SetRawInputAt(1, target_class);
+  }
+
+  HLoadClass* GetTargetClass() const {
+    HInstruction* load_class = InputAt(1);
+    DCHECK(load_class->IsLoadClass());
+    return load_class->AsLoadClass();
   }
 
   bool IsClonable() const OVERRIDE { return true; }
@@ -6703,14 +6709,20 @@ class HBoundType FINAL : public HExpression<1> {
 class HCheckCast FINAL : public HTemplateInstruction<2> {
  public:
   HCheckCast(HInstruction* object,
-             HLoadClass* constant,
+             HLoadClass* target_class,
              TypeCheckKind check_kind,
              uint32_t dex_pc)
       : HTemplateInstruction(SideEffects::CanTriggerGC(), dex_pc) {
     SetPackedField<TypeCheckKindField>(check_kind);
     SetPackedFlag<kFlagMustDoNullCheck>(true);
     SetRawInputAt(0, object);
-    SetRawInputAt(1, constant);
+    SetRawInputAt(1, target_class);
+  }
+
+  HLoadClass* GetTargetClass() const {
+    HInstruction* load_class = InputAt(1);
+    DCHECK(load_class->IsLoadClass());
+    return load_class->AsLoadClass();
   }
 
   bool IsClonable() const OVERRIDE { return true; }
