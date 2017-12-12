@@ -1035,7 +1035,7 @@ ObjPtr<Class> Class::GetDirectInterface(Thread* self, ObjPtr<Class> klass, uint3
     return interfaces->Get(idx);
   } else {
     dex::TypeIndex type_idx = klass->GetDirectInterfaceTypeIdx(idx);
-    ObjPtr<Class> interface = ClassLinker::LookupResolvedType(
+    ObjPtr<Class> interface = Runtime::Current()->GetClassLinker()->LookupResolvedType(
         type_idx, klass->GetDexCache(), klass->GetClassLoader());
     return interface;
   }
@@ -1047,9 +1047,7 @@ ObjPtr<Class> Class::ResolveDirectInterface(Thread* self, Handle<Class> klass, u
     DCHECK(!klass->IsArrayClass());
     DCHECK(!klass->IsProxyClass());
     dex::TypeIndex type_idx = klass->GetDirectInterfaceTypeIdx(idx);
-    interface = Runtime::Current()->GetClassLinker()->ResolveType(klass->GetDexFile(),
-                                                                  type_idx,
-                                                                  klass.Get());
+    interface = Runtime::Current()->GetClassLinker()->ResolveType(type_idx, klass.Get());
     CHECK(interface != nullptr || self->IsExceptionPending());
   }
   return interface;

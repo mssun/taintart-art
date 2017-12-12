@@ -440,7 +440,6 @@ inline bool Class::ResolvedFieldAccessTest(ObjPtr<Class> access_to,
     // cache. Use LookupResolveType here to search the class table if it is not in the dex cache.
     // should be no thread suspension due to the class being resolved.
     ObjPtr<Class> dex_access_to = Runtime::Current()->GetClassLinker()->LookupResolvedType(
-        *dex_cache->GetDexFile(),
         class_idx,
         dex_cache,
         access_to->GetClassLoader());
@@ -477,7 +476,6 @@ inline bool Class::ResolvedMethodAccessTest(ObjPtr<Class> access_to,
     // The referenced class has already been resolved with the method, but may not be in the dex
     // cache.
     ObjPtr<Class> dex_access_to = Runtime::Current()->GetClassLinker()->LookupResolvedType(
-        *dex_cache->GetDexFile(),
         class_idx,
         dex_cache,
         access_to->GetClassLoader());
