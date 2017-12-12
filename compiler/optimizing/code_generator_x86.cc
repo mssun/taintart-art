@@ -317,6 +317,13 @@ class TypeCheckSlowPathX86 : public SlowPathCode {
     CodeGeneratorX86* x86_codegen = down_cast<CodeGeneratorX86*>(codegen);
     __ Bind(GetEntryLabel());
 
+    if (kPoisonHeapReferences &&
+        instruction_->IsCheckCast() &&
+        instruction_->AsCheckCast()->GetTypeCheckKind() == TypeCheckKind::kInterfaceCheck) {
+      // First, unpoison the `cls` reference that was poisoned for direct memory comparison.
+      __ UnpoisonHeapReference(locations->InAt(1).AsRegister<Register>());
+    }
+
     if (!is_fatal_) {
       SaveLiveRegisters(codegen, locations);
     }
@@ -6369,7 +6376,7 @@ static size_t NumberOfInstanceOfTemps(TypeCheckKind type_check_kind) {
 // interface pointer, one for loading the current interface.
 // The other checks have one temp for loading the object's class.
 static size_t NumberOfCheckCastTemps(TypeCheckKind type_check_kind) {
-  if (type_check_kind == TypeCheckKind::kInterfaceCheck && !kPoisonHeapReferences) {
+  if (type_check_kind == TypeCheckKind::kInterfaceCheck) {
     return 2;
   }
   return 1 + NumberOfInstanceOfTemps(type_check_kind);
@@ -6638,7 +6645,7 @@ static bool IsTypeCheckSlowPathFatal(TypeCheckKind type_check_kind, bool throws_
   case TypeCheckKind::kArrayObjectCheck:
     return !throws_into_catch && !kEmitCompilerReadBarrier;
   case TypeCheckKind::kInterfaceCheck:
-    return !throws_into_catch && !kEmitCompilerReadBarrier && !kPoisonHeapReferences;
+    return !throws_into_catch && !kEmitCompilerReadBarrier;
   case TypeCheckKind::kArrayCheck:
   case TypeCheckKind::kUnresolvedCheck:
     return false;
@@ -6849,44 +6856,40 @@ void InstructionCodeGeneratorX86::VisitCheckCast(HCheckCast* instruction) {
       break;
 
     case TypeCheckKind::kInterfaceCheck: {
-      // Fast path for the interface check. Since we compare with a memory location in the inner
-      // loop we would need to have cls poisoned. However unpoisoning cls would reset the
-      // conditional flags and cause the conditional jump to be incorrect. Therefore we just jump
-      // to the slow path if we are running under poisoning.
-      if (!kPoisonHeapReferences) {
-        // Try to avoid read barriers to improve the fast path. We can not get false positives by
-        // doing this.
-        // /* HeapReference<Class> */ temp = obj->klass_
-        GenerateReferenceLoadTwoRegisters(instruction,
-                                          temp_loc,
-                                          obj_loc,
-                                          class_offset,
-                                          kWithoutReadBarrier);
+      // Fast path for the interface check. Try to avoid read barriers to improve the fast path.
+      // We can not get false positives by doing this.
+      // /* HeapReference<Class> */ temp = obj->klass_
+      GenerateReferenceLoadTwoRegisters(instruction,
+                                        temp_loc,
+                                        obj_loc,
+                                        class_offset,
+                                        kWithoutReadBarrier);
 
-        // /* HeapReference<Class> */ temp = temp->iftable_
-        GenerateReferenceLoadTwoRegisters(instruction,
-                                          temp_loc,
-                                          temp_loc,
-                                          iftable_offset,
-                                          kWithoutReadBarrier);
-        // Iftable is never null.
-        __ movl(maybe_temp2_loc.AsRegister<Register>(), Address(temp, array_length_offset));
-        // Loop through the iftable and check if any class matches.
-        NearLabel start_loop;
-        __ Bind(&start_loop);
-        // Need to subtract first to handle the empty array case.
-        __ subl(maybe_temp2_loc.AsRegister<Register>(), Immediate(2));
-        __ j(kNegative, type_check_slow_path->GetEntryLabel());
-        // Go to next interface if the classes do not match.
-        __ cmpl(cls.AsRegister<Register>(),
-                CodeGeneratorX86::ArrayAddress(temp,
-                                               maybe_temp2_loc,
-                                               TIMES_4,
-                                               object_array_data_offset));
-        __ j(kNotEqual, &start_loop);
-      } else {
-        __ jmp(type_check_slow_path->GetEntryLabel());
-      }
+      // /* HeapReference<Class> */ temp = temp->iftable_
+      GenerateReferenceLoadTwoRegisters(instruction,
+                                        temp_loc,
+                                        temp_loc,
+                                        iftable_offset,
+                                        kWithoutReadBarrier);
+      // Iftable is never null.
+      __ movl(maybe_temp2_loc.AsRegister<Register>(), Address(temp, array_length_offset));
+      // Maybe poison the `cls` for direct comparison with memory.
+      __ MaybePoisonHeapReference(cls.AsRegister<Register>());
+      // Loop through the iftable and check if any class matches.
+      NearLabel start_loop;
+      __ Bind(&start_loop);
+      // Need to subtract first to handle the empty array case.
+      __ subl(maybe_temp2_loc.AsRegister<Register>(), Immediate(2));
+      __ j(kNegative, type_check_slow_path->GetEntryLabel());
+      // Go to next interface if the classes do not match.
+      __ cmpl(cls.AsRegister<Register>(),
+              CodeGeneratorX86::ArrayAddress(temp,
+                                             maybe_temp2_loc,
+                                             TIMES_4,
+                                             object_array_data_offset));
+      __ j(kNotEqual, &start_loop);
+      // If `cls` was poisoned above, unpoison it.
+      __ MaybeUnpoisonHeapReference(cls.AsRegister<Register>());
       break;
     }
   }
