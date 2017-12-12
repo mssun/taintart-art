@@ -216,7 +216,7 @@ jvmtiError ExtensionUtil::GetExtensionFunctions(jvmtiEnv* env,
       {
         { "type_in", JVMTI_KIND_IN, JVMTI_TYPE_JINT, false },
         { "length_in", JVMTI_KIND_IN, JVMTI_TYPE_JINT, false },
-        { "data_in", JVMTI_KIND_IN_BUF, JVMTI_TYPE_JBYTE, false },
+        { "data_in", JVMTI_KIND_IN_BUF, JVMTI_TYPE_JBYTE, true },
         { "type_out", JVMTI_KIND_OUT, JVMTI_TYPE_JINT, false },
         { "data_len_out", JVMTI_KIND_OUT, JVMTI_TYPE_JINT, false },
         { "data_out", JVMTI_KIND_ALLOC_BUF, JVMTI_TYPE_JBYTE, false }

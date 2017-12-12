@@ -30,6 +30,7 @@ public class Test1940 {
   public static final int DDMS_HEADER_LENGTH = 8;
   public static final int MY_DDMS_TYPE = 0xDEADBEEF;
   public static final int MY_DDMS_RESPONSE_TYPE = 0xFADE7357;
+  public static final int MY_EMPTY_DDMS_TYPE = 0xABCDEF01;
 
   public static final boolean PRINT_ALL_CHUNKS = false;
 
@@ -58,19 +59,24 @@ public class Test1940 {
     public void connected() {}
     public void disconnected() {}
     public Chunk handleChunk(Chunk req) {
-      // For this test we will simply calculate the checksum
-      checkEq(req.type, MY_DDMS_TYPE);
       System.out.println("MyDdmHandler: Chunk received: " + printChunk(req));
-      ByteBuffer b = ByteBuffer.wrap(new byte[8]);
-      Adler32 a = new Adler32();
-      a.update(req.data, req.offset, req.length);
-      b.order(ByteOrder.BIG_ENDIAN);
-      long val = a.getValue();
-      b.putLong(val);
-      System.out.printf("MyDdmHandler: Putting value 0x%X\n", val);
-      Chunk ret = new Chunk(MY_DDMS_RESPONSE_TYPE, b.array(), 0, 8);
-      System.out.println("MyDdmHandler: Chunk returned: " + printChunk(ret));
-      return ret;
+      if (req.type == MY_DDMS_TYPE) {
+        // For this test we will simply calculate the checksum
+        ByteBuffer b = ByteBuffer.wrap(new byte[8]);
+        Adler32 a = new Adler32();
+        a.update(req.data, req.offset, req.length);
+        b.order(ByteOrder.BIG_ENDIAN);
+        long val = a.getValue();
+        b.putLong(val);
+        System.out.printf("MyDdmHandler: Putting value 0x%X\n", val);
+        Chunk ret = new Chunk(MY_DDMS_RESPONSE_TYPE, b.array(), 0, 8);
+        System.out.println("MyDdmHandler: Chunk returned: " + printChunk(ret));
+        return ret;
+      } else if (req.type == MY_EMPTY_DDMS_TYPE) {
+        return new Chunk(MY_DDMS_RESPONSE_TYPE, new byte[0], 0, 0);
+      } else {
+        throw new TestError("Unknown ddm request type: " + req.type);
+      }
     }
   }
 
@@ -113,10 +119,16 @@ public class Test1940 {
         Test1940.class.getDeclaredMethod("HandlePublish", Integer.TYPE, new byte[0].getClass()));
     // Test sending chunk directly.
     DdmServer.registerHandler(MY_DDMS_TYPE, SINGLE_HANDLER);
+    DdmServer.registerHandler(MY_EMPTY_DDMS_TYPE, SINGLE_HANDLER);
     DdmServer.registrationComplete();
     byte[] data = new byte[] { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
     System.out.println("Sending data " + Arrays.toString(data));
     Chunk res = processChunk(data);
+    System.out.println("JVMTI returned chunk: " + printChunk(res));
+
+    // Test sending an empty chunk.
+    System.out.println("Sending empty data array");
+    res = processChunk(new byte[0]);
     System.out.println("JVMTI returned chunk: " + printChunk(res));
 
     // Test sending chunk through DdmServer#sendChunk
@@ -124,6 +136,13 @@ public class Test1940 {
         MY_DDMS_TYPE, new byte[] { 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10 }, 0, 8);
     System.out.println("Sending chunk: " + printChunk(c));
     DdmServer.sendChunk(c);
+
+    // Test getting back an empty chunk.
+    data = new byte[] { 0x1 };
+    System.out.println(
+        "Sending data " + Arrays.toString(data) + " to chunk handler " + MY_EMPTY_DDMS_TYPE);
+    res = processChunk(new Chunk(MY_EMPTY_DDMS_TYPE, data, 0, 1));
+    System.out.println("JVMTI returned chunk: " + printChunk(res));
 
     // Test thread chunks are sent.
     final boolean[] types_seen = new boolean[] { false, false, false };

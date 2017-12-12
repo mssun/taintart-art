@@ -4376,15 +4376,12 @@ bool Dbg::DdmHandleChunk(JNIEnv* env,
                              replyData.get(),
                              offset,
                              length);
-  if (length == 0 || replyData.get() == nullptr) {
-    return false;
-  }
-
   out_data->resize(length);
   env->GetByteArrayRegion(replyData.get(),
                           offset,
                           length,
                           reinterpret_cast<jbyte*>(out_data->data()));
+
   return true;
 }
 
@@ -4418,7 +4415,7 @@ bool Dbg::DdmHandlePacket(JDWP::Request* request, uint8_t** pReplyBuf, int* pRep
   std::vector<uint8_t> out_data;
   uint32_t out_type = 0;
   request->Skip(request_length);
-  if (!DdmHandleChunk(env, type, data, &out_type, &out_data)) {
+  if (!DdmHandleChunk(env, type, data, &out_type, &out_data) || out_data.empty()) {
     return false;
   }
   const uint32_t kDdmHeaderSize = 8;
