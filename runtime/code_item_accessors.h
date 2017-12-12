@@ -132,6 +132,30 @@ class CodeItemDataAccessor : public CodeItemInstructionAccessor {
   uint16_t tries_size_;
 };
 
+// Abstract accesses to code item data including debug info offset. More heavy weight than the other
+// helpers.
+class CodeItemDebugInfoAccessor : public CodeItemDataAccessor {
+ public:
+  CodeItemDebugInfoAccessor() = default;
+
+  // Handles null code items, but not null dex files.
+  ALWAYS_INLINE CodeItemDebugInfoAccessor(const DexFile* dex_file,
+                                          const DexFile::CodeItem* code_item);
+
+  ALWAYS_INLINE explicit CodeItemDebugInfoAccessor(ArtMethod* method);
+
+  uint32_t DebugInfoOffset() const {
+    return debug_info_offset_;
+  }
+
+ protected:
+  ALWAYS_INLINE void Init(const CompactDexFile::CodeItem& code_item);
+  ALWAYS_INLINE void Init(const StandardDexFile::CodeItem& code_item);
+
+ private:
+  uint32_t debug_info_offset_ = 0u;
+};
+
 }  // namespace art
 
 #endif  // ART_RUNTIME_CODE_ITEM_ACCESSORS_H_

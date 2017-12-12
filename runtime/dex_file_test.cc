@@ -731,7 +731,14 @@ TEST_F(DexFileTest, OpenDexDebugInfoLocalNullType) {
   const DexFile::ClassDef& class_def = raw->GetClassDef(0);
   const DexFile::CodeItem* code_item = raw->GetCodeItem(raw->FindCodeItemOffset(class_def, 1));
   uint32_t debug_info_offset = raw->GetDebugInfoOffset(code_item);
-  ASSERT_TRUE(raw->DecodeDebugLocalInfo(code_item, debug_info_offset, true, 1, Callback, nullptr));
+  ASSERT_TRUE(raw->DecodeDebugLocalInfo(code_item->registers_size_,
+                                        code_item->ins_size_,
+                                        code_item->insns_size_in_code_units_,
+                                        debug_info_offset,
+                                        true,
+                                        1,
+                                        Callback,
+                                        nullptr));
 }
 
 }  // namespace art

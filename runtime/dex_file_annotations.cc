@@ -1559,14 +1559,12 @@ int32_t GetLineNumFromPC(const DexFile* dex_file, ArtMethod* method, uint32_t re
     return -2;
   }
 
-  const DexFile::CodeItem* code_item = dex_file->GetCodeItem(method->GetCodeItemOffset());
-  DCHECK(code_item != nullptr) << method->PrettyMethod() << " " << dex_file->GetLocation();
+  CodeItemDebugInfoAccessor accessor(method);
+  DCHECK(accessor.HasCodeItem()) << method->PrettyMethod() << " " << dex_file->GetLocation();
 
   // A method with no line number info should return -1
   DexFile::LineNumFromPcContext context(rel_pc, -1);
-  uint32_t debug_info_offset = OatFile::GetDebugInfoOffset(*dex_file, code_item);
-  dex_file->DecodeDebugPositionInfo(
-      code_item, debug_info_offset, DexFile::LineNumForPcCb, &context);
+  dex_file->DecodeDebugPositionInfo(accessor.DebugInfoOffset(), DexFile::LineNumForPcCb, &context);
   return context.line_num_;
 }
 
