@@ -954,15 +954,14 @@ TEST_F(ClassLinkerTest, LookupResolvedType) {
   ObjPtr<mirror::Class> klass = class_linker_->FindClass(soa.Self(), "LMyClass;", class_loader);
   dex::TypeIndex type_idx = klass->GetClassDef()->class_idx_;
   ObjPtr<mirror::DexCache> dex_cache = klass->GetDexCache();
-  const DexFile& dex_file = klass->GetDexFile();
   EXPECT_OBJ_PTR_EQ(
-      class_linker_->LookupResolvedType(dex_file, type_idx, dex_cache, class_loader.Get()),
+      class_linker_->LookupResolvedType(type_idx, dex_cache, class_loader.Get()),
       klass);
   // Zero out the resolved type and make sure LookupResolvedType still finds it.
   dex_cache->ClearResolvedType(type_idx);
   EXPECT_TRUE(dex_cache->GetResolvedType(type_idx) == nullptr);
   EXPECT_OBJ_PTR_EQ(
-      class_linker_->LookupResolvedType(dex_file, type_idx, dex_cache, class_loader.Get()),
+      class_linker_->LookupResolvedType(type_idx, dex_cache, class_loader.Get()),
       klass);
 }
 
@@ -983,7 +982,7 @@ TEST_F(ClassLinkerTest, LookupResolvedTypeArray) {
   dex::TypeIndex array_idx = dex_file.GetIndexForTypeId(*array_id);
   // Check that the array class wasn't resolved yet.
   EXPECT_OBJ_PTR_EQ(
-      class_linker_->LookupResolvedType(dex_file, array_idx, dex_cache.Get(), class_loader.Get()),
+      class_linker_->LookupResolvedType(array_idx, dex_cache.Get(), class_loader.Get()),
       ObjPtr<mirror::Class>(nullptr));
   // Resolve the array class we want to test.
   ObjPtr<mirror::Class> array_klass
@@ -991,13 +990,13 @@ TEST_F(ClassLinkerTest, LookupResolvedTypeArray) {
   ASSERT_OBJ_PTR_NE(array_klass, ObjPtr<mirror::Class>(nullptr));
   // Test that LookupResolvedType() finds the array class.
   EXPECT_OBJ_PTR_EQ(
-      class_linker_->LookupResolvedType(dex_file, array_idx, dex_cache.Get(), class_loader.Get()),
+      class_linker_->LookupResolvedType(array_idx, dex_cache.Get(), class_loader.Get()),
       array_klass);
   // Zero out the resolved type and make sure LookupResolvedType() still finds it.
   dex_cache->ClearResolvedType(array_idx);
   EXPECT_TRUE(dex_cache->GetResolvedType(array_idx) == nullptr);
   EXPECT_OBJ_PTR_EQ(
-      class_linker_->LookupResolvedType(dex_file, array_idx, dex_cache.Get(), class_loader.Get()),
+      class_linker_->LookupResolvedType(array_idx, dex_cache.Get(), class_loader.Get()),
       array_klass);
 }
 
@@ -1012,15 +1011,14 @@ TEST_F(ClassLinkerTest, LookupResolvedTypeErroneousInit) {
   ASSERT_OBJ_PTR_NE(klass.Get(), ObjPtr<mirror::Class>(nullptr));
   dex::TypeIndex type_idx = klass->GetClassDef()->class_idx_;
   Handle<mirror::DexCache> dex_cache = hs.NewHandle(klass->GetDexCache());
-  const DexFile& dex_file = klass->GetDexFile();
   EXPECT_OBJ_PTR_EQ(
-      class_linker_->LookupResolvedType(dex_file, type_idx, dex_cache.Get(), class_loader.Get()),
+      class_linker_->LookupResolvedType(type_idx, dex_cache.Get(), class_loader.Get()),
       klass.Get());
   // Zero out the resolved type and make sure LookupResolvedType still finds it.
   dex_cache->ClearResolvedType(type_idx);
   EXPECT_TRUE(dex_cache->GetResolvedType(type_idx) == nullptr);
   EXPECT_OBJ_PTR_EQ(
-      class_linker_->LookupResolvedType(dex_file, type_idx, dex_cache.Get(), class_loader.Get()),
+      class_linker_->LookupResolvedType(type_idx, dex_cache.Get(), class_loader.Get()),
       klass.Get());
   // Force initialization to turn the class erroneous.
   bool initialized = class_linker_->EnsureInitialized(soa.Self(),
@@ -1032,13 +1030,13 @@ TEST_F(ClassLinkerTest, LookupResolvedTypeErroneousInit) {
   soa.Self()->ClearException();
   // Check that the LookupResolvedType() can still find the resolved type.
   EXPECT_OBJ_PTR_EQ(
-      class_linker_->LookupResolvedType(dex_file, type_idx, dex_cache.Get(), class_loader.Get()),
+      class_linker_->LookupResolvedType(type_idx, dex_cache.Get(), class_loader.Get()),
       klass.Get());
   // Zero out the resolved type and make sure LookupResolvedType() still finds it.
   dex_cache->ClearResolvedType(type_idx);
   EXPECT_TRUE(dex_cache->GetResolvedType(type_idx) == nullptr);
   EXPECT_OBJ_PTR_EQ(
-      class_linker_->LookupResolvedType(dex_file, type_idx, dex_cache.Get(), class_loader.Get()),
+      class_linker_->LookupResolvedType(type_idx, dex_cache.Get(), class_loader.Get()),
       klass.Get());
 }
 

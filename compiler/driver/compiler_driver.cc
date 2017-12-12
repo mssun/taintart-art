@@ -1048,22 +1048,21 @@ void CompilerDriver::LoadImageClasses(TimingLogger* timings) {
     for (const auto& exception_type : unresolved_exception_types) {
       dex::TypeIndex exception_type_idx = exception_type.first;
       const DexFile* dex_file = exception_type.second;
-      StackHandleScope<2> hs2(self);
+      StackHandleScope<1> hs2(self);
       Handle<mirror::DexCache> dex_cache(hs2.NewHandle(class_linker->RegisterDexFile(*dex_file,
                                                                                      nullptr)));
-      Handle<mirror::Class> klass(hs2.NewHandle(
+      ObjPtr<mirror::Class> klass =
           (dex_cache != nullptr)
-              ? class_linker->ResolveType(*dex_file,
-                                          exception_type_idx,
+              ? class_linker->ResolveType(exception_type_idx,
                                           dex_cache,
                                           ScopedNullHandle<mirror::ClassLoader>())
-              : nullptr));
+              : nullptr;
       if (klass == nullptr) {
         const DexFile::TypeId& type_id = dex_file->GetTypeId(exception_type_idx);
         const char* descriptor = dex_file->GetTypeDescriptor(type_id);
         LOG(FATAL) << "Failed to resolve class " << descriptor;
       }
-      DCHECK(java_lang_Throwable->IsAssignableFrom(klass.Get()));
+      DCHECK(java_lang_Throwable->IsAssignableFrom(klass));
     }
     // Resolving exceptions may load classes that reference more exceptions, iterate until no
     // more are found
@@ -1638,7 +1637,7 @@ class ResolveClassFieldsAndMethodsVisitor : public CompilationVisitor {
         soa.Self(), dex_file)));
     // Resolve the class.
     ObjPtr<mirror::Class> klass =
-        class_linker->ResolveType(dex_file, class_def.class_idx_, dex_cache, class_loader);
+        class_linker->ResolveType(class_def.class_idx_, dex_cache, class_loader);
     bool resolve_fields_and_methods;
     if (klass == nullptr) {
       // Class couldn't be resolved, for example, super-class is in a different dex file. Don't
@@ -1690,7 +1689,10 @@ class ResolveClassFieldsAndMethodsVisitor : public CompilationVisitor {
       if (resolve_fields_and_methods) {
         while (it.HasNextMethod()) {
           ArtMethod* method = class_linker->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
-              dex_file, it.GetMemberIndex(), dex_cache, class_loader, nullptr,
+              it.GetMemberIndex(),
+              dex_cache,
+              class_loader,
+              /* referrer */ nullptr,
               it.GetMethodInvokeType(class_def));
           if (method == nullptr) {
             CheckAndClearResolveException(soa.Self());
@@ -1726,7 +1728,7 @@ class ResolveTypeVisitor : public CompilationVisitor {
         dex_file,
         class_loader.Get())));
     ObjPtr<mirror::Class> klass = (dex_cache != nullptr)
-        ? class_linker->ResolveType(dex_file, dex::TypeIndex(type_idx), dex_cache, class_loader)
+        ? class_linker->ResolveType(dex::TypeIndex(type_idx), dex_cache, class_loader)
         : nullptr;
 
     if (klass == nullptr) {

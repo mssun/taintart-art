@@ -1050,8 +1050,7 @@ void ImageWriter::PruneAndPreloadDexCache(ObjPtr<mirror::DexCache> dex_cache,
     const DexFile::MethodId& method_id = dex_file.GetMethodId(i);
     if (method_id.class_idx_ != last_class_idx) {
       last_class_idx = method_id.class_idx_;
-      last_class = class_linker->LookupResolvedType(
-          dex_file, last_class_idx, dex_cache, class_loader);
+      last_class = class_linker->LookupResolvedType(last_class_idx, dex_cache, class_loader);
       if (last_class != nullptr && !KeepClass(last_class)) {
         last_class = nullptr;
       }
@@ -1096,8 +1095,7 @@ void ImageWriter::PruneAndPreloadDexCache(ObjPtr<mirror::DexCache> dex_cache,
     const DexFile::FieldId& field_id = dex_file.GetFieldId(i);
     if (field_id.class_idx_ != last_class_idx) {
       last_class_idx = field_id.class_idx_;
-      last_class = class_linker->LookupResolvedType(
-          dex_file, last_class_idx, dex_cache, class_loader);
+      last_class = class_linker->LookupResolvedType(last_class_idx, dex_cache, class_loader);
       if (last_class != nullptr && !KeepClass(last_class)) {
         last_class = nullptr;
       }
@@ -1130,7 +1128,7 @@ void ImageWriter::PruneAndPreloadDexCache(ObjPtr<mirror::DexCache> dex_cache,
     uint32_t stored_index = pair.index;
     ObjPtr<mirror::Class> klass = pair.object.Read();
     if (klass == nullptr || i < stored_index) {
-      klass = class_linker->LookupResolvedType(dex_file, type_idx, dex_cache, class_loader);
+      klass = class_linker->LookupResolvedType(type_idx, dex_cache, class_loader);
       if (klass != nullptr) {
         DCHECK_EQ(dex_cache->GetResolvedType(type_idx), klass);
         stored_index = i;  // For correct clearing below if not keeping the `klass`.

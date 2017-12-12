@@ -146,11 +146,11 @@ static jobjectArray Class_getInterfacesInternal(JNIEnv* env, jobject javaThis) {
   // with kActiveTransaction == false.
   DCHECK(!Runtime::Current()->IsActiveTransaction());
 
+  ClassLinker* linker = Runtime::Current()->GetClassLinker();
   MutableHandle<mirror::Class> interface(hs.NewHandle<mirror::Class>(nullptr));
   for (uint32_t i = 0; i < num_ifaces; ++i) {
     const dex::TypeIndex type_idx = iface_list->GetTypeItem(i).type_idx_;
-    interface.Assign(ClassLinker::LookupResolvedType(
-        type_idx, klass->GetDexCache(), klass->GetClassLoader()));
+    interface.Assign(linker->LookupResolvedType(type_idx, klass.Get()));
     ifaces->SetWithoutChecks<false>(i, interface.Get());
   }
 

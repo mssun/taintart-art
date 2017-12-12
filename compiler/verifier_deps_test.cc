@@ -158,11 +158,10 @@ class VerifierDepsTest : public CommonCompilerTest {
     while (it.HasNextDirectMethod()) {
       ArtMethod* resolved_method =
           class_linker_->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
-              *primary_dex_file_,
               it.GetMemberIndex(),
               dex_cache_handle,
               class_loader_handle,
-              nullptr,
+              /* referrer */ nullptr,
               it.GetMethodInvokeType(*class_def));
       CHECK(resolved_method != nullptr);
       if (method_name == resolved_method->GetName()) {
