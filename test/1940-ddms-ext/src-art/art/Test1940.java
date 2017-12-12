@@ -31,6 +31,7 @@ public class Test1940 {
   public static final int MY_DDMS_TYPE = 0xDEADBEEF;
   public static final int MY_DDMS_RESPONSE_TYPE = 0xFADE7357;
   public static final int MY_EMPTY_DDMS_TYPE = 0xABCDEF01;
+  public static final int MY_INVALID_DDMS_TYPE = 0x12345678;
 
   public static final boolean PRINT_ALL_CHUNKS = false;
 
@@ -74,6 +75,9 @@ public class Test1940 {
         return ret;
       } else if (req.type == MY_EMPTY_DDMS_TYPE) {
         return new Chunk(MY_DDMS_RESPONSE_TYPE, new byte[0], 0, 0);
+      } else if (req.type == MY_INVALID_DDMS_TYPE) {
+        // This is a very invalid chunk.
+        return new Chunk(MY_DDMS_RESPONSE_TYPE, new byte[] { 0 }, /*offset*/ 12, /*length*/ 55);
       } else {
         throw new TestError("Unknown ddm request type: " + req.type);
       }
@@ -120,6 +124,7 @@ public class Test1940 {
     // Test sending chunk directly.
     DdmServer.registerHandler(MY_DDMS_TYPE, SINGLE_HANDLER);
     DdmServer.registerHandler(MY_EMPTY_DDMS_TYPE, SINGLE_HANDLER);
+    DdmServer.registerHandler(MY_INVALID_DDMS_TYPE, SINGLE_HANDLER);
     DdmServer.registrationComplete();
     byte[] data = new byte[] { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
     System.out.println("Sending data " + Arrays.toString(data));
@@ -143,6 +148,16 @@ public class Test1940 {
         "Sending data " + Arrays.toString(data) + " to chunk handler " + MY_EMPTY_DDMS_TYPE);
     res = processChunk(new Chunk(MY_EMPTY_DDMS_TYPE, data, 0, 1));
     System.out.println("JVMTI returned chunk: " + printChunk(res));
+
+    // Test getting back an invalid chunk.
+    System.out.println(
+        "Sending data " + Arrays.toString(data) + " to chunk handler " + MY_INVALID_DDMS_TYPE);
+    try {
+      res = processChunk(new Chunk(MY_INVALID_DDMS_TYPE, data, 0, 1));
+      System.out.println("JVMTI returned chunk: " + printChunk(res));
+    } catch (RuntimeException e) {
+      System.out.println("Got error: " + e.getMessage());
+    }
 
     // Test thread chunks are sent.
     final boolean[] types_seen = new boolean[] { false, false, false };

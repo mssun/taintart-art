@@ -4382,6 +4382,14 @@ bool Dbg::DdmHandleChunk(JNIEnv* env,
                           length,
                           reinterpret_cast<jbyte*>(out_data->data()));
 
+  if (env->ExceptionCheck()) {
+    LOG(INFO) << StringPrintf("Exception thrown when reading response data from dispatcher 0x%08x",
+                              type);
+    env->ExceptionDescribe();
+    env->ExceptionClear();
+    return false;
+  }
+
   return true;
 }
 
