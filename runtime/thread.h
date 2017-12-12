@@ -599,6 +599,9 @@ class Thread {
       jobjectArray output_array = nullptr, int* stack_depth = nullptr)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  jobjectArray CreateAnnotatedStackTrace(const ScopedObjectAccessAlreadyRunnable& soa) const
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   bool HasDebuggerShadowFrames() const {
     return tlsPtr_.frame_id_to_shadow_frame != nullptr;
   }
