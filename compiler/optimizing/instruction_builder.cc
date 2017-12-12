@@ -442,17 +442,15 @@ ArenaBitVector* HInstructionBuilder::FindNativeDebugInfoLocations() {
       return false;
     }
   };
-  const uint32_t num_instructions = code_item_->insns_size_in_code_units_;
+  CodeItemDebugInfoAccessor accessor(dex_file_, code_item_);
   ArenaBitVector* locations = ArenaBitVector::Create(local_allocator_,
-                                                     num_instructions,
+                                                     accessor.InsnsSizeInCodeUnits(),
                                                      /* expandable */ false,
                                                      kArenaAllocGraphBuilder);
   locations->ClearAllBits();
-  uint32_t debug_info_offset = OatFile::GetDebugInfoOffset(*dex_file_, code_item_);
-  dex_file_->DecodeDebugPositionInfo(code_item_, debug_info_offset, Callback::Position, locations);
+  dex_file_->DecodeDebugPositionInfo(accessor.DebugInfoOffset(), Callback::Position, locations);
   // Instruction-specific tweaks.
-  IterationRange<DexInstructionIterator> instructions = code_item_->Instructions();
-  for (const DexInstructionPcPair& inst : instructions) {
+  for (const DexInstructionPcPair& inst : accessor) {
     switch (inst->Opcode()) {
       case Instruction::MOVE_EXCEPTION: {
         // Stop in native debugger after the exception has been moved.
@@ -461,7 +459,7 @@ ArenaBitVector* HInstructionBuilder::FindNativeDebugInfoLocations() {
         locations->ClearBit(inst.DexPc());
         DexInstructionIterator next = std::next(DexInstructionIterator(inst));
         DCHECK(next.DexPc() != inst.DexPc());
-        if (next != instructions.end()) {
+        if (next != accessor.end()) {
           locations->SetBit(next.DexPc());
         }
         break;
