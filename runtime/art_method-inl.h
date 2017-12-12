@@ -106,23 +106,16 @@ inline uint32_t ArtMethod::GetDexMethodIndex() {
 
 inline ObjPtr<mirror::Class> ArtMethod::LookupResolvedClassFromTypeIndex(dex::TypeIndex type_idx) {
   ScopedAssertNoThreadSuspension ants(__FUNCTION__);
-  ObjPtr<mirror::DexCache> dex_cache = GetDexCache();
-  ObjPtr<mirror::Class> type = dex_cache->GetResolvedType(type_idx);
-  if (UNLIKELY(type == nullptr)) {
-    type = Runtime::Current()->GetClassLinker()->LookupResolvedType(
-        *dex_cache->GetDexFile(), type_idx, dex_cache, GetClassLoader());
-  }
-  return type.Ptr();
+  ObjPtr<mirror::Class> type =
+      Runtime::Current()->GetClassLinker()->LookupResolvedType(type_idx, this);
+  DCHECK(!Thread::Current()->IsExceptionPending());
+  return type;
 }
 
 inline ObjPtr<mirror::Class> ArtMethod::ResolveClassFromTypeIndex(dex::TypeIndex type_idx) {
-  ObjPtr<mirror::DexCache> dex_cache = GetDexCache();
-  ObjPtr<mirror::Class> type = dex_cache->GetResolvedType(type_idx);
-  if (UNLIKELY(type == nullptr)) {
-    type = Runtime::Current()->GetClassLinker()->ResolveType(type_idx, this);
-    CHECK(type != nullptr || Thread::Current()->IsExceptionPending());
-  }
-  return type.Ptr();
+  ObjPtr<mirror::Class> type = Runtime::Current()->GetClassLinker()->ResolveType(type_idx, this);
+  DCHECK_EQ(type == nullptr, Thread::Current()->IsExceptionPending());
+  return type;
 }
 
 inline bool ArtMethod::CheckIncompatibleClassChange(InvokeType type) {
@@ -305,9 +298,7 @@ inline const DexFile::ClassDef& ArtMethod::GetClassDef() {
 inline const char* ArtMethod::GetReturnTypeDescriptor() {
   DCHECK(!IsProxyMethod());
   const DexFile* dex_file = GetDexFile();
-  const DexFile::MethodId& method_id = dex_file->GetMethodId(GetDexMethodIndex());
-  const DexFile::ProtoId& proto_id = dex_file->GetMethodPrototype(method_id);
-  return dex_file->GetTypeDescriptor(dex_file->GetTypeId(proto_id.return_type_idx_));
+  return dex_file->GetTypeDescriptor(dex_file->GetTypeId(GetReturnTypeIndex()));
 }
 
 inline Primitive::Type ArtMethod::GetReturnTypePrimitive() {
