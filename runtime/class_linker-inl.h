@@ -299,8 +299,7 @@ inline ArtField* ClassLinker::ResolveField(uint32_t field_idx,
     StackHandleScope<2> hs(Thread::Current());
     Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
     Handle<mirror::ClassLoader> class_loader(hs.NewHandle(declaring_class->GetClassLoader()));
-    const DexFile& dex_file = *dex_cache->GetDexFile();
-    resolved_field = ResolveField(dex_file, field_idx, dex_cache, class_loader, is_static);
+    resolved_field = ResolveField(field_idx, dex_cache, class_loader, is_static);
     // Note: We cannot check here to see whether we added the field to the cache. The type
     //       might be an erroneous class, which results in it being hidden from us.
   }

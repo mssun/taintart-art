@@ -702,7 +702,6 @@ void CompilerDriver::Resolve(jobject class_loader,
 //       stable order.
 
 static void ResolveConstStrings(Handle<mirror::DexCache> dex_cache,
-                                const DexFile& dex_file,
                                 const DexFile::CodeItem* code_item)
       REQUIRES_SHARED(Locks::mutator_lock_) {
   if (code_item == nullptr) {
@@ -718,8 +717,7 @@ static void ResolveConstStrings(Handle<mirror::DexCache> dex_cache,
         dex::StringIndex string_index((inst->Opcode() == Instruction::CONST_STRING)
             ? inst->VRegB_21c()
             : inst->VRegB_31c());
-        ObjPtr<mirror::String> string =
-            class_linker->ResolveString(dex_file, string_index, dex_cache);
+        ObjPtr<mirror::String> string = class_linker->ResolveString(string_index, dex_cache);
         CHECK(string != nullptr) << "Could not allocate a string when forcing determinism";
         break;
       }
@@ -774,7 +772,7 @@ static void ResolveConstStrings(CompilerDriver* driver,
           continue;
         }
         previous_method_idx = method_idx;
-        ResolveConstStrings(dex_cache, *dex_file, it.GetMethodCodeItem());
+        ResolveConstStrings(dex_cache, it.GetMethodCodeItem());
         it.Next();
       }
       DCHECK(!it.HasNext());
@@ -1369,17 +1367,18 @@ void CompilerDriver::ProcessedStaticField(bool resolved, bool local) {
 }
 
 ArtField* CompilerDriver::ComputeInstanceFieldInfo(uint32_t field_idx,
-                                                   const DexCompilationUnit* mUnit, bool is_put,
+                                                   const DexCompilationUnit* mUnit,
+                                                   bool is_put,
                                                    const ScopedObjectAccess& soa) {
   // Try to resolve the field and compiling method's class.
   ArtField* resolved_field;
   ObjPtr<mirror::Class> referrer_class;
   Handle<mirror::DexCache> dex_cache(mUnit->GetDexCache());
   {
-    Handle<mirror::ClassLoader> class_loader_handle = mUnit->GetClassLoader();
-    resolved_field = ResolveField(soa, dex_cache, class_loader_handle, mUnit, field_idx, false);
+    Handle<mirror::ClassLoader> class_loader = mUnit->GetClassLoader();
+    resolved_field = ResolveField(soa, dex_cache, class_loader, field_idx, /* is_static */ false);
     referrer_class = resolved_field != nullptr
-        ? ResolveCompilingMethodsClass(soa, dex_cache, class_loader_handle, mUnit) : nullptr;
+        ? ResolveCompilingMethodsClass(soa, dex_cache, class_loader, mUnit) : nullptr;
   }
   bool can_link = false;
   if (resolved_field != nullptr && referrer_class != nullptr) {
@@ -1665,8 +1664,8 @@ class ResolveClassFieldsAndMethodsVisitor : public CompilationVisitor {
       ClassDataItemIterator it(dex_file, class_data);
       while (it.HasNextStaticField()) {
         if (resolve_fields_and_methods) {
-          ArtField* field = class_linker->ResolveField(dex_file, it.GetMemberIndex(),
-                                                               dex_cache, class_loader, true);
+          ArtField* field = class_linker->ResolveField(
+              it.GetMemberIndex(), dex_cache, class_loader, /* is_static */ true);
           if (field == nullptr) {
             CheckAndClearResolveException(soa.Self());
           }
@@ -1680,8 +1679,8 @@ class ResolveClassFieldsAndMethodsVisitor : public CompilationVisitor {
           requires_constructor_barrier = true;
         }
         if (resolve_fields_and_methods) {
-          ArtField* field = class_linker->ResolveField(dex_file, it.GetMemberIndex(),
-                                                               dex_cache, class_loader, false);
+          ArtField* field = class_linker->ResolveField(
+              it.GetMemberIndex(), dex_cache, class_loader, /* is_static */ false);
           if (field == nullptr) {
             CheckAndClearResolveException(soa.Self());
           }
@@ -2330,22 +2329,20 @@ class InitializeClassVisitor : public CompilationVisitor {
     DCHECK(!klass->IsInitialized());
 
     StackHandleScope<1> hs(Thread::Current());
-    Handle<mirror::DexCache> h_dex_cache = hs.NewHandle(klass->GetDexCache());
-    const DexFile* dex_file = manager_->GetDexFile();
+    Handle<mirror::DexCache> dex_cache = hs.NewHandle(klass->GetDexCache());
     const DexFile::ClassDef* class_def = klass->GetClassDef();
     ClassLinker* class_linker = manager_->GetClassLinker();
 
     // Check encoded final field values for strings and intern.
-    annotations::RuntimeEncodedStaticFieldValueIterator value_it(*dex_file,
-                                                                 &h_dex_cache,
-                                                                 &class_loader,
+    annotations::RuntimeEncodedStaticFieldValueIterator value_it(dex_cache,
+                                                                 class_loader,
                                                                  manager_->GetClassLinker(),
                                                                  *class_def);
     for ( ; value_it.HasNext(); value_it.Next()) {
       if (value_it.GetValueType() == annotations::RuntimeEncodedStaticFieldValueIterator::kString) {
         // Resolve the string. This will intern the string.
         art::ObjPtr<mirror::String> resolved = class_linker->ResolveString(
-            *dex_file, dex::StringIndex(value_it.GetJavaValue().i), h_dex_cache);
+            dex::StringIndex(value_it.GetJavaValue().i), dex_cache);
         CHECK(resolved != nullptr);
       }
     }
@@ -2358,11 +2355,11 @@ class InitializeClassVisitor : public CompilationVisitor {
       for (const DexInstructionPcPair& inst : code_item->Instructions()) {
         if (inst->Opcode() == Instruction::CONST_STRING) {
           ObjPtr<mirror::String> s = class_linker->ResolveString(
-              *dex_file, dex::StringIndex(inst->VRegB_21c()), h_dex_cache);
+              dex::StringIndex(inst->VRegB_21c()), dex_cache);
           CHECK(s != nullptr);
         } else if (inst->Opcode() == Instruction::CONST_STRING_JUMBO) {
           ObjPtr<mirror::String> s = class_linker->ResolveString(
-              *dex_file, dex::StringIndex(inst->VRegB_31c()), h_dex_cache);
+              dex::StringIndex(inst->VRegB_31c()), dex_cache);
           CHECK(s != nullptr);
         }
       }

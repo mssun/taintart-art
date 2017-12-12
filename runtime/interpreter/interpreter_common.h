@@ -207,17 +207,17 @@ static inline bool DoInvoke(Thread* self,
   }
 }
 
-static inline mirror::MethodHandle* ResolveMethodHandle(Thread* self,
-                                                        uint32_t method_handle_index,
-                                                        ArtMethod* referrer)
+static inline ObjPtr<mirror::MethodHandle> ResolveMethodHandle(Thread* self,
+                                                               uint32_t method_handle_index,
+                                                               ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   return class_linker->ResolveMethodHandle(self, method_handle_index, referrer);
 }
 
-static inline mirror::MethodType* ResolveMethodType(Thread* self,
-                                                    uint32_t method_type_index,
-                                                    ArtMethod* referrer)
+static inline ObjPtr<mirror::MethodType> ResolveMethodType(Thread* self,
+                                                           uint32_t method_type_index,
+                                                           ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   return class_linker->ResolveMethodType(self, method_type_index, referrer);
@@ -349,9 +349,7 @@ static inline ObjPtr<mirror::String> ResolveString(Thread* self,
   if (UNLIKELY(string_ptr == nullptr)) {
     StackHandleScope<1> hs(self);
     Handle<mirror::DexCache> dex_cache(hs.NewHandle(method->GetDexCache()));
-    string_ptr = Runtime::Current()->GetClassLinker()->ResolveString(*dex_cache->GetDexFile(),
-                                                                     string_idx,
-                                                                     dex_cache);
+    string_ptr = Runtime::Current()->GetClassLinker()->ResolveString(string_idx, dex_cache);
   }
   return string_ptr;
 }

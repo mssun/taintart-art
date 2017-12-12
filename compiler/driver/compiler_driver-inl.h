@@ -58,13 +58,13 @@ inline ObjPtr<mirror::Class> CompilerDriver::ResolveCompilingMethodsClass(
   return ResolveClass(soa, dex_cache, class_loader, referrer_method_id.class_idx_, mUnit);
 }
 
-inline ArtField* CompilerDriver::ResolveFieldWithDexFile(
-    const ScopedObjectAccess& soa, Handle<mirror::DexCache> dex_cache,
-    Handle<mirror::ClassLoader> class_loader, const DexFile* dex_file,
-    uint32_t field_idx, bool is_static) {
-  DCHECK_EQ(dex_cache->GetDexFile(), dex_file);
+inline ArtField* CompilerDriver::ResolveField(const ScopedObjectAccess& soa,
+                                              Handle<mirror::DexCache> dex_cache,
+                                              Handle<mirror::ClassLoader> class_loader,
+                                              uint32_t field_idx,
+                                              bool is_static) {
   ArtField* resolved_field = Runtime::Current()->GetClassLinker()->ResolveField(
-      *dex_file, field_idx, dex_cache, class_loader, is_static);
+      field_idx, dex_cache, class_loader, is_static);
   DCHECK_EQ(resolved_field == nullptr, soa.Self()->IsExceptionPending());
   if (UNLIKELY(resolved_field == nullptr)) {
     // Clean up any exception left by type resolution.
@@ -77,15 +77,6 @@ inline ArtField* CompilerDriver::ResolveFieldWithDexFile(
     return nullptr;
   }
   return resolved_field;
-}
-
-inline ArtField* CompilerDriver::ResolveField(
-    const ScopedObjectAccess& soa, Handle<mirror::DexCache> dex_cache,
-    Handle<mirror::ClassLoader> class_loader, const DexCompilationUnit* mUnit,
-    uint32_t field_idx, bool is_static) {
-  DCHECK_EQ(class_loader.Get(), mUnit->GetClassLoader().Get());
-  return ResolveFieldWithDexFile(soa, dex_cache, class_loader, mUnit->GetDexFile(), field_idx,
-                                 is_static);
 }
 
 inline std::pair<bool, bool> CompilerDriver::IsFastInstanceField(

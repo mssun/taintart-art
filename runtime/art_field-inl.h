@@ -353,11 +353,10 @@ inline ObjPtr<mirror::String> ArtField::GetStringName(Thread* self, bool resolve
   auto dex_field_index = GetDexFieldIndex();
   CHECK_NE(dex_field_index, dex::kDexNoIndex);
   ObjPtr<mirror::DexCache> dex_cache = GetDexCache();
-  const auto* dex_file = dex_cache->GetDexFile();
-  const auto& field_id = dex_file->GetFieldId(dex_field_index);
+  const DexFile::FieldId& field_id = dex_cache->GetDexFile()->GetFieldId(dex_field_index);
   ObjPtr<mirror::String> name = dex_cache->GetResolvedString(field_id.name_idx_);
   if (resolve && name == nullptr) {
-    name = ResolveGetStringName(self, *dex_file, field_id.name_idx_, dex_cache);
+    name = ResolveGetStringName(self, field_id.name_idx_, dex_cache);
   }
   return name;
 }

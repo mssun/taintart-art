@@ -1062,7 +1062,7 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
   // The second parameter is the name to lookup.
   {
     dex::StringIndex name_idx(static_cast<uint32_t>(it.GetJavaValue().i));
-    ObjPtr<mirror::String> name = class_linker->ResolveString(*dex_file, name_idx, dex_cache);
+    ObjPtr<mirror::String> name = class_linker->ResolveString(name_idx, dex_cache);
     if (name.IsNull()) {
       DCHECK(self->IsExceptionPending());
       return nullptr;
@@ -1073,12 +1073,8 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
 
   // The third parameter is the method type associated with the name.
   uint32_t method_type_idx = static_cast<uint32_t>(it.GetJavaValue().i);
-  Handle<mirror::MethodType>
-      method_type(hs.NewHandle(class_linker->ResolveMethodType(self,
-                                                               *dex_file,
-                                                               method_type_idx,
-                                                               dex_cache,
-                                                               class_loader)));
+  Handle<mirror::MethodType> method_type(hs.NewHandle(
+      class_linker->ResolveMethodType(self, method_type_idx, dex_cache, class_loader)));
   if (method_type.IsNull()) {
     DCHECK(self->IsExceptionPending());
     return nullptr;
@@ -1113,7 +1109,7 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
       case EncodedArrayValueIterator::ValueType::kMethodType: {
         uint32_t idx = static_cast<uint32_t>(jvalue.i);
         ObjPtr<mirror::MethodType> ref =
-            class_linker->ResolveMethodType(self, *dex_file, idx, dex_cache, class_loader);
+            class_linker->ResolveMethodType(self, idx, dex_cache, class_loader);
         if (ref.IsNull()) {
           DCHECK(self->IsExceptionPending());
           return nullptr;
@@ -1136,7 +1132,7 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
       }
       case EncodedArrayValueIterator::ValueType::kString: {
         dex::StringIndex idx(static_cast<uint32_t>(jvalue.i));
-        ObjPtr<mirror::String> ref = class_linker->ResolveString(*dex_file, idx, dex_cache);
+        ObjPtr<mirror::String> ref = class_linker->ResolveString(idx, dex_cache);
         if (ref.IsNull()) {
           DCHECK(self->IsExceptionPending());
           return nullptr;

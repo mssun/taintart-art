@@ -4818,7 +4818,6 @@ bool ClassLinker::InitializeClass(Thread* self, Handle<mirror::Class> klass,
   if (num_static_fields > 0) {
     const DexFile::ClassDef* dex_class_def = klass->GetClassDef();
     CHECK(dex_class_def != nullptr);
-    const DexFile& dex_file = klass->GetDexFile();
     StackHandleScope<3> hs(self);
     Handle<mirror::ClassLoader> class_loader(hs.NewHandle(klass->GetClassLoader()));
     Handle<mirror::DexCache> dex_cache(hs.NewHandle(klass->GetDexCache()));
@@ -4836,11 +4835,11 @@ bool ClassLinker::InitializeClass(Thread* self, Handle<mirror::Class> klass,
       }
     }
 
-    annotations::RuntimeEncodedStaticFieldValueIterator value_it(dex_file,
-                                                                 &dex_cache,
-                                                                 &class_loader,
+    annotations::RuntimeEncodedStaticFieldValueIterator value_it(dex_cache,
+                                                                 class_loader,
                                                                  this,
                                                                  *dex_class_def);
+    const DexFile& dex_file = *dex_cache->GetDexFile();
     const uint8_t* class_data = dex_file.GetClassData(*dex_class_def);
     ClassDataItemIterator field_it(dex_file, class_data);
     if (value_it.HasNext()) {
@@ -4848,7 +4847,7 @@ bool ClassLinker::InitializeClass(Thread* self, Handle<mirror::Class> klass,
       CHECK(can_init_statics);
       for ( ; value_it.HasNext(); value_it.Next(), field_it.Next()) {
         ArtField* field = ResolveField(
-            dex_file, field_it.GetMemberIndex(), dex_cache, class_loader, true);
+            field_it.GetMemberIndex(), dex_cache, class_loader, /* is_static */ true);
         if (Runtime::Current()->IsActiveTransaction()) {
           value_it.ReadValueToField<true>(field);
         } else {
@@ -7727,8 +7726,7 @@ void ClassLinker::CreateReferenceInstanceOffsets(Handle<mirror::Class> klass) {
   klass->SetReferenceInstanceOffsets(reference_offsets);
 }
 
-ObjPtr<mirror::String> ClassLinker::ResolveString(const DexFile& dex_file,
-                                                  dex::StringIndex string_idx,
+ObjPtr<mirror::String> ClassLinker::ResolveString(dex::StringIndex string_idx,
                                                   Handle<mirror::DexCache> dex_cache) {
   DCHECK(dex_cache != nullptr);
   Thread::PoisonObjectPointersIfDebug();
@@ -7736,6 +7734,7 @@ ObjPtr<mirror::String> ClassLinker::ResolveString(const DexFile& dex_file,
   if (resolved != nullptr) {
     return resolved;
   }
+  const DexFile& dex_file = *dex_cache->GetDexFile();
   uint32_t utf16_length;
   const char* utf8_data = dex_file.StringDataAndUtf16LengthByIdx(string_idx, &utf16_length);
   ObjPtr<mirror::String> string = intern_table_->InternStrong(utf16_length, utf8_data);
@@ -7745,14 +7744,14 @@ ObjPtr<mirror::String> ClassLinker::ResolveString(const DexFile& dex_file,
   return string;
 }
 
-ObjPtr<mirror::String> ClassLinker::LookupString(const DexFile& dex_file,
-                                                 dex::StringIndex string_idx,
+ObjPtr<mirror::String> ClassLinker::LookupString(dex::StringIndex string_idx,
                                                  ObjPtr<mirror::DexCache> dex_cache) {
   DCHECK(dex_cache != nullptr);
   ObjPtr<mirror::String> resolved = dex_cache->GetResolvedString(string_idx);
   if (resolved != nullptr) {
     return resolved;
   }
+  const DexFile& dex_file = *dex_cache->GetDexFile();
   uint32_t utf16_length;
   const char* utf8_data = dex_file.StringDataAndUtf16LengthByIdx(string_idx, &utf16_length);
   ObjPtr<mirror::String> string =
@@ -8114,8 +8113,7 @@ ArtField* ClassLinker::LookupResolvedField(uint32_t field_idx,
   return resolved_field;
 }
 
-ArtField* ClassLinker::ResolveField(const DexFile& dex_file,
-                                    uint32_t field_idx,
+ArtField* ClassLinker::ResolveField(uint32_t field_idx,
                                     Handle<mirror::DexCache> dex_cache,
                                     Handle<mirror::ClassLoader> class_loader,
                                     bool is_static) {
@@ -8125,6 +8123,7 @@ ArtField* ClassLinker::ResolveField(const DexFile& dex_file,
   if (resolved != nullptr) {
     return resolved;
   }
+  const DexFile& dex_file = *dex_cache->GetDexFile();
   const DexFile::FieldId& field_id = dex_file.GetFieldId(field_idx);
   Thread* const self = Thread::Current();
   ObjPtr<mirror::Class> klass = ResolveType(dex_file, field_id.class_idx_, dex_cache, class_loader);
@@ -8156,8 +8155,7 @@ ArtField* ClassLinker::ResolveField(const DexFile& dex_file,
   return resolved;
 }
 
-ArtField* ClassLinker::ResolveFieldJLS(const DexFile& dex_file,
-                                       uint32_t field_idx,
+ArtField* ClassLinker::ResolveFieldJLS(uint32_t field_idx,
                                        Handle<mirror::DexCache> dex_cache,
                                        Handle<mirror::ClassLoader> class_loader) {
   DCHECK(dex_cache != nullptr);
@@ -8166,6 +8164,7 @@ ArtField* ClassLinker::ResolveFieldJLS(const DexFile& dex_file,
   if (resolved != nullptr) {
     return resolved;
   }
+  const DexFile& dex_file = *dex_cache->GetDexFile();
   const DexFile::FieldId& field_id = dex_file.GetFieldId(field_idx);
   Thread* self = Thread::Current();
   ObjPtr<mirror::Class> klass(ResolveType(dex_file, field_id.class_idx_, dex_cache, class_loader));
@@ -8185,11 +8184,11 @@ ArtField* ClassLinker::ResolveFieldJLS(const DexFile& dex_file,
   return resolved;
 }
 
-mirror::MethodType* ClassLinker::ResolveMethodType(Thread* self,
-                                                   const DexFile& dex_file,
-                                                   uint32_t proto_idx,
-                                                   Handle<mirror::DexCache> dex_cache,
-                                                   Handle<mirror::ClassLoader> class_loader) {
+ObjPtr<mirror::MethodType> ClassLinker::ResolveMethodType(
+    Thread* self,
+    uint32_t proto_idx,
+    Handle<mirror::DexCache> dex_cache,
+    Handle<mirror::ClassLoader> class_loader) {
   DCHECK(Runtime::Current()->IsMethodHandlesEnabled());
   DCHECK(dex_cache != nullptr);
 
@@ -8201,6 +8200,7 @@ mirror::MethodType* ClassLinker::ResolveMethodType(Thread* self,
   StackHandleScope<4> hs(self);
 
   // First resolve the return type.
+  const DexFile& dex_file = *dex_cache->GetDexFile();
   const DexFile::ProtoId& proto_id = dex_file.GetProtoId(proto_idx);
   Handle<mirror::Class> return_type(hs.NewHandle(
       ResolveType(dex_file, proto_id.return_type_idx_, dex_cache, class_loader)));
@@ -8247,14 +8247,13 @@ mirror::MethodType* ClassLinker::ResolveMethodType(Thread* self,
   return type.Get();
 }
 
-mirror::MethodType* ClassLinker::ResolveMethodType(Thread* self,
-                                                   uint32_t proto_idx,
-                                                   ArtMethod* referrer) {
+ObjPtr<mirror::MethodType> ClassLinker::ResolveMethodType(Thread* self,
+                                                          uint32_t proto_idx,
+                                                          ArtMethod* referrer) {
   StackHandleScope<2> hs(self);
-  const DexFile* dex_file = referrer->GetDexFile();
   Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
   Handle<mirror::ClassLoader> class_loader(hs.NewHandle(referrer->GetClassLoader()));
-  return ResolveMethodType(self, *dex_file, proto_idx, dex_cache, class_loader);
+  return ResolveMethodType(self, proto_idx, dex_cache, class_loader);
 }
 
 mirror::MethodHandle* ClassLinker::ResolveMethodHandleForField(
@@ -8549,9 +8548,9 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForMethod(
   return mirror::MethodHandleImpl::Create(self, target, kind, method_type);
 }
 
-mirror::MethodHandle* ClassLinker::ResolveMethodHandle(Thread* self,
-                                                       uint32_t method_handle_idx,
-                                                       ArtMethod* referrer)
+ObjPtr<mirror::MethodHandle> ClassLinker::ResolveMethodHandle(Thread* self,
+                                                              uint32_t method_handle_idx,
+                                                              ArtMethod* referrer)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   const DexFile* const dex_file = referrer->GetDexFile();
   const DexFile::MethodHandleItem& method_handle = dex_file->GetMethodHandle(method_handle_idx);
