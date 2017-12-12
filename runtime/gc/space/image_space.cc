@@ -1574,7 +1574,9 @@ std::unique_ptr<ImageSpace> ImageSpace::CreateBootImage(const char* image_locati
     if (!Runtime::Current()->IsImageDex2OatEnabled()) {
       local_error_msg = "Patching disabled.";
     } else if (secondary_image) {
-      local_error_msg = "Cannot patch a secondary image.";
+      // We really want a working image. Prune and restart.
+      PruneDalvikCache(image_isa);
+      _exit(1);
     } else if (ImageCreationAllowed(is_global_cache, image_isa, &local_error_msg)) {
       bool patch_success =
           RelocateImage(image_location, cache_filename.c_str(), image_isa, &local_error_msg);
