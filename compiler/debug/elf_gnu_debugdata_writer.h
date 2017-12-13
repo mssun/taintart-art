@@ -91,8 +91,8 @@ static std::vector<uint8_t> MakeMiniDebugInfoInternal(
   builder->Start();
   // Mirror .rodata and .text as NOBITS sections.
   // It is needed to detected relocations after compression.
-  builder->GetRoData()->WriteNoBitsSection(rodata_section_size);
-  builder->GetText()->WriteNoBitsSection(text_section_size);
+  builder->GetRoData()->AllocateVirtualMemory(rodata_section_size);
+  builder->GetText()->AllocateVirtualMemory(text_section_size);
   WriteDebugSymbols(builder.get(), method_infos, false /* with_signature */);
   WriteCFISection(builder.get(),
                   method_infos,

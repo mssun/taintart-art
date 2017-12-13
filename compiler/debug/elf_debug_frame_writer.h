@@ -207,13 +207,12 @@ void WriteCFISection(linker::ElfBuilder<ElfTypes>* builder,
   }
 
   // Write .eh_frame/.debug_frame section.
-  auto* cfi_section = (format == dwarf::DW_DEBUG_FRAME_FORMAT
-                       ? builder->GetDebugFrame()
-                       : builder->GetEhFrame());
+  const bool is_debug_frame = format == dwarf::DW_DEBUG_FRAME_FORMAT;
+  auto* cfi_section = (is_debug_frame ? builder->GetDebugFrame() : builder->GetEhFrame());
   {
     cfi_section->Start();
     const bool is64bit = Is64BitInstructionSet(builder->GetIsa());
-    const Elf_Addr cfi_address = cfi_section->GetAddress();
+    const Elf_Addr cfi_address = (is_debug_frame ? 0 : cfi_section->GetAddress());
     const Elf_Addr cie_address = cfi_address;
     Elf_Addr buffer_address = cfi_address;
     std::vector<uint8_t> buffer;  // Small temporary buffer.
