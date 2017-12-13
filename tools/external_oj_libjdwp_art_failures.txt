@@ -1,6 +1,9 @@
 /*
  * This file contains expectations for ART's buildbot. The purpose of this file is
  * to temporarily list failing tests and not break the bots.
+ *
+ * This file contains the expectations for the 'libjdwp-aot' and 'libjdwp-jit'
+ * test groups on the chromium buildbot.
  */
 [
 {
@@ -69,26 +72,16 @@
   name: "org.apache.harmony.jpda.tests.jdwp.ObjectReference.IsCollectedTest#testIsCollected001"
 },
 {
-  description: "Test for ddms extensions that are not yet implemented",
-  result: EXEC_FAILED,
-  bug: 69169846,
-  name: "org.apache.harmony.jpda.tests.jdwp.DDM.DDMTest#testChunk001"
-},
-{
   description: "Test crashes",
   result: EXEC_FAILED,
   bug: 69591477,
   name: "org.apache.harmony.jpda.tests.jdwp.VirtualMachine.ExitTest#testExit001"
 },
 {
-  description: "Test for VMDebug functionality not implemented in the upstream libjdwp",
-  result: EXEC_FAILED,
-  name: "org.apache.harmony.jpda.tests.jdwp.VMDebug.VMDebugTest002#testVMDebug"
-},
-{
   description: "Test times out on fugu-debug",
   result: EXEC_FAILED,
   bug: 70459916,
-  name: "org.apache.harmony.jpda.tests.jdwp.VMDebug.VMDebugTest#testVMDebug"
+  names: [ "org.apache.harmony.jpda.tests.jdwp.VMDebug.VMDebugTest#testVMDebug",
+           "org.apache.harmony.jpda.tests.jdwp.VMDebug.VMDebugTest002#testVMDebug" ]
 }
 ]
