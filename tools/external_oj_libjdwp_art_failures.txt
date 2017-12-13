@@ -1,6 +1,9 @@
 /*
  * This file contains expectations for ART's buildbot. The purpose of this file is
  * to temporarily list failing tests and not break the bots.
+ *
+ * This file contains the expectations for the 'libjdwp-aot' and 'libjdwp-jit'
+ * test groups on the chromium buildbot.
  */
 [
 {
