@@ -81,6 +81,11 @@
   name: "org.apache.harmony.jpda.tests.jdwp.VirtualMachine.ExitTest#testExit001"
 },
 {
+  description: "Test for VMDebug functionality not implemented in the upstream libjdwp",
+  result: EXEC_FAILED,
+  name: "org.apache.harmony.jpda.tests.jdwp.VMDebug.VMDebugTest#testVMDebug002"
+},
+{
   description: "Test times out on fugu-debug",
   result: EXEC_FAILED,
   bug: 70459916,
