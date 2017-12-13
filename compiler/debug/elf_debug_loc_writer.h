@@ -251,7 +251,10 @@ static void WriteDebugLocEntry(const MethodDebugInfo* method_info,
         // kInStackLargeOffset and kConstantLargeValue are hidden by GetKind().
         // kInRegisterHigh and kInFpuRegisterHigh should be handled by
         // the special cases above and they should not occur alone.
-        LOG(ERROR) << "Unexpected register location kind: " << kind;
+        LOG(WARNING) << "Unexpected register location: " << kind
+                     << " (This can indicate either a bug in the dexer when generating"
+                     << " local variable information, or a bug in ART compiler."
+                     << " Please file a bug at go/art-bug)";
         break;
       }
       if (is64bitValue) {
