@@ -83,7 +83,7 @@
 {
   description: "Test for VMDebug functionality not implemented in the upstream libjdwp",
   result: EXEC_FAILED,
-  name: "org.apache.harmony.jpda.tests.jdwp.VMDebug.VMDebugTest#testVMDebug002"
+  name: "org.apache.harmony.jpda.tests.jdwp.VMDebug.VMDebugTest002#testVMDebug"
 },
 {
   description: "Test times out on fugu-debug",
