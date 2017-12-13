@@ -298,7 +298,7 @@ class ElfCompilationUnitWriter {
     CHECK_EQ(info_.Depth(), 0);
     std::vector<uint8_t> buffer;
     buffer.reserve(info_.data()->size() + KB);
-    const size_t offset = owner_->builder_->GetDebugInfo()->GetSize();
+    const size_t offset = owner_->builder_->GetDebugInfo()->GetPosition();
     // All compilation units share single table which is at the start of .debug_abbrev.
     const size_t debug_abbrev_offset = 0;
     WriteDebugInfoCU(debug_abbrev_offset, info_, offset, &buffer, &owner_->debug_info_patches_);
@@ -463,7 +463,7 @@ class ElfCompilationUnitWriter {
     CHECK_EQ(info_.Depth(), 0);
     std::vector<uint8_t> buffer;
     buffer.reserve(info_.data()->size() + KB);
-    const size_t offset = owner_->builder_->GetDebugInfo()->GetSize();
+    const size_t offset = owner_->builder_->GetDebugInfo()->GetPosition();
     // All compilation units share single table which is at the start of .debug_abbrev.
     const size_t debug_abbrev_offset = 0;
     WriteDebugInfoCU(debug_abbrev_offset, info_, offset, &buffer, &owner_->debug_info_patches_);
