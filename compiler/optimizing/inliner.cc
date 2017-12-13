@@ -294,7 +294,7 @@ static dex::TypeIndex FindClassIndexIn(mirror::Class* cls,
     // as there may be different class loaders. So only return the index if it's
     // the right class already resolved with the class loader.
     if (index.IsValid()) {
-      ObjPtr<mirror::Class> resolved = ClassLinker::LookupResolvedType(
+      ObjPtr<mirror::Class> resolved = compilation_unit.GetClassLinker()->LookupResolvedType(
           index, compilation_unit.GetDexCache().Get(), compilation_unit.GetClassLoader().Get());
       if (resolved != cls) {
         index = dex::TypeIndex::Invalid();
@@ -682,7 +682,7 @@ HInliner::InlineCacheType HInliner::ExtractClassesFromOfflineProfile(
             << "is invalid in location" << dex_cache->GetDexFile()->GetLocation();
       return kInlineCacheNoData;
     }
-    ObjPtr<mirror::Class> clazz = ClassLinker::LookupResolvedType(
+    ObjPtr<mirror::Class> clazz = caller_compilation_unit_.GetClassLinker()->LookupResolvedType(
           class_ref.type_index,
           dex_cache,
           caller_compilation_unit_.GetClassLoader().Get());

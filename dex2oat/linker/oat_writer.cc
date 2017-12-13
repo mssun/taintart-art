@@ -1592,11 +1592,10 @@ class OatWriter::InitImageMethodVisitor : public OatDexMethodVisitor {
       ScopedObjectAccessUnchecked soa(self);
       StackHandleScope<1> hs(self);
       method = class_linker_->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
-          *dex_file_,
           it.GetMemberIndex(),
           hs.NewHandle(dex_cache),
           ScopedNullHandle<mirror::ClassLoader>(),
-          nullptr,
+          /* referrer */ nullptr,
           invoke_type);
       if (method == nullptr) {
         LOG(FATAL_WITHOUT_ABORT) << "Unexpected failure to resolve a method: "
@@ -1957,7 +1956,7 @@ class OatWriter::WriteCodeMethodVisitor : public OrderedMethodVisitor {
     DCHECK(writer_->HasImage());
     ObjPtr<mirror::DexCache> dex_cache = GetDexCache(patch.TargetTypeDexFile());
     ObjPtr<mirror::Class> type =
-        ClassLinker::LookupResolvedType(patch.TargetTypeIndex(), dex_cache, class_loader_);
+        class_linker_->LookupResolvedType(patch.TargetTypeIndex(), dex_cache, class_loader_);
     CHECK(type != nullptr);
     return type;
   }
@@ -2697,7 +2696,8 @@ class OatWriter::WriteQuickeningIndicesMethodVisitor {
           CompiledMethod* compiled_method =
               driver.GetCompiledMethod(MethodReference(dex_file, method_idx));
           const DexFile::CodeItem* code_item = class_it.GetMethodCodeItem();
-          uint32_t existing_debug_info_offset = OatFile::GetDebugInfoOffset(*dex_file, code_item);
+          CodeItemDebugInfoAccessor accessor(dex_file, code_item);
+          const uint32_t existing_debug_info_offset = accessor.DebugInfoOffset();
           // If the existing offset is already out of bounds (and not magic marker 0xFFFFFFFF)
           // we will pretend the method has been quickened.
           bool existing_offset_out_of_bounds =

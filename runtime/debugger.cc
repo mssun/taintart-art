@@ -1661,16 +1661,16 @@ void Dbg::OutputLineTable(JDWP::RefTypeId, JDWP::MethodId method_id, JDWP::Expan
     }
   };
   ArtMethod* m = FromMethodId(method_id);
-  const DexFile::CodeItem* code_item = m->GetCodeItem();
+  CodeItemDebugInfoAccessor accessor(m);
   uint64_t start, end;
-  if (code_item == nullptr) {
+  if (!accessor.HasCodeItem()) {
     DCHECK(m->IsNative() || m->IsProxyMethod());
     start = -1;
     end = -1;
   } else {
     start = 0;
     // Return the index of the last instruction
-    end = code_item->insns_size_in_code_units_ - 1;
+    end = accessor.InsnsSizeInCodeUnits() - 1;
   }
 
   expandBufAdd8BE(pReply, start);
@@ -1684,10 +1684,10 @@ void Dbg::OutputLineTable(JDWP::RefTypeId, JDWP::MethodId method_id, JDWP::Expan
   context.numItems = 0;
   context.pReply = pReply;
 
-  if (code_item != nullptr) {
-    uint32_t debug_info_offset = OatFile::GetDebugInfoOffset(*(m->GetDexFile()), code_item);
-    m->GetDexFile()->DecodeDebugPositionInfo(
-        code_item, debug_info_offset, DebugCallbackContext::Callback, &context);
+  if (accessor.HasCodeItem()) {
+    m->GetDexFile()->DecodeDebugPositionInfo(accessor.DebugInfoOffset(),
+                                             DebugCallbackContext::Callback,
+                                             &context);
   }
 
   JDWP::Set4BE(expandBufGetBuffer(pReply) + numLinesOffset, context.numItems);
@@ -1727,6 +1727,7 @@ void Dbg::OutputVariableTable(JDWP::RefTypeId, JDWP::MethodId method_id, bool wi
     }
   };
   ArtMethod* m = FromMethodId(method_id);
+  CodeItemDebugInfoAccessor accessor(m);
 
   // arg_count considers doubles and longs to take 2 units.
   // variable_count considers everything to take 1 unit.
@@ -1742,12 +1743,15 @@ void Dbg::OutputVariableTable(JDWP::RefTypeId, JDWP::MethodId method_id, bool wi
   context.variable_count = 0;
   context.with_generic = with_generic;
 
-  const DexFile::CodeItem* code_item = m->GetCodeItem();
-  if (code_item != nullptr) {
-    uint32_t debug_info_offset = OatFile::GetDebugInfoOffset(*(m->GetDexFile()), code_item);
-    m->GetDexFile()->DecodeDebugLocalInfo(
-        code_item, debug_info_offset, m->IsStatic(), m->GetDexMethodIndex(),
-        DebugCallbackContext::Callback, &context);
+  if (accessor.HasCodeItem()) {
+    m->GetDexFile()->DecodeDebugLocalInfo(accessor.RegistersSize(),
+                                          accessor.InsSize(),
+                                          accessor.InsnsSizeInCodeUnits(),
+                                          accessor.DebugInfoOffset(),
+                                          m->IsStatic(),
+                                          m->GetDexMethodIndex(),
+                                          DebugCallbackContext::Callback,
+                                          &context);
   }
 
   JDWP::Set4BE(expandBufGetBuffer(pReply) + variable_count_offset, context.variable_count);
@@ -3836,9 +3840,9 @@ JDWP::JdwpError Dbg::ConfigureStep(JDWP::ObjectId thread_id, JDWP::JdwpStepSize 
   // Find the dex_pc values that correspond to the current line, for line-based single-stepping.
   struct DebugCallbackContext {
     DebugCallbackContext(SingleStepControl* single_step_control_cb,
-                         int32_t line_number_cb, const DexFile::CodeItem* code_item)
+                         int32_t line_number_cb, uint32_t num_insns_in_code_units)
         : single_step_control_(single_step_control_cb), line_number_(line_number_cb),
-          code_item_(code_item), last_pc_valid(false), last_pc(0) {
+          num_insns_in_code_units_(num_insns_in_code_units), last_pc_valid(false), last_pc(0) {
     }
 
     static bool Callback(void* raw_context, const DexFile::PositionInfo& entry) {
@@ -3864,8 +3868,7 @@ JDWP::JdwpError Dbg::ConfigureStep(JDWP::ObjectId thread_id, JDWP::JdwpStepSize 
     ~DebugCallbackContext() {
       // If the line number was the last in the position table...
       if (last_pc_valid) {
-        size_t end = code_item_->insns_size_in_code_units_;
-        for (uint32_t dex_pc = last_pc; dex_pc < end; ++dex_pc) {
+        for (uint32_t dex_pc = last_pc; dex_pc < num_insns_in_code_units_; ++dex_pc) {
           single_step_control_->AddDexPc(dex_pc);
         }
       }
@@ -3873,7 +3876,7 @@ JDWP::JdwpError Dbg::ConfigureStep(JDWP::ObjectId thread_id, JDWP::JdwpStepSize 
 
     SingleStepControl* const single_step_control_;
     const int32_t line_number_;
-    const DexFile::CodeItem* const code_item_;
+    const uint32_t num_insns_in_code_units_;
     bool last_pc_valid;
     uint32_t last_pc;
   };
@@ -3892,11 +3895,11 @@ JDWP::JdwpError Dbg::ConfigureStep(JDWP::ObjectId thread_id, JDWP::JdwpStepSize 
   // Note: if the thread is not running Java code (pure native thread), there is no "current"
   // method on the stack (and no line number either).
   if (m != nullptr && !m->IsNative()) {
-    const DexFile::CodeItem* const code_item = m->GetCodeItem();
-    DebugCallbackContext context(single_step_control, line_number, code_item);
-    uint32_t debug_info_offset = OatFile::GetDebugInfoOffset(*(m->GetDexFile()), code_item);
-    m->GetDexFile()->DecodeDebugPositionInfo(
-        code_item, debug_info_offset, DebugCallbackContext::Callback, &context);
+    CodeItemDebugInfoAccessor accessor(m);
+    DebugCallbackContext context(single_step_control, line_number, accessor.InsnsSizeInCodeUnits());
+    m->GetDexFile()->DecodeDebugPositionInfo(accessor.DebugInfoOffset(),
+                                             DebugCallbackContext::Callback,
+                                             &context);
   }
 
   // Activate single-step in the thread.
@@ -4376,15 +4379,20 @@ bool Dbg::DdmHandleChunk(JNIEnv* env,
                              replyData.get(),
                              offset,
                              length);
-  if (length == 0 || replyData.get() == nullptr) {
-    return false;
-  }
-
   out_data->resize(length);
   env->GetByteArrayRegion(replyData.get(),
                           offset,
                           length,
                           reinterpret_cast<jbyte*>(out_data->data()));
+
+  if (env->ExceptionCheck()) {
+    LOG(INFO) << StringPrintf("Exception thrown when reading response data from dispatcher 0x%08x",
+                              type);
+    env->ExceptionDescribe();
+    env->ExceptionClear();
+    return false;
+  }
+
   return true;
 }
 
@@ -4418,7 +4426,7 @@ bool Dbg::DdmHandlePacket(JDWP::Request* request, uint8_t** pReplyBuf, int* pRep
   std::vector<uint8_t> out_data;
   uint32_t out_type = 0;
   request->Skip(request_length);
-  if (!DdmHandleChunk(env, type, data, &out_type, &out_data)) {
+  if (!DdmHandleChunk(env, type, data, &out_type, &out_data) || out_data.empty()) {
     return false;
   }
   const uint32_t kDdmHeaderSize = 8;

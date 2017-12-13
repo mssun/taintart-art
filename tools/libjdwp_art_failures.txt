@@ -67,7 +67,8 @@
 {
   description: "Tests for VMDebug functionality not implemented in the upstream libjdwp",
   result: EXEC_FAILED,
-  name: "org.apache.harmony.jpda.tests.jdwp.VMDebug.VMDebugTest#testVMDebug"
+  names: [ "org.apache.harmony.jpda.tests.jdwp.VMDebug.VMDebugTest#testVMDebug",
+           "org.apache.harmony.jpda.tests.jdwp.VMDebug.VMDebugTest#testVMDebug002" ]
 },
 /* TODO Categorize these failures more. */
 {

@@ -442,17 +442,15 @@ ArenaBitVector* HInstructionBuilder::FindNativeDebugInfoLocations() {
       return false;
     }
   };
-  const uint32_t num_instructions = code_item_->insns_size_in_code_units_;
+  CodeItemDebugInfoAccessor accessor(dex_file_, code_item_);
   ArenaBitVector* locations = ArenaBitVector::Create(local_allocator_,
-                                                     num_instructions,
+                                                     accessor.InsnsSizeInCodeUnits(),
                                                      /* expandable */ false,
                                                      kArenaAllocGraphBuilder);
   locations->ClearAllBits();
-  uint32_t debug_info_offset = OatFile::GetDebugInfoOffset(*dex_file_, code_item_);
-  dex_file_->DecodeDebugPositionInfo(code_item_, debug_info_offset, Callback::Position, locations);
+  dex_file_->DecodeDebugPositionInfo(accessor.DebugInfoOffset(), Callback::Position, locations);
   // Instruction-specific tweaks.
-  IterationRange<DexInstructionIterator> instructions = code_item_->Instructions();
-  for (const DexInstructionPcPair& inst : instructions) {
+  for (const DexInstructionPcPair& inst : accessor) {
     switch (inst->Opcode()) {
       case Instruction::MOVE_EXCEPTION: {
         // Stop in native debugger after the exception has been moved.
@@ -461,7 +459,7 @@ ArenaBitVector* HInstructionBuilder::FindNativeDebugInfoLocations() {
         locations->ClearBit(inst.DexPc());
         DexInstructionIterator next = std::next(DexInstructionIterator(inst));
         DCHECK(next.DexPc() != inst.DexPc());
-        if (next != instructions.end()) {
+        if (next != accessor.end()) {
           locations->SetBit(next.DexPc());
         }
         break;
@@ -796,7 +794,6 @@ ArtMethod* HInstructionBuilder::ResolveMethod(uint16_t method_idx, InvokeType in
 
   ArtMethod* resolved_method =
       class_linker->ResolveMethod<ClassLinker::ResolveMode::kCheckICCEAndIAE>(
-          *dex_compilation_unit_->GetDexFile(),
           method_idx,
           dex_compilation_unit_->GetDexCache(),
           class_loader,
@@ -831,7 +828,6 @@ ArtMethod* HInstructionBuilder::ResolveMethod(uint16_t method_idx, InvokeType in
       return nullptr;
     }
     ObjPtr<mirror::Class> referenced_class = class_linker->LookupResolvedType(
-        *dex_compilation_unit_->GetDexFile(),
         dex_compilation_unit_->GetDexFile()->GetMethodId(method_idx).class_idx_,
         dex_compilation_unit_->GetDexCache().Get(),
         class_loader.Get());
@@ -1425,7 +1421,7 @@ bool HInstructionBuilder::BuildInstanceFieldAccess(const Instruction& instructio
 }
 
 static ObjPtr<mirror::Class> GetClassFrom(CompilerDriver* driver,
-                                   const DexCompilationUnit& compilation_unit) {
+                                          const DexCompilationUnit& compilation_unit) {
   ScopedObjectAccess soa(Thread::Current());
   Handle<mirror::ClassLoader> class_loader = compilation_unit.GetClassLoader();
   Handle<mirror::DexCache> dex_cache = compilation_unit.GetDexCache();
@@ -2934,7 +2930,7 @@ bool HInstructionBuilder::ProcessDexInstruction(const Instruction& instruction,
 ObjPtr<mirror::Class> HInstructionBuilder::LookupResolvedType(
     dex::TypeIndex type_index,
     const DexCompilationUnit& compilation_unit) const {
-  return ClassLinker::LookupResolvedType(
+  return compilation_unit.GetClassLinker()->LookupResolvedType(
         type_index, compilation_unit.GetDexCache().Get(), compilation_unit.GetClassLoader().Get());
 }
 
