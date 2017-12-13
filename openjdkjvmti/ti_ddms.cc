@@ -49,13 +49,15 @@ jvmtiError DDMSUtil::HandleChunk(jvmtiEnv* env,
                                  /*out*/jint* type_out,
                                  /*out*/jint* data_length_out,
                                  /*out*/jbyte** data_out) {
-  constexpr uint32_t kDdmHeaderSize = sizeof(uint32_t) * 2;
-  if (env == nullptr || data_in == nullptr || data_out == nullptr || data_length_out == nullptr) {
+  if (env == nullptr || type_out == nullptr || data_out == nullptr || data_length_out == nullptr) {
     return ERR(NULL_POINTER);
-  } else if (length_in < static_cast<jint>(kDdmHeaderSize)) {
-    // need to get type and length at least.
+  } else if (data_in == nullptr && length_in != 0) {
+    // Data-in shouldn't be null if we have data.
     return ERR(ILLEGAL_ARGUMENT);
   }
+
+  *data_length_out = 0;
+  *data_out = nullptr;
 
   art::Thread* self = art::Thread::Current();
   art::ScopedThreadStateChange(self, art::ThreadState::kNative);
@@ -71,13 +73,15 @@ jvmtiError DDMSUtil::HandleChunk(jvmtiEnv* env,
     return ERR(INTERNAL);
   } else {
     jvmtiError error = OK;
-    JvmtiUniquePtr<jbyte[]> ret = AllocJvmtiUniquePtr<jbyte[]>(env, out_data.size(), &error);
-    if (error != OK) {
-      return error;
+    if (!out_data.empty()) {
+      JvmtiUniquePtr<jbyte[]> ret = AllocJvmtiUniquePtr<jbyte[]>(env, out_data.size(), &error);
+      if (error != OK) {
+        return error;
+      }
+      memcpy(ret.get(), out_data.data(), out_data.size());
+      *data_out = ret.release();
+      *data_length_out = static_cast<jint>(out_data.size());
     }
-    memcpy(ret.get(), out_data.data(), out_data.size());
-    *data_out = ret.release();
-    *data_length_out = static_cast<jint>(out_data.size());
     return OK;
   }
 }
