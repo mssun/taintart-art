@@ -2602,6 +2602,124 @@ public class Main {
     return (byte)((int)(((long)(b & 0xff)) & 255L));
   }
 
+  /// CHECK-START: void Main.$noinline$testIfCondStaticEvaluation(int[], boolean) instruction_simplifier (before)
+  /// CHECK-DAG: <<Param:z\d+>>     ParameterValue
+  /// CHECK-DAG: <<Const0:i\d+>>    IntConstant 0
+  /// CHECK-DAG: <<Const1:i\d+>>    IntConstant 1
+  /// CHECK-DAG: <<Cond0:z\d+>>     Equal [<<Param>>,<<Const0>>]
+  /// CHECK-DAG:                    If [<<Cond0>>]
+  /// CHECK-DAG: <<Cond1:z\d+>>     Equal [<<Param>>,<<Const0>>]
+  /// CHECK-DAG:                    If [<<Cond1>>]
+  /// CHECK-DAG:                    ArraySet [{{l\d+}},{{i\d+}},<<Const0>>]
+  /// CHECK-DAG: <<Cond2:z\d+>>     Equal [<<Param>>,<<Const0>>]
+  /// CHECK-DAG:                    If [<<Cond2>>]
+  /// CHECK-DAG:                    ArraySet [{{l\d+}},{{i\d+}},<<Const1>>]
+  //
+  /// CHECK-NOT:                    If
+  /// CHECK-NOT:                    ArraySet
+
+  /// CHECK-START: void Main.$noinline$testIfCondStaticEvaluation(int[], boolean) instruction_simplifier (after)
+  /// CHECK-DAG: <<Param:z\d+>>     ParameterValue
+  /// CHECK-DAG: <<Const0:i\d+>>    IntConstant 0
+  /// CHECK-DAG: <<Const1:i\d+>>    IntConstant 1
+  /// CHECK-DAG:                    If [<<Param>>]
+  /// CHECK-DAG: <<Cond1:z\d+>>     Equal [<<Const1>>,<<Const0>>]
+  /// CHECK-DAG:                    If [<<Cond1>>]
+  /// CHECK-DAG:                    ArraySet [{{l\d+}},{{i\d+}},<<Const1>>]
+  /// CHECK-DAG: <<Cond2:z\d+>>     Equal [<<Const0>>,<<Const0>>]
+  /// CHECK-DAG:                    If [<<Cond2>>]
+  /// CHECK-DAG:                    ArraySet [{{l\d+}},{{i\d+}},<<Const0>>]
+  //
+  /// CHECK-NOT:                    If
+  /// CHECK-NOT:                    ArraySet
+
+  /// CHECK-START: void Main.$noinline$testIfCondStaticEvaluation(int[], boolean) dead_code_elimination$after_inlining (after)
+  /// CHECK-DAG: <<Param:z\d+>>     ParameterValue
+  /// CHECK-DAG: <<Const1:i\d+>>    IntConstant 1
+  /// CHECK-DAG:                    If [<<Param>>]
+  /// CHECK-DAG:                    ArraySet [{{l\d+}},{{i\d+}},<<Const1>>]
+  //
+  /// CHECK-NOT:                    IntConstant 0
+  /// CHECK-NOT:                    If [<<Param>>]
+  /// CHECK-NOT:                    ArraySet
+  private static void $noinline$testIfCondStaticEvaluation(int[] a, boolean f) {
+    if (f) {
+      if (f) {
+        a[0] = 1;
+      }
+    } else {
+      if (f) {
+        a[0] = 0;
+      }
+    }
+  }
+
+  /// CHECK-START: void Main.$noinline$testManualUnrollWithInvarExits(int[], boolean) instruction_simplifier (before)
+  /// CHECK-DAG: <<Param:z\d+>>     ParameterValue                            loop:none
+  /// CHECK-DAG: <<Const0:i\d+>>    IntConstant 0                             loop:none
+  /// CHECK-DAG: <<Const1:i\d+>>    IntConstant 1                             loop:none
+  /// CHECK-DAG: <<Cond0:z\d+>>     Equal [<<Param>>,<<Const0>>]              loop:none
+  /// CHECK-DAG:                    If [<<Cond0>>]                            loop:none
+  /// CHECK-DAG:                    ArraySet [{{l\d+}},{{i\d+}},<<Const1>>]   loop:none
+  /// CHECK-DAG: <<Phi:i\d+>>       Phi                                       loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<LoopCheck:z\d+>> GreaterThanOrEqual                        loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    If [<<LoopCheck>>]                        loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Cond1:z\d+>>     NotEqual [<<Param>>,<<Const0>>]           loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    If [<<Cond1>>]                            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    ArraySet [{{l\d+}},{{i\d+}},<<Const1>>]   loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-NOT:                    If
+  /// CHECK-NOT:                    ArraySet
+
+  /// CHECK-START: void Main.$noinline$testManualUnrollWithInvarExits(int[], boolean) instruction_simplifier (after)
+  /// CHECK-DAG: <<Param:z\d+>>     ParameterValue                            loop:none
+  /// CHECK-DAG: <<Const0:i\d+>>    IntConstant 0                             loop:none
+  /// CHECK-DAG: <<Const1:i\d+>>    IntConstant 1                             loop:none
+  /// CHECK-DAG:                    If [<<Param>>]                            loop:none
+  /// CHECK-DAG:                    ArraySet [{{l\d+}},{{i\d+}},<<Const1>>]   loop:none
+  /// CHECK-DAG: <<Phi:i\d+>>       Phi                                       loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<LoopCheck:z\d+>> GreaterThanOrEqual                        loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    If [<<LoopCheck>>]                        loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Cond1:z\d+>>     NotEqual [<<Const0>>,<<Const0>>]          loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    If [<<Cond1>>]                            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    ArraySet [{{l\d+}},{{i\d+}},<<Const1>>]   loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-NOT:                    If
+  /// CHECK-NOT:                    ArraySet
+
+  /// CHECK-START: void Main.$noinline$testManualUnrollWithInvarExits(int[], boolean) dead_code_elimination$after_inlining (after)
+  /// CHECK-DAG: <<Param:z\d+>>     ParameterValue                            loop:none
+  /// CHECK-DAG: <<Const1:i\d+>>    IntConstant 1                             loop:none
+  /// CHECK-DAG:                    If [<<Param>>]                            loop:none
+  /// CHECK-DAG:                    ArraySet [{{l\d+}},{{i\d+}},<<Const1>>]   loop:none
+  /// CHECK-DAG: <<Phi:i\d+>>       Phi                                       loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<LoopCheck:z\d+>> GreaterThanOrEqual                        loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    If [<<LoopCheck>>]                        loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                    ArraySet [{{l\d+}},{{i\d+}},<<Const1>>]   loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-NOT:                    If
+  /// CHECK-NOT:                    ArraySet
+  private static void $noinline$testManualUnrollWithInvarExits(int[] a, boolean f) {
+    if (f) {
+      return;
+    }
+    a[0] = 1;
+    for (int i = 1; i < a.length; i++) {
+      if (f) {
+        return;
+      }
+      a[i] = 1;
+    }
+  }
+
+  public static final int LENGTH = 1024;
+
+  private static final void initArray(int[] a) {
+    for (int i = 0; i < a.length; i++) {
+      a[i] = 0;
+    }
+  }
+
   public static void main(String[] args) {
     int arg = 123456;
     float floatArg = 123456.125f;
@@ -2845,6 +2963,26 @@ public class Main {
     assertIntEquals(1, $noinline$bug68142795Boolean(true));
     assertIntEquals(0x7f, $noinline$bug68142795Elaborate((byte) 0x7f));
     assertIntEquals((byte) 0x80, $noinline$bug68142795Elaborate((byte) 0x80));
+
+    int[] array = new int[LENGTH];
+
+    array[0] = 0;
+    $noinline$testIfCondStaticEvaluation(array, true);
+    assertIntEquals(array[0], 1);
+    array[0] = 0;
+    $noinline$testIfCondStaticEvaluation(array, false);
+    assertIntEquals(array[0], 0);
+
+    initArray(array);
+    $noinline$testManualUnrollWithInvarExits(array, false);
+    for (int i = 0; i < array.length; i++) {
+      assertIntEquals(array[i], 1);
+    }
+    initArray(array);
+    $noinline$testManualUnrollWithInvarExits(array, true);
+    for (int i = 0; i < array.length; i++) {
+      assertIntEquals(array[i], 0);
+    }
   }
 
   private static boolean $inline$true() { return true; }
