@@ -1017,6 +1017,7 @@ class DexFile {
 
   // Recalculates the checksum of the dex file. Does not use the current value in the header.
   uint32_t CalculateChecksum() const;
+  static uint32_t CalculateChecksum(const uint8_t* begin, size_t size);
 
   // Returns a human-readable form of the method at an index.
   std::string PrettyMethod(uint32_t method_idx, bool with_signature = true) const;
