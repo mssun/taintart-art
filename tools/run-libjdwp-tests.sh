@@ -79,7 +79,7 @@ else
   args+=(-Xplugin:libopenjdkjvmti.so)
 fi
 
-expect_path=$PWD/art/tools/libjdwp_oj_art_failures.txt
+expect_path=$PWD/art/tools/external_oj_libjdwp_art_failures.txt
 function verbose_run() {
   echo "$@"
   env "$@"
