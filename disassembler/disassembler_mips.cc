@@ -177,7 +177,9 @@ static const MipsInstruction gMipsInstructions[] = {
   { kSpecial3Mask | 0x3f, (31 << kOpcodeShift), "ext", "TSAZ", },
   { kSpecial3Mask | 0x3f, (31 << kOpcodeShift) | 3, "dext", "TSAZ", },
   { kSpecial3Mask | 0x3f, (31 << kOpcodeShift) | 4, "ins", "TSAz", },
+  { kSpecial3Mask | 0x3f, (31 << kOpcodeShift) | 5, "dinsm", "TSAJ", },
   { kSpecial3Mask | 0x3f, (31 << kOpcodeShift) | 6, "dinsu", "TSFz", },
+  { kSpecial3Mask | 0x3f, (31 << kOpcodeShift) | 7, "dins", "TSAz", },
   { kSpecial3Mask | (0x1f << 21) | (0x1f << 6) | 0x3f,
     (31 << kOpcodeShift) | (16 << 6) | 32,
     "seb",
@@ -583,6 +585,9 @@ size_t DisassemblerMips::Dump(std::ostream& os, const uint8_t* instr_ptr) {
             break;
           case 'i':  // Sign-extended lower 16-bit immediate.
             args << static_cast<int16_t>(instruction & 0xffff);
+            break;
+          case 'J':  // sz (dinsm size).
+            args << (rd - sa + 33);
             break;
           case 'j':  // sa value for lsa/dlsa.
             args << (sa + 1);

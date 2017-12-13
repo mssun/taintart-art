@@ -1353,23 +1353,42 @@ TEST_F(AssemblerMIPS64Test, Dext) {
   DriverStr(expected.str(), "Dext");
 }
 
-TEST_F(AssemblerMIPS64Test, Dinsu) {
+TEST_F(AssemblerMIPS64Test, Ins) {
+  std::vector<mips64::GpuRegister*> regs = GetRegisters();
+  WarnOnCombinations(regs.size() * regs.size() * 33 * 16);
+  std::string expected;
+  for (mips64::GpuRegister* reg1 : regs) {
+    for (mips64::GpuRegister* reg2 : regs) {
+      for (int32_t pos = 0; pos < 32; pos++) {
+        for (int32_t size = 1; pos + size <= 32; size++) {
+          __ Ins(*reg1, *reg2, pos, size);
+          std::ostringstream instr;
+          instr << "ins $" << *reg1 << ", $" << *reg2 << ", " << pos << ", " << size << "\n";
+          expected += instr.str();
+        }
+      }
+    }
+  }
+  DriverStr(expected, "Ins");
+}
+
+TEST_F(AssemblerMIPS64Test, DblIns) {
   std::vector<mips64::GpuRegister*> reg1_registers = GetRegisters();
   std::vector<mips64::GpuRegister*> reg2_registers = GetRegisters();
-  WarnOnCombinations(reg1_registers.size() * reg2_registers.size() * 33 * 16);
+  WarnOnCombinations(reg1_registers.size() * reg2_registers.size() * 65 * 32);
   std::ostringstream expected;
   for (mips64::GpuRegister* reg1 : reg1_registers) {
     for (mips64::GpuRegister* reg2 : reg2_registers) {
-      for (int32_t pos = 32; pos < 64; pos++) {
+      for (int32_t pos = 0; pos < 64; pos++) {
         for (int32_t size = 1; pos + size <= 64; size++) {
-          __ Dinsu(*reg1, *reg2, pos, size);
-          expected << "dinsu $" << *reg1 << ", $" << *reg2 << ", " << pos << ", " << size << "\n";
+          __ DblIns(*reg1, *reg2, pos, size);
+          expected << "dins $" << *reg1 << ", $" << *reg2 << ", " << pos << ", " << size << "\n";
         }
       }
     }
   }
 
-  DriverStr(expected.str(), "Dinsu");
+  DriverStr(expected.str(), "DblIns");
 }
 
 TEST_F(AssemblerMIPS64Test, Lsa) {
