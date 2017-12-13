@@ -109,6 +109,16 @@ class HVecOperation : public HVariableInputSizeInstruction {
 
   // Assumes vector nodes cannot be moved by default. Each concrete implementation
   // that can be moved should override this method and return true.
+  //
+  // Note: similar approach is used for instruction scheduling (if it is turned on for the target):
+  // by default HScheduler::IsSchedulable returns false for a particular HVecOperation.
+  // HScheduler${ARCH}::IsSchedulable can be overridden to return true for an instruction (see
+  // scheduler_arm64.h for example) if it is safe to schedule it; in this case one *must* also
+  // look at/update HScheduler${ARCH}::IsSchedulingBarrier for this instruction.
+  //
+  // Note: For newly introduced vector instructions HScheduler${ARCH}::IsSchedulingBarrier must be
+  // altered to return true if the instruction might reside outside the SIMD loop body since SIMD
+  // registers are not kept alive across vector loop boundaries (yet).
   bool CanBeMoved() const OVERRIDE { return false; }
 
   // Tests if all data of a vector node (vector length and packed type) is equal.
