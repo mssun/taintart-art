@@ -151,6 +151,20 @@ class HSchedulerARM64 : public HScheduler {
 #undef CASE_INSTRUCTION_KIND
   }
 
+  // Treat as scheduling barriers those vector instructions whose live ranges exceed the vectorized
+  // loop boundaries. This is a workaround for the lack of notion of SIMD register in the compiler;
+  // around a call we have to save/restore all live SIMD&FP registers (only lower 64 bits of
+  // SIMD&FP registers are callee saved) so don't reorder such vector instructions.
+  //
+  // TODO: remove this when a proper support of SIMD registers is introduced to the compiler.
+  bool IsSchedulingBarrier(const HInstruction* instr) const OVERRIDE {
+    return HScheduler::IsSchedulingBarrier(instr) ||
+           instr->IsVecReduce() ||
+           instr->IsVecExtractScalar() ||
+           instr->IsVecSetScalars() ||
+           instr->IsVecReplicateScalar();
+  }
+
  private:
   SchedulingLatencyVisitorARM64 arm64_latency_visitor_;
   DISALLOW_COPY_AND_ASSIGN(HSchedulerARM64);

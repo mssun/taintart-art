@@ -523,7 +523,71 @@ public class Main {
     return res;
   }
 
+  private static void expectEquals(int expected, int result) {
+    if (expected != result) {
+      throw new Error("Expected: " + expected + ", found: " + result);
+    }
+  }
+
+  private static final int ARRAY_SIZE = 32;
+
+  // Check that VecReplicateScalar is not reordered.
+  /// CHECK-START-ARM64: void Main.testVecReplicateScalar() scheduler (before)
+  /// CHECK:     Phi                loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK:     NewArray           loop:<<Loop>>      outer_loop:none
+  /// CHECK:     VecReplicateScalar loop:<<Loop>>      outer_loop:none
+
+  /// CHECK-START-ARM64: void Main.testVecReplicateScalar() scheduler (after)
+  /// CHECK:     Phi                loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK:     NewArray           loop:<<Loop>>      outer_loop:none
+  /// CHECK:     VecReplicateScalar loop:<<Loop>>      outer_loop:none
+  private static void testVecReplicateScalar() {
+    for (int j = 0; j <= 8; j++) {
+      int[] a = new int[ARRAY_SIZE];
+      for (int i = 0; i < a.length; i++) {
+        a[i] += 1;
+      }
+      for (int i = 0; i < a.length; i++) {
+        expectEquals(1, a[i]);
+      }
+    }
+  }
+
+  // Check that VecSetScalars, VecReduce, VecExtractScalar are not reordered.
+  /// CHECK-START-ARM64: void Main.testVecSetScalars() scheduler (before)
+  /// CHECK:     Phi                  loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK:     NewArray             loop:<<Loop>>      outer_loop:none
+  /// CHECK:     VecSetScalars        loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK:     VecReduce            loop:<<Loop>>      outer_loop:none
+  /// CHECK:     VecExtractScalar     loop:<<Loop>>      outer_loop:none
+  /// CHECK:     InvokeStaticOrDirect loop:<<Loop>>      outer_loop:none
+  /// CHECK:     InvokeStaticOrDirect loop:<<Loop>>      outer_loop:none
+
+  /// CHECK-START-ARM64: void Main.testVecSetScalars() scheduler (after)
+  /// CHECK:     Phi                  loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK:     NewArray             loop:<<Loop>>      outer_loop:none
+  /// CHECK:     VecSetScalars        loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK:     VecReduce            loop:<<Loop>>      outer_loop:none
+  /// CHECK:     VecExtractScalar     loop:<<Loop>>      outer_loop:none
+  /// CHECK:     InvokeStaticOrDirect loop:<<Loop>>      outer_loop:none
+  /// CHECK:     InvokeStaticOrDirect loop:<<Loop>>      outer_loop:none
+  private static void testVecSetScalars() {
+    for (int j = 0; j <= 8; j++) {
+      int[] a = new int[ARRAY_SIZE];
+      int s = 5;
+      for (int i = 0; i < ARRAY_SIZE; i++) {
+        s+=a[i];
+      }
+      expectEquals(a[0], 0);
+      expectEquals(s, 5);
+    }
+  }
+
   public static void main(String[] args) {
+    testVecSetScalars();
+    testVecReplicateScalar();
     if ((arrayAccess() + intDiv(10)) != -35) {
       System.out.println("FAIL");
     }
