@@ -97,6 +97,11 @@ class Monitor {
   static void DescribeWait(std::ostream& os, const Thread* thread)
       REQUIRES(!Locks::thread_suspend_count_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
+  static ThreadState FetchState(const Thread* thread,
+                                /* out */ mirror::Object** monitor_object,
+                                /* out */ uint32_t* lock_owner_tid)
+      REQUIRES(!Locks::thread_suspend_count_lock_)
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Used to implement JDWP's ThreadReference.CurrentContendedMonitor.
   static mirror::Object* GetContendedMonitor(Thread* thread)
