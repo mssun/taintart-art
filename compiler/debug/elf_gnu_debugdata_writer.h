@@ -80,7 +80,7 @@ template <typename ElfTypes>
 static std::vector<uint8_t> MakeMiniDebugInfoInternal(
     InstructionSet isa,
     const InstructionSetFeatures* features,
-    size_t rodata_section_size,
+    typename ElfTypes::Addr text_section_address,
     size_t text_section_size,
     const ArrayRef<const MethodDebugInfo>& method_infos) {
   std::vector<uint8_t> buffer;
@@ -88,11 +88,9 @@ static std::vector<uint8_t> MakeMiniDebugInfoInternal(
   linker::VectorOutputStream out("Mini-debug-info ELF file", &buffer);
   std::unique_ptr<linker::ElfBuilder<ElfTypes>> builder(
       new linker::ElfBuilder<ElfTypes>(isa, features, &out));
-  builder->Start();
-  // Mirror .rodata and .text as NOBITS sections.
-  // It is needed to detected relocations after compression.
-  builder->GetRoData()->AllocateVirtualMemory(rodata_section_size);
-  builder->GetText()->AllocateVirtualMemory(text_section_size);
+  builder->Start(false /* write_program_headers */);
+  // Mirror .text as NOBITS section since the added symbols will reference it.
+  builder->GetText()->AllocateVirtualMemory(text_section_address, text_section_size);
   WriteDebugSymbols(builder.get(), method_infos, false /* with_signature */);
   WriteCFISection(builder.get(),
                   method_infos,

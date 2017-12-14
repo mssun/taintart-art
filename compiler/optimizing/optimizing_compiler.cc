@@ -1224,7 +1224,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     }
 
     const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
-    if (compiler_options.GetGenerateDebugInfo()) {
+    if (compiler_options.GenerateAnyDebugInfo()) {
       const auto* method_header = reinterpret_cast<const OatQuickMethodHeader*>(code);
       const uintptr_t code_address = reinterpret_cast<uintptr_t>(method_header->GetCode());
       debug::MethodDebugInfo info = {};
@@ -1244,10 +1244,13 @@ bool OptimizingCompiler::JitCompile(Thread* self,
       info.frame_size_in_bytes = method_header->GetFrameSizeInBytes();
       info.code_info = nullptr;
       info.cfi = jni_compiled_method.GetCfi();
-      std::vector<uint8_t> elf_file = debug::WriteDebugElfFileForMethods(
+      // If both flags are passed, generate full debug info.
+      const bool mini_debug_info = !compiler_options.GetGenerateDebugInfo();
+      std::vector<uint8_t> elf_file = debug::MakeElfFileForJIT(
           GetCompilerDriver()->GetInstructionSet(),
           GetCompilerDriver()->GetInstructionSetFeatures(),
-          ArrayRef<const debug::MethodDebugInfo>(&info, 1));
+          mini_debug_info,
+          info);
       CreateJITCodeEntryForAddress(code_address, std::move(elf_file));
     }
 
@@ -1352,7 +1355,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
   }
 
   const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
-  if (compiler_options.GetGenerateDebugInfo()) {
+  if (compiler_options.GenerateAnyDebugInfo()) {
     const auto* method_header = reinterpret_cast<const OatQuickMethodHeader*>(code);
     const uintptr_t code_address = reinterpret_cast<uintptr_t>(method_header->GetCode());
     debug::MethodDebugInfo info = {};
@@ -1372,10 +1375,13 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     info.frame_size_in_bytes = method_header->GetFrameSizeInBytes();
     info.code_info = stack_map_size == 0 ? nullptr : stack_map_data;
     info.cfi = ArrayRef<const uint8_t>(*codegen->GetAssembler()->cfi().data());
-    std::vector<uint8_t> elf_file = debug::WriteDebugElfFileForMethods(
+    // If both flags are passed, generate full debug info.
+    const bool mini_debug_info = !compiler_options.GetGenerateDebugInfo();
+    std::vector<uint8_t> elf_file = debug::MakeElfFileForJIT(
         GetCompilerDriver()->GetInstructionSet(),
         GetCompilerDriver()->GetInstructionSetFeatures(),
-        ArrayRef<const debug::MethodDebugInfo>(&info, 1));
+        mini_debug_info,
+        info);
     CreateJITCodeEntryForAddress(code_address, std::move(elf_file));
   }
 
