@@ -1111,10 +1111,10 @@ bool HInstructionList::FoundBefore(const HInstruction* instruction1,
   return true;
 }
 
-bool HInstruction::Dominates(HInstruction* other_instruction, bool strictly) const {
+bool HInstruction::StrictlyDominates(HInstruction* other_instruction) const {
   if (other_instruction == this) {
     // An instruction does not strictly dominate itself.
-    return !strictly;
+    return false;
   }
   HBasicBlock* block = GetBlock();
   HBasicBlock* other_block = other_instruction->GetBlock();
@@ -1148,10 +1148,6 @@ bool HInstruction::Dominates(HInstruction* other_instruction, bool strictly) con
   }
 }
 
-bool HInstruction::StrictlyDominates(HInstruction* other_instruction) const {
-  return Dominates(other_instruction, /* strictly */ true);
-}
-
 void HInstruction::RemoveEnvironment() {
   RemoveEnvironmentUses(this);
   environment_ = nullptr;
@@ -1174,16 +1170,14 @@ void HInstruction::ReplaceWith(HInstruction* other) {
   DCHECK(env_uses_.empty());
 }
 
-void HInstruction::ReplaceUsesDominatedBy(HInstruction* dominator,
-                                          HInstruction* replacement,
-                                          bool strictly) {
+void HInstruction::ReplaceUsesDominatedBy(HInstruction* dominator, HInstruction* replacement) {
   const HUseList<HInstruction*>& uses = GetUses();
   for (auto it = uses.begin(), end = uses.end(); it != end; /* ++it below */) {
     HInstruction* user = it->GetUser();
     size_t index = it->GetIndex();
     // Increment `it` now because `*it` may disappear thanks to user->ReplaceInput().
     ++it;
-    if (dominator->Dominates(user, strictly)) {
+    if (dominator->StrictlyDominates(user)) {
       user->ReplaceInput(replacement, index);
     }
   }
