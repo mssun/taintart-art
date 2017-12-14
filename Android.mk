@@ -370,6 +370,7 @@ LOCAL_REQUIRED_MODULES := \
     libopenjdkjvmti \
     patchoat \
     profman \
+    libadbconnection \
 
 # For nosy apps, we provide a fake library that avoids namespace issues and gives some warnings.
 LOCAL_REQUIRED_MODULES += libart_fake
@@ -395,6 +396,7 @@ LOCAL_REQUIRED_MODULES += \
     libopenjdkjvmtid \
     patchoatd \
     profmand \
+    libadbconnectiond \
 
 endif
 endif

@@ -27,6 +27,7 @@ namespace art {
 enum class JdwpProvider {
   kNone,
   kInternal,
+  kAdbConnection,
 };
 
 std::ostream& operator<<(std::ostream& os, const JdwpProvider& rhs);

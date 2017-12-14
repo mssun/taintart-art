@@ -1241,6 +1241,11 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
       }
       break;
     }
+    case JdwpProvider::kAdbConnection: {
+      constexpr const char* plugin_name = kIsDebugBuild ? "libadbconnectiond.so"
+                                                        : "libadbconnection.so";
+      plugins_.push_back(Plugin::Create(plugin_name));
+    }
   }
   callbacks_->AddThreadLifecycleCallback(Dbg::GetThreadLifecycleCallback());
   callbacks_->AddClassLoadCallback(Dbg::GetClassLoadCallback());

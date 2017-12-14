@@ -388,6 +388,11 @@ TEST_F(CmdlineParserTest, TestJdwpProviderNone) {
   EXPECT_SINGLE_PARSE_VALUE(JdwpProvider::kNone, opt_args, M::JdwpProvider);
 }  // TEST_F
 
+TEST_F(CmdlineParserTest, TestJdwpProviderAdbconnection) {
+  const char* opt_args = "-XjdwpProvider:adbconnection";
+  EXPECT_SINGLE_PARSE_VALUE(JdwpProvider::kAdbConnection, opt_args, M::JdwpProvider);
+}  // TEST_F
+
 TEST_F(CmdlineParserTest, TestJdwpProviderHelp) {
   EXPECT_SINGLE_PARSE_FAIL("-XjdwpProvider:help", CmdlineResult::kUsage);
 }  // TEST_F
