@@ -43,14 +43,15 @@ void WriteDebugInfo(
 std::vector<uint8_t> MakeMiniDebugInfo(
     InstructionSet isa,
     const InstructionSetFeatures* features,
-    size_t rodata_section_size,
+    uint64_t text_section_address,
     size_t text_section_size,
     const ArrayRef<const MethodDebugInfo>& method_infos);
 
-std::vector<uint8_t> WriteDebugElfFileForMethods(
+std::vector<uint8_t> MakeElfFileForJIT(
     InstructionSet isa,
     const InstructionSetFeatures* features,
-    const ArrayRef<const MethodDebugInfo>& method_infos);
+    bool mini_debug_info,
+    const MethodDebugInfo& method_info);
 
 std::vector<uint8_t> WriteDebugElfFileForClasses(
     InstructionSet isa,
