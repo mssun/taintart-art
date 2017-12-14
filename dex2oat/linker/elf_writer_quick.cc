@@ -67,7 +67,7 @@ class DebugInfoTask : public Task {
   void Run(Thread*) {
     result_ = debug::MakeMiniDebugInfo(isa_,
                                        instruction_set_features_,
-                                       rodata_section_size_,
+                                       kPageSize + rodata_section_size_,  // .text address.
                                        text_section_size_,
                                        method_infos_);
   }

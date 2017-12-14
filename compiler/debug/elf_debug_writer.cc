@@ -108,29 +108,32 @@ void WriteDebugInfo(linker::ElfBuilder<ElfTypes>* builder,
 std::vector<uint8_t> MakeMiniDebugInfo(
     InstructionSet isa,
     const InstructionSetFeatures* features,
-    size_t rodata_size,
+    uint64_t text_address,
     size_t text_size,
     const ArrayRef<const MethodDebugInfo>& method_infos) {
   if (Is64BitInstructionSet(isa)) {
     return MakeMiniDebugInfoInternal<ElfTypes64>(isa,
                                                  features,
-                                                 rodata_size,
+                                                 text_address,
                                                  text_size,
                                                  method_infos);
   } else {
     return MakeMiniDebugInfoInternal<ElfTypes32>(isa,
                                                  features,
-                                                 rodata_size,
+                                                 text_address,
                                                  text_size,
                                                  method_infos);
   }
 }
 
 template <typename ElfTypes>
-static std::vector<uint8_t> WriteDebugElfFileForMethodsInternal(
+static std::vector<uint8_t> MakeElfFileForJITInternal(
     InstructionSet isa,
     const InstructionSetFeatures* features,
-    const ArrayRef<const MethodDebugInfo>& method_infos) {
+    bool mini_debug_info,
+    const MethodDebugInfo& mi) {
+  CHECK_EQ(mi.is_code_address_text_relative, false);
+  ArrayRef<const MethodDebugInfo> method_infos(&mi, 1);
   std::vector<uint8_t> buffer;
   buffer.reserve(KB);
   linker::VectorOutputStream out("Debug ELF file", &buffer);
@@ -138,23 +141,34 @@ static std::vector<uint8_t> WriteDebugElfFileForMethodsInternal(
       new linker::ElfBuilder<ElfTypes>(isa, features, &out));
   // No program headers since the ELF file is not linked and has no allocated sections.
   builder->Start(false /* write_program_headers */);
-  WriteDebugInfo(builder.get(),
-                 method_infos,
-                 dwarf::DW_DEBUG_FRAME_FORMAT,
-                 false /* write_oat_patches */);
+  if (mini_debug_info) {
+    std::vector<uint8_t> mdi = MakeMiniDebugInfo(isa,
+                                                 features,
+                                                 mi.code_address,
+                                                 mi.code_size,
+                                                 method_infos);
+    builder->WriteSection(".gnu_debugdata", &mdi);
+  } else {
+    builder->GetText()->AllocateVirtualMemory(mi.code_address, mi.code_size);
+    WriteDebugInfo(builder.get(),
+                   method_infos,
+                   dwarf::DW_DEBUG_FRAME_FORMAT,
+                   false /* write_oat_patches */);
+  }
   builder->End();
   CHECK(builder->Good());
   return buffer;
 }
 
-std::vector<uint8_t> WriteDebugElfFileForMethods(
+std::vector<uint8_t> MakeElfFileForJIT(
     InstructionSet isa,
     const InstructionSetFeatures* features,
-    const ArrayRef<const MethodDebugInfo>& method_infos) {
+    bool mini_debug_info,
+    const MethodDebugInfo& method_info) {
   if (Is64BitInstructionSet(isa)) {
-    return WriteDebugElfFileForMethodsInternal<ElfTypes64>(isa, features, method_infos);
+    return MakeElfFileForJITInternal<ElfTypes64>(isa, features, mini_debug_info, method_info);
   } else {
-    return WriteDebugElfFileForMethodsInternal<ElfTypes32>(isa, features, method_infos);
+    return MakeElfFileForJITInternal<ElfTypes32>(isa, features, mini_debug_info, method_info);
   }
 }
 
