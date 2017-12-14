@@ -20,6 +20,7 @@
 
 #include "gtest/gtest.h"
 
+#include "jdwp_provider.h"
 #include "experimental_flags.h"
 #include "parsed_options.h"
 #include "runtime.h"
@@ -364,48 +365,35 @@ TEST_F(CmdlineParserTest, DISABLED_TestXGcOption) {
 }  // TEST_F
 
 /*
- * {"-Xrunjdwp:_", "-agentlib:jdwp=_"}
+ * { "-XjdwpProvider:_" }
  */
-TEST_F(CmdlineParserTest, TestJdwpOptions) {
-  /*
-   * Test success
-   */
+TEST_F(CmdlineParserTest, TestJdwpProviderEmpty) {
   {
-    /*
-     * "Example: -Xrunjdwp:transport=dt_socket,address=8000,server=y\n"
-     */
-    JDWP::JdwpOptions opt = JDWP::JdwpOptions();
-    opt.transport = JDWP::JdwpTransportType::kJdwpTransportSocket;
-    opt.port = 8000;
-    opt.server = true;
-
-    const char *opt_args = "-Xrunjdwp:transport=dt_socket,address=8000,server=y";
-
-    EXPECT_SINGLE_PARSE_VALUE(opt, opt_args, M::JdwpOptions);
+    EXPECT_SINGLE_PARSE_DEFAULT_VALUE(JdwpProvider::kInternal, "", M::JdwpProvider);
   }
+}  // TEST_F
 
-  {
-    /*
-     * "Example: -agentlib:jdwp=transport=dt_socket,address=localhost:6500,server=n\n");
-     */
-    JDWP::JdwpOptions opt = JDWP::JdwpOptions();
-    opt.transport = JDWP::JdwpTransportType::kJdwpTransportSocket;
-    opt.host = "localhost";
-    opt.port = 6500;
-    opt.server = false;
+TEST_F(CmdlineParserTest, TestJdwpProviderDefault) {
+  const char* opt_args = "-XjdwpProvider:default";
+  EXPECT_SINGLE_PARSE_VALUE(JdwpProvider::kInternal, opt_args, M::JdwpProvider);
+}  // TEST_F
 
-    const char *opt_args = "-agentlib:jdwp=transport=dt_socket,address=localhost:6500,server=n";
+TEST_F(CmdlineParserTest, TestJdwpProviderInternal) {
+  const char* opt_args = "-XjdwpProvider:internal";
+  EXPECT_SINGLE_PARSE_VALUE(JdwpProvider::kInternal, opt_args, M::JdwpProvider);
+}  // TEST_F
 
-    EXPECT_SINGLE_PARSE_VALUE(opt, opt_args, M::JdwpOptions);
-  }
+TEST_F(CmdlineParserTest, TestJdwpProviderNone) {
+  const char* opt_args = "-XjdwpProvider:none";
+  EXPECT_SINGLE_PARSE_VALUE(JdwpProvider::kNone, opt_args, M::JdwpProvider);
+}  // TEST_F
 
-  /*
-   * Test failures
-   */
-  EXPECT_SINGLE_PARSE_FAIL("-Xrunjdwp:help", CmdlineResult::kUsage);  // usage for help only
-  EXPECT_SINGLE_PARSE_FAIL("-Xrunjdwp:blabla", CmdlineResult::kFailure);  // invalid subarg
-  EXPECT_SINGLE_PARSE_FAIL("-agentlib:jdwp=help", CmdlineResult::kUsage);  // usage for help only
-  EXPECT_SINGLE_PARSE_FAIL("-agentlib:jdwp=blabla", CmdlineResult::kFailure);  // invalid subarg
+TEST_F(CmdlineParserTest, TestJdwpProviderHelp) {
+  EXPECT_SINGLE_PARSE_FAIL("-XjdwpProvider:help", CmdlineResult::kUsage);
+}  // TEST_F
+
+TEST_F(CmdlineParserTest, TestJdwpProviderFail) {
+  EXPECT_SINGLE_PARSE_FAIL("-XjdwpProvider:blablabla", CmdlineResult::kFailure);
 }  // TEST_F
 
 /*

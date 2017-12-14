@@ -355,7 +355,7 @@ Runtime::~Runtime() {
   }
 
   // Make sure our internal threads are dead before we start tearing down things they're using.
-  Dbg::StopJdwp();
+  GetRuntimeCallbacks()->StopDebugger();
   delete signal_catcher_;
 
   // Make sure all other non-daemon threads have terminated, and all daemon threads are suspended.
@@ -871,8 +871,10 @@ void Runtime::InitNonZygoteOrPostFork(
   StartSignalCatcher();
 
   // Start the JDWP thread. If the command-line debugger flags specified "suspend=y",
-  // this will pause the runtime, so we probably want this to come last.
-  Dbg::StartJdwp();
+  // this will pause the runtime (in the internal debugger implementation), so we probably want
+  // this to come last.
+  ScopedObjectAccess soa(Thread::Current());
+  GetRuntimeCallbacks()->StartDebugger();
 }
 
 void Runtime::StartSignalCatcher() {
@@ -1221,8 +1223,24 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
 
   dump_gc_performance_on_shutdown_ = runtime_options.Exists(Opt::DumpGCPerformanceOnShutdown);
 
-  if (runtime_options.Exists(Opt::JdwpOptions)) {
-    Dbg::ConfigureJdwp(runtime_options.GetOrDefault(Opt::JdwpOptions));
+  jdwp_options_ = runtime_options.GetOrDefault(Opt::JdwpOptions);
+  jdwp_provider_ = runtime_options.GetOrDefault(Opt::JdwpProvider);
+  switch (jdwp_provider_) {
+    case JdwpProvider::kNone: {
+      LOG(WARNING) << "Disabling all JDWP support.";
+      break;
+    }
+    case JdwpProvider::kInternal: {
+      if (runtime_options.Exists(Opt::JdwpOptions)) {
+        JDWP::JdwpOptions ops;
+        if (!JDWP::ParseJdwpOptions(runtime_options.GetOrDefault(Opt::JdwpOptions), &ops)) {
+          LOG(ERROR) << "failed to parse jdwp options!";
+          return false;
+        }
+        Dbg::ConfigureJdwp(ops);
+      }
+      break;
+    }
   }
   callbacks_->AddThreadLifecycleCallback(Dbg::GetThreadLifecycleCallback());
   callbacks_->AddClassLoadCallback(Dbg::GetClassLoadCallback());
@@ -1509,6 +1527,7 @@ static bool EnsureJvmtiPlugin(Runtime* runtime,
   }
 
   // Is the process debuggable? Otherwise, do not attempt to load the plugin.
+  // TODO Support a crimped jvmti for non-debuggable runtimes.
   if (!runtime->IsJavaDebuggable()) {
     *error_msg = "Process is not debuggable.";
     return false;

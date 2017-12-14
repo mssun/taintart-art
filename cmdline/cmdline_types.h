@@ -34,6 +34,7 @@
 #include "gc/collector_type.h"
 #include "gc/space/large_object_space.h"
 #include "jdwp/jdwp.h"
+#include "jdwp_provider.h"
 #include "jit/profile_saver_options.h"
 #include "plugin.h"
 #include "read_barrier_config.h"
@@ -64,123 +65,27 @@ struct CmdlineType<Unit> : CmdlineTypeParser<Unit> {
 };
 
 template <>
-struct CmdlineType<JDWP::JdwpOptions> : CmdlineTypeParser<JDWP::JdwpOptions> {
+struct CmdlineType<JdwpProvider> : CmdlineTypeParser<JdwpProvider> {
   /*
-   * Handle one of the JDWP name/value pairs.
-   *
-   * JDWP options are:
-   *  help: if specified, show help message and bail
-   *  transport: may be dt_socket or dt_shmem
-   *  address: for dt_socket, "host:port", or just "port" when listening
-   *  server: if "y", wait for debugger to attach; if "n", attach to debugger
-   *  timeout: how long to wait for debugger to connect / listen
-   *
-   * Useful with server=n (these aren't supported yet):
-   *  onthrow=<exception-name>: connect to debugger when exception thrown
-   *  onuncaught=y|n: connect to debugger when uncaught exception thrown
-   *  launch=<command-line>: launch the debugger itself
-   *
-   * The "transport" option is required, as is "address" if server=n.
+   * Handle a single JDWP provider name. Must be either 'internal', 'default', or the file name of
+   * an agent. A plugin will make use of this and the jdwpOptions to set up jdwp when appropriate.
    */
-  Result Parse(const std::string& options) {
-    VLOG(jdwp) << "ParseJdwpOptions: " << options;
-
-    if (options == "help") {
+  Result Parse(const std::string& option) {
+    if (option == "help") {
       return Result::Usage(
-          "Example: -Xrunjdwp:transport=dt_socket,address=8000,server=y\n"
-          "Example: -Xrunjdwp:transport=dt_socket,address=localhost:6500,server=n\n");
-    }
-
-    const std::string s;
-
-    std::vector<std::string> pairs;
-    Split(options, ',', &pairs);
-
-    JDWP::JdwpOptions jdwp_options;
-
-    for (const std::string& jdwp_option : pairs) {
-      std::string::size_type equals_pos = jdwp_option.find('=');
-      if (equals_pos == std::string::npos) {
-        return Result::Failure(s +
-            "Can't parse JDWP option '" + jdwp_option + "' in '" + options + "'");
-      }
-
-      Result parse_attempt = ParseJdwpOption(jdwp_option.substr(0, equals_pos),
-                                             jdwp_option.substr(equals_pos + 1),
-                                             &jdwp_options);
-      if (parse_attempt.IsError()) {
-        // We fail to parse this JDWP option.
-        return parse_attempt;
-      }
-    }
-
-    if (jdwp_options.transport == JDWP::kJdwpTransportUnknown) {
-      return Result::Failure(s + "Must specify JDWP transport: " + options);
-    }
-    if (!jdwp_options.server && (jdwp_options.host.empty() || jdwp_options.port == 0)) {
-      return Result::Failure(s + "Must specify JDWP host and port when server=n: " + options);
-    }
-
-    return Result::Success(std::move(jdwp_options));
-  }
-
-  Result ParseJdwpOption(const std::string& name, const std::string& value,
-                         JDWP::JdwpOptions* jdwp_options) {
-    if (name == "transport") {
-      if (value == "dt_socket") {
-        jdwp_options->transport = JDWP::kJdwpTransportSocket;
-      } else if (value == "dt_android_adb") {
-        jdwp_options->transport = JDWP::kJdwpTransportAndroidAdb;
-      } else {
-        return Result::Failure("JDWP transport not supported: " + value);
-      }
-    } else if (name == "server") {
-      if (value == "n") {
-        jdwp_options->server = false;
-      } else if (value == "y") {
-        jdwp_options->server = true;
-      } else {
-        return Result::Failure("JDWP option 'server' must be 'y' or 'n'");
-      }
-    } else if (name == "suspend") {
-      if (value == "n") {
-        jdwp_options->suspend = false;
-      } else if (value == "y") {
-        jdwp_options->suspend = true;
-      } else {
-        return Result::Failure("JDWP option 'suspend' must be 'y' or 'n'");
-      }
-    } else if (name == "address") {
-      /* this is either <port> or <host>:<port> */
-      std::string port_string;
-      jdwp_options->host.clear();
-      std::string::size_type colon = value.find(':');
-      if (colon != std::string::npos) {
-        jdwp_options->host = value.substr(0, colon);
-        port_string = value.substr(colon + 1);
-      } else {
-        port_string = value;
-      }
-      if (port_string.empty()) {
-        return Result::Failure("JDWP address missing port: " + value);
-      }
-      char* end;
-      uint64_t port = strtoul(port_string.c_str(), &end, 10);
-      if (*end != '\0' || port > 0xffff) {
-        return Result::Failure("JDWP address has junk in port field: " + value);
-      }
-      jdwp_options->port = port;
-    } else if (name == "launch" || name == "onthrow" || name == "oncaught" || name == "timeout") {
-      /* valid but unsupported */
-      LOG(INFO) << "Ignoring JDWP option '" << name << "'='" << value << "'";
+          "Example: -XjdwpProvider:none to disable JDWP\n"
+          "Example: -XjdwpProvider:internal for internal jdwp implementation\n"
+          "Example: -XjdwpProvider:default for the default jdwp implementation"
+          " (currently internal)\n");
+    } else if (option == "internal" || option == "default") {
+      return Result::Success(JdwpProvider::kInternal);
+    } else if (option == "none") {
+      return Result::Success(JdwpProvider::kNone);
     } else {
-      LOG(INFO) << "Ignoring unrecognized JDWP option '" << name << "'='" << value << "'";
+      return Result::Failure(std::string("not a valid jdwp provider: ") + option);
     }
-
-    return Result::SuccessNoValue();
   }
-
-  static const char* Name() { return "JdwpOptions"; }
+  static const char* Name() { return "JdwpProvider"; }
 };
 
 template <size_t Divisor>
