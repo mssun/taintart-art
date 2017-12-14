@@ -79,8 +79,9 @@ static void WriteDebugSymbols(linker::ElfBuilder<ElfTypes>* builder,
       last_name_offset = name_offset;
     }
 
-    const auto* text = info.is_code_address_text_relative ? builder->GetText() : nullptr;
-    uint64_t address = info.code_address + (text != nullptr ? text->GetAddress() : 0);
+    const auto* text = builder->GetText();
+    uint64_t address = info.code_address;
+    address += info.is_code_address_text_relative ? text->GetAddress() : 0;
     // Add in code delta, e.g., thumb bit 0 for Thumb2 code.
     address += CompiledMethod::CodeDelta(info.isa);
     symtab->Add(name_offset, text, address, info.code_size, STB_GLOBAL, STT_FUNC);
