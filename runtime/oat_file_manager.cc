@@ -54,15 +54,11 @@ using android::base::StringPrintf;
 // If true, we attempt to load the application image if it exists.
 static constexpr bool kEnableAppImage = true;
 
-static bool OatFileIsOnSystem(const std::unique_ptr<const OatFile>& oat_file) {
-  UniqueCPtr<const char[]> path(realpath(oat_file->GetLocation().c_str(), nullptr));
-  return path != nullptr && android::base::StartsWith(oat_file->GetLocation(),
-                                                      GetAndroidRoot().c_str());
-}
-
 const OatFile* OatFileManager::RegisterOatFile(std::unique_ptr<const OatFile> oat_file) {
   WriterMutexLock mu(Thread::Current(), *Locks::oat_file_manager_lock_);
-  CHECK(!only_use_system_oat_files_ || OatFileIsOnSystem(oat_file))
+  CHECK(!only_use_system_oat_files_ ||
+        LocationIsOnSystem(oat_file->GetLocation().c_str()) ||
+        !oat_file->IsExecutable())
       << "Registering a non /system oat file: " << oat_file->GetLocation();
   DCHECK(oat_file != nullptr);
   if (kIsDebugBuild) {
@@ -422,7 +418,8 @@ std::vector<std::unique_ptr<const DexFile>> OatFileManager::OpenDexFilesFromOat(
 
   OatFileAssistant oat_file_assistant(dex_location,
                                       kRuntimeISA,
-                                      !runtime->IsAotCompiler());
+                                      !runtime->IsAotCompiler(),
+                                      only_use_system_oat_files_);
 
   // Lock the target oat location to avoid races generating and loading the
   // oat file.
@@ -435,8 +432,7 @@ std::vector<std::unique_ptr<const DexFile>> OatFileManager::OpenDexFilesFromOat(
 
   const OatFile* source_oat_file = nullptr;
 
-  // No point in trying to make up-to-date if we can only use system oat files.
-  if (!only_use_system_oat_files_ && !oat_file_assistant.IsUpToDate()) {
+  if (!oat_file_assistant.IsUpToDate()) {
     // Update the oat file on disk if we can, based on the --compiler-filter
     // option derived from the current runtime options.
     // This may fail, but that's okay. Best effort is all that matters here.
@@ -472,9 +468,7 @@ std::vector<std::unique_ptr<const DexFile>> OatFileManager::OpenDexFilesFromOat(
   // Get the oat file on disk.
   std::unique_ptr<const OatFile> oat_file(oat_file_assistant.GetBestOatFile().release());
 
-  if (oat_file != nullptr && only_use_system_oat_files_ && !OatFileIsOnSystem(oat_file)) {
-    // If the oat file is not on /system, don't use it.
-  } else  if ((class_loader != nullptr || dex_elements != nullptr) && oat_file != nullptr) {
+  if ((class_loader != nullptr || dex_elements != nullptr) && oat_file != nullptr) {
     // Prevent oat files from being loaded if no class_loader or dex_elements are provided.
     // This can happen when the deprecated DexFile.<init>(String) is called directly, and it
     // could load oat files without checking the classpath, which would be incorrect.
