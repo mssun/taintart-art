@@ -31,6 +31,8 @@ subdirs = [
     "dexlist",
     "dexoptanalyzer",
     "disassembler",
+    "dt_fd_forward",
+    "dt_fd_forward/export",
     "imgdiag",
     "oatdump",
     "openjdkjvm",
