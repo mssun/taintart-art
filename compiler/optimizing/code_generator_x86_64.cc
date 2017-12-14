@@ -5220,9 +5220,17 @@ void ParallelMoveResolverX86_64::EmitMove(size_t index) {
       __ movq(Address(CpuRegister(RSP), destination.GetStackIndex()), CpuRegister(TMP));
     }
   } else if (source.IsSIMDStackSlot()) {
-    DCHECK(destination.IsFpuRegister());
-    __ movups(destination.AsFpuRegister<XmmRegister>(),
-              Address(CpuRegister(RSP), source.GetStackIndex()));
+    if (destination.IsFpuRegister()) {
+      __ movups(destination.AsFpuRegister<XmmRegister>(),
+                Address(CpuRegister(RSP), source.GetStackIndex()));
+    } else {
+      DCHECK(destination.IsSIMDStackSlot());
+      size_t high = kX86_64WordSize;
+      __ movq(CpuRegister(TMP), Address(CpuRegister(RSP), source.GetStackIndex()));
+      __ movq(Address(CpuRegister(RSP), destination.GetStackIndex()), CpuRegister(TMP));
+      __ movq(CpuRegister(TMP), Address(CpuRegister(RSP), source.GetStackIndex() + high));
+      __ movq(Address(CpuRegister(RSP), destination.GetStackIndex() + high), CpuRegister(TMP));
+    }
   } else if (source.IsConstant()) {
     HConstant* constant = source.GetConstant();
     if (constant->IsIntConstant() || constant->IsNullConstant()) {
@@ -5290,19 +5298,6 @@ void ParallelMoveResolverX86_64::Exchange32(CpuRegister reg, int mem) {
   __ movl(reg, CpuRegister(TMP));
 }
 
-void ParallelMoveResolverX86_64::Exchange32(int mem1, int mem2) {
-  ScratchRegisterScope ensure_scratch(
-      this, TMP, RAX, codegen_->GetNumberOfCoreRegisters());
-
-  int stack_offset = ensure_scratch.IsSpilled() ? kX86_64WordSize : 0;
-  __ movl(CpuRegister(TMP), Address(CpuRegister(RSP), mem1 + stack_offset));
-  __ movl(CpuRegister(ensure_scratch.GetRegister()),
-          Address(CpuRegister(RSP), mem2 + stack_offset));
-  __ movl(Address(CpuRegister(RSP), mem2 + stack_offset), CpuRegister(TMP));
-  __ movl(Address(CpuRegister(RSP), mem1 + stack_offset),
-          CpuRegister(ensure_scratch.GetRegister()));
-}
-
 void ParallelMoveResolverX86_64::Exchange64(CpuRegister reg1, CpuRegister reg2) {
   __ movq(CpuRegister(TMP), reg1);
   __ movq(reg1, reg2);
@@ -5313,19 +5308,6 @@ void ParallelMoveResolverX86_64::Exchange64(CpuRegister reg, int mem) {
   __ movq(CpuRegister(TMP), Address(CpuRegister(RSP), mem));
   __ movq(Address(CpuRegister(RSP), mem), reg);
   __ movq(reg, CpuRegister(TMP));
-}
-
-void ParallelMoveResolverX86_64::Exchange64(int mem1, int mem2) {
-  ScratchRegisterScope ensure_scratch(
-      this, TMP, RAX, codegen_->GetNumberOfCoreRegisters());
-
-  int stack_offset = ensure_scratch.IsSpilled() ? kX86_64WordSize : 0;
-  __ movq(CpuRegister(TMP), Address(CpuRegister(RSP), mem1 + stack_offset));
-  __ movq(CpuRegister(ensure_scratch.GetRegister()),
-          Address(CpuRegister(RSP), mem2 + stack_offset));
-  __ movq(Address(CpuRegister(RSP), mem2 + stack_offset), CpuRegister(TMP));
-  __ movq(Address(CpuRegister(RSP), mem1 + stack_offset),
-          CpuRegister(ensure_scratch.GetRegister()));
 }
 
 void ParallelMoveResolverX86_64::Exchange32(XmmRegister reg, int mem) {
@@ -5340,6 +5322,48 @@ void ParallelMoveResolverX86_64::Exchange64(XmmRegister reg, int mem) {
   __ movd(reg, CpuRegister(TMP));
 }
 
+void ParallelMoveResolverX86_64::Exchange128(XmmRegister reg, int mem) {
+  size_t extra_slot = 2 * kX86_64WordSize;
+  __ subq(CpuRegister(RSP), Immediate(extra_slot));
+  __ movups(Address(CpuRegister(RSP), 0), XmmRegister(reg));
+  ExchangeMemory64(0, mem + extra_slot, 2);
+  __ movups(XmmRegister(reg), Address(CpuRegister(RSP), 0));
+  __ addq(CpuRegister(RSP), Immediate(extra_slot));
+}
+
+void ParallelMoveResolverX86_64::ExchangeMemory32(int mem1, int mem2) {
+  ScratchRegisterScope ensure_scratch(
+      this, TMP, RAX, codegen_->GetNumberOfCoreRegisters());
+
+  int stack_offset = ensure_scratch.IsSpilled() ? kX86_64WordSize : 0;
+  __ movl(CpuRegister(TMP), Address(CpuRegister(RSP), mem1 + stack_offset));
+  __ movl(CpuRegister(ensure_scratch.GetRegister()),
+          Address(CpuRegister(RSP), mem2 + stack_offset));
+  __ movl(Address(CpuRegister(RSP), mem2 + stack_offset), CpuRegister(TMP));
+  __ movl(Address(CpuRegister(RSP), mem1 + stack_offset),
+          CpuRegister(ensure_scratch.GetRegister()));
+}
+
+void ParallelMoveResolverX86_64::ExchangeMemory64(int mem1, int mem2, int num_of_qwords) {
+  ScratchRegisterScope ensure_scratch(
+      this, TMP, RAX, codegen_->GetNumberOfCoreRegisters());
+
+  int stack_offset = ensure_scratch.IsSpilled() ? kX86_64WordSize : 0;
+
+  // Now that temp registers are available (possibly spilled), exchange blocks of memory.
+  for (int i = 0; i < num_of_qwords; i++) {
+    __ movq(CpuRegister(TMP),
+            Address(CpuRegister(RSP), mem1 + stack_offset));
+    __ movq(CpuRegister(ensure_scratch.GetRegister()),
+            Address(CpuRegister(RSP), mem2 + stack_offset));
+    __ movq(Address(CpuRegister(RSP), mem2 + stack_offset),
+            CpuRegister(TMP));
+    __ movq(Address(CpuRegister(RSP), mem1 + stack_offset),
+            CpuRegister(ensure_scratch.GetRegister()));
+    stack_offset += kX86_64WordSize;
+  }
+}
+
 void ParallelMoveResolverX86_64::EmitSwap(size_t index) {
   MoveOperands* move = moves_[index];
   Location source = move->GetSource();
@@ -5352,13 +5376,13 @@ void ParallelMoveResolverX86_64::EmitSwap(size_t index) {
   } else if (source.IsStackSlot() && destination.IsRegister()) {
     Exchange32(destination.AsRegister<CpuRegister>(), source.GetStackIndex());
   } else if (source.IsStackSlot() && destination.IsStackSlot()) {
-    Exchange32(destination.GetStackIndex(), source.GetStackIndex());
+    ExchangeMemory32(destination.GetStackIndex(), source.GetStackIndex());
   } else if (source.IsRegister() && destination.IsDoubleStackSlot()) {
     Exchange64(source.AsRegister<CpuRegister>(), destination.GetStackIndex());
   } else if (source.IsDoubleStackSlot() && destination.IsRegister()) {
     Exchange64(destination.AsRegister<CpuRegister>(), source.GetStackIndex());
   } else if (source.IsDoubleStackSlot() && destination.IsDoubleStackSlot()) {
-    Exchange64(destination.GetStackIndex(), source.GetStackIndex());
+    ExchangeMemory64(destination.GetStackIndex(), source.GetStackIndex(), 1);
   } else if (source.IsFpuRegister() && destination.IsFpuRegister()) {
     __ movd(CpuRegister(TMP), source.AsFpuRegister<XmmRegister>());
     __ movaps(source.AsFpuRegister<XmmRegister>(), destination.AsFpuRegister<XmmRegister>());
@@ -5371,6 +5395,12 @@ void ParallelMoveResolverX86_64::EmitSwap(size_t index) {
     Exchange64(source.AsFpuRegister<XmmRegister>(), destination.GetStackIndex());
   } else if (source.IsDoubleStackSlot() && destination.IsFpuRegister()) {
     Exchange64(destination.AsFpuRegister<XmmRegister>(), source.GetStackIndex());
+  } else if (source.IsSIMDStackSlot() && destination.IsSIMDStackSlot()) {
+    ExchangeMemory64(destination.GetStackIndex(), source.GetStackIndex(), 2);
+  } else if (source.IsFpuRegister() && destination.IsSIMDStackSlot()) {
+    Exchange128(source.AsFpuRegister<XmmRegister>(), destination.GetStackIndex());
+  } else if (destination.IsFpuRegister() && source.IsSIMDStackSlot()) {
+    Exchange128(destination.AsFpuRegister<XmmRegister>(), source.GetStackIndex());
   } else {
     LOG(FATAL) << "Unimplemented swap between " << source << " and " << destination;
   }
