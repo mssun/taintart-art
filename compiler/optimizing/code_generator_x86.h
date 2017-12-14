@@ -139,10 +139,10 @@ class ParallelMoveResolverX86 : public ParallelMoveResolverWithSwap {
 
  private:
   void Exchange(Register reg, int mem);
-  void Exchange(int mem1, int mem2);
   void Exchange32(XmmRegister reg, int mem);
-  void MoveMemoryToMemory32(int dst, int src);
-  void MoveMemoryToMemory64(int dst, int src);
+  void Exchange128(XmmRegister reg, int mem);
+  void ExchangeMemory(int mem1, int mem2, int number_of_words);
+  void MoveMemoryToMemory(int dst, int src, int number_of_words);
 
   CodeGeneratorX86* const codegen_;
 
