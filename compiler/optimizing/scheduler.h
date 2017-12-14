@@ -462,6 +462,11 @@ class HScheduler {
   // containing basic block from being scheduled.
   // This method is used to restrict scheduling to instructions that we know are
   // safe to handle.
+  //
+  // For newly introduced instructions by default HScheduler::IsSchedulable returns false.
+  // HScheduler${ARCH}::IsSchedulable can be overridden to return true for an instruction (see
+  // scheduler_arm64.h for example) if it is safe to schedule it; in this case one *must* also
+  // look at/update HScheduler${ARCH}::IsSchedulingBarrier for this instruction.
   virtual bool IsSchedulable(const HInstruction* instruction) const;
   bool IsSchedulable(const HBasicBlock* block) const;
 

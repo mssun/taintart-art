@@ -60,7 +60,7 @@ class ElfDebugLineWriter {
         ? builder_->GetText()->GetAddress()
         : 0;
 
-    compilation_unit.debug_line_offset = builder_->GetDebugLine()->GetSize();
+    compilation_unit.debug_line_offset = builder_->GetDebugLine()->GetPosition();
 
     std::vector<dwarf::FileEntry> files;
     std::unordered_map<std::string, size_t> files_map;
@@ -268,7 +268,7 @@ class ElfDebugLineWriter {
     }
     std::vector<uint8_t> buffer;
     buffer.reserve(opcodes.data()->size() + KB);
-    size_t offset = builder_->GetDebugLine()->GetSize();
+    size_t offset = builder_->GetDebugLine()->GetPosition();
     WriteDebugLineTable(directories, files, opcodes, offset, &buffer, &debug_line_patches_);
     builder_->GetDebugLine()->WriteFully(buffer.data(), buffer.size());
     return buffer.size();

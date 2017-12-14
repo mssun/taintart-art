@@ -96,7 +96,7 @@ if [[ ! -f $plugin ]];  then
 fi
 
 props_path=$PWD/art/tools/libjdwp-compat.props
-expect_path=$PWD/art/tools/libjdwp_art_failures.txt
+expect_path=$PWD/art/tools/prebuilt_libjdwp_art_failures.txt
 
 function verbose_run() {
   echo "$@"

@@ -90,6 +90,14 @@ static void testFindClassOnAttachedNativeThread(JNIEnv* env) {
   CHECK(!env->ExceptionCheck());
 }
 
+extern "C" JNIEXPORT jint JNICALL Java_Main_getFieldSubclass(JNIEnv* env,
+                                                             jclass,
+                                                             jobject f_obj,
+                                                             jclass sub) {
+  jfieldID f = env->FromReflectedField(f_obj);
+  return env->GetStaticIntField(sub, f);
+}
+
 // http://b/10994325
 extern "C" JNIEXPORT void JNICALL Java_Main_testFindClassOnAttachedNativeThread(JNIEnv*, jclass) {
   PthreadHelper(&testFindClassOnAttachedNativeThread);
