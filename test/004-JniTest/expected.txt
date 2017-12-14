@@ -1,4 +1,5 @@
 JNI_OnLoad called
+ABC.XYZ = 12, GetStaticIntField(DEF.class, 'XYZ') = 12
 Super.<init>
 Super.<init>
 Subclass.<init>
