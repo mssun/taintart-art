@@ -98,7 +98,7 @@ where
     --num_inputs  : number of JFuzz programs to generate
     --device      : target device serial number (passed to adb -s)
     --dexer=DEXER : use either dx, d8, or jack to obtain dex files
-    --debug_info      : include debugging info
+    --debug_info  : include debugging info
 
 Background
 ==========

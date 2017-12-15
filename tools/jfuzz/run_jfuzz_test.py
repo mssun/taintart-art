@@ -551,7 +551,7 @@ class JFuzzTester(object):
       wrapped_args = ['--jfuzz_arg={0}'.format(opt) for opt in jfuzz_args]
       repro_cmd_str = (os.path.basename(__file__) +
                        ' --num_tests=1 --dexer=' + self._dexer +
-                       (' --debug_info' if self._debug_info else '') +
+                       (' --debug_info ' if self._debug_info else ' ') +
                        ' '.join(wrapped_args))
       comment = 'jfuzz {0}\nReproduce test:\n{1}\nReproduce divergence:\n{2}\n'.format(
           jfuzz_ver, jfuzz_cmd_str, repro_cmd_str)
