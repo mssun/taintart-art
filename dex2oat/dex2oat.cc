@@ -58,6 +58,7 @@
 #include "compiler_callbacks.h"
 #include "debug/elf_debug_writer.h"
 #include "debug/method_debug_info.h"
+#include "dexlayout.h"
 #include "dex/quick_compiler_callbacks.h"
 #include "dex/verification_results.h"
 #include "dex2oat_options.h"
@@ -2235,10 +2236,14 @@ class Dex2Oat FINAL {
     return DoProfileGuidedOptimizations();
   }
 
-  bool DoEagerUnquickeningOfVdex() const {
-    // DexLayout can invalidate the vdex metadata, so we need to unquicken
-    // the vdex file eagerly, before passing it to dexlayout.
+  bool MayInvalidateVdexMetadata() const {
+    // DexLayout can invalidate the vdex metadata if changing the class def order is enabled, so
+    // we need to unquicken the vdex file eagerly, before passing it to dexlayout.
     return DoDexLayoutOptimizations();
+  }
+
+  bool DoEagerUnquickeningOfVdex() const {
+    return MayInvalidateVdexMetadata();
   }
 
   bool LoadProfile() {
