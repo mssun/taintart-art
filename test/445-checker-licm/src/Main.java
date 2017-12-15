@@ -15,6 +15,11 @@
  */
 
 public class Main {
+  static class Dummy {
+    static int getValue() {
+      return 1;
+    }
+  }
 
   /// CHECK-START: int Main.div() licm (before)
   /// CHECK-DAG: Div loop:{{B\d+}}
@@ -105,6 +110,28 @@ public class Main {
       result += array[i];
     }
     return result;
+  }
+
+  /// CHECK-START: int Main.clinitCheck() licm (before)
+  /// CHECK-DAG: <<LoadClass:l\d+>> LoadClass loop:<<Loop:B\d+>>
+  /// CHECK-DAG:                    ClinitCheck [<<LoadClass>>] loop:<<Loop>>
+
+  /// CHECK-START: int Main.clinitCheck() licm (after)
+  /// CHECK-NOT:                    LoadClass loop:{{B\d+}}
+  /// CHECK-NOT:                    ClinitCheck loop:{{B\d+}}
+
+  /// CHECK-START: int Main.clinitCheck() licm (after)
+  /// CHECK-DAG: <<LoadClass:l\d+>> LoadClass loop:none
+  /// CHECK-DAG:                    ClinitCheck [<<LoadClass>>] loop:none
+
+  public static int clinitCheck() {
+    int i = 0;
+    int sum = 0;
+    do {
+      sum += Dummy.getValue();
+      i++;
+    } while (i < 10);
+    return sum;
   }
 
   /// CHECK-START: int Main.divAndIntrinsic(int[]) licm (before)
@@ -213,6 +240,7 @@ public class Main {
     assertEquals(18900, innerMul());
     assertEquals(105, divByA(2, 0));
     assertEquals(12, arrayLength(new int[] { 4, 8 }));
+    assertEquals(10, clinitCheck());
     assertEquals(21, divAndIntrinsic(new int[] { 4, -2, 8, -3 }));
     assertEquals(45, invariantBoundIntrinsic(-10));
     assertEquals(30, invariantBodyIntrinsic(2, 3));
