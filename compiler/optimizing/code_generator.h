@@ -388,13 +388,6 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
   bool IsBlockedCoreRegister(size_t i) { return blocked_core_registers_[i]; }
   bool IsBlockedFloatingPointRegister(size_t i) { return blocked_fpu_registers_[i]; }
 
-  // Helper that returns the pointer offset of an index in an object array.
-  // Note: this method assumes we always have the same pointer size, regardless
-  // of the architecture.
-  static size_t GetCacheOffset(uint32_t index);
-  // Pointer variant for ArtMethod and ArtField arrays.
-  size_t GetCachePointerOffset(uint32_t index);
-
   // Helper that returns the offset of the array's length field.
   // Note: Besides the normal arrays, we also use the HArrayLength for
   // accessing the String's `count` field in String intrinsics.
@@ -411,6 +404,50 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
                          Location from2,
                          Location to2,
                          DataType::Type type2);
+
+  static bool InstanceOfNeedsReadBarrier(HInstanceOf* instance_of) {
+    // Used only for kExactCheck, kAbstractClassCheck, kClassHierarchyCheck and kArrayObjectCheck.
+    DCHECK(instance_of->GetTypeCheckKind() == TypeCheckKind::kExactCheck ||
+           instance_of->GetTypeCheckKind() == TypeCheckKind::kAbstractClassCheck ||
+           instance_of->GetTypeCheckKind() == TypeCheckKind::kClassHierarchyCheck ||
+           instance_of->GetTypeCheckKind() == TypeCheckKind::kArrayObjectCheck)
+        << instance_of->GetTypeCheckKind();
+    // If the target class is in the boot image, it's non-moveable and it doesn't matter
+    // if we compare it with a from-space or to-space reference, the result is the same.
+    // It's OK to traverse a class hierarchy jumping between from-space and to-space.
+    return kEmitCompilerReadBarrier && !instance_of->GetTargetClass()->IsInBootImage();
+  }
+
+  static ReadBarrierOption ReadBarrierOptionForInstanceOf(HInstanceOf* instance_of) {
+    return InstanceOfNeedsReadBarrier(instance_of) ? kWithReadBarrier : kWithoutReadBarrier;
+  }
+
+  static bool IsTypeCheckSlowPathFatal(HCheckCast* check_cast) {
+    switch (check_cast->GetTypeCheckKind()) {
+      case TypeCheckKind::kExactCheck:
+      case TypeCheckKind::kAbstractClassCheck:
+      case TypeCheckKind::kClassHierarchyCheck:
+      case TypeCheckKind::kArrayObjectCheck:
+      case TypeCheckKind::kInterfaceCheck: {
+        bool needs_read_barrier =
+            kEmitCompilerReadBarrier && !check_cast->GetTargetClass()->IsInBootImage();
+        // We do not emit read barriers for HCheckCast, so we can get false negatives
+        // and the slow path shall re-check and simply return if the cast is actually OK.
+        return !needs_read_barrier;
+      }
+      case TypeCheckKind::kArrayCheck:
+      case TypeCheckKind::kUnresolvedCheck:
+        return false;
+    }
+    LOG(FATAL) << "Unreachable";
+    UNREACHABLE();
+  }
+
+  static LocationSummary::CallKind GetCheckCastCallKind(HCheckCast* check_cast) {
+    return (IsTypeCheckSlowPathFatal(check_cast) && !check_cast->CanThrowIntoCatchBlock())
+        ? LocationSummary::kNoCall  // In fact, call on a fatal (non-returning) slow path.
+        : LocationSummary::kCallOnSlowPath;
+  }
 
   static bool StoreNeedsWriteBarrier(DataType::Type type, HInstruction* value) {
     // Check that null value is not represented as an integer constant.

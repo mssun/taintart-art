@@ -295,15 +295,6 @@ void CodeGenerator::EmitJitRootPatches(uint8_t* code ATTRIBUTE_UNUSED,
   DCHECK_EQ(code_generation_data_->GetNumberOfJitClassRoots(), 0u);
 }
 
-size_t CodeGenerator::GetCacheOffset(uint32_t index) {
-  return sizeof(GcRoot<mirror::Object>) * index;
-}
-
-size_t CodeGenerator::GetCachePointerOffset(uint32_t index) {
-  PointerSize pointer_size = InstructionSetPointerSize(GetInstructionSet());
-  return static_cast<size_t>(pointer_size) * index;
-}
-
 uint32_t CodeGenerator::GetArrayLengthOffset(HArrayLength* array_length) {
   return array_length->IsStringLength()
       ? mirror::String::CountOffset().Uint32Value()
