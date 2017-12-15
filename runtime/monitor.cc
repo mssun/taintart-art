@@ -1289,65 +1289,6 @@ uint32_t Monitor::GetLockOwnerThreadId(mirror::Object* obj) {
   }
 }
 
-void Monitor::DescribeWait(std::ostream& os, const Thread* thread) {
-  // Determine the wait message and object we're waiting or blocked upon.
-  mirror::Object* pretty_object;
-  uint32_t lock_owner;
-  ThreadState state = FetchState(thread, &pretty_object, &lock_owner);
-
-  const char* wait_message = nullptr;
-  switch (state) {
-    case kWaiting:
-    case kTimedWaiting:
-      wait_message = "  - waiting on ";
-      break;
-
-    case kSleeping:
-      wait_message = "  - sleeping on ";
-      break;
-
-    case kBlocked:
-      wait_message = "  - waiting to lock ";
-      break;
-
-    case kWaitingForLockInflation:
-      wait_message = "  - waiting for lock inflation of ";
-      break;
-
-    default:
-      break;
-  }
-
-  if (wait_message == nullptr) {
-    return;
-  }
-
-  if (pretty_object == nullptr) {
-    os << wait_message << "an unknown object";
-  } else {
-    if ((pretty_object->GetLockWord(true).GetState() == LockWord::kThinLocked) &&
-        Locks::mutator_lock_->IsExclusiveHeld(Thread::Current())) {
-      // Getting the identity hashcode here would result in lock inflation and suspension of the
-      // current thread, which isn't safe if this is the only runnable thread.
-      os << wait_message << StringPrintf("<@addr=0x%" PRIxPTR "> (a %s)",
-                                         reinterpret_cast<intptr_t>(pretty_object),
-                                         pretty_object->PrettyTypeOf().c_str());
-    } else {
-      // - waiting on <0x6008c468> (a java.lang.Class<java.lang.ref.ReferenceQueue>)
-      // Call PrettyTypeOf before IdentityHashCode since IdentityHashCode can cause thread
-      // suspension and move pretty_object.
-      const std::string pretty_type(pretty_object->PrettyTypeOf());
-      os << wait_message << StringPrintf("<0x%08x> (a %s)", pretty_object->IdentityHashCode(),
-                                         pretty_type.c_str());
-    }
-  }
-  // - waiting to lock <0x613f83d8> (a java.lang.Object) held by thread 5
-  if (lock_owner != ThreadList::kInvalidThreadId) {
-    os << " held by thread " << lock_owner;
-  }
-  os << "\n";
-}
-
 ThreadState Monitor::FetchState(const Thread* thread,
                                 /* out */ mirror::Object** monitor_object,
                                 /* out */ uint32_t* lock_owner_tid) {
