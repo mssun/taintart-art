@@ -43,11 +43,12 @@ from common.common import DeviceTestEnv
 BISECTABLE_RET_CODES = (RetCode.SUCCESS, RetCode.ERROR, RetCode.TIMEOUT)
 
 
-def GetExecutionModeRunner(dexer, device, mode):
+def GetExecutionModeRunner(dexer, debug_info, device, mode):
   """Returns a runner for the given execution mode.
 
   Args:
     dexer: string, defines dexer
+    debug_info: boolean, if True include debugging info
     device: string, target device serial number (or None)
     mode: string, execution mode
   Returns:
@@ -56,15 +57,15 @@ def GetExecutionModeRunner(dexer, device, mode):
     FatalError: error for unknown execution mode
   """
   if mode == 'ri':
-    return TestRunnerRIOnHost()
+    return TestRunnerRIOnHost(debug_info)
   if mode == 'hint':
-    return TestRunnerArtIntOnHost(dexer)
+    return TestRunnerArtIntOnHost(dexer, debug_info)
   if mode == 'hopt':
-    return TestRunnerArtOptOnHost(dexer)
+    return TestRunnerArtOptOnHost(dexer, debug_info)
   if mode == 'tint':
-    return TestRunnerArtIntOnTarget(dexer, device)
+    return TestRunnerArtIntOnTarget(dexer, debug_info, device)
   if mode == 'topt':
-    return TestRunnerArtOptOnTarget(dexer, device)
+    return TestRunnerArtOptOnTarget(dexer, debug_info, device)
   raise FatalError('Unknown execution mode')
 
 
@@ -117,19 +118,22 @@ class TestRunner(object):
 class TestRunnerWithHostCompilation(TestRunner):
   """Abstract test runner that supports compilation on host."""
 
-  def  __init__(self, dexer):
+  def  __init__(self, dexer, debug_info):
     """Constructor for the runner with host compilation.
 
     Args:
       dexer: string, defines dexer
+      debug_info: boolean, if True include debugging info
     """
+    self._dexer = dexer
+    self._debug_info = debug_info
     self._jack_args = ['-cp', GetJackClassPath(), '--output-dex', '.',
                        'Test.java']
-    self._dexer = dexer
 
   def CompileOnHost(self):
     if self._dexer == 'dx' or self._dexer == 'd8':
-      if RunCommand(['javac', 'Test.java'],
+      dbg = '-g' if self._debug_info else '-g:none'
+      if RunCommand(['javac', dbg, 'Test.java'],
                     out=None, err=None, timeout=30) == RetCode.SUCCESS:
         dx = 'dx' if self._dexer == 'dx' else 'd8-compat-dx'
         retc = RunCommand([dx, '--dex', '--output=classes.dex'] + glob('*.class'),
@@ -147,6 +151,14 @@ class TestRunnerWithHostCompilation(TestRunner):
 class TestRunnerRIOnHost(TestRunner):
   """Concrete test runner of the reference implementation on host."""
 
+  def  __init__(self, debug_info):
+    """Constructor for the runner with host compilation.
+
+    Args:
+      debug_info: boolean, if True include debugging info
+    """
+    self._debug_info = debug_info
+
   @property
   def description(self):
     return 'RI on host'
@@ -156,7 +168,8 @@ class TestRunnerRIOnHost(TestRunner):
     return 'RI'
 
   def CompileAndRunTest(self):
-    if RunCommand(['javac', 'Test.java'],
+    dbg = '-g' if self._debug_info else '-g:none'
+    if RunCommand(['javac', dbg, 'Test.java'],
                   out=None, err=None, timeout=30) == RetCode.SUCCESS:
       retc = RunCommand(['java', 'Test'], self.output_file, err=None)
     else:
@@ -170,14 +183,15 @@ class TestRunnerRIOnHost(TestRunner):
 class TestRunnerArtOnHost(TestRunnerWithHostCompilation):
   """Abstract test runner of Art on host."""
 
-  def  __init__(self, dexer, extra_args=None):
+  def  __init__(self, dexer, debug_info, extra_args=None):
     """Constructor for the Art on host tester.
 
     Args:
       dexer: string, defines dexer
+      debug_info: boolean, if True include debugging info
       extra_args: list of strings, extra arguments for dalvikvm
     """
-    super().__init__(dexer)
+    super().__init__(dexer, debug_info)
     self._art_cmd = ['/bin/bash', 'art', '-cp', 'classes.dex']
     if extra_args is not None:
       self._art_cmd += extra_args
@@ -194,13 +208,14 @@ class TestRunnerArtOnHost(TestRunnerWithHostCompilation):
 class TestRunnerArtIntOnHost(TestRunnerArtOnHost):
   """Concrete test runner of interpreter mode Art on host."""
 
-  def  __init__(self, dexer):
+  def  __init__(self, dexer, debug_info):
     """Constructor for the Art on host tester (interpreter).
 
     Args:
       dexer: string, defines dexer
+      debug_info: boolean, if True include debugging info
    """
-    super().__init__(dexer, ['-Xint'])
+    super().__init__(dexer, debug_info, ['-Xint'])
 
   @property
   def description(self):
@@ -217,13 +232,14 @@ class TestRunnerArtIntOnHost(TestRunnerArtOnHost):
 class TestRunnerArtOptOnHost(TestRunnerArtOnHost):
   """Concrete test runner of optimizing compiler mode Art on host."""
 
-  def  __init__(self, dexer):
+  def  __init__(self, dexer, debug_info):
     """Constructor for the Art on host tester (optimizing).
 
     Args:
       dexer: string, defines dexer
+      debug_info: boolean, if True include debugging info
    """
-    super().__init__(dexer, None)
+    super().__init__(dexer, debug_info, None)
 
   @property
   def description(self):
@@ -242,15 +258,16 @@ class TestRunnerArtOptOnHost(TestRunnerArtOnHost):
 class TestRunnerArtOnTarget(TestRunnerWithHostCompilation):
   """Abstract test runner of Art on target."""
 
-  def  __init__(self, dexer, device, extra_args=None):
+  def  __init__(self, dexer, debug_info, device, extra_args=None):
     """Constructor for the Art on target tester.
 
     Args:
       dexer: string, defines dexer
+      debug_info: boolean, if True include debugging info
       device: string, target device serial number (or None)
       extra_args: list of strings, extra arguments for dalvikvm
     """
-    super().__init__(dexer)
+    super().__init__(dexer, debug_info)
     self._test_env = DeviceTestEnv('jfuzz_', specific_device=device)
     self._dalvik_cmd = ['dalvikvm']
     if extra_args is not None:
@@ -284,14 +301,15 @@ class TestRunnerArtOnTarget(TestRunnerWithHostCompilation):
 class TestRunnerArtIntOnTarget(TestRunnerArtOnTarget):
   """Concrete test runner of interpreter mode Art on target."""
 
-  def  __init__(self, dexer, device):
+  def  __init__(self, dexer, debug_info, device):
     """Constructor for the Art on target tester (interpreter).
 
     Args:
       dexer: string, defines dexer
+      debug_info: boolean, if True include debugging info
       device: string, target device serial number (or None)
     """
-    super().__init__(dexer, device, ['-Xint'])
+    super().__init__(dexer, debug_info, device, ['-Xint'])
 
   @property
   def description(self):
@@ -308,14 +326,15 @@ class TestRunnerArtIntOnTarget(TestRunnerArtOnTarget):
 class TestRunnerArtOptOnTarget(TestRunnerArtOnTarget):
   """Concrete test runner of optimizing compiler mode Art on target."""
 
-  def  __init__(self, dexer, device):
+  def  __init__(self, dexer, debug_info, device):
     """Constructor for the Art on target tester (optimizing).
 
     Args:
       dexer: string, defines dexer
+      debug_info: boolean, if True include debugging info
       device: string, target device serial number (or None)
     """
-    super().__init__(dexer, device, None)
+    super().__init__(dexer, debug_info, device, None)
 
   @property
   def description(self):
@@ -345,7 +364,7 @@ class JFuzzTester(object):
   """Tester that runs JFuzz many times and report divergences."""
 
   def  __init__(self, num_tests, device, mode1, mode2, jfuzz_args,
-                report_script, true_divergence_only, dexer):
+                report_script, true_divergence_only, dexer, debug_info):
     """Constructor for the tester.
 
     Args:
@@ -357,15 +376,17 @@ class JFuzzTester(object):
       report_script: string, path to script called for each divergence
       true_divergence_only: boolean, if True don't bisect timeout divergences
       dexer: string, defines dexer
+      debug_info: boolean, if True include debugging info
     """
     self._num_tests = num_tests
     self._device = device
-    self._runner1 = GetExecutionModeRunner(dexer, device, mode1)
-    self._runner2 = GetExecutionModeRunner(dexer, device, mode2)
+    self._runner1 = GetExecutionModeRunner(dexer, debug_info, device, mode1)
+    self._runner2 = GetExecutionModeRunner(dexer, debug_info, device, mode2)
     self._jfuzz_args = jfuzz_args
     self._report_script = report_script
     self._true_divergence_only = true_divergence_only
     self._dexer = dexer
+    self._debug_info = debug_info
     self._save_dir = None
     self._results_dir = None
     self._jfuzz_dir = None
@@ -409,6 +430,7 @@ class JFuzzTester(object):
     print('Exec-mode1:', self._runner1.description)
     print('Exec-mode2:', self._runner2.description)
     print('Dexer     :', self._dexer)
+    print('Debug-info:', self._debug_info)
     print()
     self.ShowStats()
     for self._test in range(1, self._num_tests + 1):
@@ -529,6 +551,7 @@ class JFuzzTester(object):
       wrapped_args = ['--jfuzz_arg={0}'.format(opt) for opt in jfuzz_args]
       repro_cmd_str = (os.path.basename(__file__) +
                        ' --num_tests=1 --dexer=' + self._dexer +
+                       (' --debug_info' if self._debug_info else '') +
                        ' '.join(wrapped_args))
       comment = 'jfuzz {0}\nReproduce test:\n{1}\nReproduce divergence:\n{2}\n'.format(
           jfuzz_ver, jfuzz_cmd_str, repro_cmd_str)
@@ -610,14 +633,20 @@ def main():
                       help='do not bisect timeout divergences')
   parser.add_argument('--dexer', default='dx', type=str,
                       help='defines dexer as dx, d8, or jack (default: dx)')
+  parser.add_argument('--debug_info', default=False, action='store_true',
+                      help='include debugging info')
   args = parser.parse_args()
   if args.mode1 == args.mode2:
     raise FatalError('Identical execution modes given')
   # Run the JFuzz tester.
   with JFuzzTester(args.num_tests,
-                   args.device, args.mode1, args.mode2,
-                   args.jfuzz_args, args.report_script,
-                   args.true_divergence, args.dexer) as fuzzer:
+                   args.device,
+                   args.mode1, args.mode2,
+                   args.jfuzz_args,
+                   args.report_script,
+                   args.true_divergence,
+                   args.dexer,
+                   args.debug_info) as fuzzer:
     fuzzer.Run()
 
 if __name__ == '__main__':

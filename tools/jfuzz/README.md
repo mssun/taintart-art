@@ -51,6 +51,7 @@ How to start JFuzz testing
                           [--jfuzz_arg=ARG]
                           [--true_divergence]
                           [--dexer=DEXER]
+                          [--debug_info]
 
 where
 
@@ -67,6 +68,7 @@ where
     --jfuzz_arg       : argument for jfuzz
     --true_divergence : don't bisect timeout divergences
     --dexer=DEXER     : use either dx, d8, or jack to obtain dex files
+    --debug_info      : include debugging info
 
 How to start JFuzz nightly testing
 ==================================
@@ -88,6 +90,7 @@ How to start J/DexFuzz testing (multi-layered)
                           [--num_inputs=NUM_INPUTS]
                           [--device=DEVICE]
                           [--dexer=DEXER]
+                          [--debug_info]
 
 where
 
@@ -95,6 +98,7 @@ where
     --num_inputs  : number of JFuzz programs to generate
     --device      : target device serial number (passed to adb -s)
     --dexer=DEXER : use either dx, d8, or jack to obtain dex files
+    --debug_info      : include debugging info
 
 Background
 ==========
