@@ -229,10 +229,13 @@ target_config = {
     },
     'art-heap-poisoning' : {
         'run-test' : ['--interpreter',
-                      '--optimizing'],
+                      '--optimizing',
+                      '--cdex-fast'],
         'env' : {
             'ART_USE_READ_BARRIER' : 'false',
-            'ART_HEAP_POISONING' : 'true'
+            'ART_HEAP_POISONING' : 'true',
+            # Get some extra automated testing coverage for compact dex.
+            'ART_DEFAULT_COMPACT_DEX_LEVEL' : 'fast'
         }
     },
     'art-preopt' : {
@@ -276,7 +279,9 @@ target_config = {
         'make' :  'test-art-host-gtest',
         'env': {
             'ART_DEFAULT_GC_TYPE' : 'SS',
-            'ART_USE_READ_BARRIER' : 'false'
+            'ART_USE_READ_BARRIER' : 'false',
+            # Get some extra automated testing coverage for compact dex.
+            'ART_DEFAULT_COMPACT_DEX_LEVEL' : 'fast'
         }
     },
     'art-gtest-gss-gc': {
