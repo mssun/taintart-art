@@ -94,9 +94,6 @@ class Monitor {
                    bool interruptShouldThrow, ThreadState why)
       REQUIRES_SHARED(Locks::mutator_lock_) NO_THREAD_SAFETY_ANALYSIS;
 
-  static void DescribeWait(std::ostream& os, const Thread* thread)
-      REQUIRES(!Locks::thread_suspend_count_lock_)
-      REQUIRES_SHARED(Locks::mutator_lock_);
   static ThreadState FetchState(const Thread* thread,
                                 /* out */ mirror::Object** monitor_object,
                                 /* out */ uint32_t* lock_owner_tid)

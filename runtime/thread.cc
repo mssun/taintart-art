@@ -70,6 +70,7 @@
 #include "mirror/object_array-inl.h"
 #include "mirror/stack_trace_element.h"
 #include "monitor.h"
+#include "monitor_objects_stack_visitor.h"
 #include "native_stack_dump.h"
 #include "nativehelper/scoped_local_ref.h"
 #include "nativehelper/scoped_utf_chars.h"
@@ -1756,25 +1757,22 @@ void Thread::DumpState(std::ostream& os) const {
   Thread::DumpState(os, this, GetTid());
 }
 
-struct StackDumpVisitor : public StackVisitor {
+struct StackDumpVisitor : public MonitorObjectsStackVisitor {
   StackDumpVisitor(std::ostream& os_in,
                    Thread* thread_in,
                    Context* context,
-                   bool can_allocate_in,
+                   bool can_allocate,
                    bool check_suspended = true,
-                   bool dump_locks_in = true)
+                   bool dump_locks = true)
       REQUIRES_SHARED(Locks::mutator_lock_)
-      : StackVisitor(thread_in,
-                     context,
-                     StackVisitor::StackWalkKind::kIncludeInlinedFrames,
-                     check_suspended),
+      : MonitorObjectsStackVisitor(thread_in,
+                                   context,
+                                   check_suspended,
+                                   can_allocate && dump_locks),
         os(os_in),
-        can_allocate(can_allocate_in),
         last_method(nullptr),
         last_line_number(0),
-        repetition_count(0),
-        frame_count(0),
-        dump_locks(dump_locks_in) {}
+        repetition_count(0) {}
 
   virtual ~StackDumpVisitor() {
     if (frame_count == 0) {
@@ -1782,13 +1780,12 @@ struct StackDumpVisitor : public StackVisitor {
     }
   }
 
-  bool VisitFrame() REQUIRES_SHARED(Locks::mutator_lock_) {
-    ArtMethod* m = GetMethod();
-    if (m->IsRuntimeMethod()) {
-      return true;
-    }
+  static constexpr size_t kMaxRepetition = 3u;
+
+  VisitMethodResult StartMethod(ArtMethod* m, size_t frame_nr ATTRIBUTE_UNUSED)
+      OVERRIDE
+      REQUIRES_SHARED(Locks::mutator_lock_) {
     m = m->GetInterfaceMethodIfProxy(kRuntimePointerSize);
-    const int kMaxRepetition = 3;
     ObjPtr<mirror::Class> c = m->GetDeclaringClass();
     ObjPtr<mirror::DexCache> dex_cache = c->GetDexCache();
     int line_number = -1;
@@ -1806,67 +1803,97 @@ struct StackDumpVisitor : public StackVisitor {
       last_line_number = line_number;
       last_method = m;
     }
-    if (repetition_count < kMaxRepetition) {
-      os << "  at " << m->PrettyMethod(false);
-      if (m->IsNative()) {
-        os << "(Native method)";
-      } else {
-        const char* source_file(m->GetDeclaringClassSourceFile());
-        os << "(" << (source_file != nullptr ? source_file : "unavailable")
-           << ":" << line_number << ")";
-      }
-      os << "\n";
-      if (frame_count == 0) {
-        Monitor::DescribeWait(os, GetThread());
-      }
-      if (can_allocate && dump_locks) {
-        // Visit locks, but do not abort on errors. This would trigger a nested abort.
-        // Skip visiting locks if dump_locks is false as it would cause a bad_mutexes_held in
-        // RegTypeCache::RegTypeCache due to thread_list_lock.
-        Monitor::VisitLocks(this, DumpLockedObject, &os, false);
-      }
+
+    if (repetition_count >= kMaxRepetition) {
+      // Skip visiting=printing anything.
+      return VisitMethodResult::kSkipMethod;
     }
 
-    ++frame_count;
-    return true;
+    os << "  at " << m->PrettyMethod(false);
+    if (m->IsNative()) {
+      os << "(Native method)";
+    } else {
+      const char* source_file(m->GetDeclaringClassSourceFile());
+      os << "(" << (source_file != nullptr ? source_file : "unavailable")
+                       << ":" << line_number << ")";
+    }
+    os << "\n";
+    // Go and visit locks.
+    return VisitMethodResult::kContinueMethod;
   }
 
-  static void DumpLockedObject(mirror::Object* o, void* context)
+  VisitMethodResult EndMethod(ArtMethod* m ATTRIBUTE_UNUSED) OVERRIDE {
+    return VisitMethodResult::kContinueMethod;
+  }
+
+  void VisitWaitingObject(mirror::Object* obj, ThreadState state ATTRIBUTE_UNUSED)
+      OVERRIDE
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    std::ostream& os = *reinterpret_cast<std::ostream*>(context);
-    os << "  - locked ";
-    if (o == nullptr) {
-      os << "an unknown object";
+    PrintObject(obj, "  - waiting on ", ThreadList::kInvalidThreadId);
+  }
+  void VisitSleepingObject(mirror::Object* obj)
+      OVERRIDE
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    PrintObject(obj, "  - sleeping on ", ThreadList::kInvalidThreadId);
+  }
+  void VisitBlockedOnObject(mirror::Object* obj,
+                            ThreadState state,
+                            uint32_t owner_tid)
+      OVERRIDE
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    const char* msg;
+    switch (state) {
+      case kBlocked:
+        msg = "  - waiting to lock ";
+        break;
+
+      case kWaitingForLockInflation:
+        msg = "  - waiting for lock inflation of ";
+        break;
+
+      default:
+        LOG(FATAL) << "Unreachable";
+        UNREACHABLE();
+    }
+    PrintObject(obj, msg, owner_tid);
+  }
+  void VisitLockedObject(mirror::Object* obj)
+      OVERRIDE
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    PrintObject(obj, "  - locked ", ThreadList::kInvalidThreadId);
+  }
+
+  void PrintObject(mirror::Object* obj,
+                   const char* msg,
+                   uint32_t owner_tid) REQUIRES_SHARED(Locks::mutator_lock_) {
+    if (obj == nullptr) {
+      os << msg << "an unknown object";
     } else {
-      if (kUseReadBarrier && Thread::Current()->GetIsGcMarking()) {
-        // We may call Thread::Dump() in the middle of the CC thread flip and this thread's stack
-        // may have not been flipped yet and "o" may be a from-space (stale) ref, in which case the
-        // IdentityHashCode call below will crash. So explicitly mark/forward it here.
-        o = ReadBarrier::Mark(o);
-      }
-      if ((o->GetLockWord(false).GetState() == LockWord::kThinLocked) &&
+      if ((obj->GetLockWord(true).GetState() == LockWord::kThinLocked) &&
           Locks::mutator_lock_->IsExclusiveHeld(Thread::Current())) {
         // Getting the identity hashcode here would result in lock inflation and suspension of the
         // current thread, which isn't safe if this is the only runnable thread.
-        os << StringPrintf("<@addr=0x%" PRIxPTR "> (a %s)", reinterpret_cast<intptr_t>(o),
-                           o->PrettyTypeOf().c_str());
+        os << msg << StringPrintf("<@addr=0x%" PRIxPTR "> (a %s)",
+                                  reinterpret_cast<intptr_t>(obj),
+                                  obj->PrettyTypeOf().c_str());
       } else {
-        // IdentityHashCode can cause thread suspension, which would invalidate o if it moved. So
-        // we get the pretty type beofre we call IdentityHashCode.
-        const std::string pretty_type(o->PrettyTypeOf());
-        os << StringPrintf("<0x%08x> (a %s)", o->IdentityHashCode(), pretty_type.c_str());
+        // - waiting on <0x6008c468> (a java.lang.Class<java.lang.ref.ReferenceQueue>)
+        // Call PrettyTypeOf before IdentityHashCode since IdentityHashCode can cause thread
+        // suspension and move pretty_object.
+        const std::string pretty_type(obj->PrettyTypeOf());
+        os << msg << StringPrintf("<0x%08x> (a %s)", obj->IdentityHashCode(), pretty_type.c_str());
       }
+    }
+    if (owner_tid != ThreadList::kInvalidThreadId) {
+      os << " held by thread " << owner_tid;
     }
     os << "\n";
   }
 
   std::ostream& os;
-  const bool can_allocate;
   ArtMethod* last_method;
   int last_line_number;
-  int repetition_count;
-  int frame_count;
-  const bool dump_locks;
+  size_t repetition_count;
 };
 
 static bool ShouldShowNativeStack(const Thread* thread)
