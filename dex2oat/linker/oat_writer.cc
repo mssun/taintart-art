@@ -3337,8 +3337,9 @@ bool OatWriter::WriteDexFile(OutputStream* out,
   if (!SeekToDexFile(out, file, oat_dex_file)) {
     return false;
   }
-  if (profile_compilation_info_ != nullptr ||
-          compact_dex_level_ != CompactDexLevel::kCompactDexLevelNone) {
+  // update_input_vdex disables compact dex and layout.
+  if (!update_input_vdex && (profile_compilation_info_ != nullptr ||
+      compact_dex_level_ != CompactDexLevel::kCompactDexLevelNone)) {
     CHECK(!update_input_vdex) << "We should never update the input vdex when doing dexlayout";
     if (!LayoutAndWriteDexFile(out, oat_dex_file)) {
       return false;
@@ -3456,6 +3457,7 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
   Options options;
   options.output_to_memmap_ = true;
   options.compact_dex_level_ = compact_dex_level_;
+  options.update_checksum_ = true;
   DexLayout dex_layout(options, profile_compilation_info_, nullptr);
   dex_layout.ProcessDexFile(location.c_str(), dex_file.get(), 0);
   std::unique_ptr<MemMap> mem_map(dex_layout.GetAndReleaseMemMap());

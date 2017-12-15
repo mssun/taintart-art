@@ -53,10 +53,6 @@ namespace art {
 
 using android::base::StringPrintf;
 
-// Setting this to false disables class def layout entirely, which is stronger than strictly
-// necessary to ensure the partial order w.r.t. class derivation. TODO: Re-enable (b/68317550).
-static constexpr bool kChangeClassDefOrder = false;
-
 /*
  * Flags for use with createAccessFlagStr().
  */
@@ -1594,7 +1590,7 @@ void DexLayout::LayoutClassDefsAndClassData(const DexFile* dex_file) {
   }
   CHECK_EQ(class_data_index, class_datas.size());
 
-  if (kChangeClassDefOrder) {
+  if (DexLayout::kChangeClassDefOrder) {
     // This currently produces dex files that violate the spec since the super class class_def is
     // supposed to occur before any subclasses.
     dex_ir::CollectionVector<dex_ir::ClassDef>::Vector& class_defs =
