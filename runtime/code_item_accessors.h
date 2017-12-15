@@ -42,6 +42,8 @@ class CodeItemInstructionAccessor {
 
   ALWAYS_INLINE DexInstructionIterator end() const;
 
+  IterationRange<DexInstructionIterator> InstructionsFrom(uint32_t start_dex_pc) const;
+
   uint32_t InsnsSizeInCodeUnits() const {
     return insns_size_in_code_units_;
   }
@@ -52,6 +54,7 @@ class CodeItemInstructionAccessor {
 
   // Return the instruction for a dex pc.
   const Instruction& InstructionAt(uint32_t dex_pc) const {
+    DCHECK_LT(dex_pc, InsnsSizeInCodeUnits());
     return *Instruction::At(insns_ + dex_pc);
   }
 
@@ -59,10 +62,6 @@ class CodeItemInstructionAccessor {
   bool HasCodeItem() const {
     return Insns() != nullptr;
   }
-
-  // CreateNullable allows ArtMethods that have a null code item.
-  ALWAYS_INLINE static CodeItemInstructionAccessor CreateNullable(ArtMethod* method)
-      REQUIRES_SHARED(Locks::mutator_lock_);
 
  protected:
   CodeItemInstructionAccessor() = default;
@@ -108,14 +107,6 @@ class CodeItemDataAccessor : public CodeItemInstructionAccessor {
   const uint8_t* GetCatchHandlerData(size_t offset = 0) const;
 
   const DexFile::TryItem* FindTryItem(uint32_t try_dex_pc) const;
-
-  // CreateNullable allows ArtMethods that have a null code item.
-  ALWAYS_INLINE static CodeItemDataAccessor CreateNullable(ArtMethod* method)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
-  ALWAYS_INLINE static CodeItemDataAccessor CreateNullable(
-      const DexFile* dex_file,
-      const DexFile::CodeItem* code_item);
 
  protected:
   CodeItemDataAccessor() = default;

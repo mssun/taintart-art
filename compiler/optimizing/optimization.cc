@@ -35,6 +35,7 @@
 
 #include "bounds_check_elimination.h"
 #include "cha_guard_optimization.h"
+#include "code_item_accessors-inl.h"
 #include "code_sinking.h"
 #include "constant_folding.h"
 #include "constructor_fence_redundancy_elimination.h"
@@ -241,7 +242,8 @@ ArenaVector<HOptimization*> ConstructOptimizations(
         opt = new (allocator) HDeadCodeElimination(graph, stats, name);
         break;
       case OptimizationPass::kInliner: {
-        size_t number_of_dex_registers = dex_compilation_unit.GetCodeItem()->registers_size_;
+        CodeItemDataAccessor accessor(dex_compilation_unit.GetDexFile(),
+                                      dex_compilation_unit.GetCodeItem());
         opt = new (allocator) HInliner(graph,                   // outer_graph
                                        graph,                   // outermost_graph
                                        codegen,
@@ -250,7 +252,7 @@ ArenaVector<HOptimization*> ConstructOptimizations(
                                        driver,
                                        handles,
                                        stats,
-                                       number_of_dex_registers,
+                                       accessor.RegistersSize(),
                                        /* total_number_of_instructions */ 0,
                                        /* parent */ nullptr,
                                        /* depth */ 0,

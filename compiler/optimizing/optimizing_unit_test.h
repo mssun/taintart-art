@@ -19,6 +19,7 @@
 
 #include "base/scoped_arena_allocator.h"
 #include "builder.h"
+#include "code_item_accessors-inl.h"
 #include "common_compiler_test.h"
 #include "dex_file.h"
 #include "dex_instruction.h"
@@ -145,7 +146,8 @@ class OptimizingUnitTest : public CommonCompilerTest {
               /* access_flags */ 0u,
               /* verified_method */ nullptr,
               handles_->NewHandle<mirror::DexCache>(nullptr));
-      HGraphBuilder builder(graph, dex_compilation_unit, *code_item, handles_.get(), return_type);
+      CodeItemDebugInfoAccessor accessor(&graph->GetDexFile(), code_item);
+      HGraphBuilder builder(graph, dex_compilation_unit, accessor, handles_.get(), return_type);
       bool graph_built = (builder.BuildGraph() == kAnalysisSuccess);
       return graph_built ? graph : nullptr;
     }

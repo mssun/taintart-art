@@ -19,6 +19,7 @@
 
 #include "base/scoped_arena_allocator.h"
 #include "base/scoped_arena_containers.h"
+#include "code_item_accessors.h"
 #include "data_type.h"
 #include "dex_file.h"
 #include "dex_file_types.h"
@@ -50,7 +51,7 @@ class HInstructionBuilder : public ValueObject {
                       HBasicBlockBuilder* block_builder,
                       SsaBuilder* ssa_builder,
                       const DexFile* dex_file,
-                      const DexFile::CodeItem* code_item,
+                      const CodeItemDebugInfoAccessor& accessor,
                       DataType::Type return_type,
                       const DexCompilationUnit* dex_compilation_unit,
                       const DexCompilationUnit* outer_compilation_unit,
@@ -59,30 +60,7 @@ class HInstructionBuilder : public ValueObject {
                       const uint8_t* interpreter_metadata,
                       OptimizingCompilerStats* compiler_stats,
                       VariableSizedHandleScope* handles,
-                      ScopedArenaAllocator* local_allocator)
-      : allocator_(graph->GetAllocator()),
-        graph_(graph),
-        handles_(handles),
-        dex_file_(dex_file),
-        code_item_(code_item),
-        return_type_(return_type),
-        block_builder_(block_builder),
-        ssa_builder_(ssa_builder),
-        compiler_driver_(compiler_driver),
-        code_generator_(code_generator),
-        dex_compilation_unit_(dex_compilation_unit),
-        outer_compilation_unit_(outer_compilation_unit),
-        quicken_info_(interpreter_metadata),
-        compilation_stats_(compiler_stats),
-        local_allocator_(local_allocator),
-        locals_for_(local_allocator->Adapter(kArenaAllocGraphBuilder)),
-        current_block_(nullptr),
-        current_locals_(nullptr),
-        latest_result_(nullptr),
-        current_this_parameter_(nullptr),
-        loop_headers_(local_allocator->Adapter(kArenaAllocGraphBuilder)) {
-    loop_headers_.reserve(kDefaultNumberOfLoops);
-  }
+                      ScopedArenaAllocator* local_allocator);
 
   bool Build();
   void BuildIntrinsic(ArtMethod* method);
@@ -329,7 +307,7 @@ class HInstructionBuilder : public ValueObject {
 
   // The dex file where the method being compiled is, and the bytecode data.
   const DexFile* const dex_file_;
-  const DexFile::CodeItem* const code_item_;  // null for intrinsic graph.
+  const CodeItemDebugInfoAccessor code_item_accessor_;  // null for intrinsic graph.
 
   // The return type of the method being compiled.
   const DataType::Type return_type_;

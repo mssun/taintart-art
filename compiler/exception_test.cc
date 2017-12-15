@@ -20,6 +20,7 @@
 #include "base/callee_save_type.h"
 #include "base/enums.h"
 #include "class_linker.h"
+#include "code_item_accessors-inl.h"
 #include "common_runtime_test.h"
 #include "dex_file-inl.h"
 #include "dex_file.h"
@@ -129,11 +130,12 @@ class ExceptionTest : public CommonRuntimeTest {
 TEST_F(ExceptionTest, FindCatchHandler) {
   ScopedObjectAccess soa(Thread::Current());
   const DexFile::CodeItem* code_item = dex_->GetCodeItem(method_f_->GetCodeItemOffset());
+  CodeItemDataAccessor accessor(dex_, code_item);
 
   ASSERT_TRUE(code_item != nullptr);
 
-  ASSERT_EQ(2u, code_item->tries_size_);
-  ASSERT_NE(0u, code_item->insns_size_in_code_units_);
+  ASSERT_EQ(2u, accessor.TriesSize());
+  ASSERT_NE(0u, accessor.InsnsSizeInCodeUnits());
 
   const DexFile::TryItem *t0, *t1;
   t0 = dex_->GetTryItems(*code_item, 0);

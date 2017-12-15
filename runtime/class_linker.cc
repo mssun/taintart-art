@@ -4317,15 +4317,14 @@ void ClassLinker::ResolveClassExceptionHandlerTypes(Handle<mirror::Class> klass)
 
 void ClassLinker::ResolveMethodExceptionHandlerTypes(ArtMethod* method) {
   // similar to DexVerifier::ScanTryCatchBlocks and dex2oat's ResolveExceptionsForMethod.
-  const DexFile::CodeItem* code_item =
-      method->GetDexFile()->GetCodeItem(method->GetCodeItemOffset());
-  if (code_item == nullptr) {
+  CodeItemDataAccessor accessor(method);
+  if (!accessor.HasCodeItem()) {
     return;  // native or abstract method
   }
-  if (code_item->tries_size_ == 0) {
+  if (accessor.TriesSize() == 0) {
     return;  // nothing to process
   }
-  const uint8_t* handlers_ptr = DexFile::GetCatchHandlerData(*code_item, 0);
+  const uint8_t* handlers_ptr = accessor.GetCatchHandlerData(0);
   uint32_t handlers_size = DecodeUnsignedLeb128(&handlers_ptr);
   for (uint32_t idx = 0; idx < handlers_size; idx++) {
     CatchHandlerIterator iterator(handlers_ptr);

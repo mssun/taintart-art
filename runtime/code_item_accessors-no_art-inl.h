@@ -24,7 +24,6 @@
 #include "standard_dex_file.h"
 
 // The no ART version is used by binaries that don't include the whole runtime.
-
 namespace art {
 
 inline void CodeItemInstructionAccessor::Init(const CompactDexFile::CodeItem& code_item) {
@@ -39,13 +38,14 @@ inline void CodeItemInstructionAccessor::Init(const StandardDexFile::CodeItem& c
 
 inline void CodeItemInstructionAccessor::Init(const DexFile* dex_file,
                                               const DexFile::CodeItem* code_item) {
-  DCHECK(dex_file != nullptr);
-  DCHECK(code_item != nullptr);
-  if (dex_file->IsCompactDexFile()) {
-    Init(down_cast<const CompactDexFile::CodeItem&>(*code_item));
-  } else {
-    DCHECK(dex_file->IsStandardDexFile());
-    Init(down_cast<const StandardDexFile::CodeItem&>(*code_item));
+  if (code_item != nullptr) {
+    DCHECK(dex_file != nullptr);
+    if (dex_file->IsCompactDexFile()) {
+      Init(down_cast<const CompactDexFile::CodeItem&>(*code_item));
+    } else {
+      DCHECK(dex_file->IsStandardDexFile());
+      Init(down_cast<const StandardDexFile::CodeItem&>(*code_item));
+    }
   }
 }
 
@@ -61,6 +61,14 @@ inline DexInstructionIterator CodeItemInstructionAccessor::begin() const {
 
 inline DexInstructionIterator CodeItemInstructionAccessor::end() const {
   return DexInstructionIterator(insns_, insns_size_in_code_units_);
+}
+
+inline IterationRange<DexInstructionIterator> CodeItemInstructionAccessor::InstructionsFrom(
+    uint32_t start_dex_pc) const {
+  DCHECK_LT(start_dex_pc, InsnsSizeInCodeUnits());
+  return {
+      DexInstructionIterator(insns_, start_dex_pc),
+      DexInstructionIterator(insns_, insns_size_in_code_units_) };
 }
 
 inline void CodeItemDataAccessor::Init(const CompactDexFile::CodeItem& code_item) {
@@ -81,31 +89,20 @@ inline void CodeItemDataAccessor::Init(const StandardDexFile::CodeItem& code_ite
 
 inline void CodeItemDataAccessor::Init(const DexFile* dex_file,
                                        const DexFile::CodeItem* code_item) {
-  DCHECK(dex_file != nullptr);
-  DCHECK(code_item != nullptr);
-  if (dex_file->IsCompactDexFile()) {
-    CodeItemDataAccessor::Init(down_cast<const CompactDexFile::CodeItem&>(*code_item));
-  } else {
-    DCHECK(dex_file->IsStandardDexFile());
-    CodeItemDataAccessor::Init(down_cast<const StandardDexFile::CodeItem&>(*code_item));
+  if (code_item != nullptr) {
+    DCHECK(dex_file != nullptr);
+    if (dex_file->IsCompactDexFile()) {
+      CodeItemDataAccessor::Init(down_cast<const CompactDexFile::CodeItem&>(*code_item));
+    } else {
+      DCHECK(dex_file->IsStandardDexFile());
+      CodeItemDataAccessor::Init(down_cast<const StandardDexFile::CodeItem&>(*code_item));
+    }
   }
 }
 
 inline CodeItemDataAccessor::CodeItemDataAccessor(const DexFile* dex_file,
                                                   const DexFile::CodeItem* code_item) {
   Init(dex_file, code_item);
-}
-
-inline CodeItemDataAccessor CodeItemDataAccessor::CreateNullable(
-    const DexFile* dex_file,
-    const DexFile::CodeItem* code_item) {
-  CodeItemDataAccessor ret;
-  if (code_item != nullptr) {
-    ret.Init(dex_file, code_item);
-  } else {
-    DCHECK(!ret.HasCodeItem()) << "Should be null initialized";
-  }
-  return ret;
 }
 
 inline IterationRange<const DexFile::TryItem*> CodeItemDataAccessor::TryItems() const {
@@ -162,7 +159,6 @@ inline bool CodeItemDebugInfoAccessor::DecodeDebugLocalInfo(bool is_static,
                                          new_local,
                                          context);
 }
-
 
 }  // namespace art
 

@@ -25,6 +25,7 @@
 
 namespace art {
 
+class CodeItemDataAccessor;
 class ShadowFrame;
 class Thread;
 
@@ -32,7 +33,7 @@ namespace interpreter {
 
 template<bool do_access_check, bool transaction_active>
 JValue ExecuteSwitchImpl(Thread* self,
-                         const DexFile::CodeItem* code_item,
+                         const CodeItemDataAccessor& accessor,
                          ShadowFrame& shadow_frame,
                          JValue result_register,
                          bool interpret_one_instruction) REQUIRES_SHARED(Locks::mutator_lock_);
