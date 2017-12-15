@@ -301,8 +301,11 @@ class ValueSet : public ArenaObject<kArenaAllocGvn> {
     // Pure instructions are put into odd buckets to speed up deletion. Note that in the
     // case of irreducible loops, we don't put pure instructions in odd buckets, as we
     // need to delete them when entering the loop.
-    if (instruction->GetSideEffects().HasDependencies() ||
-        instruction->GetBlock()->GetGraph()->HasIrreducibleLoops()) {
+    // ClinitCheck is treated as a pure instruction since it's only executed
+    // once.
+    bool pure = !instruction->GetSideEffects().HasDependencies() ||
+                instruction->IsClinitCheck();
+    if (!pure || instruction->GetBlock()->GetGraph()->HasIrreducibleLoops()) {
       return (hash_code << 1) | 0;
     } else {
       return (hash_code << 1) | 1;
