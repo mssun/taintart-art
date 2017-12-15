@@ -145,6 +145,7 @@ class ParallelMoveResolverMIPS : public ParallelMoveResolverWithSwap {
   void RestoreScratch(int reg) OVERRIDE;
 
   void Exchange(int index1, int index2, bool double_slot);
+  void ExchangeQuadSlots(int index1, int index2);
 
   MipsAssembler* GetAssembler() const;
 

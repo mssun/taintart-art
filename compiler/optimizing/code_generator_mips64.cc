@@ -1061,6 +1061,13 @@ void ParallelMoveResolverMIPS64::Exchange(int index1, int index2, bool double_sl
   __ StoreToOffset(store_type, TMP, SP, index1 + stack_offset);
 }
 
+void ParallelMoveResolverMIPS64::ExchangeQuadSlots(int index1, int index2) {
+  __ LoadFpuFromOffset(kLoadQuadword, FTMP, SP, index1);
+  __ LoadFpuFromOffset(kLoadQuadword, FTMP2, SP, index2);
+  __ StoreFpuToOffset(kStoreQuadword, FTMP, SP, index2);
+  __ StoreFpuToOffset(kStoreQuadword, FTMP2, SP, index1);
+}
+
 static dwarf::Reg DWARFReg(GpuRegister reg) {
   return dwarf::Reg::Mips64Core(static_cast<int>(reg));
 }
@@ -1370,6 +1377,8 @@ void CodeGeneratorMIPS64::SwapLocations(Location loc1, Location loc2, DataType::
 
   bool is_slot1 = loc1.IsStackSlot() || loc1.IsDoubleStackSlot();
   bool is_slot2 = loc2.IsStackSlot() || loc2.IsDoubleStackSlot();
+  bool is_simd1 = loc1.IsSIMDStackSlot();
+  bool is_simd2 = loc2.IsSIMDStackSlot();
   bool is_fp_reg1 = loc1.IsFpuRegister();
   bool is_fp_reg2 = loc2.IsFpuRegister();
 
@@ -1382,17 +1391,23 @@ void CodeGeneratorMIPS64::SwapLocations(Location loc1, Location loc2, DataType::
     __ Move(r1, TMP);
   } else if (is_fp_reg2 && is_fp_reg1) {
     // Swap 2 FPRs
-    FpuRegister r1 = loc1.AsFpuRegister<FpuRegister>();
-    FpuRegister r2 = loc2.AsFpuRegister<FpuRegister>();
-    if (type == DataType::Type::kFloat32) {
-      __ MovS(FTMP, r1);
-      __ MovS(r1, r2);
-      __ MovS(r2, FTMP);
+    if (GetGraph()->HasSIMD()) {
+      __ MoveV(static_cast<VectorRegister>(FTMP), VectorRegisterFrom(loc1));
+      __ MoveV(VectorRegisterFrom(loc1), VectorRegisterFrom(loc2));
+      __ MoveV(VectorRegisterFrom(loc2), static_cast<VectorRegister>(FTMP));
     } else {
-      DCHECK_EQ(type, DataType::Type::kFloat64);
-      __ MovD(FTMP, r1);
-      __ MovD(r1, r2);
-      __ MovD(r2, FTMP);
+      FpuRegister r1 = loc1.AsFpuRegister<FpuRegister>();
+      FpuRegister r2 = loc2.AsFpuRegister<FpuRegister>();
+      if (type == DataType::Type::kFloat32) {
+        __ MovS(FTMP, r1);
+        __ MovS(r1, r2);
+        __ MovS(r2, FTMP);
+      } else {
+        DCHECK_EQ(type, DataType::Type::kFloat64);
+        __ MovD(FTMP, r1);
+        __ MovD(r1, r2);
+        __ MovD(r2, FTMP);
+      }
     }
   } else if (is_slot1 != is_slot2) {
     // Swap GPR/FPR and stack slot
@@ -1421,6 +1436,17 @@ void CodeGeneratorMIPS64::SwapLocations(Location loc1, Location loc2, DataType::
     move_resolver_.Exchange(loc1.GetStackIndex(),
                             loc2.GetStackIndex(),
                             loc1.IsDoubleStackSlot());
+  } else if (is_simd1 && is_simd2) {
+    move_resolver_.ExchangeQuadSlots(loc1.GetStackIndex(), loc2.GetStackIndex());
+  } else if ((is_fp_reg1 && is_simd2) || (is_fp_reg2 && is_simd1)) {
+    Location fp_reg_loc = is_fp_reg1 ? loc1 : loc2;
+    Location mem_loc = is_fp_reg1 ? loc2 : loc1;
+    __ LoadFpuFromOffset(kLoadQuadword, FTMP, SP, mem_loc.GetStackIndex());
+    __ StoreFpuToOffset(kStoreQuadword,
+                        fp_reg_loc.AsFpuRegister<FpuRegister>(),
+                        SP,
+                        mem_loc.GetStackIndex());
+    __ MoveV(VectorRegisterFrom(fp_reg_loc), static_cast<VectorRegister>(FTMP));
   } else {
     LOG(FATAL) << "Unimplemented swap between locations " << loc1 << " and " << loc2;
   }
@@ -1652,6 +1678,11 @@ void CodeGeneratorMIPS64::SetupBlockedRegisters() const {
   blocked_core_registers_[TMP] = true;
   blocked_core_registers_[TMP2] = true;
   blocked_fpu_registers_[FTMP] = true;
+
+  if (GetInstructionSetFeatures().HasMsa()) {
+    // To be used just for MSA instructions.
+    blocked_fpu_registers_[FTMP2] = true;
+  }
 
   // Reserve suspend and thread registers.
   blocked_core_registers_[S0] = true;
