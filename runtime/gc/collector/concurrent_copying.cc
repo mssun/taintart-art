@@ -760,7 +760,8 @@ class ConcurrentCopying::ImmuneSpaceScanObjVisitor {
         // Done scanning the object, go back to white.
         bool success = obj->AtomicSetReadBarrierState(ReadBarrier::GrayState(),
                                                       ReadBarrier::WhiteState());
-        CHECK(success);
+        CHECK(success)
+            << Runtime::Current()->GetHeap()->GetVerification()->DumpObjectInfo(obj, "failed CAS");
       }
     } else {
       collector_->ScanImmuneObject(obj);
