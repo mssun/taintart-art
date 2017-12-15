@@ -22,12 +22,17 @@ class ChildClass extends SuperClass {
 
 public class Main {
 
-  /// CHECK-START:    void Main.main(java.lang.String[]) builder (after)
+  public static void main(String[] args) {
+    test1();
+    test2();
+  }
+
+  /// CHECK-START:    void Main.test1() builder (after)
   /// CHECK:          BoundType  klass:SuperClass can_be_null:false exact:false
 
-  /// CHECK-START:    void Main.main(java.lang.String[]) builder (after)
+  /// CHECK-START:    void Main.test1() builder (after)
   /// CHECK-NOT:      BoundType  klass:SuperClass can_be_null:false exact:true
-  public static void main(String[] args) {
+  public static void test1() {
     Object obj = new ChildClass();
 
     // We need a fixed point iteration to hit the bogus type update
@@ -43,6 +48,35 @@ public class Main {
       if (!(obj instanceof ChildClass)) {
         throw new Error("Expected a ChildClass, got " + obj.getClass());
       }
+    }
+  }
+
+  /// CHECK-START-X86: boolean Main.$noinline$instanceOfString(java.lang.Object) disassembly (after)
+  /// CHECK:          InstanceOf check_kind:exact_check
+  /// CHECK-NOT:      {{.*fs:.*}}
+
+  /// CHECK-START-X86_64: boolean Main.$noinline$instanceOfString(java.lang.Object) disassembly (after)
+  /// CHECK:          InstanceOf check_kind:exact_check
+  /// CHECK-NOT:      {{.*gs:.*}}
+
+  /// CHECK-START-{ARM,ARM64}: boolean Main.$noinline$instanceOfString(java.lang.Object) disassembly (after)
+  /// CHECK:          InstanceOf check_kind:exact_check
+  // For ARM and ARM64, the marking register (r8 and x20, respectively) can be used in
+  // non-CC configs for any other purpose, so we'd need a config-specific checker test.
+  // TODO: Add the checks when we support config-specific tests.
+  public static boolean $noinline$instanceOfString(Object o) {
+    // String is a final class, so `instanceof String` should use exact check.
+    // String is in the boot image, so we should avoid read barriers. The presence
+    // of the read barrier can be checked in the architecture-specific disassembly.
+    return o instanceof String;
+  }
+
+  public static void test2() {
+    if ($noinline$instanceOfString(new Object())) {
+      throw new Error();
+    }
+    if (!$noinline$instanceOfString(new String())) {
+      throw new Error();
     }
   }
 }
