@@ -1095,17 +1095,23 @@ void ParallelMoveResolverMIPS::EmitSwap(size_t index) {
     __ Move(r2, r1);
     __ Move(r1, TMP);
   } else if (loc1.IsFpuRegister() && loc2.IsFpuRegister()) {
-    FRegister f1 = loc1.AsFpuRegister<FRegister>();
-    FRegister f2 = loc2.AsFpuRegister<FRegister>();
-    if (type == DataType::Type::kFloat32) {
-      __ MovS(FTMP, f2);
-      __ MovS(f2, f1);
-      __ MovS(f1, FTMP);
+    if (codegen_->GetGraph()->HasSIMD()) {
+      __ MoveV(static_cast<VectorRegister>(FTMP), VectorRegisterFrom(loc1));
+      __ MoveV(VectorRegisterFrom(loc1), VectorRegisterFrom(loc2));
+      __ MoveV(VectorRegisterFrom(loc2), static_cast<VectorRegister>(FTMP));
     } else {
-      DCHECK_EQ(type, DataType::Type::kFloat64);
-      __ MovD(FTMP, f2);
-      __ MovD(f2, f1);
-      __ MovD(f1, FTMP);
+      FRegister f1 = loc1.AsFpuRegister<FRegister>();
+      FRegister f2 = loc2.AsFpuRegister<FRegister>();
+      if (type == DataType::Type::kFloat32) {
+        __ MovS(FTMP, f2);
+        __ MovS(f2, f1);
+        __ MovS(f1, FTMP);
+      } else {
+        DCHECK_EQ(type, DataType::Type::kFloat64);
+        __ MovD(FTMP, f2);
+        __ MovD(f2, f1);
+        __ MovD(f1, FTMP);
+      }
     }
   } else if ((loc1.IsRegister() && loc2.IsFpuRegister()) ||
              (loc1.IsFpuRegister() && loc2.IsRegister())) {
@@ -1152,6 +1158,8 @@ void ParallelMoveResolverMIPS::EmitSwap(size_t index) {
     Exchange(loc1.GetStackIndex(), loc2.GetStackIndex(), /* double_slot */ false);
   } else if (loc1.IsDoubleStackSlot() && loc2.IsDoubleStackSlot()) {
     Exchange(loc1.GetStackIndex(), loc2.GetStackIndex(), /* double_slot */ true);
+  } else if (loc1.IsSIMDStackSlot() && loc2.IsSIMDStackSlot()) {
+    ExchangeQuadSlots(loc1.GetStackIndex(), loc2.GetStackIndex());
   } else if ((loc1.IsRegister() && loc2.IsStackSlot()) ||
              (loc1.IsStackSlot() && loc2.IsRegister())) {
     Register reg = loc1.IsRegister() ? loc1.AsRegister<Register>() : loc2.AsRegister<Register>();
@@ -1174,6 +1182,13 @@ void ParallelMoveResolverMIPS::EmitSwap(size_t index) {
     __ Move(TMP, reg_h);
     __ LoadFromOffset(kLoadWord, reg_h, SP, offset_h);
     __ StoreToOffset(kStoreWord, TMP, SP, offset_h);
+  } else if ((loc1.IsFpuRegister() && loc2.IsSIMDStackSlot()) ||
+             (loc1.IsSIMDStackSlot() && loc2.IsFpuRegister())) {
+    Location fp_loc = loc1.IsFpuRegister() ? loc1 : loc2;
+    intptr_t offset = loc1.IsFpuRegister() ? loc2.GetStackIndex() : loc1.GetStackIndex();
+    __ MoveV(static_cast<VectorRegister>(FTMP), VectorRegisterFrom(fp_loc));
+    __ LoadQFromOffset(fp_loc.AsFpuRegister<FRegister>(), SP, offset);
+    __ StoreQToOffset(FTMP, SP, offset);
   } else if (loc1.IsFpuRegister() || loc2.IsFpuRegister()) {
     FRegister reg = loc1.IsFpuRegister() ? loc1.AsFpuRegister<FRegister>()
                                          : loc2.AsFpuRegister<FRegister>();
@@ -1223,6 +1238,13 @@ void ParallelMoveResolverMIPS::Exchange(int index1, int index2, bool double_slot
                      index2 + stack_offset);
     __ StoreToOffset(kStoreWord, TMP, SP, index1 + stack_offset);
   }
+}
+
+void ParallelMoveResolverMIPS::ExchangeQuadSlots(int index1, int index2) {
+  __ LoadQFromOffset(FTMP, SP, index1);
+  __ LoadQFromOffset(FTMP2, SP, index2);
+  __ StoreQToOffset(FTMP, SP, index2);
+  __ StoreQToOffset(FTMP2, SP, index1);
 }
 
 void CodeGeneratorMIPS::ComputeSpillMask() {
@@ -1789,6 +1811,11 @@ void CodeGeneratorMIPS::SetupBlockedRegisters() const {
   blocked_core_registers_[AT] = true;
   blocked_core_registers_[TMP] = true;
   blocked_fpu_registers_[FTMP] = true;
+
+  if (GetInstructionSetFeatures().HasMsa()) {
+    // To be used just for MSA instructions.
+    blocked_fpu_registers_[FTMP2] = true;
+  }
 
   // Reserve suspend and thread registers.
   blocked_core_registers_[S0] = true;

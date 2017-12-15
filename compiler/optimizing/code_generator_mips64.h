@@ -142,6 +142,7 @@ class ParallelMoveResolverMIPS64 : public ParallelMoveResolverWithSwap {
   void RestoreScratch(int reg) OVERRIDE;
 
   void Exchange(int index1, int index2, bool double_slot);
+  void ExchangeQuadSlots(int index1, int index2);
 
   Mips64Assembler* GetAssembler() const;
 
