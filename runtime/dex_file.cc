@@ -46,9 +46,13 @@ static_assert(sizeof(dex::TypeIndex) == sizeof(uint16_t), "TypeIndex size is wro
 static_assert(std::is_trivially_copyable<dex::TypeIndex>::value, "TypeIndex not trivial");
 
 uint32_t DexFile::CalculateChecksum() const {
+  return CalculateChecksum(Begin(), Size());
+}
+
+uint32_t DexFile::CalculateChecksum(const uint8_t* begin, size_t size) {
   const uint32_t non_sum = OFFSETOF_MEMBER(DexFile::Header, signature_);
-  const uint8_t* non_sum_ptr = Begin() + non_sum;
-  return adler32(adler32(0L, Z_NULL, 0), non_sum_ptr, Size() - non_sum);
+  const uint8_t* non_sum_ptr = begin + non_sum;
+  return adler32(adler32(0L, Z_NULL, 0), non_sum_ptr, size - non_sum);
 }
 
 int DexFile::GetPermissions() const {

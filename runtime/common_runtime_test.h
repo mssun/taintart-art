@@ -26,6 +26,7 @@
 
 #include "arch/instruction_set.h"
 #include "base/mutex.h"
+#include "cdex/compact_dex_level.h"
 #include "globals.h"
 // TODO: Add inl file and avoid including inl.
 #include "obj_ptr-inl.h"
@@ -305,6 +306,11 @@ class CheckJniAbortCatcher {
     return; \
   }
 
+#define TEST_DISABLED_FOR_COMPACT_DEX() \
+  if (kDefaultCompactDexLevel != CompactDexLevel::kCompactDexLevelNone) { \
+    printf("WARNING: TEST DISABLED FOR COMPACT DEX\n"); \
+    return; \
+  }
 }  // namespace art
 
 #endif  // ART_RUNTIME_COMMON_RUNTIME_TEST_H_

@@ -893,6 +893,12 @@ void DexWriter::WriteMemMap() {
     header_->SetFileSize(offset);
   }
   WriteHeader();
+
+  if (dex_layout_->GetOptions().update_checksum_) {
+    header_->SetChecksum(DexFile::CalculateChecksum(mem_map_->Begin(), offset));
+    // Rewrite the header with the calculated checksum.
+    WriteHeader();
+  }
 }
 
 void DexWriter::Output(dex_ir::Header* header,
