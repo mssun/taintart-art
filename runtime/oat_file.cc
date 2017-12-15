@@ -595,14 +595,6 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
                                 dex_file_location.c_str());
       return false;
     }
-    if (UNLIKELY(dex_file_offset == 0U)) {
-      *error_msg = StringPrintf("In oat file '%s' found OatDexFile #%zu for '%s' with zero dex "
-                                    "file offset",
-                                GetLocation().c_str(),
-                                i,
-                                dex_file_location.c_str());
-      return false;
-    }
     if (UNLIKELY(dex_file_offset > DexSize())) {
       *error_msg = StringPrintf("In oat file '%s' found OatDexFile #%zu for '%s' with dex file "
                                     "offset %u > %zu",
@@ -613,19 +605,35 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
                                 DexSize());
       return false;
     }
-    if (UNLIKELY(DexSize() - dex_file_offset < sizeof(DexFile::Header))) {
-      *error_msg = StringPrintf("In oat file '%s' found OatDexFile #%zu for '%s' with dex file "
-                                    "offset %u of %zu but the size of dex file header is %zu",
-                                GetLocation().c_str(),
-                                i,
-                                dex_file_location.c_str(),
-                                dex_file_offset,
-                                DexSize(),
-                                sizeof(DexFile::Header));
-      return false;
+    const uint8_t* dex_file_pointer = nullptr;
+    if (UNLIKELY(dex_file_offset == 0U)) {
+      if (uncompressed_dex_files_ == nullptr) {
+        uncompressed_dex_files_.reset(new std::vector<std::unique_ptr<const DexFile>>());
+        // No dex files, load it from location.
+        if (!DexFileLoader::Open(dex_file_location.c_str(),
+                                 dex_file_location,
+                                 /* verify */ false,
+                                 /* verify_checksum */ false,
+                                 error_msg,
+                                 uncompressed_dex_files_.get())) {
+          return false;
+        }
+      }
+      dex_file_pointer = uncompressed_dex_files_.get()->at(i)->Begin();
+    } else {
+      if (UNLIKELY(DexSize() - dex_file_offset < sizeof(DexFile::Header))) {
+        *error_msg = StringPrintf("In oat file '%s' found OatDexFile #%zu for '%s' with dex file "
+                                      "offset %u of %zu but the size of dex file header is %zu",
+                                  GetLocation().c_str(),
+                                  i,
+                                  dex_file_location.c_str(),
+                                  dex_file_offset,
+                                  DexSize(),
+                                  sizeof(DexFile::Header));
+        return false;
+      }
+      dex_file_pointer = DexBegin() + dex_file_offset;
     }
-
-    const uint8_t* dex_file_pointer = DexBegin() + dex_file_offset;
 
     const bool valid_magic = DexFileLoader::IsMagicValid(dex_file_pointer);
     if (UNLIKELY(!valid_magic)) {
@@ -647,7 +655,7 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
       return false;
     }
     const DexFile::Header* header = reinterpret_cast<const DexFile::Header*>(dex_file_pointer);
-    if (DexSize() - dex_file_offset < header->file_size_) {
+    if (dex_file_offset != 0 && (DexSize() - dex_file_offset < header->file_size_)) {
       *error_msg = StringPrintf("In oat file '%s' found OatDexFile #%zu for '%s' with dex file "
                                     "offset %u and size %u truncated at %zu",
                                 GetLocation().c_str(),
