@@ -1121,6 +1121,23 @@ void HEnvironment::RemoveAsUserOfInput(size_t index) const {
   user->FixUpUserRecordsAfterEnvUseRemoval(before_env_use_node);
 }
 
+void HEnvironment::ReplaceInput(HInstruction* replacement, size_t index) {
+  const HUserRecord<HEnvironment*>& env_use_record = vregs_[index];
+  HInstruction* orig_instr = env_use_record.GetInstruction();
+
+  DCHECK(orig_instr != replacement);
+
+  HUseList<HEnvironment*>::iterator before_use_node = env_use_record.GetBeforeUseNode();
+  // Note: fixup_end remains valid across splice_after().
+  auto fixup_end = replacement->env_uses_.empty() ? replacement->env_uses_.begin()
+                                                  : ++replacement->env_uses_.begin();
+  replacement->env_uses_.splice_after(replacement->env_uses_.before_begin(),
+                                      env_use_record.GetInstruction()->env_uses_,
+                                      before_use_node);
+  replacement->FixUpUserRecordsAfterEnvUseInsertion(fixup_end);
+  orig_instr->FixUpUserRecordsAfterEnvUseRemoval(before_use_node);
+}
+
 HInstruction* HInstruction::GetNextDisregardingMoves() const {
   HInstruction* next = GetNext();
   while (next != nullptr && next->IsParallelMove()) {
