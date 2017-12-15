@@ -2603,6 +2603,61 @@ bool Thread::IsExceptionThrownByCurrentMethod(ObjPtr<mirror::Throwable> exceptio
   return count_visitor.GetDepth() == static_cast<uint32_t>(exception->GetStackDepth());
 }
 
+static ObjPtr<mirror::StackTraceElement> CreateStackTraceElement(
+    const ScopedObjectAccessAlreadyRunnable& soa,
+    ArtMethod* method,
+    uint32_t dex_pc) REQUIRES_SHARED(Locks::mutator_lock_) {
+  int32_t line_number;
+  StackHandleScope<3> hs(soa.Self());
+  auto class_name_object(hs.NewHandle<mirror::String>(nullptr));
+  auto source_name_object(hs.NewHandle<mirror::String>(nullptr));
+  if (method->IsProxyMethod()) {
+    line_number = -1;
+    class_name_object.Assign(method->GetDeclaringClass()->GetName());
+    // source_name_object intentionally left null for proxy methods
+  } else {
+    line_number = method->GetLineNumFromDexPC(dex_pc);
+    // Allocate element, potentially triggering GC
+    // TODO: reuse class_name_object via Class::name_?
+    const char* descriptor = method->GetDeclaringClassDescriptor();
+    CHECK(descriptor != nullptr);
+    std::string class_name(PrettyDescriptor(descriptor));
+    class_name_object.Assign(
+        mirror::String::AllocFromModifiedUtf8(soa.Self(), class_name.c_str()));
+    if (class_name_object == nullptr) {
+      soa.Self()->AssertPendingOOMException();
+      return nullptr;
+    }
+    const char* source_file = method->GetDeclaringClassSourceFile();
+    if (line_number == -1) {
+      // Make the line_number field of StackTraceElement hold the dex pc.
+      // source_name_object is intentionally left null if we failed to map the dex pc to
+      // a line number (most probably because there is no debug info). See b/30183883.
+      line_number = dex_pc;
+    } else {
+      if (source_file != nullptr) {
+        source_name_object.Assign(mirror::String::AllocFromModifiedUtf8(soa.Self(), source_file));
+        if (source_name_object == nullptr) {
+          soa.Self()->AssertPendingOOMException();
+          return nullptr;
+        }
+      }
+    }
+  }
+  const char* method_name = method->GetInterfaceMethodIfProxy(kRuntimePointerSize)->GetName();
+  CHECK(method_name != nullptr);
+  Handle<mirror::String> method_name_object(
+      hs.NewHandle(mirror::String::AllocFromModifiedUtf8(soa.Self(), method_name)));
+  if (method_name_object == nullptr) {
+    return nullptr;
+  }
+  return mirror::StackTraceElement::Alloc(soa.Self(),
+                                          class_name_object,
+                                          method_name_object,
+                                          source_name_object,
+                                          line_number);
+}
+
 jobjectArray Thread::InternalStackTraceToStackTraceElementArray(
     const ScopedObjectAccessAlreadyRunnable& soa,
     jobject internal,
@@ -2649,55 +2704,7 @@ jobjectArray Thread::InternalStackTraceToStackTraceElementArray(
     ArtMethod* method = method_trace->GetElementPtrSize<ArtMethod*>(i, kRuntimePointerSize);
     uint32_t dex_pc = method_trace->GetElementPtrSize<uint32_t>(
         i + method_trace->GetLength() / 2, kRuntimePointerSize);
-    int32_t line_number;
-    StackHandleScope<3> hs(soa.Self());
-    auto class_name_object(hs.NewHandle<mirror::String>(nullptr));
-    auto source_name_object(hs.NewHandle<mirror::String>(nullptr));
-    if (method->IsProxyMethod()) {
-      line_number = -1;
-      class_name_object.Assign(method->GetDeclaringClass()->GetName());
-      // source_name_object intentionally left null for proxy methods
-    } else {
-      line_number = method->GetLineNumFromDexPC(dex_pc);
-      // Allocate element, potentially triggering GC
-      // TODO: reuse class_name_object via Class::name_?
-      const char* descriptor = method->GetDeclaringClassDescriptor();
-      CHECK(descriptor != nullptr);
-      std::string class_name(PrettyDescriptor(descriptor));
-      class_name_object.Assign(
-          mirror::String::AllocFromModifiedUtf8(soa.Self(), class_name.c_str()));
-      if (class_name_object == nullptr) {
-        soa.Self()->AssertPendingOOMException();
-        return nullptr;
-      }
-      const char* source_file = method->GetDeclaringClassSourceFile();
-      if (line_number == -1) {
-        // Make the line_number field of StackTraceElement hold the dex pc.
-        // source_name_object is intentionally left null if we failed to map the dex pc to
-        // a line number (most probably because there is no debug info). See b/30183883.
-        line_number = dex_pc;
-      } else {
-        if (source_file != nullptr) {
-          source_name_object.Assign(mirror::String::AllocFromModifiedUtf8(soa.Self(), source_file));
-          if (source_name_object == nullptr) {
-            soa.Self()->AssertPendingOOMException();
-            return nullptr;
-          }
-        }
-      }
-    }
-    const char* method_name = method->GetInterfaceMethodIfProxy(kRuntimePointerSize)->GetName();
-    CHECK(method_name != nullptr);
-    Handle<mirror::String> method_name_object(
-        hs.NewHandle(mirror::String::AllocFromModifiedUtf8(soa.Self(), method_name)));
-    if (method_name_object == nullptr) {
-      return nullptr;
-    }
-    ObjPtr<mirror::StackTraceElement> obj = mirror::StackTraceElement::Alloc(soa.Self(),
-                                                                             class_name_object,
-                                                                             method_name_object,
-                                                                             source_name_object,
-                                                                             line_number);
+    ObjPtr<mirror::StackTraceElement> obj = CreateStackTraceElement(soa, method, dex_pc);
     if (obj == nullptr) {
       return nullptr;
     }
