@@ -364,6 +364,7 @@ OatWriter::OatWriter(bool compiling_boot_image,
     compiler_driver_(nullptr),
     image_writer_(nullptr),
     compiling_boot_image_(compiling_boot_image),
+    only_contains_uncompressed_zip_entries_(false),
     dex_files_(nullptr),
     vdex_size_(0u),
     vdex_dex_files_offset_(0u),
@@ -637,7 +638,7 @@ bool OatWriter::WriteAndOpenDexFiles(
     SafeMap<std::string, std::string>* key_value_store,
     bool verify,
     bool update_input_vdex,
-    /*out*/ std::unique_ptr<MemMap>* opened_dex_files_map,
+    /*out*/ std::vector<std::unique_ptr<MemMap>>* opened_dex_files_map,
     /*out*/ std::vector<std::unique_ptr<const DexFile>>* opened_dex_files) {
   CHECK(write_state_ == WriteState::kAddingDexFileSources);
 
@@ -646,7 +647,7 @@ bool OatWriter::WriteAndOpenDexFiles(
      return false;
   }
 
-  std::unique_ptr<MemMap> dex_files_map;
+  std::vector<std::unique_ptr<MemMap>> dex_files_map;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
 
   // Initialize VDEX and OAT headers.
@@ -3295,14 +3296,28 @@ bool OatWriter::WriteDexFiles(OutputStream* out, File* file, bool update_input_v
 
   vdex_dex_files_offset_ = vdex_size_;
 
-  // Write dex files.
+  only_contains_uncompressed_zip_entries_ = true;
   for (OatDexFile& oat_dex_file : oat_dex_files_) {
-    if (!WriteDexFile(out, file, &oat_dex_file, update_input_vdex)) {
-      return false;
+    if (!oat_dex_file.source_.IsZipEntry()) {
+      only_contains_uncompressed_zip_entries_ = false;
+      break;
+    }
+    ZipEntry* entry = oat_dex_file.source_.GetZipEntry();
+    if (!entry->IsUncompressed() || !entry->IsAlignedToDexHeader()) {
+      only_contains_uncompressed_zip_entries_ = false;
+      break;
     }
   }
 
-  CloseSources();
+  if (!only_contains_uncompressed_zip_entries_) {
+    // Write dex files.
+    for (OatDexFile& oat_dex_file : oat_dex_files_) {
+      if (!WriteDexFile(out, file, &oat_dex_file, update_input_vdex)) {
+        return false;
+      }
+    }
+  }
+
   return true;
 }
 
@@ -3322,8 +3337,9 @@ bool OatWriter::WriteDexFile(OutputStream* out,
   if (!SeekToDexFile(out, file, oat_dex_file)) {
     return false;
   }
-  if (profile_compilation_info_ != nullptr ||
-          compact_dex_level_ != CompactDexLevel::kCompactDexLevelNone) {
+  // update_input_vdex disables compact dex and layout.
+  if (!update_input_vdex && (profile_compilation_info_ != nullptr ||
+      compact_dex_level_ != CompactDexLevel::kCompactDexLevelNone)) {
     CHECK(!update_input_vdex) << "We should never update the input vdex when doing dexlayout";
     if (!LayoutAndWriteDexFile(out, oat_dex_file)) {
       return false;
@@ -3441,6 +3457,7 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
   Options options;
   options.output_to_memmap_ = true;
   options.compact_dex_level_ = compact_dex_level_;
+  options.update_checksum_ = true;
   DexLayout dex_layout(options, profile_compilation_info_, nullptr);
   dex_layout.ProcessDexFile(location.c_str(), dex_file.get(), 0);
   std::unique_ptr<MemMap> mem_map(dex_layout.GetAndReleaseMemMap());
@@ -3624,7 +3641,7 @@ bool OatWriter::WriteDexFile(OutputStream* out,
 bool OatWriter::OpenDexFiles(
     File* file,
     bool verify,
-    /*out*/ std::unique_ptr<MemMap>* opened_dex_files_map,
+    /*out*/ std::vector<std::unique_ptr<MemMap>>* opened_dex_files_map,
     /*out*/ std::vector<std::unique_ptr<const DexFile>>* opened_dex_files) {
   TimingLogger::ScopedTiming split("OpenDexFiles", timings_);
 
@@ -3632,6 +3649,43 @@ bool OatWriter::OpenDexFiles(
     // Nothing to do.
     return true;
   }
+
+  if (only_contains_uncompressed_zip_entries_) {
+    std::vector<std::unique_ptr<const DexFile>> dex_files;
+    std::vector<std::unique_ptr<MemMap>> maps;
+    for (OatDexFile& oat_dex_file : oat_dex_files_) {
+      std::string error_msg;
+      MemMap* map = oat_dex_file.source_.GetZipEntry()->MapDirectlyFromFile(
+          oat_dex_file.dex_file_location_data_, &error_msg);
+      if (map == nullptr) {
+        LOG(ERROR) << error_msg;
+        return false;
+      }
+      maps.emplace_back(map);
+      // Now, open the dex file.
+      dex_files.emplace_back(DexFileLoader::Open(map->Begin(),
+                                                 map->Size(),
+                                                 oat_dex_file.GetLocation(),
+                                                 oat_dex_file.dex_file_location_checksum_,
+                                                 /* oat_dex_file */ nullptr,
+                                                 verify,
+                                                 verify,
+                                                 &error_msg));
+      if (dex_files.back() == nullptr) {
+        LOG(ERROR) << "Failed to open dex file from oat file. File: " << oat_dex_file.GetLocation()
+                   << " Error: " << error_msg;
+        return false;
+      }
+      oat_dex_file.class_offsets_.resize(dex_files.back()->GetHeader().class_defs_size_);
+    }
+    *opened_dex_files_map = std::move(maps);
+    *opened_dex_files = std::move(dex_files);
+    CloseSources();
+    return true;
+  }
+  // We could have closed the sources at the point of writing the dex files, but to
+  // make it consistent with the case we're not writing the dex files, we close them now.
+  CloseSources();
 
   size_t map_offset = oat_dex_files_[0].dex_file_offset_;
   size_t length = vdex_size_ - map_offset;
@@ -3691,7 +3745,7 @@ bool OatWriter::OpenDexFiles(
     oat_dex_file.class_offsets_.resize(dex_files.back()->GetHeader().class_defs_size_);
   }
 
-  *opened_dex_files_map = std::move(dex_files_map);
+  opened_dex_files_map->push_back(std::move(dex_files_map));
   *opened_dex_files = std::move(dex_files);
   return true;
 }

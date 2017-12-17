@@ -1289,62 +1289,54 @@ uint32_t Monitor::GetLockOwnerThreadId(mirror::Object* obj) {
   }
 }
 
-void Monitor::DescribeWait(std::ostream& os, const Thread* thread) {
-  // Determine the wait message and object we're waiting or blocked upon.
-  mirror::Object* pretty_object = nullptr;
-  const char* wait_message = nullptr;
-  uint32_t lock_owner = ThreadList::kInvalidThreadId;
+ThreadState Monitor::FetchState(const Thread* thread,
+                                /* out */ mirror::Object** monitor_object,
+                                /* out */ uint32_t* lock_owner_tid) {
+  DCHECK(monitor_object != nullptr);
+  DCHECK(lock_owner_tid != nullptr);
+
+  *monitor_object = nullptr;
+  *lock_owner_tid = ThreadList::kInvalidThreadId;
+
   ThreadState state = thread->GetState();
-  if (state == kWaiting || state == kTimedWaiting || state == kSleeping) {
-    wait_message = (state == kSleeping) ? "  - sleeping on " : "  - waiting on ";
-    Thread* self = Thread::Current();
-    MutexLock mu(self, *thread->GetWaitMutex());
-    Monitor* monitor = thread->GetWaitMonitor();
-    if (monitor != nullptr) {
-      pretty_object = monitor->GetObject();
-    }
-  } else if (state == kBlocked || state == kWaitingForLockInflation) {
-    wait_message = (state == kBlocked) ? "  - waiting to lock "
-                                       : "  - waiting for lock inflation of ";
-    pretty_object = thread->GetMonitorEnterObject();
-    if (pretty_object != nullptr) {
-      if (kUseReadBarrier && Thread::Current()->GetIsGcMarking()) {
-        // We may call Thread::Dump() in the middle of the CC thread flip and this thread's stack
-        // may have not been flipped yet and "pretty_object" may be a from-space (stale) ref, in
-        // which case the GetLockOwnerThreadId() call below will crash. So explicitly mark/forward
-        // it here.
-        pretty_object = ReadBarrier::Mark(pretty_object);
+
+  switch (state) {
+    case kWaiting:
+    case kTimedWaiting:
+    case kSleeping:
+    {
+      Thread* self = Thread::Current();
+      MutexLock mu(self, *thread->GetWaitMutex());
+      Monitor* monitor = thread->GetWaitMonitor();
+      if (monitor != nullptr) {
+        *monitor_object = monitor->GetObject();
       }
-      lock_owner = pretty_object->GetLockOwnerThreadId();
     }
+    break;
+
+    case kBlocked:
+    case kWaitingForLockInflation:
+    {
+      mirror::Object* lock_object = thread->GetMonitorEnterObject();
+      if (lock_object != nullptr) {
+        if (kUseReadBarrier && Thread::Current()->GetIsGcMarking()) {
+          // We may call Thread::Dump() in the middle of the CC thread flip and this thread's stack
+          // may have not been flipped yet and "pretty_object" may be a from-space (stale) ref, in
+          // which case the GetLockOwnerThreadId() call below will crash. So explicitly mark/forward
+          // it here.
+          lock_object = ReadBarrier::Mark(lock_object);
+        }
+        *monitor_object = lock_object;
+        *lock_owner_tid = lock_object->GetLockOwnerThreadId();
+      }
+    }
+    break;
+
+    default:
+      break;
   }
 
-  if (wait_message != nullptr) {
-    if (pretty_object == nullptr) {
-      os << wait_message << "an unknown object";
-    } else {
-      if ((pretty_object->GetLockWord(true).GetState() == LockWord::kThinLocked) &&
-          Locks::mutator_lock_->IsExclusiveHeld(Thread::Current())) {
-        // Getting the identity hashcode here would result in lock inflation and suspension of the
-        // current thread, which isn't safe if this is the only runnable thread.
-        os << wait_message << StringPrintf("<@addr=0x%" PRIxPTR "> (a %s)",
-                                           reinterpret_cast<intptr_t>(pretty_object),
-                                           pretty_object->PrettyTypeOf().c_str());
-      } else {
-        // - waiting on <0x6008c468> (a java.lang.Class<java.lang.ref.ReferenceQueue>)
-        // Call PrettyTypeOf before IdentityHashCode since IdentityHashCode can cause thread
-        // suspension and move pretty_object.
-        const std::string pretty_type(pretty_object->PrettyTypeOf());
-        os << wait_message << StringPrintf("<0x%08x> (a %s)", pretty_object->IdentityHashCode(),
-                                           pretty_type.c_str());
-      }
-    }
-    // - waiting to lock <0x613f83d8> (a java.lang.Object) held by thread 5
-    if (lock_owner != ThreadList::kInvalidThreadId) {
-      os << " held by thread " << lock_owner;
-    }
-    os << "\n";
-  }
+  return state;
 }
 
 mirror::Object* Monitor::GetContendedMonitor(Thread* thread) {

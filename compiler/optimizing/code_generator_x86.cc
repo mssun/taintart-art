@@ -317,7 +317,14 @@ class TypeCheckSlowPathX86 : public SlowPathCode {
     CodeGeneratorX86* x86_codegen = down_cast<CodeGeneratorX86*>(codegen);
     __ Bind(GetEntryLabel());
 
-    if (!is_fatal_) {
+    if (kPoisonHeapReferences &&
+        instruction_->IsCheckCast() &&
+        instruction_->AsCheckCast()->GetTypeCheckKind() == TypeCheckKind::kInterfaceCheck) {
+      // First, unpoison the `cls` reference that was poisoned for direct memory comparison.
+      __ UnpoisonHeapReference(locations->InAt(1).AsRegister<Register>());
+    }
+
+    if (!is_fatal_ || instruction_->CanThrowIntoCatchBlock()) {
       SaveLiveRegisters(codegen, locations);
     }
 
@@ -5732,24 +5739,18 @@ X86Assembler* ParallelMoveResolverX86::GetAssembler() const {
   return codegen_->GetAssembler();
 }
 
-void ParallelMoveResolverX86::MoveMemoryToMemory32(int dst, int src) {
+void ParallelMoveResolverX86::MoveMemoryToMemory(int dst, int src, int number_of_words) {
   ScratchRegisterScope ensure_scratch(
       this, kNoRegister, EAX, codegen_->GetNumberOfCoreRegisters());
   Register temp_reg = static_cast<Register>(ensure_scratch.GetRegister());
   int stack_offset = ensure_scratch.IsSpilled() ? kX86WordSize : 0;
-  __ movl(temp_reg, Address(ESP, src + stack_offset));
-  __ movl(Address(ESP, dst + stack_offset), temp_reg);
-}
 
-void ParallelMoveResolverX86::MoveMemoryToMemory64(int dst, int src) {
-  ScratchRegisterScope ensure_scratch(
-      this, kNoRegister, EAX, codegen_->GetNumberOfCoreRegisters());
-  Register temp_reg = static_cast<Register>(ensure_scratch.GetRegister());
-  int stack_offset = ensure_scratch.IsSpilled() ? kX86WordSize : 0;
-  __ movl(temp_reg, Address(ESP, src + stack_offset));
-  __ movl(Address(ESP, dst + stack_offset), temp_reg);
-  __ movl(temp_reg, Address(ESP, src + stack_offset + kX86WordSize));
-  __ movl(Address(ESP, dst + stack_offset + kX86WordSize), temp_reg);
+  // Now that temp register is available (possibly spilled), move blocks of memory.
+  for (int i = 0; i < number_of_words; i++) {
+    __ movl(temp_reg, Address(ESP, src + stack_offset));
+    __ movl(Address(ESP, dst + stack_offset), temp_reg);
+    stack_offset += kX86WordSize;
+  }
 }
 
 void ParallelMoveResolverX86::EmitMove(size_t index) {
@@ -5800,7 +5801,7 @@ void ParallelMoveResolverX86::EmitMove(size_t index) {
       __ movss(destination.AsFpuRegister<XmmRegister>(), Address(ESP, source.GetStackIndex()));
     } else {
       DCHECK(destination.IsStackSlot());
-      MoveMemoryToMemory32(destination.GetStackIndex(), source.GetStackIndex());
+      MoveMemoryToMemory(destination.GetStackIndex(), source.GetStackIndex(), 1);
     }
   } else if (source.IsDoubleStackSlot()) {
     if (destination.IsRegisterPair()) {
@@ -5811,11 +5812,15 @@ void ParallelMoveResolverX86::EmitMove(size_t index) {
       __ movsd(destination.AsFpuRegister<XmmRegister>(), Address(ESP, source.GetStackIndex()));
     } else {
       DCHECK(destination.IsDoubleStackSlot()) << destination;
-      MoveMemoryToMemory64(destination.GetStackIndex(), source.GetStackIndex());
+      MoveMemoryToMemory(destination.GetStackIndex(), source.GetStackIndex(), 2);
     }
   } else if (source.IsSIMDStackSlot()) {
-    DCHECK(destination.IsFpuRegister());
-    __ movups(destination.AsFpuRegister<XmmRegister>(), Address(ESP, source.GetStackIndex()));
+    if (destination.IsFpuRegister()) {
+      __ movups(destination.AsFpuRegister<XmmRegister>(), Address(ESP, source.GetStackIndex()));
+    } else {
+      DCHECK(destination.IsSIMDStackSlot());
+      MoveMemoryToMemory(destination.GetStackIndex(), source.GetStackIndex(), 4);
+    }
   } else if (source.IsConstant()) {
     HConstant* constant = source.GetConstant();
     if (constant->IsIntConstant() || constant->IsNullConstant()) {
@@ -5915,7 +5920,16 @@ void ParallelMoveResolverX86::Exchange32(XmmRegister reg, int mem) {
   __ movd(reg, temp_reg);
 }
 
-void ParallelMoveResolverX86::Exchange(int mem1, int mem2) {
+void ParallelMoveResolverX86::Exchange128(XmmRegister reg, int mem) {
+  size_t extra_slot = 4 * kX86WordSize;
+  __ subl(ESP, Immediate(extra_slot));
+  __ movups(Address(ESP, 0), XmmRegister(reg));
+  ExchangeMemory(0, mem + extra_slot, 4);
+  __ movups(XmmRegister(reg), Address(ESP, 0));
+  __ addl(ESP, Immediate(extra_slot));
+}
+
+void ParallelMoveResolverX86::ExchangeMemory(int mem1, int mem2, int number_of_words) {
   ScratchRegisterScope ensure_scratch1(
       this, kNoRegister, EAX, codegen_->GetNumberOfCoreRegisters());
 
@@ -5925,10 +5939,15 @@ void ParallelMoveResolverX86::Exchange(int mem1, int mem2) {
 
   int stack_offset = ensure_scratch1.IsSpilled() ? kX86WordSize : 0;
   stack_offset += ensure_scratch2.IsSpilled() ? kX86WordSize : 0;
-  __ movl(static_cast<Register>(ensure_scratch1.GetRegister()), Address(ESP, mem1 + stack_offset));
-  __ movl(static_cast<Register>(ensure_scratch2.GetRegister()), Address(ESP, mem2 + stack_offset));
-  __ movl(Address(ESP, mem2 + stack_offset), static_cast<Register>(ensure_scratch1.GetRegister()));
-  __ movl(Address(ESP, mem1 + stack_offset), static_cast<Register>(ensure_scratch2.GetRegister()));
+
+  // Now that temp registers are available (possibly spilled), exchange blocks of memory.
+  for (int i = 0; i < number_of_words; i++) {
+    __ movl(static_cast<Register>(ensure_scratch1.GetRegister()), Address(ESP, mem1 + stack_offset));
+    __ movl(static_cast<Register>(ensure_scratch2.GetRegister()), Address(ESP, mem2 + stack_offset));
+    __ movl(Address(ESP, mem2 + stack_offset), static_cast<Register>(ensure_scratch1.GetRegister()));
+    __ movl(Address(ESP, mem1 + stack_offset), static_cast<Register>(ensure_scratch2.GetRegister()));
+    stack_offset += kX86WordSize;
+  }
 }
 
 void ParallelMoveResolverX86::EmitSwap(size_t index) {
@@ -5947,7 +5966,7 @@ void ParallelMoveResolverX86::EmitSwap(size_t index) {
   } else if (source.IsStackSlot() && destination.IsRegister()) {
     Exchange(destination.AsRegister<Register>(), source.GetStackIndex());
   } else if (source.IsStackSlot() && destination.IsStackSlot()) {
-    Exchange(destination.GetStackIndex(), source.GetStackIndex());
+    ExchangeMemory(destination.GetStackIndex(), source.GetStackIndex(), 1);
   } else if (source.IsFpuRegister() && destination.IsFpuRegister()) {
     // Use XOR Swap algorithm to avoid a temporary.
     DCHECK_NE(source.reg(), destination.reg());
@@ -5983,8 +6002,13 @@ void ParallelMoveResolverX86::EmitSwap(size_t index) {
     // Move the high double to the low double.
     __ psrldq(reg, Immediate(8));
   } else if (destination.IsDoubleStackSlot() && source.IsDoubleStackSlot()) {
-    Exchange(destination.GetStackIndex(), source.GetStackIndex());
-    Exchange(destination.GetHighStackIndex(kX86WordSize), source.GetHighStackIndex(kX86WordSize));
+    ExchangeMemory(destination.GetStackIndex(), source.GetStackIndex(), 2);
+  } else if (source.IsSIMDStackSlot() && destination.IsSIMDStackSlot()) {
+    ExchangeMemory(destination.GetStackIndex(), source.GetStackIndex(), 4);
+  } else if (source.IsFpuRegister() && destination.IsSIMDStackSlot()) {
+    Exchange128(source.AsFpuRegister<XmmRegister>(), destination.GetStackIndex());
+  } else if (destination.IsFpuRegister() && source.IsSIMDStackSlot()) {
+    Exchange128(destination.AsFpuRegister<XmmRegister>(), source.GetStackIndex());
   } else {
     LOG(FATAL) << "Unimplemented: source: " << source << ", destination: " << destination;
   }
@@ -6369,7 +6393,7 @@ static size_t NumberOfInstanceOfTemps(TypeCheckKind type_check_kind) {
 // interface pointer, one for loading the current interface.
 // The other checks have one temp for loading the object's class.
 static size_t NumberOfCheckCastTemps(TypeCheckKind type_check_kind) {
-  if (type_check_kind == TypeCheckKind::kInterfaceCheck && !kPoisonHeapReferences) {
+  if (type_check_kind == TypeCheckKind::kInterfaceCheck) {
     return 2;
   }
   return 1 + NumberOfInstanceOfTemps(type_check_kind);
@@ -6383,11 +6407,12 @@ void LocationsBuilderX86::VisitInstanceOf(HInstanceOf* instruction) {
     case TypeCheckKind::kExactCheck:
     case TypeCheckKind::kAbstractClassCheck:
     case TypeCheckKind::kClassHierarchyCheck:
-    case TypeCheckKind::kArrayObjectCheck:
-      call_kind =
-          kEmitCompilerReadBarrier ? LocationSummary::kCallOnSlowPath : LocationSummary::kNoCall;
-      baker_read_barrier_slow_path = kUseBakerReadBarrier;
+    case TypeCheckKind::kArrayObjectCheck: {
+      bool needs_read_barrier = CodeGenerator::InstanceOfNeedsReadBarrier(instruction);
+      call_kind = needs_read_barrier ? LocationSummary::kCallOnSlowPath : LocationSummary::kNoCall;
+      baker_read_barrier_slow_path = kUseBakerReadBarrier && needs_read_barrier;
       break;
+    }
     case TypeCheckKind::kArrayCheck:
     case TypeCheckKind::kUnresolvedCheck:
     case TypeCheckKind::kInterfaceCheck:
@@ -6435,12 +6460,14 @@ void InstructionCodeGeneratorX86::VisitInstanceOf(HInstanceOf* instruction) {
 
   switch (type_check_kind) {
     case TypeCheckKind::kExactCheck: {
+      ReadBarrierOption read_barrier_option =
+          CodeGenerator::ReadBarrierOptionForInstanceOf(instruction);
       // /* HeapReference<Class> */ out = obj->klass_
       GenerateReferenceLoadTwoRegisters(instruction,
                                         out_loc,
                                         obj_loc,
                                         class_offset,
-                                        kCompilerReadBarrierOption);
+                                        read_barrier_option);
       if (cls.IsRegister()) {
         __ cmpl(out, cls.AsRegister<Register>());
       } else {
@@ -6456,12 +6483,14 @@ void InstructionCodeGeneratorX86::VisitInstanceOf(HInstanceOf* instruction) {
     }
 
     case TypeCheckKind::kAbstractClassCheck: {
+      ReadBarrierOption read_barrier_option =
+          CodeGenerator::ReadBarrierOptionForInstanceOf(instruction);
       // /* HeapReference<Class> */ out = obj->klass_
       GenerateReferenceLoadTwoRegisters(instruction,
                                         out_loc,
                                         obj_loc,
                                         class_offset,
-                                        kCompilerReadBarrierOption);
+                                        read_barrier_option);
       // If the class is abstract, we eagerly fetch the super class of the
       // object to avoid doing a comparison we know will fail.
       NearLabel loop;
@@ -6471,7 +6500,7 @@ void InstructionCodeGeneratorX86::VisitInstanceOf(HInstanceOf* instruction) {
                                        out_loc,
                                        super_offset,
                                        maybe_temp_loc,
-                                       kCompilerReadBarrierOption);
+                                       read_barrier_option);
       __ testl(out, out);
       // If `out` is null, we use it for the result, and jump to `done`.
       __ j(kEqual, &done);
@@ -6490,12 +6519,14 @@ void InstructionCodeGeneratorX86::VisitInstanceOf(HInstanceOf* instruction) {
     }
 
     case TypeCheckKind::kClassHierarchyCheck: {
+      ReadBarrierOption read_barrier_option =
+          CodeGenerator::ReadBarrierOptionForInstanceOf(instruction);
       // /* HeapReference<Class> */ out = obj->klass_
       GenerateReferenceLoadTwoRegisters(instruction,
                                         out_loc,
                                         obj_loc,
                                         class_offset,
-                                        kCompilerReadBarrierOption);
+                                        read_barrier_option);
       // Walk over the class hierarchy to find a match.
       NearLabel loop, success;
       __ Bind(&loop);
@@ -6511,7 +6542,7 @@ void InstructionCodeGeneratorX86::VisitInstanceOf(HInstanceOf* instruction) {
                                        out_loc,
                                        super_offset,
                                        maybe_temp_loc,
-                                       kCompilerReadBarrierOption);
+                                       read_barrier_option);
       __ testl(out, out);
       __ j(kNotEqual, &loop);
       // If `out` is null, we use it for the result, and jump to `done`.
@@ -6525,12 +6556,14 @@ void InstructionCodeGeneratorX86::VisitInstanceOf(HInstanceOf* instruction) {
     }
 
     case TypeCheckKind::kArrayObjectCheck: {
+      ReadBarrierOption read_barrier_option =
+          CodeGenerator::ReadBarrierOptionForInstanceOf(instruction);
       // /* HeapReference<Class> */ out = obj->klass_
       GenerateReferenceLoadTwoRegisters(instruction,
                                         out_loc,
                                         obj_loc,
                                         class_offset,
-                                        kCompilerReadBarrierOption);
+                                        read_barrier_option);
       // Do an exact check.
       NearLabel exact_check;
       if (cls.IsRegister()) {
@@ -6546,7 +6579,7 @@ void InstructionCodeGeneratorX86::VisitInstanceOf(HInstanceOf* instruction) {
                                        out_loc,
                                        component_offset,
                                        maybe_temp_loc,
-                                       kCompilerReadBarrierOption);
+                                       read_barrier_option);
       __ testl(out, out);
       // If `out` is null, we use it for the result, and jump to `done`.
       __ j(kEqual, &done);
@@ -6630,30 +6663,9 @@ void InstructionCodeGeneratorX86::VisitInstanceOf(HInstanceOf* instruction) {
   }
 }
 
-static bool IsTypeCheckSlowPathFatal(TypeCheckKind type_check_kind, bool throws_into_catch) {
-  switch (type_check_kind) {
-  case TypeCheckKind::kExactCheck:
-  case TypeCheckKind::kAbstractClassCheck:
-  case TypeCheckKind::kClassHierarchyCheck:
-  case TypeCheckKind::kArrayObjectCheck:
-    return !throws_into_catch && !kEmitCompilerReadBarrier;
-  case TypeCheckKind::kInterfaceCheck:
-    return !throws_into_catch && !kEmitCompilerReadBarrier && !kPoisonHeapReferences;
-  case TypeCheckKind::kArrayCheck:
-  case TypeCheckKind::kUnresolvedCheck:
-    return false;
-  }
-  LOG(FATAL) << "Unreachable";
-  UNREACHABLE();
-}
-
 void LocationsBuilderX86::VisitCheckCast(HCheckCast* instruction) {
-  bool throws_into_catch = instruction->CanThrowIntoCatchBlock();
   TypeCheckKind type_check_kind = instruction->GetTypeCheckKind();
-  LocationSummary::CallKind call_kind =
-      IsTypeCheckSlowPathFatal(type_check_kind, throws_into_catch)
-          ? LocationSummary::kNoCall
-          : LocationSummary::kCallOnSlowPath;
+  LocationSummary::CallKind call_kind = CodeGenerator::GetCheckCastCallKind(instruction);
   LocationSummary* locations =
       new (GetGraph()->GetAllocator()) LocationSummary(instruction, call_kind);
   locations->SetInAt(0, Location::RequiresRegister());
@@ -6691,12 +6703,7 @@ void InstructionCodeGeneratorX86::VisitCheckCast(HCheckCast* instruction) {
   const uint32_t object_array_data_offset =
       mirror::Array::DataOffset(kHeapReferenceSize).Uint32Value();
 
-  // Always false for read barriers since we may need to go to the entrypoint for non-fatal cases
-  // from false negatives. The false negatives may come from avoiding read barriers below. Avoiding
-  // read barriers is done for performance and code size reasons.
-  bool is_type_check_slow_path_fatal =
-      IsTypeCheckSlowPathFatal(type_check_kind, instruction->CanThrowIntoCatchBlock());
-
+  bool is_type_check_slow_path_fatal = CodeGenerator::IsTypeCheckSlowPathFatal(instruction);
   SlowPathCode* type_check_slow_path =
       new (codegen_->GetScopedAllocator()) TypeCheckSlowPathX86(
           instruction, is_type_check_slow_path_fatal);
@@ -6849,44 +6856,40 @@ void InstructionCodeGeneratorX86::VisitCheckCast(HCheckCast* instruction) {
       break;
 
     case TypeCheckKind::kInterfaceCheck: {
-      // Fast path for the interface check. Since we compare with a memory location in the inner
-      // loop we would need to have cls poisoned. However unpoisoning cls would reset the
-      // conditional flags and cause the conditional jump to be incorrect. Therefore we just jump
-      // to the slow path if we are running under poisoning.
-      if (!kPoisonHeapReferences) {
-        // Try to avoid read barriers to improve the fast path. We can not get false positives by
-        // doing this.
-        // /* HeapReference<Class> */ temp = obj->klass_
-        GenerateReferenceLoadTwoRegisters(instruction,
-                                          temp_loc,
-                                          obj_loc,
-                                          class_offset,
-                                          kWithoutReadBarrier);
+      // Fast path for the interface check. Try to avoid read barriers to improve the fast path.
+      // We can not get false positives by doing this.
+      // /* HeapReference<Class> */ temp = obj->klass_
+      GenerateReferenceLoadTwoRegisters(instruction,
+                                        temp_loc,
+                                        obj_loc,
+                                        class_offset,
+                                        kWithoutReadBarrier);
 
-        // /* HeapReference<Class> */ temp = temp->iftable_
-        GenerateReferenceLoadTwoRegisters(instruction,
-                                          temp_loc,
-                                          temp_loc,
-                                          iftable_offset,
-                                          kWithoutReadBarrier);
-        // Iftable is never null.
-        __ movl(maybe_temp2_loc.AsRegister<Register>(), Address(temp, array_length_offset));
-        // Loop through the iftable and check if any class matches.
-        NearLabel start_loop;
-        __ Bind(&start_loop);
-        // Need to subtract first to handle the empty array case.
-        __ subl(maybe_temp2_loc.AsRegister<Register>(), Immediate(2));
-        __ j(kNegative, type_check_slow_path->GetEntryLabel());
-        // Go to next interface if the classes do not match.
-        __ cmpl(cls.AsRegister<Register>(),
-                CodeGeneratorX86::ArrayAddress(temp,
-                                               maybe_temp2_loc,
-                                               TIMES_4,
-                                               object_array_data_offset));
-        __ j(kNotEqual, &start_loop);
-      } else {
-        __ jmp(type_check_slow_path->GetEntryLabel());
-      }
+      // /* HeapReference<Class> */ temp = temp->iftable_
+      GenerateReferenceLoadTwoRegisters(instruction,
+                                        temp_loc,
+                                        temp_loc,
+                                        iftable_offset,
+                                        kWithoutReadBarrier);
+      // Iftable is never null.
+      __ movl(maybe_temp2_loc.AsRegister<Register>(), Address(temp, array_length_offset));
+      // Maybe poison the `cls` for direct comparison with memory.
+      __ MaybePoisonHeapReference(cls.AsRegister<Register>());
+      // Loop through the iftable and check if any class matches.
+      NearLabel start_loop;
+      __ Bind(&start_loop);
+      // Need to subtract first to handle the empty array case.
+      __ subl(maybe_temp2_loc.AsRegister<Register>(), Immediate(2));
+      __ j(kNegative, type_check_slow_path->GetEntryLabel());
+      // Go to next interface if the classes do not match.
+      __ cmpl(cls.AsRegister<Register>(),
+              CodeGeneratorX86::ArrayAddress(temp,
+                                             maybe_temp2_loc,
+                                             TIMES_4,
+                                             object_array_data_offset));
+      __ j(kNotEqual, &start_loop);
+      // If `cls` was poisoned above, unpoison it.
+      __ MaybeUnpoisonHeapReference(cls.AsRegister<Register>());
       break;
     }
   }

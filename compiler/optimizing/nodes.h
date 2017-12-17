@@ -2098,13 +2098,9 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
     return IsRemovable() && !HasUses();
   }
 
-  // Does this instruction dominate (strictly or in regular sense depending on 'strictly')
-  // `other_instruction`?
-  // Returns '!strictly' if this instruction and `other_instruction` are the same.
+  // Does this instruction strictly dominate `other_instruction`?
+  // Returns false if this instruction and `other_instruction` are the same.
   // Aborts if this instruction and `other_instruction` are both phis.
-  bool Dominates(HInstruction* other_instruction, bool strictly) const;
-
-  // Return 'Dominates(other_instruction, /*strictly*/ true)'.
   bool StrictlyDominates(HInstruction* other_instruction) const;
 
   int GetId() const { return id_; }
@@ -2165,13 +2161,7 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
   void SetLocations(LocationSummary* locations) { locations_ = locations; }
 
   void ReplaceWith(HInstruction* instruction);
-
-  // Replace all uses of the instruction which are dominated by 'dominator' with 'replacement'.
-  // 'strictly' determines whether strict or regular domination relation should be checked.
-  void ReplaceUsesDominatedBy(HInstruction* dominator,
-                              HInstruction* replacement,
-                              bool strictly = true);
-
+  void ReplaceUsesDominatedBy(HInstruction* dominator, HInstruction* replacement);
   void ReplaceInput(HInstruction* replacement, size_t index);
 
   // This is almost the same as doing `ReplaceWith()`. But in this helper, the
@@ -6269,7 +6259,7 @@ class HClinitCheck FINAL : public HExpression<1> {
   HClinitCheck(HLoadClass* constant, uint32_t dex_pc)
       : HExpression(
             DataType::Type::kReference,
-            SideEffects::AllChanges(),  // Assume write/read on all fields/arrays.
+            SideEffects::AllExceptGCDependency(),  // Assume write/read on all fields/arrays.
             dex_pc) {
     SetRawInputAt(0, constant);
   }
@@ -6600,7 +6590,7 @@ std::ostream& operator<<(std::ostream& os, TypeCheckKind rhs);
 class HInstanceOf FINAL : public HExpression<2> {
  public:
   HInstanceOf(HInstruction* object,
-              HLoadClass* constant,
+              HLoadClass* target_class,
               TypeCheckKind check_kind,
               uint32_t dex_pc)
       : HExpression(DataType::Type::kBool,
@@ -6609,7 +6599,13 @@ class HInstanceOf FINAL : public HExpression<2> {
     SetPackedField<TypeCheckKindField>(check_kind);
     SetPackedFlag<kFlagMustDoNullCheck>(true);
     SetRawInputAt(0, object);
-    SetRawInputAt(1, constant);
+    SetRawInputAt(1, target_class);
+  }
+
+  HLoadClass* GetTargetClass() const {
+    HInstruction* load_class = InputAt(1);
+    DCHECK(load_class->IsLoadClass());
+    return load_class->AsLoadClass();
   }
 
   bool IsClonable() const OVERRIDE { return true; }
@@ -6703,14 +6699,20 @@ class HBoundType FINAL : public HExpression<1> {
 class HCheckCast FINAL : public HTemplateInstruction<2> {
  public:
   HCheckCast(HInstruction* object,
-             HLoadClass* constant,
+             HLoadClass* target_class,
              TypeCheckKind check_kind,
              uint32_t dex_pc)
       : HTemplateInstruction(SideEffects::CanTriggerGC(), dex_pc) {
     SetPackedField<TypeCheckKindField>(check_kind);
     SetPackedFlag<kFlagMustDoNullCheck>(true);
     SetRawInputAt(0, object);
-    SetRawInputAt(1, constant);
+    SetRawInputAt(1, target_class);
+  }
+
+  HLoadClass* GetTargetClass() const {
+    HInstruction* load_class = InputAt(1);
+    DCHECK(load_class->IsLoadClass());
+    return load_class->AsLoadClass();
   }
 
   bool IsClonable() const OVERRIDE { return true; }

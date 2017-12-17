@@ -402,6 +402,12 @@ static optimizer::DexToDexCompilationLevel GetDexToDexCompilationLevel(
     Thread* self, const CompilerDriver& driver, Handle<mirror::ClassLoader> class_loader,
     const DexFile& dex_file, const DexFile::ClassDef& class_def)
     REQUIRES_SHARED(Locks::mutator_lock_) {
+  // When the dex file is uncompressed in the APK, we do not generate a copy in the .vdex
+  // file. As a result, dex2oat will map the dex file read-only, and we only need to check
+  // that to know if we can do quickening.
+  if (dex_file.GetContainer() != nullptr && dex_file.GetContainer()->IsReadOnly()) {
+    return optimizer::DexToDexCompilationLevel::kDontDexToDexCompile;
+  }
   auto* const runtime = Runtime::Current();
   DCHECK(driver.GetCompilerOptions().IsQuickeningCompilationEnabled());
   const char* descriptor = dex_file.GetClassDescriptor(class_def);

@@ -648,6 +648,10 @@ void Jit::AddSamples(Thread* self, ArtMethod* method, uint16_t count, bool with_
     // We do not want to compile such methods.
     return;
   }
+  if (hot_method_threshold_ == 0) {
+    // Tests might request JIT on first use (compiled synchronously in the interpreter).
+    return;
+  }
   DCHECK(thread_pool_ != nullptr);
   DCHECK_GT(warm_method_threshold_, 0);
   DCHECK_GT(hot_method_threshold_, warm_method_threshold_);

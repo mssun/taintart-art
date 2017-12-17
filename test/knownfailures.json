@@ -383,7 +383,7 @@
         "tests": ["629-vdex-speed",
                   "634-vdex-duplicate"],
         "description": ["Profile driven dexlayout does not work with vdex or dex verifier."],
-        "variant": "speed-profile | cdex-fast"
+        "variant": "speed-profile"
     },
     {
         "test_patterns": ["616-cha.*"],
@@ -651,9 +651,9 @@
         "description": ["Test is designed to only check --compiler-filter=speed"]
     },
     {
-        "tests": ["628-vdex", "975-iface-private"],
+        "tests": ["975-iface-private"],
         "variant": "cdex-fast",
-        "description": ["CompactDex doesn't yet work with input-vdex or 975-iface private"]
+        "description": ["CompactDex doesn't yet work with 975-iface private"]
     }
 
 ]
