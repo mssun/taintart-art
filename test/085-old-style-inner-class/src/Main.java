@@ -20,15 +20,19 @@ import java.lang.reflect.Method;
  * Test reflection on old-style inner classes.
  */
 public class Main {
+    /*
+    // Main$1.j
     private static Runnable theRunnable = new Runnable() {
             public void run() { }
         };
 
+    // Main$1.2
     private static Runnable create() {
         return new Runnable() {
                 public void run() { }
             };
     }
+    */
 
     private static String nameOf(Class clazz) {
         return (clazz == null) ? "(null)" : clazz.getName();
@@ -48,8 +52,8 @@ public class Main {
                 nameOf(clazz.getEnclosingMethod()));
     }
 
-    public static void main(String args[]) {
-        infoFor(theRunnable.getClass());
-        infoFor(create().getClass());
+    public static void main(String args[]) throws ClassNotFoundException {
+        infoFor(Class.forName("Main$1"));
+        infoFor(Class.forName("Main$2"));
     }
 }
