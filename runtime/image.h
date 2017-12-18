@@ -179,6 +179,10 @@ class PACKED(4) ImageHeader {
     return patch_delta_;
   }
 
+  void SetPatchDelta(off_t patch_delta) {
+    patch_delta_ = patch_delta;
+  }
+
   static std::string GetOatLocationFromImageLocation(const std::string& image) {
     return GetLocationFromImageLocation(image, "oat");
   }
