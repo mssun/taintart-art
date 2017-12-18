@@ -1210,7 +1210,7 @@ class JFuzz {
 
   // Emit a static void method.
   void emitStaticNopMethod() {
-    fputs("  public static void nop() {}\n", out_);
+    fputs("  public static void nop() {}\n\n", out_);
   }
 
   // Emit program header. Emit command line options in the comments.
