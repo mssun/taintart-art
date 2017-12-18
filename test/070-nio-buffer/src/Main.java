@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import java.nio.Buffer;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -50,9 +51,9 @@ public class Main {
             1024, 1025, 1026, 1027, 1028, 1029, 1030, 1031
         };
 
-        shortBuf.position(0);
+        ((Buffer) shortBuf).position(0);
         shortBuf.put(myShorts, 0, 32);      // should work
-        shortBuf.position(0);
+        ((Buffer) shortBuf).position(0);
         shortBuf.put(myShorts, 16, 16);     // should work
         shortBuf.put(myShorts, 16, 16);     // advance to end
 
@@ -64,7 +65,7 @@ public class Main {
         }
 
         try {
-            shortBuf.position(0);
+            ((Buffer) shortBuf).position(0);
             shortBuf.put(myShorts, 0, 33);     // should fail
             System.out.println("ERROR: out-of-bounds put succeeded\n");
         } catch (IndexOutOfBoundsException ioobe) {
@@ -72,7 +73,7 @@ public class Main {
         }
 
         try {
-            shortBuf.position(16);
+            ((Buffer) shortBuf).position(16);
             shortBuf.put(myShorts, 0, 17);     // should fail
             System.out.println("ERROR: out-of-bounds put succeeded\n");
         } catch (BufferOverflowException boe) {
@@ -93,13 +94,13 @@ public class Main {
         int data[] = new int[25];
         //FloatBuffer int1 = direct.asFloatBuffer();
         //float data[] = new float[25];
-        int1.clear ();
-        int1.put (data);
-        int1.position (0);
+        ((Buffer) int1).clear();
+        int1.put(data);
+        ((Buffer) int1).position(0);
 
-        int1.clear ();
+        ((Buffer) int1).clear();
         int1.put (data);
-        int1.position (0);
+        ((Buffer) int1).position(0);
     }
 
     /*
@@ -119,7 +120,7 @@ public class Main {
     }
 
     static void storeValues(ByteBuffer directBuf) {
-        directBuf.position(0);
+        ((Buffer) directBuf).position(0);
         ShortBuffer shortBuf = directBuf.asShortBuffer();
         CharBuffer charBuf = directBuf.asCharBuffer();
         IntBuffer intBuf = directBuf.asIntBuffer();
@@ -157,7 +158,7 @@ public class Main {
             throw new RuntimeException("double get/store failed");
         }
 
-        directBuf.position(0);
+        ((Buffer) directBuf).position(0);
         char[] outBuf = new char[directBuf.limit() * 2];
         for (int i = 0; i < directBuf.limit(); i++) {
             byte b = directBuf.get();
