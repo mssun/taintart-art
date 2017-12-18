@@ -269,7 +269,7 @@ uint32_t WellKnownClasses::StringInitToEntryPoint(ArtMethod* string_init) {
         return kQuick ## entry_point_name;                                                  \
       }
       STRING_INIT_LIST(TO_ENTRY_POINT)
-  #undef TO_STRING_FACTORY
+  #undef TO_ENTRY_POINT
   LOG(FATAL) << "Could not find StringFactory method for String.<init>";
   return 0;
 }
