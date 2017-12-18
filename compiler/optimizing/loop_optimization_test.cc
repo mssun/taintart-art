@@ -194,7 +194,9 @@ TEST_F(LoopOptimizationTest, LoopNestWithSequence) {
 
 // Check that SimplifyLoop() doesn't invalidate data flow when ordering loop headers'
 // predecessors.
-TEST_F(LoopOptimizationTest, SimplifyLoop) {
+//
+// This is a test for nodes.cc functionality - HGraph::SimplifyLoop.
+TEST_F(LoopOptimizationTest, SimplifyLoopReoderPredecessors) {
   // Can't use AddLoop as we want special order for blocks predecessors.
   HBasicBlock* header = new (GetAllocator()) HBasicBlock(graph_);
   HBasicBlock* body = new (GetAllocator()) HBasicBlock(graph_);
@@ -232,4 +234,83 @@ TEST_F(LoopOptimizationTest, SimplifyLoop) {
     ASSERT_TRUE(input->GetBlock()->Dominates(header->GetPredecessors()[i]));
   }
 }
+
+// Test that SimplifyLoop() processes the multiple-preheaders loops correctly.
+//
+// This is a test for nodes.cc functionality - HGraph::SimplifyLoop.
+TEST_F(LoopOptimizationTest, SimplifyLoopSinglePreheader) {
+  HBasicBlock* header = AddLoop(entry_block_, return_block_);
+
+  header->InsertInstructionBefore(
+      new (GetAllocator()) HSuspendCheck(), header->GetLastInstruction());
+
+  // Insert an if construct before the loop so it will have two preheaders.
+  HBasicBlock* if_block = new (GetAllocator()) HBasicBlock(graph_);
+  HBasicBlock* preheader0 = new (GetAllocator()) HBasicBlock(graph_);
+  HBasicBlock* preheader1 = new (GetAllocator()) HBasicBlock(graph_);
+
+  graph_->AddBlock(if_block);
+  graph_->AddBlock(preheader0);
+  graph_->AddBlock(preheader1);
+
+  // Fix successors/predecessors.
+  entry_block_->ReplaceSuccessor(header, if_block);
+  if_block->AddSuccessor(preheader0);
+  if_block->AddSuccessor(preheader1);
+  preheader0->AddSuccessor(header);
+  preheader1->AddSuccessor(header);
+
+  if_block->AddInstruction(new (GetAllocator()) HIf(parameter_));
+  preheader0->AddInstruction(new (GetAllocator()) HGoto());
+  preheader1->AddInstruction(new (GetAllocator()) HGoto());
+
+  HBasicBlock* body = header->GetSuccessors()[0];
+  DCHECK(body != return_block_);
+
+  // Add some data flow.
+  HIntConstant* const_0 = graph_->GetIntConstant(0);
+  HIntConstant* const_1 = graph_->GetIntConstant(1);
+  HIntConstant* const_2 = graph_->GetIntConstant(2);
+
+  HAdd* preheader0_add = new (GetAllocator()) HAdd(DataType::Type::kInt32, parameter_, const_0);
+  preheader0->AddInstruction(preheader0_add);
+  HAdd* preheader1_add = new (GetAllocator()) HAdd(DataType::Type::kInt32, parameter_, const_1);
+  preheader1->AddInstruction(preheader1_add);
+
+  HPhi* header_phi = new (GetAllocator()) HPhi(GetAllocator(), 0, 0, DataType::Type::kInt32);
+  header->AddPhi(header_phi);
+
+  HAdd* body_add = new (GetAllocator()) HAdd(DataType::Type::kInt32, parameter_, const_2);
+  body->AddInstruction(body_add);
+
+  DCHECK(header->GetPredecessors()[0] == body);
+  DCHECK(header->GetPredecessors()[1] == preheader0);
+  DCHECK(header->GetPredecessors()[2] == preheader1);
+
+  header_phi->AddInput(body_add);
+  header_phi->AddInput(preheader0_add);
+  header_phi->AddInput(preheader1_add);
+
+  graph_->ClearLoopInformation();
+  graph_->ClearDominanceInformation();
+  graph_->BuildDominatorTree();
+
+  EXPECT_EQ(header->GetPredecessors().size(), 2u);
+  EXPECT_EQ(header->GetPredecessors()[1], body);
+
+  HBasicBlock* new_preheader = header->GetLoopInformation()->GetPreHeader();
+  EXPECT_EQ(preheader0->GetSingleSuccessor(), new_preheader);
+  EXPECT_EQ(preheader1->GetSingleSuccessor(), new_preheader);
+
+  EXPECT_EQ(new_preheader->GetPhis().CountSize(), 1u);
+  HPhi* new_preheader_phi = new_preheader->GetFirstPhi()->AsPhi();
+  EXPECT_EQ(new_preheader_phi->InputCount(), 2u);
+  EXPECT_EQ(new_preheader_phi->InputAt(0), preheader0_add);
+  EXPECT_EQ(new_preheader_phi->InputAt(1), preheader1_add);
+
+  EXPECT_EQ(header_phi->InputCount(), 2u);
+  EXPECT_EQ(header_phi->InputAt(0), new_preheader_phi);
+  EXPECT_EQ(header_phi->InputAt(1), body_add);
+}
+
 }  // namespace art
