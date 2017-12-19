@@ -1036,10 +1036,6 @@ class DexFile {
   ALWAYS_INLINE const StandardDexFile* AsStandardDexFile() const;
   ALWAYS_INLINE const CompactDexFile* AsCompactDexFile() const;
 
-  DexFileContainer* GetContainer() const {
-    return container_.get();
-  }
-
  protected:
   DexFile(const uint8_t* base,
           size_t size,
