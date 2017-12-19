@@ -59,8 +59,7 @@ class ZipEntry {
   uint32_t GetCrc32();
 
   bool IsUncompressed();
-  bool IsAlignedTo(size_t alignment) const;
-  bool IsAlignedToDexHeader() const;
+  bool IsAlignedTo(size_t alignment);
 
  private:
   ZipEntry(ZipArchiveHandle handle,

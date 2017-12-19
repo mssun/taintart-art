@@ -27,7 +27,6 @@
 #include "android-base/stringprintf.h"
 #include "ziparchive/zip_archive.h"
 
-#include "dex_file.h"
 #include "base/bit_utils.h"
 #include "base/unix_file/fd_file.h"
 
@@ -50,13 +49,9 @@ bool ZipEntry::IsUncompressed() {
   return zip_entry_->method == kCompressStored;
 }
 
-bool ZipEntry::IsAlignedTo(size_t alignment) const {
+bool ZipEntry::IsAlignedTo(size_t alignment) {
   DCHECK(IsPowerOfTwo(alignment)) << alignment;
   return IsAlignedParam(zip_entry_->offset, static_cast<int>(alignment));
-}
-
-bool ZipEntry::IsAlignedToDexHeader() const {
-  return IsAlignedTo(alignof(DexFile::Header));
 }
 
 ZipEntry::~ZipEntry() {
