@@ -35,7 +35,16 @@ namespace art {
 namespace mirror {
 
 inline uint32_t String::ClassSize(PointerSize pointer_size) {
+#ifdef USE_D8_DESUGAR
+  // Two lambdas in CharSequence:
+  //   lambda$chars$0$CharSequence
+  //   lambda$codePoints$1$CharSequence
+  // which were virtual functions in standalone desugar, becomes
+  // direct functions with D8 desugaring.
+  uint32_t vtable_entries = Object::kVTableLength + 54;
+#else
   uint32_t vtable_entries = Object::kVTableLength + 56;
+#endif
   return Class::ComputeClassSize(true, vtable_entries, 0, 0, 0, 1, 2, pointer_size);
 }
 
