@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_CODE_ITEM_ACCESSORS_INL_H_
 #define ART_RUNTIME_CODE_ITEM_ACCESSORS_INL_H_
 
-#include "code_item_accessors.h"
+#include "code_item_accessors-no_art-inl.h"
 
 #include "art_method-inl.h"
 #include "cdex/compact_dex_file.h"
@@ -27,44 +27,8 @@
 
 namespace art {
 
-inline void CodeItemInstructionAccessor::Init(const CompactDexFile::CodeItem& code_item) {
-  insns_size_in_code_units_ = code_item.insns_size_in_code_units_;
-  insns_ = code_item.insns_;
-}
-
-inline void CodeItemInstructionAccessor::Init(const StandardDexFile::CodeItem& code_item) {
-  insns_size_in_code_units_ = code_item.insns_size_in_code_units_;
-  insns_ = code_item.insns_;
-}
-
-inline void CodeItemInstructionAccessor::Init(const DexFile* dex_file,
-                                              const DexFile::CodeItem* code_item) {
-  DCHECK(dex_file != nullptr);
-  DCHECK(code_item != nullptr);
-  if (dex_file->IsCompactDexFile()) {
-    Init(down_cast<const CompactDexFile::CodeItem&>(*code_item));
-  } else {
-    DCHECK(dex_file->IsStandardDexFile());
-    Init(down_cast<const StandardDexFile::CodeItem&>(*code_item));
-  }
-}
-
-inline CodeItemInstructionAccessor::CodeItemInstructionAccessor(
-    const DexFile* dex_file,
-    const DexFile::CodeItem* code_item) {
-  Init(dex_file, code_item);
-}
-
 inline CodeItemInstructionAccessor::CodeItemInstructionAccessor(ArtMethod* method)
     : CodeItemInstructionAccessor(method->GetDexFile(), method->GetCodeItem()) {}
-
-inline DexInstructionIterator CodeItemInstructionAccessor::begin() const {
-  return DexInstructionIterator(insns_, 0u);
-}
-
-inline DexInstructionIterator CodeItemInstructionAccessor::end() const {
-  return DexInstructionIterator(insns_, insns_size_in_code_units_);
-}
 
 inline CodeItemInstructionAccessor CodeItemInstructionAccessor::CreateNullable(
     ArtMethod* method) {
@@ -79,76 +43,12 @@ inline CodeItemInstructionAccessor CodeItemInstructionAccessor::CreateNullable(
   return ret;
 }
 
-inline void CodeItemDataAccessor::Init(const CompactDexFile::CodeItem& code_item) {
-  CodeItemInstructionAccessor::Init(code_item);
-  registers_size_ = code_item.registers_size_;
-  ins_size_ = code_item.ins_size_;
-  outs_size_ = code_item.outs_size_;
-  tries_size_ = code_item.tries_size_;
-}
-
-inline void CodeItemDataAccessor::Init(const StandardDexFile::CodeItem& code_item) {
-  CodeItemInstructionAccessor::Init(code_item);
-  registers_size_ = code_item.registers_size_;
-  ins_size_ = code_item.ins_size_;
-  outs_size_ = code_item.outs_size_;
-  tries_size_ = code_item.tries_size_;
-}
-
-inline void CodeItemDataAccessor::Init(const DexFile* dex_file,
-                                       const DexFile::CodeItem* code_item) {
-  DCHECK(dex_file != nullptr);
-  DCHECK(code_item != nullptr);
-  if (dex_file->IsCompactDexFile()) {
-    CodeItemDataAccessor::Init(down_cast<const CompactDexFile::CodeItem&>(*code_item));
-  } else {
-    DCHECK(dex_file->IsStandardDexFile());
-    CodeItemDataAccessor::Init(down_cast<const StandardDexFile::CodeItem&>(*code_item));
-  }
-}
-
-inline CodeItemDataAccessor::CodeItemDataAccessor(const DexFile* dex_file,
-                                                  const DexFile::CodeItem* code_item) {
-  Init(dex_file, code_item);
-}
-
 inline CodeItemDataAccessor::CodeItemDataAccessor(ArtMethod* method)
     : CodeItemDataAccessor(method->GetDexFile(), method->GetCodeItem()) {}
-
-inline CodeItemDataAccessor CodeItemDataAccessor::CreateNullable(
-    const DexFile* dex_file,
-    const DexFile::CodeItem* code_item) {
-  CodeItemDataAccessor ret;
-  if (code_item != nullptr) {
-    ret.Init(dex_file, code_item);
-  } else {
-    DCHECK(!ret.HasCodeItem()) << "Should be null initialized";
-  }
-  return ret;
-}
 
 inline CodeItemDataAccessor CodeItemDataAccessor::CreateNullable(ArtMethod* method) {
   DCHECK(method != nullptr);
   return CreateNullable(method->GetDexFile(), method->GetCodeItem());
-}
-
-inline IterationRange<const DexFile::TryItem*> CodeItemDataAccessor::TryItems() const {
-  const DexFile::TryItem* try_items = DexFile::GetTryItems(end(), 0u);
-  return {
-    try_items,
-    try_items + TriesSize() };
-}
-
-inline const uint8_t* CodeItemDataAccessor::GetCatchHandlerData(size_t offset) const {
-  return DexFile::GetCatchHandlerData(end(), TriesSize(), offset);
-}
-
-inline const DexFile::TryItem* CodeItemDataAccessor::FindTryItem(uint32_t try_dex_pc) const {
-  IterationRange<const DexFile::TryItem*> try_items(TryItems());
-  int32_t index = DexFile::FindTryItem(try_items.begin(),
-                                       try_items.end() - try_items.begin(),
-                                       try_dex_pc);
-  return index != -1 ? &try_items.begin()[index] : nullptr;
 }
 
 inline CodeItemDebugInfoAccessor::CodeItemDebugInfoAccessor(ArtMethod* method)
@@ -159,21 +59,7 @@ inline CodeItemDebugInfoAccessor::CodeItemDebugInfoAccessor(const DexFile* dex_f
   if (code_item == nullptr) {
     return;
   }
-  debug_info_offset_ = OatFile::GetDebugInfoOffset(*dex_file, code_item);
-  if (dex_file->IsCompactDexFile()) {
-    Init(down_cast<const CompactDexFile::CodeItem&>(*code_item));
-  } else {
-    DCHECK(dex_file->IsStandardDexFile());
-    Init(down_cast<const StandardDexFile::CodeItem&>(*code_item));
-  }
-}
-
-inline void CodeItemDebugInfoAccessor::Init(const CompactDexFile::CodeItem& code_item) {
-  CodeItemDataAccessor::Init(code_item);
-}
-
-inline void CodeItemDebugInfoAccessor::Init(const StandardDexFile::CodeItem& code_item) {
-  CodeItemDataAccessor::Init(code_item);
+  Init(dex_file, code_item, OatFile::GetDebugInfoOffset(*dex_file, code_item));
 }
 
 }  // namespace art

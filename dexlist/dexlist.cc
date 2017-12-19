@@ -27,6 +27,7 @@
 #include <stdlib.h>
 
 #include "base/logging.h"  // For InitLogging.
+#include "code_item_accessors-no_art-inl.h"
 #include "dex_file-inl.h"
 #include "dex_file_loader.h"
 #include "mem_map.h"
@@ -99,6 +100,7 @@ static void dumpMethod(const DexFile* pDexFile,
   if (pCode == nullptr || codeOffset == 0) {
     return;
   }
+  CodeItemDebugInfoAccessor accessor(pDexFile, pCode, pDexFile->GetDebugInfoOffset(pCode));
 
   // Method information.
   const DexFile::MethodId& pMethodId = pDexFile->GetMethodId(idx);
@@ -121,8 +123,7 @@ static void dumpMethod(const DexFile* pDexFile,
 
   // Find the first line.
   int firstLine = -1;
-  uint32_t debug_info_offset = pDexFile->GetDebugInfoOffset(pCode);
-  pDexFile->DecodeDebugPositionInfo(debug_info_offset, positionsCb, &firstLine);
+  pDexFile->DecodeDebugPositionInfo(accessor.DebugInfoOffset(), positionsCb, &firstLine);
 
   // Method signature.
   const Signature signature = pDexFile->GetMethodSignature(pMethodId);
@@ -130,7 +131,7 @@ static void dumpMethod(const DexFile* pDexFile,
 
   // Dump actual method information.
   fprintf(gOutFile, "0x%08x %d %s %s %s %s %d\n",
-          insnsOff, pCode->insns_size_in_code_units_ * 2,
+          insnsOff, accessor.InsnsSizeInCodeUnits() * 2,
           className.get(), methodName, typeDesc, fileName, firstLine);
 
   free(typeDesc);
