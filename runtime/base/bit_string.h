@@ -114,7 +114,7 @@ inline std::ostream& operator<<(std::ostream& os, const BitStringChar& bc) {
 /**
  *                           BitString
  *
- * MSB                                                      LSB
+ * lsb (least significant bit)                              msb
  *  +------------+------------+------------+-----+------------+
  *  |            |            |            |     |            |
  *  |   Char0    |    Char1   |   Char2    | ... |   CharN    |
@@ -131,8 +131,9 @@ inline std::ostream& operator<<(std::ostream& os, const BitStringChar& bc) {
  *  "ABCDE...K"       := [A,B,C,D,E, ... K] + [0]*(N-idx(K)) s.t. N >= K.
  *                    // Padded with trailing 0s to fit (N+1) bitstring chars.
  *  MaxBitstringLen   := N+1
- *  StrLen(Bitstring) := MaxBitStringLen - | forall char in CharI..CharN : char == 0 AND Char(I-1) != 0 |
- *                    // Maximum length - the # of consecutive trailing zeroes.
+ *  StrLen(Bitstring) := I s.t. (I == 0 OR Char(I-1) != 0)
+ *                              AND forall char in CharI..CharN : char == 0
+ *                    // = Maximum length - the # of consecutive trailing zeroes.
  *  Bitstring[N]      := CharN
  *  Bitstring[I..N)   := [CharI, CharI+1, ... CharN-1]
  *
@@ -278,8 +279,8 @@ struct BitString {
  private:
   friend std::ostream& operator<<(std::ostream& os, const BitString& bit_string);
 
-  // Data is stored with the "highest" position in the least-significant-bit.
-  // As positions approach 0, the bits are stored with increasing significance.
+  // Data is stored with the first character in the least-significant-bit.
+  // Unused bits are zero.
   StorageType storage_;
 };
 
