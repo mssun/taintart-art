@@ -142,17 +142,35 @@ class CodeItemDebugInfoAccessor : public CodeItemDataAccessor {
   ALWAYS_INLINE CodeItemDebugInfoAccessor(const DexFile* dex_file,
                                           const DexFile::CodeItem* code_item);
 
+  // Initialize with an existing offset.
+  ALWAYS_INLINE CodeItemDebugInfoAccessor(const DexFile* dex_file,
+                                          const DexFile::CodeItem* code_item,
+                                          uint32_t debug_info_offset) {
+    Init(dex_file, code_item, debug_info_offset);
+  }
+
+  ALWAYS_INLINE void Init(const DexFile* dex_file,
+                          const DexFile::CodeItem* code_item,
+                          uint32_t debug_info_offset);
+
   ALWAYS_INLINE explicit CodeItemDebugInfoAccessor(ArtMethod* method);
 
   uint32_t DebugInfoOffset() const {
     return debug_info_offset_;
   }
 
+  template<typename NewLocalCallback>
+  bool DecodeDebugLocalInfo(bool is_static,
+                            uint32_t method_idx,
+                            NewLocalCallback new_local,
+                            void* context) const;
+
  protected:
   ALWAYS_INLINE void Init(const CompactDexFile::CodeItem& code_item);
   ALWAYS_INLINE void Init(const StandardDexFile::CodeItem& code_item);
 
  private:
+  const DexFile* dex_file_ = nullptr;
   uint32_t debug_info_offset_ = 0u;
 };
 
