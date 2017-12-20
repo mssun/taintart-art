@@ -34,6 +34,9 @@ cc_defaults {
         },
         host: {
         },
+        darwin: {
+            enabled: false,
+        },
     },
     header_libs: [
         "javavm_headers",
