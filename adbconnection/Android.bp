@@ -37,6 +37,9 @@ cc_defaults {
         },
         host: {
         },
+        darwin: {
+            enabled: false,
+        },
     },
     header_libs: [
         "libnativehelper_header_only",
