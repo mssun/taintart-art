@@ -37,6 +37,119 @@ using android::base::StringPrintf;
 
 static void* StartJdwpThread(void* arg);
 
+
+static bool ParseJdwpOption(const std::string& name,
+                            const std::string& value,
+                            JdwpOptions* jdwp_options) {
+  if (name == "transport") {
+    if (value == "dt_socket") {
+      jdwp_options->transport = JDWP::kJdwpTransportSocket;
+    } else if (value == "dt_android_adb") {
+      jdwp_options->transport = JDWP::kJdwpTransportAndroidAdb;
+    } else {
+      jdwp_options->transport = JDWP::kJdwpTransportUnknown;
+      LOG(ERROR) << "JDWP transport not supported: " << value;
+      return false;
+    }
+  } else if (name == "server") {
+    if (value == "n") {
+      jdwp_options->server = false;
+    } else if (value == "y") {
+      jdwp_options->server = true;
+    } else {
+      LOG(ERROR) << "JDWP option 'server' must be 'y' or 'n'";
+      return false;
+    }
+  } else if (name == "suspend") {
+    if (value == "n") {
+      jdwp_options->suspend = false;
+    } else if (value == "y") {
+      jdwp_options->suspend = true;
+    } else {
+      LOG(ERROR) << "JDWP option 'suspend' must be 'y' or 'n'";
+      return false;
+    }
+  } else if (name == "address") {
+    /* this is either <port> or <host>:<port> */
+    std::string port_string;
+    jdwp_options->host.clear();
+    std::string::size_type colon = value.find(':');
+    if (colon != std::string::npos) {
+      jdwp_options->host = value.substr(0, colon);
+      port_string = value.substr(colon + 1);
+    } else {
+      port_string = value;
+    }
+    if (port_string.empty()) {
+      LOG(ERROR) << "JDWP address missing port: " << value;
+      return false;
+    }
+    char* end;
+    uint64_t port = strtoul(port_string.c_str(), &end, 10);
+    if (*end != '\0' || port > 0xffff) {
+      LOG(ERROR) << "JDWP address has junk in port field: " << value;
+      return false;
+    }
+    jdwp_options->port = port;
+  } else if (name == "launch" || name == "onthrow" || name == "oncaught" || name == "timeout") {
+    /* valid but unsupported */
+    LOG(INFO) << "Ignoring JDWP option '" << name << "'='" << value << "'";
+  } else {
+    LOG(INFO) << "Ignoring unrecognized JDWP option '" << name << "'='" << value << "'";
+  }
+
+  return true;
+}
+
+bool ParseJdwpOptions(const std::string& options, JdwpOptions* jdwp_options) {
+  VLOG(jdwp) << "ParseJdwpOptions: " << options;
+
+  if (options == "help") {
+    LOG(ERROR) << "Example: -XjdwpOptions:transport=dt_socket,address=8000,server=y\n"
+               << "Example: -Xrunjdwp:transport=dt_socket,address=8000,server=y\n"
+               << "Example: -Xrunjdwp:transport=dt_socket,address=localhost:6500,server=n\n";
+    return false;
+  }
+
+  const std::string s;
+
+  std::vector<std::string> pairs;
+  Split(options, ',', &pairs);
+
+  for (const std::string& jdwp_option : pairs) {
+    std::string::size_type equals_pos = jdwp_option.find('=');
+    if (equals_pos == std::string::npos) {
+      LOG(ERROR) << s << "Can't parse JDWP option '" << jdwp_option << "' in '" << options << "'";
+      return false;
+    }
+
+    bool parse_attempt = ParseJdwpOption(jdwp_option.substr(0, equals_pos),
+                                         jdwp_option.substr(equals_pos + 1),
+                                         jdwp_options);
+    if (!parse_attempt) {
+      // We fail to parse this JDWP option.
+      return parse_attempt;
+    }
+  }
+
+  if (jdwp_options->transport == JDWP::kJdwpTransportUnknown) {
+    LOG(ERROR) << s << "Must specify JDWP transport: " << options;
+    return false;
+  }
+#if ART_TARGET_ANDROID
+  if (jdwp_options->transport == JDWP::kJdwpTransportNone) {
+    jdwp_options->transport = JDWP::kJdwpTransportAndroidAdb;
+    LOG(WARNING) << "no JDWP transport specified. Defaulting to dt_android_adb";
+  }
+#endif
+  if (!jdwp_options->server && (jdwp_options->host.empty() || jdwp_options->port == 0)) {
+    LOG(ERROR) << s << "Must specify JDWP host and port when server=n: " << options;
+    return false;
+  }
+
+  return true;
+}
+
 /*
  * JdwpNetStateBase class implementation
  */

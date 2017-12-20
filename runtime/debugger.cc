@@ -328,6 +328,7 @@ bool Dbg::gDisposed = false;
 ObjectRegistry* Dbg::gRegistry = nullptr;
 DebuggerActiveMethodInspectionCallback Dbg::gDebugActiveCallback;
 DebuggerDdmCallback Dbg::gDebugDdmCallback;
+InternalDebuggerControlCallback Dbg::gDebuggerControlCallback;
 
 // Deoptimization support.
 std::vector<DeoptimizationRequest> Dbg::deoptimization_requests_;
@@ -362,6 +363,20 @@ bool DebuggerActiveMethodInspectionCallback::IsMethodBeingInspected(ArtMethod* m
 
 bool DebuggerActiveMethodInspectionCallback::IsMethodSafeToJit(ArtMethod* m) {
   return !Dbg::MethodHasAnyBreakpoints(m);
+}
+
+void InternalDebuggerControlCallback::StartDebugger() {
+  // Release the mutator lock.
+  ScopedThreadStateChange stsc(art::Thread::Current(), kNative);
+  Dbg::StartJdwp();
+}
+
+void InternalDebuggerControlCallback::StopDebugger() {
+  Dbg::StopJdwp();
+}
+
+bool InternalDebuggerControlCallback::IsDebuggerConfigured() {
+  return Dbg::IsJdwpConfigured();
 }
 
 // Breakpoints.
@@ -736,6 +751,7 @@ void Dbg::ConfigureJdwp(const JDWP::JdwpOptions& jdwp_options) {
   CHECK_NE(jdwp_options.transport, JDWP::kJdwpTransportUnknown);
   gJdwpOptions = jdwp_options;
   gJdwpConfigured = true;
+  Runtime::Current()->GetRuntimeCallbacks()->AddDebuggerControlCallback(&gDebuggerControlCallback);
 }
 
 bool Dbg::IsJdwpConfigured() {

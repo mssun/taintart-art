@@ -98,14 +98,15 @@ bool operator!=(const JdwpLocation& lhs, const JdwpLocation& rhs);
  * How we talk to the debugger.
  */
 enum JdwpTransportType {
-  kJdwpTransportUnknown = 0,
+  kJdwpTransportNone = 0,
+  kJdwpTransportUnknown,      // Unknown tranpsort
   kJdwpTransportSocket,       // transport=dt_socket
   kJdwpTransportAndroidAdb,   // transport=dt_android_adb
 };
 std::ostream& operator<<(std::ostream& os, const JdwpTransportType& rhs);
 
 struct JdwpOptions {
-  JdwpTransportType transport = kJdwpTransportUnknown;
+  JdwpTransportType transport = kJdwpTransportNone;
   bool server = false;
   bool suspend = false;
   std::string host = "";
@@ -113,6 +114,8 @@ struct JdwpOptions {
 };
 
 bool operator==(const JdwpOptions& lhs, const JdwpOptions& rhs);
+
+bool ParseJdwpOptions(const std::string& options, JdwpOptions* jdwp_options);
 
 struct JdwpEvent;
 class JdwpNetStateBase;
