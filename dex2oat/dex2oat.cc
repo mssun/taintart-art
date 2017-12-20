@@ -538,11 +538,8 @@ class WatchDog {
     //       it's rather easy to hang in unwinding.
     //       LogLine also avoids ART logging lock issues, as it's really only a wrapper around
     //       logcat logging or stderr output.
-    android::base::LogMessage::LogLine(__FILE__,
-                                       __LINE__,
-                                       android::base::LogId::DEFAULT,
-                                       LogSeverity::FATAL,
-                                       message.c_str());
+    LogHelper::LogLineLowStack(__FILE__, __LINE__, LogSeverity::FATAL, message.c_str());
+
     // If we're on the host, try to dump all threads to get a sense of what's going on. This is
     // restricted to the host as the dump may itself go bad.
     // TODO: Use a double watchdog timeout, so we can enable this on-device.
