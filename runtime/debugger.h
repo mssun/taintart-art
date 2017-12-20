@@ -53,17 +53,21 @@ class ScopedObjectAccessUnchecked;
 class StackVisitor;
 class Thread;
 
+struct DebuggerActiveMethodInspectionCallback : public MethodInspectionCallback {
+  bool IsMethodBeingInspected(ArtMethod* method) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
+  bool IsMethodSafeToJit(ArtMethod* method) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
+};
+
 struct DebuggerDdmCallback : public DdmCallback {
   void DdmPublishChunk(uint32_t type, const ArrayRef<const uint8_t>& data)
       OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
 };
 
-struct DebuggerActiveMethodInspectionCallback : public MethodInspectionCallback {
-  bool IsMethodBeingInspected(ArtMethod* m ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
-  bool IsMethodSafeToJit(ArtMethod* m) OVERRIDE REQUIRES_SHARED(Locks::mutator_lock_);
+struct InternalDebuggerControlCallback : public DebuggerControlCallback {
+  void StartDebugger() OVERRIDE;
+  void StopDebugger() OVERRIDE;
+  bool IsDebuggerConfigured() OVERRIDE;
 };
-
 
 /*
  * Invoke-during-breakpoint support.
@@ -251,7 +255,8 @@ class Dbg {
   }
 
   // Configures JDWP with parsed command-line options.
-  static void ConfigureJdwp(const JDWP::JdwpOptions& jdwp_options);
+  static void ConfigureJdwp(const JDWP::JdwpOptions& jdwp_options)
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns true if we had -Xrunjdwp or -agentlib:jdwp= on the command line.
   static bool IsJdwpConfigured();
@@ -789,6 +794,7 @@ class Dbg {
 
   static DebuggerActiveMethodInspectionCallback gDebugActiveCallback;
   static DebuggerDdmCallback gDebugDdmCallback;
+  static InternalDebuggerControlCallback gDebuggerControlCallback;
 
   // Indicates whether we should drop the JDWP connection because the runtime stops or the
   // debugger called VirtualMachine.Dispose.
