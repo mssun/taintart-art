@@ -157,8 +157,9 @@ static jboolean VMDebug_isDebuggerConnected(JNIEnv*, jclass) {
   return Dbg::IsDebuggerActive();
 }
 
-static jboolean VMDebug_isDebuggingEnabled(JNIEnv*, jclass) {
-  return Dbg::IsJdwpConfigured();
+static jboolean VMDebug_isDebuggingEnabled(JNIEnv* env, jclass) {
+  ScopedObjectAccess soa(env);
+  return Runtime::Current()->GetRuntimeCallbacks()->IsDebuggerConfigured();
 }
 
 static jlong VMDebug_lastDebuggerActivity(JNIEnv*, jclass) {
