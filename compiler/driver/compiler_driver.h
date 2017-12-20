@@ -102,13 +102,13 @@ class CompilerDriver {
 
   ~CompilerDriver();
 
-  // Set dex files associated with the oat file being compiled.
+  // Set dex files that will be stored in the oat file after being compiled.
   void SetDexFilesForOatFile(const std::vector<const DexFile*>& dex_files);
 
   // Set dex files classpath.
   void SetClasspathDexFiles(const std::vector<const DexFile*>& dex_files);
 
-  // Get dex files associated with the the oat file being compiled.
+  // Get dex file that will be stored in the oat file after being compiled.
   ArrayRef<const DexFile* const> GetDexFilesForOatFile() const {
     return ArrayRef<const DexFile* const>(dex_files_for_oat_file_);
   }
@@ -525,7 +525,7 @@ class CompilerDriver {
 
   bool support_boot_image_fixup_;
 
-  // List of dex files associates with the oat file.
+  // List of dex files that will be stored in the oat file.
   std::vector<const DexFile*> dex_files_for_oat_file_;
 
   CompiledMethodStorage compiled_method_storage_;
