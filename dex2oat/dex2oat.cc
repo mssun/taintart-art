@@ -41,6 +41,7 @@
 #include "arch/instruction_set_features.h"
 #include "arch/mips/instruction_set_features_mips.h"
 #include "art_method-inl.h"
+#include "barrier.h"
 #include "base/callee_save_type.h"
 #include "base/dumpable.h"
 #include "base/file_utils.h"
@@ -480,7 +481,8 @@ class WatchDog {
 
  public:
   explicit WatchDog(int64_t timeout_in_milliseconds)
-      : timeout_in_milliseconds_(timeout_in_milliseconds),
+      : wait_barrier_(2),
+        timeout_in_milliseconds_(timeout_in_milliseconds),
         shutting_down_(false) {
     const char* reason = "dex2oat watch dog thread startup";
     CHECK_WATCH_DOG_PTHREAD_CALL(pthread_mutex_init, (&mutex_, nullptr), reason);
@@ -525,9 +527,14 @@ class WatchDog {
   static constexpr int64_t kDefaultWatchdogTimeoutInMS =
       kWatchdogVerifyMultiplier * kWatchDogTimeoutSeconds * 1000;
 
+  void WaitForCallBackStart(Thread* self) {
+    wait_barrier_.Wait(self);
+  }
+
  private:
   static void* CallBack(void* arg) {
     WatchDog* self = reinterpret_cast<WatchDog*>(arg);
+    self->wait_barrier_.Pass(nullptr);
     ::art::SetThreadName("dex2oat watch dog");
     self->Wait();
     return nullptr;
@@ -584,6 +591,8 @@ class WatchDog {
   pthread_cond_t cond_;
   pthread_attr_t attr_;
   pthread_t pthread_;
+
+  Barrier wait_barrier_;
 
   const int64_t timeout_in_milliseconds_;
   bool shutting_down_;
@@ -929,6 +938,8 @@ class Dex2Oat FINAL {
                             ? parser_options->watch_dog_timeout_in_ms
                             : WatchDog::kDefaultWatchdogTimeoutInMS;
       watchdog_.reset(new WatchDog(timeout));
+      watchdog_->WaitForCallBackStart(nullptr);  // The runtime hasn't been started, yet. So
+                                                 // nullptr for current thread.
     }
 
     // Fill some values into the key-value store for the oat header.
