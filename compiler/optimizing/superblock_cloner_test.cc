@@ -24,9 +24,9 @@ namespace art {
 
 // This class provides methods and helpers for testing various cloning and copying routines:
 // individual instruction cloning and cloning of the more coarse-grain structures.
-class ClonerTest : public OptimizingUnitTest {
+class SuperblockClonerTest : public OptimizingUnitTest {
  public:
-  ClonerTest()
+  SuperblockClonerTest()
       : graph_(CreateGraph()), entry_block_(nullptr), exit_block_(nullptr), parameter_(nullptr) {}
 
   void CreateBasicLoopControlFlow(/* out */ HBasicBlock** header_p,
@@ -154,7 +154,7 @@ class ClonerTest : public OptimizingUnitTest {
   HInstruction* parameter_;
 };
 
-TEST_F(ClonerTest, IndividualInstrCloner) {
+TEST_F(SuperblockClonerTest, IndividualInstrCloner) {
   HBasicBlock* header = nullptr;
   HBasicBlock* loop_body = nullptr;
 
