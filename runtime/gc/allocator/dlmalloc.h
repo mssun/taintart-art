@@ -32,6 +32,7 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wredundant-decls"
+#pragma GCC diagnostic ignored "-Wnull-pointer-arithmetic"
 #include "../../external/dlmalloc/malloc.h"
 #pragma GCC diagnostic pop
 
