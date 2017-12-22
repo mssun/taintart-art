@@ -27,7 +27,7 @@
 namespace art {
 
 class JavaVMExt;
-struct JNIEnvExt;
+class JNIEnvExt;
 template<class MirrorType> class ObjPtr;
 class Thread;
 

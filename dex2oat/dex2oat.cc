@@ -1695,10 +1695,10 @@ class Dex2Oat FINAL {
       CHECK(class_loader != nullptr);
       ScopedObjectAccess soa(Thread::Current());
       // Unload class loader to free RAM.
-      jweak weak_class_loader = soa.Env()->vm->AddWeakGlobalRef(
+      jweak weak_class_loader = soa.Env()->GetVm()->AddWeakGlobalRef(
           soa.Self(),
           soa.Decode<mirror::ClassLoader>(class_loader));
-      soa.Env()->vm->DeleteGlobalRef(soa.Self(), class_loader);
+      soa.Env()->GetVm()->DeleteGlobalRef(soa.Self(), class_loader);
       runtime_->GetHeap()->CollectGarbage(/*clear_soft_references*/ true);
       ObjPtr<mirror::ClassLoader> decoded_weak = soa.Decode<mirror::ClassLoader>(weak_class_loader);
       if (decoded_weak != nullptr) {
@@ -2898,7 +2898,7 @@ class ScopedGlobalRef {
   ~ScopedGlobalRef() {
     if (obj_ != nullptr) {
       ScopedObjectAccess soa(Thread::Current());
-      soa.Env()->vm->DeleteGlobalRef(soa.Self(), obj_);
+      soa.Env()->GetVm()->DeleteGlobalRef(soa.Self(), obj_);
     }
   }
 

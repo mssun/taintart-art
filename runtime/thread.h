@@ -86,7 +86,7 @@ class DeoptimizationContextRecord;
 class DexFile;
 class FrameIdToShadowFrame;
 class JavaVMExt;
-struct JNIEnvExt;
+class JNIEnvExt;
 class Monitor;
 class RootVisitor;
 class ScopedObjectAccessAlreadyRunnable;

@@ -26,7 +26,7 @@ namespace art {
 template<typename T>
 inline T JNIEnvExt::AddLocalReference(ObjPtr<mirror::Object> obj) {
   std::string error_msg;
-  IndirectRef ref = locals.Add(local_ref_cookie, obj, &error_msg);
+  IndirectRef ref = locals_.Add(local_ref_cookie_, obj, &error_msg);
   if (UNLIKELY(ref == nullptr)) {
     // This is really unexpected if we allow resizing local IRTs...
     LOG(FATAL) << error_msg;
@@ -35,10 +35,10 @@ inline T JNIEnvExt::AddLocalReference(ObjPtr<mirror::Object> obj) {
 
   // TODO: fix this to understand PushLocalFrame, so we can turn it on.
   if (false) {
-    if (check_jni) {
-      size_t entry_count = locals.Capacity();
+    if (check_jni_) {
+      size_t entry_count = locals_.Capacity();
       if (entry_count > 16) {
-        locals.Dump(LOG_STREAM(WARNING) << "Warning: more than 16 JNI local references: "
+        locals_.Dump(LOG_STREAM(WARNING) << "Warning: more than 16 JNI local references: "
                                         << entry_count << " (most recent was a "
                                         << mirror::Object::PrettyTypeOf(obj) << ")\n");
       // TODO: LOG(FATAL) in a later release?

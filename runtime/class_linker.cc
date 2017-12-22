@@ -3391,7 +3391,7 @@ void ClassLinker::RegisterDexFileLocked(const DexFile& dex_file,
   // Clean up pass to remove null dex caches. Also check if we need to initialize OatFile .bss.
   // Null dex caches can occur due to class unloading and we are lazily removing null entries.
   bool initialize_oat_file_bss = (oat_file != nullptr);
-  JavaVMExt* const vm = self->GetJniEnv()->vm;
+  JavaVMExt* const vm = self->GetJniEnv()->GetVm();
   for (auto it = dex_caches_.begin(); it != dex_caches_.end(); ) {
     DexCacheData data = *it;
     if (self->IsJWeakCleared(data.weak_root)) {
@@ -5269,7 +5269,7 @@ void ClassLinker::RegisterClassLoader(ObjPtr<mirror::ClassLoader> class_loader) 
   CHECK(class_loader->GetClassTable() == nullptr);
   Thread* const self = Thread::Current();
   ClassLoaderData data;
-  data.weak_root = self->GetJniEnv()->vm->AddWeakGlobalRef(self, class_loader);
+  data.weak_root = self->GetJniEnv()->GetVm()->AddWeakGlobalRef(self, class_loader);
   // Create and set the class table.
   data.class_table = new ClassTable;
   class_loader->SetClassTable(data.class_table);
