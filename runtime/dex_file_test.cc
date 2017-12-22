@@ -22,6 +22,7 @@
 
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
+#include "code_item_accessors-inl.h"
 #include "common_runtime_test.h"
 #include "dex_file-inl.h"
 #include "dex_file_loader.h"
@@ -730,15 +731,8 @@ TEST_F(DexFileTest, OpenDexDebugInfoLocalNullType) {
       kRawDexDebugInfoLocalNullType, tmp.GetFilename().c_str(), 0xf25f2b38U, true);
   const DexFile::ClassDef& class_def = raw->GetClassDef(0);
   const DexFile::CodeItem* code_item = raw->GetCodeItem(raw->FindCodeItemOffset(class_def, 1));
-  uint32_t debug_info_offset = raw->GetDebugInfoOffset(code_item);
-  ASSERT_TRUE(raw->DecodeDebugLocalInfo(code_item->registers_size_,
-                                        code_item->ins_size_,
-                                        code_item->insns_size_in_code_units_,
-                                        debug_info_offset,
-                                        true,
-                                        1,
-                                        Callback,
-                                        nullptr));
+  CodeItemDebugInfoAccessor accessor(raw.get(), code_item);
+  ASSERT_TRUE(accessor.DecodeDebugLocalInfo(true, 1, Callback, nullptr));
 }
 
 }  // namespace art

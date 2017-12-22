@@ -18,6 +18,7 @@
 #define ART_RUNTIME_CHECK_REFERENCE_MAP_VISITOR_H_
 
 #include "art_method-inl.h"
+#include "code_item_accessors-inl.h"
 #include "dex_file_types.h"
 #include "oat_quick_method_header.h"
 #include "scoped_thread_state_change-inl.h"
@@ -66,14 +67,15 @@ class CheckReferenceMapVisitor : public StackVisitor {
     CodeInfo code_info = GetCurrentOatQuickMethodHeader()->GetOptimizedCodeInfo();
     CodeInfoEncoding encoding = code_info.ExtractEncoding();
     StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset, encoding);
-    uint16_t number_of_dex_registers = m->GetCodeItem()->registers_size_;
+    CodeItemDataAccessor accessor(m);
+    uint16_t number_of_dex_registers = accessor.RegistersSize();
     DexRegisterMap dex_register_map =
         code_info.GetDexRegisterMapOf(stack_map, encoding, number_of_dex_registers);
     uint32_t register_mask = code_info.GetRegisterMaskOf(encoding, stack_map);
     BitMemoryRegion stack_mask = code_info.GetStackMaskOf(encoding, stack_map);
     for (int i = 0; i < number_of_references; ++i) {
       int reg = registers[i];
-      CHECK(reg < m->GetCodeItem()->registers_size_);
+      CHECK_LT(reg, accessor.RegistersSize());
       DexRegisterLocation location = dex_register_map.GetDexRegisterLocation(
           reg, number_of_dex_registers, code_info, encoding);
       switch (location.GetKind()) {

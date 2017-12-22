@@ -39,6 +39,44 @@
 
 namespace art {
 
+HInstructionBuilder::HInstructionBuilder(HGraph* graph,
+                                         HBasicBlockBuilder* block_builder,
+                                         SsaBuilder* ssa_builder,
+                                         const DexFile* dex_file,
+                                         const CodeItemDebugInfoAccessor& accessor,
+                                         DataType::Type return_type,
+                                         const DexCompilationUnit* dex_compilation_unit,
+                                         const DexCompilationUnit* outer_compilation_unit,
+                                         CompilerDriver* compiler_driver,
+                                         CodeGenerator* code_generator,
+                                         const uint8_t* interpreter_metadata,
+                                         OptimizingCompilerStats* compiler_stats,
+                                         VariableSizedHandleScope* handles,
+                                         ScopedArenaAllocator* local_allocator)
+    : allocator_(graph->GetAllocator()),
+      graph_(graph),
+      handles_(handles),
+      dex_file_(dex_file),
+      code_item_accessor_(accessor),
+      return_type_(return_type),
+      block_builder_(block_builder),
+      ssa_builder_(ssa_builder),
+      compiler_driver_(compiler_driver),
+      code_generator_(code_generator),
+      dex_compilation_unit_(dex_compilation_unit),
+      outer_compilation_unit_(outer_compilation_unit),
+      quicken_info_(interpreter_metadata),
+      compilation_stats_(compiler_stats),
+      local_allocator_(local_allocator),
+      locals_for_(local_allocator->Adapter(kArenaAllocGraphBuilder)),
+      current_block_(nullptr),
+      current_locals_(nullptr),
+      latest_result_(nullptr),
+      current_this_parameter_(nullptr),
+      loop_headers_(local_allocator->Adapter(kArenaAllocGraphBuilder)) {
+  loop_headers_.reserve(kDefaultNumberOfLoops);
+}
+
 HBasicBlock* HInstructionBuilder::FindBlockStartingAt(uint32_t dex_pc) const {
   return block_builder_->GetBlockAt(dex_pc);
 }
@@ -273,7 +311,7 @@ static bool IsBlockPopulated(HBasicBlock* block) {
 }
 
 bool HInstructionBuilder::Build() {
-  DCHECK(code_item_ != nullptr);
+  DCHECK(code_item_accessor_.HasCodeItem());
   locals_for_.resize(
       graph_->GetBlocks().size(),
       ScopedArenaVector<HInstruction*>(local_allocator_->Adapter(kArenaAllocGraphBuilder)));
@@ -323,7 +361,7 @@ bool HInstructionBuilder::Build() {
       quicken_index = block_builder_->GetQuickenIndex(block_dex_pc);
     }
 
-    for (const DexInstructionPcPair& pair : code_item_->Instructions(block_dex_pc)) {
+    for (const DexInstructionPcPair& pair : code_item_accessor_.InstructionsFrom(block_dex_pc)) {
       if (current_block_ == nullptr) {
         // The previous instruction ended this block.
         break;
@@ -367,7 +405,7 @@ bool HInstructionBuilder::Build() {
 }
 
 void HInstructionBuilder::BuildIntrinsic(ArtMethod* method) {
-  DCHECK(code_item_ == nullptr);
+  DCHECK(!code_item_accessor_.HasCodeItem());
   DCHECK(method->IsIntrinsic());
 
   locals_for_.resize(
@@ -442,15 +480,16 @@ ArenaBitVector* HInstructionBuilder::FindNativeDebugInfoLocations() {
       return false;
     }
   };
-  CodeItemDebugInfoAccessor accessor(dex_file_, code_item_);
   ArenaBitVector* locations = ArenaBitVector::Create(local_allocator_,
-                                                     accessor.InsnsSizeInCodeUnits(),
+                                                     code_item_accessor_.InsnsSizeInCodeUnits(),
                                                      /* expandable */ false,
                                                      kArenaAllocGraphBuilder);
   locations->ClearAllBits();
-  dex_file_->DecodeDebugPositionInfo(accessor.DebugInfoOffset(), Callback::Position, locations);
+  dex_file_->DecodeDebugPositionInfo(code_item_accessor_.DebugInfoOffset(),
+                                     Callback::Position,
+                                     locations);
   // Instruction-specific tweaks.
-  for (const DexInstructionPcPair& inst : accessor) {
+  for (const DexInstructionPcPair& inst : code_item_accessor_) {
     switch (inst->Opcode()) {
       case Instruction::MOVE_EXCEPTION: {
         // Stop in native debugger after the exception has been moved.
@@ -459,7 +498,7 @@ ArenaBitVector* HInstructionBuilder::FindNativeDebugInfoLocations() {
         locations->ClearBit(inst.DexPc());
         DexInstructionIterator next = std::next(DexInstructionIterator(inst));
         DCHECK(next.DexPc() != inst.DexPc());
-        if (next != accessor.end()) {
+        if (next != code_item_accessor_.end()) {
           locations->SetBit(next.DexPc());
         }
         break;
@@ -1706,7 +1745,8 @@ void HInstructionBuilder::BuildFillArrayData(const Instruction& instruction, uin
 
   int32_t payload_offset = instruction.VRegB_31t() + dex_pc;
   const Instruction::ArrayDataPayload* payload =
-      reinterpret_cast<const Instruction::ArrayDataPayload*>(code_item_->insns_ + payload_offset);
+      reinterpret_cast<const Instruction::ArrayDataPayload*>(
+          code_item_accessor_.Insns() + payload_offset);
   const uint8_t* data = payload->data;
   uint32_t element_count = payload->element_count;
 

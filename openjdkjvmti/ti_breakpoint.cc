@@ -98,7 +98,7 @@ jvmtiError BreakpointUtil::SetBreakpoint(jvmtiEnv* jenv, jmethodID method, jloca
   art::ScopedObjectAccess soa(art::Thread::Current());
   art::ArtMethod* art_method = art::jni::DecodeArtMethod(method)->GetCanonicalMethod();
   if (location < 0 || static_cast<uint32_t>(location) >=
-      art_method->GetCodeItem()->insns_size_in_code_units_) {
+      art_method->DexInstructions().InsnsSizeInCodeUnits()) {
     return ERR(INVALID_LOCATION);
   }
   DeoptManager::Get()->AddMethodBreakpoint(art_method);
