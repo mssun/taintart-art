@@ -27,6 +27,7 @@ class Object;
 }  // namespace mirror
 
 class ArtMethod;
+class CodeItemDataAccessor;
 union JValue;
 class ShadowFrame;
 class Thread;
@@ -52,12 +53,15 @@ extern void EnterInterpreterFromDeoptimize(Thread* self,
                                            DeoptimizationMethodType method_type)
     REQUIRES_SHARED(Locks::mutator_lock_);
 
-extern JValue EnterInterpreterFromEntryPoint(Thread* self, const DexFile::CodeItem* code_item,
+extern JValue EnterInterpreterFromEntryPoint(Thread* self,
+                                             const CodeItemDataAccessor& accessor,
                                              ShadowFrame* shadow_frame)
     REQUIRES_SHARED(Locks::mutator_lock_);
 
-void ArtInterpreterToInterpreterBridge(Thread* self, const DexFile::CodeItem* code_item,
-                                       ShadowFrame* shadow_frame, JValue* result)
+void ArtInterpreterToInterpreterBridge(Thread* self,
+                                       const CodeItemDataAccessor& accessor,
+                                       ShadowFrame* shadow_frame,
+                                       JValue* result)
     REQUIRES_SHARED(Locks::mutator_lock_);
 
 // One-time sanity check.

@@ -16,6 +16,7 @@
 
 #include "arch/context.h"
 #include "art_method-inl.h"
+#include "code_item_accessors-inl.h"
 #include "jni.h"
 #include "oat_quick_method_header.h"
 #include "scoped_thread_state_change-inl.h"
@@ -41,7 +42,7 @@ class TestVisitor : public StackVisitor {
       CHECK(GetVReg(m, 0, kIntVReg, &value));
       CHECK_EQ(value, 42u);
     } else if (m_name.compare("$opt$noinline$testIntervalHole") == 0) {
-      uint32_t number_of_dex_registers = m->GetCodeItem()->registers_size_;
+      uint32_t number_of_dex_registers = CodeItemDataAccessor(m).RegistersSize();
       uint32_t dex_register_of_first_parameter = number_of_dex_registers - 2;
       found_method_ = true;
       uint32_t value = 0;

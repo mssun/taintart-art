@@ -18,6 +18,7 @@
 #define ART_COMPILER_OPTIMIZING_BUILDER_H_
 
 #include "base/arena_object.h"
+#include "code_item_accessors.h"
 #include "dex_file-inl.h"
 #include "dex_file.h"
 #include "driver/compiler_driver.h"
@@ -33,7 +34,7 @@ class OptimizingCompilerStats;
 class HGraphBuilder : public ValueObject {
  public:
   HGraphBuilder(HGraph* graph,
-                const DexFile::CodeItem* code_item,
+                const CodeItemDebugInfoAccessor& accessor,
                 const DexCompilationUnit* dex_compilation_unit,
                 const DexCompilationUnit* outer_compilation_unit,
                 CompilerDriver* driver,
@@ -45,20 +46,9 @@ class HGraphBuilder : public ValueObject {
   // Only for unit testing.
   HGraphBuilder(HGraph* graph,
                 const DexCompilationUnit* dex_compilation_unit,
-                const DexFile::CodeItem& code_item,
+                const CodeItemDebugInfoAccessor& accessor,
                 VariableSizedHandleScope* handles,
-                DataType::Type return_type = DataType::Type::kInt32)
-      : graph_(graph),
-        dex_file_(&graph->GetDexFile()),
-        code_item_(&code_item),
-        dex_compilation_unit_(dex_compilation_unit),
-        outer_compilation_unit_(nullptr),
-        compiler_driver_(nullptr),
-        code_generator_(nullptr),
-        compilation_stats_(nullptr),
-        interpreter_metadata_(nullptr),
-        handles_(handles),
-        return_type_(return_type) {}
+                DataType::Type return_type = DataType::Type::kInt32);
 
   GraphAnalysisResult BuildGraph();
   void BuildIntrinsicGraph(ArtMethod* method);
@@ -70,7 +60,7 @@ class HGraphBuilder : public ValueObject {
 
   HGraph* const graph_;
   const DexFile* const dex_file_;
-  const DexFile::CodeItem* const code_item_;  // null for intrinsic graph.
+  const CodeItemDebugInfoAccessor code_item_accessor_;  // null for intrinsic graph.
 
   // The compilation unit of the current method being compiled. Note that
   // it can be an inlined method.

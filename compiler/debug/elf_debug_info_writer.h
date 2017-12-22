@@ -260,14 +260,10 @@ class ElfCompilationUnitWriter {
 
       // Write local variables.
       LocalInfos local_infos;
-      if (dex->DecodeDebugLocalInfo(accessor.RegistersSize(),
-                                    accessor.InsSize(),
-                                    accessor.InsnsSizeInCodeUnits(),
-                                    accessor.DebugInfoOffset(),
-                                    is_static,
-                                    mi->dex_method_index,
-                                    LocalInfoCallback,
-                                    &local_infos)) {
+      if (accessor.DecodeDebugLocalInfo(is_static,
+                                        mi->dex_method_index,
+                                        LocalInfoCallback,
+                                        &local_infos)) {
         for (const DexFile::LocalInfo& var : local_infos) {
           if (var.reg_ < accessor.RegistersSize() - accessor.InsSize()) {
             info_.StartTag(DW_TAG_variable);

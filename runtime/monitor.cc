@@ -1377,9 +1377,9 @@ void Monitor::VisitLocks(StackVisitor* stack_visitor, void (*callback)(mirror::O
   }
 
   // Is there any reason to believe there's any synchronization in this method?
-  const DexFile::CodeItem* code_item = m->GetCodeItem();
-  CHECK(code_item != nullptr) << m->PrettyMethod();
-  if (code_item->tries_size_ == 0) {
+  CHECK(m->GetCodeItem() != nullptr) << m->PrettyMethod();
+  CodeItemDataAccessor accessor(m);
+  if (accessor.TriesSize() == 0) {
     return;  // No "tries" implies no synchronization, so no held locks to report.
   }
 
@@ -1399,11 +1399,10 @@ void Monitor::VisitLocks(StackVisitor* stack_visitor, void (*callback)(mirror::O
   for (verifier::MethodVerifier::DexLockInfo& dex_lock_info : monitor_enter_dex_pcs) {
     // As a debug check, check that dex PC corresponds to a monitor-enter.
     if (kIsDebugBuild) {
-      const Instruction* monitor_enter_instruction =
-          Instruction::At(&code_item->insns_[dex_lock_info.dex_pc]);
-      CHECK_EQ(monitor_enter_instruction->Opcode(), Instruction::MONITOR_ENTER)
+      const Instruction& monitor_enter_instruction = accessor.InstructionAt(dex_lock_info.dex_pc);
+      CHECK_EQ(monitor_enter_instruction.Opcode(), Instruction::MONITOR_ENTER)
           << "expected monitor-enter @" << dex_lock_info.dex_pc << "; was "
-          << reinterpret_cast<const void*>(monitor_enter_instruction);
+          << reinterpret_cast<const void*>(&monitor_enter_instruction);
     }
 
     // Iterate through the set of dex registers, as the compiler may not have held all of them
