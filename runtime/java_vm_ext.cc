@@ -337,7 +337,7 @@ class Libraries {
       } else {
         VLOG(jni) << "[JNI_OnUnload found for \"" << library->GetPath() << "\"]: Calling...";
         JNI_OnUnloadFn jni_on_unload = reinterpret_cast<JNI_OnUnloadFn>(sym);
-        jni_on_unload(self->GetJniEnv()->vm, nullptr);
+        jni_on_unload(self->GetJniEnv()->GetVm(), nullptr);
       }
       delete library;
     }

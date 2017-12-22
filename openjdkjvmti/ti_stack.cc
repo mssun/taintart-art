@@ -892,7 +892,7 @@ struct MonitorInfoClosure : public art::Closure {
     visitor.WalkStack(/* include_transitions */ false);
     // Find any other monitors, including ones acquired in native code.
     art::RootInfo root_info(art::kRootVMInternal);
-    target->GetJniEnv()->monitors.VisitRoots(&visitor, root_info);
+    target->GetJniEnv()->VisitMonitorRoots(&visitor, root_info);
     err_ = handle_results_(soa_, visitor);
   }
 

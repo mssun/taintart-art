@@ -223,7 +223,7 @@ static jboolean VMRuntime_is64Bit(JNIEnv*, jobject) {
 }
 
 static jboolean VMRuntime_isCheckJniEnabled(JNIEnv* env, jobject) {
-  return down_cast<JNIEnvExt*>(env)->vm->IsCheckJniEnabled() ? JNI_TRUE : JNI_FALSE;
+  return down_cast<JNIEnvExt*>(env)->GetVm()->IsCheckJniEnabled() ? JNI_TRUE : JNI_FALSE;
 }
 
 static void VMRuntime_setTargetSdkVersionNative(JNIEnv*, jobject, jint target_sdk_version) {

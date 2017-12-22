@@ -273,7 +273,7 @@ void ReferenceProcessor::EnqueueClearedReferences(Thread* self) {
       jobject cleared_references;
       {
         ReaderMutexLock mu(self, *Locks::mutator_lock_);
-        cleared_references = self->GetJniEnv()->vm->AddGlobalRef(
+        cleared_references = self->GetJniEnv()->GetVm()->AddGlobalRef(
             self, cleared_references_.GetList());
       }
       if (kAsyncReferenceQueueAdd) {
