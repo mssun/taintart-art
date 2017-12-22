@@ -141,8 +141,11 @@ bool Matcher::DoMatch(const CodeItemDataAccessor* code_item, MatchFn* const* pat
 ArtMethod* GetTargetConstructor(ArtMethod* method, const Instruction* invoke_direct)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK_EQ(invoke_direct->Opcode(), Instruction::INVOKE_DIRECT);
-  DCHECK_EQ(invoke_direct->VRegC_35c(),
-            method->GetCodeItem()->registers_size_ - method->GetCodeItem()->ins_size_);
+  if (kIsDebugBuild) {
+    CodeItemDataAccessor accessor(method);
+    DCHECK_EQ(invoke_direct->VRegC_35c(),
+              accessor.RegistersSize() - accessor.InsSize());
+  }
   uint32_t method_index = invoke_direct->VRegB_35c();
   ArtMethod* target_method = Runtime::Current()->GetClassLinker()->LookupResolvedMethod(
       method_index, method->GetDexCache(), method->GetClassLoader());
@@ -323,7 +326,7 @@ bool DoAnalyseConstructor(const CodeItemDataAccessor* code_item,
       if (target_method->GetDeclaringClass()->IsObjectClass()) {
         DCHECK_EQ(CodeItemDataAccessor(target_method).begin()->Opcode(), Instruction::RETURN_VOID);
       } else {
-        CodeItemDataAccessor target_code_item = CodeItemDataAccessor::CreateNullable(target_method);
+        CodeItemDataAccessor target_code_item(target_method);
         if (!target_code_item.HasCodeItem()) {
           return false;  // Native constructor?
         }
@@ -427,7 +430,7 @@ static_assert(InlineMethodAnalyser::IGetVariant(Instruction::IGET_SHORT) ==
     InlineMethodAnalyser::IPutVariant(Instruction::IPUT_SHORT), "iget/iput_short variant");
 
 bool InlineMethodAnalyser::AnalyseMethodCode(ArtMethod* method, InlineMethod* result) {
-  CodeItemDataAccessor code_item = CodeItemDataAccessor::CreateNullable(method);
+  CodeItemDataAccessor code_item(method);
   if (!code_item.HasCodeItem()) {
     // Native or abstract.
     return false;

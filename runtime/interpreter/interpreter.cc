@@ -240,7 +240,7 @@ static constexpr InterpreterImplKind kInterpreterImplKind = kMterpImplKind;
 
 static inline JValue Execute(
     Thread* self,
-    const DexFile::CodeItem* code_item,
+    const CodeItemDataAccessor& accessor,
     ShadowFrame& shadow_frame,
     JValue result_register,
     bool stay_in_interpreter = false) REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -254,11 +254,13 @@ static inline JValue Execute(
     ArtMethod *method = shadow_frame.GetMethod();
 
     if (UNLIKELY(instrumentation->HasMethodEntryListeners())) {
-      instrumentation->MethodEnterEvent(self, shadow_frame.GetThisObject(code_item->ins_size_),
-                                        method, 0);
+      instrumentation->MethodEnterEvent(self,
+                                        shadow_frame.GetThisObject(accessor.InsSize()),
+                                        method,
+                                        0);
       if (UNLIKELY(self->IsExceptionPending())) {
         instrumentation->MethodUnwindEvent(self,
-                                           shadow_frame.GetThisObject(code_item->ins_size_),
+                                           shadow_frame.GetThisObject(accessor.InsSize()),
                                            method,
                                            0);
         return JValue();
@@ -277,7 +279,7 @@ static inline JValue Execute(
           // Calculate the offset of the first input reg. The input registers are in the high regs.
           // It's ok to access the code item here since JIT code will have been touched by the
           // interpreter and compiler already.
-          uint16_t arg_offset = code_item->registers_size_ - code_item->ins_size_;
+          uint16_t arg_offset = accessor.RegistersSize() - accessor.InsSize();
           ArtInterpreterToCompiledCodeBridge(self, nullptr, &shadow_frame, arg_offset, &result);
           // Push the shadow frame back as the caller will expect it.
           self->PushShadowFrame(&shadow_frame);
@@ -302,27 +304,27 @@ static inline JValue Execute(
     if (kInterpreterImplKind == kMterpImplKind) {
       if (transaction_active) {
         // No Mterp variant - just use the switch interpreter.
-        return ExecuteSwitchImpl<false, true>(self, code_item, shadow_frame, result_register,
+        return ExecuteSwitchImpl<false, true>(self, accessor, shadow_frame, result_register,
                                               false);
       } else if (UNLIKELY(!Runtime::Current()->IsStarted())) {
-        return ExecuteSwitchImpl<false, false>(self, code_item, shadow_frame, result_register,
+        return ExecuteSwitchImpl<false, false>(self, accessor, shadow_frame, result_register,
                                                false);
       } else {
         while (true) {
           // Mterp does not support all instrumentation/debugging.
           if (MterpShouldSwitchInterpreters() != 0) {
-            return ExecuteSwitchImpl<false, false>(self, code_item, shadow_frame, result_register,
+            return ExecuteSwitchImpl<false, false>(self, accessor, shadow_frame, result_register,
                                                    false);
           }
           bool returned = ExecuteMterpImpl(self,
-                                           code_item->insns_,
+                                           accessor.Insns(),
                                            &shadow_frame,
                                            &result_register);
           if (returned) {
             return result_register;
           } else {
             // Mterp didn't like that instruction.  Single-step it with the reference interpreter.
-            result_register = ExecuteSwitchImpl<false, false>(self, code_item, shadow_frame,
+            result_register = ExecuteSwitchImpl<false, false>(self, accessor, shadow_frame,
                                                               result_register, true);
             if (shadow_frame.GetDexPC() == dex::kDexNoIndex) {
               // Single-stepped a return or an exception not handled locally.  Return to caller.
@@ -334,10 +336,10 @@ static inline JValue Execute(
     } else {
       DCHECK_EQ(kInterpreterImplKind, kSwitchImplKind);
       if (transaction_active) {
-        return ExecuteSwitchImpl<false, true>(self, code_item, shadow_frame, result_register,
+        return ExecuteSwitchImpl<false, true>(self, accessor, shadow_frame, result_register,
                                               false);
       } else {
-        return ExecuteSwitchImpl<false, false>(self, code_item, shadow_frame, result_register,
+        return ExecuteSwitchImpl<false, false>(self, accessor, shadow_frame, result_register,
                                                false);
       }
     }
@@ -346,19 +348,19 @@ static inline JValue Execute(
     if (kInterpreterImplKind == kMterpImplKind) {
       // No access check variants for Mterp.  Just use the switch version.
       if (transaction_active) {
-        return ExecuteSwitchImpl<true, true>(self, code_item, shadow_frame, result_register,
+        return ExecuteSwitchImpl<true, true>(self, accessor, shadow_frame, result_register,
                                              false);
       } else {
-        return ExecuteSwitchImpl<true, false>(self, code_item, shadow_frame, result_register,
+        return ExecuteSwitchImpl<true, false>(self, accessor, shadow_frame, result_register,
                                               false);
       }
     } else {
       DCHECK_EQ(kInterpreterImplKind, kSwitchImplKind);
       if (transaction_active) {
-        return ExecuteSwitchImpl<true, true>(self, code_item, shadow_frame, result_register,
+        return ExecuteSwitchImpl<true, true>(self, accessor, shadow_frame, result_register,
                                              false);
       } else {
-        return ExecuteSwitchImpl<true, false>(self, code_item, shadow_frame, result_register,
+        return ExecuteSwitchImpl<true, false>(self, accessor, shadow_frame, result_register,
                                               false);
       }
     }
@@ -387,12 +389,12 @@ void EnterInterpreterFromInvoke(Thread* self,
   }
 
   const char* old_cause = self->StartAssertNoThreadSuspension("EnterInterpreterFromInvoke");
-  const DexFile::CodeItem* code_item = method->GetCodeItem();
+  CodeItemDataAccessor accessor(method);
   uint16_t num_regs;
   uint16_t num_ins;
-  if (code_item != nullptr) {
-    num_regs =  code_item->registers_size_;
-    num_ins = code_item->ins_size_;
+  if (accessor.HasCodeItem()) {
+    num_regs =  accessor.RegistersSize();
+    num_ins = accessor.InsSize();
   } else if (!method->IsInvokable()) {
     self->EndAssertNoThreadSuspension(old_cause);
     method->ThrowInvocationTimeError();
@@ -454,7 +456,7 @@ void EnterInterpreterFromInvoke(Thread* self,
     }
   }
   if (LIKELY(!method->IsNative())) {
-    JValue r = Execute(self, code_item, *shadow_frame, JValue(), stay_in_interpreter);
+    JValue r = Execute(self, accessor, *shadow_frame, JValue(), stay_in_interpreter);
     if (result != nullptr) {
       *result = r;
     }
@@ -497,7 +499,7 @@ void EnterInterpreterFromDeoptimize(Thread* self,
     DCHECK(!shadow_frame->GetMethod()->MustCountLocks());
 
     self->SetTopOfShadowStack(shadow_frame);
-    const DexFile::CodeItem* code_item = shadow_frame->GetMethod()->GetCodeItem();
+    CodeItemDataAccessor accessor(shadow_frame->GetMethod());
     const uint32_t dex_pc = shadow_frame->GetDexPC();
     uint32_t new_dex_pc = dex_pc;
     if (UNLIKELY(self->IsExceptionPending())) {
@@ -510,7 +512,7 @@ void EnterInterpreterFromDeoptimize(Thread* self,
           self, *shadow_frame, instrumentation) ? shadow_frame->GetDexPC() : dex::kDexNoIndex;
     } else if (!from_code) {
       // Deoptimization is not called from code directly.
-      const Instruction* instr = Instruction::At(&code_item->insns_[dex_pc]);
+      const Instruction* instr = &accessor.InstructionAt(dex_pc);
       if (deopt_method_type == DeoptimizationMethodType::kKeepDexPc) {
         DCHECK(first);
         // Need to re-execute the dex instruction.
@@ -566,7 +568,7 @@ void EnterInterpreterFromDeoptimize(Thread* self,
     }
     if (new_dex_pc != dex::kDexNoIndex) {
       shadow_frame->SetDexPC(new_dex_pc);
-      value = Execute(self, code_item, *shadow_frame, value);
+      value = Execute(self, accessor, *shadow_frame, value);
     }
     ShadowFrame* old_frame = shadow_frame;
     shadow_frame = shadow_frame->GetLink();
@@ -580,7 +582,7 @@ void EnterInterpreterFromDeoptimize(Thread* self,
   ret_val->SetJ(value.GetJ());
 }
 
-JValue EnterInterpreterFromEntryPoint(Thread* self, const DexFile::CodeItem* code_item,
+JValue EnterInterpreterFromEntryPoint(Thread* self, const CodeItemDataAccessor& accessor,
                                       ShadowFrame* shadow_frame) {
   DCHECK_EQ(self, Thread::Current());
   bool implicit_check = !Runtime::Current()->ExplicitStackOverflowChecks();
@@ -593,11 +595,11 @@ JValue EnterInterpreterFromEntryPoint(Thread* self, const DexFile::CodeItem* cod
   if (jit != nullptr) {
     jit->NotifyCompiledCodeToInterpreterTransition(self, shadow_frame->GetMethod());
   }
-  return Execute(self, code_item, *shadow_frame, JValue());
+  return Execute(self, accessor, *shadow_frame, JValue());
 }
 
 void ArtInterpreterToInterpreterBridge(Thread* self,
-                                       const DexFile::CodeItem* code_item,
+                                       const CodeItemDataAccessor& accessor,
                                        ShadowFrame* shadow_frame,
                                        JValue* result) {
   bool implicit_check = !Runtime::Current()->ExplicitStackOverflowChecks();
@@ -626,7 +628,7 @@ void ArtInterpreterToInterpreterBridge(Thread* self,
   }
 
   if (LIKELY(!shadow_frame->GetMethod()->IsNative())) {
-    result->SetJ(Execute(self, code_item, *shadow_frame, JValue()).GetJ());
+    result->SetJ(Execute(self, accessor, *shadow_frame, JValue()).GetJ());
   } else {
     // We don't expect to be asked to interpret native code (which is entered via a JNI compiler
     // generated stub) except during testing and image writing.

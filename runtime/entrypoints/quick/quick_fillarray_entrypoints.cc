@@ -28,7 +28,7 @@ extern "C" int artHandleFillArrayDataFromCode(uint32_t payload_offset, mirror::A
                                               ArtMethod* method, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ScopedQuickEntrypointChecks sqec(self);
-  const uint16_t* const insns = method->GetCodeItem()->insns_;
+  const uint16_t* const insns = method->DexInstructions().Insns();
   const Instruction::ArrayDataPayload* payload =
       reinterpret_cast<const Instruction::ArrayDataPayload*>(insns + payload_offset);
   bool success = FillArrayData(array, payload);

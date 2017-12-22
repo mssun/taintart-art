@@ -297,9 +297,8 @@ uint32_t ArtMethod::FindCatchBlock(Handle<mirror::Class> exception_type,
     }
   }
   if (found_dex_pc != dex::kDexNoIndex) {
-    const Instruction* first_catch_instr =
-        Instruction::At(&code_item->insns_[found_dex_pc]);
-    *has_no_move_exception = (first_catch_instr->Opcode() != Instruction::MOVE_EXCEPTION);
+    const Instruction& first_catch_instr = DexInstructions().InstructionAt(found_dex_pc);
+    *has_no_move_exception = (first_catch_instr.Opcode() != Instruction::MOVE_EXCEPTION);
   }
   // Put the exception back.
   if (exception != nullptr) {

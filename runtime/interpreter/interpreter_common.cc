@@ -1320,7 +1320,7 @@ static inline bool DoCallCommon(ArtMethod* called_method,
   }
 
   // Compute method information.
-  const DexFile::CodeItem* code_item = called_method->GetCodeItem();
+  CodeItemDataAccessor accessor(called_method);
   // Number of registers for the callee's call frame.
   uint16_t num_regs;
   // Test whether to use the interpreter or compiler entrypoint, and save that result to pass to
@@ -1334,7 +1334,7 @@ static inline bool DoCallCommon(ArtMethod* called_method,
       ClassLinker::ShouldUseInterpreterEntrypoint(
           called_method,
           called_method->GetEntryPointFromQuickCompiledCode());
-  if (LIKELY(code_item != nullptr)) {
+  if (LIKELY(accessor.HasCodeItem())) {
     // When transitioning to compiled code, space only needs to be reserved for the input registers.
     // The rest of the frame gets discarded. This also prevents accessing the called method's code
     // item, saving memory by keeping code items of compiled code untouched.
@@ -1342,8 +1342,8 @@ static inline bool DoCallCommon(ArtMethod* called_method,
       DCHECK(!Runtime::Current()->IsAotCompiler()) << "Compiler should use interpreter entrypoint";
       num_regs = number_of_inputs;
     } else {
-      num_regs = code_item->registers_size_;
-      DCHECK_EQ(string_init ? number_of_inputs - 1 : number_of_inputs, code_item->ins_size_);
+      num_regs = accessor.RegistersSize();
+      DCHECK_EQ(string_init ? number_of_inputs - 1 : number_of_inputs, accessor.InsSize());
     }
   } else {
     DCHECK(called_method->IsNative() || called_method->IsProxyMethod());
@@ -1367,7 +1367,7 @@ static inline bool DoCallCommon(ArtMethod* called_method,
     DCHECK_GT(num_regs, 0u);  // As the method is an instance method, there should be at least 1.
 
     // The new StringFactory call is static and has one fewer argument.
-    if (code_item == nullptr) {
+    if (!accessor.HasCodeItem()) {
       DCHECK(called_method->IsNative() || called_method->IsProxyMethod());
       num_regs--;
     }  // else ... don't need to change num_regs since it comes up from the string_init's code item
@@ -1499,7 +1499,7 @@ static inline bool DoCallCommon(ArtMethod* called_method,
   }
 
   PerformCall(self,
-              code_item,
+              accessor,
               shadow_frame.GetMethod(),
               first_dest_reg,
               new_shadow_frame,

@@ -949,14 +949,14 @@ class ResolveCatchBlockExceptionsClassVisitor : public ClassVisitor {
       ArtMethod* method,
       std::set<std::pair<dex::TypeIndex, const DexFile*>>* exceptions_to_resolve)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    const DexFile::CodeItem* code_item = method->GetCodeItem();
-    if (code_item == nullptr) {
+    if (method->GetCodeItem() == nullptr) {
       return;  // native or abstract method
     }
-    if (code_item->tries_size_ == 0) {
+    CodeItemDataAccessor accessor(method);
+    if (accessor.TriesSize() == 0) {
       return;  // nothing to process
     }
-    const uint8_t* encoded_catch_handler_list = DexFile::GetCatchHandlerData(*code_item, 0);
+    const uint8_t* encoded_catch_handler_list = accessor.GetCatchHandlerData();
     size_t num_encoded_catch_handlers = DecodeUnsignedLeb128(&encoded_catch_handler_list);
     for (size_t i = 0; i < num_encoded_catch_handlers; i++) {
       int32_t encoded_catch_handler_size = DecodeSignedLeb128(&encoded_catch_handler_list);

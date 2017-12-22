@@ -766,11 +766,13 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
   static constexpr size_t kSpaceFilterOptimizingThreshold = 128;
   const CompilerOptions& compiler_options = compiler_driver->GetCompilerOptions();
   if ((compiler_options.GetCompilerFilter() == CompilerFilter::kSpace)
-      && (code_item->insns_size_in_code_units_ > kSpaceFilterOptimizingThreshold)) {
+      && (CodeItemInstructionAccessor(&dex_file, code_item).InsnsSizeInCodeUnits() >
+          kSpaceFilterOptimizingThreshold)) {
     MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kNotCompiledSpaceFilter);
     return nullptr;
   }
 
+  CodeItemDebugInfoAccessor code_item_accessor(&dex_file, code_item);
   HGraph* graph = new (allocator) HGraph(
       allocator,
       arena_stack,
@@ -814,7 +816,7 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
     VLOG(compiler) << "Building " << pass_observer.GetMethodName();
     PassScope scope(HGraphBuilder::kBuilderPassName, &pass_observer);
     HGraphBuilder builder(graph,
-                          code_item,
+                          code_item_accessor,
                           &dex_compilation_unit,
                           &dex_compilation_unit,
                           compiler_driver,
@@ -932,7 +934,7 @@ CodeGenerator* OptimizingCompiler::TryCompileIntrinsic(
     VLOG(compiler) << "Building intrinsic graph " << pass_observer.GetMethodName();
     PassScope scope(HGraphBuilder::kBuilderPassName, &pass_observer);
     HGraphBuilder builder(graph,
-                          /* code_item */ nullptr,
+                          CodeItemDebugInfoAccessor(),  // Null code item.
                           &dex_compilation_unit,
                           &dex_compilation_unit,
                           compiler_driver,

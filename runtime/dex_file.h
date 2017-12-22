@@ -320,6 +320,7 @@ class DexFile {
       debug_info_off_ = new_offset;
     }
 
+   private:
     uint16_t registers_size_;            // the number of registers used by this code
                                          //   (locals + parameters)
     uint16_t ins_size_;                  // the number of words of incoming arguments to the method
@@ -340,6 +341,14 @@ class DexFile {
     uint16_t insns_[1];                  // actual array of bytecode.
 
    private:
+    ART_FRIEND_TEST(CodeItemAccessorsTest, TestDexInstructionsAccessor);
+    friend class CatchHandlerIterator;
+    friend class CodeItemDataAccessor;
+    friend class CodeItemDebugInfoAccessor;
+    friend class CodeItemInstructionAccessor;
+    friend class DexFile;  // TODO: Remove this one when it's cleaned up.
+    friend class DexFileVerifier;
+    friend class VdexFile;  // TODO: Remove this one when it's cleaned up.
     DISALLOW_COPY_AND_ASSIGN(CodeItem);
   };
 
