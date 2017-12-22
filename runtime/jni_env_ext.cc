@@ -21,6 +21,7 @@
 
 #include "android-base/stringprintf.h"
 
+#include "base/to_str.h"
 #include "check_jni.h"
 #include "indirect_reference_table.h"
 #include "java_vm_ext.h"
@@ -28,6 +29,7 @@
 #include "lock_word.h"
 #include "mirror/object-inl.h"
 #include "nth_caller_visitor.h"
+#include "scoped_thread_state_change.h"
 #include "thread-current-inl.h"
 #include "thread_list.h"
 
@@ -40,14 +42,11 @@ static constexpr size_t kMonitorsMax = 4096;  // Arbitrary sanity check.
 
 const JNINativeInterface* JNIEnvExt::table_override_ = nullptr;
 
-// Checking "locals" requires the mutator lock, but at creation time we're really only interested
-// in validity, which isn't changing. To avoid grabbing the mutator lock, factored out and tagged
-// with NO_THREAD_SAFETY_ANALYSIS.
-static bool CheckLocalsValid(JNIEnvExt* in) NO_THREAD_SAFETY_ANALYSIS {
+bool JNIEnvExt::CheckLocalsValid(JNIEnvExt* in) NO_THREAD_SAFETY_ANALYSIS {
   if (in == nullptr) {
     return false;
   }
-  return in->locals.IsValid();
+  return in->locals_.IsValid();
 }
 
 jint JNIEnvExt::GetEnvHandler(JavaVMExt* vm, /*out*/void** env, jint version) {
@@ -73,23 +72,23 @@ JNIEnvExt* JNIEnvExt::Create(Thread* self_in, JavaVMExt* vm_in, std::string* err
 }
 
 JNIEnvExt::JNIEnvExt(Thread* self_in, JavaVMExt* vm_in, std::string* error_msg)
-    : self(self_in),
-      vm(vm_in),
-      local_ref_cookie(kIRTFirstSegment),
-      locals(kLocalsInitial, kLocal, IndirectReferenceTable::ResizableCapacity::kYes, error_msg),
-      check_jni(false),
-      runtime_deleted(false),
-      critical(0),
-      monitors("monitors", kMonitorsInitial, kMonitorsMax) {
+    : self_(self_in),
+      vm_(vm_in),
+      local_ref_cookie_(kIRTFirstSegment),
+      locals_(kLocalsInitial, kLocal, IndirectReferenceTable::ResizableCapacity::kYes, error_msg),
+      monitors_("monitors", kMonitorsInitial, kMonitorsMax),
+      critical_(0),
+      check_jni_(false),
+      runtime_deleted_(false) {
   MutexLock mu(Thread::Current(), *Locks::jni_function_table_lock_);
-  check_jni = vm->IsCheckJniEnabled();
-  functions = GetFunctionTable(check_jni);
-  unchecked_functions = GetJniNativeInterface();
+  check_jni_ = vm_in->IsCheckJniEnabled();
+  functions = GetFunctionTable(check_jni_);
+  unchecked_functions_ = GetJniNativeInterface();
 }
 
 void JNIEnvExt::SetFunctionsToRuntimeShutdownFunctions() {
   functions = GetRuntimeShutdownNativeInterface();
-  runtime_deleted = true;
+  runtime_deleted_ = true;
 }
 
 JNIEnvExt::~JNIEnvExt() {
@@ -100,7 +99,7 @@ jobject JNIEnvExt::NewLocalRef(mirror::Object* obj) {
     return nullptr;
   }
   std::string error_msg;
-  jobject ref = reinterpret_cast<jobject>(locals.Add(local_ref_cookie, obj, &error_msg));
+  jobject ref = reinterpret_cast<jobject>(locals_.Add(local_ref_cookie_, obj, &error_msg));
   if (UNLIKELY(ref == nullptr)) {
     // This is really unexpected if we allow resizing local IRTs...
     LOG(FATAL) << error_msg;
@@ -111,12 +110,12 @@ jobject JNIEnvExt::NewLocalRef(mirror::Object* obj) {
 
 void JNIEnvExt::DeleteLocalRef(jobject obj) {
   if (obj != nullptr) {
-    locals.Remove(local_ref_cookie, reinterpret_cast<IndirectRef>(obj));
+    locals_.Remove(local_ref_cookie_, reinterpret_cast<IndirectRef>(obj));
   }
 }
 
 void JNIEnvExt::SetCheckJniEnabled(bool enabled) {
-  check_jni = enabled;
+  check_jni_ = enabled;
   MutexLock mu(Thread::Current(), *Locks::jni_function_table_lock_);
   functions = GetFunctionTable(enabled);
   // Check whether this is a no-op because of override.
@@ -126,20 +125,20 @@ void JNIEnvExt::SetCheckJniEnabled(bool enabled) {
 }
 
 void JNIEnvExt::DumpReferenceTables(std::ostream& os) {
-  locals.Dump(os);
-  monitors.Dump(os);
+  locals_.Dump(os);
+  monitors_.Dump(os);
 }
 
 void JNIEnvExt::PushFrame(int capacity) {
-  DCHECK_GE(locals.FreeCapacity(), static_cast<size_t>(capacity));
-  stacked_local_ref_cookies.push_back(local_ref_cookie);
-  local_ref_cookie = locals.GetSegmentState();
+  DCHECK_GE(locals_.FreeCapacity(), static_cast<size_t>(capacity));
+  stacked_local_ref_cookies_.push_back(local_ref_cookie_);
+  local_ref_cookie_ = locals_.GetSegmentState();
 }
 
 void JNIEnvExt::PopFrame() {
-  locals.SetSegmentState(local_ref_cookie);
-  local_ref_cookie = stacked_local_ref_cookies.back();
-  stacked_local_ref_cookies.pop_back();
+  locals_.SetSegmentState(local_ref_cookie_);
+  local_ref_cookie_ = stacked_local_ref_cookies_.back();
+  stacked_local_ref_cookies_.pop_back();
 }
 
 // Note: the offset code is brittle, as we can't use OFFSETOF_MEMBER or offsetof easily. Thus, there
@@ -188,7 +187,7 @@ static uintptr_t GetJavaCallFrame(Thread* self) REQUIRES_SHARED(Locks::mutator_l
 }
 
 void JNIEnvExt::RecordMonitorEnter(jobject obj) {
-  locked_objects_.push_back(std::make_pair(GetJavaCallFrame(self), obj));
+  locked_objects_.push_back(std::make_pair(GetJavaCallFrame(self_), obj));
 }
 
 static std::string ComputeMonitorDescription(Thread* self,
@@ -230,7 +229,7 @@ static void RemoveMonitors(Thread* self,
 }
 
 void JNIEnvExt::CheckMonitorRelease(jobject obj) {
-  uintptr_t current_frame = GetJavaCallFrame(self);
+  uintptr_t current_frame = GetJavaCallFrame(self_);
   std::pair<uintptr_t, jobject> exact_pair = std::make_pair(current_frame, obj);
   auto it = std::find(locked_objects_.begin(), locked_objects_.end(), exact_pair);
   bool will_abort = false;
@@ -238,11 +237,11 @@ void JNIEnvExt::CheckMonitorRelease(jobject obj) {
     locked_objects_.erase(it);
   } else {
     // Check whether this monitor was locked in another JNI "session."
-    ObjPtr<mirror::Object> mirror_obj = self->DecodeJObject(obj);
+    ObjPtr<mirror::Object> mirror_obj = self_->DecodeJObject(obj);
     for (std::pair<uintptr_t, jobject>& pair : locked_objects_) {
-      if (self->DecodeJObject(pair.second) == mirror_obj) {
-        std::string monitor_descr = ComputeMonitorDescription(self, pair.second);
-        vm->JniAbortF("<JNI MonitorExit>",
+      if (self_->DecodeJObject(pair.second) == mirror_obj) {
+        std::string monitor_descr = ComputeMonitorDescription(self_, pair.second);
+        vm_->JniAbortF("<JNI MonitorExit>",
                       "Unlocking monitor that wasn't locked here: %s",
                       monitor_descr.c_str());
         will_abort = true;
@@ -255,26 +254,26 @@ void JNIEnvExt::CheckMonitorRelease(jobject obj) {
   // the monitors table, otherwise we may visit local objects in GC during abort (which won't be
   // valid anymore).
   if (will_abort) {
-    RemoveMonitors(self, current_frame, &monitors, &locked_objects_);
+    RemoveMonitors(self_, current_frame, &monitors_, &locked_objects_);
   }
 }
 
 void JNIEnvExt::CheckNoHeldMonitors() {
-  uintptr_t current_frame = GetJavaCallFrame(self);
   // The locked_objects_ are grouped by their stack frame component, as this enforces structured
   // locking, and the groups form a stack. So the current frame entries are at the end. Check
   // whether the vector is empty, and when there are elements, whether the last element belongs
   // to this call - this signals that there are unlocked monitors.
   if (!locked_objects_.empty()) {
+    uintptr_t current_frame = GetJavaCallFrame(self_);
     std::pair<uintptr_t, jobject>& pair = locked_objects_[locked_objects_.size() - 1];
     if (pair.first == current_frame) {
-      std::string monitor_descr = ComputeMonitorDescription(self, pair.second);
-      vm->JniAbortF("<JNI End>",
+      std::string monitor_descr = ComputeMonitorDescription(self_, pair.second);
+      vm_->JniAbortF("<JNI End>",
                     "Still holding a locked object on JNI end: %s",
                     monitor_descr.c_str());
       // When we abort, also make sure that any locks from the current "session" are removed from
       // the monitors table, otherwise we may visit local objects in GC during abort.
-      RemoveMonitors(self, current_frame, &monitors, &locked_objects_);
+      RemoveMonitors(self_, current_frame, &monitors_, &locked_objects_);
     } else if (kIsDebugBuild) {
       // Make sure there are really no other entries and our checking worked as expected.
       for (std::pair<uintptr_t, jobject>& check_pair : locked_objects_) {
@@ -282,12 +281,18 @@ void JNIEnvExt::CheckNoHeldMonitors() {
       }
     }
   }
+  // Ensure critical locks aren't held when returning to Java.
+  if (critical_ > 0) {
+    vm_->JniAbortF("<JNI End>",
+                  "Critical lock held when returning to Java on thread %s",
+                  ToStr<Thread>(*self_).c_str());
+  }
 }
 
 static void ThreadResetFunctionTable(Thread* thread, void* arg ATTRIBUTE_UNUSED)
     REQUIRES(Locks::jni_function_table_lock_) {
   JNIEnvExt* env = thread->GetJniEnv();
-  bool check_jni = env->check_jni;
+  bool check_jni = env->IsCheckJniEnabled();
   env->functions = JNIEnvExt::GetFunctionTable(check_jni);
 }
 

@@ -490,7 +490,7 @@ struct ClassCallback : public art::ClassLoadCallback {
 
         // Fix up the local table with a root visitor.
         RootUpdater local_update(local->input_, local->output_);
-        t->GetJniEnv()->locals.VisitRoots(
+        t->GetJniEnv()->VisitJniLocalRoots(
             &local_update, art::RootInfo(art::kRootJNILocal, t->GetThreadId()));
       }
 
