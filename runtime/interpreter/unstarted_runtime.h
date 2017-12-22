@@ -25,6 +25,7 @@
 namespace art {
 
 class ArtMethod;
+class CodeItemDataAccessor;
 class Thread;
 class ShadowFrame;
 
@@ -48,7 +49,7 @@ class UnstartedRuntime {
   static void Initialize();
 
   static void Invoke(Thread* self,
-                     const DexFile::CodeItem* code_item,
+                     const CodeItemDataAccessor& accessor,
                      ShadowFrame* shadow_frame,
                      JValue* result,
                      size_t arg_offset)

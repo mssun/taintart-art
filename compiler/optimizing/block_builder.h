@@ -19,6 +19,7 @@
 
 #include "base/scoped_arena_allocator.h"
 #include "base/scoped_arena_containers.h"
+#include "code_item_accessors.h"
 #include "dex_file.h"
 #include "nodes.h"
 
@@ -28,22 +29,8 @@ class HBasicBlockBuilder : public ValueObject {
  public:
   HBasicBlockBuilder(HGraph* graph,
                      const DexFile* const dex_file,
-                     const DexFile::CodeItem* code_item,
-                     ScopedArenaAllocator* local_allocator)
-      : allocator_(graph->GetAllocator()),
-        graph_(graph),
-        dex_file_(dex_file),
-        code_item_(code_item),
-        local_allocator_(local_allocator),
-        branch_targets_(code_item != nullptr ? code_item->insns_size_in_code_units_
-                                             : /* fake dex_pc=0 for intrinsic graph */ 1u,
-                        nullptr,
-                        local_allocator->Adapter(kArenaAllocGraphBuilder)),
-        throwing_blocks_(kDefaultNumberOfThrowingBlocks,
-                         local_allocator->Adapter(kArenaAllocGraphBuilder)),
-        number_of_branches_(0u),
-        quicken_index_for_dex_pc_(std::less<uint32_t>(),
-                                  local_allocator->Adapter(kArenaAllocGraphBuilder)) {}
+                     const CodeItemDebugInfoAccessor& accessor,
+                     ScopedArenaAllocator* local_allocator);
 
   // Creates basic blocks in `graph_` at branch target dex_pc positions of the
   // `code_item_`. Blocks are connected but left unpopulated with instructions.
@@ -83,7 +70,7 @@ class HBasicBlockBuilder : public ValueObject {
   HGraph* const graph_;
 
   const DexFile* const dex_file_;
-  const DexFile::CodeItem* const code_item_;  // null for intrinsic graph.
+  CodeItemDataAccessor code_item_accessor_;  // null code item for intrinsic graph.
 
   ScopedArenaAllocator* const local_allocator_;
   ScopedArenaVector<HBasicBlock*> branch_targets_;

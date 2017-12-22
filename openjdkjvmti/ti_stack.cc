@@ -44,6 +44,7 @@
 #include "base/bit_utils.h"
 #include "base/enums.h"
 #include "base/mutex.h"
+#include "code_item_accessors-inl.h"
 #include "dex_file.h"
 #include "dex_file_annotations.h"
 #include "dex_file_types.h"
@@ -1044,7 +1045,7 @@ jvmtiError StackUtil::NotifyFramePop(jvmtiEnv* env, jthread thread, jint depth) 
     if (shadow_frame == nullptr) {
       needs_instrument = true;
       const size_t frame_id = visitor.GetFrameId();
-      const uint16_t num_regs = method->GetCodeItem()->registers_size_;
+      const uint16_t num_regs = art::CodeItemDataAccessor(method).RegistersSize();
       shadow_frame = target->FindOrCreateDebuggerShadowFrame(frame_id,
                                                              num_regs,
                                                              method,

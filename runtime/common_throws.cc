@@ -551,43 +551,43 @@ static bool IsValidImplicitCheck(uintptr_t addr, const Instruction& instr)
 void ThrowNullPointerExceptionFromDexPC(bool check_address, uintptr_t addr) {
   uint32_t throw_dex_pc;
   ArtMethod* method = Thread::Current()->GetCurrentMethod(&throw_dex_pc);
-  const DexFile::CodeItem* code = method->GetCodeItem();
-  CHECK_LT(throw_dex_pc, code->insns_size_in_code_units_);
-  const Instruction* instr = Instruction::At(&code->insns_[throw_dex_pc]);
-  if (check_address && !IsValidImplicitCheck(addr, *instr)) {
+  CodeItemInstructionAccessor accessor(method);
+  CHECK_LT(throw_dex_pc, accessor.InsnsSizeInCodeUnits());
+  const Instruction& instr = accessor.InstructionAt(throw_dex_pc);
+  if (check_address && !IsValidImplicitCheck(addr, instr)) {
     const DexFile* dex_file = method->GetDeclaringClass()->GetDexCache()->GetDexFile();
     LOG(FATAL) << "Invalid address for an implicit NullPointerException check: "
                << "0x" << std::hex << addr << std::dec
                << ", at "
-               << instr->DumpString(dex_file)
+               << instr.DumpString(dex_file)
                << " in "
                << method->PrettyMethod();
   }
 
-  switch (instr->Opcode()) {
+  switch (instr.Opcode()) {
     case Instruction::INVOKE_DIRECT:
-      ThrowNullPointerExceptionForMethodAccess(instr->VRegB_35c(), kDirect);
+      ThrowNullPointerExceptionForMethodAccess(instr.VRegB_35c(), kDirect);
       break;
     case Instruction::INVOKE_DIRECT_RANGE:
-      ThrowNullPointerExceptionForMethodAccess(instr->VRegB_3rc(), kDirect);
+      ThrowNullPointerExceptionForMethodAccess(instr.VRegB_3rc(), kDirect);
       break;
     case Instruction::INVOKE_VIRTUAL:
-      ThrowNullPointerExceptionForMethodAccess(instr->VRegB_35c(), kVirtual);
+      ThrowNullPointerExceptionForMethodAccess(instr.VRegB_35c(), kVirtual);
       break;
     case Instruction::INVOKE_VIRTUAL_RANGE:
-      ThrowNullPointerExceptionForMethodAccess(instr->VRegB_3rc(), kVirtual);
+      ThrowNullPointerExceptionForMethodAccess(instr.VRegB_3rc(), kVirtual);
       break;
     case Instruction::INVOKE_INTERFACE:
-      ThrowNullPointerExceptionForMethodAccess(instr->VRegB_35c(), kInterface);
+      ThrowNullPointerExceptionForMethodAccess(instr.VRegB_35c(), kInterface);
       break;
     case Instruction::INVOKE_INTERFACE_RANGE:
-      ThrowNullPointerExceptionForMethodAccess(instr->VRegB_3rc(), kInterface);
+      ThrowNullPointerExceptionForMethodAccess(instr.VRegB_3rc(), kInterface);
       break;
     case Instruction::INVOKE_POLYMORPHIC:
-      ThrowNullPointerExceptionForMethodAccess(instr->VRegB_45cc(), kVirtual);
+      ThrowNullPointerExceptionForMethodAccess(instr.VRegB_45cc(), kVirtual);
       break;
     case Instruction::INVOKE_POLYMORPHIC_RANGE:
-      ThrowNullPointerExceptionForMethodAccess(instr->VRegB_4rcc(), kVirtual);
+      ThrowNullPointerExceptionForMethodAccess(instr.VRegB_4rcc(), kVirtual);
       break;
     case Instruction::INVOKE_VIRTUAL_QUICK:
     case Instruction::INVOKE_VIRTUAL_RANGE_QUICK: {
@@ -612,7 +612,7 @@ void ThrowNullPointerExceptionFromDexPC(bool check_address, uintptr_t addr) {
     case Instruction::IGET_CHAR:
     case Instruction::IGET_SHORT: {
       ArtField* field =
-          Runtime::Current()->GetClassLinker()->ResolveField(instr->VRegC_22c(), method, false);
+          Runtime::Current()->GetClassLinker()->ResolveField(instr.VRegC_22c(), method, false);
       ThrowNullPointerExceptionForFieldAccess(field, true /* read */);
       break;
     }
@@ -644,7 +644,7 @@ void ThrowNullPointerExceptionFromDexPC(bool check_address, uintptr_t addr) {
     case Instruction::IPUT_CHAR:
     case Instruction::IPUT_SHORT: {
       ArtField* field =
-          Runtime::Current()->GetClassLinker()->ResolveField(instr->VRegC_22c(), method, false);
+          Runtime::Current()->GetClassLinker()->ResolveField(instr.VRegC_22c(), method, false);
       ThrowNullPointerExceptionForFieldAccess(field, false /* write */);
       break;
     }
@@ -707,7 +707,7 @@ void ThrowNullPointerExceptionFromDexPC(bool check_address, uintptr_t addr) {
       const DexFile* dex_file =
           method->GetDeclaringClass()->GetDexCache()->GetDexFile();
       LOG(FATAL) << "NullPointerException at an unexpected instruction: "
-                 << instr->DumpString(dex_file)
+                 << instr.DumpString(dex_file)
                  << " in "
                  << method->PrettyMethod();
       break;

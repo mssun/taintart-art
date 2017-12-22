@@ -123,19 +123,19 @@ jvmtiError MethodUtil::GetBytecodes(jvmtiEnv* env,
   }
 
   art::ScopedObjectAccess soa(art::Thread::Current());
-  const art::DexFile::CodeItem* code_item = art_method->GetCodeItem();
-  if (code_item == nullptr) {
+  art::CodeItemInstructionAccessor accessor(art_method);
+  if (!accessor.HasCodeItem()) {
     *size_ptr = 0;
     *bytecode_ptr = nullptr;
     return OK;
   }
   // 2 bytes per instruction for dex code.
-  *size_ptr = code_item->insns_size_in_code_units_ * 2;
+  *size_ptr = accessor.InsnsSizeInCodeUnits() * 2;
   jvmtiError err = env->Allocate(*size_ptr, bytecode_ptr);
   if (err != OK) {
     return err;
   }
-  memcpy(*bytecode_ptr, code_item->insns_, *size_ptr);
+  memcpy(*bytecode_ptr, accessor.Insns(), *size_ptr);
   return OK;
 }
 
@@ -168,7 +168,7 @@ jvmtiError MethodUtil::GetArgumentsSize(jvmtiEnv* env ATTRIBUTE_UNUSED,
   }
 
   DCHECK_NE(art_method->GetCodeItemOffset(), 0u);
-  *size_ptr = art_method->GetCodeItem()->ins_size_;
+  *size_ptr = art::CodeItemDataAccessor(art_method).InsSize();
 
   return ERR(NONE);
 }
@@ -266,14 +266,10 @@ jvmtiError MethodUtil::GetLocalVariableTable(jvmtiEnv* env,
   };
 
   LocalVariableContext context(env);
-  if (!dex_file->DecodeDebugLocalInfo(accessor.RegistersSize(),
-                                      accessor.InsSize(),
-                                      accessor.InsnsSizeInCodeUnits(),
-                                      accessor.DebugInfoOffset(),
-                                      art_method->IsStatic(),
-                                      art_method->GetDexMethodIndex(),
-                                      LocalVariableContext::Callback,
-                                      &context)) {
+  if (!accessor.DecodeDebugLocalInfo(art_method->IsStatic(),
+                                     art_method->GetDexMethodIndex(),
+                                     LocalVariableContext::Callback,
+                                     &context)) {
     // Something went wrong with decoding the debug information. It might as well not be there.
     return ERR(ABSENT_INFORMATION);
   } else {
@@ -305,7 +301,7 @@ jvmtiError MethodUtil::GetMaxLocals(jvmtiEnv* env ATTRIBUTE_UNUSED,
   }
 
   DCHECK_NE(art_method->GetCodeItemOffset(), 0u);
-  *max_ptr = art_method->GetCodeItem()->registers_size_;
+  *max_ptr = art::CodeItemDataAccessor(art_method).RegistersSize();
 
   return ERR(NONE);
 }
@@ -420,7 +416,7 @@ jvmtiError MethodUtil::GetMethodLocation(jvmtiEnv* env ATTRIBUTE_UNUSED,
 
   DCHECK_NE(art_method->GetCodeItemOffset(), 0u);
   *start_location_ptr = 0;
-  *end_location_ptr = art_method->GetCodeItem()->insns_size_in_code_units_ - 1;
+  *end_location_ptr = art_method->DexInstructions().InsnsSizeInCodeUnits() - 1;
 
   return ERR(NONE);
 }
@@ -571,7 +567,7 @@ class CommonLocalVariableClosure : public art::Closure {
       // TODO It might be useful to fake up support for get at least on proxy frames.
       result_ = ERR(OPAQUE_FRAME);
       return;
-    } else if (method->GetCodeItem()->registers_size_ <= slot_) {
+    } else if (art::CodeItemDataAccessor(method).RegistersSize() <= slot_) {
       result_ = ERR(INVALID_SLOT);
       return;
     }

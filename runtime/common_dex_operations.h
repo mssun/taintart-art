@@ -23,6 +23,7 @@
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "class_linker.h"
+#include "code_item_accessors.h"
 #include "handle_scope-inl.h"
 #include "instrumentation.h"
 #include "interpreter/shadow_frame.h"
@@ -52,7 +53,7 @@ namespace interpreter {
 }  // namespace interpreter
 
 inline void PerformCall(Thread* self,
-                        const DexFile::CodeItem* code_item,
+                        const CodeItemDataAccessor& accessor,
                         ArtMethod* caller_method,
                         const size_t first_dest_reg,
                         ShadowFrame* callee_frame,
@@ -61,13 +62,13 @@ inline void PerformCall(Thread* self,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   if (LIKELY(Runtime::Current()->IsStarted())) {
     if (use_interpreter_entrypoint) {
-      interpreter::ArtInterpreterToInterpreterBridge(self, code_item, callee_frame, result);
+      interpreter::ArtInterpreterToInterpreterBridge(self, accessor, callee_frame, result);
     } else {
       interpreter::ArtInterpreterToCompiledCodeBridge(
           self, caller_method, callee_frame, first_dest_reg, result);
     }
   } else {
-    interpreter::UnstartedRuntime::Invoke(self, code_item, callee_frame, result, first_dest_reg);
+    interpreter::UnstartedRuntime::Invoke(self, accessor, callee_frame, result, first_dest_reg);
   }
 }
 

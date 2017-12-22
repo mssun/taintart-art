@@ -784,8 +784,8 @@ extern "C" uint64_t artQuickToInterpreterBridge(ArtMethod* method, Thread* self,
   DCHECK(!method->IsNative()) << method->PrettyMethod();
   uint32_t shorty_len = 0;
   ArtMethod* non_proxy_method = method->GetInterfaceMethodIfProxy(kRuntimePointerSize);
-  const DexFile::CodeItem* code_item = non_proxy_method->GetCodeItem();
-  DCHECK(code_item != nullptr) << method->PrettyMethod();
+  DCHECK(non_proxy_method->GetCodeItem() != nullptr) << method->PrettyMethod();
+  CodeItemDataAccessor accessor(non_proxy_method);
   const char* shorty = non_proxy_method->GetShorty(&shorty_len);
 
   JValue result;
@@ -795,12 +795,12 @@ extern "C" uint64_t artQuickToInterpreterBridge(ArtMethod* method, Thread* self,
   } else {
     const char* old_cause = self->StartAssertNoThreadSuspension(
         "Building interpreter shadow frame");
-    uint16_t num_regs = code_item->registers_size_;
+    uint16_t num_regs = accessor.RegistersSize();
     // No last shadow coming from quick.
     ShadowFrameAllocaUniquePtr shadow_frame_unique_ptr =
         CREATE_SHADOW_FRAME(num_regs, /* link */ nullptr, method, /* dex pc */ 0);
     ShadowFrame* shadow_frame = shadow_frame_unique_ptr.get();
-    size_t first_arg_reg = code_item->registers_size_ - code_item->ins_size_;
+    size_t first_arg_reg = accessor.RegistersSize() - accessor.InsSize();
     BuildQuickShadowFrameVisitor shadow_frame_builder(sp, method->IsStatic(), shorty, shorty_len,
                                                       shadow_frame, first_arg_reg);
     shadow_frame_builder.VisitArguments();
@@ -823,7 +823,7 @@ extern "C" uint64_t artQuickToInterpreterBridge(ArtMethod* method, Thread* self,
       }
     }
 
-    result = interpreter::EnterInterpreterFromEntryPoint(self, code_item, shadow_frame);
+    result = interpreter::EnterInterpreterFromEntryPoint(self, accessor, shadow_frame);
   }
 
   // Pop transition.
@@ -1121,10 +1121,9 @@ extern "C" const void* artQuickResolutionTrampoline(
     // code.
     if (!found_stack_map || kIsDebugBuild) {
       uint32_t dex_pc = QuickArgumentVisitor::GetCallingDexPc(sp);
-      const DexFile::CodeItem* code;
-      code = caller->GetCodeItem();
-      CHECK_LT(dex_pc, code->insns_size_in_code_units_);
-      const Instruction& instr = code->InstructionAt(dex_pc);
+      CodeItemInstructionAccessor accessor(caller);
+      CHECK_LT(dex_pc, accessor.InsnsSizeInCodeUnits());
+      const Instruction& instr = accessor.InstructionAt(dex_pc);
       Instruction::Code instr_code = instr.Opcode();
       bool is_range;
       switch (instr_code) {
@@ -2450,9 +2449,7 @@ extern "C" TwoWordReturn artInvokeInterfaceTrampoline(ArtMethod* interface_metho
     // Fetch the dex_method_idx of the target interface method from the caller.
     uint32_t dex_method_idx;
     uint32_t dex_pc = QuickArgumentVisitor::GetCallingDexPc(sp);
-    const DexFile::CodeItem* code_item = caller_method->GetCodeItem();
-    DCHECK_LT(dex_pc, code_item->insns_size_in_code_units_);
-    const Instruction& instr = code_item->InstructionAt(dex_pc);
+    const Instruction& instr = caller_method->DexInstructions().InstructionAt(dex_pc);
     Instruction::Code instr_code = instr.Opcode();
     DCHECK(instr_code == Instruction::INVOKE_INTERFACE ||
            instr_code == Instruction::INVOKE_INTERFACE_RANGE)

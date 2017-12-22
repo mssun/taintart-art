@@ -37,7 +37,7 @@
 namespace art {
 
 HGraphBuilder::HGraphBuilder(HGraph* graph,
-                             const DexFile::CodeItem* code_item,
+                             const CodeItemDebugInfoAccessor& accessor,
                              const DexCompilationUnit* dex_compilation_unit,
                              const DexCompilationUnit* outer_compilation_unit,
                              CompilerDriver* driver,
@@ -47,7 +47,7 @@ HGraphBuilder::HGraphBuilder(HGraph* graph,
                              VariableSizedHandleScope* handles)
     : graph_(graph),
       dex_file_(&graph->GetDexFile()),
-      code_item_(code_item),
+      code_item_accessor_(accessor),
       dex_compilation_unit_(dex_compilation_unit),
       outer_compilation_unit_(outer_compilation_unit),
       compiler_driver_(driver),
@@ -56,6 +56,23 @@ HGraphBuilder::HGraphBuilder(HGraph* graph,
       interpreter_metadata_(interpreter_metadata),
       handles_(handles),
       return_type_(DataType::FromShorty(dex_compilation_unit_->GetShorty()[0])) {}
+
+HGraphBuilder::HGraphBuilder(HGraph* graph,
+                             const DexCompilationUnit* dex_compilation_unit,
+                             const CodeItemDebugInfoAccessor& accessor,
+                             VariableSizedHandleScope* handles,
+                             DataType::Type return_type)
+    : graph_(graph),
+      dex_file_(&graph->GetDexFile()),
+      code_item_accessor_(accessor),
+      dex_compilation_unit_(dex_compilation_unit),
+      outer_compilation_unit_(nullptr),
+      compiler_driver_(nullptr),
+      code_generator_(nullptr),
+      compilation_stats_(nullptr),
+      interpreter_metadata_(nullptr),
+      handles_(handles),
+      return_type_(return_type) {}
 
 bool HGraphBuilder::SkipCompilation(size_t number_of_branches) {
   if (compiler_driver_ == nullptr) {
@@ -69,20 +86,20 @@ bool HGraphBuilder::SkipCompilation(size_t number_of_branches) {
     return false;
   }
 
-  if (compiler_options.IsHugeMethod(code_item_->insns_size_in_code_units_)) {
+  const uint32_t code_units = code_item_accessor_.InsnsSizeInCodeUnits();
+  if (compiler_options.IsHugeMethod(code_units)) {
     VLOG(compiler) << "Skip compilation of huge method "
                    << dex_file_->PrettyMethod(dex_compilation_unit_->GetDexMethodIndex())
-                   << ": " << code_item_->insns_size_in_code_units_ << " code units";
+                   << ": " << code_units << " code units";
     MaybeRecordStat(compilation_stats_, MethodCompilationStat::kNotCompiledHugeMethod);
     return true;
   }
 
   // If it's large and contains no branches, it's likely to be machine generated initialization.
-  if (compiler_options.IsLargeMethod(code_item_->insns_size_in_code_units_)
-      && (number_of_branches == 0)) {
+  if (compiler_options.IsLargeMethod(code_units) && (number_of_branches == 0)) {
     VLOG(compiler) << "Skip compilation of large method with no branch "
                    << dex_file_->PrettyMethod(dex_compilation_unit_->GetDexMethodIndex())
-                   << ": " << code_item_->insns_size_in_code_units_ << " code units";
+                   << ": " << code_units << " code units";
     MaybeRecordStat(compilation_stats_, MethodCompilationStat::kNotCompiledLargeMethodNoBranches);
     return true;
   }
@@ -91,17 +108,17 @@ bool HGraphBuilder::SkipCompilation(size_t number_of_branches) {
 }
 
 GraphAnalysisResult HGraphBuilder::BuildGraph() {
-  DCHECK(code_item_ != nullptr);
+  DCHECK(code_item_accessor_.HasCodeItem());
   DCHECK(graph_->GetBlocks().empty());
 
-  graph_->SetNumberOfVRegs(code_item_->registers_size_);
-  graph_->SetNumberOfInVRegs(code_item_->ins_size_);
-  graph_->SetMaximumNumberOfOutVRegs(code_item_->outs_size_);
-  graph_->SetHasTryCatch(code_item_->tries_size_ != 0);
+  graph_->SetNumberOfVRegs(code_item_accessor_.RegistersSize());
+  graph_->SetNumberOfInVRegs(code_item_accessor_.InsSize());
+  graph_->SetMaximumNumberOfOutVRegs(code_item_accessor_.OutsSize());
+  graph_->SetHasTryCatch(code_item_accessor_.TriesSize() != 0);
 
   // Use ScopedArenaAllocator for all local allocations.
   ScopedArenaAllocator local_allocator(graph_->GetArenaStack());
-  HBasicBlockBuilder block_builder(graph_, dex_file_, code_item_, &local_allocator);
+  HBasicBlockBuilder block_builder(graph_, dex_file_, code_item_accessor_, &local_allocator);
   SsaBuilder ssa_builder(graph_,
                          dex_compilation_unit_->GetClassLoader(),
                          dex_compilation_unit_->GetDexCache(),
@@ -111,7 +128,7 @@ GraphAnalysisResult HGraphBuilder::BuildGraph() {
                                           &block_builder,
                                           &ssa_builder,
                                           dex_file_,
-                                          code_item_,
+                                          code_item_accessor_,
                                           return_type_,
                                           dex_compilation_unit_,
                                           outer_compilation_unit_,
@@ -150,7 +167,7 @@ GraphAnalysisResult HGraphBuilder::BuildGraph() {
 }
 
 void HGraphBuilder::BuildIntrinsicGraph(ArtMethod* method) {
-  DCHECK(code_item_ == nullptr);
+  DCHECK(!code_item_accessor_.HasCodeItem());
   DCHECK(graph_->GetBlocks().empty());
 
   // Determine the number of arguments and associated vregs.
@@ -170,7 +187,10 @@ void HGraphBuilder::BuildIntrinsicGraph(ArtMethod* method) {
 
   // Use ScopedArenaAllocator for all local allocations.
   ScopedArenaAllocator local_allocator(graph_->GetArenaStack());
-  HBasicBlockBuilder block_builder(graph_, dex_file_, /* code_item */ nullptr, &local_allocator);
+  HBasicBlockBuilder block_builder(graph_,
+                                   dex_file_,
+                                   CodeItemDebugInfoAccessor(),
+                                   &local_allocator);
   SsaBuilder ssa_builder(graph_,
                          dex_compilation_unit_->GetClassLoader(),
                          dex_compilation_unit_->GetDexCache(),
@@ -180,7 +200,7 @@ void HGraphBuilder::BuildIntrinsicGraph(ArtMethod* method) {
                                           &block_builder,
                                           &ssa_builder,
                                           dex_file_,
-                                          /* code_item */ nullptr,
+                                          CodeItemDebugInfoAccessor(),
                                           return_type_,
                                           dex_compilation_unit_,
                                           outer_compilation_unit_,

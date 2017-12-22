@@ -67,7 +67,7 @@ namespace interpreter {
   {                                                                                             \
     if (UNLIKELY(instrumentation->HasDexPcListeners()) &&                                       \
         UNLIKELY(!DoDexPcMoveEvent(self,                                                        \
-                                   code_item,                                                   \
+                                   accessor,                                                    \
                                    shadow_frame,                                                \
                                    dex_pc,                                                      \
                                    instrumentation,                                             \
@@ -125,7 +125,7 @@ namespace interpreter {
 // jvmti-agents while handling breakpoint or single step events. We had to move this into its own
 // function because it was making ExecuteSwitchImpl have too large a stack.
 NO_INLINE static bool DoDexPcMoveEvent(Thread* self,
-                                       const DexFile::CodeItem* code_item,
+                                       const CodeItemDataAccessor& accessor,
                                        const ShadowFrame& shadow_frame,
                                        uint32_t dex_pc,
                                        const instrumentation::Instrumentation* instrumentation,
@@ -139,7 +139,7 @@ NO_INLINE static bool DoDexPcMoveEvent(Thread* self,
       hs.NewHandleWrapper(LIKELY(save_ref == nullptr) ? &null_obj : save_ref->GetGCRoot()));
   self->ClearException();
   instrumentation->DexPcMovedEvent(self,
-                                   shadow_frame.GetThisObject(code_item->ins_size_),
+                                   shadow_frame.GetThisObject(accessor.InsSize()),
                                    shadow_frame.GetMethod(),
                                    dex_pc);
   if (UNLIKELY(self->IsExceptionPending())) {
@@ -188,7 +188,7 @@ NO_INLINE static bool SendMethodExitEvents(Thread* self,
 }
 
 template<bool do_access_check, bool transaction_active>
-JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
+JValue ExecuteSwitchImpl(Thread* self, const CodeItemDataAccessor& accessor,
                          ShadowFrame& shadow_frame, JValue result_register,
                          bool interpret_one_instruction) {
   constexpr bool do_assignability_check = do_access_check;
@@ -200,10 +200,10 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
 
   uint32_t dex_pc = shadow_frame.GetDexPC();
   const auto* const instrumentation = Runtime::Current()->GetInstrumentation();
-  const uint16_t* const insns = code_item->insns_;
+  ArtMethod* method = shadow_frame.GetMethod();
+  const uint16_t* const insns = accessor.Insns();
   const Instruction* inst = Instruction::At(insns + dex_pc);
   uint16_t inst_data;
-  ArtMethod* method = shadow_frame.GetMethod();
   jit::Jit* jit = Runtime::Current()->GetJit();
 
   do {
@@ -303,7 +303,7 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
                      !SendMethodExitEvents(self,
                                            instrumentation,
                                            shadow_frame,
-                                           shadow_frame.GetThisObject(code_item->ins_size_),
+                                           shadow_frame.GetThisObject(accessor.InsSize()),
                                            shadow_frame.GetMethod(),
                                            inst->GetDexPc(insns),
                                            result))) {
@@ -325,7 +325,7 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
                      !SendMethodExitEvents(self,
                                            instrumentation,
                                            shadow_frame,
-                                           shadow_frame.GetThisObject(code_item->ins_size_),
+                                           shadow_frame.GetThisObject(accessor.InsSize()),
                                            shadow_frame.GetMethod(),
                                            inst->GetDexPc(insns),
                                            result))) {
@@ -348,7 +348,7 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
                      !SendMethodExitEvents(self,
                                            instrumentation,
                                            shadow_frame,
-                                           shadow_frame.GetThisObject(code_item->ins_size_),
+                                           shadow_frame.GetThisObject(accessor.InsSize()),
                                            shadow_frame.GetMethod(),
                                            inst->GetDexPc(insns),
                                            result))) {
@@ -370,7 +370,7 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
                      !SendMethodExitEvents(self,
                                            instrumentation,
                                            shadow_frame,
-                                           shadow_frame.GetThisObject(code_item->ins_size_),
+                                           shadow_frame.GetThisObject(accessor.InsSize()),
                                            shadow_frame.GetMethod(),
                                            inst->GetDexPc(insns),
                                            result))) {
@@ -412,7 +412,7 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
                      !SendMethodExitEvents(self,
                                            instrumentation,
                                            shadow_frame,
-                                           shadow_frame.GetThisObject(code_item->ins_size_),
+                                           shadow_frame.GetThisObject(accessor.InsSize()),
                                            shadow_frame.GetMethod(),
                                            inst->GetDexPc(insns),
                                            result))) {
@@ -2484,19 +2484,19 @@ JValue ExecuteSwitchImpl(Thread* self, const DexFile::CodeItem* code_item,
 
 // Explicit definitions of ExecuteSwitchImpl.
 template HOT_ATTR
-JValue ExecuteSwitchImpl<true, false>(Thread* self, const DexFile::CodeItem* code_item,
+JValue ExecuteSwitchImpl<true, false>(Thread* self, const CodeItemDataAccessor& accessor,
                                       ShadowFrame& shadow_frame, JValue result_register,
                                       bool interpret_one_instruction);
 template HOT_ATTR
-JValue ExecuteSwitchImpl<false, false>(Thread* self, const DexFile::CodeItem* code_item,
+JValue ExecuteSwitchImpl<false, false>(Thread* self, const CodeItemDataAccessor& accessor,
                                        ShadowFrame& shadow_frame, JValue result_register,
                                        bool interpret_one_instruction);
 template
-JValue ExecuteSwitchImpl<true, true>(Thread* self, const DexFile::CodeItem* code_item,
+JValue ExecuteSwitchImpl<true, true>(Thread* self, const CodeItemDataAccessor& accessor,
                                      ShadowFrame& shadow_frame, JValue result_register,
                                      bool interpret_one_instruction);
 template
-JValue ExecuteSwitchImpl<false, true>(Thread* self, const DexFile::CodeItem* code_item,
+JValue ExecuteSwitchImpl<false, true>(Thread* self, const CodeItemDataAccessor& accessor,
                                       ShadowFrame& shadow_frame, JValue result_register,
                                       bool interpret_one_instruction);
 
