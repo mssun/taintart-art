@@ -37,10 +37,15 @@ class Object;
 // low enough that it forces sanity checks.
 static constexpr size_t kLocalsInitial = 512;
 
-struct JNIEnvExt : public JNIEnv {
+class JNIEnvExt : public JNIEnv {
+ public:
   // Creates a new JNIEnvExt. Returns null on error, in which case error_msg
   // will contain a description of the error.
   static JNIEnvExt* Create(Thread* self, JavaVMExt* vm, std::string* error_msg);
+  static Offset SegmentStateOffset(size_t pointer_size);
+  static Offset LocalRefCookieOffset(size_t pointer_size);
+  static Offset SelfOffset(size_t pointer_size);
+  static jint GetEnvHandler(JavaVMExt* vm, /*out*/void** out, jint version);
 
   ~JNIEnvExt();
 
@@ -58,43 +63,44 @@ struct JNIEnvExt : public JNIEnv {
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::alloc_tracker_lock_);
 
-  static Offset SegmentStateOffset(size_t pointer_size);
-  static Offset LocalRefCookieOffset(size_t pointer_size);
-  static Offset SelfOffset(size_t pointer_size);
-
-  static jint GetEnvHandler(JavaVMExt* vm, /*out*/void** out, jint version);
+  void UpdateLocal(IndirectRef iref, ObjPtr<mirror::Object> obj) REQUIRES_SHARED(Locks::mutator_lock_) {
+    locals_.Update(iref, obj);
+  }
 
   jobject NewLocalRef(mirror::Object* obj) REQUIRES_SHARED(Locks::mutator_lock_);
   void DeleteLocalRef(jobject obj) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  Thread* const self;
-  JavaVMExt* const vm;
+  void TrimLocals() REQUIRES_SHARED(Locks::mutator_lock_) {
+    locals_.Trim();
+  }
+  void AssertLocalsEmpty() REQUIRES_SHARED(Locks::mutator_lock_) {
+    locals_.AssertEmpty();
+  }
+  size_t GetLocalsCapacity() REQUIRES_SHARED(Locks::mutator_lock_) {
+    return locals_.Capacity();
+  }
 
-  // Cookie used when using the local indirect reference table.
-  IRTSegmentState local_ref_cookie;
+  IRTSegmentState GetLocalRefCookie() const { return local_ref_cookie_; }
+  void SetLocalRefCookie(IRTSegmentState new_cookie) { local_ref_cookie_ = new_cookie; }
 
-  // JNI local references.
-  IndirectReferenceTable locals GUARDED_BY(Locks::mutator_lock_);
+  IRTSegmentState GetLocalsSegmentState() const REQUIRES_SHARED(Locks::mutator_lock_) {
+    return locals_.GetSegmentState();
+  }
+  void SetLocalSegmentState(IRTSegmentState new_state) REQUIRES_SHARED(Locks::mutator_lock_) {
+    locals_.SetSegmentState(new_state);
+  }
 
-  // Stack of cookies corresponding to PushLocalFrame/PopLocalFrame calls.
-  // TODO: to avoid leaks (and bugs), we need to clear this vector on entry (or return)
-  // to a native method.
-  std::vector<IRTSegmentState> stacked_local_ref_cookies;
+  void VisitJniLocalRoots(RootVisitor* visitor, const RootInfo& root_info)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    locals_.VisitRoots(visitor, root_info);
+  }
 
-  // Frequently-accessed fields cached from JavaVM.
-  bool check_jni;
+  Thread* GetSelf() const { return self_; }
+  JavaVMExt* GetVm() const { return vm_; }
 
-  // If we are a JNI env for a daemon thread with a deleted runtime.
-  bool runtime_deleted;
+  bool IsRuntimeDeleted() const { return runtime_deleted_; }
+  bool IsCheckJniEnabled() const { return check_jni_; }
 
-  // How many nested "critical" JNI calls are we in?
-  int critical;
-
-  // Entered JNI monitors, for bulk exit on thread detach.
-  ReferenceTable monitors;
-
-  // Used by -Xcheck:jni.
-  const JNINativeInterface* unchecked_functions;
 
   // Functions to keep track of monitor lock and unlock operations. Used to ensure proper locking
   // rules in CheckJNI mode.
@@ -107,6 +113,11 @@ struct JNIEnvExt : public JNIEnv {
 
   // Check that no monitors are held that have been acquired in this JNI "segment."
   void CheckNoHeldMonitors() REQUIRES_SHARED(Locks::mutator_lock_);
+
+  void VisitMonitorRoots(RootVisitor* visitor, const RootInfo& root_info)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    monitors_.VisitRoots(visitor, root_info);
+  }
 
   // Set the functions to the runtime shutdown functions.
   void SetFunctionsToRuntimeShutdownFunctions();
@@ -124,6 +135,11 @@ struct JNIEnvExt : public JNIEnv {
       REQUIRES(Locks::jni_function_table_lock_);
 
  private:
+  // Checking "locals" requires the mutator lock, but at creation time we're
+  // really only interested in validity, which isn't changing. To avoid grabbing
+  // the mutator lock, factored out and tagged with NO_THREAD_SAFETY_ANALYSIS.
+  static bool CheckLocalsValid(JNIEnvExt* in) NO_THREAD_SAFETY_ANALYSIS;
+
   // Override of function tables. This applies to both default as well as instrumented (CheckJNI)
   // function tables.
   static const JNINativeInterface* table_override_ GUARDED_BY(Locks::jni_function_table_lock_);
@@ -133,29 +149,73 @@ struct JNIEnvExt : public JNIEnv {
   JNIEnvExt(Thread* self, JavaVMExt* vm, std::string* error_msg)
       REQUIRES(!Locks::jni_function_table_lock_);
 
+  // Link to Thread::Current().
+  Thread* const self_;
+
+  // The invocation interface JavaVM.
+  JavaVMExt* const vm_;
+
+  // Cookie used when using the local indirect reference table.
+  IRTSegmentState local_ref_cookie_;
+
+  // JNI local references.
+  IndirectReferenceTable locals_ GUARDED_BY(Locks::mutator_lock_);
+
+  // Stack of cookies corresponding to PushLocalFrame/PopLocalFrame calls.
+  // TODO: to avoid leaks (and bugs), we need to clear this vector on entry (or return)
+  // to a native method.
+  std::vector<IRTSegmentState> stacked_local_ref_cookies_;
+
+  // Entered JNI monitors, for bulk exit on thread detach.
+  ReferenceTable monitors_;
+
+  // Used by -Xcheck:jni.
+  const JNINativeInterface* unchecked_functions_;
+
   // All locked objects, with the (Java caller) stack frame that locked them. Used in CheckJNI
   // to ensure that only monitors locked in this native frame are being unlocked, and that at
   // the end all are unlocked.
   std::vector<std::pair<uintptr_t, jobject>> locked_objects_;
+
+  // Start time of "critical" JNI calls to ensure that their use doesn't
+  // excessively block the VM with CheckJNI.
+  uint64_t critical_start_us_;
+
+  // How many nested "critical" JNI calls are we in? Used by CheckJNI to ensure that criticals are
+  uint32_t critical_;
+
+  // Frequently-accessed fields cached from JavaVM.
+  bool check_jni_;
+
+  // If we are a JNI env for a daemon thread with a deleted runtime.
+  bool runtime_deleted_;
+
+  friend class CheckJNI;
+  friend class JNI;
+  friend class ScopedCheck;
+  friend class ScopedJniEnvLocalRefState;
+  friend class Thread;
+  ART_FRIEND_TEST(JniInternalTest, JNIEnvExtOffsets);
 };
 
 // Used to save and restore the JNIEnvExt state when not going through code created by the JNI
 // compiler.
 class ScopedJniEnvLocalRefState {
  public:
-  explicit ScopedJniEnvLocalRefState(JNIEnvExt* env) : env_(env) {
-    saved_local_ref_cookie_ = env->local_ref_cookie;
-    env->local_ref_cookie = env->locals.GetSegmentState();
+  explicit ScopedJniEnvLocalRefState(JNIEnvExt* env) :
+      env_(env),
+      saved_local_ref_cookie_(env->local_ref_cookie_) {
+    env->local_ref_cookie_ = env->locals_.GetSegmentState();
   }
 
   ~ScopedJniEnvLocalRefState() {
-    env_->locals.SetSegmentState(env_->local_ref_cookie);
-    env_->local_ref_cookie = saved_local_ref_cookie_;
+    env_->locals_.SetSegmentState(env_->local_ref_cookie_);
+    env_->local_ref_cookie_ = saved_local_ref_cookie_;
   }
 
  private:
   JNIEnvExt* const env_;
-  IRTSegmentState saved_local_ref_cookie_;
+  const IRTSegmentState saved_local_ref_cookie_;
 
   DISALLOW_COPY_AND_ASSIGN(ScopedJniEnvLocalRefState);
 };

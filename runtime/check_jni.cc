@@ -28,6 +28,7 @@
 #include "art_method-inl.h"
 #include "base/macros.h"
 #include "base/to_str.h"
+#include "base/time_utils.h"
 #include "class_linker-inl.h"
 #include "class_linker.h"
 #include "dex_file-inl.h"
@@ -55,24 +56,37 @@ using android::base::StringPrintf;
  * ===========================================================================
  */
 
+// Warn if a JNI critical is held for longer than 16ms.
+static constexpr uint64_t kCriticalWarnTimeUs = MsToUs(16);
+static_assert(kCriticalWarnTimeUs > 0, "No JNI critical warn time set");
+
 // Flags passed into ScopedCheck.
-#define kFlag_Default       0x0000
+static constexpr uint16_t kFlag_Default = 0x0000;
 
-#define kFlag_CritBad       0x0000      // Calling while in critical is not allowed.
-#define kFlag_CritOkay      0x0001      // Calling while in critical is allowed.
-#define kFlag_CritGet       0x0002      // This is a critical "get".
-#define kFlag_CritRelease   0x0003      // This is a critical "release".
-#define kFlag_CritMask      0x0003      // Bit mask to get "crit" value.
+// Calling while in critical is not allowed.
+static constexpr uint16_t kFlag_CritBad = 0x0000;
+// Calling while in critical is allowed.
+static constexpr uint16_t kFlag_CritOkay = 0x0001;
+// This is a critical "get".
+static constexpr uint16_t kFlag_CritGet = 0x0002;
+// This is a critical "release".
+static constexpr uint16_t kFlag_CritRelease = 0x0003;
+// Bit mask to get "crit" value.
+static constexpr uint16_t kFlag_CritMask = 0x0003;
 
-#define kFlag_ExcepBad      0x0000      // Raised exceptions are not allowed.
-#define kFlag_ExcepOkay     0x0004      // Raised exceptions are allowed.
+// Raised exceptions are allowed.
+static constexpr uint16_t kFlag_ExcepOkay = 0x0004;
 
-#define kFlag_Release       0x0010      // Are we in a non-critical release function?
-#define kFlag_NullableUtf   0x0020      // Are our UTF parameters nullable?
+// Are we in a non-critical release function?
+static constexpr uint16_t kFlag_Release = 0x0010;
+// Are our UTF parameters nullable?
+static constexpr uint16_t kFlag_NullableUtf = 0x0020;
 
-#define kFlag_Invocation    0x8000      // Part of the invocation interface (JavaVM*).
+// Part of the invocation interface (JavaVM*).
+static constexpr uint16_t kFlag_Invocation = 0x0100;
 
-#define kFlag_ForceTrace    0x80000000  // Add this to a JNI function's flags if you want to trace every call.
+// Add this to a JNI function's flags if you want to trace every call.
+static constexpr uint16_t kFlag_ForceTrace = 0x8000;
 
 class VarArgs;
 /*
@@ -249,8 +263,8 @@ class VarArgs {
 
 class ScopedCheck {
  public:
-  ScopedCheck(int flags, const char* functionName, bool has_method = true)
-      : function_name_(functionName), flags_(flags), indent_(0), has_method_(has_method) {
+  ScopedCheck(uint16_t flags, const char* functionName, bool has_method = true)
+      : function_name_(functionName), indent_(0), flags_(flags), has_method_(has_method) {
   }
 
   ~ScopedCheck() {}
@@ -1197,7 +1211,7 @@ class ScopedCheck {
     // this particular instance of JNIEnv.
     if (env != threadEnv) {
       // Get the thread owning the JNIEnv that's being used.
-      Thread* envThread = reinterpret_cast<JNIEnvExt*>(env)->self;
+      Thread* envThread = reinterpret_cast<JNIEnvExt*>(env)->self_;
       AbortF("thread %s using JNIEnv* from thread %s",
              ToStr<Thread>(*self).c_str(), ToStr<Thread>(*envThread).c_str());
       return false;
@@ -1209,7 +1223,7 @@ class ScopedCheck {
     case kFlag_CritOkay:    // okay to call this method
       break;
     case kFlag_CritBad:     // not okay to call
-      if (threadEnv->critical) {
+      if (threadEnv->critical_ > 0) {
         AbortF("thread %s using JNI after critical get",
                ToStr<Thread>(*self).c_str());
         return false;
@@ -1217,15 +1231,25 @@ class ScopedCheck {
       break;
     case kFlag_CritGet:     // this is a "get" call
       // Don't check here; we allow nested gets.
-      threadEnv->critical++;
+      if (threadEnv->critical_ == 0) {
+        threadEnv->critical_start_us_ = self->GetCpuMicroTime();
+      }
+      threadEnv->critical_++;
       break;
     case kFlag_CritRelease:  // this is a "release" call
-      threadEnv->critical--;
-      if (threadEnv->critical < 0) {
+      if (threadEnv->critical_ == 0) {
         AbortF("thread %s called too many critical releases",
                ToStr<Thread>(*self).c_str());
         return false;
+      } else if (threadEnv->critical_ == 1) {
+        // Leaving the critical region, possibly warn about long critical regions.
+        uint64_t critical_duration_us = self->GetCpuMicroTime() - threadEnv->critical_start_us_;
+        if (critical_duration_us > kCriticalWarnTimeUs) {
+          LOG(WARNING) << "JNI critical lock held for "
+                       << PrettyDuration(UsToNs(critical_duration_us)) << " on " << *self;
+        }
       }
+      threadEnv->critical_--;
       break;
     default:
       LOG(FATAL) << "Bad flags (internal error): " << flags_;
@@ -1357,8 +1381,9 @@ class ScopedCheck {
   // The name of the JNI function being checked.
   const char* const function_name_;
 
-  const int flags_;
   int indent_;
+
+  const uint16_t flags_;
 
   const bool has_method_;
 
@@ -2592,11 +2617,11 @@ class CheckJNI {
 
  private:
   static JavaVMExt* GetJavaVMExt(JNIEnv* env) {
-    return reinterpret_cast<JNIEnvExt*>(env)->vm;
+    return reinterpret_cast<JNIEnvExt*>(env)->GetVm();
   }
 
   static const JNINativeInterface* baseEnv(JNIEnv* env) {
-    return reinterpret_cast<JNIEnvExt*>(env)->unchecked_functions;
+    return reinterpret_cast<JNIEnvExt*>(env)->unchecked_functions_;
   }
 
   static jobject NewRef(const char* function_name, JNIEnv* env, jobject obj, IndirectRefKind kind) {
