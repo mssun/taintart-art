@@ -357,7 +357,7 @@ bool IndirectReferenceTable::Remove(IRTSegmentState previous_state, IndirectRef 
     if (self->HandleScopeContains(reinterpret_cast<jobject>(iref))) {
       auto* env = self->GetJniEnv();
       DCHECK(env != nullptr);
-      if (env->check_jni) {
+      if (env->IsCheckJniEnabled()) {
         ScopedObjectAccess soa(self);
         LOG(WARNING) << "Attempt to remove non-JNI local reference, dumping thread";
         if (kDumpStackOnNonLocalReference) {

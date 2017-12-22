@@ -51,8 +51,8 @@ extern void ReadBarrierJni(mirror::CompressedReference<mirror::Object>* handle_o
 extern uint32_t JniMethodFastStart(Thread* self) {
   JNIEnvExt* env = self->GetJniEnv();
   DCHECK(env != nullptr);
-  uint32_t saved_local_ref_cookie = bit_cast<uint32_t>(env->local_ref_cookie);
-  env->local_ref_cookie = env->locals.GetSegmentState();
+  uint32_t saved_local_ref_cookie = bit_cast<uint32_t>(env->GetLocalRefCookie());
+  env->SetLocalRefCookie(env->GetLocalsSegmentState());
 
   if (kIsDebugBuild) {
     ArtMethod* native_method = *self->GetManagedStack()->GetTopQuickFrame();
@@ -66,8 +66,8 @@ extern uint32_t JniMethodFastStart(Thread* self) {
 extern uint32_t JniMethodStart(Thread* self) {
   JNIEnvExt* env = self->GetJniEnv();
   DCHECK(env != nullptr);
-  uint32_t saved_local_ref_cookie = bit_cast<uint32_t>(env->local_ref_cookie);
-  env->local_ref_cookie = env->locals.GetSegmentState();
+  uint32_t saved_local_ref_cookie = bit_cast<uint32_t>(env->GetLocalRefCookie());
+  env->SetLocalRefCookie(env->GetLocalsSegmentState());
   ArtMethod* native_method = *self->GetManagedStack()->GetTopQuickFrame();
   // TODO: Introduce special entrypoint for synchronized @FastNative methods?
   //       Or ban synchronized @FastNative outright to avoid the extra check here?
@@ -115,11 +115,11 @@ ALWAYS_INLINE static inline void GoToRunnableFast(Thread* self) {
 static void PopLocalReferences(uint32_t saved_local_ref_cookie, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   JNIEnvExt* env = self->GetJniEnv();
-  if (UNLIKELY(env->check_jni)) {
+  if (UNLIKELY(env->IsCheckJniEnabled())) {
     env->CheckNoHeldMonitors();
   }
-  env->locals.SetSegmentState(env->local_ref_cookie);
-  env->local_ref_cookie = bit_cast<IRTSegmentState>(saved_local_ref_cookie);
+  env->SetLocalSegmentState(env->GetLocalRefCookie());
+  env->SetLocalRefCookie(bit_cast<IRTSegmentState>(saved_local_ref_cookie));
   self->PopHandleScope();
 }
 
@@ -156,7 +156,7 @@ static mirror::Object* JniMethodEndWithReferenceHandleResult(jobject result,
   }
   PopLocalReferences(saved_local_ref_cookie, self);
   // Process result.
-  if (UNLIKELY(self->GetJniEnv()->check_jni)) {
+  if (UNLIKELY(self->GetJniEnv()->IsCheckJniEnabled())) {
     // CheckReferenceResult can resolve types.
     StackHandleScope<1> hs(self);
     HandleWrapperObjPtr<mirror::Object> h_obj(hs.NewHandleWrapper(&o));
