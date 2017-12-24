@@ -1381,26 +1381,26 @@ bool HInliner::TryBuildAndInline(HInvoke* invoke_instruction,
 
   bool same_dex_file = IsSameDexFile(*outer_compilation_unit_.GetDexFile(), *method->GetDexFile());
 
-  const DexFile::CodeItem* code_item = method->GetCodeItem();
+  CodeItemDataAccessor accessor(method);
 
-  if (code_item == nullptr) {
+  if (!accessor.HasCodeItem()) {
     LOG_FAIL_NO_STAT()
         << "Method " << method->PrettyMethod() << " is not inlined because it is native";
     return false;
   }
 
   size_t inline_max_code_units = compiler_driver_->GetCompilerOptions().GetInlineMaxCodeUnits();
-  if (code_item->insns_size_in_code_units_ > inline_max_code_units) {
+  if (accessor.InsnsSizeInCodeUnits() > inline_max_code_units) {
     LOG_FAIL(stats_, MethodCompilationStat::kNotInlinedCodeItem)
         << "Method " << method->PrettyMethod()
         << " is not inlined because its code item is too big: "
-        << code_item->insns_size_in_code_units_
+        << accessor.InsnsSizeInCodeUnits()
         << " > "
         << inline_max_code_units;
     return false;
   }
 
-  if (code_item->tries_size_ != 0) {
+  if (accessor.TriesSize() != 0) {
     LOG_FAIL(stats_, MethodCompilationStat::kNotInlinedTryCatch)
         << "Method " << method->PrettyMethod() << " is not inlined because of try block";
     return false;
@@ -1660,6 +1660,7 @@ bool HInliner::TryBuildAndInlineHelper(HInvoke* invoke_instruction,
   const DexFile::CodeItem* code_item = resolved_method->GetCodeItem();
   const DexFile& callee_dex_file = *resolved_method->GetDexFile();
   uint32_t method_index = resolved_method->GetDexMethodIndex();
+  CodeItemDebugInfoAccessor code_item_accessor(&callee_dex_file, code_item);
   ClassLinker* class_linker = caller_compilation_unit_.GetClassLinker();
   Handle<mirror::DexCache> dex_cache = NewHandleIfDifferent(resolved_method->GetDexCache(),
                                                             caller_compilation_unit_.GetDexCache(),
@@ -1714,7 +1715,7 @@ bool HInliner::TryBuildAndInlineHelper(HInvoke* invoke_instruction,
     }
   }
   HGraphBuilder builder(callee_graph,
-                        code_item,
+                        code_item_accessor,
                         &dex_compilation_unit,
                         &outer_compilation_unit_,
                         compiler_driver_,
@@ -1967,6 +1968,7 @@ void HInliner::RunOptimizations(HGraph* callee_graph,
     return;
   }
 
+  CodeItemDataAccessor accessor(&callee_graph->GetDexFile(), code_item);
   HInliner inliner(callee_graph,
                    outermost_graph_,
                    codegen_,
@@ -1975,7 +1977,7 @@ void HInliner::RunOptimizations(HGraph* callee_graph,
                    compiler_driver_,
                    handles_,
                    inline_stats_,
-                   total_number_of_dex_registers_ + code_item->registers_size_,
+                   total_number_of_dex_registers_ + accessor.RegistersSize(),
                    total_number_of_instructions_ + number_of_instructions,
                    this,
                    depth_ + 1);

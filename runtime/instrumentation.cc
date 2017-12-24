@@ -1246,18 +1246,17 @@ struct RuntimeMethodShortyVisitor : public StackVisitor {
         shorty = m->GetInterfaceMethodIfProxy(kRuntimePointerSize)->GetShorty()[0];
         return false;
       }
-      const DexFile::CodeItem* code_item = m->GetCodeItem();
-      const Instruction* instr = Instruction::At(&code_item->insns_[GetDexPc()]);
-      if (instr->IsInvoke()) {
+      const Instruction& instr = m->DexInstructions().InstructionAt(GetDexPc());
+      if (instr.IsInvoke()) {
         const DexFile* dex_file = m->GetDexFile();
-        if (interpreter::IsStringInit(dex_file, instr->VRegB())) {
+        if (interpreter::IsStringInit(dex_file, instr.VRegB())) {
           // Invoking string init constructor is turned into invoking
           // StringFactory.newStringFromChars() which returns a string.
           shorty = 'L';
           return false;
         }
         // A regular invoke, use callee's shorty.
-        uint32_t method_idx = instr->VRegB();
+        uint32_t method_idx = instr.VRegB();
         shorty = dex_file->GetMethodShorty(method_idx)[0];
       }
       // Stop stack walking since we've seen a Java frame.

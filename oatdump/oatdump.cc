@@ -1261,8 +1261,7 @@ class OatDumper {
                      bool* addr_found) {
     bool success = true;
 
-    CodeItemDataAccessor code_item_accessor(CodeItemDataAccessor::CreateNullable(&dex_file,
-                                                                                 code_item));
+    CodeItemDataAccessor code_item_accessor(&dex_file, code_item);
 
     // TODO: Support regex
     std::string method_name = dex_file.GetMethodName(dex_file.GetMethodId(dex_method_idx));

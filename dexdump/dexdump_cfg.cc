@@ -25,6 +25,7 @@
 #include <set>
 #include <sstream>
 
+#include "code_item_accessors-no_art-inl.h"
 #include "dex_file-inl.h"
 #include "dex_instruction-inl.h"
 
@@ -37,17 +38,17 @@ static void dumpMethodCFGImpl(const DexFile* dex_file,
   os << "digraph {\n";
   os << "  # /* " << dex_file->PrettyMethod(dex_method_idx, true) << " */\n";
 
+  CodeItemInstructionAccessor accessor(dex_file, code_item);
+
   std::set<uint32_t> dex_pc_is_branch_target;
   {
     // Go and populate.
-    const Instruction* inst = Instruction::At(code_item->insns_);
-    for (uint32_t dex_pc = 0;
-         dex_pc < code_item->insns_size_in_code_units_;
-         dex_pc += inst->SizeInCodeUnits(), inst = inst->Next()) {
+    for (const DexInstructionPcPair& pair : accessor) {
+      const Instruction* inst = &pair.Inst();
       if (inst->IsBranch()) {
-        dex_pc_is_branch_target.insert(dex_pc + inst->GetTargetOffset());
+        dex_pc_is_branch_target.insert(pair.DexPc() + inst->GetTargetOffset());
       } else if (inst->IsSwitch()) {
-        const uint16_t* insns = code_item->insns_ + dex_pc;
+        const uint16_t* insns = reinterpret_cast<const uint16_t*>(inst);
         int32_t switch_offset = insns[1] | (static_cast<int32_t>(insns[2]) << 16);
         const uint16_t* switch_insns = insns + switch_offset;
         uint32_t switch_count = switch_insns[1];
@@ -63,7 +64,7 @@ static void dumpMethodCFGImpl(const DexFile* dex_file,
           int32_t offset =
               static_cast<int32_t>(switch_insns[targets_offset + targ * 2]) |
               static_cast<int32_t>(switch_insns[targets_offset + targ * 2 + 1] << 16);
-          dex_pc_is_branch_target.insert(dex_pc + offset);
+          dex_pc_is_branch_target.insert(pair.DexPc() + offset);
         }
       }
     }
@@ -74,12 +75,10 @@ static void dumpMethodCFGImpl(const DexFile* dex_file,
   std::map<uint32_t, uint32_t> dex_pc_to_incl_id;  // This has entries for all dex pcs.
 
   {
-    const Instruction* inst = Instruction::At(code_item->insns_);
     bool first_in_block = true;
     bool force_new_block = false;
-    for (uint32_t dex_pc = 0;
-         dex_pc < code_item->insns_size_in_code_units_;
-         dex_pc += inst->SizeInCodeUnits(), inst = inst->Next()) {
+    for (const DexInstructionPcPair& pair : accessor) {
+      const uint32_t dex_pc = pair.DexPc();
       if (dex_pc == 0 ||
           (dex_pc_is_branch_target.find(dex_pc) != dex_pc_is_branch_target.end()) ||
           force_new_block) {
@@ -108,7 +107,7 @@ static void dumpMethodCFGImpl(const DexFile* dex_file,
       // Dump the instruction. Need to escape '"', '<', '>', '{' and '}'.
       os << "<" << "p" << dex_pc << ">";
       os << " 0x" << std::hex << dex_pc << std::dec << ": ";
-      std::string inst_str = inst->DumpString(dex_file);
+      std::string inst_str = pair.Inst().DumpString(dex_file);
       size_t cur_start = 0;  // It's OK to start at zero, instruction dumps don't start with chars
                              // we need to escape.
       while (cur_start != std::string::npos) {
@@ -137,7 +136,7 @@ static void dumpMethodCFGImpl(const DexFile* dex_file,
 
       // Force a new block for some fall-throughs and some instructions that terminate the "local"
       // control flow.
-      force_new_block = inst->IsSwitch() || inst->IsBasicBlockEnd();
+      force_new_block = pair.Inst().IsSwitch() || pair.Inst().IsBasicBlockEnd();
     }
     // Close last node.
     if (dex_pc_to_node_id.size() > 0) {
@@ -162,10 +161,9 @@ static void dumpMethodCFGImpl(const DexFile* dex_file,
       uint32_t last_node_id = std::numeric_limits<uint32_t>::max();
       uint32_t old_dex_pc = 0;
       uint32_t block_start_dex_pc = std::numeric_limits<uint32_t>::max();
-      const Instruction* inst = Instruction::At(code_item->insns_);
-      for (uint32_t dex_pc = 0;
-          dex_pc < code_item->insns_size_in_code_units_;
-          old_dex_pc = dex_pc, dex_pc += inst->SizeInCodeUnits(), inst = inst->Next()) {
+      for (const DexInstructionPcPair& pair : accessor) {
+        const Instruction* inst = &pair.Inst();
+        const uint32_t dex_pc = pair.DexPc();
         {
           auto it = dex_pc_to_node_id.find(dex_pc);
           if (it != dex_pc_to_node_id.end()) {
@@ -222,7 +220,7 @@ static void dumpMethodCFGImpl(const DexFile* dex_file,
           }
         } else if (inst->IsSwitch()) {
           // TODO: Iterate through all switch targets.
-          const uint16_t* insns = code_item->insns_ + dex_pc;
+          const uint16_t* insns = reinterpret_cast<const uint16_t*>(inst);
           /* make sure the start of the switch is in range */
           int32_t switch_offset = insns[1] | (static_cast<int32_t>(insns[2]) << 16);
           /* offset to switch table is a relative branch-style offset */
@@ -272,6 +270,7 @@ static void dumpMethodCFGImpl(const DexFile* dex_file,
           // No fall-through.
           last_node_id = std::numeric_limits<uint32_t>::max();
         }
+        old_dex_pc = pair.DexPc();
       }
       // Finish up the last block, if it had common exceptions.
       if (!exception_targets.empty()) {
@@ -293,7 +292,7 @@ static void dumpMethodCFGImpl(const DexFile* dex_file,
     // TODO
     // Exception edges. If this is not the first instruction in the block
     for (uint32_t dex_pc : blocks_with_detailed_exceptions) {
-      const Instruction* inst = Instruction::At(&code_item->insns_[dex_pc]);
+      const Instruction* inst = &accessor.InstructionAt(dex_pc);
       uint32_t this_node_id = dex_pc_to_incl_id.find(dex_pc)->second;
       while (true) {
         CatchHandlerIterator catch_it(*code_item, dex_pc);
@@ -322,7 +321,7 @@ static void dumpMethodCFGImpl(const DexFile* dex_file,
         // Loop update. Have a break-out if the next instruction is a branch target and thus in
         // another block.
         dex_pc += inst->SizeInCodeUnits();
-        if (dex_pc >= code_item->insns_size_in_code_units_) {
+        if (dex_pc >= accessor.InsnsSizeInCodeUnits()) {
           break;
         }
         if (dex_pc_to_node_id.find(dex_pc) != dex_pc_to_node_id.end()) {

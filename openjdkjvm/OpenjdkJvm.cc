@@ -387,7 +387,7 @@ JNIEXPORT void JVM_Interrupt(JNIEnv* env, jobject jthread) {
 
 JNIEXPORT jboolean JVM_IsInterrupted(JNIEnv* env, jobject jthread, jboolean clearInterrupted) {
   if (clearInterrupted) {
-    return static_cast<art::JNIEnvExt*>(env)->self->Interrupted() ? JNI_TRUE : JNI_FALSE;
+    return static_cast<art::JNIEnvExt*>(env)->GetSelf()->Interrupted() ? JNI_TRUE : JNI_FALSE;
   } else {
     art::ScopedFastNativeObjectAccess soa(env);
     art::MutexLock mu(soa.Self(), *art::Locks::thread_list_lock_);

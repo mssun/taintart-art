@@ -408,7 +408,7 @@ static inline bool MethodHandleInvokeMethod(ArtMethod* called_method,
                                             const InstructionOperands* const operands,
                                             JValue* result) REQUIRES_SHARED(Locks::mutator_lock_) {
   // Compute method information.
-  const DexFile::CodeItem* code_item = called_method->GetCodeItem();
+  CodeItemDataAccessor accessor(called_method);
 
   // Number of registers for the callee's call frame. Note that for non-exact
   // invokes, we always derive this information from the callee method. We
@@ -419,10 +419,10 @@ static inline bool MethodHandleInvokeMethod(ArtMethod* called_method,
   uint16_t num_regs;
   size_t num_input_regs;
   size_t first_dest_reg;
-  if (LIKELY(code_item != nullptr)) {
-    num_regs = code_item->registers_size_;
-    first_dest_reg = num_regs - code_item->ins_size_;
-    num_input_regs = code_item->ins_size_;
+  if (LIKELY(accessor.HasCodeItem())) {
+    num_regs = accessor.RegistersSize();
+    first_dest_reg = num_regs - accessor.InsSize();
+    num_input_regs = accessor.InsSize();
     // Parameter registers go at the end of the shadow frame.
     DCHECK_NE(first_dest_reg, (size_t)-1);
   } else {
@@ -496,7 +496,7 @@ static inline bool MethodHandleInvokeMethod(ArtMethod* called_method,
   bool use_interpreter_entrypoint = ClassLinker::ShouldUseInterpreterEntrypoint(
       called_method, called_method->GetEntryPointFromQuickCompiledCode());
   PerformCall(self,
-              code_item,
+              accessor,
               shadow_frame.GetMethod(),
               first_dest_reg,
               new_shadow_frame,
@@ -550,10 +550,9 @@ static inline bool MethodHandleInvokeTransform(ArtMethod* called_method,
   // - One for the only method argument (an EmulatedStackFrame).
   static constexpr size_t kNumRegsForTransform = 2;
 
-  const DexFile::CodeItem* code_item = called_method->GetCodeItem();
-  DCHECK(code_item != nullptr);
-  DCHECK_EQ(kNumRegsForTransform, code_item->registers_size_);
-  DCHECK_EQ(kNumRegsForTransform, code_item->ins_size_);
+  CodeItemDataAccessor accessor(called_method);
+  DCHECK_EQ(kNumRegsForTransform, accessor.RegistersSize());
+  DCHECK_EQ(kNumRegsForTransform, accessor.InsSize());
 
   ShadowFrameAllocaUniquePtr shadow_frame_unique_ptr =
       CREATE_SHADOW_FRAME(kNumRegsForTransform, &shadow_frame, called_method, /* dex pc */ 0);
@@ -589,7 +588,7 @@ static inline bool MethodHandleInvokeTransform(ArtMethod* called_method,
   bool use_interpreter_entrypoint = ClassLinker::ShouldUseInterpreterEntrypoint(
       called_method, called_method->GetEntryPointFromQuickCompiledCode());
   PerformCall(self,
-              code_item,
+              accessor,
               shadow_frame.GetMethod(),
               0 /* first destination register */,
               new_shadow_frame,
@@ -1035,14 +1034,14 @@ static inline bool MethodHandleInvokeExactInternal(
   }
 
   // Compute method information.
-  const DexFile::CodeItem* code_item = called_method->GetCodeItem();
+  CodeItemDataAccessor accessor(called_method);
   uint16_t num_regs;
   size_t num_input_regs;
   size_t first_dest_reg;
-  if (LIKELY(code_item != nullptr)) {
-    num_regs = code_item->registers_size_;
-    first_dest_reg = num_regs - code_item->ins_size_;
-    num_input_regs = code_item->ins_size_;
+  if (LIKELY(accessor.HasCodeItem())) {
+    num_regs = accessor.RegistersSize();
+    first_dest_reg = num_regs - accessor.InsSize();
+    num_input_regs = accessor.InsSize();
     // Parameter registers go at the end of the shadow frame.
     DCHECK_NE(first_dest_reg, (size_t)-1);
   } else {
@@ -1066,7 +1065,7 @@ static inline bool MethodHandleInvokeExactInternal(
   bool use_interpreter_entrypoint = ClassLinker::ShouldUseInterpreterEntrypoint(
       called_method, called_method->GetEntryPointFromQuickCompiledCode());
   PerformCall(self,
-              code_item,
+              accessor,
               shadow_frame.GetMethod(),
               first_dest_reg,
               new_shadow_frame,

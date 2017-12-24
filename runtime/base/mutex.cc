@@ -959,7 +959,7 @@ void ConditionVariable::WaitHoldingLocks(Thread* self) {
   }
   if (self != nullptr) {
     JNIEnvExt* const env = self->GetJniEnv();
-    if (UNLIKELY(env != nullptr && env->runtime_deleted)) {
+    if (UNLIKELY(env != nullptr && env->IsRuntimeDeleted())) {
       CHECK(self->IsDaemon());
       // If the runtime has been deleted, then we cannot proceed. Just sleep forever. This may
       // occur for user daemon threads that get a spurious wakeup. This occurs for test 132 with

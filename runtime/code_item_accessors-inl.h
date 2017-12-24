@@ -30,26 +30,8 @@ namespace art {
 inline CodeItemInstructionAccessor::CodeItemInstructionAccessor(ArtMethod* method)
     : CodeItemInstructionAccessor(method->GetDexFile(), method->GetCodeItem()) {}
 
-inline CodeItemInstructionAccessor CodeItemInstructionAccessor::CreateNullable(
-    ArtMethod* method) {
-  DCHECK(method != nullptr);
-  CodeItemInstructionAccessor ret;
-  const DexFile::CodeItem* code_item = method->GetCodeItem();
-  if (code_item != nullptr) {
-    ret.Init(method->GetDexFile(), code_item);
-  } else {
-    DCHECK(!ret.HasCodeItem()) << "Should be null initialized";
-  }
-  return ret;
-}
-
 inline CodeItemDataAccessor::CodeItemDataAccessor(ArtMethod* method)
     : CodeItemDataAccessor(method->GetDexFile(), method->GetCodeItem()) {}
-
-inline CodeItemDataAccessor CodeItemDataAccessor::CreateNullable(ArtMethod* method) {
-  DCHECK(method != nullptr);
-  return CreateNullable(method->GetDexFile(), method->GetCodeItem());
-}
 
 inline CodeItemDebugInfoAccessor::CodeItemDebugInfoAccessor(ArtMethod* method)
     : CodeItemDebugInfoAccessor(method->GetDexFile(), method->GetCodeItem()) {}
@@ -59,7 +41,7 @@ inline CodeItemDebugInfoAccessor::CodeItemDebugInfoAccessor(const DexFile* dex_f
   if (code_item == nullptr) {
     return;
   }
-  Init(dex_file, code_item, OatFile::GetDebugInfoOffset(*dex_file, code_item));
+  Init(dex_file, code_item, OatFile::GetDebugInfoOffset(*dex_file, code_item->debug_info_off_));
 }
 
 }  // namespace art

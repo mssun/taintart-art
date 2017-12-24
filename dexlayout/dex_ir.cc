@@ -21,6 +21,8 @@
  */
 
 #include "dex_ir.h"
+
+#include "code_item_accessors-inl.h"
 #include "dex_instruction-inl.h"
 #include "dex_ir_builder.h"
 
@@ -564,13 +566,14 @@ ParameterAnnotation* Collections::GenerateParameterAnnotation(
 
 CodeItem* Collections::CreateCodeItem(const DexFile& dex_file,
                                       const DexFile::CodeItem& disk_code_item, uint32_t offset) {
-  uint16_t registers_size = disk_code_item.registers_size_;
-  uint16_t ins_size = disk_code_item.ins_size_;
-  uint16_t outs_size = disk_code_item.outs_size_;
-  uint32_t tries_size = disk_code_item.tries_size_;
+  CodeItemDebugInfoAccessor accessor(&dex_file, &disk_code_item);
+  const uint16_t registers_size = accessor.RegistersSize();
+  const uint16_t ins_size = accessor.InsSize();
+  const uint16_t outs_size = accessor.OutsSize();
+  const uint32_t tries_size = accessor.TriesSize();
 
   // TODO: Calculate the size of the debug info.
-  uint32_t debug_info_offset = dex_file.GetDebugInfoOffset(&disk_code_item);
+  const uint32_t debug_info_offset = accessor.DebugInfoOffset();
   const uint8_t* debug_info_stream = dex_file.GetDebugInfoStream(debug_info_offset);
   DebugInfoItem* debug_info = nullptr;
   if (debug_info_stream != nullptr) {
@@ -584,20 +587,19 @@ CodeItem* Collections::CreateCodeItem(const DexFile& dex_file,
     }
   }
 
-  uint32_t insns_size = disk_code_item.insns_size_in_code_units_;
+  uint32_t insns_size = accessor.InsnsSizeInCodeUnits();
   uint16_t* insns = new uint16_t[insns_size];
-  memcpy(insns, disk_code_item.insns_, insns_size * sizeof(uint16_t));
+  memcpy(insns, accessor.Insns(), insns_size * sizeof(uint16_t));
 
   TryItemVector* tries = nullptr;
   CatchHandlerVector* handler_list = nullptr;
   if (tries_size > 0) {
     tries = new TryItemVector();
     handler_list = new CatchHandlerVector();
-    for (uint32_t i = 0; i < tries_size; ++i) {
-      const DexFile::TryItem* disk_try_item = dex_file.GetTryItems(disk_code_item, i);
-      uint32_t start_addr = disk_try_item->start_addr_;
-      uint16_t insn_count = disk_try_item->insn_count_;
-      uint16_t handler_off = disk_try_item->handler_off_;
+    for (const DexFile::TryItem& disk_try_item : accessor.TryItems()) {
+      uint32_t start_addr = disk_try_item.start_addr_;
+      uint16_t insn_count = disk_try_item.insn_count_;
+      uint16_t handler_off = disk_try_item.handler_off_;
       const CatchHandler* handlers = nullptr;
       for (std::unique_ptr<const CatchHandler>& existing_handlers : *handler_list) {
         if (handler_off == existing_handlers->GetListOffset()) {
@@ -608,7 +610,7 @@ CodeItem* Collections::CreateCodeItem(const DexFile& dex_file,
       if (handlers == nullptr) {
         bool catch_all = false;
         TypeAddrPairVector* addr_pairs = new TypeAddrPairVector();
-        for (CatchHandlerIterator it(disk_code_item, *disk_try_item); it.HasNext(); it.Next()) {
+        for (CatchHandlerIterator it(disk_code_item, disk_try_item); it.HasNext(); it.Next()) {
           const dex::TypeIndex type_index = it.GetHandlerTypeIndex();
           const TypeId* type_id = GetTypeIdOrNullPtr(type_index.index_);
           catch_all |= type_id == nullptr;
@@ -622,7 +624,7 @@ CodeItem* Collections::CreateCodeItem(const DexFile& dex_file,
       tries->push_back(std::unique_ptr<const TryItem>(try_item));
     }
     // Manually walk catch handlers list and add any missing handlers unreferenced by try items.
-    const uint8_t* handlers_base = DexFile::GetCatchHandlerData(disk_code_item, 0);
+    const uint8_t* handlers_base = accessor.GetCatchHandlerData();
     const uint8_t* handlers_data = handlers_base;
     uint32_t handlers_size = DecodeUnsignedLeb128(&handlers_data);
     while (handlers_size > handler_list->size()) {

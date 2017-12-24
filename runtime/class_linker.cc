@@ -3391,7 +3391,7 @@ void ClassLinker::RegisterDexFileLocked(const DexFile& dex_file,
   // Clean up pass to remove null dex caches. Also check if we need to initialize OatFile .bss.
   // Null dex caches can occur due to class unloading and we are lazily removing null entries.
   bool initialize_oat_file_bss = (oat_file != nullptr);
-  JavaVMExt* const vm = self->GetJniEnv()->vm;
+  JavaVMExt* const vm = self->GetJniEnv()->GetVm();
   for (auto it = dex_caches_.begin(); it != dex_caches_.end(); ) {
     DexCacheData data = *it;
     if (self->IsJWeakCleared(data.weak_root)) {
@@ -4317,15 +4317,14 @@ void ClassLinker::ResolveClassExceptionHandlerTypes(Handle<mirror::Class> klass)
 
 void ClassLinker::ResolveMethodExceptionHandlerTypes(ArtMethod* method) {
   // similar to DexVerifier::ScanTryCatchBlocks and dex2oat's ResolveExceptionsForMethod.
-  const DexFile::CodeItem* code_item =
-      method->GetDexFile()->GetCodeItem(method->GetCodeItemOffset());
-  if (code_item == nullptr) {
+  CodeItemDataAccessor accessor(method);
+  if (!accessor.HasCodeItem()) {
     return;  // native or abstract method
   }
-  if (code_item->tries_size_ == 0) {
+  if (accessor.TriesSize() == 0) {
     return;  // nothing to process
   }
-  const uint8_t* handlers_ptr = DexFile::GetCatchHandlerData(*code_item, 0);
+  const uint8_t* handlers_ptr = accessor.GetCatchHandlerData(0);
   uint32_t handlers_size = DecodeUnsignedLeb128(&handlers_ptr);
   for (uint32_t idx = 0; idx < handlers_size; idx++) {
     CatchHandlerIterator iterator(handlers_ptr);
@@ -5269,7 +5268,7 @@ void ClassLinker::RegisterClassLoader(ObjPtr<mirror::ClassLoader> class_loader) 
   CHECK(class_loader->GetClassTable() == nullptr);
   Thread* const self = Thread::Current();
   ClassLoaderData data;
-  data.weak_root = self->GetJniEnv()->vm->AddWeakGlobalRef(self, class_loader);
+  data.weak_root = self->GetJniEnv()->GetVm()->AddWeakGlobalRef(self, class_loader);
   // Create and set the class table.
   data.class_table = new ClassTable;
   class_loader->SetClassTable(data.class_table);

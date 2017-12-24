@@ -76,6 +76,15 @@ static constexpr inline uint64_t MsToNs(uint64_t ms) {
   return ms * 1000 * 1000;
 }
 
+// Converts the given number of milliseconds to microseconds
+static constexpr inline uint64_t MsToUs(uint64_t ms) {
+  return ms * 1000;
+}
+
+static constexpr inline uint64_t UsToNs(uint64_t us) {
+  return us * 1000;
+}
+
 #if defined(__APPLE__)
 #ifndef CLOCK_REALTIME
 // No clocks to specify on OS/X < 10.12, fake value to pass to routines that require a clock.

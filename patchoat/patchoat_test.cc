@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#include <dirent.h>
+#include <sys/types.h>
+
 #include <string>
 #include <vector>
 
@@ -31,6 +34,44 @@ using android::base::StringPrintf;
 
 class PatchoatTest : public DexoptTest {
  public:
+  static bool ListDirFilesEndingWith(
+      const std::string& dir,
+      const std::string& suffix,
+      std::vector<std::string>* filenames,
+      std::string* error_msg) {
+    DIR* d = opendir(dir.c_str());
+    if (d == nullptr) {
+      *error_msg = "Failed to open directory";
+      return false;
+    }
+    dirent* e;
+    struct stat s;
+    size_t suffix_len = suffix.size();
+    while ((e = readdir(d)) != nullptr) {
+      if ((strcmp(e->d_name, ".") == 0) || (strcmp(e->d_name, "..") == 0)) {
+        continue;
+      }
+      size_t name_len = strlen(e->d_name);
+      if ((name_len < suffix_len) || (strcmp(&e->d_name[name_len - suffix_len], suffix.c_str()))) {
+        continue;
+      }
+      std::string basename(e->d_name);
+      std::string filename = dir + "/" + basename;
+      int stat_result = lstat(filename.c_str(), &s);
+      if (stat_result != 0) {
+        *error_msg =
+            StringPrintf("Failed to stat %s: stat returned %d", filename.c_str(), stat_result);
+        return false;
+      }
+      if (S_ISDIR(s.st_mode)) {
+        continue;
+      }
+      filenames->push_back(basename);
+    }
+    closedir(d);
+    return true;
+  }
+
   static void AddRuntimeArg(std::vector<std::string>& args, const std::string& arg) {
     args.push_back("--runtime-arg");
     args.push_back(arg);
@@ -310,30 +351,48 @@ TEST_F(PatchoatTest, PatchoatRelocationSameAsDex2oatRelocation) {
     FAIL() << "RelocateBootImage failed: " << error_msg;
   }
 
-  // dex2oat_reloc_image_filename is the boot image relocated using dex2oat
-  // patchoat_reloc_image_filename is the boot image relocated using patchoat
-  std::string dex2oat_reloc_image_filename = dex2oat_reloc_dir + "/boot.art";
-  std::string patchoat_reloc_image_filename = dex2oat_orig_dir + "/boot.art";
-  std::replace(
-      patchoat_reloc_image_filename.begin() + 1, patchoat_reloc_image_filename.end(), '/', '@');
-  patchoat_reloc_image_filename =
-      patchoat_dir
-      + (android::base::StartsWith(patchoat_reloc_image_filename, "/") ? "" : "/")
-      + patchoat_reloc_image_filename;
+  // Assert that patchoat created the same set of .art files as dex2oat
+  std::vector<std::string> dex2oat_image_basenames;
+  std::vector<std::string> patchoat_image_basenames;
+  if (!ListDirFilesEndingWith(dex2oat_reloc_dir, ".art", &dex2oat_image_basenames, &error_msg)) {
+    FAIL() << "Failed to list *.art files in " << dex2oat_reloc_dir << ": " << error_msg;
+  }
+  if (!ListDirFilesEndingWith(patchoat_dir, ".art", &patchoat_image_basenames, &error_msg)) {
+    FAIL() << "Failed to list *.art files in " << patchoat_dir << ": " << error_msg;
+  }
+  std::sort(dex2oat_image_basenames.begin(), dex2oat_image_basenames.end());
+  std::sort(patchoat_image_basenames.begin(), patchoat_image_basenames.end());
+  // .art file names output by patchoat look like tmp@art-data-<random>-<random>@boot*.art. To
+  // compare these with .art file names output by dex2oat we retain only the part of the file name
+  // after the last @.
+  std::vector<std::string> patchoat_image_shortened_basenames(patchoat_image_basenames.size());
+  for (size_t i = 0; i < patchoat_image_basenames.size(); i++) {
+    patchoat_image_shortened_basenames[i] =
+        patchoat_image_basenames[i].substr(patchoat_image_basenames[i].find_last_of("@") + 1);
+  }
+  ASSERT_EQ(dex2oat_image_basenames, patchoat_image_shortened_basenames);
 
-  // Patch up the dex2oat-relocated image so that it looks as though it was relocated by patchoat.
-  // patchoat preserves the OAT checksum header field and sets patch delta header field.
-  if (!CopyImageChecksumAndSetPatchDelta(
-      dex2oat_orig_dir + "/boot.art",
-      dex2oat_reloc_dir + "/boot.art",
-      base_addr_delta,
-      &error_msg)) {
-    FAIL() << "Unable to copy image checksum: " << error_msg;
+  // Patch up the dex2oat-relocated image files so that it looks as though they were relocated by
+  // patchoat. patchoat preserves the OAT checksum header field and sets patch delta header field.
+  for (const std::string& image_basename : dex2oat_image_basenames) {
+    if (!CopyImageChecksumAndSetPatchDelta(
+        dex2oat_orig_dir + "/" + image_basename,
+        dex2oat_reloc_dir + "/" + image_basename,
+        base_addr_delta,
+        &error_msg)) {
+      FAIL() << "Unable to patch up " << image_basename << ": " << error_msg;
+    }
   }
 
-  // Assert that the patchoat-relocated image is identical to the dex2oat-relocated image
-  if (BinaryDiff(dex2oat_reloc_image_filename, patchoat_reloc_image_filename, &error_msg)) {
-    FAIL() << "patchoat- and dex2oat-relocated images differ: " << error_msg;
+  // Assert that the patchoat-relocated images are identical to the dex2oat-relocated images
+  for (size_t i = 0; i < dex2oat_image_basenames.size(); i++) {
+    const std::string& dex2oat_image_basename = dex2oat_image_basenames[i];
+    const std::string& dex2oat_image_filename = dex2oat_reloc_dir + "/" + dex2oat_image_basename;
+    const std::string& patchoat_image_filename = patchoat_dir + "/" + patchoat_image_basenames[i];
+    if (BinaryDiff(dex2oat_image_filename, patchoat_image_filename, &error_msg)) {
+      FAIL() << "patchoat- and dex2oat-relocated variants of " << dex2oat_image_basename
+          << " differ: " << error_msg;
+    }
   }
 
   ClearDirectory(dex2oat_orig_dir.c_str(), /*recursive*/ true);

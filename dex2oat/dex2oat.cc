@@ -41,6 +41,7 @@
 #include "arch/instruction_set_features.h"
 #include "arch/mips/instruction_set_features_mips.h"
 #include "art_method-inl.h"
+#include "barrier.h"
 #include "base/callee_save_type.h"
 #include "base/dumpable.h"
 #include "base/file_utils.h"
@@ -480,7 +481,8 @@ class WatchDog {
 
  public:
   explicit WatchDog(int64_t timeout_in_milliseconds)
-      : timeout_in_milliseconds_(timeout_in_milliseconds),
+      : wait_barrier_(2),
+        timeout_in_milliseconds_(timeout_in_milliseconds),
         shutting_down_(false) {
     const char* reason = "dex2oat watch dog thread startup";
     CHECK_WATCH_DOG_PTHREAD_CALL(pthread_mutex_init, (&mutex_, nullptr), reason);
@@ -525,9 +527,14 @@ class WatchDog {
   static constexpr int64_t kDefaultWatchdogTimeoutInMS =
       kWatchdogVerifyMultiplier * kWatchDogTimeoutSeconds * 1000;
 
+  void WaitForCallBackStart(Thread* self) {
+    wait_barrier_.Wait(self);
+  }
+
  private:
   static void* CallBack(void* arg) {
     WatchDog* self = reinterpret_cast<WatchDog*>(arg);
+    self->wait_barrier_.Pass(nullptr);
     ::art::SetThreadName("dex2oat watch dog");
     self->Wait();
     return nullptr;
@@ -538,11 +545,8 @@ class WatchDog {
     //       it's rather easy to hang in unwinding.
     //       LogLine also avoids ART logging lock issues, as it's really only a wrapper around
     //       logcat logging or stderr output.
-    android::base::LogMessage::LogLine(__FILE__,
-                                       __LINE__,
-                                       android::base::LogId::DEFAULT,
-                                       LogSeverity::FATAL,
-                                       message.c_str());
+    LogHelper::LogLineLowStack(__FILE__, __LINE__, LogSeverity::FATAL, message.c_str());
+
     // If we're on the host, try to dump all threads to get a sense of what's going on. This is
     // restricted to the host as the dump may itself go bad.
     // TODO: Use a double watchdog timeout, so we can enable this on-device.
@@ -584,6 +588,8 @@ class WatchDog {
   pthread_cond_t cond_;
   pthread_attr_t attr_;
   pthread_t pthread_;
+
+  Barrier wait_barrier_;
 
   const int64_t timeout_in_milliseconds_;
   bool shutting_down_;
@@ -929,6 +935,8 @@ class Dex2Oat FINAL {
                             ? parser_options->watch_dog_timeout_in_ms
                             : WatchDog::kDefaultWatchdogTimeoutInMS;
       watchdog_.reset(new WatchDog(timeout));
+      watchdog_->WaitForCallBackStart(nullptr);  // The runtime hasn't been started, yet. So
+                                                 // nullptr for current thread.
     }
 
     // Fill some values into the key-value store for the oat header.
@@ -1687,10 +1695,10 @@ class Dex2Oat FINAL {
       CHECK(class_loader != nullptr);
       ScopedObjectAccess soa(Thread::Current());
       // Unload class loader to free RAM.
-      jweak weak_class_loader = soa.Env()->vm->AddWeakGlobalRef(
+      jweak weak_class_loader = soa.Env()->GetVm()->AddWeakGlobalRef(
           soa.Self(),
           soa.Decode<mirror::ClassLoader>(class_loader));
-      soa.Env()->vm->DeleteGlobalRef(soa.Self(), class_loader);
+      soa.Env()->GetVm()->DeleteGlobalRef(soa.Self(), class_loader);
       runtime_->GetHeap()->CollectGarbage(/*clear_soft_references*/ true);
       ObjPtr<mirror::ClassLoader> decoded_weak = soa.Decode<mirror::ClassLoader>(weak_class_loader);
       if (decoded_weak != nullptr) {
@@ -2890,7 +2898,7 @@ class ScopedGlobalRef {
   ~ScopedGlobalRef() {
     if (obj_ != nullptr) {
       ScopedObjectAccess soa(Thread::Current());
-      soa.Env()->vm->DeleteGlobalRef(soa.Self(), obj_);
+      soa.Env()->GetVm()->DeleteGlobalRef(soa.Self(), obj_);
     }
   }
 

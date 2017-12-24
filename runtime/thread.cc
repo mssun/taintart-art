@@ -621,7 +621,7 @@ void Thread::InstallImplicitProtection() {
 
 void Thread::CreateNativeThread(JNIEnv* env, jobject java_peer, size_t stack_size, bool is_daemon) {
   CHECK(java_peer != nullptr);
-  Thread* self = static_cast<JNIEnvExt*>(env)->self;
+  Thread* self = static_cast<JNIEnvExt*>(env)->GetSelf();
 
   if (VLOG_IS_ON(threads)) {
     ScopedObjectAccess soa(env);
@@ -754,8 +754,8 @@ bool Thread::Init(ThreadList* thread_list, JavaVMExt* java_vm, JNIEnvExt* jni_en
   tls32_.thin_lock_thread_id = thread_list->AllocThreadId(this);
 
   if (jni_env_ext != nullptr) {
-    DCHECK_EQ(jni_env_ext->vm, java_vm);
-    DCHECK_EQ(jni_env_ext->self, this);
+    DCHECK_EQ(jni_env_ext->GetVm(), java_vm);
+    DCHECK_EQ(jni_env_ext->GetSelf(), this);
     tlsPtr_.jni_env = jni_env_ext;
   } else {
     std::string error_msg;
@@ -853,7 +853,7 @@ Thread* Thread::Attach(const char* thread_name,
       if (thread_name != nullptr) {
         self->tlsPtr_.name->assign(thread_name);
         ::art::SetThreadName(thread_name);
-      } else if (self->GetJniEnv()->check_jni) {
+      } else if (self->GetJniEnv()->IsCheckJniEnabled()) {
         LOG(WARNING) << *Thread::Current() << " attached without supplying a name";
       }
     }
@@ -2170,7 +2170,7 @@ void Thread::Destroy() {
       ScopedObjectAccess soa(self);
       MonitorExitVisitor visitor(self);
       // On thread detach, all monitors entered with JNI MonitorEnter are automatically exited.
-      tlsPtr_.jni_env->monitors.VisitRoots(&visitor, RootInfo(kRootVMInternal));
+      tlsPtr_.jni_env->monitors_.VisitRoots(&visitor, RootInfo(kRootVMInternal));
     }
     // Release locally held global references which releasing may require the mutator lock.
     if (tlsPtr_.jpeer != nullptr) {
@@ -2339,7 +2339,7 @@ ObjPtr<mirror::Object> Thread::DecodeJObject(jobject obj) const {
   bool expect_null = false;
   // The "kinds" below are sorted by the frequency we expect to encounter them.
   if (kind == kLocal) {
-    IndirectReferenceTable& locals = tlsPtr_.jni_env->locals;
+    IndirectReferenceTable& locals = tlsPtr_.jni_env->locals_;
     // Local references do not need a read barrier.
     result = locals.Get<kWithoutReadBarrier>(ref);
   } else if (kind == kHandleScopeOrInvalid) {
@@ -2350,15 +2350,15 @@ ObjPtr<mirror::Object> Thread::DecodeJObject(jobject obj) const {
       result = reinterpret_cast<StackReference<mirror::Object>*>(obj)->AsMirrorPtr();
       VerifyObject(result);
     } else {
-      tlsPtr_.jni_env->vm->JniAbortF(nullptr, "use of invalid jobject %p", obj);
+      tlsPtr_.jni_env->vm_->JniAbortF(nullptr, "use of invalid jobject %p", obj);
       expect_null = true;
       result = nullptr;
     }
   } else if (kind == kGlobal) {
-    result = tlsPtr_.jni_env->vm->DecodeGlobal(ref);
+    result = tlsPtr_.jni_env->vm_->DecodeGlobal(ref);
   } else {
     DCHECK_EQ(kind, kWeakGlobal);
-    result = tlsPtr_.jni_env->vm->DecodeWeakGlobal(const_cast<Thread*>(this), ref);
+    result = tlsPtr_.jni_env->vm_->DecodeWeakGlobal(const_cast<Thread*>(this), ref);
     if (Runtime::Current()->IsClearedJniWeakGlobal(result)) {
       // This is a special case where it's okay to return null.
       expect_null = true;
@@ -2367,7 +2367,7 @@ ObjPtr<mirror::Object> Thread::DecodeJObject(jobject obj) const {
   }
 
   if (UNLIKELY(!expect_null && result == nullptr)) {
-    tlsPtr_.jni_env->vm->JniAbortF(nullptr, "use of deleted %s %p",
+    tlsPtr_.jni_env->vm_->JniAbortF(nullptr, "use of deleted %s %p",
                                    ToStr<IndirectRefKind>(kind).c_str(), obj);
   }
   return result;
@@ -2378,7 +2378,7 @@ bool Thread::IsJWeakCleared(jweak obj) const {
   IndirectRef ref = reinterpret_cast<IndirectRef>(obj);
   IndirectRefKind kind = IndirectReferenceTable::GetIndirectRefKind(ref);
   CHECK_EQ(kind, kWeakGlobal);
-  return tlsPtr_.jni_env->vm->IsWeakGlobalCleared(const_cast<Thread*>(this), ref);
+  return tlsPtr_.jni_env->vm_->IsWeakGlobalCleared(const_cast<Thread*>(this), ref);
 }
 
 // Implements java.lang.Thread.interrupted.
@@ -3425,7 +3425,7 @@ class ReferenceMapVisitor : public StackVisitor {
                        const CodeInfoEncoding& _encoding,
                        const StackMap& map,
                        RootVisitor& _visitor)
-          : number_of_dex_registers(method->GetCodeItem()->registers_size_),
+          : number_of_dex_registers(CodeItemDataAccessor(method).RegistersSize()),
             code_info(_code_info),
             encoding(_encoding),
             dex_register_map(code_info.GetDexRegisterMapOf(map,
@@ -3516,8 +3516,8 @@ void Thread::VisitRoots(RootVisitor* visitor) {
                        RootInfo(kRootNativeStack, thread_id));
   }
   visitor->VisitRootIfNonNull(&tlsPtr_.monitor_enter_object, RootInfo(kRootNativeStack, thread_id));
-  tlsPtr_.jni_env->locals.VisitRoots(visitor, RootInfo(kRootJNILocal, thread_id));
-  tlsPtr_.jni_env->monitors.VisitRoots(visitor, RootInfo(kRootJNIMonitor, thread_id));
+  tlsPtr_.jni_env->VisitJniLocalRoots(visitor, RootInfo(kRootJNILocal, thread_id));
+  tlsPtr_.jni_env->VisitMonitorRoots(visitor, RootInfo(kRootJNIMonitor, thread_id));
   HandleScopeVisitRoots(visitor, thread_id);
   if (tlsPtr_.debug_invoke_req != nullptr) {
     tlsPtr_.debug_invoke_req->VisitRoots(visitor, RootInfo(kRootDebugger, thread_id));
