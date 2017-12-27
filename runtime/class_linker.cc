@@ -51,6 +51,7 @@
 #include "compiler_callbacks.h"
 #include "debugger.h"
 #include "dex_file-inl.h"
+#include "dex_file_exception_helpers.h"
 #include "dex_file_loader.h"
 #include "entrypoints/entrypoint_utils.h"
 #include "entrypoints/runtime_asm_entrypoints.h"

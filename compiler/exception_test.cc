@@ -24,6 +24,7 @@
 #include "common_runtime_test.h"
 #include "dex_file-inl.h"
 #include "dex_file.h"
+#include "dex_file_exception_helpers.h"
 #include "gtest/gtest.h"
 #include "handle_scope-inl.h"
 #include "leb128.h"
@@ -129,20 +130,18 @@ class ExceptionTest : public CommonRuntimeTest {
 
 TEST_F(ExceptionTest, FindCatchHandler) {
   ScopedObjectAccess soa(Thread::Current());
-  const DexFile::CodeItem* code_item = dex_->GetCodeItem(method_f_->GetCodeItemOffset());
-  CodeItemDataAccessor accessor(dex_, code_item);
+  CodeItemDataAccessor accessor(dex_, dex_->GetCodeItem(method_f_->GetCodeItemOffset()));
 
-  ASSERT_TRUE(code_item != nullptr);
+  ASSERT_TRUE(accessor.HasCodeItem());
 
   ASSERT_EQ(2u, accessor.TriesSize());
   ASSERT_NE(0u, accessor.InsnsSizeInCodeUnits());
 
-  const DexFile::TryItem *t0, *t1;
-  t0 = dex_->GetTryItems(*code_item, 0);
-  t1 = dex_->GetTryItems(*code_item, 1);
-  EXPECT_LE(t0->start_addr_, t1->start_addr_);
+  const DexFile::TryItem& t0 = accessor.TryItems().begin()[0];
+  const DexFile::TryItem& t1 = accessor.TryItems().begin()[1];
+  EXPECT_LE(t0.start_addr_, t1.start_addr_);
   {
-    CatchHandlerIterator iter(*code_item, 4 /* Dex PC in the first try block */);
+    CatchHandlerIterator iter(accessor, 4 /* Dex PC in the first try block */);
     EXPECT_STREQ("Ljava/io/IOException;", dex_->StringByTypeIdx(iter.GetHandlerTypeIndex()));
     ASSERT_TRUE(iter.HasNext());
     iter.Next();
@@ -152,14 +151,14 @@ TEST_F(ExceptionTest, FindCatchHandler) {
     EXPECT_FALSE(iter.HasNext());
   }
   {
-    CatchHandlerIterator iter(*code_item, 8 /* Dex PC in the second try block */);
+    CatchHandlerIterator iter(accessor, 8 /* Dex PC in the second try block */);
     EXPECT_STREQ("Ljava/io/IOException;", dex_->StringByTypeIdx(iter.GetHandlerTypeIndex()));
     ASSERT_TRUE(iter.HasNext());
     iter.Next();
     EXPECT_FALSE(iter.HasNext());
   }
   {
-    CatchHandlerIterator iter(*code_item, 11 /* Dex PC not in any try block */);
+    CatchHandlerIterator iter(accessor, 11 /* Dex PC not in any try block */);
     EXPECT_FALSE(iter.HasNext());
   }
 }
