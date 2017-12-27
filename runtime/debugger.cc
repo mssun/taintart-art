@@ -40,6 +40,7 @@
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "gc/accounting/card_table-inl.h"
 #include "gc/allocation_record.h"
+#include "gc/gc_cause.h"
 #include "gc/scoped_gc_critical_section.h"
 #include "gc/space/bump_pointer_space-walk-inl.h"
 #include "gc/space/large_object_space.h"
@@ -947,7 +948,7 @@ JDWP::JdwpError Dbg::GetContendedMonitor(JDWP::ObjectId thread_id,
 JDWP::JdwpError Dbg::GetInstanceCounts(const std::vector<JDWP::RefTypeId>& class_ids,
                                        std::vector<uint64_t>* counts) {
   gc::Heap* heap = Runtime::Current()->GetHeap();
-  heap->CollectGarbage(false);
+  heap->CollectGarbage(false, gc::GcCause::kGcCauseDebugger);
   VariableSizedHandleScope hs(Thread::Current());
   std::vector<Handle<mirror::Class>> classes;
   counts->clear();
@@ -968,7 +969,7 @@ JDWP::JdwpError Dbg::GetInstances(JDWP::RefTypeId class_id, int32_t max_count,
                                   std::vector<JDWP::ObjectId>* instances) {
   gc::Heap* heap = Runtime::Current()->GetHeap();
   // We only want reachable instances, so do a GC.
-  heap->CollectGarbage(false);
+  heap->CollectGarbage(false, gc::GcCause::kGcCauseDebugger);
   JDWP::JdwpError error;
   ObjPtr<mirror::Class> c = DecodeClass(class_id, &error);
   if (c == nullptr) {
@@ -990,7 +991,7 @@ JDWP::JdwpError Dbg::GetInstances(JDWP::RefTypeId class_id, int32_t max_count,
 JDWP::JdwpError Dbg::GetReferringObjects(JDWP::ObjectId object_id, int32_t max_count,
                                          std::vector<JDWP::ObjectId>* referring_objects) {
   gc::Heap* heap = Runtime::Current()->GetHeap();
-  heap->CollectGarbage(false);
+  heap->CollectGarbage(false, gc::GcCause::kGcCauseDebugger);
   JDWP::JdwpError error;
   ObjPtr<mirror::Object> o = gRegistry->Get<mirror::Object*>(object_id, &error);
   if (o == nullptr) {
