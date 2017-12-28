@@ -342,7 +342,6 @@ class DexFile {
 
    private:
     ART_FRIEND_TEST(CodeItemAccessorsTest, TestDexInstructionsAccessor);
-    friend class CatchHandlerIterator;
     friend class CodeItemDataAccessor;
     friend class CodeItemDebugInfoAccessor;
     friend class CodeItemInstructionAccessor;
@@ -1465,47 +1464,6 @@ class CallSiteArrayValueIterator : public EncodedArrayValueIterator {
   DISALLOW_IMPLICIT_CONSTRUCTORS(CallSiteArrayValueIterator);
 };
 std::ostream& operator<<(std::ostream& os, const CallSiteArrayValueIterator::ValueType& code);
-
-class CatchHandlerIterator {
- public:
-  CatchHandlerIterator(const DexFile::CodeItem& code_item, uint32_t address);
-
-  CatchHandlerIterator(const DexFile::CodeItem& code_item,
-                       const DexFile::TryItem& try_item);
-
-  explicit CatchHandlerIterator(const uint8_t* handler_data) {
-    Init(handler_data);
-  }
-
-  dex::TypeIndex GetHandlerTypeIndex() const {
-    return handler_.type_idx_;
-  }
-  uint32_t GetHandlerAddress() const {
-    return handler_.address_;
-  }
-  void Next();
-  bool HasNext() const {
-    return remaining_count_ != -1 || catch_all_;
-  }
-  // End of this set of catch blocks, convenience method to locate next set of catch blocks
-  const uint8_t* EndDataPointer() const {
-    CHECK(!HasNext());
-    return current_data_;
-  }
-
- private:
-  void Init(const DexFile::CodeItem& code_item, int32_t offset);
-  void Init(const uint8_t* handler_data);
-
-  struct CatchHandlerItem {
-    dex::TypeIndex type_idx_;  // type index of the caught exception type
-    uint32_t address_;  // handler address
-  } handler_;
-  const uint8_t* current_data_;  // the current handler in dex file.
-  int32_t remaining_count_;   // number of handlers not read.
-  bool catch_all_;            // is there a handler that will catch all exceptions in case
-                              // that all typed handler does not match.
-};
 
 }  // namespace art
 
