@@ -32,6 +32,7 @@
 #include "class_linker.h"
 #include "compiler_callbacks.h"
 #include "dex_file-inl.h"
+#include "dex_file_exception_helpers.h"
 #include "dex_instruction-inl.h"
 #include "dex_instruction_utils.h"
 #include "experimental_flags.h"
@@ -3630,7 +3631,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
     bool has_catch_all_handler = false;
     const DexFile::TryItem* try_item = code_item_accessor_.FindTryItem(work_insn_idx_);
     CHECK(try_item != nullptr);
-    CatchHandlerIterator iterator(code_item_accessor_.GetCatchHandlerData(try_item->handler_off_));
+    CatchHandlerIterator iterator(code_item_accessor_, *try_item);
 
     // Need the linker to try and resolve the handled class to check if it's Throwable.
     ClassLinker* linker = Runtime::Current()->GetClassLinker();
