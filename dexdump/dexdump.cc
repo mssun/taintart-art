@@ -48,6 +48,7 @@
 #include "dex_file-inl.h"
 #include "dex_file_loader.h"
 #include "dex_file_types.h"
+#include "dex_file_exception_helpers.h"
 #include "dex_instruction-inl.h"
 #include "dexdump_cfg.h"
 
@@ -735,7 +736,8 @@ static void dumpInterface(const DexFile* pDexFile, const DexFile::TypeItem& pTyp
  * Dumps the catches table associated with the code.
  */
 static void dumpCatches(const DexFile* pDexFile, const DexFile::CodeItem* pCode) {
-  const u4 triesSize = CodeItemDataAccessor(pDexFile, pCode).TriesSize();
+  CodeItemDataAccessor accessor(pDexFile, pCode);
+  const u4 triesSize = accessor.TriesSize();
 
   // No catch table.
   if (triesSize == 0) {
@@ -745,12 +747,11 @@ static void dumpCatches(const DexFile* pDexFile, const DexFile::CodeItem* pCode)
 
   // Dump all table entries.
   fprintf(gOutFile, "      catches       : %d\n", triesSize);
-  for (u4 i = 0; i < triesSize; i++) {
-    const DexFile::TryItem* pTry = pDexFile->GetTryItems(*pCode, i);
-    const u4 start = pTry->start_addr_;
-    const u4 end = start + pTry->insn_count_;
+  for (const DexFile::TryItem& try_item : accessor.TryItems()) {
+    const u4 start = try_item.start_addr_;
+    const u4 end = start + try_item.insn_count_;
     fprintf(gOutFile, "        0x%04x - 0x%04x\n", start, end);
-    for (CatchHandlerIterator it(*pCode, *pTry); it.HasNext(); it.Next()) {
+    for (CatchHandlerIterator it(accessor, try_item); it.HasNext(); it.Next()) {
       const dex::TypeIndex tidx = it.GetHandlerTypeIndex();
       const char* descriptor = (!tidx.IsValid()) ? "<any>" : pDexFile->StringByTypeIdx(tidx);
       fprintf(gOutFile, "          %s -> 0x%04x\n", descriptor, it.GetHandlerAddress());

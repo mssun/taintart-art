@@ -23,6 +23,7 @@
 #include "dex_ir.h"
 
 #include "code_item_accessors-inl.h"
+#include "dex_file_exception_helpers.h"
 #include "dex_instruction-inl.h"
 #include "dex_ir_builder.h"
 
@@ -610,7 +611,7 @@ CodeItem* Collections::CreateCodeItem(const DexFile& dex_file,
       if (handlers == nullptr) {
         bool catch_all = false;
         TypeAddrPairVector* addr_pairs = new TypeAddrPairVector();
-        for (CatchHandlerIterator it(disk_code_item, disk_try_item); it.HasNext(); it.Next()) {
+        for (CatchHandlerIterator it(accessor, disk_try_item); it.HasNext(); it.Next()) {
           const dex::TypeIndex type_index = it.GetHandlerTypeIndex();
           const TypeId* type_id = GetTypeIdOrNullPtr(type_index.index_);
           catch_all |= type_id == nullptr;

@@ -27,6 +27,7 @@
 
 #include "code_item_accessors-no_art-inl.h"
 #include "dex_file-inl.h"
+#include "dex_file_exception_helpers.h"
 #include "dex_instruction-inl.h"
 
 namespace art {
@@ -38,7 +39,7 @@ static void dumpMethodCFGImpl(const DexFile* dex_file,
   os << "digraph {\n";
   os << "  # /* " << dex_file->PrettyMethod(dex_method_idx, true) << " */\n";
 
-  CodeItemInstructionAccessor accessor(dex_file, code_item);
+  CodeItemDataAccessor accessor(dex_file, code_item);
 
   std::set<uint32_t> dex_pc_is_branch_target;
   {
@@ -195,7 +196,7 @@ static void dumpMethodCFGImpl(const DexFile* dex_file,
           }
 
           // Look at the exceptions of the first entry.
-          CatchHandlerIterator catch_it(*code_item, dex_pc);
+          CatchHandlerIterator catch_it(accessor, dex_pc);
           for (; catch_it.HasNext(); catch_it.Next()) {
             exception_targets.insert(catch_it.GetHandlerAddress());
           }
@@ -254,7 +255,7 @@ static void dumpMethodCFGImpl(const DexFile* dex_file,
         // Exception edges. If this is not the first instruction in the block
         if (block_start_dex_pc != dex_pc) {
           std::set<uint32_t> current_handler_pcs;
-          CatchHandlerIterator catch_it(*code_item, dex_pc);
+          CatchHandlerIterator catch_it(accessor, dex_pc);
           for (; catch_it.HasNext(); catch_it.Next()) {
             current_handler_pcs.insert(catch_it.GetHandlerAddress());
           }
@@ -295,7 +296,7 @@ static void dumpMethodCFGImpl(const DexFile* dex_file,
       const Instruction* inst = &accessor.InstructionAt(dex_pc);
       uint32_t this_node_id = dex_pc_to_incl_id.find(dex_pc)->second;
       while (true) {
-        CatchHandlerIterator catch_it(*code_item, dex_pc);
+        CatchHandlerIterator catch_it(accessor, dex_pc);
         if (catch_it.HasNext()) {
           std::set<uint32_t> handled_targets;
           for (; catch_it.HasNext(); catch_it.Next()) {
