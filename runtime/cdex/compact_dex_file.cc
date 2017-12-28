@@ -46,4 +46,9 @@ bool CompactDexFile::IsVersionValid() const {
   return IsVersionValid(header_->magic_);
 }
 
+bool CompactDexFile::SupportsDefaultMethods() const {
+  return (GetHeader().GetFeatureFlags() &
+      static_cast<uint32_t>(FeatureFlags::kDefaultMethods)) != 0;
+}
+
 }  // namespace art

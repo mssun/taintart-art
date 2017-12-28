@@ -524,7 +524,8 @@ class Header : public Item {
          uint32_t link_size,
          uint32_t link_offset,
          uint32_t data_size,
-         uint32_t data_offset)
+         uint32_t data_offset,
+         bool support_default_methods)
       : Item(0, kHeaderItemSize),
         checksum_(checksum),
         endian_tag_(endian_tag),
@@ -533,7 +534,8 @@ class Header : public Item {
         link_size_(link_size),
         link_offset_(link_offset),
         data_size_(data_size),
-        data_offset_(data_offset) {
+        data_offset_(data_offset),
+        support_default_methods_(support_default_methods) {
     memcpy(magic_, magic, sizeof(magic_));
     memcpy(signature_, signature, sizeof(signature_));
   }
@@ -567,6 +569,10 @@ class Header : public Item {
 
   void Accept(AbstractDispatcher* dispatch) { dispatch->Dispatch(this); }
 
+  bool SupportDefaultMethods() const {
+    return support_default_methods_;
+  }
+
  private:
   uint8_t magic_[8];
   uint32_t checksum_;
@@ -578,6 +584,7 @@ class Header : public Item {
   uint32_t link_offset_;
   uint32_t data_size_;
   uint32_t data_offset_;
+  const bool support_default_methods_;
 
   Collections collections_;
 

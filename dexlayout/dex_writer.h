@@ -91,6 +91,7 @@ class DexWriter {
 
   // Header and id section
   virtual void WriteHeader();
+  virtual size_t GetHeaderSize() const;
   // reserve_only means don't write, only reserve space. This is required since the string data
   // offsets must be assigned.
   uint32_t WriteStringIds(uint32_t offset, bool reserve_only);

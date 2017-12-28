@@ -17,6 +17,7 @@
 #ifndef ART_RUNTIME_CDEX_COMPACT_DEX_FILE_H_
 #define ART_RUNTIME_CDEX_COMPACT_DEX_FILE_H_
 
+#include "base/casts.h"
 #include "dex_file.h"
 
 namespace art {
@@ -27,8 +28,20 @@ class CompactDexFile : public DexFile {
   static constexpr uint8_t kDexMagic[kDexMagicSize] = { 'c', 'd', 'e', 'x' };
   static constexpr uint8_t kDexMagicVersion[] = {'0', '0', '1', '\0'};
 
+  enum class FeatureFlags : uint32_t {
+    kDefaultMethods = 0x1,
+  };
+
   class Header : public DexFile::Header {
-    // Same for now.
+   public:
+    uint32_t GetFeatureFlags() const {
+      return feature_flags_;
+    }
+
+   private:
+    uint32_t feature_flags_ = 0u;
+
+    friend class CompactDexWriter;
   };
 
   struct CodeItem : public DexFile::CodeItem {
@@ -50,6 +63,12 @@ class CompactDexFile : public DexFile {
   // Returns true if the byte string after the magic is the correct value.
   static bool IsVersionValid(const uint8_t* magic);
   virtual bool IsVersionValid() const OVERRIDE;
+
+  const Header& GetHeader() const {
+    return down_cast<const Header&>(DexFile::GetHeader());
+  }
+
+  virtual bool SupportsDefaultMethods() const OVERRIDE;
 
  private:
   // Not supported yet.
