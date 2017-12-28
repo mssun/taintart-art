@@ -328,19 +328,19 @@ struct CmdlineType<std::vector<Plugin>> : CmdlineTypeParser<std::vector<Plugin>>
 };
 
 template <>
-struct CmdlineType<std::list<ti::Agent>> : CmdlineTypeParser<std::list<ti::Agent>> {
+struct CmdlineType<std::list<ti::AgentSpec>> : CmdlineTypeParser<std::list<ti::AgentSpec>> {
   Result Parse(const std::string& args) {
     assert(false && "Use AppendValues() for an Agent list type");
     return Result::Failure("Unconditional failure: Agent list must be appended: " + args);
   }
 
   Result ParseAndAppend(const std::string& args,
-                        std::list<ti::Agent>& existing_value) {
+                        std::list<ti::AgentSpec>& existing_value) {
     existing_value.emplace_back(args);
     return Result::SuccessNoValue();
   }
 
-  static const char* Name() { return "std::list<ti::Agent>"; }
+  static const char* Name() { return "std::list<ti::AgentSpec>"; }
 };
 
 template <>
