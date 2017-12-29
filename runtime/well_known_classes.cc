@@ -81,6 +81,7 @@ jclass WellKnownClasses::libcore_util_EmptyArray;
 jclass WellKnownClasses::org_apache_harmony_dalvik_ddmc_Chunk;
 jclass WellKnownClasses::org_apache_harmony_dalvik_ddmc_DdmServer;
 
+jmethodID WellKnownClasses::dalvik_system_BaseDexClassLoader_getLdLibraryPath;
 jmethodID WellKnownClasses::dalvik_system_VMRuntime_runFinalization;
 jmethodID WellKnownClasses::java_lang_Boolean_valueOf;
 jmethodID WellKnownClasses::java_lang_Byte_valueOf;
@@ -325,6 +326,7 @@ void WellKnownClasses::Init(JNIEnv* env) {
   org_apache_harmony_dalvik_ddmc_Chunk = CacheClass(env, "org/apache/harmony/dalvik/ddmc/Chunk");
   org_apache_harmony_dalvik_ddmc_DdmServer = CacheClass(env, "org/apache/harmony/dalvik/ddmc/DdmServer");
 
+  dalvik_system_BaseDexClassLoader_getLdLibraryPath = CacheMethod(env, dalvik_system_BaseDexClassLoader, false, "getLdLibraryPath", "()Ljava/lang/String;");
   dalvik_system_VMRuntime_runFinalization = CacheMethod(env, dalvik_system_VMRuntime, true, "runFinalization", "(J)V");
   java_lang_ClassNotFoundException_init = CacheMethod(env, java_lang_ClassNotFoundException, false, "<init>", "(Ljava/lang/String;Ljava/lang/Throwable;)V");
   java_lang_ClassLoader_loadClass = CacheMethod(env, java_lang_ClassLoader, false, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
@@ -406,7 +408,7 @@ void WellKnownClasses::LateInit(JNIEnv* env) {
   // to make sure these JNI methods are available.
   java_lang_Runtime_nativeLoad =
       CacheMethod(env, java_lang_Runtime.get(), true, "nativeLoad",
-                  "(Ljava/lang/String;Ljava/lang/ClassLoader;Ljava/lang/String;)"
+                  "(Ljava/lang/String;Ljava/lang/ClassLoader;)"
                       "Ljava/lang/String;");
   java_lang_reflect_Proxy_invoke =
     CacheMethod(env, java_lang_reflect_Proxy, true, "invoke",
@@ -465,6 +467,7 @@ void WellKnownClasses::Clear() {
   org_apache_harmony_dalvik_ddmc_Chunk = nullptr;
   org_apache_harmony_dalvik_ddmc_DdmServer = nullptr;
 
+  dalvik_system_BaseDexClassLoader_getLdLibraryPath = nullptr;
   dalvik_system_VMRuntime_runFinalization = nullptr;
   java_lang_Boolean_valueOf = nullptr;
   java_lang_Byte_valueOf = nullptr;

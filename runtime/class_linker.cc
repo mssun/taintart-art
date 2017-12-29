@@ -8706,9 +8706,9 @@ const char* ClassLinker::GetClassRootDescriptor(ClassRoot class_root) {
 }
 
 jobject ClassLinker::CreateWellKnownClassLoader(Thread* self,
-                                               const std::vector<const DexFile*>& dex_files,
-                                               jclass loader_class,
-                                               jobject parent_loader) {
+                                                const std::vector<const DexFile*>& dex_files,
+                                                jclass loader_class,
+                                                jobject parent_loader) {
   CHECK(self->GetJniEnv()->IsSameObject(loader_class,
                                         WellKnownClasses::dalvik_system_PathClassLoader) ||
         self->GetJniEnv()->IsSameObject(loader_class,
@@ -8784,6 +8784,29 @@ jobject ClassLinker::CreateWellKnownClassLoader(Thread* self,
   DCHECK(h_dex_path_list != nullptr);
   // Set elements.
   dex_elements_field->SetObject<false>(h_dex_path_list.Get(), h_dex_elements.Get());
+  // Create an empty List for the "nativeLibraryDirectories," required for native tests.
+  // Note: this code is uncommon(oatdump)/testing-only, so don't add further WellKnownClasses
+  //       elements.
+  {
+    ArtField* native_lib_dirs = dex_elements_field->GetDeclaringClass()->
+        FindDeclaredInstanceField("nativeLibraryDirectories", "Ljava/util/List;");
+    DCHECK(native_lib_dirs != nullptr);
+    ObjPtr<mirror::Class> list_class = FindSystemClass(self, "Ljava/util/ArrayList;");
+    DCHECK(list_class != nullptr);
+    {
+      StackHandleScope<1> h_list_scope(self);
+      Handle<mirror::Class> h_list_class(h_list_scope.NewHandle<mirror::Class>(list_class));
+      bool list_init = EnsureInitialized(self, h_list_class, true, true);
+      DCHECK(list_init);
+      list_class = h_list_class.Get();
+    }
+    ObjPtr<mirror::Object> list_object = list_class->AllocObject(self);
+    // Note: we leave the object uninitialized. This must never leak into any non-testing code, but
+    //       is fine for testing. While it violates a Java-code invariant (the elementData field is
+    //       normally never null), as long as one does not try to add elements, this will still
+    //       work.
+    native_lib_dirs->SetObject<false>(h_dex_path_list.Get(), list_object);
+  }
 
   // Create the class loader..
   Handle<mirror::Class> h_loader_class = hs.NewHandle(soa.Decode<mirror::Class>(loader_class));

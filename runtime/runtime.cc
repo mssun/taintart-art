@@ -1614,7 +1614,7 @@ void Runtime::InitNativeMethods() {
   // libcore can't because it's the library that implements System.loadLibrary!
   {
     std::string error_msg;
-    if (!java_vm_->LoadNativeLibrary(env, "libjavacore.so", nullptr, nullptr, &error_msg)) {
+    if (!java_vm_->LoadNativeLibrary(env, "libjavacore.so", nullptr, &error_msg)) {
       LOG(FATAL) << "LoadNativeLibrary failed for \"libjavacore.so\": " << error_msg;
     }
   }
@@ -1623,7 +1623,7 @@ void Runtime::InitNativeMethods() {
                                                 ? "libopenjdkd.so"
                                                 : "libopenjdk.so";
     std::string error_msg;
-    if (!java_vm_->LoadNativeLibrary(env, kOpenJdkLibrary, nullptr, nullptr, &error_msg)) {
+    if (!java_vm_->LoadNativeLibrary(env, kOpenJdkLibrary, nullptr, &error_msg)) {
       LOG(FATAL) << "LoadNativeLibrary failed for \"" << kOpenJdkLibrary << "\": " << error_msg;
     }
   }
