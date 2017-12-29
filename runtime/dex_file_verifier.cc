@@ -23,6 +23,7 @@
 
 #include "android-base/stringprintf.h"
 
+#include "code_item_accessors-no_art-inl.h"
 #include "dex_file-inl.h"
 #include "experimental_flags.h"
 #include "leb128.h"
@@ -572,7 +573,8 @@ uint32_t DexFileVerifier::ReadUnsignedLittleEndian(uint32_t size) {
 
 bool DexFileVerifier::CheckAndGetHandlerOffsets(const DexFile::CodeItem* code_item,
                                                 uint32_t* handler_offsets, uint32_t handlers_size) {
-  const uint8_t* handlers_base = DexFile::GetCatchHandlerData(*code_item, 0);
+  CodeItemDataAccessor accessor(dex_file_, code_item);
+  const uint8_t* handlers_base = accessor.GetCatchHandlerData();
 
   for (uint32_t i = 0; i < handlers_size; i++) {
     bool catch_all;
@@ -600,7 +602,7 @@ bool DexFileVerifier::CheckAndGetHandlerOffsets(const DexFile::CodeItem* code_it
       }
 
       DECODE_UNSIGNED_CHECKED_FROM(ptr_, addr);
-      if (UNLIKELY(addr >= code_item->insns_size_in_code_units_)) {
+      if (UNLIKELY(addr >= accessor.InsnsSizeInCodeUnits())) {
         ErrorStringPrintf("Invalid handler addr: %x", addr);
         return false;
       }
@@ -608,7 +610,7 @@ bool DexFileVerifier::CheckAndGetHandlerOffsets(const DexFile::CodeItem* code_it
 
     if (catch_all) {
       DECODE_UNSIGNED_CHECKED_FROM(ptr_, addr);
-      if (UNLIKELY(addr >= code_item->insns_size_in_code_units_)) {
+      if (UNLIKELY(addr >= accessor.InsnsSizeInCodeUnits())) {
         ErrorStringPrintf("Invalid handler catch_all_addr: %x", addr);
         return false;
       }
@@ -1224,14 +1226,14 @@ bool DexFileVerifier::CheckIntraCodeItem() {
     return false;
   }
 
-  if (UNLIKELY(code_item->ins_size_ > code_item->registers_size_)) {
+  CodeItemDataAccessor accessor(dex_file_, code_item);
+  if (UNLIKELY(accessor.InsSize() > accessor.RegistersSize())) {
     ErrorStringPrintf("ins_size (%ud) > registers_size (%ud)",
-                      code_item->ins_size_, code_item->registers_size_);
+                      accessor.InsSize(), accessor.RegistersSize());
     return false;
   }
 
-  if (UNLIKELY((code_item->outs_size_ > 5) &&
-               (code_item->outs_size_ > code_item->registers_size_))) {
+  if (UNLIKELY(accessor.OutsSize() > 5 && accessor.OutsSize() > accessor.RegistersSize())) {
     /*
      * outs_size can be up to 5, even if registers_size is smaller, since the
      * short forms of method invocation allow repetitions of a register multiple
@@ -1239,18 +1241,18 @@ bool DexFileVerifier::CheckIntraCodeItem() {
      * need to be represented in-order in the register file.
      */
     ErrorStringPrintf("outs_size (%ud) > registers_size (%ud)",
-                      code_item->outs_size_, code_item->registers_size_);
+                      accessor.OutsSize(), accessor.RegistersSize());
     return false;
   }
 
-  const uint16_t* insns = code_item->insns_;
-  uint32_t insns_size = code_item->insns_size_in_code_units_;
+  const uint16_t* insns = accessor.Insns();
+  uint32_t insns_size = accessor.InsnsSizeInCodeUnits();
   if (!CheckListSize(insns, insns_size, sizeof(uint16_t), "insns size")) {
     return false;
   }
 
   // Grab the end of the insns if there are no try_items.
-  uint32_t try_items_size = code_item->tries_size_;
+  uint32_t try_items_size = accessor.TriesSize();
   if (try_items_size == 0) {
     ptr_ = reinterpret_cast<const uint8_t*>(&insns[insns_size]);
     return true;
@@ -1262,12 +1264,12 @@ bool DexFileVerifier::CheckIntraCodeItem() {
     return false;
   }
 
-  const DexFile::TryItem* try_items = DexFile::GetTryItems(*code_item, 0);
+  const DexFile::TryItem* try_items = accessor.TryItems().begin();
   if (!CheckListSize(try_items, try_items_size, sizeof(DexFile::TryItem), "try_items size")) {
     return false;
   }
 
-  ptr_ = DexFile::GetCatchHandlerData(*code_item, 0);
+  ptr_ = accessor.GetCatchHandlerData();
   DECODE_UNSIGNED_CHECKED_FROM(ptr_, handlers_size);
 
   if (UNLIKELY((handlers_size == 0) || (handlers_size >= 65536))) {
