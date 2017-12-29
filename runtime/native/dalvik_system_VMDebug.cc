@@ -548,7 +548,7 @@ static jobjectArray VMDebug_getRuntimeStatsInternal(JNIEnv* env, jclass) {
   return result;
 }
 
-static void VMDebug_attachAgent(JNIEnv* env, jclass, jstring agent) {
+static void VMDebug_nativeAttachAgent(JNIEnv* env, jclass, jstring agent, jobject classloader) {
   if (agent == nullptr) {
     ScopedObjectAccess soa(env);
     ThrowNullPointerException("agent is null");
@@ -570,7 +570,7 @@ static void VMDebug_attachAgent(JNIEnv* env, jclass, jstring agent) {
     filename = chars.c_str();
   }
 
-  Runtime::Current()->AttachAgent(filename);
+  Runtime::Current()->AttachAgent(env, filename, classloader);
 }
 
 static JNINativeMethod gMethods[] = {
@@ -607,7 +607,7 @@ static JNINativeMethod gMethods[] = {
   FAST_NATIVE_METHOD(VMDebug, threadCpuTimeNanos, "()J"),
   NATIVE_METHOD(VMDebug, getRuntimeStatInternal, "(I)Ljava/lang/String;"),
   NATIVE_METHOD(VMDebug, getRuntimeStatsInternal, "()[Ljava/lang/String;"),
-  NATIVE_METHOD(VMDebug, attachAgent, "(Ljava/lang/String;)V"),
+  NATIVE_METHOD(VMDebug, nativeAttachAgent, "(Ljava/lang/String;Ljava/lang/ClassLoader;)V"),
 };
 
 void register_dalvik_system_VMDebug(JNIEnv* env) {
