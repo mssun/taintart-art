@@ -50,6 +50,12 @@
   invoke-static {v0}, LMain;->test(Ljava/lang/String;)V
   const-string v0, "Unresolved"
   invoke-static {v0}, LMain;->test(Ljava/lang/String;)V
+  const-string v0, "VarHandleHappyAccessors"
+  invoke-static {v0}, LMain;->test(Ljava/lang/String;)V
+  const-string v0, "VarHandleUnhappyAccessors"
+  invoke-static {v0}, LMain;->test(Ljava/lang/String;)V
+const-string v0, "VarHandleUnknownAccessor"
+  invoke-static {v0}, LMain;->test(Ljava/lang/String;)V
   return-void
 .end method
 
