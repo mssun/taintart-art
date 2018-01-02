@@ -702,6 +702,7 @@ void CompilerDriver::Resolve(jobject class_loader,
 //       stable order.
 
 static void ResolveConstStrings(Handle<mirror::DexCache> dex_cache,
+                                const DexFile* dex_file,
                                 const DexFile::CodeItem* code_item)
       REQUIRES_SHARED(Locks::mutator_lock_) {
   if (code_item == nullptr) {
@@ -710,7 +711,7 @@ static void ResolveConstStrings(Handle<mirror::DexCache> dex_cache,
   }
 
   ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
-  for (const DexInstructionPcPair& inst : code_item->Instructions()) {
+  for (const DexInstructionPcPair& inst : CodeItemInstructionAccessor(dex_file, code_item)) {
     switch (inst->Opcode()) {
       case Instruction::CONST_STRING:
       case Instruction::CONST_STRING_JUMBO: {
@@ -772,7 +773,7 @@ static void ResolveConstStrings(CompilerDriver* driver,
           continue;
         }
         previous_method_idx = method_idx;
-        ResolveConstStrings(dex_cache, it.GetMethodCodeItem());
+        ResolveConstStrings(dex_cache, dex_file, it.GetMethodCodeItem());
         it.Next();
       }
       DCHECK(!it.HasNext());
@@ -2352,9 +2353,7 @@ class InitializeClassVisitor : public CompilationVisitor {
     // Intern strings seen in <clinit>.
     ArtMethod* clinit = klass->FindClassInitializer(class_linker->GetImagePointerSize());
     if (clinit != nullptr) {
-      const DexFile::CodeItem* code_item = clinit->GetCodeItem();
-      DCHECK(code_item != nullptr);
-      for (const DexInstructionPcPair& inst : code_item->Instructions()) {
+      for (const DexInstructionPcPair& inst : clinit->DexInstructions()) {
         if (inst->Opcode() == Instruction::CONST_STRING) {
           ObjPtr<mirror::String> s = class_linker->ResolveString(
               dex::StringIndex(inst->VRegB_21c()), dex_cache);

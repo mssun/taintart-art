@@ -86,17 +86,17 @@ TEST(CodeItemAccessorsTest, TestDexInstructionsAccessor) {
     EXPECT_EQ(data_accessor.TriesSize(), kTriesSize);
   };
 
-  uint8_t buffer1[sizeof(CompactDexFile::CodeItem) + kInsnsSizeInCodeUnits * sizeof(uint16_t)] = {};
-  CompactDexFile::CodeItem* dex_code_item = reinterpret_cast<CompactDexFile::CodeItem*>(buffer1);
+  StandardDexFile::CodeItem* dex_code_item =
+      reinterpret_cast<StandardDexFile::CodeItem*>(const_cast<uint8_t*>(standard_dex->Begin()));
   dex_code_item->registers_size_ = kRegisterSize;
   dex_code_item->ins_size_ = kInsSize;
   dex_code_item->outs_size_ = kOutsSize;
   dex_code_item->tries_size_ = kTriesSize;
   dex_code_item->insns_size_in_code_units_ = kInsnsSizeInCodeUnits;
-  verify_code_item(compact_dex.get(), dex_code_item, dex_code_item->insns_);
+  verify_code_item(standard_dex.get(), dex_code_item, dex_code_item->insns_);
 
-  uint8_t buffer2[sizeof(CompactDexFile::CodeItem) + kInsnsSizeInCodeUnits * sizeof(uint16_t)] = {};
-  CompactDexFile::CodeItem* cdex_code_item = reinterpret_cast<CompactDexFile::CodeItem*>(buffer2);
+  CompactDexFile::CodeItem* cdex_code_item =
+      reinterpret_cast<CompactDexFile::CodeItem*>(const_cast<uint8_t*>(compact_dex->Begin()));
   cdex_code_item->registers_size_ = kRegisterSize;
   cdex_code_item->ins_size_ = kInsSize;
   cdex_code_item->outs_size_ = kOutsSize;
