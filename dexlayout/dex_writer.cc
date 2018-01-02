@@ -780,7 +780,7 @@ void DexWriter::WriteHeader() {
   header.checksum_ = header_->Checksum();
   std::copy_n(header_->Signature(), DexFile::kSha1DigestSize, header.signature_);
   header.file_size_ = header_->FileSize();
-  header.header_size_ = header_->GetSize();
+  header.header_size_ = GetHeaderSize();
   header.endian_tag_ = header_->EndianTag();
   header.link_size_ = header_->LinkSize();
   header.link_off_ = header_->LinkOffset();
@@ -801,13 +801,18 @@ void DexWriter::WriteHeader() {
   header.data_size_ = header_->DataSize();
   header.data_off_ = header_->DataOffset();
 
+  CHECK_EQ(sizeof(header), GetHeaderSize());
   static_assert(sizeof(header) == 0x70, "Size doesn't match dex spec");
   UNUSED(Write(reinterpret_cast<uint8_t*>(&header), sizeof(header), 0u));
 }
 
+size_t DexWriter::GetHeaderSize() const {
+  return sizeof(StandardDexFile::Header);
+}
+
 void DexWriter::WriteMemMap() {
   // Starting offset is right after the header.
-  uint32_t offset = sizeof(StandardDexFile::Header);
+  uint32_t offset = GetHeaderSize();
 
   dex_ir::Collections& collection = header_->GetCollections();
 

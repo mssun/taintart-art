@@ -37,7 +37,8 @@ Header* DexIrBuilder(const DexFile& dex_file, bool eagerly_assign_offsets) {
                               disk_header.link_size_,
                               disk_header.link_off_,
                               disk_header.data_size_,
-                              disk_header.data_off_);
+                              disk_header.data_off_,
+                              dex_file.SupportsDefaultMethods());
   Collections& collections = header->GetCollections();
   collections.SetEagerlyAssignOffsets(eagerly_assign_offsets);
   // Walk the rest of the header fields.

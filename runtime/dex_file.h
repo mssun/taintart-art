@@ -69,8 +69,6 @@ class DexFile {
   static constexpr size_t kDexMagicSize = 4;
   static constexpr size_t kDexVersionLen = 4;
 
-  // First Dex format version supporting default methods.
-  static const uint32_t kDefaultMethodsVersion = 37;
   // First Dex format version enforcing class definition ordering rules.
   static const uint32_t kClassDefinitionOrderEnforcedVersion = 37;
 
@@ -481,7 +479,7 @@ class DexFile {
   }
 
   // Decode the dex magic version
-  uint32_t GetVersion() const {
+  uint32_t GetDexVersion() const {
     return GetHeader().GetVersion();
   }
 
@@ -490,6 +488,9 @@ class DexFile {
 
   // Returns true if the byte string after the magic is the correct value.
   virtual bool IsVersionValid() const = 0;
+
+  // Returns true if the dex file supports default methods.
+  virtual bool SupportsDefaultMethods() const = 0;
 
   // Returns the number of string identifiers in the .dex file.
   size_t NumStringIds() const {
@@ -1044,6 +1045,9 @@ class DexFile {
   ALWAYS_INLINE const CompactDexFile* AsCompactDexFile() const;
 
  protected:
+  // First Dex format version supporting default methods.
+  static const uint32_t kDefaultMethodsVersion = 37;
+
   DexFile(const uint8_t* base,
           size_t size,
           const std::string& location,
