@@ -24,10 +24,6 @@ namespace art {
 constexpr size_t BitString::kBitSizeAtPosition[BitString::kCapacity];
 constexpr size_t BitString::kCapacity;
 
-};  // namespace art
-
-using namespace art;  // NOLINT
-
 struct MockClass {
   explicit MockClass(MockClass* parent, size_t x = 0, size_t y = 0) {
     parent_ = parent;
@@ -1061,3 +1057,5 @@ TEST_F(SubtypeCheckTest, EnsureInitialized_TooWide_TooDeep) {
 }
 
 // TODO: add dcheck for child-parent invariants (e.g. child < parent.next) and death tests
+
+}  // namespace art
