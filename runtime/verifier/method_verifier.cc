@@ -836,7 +836,7 @@ bool MethodVerifier::Verify() {
           return false;
         } else {
           uint32_t access_flag_options = kAccPublic;
-          if (dex_file_->GetVersion() >= DexFile::kDefaultMethodsVersion) {
+          if (dex_file_->SupportsDefaultMethods()) {
             access_flag_options |= kAccPrivate;
           }
           if (!(method_access_flags_ & access_flag_options)) {
@@ -3965,10 +3965,10 @@ ArtMethod* MethodVerifier::ResolveMethodAndCheckAccess(
   //       while this check implies an IncompatibleClassChangeError.
   if (klass->IsInterface()) {
     // methods called on interfaces should be invoke-interface, invoke-super, invoke-direct (if
-    // dex file version is 37 or greater), or invoke-static.
+    // default methods are supported for the dex file), or invoke-static.
     if (method_type != METHOD_INTERFACE &&
         method_type != METHOD_STATIC &&
-        ((dex_file_->GetVersion() < DexFile::kDefaultMethodsVersion) ||
+        (!dex_file_->SupportsDefaultMethods() ||
          method_type != METHOD_DIRECT) &&
         method_type != METHOD_SUPER) {
       Fail(VERIFY_ERROR_CLASS_CHANGE)

@@ -127,10 +127,6 @@ class MethodVerifier {
     return *dex_file_;
   }
 
-  uint32_t DexFileVersion() const {
-    return dex_file_->GetVersion();
-  }
-
   RegTypeCache* GetRegTypeCache() {
     return &reg_types_;
   }
