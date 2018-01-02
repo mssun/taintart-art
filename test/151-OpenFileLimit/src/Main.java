@@ -55,8 +55,11 @@ public class Main {
             System.out.println(e.getMessage());
         }
 
-        for (int i = 0; i < files.size(); i++) {
+        for (int i = 0; i < streams.size(); i++) {
           streams.get(i).close();
+        }
+
+        for (int i = 0; i < files.size(); i++) {
           files.get(i).delete();
         }
         System.out.println("done.");
