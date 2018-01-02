@@ -26,6 +26,7 @@ namespace art {
 template<class T> class Handle;
 struct VarHandleOffsets;
 struct FieldVarHandleOffsets;
+struct ArrayElementVarHandleOffsets;
 struct ByteArrayViewVarHandleOffsets;
 struct ByteBufferViewVarHandleOffsets;
 
