@@ -19,6 +19,7 @@ package art;
 import java.util.Arrays;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
+import java.util.concurrent.Semaphore;
 
 public class Test1941 {
   public static final boolean PRINT_CNT = false;
@@ -41,7 +42,8 @@ public class Test1941 {
     // Don't bother actually doing anything.
   }
 
-  public static void LoopAllocFreeEnv() {
+  public static void LoopAllocFreeEnv(Semaphore sem) {
+    sem.release();
     while (!Thread.interrupted()) {
       CNT++;
       long env = AllocEnv();
@@ -52,18 +54,25 @@ public class Test1941 {
   public static native long AllocEnv();
   public static native void FreeEnv(long env);
 
+  public static native void setTracingOn(Thread thr, boolean enable);
+
   public static void run() throws Exception {
-    Thread thr = new Thread(Test1941::LoopAllocFreeEnv, "LoopNative");
+    final Semaphore sem = new Semaphore(0);
+    Thread thr = new Thread(() -> { LoopAllocFreeEnv(sem); }, "LoopNative");
     thr.start();
+    // Make sure the other thread is actually started.
+    sem.acquire();
     Trace.enableSingleStepTracing(Test1941.class,
         Test1941.class.getDeclaredMethod(
             "notifySingleStep", Thread.class, Executable.class, Long.TYPE),
-        null);
+        thr);
+    setTracingOn(Thread.currentThread(), true);
 
     System.out.println("fib(20) is " + fib(20));
 
     thr.interrupt();
     thr.join();
+    setTracingOn(Thread.currentThread(), false);
     Trace.disableTracing(null);
     if (PRINT_CNT) {
       System.out.println("Number of envs created/destroyed: " + CNT);

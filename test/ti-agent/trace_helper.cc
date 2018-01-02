@@ -27,6 +27,49 @@ namespace art {
 
 namespace common_trace {
 
+static bool IsInCallback(JNIEnv* env, jvmtiEnv *jvmti, jthread thr) {
+  void* data;
+  ScopedLocalRef<jthrowable> exc(env, env->ExceptionOccurred());
+  env->ExceptionClear();
+  jvmti->GetThreadLocalStorage(thr, &data);
+  if (exc.get() != nullptr) {
+    env->Throw(exc.get());
+  }
+  if (data == nullptr) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
+static void SetInCallback(JNIEnv* env, jvmtiEnv *jvmti, jthread thr, bool val) {
+  ScopedLocalRef<jthrowable> exc(env, env->ExceptionOccurred());
+  env->ExceptionClear();
+  jvmti->SetThreadLocalStorage(thr, (val ? reinterpret_cast<void*>(0x1)
+                                         : reinterpret_cast<void*>(0x0)));
+  if (exc.get() != nullptr) {
+    env->Throw(exc.get());
+  }
+}
+
+class ScopedCallbackState {
+ public:
+  ScopedCallbackState(JNIEnv* jnienv, jvmtiEnv* env, jthread thr)
+      : jnienv_(jnienv), env_(env), thr_(thr) {
+    CHECK(!IsInCallback(jnienv_, env_, thr_));
+    SetInCallback(jnienv_, env_, thr_, true);
+  }
+  ~ScopedCallbackState() {
+    CHECK(IsInCallback(jnienv_, env_, thr_));
+    SetInCallback(jnienv_, env_, thr_, false);
+  }
+
+ private:
+  JNIEnv* jnienv_;
+  jvmtiEnv* env_;
+  jthread thr_;
+};
+
 struct TraceData {
   jclass test_klass;
   jmethodID enter_method;
@@ -36,7 +79,6 @@ struct TraceData {
   jmethodID single_step;
   jmethodID thread_start;
   jmethodID thread_end;
-  bool in_callback;
   bool access_watch_on_load;
   bool modify_watch_on_load;
   jrawMonitorID trace_mon;
@@ -94,7 +136,7 @@ static void singleStepCB(jvmtiEnv* jvmti,
                             jvmti->GetEnvironmentLocalStorage(reinterpret_cast<void**>(&data)))) {
     return;
   }
-  if (data->in_callback) {
+  if (IsInCallback(jnienv, jvmti, thread)) {
     return;
   }
   ScopedLocalRef<jclass> klass(jnienv, data->GetTestClass(jvmti, jnienv));
@@ -102,7 +144,7 @@ static void singleStepCB(jvmtiEnv* jvmti,
     return;
   }
   CHECK(data->single_step != nullptr);
-  data->in_callback = true;
+  ScopedCallbackState st(jnienv, jvmti, thread);
   jobject method_arg = GetJavaMethod(jvmti, jnienv, method);
   jnienv->CallStaticVoidMethod(klass.get(),
                                data->single_step,
@@ -110,12 +152,11 @@ static void singleStepCB(jvmtiEnv* jvmti,
                                method_arg,
                                static_cast<jlong>(location));
   jnienv->DeleteLocalRef(method_arg);
-  data->in_callback = false;
 }
 
 static void fieldAccessCB(jvmtiEnv* jvmti,
                           JNIEnv* jnienv,
-                          jthread thr ATTRIBUTE_UNUSED,
+                          jthread thr,
                           jmethodID method,
                           jlocation location,
                           jclass field_klass,
@@ -126,7 +167,7 @@ static void fieldAccessCB(jvmtiEnv* jvmti,
                             jvmti->GetEnvironmentLocalStorage(reinterpret_cast<void**>(&data)))) {
     return;
   }
-  if (data->in_callback) {
+  if (IsInCallback(jnienv, jvmti, thr)) {
     // Don't do callback for either of these to prevent an infinite loop.
     return;
   }
@@ -135,7 +176,7 @@ static void fieldAccessCB(jvmtiEnv* jvmti,
     return;
   }
   CHECK(data->field_access != nullptr);
-  data->in_callback = true;
+  ScopedCallbackState st(jnienv, jvmti, thr);
   jobject method_arg = GetJavaMethod(jvmti, jnienv, method);
   jobject field_arg = GetJavaField(jvmti, jnienv, field_klass, field);
   jnienv->CallStaticVoidMethod(klass.get(),
@@ -147,12 +188,11 @@ static void fieldAccessCB(jvmtiEnv* jvmti,
                                field_arg);
   jnienv->DeleteLocalRef(method_arg);
   jnienv->DeleteLocalRef(field_arg);
-  data->in_callback = false;
 }
 
 static void fieldModificationCB(jvmtiEnv* jvmti,
                                 JNIEnv* jnienv,
-                                jthread thr ATTRIBUTE_UNUSED,
+                                jthread thr,
                                 jmethodID method,
                                 jlocation location,
                                 jclass field_klass,
@@ -165,7 +205,7 @@ static void fieldModificationCB(jvmtiEnv* jvmti,
                             jvmti->GetEnvironmentLocalStorage(reinterpret_cast<void**>(&data)))) {
     return;
   }
-  if (data->in_callback) {
+  if (IsInCallback(jnienv, jvmti, thr)) {
     // Don't do callback recursively to prevent an infinite loop.
     return;
   }
@@ -174,12 +214,11 @@ static void fieldModificationCB(jvmtiEnv* jvmti,
     return;
   }
   CHECK(data->field_modify != nullptr);
-  data->in_callback = true;
+  ScopedCallbackState st(jnienv, jvmti, thr);
   jobject method_arg = GetJavaMethod(jvmti, jnienv, method);
   jobject field_arg = GetJavaField(jvmti, jnienv, field_klass, field);
   jobject value = GetJavaValueByType(jnienv, type_char, new_value);
   if (jnienv->ExceptionCheck()) {
-    data->in_callback = false;
     jnienv->DeleteLocalRef(method_arg);
     jnienv->DeleteLocalRef(field_arg);
     return;
@@ -194,12 +233,11 @@ static void fieldModificationCB(jvmtiEnv* jvmti,
                                value);
   jnienv->DeleteLocalRef(method_arg);
   jnienv->DeleteLocalRef(field_arg);
-  data->in_callback = false;
 }
 
 static void methodExitCB(jvmtiEnv* jvmti,
                          JNIEnv* jnienv,
-                         jthread thr ATTRIBUTE_UNUSED,
+                         jthread thr,
                          jmethodID method,
                          jboolean was_popped_by_exception,
                          jvalue return_value) {
@@ -208,7 +246,9 @@ static void methodExitCB(jvmtiEnv* jvmti,
                             jvmti->GetEnvironmentLocalStorage(reinterpret_cast<void**>(&data)))) {
     return;
   }
-  if (method == data->exit_method || method == data->enter_method || data->in_callback) {
+  if (method == data->exit_method ||
+      method == data->enter_method ||
+      IsInCallback(jnienv, jvmti, thr)) {
     // Don't do callback for either of these to prevent an infinite loop.
     return;
   }
@@ -217,12 +257,11 @@ static void methodExitCB(jvmtiEnv* jvmti,
     return;
   }
   CHECK(data->exit_method != nullptr);
-  data->in_callback = true;
+  ScopedCallbackState st(jnienv, jvmti, thr);
   jobject method_arg = GetJavaMethod(jvmti, jnienv, method);
   jobject result =
       was_popped_by_exception ? nullptr : GetJavaValue(jvmti, jnienv, method, return_value);
   if (jnienv->ExceptionCheck()) {
-    data->in_callback = false;
     return;
   }
   jnienv->CallStaticVoidMethod(klass.get(),
@@ -231,12 +270,11 @@ static void methodExitCB(jvmtiEnv* jvmti,
                                was_popped_by_exception,
                                result);
   jnienv->DeleteLocalRef(method_arg);
-  data->in_callback = false;
 }
 
 static void methodEntryCB(jvmtiEnv* jvmti,
                           JNIEnv* jnienv,
-                          jthread thr ATTRIBUTE_UNUSED,
+                          jthread thr,
                           jmethodID method) {
   TraceData* data = nullptr;
   if (JvmtiErrorToException(jnienv, jvmti,
@@ -244,7 +282,9 @@ static void methodEntryCB(jvmtiEnv* jvmti,
     return;
   }
   CHECK(data->enter_method != nullptr);
-  if (method == data->exit_method || method == data->enter_method || data->in_callback) {
+  if (method == data->exit_method ||
+      method == data->enter_method ||
+      IsInCallback(jnienv, jvmti, thr)) {
     // Don't do callback for either of these to prevent an infinite loop.
     return;
   }
@@ -252,14 +292,13 @@ static void methodEntryCB(jvmtiEnv* jvmti,
   if (klass.get() == nullptr) {
     return;
   }
-  data->in_callback = true;
+  ScopedCallbackState st(jnienv, jvmti, thr);
   jobject method_arg = GetJavaMethod(jvmti, jnienv, method);
   if (jnienv->ExceptionCheck()) {
     return;
   }
   jnienv->CallStaticVoidMethod(klass.get(), data->enter_method, method_arg);
   jnienv->DeleteLocalRef(method_arg);
-  data->in_callback = false;
 }
 
 static void classPrepareCB(jvmtiEnv* jvmti,
@@ -459,7 +498,6 @@ extern "C" JNIEXPORT void JNICALL Java_art_Trace_enableTracing2(
   data->single_step = single_step != nullptr ? env->FromReflectedMethod(single_step) : nullptr;
   data->thread_start = thread_start != nullptr ? env->FromReflectedMethod(thread_start) : nullptr;
   data->thread_end = thread_end != nullptr ? env->FromReflectedMethod(thread_end) : nullptr;
-  data->in_callback = false;
 
   TraceData* old_data = nullptr;
   if (JvmtiErrorToException(env, jvmti_env,
