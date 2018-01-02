@@ -35,6 +35,8 @@ class CompactDexWriter : public DexWriter {
  protected:
   void WriteHeader() OVERRIDE;
 
+  size_t GetHeaderSize() const OVERRIDE;
+
   const CompactDexLevel compact_dex_level_;
 
  private:
