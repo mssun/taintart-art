@@ -30,6 +30,17 @@
 namespace art {
 namespace Test1941DisposeStress {
 
+extern "C" JNIEXPORT void JNICALL Java_art_Test1941_setTracingOn(JNIEnv* env,
+                                                                 jclass,
+                                                                 jthread thr,
+                                                                 jboolean enable) {
+  JvmtiErrorToException(env,
+                        jvmti_env,
+                        jvmti_env->SetEventNotificationMode(enable ? JVMTI_ENABLE : JVMTI_DISABLE,
+                                                            JVMTI_EVENT_SINGLE_STEP,
+                                                            thr));
+}
+
 extern "C" JNIEXPORT jlong JNICALL Java_art_Test1941_AllocEnv(JNIEnv* env, jclass) {
   JavaVM* vm = nullptr;
   if (env->GetJavaVM(&vm) != 0) {
