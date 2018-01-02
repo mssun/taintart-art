@@ -795,6 +795,12 @@ struct FieldVarHandleOffsets : public CheckOffsets<mirror::FieldVarHandle> {
   }
 };
 
+struct ArrayElementVarHandleOffsets : public CheckOffsets<mirror::ArrayElementVarHandle> {
+  ArrayElementVarHandleOffsets() : CheckOffsets<mirror::ArrayElementVarHandle>(
+      false, "Ljava/lang/invoke/ArrayElementVarHandle;") {
+  }
+};
+
 struct ByteArrayViewVarHandleOffsets : public CheckOffsets<mirror::ByteArrayViewVarHandle> {
   ByteArrayViewVarHandleOffsets() : CheckOffsets<mirror::ByteArrayViewVarHandle>(
       false, "Ljava/lang/invoke/ByteArrayViewVarHandle;") {
@@ -838,6 +844,7 @@ TEST_F(ClassLinkerTest, ValidateFieldOrderOfJavaCppUnionClasses) {
   EXPECT_TRUE(CallSiteOffsets().Check());
   EXPECT_TRUE(VarHandleOffsets().Check());
   EXPECT_TRUE(FieldVarHandleOffsets().Check());
+  EXPECT_TRUE(ArrayElementVarHandleOffsets().Check());
   EXPECT_TRUE(ByteArrayViewVarHandleOffsets().Check());
   EXPECT_TRUE(ByteBufferViewVarHandleOffsets().Check());
 }
