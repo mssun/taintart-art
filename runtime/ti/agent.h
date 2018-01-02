@@ -20,10 +20,61 @@
 #include <dlfcn.h>
 #include <jni.h>  // for jint, JavaVM* etc declarations
 
+#include <memory>
+
 #include "base/logging.h"
 
 namespace art {
 namespace ti {
+
+class Agent;
+
+enum LoadError {
+  kNoError,              // No error occurred..
+  kLoadingError,         // dlopen or dlsym returned an error.
+  kInitializationError,  // The entrypoint did not return 0. This might require an abort.
+};
+
+class AgentSpec {
+ public:
+  explicit AgentSpec(const std::string& arg);
+
+  const std::string& GetName() const {
+    return name_;
+  }
+
+  const std::string& GetArgs() const {
+    return args_;
+  }
+
+  bool HasArgs() const {
+    return !GetArgs().empty();
+  }
+
+  std::unique_ptr<Agent> Load(/*out*/jint* call_res,
+                              /*out*/LoadError* error,
+                              /*out*/std::string* error_msg);
+
+  // Tries to attach the agent using its OnAttach method. Returns true on success.
+  std::unique_ptr<Agent> Attach(/*out*/jint* call_res,
+                                /*out*/LoadError* error,
+                                /*out*/std::string* error_msg);
+
+ private:
+  std::unique_ptr<Agent> DoDlOpen(/*out*/LoadError* error, /*out*/std::string* error_msg);
+
+  std::unique_ptr<Agent> DoLoadHelper(bool attaching,
+                                      /*out*/jint* call_res,
+                                      /*out*/LoadError* error,
+                                      /*out*/std::string* error_msg);
+
+  std::string name_;
+  std::string args_;
+
+  friend std::ostream& operator<<(std::ostream &os, AgentSpec const& m);
+};
+
+std::ostream& operator<<(std::ostream &os, AgentSpec const& m);
 
 using AgentOnLoadFunction = jint (*)(JavaVM*, const char*, void*);
 using AgentOnUnloadFunction = void (*)(JavaVM*);
@@ -38,49 +89,14 @@ using AgentOnUnloadFunction = void (*)(JavaVM*);
 // TODO Support native-bridge. Currently agents can only be the actual runtime ISA of the device.
 class Agent {
  public:
-  enum LoadError {
-    kNoError,              // No error occurred..
-    kAlreadyStarted,       // The agent has already been loaded.
-    kLoadingError,         // dlopen or dlsym returned an error.
-    kInitializationError,  // The entrypoint did not return 0. This might require an abort.
-  };
-
-  bool IsStarted() const {
-    return dlopen_handle_ != nullptr;
-  }
-
   const std::string& GetName() const {
     return name_;
   }
 
-  const std::string& GetArgs() const {
-    return args_;
-  }
-
-  bool HasArgs() const {
-    return !GetArgs().empty();
-  }
-
   void* FindSymbol(const std::string& name) const;
-
-  LoadError Load(/*out*/jint* call_res, /*out*/std::string* error_msg) {
-    VLOG(agents) << "Loading agent: " << name_ << " " << args_;
-    return DoLoadHelper(false, call_res, error_msg);
-  }
 
   // TODO We need to acquire some locks probably.
   void Unload();
-
-  // Tries to attach the agent using its OnAttach method. Returns true on success.
-  LoadError Attach(/*out*/jint* call_res, /*out*/std::string* error_msg) {
-    VLOG(agents) << "Attaching agent: " << name_ << " " << args_;
-    return DoLoadHelper(true, call_res, error_msg);
-  }
-
-  explicit Agent(const std::string& arg);
-
-  Agent(const Agent& other);
-  Agent& operator=(const Agent& other);
 
   Agent(Agent&& other);
   Agent& operator=(Agent&& other);
@@ -88,14 +104,17 @@ class Agent {
   ~Agent();
 
  private:
-  LoadError DoDlOpen(/*out*/std::string* error_msg);
+  Agent(const std::string& name, void* dlopen_handle) : name_(name),
+                                                        dlopen_handle_(dlopen_handle),
+                                                        onload_(nullptr),
+                                                        onattach_(nullptr),
+                                                        onunload_(nullptr) {
+    DCHECK(dlopen_handle != nullptr);
+  }
 
-  LoadError DoLoadHelper(bool attaching,
-                         /*out*/jint* call_res,
-                         /*out*/std::string* error_msg);
+  void PopulateFunctions();
 
   std::string name_;
-  std::string args_;
   void* dlopen_handle_;
 
   // The entrypoints.
@@ -103,7 +122,10 @@ class Agent {
   AgentOnLoadFunction onattach_;
   AgentOnUnloadFunction onunload_;
 
+  friend class AgentSpec;
   friend std::ostream& operator<<(std::ostream &os, Agent const& m);
+
+  DISALLOW_COPY_AND_ASSIGN(Agent);
 };
 
 std::ostream& operator<<(std::ostream &os, Agent const& m);

@@ -66,6 +66,7 @@ class Throwable;
 }  // namespace mirror
 namespace ti {
 class Agent;
+class AgentSpec;
 }  // namespace ti
 namespace verifier {
 class MethodVerifier;
@@ -662,7 +663,7 @@ class Runtime {
 
   void AttachAgent(const std::string& agent_arg);
 
-  const std::list<ti::Agent>& GetAgents() const {
+  const std::list<std::unique_ptr<ti::Agent>>& GetAgents() const {
     return agents_;
   }
 
@@ -779,7 +780,8 @@ class Runtime {
   std::string class_path_string_;
   std::vector<std::string> properties_;
 
-  std::list<ti::Agent> agents_;
+  std::list<ti::AgentSpec> agent_specs_;
+  std::list<std::unique_ptr<ti::Agent>> agents_;
   std::vector<Plugin> plugins_;
 
   // The default stack size for managed threads created by the runtime.
