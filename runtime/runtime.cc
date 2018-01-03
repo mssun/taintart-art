@@ -366,7 +366,7 @@ Runtime::~Runtime() {
 
   // TODO Maybe do some locking.
   for (auto& agent : agents_) {
-    agent.Unload();
+    agent->Unload();
   }
 
   // TODO Maybe do some locking
@@ -1166,7 +1166,7 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   madvise_random_access_ = runtime_options.GetOrDefault(Opt::MadviseRandomAccess);
 
   plugins_ = runtime_options.ReleaseOrDefault(Opt::Plugins);
-  agents_ = runtime_options.ReleaseOrDefault(Opt::AgentPath);
+  agent_specs_ = runtime_options.ReleaseOrDefault(Opt::AgentPath);
   // TODO Add back in -agentlib
   // for (auto lib : runtime_options.ReleaseOrDefault(Opt::AgentLib)) {
   //   agents_.push_back(lib);
@@ -1498,16 +1498,32 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
 
   // Startup agents
   // TODO Maybe we should start a new thread to run these on. Investigate RI behavior more.
-  for (auto& agent : agents_) {
+  for (auto& agent_spec : agent_specs_) {
     // TODO Check err
     int res = 0;
     std::string err = "";
-    ti::Agent::LoadError result = agent.Load(&res, &err);
-    if (result == ti::Agent::kInitializationError) {
-      LOG(FATAL) << "Unable to initialize agent!";
-    } else if (result != ti::Agent::kNoError) {
-      LOG(ERROR) << "Unable to load an agent: " << err;
+    ti::LoadError error;
+    std::unique_ptr<ti::Agent> agent = agent_spec.Load(&res, &error, &err);
+
+    if (agent != nullptr) {
+      agents_.push_back(std::move(agent));
+      continue;
     }
+
+    switch (error) {
+      case ti::LoadError::kInitializationError:
+        LOG(FATAL) << "Unable to initialize agent!";
+        UNREACHABLE();
+
+      case ti::LoadError::kLoadingError:
+        LOG(ERROR) << "Unable to load an agent: " << err;
+        continue;
+
+      case ti::LoadError::kNoError:
+        break;
+    }
+    LOG(FATAL) << "Unreachable";
+    UNREACHABLE();
   }
   {
     ScopedObjectAccess soa(self);
@@ -1563,15 +1579,16 @@ void Runtime::AttachAgent(const std::string& agent_arg) {
     return;
   }
 
-  ti::Agent agent(agent_arg);
+  ti::AgentSpec agent_spec(agent_arg);
 
   int res = 0;
-  ti::Agent::LoadError result = agent.Attach(&res, &error_msg);
+  ti::LoadError error;
+  std::unique_ptr<ti::Agent> agent = agent_spec.Attach(&res, &error, &error_msg);
 
-  if (result == ti::Agent::kNoError) {
+  if (agent != nullptr) {
     agents_.push_back(std::move(agent));
   } else {
-    LOG(WARNING) << "Agent attach failed (result=" << result << ") : " << error_msg;
+    LOG(WARNING) << "Agent attach failed (result=" << error << ") : " << error_msg;
     ScopedObjectAccess soa(Thread::Current());
     ThrowIOException("%s", error_msg.c_str());
   }

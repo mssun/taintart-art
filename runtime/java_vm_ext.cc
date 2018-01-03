@@ -1052,17 +1052,17 @@ bool JavaVMExt::LoadNativeLibrary(JNIEnv* env,
 static void* FindCodeForNativeMethodInAgents(ArtMethod* m) REQUIRES_SHARED(Locks::mutator_lock_) {
   std::string jni_short_name(m->JniShortName());
   std::string jni_long_name(m->JniLongName());
-  for (const ti::Agent& agent : Runtime::Current()->GetAgents()) {
-    void* fn = agent.FindSymbol(jni_short_name);
+  for (const std::unique_ptr<ti::Agent>& agent : Runtime::Current()->GetAgents()) {
+    void* fn = agent->FindSymbol(jni_short_name);
     if (fn != nullptr) {
       VLOG(jni) << "Found implementation for " << m->PrettyMethod()
-                << " (symbol: " << jni_short_name << ") in " << agent;
+                << " (symbol: " << jni_short_name << ") in " << *agent;
       return fn;
     }
-    fn = agent.FindSymbol(jni_long_name);
+    fn = agent->FindSymbol(jni_long_name);
     if (fn != nullptr) {
       VLOG(jni) << "Found implementation for " << m->PrettyMethod()
-                << " (symbol: " << jni_long_name << ") in " << agent;
+                << " (symbol: " << jni_long_name << ") in " << *agent;
       return fn;
     }
   }

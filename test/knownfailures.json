@@ -649,11 +649,6 @@
         "tests": "661-oat-writer-layout",
         "variant": "interp-ac | interpreter | jit | no-dex2oat | no-prebuild | no-image | trace",
         "description": ["Test is designed to only check --compiler-filter=speed"]
-    },
-    {
-        "tests": ["975-iface-private"],
-        "variant": "cdex-fast",
-        "description": ["CompactDex doesn't yet work with 975-iface private"]
     }
 
 ]

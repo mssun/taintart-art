@@ -174,7 +174,7 @@ inline bool ClassLinker::CheckInvokeClassMismatch(ObjPtr<mirror::DexCache> dex_c
       break;
     }
     case kDirect:
-      if (dex_cache->GetDexFile()->GetVersion() >= DexFile::kDefaultMethodsVersion) {
+      if (dex_cache->GetDexFile()->SupportsDefaultMethods()) {
         break;
       }
       FALLTHROUGH_INTENDED;

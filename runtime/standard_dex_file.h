@@ -56,6 +56,8 @@ class StandardDexFile : public DexFile {
   static bool IsVersionValid(const uint8_t* magic);
   virtual bool IsVersionValid() const OVERRIDE;
 
+  virtual bool SupportsDefaultMethods() const OVERRIDE;
+
  private:
   StandardDexFile(const uint8_t* base,
                   size_t size,
