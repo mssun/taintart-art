@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "arch/instruction_set.h"
+#include "base/runtime_debug.h"
 #include "cfi_test.h"
 #include "driver/compiler_options.h"
 #include "gtest/gtest.h"
@@ -56,6 +57,9 @@ class OptimizingCFITest : public CFITest {
   ArenaAllocator* GetAllocator() { return pool_and_allocator_.GetAllocator(); }
 
   void SetUpFrame(InstructionSet isa) {
+    // Ensure that slow-debug is off, so that there is no unexpected read-barrier check emitted.
+    SetRuntimeDebugFlagsEnabled(false);
+
     // Setup simple context.
     std::string error;
     isa_features_ = InstructionSetFeatures::FromVariant(isa, "default", &error);
