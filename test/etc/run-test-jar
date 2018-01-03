@@ -90,6 +90,9 @@ SYNC_BEFORE_RUN="n"
 
 # When running a debug build, we want to run with all checks.
 ANDROID_FLAGS="${ANDROID_FLAGS} -XX:SlowDebug=true"
+# The same for dex2oatd, both prebuild and runtime-driven.
+ANDROID_FLAGS="${ANDROID_FLAGS} -Xcompiler-option --runtime-arg -Xcompiler-option -XX:SlowDebug=true"
+COMPILER_FLAGS="${COMPILER_FLAGS} --runtime-arg -XX:SlowDebug=true"
 
 while true; do
     if [ "x$1" = "x--quiet" ]; then
