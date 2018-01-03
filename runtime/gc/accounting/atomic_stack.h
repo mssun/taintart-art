@@ -109,7 +109,7 @@ class AtomicStack {
         // Stack overflow.
         return false;
       }
-    } while (!back_index_.CompareExchangeWeakRelaxed(index, new_index));
+    } while (!back_index_.CompareAndSetWeakRelaxed(index, new_index));
     *start_address = begin_ + index;
     *end_address = begin_ + new_index;
     if (kIsDebugBuild) {
@@ -241,7 +241,7 @@ class AtomicStack {
         // Stack overflow.
         return false;
       }
-    } while (!back_index_.CompareExchangeWeakRelaxed(index, index + 1));
+    } while (!back_index_.CompareAndSetWeakRelaxed(index, index + 1));
     begin_[index].Assign(value);
     return true;
   }

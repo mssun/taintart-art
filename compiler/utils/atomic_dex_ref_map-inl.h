@@ -58,7 +58,7 @@ inline typename AtomicDexRefMap<DexFileReferenceType, Value>::InsertResult
     return kInsertResultInvalidDexFile;
   }
   DCHECK_LT(ref.index, array->size());
-  return (*array)[ref.index].CompareExchangeStrongSequentiallyConsistent(expected, desired)
+  return (*array)[ref.index].CompareAndSetStrongSequentiallyConsistent(expected, desired)
       ? kInsertResultSuccess
       : kInsertResultCASFailure;
 }

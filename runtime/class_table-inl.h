@@ -95,7 +95,7 @@ inline mirror::Class* ClassTable::TableSlot::Read() const {
   if (kReadBarrierOption != kWithoutReadBarrier && before_ptr != after_ptr) {
     // If another thread raced and updated the reference, do not store the read barrier updated
     // one.
-    data_.CompareExchangeStrongRelease(before, Encode(after_ptr, MaskHash(before)));
+    data_.CompareAndSetStrongRelease(before, Encode(after_ptr, MaskHash(before)));
   }
   return after_ptr.Ptr();
 }
@@ -110,7 +110,7 @@ inline void ClassTable::TableSlot::VisitRoot(const Visitor& visitor) const {
   if (before_ptr != after_ptr) {
     // If another thread raced and updated the reference, do not store the read barrier updated
     // one.
-    data_.CompareExchangeStrongRelease(before, Encode(after_ptr, MaskHash(before)));
+    data_.CompareAndSetStrongRelease(before, Encode(after_ptr, MaskHash(before)));
   }
 }
 

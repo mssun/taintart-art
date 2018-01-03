@@ -80,9 +80,8 @@ inline bool ArtMethod::CASDeclaringClass(mirror::Class* expected_class,
                                          mirror::Class* desired_class) {
   GcRoot<mirror::Class> expected_root(expected_class);
   GcRoot<mirror::Class> desired_root(desired_class);
-  return reinterpret_cast<Atomic<GcRoot<mirror::Class>>*>(&declaring_class_)->
-      CompareExchangeStrongSequentiallyConsistent(
-          expected_root, desired_root);
+  auto atomic_root_class = reinterpret_cast<Atomic<GcRoot<mirror::Class>>*>(&declaring_class_);
+  return atomic_root_class->CompareAndSetStrongSequentiallyConsistent(expected_root, desired_root);
 }
 
 inline uint16_t ArtMethod::GetMethodIndex() {

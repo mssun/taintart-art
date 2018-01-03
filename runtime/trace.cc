@@ -937,7 +937,7 @@ void Trace::LogMethodTraceEvent(Thread* thread, ArtMethod* method,
         overflow_ = true;
         return;
       }
-    } while (!cur_offset_.CompareExchangeWeakSequentiallyConsistent(old_offset, new_offset));
+    } while (!cur_offset_.CompareAndSetWeakSequentiallyConsistent(old_offset, new_offset));
   }
 
   TraceAction action = kTraceMethodEnter;
