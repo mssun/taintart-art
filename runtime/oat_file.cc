@@ -343,6 +343,19 @@ bool OatFileBase::ComputeFields(uint8_t* requested_base,
   // Readjust to be non-inclusive upper bound.
   end_ += sizeof(uint32_t);
 
+  data_bimg_rel_ro_begin_ = FindDynamicSymbolAddress("oatdatabimgrelro", &symbol_error_msg);
+  if (data_bimg_rel_ro_begin_ != nullptr) {
+    data_bimg_rel_ro_end_ =
+        FindDynamicSymbolAddress("oatdatabimgrelrolastword", &symbol_error_msg);
+    if (data_bimg_rel_ro_end_ == nullptr) {
+      *error_msg =
+          StringPrintf("Failed to find oatdatabimgrelrolastword symbol in '%s'", file_path.c_str());
+      return false;
+    }
+    // Readjust to be non-inclusive upper bound.
+    data_bimg_rel_ro_end_ += sizeof(uint32_t);
+  }
+
   bss_begin_ = const_cast<uint8_t*>(FindDynamicSymbolAddress("oatbss", &symbol_error_msg));
   if (bss_begin_ == nullptr) {
     // No .bss section.
@@ -535,6 +548,17 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
     return false;
   }
   const uint8_t* oat = Begin() + oat_dex_files_offset;  // Jump to the OatDexFile records.
+
+  if (!IsAligned<sizeof(uint32_t)>(data_bimg_rel_ro_begin_) ||
+      !IsAligned<sizeof(uint32_t)>(data_bimg_rel_ro_end_) ||
+      data_bimg_rel_ro_begin_ > data_bimg_rel_ro_end_) {
+    *error_msg = StringPrintf("In oat file '%s' found unaligned or unordered databimgrelro "
+                                  "symbol(s): begin = %p, end = %p",
+                              GetLocation().c_str(),
+                              data_bimg_rel_ro_begin_,
+                              data_bimg_rel_ro_end_);
+    return false;
+  }
 
   DCHECK_GE(static_cast<size_t>(pointer_size), alignof(GcRoot<mirror::Object>));
   if (!IsAligned<kPageSize>(bss_begin_) ||
@@ -849,8 +873,29 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
     }
   }
 
+  Runtime* runtime = Runtime::Current();
+
+  if (DataBimgRelRoBegin() != nullptr) {
+    // Make .data.bimg.rel.ro read only. ClassLinker shall make it writable for relocation.
+    uint8_t* reloc_begin = const_cast<uint8_t*>(DataBimgRelRoBegin());
+    CheckedCall(mprotect, "protect relocations", reloc_begin, DataBimgRelRoSize(), PROT_READ);
+    if (UNLIKELY(runtime == nullptr)) {
+      // This must be oatdump without boot image.
+    } else if (!IsExecutable()) {
+      // Do not check whether we have a boot image if the oat file is not executable.
+    } else if (UNLIKELY(runtime->GetHeap()->GetBootImageSpaces().empty())) {
+      *error_msg = StringPrintf("Cannot load oat file '%s' with .data.bimg.rel.ro as executable "
+                                    "without boot image.",
+                                GetLocation().c_str());
+      return false;
+    } else {
+      // ClassLinker shall perform the relocation when we register a dex file from
+      // this oat file. We do not do the relocation here to avoid dirtying the pages
+      // if the code is never actually ready to be executed.
+    }
+  }
+
   if (boot_image_tables != nullptr) {
-    Runtime* runtime = Runtime::Current();
     if (UNLIKELY(runtime == nullptr)) {
       // This must be oatdump without boot image. Make sure the .bss is inaccessible.
       CheckedCall(mprotect, "protect bss", const_cast<uint8_t*>(BssBegin()), BssSize(), PROT_NONE);
@@ -1513,6 +1558,8 @@ OatFile::OatFile(const std::string& location, bool is_executable)
       vdex_(nullptr),
       begin_(nullptr),
       end_(nullptr),
+      data_bimg_rel_ro_begin_(nullptr),
+      data_bimg_rel_ro_end_(nullptr),
       bss_begin_(nullptr),
       bss_end_(nullptr),
       bss_methods_(nullptr),
@@ -1542,28 +1589,22 @@ const uint8_t* OatFile::End() const {
   return end_;
 }
 
-const uint8_t* OatFile::BssBegin() const {
-  return bss_begin_;
-}
-
-const uint8_t* OatFile::BssEnd() const {
-  return bss_end_;
-}
-
-const uint8_t* OatFile::VdexBegin() const {
-  return vdex_begin_;
-}
-
-const uint8_t* OatFile::VdexEnd() const {
-  return vdex_end_;
-}
-
 const uint8_t* OatFile::DexBegin() const {
   return vdex_->Begin();
 }
 
 const uint8_t* OatFile::DexEnd() const {
   return vdex_->End();
+}
+
+ArrayRef<const uint32_t> OatFile::GetBootImageRelocations() const {
+  if (data_bimg_rel_ro_begin_ != nullptr) {
+    const uint32_t* relocations = reinterpret_cast<const uint32_t*>(data_bimg_rel_ro_begin_);
+    const uint32_t* relocations_end = reinterpret_cast<const uint32_t*>(data_bimg_rel_ro_end_);
+    return ArrayRef<const uint32_t>(relocations, relocations_end - relocations);
+  } else {
+    return ArrayRef<const uint32_t>();
+  }
 }
 
 ArrayRef<ArtMethod*> OatFile::GetBssMethods() const {

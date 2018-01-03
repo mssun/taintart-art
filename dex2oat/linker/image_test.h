@@ -313,10 +313,9 @@ inline void CompilationHelper::Compile(CompilerDriver* driver,
         oat_writer->WriteChecksumsAndVdexHeader(vdex_out.get());
 
         oat_writer->PrepareLayout(&patcher);
-        size_t rodata_size = oat_writer->GetOatHeader().GetExecutableOffset();
-        size_t text_size = oat_writer->GetOatSize() - rodata_size;
-        elf_writer->PrepareDynamicSection(rodata_size,
-                                          text_size,
+        elf_writer->PrepareDynamicSection(oat_writer->GetOatHeader().GetExecutableOffset(),
+                                          oat_writer->GetCodeSize(),
+                                          oat_writer->GetDataBimgRelRoSize(),
                                           oat_writer->GetBssSize(),
                                           oat_writer->GetBssMethodsOffset(),
                                           oat_writer->GetBssRootsOffset(),
@@ -335,6 +334,13 @@ inline void CompilationHelper::Compile(CompilerDriver* driver,
         bool text_ok = oat_writer->WriteCode(text);
         ASSERT_TRUE(text_ok);
         elf_writer->EndText(text);
+
+        if (oat_writer->GetDataBimgRelRoSize() != 0u) {
+          OutputStream* data_bimg_rel_ro = elf_writer->StartDataBimgRelRo();
+          bool data_bimg_rel_ro_ok = oat_writer->WriteDataBimgRelRo(data_bimg_rel_ro);
+          ASSERT_TRUE(data_bimg_rel_ro_ok);
+          elf_writer->EndDataBimgRelRo(data_bimg_rel_ro);
+        }
 
         bool header_ok = oat_writer->WriteHeader(elf_writer->GetStream(), 0u, 0u, 0u);
         ASSERT_TRUE(header_ok);

@@ -125,8 +125,14 @@ void HSharpening::SharpenInvokeStaticOrDirect(HInvokeStaticOrDirect* invoke,
              BootImageAOTCanEmbedMethod(callee, compiler_driver)) {
     method_load_kind = HInvokeStaticOrDirect::MethodLoadKind::kBootImageLinkTimePcRelative;
     code_ptr_location = HInvokeStaticOrDirect::CodePtrLocation::kCallArtMethod;
+  } else if (IsInBootImage(callee)) {
+    // Use PC-relative access to the .data.bimg.rel.ro methods array.
+    method_load_kind = HInvokeStaticOrDirect::MethodLoadKind::kBootImageRelRo;
+    uint8_t* begin = Runtime::Current()->GetHeap()->GetBootImageSpaces().front()->Begin();
+    method_load_data = reinterpret_cast<uintptr_t>(callee) - reinterpret_cast<uintptr_t>(begin);
+    code_ptr_location = HInvokeStaticOrDirect::CodePtrLocation::kCallArtMethod;
   } else {
-    // Use PC-relative access to the .bss methods arrays.
+    // Use PC-relative access to the .bss methods array.
     method_load_kind = HInvokeStaticOrDirect::MethodLoadKind::kBssEntry;
     code_ptr_location = HInvokeStaticOrDirect::CodePtrLocation::kCallArtMethod;
   }

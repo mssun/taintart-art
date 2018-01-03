@@ -1509,6 +1509,14 @@ inline void CodeGeneratorMIPS64::EmitPcRelativeLinkerPatches(
   }
 }
 
+linker::LinkerPatch DataBimgRelRoPatchAdapter(size_t literal_offset,
+                                              const DexFile* target_dex_file,
+                                              uint32_t pc_insn_offset,
+                                              uint32_t boot_image_offset) {
+  DCHECK(target_dex_file == nullptr);  // Unused for DataBimgRelRoPatch(), should be null.
+  return linker::LinkerPatch::DataBimgRelRoPatch(literal_offset, pc_insn_offset, boot_image_offset);
+}
+
 void CodeGeneratorMIPS64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) {
   DCHECK(linker_patches->empty());
   size_t size =
@@ -1527,7 +1535,8 @@ void CodeGeneratorMIPS64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* li
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::RelativeStringPatch>(
         boot_image_string_patches_, linker_patches);
   } else {
-    DCHECK(boot_image_method_patches_.empty());
+    EmitPcRelativeLinkerPatches<DataBimgRelRoPatchAdapter>(
+        boot_image_method_patches_, linker_patches);
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::TypeClassTablePatch>(
         boot_image_type_patches_, linker_patches);
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::StringInternTablePatch>(
@@ -1540,6 +1549,13 @@ void CodeGeneratorMIPS64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* li
   EmitPcRelativeLinkerPatches<linker::LinkerPatch::StringBssEntryPatch>(
       string_bss_entry_patches_, linker_patches);
   DCHECK_EQ(size, linker_patches->size());
+}
+
+CodeGeneratorMIPS64::PcRelativePatchInfo* CodeGeneratorMIPS64::NewBootImageRelRoPatch(
+    uint32_t boot_image_offset,
+    const PcRelativePatchInfo* info_high) {
+  return NewPcRelativePatch(
+      /* dex_file */ nullptr, boot_image_offset, info_high, &boot_image_method_patches_);
 }
 
 CodeGeneratorMIPS64::PcRelativePatchInfo* CodeGeneratorMIPS64::NewBootImageMethodPatch(
@@ -5926,6 +5942,15 @@ void CodeGeneratorMIPS64::GenerateStaticOrDirectCall(
                      kLoadDoubleword,
                      DeduplicateUint64Literal(invoke->GetMethodAddress()));
       break;
+    case HInvokeStaticOrDirect::MethodLoadKind::kBootImageRelRo: {
+      uint32_t boot_image_offset = invoke->GetDispatchInfo().method_load_data;
+      PcRelativePatchInfo* info_high = NewBootImageRelRoPatch(boot_image_offset);
+      PcRelativePatchInfo* info_low = NewBootImageRelRoPatch(boot_image_offset, info_high);
+      EmitPcRelativeAddressPlaceholderHigh(info_high, AT, info_low);
+      // Note: Boot image is in the low 4GiB and the entry is 32-bit, so emit a 32-bit load.
+      __ Lwu(temp.AsRegister<GpuRegister>(), AT, /* placeholder */ 0x5678);
+      break;
+    }
     case HInvokeStaticOrDirect::MethodLoadKind::kBssEntry: {
       PcRelativePatchInfo* info_high = NewMethodBssEntryPatch(
           MethodReference(&GetGraph()->GetDexFile(), invoke->GetDexMethodIndex()));

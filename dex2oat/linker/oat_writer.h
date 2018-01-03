@@ -137,6 +137,7 @@ class OatWriter {
   //   - PrepareLayout(),
   //   - WriteRodata(),
   //   - WriteCode(),
+  //   - WriteDataBimgRelRo() iff GetDataBimgRelRoSize() != 0,
   //   - WriteHeader().
 
   // Add dex file source(s) from a file, either a plain dex file or
@@ -197,6 +198,10 @@ class OatWriter {
   bool WriteRodata(OutputStream* out);
   // Write the code to the .text section.
   bool WriteCode(OutputStream* out);
+  // Write the boot image relocation data to the .data.bimg.rel.ro section.
+  bool WriteDataBimgRelRo(OutputStream* out);
+  // Check the size of the written oat file.
+  bool CheckOatSize(OutputStream* out, size_t file_offset, size_t relative_offset);
   // Write the oat header. This finalizes the oat file.
   bool WriteHeader(OutputStream* out,
                    uint32_t image_file_location_oat_checksum,
@@ -218,8 +223,16 @@ class OatWriter {
     return *oat_header_;
   }
 
+  size_t GetCodeSize() const {
+    return code_size_;
+  }
+
   size_t GetOatSize() const {
     return oat_size_;
+  }
+
+  size_t GetDataBimgRelRoSize() const {
+    return data_bimg_rel_ro_size_;
   }
 
   size_t GetBssSize() const {
@@ -323,6 +336,7 @@ class OatWriter {
   size_t InitOatDexFiles(size_t offset);
   size_t InitOatCode(size_t offset);
   size_t InitOatCodeDexFiles(size_t offset);
+  size_t InitDataBimgRelRoLayout(size_t offset);
   void InitBssLayout(InstructionSet instruction_set);
 
   size_t WriteClassOffsets(OutputStream* out, size_t file_offset, size_t relative_offset);
@@ -332,6 +346,7 @@ class OatWriter {
   size_t WriteOatDexFiles(OutputStream* out, size_t file_offset, size_t relative_offset);
   size_t WriteCode(OutputStream* out, size_t file_offset, size_t relative_offset);
   size_t WriteCodeDexFiles(OutputStream* out, size_t file_offset, size_t relative_offset);
+  size_t WriteDataBimgRelRo(OutputStream* out, size_t file_offset, size_t relative_offset);
 
   bool RecordOatDataOffset(OutputStream* out);
   bool WriteTypeLookupTables(OutputStream* oat_rodata,
@@ -360,6 +375,7 @@ class OatWriter {
     kPrepareLayout,
     kWriteRoData,
     kWriteText,
+    kWriteDataBimgRelRo,
     kWriteHeader,
     kDone
   };
@@ -401,8 +417,17 @@ class OatWriter {
   // Offset of section holding quickening info inside Vdex.
   size_t vdex_quickening_info_offset_;
 
+  // Size of the .text segment.
+  size_t code_size_;
+
   // Size required for Oat data structures.
   size_t oat_size_;
+
+  // The start of the required .data.bimg.rel.ro section.
+  size_t data_bimg_rel_ro_start_;
+
+  // The size of the required .data.bimg.rel.ro section holding the boot image relocations.
+  size_t data_bimg_rel_ro_size_;
 
   // The start of the required .bss section.
   size_t bss_start_;
@@ -415,6 +440,10 @@ class OatWriter {
 
   // The offset of the GC roots in .bss section.
   size_t bss_roots_offset_;
+
+  // Map for allocating .data.bimg.rel.ro entries. Indexed by the boot image offset of the
+  // relocation. The value is the assigned offset within the .data.bimg.rel.ro section.
+  SafeMap<uint32_t, size_t> data_bimg_rel_ro_entries_;
 
   // Map for recording references to ArtMethod entries in .bss.
   SafeMap<const DexFile*, BitVector> bss_method_entry_references_;
@@ -484,6 +513,8 @@ class OatWriter {
   uint32_t size_method_header_;
   uint32_t size_code_;
   uint32_t size_code_alignment_;
+  uint32_t size_data_bimg_rel_ro_;
+  uint32_t size_data_bimg_rel_ro_alignment_;
   uint32_t size_relative_call_thunks_;
   uint32_t size_misc_thunks_;
   uint32_t size_vmap_table_;
