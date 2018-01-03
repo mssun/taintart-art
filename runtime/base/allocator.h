@@ -17,10 +17,11 @@
 #ifndef ART_RUNTIME_BASE_ALLOCATOR_H_
 #define ART_RUNTIME_BASE_ALLOCATOR_H_
 
+#include <type_traits>
+
 #include "atomic.h"
 #include "base/macros.h"
 #include "base/mutex.h"
-#include "base/type_static_if.h"
 
 namespace art {
 
@@ -147,9 +148,9 @@ class TrackingAllocatorImpl : public std::allocator<T> {
 template<class T, AllocatorTag kTag>
 // C++ doesn't allow template typedefs. This is a workaround template typedef which is
 // TrackingAllocatorImpl<T> if kEnableTrackingAllocator is true, std::allocator<T> otherwise.
-using TrackingAllocator = typename TypeStaticIf<kEnableTrackingAllocator,
-                                                TrackingAllocatorImpl<T, kTag>,
-                                                std::allocator<T>>::type;
+using TrackingAllocator = typename std::conditional<kEnableTrackingAllocator,
+                                                    TrackingAllocatorImpl<T, kTag>,
+                                                    std::allocator<T>>::type;
 
 }  // namespace art
 
