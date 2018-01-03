@@ -111,6 +111,7 @@ $$(core_image_name): $$(HOST_CORE_DEX_LOCATIONS) $$(core_dex2oat_dependency)
 	  $$(LOCAL_$(2)DEX2OAT_HOST_INSTRUCTION_SET_FEATURES_OPTION) \
 	  --host --android-root=$$(HOST_OUT) \
 	  --generate-debug-info --generate-build-id --compile-pic \
+	  --runtime-arg -XX:SlowDebug=true \
 	  $$(PRIVATE_CORE_MULTI_PARAM) $$(PRIVATE_CORE_COMPILE_OPTIONS)
 
 $$(core_oat_name): $$(core_image_name)
@@ -214,6 +215,7 @@ $$(core_image_name): $$(TARGET_CORE_DEX_FILES) $$(core_dex2oat_dependency)
 	  --instruction-set-features=$$($(2)DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES) \
 	  --android-root=$$(PRODUCT_OUT)/system \
 	  --generate-debug-info --generate-build-id --compile-pic \
+	  --runtime-arg -XX:SlowDebug=true \
 	  $$(PRIVATE_CORE_COMPILE_OPTIONS) || (rm $$(PRIVATE_CORE_OAT_NAME); exit 1)
 
 $$(core_oat_name): $$(core_image_name)
