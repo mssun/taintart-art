@@ -2375,10 +2375,10 @@ class ImageDumper {
         PrettyObjectValue(os, value_class, value);
       }
     } else if (obj->IsClass()) {
-      mirror::Class* klass = obj->AsClass();
+      ObjPtr<mirror::Class> klass = obj->AsClass();
 
       os << "SUBTYPE_CHECK_BITS: ";
-      SubtypeCheck<mirror::Class*>::Dump(klass, os);
+      SubtypeCheck<ObjPtr<mirror::Class>>::Dump(klass, os);
       os << "\n";
 
       if (klass->NumStaticFields() != 0) {

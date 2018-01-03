@@ -138,6 +138,11 @@ struct SubtypeCheckInfo {
     kSubtypeOf          // Enough data. src is a subchild of the target.
   };
 
+  // Get the raw depth.
+  size_t GetDepth() const {
+    return depth_;
+  }
+
   // Chop off the depth, returning only the bitstring+of state.
   // (Used to store into memory, since storing the depth would be redundant.)
   SubtypeCheckBits GetSubtypeCheckBits() const {
