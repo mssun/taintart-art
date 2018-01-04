@@ -22,7 +22,8 @@ TEST_ART_RUN_TEST_DEPENDENCIES := \
   $(HOST_OUT_EXECUTABLES)/dx \
   $(HOST_OUT_EXECUTABLES)/jasmin \
   $(HOST_OUT_EXECUTABLES)/smali \
-  $(HOST_OUT_EXECUTABLES)/dexmerger
+  $(HOST_OUT_EXECUTABLES)/dexmerger \
+  $(HOST_OUT_JAVA_LIBRARIES)/desugar.jar
 
 # Add d8 dependency, if enabled.
 ifeq ($(USE_D8),true)
