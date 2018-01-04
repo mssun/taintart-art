@@ -3774,8 +3774,12 @@ void InstructionCodeGeneratorMIPS::DivRemByPowerOfTwo(HBinaryOperation* instruct
       if (IsUint<16>(abs_imm - 1)) {
         __ Andi(out, out, abs_imm - 1);
       } else {
-        __ Sll(out, out, 32 - ctz_imm);
-        __ Srl(out, out, 32 - ctz_imm);
+        if (codegen_->GetInstructionSetFeatures().IsMipsIsaRevGreaterThanEqual2()) {
+          __ Ins(out, ZERO, ctz_imm, 32 - ctz_imm);
+        } else {
+          __ Sll(out, out, 32 - ctz_imm);
+          __ Srl(out, out, 32 - ctz_imm);
+        }
       }
       __ Subu(out, out, TMP);
     }
