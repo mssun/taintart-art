@@ -133,10 +133,6 @@ inline const char* DexFile::GetShorty(uint32_t proto_idx) const {
   return StringDataByIdx(proto_id.shorty_idx_);
 }
 
-inline const DexFile::TryItem* DexFile::GetTryItems(const CodeItem& code_item, uint32_t offset) {
-  return GetTryItems(code_item.Instructions().end(), offset);
-}
-
 inline const DexFile::TryItem* DexFile::GetTryItems(const DexInstructionIterator& code_item_end,
                                                     uint32_t offset) {
   return reinterpret_cast<const TryItem*>
