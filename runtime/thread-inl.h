@@ -201,7 +201,7 @@ inline void Thread::TransitionToSuspendedAndRunCheckpoints(ThreadState new_state
 
     // CAS the value with a memory ordering.
     bool done =
-        tls32_.state_and_flags.as_atomic_int.CompareExchangeWeakRelease(old_state_and_flags.as_int,
+        tls32_.state_and_flags.as_atomic_int.CompareAndSetWeakRelease(old_state_and_flags.as_int,
                                                                         new_state_and_flags.as_int);
     if (LIKELY(done)) {
       break;
@@ -252,7 +252,7 @@ inline ThreadState Thread::TransitionFromSuspendedToRunnable() {
       new_state_and_flags.as_int = old_state_and_flags.as_int;
       new_state_and_flags.as_struct.state = kRunnable;
       // CAS the value with a memory barrier.
-      if (LIKELY(tls32_.state_and_flags.as_atomic_int.CompareExchangeWeakAcquire(
+      if (LIKELY(tls32_.state_and_flags.as_atomic_int.CompareAndSetWeakAcquire(
                                                  old_state_and_flags.as_int,
                                                  new_state_and_flags.as_int))) {
         // Mark the acquisition of a share of the mutator_lock_.

@@ -1129,7 +1129,7 @@ class ReadBarrierOnNativeRootsVisitor {
       // Update the field atomically. This may fail if mutator updates before us, but it's ok.
       auto* atomic_root =
           reinterpret_cast<Atomic<CompressedReference<Object>>*>(root);
-      atomic_root->CompareExchangeStrongSequentiallyConsistent(
+      atomic_root->CompareAndSetStrongSequentiallyConsistent(
           CompressedReference<Object>::FromMirrorPtr(old_ref.Ptr()),
           CompressedReference<Object>::FromMirrorPtr(new_ref.Ptr()));
     }
