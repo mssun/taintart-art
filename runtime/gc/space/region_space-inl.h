@@ -101,7 +101,7 @@ inline mirror::Object* RegionSpace::Region::Alloc(size_t num_bytes, size_t* byte
     if (UNLIKELY(new_top > end_)) {
       return nullptr;
     }
-  } while (!top_.CompareExchangeWeakRelaxed(old_top, new_top));
+  } while (!top_.CompareAndSetWeakRelaxed(old_top, new_top));
   objects_allocated_.FetchAndAddRelaxed(1);
   DCHECK_LE(Top(), end_);
   DCHECK_LT(old_top, end_);

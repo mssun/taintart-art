@@ -1319,7 +1319,7 @@ bool Thread::PassActiveSuspendBarriers(Thread* self) {
         int32_t cur_val = pending_threads->LoadRelaxed();
         CHECK_GT(cur_val, 0) << "Unexpected value for PassActiveSuspendBarriers(): " << cur_val;
         // Reduce value by 1.
-        done = pending_threads->CompareExchangeWeakRelaxed(cur_val, cur_val - 1);
+        done = pending_threads->CompareAndSetWeakRelaxed(cur_val, cur_val - 1);
 #if ART_USE_FUTEXES
         if (done && (cur_val - 1) == 0) {  // Weak CAS may fail spuriously.
           futex(pending_threads->Address(), FUTEX_WAKE, -1, nullptr, nullptr, 0);
@@ -1390,7 +1390,7 @@ bool Thread::RequestCheckpoint(Closure* function) {
   union StateAndFlags new_state_and_flags;
   new_state_and_flags.as_int = old_state_and_flags.as_int;
   new_state_and_flags.as_struct.flags |= kCheckpointRequest;
-  bool success = tls32_.state_and_flags.as_atomic_int.CompareExchangeStrongSequentiallyConsistent(
+  bool success = tls32_.state_and_flags.as_atomic_int.CompareAndSetStrongSequentiallyConsistent(
       old_state_and_flags.as_int, new_state_and_flags.as_int);
   if (success) {
     // Succeeded setting checkpoint flag, now insert the actual checkpoint.
@@ -1419,7 +1419,7 @@ bool Thread::RequestEmptyCheckpoint() {
   union StateAndFlags new_state_and_flags;
   new_state_and_flags.as_int = old_state_and_flags.as_int;
   new_state_and_flags.as_struct.flags |= kEmptyCheckpointRequest;
-  bool success = tls32_.state_and_flags.as_atomic_int.CompareExchangeStrongSequentiallyConsistent(
+  bool success = tls32_.state_and_flags.as_atomic_int.CompareAndSetStrongSequentiallyConsistent(
       old_state_and_flags.as_int, new_state_and_flags.as_int);
   if (success) {
     TriggerSuspend();
@@ -1560,7 +1560,7 @@ Closure* Thread::GetFlipFunction() {
     if (func == nullptr) {
       return nullptr;
     }
-  } while (!atomic_func->CompareExchangeWeakSequentiallyConsistent(func, nullptr));
+  } while (!atomic_func->CompareAndSetWeakSequentiallyConsistent(func, nullptr));
   DCHECK(func != nullptr);
   return func;
 }
