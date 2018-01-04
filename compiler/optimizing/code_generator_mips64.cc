@@ -3311,12 +3311,7 @@ void InstructionCodeGeneratorMIPS64::DivRemByPowerOfTwo(HBinaryOperation* instru
         __ Sra(TMP, dividend, 31);
         __ Srl(TMP, TMP, 32 - ctz_imm);
         __ Addu(out, dividend, TMP);
-        if (IsUint<16>(abs_imm - 1)) {
-          __ Andi(out, out, abs_imm - 1);
-        } else {
-          __ Sll(out, out, 32 - ctz_imm);
-          __ Srl(out, out, 32 - ctz_imm);
-        }
+        __ Ins(out, ZERO, ctz_imm, 32 - ctz_imm);
         __ Subu(out, out, TMP);
       }
     } else {
@@ -3335,17 +3330,7 @@ void InstructionCodeGeneratorMIPS64::DivRemByPowerOfTwo(HBinaryOperation* instru
           __ Dsrl32(TMP, TMP, 32 - ctz_imm);
         }
         __ Daddu(out, dividend, TMP);
-        if (IsUint<16>(abs_imm - 1)) {
-          __ Andi(out, out, abs_imm - 1);
-        } else {
-          if (ctz_imm > 32) {
-            __ Dsll(out, out, 64 - ctz_imm);
-            __ Dsrl(out, out, 64 - ctz_imm);
-          } else {
-            __ Dsll32(out, out, 32 - ctz_imm);
-            __ Dsrl32(out, out, 32 - ctz_imm);
-          }
-        }
+        __ DblIns(out, ZERO, ctz_imm, 64 - ctz_imm);
         __ Dsubu(out, out, TMP);
       }
     }
