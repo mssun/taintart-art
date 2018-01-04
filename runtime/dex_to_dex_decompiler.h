@@ -29,7 +29,8 @@ namespace optimizer {
 // to non-const has too many repercussions on the code base. We make it
 // consistent with DexToDexCompiler, but we should really change it to
 // DexFile::CodeItem*.
-bool ArtDecompileDEX(const DexFile::CodeItem& code_item,
+bool ArtDecompileDEX(const DexFile* dex_file,
+                     const DexFile::CodeItem& code_item,
                      const ArrayRef<const uint8_t>& quickened_data,
                      bool decompile_return_instruction);
 

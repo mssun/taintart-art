@@ -221,7 +221,10 @@ uint32_t DexFile::GetCodeItemSize(const DexFile::CodeItem& code_item) {
   uintptr_t code_item_start = reinterpret_cast<uintptr_t>(&code_item);
   uint32_t insns_size = code_item.insns_size_in_code_units_;
   uint32_t tries_size = code_item.tries_size_;
-  const uint8_t* handler_data = GetCatchHandlerData(code_item, 0);
+  const uint8_t* handler_data = GetCatchHandlerData(
+      DexInstructionIterator(code_item.insns_, code_item.insns_size_in_code_units_),
+      code_item.tries_size_,
+      0);
 
   if (tries_size == 0 || handler_data == nullptr) {
     uintptr_t insns_end = reinterpret_cast<uintptr_t>(&code_item.insns_[insns_size]);
@@ -509,11 +512,6 @@ int32_t DexFile::FindTryItem(const TryItem* try_items, uint32_t tries_size, uint
   }
   // No match.
   return -1;
-}
-
-int32_t DexFile::FindCatchHandlerOffset(const CodeItem &code_item, uint32_t address) {
-  int32_t try_item = FindTryItem(GetTryItems(code_item, 0), code_item.tries_size_, address);
-  return (try_item == -1) ? -1 : DexFile::GetTryItems(code_item, try_item)->handler_off_;
 }
 
 bool DexFile::LineNumForPcCb(void* raw_context, const PositionInfo& entry) {

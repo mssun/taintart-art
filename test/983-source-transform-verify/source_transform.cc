@@ -27,6 +27,7 @@
 
 #include "base/macros.h"
 #include "bytecode_utils.h"
+#include "code_item_accessors-inl.h"
 #include "dex_file.h"
 #include "dex_file_loader.h"
 #include "dex_instruction.h"
@@ -88,7 +89,8 @@ void JNICALL CheckDexFileHook(jvmtiEnv* jvmti_env ATTRIBUTE_UNUSED,
       if (!it.IsAtMethod() || it.GetMethodCodeItem() == nullptr) {
         continue;
       }
-      for (const DexInstructionPcPair& pair : it.GetMethodCodeItem()->Instructions()) {
+      for (const DexInstructionPcPair& pair :
+          art::CodeItemInstructionAccessor(dex.get(), it.GetMethodCodeItem())) {
         const Instruction& inst = pair.Inst();
         int forbiden_flags = (Instruction::kVerifyError | Instruction::kVerifyRuntimeOnly);
         if (inst.Opcode() == Instruction::RETURN_VOID_NO_BARRIER ||
