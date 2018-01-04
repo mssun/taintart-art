@@ -216,12 +216,13 @@
  * All node targets (in `src <: target`) get Assigned, and any parent of an Initialized
  * node also gets Assigned.
  */
-struct MockSubtypeCheck;  // Forward declaration for testing.
 namespace art {
 
-// This is class is using a template parameter to enable testability without losing performance.
-// KlassT is almost always `mirror::Class*` or `ObjPtr<mirror::Class>`.
-template <typename KlassT /* Pointer-like type to Class */>
+struct MockSubtypeCheck;  // Forward declaration for testing.
+
+// This class is using a template parameter to enable testability without losing performance.
+// ClassPtr is almost always `mirror::Class*` or `ObjPtr<mirror::Class>`.
+template <typename ClassPtr /* Pointer-like type to Class */>
 struct SubtypeCheck {
   // Force this class's SubtypeCheckInfo state into at least Initialized.
   // As a side-effect, all parent classes also become Assigned|Overflowed.
@@ -230,7 +231,7 @@ struct SubtypeCheck {
   //
   // Post-condition: State is >= Initialized.
   // Returns: The precise SubtypeCheckInfo::State.
-  static SubtypeCheckInfo::State EnsureInitialized(KlassT& klass)
+  static SubtypeCheckInfo::State EnsureInitialized(ClassPtr klass)
       REQUIRES(Locks::subtype_check_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     return InitializeOrAssign(klass, /*assign*/false).GetState();
@@ -243,7 +244,7 @@ struct SubtypeCheck {
   //
   // Post-condition: State is Assigned|Overflowed.
   // Returns: The precise SubtypeCheckInfo::State.
-  static SubtypeCheckInfo::State EnsureAssigned(KlassT& klass)
+  static SubtypeCheckInfo::State EnsureAssigned(ClassPtr klass)
       REQUIRES(Locks::subtype_check_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     return InitializeOrAssign(klass, /*assign*/true).GetState();
@@ -258,7 +259,7 @@ struct SubtypeCheck {
   // Cost: O(1).
   //
   // Returns: A state that is always Uninitialized.
-  static SubtypeCheckInfo::State ForceUninitialize(KlassT& klass)
+  static SubtypeCheckInfo::State ForceUninitialize(ClassPtr klass)
     REQUIRES(Locks::subtype_check_lock_)
     REQUIRES_SHARED(Locks::mutator_lock_) {
     // Trying to do this in a real runtime will break thread safety invariants
@@ -288,7 +289,7 @@ struct SubtypeCheck {
   // Cost: O(Depth(Class)).
   //
   // Returns the encoded_src value. Must be >= Initialized (EnsureInitialized).
-  static BitString::StorageType GetEncodedPathToRootForSource(const KlassT& klass)
+  static BitString::StorageType GetEncodedPathToRootForSource(ClassPtr klass)
       REQUIRES(Locks::subtype_check_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     DCHECK_NE(SubtypeCheckInfo::kUninitialized, GetSubtypeCheckInfo(klass).GetState());
@@ -301,7 +302,7 @@ struct SubtypeCheck {
   // Cost: O(Depth(Class)).
   //
   // Returns the encoded_target value. Must be Assigned (EnsureAssigned).
-  static BitString::StorageType GetEncodedPathToRootForTarget(const KlassT& klass)
+  static BitString::StorageType GetEncodedPathToRootForTarget(ClassPtr klass)
       REQUIRES(Locks::subtype_check_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     DCHECK_EQ(SubtypeCheckInfo::kAssigned, GetSubtypeCheckInfo(klass).GetState());
@@ -314,7 +315,7 @@ struct SubtypeCheck {
   // Cost: O(Depth(Class)).
   //
   // Returns the mask_target value. Must be Assigned (EnsureAssigned).
-  static BitString::StorageType GetEncodedPathToRootMask(const KlassT& klass)
+  static BitString::StorageType GetEncodedPathToRootMask(ClassPtr klass)
       REQUIRES(Locks::subtype_check_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     DCHECK_EQ(SubtypeCheckInfo::kAssigned, GetSubtypeCheckInfo(klass).GetState());
@@ -333,7 +334,7 @@ struct SubtypeCheck {
   // Runtime cost: O(Depth(Class)), but would be O(1) if depth was known.
   //
   // If the result is known, return kSubtypeOf or kNotSubtypeOf.
-  static SubtypeCheckInfo::Result IsSubtypeOf(const KlassT& source, const KlassT& target)
+  static SubtypeCheckInfo::Result IsSubtypeOf(ClassPtr source, ClassPtr target)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     SubtypeCheckInfo sci = GetSubtypeCheckInfo(source);
     SubtypeCheckInfo target_sci = GetSubtypeCheckInfo(target);
@@ -342,24 +343,24 @@ struct SubtypeCheck {
   }
 
   // Print SubtypeCheck bitstring and overflow to a stream (e.g. for oatdump).
-  static std::ostream& Dump(const KlassT& klass, std::ostream& os)
+  static std::ostream& Dump(ClassPtr klass, std::ostream& os)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     return os << GetSubtypeCheckInfo(klass);
   }
 
-  static void WriteStatus(const KlassT& klass, ClassStatus status)
+  static void WriteStatus(ClassPtr klass, ClassStatus status)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     WriteStatusImpl(klass, status);
   }
 
  private:
-  static KlassT GetParentClass(const KlassT& klass)
+  static ClassPtr GetParentClass(ClassPtr klass)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     DCHECK(klass->HasSuperClass());
-    return KlassT(klass->GetSuperClass());
+    return ClassPtr(klass->GetSuperClass());
   }
 
-  static SubtypeCheckInfo InitializeOrAssign(KlassT& klass, bool assign)
+  static SubtypeCheckInfo InitializeOrAssign(ClassPtr klass, bool assign)
       REQUIRES(Locks::subtype_check_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     if (UNLIKELY(!klass->HasSuperClass())) {
@@ -380,8 +381,8 @@ struct SubtypeCheck {
     }
 
     // Force all ancestors to Assigned | Overflowed.
-    KlassT parent_klass = GetParentClass(klass);
-    EnsureAssigned(parent_klass);
+    ClassPtr parent_klass = GetParentClass(klass);
+    size_t parent_depth = InitializeOrAssign(parent_klass, /*assign*/true).GetDepth();
     if (kIsDebugBuild) {
       SubtypeCheckInfo::State parent_state = GetSubtypeCheckInfo(parent_klass).GetState();
       DCHECK(parent_state == SubtypeCheckInfo::kAssigned ||
@@ -390,8 +391,8 @@ struct SubtypeCheck {
     }
 
     // Read.
-    SubtypeCheckInfo sci = GetSubtypeCheckInfo(klass);
-    SubtypeCheckInfo parent_sci = GetSubtypeCheckInfo(parent_klass);
+    SubtypeCheckInfo sci = GetSubtypeCheckInfo(klass, parent_depth + 1u);
+    SubtypeCheckInfo parent_sci = GetSubtypeCheckInfo(parent_klass, parent_depth);
 
     // Modify.
     const SubtypeCheckInfo::State sci_state = sci.GetState();
@@ -426,7 +427,7 @@ struct SubtypeCheck {
     return sci;
   }
 
-  static SubtypeCheckBitsAndStatus ReadField(const KlassT& klass)
+  static SubtypeCheckBitsAndStatus ReadField(ClassPtr klass)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     SubtypeCheckBitsAndStatus current_bits_and_status;
 
@@ -441,7 +442,7 @@ struct SubtypeCheck {
     return current_bits_and_status;
   }
 
-  static void WriteSubtypeCheckBits(const KlassT& klass, const SubtypeCheckBits& new_bits)
+  static void WriteSubtypeCheckBits(ClassPtr klass, const SubtypeCheckBits& new_bits)
       REQUIRES(Locks::subtype_check_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     // Use a "CAS" to write the SubtypeCheckBits in the class.
@@ -490,7 +491,7 @@ struct SubtypeCheck {
     }
   }
 
-  static void WriteStatusImpl(const KlassT& klass, ClassStatus status)
+  static void WriteStatusImpl(ClassPtr klass, ClassStatus status)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     // Despite not having a lock annotation, this is done with mutual exclusion.
     // See Class::SetStatus for more details.
@@ -519,7 +520,7 @@ struct SubtypeCheck {
     }
   }
 
-  static bool CasFieldWeakSequentiallyConsistent32(const KlassT& klass,
+  static bool CasFieldWeakSequentiallyConsistent32(ClassPtr klass,
                                                    MemberOffset offset,
                                                    int32_t old_value,
                                                    int32_t new_value)
@@ -541,18 +542,23 @@ struct SubtypeCheck {
   // it also requires calling klass->Depth.
   //
   // Anything calling this function will also be O(Depth(Class)).
-  static SubtypeCheckInfo GetSubtypeCheckInfo(const KlassT& klass)
+  static SubtypeCheckInfo GetSubtypeCheckInfo(ClassPtr klass)
         REQUIRES_SHARED(Locks::mutator_lock_) {
+    return GetSubtypeCheckInfo(klass, klass->Depth());
+  }
+
+  // Get the SubtypeCheckInfo for a klass with known depth.
+  static SubtypeCheckInfo GetSubtypeCheckInfo(ClassPtr klass, size_t depth)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+    DCHECK_EQ(depth, klass->Depth());
     SubtypeCheckBitsAndStatus current_bits_and_status = ReadField(klass);
 
-    size_t depth = klass->Depth();
     const SubtypeCheckInfo current =
         SubtypeCheckInfo::Create(current_bits_and_status.subtype_check_info_, depth);
     return current;
   }
 
-  static void SetSubtypeCheckInfo(KlassT& klass,
-                                  const SubtypeCheckInfo& new_sci)
+  static void SetSubtypeCheckInfo(ClassPtr klass, const SubtypeCheckInfo& new_sci)
         REQUIRES(Locks::subtype_check_lock_)
         REQUIRES_SHARED(Locks::mutator_lock_) {
     SubtypeCheckBits new_bits = new_sci.GetSubtypeCheckBits();
@@ -565,7 +571,7 @@ struct SubtypeCheck {
   SubtypeCheck(SubtypeCheck&& other) = default;
   ~SubtypeCheck() = default;
 
-  friend struct ::MockSubtypeCheck;
+  friend struct MockSubtypeCheck;
 };
 
 }  // namespace art
