@@ -1808,7 +1808,7 @@ static void PopulateVerifiedMethods(const DexFile& dex_file,
 
 static void LoadAndUpdateStatus(const DexFile& dex_file,
                                 const DexFile::ClassDef& class_def,
-                                mirror::Class::Status status,
+                                ClassStatus status,
                                 Handle<mirror::ClassLoader> class_loader,
                                 Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -1867,16 +1867,16 @@ bool CompilerDriver::FastVerify(jobject jclass_loader,
           // Just update the compiled_classes_ map. The compiler doesn't need to resolve
           // the type.
           ClassReference ref(dex_file, i);
-          mirror::Class::Status existing = mirror::Class::kStatusNotReady;
+          ClassStatus existing = ClassStatus::kNotReady;
           DCHECK(compiled_classes_.Get(ref, &existing)) << ref.dex_file->GetLocation();
           ClassStateTable::InsertResult result =
-             compiled_classes_.Insert(ref, existing, mirror::Class::kStatusVerified);
+             compiled_classes_.Insert(ref, existing, ClassStatus::kVerified);
           CHECK_EQ(result, ClassStateTable::kInsertResultSuccess);
         } else {
           // Update the class status, so later compilation stages know they don't need to verify
           // the class.
           LoadAndUpdateStatus(
-              *dex_file, class_def, mirror::Class::kStatusVerified, class_loader, soa.Self());
+              *dex_file, class_def, ClassStatus::kVerified, class_loader, soa.Self());
           // Create `VerifiedMethod`s for each methods, the compiler expects one for
           // quickening or compiling.
           // Note that this means:
@@ -1890,7 +1890,7 @@ bool CompilerDriver::FastVerify(jobject jclass_loader,
         // this class again.
         LoadAndUpdateStatus(*dex_file,
                             class_def,
-                            mirror::Class::kStatusRetryVerificationAtRuntime,
+                            ClassStatus::kRetryVerificationAtRuntime,
                             class_loader,
                             soa.Self());
       }
@@ -2104,10 +2104,10 @@ class SetVerifiedClassVisitor : public CompilationVisitor {
       // Only do this if the class is resolved. If even resolution fails, quickening will go very,
       // very wrong.
       if (klass->IsResolved() && !klass->IsErroneousResolved()) {
-        if (klass->GetStatus() < mirror::Class::kStatusVerified) {
+        if (klass->GetStatus() < ClassStatus::kVerified) {
           ObjectLock<mirror::Class> lock(soa.Self(), klass);
           // Set class status to verified.
-          mirror::Class::SetStatus(klass, mirror::Class::kStatusVerified, soa.Self());
+          mirror::Class::SetStatus(klass, ClassStatus::kVerified, soa.Self());
           // Mark methods as pre-verified. If we don't do this, the interpreter will run with
           // access checks.
           klass->SetSkipAccessChecksFlagOnAllMethods(
@@ -2184,7 +2184,7 @@ class InitializeClassVisitor : public CompilationVisitor {
     const bool is_boot_image = manager_->GetCompiler()->GetCompilerOptions().IsBootImage();
     const bool is_app_image = manager_->GetCompiler()->GetCompilerOptions().IsAppImage();
 
-    mirror::Class::Status old_status = klass->GetStatus();
+    ClassStatus old_status = klass->GetStatus();
     // Don't initialize classes in boot space when compiling app image
     if (is_app_image && klass->IsBootStrapClassLoaded()) {
       // Also return early and don't store the class status in the recorded class status.
@@ -2309,7 +2309,7 @@ class InitializeClassVisitor : public CompilationVisitor {
         // would do so they can be skipped at runtime.
         if (!klass->IsInitialized() &&
             manager_->GetClassLinker()->ValidateSuperClassDescriptors(klass)) {
-          old_status = mirror::Class::kStatusSuperclassValidated;
+          old_status = ClassStatus::kSuperclassValidated;
         } else {
           soa.Self()->ClearException();
         }
@@ -2772,36 +2772,36 @@ void CompilerDriver::AddCompiledMethod(const MethodReference& method_ref,
   DCHECK(GetCompiledMethod(method_ref) != nullptr) << method_ref.PrettyMethod();
 }
 
-bool CompilerDriver::GetCompiledClass(const ClassReference& ref,
-                                      mirror::Class::Status* status) const {
+bool CompilerDriver::GetCompiledClass(const ClassReference& ref, ClassStatus* status) const {
   DCHECK(status != nullptr);
   // The table doesn't know if something wasn't inserted. For this case it will return
-  // kStatusNotReady. To handle this, just assume anything we didn't try to verify is not compiled.
+  // ClassStatus::kNotReady. To handle this, just assume anything we didn't try to verify
+  // is not compiled.
   if (!compiled_classes_.Get(ref, status) ||
-      *status < mirror::Class::kStatusRetryVerificationAtRuntime) {
+      *status < ClassStatus::kRetryVerificationAtRuntime) {
     return false;
   }
   return true;
 }
 
-mirror::Class::Status CompilerDriver::GetClassStatus(const ClassReference& ref) const {
-  mirror::Class::Status status = ClassStatus::kStatusNotReady;
+ClassStatus CompilerDriver::GetClassStatus(const ClassReference& ref) const {
+  ClassStatus status = ClassStatus::kNotReady;
   if (!GetCompiledClass(ref, &status)) {
     classpath_classes_.Get(ref, &status);
   }
   return status;
 }
 
-void CompilerDriver::RecordClassStatus(const ClassReference& ref, mirror::Class::Status status) {
+void CompilerDriver::RecordClassStatus(const ClassReference& ref, ClassStatus status) {
   switch (status) {
-    case mirror::Class::kStatusErrorResolved:
-    case mirror::Class::kStatusErrorUnresolved:
-    case mirror::Class::kStatusNotReady:
-    case mirror::Class::kStatusResolved:
-    case mirror::Class::kStatusRetryVerificationAtRuntime:
-    case mirror::Class::kStatusVerified:
-    case mirror::Class::kStatusSuperclassValidated:
-    case mirror::Class::kStatusInitialized:
+    case ClassStatus::kErrorResolved:
+    case ClassStatus::kErrorUnresolved:
+    case ClassStatus::kNotReady:
+    case ClassStatus::kResolved:
+    case ClassStatus::kRetryVerificationAtRuntime:
+    case ClassStatus::kVerified:
+    case ClassStatus::kSuperclassValidated:
+    case ClassStatus::kInitialized:
       break;  // Expected states.
     default:
       LOG(FATAL) << "Unexpected class status for class "
@@ -2813,7 +2813,7 @@ void CompilerDriver::RecordClassStatus(const ClassReference& ref, mirror::Class:
   ClassStateTable::InsertResult result;
   ClassStateTable* table = &compiled_classes_;
   do {
-    mirror::Class::Status existing = mirror::Class::kStatusNotReady;
+    ClassStatus existing = ClassStatus::kNotReady;
     if (!table->Get(ref, &existing)) {
       // A classpath class.
       if (kIsDebugBuild) {
