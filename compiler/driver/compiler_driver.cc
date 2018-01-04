@@ -702,7 +702,7 @@ void CompilerDriver::Resolve(jobject class_loader,
 //       stable order.
 
 static void ResolveConstStrings(Handle<mirror::DexCache> dex_cache,
-                                const DexFile* dex_file,
+                                const DexFile& dex_file,
                                 const DexFile::CodeItem* code_item)
       REQUIRES_SHARED(Locks::mutator_lock_) {
   if (code_item == nullptr) {
@@ -711,7 +711,7 @@ static void ResolveConstStrings(Handle<mirror::DexCache> dex_cache,
   }
 
   ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
-  for (const DexInstructionPcPair& inst : CodeItemInstructionAccessor(dex_file, code_item)) {
+  for (const DexInstructionPcPair& inst : CodeItemInstructionAccessor(&dex_file, code_item)) {
     switch (inst->Opcode()) {
       case Instruction::CONST_STRING:
       case Instruction::CONST_STRING_JUMBO: {
@@ -773,7 +773,7 @@ static void ResolveConstStrings(CompilerDriver* driver,
           continue;
         }
         previous_method_idx = method_idx;
-        ResolveConstStrings(dex_cache, dex_file, it.GetMethodCodeItem());
+        ResolveConstStrings(dex_cache, *dex_file, it.GetMethodCodeItem());
         it.Next();
       }
       DCHECK(!it.HasNext());
