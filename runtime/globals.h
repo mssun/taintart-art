@@ -62,6 +62,12 @@ static constexpr bool kIsDebugBuild = GlobalsReturnSelf(false);
 static constexpr bool kIsDebugBuild = GlobalsReturnSelf(true);
 #endif
 
+#if defined(ART_PGO_INSTRUMENTATION)
+static constexpr bool kIsPGOInstrumentation = true;
+#else
+static constexpr bool kIsPGOInstrumentation = false;
+#endif
+
 // ART_TARGET - Defined for target builds of ART.
 // ART_TARGET_LINUX - Defined for target Linux builds of ART.
 // ART_TARGET_ANDROID - Defined for target Android builds of ART.
