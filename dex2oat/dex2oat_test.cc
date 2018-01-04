@@ -30,6 +30,7 @@
 #include "base/macros.h"
 #include "base/mutex-inl.h"
 #include "bytecode_utils.h"
+#include "code_item_accessors-inl.h"
 #include "dex2oat_environment_test.h"
 #include "dex2oat_return_codes.h"
 #include "dex_file-inl.h"
@@ -943,7 +944,7 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
                class_it.Next()) {
             if (class_it.IsAtMethod() && class_it.GetMethodCodeItem() != nullptr) {
               for (const DexInstructionPcPair& inst :
-                       class_it.GetMethodCodeItem()->Instructions()) {
+                       CodeItemInstructionAccessor(dex_file.get(), class_it.GetMethodCodeItem())) {
                 ASSERT_FALSE(inst->IsQuickened());
               }
             }

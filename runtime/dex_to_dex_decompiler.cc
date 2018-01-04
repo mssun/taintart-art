@@ -21,6 +21,7 @@
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "bytecode_utils.h"
+#include "code_item_accessors-inl.h"
 #include "dex_file-inl.h"
 #include "dex_instruction-inl.h"
 #include "quicken_info.h"
@@ -30,10 +31,11 @@ namespace optimizer {
 
 class DexDecompiler {
  public:
-  DexDecompiler(const DexFile::CodeItem& code_item,
+  DexDecompiler(const DexFile* dex_file,
+                const DexFile::CodeItem& code_item,
                 const ArrayRef<const uint8_t>& quickened_info,
                 bool decompile_return_instruction)
-    : code_item_(code_item),
+    : code_item_accessor_(dex_file, &code_item),
       quicken_info_(quickened_info.data()),
       quicken_info_number_of_indices_(QuickenInfoTable::NumberOfIndices(quickened_info.size())),
       decompile_return_instruction_(decompile_return_instruction) {}
@@ -76,7 +78,7 @@ class DexDecompiler {
     return ret;
   }
 
-  const DexFile::CodeItem& code_item_;
+  const CodeItemInstructionAccessor code_item_accessor_;
   const QuickenInfoTable quicken_info_;
   const size_t quicken_info_number_of_indices_;
   const bool decompile_return_instruction_;
@@ -91,7 +93,7 @@ bool DexDecompiler::Decompile() {
   // because the RETURN_VOID quickening is not encoded in the quickening data. Because
   // unquickening is a rare need and not performance sensitive, it is not worth the
   // added storage to also add the RETURN_VOID quickening in the quickened data.
-  for (const DexInstructionPcPair& pair : code_item_.Instructions()) {
+  for (const DexInstructionPcPair& pair : code_item_accessor_) {
     Instruction* inst = const_cast<Instruction*>(&pair.Inst());
 
     switch (inst->Opcode()) {
@@ -194,13 +196,14 @@ bool DexDecompiler::Decompile() {
   return true;
 }
 
-bool ArtDecompileDEX(const DexFile::CodeItem& code_item,
+bool ArtDecompileDEX(const DexFile* dex_file,
+                     const DexFile::CodeItem& code_item,
                      const ArrayRef<const uint8_t>& quickened_info,
                      bool decompile_return_instruction) {
   if (quickened_info.size() == 0 && !decompile_return_instruction) {
     return true;
   }
-  DexDecompiler decompiler(code_item, quickened_info, decompile_return_instruction);
+  DexDecompiler decompiler(dex_file, code_item, quickened_info, decompile_return_instruction);
   return decompiler.Decompile();
 }
 
