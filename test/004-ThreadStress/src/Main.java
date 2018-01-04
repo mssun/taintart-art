@@ -267,6 +267,15 @@ public class Main implements Runnable {
                 semaphore.acquire();
                 permitAcquired = true;
                 Thread.sleep(SLEEP_TIME);
+            } catch (OutOfMemoryError ignored) {
+              // The call to semaphore.acquire() above may trigger an OOME,
+              // despite the care taken doing some warm-up by forcing
+              // ahead-of-time initialization of classes used by the Semaphore
+              // class (see forceTransitiveClassInitialization below).
+              // For instance, one of the code paths executes
+              // AbstractQueuedSynchronizer.addWaiter, which allocates an
+              // AbstractQueuedSynchronizer$Node (see b/67730573).
+              // In that case, just ignore the OOME and continue.
             } catch (InterruptedException ignored) {
             } finally {
                 if (permitAcquired) {
