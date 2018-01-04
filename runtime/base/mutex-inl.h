@@ -164,7 +164,7 @@ inline void ReaderWriterMutex::SharedLock(Thread* self) {
     int32_t cur_state = state_.LoadRelaxed();
     if (LIKELY(cur_state >= 0)) {
       // Add as an extra reader.
-      done = state_.CompareExchangeWeakAcquire(cur_state, cur_state + 1);
+      done = state_.CompareAndSetWeakAcquire(cur_state, cur_state + 1);
     } else {
       HandleSharedLockContention(self, cur_state);
     }
@@ -188,10 +188,10 @@ inline void ReaderWriterMutex::SharedUnlock(Thread* self) {
     int32_t cur_state = state_.LoadRelaxed();
     if (LIKELY(cur_state > 0)) {
       // Reduce state by 1 and impose lock release load/store ordering.
-      // Note, the relaxed loads below musn't reorder before the CompareExchange.
+      // Note, the relaxed loads below musn't reorder before the CompareAndSet.
       // TODO: the ordering here is non-trivial as state is split across 3 fields, fix by placing
       // a status bit into the state on contention.
-      done = state_.CompareExchangeWeakSequentiallyConsistent(cur_state, cur_state - 1);
+      done = state_.CompareAndSetWeakSequentiallyConsistent(cur_state, cur_state - 1);
       if (done && (cur_state - 1) == 0) {  // Weak CAS may fail spuriously.
         if (num_pending_writers_.LoadRelaxed() > 0 ||
             num_pending_readers_.LoadRelaxed() > 0) {

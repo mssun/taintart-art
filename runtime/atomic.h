@@ -243,44 +243,44 @@ class PACKED(sizeof(T)) Atomic : public std::atomic<T> {
 
   // Atomically replace the value with desired value if it matches the expected value.
   // Participates in total ordering of atomic operations.
-  bool CompareExchangeStrongSequentiallyConsistent(T expected_value, T desired_value) {
+  bool CompareAndSetStrongSequentiallyConsistent(T expected_value, T desired_value) {
     return this->compare_exchange_strong(expected_value, desired_value, std::memory_order_seq_cst);
   }
 
   // The same, except it may fail spuriously.
-  bool CompareExchangeWeakSequentiallyConsistent(T expected_value, T desired_value) {
+  bool CompareAndSetWeakSequentiallyConsistent(T expected_value, T desired_value) {
     return this->compare_exchange_weak(expected_value, desired_value, std::memory_order_seq_cst);
   }
 
   // Atomically replace the value with desired value if it matches the expected value. Doesn't
   // imply ordering or synchronization constraints.
-  bool CompareExchangeStrongRelaxed(T expected_value, T desired_value) {
+  bool CompareAndSetStrongRelaxed(T expected_value, T desired_value) {
     return this->compare_exchange_strong(expected_value, desired_value, std::memory_order_relaxed);
   }
 
   // Atomically replace the value with desired value if it matches the expected value. Prior writes
   // to other memory locations become visible to the threads that do a consume or an acquire on the
   // same location.
-  bool CompareExchangeStrongRelease(T expected_value, T desired_value) {
+  bool CompareAndSetStrongRelease(T expected_value, T desired_value) {
     return this->compare_exchange_strong(expected_value, desired_value, std::memory_order_release);
   }
 
   // The same, except it may fail spuriously.
-  bool CompareExchangeWeakRelaxed(T expected_value, T desired_value) {
+  bool CompareAndSetWeakRelaxed(T expected_value, T desired_value) {
     return this->compare_exchange_weak(expected_value, desired_value, std::memory_order_relaxed);
   }
 
   // Atomically replace the value with desired value if it matches the expected value. Prior writes
   // made to other memory locations by the thread that did the release become visible in this
   // thread.
-  bool CompareExchangeWeakAcquire(T expected_value, T desired_value) {
+  bool CompareAndSetWeakAcquire(T expected_value, T desired_value) {
     return this->compare_exchange_weak(expected_value, desired_value, std::memory_order_acquire);
   }
 
   // Atomically replace the value with desired value if it matches the expected value. prior writes
   // to other memory locations become visible to the threads that do a consume or an acquire on the
   // same location.
-  bool CompareExchangeWeakRelease(T expected_value, T desired_value) {
+  bool CompareAndSetWeakRelease(T expected_value, T desired_value) {
     return this->compare_exchange_weak(expected_value, desired_value, std::memory_order_release);
   }
 

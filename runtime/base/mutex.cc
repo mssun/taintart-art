@@ -127,7 +127,7 @@ class ScopedAllMutexesLock FINAL {
  public:
   explicit ScopedAllMutexesLock(const BaseMutex* mutex) : mutex_(mutex) {
     for (uint32_t i = 0;
-         !gAllMutexData->all_mutexes_guard.CompareExchangeWeakAcquire(0, mutex);
+         !gAllMutexData->all_mutexes_guard.CompareAndSetWeakAcquire(0, mutex);
          ++i) {
       BackOff(i);
     }
@@ -146,7 +146,7 @@ class Locks::ScopedExpectedMutexesOnWeakRefAccessLock FINAL {
  public:
   explicit ScopedExpectedMutexesOnWeakRefAccessLock(const BaseMutex* mutex) : mutex_(mutex) {
     for (uint32_t i = 0;
-         !Locks::expected_mutexes_on_weak_ref_access_guard_.CompareExchangeWeakAcquire(0, mutex);
+         !Locks::expected_mutexes_on_weak_ref_access_guard_.CompareAndSetWeakAcquire(0, mutex);
          ++i) {
       BackOff(i);
     }
@@ -314,7 +314,7 @@ void BaseMutex::RecordContention(uint64_t blocked_tid,
       do {
         slot = data->cur_content_log_entry.LoadRelaxed();
         new_slot = (slot + 1) % kContentionLogSize;
-      } while (!data->cur_content_log_entry.CompareExchangeWeakRelaxed(slot, new_slot));
+      } while (!data->cur_content_log_entry.CompareAndSetWeakRelaxed(slot, new_slot));
       log[new_slot].blocked_tid = blocked_tid;
       log[new_slot].owner_tid = owner_tid;
       log[new_slot].count.StoreRelaxed(1);
@@ -438,7 +438,7 @@ void Mutex::ExclusiveLock(Thread* self) {
       int32_t cur_state = state_.LoadRelaxed();
       if (LIKELY(cur_state == 0)) {
         // Change state from 0 to 1 and impose load/store ordering appropriate for lock acquisition.
-        done = state_.CompareExchangeWeakAcquire(0 /* cur_state */, 1 /* new state */);
+        done = state_.CompareAndSetWeakAcquire(0 /* cur_state */, 1 /* new state */);
       } else {
         // Failed to acquire, hang up.
         ScopedContentionRecorder scr(this, SafeGetTid(self), GetExclusiveOwnerTid());
@@ -484,7 +484,7 @@ bool Mutex::ExclusiveTryLock(Thread* self) {
       int32_t cur_state = state_.LoadRelaxed();
       if (cur_state == 0) {
         // Change state from 0 to 1 and impose load/store ordering appropriate for lock acquisition.
-        done = state_.CompareExchangeWeakAcquire(0 /* cur_state */, 1 /* new state */);
+        done = state_.CompareAndSetWeakAcquire(0 /* cur_state */, 1 /* new state */);
       } else {
         return false;
       }
@@ -543,10 +543,10 @@ void Mutex::ExclusiveUnlock(Thread* self) {
         // We're no longer the owner.
         exclusive_owner_.StoreRelaxed(0);
         // Change state to 0 and impose load/store ordering appropriate for lock release.
-        // Note, the relaxed loads below mustn't reorder before the CompareExchange.
+        // Note, the relaxed loads below mustn't reorder before the CompareAndSet.
         // TODO: the ordering here is non-trivial as state is split across 3 fields, fix by placing
         // a status bit into the state on contention.
-        done =  state_.CompareExchangeWeakSequentiallyConsistent(cur_state, 0 /* new state */);
+        done = state_.CompareAndSetWeakSequentiallyConsistent(cur_state, 0 /* new state */);
         if (LIKELY(done)) {  // Spurious fail?
           // Wake a contender.
           if (UNLIKELY(num_contenders_.LoadRelaxed() > 0)) {
@@ -639,7 +639,7 @@ void ReaderWriterMutex::ExclusiveLock(Thread* self) {
     int32_t cur_state = state_.LoadRelaxed();
     if (LIKELY(cur_state == 0)) {
       // Change state from 0 to -1 and impose load/store ordering appropriate for lock acquisition.
-      done =  state_.CompareExchangeWeakAcquire(0 /* cur_state*/, -1 /* new state */);
+      done = state_.CompareAndSetWeakAcquire(0 /* cur_state*/, -1 /* new state */);
     } else {
       // Failed to acquire, hang up.
       ScopedContentionRecorder scr(this, SafeGetTid(self), GetExclusiveOwnerTid());
@@ -680,10 +680,10 @@ void ReaderWriterMutex::ExclusiveUnlock(Thread* self) {
       // We're no longer the owner.
       exclusive_owner_.StoreRelaxed(0);
       // Change state from -1 to 0 and impose load/store ordering appropriate for lock release.
-      // Note, the relaxed loads below musn't reorder before the CompareExchange.
+      // Note, the relaxed loads below musn't reorder before the CompareAndSet.
       // TODO: the ordering here is non-trivial as state is split across 3 fields, fix by placing
       // a status bit into the state on contention.
-      done =  state_.CompareExchangeWeakSequentiallyConsistent(-1 /* cur_state*/, 0 /* new state */);
+      done = state_.CompareAndSetWeakSequentiallyConsistent(-1 /* cur_state*/, 0 /* new state */);
       if (LIKELY(done)) {  // Weak CAS may fail spuriously.
         // Wake any waiters.
         if (UNLIKELY(num_pending_readers_.LoadRelaxed() > 0 ||
@@ -712,7 +712,7 @@ bool ReaderWriterMutex::ExclusiveLockWithTimeout(Thread* self, int64_t ms, int32
     int32_t cur_state = state_.LoadRelaxed();
     if (cur_state == 0) {
       // Change state from 0 to -1 and impose load/store ordering appropriate for lock acquisition.
-      done =  state_.CompareExchangeWeakAcquire(0 /* cur_state */, -1 /* new state */);
+      done = state_.CompareAndSetWeakAcquire(0 /* cur_state */, -1 /* new state */);
     } else {
       // Failed to acquire, hang up.
       timespec now_abs_ts;
@@ -784,7 +784,7 @@ bool ReaderWriterMutex::SharedTryLock(Thread* self) {
     int32_t cur_state = state_.LoadRelaxed();
     if (cur_state >= 0) {
       // Add as an extra reader and impose load/store ordering appropriate for lock acquisition.
-      done =  state_.CompareExchangeWeakAcquire(cur_state, cur_state + 1);
+      done = state_.CompareAndSetWeakAcquire(cur_state, cur_state + 1);
     } else {
       // Owner holds it exclusively.
       return false;

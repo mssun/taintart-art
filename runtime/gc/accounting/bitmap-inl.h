@@ -43,8 +43,7 @@ inline bool Bitmap::AtomicTestAndSetBit(uintptr_t bit_index) {
       DCHECK(TestBit(bit_index));
       return true;
     }
-  } while (!atomic_entry->CompareExchangeWeakSequentiallyConsistent(old_word,
-                                                                    old_word | word_mask));
+  } while (!atomic_entry->CompareAndSetWeakSequentiallyConsistent(old_word, old_word | word_mask));
   DCHECK(TestBit(bit_index));
   return false;
 }
