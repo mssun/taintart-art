@@ -34,6 +34,13 @@ art_cc_library {
     name: "libart-dexlayout",
     defaults: ["libart-dexlayout-defaults"],
     shared_libs: ["libart"],
+
+    pgo: {
+        instrumentation: true,
+        profile_file: "dex2oat.profdata",
+        benchmarks: ["dex2oat"],
+        enable_profile_use: false,
+    }
 }
 
 art_cc_library {
