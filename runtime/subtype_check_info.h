@@ -296,8 +296,7 @@ struct SubtypeCheckInfo {
   BitString::StorageType GetEncodedPathToRoot() const {
     BitString::StorageType data = static_cast<BitString::StorageType>(GetPathToRoot());
     // Bit strings are logically in the least-significant memory.
-    // Shift it so the bits are all most-significant.
-    return data << (BitSizeOf(data) - BitStructSizeOf<BitString>());
+    return data;
   }
 
   // Retrieve the path to root bitstring mask as a plain uintN_t that is amenable to
@@ -305,17 +304,7 @@ struct SubtypeCheckInfo {
   BitString::StorageType GetEncodedPathToRootMask() const {
     size_t num_bitchars = GetSafeDepth();
     size_t bitlength = BitString::GetBitLengthTotalAtPosition(num_bitchars);
-
-    BitString::StorageType mask_all =
-        std::numeric_limits<BitString::StorageType>::max();
-    BitString::StorageType mask_lsb =
-        MaskLeastSignificant<BitString::StorageType>(
-            BitSizeOf<BitString::StorageType>() - bitlength);
-
-    BitString::StorageType result = mask_all & ~mask_lsb;
-
-    // TODO: refactor above code into MaskMostSignificant?
-    return result;
+    return MaskLeastSignificant<BitString::StorageType>(bitlength);
   }
 
   // Get the "Next" bitchar, assuming that there is one to get.
