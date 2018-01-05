@@ -293,7 +293,7 @@ fi
 if [[ $using_jack == "true" ]]; then
   toolchain_args="--toolchain jack --language JN --jack-arg -g"
 elif [[ $mode != "ri" ]]; then
-  toolchain_args="--toolchain dx --language CUR"
+  toolchain_args="--toolchain d8 --language CUR"
 else
   toolchain_args="--toolchain javac --language CUR"
 fi
