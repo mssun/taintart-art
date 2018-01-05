@@ -27,8 +27,8 @@
 #include <class_loader_context.h>
 #include "common_throws.h"
 #include "compiler_filter.h"
-#include "dex_file-inl.h"
-#include "dex_file_loader.h"
+#include "dex/dex_file-inl.h"
+#include "dex/dex_file_loader.h"
 #include "jni_internal.h"
 #include "mirror/class_loader.h"
 #include "mirror/object-inl.h"

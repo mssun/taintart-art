@@ -17,7 +17,7 @@
 #include "java_lang_VMClassLoader.h"
 
 #include "class_linker.h"
-#include "dex_file_loader.h"
+#include "dex/dex_file_loader.h"
 #include "jni_internal.h"
 #include "mirror/class_loader.h"
 #include "mirror/object-inl.h"

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_DEX_INSTRUCTION_LIST_H_
-#define ART_RUNTIME_DEX_INSTRUCTION_LIST_H_
+#ifndef ART_RUNTIME_DEX_DEX_INSTRUCTION_LIST_H_
+#define ART_RUNTIME_DEX_DEX_INSTRUCTION_LIST_H_
 
 // V(opcode, instruction_code, name, format, index, flags, extended_flags, verifier_flags);
 #define DEX_INSTRUCTION_LIST(V) \
@@ -304,5 +304,5 @@
   V(k4rcc) \
   V(k51l)
 
-#endif  // ART_RUNTIME_DEX_INSTRUCTION_LIST_H_
-#undef ART_RUNTIME_DEX_INSTRUCTION_LIST_H_  // the guard in this file is just for cpplint
+#endif  // ART_RUNTIME_DEX_DEX_INSTRUCTION_LIST_H_
+#undef ART_RUNTIME_DEX_DEX_INSTRUCTION_LIST_H_  // the guard in this file is just for cpplint

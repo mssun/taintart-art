@@ -23,7 +23,7 @@
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "class_linker.h"
-#include "code_item_accessors.h"
+#include "dex/code_item_accessors.h"
 #include "handle_scope-inl.h"
 #include "instrumentation.h"
 #include "interpreter/shadow_frame.h"

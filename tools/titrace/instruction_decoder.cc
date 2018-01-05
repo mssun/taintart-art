@@ -15,7 +15,7 @@
 
 #include "instruction_decoder.h"
 
-#include "dex_instruction_list.h"
+#include "dex/dex_instruction_list.h"
 
 #include <android-base/logging.h>
 

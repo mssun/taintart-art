@@ -17,7 +17,7 @@
 #include "interpreter_switch_impl.h"
 
 #include "base/enums.h"
-#include "dex_file_types.h"
+#include "dex/dex_file_types.h"
 #include "experimental_flags.h"
 #include "interpreter_common.h"
 #include "jit/jit.h"

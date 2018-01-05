@@ -16,7 +16,7 @@
 
 #include "arch/context.h"
 #include "art_method-inl.h"
-#include "code_item_accessors-inl.h"
+#include "dex/code_item_accessors-inl.h"
 #include "jni.h"
 #include "oat_quick_method_header.h"
 #include "scoped_thread_state_change-inl.h"

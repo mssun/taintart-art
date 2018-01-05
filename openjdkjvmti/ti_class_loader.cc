@@ -38,8 +38,8 @@
 
 #include "art_field-inl.h"
 #include "art_jvmti.h"
-#include "dex_file.h"
-#include "dex_file_types.h"
+#include "dex/dex_file.h"
+#include "dex/dex_file_types.h"
 #include "events-inl.h"
 #include "gc/allocation_listener.h"
 #include "gc/heap.h"

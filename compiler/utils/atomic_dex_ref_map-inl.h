@@ -21,8 +21,8 @@
 
 #include <type_traits>
 
-#include "dex_file-inl.h"
 #include "class_reference.h"
+#include "dex/dex_file-inl.h"
 #include "method_reference.h"
 #include "type_reference.h"
 

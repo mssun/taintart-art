@@ -27,9 +27,9 @@
 #include <stdlib.h>
 
 #include "base/logging.h"  // For InitLogging.
-#include "code_item_accessors-no_art-inl.h"
-#include "dex_file-inl.h"
-#include "dex_file_loader.h"
+#include "dex/code_item_accessors-no_art-inl.h"
+#include "dex/dex_file-inl.h"
+#include "dex/dex_file_loader.h"
 #include "mem_map.h"
 #include "runtime.h"
 

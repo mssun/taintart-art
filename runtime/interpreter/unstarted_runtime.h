@@ -19,7 +19,7 @@
 
 #include "interpreter.h"
 
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "jvalue.h"
 
 namespace art {

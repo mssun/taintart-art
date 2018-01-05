@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_STANDARD_DEX_FILE_H_
-#define ART_RUNTIME_STANDARD_DEX_FILE_H_
+#ifndef ART_RUNTIME_DEX_STANDARD_DEX_FILE_H_
+#define ART_RUNTIME_DEX_STANDARD_DEX_FILE_H_
 
 #include <iosfwd>
 
@@ -86,4 +86,4 @@ class StandardDexFile : public DexFile {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_STANDARD_DEX_FILE_H_
+#endif  // ART_RUNTIME_DEX_STANDARD_DEX_FILE_H_

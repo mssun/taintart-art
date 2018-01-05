@@ -19,7 +19,7 @@
 
 #include <ostream>
 
-#include "dex_instruction.h"
+#include "dex/dex_instruction.h"
 #include "handle.h"
 #include "interpreter/shadow_frame.h"
 #include "jvalue.h"
