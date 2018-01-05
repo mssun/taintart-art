@@ -1565,6 +1565,9 @@ END \name
 
     /*
      * Called by managed code to resolve a static/instance field and load/store a value.
+     *
+     * Note: Functions `art{Get,Set}<Kind>{Static,Instance}FromCompiledCode` are
+     * defined with a macro in runtime/entrypoints/quick/quick_field_entrypoints.cc.
      */
 ONE_ARG_REF_DOWNCALL art_quick_get_byte_static, artGetByteStaticFromCompiledCode, RETURN_IF_NO_EXCEPTION
 ONE_ARG_REF_DOWNCALL art_quick_get_boolean_static, artGetBooleanStaticFromCompiledCode, RETURN_IF_NO_EXCEPTION
