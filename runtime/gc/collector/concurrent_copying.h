@@ -308,6 +308,11 @@ class ConcurrentCopying : public GarbageCollector {
   Atomic<uint64_t> cumulative_bytes_moved_;
   Atomic<uint64_t> cumulative_objects_moved_;
 
+  // Maintain the maximum of number of non-free regions collected just before
+  // reclaim in each GC cycle. At this moment in cycle, highest number of
+  // regions are in non-free.
+  size_t max_peak_num_non_free_regions_;
+
   // The skipped blocks are memory blocks/chucks that were copies of
   // objects that were unused due to lost races (cas failures) at
   // object copy/forward pointer install. They are reused.
