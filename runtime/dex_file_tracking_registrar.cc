@@ -164,7 +164,7 @@ void DexFileTrackingRegistrar::SetAllCodeItemRegistration(bool should_poison) {
         const DexFile::CodeItem* code_item = cdit.GetMethodCodeItem();
         if (code_item != nullptr) {
           const void* code_item_begin = reinterpret_cast<const void*>(code_item);
-          size_t code_item_size = DexFile::GetCodeItemSize(*code_item);
+          size_t code_item_size = dex_file_->GetCodeItemSize(*code_item);
           range_values_.push_back(std::make_tuple(code_item_begin, code_item_size, should_poison));
         }
         cdit.Next();
@@ -233,7 +233,7 @@ void DexFileTrackingRegistrar::SetCodeItemRegistration(const char* class_name, b
         const DexFile::CodeItem* code_item = cdit.GetMethodCodeItem();
         if (code_item != nullptr && strcmp(methodid_name, class_name) == 0) {
           const void* code_item_begin = reinterpret_cast<const void*>(code_item);
-          size_t code_item_size = DexFile::GetCodeItemSize(*code_item);
+          size_t code_item_size = dex_file_->GetCodeItemSize(*code_item);
           range_values_.push_back(std::make_tuple(code_item_begin, code_item_size, should_poison));
         }
         cdit.Next();
