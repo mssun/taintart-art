@@ -254,7 +254,7 @@ void VdexFile::UnquickenDexFile(const DexFile& target_dex_file,
                                            quickening_info));
           }
           optimizer::ArtDecompileDEX(
-              &target_dex_file,
+              target_dex_file,
               *code_item,
               GetQuickeningInfoAt(quickening_info, quickening_offset),
               decompile_return_instruction);

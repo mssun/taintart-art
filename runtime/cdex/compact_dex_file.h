@@ -47,6 +47,7 @@ class CompactDexFile : public DexFile {
   struct CodeItem : public DexFile::CodeItem {
    private:
     // TODO: Insert compact dex specific fields here.
+    friend class CompactDexFile;
     DISALLOW_COPY_AND_ASSIGN(CodeItem);
   };
 
@@ -69,6 +70,8 @@ class CompactDexFile : public DexFile {
   }
 
   virtual bool SupportsDefaultMethods() const OVERRIDE;
+
+  uint32_t GetCodeItemSize(const DexFile::CodeItem& item) const OVERRIDE;
 
  private:
   // Not supported yet.

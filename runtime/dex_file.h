@@ -308,7 +308,11 @@ class DexFile {
       debug_info_off_ = new_offset;
     }
 
-   private:
+    uint32_t GetDebugInfoOffset() const {
+      return debug_info_off_;
+    }
+
+   protected:
     uint16_t registers_size_;            // the number of registers used by this code
                                          //   (locals + parameters)
     uint16_t ins_size_;                  // the number of words of incoming arguments to the method
@@ -333,7 +337,6 @@ class DexFile {
     friend class CodeItemDataAccessor;
     friend class CodeItemDebugInfoAccessor;
     friend class CodeItemInstructionAccessor;
-    friend class DexFile;  // TODO: Remove this one when it's cleaned up.
     friend class VdexFile;  // TODO: Remove this one when it's cleaned up.
     DISALLOW_COPY_AND_ASSIGN(CodeItem);
   };
@@ -583,7 +586,7 @@ class DexFile {
   uint32_t FindCodeItemOffset(const DexFile::ClassDef& class_def,
                               uint32_t dex_method_idx) const;
 
-  static uint32_t GetCodeItemSize(const DexFile::CodeItem& disk_code_item);
+  virtual uint32_t GetCodeItemSize(const DexFile::CodeItem& disk_code_item) const = 0;
 
   // Returns the declaring class descriptor string of a field id.
   const char* GetFieldDeclaringClassDescriptor(const FieldId& field_id) const {
@@ -715,7 +718,7 @@ class DexFile {
     }
     CHECK(oat_dex_file_ == nullptr)
         << "Should only use GetDebugInfoOffset in a non runtime setup";
-    return code_item->debug_info_off_;
+    return code_item->GetDebugInfoOffset();
   }
 
   const char* GetReturnTypeDescriptor(const ProtoId& proto_id) const;
@@ -778,11 +781,7 @@ class DexFile {
   // Get the base of the encoded data for the given DexCode.
   static const uint8_t* GetCatchHandlerData(const DexInstructionIterator& code_item_end,
                                             uint32_t tries_size,
-                                            uint32_t offset) {
-    const uint8_t* handler_data =
-        reinterpret_cast<const uint8_t*>(GetTryItems(code_item_end, tries_size));
-    return handler_data + offset;
-  }
+                                            uint32_t offset);
 
   // Find which try region is associated with the given address (ie dex pc). Returns -1 if none.
   static int32_t FindTryItem(const TryItem* try_items, uint32_t tries_size, uint32_t address);
