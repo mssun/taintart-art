@@ -1026,8 +1026,8 @@ ONE_ARG_SAVE_EVERYTHING_DOWNCALL_FOR_CLINIT art_quick_initialize_type, artInitia
 ONE_ARG_SAVE_EVERYTHING_DOWNCALL art_quick_initialize_type_and_verify_access, artInitializeTypeAndVerifyAccessFromCode
 ONE_ARG_SAVE_EVERYTHING_DOWNCALL art_quick_resolve_string, artResolveStringFromCode
 
-// Note: Functions `art{Get,Set}<Kind>{Static,Instance>FromCompiledCode` are
-// defined by macros in runtime/entrypoints/quick/quick_field_entrypoints.cc.
+// Note: Functions `art{Get,Set}<Kind>{Static,Instance}FromCompiledCode` are
+// defined with a macro in runtime/entrypoints/quick/quick_field_entrypoints.cc.
 
     /*
      * Called by managed code to resolve a static field and load a non-wide value.
