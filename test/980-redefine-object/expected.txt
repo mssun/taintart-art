@@ -30,3 +30,7 @@ Object allocated of type 'java.util.LinkedList$Node'
 Object allocated of type 'java.lang.Exception'
 	Exception caught.
 	Finishing test!
+Object allocated of type 'java.lang.Thread'
+Object allocated of type 'java.lang.Object'
+Object allocated of type 'java.lang.Object'
+Object allocated of type 'java.security.AccessControlContext'
