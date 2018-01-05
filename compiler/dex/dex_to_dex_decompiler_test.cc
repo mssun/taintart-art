@@ -99,7 +99,7 @@ class DexToDexDecompilerTest : public CommonCompilerTest {
         if (compiled_method != nullptr) {
           table = compiled_method->GetVmapTable();
         }
-        optimizer::ArtDecompileDEX(updated_dex_file,
+        optimizer::ArtDecompileDEX(*updated_dex_file,
                                    *it.GetMethodCodeItem(),
                                    table,
                                    /* decompile_return_instruction */ true);

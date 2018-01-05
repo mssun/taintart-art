@@ -35,6 +35,7 @@ class StandardDexFile : public DexFile {
   struct CodeItem : public DexFile::CodeItem {
    private:
     // TODO: Insert standard dex specific fields here.
+    friend class StandardDexFile;
     DISALLOW_COPY_AND_ASSIGN(CodeItem);
   };
 
@@ -57,6 +58,8 @@ class StandardDexFile : public DexFile {
   virtual bool IsVersionValid() const OVERRIDE;
 
   virtual bool SupportsDefaultMethods() const OVERRIDE;
+
+  uint32_t GetCodeItemSize(const DexFile::CodeItem& item) const OVERRIDE;
 
  private:
   StandardDexFile(const uint8_t* base,
