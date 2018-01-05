@@ -54,23 +54,6 @@ using android::base::StringPrintf;
 
 GcRoot<Class> Class::java_lang_Class_;
 
-constexpr Class::Status Class::kStatusRetired;
-constexpr Class::Status Class::kStatusErrorResolved;
-constexpr Class::Status Class::kStatusErrorUnresolved;
-constexpr Class::Status Class::kStatusNotReady;
-constexpr Class::Status Class::kStatusIdx;
-constexpr Class::Status Class::kStatusLoaded;
-constexpr Class::Status Class::kStatusResolving;
-constexpr Class::Status Class::kStatusResolved;
-constexpr Class::Status Class::kStatusVerifying;
-constexpr Class::Status Class::kStatusRetryVerificationAtRuntime;
-constexpr Class::Status Class::kStatusVerifyingAtRuntime;
-constexpr Class::Status Class::kStatusVerified;
-constexpr Class::Status Class::kStatusSuperclassValidated;
-constexpr Class::Status Class::kStatusInitializing;
-constexpr Class::Status Class::kStatusInitialized;
-constexpr Class::Status Class::kStatusMax;
-
 void Class::SetClassClass(ObjPtr<Class> java_lang_Class) {
   CHECK(java_lang_Class_.IsNull())
       << java_lang_Class_.Read()
@@ -131,19 +114,19 @@ ClassExt* Class::EnsureExtDataPresent(Thread* self) {
   }
 }
 
-void Class::SetStatus(Handle<Class> h_this, Status new_status, Thread* self) {
-  Status old_status = h_this->GetStatus();
+void Class::SetStatus(Handle<Class> h_this, ClassStatus new_status, Thread* self) {
+  ClassStatus old_status = h_this->GetStatus();
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   bool class_linker_initialized = class_linker != nullptr && class_linker->IsInitialized();
   if (LIKELY(class_linker_initialized)) {
     if (UNLIKELY(new_status <= old_status &&
-                 new_status != kStatusErrorUnresolved &&
-                 new_status != kStatusErrorResolved &&
-                 new_status != kStatusRetired)) {
+                 new_status != ClassStatus::kErrorUnresolved &&
+                 new_status != ClassStatus::kErrorResolved &&
+                 new_status != ClassStatus::kRetired)) {
       LOG(FATAL) << "Unexpected change back of class status for " << h_this->PrettyClass()
                  << " " << old_status << " -> " << new_status;
     }
-    if (new_status >= kStatusResolved || old_status >= kStatusResolved) {
+    if (new_status >= ClassStatus::kResolved || old_status >= ClassStatus::kResolved) {
       // When classes are being resolved the resolution code should hold the lock.
       CHECK_EQ(h_this->GetLockOwnerThreadId(), self->GetThreadId())
             << "Attempt to change status of class while not holding its lock: "
@@ -155,7 +138,7 @@ void Class::SetStatus(Handle<Class> h_this, Status new_status, Thread* self) {
         << "Attempt to set as erroneous an already erroneous class "
         << h_this->PrettyClass()
         << " old_status: " << old_status << " new_status: " << new_status;
-    CHECK_EQ(new_status == kStatusErrorResolved, old_status >= kStatusResolved);
+    CHECK_EQ(new_status == ClassStatus::kErrorResolved, old_status >= ClassStatus::kResolved);
     if (VLOG_IS_ON(class_linker)) {
       LOG(ERROR) << "Setting " << h_this->PrettyDescriptor() << " to erroneous.";
       if (self->IsExceptionPending()) {
@@ -181,7 +164,7 @@ void Class::SetStatus(Handle<Class> h_this, Status new_status, Thread* self) {
   // Setting the object size alloc fast path needs to be after the status write so that if the
   // alloc path sees a valid object size, we would know that it's initialized as long as it has a
   // load-acquire/fake dependency.
-  if (new_status == kStatusInitialized && !h_this->IsVariableSize()) {
+  if (new_status == ClassStatus::kInitialized && !h_this->IsVariableSize()) {
     DCHECK_EQ(h_this->GetObjectSizeAllocFastPath(), std::numeric_limits<uint32_t>::max());
     // Finalizable objects must always go slow path.
     if (!h_this->IsFinalizable()) {
@@ -199,13 +182,13 @@ void Class::SetStatus(Handle<Class> h_this, Status new_status, Thread* self) {
     if (h_this->IsTemp()) {
       // Class is a temporary one, ensure that waiters for resolution get notified of retirement
       // so that they can grab the new version of the class from the class linker's table.
-      CHECK_LT(new_status, kStatusResolved) << h_this->PrettyDescriptor();
-      if (new_status == kStatusRetired || new_status == kStatusErrorUnresolved) {
+      CHECK_LT(new_status, ClassStatus::kResolved) << h_this->PrettyDescriptor();
+      if (new_status == ClassStatus::kRetired || new_status == ClassStatus::kErrorUnresolved) {
         h_this->NotifyAll(self);
       }
     } else {
-      CHECK_NE(new_status, kStatusRetired);
-      if (old_status >= kStatusResolved || new_status >= kStatusResolved) {
+      CHECK_NE(new_status, ClassStatus::kRetired);
+      if (old_status >= ClassStatus::kResolved || new_status >= ClassStatus::kResolved) {
         h_this->NotifyAll(self);
       }
     }
@@ -1154,7 +1137,7 @@ class CopyClassVisitor {
     StackHandleScope<1> hs(self_);
     Handle<mirror::Class> h_new_class_obj(hs.NewHandle(obj->AsClass()));
     Object::CopyObject(h_new_class_obj.Get(), orig_->Get(), copy_bytes_);
-    Class::SetStatus(h_new_class_obj, Class::kStatusResolving, self_);
+    Class::SetStatus(h_new_class_obj, ClassStatus::kResolving, self_);
     h_new_class_obj->PopulateEmbeddedVTable(pointer_size_);
     h_new_class_obj->SetImt(imt_, pointer_size_);
     h_new_class_obj->SetClassSize(new_length_);

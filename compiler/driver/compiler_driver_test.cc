@@ -16,11 +16,13 @@
 
 #include "driver/compiler_driver.h"
 
+#include <limits>
 #include <stdint.h>
 #include <stdio.h>
 #include <memory>
 
 #include "art_method-inl.h"
+#include "base/casts.h"
 #include "class_linker-inl.h"
 #include "common_compiler_test.h"
 #include "compiler_callbacks.h"
@@ -344,11 +346,11 @@ class CompilerDriverVerifyTest : public CompilerDriverTest {
     ASSERT_NE(klass, nullptr);
     EXPECT_TRUE(klass->IsVerified());
 
-    mirror::Class::Status status;
+    ClassStatus status;
     bool found = compiler_driver_->GetCompiledClass(
         ClassReference(&klass->GetDexFile(), klass->GetDexTypeIndex().index_), &status);
     ASSERT_TRUE(found);
-    EXPECT_EQ(status, mirror::Class::kStatusVerified);
+    EXPECT_EQ(status, ClassStatus::kVerified);
   }
 };
 
@@ -367,8 +369,8 @@ TEST_F(CompilerDriverVerifyTest, VerifyCompilation) {
   CheckVerifiedClass(class_loader, "LSecond;");
 }
 
-// Test that a class of status kStatusRetryVerificationAtRuntime is indeed recorded that way in the
-// driver.
+// Test that a class of status ClassStatus::kRetryVerificationAtRuntime is indeed
+// recorded that way in the driver.
 TEST_F(CompilerDriverVerifyTest, RetryVerifcationStatusCheckVerified) {
   Thread* const self = Thread::Current();
   jobject class_loader;
@@ -386,17 +388,19 @@ TEST_F(CompilerDriverVerifyTest, RetryVerifcationStatusCheckVerified) {
   callbacks_->SetDoesClassUnloading(true, compiler_driver_.get());
   ClassReference ref(dex_file, 0u);
   // Test that the status is read from the compiler driver as expected.
-  for (size_t i = mirror::Class::kStatusRetryVerificationAtRuntime;
-      i < mirror::Class::kStatusMax;
-      ++i) {
-    const mirror::Class::Status expected_status = static_cast<mirror::Class::Status>(i);
+  static_assert(enum_cast<size_t>(ClassStatus::kLast) < std::numeric_limits<size_t>::max(),
+                "Make sure incrementing the class status does not overflow.");
+  for (size_t i = enum_cast<size_t>(ClassStatus::kRetryVerificationAtRuntime);
+       i <= enum_cast<size_t>(ClassStatus::kLast);
+       ++i) {
+    const ClassStatus expected_status = enum_cast<ClassStatus>(i);
     // Skip unsupported status that are not supposed to be ever recorded.
-    if (expected_status == mirror::Class::kStatusVerifyingAtRuntime ||
-        expected_status == mirror::Class::kStatusInitializing) {
+    if (expected_status == ClassStatus::kVerifyingAtRuntime ||
+        expected_status == ClassStatus::kInitializing) {
       continue;
     }
     compiler_driver_->RecordClassStatus(ref, expected_status);
-    mirror::Class::Status status = {};
+    ClassStatus status = {};
     ASSERT_TRUE(compiler_driver_->GetCompiledClass(ref, &status));
     EXPECT_EQ(status, expected_status);
   }

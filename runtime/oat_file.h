@@ -24,11 +24,12 @@
 #include "base/array_ref.h"
 #include "base/mutex.h"
 #include "base/stringpiece.h"
+#include "class_status.h"
 #include "compiler_filter.h"
 #include "dex_file.h"
 #include "dex_file_layout.h"
 #include "index_bss_mapping.h"
-#include "mirror/class.h"
+#include "mirror/object.h"
 #include "oat.h"
 #include "os.h"
 #include "type_lookup_table.h"
@@ -196,7 +197,7 @@ class OatFile {
 
   class OatClass FINAL {
    public:
-    mirror::Class::Status GetStatus() const {
+    ClassStatus GetStatus() const {
       return status_;
     }
 
@@ -224,7 +225,7 @@ class OatFile {
     // See FindOatClass().
     static OatClass Invalid() {
       return OatClass(/* oat_file */ nullptr,
-                      mirror::Class::kStatusErrorUnresolved,
+                      ClassStatus::kErrorUnresolved,
                       kOatClassNoneCompiled,
                       /* bitmap_size */ 0,
                       /* bitmap_pointer */ nullptr,
@@ -233,7 +234,7 @@ class OatFile {
 
    private:
     OatClass(const OatFile* oat_file,
-             mirror::Class::Status status,
+             ClassStatus status,
              OatClassType type,
              uint32_t bitmap_size,
              const uint32_t* bitmap_pointer,
@@ -241,7 +242,7 @@ class OatFile {
 
     const OatFile* const oat_file_;
 
-    const mirror::Class::Status status_;
+    const ClassStatus status_;
 
     const OatClassType type_;
 

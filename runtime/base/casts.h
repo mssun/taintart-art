@@ -26,6 +26,8 @@
 
 #include <android-base/logging.h>
 
+#include "stl_util_identity.h"
+
 namespace art {
 
 // Use implicit_cast as a safe version of static_cast or const_cast
@@ -97,7 +99,7 @@ inline Dest bit_cast(const Source& source) {
 // A version of static_cast that DCHECKs that the value can be precisely represented
 // when converting to Dest.
 template <typename Dest, typename Source>
-inline Dest dchecked_integral_cast(const Source source) {
+constexpr Dest dchecked_integral_cast(Source source) {
   DCHECK(
       // Check that the value is within the lower limit of Dest.
       (static_cast<intmax_t>(std::numeric_limits<Dest>::min()) <=
@@ -111,6 +113,33 @@ inline Dest dchecked_integral_cast(const Source source) {
       << " (would be " << static_cast<Dest>(source) << ")";
 
   return static_cast<Dest>(source);
+}
+
+// A version of dchecked_integral_cast casting between an integral type and an enum type.
+// When casting to an enum type, the cast does not check if the value corresponds to an enumerator.
+// When casting from an enum type, the target type can be omitted and the enum's underlying type
+// shall be used.
+
+template <typename Dest, typename Source>
+constexpr
+typename std::enable_if<!std::is_enum<Source>::value, Dest>::type
+enum_cast(Source value) {
+  return static_cast<Dest>(
+      dchecked_integral_cast<typename std::underlying_type<Dest>::type>(value));
+}
+
+template <typename Dest = void, typename Source>
+constexpr
+typename std::enable_if<std::is_enum<Source>::value,
+                        typename std::conditional<std::is_same<Dest, void>::value,
+                                                  std::underlying_type<Source>,
+                                                  Identity<Dest>>::type>::type::type
+enum_cast(Source value) {
+  using return_type = typename std::conditional<std::is_same<Dest, void>::value,
+                                                std::underlying_type<Source>,
+                                                Identity<Dest>>::type::type;
+  return dchecked_integral_cast<return_type>(
+      static_cast<typename std::underlying_type<Source>::type>(value));
 }
 
 // A version of reinterpret_cast<>() between pointers and int64_t/uint64_t

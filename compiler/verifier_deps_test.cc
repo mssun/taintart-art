@@ -237,9 +237,9 @@ class VerifierDepsTest : public CommonCompilerTest {
           CHECK(soa.Self()->IsExceptionPending());
           soa.Self()->ClearException();
         } else if (unverified_classes.find(class_def.class_idx_) == unverified_classes.end()) {
-          ASSERT_EQ(cls->GetStatus(), mirror::Class::kStatusVerified);
+          ASSERT_EQ(cls->GetStatus(), ClassStatus::kVerified);
         } else {
-          ASSERT_LT(cls->GetStatus(), mirror::Class::kStatusVerified);
+          ASSERT_LT(cls->GetStatus(), ClassStatus::kVerified);
         }
       }
     }

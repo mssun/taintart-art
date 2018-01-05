@@ -31,13 +31,13 @@
 #include "base/mutex.h"
 #include "base/timing_logger.h"
 #include "class_reference.h"
+#include "class_status.h"
 #include "compiler.h"
 #include "dex_file.h"
 #include "dex_file_types.h"
 #include "driver/compiled_method_storage.h"
 #include "jit/profile_compilation_info.h"
 #include "method_reference.h"
-#include "mirror/class.h"  // For mirror::Class::Status.
 #include "os.h"
 #include "safe_map.h"
 #include "thread_pool.h"
@@ -47,6 +47,7 @@
 namespace art {
 
 namespace mirror {
+class Class;
 class DexCache;
 }  // namespace mirror
 
@@ -55,18 +56,21 @@ class MethodVerifier;
 class VerifierDepsTest;
 }  // namespace verifier
 
+class ArtField;
 class BitVector;
 class CompiledMethod;
 class CompilerOptions;
 class DexCompilationUnit;
+template<class T> class Handle;
 struct InlineIGetIPutData;
 class InstructionSetFeatures;
 class InternTable;
 enum InvokeType : uint32_t;
+class MemberOffset;
+template<class MirrorType> class ObjPtr;
 class ParallelCompilationManager;
 class ScopedObjectAccess;
 template <class Allocator> class SrcMap;
-template<class T> class Handle;
 class TimingLogger;
 class VdexFile;
 class VerificationResults;
@@ -152,8 +156,8 @@ class CompilerDriver {
   std::unique_ptr<const std::vector<uint8_t>> CreateQuickResolutionTrampoline() const;
   std::unique_ptr<const std::vector<uint8_t>> CreateQuickToInterpreterBridge() const;
 
-  mirror::Class::Status GetClassStatus(const ClassReference& ref) const;
-  bool GetCompiledClass(const ClassReference& ref, mirror::Class::Status* status) const;
+  ClassStatus GetClassStatus(const ClassReference& ref) const;
+  bool GetCompiledClass(const ClassReference& ref, ClassStatus* status) const;
 
   CompiledMethod* GetCompiledMethod(MethodReference ref) const;
   size_t GetNonRelativeLinkerPatchCount() const;
@@ -321,7 +325,7 @@ class CompilerDriver {
   // according to the profile file.
   bool ShouldVerifyClassBasedOnProfile(const DexFile& dex_file, uint16_t class_idx) const;
 
-  void RecordClassStatus(const ClassReference& ref, mirror::Class::Status status);
+  void RecordClassStatus(const ClassReference& ref, ClassStatus status);
 
   // Checks if the specified method has been verified without failures. Returns
   // false if the method is not in the verification results (GetVerificationResults).
@@ -476,7 +480,7 @@ class CompilerDriver {
       GUARDED_BY(requires_constructor_barrier_lock_);
 
   // All class references that this compiler has compiled. Indexed by class defs.
-  using ClassStateTable = AtomicDexRefMap<ClassReference, mirror::Class::Status>;
+  using ClassStateTable = AtomicDexRefMap<ClassReference, ClassStatus>;
   ClassStateTable compiled_classes_;
   // All class references that are in the classpath. Indexed by class defs.
   ClassStateTable classpath_classes_;
