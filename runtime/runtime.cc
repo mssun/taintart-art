@@ -290,7 +290,12 @@ Runtime::~Runtime() {
   Thread* self = Thread::Current();
   const bool attach_shutdown_thread = self == nullptr;
   if (attach_shutdown_thread) {
-    CHECK(AttachCurrentThread("Shutdown thread", false, nullptr, false));
+    // We can only create a peer if the runtime is actually started. This is only not true during
+    // some tests.
+    CHECK(AttachCurrentThread("Shutdown thread",
+                              false,
+                              GetSystemThreadGroup(),
+                              /* Create peer */IsStarted()));
     self = Thread::Current();
   } else {
     LOG(WARNING) << "Current thread not detached in Runtime shutdown";
