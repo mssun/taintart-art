@@ -507,6 +507,15 @@ inline const StandardDexFile* DexFile::AsStandardDexFile() const {
   return down_cast<const StandardDexFile*>(this);
 }
 
+// Get the base of the encoded data for the given DexCode.
+inline const uint8_t* DexFile::GetCatchHandlerData(const DexInstructionIterator& code_item_end,
+                                                   uint32_t tries_size,
+                                                   uint32_t offset) {
+  const uint8_t* handler_data =
+      reinterpret_cast<const uint8_t*>(GetTryItems(code_item_end, tries_size));
+  return handler_data + offset;
+}
+
 }  // namespace art
 
 #endif  // ART_RUNTIME_DEX_FILE_INL_H_
