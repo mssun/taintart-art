@@ -2103,9 +2103,8 @@ void InstructionCodeGeneratorARM64::GenerateClassInitializationCheck(SlowPathCod
   // TODO(vixl): Let the MacroAssembler handle MemOperand.
   __ Add(temp, class_reg, status_offset);
   __ Ldarb(temp, HeapOperand(temp));
-  __ Cmp(temp, mirror::Class::kStatusInitialized);
-  __ B(ne, slow_path->GetEntryLabel());
-  // Use Bne instead of Blt because ARM64 doesn't have Ldarsb.
+  __ Cmp(temp, enum_cast<>(ClassStatus::kInitialized));
+  __ B(lo, slow_path->GetEntryLabel());
   __ Bind(slow_path->GetExitLabel());
 }
 

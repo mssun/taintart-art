@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "driver/compiler_driver.h"
+#include "offsets.h"
 
 namespace art {
 

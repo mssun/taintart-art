@@ -44,7 +44,7 @@ bool AotClassLinker::InitializeClass(Thread* self, Handle<mirror::Class> klass,
   // Don't initialize klass if it's superclass is not initialized, because superclass might abort
   // the transaction and rolled back after klass's change is commited.
   if (strict_mode_ && !klass->IsInterface() && klass->HasSuperClass()) {
-    if (klass->GetSuperClass()->GetStatus() == mirror::Class::kStatusInitializing) {
+    if (klass->GetSuperClass()->GetStatus() == ClassStatus::kInitializing) {
       runtime->AbortTransactionAndThrowAbortError(self, "Can't resolve "
           + klass->PrettyTypeOf() + " because it's superclass is not initialized.");
       return false;
@@ -79,11 +79,11 @@ verifier::FailureKind AotClassLinker::PerformClassVerification(Thread* self,
   ClassStatus old_status = callbacks->GetPreviousClassState(
       ClassReference(&klass->GetDexFile(), klass->GetDexClassDefIndex()));
   // Was it verified? Report no failure.
-  if (old_status >= ClassStatus::kStatusVerified) {
+  if (old_status >= ClassStatus::kVerified) {
     return verifier::FailureKind::kNoFailure;
   }
   // Does it need to be verified at runtime? Report soft failure.
-  if (old_status >= ClassStatus::kStatusRetryVerificationAtRuntime) {
+  if (old_status >= ClassStatus::kRetryVerificationAtRuntime) {
     // Error messages from here are only reported through -verbose:class. It is not worth it to
     // create a message.
     return verifier::FailureKind::kSoftFailure;

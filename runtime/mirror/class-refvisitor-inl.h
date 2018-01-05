@@ -32,12 +32,12 @@ template <bool kVisitNativeRoots,
 inline void Class::VisitReferences(ObjPtr<Class> klass, const Visitor& visitor) {
   VisitInstanceFieldsReferences<kVerifyFlags, kReadBarrierOption>(klass.Ptr(), visitor);
   // Right after a class is allocated, but not yet loaded
-  // (kStatusNotReady, see ClassLinker::LoadClass()), GC may find it
+  // (ClassStatus::kNotReady, see ClassLinker::LoadClass()), GC may find it
   // and scan it. IsTemp() may call Class::GetAccessFlags() but may
   // fail in the DCHECK in Class::GetAccessFlags() because the class
-  // status is kStatusNotReady. To avoid it, rely on IsResolved()
+  // status is ClassStatus::kNotReady. To avoid it, rely on IsResolved()
   // only. This is fine because a temp class never goes into the
-  // kStatusResolved state.
+  // ClassStatus::kResolved state.
   if (IsResolved<kVerifyFlags>()) {
     // Temp classes don't ever populate imt/vtable or static fields and they are not even
     // allocated with the right size for those. Also, unresolved classes don't have fields

@@ -15,7 +15,6 @@
  */
 
 #if defined(DEFINE_INCLUDE_DEPENDENCIES)
-#include "mirror/class.h"         // kStatusInitialized
 #include "modifiers.h"            // kAccClassIsFinalizable
 #include "base/bit_utils.h"       // MostSignificantBit
 #endif
@@ -23,7 +22,6 @@
 #define DEFINE_FLAG_OFFSET(type_name, field_name, expr) \
   DEFINE_EXPR(type_name ## _ ## field_name, uint32_t, (expr))
 
-DEFINE_FLAG_OFFSET(MIRROR_CLASS, STATUS_INITIALIZED,       art::mirror::Class::kStatusInitialized)
 DEFINE_FLAG_OFFSET(ACCESS_FLAGS, CLASS_IS_FINALIZABLE,     art::kAccClassIsFinalizable)
 DEFINE_FLAG_OFFSET(ACCESS_FLAGS, CLASS_IS_INTERFACE,       art::kAccInterface)
 // TODO: We should really have a BitPosition which also checks it's a power of 2.

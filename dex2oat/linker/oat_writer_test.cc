@@ -455,7 +455,7 @@ TEST_F(OatTest, WriteRead) {
                                                    ScopedNullHandle<mirror::ClassLoader>());
 
     const OatFile::OatClass oat_class = oat_dex_file->GetOatClass(i);
-    CHECK_EQ(mirror::Class::Status::kStatusNotReady, oat_class.GetStatus()) << descriptor;
+    CHECK_EQ(ClassStatus::kNotReady, oat_class.GetStatus()) << descriptor;
     CHECK_EQ(kCompile ? OatClassType::kOatClassAllCompiled : OatClassType::kOatClassNoneCompiled,
              oat_class.GetType()) << descriptor;
 

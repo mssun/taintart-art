@@ -38,7 +38,7 @@ ClassStatus QuickCompilerCallbacks::GetPreviousClassState(ClassReference ref) {
   // If we don't have class unloading enabled in the compiler, we will never see class that were
   // previously verified. Return false to avoid overhead from the lookup in the compiler driver.
   if (!does_class_unloading_) {
-    return ClassStatus::kStatusNotReady;
+    return ClassStatus::kNotReady;
   }
   DCHECK(compiler_driver_ != nullptr);
   // In the case of the quicken filter: avoiding verification of quickened instructions, which the
