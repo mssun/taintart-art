@@ -322,8 +322,7 @@ JNIEXPORT __attribute__((noreturn)) void JVM_Exit(jint status) {
 
 JNIEXPORT jstring JVM_NativeLoad(JNIEnv* env,
                                  jstring javaFilename,
-                                 jobject javaLoader,
-                                 jstring javaLibrarySearchPath) {
+                                 jobject javaLoader) {
   ScopedUtfChars filename(env, javaFilename);
   if (filename.c_str() == NULL) {
     return NULL;
@@ -335,7 +334,6 @@ JNIEXPORT jstring JVM_NativeLoad(JNIEnv* env,
     bool success = vm->LoadNativeLibrary(env,
                                          filename.c_str(),
                                          javaLoader,
-                                         javaLibrarySearchPath,
                                          &error_msg);
     if (success) {
       return nullptr;
