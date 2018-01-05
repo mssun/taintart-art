@@ -169,6 +169,7 @@ class JvmtiMonitor {
     }
 
     size_t old_count = count_;
+    DCHECK_GT(old_count, 0u);
 
     count_ = 0;
     owner_.store(nullptr, std::memory_order_relaxed);
@@ -176,12 +177,19 @@ class JvmtiMonitor {
     {
       std::unique_lock<std::mutex> lk(mutex_, std::adopt_lock);
       how_to_wait(lk);
-      lk.release();  // Do not unlock the mutex.
+      // Here we release the mutex. We will get it back below. We first need to do a suspend-check
+      // without holding it however. This is done in the MonitorEnter function.
+      // TODO We could do this more efficiently.
+      // We hold the mutex_ but the overall monitor is not owned at this point.
+      CHECK(owner_.load(std::memory_order_relaxed) == nullptr);
+      DCHECK_EQ(0u, count_);
     }
 
-    DCHECK(owner_.load(std::memory_order_relaxed) == nullptr);
-    owner_.store(self, std::memory_order_relaxed);
-    DCHECK_EQ(0u, count_);
+    // Reaquire the mutex/monitor, also go to sleep if we were suspended.
+    MonitorEnter(self);
+    CHECK(owner_.load(std::memory_order_relaxed) == self);
+    DCHECK_EQ(1u, count_);
+    // Reset the count.
     count_ = old_count;
 
     return true;
