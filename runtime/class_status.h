@@ -24,70 +24,70 @@ namespace art {
 
 // Class Status
 //
-// kStatusRetired: Class that's temporarily used till class linking time
+// kRetired: Class that's temporarily used till class linking time
 // has its (vtable) size figured out and has been cloned to one with the
 // right size which will be the one used later. The old one is retired and
 // will be gc'ed once all refs to the class point to the newly
 // cloned version.
 //
-// kStatusErrorUnresolved, kStatusErrorResolved: Class is erroneous. We need
+// kErrorUnresolved, kErrorResolved: Class is erroneous. We need
 // to distinguish between classes that have been resolved and classes that
 // have not. This is important because the const-class instruction needs to
 // return a previously resolved class even if its subsequent initialization
 // failed. We also need this to decide whether to wrap a previous
 // initialization failure in ClassDefNotFound error or not.
 //
-// kStatusNotReady: If a Class cannot be found in the class table by
+// kNotReady: If a Class cannot be found in the class table by
 // FindClass, it allocates an new one with AllocClass in the
-// kStatusNotReady and calls LoadClass. Note if it does find a
-// class, it may not be kStatusResolved and it will try to push it
-// forward toward kStatusResolved.
+// kNotReady and calls LoadClass. Note if it does find a
+// class, it may not be kResolved and it will try to push it
+// forward toward kResolved.
 //
-// kStatusIdx: LoadClass populates with Class with information from
-// the DexFile, moving the status to kStatusIdx, indicating that the
+// kIdx: LoadClass populates with Class with information from
+// the DexFile, moving the status to kIdx, indicating that the
 // Class value in super_class_ has not been populated. The new Class
 // can then be inserted into the classes table.
 //
-// kStatusLoaded: After taking a lock on Class, the ClassLinker will
-// attempt to move a kStatusIdx class forward to kStatusLoaded by
+// kLoaded: After taking a lock on Class, the ClassLinker will
+// attempt to move a kIdx class forward to kLoaded by
 // using ResolveClass to initialize the super_class_ and ensuring the
 // interfaces are resolved.
 //
-// kStatusResolving: Class is just cloned with the right size from
+// kResolving: Class is just cloned with the right size from
 // temporary class that's acting as a placeholder for linking. The old
 // class will be retired. New class is set to this status first before
 // moving on to being resolved.
 //
-// kStatusResolved: Still holding the lock on Class, the ClassLinker
+// kResolved: Still holding the lock on Class, the ClassLinker
 // shows linking is complete and fields of the Class populated by making
-// it kStatusResolved. Java allows circularities of the form where a super
+// it kResolved. Java allows circularities of the form where a super
 // class has a field that is of the type of the sub class. We need to be able
 // to fully resolve super classes while resolving types for fields.
 //
-// kStatusRetryVerificationAtRuntime: The verifier sets a class to
+// kRetryVerificationAtRuntime: The verifier sets a class to
 // this state if it encounters a soft failure at compile time. This
 // often happens when there are unresolved classes in other dex
 // files, and this status marks a class as needing to be verified
 // again at runtime.
 //
 // TODO: Explain the other states
-enum ClassStatus : int8_t {
-  kStatusRetired = -3,  // Retired, should not be used. Use the newly cloned one instead.
-  kStatusErrorResolved = -2,
-  kStatusErrorUnresolved = -1,
-  kStatusNotReady = 0,
-  kStatusIdx = 1,  // Loaded, DEX idx in super_class_type_idx_ and interfaces_type_idx_.
-  kStatusLoaded = 2,  // DEX idx values resolved.
-  kStatusResolving = 3,  // Just cloned from temporary class object.
-  kStatusResolved = 4,  // Part of linking.
-  kStatusVerifying = 5,  // In the process of being verified.
-  kStatusRetryVerificationAtRuntime = 6,  // Compile time verification failed, retry at runtime.
-  kStatusVerifyingAtRuntime = 7,  // Retrying verification at runtime.
-  kStatusVerified = 8,  // Logically part of linking; done pre-init.
-  kStatusSuperclassValidated = 9,  // Superclass validation part of init done.
-  kStatusInitializing = 10,  // Class init in progress.
-  kStatusInitialized = 11,  // Ready to go.
-  kStatusMax = 12,
+enum class ClassStatus : uint8_t {
+  kNotReady = 0,  // Zero-initialized Class object starts in this state.
+  kRetired = 1,  // Retired, should not be used. Use the newly cloned one instead.
+  kErrorResolved = 2,
+  kErrorUnresolved = 3,
+  kIdx = 4,  // Loaded, DEX idx in super_class_type_idx_ and interfaces_type_idx_.
+  kLoaded = 5,  // DEX idx values resolved.
+  kResolving = 6,  // Just cloned from temporary class object.
+  kResolved = 7,  // Part of linking.
+  kVerifying = 8,  // In the process of being verified.
+  kRetryVerificationAtRuntime = 9,  // Compile time verification failed, retry at runtime.
+  kVerifyingAtRuntime = 10,  // Retrying verification at runtime.
+  kVerified = 11,  // Logically part of linking; done pre-init.
+  kSuperclassValidated = 12,  // Superclass validation part of init done.
+  kInitializing = 13,  // Class init in progress.
+  kInitialized = 14,  // Ready to go.
+  kLast = kInitialized
 };
 
 std::ostream& operator<<(std::ostream& os, const ClassStatus& rhs);

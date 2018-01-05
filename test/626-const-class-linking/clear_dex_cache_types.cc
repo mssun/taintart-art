@@ -36,10 +36,10 @@ extern "C" JNIEXPORT void JNICALL Java_Main_nativeSkipVerification(JNIEnv*, jcla
   ScopedObjectAccess soa(Thread::Current());
   StackHandleScope<1> hs(soa.Self());
   Handle<mirror::Class> klass = hs.NewHandle(soa.Decode<mirror::Class>(cls));
-  mirror::Class::Status status = klass->GetStatus();
-  if (status == mirror::Class::kStatusResolved) {
+  ClassStatus status = klass->GetStatus();
+  if (status == ClassStatus::kResolved) {
     ObjectLock<mirror::Class> lock(soa.Self(), klass);
-    klass->SetStatus(klass, mirror::Class::kStatusVerified, soa.Self());
+    klass->SetStatus(klass, ClassStatus::kVerified, soa.Self());
   } else {
     LOG(ERROR) << klass->PrettyClass() << " has unexpected status: " << status;
   }

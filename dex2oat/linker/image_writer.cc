@@ -585,7 +585,7 @@ void ImageWriter::AssignImageBinSlot(mirror::Object* object, size_t oat_index) {
       if (dirty_image_objects_ != nullptr &&
           dirty_image_objects_->find(klass->PrettyDescriptor()) != dirty_image_objects_->end()) {
         bin = Bin::kKnownDirty;
-      } else if (klass->GetStatus() == Class::kStatusInitialized) {
+      } else if (klass->GetStatus() == ClassStatus::kInitialized) {
         bin = Bin::kClassInitialized;
 
         // If the class's static fields are all final, put it into a separate bin
@@ -650,7 +650,7 @@ bool ImageWriter::WillMethodBeDirty(ArtMethod* m) const {
   }
   mirror::Class* declaring_class = m->GetDeclaringClass();
   // Initialized is highly unlikely to dirty since there's no entry points to mutate.
-  return declaring_class == nullptr || declaring_class->GetStatus() != Class::kStatusInitialized;
+  return declaring_class == nullptr || declaring_class->GetStatus() != ClassStatus::kInitialized;
 }
 
 bool ImageWriter::IsImageBinSlotAssigned(mirror::Object* object) const {
