@@ -28,20 +28,20 @@
 namespace art {
 
 inline CodeItemInstructionAccessor::CodeItemInstructionAccessor(ArtMethod* method)
-    : CodeItemInstructionAccessor(method->GetDexFile(), method->GetCodeItem()) {}
+    : CodeItemInstructionAccessor(*method->GetDexFile(), method->GetCodeItem()) {}
 
 inline CodeItemDataAccessor::CodeItemDataAccessor(ArtMethod* method)
-    : CodeItemDataAccessor(method->GetDexFile(), method->GetCodeItem()) {}
+    : CodeItemDataAccessor(*method->GetDexFile(), method->GetCodeItem()) {}
 
 inline CodeItemDebugInfoAccessor::CodeItemDebugInfoAccessor(ArtMethod* method)
-    : CodeItemDebugInfoAccessor(method->GetDexFile(), method->GetCodeItem()) {}
+    : CodeItemDebugInfoAccessor(*method->GetDexFile(), method->GetCodeItem()) {}
 
-inline CodeItemDebugInfoAccessor::CodeItemDebugInfoAccessor(const DexFile* dex_file,
+inline CodeItemDebugInfoAccessor::CodeItemDebugInfoAccessor(const DexFile& dex_file,
                                                             const DexFile::CodeItem* code_item) {
   if (code_item == nullptr) {
     return;
   }
-  Init(dex_file, code_item, OatFile::GetDebugInfoOffset(*dex_file, code_item->debug_info_off_));
+  Init(dex_file, code_item, OatFile::GetDebugInfoOffset(dex_file, code_item->debug_info_off_));
 }
 
 }  // namespace art

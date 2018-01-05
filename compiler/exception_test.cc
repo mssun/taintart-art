@@ -130,7 +130,7 @@ class ExceptionTest : public CommonRuntimeTest {
 
 TEST_F(ExceptionTest, FindCatchHandler) {
   ScopedObjectAccess soa(Thread::Current());
-  CodeItemDataAccessor accessor(dex_, dex_->GetCodeItem(method_f_->GetCodeItemOffset()));
+  CodeItemDataAccessor accessor(*dex_, dex_->GetCodeItem(method_f_->GetCodeItemOffset()));
 
   ASSERT_TRUE(accessor.HasCodeItem());
 

@@ -185,7 +185,7 @@ void DexFileTrackingRegistrar::SetAllCodeItemStartRegistration(bool should_poiso
         if (code_item != nullptr) {
           const void* code_item_begin = reinterpret_cast<const void*>(code_item);
           size_t code_item_start = reinterpret_cast<size_t>(code_item);
-          CodeItemInstructionAccessor accessor(dex_file_, code_item);
+          CodeItemInstructionAccessor accessor(*dex_file_, code_item);
           size_t code_item_start_end = reinterpret_cast<size_t>(accessor.Insns());
           size_t code_item_start_size = code_item_start_end - code_item_start;
           range_values_.push_back(std::make_tuple(code_item_begin,
@@ -208,7 +208,7 @@ void DexFileTrackingRegistrar::SetAllInsnsRegistration(bool should_poison) {
       while (cdit.HasNextMethod()) {
         const DexFile::CodeItem* code_item = cdit.GetMethodCodeItem();
         if (code_item != nullptr) {
-          CodeItemInstructionAccessor accessor(dex_file_, code_item);
+          CodeItemInstructionAccessor accessor(*dex_file_, code_item);
           const void* insns_begin = reinterpret_cast<const void*>(accessor.Insns());
           // Member insns_size_in_code_units_ is in 2-byte units
           size_t insns_size = accessor.InsnsSizeInCodeUnits() * 2;

@@ -36,22 +36,21 @@ inline void CodeItemInstructionAccessor::Init(const StandardDexFile::CodeItem& c
   insns_ = code_item.insns_;
 }
 
-inline void CodeItemInstructionAccessor::Init(const DexFile* dex_file,
+inline void CodeItemInstructionAccessor::Init(const DexFile& dex_file,
                                               const DexFile::CodeItem* code_item) {
   if (code_item != nullptr) {
-    DCHECK(dex_file->HasAddress(code_item));
-    DCHECK(dex_file != nullptr);
-    if (dex_file->IsCompactDexFile()) {
+    DCHECK(dex_file.HasAddress(code_item));
+    if (dex_file.IsCompactDexFile()) {
       Init(down_cast<const CompactDexFile::CodeItem&>(*code_item));
     } else {
-      DCHECK(dex_file->IsStandardDexFile());
+      DCHECK(dex_file.IsStandardDexFile());
       Init(down_cast<const StandardDexFile::CodeItem&>(*code_item));
     }
   }
 }
 
 inline CodeItemInstructionAccessor::CodeItemInstructionAccessor(
-    const DexFile* dex_file,
+    const DexFile& dex_file,
     const DexFile::CodeItem* code_item) {
   Init(dex_file, code_item);
 }
@@ -88,20 +87,19 @@ inline void CodeItemDataAccessor::Init(const StandardDexFile::CodeItem& code_ite
   tries_size_ = code_item.tries_size_;
 }
 
-inline void CodeItemDataAccessor::Init(const DexFile* dex_file,
+inline void CodeItemDataAccessor::Init(const DexFile& dex_file,
                                        const DexFile::CodeItem* code_item) {
   if (code_item != nullptr) {
-    DCHECK(dex_file != nullptr);
-    if (dex_file->IsCompactDexFile()) {
+    if (dex_file.IsCompactDexFile()) {
       CodeItemDataAccessor::Init(down_cast<const CompactDexFile::CodeItem&>(*code_item));
     } else {
-      DCHECK(dex_file->IsStandardDexFile());
+      DCHECK(dex_file.IsStandardDexFile());
       CodeItemDataAccessor::Init(down_cast<const StandardDexFile::CodeItem&>(*code_item));
     }
   }
 }
 
-inline CodeItemDataAccessor::CodeItemDataAccessor(const DexFile* dex_file,
+inline CodeItemDataAccessor::CodeItemDataAccessor(const DexFile& dex_file,
                                                   const DexFile::CodeItem* code_item) {
   Init(dex_file, code_item);
 }
@@ -125,15 +123,36 @@ inline const DexFile::TryItem* CodeItemDataAccessor::FindTryItem(uint32_t try_de
   return index != -1 ? &try_items.begin()[index] : nullptr;
 }
 
-inline void CodeItemDebugInfoAccessor::Init(const DexFile* dex_file,
+inline const void* CodeItemDataAccessor::CodeItemDataEnd() const {
+  const uint8_t* handler_data = GetCatchHandlerData();
+
+  if (TriesSize() == 0 || handler_data == nullptr) {
+    return &end().Inst();
+  }
+  // Get the start of the handler data.
+  const uint32_t handlers_size = DecodeUnsignedLeb128(&handler_data);
+  // Manually read each handler.
+  for (uint32_t i = 0; i < handlers_size; ++i) {
+    int32_t uleb128_count = DecodeSignedLeb128(&handler_data) * 2;
+    if (uleb128_count <= 0) {
+      uleb128_count = -uleb128_count + 1;
+    }
+    for (int32_t j = 0; j < uleb128_count; ++j) {
+      DecodeUnsignedLeb128(&handler_data);
+    }
+  }
+  return reinterpret_cast<const void*>(handler_data);
+}
+
+inline void CodeItemDebugInfoAccessor::Init(const DexFile& dex_file,
                                             const DexFile::CodeItem* code_item,
                                             uint32_t debug_info_offset) {
-  dex_file_ = dex_file;
+  dex_file_ = &dex_file;
   debug_info_offset_ = debug_info_offset;
-  if (dex_file->IsCompactDexFile()) {
+  if (dex_file.IsCompactDexFile()) {
     Init(down_cast<const CompactDexFile::CodeItem&>(*code_item));
   } else {
-    DCHECK(dex_file->IsStandardDexFile());
+    DCHECK(dex_file.IsStandardDexFile());
     Init(down_cast<const StandardDexFile::CodeItem&>(*code_item));
   }
 }

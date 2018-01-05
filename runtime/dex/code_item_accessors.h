@@ -33,7 +33,7 @@ class ArtMethod;
 // StandardDexFile.
 class CodeItemInstructionAccessor {
  public:
-  ALWAYS_INLINE CodeItemInstructionAccessor(const DexFile* dex_file,
+  ALWAYS_INLINE CodeItemInstructionAccessor(const DexFile& dex_file,
                                             const DexFile::CodeItem* code_item);
 
   ALWAYS_INLINE explicit CodeItemInstructionAccessor(ArtMethod* method);
@@ -68,7 +68,7 @@ class CodeItemInstructionAccessor {
 
   ALWAYS_INLINE void Init(const CompactDexFile::CodeItem& code_item);
   ALWAYS_INLINE void Init(const StandardDexFile::CodeItem& code_item);
-  ALWAYS_INLINE void Init(const DexFile* dex_file, const DexFile::CodeItem* code_item);
+  ALWAYS_INLINE void Init(const DexFile& dex_file, const DexFile::CodeItem* code_item);
 
  private:
   // size of the insns array, in 2 byte code units. 0 if there is no code item.
@@ -82,7 +82,7 @@ class CodeItemInstructionAccessor {
 // StandardDexFile.
 class CodeItemDataAccessor : public CodeItemInstructionAccessor {
  public:
-  ALWAYS_INLINE CodeItemDataAccessor(const DexFile* dex_file, const DexFile::CodeItem* code_item);
+  ALWAYS_INLINE CodeItemDataAccessor(const DexFile& dex_file, const DexFile::CodeItem* code_item);
 
   ALWAYS_INLINE explicit CodeItemDataAccessor(ArtMethod* method);
 
@@ -108,12 +108,14 @@ class CodeItemDataAccessor : public CodeItemInstructionAccessor {
 
   const DexFile::TryItem* FindTryItem(uint32_t try_dex_pc) const;
 
+  inline const void* CodeItemDataEnd() const;
+
  protected:
   CodeItemDataAccessor() = default;
 
   ALWAYS_INLINE void Init(const CompactDexFile::CodeItem& code_item);
   ALWAYS_INLINE void Init(const StandardDexFile::CodeItem& code_item);
-  ALWAYS_INLINE void Init(const DexFile* dex_file, const DexFile::CodeItem* code_item);
+  ALWAYS_INLINE void Init(const DexFile& dex_file, const DexFile::CodeItem* code_item);
 
  private:
   // Fields mirrored from the dex/cdex code item.
@@ -130,17 +132,17 @@ class CodeItemDebugInfoAccessor : public CodeItemDataAccessor {
   CodeItemDebugInfoAccessor() = default;
 
   // Handles null code items, but not null dex files.
-  ALWAYS_INLINE CodeItemDebugInfoAccessor(const DexFile* dex_file,
+  ALWAYS_INLINE CodeItemDebugInfoAccessor(const DexFile& dex_file,
                                           const DexFile::CodeItem* code_item);
 
   // Initialize with an existing offset.
-  ALWAYS_INLINE CodeItemDebugInfoAccessor(const DexFile* dex_file,
+  ALWAYS_INLINE CodeItemDebugInfoAccessor(const DexFile& dex_file,
                                           const DexFile::CodeItem* code_item,
                                           uint32_t debug_info_offset) {
     Init(dex_file, code_item, debug_info_offset);
   }
 
-  ALWAYS_INLINE void Init(const DexFile* dex_file,
+  ALWAYS_INLINE void Init(const DexFile& dex_file,
                           const DexFile::CodeItem* code_item,
                           uint32_t debug_info_offset);
 

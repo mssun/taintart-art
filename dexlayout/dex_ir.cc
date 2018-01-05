@@ -567,7 +567,7 @@ ParameterAnnotation* Collections::GenerateParameterAnnotation(
 
 CodeItem* Collections::CreateCodeItem(const DexFile& dex_file,
                                       const DexFile::CodeItem& disk_code_item, uint32_t offset) {
-  CodeItemDebugInfoAccessor accessor(&dex_file, &disk_code_item);
+  CodeItemDebugInfoAccessor accessor(dex_file, &disk_code_item);
   const uint16_t registers_size = accessor.RegistersSize();
   const uint16_t ins_size = accessor.InsSize();
   const uint16_t outs_size = accessor.OutsSize();
