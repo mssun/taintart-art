@@ -25,13 +25,6 @@
   name: "org.apache.harmony.jpda.tests.jdwp.ReferenceType.GetValues006Test#testGetValues006"
 },
 {
-  description: "Tests fail with assertion error on slot number",
-  result: EXEC_FAILED,
-  bug: 66905468,
-  names: [ "org.apache.harmony.jpda.tests.jdwp.Method.VariableTableTest#testVariableTableTest001",
-           "org.apache.harmony.jpda.tests.jdwp.Method.VariableTableWithGenericTest#testVariableTableWithGenericTest001" ]
-},
-{
   description: "Test fails with Error VM_DEAD when trying to resume during VM_DEATH event",
   result: EXEC_FAILED,
   bug: 66904725,
