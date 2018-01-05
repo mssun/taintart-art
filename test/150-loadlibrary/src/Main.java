@@ -47,7 +47,7 @@ public class Main {
     // Then call an internal function that accepts the classloader. Do not use load(), as it
     // is deprecated and only there for backwards compatibility, and prints a warning to the
     // log that we'd have to strip (it contains the pid).
-    Method m = Runtime.class.getDeclaredMethod("doLoad", String.class, ClassLoader.class);
+    Method m = Runtime.class.getDeclaredMethod("nativeLoad", String.class, ClassLoader.class);
     m.setAccessible(true);
     Object result = m.invoke(Runtime.getRuntime(), fileName, bootClassLoader);
     if (result != null) {

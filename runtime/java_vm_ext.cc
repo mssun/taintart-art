@@ -48,6 +48,7 @@
 #include "thread-inl.h"
 #include "thread_list.h"
 #include "ti/agent.h"
+#include "well_known_classes.h"
 
 namespace art {
 
@@ -853,7 +854,6 @@ void JavaVMExt::UnloadNativeLibraries() {
 bool JavaVMExt::LoadNativeLibrary(JNIEnv* env,
                                   const std::string& path,
                                   jobject class_loader,
-                                  jstring library_path,
                                   std::string* error_msg) {
   error_msg->clear();
 
@@ -950,6 +950,9 @@ bool JavaVMExt::LoadNativeLibrary(JNIEnv* env,
   // class unloading. Libraries will only be unloaded when the reference count (incremented by
   // dlopen) becomes zero from dlclose.
 
+  // Retrieve the library path from the classloader, if necessary.
+  ScopedLocalRef<jstring> library_path(env, GetLibrarySearchPath(env, class_loader));
+
   Locks::mutator_lock_->AssertNotHeld(self);
   const char* path_str = path.empty() ? nullptr : path.c_str();
   bool needs_native_bridge = false;
@@ -957,7 +960,7 @@ bool JavaVMExt::LoadNativeLibrary(JNIEnv* env,
                                             runtime_->GetTargetSdkVersion(),
                                             path_str,
                                             class_loader,
-                                            library_path,
+                                            library_path.get(),
                                             &needs_native_bridge,
                                             error_msg);
 
@@ -1117,6 +1120,18 @@ void JavaVMExt::VisitRoots(RootVisitor* visitor) {
   ReaderMutexLock mu(self, *Locks::jni_globals_lock_);
   globals_.VisitRoots(visitor, RootInfo(kRootJNIGlobal));
   // The weak_globals table is visited by the GC itself (because it mutates the table).
+}
+
+jstring JavaVMExt::GetLibrarySearchPath(JNIEnv* env, jobject class_loader) {
+  if (class_loader == nullptr) {
+    return nullptr;
+  }
+  if (!env->IsInstanceOf(class_loader, WellKnownClasses::dalvik_system_BaseDexClassLoader)) {
+    return nullptr;
+  }
+  return reinterpret_cast<jstring>(env->CallObjectMethod(
+      class_loader,
+      WellKnownClasses::dalvik_system_BaseDexClassLoader_getLdLibraryPath));
 }
 
 // JNI Invocation interface.
