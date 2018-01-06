@@ -26,7 +26,7 @@
 #include "base/casts.h"
 #include "base/enums.h"
 #include "class_linker.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "gc/heap-inl.h"
 #include "gc_root.h"
 #include "mirror/call_site.h"

@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_DEX_INSTRUCTION_ITERATOR_H_
-#define ART_RUNTIME_DEX_INSTRUCTION_ITERATOR_H_
+#ifndef ART_RUNTIME_DEX_DEX_INSTRUCTION_ITERATOR_H_
+#define ART_RUNTIME_DEX_DEX_INSTRUCTION_ITERATOR_H_
 
 #include <iterator>
 
 #include <android-base/logging.h>
 
-#include "dex_instruction.h"
 #include "base/macros.h"
+#include "dex_instruction.h"
 
 namespace art {
 
@@ -234,4 +234,4 @@ class SafeDexInstructionIterator : public DexInstructionIteratorBase {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_DEX_INSTRUCTION_ITERATOR_H_
+#endif  // ART_RUNTIME_DEX_DEX_INSTRUCTION_ITERATOR_H_

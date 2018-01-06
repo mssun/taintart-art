@@ -18,8 +18,8 @@
 
 #include "base/logging.h"  // FOR VLOG.
 #include "bytecode_utils.h"
-#include "code_item_accessors-inl.h"
-#include "dex_file_exception_helpers.h"
+#include "dex/code_item_accessors-inl.h"
+#include "dex/dex_file_exception_helpers.h"
 #include "quicken_info.h"
 
 namespace art {

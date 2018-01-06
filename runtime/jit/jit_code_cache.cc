@@ -27,7 +27,7 @@
 #include "base/time_utils.h"
 #include "cha.h"
 #include "debugger_interface.h"
-#include "dex_file_loader.h"
+#include "dex/dex_file_loader.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "gc/accounting/bitmap-inl.h"
 #include "gc/scoped_gc_critical_section.h"

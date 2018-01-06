@@ -32,7 +32,7 @@
 #include "base/time_utils.h"
 #include "class_table-inl.h"
 #include "compiler_filter.h"
-#include "dex_file_loader.h"
+#include "dex/dex_file_loader.h"
 #include "dex_reference_collection.h"
 #include "gc/collector_type.h"
 #include "gc/gc_cause.h"

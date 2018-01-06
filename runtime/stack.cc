@@ -23,7 +23,7 @@
 #include "base/callee_save_type.h"
 #include "base/enums.h"
 #include "base/hex_dump.h"
-#include "dex_file_types.h"
+#include "dex/dex_file_types.h"
 #include "entrypoints/entrypoint_utils-inl.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "gc/space/image_space.h"

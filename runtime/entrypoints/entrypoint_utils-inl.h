@@ -24,7 +24,7 @@
 #include "base/enums.h"
 #include "class_linker-inl.h"
 #include "common_throws.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "entrypoints/quick/callee_save_frame.h"
 #include "handle_scope-inl.h"
 #include "imt_conflict_table.h"

@@ -69,7 +69,7 @@
 #include "class_linker-inl.h"
 #include "compiler_callbacks.h"
 #include "debugger.h"
-#include "dex_file_loader.h"
+#include "dex/dex_file_loader.h"
 #include "elf_file.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "experimental_flags.h"

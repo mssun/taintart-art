@@ -15,7 +15,7 @@
  */
 
 #include "builder.h"
-#include "dex_instruction.h"
+#include "dex/dex_instruction.h"
 #include "nodes.h"
 #include "optimizing_unit_test.h"
 #include "pretty_printer.h"

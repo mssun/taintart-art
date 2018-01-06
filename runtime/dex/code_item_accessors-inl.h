@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_CODE_ITEM_ACCESSORS_INL_H_
-#define ART_RUNTIME_CODE_ITEM_ACCESSORS_INL_H_
+#ifndef ART_RUNTIME_DEX_CODE_ITEM_ACCESSORS_INL_H_
+#define ART_RUNTIME_DEX_CODE_ITEM_ACCESSORS_INL_H_
 
 #include "code_item_accessors-no_art-inl.h"
 
 #include "art_method-inl.h"
-#include "cdex/compact_dex_file.h"
+#include "compact_dex_file.h"
 #include "dex_file-inl.h"
 #include "oat_file.h"
 #include "standard_dex_file.h"
@@ -46,4 +46,4 @@ inline CodeItemDebugInfoAccessor::CodeItemDebugInfoAccessor(const DexFile* dex_f
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_CODE_ITEM_ACCESSORS_INL_H_
+#endif  // ART_RUNTIME_DEX_CODE_ITEM_ACCESSORS_INL_H_

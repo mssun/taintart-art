@@ -18,7 +18,7 @@
 
 #include "art_method-inl.h"
 #include "base/stl_util.h"
-#include "dex_file_types.h"
+#include "dex/dex_file_types.h"
 #include "optimizing/optimizing_compiler.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"

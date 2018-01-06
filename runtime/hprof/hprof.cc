@@ -48,7 +48,7 @@
 #include "class_linker.h"
 #include "common_throws.h"
 #include "debugger.h"
-#include "dex_file-inl.h"
+#include "dex/dex_file-inl.h"
 #include "gc/accounting/heap_bitmap.h"
 #include "gc/allocation_record.h"
 #include "gc/heap-visit-objects-inl.h"

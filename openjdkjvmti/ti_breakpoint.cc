@@ -38,7 +38,7 @@
 #include "base/enums.h"
 #include "base/mutex-inl.h"
 #include "deopt_manager.h"
-#include "dex_file_annotations.h"
+#include "dex/dex_file_annotations.h"
 #include "events-inl.h"
 #include "jni_internal.h"
 #include "mirror/class-inl.h"

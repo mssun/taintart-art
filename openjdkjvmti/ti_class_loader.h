@@ -40,7 +40,7 @@
 #include "art_method.h"
 #include "base/array_slice.h"
 #include "class_linker.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "gc_root-inl.h"
 #include "globals.h"
 #include "jni_env_ext-inl.h"

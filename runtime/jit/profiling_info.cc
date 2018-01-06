@@ -17,7 +17,7 @@
 #include "profiling_info.h"
 
 #include "art_method-inl.h"
-#include "dex_instruction.h"
+#include "dex/dex_instruction.h"
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"
 #include "scoped_thread_state_change-inl.h"

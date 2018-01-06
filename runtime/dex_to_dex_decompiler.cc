@@ -21,9 +21,9 @@
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "bytecode_utils.h"
-#include "code_item_accessors-inl.h"
-#include "dex_file-inl.h"
-#include "dex_instruction-inl.h"
+#include "dex/code_item_accessors-inl.h"
+#include "dex/dex_file-inl.h"
+#include "dex/dex_instruction-inl.h"
 #include "quicken_info.h"
 
 namespace art {
