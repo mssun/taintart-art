@@ -16,7 +16,7 @@
 
 #include "dex_compilation_unit.h"
 
-#include "code_item_accessors-inl.h"
+#include "dex/code_item_accessors-inl.h"
 #include "mirror/dex_cache.h"
 #include "utils.h"
 

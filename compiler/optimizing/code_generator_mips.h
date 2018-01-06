@@ -18,7 +18,7 @@
 #define ART_COMPILER_OPTIMIZING_CODE_GENERATOR_MIPS_H_
 
 #include "code_generator.h"
-#include "dex_file_types.h"
+#include "dex/dex_file_types.h"
 #include "driver/compiler_options.h"
 #include "nodes.h"
 #include "parallel_move_resolver.h"

@@ -19,10 +19,10 @@
 
 #include "base/scoped_arena_allocator.h"
 #include "builder.h"
-#include "code_item_accessors-inl.h"
 #include "common_compiler_test.h"
-#include "dex_file.h"
-#include "dex_instruction.h"
+#include "dex/code_item_accessors-inl.h"
+#include "dex/dex_file.h"
+#include "dex/dex_instruction.h"
 #include "driver/dex_compilation_unit.h"
 #include "handle_scope-inl.h"
 #include "mirror/class_loader.h"

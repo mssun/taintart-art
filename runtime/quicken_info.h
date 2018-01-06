@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_QUICKEN_INFO_H_
 #define ART_RUNTIME_QUICKEN_INFO_H_
 
-#include "dex_instruction.h"
+#include "dex/dex_instruction.h"
 
 namespace art {
 

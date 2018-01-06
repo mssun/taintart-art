@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_DEX_FILE_REFERENCE_H_
-#define ART_RUNTIME_DEX_FILE_REFERENCE_H_
+#ifndef ART_RUNTIME_DEX_DEX_FILE_REFERENCE_H_
+#define ART_RUNTIME_DEX_DEX_FILE_REFERENCE_H_
 
 #include <cstdint>
 
@@ -49,4 +49,4 @@ inline bool operator==(const DexFileReference& a, const DexFileReference& b) {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_DEX_FILE_REFERENCE_H_
+#endif  // ART_RUNTIME_DEX_DEX_FILE_REFERENCE_H_

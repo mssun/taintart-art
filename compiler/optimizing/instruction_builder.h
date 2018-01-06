@@ -19,10 +19,10 @@
 
 #include "base/scoped_arena_allocator.h"
 #include "base/scoped_arena_containers.h"
-#include "code_item_accessors.h"
 #include "data_type.h"
-#include "dex_file.h"
-#include "dex_file_types.h"
+#include "dex/code_item_accessors.h"
+#include "dex/dex_file.h"
+#include "dex/dex_file_types.h"
 #include "handle.h"
 #include "nodes.h"
 #include "quicken_info.h"

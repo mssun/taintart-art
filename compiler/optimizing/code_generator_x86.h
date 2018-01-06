@@ -20,7 +20,7 @@
 #include "arch/x86/instruction_set_features_x86.h"
 #include "base/enums.h"
 #include "code_generator.h"
-#include "dex_file_types.h"
+#include "dex/dex_file_types.h"
 #include "driver/compiler_options.h"
 #include "nodes.h"
 #include "parallel_move_resolver.h"

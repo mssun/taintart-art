@@ -30,8 +30,8 @@
  */
 
 #include "fixed_up_dex_file.h"
-#include "dex_file_loader.h"
-#include "dex_file-inl.h"
+#include "dex/dex_file-inl.h"
+#include "dex/dex_file_loader.h"
 
 // Runtime includes.
 #include "dex_to_dex_decompiler.h"

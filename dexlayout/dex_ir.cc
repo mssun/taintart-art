@@ -22,9 +22,9 @@
 
 #include "dex_ir.h"
 
-#include "code_item_accessors-inl.h"
-#include "dex_file_exception_helpers.h"
-#include "dex_instruction-inl.h"
+#include "dex/code_item_accessors-inl.h"
+#include "dex/dex_file_exception_helpers.h"
+#include "dex/dex_instruction-inl.h"
 #include "dex_ir_builder.h"
 
 namespace art {

@@ -23,7 +23,7 @@
 
 #include "base/array_ref.h"
 #include "base/mutex.h"
-#include "dex_file_types.h"
+#include "dex/dex_file_types.h"
 #include "handle.h"
 #include "obj_ptr.h"
 #include "thread.h"

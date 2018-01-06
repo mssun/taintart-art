@@ -44,12 +44,12 @@
 
 #include "android-base/stringprintf.h"
 
-#include "code_item_accessors-no_art-inl.h"
-#include "dex_file-inl.h"
-#include "dex_file_loader.h"
-#include "dex_file_types.h"
-#include "dex_file_exception_helpers.h"
-#include "dex_instruction-inl.h"
+#include "dex/code_item_accessors-no_art-inl.h"
+#include "dex/dex_file-inl.h"
+#include "dex/dex_file_exception_helpers.h"
+#include "dex/dex_file_loader.h"
+#include "dex/dex_file_types.h"
+#include "dex/dex_instruction-inl.h"
 #include "dexdump_cfg.h"
 
 namespace art {

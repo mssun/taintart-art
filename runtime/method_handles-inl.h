@@ -20,7 +20,7 @@
 #include "method_handles.h"
 
 #include "common_throws.h"
-#include "dex_instruction.h"
+#include "dex/dex_instruction.h"
 #include "interpreter/interpreter_common.h"
 #include "jvalue.h"
 #include "mirror/class.h"

@@ -24,7 +24,7 @@
 #include "class_linker.h"
 #include "common_compiler_test.h"
 #include "compiler.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "gtest/gtest.h"
 #include "indirect_reference_table.h"
 #include "java_vm_ext.h"

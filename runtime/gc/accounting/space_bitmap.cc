@@ -19,7 +19,7 @@
 #include "android-base/stringprintf.h"
 
 #include "art_field-inl.h"
-#include "dex_file-inl.h"
+#include "dex/dex_file-inl.h"
 #include "mem_map.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"

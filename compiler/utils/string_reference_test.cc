@@ -18,7 +18,7 @@
 
 #include <memory>
 
-#include "dex_file_types.h"
+#include "dex/dex_file_types.h"
 #include "gtest/gtest.h"
 #include "utils/test_dex_file_builder.h"
 

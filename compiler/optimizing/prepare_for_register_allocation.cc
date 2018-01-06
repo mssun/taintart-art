@@ -16,7 +16,7 @@
 
 #include "prepare_for_register_allocation.h"
 
-#include "dex_file_types.h"
+#include "dex/dex_file_types.h"
 #include "jni_internal.h"
 #include "optimizing_compiler_stats.h"
 #include "well_known_classes.h"

@@ -20,8 +20,8 @@
 #include <stdint.h>
 
 #include "base/arena_object.h"
-#include "code_item_accessors.h"
-#include "dex_file.h"
+#include "dex/code_item_accessors.h"
+#include "dex/dex_file.h"
 #include "handle.h"
 #include "jni.h"
 

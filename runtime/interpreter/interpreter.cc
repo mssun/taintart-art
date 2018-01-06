@@ -20,7 +20,7 @@
 
 #include "common_dex_operations.h"
 #include "common_throws.h"
-#include "dex_file_types.h"
+#include "dex/dex_file_types.h"
 #include "interpreter_common.h"
 #include "interpreter_mterp_impl.h"
 #include "interpreter_switch_impl.h"

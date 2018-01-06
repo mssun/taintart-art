@@ -20,7 +20,7 @@
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "base/value_object.h"
-#include "dex_file_types.h"
+#include "dex/dex_file_types.h"
 #include "gc_root.h"
 #include "offsets.h"
 #include "primitive.h"

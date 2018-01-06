@@ -34,7 +34,7 @@
 #include "art_field-inl.h"
 #include "art_jvmti.h"
 #include "base/enums.h"
-#include "dex_file_annotations.h"
+#include "dex/dex_file_annotations.h"
 #include "jni_internal.h"
 #include "mirror/object_array-inl.h"
 #include "modifiers.h"

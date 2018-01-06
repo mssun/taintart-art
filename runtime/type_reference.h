@@ -21,7 +21,7 @@
 
 #include <android-base/logging.h>
 
-#include "dex_file_types.h"
+#include "dex/dex_file_types.h"
 #include "string_reference.h"
 
 namespace art {

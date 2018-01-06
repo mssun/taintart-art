@@ -24,7 +24,7 @@
 #include <android-base/stringprintf.h>
 
 #include "base/unix_file/fd_file.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 
 namespace art {
 

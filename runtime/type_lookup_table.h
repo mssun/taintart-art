@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_TYPE_LOOKUP_TABLE_H_
 #define ART_RUNTIME_TYPE_LOOKUP_TABLE_H_
 
-#include "dex_file_types.h"
+#include "dex/dex_file_types.h"
 #include "leb128.h"
 #include "utf.h"
 

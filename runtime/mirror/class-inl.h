@@ -27,7 +27,7 @@
 #include "class_loader.h"
 #include "common_throws.h"
 #include "dex_cache.h"
-#include "dex_file-inl.h"
+#include "dex/dex_file-inl.h"
 #include "gc/heap-inl.h"
 #include "iftable.h"
 #include "invoke_type.h"
