@@ -28,7 +28,7 @@
 #include "base/stl_util.h"
 #include "class_linker.h"
 #include "compiler_filter.h"
-#include "dex_file_loader.h"
+#include "dex/dex_file_loader.h"
 #include "exec_utils.h"
 #include "gc/heap.h"
 #include "gc/space/image_space.h"

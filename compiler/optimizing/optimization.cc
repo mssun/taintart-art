@@ -35,11 +35,11 @@
 
 #include "bounds_check_elimination.h"
 #include "cha_guard_optimization.h"
-#include "code_item_accessors-inl.h"
 #include "code_sinking.h"
 #include "constant_folding.h"
 #include "constructor_fence_redundancy_elimination.h"
 #include "dead_code_elimination.h"
+#include "dex/code_item_accessors-inl.h"
 #include "driver/dex_compilation_unit.h"
 #include "gvn.h"
 #include "induction_var_analysis.h"

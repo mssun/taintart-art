@@ -21,7 +21,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "dex_file_types.h"
+#include "dex/dex_file_types.h"
 
 namespace art {
 

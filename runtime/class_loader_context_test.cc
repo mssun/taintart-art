@@ -23,7 +23,7 @@
 #include "base/stl_util.h"
 #include "class_linker.h"
 #include "common_runtime_test.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "handle_scope-inl.h"
 #include "mirror/class.h"
 #include "mirror/class_loader.h"

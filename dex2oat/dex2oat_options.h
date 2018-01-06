@@ -22,9 +22,9 @@
 #include <vector>
 
 #include "base/variant_map.h"
-#include "cdex/compact_dex_level.h"
 #include "cmdline_types.h"  // TODO: don't need to include this file here
 #include "compiler.h"
+#include "dex/compact_dex_level.h"
 #include "driver/compiler_options_map.h"
 #include "image.h"
 

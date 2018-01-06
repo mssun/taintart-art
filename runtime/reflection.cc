@@ -21,7 +21,7 @@
 #include "base/enums.h"
 #include "class_linker.h"
 #include "common_throws.h"
-#include "dex_file-inl.h"
+#include "dex/dex_file-inl.h"
 #include "indirect_reference_table-inl.h"
 #include "java_vm_ext.h"
 #include "jni_internal.h"

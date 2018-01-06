@@ -24,7 +24,7 @@
 
 #include "base/array_ref.h"
 #include "base/dchecked_vector.h"
-#include "cdex/compact_dex_level.h"
+#include "dex/compact_dex_level.h"
 #include "linker/relative_patcher.h"  // For RelativePatcherTargetProvider.
 #include "mem_map.h"
 #include "method_reference.h"

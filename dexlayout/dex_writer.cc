@@ -20,12 +20,12 @@
 
 #include <vector>
 
-#include "cdex/compact_dex_file.h"
 #include "compact_dex_writer.h"
-#include "dex_file_layout.h"
-#include "dex_file_types.h"
+#include "dex/compact_dex_file.h"
+#include "dex/dex_file_layout.h"
+#include "dex/dex_file_types.h"
+#include "dex/standard_dex_file.h"
 #include "dexlayout.h"
-#include "standard_dex_file.h"
 #include "utf.h"
 
 namespace art {

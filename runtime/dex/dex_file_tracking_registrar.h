@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_DEX_FILE_TRACKING_REGISTRAR_H_
-#define ART_RUNTIME_DEX_FILE_TRACKING_REGISTRAR_H_
+#ifndef ART_RUNTIME_DEX_DEX_FILE_TRACKING_REGISTRAR_H_
+#define ART_RUNTIME_DEX_DEX_FILE_TRACKING_REGISTRAR_H_
 
 #include <deque>
 #include <tuple>
@@ -78,4 +78,4 @@ void RegisterDexFile(const DexFile* dex_file);
 }  // namespace dex
 }  // namespace art
 
-#endif  // ART_RUNTIME_DEX_FILE_TRACKING_REGISTRAR_H_
+#endif  // ART_RUNTIME_DEX_DEX_FILE_TRACKING_REGISTRAR_H_

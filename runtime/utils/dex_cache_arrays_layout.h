@@ -17,8 +17,8 @@
 #ifndef ART_RUNTIME_UTILS_DEX_CACHE_ARRAYS_LAYOUT_H_
 #define ART_RUNTIME_UTILS_DEX_CACHE_ARRAYS_LAYOUT_H_
 
-#include "dex_file.h"
-#include "dex_file_types.h"
+#include "dex/dex_file.h"
+#include "dex/dex_file_types.h"
 
 namespace art {
 

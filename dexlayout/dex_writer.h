@@ -22,7 +22,7 @@
 #include <functional>
 
 #include "base/unix_file/fd_file.h"
-#include "cdex/compact_dex_level.h"
+#include "dex/compact_dex_level.h"
 #include "dex_ir.h"
 #include "mem_map.h"
 #include "os.h"

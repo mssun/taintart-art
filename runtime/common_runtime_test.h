@@ -26,7 +26,7 @@
 
 #include "arch/instruction_set.h"
 #include "base/mutex.h"
-#include "cdex/compact_dex_level.h"
+#include "dex/compact_dex_level.h"
 #include "globals.h"
 // TODO: Add inl file and avoid including inl.
 #include "obj_ptr-inl.h"

@@ -18,9 +18,9 @@
 #define ART_COMPILER_OPTIMIZING_BUILDER_H_
 
 #include "base/arena_object.h"
-#include "code_item_accessors.h"
-#include "dex_file-inl.h"
-#include "dex_file.h"
+#include "dex/code_item_accessors.h"
+#include "dex/dex_file-inl.h"
+#include "dex/dex_file.h"
 #include "driver/compiler_driver.h"
 #include "nodes.h"
 

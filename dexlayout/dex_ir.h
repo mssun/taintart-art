@@ -25,8 +25,8 @@
 #include <vector>
 
 #include "base/stl_util.h"
-#include "dex_file-inl.h"
-#include "dex_file_types.h"
+#include "dex/dex_file-inl.h"
+#include "dex/dex_file_types.h"
 #include "leb128.h"
 #include "utf.h"
 

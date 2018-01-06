@@ -30,7 +30,7 @@
 #include "android-base/strings.h"
 
 #include "base/file_utils.h"
-#include "dex_file-inl.h"
+#include "dex/dex_file-inl.h"
 #include "os.h"
 #include "utf-inl.h"
 

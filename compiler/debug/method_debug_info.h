@@ -21,7 +21,7 @@
 
 #include "arch/instruction_set.h"
 #include "base/array_ref.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 
 namespace art {
 namespace debug {

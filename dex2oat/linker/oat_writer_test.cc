@@ -26,7 +26,7 @@
 #include "compiled_method-inl.h"
 #include "compiler.h"
 #include "debug/method_debug_info.h"
-#include "dex_file_loader.h"
+#include "dex/dex_file_loader.h"
 #include "dex/quick_compiler_callbacks.h"
 #include "dex/verification_results.h"
 #include "driver/compiler_driver.h"

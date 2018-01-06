@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "base/mutex.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "method_reference.h"
 #include "safe_map.h"
 

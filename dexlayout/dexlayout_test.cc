@@ -22,10 +22,10 @@
 #include <unistd.h>
 
 #include "base/unix_file/fd_file.h"
-#include "code_item_accessors-inl.h"
 #include "common_runtime_test.h"
-#include "dex_file-inl.h"
-#include "dex_file_loader.h"
+#include "dex/code_item_accessors-inl.h"
+#include "dex/dex_file-inl.h"
+#include "dex/dex_file_loader.h"
 #include "exec_utils.h"
 #include "jit/profile_compilation_info.h"
 #include "utils.h"

@@ -21,7 +21,7 @@
 #include <memory>
 #include <vector>
 
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "jit/profile_compilation_info.h"
 
 namespace art {

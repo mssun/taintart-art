@@ -20,7 +20,7 @@
 #include <stdint.h>
 #include <utility>
 
-#include "dex_file_reference.h"
+#include "dex/dex_file_reference.h"
 
 namespace art {
 

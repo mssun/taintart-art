@@ -26,7 +26,7 @@
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "check_jni.h"
-#include "dex_file-inl.h"
+#include "dex/dex_file-inl.h"
 #include "fault_handler.h"
 #include "gc/allocation_record.h"
 #include "gc/heap.h"

@@ -30,7 +30,7 @@
 #include "calling_convention.h"
 #include "class_linker.h"
 #include "debug/dwarf/debug_frame_opcode_writer.h"
-#include "dex_file-inl.h"
+#include "dex/dex_file-inl.h"
 #include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
 #include "entrypoints/quick/quick_entrypoints.h"

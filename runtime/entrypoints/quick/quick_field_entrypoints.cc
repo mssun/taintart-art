@@ -20,7 +20,7 @@
 #include "art_method-inl.h"
 #include "base/callee_save_type.h"
 #include "callee_save_frame.h"
-#include "dex_file-inl.h"
+#include "dex/dex_file-inl.h"
 #include "entrypoints/entrypoint_utils-inl.h"
 #include "gc_root-inl.h"
 #include "mirror/class-inl.h"

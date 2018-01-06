@@ -21,7 +21,7 @@
 
 #include "art_method-inl.h"
 #include "base/enums.h"
-#include "dex_file-inl.h"
+#include "dex/dex_file-inl.h"
 #include "instrumentation.h"
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"
