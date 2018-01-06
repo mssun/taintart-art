@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_DEX_FILE_LAYOUT_H_
-#define ART_RUNTIME_DEX_FILE_LAYOUT_H_
+#ifndef ART_RUNTIME_DEX_DEX_FILE_LAYOUT_H_
+#define ART_RUNTIME_DEX_DEX_FILE_LAYOUT_H_
 
 #include <algorithm>
 #include <cstdint>
@@ -121,4 +121,4 @@ std::ostream& operator<<(std::ostream& os, const DexLayoutSections& sections);
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_DEX_FILE_LAYOUT_H_
+#endif  // ART_RUNTIME_DEX_DEX_FILE_LAYOUT_H_

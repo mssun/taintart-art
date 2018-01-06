@@ -17,7 +17,7 @@
 #ifndef ART_COMPILER_OPTIMIZING_INLINER_H_
 #define ART_COMPILER_OPTIMIZING_INLINER_H_
 
-#include "dex_file_types.h"
+#include "dex/dex_file_types.h"
 #include "invoke_type.h"
 #include "jit/profile_compilation_info.h"
 #include "optimization.h"

@@ -20,7 +20,7 @@
 #include "imtable.h"
 
 #include "art_method-inl.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "utf.h"
 
 namespace art {

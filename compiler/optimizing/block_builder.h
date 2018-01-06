@@ -19,8 +19,8 @@
 
 #include "base/scoped_arena_allocator.h"
 #include "base/scoped_arena_containers.h"
-#include "code_item_accessors.h"
-#include "dex_file.h"
+#include "dex/code_item_accessors.h"
+#include "dex/dex_file.h"
 #include "nodes.h"
 
 namespace art {

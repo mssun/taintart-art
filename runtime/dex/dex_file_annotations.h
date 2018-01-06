@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_DEX_FILE_ANNOTATIONS_H_
-#define ART_RUNTIME_DEX_FILE_ANNOTATIONS_H_
+#ifndef ART_RUNTIME_DEX_DEX_FILE_ANNOTATIONS_H_
+#define ART_RUNTIME_DEX_DEX_FILE_ANNOTATIONS_H_
 
 #include "dex_file.h"
 
@@ -141,4 +141,4 @@ class RuntimeEncodedStaticFieldValueIterator : public EncodedStaticFieldValueIte
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_DEX_FILE_ANNOTATIONS_H_
+#endif  // ART_RUNTIME_DEX_DEX_FILE_ANNOTATIONS_H_

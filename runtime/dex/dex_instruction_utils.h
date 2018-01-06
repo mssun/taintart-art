@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_DEX_INSTRUCTION_UTILS_H_
-#define ART_RUNTIME_DEX_INSTRUCTION_UTILS_H_
+#ifndef ART_RUNTIME_DEX_DEX_INSTRUCTION_UTILS_H_
+#define ART_RUNTIME_DEX_DEX_INSTRUCTION_UTILS_H_
 
 #include "dex_instruction.h"
 
@@ -216,4 +216,4 @@ constexpr DexMemAccessType AGetOrAPutMemAccessType(Instruction::Code code) {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_DEX_INSTRUCTION_UTILS_H_
+#endif  // ART_RUNTIME_DEX_DEX_INSTRUCTION_UTILS_H_

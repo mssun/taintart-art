@@ -29,7 +29,7 @@
 #include "base/logging.h"  // For InitLogging.
 #include "base/stringpiece.h"
 
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "dex_ir.h"
 #include "dex_ir_builder.h"
 #ifdef ART_TARGET_ANDROID

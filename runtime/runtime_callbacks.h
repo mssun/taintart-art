@@ -22,7 +22,7 @@
 #include "base/array_ref.h"
 #include "base/macros.h"
 #include "base/mutex.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "handle.h"
 
 namespace art {

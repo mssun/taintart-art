@@ -31,7 +31,7 @@
 #include "class_linker.h"
 #include "common_throws.h"
 #include "debugger.h"
-#include "dex_file-inl.h"
+#include "dex/dex_file-inl.h"
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "gc/scoped_gc_critical_section.h"
 #include "instrumentation.h"

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_CDEX_COMPACT_DEX_LEVEL_H_
-#define ART_RUNTIME_CDEX_COMPACT_DEX_LEVEL_H_
+#ifndef ART_RUNTIME_DEX_COMPACT_DEX_LEVEL_H_
+#define ART_RUNTIME_DEX_COMPACT_DEX_LEVEL_H_
 
 #include <string>
 
@@ -47,4 +47,4 @@ static constexpr CompactDexLevel kDefaultCompactDexLevel = ART_DEFAULT_COMPACT_D
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_CDEX_COMPACT_DEX_LEVEL_H_
+#endif  // ART_RUNTIME_DEX_COMPACT_DEX_LEVEL_H_

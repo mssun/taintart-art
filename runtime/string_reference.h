@@ -21,9 +21,9 @@
 
 #include <android-base/logging.h>
 
-#include "dex_file-inl.h"
-#include "dex_file_reference.h"
-#include "dex_file_types.h"
+#include "dex/dex_file-inl.h"
+#include "dex/dex_file_reference.h"
+#include "dex/dex_file_types.h"
 #include "utf-inl.h"
 
 namespace art {

@@ -25,8 +25,8 @@
 #include "base/bit_utils.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
-#include "dex_file.h"
-#include "dex_file_loader.h"
+#include "dex/dex_file.h"
+#include "dex/dex_file_loader.h"
 #include "dex_to_dex_decompiler.h"
 
 namespace art {

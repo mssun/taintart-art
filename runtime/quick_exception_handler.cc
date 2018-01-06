@@ -20,8 +20,8 @@
 #include "art_method-inl.h"
 #include "base/enums.h"
 #include "base/logging.h"  // For VLOG_IS_ON.
-#include "dex_file_types.h"
-#include "dex_instruction.h"
+#include "dex/dex_file_types.h"
+#include "dex/dex_instruction.h"
 #include "entrypoints/entrypoint_utils.h"
 #include "entrypoints/quick/quick_entrypoints_enum.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
