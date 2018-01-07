@@ -615,7 +615,7 @@ define define-test-art-gtest-combination
   endif
 
 .PHONY: $$(rule_name)
-$$(rule_name): $$(dependencies) dx d8-compat-dx
+$$(rule_name): $$(dependencies) dx d8-compat-dx desugar
 	$(hide) $$(call ART_TEST_PREREQ_FINISHED,$$@)
 
   # Clear locally defined variables.

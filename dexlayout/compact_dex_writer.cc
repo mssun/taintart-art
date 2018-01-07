@@ -16,7 +16,7 @@
 
 #include "compact_dex_writer.h"
 
-#include "cdex/compact_dex_file.h"
+#include "dex/compact_dex_file.h"
 
 namespace art {
 

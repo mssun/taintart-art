@@ -24,7 +24,7 @@
 #include "class_linker.h"
 #include "common_compiler_test.h"
 #include "compiler.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "gtest/gtest.h"
 #include "indirect_reference_table.h"
 #include "java_vm_ext.h"
@@ -299,7 +299,6 @@ class JniCompilerTest : public CommonCompilerTest {
     }
     // JNI operations after runtime start.
     env_ = Thread::Current()->GetJniEnv();
-    library_search_path_ = env_->NewStringUTF("");
     jklass_ = env_->FindClass("MyClassNatives");
     ASSERT_TRUE(jklass_ != nullptr) << method_name << " " << method_sig;
 
@@ -380,7 +379,6 @@ class JniCompilerTest : public CommonCompilerTest {
   void CriticalNativeImpl();
 
   JNIEnv* env_;
-  jstring library_search_path_;
   jmethodID jmethod_;
 
  private:
@@ -660,7 +658,7 @@ void JniCompilerTest::CompileAndRunIntMethodThroughStubImpl() {
 
   std::string reason;
   ASSERT_TRUE(Runtime::Current()->GetJavaVM()->
-                  LoadNativeLibrary(env_, "", class_loader_, library_search_path_, &reason))
+                  LoadNativeLibrary(env_, "", class_loader_, &reason))
       << reason;
 
   jint result = env_->CallNonvirtualIntMethod(jobj_, jklass_, jmethod_, 24);
@@ -676,7 +674,7 @@ void JniCompilerTest::CompileAndRunStaticIntMethodThroughStubImpl() {
 
   std::string reason;
   ASSERT_TRUE(Runtime::Current()->GetJavaVM()->
-                  LoadNativeLibrary(env_, "", class_loader_, library_search_path_, &reason))
+                  LoadNativeLibrary(env_, "", class_loader_, &reason))
       << reason;
 
   jint result = env_->CallStaticIntMethod(jklass_, jmethod_, 42);

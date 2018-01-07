@@ -16,7 +16,7 @@
 
 #include "interpreter/interpreter_intrinsics.h"
 
-#include "dex_instruction.h"
+#include "dex/dex_instruction.h"
 #include "intrinsics_enum.h"
 #include "interpreter/interpreter_common.h"
 

@@ -20,7 +20,7 @@
 #include "art_method-inl.h"
 #include "class_linker-inl.h"
 #include "common_runtime_test.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "mirror/array-inl.h"
 #include "scoped_thread_state_change-inl.h"
 
@@ -66,7 +66,7 @@ class TransactionTest : public CommonRuntimeTest {
     class_linker_->VerifyClass(soa.Self(), h_klass);
     ASSERT_TRUE(h_klass->IsVerified());
 
-    mirror::Class::Status old_status = h_klass->GetStatus();
+    ClassStatus old_status = h_klass->GetStatus();
     LockWord old_lock_word = h_klass->GetLockWord(false);
 
     Runtime::Current()->EnterTransactionMode();

@@ -69,7 +69,7 @@
 #include "class_linker-inl.h"
 #include "compiler_callbacks.h"
 #include "debugger.h"
-#include "dex_file_loader.h"
+#include "dex/dex_file_loader.h"
 #include "elf_file.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "experimental_flags.h"
@@ -290,7 +290,12 @@ Runtime::~Runtime() {
   Thread* self = Thread::Current();
   const bool attach_shutdown_thread = self == nullptr;
   if (attach_shutdown_thread) {
-    CHECK(AttachCurrentThread("Shutdown thread", false, nullptr, false));
+    // We can only create a peer if the runtime is actually started. This is only not true during
+    // some tests.
+    CHECK(AttachCurrentThread("Shutdown thread",
+                              false,
+                              GetSystemThreadGroup(),
+                              /* Create peer */IsStarted()));
     self = Thread::Current();
   } else {
     LOG(WARNING) << "Current thread not detached in Runtime shutdown";
@@ -1614,7 +1619,7 @@ void Runtime::InitNativeMethods() {
   // libcore can't because it's the library that implements System.loadLibrary!
   {
     std::string error_msg;
-    if (!java_vm_->LoadNativeLibrary(env, "libjavacore.so", nullptr, nullptr, &error_msg)) {
+    if (!java_vm_->LoadNativeLibrary(env, "libjavacore.so", nullptr, &error_msg)) {
       LOG(FATAL) << "LoadNativeLibrary failed for \"libjavacore.so\": " << error_msg;
     }
   }
@@ -1623,7 +1628,7 @@ void Runtime::InitNativeMethods() {
                                                 ? "libopenjdkd.so"
                                                 : "libopenjdk.so";
     std::string error_msg;
-    if (!java_vm_->LoadNativeLibrary(env, kOpenJdkLibrary, nullptr, nullptr, &error_msg)) {
+    if (!java_vm_->LoadNativeLibrary(env, kOpenJdkLibrary, nullptr, &error_msg)) {
       LOG(FATAL) << "LoadNativeLibrary failed for \"" << kOpenJdkLibrary << "\": " << error_msg;
     }
   }

@@ -33,7 +33,7 @@
 
 #include "base/array_slice.h"
 #include "class_linker-inl.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "fixed_up_dex_file.h"
 #include "handle.h"
 #include "handle_scope-inl.h"

@@ -20,7 +20,7 @@
 #include "common_compiler_test.h"
 #include "compiled_method-inl.h"
 #include "compiler_callbacks.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
 #include "handle_scope-inl.h"
@@ -99,8 +99,10 @@ class DexToDexDecompilerTest : public CommonCompilerTest {
         if (compiled_method != nullptr) {
           table = compiled_method->GetVmapTable();
         }
-        optimizer::ArtDecompileDEX(
-            *it.GetMethodCodeItem(), table, /* decompile_return_instruction */ true);
+        optimizer::ArtDecompileDEX(*updated_dex_file,
+                                   *it.GetMethodCodeItem(),
+                                   table,
+                                   /* decompile_return_instruction */ true);
         it.Next();
       }
       DCHECK(!it.HasNext());

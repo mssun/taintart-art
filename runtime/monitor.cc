@@ -27,9 +27,9 @@
 #include "base/systrace.h"
 #include "base/time_utils.h"
 #include "class_linker.h"
-#include "dex_file-inl.h"
-#include "dex_file_types.h"
-#include "dex_instruction-inl.h"
+#include "dex/dex_file-inl.h"
+#include "dex/dex_file_types.h"
+#include "dex/dex_instruction-inl.h"
 #include "lock_word-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
@@ -134,7 +134,7 @@ Monitor::Monitor(Thread* self, Thread* owner, mirror::Object* obj, int32_t hash_
 
 int32_t Monitor::GetHashCode() {
   while (!HasHashCode()) {
-    if (hash_code_.CompareExchangeWeakRelaxed(0, mirror::Object::GenerateIdentityHashCode())) {
+    if (hash_code_.CompareAndSetWeakRelaxed(0, mirror::Object::GenerateIdentityHashCode())) {
       break;
     }
   }

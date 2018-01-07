@@ -24,7 +24,7 @@
 #include "base/logging.h"  // For VLOG
 #include "base/safe_copy.h"
 #include "base/stl_util.h"
-#include "dex_file_types.h"
+#include "dex/dex_file_types.h"
 #include "mirror/class.h"
 #include "mirror/object_reference.h"
 #include "oat_quick_method_header.h"

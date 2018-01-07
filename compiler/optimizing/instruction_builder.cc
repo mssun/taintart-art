@@ -23,7 +23,7 @@
 #include "bytecode_utils.h"
 #include "class_linker.h"
 #include "data_type-inl.h"
-#include "dex_instruction-inl.h"
+#include "dex/dex_instruction-inl.h"
 #include "driver/compiler_driver-inl.h"
 #include "driver/dex_compilation_unit.h"
 #include "driver/compiler_options.h"

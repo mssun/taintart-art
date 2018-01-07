@@ -46,6 +46,7 @@
 #include "bytecode_utils.h"
 #include "class_linker.h"
 #include "compiled_method.h"
+#include "dex/code_item_accessors-inl.h"
 #include "dex/verified_method.h"
 #include "driver/compiler_driver.h"
 #include "graph_visualizer.h"
@@ -910,7 +911,8 @@ static void CheckLoopEntriesCanBeUsedForOsr(const HGraph& graph,
   }
   ArenaVector<size_t> covered(
       loop_headers.size(), 0, graph.GetAllocator()->Adapter(kArenaAllocMisc));
-  for (const DexInstructionPcPair& pair : code_item.Instructions()) {
+  for (const DexInstructionPcPair& pair : CodeItemInstructionAccessor(&graph.GetDexFile(),
+                                                                      &code_item)) {
     const uint32_t dex_pc = pair.DexPc();
     const Instruction& instruction = pair.Inst();
     if (instruction.IsBranch()) {

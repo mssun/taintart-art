@@ -42,7 +42,7 @@
 #include "base/systrace.h"
 #include "base/time_utils.h"
 #include "base/unix_file/fd_file.h"
-#include "dex_file_loader.h"
+#include "dex/dex_file_loader.h"
 #include "jit/profiling_info.h"
 #include "os.h"
 #include "safe_map.h"

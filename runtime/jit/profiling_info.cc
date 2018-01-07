@@ -17,7 +17,7 @@
 #include "profiling_info.h"
 
 #include "art_method-inl.h"
-#include "dex_instruction.h"
+#include "dex/dex_instruction.h"
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"
 #include "scoped_thread_state_change-inl.h"
@@ -94,8 +94,8 @@ void ProfilingInfo::AddInvokeInfo(uint32_t dex_pc, mirror::Class* cls) {
       // *after* this thread hits a suspend point.
       GcRoot<mirror::Class> expected_root(existing);
       GcRoot<mirror::Class> desired_root(cls);
-      if (!reinterpret_cast<Atomic<GcRoot<mirror::Class>>*>(&cache->classes_[i])->
-              CompareExchangeStrongSequentiallyConsistent(expected_root, desired_root)) {
+      auto atomic_root = reinterpret_cast<Atomic<GcRoot<mirror::Class>>*>(&cache->classes_[i]);
+      if (!atomic_root->CompareAndSetStrongSequentiallyConsistent(expected_root, desired_root)) {
         // Some other thread put a class in the cache, continue iteration starting at this
         // entry in case the entry contains `cls`.
         --i;

@@ -17,7 +17,7 @@
 #ifndef ART_COMPILER_DEX_DEX_TO_DEX_COMPILER_H_
 #define ART_COMPILER_DEX_DEX_TO_DEX_COMPILER_H_
 
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "handle.h"
 #include "invoke_type.h"
 

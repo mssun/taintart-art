@@ -43,8 +43,9 @@
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/unix_file/fd_file.h"
-#include "dex_file_types.h"
-#include "dex_file_loader.h"
+#include "dex/dex_file_loader.h"
+#include "dex/dex_file_types.h"
+#include "dex/standard_dex_file.h"
 #include "elf_file.h"
 #include "elf_utils.h"
 #include "gc_root.h"
@@ -57,7 +58,6 @@
 #include "oat_file_manager.h"
 #include "os.h"
 #include "runtime.h"
-#include "standard_dex_file.h"
 #include "type_lookup_table.h"
 #include "utf-inl.h"
 #include "utils.h"
@@ -1654,9 +1654,8 @@ OatFile::OatClass OatFile::OatDexFile::GetOatClass(uint16_t class_def_index) con
 
   const uint8_t* status_pointer = oat_class_pointer;
   CHECK_LT(status_pointer, oat_file_->End()) << oat_file_->GetLocation();
-  mirror::Class::Status status =
-      static_cast<mirror::Class::Status>(*reinterpret_cast<const int16_t*>(status_pointer));
-  CHECK_LT(status, mirror::Class::kStatusMax);
+  ClassStatus status = enum_cast<ClassStatus>(*reinterpret_cast<const int16_t*>(status_pointer));
+  CHECK_LE(status, ClassStatus::kLast);
 
   const uint8_t* type_pointer = status_pointer + sizeof(uint16_t);
   CHECK_LT(type_pointer, oat_file_->End()) << oat_file_->GetLocation();
@@ -1737,7 +1736,7 @@ void OatDexFile::MadviseDexFile(const DexFile& dex_file, MadviseState state) {
 }
 
 OatFile::OatClass::OatClass(const OatFile* oat_file,
-                            mirror::Class::Status status,
+                            ClassStatus status,
                             OatClassType type,
                             uint32_t bitmap_size,
                             const uint32_t* bitmap_pointer,

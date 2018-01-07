@@ -74,7 +74,7 @@ inline mirror::Object* BumpPointerSpace::AllocNonvirtualWithoutAccounting(size_t
     if (UNLIKELY(new_end > growth_end_)) {
       return nullptr;
     }
-  } while (!end_.CompareExchangeWeakSequentiallyConsistent(old_end, new_end));
+  } while (!end_.CompareAndSetWeakSequentiallyConsistent(old_end, new_end));
   return reinterpret_cast<mirror::Object*>(old_end);
 }
 

@@ -18,7 +18,7 @@
 #define ART_RUNTIME_INTERPRETER_INTERPRETER_H_
 
 #include "base/mutex.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "obj_ptr.h"
 
 namespace art {

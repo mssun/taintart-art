@@ -20,9 +20,9 @@
 #include "callee_save_frame.h"
 #include "common_throws.h"
 #include "debugger.h"
-#include "dex_file-inl.h"
-#include "dex_file_types.h"
-#include "dex_instruction-inl.h"
+#include "dex/dex_file-inl.h"
+#include "dex/dex_file_types.h"
+#include "dex/dex_instruction-inl.h"
 #include "entrypoints/entrypoint_utils-inl.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "gc/accounting/card_table-inl.h"
@@ -2564,8 +2564,7 @@ extern "C" uintptr_t artInvokePolymorphic(
   // From the instruction, get the |callsite_shorty| and expose arguments on the stack to the GC.
   ArtMethod* caller_method = QuickArgumentVisitor::GetCallingMethod(sp);
   uint32_t dex_pc = QuickArgumentVisitor::GetCallingDexPc(sp);
-  const DexFile::CodeItem* code = caller_method->GetCodeItem();
-  const Instruction& inst = code->InstructionAt(dex_pc);
+  const Instruction& inst = caller_method->DexInstructions().InstructionAt(dex_pc);
   DCHECK(inst.Opcode() == Instruction::INVOKE_POLYMORPHIC ||
          inst.Opcode() == Instruction::INVOKE_POLYMORPHIC_RANGE);
   const uint32_t proto_idx = inst.VRegH();

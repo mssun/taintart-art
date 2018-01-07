@@ -37,7 +37,7 @@
 #include "art_method-inl.h"
 #include "base/enums.h"
 #include "base/mutex-inl.h"
-#include "dex_file_annotations.h"
+#include "dex/dex_file_annotations.h"
 #include "events-inl.h"
 #include "jni_internal.h"
 #include "mirror/class-inl.h"

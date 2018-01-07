@@ -21,7 +21,7 @@
 #include "art_method-inl.h"
 #include "base/enums.h"
 #include "class-inl.h"
-#include "dex_file-inl.h"
+#include "dex/dex_file-inl.h"
 #include "gc/accounting/card_table-inl.h"
 #include "object-inl.h"
 #include "object_array-inl.h"

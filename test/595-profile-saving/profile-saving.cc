@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "dex_file.h"
+#include "dex/dex_file.h"
 
 #include "art_method-inl.h"
 #include "jit/profile_compilation_info.h"

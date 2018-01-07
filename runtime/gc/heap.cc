@@ -38,7 +38,7 @@
 #include "common_throws.h"
 #include "cutils/sched_policy.h"
 #include "debugger.h"
-#include "dex_file-inl.h"
+#include "dex/dex_file-inl.h"
 #include "entrypoints/quick/quick_alloc_entrypoints.h"
 #include "gc/accounting/card_table-inl.h"
 #include "gc/accounting/heap_bitmap-inl.h"
@@ -1127,7 +1127,7 @@ static inline AllocationListener* GetAndOverwriteAllocationListener(
   AllocationListener* old;
   do {
     old = storage->LoadSequentiallyConsistent();
-  } while (!storage->CompareExchangeStrongSequentiallyConsistent(old, new_value));
+  } while (!storage->CompareAndSetStrongSequentiallyConsistent(old, new_value));
   return old;
 }
 
@@ -3601,7 +3601,7 @@ void Heap::ClearConcurrentGCRequest() {
 
 void Heap::RequestConcurrentGC(Thread* self, GcCause cause, bool force_full) {
   if (CanAddHeapTask(self) &&
-      concurrent_gc_pending_.CompareExchangeStrongSequentiallyConsistent(false, true)) {
+      concurrent_gc_pending_.CompareAndSetStrongSequentiallyConsistent(false, true)) {
     task_processor_->AddTask(self, new ConcurrentGCTask(NanoTime(),  // Start straight away.
                                                         cause,
                                                         force_full));
@@ -3846,7 +3846,7 @@ void Heap::RegisterNativeFree(JNIEnv*, size_t bytes) {
   do {
     allocated = new_native_bytes_allocated_.LoadRelaxed();
     new_freed_bytes = std::min(allocated, bytes);
-  } while (!new_native_bytes_allocated_.CompareExchangeWeakRelaxed(allocated,
+  } while (!new_native_bytes_allocated_.CompareAndSetWeakRelaxed(allocated,
                                                                    allocated - new_freed_bytes));
   if (new_freed_bytes < bytes) {
     old_native_bytes_allocated_.FetchAndSubRelaxed(bytes - new_freed_bytes);

@@ -1915,9 +1915,9 @@ void CodeGeneratorMIPS::GenerateInvokeRuntime(int32_t entry_point_offset, bool d
 
 void InstructionCodeGeneratorMIPS::GenerateClassInitializationCheck(SlowPathCodeMIPS* slow_path,
                                                                     Register class_reg) {
-  __ LoadFromOffset(kLoadSignedByte, TMP, class_reg, mirror::Class::StatusOffset().Int32Value());
-  __ LoadConst32(AT, mirror::Class::kStatusInitialized);
-  __ Blt(TMP, AT, slow_path->GetEntryLabel());
+  __ LoadFromOffset(kLoadUnsignedByte, TMP, class_reg, mirror::Class::StatusOffset().Int32Value());
+  __ LoadConst32(AT, enum_cast<>(ClassStatus::kInitialized));
+  __ Bltu(TMP, AT, slow_path->GetEntryLabel());
   // Even if the initialized flag is set, we need to ensure consistent memory ordering.
   __ Sync(0);
   __ Bind(slow_path->GetExitLabel());
@@ -3774,8 +3774,12 @@ void InstructionCodeGeneratorMIPS::DivRemByPowerOfTwo(HBinaryOperation* instruct
       if (IsUint<16>(abs_imm - 1)) {
         __ Andi(out, out, abs_imm - 1);
       } else {
-        __ Sll(out, out, 32 - ctz_imm);
-        __ Srl(out, out, 32 - ctz_imm);
+        if (codegen_->GetInstructionSetFeatures().IsMipsIsaRevGreaterThanEqual2()) {
+          __ Ins(out, ZERO, ctz_imm, 32 - ctz_imm);
+        } else {
+          __ Sll(out, out, 32 - ctz_imm);
+          __ Srl(out, out, 32 - ctz_imm);
+        }
       }
       __ Subu(out, out, TMP);
     }

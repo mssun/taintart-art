@@ -79,7 +79,7 @@ mirror::Class* ClassTable::UpdateClass(const char* descriptor, mirror::Class* kl
   mirror::Class* const existing = existing_it->Read();
   CHECK_NE(existing, klass) << descriptor;
   CHECK(!existing->IsResolved()) << descriptor;
-  CHECK_EQ(klass->GetStatus(), mirror::Class::kStatusResolving) << descriptor;
+  CHECK_EQ(klass->GetStatus(), ClassStatus::kResolving) << descriptor;
   CHECK(!klass->IsTemp()) << descriptor;
   VerifyObject(klass);
   // Update the element in the hash set with the new class. This is safe to do since the descriptor

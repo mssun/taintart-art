@@ -26,8 +26,8 @@
 #include "base/mutex.h"
 #include "bytecode_utils.h"
 #include "compiled_method.h"
-#include "dex_file-inl.h"
-#include "dex_instruction-inl.h"
+#include "dex/dex_file-inl.h"
+#include "dex/dex_instruction-inl.h"
 #include "driver/compiler_driver.h"
 #include "driver/dex_compilation_unit.h"
 #include "mirror/dex_cache.h"
@@ -114,7 +114,8 @@ class DexCompiler {
 
 void DexCompiler::Compile() {
   DCHECK_EQ(dex_to_dex_compilation_level_, DexToDexCompilationLevel::kOptimize);
-  IterationRange<DexInstructionIterator> instructions = unit_.GetCodeItem()->Instructions();
+  IterationRange<DexInstructionIterator> instructions(unit_.GetCodeItemAccessor().begin(),
+                                                      unit_.GetCodeItemAccessor().end());
   for (DexInstructionIterator it = instructions.begin(); it != instructions.end(); ++it) {
     const uint32_t dex_pc = it.DexPc();
     Instruction* inst = const_cast<Instruction*>(&it.Inst());
@@ -364,7 +365,7 @@ CompiledMethod* ArtCompileDEX(
     if (kIsDebugBuild) {
       // Double check that the counts line up with the size of the quicken info.
       size_t quicken_count = 0;
-      for (const DexInstructionPcPair& pair : code_item->Instructions()) {
+      for (const DexInstructionPcPair& pair : unit.GetCodeItemAccessor()) {
         if (QuickenInfoTable::NeedsIndexForInstruction(&pair.Inst())) {
           ++quicken_count;
         }
@@ -376,7 +377,7 @@ CompiledMethod* ArtCompileDEX(
       // Dex pc is not serialized, only used for checking the instructions. Since we access the
       // array based on the index of the quickened instruction, the indexes must line up perfectly.
       // The reader side uses the NeedsIndexForInstruction function too.
-      const Instruction& inst = code_item->InstructionAt(info.dex_pc);
+      const Instruction& inst = unit.GetCodeItemAccessor().InstructionAt(info.dex_pc);
       CHECK(QuickenInfoTable::NeedsIndexForInstruction(&inst)) << inst.Opcode();
       // Add the index.
       quicken_data.push_back(static_cast<uint8_t>(info.dex_member_index >> 0));

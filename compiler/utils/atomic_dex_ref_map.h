@@ -18,7 +18,7 @@
 #define ART_COMPILER_UTILS_ATOMIC_DEX_REF_MAP_H_
 
 #include "base/dchecked_vector.h"
-#include "dex_file_reference.h"
+#include "dex/dex_file_reference.h"
 #include "safe_map.h"
 
 namespace art {

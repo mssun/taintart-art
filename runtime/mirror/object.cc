@@ -24,7 +24,7 @@
 #include "class-inl.h"
 #include "class.h"
 #include "class_linker-inl.h"
-#include "dex_file-inl.h"
+#include "dex/dex_file-inl.h"
 #include "gc/accounting/card_table-inl.h"
 #include "gc/heap.h"
 #include "handle_scope-inl.h"
@@ -174,7 +174,7 @@ uint32_t Object::GenerateIdentityHashCode() {
   do {
     expected_value = hash_code_seed.LoadRelaxed();
     new_value = expected_value * 1103515245 + 12345;
-  } while (!hash_code_seed.CompareExchangeWeakRelaxed(expected_value, new_value) ||
+  } while (!hash_code_seed.CompareAndSetWeakRelaxed(expected_value, new_value) ||
       (expected_value & LockWord::kHashMask) == 0);
   return expected_value & LockWord::kHashMask;
 }

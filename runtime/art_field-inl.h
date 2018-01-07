@@ -22,7 +22,7 @@
 #include <android-base/logging.h>
 
 #include "class_linker.h"
-#include "dex_file-inl.h"
+#include "dex/dex_file-inl.h"
 #include "gc/accounting/card_table-inl.h"
 #include "gc_root-inl.h"
 #include "jvalue.h"

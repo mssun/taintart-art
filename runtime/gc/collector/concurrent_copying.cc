@@ -88,6 +88,7 @@ ConcurrentCopying::ConcurrentCopying(Heap* heap,
       from_space_num_bytes_at_first_pause_(0),
       mark_stack_mode_(kMarkStackModeOff),
       weak_ref_access_enabled_(true),
+      max_peak_num_non_free_regions_(0),
       skipped_blocks_lock_("concurrent copying bytes blocks lock", kMarkSweepMarkStackLock),
       measure_read_barrier_slow_path_(measure_read_barrier_slow_path),
       mark_from_read_barrier_measurements_(false),
@@ -1754,6 +1755,8 @@ void ConcurrentCopying::ReclaimPhase() {
     cumulative_bytes_moved_.FetchAndAddRelaxed(to_bytes);
     uint64_t to_objects = objects_moved_.LoadSequentiallyConsistent();
     cumulative_objects_moved_.FetchAndAddRelaxed(to_objects);
+    max_peak_num_non_free_regions_ = std::max(max_peak_num_non_free_regions_,
+                                              region_space_->GetNumNonFreeRegions());
     if (kEnableFromSpaceAccountingCheck) {
       CHECK_EQ(from_space_num_objects_at_first_pause_, from_objects + unevac_from_objects);
       CHECK_EQ(from_space_num_bytes_at_first_pause_, from_bytes + unevac_from_bytes);
@@ -2079,7 +2082,7 @@ inline void ConcurrentCopying::VisitRoots(
         // It was updated by the mutator.
         break;
       }
-    } while (!addr->CompareExchangeWeakRelaxed(expected_ref, new_ref));
+    } while (!addr->CompareAndSetWeakRelaxed(expected_ref, new_ref));
   }
 }
 
@@ -2098,7 +2101,7 @@ inline void ConcurrentCopying::MarkRoot(mirror::CompressedReference<mirror::Obje
         // It was updated by the mutator.
         break;
       }
-    } while (!addr->CompareExchangeWeakRelaxed(expected_ref, new_ref));
+    } while (!addr->CompareAndSetWeakRelaxed(expected_ref, new_ref));
   }
 }
 
@@ -2691,6 +2694,13 @@ void ConcurrentCopying::DumpPerformanceInfo(std::ostream& os) {
   }
   os << "Cumulative bytes moved " << cumulative_bytes_moved_.LoadRelaxed() << "\n";
   os << "Cumulative objects moved " << cumulative_objects_moved_.LoadRelaxed() << "\n";
+
+  os << "Peak regions allocated "
+     << max_peak_num_non_free_regions_ << " ("
+     << PrettySize(max_peak_num_non_free_regions_ * space::RegionSpace::kRegionSize)
+     << ") / " << region_space_->GetNumRegions() << " ("
+     << PrettySize(region_space_->GetNumRegions() * space::RegionSpace::kRegionSize)
+     << ")\n";
 }
 
 }  // namespace collector

@@ -19,7 +19,7 @@
 #include "art_method-inl.h"
 #include "base/enums.h"
 #include "callee_save_frame.h"
-#include "dex_file_types.h"
+#include "dex/dex_file_types.h"
 #include "entrypoints/entrypoint_utils-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"

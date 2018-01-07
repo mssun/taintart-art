@@ -27,8 +27,8 @@
 #include <stdio.h>
 #include <unordered_map>
 
-#include "cdex/compact_dex_level.h"
-#include "dex_file_layout.h"
+#include "dex/compact_dex_level.h"
+#include "dex/dex_file_layout.h"
 #include "dex_ir.h"
 #include "mem_map.h"
 

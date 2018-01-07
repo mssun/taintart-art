@@ -20,7 +20,8 @@
 #include <stdint.h>
 
 #include "base/arena_object.h"
-#include "dex_file.h"
+#include "dex/code_item_accessors.h"
+#include "dex/dex_file.h"
 #include "handle.h"
 #include "jni.h"
 
@@ -112,6 +113,10 @@ class DexCompilationUnit : public DeletableArenaObject<kArenaAllocMisc> {
     return dex_cache_;
   }
 
+  const CodeItemDataAccessor& GetCodeItemAccessor() const {
+    return code_item_accessor_;
+  }
+
  private:
   const Handle<mirror::ClassLoader> class_loader_;
 
@@ -126,6 +131,8 @@ class DexCompilationUnit : public DeletableArenaObject<kArenaAllocMisc> {
   const VerifiedMethod* verified_method_;
 
   const Handle<mirror::DexCache> dex_cache_;
+
+  const CodeItemDataAccessor code_item_accessor_;
 
   std::string symbol_;
 };

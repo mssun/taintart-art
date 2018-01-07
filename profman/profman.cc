@@ -39,9 +39,10 @@
 #include "base/unix_file/fd_file.h"
 #include "boot_image_profile.h"
 #include "bytecode_utils.h"
-#include "dex_file.h"
-#include "dex_file_loader.h"
-#include "dex_file_types.h"
+#include "dex/code_item_accessors-inl.h"
+#include "dex/dex_file.h"
+#include "dex/dex_file_loader.h"
+#include "dex/dex_file_types.h"
 #include "jit/profile_compilation_info.h"
 #include "profile_assistant.h"
 #include "runtime.h"
@@ -726,7 +727,7 @@ class ProfMan FINAL {
     const DexFile::CodeItem* code_item = dex_file->GetCodeItem(offset);
 
     bool found_invoke = false;
-    for (const DexInstructionPcPair& inst : code_item->Instructions()) {
+    for (const DexInstructionPcPair& inst : CodeItemInstructionAccessor(dex_file, code_item)) {
       if (inst->Opcode() == Instruction::INVOKE_VIRTUAL) {
         if (found_invoke) {
           LOG(ERROR) << "Multiple invoke INVOKE_VIRTUAL found: "

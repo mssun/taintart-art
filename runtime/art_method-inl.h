@@ -22,11 +22,11 @@
 #include "art_field.h"
 #include "base/callee_save_type.h"
 #include "class_linker-inl.h"
-#include "code_item_accessors-inl.h"
 #include "common_throws.h"
-#include "dex_file-inl.h"
-#include "dex_file_annotations.h"
-#include "dex_file_types.h"
+#include "dex/code_item_accessors-inl.h"
+#include "dex/dex_file-inl.h"
+#include "dex/dex_file_annotations.h"
+#include "dex/dex_file_types.h"
 #include "gc_root-inl.h"
 #include "invoke_type.h"
 #include "jit/profiling_info.h"
@@ -80,9 +80,8 @@ inline bool ArtMethod::CASDeclaringClass(mirror::Class* expected_class,
                                          mirror::Class* desired_class) {
   GcRoot<mirror::Class> expected_root(expected_class);
   GcRoot<mirror::Class> desired_root(desired_class);
-  return reinterpret_cast<Atomic<GcRoot<mirror::Class>>*>(&declaring_class_)->
-      CompareExchangeStrongSequentiallyConsistent(
-          expected_root, desired_root);
+  auto atomic_root_class = reinterpret_cast<Atomic<GcRoot<mirror::Class>>*>(&declaring_class_);
+  return atomic_root_class->CompareAndSetStrongSequentiallyConsistent(expected_root, desired_root);
 }
 
 inline uint16_t ArtMethod::GetMethodIndex() {

@@ -22,9 +22,9 @@
 
 #include "dex_ir.h"
 
-#include "code_item_accessors-inl.h"
-#include "dex_file_exception_helpers.h"
-#include "dex_instruction-inl.h"
+#include "dex/code_item_accessors-inl.h"
+#include "dex/dex_file_exception_helpers.h"
+#include "dex/dex_instruction-inl.h"
 #include "dex_ir_builder.h"
 
 namespace art {
@@ -669,7 +669,7 @@ CodeItem* Collections::CreateCodeItem(const DexFile& dex_file,
     }
   }
 
-  uint32_t size = DexFile::GetCodeItemSize(disk_code_item);
+  uint32_t size = dex_file.GetCodeItemSize(disk_code_item);
   CodeItem* code_item = new CodeItem(
       registers_size, ins_size, outs_size, debug_info, insns_size, insns, tries, handler_list);
   code_item->SetSize(size);

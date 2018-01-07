@@ -26,7 +26,7 @@
 #include "base/casts.h"
 #include "base/enums.h"
 #include "class_linker.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "gc/heap-inl.h"
 #include "gc_root.h"
 #include "mirror/call_site.h"
@@ -168,7 +168,7 @@ inline CallSite* DexCache::SetResolvedCallSite(uint32_t call_site_idx, CallSite*
   // The first assignment for a given call site wins.
   Atomic<GcRoot<mirror::CallSite>>& ref =
       reinterpret_cast<Atomic<GcRoot<mirror::CallSite>>&>(target);
-  if (ref.CompareExchangeStrongSequentiallyConsistent(null_call_site, candidate)) {
+  if (ref.CompareAndSetStrongSequentiallyConsistent(null_call_site, candidate)) {
     // TODO: Fine-grained marking, so that we don't need to go through all arrays in full.
     Runtime::Current()->GetHeap()->WriteBarrierEveryFieldOf(this);
     return call_site;

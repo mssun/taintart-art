@@ -27,9 +27,9 @@
 #include "base/enums.h"
 #include "base/macros.h"
 #include "base/mutex.h"
+#include "dex/dex_file.h"
+#include "dex/dex_file_types.h"
 #include "dex_cache_resolved_classes.h"
-#include "dex_file.h"
-#include "dex_file_types.h"
 #include "gc_root.h"
 #include "handle.h"
 #include "jni.h"
@@ -478,7 +478,7 @@ class ClassLinker {
       REQUIRES(!Locks::dex_lock_);
   bool VerifyClassUsingOatFile(const DexFile& dex_file,
                                ObjPtr<mirror::Class> klass,
-                               mirror::Class::Status& oat_file_class_status)
+                               ClassStatus& oat_file_class_status)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_);
   void ResolveClassExceptionHandlerTypes(Handle<mirror::Class> klass)

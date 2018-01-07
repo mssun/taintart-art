@@ -62,6 +62,7 @@ class ClassLoader;
 }  // namespace mirror
 
 class ClassLoaderVisitor;
+class ImTable;
 class ImtConflictTable;
 
 static constexpr int kInvalidFd = -1;

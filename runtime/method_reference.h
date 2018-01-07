@@ -19,8 +19,8 @@
 
 #include <stdint.h>
 #include <string>
-#include "dex_file.h"
-#include "dex_file_reference.h"
+#include "dex/dex_file.h"
+#include "dex/dex_file_reference.h"
 
 namespace art {
 

@@ -20,7 +20,7 @@
 #include "art_method-inl.h"
 #include "base/callee_save_type.h"
 #include "callee_save_frame.h"
-#include "dex_file-inl.h"
+#include "dex/dex_file-inl.h"
 #include "entrypoints/entrypoint_utils-inl.h"
 #include "gc_root-inl.h"
 #include "mirror/class-inl.h"
@@ -68,6 +68,11 @@ static ArtMethod* GetReferrer(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_
   return GetCalleeSaveMethodCallerAndOuterMethod(self, CalleeSaveType::kSaveRefsOnly).caller;
 }
 
+// Macro used to define this set of functions:
+//
+//   art{Get,Set}<Kind>{Static,Instance}FromCode
+//   art{Get,Set}<Kind>{Static,Instance}FromCompiledCode
+//
 #define ART_GET_FIELD_FROM_CODE(Kind, PrimitiveType, RetType, SetType,         \
                                 PrimitiveOrObject, IsObject, Ptr)              \
   extern "C" RetType artGet ## Kind ## StaticFromCode(uint32_t field_idx,      \
@@ -216,14 +221,99 @@ static ArtMethod* GetReferrer(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_
         field_idx, obj, new_value, GetReferrer(self), self);                   \
   }
 
+// Define these functions:
+//
+//   artGetByteStaticFromCode
+//   artGetByteInstanceFromCode
+//   artSetByteStaticFromCode
+//   artSetByteInstanceFromCode
+//   artGetByteStaticFromCompiledCode
+//   artGetByteInstanceFromCompiledCode
+//   artSetByteStaticFromCompiledCode
+//   artSetByteInstanceFromCompiledCode
+//
 ART_GET_FIELD_FROM_CODE(Byte, int8_t, ssize_t, uint32_t, Primitive, false, )
+
+// Define these functions:
+//
+//   artGetBooleanStaticFromCode
+//   artGetBooleanInstanceFromCode
+//   artSetBooleanStaticFromCode
+//   artSetBooleanInstanceFromCode
+//   artGetBooleanStaticFromCompiledCode
+//   artGetBooleanInstanceFromCompiledCode
+//   artSetBooleanStaticFromCompiledCode
+//   artSetBooleanInstanceFromCompiledCode
+//
 ART_GET_FIELD_FROM_CODE(Boolean, int8_t, size_t, uint32_t, Primitive, false, )
+
+// Define these functions:
+//
+//   artGetShortStaticFromCode
+//   artGetShortInstanceFromCode
+//   artSetShortStaticFromCode
+//   artSetShortInstanceFromCode
+//   artGetShortStaticFromCompiledCode
+//   artGetShortInstanceFromCompiledCode
+//   artSetShortStaticFromCompiledCode
+//   artSetShortInstanceFromCompiledCode
+//
 ART_GET_FIELD_FROM_CODE(Short, int16_t, ssize_t, uint16_t, Primitive, false, )
+
+// Define these functions:
+//
+//   artGetCharStaticFromCode
+//   artGetCharInstanceFromCode
+//   artSetCharStaticFromCode
+//   artSetCharInstanceFromCode
+//   artGetCharStaticFromCompiledCode
+//   artGetCharInstanceFromCompiledCode
+//   artSetCharStaticFromCompiledCode
+//   artSetCharInstanceFromCompiledCode
+//
 ART_GET_FIELD_FROM_CODE(Char, int16_t, size_t, uint16_t, Primitive, false, )
+
+// Define these functions:
+//
+//   artGet32StaticFromCode
+//   artGet32InstanceFromCode
+//   artSet32StaticFromCode
+//   artSet32InstanceFromCode
+//   artGet32StaticFromCompiledCode
+//   artGet32InstanceFromCompiledCode
+//   artSet32StaticFromCompiledCode
+//   artSet32InstanceFromCompiledCode
+//
 ART_GET_FIELD_FROM_CODE(32, int32_t, size_t, uint32_t, Primitive, false, )
+
+// Define these functions:
+//
+//   artGet64StaticFromCode
+//   artGet64InstanceFromCode
+//   artSet64StaticFromCode
+//   artSet64InstanceFromCode
+//   artGet64StaticFromCompiledCode
+//   artGet64InstanceFromCompiledCode
+//   artSet64StaticFromCompiledCode
+//   artSet64InstanceFromCompiledCode
+//
 ART_GET_FIELD_FROM_CODE(64, int64_t, uint64_t, uint64_t, Primitive, false, )
+
+// Define these functions:
+//
+//   artGetObjStaticFromCode
+//   artGetObjInstanceFromCode
+//   artSetObjStaticFromCode
+//   artSetObjInstanceFromCode
+//   artGetObjStaticFromCompiledCode
+//   artGetObjInstanceFromCompiledCode
+//   artSetObjStaticFromCompiledCode
+//   artSetObjInstanceFromCompiledCode
+//
 ART_GET_FIELD_FROM_CODE(Obj, mirror::HeapReference<mirror::Object>, mirror::Object*,
                         mirror::Object*, Object, true, .Ptr())
+
+#undef ART_GET_FIELD_FROM_CODE
 
 
 // To cut on the number of entrypoints, we have shared entries for

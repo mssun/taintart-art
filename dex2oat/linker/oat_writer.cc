@@ -33,10 +33,11 @@
 #include "class_table-inl.h"
 #include "compiled_method-inl.h"
 #include "debug/method_debug_info.h"
+#include "dex/dex_file-inl.h"
+#include "dex/dex_file_loader.h"
+#include "dex/dex_file_types.h"
+#include "dex/standard_dex_file.h"
 #include "dex/verification_results.h"
-#include "dex_file-inl.h"
-#include "dex_file_loader.h"
-#include "dex_file_types.h"
 #include "dexlayout.h"
 #include "driver/compiler_driver-inl.h"
 #include "driver/compiler_options.h"
@@ -54,7 +55,6 @@
 #include "mirror/class_loader.h"
 #include "mirror/dex_cache-inl.h"
 #include "mirror/object-inl.h"
-#include "standard_dex_file.h"
 #include "oat_quick_method_header.h"
 #include "os.h"
 #include "safe_map.h"
@@ -188,8 +188,8 @@ class OatWriter::OatClassHeader {
   OatClassHeader(uint32_t offset,
                  uint32_t num_non_null_compiled_methods,
                  uint32_t num_methods,
-                 mirror::Class::Status status)
-      : status_(status),
+                 ClassStatus status)
+      : status_(enum_cast<uint16_t>(status)),
         offset_(offset) {
     // We just arbitrarily say that 0 methods means kOatClassNoneCompiled and that we won't use
     // kOatClassAllCompiled unless there is at least one compiled method. This means in an
@@ -210,8 +210,8 @@ class OatWriter::OatClassHeader {
   }
 
   // Data to write.
-  static_assert(mirror::Class::Status::kStatusMax < (1 << 16), "class status won't fit in 16bits");
-  int16_t status_;
+  static_assert(enum_cast<>(ClassStatus::kLast) < (1 << 16), "class status won't fit in 16bits");
+  uint16_t status_;
 
   static_assert(OatClassType::kOatClassMax < (1 << 16), "oat_class type won't fit in 16bits");
   uint16_t type_;
@@ -931,17 +931,17 @@ class OatWriter::InitOatClassesMethodVisitor : public DexMethodVisitor {
 
   bool EndClass() OVERRIDE {
     ClassReference class_ref(dex_file_, class_def_index_);
-    mirror::Class::Status status;
+    ClassStatus status;
     bool found = writer_->compiler_driver_->GetCompiledClass(class_ref, &status);
     if (!found) {
       VerificationResults* results = writer_->compiler_driver_->GetVerificationResults();
       if (results != nullptr && results->IsClassRejected(class_ref)) {
         // The oat class status is used only for verification of resolved classes,
-        // so use kStatusErrorResolved whether the class was resolved or unresolved
+        // so use ClassStatus::kErrorResolved whether the class was resolved or unresolved
         // during compile-time verification.
-        status = mirror::Class::kStatusErrorResolved;
+        status = ClassStatus::kErrorResolved;
       } else {
-        status = mirror::Class::kStatusNotReady;
+        status = ClassStatus::kNotReady;
       }
     }
 

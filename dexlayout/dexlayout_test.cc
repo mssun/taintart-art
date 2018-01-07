@@ -23,8 +23,9 @@
 
 #include "base/unix_file/fd_file.h"
 #include "common_runtime_test.h"
-#include "dex_file-inl.h"
-#include "dex_file_loader.h"
+#include "dex/code_item_accessors-inl.h"
+#include "dex/dex_file-inl.h"
+#include "dex/dex_file_loader.h"
 #include "exec_utils.h"
 #include "jit/profile_compilation_info.h"
 #include "utils.h"
@@ -698,7 +699,7 @@ TEST_F(DexLayoutTest, CodeItemOverrun) {
       while (it.HasNextMethod()) {
         DexFile::CodeItem* item = const_cast<DexFile::CodeItem*>(it.GetMethodCodeItem());
         if (item != nullptr) {
-          IterationRange<DexInstructionIterator> instructions = item->Instructions();
+          CodeItemInstructionAccessor instructions(dex, item);
           if (instructions.begin() != instructions.end()) {
             DexInstructionIterator last_instruction = instructions.begin();
             for (auto dex_it = instructions.begin(); dex_it != instructions.end(); ++dex_it) {

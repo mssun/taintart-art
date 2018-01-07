@@ -23,7 +23,7 @@
 
 #include "base/macros.h"
 #include "base/mutex.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 #include "lock_count_data.h"
 #include "read_barrier.h"
 #include "stack_reference.h"

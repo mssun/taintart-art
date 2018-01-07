@@ -55,7 +55,7 @@ class CompilerCallbacks {
   // Return the class status of a previous stage of the compilation. This can be used, for example,
   // when class unloading is enabled during multidex compilation.
   virtual ClassStatus GetPreviousClassState(ClassReference ref ATTRIBUTE_UNUSED) {
-    return ClassStatus::kStatusNotReady;
+    return ClassStatus::kNotReady;
   }
 
   virtual void SetDoesClassUnloading(bool does_class_unloading ATTRIBUTE_UNUSED,
