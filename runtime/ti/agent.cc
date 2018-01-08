@@ -17,6 +17,8 @@
 #include "agent.h"
 
 #include "android-base/stringprintf.h"
+#include "nativehelper/scoped_local_ref.h"
+#include "nativeloader/native_loader.h"
 
 #include "base/strlcpy.h"
 #include "java_vm_ext.h"
@@ -47,20 +49,24 @@ std::unique_ptr<Agent> AgentSpec::Load(/*out*/jint* call_res,
                                        /*out*/LoadError* error,
                                        /*out*/std::string* error_msg) {
   VLOG(agents) << "Loading agent: " << name_ << " " << args_;
-  return DoLoadHelper(false, call_res, error, error_msg);
+  return DoLoadHelper(nullptr, false, nullptr, call_res, error, error_msg);
 }
 
 // Tries to attach the agent using its OnAttach method. Returns true on success.
-std::unique_ptr<Agent> AgentSpec::Attach(/*out*/jint* call_res,
+std::unique_ptr<Agent> AgentSpec::Attach(JNIEnv* env,
+                                         jobject class_loader,
+                                         /*out*/jint* call_res,
                                          /*out*/LoadError* error,
                                          /*out*/std::string* error_msg) {
   VLOG(agents) << "Attaching agent: " << name_ << " " << args_;
-  return DoLoadHelper(true, call_res, error, error_msg);
+  return DoLoadHelper(env, true, class_loader, call_res, error, error_msg);
 }
 
 
 // TODO We need to acquire some locks probably.
-std::unique_ptr<Agent> AgentSpec::DoLoadHelper(bool attaching,
+std::unique_ptr<Agent> AgentSpec::DoLoadHelper(JNIEnv* env,
+                                               bool attaching,
+                                               jobject class_loader,
                                                /*out*/jint* call_res,
                                                /*out*/LoadError* error,
                                                /*out*/std::string* error_msg) {
@@ -68,7 +74,7 @@ std::unique_ptr<Agent> AgentSpec::DoLoadHelper(bool attaching,
   DCHECK(call_res != nullptr);
   DCHECK(error_msg != nullptr);
 
-  std::unique_ptr<Agent> agent = DoDlOpen(error, error_msg);
+  std::unique_ptr<Agent> agent = DoDlOpen(env, class_loader, error, error_msg);
   if (agent == nullptr) {
     VLOG(agents) << "err: " << *error_msg;
     return nullptr;
@@ -99,12 +105,34 @@ std::unique_ptr<Agent> AgentSpec::DoLoadHelper(bool attaching,
   return agent;
 }
 
-std::unique_ptr<Agent> AgentSpec::DoDlOpen(/*out*/LoadError* error, /*out*/std::string* error_msg) {
+std::unique_ptr<Agent> AgentSpec::DoDlOpen(JNIEnv* env,
+                                           jobject class_loader,
+                                           /*out*/LoadError* error,
+                                           /*out*/std::string* error_msg) {
   DCHECK(error_msg != nullptr);
 
-  void* dlopen_handle = dlopen(name_.c_str(), RTLD_LAZY);
+  ScopedLocalRef<jstring> library_path(env,
+                                       class_loader == nullptr
+                                           ? nullptr
+                                           : JavaVMExt::GetLibrarySearchPath(env, class_loader));
+
+  bool needs_native_bridge = false;
+  void* dlopen_handle = android::OpenNativeLibrary(env,
+                                                   Runtime::Current()->GetTargetSdkVersion(),
+                                                   name_.c_str(),
+                                                   class_loader,
+                                                   library_path.get(),
+                                                   &needs_native_bridge,
+                                                   error_msg);
   if (dlopen_handle == nullptr) {
     *error_msg = StringPrintf("Unable to dlopen %s: %s", name_.c_str(), dlerror());
+    *error = kLoadingError;
+    return nullptr;
+  }
+  if (needs_native_bridge) {
+    // TODO: Consider support?
+    android::CloseNativeLibrary(dlopen_handle, needs_native_bridge);
+    *error_msg = StringPrintf("Native-bridge agents unsupported: %s", name_.c_str());
     *error = kLoadingError;
     return nullptr;
   }
@@ -131,8 +159,9 @@ void Agent::Unload() {
     if (onunload_ != nullptr) {
       onunload_(Runtime::Current()->GetJavaVM());
     }
-    // Don't actually dlclose since some agents assume they will never get unloaded. Since this only
-    // happens when the runtime is shutting down anyway this isn't a big deal.
+    // Don't actually android::CloseNativeLibrary since some agents assume they will never get
+    // unloaded. Since this only happens when the runtime is shutting down anyway this isn't a big
+    // deal.
     dlopen_handle_ = nullptr;
     onload_ = nullptr;
     onattach_ = nullptr;
