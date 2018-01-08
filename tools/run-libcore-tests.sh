@@ -145,11 +145,11 @@ done
 # the default timeout.
 vogar_args="$vogar_args --timeout 480"
 
-# Switch between using jack or javac+desugar+dx
+# Switch between using jack or javac+desugar+d8
 if [[ $using_jack == "true" ]]; then
   vogar_args="$vogar_args --toolchain jack --language JO"
 else
-  vogar_args="$vogar_args --toolchain dx --language CUR"
+  vogar_args="$vogar_args --toolchain d8 --language CUR"
 fi
 
 # JIT settings.
