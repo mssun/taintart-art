@@ -47,7 +47,7 @@ bool Compiler::IsPathologicalCase(const DexFile::CodeItem& code_item,
    * Dalvik uses 16-bit uints for instruction and register counts.  We'll limit to a quarter
    * of that, which also guarantees we cannot overflow our 16-bit internal Quick SSA name space.
    */
-  CodeItemDataAccessor accessor(&dex_file, &code_item);
+  CodeItemDataAccessor accessor(dex_file, &code_item);
   if (accessor.InsnsSizeInCodeUnits() >= UINT16_MAX / 4) {
     LOG(INFO) << "Method exceeds compiler instruction limit: "
               << accessor.InsnsSizeInCodeUnits()

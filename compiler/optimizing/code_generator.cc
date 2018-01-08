@@ -911,7 +911,7 @@ static void CheckLoopEntriesCanBeUsedForOsr(const HGraph& graph,
   }
   ArenaVector<size_t> covered(
       loop_headers.size(), 0, graph.GetAllocator()->Adapter(kArenaAllocMisc));
-  for (const DexInstructionPcPair& pair : CodeItemInstructionAccessor(&graph.GetDexFile(),
+  for (const DexInstructionPcPair& pair : CodeItemInstructionAccessor(graph.GetDexFile(),
                                                                       &code_item)) {
     const uint32_t dex_pc = pair.DexPc();
     const Instruction& instruction = pair.Inst();

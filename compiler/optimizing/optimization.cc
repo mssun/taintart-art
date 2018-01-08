@@ -242,7 +242,7 @@ ArenaVector<HOptimization*> ConstructOptimizations(
         opt = new (allocator) HDeadCodeElimination(graph, stats, name);
         break;
       case OptimizationPass::kInliner: {
-        CodeItemDataAccessor accessor(dex_compilation_unit.GetDexFile(),
+        CodeItemDataAccessor accessor(*dex_compilation_unit.GetDexFile(),
                                       dex_compilation_unit.GetCodeItem());
         opt = new (allocator) HInliner(graph,                   // outer_graph
                                        graph,                   // outermost_graph

@@ -580,7 +580,7 @@ uint32_t DexFileVerifier::ReadUnsignedLittleEndian(uint32_t size) {
 
 bool DexFileVerifier::CheckAndGetHandlerOffsets(const DexFile::CodeItem* code_item,
                                                 uint32_t* handler_offsets, uint32_t handlers_size) {
-  CodeItemDataAccessor accessor(dex_file_, code_item);
+  CodeItemDataAccessor accessor(*dex_file_, code_item);
   const uint8_t* handlers_base = accessor.GetCatchHandlerData();
 
   for (uint32_t i = 0; i < handlers_size; i++) {
@@ -1233,7 +1233,7 @@ bool DexFileVerifier::CheckIntraCodeItem() {
     return false;
   }
 
-  CodeItemDataAccessor accessor(dex_file_, code_item);
+  CodeItemDataAccessor accessor(*dex_file_, code_item);
   if (UNLIKELY(accessor.InsSize() > accessor.RegistersSize())) {
     ErrorStringPrintf("ins_size (%ud) > registers_size (%ud)",
                       accessor.InsSize(), accessor.RegistersSize());
