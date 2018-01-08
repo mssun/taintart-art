@@ -217,31 +217,70 @@ class PACKED(sizeof(T)) Atomic : public std::atomic<T> {
   }
 
   // Store to memory without ordering or synchronization constraints.
-  void StoreRelaxed(T desired) {
-    this->store(desired, std::memory_order_relaxed);
+  void StoreRelaxed(T desired_value) {
+    this->store(desired_value, std::memory_order_relaxed);
   }
 
   // Word tearing allowed, but may race.
-  void StoreJavaData(T desired) {
-    this->store(desired, std::memory_order_relaxed);
+  void StoreJavaData(T desired_value) {
+    this->store(desired_value, std::memory_order_relaxed);
   }
 
   // Store to memory with release ordering.
-  void StoreRelease(T desired) {
-    this->store(desired, std::memory_order_release);
+  void StoreRelease(T desired_value) {
+    this->store(desired_value, std::memory_order_release);
   }
 
   // Store to memory with a total ordering.
-  void StoreSequentiallyConsistent(T desired) {
-    this->store(desired, std::memory_order_seq_cst);
+  void StoreSequentiallyConsistent(T desired_value) {
+    this->store(desired_value, std::memory_order_seq_cst);
   }
 
-  // Atomically replace the value with desired value.
+  // Atomically replace the value with desired_value.
   T ExchangeRelaxed(T desired_value) {
     return this->exchange(desired_value, std::memory_order_relaxed);
   }
 
-  // Atomically replace the value with desired value if it matches the expected value.
+  // Atomically replace the value with desired_value.
+  T ExchangeSequentiallyConsistent(T desired_value) {
+    return this->exchange(desired_value, std::memory_order_seq_cst);
+  }
+
+  // Atomically replace the value with desired_value.
+  T ExchangeAcquire(T desired_value) {
+    return this->exchange(desired_value, std::memory_order_acquire);
+  }
+
+  // Atomically replace the value with desired_value.
+  T ExchangeRelease(T desired_value) {
+    return this->exchange(desired_value, std::memory_order_release);
+  }
+
+  // Atomically replace the value with desired_value if it matches the expected_value.
+  // Participates in total ordering of atomic operations. Returns true on success, false otherwise.
+  // If the value does not match, updates the expected_value argument with the value that was
+  // atomically read for the failed comparison.
+  bool CompareAndExchangeStrongSequentiallyConsistent(T* expected_value, T desired_value) {
+    return this->compare_exchange_strong(*expected_value, desired_value, std::memory_order_seq_cst);
+  }
+
+  // Atomically replace the value with desired_value if it matches the expected_value.
+  // Participates in total ordering of atomic operations. Returns true on success, false otherwise.
+  // If the value does not match, updates the expected_value argument with the value that was
+  // atomically read for the failed comparison.
+  bool CompareAndExchangeStrongAcquire(T* expected_value, T desired_value) {
+    return this->compare_exchange_strong(*expected_value, desired_value, std::memory_order_acquire);
+  }
+
+  // Atomically replace the value with desired_value if it matches the expected_value.
+  // Participates in total ordering of atomic operations. Returns true on success, false otherwise.
+  // If the value does not match, updates the expected_value argument with the value that was
+  // atomically read for the failed comparison.
+  bool CompareAndExchangeStrongRelease(T* expected_value, T desired_value) {
+    return this->compare_exchange_strong(*expected_value, desired_value, std::memory_order_release);
+  }
+
+  // Atomically replace the value with desired_value if it matches the expected_value.
   // Participates in total ordering of atomic operations.
   bool CompareAndSetStrongSequentiallyConsistent(T expected_value, T desired_value) {
     return this->compare_exchange_strong(expected_value, desired_value, std::memory_order_seq_cst);
@@ -252,13 +291,13 @@ class PACKED(sizeof(T)) Atomic : public std::atomic<T> {
     return this->compare_exchange_weak(expected_value, desired_value, std::memory_order_seq_cst);
   }
 
-  // Atomically replace the value with desired value if it matches the expected value. Doesn't
+  // Atomically replace the value with desired_value if it matches the expected_value. Doesn't
   // imply ordering or synchronization constraints.
   bool CompareAndSetStrongRelaxed(T expected_value, T desired_value) {
     return this->compare_exchange_strong(expected_value, desired_value, std::memory_order_relaxed);
   }
 
-  // Atomically replace the value with desired value if it matches the expected value. Prior writes
+  // Atomically replace the value with desired_value if it matches the expected_value. Prior writes
   // to other memory locations become visible to the threads that do a consume or an acquire on the
   // same location.
   bool CompareAndSetStrongRelease(T expected_value, T desired_value) {
@@ -270,14 +309,14 @@ class PACKED(sizeof(T)) Atomic : public std::atomic<T> {
     return this->compare_exchange_weak(expected_value, desired_value, std::memory_order_relaxed);
   }
 
-  // Atomically replace the value with desired value if it matches the expected value. Prior writes
+  // Atomically replace the value with desired_value if it matches the expected_value. Prior writes
   // made to other memory locations by the thread that did the release become visible in this
   // thread.
   bool CompareAndSetWeakAcquire(T expected_value, T desired_value) {
     return this->compare_exchange_weak(expected_value, desired_value, std::memory_order_acquire);
   }
 
-  // Atomically replace the value with desired value if it matches the expected value. prior writes
+  // Atomically replace the value with desired_value if it matches the expected_value. Prior writes
   // to other memory locations become visible to the threads that do a consume or an acquire on the
   // same location.
   bool CompareAndSetWeakRelease(T expected_value, T desired_value) {
@@ -292,6 +331,14 @@ class PACKED(sizeof(T)) Atomic : public std::atomic<T> {
     return this->fetch_add(value, std::memory_order_relaxed);  // Return old_value.
   }
 
+  T FetchAndAddAcquire(const T value) {
+    return this->fetch_add(value, std::memory_order_acquire);  // Return old_value.
+  }
+
+  T FetchAndAddRelease(const T value) {
+    return this->fetch_add(value, std::memory_order_acquire);  // Return old_value.
+  }
+
   T FetchAndSubSequentiallyConsistent(const T value) {
     return this->fetch_sub(value, std::memory_order_seq_cst);  // Return old value.
   }
@@ -300,12 +347,40 @@ class PACKED(sizeof(T)) Atomic : public std::atomic<T> {
     return this->fetch_sub(value, std::memory_order_relaxed);  // Return old value.
   }
 
-  T FetchAndOrSequentiallyConsistent(const T value) {
+  T FetchAndBitwiseAndSequentiallyConsistent(const T value) {
+    return this->fetch_and(value, std::memory_order_seq_cst);  // Return old_value.
+  }
+
+  T FetchAndBitwiseAndAcquire(const T value) {
+    return this->fetch_and(value, std::memory_order_acquire);  // Return old_value.
+  }
+
+  T FetchAndBitwiseAndRelease(const T value) {
+    return this->fetch_and(value, std::memory_order_release);  // Return old_value.
+  }
+
+  T FetchAndBitwiseOrSequentiallyConsistent(const T value) {
     return this->fetch_or(value, std::memory_order_seq_cst);  // Return old_value.
   }
 
-  T FetchAndAndSequentiallyConsistent(const T value) {
-    return this->fetch_and(value, std::memory_order_seq_cst);  // Return old_value.
+  T FetchAndBitwiseOrAcquire(const T value) {
+    return this->fetch_or(value, std::memory_order_acquire);  // Return old_value.
+  }
+
+  T FetchAndBitwiseOrRelease(const T value) {
+    return this->fetch_or(value, std::memory_order_release);  // Return old_value.
+  }
+
+  T FetchAndBitwiseXorSequentiallyConsistent(const T value) {
+    return this->fetch_xor(value, std::memory_order_seq_cst);  // Return old_value.
+  }
+
+  T FetchAndBitwiseXorAcquire(const T value) {
+    return this->fetch_xor(value, std::memory_order_acquire);  // Return old_value.
+  }
+
+  T FetchAndBitwiseXorRelease(const T value) {
+    return this->fetch_xor(value, std::memory_order_release);  // Return old_value.
   }
 
   volatile T* Address() {
