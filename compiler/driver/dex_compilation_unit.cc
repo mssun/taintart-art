@@ -40,8 +40,7 @@ DexCompilationUnit::DexCompilationUnit(Handle<mirror::ClassLoader> class_loader,
       access_flags_(access_flags),
       verified_method_(verified_method),
       dex_cache_(dex_cache),
-      code_item_accessor_(&dex_file, code_item) {
-}
+      code_item_accessor_(dex_file, code_item) {}
 
 const std::string& DexCompilationUnit::GetSymbol() {
   if (symbol_.empty()) {

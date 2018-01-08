@@ -699,7 +699,7 @@ TEST_F(DexLayoutTest, CodeItemOverrun) {
       while (it.HasNextMethod()) {
         DexFile::CodeItem* item = const_cast<DexFile::CodeItem*>(it.GetMethodCodeItem());
         if (item != nullptr) {
-          CodeItemInstructionAccessor instructions(dex, item);
+          CodeItemInstructionAccessor instructions(*dex, item);
           if (instructions.begin() != instructions.end()) {
             DexInstructionIterator last_instruction = instructions.begin();
             for (auto dex_it = instructions.begin(); dex_it != instructions.end(); ++dex_it) {

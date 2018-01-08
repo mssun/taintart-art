@@ -993,7 +993,7 @@ class OatDumper {
       if (code_item == nullptr) {
         return;
       }
-      CodeItemInstructionAccessor instructions(&dex_file, code_item);
+      CodeItemInstructionAccessor instructions(dex_file, code_item);
 
       // If we inserted a new dex code item pointer, add to total code bytes.
       const uint16_t* code_ptr = instructions.Insns();
@@ -1261,7 +1261,7 @@ class OatDumper {
                      bool* addr_found) {
     bool success = true;
 
-    CodeItemDataAccessor code_item_accessor(&dex_file, code_item);
+    CodeItemDataAccessor code_item_accessor(dex_file, code_item);
 
     // TODO: Support regex
     std::string method_name = dex_file.GetMethodName(dex_file.GetMethodId(dex_method_idx));

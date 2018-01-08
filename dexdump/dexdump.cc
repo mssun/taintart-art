@@ -736,7 +736,7 @@ static void dumpInterface(const DexFile* pDexFile, const DexFile::TypeItem& pTyp
  * Dumps the catches table associated with the code.
  */
 static void dumpCatches(const DexFile* pDexFile, const DexFile::CodeItem* pCode) {
-  CodeItemDataAccessor accessor(pDexFile, pCode);
+  CodeItemDataAccessor accessor(*pDexFile, pCode);
   const u4 triesSize = accessor.TriesSize();
 
   // No catch table.
@@ -951,7 +951,7 @@ static void dumpInstruction(const DexFile* pDexFile,
   fprintf(gOutFile, "%06x:", codeOffset + 0x10 + insnIdx * 2);
 
   // Dump (part of) raw bytes.
-  CodeItemInstructionAccessor accessor(pDexFile, pCode);
+  CodeItemInstructionAccessor accessor(*pDexFile, pCode);
   for (u4 i = 0; i < 8; i++) {
     if (i < insnWidth) {
       if (i == 7) {
@@ -1169,7 +1169,7 @@ static void dumpBytecodes(const DexFile* pDexFile, u4 idx,
           codeOffset, codeOffset, dot.get(), name, signature.ToString().c_str());
 
   // Iterate over all instructions.
-  CodeItemDataAccessor accessor(pDexFile, pCode);
+  CodeItemDataAccessor accessor(*pDexFile, pCode);
   for (const DexInstructionPcPair& pair : accessor) {
     const Instruction* instruction = &pair.Inst();
     const u4 insnWidth = instruction->SizeInCodeUnits();
@@ -1186,7 +1186,7 @@ static void dumpBytecodes(const DexFile* pDexFile, u4 idx,
  */
 static void dumpCode(const DexFile* pDexFile, u4 idx, u4 flags,
                      const DexFile::CodeItem* pCode, u4 codeOffset) {
-  CodeItemDebugInfoAccessor accessor(pDexFile, pCode, pDexFile->GetDebugInfoOffset(pCode));
+  CodeItemDebugInfoAccessor accessor(*pDexFile, pCode, pDexFile->GetDebugInfoOffset(pCode));
 
   fprintf(gOutFile, "      registers     : %d\n", accessor.RegistersSize());
   fprintf(gOutFile, "      ins           : %d\n", accessor.InsSize());

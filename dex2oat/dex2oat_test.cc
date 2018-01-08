@@ -944,7 +944,7 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
                class_it.Next()) {
             if (class_it.IsAtMethod() && class_it.GetMethodCodeItem() != nullptr) {
               for (const DexInstructionPcPair& inst :
-                       CodeItemInstructionAccessor(dex_file.get(), class_it.GetMethodCodeItem())) {
+                       CodeItemInstructionAccessor(*dex_file, class_it.GetMethodCodeItem())) {
                 ASSERT_FALSE(inst->IsQuickened());
               }
             }
