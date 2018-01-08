@@ -1278,7 +1278,7 @@ bool Thread::ModifySuspendCountInternal(Thread* self,
     AtomicClearFlag(kSuspendRequest);
   } else {
     // Two bits might be set simultaneously.
-    tls32_.state_and_flags.as_atomic_int.FetchAndOrSequentiallyConsistent(flags);
+    tls32_.state_and_flags.as_atomic_int.FetchAndBitwiseOrSequentiallyConsistent(flags);
     TriggerSuspend();
   }
   return true;
