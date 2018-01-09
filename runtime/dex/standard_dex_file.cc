@@ -17,6 +17,7 @@
 #include "standard_dex_file.h"
 
 #include "base/casts.h"
+#include "code_item_accessors-no_art-inl.h"
 #include "dex_file-inl.h"
 #include "leb128.h"
 
@@ -73,33 +74,11 @@ bool StandardDexFile::SupportsDefaultMethods() const {
 
 uint32_t StandardDexFile::GetCodeItemSize(const DexFile::CodeItem& item) const {
   DCHECK(HasAddress(&item));
-  const CodeItem& code_item = down_cast<const CodeItem&>(item);
-  uintptr_t code_item_start = reinterpret_cast<uintptr_t>(&code_item);
-  uint32_t insns_size = code_item.insns_size_in_code_units_;
-  uint32_t tries_size = code_item.tries_size_;
-  const uint8_t* handler_data = GetCatchHandlerData(
-      DexInstructionIterator(code_item.insns_, code_item.insns_size_in_code_units_),
-      code_item.tries_size_,
-      0);
-
-  if (tries_size == 0 || handler_data == nullptr) {
-    uintptr_t insns_end = reinterpret_cast<uintptr_t>(&code_item.insns_[insns_size]);
-    return insns_end - code_item_start;
-  } else {
-    // Get the start of the handler data.
-    uint32_t handlers_size = DecodeUnsignedLeb128(&handler_data);
-    // Manually read each handler.
-    for (uint32_t i = 0; i < handlers_size; ++i) {
-      int32_t uleb128_count = DecodeSignedLeb128(&handler_data) * 2;
-      if (uleb128_count <= 0) {
-        uleb128_count = -uleb128_count + 1;
-      }
-      for (int32_t j = 0; j < uleb128_count; ++j) {
-        DecodeUnsignedLeb128(&handler_data);
-      }
-    }
-    return reinterpret_cast<uintptr_t>(handler_data) - code_item_start;
-  }
+  // TODO: Clean up this temporary code duplication with StandardDexFile. Eventually the
+  // implementations will differ.
+  DCHECK(HasAddress(&item));
+  return reinterpret_cast<uintptr_t>(CodeItemDataAccessor(*this, &item).CodeItemDataEnd()) -
+      reinterpret_cast<uintptr_t>(&item);
 }
 
 }  // namespace art

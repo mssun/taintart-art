@@ -146,7 +146,7 @@ class OptimizingUnitTest : public CommonCompilerTest {
               /* access_flags */ 0u,
               /* verified_method */ nullptr,
               handles_->NewHandle<mirror::DexCache>(nullptr));
-      CodeItemDebugInfoAccessor accessor(&graph->GetDexFile(), code_item);
+      CodeItemDebugInfoAccessor accessor(graph->GetDexFile(), code_item);
       HGraphBuilder builder(graph, dex_compilation_unit, accessor, handles_.get(), return_type);
       bool graph_built = (builder.BuildGraph() == kAnalysisSuccess);
       return graph_built ? graph : nullptr;
