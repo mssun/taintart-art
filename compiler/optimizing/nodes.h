@@ -2018,6 +2018,10 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
   // TODO: We should rename to CanVisiblyThrow, as some instructions (like HNewInstance),
   // could throw OOME, but it is still OK to remove them if they are unused.
   virtual bool CanThrow() const { return false; }
+
+  // Does the instruction always throw an exception unconditionally?
+  virtual bool AlwaysThrows() const { return false; }
+
   bool CanThrowIntoCatchBlock() const { return CanThrow() && block_->IsTryBlock(); }
 
   bool HasSideEffects() const { return side_effects_.HasSideEffects(); }
@@ -4169,6 +4173,10 @@ class HInvoke : public HVariableInputSizeInstruction {
 
   bool CanThrow() const OVERRIDE { return GetPackedFlag<kFlagCanThrow>(); }
 
+  void SetAlwaysThrows(bool always_throws) { SetPackedFlag<kFlagAlwaysThrows>(always_throws); }
+
+  bool AlwaysThrows() const OVERRIDE { return GetPackedFlag<kFlagAlwaysThrows>(); }
+
   bool CanBeMoved() const OVERRIDE { return IsIntrinsic() && !DoesAnyWrite(); }
 
   bool InstructionDataEquals(const HInstruction* other) const OVERRIDE {
@@ -4199,7 +4207,8 @@ class HInvoke : public HVariableInputSizeInstruction {
   static constexpr size_t kFieldReturnTypeSize =
       MinimumBitsToStore(static_cast<size_t>(DataType::Type::kLast));
   static constexpr size_t kFlagCanThrow = kFieldReturnType + kFieldReturnTypeSize;
-  static constexpr size_t kNumberOfInvokePackedBits = kFlagCanThrow + 1;
+  static constexpr size_t kFlagAlwaysThrows = kFlagCanThrow + 1;
+  static constexpr size_t kNumberOfInvokePackedBits = kFlagAlwaysThrows + 1;
   static_assert(kNumberOfInvokePackedBits <= kMaxNumberOfPackedBits, "Too many packed fields.");
   using InvokeTypeField = BitField<InvokeType, kFieldInvokeType, kFieldInvokeTypeSize>;
   using ReturnTypeField = BitField<DataType::Type, kFieldReturnType, kFieldReturnTypeSize>;
@@ -6574,6 +6583,8 @@ class HThrow FINAL : public HTemplateInstruction<1> {
   bool NeedsEnvironment() const OVERRIDE { return true; }
 
   bool CanThrow() const OVERRIDE { return true; }
+
+  bool AlwaysThrows() const OVERRIDE { return true; }
 
   DECLARE_INSTRUCTION(Throw);
 
