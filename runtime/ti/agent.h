@@ -56,14 +56,21 @@ class AgentSpec {
                               /*out*/std::string* error_msg);
 
   // Tries to attach the agent using its OnAttach method. Returns true on success.
-  std::unique_ptr<Agent> Attach(/*out*/jint* call_res,
+  std::unique_ptr<Agent> Attach(JNIEnv* env,
+                                jobject class_loader,
+                                /*out*/jint* call_res,
                                 /*out*/LoadError* error,
                                 /*out*/std::string* error_msg);
 
  private:
-  std::unique_ptr<Agent> DoDlOpen(/*out*/LoadError* error, /*out*/std::string* error_msg);
+  std::unique_ptr<Agent> DoDlOpen(JNIEnv* env,
+                                  jobject class_loader,
+                                  /*out*/LoadError* error,
+                                  /*out*/std::string* error_msg);
 
-  std::unique_ptr<Agent> DoLoadHelper(bool attaching,
+  std::unique_ptr<Agent> DoLoadHelper(JNIEnv* env,
+                                      bool attaching,
+                                      jobject class_loader,
                                       /*out*/jint* call_res,
                                       /*out*/LoadError* error,
                                       /*out*/std::string* error_msg);
