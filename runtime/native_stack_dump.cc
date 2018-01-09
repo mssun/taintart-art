@@ -340,14 +340,22 @@ void DumpNativeStack(std::ostream& os,
       os << StringPrintf(Is64BitInstructionSet(kRuntimeISA) ? "%016" PRIxPTR "  "
                                                             : "%08" PRIxPTR "  ",
                          it->rel_pc);
-      os << it->map.name;
+      if (it->map.name.empty()) {
+        os << StringPrintf("<anonymous:%" PRIxPTR ">", it->map.start);
+      } else {
+        os << it->map.name;
+      }
       os << " (";
       if (!it->func_name.empty()) {
         os << it->func_name;
         if (it->func_offset != 0) {
           os << "+" << it->func_offset;
         }
-        try_addr2line = true;
+        // Functions found using the gdb jit interface will be in an empty
+        // map that cannot be found using addr2line.
+        if (!it->map.name.empty()) {
+          try_addr2line = true;
+        }
       } else if (current_method != nullptr &&
           Locks::mutator_lock_->IsSharedHeld(Thread::Current()) &&
           PcIsWithinQuickCode(current_method, it->pc)) {
