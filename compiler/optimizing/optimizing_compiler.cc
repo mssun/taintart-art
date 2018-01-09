@@ -766,13 +766,13 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
   static constexpr size_t kSpaceFilterOptimizingThreshold = 128;
   const CompilerOptions& compiler_options = compiler_driver->GetCompilerOptions();
   if ((compiler_options.GetCompilerFilter() == CompilerFilter::kSpace)
-      && (CodeItemInstructionAccessor(&dex_file, code_item).InsnsSizeInCodeUnits() >
+      && (CodeItemInstructionAccessor(dex_file, code_item).InsnsSizeInCodeUnits() >
           kSpaceFilterOptimizingThreshold)) {
     MaybeRecordStat(compilation_stats_.get(), MethodCompilationStat::kNotCompiledSpaceFilter);
     return nullptr;
   }
 
-  CodeItemDebugInfoAccessor code_item_accessor(&dex_file, code_item);
+  CodeItemDebugInfoAccessor code_item_accessor(dex_file, code_item);
   HGraph* graph = new (allocator) HGraph(
       allocator,
       arena_stack,

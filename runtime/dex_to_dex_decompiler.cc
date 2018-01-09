@@ -35,7 +35,7 @@ class DexDecompiler {
                 const DexFile::CodeItem& code_item,
                 const ArrayRef<const uint8_t>& quickened_info,
                 bool decompile_return_instruction)
-    : code_item_accessor_(&dex_file, &code_item),
+    : code_item_accessor_(dex_file, &code_item),
       quicken_info_(quickened_info.data()),
       quicken_info_number_of_indices_(QuickenInfoTable::NumberOfIndices(quickened_info.size())),
       decompile_return_instruction_(decompile_return_instruction) {}

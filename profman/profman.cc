@@ -727,7 +727,7 @@ class ProfMan FINAL {
     const DexFile::CodeItem* code_item = dex_file->GetCodeItem(offset);
 
     bool found_invoke = false;
-    for (const DexInstructionPcPair& inst : CodeItemInstructionAccessor(dex_file, code_item)) {
+    for (const DexInstructionPcPair& inst : CodeItemInstructionAccessor(*dex_file, code_item)) {
       if (inst->Opcode() == Instruction::INVOKE_VIRTUAL) {
         if (found_invoke) {
           LOG(ERROR) << "Multiple invoke INVOKE_VIRTUAL found: "
