@@ -492,7 +492,7 @@ void ArmVIXLJNIMacroAssembler::CreateHandleScopeEntry(ManagedRegister mout_reg,
     temps.Exclude(in_reg.AsVIXLRegister());
     ___ Cmp(in_reg.AsVIXLRegister(), 0);
 
-    if (asm_.ShifterOperandCanHold(ADD, handle_scope_offset.Int32Value(), kCcDontCare)) {
+    if (asm_.ShifterOperandCanHold(ADD, handle_scope_offset.Int32Value())) {
       if (!out_reg.Equals(in_reg)) {
         ExactAssemblyScope guard(asm_.GetVIXLAssembler(),
                                  3 * vixl32::kMaxInstructionSizeInBytes,
@@ -531,7 +531,7 @@ void ArmVIXLJNIMacroAssembler::CreateHandleScopeEntry(FrameOffset out_off,
     // e.g. scratch = (scratch == 0) ? 0 : (SP+handle_scope_offset)
     ___ Cmp(scratch.AsVIXLRegister(), 0);
 
-    if (asm_.ShifterOperandCanHold(ADD, handle_scope_offset.Int32Value(), kCcDontCare)) {
+    if (asm_.ShifterOperandCanHold(ADD, handle_scope_offset.Int32Value())) {
       ExactAssemblyScope guard(asm_.GetVIXLAssembler(),
                                2 * vixl32::kMaxInstructionSizeInBytes,
                                CodeBufferCheckScope::kMaximumSize);

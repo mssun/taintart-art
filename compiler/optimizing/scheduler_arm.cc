@@ -330,10 +330,12 @@ bool SchedulingLatencyVisitorARM::CanGenerateTest(HCondition* condition) {
         }
       } else if (c == kCondLE || c == kCondGT) {
         if (value < std::numeric_limits<int64_t>::max() &&
-            !codegen_->GetAssembler()->ShifterOperandCanHold(SBC, High32Bits(value + 1), kCcSet)) {
+            !codegen_->GetAssembler()->ShifterOperandCanHold(
+                SBC, High32Bits(value + 1), vixl32::FlagsUpdate::SetFlags)) {
           return false;
         }
-      } else if (!codegen_->GetAssembler()->ShifterOperandCanHold(SBC, High32Bits(value), kCcSet)) {
+      } else if (!codegen_->GetAssembler()->ShifterOperandCanHold(
+                      SBC, High32Bits(value), vixl32::FlagsUpdate::SetFlags)) {
         return false;
       }
     }

@@ -112,12 +112,14 @@ bool ArmVIXLAssembler::ShifterOperandCanAlwaysHold(uint32_t immediate) {
   return vixl_masm_.IsModifiedImmediate(immediate);
 }
 
-bool ArmVIXLAssembler::ShifterOperandCanHold(Opcode opcode, uint32_t immediate, SetCc set_cc) {
+bool ArmVIXLAssembler::ShifterOperandCanHold(Opcode opcode,
+                                             uint32_t immediate,
+                                             vixl::aarch32::FlagsUpdate update_flags) {
   switch (opcode) {
     case ADD:
     case SUB:
       // Less than (or equal to) 12 bits can be done if we don't need to set condition codes.
-      if (IsUint<12>(immediate) && set_cc != kCcSet) {
+      if (IsUint<12>(immediate) && update_flags != vixl::aarch32::SetFlags) {
         return true;
       }
       return ShifterOperandCanAlwaysHold(immediate);
