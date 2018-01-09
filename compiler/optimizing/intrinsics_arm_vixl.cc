@@ -1458,30 +1458,38 @@ void IntrinsicLocationsBuilderARMVIXL::VisitStringCompareTo(HInvoke* invoke) {
   locations->SetOut(Location::RequiresRegister(), Location::kOutputOverlap);
 }
 
+// Forward declaration.
+//
+// ART build system imposes a size limit (deviceFrameSizeLimit) on the stack frames generated
+// by the compiler for every C++ function, and if this function gets inlined in
+// IntrinsicCodeGeneratorARMVIXL::VisitStringCompareTo, the limit will be exceeded, resulting in a
+// build failure. That is the reason why NO_INLINE attribute is used.
+static void NO_INLINE GenerateStringCompareToLoop(ArmVIXLAssembler* assembler,
+                                                  HInvoke* invoke,
+                                                  vixl32::Label* end,
+                                                  vixl32::Label* different_compression);
+
 void IntrinsicCodeGeneratorARMVIXL::VisitStringCompareTo(HInvoke* invoke) {
   ArmVIXLAssembler* assembler = GetAssembler();
   LocationSummary* locations = invoke->GetLocations();
 
-  vixl32::Register str = InputRegisterAt(invoke, 0);
-  vixl32::Register arg = InputRegisterAt(invoke, 1);
-  vixl32::Register out = OutputRegister(invoke);
+  const vixl32::Register str = InputRegisterAt(invoke, 0);
+  const vixl32::Register arg = InputRegisterAt(invoke, 1);
+  const vixl32::Register out = OutputRegister(invoke);
 
-  vixl32::Register temp0 = RegisterFrom(locations->GetTemp(0));
-  vixl32::Register temp1 = RegisterFrom(locations->GetTemp(1));
-  vixl32::Register temp2 = RegisterFrom(locations->GetTemp(2));
+  const vixl32::Register temp0 = RegisterFrom(locations->GetTemp(0));
+  const vixl32::Register temp1 = RegisterFrom(locations->GetTemp(1));
+  const vixl32::Register temp2 = RegisterFrom(locations->GetTemp(2));
   vixl32::Register temp3;
   if (mirror::kUseStringCompression) {
     temp3 = RegisterFrom(locations->GetTemp(3));
   }
 
-  vixl32::Label loop;
-  vixl32::Label find_char_diff;
   vixl32::Label end;
   vixl32::Label different_compression;
 
   // Get offsets of count and value fields within a string object.
   const int32_t count_offset = mirror::String::CountOffset().Int32Value();
-  const int32_t value_offset = mirror::String::ValueOffset().Int32Value();
 
   // Note that the null check must have been done earlier.
   DCHECK(!invoke->CanDoImplicitNullCheckOn(invoke->InputAt(0)));
@@ -1546,6 +1554,38 @@ void IntrinsicCodeGeneratorARMVIXL::VisitStringCompareTo(HInvoke* invoke) {
     __ add(ne, temp0, temp0, temp0);
   }
 
+
+  GenerateStringCompareToLoop(assembler, invoke, &end, &different_compression);
+
+  __ Bind(&end);
+
+  if (can_slow_path) {
+    __ Bind(slow_path->GetExitLabel());
+  }
+}
+
+static void GenerateStringCompareToLoop(ArmVIXLAssembler* assembler,
+                                                  HInvoke* invoke,
+                                                  vixl32::Label* end,
+                                                  vixl32::Label* different_compression) {
+  LocationSummary* locations = invoke->GetLocations();
+
+  const vixl32::Register str = InputRegisterAt(invoke, 0);
+  const vixl32::Register arg = InputRegisterAt(invoke, 1);
+  const vixl32::Register out = OutputRegister(invoke);
+
+  const vixl32::Register temp0 = RegisterFrom(locations->GetTemp(0));
+  const vixl32::Register temp1 = RegisterFrom(locations->GetTemp(1));
+  const vixl32::Register temp2 = RegisterFrom(locations->GetTemp(2));
+  vixl32::Register temp3;
+  if (mirror::kUseStringCompression) {
+    temp3 = RegisterFrom(locations->GetTemp(3));
+  }
+
+  vixl32::Label loop;
+  vixl32::Label find_char_diff;
+
+  const int32_t value_offset = mirror::String::ValueOffset().Int32Value();
   // Store offset of string value in preparation for comparison loop.
   __ Mov(temp1, value_offset);
 
@@ -1577,12 +1617,12 @@ void IntrinsicCodeGeneratorARMVIXL::VisitStringCompareTo(HInvoke* invoke) {
   // With string compression, we have compared 8 bytes, otherwise 4 chars.
   __ Subs(temp0, temp0, (mirror::kUseStringCompression ? 8 : 4));
   __ B(hi, &loop, /* far_target */ false);
-  __ B(&end);
+  __ B(end);
 
   __ Bind(&find_char_diff_2nd_cmp);
   if (mirror::kUseStringCompression) {
     __ Subs(temp0, temp0, 4);  // 4 bytes previously compared.
-    __ B(ls, &end, /* far_target */ false);  // Was the second comparison fully beyond the end?
+    __ B(ls, end, /* far_target */ false);  // Was the second comparison fully beyond the end?
   } else {
     // Without string compression, we can start treating temp0 as signed
     // and rely on the signed comparison below.
@@ -1610,7 +1650,7 @@ void IntrinsicCodeGeneratorARMVIXL::VisitStringCompareTo(HInvoke* invoke) {
   // the remaining string data, so just return length diff (out).
   // The comparison is unsigned for string compression, otherwise signed.
   __ Cmp(temp0, Operand(temp1, vixl32::LSR, (mirror::kUseStringCompression ? 3 : 4)));
-  __ B((mirror::kUseStringCompression ? ls : le), &end, /* far_target */ false);
+  __ B((mirror::kUseStringCompression ? ls : le), end, /* far_target */ false);
 
   // Extract the characters and calculate the difference.
   if (mirror::kUseStringCompression) {
@@ -1637,8 +1677,8 @@ void IntrinsicCodeGeneratorARMVIXL::VisitStringCompareTo(HInvoke* invoke) {
   temps.Release(temp_reg);
 
   if (mirror::kUseStringCompression) {
-    __ B(&end);
-    __ Bind(&different_compression);
+    __ B(end);
+    __ Bind(different_compression);
 
     // Comparison for different compression style.
     const size_t c_char_size = DataType::Size(DataType::Type::kInt8);
@@ -1680,7 +1720,7 @@ void IntrinsicCodeGeneratorARMVIXL::VisitStringCompareTo(HInvoke* invoke) {
     __ B(ne, &different_compression_diff, /* far_target */ false);
     __ Subs(temp0, temp0, 2);
     __ B(hi, &different_compression_loop, /* far_target */ false);
-    __ B(&end);
+    __ B(end);
 
     // Calculate the difference.
     __ Bind(&different_compression_diff);
@@ -1697,12 +1737,6 @@ void IntrinsicCodeGeneratorARMVIXL::VisitStringCompareTo(HInvoke* invoke) {
                            CodeBufferCheckScope::kMaximumSize);
     __ it(cc);
     __ rsb(cc, out, out, 0);
-  }
-
-  __ Bind(&end);
-
-  if (can_slow_path) {
-    __ Bind(slow_path->GetExitLabel());
   }
 }
 
