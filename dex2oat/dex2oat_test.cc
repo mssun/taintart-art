@@ -44,6 +44,7 @@ namespace art {
 
 static constexpr size_t kMaxMethodIds = 65535;
 static constexpr bool kDebugArgs = false;
+static const char* kDisableCompactDex = "--compact-dex-level=none";
 
 using android::base::StringPrintf;
 
@@ -776,7 +777,7 @@ class Dex2oatLayoutTest : public Dex2oatTest {
                          app_image_file_name,
                          /* use_fd */ true,
                          /* num_profile_classes */ 1,
-                         { input_vdex, output_vdex });
+                         { input_vdex, output_vdex, kDisableCompactDex });
       EXPECT_GT(vdex_file1->GetLength(), 0u);
     }
     {
@@ -788,7 +789,7 @@ class Dex2oatLayoutTest : public Dex2oatTest {
                          app_image_file_name,
                          /* use_fd */ true,
                          /* num_profile_classes */ 1,
-                         { input_vdex, output_vdex },
+                         { input_vdex, output_vdex, kDisableCompactDex },
                          /* expect_success */ true);
       EXPECT_GT(vdex_file2.GetFile()->GetLength(), 0u);
     }
@@ -876,8 +877,6 @@ TEST_F(Dex2oatLayoutTest, TestLayoutAppImage) {
 }
 
 TEST_F(Dex2oatLayoutTest, TestVdexLayout) {
-  // Disabled until figure out running compact dex + DexLayout causes quickening errors.
-  TEST_DISABLED_FOR_COMPACT_DEX();
   RunTestVDex();
 }
 
@@ -898,7 +897,7 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
       GenerateOdexForTest(dex_location,
                           odex_location,
                           CompilerFilter::kQuicken,
-                          { input_vdex, output_vdex },
+                          { input_vdex, output_vdex, kDisableCompactDex },
                           /* expect_success */ true,
                           /* use_fd */ true);
       EXPECT_GT(vdex_file1->GetLength(), 0u);
@@ -910,7 +909,7 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
       GenerateOdexForTest(dex_location,
                           odex_location,
                           CompilerFilter::kVerify,
-                          { input_vdex, output_vdex },
+                          { input_vdex, output_vdex, kDisableCompactDex },
                           /* expect_success */ true,
                           /* use_fd */ true);
     }
@@ -945,7 +944,7 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
             if (class_it.IsAtMethod() && class_it.GetMethodCodeItem() != nullptr) {
               for (const DexInstructionPcPair& inst :
                        CodeItemInstructionAccessor(*dex_file, class_it.GetMethodCodeItem())) {
-                ASSERT_FALSE(inst->IsQuickened());
+                ASSERT_FALSE(inst->IsQuickened()) << output_;
               }
             }
           }
@@ -956,8 +955,6 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
 };
 
 TEST_F(Dex2oatUnquickenTest, UnquickenMultiDex) {
-  // Disabled until figure out running compact dex + DexLayout causes quickening errors.
-  TEST_DISABLED_FOR_COMPACT_DEX();
   RunUnquickenMultiDex();
 }
 
