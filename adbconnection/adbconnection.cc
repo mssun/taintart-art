@@ -583,7 +583,9 @@ void AdbConnectionState::RunPollLoop(art::Thread* self) {
           DCHECK(!agent_listening_);
           // Load the agent now!
           self->AssertNoPendingException();
-          art::Runtime::Current()->AttachAgent(MakeAgentArg());
+          art::Runtime::Current()->AttachAgent(/* JNIEnv* */ nullptr,
+                                               MakeAgentArg(),
+                                               /* classloader */ nullptr);
           if (self->IsExceptionPending()) {
             LOG(ERROR) << "Failed to load agent " << agent_name_;
             art::ScopedObjectAccess soa(self);
