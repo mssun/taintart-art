@@ -15,4 +15,9 @@
 # limitations under the License.
 
 # Do not compare numbers, so replace numbers with 'N'.
-sed '-es/[0-9][0-9]*/N/g' "$2" | diff --strip-trailing-cr -q "$1" - >/dev/null
+# Remove all messages relating to failing to allocate a java-peer for the
+# shutdown thread. This can occasionally happen with this test but it is not
+# something we really need to worry about here.
+sed '-es/[0-9][0-9]*/N/g' "$2" \
+  | sed "/Exception creating thread peer:/,+3d" \
+  | diff --strip-trailing-cr -q "$1" - >/dev/null
