@@ -442,6 +442,7 @@
             "957-methodhandle-transforms",
             "958-methodhandle-stackframe",
             "959-invoke-polymorphic-accessors",
+            "979-const-method-handle",
             "990-method-handle-and-mr"
         ],
         "description": [
@@ -647,7 +648,7 @@
     },
     {
         "tests": "661-oat-writer-layout",
-        "variant": "interp-ac | interpreter | jit | no-dex2oat | no-prebuild | no-image | trace",
+        "variant": "interp-ac | interpreter | jit | no-dex2oat | no-prebuild | no-image | trace | redefine-stress | jvmti-stress",
         "description": ["Test is designed to only check --compiler-filter=speed"]
     }
 
