@@ -774,9 +774,16 @@ uint32_t DexWriter::GenerateAndWriteMapItems(uint32_t offset) {
 
 void DexWriter::WriteHeader() {
   StandardDexFile::Header header;
-  static constexpr size_t kMagicAndVersionLen =
-      StandardDexFile::kDexMagicSize + StandardDexFile::kDexVersionLen;
-  std::copy_n(header_->Magic(), kMagicAndVersionLen, header.magic_);
+  if (CompactDexFile::IsMagicValid(header_->Magic())) {
+    StandardDexFile::WriteMagic(header.magic_);
+    // TODO: Should we write older versions based on the feature flags?
+    StandardDexFile::WriteCurrentVersion(header.magic_);
+  } else {
+    // Standard dex -> standard dex, just reuse the same header.
+    static constexpr size_t kMagicAndVersionLen =
+        StandardDexFile::kDexMagicSize + StandardDexFile::kDexVersionLen;
+    std::copy_n(header_->Magic(), kMagicAndVersionLen, header.magic_);
+  }
   header.checksum_ = header_->Checksum();
   std::copy_n(header_->Signature(), DexFile::kSha1DigestSize, header.signature_);
   header.file_size_ = header_->FileSize();
