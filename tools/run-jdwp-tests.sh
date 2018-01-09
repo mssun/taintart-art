@@ -26,8 +26,6 @@ if [ -z "$ANDROID_HOST_OUT" ] ; then
   ANDROID_HOST_OUT=${OUT_DIR-$ANDROID_BUILD_TOP/out}/host/linux-x86
 fi
 
-using_jack=$(get_build_var ANDROID_COMPILE_WITH_JACK)
-
 java_lib_location="${ANDROID_HOST_OUT}/../common/obj/JAVA_LIBRARIES"
 make_target_name="apache-harmony-jdwp-tests-hostdex"
 
@@ -184,7 +182,6 @@ if [[ $has_gdb = "yes" ]]; then
 fi
 
 if [[ $mode == "ri" ]]; then
-  using_jack="false"
   if [[ "x$with_jdwp_path" != "x" ]]; then
     vm_args="${vm_args} --vm-arg -Djpda.settings.debuggeeAgentArgument=-agentpath:${agent_wrapper}"
     vm_args="${vm_args} --vm-arg -Djpda.settings.debuggeeAgentName=$with_jdwp_path"
@@ -225,10 +222,7 @@ function jlib_name {
   local str="classes"
   local suffix="jar"
   if [[ $mode == "ri" ]]; then
-    suffix="jar"
     str="javalib"
-  elif [[ $using_jack == "true" ]]; then
-    suffix="jack"
   fi
   echo "$path/$str.$suffix"
 }
@@ -290,9 +284,7 @@ if [[ $verbose == "yes" ]]; then
   art_debugee="$art_debugee -verbose:jdwp"
 fi
 
-if [[ $using_jack == "true" ]]; then
-  toolchain_args="--toolchain jack --language JN --jack-arg -g"
-elif [[ $mode != "ri" ]]; then
+if [[ $mode != "ri" ]]; then
   toolchain_args="--toolchain d8 --language CUR"
 else
   toolchain_args="--toolchain javac --language CUR"
