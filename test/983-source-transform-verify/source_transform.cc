@@ -90,7 +90,7 @@ void JNICALL CheckDexFileHook(jvmtiEnv* jvmti_env ATTRIBUTE_UNUSED,
         continue;
       }
       for (const DexInstructionPcPair& pair :
-          art::CodeItemInstructionAccessor(dex.get(), it.GetMethodCodeItem())) {
+          art::CodeItemInstructionAccessor(*dex, it.GetMethodCodeItem())) {
         const Instruction& inst = pair.Inst();
         int forbiden_flags = (Instruction::kVerifyError | Instruction::kVerifyRuntimeOnly);
         if (inst.Opcode() == Instruction::RETURN_VOID_NO_BARRIER ||

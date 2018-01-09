@@ -731,7 +731,7 @@ TEST_F(DexFileTest, OpenDexDebugInfoLocalNullType) {
       kRawDexDebugInfoLocalNullType, tmp.GetFilename().c_str(), 0xf25f2b38U, true);
   const DexFile::ClassDef& class_def = raw->GetClassDef(0);
   const DexFile::CodeItem* code_item = raw->GetCodeItem(raw->FindCodeItemOffset(class_def, 1));
-  CodeItemDebugInfoAccessor accessor(raw.get(), code_item);
+  CodeItemDebugInfoAccessor accessor(*raw, code_item);
   ASSERT_TRUE(accessor.DecodeDebugLocalInfo(true, 1, Callback, nullptr));
 }
 

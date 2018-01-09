@@ -711,7 +711,7 @@ static void ResolveConstStrings(Handle<mirror::DexCache> dex_cache,
   }
 
   ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
-  for (const DexInstructionPcPair& inst : CodeItemInstructionAccessor(&dex_file, code_item)) {
+  for (const DexInstructionPcPair& inst : CodeItemInstructionAccessor(dex_file, code_item)) {
     switch (inst->Opcode()) {
       case Instruction::CONST_STRING:
       case Instruction::CONST_STRING_JUMBO: {

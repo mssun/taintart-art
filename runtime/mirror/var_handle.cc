@@ -26,6 +26,59 @@ namespace mirror {
 
 namespace {
 
+struct VarHandleAccessorToAccessModeEntry {
+  const char* method_name;
+  VarHandle::AccessMode access_mode;
+
+  // Binary predicate function for finding access_mode by
+  // method_name. The access_mode field is ignored.
+  static bool CompareName(const VarHandleAccessorToAccessModeEntry& lhs,
+                          const VarHandleAccessorToAccessModeEntry& rhs) {
+    return strcmp(lhs.method_name, rhs.method_name) < 0;
+  }
+};
+
+// Map of VarHandle accessor method names to access mode values. The list is alpha-sorted to support
+// binary search. For the usage scenario - lookups in the verifier - a linear scan would likely
+// suffice since we expect VarHandles to be a lesser encountered class. We could use a std::hashmap
+// here and this would be easier to maintain if new values are added here. However, this entails
+// CPU cycles initializing the structure on every execution and uses O(N) more memory for
+// intermediate nodes and makes that memory dirty. Compile-time magic using constexpr is possible
+// here, but that's a tax when this code is recompiled.
+const VarHandleAccessorToAccessModeEntry kAccessorToAccessMode[VarHandle::kNumberOfAccessModes] = {
+  { "compareAndExchange", VarHandle::AccessMode::kCompareAndExchange },
+  { "compareAndExchangeAcquire", VarHandle::AccessMode::kCompareAndExchangeAcquire },
+  { "compareAndExchangeRelease", VarHandle::AccessMode::kCompareAndExchangeRelease },
+  { "compareAndSet", VarHandle::AccessMode::kCompareAndSet },
+  { "get", VarHandle::AccessMode::kGet },
+  { "getAcquire", VarHandle::AccessMode::kGetAcquire },
+  { "getAndAdd", VarHandle::AccessMode::kGetAndAdd },
+  { "getAndAddAcquire", VarHandle::AccessMode::kGetAndAddAcquire },
+  { "getAndAddRelease", VarHandle::AccessMode::kGetAndAddRelease },
+  { "getAndBitwiseAnd", VarHandle::AccessMode::kGetAndBitwiseAnd },
+  { "getAndBitwiseAndAcquire", VarHandle::AccessMode::kGetAndBitwiseAndAcquire },
+  { "getAndBitwiseAndRelease", VarHandle::AccessMode::kGetAndBitwiseAndRelease },
+  { "getAndBitwiseOr", VarHandle::AccessMode::kGetAndBitwiseOr },
+  { "getAndBitwiseOrAcquire", VarHandle::AccessMode::kGetAndBitwiseOrAcquire },
+  { "getAndBitwiseOrRelease", VarHandle::AccessMode::kGetAndBitwiseOrRelease },
+  { "getAndBitwiseXor", VarHandle::AccessMode::kGetAndBitwiseXor },
+  { "getAndBitwiseXorAcquire", VarHandle::AccessMode::kGetAndBitwiseXorAcquire },
+  { "getAndBitwiseXorRelease", VarHandle::AccessMode::kGetAndBitwiseXorRelease },
+  { "getAndSet", VarHandle::AccessMode::kGetAndSet },
+  { "getAndSetAcquire", VarHandle::AccessMode::kGetAndSetAcquire },
+  { "getAndSetRelease", VarHandle::AccessMode::kGetAndSetRelease },
+  { "getOpaque", VarHandle::AccessMode::kGetOpaque },
+  { "getVolatile", VarHandle::AccessMode::kGetVolatile },
+  { "set", VarHandle::AccessMode::kSet },
+  { "setOpaque", VarHandle::AccessMode::kSetOpaque },
+  { "setRelease", VarHandle::AccessMode::kSetRelease },
+  { "setVolatile", VarHandle::AccessMode::kSetVolatile },
+  { "weakCompareAndSet", VarHandle::AccessMode::kWeakCompareAndSet },
+  { "weakCompareAndSetAcquire", VarHandle::AccessMode::kWeakCompareAndSetAcquire },
+  { "weakCompareAndSetPlain", VarHandle::AccessMode::kWeakCompareAndSetPlain },
+  { "weakCompareAndSetRelease", VarHandle::AccessMode::kWeakCompareAndSetRelease },
+};
+
 // Enumeration for describing the parameter and return types of an AccessMode.
 enum class AccessModeTemplate : uint32_t {
   kGet,                 // T Op(C0..CN)
@@ -279,6 +332,41 @@ MethodType* VarHandle::GetMethodTypeForAccessMode(Thread* self,
 
 MethodType* VarHandle::GetMethodTypeForAccessMode(Thread* self, AccessMode access_mode) {
   return GetMethodTypeForAccessMode(self, this, access_mode);
+}
+
+const char* VarHandle::GetReturnTypeDescriptor(const char* accessor_name) {
+  AccessMode access_mode;
+  if (!GetAccessModeByMethodName(accessor_name, &access_mode)) {
+    return nullptr;
+  }
+  AccessModeTemplate access_mode_template = GetAccessModeTemplate(access_mode);
+  switch (access_mode_template) {
+    case AccessModeTemplate::kGet:
+    case AccessModeTemplate::kCompareAndExchange:
+    case AccessModeTemplate::kGetAndUpdate:
+      return "Ljava/lang/Object;";
+    case AccessModeTemplate::kCompareAndSet:
+      return "Z";
+    case AccessModeTemplate::kSet:
+      return "V";
+  }
+}
+
+bool VarHandle::GetAccessModeByMethodName(const char* method_name, AccessMode* access_mode) {
+  if (method_name == nullptr) {
+    return false;
+  }
+  VarHandleAccessorToAccessModeEntry target = { method_name, /*dummy*/VarHandle::AccessMode::kGet };
+  auto last = std::cend(kAccessorToAccessMode);
+  auto it = std::lower_bound(std::cbegin(kAccessorToAccessMode),
+                             last,
+                             target,
+                             VarHandleAccessorToAccessModeEntry::CompareName);
+  if (it == last || strcmp(it->method_name, method_name) != 0) {
+    return false;
+  }
+  *access_mode = it->access_mode;
+  return true;
 }
 
 void VarHandle::SetClass(Class* klass) {

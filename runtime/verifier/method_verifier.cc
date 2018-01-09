@@ -48,6 +48,7 @@
 #include "mirror/method_type.h"
 #include "mirror/object-inl.h"
 #include "mirror/object_array-inl.h"
+#include "mirror/var_handle.h"
 #include "reg_type-inl.h"
 #include "register_line-inl.h"
 #include "runtime.h"
@@ -568,7 +569,7 @@ MethodVerifier::MethodVerifier(Thread* self,
       dex_cache_(dex_cache),
       class_loader_(class_loader),
       class_def_(class_def),
-      code_item_accessor_(dex_file, code_item),
+      code_item_accessor_(*dex_file, code_item),
       declaring_class_(nullptr),
       interesting_dex_pc_(-1),
       monitor_enter_dex_pcs_(nullptr),
@@ -3141,6 +3142,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
       }
       if (!CheckSignaturePolymorphicMethod(called_method) ||
           !CheckSignaturePolymorphicReceiver(inst)) {
+        DCHECK(HasFailures());
         break;
       }
       const uint32_t proto_idx = (is_range) ? inst->VRegH_4rcc() : inst->VRegH_45cc();
@@ -4418,14 +4420,20 @@ ArtMethod* MethodVerifier::VerifyInvocationArgs(
 
 bool MethodVerifier::CheckSignaturePolymorphicMethod(ArtMethod* method) {
   mirror::Class* klass = method->GetDeclaringClass();
-  if (klass != mirror::MethodHandle::StaticClass()) {
+  const char* method_name = method->GetName();
+
+  const char* expected_return_descriptor;
+  if (klass == mirror::MethodHandle::StaticClass()) {
+    expected_return_descriptor = mirror::MethodHandle::GetReturnTypeDescriptor(method_name);
+  } else if (klass == mirror::VarHandle::StaticClass()) {
+    expected_return_descriptor = mirror::VarHandle::GetReturnTypeDescriptor(method_name);
+  } else {
     Fail(VERIFY_ERROR_BAD_CLASS_HARD)
-        << "Signature polymorphic method must be declared in java.lang.invoke.MethodClass";
+        << "Signature polymorphic method in unsuppported class: " << klass->PrettyDescriptor();
     return false;
   }
 
-  const char* method_name = method->GetName();
-  if (strcmp(method_name, "invoke") != 0 && strcmp(method_name, "invokeExact") != 0) {
+  if (expected_return_descriptor == nullptr) {
     Fail(VERIFY_ERROR_BAD_CLASS_HARD)
         << "Signature polymorphic method name invalid: " << method_name;
     return false;
@@ -4447,9 +4455,10 @@ bool MethodVerifier::CheckSignaturePolymorphicMethod(ArtMethod* method) {
   }
 
   const char* return_descriptor = method->GetReturnTypeDescriptor();
-  if (strcmp(return_descriptor, "Ljava/lang/Object;") != 0) {
+  if (strcmp(return_descriptor, expected_return_descriptor) != 0) {
     Fail(VERIFY_ERROR_BAD_CLASS_HARD)
-        << "Signature polymorphic method has unexpected return type: " << return_descriptor;
+        << "Signature polymorphic method has unexpected return type: " << return_descriptor
+        << " != " << expected_return_descriptor;
     return false;
   }
 
@@ -4476,9 +4485,10 @@ bool MethodVerifier::CheckSignaturePolymorphicReceiver(const Instruction* inst) 
         << "invoke-polymorphic receiver has no class: "
         << this_type;
     return false;
-  } else if (!this_type.GetClass()->IsSubClass(mirror::MethodHandle::StaticClass())) {
+  } else if (!this_type.GetClass()->IsSubClass(mirror::MethodHandle::StaticClass()) &&
+             !this_type.GetClass()->IsSubClass(mirror::VarHandle::StaticClass())) {
     Fail(VERIFY_ERROR_BAD_CLASS_HARD)
-        << "invoke-polymorphic receiver is not a subclass of MethodHandle: "
+        << "invoke-polymorphic receiver is not a subclass of MethodHandle or VarHandle: "
         << this_type;
     return false;
   }

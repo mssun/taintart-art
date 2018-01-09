@@ -78,7 +78,9 @@ class MANAGED VarHandle : public Object {
     kGetAndBitwiseXor,
     kGetAndBitwiseXorRelease,
     kGetAndBitwiseXorAcquire,
+    kLast = kGetAndBitwiseXorAcquire,
   };
+  constexpr static size_t kNumberOfAccessModes = static_cast<size_t>(AccessMode::kLast) + 1u;
 
   // Returns true if the AccessMode specified is a supported operation.
   bool IsAccessModeSupported(AccessMode accessMode) REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -104,6 +106,14 @@ class MANAGED VarHandle : public Object {
   static mirror::Class* StaticClass() REQUIRES_SHARED(Locks::mutator_lock_) {
     return static_class_.Read();
   }
+
+  // Gets the return type descriptor for a named accessor method,
+  // nullptr if accessor_method is not supported.
+  static const char* GetReturnTypeDescriptor(const char* accessor_method);
+
+  // Returns true and sets access_mode if method_name corresponds to a
+  // VarHandle access method, such as "setOpaque". Returns false otherwise.
+  static bool GetAccessModeByMethodName(const char* method_name, AccessMode* access_mode);
 
   static void SetClass(Class* klass) REQUIRES_SHARED(Locks::mutator_lock_);
   static void ResetClass() REQUIRES_SHARED(Locks::mutator_lock_);

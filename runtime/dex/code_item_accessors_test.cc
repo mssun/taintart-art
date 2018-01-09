@@ -71,12 +71,12 @@ TEST(CodeItemAccessorsTest, TestDexInstructionsAccessor) {
   auto verify_code_item = [&](const DexFile* dex,
                               const DexFile::CodeItem* item,
                               const uint16_t* insns) {
-    CodeItemInstructionAccessor insns_accessor(dex, item);
+    CodeItemInstructionAccessor insns_accessor(*dex, item);
     EXPECT_TRUE(insns_accessor.HasCodeItem());
     ASSERT_EQ(insns_accessor.InsnsSizeInCodeUnits(), kInsnsSizeInCodeUnits);
     EXPECT_EQ(insns_accessor.Insns(), insns);
 
-    CodeItemDataAccessor data_accessor(dex, item);
+    CodeItemDataAccessor data_accessor(*dex, item);
     EXPECT_TRUE(data_accessor.HasCodeItem());
     EXPECT_EQ(data_accessor.InsnsSizeInCodeUnits(), kInsnsSizeInCodeUnits);
     EXPECT_EQ(data_accessor.Insns(), insns);

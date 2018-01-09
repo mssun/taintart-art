@@ -39,7 +39,7 @@ static void dumpMethodCFGImpl(const DexFile* dex_file,
   os << "digraph {\n";
   os << "  # /* " << dex_file->PrettyMethod(dex_method_idx, true) << " */\n";
 
-  CodeItemDataAccessor accessor(dex_file, code_item);
+  CodeItemDataAccessor accessor(*dex_file, code_item);
 
   std::set<uint32_t> dex_pc_is_branch_target;
   {
