@@ -68,6 +68,7 @@ art_cc_library {
     shared_libs: [
         "libart",
         "libart-compiler",
+        "libart-dexlayout",
     ],
 }
 
@@ -80,5 +81,6 @@ art_cc_library {
     shared_libs: [
         "libartd",
         "libartd-compiler",
+        "libartd-dexlayout",
     ],
 }

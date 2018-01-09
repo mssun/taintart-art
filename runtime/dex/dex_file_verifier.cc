@@ -386,15 +386,14 @@ bool DexFileVerifier::CheckHeader() {
     return false;
   }
 
-  bool size_matches = false;
-  if (dex_file_->IsCompactDexFile()) {
-    size_matches = header_->header_size_ == sizeof(CompactDexFile::Header);
-  } else {
-    size_matches = header_->header_size_ == sizeof(StandardDexFile::Header);
-  }
+  const uint32_t expected_header_size = dex_file_->IsCompactDexFile()
+      ? sizeof(CompactDexFile::Header)
+      : sizeof(StandardDexFile::Header);
 
-  if (!size_matches) {
-    ErrorStringPrintf("Bad header size: %ud", header_->header_size_);
+  if (header_->header_size_ != expected_header_size) {
+    ErrorStringPrintf("Bad header size: %ud expected %ud",
+                      header_->header_size_,
+                      expected_header_size);
     return false;
   }
 
