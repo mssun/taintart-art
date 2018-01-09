@@ -1912,7 +1912,8 @@ void DexLayout::ProcessDexFile(const char* file_name,
     if (do_layout) {
       LayoutOutputFile(dex_file);
     }
-    OutputDexFile(dex_file, do_layout);
+    // If we didn't set the offsets eagerly, we definitely need to compute them here.
+    OutputDexFile(dex_file, do_layout || !eagerly_assign_offsets);
 
     // Clear header before verifying to reduce peak RAM usage.
     const size_t file_size = header_->FileSize();

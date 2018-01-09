@@ -34,7 +34,9 @@
 #include "dex/dex_file_loader.h"
 
 // Runtime includes.
+#include "dex/compact_dex_level.h"
 #include "dex_to_dex_decompiler.h"
+#include "dexlayout.h"
 #include "oat_file.h"
 #include "vdex_file.h"
 
@@ -85,6 +87,33 @@ std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& origi
   }
 
   DoDexUnquicken(*new_dex_file, original);
+
+  if (original.IsCompactDexFile()) {
+    // Since we are supposed to return a standard dex, convert back using dexlayout.
+    art::Options options;
+    options.output_to_memmap_ = true;
+    options.compact_dex_level_ = art::CompactDexLevel::kCompactDexLevelNone;
+    options.update_checksum_ = true;
+    art::DexLayout dex_layout(options, nullptr, nullptr);
+    dex_layout.ProcessDexFile(new_dex_file->GetLocation().c_str(), new_dex_file.get(), 0);
+    std::unique_ptr<art::MemMap> mem_map(dex_layout.GetAndReleaseMemMap());
+
+    const uint32_t dex_file_size =
+        reinterpret_cast<const art::DexFile::Header*>(mem_map->Begin())->file_size_;
+    // Overwrite the dex file stored in data with the new result.
+    data.clear();
+    data.insert(data.end(), mem_map->Begin(), mem_map->Begin() + dex_file_size);
+    new_dex_file = art::DexFileLoader::Open(
+        data.data(),
+        data.size(),
+        /*location*/"Unquickening_dexfile.dex",
+        /*location_checksum*/0,
+        /*oat_dex_file*/nullptr,
+        /*verify*/false,
+        /*verify_checksum*/false,
+        &error);
+  }
+
   RecomputeDexChecksum(const_cast<art::DexFile*>(new_dex_file.get()));
   std::unique_ptr<FixedUpDexFile> ret(new FixedUpDexFile(std::move(new_dex_file), std::move(data)));
   return ret;
