@@ -772,7 +772,7 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
     return nullptr;
   }
 
-  CodeItemDebugInfoAccessor code_item_accessor(dex_file, code_item);
+  CodeItemDebugInfoAccessor code_item_accessor(dex_file, code_item, method_idx);
   HGraph* graph = new (allocator) HGraph(
       allocator,
       arena_stack,

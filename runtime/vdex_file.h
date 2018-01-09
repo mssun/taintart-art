@@ -84,8 +84,8 @@ class VdexFile {
 
    private:
     static constexpr uint8_t kVdexMagic[] = { 'v', 'd', 'e', 'x' };
-    // Last update: Revert^2 compact quicken info tables that don't modify the dex code items.
-    static constexpr uint8_t kVdexVersion[] = { '0', '1', '3', '\0' };
+    // Last update: Side table for debug info offsets in compact dex.
+    static constexpr uint8_t kVdexVersion[] = { '0', '1', '4', '\0' };
 
     uint8_t magic_[4];
     uint8_t version_[4];

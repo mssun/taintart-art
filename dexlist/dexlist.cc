@@ -101,7 +101,7 @@ static void dumpMethod(const DexFile* pDexFile,
   if (pCode == nullptr || codeOffset == 0) {
     return;
   }
-  CodeItemDebugInfoAccessor accessor(*pDexFile, pCode);
+  CodeItemDebugInfoAccessor accessor(*pDexFile, pCode, idx);
 
   // Method information.
   const DexFile::MethodId& pMethodId = pDexFile->GetMethodId(idx);

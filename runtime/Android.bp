@@ -25,6 +25,7 @@ cc_defaults {
     defaults: ["art_defaults"],
     host_supported: true,
     srcs: [
+        "dex/compact_dex_debug_info.cc",
         "dex/compact_dex_file.cc",
         "dex/dex_file.cc",
         "dex/dex_file_exception_helpers.cc",
@@ -120,6 +121,7 @@ cc_defaults {
         "common_throws.cc",
         "compiler_filter.cc",
         "debugger.cc",
+        "dex/compact_dex_debug_info.cc",
         "dex/compact_dex_file.cc",
         "dex/dex_file.cc",
         "dex/dex_file_annotations.cc",
@@ -637,6 +639,7 @@ art_cc_test {
         "class_table_test.cc",
         "compiler_filter_test.cc",
         "dex/code_item_accessors_test.cc",
+        "dex/compact_dex_debug_info_test.cc",
         "dex/compact_dex_file_test.cc",
         "dex/dex_file_test.cc",
         "dex/dex_file_verifier_test.cc",

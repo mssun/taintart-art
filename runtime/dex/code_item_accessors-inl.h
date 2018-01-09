@@ -34,7 +34,9 @@ inline CodeItemDataAccessor::CodeItemDataAccessor(ArtMethod* method)
     : CodeItemDataAccessor(*method->GetDexFile(), method->GetCodeItem()) {}
 
 inline CodeItemDebugInfoAccessor::CodeItemDebugInfoAccessor(ArtMethod* method)
-    : CodeItemDebugInfoAccessor(*method->GetDexFile(), method->GetCodeItem()) {}
+    : CodeItemDebugInfoAccessor(*method->GetDexFile(),
+                                method->GetCodeItem(),
+                                method->GetDexMethodIndex()) {}
 
 }  // namespace art
 

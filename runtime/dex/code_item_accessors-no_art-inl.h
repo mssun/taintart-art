@@ -146,22 +146,28 @@ inline const void* CodeItemDataAccessor::CodeItemDataEnd() const {
 
 inline void CodeItemDebugInfoAccessor::Init(const DexFile& dex_file,
                                             const DexFile::CodeItem* code_item,
-                                            uint32_t debug_info_offset) {
+                                            uint32_t dex_method_index) {
+  if (code_item == nullptr) {
+    return;
+  }
   dex_file_ = &dex_file;
-  debug_info_offset_ = debug_info_offset;
   if (dex_file.IsCompactDexFile()) {
-    Init(down_cast<const CompactDexFile::CodeItem&>(*code_item));
+    Init(down_cast<const CompactDexFile::CodeItem&>(*code_item), dex_method_index);
   } else {
     DCHECK(dex_file.IsStandardDexFile());
     Init(down_cast<const StandardDexFile::CodeItem&>(*code_item));
   }
 }
 
-inline void CodeItemDebugInfoAccessor::Init(const CompactDexFile::CodeItem& code_item) {
+inline void CodeItemDebugInfoAccessor::Init(const CompactDexFile::CodeItem& code_item,
+                                            uint32_t dex_method_index) {
+  debug_info_offset_ = down_cast<const CompactDexFile*>(dex_file_)->GetDebugInfoOffset(
+      dex_method_index);
   CodeItemDataAccessor::Init(code_item);
 }
 
 inline void CodeItemDebugInfoAccessor::Init(const StandardDexFile::CodeItem& code_item) {
+  debug_info_offset_ = code_item.debug_info_off_;
   CodeItemDataAccessor::Init(code_item);
 }
 
@@ -178,14 +184,6 @@ inline bool CodeItemDebugInfoAccessor::DecodeDebugLocalInfo(bool is_static,
                                          method_idx,
                                          new_local,
                                          context);
-}
-
-inline CodeItemDebugInfoAccessor::CodeItemDebugInfoAccessor(const DexFile& dex_file,
-                                                            const DexFile::CodeItem* code_item) {
-  if (code_item == nullptr) {
-    return;
-  }
-  Init(dex_file, code_item, code_item->debug_info_off_);
 }
 
 }  // namespace art

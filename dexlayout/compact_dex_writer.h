@@ -33,13 +33,30 @@ class CompactDexWriter : public DexWriter {
         compact_dex_level_(compact_dex_level) {}
 
  protected:
+  void WriteMemMap() OVERRIDE;
+
   void WriteHeader() OVERRIDE;
 
   size_t GetHeaderSize() const OVERRIDE;
 
+  uint32_t WriteDebugInfoOffsetTable(uint32_t offset);
+
   const CompactDexLevel compact_dex_level_;
 
+  uint32_t WriteCodeItem(dex_ir::CodeItem* code_item, uint32_t offset, bool reserve_only) OVERRIDE;
+
+  void SortDebugInfosByMethodIndex();
+
  private:
+  // Position in the compact dex file for the debug info table data starts.
+  uint32_t debug_info_offsets_pos_ = 0u;
+
+  // Offset into the debug info table data where the lookup table is.
+  uint32_t debug_info_offsets_table_offset_ = 0u;
+
+  // Base offset of where debug info starts in the dex file.
+  uint32_t debug_info_base_ = 0u;
+
   DISALLOW_COPY_AND_ASSIGN(CompactDexWriter);
 };
 
