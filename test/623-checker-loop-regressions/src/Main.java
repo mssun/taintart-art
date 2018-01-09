@@ -19,6 +19,8 @@
  */
 public class Main {
 
+  private static native void ensureJitCompiled(Class<?> cls, String methodName);
+
   /// CHECK-START: int Main.earlyExitFirst(int) loop_optimization (before)
   /// CHECK-DAG: Phi loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: Phi loop:<<Loop>>      outer_loop:none
@@ -583,6 +585,8 @@ public class Main {
   }
 
   public static void main(String[] args) {
+    System.loadLibrary(args[0]);
+
     expectEquals(10, earlyExitFirst(-1));
     for (int i = 0; i <= 10; i++) {
       expectEquals(i, earlyExitFirst(i));
@@ -746,6 +750,9 @@ public class Main {
 
     expectEquals(153, doNotMoveSIMD());
 
+    // This test exposed SIMDization issues on x86 and x86_64
+    // so we make sure the test runs with JIT enabled.
+    ensureJitCompiled(Main.class, "reduction32Values");
     {
       int[] a1 = new int[100];
       int[] a2 = new int[100];
