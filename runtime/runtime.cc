@@ -291,11 +291,21 @@ Runtime::~Runtime() {
   const bool attach_shutdown_thread = self == nullptr;
   if (attach_shutdown_thread) {
     // We can only create a peer if the runtime is actually started. This is only not true during
-    // some tests.
-    CHECK(AttachCurrentThread("Shutdown thread",
-                              false,
-                              GetSystemThreadGroup(),
-                              /* Create peer */IsStarted()));
+    // some tests. If there is extreme memory pressure the allocation of the thread peer can fail.
+    // In this case we will just try again without allocating a peer so that shutdown can continue.
+    // Very few things are actually capable of distinguishing between the peer & peerless states so
+    // this should be fine.
+    bool thread_attached = AttachCurrentThread("Shutdown thread",
+                                               /* as_daemon */ false,
+                                               GetSystemThreadGroup(),
+                                               /* Create peer */ IsStarted());
+    if (UNLIKELY(!thread_attached)) {
+      LOG(WARNING) << "Failed to attach shutdown thread. Trying again without a peer.";
+      CHECK(AttachCurrentThread("Shutdown thread (no java peer)",
+                                /* as_daemon */   false,
+                                /* thread_group*/ nullptr,
+                                /* Create peer */ false));
+    }
     self = Thread::Current();
   } else {
     LOG(WARNING) << "Current thread not detached in Runtime shutdown";
