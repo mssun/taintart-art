@@ -4483,6 +4483,14 @@ mirror::Class* ClassLinker::CreateProxyClass(ScopedObjectAccessAlreadyRunnable& 
 
   Runtime::Current()->GetRuntimeCallbacks()->ClassPrepare(temp_klass, klass);
 
+  // SubtypeCheckInfo::Initialized must happen-before any new-instance for that type.
+  // See also ClassLinker::EnsureInitialized().
+  {
+    MutexLock subtype_check_lock(Thread::Current(), *Locks::subtype_check_lock_);
+    SubtypeCheck<ObjPtr<mirror::Class>>::EnsureInitialized(klass.Get());
+    // TODO: Avoid taking subtype_check_lock_ if SubtypeCheck for j.l.r.Proxy is already assigned.
+  }
+
   {
     // Lock on klass is released. Lock new class object.
     ObjectLock<mirror::Class> initialization_lock(self, klass);

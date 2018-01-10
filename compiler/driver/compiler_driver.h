@@ -76,6 +76,9 @@ class VdexFile;
 class VerificationResults;
 class VerifiedMethod;
 
+// Compile-time flag to enable/disable bitstring type checks.
+static constexpr bool kUseBitstringTypeCheck = true;
+
 enum EntryPointCallingConvention {
   // ABI of invocations to a method's interpreter entry point.
   kInterpreterAbi,

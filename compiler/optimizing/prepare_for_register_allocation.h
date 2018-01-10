@@ -40,6 +40,8 @@ class PrepareForRegisterAllocation : public HGraphDelegateVisitor {
       "prepare_for_register_allocation";
 
  private:
+  void VisitCheckCast(HCheckCast* check_cast) OVERRIDE;
+  void VisitInstanceOf(HInstanceOf* instance_of) OVERRIDE;
   void VisitNullCheck(HNullCheck* check) OVERRIDE;
   void VisitDivZeroCheck(HDivZeroCheck* check) OVERRIDE;
   void VisitBoundsCheck(HBoundsCheck* check) OVERRIDE;
