@@ -484,7 +484,10 @@ bool AdbConnectionState::SetupAdbConnection() {
 
 void AdbConnectionState::RunPollLoop(art::Thread* self) {
   CHECK_EQ(self->GetState(), art::kNative);
-  art::Locks::mutator_lock_->AssertNotHeld(self);
+  // TODO: Clang prebuilt for r316199 produces bogus thread safety analysis warning for holding both
+  // exclusive and shared lock in the same scope. Remove the assertion as a temporary workaround.
+  // http://b/71769596
+  // art::Locks::mutator_lock_->AssertNotHeld(self);
   self->SetState(art::kWaitingInMainDebuggerLoop);
   // shutting_down_ set by StopDebuggerThreads
   while (!shutting_down_) {
