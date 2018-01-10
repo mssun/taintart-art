@@ -114,13 +114,13 @@ inline std::ostream& operator<<(std::ostream& os, const BitStringChar& bc) {
 /**
  *                           BitString
  *
- * lsb (least significant bit)                              msb
- *  +------------+------------+------------+-----+------------+
- *  |            |            |            |     |            |
- *  |   Char0    |    Char1   |   Char2    | ... |   CharN    |
- *  |            |            |            |     |            |
- *  +------------+------------+------------+-----+------------+
- *   <- len[0] -> <- len[1] -> <- len[2] ->  ...  <- len[N] ->
+ * MSB (most significant bit)                                LSB
+ *  +------------+-----+------------+------------+------------+
+ *  |            |     |            |            |            |
+ *  |   CharN    | ... |    Char2   |   Char1    |   Char0    |
+ *  |            |     |            |            |            |
+ *  +------------+-----+------------+------------+------------+
+ *   <- len[N] ->  ...  <- len[2] -> <- len[1] -> <- len[0] ->
  *
  * Stores up to "N+1" characters in a subset of a machine word. Each character has a different
  * bitlength, as defined by len[pos]. This BitString can be nested inside of a BitStruct
@@ -145,7 +145,7 @@ struct BitString {
   // As this is meant to be used only with "SubtypeCheckInfo",
   // the bitlengths and the maximum string length is tuned by maximizing the coverage of "Assigned"
   // bitstrings for instance-of and check-cast targets during Optimizing compilation.
-  static constexpr size_t kBitSizeAtPosition[] = {12, 3, 8};          // len[] from header docs.
+  static constexpr size_t kBitSizeAtPosition[] = {12, 4, 11};         // len[] from header docs.
   static constexpr size_t kCapacity = arraysize(kBitSizeAtPosition);  // MaxBitstringLen above.
 
   // How many bits are needed to represent BitString[0..position)?
@@ -165,8 +165,7 @@ struct BitString {
   // (e.g. to use with BitField{Insert,Extract,Clear}.)
   static constexpr size_t GetLsbForPosition(size_t position) {
     DCHECK_GE(kCapacity, position);
-    constexpr size_t kMaximumBitLength = GetBitLengthTotalAtPosition(kCapacity);
-    return kMaximumBitLength - GetBitLengthTotalAtPosition(position + 1u);
+    return GetBitLengthTotalAtPosition(position);
   }
 
   // How many bits are needed for a BitStringChar at the position?
@@ -183,9 +182,7 @@ struct BitString {
   BitStringChar operator[](size_t idx) const {
     DCHECK_LT(idx, kCapacity);
 
-    StorageType data =
-        BitFieldExtract(storage_,
-                        GetLsbForPosition(idx), kBitSizeAtPosition[idx]);
+    StorageType data = BitFieldExtract(storage_, GetLsbForPosition(idx), kBitSizeAtPosition[idx]);
 
     return BitStringChar(data, kBitSizeAtPosition[idx]);
   }
@@ -259,17 +256,10 @@ struct BitString {
     DCHECK_GE(kCapacity, end);
     BitString copy = *this;
 
-    size_t bit_size = 0;
-    for (size_t idx = end; idx < kCapacity; ++idx) {
-      bit_size += kBitSizeAtPosition[idx];
-    }
-    // TODO: precompute above table.
-
-    if (bit_size > 0) {
-      StorageType data =
-          BitFieldClear(copy.storage_,
-                        GetLsbForPosition(kCapacity),
-                        bit_size);
+    if (end < kCapacity) {
+      size_t lsb = GetLsbForPosition(end);
+      size_t bit_size = GetLsbForPosition(kCapacity) - lsb;
+      StorageType data = BitFieldClear(copy.storage_, lsb, bit_size);
       copy.storage_ = data;
     }
 

@@ -1761,8 +1761,14 @@ void CodeGeneratorMIPS64::GenerateInvokeRuntime(int32_t entry_point_offset) {
 
 void InstructionCodeGeneratorMIPS64::GenerateClassInitializationCheck(SlowPathCodeMIPS64* slow_path,
                                                                       GpuRegister class_reg) {
-  __ LoadFromOffset(kLoadUnsignedByte, TMP, class_reg, mirror::Class::StatusOffset().Int32Value());
-  __ LoadConst32(AT, enum_cast<>(ClassStatus::kInitialized));
+  constexpr size_t status_lsb_position = SubtypeCheckBits::BitStructSizeOf();
+  const size_t status_byte_offset =
+      mirror::Class::StatusOffset().SizeValue() + (status_lsb_position / kBitsPerByte);
+  constexpr uint32_t shifted_initialized_value =
+      enum_cast<uint32_t>(ClassStatus::kInitialized) << (status_lsb_position % kBitsPerByte);
+
+  __ LoadFromOffset(kLoadUnsignedByte, TMP, class_reg, status_byte_offset);
+  __ LoadConst32(AT, shifted_initialized_value);
   __ Bltuc(TMP, AT, slow_path->GetEntryLabel());
   // Even if the initialized flag is set, we need to ensure consistent memory ordering.
   __ Sync(0);

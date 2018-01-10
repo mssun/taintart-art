@@ -65,7 +65,7 @@ size_t AsUint(const T& value) {
   return uint_value;
 }
 
-// Make max bistring, e.g. BitString[4095,7,255] for {12,3,8}
+// Make max bistring, e.g. BitString[4095,15,2047] for {12,4,11}
 template <size_t kCount = BitString::kCapacity>
 BitString MakeBitStringMax() {
   BitString bs{};
@@ -258,60 +258,62 @@ size_t LenForPos() { return BitString::GetBitLengthTotalAtPosition(kPos); }
 TEST_F(SubtypeCheckInfoTest, EncodedPathToRoot) {
   using StorageType = BitString::StorageType;
 
-  SubtypeCheckInfo io =
+  SubtypeCheckInfo sci =
       MakeSubtypeCheckInfo(/*path_to_root*/MakeBitStringMax(),
                            /*next*/BitStringChar{},
                            /*overflow*/false,
                            /*depth*/BitString::kCapacity);
-  // 0b11111...000 where MSB == 1, and leading 1s = the maximum bitstring representation.
-  EXPECT_EQ(MaxInt<StorageType>(LenForPos()) << (BitSizeOf<StorageType>() - LenForPos()),
-            io.GetEncodedPathToRoot());
-
-  EXPECT_EQ(MaxInt<StorageType>(LenForPos()) << (BitSizeOf<StorageType>() - LenForPos()),
-            io.GetEncodedPathToRootMask());
-
-  // 0b11111...000 where MSB == 1, and leading 1s = the maximum bitstring representation.
+  // 0b000...111 where LSB == 1, and trailing 1s = the maximum bitstring representation.
+  EXPECT_EQ(MaxInt<StorageType>(LenForPos()), sci.GetEncodedPathToRoot());
 
   // The rest of this test is written assuming kCapacity == 3 for convenience.
   // Please update the test if this changes.
   ASSERT_EQ(3u, BitString::kCapacity);
   ASSERT_EQ(12u, BitString::kBitSizeAtPosition[0]);
-  ASSERT_EQ(3u, BitString::kBitSizeAtPosition[1]);
-  ASSERT_EQ(8u, BitString::kBitSizeAtPosition[2]);
+  ASSERT_EQ(4u, BitString::kBitSizeAtPosition[1]);
+  ASSERT_EQ(11u, BitString::kBitSizeAtPosition[2]);
 
-  SubtypeCheckInfo io2 =
+  SubtypeCheckInfo sci2 =
       MakeSubtypeCheckInfoUnchecked(MakeBitStringMax<2u>(),
                                    /*overflow*/false,
                                    /*depth*/BitString::kCapacity);
 
-#define MAKE_ENCODED_PATH(pos0, pos1, pos2) (((pos0) << 3u << 8u << 9u) | ((pos1) << 8u << 9u) | ((pos2) << 9u))
+#define MAKE_ENCODED_PATH(pos0, pos1, pos2) \
+    (((pos0) << 0) | \
+     ((pos1) << BitString::kBitSizeAtPosition[0]) | \
+     ((pos2) << (BitString::kBitSizeAtPosition[0] + BitString::kBitSizeAtPosition[1])))
 
-  EXPECT_EQ(MAKE_ENCODED_PATH(MaxInt<BitString::StorageType>(12), 0b111, 0b0), io2.GetEncodedPathToRoot());
-  EXPECT_EQ(MAKE_ENCODED_PATH(MaxInt<BitString::StorageType>(12), 0b111, 0b11111111), io2.GetEncodedPathToRootMask());
+  EXPECT_EQ(MAKE_ENCODED_PATH(MaxInt<BitString::StorageType>(12), 0b1111, 0b0),
+            sci2.GetEncodedPathToRoot());
+  EXPECT_EQ(MAKE_ENCODED_PATH(MaxInt<BitString::StorageType>(12), 0b1111, 0b11111111111),
+            sci2.GetEncodedPathToRootMask());
 
-  SubtypeCheckInfo io3 =
+  SubtypeCheckInfo sci3 =
       MakeSubtypeCheckInfoUnchecked(MakeBitStringMax<2u>(),
                                    /*overflow*/false,
                                    /*depth*/BitString::kCapacity - 1u);
 
-  EXPECT_EQ(MAKE_ENCODED_PATH(MaxInt<BitString::StorageType>(12), 0b111, 0b0), io3.GetEncodedPathToRoot());
-  EXPECT_EQ(MAKE_ENCODED_PATH(MaxInt<BitString::StorageType>(12), 0b111, 0b0), io3.GetEncodedPathToRootMask());
+  EXPECT_EQ(MAKE_ENCODED_PATH(MaxInt<BitString::StorageType>(12), 0b1111, 0b0),
+            sci3.GetEncodedPathToRoot());
+  EXPECT_EQ(MAKE_ENCODED_PATH(MaxInt<BitString::StorageType>(12), 0b1111, 0b0),
+            sci3.GetEncodedPathToRootMask());
 
-  SubtypeCheckInfo io4 =
+  SubtypeCheckInfo sci4 =
       MakeSubtypeCheckInfoUnchecked(MakeBitString({0b1010101u}),
                                    /*overflow*/false,
                                    /*depth*/BitString::kCapacity - 2u);
 
-  EXPECT_EQ(MAKE_ENCODED_PATH(0b1010101u, 0b000, 0b0), io4.GetEncodedPathToRoot());
-  EXPECT_EQ(MAKE_ENCODED_PATH(MaxInt<BitString::StorageType>(12), 0b000, 0b0), io4.GetEncodedPathToRootMask());
+  EXPECT_EQ(MAKE_ENCODED_PATH(0b1010101u, 0b0000, 0b0), sci4.GetEncodedPathToRoot());
+  EXPECT_EQ(MAKE_ENCODED_PATH(MaxInt<BitString::StorageType>(12), 0b0000, 0b0),
+            sci4.GetEncodedPathToRootMask());
 }
 
 TEST_F(SubtypeCheckInfoTest, NewForRoot) {
-  SubtypeCheckInfo io = SubtypeCheckInfo::CreateRoot();
-  EXPECT_EQ(SubtypeCheckInfo::kAssigned, io.GetState());  // Root is always assigned.
-  EXPECT_EQ(0u, GetPathToRoot(io).Length());  // Root's path length is 0.
-  EXPECT_TRUE(HasNext(io));  // Root always has a "Next".
-  EXPECT_EQ(MakeBitStringChar(1u), io.GetNext());  // Next>=1 to disambiguate from Uninitialized.
+  SubtypeCheckInfo sci = SubtypeCheckInfo::CreateRoot();
+  EXPECT_EQ(SubtypeCheckInfo::kAssigned, sci.GetState());  // Root is always assigned.
+  EXPECT_EQ(0u, GetPathToRoot(sci).Length());  // Root's path length is 0.
+  EXPECT_TRUE(HasNext(sci));  // Root always has a "Next".
+  EXPECT_EQ(MakeBitStringChar(1u), sci.GetNext());  // Next>=1 to disambiguate from Uninitialized.
 }
 
 TEST_F(SubtypeCheckInfoTest, CopyCleared) {
