@@ -21,11 +21,13 @@
 #include <gtest/gtest.h>
 
 #include "common_runtime_test.h"
+#include "dexopt_test.h"
 #include "scoped_thread_state_change-inl.h"
+#include "vdex_file.h"
 
 namespace art {
 
-class OatFileTest : public CommonRuntimeTest {
+class OatFileTest : public DexoptTest {
 };
 
 TEST_F(OatFileTest, ResolveRelativeEncodedDexLocation) {
@@ -60,6 +62,30 @@ TEST_F(OatFileTest, ResolveRelativeEncodedDexLocation) {
   EXPECT_EQ(std::string("o/base.apk"),
       OatFile::ResolveRelativeEncodedDexLocation(
         "/data/app/foo/base.apk", "o/base.apk"));
+}
+
+TEST_F(OatFileTest, LoadOat) {
+  std::string dex_location = GetScratchDir() + "/LoadOat.jar";
+
+  Copy(GetDexSrc1(), dex_location);
+  GenerateOatForTest(dex_location.c_str(), CompilerFilter::kSpeed);
+
+  std::string oat_location;
+  std::string error_msg;
+  ASSERT_TRUE(OatFileAssistant::DexLocationToOatFilename(
+        dex_location, kRuntimeISA, &oat_location, &error_msg)) << error_msg;
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(oat_location.c_str(),
+                                                   oat_location.c_str(),
+                                                   nullptr,
+                                                   nullptr,
+                                                   false,
+                                                   /*low_4gb*/false,
+                                                   dex_location.c_str(),
+                                                   &error_msg));
+  ASSERT_TRUE(odex_file.get() != nullptr);
+
+  // Check that the vdex file was loaded in the reserved space of odex file.
+  EXPECT_EQ(odex_file->GetVdexFile()->Begin(), odex_file->VdexBegin());
 }
 
 }  // namespace art

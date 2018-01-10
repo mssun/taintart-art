@@ -2015,8 +2015,8 @@ class Dex2Oat FINAL {
                                           text_size,
                                           oat_writer->GetBssSize(),
                                           oat_writer->GetBssMethodsOffset(),
-                                          oat_writer->GetBssRootsOffset());
-
+                                          oat_writer->GetBssRootsOffset(),
+                                          oat_writer->GetVdexSize());
         if (IsImage()) {
           // Update oat layout.
           DCHECK(image_writer_ != nullptr);
