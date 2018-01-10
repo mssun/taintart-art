@@ -28,15 +28,9 @@ else
   JAVA_LIBRARIES=${ANDROID_PRODUCT_OUT}/../../common/obj/JAVA_LIBRARIES
 fi
 
-using_jack=$(get_build_var ANDROID_COMPILE_WITH_JACK)
-
 function classes_jar_path {
   local var="$1"
   local suffix="jar"
-
-  if [[ $using_jack == "true" ]]; then
-    suffix="jack"
-  fi
 
   echo "${JAVA_LIBRARIES}/${var}_intermediates/classes.${suffix}"
 }
@@ -145,12 +139,8 @@ done
 # the default timeout.
 vogar_args="$vogar_args --timeout 480"
 
-# Switch between using jack or javac+desugar+d8
-if [[ $using_jack == "true" ]]; then
-  vogar_args="$vogar_args --toolchain jack --language JO"
-else
-  vogar_args="$vogar_args --toolchain d8 --language CUR"
-fi
+# set the toolchain to use.
+vogar_args="$vogar_args --toolchain d8 --language CUR"
 
 # JIT settings.
 if $use_jit; then

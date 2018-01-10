@@ -40,13 +40,6 @@ enum StoreOperandType {
   kStoreDWord
 };
 
-// Set condition codes request.
-enum SetCc {
-  kCcDontCare,  // Allows prioritizing 16-bit instructions on Thumb2 whether they set CCs or not.
-  kCcSet,
-  kCcKeep,
-};
-
 }  // namespace arm
 }  // namespace art
 
