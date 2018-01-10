@@ -37,7 +37,7 @@ constexpr bool kObjPtrPoisoningValidateOnCopy = false;
 template<class MirrorType>
 class ObjPtr {
   static constexpr size_t kCookieShift =
-      sizeof(kHeapReferenceSize) * kBitsPerByte - kObjectAlignmentShift;
+      kHeapReferenceSize * kBitsPerByte - kObjectAlignmentShift;
   static constexpr size_t kCookieBits = sizeof(uintptr_t) * kBitsPerByte - kCookieShift;
   static constexpr uintptr_t kCookieMask = (static_cast<uintptr_t>(1u) << kCookieBits) - 1;
 
