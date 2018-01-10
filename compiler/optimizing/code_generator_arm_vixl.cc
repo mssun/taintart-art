@@ -7172,11 +7172,14 @@ void InstructionCodeGeneratorARMVIXL::GenerateClassInitializationCheck(
     LoadClassSlowPathARMVIXL* slow_path, vixl32::Register class_reg) {
   UseScratchRegisterScope temps(GetVIXLAssembler());
   vixl32::Register temp = temps.Acquire();
-  GetAssembler()->LoadFromOffset(kLoadUnsignedByte,
-                                 temp,
-                                 class_reg,
-                                 mirror::Class::StatusOffset().Int32Value());
-  __ Cmp(temp, enum_cast<>(ClassStatus::kInitialized));
+  constexpr size_t status_lsb_position = SubtypeCheckBits::BitStructSizeOf();
+  const size_t status_byte_offset =
+      mirror::Class::StatusOffset().SizeValue() + (status_lsb_position / kBitsPerByte);
+  constexpr uint32_t shifted_initialized_value =
+      enum_cast<uint32_t>(ClassStatus::kInitialized) << (status_lsb_position % kBitsPerByte);
+
+  GetAssembler()->LoadFromOffset(kLoadUnsignedByte, temp, class_reg, status_byte_offset);
+  __ Cmp(temp, shifted_initialized_value);
   __ B(lo, slow_path->GetEntryLabel());
   // Even if the initialized flag is set, we may be in a situation where caches are not synced
   // properly. Therefore, we do a memory fence.

@@ -46,10 +46,14 @@ template<typename T>
 constexpr int CLZ(T x) {
   static_assert(std::is_integral<T>::value, "T must be integral");
   static_assert(std::is_unsigned<T>::value, "T must be unsigned");
-  static_assert(sizeof(T) <= sizeof(long long),  // NOLINT [runtime/int] [4]
-                "T too large, must be smaller than long long");
+  static_assert(std::numeric_limits<T>::radix == 2, "Unexpected radix!");
+  static_assert(sizeof(T) == sizeof(uint64_t) || sizeof(T) <= sizeof(uint32_t),
+                "Unsupported sizeof(T)");
   DCHECK_NE(x, 0u);
-  return (sizeof(T) == sizeof(uint32_t)) ? __builtin_clz(x) : __builtin_clzll(x);
+  constexpr bool is_64_bit = (sizeof(T) == sizeof(uint64_t));
+  constexpr size_t adjustment =
+      is_64_bit ? 0u : std::numeric_limits<uint32_t>::digits - std::numeric_limits<T>::digits;
+  return is_64_bit ? __builtin_clzll(x) : __builtin_clz(x) - adjustment;
 }
 
 // Similar to CLZ except that on zero input it returns bitwidth and supports signed integers.
@@ -65,10 +69,10 @@ constexpr int CTZ(T x) {
   static_assert(std::is_integral<T>::value, "T must be integral");
   // It is not unreasonable to ask for trailing zeros in a negative number. As such, do not check
   // that T is an unsigned type.
-  static_assert(sizeof(T) <= sizeof(long long),  // NOLINT [runtime/int] [4]
-                "T too large, must be smaller than long long");
+  static_assert(sizeof(T) == sizeof(uint64_t) || sizeof(T) <= sizeof(uint32_t),
+                "Unsupported sizeof(T)");
   DCHECK_NE(x, static_cast<T>(0));
-  return (sizeof(T) == sizeof(uint32_t)) ? __builtin_ctz(x) : __builtin_ctzll(x);
+  return (sizeof(T) == sizeof(uint64_t)) ? __builtin_ctzll(x) : __builtin_ctz(x);
 }
 
 // Similar to CTZ except that on zero input it returns bitwidth and supports signed integers.
