@@ -6219,8 +6219,13 @@ void InstructionCodeGeneratorX86::VisitClinitCheck(HClinitCheck* check) {
 
 void InstructionCodeGeneratorX86::GenerateClassInitializationCheck(
     SlowPathCode* slow_path, Register class_reg) {
-  __ cmpb(Address(class_reg,  mirror::Class::StatusOffset().Int32Value()),
-          Immediate(enum_cast<>(ClassStatus::kInitialized)));
+  constexpr size_t status_lsb_position = SubtypeCheckBits::BitStructSizeOf();
+  const size_t status_byte_offset =
+      mirror::Class::StatusOffset().SizeValue() + (status_lsb_position / kBitsPerByte);
+  constexpr uint32_t shifted_initialized_value =
+      enum_cast<uint32_t>(ClassStatus::kInitialized) << (status_lsb_position % kBitsPerByte);
+
+  __ cmpb(Address(class_reg,  status_byte_offset), Immediate(shifted_initialized_value));
   __ j(kBelow, slow_path->GetEntryLabel());
   __ Bind(slow_path->GetExitLabel());
   // No need for memory fence, thanks to the X86 memory model.
