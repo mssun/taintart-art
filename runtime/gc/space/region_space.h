@@ -271,12 +271,7 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
   // Zero live bytes for a large object, used by young gen CC for marking newly allocated large
   // objects.
-  void ZeroLiveBytesForLargeObject(mirror::Object* ref) {
-    // This method is only used when Generational CC collection is enabled.
-    DCHECK(kEnableGenerationalConcurrentCopyingCollection);
-    DCHECK(IsLargeObject(ref));
-    RefToRegionUnlocked(ref)->ZeroLiveBytes();
-  }
+  void ZeroLiveBytesForLargeObject(mirror::Object* obj) REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Determine which regions to evacuate and tag them as
   // from-space. Tag the rest as unevacuated from-space.
