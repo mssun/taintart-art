@@ -28,6 +28,7 @@
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
 #include "dex_to_dex_decompiler.h"
+#include "quicken_info.h"
 
 namespace art {
 
@@ -148,9 +149,8 @@ std::unique_ptr<VdexFile> VdexFile::OpenAtAddress(uint8_t* mmap_addr,
     if (!vdex->OpenAllDexFiles(&unique_ptr_dex_files, error_msg)) {
       return nullptr;
     }
-    Unquicken(MakeNonOwningPointerVector(unique_ptr_dex_files),
-              vdex->GetQuickeningInfo(),
-              /* decompile_return_instruction */ false);
+    vdex->Unquicken(MakeNonOwningPointerVector(unique_ptr_dex_files),
+                    /* decompile_return_instruction */ false);
     // Update the quickening info size to pretend there isn't any.
     reinterpret_cast<Header*>(vdex->mmap_->Begin())->quickening_info_size_ = 0;
   }
@@ -163,14 +163,15 @@ const uint8_t* VdexFile::GetNextDexFileData(const uint8_t* cursor) const {
   DCHECK(cursor == nullptr || (cursor > Begin() && cursor <= End()));
   if (cursor == nullptr) {
     // Beginning of the iteration, return the first dex file if there is one.
-    return HasDexSection() ? DexBegin() : nullptr;
+    return HasDexSection() ? DexBegin() + sizeof(QuickeningTableOffsetType) : nullptr;
   } else {
     // Fetch the next dex file. Return null if there is none.
     const uint8_t* data = cursor + reinterpret_cast<const DexFile::Header*>(cursor)->file_size_;
     // Dex files are required to be 4 byte aligned. the OatWriter makes sure they are, see
     // OatWriter::SeekToDexFiles.
     data = AlignUp(data, 4);
-    return (data == DexEnd()) ? nullptr : data;
+
+    return (data == DexEnd()) ? nullptr : data + sizeof(QuickeningTableOffsetType);
   }
 }
 
@@ -200,64 +201,68 @@ bool VdexFile::OpenAllDexFiles(std::vector<std::unique_ptr<const DexFile>>* dex_
   return true;
 }
 
-void VdexFile::Unquicken(const std::vector<const DexFile*>& dex_files,
-                         ArrayRef<const uint8_t> quickening_info,
-                         bool decompile_return_instruction) {
-  if (quickening_info.size() == 0 && !decompile_return_instruction) {
-    // Bail early if there is no quickening info and no need to decompile
-    // RETURN_VOID_NO_BARRIER instructions to RETURN_VOID instructions.
-    return;
+void VdexFile::Unquicken(const std::vector<const DexFile*>& target_dex_files,
+                         bool decompile_return_instruction) const {
+  const uint8_t* source_dex = GetNextDexFileData(nullptr);
+  for (const DexFile* target_dex : target_dex_files) {
+    UnquickenDexFile(*target_dex, source_dex, decompile_return_instruction);
+    source_dex = GetNextDexFileData(source_dex);
   }
-
-  for (uint32_t i = 0; i < dex_files.size(); ++i) {
-    UnquickenDexFile(*dex_files[i], quickening_info, decompile_return_instruction);
-  }
+  DCHECK(source_dex == nullptr);
 }
 
-typedef __attribute__((__aligned__(1))) uint32_t unaligned_uint32_t;
-
-static uint32_t GetDebugInfoOffsetInternal(const DexFile& dex_file,
-                                           uint32_t offset_in_code_item,
-                                           const ArrayRef<const uint8_t>& quickening_info) {
-  if (quickening_info.size() == 0) {
-    // No quickening info: offset is the right one, return it.
-    return offset_in_code_item;
-  }
-  uint32_t quickening_offset = offset_in_code_item - dex_file.Size();
-  return *reinterpret_cast<const unaligned_uint32_t*>(quickening_info.data() + quickening_offset);
+uint32_t VdexFile::GetQuickeningInfoTableOffset(const uint8_t* source_dex_begin) const {
+  DCHECK_GE(source_dex_begin, DexBegin());
+  DCHECK_LT(source_dex_begin, DexEnd());
+  return reinterpret_cast<const QuickeningTableOffsetType*>(source_dex_begin)[-1];
 }
 
-static uint32_t GetQuickeningInfoOffsetFrom(const DexFile& dex_file,
-                                            uint32_t offset_in_code_item,
-                                            const ArrayRef<const uint8_t>& quickening_info) {
-  if (offset_in_code_item < dex_file.Size()) {
-    return VdexFile::kNoQuickeningInfoOffset;
-  }
-  if (quickening_info.size() == 0) {
-    // No quickening info.
-    return VdexFile::kNoQuickeningInfoOffset;
-  }
-  uint32_t quickening_offset = offset_in_code_item - dex_file.Size();
+QuickenInfoOffsetTableAccessor VdexFile::GetQuickenInfoOffsetTable(
+    const uint8_t* source_dex_begin,
+    uint32_t num_method_ids,
+    const ArrayRef<const uint8_t>& quickening_info) const {
+  // The offset a is in preheader right before the dex file.
+  const uint32_t offset = GetQuickeningInfoTableOffset(source_dex_begin);
+  const uint8_t* data_ptr = quickening_info.data() + offset;
+  return QuickenInfoOffsetTableAccessor(data_ptr, num_method_ids);
+}
 
-  // Add 2 * sizeof(uint32_t) for the debug info offset and the data offset.
-  CHECK_LE(quickening_offset + 2 * sizeof(uint32_t), quickening_info.size());
-  return *reinterpret_cast<const unaligned_uint32_t*>(
-      quickening_info.data() + quickening_offset + sizeof(uint32_t));
+QuickenInfoOffsetTableAccessor VdexFile::GetQuickenInfoOffsetTable(
+    const DexFile& dex_file,
+    const ArrayRef<const uint8_t>& quickening_info) const {
+  return GetQuickenInfoOffsetTable(dex_file.Begin(), dex_file.NumMethodIds(), quickening_info);
 }
 
 static ArrayRef<const uint8_t> GetQuickeningInfoAt(const ArrayRef<const uint8_t>& quickening_info,
                                                    uint32_t quickening_offset) {
-  return (quickening_offset == VdexFile::kNoQuickeningInfoOffset)
-      ? ArrayRef<const uint8_t>(nullptr, 0)
-      : quickening_info.SubArray(
-            quickening_offset + sizeof(uint32_t),
-            *reinterpret_cast<const unaligned_uint32_t*>(
-                quickening_info.data() + quickening_offset));
+  ArrayRef<const uint8_t> remaining = quickening_info.SubArray(quickening_offset);
+  return remaining.SubArray(0u, QuickenInfoTable::SizeInBytes(remaining));
+}
+
+static uint32_t GetQuickeningInfoOffset(const QuickenInfoOffsetTableAccessor& table,
+                                        uint32_t dex_method_index,
+                                        const ArrayRef<const uint8_t>& quickening_info) {
+  DCHECK(!quickening_info.empty());
+  uint32_t remainder;
+  uint32_t offset = table.ElementOffset(dex_method_index, &remainder);
+  // Decode the sizes for the remainder offsets (not covered by the table).
+  while (remainder != 0) {
+    offset += GetQuickeningInfoAt(quickening_info, offset).size();
+    --remainder;
+  }
+  return offset;
 }
 
 void VdexFile::UnquickenDexFile(const DexFile& target_dex_file,
-                                ArrayRef<const uint8_t> quickening_info,
-                                bool decompile_return_instruction) {
+                                const DexFile& source_dex_file,
+                                bool decompile_return_instruction) const {
+  UnquickenDexFile(target_dex_file, source_dex_file.Begin(), decompile_return_instruction);
+}
+
+void VdexFile::UnquickenDexFile(const DexFile& target_dex_file,
+                                const uint8_t* source_dex_begin,
+                                bool decompile_return_instruction) const {
+  ArrayRef<const uint8_t> quickening_info = GetQuickeningInfo();
   if (quickening_info.size() == 0 && !decompile_return_instruction) {
     // Bail early if there is no quickening info and no need to decompile
     // RETURN_VOID_NO_BARRIER instructions to RETURN_VOID instructions.
@@ -272,19 +277,20 @@ void VdexFile::UnquickenDexFile(const DexFile& target_dex_file,
            class_it.Next()) {
         if (class_it.IsAtMethod() && class_it.GetMethodCodeItem() != nullptr) {
           const DexFile::CodeItem* code_item = class_it.GetMethodCodeItem();
-          uint32_t quickening_offset = GetQuickeningInfoOffsetFrom(
-              target_dex_file, code_item->debug_info_off_, quickening_info);
-          if (quickening_offset != VdexFile::kNoQuickeningInfoOffset) {
-            // If we have quickening data, put back the original debug_info_off.
-            const_cast<DexFile::CodeItem*>(code_item)->SetDebugInfoOffset(
-                GetDebugInfoOffsetInternal(target_dex_file,
-                                           code_item->debug_info_off_,
-                                           quickening_info));
+          ArrayRef<const uint8_t> quicken_data;
+          if (!quickening_info.empty()) {
+            const uint32_t quickening_offset = GetQuickeningInfoOffset(
+                GetQuickenInfoOffsetTable(source_dex_begin,
+                                          target_dex_file.NumMethodIds(),
+                                          quickening_info),
+                class_it.GetMemberIndex(),
+                quickening_info);
+            quicken_data = GetQuickeningInfoAt(quickening_info, quickening_offset);
           }
           optimizer::ArtDecompileDEX(
               target_dex_file,
               *code_item,
-              GetQuickeningInfoAt(quickening_info, quickening_offset),
+              quicken_data,
               decompile_return_instruction);
         }
       }
@@ -292,25 +298,17 @@ void VdexFile::UnquickenDexFile(const DexFile& target_dex_file,
   }
 }
 
-uint32_t VdexFile::GetDebugInfoOffset(const DexFile& dex_file, uint32_t offset_in_code_item) const {
-  return GetDebugInfoOffsetInternal(dex_file, offset_in_code_item, GetQuickeningInfo());
-}
-
-const uint8_t* VdexFile::GetQuickenedInfoOf(const DexFile& dex_file,
-                                            uint32_t code_item_offset) const {
+ArrayRef<const uint8_t> VdexFile::GetQuickenedInfoOf(const DexFile& dex_file,
+                                                     uint32_t dex_method_idx) const {
   ArrayRef<const uint8_t> quickening_info = GetQuickeningInfo();
-  uint32_t quickening_offset = GetQuickeningInfoOffsetFrom(
-      dex_file, dex_file.GetCodeItem(code_item_offset)->debug_info_off_, quickening_info);
-
-  return GetQuickeningInfoAt(quickening_info, quickening_offset).data();
-}
-
-bool VdexFile::CanEncodeQuickenedData(const DexFile& dex_file) {
-  // We are going to use the debug_info_off_ to signal there is
-  // quickened data, by putting a value greater than dex_file.Size(). So
-  // make sure we have some room in the offset by checking that we have at least
-  // half of the range of a uint32_t.
-  return dex_file.Size() <= (std::numeric_limits<uint32_t>::max() >> 1);
+  if (quickening_info.empty()) {
+    return ArrayRef<const uint8_t>();
+  }
+  const uint32_t quickening_offset = GetQuickeningInfoOffset(
+      GetQuickenInfoOffsetTable(dex_file, quickening_info),
+      dex_method_idx,
+      quickening_info);
+  return GetQuickeningInfoAt(quickening_info, quickening_offset);
 }
 
 }  // namespace art
