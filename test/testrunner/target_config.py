@@ -234,8 +234,8 @@ target_config = {
         'env' : {
             'ART_USE_READ_BARRIER' : 'false',
             'ART_HEAP_POISONING' : 'true',
-            # Get some extra automated testing coverage for compact dex.
-            'ART_DEFAULT_COMPACT_DEX_LEVEL' : 'fast'
+            # Disable compact dex to get coverage of standard dex file usage.
+            'ART_DEFAULT_COMPACT_DEX_LEVEL' : 'none'
         }
     },
     'art-preopt' : {
@@ -280,8 +280,8 @@ target_config = {
         'env': {
             'ART_DEFAULT_GC_TYPE' : 'SS',
             'ART_USE_READ_BARRIER' : 'false',
-            # Get some extra automated testing coverage for compact dex.
-            'ART_DEFAULT_COMPACT_DEX_LEVEL' : 'fast'
+            # Disable compact dex to get coverage of standard dex file usage.
+            'ART_DEFAULT_COMPACT_DEX_LEVEL' : 'none'
         }
     },
     'art-gtest-gss-gc': {

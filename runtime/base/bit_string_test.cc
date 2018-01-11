@@ -65,7 +65,7 @@ size_t AsUint(const T& value) {
   return uint_value;
 }
 
-// Make max bitstring, e.g. BitString[4095,7,255] for {12,3,8}
+// Make max bitstring, e.g. BitString[4095,15,2047] for {12,4,11}
 template <size_t kCount = BitString::kCapacity>
 BitString MakeBitStringMax() {
   BitString bs{};
@@ -87,15 +87,14 @@ BitString SetBitStringCharAt(BitString bit_string, size_t i, size_t val) {
 #define EXPECT_BITSTRING_STR(expected_str, actual_value)                       \
   EXPECT_STREQ((expected_str), Stringify((actual_value)).c_str())
 
+// TODO: Consider removing this test, it's kind of replicating the logic in GetLsbForPosition().
 TEST(InstanceOfBitString, GetLsbForPosition) {
   ASSERT_LE(3u, BitString::kCapacity);
   // Test will fail if kCapacity is not at least 3. Update it.
-  EXPECT_EQ(0u, BitString::GetLsbForPosition(BitString::kCapacity - 1u));
-  EXPECT_EQ(BitString::kBitSizeAtPosition[BitString::kCapacity - 1u],
-            BitString::GetLsbForPosition(BitString::kCapacity - 2u));
-  EXPECT_EQ(BitString::kBitSizeAtPosition[BitString::kCapacity - 1u] +
-                BitString::kBitSizeAtPosition[BitString::kCapacity - 2u],
-            BitString::GetLsbForPosition(BitString::kCapacity - 3u));
+  EXPECT_EQ(0u, BitString::GetLsbForPosition(0u));
+  EXPECT_EQ(BitString::kBitSizeAtPosition[0u], BitString::GetLsbForPosition(1u));
+  EXPECT_EQ(BitString::kBitSizeAtPosition[0u] + BitString::kBitSizeAtPosition[1u],
+            BitString::GetLsbForPosition(2u));
 }
 
 TEST(InstanceOfBitString, ToString) {
@@ -126,8 +125,8 @@ TEST(InstanceOfBitString, ReadWrite) {
   // Each maximal value should be tested here for each position.
   uint32_t max_bitstring_ints[] = {
       MaxInt<uint32_t>(12),
-      MaxInt<uint32_t>(3),
-      MaxInt<uint32_t>(8),
+      MaxInt<uint32_t>(4),
+      MaxInt<uint32_t>(11),
   };
 
   // Update tests if changing the tuning values above.
@@ -151,14 +150,13 @@ constexpr auto MaxForPos() {
 }
 
 TEST(InstanceOfBitString, MemoryRepresentation) {
-  // Verify that the lower positions are stored in more significant bits.
+  // Verify that the lower positions are stored in less significant bits.
   BitString bs = MakeBitString({MaxForPos<0>(), MaxForPos<1>()});
   BitString::StorageType as_int = static_cast<BitString::StorageType>(bs);
 
-  // Below tests assumes the capacity is 3. Update if it this changes.
-  ASSERT_EQ(3u, BitString::kCapacity);
-  EXPECT_EQ(MaxForPos<0>()  << (BitString::kBitSizeAtPosition[2] + BitString::kBitSizeAtPosition[1]) |
-               (MaxForPos<1>() << BitString::kBitSizeAtPosition[2]),
+  // Below tests assumes the capacity is at least 3.
+  ASSERT_LE(3u, BitString::kCapacity);
+  EXPECT_EQ((MaxForPos<0>() << 0) | (MaxForPos<1>() << BitString::kBitSizeAtPosition[0]),
             as_int);
 }
 

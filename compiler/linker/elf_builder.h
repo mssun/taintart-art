@@ -38,9 +38,10 @@ namespace linker {
 //   Elf_Ehdr                    - The ELF header.
 //   Elf_Phdr[]                  - Program headers for the linker.
 //   .note.gnu.build-id          - Optional build ID section (SHA-1 digest).
-//   .rodata                     - DEX files and oat metadata.
+//   .rodata                     - Oat metadata.
 //   .text                       - Compiled code.
 //   .bss                        - Zero-initialized writeable section.
+//   .dex                        - Reserved NOBITS space for dex-related data.
 //   .MIPS.abiflags              - MIPS specific section.
 //   .dynstr                     - Names for .dynsym.
 //   .dynsym                     - A few oat-specific dynamic symbols.
@@ -503,6 +504,7 @@ class ElfBuilder FINAL {
         rodata_(this, ".rodata", SHT_PROGBITS, SHF_ALLOC, nullptr, 0, kPageSize, 0),
         text_(this, ".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, nullptr, 0, kPageSize, 0),
         bss_(this, ".bss", SHT_NOBITS, SHF_ALLOC, nullptr, 0, kPageSize, 0),
+        dex_(this, ".dex", SHT_NOBITS, SHF_ALLOC, nullptr, 0, kPageSize, 0),
         dynstr_(this, ".dynstr", SHF_ALLOC, kPageSize),
         dynsym_(this, ".dynsym", SHT_DYNSYM, SHF_ALLOC, &dynstr_),
         hash_(this, ".hash", SHT_HASH, SHF_ALLOC, &dynsym_, 0, sizeof(Elf_Word), sizeof(Elf_Word)),
@@ -525,6 +527,7 @@ class ElfBuilder FINAL {
         virtual_address_(0) {
     text_.phdr_flags_ = PF_R | PF_X;
     bss_.phdr_flags_ = PF_R | PF_W;
+    dex_.phdr_flags_ = PF_R;
     dynamic_.phdr_flags_ = PF_R | PF_W;
     dynamic_.phdr_type_ = PT_DYNAMIC;
     eh_frame_hdr_.phdr_type_ = PT_GNU_EH_FRAME;
@@ -538,6 +541,7 @@ class ElfBuilder FINAL {
   Section* GetRoData() { return &rodata_; }
   Section* GetText() { return &text_; }
   Section* GetBss() { return &bss_; }
+  Section* GetDex() { return &dex_; }
   StringSection* GetStrTab() { return &strtab_; }
   SymbolSection* GetSymTab() { return &symtab_; }
   Section* GetEhFrame() { return &eh_frame_; }
@@ -666,7 +670,8 @@ class ElfBuilder FINAL {
                              Elf_Word text_size,
                              Elf_Word bss_size,
                              Elf_Word bss_methods_offset,
-                             Elf_Word bss_roots_offset) {
+                             Elf_Word bss_roots_offset,
+                             Elf_Word dex_size) {
     std::string soname(elf_file_path);
     size_t directory_separator_pos = soname.rfind('/');
     if (directory_separator_pos != std::string::npos) {
@@ -678,6 +683,9 @@ class ElfBuilder FINAL {
     text_.AllocateVirtualMemory(text_size);
     if (bss_size != 0) {
       bss_.AllocateVirtualMemory(bss_size);
+    }
+    if (dex_size != 0) {
+      dex_.AllocateVirtualMemory(dex_size);
     }
     if (isa_ == InstructionSet::kMips || isa_ == InstructionSet::kMips64) {
       abiflags_.AllocateVirtualMemory(abiflags_.GetSize());
@@ -725,6 +733,14 @@ class ElfBuilder FINAL {
       Elf_Word bsslastword_address = bss_.GetAddress() + bss_size - 4;
       dynsym_.Add(oatbsslastword, &bss_, bsslastword_address, 4, STB_GLOBAL, STT_OBJECT);
     }
+    if (dex_size != 0u) {
+      Elf_Word oatdex = dynstr_.Add("oatdex");
+      dynsym_.Add(oatdex, &dex_, dex_.GetAddress(), dex_size, STB_GLOBAL, STT_OBJECT);
+      Elf_Word oatdexlastword = dynstr_.Add("oatdexlastword");
+      Elf_Word oatdexlastword_address = dex_.GetAddress() + dex_size - 4;
+      dynsym_.Add(oatdexlastword, &dex_, oatdexlastword_address, 4, STB_GLOBAL, STT_OBJECT);
+    }
+
     Elf_Word soname_offset = dynstr_.Add(soname);
 
     // We do not really need a hash-table since there is so few entries.
@@ -967,6 +983,7 @@ class ElfBuilder FINAL {
   Section rodata_;
   Section text_;
   Section bss_;
+  Section dex_;
   CachedStringSection dynstr_;
   SymbolSection dynsym_;
   CachedSection hash_;

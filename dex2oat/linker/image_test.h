@@ -316,7 +316,8 @@ inline void CompilationHelper::Compile(CompilerDriver* driver,
                                           text_size,
                                           oat_writer->GetBssSize(),
                                           oat_writer->GetBssMethodsOffset(),
-                                          oat_writer->GetBssRootsOffset());
+                                          oat_writer->GetBssRootsOffset(),
+                                          oat_writer->GetVdexSize());
 
         writer->UpdateOatFileLayout(i,
                                     elf_writer->GetLoadedSize(),

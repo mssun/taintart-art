@@ -64,6 +64,7 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
   template<bool kForEvac>
   mirror::Object* AllocLarge(size_t num_bytes, size_t* bytes_allocated, size_t* usable_size,
                              size_t* bytes_tl_bulk_allocated) REQUIRES(!region_lock_);
+  template<bool kForEvac>
   void FreeLarge(mirror::Object* large_obj, size_t bytes_allocated) REQUIRES(!region_lock_);
 
   // Return the storage space required by obj.
@@ -138,9 +139,8 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
   uint64_t GetObjectsAllocatedInUnevacFromSpace() REQUIRES(!region_lock_) {
     return GetObjectsAllocatedInternal<RegionType::kRegionTypeUnevacFromSpace>();
   }
-  // It is OK to do a racy read here as it's only for performance dump.
-  size_t GetNumNonFreeRegions() const {
-    return num_non_free_regions_;
+  size_t GetMaxPeakNumNonFreeRegions() const {
+    return max_peak_num_non_free_regions_;
   }
   size_t GetNumRegions() const {
     return num_regions_;
@@ -530,8 +530,18 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
   Mutex region_lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
 
   uint32_t time_;                  // The time as the number of collections since the startup.
-  size_t num_regions_;             // The number of regions in this space.
-  size_t num_non_free_regions_;    // The number of non-free regions in this space.
+  const size_t num_regions_;       // The number of regions in this space.
+  // The number of non-free regions in this space.
+  size_t num_non_free_regions_ GUARDED_BY(region_lock_);
+
+  // The number of evac regions allocated during collection. 0 when GC not running.
+  size_t num_evac_regions_ GUARDED_BY(region_lock_);
+
+  // Maintain the maximum of number of non-free regions collected just before
+  // reclaim in each GC cycle. At this moment in cycle, highest number of
+  // regions are in non-free.
+  size_t max_peak_num_non_free_regions_;
+
   std::unique_ptr<Region[]> regions_ GUARDED_BY(region_lock_);
                                    // The pointer to the region array.
   // The upper-bound index of the non-free regions. Used to avoid scanning all regions in

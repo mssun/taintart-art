@@ -230,6 +230,10 @@ class OatWriter {
     return bss_roots_offset_;
   }
 
+  size_t GetVdexSize() const {
+    return vdex_size_;
+  }
+
   size_t GetOatDataOffset() const {
     return oat_data_offset_;
   }
