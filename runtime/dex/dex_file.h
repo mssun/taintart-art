@@ -312,6 +312,8 @@ class DexFile {
 
   // Raw try_item.
   struct TryItem {
+    static constexpr size_t kAlignment = sizeof(uint32_t);
+
     uint32_t start_addr_;
     uint16_t insn_count_;
     uint16_t handler_off_;

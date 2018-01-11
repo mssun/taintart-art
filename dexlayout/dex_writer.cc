@@ -512,8 +512,8 @@ uint32_t DexWriter::WriteCodeItemPostInstructionData(dex_ir::CodeItem* code_item
                                                      bool reserve_only) {
   const uint32_t start_offset = offset;
   if (code_item->TriesSize() != 0) {
-    // Make sure the try items are properly aligned.
-    offset = RoundUp(offset, kDexTryItemAlignment);
+    // Align for the try items.
+    offset = RoundUp(offset, DexFile::TryItem::kAlignment);
     // Write try items.
     for (std::unique_ptr<const dex_ir::TryItem>& try_item : *code_item->Tries()) {
       DexFile::TryItem disk_try_item;
