@@ -303,15 +303,6 @@ class DexFile {
 
   // Raw code_item.
   struct CodeItem {
-    // Used when quickening / unquickening.
-    void SetDebugInfoOffset(uint32_t new_offset) {
-      debug_info_off_ = new_offset;
-    }
-
-    uint32_t GetDebugInfoOffset() const {
-      return debug_info_off_;
-    }
-
    protected:
     uint16_t registers_size_;            // the number of registers used by this code
                                          //   (locals + parameters)
@@ -322,12 +313,7 @@ class DexFile {
     uint16_t tries_size_;                // the number of try_items for this instance. If non-zero,
                                          //   then these appear as the tries array just after the
                                          //   insns in this instance.
-    // Normally holds file offset to debug info stream. In case the method has been quickened
-    // holds an offset in the Vdex file containing both the actual debug_info_off and the
-    // quickening info offset.
-    // Don't use this field directly, use OatFile::GetDebugInfoOffset in general ART code,
-    // or DexFile::GetDebugInfoOffset in code that are not using a Runtime.
-    uint32_t debug_info_off_;
+    uint32_t debug_info_off_;            // Holds file offset to debug info stream.
 
     uint32_t insns_size_in_code_units_;  // size of the insns array, in 2 byte code units
     uint16_t insns_[1];                  // actual array of bytecode.
@@ -337,7 +323,6 @@ class DexFile {
     friend class CodeItemDataAccessor;
     friend class CodeItemDebugInfoAccessor;
     friend class CodeItemInstructionAccessor;
-    friend class VdexFile;  // TODO: Remove this one when it's cleaned up.
     DISALLOW_COPY_AND_ASSIGN(CodeItem);
   };
 
@@ -710,15 +695,6 @@ class DexFile {
     }
     const uint8_t* addr = begin_ + code_off;
     return reinterpret_cast<const CodeItem*>(addr);
-  }
-
-  uint32_t GetDebugInfoOffset(const CodeItem* code_item) const {
-    if (code_item == nullptr) {
-      return 0;
-    }
-    CHECK(oat_dex_file_ == nullptr)
-        << "Should only use GetDebugInfoOffset in a non runtime setup";
-    return code_item->GetDebugInfoOffset();
   }
 
   const char* GetReturnTypeDescriptor(const ProtoId& proto_id) const;
