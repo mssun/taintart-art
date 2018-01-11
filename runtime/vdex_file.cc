@@ -120,6 +120,7 @@ std::unique_ptr<VdexFile> VdexFile::OpenAtAddress(uint8_t* mmap_addr,
     mmap_addr = nullptr;
     mmap_reuse = false;
   }
+  CHECK(!mmap_reuse || mmap_addr != nullptr);
   std::unique_ptr<MemMap> mmap(MemMap::MapFileAtAddress(
       mmap_addr,
       vdex_length,
