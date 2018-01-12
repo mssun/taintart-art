@@ -182,7 +182,9 @@ class SchedulerTest : public OptimizingUnitTest {
     scheduler->Schedule(graph_);
   }
 
-  void CompileWithRandomSchedulerAndRun(const uint16_t* data, bool has_result, int expected) {
+  void CompileWithRandomSchedulerAndRun(const std::vector<uint16_t>& data,
+                                        bool has_result,
+                                        int expected) {
     for (CodegenTargetConfig target_config : GetTargetConfigs()) {
       HGraph* graph = CreateCFG(data);
 
@@ -393,7 +395,7 @@ TEST_F(SchedulerTest, RandomScheduling) {
   //  }
   //  return result;
   //
-  const uint16_t data[] = SIX_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = SIX_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 0 << 12 | 2 << 8,          // const/4 v2, #int 0
     Instruction::CONST_HIGH16 | 0 << 8, 0x4120,       // const/high16 v0, #float 10.0 // #41200000
     Instruction::CONST_4 | 1 << 12 | 1 << 8,          // const/4 v1, #int 1

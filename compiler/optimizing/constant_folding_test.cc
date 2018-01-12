@@ -36,7 +36,7 @@ class ConstantFoldingTest : public OptimizingUnitTest {
  public:
   ConstantFoldingTest() : graph_(nullptr) { }
 
-  void TestCode(const uint16_t* data,
+  void TestCode(const std::vector<uint16_t>& data,
                 const std::string& expected_before,
                 const std::string& expected_after_cf,
                 const std::string& expected_after_dce,
@@ -100,7 +100,7 @@ class ConstantFoldingTest : public OptimizingUnitTest {
  *     return v1                2.      return v1
  */
 TEST_F(ConstantFoldingTest, IntConstantFoldingNegation) {
-  const uint16_t data[] = TWO_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = TWO_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 0 << 8 | 1 << 12,
     Instruction::NEG_INT | 1 << 8 | 0 << 12,
     Instruction::RETURN | 1 << 8);
@@ -161,7 +161,7 @@ TEST_F(ConstantFoldingTest, LongConstantFoldingNegation) {
   const uint16_t word1 = High16Bits(Low32Bits(input));
   const uint16_t word2 = Low16Bits(High32Bits(input));
   const uint16_t word3 = High16Bits(High32Bits(input));  // MSW.
-  const uint16_t data[] = FOUR_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = FOUR_REGISTERS_CODE_ITEM(
     Instruction::CONST_WIDE | 0 << 8, word0, word1, word2, word3,
     Instruction::NEG_LONG | 2 << 8 | 0 << 12,
     Instruction::RETURN_WIDE | 2 << 8);
@@ -219,7 +219,7 @@ TEST_F(ConstantFoldingTest, LongConstantFoldingNegation) {
  *     return v2                4.      return v2
  */
 TEST_F(ConstantFoldingTest, IntConstantFoldingOnAddition1) {
-  const uint16_t data[] = THREE_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = THREE_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 0 << 8 | 1 << 12,
     Instruction::CONST_4 | 1 << 8 | 2 << 12,
     Instruction::ADD_INT | 2 << 8, 0 | 1 << 8,
@@ -284,7 +284,7 @@ TEST_F(ConstantFoldingTest, IntConstantFoldingOnAddition1) {
  *     return v2                8.      return v2
  */
 TEST_F(ConstantFoldingTest, IntConstantFoldingOnAddition2) {
-  const uint16_t data[] = THREE_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = THREE_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 0 << 8 | 1 << 12,
     Instruction::CONST_4 | 1 << 8 | 2 << 12,
     Instruction::ADD_INT_2ADDR | 0 << 8 | 1 << 12,
@@ -369,7 +369,7 @@ TEST_F(ConstantFoldingTest, IntConstantFoldingOnAddition2) {
  *     return v2                4.      return v2
  */
 TEST_F(ConstantFoldingTest, IntConstantFoldingOnSubtraction) {
-  const uint16_t data[] = THREE_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = THREE_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 0 << 8 | 3 << 12,
     Instruction::CONST_4 | 1 << 8 | 2 << 12,
     Instruction::SUB_INT | 2 << 8, 0 | 1 << 8,
@@ -432,7 +432,7 @@ TEST_F(ConstantFoldingTest, IntConstantFoldingOnSubtraction) {
  *     return (v4, v5)          6.      return-wide v4
  */
 TEST_F(ConstantFoldingTest, LongConstantFoldingOnAddition) {
-  const uint16_t data[] = SIX_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = SIX_REGISTERS_CODE_ITEM(
     Instruction::CONST_WIDE_16 | 0 << 8, 1,
     Instruction::CONST_WIDE_16 | 2 << 8, 2,
     Instruction::ADD_LONG | 4 << 8, 0 | 2 << 8,
@@ -496,7 +496,7 @@ TEST_F(ConstantFoldingTest, LongConstantFoldingOnAddition) {
  *     return (v4, v5)          6.      return-wide v4
  */
 TEST_F(ConstantFoldingTest, LongConstantFoldingOnSubtraction) {
-  const uint16_t data[] = SIX_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = SIX_REGISTERS_CODE_ITEM(
     Instruction::CONST_WIDE_16 | 0 << 8, 3,
     Instruction::CONST_WIDE_16 | 2 << 8, 2,
     Instruction::SUB_LONG | 4 << 8, 0 | 2 << 8,
@@ -569,7 +569,7 @@ TEST_F(ConstantFoldingTest, LongConstantFoldingOnSubtraction) {
  *     return v2                13.     return v2
  */
 TEST_F(ConstantFoldingTest, IntConstantFoldingAndJumps) {
-  const uint16_t data[] = THREE_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = THREE_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 0 << 8 | 1 << 12,
     Instruction::CONST_4 | 1 << 8 | 2 << 12,
     Instruction::ADD_INT | 2 << 8, 0 | 1 << 8,
@@ -672,7 +672,7 @@ TEST_F(ConstantFoldingTest, IntConstantFoldingAndJumps) {
  *     return-void              7.      return
  */
 TEST_F(ConstantFoldingTest, ConstantCondition) {
-  const uint16_t data[] = THREE_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = THREE_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 1 << 8 | 1 << 12,
     Instruction::CONST_4 | 0 << 8 | 0 << 12,
     Instruction::IF_GEZ | 1 << 8, 3,

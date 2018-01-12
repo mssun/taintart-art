@@ -26,10 +26,12 @@ namespace art {
 
 class OptimizerTest : public OptimizingUnitTest {
  protected:
-  void TestCode(const uint16_t* data, const uint32_t* blocks, size_t blocks_length);
+  void TestCode(const std::vector<uint16_t>& data, const uint32_t* blocks, size_t blocks_length);
 };
 
-void OptimizerTest::TestCode(const uint16_t* data, const uint32_t* blocks, size_t blocks_length) {
+void OptimizerTest::TestCode(const std::vector<uint16_t>& data,
+                             const uint32_t* blocks,
+                             size_t blocks_length) {
   HGraph* graph = CreateCFG(data);
   ASSERT_EQ(graph->GetBlocks().size(), blocks_length);
   for (size_t i = 0, e = blocks_length; i < e; ++i) {
@@ -49,7 +51,7 @@ void OptimizerTest::TestCode(const uint16_t* data, const uint32_t* blocks, size_
 }
 
 TEST_F(OptimizerTest, ReturnVoid) {
-  const uint16_t data[] = ZERO_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ZERO_REGISTER_CODE_ITEM(
       Instruction::RETURN_VOID);  // Block number 1
 
   const uint32_t dominators[] = {
@@ -62,7 +64,7 @@ TEST_F(OptimizerTest, ReturnVoid) {
 }
 
 TEST_F(OptimizerTest, CFG1) {
-  const uint16_t data[] = ZERO_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ZERO_REGISTER_CODE_ITEM(
     Instruction::GOTO | 0x100,  // Block number 1
     Instruction::RETURN_VOID);  // Block number 2
 
@@ -77,7 +79,7 @@ TEST_F(OptimizerTest, CFG1) {
 }
 
 TEST_F(OptimizerTest, CFG2) {
-  const uint16_t data[] = ZERO_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ZERO_REGISTER_CODE_ITEM(
     Instruction::GOTO | 0x100,  // Block number 1
     Instruction::GOTO | 0x100,  // Block number 2
     Instruction::RETURN_VOID);  // Block number 3
@@ -94,7 +96,7 @@ TEST_F(OptimizerTest, CFG2) {
 }
 
 TEST_F(OptimizerTest, CFG3) {
-  const uint16_t data1[] = ZERO_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data1 = ZERO_REGISTER_CODE_ITEM(
     Instruction::GOTO | 0x200,    // Block number 1
     Instruction::RETURN_VOID,     // Block number 2
     Instruction::GOTO | 0xFF00);  // Block number 3
@@ -109,14 +111,14 @@ TEST_F(OptimizerTest, CFG3) {
 
   TestCode(data1, dominators, sizeof(dominators) / sizeof(int));
 
-  const uint16_t data2[] = ZERO_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data2 = ZERO_REGISTER_CODE_ITEM(
     Instruction::GOTO_16, 3,
     Instruction::RETURN_VOID,
     Instruction::GOTO_16, 0xFFFF);
 
   TestCode(data2, dominators, sizeof(dominators) / sizeof(int));
 
-  const uint16_t data3[] = ZERO_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data3 = ZERO_REGISTER_CODE_ITEM(
     Instruction::GOTO_32, 4, 0,
     Instruction::RETURN_VOID,
     Instruction::GOTO_32, 0xFFFF, 0xFFFF);
@@ -125,7 +127,7 @@ TEST_F(OptimizerTest, CFG3) {
 }
 
 TEST_F(OptimizerTest, CFG4) {
-  const uint16_t data1[] = ZERO_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data1 = ZERO_REGISTER_CODE_ITEM(
     Instruction::NOP,
     Instruction::GOTO | 0xFF00);
 
@@ -138,14 +140,14 @@ TEST_F(OptimizerTest, CFG4) {
 
   TestCode(data1, dominators, sizeof(dominators) / sizeof(int));
 
-  const uint16_t data2[] = ZERO_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data2 = ZERO_REGISTER_CODE_ITEM(
     Instruction::GOTO_32, 0, 0);
 
   TestCode(data2, dominators, sizeof(dominators) / sizeof(int));
 }
 
 TEST_F(OptimizerTest, CFG5) {
-  const uint16_t data[] = ZERO_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ZERO_REGISTER_CODE_ITEM(
     Instruction::RETURN_VOID,     // Block number 1
     Instruction::GOTO | 0x100,    // Dead block
     Instruction::GOTO | 0xFE00);  // Block number 2
@@ -162,7 +164,7 @@ TEST_F(OptimizerTest, CFG5) {
 }
 
 TEST_F(OptimizerTest, CFG6) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 3,
     Instruction::GOTO | 0x100,
@@ -181,7 +183,7 @@ TEST_F(OptimizerTest, CFG6) {
 }
 
 TEST_F(OptimizerTest, CFG7) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 3,        // Block number 1
     Instruction::GOTO | 0x100,    // Block number 2
@@ -201,7 +203,7 @@ TEST_F(OptimizerTest, CFG7) {
 }
 
 TEST_F(OptimizerTest, CFG8) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 3,        // Block number 1
     Instruction::GOTO | 0x200,    // Block number 2
@@ -222,7 +224,7 @@ TEST_F(OptimizerTest, CFG8) {
 }
 
 TEST_F(OptimizerTest, CFG9) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 3,        // Block number 1
     Instruction::GOTO | 0x200,    // Block number 2
@@ -243,7 +245,7 @@ TEST_F(OptimizerTest, CFG9) {
 }
 
 TEST_F(OptimizerTest, CFG10) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 6,  // Block number 1
     Instruction::IF_EQ, 3,  // Block number 2
