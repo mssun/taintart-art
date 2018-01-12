@@ -275,7 +275,7 @@ class OatWriter {
   class WriteMapMethodVisitor;
   class WriteMethodInfoVisitor;
   class WriteQuickeningInfoMethodVisitor;
-  class WriteQuickeningInfoOffsetsMethodVisitor;
+  class WriteQuickeningIndicesMethodVisitor;
 
   // Visit all the methods in all the compiled dex files in their definition order
   // with a given DexMethodVisitor.

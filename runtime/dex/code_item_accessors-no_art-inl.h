@@ -180,14 +180,6 @@ inline bool CodeItemDebugInfoAccessor::DecodeDebugLocalInfo(bool is_static,
                                          context);
 }
 
-inline CodeItemDebugInfoAccessor::CodeItemDebugInfoAccessor(const DexFile& dex_file,
-                                                            const DexFile::CodeItem* code_item) {
-  if (code_item == nullptr) {
-    return;
-  }
-  Init(dex_file, code_item, code_item->debug_info_off_);
-}
-
 }  // namespace art
 
 #endif  // ART_RUNTIME_DEX_CODE_ITEM_ACCESSORS_NO_ART_INL_H_

@@ -659,11 +659,7 @@ void OatTest::TestDexFileInput(bool verify, bool low_4gb, bool use_profile) {
   ASSERT_EQ(dex_file2_data->GetLocation(), opened_dex_file2->GetLocation());
 
   const VdexFile::Header &vdex_header = opened_oat_file->GetVdexFile()->GetHeader();
-  if (!compiler_driver_->GetCompilerOptions().IsQuickeningCompilationEnabled()) {
-    // If quickening is enabled we will always write the table since there is no special logic that
-    // checks for all methods not being quickened (not worth the complexity).
-    ASSERT_EQ(vdex_header.GetQuickeningInfoSize(), 0u);
-  }
+  ASSERT_EQ(vdex_header.GetQuickeningInfoSize(), 0u);
 
   int64_t actual_vdex_size = vdex_file.GetFile()->GetLength();
   ASSERT_GE(actual_vdex_size, 0);

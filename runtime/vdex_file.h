@@ -24,7 +24,6 @@
 #include "base/macros.h"
 #include "mem_map.h"
 #include "os.h"
-#include "quicken_info.h"
 
 namespace art {
 
@@ -36,17 +35,18 @@ class DexFile;
 // File format:
 //   VdexFile::Header    fixed-length header
 //
-//   quicken_table_off[0]  offset into QuickeningInfo section for offset table for DEX[0].
-//   DEX[0]                array of the input DEX files, the bytecode may have been quickened.
-//   quicken_table_off[1]
-//   DEX[1]
+//   DEX[0]              array of the input DEX files
+//   DEX[1]              the bytecode may have been quickened
 //   ...
 //   DEX[D]
 //   VerifierDeps
 //      uint8[D][]                 verification dependencies
 //   QuickeningInfo
 //     uint8[D][]                  quickening data
-//     uint32[D][]                 quickening data offset tables
+//     unaligned_uint32_t[D][2][]  table of offsets pair:
+//                                   uint32_t[0] contains original CodeItem::debug_info_off_
+//                                   uint32_t[1] contains quickening data offset from the start
+//                                                of QuickeningInfo
 
 class VdexFile {
  public:
@@ -84,8 +84,8 @@ class VdexFile {
 
    private:
     static constexpr uint8_t kVdexMagic[] = { 'v', 'd', 'e', 'x' };
-    // Last update: Compact quicken info tables that don't modify the dex code items.
-    static constexpr uint8_t kVdexVersion[] = { '0', '1', '2', '\0' };
+    // Last update: Lookup-friendly encoding for quickening info.
+    static constexpr uint8_t kVdexVersion[] = { '0', '1', '1', '\0' };
 
     uint8_t magic_[4];
     uint8_t version_[4];
@@ -98,7 +98,6 @@ class VdexFile {
   };
 
   typedef uint32_t VdexChecksum;
-  using QuickeningTableOffsetType = uint32_t;
 
   explicit VdexFile(MemMap* mmap) : mmap_(mmap) {}
 
@@ -205,41 +204,28 @@ class VdexFile {
   // `decompile_return_instruction` controls if RETURN_VOID_BARRIER instructions are
   // decompiled to RETURN_VOID instructions using the slower ClassDataItemIterator
   // instead of the faster QuickeningInfoIterator.
-  // Always unquickens using the vdex dex files as the source for quicken tables.
-  void Unquicken(const std::vector<const DexFile*>& target_dex_files,
-                 bool decompile_return_instruction) const;
+  static void Unquicken(const std::vector<const DexFile*>& dex_files,
+                        ArrayRef<const uint8_t> quickening_info,
+                        bool decompile_return_instruction);
 
   // Fully unquicken `target_dex_file` based on `quickening_info`.
-  void UnquickenDexFile(const DexFile& target_dex_file,
-                        const DexFile& source_dex_file,
-                        bool decompile_return_instruction) const;
+  static void UnquickenDexFile(const DexFile& target_dex_file,
+                               ArrayRef<const uint8_t> quickening_info,
+                               bool decompile_return_instruction);
 
-  // Return the quickening info of a given method index (or null if it's empty).
-  ArrayRef<const uint8_t> GetQuickenedInfoOf(const DexFile& dex_file,
-                                             uint32_t dex_method_idx) const;
+  // Return the quickening info of the given code item.
+  const uint8_t* GetQuickenedInfoOf(const DexFile& dex_file, uint32_t code_item_offset) const;
+
+  uint32_t GetDebugInfoOffset(const DexFile& dex_file, uint32_t offset_in_code_item) const;
+
+  static bool CanEncodeQuickenedData(const DexFile& dex_file);
+
+  static constexpr uint32_t kNoQuickeningInfoOffset = -1;
 
  private:
-  uint32_t GetQuickeningInfoTableOffset(const uint8_t* source_dex_begin) const;
-
-  // Source dex must be the in the vdex file.
-  void UnquickenDexFile(const DexFile& target_dex_file,
-                        const uint8_t* source_dex_begin,
-                        bool decompile_return_instruction) const;
-
-  QuickenInfoOffsetTableAccessor GetQuickenInfoOffsetTable(
-        const DexFile& dex_file,
-        const ArrayRef<const uint8_t>& quickening_info) const;
-
-  QuickenInfoOffsetTableAccessor GetQuickenInfoOffsetTable(
-      const uint8_t* source_dex_begin,
-      uint32_t num_method_ids,
-      const ArrayRef<const uint8_t>& quickening_info) const;
-
   bool HasDexSection() const {
     return GetHeader().GetDexSize() != 0;
   }
-
-  bool ContainsDexFile(const DexFile& dex_file) const;
 
   const uint8_t* DexBegin() const {
     return Begin() + sizeof(Header) + GetHeader().GetSizeOfChecksumsSection();
@@ -248,6 +234,8 @@ class VdexFile {
   const uint8_t* DexEnd() const {
     return DexBegin() + GetHeader().GetDexSize();
   }
+
+  uint32_t GetDexFileIndex(const DexFile& dex_file) const;
 
   std::unique_ptr<MemMap> mmap_;
 
