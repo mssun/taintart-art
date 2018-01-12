@@ -36,7 +36,8 @@ class DexDecompiler {
                 const ArrayRef<const uint8_t>& quickened_info,
                 bool decompile_return_instruction)
     : code_item_accessor_(dex_file, &code_item),
-      quicken_info_(quickened_info),
+      quicken_info_(quickened_info.data()),
+      quicken_info_number_of_indices_(QuickenInfoTable::NumberOfIndices(quickened_info.size())),
       decompile_return_instruction_(decompile_return_instruction) {}
 
   bool Decompile();
@@ -71,7 +72,7 @@ class DexDecompiler {
   }
 
   uint16_t NextIndex() {
-    DCHECK_LT(quicken_index_, quicken_info_.NumIndices());
+    DCHECK_LT(quicken_index_, quicken_info_number_of_indices_);
     const uint16_t ret = quicken_info_.GetData(quicken_index_);
     quicken_index_++;
     return ret;
@@ -79,6 +80,7 @@ class DexDecompiler {
 
   const CodeItemInstructionAccessor code_item_accessor_;
   const QuickenInfoTable quicken_info_;
+  const size_t quicken_info_number_of_indices_;
   const bool decompile_return_instruction_;
 
   size_t quicken_index_ = 0u;
@@ -102,7 +104,7 @@ bool DexDecompiler::Decompile() {
         break;
 
       case Instruction::NOP:
-        if (quicken_info_.NumIndices() > 0) {
+        if (quicken_info_number_of_indices_ > 0) {
           // Only try to decompile NOP if there are more than 0 indices. Not having
           // any index happens when we unquicken a code item that only has
           // RETURN_VOID_NO_BARRIER as quickened instruction.
@@ -179,14 +181,14 @@ bool DexDecompiler::Decompile() {
     }
   }
 
-  if (quicken_index_ != quicken_info_.NumIndices()) {
+  if (quicken_index_ != quicken_info_number_of_indices_) {
     if (quicken_index_ == 0) {
       LOG(WARNING) << "Failed to use any value in quickening info,"
                    << " potentially due to duplicate methods.";
     } else {
       LOG(FATAL) << "Failed to use all values in quickening info."
                  << " Actual: " << std::hex << quicken_index_
-                 << " Expected: " << quicken_info_.NumIndices();
+                 << " Expected: " << quicken_info_number_of_indices_;
       return false;
     }
   }
