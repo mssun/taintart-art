@@ -373,15 +373,15 @@ CompiledMethod* ArtCompileDEX(
       CHECK_EQ(quicken_count, dex_compiler.GetQuickenedInfo().size());
     }
     std::vector<uint8_t> quicken_data;
+    QuickenInfoTable::Builder builder(&quicken_data, dex_compiler.GetQuickenedInfo().size());
+    // Length is encoded by the constructor.
     for (QuickenedInfo info : dex_compiler.GetQuickenedInfo()) {
       // Dex pc is not serialized, only used for checking the instructions. Since we access the
       // array based on the index of the quickened instruction, the indexes must line up perfectly.
       // The reader side uses the NeedsIndexForInstruction function too.
       const Instruction& inst = unit.GetCodeItemAccessor().InstructionAt(info.dex_pc);
       CHECK(QuickenInfoTable::NeedsIndexForInstruction(&inst)) << inst.Opcode();
-      // Add the index.
-      quicken_data.push_back(static_cast<uint8_t>(info.dex_member_index >> 0));
-      quicken_data.push_back(static_cast<uint8_t>(info.dex_member_index >> 8));
+      builder.AddIndex(info.dex_member_index);
     }
     InstructionSet instruction_set = driver->GetInstructionSet();
     if (instruction_set == InstructionSet::kThumb2) {
