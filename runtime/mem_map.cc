@@ -927,9 +927,6 @@ void* MemMap::MapInternal(void* addr,
   UNUSED(low_4gb);
 #endif
   DCHECK_ALIGNED(length, kPageSize);
-  if (low_4gb) {
-    DCHECK_EQ(flags & MAP_FIXED, 0);
-  }
   // TODO:
   // A page allocator would be a useful abstraction here, as
   // 1) It is doubtful that MAP_32BIT on x86_64 is doing the right job for us
