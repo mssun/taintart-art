@@ -783,7 +783,7 @@ CodeGenerator* OptimizingCompiler::TryCompile(ArenaAllocator* allocator,
       compiler_driver->GetCompilerOptions().GetDebuggable(),
       osr);
 
-  ArrayRef<const uint8_t> interpreter_metadata;
+  const uint8_t* interpreter_metadata = nullptr;
   // For AOT compilation, we may not get a method, for example if its class is erroneous.
   // JIT should always have a method.
   DCHECK(Runtime::Current()->IsAotCompiler() || method != nullptr);
@@ -940,7 +940,7 @@ CodeGenerator* OptimizingCompiler::TryCompileIntrinsic(
                           compiler_driver,
                           codegen.get(),
                           compilation_stats_.get(),
-                          /* interpreter_metadata */ ArrayRef<const uint8_t>(),
+                          /* interpreter_metadata */ nullptr,
                           handles);
     builder.BuildIntrinsicGraph(method);
   }

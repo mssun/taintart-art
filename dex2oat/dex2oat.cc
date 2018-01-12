@@ -1807,7 +1807,9 @@ class Dex2Oat FINAL {
       // We do not decompile a RETURN_VOID_NO_BARRIER into a RETURN_VOID, as the quickening
       // optimization does not depend on the boot image (the optimization relies on not
       // having final fields in a class, which does not change for an app).
-      input_vdex_file_->Unquicken(dex_files_, /* decompile_return_instruction */ false);
+      VdexFile::Unquicken(dex_files_,
+                          input_vdex_file_->GetQuickeningInfo(),
+                          /* decompile_return_instruction */ false);
     } else {
       // Create the main VerifierDeps, here instead of in the compiler since we want to aggregate
       // the results for all the dex files, not just the results for the current dex file.
