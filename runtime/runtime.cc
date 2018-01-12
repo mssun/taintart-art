@@ -69,6 +69,7 @@
 #include "class_linker-inl.h"
 #include "compiler_callbacks.h"
 #include "debugger.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/dex_file_loader.h"
 #include "elf_file.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
@@ -1041,6 +1042,7 @@ static size_t OpenDexFiles(const std::vector<std::string>& dex_filenames,
   if (!image_location.empty() && OpenDexFilesFromImage(image_location, dex_files, &failure_count)) {
     return failure_count;
   }
+  const ArtDexFileLoader dex_file_loader;
   failure_count = 0;
   for (size_t i = 0; i < dex_filenames.size(); i++) {
     const char* dex_filename = dex_filenames[i].c_str();
@@ -1051,12 +1053,12 @@ static size_t OpenDexFiles(const std::vector<std::string>& dex_filenames,
       LOG(WARNING) << "Skipping non-existent dex file '" << dex_filename << "'";
       continue;
     }
-    if (!DexFileLoader::Open(dex_filename,
-                             dex_location,
-                             Runtime::Current()->IsVerificationEnabled(),
-                             kVerifyChecksum,
-                             &error_msg,
-                             dex_files)) {
+    if (!dex_file_loader.Open(dex_filename,
+                              dex_location,
+                              Runtime::Current()->IsVerificationEnabled(),
+                              kVerifyChecksum,
+                              &error_msg,
+                              dex_files)) {
       LOG(WARNING) << "Failed to open .dex from file '" << dex_filename << "': " << error_msg;
       ++failure_count;
     }

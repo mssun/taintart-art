@@ -42,6 +42,7 @@
 #include "class_linker.h"
 #include "class_table-inl.h"
 #include "common_throws.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/dex_file_annotations.h"
 #include "dex/dex_file_loader.h"
 #include "events-inl.h"
@@ -107,12 +108,13 @@ static std::unique_ptr<const art::DexFile> MakeSingleDexFile(art::Thread* self,
   }
   uint32_t checksum = reinterpret_cast<const art::DexFile::Header*>(map->Begin())->checksum_;
   std::string map_name = map->GetName();
-  std::unique_ptr<const art::DexFile> dex_file(art::DexFileLoader::Open(map_name,
-                                                                        checksum,
-                                                                        std::move(map),
-                                                                        /*verify*/true,
-                                                                        /*verify_checksum*/true,
-                                                                        &error_msg));
+  const art::ArtDexFileLoader dex_file_loader;
+  std::unique_ptr<const art::DexFile> dex_file(dex_file_loader.Open(map_name,
+                                                                    checksum,
+                                                                    std::move(map),
+                                                                    /*verify*/true,
+                                                                    /*verify_checksum*/true,
+                                                                    &error_msg));
   if (dex_file.get() == nullptr) {
     LOG(WARNING) << "Unable to load modified dex file for " << descriptor << ": " << error_msg;
     art::ThrowClassFormatError(nullptr,

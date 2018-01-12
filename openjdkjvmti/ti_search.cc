@@ -38,6 +38,7 @@
 #include "base/enums.h"
 #include "base/macros.h"
 #include "class_linker.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
 #include "jni_internal.h"
@@ -227,7 +228,8 @@ jvmtiError SearchUtil::AddToBootstrapClassLoaderSearch(jvmtiEnv* env ATTRIBUTE_U
 
   std::string error_msg;
   std::vector<std::unique_ptr<const art::DexFile>> dex_files;
-  if (!art::DexFileLoader::Open(
+  const art::ArtDexFileLoader dex_file_loader;
+  if (!dex_file_loader.Open(
         segment, segment, /* verify */ true, /* verify_checksum */ true, &error_msg, &dex_files)) {
     LOG(WARNING) << "Could not open " << segment << " for boot classpath extension: " << error_msg;
     return ERR(ILLEGAL_ARGUMENT);

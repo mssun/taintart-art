@@ -21,6 +21,70 @@
 JIT_DEBUG_REGISTER_CODE_LDFLAGS = ["-Wl,--keep-unique,__jit_debug_register_code"]
 
 cc_defaults {
+    name: "libdexfile_defaults",
+    defaults: ["art_defaults"],
+    host_supported: true,
+    srcs: [
+        "dex/compact_dex_file.cc",
+        "dex/dex_file.cc",
+        "dex/dex_file_exception_helpers.cc",
+        "dex/dex_file_loader.cc",
+        "dex/dex_file_tracking_registrar.cc",
+        "dex/dex_file_verifier.cc",
+        "dex/dex_instruction.cc",
+        "dex/standard_dex_file.cc",
+        "utf.cc",
+        "utils.cc",
+    ],
+
+    target: {
+        android: {
+            shared_libs: [
+                "libutils",
+            ],
+            static_libs: [
+                "libz",
+                "libbase",
+            ],
+        },
+        host: {
+            shared_libs: [
+                "libz",
+            ],
+        },
+    },
+    generated_sources: ["art_operator_srcs"],
+    // asm_support_gen.h (used by asm_support.h) is generated with cpp-define-generator
+    generated_headers: ["cpp-define-generator-asm-support"],
+    // export our headers so the libart-gtest targets can use it as well.
+    export_generated_headers: ["cpp-define-generator-asm-support"],
+    include_dirs: [
+        "external/icu/icu4c/source/common",
+        "external/zlib",
+    ],
+    shared_libs: [
+        "liblog",
+        // For common macros.
+        "libbase",
+    ],
+    export_include_dirs: ["."],
+    // ART's macros.h depends on libbase's macros.h.
+    // Note: runtime_options.h depends on cmdline. But we don't really want to export this
+    //       generically. dex2oat takes care of it itself.
+    export_shared_lib_headers: ["libbase"],
+}
+
+art_cc_library {
+    name: "libdexfile",
+    defaults: ["libdexfile_defaults"],
+    // Leave the symbols in the shared library so that stack unwinders can
+    // produce meaningful name resolution.
+    strip: {
+        keep_symbols: true,
+    },
+}
+
+cc_defaults {
     name: "libart_defaults",
     defaults: ["art_defaults"],
     host_supported: true,
@@ -62,6 +126,7 @@ cc_defaults {
         "dex/dex_file_exception_helpers.cc",
         "dex/dex_file_layout.cc",
         "dex/dex_file_loader.cc",
+        "dex/art_dex_file_loader.cc",
         "dex/dex_file_tracking_registrar.cc",
         "dex/dex_file_verifier.cc",
         "dex/dex_instruction.cc",
