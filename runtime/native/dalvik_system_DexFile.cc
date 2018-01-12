@@ -27,6 +27,7 @@
 #include <class_loader_context.h>
 #include "common_throws.h"
 #include "compiler_filter.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
 #include "jni_internal.h"
@@ -188,12 +189,13 @@ static const DexFile* CreateDexFile(JNIEnv* env, std::unique_ptr<MemMap> dex_mem
                                       dex_mem_map->Begin(),
                                       dex_mem_map->End());
   std::string error_message;
-  std::unique_ptr<const DexFile> dex_file(DexFileLoader::Open(location,
-                                                              0,
-                                                              std::move(dex_mem_map),
-                                                              /* verify */ true,
-                                                              /* verify_location */ true,
-                                                              &error_message));
+  const ArtDexFileLoader dex_file_loader;
+  std::unique_ptr<const DexFile> dex_file(dex_file_loader.Open(location,
+                                                               0,
+                                                               std::move(dex_mem_map),
+                                                               /* verify */ true,
+                                                               /* verify_location */ true,
+                                                               &error_message));
   if (dex_file == nullptr) {
     ScopedObjectAccess soa(env);
     ThrowWrappedIOException("%s", error_message.c_str());
