@@ -43,6 +43,7 @@
 #include "base/stringpiece.h"
 #include "class_linker-inl.h"
 #include "debugger.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
 #include "dex/dex_file_types.h"
@@ -426,12 +427,13 @@ jvmtiError Redefiner::AddRedefinition(ArtJvmTiEnv* env, const ArtClassDefinition
     return ERR(INVALID_CLASS_FORMAT);
   }
   uint32_t checksum = reinterpret_cast<const art::DexFile::Header*>(map->Begin())->checksum_;
-  std::unique_ptr<const art::DexFile> dex_file(art::DexFileLoader::Open(map->GetName(),
-                                                                        checksum,
-                                                                        std::move(map),
-                                                                        /*verify*/true,
-                                                                        /*verify_checksum*/true,
-                                                                        error_msg_));
+  const art::ArtDexFileLoader dex_file_loader;
+  std::unique_ptr<const art::DexFile> dex_file(dex_file_loader.Open(map->GetName(),
+                                                                    checksum,
+                                                                    std::move(map),
+                                                                    /*verify*/true,
+                                                                    /*verify_checksum*/true,
+                                                                    error_msg_));
   if (dex_file.get() == nullptr) {
     os << "Unable to load modified dex file for " << def.GetName() << ": " << *error_msg_;
     *error_msg_ = os.str();

@@ -22,6 +22,7 @@
 #include <functional>
 #include <memory>
 
+#include "art_dex_file_loader.h"
 #include "base/bit_utils.h"
 #include "base/macros.h"
 #include "base/unix_file/fd_file.h"
@@ -114,7 +115,8 @@ static std::unique_ptr<const DexFile> OpenDexFileBase64(const char* base64,
   // read dex file
   ScopedObjectAccess soa(Thread::Current());
   std::vector<std::unique_ptr<const DexFile>> tmp;
-  bool success = DexFileLoader::Open(
+  const ArtDexFileLoader dex_file_loader;
+  bool success = dex_file_loader.Open(
       location, location, /* verify */ true, /* verify_checksum */ true, error_msg, &tmp);
   CHECK(success) << *error_msg;
   EXPECT_EQ(1U, tmp.size());

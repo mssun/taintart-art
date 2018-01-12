@@ -35,6 +35,7 @@
 #include "base/unix_file/fd_file.h"
 #include "class_linker.h"
 #include "compiler_callbacks.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
 #include "gc/heap.h"
@@ -375,7 +376,8 @@ std::unique_ptr<const DexFile> CommonRuntimeTestImpl::LoadExpectSingleDexFile(
   std::string error_msg;
   MemMap::Init();
   static constexpr bool kVerifyChecksum = true;
-  if (!DexFileLoader::Open(
+  const ArtDexFileLoader dex_file_loader;
+  if (!dex_file_loader.Open(
         location, location, /* verify */ true, kVerifyChecksum, &error_msg, &dex_files)) {
     LOG(FATAL) << "Could not open .dex file '" << location << "': " << error_msg << "\n";
     UNREACHABLE();
@@ -574,12 +576,13 @@ std::vector<std::unique_ptr<const DexFile>> CommonRuntimeTestImpl::OpenTestDexFi
   std::string filename = GetTestDexFileName(name);
   static constexpr bool kVerifyChecksum = true;
   std::string error_msg;
+  const ArtDexFileLoader dex_file_loader;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  bool success = DexFileLoader::Open(filename.c_str(),
-                                     filename.c_str(),
-                                     /* verify */ true,
-                                     kVerifyChecksum,
-                                     &error_msg, &dex_files);
+  bool success = dex_file_loader.Open(filename.c_str(),
+                                      filename.c_str(),
+                                      /* verify */ true,
+                                      kVerifyChecksum,
+                                      &error_msg, &dex_files);
   CHECK(success) << "Failed to open '" << filename << "': " << error_msg;
   for (auto& dex_file : dex_files) {
     CHECK_EQ(PROT_READ, dex_file->GetPermissions());

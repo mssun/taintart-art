@@ -30,6 +30,7 @@
 #include "base/macros.h"
 #include "base/mutex-inl.h"
 #include "bytecode_utils.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
@@ -684,7 +685,8 @@ class Dex2oatLayoutTest : public Dex2oatTest {
     const char* location = dex_location.c_str();
     std::string error_msg;
     std::vector<std::unique_ptr<const DexFile>> dex_files;
-    ASSERT_TRUE(DexFileLoader::Open(
+    const ArtDexFileLoader dex_file_loader;
+    ASSERT_TRUE(dex_file_loader.Open(
         location, location, /* verify */ true, /* verify_checksum */ true, &error_msg, &dex_files));
     EXPECT_EQ(dex_files.size(), 1U);
     std::unique_ptr<const DexFile>& dex_file = dex_files[0];
@@ -819,7 +821,8 @@ class Dex2oatLayoutTest : public Dex2oatTest {
 
     const char* location = dex_location.c_str();
     std::vector<std::unique_ptr<const DexFile>> dex_files;
-    ASSERT_TRUE(DexFileLoader::Open(
+    const ArtDexFileLoader dex_file_loader;
+    ASSERT_TRUE(dex_file_loader.Open(
         location, location, /* verify */ true, /* verify_checksum */ true, &error_msg, &dex_files));
     EXPECT_EQ(dex_files.size(), 1U);
     std::unique_ptr<const DexFile>& old_dex_file = dex_files[0];
