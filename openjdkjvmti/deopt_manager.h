@@ -101,6 +101,10 @@ class DeoptManager {
   void DeoptimizeThread(art::Thread* target) REQUIRES_SHARED(art::Locks::mutator_lock_);
   void DeoptimizeAllThreads() REQUIRES_SHARED(art::Locks::mutator_lock_);
 
+  void FinishSetup()
+      REQUIRES(!deoptimization_status_lock_, !art::Roles::uninterruptible_)
+      REQUIRES_SHARED(art::Locks::mutator_lock_);
+
   static DeoptManager* Get();
 
  private:
@@ -141,9 +145,8 @@ class DeoptManager {
       REQUIRES(!art::Roles::uninterruptible_, !art::Locks::mutator_lock_);
 
   static constexpr const char* kDeoptManagerInstrumentationKey = "JVMTI_DeoptManager";
-  // static constexpr const char* kDeoptManagerThreadName = "JVMTI_DeoptManagerWorkerThread";
 
-  art::Mutex deoptimization_status_lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
+  art::Mutex deoptimization_status_lock_ ACQUIRED_BEFORE(art::Locks::classlinker_classes_lock_);
   art::ConditionVariable deoptimization_condition_ GUARDED_BY(deoptimization_status_lock_);
   bool performing_deoptimization_ GUARDED_BY(deoptimization_status_lock_);
 

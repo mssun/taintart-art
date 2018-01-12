@@ -62,10 +62,22 @@ namespace openjdkjvmti {
 
 class ObjectTagTable;
 
+// A special version that we use to identify special tooling interface versions which mostly matches
+// the jvmti spec but everything is best effort. This is used to implement the userdebug
+// 'debug-anything' behavior.
+//
+// This is the value 0x70010200.
+static constexpr jint kArtTiVersion = JVMTI_VERSION_1_2 | 0x40000000;
+
 // A structure that is a jvmtiEnv with additional information for the runtime.
 struct ArtJvmTiEnv : public jvmtiEnv {
   art::JavaVMExt* art_vm;
   void* local_data;
+
+  // The ti_version we are compatible with. This is only for giving the correct value for GetVersion
+  // when running on a userdebug/eng device.
+  jint ti_version;
+
   jvmtiCapabilities capabilities;
 
   EventMasks event_masks;
@@ -90,7 +102,7 @@ struct ArtJvmTiEnv : public jvmtiEnv {
   // RW lock to protect access to all of the event data.
   art::ReaderWriterMutex event_info_mutex_ DEFAULT_MUTEX_ACQUIRED_AFTER;
 
-  ArtJvmTiEnv(art::JavaVMExt* runtime, EventHandler* event_handler);
+  ArtJvmTiEnv(art::JavaVMExt* runtime, EventHandler* event_handler, jint ti_version);
 
   static ArtJvmTiEnv* AsArtJvmTiEnv(jvmtiEnv* env) {
     return art::down_cast<ArtJvmTiEnv*>(env);
@@ -268,6 +280,60 @@ const jvmtiCapabilities kPotentialCapabilities = {
     .can_set_native_method_prefix                    = 0,
     .can_retransform_classes                         = 1,
     .can_retransform_any_class                       = 0,
+    .can_generate_resource_exhaustion_heap_events    = 0,
+    .can_generate_resource_exhaustion_threads_events = 0,
+};
+
+// These are capabilities that are disabled if we were loaded without being debuggable.
+//
+// This includes the following capabilities:
+//   can_retransform_any_class:
+//   can_retransform_classes:
+//   can_redefine_any_class:
+//   can_redefine_classes:
+//     We need to ensure that inlined code is either not present or can always be deoptimized. This
+//     is not guaranteed for non-debuggable processes since we might have inlined bootclasspath code
+//     on a threads stack.
+const jvmtiCapabilities kNonDebuggableUnsupportedCapabilities = {
+    .can_tag_objects                                 = 0,
+    .can_generate_field_modification_events          = 0,
+    .can_generate_field_access_events                = 0,
+    .can_get_bytecodes                               = 0,
+    .can_get_synthetic_attribute                     = 0,
+    .can_get_owned_monitor_info                      = 0,
+    .can_get_current_contended_monitor               = 0,
+    .can_get_monitor_info                            = 0,
+    .can_pop_frame                                   = 0,
+    .can_redefine_classes                            = 1,
+    .can_signal_thread                               = 0,
+    .can_get_source_file_name                        = 0,
+    .can_get_line_numbers                            = 0,
+    .can_get_source_debug_extension                  = 0,
+    .can_access_local_variables                      = 0,
+    .can_maintain_original_method_order              = 0,
+    .can_generate_single_step_events                 = 0,
+    .can_generate_exception_events                   = 0,
+    .can_generate_frame_pop_events                   = 0,
+    .can_generate_breakpoint_events                  = 0,
+    .can_suspend                                     = 0,
+    .can_redefine_any_class                          = 1,
+    .can_get_current_thread_cpu_time                 = 0,
+    .can_get_thread_cpu_time                         = 0,
+    .can_generate_method_entry_events                = 0,
+    .can_generate_method_exit_events                 = 0,
+    .can_generate_all_class_hook_events              = 0,
+    .can_generate_compiled_method_load_events        = 0,
+    .can_generate_monitor_events                     = 0,
+    .can_generate_vm_object_alloc_events             = 0,
+    .can_generate_native_method_bind_events          = 0,
+    .can_generate_garbage_collection_events          = 0,
+    .can_generate_object_free_events                 = 0,
+    .can_force_early_return                          = 0,
+    .can_get_owned_monitor_stack_depth_info          = 0,
+    .can_get_constant_pool                           = 0,
+    .can_set_native_method_prefix                    = 0,
+    .can_retransform_classes                         = 1,
+    .can_retransform_any_class                       = 1,
     .can_generate_resource_exhaustion_heap_events    = 0,
     .can_generate_resource_exhaustion_threads_events = 0,
 };
