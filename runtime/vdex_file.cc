@@ -110,11 +110,6 @@ std::unique_ptr<VdexFile> VdexFile::OpenAtAddress(uint8_t* mmap_addr,
                                                   bool low_4gb,
                                                   bool unquicken,
                                                   std::string* error_msg) {
-  if (low_4gb) {
-    LOG(WARNING) << "Can not mmap vdex in low 4GB";  // TODO: Implement in MemMap.
-    mmap_addr = nullptr;
-    mmap_reuse = false;
-  }
   if (mmap_addr != nullptr && mmap_size < vdex_length) {
     LOG(WARNING) << "Insufficient pre-allocated space to mmap vdex.";
     mmap_addr = nullptr;
