@@ -44,24 +44,11 @@ class Class;
 
 class PatchOat {
  public:
-  // Relocates the provided image by the specified offset. If output_image_directory is non-empty,
-  // outputs the relocated image into that directory. If output_image_relocation_directory is
-  // non-empty, outputs image relocation files (see GeneratePatch) into that directory.
   static bool Patch(const std::string& image_location,
                     off_t delta,
-                    const std::string& output_image_directory,
-                    const std::string& output_image_relocation_directory,
+                    const std::string& output_directory,
                     InstructionSet isa,
                     TimingLogger* timings);
-
-  // Generates a patch which can be used to efficiently relocate the original file or to check that
-  // a relocated file matches the original. The patch is generated from the difference of the
-  // |original| and the already |relocated| image, and written to |output| in the form of unsigned
-  // LEB128 for each relocation position.
-  static bool GeneratePatch(const MemMap& original,
-                            const MemMap& relocated,
-                            std::vector<uint8_t>* output,
-                            std::string* error_msg);
 
   ~PatchOat() {}
   PatchOat(PatchOat&&) = default;
