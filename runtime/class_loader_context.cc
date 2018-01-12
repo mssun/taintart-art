@@ -21,6 +21,7 @@
 #include "base/stl_util.h"
 #include "class_linker.h"
 #include "class_loader_utils.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
 #include "handle_scope-inl.h"
@@ -203,6 +204,7 @@ bool ClassLoaderContext::OpenDexFiles(InstructionSet isa, const std::string& cla
   // We may get resource-only apks which we cannot load.
   // TODO(calin): Refine the dex opening interface to be able to tell if an archive contains
   // no dex files. So that we can distinguish the real failures...
+  const ArtDexFileLoader dex_file_loader;
   for (ClassLoaderInfo& info : class_loader_chain_) {
     size_t opened_dex_files_index = info.opened_dex_files.size();
     for (const std::string& cp_elem : info.classpath) {
@@ -215,12 +217,12 @@ bool ClassLoaderContext::OpenDexFiles(InstructionSet isa, const std::string& cla
       std::string error_msg;
       // When opening the dex files from the context we expect their checksum to match their
       // contents. So pass true to verify_checksum.
-      if (!DexFileLoader::Open(location.c_str(),
-                               location.c_str(),
-                               Runtime::Current()->IsVerificationEnabled(),
-                               /*verify_checksum*/ true,
-                               &error_msg,
-                               &info.opened_dex_files)) {
+      if (!dex_file_loader.Open(location.c_str(),
+                                location.c_str(),
+                                Runtime::Current()->IsVerificationEnabled(),
+                                /*verify_checksum*/ true,
+                                &error_msg,
+                                &info.opened_dex_files)) {
         // If we fail to open the dex file because it's been stripped, try to open the dex file
         // from its corresponding oat file.
         // This could happen when we need to recompile a pre-build whose dex code has been stripped.

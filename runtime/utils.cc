@@ -26,10 +26,10 @@
 
 #include <memory>
 
+#include "android-base/file.h"
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 
-#include "base/file_utils.h"
 #include "dex/dex_file-inl.h"
 #include "os.h"
 #include "utf-inl.h"
@@ -46,6 +46,7 @@
 
 namespace art {
 
+using android::base::ReadFileToString;
 using android::base::StringAppendF;
 using android::base::StringPrintf;
 
@@ -63,6 +64,7 @@ pid_t GetTid() {
 
 std::string GetThreadName(pid_t tid) {
   std::string result;
+  // TODO: make this less Linux-specific.
   if (ReadFileToString(StringPrintf("/proc/self/task/%d/comm", tid), &result)) {
     result.resize(result.size() - 1);  // Lose the trailing '\n'.
   } else {
@@ -611,6 +613,7 @@ void SetThreadName(const char* thread_name) {
 void GetTaskStats(pid_t tid, char* state, int* utime, int* stime, int* task_cpu) {
   *utime = *stime = *task_cpu = 0;
   std::string stats;
+  // TODO: make this less Linux-specific.
   if (!ReadFileToString(StringPrintf("/proc/self/task/%d/stat", tid), &stats)) {
     return;
   }

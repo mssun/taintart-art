@@ -28,6 +28,7 @@
 #include "base/stl_util.h"
 #include "class_linker.h"
 #include "compiler_filter.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/dex_file_loader.h"
 #include "exec_utils.h"
 #include "gc/heap.h"
@@ -869,10 +870,11 @@ const std::vector<uint32_t>* OatFileAssistant::GetRequiredDexChecksums() {
     required_dex_checksums_found_ = false;
     cached_required_dex_checksums_.clear();
     std::string error_msg;
-    if (DexFileLoader::GetMultiDexChecksums(dex_location_.c_str(),
-                                            &cached_required_dex_checksums_,
-                                            &error_msg,
-                                            zip_fd_)) {
+    const ArtDexFileLoader dex_file_loader;
+    if (dex_file_loader.GetMultiDexChecksums(dex_location_.c_str(),
+                                             &cached_required_dex_checksums_,
+                                             &error_msg,
+                                             zip_fd_)) {
       required_dex_checksums_found_ = true;
       has_original_dex_files_ = true;
     } else {
