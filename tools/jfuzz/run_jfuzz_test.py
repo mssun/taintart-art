@@ -133,7 +133,7 @@ class TestRunnerWithHostCompilation(TestRunner):
   def CompileOnHost(self):
     if self._dexer == 'dx' or self._dexer == 'd8':
       dbg = '-g' if self._debug_info else '-g:none'
-      if RunCommand(['javac', dbg, 'Test.java'],
+      if RunCommand(['javac', '--release=8', dbg, 'Test.java'],
                     out=None, err=None, timeout=30) == RetCode.SUCCESS:
         dx = 'dx' if self._dexer == 'dx' else 'd8-compat-dx'
         retc = RunCommand([dx, '--dex', '--output=classes.dex'] + glob('*.class'),

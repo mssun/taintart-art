@@ -106,14 +106,14 @@ class DexFuzzTester(object):
     self.RunDexFuzz()
 
   def CompileOnHost(self):
-    """Compiles Test.java into classes.dex using either javac/dx or jack.
+    """Compiles Test.java into classes.dex using either javac/dx,d8 or jack.
 
     Raises:
       FatalError: error when compilation fails
     """
     if self._dexer == 'dx' or self._dexer == 'd8':
       dbg = '-g' if self._debug_info else '-g:none'
-      if RunCommand(['javac', dbg, 'Test.java'],
+      if RunCommand(['javac', '--release=8', dbg, 'Test.java'],
                     out=None, err='jerr.txt', timeout=30) != RetCode.SUCCESS:
         print('Unexpected error while running javac')
         raise FatalError('Unexpected error while running javac')
