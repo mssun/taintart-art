@@ -36,6 +36,14 @@ inline CodeItemDataAccessor::CodeItemDataAccessor(ArtMethod* method)
 inline CodeItemDebugInfoAccessor::CodeItemDebugInfoAccessor(ArtMethod* method)
     : CodeItemDebugInfoAccessor(*method->GetDexFile(), method->GetCodeItem()) {}
 
+inline CodeItemDebugInfoAccessor::CodeItemDebugInfoAccessor(const DexFile& dex_file,
+                                                            const DexFile::CodeItem* code_item) {
+  if (code_item == nullptr) {
+    return;
+  }
+  Init(dex_file, code_item, OatFile::GetDebugInfoOffset(dex_file, code_item->debug_info_off_));
+}
+
 }  // namespace art
 
 #endif  // ART_RUNTIME_DEX_CODE_ITEM_ACCESSORS_INL_H_
