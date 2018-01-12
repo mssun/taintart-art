@@ -41,6 +41,7 @@
 #include "jni_internal.h"
 #include "mirror/class_loader.h"
 #include "mirror/object-inl.h"
+#include "oat_file.h"
 #include "oat_file_assistant.h"
 #include "obj_ptr-inl.h"
 #include "scoped_thread_state_change-inl.h"
@@ -528,8 +529,14 @@ std::vector<std::unique_ptr<const DexFile>> OatFileManager::OpenDexFilesFromOat(
   if (source_oat_file != nullptr) {
     bool added_image_space = false;
     if (source_oat_file->IsExecutable()) {
-      std::unique_ptr<gc::space::ImageSpace> image_space =
-          kEnableAppImage ? oat_file_assistant.OpenImageSpace(source_oat_file) : nullptr;
+      // We need to throw away the image space if we are debuggable but the oat-file source of the
+      // image is not otherwise we might get classes with inlined methods or other such things.
+      std::unique_ptr<gc::space::ImageSpace> image_space;
+      if (kEnableAppImage && (!runtime->IsJavaDebuggable() || source_oat_file->IsDebuggable())) {
+        image_space = oat_file_assistant.OpenImageSpace(source_oat_file);
+      } else {
+        image_space = nullptr;
+      }
       if (image_space != nullptr) {
         ScopedObjectAccess soa(self);
         StackHandleScope<1> hs(self);

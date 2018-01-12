@@ -63,9 +63,7 @@ static constexpr int kControlSockSendTimeout = 10;
 static AdbConnectionState* gState;
 
 static bool IsDebuggingPossible() {
-  // TODO We need to do this on IsJdwpAllowed not IsDebuggable in order to support userdebug
-  // workloads. For now we will only allow it when we are debuggable so that testing is easier.
-  return art::Runtime::Current()->IsJavaDebuggable() && art::Dbg::IsJdwpAllowed();
+  return art::Dbg::IsJdwpAllowed();
 }
 
 // Begin running the debugger.
@@ -581,11 +579,14 @@ void AdbConnectionState::RunPollLoop(art::Thread* self) {
         DCHECK(!agent_has_socket_);
         if (!agent_loaded_) {
           DCHECK(!agent_listening_);
+          // TODO Should we check in some other way if we are userdebug/eng?
+          CHECK(art::Dbg::IsJdwpAllowed());
           // Load the agent now!
           self->AssertNoPendingException();
           art::Runtime::Current()->AttachAgent(/* JNIEnv* */ nullptr,
                                                MakeAgentArg(),
-                                               /* classloader */ nullptr);
+                                               /* classloader */ nullptr,
+                                               /*allow_non_debuggable_tooling*/ true);
           if (self->IsExceptionPending()) {
             LOG(ERROR) << "Failed to load agent " << agent_name_;
             art::ScopedObjectAccess soa(self);
