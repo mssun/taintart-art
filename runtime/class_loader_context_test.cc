@@ -278,14 +278,17 @@ TEST_F(ClassLoaderContextTest, OpenValidDexFiles) {
   VerifyOpenDexFiles(context.get(), 1, &all_dex_files1);
 }
 
-static std::string CreateRelativeString(const std::string& in, const char* cwd) {
+// Creates a relative path from cwd to 'in'. Returns false if it cannot be done.
+// TODO We should somehow support this in all situations. b/72042237.
+static bool CreateRelativeString(const std::string& in, const char* cwd, std::string* out) {
   int cwd_len = strlen(cwd);
   if (!android::base::StartsWith(in, cwd) || (cwd_len < 1)) {
-    LOG(FATAL) << in << " " << cwd;
+    return false;
   }
   bool contains_trailing_slash = (cwd[cwd_len - 1] == '/');
   int start_position = cwd_len + (contains_trailing_slash ? 0 : 1);
-  return in.substr(start_position);
+  *out = in.substr(start_position);
+  return true;
 }
 
 TEST_F(ClassLoaderContextTest, OpenValidDexFilesRelative) {
@@ -293,9 +296,17 @@ TEST_F(ClassLoaderContextTest, OpenValidDexFilesRelative) {
   if (getcwd(cwd_buf, arraysize(cwd_buf)) == nullptr) {
     PLOG(FATAL) << "Could not get working directory";
   }
-  std::string multidex_name = CreateRelativeString(GetTestDexFileName("MultiDex"), cwd_buf);
-  std::string myclass_dex_name = CreateRelativeString(GetTestDexFileName("MyClass"), cwd_buf);
-  std::string dex_name = CreateRelativeString(GetTestDexFileName("Main"), cwd_buf);
+  std::string multidex_name;
+  std::string myclass_dex_name;
+  std::string dex_name;
+  if (!CreateRelativeString(GetTestDexFileName("MultiDex"), cwd_buf, &multidex_name) ||
+      !CreateRelativeString(GetTestDexFileName("MyClass"), cwd_buf, &myclass_dex_name) ||
+      !CreateRelativeString(GetTestDexFileName("Main"), cwd_buf, &dex_name)) {
+    LOG(ERROR) << "Test OpenValidDexFilesRelative cannot be run because target dex files have no "
+               << "relative path.";
+    SUCCEED();
+    return;
+  }
 
 
   std::unique_ptr<ClassLoaderContext> context =
@@ -321,10 +332,17 @@ TEST_F(ClassLoaderContextTest, OpenValidDexFilesClasspathDir) {
   if (getcwd(cwd_buf, arraysize(cwd_buf)) == nullptr) {
     PLOG(FATAL) << "Could not get working directory";
   }
-  std::string multidex_name = CreateRelativeString(GetTestDexFileName("MultiDex"), cwd_buf);
-  std::string myclass_dex_name = CreateRelativeString(GetTestDexFileName("MyClass"), cwd_buf);
-  std::string dex_name = CreateRelativeString(GetTestDexFileName("Main"), cwd_buf);
-
+  std::string multidex_name;
+  std::string myclass_dex_name;
+  std::string dex_name;
+  if (!CreateRelativeString(GetTestDexFileName("MultiDex"), cwd_buf, &multidex_name) ||
+      !CreateRelativeString(GetTestDexFileName("MyClass"), cwd_buf, &myclass_dex_name) ||
+      !CreateRelativeString(GetTestDexFileName("Main"), cwd_buf, &dex_name)) {
+    LOG(ERROR) << "Test OpenValidDexFilesClasspathDir cannot be run because target dex files have "
+               << "no relative path.";
+    SUCCEED();
+    return;
+  }
   std::unique_ptr<ClassLoaderContext> context =
       ClassLoaderContext::Create(
           "PCL[" + multidex_name + ":" + myclass_dex_name + "];" +
