@@ -20,6 +20,7 @@
 
 #include <memory>
 
+#include "art_dex_file_loader.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "code_item_accessors-inl.h"
@@ -237,7 +238,8 @@ static bool OpenDexFilesBase64(const char* base64,
   ScopedObjectAccess soa(Thread::Current());
   static constexpr bool kVerifyChecksum = true;
   std::vector<std::unique_ptr<const DexFile>> tmp;
-  bool success = DexFileLoader::Open(
+  const ArtDexFileLoader dex_file_loader;
+  bool success = dex_file_loader.Open(
       location, location, /* verify */ true, kVerifyChecksum, error_msg, &tmp);
   if (success) {
     for (std::unique_ptr<const DexFile>& dex_file : tmp) {
@@ -277,12 +279,13 @@ static std::unique_ptr<const DexFile> OpenDexFileInMemoryBase64(const char* base
                                                       /* reuse */ false,
                                                       &error_message));
   memcpy(region->Begin(), dex_bytes.data(), dex_bytes.size());
-  std::unique_ptr<const DexFile> dex_file(DexFileLoader::Open(location,
-                                                              location_checksum,
-                                                              std::move(region),
-                                                              /* verify */ true,
-                                                              /* verify_checksum */ true,
-                                                              &error_message));
+  const ArtDexFileLoader dex_file_loader;
+  std::unique_ptr<const DexFile> dex_file(dex_file_loader.Open(location,
+                                                               location_checksum,
+                                                               std::move(region),
+                                                               /* verify */ true,
+                                                               /* verify_checksum */ true,
+                                                               &error_message));
   if (expect_success) {
     CHECK(dex_file != nullptr) << error_message;
   } else {
@@ -368,7 +371,8 @@ TEST_F(DexFileTest, Version40Rejected) {
   static constexpr bool kVerifyChecksum = true;
   std::string error_msg;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  ASSERT_FALSE(DexFileLoader::Open(
+  const ArtDexFileLoader dex_file_loader;
+  ASSERT_FALSE(dex_file_loader.Open(
       location, location, /* verify */ true, kVerifyChecksum, &error_msg, &dex_files));
 }
 
@@ -381,7 +385,8 @@ TEST_F(DexFileTest, Version41Rejected) {
   static constexpr bool kVerifyChecksum = true;
   std::string error_msg;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  ASSERT_FALSE(DexFileLoader::Open(
+  const ArtDexFileLoader dex_file_loader;
+  ASSERT_FALSE(dex_file_loader.Open(
       location, location, /* verify */ true, kVerifyChecksum, &error_msg, &dex_files));
 }
 
@@ -394,7 +399,8 @@ TEST_F(DexFileTest, ZeroLengthDexRejected) {
   static constexpr bool kVerifyChecksum = true;
   std::string error_msg;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  ASSERT_FALSE(DexFileLoader::Open(
+  const ArtDexFileLoader dex_file_loader;
+  ASSERT_FALSE(dex_file_loader.Open(
       location, location, /* verify */ true, kVerifyChecksum, &error_msg, &dex_files));
 }
 
@@ -408,9 +414,10 @@ TEST_F(DexFileTest, GetChecksum) {
   std::vector<uint32_t> checksums;
   ScopedObjectAccess soa(Thread::Current());
   std::string error_msg;
-  EXPECT_TRUE(DexFileLoader::GetMultiDexChecksums(GetLibCoreDexFileNames()[0].c_str(),
-                                                  &checksums,
-                                                  &error_msg))
+  const ArtDexFileLoader dex_file_loader;
+  EXPECT_TRUE(dex_file_loader.GetMultiDexChecksums(GetLibCoreDexFileNames()[0].c_str(),
+                                                    &checksums,
+                                                    &error_msg))
       << error_msg;
   ASSERT_EQ(1U, checksums.size());
   EXPECT_EQ(java_lang_dex_file_->GetLocationChecksum(), checksums[0]);
@@ -420,9 +427,10 @@ TEST_F(DexFileTest, GetMultiDexChecksums) {
   std::string error_msg;
   std::vector<uint32_t> checksums;
   std::string multidex_file = GetTestDexFileName("MultiDex");
-  EXPECT_TRUE(DexFileLoader::GetMultiDexChecksums(multidex_file.c_str(),
-                                                  &checksums,
-                                                  &error_msg)) << error_msg;
+  const ArtDexFileLoader dex_file_loader;
+  EXPECT_TRUE(dex_file_loader.GetMultiDexChecksums(multidex_file.c_str(),
+                                                    &checksums,
+                                                    &error_msg)) << error_msg;
 
   std::vector<std::unique_ptr<const DexFile>> dexes = OpenTestDexFiles("MultiDex");
   ASSERT_EQ(2U, dexes.size());

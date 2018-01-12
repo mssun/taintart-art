@@ -39,6 +39,7 @@
 #include "base/unix_file/fd_file.h"
 #include "boot_image_profile.h"
 #include "bytecode_utils.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
@@ -329,25 +330,26 @@ class ProfMan FINAL {
     static constexpr bool kVerifyChecksum = true;
     for (size_t i = 0; i < dex_locations_.size(); ++i) {
       std::string error_msg;
+      const ArtDexFileLoader dex_file_loader;
       std::vector<std::unique_ptr<const DexFile>> dex_files_for_location;
       if (use_apk_fd_list) {
-        if (DexFileLoader::OpenZip(apks_fd_[i],
-                                   dex_locations_[i],
-                                   /* verify */ true,
-                                   kVerifyChecksum,
-                                   &error_msg,
-                                   &dex_files_for_location)) {
+        if (dex_file_loader.OpenZip(apks_fd_[i],
+                                    dex_locations_[i],
+                                    /* verify */ true,
+                                    kVerifyChecksum,
+                                    &error_msg,
+                                    &dex_files_for_location)) {
         } else {
           LOG(WARNING) << "OpenZip failed for '" << dex_locations_[i] << "' " << error_msg;
           continue;
         }
       } else {
-        if (DexFileLoader::Open(apk_files_[i].c_str(),
-                                dex_locations_[i],
-                                /* verify */ true,
-                                kVerifyChecksum,
-                                &error_msg,
-                                &dex_files_for_location)) {
+        if (dex_file_loader.Open(apk_files_[i].c_str(),
+                                 dex_locations_[i],
+                                 /* verify */ true,
+                                 kVerifyChecksum,
+                                 &error_msg,
+                                 &dex_files_for_location)) {
         } else {
           LOG(WARNING) << "Open failed for '" << dex_locations_[i] << "' " << error_msg;
           continue;

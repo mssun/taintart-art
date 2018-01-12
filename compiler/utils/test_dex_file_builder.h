@@ -27,6 +27,7 @@
 #include <android-base/logging.h>
 
 #include "base/bit_utils.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/dex_file_loader.h"
 #include "dex/standard_dex_file.h"
 
@@ -233,7 +234,8 @@ class TestDexFileBuilder {
     static constexpr bool kVerify = false;
     static constexpr bool kVerifyChecksum = false;
     std::string error_msg;
-    std::unique_ptr<const DexFile> dex_file(DexFileLoader::Open(
+    const ArtDexFileLoader dex_file_loader;
+    std::unique_ptr<const DexFile> dex_file(dex_file_loader.Open(
         &dex_file_data_[0],
         dex_file_data_.size(),
         dex_location,

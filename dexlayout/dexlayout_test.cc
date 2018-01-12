@@ -23,6 +23,7 @@
 
 #include "base/unix_file/fd_file.h"
 #include "common_runtime_test.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
@@ -318,12 +319,13 @@ class DexLayoutTest : public CommonRuntimeTest {
   bool MutateDexFile(File* output_dex, const std::string& input_jar, const Mutator& mutator) {
     std::vector<std::unique_ptr<const DexFile>> dex_files;
     std::string error_msg;
-    CHECK(DexFileLoader::Open(input_jar.c_str(),
-                              input_jar.c_str(),
-                              /*verify*/ true,
-                              /*verify_checksum*/ true,
-                              &error_msg,
-                              &dex_files)) << error_msg;
+    const ArtDexFileLoader dex_file_loader;
+    CHECK(dex_file_loader.Open(input_jar.c_str(),
+                               input_jar.c_str(),
+                               /*verify*/ true,
+                               /*verify_checksum*/ true,
+                               &error_msg,
+                               &dex_files)) << error_msg;
     EXPECT_EQ(dex_files.size(), 1u) << "Only one input dex is supported";
     for (const std::unique_ptr<const DexFile>& dex : dex_files) {
       CHECK(dex->EnableWrite()) << "Failed to enable write";
@@ -344,12 +346,13 @@ class DexLayoutTest : public CommonRuntimeTest {
                      const std::string& dex_location) {
     std::vector<std::unique_ptr<const DexFile>> dex_files;
     std::string error_msg;
-    bool result = DexFileLoader::Open(input_dex.c_str(),
-                                      input_dex,
-                                      /*verify*/ true,
-                                      /*verify_checksum*/ false,
-                                      &error_msg,
-                                      &dex_files);
+    const ArtDexFileLoader dex_file_loader;
+    bool result = dex_file_loader.Open(input_dex.c_str(),
+                                       input_dex,
+                                       /*verify*/ true,
+                                       /*verify_checksum*/ false,
+                                       &error_msg,
+                                       &dex_files);
 
     ASSERT_TRUE(result) << error_msg;
     ASSERT_GE(dex_files.size(), 1u);

@@ -44,6 +44,7 @@
 
 #include "android-base/stringprintf.h"
 
+#include "dex/art_dex_file_loader.h"
 #include "dex/code_item_accessors-no_art-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_exception_helpers.h"
@@ -1879,8 +1880,10 @@ int processFile(const char* fileName) {
   // all of which are Zip archives with "classes.dex" inside.
   const bool kVerifyChecksum = !gOptions.ignoreBadChecksum;
   std::string error_msg;
+  // TODO: Use DexFileLoader when that is implemented.
+  const ArtDexFileLoader dex_file_loader;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  if (!DexFileLoader::Open(
+  if (!dex_file_loader.Open(
         fileName, fileName, /* verify */ true, kVerifyChecksum, &error_msg, &dex_files)) {
     // Display returned error message to user. Note that this error behavior
     // differs from the error messages shown by the original Dalvik dexdump.
