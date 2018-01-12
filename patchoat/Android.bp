@@ -26,7 +26,6 @@ cc_defaults {
     },
     shared_libs: [
         "libbase",
-        "libcrypto", // For computing the digest of image file
     ],
 }
 
@@ -59,6 +58,5 @@ art_cc_test {
     ],
     shared_libs: [
         "libartd",
-        "libcrypto", // For computing the digest of image file
     ],
 }
