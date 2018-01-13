@@ -159,7 +159,7 @@ class ElfDebugLineWriter {
       PositionInfos dex2line_map;
       DCHECK(mi->dex_file != nullptr);
       const DexFile* dex = mi->dex_file;
-      CodeItemDebugInfoAccessor accessor(*dex, mi->code_item);
+      CodeItemDebugInfoAccessor accessor(*dex, mi->code_item, mi->dex_method_index);
       const uint32_t debug_info_offset = accessor.DebugInfoOffset();
       if (!dex->DecodeDebugPositionInfo(debug_info_offset, PositionInfoCallback, &dex2line_map)) {
         continue;
