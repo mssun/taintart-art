@@ -18,6 +18,7 @@
 #define ART_COMPILER_OPTIMIZING_BUILDER_H_
 
 #include "base/arena_object.h"
+#include "base/array_ref.h"
 #include "dex/code_item_accessors.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file.h"
@@ -40,7 +41,7 @@ class HGraphBuilder : public ValueObject {
                 CompilerDriver* driver,
                 CodeGenerator* code_generator,
                 OptimizingCompilerStats* compiler_stats,
-                const uint8_t* interpreter_metadata,
+                ArrayRef<const uint8_t> interpreter_metadata,
                 VariableSizedHandleScope* handles);
 
   // Only for unit testing.
@@ -73,7 +74,7 @@ class HGraphBuilder : public ValueObject {
   CodeGenerator* const code_generator_;
 
   OptimizingCompilerStats* const compilation_stats_;
-  const uint8_t* const interpreter_metadata_;
+  const ArrayRef<const uint8_t> interpreter_metadata_;
   VariableSizedHandleScope* const handles_;
   const DataType::Type return_type_;
 

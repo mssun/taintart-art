@@ -566,8 +566,10 @@ ParameterAnnotation* Collections::GenerateParameterAnnotation(
 }
 
 CodeItem* Collections::CreateCodeItem(const DexFile& dex_file,
-                                      const DexFile::CodeItem& disk_code_item, uint32_t offset) {
-  CodeItemDebugInfoAccessor accessor(dex_file, &disk_code_item);
+                                      const DexFile::CodeItem& disk_code_item,
+                                      uint32_t offset,
+                                      uint32_t dex_method_index) {
+  CodeItemDebugInfoAccessor accessor(dex_file, &disk_code_item, dex_method_index);
   const uint16_t registers_size = accessor.RegistersSize();
   const uint16_t ins_size = accessor.InsSize();
   const uint16_t outs_size = accessor.OutsSize();
@@ -705,7 +707,10 @@ MethodItem* Collections::GenerateMethodItem(const DexFile& dex_file, ClassDataIt
   DebugInfoItem* debug_info = nullptr;
   if (disk_code_item != nullptr) {
     if (code_item == nullptr) {
-      code_item = CreateCodeItem(dex_file, *disk_code_item, cdii.GetMethodCodeItemOffset());
+      code_item = CreateCodeItem(dex_file,
+                                 *disk_code_item,
+                                 cdii.GetMethodCodeItemOffset(),
+                                 cdii.GetMemberIndex());
     }
     debug_info = code_item->DebugInfo();
   }

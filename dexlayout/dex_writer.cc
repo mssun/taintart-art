@@ -30,25 +30,6 @@
 
 namespace art {
 
-static constexpr uint32_t kDataSectionAlignment = sizeof(uint32_t) * 2;
-static constexpr uint32_t kDexSectionWordAlignment = 4;
-
-static constexpr uint32_t SectionAlignment(DexFile::MapItemType type) {
-  switch (type) {
-    case DexFile::kDexTypeClassDataItem:
-    case DexFile::kDexTypeStringDataItem:
-    case DexFile::kDexTypeDebugInfoItem:
-    case DexFile::kDexTypeAnnotationItem:
-    case DexFile::kDexTypeEncodedArrayItem:
-      return alignof(uint8_t);
-
-    default:
-      // All other sections are kDexAlignedSection.
-      return kDexSectionWordAlignment;
-  }
-}
-
-
 size_t EncodeIntValue(int32_t value, uint8_t* buffer) {
   size_t length = 0;
   if (value >= 0) {
@@ -526,69 +507,96 @@ uint32_t DexWriter::WriteDebugInfoItems(uint32_t offset) {
   return offset - start;
 }
 
+uint32_t DexWriter::WriteCodeItemPostInstructionData(dex_ir::CodeItem* code_item,
+                                                     uint32_t offset,
+                                                     bool reserve_only) {
+  const uint32_t start_offset = offset;
+  if (code_item->TriesSize() != 0) {
+    // Make sure the try items are properly aligned.
+    offset = RoundUp(offset, kDexTryItemAlignment);
+    // Write try items.
+    for (std::unique_ptr<const dex_ir::TryItem>& try_item : *code_item->Tries()) {
+      DexFile::TryItem disk_try_item;
+      if (!reserve_only) {
+        disk_try_item.start_addr_ = try_item->StartAddr();
+        disk_try_item.insn_count_ = try_item->InsnCount();
+        disk_try_item.handler_off_ = try_item->GetHandlers()->GetListOffset();
+      }
+      offset += Write(&disk_try_item, sizeof(disk_try_item), offset);
+    }
+    size_t max_offset = offset;
+    // Leave offset pointing to the end of the try items.
+    UNUSED(WriteUleb128(code_item->Handlers()->size(), offset));
+    for (std::unique_ptr<const dex_ir::CatchHandler>& handlers : *code_item->Handlers()) {
+      size_t list_offset = offset + handlers->GetListOffset();
+      uint32_t size = handlers->HasCatchAll() ? (handlers->GetHandlers()->size() - 1) * -1 :
+          handlers->GetHandlers()->size();
+      list_offset += WriteSleb128(size, list_offset);
+      for (std::unique_ptr<const dex_ir::TypeAddrPair>& handler : *handlers->GetHandlers()) {
+        if (handler->GetTypeId() != nullptr) {
+          list_offset += WriteUleb128(handler->GetTypeId()->GetIndex(), list_offset);
+        }
+        list_offset += WriteUleb128(handler->GetAddress(), list_offset);
+      }
+      // TODO: Clean this up to write the handlers in address order.
+      max_offset = std::max(max_offset, list_offset);
+    }
+    offset = max_offset;
+  }
+
+  return offset - start_offset;
+}
+
+uint32_t DexWriter::WriteCodeItem(dex_ir::CodeItem* code_item,
+                                  uint32_t offset,
+                                  bool reserve_only) {
+  DCHECK(code_item != nullptr);
+  const uint32_t start_offset = offset;
+  offset = RoundUp(offset, SectionAlignment(DexFile::kDexTypeCodeItem));
+  ProcessOffset(&offset, code_item);
+
+  StandardDexFile::CodeItem disk_code_item;
+  if (!reserve_only) {
+    disk_code_item.registers_size_ = code_item->RegistersSize();
+    disk_code_item.ins_size_ = code_item->InsSize();
+    disk_code_item.outs_size_ = code_item->OutsSize();
+    disk_code_item.tries_size_ = code_item->TriesSize();
+    disk_code_item.debug_info_off_ = code_item->DebugInfo() == nullptr
+        ? 0
+        : code_item->DebugInfo()->GetOffset();
+    disk_code_item.insns_size_in_code_units_ = code_item->InsnsSize();
+  }
+  // Avoid using sizeof so that we don't write the fake instruction array at the end of the code
+  // item.
+  offset += Write(&disk_code_item,
+                  OFFSETOF_MEMBER(StandardDexFile::CodeItem, insns_),
+                  offset);
+  // Write the instructions.
+  offset += Write(code_item->Insns(), code_item->InsnsSize() * sizeof(uint16_t), offset);
+  // Write the post instruction data.
+  offset += WriteCodeItemPostInstructionData(code_item, offset, reserve_only);
+  return offset - start_offset;
+}
+
 uint32_t DexWriter::WriteCodeItems(uint32_t offset, bool reserve_only) {
   DexLayoutSection* code_section = nullptr;
   if (!reserve_only && dex_layout_ != nullptr) {
     code_section = &dex_layout_->GetSections().sections_[static_cast<size_t>(
         DexLayoutSections::SectionType::kSectionTypeCode)];
   }
-  uint16_t uint16_buffer[4] = {};
-  uint32_t uint32_buffer[2] = {};
   uint32_t start = offset;
   for (auto& code_item : header_->GetCollections().CodeItems()) {
-    offset = RoundUp(offset, SectionAlignment(DexFile::kDexTypeCodeItem));
-    ProcessOffset(&offset, code_item.get());
-    if (!reserve_only) {
-      uint16_buffer[0] = code_item->RegistersSize();
-      uint16_buffer[1] = code_item->InsSize();
-      uint16_buffer[2] = code_item->OutsSize();
-      uint16_buffer[3] = code_item->TriesSize();
-      uint32_buffer[0] = code_item->DebugInfo() == nullptr ? 0 :
-          code_item->DebugInfo()->GetOffset();
-      uint32_buffer[1] = code_item->InsnsSize();
-      // Only add the section hotness info once.
-      if (code_section != nullptr) {
-        auto it = dex_layout_->LayoutHotnessInfo().code_item_layout_.find(code_item.get());
-        if (it != dex_layout_->LayoutHotnessInfo().code_item_layout_.end()) {
-          code_section->parts_[static_cast<size_t>(it->second)].CombineSection(
-              code_item->GetOffset(), code_item->GetOffset() + code_item->GetSize());
-        }
+    const size_t code_item_size = WriteCodeItem(code_item.get(), offset, reserve_only);
+    // Only add the section hotness info once.
+    if (!reserve_only && code_section != nullptr) {
+      auto it = dex_layout_->LayoutHotnessInfo().code_item_layout_.find(code_item.get());
+      if (it != dex_layout_->LayoutHotnessInfo().code_item_layout_.end()) {
+        code_section->parts_[static_cast<size_t>(it->second)].CombineSection(
+            offset,
+            offset + code_item_size);
       }
     }
-    offset += Write(uint16_buffer, 4 * sizeof(uint16_t), offset);
-    offset += Write(uint32_buffer, 2 * sizeof(uint32_t), offset);
-    offset += Write(code_item->Insns(), code_item->InsnsSize() * sizeof(uint16_t), offset);
-    if (code_item->TriesSize() != 0) {
-      if (code_item->InsnsSize() % 2 != 0) {
-        uint16_t padding[1] = { 0 };
-        offset += Write(padding, sizeof(uint16_t), offset);
-      }
-      uint32_t start_addr[1];
-      uint16_t insn_count_and_handler_off[2];
-      for (std::unique_ptr<const dex_ir::TryItem>& try_item : *code_item->Tries()) {
-        start_addr[0] = try_item->StartAddr();
-        insn_count_and_handler_off[0] = try_item->InsnCount();
-        insn_count_and_handler_off[1] = try_item->GetHandlers()->GetListOffset();
-        offset += Write(start_addr, sizeof(uint32_t), offset);
-        offset += Write(insn_count_and_handler_off, 2 * sizeof(uint16_t), offset);
-      }
-      // Leave offset pointing to the end of the try items.
-      UNUSED(WriteUleb128(code_item->Handlers()->size(), offset));
-      for (std::unique_ptr<const dex_ir::CatchHandler>& handlers : *code_item->Handlers()) {
-        size_t list_offset = offset + handlers->GetListOffset();
-        uint32_t size = handlers->HasCatchAll() ? (handlers->GetHandlers()->size() - 1) * -1 :
-            handlers->GetHandlers()->size();
-        list_offset += WriteSleb128(size, list_offset);
-        for (std::unique_ptr<const dex_ir::TypeAddrPair>& handler : *handlers->GetHandlers()) {
-          if (handler->GetTypeId() != nullptr) {
-            list_offset += WriteUleb128(handler->GetTypeId()->GetIndex(), list_offset);
-          }
-          list_offset += WriteUleb128(handler->GetAddress(), list_offset);
-        }
-      }
-    }
-    // TODO: Clean this up to properly calculate the size instead of assuming it doesn't change.
-    offset = code_item->GetOffset() + code_item->GetSize();
+    offset += code_item_size;
   }
 
   if (compute_offsets_ && start != offset) {
