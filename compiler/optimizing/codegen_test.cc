@@ -74,8 +74,8 @@ static ::std::vector<CodegenTargetConfig> GetTargetConfigs() {
 
 class CodegenTest : public OptimizingUnitTest {
  protected:
-  void TestCode(const uint16_t* data, bool has_result = false, int32_t expected = 0);
-  void TestCodeLong(const uint16_t* data, bool has_result, int64_t expected);
+  void TestCode(const std::vector<uint16_t>& data, bool has_result = false, int32_t expected = 0);
+  void TestCodeLong(const std::vector<uint16_t>& data, bool has_result, int64_t expected);
   void TestComparison(IfCondition condition,
                       int64_t i,
                       int64_t j,
@@ -83,7 +83,7 @@ class CodegenTest : public OptimizingUnitTest {
                       const CodegenTargetConfig target_config);
 };
 
-void CodegenTest::TestCode(const uint16_t* data, bool has_result, int32_t expected) {
+void CodegenTest::TestCode(const std::vector<uint16_t>& data, bool has_result, int32_t expected) {
   for (const CodegenTargetConfig& target_config : GetTargetConfigs()) {
     ResetPoolAndAllocator();
     HGraph* graph = CreateCFG(data);
@@ -93,7 +93,8 @@ void CodegenTest::TestCode(const uint16_t* data, bool has_result, int32_t expect
   }
 }
 
-void CodegenTest::TestCodeLong(const uint16_t* data, bool has_result, int64_t expected) {
+void CodegenTest::TestCodeLong(const std::vector<uint16_t>& data,
+                               bool has_result, int64_t expected) {
   for (const CodegenTargetConfig& target_config : GetTargetConfigs()) {
     ResetPoolAndAllocator();
     HGraph* graph = CreateCFG(data, DataType::Type::kInt64);
@@ -104,12 +105,12 @@ void CodegenTest::TestCodeLong(const uint16_t* data, bool has_result, int64_t ex
 }
 
 TEST_F(CodegenTest, ReturnVoid) {
-  const uint16_t data[] = ZERO_REGISTER_CODE_ITEM(Instruction::RETURN_VOID);
+  const std::vector<uint16_t> data = ZERO_REGISTER_CODE_ITEM(Instruction::RETURN_VOID);
   TestCode(data);
 }
 
 TEST_F(CodegenTest, CFG1) {
-  const uint16_t data[] = ZERO_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ZERO_REGISTER_CODE_ITEM(
     Instruction::GOTO | 0x100,
     Instruction::RETURN_VOID);
 
@@ -117,7 +118,7 @@ TEST_F(CodegenTest, CFG1) {
 }
 
 TEST_F(CodegenTest, CFG2) {
-  const uint16_t data[] = ZERO_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ZERO_REGISTER_CODE_ITEM(
     Instruction::GOTO | 0x100,
     Instruction::GOTO | 0x100,
     Instruction::RETURN_VOID);
@@ -126,21 +127,21 @@ TEST_F(CodegenTest, CFG2) {
 }
 
 TEST_F(CodegenTest, CFG3) {
-  const uint16_t data1[] = ZERO_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data1 = ZERO_REGISTER_CODE_ITEM(
     Instruction::GOTO | 0x200,
     Instruction::RETURN_VOID,
     Instruction::GOTO | 0xFF00);
 
   TestCode(data1);
 
-  const uint16_t data2[] = ZERO_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data2 = ZERO_REGISTER_CODE_ITEM(
     Instruction::GOTO_16, 3,
     Instruction::RETURN_VOID,
     Instruction::GOTO_16, 0xFFFF);
 
   TestCode(data2);
 
-  const uint16_t data3[] = ZERO_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data3 = ZERO_REGISTER_CODE_ITEM(
     Instruction::GOTO_32, 4, 0,
     Instruction::RETURN_VOID,
     Instruction::GOTO_32, 0xFFFF, 0xFFFF);
@@ -149,7 +150,7 @@ TEST_F(CodegenTest, CFG3) {
 }
 
 TEST_F(CodegenTest, CFG4) {
-  const uint16_t data[] = ZERO_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ZERO_REGISTER_CODE_ITEM(
     Instruction::RETURN_VOID,
     Instruction::GOTO | 0x100,
     Instruction::GOTO | 0xFE00);
@@ -158,7 +159,7 @@ TEST_F(CodegenTest, CFG4) {
 }
 
 TEST_F(CodegenTest, CFG5) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 3,
     Instruction::GOTO | 0x100,
@@ -168,7 +169,7 @@ TEST_F(CodegenTest, CFG5) {
 }
 
 TEST_F(CodegenTest, IntConstant) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::RETURN_VOID);
 
@@ -176,7 +177,7 @@ TEST_F(CodegenTest, IntConstant) {
 }
 
 TEST_F(CodegenTest, Return1) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::RETURN | 0);
 
@@ -184,7 +185,7 @@ TEST_F(CodegenTest, Return1) {
 }
 
 TEST_F(CodegenTest, Return2) {
-  const uint16_t data[] = TWO_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = TWO_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::CONST_4 | 0 | 1 << 8,
     Instruction::RETURN | 1 << 8);
@@ -193,7 +194,7 @@ TEST_F(CodegenTest, Return2) {
 }
 
 TEST_F(CodegenTest, Return3) {
-  const uint16_t data[] = TWO_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = TWO_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::CONST_4 | 1 << 8 | 1 << 12,
     Instruction::RETURN | 1 << 8);
@@ -202,7 +203,7 @@ TEST_F(CodegenTest, Return3) {
 }
 
 TEST_F(CodegenTest, ReturnIf1) {
-  const uint16_t data[] = TWO_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = TWO_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::CONST_4 | 1 << 8 | 1 << 12,
     Instruction::IF_EQ, 3,
@@ -213,7 +214,7 @@ TEST_F(CodegenTest, ReturnIf1) {
 }
 
 TEST_F(CodegenTest, ReturnIf2) {
-  const uint16_t data[] = TWO_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = TWO_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::CONST_4 | 1 << 8 | 1 << 12,
     Instruction::IF_EQ | 0 << 4 | 1 << 8, 3,
@@ -224,17 +225,17 @@ TEST_F(CodegenTest, ReturnIf2) {
 }
 
 // Exercise bit-wise (one's complement) not-int instruction.
-#define NOT_INT_TEST(TEST_NAME, INPUT, EXPECTED_OUTPUT) \
-TEST_F(CodegenTest, TEST_NAME) {                        \
-  const int32_t input = INPUT;                          \
-  const uint16_t input_lo = Low16Bits(input);           \
-  const uint16_t input_hi = High16Bits(input);          \
-  const uint16_t data[] = TWO_REGISTERS_CODE_ITEM(      \
-      Instruction::CONST | 0 << 8, input_lo, input_hi,  \
-      Instruction::NOT_INT | 1 << 8 | 0 << 12 ,         \
-      Instruction::RETURN | 1 << 8);                    \
-                                                        \
-  TestCode(data, true, EXPECTED_OUTPUT);                \
+#define NOT_INT_TEST(TEST_NAME, INPUT, EXPECTED_OUTPUT)           \
+TEST_F(CodegenTest, TEST_NAME) {                                  \
+  const int32_t input = INPUT;                                    \
+  const uint16_t input_lo = Low16Bits(input);                     \
+  const uint16_t input_hi = High16Bits(input);                    \
+  const std::vector<uint16_t> data = TWO_REGISTERS_CODE_ITEM(     \
+      Instruction::CONST | 0 << 8, input_lo, input_hi,            \
+      Instruction::NOT_INT | 1 << 8 | 0 << 12 ,                   \
+      Instruction::RETURN | 1 << 8);                              \
+                                                                  \
+  TestCode(data, true, EXPECTED_OUTPUT);                          \
 }
 
 NOT_INT_TEST(ReturnNotIntMinus2, -2, 1)
@@ -256,7 +257,7 @@ TEST_F(CodegenTest, TEST_NAME) {                                         \
   const uint16_t word1 = High16Bits(Low32Bits(input));                   \
   const uint16_t word2 = Low16Bits(High32Bits(input));                   \
   const uint16_t word3 = High16Bits(High32Bits(input)); /* MSW. */       \
-  const uint16_t data[] = FOUR_REGISTERS_CODE_ITEM(                      \
+  const std::vector<uint16_t> data = FOUR_REGISTERS_CODE_ITEM(           \
       Instruction::CONST_WIDE | 0 << 8, word0, word1, word2, word3,      \
       Instruction::NOT_LONG | 2 << 8 | 0 << 12,                          \
       Instruction::RETURN_WIDE | 2 << 8);                                \
@@ -306,7 +307,7 @@ TEST_F(CodegenTest, IntToLongOfLongToInt) {
   const uint16_t word1 = High16Bits(Low32Bits(input));
   const uint16_t word2 = Low16Bits(High32Bits(input));
   const uint16_t word3 = High16Bits(High32Bits(input));  // MSW.
-  const uint16_t data[] = FIVE_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = FIVE_REGISTERS_CODE_ITEM(
       Instruction::CONST_WIDE | 0 << 8, word0, word1, word2, word3,
       Instruction::CONST_WIDE | 2 << 8, 1, 0, 0, 0,
       Instruction::ADD_LONG | 0, 0 << 8 | 2,             // v0 <- 2^32 + 1
@@ -318,7 +319,7 @@ TEST_F(CodegenTest, IntToLongOfLongToInt) {
 }
 
 TEST_F(CodegenTest, ReturnAdd1) {
-  const uint16_t data[] = TWO_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = TWO_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 3 << 12 | 0,
     Instruction::CONST_4 | 4 << 12 | 1 << 8,
     Instruction::ADD_INT, 1 << 8 | 0,
@@ -328,7 +329,7 @@ TEST_F(CodegenTest, ReturnAdd1) {
 }
 
 TEST_F(CodegenTest, ReturnAdd2) {
-  const uint16_t data[] = TWO_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = TWO_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 3 << 12 | 0,
     Instruction::CONST_4 | 4 << 12 | 1 << 8,
     Instruction::ADD_INT_2ADDR | 1 << 12,
@@ -338,7 +339,7 @@ TEST_F(CodegenTest, ReturnAdd2) {
 }
 
 TEST_F(CodegenTest, ReturnAdd3) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 4 << 12 | 0 << 8,
     Instruction::ADD_INT_LIT8, 3 << 8 | 0,
     Instruction::RETURN);
@@ -347,7 +348,7 @@ TEST_F(CodegenTest, ReturnAdd3) {
 }
 
 TEST_F(CodegenTest, ReturnAdd4) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 4 << 12 | 0 << 8,
     Instruction::ADD_INT_LIT16, 3,
     Instruction::RETURN);
@@ -356,7 +357,7 @@ TEST_F(CodegenTest, ReturnAdd4) {
 }
 
 TEST_F(CodegenTest, ReturnMulInt) {
-  const uint16_t data[] = TWO_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = TWO_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 3 << 12 | 0,
     Instruction::CONST_4 | 4 << 12 | 1 << 8,
     Instruction::MUL_INT, 1 << 8 | 0,
@@ -366,7 +367,7 @@ TEST_F(CodegenTest, ReturnMulInt) {
 }
 
 TEST_F(CodegenTest, ReturnMulInt2addr) {
-  const uint16_t data[] = TWO_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = TWO_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 3 << 12 | 0,
     Instruction::CONST_4 | 4 << 12 | 1 << 8,
     Instruction::MUL_INT_2ADDR | 1 << 12,
@@ -376,7 +377,7 @@ TEST_F(CodegenTest, ReturnMulInt2addr) {
 }
 
 TEST_F(CodegenTest, ReturnMulLong) {
-  const uint16_t data[] = FOUR_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = FOUR_REGISTERS_CODE_ITEM(
     Instruction::CONST_WIDE | 0 << 8, 3, 0, 0, 0,
     Instruction::CONST_WIDE | 2 << 8, 4, 0, 0, 0,
     Instruction::MUL_LONG, 2 << 8 | 0,
@@ -386,7 +387,7 @@ TEST_F(CodegenTest, ReturnMulLong) {
 }
 
 TEST_F(CodegenTest, ReturnMulLong2addr) {
-  const uint16_t data[] = FOUR_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = FOUR_REGISTERS_CODE_ITEM(
     Instruction::CONST_WIDE | 0 << 8, 3, 0, 0, 0,
     Instruction::CONST_WIDE | 2 << 8, 4, 0, 0, 0,
     Instruction::MUL_LONG_2ADDR | 2 << 12,
@@ -396,7 +397,7 @@ TEST_F(CodegenTest, ReturnMulLong2addr) {
 }
 
 TEST_F(CodegenTest, ReturnMulIntLit8) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 4 << 12 | 0 << 8,
     Instruction::MUL_INT_LIT8, 3 << 8 | 0,
     Instruction::RETURN);
@@ -405,7 +406,7 @@ TEST_F(CodegenTest, ReturnMulIntLit8) {
 }
 
 TEST_F(CodegenTest, ReturnMulIntLit16) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 4 << 12 | 0 << 8,
     Instruction::MUL_INT_LIT16, 3,
     Instruction::RETURN);
@@ -578,7 +579,7 @@ TEST_F(CodegenTest, MaterializedCondition2) {
 }
 
 TEST_F(CodegenTest, ReturnDivIntLit8) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 4 << 12 | 0 << 8,
     Instruction::DIV_INT_LIT8, 3 << 8 | 0,
     Instruction::RETURN);
@@ -587,7 +588,7 @@ TEST_F(CodegenTest, ReturnDivIntLit8) {
 }
 
 TEST_F(CodegenTest, ReturnDivInt2Addr) {
-  const uint16_t data[] = TWO_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = TWO_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 4 << 12 | 0,
     Instruction::CONST_4 | 2 << 12 | 1 << 8,
     Instruction::DIV_INT_2ADDR | 1 << 12,

@@ -33,6 +33,8 @@ class StandardDexFile : public DexFile {
   };
 
   struct CodeItem : public DexFile::CodeItem {
+    static constexpr size_t kAlignment = 4;
+
    private:
     // TODO: Insert standard dex specific fields here.
     friend class StandardDexFile;
@@ -80,6 +82,7 @@ class StandardDexFile : public DexFile {
   friend class DexFileVerifierTest;
 
   ART_FRIEND_TEST(ClassLinkerTest, RegisterDexFileName);  // for constructor
+  friend class OptimizingUnitTestHelper;  // for constructor
 
   DISALLOW_COPY_AND_ASSIGN(StandardDexFile);
 };
