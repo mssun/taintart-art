@@ -35,11 +35,12 @@ namespace art {
 class LinearizeTest : public OptimizingUnitTest {
  protected:
   template <size_t number_of_blocks>
-  void TestCode(const uint16_t* data, const uint32_t (&expected_order)[number_of_blocks]);
+  void TestCode(const std::vector<uint16_t>& data,
+                const uint32_t (&expected_order)[number_of_blocks]);
 };
 
 template <size_t number_of_blocks>
-void LinearizeTest::TestCode(const uint16_t* data,
+void LinearizeTest::TestCode(const std::vector<uint16_t>& data,
                              const uint32_t (&expected_order)[number_of_blocks]) {
   HGraph* graph = CreateCFG(data);
   std::unique_ptr<const X86InstructionSetFeatures> features_x86(
@@ -68,7 +69,7 @@ TEST_F(LinearizeTest, CFG1) {
   //               + /   \  +
   //           Block4   Block8
 
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 5,
     Instruction::IF_EQ, 0xFFFE,
@@ -93,7 +94,7 @@ TEST_F(LinearizeTest, CFG2) {
   //               + /   \  +
   //           Block5   Block8
 
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 3,
     Instruction::RETURN_VOID,
@@ -119,7 +120,7 @@ TEST_F(LinearizeTest, CFG3) {
   //           Block6  + Block9
   //             |     +
   //           Block4 ++
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 4,
     Instruction::RETURN_VOID,
@@ -149,7 +150,7 @@ TEST_F(LinearizeTest, CFG4) {
   //                  + /    \   +
   //                Block5  Block11
   */
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 7,
     Instruction::IF_EQ, 0xFFFE,
@@ -179,7 +180,7 @@ TEST_F(LinearizeTest, CFG5) {
   //                   +/    \   +
   //                Block6  Block11
   */
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 3,
     Instruction::RETURN_VOID,
@@ -205,7 +206,7 @@ TEST_F(LinearizeTest, CFG6) {
   //       Block5 <- Block9 Block6  +
   //         |
   //       Block7
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::GOTO | 0x0100,
     Instruction::IF_EQ, 0x0004,
@@ -233,7 +234,7 @@ TEST_F(LinearizeTest, CFG7) {
   //     |
   //   Block7
   //
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::GOTO | 0x0100,
     Instruction::IF_EQ, 0x0005,

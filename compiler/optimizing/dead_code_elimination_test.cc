@@ -29,12 +29,12 @@ namespace art {
 
 class DeadCodeEliminationTest : public OptimizingUnitTest {
  protected:
-  void TestCode(const uint16_t* data,
+  void TestCode(const std::vector<uint16_t>& data,
                 const std::string& expected_before,
                 const std::string& expected_after);
 };
 
-void DeadCodeEliminationTest::TestCode(const uint16_t* data,
+void DeadCodeEliminationTest::TestCode(const std::vector<uint16_t>& data,
                                        const std::string& expected_before,
                                        const std::string& expected_after) {
   HGraph* graph = CreateCFG(data);
@@ -73,7 +73,7 @@ void DeadCodeEliminationTest::TestCode(const uint16_t* data,
  *     return-void              7.      return
  */
 TEST_F(DeadCodeEliminationTest, AdditionAndConditionalJump) {
-  const uint16_t data[] = THREE_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = THREE_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 1 << 8 | 1 << 12,
     Instruction::CONST_4 | 0 << 8 | 0 << 12,
     Instruction::IF_GEZ | 1 << 8, 3,
@@ -135,7 +135,7 @@ TEST_F(DeadCodeEliminationTest, AdditionAndConditionalJump) {
  *     return                   13.     return-void
  */
 TEST_F(DeadCodeEliminationTest, AdditionsAndInconditionalJumps) {
-  const uint16_t data[] = THREE_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = THREE_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 0 << 8 | 0 << 12,
     Instruction::CONST_4 | 1 << 8 | 1 << 12,
     Instruction::ADD_INT | 2 << 8, 0 | 1 << 8,

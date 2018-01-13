@@ -31,10 +31,10 @@ namespace art {
 
 class LiveRangesTest : public OptimizingUnitTest {
  public:
-  HGraph* BuildGraph(const uint16_t* data);
+  HGraph* BuildGraph(const std::vector<uint16_t>& data);
 };
 
-HGraph* LiveRangesTest::BuildGraph(const uint16_t* data) {
+HGraph* LiveRangesTest::BuildGraph(const std::vector<uint16_t>& data) {
   HGraph* graph = CreateCFG(data);
   // Suspend checks implementation may change in the future, and this test relies
   // on how instructions are ordered.
@@ -57,7 +57,7 @@ TEST_F(LiveRangesTest, CFG1) {
    *           |
    *       12: exit
    */
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::RETURN);
 
@@ -102,7 +102,7 @@ TEST_F(LiveRangesTest, CFG2) {
    *         |
    *       26: exit
    */
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 3,
     Instruction::GOTO | 0x100,
@@ -151,7 +151,7 @@ TEST_F(LiveRangesTest, CFG3) {
    *         |
    *       28: exit
    */
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 3,
     Instruction::CONST_4 | 4 << 12 | 0,
@@ -225,7 +225,7 @@ TEST_F(LiveRangesTest, Loop1) {
    *       30: exit
    */
 
-  const uint16_t data[] = TWO_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = TWO_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 4,
     Instruction::CONST_4 | 4 << 12 | 0,
@@ -304,7 +304,7 @@ TEST_F(LiveRangesTest, Loop2) {
    * We want to make sure the phi at 10 has a lifetime hole after the add at 20.
    */
 
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 6,
     Instruction::ADD_INT, 0, 0,
@@ -378,7 +378,7 @@ TEST_F(LiveRangesTest, CFG4) {
    *
    * We want to make sure the constant0 has a lifetime hole after the 16: add.
    */
-  const uint16_t data[] = TWO_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = TWO_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::CONST_4 | 4 << 12 | 1 << 8,
     Instruction::IF_EQ, 5,
