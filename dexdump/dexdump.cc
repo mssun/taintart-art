@@ -1187,7 +1187,7 @@ static void dumpBytecodes(const DexFile* pDexFile, u4 idx,
  */
 static void dumpCode(const DexFile* pDexFile, u4 idx, u4 flags,
                      const DexFile::CodeItem* pCode, u4 codeOffset) {
-  CodeItemDebugInfoAccessor accessor(*pDexFile, pCode, pDexFile->GetDebugInfoOffset(pCode));
+  CodeItemDebugInfoAccessor accessor(*pDexFile, pCode, idx);
 
   fprintf(gOutFile, "      registers     : %d\n", accessor.RegistersSize());
   fprintf(gOutFile, "      ins           : %d\n", accessor.InsSize());

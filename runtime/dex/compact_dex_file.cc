@@ -63,4 +63,21 @@ uint32_t CompactDexFile::GetCodeItemSize(const DexFile::CodeItem& item) const {
       reinterpret_cast<uintptr_t>(&item);
 }
 
+CompactDexFile::CompactDexFile(const uint8_t* base,
+                               size_t size,
+                               const std::string& location,
+                               uint32_t location_checksum,
+                               const OatDexFile* oat_dex_file,
+                               DexFileContainer* container)
+    : DexFile(base,
+              size,
+              location,
+              location_checksum,
+              oat_dex_file,
+              container,
+              /*is_compact_dex*/ true),
+      debug_info_offsets_(Begin() + GetHeader().debug_info_offsets_pos_,
+                          GetHeader().debug_info_base_,
+                          GetHeader().debug_info_offsets_table_offset_) {}
+
 }  // namespace art

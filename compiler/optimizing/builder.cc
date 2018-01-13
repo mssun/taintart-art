@@ -43,7 +43,7 @@ HGraphBuilder::HGraphBuilder(HGraph* graph,
                              CompilerDriver* driver,
                              CodeGenerator* code_generator,
                              OptimizingCompilerStats* compiler_stats,
-                             const uint8_t* interpreter_metadata,
+                             ArrayRef<const uint8_t> interpreter_metadata,
                              VariableSizedHandleScope* handles)
     : graph_(graph),
       dex_file_(&graph->GetDexFile()),
@@ -70,7 +70,6 @@ HGraphBuilder::HGraphBuilder(HGraph* graph,
       compiler_driver_(nullptr),
       code_generator_(nullptr),
       compilation_stats_(nullptr),
-      interpreter_metadata_(nullptr),
       handles_(handles),
       return_type_(return_type) {}
 
