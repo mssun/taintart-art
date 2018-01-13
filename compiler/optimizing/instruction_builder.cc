@@ -49,7 +49,7 @@ HInstructionBuilder::HInstructionBuilder(HGraph* graph,
                                          const DexCompilationUnit* outer_compilation_unit,
                                          CompilerDriver* compiler_driver,
                                          CodeGenerator* code_generator,
-                                         const uint8_t* interpreter_metadata,
+                                         ArrayRef<const uint8_t> interpreter_metadata,
                                          OptimizingCompilerStats* compiler_stats,
                                          VariableSizedHandleScope* handles,
                                          ScopedArenaAllocator* local_allocator)

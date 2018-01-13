@@ -115,10 +115,6 @@ class OatFile {
                                const char* abs_dex_location,
                                std::string* error_msg);
 
-  // Return the actual debug info offset for an offset that might be actually pointing to
-  // dequickening info. The returned debug info offset is the one originally in the the dex file.
-  static uint32_t GetDebugInfoOffset(const DexFile& dex_file, uint32_t debug_info_off);
-
   virtual ~OatFile();
 
   bool IsExecutable() const {

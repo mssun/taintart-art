@@ -577,14 +577,14 @@ bool ArtMethod::EqualParameters(Handle<mirror::ObjectArray<mirror::Class>> param
   return true;
 }
 
-const uint8_t* ArtMethod::GetQuickenedInfo() {
+ArrayRef<const uint8_t> ArtMethod::GetQuickenedInfo() {
   const DexFile& dex_file = GetDeclaringClass()->GetDexFile();
   const OatFile::OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
   if (oat_dex_file == nullptr || (oat_dex_file->GetOatFile() == nullptr)) {
-    return nullptr;
+    return ArrayRef<const uint8_t>();
   }
-  return oat_dex_file->GetOatFile()->GetVdexFile()->GetQuickenedInfoOf(
-      dex_file, GetCodeItemOffset());
+  return oat_dex_file->GetOatFile()->GetVdexFile()->GetQuickenedInfoOf(dex_file,
+                                                                       GetDexMethodIndex());
 }
 
 const OatQuickMethodHeader* ArtMethod::GetOatQuickMethodHeader(uintptr_t pc) {

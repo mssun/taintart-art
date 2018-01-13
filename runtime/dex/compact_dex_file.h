@@ -19,6 +19,7 @@
 
 #include "base/casts.h"
 #include "dex_file.h"
+#include "dex/compact_dex_debug_info.h"
 
 namespace art {
 
@@ -41,13 +42,45 @@ class CompactDexFile : public DexFile {
    private:
     uint32_t feature_flags_ = 0u;
 
+    // Position in the compact dex file for the debug info table data starts.
+    uint32_t debug_info_offsets_pos_ = 0u;
+
+    // Offset into the debug info table data where the lookup table is.
+    uint32_t debug_info_offsets_table_offset_ = 0u;
+
+    // Base offset of where debug info starts in the dex file.
+    uint32_t debug_info_base_ = 0u;
+
+    friend class CompactDexFile;
     friend class CompactDexWriter;
   };
 
+  // Like the standard code item except without a debug info offset.
   struct CodeItem : public DexFile::CodeItem {
+    static constexpr size_t kAlignment = sizeof(uint32_t);
+
    private:
-    // TODO: Insert compact dex specific fields here.
+    CodeItem() = default;
+
+    uint16_t registers_size_;            // the number of registers used by this code
+                                         //   (locals + parameters)
+    uint16_t ins_size_;                  // the number of words of incoming arguments to the method
+                                         //   that this code is for
+    uint16_t outs_size_;                 // the number of words of outgoing argument space required
+                                         //   by this code for method invocation
+    uint16_t tries_size_;                // the number of try_items for this instance. If non-zero,
+                                         //   then these appear as the tries array just after the
+                                         //   insns in this instance.
+
+    uint32_t insns_size_in_code_units_;  // size of the insns array, in 2 byte code units
+    uint16_t insns_[1];                  // actual array of bytecode.
+
+    ART_FRIEND_TEST(CodeItemAccessorsTest, TestDexInstructionsAccessor);
+    friend class CodeItemDataAccessor;
+    friend class CodeItemDebugInfoAccessor;
+    friend class CodeItemInstructionAccessor;
     friend class CompactDexFile;
+    friend class CompactDexWriter;
     DISALLOW_COPY_AND_ASSIGN(CodeItem);
   };
 
@@ -73,25 +106,22 @@ class CompactDexFile : public DexFile {
 
   uint32_t GetCodeItemSize(const DexFile::CodeItem& item) const OVERRIDE;
 
+  uint32_t GetDebugInfoOffset(uint32_t dex_method_index) const {
+    return debug_info_offsets_.GetDebugInfoOffset(dex_method_index);
+  }
+
  private:
-  // Not supported yet.
   CompactDexFile(const uint8_t* base,
                  size_t size,
                  const std::string& location,
                  uint32_t location_checksum,
                  const OatDexFile* oat_dex_file,
-                 DexFileContainer* container)
-      : DexFile(base,
-                size,
-                location,
-                location_checksum,
-                oat_dex_file,
-                container,
-                /*is_compact_dex*/ true) {}
+                 DexFileContainer* container);
+
+  CompactDexDebugInfoOffsetTable::Accessor debug_info_offsets_;
 
   friend class DexFile;
   friend class DexFileLoader;
-
   DISALLOW_COPY_AND_ASSIGN(CompactDexFile);
 };
 
