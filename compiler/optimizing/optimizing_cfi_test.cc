@@ -41,7 +41,7 @@ namespace art {
 // Run the tests only on host.
 #ifndef ART_TARGET_ANDROID
 
-class OptimizingCFITest : public CFITest {
+class OptimizingCFITest : public CFITest, public OptimizingUnitTestHelper {
  public:
   // Enable this flag to generate the expected outputs.
   static constexpr bool kGenerateExpected = false;
@@ -63,7 +63,7 @@ class OptimizingCFITest : public CFITest {
     // Setup simple context.
     std::string error;
     isa_features_ = InstructionSetFeatures::FromVariant(isa, "default", &error);
-    graph_ = CreateGraph(&pool_and_allocator_);
+    graph_ = CreateGraph();
     // Generate simple frame with some spills.
     code_gen_ = CodeGenerator::Create(graph_, isa, *isa_features_, opts_);
     code_gen_->GetAssembler()->cfi().SetEnabled(true);
