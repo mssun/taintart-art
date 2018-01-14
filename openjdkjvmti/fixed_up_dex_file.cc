@@ -30,6 +30,7 @@
  */
 
 #include "fixed_up_dex_file.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
 
@@ -62,8 +63,7 @@ static void DoDexUnquicken(const art::DexFile& new_dex_file, const art::DexFile&
   if (vdex == nullptr) {
     return;
   }
-  art::VdexFile::UnquickenDexFile(
-      new_dex_file, vdex->GetQuickeningInfo(), /* decompile_return_instruction */true);
+  vdex->UnquickenDexFile(new_dex_file, original_dex_file, /* decompile_return_instruction */true);
 }
 
 std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& original) {
@@ -72,7 +72,8 @@ std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& origi
   data.resize(original.Size());
   memcpy(data.data(), original.Begin(), original.Size());
   std::string error;
-  std::unique_ptr<const art::DexFile> new_dex_file(art::DexFileLoader::Open(
+  const art::ArtDexFileLoader dex_file_loader;
+  std::unique_ptr<const art::DexFile> new_dex_file(dex_file_loader.Open(
       data.data(),
       data.size(),
       /*location*/"Unquickening_dexfile.dex",
@@ -103,7 +104,7 @@ std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& origi
     // Overwrite the dex file stored in data with the new result.
     data.clear();
     data.insert(data.end(), mem_map->Begin(), mem_map->Begin() + dex_file_size);
-    new_dex_file = art::DexFileLoader::Open(
+    new_dex_file = dex_file_loader.Open(
         data.data(),
         data.size(),
         /*location*/"Unquickening_dexfile.dex",

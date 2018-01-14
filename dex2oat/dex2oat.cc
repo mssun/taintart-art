@@ -1807,9 +1807,7 @@ class Dex2Oat FINAL {
       // We do not decompile a RETURN_VOID_NO_BARRIER into a RETURN_VOID, as the quickening
       // optimization does not depend on the boot image (the optimization relies on not
       // having final fields in a class, which does not change for an app).
-      VdexFile::Unquicken(dex_files_,
-                          input_vdex_file_->GetQuickeningInfo(),
-                          /* decompile_return_instruction */ false);
+      input_vdex_file_->Unquicken(dex_files_, /* decompile_return_instruction */ false);
     } else {
       // Create the main VerifierDeps, here instead of in the compiler since we want to aggregate
       // the results for all the dex files, not just the results for the current dex file.
@@ -3063,9 +3061,9 @@ static dex2oat::ReturnCode Dex2oat(int argc, char** argv) {
 int main(int argc, char** argv) {
   int result = static_cast<int>(art::Dex2oat(argc, argv));
   // Everything was done, do an explicit exit here to avoid running Runtime destructors that take
-  // time (bug 10645725) unless we're a debug build or running on valgrind. Note: The Dex2Oat class
-  // should not destruct the runtime in this case.
-  if (!art::kIsDebugBuild && (RUNNING_ON_MEMORY_TOOL == 0)) {
+  // time (bug 10645725) unless we're a debug or instrumented build or running on valgrind. Note:
+  // The Dex2Oat class should not destruct the runtime in this case.
+  if (!art::kIsDebugBuild && !art::kIsPGOInstrumentation && (RUNNING_ON_MEMORY_TOOL == 0)) {
     _exit(result);
   }
   return result;

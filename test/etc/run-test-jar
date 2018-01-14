@@ -466,10 +466,9 @@ if [ "$USE_JVMTI" = "y" ]; then
     if  [[ "$TEST_IS_NDEBUG" = "y" ]]; then
       plugin=libopenjdkjvmti.so
     fi
+    # We used to add flags here that made the runtime debuggable but that is not
+    # needed anymore since the plugin can do it for us now.
     FLAGS="${FLAGS} -Xplugin:${plugin}"
-    FLAGS="${FLAGS} -Xcompiler-option --debuggable"
-    # Always make the compilation be debuggable.
-    COMPILE_FLAGS="${COMPILE_FLAGS} --debuggable"
   fi
 fi
 

@@ -33,6 +33,7 @@
 #include "class_table-inl.h"
 #include "compiled_method-inl.h"
 #include "debug/method_debug_info.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
 #include "dex/dex_file_types.h"
@@ -57,6 +58,7 @@
 #include "mirror/object-inl.h"
 #include "oat_quick_method_header.h"
 #include "os.h"
+#include "quicken_info.h"
 #include "safe_map.h"
 #include "scoped_thread_state_change-inl.h"
 #include "type_lookup_table.h"
@@ -2617,42 +2619,54 @@ bool OatWriter::WriteRodata(OutputStream* out) {
   return true;
 }
 
-class OatWriter::WriteQuickeningInfoMethodVisitor : public DexMethodVisitor {
+class OatWriter::WriteQuickeningInfoMethodVisitor {
  public:
-  WriteQuickeningInfoMethodVisitor(OatWriter* writer,
-                                   OutputStream* out,
-                                   uint32_t offset,
-                                   SafeMap<const uint8_t*, uint32_t>* offset_map)
-      : DexMethodVisitor(writer, offset),
-        out_(out),
-        written_bytes_(0u),
-        offset_map_(offset_map) {}
+  WriteQuickeningInfoMethodVisitor(OatWriter* writer, OutputStream* out)
+      : writer_(writer),
+        out_(out) {}
 
-  bool VisitMethod(size_t class_def_method_index ATTRIBUTE_UNUSED, const ClassDataItemIterator& it)
-      OVERRIDE {
-    uint32_t method_idx = it.GetMemberIndex();
-    CompiledMethod* compiled_method =
-        writer_->compiler_driver_->GetCompiledMethod(MethodReference(dex_file_, method_idx));
+  bool VisitDexMethods(const std::vector<const DexFile*>& dex_files) {
+    std::vector<uint8_t> empty_quicken_info;
+    {
+      // Since we need to be able to access by dex method index, put a one byte empty quicken info
+      // for any method that isn't quickened.
+      QuickenInfoTable::Builder empty_info(&empty_quicken_info, /*num_elements*/ 0u);
+      CHECK(!empty_quicken_info.empty());
+    }
+    for (const DexFile* dex_file : dex_files) {
+      std::vector<uint32_t>* const offsets =
+          &quicken_info_offset_indices_.Put(dex_file, std::vector<uint32_t>())->second;
 
-    if (HasQuickeningInfo(compiled_method)) {
-      ArrayRef<const uint8_t> map = compiled_method->GetVmapTable();
-      // Deduplication is already done on a pointer basis by the compiler driver,
-      // so we can simply compare the pointers to find out if things are duplicated.
-      if (offset_map_->find(map.data()) == offset_map_->end()) {
-        uint32_t length = map.size() * sizeof(map.front());
-        offset_map_->Put(map.data(), written_bytes_);
-        if (!out_->WriteFully(&length, sizeof(length)) ||
-            !out_->WriteFully(map.data(), length)) {
-          PLOG(ERROR) << "Failed to write quickening info for "
-                      << dex_file_->PrettyMethod(it.GetMemberIndex()) << " to "
-                      << out_->GetLocation();
+      // Every method needs an index in the table.
+      for (uint32_t method_idx = 0; method_idx < dex_file->NumMethodIds(); ++method_idx) {
+        ArrayRef<const uint8_t> map(empty_quicken_info);
+
+        // Use the existing quicken info if it exists.
+        MethodReference method_ref(dex_file, method_idx);
+        CompiledMethod* compiled_method = writer_->compiler_driver_->GetCompiledMethod(method_ref);
+        if (compiled_method != nullptr && HasQuickeningInfo(compiled_method)) {
+          map = compiled_method->GetVmapTable();
+        }
+
+        // The current approach prevents deduplication of quicken infos since each method index
+        // has one unique quicken info. Deduplication does not provide much savings for dex indices
+        // since they are rarely duplicated.
+        const uint32_t length = map.size() * sizeof(map.front());
+
+        // Record each index if required. written_bytes_ is the offset from the start of the
+        // quicken info data.
+        if (QuickenInfoOffsetTableAccessor::IsCoveredIndex(method_idx)) {
+          offsets->push_back(written_bytes_);
+        }
+
+        if (!out_->WriteFully(map.data(), length)) {
+          PLOG(ERROR) << "Failed to write quickening info for " << method_ref.PrettyMethod()
+                      << " to " << out_->GetLocation();
           return false;
         }
-        written_bytes_ += sizeof(length) + length;
-        offset_ += sizeof(length) + length;
+        written_bytes_ += length;
       }
     }
-
     return true;
   }
 
@@ -2660,71 +2674,59 @@ class OatWriter::WriteQuickeningInfoMethodVisitor : public DexMethodVisitor {
     return written_bytes_;
   }
 
+  SafeMap<const DexFile*, std::vector<uint32_t>>& GetQuickenInfoOffsetIndicies() {
+    return quicken_info_offset_indices_;
+  }
+
+
  private:
+  OatWriter* const writer_;
   OutputStream* const out_;
-  size_t written_bytes_;
-  // Maps quickening map to its offset in the file.
-  SafeMap<const uint8_t*, uint32_t>* offset_map_;
+  size_t written_bytes_ = 0u;
+  // Map of offsets for quicken info related to method indices.
+  SafeMap<const DexFile*, std::vector<uint32_t>> quicken_info_offset_indices_;
 };
 
-class OatWriter::WriteQuickeningIndicesMethodVisitor {
+class OatWriter::WriteQuickeningInfoOffsetsMethodVisitor {
  public:
-  WriteQuickeningIndicesMethodVisitor(OutputStream* out,
-                                      uint32_t quickening_info_bytes,
-                                      const SafeMap<const uint8_t*, uint32_t>& offset_map)
+  WriteQuickeningInfoOffsetsMethodVisitor(
+      OutputStream* out,
+      uint32_t start_offset,
+      SafeMap<const DexFile*, std::vector<uint32_t>>* quicken_info_offset_indices,
+      std::vector<uint32_t>* out_table_offsets)
       : out_(out),
-        quickening_info_bytes_(quickening_info_bytes),
-        written_bytes_(0u),
-        offset_map_(offset_map) {}
+        start_offset_(start_offset),
+        quicken_info_offset_indices_(quicken_info_offset_indices),
+        out_table_offsets_(out_table_offsets) {}
 
-  bool VisitDexMethods(const std::vector<const DexFile*>& dex_files, const CompilerDriver& driver) {
+  bool VisitDexMethods(const std::vector<const DexFile*>& dex_files) {
     for (const DexFile* dex_file : dex_files) {
-      const size_t class_def_count = dex_file->NumClassDefs();
-      for (size_t class_def_index = 0; class_def_index != class_def_count; ++class_def_index) {
-        const DexFile::ClassDef& class_def = dex_file->GetClassDef(class_def_index);
-        const uint8_t* class_data = dex_file->GetClassData(class_def);
-        if (class_data == nullptr) {
-          continue;
-        }
-        for (ClassDataItemIterator class_it(*dex_file, class_data);
-             class_it.HasNext();
-             class_it.Next()) {
-          if (!class_it.IsAtMethod() || class_it.GetMethodCodeItem() == nullptr) {
-            continue;
-          }
-          uint32_t method_idx = class_it.GetMemberIndex();
-          CompiledMethod* compiled_method =
-              driver.GetCompiledMethod(MethodReference(dex_file, method_idx));
-          const DexFile::CodeItem* code_item = class_it.GetMethodCodeItem();
-          CodeItemDebugInfoAccessor accessor(*dex_file, code_item);
-          const uint32_t existing_debug_info_offset = accessor.DebugInfoOffset();
-          // If the existing offset is already out of bounds (and not magic marker 0xFFFFFFFF)
-          // we will pretend the method has been quickened.
-          bool existing_offset_out_of_bounds =
-              (existing_debug_info_offset >= dex_file->Size() &&
-               existing_debug_info_offset != 0xFFFFFFFF);
-          bool has_quickening_info = HasQuickeningInfo(compiled_method);
-          if (has_quickening_info || existing_offset_out_of_bounds) {
-            uint32_t new_debug_info_offset =
-                dex_file->Size() + quickening_info_bytes_ + written_bytes_;
-            // Abort if overflow.
-            CHECK_GE(new_debug_info_offset, dex_file->Size());
-            const_cast<DexFile::CodeItem*>(code_item)->SetDebugInfoOffset(new_debug_info_offset);
-            uint32_t quickening_offset = has_quickening_info
-                ? offset_map_.Get(compiled_method->GetVmapTable().data())
-                : VdexFile::kNoQuickeningInfoOffset;
-            if (!out_->WriteFully(&existing_debug_info_offset,
-                                  sizeof(existing_debug_info_offset)) ||
-                !out_->WriteFully(&quickening_offset, sizeof(quickening_offset))) {
-              PLOG(ERROR) << "Failed to write quickening info for "
-                          << dex_file->PrettyMethod(method_idx) << " to "
-                          << out_->GetLocation();
-              return false;
-            }
-            written_bytes_ += sizeof(existing_debug_info_offset) + sizeof(quickening_offset);
-          }
-        }
+      auto it = quicken_info_offset_indices_->find(dex_file);
+      DCHECK(it != quicken_info_offset_indices_->end()) << "Failed to find dex file "
+                                                        << dex_file->GetLocation();
+      const std::vector<uint32_t>* const offsets = &it->second;
+
+      const uint32_t current_offset = start_offset_ + written_bytes_;
+      CHECK_ALIGNED_PARAM(current_offset, QuickenInfoOffsetTableAccessor::Alignment());
+
+      // Generate and write the data.
+      std::vector<uint8_t> table_data;
+      QuickenInfoOffsetTableAccessor::Builder builder(&table_data);
+      for (uint32_t offset : *offsets) {
+        builder.AddOffset(offset);
       }
+
+      // Store the offset since we need to put those after the dex file. Table offsets are relative
+      // to the start of the quicken info section.
+      out_table_offsets_->push_back(current_offset);
+
+      const uint32_t length = table_data.size() * sizeof(table_data.front());
+      if (!out_->WriteFully(table_data.data(), length)) {
+        PLOG(ERROR) << "Failed to write quickening offset table for " << dex_file->GetLocation()
+                    << " to " << out_->GetLocation();
+        return false;
+      }
+      written_bytes_ += length;
     }
     return true;
   }
@@ -2735,14 +2737,16 @@ class OatWriter::WriteQuickeningIndicesMethodVisitor {
 
  private:
   OutputStream* const out_;
-  const uint32_t quickening_info_bytes_;
-  size_t written_bytes_;
-  // Maps quickening map to its offset in the file.
-  const SafeMap<const uint8_t*, uint32_t>& offset_map_;
+  const uint32_t start_offset_;
+  size_t written_bytes_ = 0u;
+  // Maps containing the offsets for the tables.
+  SafeMap<const DexFile*, std::vector<uint32_t>>* const quicken_info_offset_indices_;
+  std::vector<uint32_t>* const out_table_offsets_;
 };
 
 bool OatWriter::WriteQuickeningInfo(OutputStream* vdex_out) {
   size_t initial_offset = vdex_size_;
+  // Make sure the table is properly aligned.
   size_t start_offset = RoundUp(initial_offset, 4u);
 
   off_t actual_offset = vdex_out->Seek(start_offset, kSeekSet);
@@ -2753,36 +2757,71 @@ bool OatWriter::WriteQuickeningInfo(OutputStream* vdex_out) {
     return false;
   }
 
-  if (compiler_driver_->GetCompilerOptions().IsAnyCompilationEnabled()) {
+  size_t current_offset = start_offset;
+  if (compiler_driver_->GetCompilerOptions().IsQuickeningCompilationEnabled()) {
     std::vector<uint32_t> dex_files_indices;
-    SafeMap<const uint8_t*, uint32_t> offset_map;
-    WriteQuickeningInfoMethodVisitor visitor1(this, vdex_out, start_offset, &offset_map);
-    if (!VisitDexMethods(&visitor1)) {
+    WriteQuickeningInfoMethodVisitor write_quicken_info_visitor(this, vdex_out);
+    if (!write_quicken_info_visitor.VisitDexMethods(*dex_files_)) {
       PLOG(ERROR) << "Failed to write the vdex quickening info. File: " << vdex_out->GetLocation();
       return false;
     }
 
-    if (visitor1.GetNumberOfWrittenBytes() > 0) {
-      WriteQuickeningIndicesMethodVisitor visitor2(vdex_out,
-                                                   visitor1.GetNumberOfWrittenBytes(),
-                                                   offset_map);
-      if (!visitor2.VisitDexMethods(*dex_files_, *compiler_driver_)) {
-        PLOG(ERROR) << "Failed to write the vdex quickening info. File: "
-                    << vdex_out->GetLocation();
+    uint32_t quicken_info_offset = write_quicken_info_visitor.GetNumberOfWrittenBytes();
+    current_offset = current_offset + quicken_info_offset;
+    uint32_t before_offset = current_offset;
+    current_offset = RoundUp(current_offset, QuickenInfoOffsetTableAccessor::Alignment());
+    const size_t extra_bytes = current_offset - before_offset;
+    quicken_info_offset += extra_bytes;
+    actual_offset = vdex_out->Seek(current_offset, kSeekSet);
+    if (actual_offset != static_cast<off_t>(current_offset)) {
+      PLOG(ERROR) << "Failed to seek to quickening offset table section. Actual: " << actual_offset
+                  << " Expected: " << current_offset
+                  << " Output: " << vdex_out->GetLocation();
+      return false;
+    }
+
+    std::vector<uint32_t> table_offsets;
+    WriteQuickeningInfoOffsetsMethodVisitor table_visitor(
+        vdex_out,
+        quicken_info_offset,
+        &write_quicken_info_visitor.GetQuickenInfoOffsetIndicies(),
+        /*out*/ &table_offsets);
+    if (!table_visitor.VisitDexMethods(*dex_files_)) {
+      PLOG(ERROR) << "Failed to write the vdex quickening info. File: "
+                  << vdex_out->GetLocation();
+      return false;
+    }
+
+    CHECK_EQ(table_offsets.size(), dex_files_->size());
+
+    current_offset += table_visitor.GetNumberOfWrittenBytes();
+
+    // Store the offset table offset as a preheader for each dex.
+    size_t index = 0;
+    for (const OatDexFile& oat_dex_file : oat_dex_files_) {
+      const off_t desired_offset = oat_dex_file.dex_file_offset_ -
+          sizeof(VdexFile::QuickeningTableOffsetType);
+      actual_offset = vdex_out->Seek(desired_offset, kSeekSet);
+      if (actual_offset != desired_offset) {
+        PLOG(ERROR) << "Failed to seek to before dex file for writing offset table offset: "
+                    << actual_offset << " Expected: " << desired_offset
+                    << " Output: " << vdex_out->GetLocation();
         return false;
       }
-
-      if (!vdex_out->Flush()) {
-        PLOG(ERROR) << "Failed to flush stream after writing quickening info."
+      uint32_t offset = table_offsets[index];
+      if (!vdex_out->WriteFully(reinterpret_cast<const uint8_t*>(&offset), sizeof(offset))) {
+        PLOG(ERROR) << "Failed to write verifier deps."
                     << " File: " << vdex_out->GetLocation();
         return false;
       }
-      size_quickening_info_ = visitor1.GetNumberOfWrittenBytes() +
-                              visitor2.GetNumberOfWrittenBytes();
-    } else {
-      // We know we did not quicken.
-      size_quickening_info_ = 0;
+      ++index;
     }
+    if (!vdex_out->Flush()) {
+      PLOG(ERROR) << "Failed to flush stream after writing quickening info."
+                  << " File: " << vdex_out->GetLocation();
+      return false;
+    }
+    size_quickening_info_ = current_offset - start_offset;
   } else {
     // We know we did not quicken.
     size_quickening_info_ = 0;
@@ -3357,8 +3396,14 @@ bool OatWriter::SeekToDexFile(OutputStream* out, File* file, OatDexFile* oat_dex
   // Dex files are required to be 4 byte aligned.
   size_t initial_offset = vdex_size_;
   size_t start_offset = RoundUp(initial_offset, 4);
-  size_t file_offset = start_offset;
   size_dex_file_alignment_ += start_offset - initial_offset;
+
+  // Leave extra room for the quicken offset table offset.
+  start_offset += sizeof(VdexFile::QuickeningTableOffsetType);
+  // TODO: Not count the offset as part of alignment.
+  size_dex_file_alignment_ += sizeof(VdexFile::QuickeningTableOffsetType);
+
+  size_t file_offset = start_offset;
 
   // Seek to the start of the dex file and flush any pending operations in the stream.
   // Verify that, after flushing the stream, the file is at the same offset as the stream.
@@ -3392,6 +3437,7 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
   std::string error_msg;
   std::string location(oat_dex_file->GetLocation());
   std::unique_ptr<const DexFile> dex_file;
+  const ArtDexFileLoader dex_file_loader;
   if (oat_dex_file->source_.IsZipEntry()) {
     ZipEntry* zip_entry = oat_dex_file->source_.GetZipEntry();
     std::unique_ptr<MemMap> mem_map(
@@ -3400,12 +3446,12 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
       LOG(ERROR) << "Failed to extract dex file to mem map for layout: " << error_msg;
       return false;
     }
-    dex_file = DexFileLoader::Open(location,
-                                   zip_entry->GetCrc32(),
-                                   std::move(mem_map),
-                                   /* verify */ true,
-                                   /* verify_checksum */ true,
-                                   &error_msg);
+    dex_file = dex_file_loader.Open(location,
+                               zip_entry->GetCrc32(),
+                               std::move(mem_map),
+                               /* verify */ true,
+                               /* verify_checksum */ true,
+                               &error_msg);
   } else if (oat_dex_file->source_.IsRawFile()) {
     File* raw_file = oat_dex_file->source_.GetRawFile();
     int dup_fd = dup(raw_file->Fd());
@@ -3413,7 +3459,7 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
       PLOG(ERROR) << "Failed to dup dex file descriptor (" << raw_file->Fd() << ") at " << location;
       return false;
     }
-    dex_file = DexFileLoader::OpenDex(
+    dex_file = dex_file_loader.OpenDex(
         dup_fd, location, /* verify */ true, /* verify_checksum */ true, &error_msg);
   } else {
     // The source data is a vdex file.
@@ -3426,14 +3472,14 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
     DCHECK(ValidateDexFileHeader(raw_dex_file, oat_dex_file->GetLocation()));
     const UnalignedDexFileHeader* header = AsUnalignedDexFileHeader(raw_dex_file);
     // Since the source may have had its layout changed, or may be quickened, don't verify it.
-    dex_file = DexFileLoader::Open(raw_dex_file,
-                                   header->file_size_,
-                                   location,
-                                   oat_dex_file->dex_file_location_checksum_,
-                                   nullptr,
-                                   /* verify */ false,
-                                   /* verify_checksum */ false,
-                                   &error_msg);
+    dex_file = dex_file_loader.Open(raw_dex_file,
+                                    header->file_size_,
+                                    location,
+                                    oat_dex_file->dex_file_location_checksum_,
+                                    nullptr,
+                                    /* verify */ false,
+                                    /* verify_checksum */ false,
+                                    &error_msg);
   }
   if (dex_file == nullptr) {
     LOG(ERROR) << "Failed to open dex file for layout: " << error_msg;
@@ -3653,6 +3699,7 @@ bool OatWriter::OpenDexFiles(
                << " error: " << error_msg;
     return false;
   }
+  const ArtDexFileLoader dex_file_loader;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
   for (OatDexFile& oat_dex_file : oat_dex_files_) {
     const uint8_t* raw_dex_file =
@@ -3674,14 +3721,14 @@ bool OatWriter::OpenDexFiles(
     }
 
     // Now, open the dex file.
-    dex_files.emplace_back(DexFileLoader::Open(raw_dex_file,
-                                               oat_dex_file.dex_file_size_,
-                                               oat_dex_file.GetLocation(),
-                                               oat_dex_file.dex_file_location_checksum_,
-                                               /* oat_dex_file */ nullptr,
-                                               verify,
-                                               verify,
-                                               &error_msg));
+    dex_files.emplace_back(dex_file_loader.Open(raw_dex_file,
+                                                oat_dex_file.dex_file_size_,
+                                                oat_dex_file.GetLocation(),
+                                                oat_dex_file.dex_file_location_checksum_,
+                                                /* oat_dex_file */ nullptr,
+                                                verify,
+                                                verify,
+                                                &error_msg));
     if (dex_files.back() == nullptr) {
       LOG(ERROR) << "Failed to open dex file from oat file. File: " << oat_dex_file.GetLocation()
                  << " Error: " << error_msg;
@@ -3689,7 +3736,7 @@ bool OatWriter::OpenDexFiles(
     }
 
     // Set the class_offsets size now that we have easy access to the DexFile and
-    // it has been verified in DexFileLoader::Open.
+    // it has been verified in dex_file_loader.Open.
     oat_dex_file.class_offsets_.resize(dex_files.back()->GetHeader().class_defs_size_);
   }
 

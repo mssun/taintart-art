@@ -22,7 +22,7 @@ namespace art {
 class GraphCheckerTest : public OptimizingUnitTest {
  protected:
   HGraph* CreateSimpleCFG();
-  void TestCode(const uint16_t* data);
+  void TestCode(const std::vector<uint16_t>& data);
 };
 
 /**
@@ -48,7 +48,7 @@ HGraph* GraphCheckerTest::CreateSimpleCFG() {
   return graph;
 }
 
-void GraphCheckerTest::TestCode(const uint16_t* data) {
+void GraphCheckerTest::TestCode(const std::vector<uint16_t>& data) {
   HGraph* graph = CreateCFG(data);
   ASSERT_NE(graph, nullptr);
 
@@ -58,14 +58,14 @@ void GraphCheckerTest::TestCode(const uint16_t* data) {
 }
 
 TEST_F(GraphCheckerTest, ReturnVoid) {
-  const uint16_t data[] = ZERO_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ZERO_REGISTER_CODE_ITEM(
       Instruction::RETURN_VOID);
 
   TestCode(data);
 }
 
 TEST_F(GraphCheckerTest, CFG1) {
-  const uint16_t data[] = ZERO_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ZERO_REGISTER_CODE_ITEM(
       Instruction::GOTO | 0x100,
       Instruction::RETURN_VOID);
 
@@ -73,7 +73,7 @@ TEST_F(GraphCheckerTest, CFG1) {
 }
 
 TEST_F(GraphCheckerTest, CFG2) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 3,
     Instruction::GOTO | 0x100,
@@ -83,7 +83,7 @@ TEST_F(GraphCheckerTest, CFG2) {
 }
 
 TEST_F(GraphCheckerTest, CFG3) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 3,
     Instruction::GOTO | 0x100,
@@ -128,7 +128,7 @@ TEST_F(GraphCheckerTest, BlockEndingWithNonBranchInstruction) {
 
 TEST_F(GraphCheckerTest, SSAPhi) {
   // This code creates one Phi function during the conversion to SSA form.
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 3,
     Instruction::CONST_4 | 4 << 12 | 0,

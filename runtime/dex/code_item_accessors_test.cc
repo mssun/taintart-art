@@ -19,6 +19,7 @@
 #include <memory>
 
 #include "common_runtime_test.h"
+#include "art_dex_file_loader.h"
 #include "dex_file_loader.h"
 #include "mem_map.h"
 
@@ -44,13 +45,13 @@ std::unique_ptr<const DexFile> CreateFakeDex(bool compact_dex) {
     StandardDexFile::WriteMagic(map->Begin());
     StandardDexFile::WriteCurrentVersion(map->Begin());
   }
-  std::unique_ptr<const DexFile> dex(
-      DexFileLoader::Open("location",
-                          /*location_checksum*/ 123,
-                          std::move(map),
-                          /*verify*/false,
-                          /*verify_checksum*/false,
-                          &error_msg));
+  const ArtDexFileLoader dex_file_loader;
+  std::unique_ptr<const DexFile> dex(dex_file_loader.Open("location",
+                                                          /*location_checksum*/ 123,
+                                                          std::move(map),
+                                                          /*verify*/false,
+                                                          /*verify_checksum*/false,
+                                                          &error_msg));
   CHECK(dex != nullptr) << error_msg;
   return dex;
 }

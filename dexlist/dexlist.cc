@@ -27,6 +27,7 @@
 #include <stdlib.h>
 
 #include "base/logging.h"  // For InitLogging.
+#include "dex/art_dex_file_loader.h"
 #include "dex/code_item_accessors-no_art-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
@@ -100,7 +101,7 @@ static void dumpMethod(const DexFile* pDexFile,
   if (pCode == nullptr || codeOffset == 0) {
     return;
   }
-  CodeItemDebugInfoAccessor accessor(*pDexFile, pCode, pDexFile->GetDebugInfoOffset(pCode));
+  CodeItemDebugInfoAccessor accessor(*pDexFile, pCode, idx);
 
   // Method information.
   const DexFile::MethodId& pMethodId = pDexFile->GetMethodId(idx);
@@ -174,7 +175,8 @@ static int processFile(const char* fileName) {
   static constexpr bool kVerifyChecksum = true;
   std::string error_msg;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  if (!DexFileLoader::Open(
+  const ArtDexFileLoader dex_file_loader;
+  if (!dex_file_loader.Open(
         fileName, fileName, /* verify */ true, kVerifyChecksum, &error_msg, &dex_files)) {
     fputs(error_msg.c_str(), stderr);
     fputc('\n', stderr);

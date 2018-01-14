@@ -30,6 +30,7 @@
 #include "base/macros.h"
 #include "base/mutex-inl.h"
 #include "bytecode_utils.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
@@ -108,6 +109,8 @@ class Dex2oatTest : public Dex2oatEnvironmentTest {
                         [](const OatFile&) {});
   }
 
+  bool test_accepts_odex_file_on_failure = false;
+
   template <typename T>
   void GenerateOdexForTest(
       const std::string& dex_location,
@@ -124,7 +127,7 @@ class Dex2oatTest : public Dex2oatEnvironmentTest {
                                                &error_msg,
                                                extra_args,
                                                use_fd);
-    bool success = (status == 0);
+    bool success = (WIFEXITED(status) && WEXITSTATUS(status) == 0);
     if (expect_success) {
       ASSERT_TRUE(success) << error_msg << std::endl << output_;
 
@@ -146,16 +149,18 @@ class Dex2oatTest : public Dex2oatEnvironmentTest {
 
       error_msg_ = error_msg;
 
-      // Verify there's no loadable odex file.
-      std::unique_ptr<OatFile> odex_file(OatFile::Open(odex_location.c_str(),
-                                                       odex_location.c_str(),
-                                                       nullptr,
-                                                       nullptr,
-                                                       false,
-                                                       /*low_4gb*/false,
-                                                       dex_location.c_str(),
-                                                       &error_msg));
-      ASSERT_TRUE(odex_file.get() == nullptr);
+      if (!test_accepts_odex_file_on_failure) {
+        // Verify there's no loadable odex file.
+        std::unique_ptr<OatFile> odex_file(OatFile::Open(odex_location.c_str(),
+                                                         odex_location.c_str(),
+                                                         nullptr,
+                                                         nullptr,
+                                                         false,
+                                                         /*low_4gb*/false,
+                                                         dex_location.c_str(),
+                                                         &error_msg));
+        ASSERT_TRUE(odex_file.get() == nullptr);
+      }
     }
   }
 
@@ -680,7 +685,8 @@ class Dex2oatLayoutTest : public Dex2oatTest {
     const char* location = dex_location.c_str();
     std::string error_msg;
     std::vector<std::unique_ptr<const DexFile>> dex_files;
-    ASSERT_TRUE(DexFileLoader::Open(
+    const ArtDexFileLoader dex_file_loader;
+    ASSERT_TRUE(dex_file_loader.Open(
         location, location, /* verify */ true, /* verify_checksum */ true, &error_msg, &dex_files));
     EXPECT_EQ(dex_files.size(), 1U);
     std::unique_ptr<const DexFile>& dex_file = dex_files[0];
@@ -815,7 +821,8 @@ class Dex2oatLayoutTest : public Dex2oatTest {
 
     const char* location = dex_location.c_str();
     std::vector<std::unique_ptr<const DexFile>> dex_files;
-    ASSERT_TRUE(DexFileLoader::Open(
+    const ArtDexFileLoader dex_file_loader;
+    ASSERT_TRUE(dex_file_loader.Open(
         location, location, /* verify */ true, /* verify_checksum */ true, &error_msg, &dex_files));
     EXPECT_EQ(dex_files.size(), 1U);
     std::unique_ptr<const DexFile>& old_dex_file = dex_files[0];
@@ -993,7 +1000,12 @@ TEST_F(Dex2oatWatchdogTest, TestWatchdogOK) {
 
 TEST_F(Dex2oatWatchdogTest, TestWatchdogTrigger) {
   TEST_DISABLED_FOR_MEMORY_TOOL_VALGRIND();  // b/63052624
-  TEST_DISABLED_WITHOUT_BAKER_READ_BARRIERS();  // b/63052624
+
+  // The watchdog is independent of dex2oat and will not delete intermediates. It is possible
+  // that the compilation succeeds and the file is completely written by the time the watchdog
+  // kills dex2oat (but the dex2oat threads must have been scheduled pretty badly).
+  test_accepts_odex_file_on_failure = true;
+
   // Check with ten milliseconds.
   RunTest(false, { "--watchdog-timeout=10" });
 }

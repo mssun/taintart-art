@@ -424,10 +424,6 @@ static optimizer::DexToDexCompilationLevel GetDexToDexCompilationLevel(
     // optimizations that could break that.
     max_level = optimizer::DexToDexCompilationLevel::kDontDexToDexCompile;
   }
-  if (!VdexFile::CanEncodeQuickenedData(dex_file)) {
-    // Don't do any dex level optimizations if we cannot encode the quickening.
-    return optimizer::DexToDexCompilationLevel::kDontDexToDexCompile;
-  }
   if (klass->IsVerified()) {
     // Class is verified so we can enable DEX-to-DEX compilation for performance.
     return max_level;

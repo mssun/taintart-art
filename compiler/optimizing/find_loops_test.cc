@@ -31,7 +31,7 @@ class FindLoopsTest : public OptimizingUnitTest {};
 
 TEST_F(FindLoopsTest, CFG1) {
   // Constant is not used.
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::RETURN_VOID);
 
@@ -42,7 +42,7 @@ TEST_F(FindLoopsTest, CFG1) {
 }
 
 TEST_F(FindLoopsTest, CFG2) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::RETURN);
 
@@ -53,7 +53,7 @@ TEST_F(FindLoopsTest, CFG2) {
 }
 
 TEST_F(FindLoopsTest, CFG3) {
-  const uint16_t data[] = TWO_REGISTERS_CODE_ITEM(
+  const std::vector<uint16_t> data = TWO_REGISTERS_CODE_ITEM(
     Instruction::CONST_4 | 3 << 12 | 0,
     Instruction::CONST_4 | 4 << 12 | 1 << 8,
     Instruction::ADD_INT_2ADDR | 1 << 12,
@@ -67,7 +67,7 @@ TEST_F(FindLoopsTest, CFG3) {
 }
 
 TEST_F(FindLoopsTest, CFG4) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 4,
     Instruction::CONST_4 | 4 << 12 | 0,
@@ -82,7 +82,7 @@ TEST_F(FindLoopsTest, CFG4) {
 }
 
 TEST_F(FindLoopsTest, CFG5) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 3,
     Instruction::CONST_4 | 4 << 12 | 0,
@@ -126,7 +126,7 @@ TEST_F(FindLoopsTest, Loop1) {
   // while (a == a) {
   // }
   // return;
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 3,
     Instruction::GOTO | 0xFE00,
@@ -150,7 +150,7 @@ TEST_F(FindLoopsTest, Loop2) {
   // while (a == a) {
   // }
   // return a;
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::GOTO | 0x400,
     Instruction::IF_EQ, 4,
@@ -173,7 +173,7 @@ TEST_F(FindLoopsTest, Loop2) {
 TEST_F(FindLoopsTest, Loop3) {
   // Make sure we create a preheader of a loop when a header originally has two
   // incoming blocks and one back edge.
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 3,
     Instruction::GOTO | 0x100,
@@ -197,7 +197,7 @@ TEST_F(FindLoopsTest, Loop3) {
 
 TEST_F(FindLoopsTest, Loop4) {
   // Test loop with originally two back edges.
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 6,
     Instruction::IF_EQ, 3,
@@ -221,7 +221,7 @@ TEST_F(FindLoopsTest, Loop4) {
 
 TEST_F(FindLoopsTest, Loop5) {
   // Test loop with two exit edges.
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 6,
     Instruction::IF_EQ, 3,
@@ -244,7 +244,7 @@ TEST_F(FindLoopsTest, Loop5) {
 }
 
 TEST_F(FindLoopsTest, InnerLoop) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 6,
     Instruction::IF_EQ, 3,
@@ -273,7 +273,7 @@ TEST_F(FindLoopsTest, InnerLoop) {
 }
 
 TEST_F(FindLoopsTest, TwoLoops) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 3,
     Instruction::GOTO | 0xFE00,  // first loop
@@ -301,7 +301,7 @@ TEST_F(FindLoopsTest, TwoLoops) {
 }
 
 TEST_F(FindLoopsTest, NonNaturalLoop) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::IF_EQ, 3,
     Instruction::GOTO | 0x0100,
@@ -317,7 +317,7 @@ TEST_F(FindLoopsTest, NonNaturalLoop) {
 }
 
 TEST_F(FindLoopsTest, DoWhileLoop) {
-  const uint16_t data[] = ONE_REGISTER_CODE_ITEM(
+  const std::vector<uint16_t> data = ONE_REGISTER_CODE_ITEM(
     Instruction::CONST_4 | 0 | 0,
     Instruction::GOTO | 0x0100,
     Instruction::IF_EQ, 0xFFFF,

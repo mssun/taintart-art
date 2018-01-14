@@ -43,6 +43,7 @@
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/unix_file/fd_file.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/dex_file_loader.h"
 #include "dex/dex_file_types.h"
 #include "dex/standard_dex_file.h"
@@ -1534,21 +1535,6 @@ ArrayRef<GcRoot<mirror::Object>> OatFile::GetBssGcRoots() const {
   }
 }
 
-uint32_t OatFile::GetDebugInfoOffset(const DexFile& dex_file, uint32_t debug_info_off) {
-  // Note that although the specification says that 0 should be used if there
-  // is no debug information, some applications incorrectly use 0xFFFFFFFF.
-  // The following check also handles debug_info_off == 0.
-  if (debug_info_off < dex_file.Size() || debug_info_off == 0xFFFFFFFF) {
-    return debug_info_off;
-  }
-  const OatFile::OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
-  if (oat_dex_file == nullptr || (oat_dex_file->GetOatFile() == nullptr)) {
-    return debug_info_off;
-  }
-  return oat_dex_file->GetOatFile()->GetVdexFile()->GetDebugInfoOffset(
-      dex_file, debug_info_off);
-}
-
 const OatFile::OatDexFile* OatFile::GetOatDexFile(const char* dex_location,
                                                   const uint32_t* dex_location_checksum,
                                                   std::string* error_msg) const {
@@ -1666,14 +1652,15 @@ std::unique_ptr<const DexFile> OatFile::OatDexFile::OpenDexFile(std::string* err
   ScopedTrace trace(__PRETTY_FUNCTION__);
   static constexpr bool kVerify = false;
   static constexpr bool kVerifyChecksum = false;
-  return DexFileLoader::Open(dex_file_pointer_,
-                             FileSize(),
-                             dex_file_location_,
-                             dex_file_location_checksum_,
-                             this,
-                             kVerify,
-                             kVerifyChecksum,
-                             error_msg);
+  const ArtDexFileLoader dex_file_loader;
+  return dex_file_loader.Open(dex_file_pointer_,
+                              FileSize(),
+                              dex_file_location_,
+                              dex_file_location_checksum_,
+                              this,
+                              kVerify,
+                              kVerifyChecksum,
+                              error_msg);
 }
 
 uint32_t OatFile::OatDexFile::GetOatClassOffset(uint16_t class_def_index) const {

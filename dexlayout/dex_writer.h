@@ -23,6 +23,7 @@
 
 #include "base/unix_file/fd_file.h"
 #include "dex/compact_dex_level.h"
+#include "dex/dex_file.h"
 #include "dex_ir.h"
 #include "mem_map.h"
 #include "os.h"
@@ -59,6 +60,25 @@ class MapItemQueue : public
 
 class DexWriter {
  public:
+  static constexpr uint32_t kDataSectionAlignment = sizeof(uint32_t) * 2;
+  static constexpr uint32_t kDexSectionWordAlignment = 4;
+  static constexpr uint32_t kDexTryItemAlignment = sizeof(uint32_t);
+
+  static inline constexpr uint32_t SectionAlignment(DexFile::MapItemType type) {
+    switch (type) {
+      case DexFile::kDexTypeClassDataItem:
+      case DexFile::kDexTypeStringDataItem:
+      case DexFile::kDexTypeDebugInfoItem:
+      case DexFile::kDexTypeAnnotationItem:
+      case DexFile::kDexTypeEncodedArrayItem:
+        return alignof(uint8_t);
+
+      default:
+        // All other sections are kDexAlignedSection.
+        return DexWriter::kDexSectionWordAlignment;
+    }
+  }
+
   DexWriter(dex_ir::Header* header,
             MemMap* mem_map,
             DexLayout* dex_layout,
@@ -77,7 +97,7 @@ class DexWriter {
   virtual ~DexWriter() {}
 
  protected:
-  void WriteMemMap();
+  virtual void WriteMemMap();
 
   size_t Write(const void* buffer, size_t length, size_t offset) WARN_UNUSED;
   size_t WriteSleb128(uint32_t value, size_t offset) WARN_UNUSED;
@@ -117,6 +137,11 @@ class DexWriter {
   uint32_t WriteMethodHandles(uint32_t offset);
   uint32_t WriteMapItems(uint32_t offset, MapItemQueue* queue);
   uint32_t GenerateAndWriteMapItems(uint32_t offset);
+
+  virtual uint32_t WriteCodeItemPostInstructionData(dex_ir::CodeItem* item,
+                                                    uint32_t offset,
+                                                    bool reserve_only);
+  virtual uint32_t WriteCodeItem(dex_ir::CodeItem* item, uint32_t offset, bool reserve_only);
 
   // Process an offset, if compute_offset is set, write into the dex ir item, otherwise read the
   // existing offset and use that for writing.

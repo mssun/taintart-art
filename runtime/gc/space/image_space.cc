@@ -36,6 +36,7 @@
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/time_utils.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/dex_file_loader.h"
 #include "exec_utils.h"
 #include "gc/accounting/space_bitmap-inl.h"
@@ -1828,6 +1829,7 @@ std::string ImageSpace::GetMultiImageBootClassPath(
 }
 
 bool ImageSpace::ValidateOatFile(const OatFile& oat_file, std::string* error_msg) {
+  const ArtDexFileLoader dex_file_loader;
   for (const OatFile::OatDexFile* oat_dex_file : oat_file.GetOatDexFiles()) {
     const std::string& dex_file_location = oat_dex_file->GetDexFileLocation();
 
@@ -1838,7 +1840,7 @@ bool ImageSpace::ValidateOatFile(const OatFile& oat_file, std::string* error_msg
     }
 
     std::vector<uint32_t> checksums;
-    if (!DexFileLoader::GetMultiDexChecksums(dex_file_location.c_str(), &checksums, error_msg)) {
+    if (!dex_file_loader.GetMultiDexChecksums(dex_file_location.c_str(), &checksums, error_msg)) {
       *error_msg = StringPrintf("ValidateOatFile failed to get checksums of dex file '%s' "
                                 "referenced by oat file %s: %s",
                                 dex_file_location.c_str(),
