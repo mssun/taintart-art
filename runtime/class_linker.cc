@@ -1296,32 +1296,22 @@ void AppImageClassLoadersAndDexCachesHelper::Update(
             }
             for (ArtMethod& m : klass->GetDirectMethods(kRuntimePointerSize)) {
               const void* code = m.GetEntryPointFromQuickCompiledCode();
-              if (!m.IsProxyMethod() &&
-                  !m.IsNative() &&
-                  !class_linker->IsQuickResolutionStub(code) &&
+              const void* oat_code = m.IsInvokable() ? class_linker->GetQuickOatCodeFor(&m) : code;
+              if (!class_linker->IsQuickResolutionStub(code) &&
+                  !class_linker->IsQuickGenericJniStub(code) &&
                   !class_linker->IsQuickToInterpreterBridge(code) &&
-                  m.IsInvokable()) {
-                // Since this is just a sanity check it's okay to get the oat code here regardless
-                // of whether it's usable.
-                const void* oat_code = m.GetOatMethodQuickCode(class_linker->GetImagePointerSize());
-                if (oat_code != nullptr) {
-                  DCHECK_EQ(code, oat_code) << m.PrettyMethod();
-                }
+                  !m.IsNative()) {
+                DCHECK_EQ(code, oat_code) << m.PrettyMethod();
               }
             }
             for (ArtMethod& m : klass->GetVirtualMethods(kRuntimePointerSize)) {
               const void* code = m.GetEntryPointFromQuickCompiledCode();
-              if (!m.IsProxyMethod() &&
-                  !m.IsNative() &&
-                  !class_linker->IsQuickResolutionStub(code) &&
+              const void* oat_code = m.IsInvokable() ? class_linker->GetQuickOatCodeFor(&m) : code;
+              if (!class_linker->IsQuickResolutionStub(code) &&
+                  !class_linker->IsQuickGenericJniStub(code) &&
                   !class_linker->IsQuickToInterpreterBridge(code) &&
-                  m.IsInvokable()) {
-                // Since this is just a sanity check it's okay to get the oat code here regardless
-                // of whether it's usable.
-                const void* oat_code = m.GetOatMethodQuickCode(class_linker->GetImagePointerSize());
-                if (oat_code != nullptr) {
-                  DCHECK_EQ(code, oat_code) << m.PrettyMethod();
-                }
+                  !m.IsNative()) {
+                DCHECK_EQ(code, oat_code) << m.PrettyMethod();
               }
             }
           }
@@ -2909,25 +2899,21 @@ uint32_t ClassLinker::SizeOfClassWithoutEmbeddedTables(const DexFile& dex_file,
                                          image_pointer_size_);
 }
 
-const void* ClassLinker::GetQuickEntrypointFor(ArtMethod* method) {
+// Special case to get oat code without overwriting a trampoline.
+const void* ClassLinker::GetQuickOatCodeFor(ArtMethod* method) {
   CHECK(method->IsInvokable()) << method->PrettyMethod();
   if (method->IsProxyMethod()) {
     return GetQuickProxyInvokeHandler();
   }
-  const void* oat_code = method->GetOatMethodQuickCode(GetImagePointerSize());
-  if (oat_code == nullptr) {
-    // We need either the generic jni or interpreter bridge.
-    if (method->IsNative()) {
-      return GetQuickGenericJniStub();
-    } else {
-      return GetQuickToInterpreterBridge();
-    }
-  } else if (ClassLinker::ShouldUseInterpreterEntrypoint(method, oat_code)) {
-    // We have oat code but we cannot use it for some reason.
-    return GetQuickToInterpreterBridge();
-  } else {
-    return oat_code;
+  auto* code = method->GetOatMethodQuickCode(GetImagePointerSize());
+  if (code != nullptr) {
+    return code;
   }
+  if (method->IsNative()) {
+    // No code and native? Use generic trampoline.
+    return GetQuickGenericJniStub();
+  }
+  return GetQuickToInterpreterBridge();
 }
 
 bool ClassLinker::ShouldUseInterpreterEntrypoint(ArtMethod* method, const void* quick_code) {
