@@ -18,6 +18,7 @@
 #define ART_COMPILER_LINKER_ELF_BUILDER_H_
 
 #include <vector>
+#include <unordered_map>
 
 #include "arch/instruction_set.h"
 #include "arch/mips/instruction_set_features_mips.h"
@@ -309,27 +310,24 @@ class ElfBuilder FINAL {
                   /* info */ 0,
                   align,
                   /* entsize */ 0),
-          current_offset_(0),
-          last_offset_(0) {
+          current_offset_(0) {
     }
 
     Elf_Word Write(const std::string& name) {
       if (current_offset_ == 0) {
         DCHECK(name.empty());
-      } else if (name == last_name_) {
-        return last_offset_;  // Very simple string de-duplication.
       }
-      last_name_ = name;
-      last_offset_ = current_offset_;
-      this->WriteFully(name.c_str(), name.length() + 1);
-      current_offset_ += name.length() + 1;
-      return last_offset_;
+      auto res = written_names_.emplace(name, current_offset_);
+      if (res.second) {  // Inserted.
+        this->WriteFully(name.c_str(), name.length() + 1);
+        current_offset_ += name.length() + 1;
+      }
+      return res.first->second;  // Offset.
     }
 
    private:
     Elf_Word current_offset_;
-    std::string last_name_;
-    Elf_Word last_offset_;
+    std::unordered_map<std::string, Elf_Word> written_names_;  // Dedup strings.
   };
 
   // Writer of .dynsym and .symtab sections.
