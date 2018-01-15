@@ -196,6 +196,11 @@ class ElfBuilder FINAL {
       return section_index_;
     }
 
+    // Returns true if this section has been added.
+    bool Exists() const {
+      return section_index_ != 0;
+    }
+
    private:
     // Add this section to the list of generated ELF sections (if not there already).
     // It also ensures the alignment is sufficient to generate valid program headers,
@@ -304,42 +309,46 @@ class ElfBuilder FINAL {
                   /* info */ 0,
                   align,
                   /* entsize */ 0),
-          current_offset_(0) {
+          current_offset_(0),
+          last_offset_(0) {
     }
 
     Elf_Word Write(const std::string& name) {
       if (current_offset_ == 0) {
         DCHECK(name.empty());
+      } else if (name == last_name_) {
+        return last_offset_;  // Very simple string de-duplication.
       }
-      Elf_Word offset = current_offset_;
+      last_name_ = name;
+      last_offset_ = current_offset_;
       this->WriteFully(name.c_str(), name.length() + 1);
       current_offset_ += name.length() + 1;
-      return offset;
+      return last_offset_;
     }
 
    private:
     Elf_Word current_offset_;
+    std::string last_name_;
+    Elf_Word last_offset_;
   };
 
   // Writer of .dynsym and .symtab sections.
-  class SymbolSection FINAL : public CachedSection {
+  class SymbolSection FINAL : public Section {
    public:
     SymbolSection(ElfBuilder<ElfTypes>* owner,
                   const std::string& name,
                   Elf_Word type,
                   Elf_Word flags,
                   Section* strtab)
-        : CachedSection(owner,
-                        name,
-                        type,
-                        flags,
-                        strtab,
-                        /* info */ 0,
-                        sizeof(Elf_Off),
-                        sizeof(Elf_Sym)) {
-      // The symbol table always has to start with NULL symbol.
-      Elf_Sym null_symbol = Elf_Sym();
-      CachedSection::Add(&null_symbol, sizeof(null_symbol));
+        : Section(owner,
+                  name,
+                  type,
+                  flags,
+                  strtab,
+                  /* info */ 0,
+                  sizeof(Elf_Off),
+                  sizeof(Elf_Sym)) {
+      syms_.push_back(Elf_Sym());  // The symbol table always has to start with NULL symbol.
     }
 
     // Buffer symbol for this section.  It will be written later.
@@ -362,6 +371,7 @@ class ElfBuilder FINAL {
       Add(name, section_index, addr, size, binding, type);
     }
 
+    // Buffer symbol for this section.  It will be written later.
     void Add(Elf_Word name,
              Elf_Word section_index,
              Elf_Addr addr,
@@ -375,8 +385,19 @@ class ElfBuilder FINAL {
       sym.st_other = 0;
       sym.st_shndx = section_index;
       sym.st_info = (binding << 4) + (type & 0xf);
-      CachedSection::Add(&sym, sizeof(sym));
+      syms_.push_back(sym);
     }
+
+    Elf_Word GetCacheSize() { return syms_.size() * sizeof(Elf_Sym); }
+
+    void WriteCachedSection() {
+      this->Start();
+      this->WriteFully(syms_.data(), syms_.size() * sizeof(Elf_Sym));
+      this->End();
+    }
+
+   private:
+    std::vector<Elf_Sym> syms_;  // Buffered/cached content of the whole section.
   };
 
   class AbiflagsSection FINAL : public Section {
