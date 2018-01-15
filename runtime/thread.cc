@@ -2743,6 +2743,199 @@ jobjectArray Thread::InternalStackTraceToStackTraceElementArray(
   return result;
 }
 
+jobjectArray Thread::CreateAnnotatedStackTrace(const ScopedObjectAccessAlreadyRunnable& soa) const {
+  // This code allocates. Do not allow it to operate with a pending exception.
+  if (IsExceptionPending()) {
+    return nullptr;
+  }
+
+  // If flip_function is not null, it means we have run a checkpoint
+  // before the thread wakes up to execute the flip function and the
+  // thread roots haven't been forwarded.  So the following access to
+  // the roots (locks or methods in the frames) would be bad. Run it
+  // here. TODO: clean up.
+  // Note: copied from DumpJavaStack.
+  {
+    Thread* this_thread = const_cast<Thread*>(this);
+    Closure* flip_func = this_thread->GetFlipFunction();
+    if (flip_func != nullptr) {
+      flip_func->Run(this_thread);
+    }
+  }
+
+  class CollectFramesAndLocksStackVisitor : public MonitorObjectsStackVisitor {
+   public:
+    CollectFramesAndLocksStackVisitor(const ScopedObjectAccessAlreadyRunnable& soaa_in,
+                                      Thread* self,
+                                      Context* context)
+        : MonitorObjectsStackVisitor(self, context),
+          wait_jobject_(soaa_in.Env(), nullptr),
+          block_jobject_(soaa_in.Env(), nullptr),
+          soaa_(soaa_in) {}
+
+   protected:
+    VisitMethodResult StartMethod(ArtMethod* m, size_t frame_nr ATTRIBUTE_UNUSED)
+        OVERRIDE
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      ObjPtr<mirror::StackTraceElement> obj = CreateStackTraceElement(
+          soaa_, m, GetDexPc(/* abort on error */ false));
+      if (obj == nullptr) {
+        return VisitMethodResult::kEndStackWalk;
+      }
+      stack_trace_elements_.emplace_back(soaa_.Env(), soaa_.AddLocalReference<jobject>(obj.Ptr()));
+      return VisitMethodResult::kContinueMethod;
+    }
+
+    VisitMethodResult EndMethod(ArtMethod* m ATTRIBUTE_UNUSED) OVERRIDE {
+      lock_objects_.push_back({});
+      lock_objects_[lock_objects_.size() - 1].swap(frame_lock_objects_);
+
+      DCHECK_EQ(lock_objects_.size(), stack_trace_elements_.size());
+
+      return VisitMethodResult::kContinueMethod;
+    }
+
+    void VisitWaitingObject(mirror::Object* obj, ThreadState state ATTRIBUTE_UNUSED)
+        OVERRIDE
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      wait_jobject_.reset(soaa_.AddLocalReference<jobject>(obj));
+    }
+    void VisitSleepingObject(mirror::Object* obj)
+        OVERRIDE
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      wait_jobject_.reset(soaa_.AddLocalReference<jobject>(obj));
+    }
+    void VisitBlockedOnObject(mirror::Object* obj,
+                              ThreadState state ATTRIBUTE_UNUSED,
+                              uint32_t owner_tid ATTRIBUTE_UNUSED)
+        OVERRIDE
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      block_jobject_.reset(soaa_.AddLocalReference<jobject>(obj));
+    }
+    void VisitLockedObject(mirror::Object* obj)
+        OVERRIDE
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      frame_lock_objects_.emplace_back(soaa_.Env(), soaa_.AddLocalReference<jobject>(obj));
+    }
+
+   public:
+    std::vector<ScopedLocalRef<jobject>> stack_trace_elements_;
+    ScopedLocalRef<jobject> wait_jobject_;
+    ScopedLocalRef<jobject> block_jobject_;
+    std::vector<std::vector<ScopedLocalRef<jobject>>> lock_objects_;
+
+   private:
+    const ScopedObjectAccessAlreadyRunnable& soaa_;
+
+    std::vector<ScopedLocalRef<jobject>> frame_lock_objects_;
+  };
+
+  std::unique_ptr<Context> context(Context::Create());
+  CollectFramesAndLocksStackVisitor dumper(soa, const_cast<Thread*>(this), context.get());
+  dumper.WalkStack();
+
+  // There should not be a pending exception. Otherwise, return with it pending.
+  if (IsExceptionPending()) {
+    return nullptr;
+  }
+
+  // Now go and create Java arrays.
+
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+
+  StackHandleScope<6> hs(soa.Self());
+  mirror::Class* aste_array_class = class_linker->FindClass(
+      soa.Self(),
+      "[Ldalvik/system/AnnotatedStackTraceElement;",
+      ScopedNullHandle<mirror::ClassLoader>());
+  if (aste_array_class == nullptr) {
+    return nullptr;
+  }
+  Handle<mirror::Class> h_aste_array_class(hs.NewHandle<mirror::Class>(aste_array_class));
+
+  mirror::Class* o_array_class = class_linker->FindClass(soa.Self(),
+                                                         "[Ljava/lang/Object;",
+                                                         ScopedNullHandle<mirror::ClassLoader>());
+  if (o_array_class == nullptr) {
+    // This should not fail in a healthy runtime.
+    soa.Self()->AssertPendingException();
+    return nullptr;
+  }
+  Handle<mirror::Class> h_o_array_class(hs.NewHandle<mirror::Class>(o_array_class));
+
+  Handle<mirror::Class> h_aste_class(hs.NewHandle<mirror::Class>(
+      h_aste_array_class->GetComponentType()));
+  ArtField* stack_trace_element_field = h_aste_class->FindField(
+      soa.Self(), h_aste_class.Get(), "stackTraceElement", "Ljava/lang/StackTraceElement;");
+  DCHECK(stack_trace_element_field != nullptr);
+  ArtField* held_locks_field = h_aste_class->FindField(
+        soa.Self(), h_aste_class.Get(), "heldLocks", "[Ljava/lang/Object;");
+  DCHECK(held_locks_field != nullptr);
+  ArtField* blocked_on_field = h_aste_class->FindField(
+        soa.Self(), h_aste_class.Get(), "blockedOn", "Ljava/lang/Object;");
+  DCHECK(blocked_on_field != nullptr);
+
+  size_t length = dumper.stack_trace_elements_.size();
+  ObjPtr<mirror::ObjectArray<mirror::Object>> array =
+      mirror::ObjectArray<mirror::Object>::Alloc(soa.Self(), aste_array_class, length);
+  if (array == nullptr) {
+    soa.Self()->AssertPendingOOMException();
+    return nullptr;
+  }
+
+  ScopedLocalRef<jobjectArray> result(soa.Env(), soa.Env()->AddLocalReference<jobjectArray>(array));
+
+  MutableHandle<mirror::Object> handle(hs.NewHandle<mirror::Object>(nullptr));
+  MutableHandle<mirror::ObjectArray<mirror::Object>> handle2(
+      hs.NewHandle<mirror::ObjectArray<mirror::Object>>(nullptr));
+  for (size_t i = 0; i != length; ++i) {
+    handle.Assign(h_aste_class->AllocObject(soa.Self()));
+    if (handle == nullptr) {
+      soa.Self()->AssertPendingOOMException();
+      return nullptr;
+    }
+
+    // Set stack trace element.
+    stack_trace_element_field->SetObject<false>(
+        handle.Get(), soa.Decode<mirror::Object>(dumper.stack_trace_elements_[i].get()));
+
+    // Create locked-on array.
+    if (!dumper.lock_objects_[i].empty()) {
+      handle2.Assign(mirror::ObjectArray<mirror::Object>::Alloc(soa.Self(),
+                                                                h_o_array_class.Get(),
+                                                                dumper.lock_objects_[i].size()));
+      if (handle2 == nullptr) {
+        soa.Self()->AssertPendingOOMException();
+        return nullptr;
+      }
+      int32_t j = 0;
+      for (auto& scoped_local : dumper.lock_objects_[i]) {
+        if (scoped_local == nullptr) {
+          continue;
+        }
+        handle2->Set(j, soa.Decode<mirror::Object>(scoped_local.get()));
+        DCHECK(!soa.Self()->IsExceptionPending());
+        j++;
+      }
+      held_locks_field->SetObject<false>(handle.Get(), handle2.Get());
+    }
+
+    // Set blocked-on object.
+    if (i == 0) {
+      if (dumper.block_jobject_ != nullptr) {
+        blocked_on_field->SetObject<false>(
+            handle.Get(), soa.Decode<mirror::Object>(dumper.block_jobject_.get()));
+      }
+    }
+
+    ScopedLocalRef<jobject> elem(soa.Env(), soa.AddLocalReference<jobject>(handle.Get()));
+    soa.Env()->SetObjectArrayElement(result.get(), i, elem.get());
+    DCHECK(!soa.Self()->IsExceptionPending());
+  }
+
+  return result.release();
+}
+
 void Thread::ThrowNewExceptionF(const char* exception_class_descriptor, const char* fmt, ...) {
   va_list args;
   va_start(args, fmt);

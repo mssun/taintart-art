@@ -160,12 +160,22 @@ static jobjectArray VMStack_getThreadStackTrace(JNIEnv* env, jclass, jobject jav
   return Thread::InternalStackTraceToStackTraceElementArray(soa, trace);
 }
 
+static jobjectArray VMStack_getAnnotatedThreadStackTrace(JNIEnv* env, jclass, jobject javaThread) {
+  ScopedFastNativeObjectAccess soa(env);
+  auto fn = [](Thread* thread, const ScopedFastNativeObjectAccess& soaa)
+      REQUIRES_SHARED(Locks::mutator_lock_) -> jobjectArray {
+    return thread->CreateAnnotatedStackTrace(soaa);
+  };
+  return GetThreadStack(soa, javaThread, fn);
+}
+
 static JNINativeMethod gMethods[] = {
   FAST_NATIVE_METHOD(VMStack, fillStackTraceElements, "(Ljava/lang/Thread;[Ljava/lang/StackTraceElement;)I"),
   FAST_NATIVE_METHOD(VMStack, getCallingClassLoader, "()Ljava/lang/ClassLoader;"),
   FAST_NATIVE_METHOD(VMStack, getClosestUserClassLoader, "()Ljava/lang/ClassLoader;"),
   FAST_NATIVE_METHOD(VMStack, getStackClass2, "()Ljava/lang/Class;"),
   FAST_NATIVE_METHOD(VMStack, getThreadStackTrace, "(Ljava/lang/Thread;)[Ljava/lang/StackTraceElement;"),
+  FAST_NATIVE_METHOD(VMStack, getAnnotatedThreadStackTrace, "(Ljava/lang/Thread;)[Ldalvik/system/AnnotatedStackTraceElement;"),
 };
 
 void register_dalvik_system_VMStack(JNIEnv* env) {
