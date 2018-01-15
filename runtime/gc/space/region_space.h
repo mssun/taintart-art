@@ -449,6 +449,18 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
     void SetAsFromSpace() {
       DCHECK(!IsFree() && IsInToSpace());
       type_ = RegionType::kRegionTypeFromSpace;
+      if (IsNewlyAllocated()) {
+        // Clear the "newly allocated" status here, as we do not want the
+        // GC to see it when encountering references in the from-space.
+        //
+        // Invariant: There should be no newly-allocated region in the
+        // from-space (when the from-space exists, which is between the calls
+        // to RegionSpace::SetFromSpace and RegionSpace::ClearFromSpace).
+        is_newly_allocated_ = false;
+      }
+      // Set live bytes to an invalid value, as we have made an
+      // evacuation decision (possibly based on the percentage of live
+      // bytes).
       live_bytes_ = static_cast<size_t>(-1);
     }
 
@@ -461,7 +473,25 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
       DCHECK(kEnableGenerationalConcurrentCopyingCollection || clear_live_bytes);
       DCHECK(!IsFree() && IsInToSpace());
       type_ = RegionType::kRegionTypeUnevacFromSpace;
+      if (IsNewlyAllocated()) {
+        // A newly allocated region set as unevac from-space must be
+        // a large or large tail region.
+        DCHECK(IsLarge() || IsLargeTail()) << static_cast<uint>(state_);
+        // Always clear the live bytes of a newly allocated (large or
+        // large tail) region.
+        clear_live_bytes = true;
+        // Clear the "newly allocated" status here, as we do not want the
+        // GC to see it when encountering (and processing) references in the
+        // from-space.
+        //
+        // Invariant: There should be no newly-allocated region in the
+        // from-space (when the from-space exists, which is between the calls
+        // to RegionSpace::SetFromSpace and RegionSpace::ClearFromSpace).
+        is_newly_allocated_ = false;
+      }
       if (clear_live_bytes) {
+        // Reset the live bytes, as we have made a non-evacuation
+        // decision (possibly based on the percentage of live bytes).
         live_bytes_ = 0;
       }
     }
@@ -471,9 +501,6 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
     void SetUnevacFromSpaceAsToSpace() {
       DCHECK(!IsFree() && IsInUnevacFromSpace());
       type_ = RegionType::kRegionTypeToSpace;
-      if (kEnableGenerationalConcurrentCopyingCollection) {
-        is_newly_allocated_ = false;
-      }
     }
 
     // Return whether this region should be evacuated. Used by RegionSpace::SetFromSpace.
