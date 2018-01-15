@@ -25,6 +25,7 @@
 #include "base/array_ref.h"
 #include "base/macros.h"
 #include "base/mutex.h"
+#include "debug/debug_info.h"
 #include "os.h"
 
 namespace art {
@@ -66,13 +67,13 @@ class ElfWriter {
                                      size_t bss_methods_offset,
                                      size_t bss_roots_offset,
                                      size_t dex_section_size) = 0;
-  virtual void PrepareDebugInfo(const ArrayRef<const debug::MethodDebugInfo>& method_infos) = 0;
+  virtual void PrepareDebugInfo(const debug::DebugInfo& debug_info) = 0;
   virtual OutputStream* StartRoData() = 0;
   virtual void EndRoData(OutputStream* rodata) = 0;
   virtual OutputStream* StartText() = 0;
   virtual void EndText(OutputStream* text) = 0;
   virtual void WriteDynamicSection() = 0;
-  virtual void WriteDebugInfo(const ArrayRef<const debug::MethodDebugInfo>& method_infos) = 0;
+  virtual void WriteDebugInfo(const debug::DebugInfo& debug_info) = 0;
   virtual bool End() = 0;
 
   // Get the ELF writer's stream. This stream can be used for writing data directly
