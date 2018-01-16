@@ -1820,8 +1820,13 @@ void DexLayout::OutputDexFile(const DexFile* dex_file, bool compute_offsets) {
   // Since we allow dex growth, we need to size the map larger than the original input to be safe.
   // Reserve an extra 10% to add some buffer room. Note that this is probably more than
   // necessary.
-  constexpr size_t kReserveFraction = 10;
-  const size_t max_size = header_->FileSize() + header_->FileSize() / kReserveFraction;
+  static constexpr size_t kReserveFraction = 10;
+  // Add an extra constant amount since the compact dex header and extra tables may cause more
+  // expansion than fits in the reserve fraction for small dex files.
+  // TODO: Move to using a resizable buffer like a vector.
+  static constexpr size_t kExtraReserve = 128 * KB;
+  const size_t max_size = header_->FileSize() + kExtraReserve +
+      header_->FileSize() / kReserveFraction;
   if (!options_.output_to_memmap_) {
     std::string output_location(options_.output_dex_directory_);
     size_t last_slash = dex_file_location.rfind('/');
