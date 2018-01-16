@@ -40,6 +40,7 @@ class HDeadCodeElimination : public HOptimization {
   void MaybeRecordSimplifyIf();
   bool RemoveDeadBlocks();
   void RemoveDeadInstructions();
+  bool SimplifyAlwaysThrows();
   bool SimplifyIfs();
   void ConnectSuccessiveBlocks();
 

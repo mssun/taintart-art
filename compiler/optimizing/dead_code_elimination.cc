@@ -148,6 +148,77 @@ static HConstant* Evaluate(HCondition* condition, HInstruction* left, HInstructi
 
 // Simplify the pattern:
 //
+//           B1
+//          /  \
+//          |   foo()  // always throws
+//          \   goto B2
+//           \ /
+//            B2
+//
+// Into:
+//
+//           B1
+//          /  \
+//          |  foo()
+//          |  goto Exit
+//          |   |
+//         B2  Exit
+//
+// Rationale:
+// Removal of the never taken edge to B2 may expose
+// other optimization opportunities, such as code sinking.
+bool HDeadCodeElimination::SimplifyAlwaysThrows() {
+  // Make sure exceptions go to exit.
+  if (graph_->HasTryCatch()) {
+    return false;
+  }
+  HBasicBlock* exit = graph_->GetExitBlock();
+  if (exit == nullptr) {
+    return false;
+  }
+
+  bool rerun_dominance_and_loop_analysis = false;
+
+  // Order does not matter, just pick one.
+  for (HBasicBlock* block : graph_->GetReversePostOrder()) {
+    HInstruction* first = block->GetFirstInstruction();
+    HInstruction* last = block->GetLastInstruction();
+    // Ensure only one throwing instruction appears before goto.
+    if (first->AlwaysThrows() &&
+        first->GetNext() == last &&
+        last->IsGoto() &&
+        block->GetPhis().IsEmpty() &&
+        block->GetPredecessors().size() == 1u) {
+      DCHECK_EQ(block->GetSuccessors().size(), 1u);
+      HBasicBlock* pred = block->GetSinglePredecessor();
+      HBasicBlock* succ = block->GetSingleSuccessor();
+      // Ensure no computations are merged through throwing block.
+      // This does not prevent the optimization per se, but would
+      // require an elaborate clean up of the SSA graph.
+      if (succ != exit &&
+          !block->Dominates(pred) &&
+          pred->Dominates(succ) &&
+          succ->GetPredecessors().size() > 1u &&
+          succ->GetPhis().IsEmpty()) {
+        block->ReplaceSuccessor(succ, exit);
+        rerun_dominance_and_loop_analysis = true;
+        MaybeRecordStat(stats_, MethodCompilationStat::kSimplifyThrowingInvoke);
+      }
+    }
+  }
+
+  // We need to re-analyze the graph in order to run DCE afterwards.
+  if (rerun_dominance_and_loop_analysis) {
+    graph_->ClearLoopInformation();
+    graph_->ClearDominanceInformation();
+    graph_->BuildDominatorTree();
+    return true;
+  }
+  return false;
+}
+
+// Simplify the pattern:
+//
 //        B1    B2    ...
 //       goto  goto  goto
 //         \    |    /
@@ -381,6 +452,7 @@ void HDeadCodeElimination::Run() {
     // Simplify graph to generate more dead block patterns.
     ConnectSuccessiveBlocks();
     bool did_any_simplification = false;
+    did_any_simplification |= SimplifyAlwaysThrows();
     did_any_simplification |= SimplifyIfs();
     did_any_simplification |= RemoveDeadBlocks();
     if (did_any_simplification) {
