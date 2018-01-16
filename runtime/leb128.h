@@ -241,7 +241,7 @@ static inline void EncodeUnsignedLeb128(Vector* dest, uint32_t value) {
 static inline void UpdateUnsignedLeb128(uint8_t* dest, uint32_t value) {
   const uint8_t* old_end = dest;
   uint32_t old_value = DecodeUnsignedLeb128(&old_end);
-  DCHECK_LE(value, old_value);
+  DCHECK_LE(UnsignedLeb128Size(value), UnsignedLeb128Size(old_value));
   for (uint8_t* end = EncodeUnsignedLeb128(dest, value); end < old_end; end++) {
     // Use longer encoding than necessary to fill the allocated space.
     end[-1] |= 0x80;
