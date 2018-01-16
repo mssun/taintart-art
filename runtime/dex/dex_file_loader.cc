@@ -94,16 +94,24 @@ bool DexFileLoader::GetMultiDexChecksums(const char* filename ATTRIBUTE_UNUSED,
   return false;
 }
 
-std::unique_ptr<const DexFile> DexFileLoader::Open(const uint8_t* base ATTRIBUTE_UNUSED,
-                                                   size_t size ATTRIBUTE_UNUSED,
-                                                   const std::string& location ATTRIBUTE_UNUSED,
-                                                   uint32_t location_checksum ATTRIBUTE_UNUSED,
-                                                   const OatDexFile* oat_dex_file ATTRIBUTE_UNUSED,
-                                                   bool verify ATTRIBUTE_UNUSED,
-                                                   bool verify_checksum ATTRIBUTE_UNUSED,
+std::unique_ptr<const DexFile> DexFileLoader::Open(const uint8_t* base,
+                                                   size_t size,
+                                                   const std::string& location,
+                                                   uint32_t location_checksum,
+                                                   const OatDexFile* oat_dex_file,
+                                                   bool verify,
+                                                   bool verify_checksum,
                                                    std::string* error_msg) const {
-  *error_msg = "UNIMPLEMENTED";
-  return nullptr;
+  return OpenCommon(base,
+                    size,
+                    location,
+                    location_checksum,
+                    oat_dex_file,
+                    verify,
+                    verify_checksum,
+                    error_msg,
+                    /*container*/ nullptr,
+                    /*verify_result*/ nullptr);
 }
 
 std::unique_ptr<const DexFile> DexFileLoader::Open(const std::string& location ATTRIBUTE_UNUSED,
