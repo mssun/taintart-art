@@ -75,6 +75,7 @@ enum class MethodCompilationStat {
   kImplicitNullCheckGenerated,
   kExplicitNullCheckGenerated,
   kSimplifyIf,
+  kSimplifyThrowingInvoke,
   kInstructionSunk,
   kNotInlinedUnresolvedEntrypoint,
   kNotInlinedDexCache,
