@@ -137,16 +137,7 @@ class CompiledMethodStorage::DedupeHashFunc {
 
       return hash;
     } else {
-      size_t hash = 0x811c9dc5;
-      for (uint32_t i = 0; i < len; ++i) {
-        hash = (hash * 16777619) ^ data[i];
-      }
-      hash += hash << 13;
-      hash ^= hash >> 7;
-      hash += hash << 3;
-      hash ^= hash >> 17;
-      hash += hash << 5;
-      return hash;
+      return HashBytes(data, len);
     }
   }
 };
