@@ -36,6 +36,7 @@ GTEST_DEX_DIRECTORIES := \
   ForClassLoaderD \
   ExceptionHandle \
   GetMethodSignature \
+  HiddenApi \
   ImageLayoutA \
   ImageLayoutB \
   IMTA \
@@ -113,6 +114,7 @@ ART_GTEST_dexlayout_test_DEX_DEPS := ManyMethods
 ART_GTEST_dex2oat_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS) ManyMethods Statics VerifierDeps
 ART_GTEST_dex2oat_image_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS) Statics VerifierDeps
 ART_GTEST_exception_test_DEX_DEPS := ExceptionHandle
+ART_GTEST_hiddenapi_test_DEX_DEPS := HiddenApi
 ART_GTEST_image_test_DEX_DEPS := ImageLayoutA ImageLayoutB DefaultMethods
 ART_GTEST_imtable_test_DEX_DEPS := IMTA IMTB
 ART_GTEST_instrumentation_test_DEX_DEPS := Instrumentation
@@ -266,6 +268,11 @@ ART_GTEST_patchoat_test_TARGET_DEPS := \
 ART_GTEST_profile_assistant_test_HOST_DEPS := profmand-host
 ART_GTEST_profile_assistant_test_TARGET_DEPS := profmand-target
 
+ART_GTEST_hiddenapi_test_HOST_DEPS := \
+  $(HOST_CORE_IMAGE_DEFAULT_64) \
+  $(HOST_CORE_IMAGE_DEFAULT_32) \
+  hiddenapid-host
+
 # The path for which all the source files are relative, not actually the current directory.
 LOCAL_PATH := art
 
@@ -279,6 +286,7 @@ ART_TEST_MODULES := \
     art_dexlayout_tests \
     art_dexlist_tests \
     art_dexoptanalyzer_tests \
+    art_hiddenapi_tests \
     art_imgdiag_tests \
     art_oatdump_tests \
     art_patchoat_tests \
