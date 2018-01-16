@@ -709,6 +709,8 @@ class Runtime {
     return jdwp_provider_;
   }
 
+  static constexpr int32_t kUnsetSdkVersion = 0u;
+
  private:
   static void InitPlatformSignalHandlers();
 
