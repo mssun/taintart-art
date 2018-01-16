@@ -66,6 +66,7 @@ class CodeItemInstructionAccessor {
  protected:
   CodeItemInstructionAccessor() = default;
 
+  ALWAYS_INLINE void Init(uint32_t insns_size_in_code_units, const uint16_t* insns);
   ALWAYS_INLINE void Init(const CompactDexFile::CodeItem& code_item);
   ALWAYS_INLINE void Init(const StandardDexFile::CodeItem& code_item);
   ALWAYS_INLINE void Init(const DexFile& dex_file, const DexFile::CodeItem* code_item);

@@ -95,15 +95,45 @@ uint32_t CompactDexWriter::WriteCodeItem(dex_ir::CodeItem* code_item,
                                          bool reserve_only) {
   DCHECK(code_item != nullptr);
   const uint32_t start_offset = offset;
+  // Use 4 byte alignment for now, we need to peek at the bytecode to see if we can 2 byte align
+  // otherwise.
   offset = RoundUp(offset, CompactDexFile::CodeItem::kAlignment);
-  ProcessOffset(&offset, code_item);
 
   CompactDexFile::CodeItem disk_code_item;
-  disk_code_item.registers_size_ = code_item->RegistersSize();
-  disk_code_item.ins_size_ = code_item->InsSize();
-  disk_code_item.outs_size_ = code_item->OutsSize();
-  disk_code_item.tries_size_ = code_item->TriesSize();
-  disk_code_item.insns_size_in_code_units_ = code_item->InsnsSize();
+
+  uint16_t preheader_storage[CompactDexFile::CodeItem::kMaxPreHeaderSize] = {};
+  uint16_t* preheader_end = preheader_storage + CompactDexFile::CodeItem::kMaxPreHeaderSize;
+  const uint16_t* preheader = disk_code_item.Create(
+      code_item->RegistersSize(),
+      code_item->InsSize(),
+      code_item->OutsSize(),
+      code_item->TriesSize(),
+      code_item->InsnsSize(),
+      preheader_end);
+  const size_t preheader_bytes = (preheader_end - preheader) * sizeof(preheader[0]);
+
+  static constexpr size_t kPayloadInstructionRequiredAlignment = 4;
+  const uint32_t current_code_item_start = offset + preheader_bytes;
+  if (!IsAlignedParam(current_code_item_start, kPayloadInstructionRequiredAlignment)) {
+    // If the preheader is going to make the code unaligned, consider adding 2 bytes of padding
+    // before if required.
+    for (const DexInstructionPcPair& instruction : code_item->Instructions()) {
+      const Instruction::Code opcode = instruction->Opcode();
+      // Payload instructions possibly require special alignment for their data.
+      if (opcode == Instruction::FILL_ARRAY_DATA ||
+          opcode == Instruction::PACKED_SWITCH ||
+          opcode == Instruction::SPARSE_SWITCH) {
+        offset += RoundUp(current_code_item_start, kPayloadInstructionRequiredAlignment) -
+            current_code_item_start;
+        break;
+      }
+    }
+  }
+
+  // Write preheader first.
+  offset += Write(reinterpret_cast<const uint8_t*>(preheader), preheader_bytes, offset);
+  // Registered offset is after the preheader.
+  ProcessOffset(&offset, code_item);
   // Avoid using sizeof so that we don't write the fake instruction array at the end of the code
   // item.
   offset += Write(&disk_code_item,
