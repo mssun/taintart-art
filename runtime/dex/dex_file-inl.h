@@ -136,7 +136,7 @@ inline const char* DexFile::GetShorty(uint32_t proto_idx) const {
 inline const DexFile::TryItem* DexFile::GetTryItems(const DexInstructionIterator& code_item_end,
                                                     uint32_t offset) {
   return reinterpret_cast<const TryItem*>
-      (RoundUp(reinterpret_cast<uintptr_t>(&code_item_end.Inst()), 4)) + offset;
+      (RoundUp(reinterpret_cast<uintptr_t>(&code_item_end.Inst()), TryItem::kAlignment)) + offset;
 }
 
 static inline bool DexFileStringEquals(const DexFile* df1, dex::StringIndex sidx1,
