@@ -17,9 +17,13 @@
 #ifndef ART_COMPILER_DEBUG_ELF_SYMTAB_WRITER_H_
 #define ART_COMPILER_DEBUG_ELF_SYMTAB_WRITER_H_
 
+#include <map>
 #include <unordered_set>
 
+#include "debug/debug_info.h"
 #include "debug/method_debug_info.h"
+#include "dex/dex_file-inl.h"
+#include "dex/code_item_accessors.h"
 #include "linker/elf_builder.h"
 #include "utils.h"
 
@@ -35,22 +39,26 @@ namespace debug {
 // one symbol which marks the whole .text section as code.
 constexpr bool kGenerateSingleArmMappingSymbol = true;
 
+// Magic name for .symtab symbols which enumerate dex files used
+// by this ELF file (currently mmapped inside the .dex section).
+constexpr const char* kDexFileSymbolName = "$dexfile";
+
 template <typename ElfTypes>
 static void WriteDebugSymbols(linker::ElfBuilder<ElfTypes>* builder,
-                              const ArrayRef<const MethodDebugInfo>& method_infos,
-                              bool with_signature) {
+                              bool mini_debug_info,
+                              const DebugInfo& debug_info) {
   uint64_t mapping_symbol_address = std::numeric_limits<uint64_t>::max();
   auto* strtab = builder->GetStrTab();
   auto* symtab = builder->GetSymTab();
 
-  if (method_infos.empty()) {
+  if (debug_info.Empty()) {
     return;
   }
 
   // Find all addresses which contain deduped methods.
   // The first instance of method is not marked deduped_, but the rest is.
   std::unordered_set<uint64_t> deduped_addresses;
-  for (const MethodDebugInfo& info : method_infos) {
+  for (const MethodDebugInfo& info : debug_info.compiled_methods) {
     if (info.deduped) {
       deduped_addresses.insert(info.code_address);
     }
@@ -58,9 +66,8 @@ static void WriteDebugSymbols(linker::ElfBuilder<ElfTypes>* builder,
 
   strtab->Start();
   strtab->Write("");  // strtab should start with empty string.
-  std::string last_name;
-  size_t last_name_offset = 0;
-  for (const MethodDebugInfo& info : method_infos) {
+  // Add symbols for compiled methods.
+  for (const MethodDebugInfo& info : debug_info.compiled_methods) {
     if (info.deduped) {
       continue;  // Add symbol only for the first instance.
     }
@@ -69,14 +76,11 @@ static void WriteDebugSymbols(linker::ElfBuilder<ElfTypes>* builder,
       name_offset = strtab->Write(info.trampoline_name);
     } else {
       DCHECK(info.dex_file != nullptr);
-      std::string name = info.dex_file->PrettyMethod(info.dex_method_index, with_signature);
+      std::string name = info.dex_file->PrettyMethod(info.dex_method_index, !mini_debug_info);
       if (deduped_addresses.find(info.code_address) != deduped_addresses.end()) {
         name += " [DEDUPED]";
       }
-      // If we write method names without signature, we might see the same name multiple times.
-      name_offset = (name == last_name ? last_name_offset : strtab->Write(name));
-      last_name = std::move(name);
-      last_name_offset = name_offset;
+      name_offset = strtab->Write(name);
     }
 
     const auto* text = builder->GetText();
@@ -97,13 +101,46 @@ static void WriteDebugSymbols(linker::ElfBuilder<ElfTypes>* builder,
       }
     }
   }
+  // Add symbols for interpreted methods (with address range of the method's bytecode).
+  if (!debug_info.dex_files.empty() && builder->GetDex()->Exists()) {
+    auto dex = builder->GetDex();
+    for (auto it : debug_info.dex_files) {
+      uint64_t dex_address = dex->GetAddress() + it.first /* offset within the section */;
+      const DexFile* dex_file = it.second;
+      symtab->Add(strtab->Write(kDexFileSymbolName), dex, dex_address, 0, STB_LOCAL, STT_NOTYPE);
+      if (mini_debug_info) {
+        continue;  // Don't add interpreter method names to mini-debug-info for now.
+      }
+      for (uint32_t i = 0; i < dex_file->NumClassDefs(); ++i) {
+        const DexFile::ClassDef& class_def = dex_file->GetClassDef(i);
+        const uint8_t* class_data = dex_file->GetClassData(class_def);
+        if (class_data == nullptr) {
+          continue;
+        }
+        for (ClassDataItemIterator item(*dex_file, class_data); item.HasNext(); item.Next()) {
+          if (!item.IsAtMethod()) {
+            continue;
+          }
+          const DexFile::CodeItem* code_item = item.GetMethodCodeItem();
+          if (code_item == nullptr) {
+            continue;
+          }
+          CodeItemInstructionAccessor code(*dex_file, code_item);
+          DCHECK(code.HasCodeItem());
+          std::string name = dex_file->PrettyMethod(item.GetMemberIndex(), !mini_debug_info);
+          size_t name_offset = strtab->Write(name);
+          uint64_t offset = reinterpret_cast<const uint8_t*>(code.Insns()) - dex_file->Begin();
+          uint64_t address = dex_address + offset;
+          size_t size = code.InsnsSizeInCodeUnits() * sizeof(uint16_t);
+          symtab->Add(name_offset, dex, address, size, STB_GLOBAL, STT_FUNC);
+        }
+      }
+    }
+  }
   strtab->End();
 
   // Symbols are buffered and written after names (because they are smaller).
-  // We could also do two passes in this function to avoid the buffering.
-  symtab->Start();
-  symtab->Write();
-  symtab->End();
+  symtab->WriteCachedSection();
 }
 
 }  // namespace debug
