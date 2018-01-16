@@ -62,7 +62,6 @@ class DexWriter {
  public:
   static constexpr uint32_t kDataSectionAlignment = sizeof(uint32_t) * 2;
   static constexpr uint32_t kDexSectionWordAlignment = 4;
-  static constexpr uint32_t kDexTryItemAlignment = sizeof(uint32_t);
 
   static inline constexpr uint32_t SectionAlignment(DexFile::MapItemType type) {
     switch (type) {
