@@ -1347,7 +1347,10 @@ void CodeGeneratorX86::AddLocationAsTemp(Location location, LocationSummary* loc
 }
 
 void InstructionCodeGeneratorX86::HandleGoto(HInstruction* got, HBasicBlock* successor) {
-  DCHECK(!successor->IsExitBlock());
+  if (successor->IsExitBlock()) {
+    DCHECK(got->GetPrevious()->AlwaysThrows());
+    return;  // no code needed
+  }
 
   HBasicBlock* block = got->GetBlock();
   HInstruction* previous = got->GetPrevious();
