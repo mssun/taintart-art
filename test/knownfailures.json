@@ -412,7 +412,8 @@
     {
         "tests": [
             "961-default-iface-resolution-gen",
-            "964-default-iface-init-gen"
+            "964-default-iface-init-gen",
+            "968-default-partial-compile-gen"
         ],
         "description": ["Tests that just take too long with jvmti-stress"],
         "variant": "jvmti-stress | redefine-stress | trace-stress | step-stress"
