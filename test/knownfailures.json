@@ -648,6 +648,13 @@
         "bug": "b/64683522"
     },
     {
+        "tests": ["628-vdex",
+                  "629-vdex-speed",
+                  "634-vdex-duplicate"],
+        "variant": "cdex-fast",
+        "description": ["Tests that depend on input-vdex are not supported with compact dex"]
+    },
+    {
         "tests": "661-oat-writer-layout",
         "variant": "interp-ac | interpreter | jit | no-dex2oat | no-prebuild | no-image | trace | redefine-stress | jvmti-stress",
         "description": ["Test is designed to only check --compiler-filter=speed"]
