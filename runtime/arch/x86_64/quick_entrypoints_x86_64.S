@@ -1410,21 +1410,21 @@ DEFINE_FUNCTION art_quick_check_instance_of
     SETUP_FP_CALLEE_SAVE_FRAME
     call SYMBOL(artInstanceOfFromCode)  // (Object* obj, Class* ref_klass)
     testq %rax, %rax
-    jz 1f                             // jump forward if not assignable
+    jz .Lthrow_class_cast_exception   // jump forward if not assignable
+    CFI_REMEMBER_STATE
     RESTORE_FP_CALLEE_SAVE_FRAME
     addq LITERAL(24), %rsp            // pop arguments
     CFI_ADJUST_CFA_OFFSET(-24)
-
-.Lreturn:
     ret
+    CFI_RESTORE_STATE                 // Reset unwind info so following code unwinds.
 
-    CFI_ADJUST_CFA_OFFSET(24 + 4 * 8)  // Reset unwind info so following code unwinds.
-1:
+.Lthrow_class_cast_exception:
     RESTORE_FP_CALLEE_SAVE_FRAME
     addq LITERAL(8), %rsp             // pop padding
     CFI_ADJUST_CFA_OFFSET(-8)
     POP rsi                           // Pop arguments
     POP rdi
+
     SETUP_SAVE_ALL_CALLEE_SAVES_FRAME // save all registers as basis for long jump context
     mov %gs:THREAD_SELF_OFFSET, %rdx  // pass Thread::Current()
     call SYMBOL(artThrowClassCastExceptionForObject)  // (Object* src, Class* dest, Thread*)
