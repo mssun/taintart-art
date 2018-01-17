@@ -64,6 +64,9 @@ constexpr char ELFMAG0 = ElfMagic[EI_MAG0];
 constexpr char ELFMAG1 = ElfMagic[EI_MAG1];
 constexpr char ELFMAG2 = ElfMagic[EI_MAG2];
 constexpr char ELFMAG3 = ElfMagic[EI_MAG3];
+constexpr char ELFMAG[] = "\177ELF";
+constexpr int SELFMAG = 4;
+constexpr int NT_PRSTATUS = 1;
 // END android-added for <elf.h> compat
 
 struct Elf32_Ehdr {
@@ -1411,7 +1414,9 @@ struct Elf32_Sym {
 };
 
 // BEGIN android-added for <elf.h> compat
+static inline unsigned char ELF32_ST_BIND(unsigned char st_info) { return st_info >> 4; }
 static inline unsigned char ELF32_ST_TYPE(unsigned char st_info) { return st_info & 0x0f; }
+static inline unsigned char ELF64_ST_BIND(unsigned char st_info) { return st_info >> 4; }
 static inline unsigned char ELF64_ST_TYPE(unsigned char st_info) { return st_info & 0x0f; }
 // END android-added for <elf.h> compat
 

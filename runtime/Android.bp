@@ -40,9 +40,6 @@ cc_defaults {
 
     target: {
         android: {
-            shared_libs: [
-                "libutils",
-            ],
             static_libs: [
                 "libz",
                 "libbase",
@@ -54,6 +51,9 @@ cc_defaults {
             ],
         },
     },
+    header_libs: [
+        "jni_headers",
+    ],
     generated_sources: ["art_operator_srcs"],
     // asm_support_gen.h (used by asm_support.h) is generated with cpp-define-generator
     generated_headers: ["cpp-define-generator-asm-support"],
@@ -78,6 +78,11 @@ cc_defaults {
 art_cc_library {
     name: "libdexfile",
     defaults: ["libdexfile_defaults"],
+    vendor_available: true,
+    vndk: {
+        enabled: true,
+        support_system_process: true,
+    },
     // Leave the symbols in the shared library so that stack unwinders can
     // produce meaningful name resolution.
     strip: {
