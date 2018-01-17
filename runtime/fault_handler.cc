@@ -201,13 +201,13 @@ bool FaultManager::HandleFault(int sig, siginfo_t* info, void* context) {
         return true;
       }
     }
+  }
 
-    // We hit a signal we didn't handle.  This might be something for which
-    // we can give more information about so call all registered handlers to
-    // see if it is.
-    if (HandleFaultByOtherHandlers(sig, info, context)) {
-      return true;
-    }
+  // We hit a signal we didn't handle.  This might be something for which
+  // we can give more information about so call all registered handlers to
+  // see if it is.
+  if (HandleFaultByOtherHandlers(sig, info, context)) {
+    return true;
   }
 
   // Set a breakpoint in this function to catch unhandled signals.
@@ -232,7 +232,7 @@ void FaultManager::RemoveHandler(FaultHandler* handler) {
   }
   auto it2 = std::find(other_handlers_.begin(), other_handlers_.end(), handler);
   if (it2 != other_handlers_.end()) {
-    other_handlers_.erase(it);
+    other_handlers_.erase(it2);
     return;
   }
   LOG(FATAL) << "Attempted to remove non existent handler " << handler;
