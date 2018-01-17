@@ -167,7 +167,7 @@ void Instrumentation::InstallStubsForMethod(ArtMethod* method) {
       if (NeedDebugVersionFor(method)) {
         new_quick_code = GetQuickToInterpreterBridge();
       } else {
-        new_quick_code = class_linker->GetQuickEntrypointFor(method);
+        new_quick_code = class_linker->GetQuickOatCodeFor(method);
       }
     } else {
       new_quick_code = GetQuickResolutionStub();
@@ -188,7 +188,7 @@ void Instrumentation::InstallStubsForMethod(ArtMethod* method) {
         } else if (entry_exit_stubs_installed_) {
           new_quick_code = GetQuickInstrumentationEntryPoint();
         } else {
-          new_quick_code = class_linker->GetQuickEntrypointFor(method);
+          new_quick_code = class_linker->GetQuickOatCodeFor(method);
         }
       } else {
         new_quick_code = GetQuickResolutionStub();
@@ -877,7 +877,7 @@ void Instrumentation::Undeoptimize(ArtMethod* method) {
     } else {
       const void* quick_code = NeedDebugVersionFor(method)
           ? GetQuickToInterpreterBridge()
-          : class_linker->GetQuickEntrypointFor(method);
+          : class_linker->GetQuickOatCodeFor(method);
       UpdateEntrypoints(method, quick_code);
     }
 
@@ -971,7 +971,7 @@ const void* Instrumentation::GetQuickCodeFor(ArtMethod* method, PointerSize poin
       return code;
     }
   }
-  return class_linker->GetQuickEntrypointFor(method);
+  return class_linker->GetQuickOatCodeFor(method);
 }
 
 void Instrumentation::MethodEnterEventImpl(Thread* thread,
