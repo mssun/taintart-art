@@ -65,6 +65,8 @@ class Options {
   bool visualize_pattern_ = false;
   bool update_checksum_ = false;
   CompactDexLevel compact_dex_level_ = CompactDexLevel::kCompactDexLevelNone;
+  // Disabled until dex2oat properly handles quickening of deduped code items.
+  bool dedupe_code_items_ = false;
   OutputFormat output_format_ = kOutputPlain;
   const char* output_dex_directory_ = nullptr;
   const char* output_file_name_ = nullptr;
