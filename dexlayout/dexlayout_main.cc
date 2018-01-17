@@ -62,6 +62,7 @@ static void Usage(void) {
   fprintf(stderr, " -t : display file section sizes\n");
   fprintf(stderr, " -v : verify output file is canonical to input (IR level comparison)\n");
   fprintf(stderr, " -w : output dex directory \n");
+  fprintf(stderr, " -x : compact dex generation level, either 'none' or 'fast'\n");
 }
 
 /*
@@ -79,7 +80,7 @@ int DexlayoutDriver(int argc, char** argv) {
 
   // Parse all arguments.
   while (1) {
-    const int ic = getopt(argc, argv, "abcdefghil:mo:p:stvw:");
+    const int ic = getopt(argc, argv, "abcdefghil:mo:p:stvw:x:");
     if (ic < 0) {
       break;  // done
     }
@@ -140,6 +141,15 @@ int DexlayoutDriver(int argc, char** argv) {
         break;
       case 'w':  // output dex files directory
         options.output_dex_directory_ = optarg;
+        break;
+      case 'x':  // compact dex level
+        if (strcmp(optarg, "none") == 0) {
+          options.compact_dex_level_ = CompactDexLevel::kCompactDexLevelNone;
+        } else if (strcmp(optarg, "fast") == 0) {
+          options.compact_dex_level_ = CompactDexLevel::kCompactDexLevelFast;
+        } else {
+          want_usage = true;
+        }
         break;
       default:
         want_usage = true;
