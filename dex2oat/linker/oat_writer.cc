@@ -3362,9 +3362,10 @@ bool OatWriter::WriteDexFile(OutputStream* out,
     return false;
   }
   // update_input_vdex disables compact dex and layout.
-  if (!update_input_vdex && (profile_compilation_info_ != nullptr ||
-      compact_dex_level_ != CompactDexLevel::kCompactDexLevelNone)) {
-    CHECK(!update_input_vdex) << "We should never update the input vdex when doing dexlayout";
+  if (profile_compilation_info_ != nullptr ||
+      compact_dex_level_ != CompactDexLevel::kCompactDexLevelNone) {
+    CHECK(!update_input_vdex)
+        << "We should never update the input vdex when doing dexlayout or compact dex";
     if (!LayoutAndWriteDexFile(out, oat_dex_file)) {
       return false;
     }
@@ -3433,6 +3434,11 @@ bool OatWriter::SeekToDexFile(OutputStream* out, File* file, OatDexFile* oat_dex
 }
 
 bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_file) {
+  // Open dex files and write them into `out`.
+  // Note that we only verify dex files which do not belong to the boot class path.
+  // This is because those have been processed by `hiddenapi` and would not pass
+  // some of the checks. No guarantees are lost, however, as `hiddenapi` verifies
+  // the dex files prior to processing.
   TimingLogger::ScopedTiming split("Dex Layout", timings_);
   std::string error_msg;
   std::string location(oat_dex_file->GetLocation());
@@ -3449,7 +3455,7 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
     dex_file = dex_file_loader.Open(location,
                                zip_entry->GetCrc32(),
                                std::move(mem_map),
-                               /* verify */ true,
+                               /* verify */ !compiling_boot_image_,
                                /* verify_checksum */ true,
                                &error_msg);
   } else if (oat_dex_file->source_.IsRawFile()) {
@@ -3459,8 +3465,11 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
       PLOG(ERROR) << "Failed to dup dex file descriptor (" << raw_file->Fd() << ") at " << location;
       return false;
     }
-    dex_file = dex_file_loader.OpenDex(
-        dup_fd, location, /* verify */ true, /* verify_checksum */ true, &error_msg);
+    dex_file = dex_file_loader.OpenDex(dup_fd, location,
+                                       /* verify */ !compiling_boot_image_,
+                                       /* verify_checksum */ true,
+                                       /* mmap_shared */ false,
+                                       &error_msg);
   } else {
     // The source data is a vdex file.
     CHECK(oat_dex_file->source_.IsRawData())
