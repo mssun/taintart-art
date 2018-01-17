@@ -173,6 +173,7 @@ enum {
   DEBUG_JAVA_DEBUGGABLE           = 1 << 8,
   DISABLE_VERIFIER                = 1 << 9,
   ONLY_USE_SYSTEM_OAT_FILES       = 1 << 10,
+  DISABLE_HIDDEN_API_CHECKS       = 1 << 11,
 };
 
 static uint32_t EnableDebugFeatures(uint32_t runtime_flags) {
@@ -284,6 +285,11 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
     runtime_flags &= ~ONLY_USE_SYSTEM_OAT_FILES;
   }
 
+  if ((runtime_flags & DISABLE_HIDDEN_API_CHECKS) != 0) {
+    Runtime::Current()->DisableHiddenApiChecks();
+    runtime_flags &= ~DISABLE_HIDDEN_API_CHECKS;
+  }
+
   if (runtime_flags != 0) {
     LOG(ERROR) << StringPrintf("Unknown bits set in runtime_flags: %#x", runtime_flags);
   }
@@ -330,6 +336,9 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
       }
     }
   }
+
+  DCHECK(!is_system_server || !Runtime::Current()->AreHiddenApiChecksEnabled())
+      << "SystemServer should be forked with DISABLE_HIDDEN_API_CHECKS";
 
   if (instruction_set != nullptr && !is_system_server) {
     ScopedUtfChars isa_string(env, instruction_set);
