@@ -459,25 +459,29 @@ bool HInliner::TryInline(HInvoke* invoke_instruction) {
   }
 
   if (actual_method != nullptr) {
+    // Single target.
     bool result = TryInlineAndReplace(invoke_instruction,
                                       actual_method,
                                       ReferenceTypeInfo::CreateInvalid(),
                                       /* do_rtp */ true,
                                       cha_devirtualize);
-    if (result && !invoke_instruction->IsInvokeStaticOrDirect()) {
-      if (cha_devirtualize) {
-        // Add dependency due to devirtulization. We've assumed resolved_method
-        // has single implementation.
-        outermost_graph_->AddCHASingleImplementationDependency(resolved_method);
-        MaybeRecordStat(stats_, MethodCompilationStat::kCHAInline);
-      } else {
-        MaybeRecordStat(stats_, MethodCompilationStat::kInlinedInvokeVirtualOrInterface);
+    if (result) {
+      // Successfully inlined.
+      if (!invoke_instruction->IsInvokeStaticOrDirect()) {
+        if (cha_devirtualize) {
+          // Add dependency due to devirtualization. We've assumed resolved_method
+          // has single implementation.
+          outermost_graph_->AddCHASingleImplementationDependency(resolved_method);
+          MaybeRecordStat(stats_, MethodCompilationStat::kCHAInline);
+        } else {
+          MaybeRecordStat(stats_, MethodCompilationStat::kInlinedInvokeVirtualOrInterface);
+        }
       }
-    } else if (!result && invoke_instruction->IsInvokeStaticOrDirect()) {
-      // Analyze always throws property for static/direct method call with single target.
-      if (AlwaysThrows(actual_method)) {
-        invoke_instruction->SetAlwaysThrows(true);
-      }
+    } else if (!cha_devirtualize && AlwaysThrows(actual_method)) {
+      // Set always throws property for non-inlined method call with single target
+      // (unless it was obtained through CHA, because that would imply we have
+      // to add the CHA dependency, which seems not worth it).
+      invoke_instruction->SetAlwaysThrows(true);
     }
     return result;
   }
