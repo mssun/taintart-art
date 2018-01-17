@@ -1057,6 +1057,64 @@ public class Main {
     }
   }
 
+  /// CHECK-START: void Main.lengthAlias1(int[], int) BCE (before)
+  /// CHECK-DAG: <<Arr:l\d+>> ParameterValue                loop:none
+  /// CHECK-DAG: <<Par:i\d+>> ParameterValue                loop:none
+  /// CHECK-DAG: <<Nul:l\d+>> NullCheck [<<Arr>>]           loop:none
+  /// CHECK-DAG: <<Len:i\d+>> ArrayLength [<<Nul>>]         loop:none
+  /// CHECK-DAG:              NotEqual [<<Par>>,<<Len>>]    loop:none
+  /// CHECK-DAG: <<Idx:i\d+>> Phi                           loop:<<Loop:B\d+>>
+  /// CHECK-DAG:              BoundsCheck [<<Idx>>,<<Len>>] loop:<<Loop>>
+  //
+  /// CHECK-START: void Main.lengthAlias1(int[], int) BCE (after)
+  /// CHECK-NOT:              BoundsCheck
+  public static void lengthAlias1(int[] a, int len) {
+    if (len == a.length) {
+      for (int i = 0; i < len; i++) {
+        a[i] = 1;
+      }
+    }
+  }
+
+  /// CHECK-START: void Main.lengthAlias2(int[], int) BCE (before)
+  /// CHECK-DAG: <<Arr:l\d+>> ParameterValue                loop:none
+  /// CHECK-DAG: <<Par:i\d+>> ParameterValue                loop:none
+  /// CHECK-DAG: <<Nul:l\d+>> NullCheck [<<Arr>>]           loop:none
+  /// CHECK-DAG: <<Len:i\d+>> ArrayLength [<<Nul>>]         loop:none
+  /// CHECK-DAG:              Equal [<<Par>>,<<Len>>]       loop:none
+  /// CHECK-DAG: <<Idx:i\d+>> Phi                           loop:<<Loop:B\d+>>
+  /// CHECK-DAG:              BoundsCheck [<<Idx>>,<<Len>>] loop:<<Loop>>
+  //
+  /// CHECK-START: void Main.lengthAlias2(int[], int) BCE (after)
+  /// CHECK-NOT:              BoundsCheck
+  public static void lengthAlias2(int[] a, int len) {
+    if (len != a.length) {
+      return;
+    }
+    for (int i = 0; i < len; i++) {
+      a[i] = 2;
+    }
+  }
+
+  /// CHECK-START: void Main.lengthAlias3(int[], int) BCE (before)
+  /// CHECK-DAG: <<Arr:l\d+>> ParameterValue                loop:none
+  /// CHECK-DAG: <<Par:i\d+>> ParameterValue                loop:none
+  /// CHECK-DAG: <<Nul:l\d+>> NullCheck [<<Arr>>]           loop:none
+  /// CHECK-DAG: <<Len:i\d+>> ArrayLength [<<Nul>>]         loop:none
+  /// CHECK-DAG:              NotEqual [<<Par>>,<<Len>>]    loop:none
+  /// CHECK-DAG: <<Idx:i\d+>> Phi                           loop:<<Loop:B\d+>>
+  /// CHECK-DAG:              BoundsCheck [<<Idx>>,<<Len>>] loop:<<Loop>>
+  //
+  /// CHECK-START: void Main.lengthAlias3(int[], int) BCE (after)
+  /// CHECK-NOT:              BoundsCheck
+  public static void lengthAlias3(int[] a, int len) {
+    if (a.length == len) {
+      for (int i = 0; i < len; i++) {
+        a[i] = 3;
+      }
+    }
+  }
+
   static int[][] mA;
 
   /// CHECK-START: void Main.dynamicBCEAndIntrinsic(int) BCE (before)
@@ -1747,10 +1805,40 @@ public class Main {
       System.out.println("nonzero length failed!");
     }
 
+    array = new int[8];
+    lengthAlias1(array, 8);
+    for (int i = 0; i < 8; i++) {
+      if (array[i] != 1) {
+        System.out.println("alias1 failed!");
+      }
+    }
+    lengthAlias2(array, 8);
+    for (int i = 0; i < 8; i++) {
+      if (array[i] != 2) {
+        System.out.println("alias2 failed!");
+      }
+    }
+    lengthAlias3(array, 8);
+    for (int i = 0; i < 8; i++) {
+      if (array[i] != 3) {
+        System.out.println("alias3 failed!");
+      }
+    }
+
+    lengthAlias1(array, /*mismatched value*/ 32);
+    for (int i = 0; i < 8; i++) {
+      if (array[i] != 3) {
+        System.out.println("mismatch failed!");
+      }
+    }
+
     // Zero length array does not break.
     array = new int[0];
     nonzeroLength(array);
     knownLength(array);
+    lengthAlias1(array, 0);
+    lengthAlias2(array, 0);
+    lengthAlias3(array, 0);
 
     mA = new int[4][4];
     for (int i = 0; i < 4; i++) {
