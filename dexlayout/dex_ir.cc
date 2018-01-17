@@ -565,18 +565,23 @@ ParameterAnnotation* Collections::GenerateParameterAnnotation(
   return new ParameterAnnotation(method_id, set_ref_list);
 }
 
-CodeItem* Collections::CreateCodeItem(const DexFile& dex_file,
-                                      const DexFile::CodeItem& disk_code_item,
-                                      uint32_t offset,
-                                      uint32_t dex_method_index) {
-  CodeItemDebugInfoAccessor accessor(dex_file, &disk_code_item, dex_method_index);
-  const uint16_t registers_size = accessor.RegistersSize();
-  const uint16_t ins_size = accessor.InsSize();
-  const uint16_t outs_size = accessor.OutsSize();
-  const uint32_t tries_size = accessor.TriesSize();
-
-  // TODO: Calculate the size of the debug info.
+CodeItem* Collections::DedupeOrCreateCodeItem(const DexFile& dex_file,
+                                              const DexFile::CodeItem* disk_code_item,
+                                              uint32_t offset,
+                                              uint32_t dex_method_index) {
+  if (disk_code_item == nullptr) {
+    return nullptr;
+  }
+  CodeItemDebugInfoAccessor accessor(dex_file, disk_code_item, dex_method_index);
   const uint32_t debug_info_offset = accessor.DebugInfoOffset();
+
+  // Create the offsets pair and dedupe based on it.
+  std::pair<uint32_t, uint32_t> offsets_pair(offset, debug_info_offset);
+  auto existing = code_items_map_.find(offsets_pair);
+  if (existing != code_items_map_.end()) {
+    return existing->second;
+  }
+
   const uint8_t* debug_info_stream = dex_file.GetDebugInfoStream(debug_info_offset);
   DebugInfoItem* debug_info = nullptr;
   if (debug_info_stream != nullptr) {
@@ -596,7 +601,7 @@ CodeItem* Collections::CreateCodeItem(const DexFile& dex_file,
 
   TryItemVector* tries = nullptr;
   CatchHandlerVector* handler_list = nullptr;
-  if (tries_size > 0) {
+  if (accessor.TriesSize() > 0) {
     tries = new TryItemVector();
     handler_list = new CatchHandlerVector();
     for (const DexFile::TryItem& disk_try_item : accessor.TryItems()) {
@@ -671,11 +676,25 @@ CodeItem* Collections::CreateCodeItem(const DexFile& dex_file,
     }
   }
 
-  uint32_t size = dex_file.GetCodeItemSize(disk_code_item);
-  CodeItem* code_item = new CodeItem(
-      registers_size, ins_size, outs_size, debug_info, insns_size, insns, tries, handler_list);
+  uint32_t size = dex_file.GetCodeItemSize(*disk_code_item);
+  CodeItem* code_item = new CodeItem(accessor.RegistersSize(),
+                                     accessor.InsSize(),
+                                     accessor.OutsSize(),
+                                     debug_info,
+                                     insns_size,
+                                     insns,
+                                     tries,
+                                     handler_list);
   code_item->SetSize(size);
-  AddItem(code_items_map_, code_items_, code_item, offset);
+
+  // Add the code item to the map.
+  DCHECK(!code_item->OffsetAssigned());
+  if (eagerly_assign_offsets_) {
+    code_item->SetOffset(offset);
+  }
+  code_items_map_.emplace(offsets_pair, code_item);
+  code_items_.AddItem(code_item);
+
   // Add "fixup" references to types, strings, methods, and fields.
   // This is temporary, as we will probably want more detailed parsing of the
   // instructions here.
@@ -703,17 +722,12 @@ MethodItem* Collections::GenerateMethodItem(const DexFile& dex_file, ClassDataIt
   MethodId* method_id = GetMethodId(cdii.GetMemberIndex());
   uint32_t access_flags = cdii.GetRawMemberAccessFlags();
   const DexFile::CodeItem* disk_code_item = cdii.GetMethodCodeItem();
-  CodeItem* code_item = code_items_map_.GetExistingObject(cdii.GetMethodCodeItemOffset());
-  DebugInfoItem* debug_info = nullptr;
-  if (disk_code_item != nullptr) {
-    if (code_item == nullptr) {
-      code_item = CreateCodeItem(dex_file,
-                                 *disk_code_item,
-                                 cdii.GetMethodCodeItemOffset(),
-                                 cdii.GetMemberIndex());
-    }
-    debug_info = code_item->DebugInfo();
-  }
+  // Temporary hack to prevent incorrectly deduping code items if they have the same offset since
+  // they may have different debug info streams.
+  CodeItem* code_item = DedupeOrCreateCodeItem(dex_file,
+                                               disk_code_item,
+                                               cdii.GetMethodCodeItemOffset(),
+                                               cdii.GetMemberIndex());
   return new MethodItem(access_flags, method_id, code_item);
 }
 
@@ -819,16 +833,16 @@ void Collections::CreateMethodHandleItem(const DexFile& dex_file, uint32_t i) {
 }
 
 void Collections::SortVectorsByMapOrder() {
-  string_datas_map_.SortVectorByMapOrder(string_datas_);
-  type_lists_map_.SortVectorByMapOrder(type_lists_);
-  encoded_array_items_map_.SortVectorByMapOrder(encoded_array_items_);
-  annotation_items_map_.SortVectorByMapOrder(annotation_items_);
-  annotation_set_items_map_.SortVectorByMapOrder(annotation_set_items_);
-  annotation_set_ref_lists_map_.SortVectorByMapOrder(annotation_set_ref_lists_);
-  annotations_directory_items_map_.SortVectorByMapOrder(annotations_directory_items_);
-  debug_info_items_map_.SortVectorByMapOrder(debug_info_items_);
-  code_items_map_.SortVectorByMapOrder(code_items_);
-  class_datas_map_.SortVectorByMapOrder(class_datas_);
+  string_datas_.SortByMapOrder(string_datas_map_.Collection());
+  type_lists_.SortByMapOrder(type_lists_map_.Collection());
+  encoded_array_items_.SortByMapOrder(encoded_array_items_map_.Collection());
+  annotation_items_.SortByMapOrder(annotation_items_map_.Collection());
+  annotation_set_items_.SortByMapOrder(annotation_set_items_map_.Collection());
+  annotation_set_ref_lists_.SortByMapOrder(annotation_set_ref_lists_map_.Collection());
+  annotations_directory_items_.SortByMapOrder(annotations_directory_items_map_.Collection());
+  debug_info_items_.SortByMapOrder(debug_info_items_map_.Collection());
+  code_items_.SortByMapOrder(code_items_map_);
+  class_datas_.SortByMapOrder(class_datas_map_.Collection());
 }
 
 static uint32_t HeaderOffset(const dex_ir::Collections& collections ATTRIBUTE_UNUSED) {
