@@ -46,12 +46,13 @@ class HiddenApiTest : public CommonRuntimeTest {
                                               const std::vector<std::string>& extra_args,
                                               ScratchFile* out_dex) {
     std::string error;
-    ZipArchive* jar = ZipArchive::Open(GetTestDexFileName("HiddenApi").c_str(), &error);
+    std::unique_ptr<ZipArchive> jar(
+        ZipArchive::Open(GetTestDexFileName("HiddenApi").c_str(), &error));
     if (jar == nullptr) {
       LOG(FATAL) << "Could not open test file " << GetTestDexFileName("HiddenApi") << ": " << error;
       UNREACHABLE();
     }
-    ZipEntry* jar_classes_dex = jar->Find("classes.dex", &error);
+    std::unique_ptr<ZipEntry> jar_classes_dex(jar->Find("classes.dex", &error));
     if (jar_classes_dex == nullptr) {
       LOG(FATAL) << "Could not find classes.dex in test file " << GetTestDexFileName("HiddenApi")
                  << ": " << error;
