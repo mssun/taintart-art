@@ -28,6 +28,7 @@
 #include "dex/dex_file.h"
 #include "dex/dex_file_types.h"
 #include "method_reference.h"
+#include "mem_map.h"
 #include "safe_map.h"
 #include "type_reference.h"
 
@@ -70,6 +71,8 @@ class ProfileCompilationInfo {
  public:
   static const uint8_t kProfileMagic[];
   static const uint8_t kProfileVersion[];
+
+  static const char* kDexMetadataProfileEntry;
 
   // Data structures for encoding the offline representation of inline caches.
   // This is exposed as public in order to make it available to dex2oat compilations
@@ -410,6 +413,9 @@ class ProfileCompilationInfo {
   // Return all of the class descriptors in the profile for a set of dex files.
   std::unordered_set<std::string> GetClassDescriptors(const std::vector<const DexFile*>& dex_files);
 
+  // Return true if the fd points to a profile file.
+  bool IsProfileFile(int fd);
+
  private:
   enum ProfileLoadSatus {
     kProfileLoadWouldOverwiteData,
@@ -577,6 +583,58 @@ class ProfileCompilationInfo {
     uint32_t num_method_ids;
   };
 
+  /**
+   * Encapsulate the source of profile data for loading.
+   * The source can be either a plain file or a zip file.
+   * For zip files, the profile entry will be extracted to
+   * the memory map.
+   */
+  class ProfileSource {
+   public:
+    /**
+     * Create a profile source for the given fd. The ownership of the fd
+     * remains to the caller; as this class will not attempt to close it at any
+     * point.
+     */
+    static ProfileSource* Create(int32_t fd) {
+      DCHECK_GT(fd, -1);
+      return new ProfileSource(fd, /*map*/ nullptr);
+    }
+
+    /**
+     * Create a profile source backed by a memory map. The map can be null in
+     * which case it will the treated as an empty source.
+     */
+    static ProfileSource* Create(std::unique_ptr<MemMap>&& mem_map) {
+      return new ProfileSource(/*fd*/ -1, std::move(mem_map));
+    }
+
+    /**
+     * Read bytes from this source.
+     * Reading will advance the current source position so subsequent
+     * invocations will read from the las position.
+     */
+    ProfileLoadSatus Read(uint8_t* buffer,
+                          size_t byte_count,
+                          const std::string& debug_stage,
+                          std::string* error);
+
+    /** Return true if the source has 0 data. */
+    bool HasEmptyContent() const;
+    /** Return true if all the information from this source has been read. */
+    bool HasConsumedAllData() const;
+
+   private:
+    ProfileSource(int32_t fd, std::unique_ptr<MemMap>&& mem_map)
+        : fd_(fd), mem_map_(std::move(mem_map)), mem_map_cur_(0) {}
+
+    bool IsMemMap() const { return fd_ == -1; }
+
+    int32_t fd_;  // The fd is not owned by this class.
+    std::unique_ptr<MemMap> mem_map_;
+    size_t mem_map_cur_;  // Current position in the map to read from.
+  };
+
   // A helper structure to make sure we don't read past our buffers in the loops.
   struct SafeBuffer {
    public:
@@ -586,13 +644,9 @@ class ProfileCompilationInfo {
     }
 
     // Reads the content of the descriptor at the current position.
-    ProfileLoadSatus FillFromFd(int fd,
-                                const std::string& source,
-                                /*out*/std::string* error);
-
-    ProfileLoadSatus FillFromBuffer(uint8_t* buffer_ptr,
-                                    const std::string& source,
-                                    /*out*/std::string* error);
+    ProfileLoadSatus Fill(ProfileSource& source,
+                          const std::string& debug_stage,
+                          /*out*/std::string* error);
 
     // Reads an uint value (high bits to low bits) and advances the current pointer
     // with the number of bits read.
@@ -620,12 +674,18 @@ class ProfileCompilationInfo {
     uint8_t* ptr_current_;
   };
 
+  ProfileLoadSatus OpenSource(int32_t fd,
+                              /*out*/ std::unique_ptr<ProfileSource>* source,
+                              /*out*/ std::string* error);
+
   // Entry point for profile loding functionality.
-  ProfileLoadSatus LoadInternal(int fd, std::string* error, bool merge_classes = true);
+  ProfileLoadSatus LoadInternal(int32_t fd,
+                                std::string* error,
+                                bool merge_classes = true);
 
   // Read the profile header from the given fd and store the number of profile
   // lines into number_of_dex_files.
-  ProfileLoadSatus ReadProfileHeader(int fd,
+  ProfileLoadSatus ReadProfileHeader(ProfileSource& source,
                                      /*out*/uint8_t* number_of_dex_files,
                                      /*out*/uint32_t* size_uncompressed_data,
                                      /*out*/uint32_t* size_compressed_data,

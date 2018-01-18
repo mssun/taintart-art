@@ -15,6 +15,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <stdio.h>
 
 #include "art_method-inl.h"
 #include "base/unix_file/fd_file.h"
@@ -29,6 +30,7 @@
 #include "mirror/class_loader.h"
 #include "scoped_thread_state_change-inl.h"
 #include "type_reference.h"
+#include "ziparchive/zip_writer.h"
 
 namespace art {
 
@@ -265,6 +267,50 @@ class ProfileCompilationInfoTest : public CommonRuntimeTest {
         const_cast<ProfileCompilationInfo::InlineCacheMap*>(pmi->inline_caches);
     for (auto it : *ic_map) {
       it.second.SetIsMissingTypes();
+    }
+  }
+
+  void TestProfileLoadFromZip(const char* zip_entry,
+                              size_t zip_flags,
+                              bool should_succeed,
+                              bool should_succeed_with_empty_profile = false) {
+    // Create a valid profile.
+    ScratchFile profile;
+    ProfileCompilationInfo saved_info;
+    for (uint16_t i = 0; i < 10; i++) {
+      ASSERT_TRUE(AddMethod("dex_location1", /* checksum */ 1, /* method_idx */ i, &saved_info));
+      ASSERT_TRUE(AddMethod("dex_location2", /* checksum */ 2, /* method_idx */ i, &saved_info));
+    }
+    ASSERT_TRUE(saved_info.Save(GetFd(profile)));
+    ASSERT_EQ(0, profile.GetFile()->Flush());
+
+    // Prepare the profile content for zipping.
+    ASSERT_TRUE(profile.GetFile()->ResetOffset());
+    uint64_t data_size = profile.GetFile()->GetLength();
+    std::unique_ptr<uint8_t> data(new uint8_t[data_size]);
+    ASSERT_TRUE(profile.GetFile()->ReadFully(data.get(), data_size));
+
+    // Zip the profile content.
+    ScratchFile zip;
+    FILE* file = fopen(zip.GetFile()->GetPath().c_str(), "wb");
+    ZipWriter writer(file);
+    writer.StartEntry(zip_entry, zip_flags);
+    writer.WriteBytes(data.get(), data_size);
+    writer.FinishEntry();
+    writer.Finish();
+    fflush(file);
+    fclose(file);
+
+    // Verify loading from the zip archive.
+    ProfileCompilationInfo loaded_info;
+    ASSERT_TRUE(zip.GetFile()->ResetOffset());
+    ASSERT_EQ(should_succeed, loaded_info.Load(zip.GetFile()->GetPath(), false));
+    if (should_succeed) {
+      if (should_succeed_with_empty_profile) {
+        ASSERT_TRUE(loaded_info.IsEmpty());
+      } else {
+        ASSERT_TRUE(loaded_info.Equals(saved_info));
+      }
     }
   }
 
@@ -932,6 +978,66 @@ TEST_F(ProfileCompilationInfoTest, SampledMethodsTest) {
     EXPECT_FALSE(info.GetMethodHotness(MethodReference(dex.get(), 4)).IsStartup());
     EXPECT_FALSE(info.GetMethodHotness(MethodReference(dex.get(), 6)).IsStartup());
   }
+}
+
+TEST_F(ProfileCompilationInfoTest, LoadFromZipCompress) {
+  TestProfileLoadFromZip("primary.prof",
+                         ZipWriter::kCompress | ZipWriter::kAlign32,
+                         /*should_succeed*/true);
+}
+
+TEST_F(ProfileCompilationInfoTest, LoadFromZipUnCompress) {
+  TestProfileLoadFromZip("primary.prof",
+                         ZipWriter::kAlign32,
+                         /*should_succeed*/true);
+}
+
+TEST_F(ProfileCompilationInfoTest, LoadFromZipUnAligned) {
+  TestProfileLoadFromZip("primary.prof",
+                         0,
+                         /*should_succeed*/true);
+}
+
+TEST_F(ProfileCompilationInfoTest, LoadFromZipFailBadZipEntry) {
+  TestProfileLoadFromZip("invalid.profile.entry",
+                         0,
+                         /*should_succeed*/true,
+                         /*should_succeed_with_empty_profile*/true);
+}
+
+TEST_F(ProfileCompilationInfoTest, LoadFromZipFailBadProfile) {
+  // Create a bad profile.
+  ScratchFile profile;
+  ASSERT_TRUE(profile.GetFile()->WriteFully(
+      ProfileCompilationInfo::kProfileMagic, kProfileMagicSize));
+  ASSERT_TRUE(profile.GetFile()->WriteFully(
+      ProfileCompilationInfo::kProfileVersion, kProfileVersionSize));
+  // Write that we have at least one line.
+  uint8_t line_number[] = { 0, 1 };
+  ASSERT_TRUE(profile.GetFile()->WriteFully(line_number, sizeof(line_number)));
+  ASSERT_EQ(0, profile.GetFile()->Flush());
+
+  // Prepare the profile content for zipping.
+  ASSERT_TRUE(profile.GetFile()->ResetOffset());
+  uint64_t data_size = profile.GetFile()->GetLength();
+  std::unique_ptr<uint8_t> data(new uint8_t[data_size]);
+  ASSERT_TRUE(profile.GetFile()->ReadFully(data.get(), data_size));
+
+  // Zip the profile content.
+  ScratchFile zip;
+  FILE* file = fopen(zip.GetFile()->GetPath().c_str(), "wb");
+  ZipWriter writer(file);
+  writer.StartEntry("primary.prof", ZipWriter::kCompress | ZipWriter::kAlign32);
+  writer.WriteBytes(data.get(), data_size);
+  writer.FinishEntry();
+  writer.Finish();
+  fflush(file);
+  fclose(file);
+
+  // Check that we failed to load.
+  ProfileCompilationInfo loaded_info;
+  ASSERT_TRUE(zip.GetFile()->ResetOffset());
+  ASSERT_FALSE(loaded_info.Load(GetFd(zip)));
 }
 
 }  // namespace art

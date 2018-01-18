@@ -709,6 +709,7 @@ art_cc_test {
     ],
     shared_libs: [
         "libbacktrace",
+        "libziparchive",
     ],
     header_libs: [
         "art_cmdlineparser_headers", // For parsed_options_test.
