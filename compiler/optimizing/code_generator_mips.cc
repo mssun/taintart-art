@@ -1276,6 +1276,10 @@ static dwarf::Reg DWARFReg(Register reg) {
 void CodeGeneratorMIPS::GenerateFrameEntry() {
   __ Bind(&frame_entry_label_);
 
+  if (GetCompilerOptions().CountHotnessInCompiledCode()) {
+    LOG(WARNING) << "Unimplemented hotness update in mips backend";
+  }
+
   bool do_overflow_check =
       FrameNeedsStackCheck(GetFrameSize(), InstructionSet::kMips) || !IsLeafMethod();
 

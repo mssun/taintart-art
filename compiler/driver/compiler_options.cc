@@ -60,6 +60,7 @@ CompilerOptions::CompilerOptions()
       dump_cfg_append_(false),
       force_determinism_(false),
       deduplicate_code_(true),
+      count_hotness_in_compiled_code_(false),
       register_allocation_strategy_(RegisterAllocator::kRegisterAllocatorDefault),
       passes_to_run_(nullptr) {
 }

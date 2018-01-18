@@ -1079,6 +1079,10 @@ static dwarf::Reg DWARFReg(FpuRegister reg) {
 void CodeGeneratorMIPS64::GenerateFrameEntry() {
   __ Bind(&frame_entry_label_);
 
+  if (GetCompilerOptions().CountHotnessInCompiledCode()) {
+    LOG(WARNING) << "Unimplemented hotness update in mips64 backend";
+  }
+
   bool do_overflow_check =
       FrameNeedsStackCheck(GetFrameSize(), InstructionSet::kMips64) || !IsLeafMethod();
 
