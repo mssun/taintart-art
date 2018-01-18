@@ -107,7 +107,8 @@ static void WriteDebugSymbols(linker::ElfBuilder<ElfTypes>* builder,
     for (auto it : debug_info.dex_files) {
       uint64_t dex_address = dex->GetAddress() + it.first /* offset within the section */;
       const DexFile* dex_file = it.second;
-      symtab->Add(strtab->Write(kDexFileSymbolName), dex, dex_address, 0, STB_LOCAL, STT_NOTYPE);
+      typename ElfTypes::Word dex_name = strtab->Write(kDexFileSymbolName);
+      symtab->Add(dex_name, dex, dex_address, dex_file->Size(), STB_LOCAL, STT_NOTYPE);
       if (mini_debug_info) {
         continue;  // Don't add interpreter method names to mini-debug-info for now.
       }
