@@ -3286,7 +3286,15 @@ void ClassLinker::LoadField(const ClassDataItemIterator& it,
   const uint32_t field_idx = it.GetMemberIndex();
   dst->SetDexFieldIndex(field_idx);
   dst->SetDeclaringClass(klass.Get());
-  dst->SetAccessFlags(it.GetFieldAccessFlags());
+
+  // Get access flags from the DexFile. If this is a boot class path class,
+  // also set its runtime hidden API access flags.
+  uint32_t access_flags = it.GetFieldAccessFlags();
+  if (klass->IsBootStrapClassLoaded()) {
+    access_flags =
+        HiddenApiAccessFlags::EncodeForRuntime(access_flags, it.DecodeHiddenAccessFlags());
+  }
+  dst->SetAccessFlags(access_flags);
 }
 
 void ClassLinker::LoadMethod(const DexFile& dex_file,
@@ -3302,7 +3310,14 @@ void ClassLinker::LoadMethod(const DexFile& dex_file,
   dst->SetDeclaringClass(klass.Get());
   dst->SetCodeItemOffset(it.GetMethodCodeItemOffset());
 
+  // Get access flags from the DexFile. If this is a boot class path class,
+  // also set its runtime hidden API access flags.
   uint32_t access_flags = it.GetMethodAccessFlags();
+
+  if (klass->IsBootStrapClassLoaded()) {
+    access_flags =
+        HiddenApiAccessFlags::EncodeForRuntime(access_flags, it.DecodeHiddenAccessFlags());
+  }
 
   if (UNLIKELY(strcmp("finalize", method_name) == 0)) {
     // Set finalizable flag on declaring class.
