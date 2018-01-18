@@ -193,7 +193,6 @@ void SemiSpace::MarkingPhase() {
   if (generational_) {
     if (GetCurrentIteration()->GetGcCause() == kGcCauseExplicit ||
         GetCurrentIteration()->GetGcCause() == kGcCauseForNativeAlloc ||
-        GetCurrentIteration()->GetGcCause() == kGcCauseForNativeAllocBlocking ||
         GetCurrentIteration()->GetClearSoftReferences()) {
       // If an explicit, native allocation-triggered, or last attempt
       // collection, collect the whole heap.
