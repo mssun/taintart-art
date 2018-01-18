@@ -1341,12 +1341,14 @@ ENTRY art_quick_check_instance_of
     // Call runtime code
     bl artInstanceOfFromCode
 
+    // Restore LR.
+    RESTORE_REG xLR, 24
+
     // Check for exception
     cbz x0, .Lthrow_class_cast_exception
 
     // Restore and return
     .cfi_remember_state
-    RESTORE_REG xLR, 24
     RESTORE_TWO_REGS_DECREASE_FRAME x0, x1, 32
     ret
     .cfi_restore_state                // Reset unwind info so following code unwinds.
@@ -1354,7 +1356,6 @@ ENTRY art_quick_check_instance_of
 
 .Lthrow_class_cast_exception:
     // Restore
-    RESTORE_REG xLR, 24
     RESTORE_TWO_REGS_DECREASE_FRAME x0, x1, 32
 
     SETUP_SAVE_ALL_CALLEE_SAVES_FRAME // save all registers as basis for long jump context

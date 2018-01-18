@@ -369,6 +369,7 @@ cc_defaults {
         "154-gc-loop/heap_interface.cc",
         "167-visit-locks/visit_locks.cc",
         "203-multi-checkpoint/multi_checkpoint.cc",
+        "305-other-fault-handler/fault_handler.cc",
         "454-get-vreg/get_vreg_jni.cc",
         "457-regs/regs_jni.cc",
         "461-get-reference-vreg/get_reference_vreg_jni.cc",

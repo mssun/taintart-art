@@ -55,6 +55,8 @@ art_cc_binary {
 
 art_cc_test {
     name: "art_hiddenapi_tests",
+    host_supported: true,
+    device_supported: false,
     defaults: [
         "art_gtest_defaults",
     ],

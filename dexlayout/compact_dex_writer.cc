@@ -24,6 +24,18 @@
 
 namespace art {
 
+CompactDexWriter::CompactDexWriter(dex_ir::Header* header,
+                                   MemMap* mem_map,
+                                   DexLayout* dex_layout,
+                                   CompactDexLevel compact_dex_level)
+    : DexWriter(header, mem_map, dex_layout, /*compute_offsets*/ true),
+      compact_dex_level_(compact_dex_level),
+      data_dedupe_(/*bucket_count*/ 32,
+                   HashedMemoryRange::HashEqual(mem_map->Begin()),
+                   HashedMemoryRange::HashEqual(mem_map->Begin())) {
+  CHECK(compact_dex_level_ != CompactDexLevel::kCompactDexLevelNone);
+}
+
 uint32_t CompactDexWriter::WriteDebugInfoOffsetTable(uint32_t offset) {
   const uint32_t start_offset = offset;
   const dex_ir::Collections& collections = header_->GetCollections();
@@ -94,16 +106,50 @@ uint32_t CompactDexWriter::WriteCodeItem(dex_ir::CodeItem* code_item,
                                          uint32_t offset,
                                          bool reserve_only) {
   DCHECK(code_item != nullptr);
+  DCHECK(!reserve_only) << "Not supported because of deduping.";
   const uint32_t start_offset = offset;
+
+  // Align to minimum requirements, additional alignment requirements are handled below after we
+  // know the preheader size.
   offset = RoundUp(offset, CompactDexFile::CodeItem::kAlignment);
-  ProcessOffset(&offset, code_item);
 
   CompactDexFile::CodeItem disk_code_item;
-  disk_code_item.registers_size_ = code_item->RegistersSize();
-  disk_code_item.ins_size_ = code_item->InsSize();
-  disk_code_item.outs_size_ = code_item->OutsSize();
-  disk_code_item.tries_size_ = code_item->TriesSize();
-  disk_code_item.insns_size_in_code_units_ = code_item->InsnsSize();
+
+  uint16_t preheader_storage[CompactDexFile::CodeItem::kMaxPreHeaderSize] = {};
+  uint16_t* preheader_end = preheader_storage + CompactDexFile::CodeItem::kMaxPreHeaderSize;
+  const uint16_t* preheader = disk_code_item.Create(
+      code_item->RegistersSize(),
+      code_item->InsSize(),
+      code_item->OutsSize(),
+      code_item->TriesSize(),
+      code_item->InsnsSize(),
+      preheader_end);
+  const size_t preheader_bytes = (preheader_end - preheader) * sizeof(preheader[0]);
+
+  static constexpr size_t kPayloadInstructionRequiredAlignment = 4;
+  const uint32_t current_code_item_start = offset + preheader_bytes;
+  if (!IsAlignedParam(current_code_item_start, kPayloadInstructionRequiredAlignment)) {
+    // If the preheader is going to make the code unaligned, consider adding 2 bytes of padding
+    // before if required.
+    for (const DexInstructionPcPair& instruction : code_item->Instructions()) {
+      const Instruction::Code opcode = instruction->Opcode();
+      // Payload instructions possibly require special alignment for their data.
+      if (opcode == Instruction::FILL_ARRAY_DATA ||
+          opcode == Instruction::PACKED_SWITCH ||
+          opcode == Instruction::SPARSE_SWITCH) {
+        offset += RoundUp(current_code_item_start, kPayloadInstructionRequiredAlignment) -
+            current_code_item_start;
+        break;
+      }
+    }
+  }
+
+  const uint32_t data_start = offset;
+
+  // Write preheader first.
+  offset += Write(reinterpret_cast<const uint8_t*>(preheader), preheader_bytes, offset);
+  // Registered offset is after the preheader.
+  ProcessOffset(&offset, code_item);
   // Avoid using sizeof so that we don't write the fake instruction array at the end of the code
   // item.
   offset += Write(&disk_code_item,
@@ -113,7 +159,30 @@ uint32_t CompactDexWriter::WriteCodeItem(dex_ir::CodeItem* code_item,
   offset += Write(code_item->Insns(), code_item->InsnsSize() * sizeof(uint16_t), offset);
   // Write the post instruction data.
   offset += WriteCodeItemPostInstructionData(code_item, offset, reserve_only);
+
+  if (dex_layout_->GetOptions().dedupe_code_items_ && compute_offsets_) {
+    // After having written, try to dedupe the whole code item (excluding padding).
+    uint32_t deduped_offset = DedupeData(data_start, offset, code_item->GetOffset());
+    if (deduped_offset != kDidNotDedupe) {
+      code_item->SetOffset(deduped_offset);
+      // Undo the offset for all that we wrote since we deduped.
+      offset = start_offset;
+    }
+  }
+
   return offset - start_offset;
+}
+
+uint32_t CompactDexWriter::DedupeData(uint32_t data_start,
+                                      uint32_t data_end,
+                                      uint32_t item_offset) {
+  HashedMemoryRange range {data_start, data_end - data_start};
+  auto existing = data_dedupe_.emplace(range, item_offset);
+  if (!existing.second) {
+    // Failed to insert, item already existed in the map.
+    return existing.first->second;
+  }
+  return kDidNotDedupe;
 }
 
 void CompactDexWriter::SortDebugInfosByMethodIndex() {
