@@ -81,6 +81,17 @@ else
   HAS_SRC_DEX2OAT_UNRESOLVED=false
 fi
 
+if [ -f api-light-greylist.txt -o -f api-dark-greylist.txt -o -f api-blacklist.txt ]; then
+  HAS_HIDDENAPI_SPEC=true
+else
+  HAS_HIDDENAPI_SPEC=false
+fi
+
+# USE_HIDDENAPI=false run-test... will disable hiddenapi.
+if [ -z "${USE_HIDDENAPI}" ]; then
+  USE_HIDDENAPI=true
+fi
+
 # DESUGAR=false run-test... will disable desugar.
 if [[ "$DESUGAR" == false ]]; then
   USE_DESUGAR=false
@@ -321,6 +332,24 @@ function make_dexmerge() {
   ${DXMERGER} "$dst_file" "${dex_files_to_merge[@]}"
 }
 
+function make_hiddenapi() {
+  local args=()
+  while [[ $# -gt 0 ]]; do
+    args+=("--dex=$1")
+    shift
+  done
+  if [ -f api-light-greylist.txt ]; then
+    args+=("--light-greylist=api-light-greylist.txt")
+  fi
+  if [ -f api-dark-greylist.txt ]; then
+    args+=("--dark-greylist=api-dark-greylist.txt")
+  fi
+  if [ -f api-blacklist.txt ]; then
+    args+=("--blacklist=api-blacklist.txt")
+  fi
+  ${HIDDENAPI} "${args[@]}"
+}
+
 # Print the directory name only if it exists.
 function maybe_dir() {
   local dirname="$1"
@@ -333,6 +362,13 @@ if [ -e classes.dex ]; then
   zip $TEST_NAME.jar classes.dex
   exit 0
 fi
+
+# Helper function for a common test. Evaluate with $(has_mutlidex).
+function has_multidex() {
+  echo [ ${HAS_SRC_MULTIDEX} = "true" \
+         -o ${HAS_JASMIN_MULTIDEX} = "true" \
+         -o ${HAS_SMALI_MULTIDEX} = "true" ]
+}
 
 if [ ${HAS_SRC_DEX2OAT_UNRESOLVED} = "true" ]; then
   mkdir classes
@@ -501,9 +537,18 @@ if [ ${HAS_SRC_EX} = "true" ]; then
   fi
 fi
 
+# Apply hiddenapi on the dex files if the test has API list file(s).
+if [ ${NEED_DEX} = "true" -a ${USE_HIDDENAPI} = "true" -a ${HAS_HIDDENAPI_SPEC} = "true" ]; then
+  if $(has_multidex); then
+    make_hiddenapi classes.dex classes2.dex
+  else
+    make_hiddenapi classes.dex
+  fi
+fi
+
 # Create a single dex jar with two dex files for multidex.
 if [ ${NEED_DEX} = "true" ]; then
-  if [ ${HAS_SRC_MULTIDEX} = "true" ] || [ ${HAS_JASMIN_MULTIDEX} = "true" ] || [ ${HAS_SMALI_MULTIDEX} = "true" ]; then
+  if $(has_multidex); then
     zip $TEST_NAME.jar classes.dex classes2.dex
   else
     zip $TEST_NAME.jar classes.dex
