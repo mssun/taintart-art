@@ -257,10 +257,8 @@
     },
     {
         "tests": "137-cfi",
-        "description": ["CFI unwinding expects managed frames, and the test",
-                        "does not iterate enough to even compile. JIT also",
-                        "uses Generic JNI instead of the JNI compiler."],
-        "variant": "interpreter | jit"
+        "description": ["CFI unwinding expects managed frames"],
+        "variant": "interpreter"
     },
     {
         "tests": "906-iterate-heap",
