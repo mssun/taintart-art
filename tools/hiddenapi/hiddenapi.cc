@@ -24,7 +24,7 @@
 #include "base/unix_file/fd_file.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/dex_file-inl.h"
-#include "dex/dex_hidden_access_flags.h"
+#include "hidden_api_access_flags.h"
 #include "mem_map.h"
 #include "os.h"
 
@@ -108,9 +108,9 @@ class DexMember {
   // Note that this will not update the cached data of ClassDataItemIterator
   // until it iterates over this item again and therefore will fail a CHECK if
   // it is called multiple times on the same DexMember.
-  void SetHidden(DexHiddenAccessFlags::ApiList value) {
+  void SetHidden(HiddenApiAccessFlags::ApiList value) {
     const uint32_t old_flags = it_.GetRawMemberAccessFlags();
-    const uint32_t new_flags = DexHiddenAccessFlags::Encode(old_flags, value);
+    const uint32_t new_flags = HiddenApiAccessFlags::EncodeForDex(old_flags, value);
     CHECK_EQ(UnsignedLeb128Size(new_flags), UnsignedLeb128Size(old_flags));
 
     // Locate the LEB128-encoded access flags in class data.
@@ -350,13 +350,13 @@ class HiddenApi FINAL {
         // as the strictest.
         bool is_hidden = true;
         if (member.IsOnApiList(blacklist_)) {
-          member.SetHidden(DexHiddenAccessFlags::kBlacklist);
+          member.SetHidden(HiddenApiAccessFlags::kBlacklist);
         } else if (member.IsOnApiList(dark_greylist_)) {
-          member.SetHidden(DexHiddenAccessFlags::kDarkGreylist);
+          member.SetHidden(HiddenApiAccessFlags::kDarkGreylist);
         } else if (member.IsOnApiList(light_greylist_)) {
-          member.SetHidden(DexHiddenAccessFlags::kLightGreylist);
+          member.SetHidden(HiddenApiAccessFlags::kLightGreylist);
         } else {
-          member.SetHidden(DexHiddenAccessFlags::kWhitelist);
+          member.SetHidden(HiddenApiAccessFlags::kWhitelist);
           is_hidden = false;
         }
 
