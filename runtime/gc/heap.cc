@@ -3499,10 +3499,8 @@ void Heap::GrowForUtilization(collector::GarbageCollector* collector_ran,
       const uint64_t bytes_allocated_during_gc = bytes_allocated + freed_bytes -
           bytes_allocated_before_gc;
       // Calculate when to perform the next ConcurrentGC.
-      // Calculate the estimated GC duration.
-      const double gc_duration_seconds = NsToMs(current_gc_iteration_.GetDurationNs()) / 1000.0;
       // Estimate how many remaining bytes we will have when we need to start the next GC.
-      size_t remaining_bytes = bytes_allocated_during_gc * gc_duration_seconds;
+      size_t remaining_bytes = bytes_allocated_during_gc;
       remaining_bytes = std::min(remaining_bytes, kMaxConcurrentRemainingBytes);
       remaining_bytes = std::max(remaining_bytes, kMinConcurrentRemainingBytes);
       if (UNLIKELY(remaining_bytes > max_allowed_footprint_)) {
