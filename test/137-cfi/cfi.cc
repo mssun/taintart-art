@@ -71,7 +71,7 @@ static bool CheckStack(Backtrace* bt, const std::vector<std::string>& seq) {
   for (Backtrace::const_iterator it = bt->begin(); it != bt->end(); ++it) {
     if (BacktraceMap::IsValid(it->map)) {
       LOG(INFO) << "Got " << it->func_name << ", looking for " << seq[cur_search_index];
-      if (it->func_name == seq[cur_search_index]) {
+      if (it->func_name.find(seq[cur_search_index]) != std::string::npos) {
         cur_search_index++;
         if (cur_search_index == seq.size()) {
           return true;
@@ -107,7 +107,7 @@ static void MoreErrorInfo(pid_t pid, bool sig_quit_on_fail) {
 extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindInProcess(
     JNIEnv*,
     jobject,
-    jboolean full_signatrues,
+    jboolean,
     jint,
     jboolean) {
 #if __linux__
@@ -129,17 +129,11 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindInProcess(
   std::vector<std::string> seq = {
       "Java_Main_unwindInProcess",                   // This function.
       "Main.unwindInProcess",                        // The corresponding Java native method frame.
-      "int java.util.Arrays.binarySearch(java.lang.Object[], int, int, java.lang.Object, java.util.Comparator)",  // Framework method.
+      "java.util.Arrays.binarySearch0",              // Framework method.
       "Main.main"                                    // The Java entry method.
   };
-  std::vector<std::string> full_seq = {
-      "Java_Main_unwindInProcess",                   // This function.
-      "boolean Main.unwindInProcess(boolean, int, boolean)",  // The corresponding Java native method frame.
-      "int java.util.Arrays.binarySearch(java.lang.Object[], int, int, java.lang.Object, java.util.Comparator)",  // Framework method.
-      "void Main.main(java.lang.String[])"           // The Java entry method.
-  };
 
-  bool result = CheckStack(bt.get(), full_signatrues ? full_seq : seq);
+  bool result = CheckStack(bt.get(), seq);
   if (!kCauseSegfault) {
     return result ? JNI_TRUE : JNI_FALSE;
   } else {
@@ -191,7 +185,7 @@ int wait_for_sigstop(pid_t tid, int* total_sleep_time_usec, bool* detach_failed 
 extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindOtherProcess(
     JNIEnv*,
     jobject,
-    jboolean full_signatrues,
+    jboolean,
     jint pid_int) {
 #if __linux__
   // TODO: What to do on Valgrind?
@@ -235,20 +229,11 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindOtherProcess(
                                                      // Note: For some reason, the name isn't
                                                      // resolved, so don't look for it right now.
         "Main.sleep",                                // The corresponding Java native method frame.
-        "int java.util.Arrays.binarySearch(java.lang.Object[], int, int, java.lang.Object, java.util.Comparator)",  // Framework method.
+        "java.util.Arrays.binarySearch0",            // Framework method.
         "Main.main"                                  // The Java entry method.
     };
-    std::vector<std::string> full_seq = {
-        // "Java_Main_sleep",                        // The sleep function being executed in the
-                                                     // other runtime.
-                                                     // Note: For some reason, the name isn't
-                                                     // resolved, so don't look for it right now.
-        "boolean Main.sleep(int, boolean, double)",  // The corresponding Java native method frame.
-        "int java.util.Arrays.binarySearch(java.lang.Object[], int, int, java.lang.Object, java.util.Comparator)",  // Framework method.
-        "void Main.main(java.lang.String[])"         // The Java entry method.
-    };
 
-    result = CheckStack(bt.get(), full_signatrues ? full_seq : seq);
+    result = CheckStack(bt.get(), seq);
   }
 
   constexpr bool kSigQuitOnFail = true;
