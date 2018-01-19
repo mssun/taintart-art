@@ -117,15 +117,18 @@ std::unique_ptr<Agent> AgentSpec::DoDlOpen(JNIEnv* env,
                                            : JavaVMExt::GetLibrarySearchPath(env, class_loader));
 
   bool needs_native_bridge = false;
+  std::string nativeloader_error_msg;
   void* dlopen_handle = android::OpenNativeLibrary(env,
                                                    Runtime::Current()->GetTargetSdkVersion(),
                                                    name_.c_str(),
                                                    class_loader,
                                                    library_path.get(),
                                                    &needs_native_bridge,
-                                                   error_msg);
+                                                   &nativeloader_error_msg);
   if (dlopen_handle == nullptr) {
-    *error_msg = StringPrintf("Unable to dlopen %s: %s", name_.c_str(), dlerror());
+    *error_msg = StringPrintf("Unable to dlopen %s: %s",
+                              name_.c_str(),
+                              nativeloader_error_msg.c_str());
     *error = kLoadingError;
     return nullptr;
   }
