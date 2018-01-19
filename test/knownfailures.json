@@ -256,11 +256,6 @@
                         "testing deoptimizing at quick-to-interpreter bridge."]
     },
     {
-        "tests": "137-cfi",
-        "description": ["CFI unwinding expects managed frames"],
-        "variant": "interpreter"
-    },
-    {
         "tests": "906-iterate-heap",
         "description": ["Test 906 iterates the heap filtering with different",
                         "options. No instances should be created between those",
