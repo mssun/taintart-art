@@ -180,7 +180,7 @@ class OatSymbolizer FINAL {
     #define DO_TRAMPOLINE(fn_name)                                                \
       if (oat_header.Get ## fn_name ## Offset() != 0) {                           \
         debug::MethodDebugInfo info = {};                                         \
-        info.trampoline_name = #fn_name;                                          \
+        info.custom_name = #fn_name;                                              \
         info.isa = oat_header.GetInstructionSet();                                \
         info.is_code_address_text_relative = true;                                \
         size_t code_offset = oat_header.Get ## fn_name ## Offset();               \
@@ -308,7 +308,7 @@ class OatSymbolizer FINAL {
     const void* code_address = EntryPointToCodePointer(reinterpret_cast<void*>(entry_point));
 
     debug::MethodDebugInfo info = {};
-    DCHECK(info.trampoline_name.empty());
+    DCHECK(info.custom_name.empty());
     info.dex_file = &dex_file;
     info.class_def_index = class_def_index;
     info.dex_method_index = dex_method_index;
