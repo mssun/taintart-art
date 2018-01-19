@@ -333,15 +333,15 @@ void DumpNativeStack(std::ostream& os,
     os << prefix << StringPrintf("#%02zu pc ", it->num);
     bool try_addr2line = false;
     if (!BacktraceMap::IsValid(it->map)) {
-      os << StringPrintf(Is64BitInstructionSet(kRuntimeISA) ? "%016" PRIxPTR "  ???"
-                                                            : "%08" PRIxPTR "  ???",
+      os << StringPrintf(Is64BitInstructionSet(kRuntimeISA) ? "%016" PRIx64 "  ???"
+                                                            : "%08" PRIx64 "  ???",
                          it->pc);
     } else {
-      os << StringPrintf(Is64BitInstructionSet(kRuntimeISA) ? "%016" PRIxPTR "  "
-                                                            : "%08" PRIxPTR "  ",
+      os << StringPrintf(Is64BitInstructionSet(kRuntimeISA) ? "%016" PRIx64 "  "
+                                                            : "%08" PRIx64 "  ",
                          it->rel_pc);
       if (it->map.name.empty()) {
-        os << StringPrintf("<anonymous:%" PRIxPTR ">", it->map.start);
+        os << StringPrintf("<anonymous:%" PRIx64 ">", it->map.start);
       } else {
         os << it->map.name;
       }
@@ -361,7 +361,7 @@ void DumpNativeStack(std::ostream& os,
           PcIsWithinQuickCode(current_method, it->pc)) {
         const void* start_of_code = current_method->GetEntryPointFromQuickCompiledCode();
         os << current_method->JniLongName() << "+"
-           << (it->pc - reinterpret_cast<uintptr_t>(start_of_code));
+           << (it->pc - reinterpret_cast<uint64_t>(start_of_code));
       } else {
         os << "???";
       }
