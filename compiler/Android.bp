@@ -252,9 +252,8 @@ art_cc_library {
 
     pgo: {
         instrumentation: true,
-        profile_file: "dex2oat.profdata",
+        profile_file: "art/dex2oat.profdata",
         benchmarks: ["dex2oat"],
-        enable_profile_use: false,
     }
 }
 
