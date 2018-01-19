@@ -213,8 +213,8 @@ void DexoptTest::ReserveImageSpace() {
   // Ensure a chunk of memory is reserved for the image space.
   // The reservation_end includes room for the main space that has to come
   // right after the image in case of the GSS collector.
-  uintptr_t reservation_start = ART_BASE_ADDRESS;
-  uintptr_t reservation_end = ART_BASE_ADDRESS + 384 * MB;
+  uint64_t reservation_start = ART_BASE_ADDRESS;
+  uint64_t reservation_end = ART_BASE_ADDRESS + 384 * MB;
 
   std::unique_ptr<BacktraceMap> map(BacktraceMap::Create(getpid(), true));
   ASSERT_TRUE(map.get() != nullptr) << "Failed to build process map";
