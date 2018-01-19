@@ -93,9 +93,18 @@ public class ChildClass {
                                  "in boot class path");
     }
 
+    boolean isSameBoot = (isParentInBoot == isChildInBoot);
+
     // Run meaningful combinations of access flags.
     for (Hiddenness hiddenness : Hiddenness.values()) {
-      final Behaviour expected = Behaviour.Granted;
+      final Behaviour expected;
+      if (isSameBoot || hiddenness == Hiddenness.Whitelist) {
+        expected = Behaviour.Granted;
+      } else if (hiddenness == Hiddenness.Blacklist) {
+        expected = Behaviour.Denied;
+      } else {
+        expected = Behaviour.Granted;
+      }
 
       for (boolean isStatic : booleanValues) {
         String suffix = (isStatic ? "Static" : "") + hiddenness.name();
