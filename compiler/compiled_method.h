@@ -168,6 +168,10 @@ class CompiledMethod FINAL : public CompiledCode {
 
   ArrayRef<const linker::LinkerPatch> GetPatches() const;
 
+  // The compiler sometimes unquickens shared code items. In that case, we need to clear the vmap
+  // table to avoid writing the quicken info to the vdex file.
+  void ReleaseVMapTable();
+
  private:
   static constexpr size_t kIsIntrinsicLsb = kNumberOfCompiledCodePackedBits;
   static constexpr size_t kIsIntrinsicSize = 1u;
@@ -186,7 +190,7 @@ class CompiledMethod FINAL : public CompiledCode {
   // For quick code, method specific information that is not very dedupe friendly (method indices).
   const LengthPrefixedArray<uint8_t>* const method_info_;
   // For quick code, holds code infos which contain stack maps, inline information, and etc.
-  const LengthPrefixedArray<uint8_t>* const vmap_table_;
+  const LengthPrefixedArray<uint8_t>* vmap_table_;
   // For quick code, a FDE entry for the debug_frame section.
   const LengthPrefixedArray<uint8_t>* const cfi_info_;
   // For quick code, linker patches needed by the method.

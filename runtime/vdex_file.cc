@@ -19,6 +19,7 @@
 #include <sys/mman.h>  // For the PROT_* and MAP_* constants.
 
 #include <memory>
+#include <unordered_set>
 
 #include <android-base/logging.h>
 
@@ -265,6 +266,8 @@ void VdexFile::UnquickenDexFile(const DexFile& target_dex_file,
     // RETURN_VOID_NO_BARRIER instructions to RETURN_VOID instructions.
     return;
   }
+  // Make sure to not unquicken the same code item multiple times.
+  std::unordered_set<const DexFile::CodeItem*> unquickened_code_item;
   for (uint32_t i = 0; i < target_dex_file.NumClassDefs(); ++i) {
     const DexFile::ClassDef& class_def = target_dex_file.GetClassDef(i);
     const uint8_t* class_data = target_dex_file.GetClassData(class_def);
@@ -274,6 +277,10 @@ void VdexFile::UnquickenDexFile(const DexFile& target_dex_file,
            class_it.Next()) {
         if (class_it.IsAtMethod() && class_it.GetMethodCodeItem() != nullptr) {
           const DexFile::CodeItem* code_item = class_it.GetMethodCodeItem();
+          if (!unquickened_code_item.emplace(code_item).second) {
+            // Already unquickened this code item, do not do it again.
+            continue;
+          }
           ArrayRef<const uint8_t> quicken_data;
           if (!quickening_info.empty()) {
             const uint32_t quickening_offset = GetQuickeningInfoOffset(
