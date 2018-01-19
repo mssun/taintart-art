@@ -9,6 +9,8 @@ directory are compiled separately but to the same output directory;
 this can be used to exercise "API mismatch" situations by replacing
 class files created in the first pass. The "src-ex" directory is
 built separately, and is intended for exercising class loaders.
+Resources can be stored in the "res" directory, which is distributed
+together with the executable files.
 
 The gtests are in named directories and contain a .java source
 file.
