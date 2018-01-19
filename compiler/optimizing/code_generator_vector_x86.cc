@@ -92,8 +92,8 @@ void InstructionCodeGeneratorX86::VisitVecReplicateScalar(HVecReplicateScalar* i
       __ pshufd(dst, dst, Immediate(0));
       break;
     case DataType::Type::kInt64: {
-      XmmRegister tmp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
       DCHECK_EQ(2u, instruction->GetVectorLength());
+      XmmRegister tmp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
       __ movd(dst, locations->InAt(0).AsRegisterPairLow<Register>());
       __ movd(tmp, locations->InAt(0).AsRegisterPairHigh<Register>());
       __ punpckldq(dst, tmp);
@@ -101,13 +101,13 @@ void InstructionCodeGeneratorX86::VisitVecReplicateScalar(HVecReplicateScalar* i
       break;
     }
     case DataType::Type::kFloat32:
-      DCHECK(locations->InAt(0).Equals(locations->Out()));
       DCHECK_EQ(4u, instruction->GetVectorLength());
+      DCHECK(locations->InAt(0).Equals(locations->Out()));
       __ shufps(dst, dst, Immediate(0));
       break;
     case DataType::Type::kFloat64:
-      DCHECK(locations->InAt(0).Equals(locations->Out()));
       DCHECK_EQ(2u, instruction->GetVectorLength());
+      DCHECK(locations->InAt(0).Equals(locations->Out()));
       __ shufpd(dst, dst, Immediate(0));
       break;
     default:
@@ -160,8 +160,8 @@ void InstructionCodeGeneratorX86::VisitVecExtractScalar(HVecExtractScalar* instr
       __ movd(locations->Out().AsRegister<Register>(), src);
       break;
     case DataType::Type::kInt64: {
-      XmmRegister tmp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
       DCHECK_EQ(2u, instruction->GetVectorLength());
+      XmmRegister tmp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
       __ movd(locations->Out().AsRegisterPairLow<Register>(), src);
       __ pshufd(tmp, src, Immediate(1));
       __ movd(locations->Out().AsRegisterPairHigh<Register>(), tmp);
@@ -1022,8 +1022,8 @@ void InstructionCodeGeneratorX86::VisitVecSetScalars(HVecSetScalars* instruction
       __ movd(dst, locations->InAt(0).AsRegister<Register>());
       break;
     case DataType::Type::kInt64: {
-      XmmRegister tmp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
       DCHECK_EQ(2u, instruction->GetVectorLength());
+      XmmRegister tmp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
       __ xorps(tmp, tmp);
       __ movd(dst, locations->InAt(0).AsRegisterPairLow<Register>());
       __ movd(tmp, locations->InAt(0).AsRegisterPairHigh<Register>());
