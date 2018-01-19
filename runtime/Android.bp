@@ -67,8 +67,13 @@ cc_defaults {
         "liblog",
         // For common macros.
         "libbase",
+        "libz",
     ],
-    export_include_dirs: ["."],
+
+    // Exporting "." would shadow the system elf.h with our elf.h,
+    // which in turn breaks any tools that reference this library.
+    // export_include_dirs: ["."],
+
     // ART's macros.h depends on libbase's macros.h.
     // Note: runtime_options.h depends on cmdline. But we don't really want to export this
     //       generically. dex2oat takes care of it itself.
@@ -78,11 +83,6 @@ cc_defaults {
 art_cc_library {
     name: "libdexfile",
     defaults: ["libdexfile_defaults"],
-    vendor_available: true,
-    vndk: {
-        enabled: true,
-        support_system_process: true,
-    },
     // Leave the symbols in the shared library so that stack unwinders can
     // produce meaningful name resolution.
     strip: {
