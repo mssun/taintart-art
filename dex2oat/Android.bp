@@ -132,9 +132,8 @@ art_cc_binary {
 
     pgo: {
         instrumentation: true,
-        profile_file: "dex2oat.profdata",
+        profile_file: "art/dex2oat.profdata",
         benchmarks: ["dex2oat"],
-        enable_profile_use: false,
         cflags: [
             // Ignore frame-size increase resulting from instrumentation.
             "-Wno-frame-larger-than=",
