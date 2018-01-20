@@ -14,26 +14,9 @@
  * limitations under the License.
  */
 
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.FileOutputStream;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
 public class Main {
-    private static void extractResource(String resource, String filename) throws Exception {
-        ClassLoader loader = Main.class.getClassLoader();
-        InputStream is = loader.getResourceAsStream(resource);
-        OutputStream os = new FileOutputStream(filename);
-        int read;
-        byte[] buf = new byte[4096];
-        while ((read = is.read(buf)) >= 0) {
-          os.write(buf, 0, read);
-        }
-        is.close();
-        os.close();
-    }
-
     private static long getDexFileSize(String filename) throws Exception {
         ClassLoader loader = Main.class.getClassLoader();
         Class<?> DexFile = loader.loadClass("dalvik.system.DexFile");
@@ -47,8 +30,7 @@ public class Main {
     }
 
     private static void test(String resource) throws Exception {
-        String filename = System.getenv("DEX_LOCATION") + "/" + resource;
-        extractResource(resource, filename);
+        String filename = System.getenv("DEX_LOCATION") + "/res/" + resource;
         long size = getDexFileSize(filename);
         System.out.println("Size for " + resource + ": " + size);
     }
