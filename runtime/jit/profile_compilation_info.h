@@ -417,7 +417,7 @@ class ProfileCompilationInfo {
   bool IsProfileFile(int fd);
 
  private:
-  enum ProfileLoadSatus {
+  enum ProfileLoadStatus {
     kProfileLoadWouldOverwiteData,
     kProfileLoadIOError,
     kProfileLoadVersionMismatch,
@@ -614,10 +614,10 @@ class ProfileCompilationInfo {
      * Reading will advance the current source position so subsequent
      * invocations will read from the las position.
      */
-    ProfileLoadSatus Read(uint8_t* buffer,
-                          size_t byte_count,
-                          const std::string& debug_stage,
-                          std::string* error);
+    ProfileLoadStatus Read(uint8_t* buffer,
+                           size_t byte_count,
+                           const std::string& debug_stage,
+                           std::string* error);
 
     /** Return true if the source has 0 data. */
     bool HasEmptyContent() const;
@@ -644,9 +644,9 @@ class ProfileCompilationInfo {
     }
 
     // Reads the content of the descriptor at the current position.
-    ProfileLoadSatus Fill(ProfileSource& source,
-                          const std::string& debug_stage,
-                          /*out*/std::string* error);
+    ProfileLoadStatus Fill(ProfileSource& source,
+                           const std::string& debug_stage,
+                           /*out*/std::string* error);
 
     // Reads an uint value (high bits to low bits) and advances the current pointer
     // with the number of bits read.
@@ -674,27 +674,27 @@ class ProfileCompilationInfo {
     uint8_t* ptr_current_;
   };
 
-  ProfileLoadSatus OpenSource(int32_t fd,
-                              /*out*/ std::unique_ptr<ProfileSource>* source,
-                              /*out*/ std::string* error);
+  ProfileLoadStatus OpenSource(int32_t fd,
+                               /*out*/ std::unique_ptr<ProfileSource>* source,
+                               /*out*/ std::string* error);
 
   // Entry point for profile loding functionality.
-  ProfileLoadSatus LoadInternal(int32_t fd,
-                                std::string* error,
-                                bool merge_classes = true);
+  ProfileLoadStatus LoadInternal(int32_t fd,
+                                 std::string* error,
+                                 bool merge_classes = true);
 
   // Read the profile header from the given fd and store the number of profile
   // lines into number_of_dex_files.
-  ProfileLoadSatus ReadProfileHeader(ProfileSource& source,
-                                     /*out*/uint8_t* number_of_dex_files,
-                                     /*out*/uint32_t* size_uncompressed_data,
-                                     /*out*/uint32_t* size_compressed_data,
-                                     /*out*/std::string* error);
+  ProfileLoadStatus ReadProfileHeader(ProfileSource& source,
+                                      /*out*/uint8_t* number_of_dex_files,
+                                      /*out*/uint32_t* size_uncompressed_data,
+                                      /*out*/uint32_t* size_compressed_data,
+                                      /*out*/std::string* error);
 
   // Read the header of a profile line from the given fd.
-  ProfileLoadSatus ReadProfileLineHeader(SafeBuffer& buffer,
-                                         /*out*/ProfileLineHeader* line_header,
-                                         /*out*/std::string* error);
+  ProfileLoadStatus ReadProfileLineHeader(SafeBuffer& buffer,
+                                          /*out*/ProfileLineHeader* line_header,
+                                          /*out*/std::string* error);
 
   // Read individual elements from the profile line header.
   bool ReadProfileLineHeaderElements(SafeBuffer& buffer,
@@ -703,12 +703,12 @@ class ProfileCompilationInfo {
                                      /*out*/std::string* error);
 
   // Read a single profile line from the given fd.
-  ProfileLoadSatus ReadProfileLine(SafeBuffer& buffer,
-                                   uint8_t number_of_dex_files,
-                                   const ProfileLineHeader& line_header,
-                                   const SafeMap<uint8_t, uint8_t>& dex_profile_index_remap,
-                                   bool merge_classes,
-                                   /*out*/std::string* error);
+  ProfileLoadStatus ReadProfileLine(SafeBuffer& buffer,
+                                    uint8_t number_of_dex_files,
+                                    const ProfileLineHeader& line_header,
+                                    const SafeMap<uint8_t, uint8_t>& dex_profile_index_remap,
+                                    bool merge_classes,
+                                    /*out*/std::string* error);
 
   // Read all the classes from the buffer into the profile `info_` structure.
   bool ReadClasses(SafeBuffer& buffer,

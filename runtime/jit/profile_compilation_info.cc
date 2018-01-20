@@ -199,7 +199,7 @@ bool ProfileCompilationInfo::MergeWith(const std::string& filename) {
 
   int fd = profile_file->Fd();
 
-  ProfileLoadSatus status = LoadInternal(fd, &error);
+  ProfileLoadStatus status = LoadInternal(fd, &error);
   if (status == kProfileLoadSuccess) {
     return true;
   }
@@ -230,7 +230,7 @@ bool ProfileCompilationInfo::Load(const std::string& filename, bool clear_if_inv
 
   int fd = profile_file->Fd();
 
-  ProfileLoadSatus status = LoadInternal(fd, &error);
+  ProfileLoadStatus status = LoadInternal(fd, &error);
   if (status == kProfileLoadSuccess) {
     return true;
   }
@@ -888,7 +888,7 @@ bool ProfileCompilationInfo::SafeBuffer::CompareAndAdvance(const uint8_t* data, 
   return false;
 }
 
-ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::SafeBuffer::Fill(
+ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::SafeBuffer::Fill(
       ProfileSource& source,
       const std::string& debug_stage,
       /*out*/ std::string* error) {
@@ -909,7 +909,7 @@ void ProfileCompilationInfo::SafeBuffer::Advance(size_t data_size) {
   ptr_current_ += data_size;
 }
 
-ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::ReadProfileHeader(
+ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::ReadProfileHeader(
       ProfileSource& source,
       /*out*/uint8_t* number_of_dex_files,
       /*out*/uint32_t* uncompressed_data_size,
@@ -925,7 +925,7 @@ ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::ReadProfileHead
 
   SafeBuffer safe_buffer(kMagicVersionSize);
 
-  ProfileLoadSatus status = safe_buffer.Fill(source, "ReadProfileHeader", error);
+  ProfileLoadStatus status = safe_buffer.Fill(source, "ReadProfileHeader", error);
   if (status != kProfileLoadSuccess) {
     return status;
   }
@@ -965,7 +965,7 @@ bool ProfileCompilationInfo::ReadProfileLineHeaderElements(SafeBuffer& buffer,
   return true;
 }
 
-ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::ReadProfileLineHeader(
+ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::ReadProfileLineHeader(
     SafeBuffer& buffer,
     /*out*/ProfileLineHeader* line_header,
     /*out*/std::string* error) {
@@ -996,7 +996,7 @@ ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::ReadProfileLine
   return kProfileLoadSuccess;
 }
 
-ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::ReadProfileLine(
+ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::ReadProfileLine(
       SafeBuffer& buffer,
       uint8_t number_of_dex_files,
       const ProfileLineHeader& line_header,
@@ -1039,7 +1039,7 @@ ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::ReadProfileLine
 bool ProfileCompilationInfo::Load(int fd, bool merge_classes) {
   std::string error;
 
-  ProfileLoadSatus status = LoadInternal(fd, &error, merge_classes);
+  ProfileLoadStatus status = LoadInternal(fd, &error, merge_classes);
 
   if (status == kProfileLoadSuccess) {
     return true;
@@ -1141,7 +1141,7 @@ bool ProfileCompilationInfo::VerifyProfileData(const std::vector<const DexFile*>
   return true;
 }
 
-ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::OpenSource(
+ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::OpenSource(
     int32_t fd,
     /*out*/ std::unique_ptr<ProfileSource>* source,
     /*out*/ std::string* error) {
@@ -1195,7 +1195,7 @@ ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::OpenSource(
   }
 }
 
-ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::ProfileSource::Read(
+ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::ProfileSource::Read(
     uint8_t* buffer,
     size_t byte_count,
     const std::string& debug_stage,
@@ -1244,13 +1244,13 @@ bool ProfileCompilationInfo::ProfileSource::HasEmptyContent() const {
 }
 
 // TODO(calin): fail fast if the dex checksums don't match.
-ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::LoadInternal(
+ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::LoadInternal(
       int32_t fd, std::string* error, bool merge_classes) {
   ScopedTrace trace(__PRETTY_FUNCTION__);
   DCHECK_GE(fd, 0);
 
   std::unique_ptr<ProfileSource> source;
-  ProfileLoadSatus status = OpenSource(fd, &source, error);
+  ProfileLoadStatus status = OpenSource(fd, &source, error);
   if (status != kProfileLoadSuccess) {
     return status;
   }
