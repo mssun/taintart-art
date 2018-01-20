@@ -48,10 +48,12 @@ bool VdexFile::Header::IsVersionValid() const {
 
 VdexFile::Header::Header(uint32_t number_of_dex_files,
                          uint32_t dex_size,
+                         uint32_t dex_shared_data_size,
                          uint32_t verifier_deps_size,
                          uint32_t quickening_info_size)
     : number_of_dex_files_(number_of_dex_files),
       dex_size_(dex_size),
+      dex_shared_data_size_(dex_shared_data_size),
       verifier_deps_size_(verifier_deps_size),
       quickening_info_size_(quickening_info_size) {
   memcpy(magic_, kVdexMagic, sizeof(kVdexMagic));
@@ -183,14 +185,17 @@ bool VdexFile::OpenAllDexFiles(std::vector<std::unique_ptr<const DexFile>>* dex_
     // TODO: Supply the location information for a vdex file.
     static constexpr char kVdexLocation[] = "";
     std::string location = DexFileLoader::GetMultiDexLocation(i, kVdexLocation);
-    std::unique_ptr<const DexFile> dex(dex_file_loader.Open(dex_file_start,
-                                                            size,
-                                                            location,
-                                                            GetLocationChecksum(i),
-                                                            nullptr /*oat_dex_file*/,
-                                                            false /*verify*/,
-                                                            false /*verify_checksum*/,
-                                                            error_msg));
+    std::unique_ptr<const DexFile> dex(dex_file_loader.OpenWithDataSection(
+        dex_file_start,
+        size,
+        /*data_base*/ nullptr,
+        /*data_size*/ 0u,
+        location,
+        GetLocationChecksum(i),
+        nullptr /*oat_dex_file*/,
+        false /*verify*/,
+        false /*verify_checksum*/,
+        error_msg));
     if (dex == nullptr) {
       return false;
     }

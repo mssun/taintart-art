@@ -280,7 +280,7 @@ void Collections::ReadEncodedValue(const DexFile& dex_file,
     }
     case DexFile::kDexAnnotationArray: {
       EncodedValueVector* values = new EncodedValueVector();
-      const uint32_t offset = *data - dex_file.Begin();
+      const uint32_t offset = *data - dex_file.DataBegin();
       const uint32_t size = DecodeUnsignedLeb128(data);
       // Decode all elements.
       for (uint32_t i = 0; i < size; i++) {
@@ -440,7 +440,7 @@ void Collections::AddAnnotationsFromMapListSection(const DexFile& dex_file,
 AnnotationItem* Collections::CreateAnnotationItem(const DexFile& dex_file,
                                                   const DexFile::AnnotationItem* annotation) {
   const uint8_t* const start_data = reinterpret_cast<const uint8_t*>(annotation);
-  const uint32_t offset = start_data - dex_file.Begin();
+  const uint32_t offset = start_data - dex_file.DataBegin();
   AnnotationItem* annotation_item = annotation_items_map_.GetExistingObject(offset);
   if (annotation_item == nullptr) {
     uint8_t visibility = annotation->visibility_;
@@ -772,8 +772,7 @@ ClassData* Collections::CreateClassData(
 
 void Collections::CreateCallSitesAndMethodHandles(const DexFile& dex_file) {
   // Iterate through the map list and set the offset of the CallSiteIds and MethodHandleItems.
-  const DexFile::MapList* map =
-      reinterpret_cast<const DexFile::MapList*>(dex_file.Begin() + MapListOffset());
+  const DexFile::MapList* map = dex_file.GetMapList();
   for (uint32_t i = 0; i < map->size_; ++i) {
     const DexFile::MapItem* item = map->list_ + i;
     switch (item->type_) {
@@ -799,7 +798,7 @@ void Collections::CreateCallSitesAndMethodHandles(const DexFile& dex_file) {
 
 void Collections::CreateCallSiteId(const DexFile& dex_file, uint32_t i) {
   const DexFile::CallSiteIdItem& disk_call_site_id = dex_file.GetCallSiteId(i);
-  const uint8_t* disk_call_item_ptr = dex_file.Begin() + disk_call_site_id.data_off_;
+  const uint8_t* disk_call_item_ptr = dex_file.DataBegin() + disk_call_site_id.data_off_;
   EncodedArrayItem* call_site_item =
       CreateEncodedArrayItem(dex_file, disk_call_item_ptr, disk_call_site_id.data_off_);
 

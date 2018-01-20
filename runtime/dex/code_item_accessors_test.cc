@@ -39,8 +39,12 @@ std::unique_ptr<const DexFile> CreateFakeDex(bool compact_dex) {
                            &error_msg));
   CHECK(map != nullptr) << error_msg;
   if (compact_dex) {
-    CompactDexFile::WriteMagic(map->Begin());
-    CompactDexFile::WriteCurrentVersion(map->Begin());
+    CompactDexFile::Header* header =
+        const_cast<CompactDexFile::Header*>(CompactDexFile::Header::At(map->Begin()));
+    CompactDexFile::WriteMagic(header->magic_);
+    CompactDexFile::WriteCurrentVersion(header->magic_);
+    header->data_off_ = 0;
+    header->data_size_ = map->Size();
   } else {
     StandardDexFile::WriteMagic(map->Begin());
     StandardDexFile::WriteCurrentVersion(map->Begin());

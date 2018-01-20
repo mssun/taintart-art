@@ -56,27 +56,52 @@ bool CompactDexFile::SupportsDefaultMethods() const {
 }
 
 uint32_t CompactDexFile::GetCodeItemSize(const DexFile::CodeItem& item) const {
-  // TODO: Clean up this temporary code duplication with StandardDexFile. Eventually the
-  // implementations will differ.
-  DCHECK(HasAddress(&item));
+  DCHECK(IsInDataSection(&item));
   return reinterpret_cast<uintptr_t>(CodeItemDataAccessor(*this, &item).CodeItemDataEnd()) -
       reinterpret_cast<uintptr_t>(&item);
 }
 
+
+uint32_t CompactDexFile::CalculateChecksum(const uint8_t* base_begin,
+                                           size_t base_size,
+                                           const uint8_t* data_begin,
+                                           size_t data_size) {
+  Header temp_header(*Header::At(base_begin));
+  // Zero out fields that are not included in the sum.
+  temp_header.checksum_ = 0u;
+  temp_header.data_off_ = 0u;
+  temp_header.data_size_ = 0u;
+  uint32_t checksum = ChecksumMemoryRange(reinterpret_cast<const uint8_t*>(&temp_header),
+                                          sizeof(temp_header));
+  // Exclude the header since we already computed it's checksum.
+  checksum = (checksum * 31) ^ ChecksumMemoryRange(base_begin + sizeof(temp_header),
+                                                   base_size - sizeof(temp_header));
+  checksum = (checksum * 31) ^ ChecksumMemoryRange(data_begin, data_size);
+  return checksum;
+}
+
+uint32_t CompactDexFile::CalculateChecksum() const {
+  return CalculateChecksum(Begin(), Size(), DataBegin(), DataSize());
+}
+
 CompactDexFile::CompactDexFile(const uint8_t* base,
                                size_t size,
+                               const uint8_t* data_begin,
+                               size_t data_size,
                                const std::string& location,
                                uint32_t location_checksum,
                                const OatDexFile* oat_dex_file,
                                DexFileContainer* container)
     : DexFile(base,
               size,
+              data_begin,
+              data_size,
               location,
               location_checksum,
               oat_dex_file,
               container,
               /*is_compact_dex*/ true),
-      debug_info_offsets_(Begin() + GetHeader().debug_info_offsets_pos_,
+      debug_info_offsets_(DataBegin() + GetHeader().debug_info_offsets_pos_,
                           GetHeader().debug_info_base_,
                           GetHeader().debug_info_offsets_table_offset_) {}
 
