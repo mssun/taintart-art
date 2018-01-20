@@ -44,7 +44,14 @@ art_cc_library {
         instrumentation: true,
         profile_file: "art/dex2oat.profdata",
         benchmarks: ["dex2oat"],
-    }
+    },
+    target: {
+        android: {
+            lto: {
+                 thin: true,
+            },
+        },
+    },
 }
 
 art_cc_library {
