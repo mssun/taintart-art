@@ -1685,10 +1685,15 @@ void MethodVerifier::Dump(VariableIndentationOutputStream* vios) {
 
   for (const DexInstructionPcPair& inst : code_item_accessor_) {
     const size_t dex_pc = inst.DexPc();
-    RegisterLine* reg_line = reg_table_.GetLine(dex_pc);
-    if (reg_line != nullptr) {
-      vios->Stream() << reg_line->Dump(this) << "\n";
+
+    // Might be asked to dump before the table is initialized.
+    if (reg_table_.IsInitialized()) {
+      RegisterLine* reg_line = reg_table_.GetLine(dex_pc);
+      if (reg_line != nullptr) {
+        vios->Stream() << reg_line->Dump(this) << "\n";
+      }
     }
+
     vios->Stream()
         << StringPrintf("0x%04zx", dex_pc) << ": " << GetInstructionFlags(dex_pc).ToString() << " ";
     const bool kDumpHexOfInstruction = false;
