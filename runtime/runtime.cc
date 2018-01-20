@@ -266,6 +266,8 @@ Runtime::Runtime()
       is_low_memory_mode_(false),
       safe_mode_(false),
       do_hidden_api_checks_(false),
+      pending_hidden_api_warning_(false),
+      dedupe_hidden_api_warnings_(true),
       dump_native_stack_on_sig_quit_(true),
       pruned_dalvik_cache_(false),
       // Initially assume we perceive jank in case the process state is never updated.
