@@ -16,15 +16,13 @@
 
 ./default-build "$@"
 
-# Create and add as resources to the test jar file:
+# Bundle with the test the following resources:
 # 1. test1.dex
 # 2. test2.dex
 # 3. test-jar.jar, containing test1.dex as classes.dex
 # 4. multi-jar.jar, containing test1.dex as classes.dex and test2.dex as classes2.dex
 mkdir test-jar
-cp test1.dex test-jar/classes.dex
-cp test2.dex test-jar/classes2.dex
-zip -j test-jar.jar test-jar/classes.dex
-zip -j multi-jar.jar test-jar/classes.dex test-jar/classes2.dex
-jar uf ${TEST_NAME}.jar test1.dex test2.dex test-jar.jar multi-jar.jar
-
+cp res/test1.dex test-jar/classes.dex
+cp res/test2.dex test-jar/classes2.dex
+zip -j res/test-jar.jar test-jar/classes.dex
+zip -j res/multi-jar.jar test-jar/classes.dex test-jar/classes2.dex

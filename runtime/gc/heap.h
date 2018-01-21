@@ -268,7 +268,7 @@ class Heap {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   void RegisterNativeAllocation(JNIEnv* env, size_t bytes)
-      REQUIRES(!*gc_complete_lock_, !*pending_task_lock_, !*native_blocking_gc_lock_);
+      REQUIRES(!*gc_complete_lock_, !*pending_task_lock_);
   void RegisterNativeFree(JNIEnv* env, size_t bytes);
 
   // Change the allocator, updates entrypoints.
@@ -1087,16 +1087,6 @@ class Heap {
     return max_free_;
   }
 
-  // How large new_native_bytes_allocated_ can grow while GC is in progress
-  // before we block the allocating thread to allow GC to catch up.
-  ALWAYS_INLINE size_t NativeAllocationBlockingGcWatermark() const {
-    // Historically the native allocations were bounded by growth_limit_. This
-    // uses that same value, dividing growth_limit_ by 2 to account for
-    // the fact that now the bound is relative to the number of retained
-    // registered native allocations rather than absolute.
-    return growth_limit_ / 2;
-  }
-
   void TraceHeapSize(size_t heap_size);
 
   // Remove a vlog code from heap-inl.h which is transitively included in half the world.
@@ -1251,23 +1241,6 @@ class Heap {
   // native bytes is determined by taking the sum of
   // old_native_bytes_allocated_ and new_native_bytes_allocated_.
   Atomic<size_t> old_native_bytes_allocated_;
-
-  // Used for synchronization when multiple threads call into
-  // RegisterNativeAllocation and require blocking GC.
-  // * If a previous blocking GC is in progress, all threads will wait for
-  // that GC to complete, then wait for one of the threads to complete another
-  // blocking GC.
-  // * If a blocking GC is assigned but not in progress, a thread has been
-  // assigned to run a blocking GC but has not started yet. Threads will wait
-  // for the assigned blocking GC to complete.
-  // * If a blocking GC is not assigned nor in progress, the first thread will
-  // run a blocking GC and signal to other threads that blocking GC has been
-  // assigned.
-  Mutex* native_blocking_gc_lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
-  std::unique_ptr<ConditionVariable> native_blocking_gc_cond_ GUARDED_BY(native_blocking_gc_lock_);
-  bool native_blocking_gc_is_assigned_ GUARDED_BY(native_blocking_gc_lock_);
-  bool native_blocking_gc_in_progress_ GUARDED_BY(native_blocking_gc_lock_);
-  uint32_t native_blocking_gcs_finished_ GUARDED_BY(native_blocking_gc_lock_);
 
   // Number of bytes freed by thread local buffer revokes. This will
   // cancel out the ahead-of-time bulk counting of bytes allocated in

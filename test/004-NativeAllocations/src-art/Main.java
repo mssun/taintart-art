@@ -14,82 +14,109 @@
  * limitations under the License.
  */
 
-import java.lang.reflect.*;
 import java.lang.Runtime;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.PhantomReference;
 import dalvik.system.VMRuntime;
 
 public class Main {
-    static Object nativeLock = new Object();
     static Object deadlockLock = new Object();
-    static boolean aboutToDeadlockLock = false;
-    static int nativeBytes = 0;
-    static Object runtime;
-    static Method register_native_allocation;
-    static Method register_native_free;
-    static long maxMem = 0;
+    static VMRuntime runtime = VMRuntime.getRuntime();
+    static volatile boolean aboutToDeadlock = false;
 
-    static class NativeAllocation {
-        private int bytes;
+    // Save ref as a static field to ensure it doesn't get GC'd before the
+    // referent is enqueued.
+    static PhantomReference ref = null;
 
-        NativeAllocation(int bytes, boolean testingDeadlock) throws Exception {
-            this.bytes = bytes;
-            register_native_allocation.invoke(runtime, bytes);
+    static class DeadlockingFinalizer {
+        protected void finalize() throws Exception {
+            aboutToDeadlock = true;
+            synchronized (deadlockLock) { }
+        }
+    }
 
-            // Register native allocation can only provide guarantees bounding
-            // the maximum outstanding allocations if finalizers don't time
-            // out. In case finalizers have timed out, wait longer for them
-            // now to complete so we can test the guarantees.
-            if (!testingDeadlock) {
-              VMRuntime.runFinalization(0);
-            }
+    private static void allocateDeadlockingFinalizer() {
+        new DeadlockingFinalizer();
+    }
 
-            synchronized (nativeLock) {
-                if (!testingDeadlock) {
-                    nativeBytes += bytes;
-                    if (nativeBytes > 2 * maxMem) {
-                        throw new OutOfMemoryError();
-                    }
-                }
-            }
+    public static PhantomReference allocPhantom(ReferenceQueue<Object> queue) {
+        return new PhantomReference(new Object(), queue);
+    }
+
+    // Test that calling registerNativeAllocation triggers a GC eventually
+    // after a substantial number of registered native bytes.
+    private static void checkRegisterNativeAllocation() throws Exception {
+        long maxMem = Runtime.getRuntime().maxMemory();
+        int size = (int)(maxMem / 32);
+        int allocationCount = 256;
+        int maxExpectedGcDurationMs = 2000;
+
+        ReferenceQueue<Object> queue = new ReferenceQueue<Object>();
+        ref = allocPhantom(queue);
+        long total = 0;
+        for (int i = 0; !ref.isEnqueued() && i < allocationCount; ++i) {
+            runtime.registerNativeAllocation(size);
+            total += size;
+
+            // Sleep a little bit to ensure not all of the calls to
+            // registerNativeAllocation complete while GC is in the process of
+            // running.
+            Thread.sleep(maxExpectedGcDurationMs / allocationCount);
         }
 
-        protected void finalize() throws Exception {
-            synchronized (nativeLock) {
-                nativeBytes -= bytes;
-            }
-            register_native_free.invoke(runtime, bytes);
-            aboutToDeadlockLock = true;
-            synchronized (deadlockLock) {
-            }
+        // Wait up to maxExpectedGcDurationMs to give GC a chance to finish
+        // running. If the reference isn't enqueued after that, then it is
+        // pretty unlikely (though technically still possible) that GC was
+        // triggered as intended.
+        if (queue.remove(maxExpectedGcDurationMs) == null) {
+            throw new RuntimeException("GC failed to complete");
+        }
+
+        while (total > 0) {
+            runtime.registerNativeFree(size);
+            total -= size;
+        }
+    }
+
+    // Call registerNativeAllocation repeatedly at a high rate to trigger the
+    // case of blocking registerNativeAllocation.
+    private static void triggerBlockingRegisterNativeAllocation() throws Exception {
+        long maxMem = Runtime.getRuntime().maxMemory();
+        int size = (int)(maxMem / 32);
+        int allocationCount = 256;
+
+        long total = 0;
+        for (int i = 0; i < allocationCount; ++i) {
+            runtime.registerNativeAllocation(size);
+            total += size;
+        }
+
+        while (total > 0) {
+            runtime.registerNativeFree(size);
+            total -= size;
         }
     }
 
     public static void main(String[] args) throws Exception {
-        Class<?> vm_runtime = Class.forName("dalvik.system.VMRuntime");
-        Method get_runtime = vm_runtime.getDeclaredMethod("getRuntime");
-        runtime = get_runtime.invoke(null);
-        register_native_allocation = vm_runtime.getDeclaredMethod("registerNativeAllocation", Integer.TYPE);
-        register_native_free = vm_runtime.getDeclaredMethod("registerNativeFree", Integer.TYPE);
-        maxMem = Runtime.getRuntime().maxMemory();
-        int count = 16;
-        int size = (int)(maxMem / 2 / count);
-        int allocation_count = 256;
-        NativeAllocation[] allocations = new NativeAllocation[count];
-        for (int i = 0; i < allocation_count; ++i) {
-            allocations[i % count] = new NativeAllocation(size, false);
+        // Test that registerNativeAllocation triggers GC.
+        // Run this a few times in a loop to reduce the chances that the test
+        // is flaky and make sure registerNativeAllocation continues to work
+        // after the first GC is triggered.
+        for (int i = 0; i < 20; ++i) {
+            checkRegisterNativeAllocation();
         }
-        // Test that we don't get a deadlock if we are holding nativeLock. If there is no timeout,
-        // then we will get a finalizer timeout exception.
-        aboutToDeadlockLock = false;
+
+        // Test that we don't get a deadlock if we call
+        // registerNativeAllocation with a blocked finalizer.
         synchronized (deadlockLock) {
-            for (int i = 0; aboutToDeadlockLock != true; ++i) {
-                allocations[i % count] = new NativeAllocation(size, true);
+            allocateDeadlockingFinalizer();
+            while (!aboutToDeadlock) {
+                checkRegisterNativeAllocation();
             }
+
             // Do more allocations now that the finalizer thread is deadlocked so that we force
-            // finalization and timeout. 
-            for (int i = 0; i < 10; ++i) {
-                allocations[i % count] = new NativeAllocation(size, true);
-            }
+            // finalization and timeout.
+            triggerBlockingRegisterNativeAllocation();
         }
         System.out.println("Test complete");
     }

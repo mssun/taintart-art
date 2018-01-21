@@ -302,7 +302,7 @@ class ValueRange : public ArenaObject<kArenaAllocBoundsCheckElimination> {
   ValueBound GetLower() const { return lower_; }
   ValueBound GetUpper() const { return upper_; }
 
-  bool IsConstantValueRange() { return lower_.IsConstant() && upper_.IsConstant(); }
+  bool IsConstantValueRange() const { return lower_.IsConstant() && upper_.IsConstant(); }
 
   // If it's certain that this value range fits in other_range.
   virtual bool FitsIn(ValueRange* other_range) const {
@@ -789,24 +789,33 @@ class BCEVisitor : public HGraphVisitor {
         ApplyRangeFromComparison(left, block, false_successor, new_range);
       }
     } else if (cond == kCondNE || cond == kCondEQ) {
-      if (left->IsArrayLength() && lower.IsConstant() && upper.IsConstant()) {
-        // Special case:
-        //   length == [c,d] yields [c, d] along true
-        //   length != [c,d] yields [c, d] along false
-        if (!lower.Equals(ValueBound::Min()) || !upper.Equals(ValueBound::Max())) {
-          ValueRange* new_range = new (&allocator_) ValueRange(&allocator_, lower, upper);
-          ApplyRangeFromComparison(
-              left, block, cond == kCondEQ ? true_successor : false_successor, new_range);
+      if (left->IsArrayLength()) {
+        if (lower.IsConstant() && upper.IsConstant()) {
+          // Special case:
+          //   length == [c,d] yields [c, d] along true
+          //   length != [c,d] yields [c, d] along false
+          if (!lower.Equals(ValueBound::Min()) || !upper.Equals(ValueBound::Max())) {
+            ValueRange* new_range = new (&allocator_) ValueRange(&allocator_, lower, upper);
+            ApplyRangeFromComparison(
+                left, block, cond == kCondEQ ? true_successor : false_successor, new_range);
+          }
+          // In addition:
+          //   length == 0 yields [1, max] along false
+          //   length != 0 yields [1, max] along true
+          if (lower.GetConstant() == 0 && upper.GetConstant() == 0) {
+            ValueRange* new_range = new (&allocator_) ValueRange(
+                &allocator_, ValueBound(nullptr, 1), ValueBound::Max());
+            ApplyRangeFromComparison(
+                left, block, cond == kCondEQ ? false_successor : true_successor, new_range);
+          }
         }
-        // In addition:
-        //   length == 0 yields [1, max] along false
-        //   length != 0 yields [1, max] along true
-        if (lower.GetConstant() == 0 && upper.GetConstant() == 0) {
-          ValueRange* new_range = new (&allocator_) ValueRange(
-              &allocator_, ValueBound(nullptr, 1), ValueBound::Max());
-          ApplyRangeFromComparison(
-              left, block, cond == kCondEQ ? false_successor : true_successor, new_range);
-        }
+      } else if (lower.IsRelatedToArrayLength() && lower.Equals(upper)) {
+        // Special aliasing case, with x not array length itself:
+        //   x == [length,length] yields x == length along true
+        //   x != [length,length] yields x == length along false
+        ValueRange* new_range = new (&allocator_) ValueRange(&allocator_, lower, upper);
+        ApplyRangeFromComparison(
+            left, block, cond == kCondEQ ? true_successor : false_successor, new_range);
       }
     }
   }

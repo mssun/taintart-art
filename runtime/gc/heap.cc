@@ -128,9 +128,6 @@ static constexpr size_t kVerifyObjectAllocationStackSize = 16 * KB /
     sizeof(mirror::HeapReference<mirror::Object>);
 static constexpr size_t kDefaultAllocationStackSize = 8 * MB /
     sizeof(mirror::HeapReference<mirror::Object>);
-// System.runFinalization can deadlock with native allocations, to deal with this, we have a
-// timeout on how long we wait for finalizers to run. b/21544853
-static constexpr uint64_t kNativeAllocationFinalizeTimeout = MsToNs(250u);
 
 // For deterministic compilation, we need the heap to be at a well-known address.
 static constexpr uint32_t kAllocSpaceBeginForDeterministicAoT = 0x40000000;
@@ -561,12 +558,6 @@ Heap::Heap(size_t initial_size,
   gc_complete_lock_ = new Mutex("GC complete lock");
   gc_complete_cond_.reset(new ConditionVariable("GC complete condition variable",
                                                 *gc_complete_lock_));
-  native_blocking_gc_lock_ = new Mutex("Native blocking GC lock");
-  native_blocking_gc_cond_.reset(new ConditionVariable("Native blocking GC condition variable",
-                                                       *native_blocking_gc_lock_));
-  native_blocking_gc_is_assigned_ = false;
-  native_blocking_gc_in_progress_ = false;
-  native_blocking_gcs_finished_ = 0;
 
   thread_flip_lock_ = new Mutex("GC thread flip lock");
   thread_flip_cond_.reset(new ConditionVariable("GC thread flip condition variable",
@@ -1143,7 +1134,6 @@ Heap::~Heap() {
   STLDeleteElements(&continuous_spaces_);
   STLDeleteElements(&discontinuous_spaces_);
   delete gc_complete_lock_;
-  delete native_blocking_gc_lock_;
   delete thread_flip_lock_;
   delete pending_task_lock_;
   delete backtrace_lock_;
@@ -2556,10 +2546,6 @@ collector::GcType Heap::CollectGarbageInternal(collector::GcType gc_type,
     // old_native_bytes_allocated_ now that GC has been triggered, resetting
     // new_native_bytes_allocated_ to zero in the process.
     old_native_bytes_allocated_.FetchAndAddRelaxed(new_native_bytes_allocated_.ExchangeRelaxed(0));
-    if (gc_cause == kGcCauseForNativeAllocBlocking) {
-      MutexLock mu(self, *native_blocking_gc_lock_);
-      native_blocking_gc_in_progress_ = true;
-    }
   }
 
   DCHECK_LT(gc_type, collector::kGcTypeMax);
@@ -3386,7 +3372,6 @@ collector::GcType Heap::WaitForGcToCompleteLocked(GcCause cause, Thread* self) {
     // it results in log spam. kGcCauseExplicit is already logged in LogGC, so avoid it here too.
     if (cause == kGcCauseForAlloc ||
         cause == kGcCauseForNativeAlloc ||
-        cause == kGcCauseForNativeAllocBlocking ||
         cause == kGcCauseDisableMovingGc) {
       VLOG(gc) << "Starting a blocking GC " << cause;
     }
@@ -3499,10 +3484,8 @@ void Heap::GrowForUtilization(collector::GarbageCollector* collector_ran,
       const uint64_t bytes_allocated_during_gc = bytes_allocated + freed_bytes -
           bytes_allocated_before_gc;
       // Calculate when to perform the next ConcurrentGC.
-      // Calculate the estimated GC duration.
-      const double gc_duration_seconds = NsToMs(current_gc_iteration_.GetDurationNs()) / 1000.0;
       // Estimate how many remaining bytes we will have when we need to start the next GC.
-      size_t remaining_bytes = bytes_allocated_during_gc * gc_duration_seconds;
+      size_t remaining_bytes = bytes_allocated_during_gc;
       remaining_bytes = std::min(remaining_bytes, kMaxConcurrentRemainingBytes);
       remaining_bytes = std::max(remaining_bytes, kMinConcurrentRemainingBytes);
       if (UNLIKELY(remaining_bytes > max_allowed_footprint_)) {
@@ -3772,59 +3755,9 @@ void Heap::RunFinalization(JNIEnv* env, uint64_t timeout) {
 }
 
 void Heap::RegisterNativeAllocation(JNIEnv* env, size_t bytes) {
-  // See the REDESIGN section of go/understanding-register-native-allocation
-  // for an explanation of how RegisterNativeAllocation works.
-  size_t new_value = bytes + new_native_bytes_allocated_.FetchAndAddRelaxed(bytes);
-  if (new_value > NativeAllocationBlockingGcWatermark()) {
-    // Wait for a new GC to finish and finalizers to run, because the
-    // allocation rate is too high.
-    Thread* self = ThreadForEnv(env);
+  size_t old_value = new_native_bytes_allocated_.FetchAndAddRelaxed(bytes);
 
-    bool run_gc = false;
-    {
-      MutexLock mu(self, *native_blocking_gc_lock_);
-      uint32_t initial_gcs_finished = native_blocking_gcs_finished_;
-      if (native_blocking_gc_in_progress_) {
-        // A native blocking GC is in progress from the last time the native
-        // allocation blocking GC watermark was exceeded. Wait for that GC to
-        // finish before addressing the fact that we exceeded the blocking
-        // watermark again.
-        do {
-          ScopedTrace trace("RegisterNativeAllocation: Wait For Prior Blocking GC Completion");
-          native_blocking_gc_cond_->Wait(self);
-        } while (native_blocking_gcs_finished_ == initial_gcs_finished);
-        initial_gcs_finished++;
-      }
-
-      // It's possible multiple threads have seen that we exceeded the
-      // blocking watermark. Ensure that only one of those threads is assigned
-      // to run the blocking GC. The rest of the threads should instead wait
-      // for the blocking GC to complete.
-      if (native_blocking_gcs_finished_ == initial_gcs_finished) {
-        if (native_blocking_gc_is_assigned_) {
-          do {
-            ScopedTrace trace("RegisterNativeAllocation: Wait For Blocking GC Completion");
-            native_blocking_gc_cond_->Wait(self);
-          } while (native_blocking_gcs_finished_ == initial_gcs_finished);
-        } else {
-          native_blocking_gc_is_assigned_ = true;
-          run_gc = true;
-        }
-      }
-    }
-
-    if (run_gc) {
-      CollectGarbageInternal(NonStickyGcType(), kGcCauseForNativeAllocBlocking, false);
-      RunFinalization(env, kNativeAllocationFinalizeTimeout);
-      CHECK(!env->ExceptionCheck());
-
-      MutexLock mu(self, *native_blocking_gc_lock_);
-      native_blocking_gc_is_assigned_ = false;
-      native_blocking_gc_in_progress_ = false;
-      native_blocking_gcs_finished_++;
-      native_blocking_gc_cond_->Broadcast(self);
-    }
-  } else if (new_value > NativeAllocationGcWatermark() * HeapGrowthMultiplier() &&
+  if (old_value > NativeAllocationGcWatermark() * HeapGrowthMultiplier() &&
              !IsGCRequestPending()) {
     // Trigger another GC because there have been enough native bytes
     // allocated since the last GC.

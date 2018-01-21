@@ -806,6 +806,10 @@ if [ "$HOST" = "n" ]; then
       if [ "$PROFILE" = "y" ] || [ "$RANDOM_PROFILE" = "y" ]; then
         adb push profile $DEX_LOCATION
       fi
+      # Copy resource folder
+      if [ -d res ]; then
+        adb push res $DEX_LOCATION
+      fi
     else
       adb shell rm -r $DEX_LOCATION >/dev/null 2>&1
       adb shell mkdir -p $DEX_LOCATION >/dev/null 2>&1
@@ -814,7 +818,10 @@ if [ "$HOST" = "n" ]; then
       if [ "$PROFILE" = "y" ] || [ "$RANDOM_PROFILE" = "y" ]; then
         adb push profile $DEX_LOCATION >/dev/null 2>&1
       fi
-
+      # Copy resource folder
+      if [ -d res ]; then
+        adb push res $DEX_LOCATION >/dev/null 2>&1
+      fi
     fi
 
     LD_LIBRARY_PATH=/data/$TEST_DIRECTORY/art/$ISA
