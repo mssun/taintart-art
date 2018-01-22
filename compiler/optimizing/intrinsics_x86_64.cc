@@ -897,6 +897,14 @@ void IntrinsicCodeGeneratorX86_64::VisitMathAtan2(HInvoke* invoke) {
   GenFPToFPCall(invoke, codegen_, kQuickAtan2);
 }
 
+void IntrinsicLocationsBuilderX86_64::VisitMathPow(HInvoke* invoke) {
+  CreateFPFPToFPCallLocations(allocator_, invoke);
+}
+
+void IntrinsicCodeGeneratorX86_64::VisitMathPow(HInvoke* invoke) {
+  GenFPToFPCall(invoke, codegen_, kQuickPow);
+}
+
 void IntrinsicLocationsBuilderX86_64::VisitMathHypot(HInvoke* invoke) {
   CreateFPFPToFPCallLocations(allocator_, invoke);
 }

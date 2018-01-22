@@ -168,6 +168,7 @@ void InitEntryPoints(JniEntryPoints* jpoints, QuickEntryPoints* qpoints) {
   qpoints->pAsin = asin;
   qpoints->pAtan = atan;
   qpoints->pAtan2 = atan2;
+  qpoints->pPow = pow;
   qpoints->pCbrt = cbrt;
   qpoints->pCosh = cosh;
   qpoints->pExp = exp;
