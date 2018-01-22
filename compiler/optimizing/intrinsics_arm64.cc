@@ -2011,6 +2011,14 @@ void IntrinsicCodeGeneratorARM64::VisitMathAtan2(HInvoke* invoke) {
   GenFPToFPCall(invoke, codegen_, kQuickAtan2);
 }
 
+void IntrinsicLocationsBuilderARM64::VisitMathPow(HInvoke* invoke) {
+  CreateFPFPToFPCallLocations(allocator_, invoke);
+}
+
+void IntrinsicCodeGeneratorARM64::VisitMathPow(HInvoke* invoke) {
+  GenFPToFPCall(invoke, codegen_, kQuickPow);
+}
+
 void IntrinsicLocationsBuilderARM64::VisitMathHypot(HInvoke* invoke) {
   CreateFPFPToFPCallLocations(allocator_, invoke);
 }

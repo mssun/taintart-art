@@ -91,6 +91,7 @@
   V(Asin, double, double) \
   V(Atan, double, double) \
   V(Atan2, double, double, double) \
+  V(Pow, double, double, double) \
   V(Cbrt, double, double) \
   V(Cosh, double, double) \
   V(Exp, double, double) \
