@@ -14,33 +14,38 @@
 
 // TODO(ajcbik): rename dexdump2 into dexdump when Dalvik version is removed
 
-art_cc_binary {
-    name: "dexdump2",
-    host_supported: true,
+
+cc_defaults {
+    name: "dexdump_defaults",
     srcs: [
         "dexdump_cfg.cc",
         "dexdump_main.cc",
         "dexdump.cc",
     ],
     cflags: ["-Wall", "-Werror"],
+    // TODO: fix b/72216369 and remove the need for this.
+    include_dirs: [
+        "art/runtime"  // dex utils.
+    ],
+}
+
+art_cc_binary {
+    name: "dexdump2",
+    defaults: ["dexdump_defaults"],
+    host_supported: true,
     shared_libs: [
-        "libart",
+        "libdexfile",
         "libbase",
     ],
 }
 
 art_cc_binary {
     name: "dexdumps",
+    defaults: ["dexdump_defaults"],
     host_supported: true,
     device_supported: false,
-    srcs: [
-        "dexdump_cfg.cc",
-        "dexdump_main.cc",
-        "dexdump.cc",
-    ],
-    cflags: ["-Wall", "-Werror"],
     static_libs: [
-        "libart",
+        "libdexfile",
         "libbase",
     ] + art_static_dependencies,
     target: {

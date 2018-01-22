@@ -28,7 +28,8 @@ class DexFile;
 class DexFileContainer;
 class MemMap;
 class OatDexFile;
-class ZipArchive;
+
+class DexZipArchive;
 
 // Class that is used to open dex files and deal with corresponding multidex and location logic.
 class DexFileLoader {
@@ -46,67 +47,9 @@ class DexFileLoader {
   // Return true if the corresponding version and magic is valid.
   static bool IsVersionAndMagicValid(const uint8_t* magic);
 
-  virtual ~DexFileLoader() { }
-
-  // Returns the checksums of a file for comparison with GetLocationChecksum().
-  // For .dex files, this is the single header checksum.
-  // For zip files, this is the zip entry CRC32 checksum for classes.dex and
-  // each additional multidex entry classes2.dex, classes3.dex, etc.
-  // If a valid zip_fd is provided the file content will be read directly from
-  // the descriptor and `filename` will be used as alias for error logging. If
-  // zip_fd is -1, the method will try to open the `filename` and read the
-  // content from it.
-  // Return true if the checksums could be found, false otherwise.
-  virtual bool GetMultiDexChecksums(const char* filename,
-                                    std::vector<uint32_t>* checksums,
-                                    std::string* error_msg,
-                                    int zip_fd = -1) const;
-
   // Check whether a location denotes a multidex dex file. This is a very simple check: returns
   // whether the string contains the separator character.
   static bool IsMultiDexLocation(const char* location);
-
-  // Opens .dex file, backed by existing memory
-  virtual std::unique_ptr<const DexFile> Open(const uint8_t* base,
-                                              size_t size,
-                                              const std::string& location,
-                                              uint32_t location_checksum,
-                                              const OatDexFile* oat_dex_file,
-                                              bool verify,
-                                              bool verify_checksum,
-                                              std::string* error_msg) const;
-
-  // Opens .dex file that has been memory-mapped by the caller.
-  virtual std::unique_ptr<const DexFile> Open(const std::string& location,
-                                              uint32_t location_checkum,
-                                              std::unique_ptr<MemMap> mem_map,
-                                              bool verify,
-                                              bool verify_checksum,
-                                              std::string* error_msg) const;
-
-  // Opens all .dex files found in the file, guessing the container format based on file extension.
-  virtual bool Open(const char* filename,
-                    const std::string& location,
-                    bool verify,
-                    bool verify_checksum,
-                    std::string* error_msg,
-                    std::vector<std::unique_ptr<const DexFile>>* dex_files) const;
-
-  // Open a single dex file from an fd. This function closes the fd.
-  virtual std::unique_ptr<const DexFile> OpenDex(int fd,
-                                                 const std::string& location,
-                                                 bool verify,
-                                                 bool verify_checksum,
-                                                 bool mmap_shared,
-                                                 std::string* error_msg) const;
-
-  // Opens dex files from within a .jar, .zip, or .apk file
-  virtual bool OpenZip(int fd,
-                       const std::string& location,
-                       bool verify,
-                       bool verify_checksum,
-                       std::string* error_msg,
-                       std::vector<std::unique_ptr<const DexFile>>* dex_files) const;
 
   // Return the name of the index-th classes.dex in a multidex zip file. This is classes.dex for
   // index == 0, and classes{index + 1}.dex else.
@@ -151,6 +94,42 @@ class DexFileLoader {
     return (pos == std::string::npos) ? std::string() : location.substr(pos);
   }
 
+  virtual ~DexFileLoader() { }
+
+  // Returns the checksums of a file for comparison with GetLocationChecksum().
+  // For .dex files, this is the single header checksum.
+  // For zip files, this is the zip entry CRC32 checksum for classes.dex and
+  // each additional multidex entry classes2.dex, classes3.dex, etc.
+  // If a valid zip_fd is provided the file content will be read directly from
+  // the descriptor and `filename` will be used as alias for error logging. If
+  // zip_fd is -1, the method will try to open the `filename` and read the
+  // content from it.
+  // Return true if the checksums could be found, false otherwise.
+  virtual bool GetMultiDexChecksums(const char* filename,
+                                    std::vector<uint32_t>* checksums,
+                                    std::string* error_msg,
+                                    int zip_fd = -1) const;
+
+  // Opens .dex file, backed by existing memory
+  virtual std::unique_ptr<const DexFile> Open(const uint8_t* base,
+                                              size_t size,
+                                              const std::string& location,
+                                              uint32_t location_checksum,
+                                              const OatDexFile* oat_dex_file,
+                                              bool verify,
+                                              bool verify_checksum,
+                                              std::string* error_msg) const;
+
+  // Opens all .dex files found in the memory map, guessing the container format based on file
+  // extension.
+  virtual bool OpenAll(const uint8_t* base,
+                       size_t size,
+                       const std::string& location,
+                       bool verify,
+                       bool verify_checksum,
+                       std::string* error_msg,
+                       std::vector<std::unique_ptr<const DexFile>>* dex_files) const;
+
  protected:
   enum class ZipOpenErrorCode {
     kNoError,
@@ -179,30 +158,23 @@ class DexFileLoader {
                                              VerifyResult* verify_result);
 
  private:
-  virtual std::unique_ptr<const DexFile> OpenFile(int fd,
-                                                  const std::string& location,
-                                                  bool verify,
-                                                  bool verify_checksum,
-                                                  bool mmap_shared,
-                                                  std::string* error_msg) const;
-
   // Open all classesXXX.dex files from a zip archive.
-  virtual bool OpenAllDexFilesFromZip(const ZipArchive& zip_archive,
-                                      const std::string& location,
-                                      bool verify,
-                                      bool verify_checksum,
-                                      std::string* error_msg,
-                                      std::vector<std::unique_ptr<const DexFile>>* dex_files) const;
+  bool OpenAllDexFilesFromZip(const DexZipArchive& zip_archive,
+                              const std::string& location,
+                              bool verify,
+                              bool verify_checksum,
+                              std::string* error_msg,
+                              std::vector<std::unique_ptr<const DexFile>>* dex_files) const;
 
   // Opens .dex file from the entry_name in a zip archive. error_code is undefined when non-null
   // return.
-  virtual std::unique_ptr<const DexFile> OpenOneDexFileFromZip(const ZipArchive& zip_archive,
-                                                               const char* entry_name,
-                                                               const std::string& location,
-                                                               bool verify,
-                                                               bool verify_checksum,
-                                                               std::string* error_msg,
-                                                               ZipOpenErrorCode* error_code) const;
+  std::unique_ptr<const DexFile> OpenOneDexFileFromZip(const DexZipArchive& zip_archive,
+                                                       const char* entry_name,
+                                                       const std::string& location,
+                                                       bool verify,
+                                                       bool verify_checksum,
+                                                       std::string* error_msg,
+                                                       ZipOpenErrorCode* error_code) const;
 };
 
 }  // namespace art
