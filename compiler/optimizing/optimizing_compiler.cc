@@ -382,6 +382,8 @@ class OptimizingCompiler FINAL : public Compiler {
                             PassObserver* pass_observer,
                             VariableSizedHandleScope* handles) const;
 
+  void GenerateJitDebugInfo(debug::MethodDebugInfo method_debug_info);
+
   std::unique_ptr<OptimizingCompilerStats> compilation_stats_;
 
   std::unique_ptr<std::ostream> visualizer_output_;
@@ -1230,7 +1232,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
       const auto* method_header = reinterpret_cast<const OatQuickMethodHeader*>(code);
       const uintptr_t code_address = reinterpret_cast<uintptr_t>(method_header->GetCode());
       debug::MethodDebugInfo info = {};
-      DCHECK(info.trampoline_name.empty());
+      DCHECK(info.custom_name.empty());
       info.dex_file = dex_file;
       info.class_def_index = class_def_idx;
       info.dex_method_index = method_idx;
@@ -1246,14 +1248,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
       info.frame_size_in_bytes = method_header->GetFrameSizeInBytes();
       info.code_info = nullptr;
       info.cfi = jni_compiled_method.GetCfi();
-      // If both flags are passed, generate full debug info.
-      const bool mini_debug_info = !compiler_options.GetGenerateDebugInfo();
-      std::vector<uint8_t> elf_file = debug::MakeElfFileForJIT(
-          GetCompilerDriver()->GetInstructionSet(),
-          GetCompilerDriver()->GetInstructionSetFeatures(),
-          mini_debug_info,
-          info);
-      CreateJITCodeEntryForAddress(code_address, std::move(elf_file));
+      GenerateJitDebugInfo(info);
     }
 
     Runtime::Current()->GetJit()->AddMemoryUsage(method, allocator.BytesUsed());
@@ -1361,7 +1356,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     const auto* method_header = reinterpret_cast<const OatQuickMethodHeader*>(code);
     const uintptr_t code_address = reinterpret_cast<uintptr_t>(method_header->GetCode());
     debug::MethodDebugInfo info = {};
-    DCHECK(info.trampoline_name.empty());
+    DCHECK(info.custom_name.empty());
     info.dex_file = dex_file;
     info.class_def_index = class_def_idx;
     info.dex_method_index = method_idx;
@@ -1377,14 +1372,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     info.frame_size_in_bytes = method_header->GetFrameSizeInBytes();
     info.code_info = stack_map_size == 0 ? nullptr : stack_map_data;
     info.cfi = ArrayRef<const uint8_t>(*codegen->GetAssembler()->cfi().data());
-    // If both flags are passed, generate full debug info.
-    const bool mini_debug_info = !compiler_options.GetGenerateDebugInfo();
-    std::vector<uint8_t> elf_file = debug::MakeElfFileForJIT(
-        GetCompilerDriver()->GetInstructionSet(),
-        GetCompilerDriver()->GetInstructionSetFeatures(),
-        mini_debug_info,
-        info);
-    CreateJITCodeEntryForAddress(code_address, std::move(elf_file));
+    GenerateJitDebugInfo(info);
   }
 
   Runtime::Current()->GetJit()->AddMemoryUsage(method, allocator.BytesUsed());
@@ -1406,6 +1394,24 @@ bool OptimizingCompiler::JitCompile(Thread* self,
   }
 
   return true;
+}
+
+void OptimizingCompiler::GenerateJitDebugInfo(debug::MethodDebugInfo info) {
+  const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
+  DCHECK(compiler_options.GenerateAnyDebugInfo());
+
+  // If both flags are passed, generate full debug info.
+  const bool mini_debug_info = !compiler_options.GetGenerateDebugInfo();
+
+  // Create entry for the single method that we just compiled.
+  std::vector<uint8_t> elf_file = debug::MakeElfFileForJIT(
+      GetCompilerDriver()->GetInstructionSet(),
+      GetCompilerDriver()->GetInstructionSetFeatures(),
+      mini_debug_info,
+      ArrayRef<const debug::MethodDebugInfo>(&info, 1));
+  MutexLock mu(Thread::Current(), g_jit_debug_mutex);
+  JITCodeEntry* entry = CreateJITCodeEntry(elf_file);
+  IncrementJITCodeEntryRefcount(entry, info.code_address);
 }
 
 }  // namespace art
