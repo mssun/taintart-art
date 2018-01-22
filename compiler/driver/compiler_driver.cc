@@ -872,6 +872,14 @@ void CompilerDriver::PreCompile(jobject class_loader,
                                 TimingLogger* timings) {
   CheckThreadPools();
 
+  if (kUseBitstringTypeCheck &&
+      !compiler_options_->IsBootImage() &&
+      compiler_options_->IsAotCompilationEnabled()) {
+    RecordBootImageClassesWithAssignedBitstring();
+    VLOG(compiler) << "RecordBootImageClassesWithAssignedBitstring: "
+        << GetMemoryUsageString(false);
+  }
+
   LoadImageClasses(timings);
   VLOG(compiler) << "LoadImageClasses: " << GetMemoryUsageString(false);
 
@@ -938,6 +946,43 @@ void CompilerDriver::PreCompile(jobject class_loader,
     // Note: This is done after UpdateImageClasses() at it relies on the image classes to be final.
     InitializeTypeCheckBitstrings(this, dex_files, timings);
   }
+}
+
+void CompilerDriver::RecordBootImageClassesWithAssignedBitstring() {
+  if (boot_image_classes_with_assigned_bitstring_ != nullptr) {
+    return;  // Already recorded. (Happens because of class unloading between dex files.)
+  }
+
+  class Visitor : public ClassVisitor {
+   public:
+    explicit Visitor(std::unordered_set<mirror::Class*>* recorded_classes)
+        : recorded_classes_(recorded_classes) {}
+
+    bool operator()(ObjPtr<mirror::Class> klass) OVERRIDE
+        REQUIRES(Locks::subtype_check_lock_) REQUIRES_SHARED(Locks::mutator_lock_) {
+      DCHECK(klass != nullptr);
+      SubtypeCheckInfo::State state = SubtypeCheck<ObjPtr<mirror::Class>>::GetState(klass);
+      if (state == SubtypeCheckInfo::kAssigned) {
+        recorded_classes_->insert(klass.Ptr());
+      }
+      return true;
+    }
+
+   private:
+    std::unordered_set<mirror::Class*>* const recorded_classes_;
+  };
+
+  boot_image_classes_with_assigned_bitstring_.reset(new std::unordered_set<mirror::Class*>());
+  Visitor visitor(boot_image_classes_with_assigned_bitstring_.get());
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  ScopedObjectAccess soa(Thread::Current());
+  MutexLock subtype_check_lock(soa.Self(), *Locks::subtype_check_lock_);
+  class_linker->VisitClasses(&visitor);
+}
+
+bool CompilerDriver::IsBootImageClassWithAssignedBitstring(ObjPtr<mirror::Class> klass) {
+  DCHECK(boot_image_classes_with_assigned_bitstring_ != nullptr);
+  return boot_image_classes_with_assigned_bitstring_->count(klass.Ptr()) != 0u;
 }
 
 bool CompilerDriver::IsImageClass(const char* descriptor) const {

@@ -385,11 +385,16 @@ class CompilerDriver {
     return dex_to_dex_compiler_;
   }
 
+  bool IsBootImageClassWithAssignedBitstring(ObjPtr<mirror::Class> klass)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
  private:
   void PreCompile(jobject class_loader,
                   const std::vector<const DexFile*>& dex_files,
                   TimingLogger* timings)
       REQUIRES(!Locks::mutator_lock_);
+
+  void RecordBootImageClassesWithAssignedBitstring() REQUIRES(!Locks::mutator_lock_);
 
   void LoadImageClasses(TimingLogger* timings) REQUIRES(!Locks::mutator_lock_);
 
@@ -512,6 +517,12 @@ class CompilerDriver {
   // all methods are eligible for compilation (compilation filters etc. will still apply).
   // This option may be restricted to the boot image, depending on a flag in the implementation.
   std::unique_ptr<std::unordered_set<std::string>> methods_to_compile_;
+
+  // For AOT app compilation, we keep the set of boot image classes with assigned type check
+  // bitstring. We need to retrieve this set before we initialize app image classes as the
+  // initialization can cause more boot image bitstrings to be assigned.
+  // Note that boot image classes are non-moveable, so it's OK to keep raw pointers.
+  std::unique_ptr<std::unordered_set<mirror::Class*>> boot_image_classes_with_assigned_bitstring_;
 
   std::atomic<uint32_t> number_of_soft_verifier_failures_;
   bool had_hard_verifier_failure_;
