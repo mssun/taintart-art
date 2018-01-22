@@ -35,6 +35,7 @@
 #include "compiler.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_types.h"
+#include "dex/dex_to_dex_compiler.h"
 #include "driver/compiled_method_storage.h"
 #include "jit/profile_compilation_info.h"
 #include "method_reference.h"
@@ -120,12 +121,11 @@ class CompilerDriver {
   void CompileAll(jobject class_loader,
                   const std::vector<const DexFile*>& dex_files,
                   TimingLogger* timings)
-      REQUIRES(!Locks::mutator_lock_, !dex_to_dex_references_lock_);
+      REQUIRES(!Locks::mutator_lock_);
 
   // Compile a single Method.
   void CompileOne(Thread* self, ArtMethod* method, TimingLogger* timings)
-      REQUIRES_SHARED(Locks::mutator_lock_)
-      REQUIRES(!dex_to_dex_references_lock_);
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
   VerificationResults* GetVerificationResults() const;
 
@@ -362,13 +362,6 @@ class CompilerDriver {
     return true;
   }
 
-  void MarkForDexToDexCompilation(Thread* self, const MethodReference& method_ref)
-      REQUIRES(!dex_to_dex_references_lock_);
-
-  const BitVector* GetCurrentDexToDexMethods() const {
-    return current_dex_to_dex_methods_;
-  }
-
   const ProfileCompilationInfo* GetProfileCompilationInfo() const {
     return profile_compilation_info_;
   }
@@ -379,6 +372,14 @@ class CompilerDriver {
     // TODO: This is under-approximating...
     return android::base::EndsWith(boot_image_filename, "core.art")
         || android::base::EndsWith(boot_image_filename, "core-optimizing.art");
+  }
+
+  bool GetCompilingDexToDex() const {
+    return compiling_dex_to_dex_;
+  }
+
+  optimizer::DexToDexCompiler& GetDexToDexCompiler() {
+    return dex_to_dex_compiler_;
   }
 
  private:
@@ -447,7 +448,7 @@ class CompilerDriver {
 
   void Compile(jobject class_loader,
                const std::vector<const DexFile*>& dex_files,
-               TimingLogger* timings) REQUIRES(!dex_to_dex_references_lock_);
+               TimingLogger* timings);
   void CompileDexFile(jobject class_loader,
                       const DexFile& dex_file,
                       const std::vector<const DexFile*>& dex_files,
@@ -539,14 +540,9 @@ class CompilerDriver {
 
   size_t max_arena_alloc_;
 
-  // Data for delaying dex-to-dex compilation.
-  Mutex dex_to_dex_references_lock_;
-  // In the first phase, dex_to_dex_references_ collects methods for dex-to-dex compilation.
-  class DexFileMethodSet;
-  std::vector<DexFileMethodSet> dex_to_dex_references_ GUARDED_BY(dex_to_dex_references_lock_);
-  // In the second phase, current_dex_to_dex_methods_ points to the BitVector with method
-  // indexes for dex-to-dex compilation in the current dex file.
-  const BitVector* current_dex_to_dex_methods_;
+  // Compiler for dex to dex (quickening).
+  bool compiling_dex_to_dex_;
+  optimizer::DexToDexCompiler dex_to_dex_compiler_;
 
   friend class CompileClassVisitor;
   friend class DexToDexDecompilerTest;
