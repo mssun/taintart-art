@@ -137,10 +137,17 @@ static std::vector<uint8_t> MakeElfFileForJITInternal(
     InstructionSet isa,
     const InstructionSetFeatures* features,
     bool mini_debug_info,
-    const MethodDebugInfo& mi) {
-  CHECK_EQ(mi.is_code_address_text_relative, false);
+    ArrayRef<const MethodDebugInfo> method_infos) {
+  CHECK_GT(method_infos.size(), 0u);
+  uint64_t min_address = std::numeric_limits<uint64_t>::max();
+  uint64_t max_address = 0;
+  for (const MethodDebugInfo& mi : method_infos) {
+    CHECK_EQ(mi.is_code_address_text_relative, false);
+    min_address = std::min(min_address, mi.code_address);
+    max_address = std::max(max_address, mi.code_address + mi.code_size);
+  }
   DebugInfo debug_info{};
-  debug_info.compiled_methods = ArrayRef<const debug::MethodDebugInfo>(&mi, 1);
+  debug_info.compiled_methods = method_infos;
   std::vector<uint8_t> buffer;
   buffer.reserve(KB);
   linker::VectorOutputStream out("Debug ELF file", &buffer);
@@ -151,14 +158,14 @@ static std::vector<uint8_t> MakeElfFileForJITInternal(
   if (mini_debug_info) {
     std::vector<uint8_t> mdi = MakeMiniDebugInfo(isa,
                                                  features,
-                                                 mi.code_address,
-                                                 mi.code_size,
+                                                 min_address,
+                                                 max_address - min_address,
                                                  /* dex_section_address */ 0,
                                                  /* dex_section_size */ 0,
                                                  debug_info);
     builder->WriteSection(".gnu_debugdata", &mdi);
   } else {
-    builder->GetText()->AllocateVirtualMemory(mi.code_address, mi.code_size);
+    builder->GetText()->AllocateVirtualMemory(min_address, max_address - min_address);
     WriteDebugInfo(builder.get(),
                    debug_info,
                    dwarf::DW_DEBUG_FRAME_FORMAT,
@@ -173,11 +180,11 @@ std::vector<uint8_t> MakeElfFileForJIT(
     InstructionSet isa,
     const InstructionSetFeatures* features,
     bool mini_debug_info,
-    const MethodDebugInfo& method_info) {
+    ArrayRef<const MethodDebugInfo> method_infos) {
   if (Is64BitInstructionSet(isa)) {
-    return MakeElfFileForJITInternal<ElfTypes64>(isa, features, mini_debug_info, method_info);
+    return MakeElfFileForJITInternal<ElfTypes64>(isa, features, mini_debug_info, method_infos);
   } else {
-    return MakeElfFileForJITInternal<ElfTypes32>(isa, features, mini_debug_info, method_info);
+    return MakeElfFileForJITInternal<ElfTypes32>(isa, features, mini_debug_info, method_infos);
   }
 }
 

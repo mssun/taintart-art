@@ -42,6 +42,7 @@ extern "C" {
     JITCodeEntry* prev_;
     const uint8_t *symfile_addr_;
     uint64_t symfile_size_;
+    uint32_t ref_count;  // ART internal field.
   };
 
   struct JITDescriptor {
@@ -69,10 +70,11 @@ extern "C" {
   JITDescriptor __jit_debug_descriptor = { 1, JIT_NOACTION, nullptr, nullptr };
 }
 
-static Mutex g_jit_debug_mutex("JIT debug interface lock", kJitDebugInterfaceLock);
+Mutex g_jit_debug_mutex("JIT debug interface lock", kJitDebugInterfaceLock);
 
-static JITCodeEntry* CreateJITCodeEntryInternal(std::vector<uint8_t> symfile)
-    REQUIRES(g_jit_debug_mutex) {
+static size_t g_jit_debug_mem_usage = 0;
+
+JITCodeEntry* CreateJITCodeEntry(const std::vector<uint8_t>& symfile) {
   DCHECK_NE(symfile.size(), 0u);
 
   // Make a copy of the buffer. We want to shrink it anyway.
@@ -85,20 +87,20 @@ static JITCodeEntry* CreateJITCodeEntryInternal(std::vector<uint8_t> symfile)
   entry->symfile_addr_ = symfile_copy;
   entry->symfile_size_ = symfile.size();
   entry->prev_ = nullptr;
-
+  entry->ref_count = 0;
   entry->next_ = __jit_debug_descriptor.first_entry_;
   if (entry->next_ != nullptr) {
     entry->next_->prev_ = entry;
   }
+  g_jit_debug_mem_usage += sizeof(JITCodeEntry) + entry->symfile_size_;
   __jit_debug_descriptor.first_entry_ = entry;
   __jit_debug_descriptor.relevant_entry_ = entry;
-
   __jit_debug_descriptor.action_flag_ = JIT_REGISTER_FN;
   (*__jit_debug_register_code_ptr)();
   return entry;
 }
 
-static void DeleteJITCodeEntryInternal(JITCodeEntry* entry) REQUIRES(g_jit_debug_mutex) {
+void DeleteJITCodeEntry(JITCodeEntry* entry) {
   if (entry->prev_ != nullptr) {
     entry->prev_->next_ = entry->next_;
   } else {
@@ -109,6 +111,7 @@ static void DeleteJITCodeEntryInternal(JITCodeEntry* entry) REQUIRES(g_jit_debug
     entry->next_->prev_ = entry->prev_;
   }
 
+  g_jit_debug_mem_usage -= sizeof(JITCodeEntry) + entry->symfile_size_;
   __jit_debug_descriptor.relevant_entry_ = entry;
   __jit_debug_descriptor.action_flag_ = JIT_UNREGISTER_FN;
   (*__jit_debug_register_code_ptr)();
@@ -116,41 +119,33 @@ static void DeleteJITCodeEntryInternal(JITCodeEntry* entry) REQUIRES(g_jit_debug
   delete entry;
 }
 
-JITCodeEntry* CreateJITCodeEntry(std::vector<uint8_t> symfile) {
-  Thread* self = Thread::Current();
-  MutexLock mu(self, g_jit_debug_mutex);
-  return CreateJITCodeEntryInternal(std::move(symfile));
+// Mapping from code address to entry. Used to manage life-time of the entries.
+static std::unordered_map<uintptr_t, JITCodeEntry*> g_jit_code_entries
+    GUARDED_BY(g_jit_debug_mutex);
+
+void IncrementJITCodeEntryRefcount(JITCodeEntry* entry, uintptr_t code_address) {
+  DCHECK(entry != nullptr);
+  DCHECK_EQ(g_jit_code_entries.count(code_address), 0u);
+  entry->ref_count++;
+  g_jit_code_entries.emplace(code_address, entry);
 }
 
-void DeleteJITCodeEntry(JITCodeEntry* entry) {
-  Thread* self = Thread::Current();
-  MutexLock mu(self, g_jit_debug_mutex);
-  DeleteJITCodeEntryInternal(entry);
-}
-
-// Mapping from address to entry.  It takes ownership of the entries
-// so that the user of the JIT interface does not have to store them.
-static std::unordered_map<uintptr_t, JITCodeEntry*> g_jit_code_entries;
-
-void CreateJITCodeEntryForAddress(uintptr_t address, std::vector<uint8_t> symfile) {
-  Thread* self = Thread::Current();
-  MutexLock mu(self, g_jit_debug_mutex);
-  DCHECK_NE(address, 0u);
-  DCHECK(g_jit_code_entries.find(address) == g_jit_code_entries.end());
-  JITCodeEntry* entry = CreateJITCodeEntryInternal(std::move(symfile));
-  g_jit_code_entries.emplace(address, entry);
-}
-
-bool DeleteJITCodeEntryForAddress(uintptr_t address) {
-  Thread* self = Thread::Current();
-  MutexLock mu(self, g_jit_debug_mutex);
-  const auto it = g_jit_code_entries.find(address);
-  if (it == g_jit_code_entries.end()) {
-    return false;
+void DecrementJITCodeEntryRefcount(JITCodeEntry* entry, uintptr_t code_address) {
+  DCHECK(entry != nullptr);
+  DCHECK(g_jit_code_entries[code_address] == entry);
+  if (--entry->ref_count == 0) {
+    DeleteJITCodeEntry(entry);
   }
-  DeleteJITCodeEntryInternal(it->second);
-  g_jit_code_entries.erase(it);
-  return true;
+  g_jit_code_entries.erase(code_address);
+}
+
+JITCodeEntry* GetJITCodeEntry(uintptr_t code_address) {
+  auto it = g_jit_code_entries.find(code_address);
+  return it == g_jit_code_entries.end() ? nullptr : it->second;
+}
+
+size_t GetJITCodeEntryMemUsage() {
+  return g_jit_debug_mem_usage + g_jit_code_entries.size() * 2 * sizeof(void*);
 }
 
 }  // namespace art
