@@ -1829,6 +1829,7 @@ class Dex2Oat FINAL {
     jobject class_loader = nullptr;
     if (!IsBootImage()) {
       class_loader = class_loader_context_->CreateClassLoader(dex_files_);
+      callbacks_->SetDexFiles(&dex_files);
     }
 
     // Register dex caches and key them to the class loader so that they only unload when the
