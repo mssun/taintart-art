@@ -54,7 +54,7 @@ std::vector<uint8_t> MakeElfFileForJIT(
     InstructionSet isa,
     const InstructionSetFeatures* features,
     bool mini_debug_info,
-    const MethodDebugInfo& method_info);
+    ArrayRef<const MethodDebugInfo> method_infos);
 
 std::vector<uint8_t> WriteDebugElfFileForClasses(
     InstructionSet isa,

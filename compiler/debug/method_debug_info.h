@@ -27,7 +27,7 @@ namespace art {
 namespace debug {
 
 struct MethodDebugInfo {
-  std::string trampoline_name;
+  std::string custom_name;
   const DexFile* dex_file;  // Native methods (trampolines) do not reference dex file.
   size_t class_def_index;
   uint32_t dex_method_index;
