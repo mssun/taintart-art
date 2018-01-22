@@ -17,6 +17,10 @@
 #include "quick_compiler_callbacks.h"
 
 #include "driver/compiler_driver.h"
+#include "mirror/class-inl.h"
+#include "mirror/object.h"
+#include "obj_ptr-inl.h"
+#include "thread-current-inl.h"
 #include "verification_results.h"
 #include "verifier/method_verifier-inl.h"
 
@@ -52,6 +56,17 @@ void QuickCompilerCallbacks::UpdateClassState(ClassReference ref, ClassStatus st
   if (compiler_driver_ != nullptr) {
     compiler_driver_->RecordClassStatus(ref, status);
   }
+}
+
+bool QuickCompilerCallbacks::CanUseOatStatusForVerification(mirror::Class* klass) {
+  // No dex files: conservatively false.
+  if (dex_files_ == nullptr) {
+    return false;
+  }
+
+  // If the class isn't from one of the dex files, accept oat file data.
+  const DexFile* dex_file = &klass->GetDexFile();
+  return std::find(dex_files_->begin(), dex_files_->end(), dex_file) == dex_files_->end();
 }
 
 }  // namespace art

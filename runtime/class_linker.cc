@@ -4252,17 +4252,16 @@ bool ClassLinker::VerifyClassUsingOatFile(const DexFile& dex_file,
                                           ClassStatus& oat_file_class_status) {
   // If we're compiling, we can only verify the class using the oat file if
   // we are not compiling the image or if the class we're verifying is not part of
-  // the app.  In other words, we will only check for preverification of bootclasspath
-  // classes.
+  // the compilation unit (app - dependencies). We will let the compiler callback
+  // tell us about the latter.
   if (Runtime::Current()->IsAotCompiler()) {
+    CompilerCallbacks* callbacks = Runtime::Current()->GetCompilerCallbacks();
     // Are we compiling the bootclasspath?
-    if (Runtime::Current()->GetCompilerCallbacks()->IsBootImage()) {
+    if (callbacks->IsBootImage()) {
       return false;
     }
     // We are compiling an app (not the image).
-
-    // Is this an app class? (I.e. not a bootclasspath class)
-    if (klass->GetClassLoader() != nullptr) {
+    if (!callbacks->CanUseOatStatusForVerification(klass.Ptr())) {
       return false;
     }
   }
