@@ -41,12 +41,17 @@ cc_defaults {
     target: {
         android: {
             static_libs: [
+                "libziparchive",
                 "libz",
                 "libbase",
+            ],
+            shared_libs: [
+                "libutils",
             ],
         },
         host: {
             shared_libs: [
+                "libziparchive",
                 "libz",
             ],
         },
