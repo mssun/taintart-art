@@ -77,6 +77,10 @@ class PcToRegisterLineTable {
   void Init(RegisterTrackingMode mode, InstructionFlags* flags, uint32_t insns_size,
             uint16_t registers_size, MethodVerifier* verifier);
 
+  bool IsInitialized() const {
+    return !register_lines_.empty();
+  }
+
   RegisterLine* GetLine(size_t idx) const {
     return register_lines_[idx].get();
   }
