@@ -2811,6 +2811,14 @@ void IntrinsicCodeGeneratorARMVIXL::VisitMathAtan2(HInvoke* invoke) {
   GenFPFPToFPCall(invoke, GetAssembler(), codegen_, kQuickAtan2);
 }
 
+void IntrinsicLocationsBuilderARMVIXL::VisitMathPow(HInvoke* invoke) {
+  CreateFPFPToFPCallLocations(allocator_, invoke);
+}
+
+void IntrinsicCodeGeneratorARMVIXL::VisitMathPow(HInvoke* invoke) {
+  GenFPFPToFPCall(invoke, GetAssembler(), codegen_, kQuickPow);
+}
+
 void IntrinsicLocationsBuilderARMVIXL::VisitMathHypot(HInvoke* invoke) {
   CreateFPFPToFPCallLocations(allocator_, invoke);
 }

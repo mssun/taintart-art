@@ -348,6 +348,8 @@ void InitEntryPoints(JniEntryPoints* jpoints, QuickEntryPoints* qpoints) {
   static_assert(IsDirectEntrypoint(kQuickAtan), "Direct C stub marked non-direct.");
   qpoints->pAtan2 = atan2;
   static_assert(IsDirectEntrypoint(kQuickAtan2), "Direct C stub marked non-direct.");
+  qpoints->pPow = pow;
+  static_assert(IsDirectEntrypoint(kQuickPow), "Direct C stub marked non-direct.");
   qpoints->pCbrt = cbrt;
   static_assert(IsDirectEntrypoint(kQuickCbrt), "Direct C stub marked non-direct.");
   qpoints->pCosh = cosh;
