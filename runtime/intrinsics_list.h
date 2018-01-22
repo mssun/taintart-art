@@ -136,6 +136,7 @@
   V(MathAsin, kStatic, kNeedsEnvironmentOrCache, kNoSideEffects, kNoThrow, "Ljava/lang/Math;", "asin", "(D)D") \
   V(MathAtan, kStatic, kNeedsEnvironmentOrCache, kNoSideEffects, kNoThrow, "Ljava/lang/Math;", "atan", "(D)D") \
   V(MathAtan2, kStatic, kNeedsEnvironmentOrCache, kNoSideEffects, kNoThrow, "Ljava/lang/Math;", "atan2", "(DD)D") \
+  V(MathPow, kStatic, kNeedsEnvironmentOrCache, kNoSideEffects, kNoThrow, "Ljava/lang/Math;", "pow", "(DD)D") \
   V(MathCbrt, kStatic, kNeedsEnvironmentOrCache, kNoSideEffects, kNoThrow, "Ljava/lang/Math;", "cbrt", "(D)D") \
   V(MathCosh, kStatic, kNeedsEnvironmentOrCache, kNoSideEffects, kNoThrow, "Ljava/lang/Math;", "cosh", "(D)D") \
   V(MathExp, kStatic, kNeedsEnvironmentOrCache, kNoSideEffects, kNoThrow, "Ljava/lang/Math;", "exp", "(D)D") \
