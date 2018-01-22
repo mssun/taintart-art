@@ -21,28 +21,45 @@
 #include <memory>
 #include <vector>
 
+#include "base/array_ref.h"
+#include "base/mutex.h"
+
 namespace art {
 
 extern "C" {
   struct JITCodeEntry;
 }
 
+extern Mutex g_jit_debug_mutex;
+
 // Notify native debugger about new JITed code by passing in-memory ELF.
 // It takes ownership of the in-memory ELF file.
-JITCodeEntry* CreateJITCodeEntry(std::vector<uint8_t> symfile);
+JITCodeEntry* CreateJITCodeEntry(const std::vector<uint8_t>& symfile)
+    REQUIRES(g_jit_debug_mutex);
 
 // Notify native debugger that JITed code has been removed.
 // It also releases the associated in-memory ELF file.
-void DeleteJITCodeEntry(JITCodeEntry* entry);
+void DeleteJITCodeEntry(JITCodeEntry* entry)
+    REQUIRES(g_jit_debug_mutex);
 
-// Notify native debugger about new JITed code by passing in-memory ELF.
-// The address is used only to uniquely identify the entry.
-// It takes ownership of the in-memory ELF file.
-void CreateJITCodeEntryForAddress(uintptr_t address, std::vector<uint8_t> symfile);
+// Helper method to track life-time of JITCodeEntry.
+// It registers given code address as being described by the given entry.
+void IncrementJITCodeEntryRefcount(JITCodeEntry* entry, uintptr_t code_address)
+    REQUIRES(g_jit_debug_mutex);
 
-// Notify native debugger that JITed code has been removed.
-// Returns false if entry for the given address was not found.
-bool DeleteJITCodeEntryForAddress(uintptr_t address);
+// Helper method to track life-time of JITCodeEntry.
+// It de-registers given code address as being described by the given entry.
+void DecrementJITCodeEntryRefcount(JITCodeEntry* entry, uintptr_t code_address)
+    REQUIRES(g_jit_debug_mutex);
+
+// Find the registered JITCodeEntry for given code address.
+// There can be only one entry per address at any given time.
+JITCodeEntry* GetJITCodeEntry(uintptr_t code_address)
+    REQUIRES(g_jit_debug_mutex);
+
+// Returns approximate memory used by all JITCodeEntries.
+size_t GetJITCodeEntryMemUsage()
+    REQUIRES(g_jit_debug_mutex);
 
 }  // namespace art
 

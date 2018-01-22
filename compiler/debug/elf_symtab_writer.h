@@ -72,8 +72,8 @@ static void WriteDebugSymbols(linker::ElfBuilder<ElfTypes>* builder,
       continue;  // Add symbol only for the first instance.
     }
     size_t name_offset;
-    if (!info.trampoline_name.empty()) {
-      name_offset = strtab->Write(info.trampoline_name);
+    if (!info.custom_name.empty()) {
+      name_offset = strtab->Write(info.custom_name);
     } else {
       DCHECK(info.dex_file != nullptr);
       std::string name = info.dex_file->PrettyMethod(info.dex_method_index, !mini_debug_info);
