@@ -159,4 +159,10 @@ CompiledMethod::~CompiledMethod() {
   storage->ReleaseMethodInfo(method_info_);
 }
 
+void CompiledMethod::ReleaseVMapTable() {
+  CompiledMethodStorage* storage = GetCompilerDriver()->GetCompiledMethodStorage();
+  storage->ReleaseVMapTable(vmap_table_);
+  vmap_table_ = nullptr;
+}
+
 }  // namespace art
