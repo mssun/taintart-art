@@ -17,10 +17,14 @@
 #include "graph_checker.h"
 #include "nodes.h"
 #include "optimizing_unit_test.h"
+#include "superblock_cloner.h"
 
 #include "gtest/gtest.h"
 
 namespace art {
+
+using HBasicBlockMap = SuperblockCloner::HBasicBlockMap;
+using HInstructionMap = SuperblockCloner::HInstructionMap;
 
 // This class provides methods and helpers for testing various cloning and copying routines:
 // individual instruction cloning and cloning of the more coarse-grain structures.
@@ -180,6 +184,123 @@ TEST_F(SuperblockClonerTest, IndividualInstrCloner) {
   HSuspendCheck* new_suspend_check = header->GetLoopInformation()->GetSuspendCheck();
   EXPECT_NE(new_suspend_check, old_suspend_check);
   EXPECT_NE(new_suspend_check, nullptr);
+}
+
+// Tests SuperblockCloner::CloneBasicBlocks - check instruction cloning and initial remapping of
+// instructions' inputs.
+TEST_F(SuperblockClonerTest, CloneBasicBlocks) {
+  HBasicBlock* header = nullptr;
+  HBasicBlock* loop_body = nullptr;
+  ArenaAllocator* arena = graph_->GetAllocator();
+
+  CreateBasicLoopControlFlow(&header, &loop_body);
+  CreateBasicLoopDataFlow(header, loop_body);
+  graph_->BuildDominatorTree();
+  ASSERT_TRUE(CheckGraph());
+
+  ArenaBitVector orig_bb_set(
+      arena, graph_->GetBlocks().size(), false, kArenaAllocSuperblockCloner);
+  HBasicBlockMap bb_map(std::less<HBasicBlock*>(), arena->Adapter(kArenaAllocSuperblockCloner));
+  HInstructionMap hir_map(std::less<HInstruction*>(), arena->Adapter(kArenaAllocSuperblockCloner));
+
+  HLoopInformation* loop_info = header->GetLoopInformation();
+  orig_bb_set.Union(&loop_info->GetBlocks());
+
+  SuperblockCloner cloner(graph_,
+                          &orig_bb_set,
+                          &bb_map,
+                          &hir_map);
+  EXPECT_TRUE(cloner.IsSubgraphClonable());
+
+  cloner.CloneBasicBlocks();
+
+  EXPECT_EQ(bb_map.size(), 2u);
+  EXPECT_EQ(hir_map.size(), 12u);
+
+  for (auto it : hir_map) {
+    HInstruction* orig_instr = it.first;
+    HInstruction* copy_instr = it.second;
+
+    EXPECT_EQ(cloner.GetBlockCopy(orig_instr->GetBlock()), copy_instr->GetBlock());
+    EXPECT_EQ(orig_instr->GetKind(), copy_instr->GetKind());
+    EXPECT_EQ(orig_instr->GetType(), copy_instr->GetType());
+
+    if (orig_instr->IsPhi()) {
+      continue;
+    }
+
+    EXPECT_EQ(orig_instr->InputCount(), copy_instr->InputCount());
+
+    // Check that inputs match.
+    for (size_t i = 0, e = orig_instr->InputCount(); i < e; i++) {
+      HInstruction* orig_input = orig_instr->InputAt(i);
+      HInstruction* copy_input = copy_instr->InputAt(i);
+      if (cloner.IsInOrigBBSet(orig_input->GetBlock())) {
+        EXPECT_EQ(cloner.GetInstrCopy(orig_input), copy_input);
+      } else {
+        EXPECT_EQ(orig_input, copy_input);
+      }
+    }
+
+    EXPECT_EQ(orig_instr->HasEnvironment(), copy_instr->HasEnvironment());
+
+    // Check that environments match.
+    if (orig_instr->HasEnvironment()) {
+      HEnvironment* orig_env = orig_instr->GetEnvironment();
+      HEnvironment* copy_env = copy_instr->GetEnvironment();
+
+      EXPECT_EQ(copy_env->GetParent(), nullptr);
+      EXPECT_EQ(orig_env->Size(), copy_env->Size());
+
+      for (size_t i = 0, e = orig_env->Size(); i < e; i++) {
+        HInstruction* orig_input = orig_env->GetInstructionAt(i);
+        HInstruction* copy_input = copy_env->GetInstructionAt(i);
+        if (cloner.IsInOrigBBSet(orig_input->GetBlock())) {
+          EXPECT_EQ(cloner.GetInstrCopy(orig_input), copy_input);
+        } else {
+          EXPECT_EQ(orig_input, copy_input);
+        }
+      }
+    }
+  }
+}
+
+// SuperblockCloner::CleanUpControlFlow - checks algorithms of local adjustments of the control
+// flow.
+TEST_F(SuperblockClonerTest, AdjustControlFlowInfo) {
+  HBasicBlock* header = nullptr;
+  HBasicBlock* loop_body = nullptr;
+  ArenaAllocator* arena = graph_->GetAllocator();
+
+  CreateBasicLoopControlFlow(&header, &loop_body);
+  CreateBasicLoopDataFlow(header, loop_body);
+  graph_->BuildDominatorTree();
+  ASSERT_TRUE(CheckGraph());
+
+  ArenaBitVector orig_bb_set(
+      arena, graph_->GetBlocks().size(), false, kArenaAllocSuperblockCloner);
+
+  HLoopInformation* loop_info = header->GetLoopInformation();
+  orig_bb_set.Union(&loop_info->GetBlocks());
+
+  SuperblockCloner cloner(graph_,
+                          &orig_bb_set,
+                          nullptr,
+                          nullptr);
+  EXPECT_TRUE(cloner.IsSubgraphClonable());
+
+  cloner.FindAndSetLocalAreaForAdjustments();
+  cloner.CleanUpControlFlow();
+
+  EXPECT_TRUE(CheckGraph());
+
+  EXPECT_TRUE(entry_block_->Dominates(header));
+  EXPECT_TRUE(entry_block_->Dominates(exit_block_));
+
+  EXPECT_EQ(header->GetLoopInformation(), loop_info);
+  EXPECT_EQ(loop_info->GetHeader(), header);
+  EXPECT_TRUE(loop_info->Contains(*loop_body));
+  EXPECT_TRUE(loop_info->IsBackEdge(*loop_body));
 }
 
 }  // namespace art
