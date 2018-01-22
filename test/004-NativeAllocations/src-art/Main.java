@@ -82,8 +82,8 @@ public class Main {
     // case of blocking registerNativeAllocation.
     private static void triggerBlockingRegisterNativeAllocation() throws Exception {
         long maxMem = Runtime.getRuntime().maxMemory();
-        int size = (int)(maxMem / 32);
-        int allocationCount = 256;
+        int size = (int)(maxMem / 5);
+        int allocationCount = 10;
 
         long total = 0;
         for (int i = 0; i < allocationCount; ++i) {
@@ -111,7 +111,7 @@ public class Main {
         synchronized (deadlockLock) {
             allocateDeadlockingFinalizer();
             while (!aboutToDeadlock) {
-                checkRegisterNativeAllocation();
+                Runtime.getRuntime().gc();
             }
 
             // Do more allocations now that the finalizer thread is deadlocked so that we force
