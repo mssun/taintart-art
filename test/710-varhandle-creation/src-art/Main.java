@@ -18,7 +18,6 @@
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-import dalvik.system.VMRuntime;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.invoke.VarHandle.AccessMode;
@@ -128,9 +127,6 @@ public final class Main {
     static final VarHandle vbbf;
     static final VarHandle vbbd;
     static final VarHandle vbbo;
-
-    // Some test results vary depending on 32-bit vs 64-bit.
-    static final boolean IS_64_BIT = VMRuntime.getRuntime().is64Bit();
 
     static {
         try {
@@ -1728,14 +1724,14 @@ public final class Main {
         checkNotNull(vbaj);
         checkVarType(vbaj, long.class);
         checkCoordinateTypes(vbaj, "[class [B, int]");
-        checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.GET, IS_64_BIT, "(byte[],int)long");
-        checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.SET, IS_64_BIT, "(byte[],int,long)void");
-        checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.GET_VOLATILE, IS_64_BIT, "(byte[],int)long");
-        checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.SET_VOLATILE, IS_64_BIT, "(byte[],int,long)void");
-        checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.GET_ACQUIRE, IS_64_BIT, "(byte[],int)long");
-        checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.SET_RELEASE, IS_64_BIT, "(byte[],int,long)void");
-        checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.GET_OPAQUE, IS_64_BIT, "(byte[],int)long");
-        checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.SET_OPAQUE, IS_64_BIT, "(byte[],int,long)void");
+        checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.GET, true, "(byte[],int)long");
+        checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.SET, true, "(byte[],int,long)void");
+        checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.GET_VOLATILE, true, "(byte[],int)long");
+        checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.SET_VOLATILE, true, "(byte[],int,long)void");
+        checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.GET_ACQUIRE, true, "(byte[],int)long");
+        checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.SET_RELEASE, true, "(byte[],int,long)void");
+        checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.GET_OPAQUE, true, "(byte[],int)long");
+        checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.SET_OPAQUE, true, "(byte[],int,long)void");
         checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.COMPARE_AND_SET, true, "(byte[],int,long,long)boolean");
         checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.COMPARE_AND_EXCHANGE, true, "(byte[],int,long,long)long");
         checkVarHandleAccessMode(vbaj, VarHandle.AccessMode.COMPARE_AND_EXCHANGE_ACQUIRE, true, "(byte[],int,long,long)long");
@@ -1800,14 +1796,14 @@ public final class Main {
         checkNotNull(vbad);
         checkVarType(vbad, double.class);
         checkCoordinateTypes(vbad, "[class [B, int]");
-        checkVarHandleAccessMode(vbad, VarHandle.AccessMode.GET, IS_64_BIT, "(byte[],int)double");
-        checkVarHandleAccessMode(vbad, VarHandle.AccessMode.SET, IS_64_BIT, "(byte[],int,double)void");
-        checkVarHandleAccessMode(vbad, VarHandle.AccessMode.GET_VOLATILE, IS_64_BIT, "(byte[],int)double");
-        checkVarHandleAccessMode(vbad, VarHandle.AccessMode.SET_VOLATILE, IS_64_BIT, "(byte[],int,double)void");
-        checkVarHandleAccessMode(vbad, VarHandle.AccessMode.GET_ACQUIRE, IS_64_BIT, "(byte[],int)double");
-        checkVarHandleAccessMode(vbad, VarHandle.AccessMode.SET_RELEASE, IS_64_BIT, "(byte[],int,double)void");
-        checkVarHandleAccessMode(vbad, VarHandle.AccessMode.GET_OPAQUE, IS_64_BIT, "(byte[],int)double");
-        checkVarHandleAccessMode(vbad, VarHandle.AccessMode.SET_OPAQUE, IS_64_BIT, "(byte[],int,double)void");
+        checkVarHandleAccessMode(vbad, VarHandle.AccessMode.GET, true, "(byte[],int)double");
+        checkVarHandleAccessMode(vbad, VarHandle.AccessMode.SET, true, "(byte[],int,double)void");
+        checkVarHandleAccessMode(vbad, VarHandle.AccessMode.GET_VOLATILE, true, "(byte[],int)double");
+        checkVarHandleAccessMode(vbad, VarHandle.AccessMode.SET_VOLATILE, true, "(byte[],int,double)void");
+        checkVarHandleAccessMode(vbad, VarHandle.AccessMode.GET_ACQUIRE, true, "(byte[],int)double");
+        checkVarHandleAccessMode(vbad, VarHandle.AccessMode.SET_RELEASE, true, "(byte[],int,double)void");
+        checkVarHandleAccessMode(vbad, VarHandle.AccessMode.GET_OPAQUE, true, "(byte[],int)double");
+        checkVarHandleAccessMode(vbad, VarHandle.AccessMode.SET_OPAQUE, true, "(byte[],int,double)void");
         checkVarHandleAccessMode(vbad, VarHandle.AccessMode.COMPARE_AND_SET, true, "(byte[],int,double,double)boolean");
         checkVarHandleAccessMode(vbad, VarHandle.AccessMode.COMPARE_AND_EXCHANGE, true, "(byte[],int,double,double)double");
         checkVarHandleAccessMode(vbad, VarHandle.AccessMode.COMPARE_AND_EXCHANGE_ACQUIRE, true, "(byte[],int,double,double)double");
@@ -1953,14 +1949,14 @@ public final class Main {
         checkNotNull(vbbj);
         checkVarType(vbbj, long.class);
         checkCoordinateTypes(vbbj, "[class java.nio.ByteBuffer, int]");
-        checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.GET, IS_64_BIT, "(ByteBuffer,int)long");
-        checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.SET, IS_64_BIT, "(ByteBuffer,int,long)void");
-        checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.GET_VOLATILE, IS_64_BIT, "(ByteBuffer,int)long");
-        checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.SET_VOLATILE, IS_64_BIT, "(ByteBuffer,int,long)void");
-        checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.GET_ACQUIRE, IS_64_BIT, "(ByteBuffer,int)long");
-        checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.SET_RELEASE, IS_64_BIT, "(ByteBuffer,int,long)void");
-        checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.GET_OPAQUE, IS_64_BIT, "(ByteBuffer,int)long");
-        checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.SET_OPAQUE, IS_64_BIT, "(ByteBuffer,int,long)void");
+        checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.GET, true, "(ByteBuffer,int)long");
+        checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.SET, true, "(ByteBuffer,int,long)void");
+        checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.GET_VOLATILE, true, "(ByteBuffer,int)long");
+        checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.SET_VOLATILE, true, "(ByteBuffer,int,long)void");
+        checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.GET_ACQUIRE, true, "(ByteBuffer,int)long");
+        checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.SET_RELEASE, true, "(ByteBuffer,int,long)void");
+        checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.GET_OPAQUE, true, "(ByteBuffer,int)long");
+        checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.SET_OPAQUE, true, "(ByteBuffer,int,long)void");
         checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.COMPARE_AND_SET, true, "(ByteBuffer,int,long,long)boolean");
         checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.COMPARE_AND_EXCHANGE, true, "(ByteBuffer,int,long,long)long");
         checkVarHandleAccessMode(vbbj, VarHandle.AccessMode.COMPARE_AND_EXCHANGE_ACQUIRE, true, "(ByteBuffer,int,long,long)long");
@@ -2025,14 +2021,14 @@ public final class Main {
         checkNotNull(vbbd);
         checkVarType(vbbd, double.class);
         checkCoordinateTypes(vbbd, "[class java.nio.ByteBuffer, int]");
-        checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.GET, IS_64_BIT, "(ByteBuffer,int)double");
-        checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.SET, IS_64_BIT, "(ByteBuffer,int,double)void");
-        checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.GET_VOLATILE, IS_64_BIT, "(ByteBuffer,int)double");
-        checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.SET_VOLATILE, IS_64_BIT, "(ByteBuffer,int,double)void");
-        checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.GET_ACQUIRE, IS_64_BIT, "(ByteBuffer,int)double");
-        checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.SET_RELEASE, IS_64_BIT, "(ByteBuffer,int,double)void");
-        checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.GET_OPAQUE, IS_64_BIT, "(ByteBuffer,int)double");
-        checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.SET_OPAQUE, IS_64_BIT, "(ByteBuffer,int,double)void");
+        checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.GET, true, "(ByteBuffer,int)double");
+        checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.SET, true, "(ByteBuffer,int,double)void");
+        checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.GET_VOLATILE, true, "(ByteBuffer,int)double");
+        checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.SET_VOLATILE, true, "(ByteBuffer,int,double)void");
+        checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.GET_ACQUIRE, true, "(ByteBuffer,int)double");
+        checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.SET_RELEASE, true, "(ByteBuffer,int,double)void");
+        checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.GET_OPAQUE, true, "(ByteBuffer,int)double");
+        checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.SET_OPAQUE, true, "(ByteBuffer,int,double)void");
         checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.COMPARE_AND_SET, true, "(ByteBuffer,int,double,double)boolean");
         checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.COMPARE_AND_EXCHANGE, true, "(ByteBuffer,int,double,double)double");
         checkVarHandleAccessMode(vbbd, VarHandle.AccessMode.COMPARE_AND_EXCHANGE_ACQUIRE, true, "(ByteBuffer,int,double,double)double");
