@@ -23,7 +23,6 @@
 
 #include "common_runtime_test.h"
 #include "compiler.h"
-#include "jit/profile_compilation_info.h"
 #include "oat_file.h"
 
 namespace art {
@@ -34,6 +33,7 @@ class ClassLoader;
 class CompilerDriver;
 class CompilerOptions;
 class CumulativeLogger;
+class ProfileCompilationInfo;
 class VerificationResults;
 
 template<class T> class Handle;
