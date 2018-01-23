@@ -283,7 +283,7 @@ class EventHandler {
   ALWAYS_INLINE
   inline void RecalculateGlobalEventMask(ArtJvmtiEvent event) REQUIRES(!envs_lock_);
   ALWAYS_INLINE
-  inline void RecalculateGlobalEventMaskLocked(ArtJvmtiEvent event) REQUIRES(envs_lock_);
+  inline void RecalculateGlobalEventMaskLocked(ArtJvmtiEvent event) REQUIRES_SHARED(envs_lock_);
 
   template <ArtJvmtiEvent kEvent>
   ALWAYS_INLINE inline void DispatchClassFileLoadHookEvent(art::Thread* thread,
@@ -310,7 +310,8 @@ class EventHandler {
   std::list<ArtJvmTiEnv*> envs GUARDED_BY(envs_lock_);
 
   // Top level lock. Nothing at all should be held when we lock this.
-  mutable art::Mutex envs_lock_ ACQUIRED_BEFORE(art::Locks::instrument_entrypoints_lock_);
+  mutable art::ReaderWriterMutex envs_lock_
+      ACQUIRED_BEFORE(art::Locks::instrument_entrypoints_lock_);
 
   // A union of all enabled events, anywhere.
   EventMask global_mask;
