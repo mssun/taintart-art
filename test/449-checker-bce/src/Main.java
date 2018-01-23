@@ -1068,6 +1068,7 @@ public class Main {
   //
   /// CHECK-START: void Main.lengthAlias1(int[], int) BCE (after)
   /// CHECK-NOT:              BoundsCheck
+  /// CHECK-NOT:              Deoptimize
   public static void lengthAlias1(int[] a, int len) {
     if (len == a.length) {
       for (int i = 0; i < len; i++) {
@@ -1087,6 +1088,7 @@ public class Main {
   //
   /// CHECK-START: void Main.lengthAlias2(int[], int) BCE (after)
   /// CHECK-NOT:              BoundsCheck
+  /// CHECK-NOT:              Deoptimize
   public static void lengthAlias2(int[] a, int len) {
     if (len != a.length) {
       return;
@@ -1107,11 +1109,33 @@ public class Main {
   //
   /// CHECK-START: void Main.lengthAlias3(int[], int) BCE (after)
   /// CHECK-NOT:              BoundsCheck
+  /// CHECK-NOT:              Deoptimize
   public static void lengthAlias3(int[] a, int len) {
     if (a.length == len) {
       for (int i = 0; i < len; i++) {
         a[i] = 3;
       }
+    }
+  }
+
+  /// CHECK-START: void Main.lengthAlias4(int[]) BCE (before)
+  /// CHECK-DAG: <<Arr:l\d+>> ParameterValue                loop:none
+  /// CHECK-DAG: <<Val:i\d+>> IntConstant 8                 loop:none
+  /// CHECK-DAG: <<Nul:l\d+>> NullCheck [<<Arr>>]           loop:none
+  /// CHECK-DAG: <<Len:i\d+>> ArrayLength [<<Nul>>]         loop:none
+  /// CHECK-DAG:              Equal [<<Len>>,<<Val>>]       loop:none
+  /// CHECK-DAG: <<Idx:i\d+>> Phi                           loop:<<Loop:B\d+>>
+  /// CHECK-DAG:              BoundsCheck [<<Idx>>,<<Len>>] loop:<<Loop>>
+  //
+  /// CHECK-START: void Main.lengthAlias4(int[]) BCE (after)
+  /// CHECK-NOT:              BoundsCheck
+  /// CHECK-NOT:              Deoptimize
+  public static void lengthAlias4(int[] a) {
+    if (8 != a.length) {
+      return;
+    }
+    for (int i = 0; i < 8; i++) {
+      a[i] = 4;
     }
   }
 
@@ -1824,10 +1848,20 @@ public class Main {
         System.out.println("alias3 failed!");
       }
     }
-
-    lengthAlias1(array, /*mismatched value*/ 32);
+    lengthAlias4(array);
     for (int i = 0; i < 8; i++) {
-      if (array[i] != 3) {
+      if (array[i] != 4) {
+        System.out.println("alias4 failed!");
+      }
+    }
+
+    array = new int[10];
+    lengthAlias1(array, /*mismatched value*/ 8);
+    lengthAlias2(array, /*mismatched value*/ 8);
+    lengthAlias3(array, /*mismatched value*/ 8);
+    lengthAlias4(array);  // implicit mismatch
+    for (int i = 0; i < 10; i++) {
+      if (array[i] != 0) {
         System.out.println("mismatch failed!");
       }
     }
