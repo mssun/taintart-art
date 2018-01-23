@@ -39,6 +39,7 @@ class DexCompilationUnit;
 class HBasicBlockBuilder;
 class Instruction;
 class OptimizingCompilerStats;
+class ScopedObjectAccess;
 class SsaBuilder;
 class VariableSizedHandleScope;
 
@@ -230,6 +231,12 @@ class HInstructionBuilder : public ValueObject {
                              Handle<mirror::Class> klass,
                              uint32_t dex_pc,
                              bool needs_access_check)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
+  Handle<mirror::Class> ResolveClass(ScopedObjectAccess& soa, dex::TypeIndex type_index)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
+  bool LoadClassNeedsAccessCheck(Handle<mirror::Class> klass)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns the outer-most compiling method's class.
