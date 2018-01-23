@@ -41,12 +41,17 @@ cc_defaults {
     target: {
         android: {
             static_libs: [
+                "libziparchive",
                 "libz",
                 "libbase",
+            ],
+            shared_libs: [
+                "libutils",
             ],
         },
         host: {
             shared_libs: [
+                "libziparchive",
                 "libz",
             ],
         },
@@ -709,6 +714,7 @@ art_cc_test {
     ],
     shared_libs: [
         "libbacktrace",
+        "libziparchive",
     ],
     header_libs: [
         "art_cmdlineparser_headers", // For parsed_options_test.

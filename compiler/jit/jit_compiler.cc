@@ -76,6 +76,7 @@ extern "C" void jit_types_loaded(void* handle, mirror::Class** types, size_t cou
     const ArrayRef<mirror::Class*> types_array(types, count);
     std::vector<uint8_t> elf_file = debug::WriteDebugElfFileForClasses(
         kRuntimeISA, jit_compiler->GetCompilerDriver()->GetInstructionSetFeatures(), types_array);
+    MutexLock mu(Thread::Current(), g_jit_debug_mutex);
     CreateJITCodeEntry(std::move(elf_file));
   }
 }

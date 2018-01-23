@@ -836,9 +836,23 @@ class BCEVisitor : public HGraphVisitor {
       ValueRange array_range(&allocator_, lower, upper);
       // Try index range obtained by dominator-based analysis.
       ValueRange* index_range = LookupValueRange(index, block);
-      if (index_range != nullptr && index_range->FitsIn(&array_range)) {
-        ReplaceInstruction(bounds_check, index);
-        return;
+      if (index_range != nullptr) {
+        if (index_range->FitsIn(&array_range)) {
+          ReplaceInstruction(bounds_check, index);
+          return;
+        } else if (index_range->IsConstantValueRange()) {
+          // If the non-constant index turns out to have a constant range,
+          // make one more attempt to get a constant in the array range.
+          ValueRange* existing_range = LookupValueRange(array_length, block);
+          if (existing_range != nullptr &&
+              existing_range->IsConstantValueRange()) {
+            ValueRange constant_array_range(&allocator_, lower, existing_range->GetLower());
+            if (index_range->FitsIn(&constant_array_range)) {
+              ReplaceInstruction(bounds_check, index);
+              return;
+            }
+          }
+        }
       }
       // Try index range obtained by induction variable analysis.
       // Disables dynamic bce if OOB is certain.

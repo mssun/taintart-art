@@ -32,6 +32,7 @@
 #include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
 #include "entrypoints/quick/quick_entrypoints.h"
+#include "jit/profile_compilation_info.h"
 #include "linker/buffered_output_stream.h"
 #include "linker/elf_writer.h"
 #include "linker/elf_writer_quick.h"
@@ -485,7 +486,7 @@ TEST_F(OatTest, OatHeaderSizeCheck) {
   EXPECT_EQ(76U, sizeof(OatHeader));
   EXPECT_EQ(4U, sizeof(OatMethodOffsets));
   EXPECT_EQ(24U, sizeof(OatQuickMethodHeader));
-  EXPECT_EQ(161 * static_cast<size_t>(GetInstructionSetPointerSize(kRuntimeISA)),
+  EXPECT_EQ(162 * static_cast<size_t>(GetInstructionSetPointerSize(kRuntimeISA)),
             sizeof(QuickEntryPoints));
 }
 

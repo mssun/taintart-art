@@ -46,6 +46,7 @@
 #include "gc/space/space.h"
 #include "handle_scope-inl.h"
 #include "image_writer.h"
+#include "jit/profile_compilation_info.h"
 #include "linker/buffered_output_stream.h"
 #include "linker/file_output_stream.h"
 #include "linker/index_bss_mapping_encoder.h"
@@ -1336,7 +1337,7 @@ class OatWriter::LayoutReserveOffsetCodeMethodVisitor : public OrderedMethodVisi
       bool has_code_info = method_header->IsOptimized();
       // Record debug information for this function if we are doing that.
       debug::MethodDebugInfo& info = writer_->method_info_[debug_info_idx];
-      DCHECK(info.trampoline_name.empty());
+      DCHECK(info.custom_name.empty());
       info.dex_file = method_ref.dex_file;
       info.class_def_index = class_def_index;
       info.dex_method_index = method_ref.index;
@@ -2420,7 +2421,7 @@ size_t OatWriter::InitOatCode(size_t offset) {
       (field) = compiler_driver_->Create ## fn_name();                      \
       if (generate_debug_info) {                                            \
         debug::MethodDebugInfo info = {};                                   \
-        info.trampoline_name = #fn_name;                                    \
+        info.custom_name = #fn_name;                                        \
         info.isa = instruction_set;                                         \
         info.is_code_address_text_relative = true;                          \
         /* Use the code offset rather than the `adjusted_offset`. */        \

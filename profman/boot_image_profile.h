@@ -22,9 +22,10 @@
 #include <vector>
 
 #include "dex/dex_file.h"
-#include "jit/profile_compilation_info.h"
 
 namespace art {
+
+class ProfileCompilationInfo;
 
 struct BootImageOptions {
  public:

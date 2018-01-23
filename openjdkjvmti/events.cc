@@ -196,12 +196,12 @@ void EventMasks::HandleChangedCapabilities(const jvmtiCapabilities& caps, bool c
 }
 
 void EventHandler::RegisterArtJvmTiEnv(ArtJvmTiEnv* env) {
-  art::MutexLock mu(art::Thread::Current(), envs_lock_);
+  art::WriterMutexLock mu(art::Thread::Current(), envs_lock_);
   envs.push_back(env);
 }
 
 void EventHandler::RemoveArtJvmTiEnv(ArtJvmTiEnv* env) {
-  art::MutexLock mu(art::Thread::Current(), envs_lock_);
+  art::WriterMutexLock mu(art::Thread::Current(), envs_lock_);
   // Since we might be currently iterating over the envs list we cannot actually erase elements.
   // Instead we will simply replace them with 'nullptr' and skip them manually.
   auto it = std::find(envs.begin(), envs.end(), env);
@@ -1143,7 +1143,7 @@ jvmtiError EventHandler::SetEvent(ArtJvmTiEnv* env,
   {
     // Change the event masks atomically.
     art::Thread* self = art::Thread::Current();
-    art::MutexLock mu(self, envs_lock_);
+    art::WriterMutexLock mu(self, envs_lock_);
     art::WriterMutexLock mu_env_info(self, env->event_info_mutex_);
     old_state = global_mask.Test(event);
     if (mode == JVMTI_ENABLE) {

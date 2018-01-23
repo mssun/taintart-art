@@ -25,6 +25,12 @@ namespace art {
 
 class CompilerDriver;
 
+namespace mirror {
+
+class Class;
+
+}  // namespace mirror
+
 namespace verifier {
 
 class MethodVerifier;
@@ -67,6 +73,11 @@ class CompilerCallbacks {
 
   virtual void UpdateClassState(ClassReference ref ATTRIBUTE_UNUSED,
                                 ClassStatus state ATTRIBUTE_UNUSED) {}
+
+  virtual bool CanUseOatStatusForVerification(mirror::Class* klass ATTRIBUTE_UNUSED)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    return false;
+  }
 
  protected:
   explicit CompilerCallbacks(CallbackMode mode) : mode_(mode) { }

@@ -250,12 +250,12 @@ std::vector<debug::MethodDebugInfo> ArmBaseRelativePatcher::GenerateThunkDebugIn
     for (size_t i = start, num = data.NumberOfThunks(); i != num; ++i) {
       debug::MethodDebugInfo info = {};
       if (i == 0u) {
-        info.trampoline_name = base_name;
+        info.custom_name = base_name;
       } else {
         // Add a disambiguating tag for subsequent identical thunks. Since the `thunks_`
         // keeps records also for thunks in previous oat files, names based on the thunk
         // index shall be unique across the whole multi-oat output.
-        info.trampoline_name = base_name + "_" + std::to_string(i);
+        info.custom_name = base_name + "_" + std::to_string(i);
       }
       info.isa = instruction_set_;
       info.is_code_address_text_relative = true;

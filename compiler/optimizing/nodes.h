@@ -826,6 +826,10 @@ class HLoopInformation : public ArenaObject<kArenaAllocLoopInfo> {
   // Finds blocks that are part of this loop.
   void Populate();
 
+  // Updates blocks population of the loop and all of its outer' ones recursively after the
+  // population of the inner loop is updated.
+  void PopulateInnerLoopUpwards(HLoopInformation* inner_loop);
+
   // Returns whether this loop information contains `block`.
   // Note that this loop information *must* be populated before entering this function.
   bool Contains(const HBasicBlock& block) const;
@@ -855,6 +859,12 @@ class HLoopInformation : public ArenaObject<kArenaAllocLoopInfo> {
   bool DominatesAllBackEdges(HBasicBlock* block);
 
   bool HasExitEdge() const;
+
+  // Resets back edge and blocks-in-loop data.
+  void ResetBasicBlockData() {
+    back_edges_.clear();
+    ClearAllBlocks();
+  }
 
  private:
   // Internal recursive implementation of `Populate`.
@@ -995,6 +1005,18 @@ class HBasicBlock : public ArenaObject<kArenaAllocBasicBlock> {
       loop_information_ = new (graph_->GetAllocator()) HLoopInformation(this, graph_);
     }
     DCHECK_EQ(loop_information_->GetHeader(), this);
+    loop_information_->AddBackEdge(back_edge);
+  }
+
+  // Registers a back edge; if the block was not a loop header before the call associates a newly
+  // created loop info with it.
+  //
+  // Used in SuperblockCloner to preserve LoopInformation object instead of reseting loop
+  // info for all blocks during back edges recalculation.
+  void AddBackEdgeWhileUpdating(HBasicBlock* back_edge) {
+    if (loop_information_ == nullptr || loop_information_->GetHeader() != this) {
+      loop_information_ = new (graph_->GetAllocator()) HLoopInformation(this, graph_);
+    }
     loop_information_->AddBackEdge(back_edge);
   }
 
@@ -7309,19 +7331,19 @@ HInstruction* ReplaceInstrOrPhiByClone(HInstruction* instr);
 class CloneAndReplaceInstructionVisitor : public HGraphDelegateVisitor {
  public:
   explicit CloneAndReplaceInstructionVisitor(HGraph* graph)
-      : HGraphDelegateVisitor(graph), instr_replaced_by_clones_count(0) {}
+      : HGraphDelegateVisitor(graph), instr_replaced_by_clones_count_(0) {}
 
   void VisitInstruction(HInstruction* instruction) OVERRIDE {
     if (instruction->IsClonable()) {
       ReplaceInstrOrPhiByClone(instruction);
-      instr_replaced_by_clones_count++;
+      instr_replaced_by_clones_count_++;
     }
   }
 
-  size_t GetInstrReplacedByClonesCount() const { return instr_replaced_by_clones_count; }
+  size_t GetInstrReplacedByClonesCount() const { return instr_replaced_by_clones_count_; }
 
  private:
-  size_t instr_replaced_by_clones_count;
+  size_t instr_replaced_by_clones_count_;
 
   DISALLOW_COPY_AND_ASSIGN(CloneAndReplaceInstructionVisitor);
 };

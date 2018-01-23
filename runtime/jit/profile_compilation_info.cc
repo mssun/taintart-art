@@ -47,6 +47,7 @@
 #include "os.h"
 #include "safe_map.h"
 #include "utils.h"
+#include "zip_archive.h"
 
 namespace art {
 
@@ -55,6 +56,10 @@ const uint8_t ProfileCompilationInfo::kProfileMagic[] = { 'p', 'r', 'o', '\0' };
 // profile_compilation_info object. All the profile line headers are now placed together
 // before corresponding method_encodings and class_ids.
 const uint8_t ProfileCompilationInfo::kProfileVersion[] = { '0', '1', '0', '\0' };
+
+// The name of the profile entry in the dex metadata file.
+// DO NOT CHANGE THIS! (it's similar to classes.dex in the apk files).
+const char* ProfileCompilationInfo::kDexMetadataProfileEntry = "primary.prof";
 
 static constexpr uint16_t kMaxDexFileKeyLength = PATH_MAX;
 
@@ -194,7 +199,7 @@ bool ProfileCompilationInfo::MergeWith(const std::string& filename) {
 
   int fd = profile_file->Fd();
 
-  ProfileLoadSatus status = LoadInternal(fd, &error);
+  ProfileLoadStatus status = LoadInternal(fd, &error);
   if (status == kProfileLoadSuccess) {
     return true;
   }
@@ -225,7 +230,7 @@ bool ProfileCompilationInfo::Load(const std::string& filename, bool clear_if_inv
 
   int fd = profile_file->Fd();
 
-  ProfileLoadSatus status = LoadInternal(fd, &error);
+  ProfileLoadStatus status = LoadInternal(fd, &error);
   if (status == kProfileLoadSuccess) {
     return true;
   }
@@ -883,25 +888,13 @@ bool ProfileCompilationInfo::SafeBuffer::CompareAndAdvance(const uint8_t* data, 
   return false;
 }
 
-ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::SafeBuffer::FillFromFd(
-      int fd,
-      const std::string& source,
-      /*out*/std::string* error) {
+ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::SafeBuffer::Fill(
+      ProfileSource& source,
+      const std::string& debug_stage,
+      /*out*/ std::string* error) {
   size_t byte_count = (ptr_end_ - ptr_current_) * sizeof(*ptr_current_);
   uint8_t* buffer = ptr_current_;
-  while (byte_count > 0) {
-    int bytes_read = TEMP_FAILURE_RETRY(read(fd, buffer, byte_count));
-    if (bytes_read == 0) {
-      *error += "Profile EOF reached prematurely for " + source;
-      return kProfileLoadBadData;
-    } else if (bytes_read < 0) {
-      *error += "Profile IO error for " + source + strerror(errno);
-      return kProfileLoadIOError;
-    }
-    byte_count -= bytes_read;
-    buffer += bytes_read;
-  }
-  return kProfileLoadSuccess;
+  return source.Read(buffer, byte_count, debug_stage, error);
 }
 
 size_t ProfileCompilationInfo::SafeBuffer::CountUnreadBytes() {
@@ -916,8 +909,8 @@ void ProfileCompilationInfo::SafeBuffer::Advance(size_t data_size) {
   ptr_current_ += data_size;
 }
 
-ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::ReadProfileHeader(
-      int fd,
+ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::ReadProfileHeader(
+      ProfileSource& source,
       /*out*/uint8_t* number_of_dex_files,
       /*out*/uint32_t* uncompressed_data_size,
       /*out*/uint32_t* compressed_data_size,
@@ -932,7 +925,7 @@ ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::ReadProfileHead
 
   SafeBuffer safe_buffer(kMagicVersionSize);
 
-  ProfileLoadSatus status = safe_buffer.FillFromFd(fd, "ReadProfileHeader", error);
+  ProfileLoadStatus status = safe_buffer.Fill(source, "ReadProfileHeader", error);
   if (status != kProfileLoadSuccess) {
     return status;
   }
@@ -972,7 +965,7 @@ bool ProfileCompilationInfo::ReadProfileLineHeaderElements(SafeBuffer& buffer,
   return true;
 }
 
-ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::ReadProfileLineHeader(
+ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::ReadProfileLineHeader(
     SafeBuffer& buffer,
     /*out*/ProfileLineHeader* line_header,
     /*out*/std::string* error) {
@@ -1003,7 +996,7 @@ ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::ReadProfileLine
   return kProfileLoadSuccess;
 }
 
-ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::ReadProfileLine(
+ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::ReadProfileLine(
       SafeBuffer& buffer,
       uint8_t number_of_dex_files,
       const ProfileLineHeader& line_header,
@@ -1046,7 +1039,7 @@ ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::ReadProfileLine
 bool ProfileCompilationInfo::Load(int fd, bool merge_classes) {
   std::string error;
 
-  ProfileLoadSatus status = LoadInternal(fd, &error, merge_classes);
+  ProfileLoadStatus status = LoadInternal(fd, &error, merge_classes);
 
   if (status == kProfileLoadSuccess) {
     return true;
@@ -1148,31 +1141,136 @@ bool ProfileCompilationInfo::VerifyProfileData(const std::vector<const DexFile*>
   return true;
 }
 
+ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::OpenSource(
+    int32_t fd,
+    /*out*/ std::unique_ptr<ProfileSource>* source,
+    /*out*/ std::string* error) {
+  if (IsProfileFile(fd)) {
+    source->reset(ProfileSource::Create(fd));
+    return kProfileLoadSuccess;
+  } else {
+    std::unique_ptr<ZipArchive> zip_archive(ZipArchive::OpenFromFd(fd, "profile", error));
+    if (zip_archive.get() == nullptr) {
+      *error = "Could not open the profile zip archive";
+      return kProfileLoadBadData;
+    }
+    std::unique_ptr<ZipEntry> zip_entry(zip_archive->Find(kDexMetadataProfileEntry, error));
+    if (zip_entry == nullptr) {
+      // Allow archives without the profile entry. In this case, create an empty profile.
+      // This gives more flexible when ure-using archives that may miss the entry.
+      // (e.g. dex metadata files)
+      LOG(WARNING) << std::string("Could not find entry ") + kDexMetadataProfileEntry +
+            " in the zip archive. Creating an empty profile.";
+      source->reset(ProfileSource::Create(nullptr));
+      return kProfileLoadSuccess;
+    }
+    if (zip_entry->GetUncompressedLength() == 0) {
+      *error = "Empty profile entry in the zip archive.";
+      return kProfileLoadBadData;
+    }
+
+    std::unique_ptr<MemMap> map;
+    if (zip_entry->IsUncompressed()) {
+      // Map uncompressed files within zip as file-backed to avoid a dirty copy.
+      map.reset(zip_entry->MapDirectlyFromFile(kDexMetadataProfileEntry, error));
+      if (map == nullptr) {
+        LOG(WARNING) << "Can't mmap profile directly; "
+                     << "is your ZIP file corrupted? Falling back to extraction.";
+        // Try again with Extraction which still has a chance of recovery.
+      }
+    }
+
+    if (map == nullptr) {
+      // Default path for compressed ZIP entries, and fallback for stored ZIP entries.
+      // TODO(calin) pass along file names to assist with debugging.
+      map.reset(zip_entry->ExtractToMemMap("profile file", kDexMetadataProfileEntry, error));
+    }
+
+    if (map != nullptr) {
+      source->reset(ProfileSource::Create(std::move(map)));
+      return kProfileLoadSuccess;
+    } else {
+      return kProfileLoadBadData;
+    }
+  }
+}
+
+ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::ProfileSource::Read(
+    uint8_t* buffer,
+    size_t byte_count,
+    const std::string& debug_stage,
+    std::string* error) {
+  if (IsMemMap()) {
+    if (mem_map_cur_ + byte_count > mem_map_->Size()) {
+      return kProfileLoadBadData;
+    }
+    for (size_t i = 0; i < byte_count; i++) {
+      buffer[i] = *(mem_map_->Begin() + mem_map_cur_);
+      mem_map_cur_++;
+    }
+  } else {
+    while (byte_count > 0) {
+      int bytes_read = TEMP_FAILURE_RETRY(read(fd_, buffer, byte_count));;
+      if (bytes_read == 0) {
+        *error += "Profile EOF reached prematurely for " + debug_stage;
+        return kProfileLoadBadData;
+      } else if (bytes_read < 0) {
+        *error += "Profile IO error for " + debug_stage + strerror(errno);
+        return kProfileLoadIOError;
+      }
+      byte_count -= bytes_read;
+      buffer += bytes_read;
+    }
+  }
+  return kProfileLoadSuccess;
+}
+
+bool ProfileCompilationInfo::ProfileSource::HasConsumedAllData() const {
+  return IsMemMap()
+      ? (mem_map_ == nullptr || mem_map_cur_ == mem_map_->Size())
+      : (testEOF(fd_) == 0);
+}
+
+bool ProfileCompilationInfo::ProfileSource::HasEmptyContent() const {
+  if (IsMemMap()) {
+    return mem_map_ == nullptr || mem_map_->Size() == 0;
+  } else {
+    struct stat stat_buffer;
+    if (fstat(fd_, &stat_buffer) != 0) {
+      return false;
+    }
+    return stat_buffer.st_size == 0;
+  }
+}
+
 // TODO(calin): fail fast if the dex checksums don't match.
-ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::LoadInternal(
-      int fd, std::string* error, bool merge_classes) {
+ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::LoadInternal(
+      int32_t fd, std::string* error, bool merge_classes) {
   ScopedTrace trace(__PRETTY_FUNCTION__);
   DCHECK_GE(fd, 0);
 
-  struct stat stat_buffer;
-  if (fstat(fd, &stat_buffer) != 0) {
-    return kProfileLoadIOError;
+  std::unique_ptr<ProfileSource> source;
+  ProfileLoadStatus status = OpenSource(fd, &source, error);
+  if (status != kProfileLoadSuccess) {
+    return status;
   }
+
   // We allow empty profile files.
   // Profiles may be created by ActivityManager or installd before we manage to
   // process them in the runtime or profman.
-  if (stat_buffer.st_size == 0) {
+  if (source->HasEmptyContent()) {
     return kProfileLoadSuccess;
   }
+
   // Read profile header: magic + version + number_of_dex_files.
   uint8_t number_of_dex_files;
   uint32_t uncompressed_data_size;
   uint32_t compressed_data_size;
-  ProfileLoadSatus status = ReadProfileHeader(fd,
-                                              &number_of_dex_files,
-                                              &uncompressed_data_size,
-                                              &compressed_data_size,
-                                              error);
+  status = ReadProfileHeader(*source,
+                             &number_of_dex_files,
+                             &uncompressed_data_size,
+                             &compressed_data_size,
+                             error);
 
   if (status != kProfileLoadSuccess) {
     return status;
@@ -1192,16 +1290,14 @@ ProfileCompilationInfo::ProfileLoadSatus ProfileCompilationInfo::LoadInternal(
   }
 
   std::unique_ptr<uint8_t[]> compressed_data(new uint8_t[compressed_data_size]);
-  bool bytes_read_success =
-      android::base::ReadFully(fd, compressed_data.get(), compressed_data_size);
-
-  if (testEOF(fd) != 0) {
-    *error += "Unexpected data in the profile file.";
-    return kProfileLoadBadData;
+  status = source->Read(compressed_data.get(), compressed_data_size, "ReadContent", error);
+  if (status != kProfileLoadSuccess) {
+    *error += "Unable to read compressed profile data";
+    return status;
   }
 
-  if (!bytes_read_success) {
-    *error += "Unable to read compressed profile data";
+  if (!source->HasConsumedAllData()) {
+    *error += "Unexpected data in the profile file.";
     return kProfileLoadBadData;
   }
 
@@ -1902,6 +1998,36 @@ std::unordered_set<std::string> ProfileCompilationInfo::GetClassDescriptors(
     }
   }
   return ret;
+}
+
+bool ProfileCompilationInfo::IsProfileFile(int fd) {
+  // First check if it's an empty file as we allow empty profile files.
+  // Profiles may be created by ActivityManager or installd before we manage to
+  // process them in the runtime or profman.
+  struct stat stat_buffer;
+  if (fstat(fd, &stat_buffer) != 0) {
+    return false;
+  }
+
+  if (stat_buffer.st_size == 0) {
+    return true;
+  }
+
+  // The files is not empty. Check if it contains the profile magic.
+  size_t byte_count = sizeof(kProfileMagic);
+  uint8_t buffer[sizeof(kProfileMagic)];
+  if (!android::base::ReadFully(fd, buffer, byte_count)) {
+    return false;
+  }
+
+  // Reset the offset to prepare the file for reading.
+  off_t rc =  TEMP_FAILURE_RETRY(lseek(fd, 0, SEEK_SET));
+  if (rc == static_cast<off_t>(-1)) {
+    PLOG(ERROR) << "Failed to reset the offset";
+    return false;
+  }
+
+  return memcmp(buffer, kProfileMagic, byte_count) == 0;
 }
 
 }  // namespace art

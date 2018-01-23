@@ -101,6 +101,7 @@ enum LockLevel {
   kAllocatedThreadIdsLock,
   kMonitorPoolLock,
   kClassLinkerClassesLock,  // TODO rename.
+  kDexToDexCompilerLock,
   kJitCodeCacheLock,
   kCHALock,
   kSubtypeCheckLock,
