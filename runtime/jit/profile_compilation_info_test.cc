@@ -22,6 +22,7 @@
 #include "class_linker-inl.h"
 #include "common_runtime_test.h"
 #include "dex/dex_file.h"
+#include "dex/dex_file_loader.h"
 #include "handle_scope-inl.h"
 #include "jit/profile_compilation_info.h"
 #include "linear_alloc.h"
@@ -1038,6 +1039,91 @@ TEST_F(ProfileCompilationInfoTest, LoadFromZipFailBadProfile) {
   ProfileCompilationInfo loaded_info;
   ASSERT_TRUE(zip.GetFile()->ResetOffset());
   ASSERT_FALSE(loaded_info.Load(GetFd(zip)));
+}
+
+TEST_F(ProfileCompilationInfoTest, UpdateProfileKeyOk) {
+  std::vector<std::unique_ptr<const DexFile>> dex_files = OpenTestDexFiles("MultiDex");
+
+  ProfileCompilationInfo info;
+  for (const std::unique_ptr<const DexFile>& dex : dex_files) {
+    // Create the profile with a different location so that we can update it to the
+    // real dex location later.
+    std::string base_location = DexFileLoader::GetBaseLocation(dex->GetLocation());
+    std::string multidex_suffix = DexFileLoader::GetMultiDexSuffix(dex->GetLocation());
+    std::string old_name = base_location + "-old" + multidex_suffix;
+    info.AddMethodIndex(Hotness::kFlagHot,
+                        old_name,
+                        dex->GetLocationChecksum(),
+                        /* method_idx */ 0,
+                        dex->NumMethodIds());
+  }
+
+  // Update the profile keys based on the original dex files
+  ASSERT_TRUE(info.UpdateProfileKeys(dex_files));
+
+  // Verify that we find the methods when searched with the original dex files.
+  for (const std::unique_ptr<const DexFile>& dex : dex_files) {
+    std::unique_ptr<ProfileCompilationInfo::OfflineProfileMethodInfo> loaded_pmi =
+        info.GetMethod(dex->GetLocation(), dex->GetLocationChecksum(), /* method_idx */ 0);
+    ASSERT_TRUE(loaded_pmi != nullptr);
+  }
+}
+
+TEST_F(ProfileCompilationInfoTest, UpdateProfileKeyOkButNoUpdate) {
+  std::vector<std::unique_ptr<const DexFile>> dex_files = OpenTestDexFiles("MultiDex");
+
+  ProfileCompilationInfo info;
+  info.AddMethodIndex(Hotness::kFlagHot,
+                      "my.app",
+                      /* checksum */ 123,
+                      /* method_idx */ 0,
+                      /* num_method_ids */ 10);
+
+  // Update the profile keys based on the original dex files
+  ASSERT_TRUE(info.UpdateProfileKeys(dex_files));
+
+  // Verify that we did not perform any update and that we cannot find anything with the new
+  // location.
+  for (const std::unique_ptr<const DexFile>& dex : dex_files) {
+    std::unique_ptr<ProfileCompilationInfo::OfflineProfileMethodInfo> loaded_pmi =
+        info.GetMethod(dex->GetLocation(), dex->GetLocationChecksum(), /* method_idx */ 0);
+    ASSERT_TRUE(loaded_pmi == nullptr);
+  }
+
+  // Verify that we can find the original entry.
+  std::unique_ptr<ProfileCompilationInfo::OfflineProfileMethodInfo> loaded_pmi =
+        info.GetMethod("my.app", /* checksum */ 123, /* method_idx */ 0);
+  ASSERT_TRUE(loaded_pmi != nullptr);
+}
+
+TEST_F(ProfileCompilationInfoTest, UpdateProfileKeyFail) {
+  std::vector<std::unique_ptr<const DexFile>> dex_files = OpenTestDexFiles("MultiDex");
+
+
+  ProfileCompilationInfo info;
+  // Add all dex
+  for (const std::unique_ptr<const DexFile>& dex : dex_files) {
+    // Create the profile with a different location so that we can update it to the
+    // real dex location later.
+    std::string base_location = DexFileLoader::GetBaseLocation(dex->GetLocation());
+    std::string multidex_suffix = DexFileLoader::GetMultiDexSuffix(dex->GetLocation());
+    std::string old_name = base_location + "-old" + multidex_suffix;
+    info.AddMethodIndex(Hotness::kFlagHot,
+                        old_name,
+                        dex->GetLocationChecksum(),
+                        /* method_idx */ 0,
+                        dex->NumMethodIds());
+  }
+
+  // Add a method index using the location we want to rename to.
+  // This will cause the rename to fail because an existing entry would already have that name.
+  info.AddMethodIndex(Hotness::kFlagHot,
+                      dex_files[0]->GetLocation(),
+                      /* checksum */ 123,
+                      /* method_idx */ 0,
+                      dex_files[0]->NumMethodIds());
+
+  ASSERT_FALSE(info.UpdateProfileKeys(dex_files));
 }
 
 }  // namespace art
