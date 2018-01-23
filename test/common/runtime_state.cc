@@ -25,6 +25,7 @@
 #include "instrumentation.h"
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"
+#include "jit/profile_compilation_info.h"
 #include "jit/profiling_info.h"
 #include "mirror/class-inl.h"
 #include "nativehelper/ScopedUtfChars.h"
