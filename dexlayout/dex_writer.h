@@ -20,9 +20,11 @@
 #define ART_DEXLAYOUT_DEX_WRITER_H_
 
 #include <functional>
+#include <memory>  // For unique_ptr
 
 #include "base/unix_file/fd_file.h"
 #include "dex/compact_dex_level.h"
+#include "dex_container.h"
 #include "dex/dex_file.h"
 #include "dex_ir.h"
 #include "mem_map.h"
@@ -39,7 +41,7 @@ struct MapItem {
   // Not using DexFile::MapItemType since compact dex and standard dex file may have different
   // sections.
   MapItem() = default;
-  MapItem(uint32_t type, uint32_t size, uint32_t offset)
+  MapItem(uint32_t type, uint32_t size, size_t offset)
       : type_(type), size_(size), offset_(offset) { }
 
   // Sort by decreasing order since the priority_queue puts largest elements first.
@@ -63,6 +65,114 @@ class DexWriter {
   static constexpr uint32_t kDataSectionAlignment = sizeof(uint32_t) * 2;
   static constexpr uint32_t kDexSectionWordAlignment = 4;
 
+  // Stream that writes into a dex container section. Do not have two streams pointing to the same
+  // backing storage as there may be invalidation of backing storage to resize the section.
+  // Random access stream (consider refactoring).
+  class Stream {
+   public:
+    explicit Stream(DexContainer::Section* section) : section_(section) {
+      SyncWithSection();
+    }
+
+    const uint8_t* Begin() const {
+      return data_;
+    }
+
+    // Functions are not virtual (yet) for speed.
+    size_t Tell() const {
+      return position_;
+    }
+
+    void Seek(size_t position) {
+      position_ = position;
+    }
+
+    // Does not allow overwriting for bug prevention purposes.
+    ALWAYS_INLINE size_t Write(const void* buffer, size_t length) {
+      EnsureStorage(length);
+      for (size_t i = 0; i < length; ++i) {
+        DCHECK_EQ(data_[position_ + i], 0u);
+      }
+      memcpy(&data_[position_], buffer, length);
+      position_ += length;
+      return length;
+    }
+
+    ALWAYS_INLINE size_t Overwrite(const void* buffer, size_t length) {
+      EnsureStorage(length);
+      memcpy(&data_[position_], buffer, length);
+      position_ += length;
+      return length;
+    }
+
+    ALWAYS_INLINE size_t Clear(size_t position, size_t length) {
+      EnsureStorage(length);
+      memset(&data_[position], 0, length);
+      return length;
+    }
+
+    ALWAYS_INLINE size_t WriteSleb128(int32_t value) {
+      EnsureStorage(8);
+      uint8_t* ptr = &data_[position_];
+      const size_t len = EncodeSignedLeb128(ptr, value) - ptr;
+      position_ += len;
+      return len;
+    }
+
+    ALWAYS_INLINE size_t WriteUleb128(uint32_t value) {
+      EnsureStorage(8);
+      uint8_t* ptr = &data_[position_];
+      const size_t len = EncodeUnsignedLeb128(ptr, value) - ptr;
+      position_ += len;
+      return len;
+    }
+
+    ALWAYS_INLINE void AlignTo(const size_t alignment) {
+      position_ = RoundUp(position_, alignment);
+    }
+
+    ALWAYS_INLINE void Skip(const size_t count) {
+      position_ += count;
+    }
+
+    class ScopedSeek {
+     public:
+      ScopedSeek(Stream* stream, uint32_t offset) : stream_(stream), offset_(stream->Tell()) {
+        stream->Seek(offset);
+      }
+
+      ~ScopedSeek() {
+        stream_->Seek(offset_);
+      }
+
+     private:
+      Stream* const stream_;
+      const uint32_t offset_;
+    };
+
+   private:
+    ALWAYS_INLINE void EnsureStorage(size_t length) {
+      size_t end = position_ + length;
+      while (UNLIKELY(end > data_size_)) {
+        section_->Resize(data_size_ * 3 / 2 + 1);
+        SyncWithSection();
+      }
+    }
+
+    void SyncWithSection() {
+      data_ = section_->Begin();
+      data_size_ = section_->Size();
+    }
+
+    // Current position of the stream.
+    size_t position_ = 0u;
+    DexContainer::Section* const section_ = nullptr;
+    // Cached Begin() from the container to provide faster accesses.
+    uint8_t* data_ = nullptr;
+    // Cached Size from the container to provide faster accesses.
+    size_t data_size_ = 0u;
+  };
+
   static inline constexpr uint32_t SectionAlignment(DexFile::MapItemType type) {
     switch (type) {
       case DexFile::kDexTypeClassDataItem:
@@ -78,83 +188,85 @@ class DexWriter {
     }
   }
 
-  DexWriter(dex_ir::Header* header,
-            MemMap* mem_map,
-            DexLayout* dex_layout,
-            bool compute_offsets)
-      : header_(header),
-        mem_map_(mem_map),
-        dex_layout_(dex_layout),
-        compute_offsets_(compute_offsets) {}
+  class Container : public DexContainer {
+   public:
+    Section* GetMainSection() OVERRIDE {
+      return &main_section_;
+    }
 
-  static void Output(dex_ir::Header* header,
-                     MemMap* mem_map,
-                     DexLayout* dex_layout,
-                     bool compute_offsets,
-                     CompactDexLevel compact_dex_level);
+    Section* GetDataSection() OVERRIDE {
+      return &data_section_;
+    }
+
+    bool IsCompactDexContainer() const OVERRIDE {
+      return false;
+    }
+
+   private:
+    VectorSection main_section_;
+    VectorSection data_section_;
+
+    friend class CompactDexWriter;
+  };
+
+  DexWriter(DexLayout* dex_layout, bool compute_offsets);
+
+  static void Output(DexLayout* dex_layout,
+                     std::unique_ptr<DexContainer>* container,
+                     bool compute_offsets);
 
   virtual ~DexWriter() {}
 
  protected:
-  virtual void WriteMemMap();
+  virtual void Write(DexContainer* output);
+  virtual std::unique_ptr<DexContainer> CreateDexContainer() const;
 
-  size_t Write(const void* buffer, size_t length, size_t offset) WARN_UNUSED;
-  size_t WriteSleb128(uint32_t value, size_t offset) WARN_UNUSED;
-  size_t WriteUleb128(uint32_t value, size_t offset) WARN_UNUSED;
-  size_t WriteEncodedValue(dex_ir::EncodedValue* encoded_value, size_t offset) WARN_UNUSED;
-  size_t WriteEncodedValueHeader(int8_t value_type, size_t value_arg, size_t offset) WARN_UNUSED;
-  size_t WriteEncodedArray(dex_ir::EncodedValueVector* values, size_t offset) WARN_UNUSED;
-  size_t WriteEncodedAnnotation(dex_ir::EncodedAnnotation* annotation, size_t offset) WARN_UNUSED;
-  size_t WriteEncodedFields(dex_ir::FieldItemVector* fields, size_t offset) WARN_UNUSED;
-  size_t WriteEncodedMethods(dex_ir::MethodItemVector* methods, size_t offset) WARN_UNUSED;
+  size_t WriteEncodedValue(Stream* stream, dex_ir::EncodedValue* encoded_value);
+  size_t WriteEncodedValueHeader(Stream* stream, int8_t value_type, size_t value_arg);
+  size_t WriteEncodedArray(Stream* stream, dex_ir::EncodedValueVector* values);
+  size_t WriteEncodedAnnotation(Stream* stream, dex_ir::EncodedAnnotation* annotation);
+  size_t WriteEncodedFields(Stream* stream, dex_ir::FieldItemVector* fields);
+  size_t WriteEncodedMethods(Stream* stream, dex_ir::MethodItemVector* methods);
 
   // Header and id section
-  virtual void WriteHeader();
+  virtual void WriteHeader(Stream* stream);
   virtual size_t GetHeaderSize() const;
   // reserve_only means don't write, only reserve space. This is required since the string data
   // offsets must be assigned.
-  uint32_t WriteStringIds(uint32_t offset, bool reserve_only);
-  uint32_t WriteTypeIds(uint32_t offset);
-  uint32_t WriteProtoIds(uint32_t offset, bool reserve_only);
-  uint32_t WriteFieldIds(uint32_t offset);
-  uint32_t WriteMethodIds(uint32_t offset);
-  uint32_t WriteClassDefs(uint32_t offset, bool reserve_only);
-  uint32_t WriteCallSiteIds(uint32_t offset, bool reserve_only);
+  uint32_t WriteStringIds(Stream* stream, bool reserve_only);
+  uint32_t WriteTypeIds(Stream* stream);
+  uint32_t WriteProtoIds(Stream* stream, bool reserve_only);
+  uint32_t WriteFieldIds(Stream* stream);
+  uint32_t WriteMethodIds(Stream* stream);
+  uint32_t WriteClassDefs(Stream* stream, bool reserve_only);
+  uint32_t WriteCallSiteIds(Stream* stream, bool reserve_only);
 
-  uint32_t WriteEncodedArrays(uint32_t offset);
-  uint32_t WriteAnnotations(uint32_t offset);
-  uint32_t WriteAnnotationSets(uint32_t offset);
-  uint32_t WriteAnnotationSetRefs(uint32_t offset);
-  uint32_t WriteAnnotationsDirectories(uint32_t offset);
+  uint32_t WriteEncodedArrays(Stream* stream);
+  uint32_t WriteAnnotations(Stream* stream);
+  uint32_t WriteAnnotationSets(Stream* stream);
+  uint32_t WriteAnnotationSetRefs(Stream* stream);
+  uint32_t WriteAnnotationsDirectories(Stream* stream);
 
   // Data section.
-  uint32_t WriteDebugInfoItems(uint32_t offset);
-  uint32_t WriteCodeItems(uint32_t offset, bool reserve_only);
-  uint32_t WriteTypeLists(uint32_t offset);
-  uint32_t WriteStringDatas(uint32_t offset);
-  uint32_t WriteClassDatas(uint32_t offset);
-  uint32_t WriteMethodHandles(uint32_t offset);
-  uint32_t WriteMapItems(uint32_t offset, MapItemQueue* queue);
-  uint32_t GenerateAndWriteMapItems(uint32_t offset);
+  uint32_t WriteDebugInfoItems(Stream* stream);
+  uint32_t WriteCodeItems(Stream* stream, bool reserve_only);
+  uint32_t WriteTypeLists(Stream* stream);
+  uint32_t WriteStringDatas(Stream* stream);
+  uint32_t WriteClassDatas(Stream* stream);
+  uint32_t WriteMethodHandles(Stream* stream);
+  uint32_t WriteMapItems(Stream* stream, MapItemQueue* queue);
+  uint32_t GenerateAndWriteMapItems(Stream* stream);
 
-  virtual uint32_t WriteCodeItemPostInstructionData(dex_ir::CodeItem* item,
-                                                    uint32_t offset,
+  virtual uint32_t WriteCodeItemPostInstructionData(Stream* stream,
+                                                    dex_ir::CodeItem* item,
                                                     bool reserve_only);
-  virtual uint32_t WriteCodeItem(dex_ir::CodeItem* item, uint32_t offset, bool reserve_only);
+  virtual uint32_t WriteCodeItem(Stream* stream, dex_ir::CodeItem* item, bool reserve_only);
 
   // Process an offset, if compute_offset is set, write into the dex ir item, otherwise read the
   // existing offset and use that for writing.
-  void ProcessOffset(uint32_t* const offset, dex_ir::Item* item) {
-    if (compute_offsets_) {
-      item->SetOffset(*offset);
-    } else {
-      // Not computing offsets, just use the one in the item.
-      *offset = item->GetOffset();
-    }
-  }
+  void ProcessOffset(Stream* stream, dex_ir::Item* item);
 
   dex_ir::Header* const header_;
-  MemMap* const mem_map_;
   DexLayout* const dex_layout_;
   bool compute_offsets_;
 

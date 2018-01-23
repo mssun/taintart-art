@@ -19,6 +19,7 @@
 #ifndef ART_DEXLAYOUT_COMPACT_DEX_WRITER_H_
 #define ART_DEXLAYOUT_COMPACT_DEX_WRITER_H_
 
+#include <memory>  // For unique_ptr
 #include <unordered_map>
 
 #include "dex_writer.h"
@@ -26,62 +27,108 @@
 
 namespace art {
 
-class HashedMemoryRange {
+// Compact dex writer for a single dex.
+class CompactDexWriter : public DexWriter {
  public:
-  uint32_t offset_;
-  uint32_t length_;
+  explicit CompactDexWriter(DexLayout* dex_layout);
 
-  class HashEqual {
+ protected:
+  class Deduper {
    public:
-    explicit HashEqual(const uint8_t* data) : data_(data) {}
+    static const uint32_t kDidNotDedupe = 0;
 
-    // Equal function.
-    bool operator()(const HashedMemoryRange& a, const HashedMemoryRange& b) const {
-      return a.length_ == b.length_ && std::equal(data_ + a.offset_,
-                                                  data_ + a.offset_ + a.length_,
-                                                  data_ + b.offset_);
+    // if not enabled, Dedupe will always return kDidNotDedupe.
+    explicit Deduper(bool enabled, DexContainer::Section* section);
+
+    // Deduplicate a blob of data that has been written to mem_map.
+    // Returns the offset of the deduplicated data or kDidNotDedupe did deduplication did not occur.
+    uint32_t Dedupe(uint32_t data_start, uint32_t data_end, uint32_t item_offset);
+
+   private:
+    class HashedMemoryRange {
+     public:
+      uint32_t offset_;
+      uint32_t length_;
+
+      class HashEqual {
+       public:
+        explicit HashEqual(DexContainer::Section* section) : section_(section) {}
+
+        // Equal function.
+        bool operator()(const HashedMemoryRange& a, const HashedMemoryRange& b) const {
+          if (a.length_ != b.length_) {
+            return false;
+          }
+          const uint8_t* data = Data();
+          return std::equal(data + a.offset_, data + a.offset_ + a.length_, data + b.offset_);
+        }
+
+        // Hash function.
+        size_t operator()(const HashedMemoryRange& range) const {
+          return HashBytes(Data() + range.offset_, range.length_);
+        }
+
+        ALWAYS_INLINE uint8_t* Data() const {
+          return section_->Begin();
+        }
+
+       private:
+        DexContainer::Section* const section_;
+      };
+    };
+
+    const bool enabled_;
+
+    // Dedupe map.
+    std::unordered_map<HashedMemoryRange,
+                       uint32_t,
+                       HashedMemoryRange::HashEqual,
+                       HashedMemoryRange::HashEqual> dedupe_map_;
+  };
+
+ public:
+  class Container : public DexContainer {
+   public:
+    Section* GetMainSection() OVERRIDE {
+      return &main_section_;
     }
 
-    // Hash function.
-    size_t operator()(const HashedMemoryRange& range) const {
-      return HashBytes(data_ + range.offset_, range.length_);
+    Section* GetDataSection() OVERRIDE {
+      return &data_section_;
+    }
+
+    bool IsCompactDexContainer() const OVERRIDE {
+      return true;
     }
 
    private:
-    const uint8_t* data_;
-  };
-};
+    explicit Container(bool dedupe_code_items);
 
-class CompactDexWriter : public DexWriter {
- public:
-  CompactDexWriter(dex_ir::Header* header,
-                   MemMap* mem_map,
-                   DexLayout* dex_layout,
-                   CompactDexLevel compact_dex_level);
+    VectorSection main_section_;
+    VectorSection data_section_;
+    Deduper code_item_dedupe_;
+
+    friend class CompactDexWriter;
+  };
 
  protected:
-  void WriteMemMap() OVERRIDE;
+  void Write(DexContainer* output) OVERRIDE;
 
-  void WriteHeader() OVERRIDE;
+  std::unique_ptr<DexContainer> CreateDexContainer() const OVERRIDE;
+
+  void WriteHeader(Stream* stream) OVERRIDE;
 
   size_t GetHeaderSize() const OVERRIDE;
 
-  uint32_t WriteDebugInfoOffsetTable(uint32_t offset);
+  uint32_t WriteDebugInfoOffsetTable(Stream* stream);
 
-  uint32_t WriteCodeItem(dex_ir::CodeItem* code_item, uint32_t offset, bool reserve_only) OVERRIDE;
+  uint32_t WriteCodeItem(Stream* stream, dex_ir::CodeItem* code_item, bool reserve_only) OVERRIDE;
 
   void SortDebugInfosByMethodIndex();
 
-  // Deduplicate a blob of data that has been written to mem_map. The backing storage is the actual
-  // mem_map contents to reduce RAM usage.
-  // Returns the offset of the deduplicated data or 0 if kDidNotDedupe did not occur.
-  uint32_t DedupeData(uint32_t data_start, uint32_t data_end, uint32_t item_offset);
+  CompactDexLevel GetCompactDexLevel() const;
 
  private:
-  const CompactDexLevel compact_dex_level_;
-
-  static const uint32_t kDidNotDedupe = 0;
-
   // Position in the compact dex file for the debug info table data starts.
   uint32_t debug_info_offsets_pos_ = 0u;
 
@@ -91,11 +138,8 @@ class CompactDexWriter : public DexWriter {
   // Base offset of where debug info starts in the dex file.
   uint32_t debug_info_base_ = 0u;
 
-  // Dedupe map.
-  std::unordered_map<HashedMemoryRange,
-                     uint32_t,
-                     HashedMemoryRange::HashEqual,
-                     HashedMemoryRange::HashEqual> data_dedupe_;
+  // State for where we are deduping.
+  Deduper* code_item_dedupe_ = nullptr;
 
   DISALLOW_COPY_AND_ASSIGN(CompactDexWriter);
 };
