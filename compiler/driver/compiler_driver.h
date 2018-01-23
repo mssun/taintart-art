@@ -37,7 +37,6 @@
 #include "dex/dex_file_types.h"
 #include "dex/dex_to_dex_compiler.h"
 #include "driver/compiled_method_storage.h"
-#include "jit/profile_compilation_info.h"
 #include "method_reference.h"
 #include "os.h"
 #include "safe_map.h"
@@ -70,6 +69,7 @@ enum InvokeType : uint32_t;
 class MemberOffset;
 template<class MirrorType> class ObjPtr;
 class ParallelCompilationManager;
+class ProfileCompilationInfo;
 class ScopedObjectAccess;
 template <class Allocator> class SrcMap;
 class TimingLogger;
