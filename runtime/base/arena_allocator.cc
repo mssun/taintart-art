@@ -56,6 +56,7 @@ const char* const ArenaAllocatorStatsImpl<kCount>::kAllocNames[] = {
   "CtorFenceIns ",
   "InvokeInputs ",
   "PhiInputs    ",
+  "TypeCheckIns ",
   "LoopInfo     ",
   "LIBackEdges  ",
   "TryCatchInf  ",
