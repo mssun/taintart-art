@@ -26,6 +26,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "android-base/logging.h"
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 
@@ -2907,7 +2908,7 @@ static int DumpImage(gc::space::ImageSpace* image_space,
                      std::ostream* os) REQUIRES_SHARED(Locks::mutator_lock_) {
   const ImageHeader& image_header = image_space->GetImageHeader();
   if (!image_header.IsValid()) {
-    fprintf(stderr, "Invalid image header %s\n", image_space->GetImageLocation().c_str());
+    LOG(ERROR) << "Invalid image header " << image_space->GetImageLocation();
     return EXIT_FAILURE;
   }
   ImageDumper image_dumper(os, *image_space, image_header, options);
@@ -3053,7 +3054,7 @@ static int DumpOat(Runtime* runtime, const char* oat_filename, OatDumperOptions*
                                                   nullptr,
                                                   &error_msg));
   if (oat_file == nullptr) {
-    fprintf(stderr, "Failed to open oat file from '%s': %s\n", oat_filename, error_msg.c_str());
+    LOG(ERROR) << "Failed to open oat file from '" << oat_filename << "': " << error_msg;
     return EXIT_FAILURE;
   }
 
@@ -3075,7 +3076,7 @@ static int SymbolizeOat(const char* oat_filename, std::string& output_name, bool
                                                   nullptr,
                                                   &error_msg));
   if (oat_file == nullptr) {
-    fprintf(stderr, "Failed to open oat file from '%s': %s\n", oat_filename, error_msg.c_str());
+    LOG(ERROR) << "Failed to open oat file from '" << oat_filename << "': " << error_msg;
     return EXIT_FAILURE;
   }
 
@@ -3090,7 +3091,7 @@ static int SymbolizeOat(const char* oat_filename, std::string& output_name, bool
     result = oat_symbolizer.Symbolize();
   }
   if (!result) {
-    fprintf(stderr, "Failed to symbolize\n");
+    LOG(ERROR) << "Failed to symbolize";
     return EXIT_FAILURE;
   }
 
@@ -3121,7 +3122,7 @@ class IMTDumper {
                                                       nullptr,
                                                       &error_msg));
       if (oat_file == nullptr) {
-        fprintf(stderr, "Failed to open oat file from '%s': %s\n", oat_filename, error_msg.c_str());
+        LOG(ERROR) << "Failed to open oat file from '" << oat_filename << "': " << error_msg;
         return false;
       }
 
@@ -3799,6 +3800,9 @@ struct OatdumpMain : public CmdlineMain<OatdumpArgs> {
 }  // namespace art
 
 int main(int argc, char** argv) {
+  // Output all logging to stderr.
+  android::base::SetLogger(android::base::StderrLogger);
+
   art::OatdumpMain main;
   return main.Main(argc, argv);
 }

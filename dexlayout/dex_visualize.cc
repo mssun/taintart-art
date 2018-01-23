@@ -29,6 +29,8 @@
 #include <memory>
 #include <vector>
 
+#include <android-base/logging.h>
+
 #include "dex_ir.h"
 #include "dexlayout.h"
 #include "jit/profile_compilation_info.h"
@@ -246,7 +248,7 @@ void VisualizeDexLayout(dex_ir::Header* header,
                         ProfileCompilationInfo* profile_info) {
   std::unique_ptr<Dumper> dumper(new Dumper(header));
   if (!dumper->OpenAndPrintHeader(dex_file_index)) {
-    fprintf(stderr, "Could not open output file.\n");
+    LOG(ERROR) << "Could not open output file.";
     return;
   }
 
