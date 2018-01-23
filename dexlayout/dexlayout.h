@@ -28,6 +28,7 @@
 #include <unordered_map>
 
 #include "dex/compact_dex_level.h"
+#include "dex_container.h"
 #include "dex/dex_file_layout.h"
 #include "dex_ir.h"
 #include "mem_map.h"
@@ -55,7 +56,7 @@ class Options {
   bool disassemble_ = false;
   bool exports_only_ = false;
   bool ignore_bad_checksum_ = false;
-  bool output_to_memmap_ = false;
+  bool output_to_container_ = false;
   bool show_annotations_ = false;
   bool show_file_headers_ = false;
   bool show_section_headers_ = false;
@@ -82,6 +83,18 @@ class DexLayoutHotnessInfo {
 
 class DexLayout {
  public:
+  class VectorOutputContainer {
+   public:
+    // Begin is not necessarily aligned (for now).
+    uint8_t* Begin() {
+      return &data_[0];
+    }
+
+   private:
+    std::vector<uint8_t> data_;
+  };
+
+
   // Setting this to false disables class def layout entirely, which is stronger than strictly
   // necessary to ensure the partial order w.r.t. class derivation. TODO: Re-enable (b/68317550).
   static constexpr bool kChangeClassDefOrder = false;
@@ -89,17 +102,20 @@ class DexLayout {
   DexLayout(Options& options,
             ProfileCompilationInfo* info,
             FILE* out_file,
-            dex_ir::Header*
-            header = nullptr)
-      : options_(options), info_(info), out_file_(out_file), header_(header) { }
+            dex_ir::Header* header)
+      : options_(options),
+        info_(info),
+        out_file_(out_file),
+        header_(header) { }
 
   int ProcessFile(const char* file_name);
-  void ProcessDexFile(const char* file_name, const DexFile* dex_file, size_t dex_file_index);
+  void ProcessDexFile(const char* file_name,
+                      const DexFile* dex_file,
+                      size_t dex_file_index,
+                      std::unique_ptr<DexContainer>* dex_container);
 
   dex_ir::Header* GetHeader() const { return header_; }
   void SetHeader(dex_ir::Header* header) { header_ = header; }
-
-  MemMap* GetAndReleaseMemMap() { return mem_map_.release(); }
 
   DexLayoutSections& GetSections() {
     return dex_sections_;
@@ -150,7 +166,9 @@ class DexLayout {
   // Creates a new layout for the dex file based on profile info.
   // Currently reorders ClassDefs, ClassDataItems, and CodeItems.
   void LayoutOutputFile(const DexFile* dex_file);
-  void OutputDexFile(const DexFile* dex_file, bool compute_offsets);
+  void OutputDexFile(const DexFile* input_dex_file,
+                     bool compute_offsets,
+                     std::unique_ptr<DexContainer>* dex_container);
 
   void DumpCFG(const DexFile* dex_file, int idx);
   void DumpCFG(const DexFile* dex_file, uint32_t dex_method_idx, const DexFile::CodeItem* code);
@@ -159,7 +177,6 @@ class DexLayout {
   ProfileCompilationInfo* info_;
   FILE* out_file_;
   dex_ir::Header* header_;
-  std::unique_ptr<MemMap> mem_map_;
   DexLayoutSections dex_sections_;
   // Layout hotness information is only calculated when dexlayout is enabled.
   DexLayoutHotnessInfo layout_hotness_info_;

@@ -80,7 +80,7 @@ int DexlayoutDriver(int argc, char** argv) {
 
   // Parse all arguments.
   while (1) {
-    const int ic = getopt(argc, argv, "abcdefghil:mo:p:stvw:x:");
+    const int ic = getopt(argc, argv, "abcdefghil:o:p:stvw:x:");
     if (ic < 0) {
       break;  // done
     }
@@ -118,9 +118,6 @@ int DexlayoutDriver(int argc, char** argv) {
         } else {
           want_usage = true;
         }
-        break;
-      case 'm':  // output dex files to a memmap
-        options.output_to_memmap_ = true;
         break;
       case 'o':  // output file
         options.output_file_name_ = optarg;
@@ -197,7 +194,7 @@ int DexlayoutDriver(int argc, char** argv) {
   }
 
   // Create DexLayout instance.
-  DexLayout dex_layout(options, profile_info.get(), out_file);
+  DexLayout dex_layout(options, profile_info.get(), out_file, /*header*/ nullptr);
 
   // Process all files supplied on command line.
   int result = 0;
