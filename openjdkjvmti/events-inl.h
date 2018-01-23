@@ -187,7 +187,7 @@ FORALL_EVENT_TYPES(MAKE_EVENT_HANDLER_FUNC)
 template <ArtJvmtiEvent kEvent, typename ...Args>
 inline std::vector<impl::EventHandlerFunc<kEvent>> EventHandler::CollectEvents(art::Thread* thread,
                                                                                Args... args) const {
-  art::MutexLock mu(thread, envs_lock_);
+  art::ReaderMutexLock mu(thread, envs_lock_);
   std::vector<impl::EventHandlerFunc<kEvent>> handlers;
   for (ArtJvmTiEnv* env : envs) {
     if (ShouldDispatch<kEvent>(env, thread, args...)) {
@@ -527,7 +527,7 @@ inline bool EventHandler::ShouldDispatch(ArtJvmTiEnv* env,
 }
 
 inline void EventHandler::RecalculateGlobalEventMask(ArtJvmtiEvent event) {
-  art::MutexLock mu(art::Thread::Current(), envs_lock_);
+  art::WriterMutexLock mu(art::Thread::Current(), envs_lock_);
   RecalculateGlobalEventMaskLocked(event);
 }
 
