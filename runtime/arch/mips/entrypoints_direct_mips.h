@@ -54,6 +54,7 @@ static constexpr bool IsDirectEntrypoint(QuickEntrypointEnum entrypoint) {
       entrypoint == kQuickAsin ||
       entrypoint == kQuickAtan ||
       entrypoint == kQuickAtan2 ||
+      entrypoint == kQuickPow ||
       entrypoint == kQuickCbrt ||
       entrypoint == kQuickCosh ||
       entrypoint == kQuickExp ||
