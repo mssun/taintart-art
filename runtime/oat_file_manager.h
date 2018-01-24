@@ -127,6 +127,9 @@ class OatFileManager {
 
   std::set<std::unique_ptr<const OatFile>> oat_files_ GUARDED_BY(Locks::oat_file_manager_lock_);
   bool have_non_pic_oat_file_;
+
+  // Only use the compiled code in an OAT file when the file is on /system. If the OAT file
+  // is not on /system, don't load it "executable".
   bool only_use_system_oat_files_;
 
   DISALLOW_COPY_AND_ASSIGN(OatFileManager);
