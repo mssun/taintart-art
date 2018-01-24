@@ -353,4 +353,9 @@ int MadviseLargestPageAlignedRegion(const uint8_t* begin, const uint8_t* end, in
   return 0;
 }
 
+bool LocationIsOnSystem(const char* location) {
+  UniqueCPtr<const char[]> path(realpath(location, nullptr));
+  return path != nullptr && android::base::StartsWith(path.get(), GetAndroidRoot().c_str());
+}
+
 }  // namespace art

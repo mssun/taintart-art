@@ -82,6 +82,9 @@ int64_t GetFileSizeBytes(const std::string& filename);
 // Madvise the largest page aligned region within begin and end.
 int MadviseLargestPageAlignedRegion(const uint8_t* begin, const uint8_t* end, int advice);
 
+// Return whether the location is on system (i.e. android root).
+bool LocationIsOnSystem(const char* location);
+
 }  // namespace art
 
 #endif  // ART_RUNTIME_BASE_FILE_UTILS_H_
