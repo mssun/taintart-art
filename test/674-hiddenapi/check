@@ -15,6 +15,9 @@
 # limitations under the License.
 
 # Remove pid and date from the log messages.
-grep -vE '^dalvikvm(32|64) E [^]]+]' "$2" | grep -v JNI_OnUnload > "$2.tmp"
+grep -vE '^dalvikvm(32|64) E [^]]+]' "$2" \
+    | grep -v JNI_OnLoad \
+    | grep -v JNI_OnUnload \
+    > "$2.tmp"
 
 ./default-check "$1" "$2.tmp"
