@@ -35,18 +35,19 @@ public class Main {
     // The expectation is that hidden members in parent should be visible to
     // the child.
     doTest(false, false);
+    doUnloading();
 
     // Now append parent dex file to boot class path and run again. This time
     // the child dex file should not be able to access private APIs of the parent.
     appendToBootClassLoader(DEX_PARENT_BOOT);
     doTest(true, false);
+    doUnloading();
 
     // And finally append to child to boot class path as well. With both in the
     // boot class path, access should be granted.
     appendToBootClassLoader(DEX_CHILD);
     doTest(true, true);
-
-    System.out.println("Done");
+    doUnloading();
   }
 
   private static void doTest(boolean parentInBoot, boolean childInBoot) throws Exception {
@@ -127,6 +128,14 @@ public class Main {
     File tempFile = new File(System.getenv("DEX_LOCATION"), tempFileName);
     Files.copy(new File(nativeLibFileName).toPath(), tempFile.toPath());
     return tempFile.getAbsolutePath();
+  }
+
+  private static void doUnloading() {
+    // Do multiple GCs to prevent rare flakiness if some other thread is keeping the
+    // classloader live.
+    for (int i = 0; i < 5; ++i) {
+       Runtime.getRuntime().gc();
+    }
   }
 
   private static String nativeLibFileName;
