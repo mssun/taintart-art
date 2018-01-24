@@ -126,6 +126,14 @@ extern "C" NO_RETURN void artThrowClassCastException(mirror::Class* dest_type,
     dex::TypeIndex type_index(check_cast.VRegB_21c());
     ClassLinker* linker = Runtime::Current()->GetClassLinker();
     dest_type = linker->LookupResolvedType(type_index, visitor.caller).Ptr();
+    if (UNLIKELY(dest_type == nullptr)) {
+      // This class must have been resolved to the boot image at AOT compile time
+      // but it's not yet resolved in the app's class loader. Just look it up in
+      // the boot class path loader.
+      DCHECK(visitor.caller->GetClassLoader() != nullptr);
+      dest_type = linker->LookupResolvedType(
+          type_index, visitor.caller->GetDexCache(), /* class_loader */ nullptr).Ptr();
+    }
     CHECK(dest_type != nullptr) << "Target class should have been previously resolved: "
         << visitor.caller->GetDexFile()->PrettyType(type_index);
   }
