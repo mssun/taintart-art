@@ -286,16 +286,15 @@ class ProfileCompilationInfoTest : public CommonRuntimeTest {
 
     // Prepare the profile content for zipping.
     ASSERT_TRUE(profile.GetFile()->ResetOffset());
-    uint64_t data_size = profile.GetFile()->GetLength();
-    std::unique_ptr<uint8_t> data(new uint8_t[data_size]);
-    ASSERT_TRUE(profile.GetFile()->ReadFully(data.get(), data_size));
+    std::vector<uint8_t> data(profile.GetFile()->GetLength());
+    ASSERT_TRUE(profile.GetFile()->ReadFully(data.data(), data.size()));
 
     // Zip the profile content.
     ScratchFile zip;
     FILE* file = fopen(zip.GetFile()->GetPath().c_str(), "wb");
     ZipWriter writer(file);
     writer.StartEntry(zip_entry, zip_flags);
-    writer.WriteBytes(data.get(), data_size);
+    writer.WriteBytes(data.data(), data.size());
     writer.FinishEntry();
     writer.Finish();
     fflush(file);
@@ -1019,16 +1018,15 @@ TEST_F(ProfileCompilationInfoTest, LoadFromZipFailBadProfile) {
 
   // Prepare the profile content for zipping.
   ASSERT_TRUE(profile.GetFile()->ResetOffset());
-  uint64_t data_size = profile.GetFile()->GetLength();
-  std::unique_ptr<uint8_t> data(new uint8_t[data_size]);
-  ASSERT_TRUE(profile.GetFile()->ReadFully(data.get(), data_size));
+  std::vector<uint8_t> data(profile.GetFile()->GetLength());
+  ASSERT_TRUE(profile.GetFile()->ReadFully(data.data(), data.size()));
 
   // Zip the profile content.
   ScratchFile zip;
   FILE* file = fopen(zip.GetFile()->GetPath().c_str(), "wb");
   ZipWriter writer(file);
-  writer.StartEntry("primary.prof", ZipWriter::kCompress | ZipWriter::kAlign32);
-  writer.WriteBytes(data.get(), data_size);
+  writer.StartEntry("primary.prof", ZipWriter::kAlign32);
+  writer.WriteBytes(data.data(), data.size());
   writer.FinishEntry();
   writer.Finish();
   fflush(file);
