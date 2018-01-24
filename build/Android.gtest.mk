@@ -468,7 +468,7 @@ $$(gtest_rule): $$(gtest_exe) $$(gtest_deps)
 	$(hide) ($$(call ART_TEST_SKIP,$$@) && set -o pipefail && \
 		ASAN_OPTIONS=detect_leaks=1 $$< 2>&1 | tee $$<.tmp.out >&2 && \
 		{ $$(call ART_TEST_PASSED,$$@) ; rm $$<.tmp.out ; }) || \
-		( grep -q AddressSanitizer $$<.tmp.out && \
+		( grep -q AddressSanitizer $$<.tmp.out && export ANDROID_BUILD_TOP=`pwd` && \
 			{ echo "ABI: 'x86_64'" | cat - $$<.tmp.out | development/scripts/stack | tail -n 3000 ; } ; \
 		rm $$<.tmp.out ; $$(call ART_TEST_FAILED,$$@))
 endif
