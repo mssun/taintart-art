@@ -17,11 +17,11 @@
 #include "method_handles_lookup.h"
 
 #include "class-inl.h"
+#include "dex/modifiers.h"
 #include "gc_root-inl.h"
 #include "handle_scope.h"
 #include "jni_internal.h"
 #include "mirror/method_handle_impl.h"
-#include "modifiers.h"
 #include "object-inl.h"
 #include "well_known_classes.h"
 

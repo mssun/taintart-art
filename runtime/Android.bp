@@ -14,12 +14,6 @@
 // limitations under the License.
 //
 
-// Keep the __jit_debug_register_code symbol as a unique symbol during ICF for architectures where
-// we use gold as the linker (arm, x86, x86_64). The symbol is used by the debuggers to detect when
-// new jit code is generated. We don't want it to be called when a different function with the same
-// (empty) body is called.
-JIT_DEBUG_REGISTER_CODE_LDFLAGS = ["-Wl,--keep-unique,__jit_debug_register_code"]
-
 cc_defaults {
     name: "libdexfile_defaults",
     defaults: ["art_defaults"],
@@ -33,6 +27,7 @@ cc_defaults {
         "dex/dex_file_tracking_registrar.cc",
         "dex/dex_file_verifier.cc",
         "dex/dex_instruction.cc",
+        "dex/modifiers.cc",
         "dex/standard_dex_file.cc",
         "utf.cc",
         "utils.cc",
@@ -56,16 +51,8 @@ cc_defaults {
             ],
         },
     },
-    header_libs: [
-        "jni_headers",
-    ],
     generated_sources: ["art_operator_srcs"],
-    // asm_support_gen.h (used by asm_support.h) is generated with cpp-define-generator
-    generated_headers: ["cpp-define-generator-asm-support"],
-    // export our headers so the libart-gtest targets can use it as well.
-    export_generated_headers: ["cpp-define-generator-asm-support"],
     include_dirs: [
-        "external/icu/icu4c/source/common",
         "external/zlib",
     ],
     shared_libs: [
@@ -78,11 +65,20 @@ cc_defaults {
     // Exporting "." would shadow the system elf.h with our elf.h,
     // which in turn breaks any tools that reference this library.
     // export_include_dirs: ["."],
+}
 
-    // ART's macros.h depends on libbase's macros.h.
-    // Note: runtime_options.h depends on cmdline. But we don't really want to export this
-    //       generically. dex2oat takes care of it itself.
-    export_shared_lib_headers: ["libbase"],
+gensrcs {
+    name: "dexfile_operator_srcs",
+    cmd: "$(location generate-operator-out.py) art/runtime $(in) > $(out)",
+    tool_files: ["generate-operator-out.py"],
+    srcs: [
+        "dex/dex_file.h",
+        "dex/dex_file_layout.h",
+        "dex/dex_instruction.h",
+        "dex/dex_instruction_utils.h",
+        "dex/invoke_type.h",
+    ],
+    output_extension: "operator_out.cc",
 }
 
 art_cc_library {
@@ -94,6 +90,12 @@ art_cc_library {
         keep_symbols: true,
     },
 }
+
+// Keep the __jit_debug_register_code symbol as a unique symbol during ICF for architectures where
+// we use gold as the linker (arm, x86, x86_64). The symbol is used by the debuggers to detect when
+// new jit code is generated. We don't want it to be called when a different function with the same
+// (empty) body is called.
+JIT_DEBUG_REGISTER_CODE_LDFLAGS = ["-Wl,--keep-unique,__jit_debug_register_code"]
 
 cc_defaults {
     name: "libart_defaults",
@@ -142,6 +144,7 @@ cc_defaults {
         "dex/dex_file_tracking_registrar.cc",
         "dex/dex_file_verifier.cc",
         "dex/dex_instruction.cc",
+        "dex/modifiers.cc",
         "dex/standard_dex_file.cc",
         "dex_to_dex_decompiler.cc",
         "elf_file.cc",
@@ -535,6 +538,7 @@ gensrcs {
         "dex/dex_file_layout.h",
         "dex/dex_instruction.h",
         "dex/dex_instruction_utils.h",
+        "dex/invoke_type.h",
         "gc_root.h",
         "gc/allocator_type.h",
         "gc/allocator/rosalloc.h",
@@ -547,7 +551,6 @@ gensrcs {
         "image.h",
         "instrumentation.h",
         "indirect_reference_table.h",
-        "invoke_type.h",
         "jdwp_provider.h",
         "jdwp/jdwp.h",
         "jdwp/jdwp_constants.h",
