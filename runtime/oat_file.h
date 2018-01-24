@@ -328,6 +328,11 @@ class OatFile {
     return vdex_.get();
   }
 
+  // Whether the OatFile embeds the Dex code.
+  bool ContainsDexCode() const {
+    return uncompressed_dex_files_ == nullptr;
+  }
+
  protected:
   OatFile(const std::string& filename, bool executable);
 
@@ -398,6 +403,10 @@ class OatFile {
   // new strings to the end. The adding of a new element must not touch any previously stored
   // elements. std::list<> and std::deque<> satisfy this requirement, std::vector<> doesn't.
   mutable std::list<std::string> string_cache_ GUARDED_BY(secondary_lookup_lock_);
+
+  // Cache of dex files mapped directly from a location, in case the OatFile does
+  // not embed the dex code.
+  std::unique_ptr<std::vector<std::unique_ptr<const DexFile>>> uncompressed_dex_files_;
 
   friend class gc::collector::DummyOatFile;  // For modifying begin_ and end_.
   friend class OatClass;
