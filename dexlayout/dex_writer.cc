@@ -254,15 +254,19 @@ uint32_t DexWriter::WriteStringIds(Stream* stream, bool reserve_only) {
   return stream->Tell() - start;
 }
 
+void DexWriter::WriteStringData(Stream* stream, dex_ir::StringData* string_data) {
+  ProcessOffset(stream, string_data);
+  stream->AlignTo(SectionAlignment(DexFile::kDexTypeStringDataItem));
+  stream->WriteUleb128(CountModifiedUtf8Chars(string_data->Data()));
+  stream->Write(string_data->Data(), strlen(string_data->Data()));
+  // Skip null terminator (already zeroed out, no need to write).
+  stream->Skip(1);
+}
+
 uint32_t DexWriter::WriteStringDatas(Stream* stream) {
   const uint32_t start = stream->Tell();
   for (std::unique_ptr<dex_ir::StringData>& string_data : header_->GetCollections().StringDatas()) {
-    ProcessOffset(stream, string_data.get());
-    stream->AlignTo(SectionAlignment(DexFile::kDexTypeStringDataItem));
-    stream->WriteUleb128(CountModifiedUtf8Chars(string_data->Data()));
-    stream->Write(string_data->Data(), strlen(string_data->Data()));
-    // Skip null terminator (already zeroed out, no need to write).
-    stream->Skip(1);
+    WriteStringData(stream, string_data.get());
   }
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetStringDatasOffset(start);
@@ -483,13 +487,17 @@ uint32_t DexWriter::WriteAnnotationsDirectories(Stream* stream) {
   return stream->Tell() - start;
 }
 
+void DexWriter::WriteDebugInfoItem(Stream* stream, dex_ir::DebugInfoItem* debug_info) {
+  stream->AlignTo(SectionAlignment(DexFile::kDexTypeDebugInfoItem));
+  ProcessOffset(stream, debug_info);
+  stream->Write(debug_info->GetDebugInfo(), debug_info->GetDebugInfoSize());
+}
+
 uint32_t DexWriter::WriteDebugInfoItems(Stream* stream) {
   const uint32_t start = stream->Tell();
   for (std::unique_ptr<dex_ir::DebugInfoItem>& debug_info :
       header_->GetCollections().DebugInfoItems()) {
-    stream->AlignTo(SectionAlignment(DexFile::kDexTypeDebugInfoItem));
-    ProcessOffset(stream, debug_info.get());
-    stream->Write(debug_info->GetDebugInfo(), debug_info->GetDebugInfoSize());
+    WriteDebugInfoItem(stream, debug_info.get());
   }
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetDebugInfoItemsOffset(start);
@@ -535,9 +543,9 @@ uint32_t DexWriter::WriteCodeItemPostInstructionData(Stream* stream,
   return stream->Tell() - start_offset;
 }
 
-uint32_t DexWriter::WriteCodeItem(Stream* stream,
-                                  dex_ir::CodeItem* code_item,
-                                  bool reserve_only) {
+void DexWriter::WriteCodeItem(Stream* stream,
+                              dex_ir::CodeItem* code_item,
+                              bool reserve_only) {
   DCHECK(code_item != nullptr);
   const uint32_t start_offset = stream->Tell();
   stream->AlignTo(SectionAlignment(DexFile::kDexTypeCodeItem));
@@ -564,7 +572,6 @@ uint32_t DexWriter::WriteCodeItem(Stream* stream,
   if (reserve_only) {
     stream->Clear(start_offset, stream->Tell() - start_offset);
   }
-  return stream->Tell() - start_offset;
 }
 
 uint32_t DexWriter::WriteCodeItems(Stream* stream, bool reserve_only) {
@@ -575,13 +582,14 @@ uint32_t DexWriter::WriteCodeItems(Stream* stream, bool reserve_only) {
   }
   const uint32_t start = stream->Tell();
   for (auto& code_item : header_->GetCollections().CodeItems()) {
-    const size_t code_item_size = WriteCodeItem(stream, code_item.get(), reserve_only);
+    uint32_t start_offset = stream->Tell();
+    WriteCodeItem(stream, code_item.get(), reserve_only);
     // Only add the section hotness info once.
     if (!reserve_only && code_section != nullptr) {
       auto it = dex_layout_->LayoutHotnessInfo().code_item_layout_.find(code_item.get());
       if (it != dex_layout_->LayoutHotnessInfo().code_item_layout_.end()) {
         code_section->parts_[static_cast<size_t>(it->second)].CombineSection(
-            stream->Tell() - code_item_size,
+            start_offset,
             stream->Tell());
       }
     }
