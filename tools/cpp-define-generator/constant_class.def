@@ -15,8 +15,8 @@
  */
 
 #if defined(DEFINE_INCLUDE_DEPENDENCIES)
-#include "modifiers.h"            // kAccClassIsFinalizable
 #include "base/bit_utils.h"       // MostSignificantBit
+#include "dex/modifiers.h"        // kAccClassIsFinalizable
 #endif
 
 #define DEFINE_FLAG_OFFSET(type_name, field_name, expr) \
