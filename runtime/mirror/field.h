@@ -19,8 +19,8 @@
 
 #include "accessible_object.h"
 #include "base/enums.h"
+#include "dex/modifiers.h"
 #include "gc_root.h"
-#include "modifiers.h"
 #include "obj_ptr.h"
 #include "object.h"
 #include "primitive.h"

@@ -82,10 +82,6 @@ void AppendPrettyDescriptor(const char* descriptor, std::string* result);
 std::string PrettyDescriptor(const char* descriptor);
 std::string PrettyDescriptor(Primitive::Type type);
 
-// Returns a human-readable version of the Java part of the access flags, e.g., "private static "
-// (note the trailing whitespace).
-std::string PrettyJavaAccessFlags(uint32_t access_flags);
-
 // Returns a human-readable size string such as "1MB".
 std::string PrettySize(int64_t size_in_bytes);
 
