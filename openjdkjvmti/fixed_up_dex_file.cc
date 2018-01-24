@@ -35,6 +35,7 @@
 #include "dex/dex_file_loader.h"
 
 // Runtime includes.
+#include "dex_container.h"
 #include "dex/compact_dex_level.h"
 #include "dex_to_dex_decompiler.h"
 #include "dexlayout.h"
@@ -92,18 +93,21 @@ std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& origi
   if (original.IsCompactDexFile()) {
     // Since we are supposed to return a standard dex, convert back using dexlayout.
     art::Options options;
-    options.output_to_memmap_ = true;
     options.compact_dex_level_ = art::CompactDexLevel::kCompactDexLevelNone;
     options.update_checksum_ = true;
-    art::DexLayout dex_layout(options, nullptr, nullptr);
-    dex_layout.ProcessDexFile(new_dex_file->GetLocation().c_str(), new_dex_file.get(), 0);
-    std::unique_ptr<art::MemMap> mem_map(dex_layout.GetAndReleaseMemMap());
-
-    const uint32_t dex_file_size =
-        reinterpret_cast<const art::DexFile::Header*>(mem_map->Begin())->file_size_;
+    art::DexLayout dex_layout(options,
+                              /*info*/ nullptr,
+                              /*out_file*/ nullptr,
+                              /*header*/ nullptr);
+    std::unique_ptr<art::DexContainer> dex_container;
+    dex_layout.ProcessDexFile(new_dex_file->GetLocation().c_str(),
+                              new_dex_file.get(),
+                              0,
+                              &dex_container);
+    art::DexContainer::Section* main_section = dex_container->GetMainSection();
     // Overwrite the dex file stored in data with the new result.
     data.clear();
-    data.insert(data.end(), mem_map->Begin(), mem_map->Begin() + dex_file_size);
+    data.insert(data.end(), main_section->Begin(), main_section->End());
     new_dex_file = dex_file_loader.Open(
         data.data(),
         data.size(),
