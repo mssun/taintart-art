@@ -113,6 +113,11 @@ if [ -z "$ZIPALIGN" ]; then
 fi
 export ZIPALIGN
 
+# If hiddenapi was not set by the environment variable, assume it is in the path.
+if [ -z "$HIDDENAPI" ]; then
+  export HIDDENAPI="hiddenapi"
+fi
+
 info="info.txt"
 build="build"
 run="run"
