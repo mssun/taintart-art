@@ -260,6 +260,7 @@ class DexoptAnalyzer FINAL {
     oat_file_assistant = std::make_unique<OatFileAssistant>(dex_file_.c_str(),
                                                             isa_,
                                                             false /*load_executable*/,
+                                                            false /*only_load_system_executable*/,
                                                             vdex_fd_,
                                                             oat_fd_,
                                                             zip_fd_);
