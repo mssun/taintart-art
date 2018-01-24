@@ -418,6 +418,12 @@ void RegionSpace::Dump(std::ostream& os) const {
       << reinterpret_cast<void*>(Begin()) << "-" << reinterpret_cast<void*>(Limit());
 }
 
+void RegionSpace::DumpRegionForObject(std::ostream& os, mirror::Object* obj) {
+  CHECK(HasAddress(obj));
+  MutexLock mu(Thread::Current(), region_lock_);
+  RefToRegionUnlocked(obj)->Dump(os);
+}
+
 void RegionSpace::DumpRegions(std::ostream& os) {
   MutexLock mu(Thread::Current(), region_lock_);
   for (size_t i = 0; i < num_regions_; ++i) {
