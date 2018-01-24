@@ -18,8 +18,8 @@
 
 #include "art_method-inl.h"
 #include "class_linker.h"
+#include "dex/invoke_type.h"
 #include "intrinsics_enum.h"
-#include "invoke_type.h"
 #include "mirror/class.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"

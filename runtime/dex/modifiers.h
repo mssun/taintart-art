@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_MODIFIERS_H_
-#define ART_RUNTIME_MODIFIERS_H_
+#ifndef ART_RUNTIME_DEX_MODIFIERS_H_
+#define ART_RUNTIME_DEX_MODIFIERS_H_
 
 #include <stdint.h>
 
@@ -138,7 +138,11 @@ static constexpr uint32_t kAccValidInterfaceFlags = kAccPublic | kAccInterface |
 
 static constexpr uint32_t kAccVisibilityFlags = kAccPublic | kAccPrivate | kAccProtected;
 
+// Returns a human-readable version of the Java part of the access flags, e.g., "private static "
+// (note the trailing whitespace).
+std::string PrettyJavaAccessFlags(uint32_t access_flags);
+
 }  // namespace art
 
-#endif  // ART_RUNTIME_MODIFIERS_H_
+#endif  // ART_RUNTIME_DEX_MODIFIERS_H_
 
