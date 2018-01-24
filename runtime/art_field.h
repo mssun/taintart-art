@@ -20,8 +20,8 @@
 #include <jni.h>
 
 #include "dex/dex_file_types.h"
+#include "dex/modifiers.h"
 #include "gc_root.h"
-#include "modifiers.h"
 #include "obj_ptr.h"
 #include "offsets.h"
 #include "primitive.h"

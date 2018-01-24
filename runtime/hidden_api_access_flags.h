@@ -18,7 +18,7 @@
 #define ART_RUNTIME_HIDDEN_API_ACCESS_FLAGS_H_
 
 #include "base/bit_utils.h"
-#include "modifiers.h"
+#include "dex/modifiers.h"
 
 namespace art {
 

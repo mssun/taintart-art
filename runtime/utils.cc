@@ -30,7 +30,6 @@
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 
-#include "dex/dex_file-inl.h"
 #include "os.h"
 #include "utf-inl.h"
 
@@ -123,41 +122,6 @@ void AppendPrettyDescriptor(const char* descriptor, std::string* result) {
 std::string PrettyDescriptor(const char* descriptor) {
   std::string result;
   AppendPrettyDescriptor(descriptor, &result);
-  return result;
-}
-
-std::string PrettyJavaAccessFlags(uint32_t access_flags) {
-  std::string result;
-  if ((access_flags & kAccPublic) != 0) {
-    result += "public ";
-  }
-  if ((access_flags & kAccProtected) != 0) {
-    result += "protected ";
-  }
-  if ((access_flags & kAccPrivate) != 0) {
-    result += "private ";
-  }
-  if ((access_flags & kAccFinal) != 0) {
-    result += "final ";
-  }
-  if ((access_flags & kAccStatic) != 0) {
-    result += "static ";
-  }
-  if ((access_flags & kAccAbstract) != 0) {
-    result += "abstract ";
-  }
-  if ((access_flags & kAccInterface) != 0) {
-    result += "interface ";
-  }
-  if ((access_flags & kAccTransient) != 0) {
-    result += "transient ";
-  }
-  if ((access_flags & kAccVolatile) != 0) {
-    result += "volatile ";
-  }
-  if ((access_flags & kAccSynchronized) != 0) {
-    result += "synchronized ";
-  }
   return result;
 }
 
