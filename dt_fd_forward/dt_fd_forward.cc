@@ -162,7 +162,7 @@ IOResult FdForwardTransport::ReadFullyWithoutChecks(void* data, size_t ndata) {
 IOResult FdForwardTransport::ReadUpToMax(void* data, size_t ndata, /*out*/size_t* read_amount) {
   CHECK_GE(read_fd_.get(), 0);
   int avail;
-  int res = ioctl(read_fd_, FIONREAD, &avail);
+  int res = TEMP_FAILURE_RETRY(ioctl(read_fd_, FIONREAD, &avail));
   if (res < 0) {
     DT_IO_ERROR("Failed ioctl(read_fd_, FIONREAD, &avail)");
     return IOResult::kError;
@@ -172,7 +172,7 @@ IOResult FdForwardTransport::ReadUpToMax(void* data, size_t ndata, /*out*/size_t
   if (*read_amount == 0) {
     // Check if the read would cause an EOF.
     struct pollfd pollfd = { read_fd_, POLLRDHUP, 0 };
-    res = poll(&pollfd, /*nfds*/1, /*timeout*/0);
+    res = TEMP_FAILURE_RETRY(poll(&pollfd, /*nfds*/1, /*timeout*/0));
     if (res < 0 || (pollfd.revents & POLLERR) == POLLERR) {
       DT_IO_ERROR("Failed poll on read fd.");
       return IOResult::kError;
@@ -214,13 +214,13 @@ IOResult FdForwardTransport::ReadFully(void* data, size_t ndata) {
       // No more data. Sleep without locks until more is available. We don't actually check for any
       // errors since possible ones are (1) the read_fd_ is closed or wakeup happens which are both
       // fine since the wakeup_fd_ or the poll failing will wake us up.
-      int poll_res = poll(pollfds, 2, -1);
+      int poll_res = TEMP_FAILURE_RETRY(poll(pollfds, 2, -1));
       if (poll_res < 0) {
         DT_IO_ERROR("Failed to poll!");
       }
       // Clear the wakeup_fd regardless.
       uint64_t val;
-      int unused = read(wakeup_fd_, &val, sizeof(val));
+      int unused = TEMP_FAILURE_RETRY(read(wakeup_fd_, &val, sizeof(val)));
       DCHECK(unused == sizeof(val) || errno == EAGAIN);
       if (poll_res < 0) {
         return IOResult::kError;
