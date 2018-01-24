@@ -375,7 +375,7 @@ TEST_F(CmdlineParserTest, TestJdwpProviderEmpty) {
 
 TEST_F(CmdlineParserTest, TestJdwpProviderDefault) {
   const char* opt_args = "-XjdwpProvider:default";
-  EXPECT_SINGLE_PARSE_VALUE(JdwpProvider::kAdbConnection, opt_args, M::JdwpProvider);
+  EXPECT_SINGLE_PARSE_VALUE(JdwpProvider::kInternal, opt_args, M::JdwpProvider);
 }  // TEST_F
 
 TEST_F(CmdlineParserTest, TestJdwpProviderInternal) {
