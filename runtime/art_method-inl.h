@@ -29,6 +29,7 @@
 #include "dex/dex_file_types.h"
 #include "gc_root-inl.h"
 #include "invoke_type.h"
+#include "intrinsics_enum.h"
 #include "jit/profiling_info.h"
 #include "mirror/class-inl.h"
 #include "mirror/dex_cache-inl.h"
@@ -412,7 +413,11 @@ inline void ArtMethod::SetIntrinsic(uint32_t intrinsic) {
     DCHECK_EQ(is_default_conflict, IsDefaultConflicting());
     DCHECK_EQ(is_compilable, IsCompilable());
     DCHECK_EQ(must_count_locks, MustCountLocks());
-    DCHECK_EQ(hidden_api_list, GetHiddenApiAccessFlags());
+    // We need to special case java.lang.ref.Reference.getRefererent. The Java method
+    // is hidden but we do not yet have a way of making intrinsics hidden.
+    if (intrinsic != static_cast<uint32_t>(Intrinsics::kReferenceGetReferent)) {
+      DCHECK_EQ(hidden_api_list, GetHiddenApiAccessFlags());
+    }
   } else {
     SetAccessFlags(new_value);
   }
