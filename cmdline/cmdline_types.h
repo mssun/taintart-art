@@ -77,10 +77,10 @@ struct CmdlineType<JdwpProvider> : CmdlineTypeParser<JdwpProvider> {
           "Example: -XjdwpProvider:internal for internal jdwp implementation\n"
           "Example: -XjdwpProvider:adbconnection for adb connection mediated jdwp implementation\n"
           "Example: -XjdwpProvider:default for the default jdwp implementation"
-          " (currently adbconnection)\n");
-    } else if (option == "internal") {
+          " (currently internal)\n");
+    } else if (option == "internal" || option == "default") {
       return Result::Success(JdwpProvider::kInternal);
-    } else if (option == "adbconnection" || option == "default") {
+    } else if (option == "adbconnection") {
       return Result::Success(JdwpProvider::kAdbConnection);
     } else if (option == "none") {
       return Result::Success(JdwpProvider::kNone);
