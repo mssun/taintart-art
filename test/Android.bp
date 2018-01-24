@@ -389,6 +389,7 @@ cc_defaults {
         "661-oat-writer-layout/oat_writer_layout.cc",
         "664-aget-verifier/aget-verifier.cc",
         "667-jit-jni-stub/jit_jni_stub_test.cc",
+        "674-hiddenapi/hiddenapi.cc",
         "708-jit-cache-churn/jit.cc",
     ],
     shared_libs: [
