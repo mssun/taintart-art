@@ -286,7 +286,7 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
   }
 
   if ((runtime_flags & DISABLE_HIDDEN_API_CHECKS) != 0) {
-    Runtime::Current()->DisableHiddenApiChecks();
+    Runtime::Current()->SetHiddenApiChecksEnabled(false);
     runtime_flags &= ~DISABLE_HIDDEN_API_CHECKS;
   }
 

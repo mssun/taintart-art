@@ -25,6 +25,10 @@
 namespace art {
 namespace Test674HiddenApi {
 
+extern "C" JNIEXPORT void JNICALL Java_Main_init(JNIEnv*, jclass) {
+  Runtime::Current()->SetHiddenApiChecksEnabled(true);
+}
+
 extern "C" JNIEXPORT void JNICALL Java_Main_appendToBootClassLoader(
     JNIEnv* env, jclass, jstring jpath) {
   ScopedUtfChars utf(env, jpath);

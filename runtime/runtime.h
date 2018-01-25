@@ -520,8 +520,8 @@ class Runtime {
   bool IsVerificationEnabled() const;
   bool IsVerificationSoftFail() const;
 
-  void DisableHiddenApiChecks() {
-    do_hidden_api_checks_ = false;
+  void SetHiddenApiChecksEnabled(bool value) {
+    do_hidden_api_checks_ = value;
   }
 
   bool AreHiddenApiChecksEnabled() const {
