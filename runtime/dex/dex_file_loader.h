@@ -120,6 +120,20 @@ class DexFileLoader {
                                               bool verify_checksum,
                                               std::string* error_msg) const;
 
+  // Open a dex file with a separate data section.
+  virtual std::unique_ptr<const DexFile> OpenWithDataSection(
+      const uint8_t* base,
+      size_t size,
+      const uint8_t* data_base,
+      size_t data_size,
+      const std::string& location,
+      uint32_t location_checksum,
+      const OatDexFile* oat_dex_file,
+      bool verify,
+      bool verify_checksum,
+      std::string* error_msg) const;
+
+
   // Opens all .dex files found in the memory map, guessing the container format based on file
   // extension.
   virtual bool OpenAll(const uint8_t* base,
@@ -148,6 +162,8 @@ class DexFileLoader {
 
   static std::unique_ptr<DexFile> OpenCommon(const uint8_t* base,
                                              size_t size,
+                                             const uint8_t* data_base,
+                                             size_t data_size,
                                              const std::string& location,
                                              uint32_t location_checksum,
                                              const OatDexFile* oat_dex_file,

@@ -43,7 +43,7 @@ class TypeLookupTable {
 
   // Method search class_def_idx by class descriptor and it's hash.
   // If no data found then the method returns dex::kDexNoIndex.
-  ALWAYS_INLINE uint32_t Lookup(const char* str, uint32_t hash) const {
+  uint32_t Lookup(const char* str, uint32_t hash) const {
     uint32_t pos = hash & GetSizeMask();
     // Thanks to special insertion algorithm, the element at position pos can be empty or start of
     // bucket.
@@ -127,8 +127,8 @@ class TypeLookupTable {
                   uint32_t num_class_defs);
 
   bool IsStringsEquals(const char* str, uint32_t str_offset) const {
-    const uint8_t* ptr = dex_file_begin_ + str_offset;
-    CHECK(dex_file_begin_ != nullptr);
+    const uint8_t* ptr = dex_data_begin_ + str_offset;
+    CHECK(dex_data_begin_ != nullptr);
     // Skip string length.
     DecodeUnsignedLeb128(&ptr);
     return CompareModifiedUtf8ToModifiedUtf8AsUtf16CodePointValues(
@@ -160,7 +160,7 @@ class TypeLookupTable {
   // Find the last entry in a chain.
   uint32_t FindLastEntryInBucket(uint32_t cur_pos) const;
 
-  const uint8_t* dex_file_begin_;
+  const uint8_t* dex_data_begin_;
   const uint32_t raw_data_length_;
   const uint32_t mask_;
   std::unique_ptr<Entry[]> entries_;

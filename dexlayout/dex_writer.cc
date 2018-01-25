@@ -30,6 +30,8 @@
 
 namespace art {
 
+constexpr uint32_t DexWriter::kDataSectionAlignment;
+
 static size_t EncodeIntValue(int32_t value, uint8_t* buffer) {
   size_t length = 0;
   if (value >= 0) {

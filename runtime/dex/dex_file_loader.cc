@@ -222,6 +222,33 @@ std::unique_ptr<const DexFile> DexFileLoader::Open(const uint8_t* base,
                                                    std::string* error_msg) const {
   return OpenCommon(base,
                     size,
+                    /*data_base*/ base,
+                    /*data_size*/ size,
+                    location,
+                    location_checksum,
+                    oat_dex_file,
+                    verify,
+                    verify_checksum,
+                    error_msg,
+                    /*container*/ nullptr,
+                    /*verify_result*/ nullptr);
+}
+
+std::unique_ptr<const DexFile> DexFileLoader::OpenWithDataSection(
+    const uint8_t* base,
+    size_t size,
+    const uint8_t* data_base,
+    size_t data_size,
+    const std::string& location,
+    uint32_t location_checksum,
+    const OatDexFile* oat_dex_file,
+    bool verify,
+    bool verify_checksum,
+    std::string* error_msg) const {
+  return OpenCommon(base,
+                    size,
+                    data_base,
+                    data_size,
                     location,
                     location_checksum,
                     oat_dex_file,
@@ -278,6 +305,8 @@ bool DexFileLoader::OpenAll(
 
 std::unique_ptr<DexFile> DexFileLoader::OpenCommon(const uint8_t* base,
                                                    size_t size,
+                                                   const uint8_t* data_base,
+                                                   size_t data_size,
                                                    const std::string& location,
                                                    uint32_t location_checksum,
                                                    const OatDexFile* oat_dex_file,
@@ -291,11 +320,32 @@ std::unique_ptr<DexFile> DexFileLoader::OpenCommon(const uint8_t* base,
   }
   std::unique_ptr<DexFile> dex_file;
   if (StandardDexFile::IsMagicValid(base)) {
-    dex_file.reset(
-        new StandardDexFile(base, size, location, location_checksum, oat_dex_file, container));
+    if (data_size != 0) {
+      CHECK_EQ(base, data_base) << "Unsupported for standard dex";
+    }
+    dex_file.reset(new StandardDexFile(base,
+                                       size,
+                                       location,
+                                       location_checksum,
+                                       oat_dex_file,
+                                       container));
   } else if (CompactDexFile::IsMagicValid(base)) {
-    dex_file.reset(
-        new CompactDexFile(base, size, location, location_checksum, oat_dex_file, container));
+    if (data_base == nullptr) {
+      // TODO: Is there a clean way to support both an explicit data section and reading the one
+      // from the header.
+      CHECK_EQ(data_size, 0u);
+      const CompactDexFile::Header* const header = CompactDexFile::Header::At(base);
+      data_base = base + header->data_off_;
+      data_size = header->data_size_;
+    }
+    dex_file.reset(new CompactDexFile(base,
+                                      size,
+                                      data_base,
+                                      data_size,
+                                      location,
+                                      location_checksum,
+                                      oat_dex_file,
+                                      container));
   }
   if (dex_file == nullptr) {
     *error_msg = StringPrintf("Failed to open dex file '%s' from memory: %s", location.c_str(),
@@ -353,6 +403,8 @@ std::unique_ptr<const DexFile> DexFileLoader::OpenOneDexFileFromZip(
   VerifyResult verify_result;
   std::unique_ptr<const DexFile> dex_file = OpenCommon(map.data(),
                                                        map.size(),
+                                                       /*data_base*/ nullptr,
+                                                       /*data_size*/ 0u,
                                                        location,
                                                        zip_entry->GetCrc32(),
                                                        /*oat_dex_file*/ nullptr,
