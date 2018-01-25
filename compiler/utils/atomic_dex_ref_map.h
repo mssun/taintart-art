@@ -45,6 +45,9 @@ class AtomicDexRefMap {
   // Retreive an item, returns false if the dex file is not added.
   bool Get(const DexFileReferenceType& ref, Value* out) const;
 
+  // Remove an item and return the existing value. Returns false if the dex file is not added.
+  bool Remove(const DexFileReferenceType& ref, Value* out);
+
   // Dex files must be added before method references belonging to them can be used as keys. Not
   // thread safe.
   void AddDexFile(const DexFile* dex_file);

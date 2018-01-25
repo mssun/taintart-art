@@ -26,6 +26,8 @@ class ManyMethods {
     public static String msg7 = "Hello World7";
     public static String msg8 = "Hello World8";
     public static String msg9 = "Hello World9";
+    public static String msg10 = "Hello World10";
+    public static String msg11 = "Hello World11";
   }
 
   static class Printer {
@@ -57,35 +59,35 @@ class ManyMethods {
   }
 
   public static void Print4() {
-    Printer.Print(Strings.msg2);
+    Printer.Print(Strings.msg4);
   }
 
   public static void Print5() {
-    Printer.Print(Strings.msg3);
-  }
-
-  public static void Print6() {
-    Printer2.Print(Strings.msg4);
-  }
-
-  public static void Print7() {
     Printer.Print(Strings.msg5);
   }
 
+  public static void Print6() {
+    Printer2.Print(Strings.msg6);
+  }
+
+  public static void Print7() {
+    Printer.Print(Strings.msg7);
+  }
+
   public static void Print8() {
-    Printer.Print(Strings.msg6);
+    Printer.Print(Strings.msg8);
   }
 
   public static void Print9() {
-    Printer2.Print(Strings.msg7);
+    Printer2.Print(Strings.msg9);
   }
 
   public static void Print10() {
-    Printer2.Print(Strings.msg8);
+    Printer2.Print(Strings.msg10);
   }
 
   public static void Print11() {
-    Printer.Print(Strings.msg9);
+    Printer.Print(Strings.msg11);
   }
 
   public static void main(String args[]) {
