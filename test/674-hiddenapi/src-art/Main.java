@@ -31,6 +31,9 @@ public class Main {
     System.loadLibrary(args[0]);
     prepareNativeLibFileName(args[0]);
 
+    // Enable hidden API checks in case they are disabled by default.
+    init();
+
     // Run test with both parent and child dex files loaded with class loaders.
     // The expectation is that hidden members in parent should be visible to
     // the child.
@@ -150,4 +153,5 @@ public class Main {
   private static ClassLoader BOOT_CLASS_LOADER = Object.class.getClassLoader();
 
   private static native void appendToBootClassLoader(String dexPath);
+  private static native void init();
 }
