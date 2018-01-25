@@ -253,9 +253,9 @@ static inline bool CanUseTypeCheckBitstring(ObjPtr<mirror::Class> klass,
     // If the target is a boot image class, try to assign a type check bitstring (fall through).
     // (If --force-determinism, this was already done; repeating is OK and yields the same result.)
   } else {
-    // For AOT app compilation we can use the bitstring iff the target class is
-    // a boot image class with a bitstring already assigned in the boot image.
-    return compiler_driver->IsBootImageClassWithAssignedBitstring(klass);
+    // TODO: Use the bitstring also for AOT app compilation if the target class has a bitstring
+    // already assigned in the boot image.
+    return false;
   }
 
   // Try to assign a type check bitstring.
