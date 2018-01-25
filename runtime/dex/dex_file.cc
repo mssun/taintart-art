@@ -157,14 +157,14 @@ bool DexFile::CheckMagicAndVersion(std::string* error_msg) const {
 
 void DexFile::InitializeSectionsFromMapList() {
   const MapList* map_list = reinterpret_cast<const MapList*>(DataBegin() + header_->map_off_);
-  if (header_->map_off_ == 0 || header_->map_off_ > size_) {
+  if (header_->map_off_ == 0 || header_->map_off_ > DataSize()) {
     // Bad offset. The dex file verifier runs after this method and will reject the file.
     return;
   }
   const size_t count = map_list->size_;
 
   size_t map_limit = header_->map_off_ + count * sizeof(MapItem);
-  if (header_->map_off_ >= map_limit || map_limit > size_) {
+  if (header_->map_off_ >= map_limit || map_limit > DataSize()) {
     // Overflow or out out of bounds. The dex file verifier runs after
     // this method and will reject the file as it is malformed.
     return;
@@ -173,10 +173,10 @@ void DexFile::InitializeSectionsFromMapList() {
   for (size_t i = 0; i < count; ++i) {
     const MapItem& map_item = map_list->list_[i];
     if (map_item.type_ == kDexTypeMethodHandleItem) {
-      method_handles_ = reinterpret_cast<const MethodHandleItem*>(DataBegin() + map_item.offset_);
+      method_handles_ = reinterpret_cast<const MethodHandleItem*>(Begin() + map_item.offset_);
       num_method_handles_ = map_item.size_;
     } else if (map_item.type_ == kDexTypeCallSiteIdItem) {
-      call_site_ids_ = reinterpret_cast<const CallSiteIdItem*>(DataBegin() + map_item.offset_);
+      call_site_ids_ = reinterpret_cast<const CallSiteIdItem*>(Begin() + map_item.offset_);
       num_call_site_ids_ = map_item.size_;
     }
   }
