@@ -465,6 +465,9 @@ JValue InvokeWithVarArgs(const ScopedObjectAccessAlreadyRunnable& soa, jobject o
   }
 
   ArtMethod* method = jni::DecodeArtMethod(mid);
+
+  hiddenapi::MaybeWarnAboutMemberAccess(method, soa.Self(), /* num_frames */ 1);
+
   bool is_string_init = method->GetDeclaringClass()->IsStringClass() && method->IsConstructor();
   if (is_string_init) {
     // Replace calls to String.<init> with equivalent StringFactory call.
@@ -496,6 +499,9 @@ JValue InvokeWithJValues(const ScopedObjectAccessAlreadyRunnable& soa, jobject o
   }
 
   ArtMethod* method = jni::DecodeArtMethod(mid);
+
+  hiddenapi::MaybeWarnAboutMemberAccess(method, soa.Self(), /* num_frames */ 1);
+
   bool is_string_init = method->GetDeclaringClass()->IsStringClass() && method->IsConstructor();
   if (is_string_init) {
     // Replace calls to String.<init> with equivalent StringFactory call.
@@ -528,6 +534,9 @@ JValue InvokeVirtualOrInterfaceWithJValues(const ScopedObjectAccessAlreadyRunnab
 
   ObjPtr<mirror::Object> receiver = soa.Decode<mirror::Object>(obj);
   ArtMethod* method = FindVirtualMethod(receiver, jni::DecodeArtMethod(mid));
+
+  hiddenapi::MaybeWarnAboutMemberAccess(method, soa.Self(), /* num_frames */ 1);
+
   bool is_string_init = method->GetDeclaringClass()->IsStringClass() && method->IsConstructor();
   if (is_string_init) {
     // Replace calls to String.<init> with equivalent StringFactory call.
@@ -560,6 +569,9 @@ JValue InvokeVirtualOrInterfaceWithVarArgs(const ScopedObjectAccessAlreadyRunnab
 
   ObjPtr<mirror::Object> receiver = soa.Decode<mirror::Object>(obj);
   ArtMethod* method = FindVirtualMethod(receiver, jni::DecodeArtMethod(mid));
+
+  hiddenapi::MaybeWarnAboutMemberAccess(method, soa.Self(), /* num_frames */ 1);
+
   bool is_string_init = method->GetDeclaringClass()->IsStringClass() && method->IsConstructor();
   if (is_string_init) {
     // Replace calls to String.<init> with equivalent StringFactory call.
@@ -603,6 +615,8 @@ jobject InvokeMethod(const ScopedObjectAccessAlreadyRunnable& soa, jobject javaM
       return nullptr;
     }
   }
+
+  hiddenapi::MaybeWarnAboutMemberAccess(m, soa.Self(), num_frames);
 
   ObjPtr<mirror::Object> receiver;
   if (!m->IsStatic()) {
