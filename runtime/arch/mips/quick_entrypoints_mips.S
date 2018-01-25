@@ -1423,10 +1423,6 @@ END art_quick_unlock_object_no_inline
     .extern artInstanceOfFromCode
     .extern artThrowClassCastExceptionForObject
 ENTRY art_quick_check_instance_of
-    // Type check using the bit string passes null as the target class. In that case just throw.
-    beqz   $a1, .Lthrow_class_cast_exception_for_bitstring_check
-    nop
-
     addiu  $sp, $sp, -32
     .cfi_adjust_cfa_offset 32
     sw     $gp, 16($sp)
@@ -1445,15 +1441,12 @@ ENTRY art_quick_check_instance_of
     jalr   $zero, $ra
     addiu  $sp, $sp, 32
     .cfi_adjust_cfa_offset -32
-
 .Lthrow_class_cast_exception:
     lw     $t9, 8($sp)
     lw     $a1, 4($sp)
     lw     $a0, 0($sp)
     addiu  $sp, $sp, 32
     .cfi_adjust_cfa_offset -32
-
-.Lthrow_class_cast_exception_for_bitstring_check:
     SETUP_SAVE_ALL_CALLEE_SAVES_FRAME
     la   $t9, artThrowClassCastExceptionForObject
     jalr $zero, $t9                 # artThrowClassCastException (Object*, Class*, Thread*)

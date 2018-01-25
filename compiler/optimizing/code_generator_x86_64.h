@@ -208,7 +208,6 @@ class InstructionCodeGeneratorX86_64 : public InstructionCodeGenerator {
   // the suspend call.
   void GenerateSuspendCheck(HSuspendCheck* instruction, HBasicBlock* successor);
   void GenerateClassInitializationCheck(SlowPathCode* slow_path, CpuRegister class_reg);
-  void GenerateBitstringTypeCheckCompare(HTypeCheckInstruction* check, CpuRegister temp);
   void HandleBitwiseOperation(HBinaryOperation* operation);
   void GenerateRemFP(HRem* rem);
   void DivRemOneOrMinusOne(HBinaryOperation* instruction);
