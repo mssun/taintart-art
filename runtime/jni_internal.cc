@@ -80,15 +80,17 @@ namespace art {
 // things not rendering correctly. E.g. b/16858794
 static constexpr bool kWarnJniAbort = false;
 
-// Helpers to call instrumentation functions for fields. These take jobjects so we don't need to set
-// up handles for the rare case where these actually do something. Once these functions return it is
-// possible there will be a pending exception if the instrumentation happens to throw one.
+// Helpers to check if we need to warn about accessing hidden API fields and to call instrumentation
+// functions for them. These take jobjects so we don't need to set up handles for the rare case
+// where these actually do something. Once these functions return it is possible there will be
+// a pending exception if the instrumentation happens to throw one.
 static void NotifySetObjectField(ArtField* field, jobject obj, jobject jval)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK_EQ(field->GetTypeAsPrimitiveType(), Primitive::kPrimNot);
+  Thread* self = Thread::Current();
+  hiddenapi::MaybeWarnAboutMemberAccess(field, self, /* num_frames */ 1);
   instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
   if (UNLIKELY(instrumentation->HasFieldWriteListeners())) {
-    Thread* self = Thread::Current();
     ArtMethod* cur_method = self->GetCurrentMethod(/*dex_pc*/ nullptr,
                                                    /*check_suspended*/ true,
                                                    /*abort_on_error*/ false);
@@ -113,9 +115,10 @@ static void NotifySetObjectField(ArtField* field, jobject obj, jobject jval)
 static void NotifySetPrimitiveField(ArtField* field, jobject obj, JValue val)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK_NE(field->GetTypeAsPrimitiveType(), Primitive::kPrimNot);
+  Thread* self = Thread::Current();
+  hiddenapi::MaybeWarnAboutMemberAccess(field, self, /* num_frames */ 1);
   instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
   if (UNLIKELY(instrumentation->HasFieldWriteListeners())) {
-    Thread* self = Thread::Current();
     ArtMethod* cur_method = self->GetCurrentMethod(/*dex_pc*/ nullptr,
                                                    /*check_suspended*/ true,
                                                    /*abort_on_error*/ false);
@@ -137,9 +140,10 @@ static void NotifySetPrimitiveField(ArtField* field, jobject obj, JValue val)
 
 static void NotifyGetField(ArtField* field, jobject obj)
     REQUIRES_SHARED(Locks::mutator_lock_) {
+  Thread* self = Thread::Current();
+  hiddenapi::MaybeWarnAboutMemberAccess(field, self, /* num_frames */ 1);
   instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
   if (UNLIKELY(instrumentation->HasFieldReadListeners())) {
-    Thread* self = Thread::Current();
     ArtMethod* cur_method = self->GetCurrentMethod(/*dex_pc*/ nullptr,
                                                    /*check_suspended*/ true,
                                                    /*abort_on_error*/ false);
