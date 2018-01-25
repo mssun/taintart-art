@@ -2404,7 +2404,7 @@ class Dex2Oat FINAL {
 
   bool AddDexFileSources() {
     TimingLogger::ScopedTiming t2("AddDexFileSources", timings_);
-    if (input_vdex_file_ != nullptr) {
+    if (input_vdex_file_ != nullptr && input_vdex_file_->HasDexSection()) {
       DCHECK_EQ(oat_writers_.size(), 1u);
       const std::string& name = zip_location_.empty() ? dex_locations_[0] : zip_location_;
       DCHECK(!name.empty());
