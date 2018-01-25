@@ -775,8 +775,14 @@ bool ProfileCompilationInfo::ReadInlineCache(
       for (; dex_classes_size > 0; dex_classes_size--) {
         uint16_t type_index;
         READ_UINT(uint16_t, buffer, type_index, error);
-        dex_pc_data->AddClass(dex_profile_index_remap.Get(dex_profile_index),
-                              dex::TypeIndex(type_index));
+        auto it = dex_profile_index_remap.find(dex_profile_index);
+        if (it == dex_profile_index_remap.end()) {
+          // If we don't have an index that's because the dex file was filtered out when loading.
+          // Set missing types on the dex pc data.
+          dex_pc_data->SetIsMissingTypes();
+        } else {
+          dex_pc_data->AddClass(it->second, dex::TypeIndex(type_index));
+        }
       }
     }
   }
@@ -1036,10 +1042,11 @@ ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::ReadProfileLin
 
 // TODO(calin): Fix this API. ProfileCompilationInfo::Load should be static and
 // return a unique pointer to a ProfileCompilationInfo upon success.
-bool ProfileCompilationInfo::Load(int fd, bool merge_classes) {
+bool ProfileCompilationInfo::Load(
+    int fd, bool merge_classes, const ProfileLoadFilterFn& filter_fn) {
   std::string error;
 
-  ProfileLoadStatus status = LoadInternal(fd, &error, merge_classes);
+  ProfileLoadStatus status = LoadInternal(fd, &error, merge_classes, filter_fn);
 
   if (status == kProfileLoadSuccess) {
     return true;
@@ -1245,7 +1252,10 @@ bool ProfileCompilationInfo::ProfileSource::HasEmptyContent() const {
 
 // TODO(calin): fail fast if the dex checksums don't match.
 ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::LoadInternal(
-      int32_t fd, std::string* error, bool merge_classes) {
+      int32_t fd,
+      std::string* error,
+      bool merge_classes,
+      const ProfileLoadFilterFn& filter_fn) {
   ScopedTrace trace(__PRETTY_FUNCTION__);
   DCHECK_GE(fd, 0);
 
@@ -1327,20 +1337,29 @@ ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::LoadInternal(
   }
 
   SafeMap<uint8_t, uint8_t> dex_profile_index_remap;
-  if (!RemapProfileIndex(profile_line_headers, &dex_profile_index_remap)) {
+  if (!RemapProfileIndex(profile_line_headers, filter_fn, &dex_profile_index_remap)) {
     return kProfileLoadBadData;
   }
 
   for (uint8_t k = 0; k < number_of_dex_files; k++) {
-    // Now read the actual profile line.
-    status = ReadProfileLine(uncompressed_data,
-                             number_of_dex_files,
-                             profile_line_headers[k],
-                             dex_profile_index_remap,
-                             merge_classes,
-                             error);
-    if (status != kProfileLoadSuccess) {
-      return status;
+    if (!filter_fn(profile_line_headers[k].dex_location, profile_line_headers[k].checksum)) {
+      // We have to skip the line. Advanced the current pointer of the buffer.
+      size_t profile_line_size =
+           profile_line_headers[k].class_set_size +
+           profile_line_headers[k].method_region_size_bytes +
+           DexFileData::ComputeBitmapStorage(profile_line_headers[k].num_method_ids);
+      uncompressed_data.Advance(profile_line_size);
+    } else {
+      // Now read the actual profile line.
+      status = ReadProfileLine(uncompressed_data,
+                               number_of_dex_files,
+                               profile_line_headers[k],
+                               dex_profile_index_remap,
+                               merge_classes,
+                               error);
+      if (status != kProfileLoadSuccess) {
+        return status;
+      }
     }
   }
 
@@ -1355,12 +1374,16 @@ ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::LoadInternal(
 
 bool ProfileCompilationInfo::RemapProfileIndex(
     const std::vector<ProfileLineHeader>& profile_line_headers,
+    const ProfileLoadFilterFn& filter_fn,
     /*out*/SafeMap<uint8_t, uint8_t>* dex_profile_index_remap) {
   // First verify that all checksums match. This will avoid adding garbage to
   // the current profile info.
   // Note that the number of elements should be very small, so this should not
   // be a performance issue.
   for (const ProfileLineHeader other_profile_line_header : profile_line_headers) {
+    if (!filter_fn(other_profile_line_header.dex_location, other_profile_line_header.checksum)) {
+      continue;
+    }
     // verify_checksum is false because we want to differentiate between a missing dex data and
     // a mismatched checksum.
     const DexFileData* dex_data = FindDexData(other_profile_line_header.dex_location,
@@ -1374,6 +1397,9 @@ bool ProfileCompilationInfo::RemapProfileIndex(
   // All checksums match. Import the data.
   uint32_t num_dex_files = static_cast<uint32_t>(profile_line_headers.size());
   for (uint32_t i = 0; i < num_dex_files; i++) {
+    if (!filter_fn(profile_line_headers[i].dex_location, profile_line_headers[i].checksum)) {
+      continue;
+    }
     const DexFileData* dex_data = GetOrAddDexFileData(profile_line_headers[i].dex_location,
                                                       profile_line_headers[i].checksum,
                                                       profile_line_headers[i].num_method_ids);
@@ -2051,6 +2077,12 @@ bool ProfileCompilationInfo::UpdateProfileKeys(
       }
     }
   }
+  return true;
+}
+
+bool ProfileCompilationInfo::ProfileFilterFnAcceptAll(
+    const std::string& dex_location ATTRIBUTE_UNUSED,
+    uint32_t checksum ATTRIBUTE_UNUSED) {
   return true;
 }
 
