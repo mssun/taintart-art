@@ -260,7 +260,9 @@ class DexWriter {
   virtual uint32_t WriteCodeItemPostInstructionData(Stream* stream,
                                                     dex_ir::CodeItem* item,
                                                     bool reserve_only);
-  virtual uint32_t WriteCodeItem(Stream* stream, dex_ir::CodeItem* item, bool reserve_only);
+  virtual void WriteCodeItem(Stream* stream, dex_ir::CodeItem* item, bool reserve_only);
+  virtual void WriteDebugInfoItem(Stream* stream, dex_ir::DebugInfoItem* debug_info);
+  virtual void WriteStringData(Stream* stream, dex_ir::StringData* string_data);
 
   // Process an offset, if compute_offset is set, write into the dex ir item, otherwise read the
   // existing offset and use that for writing.
