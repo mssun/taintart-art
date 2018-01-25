@@ -15,11 +15,8 @@
  */
 
 #include "callee_save_frame.h"
-#include "dex/code_item_accessors-inl.h"
-#include "dex/dex_instruction-inl.h"
 #include "common_throws.h"
 #include "mirror/object-inl.h"
-#include "nth_caller_visitor.h"
 #include "thread.h"
 #include "well_known_classes.h"
 
@@ -114,21 +111,6 @@ extern "C" NO_RETURN void artThrowClassCastException(mirror::Class* dest_type,
                                                      Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ScopedQuickEntrypointChecks sqec(self);
-  if (dest_type == nullptr) {
-    // Find the target class for check cast using the bitstring check (dest_type == null).
-    NthCallerVisitor visitor(self, 0u);
-    visitor.WalkStack();
-    DCHECK(visitor.caller != nullptr);
-    uint32_t dex_pc = visitor.GetDexPc();
-    CodeItemDataAccessor accessor(visitor.caller);
-    const Instruction& check_cast = accessor.InstructionAt(dex_pc);
-    DCHECK_EQ(check_cast.Opcode(), Instruction::CHECK_CAST);
-    dex::TypeIndex type_index(check_cast.VRegB_21c());
-    ClassLinker* linker = Runtime::Current()->GetClassLinker();
-    dest_type = linker->LookupResolvedType(type_index, visitor.caller).Ptr();
-    CHECK(dest_type != nullptr) << "Target class should have been previously resolved: "
-        << visitor.caller->GetDexFile()->PrettyType(type_index);
-  }
   DCHECK(!dest_type->IsAssignableFrom(src_type));
   ThrowClassCastException(dest_type, src_type);
   self->QuickDeliverException();
