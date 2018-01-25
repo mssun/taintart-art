@@ -1293,10 +1293,6 @@ class Heap {
   // Parallel GC data structures.
   std::unique_ptr<ThreadPool> thread_pool_;
 
-  // Estimated allocation rate (bytes / second). Computed between the time of the last GC cycle
-  // and the start of the current one.
-  uint64_t allocation_rate_;
-
   // For a GC cycle, a bitmap that is set corresponding to the
   std::unique_ptr<accounting::HeapBitmap> live_bitmap_ GUARDED_BY(Locks::heap_bitmap_lock_);
   std::unique_ptr<accounting::HeapBitmap> mark_bitmap_ GUARDED_BY(Locks::heap_bitmap_lock_);
