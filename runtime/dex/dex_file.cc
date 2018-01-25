@@ -50,9 +50,12 @@ uint32_t DexFile::CalculateChecksum() const {
 }
 
 uint32_t DexFile::CalculateChecksum(const uint8_t* begin, size_t size) {
-  const uint32_t non_sum = OFFSETOF_MEMBER(DexFile::Header, signature_);
-  const uint8_t* non_sum_ptr = begin + non_sum;
-  return adler32(adler32(0L, Z_NULL, 0), non_sum_ptr, size - non_sum);
+  const uint32_t non_sum_bytes = OFFSETOF_MEMBER(DexFile::Header, signature_);
+  return ChecksumMemoryRange(begin + non_sum_bytes, size - non_sum_bytes);
+}
+
+uint32_t DexFile::ChecksumMemoryRange(const uint8_t* begin, size_t size) {
+  return adler32(adler32(0L, Z_NULL, 0), begin, size);
 }
 
 int DexFile::GetPermissions() const {
@@ -77,6 +80,8 @@ bool DexFile::DisableWrite() const {
 
 DexFile::DexFile(const uint8_t* base,
                  size_t size,
+                 const uint8_t* data_begin,
+                 size_t data_size,
                  const std::string& location,
                  uint32_t location_checksum,
                  const OatDexFile* oat_dex_file,
@@ -84,6 +89,8 @@ DexFile::DexFile(const uint8_t* base,
                  bool is_compact_dex)
     : begin_(base),
       size_(size),
+      data_begin_(data_begin),
+      data_size_(data_size),
       location_(location),
       location_checksum_(location_checksum),
       header_(reinterpret_cast<const Header*>(base)),
@@ -149,7 +156,7 @@ bool DexFile::CheckMagicAndVersion(std::string* error_msg) const {
 }
 
 void DexFile::InitializeSectionsFromMapList() {
-  const MapList* map_list = reinterpret_cast<const MapList*>(begin_ + header_->map_off_);
+  const MapList* map_list = reinterpret_cast<const MapList*>(DataBegin() + header_->map_off_);
   if (header_->map_off_ == 0 || header_->map_off_ > size_) {
     // Bad offset. The dex file verifier runs after this method and will reject the file.
     return;
@@ -166,10 +173,10 @@ void DexFile::InitializeSectionsFromMapList() {
   for (size_t i = 0; i < count; ++i) {
     const MapItem& map_item = map_list->list_[i];
     if (map_item.type_ == kDexTypeMethodHandleItem) {
-      method_handles_ = reinterpret_cast<const MethodHandleItem*>(begin_ + map_item.offset_);
+      method_handles_ = reinterpret_cast<const MethodHandleItem*>(DataBegin() + map_item.offset_);
       num_method_handles_ = map_item.size_;
     } else if (map_item.type_ == kDexTypeCallSiteIdItem) {
-      call_site_ids_ = reinterpret_cast<const CallSiteIdItem*>(begin_ + map_item.offset_);
+      call_site_ids_ = reinterpret_cast<const CallSiteIdItem*>(DataBegin() + map_item.offset_);
       num_call_site_ids_ = map_item.size_;
     }
   }

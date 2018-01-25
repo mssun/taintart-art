@@ -41,6 +41,7 @@ namespace art {
 class BitVector;
 class CompiledMethod;
 class CompilerDriver;
+class DexContainer;
 class ProfileCompilationInfo;
 class TimingLogger;
 class TypeLookupTable;
@@ -382,6 +383,9 @@ class OatWriter {
   // Offset of section holding Dex files inside Vdex.
   size_t vdex_dex_files_offset_;
 
+  // Offset of section holding shared dex data section in the Vdex.
+  size_t vdex_dex_shared_data_offset_;
+
   // Offset of section holding VerifierDeps inside Vdex.
   size_t vdex_verifier_deps_offset_;
 
@@ -517,6 +521,9 @@ class OatWriter {
   // Methods can be inserted more than once in case of duplicated methods.
   // This pointer is only non-null after InitOatCodeDexFiles succeeds.
   std::unique_ptr<OrderedMethodList> ordered_methods_;
+
+  // Container of shared dex data.
+  std::unique_ptr<DexContainer> dex_container_;
 
   DISALLOW_COPY_AND_ASSIGN(OatWriter);
 };

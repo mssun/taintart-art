@@ -83,8 +83,8 @@ Header* DexIrBuilder(const DexFile& dex_file, bool eagerly_assign_offsets) {
 
   // Load the link data if it exists.
   collections.SetLinkData(std::vector<uint8_t>(
-      dex_file.Begin() + dex_file.GetHeader().link_off_,
-      dex_file.Begin() + dex_file.GetHeader().link_off_ + dex_file.GetHeader().link_size_));
+      dex_file.DataBegin() + dex_file.GetHeader().link_off_,
+      dex_file.DataBegin() + dex_file.GetHeader().link_off_ + dex_file.GetHeader().link_size_));
 
   return header;
 }
@@ -92,8 +92,7 @@ Header* DexIrBuilder(const DexFile& dex_file, bool eagerly_assign_offsets) {
 static void CheckAndSetRemainingOffsets(const DexFile& dex_file, Collections* collections) {
   const DexFile::Header& disk_header = dex_file.GetHeader();
   // Read MapItems and validate/set remaining offsets.
-  const DexFile::MapList* map =
-      reinterpret_cast<const DexFile::MapList*>(dex_file.Begin() + disk_header.map_off_);
+  const DexFile::MapList* map = dex_file.GetMapList();
   const uint32_t count = map->size_;
   for (uint32_t i = 0; i < count; ++i) {
     const DexFile::MapItem* item = map->list_ + i;

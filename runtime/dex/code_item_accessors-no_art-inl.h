@@ -50,7 +50,7 @@ inline void CodeItemInstructionAccessor::Init(const StandardDexFile::CodeItem& c
 inline void CodeItemInstructionAccessor::Init(const DexFile& dex_file,
                                               const DexFile::CodeItem* code_item) {
   if (code_item != nullptr) {
-    DCHECK(dex_file.HasAddress(code_item));
+    DCHECK(dex_file.IsInDataSection(code_item));
     if (dex_file.IsCompactDexFile()) {
       Init(down_cast<const CompactDexFile::CodeItem&>(*code_item));
     } else {
