@@ -283,17 +283,6 @@ struct SubtypeCheck {
     return SubtypeCheckInfo::kUninitialized;
   }
 
-  // Retrieve the state of this class's SubtypeCheckInfo.
-  //
-  // Cost: O(Depth(Class)).
-  //
-  // Returns: The precise SubtypeCheckInfo::State.
-  static SubtypeCheckInfo::State GetState(ClassPtr klass)
-      REQUIRES(Locks::subtype_check_lock_)
-      REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetSubtypeCheckInfo(klass).GetState();
-  }
-
   // Retrieve the path to root bitstring as a plain uintN_t value that is amenable to
   // be used by a fast check "encoded_src & mask_target == encoded_target".
   //
@@ -316,9 +305,8 @@ struct SubtypeCheck {
   static BitString::StorageType GetEncodedPathToRootForTarget(ClassPtr klass)
       REQUIRES(Locks::subtype_check_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    SubtypeCheckInfo sci = GetSubtypeCheckInfo(klass);
-    DCHECK_EQ(SubtypeCheckInfo::kAssigned, sci.GetState());
-    return sci.GetEncodedPathToRoot();
+    DCHECK_EQ(SubtypeCheckInfo::kAssigned, GetSubtypeCheckInfo(klass).GetState());
+    return GetSubtypeCheckInfo(klass).GetEncodedPathToRoot();
   }
 
   // Retrieve the path to root bitstring mask as a plain uintN_t value that is amenable to
@@ -330,9 +318,8 @@ struct SubtypeCheck {
   static BitString::StorageType GetEncodedPathToRootMask(ClassPtr klass)
       REQUIRES(Locks::subtype_check_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    SubtypeCheckInfo sci = GetSubtypeCheckInfo(klass);
-    DCHECK_EQ(SubtypeCheckInfo::kAssigned, sci.GetState());
-    return sci.GetEncodedPathToRootMask();
+    DCHECK_EQ(SubtypeCheckInfo::kAssigned, GetSubtypeCheckInfo(klass).GetState());
+    return GetSubtypeCheckInfo(klass).GetEncodedPathToRootMask();
   }
 
   // Is the source class a subclass of the target?
