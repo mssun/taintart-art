@@ -149,6 +149,10 @@ NO_RETURN static void Usage(const char *fmt, ...) {
   UsageError("  --boot-image-sampled-method-threshold=<value>: minimum number of profiles a");
   UsageError("      non-hot method needs to be in order to be hot in the output profile. The");
   UsageError("      default is max int.");
+  UsageError("  --copy-and-update-profile-key: if present, profman will copy the profile from");
+  UsageError("      the file passed with --profile-fd(file) to the profile passed with");
+  UsageError("      --reference-profile-fd(file) and update at the same time the profile-key");
+  UsageError("      of entries corresponding to the apks passed with --apk(-fd).");
   UsageError("");
 
   exit(EXIT_FAILURE);
@@ -186,7 +190,8 @@ class ProfMan FINAL {
       test_profile_method_percerntage_(kDefaultTestProfileMethodPercentage),
       test_profile_class_percentage_(kDefaultTestProfileClassPercentage),
       test_profile_seed_(NanoTime()),
-      start_ns_(NanoTime()) {}
+      start_ns_(NanoTime()),
+      copy_and_update_profile_key_(false) {}
 
   ~ProfMan() {
     LogCompletionTime();
@@ -302,11 +307,13 @@ class ProfMan FINAL {
             "should only be used together");
     }
     ProfileAssistant::ProcessingResult result;
+
     if (profile_files_.empty()) {
       // The file doesn't need to be flushed here (ProcessProfiles will do it)
       // so don't check the usage.
       File file(reference_profile_file_fd_, false);
-      result = ProfileAssistant::ProcessProfiles(profile_files_fd_, reference_profile_file_fd_);
+      result = ProfileAssistant::ProcessProfiles(profile_files_fd_,
+                                                 reference_profile_file_fd_);
       CloseAllFds(profile_files_fd_, "profile_files_fd_");
     } else {
       result = ProfileAssistant::ProcessProfiles(profile_files_, reference_profile_file_);
@@ -314,7 +321,7 @@ class ProfMan FINAL {
     return result;
   }
 
-  void OpenApkFilesFromLocations(std::vector<std::unique_ptr<const DexFile>>* dex_files) {
+  void OpenApkFilesFromLocations(std::vector<std::unique_ptr<const DexFile>>* dex_files) const {
     bool use_apk_fd_list = !apks_fd_.empty();
     if (use_apk_fd_list) {
       // Get the APKs from the collection of FDs.
@@ -1070,6 +1077,42 @@ class ProfMan FINAL {
     return !test_profile_.empty();
   }
 
+  bool ShouldCopyAndUpdateProfileKey() const {
+    return copy_and_update_profile_key_;
+  }
+
+  bool CopyAndUpdateProfileKey() const {
+    // Validate that at least one profile file was passed, as well as a reference profile.
+    if (!(profile_files_.size() == 1 ^ profile_files_fd_.size() == 1)) {
+      Usage("Only one profile file should be specified.");
+    }
+    if (reference_profile_file_.empty() && !FdIsValid(reference_profile_file_fd_)) {
+      Usage("No reference profile file specified.");
+    }
+
+    if (apk_files_.empty() && apks_fd_.empty()) {
+      Usage("No apk files specified");
+    }
+
+    bool use_fds = profile_files_fd_.size() == 1;
+
+    ProfileCompilationInfo profile;
+    // Do not clear if invalid. The input might be an archive.
+    if (profile.Load(profile_files_[0], /*clear_if_invalid*/ false)) {
+      // Open the dex files to look up classes and methods.
+      std::vector<std::unique_ptr<const DexFile>> dex_files;
+      OpenApkFilesFromLocations(&dex_files);
+      if (!profile.UpdateProfileKeys(dex_files)) {
+        return false;
+      }
+      return use_fds
+        ? profile.Save(reference_profile_file_fd_)
+        : profile.Save(reference_profile_file_, /*bytes_written*/ nullptr);
+    } else {
+      return false;
+    }
+  }
+
  private:
   static void ParseFdForCollection(const StringPiece& option,
                                    const char* arg_name,
@@ -1114,6 +1157,7 @@ class ProfMan FINAL {
   uint16_t test_profile_class_percentage_;
   uint32_t test_profile_seed_;
   uint64_t start_ns_;
+  bool copy_and_update_profile_key_;
 };
 
 // See ProfileAssistant::ProcessingResult for return codes.
