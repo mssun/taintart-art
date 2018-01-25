@@ -372,6 +372,7 @@ OatWriter::OatWriter(bool compiling_boot_image,
     dex_files_(nullptr),
     vdex_size_(0u),
     vdex_dex_files_offset_(0u),
+    vdex_dex_shared_data_offset_(0u),
     vdex_verifier_deps_offset_(0u),
     vdex_quickening_info_offset_(0u),
     oat_size_(0u),
@@ -3363,6 +3364,54 @@ bool OatWriter::WriteDexFiles(OutputStream* out, File* file, bool update_input_v
         return false;
       }
     }
+
+    // Write shared dex file data section and fix up the dex file headers.
+    vdex_dex_shared_data_offset_ = vdex_size_;
+    if (dex_container_ != nullptr) {
+      DexContainer::Section* const section = dex_container_->GetDataSection();
+      if (section->Size() > 0) {
+        const uint32_t shared_data_offset = vdex_size_;
+        const off_t existing_offset = out->Seek(0, kSeekCurrent);
+        if (static_cast<uint32_t>(existing_offset) != shared_data_offset) {
+          LOG(ERROR) << "Expected offset " << shared_data_offset << " but got " << existing_offset;
+          return false;
+        }
+        const uint32_t shared_data_size = section->Size();
+        if (!out->WriteFully(section->Begin(), shared_data_size)) {
+          LOG(ERROR) << "Failed to write shared data!";
+          return false;
+        }
+        // Fix up the dex headers to have correct offsets to the data section.
+        for (OatDexFile& oat_dex_file : oat_dex_files_) {
+          // Overwrite the header by reading it, updating the offset, and writing it back out.
+          DexFile::Header header;
+          if (!file->PreadFully(&header, sizeof(header), oat_dex_file.dex_file_offset_)) {
+            LOG(ERROR) << "Failed to read dex header for updating";
+            return false;
+          }
+          CHECK(CompactDexFile::IsMagicValid(header.magic_)) << "Must be compact dex";
+          CHECK_GT(shared_data_offset, oat_dex_file.dex_file_offset_);
+          // Offset is from the dex file base.
+          header.data_off_ = shared_data_offset - oat_dex_file.dex_file_offset_;
+          // The size should already be what part of the data buffer may be used by the dex.
+          CHECK_LE(header.data_size_, shared_data_size);
+          if (!file->PwriteFully(&header, sizeof(header), oat_dex_file.dex_file_offset_)) {
+            LOG(ERROR) << "Failed to write dex header for updating";
+            return false;
+          }
+        }
+        vdex_size_ += shared_data_size;
+        size_dex_file_ += shared_data_size;
+        section->Clear();
+        if (!out->Flush()) {
+          PLOG(ERROR) << "Failed to flush after writing shared dex section.";
+          return false;
+        }
+      }
+      dex_container_.reset();
+    }
+  } else {
+    vdex_dex_shared_data_offset_ =  vdex_size_;
   }
 
   return true;
@@ -3521,19 +3570,22 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
   options.compact_dex_level_ = compact_dex_level_;
   options.update_checksum_ = true;
   DexLayout dex_layout(options, profile_compilation_info_, /*file*/ nullptr, /*header*/ nullptr);
-  std::unique_ptr<DexContainer> out_data;
-  dex_layout.ProcessDexFile(location.c_str(), dex_file.get(), 0, &out_data);
+  dex_layout.ProcessDexFile(location.c_str(), dex_file.get(), 0, &dex_container_);
   oat_dex_file->dex_sections_layout_ = dex_layout.GetSections();
   // Dex layout can affect the size of the dex file, so we update here what we have set
   // when adding the dex file as a source.
   const UnalignedDexFileHeader* header =
-      AsUnalignedDexFileHeader(out_data->GetMainSection()->Begin());
+      AsUnalignedDexFileHeader(dex_container_->GetMainSection()->Begin());
   oat_dex_file->dex_file_size_ = header->file_size_;
   if (!WriteDexFile(out,
                     oat_dex_file,
-                    out_data->GetMainSection()->Begin(),
+                    dex_container_->GetMainSection()->Begin(),
                     /* update_input_vdex */ false)) {
     return false;
+  }
+  if (dex_container_ != nullptr) {
+    // Clear the main section in case we write more data into the container.
+    dex_container_->GetMainSection()->Clear();
   }
   CHECK_EQ(oat_dex_file->dex_file_location_checksum_, dex_file->GetLocationChecksum());
   return true;
@@ -3996,12 +4048,14 @@ bool OatWriter::WriteChecksumsAndVdexHeader(OutputStream* vdex_out) {
   DCHECK_NE(vdex_verifier_deps_offset_, 0u);
   DCHECK_NE(vdex_quickening_info_offset_, 0u);
 
-  size_t dex_section_size = vdex_verifier_deps_offset_ - vdex_dex_files_offset_;
+  size_t dex_section_size = vdex_dex_shared_data_offset_ - vdex_dex_files_offset_;
+  size_t dex_shared_data_size = vdex_verifier_deps_offset_ - vdex_dex_shared_data_offset_;
   size_t verifier_deps_section_size = vdex_quickening_info_offset_ - vdex_verifier_deps_offset_;
   size_t quickening_info_section_size = vdex_size_ - vdex_quickening_info_offset_;
 
   VdexFile::Header vdex_header(oat_dex_files_.size(),
                                dex_section_size,
+                               dex_shared_data_size,
                                verifier_deps_section_size,
                                quickening_info_section_size);
   if (!vdex_out->WriteFully(&vdex_header, sizeof(VdexFile::Header))) {

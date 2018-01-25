@@ -92,6 +92,8 @@ class StandardDexFile : public DexFile {
                   DexFileContainer* container)
       : DexFile(base,
                 size,
+                /*data_begin*/ base,
+                /*data_size*/ size,
                 location,
                 location_checksum,
                 oat_dex_file,

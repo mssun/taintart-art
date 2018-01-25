@@ -1156,6 +1156,7 @@ class OatDumper {
       // Vdex unquicken output should match original input bytecode
       uint32_t orig_checksum =
           reinterpret_cast<DexFile::Header*>(const_cast<uint8_t*>(dex_file->Begin()))->checksum_;
+      CHECK_EQ(orig_checksum, dex_file->CalculateChecksum());
       if (orig_checksum != dex_file->CalculateChecksum()) {
         os << "Unexpected checksum from unquicken dex file '" << dex_file_location << "'\n";
         return false;
@@ -1208,7 +1209,11 @@ class OatDumper {
       return false;
     }
 
-    if (!file->WriteFully(dex_file->Begin(), fsize)) {
+    bool success = false;
+      success = file->WriteFully(dex_file->Begin(), fsize);
+    // }
+
+    if (!success) {
       os << "Failed to write dex file";
       file->Erase();
       return false;
