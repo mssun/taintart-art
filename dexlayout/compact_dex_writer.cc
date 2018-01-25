@@ -34,7 +34,8 @@ CompactDexLevel CompactDexWriter::GetCompactDexLevel() const {
 }
 
 CompactDexWriter::Container::Container(bool dedupe_code_items)
-    : code_item_dedupe_(dedupe_code_items, &data_section_) {}
+    : code_item_dedupe_(dedupe_code_items, &data_section_),
+      data_item_dedupe_(/*dedupe*/ true, &data_section_) {}
 
 uint32_t CompactDexWriter::WriteDebugInfoOffsetTable(Stream* stream) {
   const uint32_t start_offset = stream->Tell();
@@ -103,16 +104,45 @@ uint32_t CompactDexWriter::WriteDebugInfoOffsetTable(Stream* stream) {
   return stream->Tell() - start_offset;
 }
 
-uint32_t CompactDexWriter::WriteCodeItem(Stream* stream,
-                                         dex_ir::CodeItem* code_item,
-                                         bool reserve_only) {
+CompactDexWriter::ScopedDataSectionItem::ScopedDataSectionItem(Stream* stream,
+                                                               dex_ir::Item* item,
+                                                               size_t alignment,
+                                                               Deduper* deduper)
+    : stream_(stream),
+      item_(item),
+      alignment_(alignment),
+      deduper_(deduper),
+      start_offset_(stream->Tell()) {
+  stream_->AlignTo(alignment_);
+}
+
+CompactDexWriter::ScopedDataSectionItem::~ScopedDataSectionItem() {
+  // After having written, maybe dedupe the whole code item (excluding padding).
+  const uint32_t deduped_offset = deduper_->Dedupe(start_offset_,
+                                                   stream_->Tell(),
+                                                   item_->GetOffset());
+  // In case we dedupe to something with wrong alignment, just say we didn't dedupe.
+  if (deduped_offset != Deduper::kDidNotDedupe && IsAlignedParam(deduped_offset, alignment_)) {
+    item_->SetOffset(deduped_offset);
+    stream_->Clear(start_offset_, stream_->Tell() - start_offset_);
+    // Undo the offset for all that we wrote since we deduped.
+    stream_->Seek(start_offset_);
+  }
+}
+
+size_t CompactDexWriter::ScopedDataSectionItem::Written() const {
+  return stream_->Tell() - start_offset_;
+}
+
+void CompactDexWriter::WriteCodeItem(Stream* stream,
+                                     dex_ir::CodeItem* code_item,
+                                     bool reserve_only) {
   DCHECK(code_item != nullptr);
   DCHECK(!reserve_only) << "Not supported because of deduping.";
-  const uint32_t start_offset = stream->Tell();
-
-  // Align to minimum requirements, additional alignment requirements are handled below after we
-  // know the preheader size.
-  stream->AlignTo(CompactDexFile::CodeItem::kAlignment);
+  ScopedDataSectionItem data_item(stream,
+                                  code_item,
+                                  CompactDexFile::CodeItem::kAlignment,
+                                  code_item_dedupe_);
 
   CompactDexFile::CodeItem disk_code_item;
 
@@ -146,8 +176,6 @@ uint32_t CompactDexWriter::WriteCodeItem(Stream* stream,
     }
   }
 
-  const uint32_t data_start = stream->Tell();
-
   // Write preheader first.
   stream->Write(reinterpret_cast<const uint8_t*>(preheader), preheader_bytes);
   // Registered offset is after the preheader.
@@ -159,21 +187,15 @@ uint32_t CompactDexWriter::WriteCodeItem(Stream* stream,
   stream->Write(code_item->Insns(), code_item->InsnsSize() * sizeof(uint16_t));
   // Write the post instruction data.
   WriteCodeItemPostInstructionData(stream, code_item, reserve_only);
+}
 
-  if (compute_offsets_) {
-    // After having written, maybe dedupe the whole code item (excluding padding).
-    const uint32_t deduped_offset = code_item_dedupe_->Dedupe(data_start,
-                                                              stream->Tell(),
-                                                              code_item->GetOffset());
-    if (deduped_offset != Deduper::kDidNotDedupe) {
-      code_item->SetOffset(deduped_offset);
-      stream->Clear(start_offset, stream->Tell() - start_offset);
-      // Undo the offset for all that we wrote since we deduped.
-      stream->Seek(start_offset);
-    }
-  }
-
-  return stream->Tell() - start_offset;
+void CompactDexWriter::WriteDebugInfoItem(Stream* stream, dex_ir::DebugInfoItem* debug_info) {
+  ScopedDataSectionItem data_item(stream,
+                                  debug_info,
+                                  SectionAlignment(DexFile::kDexTypeDebugInfoItem),
+                                  data_item_dedupe_);
+  ProcessOffset(stream, debug_info);
+  stream->Write(debug_info->GetDebugInfo(), debug_info->GetDebugInfoSize());
 }
 
 
@@ -284,11 +306,24 @@ size_t CompactDexWriter::GetHeaderSize() const {
   return sizeof(CompactDexFile::Header);
 }
 
+void CompactDexWriter::WriteStringData(Stream* stream, dex_ir::StringData* string_data) {
+  ScopedDataSectionItem data_item(stream,
+                                  string_data,
+                                  SectionAlignment(DexFile::kDexTypeStringDataItem),
+                                  data_item_dedupe_);
+  ProcessOffset(stream, string_data);
+  stream->WriteUleb128(CountModifiedUtf8Chars(string_data->Data()));
+  stream->Write(string_data->Data(), strlen(string_data->Data()));
+  // Skip null terminator (already zeroed out, no need to write).
+  stream->Skip(1);
+}
+
 void CompactDexWriter::Write(DexContainer* output)  {
   CHECK(output->IsCompactDexContainer());
   Container* const container = down_cast<Container*>(output);
   // For now, use the same stream for both data and metadata.
   Stream temp_main_stream(output->GetMainSection());
+  CHECK_EQ(output->GetMainSection()->Size(), 0u);
   Stream temp_data_stream(output->GetDataSection());
   Stream* main_stream = &temp_main_stream;
   Stream* data_stream = &temp_data_stream;
@@ -299,6 +334,7 @@ void CompactDexWriter::Write(DexContainer* output)  {
       static_cast<uint32_t>(output->GetDataSection()->Size()),
       kDataSectionAlignment));
   code_item_dedupe_ = &container->code_item_dedupe_;
+  data_item_dedupe_ = &container->data_item_dedupe_;
 
   // Starting offset is right after the header.
   main_stream->Seek(GetHeaderSize());
