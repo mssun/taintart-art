@@ -48,9 +48,6 @@ inline bool RegType::CanAccess(const RegType& other) const {
 
 inline bool RegType::CanAccessMember(ObjPtr<mirror::Class> klass, uint32_t access_flags) const {
   DCHECK(IsReferenceTypes());
-  if ((access_flags & kAccPublic) != 0) {
-    return true;
-  }
   if (IsNull()) {
     return true;
   }

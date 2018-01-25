@@ -34,6 +34,7 @@
 #include "class_linker-inl.h"
 #include "dex/dex_file-inl.h"
 #include "fault_handler.h"
+#include "hidden_api.h"
 #include "gc/accounting/card_table-inl.h"
 #include "gc_root.h"
 #include "indirect_reference_table-inl.h"
@@ -238,6 +239,10 @@ static jmethodID FindMethodID(ScopedObjectAccess& soa, jclass jni_class,
   } else {
     method = c->FindClassMethod(name, sig, pointer_size);
   }
+  if (method != nullptr &&
+      hiddenapi::ShouldBlockAccessToMember(method, soa.Self(), /* num_frames */ 1)) {
+    method = nullptr;
+  }
   if (method == nullptr || method->IsStatic() != is_static) {
     ThrowNoSuchMethodError(soa, c, name, sig, is_static ? "static" : "non-static");
     return nullptr;
@@ -313,6 +318,10 @@ static jfieldID FindFieldID(const ScopedObjectAccess& soa, jclass jni_class, con
         soa.Self(), c.Get(), name, field_type->GetDescriptor(&temp));
   } else {
     field = c->FindInstanceField(name, field_type->GetDescriptor(&temp));
+  }
+  if (field != nullptr &&
+      hiddenapi::ShouldBlockAccessToMember(field, soa.Self(), /* num_frames */ 1)) {
+    field = nullptr;
   }
   if (field == nullptr) {
     soa.Self()->ThrowNewExceptionF("Ljava/lang/NoSuchFieldError;",
