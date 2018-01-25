@@ -59,7 +59,7 @@ public class Main {
   /// CHECK:          InstanceOf check_kind:exact_check
   /// CHECK-NOT:      {{.*gs:.*}}
 
-  /// CHECK-START-{ARM,ARM64}: boolean Main.$noinline$instanceOfString(java.lang.Object) disassembly (after)
+  /// CHECK-START-{ARM,ARM64,MIPS,MIPS64}: boolean Main.$noinline$instanceOfString(java.lang.Object) disassembly (after)
   /// CHECK:          InstanceOf check_kind:exact_check
   // For ARM and ARM64, the marking register (r8 and x20, respectively) can be used in
   // non-CC configs for any other purpose, so we'd need a config-specific checker test.

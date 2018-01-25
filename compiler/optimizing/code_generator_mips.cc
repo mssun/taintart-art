@@ -391,7 +391,7 @@ class TypeCheckSlowPathMIPS : public SlowPathCodeMIPS {
     CodeGeneratorMIPS* mips_codegen = down_cast<CodeGeneratorMIPS*>(codegen);
 
     __ Bind(GetEntryLabel());
-    if (!is_fatal_) {
+    if (!is_fatal_ || instruction_->CanThrowIntoCatchBlock()) {
       SaveLiveRegisters(codegen, locations);
     }
 
@@ -3271,26 +3271,8 @@ static size_t NumberOfCheckCastTemps(TypeCheckKind type_check_kind) {
 }
 
 void LocationsBuilderMIPS::VisitCheckCast(HCheckCast* instruction) {
-  LocationSummary::CallKind call_kind = LocationSummary::kNoCall;
-  bool throws_into_catch = instruction->CanThrowIntoCatchBlock();
-
   TypeCheckKind type_check_kind = instruction->GetTypeCheckKind();
-  switch (type_check_kind) {
-    case TypeCheckKind::kExactCheck:
-    case TypeCheckKind::kAbstractClassCheck:
-    case TypeCheckKind::kClassHierarchyCheck:
-    case TypeCheckKind::kArrayObjectCheck:
-      call_kind = (throws_into_catch || kEmitCompilerReadBarrier)
-          ? LocationSummary::kCallOnSlowPath
-          : LocationSummary::kNoCall;  // In fact, call on a fatal (non-returning) slow path.
-      break;
-    case TypeCheckKind::kArrayCheck:
-    case TypeCheckKind::kUnresolvedCheck:
-    case TypeCheckKind::kInterfaceCheck:
-      call_kind = LocationSummary::kCallOnSlowPath;
-      break;
-  }
-
+  LocationSummary::CallKind call_kind = CodeGenerator::GetCheckCastCallKind(instruction);
   LocationSummary* locations =
       new (GetGraph()->GetAllocator()) LocationSummary(instruction, call_kind);
   locations->SetInAt(0, Location::RequiresRegister());
@@ -3319,18 +3301,7 @@ void InstructionCodeGeneratorMIPS::VisitCheckCast(HCheckCast* instruction) {
       mirror::Array::DataOffset(kHeapReferenceSize).Uint32Value();
   MipsLabel done;
 
-  // Always false for read barriers since we may need to go to the entrypoint for non-fatal cases
-  // from false negatives. The false negatives may come from avoiding read barriers below. Avoiding
-  // read barriers is done for performance and code size reasons.
-  bool is_type_check_slow_path_fatal = false;
-  if (!kEmitCompilerReadBarrier) {
-    is_type_check_slow_path_fatal =
-        (type_check_kind == TypeCheckKind::kExactCheck ||
-         type_check_kind == TypeCheckKind::kAbstractClassCheck ||
-         type_check_kind == TypeCheckKind::kClassHierarchyCheck ||
-         type_check_kind == TypeCheckKind::kArrayObjectCheck) &&
-        !instruction->CanThrowIntoCatchBlock();
-  }
+  bool is_type_check_slow_path_fatal = CodeGenerator::IsTypeCheckSlowPathFatal(instruction);
   SlowPathCodeMIPS* slow_path =
       new (codegen_->GetScopedAllocator()) TypeCheckSlowPathMIPS(
           instruction, is_type_check_slow_path_fatal);
@@ -7197,11 +7168,12 @@ void LocationsBuilderMIPS::VisitInstanceOf(HInstanceOf* instruction) {
     case TypeCheckKind::kExactCheck:
     case TypeCheckKind::kAbstractClassCheck:
     case TypeCheckKind::kClassHierarchyCheck:
-    case TypeCheckKind::kArrayObjectCheck:
-      call_kind =
-          kEmitCompilerReadBarrier ? LocationSummary::kCallOnSlowPath : LocationSummary::kNoCall;
-      baker_read_barrier_slow_path = kUseBakerReadBarrier;
+    case TypeCheckKind::kArrayObjectCheck: {
+      bool needs_read_barrier = CodeGenerator::InstanceOfNeedsReadBarrier(instruction);
+      call_kind = needs_read_barrier ? LocationSummary::kCallOnSlowPath : LocationSummary::kNoCall;
+      baker_read_barrier_slow_path = kUseBakerReadBarrier && needs_read_barrier;
       break;
+    }
     case TypeCheckKind::kArrayCheck:
     case TypeCheckKind::kUnresolvedCheck:
     case TypeCheckKind::kInterfaceCheck:
@@ -7249,13 +7221,15 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
 
   switch (type_check_kind) {
     case TypeCheckKind::kExactCheck: {
+      ReadBarrierOption read_barrier_option =
+          CodeGenerator::ReadBarrierOptionForInstanceOf(instruction);
       // /* HeapReference<Class> */ out = obj->klass_
       GenerateReferenceLoadTwoRegisters(instruction,
                                         out_loc,
                                         obj_loc,
                                         class_offset,
                                         maybe_temp_loc,
-                                        kCompilerReadBarrierOption);
+                                        read_barrier_option);
       // Classes must be equal for the instanceof to succeed.
       __ Xor(out, out, cls);
       __ Sltiu(out, out, 1);
@@ -7263,13 +7237,15 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
     }
 
     case TypeCheckKind::kAbstractClassCheck: {
+      ReadBarrierOption read_barrier_option =
+          CodeGenerator::ReadBarrierOptionForInstanceOf(instruction);
       // /* HeapReference<Class> */ out = obj->klass_
       GenerateReferenceLoadTwoRegisters(instruction,
                                         out_loc,
                                         obj_loc,
                                         class_offset,
                                         maybe_temp_loc,
-                                        kCompilerReadBarrierOption);
+                                        read_barrier_option);
       // If the class is abstract, we eagerly fetch the super class of the
       // object to avoid doing a comparison we know will fail.
       MipsLabel loop;
@@ -7279,7 +7255,7 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
                                        out_loc,
                                        super_offset,
                                        maybe_temp_loc,
-                                       kCompilerReadBarrierOption);
+                                       read_barrier_option);
       // If `out` is null, we use it for the result, and jump to `done`.
       __ Beqz(out, &done);
       __ Bne(out, cls, &loop);
@@ -7288,13 +7264,15 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
     }
 
     case TypeCheckKind::kClassHierarchyCheck: {
+      ReadBarrierOption read_barrier_option =
+          CodeGenerator::ReadBarrierOptionForInstanceOf(instruction);
       // /* HeapReference<Class> */ out = obj->klass_
       GenerateReferenceLoadTwoRegisters(instruction,
                                         out_loc,
                                         obj_loc,
                                         class_offset,
                                         maybe_temp_loc,
-                                        kCompilerReadBarrierOption);
+                                        read_barrier_option);
       // Walk over the class hierarchy to find a match.
       MipsLabel loop, success;
       __ Bind(&loop);
@@ -7304,7 +7282,7 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
                                        out_loc,
                                        super_offset,
                                        maybe_temp_loc,
-                                       kCompilerReadBarrierOption);
+                                       read_barrier_option);
       __ Bnez(out, &loop);
       // If `out` is null, we use it for the result, and jump to `done`.
       __ B(&done);
@@ -7314,13 +7292,15 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
     }
 
     case TypeCheckKind::kArrayObjectCheck: {
+      ReadBarrierOption read_barrier_option =
+          CodeGenerator::ReadBarrierOptionForInstanceOf(instruction);
       // /* HeapReference<Class> */ out = obj->klass_
       GenerateReferenceLoadTwoRegisters(instruction,
                                         out_loc,
                                         obj_loc,
                                         class_offset,
                                         maybe_temp_loc,
-                                        kCompilerReadBarrierOption);
+                                        read_barrier_option);
       // Do an exact check.
       MipsLabel success;
       __ Beq(out, cls, &success);
@@ -7330,7 +7310,7 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
                                        out_loc,
                                        component_offset,
                                        maybe_temp_loc,
-                                       kCompilerReadBarrierOption);
+                                       read_barrier_option);
       // If `out` is null, we use it for the result, and jump to `done`.
       __ Beqz(out, &done);
       __ LoadFromOffset(kLoadUnsignedHalfword, out, out, primitive_offset);
