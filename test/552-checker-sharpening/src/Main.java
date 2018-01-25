@@ -14,7 +14,16 @@
  * limitations under the License.
  */
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+
 public class Main {
+
+  public static void assertBooleanEquals(boolean expected, boolean result) {
+    if (expected != result) {
+      throw new Error("Expected: " + expected + ", found: " + result);
+    }
+  }
 
   public static void assertIntEquals(int expected, int result) {
     if (expected != result) {
@@ -195,6 +204,14 @@ public class Main {
     return Other.class;
   }
 
+  /// CHECK-START: boolean Main.$noinline$instanceOfInputStream(java.lang.Object) builder (after)
+  /// CHECK-NOT:            LoadClass
+  /// CHECK:                InstanceOf check_kind:bitstring_check
+  public static boolean $noinline$instanceOfInputStream(Object o) {
+    // InputStream is known to be in the core image with an initialized type check bitstring.
+    return o instanceof InputStream;
+  }
+
   public static void main(String[] args) {
     assertIntEquals(1, testSimple(1));
     assertIntEquals(1, testDiamond(false, 1));
@@ -208,6 +225,10 @@ public class Main {
     assertStringEquals("non-boot-image-string", $noinline$getNonBootImageString());
     assertClassEquals(String.class, $noinline$getStringClass());
     assertClassEquals(Other.class, $noinline$getOtherClass());
+    assertBooleanEquals(false, $noinline$instanceOfInputStream(null));
+    assertBooleanEquals(false, $noinline$instanceOfInputStream(new Integer(1)));
+    assertBooleanEquals(true,
+                        $noinline$instanceOfInputStream(new ByteArrayInputStream(new byte[10])));
   }
 }
 

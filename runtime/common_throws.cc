@@ -26,7 +26,7 @@
 #include "class_linker-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_instruction-inl.h"
-#include "invoke_type.h"
+#include "dex/invoke_type.h"
 #include "mirror/class-inl.h"
 #include "mirror/method_type.h"
 #include "mirror/object-inl.h"

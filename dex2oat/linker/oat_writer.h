@@ -174,7 +174,7 @@ class OatWriter {
                             SafeMap<std::string, std::string>* key_value_store,
                             bool verify,
                             bool update_input_vdex,
-                            /*out*/ std::unique_ptr<MemMap>* opened_dex_files_map,
+                            /*out*/ std::vector<std::unique_ptr<MemMap>>* opened_dex_files_map,
                             /*out*/ std::vector<std::unique_ptr<const DexFile>>* opened_dex_files);
   bool WriteQuickeningInfo(OutputStream* vdex_out);
   bool WriteVerifierDeps(OutputStream* vdex_out, verifier::VerifierDeps* verifier_deps);
@@ -303,7 +303,7 @@ class OatWriter {
                     bool update_input_vdex);
   bool OpenDexFiles(File* file,
                     bool verify,
-                    /*out*/ std::unique_ptr<MemMap>* opened_dex_files_map,
+                    /*out*/ std::vector<std::unique_ptr<MemMap>>* opened_dex_files_map,
                     /*out*/ std::vector<std::unique_ptr<const DexFile>>* opened_dex_files);
 
   size_t InitOatHeader(InstructionSet instruction_set,
@@ -370,6 +370,8 @@ class OatWriter {
   const CompilerDriver* compiler_driver_;
   ImageWriter* image_writer_;
   const bool compiling_boot_image_;
+  // Whether the dex files being compiled are all uncompressed in the APK.
+  bool only_contains_uncompressed_zip_entries_;
 
   // note OatFile does not take ownership of the DexFiles
   const std::vector<const DexFile*>* dex_files_;

@@ -113,6 +113,12 @@ if [ -z "$ZIPALIGN" ]; then
 fi
 export ZIPALIGN
 
+# If hiddenapi was not set by the environment variable, assume it is in
+# ANDROID_HOST_OUT.
+if [ -z "$HIDDENAPI" ]; then
+  export HIDDENAPI="${ANDROID_HOST_OUT}/bin/hiddenapi"
+fi
+
 info="info.txt"
 build="build"
 run="run"

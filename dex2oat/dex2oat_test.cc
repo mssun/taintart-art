@@ -1136,7 +1136,7 @@ TEST_F(Dex2oatClassLoaderContextTest, ContextWithStrippedDexFilesBackedByOdex) {
   std::string expected_classpath_key;
   {
     // Open the oat file to get the expected classpath.
-    OatFileAssistant oat_file_assistant(stripped_classpath.c_str(), kRuntimeISA, false);
+    OatFileAssistant oat_file_assistant(stripped_classpath.c_str(), kRuntimeISA, false, false);
     std::unique_ptr<OatFile> oat_file(oat_file_assistant.GetBestOatFile());
     std::vector<std::unique_ptr<const DexFile>> oat_dex_files =
         OatFileAssistant::LoadDexFiles(*oat_file, stripped_classpath.c_str());
@@ -1526,6 +1526,21 @@ TEST_F(Dex2oatDedupeCode, DedupeTest) {
                       });
 
   EXPECT_LT(dedupe_size, no_dedupe_size);
+}
+
+TEST_F(Dex2oatTest, UncompressedTest) {
+  std::unique_ptr<const DexFile> dex(OpenTestDexFile("MainUncompressed"));
+  std::string out_dir = GetScratchDir();
+  const std::string base_oat_name = out_dir + "/base.oat";
+  GenerateOdexForTest(dex->GetLocation(),
+                      base_oat_name,
+                      CompilerFilter::Filter::kQuicken,
+                      { },
+                      true,  // expect_success
+                      false,  // use_fd
+                      [](const OatFile& o) {
+                        CHECK(!o.ContainsDexCode());
+                      });
 }
 
 }  // namespace art

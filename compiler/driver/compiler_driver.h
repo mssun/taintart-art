@@ -110,13 +110,13 @@ class CompilerDriver {
 
   ~CompilerDriver();
 
-  // Set dex files that will be stored in the oat file after being compiled.
+  // Set dex files associated with the oat file being compiled.
   void SetDexFilesForOatFile(const std::vector<const DexFile*>& dex_files);
 
   // Set dex files classpath.
   void SetClasspathDexFiles(const std::vector<const DexFile*>& dex_files);
 
-  // Get dex file that will be stored in the oat file after being compiled.
+  // Get dex files associated with the the oat file being compiled.
   ArrayRef<const DexFile* const> GetDexFilesForOatFile() const {
     return ArrayRef<const DexFile* const>(dex_files_for_oat_file_);
   }
@@ -385,11 +385,16 @@ class CompilerDriver {
     return dex_to_dex_compiler_;
   }
 
+  bool IsBootImageClassWithAssignedBitstring(ObjPtr<mirror::Class> klass)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
  private:
   void PreCompile(jobject class_loader,
                   const std::vector<const DexFile*>& dex_files,
                   TimingLogger* timings)
       REQUIRES(!Locks::mutator_lock_);
+
+  void RecordBootImageClassesWithAssignedBitstring() REQUIRES(!Locks::mutator_lock_);
 
   void LoadImageClasses(TimingLogger* timings) REQUIRES(!Locks::mutator_lock_);
 
@@ -513,6 +518,12 @@ class CompilerDriver {
   // This option may be restricted to the boot image, depending on a flag in the implementation.
   std::unique_ptr<std::unordered_set<std::string>> methods_to_compile_;
 
+  // For AOT app compilation, we keep the set of boot image classes with assigned type check
+  // bitstring. We need to retrieve this set before we initialize app image classes as the
+  // initialization can cause more boot image bitstrings to be assigned.
+  // Note that boot image classes are non-moveable, so it's OK to keep raw pointers.
+  std::unique_ptr<std::unordered_set<mirror::Class*>> boot_image_classes_with_assigned_bitstring_;
+
   std::atomic<uint32_t> number_of_soft_verifier_failures_;
   bool had_hard_verifier_failure_;
 
@@ -533,7 +544,7 @@ class CompilerDriver {
 
   bool support_boot_image_fixup_;
 
-  // List of dex files that will be stored in the oat file.
+  // List of dex files associates with the oat file.
   std::vector<const DexFile*> dex_files_for_oat_file_;
 
   CompiledMethodStorage compiled_method_storage_;

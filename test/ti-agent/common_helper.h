@@ -22,7 +22,7 @@
 
 namespace art {
 
-// Taken from art/runtime/modifiers.h
+// Taken from art/runtime/dex/modifiers.h
 static constexpr uint32_t kAccStatic =       0x0008;  // field, method, ic
 
 jobject GetJavaField(jvmtiEnv* jvmti, JNIEnv* env, jclass field_klass, jfieldID f);
