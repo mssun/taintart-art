@@ -416,6 +416,17 @@ class ProfileCompilationInfo {
   // Return true if the fd points to a profile file.
   bool IsProfileFile(int fd);
 
+  // Update the profile keys corresponding to the given dex files based on their current paths.
+  // This method allows fix-ups in the profile for dex files that might have been renamed.
+  // The new profile key will be constructed based on the current dex location.
+  //
+  // The matching [profile key <-> dex_file] is done based on the dex checksum and the number of
+  // methods ids. If neither is a match then the profile key is not updated.
+  //
+  // If the new profile key would collide with an existing key (for a different dex)
+  // the method returns false. Otherwise it returns true.
+  bool UpdateProfileKeys(const std::vector<std::unique_ptr<const DexFile>>& dex_files);
+
  private:
   enum ProfileLoadStatus {
     kProfileLoadWouldOverwiteData,

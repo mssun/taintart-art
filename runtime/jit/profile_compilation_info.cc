@@ -2030,4 +2030,28 @@ bool ProfileCompilationInfo::IsProfileFile(int fd) {
   return memcmp(buffer, kProfileMagic, byte_count) == 0;
 }
 
+bool ProfileCompilationInfo::UpdateProfileKeys(
+      const std::vector<std::unique_ptr<const DexFile>>& dex_files) {
+  for (const std::unique_ptr<const DexFile>& dex_file : dex_files) {
+    for (DexFileData* dex_data : info_) {
+      if (dex_data->checksum == dex_file->GetLocationChecksum()
+          && dex_data->num_method_ids == dex_file->NumMethodIds()) {
+        std::string new_profile_key = GetProfileDexFileKey(dex_file->GetLocation());
+        if (dex_data->profile_key != new_profile_key) {
+          if (profile_key_map_.find(new_profile_key) != profile_key_map_.end()) {
+            // We can't update the key if the new key belongs to a different dex file.
+            LOG(ERROR) << "Cannot update profile key to " << new_profile_key
+                << " because the new key belongs to another dex file.";
+            return false;
+          }
+          profile_key_map_.erase(dex_data->profile_key);
+          profile_key_map_.Put(new_profile_key, dex_data->profile_index);
+          dex_data->profile_key = new_profile_key;
+        }
+      }
+    }
+  }
+  return true;
+}
+
 }  // namespace art
