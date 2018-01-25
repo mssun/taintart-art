@@ -218,6 +218,10 @@ class VdexFile {
   ArrayRef<const uint8_t> GetQuickenedInfoOf(const DexFile& dex_file,
                                              uint32_t dex_method_idx) const;
 
+  bool HasDexSection() const {
+    return GetHeader().GetDexSize() != 0;
+  }
+
  private:
   uint32_t GetQuickeningInfoTableOffset(const uint8_t* source_dex_begin) const;
 
@@ -234,10 +238,6 @@ class VdexFile {
       const uint8_t* source_dex_begin,
       uint32_t num_method_ids,
       const ArrayRef<const uint8_t>& quickening_info) const;
-
-  bool HasDexSection() const {
-    return GetHeader().GetDexSize() != 0;
-  }
 
   bool ContainsDexFile(const DexFile& dex_file) const;
 
