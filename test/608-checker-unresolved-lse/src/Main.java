@@ -88,6 +88,7 @@ public class Main extends MissingSuperClass {
 
   /// CHECK-START: void Main.staticFieldTest() load_store_elimination (after)
   /// CHECK:        StaticFieldSet
+  /// CHECK:        StaticFieldSet
   /// CHECK:        UnresolvedStaticFieldGet
   public static void staticFieldTest() {
     // Ensure Foo is initialized.
