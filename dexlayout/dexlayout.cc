@@ -1838,13 +1838,17 @@ void DexLayout::OutputDexFile(const DexFile* input_dex_file,
     }
   }
   DexWriter::Output(this, dex_container, compute_offsets);
-  DexContainer* const container = dex_container->get();
-  DexContainer::Section* const main_section = container->GetMainSection();
-  DexContainer::Section* const data_section = container->GetDataSection();
-  CHECK_EQ(data_section->Size(), 0u) << "Unsupported";
   if (new_file != nullptr) {
+    DexContainer* const container = dex_container->get();
+    DexContainer::Section* const main_section = container->GetMainSection();
     if (!new_file->WriteFully(main_section->Begin(), main_section->Size())) {
-      LOG(ERROR) << "Failed tow write dex file to " << dex_file_location;
+      LOG(ERROR) << "Failed to write main section for dex file " << dex_file_location;
+      new_file->Erase();
+      return;
+    }
+    DexContainer::Section* const data_section = container->GetDataSection();
+    if (!new_file->WriteFully(data_section->Begin(), data_section->Size())) {
+      LOG(ERROR) << "Failed to write data section for dex file " << dex_file_location;
       new_file->Erase();
       return;
     }
@@ -1919,17 +1923,22 @@ void DexLayout::ProcessDexFile(const char* file_name,
       // Dex file verifier cannot handle compact dex.
       bool verify = options_.compact_dex_level_ == CompactDexLevel::kCompactDexLevelNone;
       const ArtDexFileLoader dex_file_loader;
-      DexContainer::Section* section = (*dex_container)->GetMainSection();
-      DCHECK_EQ(file_size, section->Size());
+      DexContainer::Section* const main_section = (*dex_container)->GetMainSection();
+      DexContainer::Section* const data_section = (*dex_container)->GetDataSection();
+      DCHECK_EQ(file_size, main_section->Size())
+          << main_section->Size() << " " << data_section->Size();
       std::unique_ptr<const DexFile> output_dex_file(
-          dex_file_loader.Open(section->Begin(),
-                               file_size,
-                               location,
-                               /* checksum */ 0,
-                               /*oat_dex_file*/ nullptr,
-                               verify,
-                               /*verify_checksum*/ false,
-                               &error_msg));
+          dex_file_loader.OpenWithDataSection(
+              main_section->Begin(),
+              main_section->Size(),
+              data_section->Begin(),
+              data_section->Size(),
+              location,
+              /* checksum */ 0,
+              /*oat_dex_file*/ nullptr,
+              verify,
+              /*verify_checksum*/ false,
+              &error_msg));
       CHECK(output_dex_file != nullptr) << "Failed to re-open output file:" << error_msg;
 
       // Do IR-level comparison between input and output. This check ignores potential differences

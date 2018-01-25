@@ -70,8 +70,21 @@ static void DoDexUnquicken(const art::DexFile& new_dex_file, const art::DexFile&
 std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& original) {
   // Copy the data into mutable memory.
   std::vector<unsigned char> data;
-  data.resize(original.Size());
-  memcpy(data.data(), original.Begin(), original.Size());
+  if (original.IsCompactDexFile()) {
+    // Compact dex has a separate data section that is relative from the original dex.
+    // We need to copy the shared data section so that dequickening doesn't change anything.
+    data.resize(original.Size() + original.DataSize());
+    memcpy(data.data(), original.Begin(), original.Size());
+    memcpy(data.data() + original.Size(), original.DataBegin(), original.DataSize());
+    // Go patch up the header to point to the copied data section.
+    art::CompactDexFile::Header* const header =
+        const_cast<art::CompactDexFile::Header*>(art::CompactDexFile::Header::At(data.data()));
+    header->data_off_ = original.Size();
+    header->data_size_ = original.DataSize();
+  } else {
+    data.resize(original.Size());
+    memcpy(data.data(), original.Begin(), original.Size());
+  }
   std::string error;
   const art::ArtDexFileLoader dex_file_loader;
   std::unique_ptr<const art::DexFile> new_dex_file(dex_file_loader.Open(
@@ -105,6 +118,7 @@ std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& origi
                               0,
                               &dex_container);
     art::DexContainer::Section* main_section = dex_container->GetMainSection();
+    CHECK_EQ(dex_container->GetDataSection()->Size(), 0u);
     // Overwrite the dex file stored in data with the new result.
     data.clear();
     data.insert(data.end(), main_section->Begin(), main_section->End());

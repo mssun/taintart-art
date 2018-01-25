@@ -73,10 +73,7 @@ bool StandardDexFile::SupportsDefaultMethods() const {
 }
 
 uint32_t StandardDexFile::GetCodeItemSize(const DexFile::CodeItem& item) const {
-  DCHECK(HasAddress(&item));
-  // TODO: Clean up this temporary code duplication with StandardDexFile. Eventually the
-  // implementations will differ.
-  DCHECK(HasAddress(&item));
+  DCHECK(IsInDataSection(&item));
   return reinterpret_cast<uintptr_t>(CodeItemDataAccessor(*this, &item).CodeItemDataEnd()) -
       reinterpret_cast<uintptr_t>(&item);
 }

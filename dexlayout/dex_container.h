@@ -43,6 +43,9 @@ class DexContainer {
     // Resize the backing storage.
     virtual void Resize(size_t size) = 0;
 
+    // Clear the container.
+    virtual void Clear() = 0;
+
     // Returns the end of the memory region.
     uint8_t* End() {
       return Begin() + Size();
@@ -64,6 +67,10 @@ class DexContainer {
 
     void Resize(size_t size) OVERRIDE {
       data_.resize(size, 0u);
+    }
+
+    void Clear() OVERRIDE {
+      data_.clear();
     }
 
    private:

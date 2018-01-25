@@ -1653,7 +1653,12 @@ OatFile::OatDexFile::OatDexFile(const OatFile* oat_file,
     if (lookup_table_data_ + TypeLookupTable::RawDataLength(num_class_defs) > GetOatFile()->End()) {
       LOG(WARNING) << "found truncated lookup table in " << dex_file_location_;
     } else {
-      lookup_table_ = TypeLookupTable::Open(dex_file_pointer_, lookup_table_data_, num_class_defs);
+      const uint8_t* dex_data = dex_file_pointer_;
+      // TODO: Clean this up to create the type lookup table after the dex file has been created?
+      if (CompactDexFile::IsMagicValid(dex_header->magic_)) {
+        dex_data += dex_header->data_off_;
+      }
+      lookup_table_ = TypeLookupTable::Open(dex_data, lookup_table_data_, num_class_defs);
     }
   }
 }
@@ -1733,9 +1738,17 @@ const DexFile::ClassDef* OatFile::OatDexFile::FindClassDef(const DexFile& dex_fi
                                                            size_t hash) {
   const OatFile::OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
   DCHECK_EQ(ComputeModifiedUtf8Hash(descriptor), hash);
+  bool used_lookup_table = false;
+  const DexFile::ClassDef* lookup_table_classdef = nullptr;
   if (LIKELY((oat_dex_file != nullptr) && (oat_dex_file->GetTypeLookupTable() != nullptr))) {
+    used_lookup_table = true;
     const uint32_t class_def_idx = oat_dex_file->GetTypeLookupTable()->Lookup(descriptor, hash);
-    return (class_def_idx != dex::kDexNoIndex) ? &dex_file.GetClassDef(class_def_idx) : nullptr;
+    lookup_table_classdef = (class_def_idx != dex::kDexNoIndex)
+        ? &dex_file.GetClassDef(class_def_idx)
+        : nullptr;
+    if (!kIsDebugBuild) {
+      return lookup_table_classdef;
+    }
   }
   // Fast path for rare no class defs case.
   const uint32_t num_class_defs = dex_file.NumClassDefs();
@@ -1745,7 +1758,11 @@ const DexFile::ClassDef* OatFile::OatDexFile::FindClassDef(const DexFile& dex_fi
   const DexFile::TypeId* type_id = dex_file.FindTypeId(descriptor);
   if (type_id != nullptr) {
     dex::TypeIndex type_idx = dex_file.GetIndexForTypeId(*type_id);
-    return dex_file.FindClassDef(type_idx);
+    const DexFile::ClassDef* found_class_def = dex_file.FindClassDef(type_idx);
+    if (kIsDebugBuild && used_lookup_table) {
+      DCHECK_EQ(found_class_def, lookup_table_classdef);
+    }
+    return found_class_def;
   }
   return nullptr;
 }
