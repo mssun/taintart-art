@@ -337,7 +337,7 @@ public class Main {
   public static void testStoreStore(boolean doThrow) {
     Main m = new Main();
     m.intField = 42;
-    m.intField2 = 43;
+    m.intField = 43;
     if (doThrow) {
       throw new Error(m.$opt$noinline$toString());
     }
@@ -349,7 +349,6 @@ public class Main {
 
   volatile int volatileField;
   int intField;
-  int intField2;
   Object objectField;
   static boolean doThrow;
   static boolean doLoop;
