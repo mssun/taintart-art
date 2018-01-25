@@ -691,19 +691,17 @@ uint32_t DexWriter::WriteMethodHandles(Stream* stream) {
 
 uint32_t DexWriter::WriteMapItems(Stream* stream, MapItemQueue* queue) {
   // All the sections should already have been added.
-  uint16_t uint16_buffer[2];
-  uint32_t uint32_buffer[2];
-  uint16_buffer[1] = 0;
-  uint32_buffer[0] = queue->size();
+  const uint32_t map_list_size = queue->size();
   const uint32_t start = stream->Tell();
-  stream->Write(uint32_buffer, sizeof(uint32_t));
+  stream->Write(&map_list_size, sizeof(map_list_size));
   while (!queue->empty()) {
-    const MapItem& map_item = queue->top();
-    uint16_buffer[0] = map_item.type_;
-    uint32_buffer[0] = map_item.size_;
-    uint32_buffer[1] = map_item.offset_;
-    stream->Write(uint16_buffer, 2 * sizeof(uint16_t));
-    stream->Write(uint32_buffer, 2 * sizeof(uint32_t));
+    const MapItem& item = queue->top();
+    DexFile::MapItem map_item;
+    map_item.type_ = item.type_;
+    map_item.size_ = item.size_;
+    map_item.offset_ = item.offset_;
+    map_item.unused_ = 0u;
+    stream->Write(&map_item, sizeof(map_item));
     queue->pop();
   }
   return stream->Tell() - start;
