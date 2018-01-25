@@ -41,6 +41,28 @@ inline bool IsMemberHidden(uint32_t access_flags) {
   }
 }
 
+// Returns true if we should warn about non-boot class path accessing member
+// with `access_flags`.
+inline bool ShouldWarnAboutMember(uint32_t access_flags) {
+  if (!Runtime::Current()->AreHiddenApiChecksEnabled()) {
+    return false;
+  }
+
+  switch (HiddenApiAccessFlags::DecodeFromRuntime(access_flags)) {
+    case HiddenApiAccessFlags::kWhitelist:
+      return false;
+    case HiddenApiAccessFlags::kLightGreylist:
+    case HiddenApiAccessFlags::kDarkGreylist:
+      return true;
+    case HiddenApiAccessFlags::kBlacklist:
+      // We should never access a blacklisted member from non-boot class path,
+      // but this function is called before we establish the origin of the access.
+      // Return false here, we do not want to warn when boot class path accesses
+      // a blacklisted member.
+      return false;
+  }
+}
+
 // Returns true if caller `num_frames` up the stack is in boot class path.
 inline bool IsCallerInBootClassPath(Thread* self, size_t num_frames)
     REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -76,6 +98,70 @@ inline bool ShouldBlockAccessToMember(T* member, Thread* self, size_t num_frames
   DCHECK(member != nullptr);
   return IsMemberHidden(member->GetAccessFlags()) &&
          !IsCallerInBootClassPath(self, num_frames);  // This is expensive. Save it for last.
+}
+
+// Issue a warning about field access.
+inline void WarnAboutMemberAccess(ArtField* field) REQUIRES_SHARED(Locks::mutator_lock_) {
+  Runtime::Current()->SetPendingHiddenApiWarning(true);
+  LOG(WARNING) << "Access to hidden field " << field->PrettyField();
+}
+
+// Issue a warning about method access.
+inline void WarnAboutMemberAccess(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_) {
+  Runtime::Current()->SetPendingHiddenApiWarning(true);
+  LOG(WARNING) << "Access to hidden method " << method->PrettyMethod();
+}
+
+// Set access flags of `member` to be in hidden API whitelist. This can be disabled
+// with a Runtime::SetDedupHiddenApiWarnings.
+template<typename T>
+inline void MaybeWhitelistMember(T* member) REQUIRES_SHARED(Locks::mutator_lock_) {
+  if (Runtime::Current()->ShouldDedupeHiddenApiWarnings()) {
+    member->SetAccessFlags(HiddenApiAccessFlags::EncodeForRuntime(
+        member->GetAccessFlags(), HiddenApiAccessFlags::kWhitelist));
+    DCHECK(!ShouldWarnAboutMember(member->GetAccessFlags()));
+  }
+}
+
+// Check if `caller` should be allowed to access `member` and warn if not.
+template<typename T>
+inline void MaybeWarnAboutMemberAccess(T* member, ArtMethod* caller)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  DCHECK(member != nullptr);
+  DCHECK(!caller->IsRuntimeMethod());
+  if (!Runtime::Current()->AreHiddenApiChecksEnabled() ||
+      member == nullptr ||
+      !ShouldWarnAboutMember(member->GetAccessFlags()) ||
+      caller->GetDeclaringClass()->IsBootStrapClassLoaded()) {
+    return;
+  }
+
+  WarnAboutMember(member);
+  MaybeWhitelistMember(member);
+}
+
+// Check if the caller `num_frames` up the stack should be allowed to access
+// `member` and warn if not.
+template<typename T>
+inline void MaybeWarnAboutMemberAccess(T* member, Thread* self, size_t num_frames)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  if (!Runtime::Current()->AreHiddenApiChecksEnabled() ||
+      member == nullptr ||
+      !ShouldWarnAboutMember(member->GetAccessFlags())) {
+    return;
+  }
+
+  // Walk the stack to find the caller. This is *very* expensive. Save it for last.
+  ObjPtr<mirror::Class> klass = GetCallingClass(self, num_frames);
+  if (klass == nullptr) {
+    // Unattached native thread, assume that this is *not* boot class path
+    // and enforce the rules.
+  } else if (klass->IsBootStrapClassLoaded()) {
+    return;
+  }
+
+  WarnAboutMemberAccess(member);
+  MaybeWhitelistMember(member);
 }
 
 }  // namespace hiddenapi

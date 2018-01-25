@@ -831,6 +831,7 @@ static jobject Class_newInstance(JNIEnv* env, jobject javaThis) {
       return nullptr;
     }
   }
+  hiddenapi::MaybeWarnAboutMemberAccess(constructor, soa.Self(), /* num_frames */ 1);
   // Invoke the constructor.
   JValue result;
   uint32_t args[1] = { static_cast<uint32_t>(reinterpret_cast<uintptr_t>(receiver.Get())) };
