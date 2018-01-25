@@ -382,7 +382,8 @@ class OptimizingCompiler FINAL : public Compiler {
                             PassObserver* pass_observer,
                             VariableSizedHandleScope* handles) const;
 
-  void GenerateJitDebugInfo(debug::MethodDebugInfo method_debug_info);
+  void GenerateJitDebugInfo(ArtMethod* method, debug::MethodDebugInfo method_debug_info)
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
   std::unique_ptr<OptimizingCompilerStats> compilation_stats_;
 
@@ -1248,7 +1249,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
       info.frame_size_in_bytes = method_header->GetFrameSizeInBytes();
       info.code_info = nullptr;
       info.cfi = jni_compiled_method.GetCfi();
-      GenerateJitDebugInfo(info);
+      GenerateJitDebugInfo(method, info);
     }
 
     Runtime::Current()->GetJit()->AddMemoryUsage(method, allocator.BytesUsed());
@@ -1372,7 +1373,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     info.frame_size_in_bytes = method_header->GetFrameSizeInBytes();
     info.code_info = stack_map_size == 0 ? nullptr : stack_map_data;
     info.cfi = ArrayRef<const uint8_t>(*codegen->GetAssembler()->cfi().data());
-    GenerateJitDebugInfo(info);
+    GenerateJitDebugInfo(method, info);
   }
 
   Runtime::Current()->GetJit()->AddMemoryUsage(method, allocator.BytesUsed());
@@ -1396,7 +1397,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
   return true;
 }
 
-void OptimizingCompiler::GenerateJitDebugInfo(debug::MethodDebugInfo info) {
+void OptimizingCompiler::GenerateJitDebugInfo(ArtMethod* method, debug::MethodDebugInfo info) {
   const CompilerOptions& compiler_options = GetCompilerDriver()->GetCompilerOptions();
   DCHECK(compiler_options.GenerateAnyDebugInfo());
 
@@ -1412,6 +1413,11 @@ void OptimizingCompiler::GenerateJitDebugInfo(debug::MethodDebugInfo info) {
   MutexLock mu(Thread::Current(), g_jit_debug_mutex);
   JITCodeEntry* entry = CreateJITCodeEntry(elf_file);
   IncrementJITCodeEntryRefcount(entry, info.code_address);
+
+  VLOG(jit)
+      << "JIT mini-debug-info added for " << ArtMethod::PrettyMethod(method)
+      << " size=" << PrettySize(elf_file.size())
+      << " total_size=" << PrettySize(GetJITCodeEntryMemUsage());
 }
 
 }  // namespace art

@@ -1823,8 +1823,10 @@ void JitCodeCache::FreeData(uint8_t* data) {
 
 void JitCodeCache::Dump(std::ostream& os) {
   MutexLock mu(Thread::Current(), lock_);
+  MutexLock mu2(Thread::Current(), g_jit_debug_mutex);
   os << "Current JIT code cache size: " << PrettySize(used_memory_for_code_) << "\n"
      << "Current JIT data cache size: " << PrettySize(used_memory_for_data_) << "\n"
+     << "Current JIT mini-debug-info size: " << PrettySize(GetJITCodeEntryMemUsage()) << "\n"
      << "Current JIT capacity: " << PrettySize(current_capacity_) << "\n"
      << "Current number of JIT JNI stub entries: " << jni_stubs_map_.size() << "\n"
      << "Current number of JIT code cache entries: " << method_code_map_.size() << "\n"
