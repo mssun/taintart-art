@@ -24,6 +24,7 @@
 #include "android-base/unique_fd.h"
 
 #include "base/mutex.h"
+#include "base/array_ref.h"
 #include "runtime_callbacks.h"
 
 #include <sys/socket.h>
@@ -55,6 +56,8 @@ struct AdbConnectionDebuggerController : public art::DebuggerControlCallback {
  private:
   AdbConnectionState* connection_;
 };
+
+enum class DdmPacketType : uint8_t { kReply = 0x80, kCmd = 0x00, };
 
 struct AdbConnectionDdmCallback : public art::DdmCallback {
   explicit AdbConnectionDdmCallback(AdbConnectionState* connection) : connection_(connection) {}
@@ -94,9 +97,22 @@ class AdbConnectionState {
 
   android::base::unique_fd ReadFdFromAdb();
 
-  void SendAgentFds();
+  void SendAgentFds(bool require_handshake);
 
   void CloseFds();
+
+  void HandleDataWithoutAgent(art::Thread* self);
+
+  void PerformHandshake();
+
+  void AttachJdwpAgent(art::Thread* self);
+
+  void NotifyDdms(bool active);
+
+  void SendDdmPacket(uint32_t id,
+                     DdmPacketType type,
+                     uint32_t ddm_type,
+                     art::ArrayRef<const uint8_t> data);
 
   std::string agent_name_;
 
@@ -138,6 +154,10 @@ class AdbConnectionState {
   std::atomic<bool> agent_has_socket_;
 
   std::atomic<bool> sent_agent_fds_;
+
+  bool performed_handshake_;
+
+  bool notified_ddm_active_;
 
   std::atomic<uint32_t> next_ddm_id_;
 

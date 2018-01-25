@@ -105,7 +105,9 @@ class FdForwardTransport : public jdwpTransportEnv {
 
   bool ChangeState(TransportState old_state, TransportState new_state);  // REQUIRES(state_mutex_);
 
-  IOResult ReceiveFdsFromSocket();
+  // Gets the fds from the server side. do_handshake returns whether the transport can skip the
+  // jdwp handshake.
+  IOResult ReceiveFdsFromSocket(/*out*/bool* do_handshake);
 
   IOResult WriteFully(const void* data, size_t ndata);  // REQUIRES(!state_mutex_);
   IOResult WriteFullyWithoutChecks(const void* data, size_t ndata);  // REQUIRES(state_mutex_);

@@ -276,17 +276,16 @@ static void SendAcceptMessage(int fd) {
   TEMP_FAILURE_RETRY(send(fd, kAcceptMessage, sizeof(kAcceptMessage), MSG_EOR));
 }
 
-IOResult FdForwardTransport::ReceiveFdsFromSocket() {
+IOResult FdForwardTransport::ReceiveFdsFromSocket(bool* do_handshake) {
   union {
     cmsghdr cm;
     uint8_t buffer[CMSG_SPACE(sizeof(FdSet))];
   } msg_union;
-  // We don't actually care about the data. Only FDs. We need to have an iovec anyway to tell if we
-  // got the values or not though.
-  char dummy = '\0';
+  // This lets us know if we need to do a handshake or not.
+  char message[128];
   iovec iov;
-  iov.iov_base = &dummy;
-  iov.iov_len  = sizeof(dummy);
+  iov.iov_base = message;
+  iov.iov_len  = sizeof(message);
 
   msghdr msg;
   memset(&msg, 0, sizeof(msg));
@@ -307,8 +306,22 @@ IOResult FdForwardTransport::ReceiveFdsFromSocket() {
     return IOResult::kError;
   }
   FdSet out_fds = FdSet::ReadData(CMSG_DATA(cmsg));
-  if (out_fds.read_fd_ < 0 || out_fds.write_fd_ < 0 || out_fds.write_lock_fd_ < 0) {
+  bool failed = false;
+  if (out_fds.read_fd_ < 0 ||
+      out_fds.write_fd_ < 0 ||
+      out_fds.write_lock_fd_ < 0) {
     DT_IO_ERROR("Received fds were invalid!");
+    failed = true;
+  } else if (strcmp(kPerformHandshakeMessage, message) == 0) {
+    *do_handshake = true;
+  } else if (strcmp(kSkipHandshakeMessage, message) == 0) {
+    *do_handshake = false;
+  } else {
+    DT_IO_ERROR("Unknown message sent with fds.");
+    failed = true;
+  }
+
+  if (failed) {
     if (out_fds.read_fd_ >= 0) {
       close(out_fds.read_fd_);
     }
@@ -346,8 +359,9 @@ jdwpTransportError FdForwardTransport::Accept() {
       state_cv_.wait(lk);
     }
 
+    bool do_handshake = false;
     DCHECK_NE(listen_fd_.get(), -1);
-    if (ReceiveFdsFromSocket() != IOResult::kOk) {
+    if (ReceiveFdsFromSocket(&do_handshake) != IOResult::kOk) {
       CHECK(ChangeState(TransportState::kOpening, TransportState::kListening));
       return ERR(IO_ERROR);
     }
@@ -355,24 +369,27 @@ jdwpTransportError FdForwardTransport::Accept() {
     current_seq_num_++;
 
     // Moved to the opening state.
-    char handshake_recv[sizeof(kJdwpHandshake)];
-    memset(handshake_recv, 0, sizeof(handshake_recv));
-    IOResult res = ReadFullyWithoutChecks(handshake_recv, sizeof(handshake_recv));
-    if (res != IOResult::kOk ||
-        strncmp(handshake_recv, kJdwpHandshake, sizeof(kJdwpHandshake)) != 0) {
-      DT_IO_ERROR("Failed to read handshake");
-      CHECK(ChangeState(TransportState::kOpening, TransportState::kListening));
-      CloseFdsLocked();
-      // Retry.
-      continue;
-    }
-    res = WriteFullyWithoutChecks(kJdwpHandshake, sizeof(kJdwpHandshake));
-    if (res != IOResult::kOk) {
-      DT_IO_ERROR("Failed to write handshake");
-      CHECK(ChangeState(TransportState::kOpening, TransportState::kListening));
-      CloseFdsLocked();
-      // Retry.
-      continue;
+    if (do_handshake) {
+      // Perform the handshake
+      char handshake_recv[sizeof(kJdwpHandshake)];
+      memset(handshake_recv, 0, sizeof(handshake_recv));
+      IOResult res = ReadFullyWithoutChecks(handshake_recv, sizeof(handshake_recv));
+      if (res != IOResult::kOk ||
+          strncmp(handshake_recv, kJdwpHandshake, sizeof(kJdwpHandshake)) != 0) {
+        DT_IO_ERROR("Failed to read handshake");
+        CHECK(ChangeState(TransportState::kOpening, TransportState::kListening));
+        CloseFdsLocked();
+        // Retry.
+        continue;
+      }
+      res = WriteFullyWithoutChecks(kJdwpHandshake, sizeof(kJdwpHandshake));
+      if (res != IOResult::kOk) {
+        DT_IO_ERROR("Failed to write handshake");
+        CHECK(ChangeState(TransportState::kOpening, TransportState::kListening));
+        CloseFdsLocked();
+        // Retry.
+        continue;
+      }
     }
     break;
   }
