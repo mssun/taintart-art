@@ -438,8 +438,6 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
       case TypeCheckKind::kArrayCheck:
       case TypeCheckKind::kUnresolvedCheck:
         return false;
-      case TypeCheckKind::kBitstringCheck:
-        return true;
     }
     LOG(FATAL) << "Unreachable";
     UNREACHABLE();
