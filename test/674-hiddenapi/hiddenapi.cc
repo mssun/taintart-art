@@ -27,6 +27,7 @@ namespace Test674HiddenApi {
 
 extern "C" JNIEXPORT void JNICALL Java_Main_init(JNIEnv*, jclass) {
   Runtime::Current()->SetHiddenApiChecksEnabled(true);
+  Runtime::Current()->SetDedupeHiddenApiWarnings(false);
 }
 
 extern "C" JNIEXPORT void JNICALL Java_Main_appendToBootClassLoader(
@@ -284,11 +285,11 @@ extern "C" JNIEXPORT jint JNICALL Java_Reflection_getHiddenApiAccessFlags(JNIEnv
 }
 
 extern "C" JNIEXPORT jboolean JNICALL Java_ChildClass_hasPendingWarning(JNIEnv*, jclass) {
-  return false;
+  return Runtime::Current()->HasPendingHiddenApiWarning();
 }
 
 extern "C" JNIEXPORT void JNICALL Java_ChildClass_clearWarning(JNIEnv*, jclass) {
-  return;
+  Runtime::Current()->SetPendingHiddenApiWarning(false);
 }
 
 }  // namespace Test674HiddenApi
