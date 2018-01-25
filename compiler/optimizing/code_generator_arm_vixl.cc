@@ -2490,12 +2490,8 @@ void CodeGeneratorARMVIXL::GenerateFrameEntry() {
   }
 
   if (!skip_overflow_check) {
-    // Using r4 instead of IP saves 2 bytes. Start by asserting that r4 is available here.
-    for (vixl32::Register reg : kParameterCoreRegistersVIXL) {
-      DCHECK(!reg.Is(r4));
-    }
-    DCHECK(!kCoreCalleeSaves.Includes(r4));
-    vixl32::Register temp = r4;
+    UseScratchRegisterScope temps(GetVIXLAssembler());
+    vixl32::Register temp = temps.Acquire();
     __ Sub(temp, sp, Operand::From(GetStackOverflowReservedBytes(InstructionSet::kArm)));
     // The load must immediately precede RecordPcInfo.
     ExactAssemblyScope aas(GetVIXLAssembler(),
