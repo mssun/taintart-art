@@ -31,6 +31,7 @@ cc_defaults {
     },
 
     shared_libs: [
+        "libdexfile",
         "libbase",
     ],
 }

@@ -39,6 +39,7 @@
 #include "class_linker.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_types.h"
+#include "dex/utf.h"
 #include "events-inl.h"
 #include "gc_root-inl.h"
 #include "globals.h"
@@ -58,7 +59,6 @@
 #include "thread_list.h"
 #include "ti_redefine.h"
 #include "transform.h"
-#include "utf.h"
 #include "utils/dex_cache_arrays_layout-inl.h"
 
 namespace openjdkjvmti {
