@@ -107,7 +107,6 @@ collector::ObjectBytePair ContinuousMemMapAllocSpace::Sweep(bool swap_bitmaps) {
   return scc.freed;
 }
 
-// Returns the old mark bitmap.
 void ContinuousMemMapAllocSpace::BindLiveToMarkBitmap() {
   CHECK(!HasBoundBitmaps());
   accounting::ContinuousSpaceBitmap* live_bitmap = GetLiveBitmap();
