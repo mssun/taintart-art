@@ -1699,7 +1699,9 @@ bool JitCodeCache::NotifyCompilationOf(ArtMethod* method, Thread* self, bool osr
       // can avoid a few expensive GenericJNI calls.
       instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
       for (ArtMethod* m : data->GetMethods()) {
-        instrumentation->UpdateMethodsCode(m, entrypoint);
+        // Call the dedicated method instead of the more generic UpdateMethodsCode, because
+        // `m` might be in the process of being deleted.
+        instrumentation->UpdateNativeMethodsCodeToJitCode(m, entrypoint);
       }
       if (collection_in_progress_) {
         GetLiveBitmap()->AtomicTestAndSet(FromCodeToAllocation(data->GetCode()));

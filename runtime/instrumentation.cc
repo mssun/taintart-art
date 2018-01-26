@@ -776,6 +776,17 @@ void Instrumentation::UpdateMethodsCodeImpl(ArtMethod* method, const void* quick
   UpdateEntrypoints(method, new_quick_code);
 }
 
+void Instrumentation::UpdateNativeMethodsCodeToJitCode(ArtMethod* method, const void* quick_code) {
+  // We don't do any read barrier on `method`'s declaring class in this code, as the JIT might
+  // enter here on a soon-to-be deleted ArtMethod. Updating the entrypoint is OK though, as
+  // the ArtMethod is still in memory.
+  const void* new_quick_code = quick_code;
+  if (UNLIKELY(instrumentation_stubs_installed_) && entry_exit_stubs_installed_) {
+    new_quick_code = GetQuickInstrumentationEntryPoint();
+  }
+  UpdateEntrypoints(method, new_quick_code);
+}
+
 void Instrumentation::UpdateMethodsCode(ArtMethod* method, const void* quick_code) {
   DCHECK(method->GetDeclaringClass()->IsResolved());
   UpdateMethodsCodeImpl(method, quick_code);
