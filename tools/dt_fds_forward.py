@@ -34,10 +34,11 @@ import subprocess
 import sys
 import time
 
-LISTEN_START_MESSAGE = b"dt_fd_forward:START-LISTEN\x00"
-LISTEN_END_MESSAGE   = b"dt_fd_forward:END-LISTEN\x00"
-ACCEPTED_MESSAGE     = b"dt_fd_forward:ACCEPTED\x00"
-CLOSE_MESSAGE        = b"dt_fd_forward:CLOSING\x00"
+NEED_HANDSHAKE_MESSAGE = b"HANDSHAKE:REQD\x00"
+LISTEN_START_MESSAGE   = b"dt_fd_forward:START-LISTEN\x00"
+LISTEN_END_MESSAGE     = b"dt_fd_forward:END-LISTEN\x00"
+ACCEPTED_MESSAGE       = b"dt_fd_forward:ACCEPTED\x00"
+CLOSE_MESSAGE          = b"dt_fd_forward:CLOSING\x00"
 
 libc = ctypes.cdll.LoadLibrary("libc.so.6")
 def eventfd(init_val, flags):
@@ -70,7 +71,7 @@ def send_fds(sock, remote_read, remote_write, remote_event):
   """
   Send the three fds over the given socket.
   """
-  sock.sendmsg([b"!"],  # We don't actually care what we send here.
+  sock.sendmsg([NEED_HANDSHAKE_MESSAGE],  # We want the transport to handle the handshake.
                [(socket.SOL_SOCKET,  # Send over socket.
                  socket.SCM_RIGHTS,  # Payload is file-descriptor array
                  array.array('i', [remote_read, remote_write, remote_event]))])

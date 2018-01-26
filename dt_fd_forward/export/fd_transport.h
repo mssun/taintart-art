@@ -47,6 +47,12 @@ struct FdSet {
   }
 };
 
+// Sent with the file descriptors if the transport should not skip waiting for the handshake.
+static constexpr char kPerformHandshakeMessage[] = "HANDSHAKE:REQD";
+
+// Sent with the file descriptors if the transport can skip waiting for the handshake.
+static constexpr char kSkipHandshakeMessage[] = "HANDSHAKE:SKIP";
+
 // This message is sent over the fd associated with the transport when we are listening for fds.
 static constexpr char kListenStartMessage[] = "dt_fd_forward:START-LISTEN";
 
