@@ -33,8 +33,6 @@ art_cc_defaults {
     },
     generated_sources: ["art_dex2oat_operator_srcs"],
     shared_libs: [
-        "libart-compiler",
-        "libart-dexlayout",
         "libbase",
         "liblz4",
         "liblzma",
@@ -69,6 +67,7 @@ art_cc_static_library {
     defaults: ["libart-dex2oat-defaults"],
     shared_libs: [
         "libart-compiler",
+        "libart-dexlayout",
         "libart",
     ],
 }
@@ -81,6 +80,7 @@ art_cc_static_library {
     ],
     shared_libs: [
         "libartd-compiler",
+        "libartd-dexlayout",
         "libartd",
     ],
 }
