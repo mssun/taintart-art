@@ -827,12 +827,41 @@ void AdbConnectionState::AttachJdwpAgent(art::Thread* self) {
   agent_loaded_ = true;
 }
 
+bool ContainsArgument(const std::string& opts, const char* arg) {
+  return opts.find(arg) != std::string::npos;
+}
+
+bool ValidateJdwpOptions(const std::string& opts) {
+  bool res = true;
+  // The adbconnection plugin requires that the jdwp agent be configured as a 'server' because that
+  // is what adb expects and otherwise we will hit a deadlock as the poll loop thread stops waiting
+  // for the fd's to be passed down.
+  if (ContainsArgument(opts, "server=n")) {
+    res = false;
+    LOG(ERROR) << "Cannot start jdwp debugging with server=n from adbconnection.";
+  }
+  // We don't start the jdwp agent until threads are already running. It is far too late to suspend
+  // everything.
+  if (ContainsArgument(opts, "suspend=y")) {
+    res = false;
+    LOG(ERROR) << "Cannot use suspend=y with late-init jdwp.";
+  }
+  return res;
+}
+
 std::string AdbConnectionState::MakeAgentArg() {
-  // TODO Get this from something user settable?
   const std::string& opts = art::Runtime::Current()->GetJdwpOptions();
-  return agent_name_ + "=" + opts + (opts.empty() ? "" : ",")
-      + "ddm_already_active=" + (notified_ddm_active_ ? "y" : "n") + ","
-      + "transport=dt_fd_forward,address=" + std::to_string(remote_agent_control_sock_);
+  DCHECK(ValidateJdwpOptions(opts));
+  // TODO Get agent_name_ from something user settable?
+  return agent_name_ + "=" + opts + (opts.empty() ? "" : ",") +
+      "ddm_already_active=" + (notified_ddm_active_ ? "y" : "n") + "," +
+      // See the comment above for why we need to be server=y. Since the agent defaults to server=n
+      // we will add it if it wasn't already present for the convenience of the user.
+      (ContainsArgument(opts, "server=y") ? "" : "server=y,") +
+      // See the comment above for why we need to be suspend=n. Since the agent defaults to
+      // suspend=y we will add it if it wasn't already present.
+      (ContainsArgument(opts, "suspend=n") ? "" : "suspend=n") +
+      "transport=dt_fd_forward,address=" + std::to_string(remote_agent_control_sock_);
 }
 
 void AdbConnectionState::StopDebuggerThreads() {
@@ -849,7 +878,7 @@ extern "C" bool ArtPlugin_Initialize() REQUIRES_SHARED(art::Locks::mutator_lock_
   // TODO Provide some way for apps to set this maybe?
   gState = new AdbConnectionState(kDefaultJdwpAgentName);
   CHECK(gState != nullptr);
-  return true;
+  return ValidateJdwpOptions(art::Runtime::Current()->GetJdwpOptions());
 }
 
 extern "C" bool ArtPlugin_Deinitialize() {
