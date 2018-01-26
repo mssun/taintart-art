@@ -185,7 +185,7 @@ def setup_test_env():
     _user_input_variants['prebuild'].add('prebuild')
 
   if not _user_input_variants['cdex_level']: # Default
-    _user_input_variants['cdex_level'].add('cdex-none')
+    _user_input_variants['cdex_level'].add('cdex-fast')
 
   # By default only run without jvmti
   if not _user_input_variants['jvmti']:
