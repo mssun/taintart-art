@@ -138,9 +138,6 @@ class DexFile {
     uint16_t unused_;
     uint32_t size_;
     uint32_t offset_;
-
-   private:
-    DISALLOW_COPY_AND_ASSIGN(MapItem);
   };
 
   struct MapList {

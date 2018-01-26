@@ -319,6 +319,7 @@ void CompactDexWriter::WriteStringData(Stream* stream, dex_ir::StringData* strin
 }
 
 void CompactDexWriter::Write(DexContainer* output)  {
+  CHECK(compute_offsets_);
   CHECK(output->IsCompactDexContainer());
   Container* const container = down_cast<Container*>(output);
   // For now, use the same stream for both data and metadata.
