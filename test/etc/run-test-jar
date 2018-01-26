@@ -64,6 +64,7 @@ ARGS=""
 EXTERNAL_LOG_TAGS="n" # if y respect externally set ANDROID_LOG_TAGS.
 DRY_RUN="n" # if y prepare to run the test but don't run it.
 TEST_VDEX="n"
+TEST_DM="n"
 TEST_IS_NDEBUG="n"
 APP_IMAGE="y"
 JVMTI_STRESS="n"
@@ -345,6 +346,9 @@ while true; do
         shift
     elif [ "x$1" = "x--vdex" ]; then
         TEST_VDEX="y"
+        shift
+    elif [ "x$1" = "x--dm" ]; then
+        TEST_DM="y"
         shift
     elif [ "x$1" = "x--vdex-filter" ]; then
         shift
@@ -672,6 +676,7 @@ fi
 profman_cmdline="true"
 dex2oat_cmdline="true"
 vdex_cmdline="true"
+dm_cmdline="true"
 mkdir_locations="${mkdir_locations} ${DEX_LOCATION}/dalvik-cache/$ISA"
 strip_cmdline="true"
 sync_cmdline="true"
@@ -735,6 +740,10 @@ if [ "$PREBUILD" = "y" ]; then
     vdex_cmdline="${dex2oat_cmdline} ${VDEX_FILTER} --input-vdex=$DEX_LOCATION/oat/$ISA/$TEST_NAME.vdex --output-vdex=$DEX_LOCATION/oat/$ISA/$TEST_NAME.vdex"
   elif [ "$TEST_VDEX" = "y" ]; then
     vdex_cmdline="${dex2oat_cmdline} ${VDEX_FILTER} --input-vdex=$DEX_LOCATION/oat/$ISA/$TEST_NAME.vdex"
+  elif [ "$TEST_DM" = "y" ]; then
+    dex2oat_cmdline="${dex2oat_cmdline} --output-vdex=$DEX_LOCATION/oat/$ISA/primary.vdex"
+    dm_cmdline="zip -qj $DEX_LOCATION/oat/$ISA/$TEST_NAME.dm $DEX_LOCATION/oat/$ISA/primary.vdex"
+    vdex_cmdline="${dex2oat_cmdline} --dump-timings --dm-file=$DEX_LOCATION/oat/$ISA/$TEST_NAME.dm"
   elif [ "$PROFILE" = "y" ] || [ "$RANDOM_PROFILE" = "y" ]; then
     vdex_cmdline="${dex2oat_cmdline} --input-vdex=$DEX_LOCATION/oat/$ISA/$TEST_NAME.vdex --output-vdex=$DEX_LOCATION/oat/$ISA/$TEST_NAME.vdex"
   fi
@@ -782,6 +791,7 @@ dalvikvm_cmdline="$INVOKE_WITH $GDB $ANDROID_ROOT/bin/$DALVIKVM \
 # Remove whitespace.
 dex2oat_cmdline=$(echo $dex2oat_cmdline)
 dalvikvm_cmdline=$(echo $dalvikvm_cmdline)
+dm_cmdline=$(echo $dm_cmdline)
 vdex_cmdline=$(echo $vdex_cmdline)
 profman_cmdline=$(echo $profman_cmdline)
 
@@ -851,6 +861,7 @@ if [ "$HOST" = "n" ]; then
              export PATH=$ANDROID_ROOT/bin:$PATH && \
              $profman_cmdline && \
              $dex2oat_cmdline && \
+             $dm_cmdline && \
              $vdex_cmdline && \
              $strip_cmdline && \
              $sync_cmdline && \
@@ -927,7 +938,7 @@ else
     fi
 
     if [ "$DEV_MODE" = "y" ]; then
-      echo "mkdir -p ${mkdir_locations} && $profman_cmdline && $dex2oat_cmdline && $vdex_cmdline && $strip_cmdline && $sync_cmdline && $cmdline"
+      echo "mkdir -p ${mkdir_locations} && $profman_cmdline && $dex2oat_cmdline && $dm_cmdline && $vdex_cmdline && $strip_cmdline && $sync_cmdline && $cmdline"
     fi
 
     cd $ANDROID_BUILD_TOP
@@ -943,6 +954,7 @@ else
     mkdir -p ${mkdir_locations} || exit 1
     $profman_cmdline || { echo "Profman failed." >&2 ; exit 2; }
     $dex2oat_cmdline || { echo "Dex2oat failed." >&2 ; exit 2; }
+    $dm_cmdline || { echo "Dex2oat failed." >&2 ; exit 2; }
     $vdex_cmdline || { echo "Dex2oat failed." >&2 ; exit 2; }
     $strip_cmdline || { echo "Strip failed." >&2 ; exit 3; }
     $sync_cmdline || { echo "Sync failed." >&2 ; exit 4; }

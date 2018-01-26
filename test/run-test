@@ -421,6 +421,9 @@ while true; do
     elif [ "x$1" = "x--vdex" ]; then
         run_args="${run_args} --vdex"
         shift
+    elif [ "x$1" = "x--dm" ]; then
+        run_args="${run_args} --dm"
+        shift
     elif [ "x$1" = "x--vdex-filter" ]; then
         shift
         filter=$1
