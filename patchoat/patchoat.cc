@@ -276,14 +276,14 @@ static bool CheckImageIdenticalToOriginalExceptForRelocation(
   if ((image_size % 4) != 0) {
     *error_msg =
         StringPrintf(
-            "Relocated image file %s size not multiple of 4: %jd",
+            "Relocated image file %s size not multiple of 4: %" PRId64,
                 relocated_filename.c_str(), image_size);
     return false;
   }
-  if (image_size > UINT32_MAX) {
+  if (image_size > std::numeric_limits<uint32_t>::max()) {
     *error_msg =
         StringPrintf(
-            "Relocated image file %s too large: %jd" , relocated_filename.c_str(), image_size);
+            "Relocated image file %s too large: %" PRId64, relocated_filename.c_str(), image_size);
     return false;
   }
 
