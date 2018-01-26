@@ -55,6 +55,10 @@ static inline uint32_t DecodeUnsignedLeb128(const uint8_t** data) {
   return static_cast<uint32_t>(result);
 }
 
+static inline uint32_t DecodeUnsignedLeb128WithoutMovingCursor(const uint8_t* data) {
+  return DecodeUnsignedLeb128(&data);
+}
+
 static inline bool DecodeUnsignedLeb128Checked(const uint8_t** data,
                                                const void* end,
                                                uint32_t* out) {
@@ -201,6 +205,34 @@ static inline uint32_t UnsignedLeb128Size(uint32_t data) {
   // Division by 7 is done by (x * 37) >> 8 where 37 = ceil(256 / 7).
   // This works for 0 <= x < 256 / (7 * 37 - 256), i.e. 0 <= x <= 85.
   return (x * 37) >> 8;
+}
+
+static inline bool IsLeb128Terminator(const uint8_t* ptr) {
+  return *ptr <= 0x7f;
+}
+
+// Returns the first byte of a Leb128 value assuming that:
+// (1) `end_ptr` points to the first byte after the Leb128 value, and
+// (2) there is another Leb128 value before this one.
+template <typename T>
+static inline T* ReverseSearchUnsignedLeb128(T* end_ptr) {
+  static_assert(std::is_same<typename std::remove_const<T>::type, uint8_t>::value,
+                "T must be a uint8_t");
+  T* ptr = end_ptr;
+
+  // Move one byte back, check that this is the terminating byte.
+  ptr--;
+  DCHECK(IsLeb128Terminator(ptr));
+
+  // Keep moving back while the previous byte is not a terminating byte.
+  // Fail after reading five bytes in case there isn't another Leb128 value
+  // before this one.
+  while (!IsLeb128Terminator(ptr - 1)) {
+    ptr--;
+    DCHECK_LE(static_cast<ptrdiff_t>(end_ptr - ptr), 5);
+  }
+
+  return ptr;
 }
 
 // Returns the number of bytes needed to encode the value in unsigned LEB128.
