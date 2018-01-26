@@ -53,6 +53,10 @@ class PatchOat {
                     const std::string& output_image_relocation_directory,
                     InstructionSet isa,
                     TimingLogger* timings);
+  static bool Verify(const std::string& image_location,
+                     const std::string& output_image_filename,
+                     InstructionSet isa,
+                     TimingLogger* timings);
 
   // Generates a patch which can be used to efficiently relocate the original file or to check that
   // a relocated file matches the original. The patch is generated from the difference of the
