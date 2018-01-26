@@ -60,11 +60,14 @@ class CompactDexWriter : public DexWriter {
             return false;
           }
           const uint8_t* data = Data();
+          DCHECK_LE(a.offset_ + a.length_, section_->Size());
+          DCHECK_LE(b.offset_ + b.length_, section_->Size());
           return std::equal(data + a.offset_, data + a.offset_ + a.length_, data + b.offset_);
         }
 
         // Hash function.
         size_t operator()(const HashedMemoryRange& range) const {
+          DCHECK_LE(range.offset_ + range.length_, section_->Size());
           return HashBytes(Data() + range.offset_, range.length_);
         }
 
