@@ -229,6 +229,8 @@ static uint32_t EnableDebugFeatures(uint32_t runtime_flags) {
   bool needs_non_debuggable_classes = false;
   if ((runtime_flags & DEBUG_JAVA_DEBUGGABLE) != 0) {
     runtime->AddCompilerOption("--debuggable");
+    // Generate native debug information to allow backtracing through JITed code.
+    runtime->AddCompilerOption("--generate-mini-debug-info");
     runtime->SetJavaDebuggable(true);
     // Deoptimize the boot image as it may be non-debuggable.
     runtime->DeoptimizeBootImage();
@@ -241,6 +243,7 @@ static uint32_t EnableDebugFeatures(uint32_t runtime_flags) {
 
   if ((runtime_flags & DEBUG_NATIVE_DEBUGGABLE) != 0) {
     runtime->AddCompilerOption("--debuggable");
+    // Generate all native debug information we can (e.g. line-numbers).
     runtime->AddCompilerOption("--generate-debug-info");
     runtime->SetNativeDebuggable(true);
     runtime_flags &= ~DEBUG_NATIVE_DEBUGGABLE;
