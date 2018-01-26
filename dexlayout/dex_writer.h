@@ -85,6 +85,7 @@ class DexWriter {
 
     void Seek(size_t position) {
       position_ = position;
+      EnsureStorage(0u);
     }
 
     // Does not allow overwriting for bug prevention purposes.
@@ -129,10 +130,12 @@ class DexWriter {
 
     ALWAYS_INLINE void AlignTo(const size_t alignment) {
       position_ = RoundUp(position_, alignment);
+      EnsureStorage(0u);
     }
 
     ALWAYS_INLINE void Skip(const size_t count) {
       position_ += count;
+      EnsureStorage(0u);
     }
 
     class ScopedSeek {
