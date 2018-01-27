@@ -1052,7 +1052,7 @@ void DexLayout::DumpBytecodes(uint32_t idx, const dex_ir::CodeItem* code, uint32
   for (const DexInstructionPcPair& inst : code->Instructions()) {
     const uint32_t insn_width = inst->SizeInCodeUnits();
     if (insn_width == 0) {
-      fprintf(stderr, "GLITCH: zero-width instruction at idx=0x%04x\n", inst.DexPc());
+      LOG(WARNING) << "GLITCH: zero-width instruction at idx=0x" << std::hex << inst.DexPc();
       break;
     }
     DumpInstruction(code, code_offset, inst.DexPc(), insn_width, &inst.Inst());
@@ -1220,7 +1220,7 @@ void DexLayout::DumpMethod(uint32_t idx, uint32_t flags, const dex_ir::CodeItem*
       fprintf(out_file_, "<method name=\"%s\"\n", name);
       const char* return_type = strrchr(type_descriptor, ')');
       if (return_type == nullptr) {
-        fprintf(stderr, "bad method type descriptor '%s'\n", type_descriptor);
+        LOG(ERROR) << "bad method type descriptor '" << type_descriptor << "'";
         goto bail;
       }
       std::string dot(DescriptorToDotWrapper(return_type + 1));
@@ -1239,7 +1239,7 @@ void DexLayout::DumpMethod(uint32_t idx, uint32_t flags, const dex_ir::CodeItem*
 
     // Parameters.
     if (type_descriptor[0] != '(') {
-      fprintf(stderr, "ERROR: bad descriptor '%s'\n", type_descriptor);
+      LOG(ERROR) << "ERROR: bad descriptor '" << type_descriptor << "'";
       goto bail;
     }
     char* tmp_buf = reinterpret_cast<char*>(malloc(strlen(type_descriptor) + 1));
@@ -1258,7 +1258,7 @@ void DexLayout::DumpMethod(uint32_t idx, uint32_t flags, const dex_ir::CodeItem*
       } else {
         // Primitive char, copy it.
         if (strchr("ZBCSIFJD", *base) == nullptr) {
-          fprintf(stderr, "ERROR: bad method signature '%s'\n", base);
+          LOG(ERROR) << "ERROR: bad method signature '" << base << "'";
           break;  // while
         }
         *cp++ = *base++;
@@ -1368,7 +1368,7 @@ void DexLayout::DumpClass(int idx, char** last_package) {
   if (!(class_descriptor[0] == 'L' &&
         class_descriptor[strlen(class_descriptor)-1] == ';')) {
     // Arrays and primitives should not be defined explicitly. Keep going?
-    fprintf(stderr, "Malformed class name '%s'\n", class_descriptor);
+    LOG(ERROR) << "Malformed class name '" << class_descriptor << "'";
   } else if (options_.output_format_ == kOutputXml) {
     char* mangle = strdup(class_descriptor + 1);
     mangle[strlen(mangle)-1] = '\0';
@@ -1979,8 +1979,7 @@ int DexLayout::ProcessFile(const char* file_name) {
         file_name, file_name, /* verify */ true, verify_checksum, &error_msg, &dex_files)) {
     // Display returned error message to user. Note that this error behavior
     // differs from the error messages shown by the original Dalvik dexdump.
-    fputs(error_msg.c_str(), stderr);
-    fputc('\n', stderr);
+    LOG(ERROR) << error_msg;
     return -1;
   }
 
