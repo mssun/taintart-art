@@ -1873,7 +1873,9 @@ void DexLayout::ProcessDexFile(const char* file_name,
     // These options required the offsets for dumping purposes.
     eagerly_assign_offsets = true;
   }
-  std::unique_ptr<dex_ir::Header> header(dex_ir::DexIrBuilder(*dex_file, eagerly_assign_offsets));
+  std::unique_ptr<dex_ir::Header> header(dex_ir::DexIrBuilder(*dex_file,
+                                                               eagerly_assign_offsets,
+                                                               GetOptions()));
   SetHeader(header.get());
 
   if (options_.verbose_) {
@@ -1948,10 +1950,12 @@ void DexLayout::ProcessDexFile(const char* file_name,
       // Regenerate output IR to catch any bugs that might happen during writing.
       std::unique_ptr<dex_ir::Header> output_header(
           dex_ir::DexIrBuilder(*output_dex_file,
-                               /*eagerly_assign_offsets*/ true));
+                               /*eagerly_assign_offsets*/ true,
+                               GetOptions()));
       std::unique_ptr<dex_ir::Header> orig_header(
           dex_ir::DexIrBuilder(*dex_file,
-                               /*eagerly_assign_offsets*/ true));
+                               /*eagerly_assign_offsets*/ true,
+                               GetOptions()));
       CHECK(VerifyOutputDexFile(output_header.get(), orig_header.get(), &error_msg)) << error_msg;
     }
   }
