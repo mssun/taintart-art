@@ -32,6 +32,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <android-base/logging.h>
+
 #include "dex/code_item_accessors-no_art-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
@@ -207,16 +209,14 @@ static int processFile(const char* fileName) {
   size_t size = 0;
   std::string error_msg;
   if (!openAndMapFile(fileName, &base, &size, &error_msg)) {
-    fputs(error_msg.c_str(), stderr);
-    fputc('\n', stderr);
+    LOG(ERROR) << error_msg;
     return -1;
   }
   std::vector<std::unique_ptr<const DexFile>> dex_files;
   const DexFileLoader dex_file_loader;
   if (!dex_file_loader.OpenAll(
         base, size, fileName, /*verify*/ true, kVerifyChecksum, &error_msg, &dex_files)) {
-    fputs(error_msg.c_str(), stderr);
-    fputc('\n', stderr);
+    LOG(ERROR) << error_msg;
     return -1;
   }
 
@@ -237,9 +237,9 @@ static int processFile(const char* fileName) {
  * Shows usage.
  */
 static void usage(void) {
-  fprintf(stderr, "Copyright (C) 2007 The Android Open Source Project\n\n");
-  fprintf(stderr, "%s: [-m p.c.m] [-o outfile] dexfile...\n", gProgName);
-  fprintf(stderr, "\n");
+  LOG(ERROR) << "Copyright (C) 2007 The Android Open Source Project\n";
+  LOG(ERROR) << gProgName << ": [-m p.c.m] [-o outfile] dexfile...";
+  LOG(ERROR) << "";
 }
 
 /*
@@ -268,7 +268,7 @@ int dexlistDriver(int argc, char** argv) {
           gOptions.argCopy = strdup(optarg);
           char* meth = strrchr(gOptions.argCopy, '.');
           if (meth == nullptr) {
-            fprintf(stderr, "Expected: package.Class.method\n");
+            LOG(ERROR) << "Expected: package.Class.method";
             wantUsage = true;
           } else {
             *meth = '\0';
@@ -285,7 +285,7 @@ int dexlistDriver(int argc, char** argv) {
 
   // Detect early problems.
   if (optind == argc) {
-    fprintf(stderr, "%s: no file specified\n", gProgName);
+    LOG(ERROR) << "No file specified";
     wantUsage = true;
   }
   if (wantUsage) {
@@ -298,7 +298,7 @@ int dexlistDriver(int argc, char** argv) {
   if (gOptions.outputFileName) {
     gOutFile = fopen(gOptions.outputFileName, "w");
     if (!gOutFile) {
-      fprintf(stderr, "Can't open %s\n", gOptions.outputFileName);
+      PLOG(ERROR) << "Can't open " << gOptions.outputFileName;
       free(gOptions.argCopy);
       return 1;
     }
@@ -318,6 +318,9 @@ int dexlistDriver(int argc, char** argv) {
 }  // namespace art
 
 int main(int argc, char** argv) {
+  // Output all logging to stderr.
+  android::base::SetLogger(android::base::StderrLogger);
+
   return art::dexlistDriver(argc, argv);
 }
 
