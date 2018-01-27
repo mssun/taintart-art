@@ -47,6 +47,7 @@
 #include <sstream>
 #include <vector>
 
+#include "android-base/logging.h"
 #include "android-base/stringprintf.h"
 
 #include "dex/code_item_accessors-no_art-inl.h"
@@ -1179,7 +1180,7 @@ static void dumpBytecodes(const DexFile* pDexFile, u4 idx,
     const Instruction* instruction = &pair.Inst();
     const u4 insnWidth = instruction->SizeInCodeUnits();
     if (insnWidth == 0) {
-      fprintf(stderr, "GLITCH: zero-width instruction at idx=0x%04x\n", pair.DexPc());
+      LOG(WARNING) << "GLITCH: zero-width instruction at idx=0x" << std::hex << pair.DexPc();
       break;
     }
     dumpInstruction(pDexFile, pCode, codeOffset, pair.DexPc(), insnWidth, instruction);
@@ -1259,7 +1260,7 @@ static void dumpMethod(const DexFile* pDexFile, u4 idx, u4 flags,
       fprintf(gOutFile, "<method name=\"%s\"\n", name);
       const char* returnType = strrchr(typeDescriptor, ')');
       if (returnType == nullptr) {
-        fprintf(stderr, "bad method type descriptor '%s'\n", typeDescriptor);
+        LOG(ERROR) << "bad method type descriptor '" << typeDescriptor << "'";
         goto bail;
       }
       std::unique_ptr<char[]> dot(descriptorToDot(returnType + 1));
@@ -1278,7 +1279,7 @@ static void dumpMethod(const DexFile* pDexFile, u4 idx, u4 flags,
 
     // Parameters.
     if (typeDescriptor[0] != '(') {
-      fprintf(stderr, "ERROR: bad descriptor '%s'\n", typeDescriptor);
+      LOG(ERROR) << "ERROR: bad descriptor '" << typeDescriptor << "'";
       goto bail;
     }
     char* tmpBuf = reinterpret_cast<char*>(malloc(strlen(typeDescriptor) + 1));
@@ -1297,7 +1298,7 @@ static void dumpMethod(const DexFile* pDexFile, u4 idx, u4 flags,
       } else {
         // Primitive char, copy it.
         if (strchr("ZBCSIFJD", *base) == nullptr) {
-          fprintf(stderr, "ERROR: bad method signature '%s'\n", base);
+          LOG(ERROR) << "ERROR: bad method signature '" << base << "'";
           break;  // while
         }
         *cp++ = *base++;
@@ -1444,7 +1445,7 @@ static void dumpClass(const DexFile* pDexFile, int idx, char** pLastPackage) {
   if (!(classDescriptor[0] == 'L' &&
         classDescriptor[strlen(classDescriptor)-1] == ';')) {
     // Arrays and primitives should not be defined explicitly. Keep going?
-    fprintf(stderr, "Malformed class name '%s'\n", classDescriptor);
+    LOG(WARNING) << "Malformed class name '" << classDescriptor << "'";
   } else if (gOptions.outputFormat == OUTPUT_XML) {
     char* mangle = strdup(classDescriptor + 1);
     mangle[strlen(mangle)-1] = '\0';
@@ -1694,7 +1695,7 @@ static void dumpCallSite(const DexFile* pDexFile, u4 idx) {
   const DexFile::CallSiteIdItem& call_site_id = pDexFile->GetCallSiteId(idx);
   CallSiteArrayValueIterator it(*pDexFile, call_site_id);
   if (it.Size() < 3) {
-    fprintf(stderr, "ERROR: Call site %u has too few values.\n", idx);
+    LOG(ERROR) << "ERROR: Call site " << idx << " has too few values.";
     return;
   }
 
@@ -1915,8 +1916,7 @@ int processFile(const char* fileName) {
   size_t size = 0;
   std::string error_msg;
   if (!openAndMapFile(fileName, &base, &size, &error_msg)) {
-    fputs(error_msg.c_str(), stderr);
-    fputc('\n', stderr);
+    LOG(ERROR) << error_msg;
     return -1;
   }
   const DexFileLoader dex_file_loader;
@@ -1925,8 +1925,7 @@ int processFile(const char* fileName) {
         base, size, fileName, /*verify*/ true, kVerifyChecksum, &error_msg, &dex_files)) {
     // Display returned error message to user. Note that this error behavior
     // differs from the error messages shown by the original Dalvik dexdump.
-    fputs(error_msg.c_str(), stderr);
-    fputc('\n', stderr);
+    LOG(ERROR) << error_msg;
     return -1;
   }
 
