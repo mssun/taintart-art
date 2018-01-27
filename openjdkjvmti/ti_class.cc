@@ -191,7 +191,8 @@ struct ClassCallback : public art::ClassLoadCallback {
     art::JNIEnvExt* env = self->GetJniEnv();
     ScopedLocalRef<jobject> loader(
         env, class_loader.IsNull() ? nullptr : env->AddLocalReference<jobject>(class_loader.Get()));
-    std::unique_ptr<FixedUpDexFile> dex_file_copy(FixedUpDexFile::Create(initial_dex_file));
+    std::unique_ptr<FixedUpDexFile> dex_file_copy(FixedUpDexFile::Create(initial_dex_file,
+                                                                         descriptor));
 
     // Go back to native.
     art::ScopedThreadSuspension sts(self, art::ThreadState::kNative);

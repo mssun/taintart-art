@@ -27,6 +27,7 @@
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
+#include "dexlayout.h"
 #include "exec_utils.h"
 #include "jit/profile_compilation_info.h"
 #include "utils.h"
@@ -776,6 +777,60 @@ TEST_F(DexLayoutTest, LinkData) {
   std::vector<std::string> rm_exec_argv =
       { "/bin/rm", output_dex };
   ASSERT_TRUE(::art::Exec(rm_exec_argv, &error_msg));
+}
+
+TEST_F(DexLayoutTest, ClassFilter) {
+  std::vector<std::unique_ptr<const DexFile>> dex_files;
+  std::string error_msg;
+  const ArtDexFileLoader dex_file_loader;
+  const std::string input_jar = GetTestDexFileName("ManyMethods");
+  CHECK(dex_file_loader.Open(input_jar.c_str(),
+                             input_jar.c_str(),
+                             /*verify*/ true,
+                             /*verify_checksum*/ true,
+                             &error_msg,
+                             &dex_files)) << error_msg;
+  ASSERT_EQ(dex_files.size(), 1u);
+  for (const std::unique_ptr<const DexFile>& dex_file : dex_files) {
+    EXPECT_GT(dex_file->NumClassDefs(), 1u);
+    for (uint32_t i = 0; i < dex_file->NumClassDefs(); ++i) {
+      const DexFile::ClassDef& class_def = dex_file->GetClassDef(i);
+      LOG(INFO) << dex_file->GetClassDescriptor(class_def);
+    }
+    Options options;
+    // Filter out all the classes other than the one below based on class descriptor.
+    options.class_filter_.insert("LManyMethods$Strings;");
+    DexLayout dexlayout(options,
+                        /*info*/ nullptr,
+                        /*out_file*/ nullptr,
+                        /*header*/ nullptr);
+    std::unique_ptr<DexContainer> out;
+    dexlayout.ProcessDexFile(dex_file->GetLocation().c_str(),
+                             dex_file.get(),
+                             /*dex_file_index*/ 0,
+                             &out);
+    std::unique_ptr<const DexFile> output_dex_file(
+        dex_file_loader.OpenWithDataSection(
+            out->GetMainSection()->Begin(),
+            out->GetMainSection()->Size(),
+            out->GetDataSection()->Begin(),
+            out->GetDataSection()->Size(),
+            dex_file->GetLocation().c_str(),
+            /* checksum */ 0,
+            /*oat_dex_file*/ nullptr,
+            /* verify */ true,
+            /*verify_checksum*/ false,
+            &error_msg));
+    ASSERT_TRUE(output_dex_file != nullptr);
+
+    ASSERT_EQ(output_dex_file->NumClassDefs(), 1u);
+    for (uint32_t i = 0; i < output_dex_file->NumClassDefs(); ++i) {
+      // Check that every class is in the filter.
+      const DexFile::ClassDef& class_def = output_dex_file->GetClassDef(i);
+      ASSERT_TRUE(options.class_filter_.find(output_dex_file->GetClassDescriptor(class_def)) !=
+          options.class_filter_.end());
+    }
+  }
 }
 
 }  // namespace art
