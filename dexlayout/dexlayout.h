@@ -72,6 +72,7 @@ class Options {
   const char* output_dex_directory_ = nullptr;
   const char* output_file_name_ = nullptr;
   const char* profile_file_name_ = nullptr;
+  std::set<std::string> class_filter_;
 };
 
 // Hotness info

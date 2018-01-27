@@ -20,13 +20,18 @@
 #include <vector>
 
 #include "dex_ir_builder.h"
+#include "dexlayout.h"
 
 namespace art {
 namespace dex_ir {
 
-static void CheckAndSetRemainingOffsets(const DexFile& dex_file, Collections* collections);
+static void CheckAndSetRemainingOffsets(const DexFile& dex_file,
+                                        Collections* collections,
+                                        const Options& options);
 
-Header* DexIrBuilder(const DexFile& dex_file, bool eagerly_assign_offsets) {
+Header* DexIrBuilder(const DexFile& dex_file,
+                     bool eagerly_assign_offsets,
+                     const Options& options) {
   const DexFile::Header& disk_header = dex_file.GetHeader();
   Header* header = new Header(disk_header.magic_,
                               disk_header.checksum_,
@@ -70,13 +75,22 @@ Header* DexIrBuilder(const DexFile& dex_file, bool eagerly_assign_offsets) {
   // ClassDef table.
   collections.SetClassDefsOffset(disk_header.class_defs_off_);
   for (uint32_t i = 0; i < dex_file.NumClassDefs(); ++i) {
+    if (!options.class_filter_.empty()) {
+      // If the filter is enabled (not empty), filter out classes that don't have a matching
+      // descriptor.
+      const DexFile::ClassDef& class_def = dex_file.GetClassDef(i);
+      const char* descriptor = dex_file.GetClassDescriptor(class_def);
+      if (options.class_filter_.find(descriptor) == options.class_filter_.end()) {
+        continue;
+      }
+    }
     collections.CreateClassDef(dex_file, i);
   }
   // MapItem.
   collections.SetMapListOffset(disk_header.map_off_);
   // CallSiteIds and MethodHandleItems.
   collections.CreateCallSitesAndMethodHandles(dex_file);
-  CheckAndSetRemainingOffsets(dex_file, &collections);
+  CheckAndSetRemainingOffsets(dex_file, &collections, options);
 
   // Sort the vectors by the map order (same order as the file).
   collections.SortVectorsByMapOrder();
@@ -89,7 +103,9 @@ Header* DexIrBuilder(const DexFile& dex_file, bool eagerly_assign_offsets) {
   return header;
 }
 
-static void CheckAndSetRemainingOffsets(const DexFile& dex_file, Collections* collections) {
+static void CheckAndSetRemainingOffsets(const DexFile& dex_file,
+                                        Collections* collections,
+                                        const Options& options) {
   const DexFile::Header& disk_header = dex_file.GetHeader();
   // Read MapItems and validate/set remaining offsets.
   const DexFile::MapList* map = dex_file.GetMapList();
@@ -122,7 +138,10 @@ static void CheckAndSetRemainingOffsets(const DexFile& dex_file, Collections* co
         CHECK_EQ(item->offset_, collections->MethodIdsOffset());
         break;
       case DexFile::kDexTypeClassDefItem:
-        CHECK_EQ(item->size_, collections->ClassDefsSize());
+        if (options.class_filter_.empty()) {
+          // The filter may have removed some classes, this will get fixed up during writing.
+          CHECK_EQ(item->size_, collections->ClassDefsSize());
+        }
         CHECK_EQ(item->offset_, collections->ClassDefsOffset());
         break;
       case DexFile::kDexTypeCallSiteIdItem:
