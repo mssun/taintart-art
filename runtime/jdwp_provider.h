@@ -28,6 +28,9 @@ enum class JdwpProvider {
   kNone,
   kInternal,
   kAdbConnection,
+
+  // The current default provider
+  kDefaultJdwpProvider = kAdbConnection,
 };
 
 std::ostream& operator<<(std::ostream& os, const JdwpProvider& rhs);
