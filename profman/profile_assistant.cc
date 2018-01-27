@@ -31,12 +31,13 @@ static constexpr const uint32_t kMinNewClassesPercentChangeForCompilation = 2;
 
 ProfileAssistant::ProcessingResult ProfileAssistant::ProcessProfilesInternal(
         const std::vector<ScopedFlock>& profile_files,
-        const ScopedFlock& reference_profile_file) {
+        const ScopedFlock& reference_profile_file,
+        const ProfileCompilationInfo::ProfileLoadFilterFn& filter_fn) {
   DCHECK(!profile_files.empty());
 
   ProfileCompilationInfo info;
   // Load the reference profile.
-  if (!info.Load(reference_profile_file->Fd())) {
+  if (!info.Load(reference_profile_file->Fd(), /*merge_classes*/ true, filter_fn)) {
     LOG(WARNING) << "Could not load reference profile file";
     return kErrorBadProfiles;
   }
@@ -48,7 +49,7 @@ ProfileAssistant::ProcessingResult ProfileAssistant::ProcessProfilesInternal(
   // Merge all current profiles.
   for (size_t i = 0; i < profile_files.size(); i++) {
     ProfileCompilationInfo cur_info;
-    if (!cur_info.Load(profile_files[i]->Fd())) {
+    if (!cur_info.Load(profile_files[i]->Fd(), /*merge_classes*/ true, filter_fn)) {
       LOG(WARNING) << "Could not load profile file at index " << i;
       return kErrorBadProfiles;
     }
@@ -122,7 +123,8 @@ class ScopedFlockList {
 
 ProfileAssistant::ProcessingResult ProfileAssistant::ProcessProfiles(
         const std::vector<int>& profile_files_fd,
-        int reference_profile_file_fd) {
+        int reference_profile_file_fd,
+        const ProfileCompilationInfo::ProfileLoadFilterFn& filter_fn) {
   DCHECK_GE(reference_profile_file_fd, 0);
 
   std::string error;
@@ -143,12 +145,15 @@ ProfileAssistant::ProcessingResult ProfileAssistant::ProcessProfiles(
     return kErrorCannotLock;
   }
 
-  return ProcessProfilesInternal(profile_files.Get(), reference_profile_file);
+  return ProcessProfilesInternal(profile_files.Get(),
+                                 reference_profile_file,
+                                 filter_fn);
 }
 
 ProfileAssistant::ProcessingResult ProfileAssistant::ProcessProfiles(
         const std::vector<std::string>& profile_files,
-        const std::string& reference_profile_file) {
+        const std::string& reference_profile_file,
+        const ProfileCompilationInfo::ProfileLoadFilterFn& filter_fn) {
   std::string error;
 
   ScopedFlockList profile_files_list(profile_files.size());
@@ -164,7 +169,9 @@ ProfileAssistant::ProcessingResult ProfileAssistant::ProcessProfiles(
     return kErrorCannotLock;
   }
 
-  return ProcessProfilesInternal(profile_files_list.Get(), locked_reference_profile_file);
+  return ProcessProfilesInternal(profile_files_list.Get(),
+                                 locked_reference_profile_file,
+                                 filter_fn);
 }
 
 }  // namespace art
