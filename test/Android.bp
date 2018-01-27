@@ -417,10 +417,11 @@ art_cc_test_library {
 
 art_cc_defaults {
     name: "libtistress-static-defaults",
-    defaults: ["libtistress-srcs"],
-    static_libs: art_static_dependencies + [
-        "slicer",
+    defaults: [
+        "libtistress-srcs",
+        "libart_static_defaults",
     ],
+    static_libs: ["slicer"],
 }
 
 art_cc_test_library {

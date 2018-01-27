@@ -32,6 +32,14 @@ art_cc_defaults {
     static_libs: ["libz"],
 }
 
+cc_defaults {
+    name: "libart-dexlayout_static_base_defaults",
+    static_libs: [
+        "libbase",
+        "libz",
+    ],
+}
+
 art_cc_library {
     name: "libart-dexlayout",
     defaults: [
@@ -53,6 +61,17 @@ art_cc_library {
     },
 }
 
+cc_defaults {
+    name: "libart-dexlayout_static_defaults",
+    defaults: [
+        "libart-dexlayout_static_base_defaults",
+        "libartbase_static_defaults",
+        "libdexfile_static_defaults",
+        "libprofile_static_defaults",
+    ],
+    static_libs: ["libart-dexlayout"],
+}
+
 art_cc_library {
     name: "libartd-dexlayout",
     defaults: [
@@ -64,6 +83,17 @@ art_cc_library {
         "libartbased",
         "libprofiled",
     ],
+}
+
+cc_defaults {
+    name: "libartd-dexlayout_static_defaults",
+    defaults: [
+        "libart-dexlayout_static_base_defaults",
+        "libartbased_static_defaults",
+        "libdexfiled_static_defaults",
+        "libprofiled_static_defaults",
+    ],
+    static_libs: ["libartd-dexlayout"],
 }
 
 cc_defaults {

@@ -16,7 +16,10 @@
 
 art_cc_defaults {
     name: "art_verifier-defaults",
-    defaults: ["art_defaults"],
+    defaults: [
+        "art_defaults",
+        "libart_static_defaults",
+    ],
     host_supported: true,
     srcs: [
         "art_verifier.cc",
@@ -24,11 +27,8 @@ art_cc_defaults {
     header_libs: [
         "art_cmdlineparser_headers",
     ],
-    static_libs: art_static_dependencies + [
-        "libart",
-        "libartbase",
-        "libdexfile",
-        "libprofile",
+    static_libs: [
+        "libsigchain_dummy",
     ],
     target: {
         android: {
