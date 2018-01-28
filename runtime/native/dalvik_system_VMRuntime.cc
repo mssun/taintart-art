@@ -74,6 +74,10 @@ static void VMRuntime_startJitCompilation(JNIEnv*, jobject) {
 static void VMRuntime_disableJitCompilation(JNIEnv*, jobject) {
 }
 
+static jboolean VMRuntime_hasUsedHiddenApi(JNIEnv*, jobject) {
+  return Runtime::Current()->HasPendingHiddenApiWarning() ? JNI_TRUE : JNI_FALSE;
+}
+
 static jobject VMRuntime_newNonMovableArray(JNIEnv* env, jobject, jclass javaElementClass,
                                             jint length) {
   ScopedFastNativeObjectAccess soa(env);
@@ -670,6 +674,7 @@ static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(VMRuntime, clearGrowthLimit, "()V"),
   NATIVE_METHOD(VMRuntime, concurrentGC, "()V"),
   NATIVE_METHOD(VMRuntime, disableJitCompilation, "()V"),
+  NATIVE_METHOD(VMRuntime, hasUsedHiddenApi, "()Z"),
   NATIVE_METHOD(VMRuntime, getTargetHeapUtilization, "()F"),
   FAST_NATIVE_METHOD(VMRuntime, isDebuggerActive, "()Z"),
   FAST_NATIVE_METHOD(VMRuntime, isNativeDebuggable, "()Z"),

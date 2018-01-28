@@ -66,7 +66,7 @@ std::unique_ptr<TypeLookupTable> TypeLookupTable::Open(const uint8_t* dex_file_p
 }
 
 TypeLookupTable::TypeLookupTable(const DexFile& dex_file, uint8_t* storage)
-    : dex_file_begin_(dex_file.Begin()),
+    : dex_data_begin_(dex_file.DataBegin()),
       raw_data_length_(RawDataLength(dex_file.NumClassDefs())),
       mask_(CalculateMask(dex_file.NumClassDefs())),
       entries_(storage != nullptr ? reinterpret_cast<Entry*>(storage) : new Entry[mask_ + 1]),
@@ -106,7 +106,7 @@ TypeLookupTable::TypeLookupTable(const DexFile& dex_file, uint8_t* storage)
 TypeLookupTable::TypeLookupTable(const uint8_t* dex_file_pointer,
                                  const uint8_t* raw_data,
                                  uint32_t num_class_defs)
-    : dex_file_begin_(dex_file_pointer),
+    : dex_data_begin_(dex_file_pointer),
       raw_data_length_(RawDataLength(num_class_defs)),
       mask_(CalculateMask(num_class_defs)),
       entries_(reinterpret_cast<Entry*>(const_cast<uint8_t*>(raw_data))),

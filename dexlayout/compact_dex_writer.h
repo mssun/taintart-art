@@ -60,11 +60,14 @@ class CompactDexWriter : public DexWriter {
             return false;
           }
           const uint8_t* data = Data();
+          DCHECK_LE(a.offset_ + a.length_, section_->Size());
+          DCHECK_LE(b.offset_ + b.length_, section_->Size());
           return std::equal(data + a.offset_, data + a.offset_ + a.length_, data + b.offset_);
         }
 
         // Hash function.
         size_t operator()(const HashedMemoryRange& range) const {
+          DCHECK_LE(range.offset_ + range.length_, section_->Size());
           return HashBytes(Data() + range.offset_, range.length_);
         }
 
@@ -84,6 +87,21 @@ class CompactDexWriter : public DexWriter {
                        uint32_t,
                        HashedMemoryRange::HashEqual,
                        HashedMemoryRange::HashEqual> dedupe_map_;
+  };
+
+  // Handles alignment and deduping of a data section item.
+  class ScopedDataSectionItem {
+   public:
+    ScopedDataSectionItem(Stream* stream, dex_ir::Item* item, size_t alignment, Deduper* deduper);
+    ~ScopedDataSectionItem();
+    size_t Written() const;
+
+   private:
+    Stream* const stream_;
+    dex_ir::Item* const item_;
+    const size_t alignment_;
+    Deduper* deduper_;
+    const uint32_t start_offset_;
   };
 
  public:
@@ -107,6 +125,7 @@ class CompactDexWriter : public DexWriter {
     VectorSection main_section_;
     VectorSection data_section_;
     Deduper code_item_dedupe_;
+    Deduper data_item_dedupe_;
 
     friend class CompactDexWriter;
   };
@@ -122,7 +141,11 @@ class CompactDexWriter : public DexWriter {
 
   uint32_t WriteDebugInfoOffsetTable(Stream* stream);
 
-  uint32_t WriteCodeItem(Stream* stream, dex_ir::CodeItem* code_item, bool reserve_only) OVERRIDE;
+  void WriteCodeItem(Stream* stream, dex_ir::CodeItem* code_item, bool reserve_only) OVERRIDE;
+
+  void WriteStringData(Stream* stream, dex_ir::StringData* string_data) OVERRIDE;
+
+  void WriteDebugInfoItem(Stream* stream, dex_ir::DebugInfoItem* debug_info) OVERRIDE;
 
   void SortDebugInfosByMethodIndex();
 
@@ -140,6 +163,7 @@ class CompactDexWriter : public DexWriter {
 
   // State for where we are deduping.
   Deduper* code_item_dedupe_ = nullptr;
+  Deduper* data_item_dedupe_ = nullptr;
 
   DISALLOW_COPY_AND_ASSIGN(CompactDexWriter);
 };

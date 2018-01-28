@@ -138,9 +138,6 @@ class DexFile {
     uint16_t unused_;
     uint32_t size_;
     uint32_t offset_;
-
-   private:
-    DISALLOW_COPY_AND_ASSIGN(MapItem);
   };
 
   struct MapList {
@@ -646,11 +643,7 @@ class DexFile {
   const ClassDef* FindClassDef(dex::TypeIndex type_idx) const;
 
   const TypeList* GetInterfacesList(const ClassDef& class_def) const {
-    if (class_def.interfaces_off_ == 0) {
-      return nullptr;
-    }
-    const uint8_t* addr = begin_ + class_def.interfaces_off_;
-    return reinterpret_cast<const TypeList*>(addr);
+    return DataPointer<TypeList>(class_def.interfaces_off_);
   }
 
   uint32_t NumMethodHandles() const {
@@ -673,17 +666,13 @@ class DexFile {
 
   // Returns a pointer to the raw memory mapped class_data_item
   const uint8_t* GetClassData(const ClassDef& class_def) const {
-    return (class_def.class_data_off_ == 0) ? nullptr : begin_ + class_def.class_data_off_;
+    return DataPointer<uint8_t>(class_def.class_data_off_);
   }
 
-  //
+  // Return the code item for a provided offset.
   const CodeItem* GetCodeItem(const uint32_t code_off) const {
-    DCHECK_LT(code_off, size_) << "Code item offset larger then maximum allowed offset";
-    if (code_off == 0) {
-      return nullptr;  // native or abstract method
-    }
-    const uint8_t* addr = begin_ + code_off;
-    return reinterpret_cast<const CodeItem*>(addr);
+    // May be null for native or abstract methods.
+    return DataPointer<CodeItem>(code_off);
   }
 
   const char* GetReturnTypeDescriptor(const ProtoId& proto_id) const;
@@ -728,17 +717,15 @@ class DexFile {
   const char* GetShorty(uint32_t proto_idx) const;
 
   const TypeList* GetProtoParameters(const ProtoId& proto_id) const {
-    return (proto_id.parameters_off_ == 0)
-        ? nullptr
-        : reinterpret_cast<const TypeList*>(begin_ + proto_id.parameters_off_);
+    return DataPointer<TypeList>(proto_id.parameters_off_);
   }
 
   const uint8_t* GetEncodedStaticFieldValuesArray(const ClassDef& class_def) const {
-    return (class_def.static_values_off_ == 0) ? 0 : begin_ + class_def.static_values_off_;
+    return DataPointer<uint8_t>(class_def.static_values_off_);
   }
 
   const uint8_t* GetCallSiteEncodedValuesArray(const CallSiteIdItem& call_site_id) const {
-    return begin_ + call_site_id.data_off_;
+    return DataBegin() + call_site_id.data_off_;
   }
 
   static const TryItem* GetTryItems(const DexInstructionIterator& code_item_end, uint32_t offset);
@@ -756,7 +743,9 @@ class DexFile {
     // Check that the offset is in bounds.
     // Note that although the specification says that 0 should be used if there
     // is no debug information, some applications incorrectly use 0xFFFFFFFF.
-    return (debug_info_off == 0 || debug_info_off >= size_) ? nullptr : begin_ + debug_info_off;
+    return (debug_info_off == 0 || debug_info_off >= data_size_)
+        ? nullptr
+        : DataBegin() + debug_info_off;
   }
 
   struct PositionInfo {
@@ -787,21 +776,17 @@ class DexFile {
   static bool LineNumForPcCb(void* context, const PositionInfo& entry);
 
   const AnnotationsDirectoryItem* GetAnnotationsDirectory(const ClassDef& class_def) const {
-    return (class_def.annotations_off_ == 0)
-        ? nullptr
-        : reinterpret_cast<const AnnotationsDirectoryItem*>(begin_ + class_def.annotations_off_);
+    return DataPointer<AnnotationsDirectoryItem>(class_def.annotations_off_);
   }
 
   const AnnotationSetItem* GetClassAnnotationSet(const AnnotationsDirectoryItem* anno_dir) const {
-    return (anno_dir->class_annotations_off_ == 0)
-        ? nullptr
-        : reinterpret_cast<const AnnotationSetItem*>(begin_ + anno_dir->class_annotations_off_);
+    return DataPointer<AnnotationSetItem>(anno_dir->class_annotations_off_);
   }
 
   const FieldAnnotationsItem* GetFieldAnnotations(const AnnotationsDirectoryItem* anno_dir) const {
     return (anno_dir->fields_size_ == 0)
-        ? nullptr
-        : reinterpret_cast<const FieldAnnotationsItem*>(&anno_dir[1]);
+         ? nullptr
+         : reinterpret_cast<const FieldAnnotationsItem*>(&anno_dir[1]);
   }
 
   const MethodAnnotationsItem* GetMethodAnnotations(const AnnotationsDirectoryItem* anno_dir)
@@ -828,33 +813,21 @@ class DexFile {
   }
 
   const AnnotationSetItem* GetFieldAnnotationSetItem(const FieldAnnotationsItem& anno_item) const {
-    uint32_t offset = anno_item.annotations_off_;
-    return (offset == 0)
-        ? nullptr
-        : reinterpret_cast<const AnnotationSetItem*>(begin_ + offset);
+    return DataPointer<AnnotationSetItem>(anno_item.annotations_off_);
   }
 
   const AnnotationSetItem* GetMethodAnnotationSetItem(const MethodAnnotationsItem& anno_item)
       const {
-    uint32_t offset = anno_item.annotations_off_;
-    return (offset == 0)
-        ? nullptr
-        : reinterpret_cast<const AnnotationSetItem*>(begin_ + offset);
+    return DataPointer<AnnotationSetItem>(anno_item.annotations_off_);
   }
 
   const AnnotationSetRefList* GetParameterAnnotationSetRefList(
       const ParameterAnnotationsItem* anno_item) const {
-    uint32_t offset = anno_item->annotations_off_;
-    return (offset == 0)
-        ? nullptr
-        : reinterpret_cast<const AnnotationSetRefList*>(begin_ + offset);
+    return DataPointer<AnnotationSetRefList>(anno_item->annotations_off_);
   }
 
   ALWAYS_INLINE const AnnotationItem* GetAnnotationItemAtOffset(uint32_t offset) const {
-    DCHECK_LE(offset, Size());
-    return (offset == 0)
-        ? nullptr
-        : reinterpret_cast<const AnnotationItem*>(begin_ + offset);
+    return DataPointer<AnnotationItem>(offset);
   }
 
   const AnnotationItem* GetAnnotationItem(const AnnotationSetItem* set_item, uint32_t index) const {
@@ -863,10 +836,7 @@ class DexFile {
   }
 
   const AnnotationSetItem* GetSetRefItemItem(const AnnotationSetRefItem* anno_item) const {
-    uint32_t offset = anno_item->annotations_off_;
-    return (offset == 0)
-        ? nullptr
-        : reinterpret_cast<const AnnotationSetItem*>(begin_ + offset);
+    return DataPointer<AnnotationSetItem>(anno_item->annotations_off_);
   }
 
   // Debug info opcodes and constants
@@ -955,6 +925,20 @@ class DexFile {
     return size_;
   }
 
+  const uint8_t* DataBegin() const {
+    return data_begin_;
+  }
+
+  size_t DataSize() const {
+    return data_size_;
+  }
+
+  template <typename T>
+  const T* DataPointer(size_t offset) const {
+    DCHECK_LT(offset, DataSize()) << "Offset past end of data section";
+    return (offset != 0u) ? reinterpret_cast<const T*>(DataBegin() + offset) : nullptr;
+  }
+
   const OatDexFile* GetOatDexFile() const {
     return oat_dex_file_;
   }
@@ -964,6 +948,11 @@ class DexFile {
     oat_dex_file_ = oat_dex_file;
   }
 
+  // Read MapItems and validate/set remaining offsets.
+  const DexFile::MapList* GetMapList() const {
+    return reinterpret_cast<const DexFile::MapList*>(DataBegin() + header_->map_off_);
+  }
+
   // Utility methods for reading integral values from a buffer.
   static int32_t ReadSignedInt(const uint8_t* ptr, int zwidth);
   static uint32_t ReadUnsignedInt(const uint8_t* ptr, int zwidth, bool fill_on_right);
@@ -971,8 +960,9 @@ class DexFile {
   static uint64_t ReadUnsignedLong(const uint8_t* ptr, int zwidth, bool fill_on_right);
 
   // Recalculates the checksum of the dex file. Does not use the current value in the header.
-  uint32_t CalculateChecksum() const;
+  virtual uint32_t CalculateChecksum() const;
   static uint32_t CalculateChecksum(const uint8_t* begin, size_t size);
+  static uint32_t ChecksumMemoryRange(const uint8_t* begin, size_t size);
 
   // Returns a human-readable form of the method at an index.
   std::string PrettyMethod(uint32_t method_idx, bool with_signature = true) const;
@@ -991,8 +981,12 @@ class DexFile {
   ALWAYS_INLINE const StandardDexFile* AsStandardDexFile() const;
   ALWAYS_INLINE const CompactDexFile* AsCompactDexFile() const;
 
-  bool HasAddress(const void* addr) const {
+  bool IsInMainSection(const void* addr) const {
     return Begin() <= addr && addr < Begin() + Size();
+  }
+
+  bool IsInDataSection(const void* addr) const {
+    return DataBegin() <= addr && addr < DataBegin() + DataSize();
   }
 
   DexFileContainer* GetContainer() const {
@@ -1005,6 +999,8 @@ class DexFile {
 
   DexFile(const uint8_t* base,
           size_t size,
+          const uint8_t* data_begin,
+          size_t data_size,
           const std::string& location,
           uint32_t location_checksum,
           const OatDexFile* oat_dex_file,
@@ -1025,6 +1021,12 @@ class DexFile {
 
   // The size of the underlying memory allocation in bytes.
   const size_t size_;
+
+  // The base address of the data section (same as Begin() for standard dex).
+  const uint8_t* const data_begin_;
+
+  // The size of the data section.
+  const size_t data_size_;
 
   // Typically the dex file name when available, alternatively some identifying string.
   //

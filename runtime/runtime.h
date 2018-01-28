@@ -520,12 +520,28 @@ class Runtime {
   bool IsVerificationEnabled() const;
   bool IsVerificationSoftFail() const;
 
-  void DisableHiddenApiChecks() {
-    do_hidden_api_checks_ = false;
+  void SetHiddenApiChecksEnabled(bool value) {
+    do_hidden_api_checks_ = value;
   }
 
   bool AreHiddenApiChecksEnabled() const {
     return do_hidden_api_checks_;
+  }
+
+  void SetPendingHiddenApiWarning(bool value) {
+    pending_hidden_api_warning_ = value;
+  }
+
+  bool HasPendingHiddenApiWarning() const {
+    return pending_hidden_api_warning_;
+  }
+
+  void SetDedupeHiddenApiWarnings(bool value) {
+    dedupe_hidden_api_warnings_ = value;
+  }
+
+  bool ShouldDedupeHiddenApiWarnings() {
+    return dedupe_hidden_api_warnings_;
   }
 
   bool IsDexFileFallbackEnabled() const {
@@ -967,6 +983,14 @@ class Runtime {
 
   // Whether access checks on hidden API should be performed.
   bool do_hidden_api_checks_;
+
+  // Whether the application has used an API which is not restricted but we
+  // should issue a warning about it.
+  bool pending_hidden_api_warning_;
+
+  // Do not warn about the same hidden API access violation twice.
+  // This is only used for testing.
+  bool dedupe_hidden_api_warnings_;
 
   // Whether threads should dump their native stack on SIGQUIT.
   bool dump_native_stack_on_sig_quit_;

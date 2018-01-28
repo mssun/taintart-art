@@ -1052,7 +1052,7 @@ void DexLayout::DumpBytecodes(uint32_t idx, const dex_ir::CodeItem* code, uint32
   for (const DexInstructionPcPair& inst : code->Instructions()) {
     const uint32_t insn_width = inst->SizeInCodeUnits();
     if (insn_width == 0) {
-      fprintf(stderr, "GLITCH: zero-width instruction at idx=0x%04x\n", inst.DexPc());
+      LOG(WARNING) << "GLITCH: zero-width instruction at idx=0x" << std::hex << inst.DexPc();
       break;
     }
     DumpInstruction(code, code_offset, inst.DexPc(), insn_width, &inst.Inst());
@@ -1220,7 +1220,7 @@ void DexLayout::DumpMethod(uint32_t idx, uint32_t flags, const dex_ir::CodeItem*
       fprintf(out_file_, "<method name=\"%s\"\n", name);
       const char* return_type = strrchr(type_descriptor, ')');
       if (return_type == nullptr) {
-        fprintf(stderr, "bad method type descriptor '%s'\n", type_descriptor);
+        LOG(ERROR) << "bad method type descriptor '" << type_descriptor << "'";
         goto bail;
       }
       std::string dot(DescriptorToDotWrapper(return_type + 1));
@@ -1239,7 +1239,7 @@ void DexLayout::DumpMethod(uint32_t idx, uint32_t flags, const dex_ir::CodeItem*
 
     // Parameters.
     if (type_descriptor[0] != '(') {
-      fprintf(stderr, "ERROR: bad descriptor '%s'\n", type_descriptor);
+      LOG(ERROR) << "ERROR: bad descriptor '" << type_descriptor << "'";
       goto bail;
     }
     char* tmp_buf = reinterpret_cast<char*>(malloc(strlen(type_descriptor) + 1));
@@ -1258,7 +1258,7 @@ void DexLayout::DumpMethod(uint32_t idx, uint32_t flags, const dex_ir::CodeItem*
       } else {
         // Primitive char, copy it.
         if (strchr("ZBCSIFJD", *base) == nullptr) {
-          fprintf(stderr, "ERROR: bad method signature '%s'\n", base);
+          LOG(ERROR) << "ERROR: bad method signature '" << base << "'";
           break;  // while
         }
         *cp++ = *base++;
@@ -1368,7 +1368,7 @@ void DexLayout::DumpClass(int idx, char** last_package) {
   if (!(class_descriptor[0] == 'L' &&
         class_descriptor[strlen(class_descriptor)-1] == ';')) {
     // Arrays and primitives should not be defined explicitly. Keep going?
-    fprintf(stderr, "Malformed class name '%s'\n", class_descriptor);
+    LOG(ERROR) << "Malformed class name '" << class_descriptor << "'";
   } else if (options_.output_format_ == kOutputXml) {
     char* mangle = strdup(class_descriptor + 1);
     mangle[strlen(mangle)-1] = '\0';
@@ -1838,13 +1838,17 @@ void DexLayout::OutputDexFile(const DexFile* input_dex_file,
     }
   }
   DexWriter::Output(this, dex_container, compute_offsets);
-  DexContainer* const container = dex_container->get();
-  DexContainer::Section* const main_section = container->GetMainSection();
-  DexContainer::Section* const data_section = container->GetDataSection();
-  CHECK_EQ(data_section->Size(), 0u) << "Unsupported";
   if (new_file != nullptr) {
+    DexContainer* const container = dex_container->get();
+    DexContainer::Section* const main_section = container->GetMainSection();
     if (!new_file->WriteFully(main_section->Begin(), main_section->Size())) {
-      LOG(ERROR) << "Failed tow write dex file to " << dex_file_location;
+      LOG(ERROR) << "Failed to write main section for dex file " << dex_file_location;
+      new_file->Erase();
+      return;
+    }
+    DexContainer::Section* const data_section = container->GetDataSection();
+    if (!new_file->WriteFully(data_section->Begin(), data_section->Size())) {
+      LOG(ERROR) << "Failed to write data section for dex file " << dex_file_location;
       new_file->Erase();
       return;
     }
@@ -1869,7 +1873,9 @@ void DexLayout::ProcessDexFile(const char* file_name,
     // These options required the offsets for dumping purposes.
     eagerly_assign_offsets = true;
   }
-  std::unique_ptr<dex_ir::Header> header(dex_ir::DexIrBuilder(*dex_file, eagerly_assign_offsets));
+  std::unique_ptr<dex_ir::Header> header(dex_ir::DexIrBuilder(*dex_file,
+                                                               eagerly_assign_offsets,
+                                                               GetOptions()));
   SetHeader(header.get());
 
   if (options_.verbose_) {
@@ -1919,17 +1925,22 @@ void DexLayout::ProcessDexFile(const char* file_name,
       // Dex file verifier cannot handle compact dex.
       bool verify = options_.compact_dex_level_ == CompactDexLevel::kCompactDexLevelNone;
       const ArtDexFileLoader dex_file_loader;
-      DexContainer::Section* section = (*dex_container)->GetMainSection();
-      DCHECK_EQ(file_size, section->Size());
+      DexContainer::Section* const main_section = (*dex_container)->GetMainSection();
+      DexContainer::Section* const data_section = (*dex_container)->GetDataSection();
+      DCHECK_EQ(file_size, main_section->Size())
+          << main_section->Size() << " " << data_section->Size();
       std::unique_ptr<const DexFile> output_dex_file(
-          dex_file_loader.Open(section->Begin(),
-                               file_size,
-                               location,
-                               /* checksum */ 0,
-                               /*oat_dex_file*/ nullptr,
-                               verify,
-                               /*verify_checksum*/ false,
-                               &error_msg));
+          dex_file_loader.OpenWithDataSection(
+              main_section->Begin(),
+              main_section->Size(),
+              data_section->Begin(),
+              data_section->Size(),
+              location,
+              /* checksum */ 0,
+              /*oat_dex_file*/ nullptr,
+              verify,
+              /*verify_checksum*/ false,
+              &error_msg));
       CHECK(output_dex_file != nullptr) << "Failed to re-open output file:" << error_msg;
 
       // Do IR-level comparison between input and output. This check ignores potential differences
@@ -1939,10 +1950,12 @@ void DexLayout::ProcessDexFile(const char* file_name,
       // Regenerate output IR to catch any bugs that might happen during writing.
       std::unique_ptr<dex_ir::Header> output_header(
           dex_ir::DexIrBuilder(*output_dex_file,
-                               /*eagerly_assign_offsets*/ true));
+                               /*eagerly_assign_offsets*/ true,
+                               GetOptions()));
       std::unique_ptr<dex_ir::Header> orig_header(
           dex_ir::DexIrBuilder(*dex_file,
-                               /*eagerly_assign_offsets*/ true));
+                               /*eagerly_assign_offsets*/ true,
+                               GetOptions()));
       CHECK(VerifyOutputDexFile(output_header.get(), orig_header.get(), &error_msg)) << error_msg;
     }
   }
@@ -1966,8 +1979,7 @@ int DexLayout::ProcessFile(const char* file_name) {
         file_name, file_name, /* verify */ true, verify_checksum, &error_msg, &dex_files)) {
     // Display returned error message to user. Note that this error behavior
     // differs from the error messages shown by the original Dalvik dexdump.
-    fputs(error_msg.c_str(), stderr);
-    fputc('\n', stderr);
+    LOG(ERROR) << error_msg;
     return -1;
   }
 

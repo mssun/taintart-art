@@ -54,6 +54,7 @@ class VdexFile {
    public:
     Header(uint32_t number_of_dex_files_,
            uint32_t dex_size,
+           uint32_t dex_shared_data_size,
            uint32_t verifier_deps_size,
            uint32_t quickening_info_size);
 
@@ -64,6 +65,7 @@ class VdexFile {
     bool IsValid() const { return IsMagicValid() && IsVersionValid(); }
 
     uint32_t GetDexSize() const { return dex_size_; }
+    uint32_t GetDexSharedDataSize() const { return dex_shared_data_size_; }
     uint32_t GetVerifierDepsSize() const { return verifier_deps_size_; }
     uint32_t GetQuickeningInfoSize() const { return quickening_info_size_; }
     uint32_t GetNumberOfDexFiles() const { return number_of_dex_files_; }
@@ -72,6 +74,7 @@ class VdexFile {
       return sizeof(Header) +
              GetSizeOfChecksumsSection() +
              GetDexSize() +
+             GetDexSharedDataSize() +
              GetVerifierDepsSize() +
              GetQuickeningInfoSize();
     }
@@ -84,13 +87,14 @@ class VdexFile {
 
    private:
     static constexpr uint8_t kVdexMagic[] = { 'v', 'd', 'e', 'x' };
-    // Last update: Use efficient encoding for compact dex code item fields
-    static constexpr uint8_t kVdexVersion[] = { '0', '1', '5', '\0' };
+    // Last update: Separate section for compact dex data.
+    static constexpr uint8_t kVdexVersion[] = { '0', '1', '6', '\0' };
 
     uint8_t magic_[4];
     uint8_t version_[4];
     uint32_t number_of_dex_files_;
     uint32_t dex_size_;
+    uint32_t dex_shared_data_size_;
     uint32_t verifier_deps_size_;
     uint32_t quickening_info_size_;
 
@@ -172,7 +176,8 @@ class VdexFile {
 
   ArrayRef<const uint8_t> GetVerifierDepsData() const {
     return ArrayRef<const uint8_t>(
-        DexBegin() + GetHeader().GetDexSize(), GetHeader().GetVerifierDepsSize());
+        DexBegin() + GetHeader().GetDexSize() + GetHeader().GetDexSharedDataSize(),
+        GetHeader().GetVerifierDepsSize());
   }
 
   ArrayRef<const uint8_t> GetQuickeningInfo() const {
@@ -218,6 +223,10 @@ class VdexFile {
   ArrayRef<const uint8_t> GetQuickenedInfoOf(const DexFile& dex_file,
                                              uint32_t dex_method_idx) const;
 
+  bool HasDexSection() const {
+    return GetHeader().GetDexSize() != 0;
+  }
+
  private:
   uint32_t GetQuickeningInfoTableOffset(const uint8_t* source_dex_begin) const;
 
@@ -234,10 +243,6 @@ class VdexFile {
       const uint8_t* source_dex_begin,
       uint32_t num_method_ids,
       const ArrayRef<const uint8_t>& quickening_info) const;
-
-  bool HasDexSection() const {
-    return GetHeader().GetDexSize() != 0;
-  }
 
   bool ContainsDexFile(const DexFile& dex_file) const;
 

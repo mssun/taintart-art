@@ -35,8 +35,20 @@ class CompactDexFile : public DexFile {
 
   class Header : public DexFile::Header {
    public:
+    static const Header* At(const void* at) {
+      return reinterpret_cast<const Header*>(at);
+    }
+
     uint32_t GetFeatureFlags() const {
       return feature_flags_;
+    }
+
+    uint32_t GetDataOffset() const {
+      return data_off_;
+    }
+
+    uint32_t GetDataSize() const {
+      return data_size_;
     }
 
    private:
@@ -245,9 +257,17 @@ class CompactDexFile : public DexFile {
     return debug_info_offsets_.GetDebugInfoOffset(dex_method_index);
   }
 
+  static uint32_t CalculateChecksum(const uint8_t* base_begin,
+                                    size_t base_size,
+                                    const uint8_t* data_begin,
+                                    size_t data_size);
+  virtual uint32_t CalculateChecksum() const OVERRIDE;
+
  private:
   CompactDexFile(const uint8_t* base,
                  size_t size,
+                 const uint8_t* data_begin,
+                 size_t data_size,
                  const std::string& location,
                  uint32_t location_checksum,
                  const OatDexFile* oat_dex_file,

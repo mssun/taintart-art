@@ -124,17 +124,35 @@ class PatchoatTest : public DexoptTest {
     return RunDex2OatOrPatchoat(argv, error_msg);
   }
 
-  bool RelocateBootImage(const std::string& input_image_location,
-                         const std::string& output_image_filename,
-                         off_t base_offset_delta,
-                         std::string* error_msg) {
+  static std::vector<std::string> BasePatchoatCommand(const std::string& input_image_location,
+                                                      off_t base_offset_delta) {
     Runtime* const runtime = Runtime::Current();
     std::vector<std::string> argv;
     argv.push_back(runtime->GetPatchoatExecutable());
     argv.push_back("--input-image-location=" + input_image_location);
-    argv.push_back("--output-image-file=" + output_image_filename);
     argv.push_back(StringPrintf("--base-offset-delta=0x%jx", (intmax_t) base_offset_delta));
     argv.push_back(StringPrintf("--instruction-set=%s", GetInstructionSetString(kRuntimeISA)));
+
+    return argv;
+  }
+
+  bool RelocateBootImage(const std::string& input_image_location,
+                         const std::string& output_image_filename,
+                         off_t base_offset_delta,
+                         std::string* error_msg) {
+    std::vector<std::string> argv = BasePatchoatCommand(input_image_location, base_offset_delta);
+    argv.push_back("--output-image-file=" + output_image_filename);
+
+    return RunDex2OatOrPatchoat(argv, error_msg);
+  }
+
+  bool VerifyBootImage(const std::string& input_image_location,
+                       const std::string& output_image_filename,
+                       off_t base_offset_delta,
+                       std::string* error_msg) {
+    std::vector<std::string> argv = BasePatchoatCommand(input_image_location, base_offset_delta);
+    argv.push_back("--output-image-file=" + output_image_filename);
+    argv.push_back("--verify");
 
     return RunDex2OatOrPatchoat(argv, error_msg);
   }
@@ -143,13 +161,8 @@ class PatchoatTest : public DexoptTest {
                                 const std::string& output_rel_filename,
                                 off_t base_offset_delta,
                                 std::string* error_msg) {
-    Runtime* const runtime = Runtime::Current();
-    std::vector<std::string> argv;
-    argv.push_back(runtime->GetPatchoatExecutable());
-    argv.push_back("--input-image-location=" + input_image_location);
+    std::vector<std::string> argv = BasePatchoatCommand(input_image_location, base_offset_delta);
     argv.push_back("--output-image-relocation-file=" + output_rel_filename);
-    argv.push_back(StringPrintf("--base-offset-delta=0x%jx", (intmax_t) base_offset_delta));
-    argv.push_back(StringPrintf("--instruction-set=%s", GetInstructionSetString(kRuntimeISA)));
 
     return RunDex2OatOrPatchoat(argv, error_msg);
   }
@@ -280,34 +293,6 @@ class PatchoatTest : public DexoptTest {
   }
 
   bool BinaryDiff(
-      const std::string& filename1,
-      const std::vector<uint8_t>& data1,
-      const std::string& filename2,
-      const std::vector<uint8_t>& data2,
-      std::string* error_msg) {
-    if (data1.size() != data1.size()) {
-      *error_msg =
-          StringPrintf(
-              "%s and %s are of different size: %zu vs %zu",
-              filename1.c_str(),
-              filename2.c_str(),
-              data1.size(),
-              data2.size());
-      return true;
-    }
-    size_t size = data1.size();
-    for (size_t i = 0; i < size; i++) {
-      if (data1[i] != data2[i]) {
-        *error_msg =
-            StringPrintf("%s and %s differ at offset %zu", filename1.c_str(), filename2.c_str(), i);
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  bool BinaryDiff(
       const std::string& filename1, const std::string& filename2, std::string* error_msg) {
     std::string read_error_msg;
     std::vector<uint8_t> image1;
@@ -320,97 +305,26 @@ class PatchoatTest : public DexoptTest {
       *error_msg = StringPrintf("Failed to read %s: %s", filename2.c_str(), read_error_msg.c_str());
       return true;
     }
-    return BinaryDiff(filename1, image1, filename2, image2, error_msg);
-  }
-
-  bool IsImageIdenticalToOriginalExceptForRelocation(
-      const std::string& relocated_filename,
-      const std::string& original_filename,
-      const std::string& rel_filename,
-      std::string* error_msg) {
-    *error_msg = "";
-    std::string read_error_msg;
-    std::vector<uint8_t> rel;
-    if (!ReadFully(rel_filename, &rel, &read_error_msg)) {
-      *error_msg =
-          StringPrintf("Failed to read %s: %s", rel_filename.c_str(), read_error_msg.c_str());
-      return false;
-    }
-    std::vector<uint8_t> relocated;
-    if (!ReadFully(relocated_filename, &relocated, &read_error_msg)) {
-      *error_msg =
-          StringPrintf("Failed to read %s: %s", relocated_filename.c_str(), read_error_msg.c_str());
-      return false;
-    }
-
-    size_t image_size = relocated.size();
-    if ((image_size % 4) != 0) {
+    if (image1.size() != image1.size()) {
       *error_msg =
           StringPrintf(
-              "Relocated image file %s size not multiple of 4: %zu",
-                  relocated_filename.c_str(), image_size);
-      return false;
+              "%s and %s are of different size: %zu vs %zu",
+              filename1.c_str(),
+              filename2.c_str(),
+              image1.size(),
+              image2.size());
+      return true;
     }
-    if (image_size > UINT32_MAX) {
-      *error_msg =
-          StringPrintf(
-              "Relocated image file %s too large: %zu" , relocated_filename.c_str(), image_size);
-      return false;
-    }
-
-    const ImageHeader& relocated_header = *reinterpret_cast<const ImageHeader*>(relocated.data());
-    off_t expected_diff = relocated_header.GetPatchDelta();
-
-    if (expected_diff != 0) {
-      // Relocated image is expected to differ from the original due to relocation.
-      // Unrelocate the image in memory to compensate.
-      uint8_t* image_start = relocated.data();
-      const uint8_t* rel_end = &rel[rel.size()];
-      if (rel.size() < SHA256_DIGEST_LENGTH) {
+    size_t size = image1.size();
+    for (size_t i = 0; i < size; i++) {
+      if (image1[i] != image2[i]) {
         *error_msg =
-            StringPrintf("Malformed image relocation file %s: too short", rel_filename.c_str());
-        return false;
-      }
-      const uint8_t* rel_ptr = &rel[SHA256_DIGEST_LENGTH];
-      // The remaining .rel file consists of offsets at which relocation should've occurred.
-      // For each offset, we "unrelocate" the image by subtracting the expected relocation
-      // diff value (as specified in the image header).
-      //
-      // Each offset is encoded as a delta/diff relative to the previous offset. With the
-      // very first offset being encoded relative to offset 0.
-      // Deltas are encoded using little-endian 7 bits per byte encoding, with all bytes except
-      // the last one having the highest bit set.
-      uint32_t offset = 0;
-      while (rel_ptr != rel_end) {
-        uint32_t offset_delta = 0;
-        if (DecodeUnsignedLeb128Checked(&rel_ptr, rel_end, &offset_delta)) {
-          offset += offset_delta;
-          uint32_t *image_value = reinterpret_cast<uint32_t*>(image_start + offset);
-          *image_value -= expected_diff;
-        } else {
-            *error_msg =
-                StringPrintf(
-                    "Malformed image relocation file %s: "
-                    "last byte has it's most significant bit set",
-                    rel_filename.c_str());
-            return false;
-        }
+            StringPrintf("%s and %s differ at offset %zu", filename1.c_str(), filename2.c_str(), i);
+        return true;
       }
     }
 
-    // Image in memory is now supposed to be identical to the original. Compare it to the original.
-    std::vector<uint8_t> original;
-    if (!ReadFully(original_filename, &original, &read_error_msg)) {
-      *error_msg =
-          StringPrintf("Failed to read %s: %s", original_filename.c_str(), read_error_msg.c_str());
-      return false;
-    }
-    if (BinaryDiff(relocated_filename, relocated, original_filename, original, error_msg)) {
-      return false;
-    }
-
-    // Relocated image is identical to the original, once relocations are taken into account
-    return true;
+    return false;
   }
 };
 
@@ -524,7 +438,7 @@ TEST_F(PatchoatTest, PatchoatRelocationSameAsDex2oatRelocation) {
 #endif
 }
 
-TEST_F(PatchoatTest, RelFileSufficientToUnpatch) {
+TEST_F(PatchoatTest, RelFileVerification) {
   // This test checks that a boot image relocated using patchoat can be unrelocated using the .rel
   // file created by patchoat.
 
@@ -546,10 +460,6 @@ TEST_F(PatchoatTest, RelFileSufficientToUnpatch) {
   }
 
   // Generate image relocation file for the original boot image
-  ScratchFile rel_scratch;
-  rel_scratch.Unlink();
-  std::string rel_dir = rel_scratch.GetFilename();
-  ASSERT_EQ(0, mkdir(rel_dir.c_str(), 0700));
   std::string dex2oat_orig_with_arch_dir =
       dex2oat_orig_dir + "/" + GetInstructionSetString(kRuntimeISA);
   // The arch-including symlink is needed by patchoat
@@ -557,7 +467,7 @@ TEST_F(PatchoatTest, RelFileSufficientToUnpatch) {
   off_t base_addr_delta = 0x100000;
   if (!GenerateBootImageRelFile(
       dex2oat_orig_dir + "/boot.art",
-      rel_dir + "/boot.art.rel",
+      dex2oat_orig_dir + "/boot.art.rel",
       base_addr_delta,
       &error_msg)) {
     FAIL() << "RelocateBootImage failed: " << error_msg;
@@ -582,8 +492,8 @@ TEST_F(PatchoatTest, RelFileSufficientToUnpatch) {
   // Assert that patchoat created the same set of .art and .art.rel files
   std::vector<std::string> rel_basenames;
   std::vector<std::string> relocated_image_basenames;
-  if (!ListDirFilesEndingWith(rel_dir, "", &rel_basenames, &error_msg)) {
-    FAIL() << "Failed to list *.art.rel files in " << rel_dir << ": " << error_msg;
+  if (!ListDirFilesEndingWith(dex2oat_orig_dir, ".rel", &rel_basenames, &error_msg)) {
+    FAIL() << "Failed to list *.art.rel files in " << dex2oat_orig_dir << ": " << error_msg;
   }
   if (!ListDirFilesEndingWith(relocated_dir, ".art", &relocated_image_basenames, &error_msg)) {
     FAIL() << "Failed to list *.art files in " << relocated_dir << ": " << error_msg;
@@ -611,52 +521,19 @@ TEST_F(PatchoatTest, RelFileSufficientToUnpatch) {
   }
   ASSERT_EQ(rel_shortened_basenames, relocated_image_shortened_basenames);
 
-  // For each image file, assert that unrelocating the image produces its original version
-  for (size_t i = 0; i < relocated_image_basenames.size(); i++) {
-    const std::string& original_image_filename =
-        dex2oat_orig_dir + "/" + relocated_image_shortened_basenames[i] + ".art";
-    const std::string& relocated_image_filename =
-        relocated_dir + "/" + relocated_image_basenames[i];
-    const std::string& rel_filename = rel_dir + "/" + rel_basenames[i];
-
-    // Assert that relocated image differs from the original
-    if (!BinaryDiff(original_image_filename, relocated_image_filename, &error_msg)) {
-      FAIL() << "Relocated image " << relocated_image_filename
-          << " identical to the original image " << original_image_filename;
-    }
-
-    // Assert that relocated image is identical to the original except for relocations described in
-    // the .rel file
-    if (!IsImageIdenticalToOriginalExceptForRelocation(
-        relocated_image_filename, original_image_filename, rel_filename, &error_msg)) {
-      FAIL() << "Unrelocating " << relocated_image_filename << " using " << rel_filename
-          << " did not produce the same output as " << original_image_filename << ": " << error_msg;
-    }
-
-    // Assert that the digest of original image in .rel file is as expected
-    std::vector<uint8_t> original;
-    if (!ReadFully(original_image_filename, &original, &error_msg)) {
-      FAIL() << "Failed to read original image " << original_image_filename;
-    }
-    std::vector<uint8_t> rel;
-    if (!ReadFully(rel_filename, &rel, &error_msg)) {
-      FAIL() << "Failed to read image relocation file " << rel_filename;
-    }
-    uint8_t original_image_digest[SHA256_DIGEST_LENGTH];
-    SHA256(original.data(), original.size(), original_image_digest);
-    const uint8_t* original_image_digest_in_rel_file = rel.data();
-    if (memcmp(original_image_digest_in_rel_file, original_image_digest, SHA256_DIGEST_LENGTH)) {
-      FAIL() << "Digest of original image in " << rel_filename << " does not match the original"
-          " image " << original_image_filename;
-    }
+  // Assert that verification works with the .rel files.
+  if (!VerifyBootImage(
+      dex2oat_orig_dir + "/boot.art",
+      relocated_dir + "/boot.art",
+      base_addr_delta,
+      &error_msg)) {
+    FAIL() << "VerifyBootImage failed: " << error_msg;
   }
 
   ClearDirectory(dex2oat_orig_dir.c_str(), /*recursive*/ true);
-  ClearDirectory(rel_dir.c_str(), /*recursive*/ true);
   ClearDirectory(relocated_dir.c_str(), /*recursive*/ true);
 
   rmdir(dex2oat_orig_dir.c_str());
-  rmdir(rel_dir.c_str());
   rmdir(relocated_dir.c_str());
 }
 

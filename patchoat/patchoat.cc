@@ -25,12 +25,14 @@
 #include <string>
 #include <vector>
 
+#include "android-base/file.h"
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "base/dumpable.h"
+#include "base/file_utils.h"
 #include "base/logging.h"  // For InitLogging.
 #include "base/memory_tool.h"
 #include "base/scoped_flock.h"
@@ -232,6 +234,126 @@ static bool WriteRelFile(
     return false;
   }
 
+  return true;
+}
+
+static bool CheckImageIdenticalToOriginalExceptForRelocation(
+    const std::string& relocated_filename,
+    const std::string& original_filename,
+    std::string* error_msg) {
+  *error_msg = "";
+  std::string rel_filename = original_filename + ".rel";
+  std::unique_ptr<File> rel_file(OS::OpenFileForReading(rel_filename.c_str()));
+  if (rel_file.get() == nullptr) {
+    *error_msg = StringPrintf("Failed to open image relocation file %s", rel_filename.c_str());
+    return false;
+  }
+  int64_t rel_size = rel_file->GetLength();
+  if (rel_size < 0) {
+    *error_msg = StringPrintf("Error while getting size of image relocation file %s",
+                              rel_filename.c_str());
+    return false;
+  }
+  std::unique_ptr<uint8_t[]> rel(new uint8_t[rel_size]);
+  if (!rel_file->ReadFully(rel.get(), rel_size)) {
+    *error_msg = StringPrintf("Failed to read image relocation file %s", rel_filename.c_str());
+    return false;
+  }
+
+  std::unique_ptr<File> image_file(OS::OpenFileForReading(relocated_filename.c_str()));
+  if (image_file.get() == nullptr) {
+    *error_msg = StringPrintf("Unable to open relocated image file  %s",
+                              relocated_filename.c_str());
+    return false;
+  }
+
+  int64_t image_size = image_file->GetLength();
+  if (image_size < 0) {
+    *error_msg = StringPrintf("Error while getting size of relocated image file %s",
+                              relocated_filename.c_str());
+    return false;
+  }
+  if ((image_size % 4) != 0) {
+    *error_msg =
+        StringPrintf(
+            "Relocated image file %s size not multiple of 4: %" PRId64,
+                relocated_filename.c_str(), image_size);
+    return false;
+  }
+  if (image_size > std::numeric_limits<uint32_t>::max()) {
+    *error_msg =
+        StringPrintf(
+            "Relocated image file %s too large: %" PRId64, relocated_filename.c_str(), image_size);
+    return false;
+  }
+
+  std::unique_ptr<uint8_t[]> image(new uint8_t[image_size]);
+  if (!image_file->ReadFully(image.get(), image_size)) {
+    *error_msg = StringPrintf("Failed to read relocated image file %s", relocated_filename.c_str());
+    return false;
+  }
+
+  const uint8_t* original_image_digest = rel.get();
+  if (rel_size < SHA256_DIGEST_LENGTH) {
+    *error_msg = StringPrintf("Malformed image relocation file %s: too short",
+                              rel_filename.c_str());
+    return false;
+  }
+
+  const ImageHeader& image_header = *reinterpret_cast<const ImageHeader*>(image.get());
+  off_t expected_diff = image_header.GetPatchDelta();
+
+  if (expected_diff == 0) {
+    *error_msg = StringPrintf("Unsuported patch delta of zero in %s",
+                              relocated_filename.c_str());
+    return false;
+  }
+
+  // Relocated image is expected to differ from the original due to relocation.
+  // Unrelocate the image in memory to compensate.
+  uint8_t* image_start = image.get();
+  const uint8_t* rel_end = &rel[rel_size];
+  const uint8_t* rel_ptr = &rel[SHA256_DIGEST_LENGTH];
+  // The remaining .rel file consists of offsets at which relocation should've occurred.
+  // For each offset, we "unrelocate" the image by subtracting the expected relocation
+  // diff value (as specified in the image header).
+  //
+  // Each offset is encoded as a delta/diff relative to the previous offset. With the
+  // very first offset being encoded relative to offset 0.
+  // Deltas are encoded using little-endian 7 bits per byte encoding, with all bytes except
+  // the last one having the highest bit set.
+  uint32_t offset = 0;
+  while (rel_ptr != rel_end) {
+    uint32_t offset_delta = 0;
+    if (DecodeUnsignedLeb128Checked(&rel_ptr, rel_end, &offset_delta)) {
+      offset += offset_delta;
+      uint32_t *image_value = reinterpret_cast<uint32_t*>(image_start + offset);
+      *image_value -= expected_diff;
+    } else {
+      *error_msg =
+          StringPrintf(
+              "Malformed image relocation file %s: "
+              "last byte has it's most significant bit set",
+              rel_filename.c_str());
+      return false;
+    }
+  }
+
+  // Image in memory is now supposed to be identical to the original.  We
+  // confirm this by comparing the digest of the in-memory image to the expected
+  // digest from relocation file.
+  uint8_t image_digest[SHA256_DIGEST_LENGTH];
+  SHA256(image.get(), image_size, image_digest);
+  if (memcmp(image_digest, original_image_digest, SHA256_DIGEST_LENGTH) != 0) {
+    *error_msg =
+        StringPrintf(
+            "Relocated image %s does not match the original %s after unrelocation",
+            relocated_filename.c_str(),
+            original_filename.c_str());
+    return false;
+  }
+
+  // Relocated image is identical to the original, once relocations are taken into account
   return true;
 }
 
@@ -473,6 +595,86 @@ bool PatchOat::Patch(const std::string& image_location,
   }
 
   return true;
+}
+
+bool PatchOat::Verify(const std::string& image_location,
+                      const std::string& output_image_directory,
+                      InstructionSet isa,
+                      TimingLogger* timings) {
+  if (image_location.empty()) {
+    LOG(ERROR) << "Original image file not provided";
+    return false;
+  }
+  if (output_image_directory.empty()) {
+    LOG(ERROR) << "Relocated image directory not provided";
+    return false;
+  }
+
+  TimingLogger::ScopedTiming t("Runtime Setup", timings);
+
+  CHECK_NE(isa, InstructionSet::kNone);
+  const char* isa_name = GetInstructionSetString(isa);
+
+  // Set up the runtime
+  RuntimeOptions options;
+  NoopCompilerCallbacks callbacks;
+  options.push_back(std::make_pair("compilercallbacks", &callbacks));
+  std::string img = "-Ximage:" + image_location;
+  options.push_back(std::make_pair(img.c_str(), nullptr));
+  options.push_back(std::make_pair("imageinstructionset", reinterpret_cast<const void*>(isa_name)));
+  options.push_back(std::make_pair("-Xno-sig-chain", nullptr));
+  if (!Runtime::Create(options, false)) {
+    LOG(ERROR) << "Unable to initialize runtime";
+    return false;
+  }
+  std::unique_ptr<Runtime> runtime(Runtime::Current());
+
+  // Runtime::Create acquired the mutator_lock_ that is normally given away when we Runtime::Start,
+  // give it away now and then switch to a more manageable ScopedObjectAccess.
+  Thread::Current()->TransitionFromRunnableToSuspended(kNative);
+  ScopedObjectAccess soa(Thread::Current());
+
+  t.NewTiming("Image Verification setup");
+  std::vector<gc::space::ImageSpace*> spaces = Runtime::Current()->GetHeap()->GetBootImageSpaces();
+
+  // TODO: Check that no other .rel files exist in the original dir
+
+  bool success = true;
+  std::string image_location_dir = android::base::Dirname(image_location);
+  for (size_t i = 0; i < spaces.size(); ++i) {
+    gc::space::ImageSpace* space = spaces[i];
+    std::string image_filename = space->GetImageLocation();
+
+    std::string relocated_image_filename;
+    std::string error_msg;
+    if (!GetDalvikCacheFilename(image_filename.c_str(),
+            output_image_directory.c_str(), &relocated_image_filename, &error_msg)) {
+      LOG(ERROR) << "Failed to find relocated image file name: " << error_msg;
+      success = false;
+      break;
+    }
+    // location:     /system/framework/boot.art
+    // isa:          arm64
+    // basename:     boot.art
+    // original:     /system/framework/arm64/boot.art
+    // relocation:   /system/framework/arm64/boot.art.rel
+    std::string original_image_filename = GetSystemImageFilename(image_filename.c_str(), isa);
+
+    if (!CheckImageIdenticalToOriginalExceptForRelocation(
+            relocated_image_filename, original_image_filename, &error_msg)) {
+      LOG(ERROR) << error_msg;
+      success = false;
+      break;
+    }
+  }
+
+  if (!kIsDebugBuild && !(RUNNING_ON_MEMORY_TOOL && kMemoryToolDetectsLeaks)) {
+    // We want to just exit on non-debug builds, not bringing the runtime down
+    // in an orderly fashion. So release the following fields.
+    runtime.release();
+  }
+
+  return success;
 }
 
 bool PatchOat::WriteImage(File* out) {
@@ -919,6 +1121,8 @@ NO_RETURN static void Usage(const char *fmt, ...) {
   UsageError("  --base-offset-delta=<delta>: Specify the amount to change the old base-offset by.");
   UsageError("      This value may be negative.");
   UsageError("");
+  UsageError("  --verify: Verify an existing patched file instead of creating one.");
+  UsageError("");
   UsageError("  --dump-timings: dump out patch timing information");
   UsageError("");
   UsageError("  --no-dump-timings: do not dump out patch timing information");
@@ -927,16 +1131,16 @@ NO_RETURN static void Usage(const char *fmt, ...) {
   exit(EXIT_FAILURE);
 }
 
-static int patchoat_image(TimingLogger& timings,
-                          InstructionSet isa,
-                          const std::string& input_image_location,
-                          const std::string& output_image_filename,
-                          const std::string& output_image_relocation_filename,
-                          off_t base_delta,
-                          bool base_delta_set,
-                          bool debug) {
+static int patchoat_patch_image(TimingLogger& timings,
+                                InstructionSet isa,
+                                const std::string& input_image_location,
+                                const std::string& output_image_directory,
+                                const std::string& output_image_relocation_filename,
+                                off_t base_delta,
+                                bool base_delta_set,
+                                bool debug) {
   CHECK(!input_image_location.empty());
-  if ((output_image_filename.empty()) && (output_image_relocation_filename.empty())) {
+  if ((output_image_directory.empty()) && (output_image_relocation_filename.empty())) {
     Usage("Image patching requires --output-image-file or --output-image-relocation-file");
   }
 
@@ -956,8 +1160,6 @@ static int patchoat_image(TimingLogger& timings,
 
   TimingLogger::ScopedTiming pt("patch image and oat", &timings);
 
-  std::string output_image_directory =
-      output_image_filename.substr(0, output_image_filename.find_last_of('/'));
   std::string output_image_relocation_directory =
       output_image_relocation_filename.substr(
           0, output_image_relocation_filename.find_last_of('/'));
@@ -967,6 +1169,26 @@ static int patchoat_image(TimingLogger& timings,
           base_delta,
           output_image_directory,
           output_image_relocation_directory,
+          isa,
+          &timings);
+
+  if (kIsDebugBuild) {
+    LOG(INFO) << "Exiting with return ... " << ret;
+  }
+  return ret ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+static int patchoat_verify_image(TimingLogger& timings,
+                                 InstructionSet isa,
+                                 const std::string& input_image_location,
+                                 const std::string& output_image_directory) {
+  CHECK(!input_image_location.empty());
+  TimingLogger::ScopedTiming pt("verify image and oat", &timings);
+
+  bool ret =
+      PatchOat::Verify(
+          input_image_location,
+          output_image_directory,
           isa,
           &timings);
 
@@ -1003,6 +1225,7 @@ static int patchoat(int argc, char **argv) {
   off_t base_delta = 0;
   bool base_delta_set = false;
   bool dump_timings = kIsDebugBuild;
+  bool verify = false;
 
   for (int i = 0; i < argc; ++i) {
     const StringPiece option(argv[i]);
@@ -1034,24 +1257,40 @@ static int patchoat(int argc, char **argv) {
       dump_timings = true;
     } else if (option == "--no-dump-timings") {
       dump_timings = false;
+    } else if (option == "--verify") {
+      verify = true;
     } else {
       Usage("Unknown argument %s", option.data());
     }
   }
+
+  // TODO: Have calls to patchoat pass in the output_image directory instead of
+  // the output_image_filename.
+  std::string output_image_directory;
+  if (!output_image_filename.empty())
+    output_image_directory = android::base::Dirname(output_image_filename);
 
   // The instruction set is mandatory. This simplifies things...
   if (!isa_set) {
     Usage("Instruction set must be set.");
   }
 
-  int ret = patchoat_image(timings,
-                           isa,
-                           input_image_location,
-                           output_image_filename,
-                           output_image_relocation_filename,
-                           base_delta,
-                           base_delta_set,
-                           debug);
+  int ret;
+  if (verify) {
+    ret = patchoat_verify_image(timings,
+                                isa,
+                                input_image_location,
+                                output_image_directory);
+  } else {
+    ret = patchoat_patch_image(timings,
+                               isa,
+                               input_image_location,
+                               output_image_directory,
+                               output_image_relocation_filename,
+                               base_delta,
+                               base_delta_set,
+                               debug);
+  }
 
   timings.EndTiming();
   if (dump_timings) {

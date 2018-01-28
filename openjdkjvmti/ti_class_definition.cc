@@ -122,7 +122,9 @@ static jvmtiError GetDexDataForRetransformation(ArtJvmTiEnv* env,
   if (dex_file == nullptr) {
     dex_file = &klass->GetDexFile();
   }
-  std::unique_ptr<FixedUpDexFile> fixed_dex_file(FixedUpDexFile::Create(*dex_file));
+  std::string storage;
+  std::unique_ptr<FixedUpDexFile> fixed_dex_file(
+      FixedUpDexFile::Create(*dex_file, klass->GetDescriptor(&storage)));
   *dex_data_len = static_cast<jint>(fixed_dex_file->Size());
   return CopyDataIntoJvmtiBuffer(env,
                                  fixed_dex_file->Begin(),

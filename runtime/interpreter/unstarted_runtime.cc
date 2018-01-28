@@ -38,6 +38,7 @@
 #include "entrypoints/entrypoint_utils-inl.h"
 #include "gc/reference_processor.h"
 #include "handle_scope-inl.h"
+#include "hidden_api.h"
 #include "interpreter/interpreter_common.h"
 #include "jvalue-inl.h"
 #include "mirror/array-inl.h"
@@ -265,7 +266,11 @@ void UnstartedRuntime::UnstartedClassNewInstance(
   bool ok = false;
   auto* cl = Runtime::Current()->GetClassLinker();
   if (cl->EnsureInitialized(self, h_klass, true, true)) {
-    auto* cons = h_klass->FindConstructor("()V", cl->GetImagePointerSize());
+    ArtMethod* cons = h_klass->FindConstructor("()V", cl->GetImagePointerSize());
+    if (cons != nullptr &&
+        hiddenapi::ShouldBlockAccessToMember(cons, shadow_frame->GetMethod())) {
+      cons = nullptr;
+    }
     if (cons != nullptr) {
       Handle<mirror::Object> h_obj(hs.NewHandle(klass->AllocObject(self)));
       CHECK(h_obj != nullptr);  // We don't expect OOM at compile-time.
@@ -307,6 +312,10 @@ void UnstartedRuntime::UnstartedClassGetDeclaredField(
         break;
       }
     }
+  }
+  if (found != nullptr &&
+      hiddenapi::ShouldBlockAccessToMember(found, shadow_frame->GetMethod())) {
+    found = nullptr;
   }
   if (found == nullptr) {
     AbortTransactionOrFail(self, "Failed to find field in Class.getDeclaredField in un-started "
@@ -370,6 +379,10 @@ void UnstartedRuntime::UnstartedClassGetDeclaredMethod(
           self, klass, name, args);
     }
   }
+  if (method != nullptr &&
+      hiddenapi::ShouldBlockAccessToMember(method->GetArtMethod(), shadow_frame->GetMethod())) {
+    method = nullptr;
+  }
   result->SetL(method);
 }
 
@@ -403,6 +416,11 @@ void UnstartedRuntime::UnstartedClassGetDeclaredConstructor(
       constructor = mirror::Class::GetDeclaredConstructorInternal<PointerSize::k32,
                                                                   false>(self, klass, args);
     }
+  }
+  if (constructor != nullptr &&
+      hiddenapi::ShouldBlockAccessToMember(
+          constructor->GetArtMethod(), shadow_frame->GetMethod())) {
+    constructor = nullptr;
   }
   result->SetL(constructor);
 }

@@ -398,6 +398,7 @@ public class Main {
   /// CHECK-START: int Main.test15() load_store_elimination (after)
   /// CHECK: <<Const2:i\d+>> IntConstant 2
   /// CHECK: StaticFieldSet
+  /// CHECK: StaticFieldSet
   /// CHECK-NOT: StaticFieldGet
   /// CHECK: Return [<<Const2>>]
 
@@ -772,127 +773,6 @@ public class Main {
     return obj;
   }
 
-  /// CHECK-START: void Main.testStoreStore2(TestClass2) load_store_elimination (before)
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldSet
-
-  /// CHECK-START: void Main.testStoreStore2(TestClass2) load_store_elimination (after)
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldSet
-  /// CHECK-NOT: InstanceFieldSet
-
-  private static void testStoreStore2(TestClass2 obj) {
-    obj.i = 41;
-    obj.j = 42;
-    obj.i = 43;
-    obj.j = 44;
-  }
-
-  /// CHECK-START: void Main.testStoreStore3(TestClass2, boolean) load_store_elimination (before)
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldSet
-
-  /// CHECK-START: void Main.testStoreStore3(TestClass2, boolean) load_store_elimination (after)
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldSet
-  /// CHECK-NOT: InstanceFieldSet
-
-  private static void testStoreStore3(TestClass2 obj, boolean flag) {
-    obj.i = 41;
-    obj.j = 42;    // redundant since it's overwritten in both branches below.
-    if (flag) {
-      obj.j = 43;
-    } else {
-      obj.j = 44;
-    }
-  }
-
-  /// CHECK-START: void Main.testStoreStore4() load_store_elimination (before)
-  /// CHECK: StaticFieldSet
-  /// CHECK: StaticFieldSet
-
-  /// CHECK-START: void Main.testStoreStore4() load_store_elimination (after)
-  /// CHECK: StaticFieldSet
-  /// CHECK-NOT: StaticFieldSet
-
-  private static void testStoreStore4() {
-    TestClass.si = 61;
-    TestClass.si = 62;
-  }
-
-  /// CHECK-START: int Main.testStoreStore5(TestClass2, TestClass2) load_store_elimination (before)
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldGet
-  /// CHECK: InstanceFieldSet
-
-  /// CHECK-START: int Main.testStoreStore5(TestClass2, TestClass2) load_store_elimination (after)
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldGet
-  /// CHECK: InstanceFieldSet
-
-  private static int testStoreStore5(TestClass2 obj1, TestClass2 obj2) {
-    obj1.i = 71;      // This store is needed since obj2.i may load from it.
-    int i = obj2.i;
-    obj1.i = 72;
-    return i;
-  }
-
-  /// CHECK-START: int Main.testStoreStore6(TestClass2, TestClass2) load_store_elimination (before)
-  /// CHECK: InstanceFieldSet
-  /// CHECK: InstanceFieldGet
-  /// CHECK: InstanceFieldSet
-
-  /// CHECK-START: int Main.testStoreStore6(TestClass2, TestClass2) load_store_elimination (after)
-  /// CHECK-NOT: InstanceFieldSet
-  /// CHECK: InstanceFieldGet
-  /// CHECK: InstanceFieldSet
-
-  private static int testStoreStore6(TestClass2 obj1, TestClass2 obj2) {
-    obj1.i = 81;      // This store is not needed since obj2.j cannot load from it.
-    int j = obj2.j;
-    obj1.i = 82;
-    return j;
-  }
-
-  /// CHECK-START: int Main.testNoSideEffects(int[]) load_store_elimination (before)
-  /// CHECK: ArraySet
-  /// CHECK: ArraySet
-  /// CHECK: ArraySet
-  /// CHECK: ArrayGet
-
-  /// CHECK-START: int Main.testNoSideEffects(int[]) load_store_elimination (after)
-  /// CHECK: ArraySet
-  /// CHECK: ArraySet
-  /// CHECK-NOT: ArraySet
-  /// CHECK-NOT: ArrayGet
-
-  private static int testNoSideEffects(int[] array) {
-    array[0] = 101;
-    array[1] = 102;
-    int bitCount = Integer.bitCount(0x3456);
-    array[1] = 103;
-    return array[0] + bitCount;
-  }
-
-  /// CHECK-START: void Main.testThrow(TestClass2, java.lang.Exception) load_store_elimination (before)
-  /// CHECK: InstanceFieldSet
-  /// CHECK: Throw
-
-  /// CHECK-START: void Main.testThrow(TestClass2, java.lang.Exception) load_store_elimination (after)
-  /// CHECK: InstanceFieldSet
-  /// CHECK: Throw
-
-  // Make sure throw keeps the store.
-  private static void testThrow(TestClass2 obj, Exception e) throws Exception {
-    obj.i = 55;
-    throw e;
-  }
-
   /// CHECK-START: int Main.testStoreStoreWithDeoptimize(int[]) load_store_elimination (before)
   /// CHECK: NewInstance
   /// CHECK: InstanceFieldSet
@@ -932,6 +812,23 @@ public class Main {
     arr[2] = 1;
     arr[3] = 1;
     return arr[0] + arr[1] + arr[2] + arr[3];
+  }
+
+  /// CHECK-START: int Main.testNoSideEffects(int[]) load_store_elimination (before)
+  /// CHECK: ArraySet
+  /// CHECK: ArraySet
+  /// CHECK: ArrayGet
+
+  /// CHECK-START: int Main.testNoSideEffects(int[]) load_store_elimination (after)
+  /// CHECK: ArraySet
+  /// CHECK: ArraySet
+  /// CHECK-NOT: ArrayGet
+
+  private static int testNoSideEffects(int[] array) {
+    array[0] = 101;
+    int bitCount = Integer.bitCount(0x3456);
+    array[1] = array[0] + 1;
+    return array[0] + bitCount;
   }
 
   /// CHECK-START: double Main.getCircleArea(double, boolean) load_store_elimination (before)
@@ -1208,46 +1105,16 @@ public class Main {
 
     assertIntEquals(testStoreStore().i, 41);
     assertIntEquals(testStoreStore().j, 43);
+    assertIntEquals(testStoreStoreWithDeoptimize(new int[4]), 4);
 
     assertIntEquals(testExitMerge(true), 2);
     assertIntEquals(testExitMerge2(true), 2);
     assertIntEquals(testExitMerge2(false), 2);
 
-    TestClass2 testclass2 = new TestClass2();
-    testStoreStore2(testclass2);
-    assertIntEquals(testclass2.i, 43);
-    assertIntEquals(testclass2.j, 44);
-
-    testStoreStore3(testclass2, true);
-    assertIntEquals(testclass2.i, 41);
-    assertIntEquals(testclass2.j, 43);
-    testStoreStore3(testclass2, false);
-    assertIntEquals(testclass2.i, 41);
-    assertIntEquals(testclass2.j, 44);
-
-    testStoreStore4();
-    assertIntEquals(TestClass.si, 62);
-
-    int ret = testStoreStore5(testclass2, testclass2);
-    assertIntEquals(testclass2.i, 72);
-    assertIntEquals(ret, 71);
-
-    testclass2.j = 88;
-    ret = testStoreStore6(testclass2, testclass2);
-    assertIntEquals(testclass2.i, 82);
-    assertIntEquals(ret, 88);
-
-    ret = testNoSideEffects(iarray);
+    int ret = testNoSideEffects(iarray);
     assertIntEquals(iarray[0], 101);
-    assertIntEquals(iarray[1], 103);
+    assertIntEquals(iarray[1], 102);
     assertIntEquals(ret, 108);
-
-    try {
-      testThrow(testclass2, new Exception());
-    } catch (Exception e) {}
-    assertIntEquals(testclass2.i, 55);
-
-    assertIntEquals(testStoreStoreWithDeoptimize(new int[4]), 4);
   }
 
   static boolean sFlag;

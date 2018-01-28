@@ -93,9 +93,18 @@ public class ChildClass {
                                  "in boot class path");
     }
 
+    boolean isSameBoot = (isParentInBoot == isChildInBoot);
+
     // Run meaningful combinations of access flags.
     for (Hiddenness hiddenness : Hiddenness.values()) {
-      final Behaviour expected = Behaviour.Granted;
+      final Behaviour expected;
+      if (isSameBoot || hiddenness == Hiddenness.Whitelist) {
+        expected = Behaviour.Granted;
+      } else if (hiddenness == Hiddenness.Blacklist) {
+        expected = Behaviour.Denied;
+      } else {
+        expected = Behaviour.Warning;
+      }
 
       for (boolean isStatic : booleanValues) {
         String suffix = (isStatic ? "Static" : "") + hiddenness.name();
@@ -380,7 +389,7 @@ public class ChildClass {
   private static void checkLinking(String className, boolean takesParameter, Behaviour behaviour)
       throws Exception {
     boolean canAccess = (behaviour != Behaviour.Denied);
-    boolean setsWarning = (behaviour == Behaviour.Warning);
+    boolean setsWarning = false;  // we do not set the flag in verifier or at runtime
 
     clearWarning();
     if (Linking.canAccess(className, takesParameter) != canAccess) {

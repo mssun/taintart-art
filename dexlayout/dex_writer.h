@@ -85,6 +85,7 @@ class DexWriter {
 
     void Seek(size_t position) {
       position_ = position;
+      EnsureStorage(0u);
     }
 
     // Does not allow overwriting for bug prevention purposes.
@@ -129,10 +130,12 @@ class DexWriter {
 
     ALWAYS_INLINE void AlignTo(const size_t alignment) {
       position_ = RoundUp(position_, alignment);
+      EnsureStorage(0u);
     }
 
     ALWAYS_INLINE void Skip(const size_t count) {
       position_ += count;
+      EnsureStorage(0u);
     }
 
     class ScopedSeek {
@@ -260,7 +263,9 @@ class DexWriter {
   virtual uint32_t WriteCodeItemPostInstructionData(Stream* stream,
                                                     dex_ir::CodeItem* item,
                                                     bool reserve_only);
-  virtual uint32_t WriteCodeItem(Stream* stream, dex_ir::CodeItem* item, bool reserve_only);
+  virtual void WriteCodeItem(Stream* stream, dex_ir::CodeItem* item, bool reserve_only);
+  virtual void WriteDebugInfoItem(Stream* stream, dex_ir::DebugInfoItem* debug_info);
+  virtual void WriteStringData(Stream* stream, dex_ir::StringData* string_data);
 
   // Process an offset, if compute_offset is set, write into the dex ir item, otherwise read the
   // existing offset and use that for writing.
