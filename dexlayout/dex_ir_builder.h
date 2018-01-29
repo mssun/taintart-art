@@ -27,8 +27,8 @@ class Options;
 
 namespace dex_ir {
 
-// Eagerly assign offsets assigns offsets based on the original offsets in the input dex file. If
-// this not done, dex_ir::Item::GetOffset will abort when reading uninitialized offsets.
+// Eagerly assign offsets based on the original offsets in the input dex file. If this is not done,
+// dex_ir::Item::GetOffset will abort when reading uninitialized offsets.
 dex_ir::Header* DexIrBuilder(const DexFile& dex_file,
                              bool eagerly_assign_offsets,
                              const Options& options);
