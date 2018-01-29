@@ -578,6 +578,11 @@ TEST_F(AssemblerX86_64Test, AddlImm) {
                      "add ${imm}, %{reg}"), "addli");
 }
 
+TEST_F(AssemblerX86_64Test, Addw) {
+  DriverStr(
+      RepeatAI(&x86_64::X86_64Assembler::addw, /*imm_bytes*/2U, "addw ${imm}, {mem}"), "addw");
+}
+
 TEST_F(AssemblerX86_64Test, ImulqReg1) {
   DriverStr(RepeatR(&x86_64::X86_64Assembler::imulq, "imulq %{reg}"), "imulq");
 }

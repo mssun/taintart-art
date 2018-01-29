@@ -2608,6 +2608,15 @@ void X86_64Assembler::addl(const Address& address, const Immediate& imm) {
 }
 
 
+void X86_64Assembler::addw(const Address& address, const Immediate& imm) {
+  AssemblerBuffer::EnsureCapacity ensured(&buffer_);
+  CHECK(imm.is_uint16() || imm.is_int16()) << imm.value();
+  EmitUint8(0x66);
+  EmitOptionalRex32(address);
+  EmitComplex(0, address, imm, /* is_16_op */ true);
+}
+
+
 void X86_64Assembler::subl(CpuRegister dst, CpuRegister src) {
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitOptionalRex32(dst, src);
@@ -3387,8 +3396,11 @@ void X86_64Assembler::EmitOperand(uint8_t reg_or_opcode, const Operand& operand)
 }
 
 
-void X86_64Assembler::EmitImmediate(const Immediate& imm) {
-  if (imm.is_int32()) {
+void X86_64Assembler::EmitImmediate(const Immediate& imm, bool is_16_op) {
+  if (is_16_op) {
+    EmitUint8(imm.value() & 0xFF);
+    EmitUint8(imm.value() >> 8);
+  } else if (imm.is_int32()) {
     EmitInt32(static_cast<int32_t>(imm.value()));
   } else {
     EmitInt64(imm.value());
@@ -3398,7 +3410,8 @@ void X86_64Assembler::EmitImmediate(const Immediate& imm) {
 
 void X86_64Assembler::EmitComplex(uint8_t reg_or_opcode,
                                   const Operand& operand,
-                                  const Immediate& immediate) {
+                                  const Immediate& immediate,
+                                  bool is_16_op) {
   CHECK_GE(reg_or_opcode, 0);
   CHECK_LT(reg_or_opcode, 8);
   if (immediate.is_int8()) {
@@ -3409,11 +3422,11 @@ void X86_64Assembler::EmitComplex(uint8_t reg_or_opcode,
   } else if (operand.IsRegister(CpuRegister(RAX))) {
     // Use short form if the destination is eax.
     EmitUint8(0x05 + (reg_or_opcode << 3));
-    EmitImmediate(immediate);
+    EmitImmediate(immediate, is_16_op);
   } else {
     EmitUint8(0x81);
     EmitOperand(reg_or_opcode, operand);
-    EmitImmediate(immediate);
+    EmitImmediate(immediate, is_16_op);
   }
 }
 
