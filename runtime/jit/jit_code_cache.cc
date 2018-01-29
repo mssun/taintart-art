@@ -549,7 +549,7 @@ void JitCodeCache::FreeCode(const void* code_ptr) {
   uintptr_t allocation = FromCodeToAllocation(code_ptr);
   // Notify native debugger that we are about to remove the code.
   // It does nothing if we are not using native debugger.
-  MutexLock mu(Thread::Current(), g_jit_debug_mutex);
+  MutexLock mu(Thread::Current(), *Locks::native_debug_interface_lock_);
   JITCodeEntry* entry = GetJITCodeEntry(reinterpret_cast<uintptr_t>(code_ptr));
   if (entry != nullptr) {
     DecrementJITCodeEntryRefcount(entry, reinterpret_cast<uintptr_t>(code_ptr));
@@ -1825,7 +1825,7 @@ void JitCodeCache::FreeData(uint8_t* data) {
 
 void JitCodeCache::Dump(std::ostream& os) {
   MutexLock mu(Thread::Current(), lock_);
-  MutexLock mu2(Thread::Current(), g_jit_debug_mutex);
+  MutexLock mu2(Thread::Current(), *Locks::native_debug_interface_lock_);
   os << "Current JIT code cache size: " << PrettySize(used_memory_for_code_) << "\n"
      << "Current JIT data cache size: " << PrettySize(used_memory_for_data_) << "\n"
      << "Current JIT mini-debug-info size: " << PrettySize(GetJITCodeEntryMemUsage()) << "\n"
