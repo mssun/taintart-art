@@ -901,6 +901,10 @@ public class Main {
                 fail();
             } catch (WrongMethodTypeException expected) {}
             try {
+                h0.invoke(Double.valueOf(0.33));
+                fail();
+            } catch (WrongMethodTypeException expected) {}
+            try {
                 Number doubleNumber = getDoubleAsNumber();
                 h0.invoke(doubleNumber);
                 fail();
