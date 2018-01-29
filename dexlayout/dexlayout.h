@@ -72,6 +72,8 @@ class Options {
   const char* output_dex_directory_ = nullptr;
   const char* output_file_name_ = nullptr;
   const char* profile_file_name_ = nullptr;
+  // Filter that removes classes that don't have a matching descriptor (during IR creation).
+  // This speeds up cases when the output only requires a single class.
   std::set<std::string> class_filter_;
 };
 
