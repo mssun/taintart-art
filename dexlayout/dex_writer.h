@@ -224,43 +224,43 @@ class DexWriter {
   virtual void Write(DexContainer* output);
   virtual std::unique_ptr<DexContainer> CreateDexContainer() const;
 
-  size_t WriteEncodedValue(Stream* stream, dex_ir::EncodedValue* encoded_value);
-  size_t WriteEncodedValueHeader(Stream* stream, int8_t value_type, size_t value_arg);
-  size_t WriteEncodedArray(Stream* stream, dex_ir::EncodedValueVector* values);
-  size_t WriteEncodedAnnotation(Stream* stream, dex_ir::EncodedAnnotation* annotation);
-  size_t WriteEncodedFields(Stream* stream, dex_ir::FieldItemVector* fields);
-  size_t WriteEncodedMethods(Stream* stream, dex_ir::MethodItemVector* methods);
+  void WriteEncodedValue(Stream* stream, dex_ir::EncodedValue* encoded_value);
+  void WriteEncodedValueHeader(Stream* stream, int8_t value_type, size_t value_arg);
+  void WriteEncodedArray(Stream* stream, dex_ir::EncodedValueVector* values);
+  void WriteEncodedAnnotation(Stream* stream, dex_ir::EncodedAnnotation* annotation);
+  void WriteEncodedFields(Stream* stream, dex_ir::FieldItemVector* fields);
+  void WriteEncodedMethods(Stream* stream, dex_ir::MethodItemVector* methods);
 
   // Header and id section
   virtual void WriteHeader(Stream* stream);
   virtual size_t GetHeaderSize() const;
   // reserve_only means don't write, only reserve space. This is required since the string data
   // offsets must be assigned.
-  uint32_t WriteStringIds(Stream* stream, bool reserve_only);
-  uint32_t WriteTypeIds(Stream* stream);
-  uint32_t WriteProtoIds(Stream* stream, bool reserve_only);
-  uint32_t WriteFieldIds(Stream* stream);
-  uint32_t WriteMethodIds(Stream* stream);
-  uint32_t WriteClassDefs(Stream* stream, bool reserve_only);
-  uint32_t WriteCallSiteIds(Stream* stream, bool reserve_only);
+  void WriteStringIds(Stream* stream, bool reserve_only);
+  void WriteTypeIds(Stream* stream);
+  void WriteProtoIds(Stream* stream, bool reserve_only);
+  void WriteFieldIds(Stream* stream);
+  void WriteMethodIds(Stream* stream);
+  void WriteClassDefs(Stream* stream, bool reserve_only);
+  void WriteCallSiteIds(Stream* stream, bool reserve_only);
 
-  uint32_t WriteEncodedArrays(Stream* stream);
-  uint32_t WriteAnnotations(Stream* stream);
-  uint32_t WriteAnnotationSets(Stream* stream);
-  uint32_t WriteAnnotationSetRefs(Stream* stream);
-  uint32_t WriteAnnotationsDirectories(Stream* stream);
+  void WriteEncodedArrays(Stream* stream);
+  void WriteAnnotations(Stream* stream);
+  void WriteAnnotationSets(Stream* stream);
+  void WriteAnnotationSetRefs(Stream* stream);
+  void WriteAnnotationsDirectories(Stream* stream);
 
   // Data section.
-  uint32_t WriteDebugInfoItems(Stream* stream);
-  uint32_t WriteCodeItems(Stream* stream, bool reserve_only);
-  uint32_t WriteTypeLists(Stream* stream);
-  uint32_t WriteStringDatas(Stream* stream);
-  uint32_t WriteClassDatas(Stream* stream);
-  uint32_t WriteMethodHandles(Stream* stream);
-  uint32_t WriteMapItems(Stream* stream, MapItemQueue* queue);
-  uint32_t GenerateAndWriteMapItems(Stream* stream);
+  void WriteDebugInfoItems(Stream* stream);
+  void WriteCodeItems(Stream* stream, bool reserve_only);
+  void WriteTypeLists(Stream* stream);
+  void WriteStringDatas(Stream* stream);
+  void WriteClassDatas(Stream* stream);
+  void WriteMethodHandles(Stream* stream);
+  void WriteMapItems(Stream* stream, MapItemQueue* queue);
+  void GenerateAndWriteMapItems(Stream* stream);
 
-  virtual uint32_t WriteCodeItemPostInstructionData(Stream* stream,
+  virtual void WriteCodeItemPostInstructionData(Stream* stream,
                                                     dex_ir::CodeItem* item,
                                                     bool reserve_only);
   virtual void WriteCodeItem(Stream* stream, dex_ir::CodeItem* item, bool reserve_only);
