@@ -140,8 +140,26 @@ class Primitive {
   // Returns the descriptor corresponding to the boxed type of |type|.
   static const char* BoxedDescriptor(Type type);
 
-  // Return true if |type| is an numeric type.
+  // Returns true if |type| is an numeric type.
   static constexpr bool IsNumericType(Type type) {
+    switch (type) {
+      case Primitive::Type::kPrimNot: return false;
+      case Primitive::Type::kPrimBoolean: return false;
+      case Primitive::Type::kPrimByte: return true;
+      case Primitive::Type::kPrimChar: return true;
+      case Primitive::Type::kPrimShort: return true;
+      case Primitive::Type::kPrimInt: return true;
+      case Primitive::Type::kPrimLong: return true;
+      case Primitive::Type::kPrimFloat: return true;
+      case Primitive::Type::kPrimDouble: return true;
+      case Primitive::Type::kPrimVoid: return false;
+    }
+    LOG(FATAL) << "Invalid type " << static_cast<int>(type);
+    UNREACHABLE();
+  }
+
+  // Return trues if |type| is a signed numeric type.
+  static constexpr bool IsSignedNumericType(Type type) {
     switch (type) {
       case Primitive::Type::kPrimNot: return false;
       case Primitive::Type::kPrimBoolean: return false;
@@ -158,17 +176,39 @@ class Primitive {
     UNREACHABLE();
   }
 
+  // Returns the number of bits required to hold the largest
+  // positive number that can be represented by |type|.
+  static constexpr size_t BitsRequiredForLargestValue(Type type) {
+    switch (type) {
+      case Primitive::Type::kPrimNot: return 0u;
+      case Primitive::Type::kPrimBoolean: return 1u;
+      case Primitive::Type::kPrimByte: return 7u;
+      case Primitive::Type::kPrimChar: return 16u;
+      case Primitive::Type::kPrimShort: return 15u;
+      case Primitive::Type::kPrimInt: return 31u;
+      case Primitive::Type::kPrimLong: return 63u;
+      case Primitive::Type::kPrimFloat: return 128u;
+      case Primitive::Type::kPrimDouble: return 1024u;
+      case Primitive::Type::kPrimVoid: return 0u;
+    }
+  }
+
   // Returns true if it is possible to widen type |from| to type |to|. Both |from| and
   // |to| should be numeric primitive types.
   static bool IsWidenable(Type from, Type to) {
-    static_assert(Primitive::Type::kPrimByte < Primitive::Type::kPrimShort, "Bad ordering");
-    static_assert(Primitive::Type::kPrimShort < Primitive::Type::kPrimInt, "Bad ordering");
-    static_assert(Primitive::Type::kPrimInt < Primitive::Type::kPrimLong, "Bad ordering");
-    static_assert(Primitive::Type::kPrimLong < Primitive::Type::kPrimFloat, "Bad ordering");
-    static_assert(Primitive::Type::kPrimFloat < Primitive::Type::kPrimDouble, "Bad ordering");
-    // Widening is only applicable between numeric types, like byte
-    // and int. Non-numeric types, such as boolean, cannot be widened.
-    return IsNumericType(from) && IsNumericType(to) && from <= to;
+    if (!IsNumericType(from) || !IsNumericType(to)) {
+      // Widening is only applicable between numeric types.
+      return false;
+    }
+    if (IsSignedNumericType(from) && !IsSignedNumericType(to)) {
+      // Nowhere to store the sign bit in |to|.
+      return false;
+    }
+    if (BitsRequiredForLargestValue(from) > BitsRequiredForLargestValue(to)) {
+      // The from,to pair corresponds to a narrowing.
+      return false;
+    }
+    return true;
   }
 
   static bool Is64BitType(Type type) {
