@@ -280,6 +280,10 @@ class Instrumentation {
   void UpdateMethodsCode(ArtMethod* method, const void* quick_code)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!deoptimized_methods_lock_);
 
+  // Update the code of a native method to a JITed stub.
+  void UpdateNativeMethodsCodeToJitCode(ArtMethod* method, const void* quick_code)
+      REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!deoptimized_methods_lock_);
+
   // Update the code of a method to the interpreter respecting any installed stubs from debugger.
   void UpdateMethodsCodeToInterpreterEntryPoint(ArtMethod* method)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!deoptimized_methods_lock_);
