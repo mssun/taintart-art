@@ -693,6 +693,7 @@ class X86_64Assembler FINAL : public Assembler {
   void addl(CpuRegister reg, const Address& address);
   void addl(const Address& address, CpuRegister reg);
   void addl(const Address& address, const Immediate& imm);
+  void addw(const Address& address, const Immediate& imm);
 
   void addq(CpuRegister reg, const Immediate& imm);
   void addq(CpuRegister dst, CpuRegister src);
@@ -904,8 +905,9 @@ class X86_64Assembler FINAL : public Assembler {
   void EmitOperandSizeOverride();
 
   void EmitOperand(uint8_t rm, const Operand& operand);
-  void EmitImmediate(const Immediate& imm);
-  void EmitComplex(uint8_t rm, const Operand& operand, const Immediate& immediate);
+  void EmitImmediate(const Immediate& imm, bool is_16_op = false);
+  void EmitComplex(
+      uint8_t rm, const Operand& operand, const Immediate& immediate, bool is_16_op = false);
   void EmitLabel(Label* label, int instruction_size);
   void EmitLabelLink(Label* label);
   void EmitLabelLink(NearLabel* label);
