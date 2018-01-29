@@ -231,7 +231,7 @@ bool ConvertJValueCommon(
     StackHandleScope<2> hs(Thread::Current());
     Handle<mirror::Class> h_to(hs.NewHandle(to));
     Handle<mirror::Object> h_obj(hs.NewHandle(src_value.GetL()));
-    if (h_obj != nullptr && !to->IsAssignableFrom(h_obj->GetClass())) {
+    if (UNLIKELY(!h_obj.IsNull() && !to->IsAssignableFrom(h_obj->GetClass()))) {
       ThrowClassCastException(h_to.Get(), h_obj->GetClass());
       return false;
     }
@@ -246,7 +246,7 @@ bool ConvertJValueCommon(
     Primitive::Type type;
     if (!GetUnboxedPrimitiveType(to, &type)) {
       ObjPtr<mirror::Class> boxed_from_class = GetBoxedPrimitiveClass(from_type);
-      if (boxed_from_class->IsSubClass(to)) {
+      if (LIKELY(boxed_from_class->IsSubClass(to))) {
         type = from_type;
       } else {
         ThrowWrongMethodTypeException(callee_type.Get(), callsite_type.Get());
@@ -259,7 +259,7 @@ bool ConvertJValueCommon(
       return false;
     }
 
-    if (!ConvertPrimitiveValueNoThrow(from_type, type, src_value, value)) {
+    if (UNLIKELY(!ConvertPrimitiveValueNoThrow(from_type, type, src_value, value))) {
       ThrowWrongMethodTypeException(callee_type.Get(), callsite_type.Get());
       return false;
     }
@@ -274,7 +274,7 @@ bool ConvertJValueCommon(
     DCHECK(IsPrimitiveType(to_type));
 
     ObjPtr<mirror::Object> from_obj(src_value.GetL());
-    if (UNLIKELY(from_obj == nullptr)) {
+    if (UNLIKELY(from_obj.IsNull())) {
       ThrowNullPointerException(
           StringPrintf("Expected to unbox a '%s' primitive type but was returned null",
                        from->PrettyDescriptor().c_str()).c_str());
@@ -289,7 +289,14 @@ bool ConvertJValueCommon(
     }
 
     if (UNLIKELY(!ConvertPrimitiveValueNoThrow(unboxed_type, to_type, unboxed_value, value))) {
-      ThrowClassCastException(from, to);
+      if (from->IsAssignableFrom(GetBoxedPrimitiveClass(to_type))) {
+        // CallSite may be Number, but the Number object is
+        // incompatible, e.g. Number (Integer) for a short.
+        ThrowClassCastException(from, to);
+      } else {
+        // CallSite is incompatible, e.g. Integer for a short.
+        ThrowWrongMethodTypeException(callee_type.Get(), callsite_type.Get());
+      }
       return false;
     }
 
