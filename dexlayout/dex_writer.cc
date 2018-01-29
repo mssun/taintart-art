@@ -114,8 +114,7 @@ DexWriter::DexWriter(DexLayout* dex_layout, bool compute_offsets)
       dex_layout_(dex_layout),
       compute_offsets_(compute_offsets) {}
 
-size_t DexWriter::WriteEncodedValue(Stream* stream, dex_ir::EncodedValue* encoded_value) {
-  size_t original_offset = stream->Tell();
+void DexWriter::WriteEncodedValue(Stream* stream, dex_ir::EncodedValue* encoded_value) {
   size_t start = 0;
   size_t length;
   uint8_t buffer[8];
@@ -166,39 +165,37 @@ size_t DexWriter::WriteEncodedValue(Stream* stream, dex_ir::EncodedValue* encode
     case DexFile::kDexAnnotationArray:
       WriteEncodedValueHeader(stream, type, 0);
       WriteEncodedArray(stream, encoded_value->GetEncodedArray()->GetEncodedValues());
-      return stream->Tell() - original_offset;
+      return;
     case DexFile::kDexAnnotationAnnotation:
       WriteEncodedValueHeader(stream, type, 0);
       WriteEncodedAnnotation(stream, encoded_value->GetEncodedAnnotation());
-      return stream->Tell() - original_offset;
+      return;
     case DexFile::kDexAnnotationNull:
-      return WriteEncodedValueHeader(stream, type, 0);
+      WriteEncodedValueHeader(stream, type, 0);
+      return;
     case DexFile::kDexAnnotationBoolean:
-      return WriteEncodedValueHeader(stream, type, encoded_value->GetBoolean() ? 1 : 0);
+      WriteEncodedValueHeader(stream, type, encoded_value->GetBoolean() ? 1 : 0);
+      return;
     default:
-      return 0;
+      return;
   }
   WriteEncodedValueHeader(stream, type, length - 1);
   stream->Write(buffer + start, length);
-  return stream->Tell() - original_offset;
 }
 
-size_t DexWriter::WriteEncodedValueHeader(Stream* stream, int8_t value_type, size_t value_arg) {
+void DexWriter::WriteEncodedValueHeader(Stream* stream, int8_t value_type, size_t value_arg) {
   uint8_t buffer[1] = { static_cast<uint8_t>((value_arg << 5) | value_type) };
-  return stream->Write(buffer, sizeof(uint8_t));
+  stream->Write(buffer, sizeof(uint8_t));
 }
 
-size_t DexWriter::WriteEncodedArray(Stream* stream, dex_ir::EncodedValueVector* values) {
-  size_t original_offset = stream->Tell();
+void DexWriter::WriteEncodedArray(Stream* stream, dex_ir::EncodedValueVector* values) {
   stream->WriteUleb128(values->size());
   for (std::unique_ptr<dex_ir::EncodedValue>& value : *values) {
     WriteEncodedValue(stream, value.get());
   }
-  return stream->Tell() - original_offset;
 }
 
-size_t DexWriter::WriteEncodedAnnotation(Stream* stream, dex_ir::EncodedAnnotation* annotation) {
-  size_t original_offset = stream->Tell();
+void DexWriter::WriteEncodedAnnotation(Stream* stream, dex_ir::EncodedAnnotation* annotation) {
   stream->WriteUleb128(annotation->GetType()->GetIndex());
   stream->WriteUleb128(annotation->GetAnnotationElements()->size());
   for (std::unique_ptr<dex_ir::AnnotationElement>& annotation_element :
@@ -206,11 +203,9 @@ size_t DexWriter::WriteEncodedAnnotation(Stream* stream, dex_ir::EncodedAnnotati
     stream->WriteUleb128(annotation_element->GetName()->GetIndex());
     WriteEncodedValue(stream, annotation_element->GetValue());
   }
-  return stream->Tell() - original_offset;
 }
 
-size_t DexWriter::WriteEncodedFields(Stream* stream, dex_ir::FieldItemVector* fields) {
-  size_t original_offset = stream->Tell();
+void DexWriter::WriteEncodedFields(Stream* stream, dex_ir::FieldItemVector* fields) {
   uint32_t prev_index = 0;
   for (std::unique_ptr<dex_ir::FieldItem>& field : *fields) {
     uint32_t index = field->GetFieldId()->GetIndex();
@@ -218,11 +213,9 @@ size_t DexWriter::WriteEncodedFields(Stream* stream, dex_ir::FieldItemVector* fi
     stream->WriteUleb128(field->GetAccessFlags());
     prev_index = index;
   }
-  return stream->Tell() - original_offset;
 }
 
-size_t DexWriter::WriteEncodedMethods(Stream* stream, dex_ir::MethodItemVector* methods) {
-  size_t original_offset = stream->Tell();
+void DexWriter::WriteEncodedMethods(Stream* stream, dex_ir::MethodItemVector* methods) {
   uint32_t prev_index = 0;
   for (std::unique_ptr<dex_ir::MethodItem>& method : *methods) {
     uint32_t index = method->GetMethodId()->GetIndex();
@@ -232,12 +225,11 @@ size_t DexWriter::WriteEncodedMethods(Stream* stream, dex_ir::MethodItemVector* 
     stream->WriteUleb128(code_off);
     prev_index = index;
   }
-  return stream->Tell() - original_offset;
 }
 
 // TODO: Refactor this to remove duplicated boiler plate. One way to do this is adding
 // function that takes a CollectionVector<T> and uses overloading.
-uint32_t DexWriter::WriteStringIds(Stream* stream, bool reserve_only) {
+void DexWriter::WriteStringIds(Stream* stream, bool reserve_only) {
   const uint32_t start = stream->Tell();
   for (std::unique_ptr<dex_ir::StringId>& string_id : header_->GetCollections().StringIds()) {
     stream->AlignTo(SectionAlignment(DexFile::kDexTypeStringIdItem));
@@ -251,7 +243,6 @@ uint32_t DexWriter::WriteStringIds(Stream* stream, bool reserve_only) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetStringIdsOffset(start);
   }
-  return stream->Tell() - start;
 }
 
 void DexWriter::WriteStringData(Stream* stream, dex_ir::StringData* string_data) {
@@ -263,7 +254,7 @@ void DexWriter::WriteStringData(Stream* stream, dex_ir::StringData* string_data)
   stream->Skip(1);
 }
 
-uint32_t DexWriter::WriteStringDatas(Stream* stream) {
+void DexWriter::WriteStringDatas(Stream* stream) {
   const uint32_t start = stream->Tell();
   for (std::unique_ptr<dex_ir::StringData>& string_data : header_->GetCollections().StringDatas()) {
     WriteStringData(stream, string_data.get());
@@ -271,10 +262,9 @@ uint32_t DexWriter::WriteStringDatas(Stream* stream) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetStringDatasOffset(start);
   }
-  return stream->Tell() - start;
 }
 
-uint32_t DexWriter::WriteTypeIds(Stream* stream) {
+void DexWriter::WriteTypeIds(Stream* stream) {
   uint32_t descriptor_idx[1];
   const uint32_t start = stream->Tell();
   for (std::unique_ptr<dex_ir::TypeId>& type_id : header_->GetCollections().TypeIds()) {
@@ -286,10 +276,9 @@ uint32_t DexWriter::WriteTypeIds(Stream* stream) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetTypeIdsOffset(start);
   }
-  return stream->Tell() - start;
 }
 
-uint32_t DexWriter::WriteTypeLists(Stream* stream) {
+void DexWriter::WriteTypeLists(Stream* stream) {
   uint32_t size[1];
   uint16_t list[1];
   const uint32_t start = stream->Tell();
@@ -306,10 +295,9 @@ uint32_t DexWriter::WriteTypeLists(Stream* stream) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetTypeListsOffset(start);
   }
-  return stream->Tell() - start;
 }
 
-uint32_t DexWriter::WriteProtoIds(Stream* stream, bool reserve_only) {
+void DexWriter::WriteProtoIds(Stream* stream, bool reserve_only) {
   uint32_t buffer[3];
   const uint32_t start = stream->Tell();
   for (std::unique_ptr<dex_ir::ProtoId>& proto_id : header_->GetCollections().ProtoIds()) {
@@ -327,10 +315,9 @@ uint32_t DexWriter::WriteProtoIds(Stream* stream, bool reserve_only) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetProtoIdsOffset(start);
   }
-  return stream->Tell() - start;
 }
 
-uint32_t DexWriter::WriteFieldIds(Stream* stream) {
+void DexWriter::WriteFieldIds(Stream* stream) {
   uint16_t buffer[4];
   const uint32_t start = stream->Tell();
   for (std::unique_ptr<dex_ir::FieldId>& field_id : header_->GetCollections().FieldIds()) {
@@ -345,10 +332,9 @@ uint32_t DexWriter::WriteFieldIds(Stream* stream) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetFieldIdsOffset(start);
   }
-  return stream->Tell() - start;
 }
 
-uint32_t DexWriter::WriteMethodIds(Stream* stream) {
+void DexWriter::WriteMethodIds(Stream* stream) {
   uint16_t buffer[4];
   const uint32_t start = stream->Tell();
   for (std::unique_ptr<dex_ir::MethodId>& method_id : header_->GetCollections().MethodIds()) {
@@ -363,10 +349,9 @@ uint32_t DexWriter::WriteMethodIds(Stream* stream) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetMethodIdsOffset(start);
   }
-  return stream->Tell() - start;
 }
 
-uint32_t DexWriter::WriteEncodedArrays(Stream* stream) {
+void DexWriter::WriteEncodedArrays(Stream* stream) {
   const uint32_t start = stream->Tell();
   for (std::unique_ptr<dex_ir::EncodedArrayItem>& encoded_array :
       header_->GetCollections().EncodedArrayItems()) {
@@ -377,10 +362,9 @@ uint32_t DexWriter::WriteEncodedArrays(Stream* stream) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetEncodedArrayItemsOffset(start);
   }
-  return stream->Tell() - start;
 }
 
-uint32_t DexWriter::WriteAnnotations(Stream* stream) {
+void DexWriter::WriteAnnotations(Stream* stream) {
   uint8_t visibility[1];
   const uint32_t start = stream->Tell();
   for (std::unique_ptr<dex_ir::AnnotationItem>& annotation :
@@ -394,10 +378,9 @@ uint32_t DexWriter::WriteAnnotations(Stream* stream) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetAnnotationItemsOffset(start);
   }
-  return stream->Tell() - start;
 }
 
-uint32_t DexWriter::WriteAnnotationSets(Stream* stream) {
+void DexWriter::WriteAnnotationSets(Stream* stream) {
   uint32_t size[1];
   uint32_t annotation_off[1];
   const uint32_t start = stream->Tell();
@@ -415,10 +398,9 @@ uint32_t DexWriter::WriteAnnotationSets(Stream* stream) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetAnnotationSetItemsOffset(start);
   }
-  return stream->Tell() - start;
 }
 
-uint32_t DexWriter::WriteAnnotationSetRefs(Stream* stream) {
+void DexWriter::WriteAnnotationSetRefs(Stream* stream) {
   uint32_t size[1];
   uint32_t annotations_off[1];
   const uint32_t start = stream->Tell();
@@ -436,10 +418,9 @@ uint32_t DexWriter::WriteAnnotationSetRefs(Stream* stream) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetAnnotationSetRefListsOffset(start);
   }
-  return stream->Tell() - start;
 }
 
-uint32_t DexWriter::WriteAnnotationsDirectories(Stream* stream) {
+void DexWriter::WriteAnnotationsDirectories(Stream* stream) {
   uint32_t directory_buffer[4];
   uint32_t annotation_buffer[2];
   const uint32_t start = stream->Tell();
@@ -484,7 +465,6 @@ uint32_t DexWriter::WriteAnnotationsDirectories(Stream* stream) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetAnnotationsDirectoryItemsOffset(start);
   }
-  return stream->Tell() - start;
 }
 
 void DexWriter::WriteDebugInfoItem(Stream* stream, dex_ir::DebugInfoItem* debug_info) {
@@ -493,7 +473,7 @@ void DexWriter::WriteDebugInfoItem(Stream* stream, dex_ir::DebugInfoItem* debug_
   stream->Write(debug_info->GetDebugInfo(), debug_info->GetDebugInfoSize());
 }
 
-uint32_t DexWriter::WriteDebugInfoItems(Stream* stream) {
+void DexWriter::WriteDebugInfoItems(Stream* stream) {
   const uint32_t start = stream->Tell();
   for (std::unique_ptr<dex_ir::DebugInfoItem>& debug_info :
       header_->GetCollections().DebugInfoItems()) {
@@ -502,13 +482,11 @@ uint32_t DexWriter::WriteDebugInfoItems(Stream* stream) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetDebugInfoItemsOffset(start);
   }
-  return stream->Tell() - start;
 }
 
-uint32_t DexWriter::WriteCodeItemPostInstructionData(Stream* stream,
-                                                     dex_ir::CodeItem* code_item,
-                                                     bool reserve_only) {
-  const uint32_t start_offset = stream->Tell();
+void DexWriter::WriteCodeItemPostInstructionData(Stream* stream,
+                                                 dex_ir::CodeItem* code_item,
+                                                 bool reserve_only) {
   if (code_item->TriesSize() != 0) {
     stream->AlignTo(DexFile::TryItem::kAlignment);
     // Write try items.
@@ -540,7 +518,6 @@ uint32_t DexWriter::WriteCodeItemPostInstructionData(Stream* stream,
     }
     stream->Seek(max_offset);
   }
-  return stream->Tell() - start_offset;
 }
 
 void DexWriter::WriteCodeItem(Stream* stream,
@@ -574,7 +551,7 @@ void DexWriter::WriteCodeItem(Stream* stream,
   }
 }
 
-uint32_t DexWriter::WriteCodeItems(Stream* stream, bool reserve_only) {
+void DexWriter::WriteCodeItems(Stream* stream, bool reserve_only) {
   DexLayoutSection* code_section = nullptr;
   if (!reserve_only && dex_layout_ != nullptr) {
     code_section = &dex_layout_->GetSections().sections_[static_cast<size_t>(
@@ -598,10 +575,9 @@ uint32_t DexWriter::WriteCodeItems(Stream* stream, bool reserve_only) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetCodeItemsOffset(start);
   }
-  return stream->Tell() - start;
 }
 
-uint32_t DexWriter::WriteClassDefs(Stream* stream, bool reserve_only) {
+void DexWriter::WriteClassDefs(Stream* stream, bool reserve_only) {
   const uint32_t start = stream->Tell();
   uint32_t class_def_buffer[8];
   for (std::unique_ptr<dex_ir::ClassDef>& class_def : header_->GetCollections().ClassDefs()) {
@@ -628,10 +604,9 @@ uint32_t DexWriter::WriteClassDefs(Stream* stream, bool reserve_only) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetClassDefsOffset(start);
   }
-  return stream->Tell() - start;
 }
 
-uint32_t DexWriter::WriteClassDatas(Stream* stream) {
+void DexWriter::WriteClassDatas(Stream* stream) {
   const uint32_t start = stream->Tell();
   for (const std::unique_ptr<dex_ir::ClassData>& class_data :
       header_->GetCollections().ClassDatas()) {
@@ -649,10 +624,9 @@ uint32_t DexWriter::WriteClassDatas(Stream* stream) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetClassDatasOffset(start);
   }
-  return stream->Tell() - start;
 }
 
-uint32_t DexWriter::WriteCallSiteIds(Stream* stream, bool reserve_only) {
+void DexWriter::WriteCallSiteIds(Stream* stream, bool reserve_only) {
   const uint32_t start = stream->Tell();
   uint32_t call_site_off[1];
   for (std::unique_ptr<dex_ir::CallSiteId>& call_site_id :
@@ -668,10 +642,9 @@ uint32_t DexWriter::WriteCallSiteIds(Stream* stream, bool reserve_only) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetCallSiteIdsOffset(start);
   }
-  return stream->Tell() - start;
 }
 
-uint32_t DexWriter::WriteMethodHandles(Stream* stream) {
+void DexWriter::WriteMethodHandles(Stream* stream) {
   const uint32_t start = stream->Tell();
   uint16_t method_handle_buff[4];
   for (std::unique_ptr<dex_ir::MethodHandleItem>& method_handle :
@@ -686,13 +659,11 @@ uint32_t DexWriter::WriteMethodHandles(Stream* stream) {
   if (compute_offsets_ && start != stream->Tell()) {
     header_->GetCollections().SetMethodHandleItemsOffset(start);
   }
-  return stream->Tell() - start;
 }
 
-uint32_t DexWriter::WriteMapItems(Stream* stream, MapItemQueue* queue) {
+void DexWriter::WriteMapItems(Stream* stream, MapItemQueue* queue) {
   // All the sections should already have been added.
   const uint32_t map_list_size = queue->size();
-  const uint32_t start = stream->Tell();
   stream->Write(&map_list_size, sizeof(map_list_size));
   while (!queue->empty()) {
     const MapItem& item = queue->top();
@@ -704,10 +675,9 @@ uint32_t DexWriter::WriteMapItems(Stream* stream, MapItemQueue* queue) {
     stream->Write(&map_item, sizeof(map_item));
     queue->pop();
   }
-  return stream->Tell() - start;
 }
 
-uint32_t DexWriter::GenerateAndWriteMapItems(Stream* stream) {
+void DexWriter::GenerateAndWriteMapItems(Stream* stream) {
   dex_ir::Collections& collection = header_->GetCollections();
   MapItemQueue queue;
 
@@ -769,9 +739,7 @@ uint32_t DexWriter::GenerateAndWriteMapItems(Stream* stream) {
   queue.AddIfNotEmpty(MapItem(DexFile::kDexTypeAnnotationsDirectoryItem,
                               collection.AnnotationsDirectoryItemsSize(),
                               collection.AnnotationsDirectoryItemsOffset()));
-
-  // Write the map items.
-  return WriteMapItems(stream, &queue);
+  WriteMapItems(stream, &queue);
 }
 
 void DexWriter::WriteHeader(Stream* stream) {
