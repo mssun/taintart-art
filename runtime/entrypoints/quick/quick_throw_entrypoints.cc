@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include "art_method-inl.h"
 #include "callee_save_frame.h"
 #include "common_throws.h"
 #include "mirror/object-inl.h"

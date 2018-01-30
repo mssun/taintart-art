@@ -18,7 +18,6 @@
 
 #include <memory>
 
-#include "dex/utf.h"
 #include "gc/collector/garbage_collector.h"
 #include "gc/space/image_space.h"
 #include "gc/weak_root_state.h"
@@ -31,6 +30,7 @@
 #include "object_callbacks.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread.h"
+#include "utf.h"
 
 namespace art {
 

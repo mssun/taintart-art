@@ -50,10 +50,10 @@
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
 #include "dex/dex_instruction.h"
-#include "dex/utf-inl.h"
 #include "oat_quick_method_header.h"
 #include "os.h"
 #include "scoped_thread_state_change-inl.h"
+#include "utf-inl.h"
 
 #if defined(__APPLE__)
 #include <crt_externs.h>

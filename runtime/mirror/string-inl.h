@@ -24,11 +24,11 @@
 #include "base/bit_utils.h"
 #include "class.h"
 #include "common_throws.h"
-#include "dex/utf.h"
 #include "gc/heap-inl.h"
 #include "globals.h"
 #include "runtime.h"
 #include "thread.h"
+#include "utf.h"
 #include "utils.h"
 
 namespace art {

@@ -30,8 +30,8 @@
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 
-#include "dex/utf-inl.h"
 #include "os.h"
+#include "utf-inl.h"
 
 #if defined(__APPLE__)
 #include <crt_externs.h>
@@ -149,6 +149,57 @@ std::string PrettySize(int64_t byte_count) {
   }
   return StringPrintf("%s%" PRId64 "%s",
                       negative_str, byte_count / kBytesPerUnit[i], kUnitStrings[i]);
+}
+
+static inline constexpr bool NeedsEscaping(uint16_t ch) {
+  return (ch < ' ' || ch > '~');
+}
+
+std::string PrintableChar(uint16_t ch) {
+  std::string result;
+  result += '\'';
+  if (NeedsEscaping(ch)) {
+    StringAppendF(&result, "\\u%04x", ch);
+  } else {
+    result += static_cast<std::string::value_type>(ch);
+  }
+  result += '\'';
+  return result;
+}
+
+std::string PrintableString(const char* utf) {
+  std::string result;
+  result += '"';
+  const char* p = utf;
+  size_t char_count = CountModifiedUtf8Chars(p);
+  for (size_t i = 0; i < char_count; ++i) {
+    uint32_t ch = GetUtf16FromUtf8(&p);
+    if (ch == '\\') {
+      result += "\\\\";
+    } else if (ch == '\n') {
+      result += "\\n";
+    } else if (ch == '\r') {
+      result += "\\r";
+    } else if (ch == '\t') {
+      result += "\\t";
+    } else {
+      const uint16_t leading = GetLeadingUtf16Char(ch);
+
+      if (NeedsEscaping(leading)) {
+        StringAppendF(&result, "\\u%04x", leading);
+      } else {
+        result += static_cast<std::string::value_type>(leading);
+      }
+
+      const uint32_t trailing = GetTrailingUtf16Char(ch);
+      if (trailing != 0) {
+        // All high surrogates will need escaping.
+        StringAppendF(&result, "\\u%04x", trailing);
+      }
+    }
+  }
+  result += '"';
+  return result;
 }
 
 std::string GetJniShortName(const std::string& class_descriptor, const std::string& method) {
