@@ -34,7 +34,9 @@ class Monitor;
 
 /* The lock value itself as stored in mirror::Object::monitor_.  The two most significant bits of
  * the state. The four possible states are fat locked, thin/unlocked, hash code, and forwarding
- * address. When the lock word is in the "thin" state and its bits are formatted as follows:
+ * address.
+ *
+ * When the lock word is in the "thin" state and its bits are formatted as follows:
  *
  *  |33|2|2|222222221111|1111110000000000|
  *  |10|9|8|765432109876|5432109876543210|
@@ -59,7 +61,7 @@ class Monitor;
  *  |11|0| ForwardingAddress           |
  *
  * The `r` bit stores the read barrier state.
- * The `m` bit stores the mark state.
+ * The `m` bit stores the mark bit state.
  */
 class LockWord {
  public:

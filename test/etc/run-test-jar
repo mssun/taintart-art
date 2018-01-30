@@ -667,7 +667,8 @@ fi
 if [ "$HOST" = "y" ]; then
   max_filename_size=$(getconf NAME_MAX $DEX_LOCATION)
 else
-  # There is no getconf on device, fallback to standard value. See NAME_MAX in kernel <linux/limits.h>
+  # There is no getconf on device, fallback to standard value.
+  # See NAME_MAX in kernel <linux/limits.h>
   max_filename_size=255
 fi
 # Compute VDEX_NAME.

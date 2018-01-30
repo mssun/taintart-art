@@ -187,7 +187,7 @@ inline bool Object::AtomicSetMarkBit(uint32_t expected_mark_bit, uint32_t mark_b
     expected_lw = lw;
     new_lw = lw;
     new_lw.SetMarkBitState(mark_bit);
-    // Since this is only set from the mutator, we can use the non release Cas.
+    // Since this is only set from the mutator, we can use the non-release CAS.
   } while (!CasLockWordWeakRelaxed(expected_lw, new_lw));
   return true;
 }

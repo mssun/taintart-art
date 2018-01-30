@@ -46,24 +46,33 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
   static MemMap* CreateMemMap(const std::string& name, size_t capacity, uint8_t* requested_begin);
   static RegionSpace* Create(const std::string& name, MemMap* mem_map);
 
-  // Allocate num_bytes, returns null if the space is full.
-  mirror::Object* Alloc(Thread* self, size_t num_bytes, size_t* bytes_allocated,
-                        size_t* usable_size, size_t* bytes_tl_bulk_allocated)
+  // Allocate `num_bytes`, returns null if the space is full.
+  mirror::Object* Alloc(Thread* self,
+                        size_t num_bytes,
+                        /* out */ size_t* bytes_allocated,
+                        /* out */ size_t* usable_size,
+                        /* out */ size_t* bytes_tl_bulk_allocated)
       OVERRIDE REQUIRES(!region_lock_);
   // Thread-unsafe allocation for when mutators are suspended, used by the semispace collector.
-  mirror::Object* AllocThreadUnsafe(Thread* self, size_t num_bytes, size_t* bytes_allocated,
-                                    size_t* usable_size, size_t* bytes_tl_bulk_allocated)
+  mirror::Object* AllocThreadUnsafe(Thread* self,
+                                    size_t num_bytes,
+                                    /* out */ size_t* bytes_allocated,
+                                    /* out */ size_t* usable_size,
+                                    /* out */ size_t* bytes_tl_bulk_allocated)
       OVERRIDE REQUIRES(Locks::mutator_lock_) REQUIRES(!region_lock_);
   // The main allocation routine.
   template<bool kForEvac>
-  ALWAYS_INLINE mirror::Object* AllocNonvirtual(size_t num_bytes, size_t* bytes_allocated,
-                                                size_t* usable_size,
-                                                size_t* bytes_tl_bulk_allocated)
+  ALWAYS_INLINE mirror::Object* AllocNonvirtual(size_t num_bytes,
+                                                /* out */ size_t* bytes_allocated,
+                                                /* out */ size_t* usable_size,
+                                                /* out */ size_t* bytes_tl_bulk_allocated)
       REQUIRES(!region_lock_);
   // Allocate/free large objects (objects that are larger than the region size).
   template<bool kForEvac>
-  mirror::Object* AllocLarge(size_t num_bytes, size_t* bytes_allocated, size_t* usable_size,
-                             size_t* bytes_tl_bulk_allocated) REQUIRES(!region_lock_);
+  mirror::Object* AllocLarge(size_t num_bytes,
+                             /* out */ size_t* bytes_allocated,
+                             /* out */ size_t* usable_size,
+                             /* out */ size_t* bytes_tl_bulk_allocated) REQUIRES(!region_lock_);
   template<bool kForEvac>
   void FreeLarge(mirror::Object* large_obj, size_t bytes_allocated) REQUIRES(!region_lock_);
 
@@ -176,7 +185,7 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
   template <typename Visitor>
   ALWAYS_INLINE void WalkToSpace(Visitor&& visitor)
       REQUIRES(Locks::mutator_lock_) {
-    WalkInternal<true>(visitor);
+    WalkInternal<true /* kToSpaceOnly */>(visitor);
   }
 
   accounting::ContinuousSpaceBitmap::SweepCallback* GetSweepCallback() OVERRIDE {
@@ -236,7 +245,8 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
   size_t FromSpaceSize() REQUIRES(!region_lock_);
   size_t UnevacFromSpaceSize() REQUIRES(!region_lock_);
   size_t ToSpaceSize() REQUIRES(!region_lock_);
-  void ClearFromSpace(uint64_t* cleared_bytes, uint64_t* cleared_objects) REQUIRES(!region_lock_);
+  void ClearFromSpace(/* out */ uint64_t* cleared_bytes, /* out */ uint64_t* cleared_objects)
+      REQUIRES(!region_lock_);
 
   void AddLiveBytes(mirror::Object* ref, size_t alloc_size) {
     Region* reg = RefToRegionUnlocked(ref);
@@ -303,12 +313,13 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
     void Clear(bool zero_and_release_pages);
 
-    ALWAYS_INLINE mirror::Object* Alloc(size_t num_bytes, size_t* bytes_allocated,
-                                        size_t* usable_size,
-                                        size_t* bytes_tl_bulk_allocated);
+    ALWAYS_INLINE mirror::Object* Alloc(size_t num_bytes,
+                                        /* out */ size_t* bytes_allocated,
+                                        /* out */ size_t* usable_size,
+                                        /* out */ size_t* bytes_tl_bulk_allocated);
 
     bool IsFree() const {
-      bool is_free = state_ == RegionState::kRegionStateFree;
+      bool is_free = (state_ == RegionState::kRegionStateFree);
       if (is_free) {
         DCHECK(IsInNoSpace());
         DCHECK_EQ(begin_, Top());
@@ -341,7 +352,7 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
     // Large allocated.
     bool IsLarge() const {
-      bool is_large = state_ == RegionState::kRegionStateLarge;
+      bool is_large = (state_ == RegionState::kRegionStateLarge);
       if (is_large) {
         DCHECK_LT(begin_ + kRegionSize, Top());
       }
@@ -350,7 +361,7 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
     // Large-tail allocated.
     bool IsLargeTail() const {
-      bool is_large_tail = state_ == RegionState::kRegionStateLargeTail;
+      bool is_large_tail = (state_ == RegionState::kRegionStateLargeTail);
       if (is_large_tail) {
         DCHECK_EQ(begin_, Top());
       }
@@ -553,12 +564,15 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
   std::unique_ptr<Region[]> regions_ GUARDED_BY(region_lock_);
                                    // The pointer to the region array.
+
   // The upper-bound index of the non-free regions. Used to avoid scanning all regions in
-  // SetFromSpace().  Invariant: for all i >= non_free_region_index_limit_, regions_[i].IsFree() is
-  // true.
+  // RegionSpace::SetFromSpace and RegionSpace::ClearFromSpace.
+  //
+  // Invariant (verified by RegionSpace::VerifyNonFreeRegionLimit):
+  //   for all `i >= non_free_region_index_limit_`, `regions_[i].IsFree()` is true.
   size_t non_free_region_index_limit_ GUARDED_BY(region_lock_);
-  Region* current_region_;         // The region that's being allocated currently.
-  Region* evac_region_;            // The region that's being evacuated to currently.
+  Region* current_region_;         // The region that's being currently allocated.
+  Region* evac_region_;            // The region that's being currently evacuated to.
   Region full_region_;             // The dummy/sentinel region that looks full.
 
   // Mark bitmap used by the GC.

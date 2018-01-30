@@ -27,7 +27,7 @@ namespace space {
 
 // If a region has live objects whose size is less than this percent
 // value of the region size, evaculate the region.
-static constexpr uint kEvaculateLivePercentThreshold = 75U;
+static constexpr uint kEvacuateLivePercentThreshold = 75U;
 
 // If we protect the cleared regions.
 // Only protect for target builds to prevent flaky test failures (b/63131961).
@@ -165,7 +165,7 @@ inline bool RegionSpace::Region::ShouldBeEvacuated() {
   if (is_newly_allocated_) {
     result = true;
   } else {
-    bool is_live_percent_valid = live_bytes_ != static_cast<size_t>(-1);
+    bool is_live_percent_valid = (live_bytes_ != static_cast<size_t>(-1));
     if (is_live_percent_valid) {
       DCHECK(IsInToSpace());
       DCHECK(!IsLargeTail());
@@ -177,10 +177,10 @@ inline bool RegionSpace::Region::ShouldBeEvacuated() {
         // Side node: live_percent == 0 does not necessarily mean
         // there's no live objects due to rounding (there may be a
         // few).
-        result = live_bytes_ * 100U < kEvaculateLivePercentThreshold * bytes_allocated;
+        result = (live_bytes_ * 100U < kEvacuateLivePercentThreshold * bytes_allocated);
       } else {
         DCHECK(IsLarge());
-        result = live_bytes_ == 0U;
+        result = (live_bytes_ == 0U);
       }
     } else {
       result = false;
@@ -260,7 +260,8 @@ static void ZeroAndProtectRegion(uint8_t* begin, uint8_t* end) {
   }
 }
 
-void RegionSpace::ClearFromSpace(uint64_t* cleared_bytes, uint64_t* cleared_objects) {
+void RegionSpace::ClearFromSpace(/* out */ uint64_t* cleared_bytes,
+                                 /* out */ uint64_t* cleared_objects) {
   DCHECK(cleared_bytes != nullptr);
   DCHECK(cleared_objects != nullptr);
   *cleared_bytes = 0;
@@ -432,7 +433,7 @@ void RegionSpace::ClampGrowthLimit(size_t new_capacity) {
 
 void RegionSpace::Dump(std::ostream& os) const {
   os << GetName() << " "
-      << reinterpret_cast<void*>(Begin()) << "-" << reinterpret_cast<void*>(Limit());
+     << reinterpret_cast<void*>(Begin()) << "-" << reinterpret_cast<void*>(Limit());
 }
 
 void RegionSpace::DumpRegionForObject(std::ostream& os, mirror::Object* obj) {
@@ -532,13 +533,18 @@ void RegionSpace::AssertAllThreadLocalBuffersAreRevoked() {
 }
 
 void RegionSpace::Region::Dump(std::ostream& os) const {
-  os << "Region[" << idx_ << "]=" << reinterpret_cast<void*>(begin_) << "-"
-     << reinterpret_cast<void*>(Top())
+  os << "Region[" << idx_ << "]="
+     << reinterpret_cast<void*>(begin_)
+     << "-" << reinterpret_cast<void*>(Top())
      << "-" << reinterpret_cast<void*>(end_)
-     << " state=" << static_cast<uint>(state_) << " type=" << static_cast<uint>(type_)
+     << " state=" << static_cast<uint>(state_)
+     << " type=" << static_cast<uint>(type_)
      << " objects_allocated=" << objects_allocated_
-     << " alloc_time=" << alloc_time_ << " live_bytes=" << live_bytes_
-     << " is_newly_allocated=" << is_newly_allocated_ << " is_a_tlab=" << is_a_tlab_ << " thread=" << thread_ << "\n";
+     << " alloc_time=" << alloc_time_
+     << " live_bytes=" << live_bytes_
+     << " is_newly_allocated=" << std::boolalpha << is_newly_allocated_ << std::noboolalpha
+     << " is_a_tlab=" << std::boolalpha << is_a_tlab_ << std::noboolalpha
+     << " thread=" << thread_ << '\n';
 }
 
 size_t RegionSpace::AllocationSizeNonvirtual(mirror::Object* obj, size_t* usable_size) {

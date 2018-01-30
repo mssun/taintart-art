@@ -52,7 +52,8 @@ inline mirror::Object* ConcurrentCopying::MarkUnevacFromSpaceRegion(
     // we can avoid an expensive CAS.
     // For the baker case, an object is marked if either the mark bit marked or the bitmap bit is
     // set.
-    success = ref->AtomicSetReadBarrierState(ReadBarrier::WhiteState(), ReadBarrier::GrayState());
+    success = ref->AtomicSetReadBarrierState(/* expected_rb_state */ ReadBarrier::WhiteState(),
+                                             /* rb_state */ ReadBarrier::GrayState());
   } else {
     success = !bitmap->AtomicTestAndSet(ref);
   }
@@ -86,8 +87,8 @@ inline mirror::Object* ConcurrentCopying::MarkImmuneSpace(mirror::Object* ref) {
       return ref;
     }
     // This may or may not succeed, which is ok because the object may already be gray.
-    bool success = ref->AtomicSetReadBarrierState(ReadBarrier::WhiteState(),
-                                                  ReadBarrier::GrayState());
+    bool success = ref->AtomicSetReadBarrierState(/* expected_rb_state */ ReadBarrier::WhiteState(),
+                                                  /* rb_state */ ReadBarrier::GrayState());
     if (success) {
       MutexLock mu(Thread::Current(), immune_gray_stack_lock_);
       immune_gray_stack_.push_back(ref);

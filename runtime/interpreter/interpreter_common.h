@@ -176,7 +176,8 @@ static inline bool DoInvoke(Thread* self,
   }
   const uint32_t method_idx = (is_range) ? inst->VRegB_3rc() : inst->VRegB_35c();
   const uint32_t vregC = (is_range) ? inst->VRegC_3rc() : inst->VRegC_35c();
-  ObjPtr<mirror::Object> receiver = (type == kStatic) ? nullptr : shadow_frame.GetVRegReference(vregC);
+  ObjPtr<mirror::Object> receiver =
+      (type == kStatic) ? nullptr : shadow_frame.GetVRegReference(vregC);
   ArtMethod* sf_method = shadow_frame.GetMethod();
   ArtMethod* const called_method = FindMethodFromCode<type, do_access_check>(
       method_idx, &receiver, sf_method, self);
@@ -645,7 +646,7 @@ EXPLICIT_DO_FAST_INVOKE_TEMPLATE_DECL(kVirtual);    // invoke-virtual
 
 // Explicitly instantiate all DoInvokeVirtualQuick functions.
 #define EXPLICIT_DO_INVOKE_VIRTUAL_QUICK_TEMPLATE_DECL(_is_range)                    \
-  template REQUIRES_SHARED(Locks::mutator_lock_)                               \
+  template REQUIRES_SHARED(Locks::mutator_lock_)                                     \
   bool DoInvokeVirtualQuick<_is_range>(Thread* self, ShadowFrame& shadow_frame,      \
                                        const Instruction* inst, uint16_t inst_data,  \
                                        JValue* result)
