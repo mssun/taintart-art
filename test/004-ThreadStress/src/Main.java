@@ -38,6 +38,8 @@ import java.util.concurrent.Semaphore;
 //    -t X ............ number of operations per thread
 //    -p X ............ number of permits granted by semaphore
 //    --dumpmap ....... print the frequency map
+//    --locks-only .... select a pre-set frequency map with lock-related operations only
+//    --allocs-only ... select a pre-set frequency map with allocation-related operations only
 //    -oom:X .......... frequency of OOM (double)
 //    -sigquit:X ...... frequency of SigQuit (double)
 //    -alloc:X ........ frequency of Alloc (double)
@@ -289,26 +291,35 @@ public class Main implements Runnable {
     private final static Map<Operation, Double> createDefaultFrequencyMap(Object lock,
             Semaphore semaphore) {
         Map<Operation, Double> frequencyMap = new HashMap<Operation, Double>();
-        frequencyMap.put(new OOM(), 0.005);                   //  1/200
-        frequencyMap.put(new SigQuit(), 0.095);               // 19/200
-        frequencyMap.put(new Alloc(), 0.225);                 // 45/200
-        frequencyMap.put(new LargeAlloc(), 0.05);             // 10/200
-        frequencyMap.put(new StackTrace(), 0.1);              // 20/200
-        frequencyMap.put(new Exit(), 0.225);                  // 45/200
-        frequencyMap.put(new Sleep(), 0.125);                 // 25/200
-        frequencyMap.put(new TimedWait(lock), 0.05);          // 10/200
-        frequencyMap.put(new Wait(lock), 0.075);              // 15/200
-        frequencyMap.put(new QueuedWait(semaphore), 0.05);    // 10/200
+        frequencyMap.put(new OOM(), 0.005);                   //   1/200
+        frequencyMap.put(new SigQuit(), 0.095);               //  19/200
+        frequencyMap.put(new Alloc(), 0.225);                 //  45/200
+        frequencyMap.put(new LargeAlloc(), 0.05);             //  10/200
+        frequencyMap.put(new StackTrace(), 0.1);              //  20/200
+        frequencyMap.put(new Exit(), 0.225);                  //  45/200
+        frequencyMap.put(new Sleep(), 0.125);                 //  25/200
+        frequencyMap.put(new TimedWait(lock), 0.05);          //  10/200
+        frequencyMap.put(new Wait(lock), 0.075);              //  15/200
+        frequencyMap.put(new QueuedWait(semaphore), 0.05);    //  10/200
+
+        return frequencyMap;
+    }
+
+    private final static Map<Operation, Double> createAllocFrequencyMap() {
+        Map<Operation, Double> frequencyMap = new HashMap<Operation, Double>();
+        frequencyMap.put(new Sleep(), 0.2);                   //  40/200
+        frequencyMap.put(new Alloc(), 0.65);                  // 130/200
+        frequencyMap.put(new LargeAlloc(), 0.15);             //  30/200
 
         return frequencyMap;
     }
 
     private final static Map<Operation, Double> createLockFrequencyMap(Object lock) {
       Map<Operation, Double> frequencyMap = new HashMap<Operation, Double>();
-      frequencyMap.put(new Sleep(), 0.2);                     // 40/200
-      frequencyMap.put(new TimedWait(lock), 0.2);             // 40/200
-      frequencyMap.put(new Wait(lock), 0.2);                  // 40/200
-      frequencyMap.put(new SyncAndWork(lock), 0.4);           // 80/200
+      frequencyMap.put(new Sleep(), 0.2);                     //  40/200
+      frequencyMap.put(new TimedWait(lock), 0.2);             //  40/200
+      frequencyMap.put(new Wait(lock), 0.2);                  //  40/200
+      frequencyMap.put(new SyncAndWork(lock), 0.4);           //  80/200
 
       return frequencyMap;
     }
@@ -414,11 +425,14 @@ public class Main implements Runnable {
                     i++;
                     permits = Integer.parseInt(args[i]);
                 } else if (args[i].equals("--locks-only")) {
-                    lock = new Object();
                     frequencyMap = createLockFrequencyMap(lock);
+                } else if (args[i].equals("--allocs-only")) {
+                    frequencyMap = createAllocFrequencyMap();
                 } else if (args[i].equals("--dumpmap")) {
                     dumpMap = true;
                 } else {
+                    // Processing an argument of the form "-<operation>:X"
+                    // (where X is a double value).
                     Semaphore semaphore = getSemaphore(permits);
                     frequencyMap = updateFrequencyMap(frequencyMap, lock, semaphore, args[i]);
                 }
