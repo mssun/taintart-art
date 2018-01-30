@@ -85,6 +85,8 @@ class CodeItemDataAccessor : public CodeItemInstructionAccessor {
  public:
   ALWAYS_INLINE CodeItemDataAccessor(const DexFile& dex_file, const DexFile::CodeItem* code_item);
 
+  ALWAYS_INLINE explicit CodeItemDataAccessor(ArtMethod* method);
+
   uint16_t RegistersSize() const {
     return registers_size_;
   }

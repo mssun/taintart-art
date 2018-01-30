@@ -20,8 +20,8 @@
 
 #include "common_runtime_test.h"
 #include "dex/dex_file-inl.h"
-#include "dex/utf-inl.h"
 #include "scoped_thread_state_change-inl.h"
+#include "utf-inl.h"
 
 namespace art {
 

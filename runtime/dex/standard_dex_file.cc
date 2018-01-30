@@ -17,7 +17,7 @@
 #include "standard_dex_file.h"
 
 #include "base/casts.h"
-#include "code_item_accessors-inl.h"
+#include "code_item_accessors-no_art-inl.h"
 #include "dex_file-inl.h"
 #include "leb128.h"
 

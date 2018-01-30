@@ -3618,7 +3618,7 @@ class ReferenceMapVisitor : public StackVisitor {
                        const CodeInfoEncoding& _encoding,
                        const StackMap& map,
                        RootVisitor& _visitor)
-          : number_of_dex_registers(method->DexInstructionData().RegistersSize()),
+          : number_of_dex_registers(CodeItemDataAccessor(method).RegistersSize()),
             code_info(_code_info),
             encoding(_encoding),
             dex_register_map(code_info.GetDexRegisterMapOf(map,

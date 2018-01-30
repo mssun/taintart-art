@@ -58,7 +58,6 @@ cc_defaults {
         "libopenjdkjvmti_headers",
     ],
     shared_libs: [
-        "libdexfile",
         "libbase",
     ],
 }

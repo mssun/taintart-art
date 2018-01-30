@@ -1,7 +1,6 @@
 // TODO: These should be handled with transitive static library dependencies
 art_static_dependencies = [
     // Note: the order is important because of static linking resolution.
-    "libdexfile",
     "libziparchive",
     "libnativehelper",
     "libnativebridge",

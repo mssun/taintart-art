@@ -389,7 +389,7 @@ void EnterInterpreterFromInvoke(Thread* self,
   }
 
   const char* old_cause = self->StartAssertNoThreadSuspension("EnterInterpreterFromInvoke");
-  CodeItemDataAccessor accessor(method->DexInstructionData());
+  CodeItemDataAccessor accessor(method);
   uint16_t num_regs;
   uint16_t num_ins;
   if (accessor.HasCodeItem()) {
@@ -499,7 +499,7 @@ void EnterInterpreterFromDeoptimize(Thread* self,
     DCHECK(!shadow_frame->GetMethod()->MustCountLocks());
 
     self->SetTopOfShadowStack(shadow_frame);
-    CodeItemDataAccessor accessor(shadow_frame->GetMethod()->DexInstructionData());
+    CodeItemDataAccessor accessor(shadow_frame->GetMethod());
     const uint32_t dex_pc = shadow_frame->GetDexPC();
     uint32_t new_dex_pc = dex_pc;
     if (UNLIKELY(self->IsExceptionPending())) {

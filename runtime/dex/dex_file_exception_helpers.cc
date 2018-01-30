@@ -16,7 +16,7 @@
 
 #include "dex_file_exception_helpers.h"
 
-#include "code_item_accessors-inl.h"
+#include "code_item_accessors-no_art-inl.h"
 
 namespace art {
 
