@@ -184,7 +184,6 @@ art_cc_defaults {
     },
     generated_sources: ["art_compiler_operator_srcs"],
     shared_libs: [
-        "libdexfile",
         "libbase",
         "libcutils",  // for atrace.
         "liblzma",

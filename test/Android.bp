@@ -62,7 +62,6 @@ art_cc_defaults {
         "libvixld-arm",
         "libvixld-arm64",
         "libart-gtest",
-        "libdexfile",
 
         "libbase",
         "libicuuc",
@@ -114,7 +113,6 @@ art_cc_defaults {
     shared_libs: [
         "libartd",
         "libartd-compiler",
-        "libdexfile",
     ],
     static_libs: [
         "libgtest",
@@ -151,7 +149,6 @@ art_cc_library {
     shared_libs: [
         "libartd",
         "libartd-compiler",
-        "libdexfile",
         "libbase",
         "libbacktrace",
     ],
@@ -169,7 +166,6 @@ cc_defaults {
         "art_defaults",
     ],
     shared_libs: [
-        "libdexfile",
         "libbacktrace",
         "libbase",
         "libnativehelper",
@@ -268,7 +264,6 @@ art_cc_defaults {
         "1943-suspend-raw-monitor-wait/native_suspend_monitor.cc",
     ],
     shared_libs: [
-        "libdexfile",
         "libbase",
     ],
     header_libs: [
@@ -398,7 +393,6 @@ cc_defaults {
         "708-jit-cache-churn/jit.cc",
     ],
     shared_libs: [
-        "libdexfile",
         "libbacktrace",
         "libbase",
         "libnativehelper",

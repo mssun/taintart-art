@@ -551,7 +551,7 @@ static bool IsValidImplicitCheck(uintptr_t addr, const Instruction& instr)
 void ThrowNullPointerExceptionFromDexPC(bool check_address, uintptr_t addr) {
   uint32_t throw_dex_pc;
   ArtMethod* method = Thread::Current()->GetCurrentMethod(&throw_dex_pc);
-  CodeItemInstructionAccessor accessor(method->DexInstructions());
+  CodeItemInstructionAccessor accessor(method);
   CHECK_LT(throw_dex_pc, accessor.InsnsSizeInCodeUnits());
   const Instruction& instr = accessor.InstructionAt(throw_dex_pc);
   if (check_address && !IsValidImplicitCheck(addr, instr)) {

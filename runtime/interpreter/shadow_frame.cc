@@ -28,7 +28,7 @@ mirror::Object* ShadowFrame::GetThisObject() const {
     return GetVRegReference(0);
   } else {
     CHECK(m->GetCodeItem() != nullptr) << ArtMethod::PrettyMethod(m);
-    CodeItemDataAccessor accessor(m->DexInstructionData());
+    CodeItemDataAccessor accessor(m);
     uint16_t reg = accessor.RegistersSize() - accessor.InsSize();
     return GetVRegReference(reg);
   }

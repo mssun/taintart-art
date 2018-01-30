@@ -41,7 +41,6 @@
 #include "base/array_ref.h"
 #include "class_linker.h"
 #include "dex/dex_file.h"
-#include "dex/utf.h"
 #include "gc_root-inl.h"
 #include "globals.h"
 #include "jni_env_ext-inl.h"
@@ -61,6 +60,7 @@
 #include "thread_list.h"
 #include "ti_class_definition.h"
 #include "transform.h"
+#include "utf.h"
 #include "utils/dex_cache_arrays_layout-inl.h"
 
 namespace openjdkjvmti {

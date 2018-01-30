@@ -47,7 +47,6 @@
 #include "dex/dex_file_loader.h"
 #include "dex/dex_file_types.h"
 #include "dex/standard_dex_file.h"
-#include "dex/utf-inl.h"
 #include "elf_file.h"
 #include "elf_utils.h"
 #include "gc_root.h"
@@ -61,6 +60,7 @@
 #include "os.h"
 #include "runtime.h"
 #include "type_lookup_table.h"
+#include "utf-inl.h"
 #include "utils.h"
 #include "vdex_file.h"
 

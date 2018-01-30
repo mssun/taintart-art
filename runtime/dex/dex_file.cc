@@ -30,11 +30,11 @@
 
 #include "base/enums.h"
 #include "base/stl_util.h"
-#include "descriptors_names.h"
 #include "dex_file-inl.h"
 #include "leb128.h"
 #include "standard_dex_file.h"
 #include "utf-inl.h"
+#include "utils.h"
 
 namespace art {
 

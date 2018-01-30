@@ -18,8 +18,8 @@
 #define ART_RUNTIME_TYPE_LOOKUP_TABLE_H_
 
 #include "dex/dex_file_types.h"
-#include "dex/utf.h"
 #include "leb128.h"
+#include "utf.h"
 
 namespace art {
 
