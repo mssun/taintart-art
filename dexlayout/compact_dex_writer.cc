@@ -121,11 +121,14 @@ CompactDexWriter::ScopedDataSectionItem::~ScopedDataSectionItem() {
   const uint32_t deduped_offset = deduper_->Dedupe(start_offset_,
                                                    stream_->Tell(),
                                                    item_->GetOffset());
-  // In case we dedupe to something with wrong alignment, just say we didn't dedupe.
+  // If we deduped, only use the deduped offset if the alignment matches the required alignment.
+  // Otherwise, return without deduping.
   if (deduped_offset != Deduper::kDidNotDedupe && IsAlignedParam(deduped_offset, alignment_)) {
+    // Update the IR offset to the offset of the deduped item.
     item_->SetOffset(deduped_offset);
+    // Clear the written data for the item so that the stream write doesn't abort in the future.
     stream_->Clear(start_offset_, stream_->Tell() - start_offset_);
-    // Undo the offset for all that we wrote since we deduped.
+    // Since we deduped, restore the offset to the original position.
     stream_->Seek(start_offset_);
   }
 }

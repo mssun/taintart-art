@@ -16,7 +16,6 @@
 
 package art;
 
-import java.util.Base64;
 public class Test983 {
   static class Transform {
     public void sayHi() {
@@ -29,10 +28,11 @@ public class Test983 {
   }
 
   public static void doTest() {
-    Transform abc = new Transform();
     Redefinition.enableCommonRetransformation(true);
     Redefinition.doCommonClassRetransformation(Transform.class);
     Redefinition.doCommonClassRetransformation(Object.class);
+    // NB java.lang.ClassLoader has hidden fields.
+    Redefinition.doCommonClassRetransformation(ClassLoader.class);
     Redefinition.enableCommonRetransformation(false);
   }
 }

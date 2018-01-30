@@ -118,9 +118,11 @@ class DexMember {
     // until we hit the terminating byte of the previous Leb128 value.
     const uint8_t* ptr = it_.DataPointer();
     if (it_.IsAtMethod()) {
-      ptr = ReverseSearchUnsignedLeb128(ptr, it_.GetMethodCodeItemOffset());
+      ptr = ReverseSearchUnsignedLeb128(ptr);
+      DCHECK_EQ(DecodeUnsignedLeb128WithoutMovingCursor(ptr), it_.GetMethodCodeItemOffset());
     }
-    ptr = ReverseSearchUnsignedLeb128(ptr, old_flags);
+    ptr = ReverseSearchUnsignedLeb128(ptr);
+    DCHECK_EQ(DecodeUnsignedLeb128WithoutMovingCursor(ptr), old_flags);
 
     // Overwrite the access flags.
     UpdateUnsignedLeb128(const_cast<uint8_t*>(ptr), new_flags);
@@ -156,38 +158,6 @@ class DexMember {
   inline const DexFile::FieldId& GetFieldId() const {
     DCHECK(!it_.IsAtMethod());
     return klass_.GetDexFile().GetFieldId(it_.GetMemberIndex());
-  }
-
-  static inline bool IsLeb128Terminator(const uint8_t* ptr) {
-    return *ptr <= 0x7f;
-  }
-
-  // Returns the first byte of a Leb128 value assuming that:
-  // (1) `end_ptr` points to the first byte after the Leb128 value, and
-  // (2) there is another Leb128 value before this one.
-  // The function will fail after reading 5 bytes (the longest supported Leb128
-  // encoding) to protect against situations when (2) is not satisfied.
-  // When a Leb128 value is discovered, it is decoded and CHECKed against `value`.
-  static const uint8_t* ReverseSearchUnsignedLeb128(const uint8_t* end_ptr, uint32_t expected) {
-    const uint8_t* ptr = end_ptr;
-
-    // Move one byte back, check that this is the terminating byte.
-    ptr--;
-    CHECK(IsLeb128Terminator(ptr));
-
-    // Keep moving back while the previous byte is not a terminating byte.
-    // Fail after reading five bytes in case there isn't another Leb128 value
-    // before this one.
-    while (!IsLeb128Terminator(ptr - 1)) {
-      ptr--;
-      CHECK_LE((size_t) (end_ptr - ptr), 5u);
-    }
-
-    // Check that the decoded value matches the `expected` value.
-    const uint8_t* tmp_ptr = ptr;
-    CHECK_EQ(DecodeUnsignedLeb128(&tmp_ptr), expected);
-
-    return ptr;
   }
 
   const DexClass& klass_;

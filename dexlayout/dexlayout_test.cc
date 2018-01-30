@@ -823,9 +823,9 @@ TEST_F(DexLayoutTest, ClassFilter) {
             &error_msg));
     ASSERT_TRUE(output_dex_file != nullptr);
 
-    ASSERT_EQ(output_dex_file->NumClassDefs(), 1u);
+    ASSERT_EQ(output_dex_file->NumClassDefs(), options.class_filter_.size());
     for (uint32_t i = 0; i < output_dex_file->NumClassDefs(); ++i) {
-      // Check that every class is in the filter.
+      // Check that every class in the output dex file is in the filter.
       const DexFile::ClassDef& class_def = output_dex_file->GetClassDef(i);
       ASSERT_TRUE(options.class_filter_.find(output_dex_file->GetClassDescriptor(class_def)) !=
           options.class_filter_.end());
