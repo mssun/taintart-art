@@ -1320,7 +1320,7 @@ static inline bool DoCallCommon(ArtMethod* called_method,
   }
 
   // Compute method information.
-  CodeItemDataAccessor accessor(called_method->DexInstructionData());
+  CodeItemDataAccessor accessor(called_method);
   // Number of registers for the callee's call frame.
   uint16_t num_regs;
   // Test whether to use the interpreter or compiler entrypoint, and save that result to pass to

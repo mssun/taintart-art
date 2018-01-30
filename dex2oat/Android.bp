@@ -106,6 +106,7 @@ cc_defaults {
             compile_multilib: "prefer32",
         },
     },
+
     header_libs: [
         "dex2oat_headers",
         "art_cmdlineparser_headers",
@@ -121,7 +122,6 @@ art_cc_binary {
         "libart-compiler",
         "libart-dexlayout",
         "libart",
-        "libdexfile",
         "libbase",
         "liblz4",
         "libsigchain",
@@ -152,7 +152,6 @@ art_cc_binary {
         "libartd-compiler",
         "libartd-dexlayout",
         "libartd",
-        "libdexfile",
         "libbase",
         "liblz4",
         "libsigchain",

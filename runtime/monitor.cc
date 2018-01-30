@@ -1378,7 +1378,7 @@ void Monitor::VisitLocks(StackVisitor* stack_visitor, void (*callback)(mirror::O
 
   // Is there any reason to believe there's any synchronization in this method?
   CHECK(m->GetCodeItem() != nullptr) << m->PrettyMethod();
-  CodeItemDataAccessor accessor(m->DexInstructionData());
+  CodeItemDataAccessor accessor(m);
   if (accessor.TriesSize() == 0) {
     return;  // No "tries" implies no synchronization, so no held locks to report.
   }

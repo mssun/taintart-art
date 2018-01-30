@@ -14,15 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_DEX_UTF_H_
-#define ART_RUNTIME_DEX_UTF_H_
+#ifndef ART_RUNTIME_UTF_H_
+#define ART_RUNTIME_UTF_H_
 
 #include "base/macros.h"
 
 #include <stddef.h>
 #include <stdint.h>
-
-#include <string>
 
 /*
  * All UTF-8 in art is actually modified UTF-8. Mostly, this distinction
@@ -123,13 +121,6 @@ ALWAYS_INLINE uint16_t GetLeadingUtf16Char(uint32_t maybe_pair);
  */
 ALWAYS_INLINE uint16_t GetTrailingUtf16Char(uint32_t maybe_pair);
 
-// Returns a printable (escaped) version of a character.
-std::string PrintableChar(uint16_t ch);
-
-// Returns an ASCII string corresponding to the given UTF-8 string.
-// Java escapes are used for non-ASCII characters.
-std::string PrintableString(const char* utf8);
-
 }  // namespace art
 
-#endif  // ART_RUNTIME_DEX_UTF_H_
+#endif  // ART_RUNTIME_UTF_H_

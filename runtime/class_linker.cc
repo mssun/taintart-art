@@ -53,7 +53,6 @@
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_exception_helpers.h"
 #include "dex/dex_file_loader.h"
-#include "dex/utf.h"
 #include "entrypoints/entrypoint_utils.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "experimental_flags.h"
@@ -116,6 +115,7 @@
 #include "thread-inl.h"
 #include "thread_list.h"
 #include "trace.h"
+#include "utf.h"
 #include "utils.h"
 #include "utils/dex_cache_arrays_layout-inl.h"
 #include "verifier/method_verifier.h"
@@ -4329,7 +4329,7 @@ void ClassLinker::ResolveClassExceptionHandlerTypes(Handle<mirror::Class> klass)
 
 void ClassLinker::ResolveMethodExceptionHandlerTypes(ArtMethod* method) {
   // similar to DexVerifier::ScanTryCatchBlocks and dex2oat's ResolveExceptionsForMethod.
-  CodeItemDataAccessor accessor(method->DexInstructionData());
+  CodeItemDataAccessor accessor(method);
   if (!accessor.HasCodeItem()) {
     return;  // native or abstract method
   }

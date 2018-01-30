@@ -25,7 +25,6 @@
 #include "common_throws.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_annotations.h"
-#include "dex/utf.h"
 #include "hidden_api.h"
 #include "jni_internal.h"
 #include "mirror/class-inl.h"
@@ -44,6 +43,7 @@
 #include "reflection.h"
 #include "scoped_fast_native_object_access-inl.h"
 #include "scoped_thread_state_change-inl.h"
+#include "utf.h"
 #include "well_known_classes.h"
 
 namespace art {
