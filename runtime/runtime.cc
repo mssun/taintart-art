@@ -1855,7 +1855,13 @@ void Runtime::BlockSignals() {
 bool Runtime::AttachCurrentThread(const char* thread_name, bool as_daemon, jobject thread_group,
                                   bool create_peer) {
   ScopedTrace trace(__FUNCTION__);
-  return Thread::Attach(thread_name, as_daemon, thread_group, create_peer) != nullptr;
+  Thread* self = Thread::Attach(thread_name, as_daemon, thread_group, create_peer);
+  // Run ThreadGroup.add to notify the group that this thread is now started.
+  if (self != nullptr && create_peer && !IsAotCompiler()) {
+    ScopedObjectAccess soa(self);
+    self->NotifyThreadGroup(soa, thread_group);
+  }
+  return self != nullptr;
 }
 
 void Runtime::DetachCurrentThread() {
