@@ -2548,7 +2548,7 @@ class ImageDumper {
         }
       }
     } else {
-      CodeItemDataAccessor code_item_accessor(method);
+      CodeItemDataAccessor code_item_accessor(method->DexInstructionData());
       size_t dex_instruction_bytes = code_item_accessor.InsnsSizeInCodeUnits() * 2;
       stats_.dex_instruction_bytes += dex_instruction_bytes;
 

@@ -16,6 +16,7 @@
 
 #include "code_item_accessors-inl.h"
 
+#include <sys/mman.h>
 #include <memory>
 
 #include "common_runtime_test.h"

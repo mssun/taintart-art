@@ -42,7 +42,8 @@ class TestVisitor : public StackVisitor {
       CHECK(GetVReg(m, 0, kIntVReg, &value));
       CHECK_EQ(value, 42u);
     } else if (m_name.compare("$opt$noinline$testIntervalHole") == 0) {
-      uint32_t number_of_dex_registers = CodeItemDataAccessor(m).RegistersSize();
+      uint32_t number_of_dex_registers =
+          CodeItemDataAccessor(m->DexInstructionData()).RegistersSize();
       uint32_t dex_register_of_first_parameter = number_of_dex_registers - 2;
       found_method_ = true;
       uint32_t value = 0;
