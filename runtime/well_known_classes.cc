@@ -110,6 +110,7 @@ jmethodID WellKnownClasses::java_lang_System_runFinalization = nullptr;
 jmethodID WellKnownClasses::java_lang_Thread_dispatchUncaughtException;
 jmethodID WellKnownClasses::java_lang_Thread_init;
 jmethodID WellKnownClasses::java_lang_Thread_run;
+jmethodID WellKnownClasses::java_lang_ThreadGroup_add;
 jmethodID WellKnownClasses::java_lang_ThreadGroup_removeThread;
 jmethodID WellKnownClasses::java_nio_DirectByteBuffer_init;
 jmethodID WellKnownClasses::libcore_reflect_AnnotationFactory_createAnnotation;
@@ -347,6 +348,7 @@ void WellKnownClasses::Init(JNIEnv* env) {
   java_lang_Thread_dispatchUncaughtException = CacheMethod(env, java_lang_Thread, false, "dispatchUncaughtException", "(Ljava/lang/Throwable;)V");
   java_lang_Thread_init = CacheMethod(env, java_lang_Thread, false, "<init>", "(Ljava/lang/ThreadGroup;Ljava/lang/String;IZ)V");
   java_lang_Thread_run = CacheMethod(env, java_lang_Thread, false, "run", "()V");
+  java_lang_ThreadGroup_add = CacheMethod(env, java_lang_ThreadGroup, false, "add", "(Ljava/lang/Thread;)V");
   java_lang_ThreadGroup_removeThread = CacheMethod(env, java_lang_ThreadGroup, false, "threadTerminated", "(Ljava/lang/Thread;)V");
   java_nio_DirectByteBuffer_init = CacheMethod(env, java_nio_DirectByteBuffer, false, "<init>", "(JI)V");
   libcore_reflect_AnnotationFactory_createAnnotation = CacheMethod(env, libcore_reflect_AnnotationFactory, true, "createAnnotation", "(Ljava/lang/Class;[Llibcore/reflect/AnnotationMember;)Ljava/lang/annotation/Annotation;");
@@ -496,6 +498,7 @@ void WellKnownClasses::Clear() {
   java_lang_Thread_dispatchUncaughtException = nullptr;
   java_lang_Thread_init = nullptr;
   java_lang_Thread_run = nullptr;
+  java_lang_ThreadGroup_add = nullptr;
   java_lang_ThreadGroup_removeThread = nullptr;
   java_nio_DirectByteBuffer_init = nullptr;
   libcore_reflect_AnnotationFactory_createAnnotation = nullptr;

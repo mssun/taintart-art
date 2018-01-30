@@ -511,6 +511,12 @@ class Thread {
   static void FinishStartup();
   static void Shutdown();
 
+  // Notify this thread's thread-group that this thread has started.
+  // Note: the given thread-group is used as a fast path and verified in debug build. If the value
+  //       is null, the thread's thread-group is loaded from the peer.
+  void NotifyThreadGroup(ScopedObjectAccessAlreadyRunnable& soa, jobject thread_group = nullptr)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   // JNI methods
   JNIEnvExt* GetJniEnv() const {
     return tlsPtr_.jni_env;
