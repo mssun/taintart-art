@@ -121,6 +121,7 @@ struct WellKnownClasses {
   static jmethodID java_lang_Thread_dispatchUncaughtException;
   static jmethodID java_lang_Thread_init;
   static jmethodID java_lang_Thread_run;
+  static jmethodID java_lang_ThreadGroup_add;
   static jmethodID java_lang_ThreadGroup_removeThread;
   static jmethodID java_nio_DirectByteBuffer_init;
   static jmethodID libcore_reflect_AnnotationFactory_createAnnotation;
