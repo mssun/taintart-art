@@ -137,6 +137,7 @@ NO_RETURN static void Usage(const char *fmt, ...) {
   UsageError("  --apk-fd=<number>: file descriptor containing an open APK to");
   UsageError("      search for dex files");
   UsageError("  --apk-=<filename>: an APK to search for dex files");
+  UsageError("  --skip-apk-verification: do not attempt to verify APKs");
   UsageError("");
   UsageError("  --generate-boot-image-profile: Generate a boot image profile based on input");
   UsageError("      profiles. Requires passing in dex files to inspect properties of classes.");
@@ -185,6 +186,7 @@ class ProfMan FINAL {
       dump_only_(false),
       dump_classes_and_methods_(false),
       generate_boot_image_profile_(false),
+      skip_apk_verification_(false),
       dump_output_to_fd_(kInvalidFd),
       test_profile_num_dex_(kDefaultTestProfileNumDex),
       test_profile_method_percerntage_(kDefaultTestProfileMethodPercentage),
@@ -227,6 +229,8 @@ class ProfMan FINAL {
         ParseUintOption(option, "--dump-output-to-fd", &dump_output_to_fd_, Usage);
       } else if (option == "--generate-boot-image-profile") {
         generate_boot_image_profile_ = true;
+      } else if (option == "--skip-apk-verification") {
+        skip_apk_verification_ = true;
       } else if (option.starts_with("--boot-image-class-threshold=")) {
         ParseUintOption(option,
                         "--boot-image-class-threshold",
@@ -321,6 +325,10 @@ class ProfMan FINAL {
     return result;
   }
 
+  bool ShouldSkipApkVerification() const {
+    return skip_apk_verification_;
+  }
+
   void OpenApkFilesFromLocations(std::vector<std::unique_ptr<const DexFile>>* dex_files) const {
     bool use_apk_fd_list = !apks_fd_.empty();
     if (use_apk_fd_list) {
@@ -342,7 +350,7 @@ class ProfMan FINAL {
       if (use_apk_fd_list) {
         if (dex_file_loader.OpenZip(apks_fd_[i],
                                     dex_locations_[i],
-                                    /* verify */ true,
+                                    /* verify */ !ShouldSkipApkVerification(),
                                     kVerifyChecksum,
                                     &error_msg,
                                     &dex_files_for_location)) {
@@ -353,7 +361,7 @@ class ProfMan FINAL {
       } else {
         if (dex_file_loader.Open(apk_files_[i].c_str(),
                                  dex_locations_[i],
-                                 /* verify */ true,
+                                 /* verify */ !ShouldSkipApkVerification(),
                                  kVerifyChecksum,
                                  &error_msg,
                                  &dex_files_for_location)) {
@@ -1148,6 +1156,7 @@ class ProfMan FINAL {
   bool dump_only_;
   bool dump_classes_and_methods_;
   bool generate_boot_image_profile_;
+  bool skip_apk_verification_;
   int dump_output_to_fd_;
   BootImageOptions boot_image_options_;
   std::string test_profile_;
