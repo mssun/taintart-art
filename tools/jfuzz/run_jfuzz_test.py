@@ -169,7 +169,7 @@ class TestRunnerRIOnHost(TestRunner):
 
   def CompileAndRunTest(self):
     dbg = '-g' if self._debug_info else '-g:none'
-    if RunCommand(['javac', dbg, 'Test.java'],
+    if RunCommand(['javac', '--release=8', dbg, 'Test.java'],
                   out=None, err=None, timeout=30) == RetCode.SUCCESS:
       retc = RunCommand(['java', 'Test'], self.output_file, err=None)
     else:
