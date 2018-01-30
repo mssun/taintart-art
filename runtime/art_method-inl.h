@@ -466,7 +466,15 @@ inline void ArtMethod::UpdateEntrypoints(const Visitor& visitor, PointerSize poi
 }
 
 inline CodeItemInstructionAccessor ArtMethod::DexInstructions() {
-  return CodeItemInstructionAccessor(this);
+  return CodeItemInstructionAccessor(*GetDexFile(), GetCodeItem());
+}
+
+inline CodeItemDataAccessor ArtMethod::DexInstructionData() {
+  return CodeItemDataAccessor(*GetDexFile(), GetCodeItem());
+}
+
+inline CodeItemDebugInfoAccessor ArtMethod::DexInstructionDebugInfo() {
+  return CodeItemDebugInfoAccessor(*GetDexFile(), GetCodeItem(), GetDexMethodIndex());
 }
 
 }  // namespace art

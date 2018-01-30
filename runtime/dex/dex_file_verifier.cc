@@ -23,14 +23,12 @@
 
 #include "android-base/stringprintf.h"
 
-#include "code_item_accessors-no_art-inl.h"
+#include "code_item_accessors-inl.h"
+#include "descriptors_names.h"
 #include "dex_file-inl.h"
-#include "experimental_flags.h"
 #include "leb128.h"
 #include "modifiers.h"
-#include "safe_map.h"
 #include "utf-inl.h"
-#include "utils.h"
 
 namespace art {
 

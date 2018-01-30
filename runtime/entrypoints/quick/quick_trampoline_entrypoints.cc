@@ -785,7 +785,7 @@ extern "C" uint64_t artQuickToInterpreterBridge(ArtMethod* method, Thread* self,
   uint32_t shorty_len = 0;
   ArtMethod* non_proxy_method = method->GetInterfaceMethodIfProxy(kRuntimePointerSize);
   DCHECK(non_proxy_method->GetCodeItem() != nullptr) << method->PrettyMethod();
-  CodeItemDataAccessor accessor(non_proxy_method);
+  CodeItemDataAccessor accessor(non_proxy_method->DexInstructionData());
   const char* shorty = non_proxy_method->GetShorty(&shorty_len);
 
   JValue result;
@@ -1121,7 +1121,7 @@ extern "C" const void* artQuickResolutionTrampoline(
     // code.
     if (!found_stack_map || kIsDebugBuild) {
       uint32_t dex_pc = QuickArgumentVisitor::GetCallingDexPc(sp);
-      CodeItemInstructionAccessor accessor(caller);
+      CodeItemInstructionAccessor accessor(caller->DexInstructions());
       CHECK_LT(dex_pc, accessor.InsnsSizeInCodeUnits());
       const Instruction& instr = accessor.InstructionAt(dex_pc);
       Instruction::Code instr_code = instr.Opcode();

@@ -25,8 +25,8 @@
 #include "dex/dex_file_layout.h"
 #include "dex/dex_file_types.h"
 #include "dex/standard_dex_file.h"
+#include "dex/utf.h"
 #include "dexlayout.h"
-#include "utf.h"
 
 namespace art {
 

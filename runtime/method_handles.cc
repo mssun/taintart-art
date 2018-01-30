@@ -415,7 +415,7 @@ static inline bool MethodHandleInvokeMethod(ArtMethod* called_method,
                                             const InstructionOperands* const operands,
                                             JValue* result) REQUIRES_SHARED(Locks::mutator_lock_) {
   // Compute method information.
-  CodeItemDataAccessor accessor(called_method);
+  CodeItemDataAccessor accessor(called_method->DexInstructionData());
 
   // Number of registers for the callee's call frame. Note that for non-exact
   // invokes, we always derive this information from the callee method. We
@@ -557,7 +557,7 @@ static inline bool MethodHandleInvokeTransform(ArtMethod* called_method,
   // - One for the only method argument (an EmulatedStackFrame).
   static constexpr size_t kNumRegsForTransform = 2;
 
-  CodeItemDataAccessor accessor(called_method);
+  CodeItemDataAccessor accessor(called_method->DexInstructionData());
   DCHECK_EQ(kNumRegsForTransform, accessor.RegistersSize());
   DCHECK_EQ(kNumRegsForTransform, accessor.InsSize());
 
@@ -1041,7 +1041,7 @@ static inline bool MethodHandleInvokeExactInternal(
   }
 
   // Compute method information.
-  CodeItemDataAccessor accessor(called_method);
+  CodeItemDataAccessor accessor(called_method->DexInstructionData());
   uint16_t num_regs;
   size_t num_input_regs;
   size_t first_dest_reg;
