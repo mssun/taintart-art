@@ -222,7 +222,7 @@ void QuickExceptionHandler::SetCatchEnvironmentForOptimizedHandler(StackVisitor*
     self_->DumpStack(LOG_STREAM(INFO) << "Setting catch phis: ");
   }
 
-  CodeItemDataAccessor accessor(handler_method_);
+  CodeItemDataAccessor accessor(handler_method_->DexInstructionData());
   const size_t number_of_vregs = accessor.RegistersSize();
   CodeInfo code_info = handler_method_header_->GetOptimizedCodeInfo();
   CodeInfoEncoding encoding = code_info.ExtractEncoding();
@@ -360,7 +360,7 @@ class DeoptimizeStackVisitor FINAL : public StackVisitor {
       const size_t frame_id = GetFrameId();
       ShadowFrame* new_frame = GetThread()->FindDebuggerShadowFrame(frame_id);
       const bool* updated_vregs;
-      CodeItemDataAccessor accessor(method);
+      CodeItemDataAccessor accessor(method->DexInstructionData());
       const size_t num_regs = accessor.RegistersSize();
       if (new_frame == nullptr) {
         new_frame = ShadowFrame::CreateDeoptimizedFrame(num_regs, nullptr, method, GetDexPc());
@@ -408,7 +408,7 @@ class DeoptimizeStackVisitor FINAL : public StackVisitor {
     uintptr_t native_pc_offset = method_header->NativeQuickPcOffset(GetCurrentQuickFramePc());
     CodeInfoEncoding encoding = code_info.ExtractEncoding();
     StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset, encoding);
-    CodeItemDataAccessor accessor(m);
+    CodeItemDataAccessor accessor(m->DexInstructionData());
     const size_t number_of_vregs = accessor.RegistersSize();
     uint32_t register_mask = code_info.GetRegisterMaskOf(encoding, stack_map);
     BitMemoryRegion stack_mask = code_info.GetStackMaskOf(encoding, stack_map);

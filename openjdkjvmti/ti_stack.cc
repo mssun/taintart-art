@@ -1045,7 +1045,7 @@ jvmtiError StackUtil::NotifyFramePop(jvmtiEnv* env, jthread thread, jint depth) 
     if (shadow_frame == nullptr) {
       needs_instrument = true;
       const size_t frame_id = visitor.GetFrameId();
-      const uint16_t num_regs = art::CodeItemDataAccessor(method).RegistersSize();
+      const uint16_t num_regs = method->DexInstructionData().RegistersSize();
       shadow_frame = target->FindOrCreateDebuggerShadowFrame(frame_id,
                                                              num_regs,
                                                              method,

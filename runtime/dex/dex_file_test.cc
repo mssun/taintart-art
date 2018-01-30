@@ -25,13 +25,13 @@
 #include "base/unix_file/fd_file.h"
 #include "code_item_accessors-inl.h"
 #include "common_runtime_test.h"
+#include "descriptors_names.h"
 #include "dex_file-inl.h"
 #include "dex_file_loader.h"
 #include "mem_map.h"
 #include "os.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
-#include "utils.h"
 
 namespace art {
 
