@@ -31,17 +31,25 @@ namespace mirror {
 // C++ mirror of java.lang.invoke.MethodType
 class MANAGED MethodType : public Object {
  public:
-  static mirror::MethodType* Create(Thread* const self,
-                                    Handle<Class> return_type,
-                                    Handle<ObjectArray<Class>> param_types)
+  static MethodType* Create(Thread* const self,
+                            Handle<Class> return_type,
+                            Handle<ObjectArray<Class>> param_types)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
-  static mirror::Class* StaticClass() REQUIRES_SHARED(Locks::mutator_lock_) {
+  static MethodType* CloneWithoutLeadingParameter(Thread* const self,
+                                                  ObjPtr<MethodType> method_type)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
+  static Class* StaticClass() REQUIRES_SHARED(Locks::mutator_lock_) {
     return static_class_.Read();
   }
 
   ObjectArray<Class>* GetPTypes() REQUIRES_SHARED(Locks::mutator_lock_) {
     return GetFieldObject<ObjectArray<Class>>(OFFSET_OF_OBJECT_MEMBER(MethodType, p_types_));
+  }
+
+  int GetNumberOfPTypes() REQUIRES_SHARED(Locks::mutator_lock_) {
+    return GetPTypes()->GetLength();
   }
 
   // Number of virtual registers required to hold the parameters for
@@ -58,11 +66,11 @@ class MANAGED MethodType : public Object {
 
   // Returns true iff. |this| is an exact match for method type |target|, i.e
   // iff. they have the same return types and parameter types.
-  bool IsExactMatch(mirror::MethodType* target) REQUIRES_SHARED(Locks::mutator_lock_);
+  bool IsExactMatch(MethodType* target) REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns true iff. |this| can be converted to match |target| method type, i.e
   // iff. they have convertible return types and parameter types.
-  bool IsConvertible(mirror::MethodType* target) REQUIRES_SHARED(Locks::mutator_lock_);
+  bool IsConvertible(MethodType* target) REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns the pretty descriptor for this method type, suitable for display in
   // exception messages and the like.
@@ -89,13 +97,13 @@ class MANAGED MethodType : public Object {
     return MemberOffset(OFFSETOF_MEMBER(MethodType, wrap_alt_));
   }
 
-  HeapReference<mirror::Object> form_;  // Unused in the runtime
-  HeapReference<mirror::String> method_descriptor_;  // Unused in the runtime
-  HeapReference<ObjectArray<mirror::Class>> p_types_;
-  HeapReference<mirror::Class> r_type_;
-  HeapReference<mirror::Object> wrap_alt_;  // Unused in the runtime
+  HeapReference<Object> form_;  // Unused in the runtime
+  HeapReference<String> method_descriptor_;  // Unused in the runtime
+  HeapReference<ObjectArray<Class>> p_types_;
+  HeapReference<Class> r_type_;
+  HeapReference<Object> wrap_alt_;  // Unused in the runtime
 
-  static GcRoot<mirror::Class> static_class_;  // java.lang.invoke.MethodType.class
+  static GcRoot<Class> static_class_;  // java.lang.invoke.MethodType.class
 
   friend struct art::MethodTypeOffsets;  // for verifying offset information
   DISALLOW_IMPLICIT_CONSTRUCTORS(MethodType);

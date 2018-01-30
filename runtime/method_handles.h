@@ -123,7 +123,8 @@ bool PerformConversions(Thread* self,
                         Handle<mirror::MethodType> callee_type,
                         G* getter,
                         S* setter,
-                        int32_t num_conversions) REQUIRES_SHARED(Locks::mutator_lock_);
+                        int32_t start_index,
+                        int32_t end_index) REQUIRES_SHARED(Locks::mutator_lock_);
 
 // A convenience class that allows for iteration through a list of
 // input argument registers. This is used to iterate over input
