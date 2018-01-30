@@ -123,7 +123,7 @@ jvmtiError MethodUtil::GetBytecodes(jvmtiEnv* env,
   }
 
   art::ScopedObjectAccess soa(art::Thread::Current());
-  art::CodeItemInstructionAccessor accessor(art_method);
+  art::CodeItemInstructionAccessor accessor(art_method->DexInstructions());
   if (!accessor.HasCodeItem()) {
     *size_ptr = 0;
     *bytecode_ptr = nullptr;
@@ -168,7 +168,7 @@ jvmtiError MethodUtil::GetArgumentsSize(jvmtiEnv* env ATTRIBUTE_UNUSED,
   }
 
   DCHECK_NE(art_method->GetCodeItemOffset(), 0u);
-  *size_ptr = art::CodeItemDataAccessor(art_method).InsSize();
+  *size_ptr = art_method->DexInstructionData().InsSize();
 
   return ERR(NONE);
 }
@@ -200,7 +200,7 @@ jvmtiError MethodUtil::GetLocalVariableTable(jvmtiEnv* env,
   // TODO HasCodeItem == false means that the method is abstract (or native, but we check that
   // earlier). We should check what is returned by the RI in this situation since it's not clear
   // what the appropriate return value is from the spec.
-  art::CodeItemDebugInfoAccessor accessor(art_method);
+  art::CodeItemDebugInfoAccessor accessor(art_method->DexInstructionDebugInfo());
   if (!accessor.HasCodeItem()) {
     return ERR(ABSENT_INFORMATION);
   }
@@ -301,7 +301,7 @@ jvmtiError MethodUtil::GetMaxLocals(jvmtiEnv* env ATTRIBUTE_UNUSED,
   }
 
   DCHECK_NE(art_method->GetCodeItemOffset(), 0u);
-  *max_ptr = art::CodeItemDataAccessor(art_method).RegistersSize();
+  *max_ptr = art_method->DexInstructionData().RegistersSize();
 
   return ERR(NONE);
 }
@@ -480,7 +480,7 @@ jvmtiError MethodUtil::GetLineNumberTable(jvmtiEnv* env,
       return ERR(NULL_POINTER);
     }
 
-    accessor = art::CodeItemDebugInfoAccessor(art_method);
+    accessor = art::CodeItemDebugInfoAccessor(art_method->DexInstructionDebugInfo());
     dex_file = art_method->GetDexFile();
     DCHECK(accessor.HasCodeItem()) << art_method->PrettyMethod() << " " << dex_file->GetLocation();
   }
@@ -567,7 +567,7 @@ class CommonLocalVariableClosure : public art::Closure {
       // TODO It might be useful to fake up support for get at least on proxy frames.
       result_ = ERR(OPAQUE_FRAME);
       return;
-    } else if (art::CodeItemDataAccessor(method).RegistersSize() <= slot_) {
+    } else if (method->DexInstructionData().RegistersSize() <= slot_) {
       result_ = ERR(INVALID_SLOT);
       return;
     }
@@ -618,7 +618,7 @@ class CommonLocalVariableClosure : public art::Closure {
     if (dex_file == nullptr) {
       return ERR(OPAQUE_FRAME);
     }
-    art::CodeItemDebugInfoAccessor accessor(method);
+    art::CodeItemDebugInfoAccessor accessor(method->DexInstructionDebugInfo());
     if (!accessor.HasCodeItem()) {
       return ERR(OPAQUE_FRAME);
     }
