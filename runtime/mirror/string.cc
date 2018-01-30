@@ -21,7 +21,6 @@
 #include "base/array_ref.h"
 #include "base/stl_util.h"
 #include "class-inl.h"
-#include "dex/utf-inl.h"
 #include "gc/accounting/card_table-inl.h"
 #include "gc_root-inl.h"
 #include "handle_scope-inl.h"
@@ -30,6 +29,7 @@
 #include "runtime.h"
 #include "string-inl.h"
 #include "thread.h"
+#include "utf-inl.h"
 
 namespace art {
 namespace mirror {
