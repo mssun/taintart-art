@@ -286,6 +286,10 @@ fi
 
 if [[ $mode != "ri" ]]; then
   toolchain_args="--toolchain d8 --language CUR"
+  if [[ "x$with_jdwp_path" == "x" ]]; then
+    # Need to enable the internal jdwp implementation.
+    art_debugee="${art_debugee} -XjdwpProvider:internal"
+  fi
 else
   toolchain_args="--toolchain javac --language CUR"
 fi
