@@ -48,8 +48,13 @@ jvmtiError GetClassLocation(ArtJvmTiEnv* env, jclass klass, /*out*/std::string* 
 
 class Transformer {
  public:
+  template<ArtJvmtiEvent kEvent>
+  static void TransformSingleClassDirect(
+      EventHandler* event_handler,
+      art::Thread* self,
+      /*in-out*/ArtClassDefinition* def);
+
   static jvmtiError RetransformClassesDirect(
-      ArtJvmTiEnv* env,
       EventHandler* event_handler,
       art::Thread* self,
       /*in-out*/std::vector<ArtClassDefinition>* definitions);
