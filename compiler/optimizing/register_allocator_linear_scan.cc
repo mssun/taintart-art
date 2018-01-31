@@ -1131,6 +1131,8 @@ void RegisterAllocatorLinearScan::AllocateSpillSlotFor(LiveInterval* interval) {
     case DataType::Type::kInt16:
       spill_slots = &int_spill_slots_;
       break;
+    case DataType::Type::kUint32:
+    case DataType::Type::kUint64:
     case DataType::Type::kVoid:
       LOG(FATAL) << "Unexpected type for interval " << interval->GetType();
   }

@@ -103,6 +103,7 @@ void RegisterAllocationResolver::Resolve(ArrayRef<HInstruction* const> safepoint
         case DataType::Type::kFloat64:
           slot += long_spill_slots;
           FALLTHROUGH_INTENDED;
+        case DataType::Type::kUint64:
         case DataType::Type::kInt64:
           slot += float_spill_slots;
           FALLTHROUGH_INTENDED;
@@ -110,6 +111,7 @@ void RegisterAllocationResolver::Resolve(ArrayRef<HInstruction* const> safepoint
           slot += int_spill_slots;
           FALLTHROUGH_INTENDED;
         case DataType::Type::kReference:
+        case DataType::Type::kUint32:
         case DataType::Type::kInt32:
         case DataType::Type::kUint16:
         case DataType::Type::kUint8:

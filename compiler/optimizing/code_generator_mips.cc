@@ -58,9 +58,11 @@ Location MipsReturnLocation(DataType::Type return_type) {
     case DataType::Type::kInt8:
     case DataType::Type::kUint16:
     case DataType::Type::kInt16:
+    case DataType::Type::kUint32:
     case DataType::Type::kInt32:
       return Location::RegisterLocation(V0);
 
+    case DataType::Type::kUint64:
     case DataType::Type::kInt64:
       return Location::RegisterPairLocation(V0, V1);
 
@@ -140,6 +142,8 @@ Location InvokeDexCallingConventionVisitorMIPS::GetNextLocation(DataType::Type t
       break;
     }
 
+    case DataType::Type::kUint32:
+    case DataType::Type::kUint64:
     case DataType::Type::kVoid:
       LOG(FATAL) << "Unexpected parameter type " << type;
       break;
@@ -2821,6 +2825,8 @@ void InstructionCodeGeneratorMIPS::VisitArrayGet(HArrayGet* instruction) {
       break;
     }
 
+    case DataType::Type::kUint32:
+    case DataType::Type::kUint64:
     case DataType::Type::kVoid:
       LOG(FATAL) << "Unreachable type " << instruction->GetType();
       UNREACHABLE();
@@ -3136,6 +3142,8 @@ void InstructionCodeGeneratorMIPS::VisitArraySet(HArraySet* instruction) {
       break;
     }
 
+    case DataType::Type::kUint32:
+    case DataType::Type::kUint64:
     case DataType::Type::kVoid:
       LOG(FATAL) << "Unreachable type " << instruction->GetType();
       UNREACHABLE();
@@ -6320,6 +6328,8 @@ void InstructionCodeGeneratorMIPS::HandleFieldGet(HInstruction* instruction,
     case DataType::Type::kFloat64:
       load_type = kLoadDoubleword;
       break;
+    case DataType::Type::kUint32:
+    case DataType::Type::kUint64:
     case DataType::Type::kVoid:
       LOG(FATAL) << "Unreachable type " << type;
       UNREACHABLE();
@@ -6473,6 +6483,8 @@ void InstructionCodeGeneratorMIPS::HandleFieldSet(HInstruction* instruction,
     case DataType::Type::kFloat64:
       store_type = kStoreDoubleword;
       break;
+    case DataType::Type::kUint32:
+    case DataType::Type::kUint64:
     case DataType::Type::kVoid:
       LOG(FATAL) << "Unreachable type " << type;
       UNREACHABLE();
