@@ -351,15 +351,14 @@ jvmtiError Redefiner::RedefineClasses(ArtJvmTiEnv* env,
     memcpy(class_bytes_copy, definitions[i].class_bytes, definitions[i].class_byte_count);
 
     ArtClassDefinition def;
-    res = def.Init(env, definitions[i]);
+    res = def.Init(self, definitions[i]);
     if (res != OK) {
       return res;
     }
     def_vector.push_back(std::move(def));
   }
   // Call all the transformation events.
-  jvmtiError res = Transformer::RetransformClassesDirect(env,
-                                                         event_handler,
+  jvmtiError res = Transformer::RetransformClassesDirect(event_handler,
                                                          self,
                                                          &def_vector);
   if (res != OK) {
