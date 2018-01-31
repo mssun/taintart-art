@@ -369,7 +369,7 @@ TEST_F(CmdlineParserTest, DISABLED_TestXGcOption) {
  */
 TEST_F(CmdlineParserTest, TestJdwpProviderEmpty) {
   {
-    EXPECT_SINGLE_PARSE_DEFAULT_VALUE(JdwpProvider::kNone, "", M::JdwpProvider);
+    EXPECT_SINGLE_PARSE_DEFAULT_VALUE(JdwpProvider::kInternal, "", M::JdwpProvider);
   }
 }  // TEST_F
 
