@@ -436,13 +436,7 @@ if [ "$DEBUGGER" = "y" ]; then
     msg "    adb forward tcp:$PORT tcp:$PORT"
   fi
   msg "    jdb -attach localhost:$PORT"
-  if [ "$USE_JVM" = "n" ]; then
-    # TODO We should switch over to using the jvmti agent by default.
-    # Need to tell the runtime to enable the internal jdwp implementation.
-    DEBUGGER_OPTS="-XjdwpOptions:transport=dt_socket,address=$PORT,server=y,suspend=y -XjdwpProvider:internal"
-  else
-    DEBUGGER_OPTS="-agentlib:jdwp=transport=dt_socket,address=$PORT,server=y,suspend=y"
-  fi
+  DEBUGGER_OPTS="-agentlib:jdwp=transport=dt_socket,address=$PORT,server=y,suspend=y"
 elif [ "$DEBUGGER" = "agent" ]; then
   PORT=12345
   # TODO Support ddms connection and support target.

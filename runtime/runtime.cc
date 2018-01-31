@@ -1253,20 +1253,7 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   jdwp_provider_ = runtime_options.GetOrDefault(Opt::JdwpProvider);
   switch (jdwp_provider_) {
     case JdwpProvider::kNone: {
-      LOG(INFO) << "Disabling all JDWP support.";
-      if (!jdwp_options_.empty()) {
-        bool has_transport = jdwp_options_.find("transport") != std::string::npos;
-        const char* transport_internal = !has_transport ? "transport=dt_android_adb," : "";
-        std::string adb_connection_args =
-            std::string("  -XjdwpProvider:adbconnection -XjdwpOptions:") + jdwp_options_;
-        LOG(WARNING) << "Jdwp options given when jdwp is disabled! You probably want to enable "
-                     << "jdwp with one of:" << std::endl
-                     << "  -XjdwpProvider:internal "
-                     << "-XjdwpOptions:" << transport_internal << jdwp_options_ << std::endl
-                     << "  -Xplugin:libopenjdkjvmti" << (kIsDebugBuild ? "d" : "") << ".so "
-                     << "-agentpath:libjdwp.so=" << jdwp_options_ << std::endl
-                     << (has_transport ? "" : adb_connection_args);
-      }
+      LOG(WARNING) << "Disabling all JDWP support.";
       break;
     }
     case JdwpProvider::kInternal: {
