@@ -28,12 +28,12 @@
 #include "compiler_filter.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_layout.h"
+#include "dex/utf.h"
 #include "index_bss_mapping.h"
 #include "mirror/object.h"
 #include "oat.h"
 #include "os.h"
 #include "type_lookup_table.h"
-#include "utf.h"
 #include "utils.h"
 
 namespace art {

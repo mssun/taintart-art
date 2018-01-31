@@ -142,7 +142,7 @@ ArtMethod* GetTargetConstructor(ArtMethod* method, const Instruction* invoke_dir
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK_EQ(invoke_direct->Opcode(), Instruction::INVOKE_DIRECT);
   if (kIsDebugBuild) {
-    CodeItemDataAccessor accessor(method);
+    CodeItemDataAccessor accessor(method->DexInstructionData());
     DCHECK_EQ(invoke_direct->VRegC_35c(),
               accessor.RegistersSize() - accessor.InsSize());
   }
@@ -324,9 +324,9 @@ bool DoAnalyseConstructor(const CodeItemDataAccessor* code_item,
         return false;
       }
       if (target_method->GetDeclaringClass()->IsObjectClass()) {
-        DCHECK_EQ(CodeItemDataAccessor(target_method).begin()->Opcode(), Instruction::RETURN_VOID);
+        DCHECK_EQ(target_method->DexInstructionData().begin()->Opcode(), Instruction::RETURN_VOID);
       } else {
-        CodeItemDataAccessor target_code_item(target_method);
+        CodeItemDataAccessor target_code_item(target_method->DexInstructionData());
         if (!target_code_item.HasCodeItem()) {
           return false;  // Native constructor?
         }
@@ -430,7 +430,7 @@ static_assert(InlineMethodAnalyser::IGetVariant(Instruction::IGET_SHORT) ==
     InlineMethodAnalyser::IPutVariant(Instruction::IPUT_SHORT), "iget/iput_short variant");
 
 bool InlineMethodAnalyser::AnalyseMethodCode(ArtMethod* method, InlineMethod* result) {
-  CodeItemDataAccessor code_item(method);
+  CodeItemDataAccessor code_item(method->DexInstructionData());
   if (!code_item.HasCodeItem()) {
     // Native or abstract.
     return false;
