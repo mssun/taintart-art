@@ -1,0 +1,4 @@
+Exception in thread "main" java.lang.BootstrapMethodError: Exception from call site #0 bootstrap method
+	at Main.main(Main.java:25)
+Caused by: java.lang.NullPointerException: Bootstrap method returned null
+	... 1 more
