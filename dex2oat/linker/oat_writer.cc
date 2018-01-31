@@ -3367,7 +3367,10 @@ bool OatWriter::WriteDexFiles(OutputStream* out, File* file, bool update_input_v
 
     // Write shared dex file data section and fix up the dex file headers.
     vdex_dex_shared_data_offset_ = vdex_size_;
+    uint32_t shared_data_size = 0u;
+
     if (dex_container_ != nullptr) {
+      CHECK(!update_input_vdex) << "Update input vdex should have empty dex container";
       DexContainer::Section* const section = dex_container_->GetDataSection();
       if (section->Size() > 0) {
         const uint32_t shared_data_offset = vdex_size_;
@@ -3376,7 +3379,7 @@ bool OatWriter::WriteDexFiles(OutputStream* out, File* file, bool update_input_v
           LOG(ERROR) << "Expected offset " << shared_data_offset << " but got " << existing_offset;
           return false;
         }
-        const uint32_t shared_data_size = section->Size();
+        shared_data_size = section->Size();
         if (!out->WriteFully(section->Begin(), shared_data_size)) {
           LOG(ERROR) << "Failed to write shared data!";
           return false;
@@ -3400,8 +3403,6 @@ bool OatWriter::WriteDexFiles(OutputStream* out, File* file, bool update_input_v
             return false;
           }
         }
-        vdex_size_ += shared_data_size;
-        size_dex_file_ += shared_data_size;
         section->Clear();
         if (!out->Flush()) {
           PLOG(ERROR) << "Failed to flush after writing shared dex section.";
@@ -3409,9 +3410,35 @@ bool OatWriter::WriteDexFiles(OutputStream* out, File* file, bool update_input_v
         }
       }
       dex_container_.reset();
+    } else {
+      if (update_input_vdex) {
+        for (OatDexFile& oat_dex_file : oat_dex_files_) {
+          DexFile::Header header;
+          if (!file->PreadFully(&header, sizeof(header), oat_dex_file.dex_file_offset_)) {
+            PLOG(ERROR) << "Failed to read dex header";
+            return false;
+          }
+          if (!CompactDexFile::IsMagicValid(header.magic_)) {
+            // Non compact dex does not have shared data section.
+            continue;
+          }
+          const uint32_t expected_data_off = vdex_dex_shared_data_offset_ -
+              oat_dex_file.dex_file_offset_;
+          if (header.data_off_ != expected_data_off) {
+            PLOG(ERROR) << "Shared data section offset " << header.data_off_
+                        << " does not match expected value " << expected_data_off;
+            return false;
+          }
+          // The different dex files currently can have different data sizes since
+          // the dex writer writes them one at a time into the shared section.:w
+          shared_data_size = std::max(shared_data_size, header.data_size_);
+        }
+      }
     }
+    vdex_size_ += shared_data_size;
+    size_dex_file_ += shared_data_size;
   } else {
-    vdex_dex_shared_data_offset_ =  vdex_size_;
+    vdex_dex_shared_data_offset_ = vdex_size_;
   }
 
   return true;
