@@ -783,7 +783,7 @@ class Dex2oatLayoutTest : public Dex2oatTest {
                          app_image_file_name,
                          /* use_fd */ true,
                          /* num_profile_classes */ 1,
-                         { input_vdex, output_vdex, kDisableCompactDex });
+                         { input_vdex, output_vdex });
       EXPECT_GT(vdex_file1->GetLength(), 0u);
     }
     {
@@ -904,7 +904,7 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
       GenerateOdexForTest(dex_location,
                           odex_location,
                           CompilerFilter::kQuicken,
-                          { input_vdex, output_vdex, kDisableCompactDex },
+                          { input_vdex, output_vdex },
                           /* expect_success */ true,
                           /* use_fd */ true);
       EXPECT_GT(vdex_file1->GetLength(), 0u);
