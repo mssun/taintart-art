@@ -63,27 +63,46 @@
 
 namespace openjdkjvmti {
 
+// Initialize templates.
+template
+void Transformer::TransformSingleClassDirect<ArtJvmtiEvent::kClassFileLoadHookNonRetransformable>(
+    EventHandler* event_handler, art::Thread* self, /*in-out*/ArtClassDefinition* def);
+template
+void Transformer::TransformSingleClassDirect<ArtJvmtiEvent::kClassFileLoadHookRetransformable>(
+    EventHandler* event_handler, art::Thread* self, /*in-out*/ArtClassDefinition* def);
+
+template<ArtJvmtiEvent kEvent>
+void Transformer::TransformSingleClassDirect(EventHandler* event_handler,
+                                             art::Thread* self,
+                                             /*in-out*/ArtClassDefinition* def) {
+  static_assert(kEvent == ArtJvmtiEvent::kClassFileLoadHookNonRetransformable ||
+                kEvent == ArtJvmtiEvent::kClassFileLoadHookRetransformable,
+                "bad event type");
+  jint new_len = -1;
+  unsigned char* new_data = nullptr;
+  art::ArrayRef<const unsigned char> dex_data = def->GetDexData();
+  event_handler->DispatchEvent<kEvent>(
+      self,
+      static_cast<JNIEnv*>(self->GetJniEnv()),
+      def->GetClass(),
+      def->GetLoader(),
+      def->GetName().c_str(),
+      def->GetProtectionDomain(),
+      static_cast<jint>(dex_data.size()),
+      dex_data.data(),
+      /*out*/&new_len,
+      /*out*/&new_data);
+  def->SetNewDexData(new_len, new_data);
+}
+
 jvmtiError Transformer::RetransformClassesDirect(
-      ArtJvmTiEnv* env,
       EventHandler* event_handler,
       art::Thread* self,
       /*in-out*/std::vector<ArtClassDefinition>* definitions) {
   for (ArtClassDefinition& def : *definitions) {
-    jint new_len = -1;
-    unsigned char* new_data = nullptr;
-    art::ArrayRef<const unsigned char> dex_data = def.GetDexData();
-    event_handler->DispatchEvent<ArtJvmtiEvent::kClassFileLoadHookRetransformable>(
-        self,
-        GetJniEnv(env),
-        def.GetClass(),
-        def.GetLoader(),
-        def.GetName().c_str(),
-        def.GetProtectionDomain(),
-        static_cast<jint>(dex_data.size()),
-        dex_data.data(),
-        /*out*/&new_len,
-        /*out*/&new_data);
-    def.SetNewDexData(env, new_len, new_data);
+    TransformSingleClassDirect<ArtJvmtiEvent::kClassFileLoadHookRetransformable>(event_handler,
+                                                                                 self,
+                                                                                 &def);
   }
   return OK;
 }
@@ -120,13 +139,13 @@ jvmtiError Transformer::RetransformClasses(ArtJvmTiEnv* env,
       return ERR(UNMODIFIABLE_CLASS);
     }
     ArtClassDefinition def;
-    res = def.Init(env, classes[i]);
+    res = def.Init(self, classes[i]);
     if (res != OK) {
       return res;
     }
     definitions.push_back(std::move(def));
   }
-  res = RetransformClassesDirect(env, event_handler, self, &definitions);
+  res = RetransformClassesDirect(event_handler, self, &definitions);
   if (res != OK) {
     return res;
   }

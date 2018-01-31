@@ -184,74 +184,27 @@ struct ClassCallback : public art::ClassLoadCallback {
       return;
     }
 
-    // Strip the 'L' and ';' from the descriptor
-    std::string name(std::string(descriptor).substr(1, strlen(descriptor) - 2));
-
     art::Thread* self = art::Thread::Current();
-    art::JNIEnvExt* env = self->GetJniEnv();
-    ScopedLocalRef<jobject> loader(
-        env, class_loader.IsNull() ? nullptr : env->AddLocalReference<jobject>(class_loader.Get()));
-    std::unique_ptr<FixedUpDexFile> dex_file_copy(FixedUpDexFile::Create(initial_dex_file,
-                                                                         descriptor));
+    ArtClassDefinition def;
+    def.InitFirstLoad(descriptor, class_loader, initial_dex_file);
 
-    // Go back to native.
-    art::ScopedThreadSuspension sts(self, art::ThreadState::kNative);
-    // Call all Non-retransformable agents.
-    jint post_no_redefine_len = 0;
-    unsigned char* post_no_redefine_dex_data = nullptr;
-    std::unique_ptr<const unsigned char, FakeJvmtiDeleter<const unsigned char>>
-        post_no_redefine_unique_ptr(nullptr, FakeJvmtiDeleter<const unsigned char>());
-    event_handler->DispatchEvent<ArtJvmtiEvent::kClassFileLoadHookNonRetransformable>(
-        self,
-        static_cast<JNIEnv*>(env),
-        static_cast<jclass>(nullptr),  // The class doesn't really exist yet so send null.
-        loader.get(),
-        name.c_str(),
-        static_cast<jobject>(nullptr),  // Android doesn't seem to have protection domains
-        static_cast<jint>(dex_file_copy->Size()),
-        static_cast<const unsigned char*>(dex_file_copy->Begin()),
-        static_cast<jint*>(&post_no_redefine_len),
-        static_cast<unsigned char**>(&post_no_redefine_dex_data));
-    if (post_no_redefine_dex_data == nullptr) {
-      DCHECK_EQ(post_no_redefine_len, 0);
-      post_no_redefine_dex_data = const_cast<unsigned char*>(dex_file_copy->Begin());
-      post_no_redefine_len = dex_file_copy->Size();
-    } else {
-      post_no_redefine_unique_ptr =
-          std::unique_ptr<const unsigned char, FakeJvmtiDeleter<const unsigned char>>(
-              post_no_redefine_dex_data, FakeJvmtiDeleter<const unsigned char>());
-      DCHECK_GT(post_no_redefine_len, 0);
+    // Call all non-retransformable agents.
+    Transformer::TransformSingleClassDirect<ArtJvmtiEvent::kClassFileLoadHookNonRetransformable>(
+        event_handler, self, &def);
+
+    std::vector<unsigned char> post_non_retransform;
+    if (def.IsModified()) {
+      // Copy the dex data after the non-retransformable events.
+      post_non_retransform.resize(def.GetDexData().size());
+      memcpy(post_non_retransform.data(), def.GetDexData().data(), post_non_retransform.size());
     }
+
     // Call all retransformable agents.
-    jint final_len = 0;
-    unsigned char* final_dex_data = nullptr;
-    std::unique_ptr<const unsigned char, FakeJvmtiDeleter<const unsigned char>>
-        final_dex_unique_ptr(nullptr, FakeJvmtiDeleter<const unsigned char>());
-    event_handler->DispatchEvent<ArtJvmtiEvent::kClassFileLoadHookRetransformable>(
-        self,
-        static_cast<JNIEnv*>(env),
-        static_cast<jclass>(nullptr),  // The class doesn't really exist yet so send null.
-        loader.get(),
-        name.c_str(),
-        static_cast<jobject>(nullptr),  // Android doesn't seem to have protection domains
-        static_cast<jint>(post_no_redefine_len),
-        static_cast<const unsigned char*>(post_no_redefine_dex_data),
-        static_cast<jint*>(&final_len),
-        static_cast<unsigned char**>(&final_dex_data));
-    if (final_dex_data == nullptr) {
-      DCHECK_EQ(final_len, 0);
-      final_dex_data = post_no_redefine_dex_data;
-      final_len = post_no_redefine_len;
-    } else {
-      final_dex_unique_ptr =
-          std::unique_ptr<const unsigned char, FakeJvmtiDeleter<const unsigned char>>(
-              final_dex_data, FakeJvmtiDeleter<const unsigned char>());
-      DCHECK_GT(final_len, 0);
-    }
+    Transformer::TransformSingleClassDirect<ArtJvmtiEvent::kClassFileLoadHookRetransformable>(
+        event_handler, self, &def);
 
-    if (final_dex_data != dex_file_copy->Begin()) {
+    if (def.IsModified()) {
       LOG(WARNING) << "Changing class " << descriptor;
-      art::ScopedObjectAccess soa(self);
       art::StackHandleScope<2> hs(self);
       // Save the results of all the non-retransformable agents.
       // First allocate the ClassExt
@@ -268,7 +221,7 @@ struct ClassCallback : public art::ClassLoadCallback {
 
       // Allocate the byte array to store the dex file bytes in.
       art::MutableHandle<art::mirror::Object> arr(hs.NewHandle<art::mirror::Object>(nullptr));
-      if (post_no_redefine_dex_data == dex_file_copy->Begin() && name != "java/lang/Long") {
+      if (post_non_retransform.empty() && strcmp(descriptor, "Ljava/lang/Long;") != 0) {
         // we didn't have any non-retransformable agents. We can just cache a pointer to the
         // initial_dex_file. It will be kept live by the class_loader.
         jlong dex_ptr = reinterpret_cast<uintptr_t>(&initial_dex_file);
@@ -278,8 +231,8 @@ struct ClassCallback : public art::ClassLoadCallback {
       } else {
         arr.Assign(art::mirror::ByteArray::AllocateAndFill(
             self,
-            reinterpret_cast<const signed char*>(post_no_redefine_dex_data),
-            post_no_redefine_len));
+            reinterpret_cast<const signed char*>(post_non_retransform.data()),
+            post_non_retransform.size()));
       }
       if (arr.IsNull()) {
         LOG(WARNING) << "Unable to allocate memory for initial dex-file. Aborting transformation";
@@ -290,8 +243,8 @@ struct ClassCallback : public art::ClassLoadCallback {
       std::unique_ptr<const art::DexFile> dex_file(MakeSingleDexFile(self,
                                                                      descriptor,
                                                                      initial_dex_file.GetLocation(),
-                                                                     final_len,
-                                                                     final_dex_data));
+                                                                     def.GetDexData().size(),
+                                                                     def.GetDexData().data()));
       if (dex_file.get() == nullptr) {
         return;
       }
