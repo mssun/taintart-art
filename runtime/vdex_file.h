@@ -87,8 +87,8 @@ class VdexFile {
 
    private:
     static constexpr uint8_t kVdexMagic[] = { 'v', 'd', 'e', 'x' };
-    // Last update: Separate section for compact dex data.
-    static constexpr uint8_t kVdexVersion[] = { '0', '1', '6', '\0' };
+    // Last update: Fix separate section for compact dex data.
+    static constexpr uint8_t kVdexVersion[] = { '0', '1', '7', '\0' };
 
     uint8_t magic_[4];
     uint8_t version_[4];
