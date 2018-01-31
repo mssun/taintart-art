@@ -176,6 +176,13 @@ static mirror::String* GetClassName(Thread* self, ShadowFrame* shadow_frame, siz
   return param->AsString();
 }
 
+template<typename T>
+static ALWAYS_INLINE bool ShouldBlockAccessToMember(T* member, ShadowFrame* frame)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  return hiddenapi::ShouldBlockAccessToMember(
+      member->GetAccessFlags(), frame->GetMethod()->GetDeclaringClass());
+}
+
 void UnstartedRuntime::UnstartedClassForNameCommon(Thread* self,
                                                    ShadowFrame* shadow_frame,
                                                    JValue* result,
@@ -267,8 +274,7 @@ void UnstartedRuntime::UnstartedClassNewInstance(
   auto* cl = Runtime::Current()->GetClassLinker();
   if (cl->EnsureInitialized(self, h_klass, true, true)) {
     ArtMethod* cons = h_klass->FindConstructor("()V", cl->GetImagePointerSize());
-    if (cons != nullptr &&
-        hiddenapi::ShouldBlockAccessToMember(cons, shadow_frame->GetMethod())) {
+    if (cons != nullptr && ShouldBlockAccessToMember(cons, shadow_frame)) {
       cons = nullptr;
     }
     if (cons != nullptr) {
@@ -313,8 +319,7 @@ void UnstartedRuntime::UnstartedClassGetDeclaredField(
       }
     }
   }
-  if (found != nullptr &&
-      hiddenapi::ShouldBlockAccessToMember(found, shadow_frame->GetMethod())) {
+  if (found != nullptr && ShouldBlockAccessToMember(found, shadow_frame)) {
     found = nullptr;
   }
   if (found == nullptr) {
@@ -379,8 +384,7 @@ void UnstartedRuntime::UnstartedClassGetDeclaredMethod(
           self, klass, name, args);
     }
   }
-  if (method != nullptr &&
-      hiddenapi::ShouldBlockAccessToMember(method->GetArtMethod(), shadow_frame->GetMethod())) {
+  if (method != nullptr && ShouldBlockAccessToMember(method->GetArtMethod(), shadow_frame)) {
     method = nullptr;
   }
   result->SetL(method);
@@ -418,8 +422,7 @@ void UnstartedRuntime::UnstartedClassGetDeclaredConstructor(
     }
   }
   if (constructor != nullptr &&
-      hiddenapi::ShouldBlockAccessToMember(
-          constructor->GetArtMethod(), shadow_frame->GetMethod())) {
+      ShouldBlockAccessToMember(constructor->GetArtMethod(), shadow_frame)) {
     constructor = nullptr;
   }
   result->SetL(constructor);
