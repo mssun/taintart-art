@@ -1162,6 +1162,25 @@ static bool FlattenPathClassLoader(ObjPtr<mirror::ClassLoader> class_loader,
   return true;
 }
 
+class CHAOnDeleteUpdateClassVisitor {
+ public:
+  explicit CHAOnDeleteUpdateClassVisitor(LinearAlloc* alloc)
+      : allocator_(alloc), cha_(Runtime::Current()->GetClassLinker()->GetClassHierarchyAnalysis()),
+        pointer_size_(Runtime::Current()->GetClassLinker()->GetImagePointerSize()),
+        self_(Thread::Current()) {}
+
+  bool operator()(ObjPtr<mirror::Class> klass) REQUIRES_SHARED(Locks::mutator_lock_) {
+    // This class is going to be unloaded. Tell CHA about it.
+    cha_->ResetSingleImplementationInHierarchy(klass, allocator_, pointer_size_);
+    return true;
+  }
+ private:
+  const LinearAlloc* allocator_;
+  const ClassHierarchyAnalysis* cha_;
+  const PointerSize pointer_size_;
+  const Thread* self_;
+};
+
 class VerifyDeclaringClassVisitor : public ArtMethodVisitor {
  public:
   VerifyDeclaringClassVisitor() REQUIRES_SHARED(Locks::mutator_lock_, Locks::heap_bitmap_lock_)
@@ -2146,12 +2165,14 @@ ClassLinker::~ClassLinker() {
   mirror::EmulatedStackFrame::ResetClass();
   Thread* const self = Thread::Current();
   for (const ClassLoaderData& data : class_loaders_) {
-    DeleteClassLoader(self, data);
+    // CHA unloading analysis is not needed. No negative consequences are expected because
+    // all the classloaders are deleted at the same time.
+    DeleteClassLoader(self, data, false /*cleanup_cha*/);
   }
   class_loaders_.clear();
 }
 
-void ClassLinker::DeleteClassLoader(Thread* self, const ClassLoaderData& data) {
+void ClassLinker::DeleteClassLoader(Thread* self, const ClassLoaderData& data, bool cleanup_cha) {
   Runtime* const runtime = Runtime::Current();
   JavaVMExt* const vm = runtime->GetJavaVM();
   vm->DeleteWeakGlobalRef(self, data.weak_root);
@@ -2166,6 +2187,12 @@ void ClassLinker::DeleteClassLoader(Thread* self, const ClassLoaderData& data) {
     // If we don't have a JIT, we need to manually remove the CHA dependencies manually.
     cha_->RemoveDependenciesForLinearAlloc(data.allocator);
   }
+  // Cleanup references to single implementation ArtMethods that will be deleted.
+  if (cleanup_cha) {
+    CHAOnDeleteUpdateClassVisitor visitor(data.allocator);
+    data.class_table->Visit<CHAOnDeleteUpdateClassVisitor, kWithoutReadBarrier>(visitor);
+  }
+
   delete data.allocator;
   delete data.class_table;
 }
@@ -8891,7 +8918,8 @@ void ClassLinker::CleanupClassLoaders() {
     }
   }
   for (ClassLoaderData& data : to_delete) {
-    DeleteClassLoader(self, data);
+    // CHA unloading analysis and SingleImplementaion cleanups are required.
+    DeleteClassLoader(self, data, true /*cleanup_cha*/);
   }
 }
 
