@@ -656,6 +656,10 @@
         "tests": "661-oat-writer-layout",
         "variant": "interp-ac | interpreter | jit | no-dex2oat | no-prebuild | no-image | trace | redefine-stress | jvmti-stress",
         "description": ["Test is designed to only check --compiler-filter=speed"]
+    },
+    {
+        "tests": "674-HelloWorld-Dm",
+        "variant": "target",
+        "description": ["Requires zip, which isn't available on device"]
     }
-
 ]
