@@ -14,63 +14,17 @@
  * limitations under the License.
  */
 
-#include "utils.h"
+#include "descriptors_names.h"
 
-#include <inttypes.h>
-#include <pthread.h>
-#include <sys/stat.h>
-#include <sys/syscall.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
-#include <memory>
-
-#include "android-base/file.h"
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 
 #include "dex/utf-inl.h"
-#include "os.h"
-
-#if defined(__APPLE__)
-#include <crt_externs.h>
-#include <sys/syscall.h>
-#include "AvailabilityMacros.h"  // For MAC_OS_X_VERSION_MAX_ALLOWED
-#endif
-
-#if defined(__linux__)
-#include <linux/unistd.h>
-#endif
 
 namespace art {
 
-using android::base::ReadFileToString;
 using android::base::StringAppendF;
 using android::base::StringPrintf;
-
-pid_t GetTid() {
-#if defined(__APPLE__)
-  uint64_t owner;
-  CHECK_PTHREAD_CALL(pthread_threadid_np, (nullptr, &owner), __FUNCTION__);  // Requires Mac OS 10.6
-  return owner;
-#elif defined(__BIONIC__)
-  return gettid();
-#else
-  return syscall(__NR_gettid);
-#endif
-}
-
-std::string GetThreadName(pid_t tid) {
-  std::string result;
-  // TODO: make this less Linux-specific.
-  if (ReadFileToString(StringPrintf("/proc/self/task/%d/comm", tid), &result)) {
-    result.resize(result.size() - 1);  // Lose the trailing '\n'.
-  } else {
-    result = "<unknown>";
-  }
-  return result;
-}
 
 void AppendPrettyDescriptor(const char* descriptor, std::string* result) {
   // Count the number of '['s to get the dimensionality.
@@ -123,32 +77,6 @@ std::string PrettyDescriptor(const char* descriptor) {
   std::string result;
   AppendPrettyDescriptor(descriptor, &result);
   return result;
-}
-
-std::string PrettySize(int64_t byte_count) {
-  // The byte thresholds at which we display amounts.  A byte count is displayed
-  // in unit U when kUnitThresholds[U] <= bytes < kUnitThresholds[U+1].
-  static const int64_t kUnitThresholds[] = {
-    0,              // B up to...
-    3*1024,         // KB up to...
-    2*1024*1024,    // MB up to...
-    1024*1024*1024  // GB from here.
-  };
-  static const int64_t kBytesPerUnit[] = { 1, KB, MB, GB };
-  static const char* const kUnitStrings[] = { "B", "KB", "MB", "GB" };
-  const char* negative_str = "";
-  if (byte_count < 0) {
-    negative_str = "-";
-    byte_count = -byte_count;
-  }
-  int i = arraysize(kUnitThresholds);
-  while (--i > 0) {
-    if (byte_count >= kUnitThresholds[i]) {
-      break;
-    }
-  }
-  return StringPrintf("%s%" PRId64 "%s",
-                      negative_str, byte_count / kBytesPerUnit[i], kUnitStrings[i]);
 }
 
 std::string GetJniShortName(const std::string& class_descriptor, const std::string& method) {
@@ -235,7 +163,7 @@ std::string DescriptorToName(const char* descriptor) {
 }
 
 // Helper for IsValidPartOfMemberNameUtf8(), a bit vector indicating valid low ascii.
-uint32_t DEX_MEMBER_VALID_LOW_ASCII[4] = {
+static uint32_t DEX_MEMBER_VALID_LOW_ASCII[4] = {
   0x00000000,  // 00..1f low control characters; nothing valid
   0x03ff2010,  // 20..3f digits and symbols; valid: '0'..'9', '$', '-'
   0x87fffffe,  // 40..5f uppercase etc.; valid: 'A'..'Z', '_'
@@ -243,7 +171,7 @@ uint32_t DEX_MEMBER_VALID_LOW_ASCII[4] = {
 };
 
 // Helper for IsValidPartOfMemberNameUtf8(); do not call directly.
-bool IsValidPartOfMemberNameUtf8Slow(const char** pUtf8Ptr) {
+static bool IsValidPartOfMemberNameUtf8Slow(const char** pUtf8Ptr) {
   /*
    * It's a multibyte encoded character. Decode it and analyze. We
    * accept anything that isn't (a) an improperly encoded low value,
@@ -491,103 +419,8 @@ void Split(const std::string& s, char separator, std::vector<std::string>* resul
   }
 }
 
-void SetThreadName(const char* thread_name) {
-  int hasAt = 0;
-  int hasDot = 0;
-  const char* s = thread_name;
-  while (*s) {
-    if (*s == '.') {
-      hasDot = 1;
-    } else if (*s == '@') {
-      hasAt = 1;
-    }
-    s++;
-  }
-  int len = s - thread_name;
-  if (len < 15 || hasAt || !hasDot) {
-    s = thread_name;
-  } else {
-    s = thread_name + len - 15;
-  }
-#if defined(__linux__)
-  // pthread_setname_np fails rather than truncating long strings.
-  char buf[16];       // MAX_TASK_COMM_LEN=16 is hard-coded in the kernel.
-  strncpy(buf, s, sizeof(buf)-1);
-  buf[sizeof(buf)-1] = '\0';
-  errno = pthread_setname_np(pthread_self(), buf);
-  if (errno != 0) {
-    PLOG(WARNING) << "Unable to set the name of current thread to '" << buf << "'";
-  }
-#else  // __APPLE__
-  pthread_setname_np(thread_name);
-#endif
-}
-
-void GetTaskStats(pid_t tid, char* state, int* utime, int* stime, int* task_cpu) {
-  *utime = *stime = *task_cpu = 0;
-  std::string stats;
-  // TODO: make this less Linux-specific.
-  if (!ReadFileToString(StringPrintf("/proc/self/task/%d/stat", tid), &stats)) {
-    return;
-  }
-  // Skip the command, which may contain spaces.
-  stats = stats.substr(stats.find(')') + 2);
-  // Extract the three fields we care about.
-  std::vector<std::string> fields;
-  Split(stats, ' ', &fields);
-  *state = fields[0][0];
-  *utime = strtoull(fields[11].c_str(), nullptr, 10);
-  *stime = strtoull(fields[12].c_str(), nullptr, 10);
-  *task_cpu = strtoull(fields[36].c_str(), nullptr, 10);
-}
-
 std::string PrettyDescriptor(Primitive::Type type) {
   return PrettyDescriptor(Primitive::Descriptor(type));
-}
-
-static void ParseStringAfterChar(const std::string& s,
-                                 char c,
-                                 std::string* parsed_value,
-                                 UsageFn Usage) {
-  std::string::size_type colon = s.find(c);
-  if (colon == std::string::npos) {
-    Usage("Missing char %c in option %s\n", c, s.c_str());
-  }
-  // Add one to remove the char we were trimming until.
-  *parsed_value = s.substr(colon + 1);
-}
-
-void ParseDouble(const std::string& option,
-                 char after_char,
-                 double min,
-                 double max,
-                 double* parsed_value,
-                 UsageFn Usage) {
-  std::string substring;
-  ParseStringAfterChar(option, after_char, &substring, Usage);
-  bool sane_val = true;
-  double value;
-  if ((false)) {
-    // TODO: this doesn't seem to work on the emulator.  b/15114595
-    std::stringstream iss(substring);
-    iss >> value;
-    // Ensure that we have a value, there was no cruft after it and it satisfies a sensible range.
-    sane_val = iss.eof() && (value >= min) && (value <= max);
-  } else {
-    char* end = nullptr;
-    value = strtod(substring.c_str(), &end);
-    sane_val = *end == '\0' && value >= min && value <= max;
-  }
-  if (!sane_val) {
-    Usage("Invalid double value %s for option %s\n", substring.c_str(), option.c_str());
-  }
-  *parsed_value = value;
-}
-
-void SleepForever() {
-  while (true) {
-    usleep(1000000);
-  }
 }
 
 }  // namespace art
