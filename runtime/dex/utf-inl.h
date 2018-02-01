@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_UTF_INL_H_
-#define ART_RUNTIME_UTF_INL_H_
+#ifndef ART_RUNTIME_DEX_UTF_INL_H_
+#define ART_RUNTIME_DEX_UTF_INL_H_
 
 #include "utf.h"
 
@@ -96,4 +96,4 @@ inline int CompareModifiedUtf8ToModifiedUtf8AsUtf16CodePointValues(const char* u
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_UTF_INL_H_
+#endif  // ART_RUNTIME_DEX_UTF_INL_H_

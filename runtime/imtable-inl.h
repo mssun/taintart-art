@@ -21,7 +21,7 @@
 
 #include "art_method-inl.h"
 #include "dex/dex_file.h"
-#include "utf.h"
+#include "dex/utf.h"
 
 namespace art {
 

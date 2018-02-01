@@ -67,7 +67,7 @@ class CheckReferenceMapVisitor : public StackVisitor {
     CodeInfo code_info = GetCurrentOatQuickMethodHeader()->GetOptimizedCodeInfo();
     CodeInfoEncoding encoding = code_info.ExtractEncoding();
     StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset, encoding);
-    CodeItemDataAccessor accessor(m);
+    CodeItemDataAccessor accessor(m->DexInstructionData());
     uint16_t number_of_dex_registers = accessor.RegistersSize();
     DexRegisterMap dex_register_map =
         code_info.GetDexRegisterMapOf(stack_map, encoding, number_of_dex_registers);
