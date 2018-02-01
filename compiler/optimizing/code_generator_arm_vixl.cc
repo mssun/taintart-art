@@ -2485,6 +2485,14 @@ void CodeGeneratorARMVIXL::GenerateFrameEntry() {
   DCHECK(GetCompilerOptions().GetImplicitStackOverflowChecks());
   __ Bind(&frame_entry_label_);
 
+  if (GetCompilerOptions().CountHotnessInCompiledCode()) {
+    UseScratchRegisterScope temps(GetVIXLAssembler());
+    vixl32::Register temp = temps.Acquire();
+    __ Ldrh(temp, MemOperand(kMethodRegister, ArtMethod::HotnessCountOffset().Int32Value()));
+    __ Add(temp, temp, 1);
+    __ Strh(temp, MemOperand(kMethodRegister, ArtMethod::HotnessCountOffset().Int32Value()));
+  }
+
   if (HasEmptyFrame()) {
     return;
   }
@@ -2786,6 +2794,16 @@ void InstructionCodeGeneratorARMVIXL::HandleGoto(HInstruction* got, HBasicBlock*
   HLoopInformation* info = block->GetLoopInformation();
 
   if (info != nullptr && info->IsBackEdge(*block) && info->HasSuspendCheck()) {
+    if (codegen_->GetCompilerOptions().CountHotnessInCompiledCode()) {
+      UseScratchRegisterScope temps(GetVIXLAssembler());
+      vixl32::Register temp = temps.Acquire();
+      __ Push(vixl32::Register(kMethodRegister));
+      GetAssembler()->LoadFromOffset(kLoadWord, kMethodRegister, sp, kArmWordSize);
+      __ Ldrh(temp, MemOperand(kMethodRegister, ArtMethod::HotnessCountOffset().Int32Value()));
+      __ Add(temp, temp, 1);
+      __ Strh(temp, MemOperand(kMethodRegister, ArtMethod::HotnessCountOffset().Int32Value()));
+      __ Pop(vixl32::Register(kMethodRegister));
+    }
     GenerateSuspendCheck(info->GetSuspendCheck(), successor);
     return;
   }
