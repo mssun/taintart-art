@@ -32,23 +32,17 @@ public class OOMEOnDispatch implements InvocationHandler {
                 OOMEInterface.class.getClassLoader(), new Class[] { OOMEInterface.class },
                 handler);
 
+        // Stop the JIT to be sure nothing is running that could be resolving classes or causing
+        // verification.
+        Main.stopJit();
+        Main.waitForCompilation();
+
         int l = 1024 * 1024;
         while (l > 8) {
           try {
             storage.add(new byte[l]);
           } catch (OutOfMemoryError e) {
             l = l/2;
-          }
-        }
-        // Have an extra run with the exact size of Method objects. The above loop should have
-        // filled with enough large objects for simplicity and speed, but ensure exact allocation
-        // size.
-        final int methodAsByteArrayLength = 40 - 12;  // Method size - byte array overhead.
-        for (;;) {
-          try {
-            storage.add(new byte[methodAsByteArrayLength]);
-          } catch (OutOfMemoryError e) {
-            break;
           }
         }
 
@@ -60,6 +54,8 @@ public class OOMEOnDispatch implements InvocationHandler {
             storage.clear();
             System.out.println("Received OOME");
         }
+
+        Main.startJit();
     }
 
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
