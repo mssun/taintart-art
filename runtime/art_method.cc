@@ -272,7 +272,7 @@ uint32_t ArtMethod::FindCatchBlock(Handle<mirror::Class> exception_type,
   // Default to handler not found.
   uint32_t found_dex_pc = dex::kDexNoIndex;
   // Iterate over the catch handlers associated with dex_pc.
-  CodeItemDataAccessor accessor(this);
+  CodeItemDataAccessor accessor(DexInstructionData());
   for (CatchHandlerIterator it(accessor, dex_pc); it.HasNext(); it.Next()) {
     dex::TypeIndex iter_type_idx = it.GetHandlerTypeIndex();
     // Catch all case

@@ -727,6 +727,14 @@ class ArtMethod FINAL {
   ALWAYS_INLINE CodeItemInstructionAccessor DexInstructions()
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Returns the dex code item data section of the DexFile for the art method.
+  ALWAYS_INLINE CodeItemDataAccessor DexInstructionData()
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Returns the dex code item debug info section of the DexFile for the art method.
+  ALWAYS_INLINE CodeItemDebugInfoAccessor DexInstructionDebugInfo()
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
  protected:
   // Field order required by test "ValidateFieldOrderOfJavaCppUnionClasses".
   // The class we are a part of.

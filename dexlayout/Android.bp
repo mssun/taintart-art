@@ -26,7 +26,10 @@ art_cc_defaults {
         "dex_writer.cc",
     ],
     export_include_dirs: ["."],
-    shared_libs: ["libbase"],
+    shared_libs: [
+        "libdexfile",
+        "libbase",
+    ],
     static_libs: ["libz"],
 }
 
