@@ -297,4 +297,25 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_isClassMoveable(JNIEnv*,
   return runtime->GetHeap()->IsMovableObject(klass);
 }
 
+extern "C" JNIEXPORT void JNICALL Java_Main_waitForCompilation(JNIEnv*, jclass) {
+  jit::Jit* jit = Runtime::Current()->GetJit();
+  if (jit != nullptr) {
+    jit->WaitForCompilationToFinish(Thread::Current());
+  }
+}
+
+extern "C" JNIEXPORT void JNICALL Java_Main_stopJit(JNIEnv*, jclass) {
+  jit::Jit* jit = Runtime::Current()->GetJit();
+  if (jit != nullptr) {
+    jit->Stop();
+  }
+}
+
+extern "C" JNIEXPORT void JNICALL Java_Main_startJit(JNIEnv*, jclass) {
+  jit::Jit* jit = Runtime::Current()->GetJit();
+  if (jit != nullptr) {
+    jit->Start();
+  }
+}
+
 }  // namespace art
