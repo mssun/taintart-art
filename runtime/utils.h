@@ -67,12 +67,6 @@ static inline uint32_t PointerToLowMemUInt32(const void* p) {
   return intp & 0xFFFFFFFFU;
 }
 
-std::string PrintableChar(uint16_t ch);
-
-// Returns an ASCII string corresponding to the given UTF-8 string.
-// Java escapes are used for non-ASCII characters.
-std::string PrintableString(const char* utf8);
-
 // Used to implement PrettyClass, PrettyField, PrettyMethod, and PrettyTypeOf,
 // one of which is probably more useful to you.
 // Returns a human-readable equivalent of 'descriptor'. So "I" would be "int",

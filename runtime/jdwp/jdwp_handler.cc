@@ -27,6 +27,7 @@
 #include "base/logging.h"  // For VLOG.
 #include "base/macros.h"
 #include "debugger.h"
+#include "dex/utf.h"
 #include "jdwp/jdwp_constants.h"
 #include "jdwp/jdwp_event.h"
 #include "jdwp/jdwp_expand_buf.h"
@@ -34,7 +35,6 @@
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
-#include "utils.h"
 
 namespace art {
 
