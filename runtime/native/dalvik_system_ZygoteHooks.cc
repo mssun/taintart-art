@@ -282,6 +282,7 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
   // Our system thread ID, etc, has changed so reset Thread state.
   thread->InitAfterFork();
   runtime_flags = EnableDebugFeatures(runtime_flags);
+  bool do_hidden_api_checks = true;
 
   if ((runtime_flags & DISABLE_VERIFIER) != 0) {
     Runtime::Current()->DisableVerifier();
@@ -294,7 +295,7 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
   }
 
   if ((runtime_flags & DISABLE_HIDDEN_API_CHECKS) != 0) {
-    Runtime::Current()->SetHiddenApiChecksEnabled(false);
+    do_hidden_api_checks = false;
     runtime_flags &= ~DISABLE_HIDDEN_API_CHECKS;
   }
 
@@ -345,8 +346,9 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
     }
   }
 
-  DCHECK(!is_system_server || !Runtime::Current()->AreHiddenApiChecksEnabled())
+  DCHECK(!is_system_server || !do_hidden_api_checks)
       << "SystemServer should be forked with DISABLE_HIDDEN_API_CHECKS";
+  Runtime::Current()->SetHiddenApiChecksEnabled(do_hidden_api_checks);
 
   if (instruction_set != nullptr && !is_system_server) {
     ScopedUtfChars isa_string(env, instruction_set);

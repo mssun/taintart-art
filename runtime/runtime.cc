@@ -265,7 +265,7 @@ Runtime::Runtime()
       oat_file_manager_(nullptr),
       is_low_memory_mode_(false),
       safe_mode_(false),
-      do_hidden_api_checks_(false),
+      do_hidden_api_checks_(true),
       pending_hidden_api_warning_(false),
       dedupe_hidden_api_warnings_(true),
       dump_native_stack_on_sig_quit_(true),
@@ -1171,7 +1171,9 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
 
   target_sdk_version_ = runtime_options.GetOrDefault(Opt::TargetSdkVersion);
 
-  if (runtime_options.Exists(Opt::NoHiddenApiChecks)) {
+  // Check whether to enforce hidden API access checks. Zygote needs to be exempt
+  // but checks may be enabled for forked processes (see dalvik_system_ZygoteHooks).
+  if (is_zygote_ || runtime_options.Exists(Opt::NoHiddenApiChecks)) {
     do_hidden_api_checks_ = false;
   }
 
