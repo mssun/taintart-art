@@ -251,13 +251,6 @@ extern "C" JNIEXPORT int JNICALL Java_Main_getHotnessCounter(JNIEnv* env,
                                                              jclass,
                                                              jclass cls,
                                                              jstring method_name) {
-  jit::Jit* jit = Runtime::Current()->GetJit();
-  if (jit == nullptr) {
-    // The hotness counter is valid only under JIT.
-    // If we don't JIT return 0 to match test expectations.
-    return 0;
-  }
-
   ArtMethod* method = nullptr;
   {
     ScopedObjectAccess soa(Thread::Current());
