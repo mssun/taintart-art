@@ -429,6 +429,7 @@ cc_defaults {
         "596-app-images/app_images.cc",
         "596-monitor-inflation/monitor_inflation.cc",
         "597-deopt-new-string/deopt.cc",
+        "616-cha-unloading/cha_unload.cc",
         "626-const-class-linking/clear_dex_cache_types.cc",
         "642-fp-callees/fp_callees.cc",
         "647-jni-get-field-id/get_field_id.cc",

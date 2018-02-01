@@ -374,13 +374,14 @@ inline ObjPtr<mirror::Class> ArtMethod::ResolveReturnType() {
   return ResolveClassFromTypeIndex(GetReturnTypeIndex());
 }
 
+template <ReadBarrierOption kReadBarrierOption>
 inline bool ArtMethod::HasSingleImplementation() {
-  if (IsFinal() || GetDeclaringClass()->IsFinal()) {
+  if (IsFinal<kReadBarrierOption>() || GetDeclaringClass<kReadBarrierOption>()->IsFinal()) {
     // We don't set kAccSingleImplementation for these cases since intrinsic
     // can use the flag also.
     return true;
   }
-  return (GetAccessFlags() & kAccSingleImplementation) != 0;
+  return (GetAccessFlags<kReadBarrierOption>() & kAccSingleImplementation) != 0;
 }
 
 inline bool ArtMethod::IsHiddenIntrinsic(uint32_t ordinal) {

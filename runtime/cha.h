@@ -110,6 +110,17 @@ class ClassHierarchyAnalysis {
       const std::unordered_set<OatQuickMethodHeader*>& method_headers)
       REQUIRES(Locks::cha_lock_);
 
+  // If a given class belongs to a linear allocation that is about to be deleted, in all its
+  // superclasses and superinterfaces reset SingleImplementation fields of their methods
+  // that might be affected by the deletion.
+  // The method is intended to be called during GC before ReclaimPhase, since it gets info from
+  // Java objects that are going to be collected.
+  // For the same reason it's important to access objects without read barrier to not revive them.
+  void ResetSingleImplementationInHierarchy(ObjPtr<mirror::Class> klass,
+                                            const LinearAlloc* alloc,
+                                            PointerSize pointer_size)
+      const REQUIRES_SHARED(Locks::mutator_lock_);
+
   // Update CHA info for methods that `klass` overrides, after loading `klass`.
   void UpdateAfterLoadingOf(Handle<mirror::Class> klass) REQUIRES_SHARED(Locks::mutator_lock_);
 
