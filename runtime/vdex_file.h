@@ -101,6 +101,9 @@ class VdexFile {
     friend class VdexFile;
   };
 
+  // Note: The file is called "primary" to match the naming with profiles.
+  static const constexpr char* kVdexNameInDmFile = "primary.vdex";
+
   typedef uint32_t VdexChecksum;
   using QuickeningTableOffsetType = uint32_t;
 

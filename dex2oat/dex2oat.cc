@@ -605,6 +605,7 @@ class Dex2Oat FINAL {
       input_vdex_fd_(-1),
       output_vdex_fd_(-1),
       input_vdex_file_(nullptr),
+      dm_fd_(-1),
       zip_fd_(-1),
       image_base_(0U),
       image_classes_zip_filename_(nullptr),
@@ -755,6 +756,11 @@ class Dex2Oat FINAL {
 
     if (oat_fd_ != -1 && !image_filenames_.empty()) {
       Usage("--oat-fd should not be used with --image");
+    }
+
+    if ((input_vdex_fd_ != -1 || !input_vdex_.empty()) &&
+        (dm_fd_ != -1 || !dm_file_location_.empty())) {
+      Usage("An input vdex should not be passed with a .dm file");
     }
 
     if (!parser_options->oat_symbols.empty() &&
@@ -1176,6 +1182,8 @@ class Dex2Oat FINAL {
     AssignIfExists(args, M::OutputVdexFd, &output_vdex_fd_);
     AssignIfExists(args, M::InputVdex, &input_vdex_);
     AssignIfExists(args, M::OutputVdex, &output_vdex_);
+    AssignIfExists(args, M::DmFd, &dm_fd_);
+    AssignIfExists(args, M::DmFile, &dm_file_location_);
     AssignIfExists(args, M::OatFd, &oat_fd_);
     AssignIfExists(args, M::OatLocation, &oat_location_);
     AssignIfExists(args, M::Watchdog, &parser_options->watch_dog_enabled);
@@ -1386,6 +1394,42 @@ class Dex2Oat FINAL {
         PLOG(ERROR) << "Failed to flush stream after invalidating header of vdex file."
                     << " File: " << vdex_out->GetLocation();
         return false;
+      }
+    }
+
+    if (dm_fd_ != -1 || !dm_file_location_.empty()) {
+      std::string error_msg;
+      if (dm_fd_ != -1) {
+        dm_file_.reset(ZipArchive::OpenFromFd(dm_fd_, "DexMetadata", &error_msg));
+      } else {
+        dm_file_.reset(ZipArchive::Open(dm_file_location_.c_str(), &error_msg));
+      }
+      if (dm_file_ == nullptr) {
+        LOG(WARNING) << "Could not open DexMetadata archive " << error_msg;
+      }
+    }
+
+    if (dm_file_ != nullptr) {
+      DCHECK(input_vdex_file_ == nullptr);
+      std::string error_msg;
+      static const char* kDexMetadata = "DexMetadata";
+      std::unique_ptr<ZipEntry> zip_entry(dm_file_->Find(VdexFile::kVdexNameInDmFile, &error_msg));
+      if (zip_entry == nullptr) {
+        LOG(INFO) << "No " << VdexFile::kVdexNameInDmFile << " file in DexMetadata archive. "
+                  << "Not doing fast verification.";
+      } else {
+        std::unique_ptr<MemMap> input_file;
+        if (zip_entry->IsUncompressed()) {
+          input_file.reset(zip_entry->MapDirectlyFromFile(VdexFile::kVdexNameInDmFile, &error_msg));
+        } else {
+          input_file.reset(zip_entry->ExtractToMemMap(
+              kDexMetadata, VdexFile::kVdexNameInDmFile, &error_msg));
+        }
+        if (input_file == nullptr) {
+          LOG(WARNING) << "Could not open vdex file in DexMetadata archive: " << error_msg;
+        } else {
+          input_vdex_file_ = std::make_unique<VdexFile>(input_file.release());
+        }
       }
     }
 
@@ -2240,7 +2284,7 @@ class Dex2Oat FINAL {
   }
 
   bool DoEagerUnquickeningOfVdex() const {
-    return MayInvalidateVdexMetadata();
+    return MayInvalidateVdexMetadata() && dm_file_ == nullptr;
   }
 
   bool LoadProfile() {
@@ -2790,6 +2834,9 @@ class Dex2Oat FINAL {
   std::string input_vdex_;
   std::string output_vdex_;
   std::unique_ptr<VdexFile> input_vdex_file_;
+  int dm_fd_;
+  std::string dm_file_location_;
+  std::unique_ptr<ZipArchive> dm_file_;
   std::vector<const char*> dex_filenames_;
   std::vector<const char*> dex_locations_;
   int zip_fd_;
