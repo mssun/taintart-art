@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import dalvik.system.VMRuntime;
+
 import java.lang.reflect.*;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,25 +34,26 @@ import java.util.concurrent.Semaphore;
 //   (It is important to pass Main if you want to give parameters...)
 //
 // ThreadStress command line parameters:
-//    -n X ............ number of threads
-//    -d X ............ number of daemon threads
-//    -o X ............ number of overall operations
-//    -t X ............ number of operations per thread
-//    -p X ............ number of permits granted by semaphore
-//    --dumpmap ....... print the frequency map
-//    --locks-only .... select a pre-set frequency map with lock-related operations only
-//    --allocs-only ... select a pre-set frequency map with allocation-related operations only
-//    -oom:X .......... frequency of OOM (double)
-//    -sigquit:X ...... frequency of SigQuit (double)
-//    -alloc:X ........ frequency of Alloc (double)
-//    -largealloc:X ... frequency of LargeAlloc (double)
-//    -stacktrace:X ... frequency of StackTrace (double)
-//    -exit:X ......... frequency of Exit (double)
-//    -sleep:X ........ frequency of Sleep (double)
-//    -wait:X ......... frequency of Wait (double)
-//    -timedwait:X .... frequency of TimedWait (double)
-//    -syncandwork:X .. frequency of SyncAndWork (double)
-//    -queuedwait:X ... frequency of QueuedWait (double)
+//    -n X .............. number of threads
+//    -d X .............. number of daemon threads
+//    -o X .............. number of overall operations
+//    -t X .............. number of operations per thread
+//    -p X .............. number of permits granted by semaphore
+//    --dumpmap ......... print the frequency map
+//    --locks-only ...... select a pre-set frequency map with lock-related operations only
+//    --allocs-only ..... select a pre-set frequency map with allocation-related operations only
+//    -oom:X ............ frequency of OOM (double)
+//    -sigquit:X ........ frequency of SigQuit (double)
+//    -alloc:X .......... frequency of Alloc (double)
+//    -largealloc:X ..... frequency of LargeAlloc (double)
+//    -nonmovingalloc:X.. frequency of NonMovingAlloc (double)
+//    -stacktrace:X ..... frequency of StackTrace (double)
+//    -exit:X ........... frequency of Exit (double)
+//    -sleep:X .......... frequency of Sleep (double)
+//    -wait:X ........... frequency of Wait (double)
+//    -timedwait:X ...... frequency of TimedWait (double)
+//    -syncandwork:X .... frequency of SyncAndWork (double)
+//    -queuedwait:X ..... frequency of QueuedWait (double)
 
 public class Main implements Runnable {
 
@@ -157,6 +160,25 @@ public class Main implements Runnable {
             return true;
         }
     }
+
+  private final static class NonMovingAlloc extends Operation {
+        private final static int ALLOC_SIZE = 1024;  // Needs to be small enough to not be in LOS.
+        private final static int ALLOC_COUNT = 1024;
+        private final static VMRuntime runtime = VMRuntime.getRuntime();
+
+        @Override
+        public boolean perform() {
+            try {
+                List<byte[]> l = new ArrayList<byte[]>();
+                for (int i = 0; i < ALLOC_COUNT; i++) {
+                    l.add((byte[]) runtime.newNonMovableArray(byte.class, ALLOC_SIZE));
+                }
+            } catch (OutOfMemoryError e) {
+            }
+            return true;
+        }
+    }
+
 
     private final static class StackTrace extends Operation {
         @Override
@@ -295,6 +317,9 @@ public class Main implements Runnable {
         frequencyMap.put(new SigQuit(), 0.095);               //  19/200
         frequencyMap.put(new Alloc(), 0.225);                 //  45/200
         frequencyMap.put(new LargeAlloc(), 0.05);             //  10/200
+        // TODO: NonMovingAlloc operations fail an assertion with the
+        // GSS collector (see b/72738921); disable them for now.
+        frequencyMap.put(new NonMovingAlloc(), 0.0);          //   0/200
         frequencyMap.put(new StackTrace(), 0.1);              //  20/200
         frequencyMap.put(new Exit(), 0.225);                  //  45/200
         frequencyMap.put(new Sleep(), 0.125);                 //  25/200
@@ -308,8 +333,9 @@ public class Main implements Runnable {
     private final static Map<Operation, Double> createAllocFrequencyMap() {
         Map<Operation, Double> frequencyMap = new HashMap<Operation, Double>();
         frequencyMap.put(new Sleep(), 0.2);                   //  40/200
-        frequencyMap.put(new Alloc(), 0.65);                  // 130/200
+        frequencyMap.put(new Alloc(), 0.575);                 // 115/200
         frequencyMap.put(new LargeAlloc(), 0.15);             //  30/200
+        frequencyMap.put(new NonMovingAlloc(), 0.075);        //  15/200
 
         return frequencyMap;
     }
