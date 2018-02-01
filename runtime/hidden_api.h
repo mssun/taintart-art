@@ -44,12 +44,18 @@ inline Action GetMemberAction(uint32_t access_flags) {
 
 // Issue a warning about field access.
 inline void WarnAboutMemberAccess(ArtField* field) REQUIRES_SHARED(Locks::mutator_lock_) {
-  LOG(WARNING) << "Access to hidden field " << field->PrettyField();
+  std::string tmp;
+  LOG(WARNING) << "Accessing hidden field "
+               << field->GetDeclaringClass()->GetDescriptor(&tmp) << "->"
+               << field->GetName() << ":" << field->GetTypeDescriptor();
 }
 
 // Issue a warning about method access.
 inline void WarnAboutMemberAccess(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_) {
-  LOG(WARNING) << "Access to hidden method " << method->PrettyMethod();
+  std::string tmp;
+  LOG(WARNING) << "Accessing hidden method "
+               << method->GetDeclaringClass()->GetDescriptor(&tmp) << "->"
+               << method->GetName() << method->GetSignature().ToString();
 }
 
 // Returns true if access to `member` should be denied to the caller of the
