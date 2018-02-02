@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/file.h>
+#include <sys/param.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -297,6 +298,22 @@ class ProfMan FINAL {
     }
   }
 
+  struct ProfileFilterKey {
+    ProfileFilterKey(const std::string& dex_location, uint32_t checksum)
+        : dex_location_(dex_location), checksum_(checksum) {}
+    const std::string dex_location_;
+    uint32_t checksum_;
+
+    bool operator==(const ProfileFilterKey& other) const {
+      return checksum_ == other.checksum_ && dex_location_ == other.dex_location_;
+    }
+    bool operator<(const ProfileFilterKey& other) const {
+      return checksum_ == other.checksum_
+          ?  dex_location_ < other.dex_location_
+          : checksum_ < other.checksum_;
+    }
+  };
+
   ProfileAssistant::ProcessingResult ProcessProfiles() {
     // Validate that at least one profile file was passed, as well as a reference profile.
     if (profile_files_.empty() && profile_files_fd_.empty()) {
@@ -310,6 +327,27 @@ class ProfMan FINAL {
       Usage("Options --profile-file-fd and --reference-profile-file-fd "
             "should only be used together");
     }
+
+    // Check if we have any apks which we should use to filter the profile data.
+    std::set<ProfileFilterKey> profile_filter_keys;
+    if (!GetProfileFilterKeyFromApks(&profile_filter_keys)) {
+      return ProfileAssistant::kErrorIO;
+    }
+
+    // Build the profile filter function. If the set of keys is empty it means we
+    // don't have any apks; as such we do not filter anything.
+    const ProfileCompilationInfo::ProfileLoadFilterFn& filter_fn =
+        [profile_filter_keys](const std::string& dex_location, uint32_t checksum) {
+            if (profile_filter_keys.empty()) {
+              // No --apk was specified. Accept all dex files.
+              return true;
+            } else {
+              bool res = profile_filter_keys.find(
+                  ProfileFilterKey(dex_location, checksum)) != profile_filter_keys.end();
+              return res;
+            }
+        };
+
     ProfileAssistant::ProcessingResult result;
 
     if (profile_files_.empty()) {
@@ -317,10 +355,13 @@ class ProfMan FINAL {
       // so don't check the usage.
       File file(reference_profile_file_fd_, false);
       result = ProfileAssistant::ProcessProfiles(profile_files_fd_,
-                                                 reference_profile_file_fd_);
+                                                 reference_profile_file_fd_,
+                                                 filter_fn);
       CloseAllFds(profile_files_fd_, "profile_files_fd_");
     } else {
-      result = ProfileAssistant::ProcessProfiles(profile_files_, reference_profile_file_);
+      result = ProfileAssistant::ProcessProfiles(profile_files_,
+                                                 reference_profile_file_,
+                                                 filter_fn);
     }
     return result;
   }
@@ -329,18 +370,48 @@ class ProfMan FINAL {
     return skip_apk_verification_;
   }
 
-  void OpenApkFilesFromLocations(std::vector<std::unique_ptr<const DexFile>>* dex_files) const {
+  bool GetProfileFilterKeyFromApks(std::set<ProfileFilterKey>* profile_filter_keys) {
+    auto process_fn = [profile_filter_keys](std::unique_ptr<const DexFile>&& dex_file) {
+      // Store the profile key of the location instead of the location itself.
+      // This will make the matching in the profile filter method much easier.
+      profile_filter_keys->emplace(ProfileCompilationInfo::GetProfileDexFileKey(
+          dex_file->GetLocation()), dex_file->GetLocationChecksum());
+    };
+    return OpenApkFilesFromLocations(process_fn);
+  }
+
+  bool OpenApkFilesFromLocations(std::vector<std::unique_ptr<const DexFile>>* dex_files) {
+    auto process_fn = [dex_files](std::unique_ptr<const DexFile>&& dex_file) {
+      dex_files->emplace_back(std::move(dex_file));
+    };
+    return OpenApkFilesFromLocations(process_fn);
+  }
+
+  bool OpenApkFilesFromLocations(
+      std::function<void(std::unique_ptr<const DexFile>&&)> process_fn) {
     bool use_apk_fd_list = !apks_fd_.empty();
     if (use_apk_fd_list) {
       // Get the APKs from the collection of FDs.
-      CHECK_EQ(dex_locations_.size(), apks_fd_.size());
+      if (dex_locations_.empty()) {
+        // Try to compute the dex locations from the file paths of the descriptions.
+        // This will make it easier to invoke profman with --apk-fd and without
+        // being force to pass --dex-location when the location would be the apk path.
+        if (!ComputeDexLocationsFromApkFds()) {
+          return false;
+        }
+      } else {
+        if (dex_locations_.size() != apks_fd_.size()) {
+            Usage("The number of apk-fds must match the number of dex-locations.");
+        }
+      }
     } else if (!apk_files_.empty()) {
-      // Get the APKs from the collection of filenames.
-      CHECK_EQ(dex_locations_.size(), apk_files_.size());
+        if (dex_locations_.size() != apk_files_.size()) {
+            Usage("The number of apk-fds must match the number of dex-locations.");
+        }
     } else {
       // No APKs were specified.
       CHECK(dex_locations_.empty());
-      return;
+      return true;
     }
     static constexpr bool kVerifyChecksum = true;
     for (size_t i = 0; i < dex_locations_.size(); ++i) {
@@ -355,8 +426,8 @@ class ProfMan FINAL {
                                     &error_msg,
                                     &dex_files_for_location)) {
         } else {
-          LOG(WARNING) << "OpenZip failed for '" << dex_locations_[i] << "' " << error_msg;
-          continue;
+          LOG(ERROR) << "OpenZip failed for '" << dex_locations_[i] << "' " << error_msg;
+          return false;
         }
       } else {
         if (dex_file_loader.Open(apk_files_[i].c_str(),
@@ -366,14 +437,36 @@ class ProfMan FINAL {
                                  &error_msg,
                                  &dex_files_for_location)) {
         } else {
-          LOG(WARNING) << "Open failed for '" << dex_locations_[i] << "' " << error_msg;
-          continue;
+          LOG(ERROR) << "Open failed for '" << dex_locations_[i] << "' " << error_msg;
+          return false;
         }
       }
       for (std::unique_ptr<const DexFile>& dex_file : dex_files_for_location) {
-        dex_files->emplace_back(std::move(dex_file));
+        process_fn(std::move(dex_file));
       }
     }
+    return true;
+  }
+
+  // Get the dex locations from the apk fds.
+  // The methods reads the links from /proc/self/fd/ to find the original apk paths
+  // and puts them in the dex_locations_ vector.
+  bool ComputeDexLocationsFromApkFds() {
+    // We can't use a char array of PATH_MAX size without exceeding the frame size.
+    // So we use a vector as the buffer for the path.
+    std::vector<char> buffer(PATH_MAX, 0);
+    for (size_t i = 0; i < apks_fd_.size(); ++i) {
+      std::string fd_path = "/proc/self/fd/" + std::to_string(apks_fd_[i]);
+      ssize_t len = readlink(fd_path.c_str(), buffer.data(), buffer.size() - 1);
+      if (len == -1) {
+        PLOG(ERROR) << "Could not open path from fd";
+        return false;
+      }
+
+      buffer[len] = '\0';
+      dex_locations_.push_back(buffer.data());
+    }
+    return true;
   }
 
   std::unique_ptr<const ProfileCompilationInfo> LoadProfile(const std::string& filename, int fd) {
@@ -416,8 +509,6 @@ class ProfMan FINAL {
     static const char* kOrdinaryProfile = "=== profile ===";
     static const char* kReferenceProfile = "=== reference profile ===";
 
-    // Open apk/zip files and and read dex files.
-    MemMap::Init();  // for ZipArchive::OpenFromFd
     std::vector<std::unique_ptr<const DexFile>> dex_files;
     OpenApkFilesFromLocations(&dex_files);
     std::string dump;
@@ -553,8 +644,7 @@ class ProfMan FINAL {
         reference_profile_file_.empty() && !FdIsValid(reference_profile_file_fd_)) {
       Usage("No profile files or reference profile specified.");
     }
-    // Open apk/zip files and and read dex files.
-    MemMap::Init();  // for ZipArchive::OpenFromFd
+
     // Open the dex files to get the names for classes.
     std::vector<std::unique_ptr<const DexFile>> dex_files;
     OpenApkFilesFromLocations(&dex_files);
@@ -948,8 +1038,6 @@ class ProfMan FINAL {
       Usage("Profile must be specified with --reference-profile-file or "
             "--reference-profile-file-fd");
     }
-    // for ZipArchive::OpenFromFd
-    MemMap::Init();
     // Open the profile output file if needed.
     int fd = OpenReferenceProfile();
     if (!FdIsValid(fd)) {
@@ -984,8 +1072,6 @@ class ProfMan FINAL {
   }
 
   int CreateBootProfile() {
-    // Initialize memmap since it's required to open dex files.
-    MemMap::Init();
     // Open the profile output file.
     const int reference_fd = OpenReferenceProfile();
     if (!FdIsValid(reference_fd)) {
@@ -1065,8 +1151,6 @@ class ProfMan FINAL {
                                                            test_profile_class_percentage_,
                                                            test_profile_seed_);
     } else {
-      // Initialize MemMap for ZipArchive::OpenFromFd.
-      MemMap::Init();
       // Open the dex files to look up classes and methods.
       std::vector<std::unique_ptr<const DexFile>> dex_files;
       OpenApkFilesFromLocations(&dex_files);
@@ -1089,7 +1173,7 @@ class ProfMan FINAL {
     return copy_and_update_profile_key_;
   }
 
-  bool CopyAndUpdateProfileKey() const {
+  bool CopyAndUpdateProfileKey() {
     // Validate that at least one profile file was passed, as well as a reference profile.
     if (!(profile_files_.size() == 1 ^ profile_files_fd_.size() == 1)) {
       Usage("Only one profile file should be specified.");
@@ -1133,7 +1217,8 @@ class ProfMan FINAL {
   static void CloseAllFds(const std::vector<int>& fds, const char* descriptor) {
     for (size_t i = 0; i < fds.size(); i++) {
       if (close(fds[i]) < 0) {
-        PLOG(WARNING) << "Failed to close descriptor for " << descriptor << " at index " << i;
+        PLOG(WARNING) << "Failed to close descriptor for "
+            << descriptor << " at index " << i << ": " << fds[i];
       }
     }
   }
@@ -1175,6 +1260,9 @@ static int profman(int argc, char** argv) {
 
   // Parse arguments. Argument mistakes will lead to exit(EXIT_FAILURE) in UsageError.
   profman.ParseArgs(argc, argv);
+
+  // Initialize MemMap for ZipArchive::OpenFromFd.
+  MemMap::Init();
 
   if (profman.ShouldGenerateTestProfile()) {
     return profman.GenerateTestProfile();
