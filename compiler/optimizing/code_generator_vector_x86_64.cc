@@ -623,23 +623,21 @@ void InstructionCodeGeneratorX86_64::VisitVecMin(HVecMin* instruction) {
       DCHECK_EQ(8u, instruction->GetVectorLength());
       __ pminsw(dst, src);
       break;
+    case DataType::Type::kUint32:
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      __ pminud(dst, src);
+      break;
     case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ pminud(dst, src);
-      } else {
-        __ pminsd(dst, src);
-      }
+      __ pminsd(dst, src);
       break;
     // Next cases are sloppy wrt 0.0 vs -0.0.
     case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
-      DCHECK(!instruction->IsUnsigned());
       __ minps(dst, src);
       break;
     case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      DCHECK(!instruction->IsUnsigned());
       __ minpd(dst, src);
       break;
     default:
@@ -674,23 +672,21 @@ void InstructionCodeGeneratorX86_64::VisitVecMax(HVecMax* instruction) {
       DCHECK_EQ(8u, instruction->GetVectorLength());
       __ pmaxsw(dst, src);
       break;
+    case DataType::Type::kUint32:
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      __ pmaxud(dst, src);
+      break;
     case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ pmaxud(dst, src);
-      } else {
-        __ pmaxsd(dst, src);
-      }
+      __ pmaxsd(dst, src);
       break;
     // Next cases are sloppy wrt 0.0 vs -0.0.
     case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
-      DCHECK(!instruction->IsUnsigned());
       __ maxps(dst, src);
       break;
     case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      DCHECK(!instruction->IsUnsigned());
       __ maxpd(dst, src);
       break;
     default:
