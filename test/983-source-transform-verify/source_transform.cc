@@ -67,6 +67,14 @@ void JNICALL CheckDexFileHook(jvmtiEnv* jvmti_env ATTRIBUTE_UNUSED,
   if (IsJVM()) {
     return;
   }
+
+  // Due to b/72402467 the class_data_len might just be an estimate.
+  CHECK_GE(static_cast<size_t>(class_data_len), sizeof(DexFile::Header));
+  const DexFile::Header* header = reinterpret_cast<const DexFile::Header*>(class_data);
+  uint32_t header_file_size = header->file_size_;
+  CHECK_LE(static_cast<jint>(header_file_size), class_data_len);
+  class_data_len = static_cast<jint>(header_file_size);
+
   const ArtDexFileLoader dex_file_loader;
   std::string error;
   std::unique_ptr<const DexFile> dex(dex_file_loader.Open(class_data,

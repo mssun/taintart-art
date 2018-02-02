@@ -45,6 +45,31 @@
 
 namespace openjdkjvmti {
 
+void ArtClassDefinition::InitializeMemory() const {
+  DCHECK(art::MemMap::kCanReplaceMapping);
+  VLOG(signals) << "Initializing de-quickened memory for dex file of " << name_;
+  CHECK(dex_data_mmap_ != nullptr);
+  CHECK(temp_mmap_ != nullptr);
+  CHECK_EQ(dex_data_mmap_->GetProtect(), PROT_NONE);
+  CHECK_EQ(temp_mmap_->GetProtect(), PROT_READ | PROT_WRITE);
+
+  std::string desc = std::string("L") + name_ + ";";
+  std::unique_ptr<FixedUpDexFile>
+      fixed_dex_file(FixedUpDexFile::Create(*initial_dex_file_unquickened_, desc.c_str()));
+  CHECK(fixed_dex_file.get() != nullptr);
+  CHECK_LE(fixed_dex_file->Size(), temp_mmap_->Size());
+  CHECK_EQ(temp_mmap_->Size(), dex_data_mmap_->Size());
+  // Copy the data to the temp mmap.
+  memcpy(temp_mmap_->Begin(), fixed_dex_file->Begin(), fixed_dex_file->Size());
+
+  // Move the mmap atomically.
+  art::MemMap* source = temp_mmap_.release();
+  std::string error;
+  CHECK(dex_data_mmap_->ReplaceWith(&source, &error)) << "Failed to replace mmap for "
+                                                      << name_ << " because " << error;
+  CHECK(dex_data_mmap_->Protect(PROT_READ));
+}
+
 bool ArtClassDefinition::IsModified() const {
   // RedefineClasses calls always are 'modified' since they need to change the current_dex_file of
   // the class.
@@ -57,6 +82,27 @@ bool ArtClassDefinition::IsModified() const {
     // no change at all.
     return false;
   }
+
+  // The dex_data_ was never touched by the agents.
+  if (dex_data_mmap_ != nullptr && dex_data_mmap_->GetProtect() == PROT_NONE) {
+    if (current_dex_file_.data() == dex_data_mmap_->Begin()) {
+      // the dex_data_ looks like it changed (not equal to current_dex_file_) but we never
+      // initialized the dex_data_mmap_. This means the new_dex_data was filled in without looking
+      // at the initial dex_data_.
+      return true;
+    } else if (dex_data_.data() == dex_data_mmap_->Begin()) {
+      // The dex file used to have modifications but they were not added again.
+      return true;
+    } else {
+      // It's not clear what happened. It's possible that the agent got the current dex file data
+      // from some other source so we need to initialize everything to see if it is the same.
+      VLOG(signals) << "Lazy dex file for " << name_ << " was never touched but the dex_data_ is "
+                    << "changed! Need to initialize the memory to see if anything changed";
+      InitializeMemory();
+    }
+  }
+
+  // We can definitely read current_dex_file_ and dex_file_ without causing page faults.
 
   // Check if the dex file we want to set is the same as the current one.
   // Unfortunately we need to do this check even if no modifications have been done since it could
@@ -194,6 +240,53 @@ void ArtClassDefinition::InitWithDex(GetOriginalDexFile get_original,
                                      const art::DexFile* quick_dex) {
   art::Thread* self = art::Thread::Current();
   DCHECK(quick_dex != nullptr);
+  if (art::MemMap::kCanReplaceMapping && kEnableOnDemandDexDequicken) {
+    size_t dequick_size = quick_dex->GetDequickenedSize();
+    std::string mmap_name("anon-mmap-for-redefine: ");
+    mmap_name += name_;
+    std::string error;
+    dex_data_mmap_.reset(art::MemMap::MapAnonymous(mmap_name.c_str(),
+                                                   nullptr,
+                                                   dequick_size,
+                                                   PROT_NONE,
+                                                   /*low_4gb*/ false,
+                                                   /*reuse*/ false,
+                                                   &error));
+    mmap_name += "-TEMP";
+    temp_mmap_.reset(art::MemMap::MapAnonymous(mmap_name.c_str(),
+                                               nullptr,
+                                               dequick_size,
+                                               PROT_READ | PROT_WRITE,
+                                               /*low_4gb*/ false,
+                                               /*reuse*/ false,
+                                               &error));
+    if (UNLIKELY(dex_data_mmap_ != nullptr && temp_mmap_ != nullptr)) {
+      // Need to save the initial dexfile so we don't need to search for it in the fault-handler.
+      initial_dex_file_unquickened_ = quick_dex;
+      dex_data_ = art::ArrayRef<const unsigned char>(dex_data_mmap_->Begin(),
+                                                     dex_data_mmap_->Size());
+      if (from_class_ext_) {
+        // We got initial from class_ext so the current one must have undergone redefinition so no
+        // cdex or quickening stuff.
+        // We can only do this if it's not a first load.
+        DCHECK(klass_ != nullptr);
+        const art::DexFile& cur_dex = self->DecodeJObject(klass_)->AsClass()->GetDexFile();
+        current_dex_file_ = art::ArrayRef<const unsigned char>(cur_dex.Begin(), cur_dex.Size());
+      } else {
+        // This class hasn't been redefined before. The dequickened current data is the same as the
+        // dex_data_mmap_ when it's filled it. We don't need to copy anything because the mmap will
+        // not be cleared until after everything is done.
+        current_dex_file_ = art::ArrayRef<const unsigned char>(dex_data_mmap_->Begin(),
+                                                               dequick_size);
+      }
+      return;
+    }
+  }
+  dex_data_mmap_.reset(nullptr);
+  temp_mmap_.reset(nullptr);
+  // Failed to mmap a large enough area (or on-demand dequickening was disabled). This is
+  // unfortunate. Since currently the size is just a guess though we might as well try to do it
+  // manually.
   get_original(/*out*/&dex_data_memory_);
   dex_data_ = art::ArrayRef<const unsigned char>(dex_data_memory_);
   if (from_class_ext_) {
