@@ -2207,8 +2207,9 @@ ENTRY art_quick_instrumentation_entry
                             # Deliver exception if we got nullptr as function.
     move    $t9, $v0        # $t9 holds reference to code
     ld      $a0, 8($sp)     # Restore arg0.
+    dla     $v0, art_quick_instrumentation_exit
     RESTORE_SAVE_REFS_AND_ARGS_FRAME
-    dla     $ra, art_quick_instrumentation_exit
+    move    $ra, $v0
     jic     $t9, 0          # call method, returning to art_quick_instrumentation_exit
 .Ldeliver_instrumentation_entry_exception:
     RESTORE_SAVE_REFS_AND_ARGS_FRAME
