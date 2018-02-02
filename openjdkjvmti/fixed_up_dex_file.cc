@@ -44,14 +44,13 @@
 
 namespace openjdkjvmti {
 
-static void RecomputeDexChecksum(art::DexFile* dex_file)
-    REQUIRES_SHARED(art::Locks::mutator_lock_) {
+static void RecomputeDexChecksum(art::DexFile* dex_file) {
   reinterpret_cast<art::DexFile::Header*>(const_cast<uint8_t*>(dex_file->Begin()))->checksum_ =
       dex_file->CalculateChecksum();
 }
 
-static void DoDexUnquicken(const art::DexFile& new_dex_file, const art::DexFile& original_dex_file)
-    REQUIRES_SHARED(art::Locks::mutator_lock_) {
+static void DoDexUnquicken(const art::DexFile& new_dex_file,
+                           const art::DexFile& original_dex_file) {
   const art::OatDexFile* oat_dex = original_dex_file.GetOatDexFile();
   if (oat_dex == nullptr) {
     return;
