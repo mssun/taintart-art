@@ -30,46 +30,6 @@
 
 namespace art {
 
-// TODO: Clean up the packed type detection so that we have the right type straight away
-// and do not need to go through this normalization.
-static inline void NormalizePackedType(/* inout */ DataType::Type* type,
-                                       /* inout */ bool* is_unsigned) {
-  switch (*type) {
-    case DataType::Type::kBool:
-      DCHECK(!*is_unsigned);
-      break;
-    case DataType::Type::kUint8:
-    case DataType::Type::kInt8:
-      if (*is_unsigned) {
-        *is_unsigned = false;
-        *type = DataType::Type::kUint8;
-      } else {
-        *type = DataType::Type::kInt8;
-      }
-      break;
-    case DataType::Type::kUint16:
-    case DataType::Type::kInt16:
-      if (*is_unsigned) {
-        *is_unsigned = false;
-        *type = DataType::Type::kUint16;
-      } else {
-        *type = DataType::Type::kInt16;
-      }
-      break;
-    case DataType::Type::kInt32:
-    case DataType::Type::kInt64:
-      // We do not have kUint32 and kUint64 at the moment.
-      break;
-    case DataType::Type::kFloat32:
-    case DataType::Type::kFloat64:
-      DCHECK(!*is_unsigned);
-      break;
-    default:
-      LOG(FATAL) << "Unexpected type " << *type;
-      UNREACHABLE();
-  }
-}
-
 // Enables vectorization (SIMDization) in the loop optimizer.
 static constexpr bool kEnableVectorization = true;
 
@@ -1362,8 +1322,10 @@ bool HLoopOptimization::VectorizeUse(LoopNode* node,
         }
         if (VectorizeUse(node, r, generate_code, type, restrictions)) {
           if (generate_code) {
-            NormalizePackedType(&type, &is_unsigned);
-            GenerateVecOp(instruction, vector_map_->Get(r), nullptr, type);
+            GenerateVecOp(instruction,
+                          vector_map_->Get(r),
+                          nullptr,
+                          HVecOperation::ToProperType(type, is_unsigned));
           }
           return true;
         }
@@ -1865,18 +1827,26 @@ void HLoopOptimization::GenerateVecOp(HInstruction* org,
           case Intrinsics::kMathMinLongLong:
           case Intrinsics::kMathMinFloatFloat:
           case Intrinsics::kMathMinDoubleDouble: {
-            NormalizePackedType(&type, &is_unsigned);
             vector = new (global_allocator_)
-                HVecMin(global_allocator_, opa, opb, type, vector_length_, is_unsigned, dex_pc);
+                HVecMin(global_allocator_,
+                        opa,
+                        opb,
+                        HVecOperation::ToProperType(type, is_unsigned),
+                        vector_length_,
+                        dex_pc);
             break;
           }
           case Intrinsics::kMathMaxIntInt:
           case Intrinsics::kMathMaxLongLong:
           case Intrinsics::kMathMaxFloatFloat:
           case Intrinsics::kMathMaxDoubleDouble: {
-            NormalizePackedType(&type, &is_unsigned);
             vector = new (global_allocator_)
-                HVecMax(global_allocator_, opa, opb, type, vector_length_, is_unsigned, dex_pc);
+                HVecMax(global_allocator_,
+                        opa,
+                        opb,
+                        HVecOperation::ToProperType(type, is_unsigned),
+                        vector_length_,
+                        dex_pc);
             break;
           }
           default:
@@ -1987,15 +1957,13 @@ bool HLoopOptimization::VectorizeHalvingAddIdiom(LoopNode* node,
           VectorizeUse(node, s, generate_code, type, restrictions)) {
         if (generate_code) {
           if (vector_mode_ == kVector) {
-            NormalizePackedType(&type, &is_unsigned);
             vector_map_->Put(instruction, new (global_allocator_) HVecHalvingAdd(
                 global_allocator_,
                 vector_map_->Get(r),
                 vector_map_->Get(s),
-                type,
+                HVecOperation::ToProperType(type, is_unsigned),
                 vector_length_,
                 is_rounded,
-                is_unsigned,
                 kNoDexPc));
             MaybeRecordStat(stats_, MethodCompilationStat::kLoopVectorizedIdiom);
           } else {
@@ -2086,7 +2054,7 @@ bool HLoopOptimization::VectorizeSADIdiom(LoopNode* node,
       VectorizeUse(node, r, generate_code, sub_type, restrictions) &&
       VectorizeUse(node, s, generate_code, sub_type, restrictions)) {
     if (generate_code) {
-      NormalizePackedType(&reduction_type, &is_unsigned);
+      reduction_type = HVecOperation::ToProperType(reduction_type, is_unsigned);
       if (vector_mode_ == kVector) {
         vector_map_->Put(instruction, new (global_allocator_) HVecSADAccumulate(
             global_allocator_,

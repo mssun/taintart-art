@@ -606,22 +606,20 @@ void InstructionCodeGeneratorARM64::VisitVecMin(HVecMin* instruction) {
       DCHECK_EQ(8u, instruction->GetVectorLength());
       __ Smin(dst.V8H(), lhs.V8H(), rhs.V8H());
       break;
+    case DataType::Type::kUint32:
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      __ Umin(dst.V4S(), lhs.V4S(), rhs.V4S());
+      break;
     case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ Umin(dst.V4S(), lhs.V4S(), rhs.V4S());
-      } else {
-        __ Smin(dst.V4S(), lhs.V4S(), rhs.V4S());
-      }
+      __ Smin(dst.V4S(), lhs.V4S(), rhs.V4S());
       break;
     case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
-      DCHECK(!instruction->IsUnsigned());
       __ Fmin(dst.V4S(), lhs.V4S(), rhs.V4S());
       break;
     case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      DCHECK(!instruction->IsUnsigned());
       __ Fmin(dst.V2D(), lhs.V2D(), rhs.V2D());
       break;
     default:
@@ -656,22 +654,20 @@ void InstructionCodeGeneratorARM64::VisitVecMax(HVecMax* instruction) {
       DCHECK_EQ(8u, instruction->GetVectorLength());
       __ Smax(dst.V8H(), lhs.V8H(), rhs.V8H());
       break;
+    case DataType::Type::kUint32:
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      __ Umax(dst.V4S(), lhs.V4S(), rhs.V4S());
+      break;
     case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ Umax(dst.V4S(), lhs.V4S(), rhs.V4S());
-      } else {
-        __ Smax(dst.V4S(), lhs.V4S(), rhs.V4S());
-      }
+      __ Smax(dst.V4S(), lhs.V4S(), rhs.V4S());
       break;
     case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
-      DCHECK(!instruction->IsUnsigned());
       __ Fmax(dst.V4S(), lhs.V4S(), rhs.V4S());
       break;
     case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      DCHECK(!instruction->IsUnsigned());
       __ Fmax(dst.V2D(), lhs.V2D(), rhs.V2D());
       break;
     default:

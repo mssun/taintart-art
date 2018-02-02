@@ -1972,6 +1972,8 @@ void RegisterAllocatorGraphColor::AllocateSpillSlots(ArrayRef<InterferenceNode* 
         case DataType::Type::kInt16:
           int_intervals.push_back(parent);
           break;
+        case DataType::Type::kUint32:
+        case DataType::Type::kUint64:
         case DataType::Type::kVoid:
           LOG(FATAL) << "Unexpected type for interval " << node->GetInterval()->GetType();
           UNREACHABLE();
