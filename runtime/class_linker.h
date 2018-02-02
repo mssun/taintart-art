@@ -979,7 +979,6 @@ class ClassLinker {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   mirror::MethodHandle* ResolveMethodHandleForMethod(Thread* self,
-                                                     const DexFile* const dex_file,
                                                      const DexFile::MethodHandleItem& method_handle,
                                                      ArtMethod* referrer)
       REQUIRES_SHARED(Locks::mutator_lock_);
