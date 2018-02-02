@@ -34,7 +34,9 @@ class DataType {
     kInt8,
     kUint16,
     kInt16,
+    kUint32,
     kInt32,
+    kUint64,
     kInt64,
     kFloat32,
     kFloat64,
@@ -55,9 +57,11 @@ class DataType {
       case Type::kUint16:
       case Type::kInt16:
         return 1;
+      case Type::kUint32:
       case Type::kInt32:
       case Type::kFloat32:
         return 2;
+      case Type::kUint64:
       case Type::kInt64:
       case Type::kFloat64:
         return 3;
@@ -80,9 +84,11 @@ class DataType {
       case Type::kUint16:
       case Type::kInt16:
         return 2;
+      case Type::kUint32:
       case Type::kInt32:
       case Type::kFloat32:
         return 4;
+      case Type::kUint64:
       case Type::kInt64:
       case Type::kFloat64:
         return 8;
@@ -107,7 +113,9 @@ class DataType {
       case Type::kInt8:
       case Type::kUint16:
       case Type::kInt16:
+      case Type::kUint32:
       case Type::kInt32:
+      case Type::kUint64:
       case Type::kInt64:
         return true;
       default:
@@ -120,11 +128,12 @@ class DataType {
   }
 
   static bool Is64BitType(Type type) {
-    return type == Type::kInt64 || type == Type::kFloat64;
+    return type == Type::kUint64 || type == Type::kInt64 || type == Type::kFloat64;
   }
 
   static bool IsUnsignedType(Type type) {
-    return type == Type::kBool || type == Type::kUint8 || type == Type::kUint16;
+    return type == Type::kBool || type == Type::kUint8 || type == Type::kUint16 ||
+        type == Type::kUint32 || type == Type::kUint64;
   }
 
   // Return the general kind of `type`, fusing integer-like types as Type::kInt.
@@ -133,10 +142,14 @@ class DataType {
       case Type::kBool:
       case Type::kUint8:
       case Type::kInt8:
-      case Type::kInt16:
       case Type::kUint16:
+      case Type::kInt16:
+      case Type::kUint32:
       case Type::kInt32:
         return Type::kInt32;
+      case Type::kUint64:
+      case Type::kInt64:
+        return Type::kInt64;
       default:
         return type;
     }
@@ -154,8 +167,12 @@ class DataType {
         return std::numeric_limits<uint16_t>::min();
       case Type::kInt16:
         return std::numeric_limits<int16_t>::min();
+      case Type::kUint32:
+        return std::numeric_limits<uint32_t>::min();
       case Type::kInt32:
         return std::numeric_limits<int32_t>::min();
+      case Type::kUint64:
+        return std::numeric_limits<uint64_t>::min();
       case Type::kInt64:
         return std::numeric_limits<int64_t>::min();
       default:
@@ -176,8 +193,12 @@ class DataType {
         return std::numeric_limits<uint16_t>::max();
       case Type::kInt16:
         return std::numeric_limits<int16_t>::max();
+      case Type::kUint32:
+        return std::numeric_limits<uint32_t>::max();
       case Type::kInt32:
         return std::numeric_limits<int32_t>::max();
+      case Type::kUint64:
+        return std::numeric_limits<uint64_t>::max();
       case Type::kInt64:
         return std::numeric_limits<int64_t>::max();
       default:
