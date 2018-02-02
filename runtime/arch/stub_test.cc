@@ -186,10 +186,9 @@ class StubTest : public CommonRuntimeTest {
         "stp x2, x3, [sp, #16]\n\t"
         "stp x4, x5, [sp, #32]\n\t"
         "stp x6, x7, [sp, #48]\n\t"
-        // To be extra defensive, store x20. We do this because some of the stubs might make a
+        // To be extra defensive, store x20,x21. We do this because some of the stubs might make a
         // transition into the runtime via the blr instruction below and *not* save x20.
-        "str x20, [sp, #64]\n\t"
-        // 8 byte buffer
+        "stp x20, x21, [sp, #64]\n\t"
 
         "sub sp, sp, #16\n\t"          // Reserve stack space, 16B aligned
         ".cfi_adjust_cfa_offset 16\n\t"
@@ -288,7 +287,7 @@ class StubTest : public CommonRuntimeTest {
         "ldp x2, x3, [sp, #16]\n\t"
         "ldp x4, x5, [sp, #32]\n\t"
         "ldp x6, x7, [sp, #48]\n\t"
-        "ldr x20, [sp, #64]\n\t"
+        "ldp x20, x21, [sp, #64]\n\t"
         "add sp, sp, #80\n\t"         // Free stack space, now sp as on entry
         ".cfi_adjust_cfa_offset -80\n\t"
 
@@ -312,8 +311,9 @@ class StubTest : public CommonRuntimeTest {
           // -fstack-protector-strong. According to AAPCS64 registers x9-x15 are caller-saved,
           // which means we should unclobber one of the callee-saved registers that are unused.
           // Here we use x20.
+          // http://b/72613441, Clang 7.0 asks for one more register, so we do not reserve x21.
         : "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x18", "x19",
-          "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28", "x30",
+          "x22", "x23", "x24", "x25", "x26", "x27", "x28", "x30",
           "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7",
           "d8", "d9", "d10", "d11", "d12", "d13", "d14", "d15",
           "d16", "d17", "d18", "d19", "d20", "d21", "d22", "d23",
