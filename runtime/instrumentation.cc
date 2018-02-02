@@ -1384,8 +1384,8 @@ TwoWordReturn Instrumentation::PopInstrumentationStackFrame(Thread* self,
                                   reinterpret_cast<uintptr_t>(GetQuickDeoptimizationEntryPoint()));
   } else {
     if (deoptimize && !Runtime::Current()->IsAsyncDeoptimizeable(*return_pc)) {
-      LOG(WARNING) << "Got a deoptimization request on un-deoptimizable " << method->PrettyMethod()
-                   << " at PC " << reinterpret_cast<void*>(*return_pc);
+      VLOG(deopt) << "Got a deoptimization request on un-deoptimizable " << method->PrettyMethod()
+                  << " at PC " << reinterpret_cast<void*>(*return_pc);
     }
     if (kVerboseInstrumentation) {
       LOG(INFO) << "Returning from " << method->PrettyMethod()
