@@ -27,6 +27,7 @@ namespace hiddenapi {
 enum Action {
   kAllow,
   kAllowButWarn,
+  kAllowButWarnAndToast,
   kDeny
 };
 
@@ -35,8 +36,9 @@ inline Action GetMemberAction(uint32_t access_flags) {
     case HiddenApiAccessFlags::kWhitelist:
       return kAllow;
     case HiddenApiAccessFlags::kLightGreylist:
-    case HiddenApiAccessFlags::kDarkGreylist:
       return kAllowButWarn;
+    case HiddenApiAccessFlags::kDarkGreylist:
+      return kAllowButWarnAndToast;
     case HiddenApiAccessFlags::kBlacklist:
       return kDeny;
   }
@@ -70,8 +72,9 @@ inline bool ShouldBlockAccessToMember(T* member,
                                       std::function<bool(Thread*)> fn_caller_in_boot)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(member != nullptr);
+  Runtime* runtime = Runtime::Current();
 
-  if (!Runtime::Current()->AreHiddenApiChecksEnabled()) {
+  if (!runtime->AreHiddenApiChecksEnabled()) {
     // Exit early. Nothing to enforce.
     return false;
   }
@@ -90,20 +93,23 @@ inline bool ShouldBlockAccessToMember(T* member,
   }
 
   // Member is hidden and we are not in the boot class path. Act accordingly.
-  if (action == kAllowButWarn) {
+  if (action == kDeny) {
+    return true;
+  } else {
+    DCHECK(action == kAllowButWarn || action == kAllowButWarnAndToast);
+
     // Allow access to this member but print a warning. Depending on a runtime
     // flag, we might move the member into whitelist and skip the warning the
     // next time the member is used.
-    Runtime::Current()->SetPendingHiddenApiWarning(true);
-    if (Runtime::Current()->ShouldDedupeHiddenApiWarnings()) {
+    if (runtime->ShouldDedupeHiddenApiWarnings()) {
       member->SetAccessFlags(HiddenApiAccessFlags::EncodeForRuntime(
           member->GetAccessFlags(), HiddenApiAccessFlags::kWhitelist));
     }
     WarnAboutMemberAccess(member);
+    if (action == kAllowButWarnAndToast || runtime->ShouldAlwaysSetHiddenApiWarningFlag()) {
+      Runtime::Current()->SetPendingHiddenApiWarning(true);
+    }
     return false;
-  } else {
-    DCHECK_EQ(action, hiddenapi::kDeny);
-    return true;
   }
 }
 
