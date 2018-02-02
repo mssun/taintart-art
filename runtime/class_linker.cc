@@ -73,6 +73,7 @@
 #include "intern_table.h"
 #include "interpreter/interpreter.h"
 #include "java_vm_ext.h"
+#include "jit/debugger_interface.h"
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"
 #include "jit/profile_compilation_info.h"
@@ -3432,6 +3433,7 @@ void ClassLinker::RegisterDexFileLocked(const DexFile& dex_file,
   data.weak_root = dex_cache_jweak;
   data.dex_file = dex_cache->GetDexFile();
   data.class_table = ClassTableForClassLoader(class_loader);
+  RegisterDexFileForNative(self, data.dex_file->Begin());
   DCHECK(data.class_table != nullptr);
   // Make sure to hold the dex cache live in the class table. This case happens for the boot class
   // path dex caches without an image.

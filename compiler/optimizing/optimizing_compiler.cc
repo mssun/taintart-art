@@ -1410,7 +1410,7 @@ void OptimizingCompiler::GenerateJitDebugInfo(ArtMethod* method, debug::MethodDe
       GetCompilerDriver()->GetInstructionSetFeatures(),
       mini_debug_info,
       ArrayRef<const debug::MethodDebugInfo>(&info, 1));
-  MutexLock mu(Thread::Current(), g_jit_debug_mutex);
+  MutexLock mu(Thread::Current(), *Locks::native_debug_interface_lock_);
   JITCodeEntry* entry = CreateJITCodeEntry(elf_file);
   IncrementJITCodeEntryRefcount(entry, info.code_address);
 
