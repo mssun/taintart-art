@@ -68,11 +68,65 @@ extern "C" {
   // Static initialization is necessary to prevent GDB from seeing
   // uninitialized descriptor.
   JITDescriptor __jit_debug_descriptor = { 1, JIT_NOACTION, nullptr, nullptr };
+
+  // Incremented whenever __jit_debug_descriptor is modified.
+  uint32_t __jit_debug_descriptor_timestamp = 0;
+
+  struct DEXFileEntry {
+    DEXFileEntry* next_;
+    DEXFileEntry* prev_;
+    const void* dexfile_;
+  };
+
+  DEXFileEntry* __art_debug_dexfiles = nullptr;
+
+  // Incremented whenever __art_debug_dexfiles is modified.
+  uint32_t __art_debug_dexfiles_timestamp = 0;
 }
 
-Mutex g_jit_debug_mutex("JIT debug interface lock", kJitDebugInterfaceLock);
+static size_t g_jit_debug_mem_usage
+    GUARDED_BY(Locks::native_debug_interface_lock_) = 0;
 
-static size_t g_jit_debug_mem_usage = 0;
+static std::unordered_map<const void*, DEXFileEntry*> g_dexfile_entries
+    GUARDED_BY(Locks::native_debug_interface_lock_);
+
+void RegisterDexFileForNative(Thread* current_thread, const void* dexfile_header) {
+  MutexLock mu(current_thread, *Locks::native_debug_interface_lock_);
+  if (g_dexfile_entries.count(dexfile_header) == 0) {
+    DEXFileEntry* entry = new DEXFileEntry();
+    CHECK(entry != nullptr);
+    entry->dexfile_ = dexfile_header;
+    entry->prev_ = nullptr;
+    entry->next_ = __art_debug_dexfiles;
+    if (entry->next_ != nullptr) {
+      entry->next_->prev_ = entry;
+    }
+    __art_debug_dexfiles = entry;
+    __art_debug_dexfiles_timestamp++;
+    g_dexfile_entries.emplace(dexfile_header, entry);
+  }
+}
+
+void DeregisterDexFileForNative(Thread* current_thread, const void* dexfile_header) {
+  MutexLock mu(current_thread, *Locks::native_debug_interface_lock_);
+  auto it = g_dexfile_entries.find(dexfile_header);
+  // We register dex files in the class linker and free them in DexFile_closeDexFile,
+  // but might be cases where we load the dex file without using it in the class linker.
+  if (it != g_dexfile_entries.end()) {
+    DEXFileEntry* entry = it->second;
+    if (entry->prev_ != nullptr) {
+      entry->prev_->next_ = entry->next_;
+    } else {
+      __art_debug_dexfiles = entry->next_;
+    }
+    if (entry->next_ != nullptr) {
+      entry->next_->prev_ = entry->prev_;
+    }
+    __art_debug_dexfiles_timestamp++;
+    delete entry;
+    g_dexfile_entries.erase(it);
+  }
+}
 
 JITCodeEntry* CreateJITCodeEntry(const std::vector<uint8_t>& symfile) {
   DCHECK_NE(symfile.size(), 0u);
@@ -96,6 +150,7 @@ JITCodeEntry* CreateJITCodeEntry(const std::vector<uint8_t>& symfile) {
   __jit_debug_descriptor.first_entry_ = entry;
   __jit_debug_descriptor.relevant_entry_ = entry;
   __jit_debug_descriptor.action_flag_ = JIT_REGISTER_FN;
+  __jit_debug_descriptor_timestamp++;
   (*__jit_debug_register_code_ptr)();
   return entry;
 }
@@ -114,6 +169,7 @@ void DeleteJITCodeEntry(JITCodeEntry* entry) {
   g_jit_debug_mem_usage -= sizeof(JITCodeEntry) + entry->symfile_size_;
   __jit_debug_descriptor.relevant_entry_ = entry;
   __jit_debug_descriptor.action_flag_ = JIT_UNREGISTER_FN;
+  __jit_debug_descriptor_timestamp++;
   (*__jit_debug_register_code_ptr)();
   delete[] entry->symfile_addr_;
   delete entry;
@@ -121,7 +177,7 @@ void DeleteJITCodeEntry(JITCodeEntry* entry) {
 
 // Mapping from code address to entry. Used to manage life-time of the entries.
 static std::unordered_map<uintptr_t, JITCodeEntry*> g_jit_code_entries
-    GUARDED_BY(g_jit_debug_mutex);
+    GUARDED_BY(Locks::native_debug_interface_lock_);
 
 void IncrementJITCodeEntryRefcount(JITCodeEntry* entry, uintptr_t code_address) {
   DCHECK(entry != nullptr);

@@ -74,6 +74,7 @@ Uninterruptible Roles::uninterruptible_;
 ReaderWriterMutex* Locks::jni_globals_lock_ = nullptr;
 Mutex* Locks::jni_weak_globals_lock_ = nullptr;
 ReaderWriterMutex* Locks::dex_lock_ = nullptr;
+Mutex* Locks::native_debug_interface_lock_ = nullptr;
 std::vector<BaseMutex*> Locks::expected_mutexes_on_weak_ref_access_;
 Atomic<const BaseMutex*> Locks::expected_mutexes_on_weak_ref_access_guard_;
 
@@ -1073,6 +1074,7 @@ void Locks::Init() {
     DCHECK(unexpected_signal_lock_ != nullptr);
     DCHECK(user_code_suspension_lock_ != nullptr);
     DCHECK(dex_lock_ != nullptr);
+    DCHECK(native_debug_interface_lock_ != nullptr);
   } else {
     // Create global locks in level order from highest lock level to lowest.
     LockLevel current_lock_level = kInstrumentEntrypointsLock;
@@ -1227,6 +1229,10 @@ void Locks::Init() {
     UPDATE_CURRENT_LOCK_LEVEL(kUnexpectedSignalLock);
     DCHECK(unexpected_signal_lock_ == nullptr);
     unexpected_signal_lock_ = new Mutex("unexpected signal lock", current_lock_level, true);
+
+    UPDATE_CURRENT_LOCK_LEVEL(kNativeDebugInterfaceLock);
+    DCHECK(native_debug_interface_lock_ == nullptr);
+    native_debug_interface_lock_ = new Mutex("Native debug interface lock", current_lock_level);
 
     UPDATE_CURRENT_LOCK_LEVEL(kLoggingLock);
     DCHECK(logging_lock_ == nullptr);
