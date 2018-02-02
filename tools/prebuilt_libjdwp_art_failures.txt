@@ -124,6 +124,6 @@
   result: EXEC_FAILED,
   bug: 70958370,
   names: [ "org.apache.harmony.jpda.tests.jdwp.ObjectReference.EnableCollectionTest#testEnableCollection001",
-           "org.apache.harmony.jpda.tests.jdwp.MultiSession.EnableCollectionTest.testEnableCollection001" ]
+           "org.apache.harmony.jpda.tests.jdwp.MultiSession.EnableCollectionTest#testEnableCollection001" ]
 }
 ]
