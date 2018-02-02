@@ -30,36 +30,42 @@ extern "C" {
   struct JITCodeEntry;
 }
 
-extern Mutex g_jit_debug_mutex;
+// Notify native tools (e.g. libunwind) that DEX file has been opened.
+// The pointer needs to point the start of the dex data (not the DexFile* object).
+void RegisterDexFileForNative(Thread* current_thread, const void* dexfile_header);
+
+// Notify native tools (e.g. libunwind) that DEX file has been closed.
+// The pointer needs to point the start of the dex data (not the DexFile* object).
+void DeregisterDexFileForNative(Thread* current_thread, const void* dexfile_header);
 
 // Notify native debugger about new JITed code by passing in-memory ELF.
 // It takes ownership of the in-memory ELF file.
 JITCodeEntry* CreateJITCodeEntry(const std::vector<uint8_t>& symfile)
-    REQUIRES(g_jit_debug_mutex);
+    REQUIRES(Locks::native_debug_interface_lock_);
 
 // Notify native debugger that JITed code has been removed.
 // It also releases the associated in-memory ELF file.
 void DeleteJITCodeEntry(JITCodeEntry* entry)
-    REQUIRES(g_jit_debug_mutex);
+    REQUIRES(Locks::native_debug_interface_lock_);
 
 // Helper method to track life-time of JITCodeEntry.
 // It registers given code address as being described by the given entry.
 void IncrementJITCodeEntryRefcount(JITCodeEntry* entry, uintptr_t code_address)
-    REQUIRES(g_jit_debug_mutex);
+    REQUIRES(Locks::native_debug_interface_lock_);
 
 // Helper method to track life-time of JITCodeEntry.
 // It de-registers given code address as being described by the given entry.
 void DecrementJITCodeEntryRefcount(JITCodeEntry* entry, uintptr_t code_address)
-    REQUIRES(g_jit_debug_mutex);
+    REQUIRES(Locks::native_debug_interface_lock_);
 
 // Find the registered JITCodeEntry for given code address.
 // There can be only one entry per address at any given time.
 JITCodeEntry* GetJITCodeEntry(uintptr_t code_address)
-    REQUIRES(g_jit_debug_mutex);
+    REQUIRES(Locks::native_debug_interface_lock_);
 
 // Returns approximate memory used by all JITCodeEntries.
 size_t GetJITCodeEntryMemUsage()
-    REQUIRES(g_jit_debug_mutex);
+    REQUIRES(Locks::native_debug_interface_lock_);
 
 }  // namespace art
 
