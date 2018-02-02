@@ -39,8 +39,12 @@ namespace art {
 
 #ifdef __linux__
 static constexpr bool kMadviseZeroes = true;
+#define HAVE_MREMAP_SYSCALL true
 #else
 static constexpr bool kMadviseZeroes = false;
+// We cannot ever perform MemMap::ReplaceWith on non-linux hosts since the syscall is not
+// present.
+#define HAVE_MREMAP_SYSCALL false
 #endif
 
 // Used to keep track of mmap segments.
@@ -52,6 +56,32 @@ static constexpr bool kMadviseZeroes = false;
 // Otherwise, calls might see uninitialized values.
 class MemMap {
  public:
+  static constexpr bool kCanReplaceMapping = HAVE_MREMAP_SYSCALL;
+
+  // Replace the data in this memmmap with the data in the memmap pointed to by source. The caller
+  // relinquishes ownership of the source mmap.
+  //
+  // For the call to be successful:
+  //   * The range [dest->Begin, dest->Begin() + source->Size()] must not overlap with
+  //     [source->Begin(), source->End()].
+  //   * Neither source nor dest may be 'reused' mappings (they must own all the pages associated
+  //     with them.
+  //   * kCanReplaceMapping must be true.
+  //   * Neither source nor dest may use manual redzones.
+  //   * Both source and dest must have the same offset from the nearest page boundary.
+  //   * mremap must succeed when called on the mappings.
+  //
+  // If this call succeeds it will return true and:
+  //   * Deallocate *source
+  //   * Sets *source to nullptr
+  //   * The protection of this will remain the same.
+  //   * The size of this will be the size of the source
+  //   * The data in this will be the data from source.
+  //
+  // If this call fails it will return false and make no changes to *source or this. The ownership
+  // of the source mmap is returned to the caller.
+  bool ReplaceWith(/*in-out*/MemMap** source, /*out*/std::string* error);
+
   // Request an anonymous region of length 'byte_count' and a requested base address.
   // Use null as the requested base address if you don't care.
   // "reuse" allows re-mapping an address range from an existing mapping.
@@ -245,6 +275,9 @@ class MemMap {
   // and we do not take ownership and are not responsible for
   // unmapping.
   const bool reuse_;
+
+  // When already_unmapped_ is true the destructor will not call munmap.
+  bool already_unmapped_;
 
   const size_t redzone_size_;
 
