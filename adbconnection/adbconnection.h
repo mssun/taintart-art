@@ -72,7 +72,7 @@ struct AdbConnectionDdmCallback : public art::DdmCallback {
 
 class AdbConnectionState {
  public:
-  explicit AdbConnectionState(const std::string& agent_name);
+  explicit AdbConnectionState(const std::string& name);
 
   // Called on the listening thread to start dealing with new input. thr is used to attach the new
   // thread to the runtime.
@@ -84,6 +84,11 @@ class AdbConnectionState {
 
   // Stops debugger threads during shutdown.
   void StopDebuggerThreads();
+
+  // If StartDebuggerThreads was called successfully.
+  bool DebuggerThreadsStarted() {
+    return started_debugger_threads_;
+  }
 
  private:
   uint32_t NextDdmId();
@@ -160,6 +165,8 @@ class AdbConnectionState {
   bool notified_ddm_active_;
 
   std::atomic<uint32_t> next_ddm_id_;
+
+  bool started_debugger_threads_;
 
   socklen_t control_addr_len_;
   union {
