@@ -613,32 +613,30 @@ void InstructionCodeGeneratorMIPS::VisitVecMin(HVecMin* instruction) {
       DCHECK_EQ(8u, instruction->GetVectorLength());
       __ Min_sH(dst, lhs, rhs);
       break;
+    case DataType::Type::kUint32:
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      __ Min_uW(dst, lhs, rhs);
+      break;
     case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ Min_uW(dst, lhs, rhs);
-      } else {
-        __ Min_sW(dst, lhs, rhs);
-      }
+      __ Min_sW(dst, lhs, rhs);
+      break;
+    case DataType::Type::kUint64:
+      DCHECK_EQ(2u, instruction->GetVectorLength());
+      __ Min_uD(dst, lhs, rhs);
       break;
     case DataType::Type::kInt64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ Min_uD(dst, lhs, rhs);
-      } else {
-        __ Min_sD(dst, lhs, rhs);
-      }
+      __ Min_sD(dst, lhs, rhs);
       break;
     // When one of arguments is NaN, fmin.df returns other argument, but Java expects a NaN value.
     // TODO: Fix min(x, NaN) cases for float and double.
     case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
-      DCHECK(!instruction->IsUnsigned());
       __ FminW(dst, lhs, rhs);
       break;
     case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      DCHECK(!instruction->IsUnsigned());
       __ FminD(dst, lhs, rhs);
       break;
     default:
@@ -673,32 +671,30 @@ void InstructionCodeGeneratorMIPS::VisitVecMax(HVecMax* instruction) {
       DCHECK_EQ(8u, instruction->GetVectorLength());
       __ Max_sH(dst, lhs, rhs);
       break;
+    case DataType::Type::kUint32:
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      __ Max_uW(dst, lhs, rhs);
+      break;
     case DataType::Type::kInt32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ Max_uW(dst, lhs, rhs);
-      } else {
-        __ Max_sW(dst, lhs, rhs);
-      }
+      __ Max_sW(dst, lhs, rhs);
+      break;
+    case DataType::Type::kUint64:
+      DCHECK_EQ(2u, instruction->GetVectorLength());
+      __ Max_uD(dst, lhs, rhs);
       break;
     case DataType::Type::kInt64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ Max_uD(dst, lhs, rhs);
-      } else {
-        __ Max_sD(dst, lhs, rhs);
-      }
+      __ Max_sD(dst, lhs, rhs);
       break;
     // When one of arguments is NaN, fmax.df returns other argument, but Java expects a NaN value.
     // TODO: Fix max(x, NaN) cases for float and double.
     case DataType::Type::kFloat32:
       DCHECK_EQ(4u, instruction->GetVectorLength());
-      DCHECK(!instruction->IsUnsigned());
       __ FmaxW(dst, lhs, rhs);
       break;
     case DataType::Type::kFloat64:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      DCHECK(!instruction->IsUnsigned());
       __ FmaxD(dst, lhs, rhs);
       break;
     default:
