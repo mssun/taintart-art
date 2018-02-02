@@ -245,6 +245,12 @@ class CompactDexFile : public DexFile {
   static bool IsVersionValid(const uint8_t* magic);
   virtual bool IsVersionValid() const OVERRIDE;
 
+  // TODO This is completely a guess. We really need to do better. b/72402467
+  // We ask for 64 megabytes which should be big enough for any realistic dex file.
+  virtual size_t GetDequickenedSize() const OVERRIDE {
+    return 64 * MB;
+  }
+
   const Header& GetHeader() const {
     return down_cast<const Header&>(DexFile::GetHeader());
   }
