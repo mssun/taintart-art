@@ -83,6 +83,10 @@ class StandardDexFile : public DexFile {
 
   uint32_t GetCodeItemSize(const DexFile::CodeItem& item) const OVERRIDE;
 
+  virtual size_t GetDequickenedSize() const OVERRIDE {
+    return Size();
+  }
+
  private:
   StandardDexFile(const uint8_t* base,
                   size_t size,
