@@ -50,8 +50,7 @@ namespace openjdkjvmti {
 class FixedUpDexFile {
  public:
   static std::unique_ptr<FixedUpDexFile> Create(const art::DexFile& original,
-                                                const char* descriptor)
-      REQUIRES_SHARED(art::Locks::mutator_lock_);
+                                                const char* descriptor);
 
   const art::DexFile& GetDexFile() {
     return *dex_file_;
