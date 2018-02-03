@@ -350,6 +350,9 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
       << "SystemServer should be forked with DISABLE_HIDDEN_API_CHECKS";
   Runtime::Current()->SetHiddenApiChecksEnabled(do_hidden_api_checks);
 
+  // Clear the hidden API warning flag, in case it was set.
+  Runtime::Current()->SetPendingHiddenApiWarning(false);
+
   if (instruction_set != nullptr && !is_system_server) {
     ScopedUtfChars isa_string(env, instruction_set);
     InstructionSet isa = GetInstructionSetFromString(isa_string.c_str());
