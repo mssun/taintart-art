@@ -152,7 +152,14 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_isAotCompiled(JNIEnv* env,
   CHECK(chars.c_str() != nullptr);
   ArtMethod* method = soa.Decode<mirror::Class>(cls)->FindDeclaredDirectMethodByName(
         chars.c_str(), kRuntimePointerSize);
-  return method->GetOatMethodQuickCode(kRuntimePointerSize) != nullptr;
+  const void* oat_code = method->GetOatMethodQuickCode(kRuntimePointerSize);
+  if (oat_code == nullptr) {
+    return false;
+  }
+  const void* actual_code = method->GetEntryPointFromQuickCompiledCodePtrSize(kRuntimePointerSize);
+  bool interpreter =
+      Runtime::Current()->GetClassLinker()->ShouldUseInterpreterEntrypoint(method, actual_code);
+  return !interpreter;
 }
 
 extern "C" JNIEXPORT jboolean JNICALL Java_Main_hasJitCompiledEntrypoint(JNIEnv* env,
