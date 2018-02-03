@@ -648,11 +648,6 @@
         "description": ["Tests that depend on input-vdex are not supported with compact dex"]
     },
     {
-        "tests": ["137-cfi"],
-        "variant": "cdex-fast",
-        "description": ["Temporarily disabled until libbacktrace works properly with shared data section"]
-    },
-    {
         "tests": "661-oat-writer-layout",
         "variant": "interp-ac | interpreter | jit | no-dex2oat | no-prebuild | no-image | trace | redefine-stress | jvmti-stress",
         "description": ["Test is designed to only check --compiler-filter=speed"]
