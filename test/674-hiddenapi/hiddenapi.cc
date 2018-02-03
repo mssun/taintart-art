@@ -26,8 +26,10 @@ namespace art {
 namespace Test674HiddenApi {
 
 extern "C" JNIEXPORT void JNICALL Java_Main_init(JNIEnv*, jclass) {
-  Runtime::Current()->SetHiddenApiChecksEnabled(true);
-  Runtime::Current()->SetDedupeHiddenApiWarnings(false);
+  Runtime* runtime = Runtime::Current();
+  runtime->SetHiddenApiChecksEnabled(true);
+  runtime->SetDedupeHiddenApiWarnings(false);
+  runtime->AlwaysSetHiddenApiWarningFlag();
 }
 
 extern "C" JNIEXPORT void JNICALL Java_Main_appendToBootClassLoader(
