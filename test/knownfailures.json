@@ -384,6 +384,12 @@
         "variant": "jvmti-stress & jit | redefine-stress & jit"
     },
     {
+        "test_patterns": ["674-hiddenapi"],
+        "description": ["hiddenapi test is failing with redefine stress cdex"],
+        "bug": "http://b/72610009",
+        "variant": "redefine-stress & cdex-fast"
+    },
+    {
         "test_patterns": ["616-cha"],
         "description": ["The test assumes a boot image exists."],
         "bug": "http://b/34193647",
