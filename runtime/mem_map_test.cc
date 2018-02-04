@@ -166,6 +166,7 @@ TEST_F(MemMapTest, Start) {
 // We need mremap to be able to test ReplaceMapping at all
 #if HAVE_MREMAP_SYSCALL
 TEST_F(MemMapTest, ReplaceMapping_SameSize) {
+  TEST_DISABLED_FOR_MEMORY_TOOL_VALGRIND();
   std::string error_msg;
   std::unique_ptr<MemMap> dest(MemMap::MapAnonymous("MapAnonymousEmpty-atomic-replace-dest",
                                                     nullptr,
@@ -203,6 +204,7 @@ TEST_F(MemMapTest, ReplaceMapping_SameSize) {
 }
 
 TEST_F(MemMapTest, ReplaceMapping_MakeLarger) {
+  TEST_DISABLED_FOR_MEMORY_TOOL_VALGRIND();
   std::string error_msg;
   std::unique_ptr<MemMap> dest(MemMap::MapAnonymous("MapAnonymousEmpty-atomic-replace-dest",
                                                     nullptr,
@@ -251,6 +253,7 @@ TEST_F(MemMapTest, ReplaceMapping_MakeLarger) {
 }
 
 TEST_F(MemMapTest, ReplaceMapping_MakeSmaller) {
+  TEST_DISABLED_FOR_MEMORY_TOOL_VALGRIND();
   std::string error_msg;
   std::unique_ptr<MemMap> dest(MemMap::MapAnonymous("MapAnonymousEmpty-atomic-replace-dest",
                                                     nullptr,
