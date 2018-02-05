@@ -425,6 +425,7 @@
     },
     {
         "tests": [
+            "714-invoke-custom-lambda-metafactory",
             "950-redefine-intrinsic",
             "951-threaded-obsolete",
             "952-invoke-custom",
