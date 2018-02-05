@@ -146,6 +146,65 @@ static HConstant* Evaluate(HCondition* condition, HInstruction* left, HInstructi
   }
 }
 
+static bool RemoveNonNullControlDependences(HBasicBlock* block, HBasicBlock* throws) {
+  // Test for an if as last statement.
+  if (!block->EndsWithIf()) {
+    return false;
+  }
+  HIf* ifs = block->GetLastInstruction()->AsIf();
+  // Find either:
+  //   if obj == null
+  //     throws
+  //   else
+  //     not_throws
+  // or:
+  //   if obj != null
+  //     not_throws
+  //   else
+  //     throws
+  HInstruction* cond = ifs->InputAt(0);
+  HBasicBlock* not_throws = nullptr;
+  if (throws == ifs->IfTrueSuccessor() && cond->IsEqual()) {
+    not_throws = ifs->IfFalseSuccessor();
+  } else if (throws == ifs->IfFalseSuccessor() && cond->IsNotEqual()) {
+    not_throws = ifs->IfTrueSuccessor();
+  } else {
+    return false;
+  }
+  DCHECK(cond->IsEqual() || cond->IsNotEqual());
+  HInstruction* obj = cond->InputAt(1);
+  if (obj->IsNullConstant()) {
+    obj = cond->InputAt(0);
+  } else if (!cond->InputAt(0)->IsNullConstant()) {
+    return false;
+  }
+  // Scan all uses of obj and find null check under control dependence.
+  HBoundType* bound = nullptr;
+  const HUseList<HInstruction*>& uses = obj->GetUses();
+  for (auto it = uses.begin(), end = uses.end(); it != end;) {
+    HInstruction* user = it->GetUser();
+    ++it;  // increment before possibly replacing
+    if (user->IsNullCheck()) {
+      HBasicBlock* user_block = user->GetBlock();
+      if (user_block != block &&
+          user_block != throws &&
+          block->Dominates(user_block)) {
+        if (bound == nullptr) {
+          ReferenceTypeInfo ti = obj->GetReferenceTypeInfo();
+          bound = new (obj->GetBlock()->GetGraph()->GetAllocator()) HBoundType(obj);
+          bound->SetUpperBound(ti, /*can_be_null*/ false);
+          bound->SetReferenceTypeInfo(ti);
+          bound->SetCanBeNull(false);
+          not_throws->InsertInstructionBefore(bound, not_throws->GetFirstInstruction());
+        }
+        user->ReplaceWith(bound);
+        user_block->RemoveInstruction(user);
+      }
+    }
+  }
+  return bound != nullptr;
+}
+
 // Simplify the pattern:
 //
 //           B1
@@ -203,6 +262,11 @@ bool HDeadCodeElimination::SimplifyAlwaysThrows() {
         block->ReplaceSuccessor(succ, exit);
         rerun_dominance_and_loop_analysis = true;
         MaybeRecordStat(stats_, MethodCompilationStat::kSimplifyThrowingInvoke);
+        // Perform a quick follow up optimization on object != null control dependences
+        // that is much cheaper to perform now than in a later phase.
+        if (RemoveNonNullControlDependences(pred, block)) {
+          MaybeRecordStat(stats_, MethodCompilationStat::kRemovedNullCheck);
+        }
       }
     }
   }
