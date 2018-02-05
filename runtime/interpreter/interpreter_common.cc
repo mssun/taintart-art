@@ -1183,10 +1183,9 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
   }
 
   Handle<mirror::Object> object(hs.NewHandle(result.GetL()));
-
-  // Check the result is not null.
   if (UNLIKELY(object.IsNull())) {
-    ThrowNullPointerException("CallSite == null");
+    // This will typically be for LambdaMetafactory which is not supported.
+    ThrowNullPointerException("Bootstrap method returned null");
     return nullptr;
   }
 
@@ -1202,7 +1201,7 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
   // Check the call site target is not null as we're going to invoke it.
   Handle<mirror::MethodHandle> target = hs.NewHandle(call_site->GetTarget());
   if (UNLIKELY(target.IsNull())) {
-    ThrowNullPointerException("CallSite target == null");
+    ThrowNullPointerException("Target for call-site is null");
     return nullptr;
   }
 
@@ -1320,7 +1319,7 @@ static inline bool DoCallCommon(ArtMethod* called_method,
   }
 
   // Compute method information.
-  CodeItemDataAccessor accessor(called_method);
+  CodeItemDataAccessor accessor(called_method->DexInstructionData());
   // Number of registers for the callee's call frame.
   uint16_t num_regs;
   // Test whether to use the interpreter or compiler entrypoint, and save that result to pass to

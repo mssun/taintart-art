@@ -396,6 +396,91 @@ MemMap* MemMap::MapDummy(const char* name, uint8_t* addr, size_t byte_count) {
   return new MemMap(name, addr, byte_count, addr, page_aligned_byte_count, 0, true /* reuse */);
 }
 
+template<typename A, typename B>
+static ptrdiff_t PointerDiff(A* a, B* b) {
+  return static_cast<ptrdiff_t>(reinterpret_cast<intptr_t>(a) - reinterpret_cast<intptr_t>(b));
+}
+
+bool MemMap::ReplaceWith(MemMap** source_ptr, /*out*/std::string* error) {
+#if !HAVE_MREMAP_SYSCALL
+  UNUSED(source_ptr);
+  *error = "Cannot perform atomic replace because we are missing the required mremap syscall";
+  return false;
+#else  // !HAVE_MREMAP_SYSCALL
+  CHECK(source_ptr != nullptr);
+  CHECK(*source_ptr != nullptr);
+  if (!MemMap::kCanReplaceMapping) {
+    *error = "Unable to perform atomic replace due to runtime environment!";
+    return false;
+  }
+  MemMap* source = *source_ptr;
+  // neither can be reuse.
+  if (source->reuse_ || reuse_) {
+    *error = "One or both mappings is not a real mmap!";
+    return false;
+  }
+  // TODO Support redzones.
+  if (source->redzone_size_ != 0 || redzone_size_ != 0) {
+    *error = "source and dest have different redzone sizes";
+    return false;
+  }
+  // Make sure they have the same offset from the actual mmap'd address
+  if (PointerDiff(BaseBegin(), Begin()) != PointerDiff(source->BaseBegin(), source->Begin())) {
+    *error =
+        "source starts at a different offset from the mmap. Cannot atomically replace mappings";
+    return false;
+  }
+  // mremap doesn't allow the final [start, end] to overlap with the initial [start, end] (it's like
+  // memcpy but the check is explicit and actually done).
+  if (source->BaseBegin() > BaseBegin() &&
+      reinterpret_cast<uint8_t*>(BaseBegin()) + source->BaseSize() >
+      reinterpret_cast<uint8_t*>(source->BaseBegin())) {
+    *error = "destination memory pages overlap with source memory pages";
+    return false;
+  }
+  // Change the protection to match the new location.
+  int old_prot = source->GetProtect();
+  if (!source->Protect(GetProtect())) {
+    *error = "Could not change protections for source to those required for dest.";
+    return false;
+  }
+
+  // Do the mremap.
+  void* res = mremap(/*old_address*/source->BaseBegin(),
+                     /*old_size*/source->BaseSize(),
+                     /*new_size*/source->BaseSize(),
+                     /*flags*/MREMAP_MAYMOVE | MREMAP_FIXED,
+                     /*new_address*/BaseBegin());
+  if (res == MAP_FAILED) {
+    int saved_errno = errno;
+    // Wasn't able to move mapping. Change the protection of source back to the original one and
+    // return.
+    source->Protect(old_prot);
+    *error = std::string("Failed to mremap source to dest. Error was ") + strerror(saved_errno);
+    return false;
+  }
+  CHECK(res == BaseBegin());
+
+  // The new base_size is all the pages of the 'source' plus any remaining dest pages. We will unmap
+  // them later.
+  size_t new_base_size = std::max(source->base_size_, base_size_);
+
+  // Delete the old source, don't unmap it though (set reuse) since it is already gone.
+  *source_ptr = nullptr;
+  size_t source_size = source->size_;
+  source->already_unmapped_ = true;
+  delete source;
+  source = nullptr;
+
+  size_ = source_size;
+  base_size_ = new_base_size;
+  // Reduce base_size if needed (this will unmap the extra pages).
+  SetSize(source_size);
+
+  return true;
+#endif  // !HAVE_MREMAP_SYSCALL
+}
+
 MemMap* MemMap::MapFileAtAddress(uint8_t* expected_ptr,
                                  size_t byte_count,
                                  int prot,
@@ -499,9 +584,11 @@ MemMap::~MemMap() {
 
   if (!reuse_) {
     MEMORY_TOOL_MAKE_UNDEFINED(base_begin_, base_size_);
-    int result = munmap(base_begin_, base_size_);
-    if (result == -1) {
-      PLOG(FATAL) << "munmap failed";
+    if (!already_unmapped_) {
+      int result = munmap(base_begin_, base_size_);
+      if (result == -1) {
+        PLOG(FATAL) << "munmap failed";
+      }
     }
   }
 
@@ -523,7 +610,7 @@ MemMap::~MemMap() {
 MemMap::MemMap(const std::string& name, uint8_t* begin, size_t size, void* base_begin,
                size_t base_size, int prot, bool reuse, size_t redzone_size)
     : name_(name), begin_(begin), size_(size), base_begin_(base_begin), base_size_(base_size),
-      prot_(prot), reuse_(reuse), redzone_size_(redzone_size) {
+      prot_(prot), reuse_(reuse), already_unmapped_(false), redzone_size_(redzone_size) {
   if (size_ == 0) {
     CHECK(begin_ == nullptr);
     CHECK(base_begin_ == nullptr);
@@ -794,19 +881,21 @@ void MemMap::Shutdown() {
 }
 
 void MemMap::SetSize(size_t new_size) {
-  if (new_size == base_size_) {
+  CHECK_LE(new_size, size_);
+  size_t new_base_size = RoundUp(new_size + static_cast<size_t>(PointerDiff(Begin(), BaseBegin())),
+                                 kPageSize);
+  if (new_base_size == base_size_) {
+    size_ = new_size;
     return;
   }
-  CHECK_ALIGNED(new_size, kPageSize);
-  CHECK_EQ(base_size_, size_) << "Unsupported";
-  CHECK_LE(new_size, base_size_);
+  CHECK_LT(new_base_size, base_size_);
   MEMORY_TOOL_MAKE_UNDEFINED(
       reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(BaseBegin()) +
-                              new_size),
-      base_size_ - new_size);
-  CHECK_EQ(munmap(reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(BaseBegin()) + new_size),
-                  base_size_ - new_size), 0) << new_size << " " << base_size_;
-  base_size_ = new_size;
+                              new_base_size),
+      base_size_ - new_base_size);
+  CHECK_EQ(munmap(reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(BaseBegin()) + new_base_size),
+                  base_size_ - new_base_size), 0) << new_base_size << " " << base_size_;
+  base_size_ = new_base_size;
   size_ = new_size;
 }
 

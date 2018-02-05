@@ -174,6 +174,7 @@ enum {
   DISABLE_VERIFIER                = 1 << 9,
   ONLY_USE_SYSTEM_OAT_FILES       = 1 << 10,
   DISABLE_HIDDEN_API_CHECKS       = 1 << 11,
+  DEBUG_GENERATE_MINI_DEBUG_INFO  = 1 << 12,
 };
 
 static uint32_t EnableDebugFeatures(uint32_t runtime_flags) {
@@ -210,12 +211,6 @@ static uint32_t EnableDebugFeatures(uint32_t runtime_flags) {
     runtime_flags &= ~DEBUG_ENABLE_SAFEMODE;
   }
 
-  const bool generate_debug_info = (runtime_flags & DEBUG_GENERATE_DEBUG_INFO) != 0;
-  if (generate_debug_info) {
-    runtime->AddCompilerOption("--generate-debug-info");
-    runtime_flags &= ~DEBUG_GENERATE_DEBUG_INFO;
-  }
-
   // This is for backwards compatibility with Dalvik.
   runtime_flags &= ~DEBUG_ENABLE_ASSERT;
 
@@ -229,8 +224,7 @@ static uint32_t EnableDebugFeatures(uint32_t runtime_flags) {
   bool needs_non_debuggable_classes = false;
   if ((runtime_flags & DEBUG_JAVA_DEBUGGABLE) != 0) {
     runtime->AddCompilerOption("--debuggable");
-    // Generate native debug information to allow backtracing through JITed code.
-    runtime->AddCompilerOption("--generate-mini-debug-info");
+    runtime_flags |= DEBUG_GENERATE_MINI_DEBUG_INFO;
     runtime->SetJavaDebuggable(true);
     // Deoptimize the boot image as it may be non-debuggable.
     runtime->DeoptimizeBootImage();
@@ -243,10 +237,21 @@ static uint32_t EnableDebugFeatures(uint32_t runtime_flags) {
 
   if ((runtime_flags & DEBUG_NATIVE_DEBUGGABLE) != 0) {
     runtime->AddCompilerOption("--debuggable");
-    // Generate all native debug information we can (e.g. line-numbers).
-    runtime->AddCompilerOption("--generate-debug-info");
+    runtime_flags |= DEBUG_GENERATE_DEBUG_INFO;
     runtime->SetNativeDebuggable(true);
     runtime_flags &= ~DEBUG_NATIVE_DEBUGGABLE;
+  }
+
+  if ((runtime_flags & DEBUG_GENERATE_MINI_DEBUG_INFO) != 0) {
+    // Generate native minimal debug information to allow backtracing.
+    runtime->AddCompilerOption("--generate-mini-debug-info");
+    runtime_flags &= ~DEBUG_GENERATE_MINI_DEBUG_INFO;
+  }
+
+  if ((runtime_flags & DEBUG_GENERATE_DEBUG_INFO) != 0) {
+    // Generate all native debug information we can (e.g. line-numbers).
+    runtime->AddCompilerOption("--generate-debug-info");
+    runtime_flags &= ~DEBUG_GENERATE_DEBUG_INFO;
   }
 
   return runtime_flags;
@@ -277,6 +282,7 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
   // Our system thread ID, etc, has changed so reset Thread state.
   thread->InitAfterFork();
   runtime_flags = EnableDebugFeatures(runtime_flags);
+  bool do_hidden_api_checks = true;
 
   if ((runtime_flags & DISABLE_VERIFIER) != 0) {
     Runtime::Current()->DisableVerifier();
@@ -289,7 +295,7 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
   }
 
   if ((runtime_flags & DISABLE_HIDDEN_API_CHECKS) != 0) {
-    Runtime::Current()->SetHiddenApiChecksEnabled(false);
+    do_hidden_api_checks = false;
     runtime_flags &= ~DISABLE_HIDDEN_API_CHECKS;
   }
 
@@ -340,8 +346,12 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
     }
   }
 
-  DCHECK(!is_system_server || !Runtime::Current()->AreHiddenApiChecksEnabled())
+  DCHECK(!is_system_server || !do_hidden_api_checks)
       << "SystemServer should be forked with DISABLE_HIDDEN_API_CHECKS";
+  Runtime::Current()->SetHiddenApiChecksEnabled(do_hidden_api_checks);
+
+  // Clear the hidden API warning flag, in case it was set.
+  Runtime::Current()->SetPendingHiddenApiWarning(false);
 
   if (instruction_set != nullptr && !is_system_server) {
     ScopedUtfChars isa_string(env, instruction_set);

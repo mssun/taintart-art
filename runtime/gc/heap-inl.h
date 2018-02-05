@@ -106,8 +106,8 @@ inline mirror::Object* Heap::AllocObjectWithAllocator(Thread* self,
     pre_fence_visitor(obj, usable_size);
     QuasiAtomic::ThreadFenceForConstructor();
   } else {
-    // bytes allocated that takes bulk thread-local buffer allocations into account.
-    size_t bytes_tl_bulk_allocated = 0;
+    // Bytes allocated that takes bulk thread-local buffer allocations into account.
+    size_t bytes_tl_bulk_allocated = 0u;
     obj = TryToAllocate<kInstrumented, false>(self, allocator, byte_count, &bytes_allocated,
                                               &usable_size, &bytes_tl_bulk_allocated);
     if (UNLIKELY(obj == nullptr)) {
@@ -154,12 +154,13 @@ inline mirror::Object* Heap::AllocObjectWithAllocator(Thread* self,
     }
     pre_fence_visitor(obj, usable_size);
     QuasiAtomic::ThreadFenceForConstructor();
-    new_num_bytes_allocated = num_bytes_allocated_.FetchAndAddRelaxed(bytes_tl_bulk_allocated) +
-        bytes_tl_bulk_allocated;
+    size_t num_bytes_allocated_before =
+        num_bytes_allocated_.FetchAndAddRelaxed(bytes_tl_bulk_allocated);
+    new_num_bytes_allocated = num_bytes_allocated_before + bytes_tl_bulk_allocated;
     if (bytes_tl_bulk_allocated > 0) {
       // Only trace when we get an increase in the number of bytes allocated. This happens when
       // obtaining a new TLAB and isn't often enough to hurt performance according to golem.
-      TraceHeapSize(new_num_bytes_allocated + bytes_tl_bulk_allocated);
+      TraceHeapSize(new_num_bytes_allocated);
     }
   }
   if (kIsDebugBuild && Runtime::Current()->IsStarted()) {

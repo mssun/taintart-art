@@ -456,6 +456,13 @@ class DexFile {
   // Returns true if the dex file supports default methods.
   virtual bool SupportsDefaultMethods() const = 0;
 
+  // Returns the maximum size in bytes needed to store an equivalent dex file strictly conforming to
+  // the dex file specification. That is the size if we wanted to get rid of all the
+  // quickening/compact-dexing/etc.
+  //
+  // TODO This should really be an exact size! b/72402467
+  virtual size_t GetDequickenedSize() const = 0;
+
   // Returns the number of string identifiers in the .dex file.
   size_t NumStringIds() const {
     DCHECK(header_ != nullptr) << GetLocation();

@@ -32,9 +32,14 @@
 #ifndef ART_OPENJDKJVMTI_TI_CLASS_DEFINITION_H_
 #define ART_OPENJDKJVMTI_TI_CLASS_DEFINITION_H_
 
+#include <stddef.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+
 #include "art_jvmti.h"
 
 #include "base/array_ref.h"
+#include "mem_map.h"
 
 namespace openjdkjvmti {
 
@@ -43,13 +48,21 @@ namespace openjdkjvmti {
 // redefinition/retransformation function that created it.
 class ArtClassDefinition {
  public:
+  // If we support doing a on-demand dex-dequickening using signal handlers.
+  // TODO Make this true. We currently have some ASAN issues with this.
+  static constexpr bool kEnableOnDemandDexDequicken = false;
+
   ArtClassDefinition()
       : klass_(nullptr),
         loader_(nullptr),
         name_(),
         protection_domain_(nullptr),
+        dex_data_mmap_(nullptr),
+        temp_mmap_(nullptr),
         dex_data_memory_(),
+        initial_dex_file_unquickened_(nullptr),
         dex_data_(),
+        current_dex_memory_(),
         current_dex_file_(),
         redefined_(false),
         from_class_ext_(false),
@@ -87,6 +100,12 @@ class ArtClassDefinition {
     }
   }
 
+  bool ContainsAddress(uintptr_t ptr) const {
+    return dex_data_mmap_ != nullptr &&
+        reinterpret_cast<uintptr_t>(dex_data_mmap_->Begin()) <= ptr &&
+        reinterpret_cast<uintptr_t>(dex_data_mmap_->End()) > ptr;
+  }
+
   bool IsModified() const REQUIRES_SHARED(art::Locks::mutator_lock_);
 
   bool IsInitialized() const {
@@ -108,6 +127,13 @@ class ArtClassDefinition {
     return name_;
   }
 
+  bool IsLazyDefinition() const {
+    DCHECK(IsInitialized());
+    return dex_data_mmap_ != nullptr &&
+        dex_data_.data() == dex_data_mmap_->Begin() &&
+        dex_data_mmap_->GetProtect() == PROT_NONE;
+  }
+
   jobject GetProtectionDomain() const {
     DCHECK(IsInitialized());
     return protection_domain_;
@@ -117,6 +143,8 @@ class ArtClassDefinition {
     DCHECK(IsInitialized());
     return dex_data_;
   }
+
+  void InitializeMemory() const;
 
  private:
   jvmtiError InitCommon(art::Thread* self, jclass klass);
@@ -130,8 +158,16 @@ class ArtClassDefinition {
   std::string name_;
   jobject protection_domain_;
 
+  // Mmap that will be filled with the original-dex-file lazily if it needs to be de-quickened or
+  // de-compact-dex'd
+  mutable std::unique_ptr<art::MemMap> dex_data_mmap_;
+  // This is a temporary mmap we will use to be able to fill the dex file data atomically.
+  mutable std::unique_ptr<art::MemMap> temp_mmap_;
+
   // A unique_ptr to the current dex_data if it needs to be cleaned up.
   std::vector<unsigned char> dex_data_memory_;
+
+  const art::DexFile* initial_dex_file_unquickened_;
 
   // A ref to the current dex data. This is either dex_data_memory_, or current_dex_file_. This is
   // what the dex file will be turned into.

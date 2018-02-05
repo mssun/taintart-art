@@ -1535,6 +1535,7 @@ extern "C" bool ArtPlugin_Initialize() {
   MethodUtil::Register(&gEventHandler);
   SearchUtil::Register();
   HeapUtil::Register();
+  Transformer::Setup();
 
   {
     // Make sure we can deopt anything we need to.

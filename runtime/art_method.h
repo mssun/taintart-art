@@ -667,6 +667,10 @@ class ArtMethod FINAL {
     return hotness_count_;
   }
 
+  static MemberOffset HotnessCountOffset() {
+    return MemberOffset(OFFSETOF_MEMBER(ArtMethod, hotness_count_));
+  }
+
   ArrayRef<const uint8_t> GetQuickenedInfo() REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns the method header for the compiled code containing 'pc'. Note that runtime
@@ -727,6 +731,14 @@ class ArtMethod FINAL {
   ALWAYS_INLINE CodeItemInstructionAccessor DexInstructions()
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Returns the dex code item data section of the DexFile for the art method.
+  ALWAYS_INLINE CodeItemDataAccessor DexInstructionData()
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Returns the dex code item debug info section of the DexFile for the art method.
+  ALWAYS_INLINE CodeItemDebugInfoAccessor DexInstructionDebugInfo()
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
  protected:
   // Field order required by test "ValidateFieldOrderOfJavaCppUnionClasses".
   // The class we are a part of.
@@ -753,7 +765,7 @@ class ArtMethod FINAL {
   // ifTable.
   uint16_t method_index_;
 
-  // The hotness we measure for this method. Managed by the interpreter. Not atomic, as we allow
+  // The hotness we measure for this method. Not atomic, as we allow
   // missing increments: if the method is hot, we will see it eventually.
   uint16_t hotness_count_;
 

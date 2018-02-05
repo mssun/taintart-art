@@ -431,13 +431,13 @@ void InstructionCodeGeneratorARMVIXL::VisitVecMin(HVecMin* instruction) {
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ Vmin(DataTypeValue::S16, dst, lhs, rhs);
       break;
+    case DataType::Type::kUint32:
+      DCHECK_EQ(2u, instruction->GetVectorLength());
+      __ Vmin(DataTypeValue::U32, dst, lhs, rhs);
+      break;
     case DataType::Type::kInt32:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ Vmin(DataTypeValue::U32, dst, lhs, rhs);
-      } else {
-        __ Vmin(DataTypeValue::S32, dst, lhs, rhs);
-      }
+      __ Vmin(DataTypeValue::S32, dst, lhs, rhs);
       break;
     default:
       LOG(FATAL) << "Unsupported SIMD type";
@@ -471,13 +471,13 @@ void InstructionCodeGeneratorARMVIXL::VisitVecMax(HVecMax* instruction) {
       DCHECK_EQ(4u, instruction->GetVectorLength());
       __ Vmax(DataTypeValue::S16, dst, lhs, rhs);
       break;
+    case DataType::Type::kUint32:
+      DCHECK_EQ(2u, instruction->GetVectorLength());
+      __ Vmax(DataTypeValue::U32, dst, lhs, rhs);
+      break;
     case DataType::Type::kInt32:
       DCHECK_EQ(2u, instruction->GetVectorLength());
-      if (instruction->IsUnsigned()) {
-        __ Vmax(DataTypeValue::U32, dst, lhs, rhs);
-      } else {
-        __ Vmax(DataTypeValue::S32, dst, lhs, rhs);
-      }
+      __ Vmax(DataTypeValue::S32, dst, lhs, rhs);
       break;
     default:
       LOG(FATAL) << "Unsupported SIMD type";

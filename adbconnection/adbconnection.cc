@@ -139,7 +139,8 @@ AdbConnectionState::AdbConnectionState(const std::string& agent_name)
     sent_agent_fds_(false),
     performed_handshake_(false),
     notified_ddm_active_(false),
-    next_ddm_id_(1) {
+    next_ddm_id_(1),
+    started_debugger_threads_(false) {
   // Setup the addr.
   control_addr_.controlAddrUn.sun_family = AF_UNIX;
   control_addr_len_ = sizeof(control_addr_.controlAddrUn.sun_family) + sizeof(kJdwpControlName) - 1;
@@ -174,6 +175,7 @@ struct CallbackData {
 
 static void* CallbackFunction(void* vdata) {
   std::unique_ptr<CallbackData> data(reinterpret_cast<CallbackData*>(vdata));
+  CHECK(data->this_ == gState);
   art::Thread* self = art::Thread::Attach(kAdbConnectionThreadName,
                                           true,
                                           data->thr_);
@@ -198,6 +200,10 @@ static void* CallbackFunction(void* vdata) {
   data->this_->RunPollLoop(self);
   int detach_result = art::Runtime::Current()->GetJavaVM()->DetachCurrentThread();
   CHECK_EQ(detach_result, 0);
+
+  // Get rid of the connection
+  gState = nullptr;
+  delete data->this_;
 
   return nullptr;
 }
@@ -247,11 +253,13 @@ void AdbConnectionState::StartDebuggerThreads() {
   ScopedLocalRef<jobject> thr(soa.Env(), CreateAdbConnectionThread(soa.Self()));
   pthread_t pthread;
   std::unique_ptr<CallbackData> data(new CallbackData { this, soa.Env()->NewGlobalRef(thr.get()) });
+  started_debugger_threads_ = true;
   int pthread_create_result = pthread_create(&pthread,
                                              nullptr,
                                              &CallbackFunction,
                                              data.get());
   if (pthread_create_result != 0) {
+    started_debugger_threads_ = false;
     // If the create succeeded the other thread will call EndThreadBirth.
     art::Runtime* runtime = art::Runtime::Current();
     soa.Env()->DeleteGlobalRef(data->thr_);
@@ -312,12 +320,12 @@ void AdbConnectionState::SendDdmPacket(uint32_t id,
   // Get the write_event early to fail fast.
   ScopedEventFdLock lk(adb_write_event_fd_);
   if (adb_connection_socket_ == -1) {
-    LOG(WARNING) << "Not sending ddms data of type "
-                 << StringPrintf("%c%c%c%c",
-                                 static_cast<char>(type >> 24),
-                                 static_cast<char>(type >> 16),
-                                 static_cast<char>(type >> 8),
-                                 static_cast<char>(type)) << " due to no connection!";
+    VLOG(jdwp) << "Not sending ddms data of type "
+               << StringPrintf("%c%c%c%c",
+                               static_cast<char>(type >> 24),
+                               static_cast<char>(type >> 16),
+                               static_cast<char>(type >> 8),
+                               static_cast<char>(type)) << " due to no connection!";
     // Adb is not connected.
     return;
   }
@@ -523,7 +531,7 @@ bool AdbConnectionState::SetupAdbConnection() {
       /* now try to send our pid to the ADB daemon */
       ret = TEMP_FAILURE_RETRY(send(sock, buff, sizeof(pid_t), 0));
       if (ret == sizeof(pid_t)) {
-        LOG(INFO) << "PID " << getpid() << " send to adb";
+        VLOG(jdwp) << "PID " << getpid() << " send to adb";
         control_sock_ = std::move(sock);
         return true;
       } else {
@@ -545,6 +553,7 @@ bool AdbConnectionState::SetupAdbConnection() {
 }
 
 void AdbConnectionState::RunPollLoop(art::Thread* self) {
+  CHECK_NE(agent_name_, "");
   CHECK_EQ(self->GetState(), art::kNative);
   art::Locks::mutator_lock_->AssertNotHeld(self);
   self->SetState(art::kWaitingInMainDebuggerLoop);
@@ -869,24 +878,26 @@ void AdbConnectionState::StopDebuggerThreads() {
   shutting_down_ = true;
   // Wakeup the poll loop.
   uint64_t data = 1;
-  TEMP_FAILURE_RETRY(write(sleep_event_fd_, &data, sizeof(data)));
+  if (sleep_event_fd_ != -1) {
+    TEMP_FAILURE_RETRY(write(sleep_event_fd_, &data, sizeof(data)));
+  }
 }
 
 // The plugin initialization function.
 extern "C" bool ArtPlugin_Initialize() REQUIRES_SHARED(art::Locks::mutator_lock_) {
   DCHECK(art::Runtime::Current()->GetJdwpProvider() == art::JdwpProvider::kAdbConnection);
   // TODO Provide some way for apps to set this maybe?
+  DCHECK(gState == nullptr);
   gState = new AdbConnectionState(kDefaultJdwpAgentName);
-  CHECK(gState != nullptr);
   return ValidateJdwpOptions(art::Runtime::Current()->GetJdwpOptions());
 }
 
 extern "C" bool ArtPlugin_Deinitialize() {
-  CHECK(gState != nullptr);
-  // Just do this a second time?
-  // TODO I don't think this should be needed.
   gState->StopDebuggerThreads();
-  delete gState;
+  if (!gState->DebuggerThreadsStarted()) {
+    // If debugger threads were started then those threads will delete the state once they are done.
+    delete gState;
+  }
   return true;
 }
 

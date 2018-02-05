@@ -19,6 +19,7 @@
 #include <sys/mman.h>
 
 #include <memory>
+#include <random>
 
 #include "base/memory_tool.h"
 #include "base/unix_file/fd_file.h"
@@ -34,6 +35,25 @@ class MemMapTest : public CommonRuntimeTest {
 
   static size_t BaseSize(MemMap* mem_map) {
     return mem_map->base_size_;
+  }
+
+  static bool IsAddressMapped(void* addr) {
+    bool res = msync(addr, 1, MS_SYNC) == 0;
+    if (!res && errno != ENOMEM) {
+      PLOG(FATAL) << "Unexpected error occurred on msync";
+    }
+    return res;
+  }
+
+  static std::vector<uint8_t> RandomData(size_t size) {
+    std::random_device rd;
+    std::uniform_int_distribution<uint8_t> dist;
+    std::vector<uint8_t> res;
+    res.resize(size);
+    for (size_t i = 0; i < size; i++) {
+      res[i] = dist(rd);
+    }
+    return res;
   }
 
   static uint8_t* GetValidMapAddress(size_t size, bool low_4gb) {
@@ -142,6 +162,189 @@ TEST_F(MemMapTest, Start) {
   // End of test.
 }
 #endif
+
+// We need mremap to be able to test ReplaceMapping at all
+#if HAVE_MREMAP_SYSCALL
+TEST_F(MemMapTest, ReplaceMapping_SameSize) {
+  TEST_DISABLED_FOR_MEMORY_TOOL_VALGRIND();
+  std::string error_msg;
+  std::unique_ptr<MemMap> dest(MemMap::MapAnonymous("MapAnonymousEmpty-atomic-replace-dest",
+                                                    nullptr,
+                                                    kPageSize,
+                                                    PROT_READ,
+                                                    false,
+                                                    false,
+                                                    &error_msg));
+  ASSERT_TRUE(dest != nullptr);
+  MemMap* source = MemMap::MapAnonymous("MapAnonymous-atomic-replace-source",
+                                        nullptr,
+                                        kPageSize,
+                                        PROT_WRITE | PROT_READ,
+                                        false,
+                                        false,
+                                        &error_msg);
+  ASSERT_TRUE(source != nullptr);
+  void* source_addr = source->Begin();
+  void* dest_addr = dest->Begin();
+  ASSERT_TRUE(IsAddressMapped(source_addr));
+  ASSERT_TRUE(IsAddressMapped(dest_addr));
+
+  std::vector<uint8_t> data = RandomData(kPageSize);
+  memcpy(source->Begin(), data.data(), data.size());
+
+  ASSERT_TRUE(dest->ReplaceWith(&source, &error_msg)) << error_msg;
+
+  ASSERT_FALSE(IsAddressMapped(source_addr));
+  ASSERT_TRUE(IsAddressMapped(dest_addr));
+  ASSERT_TRUE(source == nullptr);
+
+  ASSERT_EQ(dest->Size(), static_cast<size_t>(kPageSize));
+
+  ASSERT_EQ(memcmp(dest->Begin(), data.data(), dest->Size()), 0);
+}
+
+TEST_F(MemMapTest, ReplaceMapping_MakeLarger) {
+  TEST_DISABLED_FOR_MEMORY_TOOL_VALGRIND();
+  std::string error_msg;
+  std::unique_ptr<MemMap> dest(MemMap::MapAnonymous("MapAnonymousEmpty-atomic-replace-dest",
+                                                    nullptr,
+                                                    5 * kPageSize,  // Need to make it larger
+                                                                    // initially so we know
+                                                                    // there won't be mappings
+                                                                    // in the way we we move
+                                                                    // source.
+                                                    PROT_READ,
+                                                    false,
+                                                    false,
+                                                    &error_msg));
+  ASSERT_TRUE(dest != nullptr);
+  MemMap* source = MemMap::MapAnonymous("MapAnonymous-atomic-replace-source",
+                                        nullptr,
+                                        3 * kPageSize,
+                                        PROT_WRITE | PROT_READ,
+                                        false,
+                                        false,
+                                        &error_msg);
+  ASSERT_TRUE(source != nullptr);
+  uint8_t* source_addr = source->Begin();
+  uint8_t* dest_addr = dest->Begin();
+  ASSERT_TRUE(IsAddressMapped(source_addr));
+
+  // Fill the source with random data.
+  std::vector<uint8_t> data = RandomData(3 * kPageSize);
+  memcpy(source->Begin(), data.data(), data.size());
+
+  // Make the dest smaller so that we know we'll have space.
+  dest->SetSize(kPageSize);
+
+  ASSERT_TRUE(IsAddressMapped(dest_addr));
+  ASSERT_FALSE(IsAddressMapped(dest_addr + 2 * kPageSize));
+  ASSERT_EQ(dest->Size(), static_cast<size_t>(kPageSize));
+
+  ASSERT_TRUE(dest->ReplaceWith(&source, &error_msg)) << error_msg;
+
+  ASSERT_FALSE(IsAddressMapped(source_addr));
+  ASSERT_EQ(dest->Size(), static_cast<size_t>(3 * kPageSize));
+  ASSERT_TRUE(IsAddressMapped(dest_addr));
+  ASSERT_TRUE(IsAddressMapped(dest_addr + 2 * kPageSize));
+  ASSERT_TRUE(source == nullptr);
+
+  ASSERT_EQ(memcmp(dest->Begin(), data.data(), dest->Size()), 0);
+}
+
+TEST_F(MemMapTest, ReplaceMapping_MakeSmaller) {
+  TEST_DISABLED_FOR_MEMORY_TOOL_VALGRIND();
+  std::string error_msg;
+  std::unique_ptr<MemMap> dest(MemMap::MapAnonymous("MapAnonymousEmpty-atomic-replace-dest",
+                                                    nullptr,
+                                                    3 * kPageSize,
+                                                    PROT_READ,
+                                                    false,
+                                                    false,
+                                                    &error_msg));
+  ASSERT_TRUE(dest != nullptr);
+  MemMap* source = MemMap::MapAnonymous("MapAnonymous-atomic-replace-source",
+                                        nullptr,
+                                        kPageSize,
+                                        PROT_WRITE | PROT_READ,
+                                        false,
+                                        false,
+                                        &error_msg);
+  ASSERT_TRUE(source != nullptr);
+  uint8_t* source_addr = source->Begin();
+  uint8_t* dest_addr = dest->Begin();
+  ASSERT_TRUE(IsAddressMapped(source_addr));
+  ASSERT_TRUE(IsAddressMapped(dest_addr));
+  ASSERT_TRUE(IsAddressMapped(dest_addr + 2 * kPageSize));
+  ASSERT_EQ(dest->Size(), static_cast<size_t>(3 * kPageSize));
+
+  std::vector<uint8_t> data = RandomData(kPageSize);
+  memcpy(source->Begin(), data.data(), kPageSize);
+
+  ASSERT_TRUE(dest->ReplaceWith(&source, &error_msg)) << error_msg;
+
+  ASSERT_FALSE(IsAddressMapped(source_addr));
+  ASSERT_EQ(dest->Size(), static_cast<size_t>(kPageSize));
+  ASSERT_TRUE(IsAddressMapped(dest_addr));
+  ASSERT_FALSE(IsAddressMapped(dest_addr + 2 * kPageSize));
+  ASSERT_TRUE(source == nullptr);
+
+  ASSERT_EQ(memcmp(dest->Begin(), data.data(), dest->Size()), 0);
+}
+
+TEST_F(MemMapTest, ReplaceMapping_FailureOverlap) {
+  std::string error_msg;
+  std::unique_ptr<MemMap> dest(
+      MemMap::MapAnonymous(
+          "MapAnonymousEmpty-atomic-replace-dest",
+          nullptr,
+          3 * kPageSize,  // Need to make it larger initially so we know there won't be mappings in
+                          // the way we we move source.
+          PROT_READ | PROT_WRITE,
+          false,
+          false,
+          &error_msg));
+  ASSERT_TRUE(dest != nullptr);
+  // Resize down to 1 page so we can remap the rest.
+  dest->SetSize(kPageSize);
+  // Create source from the last 2 pages
+  MemMap* source = MemMap::MapAnonymous("MapAnonymous-atomic-replace-source",
+                                        dest->Begin() + kPageSize,
+                                        2 * kPageSize,
+                                        PROT_WRITE | PROT_READ,
+                                        false,
+                                        false,
+                                        &error_msg);
+  ASSERT_TRUE(source != nullptr);
+  MemMap* orig_source = source;
+  ASSERT_EQ(dest->Begin() + kPageSize, source->Begin());
+  uint8_t* source_addr = source->Begin();
+  uint8_t* dest_addr = dest->Begin();
+  ASSERT_TRUE(IsAddressMapped(source_addr));
+
+  // Fill the source and dest with random data.
+  std::vector<uint8_t> data = RandomData(2 * kPageSize);
+  memcpy(source->Begin(), data.data(), data.size());
+  std::vector<uint8_t> dest_data = RandomData(kPageSize);
+  memcpy(dest->Begin(), dest_data.data(), dest_data.size());
+
+  ASSERT_TRUE(IsAddressMapped(dest_addr));
+  ASSERT_EQ(dest->Size(), static_cast<size_t>(kPageSize));
+
+  ASSERT_FALSE(dest->ReplaceWith(&source, &error_msg)) << error_msg;
+
+  ASSERT_TRUE(source == orig_source);
+  ASSERT_TRUE(IsAddressMapped(source_addr));
+  ASSERT_TRUE(IsAddressMapped(dest_addr));
+  ASSERT_EQ(source->Size(), data.size());
+  ASSERT_EQ(dest->Size(), dest_data.size());
+
+  ASSERT_EQ(memcmp(source->Begin(), data.data(), data.size()), 0);
+  ASSERT_EQ(memcmp(dest->Begin(), dest_data.data(), dest_data.size()), 0);
+
+  delete source;
+}
+#endif  // HAVE_MREMAP_SYSCALL
 
 TEST_F(MemMapTest, MapAnonymousEmpty) {
   CommonInit();

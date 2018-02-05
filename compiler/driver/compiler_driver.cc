@@ -932,7 +932,7 @@ class ResolveCatchBlockExceptionsClassVisitor : public ClassVisitor {
     if (method->GetCodeItem() == nullptr) {
       return;  // native or abstract method
     }
-    CodeItemDataAccessor accessor(method);
+    CodeItemDataAccessor accessor(method->DexInstructionData());
     if (accessor.TriesSize() == 0) {
       return;  // nothing to process
     }

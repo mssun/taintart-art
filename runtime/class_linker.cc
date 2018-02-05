@@ -53,6 +53,7 @@
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_exception_helpers.h"
 #include "dex/dex_file_loader.h"
+#include "dex/utf.h"
 #include "entrypoints/entrypoint_utils.h"
 #include "entrypoints/runtime_asm_entrypoints.h"
 #include "experimental_flags.h"
@@ -72,6 +73,7 @@
 #include "intern_table.h"
 #include "interpreter/interpreter.h"
 #include "java_vm_ext.h"
+#include "jit/debugger_interface.h"
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"
 #include "jit/profile_compilation_info.h"
@@ -115,7 +117,6 @@
 #include "thread-inl.h"
 #include "thread_list.h"
 #include "trace.h"
-#include "utf.h"
 #include "utils.h"
 #include "utils/dex_cache_arrays_layout-inl.h"
 #include "verifier/method_verifier.h"
@@ -3432,6 +3433,7 @@ void ClassLinker::RegisterDexFileLocked(const DexFile& dex_file,
   data.weak_root = dex_cache_jweak;
   data.dex_file = dex_cache->GetDexFile();
   data.class_table = ClassTableForClassLoader(class_loader);
+  RegisterDexFileForNative(self, data.dex_file->Begin());
   DCHECK(data.class_table != nullptr);
   // Make sure to hold the dex cache live in the class table. This case happens for the boot class
   // path dex caches without an image.
@@ -4329,7 +4331,7 @@ void ClassLinker::ResolveClassExceptionHandlerTypes(Handle<mirror::Class> klass)
 
 void ClassLinker::ResolveMethodExceptionHandlerTypes(ArtMethod* method) {
   // similar to DexVerifier::ScanTryCatchBlocks and dex2oat's ResolveExceptionsForMethod.
-  CodeItemDataAccessor accessor(method);
+  CodeItemDataAccessor accessor(method->DexInstructionData());
   if (!accessor.HasCodeItem()) {
     return;  // native or abstract method
   }
@@ -8368,7 +8370,6 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForField(
 
 mirror::MethodHandle* ClassLinker::ResolveMethodHandleForMethod(
     Thread* self,
-    const DexFile* const dex_file,
     const DexFile::MethodHandleItem& method_handle,
     ArtMethod* referrer) {
   DexFile::MethodHandleType handle_type =
@@ -8492,19 +8493,20 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForMethod(
     return nullptr;
   }
 
-  Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
-  Handle<mirror::ClassLoader> class_loader(hs.NewHandle(referrer->GetClassLoader()));
   int32_t index = 0;
-
   if (receiver_count != 0) {
     // Insert receiver
     method_params->Set(index++, target_method->GetDeclaringClass());
   }
-
-  DexFileParameterIterator it(*dex_file, target_method->GetPrototype());
+  DexFileParameterIterator it(*target_method->GetDexFile(), target_method->GetPrototype());
+  Handle<mirror::DexCache> target_method_dex_cache(hs.NewHandle(target_method->GetDexCache()));
+  Handle<mirror::ClassLoader> target_method_class_loader(hs.NewHandle(target_method->GetClassLoader()));
   while (it.HasNext()) {
+    DCHECK_LT(index, num_params);
     const dex::TypeIndex type_idx = it.GetTypeIdx();
-    ObjPtr<mirror::Class> klass = ResolveType(type_idx, dex_cache, class_loader);
+    ObjPtr<mirror::Class> klass = ResolveType(type_idx,
+                                              target_method_dex_cache,
+                                              target_method_class_loader);
     if (nullptr == klass) {
       DCHECK(self->IsExceptionPending());
       return nullptr;
@@ -8554,7 +8556,7 @@ ObjPtr<mirror::MethodHandle> ClassLinker::ResolveMethodHandle(Thread* self,
     case DexFile::MethodHandleType::kInvokeConstructor:
     case DexFile::MethodHandleType::kInvokeDirect:
     case DexFile::MethodHandleType::kInvokeInterface:
-      return ResolveMethodHandleForMethod(self, dex_file, method_handle, referrer);
+      return ResolveMethodHandleForMethod(self, method_handle, referrer);
   }
 }
 

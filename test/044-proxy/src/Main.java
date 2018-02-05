@@ -54,4 +54,8 @@ public class Main {
     private static final HashMap<String, String> proxyClassNameMap = new HashMap<String, String>();
 
     private static int uniqueTestProxyClassNum = 0;
+
+    static native void startJit();
+    static native void stopJit();
+    static native void waitForCompilation();
 }
