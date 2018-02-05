@@ -101,7 +101,7 @@ static void WriteDebugSymbols(linker::ElfBuilder<ElfTypes>* builder,
       }
     }
   }
-  // Add symbols for interpreted methods (with address range of the method's bytecode).
+  // Add symbols for dex files.
   if (!debug_info.dex_files.empty() && builder->GetDex()->Exists()) {
     auto dex = builder->GetDex();
     for (auto it : debug_info.dex_files) {
@@ -109,33 +109,6 @@ static void WriteDebugSymbols(linker::ElfBuilder<ElfTypes>* builder,
       const DexFile* dex_file = it.second;
       typename ElfTypes::Word dex_name = strtab->Write(kDexFileSymbolName);
       symtab->Add(dex_name, dex, dex_address, dex_file->Size(), STB_GLOBAL, STT_FUNC);
-      if (mini_debug_info) {
-        continue;  // Don't add interpreter method names to mini-debug-info for now.
-      }
-      for (uint32_t i = 0; i < dex_file->NumClassDefs(); ++i) {
-        const DexFile::ClassDef& class_def = dex_file->GetClassDef(i);
-        const uint8_t* class_data = dex_file->GetClassData(class_def);
-        if (class_data == nullptr) {
-          continue;
-        }
-        for (ClassDataItemIterator item(*dex_file, class_data); item.HasNext(); item.Next()) {
-          if (!item.IsAtMethod()) {
-            continue;
-          }
-          const DexFile::CodeItem* code_item = item.GetMethodCodeItem();
-          if (code_item == nullptr) {
-            continue;
-          }
-          CodeItemInstructionAccessor code(*dex_file, code_item);
-          DCHECK(code.HasCodeItem());
-          std::string name = dex_file->PrettyMethod(item.GetMemberIndex(), !mini_debug_info);
-          size_t name_offset = strtab->Write(name);
-          uint64_t offset = reinterpret_cast<const uint8_t*>(code.Insns()) - dex_file->Begin();
-          uint64_t address = dex_address + offset;
-          size_t size = code.InsnsSizeInCodeUnits() * sizeof(uint16_t);
-          symtab->Add(name_offset, dex, address, size, STB_GLOBAL, STT_FUNC);
-        }
-      }
     }
   }
   strtab->End();
