@@ -357,11 +357,12 @@ def run_tests(tests):
         while threading.active_count() > 2:
           time.sleep(0.1)
           return
+      # NB The order of components here should match the order of
+      # components in the regex parser in parse_test_name.
       test_name = 'test-art-'
       test_name += target + '-run-test-'
       test_name += run + '-'
       test_name += prebuild + '-'
-      test_name += cdex_level + '-'
       test_name += compiler + '-'
       test_name += relocate + '-'
       test_name += trace + '-'
@@ -371,6 +372,7 @@ def run_tests(tests):
       test_name += pictest + '-'
       test_name += debuggable + '-'
       test_name += jvmti + '-'
+      test_name += cdex_level + '-'
       test_name += test
       test_name += address_size
 
