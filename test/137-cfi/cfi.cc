@@ -130,6 +130,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindInProcess(
       "Java_Main_unwindInProcess",                   // This function.
       "Main.unwindInProcess",                        // The corresponding Java native method frame.
       "java.util.Arrays.binarySearch0",              // Framework method.
+      "Base.runBase",                                // Method in other dex file.
       "Main.main"                                    // The Java entry method.
   };
 
@@ -230,6 +231,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindOtherProcess(
                                                      // resolved, so don't look for it right now.
         "Main.sleep",                                // The corresponding Java native method frame.
         "java.util.Arrays.binarySearch0",            // Framework method.
+        "Base.runBase",                              // Method in other dex file.
         "Main.main"                                  // The Java entry method.
     };
 
