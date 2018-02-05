@@ -37,6 +37,12 @@ public class Main {
       doThrow(par);
   }
 
+  static private void checkNotNullSplitAlt(Object obj, String par) {
+    if (obj != null)
+      return;
+    doThrow(par);
+  }
+
   //
   // Various ways of enforcing non-null parameter.
   // In all cases, par should be subject to code sinking.
@@ -174,6 +180,60 @@ public class Main {
   }
 
   //
+  // Various ways of exploiting non-null parameter.
+  // In all cases, implicit null checks are redundant.
+  //
+
+  /// CHECK-START: int Main.deleteNullCheck(int[]) dead_code_elimination$after_inlining (before)
+  /// CHECK:   <<Par:l\d+>>   ParameterValue
+  /// CHECK:   <<Zero:i\d+>>  IntConstant 0
+  /// CHECK:   <<Null:l\d+>>  NullCheck [<<Par>>]
+  /// CHECK:   <<Len:i\d+>>   ArrayLength [<<Null>>]
+  /// CHECK:   <<Check:i\d+>> BoundsCheck [<<Zero>>,<<Len>>]
+  /// CHECK:   <<Get:i\d+>>   ArrayGet [<<Null>>,<<Check>>]
+  /// CHECK:                  Return [<<Get>>]
+  //
+  /// CHECK-START: int Main.deleteNullCheck(int[]) dead_code_elimination$after_inlining (after)
+  /// CHECK:   <<Par:l\d+>>   ParameterValue
+  /// CHECK:   <<Zero:i\d+>>  IntConstant 0
+  /// CHECK:   <<BT:l\d+>>    BoundType [<<Par>>]
+  /// CHECK:   <<Len:i\d+>>   ArrayLength [<<BT>>]
+  /// CHECK:   <<Check:i\d+>> BoundsCheck [<<Zero>>,<<Len>>]
+  /// CHECK:   <<Get:i\d+>>   ArrayGet [<<BT>>,<<Check>>]
+  /// CHECK:                  Return [<<Get>>]
+  //
+  /// CHECK-START: int Main.deleteNullCheck(int[]) dead_code_elimination$after_inlining (after)
+  /// CHECK-NOT:              NullCheck
+  static public int deleteNullCheck(int[] a) {
+    checkNotNullSplit(a, "a");
+    return a[0];
+  }
+
+  /// CHECK-START: int Main.deleteNullCheckAlt(int[]) dead_code_elimination$after_inlining (before)
+  /// CHECK:     NullCheck
+  //
+  /// CHECK-START: int Main.deleteNullCheckAlt(int[]) dead_code_elimination$after_inlining (after)
+  /// CHECK-NOT: NullCheck
+  static public int deleteNullCheckAlt(int[] a) {
+    checkNotNullSplitAlt(a, "a");
+    return a[0];
+  }
+
+  /// CHECK-START: int Main.deleteNullChecks3(int[], int[], int[]) dead_code_elimination$after_inlining (before)
+  /// CHECK:     NullCheck
+  /// CHECK:     NullCheck
+  /// CHECK:     NullCheck
+  //
+  /// CHECK-START: int Main.deleteNullChecks3(int[], int[], int[]) dead_code_elimination$after_inlining (after)
+  /// CHECK-NOT: NullCheck
+  static public int deleteNullChecks3(int[] a, int[] b, int[] c) {
+    checkNotNullSplit(a, "a");
+    checkNotNullSplit(b, "b");
+    checkNotNullSplit(c, "c");
+    return a[0] + b[0] + c[0];
+  }
+
+  //
   // Test driver.
   //
 
@@ -231,6 +291,18 @@ public class Main {
     }
     for (int i = 0; i < 100; i++) {
       expectEquals(5, a[i]);
+    }
+
+    int[] x = { 11 } ;
+    expectEquals(11, deleteNullCheck(x));
+    int[] y = { 55 } ;
+    int[] z = { 22 } ;
+    expectEquals(88, deleteNullChecks3(x, y, z));
+
+    try {
+      deleteNullCheck(null);
+      System.out.println("should not reach this!");
+    } catch (Error e) {
     }
 
     System.out.println("passed");
