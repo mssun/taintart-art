@@ -528,6 +528,14 @@ class Runtime {
     return do_hidden_api_checks_;
   }
 
+  void SetUseHiddenApiWarningFlag(bool value) {
+    use_hidden_api_warning_flag_ = value;
+  }
+
+  bool ShouldSetHiddenApiWarningFlag() const {
+    return use_hidden_api_warning_flag_;
+  }
+
   void SetPendingHiddenApiWarning(bool value) {
     pending_hidden_api_warning_ = value;
   }
@@ -991,6 +999,9 @@ class Runtime {
 
   // Whether access checks on hidden API should be performed.
   bool do_hidden_api_checks_;
+
+  // Whether hidden API UI warning flag should be set or not.
+  bool use_hidden_api_warning_flag_;
 
   // Whether the application has used an API which is not restricted but we
   // should issue a warning about it.

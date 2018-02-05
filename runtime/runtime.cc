@@ -266,6 +266,7 @@ Runtime::Runtime()
       is_low_memory_mode_(false),
       safe_mode_(false),
       do_hidden_api_checks_(true),
+      use_hidden_api_warning_flag_(true),
       pending_hidden_api_warning_(false),
       dedupe_hidden_api_warnings_(true),
       always_set_hidden_api_warning_flag_(false),

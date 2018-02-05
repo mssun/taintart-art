@@ -348,7 +348,12 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
 
   DCHECK(!is_system_server || !do_hidden_api_checks)
       << "SystemServer should be forked with DISABLE_HIDDEN_API_CHECKS";
-  Runtime::Current()->SetHiddenApiChecksEnabled(do_hidden_api_checks);
+
+  // Skip checks only if this is the system server. Show UI warnings if not
+  // exempt from hidden API checks. This is a temporary configuration for
+  // dogfood builds.
+  Runtime::Current()->SetHiddenApiChecksEnabled(!is_system_server);
+  Runtime::Current()->SetUseHiddenApiWarningFlag(do_hidden_api_checks);
 
   // Clear the hidden API warning flag, in case it was set.
   Runtime::Current()->SetPendingHiddenApiWarning(false);
