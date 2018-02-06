@@ -44,6 +44,11 @@ class CompactDexWriter : public DexWriter {
     // Returns the offset of the deduplicated data or kDidNotDedupe did deduplication did not occur.
     uint32_t Dedupe(uint32_t data_start, uint32_t data_end, uint32_t item_offset);
 
+    // Clear dedupe state to prevent deduplication against existing items in the future.
+    void Clear() {
+      dedupe_map_.clear();
+    }
+
    private:
     class HashedMemoryRange {
      public:

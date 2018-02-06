@@ -221,6 +221,12 @@ static const char kDuplicateCodeItemInputDex[] =
     "AHAAAAACAAAAAwAAAIwAAAADAAAAAQAAAJgAAAAFAAAABAAAAKQAAAAGAAAAAQAAAMQAAAABIAAA"
     "AwAAAOQAAAACIAAABwAAACQBAAADIAAAAwAAAFYBAAAAIAAAAQAAAGUBAAAAEAAAAQAAAHgBAAA=";
 
+// Returns the default compact dex option for dexlayout based on kDefaultCompactDexLevel.
+static std::vector<std::string> DefaultCompactDexOption() {
+  return (kDefaultCompactDexLevel == CompactDexLevel::kCompactDexLevelFast) ?
+      std::vector<std::string>{"-x", "fast"} : std::vector<std::string>{"-x", "none"};
+}
+
 static void WriteBase64ToFile(const char* base64, File* file) {
   // Decode base64.
   CHECK(base64 != nullptr);
@@ -289,7 +295,7 @@ class DexLayoutTest : public CommonRuntimeTest {
     for (const std::string &dex_file : GetLibCoreDexFileNames()) {
       std::vector<std::string> dexlayout_args =
           { "-w", tmp_dir, "-o", tmp_name, dex_file };
-      if (!DexLayoutExec(dexlayout_args, error_msg)) {
+      if (!DexLayoutExec(dexlayout_args, error_msg, /*pass_default_cdex_option*/ false)) {
         return false;
       }
       size_t dex_file_last_slash = dex_file.rfind('/');
@@ -467,7 +473,7 @@ class DexLayoutTest : public CommonRuntimeTest {
     // -v makes sure that the layout did not corrupt the dex file.
     std::vector<std::string> dexlayout_args =
         { "-i", "-v", "-w", tmp_dir, "-o", tmp_name, "-p", profile_file, dex_file };
-    if (!DexLayoutExec(dexlayout_args, error_msg)) {
+    if (!DexLayoutExec(dexlayout_args, error_msg, /*pass_default_cdex_option*/ false)) {
       return false;
     }
 
@@ -479,7 +485,7 @@ class DexLayoutTest : public CommonRuntimeTest {
     // -i since the checksum won't match from the first layout.
     std::vector<std::string> second_dexlayout_args =
         { "-i", "-v", "-w", tmp_dir, "-o", tmp_name, "-p", profile_file, output_dex };
-    if (!DexLayoutExec(second_dexlayout_args, error_msg)) {
+    if (!DexLayoutExec(second_dexlayout_args, error_msg, /*pass_default_cdex_option*/ false)) {
       return false;
     }
 
@@ -512,7 +518,7 @@ class DexLayoutTest : public CommonRuntimeTest {
     std::string output_dex = tmp_dir + "classes.dex.new";
 
     std::vector<std::string> dexlayout_args = { "-w", tmp_dir, "-o", "/dev/null", input_dex };
-    if (!DexLayoutExec(dexlayout_args, error_msg)) {
+    if (!DexLayoutExec(dexlayout_args, error_msg, /*pass_default_cdex_option*/ false)) {
       return false;
     }
 
@@ -550,12 +556,18 @@ class DexLayoutTest : public CommonRuntimeTest {
     return true;
   }
 
-  bool DexLayoutExec(const std::vector<std::string>& dexlayout_args, std::string* error_msg) {
+  bool DexLayoutExec(const std::vector<std::string>& dexlayout_args,
+                     std::string* error_msg,
+                     bool pass_default_cdex_option = true) {
     std::vector<std::string> argv;
 
     std::string dexlayout = GetDexLayoutPath();
     CHECK(OS::FileExists(dexlayout.c_str())) << dexlayout << " should be a valid file path";
     argv.push_back(dexlayout);
+    if (pass_default_cdex_option) {
+      std::vector<std::string> cdex_level = DefaultCompactDexOption();
+      argv.insert(argv.end(), cdex_level.begin(), cdex_level.end());
+    }
 
     argv.insert(argv.end(), dexlayout_args.begin(), dexlayout_args.end());
 
@@ -730,11 +742,33 @@ TEST_F(DexLayoutTest, CodeItemOverrun) {
     CHECK(mutated_successfully)
         << "Failed to find candidate code item with only one code unit in last instruction.";
   });
-  std::vector<std::string> dexlayout_args = { "-i", "-o", "/dev/null", temp_dex.GetFilename() };
+
+  std::string error_msg;
+
+  ScratchFile tmp_file;
+  const std::string& tmp_name = tmp_file.GetFilename();
+  size_t tmp_last_slash = tmp_name.rfind('/');
+  std::string tmp_dir = tmp_name.substr(0, tmp_last_slash + 1);
+  ScratchFile profile_file;
+
+  std::vector<std::string> dexlayout_args =
+      { "-i",
+        "-v",
+        "-w", tmp_dir,
+        "-o", tmp_name,
+        "-p", profile_file.GetFilename(),
+        temp_dex.GetFilename()
+      };
+  // -v makes sure that the layout did not corrupt the dex file.
   ASSERT_TRUE(DexLayoutExec(&temp_dex,
                             /*dex_filename*/ nullptr,
-                            nullptr /* profile_file */,
+                            &profile_file,
                             dexlayout_args));
+
+  std::string output_dex = temp_dex.GetFilename() + ".new";
+  std::vector<std::string> rm_exec_argv =
+      { "/bin/rm", output_dex };
+  ASSERT_TRUE(::art::Exec(rm_exec_argv, &error_msg));
 }
 
 // Test that link data is written out (or at least the header is updated).
