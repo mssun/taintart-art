@@ -85,7 +85,6 @@ struct WellKnownClasses {
   static jclass java_lang_Throwable;
   static jclass java_util_ArrayList;
   static jclass java_util_Collections;
-  static jclass java_nio_ByteBuffer;
   static jclass java_nio_DirectByteBuffer;
   static jclass libcore_reflect_AnnotationFactory;
   static jclass libcore_reflect_AnnotationMember;
@@ -154,14 +153,8 @@ struct WellKnownClasses {
   static jfieldID java_lang_Throwable_stackTrace;
   static jfieldID java_lang_Throwable_stackState;
   static jfieldID java_lang_Throwable_suppressedExceptions;
-  static jfieldID java_nio_ByteBuffer_address;
-  static jfieldID java_nio_ByteBuffer_hb;
-  static jfieldID java_nio_ByteBuffer_isReadOnly;
-  static jfieldID java_nio_ByteBuffer_limit;
-  static jfieldID java_nio_ByteBuffer_offset;
   static jfieldID java_nio_DirectByteBuffer_capacity;
   static jfieldID java_nio_DirectByteBuffer_effectiveDirectAddress;
-
   static jfieldID java_util_ArrayList_array;
   static jfieldID java_util_ArrayList_size;
   static jfieldID java_util_Collections_EMPTY_LIST;
