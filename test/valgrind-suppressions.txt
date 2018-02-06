@@ -75,3 +75,13 @@
    process_vm_readv(lvec[...])
    fun:process_vm_readv
 }
+
+# Suppressions for IsAddressMapped check in MemMapTest
+{
+   MemMapTest_IsAddressMapped
+   Memcheck:Param
+   msync(start)
+   ...
+   fun:_ZN3art10MemMapTest15IsAddressMappedEPv
+   ...
+}
