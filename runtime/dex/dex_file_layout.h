@@ -83,7 +83,7 @@ class DexLayoutSection {
     }
 
     void CombineSection(uint32_t start_offset, uint32_t end_offset) {
-      DCHECK_LT(start_offset, end_offset);
+      DCHECK_LE(start_offset, end_offset);
       if (start_offset_ == end_offset_) {
         start_offset_ = start_offset;
         end_offset_ = end_offset;
