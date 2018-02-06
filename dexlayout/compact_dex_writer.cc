@@ -162,11 +162,18 @@ void CompactDexWriter::WriteCodeItem(Stream* stream,
 
   static constexpr size_t kPayloadInstructionRequiredAlignment = 4;
   const uint32_t current_code_item_start = stream->Tell() + preheader_bytes;
-  if (!IsAlignedParam(current_code_item_start, kPayloadInstructionRequiredAlignment)) {
+  if (!IsAlignedParam(current_code_item_start, kPayloadInstructionRequiredAlignment) ||
+      kIsDebugBuild) {
     // If the preheader is going to make the code unaligned, consider adding 2 bytes of padding
     // before if required.
-    for (const DexInstructionPcPair& instruction : code_item->Instructions()) {
-      const Instruction::Code opcode = instruction->Opcode();
+    IterationRange<DexInstructionIterator> instructions = code_item->Instructions();
+    SafeDexInstructionIterator it(instructions.begin(), instructions.end());
+    for (; !it.IsErrorState() && it < instructions.end(); ++it) {
+      // In case the instruction goes past the end of the code item, make sure to not process it.
+      if (std::next(it).IsErrorState()) {
+        break;
+      }
+      const Instruction::Code opcode = it->Opcode();
       // Payload instructions possibly require special alignment for their data.
       if (opcode == Instruction::FILL_ARRAY_DATA ||
           opcode == Instruction::PACKED_SWITCH ||
