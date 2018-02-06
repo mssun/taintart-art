@@ -340,6 +340,10 @@ class OatWriter {
 
   bool MayHaveCompiledMethods() const;
 
+  bool VdexWillContainDexFiles() const {
+    return dex_files_ != nullptr && !only_contains_uncompressed_zip_entries_;
+  }
+
   // Find the address of the GcRoot<String> in the InternTable for a boot image string.
   const uint8_t* LookupBootImageInternTableSlot(const DexFile& dex_file,
                                                 dex::StringIndex string_idx);
