@@ -83,7 +83,7 @@ static bool CheckStack(Backtrace* bt, const std::vector<std::string>& seq) {
   printf("Cannot find %s in backtrace:\n", seq[cur_search_index].c_str());
   for (Backtrace::const_iterator it = bt->begin(); it != bt->end(); ++it) {
     if (BacktraceMap::IsValid(it->map)) {
-      printf("  %s\n", it->func_name.c_str());
+      printf("  %s\n", Backtrace::FormatFrameData(&*it).c_str());
     }
   }
 
