@@ -130,10 +130,8 @@ bool PerformConversions(Thread* self,
 // arguments while performing standard argument conversions.
 class ShadowFrameGetter {
  public:
-  ShadowFrameGetter(const ShadowFrame& shadow_frame,
-                    const InstructionOperands* const operands,
-                    size_t operand_index = 0u)
-      : shadow_frame_(shadow_frame), operands_(operands), operand_index_(operand_index)  {}
+  ShadowFrameGetter(const InstructionOperands* const operands, const ShadowFrame& shadow_frame)
+      : operands_(operands), operand_index_(0), shadow_frame_(shadow_frame) {}
 
   ALWAYS_INLINE uint32_t Get() REQUIRES_SHARED(Locks::mutator_lock_) {
     return shadow_frame_.GetVReg(Next());
@@ -153,24 +151,26 @@ class ShadowFrameGetter {
     operand_index_ += 1;
     return next;
   }
-
   uint32_t NextLong() {
     const uint32_t next = operands_->GetOperand(operand_index_);
     operand_index_ += 2;
     return next;
   }
 
-  const ShadowFrame& shadow_frame_;
-  const InstructionOperands* const operands_;  // the set of register operands to read
+  const InstructionOperands* const operands_;
   size_t operand_index_;  // the next register operand to read from frame
+  const ShadowFrame& shadow_frame_;
 };
 
 // A convenience class that allows values to be written to a given shadow frame,
 // starting at location |first_dst_reg|.
 class ShadowFrameSetter {
  public:
-  ShadowFrameSetter(ShadowFrame* shadow_frame, size_t first_dst_reg)
-      : shadow_frame_(shadow_frame), arg_index_(first_dst_reg) {}
+  ShadowFrameSetter(ShadowFrame* shadow_frame,
+                    size_t first_dst_reg) :
+    shadow_frame_(shadow_frame),
+    arg_index_(first_dst_reg) {
+  }
 
   ALWAYS_INLINE void Set(uint32_t value) REQUIRES_SHARED(Locks::mutator_lock_) {
     shadow_frame_->SetVReg(arg_index_++, value);
