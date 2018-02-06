@@ -20,7 +20,7 @@ import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.Comparator;
 
-public class Main implements Comparator<Main> {
+public class Main extends Base implements Comparator<Main> {
   // Whether to test local unwinding.
   private boolean testLocal;
 
@@ -57,10 +57,10 @@ public class Main implements Comparator<Main> {
   }
 
   public static void main(String[] args) throws Exception {
-      new Main(args).run();
+      new Main(args).runBase();
   }
 
-  private void run() {
+  public void runImpl() {
       if (secondary) {
           if (!testRemote) {
               throw new RuntimeException("Should not be running secondary!");
