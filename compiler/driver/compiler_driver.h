@@ -165,6 +165,7 @@ class CompilerDriver {
   void AddCompiledMethod(const MethodReference& method_ref,
                          CompiledMethod* const compiled_method,
                          size_t non_relative_linker_patch_count);
+  CompiledMethod* RemoveCompiledMethod(const MethodReference& method_ref);
 
   void SetRequiresConstructorBarrier(Thread* self,
                                      const DexFile* dex_file,
