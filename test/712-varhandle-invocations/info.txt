@@ -1,1 +1,0 @@
-Generates and runs tests that invoke VarHandle accessor methods.
