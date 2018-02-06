@@ -1176,14 +1176,20 @@ static void dumpBytecodes(const DexFile* pDexFile, u4 idx,
 
   // Iterate over all instructions.
   CodeItemDataAccessor accessor(*pDexFile, pCode);
+  const u4 maxPc = accessor.InsnsSizeInCodeUnits();
   for (const DexInstructionPcPair& pair : accessor) {
+    const u4 dexPc = pair.DexPc();
+    if (dexPc >= maxPc) {
+      LOG(WARNING) << "GLITCH: run-away instruction at idx=0x" << std::hex << dexPc;
+      break;
+    }
     const Instruction* instruction = &pair.Inst();
     const u4 insnWidth = instruction->SizeInCodeUnits();
     if (insnWidth == 0) {
-      LOG(WARNING) << "GLITCH: zero-width instruction at idx=0x" << std::hex << pair.DexPc();
+      LOG(WARNING) << "GLITCH: zero-width instruction at idx=0x" << std::hex << dexPc;
       break;
     }
-    dumpInstruction(pDexFile, pCode, codeOffset, pair.DexPc(), insnWidth, instruction);
+    dumpInstruction(pDexFile, pCode, codeOffset, dexPc, insnWidth, instruction);
   }  // for
 }
 
