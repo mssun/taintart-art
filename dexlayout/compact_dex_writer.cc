@@ -460,6 +460,11 @@ void CompactDexWriter::Write(DexContainer* output)  {
     // Rewrite the header with the calculated checksum.
     WriteHeader(main_stream);
   }
+
+  // Clear the dedupe to prevent interdex code item deduping. This does not currently work well with
+  // dex2oat's class unloading. The issue is that verification encounters quickened opcodes after
+  // the first dex gets unloaded.
+  code_item_dedupe_->Clear();
 }
 
 std::unique_ptr<DexContainer> CompactDexWriter::CreateDexContainer() const {
