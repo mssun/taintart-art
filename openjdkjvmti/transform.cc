@@ -128,6 +128,11 @@ class TransformationFaultHandler FINAL : public art::FaultHandler {
       }
     }
 
+    if (LIKELY(self != nullptr)) {
+      CHECK_EQ(self->GetState(), art::ThreadState::kNative)
+          << "Transformation fault handler occurred outside of native mode";
+    }
+
     VLOG(signals) << "Lazy initialization of dex file for transformation of " << res->GetName()
                   << " during SEGV";
     res->InitializeMemory();
@@ -250,6 +255,10 @@ void Transformer::TransformSingleClassDirect(EventHandler* event_handler,
   static_assert(kEvent == ArtJvmtiEvent::kClassFileLoadHookNonRetransformable ||
                 kEvent == ArtJvmtiEvent::kClassFileLoadHookRetransformable,
                 "bad event type");
+  // We don't want to do transitions between calling the event and setting the new data so change to
+  // native state early. This also avoids any problems that the FaultHandler might have in
+  // determining if an access to the dex_data is from generated code or not.
+  art::ScopedThreadStateChange stsc(self, art::ThreadState::kNative);
   ScopedDefinitionHandler handler(def);
   jint new_len = -1;
   unsigned char* new_data = nullptr;
