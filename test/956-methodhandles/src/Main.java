@@ -22,6 +22,7 @@ import java.lang.invoke.MethodType;
 import java.lang.invoke.WrongMethodTypeException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -79,6 +80,7 @@ public class Main {
     testVariableArity();
     testVariableArity_MethodHandles_bind();
     testRevealDirect();
+    testReflectiveCalls();
   }
 
   public static void testfindSpecial_invokeSuperBehaviour() throws Throwable {
@@ -1623,5 +1625,21 @@ public class Main {
     assertEquals(MethodHandleInfo.REF_getField, info.getReferenceKind());
     assertEquals(field, info.reflectAs(Field.class, MethodHandles.lookup()));
     assertEquals(MethodType.methodType(String.class), info.getMethodType());
+  }
+
+  public static void testReflectiveCalls() throws Throwable {
+    String[] methodNames = { "invoke", "invokeExact" };
+    for (String methodName : methodNames) {
+      Method invokeMethod = MethodHandle.class.getMethod(methodName, Object[].class);
+      MethodHandle instance =
+          MethodHandles.lookup().findVirtual(java.io.PrintStream.class, "println",
+                                             MethodType.methodType(void.class, String.class));
+      try {
+        invokeMethod.invoke(instance, new Object[] { new Object[] { Integer.valueOf(1) } } );
+        fail();
+      } catch (InvocationTargetException ite) {
+        assertEquals(ite.getCause().getClass(), UnsupportedOperationException.class);
+      }
+    }
   }
 }
