@@ -15,18 +15,14 @@
  */
 
 #include <vector>
-#include <sys/mman.h>
 
 #include "base/logging.h"
 #include "dex/compact_dex_debug_info.h"
 #include "gtest/gtest.h"
-#include "mem_map.h"
 
 namespace art {
 
 TEST(CompactDexDebugInfoTest, TestBuildAndAccess) {
-  MemMap::Init();
-
   const size_t kDebugInfoMinOffset = 1234567;
   std::vector<uint32_t> offsets = {
       0, 17, 2, 3, 11, 0, 0, 0, 0, 1, 0, 1552, 100, 122, 44, 1234567, 0, 0,
@@ -58,17 +54,10 @@ TEST(CompactDexDebugInfoTest, TestBuildAndAccess) {
   std::string error_msg;
   // Leave some extra room since we don't copy the table at the start (for testing).
   constexpr size_t kExtraOffset = 4 * 128;
-  std::unique_ptr<MemMap> fake_dex(MemMap::MapAnonymous("fake dex",
-                                                        nullptr,
-                                                        data.size() + kExtraOffset,
-                                                        PROT_READ | PROT_WRITE,
-                                                        /*low_4gb*/ false,
-                                                        /*reuse*/ false,
-                                                        &error_msg));
-  ASSERT_TRUE(fake_dex != nullptr) << error_msg;
-  std::copy(data.begin(), data.end(), fake_dex->Begin() + kExtraOffset);
+  std::vector<uint8_t> fake_dex(data.size() + kExtraOffset);
+  std::copy(data.begin(), data.end(), fake_dex.data() + kExtraOffset);
 
-  CompactDexDebugInfoOffsetTable::Accessor accessor(fake_dex->Begin() + kExtraOffset,
+  CompactDexDebugInfoOffsetTable::Accessor accessor(fake_dex.data() + kExtraOffset,
                                                     base_offset,
                                                     table_offset);
   for (size_t i = 0; i < offsets.size(); ++i) {
