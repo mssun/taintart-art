@@ -882,6 +882,7 @@ class LSEVisitor : public HGraphDelegateVisitor {
     }
     if (ref_info->IsSingletonAndRemovable() && !new_instance->NeedsChecks()) {
       DCHECK(!new_instance->IsFinalizable());
+      // new_instance can potentially be eliminated.
       singleton_new_instances_.push_back(new_instance);
     }
     ScopedArenaVector<HInstruction*>& heap_values =
@@ -904,7 +905,13 @@ class LSEVisitor : public HGraphDelegateVisitor {
       return;
     }
     if (ref_info->IsSingletonAndRemovable()) {
-      singleton_new_instances_.push_back(new_array);
+      if (new_array->GetLength()->IsIntConstant() &&
+          new_array->GetLength()->AsIntConstant()->GetValue() >= 0) {
+        // new_array can potentially be eliminated.
+        singleton_new_instances_.push_back(new_array);
+      } else {
+        // new_array may throw NegativeArraySizeException. Keep it.
+      }
     }
     ScopedArenaVector<HInstruction*>& heap_values =
         heap_values_for_[new_array->GetBlock()->GetBlockId()];

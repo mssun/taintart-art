@@ -1052,6 +1052,23 @@ public class Main {
     return array[1] + array[i];
   }
 
+  /// CHECK-START: int Main.testAllocationEliminationOfArray5(int) load_store_elimination (before)
+  /// CHECK: NewArray
+  /// CHECK: ArraySet
+  /// CHECK: ArrayGet
+
+  /// CHECK-START: int Main.testAllocationEliminationOfArray5(int) load_store_elimination (after)
+  /// CHECK: NewArray
+  /// CHECK-NOT: ArraySet
+  /// CHECK-NOT: ArrayGet
+  private static int testAllocationEliminationOfArray5(int i) {
+    // Cannot eliminate array allocation due to unknown i that may
+    // cause NegativeArraySizeException.
+    int[] array = new int[i];
+    array[1] = 12;
+    return array[1];
+  }
+
   /// CHECK-START: int Main.testExitMerge(boolean) load_store_elimination (before)
   /// CHECK: NewInstance
   /// CHECK: InstanceFieldSet
@@ -1205,6 +1222,12 @@ public class Main {
     assertIntEquals(testAllocationEliminationOfArray2(), 11);
     assertIntEquals(testAllocationEliminationOfArray3(2), 4);
     assertIntEquals(testAllocationEliminationOfArray4(2), 6);
+    assertIntEquals(testAllocationEliminationOfArray5(2), 12);
+    try {
+      testAllocationEliminationOfArray5(-2);
+    } catch (NegativeArraySizeException e) {
+      System.out.println("Got NegativeArraySizeException.");
+    }
 
     assertIntEquals(testStoreStore().i, 41);
     assertIntEquals(testStoreStore().j, 43);
