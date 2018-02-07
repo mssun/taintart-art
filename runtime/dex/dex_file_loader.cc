@@ -319,7 +319,7 @@ std::unique_ptr<DexFile> DexFileLoader::OpenCommon(const uint8_t* base,
     *verify_result = VerifyResult::kVerifyNotAttempted;
   }
   std::unique_ptr<DexFile> dex_file;
-  if (StandardDexFile::IsMagicValid(base)) {
+  if (size >= sizeof(StandardDexFile::Header) && StandardDexFile::IsMagicValid(base)) {
     if (data_size != 0) {
       CHECK_EQ(base, data_base) << "Unsupported for standard dex";
     }
@@ -329,7 +329,7 @@ std::unique_ptr<DexFile> DexFileLoader::OpenCommon(const uint8_t* base,
                                        location_checksum,
                                        oat_dex_file,
                                        container));
-  } else if (CompactDexFile::IsMagicValid(base)) {
+  } else if (size >= sizeof(CompactDexFile::Header) && CompactDexFile::IsMagicValid(base)) {
     if (data_base == nullptr) {
       // TODO: Is there a clean way to support both an explicit data section and reading the one
       // from the header.
@@ -346,6 +346,8 @@ std::unique_ptr<DexFile> DexFileLoader::OpenCommon(const uint8_t* base,
                                       location_checksum,
                                       oat_dex_file,
                                       container));
+  } else {
+    *error_msg = "Invalid or truncated dex file";
   }
   if (dex_file == nullptr) {
     *error_msg = StringPrintf("Failed to open dex file '%s' from memory: %s", location.c_str(),
