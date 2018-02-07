@@ -106,8 +106,7 @@ inline bool ShouldBlockAccessToMember(T* member,
           member->GetAccessFlags(), HiddenApiAccessFlags::kWhitelist));
     }
     WarnAboutMemberAccess(member);
-    if ((action == kAllowButWarnAndToast && runtime->ShouldSetHiddenApiWarningFlag()) ||
-        runtime->ShouldAlwaysSetHiddenApiWarningFlag()) {
+    if (action == kAllowButWarnAndToast || runtime->ShouldAlwaysSetHiddenApiWarningFlag()) {
       Runtime::Current()->SetPendingHiddenApiWarning(true);
     }
     return false;
