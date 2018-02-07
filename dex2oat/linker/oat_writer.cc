@@ -3597,17 +3597,21 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
   options.compact_dex_level_ = compact_dex_level_;
   options.update_checksum_ = true;
   DexLayout dex_layout(options, profile_compilation_info_, /*file*/ nullptr, /*header*/ nullptr);
-  dex_layout.ProcessDexFile(location.c_str(), dex_file.get(), 0, &dex_container_);
-  oat_dex_file->dex_sections_layout_ = dex_layout.GetSections();
-  // Dex layout can affect the size of the dex file, so we update here what we have set
-  // when adding the dex file as a source.
-  const UnalignedDexFileHeader* header =
-      AsUnalignedDexFileHeader(dex_container_->GetMainSection()->Begin());
-  oat_dex_file->dex_file_size_ = header->file_size_;
-  if (!WriteDexFile(out,
-                    oat_dex_file,
-                    dex_container_->GetMainSection()->Begin(),
-                    /* update_input_vdex */ false)) {
+  const uint8_t* dex_src = nullptr;
+  if (dex_layout.ProcessDexFile(location.c_str(), dex_file.get(), 0, &dex_container_, &error_msg)) {
+    oat_dex_file->dex_sections_layout_ = dex_layout.GetSections();
+    // Dex layout can affect the size of the dex file, so we update here what we have set
+    // when adding the dex file as a source.
+    const UnalignedDexFileHeader* header =
+        AsUnalignedDexFileHeader(dex_container_->GetMainSection()->Begin());
+    oat_dex_file->dex_file_size_ = header->file_size_;
+    dex_src = dex_container_->GetMainSection()->Begin();
+  } else {
+    LOG(WARNING) << "Failed to run dex layout, reason:" << error_msg;
+    // Since we failed to convert the dex, just copy the input dex.
+    dex_src = dex_file->Begin();
+  }
+  if (!WriteDexFile(out, oat_dex_file, dex_src, /* update_input_vdex */ false)) {
     return false;
   }
   if (dex_container_ != nullptr) {
