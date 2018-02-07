@@ -106,6 +106,12 @@ class ArrayRef {
     return *this = ArrayRef(other);
   }
 
+  template <typename U>
+  static ArrayRef Cast(const ArrayRef<U>& src) {
+    return ArrayRef(reinterpret_cast<const T*>(src.data()),
+                    src.size() * sizeof(T) / sizeof(U));
+  }
+
   // Destructor.
   ~ArrayRef() = default;
 

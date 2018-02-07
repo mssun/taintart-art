@@ -228,8 +228,7 @@ QuickenInfoOffsetTableAccessor VdexFile::GetQuickenInfoOffsetTable(
     const ArrayRef<const uint8_t>& quickening_info) const {
   // The offset a is in preheader right before the dex file.
   const uint32_t offset = GetQuickeningInfoTableOffset(source_dex_begin);
-  const uint8_t* data_ptr = quickening_info.data() + offset;
-  return QuickenInfoOffsetTableAccessor(data_ptr, num_method_ids);
+  return QuickenInfoOffsetTableAccessor(quickening_info.SubArray(offset), num_method_ids);
 }
 
 QuickenInfoOffsetTableAccessor VdexFile::GetQuickenInfoOffsetTable(
