@@ -294,6 +294,7 @@ art_cc_defaults {
         "936-search-onload/search_onload.cc",
         "983-source-transform-verify/source_transform.cc",
         "1940-ddms-ext/ddm_ext.cc",
+        "1944-sudden-exit/sudden_exit.cc",
     ],
 }
 
