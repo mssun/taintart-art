@@ -310,12 +310,10 @@ class DexLayoutTest : public CommonRuntimeTest {
       if (!::art::Exec(diff_exec_argv, error_msg)) {
         return false;
       }
-      std::vector<std::string> rm_zip_exec_argv = { "/bin/rm", tmp_dir + "classes.dex" };
-      if (!::art::Exec(rm_zip_exec_argv, error_msg)) {
+      if (!UnlinkFile(tmp_dir + "classes.dex")) {
         return false;
       }
-      std::vector<std::string> rm_out_exec_argv = { "/bin/rm", tmp_dir + dex_file_name };
-      if (!::art::Exec(rm_out_exec_argv, error_msg)) {
+      if (!UnlinkFile(tmp_dir + dex_file_name)) {
         return false;
       }
     }
@@ -432,10 +430,7 @@ class DexLayoutTest : public CommonRuntimeTest {
     }
 
     // -v makes sure that the layout did not corrupt the dex file.
-
-    std::vector<std::string> rm_exec_argv =
-        { "/bin/rm", dex_file, profile_file, output_dex };
-    if (!::art::Exec(rm_exec_argv, error_msg)) {
+    if (!UnlinkFile(dex_file) || !UnlinkFile(profile_file) || !UnlinkFile(output_dex)) {
       return false;
     }
     return true;
@@ -496,10 +491,11 @@ class DexLayoutTest : public CommonRuntimeTest {
       diff_result = false;
     }
 
-    std::vector<std::string> rm_exec_argv =
-        { "/bin/rm", dex_file, profile_file, output_dex, second_output_dex };
-    if (!::art::Exec(rm_exec_argv, error_msg)) {
-      return false;
+    std::vector<std::string> test_files = { dex_file, profile_file, output_dex, second_output_dex };
+    for (auto test_file : test_files) {
+      if (!UnlinkFile(test_file)) {
+        return false;
+      }
     }
 
     return diff_result;
@@ -528,9 +524,11 @@ class DexLayoutTest : public CommonRuntimeTest {
       return false;
     }
 
-    std::vector<std::string> rm_exec_argv = { "/bin/rm", input_dex, output_dex };
-    if (!::art::Exec(rm_exec_argv, error_msg)) {
-      return false;
+    std::vector<std::string> dex_files = { input_dex, output_dex };
+    for (auto dex_file : dex_files) {
+      if (!UnlinkFile(dex_file)) {
+        return false;
+      }
     }
     return true;
   }
@@ -572,6 +570,10 @@ class DexLayoutTest : public CommonRuntimeTest {
     argv.insert(argv.end(), dexlayout_args.begin(), dexlayout_args.end());
 
     return ::art::Exec(argv, error_msg);
+  }
+
+  bool UnlinkFile(const std::string& file_path) {
+    return unix_file::FdFile(file_path, 0, false).Unlink();
   }
 };
 
@@ -764,11 +766,7 @@ TEST_F(DexLayoutTest, CodeItemOverrun) {
                             /*dex_filename*/ nullptr,
                             &profile_file,
                             dexlayout_args));
-
-  std::string output_dex = temp_dex.GetFilename() + ".new";
-  std::vector<std::string> rm_exec_argv =
-      { "/bin/rm", output_dex };
-  ASSERT_TRUE(::art::Exec(rm_exec_argv, &error_msg));
+  ASSERT_TRUE(UnlinkFile(temp_dex.GetFilename() + ".new"));
 }
 
 // Test that link data is written out (or at least the header is updated).
@@ -806,11 +804,7 @@ TEST_F(DexLayoutTest, LinkData) {
                             /*dex_filename*/ nullptr,
                             &profile_file,
                             dexlayout_args));
-
-  std::string output_dex = temp_dex.GetFilename() + ".new";
-  std::vector<std::string> rm_exec_argv =
-      { "/bin/rm", output_dex };
-  ASSERT_TRUE(::art::Exec(rm_exec_argv, &error_msg));
+  ASSERT_TRUE(UnlinkFile(temp_dex.GetFilename() + ".new"));
 }
 
 TEST_F(DexLayoutTest, ClassFilter) {
