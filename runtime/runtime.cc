@@ -1172,11 +1172,15 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
 
   target_sdk_version_ = runtime_options.GetOrDefault(Opt::TargetSdkVersion);
 
-  // Check whether to enforce hidden API access checks. Zygote needs to be exempt
-  // but checks may be enabled for forked processes (see dalvik_system_ZygoteHooks).
-  if (is_zygote_ || runtime_options.Exists(Opt::NoHiddenApiChecks)) {
-    do_hidden_api_checks_ = false;
-  }
+  // Check whether to enforce hidden API access checks. The checks are disabled
+  // by default and we only enable them if:
+  // (a) runtime was started with a flag that enables the checks, or
+  // (b) Zygote forked a new process that is not exempt (see ZygoteHooks).
+  // TODO(dbrazdil): Turn the NoHiddenApiChecks negative flag into a positive one
+  // to clean up this logic.
+  do_hidden_api_checks_ = IsAotCompiler() && !runtime_options.Exists(Opt::NoHiddenApiChecks);
+  DCHECK(!is_zygote_ || !do_hidden_api_checks_)
+      << "Zygote should not be started with hidden API checks";
 
   no_sig_chain_ = runtime_options.Exists(Opt::NoSigChain);
   force_native_bridge_ = runtime_options.Exists(Opt::ForceNativeBridge);
