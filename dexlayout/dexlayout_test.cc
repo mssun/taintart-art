@@ -24,6 +24,7 @@
 #include "base/unix_file/fd_file.h"
 #include "common_runtime_test.h"
 #include "dex/art_dex_file_loader.h"
+#include "dex/base64_test_util.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"

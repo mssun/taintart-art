@@ -53,8 +53,6 @@ typedef std::vector<std::pair<std::string, const void*>> RuntimeOptions;
 class Thread;
 class VariableSizedHandleScope;
 
-uint8_t* DecodeBase64(const char* src, size_t* dst_size);
-
 class ScratchFile {
  public:
   ScratchFile();

@@ -16,15 +16,15 @@
 
 #include "utf.h"
 
-#include "common_runtime_test.h"
-#include "utf-inl.h"
-
 #include <map>
 #include <vector>
 
+#include "gtest/gtest.h"
+#include "utf-inl.h"
+
 namespace art {
 
-class UtfTest : public CommonRuntimeTest {};
+class UtfTest : public testing::Test {};
 
 TEST_F(UtfTest, GetLeadingUtf16Char) {
   EXPECT_EQ(0xffff, GetLeadingUtf16Char(0xeeeeffff));
