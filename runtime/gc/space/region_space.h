@@ -92,6 +92,13 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
   void Clear() OVERRIDE REQUIRES(!region_lock_);
 
+  // Change the non growth limit capacity to new capacity by shrinking or expanding the map.
+  // Currently, only shrinking is supported.
+  // Unlike implementations of this function in other spaces, we need to pass
+  // new capacity as argument here as region space doesn't have any notion of
+  // growth limit.
+  void ClampGrowthLimit(size_t new_capacity) REQUIRES(!region_lock_);
+
   void Dump(std::ostream& os) const;
   void DumpRegions(std::ostream& os) REQUIRES(!region_lock_);
   void DumpNonFreeRegions(std::ostream& os) REQUIRES(!region_lock_);
@@ -530,7 +537,7 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
   Mutex region_lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
 
   uint32_t time_;                  // The time as the number of collections since the startup.
-  const size_t num_regions_;       // The number of regions in this space.
+  size_t num_regions_;             // The number of regions in this space.
   // The number of non-free regions in this space.
   size_t num_non_free_regions_ GUARDED_BY(region_lock_);
 
