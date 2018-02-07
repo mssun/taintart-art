@@ -105,6 +105,7 @@
 #include "mirror/method_type.h"
 #include "mirror/stack_trace_element.h"
 #include "mirror/throwable.h"
+#include "mirror/var_handle.h"
 #include "monitor.h"
 #include "native/dalvik_system_DexFile.h"
 #include "native/dalvik_system_VMDebug.h"
@@ -1929,6 +1930,11 @@ void Runtime::VisitConstantRoots(RootVisitor* visitor) {
   mirror::EmulatedStackFrame::VisitRoots(visitor);
   mirror::ClassExt::VisitRoots(visitor);
   mirror::CallSite::VisitRoots(visitor);
+  mirror::VarHandle::VisitRoots(visitor);
+  mirror::FieldVarHandle::VisitRoots(visitor);
+  mirror::ArrayElementVarHandle::VisitRoots(visitor);
+  mirror::ByteArrayViewVarHandle::VisitRoots(visitor);
+  mirror::ByteBufferViewVarHandle::VisitRoots(visitor);
   // Visit all the primitive array types classes.
   mirror::PrimitiveArray<uint8_t>::VisitRoots(visitor);   // BooleanArray
   mirror::PrimitiveArray<int8_t>::VisitRoots(visitor);    // ByteArray
