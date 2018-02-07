@@ -392,10 +392,33 @@ ArtMethod* HInliner::TryCHADevirtualization(ArtMethod* resolved_method) {
   return single_impl;
 }
 
-static bool AlwaysThrows(ArtMethod* method)
+static bool IsMethodUnverified(CompilerDriver* const compiler_driver, ArtMethod* method)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  CodeItemDataAccessor accessor(method->DexInstructionData());
+  if (!method->GetDeclaringClass()->IsVerified()) {
+    if (Runtime::Current()->UseJitCompilation()) {
+      // We're at runtime, we know this is cold code if the class
+      // is not verified, so don't bother analyzing.
+      return true;
+    }
+    uint16_t class_def_idx = method->GetDeclaringClass()->GetDexClassDefIndex();
+    if (!compiler_driver->IsMethodVerifiedWithoutFailures(
+        method->GetDexMethodIndex(), class_def_idx, *method->GetDexFile())) {
+      // Method has soft or hard failures, don't analyze.
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool AlwaysThrows(CompilerDriver* const compiler_driver, ArtMethod* method)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  DCHECK(method != nullptr);
+  // Skip non-compilable and unverified methods.
+  if (!method->IsCompilable() || IsMethodUnverified(compiler_driver, method)) {
+    return false;
+  }
   // Skip native methods, methods with try blocks, and methods that are too large.
+  CodeItemDataAccessor accessor(method->DexInstructionData());
   if (!accessor.HasCodeItem() ||
       accessor.TriesSize() != 0 ||
       accessor.InsnsSizeInCodeUnits() > kMaximumNumberOfTotalInstructions) {
@@ -478,7 +501,7 @@ bool HInliner::TryInline(HInvoke* invoke_instruction) {
           MaybeRecordStat(stats_, MethodCompilationStat::kInlinedInvokeVirtualOrInterface);
         }
       }
-    } else if (!cha_devirtualize && AlwaysThrows(actual_method)) {
+    } else if (!cha_devirtualize && AlwaysThrows(compiler_driver_, actual_method)) {
       // Set always throws property for non-inlined method call with single target
       // (unless it was obtained through CHA, because that would imply we have
       // to add the CHA dependency, which seems not worth it).
@@ -1450,16 +1473,11 @@ bool HInliner::TryBuildAndInline(HInvoke* invoke_instruction,
         << " has soft failures un-handled by the compiler, so it cannot be inlined";
   }
 
-  if (!method->GetDeclaringClass()->IsVerified()) {
-    uint16_t class_def_idx = method->GetDeclaringClass()->GetDexClassDefIndex();
-    if (Runtime::Current()->UseJitCompilation() ||
-        !compiler_driver_->IsMethodVerifiedWithoutFailures(
-            method->GetDexMethodIndex(), class_def_idx, *method->GetDexFile())) {
-      LOG_FAIL(stats_, MethodCompilationStat::kNotInlinedNotVerified)
-          << "Method " << method->PrettyMethod()
-          << " couldn't be verified, so it cannot be inlined";
-      return false;
-    }
+  if (IsMethodUnverified(compiler_driver_, method)) {
+    LOG_FAIL(stats_, MethodCompilationStat::kNotInlinedNotVerified)
+        << "Method " << method->PrettyMethod()
+        << " couldn't be verified, so it cannot be inlined";
+    return false;
   }
 
   if (invoke_instruction->IsInvokeStaticOrDirect() &&
