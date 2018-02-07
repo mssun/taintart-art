@@ -1543,4 +1543,20 @@ TEST_F(Dex2oatTest, UncompressedTest) {
                       });
 }
 
+TEST_F(Dex2oatTest, EmptyUncompressedDexTest) {
+  std::string out_dir = GetScratchDir();
+  const std::string base_oat_name = out_dir + "/base.oat";
+  std::string error_msg;
+  int status = GenerateOdexForTestWithStatus(
+      { GetTestDexFileName("MainEmptyUncompressed") },
+      base_oat_name,
+      CompilerFilter::Filter::kQuicken,
+      &error_msg,
+      { },
+      /*use_fd*/ false);
+  // Expect to fail with code 1 and not SIGSEGV or SIGABRT.
+  ASSERT_TRUE(WIFEXITED(status));
+  ASSERT_EQ(WEXITSTATUS(status), 1) << error_msg;
+}
+
 }  // namespace art
