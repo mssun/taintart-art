@@ -1,12 +1,5 @@
 [
     {
-        "tests": [ "1939-proxy-frames", "1914-get-local-instance" ],
-        "description": ["Test 1939 & 1914 seems to consistently fail in gcstress on 64 bit with",
-                        "a proxy this object having no associated class!"],
-        "variant": "gcstress",
-        "bug": "http://b/67679263"
-    },
-    {
         "tests": "1934-jvmti-signal-thread",
         "description": ["Disables 1934-jvmti-signal-thread in tracing configurations"],
         "variant": "trace | stream",
