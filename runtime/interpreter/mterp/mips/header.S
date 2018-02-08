@@ -61,6 +61,8 @@
 
 /* single-purpose registers, given names for clarity */
 #define rPC s0
+#define CFI_DEX 16  // DWARF register number of the register holding dex-pc (s0).
+#define CFI_TMP 4   // DWARF register number of the first argument register (a0).
 #define rFP s1
 #define rSELF s2
 #define rIBASE s3

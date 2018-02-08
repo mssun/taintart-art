@@ -97,6 +97,8 @@ The following registers have fixed assignments:
 /* During bringup, we'll use the shadow frame model instead of rFP */
 /* single-purpose registers, given names for clarity */
 #define rPC      s0
+#define CFI_DEX  16  // DWARF register number of the register holding dex-pc (s0).
+#define CFI_TMP  4   // DWARF register number of the first argument register (a0).
 #define rFP      s1
 #define rSELF    s2
 #define rINST    s3
@@ -408,7 +410,7 @@ ExecuteMterpImpl:
     dlsa    rREFS, v0, rFP, 2
     lw      v0, SHADOWFRAME_DEX_PC_OFFSET(a2)
     dlsa    rPC, v0, a1, 1
-    .cfi_register DPC_PSEUDO_REG, rPC
+    CFI_DEFINE_DEX_PC_WITH_OFFSET(CFI_TMP, CFI_DEX, 0)
     EXPORT_PC
 
     /* Starting ibase */
