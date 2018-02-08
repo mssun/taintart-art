@@ -104,10 +104,13 @@ std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& origi
                               /*out_file*/ nullptr,
                               /*header*/ nullptr);
     std::unique_ptr<art::DexContainer> dex_container;
-    dex_layout.ProcessDexFile(original.GetLocation().c_str(),
-                              &original,
-                              0,
-                              &dex_container);
+    bool result = dex_layout.ProcessDexFile(
+        original.GetLocation().c_str(),
+        &original,
+        0,
+        &dex_container,
+        &error);
+    CHECK(result) << "Failed to generate dex file " << error;
     art::DexContainer::Section* main_section = dex_container->GetMainSection();
     CHECK_EQ(dex_container->GetDataSection()->Size(), 0u);
     data.insert(data.end(), main_section->Begin(), main_section->End());

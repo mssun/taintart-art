@@ -111,10 +111,11 @@ class DexLayout {
         header_(header) { }
 
   int ProcessFile(const char* file_name);
-  void ProcessDexFile(const char* file_name,
+  bool ProcessDexFile(const char* file_name,
                       const DexFile* dex_file,
                       size_t dex_file_index,
-                      std::unique_ptr<DexContainer>* dex_container);
+                      std::unique_ptr<DexContainer>* dex_container,
+                      std::string* error_msg);
 
   dex_ir::Header* GetHeader() const { return header_; }
   void SetHeader(dex_ir::Header* header) { header_ = header; }
@@ -168,9 +169,10 @@ class DexLayout {
   // Creates a new layout for the dex file based on profile info.
   // Currently reorders ClassDefs, ClassDataItems, and CodeItems.
   void LayoutOutputFile(const DexFile* dex_file);
-  void OutputDexFile(const DexFile* input_dex_file,
+  bool OutputDexFile(const DexFile* input_dex_file,
                      bool compute_offsets,
-                     std::unique_ptr<DexContainer>* dex_container);
+                     std::unique_ptr<DexContainer>* dex_container,
+                     std::string* error_msg);
 
   void DumpCFG(const DexFile* dex_file, int idx);
   void DumpCFG(const DexFile* dex_file, uint32_t dex_method_idx, const DexFile::CodeItem* code);
