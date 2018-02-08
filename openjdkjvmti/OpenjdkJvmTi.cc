@@ -73,10 +73,8 @@
 
 namespace openjdkjvmti {
 
-// NB These are heap allocated to avoid the static destructors being run if an agent calls exit(3).
-// These should never be null.
-EventHandler* gEventHandler;
-DeoptManager* gDeoptManager;
+EventHandler gEventHandler;
+DeoptManager gDeoptManager;
 
 #define ENSURE_NON_NULL(n)      \
   do {                          \
@@ -778,7 +776,7 @@ class JvmtiFunctions {
     ENSURE_HAS_CAP(env, can_retransform_classes);
     std::string error_msg;
     jvmtiError res = Transformer::RetransformClasses(ArtJvmTiEnv::AsArtJvmTiEnv(env),
-                                                     gEventHandler,
+                                                     &gEventHandler,
                                                      art::Runtime::Current(),
                                                      art::Thread::Current(),
                                                      class_count,
@@ -797,7 +795,7 @@ class JvmtiFunctions {
     ENSURE_HAS_CAP(env, can_redefine_classes);
     std::string error_msg;
     jvmtiError res = Redefiner::RedefineClasses(ArtJvmTiEnv::AsArtJvmTiEnv(env),
-                                                gEventHandler,
+                                                &gEventHandler,
                                                 art::Runtime::Current(),
                                                 art::Thread::Current(),
                                                 class_count,
@@ -1063,10 +1061,7 @@ class JvmtiFunctions {
     }
 
     ArtJvmTiEnv* art_env = ArtJvmTiEnv::AsArtJvmTiEnv(env);
-    return gEventHandler->SetEvent(art_env,
-                                   art_thread,
-                                   GetArtJvmtiEvent(art_env, event_type),
-                                   mode);
+    return gEventHandler.SetEvent(art_env, art_thread, GetArtJvmtiEvent(art_env, event_type), mode);
   }
 
   static jvmtiError GenerateEvents(jvmtiEnv* env,
@@ -1100,7 +1095,7 @@ class JvmtiFunctions {
     return ExtensionUtil::SetExtensionEventCallback(env,
                                                     extension_event_index,
                                                     callback,
-                                                    gEventHandler);
+                                                    &gEventHandler);
   }
 
 #define FOR_ALL_CAPABILITIES(FUN)                        \
@@ -1191,9 +1186,9 @@ class JvmtiFunctions {
 
     FOR_ALL_CAPABILITIES(ADD_CAPABILITY);
 #undef ADD_CAPABILITY
-    gEventHandler->HandleChangedCapabilities(ArtJvmTiEnv::AsArtJvmTiEnv(env),
-                                             changed,
-                                             /*added*/true);
+    gEventHandler.HandleChangedCapabilities(ArtJvmTiEnv::AsArtJvmTiEnv(env),
+                                            changed,
+                                            /*added*/true);
     return ret;
   }
 
@@ -1215,9 +1210,9 @@ class JvmtiFunctions {
 
     FOR_ALL_CAPABILITIES(DEL_CAPABILITY);
 #undef DEL_CAPABILITY
-    gEventHandler->HandleChangedCapabilities(ArtJvmTiEnv::AsArtJvmTiEnv(env),
-                                             changed,
-                                             /*added*/false);
+    gEventHandler.HandleChangedCapabilities(ArtJvmTiEnv::AsArtJvmTiEnv(env),
+                                            changed,
+                                            /*added*/false);
     return OK;
   }
 
@@ -1307,7 +1302,7 @@ class JvmtiFunctions {
   static jvmtiError DisposeEnvironment(jvmtiEnv* env) {
     ENSURE_VALID_ENV(env);
     ArtJvmTiEnv* tienv = ArtJvmTiEnv::AsArtJvmTiEnv(env);
-    gEventHandler->RemoveArtJvmTiEnv(tienv);
+    gEventHandler.RemoveArtJvmTiEnv(tienv);
     art::Runtime::Current()->RemoveSystemWeakHolder(tienv->object_tag_table.get());
     ThreadUtil::RemoveEnvironment(tienv);
     delete tienv;
@@ -1495,10 +1490,10 @@ ArtJvmTiEnv::ArtJvmTiEnv(art::JavaVMExt* runtime, EventHandler* event_handler, j
 // Creates a jvmtiEnv and returns it with the art::ti::Env that is associated with it. new_art_ti
 // is a pointer to the uninitialized memory for an art::ti::Env.
 static void CreateArtJvmTiEnv(art::JavaVMExt* vm, jint version, /*out*/void** new_jvmtiEnv) {
-  struct ArtJvmTiEnv* env = new ArtJvmTiEnv(vm, gEventHandler, version);
+  struct ArtJvmTiEnv* env = new ArtJvmTiEnv(vm, &gEventHandler, version);
   *new_jvmtiEnv = env;
 
-  gEventHandler->RegisterArtJvmTiEnv(env);
+  gEventHandler.RegisterArtJvmTiEnv(env);
 
   art::Runtime::Current()->AddSystemWeakHolder(
       ArtJvmTiEnv::AsArtJvmTiEnv(env)->object_tag_table.get());
@@ -1527,20 +1522,17 @@ static jint GetEnvHandler(art::JavaVMExt* vm, /*out*/void** env, jint version) {
 extern "C" bool ArtPlugin_Initialize() {
   art::Runtime* runtime = art::Runtime::Current();
 
-  gDeoptManager = new DeoptManager;
-  gEventHandler = new EventHandler;
-
-  gDeoptManager->Setup();
+  gDeoptManager.Setup();
   if (runtime->IsStarted()) {
     PhaseUtil::SetToLive();
   } else {
     PhaseUtil::SetToOnLoad();
   }
-  PhaseUtil::Register(gEventHandler);
-  ThreadUtil::Register(gEventHandler);
-  ClassUtil::Register(gEventHandler);
-  DumpUtil::Register(gEventHandler);
-  MethodUtil::Register(gEventHandler);
+  PhaseUtil::Register(&gEventHandler);
+  ThreadUtil::Register(&gEventHandler);
+  ClassUtil::Register(&gEventHandler);
+  DumpUtil::Register(&gEventHandler);
+  MethodUtil::Register(&gEventHandler);
   SearchUtil::Register();
   HeapUtil::Register();
   Transformer::Setup();
@@ -1548,7 +1540,7 @@ extern "C" bool ArtPlugin_Initialize() {
   {
     // Make sure we can deopt anything we need to.
     art::ScopedObjectAccess soa(art::Thread::Current());
-    gDeoptManager->FinishSetup();
+    gDeoptManager.FinishSetup();
   }
 
   runtime->GetJavaVM()->AddEnvironmentHook(GetEnvHandler);
@@ -1557,8 +1549,8 @@ extern "C" bool ArtPlugin_Initialize() {
 }
 
 extern "C" bool ArtPlugin_Deinitialize() {
-  gEventHandler->Shutdown();
-  gDeoptManager->Shutdown();
+  gEventHandler.Shutdown();
+  gDeoptManager.Shutdown();
   PhaseUtil::Unregister();
   ThreadUtil::Unregister();
   ClassUtil::Unregister();
@@ -1566,11 +1558,6 @@ extern "C" bool ArtPlugin_Deinitialize() {
   MethodUtil::Unregister();
   SearchUtil::Unregister();
   HeapUtil::Unregister();
-
-  // TODO It would be good to delete the gEventHandler and gDeoptManager here but we cannot since
-  // daemon threads might be suspended and we want to make sure that even if they wake up briefly
-  // they won't hit deallocated memory. By this point none of the functions will do anything since
-  // they have already shutdown.
 
   return true;
 }

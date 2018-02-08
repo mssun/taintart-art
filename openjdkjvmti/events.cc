@@ -1186,9 +1186,8 @@ void EventHandler::Shutdown() {
   art::Runtime::Current()->GetInstrumentation()->RemoveListener(method_trace_listener_.get(), ~0);
 }
 
-EventHandler::EventHandler()
-  : envs_lock_("JVMTI Environment List Lock", art::LockLevel::kTopLockLevel),
-    frame_pop_enabled(false) {
+EventHandler::EventHandler() : envs_lock_("JVMTI Environment List Lock",
+                                          art::LockLevel::kTopLockLevel) {
   alloc_listener_.reset(new JvmtiAllocationListener(this));
   ddm_listener_.reset(new JvmtiDdmChunkListener(this));
   gc_pause_listener_.reset(new JvmtiGcPauseListener(this));
