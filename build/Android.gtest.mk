@@ -83,6 +83,11 @@ ART_TEST_TARGET_GTEST_MainUncompressed_DEX := $(basename $(ART_TEST_TARGET_GTEST
 ART_TEST_HOST_GTEST_EmptyUncompressed_DEX := $(basename $(ART_TEST_HOST_GTEST_Main_DEX))EmptyUncompressed$(suffix $(ART_TEST_HOST_GTEST_Main_DEX))
 ART_TEST_TARGET_GTEST_EmptyUncompressed_DEX := $(basename $(ART_TEST_TARGET_GTEST_Main_DEX))EmptyUncompressed$(suffix $(ART_TEST_TARGET_GTEST_Main_DEX))
 
+# Create rules for MultiDexUncompressed, a copy of MultiDex with the classes.dex uncompressed
+# for the OatFile tests.
+ART_TEST_HOST_GTEST_MultiDexUncompressed_DEX := $(basename $(ART_TEST_HOST_GTEST_MultiDex_DEX))Uncompressed$(suffix $(ART_TEST_HOST_GTEST_MultiDex_DEX))
+ART_TEST_TARGET_GTEST_MultiDexUncompressed_DEX := $(basename $(ART_TEST_TARGET_GTEST_MultiDex_DEX))Uncompressed$(suffix $(ART_TEST_TARGET_GTEST_MultiDex_DEX))
+
 $(ART_TEST_HOST_GTEST_MainStripped_DEX): $(ART_TEST_HOST_GTEST_Main_DEX)
 	cp $< $@
 	$(call dexpreopt-remove-classes.dex,$@)
@@ -110,6 +115,16 @@ $(ART_TEST_TARGET_GTEST_EmptyUncompressed_DEX): $(ZIPALIGN)
 	touch $(dir $@)classes.dex
 	zip -j -qD -X -0 $@ $(dir $@)classes.dex
 	rm $(dir $@)classes.dex
+
+$(ART_TEST_HOST_GTEST_MultiDexUncompressed_DEX): $(ART_TEST_HOST_GTEST_MultiDex_DEX) $(ZIPALIGN)
+	cp $< $@
+	$(call uncompress-dexs, $@)
+	$(call align-package, $@)
+
+$(ART_TEST_TARGET_GTEST_MultiDexUncompressed_DEX): $(ART_TEST_TARGET_GTEST_MultiDex_DEX) $(ZIPALIGN)
+	cp $< $@
+	$(call uncompress-dexs, $@)
+	$(call align-package, $@)
 
 ART_TEST_GTEST_VerifierDeps_SRC := $(abspath $(wildcard $(LOCAL_PATH)/VerifierDeps/*.smali))
 ART_TEST_GTEST_VerifierDepsMulti_SRC := $(abspath $(wildcard $(LOCAL_PATH)/VerifierDepsMulti/*.smali))
@@ -153,7 +168,7 @@ ART_GTEST_jni_internal_test_DEX_DEPS := AllFields StaticLeafMethods
 ART_GTEST_oat_file_assistant_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS)
 ART_GTEST_dexoptanalyzer_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS)
 ART_GTEST_image_space_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS)
-ART_GTEST_oat_file_test_DEX_DEPS := Main MultiDex
+ART_GTEST_oat_file_test_DEX_DEPS := Main MultiDex MainUncompressed MultiDexUncompressed
 ART_GTEST_oat_test_DEX_DEPS := Main
 ART_GTEST_object_test_DEX_DEPS := ProtoCompare ProtoCompare2 StaticsFromCode XandY
 ART_GTEST_patchoat_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS)
