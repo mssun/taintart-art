@@ -136,7 +136,10 @@ class CompactDexWriter : public DexWriter {
   };
 
  protected:
-  void Write(DexContainer* output) OVERRIDE;
+  // Return true if we can generate compact dex for the IR.
+  bool CanGenerateCompactDex(std::string* error_msg);
+
+  bool Write(DexContainer* output, std::string* error_msg) OVERRIDE;
 
   std::unique_ptr<DexContainer> CreateDexContainer() const OVERRIDE;
 

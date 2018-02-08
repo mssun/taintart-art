@@ -31,6 +31,7 @@
 #include "base/mutex-inl.h"
 #include "bytecode_utils.h"
 #include "dex/art_dex_file_loader.h"
+#include "dex/base64_test_util.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
@@ -1557,6 +1558,113 @@ TEST_F(Dex2oatTest, EmptyUncompressedDexTest) {
   // Expect to fail with code 1 and not SIGSEGV or SIGABRT.
   ASSERT_TRUE(WIFEXITED(status));
   ASSERT_EQ(WEXITSTATUS(status), 1) << error_msg;
+}
+
+// Dex file that has duplicate methods have different code items and debug info.
+static const char kDuplicateMethodInputDex[] =
+    "ZGV4CjAzOQDEy8VPdj4qHpgPYFWtLCtOykfFP4kB8tGYDAAAcAAAAHhWNBIAAAAAAAAAANALAABI"
+    "AAAAcAAAAA4AAACQAQAABQAAAMgBAAANAAAABAIAABkAAABsAgAABAAAADQDAADgCAAAuAMAADgI"
+    "AABCCAAASggAAE8IAABcCAAAaggAAHkIAACICAAAlggAAKQIAACyCAAAwAgAAM4IAADcCAAA6ggA"
+    "APgIAAD7CAAA/wgAABcJAAAuCQAARQkAAFQJAAB4CQAAmAkAALsJAADSCQAA5gkAAPoJAAAVCgAA"
+    "KQoAADsKAABCCgAASgoAAFIKAABbCgAAZAoAAGwKAAB0CgAAfAoAAIQKAACMCgAAlAoAAJwKAACk"
+    "CgAArQoAALcKAADACgAAwwoAAMcKAADcCgAA6QoAAPEKAAD3CgAA/QoAAAMLAAAJCwAAEAsAABcL"
+    "AAAdCwAAIwsAACkLAAAvCwAANQsAADsLAABBCwAARwsAAE0LAABSCwAAWwsAAF4LAABoCwAAbwsA"
+    "ABEAAAASAAAAEwAAABQAAAAVAAAAFgAAABcAAAAYAAAAGQAAABoAAAAbAAAAHAAAAC4AAAAwAAAA"
+    "DwAAAAkAAAAAAAAAEAAAAAoAAACoBwAALgAAAAwAAAAAAAAALwAAAAwAAACoBwAALwAAAAwAAACw"
+    "BwAAAgAJADUAAAACAAkANgAAAAIACQA3AAAAAgAJADgAAAACAAkAOQAAAAIACQA6AAAAAgAJADsA"
+    "AAACAAkAPAAAAAIACQA9AAAAAgAJAD4AAAACAAkAPwAAAAIACQBAAAAACwAHAEIAAAAAAAIAAQAA"
+    "AAAAAwAeAAAAAQACAAEAAAABAAMAHgAAAAIAAgAAAAAAAgACAAEAAAADAAIAAQAAAAMAAgAfAAAA"
+    "AwACACAAAAADAAIAIQAAAAMAAgAiAAAAAwACACMAAAADAAIAJAAAAAMAAgAlAAAAAwACACYAAAAD"
+    "AAIAJwAAAAMAAgAoAAAAAwACACkAAAADAAIAKgAAAAMABAA0AAAABwADAEMAAAAIAAIAAQAAAAoA"
+    "AgABAAAACgABADIAAAAKAAAARQAAAAAAAAAAAAAACAAAAAAAAAAdAAAAaAcAALYHAAAAAAAAAQAA"
+    "AAAAAAAIAAAAAAAAAB0AAAB4BwAAxAcAAAAAAAACAAAAAAAAAAgAAAAAAAAAHQAAAIgHAADSBwAA"
+    "AAAAAAMAAAAAAAAACAAAAAAAAAAdAAAAmAcAAPoHAAAAAAAAAAAAAAEAAAAAAAAArAYAADEAAAAa"
+    "AAMAaQAAABoABABpAAEAGgAHAGkABAAaAAgAaQAFABoACQBpAAYAGgAKAGkABwAaAAsAaQAIABoA"
+    "DABpAAkAGgANAGkACgAaAA4AaQALABoABQBpAAIAGgAGAGkAAwAOAAAAAQABAAEAAACSBgAABAAA"
+    "AHAQFQAAAA4ABAABAAIAAACWBgAAFwAAAGIADAAiAQoAcBAWAAEAGgICAG4gFwAhAG4gFwAxAG4Q"
+    "GAABAAwBbiAUABAADgAAAAEAAQABAAAAngYAAAQAAABwEBUAAAAOAAIAAQACAAAAogYAAAYAAABi"
+    "AAwAbiAUABAADgABAAEAAQAAAKgGAAAEAAAAcBAVAAAADgABAAEAAQAAALsGAAAEAAAAcBAVAAAA"
+    "DgABAAAAAQAAAL8GAAAGAAAAYgAAAHEQAwAAAA4AAQAAAAEAAADEBgAABgAAAGIAAQBxEAMAAAAO"
+    "AAEAAAABAAAA8QYAAAYAAABiAAIAcRABAAAADgABAAAAAQAAAPYGAAAGAAAAYgADAHEQAwAAAA4A"
+    "AQAAAAEAAADJBgAABgAAAGIABABxEAMAAAAOAAEAAAABAAAAzgYAAAYAAABiAAEAcRADAAAADgAB"
+    "AAAAAQAAANMGAAAGAAAAYgAGAHEQAwAAAA4AAQAAAAEAAADYBgAABgAAAGIABwBxEAMAAAAOAAEA"
+    "AAABAAAA3QYAAAYAAABiAAgAcRABAAAADgABAAAAAQAAAOIGAAAGAAAAYgAJAHEQAwAAAA4AAQAA"
+    "AAEAAADnBgAABgAAAGIACgBxEAMAAAAOAAEAAAABAAAA7AYAAAYAAABiAAsAcRABAAAADgABAAEA"
+    "AAAAAPsGAAAlAAAAcQAHAAAAcQAIAAAAcQALAAAAcQAMAAAAcQANAAAAcQAOAAAAcQAPAAAAcQAQ"
+    "AAAAcQARAAAAcQASAAAAcQAJAAAAcQAKAAAADgAnAA4AKQFFDgEWDwAhAA4AIwFFDloAEgAOABMA"
+    "DktLS0tLS0tLS0tLABEADgAuAA5aADIADloANgAOWgA6AA5aAD4ADloAQgAOWgBGAA5aAEoADloA"
+    "TgAOWgBSAA5aAFYADloAWgAOWgBeATQOPDw8PDw8PDw8PDw8AAIEAUYYAwIFAjEECEEXLAIFAjEE"
+    "CEEXKwIFAjEECEEXLQIGAUYcAxgAGAEYAgAAAAIAAAAMBwAAEgcAAAIAAAAMBwAAGwcAAAIAAAAM"
+    "BwAAJAcAAAEAAAAtBwAAPAcAAAAAAAAAAAAAAAAAAEgHAAAAAAAAAAAAAAAAAABUBwAAAAAAAAAA"
+    "AAAAAAAAYAcAAAAAAAAAAAAAAAAAAAEAAAAJAAAAAQAAAA0AAAACAACAgASsCAEIxAgAAAIAAoCA"
+    "BIQJAQicCQwAAgAACQEJAQkBCQEJAQkBCQEJAQkBCQEJAQkEiIAEuAcBgIAEuAkAAA4ABoCABNAJ"
+    "AQnoCQAJhAoACaAKAAm8CgAJ2AoACfQKAAmQCwAJrAsACcgLAAnkCwAJgAwACZwMAAm4DAg8Y2xp"
+    "bml0PgAGPGluaXQ+AANBQUEAC0hlbGxvIFdvcmxkAAxIZWxsbyBXb3JsZDEADUhlbGxvIFdvcmxk"
+    "MTAADUhlbGxvIFdvcmxkMTEADEhlbGxvIFdvcmxkMgAMSGVsbG8gV29ybGQzAAxIZWxsbyBXb3Js"
+    "ZDQADEhlbGxvIFdvcmxkNQAMSGVsbG8gV29ybGQ2AAxIZWxsbyBXb3JsZDcADEhlbGxvIFdvcmxk"
+    "OAAMSGVsbG8gV29ybGQ5AAFMAAJMTAAWTE1hbnlNZXRob2RzJFByaW50ZXIyOwAVTE1hbnlNZXRo"
+    "b2RzJFByaW50ZXI7ABVMTWFueU1ldGhvZHMkU3RyaW5nczsADUxNYW55TWV0aG9kczsAIkxkYWx2"
+    "aWsvYW5ub3RhdGlvbi9FbmNsb3NpbmdDbGFzczsAHkxkYWx2aWsvYW5ub3RhdGlvbi9Jbm5lckNs"
+    "YXNzOwAhTGRhbHZpay9hbm5vdGF0aW9uL01lbWJlckNsYXNzZXM7ABVMamF2YS9pby9QcmludFN0"
+    "cmVhbTsAEkxqYXZhL2xhbmcvT2JqZWN0OwASTGphdmEvbGFuZy9TdHJpbmc7ABlMamF2YS9sYW5n"
+    "L1N0cmluZ0J1aWxkZXI7ABJMamF2YS9sYW5nL1N5c3RlbTsAEE1hbnlNZXRob2RzLmphdmEABVBy"
+    "aW50AAZQcmludDAABlByaW50MQAHUHJpbnQxMAAHUHJpbnQxMQAGUHJpbnQyAAZQcmludDMABlBy"
+    "aW50NAAGUHJpbnQ1AAZQcmludDYABlByaW50NwAGUHJpbnQ4AAZQcmludDkAB1ByaW50ZXIACFBy"
+    "aW50ZXIyAAdTdHJpbmdzAAFWAAJWTAATW0xqYXZhL2xhbmcvU3RyaW5nOwALYWNjZXNzRmxhZ3MA"
+    "BmFwcGVuZAAEYXJncwAEbWFpbgAEbXNnMAAEbXNnMQAFbXNnMTAABW1zZzExAARtc2cyAARtc2cz"
+    "AARtc2c0AARtc2c1AARtc2c2AARtc2c3AARtc2c4AARtc2c5AARuYW1lAANvdXQAB3ByaW50bG4A"
+    "AXMACHRvU3RyaW5nAAV2YWx1ZQBffn5EOHsibWluLWFwaSI6MTAwMDAsInNoYS0xIjoiZmViODZj"
+    "MDA2ZWZhY2YxZDc5ODRiODVlMTc5MGZlZjdhNzY3YWViYyIsInZlcnNpb24iOiJ2MS4xLjUtZGV2"
+    "In0AEAAAAAAAAAABAAAAAAAAAAEAAABIAAAAcAAAAAIAAAAOAAAAkAEAAAMAAAAFAAAAyAEAAAQA"
+    "AAANAAAABAIAAAUAAAAZAAAAbAIAAAYAAAAEAAAANAMAAAEgAAAUAAAAuAMAAAMgAAAUAAAAkgYA"
+    "AAQgAAAFAAAADAcAAAMQAAAEAAAAOQcAAAYgAAAEAAAAaAcAAAEQAAACAAAAqAcAAAAgAAAEAAAA"
+    "tgcAAAIgAABIAAAAOAgAAAAQAAABAAAA0AsAAAAAAAA=";
+
+static void WriteBase64ToFile(const char* base64, File* file) {
+  // Decode base64.
+  CHECK(base64 != nullptr);
+  size_t length;
+  std::unique_ptr<uint8_t[]> bytes(DecodeBase64(base64, &length));
+  CHECK(bytes != nullptr);
+  if (!file->WriteFully(bytes.get(), length)) {
+    PLOG(FATAL) << "Failed to write base64 as file";
+  }
+}
+
+TEST_F(Dex2oatTest, CompactDexGenerationFailure) {
+  ScratchFile temp_dex;
+  WriteBase64ToFile(kDuplicateMethodInputDex, temp_dex.GetFile());
+  std::string out_dir = GetScratchDir();
+  const std::string oat_filename = out_dir + "/base.oat";
+  // The dex won't pass the method verifier, only use the verify filter.
+  GenerateOdexForTest(temp_dex.GetFilename(),
+                      oat_filename,
+                      CompilerFilter::Filter::kVerify,
+                      { },
+                      true,  // expect_success
+                      false,  // use_fd
+                      [](const OatFile& o) {
+                        CHECK(o.ContainsDexCode());
+                      });
+  // Open our generated oat file.
+  std::string error_msg;
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(oat_filename.c_str(),
+                                                   oat_filename.c_str(),
+                                                   nullptr,
+                                                   nullptr,
+                                                   false,
+                                                   /*low_4gb*/false,
+                                                   temp_dex.GetFilename().c_str(),
+                                                   &error_msg));
+  ASSERT_TRUE(odex_file != nullptr);
+  std::vector<const OatDexFile*> oat_dex_files = odex_file->GetOatDexFiles();
+  ASSERT_EQ(oat_dex_files.size(), 1u);
+  // The dexes should have failed to convert to compact dex.
+  for (const OatDexFile* oat_dex : oat_dex_files) {
+    std::unique_ptr<const DexFile> dex_file(oat_dex->OpenDexFile(&error_msg));
+    ASSERT_TRUE(dex_file != nullptr) << error_msg;
+    ASSERT_TRUE(!dex_file->IsCompactDexFile());
+  }
 }
 
 }  // namespace art
