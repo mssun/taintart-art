@@ -417,16 +417,6 @@ class MANAGED DexCache FINAL : public Object {
 
   void SetLocation(ObjPtr<String> location) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // NOTE: Get/SetElementPtrSize() are intended for working with ArtMethod** and ArtField**
-  // provided by GetResolvedMethods/Fields() and ArtMethod::GetDexCacheResolvedMethods(),
-  // so they need to be public.
-
-  template <typename PtrType>
-  static PtrType GetElementPtrSize(PtrType* ptr_array, size_t idx, PointerSize ptr_size);
-
-  template <typename PtrType>
-  static void SetElementPtrSize(PtrType* ptr_array, size_t idx, PtrType ptr, PointerSize ptr_size);
-
   template <typename T>
   static NativeDexCachePair<T> GetNativePairPtrSize(std::atomic<NativeDexCachePair<T>>* pair_array,
                                                     size_t idx,

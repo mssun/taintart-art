@@ -243,31 +243,6 @@ inline void DexCache::ClearResolvedMethod(uint32_t method_idx, PointerSize ptr_s
   }
 }
 
-template <typename PtrType>
-inline PtrType DexCache::GetElementPtrSize(PtrType* ptr_array, size_t idx, PointerSize ptr_size) {
-  if (ptr_size == PointerSize::k64) {
-    uint64_t element = reinterpret_cast<const uint64_t*>(ptr_array)[idx];
-    return reinterpret_cast<PtrType>(dchecked_integral_cast<uintptr_t>(element));
-  } else {
-    uint32_t element = reinterpret_cast<const uint32_t*>(ptr_array)[idx];
-    return reinterpret_cast<PtrType>(dchecked_integral_cast<uintptr_t>(element));
-  }
-}
-
-template <typename PtrType>
-inline void DexCache::SetElementPtrSize(PtrType* ptr_array,
-                                        size_t idx,
-                                        PtrType ptr,
-                                        PointerSize ptr_size) {
-  if (ptr_size == PointerSize::k64) {
-    reinterpret_cast<uint64_t*>(ptr_array)[idx] =
-        dchecked_integral_cast<uint64_t>(reinterpret_cast<uintptr_t>(ptr));
-  } else {
-    reinterpret_cast<uint32_t*>(ptr_array)[idx] =
-        dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(ptr));
-  }
-}
-
 template <typename T>
 NativeDexCachePair<T> DexCache::GetNativePairPtrSize(std::atomic<NativeDexCachePair<T>>* pair_array,
                                                      size_t idx,
