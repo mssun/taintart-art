@@ -445,6 +445,9 @@ class HGraphVisualizerPrinter : public HGraphDelegateVisitor {
         ? GetGraph()->GetDexFile().PrettyMethod(invoke->GetDexMethodIndex(), kWithSignature)
         : method->PrettyMethod(kWithSignature);
     StartAttributeStream("method_name") << method_name;
+    StartAttributeStream("always_throws") << std::boolalpha
+                                          << invoke->AlwaysThrows()
+                                          << std::noboolalpha;
   }
 
   void VisitInvokeUnresolved(HInvokeUnresolved* invoke) OVERRIDE {

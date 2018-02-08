@@ -50,16 +50,17 @@ class QuickenInfoOffsetTableAccessor {
     return index % kElementsPerIndex == 0;
   }
 
-  explicit QuickenInfoOffsetTableAccessor(const uint8_t* data, uint32_t max_index)
-      : table_(reinterpret_cast<const uint32_t*>(data)),
-        num_indices_(RoundUp(max_index, kElementsPerIndex) / kElementsPerIndex) {}
+  QuickenInfoOffsetTableAccessor(const ArrayRef<const uint8_t>& data, uint32_t max_index)
+      : table_(ArrayRef<const TableType>::Cast(data).SubArray(
+          0,
+          RoundUp(max_index, kElementsPerIndex) / kElementsPerIndex)) {}
 
   size_t SizeInBytes() const {
     return NumIndices() * sizeof(table_[0]);
   }
 
   uint32_t NumIndices() const {
-    return num_indices_;
+    return table_.size();
   }
 
   // Returns the offset for the index at or before the desired index. If the offset is for an index
@@ -69,17 +70,12 @@ class QuickenInfoOffsetTableAccessor {
     return table_[index / kElementsPerIndex];
   }
 
-  const uint8_t* DataEnd() const {
-    return reinterpret_cast<const uint8_t*>(table_ + NumIndices());
-  }
-
   static uint32_t Alignment() {
     return alignof(TableType);
   }
 
  private:
-  const TableType* table_;
-  uint32_t num_indices_;
+  const ArrayRef<const TableType> table_;
 };
 
 // QuickenInfoTable is a table of 16 bit dex indices. There is one slot for every instruction that

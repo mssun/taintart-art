@@ -18,42 +18,35 @@
 
 #include <sys/mman.h>
 #include <memory>
+#include <vector>
 
-#include "common_runtime_test.h"
-#include "art_dex_file_loader.h"
 #include "dex_file_loader.h"
-#include "mem_map.h"
+#include "gtest/gtest.h"
 
 namespace art {
 
-class CodeItemAccessorsTest : public CommonRuntimeTest {};
+class CodeItemAccessorsTest : public testing::Test {};
 
-std::unique_ptr<const DexFile> CreateFakeDex(bool compact_dex) {
-  std::string error_msg;
-  std::unique_ptr<MemMap> map(
-      MemMap::MapAnonymous(/*name*/ "map",
-                           /*addr*/ nullptr,
-                           /*byte_count*/ kPageSize,
-                           PROT_READ | PROT_WRITE,
-                           /*low_4gb*/ false,
-                           /*reuse*/ false,
-                           &error_msg));
-  CHECK(map != nullptr) << error_msg;
+std::unique_ptr<const DexFile> CreateFakeDex(bool compact_dex, std::vector<uint8_t>* data) {
+  data->resize(kPageSize);
   if (compact_dex) {
     CompactDexFile::Header* header =
-        const_cast<CompactDexFile::Header*>(CompactDexFile::Header::At(map->Begin()));
+        const_cast<CompactDexFile::Header*>(CompactDexFile::Header::At(data->data()));
     CompactDexFile::WriteMagic(header->magic_);
     CompactDexFile::WriteCurrentVersion(header->magic_);
     header->data_off_ = 0;
-    header->data_size_ = map->Size();
+    header->data_size_ = data->size();
   } else {
-    StandardDexFile::WriteMagic(map->Begin());
-    StandardDexFile::WriteCurrentVersion(map->Begin());
+    StandardDexFile::WriteMagic(data->data());
+    StandardDexFile::WriteCurrentVersion(data->data());
   }
-  const ArtDexFileLoader dex_file_loader;
-  std::unique_ptr<const DexFile> dex(dex_file_loader.Open("location",
+  const DexFileLoader dex_file_loader;
+  std::string error_msg;
+  std::unique_ptr<const DexFile> dex(dex_file_loader.Open(data->data(),
+                                                          data->size(),
+                                                          "location",
                                                           /*location_checksum*/ 123,
-                                                          std::move(map),
+                                                          /*oat_dex_file*/nullptr,
                                                           /*verify*/false,
                                                           /*verify_checksum*/false,
                                                           &error_msg));
@@ -62,10 +55,13 @@ std::unique_ptr<const DexFile> CreateFakeDex(bool compact_dex) {
 }
 
 TEST(CodeItemAccessorsTest, TestDexInstructionsAccessor) {
-  MemMap::Init();
-  std::unique_ptr<const DexFile> standard_dex(CreateFakeDex(/*compact_dex*/false));
+  std::vector<uint8_t> standard_dex_data;
+  std::unique_ptr<const DexFile> standard_dex(CreateFakeDex(/*compact_dex*/false,
+                                                            &standard_dex_data));
   ASSERT_TRUE(standard_dex != nullptr);
-  std::unique_ptr<const DexFile> compact_dex(CreateFakeDex(/*compact_dex*/true));
+  std::vector<uint8_t> compact_dex_data;
+  std::unique_ptr<const DexFile> compact_dex(CreateFakeDex(/*compact_dex*/true,
+                                                           &compact_dex_data));
   ASSERT_TRUE(compact_dex != nullptr);
   static constexpr uint16_t kRegisterSize = 2;
   static constexpr uint16_t kInsSize = 1;
