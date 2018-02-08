@@ -214,14 +214,15 @@ class DexWriter {
 
   DexWriter(DexLayout* dex_layout, bool compute_offsets);
 
-  static void Output(DexLayout* dex_layout,
+  static bool Output(DexLayout* dex_layout,
                      std::unique_ptr<DexContainer>* container,
-                     bool compute_offsets);
+                     bool compute_offsets,
+                     std::string* error_msg) WARN_UNUSED;
 
   virtual ~DexWriter() {}
 
  protected:
-  virtual void Write(DexContainer* output);
+  virtual bool Write(DexContainer* output, std::string* error_msg);
   virtual std::unique_ptr<DexContainer> CreateDexContainer() const;
 
   void WriteEncodedValue(Stream* stream, dex_ir::EncodedValue* encoded_value);

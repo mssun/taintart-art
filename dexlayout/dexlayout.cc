@@ -1813,11 +1813,11 @@ void DexLayout::LayoutOutputFile(const DexFile* dex_file) {
   LayoutCodeItems(dex_file);
 }
 
-void DexLayout::OutputDexFile(const DexFile* input_dex_file,
+bool DexLayout::OutputDexFile(const DexFile* input_dex_file,
                               bool compute_offsets,
-                              std::unique_ptr<DexContainer>* dex_container) {
+                              std::unique_ptr<DexContainer>* dex_container,
+                              std::string* error_msg) {
   const std::string& dex_file_location = input_dex_file->GetLocation();
-  std::string error_msg;
   std::unique_ptr<File> new_file;
   // If options_.output_dex_directory_ is non null, we are outputting to a file.
   if (options_.output_dex_directory_ != nullptr) {
@@ -1834,35 +1834,39 @@ void DexLayout::OutputDexFile(const DexFile* input_dex_file,
     new_file.reset(OS::CreateEmptyFile(output_location.c_str()));
     if (new_file == nullptr) {
       LOG(ERROR) << "Could not create dex writer output file: " << output_location;
-      return;
+      return false;
     }
   }
-  DexWriter::Output(this, dex_container, compute_offsets);
+  if (!DexWriter::Output(this, dex_container, compute_offsets, error_msg)) {
+    return false;
+  }
   if (new_file != nullptr) {
     DexContainer* const container = dex_container->get();
     DexContainer::Section* const main_section = container->GetMainSection();
     if (!new_file->WriteFully(main_section->Begin(), main_section->Size())) {
       LOG(ERROR) << "Failed to write main section for dex file " << dex_file_location;
       new_file->Erase();
-      return;
+      return false;
     }
     DexContainer::Section* const data_section = container->GetDataSection();
     if (!new_file->WriteFully(data_section->Begin(), data_section->Size())) {
       LOG(ERROR) << "Failed to write data section for dex file " << dex_file_location;
       new_file->Erase();
-      return;
+      return false;
     }
     UNUSED(new_file->FlushCloseOrErase());
   }
+  return true;
 }
 
 /*
  * Dumps the requested sections of the file.
  */
-void DexLayout::ProcessDexFile(const char* file_name,
+bool DexLayout::ProcessDexFile(const char* file_name,
                                const DexFile* dex_file,
                                size_t dex_file_index,
-                               std::unique_ptr<DexContainer>* dex_container) {
+                               std::unique_ptr<DexContainer>* dex_container,
+                               std::string* error_msg) {
   const bool has_output_container = dex_container != nullptr;
   const bool output = options_.output_dex_directory_ != nullptr || has_output_container;
 
@@ -1885,12 +1889,12 @@ void DexLayout::ProcessDexFile(const char* file_name,
 
   if (options_.visualize_pattern_) {
     VisualizeDexLayout(header_, dex_file, dex_file_index, info_);
-    return;
+    return true;
   }
 
   if (options_.show_section_statistics_) {
     ShowDexSectionStatistics(header_, dex_file_index);
-    return;
+    return true;
   }
 
   // Dump dex file.
@@ -1912,7 +1916,9 @@ void DexLayout::ProcessDexFile(const char* file_name,
       dex_container = &temp_container;
     }
     // If we didn't set the offsets eagerly, we definitely need to compute them here.
-    OutputDexFile(dex_file, do_layout || !eagerly_assign_offsets, dex_container);
+    if (!OutputDexFile(dex_file, do_layout || !eagerly_assign_offsets, dex_container, error_msg)) {
+      return false;
+    }
 
     // Clear header before verifying to reduce peak RAM usage.
     const size_t file_size = header_->FileSize();
@@ -1920,7 +1926,6 @@ void DexLayout::ProcessDexFile(const char* file_name,
 
     // Verify the output dex file's structure, only enabled by default for debug builds.
     if (options_.verify_output_ && has_output_container) {
-      std::string error_msg;
       std::string location = "memory mapped file for " + std::string(file_name);
       // Dex file verifier cannot handle compact dex.
       bool verify = options_.compact_dex_level_ == CompactDexLevel::kCompactDexLevelNone;
@@ -1940,8 +1945,8 @@ void DexLayout::ProcessDexFile(const char* file_name,
               /*oat_dex_file*/ nullptr,
               verify,
               /*verify_checksum*/ false,
-              &error_msg));
-      CHECK(output_dex_file != nullptr) << "Failed to re-open output file:" << error_msg;
+              error_msg));
+      CHECK(output_dex_file != nullptr) << "Failed to re-open output file:" << *error_msg;
 
       // Do IR-level comparison between input and output. This check ignores potential differences
       // due to layout, so offsets are not checked. Instead, it checks the data contents of each
@@ -1956,9 +1961,10 @@ void DexLayout::ProcessDexFile(const char* file_name,
           dex_ir::DexIrBuilder(*dex_file,
                                /*eagerly_assign_offsets*/ true,
                                GetOptions()));
-      CHECK(VerifyOutputDexFile(output_header.get(), orig_header.get(), &error_msg)) << error_msg;
+      CHECK(VerifyOutputDexFile(output_header.get(), orig_header.get(), error_msg)) << *error_msg;
     }
   }
+  return true;
 }
 
 /*
@@ -1990,7 +1996,13 @@ int DexLayout::ProcessFile(const char* file_name) {
   } else {
     for (size_t i = 0; i < dex_files.size(); i++) {
       // Pass in a null container to avoid output by default.
-      ProcessDexFile(file_name, dex_files[i].get(), i, /*dex_container*/ nullptr);
+      if (!ProcessDexFile(file_name,
+                          dex_files[i].get(),
+                          i,
+                          /*dex_container*/ nullptr,
+                          &error_msg)) {
+        LOG(WARNING) << "Failed to run dex file " << i << " in " << file_name << " : " << error_msg;
+      }
     }
   }
   return 0;

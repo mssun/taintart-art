@@ -834,10 +834,13 @@ TEST_F(DexLayoutTest, ClassFilter) {
                         /*out_file*/ nullptr,
                         /*header*/ nullptr);
     std::unique_ptr<DexContainer> out;
-    dexlayout.ProcessDexFile(dex_file->GetLocation().c_str(),
-                             dex_file.get(),
-                             /*dex_file_index*/ 0,
-                             &out);
+    bool result = dexlayout.ProcessDexFile(
+        dex_file->GetLocation().c_str(),
+        dex_file.get(),
+        /*dex_file_index*/ 0,
+        &out,
+        &error_msg);
+    ASSERT_TRUE(result) << "Failed to run dexlayout " << error_msg;
     std::unique_ptr<const DexFile> output_dex_file(
         dex_file_loader.OpenWithDataSection(
             out->GetMainSection()->Begin(),
