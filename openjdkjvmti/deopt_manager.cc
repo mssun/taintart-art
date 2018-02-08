@@ -343,9 +343,9 @@ void DeoptManager::DeoptimizeThread(art::Thread* target) {
   art::Runtime::Current()->GetInstrumentation()->InstrumentThreadStack(target);
 }
 
-extern DeoptManager* gDeoptManager;
+extern DeoptManager gDeoptManager;
 DeoptManager* DeoptManager::Get() {
-  return gDeoptManager;
+  return &gDeoptManager;
 }
 
 }  // namespace openjdkjvmti
