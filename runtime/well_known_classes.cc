@@ -278,6 +278,12 @@ uint32_t WellKnownClasses::StringInitToEntryPoint(ArtMethod* string_init) {
 #undef STRING_INIT_LIST
 
 void WellKnownClasses::Init(JNIEnv* env) {
+  // The following initializers use JNI to get handles on hidden methods/fields.
+  // Temporarily disable hidden API checks as they would see these calls coming
+  // from an unattached thread and assume the caller is not in boot class path.
+  const bool hidden_api_checks_enabled =  Runtime::Current()->AreHiddenApiChecksEnabled();
+  Runtime::Current()->SetHiddenApiChecksEnabled(false);
+
   dalvik_annotation_optimization_CriticalNative =
       CacheClass(env, "dalvik/annotation/optimization/CriticalNative");
   dalvik_annotation_optimization_FastNative = CacheClass(env, "dalvik/annotation/optimization/FastNative");
@@ -401,6 +407,9 @@ void WellKnownClasses::Init(JNIEnv* env) {
 
   InitStringInit(env);
   Thread::Current()->InitStringEntryPoints();
+
+  // Reenable hidden API checks if necessary.
+  Runtime::Current()->SetHiddenApiChecksEnabled(hidden_api_checks_enabled);
 }
 
 void WellKnownClasses::LateInit(JNIEnv* env) {
