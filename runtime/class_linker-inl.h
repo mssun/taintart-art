@@ -226,14 +226,7 @@ inline ArtMethod* ClassLinker::LookupResolvedMethod(uint32_t method_idx,
     const DexFile::MethodId& method_id = dex_file.GetMethodId(method_idx);
     ObjPtr<mirror::Class> klass = LookupResolvedType(method_id.class_idx_, dex_cache, class_loader);
     if (klass != nullptr) {
-      if (klass->IsInterface()) {
-        resolved = klass->FindInterfaceMethod(dex_cache, method_idx, pointer_size);
-      } else {
-        resolved = klass->FindClassMethod(dex_cache, method_idx, pointer_size);
-      }
-      if (resolved != nullptr) {
-        dex_cache->SetResolvedMethod(method_idx, resolved, pointer_size);
-      }
+      resolved = FindResolvedMethod(klass, dex_cache, class_loader, method_idx);
     }
   }
   return resolved;
