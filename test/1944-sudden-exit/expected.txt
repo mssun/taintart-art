@@ -1,2 +1,0 @@
-All threads started
-Exiting suddenly
