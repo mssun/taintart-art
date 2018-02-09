@@ -936,7 +936,8 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
 
   // The first parameter is a MethodHandles lookup instance.
   {
-    Handle<mirror::Class> lookup_class(hs.NewHandle(bootstrap->GetTargetClass()));
+    Handle<mirror::Class> lookup_class =
+        hs.NewHandle(shadow_frame.GetMethod()->GetDeclaringClass());
     ObjPtr<mirror::MethodHandlesLookup> lookup =
         mirror::MethodHandlesLookup::Create(self, lookup_class);
     if (lookup.IsNull()) {
