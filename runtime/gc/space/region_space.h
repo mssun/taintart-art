@@ -60,7 +60,7 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
                                                 size_t* usable_size,
                                                 size_t* bytes_tl_bulk_allocated)
       REQUIRES(!region_lock_);
-  // Allocate/free large objects (objects that are larger than the region size.)
+  // Allocate/free large objects (objects that are larger than the region size).
   template<bool kForEvac>
   mirror::Object* AllocLarge(size_t num_bytes, size_t* bytes_allocated, size_t* usable_size,
                              size_t* bytes_tl_bulk_allocated) REQUIRES(!region_lock_);

@@ -2027,7 +2027,7 @@ void ConcurrentCopying::LogFromSpaceRefHolder(mirror::Object* obj, MemberOffset 
 void ConcurrentCopying::AssertToSpaceInvariantInNonMovingSpace(mirror::Object* obj,
                                                                mirror::Object* ref) {
   CHECK(!region_space_->HasAddress(ref)) << "obj=" << obj << " ref=" << ref;
-  // In a non-moving spaces. Check that the ref is marked.
+  // In a non-moving space. Check that the ref is marked.
   if (immune_spaces_.ContainsObject(ref)) {
     if (kUseBakerReadBarrier) {
       // Immune object may not be gray if called from the GC.
