@@ -1714,4 +1714,21 @@ TEST_F(Dex2oatTest, CompactDexGenerationFailure) {
   }
 }
 
+TEST_F(Dex2oatTest, StderrLoggerOutput) {
+  std::string dex_location = GetScratchDir() + "/Dex2OatStderrLoggerTest.jar";
+  std::string odex_location = GetOdexDir() + "/Dex2OatStderrLoggerTest.odex";
+
+  // Test file doesn't matter.
+  Copy(GetDexSrc1(), dex_location);
+
+  GenerateOdexForTest(dex_location,
+                      odex_location,
+                      CompilerFilter::kQuicken,
+                      { "--runtime-arg", "-Xuse-stderr-logger" },
+                      true);
+  // Look for some random part of dex2oat logging. With the stderr logger this should be captured,
+  // even on device.
+  EXPECT_NE(std::string::npos, output_.find("dex2oat took"));
+}
+
 }  // namespace art
