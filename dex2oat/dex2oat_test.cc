@@ -796,7 +796,7 @@ class Dex2oatLayoutTest : public Dex2oatTest {
                          app_image_file_name,
                          /* use_fd */ true,
                          /* num_profile_classes */ 1,
-                         { input_vdex, output_vdex, kDisableCompactDex },
+                         { input_vdex, output_vdex },
                          /* expect_success */ true);
       EXPECT_GT(vdex_file2.GetFile()->GetLength(), 0u);
     }
@@ -926,6 +926,49 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
     ASSERT_TRUE(success_);
   }
 
+  void RunUnquickenMultiDexCDex() {
+    std::string dex_location = GetScratchDir() + "/UnquickenMultiDex.jar";
+    std::string odex_location = GetOdexDir() + "/UnquickenMultiDex.odex";
+    std::string odex_location2 = GetOdexDir() + "/UnquickenMultiDex2.odex";
+    std::string vdex_location = GetOdexDir() + "/UnquickenMultiDex.vdex";
+    std::string vdex_location2 = GetOdexDir() + "/UnquickenMultiDex2.vdex";
+    Copy(GetTestDexFileName("MultiDex"), dex_location);
+
+    std::unique_ptr<File> vdex_file1(OS::CreateEmptyFile(vdex_location.c_str()));
+    std::unique_ptr<File> vdex_file2(OS::CreateEmptyFile(vdex_location2.c_str()));
+    CHECK(vdex_file1 != nullptr) << vdex_location;
+    CHECK(vdex_file2 != nullptr) << vdex_location2;
+
+    // Quicken the dex file into a vdex file.
+    {
+      std::string input_vdex = "--input-vdex-fd=-1";
+      std::string output_vdex = StringPrintf("--output-vdex-fd=%d", vdex_file1->Fd());
+      GenerateOdexForTest(dex_location,
+                          odex_location,
+                          CompilerFilter::kQuicken,
+                          { input_vdex, output_vdex, "--compact-dex-level=fast"},
+                          /* expect_success */ true,
+                          /* use_fd */ true);
+      EXPECT_GT(vdex_file1->GetLength(), 0u);
+    }
+
+    // Unquicken by running the verify compiler filter on the vdex file.
+    {
+      std::string input_vdex = StringPrintf("--input-vdex-fd=%d", vdex_file1->Fd());
+      std::string output_vdex = StringPrintf("--output-vdex-fd=%d", vdex_file2->Fd());
+      GenerateOdexForTest(dex_location,
+                          odex_location2,
+                          CompilerFilter::kVerify,
+                          { input_vdex, output_vdex, "--compact-dex-level=none"},
+                          /* expect_success */ true,
+                          /* use_fd */ true);
+    }
+    ASSERT_EQ(vdex_file1->FlushCloseOrErase(), 0) << "Could not flush and close vdex file";
+    ASSERT_EQ(vdex_file2->FlushCloseOrErase(), 0) << "Could not flush and close vdex file";
+    CheckResult(dex_location, odex_location2);
+    ASSERT_TRUE(success_);
+  }
+
   void CheckResult(const std::string& dex_location, const std::string& odex_location) {
     std::string error_msg;
     std::unique_ptr<OatFile> odex_file(OatFile::Open(odex_location.c_str(),
@@ -964,6 +1007,10 @@ class Dex2oatUnquickenTest : public Dex2oatTest {
 
 TEST_F(Dex2oatUnquickenTest, UnquickenMultiDex) {
   RunUnquickenMultiDex();
+}
+
+TEST_F(Dex2oatUnquickenTest, UnquickenMultiDexCDex) {
+  RunUnquickenMultiDexCDex();
 }
 
 class Dex2oatWatchdogTest : public Dex2oatTest {
