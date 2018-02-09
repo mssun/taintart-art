@@ -29,8 +29,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <algorithm>
 #include <initializer_list>
 #include <mutex>
+#include <type_traits>
 #include <utility>
 
 #include "sigchain.h"
@@ -78,9 +80,28 @@ static void log(const char* format, ...) {
 
 #define fatal(...) log(__VA_ARGS__); abort()
 
-static int sigorset(sigset_t* dest, sigset_t* left, sigset_t* right) {
+#if defined(__BIONIC__) && !defined(__LP64__)
+static int sigismember(const sigset64_t* sigset, int signum) {
+  return sigismember64(sigset, signum);
+}
+
+static int sigemptyset(sigset64_t* sigset) {
+  return sigemptyset64(sigset);
+}
+
+static int sigaddset(sigset64_t* sigset, int signum) {
+  return sigaddset64(sigset, signum);
+}
+
+static int sigdelset(sigset64_t* sigset, int signum) {
+  return sigdelset64(sigset, signum);
+}
+#endif
+
+template<typename SigsetType>
+static int sigorset(SigsetType* dest, SigsetType* left, SigsetType* right) {
   sigemptyset(dest);
-  for (size_t i = 0; i < sizeof(sigset_t) * CHAR_BIT; ++i) {
+  for (size_t i = 0; i < sizeof(SigsetType) * CHAR_BIT; ++i) {
     if (sigismember(left, i) == 1 || sigismember(right, i) == 1) {
       sigaddset(dest, i);
     }
@@ -93,34 +114,35 @@ namespace art {
 static decltype(&sigaction) linked_sigaction;
 static decltype(&sigprocmask) linked_sigprocmask;
 
+#if defined(__BIONIC__)
+static decltype(&sigaction64) linked_sigaction64;
+static decltype(&sigprocmask64) linked_sigprocmask64;
+#endif
+
+template<typename T>
+static void lookup_next_symbol(T* output, T wrapper, const char* name) {
+  void* sym = dlsym(RTLD_NEXT, name);
+  if (sym == nullptr) {
+    sym = dlsym(RTLD_DEFAULT, name);
+    if (sym == wrapper || sym == sigaction) {
+      fatal("Unable to find next %s in signal chain", name);
+    }
+  }
+  *output = reinterpret_cast<T>(sym);
+}
+
 __attribute__((constructor)) static void InitializeSignalChain() {
   static std::once_flag once;
   std::call_once(once, []() {
-    void* linked_sigaction_sym = dlsym(RTLD_NEXT, "sigaction");
-    if (linked_sigaction_sym == nullptr) {
-      linked_sigaction_sym = dlsym(RTLD_DEFAULT, "sigaction");
-      if (linked_sigaction_sym == nullptr ||
-          linked_sigaction_sym == reinterpret_cast<void*>(sigaction)) {
-        fatal("Unable to find next sigaction in signal chain");
-      }
-    }
+    lookup_next_symbol(&linked_sigaction, sigaction, "sigaction");
+    lookup_next_symbol(&linked_sigprocmask, sigprocmask, "sigprocmask");
 
-    void* linked_sigprocmask_sym = dlsym(RTLD_NEXT, "sigprocmask");
-    if (linked_sigprocmask_sym == nullptr) {
-      linked_sigprocmask_sym = dlsym(RTLD_DEFAULT, "sigprocmask");
-      if (linked_sigprocmask_sym == nullptr ||
-          linked_sigprocmask_sym == reinterpret_cast<void*>(sigprocmask)) {
-        fatal("Unable to find next sigprocmask in signal chain");
-      }
-    }
-
-    linked_sigaction =
-        reinterpret_cast<decltype(linked_sigaction)>(linked_sigaction_sym);
-    linked_sigprocmask =
-        reinterpret_cast<decltype(linked_sigprocmask)>(linked_sigprocmask_sym);
+#if defined(__BIONIC__)
+    lookup_next_symbol(&linked_sigaction64, sigaction64, "sigaction64");
+    lookup_next_symbol(&linked_sigprocmask64, sigprocmask64, "sigprocmask64");
+#endif
   });
 }
-
 
 static pthread_key_t GetHandlingSignalKey() {
   static pthread_key_t key;
@@ -175,19 +197,51 @@ class SignalChain {
 
   // Register the signal chain with the kernel if needed.
   void Register(int signo) {
+#if defined(__BIONIC__)
+    struct sigaction64 handler_action = {};
+    sigfillset64(&handler_action.sa_mask);
+#else
     struct sigaction handler_action = {};
+    sigfillset(&handler_action.sa_mask);
+#endif
+
     handler_action.sa_sigaction = SignalChain::Handler;
     handler_action.sa_flags = SA_RESTART | SA_SIGINFO | SA_ONSTACK;
-    sigfillset(&handler_action.sa_mask);
+
+#if defined(__BIONIC__)
+    linked_sigaction64(signo, &handler_action, &action_);
+#else
     linked_sigaction(signo, &handler_action, &action_);
+#endif
   }
 
-  void SetAction(const struct sigaction* action) {
-    action_ = *action;
+  template <typename SigactionType>
+  SigactionType GetAction() {
+    if constexpr (std::is_same_v<decltype(action_), SigactionType>) {
+      return action_;
+    } else {
+      SigactionType result;
+      result.sa_flags = action_.sa_flags;
+      result.sa_handler = action_.sa_handler;
+      result.sa_restorer = action_.sa_restorer;
+      memcpy(&result.sa_mask, &action_.sa_mask,
+             std::min(sizeof(action_.sa_mask), sizeof(result.sa_mask)));
+      return result;
+    }
   }
 
-  struct sigaction GetAction() {
-    return action_;
+  template <typename SigactionType>
+  void SetAction(const SigactionType* new_action) {
+    if constexpr (std::is_same_v<decltype(action_), SigactionType>) {
+      action_ = *new_action;
+    } else {
+      action_.sa_flags = new_action->sa_flags;
+      action_.sa_handler = new_action->sa_handler;
+      action_.sa_restorer = new_action->sa_restorer;
+      sigemptyset(&action_.sa_mask);
+      memcpy(&action_.sa_mask, &new_action->sa_mask,
+             std::min(sizeof(action_.sa_mask), sizeof(new_action->sa_mask)));
+    }
   }
 
   void AddSpecialHandler(SigchainAction* sa) {
@@ -222,7 +276,11 @@ class SignalChain {
 
  private:
   bool claimed_;
+#if defined(__BIONIC__)
+  struct sigaction64 action_;
+#else
   struct sigaction action_;
+#endif
   SigchainAction special_handlers_[2];
 };
 
@@ -260,12 +318,22 @@ void SignalChain::Handler(int signo, siginfo_t* siginfo, void* ucontext_raw) {
   // Forward to the user's signal handler.
   int handler_flags = chains[signo].action_.sa_flags;
   ucontext_t* ucontext = static_cast<ucontext_t*>(ucontext_raw);
+#if defined(__BIONIC__)
+  sigset64_t mask;
+  sigorset(&mask, &ucontext->uc_sigmask64, &chains[signo].action_.sa_mask);
+#else
   sigset_t mask;
   sigorset(&mask, &ucontext->uc_sigmask, &chains[signo].action_.sa_mask);
+#endif
   if (!(handler_flags & SA_NODEFER)) {
     sigaddset(&mask, signo);
   }
+
+#if defined(__BIONIC__)
+  linked_sigprocmask64(SIG_SETMASK, &mask, nullptr);
+#else
   linked_sigprocmask(SIG_SETMASK, &mask, nullptr);
+#endif
 
   if ((handler_flags & SA_SIGINFO)) {
     chains[signo].action_.sa_sigaction(signo, siginfo, ucontext_raw);
@@ -281,9 +349,11 @@ void SignalChain::Handler(int signo, siginfo_t* siginfo, void* ucontext_raw) {
   }
 }
 
-extern "C" int sigaction(int signal, const struct sigaction* new_action, struct sigaction* old_action) {
-  InitializeSignalChain();
-
+template <typename SigactionType>
+static int __sigaction(int signal, const SigactionType* new_action,
+                       SigactionType* old_action,
+                       int (*linked)(int, const SigactionType*,
+                                     SigactionType*)) {
   // If this signal has been claimed as a signal chain, record the user's
   // action but don't pass it on to the kernel.
   // Note that we check that the signal number is in range here.  An out of range signal
@@ -294,7 +364,7 @@ extern "C" int sigaction(int signal, const struct sigaction* new_action, struct 
   }
 
   if (chains[signal].IsClaimed()) {
-    struct sigaction saved_action = chains[signal].GetAction();
+    SigactionType saved_action = chains[signal].GetAction<SigactionType>();
     if (new_action != nullptr) {
       chains[signal].SetAction(new_action);
     }
@@ -306,8 +376,22 @@ extern "C" int sigaction(int signal, const struct sigaction* new_action, struct 
 
   // Will only get here if the signal chain has not been claimed.  We want
   // to pass the sigaction on to the kernel via the real sigaction in libc.
-  return linked_sigaction(signal, new_action, old_action);
+  return linked(signal, new_action, old_action);
 }
+
+extern "C" int sigaction(int signal, const struct sigaction* new_action,
+                         struct sigaction* old_action) {
+  InitializeSignalChain();
+  return __sigaction(signal, new_action, old_action, linked_sigaction);
+}
+
+#if defined(__BIONIC__)
+extern "C" int sigaction64(int signal, const struct sigaction64* new_action,
+                           struct sigaction64* old_action) {
+  InitializeSignalChain();
+  return __sigaction(signal, new_action, old_action, linked_sigaction64);
+}
+#endif
 
 extern "C" sighandler_t signal(int signo, sighandler_t handler) {
   InitializeSignalChain();
@@ -326,7 +410,8 @@ extern "C" sighandler_t signal(int signo, sighandler_t handler) {
   // If this signal has been claimed as a signal chain, record the user's
   // action but don't pass it on to the kernel.
   if (chains[signo].IsClaimed()) {
-    oldhandler = reinterpret_cast<sighandler_t>(chains[signo].GetAction().sa_handler);
+    oldhandler = reinterpret_cast<sighandler_t>(
+        chains[signo].GetAction<struct sigaction>().sa_handler);
     chains[signo].SetAction(&sa);
     return oldhandler;
   }
@@ -348,18 +433,18 @@ extern "C" sighandler_t bsd_signal(int signo, sighandler_t handler) {
 }
 #endif
 
-extern "C" int sigprocmask(int how, const sigset_t* bionic_new_set, sigset_t* bionic_old_set) {
-  InitializeSignalChain();
-
+template <typename SigsetType>
+int __sigprocmask(int how, const SigsetType* new_set, SigsetType* old_set,
+                  int (*linked)(int, const SigsetType*, SigsetType*)) {
   // When inside a signal handler, forward directly to the actual sigprocmask.
   if (GetHandlingSignal()) {
-    return linked_sigprocmask(how, bionic_new_set, bionic_old_set);
+    return linked(how, new_set, old_set);
   }
 
-  const sigset_t* new_set_ptr = bionic_new_set;
-  sigset_t tmpset;
-  if (bionic_new_set != nullptr) {
-    tmpset = *bionic_new_set;
+  const SigsetType* new_set_ptr = new_set;
+  SigsetType tmpset;
+  if (new_set != nullptr) {
+    tmpset = *new_set;
 
     if (how == SIG_BLOCK) {
       // Don't allow claimed signals in the mask.  If a signal chain has been claimed
@@ -373,8 +458,22 @@ extern "C" int sigprocmask(int how, const sigset_t* bionic_new_set, sigset_t* bi
     new_set_ptr = &tmpset;
   }
 
-  return linked_sigprocmask(how, new_set_ptr, bionic_old_set);
+  return linked(how, new_set_ptr, old_set);
 }
+
+extern "C" int sigprocmask(int how, const sigset_t* new_set,
+                           sigset_t* old_set) {
+  InitializeSignalChain();
+  return __sigprocmask(how, new_set, old_set, linked_sigprocmask);
+}
+
+#if defined(__BIONIC__)
+extern "C" int sigprocmask64(int how, const sigset64_t* new_set,
+                             sigset64_t* old_set) {
+  InitializeSignalChain();
+  return __sigprocmask(how, new_set, old_set, linked_sigprocmask64);
+}
+#endif
 
 extern "C" void AddSpecialSignalHandlerFn(int signal, SigchainAction* sa) {
   InitializeSignalChain();
