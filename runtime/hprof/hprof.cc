@@ -41,6 +41,7 @@
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
+#include "base/array_ref.h"
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "base/time_utils.h"
@@ -412,25 +413,21 @@ class FileEndianOutput FINAL : public EndianOutputBuffered {
   bool errors_;
 };
 
-class NetStateEndianOutput FINAL : public EndianOutputBuffered {
+class VectorEndianOuputput FINAL : public EndianOutputBuffered {
  public:
-  NetStateEndianOutput(JDWP::JdwpNetStateBase* net_state, size_t reserved_size)
-      : EndianOutputBuffered(reserved_size), net_state_(net_state) {
-    DCHECK(net_state != nullptr);
-  }
-  ~NetStateEndianOutput() {}
+  VectorEndianOuputput(std::vector<uint8_t>& data, size_t reserved_size)
+      : EndianOutputBuffered(reserved_size), full_data_(data) {}
+  ~VectorEndianOuputput() {}
 
  protected:
-  void HandleFlush(const uint8_t* buffer, size_t length) OVERRIDE {
-    std::vector<iovec> iov;
-    iov.push_back(iovec());
-    iov[0].iov_base = const_cast<void*>(reinterpret_cast<const void*>(buffer));
-    iov[0].iov_len = length;
-    net_state_->WriteBufferedPacketLocked(iov);
+  void HandleFlush(const uint8_t* buf, size_t length) OVERRIDE {
+    size_t old_size = full_data_.size();
+    full_data_.resize(old_size + length);
+    memcpy(full_data_.data() + old_size, buf, length);
   }
 
  private:
-  JDWP::JdwpNetStateBase* net_state_;
+  std::vector<uint8_t>& full_data_;
 };
 
 #define __ output_->
@@ -813,29 +810,21 @@ class Hprof : public SingleRootVisitor {
   bool DumpToDdmsDirect(size_t overall_size, size_t max_length, uint32_t chunk_type)
       REQUIRES(Locks::mutator_lock_) {
     CHECK(direct_to_ddms_);
-    JDWP::JdwpState* state = Dbg::GetJdwpState();
-    CHECK(state != nullptr);
-    JDWP::JdwpNetStateBase* net_state = state->netState;
-    CHECK(net_state != nullptr);
 
-    // Hold the socket lock for the whole time since we want this to be atomic.
-    MutexLock mu(Thread::Current(), *net_state->GetSocketLock());
+    std::vector<uint8_t> out_data;
 
-    // Prepare the Ddms chunk.
-    constexpr size_t kChunkHeaderSize = kJDWPHeaderLen + 8;
-    uint8_t chunk_header[kChunkHeaderSize] = { 0 };
-    state->SetupChunkHeader(chunk_type, overall_size, kChunkHeaderSize, chunk_header);
-
-    // Prepare the output and send the chunk header.
-    NetStateEndianOutput net_output(net_state, max_length);
-    output_ = &net_output;
-    net_output.AddU1List(chunk_header, kChunkHeaderSize);
+    // TODO It would be really good to have some streaming thing again. b/73084059
+    VectorEndianOuputput output(out_data, max_length);
+    output_ = &output;
 
     // Write the dump.
     ProcessHeap(true);
 
+    Runtime::Current()->GetRuntimeCallbacks()->DdmPublishChunk(
+        chunk_type, ArrayRef<const uint8_t>(out_data.data(), out_data.size()));
+
     // Check for expected size. See DumpToFile for comment.
-    DCHECK_LE(net_output.SumLength(), overall_size + kChunkHeaderSize);
+    DCHECK_LE(output.SumLength(), overall_size);
     output_ = nullptr;
 
     return true;
