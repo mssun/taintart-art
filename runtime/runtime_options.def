@@ -150,5 +150,6 @@ RUNTIME_OPTIONS_KEY (void (*)(),          HookAbort,                      nullpt
 RUNTIME_OPTIONS_KEY (bool,                SlowDebug,                      false)
 
 RUNTIME_OPTIONS_KEY (unsigned int,        GlobalRefAllocStackTraceLimit,  0)  // 0 = off
+RUNTIME_OPTIONS_KEY (Unit,                UseStderrLogger)
 
 #undef RUNTIME_OPTIONS_KEY

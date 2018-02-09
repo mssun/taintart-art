@@ -1083,9 +1083,15 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   // Take a snapshot of the environment at the time the runtime was created, for use by Exec, etc.
   env_snapshot_.TakeSnapshot();
 
-  RuntimeArgumentMap runtime_options(std::move(runtime_options_in));
+  using Opt = RuntimeArgumentMap;
+  Opt runtime_options(std::move(runtime_options_in));
   ScopedTrace trace(__FUNCTION__);
   CHECK_EQ(sysconf(_SC_PAGE_SIZE), kPageSize);
+
+  // Early override for logging output.
+  if (runtime_options.Exists(Opt::UseStderrLogger)) {
+    android::base::SetLogger(android::base::StderrLogger);
+  }
 
   MemMap::Init();
 
@@ -1113,7 +1119,6 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
     }
   }
 
-  using Opt = RuntimeArgumentMap;
   VLOG(startup) << "Runtime::Init -verbose:startup enabled";
 
   QuasiAtomic::Startup();
