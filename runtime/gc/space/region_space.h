@@ -101,6 +101,8 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
   void Dump(std::ostream& os) const;
   void DumpRegions(std::ostream& os) REQUIRES(!region_lock_);
+  // Dump region containing object `obj`. Precondition: `obj` is in the region space.
+  void DumpRegionForObject(std::ostream& os, mirror::Object* obj) REQUIRES(!region_lock_);
   void DumpNonFreeRegions(std::ostream& os) REQUIRES(!region_lock_);
 
   size_t RevokeThreadLocalBuffers(Thread* thread) REQUIRES(!region_lock_);

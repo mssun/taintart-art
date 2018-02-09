@@ -160,7 +160,8 @@ inline bool Object::VerifierInstanceOf(ObjPtr<Class> klass) {
 template<VerifyObjectFlags kVerifyFlags>
 inline bool Object::InstanceOf(ObjPtr<Class> klass) {
   DCHECK(klass != nullptr);
-  DCHECK(GetClass<kVerifyNone>() != nullptr);
+  DCHECK(GetClass<kVerifyNone>() != nullptr)
+      << "this=" << std::hex << reinterpret_cast<uintptr_t>(this) << std::dec;
   return klass->IsAssignableFrom(GetClass<kVerifyFlags>());
 }
 
