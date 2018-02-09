@@ -325,7 +325,7 @@ class Runtime {
   // instead.
   void VisitImageRoots(RootVisitor* visitor) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Visit all of the roots we can do safely do concurrently.
+  // Visit all of the roots we can safely visit concurrently.
   void VisitConcurrentRoots(RootVisitor* visitor,
                             VisitRootFlags flags = kVisitRootFlagAllRoots)
       REQUIRES(!Locks::classlinker_classes_lock_, !Locks::trace_lock_)

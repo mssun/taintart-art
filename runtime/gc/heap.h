@@ -551,7 +551,7 @@ class Heap {
     return total_memory - std::min(total_memory, byte_allocated);
   }
 
-  // get the space that corresponds to an object's address. Current implementation searches all
+  // Get the space that corresponds to an object's address. Current implementation searches all
   // spaces in turn. If fail_ok is false then failing to find a space will cause an abort.
   // TODO: consider using faster data structure like binary tree.
   space::ContinuousSpace* FindContinuousSpaceFromObject(ObjPtr<mirror::Object>, bool fail_ok) const
@@ -1312,7 +1312,7 @@ class Heap {
   AllocatorType current_allocator_;
   const AllocatorType current_non_moving_allocator_;
 
-  // Which GCs we run in order when we an allocation fails.
+  // Which GCs we run in order when an allocation fails.
   std::vector<collector::GcType> gc_plan_;
 
   // Bump pointer spaces.
