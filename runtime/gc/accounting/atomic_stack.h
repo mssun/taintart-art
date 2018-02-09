@@ -41,7 +41,7 @@ namespace art {
 namespace gc {
 namespace accounting {
 
-// Internal representation is StackReference<T>, so this only works with mirror::Object or it's
+// Internal representation is StackReference<T>, so this only works with mirror::Object or its
 // subclasses.
 template <typename T>
 class AtomicStack {

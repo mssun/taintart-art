@@ -1287,7 +1287,7 @@ void MarkSweep::Sweep(bool swap_bitmaps) {
   CHECK_GE(live_stack_freeze_size_, GetHeap()->GetLiveStack()->Size());
   {
     TimingLogger::ScopedTiming t2("MarkAllocStackAsLive", GetTimings());
-    // Mark everything allocated since the last as GC live so that we can sweep concurrently,
+    // Mark everything allocated since the last GC as live so that we can sweep concurrently,
     // knowing that new allocations won't be marked as live.
     accounting::ObjectStack* live_stack = heap_->GetLiveStack();
     heap_->MarkAllocStackAsLive(live_stack);
