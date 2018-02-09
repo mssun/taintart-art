@@ -431,20 +431,7 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
     size_t BytesAllocated() const;
 
-    size_t ObjectsAllocated() const {
-      if (IsLarge()) {
-        DCHECK_LT(begin_ + kRegionSize, Top());
-        DCHECK_EQ(objects_allocated_.LoadRelaxed(), 0U);
-        return 1;
-      } else if (IsLargeTail()) {
-        DCHECK_EQ(begin_, Top());
-        DCHECK_EQ(objects_allocated_.LoadRelaxed(), 0U);
-        return 0;
-      } else {
-        DCHECK(IsAllocated()) << static_cast<uint>(state_);
-        return objects_allocated_;
-      }
-    }
+    size_t ObjectsAllocated() const;
 
     uint8_t* Begin() const {
       return begin_;

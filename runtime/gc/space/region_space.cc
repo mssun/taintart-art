@@ -537,8 +537,8 @@ void RegionSpace::Region::Dump(std::ostream& os) const {
      << reinterpret_cast<void*>(begin_)
      << "-" << reinterpret_cast<void*>(Top())
      << "-" << reinterpret_cast<void*>(end_)
-     << " state=" << static_cast<uint>(state_)
-     << " type=" << static_cast<uint>(type_)
+     << " state=" << state_
+     << " type=" << type_
      << " objects_allocated=" << objects_allocated_
      << " alloc_time=" << alloc_time_
      << " live_bytes=" << live_bytes_

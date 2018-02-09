@@ -349,7 +349,7 @@ inline size_t RegionSpace::Region::BytesAllocated() const {
     DCHECK_EQ(begin_, Top());
     return 0;
   } else {
-    DCHECK(IsAllocated()) << static_cast<uint>(state_);
+    DCHECK(IsAllocated()) << "state=" << state_;
     DCHECK_LE(begin_, Top());
     size_t bytes;
     if (is_a_tlab_) {
@@ -362,6 +362,20 @@ inline size_t RegionSpace::Region::BytesAllocated() const {
   }
 }
 
+inline size_t RegionSpace::Region::ObjectsAllocated() const {
+  if (IsLarge()) {
+    DCHECK_LT(begin_ + kRegionSize, Top());
+    DCHECK_EQ(objects_allocated_.LoadRelaxed(), 0U);
+    return 1;
+  } else if (IsLargeTail()) {
+    DCHECK_EQ(begin_, Top());
+    DCHECK_EQ(objects_allocated_.LoadRelaxed(), 0U);
+    return 0;
+  } else {
+    DCHECK(IsAllocated()) << "state=" << state_;
+    return objects_allocated_;
+  }
+}
 
 }  // namespace space
 }  // namespace gc
