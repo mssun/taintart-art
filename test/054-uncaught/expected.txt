@@ -18,3 +18,4 @@ Uncaught exception DEFAULT!
 java.lang.NullPointerException: Hi diddly-ho, neighborino.
 	at Main.catchTheUncaught(Main.java:63)
 	at Main.main(Main.java:26)
+exit status: 1
