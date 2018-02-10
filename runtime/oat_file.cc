@@ -633,6 +633,15 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
     const uint8_t* dex_file_pointer = nullptr;
     if (UNLIKELY(dex_file_offset == 0U)) {
       if (uncompressed_dex_files_ == nullptr) {
+        // Do not support mixed-mode oat files.
+        if (i > 0) {
+          *error_msg = StringPrintf("In oat file '%s', unsupported uncompressed-dex-file for dex "
+                                        "file %zu (%s)",
+                                    GetLocation().c_str(),
+                                    i,
+                                    dex_file_location.c_str());
+          return false;
+        }
         uncompressed_dex_files_.reset(new std::vector<std::unique_ptr<const DexFile>>());
         // No dex files, load it from location.
         const ArtDexFileLoader dex_file_loader;
@@ -652,9 +661,31 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
             return false;
           }
         }
+        // The oat file may be out of date wrt/ the dex-file location. We need to be defensive
+        // here and ensure that at least the number of dex files still matches.
+        // Note: actual checksum comparisons are the duty of the OatFileAssistant and will be
+        //       done after loading the OatFile.
+        if (uncompressed_dex_files_->size() != dex_file_count) {
+          *error_msg = StringPrintf("In oat file '%s', expected %u uncompressed dex files, but "
+                                        "found %zu in '%s'",
+                                    GetLocation().c_str(),
+                                    dex_file_count,
+                                    uncompressed_dex_files_->size(),
+                                    dex_file_location.c_str());
+          return false;
+        }
       }
       dex_file_pointer = uncompressed_dex_files_.get()->at(i)->Begin();
     } else {
+      // Do not support mixed-mode oat files.
+      if (uncompressed_dex_files_ != nullptr) {
+        *error_msg = StringPrintf("In oat file '%s', unsupported embedded dex-file for dex file "
+                                      "%zu (%s)",
+                                  GetLocation().c_str(),
+                                  i,
+                                  dex_file_location.c_str());
+        return false;
+      }
       if (UNLIKELY(DexSize() - dex_file_offset < sizeof(DexFile::Header))) {
         *error_msg = StringPrintf("In oat file '%s' found OatDexFile #%zu for '%s' with dex file "
                                       "offset %u of %zu but the size of dex file header is %zu",
