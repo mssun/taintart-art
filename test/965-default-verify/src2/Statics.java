@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 class Statics {
-  // public static void nonexistantFunction() {
+  // public static void nonexistentFunction() {
   //     System.out.println("I don't exist");
   // }
 }

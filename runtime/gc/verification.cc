@@ -140,7 +140,7 @@ bool Verification::IsValidClass(const void* addr) const {
   if (!IsValidHeapObjectAddress(k1)) {
     return false;
   }
-  // k should be class class, take the class again to verify.
+  // `k1` should be class class, take the class again to verify.
   // Note that this check may not be valid for the no image space since the class class might move
   // around from moving GC.
   mirror::Class* k2 = k1->GetClass<kVerifyNone, kWithoutReadBarrier>();

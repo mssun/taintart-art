@@ -120,6 +120,11 @@ void ThrowIllegalAccessException(const char* msg)
 void ThrowIllegalArgumentException(const char* msg)
     REQUIRES_SHARED(Locks::mutator_lock_) COLD_ATTR;
 
+// IllegalAccessException
+
+void ThrowIllegalStateException(const char* msg)
+    REQUIRES_SHARED(Locks::mutator_lock_) COLD_ATTR;
+
 // IncompatibleClassChangeError
 
 void ThrowIncompatibleClassChangeError(InvokeType expected_type,
@@ -149,6 +154,11 @@ void ThrowIncompatibleClassChangeError(ObjPtr<mirror::Class> referrer, const cha
     REQUIRES_SHARED(Locks::mutator_lock_) COLD_ATTR;
 
 void ThrowIncompatibleClassChangeErrorForMethodConflict(ArtMethod* method)
+    REQUIRES_SHARED(Locks::mutator_lock_) COLD_ATTR;
+
+// IndexOutOfBoundsException
+
+void ThrowIndexOutOfBoundsException(int index, int length)
     REQUIRES_SHARED(Locks::mutator_lock_) COLD_ATTR;
 
 // InternalError
@@ -223,6 +233,10 @@ void ThrowNullPointerExceptionFromDexPC(bool check_address = false, uintptr_t ad
 void ThrowNullPointerException(const char* msg)
     REQUIRES_SHARED(Locks::mutator_lock_) COLD_ATTR;
 
+// ReadOnlyBufferException
+
+void ThrowReadOnlyBufferException() REQUIRES_SHARED(Locks::mutator_lock_) COLD_ATTR;
+
 // RuntimeException
 
 void ThrowRuntimeException(const char* fmt, ...)
@@ -244,6 +258,10 @@ void ThrowStackOverflowError(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_)
 void ThrowStringIndexOutOfBoundsException(int index, int length)
     REQUIRES_SHARED(Locks::mutator_lock_) COLD_ATTR;
 
+// UnsupportedOperationException
+
+void ThrowUnsupportedOperationException() REQUIRES_SHARED(Locks::mutator_lock_) COLD_ATTR;
+
 // VerifyError
 
 void ThrowVerifyError(ObjPtr<mirror::Class> referrer, const char* fmt, ...)
@@ -251,6 +269,7 @@ void ThrowVerifyError(ObjPtr<mirror::Class> referrer, const char* fmt, ...)
     REQUIRES_SHARED(Locks::mutator_lock_) COLD_ATTR;
 
 // WrongMethodTypeException
+
 void ThrowWrongMethodTypeException(mirror::MethodType* callee_type,
                                    mirror::MethodType* callsite_type)
     REQUIRES_SHARED(Locks::mutator_lock_) COLD_ATTR;

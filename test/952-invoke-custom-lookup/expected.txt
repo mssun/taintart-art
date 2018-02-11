@@ -1,0 +1,10 @@
+NAME: 1
+CALLER: Main
+CALLER CLASS: class Main
+THIS CLASS: class com.android.tools.r8.maindexlist.desugar.BootstrapHolder
+invokedynamic target on Main
+NAME: 2
+CALLER: Main
+CALLER CLASS: class Main
+THIS CLASS: class com.android.tools.r8.maindexlist.desugar.BootstrapHolder
+invokedynamic target on BootstrapHolder

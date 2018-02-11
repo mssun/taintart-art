@@ -346,7 +346,7 @@ inline bool ConvertAndCopyArgumentsFromCallerFrame(
     return false;
   }
 
-  ShadowFrameGetter getter(operands, caller_frame);
+  ShadowFrameGetter getter(caller_frame, operands);
   ShadowFrameSetter setter(callee_frame, first_dest_reg);
   return PerformConversions<ShadowFrameGetter, ShadowFrameSetter>(self,
                                                                   callsite_type,

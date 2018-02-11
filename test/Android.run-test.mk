@@ -32,11 +32,6 @@ TEST_ART_RUN_TEST_DEPENDENCIES += \
   $(HOST_OUT_EXECUTABLES)/d8-compat-dx
 endif
 
-# Convert's a rule name to the form used in variables, e.g. no-relocate to NO_RELOCATE
-define name-to-var
-$(shell echo $(1) | tr '[:lower:]' '[:upper:]' | tr '-' '_')
-endef  # name-to-var
-
 # We need dex2oat and dalvikvm on the target as well as the core images (all images as we sync
 # only once).
 TEST_ART_TARGET_SYNC_DEPS += $(ART_TARGET_EXECUTABLES) $(TARGET_CORE_IMG_OUTS)
@@ -124,13 +119,13 @@ define core-image-dependencies
     endif
   endif
   ifeq ($(2),no-image)
-    $(1)_prereq_rules += $$($(call name-to-var,$(1))_CORE_IMAGE_$$(image_suffix)_$(4))
+    $(1)_prereq_rules += $$($(call to-upper,$(1))_CORE_IMAGE_$$(image_suffix)_$(4))
   else
     ifeq ($(2),picimage)
-      $(1)_prereq_rules += $$($(call name-to-var,$(1))_CORE_IMAGE_$$(image_suffix)_$(4))
+      $(1)_prereq_rules += $$($(call to-upper,$(1))_CORE_IMAGE_$$(image_suffix)_$(4))
     else
       ifeq ($(2),multipicimage)
-        $(1)_prereq_rules += $$($(call name-to-var,$(1))_CORE_IMAGE_$$(image_suffix)_multi_$(4))
+        $(1)_prereq_rules += $$($(call to-upper,$(1))_CORE_IMAGE_$$(image_suffix)_multi_$(4))
       endif
     endif
   endif
@@ -174,7 +169,6 @@ test-art-run-test : test-art-host-run-test test-art-target-run-test
 host_prereq_rules :=
 target_prereq_rules :=
 core-image-dependencies :=
-name-to-var :=
 define-test-art-host-or-target-run-test-group :=
 TARGET_TYPES :=
 COMPILER_TYPES :=

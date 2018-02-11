@@ -232,10 +232,10 @@ public class Main {
             field.set(instance, null);
 
             /*
-             * Try getDeclaredField on a non-existant field.
+             * Try getDeclaredField on a non-existent field.
              */
             try {
-                field = target.getDeclaredField("nonExistant");
+                field = target.getDeclaredField("nonExistent");
                 System.out.println("ERROR: Expected NoSuchFieldException");
             } catch (NoSuchFieldException nsfe) {
                 String msg = nsfe.getMessage();

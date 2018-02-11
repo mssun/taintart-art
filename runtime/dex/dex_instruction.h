@@ -701,7 +701,7 @@ class InstructionOperands {
   size_t GetNumberOfOperands() const { return num_operands_; }
 
  private:
-  size_t num_operands_;
+  const size_t num_operands_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(InstructionOperands);
 };
@@ -735,6 +735,21 @@ class VarArgsInstructionOperands FINAL : public InstructionOperands {
   const uint32_t (&operands_)[Instruction::kMaxVarArgRegs];
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(VarArgsInstructionOperands);
+};
+
+// Class for accessing operands without the receiver by wrapping an
+// existing InstructionOperands instance.
+class NoReceiverInstructionOperands FINAL : public InstructionOperands {
+ public:
+  explicit NoReceiverInstructionOperands(InstructionOperands* inner)
+      : InstructionOperands(inner->GetNumberOfOperands() - 1), inner_(inner) {}
+  ~NoReceiverInstructionOperands() {}
+  uint32_t GetOperand(size_t operand_index) const OVERRIDE;
+
+ private:
+  const InstructionOperands* const inner_;
+
+  DISALLOW_IMPLICIT_CONSTRUCTORS(NoReceiverInstructionOperands);
 };
 
 }  // namespace art

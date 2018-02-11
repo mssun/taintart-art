@@ -5,7 +5,7 @@
 
 .super Ljava/lang/Object;
 
-.method public static run()La/b/c/d/e/nonexistant;
+.method public static run()La/b/c/d/e/nonexistent;
     .registers 4
     # v1 is undefined, and the return type cannot be resolved. The Undefined should take
     # precedence here.

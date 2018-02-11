@@ -26,7 +26,7 @@ namespace gc {
 
 namespace space {
 
-// An zygote space is a space which you cannot allocate into or free from.
+// A zygote space is a space which you cannot allocate into or free from.
 class ZygoteSpace FINAL : public ContinuousMemMapAllocSpace {
  public:
   // Returns the remaining storage in the out_map field.

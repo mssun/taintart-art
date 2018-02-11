@@ -788,7 +788,9 @@ size_t DexWriter::GetHeaderSize() const {
   return sizeof(StandardDexFile::Header);
 }
 
-void DexWriter::Write(DexContainer* output) {
+bool DexWriter::Write(DexContainer* output, std::string* error_msg) {
+  DCHECK(error_msg != nullptr);
+
   Stream stream_storage(output->GetMainSection());
   Stream* stream = &stream_storage;
 
@@ -905,11 +907,13 @@ void DexWriter::Write(DexContainer* output) {
 
   // Trim the map to make it sized as large as the dex file.
   output->GetMainSection()->Resize(header_->FileSize());
+  return true;
 }
 
-void DexWriter::Output(DexLayout* dex_layout,
+bool DexWriter::Output(DexLayout* dex_layout,
                        std::unique_ptr<DexContainer>* container,
-                       bool compute_offsets) {
+                       bool compute_offsets,
+                       std::string* error_msg) {
   CHECK(dex_layout != nullptr);
   std::unique_ptr<DexWriter> writer;
   if (dex_layout->GetOptions().compact_dex_level_ != CompactDexLevel::kCompactDexLevelNone) {
@@ -922,7 +926,7 @@ void DexWriter::Output(DexLayout* dex_layout,
   if (*container == nullptr) {
     *container = writer->CreateDexContainer();
   }
-  writer->Write(container->get());
+  return writer->Write(container->get(), error_msg);
 }
 
 void MapItemQueue::AddIfNotEmpty(const MapItem& item) {

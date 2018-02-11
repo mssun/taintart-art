@@ -24,6 +24,8 @@ import java.lang.reflect.Method;
  */
 public class Main {
   public static void main(String[] args) {
+    System.loadLibrary(args[0]);
+
     SubClass.main(null);
 
     try {
@@ -50,6 +52,8 @@ public class Main {
     } catch (Exception e) {
       System.out.println("Got unexpected failure " + e);
     }
+
+    OOMEOnNullAccess.main(args);
   }
 
   /*
@@ -123,6 +127,10 @@ public class Main {
 
     return result;
   }
+
+  static native void startJit();
+  static native void stopJit();
+  static native void waitForCompilation();
 }
 
 /*

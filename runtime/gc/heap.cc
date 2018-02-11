@@ -1536,7 +1536,7 @@ void Heap::RecordFree(uint64_t freed_objects, int64_t freed_bytes) {
 
 void Heap::RecordFreeRevoke() {
   // Subtract num_bytes_freed_revoke_ from num_bytes_allocated_ to cancel out the
-  // the ahead-of-time, bulk counting of bytes allocated in rosalloc thread-local buffers.
+  // ahead-of-time, bulk counting of bytes allocated in rosalloc thread-local buffers.
   // If there's a concurrent revoke, ok to not necessarily reset num_bytes_freed_revoke_
   // all the way to zero exactly as the remainder will be subtracted at the next GC.
   size_t bytes_freed = num_bytes_freed_revoke_.LoadSequentiallyConsistent();
@@ -1758,7 +1758,7 @@ void Heap::SetTargetHeapUtilization(float target) {
 size_t Heap::GetObjectsAllocated() const {
   Thread* const self = Thread::Current();
   ScopedThreadStateChange tsc(self, kWaitingForGetObjectsAllocated);
-  // Prevent GC running during GetObjectsALlocated since we may get a checkpoint request that tells
+  // Prevent GC running during GetObjectsAllocated since we may get a checkpoint request that tells
   // us to suspend while we are doing SuspendAll. b/35232978
   gc::ScopedGCCriticalSection gcs(Thread::Current(),
                                   gc::kGcCauseGetObjectsAllocated,
@@ -3524,6 +3524,11 @@ void Heap::ClampGrowthLimit() {
       gc::space::MallocSpace* malloc_space = space->AsMallocSpace();
       malloc_space->ClampGrowthLimit();
     }
+  }
+  if (collector_type_ == kCollectorTypeCC) {
+    DCHECK(region_space_ != nullptr);
+    // Twice the capacity as CC needs extra space for evacuating objects.
+    region_space_->ClampGrowthLimit(2 * capacity_);
   }
   // This space isn't added for performance reasons.
   if (main_space_backup_.get() != nullptr) {

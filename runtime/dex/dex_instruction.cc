@@ -558,4 +558,11 @@ uint32_t VarArgsInstructionOperands::GetOperand(size_t operand_index) const {
   return operands_[operand_index];
 }
 
+uint32_t NoReceiverInstructionOperands::GetOperand(size_t operand_index) const {
+  DCHECK_LT(GetNumberOfOperands(), inner_->GetNumberOfOperands());
+  // The receiver is the first operand and since we're skipping it, we need to
+  // add 1 to the operand_index.
+  return inner_->GetOperand(operand_index + 1);
+}
+
 }  // namespace art

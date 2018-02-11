@@ -223,7 +223,7 @@ void BitVector::Subtract(const BitVector *src) {
   // Difference until max, we know both accept it:
   //   There is no need to do more:
   //     If we are bigger than src, the upper bits are unchanged.
-  //     If we are smaller than src, the non-existant upper bits are 0 and thus can't get subtracted.
+  //     If we are smaller than src, the nonexistent upper bits are 0 and thus can't get subtracted.
   for (uint32_t idx = 0; idx < min_size; idx++) {
     storage_[idx] &= (~(src->GetRawStorageWord(idx)));
   }

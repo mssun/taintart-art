@@ -16,3 +16,4 @@
 
 # Ask for stack traces to be dumped to a file rather than to stdout.
 ./default-run "$@" --jvmti
+echo "exit status: " $?

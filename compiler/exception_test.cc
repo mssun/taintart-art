@@ -42,6 +42,11 @@ namespace art {
 
 class ExceptionTest : public CommonRuntimeTest {
  protected:
+  // Since various dexers may differ in bytecode layout, we play
+  // it safe and simply set the dex pc to the start of the method,
+  // which always points to the first source statement.
+  static constexpr const uint32_t kDexPc = 0;
+
   virtual void SetUp() {
     CommonRuntimeTest::SetUp();
 
@@ -66,7 +71,7 @@ class ExceptionTest : public CommonRuntimeTest {
     ArenaStack arena_stack(&pool);
     ScopedArenaAllocator allocator(&arena_stack);
     StackMapStream stack_maps(&allocator, kRuntimeISA);
-    stack_maps.BeginStackMapEntry(/* dex_pc */ 3u,
+    stack_maps.BeginStackMapEntry(kDexPc,
                                   /* native_pc_offset */ 3u,
                                   /* register_mask */ 0u,
                                   /* sp_mask */ nullptr,
@@ -181,11 +186,6 @@ TEST_F(ExceptionTest, StackTraceElement) {
   ASSERT_EQ(kStackAlignment, 16U);
   // ASSERT_EQ(sizeof(uintptr_t), sizeof(uint32_t));
 
-
-  // Create three fake stack frames with mapping data created in SetUp. We map offset 3 in the
-  // code to dex pc 3.
-  const uint32_t dex_pc = 3;
-
   // Create the stack frame for the callee save method, expected by the runtime.
   fake_stack.push_back(reinterpret_cast<uintptr_t>(save_method));
   for (size_t i = 0; i < frame_info.FrameSizeInBytes() - 2 * sizeof(uintptr_t);
@@ -194,14 +194,14 @@ TEST_F(ExceptionTest, StackTraceElement) {
   }
 
   fake_stack.push_back(method_g_->GetOatQuickMethodHeader(0)->ToNativeQuickPc(
-      method_g_, dex_pc, /* is_catch_handler */ false));  // return pc
+      method_g_, kDexPc, /* is_catch_handler */ false));  // return pc
 
   // Create/push fake 16byte stack frame for method g
   fake_stack.push_back(reinterpret_cast<uintptr_t>(method_g_));
   fake_stack.push_back(0);
   fake_stack.push_back(0);
   fake_stack.push_back(method_g_->GetOatQuickMethodHeader(0)->ToNativeQuickPc(
-      method_g_, dex_pc, /* is_catch_handler */ false));  // return pc
+      method_g_, kDexPc, /* is_catch_handler */ false));  // return pc
 
   // Create/push fake 16byte stack frame for method f
   fake_stack.push_back(reinterpret_cast<uintptr_t>(method_f_));
@@ -217,7 +217,7 @@ TEST_F(ExceptionTest, StackTraceElement) {
   fake_stack.push_back(0);
   fake_stack.push_back(0);
 
-  // Set up thread to appear as if we called out of method_g_ at pc dex 3
+  // Set up thread to appear as if we called out of method_g_ at given pc dex.
   thread->SetTopOfStack(reinterpret_cast<ArtMethod**>(&fake_stack[0]));
 
   jobject internal = thread->CreateInternalStackTrace<false>(soa);
@@ -233,7 +233,7 @@ TEST_F(ExceptionTest, StackTraceElement) {
   EXPECT_STREQ("ExceptionHandle.java",
                trace_array->Get(0)->GetFileName()->ToModifiedUtf8().c_str());
   EXPECT_STREQ("g", trace_array->Get(0)->GetMethodName()->ToModifiedUtf8().c_str());
-  EXPECT_EQ(37, trace_array->Get(0)->GetLineNumber());
+  EXPECT_EQ(36, trace_array->Get(0)->GetLineNumber());
 
   ASSERT_TRUE(trace_array->Get(1) != nullptr);
   EXPECT_STREQ("ExceptionHandle",

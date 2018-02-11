@@ -124,18 +124,20 @@ JACK_EXPERIMENTAL_ARGS[${DEFAULT_EXPERIMENT}]="-D jack.java.source.version=1.8 -
 declare -A SMALI_EXPERIMENTAL_ARGS
 SMALI_EXPERIMENTAL_ARGS["default-methods"]="--api 24"
 SMALI_EXPERIMENTAL_ARGS["method-handles"]="--api 26"
+SMALI_EXPERIMENTAL_ARGS["var-handles"]="--api 26"
 SMALI_EXPERIMENTAL_ARGS["agents"]="--api 26"
 
 declare -A JAVAC_EXPERIMENTAL_ARGS
 JAVAC_EXPERIMENTAL_ARGS["default-methods"]="-source 1.8 -target 1.8"
 JAVAC_EXPERIMENTAL_ARGS["lambdas"]="-source 1.8 -target 1.8"
 JAVAC_EXPERIMENTAL_ARGS["method-handles"]="-source 1.8 -target 1.8"
-# We need to leave javac at default 1.7 so that dx will continue to work
+JAVAC_EXPERIMENTAL_ARGS["var-handles"]="-source 1.8 -target 1.8"
 JAVAC_EXPERIMENTAL_ARGS[${DEFAULT_EXPERIMENT}]="-source 1.8 -target 1.8"
 JAVAC_EXPERIMENTAL_ARGS["agents"]="-source 1.8 -target 1.8"
 
 declare -A DX_EXPERIMENTAL_ARGS
 DX_EXPERIMENTAL_ARGS["method-handles"]="--min-sdk-version=26"
+DX_EXPERIMENTAL_ARGS["var-handles"]="--min-sdk-version=26"
 
 while true; do
   if [ "x$1" = "x--dx-option" ]; then
@@ -441,7 +443,7 @@ else
 
     if [ "${HAS_SRC2}" = "true" ]; then
       mkdir -p classes
-      ${JAVAC} ${JAVAC_ARGS} -d classes `find src2 -name '*.java'`
+      ${JAVAC} ${JAVAC_ARGS} -classpath classes -d classes `find src2 -name '*.java'`
     fi
 
     if [[ "${HAS_SRC}" == "true" || "${HAS_SRC2}" == "true" || "${HAS_SRC_ART}" == "true" ]]; then

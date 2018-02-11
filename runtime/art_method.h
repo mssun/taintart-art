@@ -551,7 +551,7 @@ class ArtMethod FINAL {
   // Is this a CalleSaveMethod or ResolutionMethod and therefore doesn't adhere to normal
   // conventions for a method of managed code. Returns false for Proxy methods.
   ALWAYS_INLINE bool IsRuntimeMethod() {
-    return dex_method_index_ == kRuntimeMethodDexMethodIndex;;
+    return dex_method_index_ == kRuntimeMethodDexMethodIndex;
   }
 
   // Is this a hand crafted method used for something like describing callee saves?

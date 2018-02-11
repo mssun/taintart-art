@@ -105,6 +105,7 @@
 #include "mirror/method_type.h"
 #include "mirror/stack_trace_element.h"
 #include "mirror/throwable.h"
+#include "mirror/var_handle.h"
 #include "monitor.h"
 #include "native/dalvik_system_DexFile.h"
 #include "native/dalvik_system_VMDebug.h"
@@ -1082,9 +1083,15 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   // Take a snapshot of the environment at the time the runtime was created, for use by Exec, etc.
   env_snapshot_.TakeSnapshot();
 
-  RuntimeArgumentMap runtime_options(std::move(runtime_options_in));
+  using Opt = RuntimeArgumentMap;
+  Opt runtime_options(std::move(runtime_options_in));
   ScopedTrace trace(__FUNCTION__);
   CHECK_EQ(sysconf(_SC_PAGE_SIZE), kPageSize);
+
+  // Early override for logging output.
+  if (runtime_options.Exists(Opt::UseStderrLogger)) {
+    android::base::SetLogger(android::base::StderrLogger);
+  }
 
   MemMap::Init();
 
@@ -1112,7 +1119,6 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
     }
   }
 
-  using Opt = RuntimeArgumentMap;
   VLOG(startup) << "Runtime::Init -verbose:startup enabled";
 
   QuasiAtomic::Startup();
@@ -1934,6 +1940,11 @@ void Runtime::VisitConstantRoots(RootVisitor* visitor) {
   mirror::EmulatedStackFrame::VisitRoots(visitor);
   mirror::ClassExt::VisitRoots(visitor);
   mirror::CallSite::VisitRoots(visitor);
+  mirror::VarHandle::VisitRoots(visitor);
+  mirror::FieldVarHandle::VisitRoots(visitor);
+  mirror::ArrayElementVarHandle::VisitRoots(visitor);
+  mirror::ByteArrayViewVarHandle::VisitRoots(visitor);
+  mirror::ByteBufferViewVarHandle::VisitRoots(visitor);
   // Visit all the primitive array types classes.
   mirror::PrimitiveArray<uint8_t>::VisitRoots(visitor);   // BooleanArray
   mirror::PrimitiveArray<int8_t>::VisitRoots(visitor);    // ByteArray

@@ -18,6 +18,6 @@ public interface Iface {
     return "Hello";
   }
   public default void verificationSoftFail() {
-    Statics.nonexistantFunction();
+    Statics.nonexistentFunction();
   }
 }

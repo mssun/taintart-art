@@ -16,6 +16,7 @@
 
 #include "compact_dex_writer.h"
 
+#include "android-base/stringprintf.h"
 #include "base/logging.h"
 #include "base/time_utils.h"
 #include "dex/compact_dex_debug_info.h"
@@ -328,9 +329,63 @@ void CompactDexWriter::WriteStringData(Stream* stream, dex_ir::StringData* strin
   stream->Skip(1);
 }
 
-void CompactDexWriter::Write(DexContainer* output)  {
+bool CompactDexWriter::CanGenerateCompactDex(std::string* error_msg) {
+  dex_ir::Collections& collections = header_->GetCollections();
+  static constexpr InvokeType invoke_types[] = {
+    kDirect,
+    kVirtual
+  };
+  std::vector<bool> saw_method_id(collections.MethodIdsSize(), false);
+  std::vector<dex_ir::CodeItem*> method_id_code_item(collections.MethodIdsSize(), nullptr);
+  std::vector<dex_ir::DebugInfoItem*> method_id_debug_info(collections.MethodIdsSize(), nullptr);
+  for (InvokeType invoke_type : invoke_types) {
+    for (std::unique_ptr<dex_ir::ClassDef>& class_def : collections.ClassDefs()) {
+      // Skip classes that are not defined in this dex file.
+      dex_ir::ClassData* class_data = class_def->GetClassData();
+      if (class_data == nullptr) {
+        continue;
+      }
+      for (auto& method : *(invoke_type == InvokeType::kDirect
+                                ? class_data->DirectMethods()
+                                : class_data->VirtualMethods())) {
+        const uint32_t idx = method->GetMethodId()->GetIndex();
+        dex_ir::CodeItem* code_item = method->GetCodeItem();
+        dex_ir:: DebugInfoItem* debug_info_item = nullptr;
+        if (code_item != nullptr) {
+          debug_info_item = code_item->DebugInfo();
+        }
+        if (saw_method_id[idx]) {
+          if (method_id_code_item[idx] != code_item) {
+            *error_msg = android::base::StringPrintf("Conflicting code item for method id %u",
+                                                     idx);
+            // Conflicting info, abort generation.
+            return false;
+          }
+          if (method_id_debug_info[idx] != debug_info_item) {
+            *error_msg = android::base::StringPrintf("Conflicting debug info for method id %u",
+                                                     idx);
+            // Conflicting info, abort generation.
+            return false;
+          }
+        }
+        method_id_code_item[idx] = code_item;
+        method_id_debug_info[idx] = debug_info_item;
+        saw_method_id[idx] = true;
+      }
+    }
+  }
+  return true;
+}
+
+bool CompactDexWriter::Write(DexContainer* output, std::string* error_msg)  {
+  DCHECK(error_msg != nullptr);
   CHECK(compute_offsets_);
   CHECK(output->IsCompactDexContainer());
+
+  if (!CanGenerateCompactDex(error_msg)) {
+    return false;
+  }
+
   Container* const container = down_cast<Container*>(output);
   // For now, use the same stream for both data and metadata.
   Stream temp_main_stream(output->GetMainSection());
@@ -472,6 +527,8 @@ void CompactDexWriter::Write(DexContainer* output)  {
   // dex2oat's class unloading. The issue is that verification encounters quickened opcodes after
   // the first dex gets unloaded.
   code_item_dedupe_->Clear();
+
+  return true;
 }
 
 std::unique_ptr<DexContainer> CompactDexWriter::CreateDexContainer() const {

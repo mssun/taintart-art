@@ -83,6 +83,11 @@ ART_TEST_TARGET_GTEST_MainUncompressed_DEX := $(basename $(ART_TEST_TARGET_GTEST
 ART_TEST_HOST_GTEST_EmptyUncompressed_DEX := $(basename $(ART_TEST_HOST_GTEST_Main_DEX))EmptyUncompressed$(suffix $(ART_TEST_HOST_GTEST_Main_DEX))
 ART_TEST_TARGET_GTEST_EmptyUncompressed_DEX := $(basename $(ART_TEST_TARGET_GTEST_Main_DEX))EmptyUncompressed$(suffix $(ART_TEST_TARGET_GTEST_Main_DEX))
 
+# Create rules for MultiDexUncompressed, a copy of MultiDex with the classes.dex uncompressed
+# for the OatFile tests.
+ART_TEST_HOST_GTEST_MultiDexUncompressed_DEX := $(basename $(ART_TEST_HOST_GTEST_MultiDex_DEX))Uncompressed$(suffix $(ART_TEST_HOST_GTEST_MultiDex_DEX))
+ART_TEST_TARGET_GTEST_MultiDexUncompressed_DEX := $(basename $(ART_TEST_TARGET_GTEST_MultiDex_DEX))Uncompressed$(suffix $(ART_TEST_TARGET_GTEST_MultiDex_DEX))
+
 $(ART_TEST_HOST_GTEST_MainStripped_DEX): $(ART_TEST_HOST_GTEST_Main_DEX)
 	cp $< $@
 	$(call dexpreopt-remove-classes.dex,$@)
@@ -111,6 +116,16 @@ $(ART_TEST_TARGET_GTEST_EmptyUncompressed_DEX): $(ZIPALIGN)
 	zip -j -qD -X -0 $@ $(dir $@)classes.dex
 	rm $(dir $@)classes.dex
 
+$(ART_TEST_HOST_GTEST_MultiDexUncompressed_DEX): $(ART_TEST_HOST_GTEST_MultiDex_DEX) $(ZIPALIGN)
+	cp $< $@
+	$(call uncompress-dexs, $@)
+	$(call align-package, $@)
+
+$(ART_TEST_TARGET_GTEST_MultiDexUncompressed_DEX): $(ART_TEST_TARGET_GTEST_MultiDex_DEX) $(ZIPALIGN)
+	cp $< $@
+	$(call uncompress-dexs, $@)
+	$(call align-package, $@)
+
 ART_TEST_GTEST_VerifierDeps_SRC := $(abspath $(wildcard $(LOCAL_PATH)/VerifierDeps/*.smali))
 ART_TEST_GTEST_VerifierDepsMulti_SRC := $(abspath $(wildcard $(LOCAL_PATH)/VerifierDepsMulti/*.smali))
 ART_TEST_HOST_GTEST_VerifierDeps_DEX := $(dir $(ART_TEST_HOST_GTEST_Main_DEX))$(subst Main,VerifierDeps,$(basename $(notdir $(ART_TEST_HOST_GTEST_Main_DEX))))$(suffix $(ART_TEST_HOST_GTEST_Main_DEX))
@@ -131,6 +146,7 @@ $(ART_TEST_TARGET_GTEST_VerifierDepsMulti_DEX): $(ART_TEST_GTEST_VerifierDepsMul
 	 $(HOST_OUT_EXECUTABLES)/smali assemble --output $@ $(filter %.smali,$^)
 
 # Dex file dependencies for each gtest.
+ART_GTEST_art_dex_file_loader_test_DEX_DEPS := GetMethodSignature Main Nested MultiDex
 ART_GTEST_dex2oat_environment_tests_DEX_DEPS := Main MainStripped MultiDex MultiDexModifiedSecondary MyClassNatives Nested VerifierDeps VerifierDepsMulti
 
 ART_GTEST_atomic_dex_ref_map_test_DEX_DEPS := Interfaces
@@ -139,7 +155,6 @@ ART_GTEST_class_loader_context_test_DEX_DEPS := Main MultiDex MyClass ForClassLo
 ART_GTEST_class_table_test_DEX_DEPS := XandY
 ART_GTEST_compiler_driver_test_DEX_DEPS := AbstractMethod StaticLeafMethods ProfileTestMultiDex
 ART_GTEST_dex_cache_test_DEX_DEPS := Main Packages MethodTypes
-ART_GTEST_dex_file_test_DEX_DEPS := GetMethodSignature Main Nested MultiDex
 ART_GTEST_dexlayout_test_DEX_DEPS := ManyMethods
 ART_GTEST_dex2oat_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS) ManyMethods Statics VerifierDeps MainUncompressed EmptyUncompressed
 ART_GTEST_dex2oat_image_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS) Statics VerifierDeps
@@ -153,7 +168,7 @@ ART_GTEST_jni_internal_test_DEX_DEPS := AllFields StaticLeafMethods
 ART_GTEST_oat_file_assistant_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS)
 ART_GTEST_dexoptanalyzer_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS)
 ART_GTEST_image_space_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS)
-ART_GTEST_oat_file_test_DEX_DEPS := Main MultiDex
+ART_GTEST_oat_file_test_DEX_DEPS := Main MultiDex MainUncompressed MultiDexUncompressed
 ART_GTEST_oat_test_DEX_DEPS := Main
 ART_GTEST_object_test_DEX_DEPS := ProtoCompare ProtoCompare2 StaticsFromCode XandY
 ART_GTEST_patchoat_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS)

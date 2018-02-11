@@ -278,7 +278,7 @@ RegTypeCache::RegTypeCache(bool can_load_classes, ScopedArenaAllocator& allocato
       klass_entries_(allocator.Adapter(kArenaAllocVerifier)),
       can_load_classes_(can_load_classes),
       allocator_(allocator) {
-  DCHECK(can_suspend || !can_load_classes) << "Cannot load classes is suspension is disabled!";
+  DCHECK(can_suspend || !can_load_classes) << "Cannot load classes if suspension is disabled!";
   if (kIsDebugBuild && can_suspend) {
     Thread::Current()->AssertThreadSuspensionIsAllowable(gAborting == 0);
   }

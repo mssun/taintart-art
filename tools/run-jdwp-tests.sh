@@ -54,6 +54,7 @@ mode="target"
 # Use JIT compiling by default.
 use_jit=true
 variant_cmdline_parameter="--variant=X32"
+dump_command="/bin/true"
 # Timeout of JDWP test in ms.
 #
 # Note: some tests expect a timeout to check that *no* reply/event is received for a specific case.
@@ -197,6 +198,14 @@ if [[ $mode == "ri" ]]; then
     exit 1
   fi
 else
+  if [[ "$mode" == "host" ]]; then
+    dump_command="/bin/kill -3"
+  else
+    # TODO It would be great to be able to use this on target too but we need to
+    # be able to walk /proc to figure out what the actual child pid is.
+    dump_command="/system/bin/true"
+    # dump_command="/system/xbin/su root /data/local/tmp/system/bin/debuggerd -b"
+  fi
   if [[ $has_gdb = "yes" ]]; then
     if [[ $mode == "target" ]]; then
       echo "Cannot use --gdbserver with --mode=target"
@@ -306,6 +315,7 @@ vogar $vm_command \
       --vm-arg -Djpda.settings.timeout=$jdwp_test_timeout \
       --vm-arg -Djpda.settings.waitingTime=$jdwp_test_timeout \
       --vm-arg -Djpda.settings.transportAddress=127.0.0.1:55107 \
+      --vm-arg -Djpda.settings.dumpProcess="$dump_command" \
       --vm-arg -Djpda.settings.debuggeeJavaPath="$art_debugee $plugin $image $debuggee_args" \
       --classpath "$test_jar" \
       $toolchain_args \

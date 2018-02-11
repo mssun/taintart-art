@@ -183,7 +183,7 @@ mirror::EmulatedStackFrame* EmulatedStackFrame::CreateFromShadowFrameAndArgs(
   }
 
   // Step 4 : Perform argument conversions (if required).
-  ShadowFrameGetter getter(operands, caller_frame);
+  ShadowFrameGetter getter(caller_frame, operands);
   EmulatedStackFrameAccessor setter(references, stack_frame, stack_frame->GetLength());
   if (!PerformConversions<ShadowFrameGetter, EmulatedStackFrameAccessor>(
           self, caller_type, callee_type, &getter, &setter, num_method_params)) {

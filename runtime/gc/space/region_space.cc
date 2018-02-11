@@ -413,9 +413,32 @@ void RegionSpace::Clear() {
   evac_region_ = &full_region_;
 }
 
+void RegionSpace::ClampGrowthLimit(size_t new_capacity) {
+  MutexLock mu(Thread::Current(), region_lock_);
+  CHECK_LE(new_capacity, NonGrowthLimitCapacity());
+  size_t new_num_regions = new_capacity / kRegionSize;
+  if (non_free_region_index_limit_ > new_num_regions) {
+    LOG(WARNING) << "Couldn't clamp region space as there are regions in use beyond growth limit.";
+    return;
+  }
+  num_regions_ = new_num_regions;
+  SetLimit(Begin() + new_capacity);
+  if (Size() > new_capacity) {
+    SetEnd(Limit());
+  }
+  GetMarkBitmap()->SetHeapSize(new_capacity);
+  GetMemMap()->SetSize(new_capacity);
+}
+
 void RegionSpace::Dump(std::ostream& os) const {
   os << GetName() << " "
       << reinterpret_cast<void*>(Begin()) << "-" << reinterpret_cast<void*>(Limit());
+}
+
+void RegionSpace::DumpRegionForObject(std::ostream& os, mirror::Object* obj) {
+  CHECK(HasAddress(obj));
+  MutexLock mu(Thread::Current(), region_lock_);
+  RefToRegionUnlocked(obj)->Dump(os);
 }
 
 void RegionSpace::DumpRegions(std::ostream& os) {

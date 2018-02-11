@@ -1,0 +1,1 @@
+A temporary test for the lookup class used for invoke-custom (see b/73056094).

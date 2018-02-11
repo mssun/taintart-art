@@ -327,7 +327,7 @@ TEST_F(VarHandleTest, InstanceFieldVarHandle) {
     EXPECT_TRUE(fvh->IsMethodTypeCompatible(access_mode, MethodTypeOf("(Ljava/lang/Integer;II)I")));
     EXPECT_TRUE(fvh->IsMethodTypeCompatible(access_mode, MethodTypeOf("(Ljava/lang/Integer;II)V")));
     EXPECT_FALSE(fvh->IsMethodTypeCompatible(access_mode, MethodTypeOf("(Ljava/lang/Integer;I)Z")));
-    EXPECT_FALSE(fvh->IsMethodTypeCompatible(access_mode, MethodTypeOf("(III)V")));
+    EXPECT_FALSE(fvh->IsMethodTypeCompatible(access_mode, MethodTypeOf("(IIII)V")));
   }
 
   // Check compatibility - "GetAndUpdate" pattern
@@ -336,7 +336,7 @@ TEST_F(VarHandleTest, InstanceFieldVarHandle) {
     EXPECT_TRUE(fvh->IsMethodTypeCompatible(access_mode, MethodTypeOf("(Ljava/lang/Integer;I)I")));
     EXPECT_TRUE(fvh->IsMethodTypeCompatible(access_mode, MethodTypeOf("(Ljava/lang/Integer;I)V")));
     EXPECT_FALSE(fvh->IsMethodTypeCompatible(access_mode, MethodTypeOf("(Ljava/lang/Integer;I)Z")));
-    EXPECT_FALSE(fvh->IsMethodTypeCompatible(access_mode, MethodTypeOf("(II)V")));
+    EXPECT_FALSE(fvh->IsMethodTypeCompatible(access_mode, MethodTypeOf("(II)S")));
   }
 
   // Check synthesized method types match expected forms.
@@ -461,8 +461,8 @@ TEST_F(VarHandleTest, StaticFieldVarHandle) {
     EXPECT_TRUE(fvh->IsMethodTypeCompatible(access_mode, MethodTypeOf("(II)I")));
     EXPECT_TRUE(fvh->IsMethodTypeCompatible(access_mode, MethodTypeOf("(II)V")));
     EXPECT_FALSE(fvh->IsMethodTypeCompatible(access_mode, MethodTypeOf("(ID)I")));
-    EXPECT_FALSE(fvh->IsMethodTypeCompatible(access_mode, MethodTypeOf("(II)D")));
-    EXPECT_FALSE(fvh->IsMethodTypeCompatible(access_mode, MethodTypeOf("(III)V")));
+    EXPECT_FALSE(fvh->IsMethodTypeCompatible(access_mode, MethodTypeOf("(II)S")));
+    EXPECT_FALSE(fvh->IsMethodTypeCompatible(access_mode, MethodTypeOf("(IIJ)V")));
   }
 
   // Check compatibility - "GetAndUpdate" pattern

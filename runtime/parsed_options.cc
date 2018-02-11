@@ -332,6 +332,8 @@ std::unique_ptr<RuntimeParser> ParsedOptions::MakeParser(bool ignore_unrecognize
           .IntoKey(M::TargetSdkVersion)
       .Define("-Xno-hidden-api-checks")
           .IntoKey(M::NoHiddenApiChecks)
+      .Define("-Xuse-stderr-logger")
+          .IntoKey(M::UseStderrLogger)
       .Ignore({
           "-ea", "-da", "-enableassertions", "-disableassertions", "--runtime-arg", "-esa",
           "-dsa", "-enablesystemassertions", "-disablesystemassertions", "-Xrs", "-Xint:_",

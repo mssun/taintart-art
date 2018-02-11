@@ -3373,15 +3373,19 @@ bool OatWriter::WriteDexFiles(OutputStream* out, File* file, bool update_input_v
       CHECK(!update_input_vdex) << "Update input vdex should have empty dex container";
       DexContainer::Section* const section = dex_container_->GetDataSection();
       if (section->Size() > 0) {
-        const uint32_t shared_data_offset = vdex_size_;
         const off_t existing_offset = out->Seek(0, kSeekCurrent);
-        if (static_cast<uint32_t>(existing_offset) != shared_data_offset) {
-          LOG(ERROR) << "Expected offset " << shared_data_offset << " but got " << existing_offset;
+        if (static_cast<uint32_t>(existing_offset) != vdex_dex_shared_data_offset_) {
+          PLOG(ERROR) << "Expected offset " << vdex_dex_shared_data_offset_ << " but got "
+                      << existing_offset;
           return false;
         }
         shared_data_size = section->Size();
         if (!out->WriteFully(section->Begin(), shared_data_size)) {
-          LOG(ERROR) << "Failed to write shared data!";
+          PLOG(ERROR) << "Failed to write shared data!";
+          return false;
+        }
+        if (!out->Flush()) {
+          PLOG(ERROR) << "Failed to flush after writing shared dex section.";
           return false;
         }
         // Fix up the dex headers to have correct offsets to the data section.
@@ -3389,49 +3393,69 @@ bool OatWriter::WriteDexFiles(OutputStream* out, File* file, bool update_input_v
           // Overwrite the header by reading it, updating the offset, and writing it back out.
           DexFile::Header header;
           if (!file->PreadFully(&header, sizeof(header), oat_dex_file.dex_file_offset_)) {
-            LOG(ERROR) << "Failed to read dex header for updating";
+            PLOG(ERROR) << "Failed to read dex header for updating";
             return false;
           }
           CHECK(CompactDexFile::IsMagicValid(header.magic_)) << "Must be compact dex";
-          CHECK_GT(shared_data_offset, oat_dex_file.dex_file_offset_);
+          CHECK_GT(vdex_dex_shared_data_offset_, oat_dex_file.dex_file_offset_);
           // Offset is from the dex file base.
-          header.data_off_ = shared_data_offset - oat_dex_file.dex_file_offset_;
+          header.data_off_ = vdex_dex_shared_data_offset_ - oat_dex_file.dex_file_offset_;
           // The size should already be what part of the data buffer may be used by the dex.
           CHECK_LE(header.data_size_, shared_data_size);
           if (!file->PwriteFully(&header, sizeof(header), oat_dex_file.dex_file_offset_)) {
-            LOG(ERROR) << "Failed to write dex header for updating";
+            PLOG(ERROR) << "Failed to write dex header for updating";
             return false;
           }
         }
         section->Clear();
-        if (!out->Flush()) {
-          PLOG(ERROR) << "Failed to flush after writing shared dex section.";
-          return false;
-        }
       }
       dex_container_.reset();
     } else {
-      if (update_input_vdex) {
-        for (OatDexFile& oat_dex_file : oat_dex_files_) {
-          DexFile::Header header;
-          if (!file->PreadFully(&header, sizeof(header), oat_dex_file.dex_file_offset_)) {
-            PLOG(ERROR) << "Failed to read dex header";
-            return false;
+      const uint8_t* data_begin = nullptr;
+      for (OatDexFile& oat_dex_file : oat_dex_files_) {
+        DexFile::Header header;
+        if (!file->PreadFully(&header, sizeof(header), oat_dex_file.dex_file_offset_)) {
+          PLOG(ERROR) << "Failed to read dex header";
+          return false;
+        }
+        if (!CompactDexFile::IsMagicValid(header.magic_)) {
+          // Non compact dex does not have shared data section.
+          continue;
+        }
+        const uint32_t expected_data_off = vdex_dex_shared_data_offset_ -
+            oat_dex_file.dex_file_offset_;
+        if (header.data_off_ != expected_data_off) {
+          PLOG(ERROR) << "Shared data section offset " << header.data_off_
+                      << " does not match expected value " << expected_data_off;
+          return false;
+        }
+        if (oat_dex_file.source_.IsRawData()) {
+          // Figure out the start of the shared data section so we can copy it below.
+          const uint8_t* cur_data_begin = oat_dex_file.source_.GetRawData() + header.data_off_;
+          if (data_begin != nullptr) {
+            CHECK_EQ(data_begin, cur_data_begin);
           }
-          if (!CompactDexFile::IsMagicValid(header.magic_)) {
-            // Non compact dex does not have shared data section.
-            continue;
-          }
-          const uint32_t expected_data_off = vdex_dex_shared_data_offset_ -
-              oat_dex_file.dex_file_offset_;
-          if (header.data_off_ != expected_data_off) {
-            PLOG(ERROR) << "Shared data section offset " << header.data_off_
-                        << " does not match expected value " << expected_data_off;
-            return false;
-          }
-          // The different dex files currently can have different data sizes since
-          // the dex writer writes them one at a time into the shared section.:w
-          shared_data_size = std::max(shared_data_size, header.data_size_);
+          data_begin = cur_data_begin;
+        }
+        // The different dex files currently can have different data sizes since
+        // the dex writer writes them one at a time into the shared section.:w
+        shared_data_size = std::max(shared_data_size, header.data_size_);
+      }
+      // If we are not updating the input vdex, write out the shared data section.
+      if (!update_input_vdex) {
+        const off_t existing_offset = out->Seek(0, kSeekCurrent);
+        if (static_cast<uint32_t>(existing_offset) != vdex_dex_shared_data_offset_) {
+          PLOG(ERROR) << "Expected offset " << vdex_dex_shared_data_offset_ << " but got "
+                      << existing_offset;
+          return false;
+        }
+        if (!out->WriteFully(data_begin, shared_data_size)) {
+          PLOG(ERROR) << "Failed to write shared data!";
+          return false;
+        }
+        if (!out->Flush()) {
+          PLOG(ERROR) << "Failed to flush after writing shared dex section.";
+          return false;
         }
       }
     }
@@ -3597,17 +3621,21 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
   options.compact_dex_level_ = compact_dex_level_;
   options.update_checksum_ = true;
   DexLayout dex_layout(options, profile_compilation_info_, /*file*/ nullptr, /*header*/ nullptr);
-  dex_layout.ProcessDexFile(location.c_str(), dex_file.get(), 0, &dex_container_);
-  oat_dex_file->dex_sections_layout_ = dex_layout.GetSections();
-  // Dex layout can affect the size of the dex file, so we update here what we have set
-  // when adding the dex file as a source.
-  const UnalignedDexFileHeader* header =
-      AsUnalignedDexFileHeader(dex_container_->GetMainSection()->Begin());
-  oat_dex_file->dex_file_size_ = header->file_size_;
-  if (!WriteDexFile(out,
-                    oat_dex_file,
-                    dex_container_->GetMainSection()->Begin(),
-                    /* update_input_vdex */ false)) {
+  const uint8_t* dex_src = nullptr;
+  if (dex_layout.ProcessDexFile(location.c_str(), dex_file.get(), 0, &dex_container_, &error_msg)) {
+    oat_dex_file->dex_sections_layout_ = dex_layout.GetSections();
+    // Dex layout can affect the size of the dex file, so we update here what we have set
+    // when adding the dex file as a source.
+    const UnalignedDexFileHeader* header =
+        AsUnalignedDexFileHeader(dex_container_->GetMainSection()->Begin());
+    oat_dex_file->dex_file_size_ = header->file_size_;
+    dex_src = dex_container_->GetMainSection()->Begin();
+  } else {
+    LOG(WARNING) << "Failed to run dex layout, reason:" << error_msg;
+    // Since we failed to convert the dex, just copy the input dex.
+    dex_src = dex_file->Begin();
+  }
+  if (!WriteDexFile(out, oat_dex_file, dex_src, /* update_input_vdex */ false)) {
     return false;
   }
   if (dex_container_ != nullptr) {

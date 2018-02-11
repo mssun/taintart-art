@@ -24,7 +24,7 @@ extern "C" JNIEXPORT void JNICALL Java_art_Test1944_exitNow(JNIEnv*, jclass)
     __attribute__((noreturn));
 
 extern "C" JNIEXPORT void JNICALL Java_art_Test1944_exitNow(JNIEnv*, jclass) {
-  exit(0);
+  exit(12);
 }
 
 }  // namespace Test1944SuddenExit
