@@ -345,6 +345,9 @@ void DumpNativeStack(std::ostream& os,
       } else {
         os << it->map.name;
       }
+      if (it->map.offset != 0) {
+        os << StringPrintf(" (offset %" PRIx64 ")", it->map.offset);
+      }
       os << " (";
       if (!it->func_name.empty()) {
         os << it->func_name;
