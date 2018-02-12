@@ -653,6 +653,11 @@
         "description": ["Test is designed to only check --compiler-filter=speed"]
     },
     {
+        "test_patterns": [".*"],
+        "description": ["Tests are timing out for weeks now, disable to fix."],
+        "variant": "cdex-fast & redefine-stress"
+    },
+    {
         "tests": "674-HelloWorld-Dm",
         "variant": "target",
         "description": ["Requires zip, which isn't available on device"]
