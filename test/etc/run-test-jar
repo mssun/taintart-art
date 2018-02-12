@@ -887,14 +887,11 @@ if [ "$HOST" = "n" ]; then
       adb push $cmdfile $DEX_LOCATION/cmdline.sh > /dev/null 2>&1
     fi
 
-    exit_status=0
     if [ "$DRY_RUN" != "y" ]; then
       adb shell sh $DEX_LOCATION/cmdline.sh
-      exit_status=$?
     fi
 
     rm -f $cmdfile
-    exit $exit_status
 else
     # Host run.
     export ANDROID_PRINTF_LOG=brief
@@ -1000,12 +997,10 @@ else
         trap 'kill -INT -$pid' INT
         $cmdline "$@" 2>&1 & pid=$!
         wait $pid
-        exit_value=$?
         # Add extra detail if time out is enabled.
-        if [ $exit_value = 124 ] && [ "$TIME_OUT" = "timeout" ]; then
+        if [ ${PIPESTATUS[0]} = 124 ] && [ "$TIME_OUT" = "timeout" ]; then
           echo -e "\e[91mTEST TIMED OUT!\e[0m" >&2
         fi
-        exit $exit_value
       else
         # With a thread dump that uses gdb if a timeout.
         trap 'kill -INT -$pid' INT
@@ -1028,7 +1023,6 @@ else
             # The test timed out.
             echo -e "\e[91mTEST TIMED OUT!\e[0m" >&2
           fi
-          exit $test_exit_status
         fi
       fi
     fi
