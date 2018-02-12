@@ -97,7 +97,8 @@ ALWAYS_INLINE static bool ShouldEnforceHiddenApi(Thread* self)
 template<typename T>
 ALWAYS_INLINE static bool ShouldBlockAccessToMember(T* member, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  return hiddenapi::ShouldBlockAccessToMember(member, self, IsCallerInBootClassPath);
+  return hiddenapi::ShouldBlockAccessToMember(
+      member, self, IsCallerInBootClassPath, hiddenapi::kReflection);
 }
 
 // Returns true if a class member should be discoverable with reflection given
