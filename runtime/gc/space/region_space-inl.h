@@ -24,26 +24,30 @@ namespace art {
 namespace gc {
 namespace space {
 
-inline mirror::Object* RegionSpace::Alloc(Thread*, size_t num_bytes, size_t* bytes_allocated,
-                                          size_t* usable_size,
-                                          size_t* bytes_tl_bulk_allocated) {
+inline mirror::Object* RegionSpace::Alloc(Thread* self ATTRIBUTE_UNUSED,
+                                          size_t num_bytes,
+                                          /* out */ size_t* bytes_allocated,
+                                          /* out */ size_t* usable_size,
+                                          /* out */ size_t* bytes_tl_bulk_allocated) {
   num_bytes = RoundUp(num_bytes, kAlignment);
   return AllocNonvirtual<false>(num_bytes, bytes_allocated, usable_size,
                                 bytes_tl_bulk_allocated);
 }
 
-inline mirror::Object* RegionSpace::AllocThreadUnsafe(Thread* self, size_t num_bytes,
-                                                      size_t* bytes_allocated,
-                                                      size_t* usable_size,
-                                                      size_t* bytes_tl_bulk_allocated) {
+inline mirror::Object* RegionSpace::AllocThreadUnsafe(Thread* self,
+                                                      size_t num_bytes,
+                                                      /* out */ size_t* bytes_allocated,
+                                                      /* out */ size_t* usable_size,
+                                                      /* out */ size_t* bytes_tl_bulk_allocated) {
   Locks::mutator_lock_->AssertExclusiveHeld(self);
   return Alloc(self, num_bytes, bytes_allocated, usable_size, bytes_tl_bulk_allocated);
 }
 
 template<bool kForEvac>
-inline mirror::Object* RegionSpace::AllocNonvirtual(size_t num_bytes, size_t* bytes_allocated,
-                                                    size_t* usable_size,
-                                                    size_t* bytes_tl_bulk_allocated) {
+inline mirror::Object* RegionSpace::AllocNonvirtual(size_t num_bytes,
+                                                    /* out */ size_t* bytes_allocated,
+                                                    /* out */ size_t* usable_size,
+                                                    /* out */ size_t* bytes_tl_bulk_allocated) {
   DCHECK_ALIGNED(num_bytes, kAlignment);
   mirror::Object* obj;
   if (LIKELY(num_bytes <= kRegionSize)) {
@@ -79,8 +83,7 @@ inline mirror::Object* RegionSpace::AllocNonvirtual(size_t num_bytes, size_t* by
     }
   } else {
     // Large object.
-    obj = AllocLarge<kForEvac>(num_bytes, bytes_allocated, usable_size,
-                               bytes_tl_bulk_allocated);
+    obj = AllocLarge<kForEvac>(num_bytes, bytes_allocated, usable_size, bytes_tl_bulk_allocated);
     if (LIKELY(obj != nullptr)) {
       return obj;
     }
@@ -88,9 +91,10 @@ inline mirror::Object* RegionSpace::AllocNonvirtual(size_t num_bytes, size_t* by
   return nullptr;
 }
 
-inline mirror::Object* RegionSpace::Region::Alloc(size_t num_bytes, size_t* bytes_allocated,
-                                                  size_t* usable_size,
-                                                  size_t* bytes_tl_bulk_allocated) {
+inline mirror::Object* RegionSpace::Region::Alloc(size_t num_bytes,
+                                                  /* out */ size_t* bytes_allocated,
+                                                  /* out */ size_t* usable_size,
+                                                  /* out */ size_t* bytes_tl_bulk_allocated) {
   DCHECK(IsAllocated() && IsInToSpace());
   DCHECK_ALIGNED(num_bytes, kAlignment);
   uint8_t* old_top;
@@ -238,9 +242,9 @@ inline mirror::Object* RegionSpace::GetNextObject(mirror::Object* obj) {
 
 template<bool kForEvac>
 inline mirror::Object* RegionSpace::AllocLarge(size_t num_bytes,
-                                               size_t* bytes_allocated,
-                                               size_t* usable_size,
-                                               size_t* bytes_tl_bulk_allocated) {
+                                               /* out */ size_t* bytes_allocated,
+                                               /* out */ size_t* usable_size,
+                                               /* out */ size_t* bytes_tl_bulk_allocated) {
   DCHECK_ALIGNED(num_bytes, kAlignment);
   DCHECK_GT(num_bytes, kRegionSize);
   size_t num_regs = RoundUp(num_bytes, kRegionSize) / kRegionSize;
@@ -270,7 +274,7 @@ inline mirror::Object* RegionSpace::AllocLarge(size_t num_bytes,
       }
     }
     if (found) {
-      // right points to the one region past the last free region.
+      // `right` points to the one region past the last free region.
       DCHECK_EQ(left + num_regs, right);
       Region* first_reg = &regions_[left];
       DCHECK(first_reg->IsFree());
@@ -345,7 +349,7 @@ inline size_t RegionSpace::Region::BytesAllocated() const {
     DCHECK_EQ(begin_, Top());
     return 0;
   } else {
-    DCHECK(IsAllocated()) << static_cast<uint>(state_);
+    DCHECK(IsAllocated()) << "state=" << state_;
     DCHECK_LE(begin_, Top());
     size_t bytes;
     if (is_a_tlab_) {
@@ -358,6 +362,20 @@ inline size_t RegionSpace::Region::BytesAllocated() const {
   }
 }
 
+inline size_t RegionSpace::Region::ObjectsAllocated() const {
+  if (IsLarge()) {
+    DCHECK_LT(begin_ + kRegionSize, Top());
+    DCHECK_EQ(objects_allocated_.LoadRelaxed(), 0U);
+    return 1;
+  } else if (IsLargeTail()) {
+    DCHECK_EQ(begin_, Top());
+    DCHECK_EQ(objects_allocated_.LoadRelaxed(), 0U);
+    return 0;
+  } else {
+    DCHECK(IsAllocated()) << "state=" << state_;
+    return objects_allocated_;
+  }
+}
 
 }  // namespace space
 }  // namespace gc

@@ -389,8 +389,8 @@ class MemMapSpace : public ContinuousSpace {
   }
 
  protected:
-  MemMapSpace(const std::string& name, MemMap* mem_map, uint8_t* begin, uint8_t* end, uint8_t* limit,
-              GcRetentionPolicy gc_retention_policy)
+  MemMapSpace(const std::string& name, MemMap* mem_map, uint8_t* begin, uint8_t* end,
+              uint8_t* limit, GcRetentionPolicy gc_retention_policy)
       : ContinuousSpace(name, gc_retention_policy, begin, end, limit),
         mem_map_(mem_map) {
   }
