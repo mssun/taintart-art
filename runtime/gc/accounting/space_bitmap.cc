@@ -33,7 +33,12 @@ using android::base::StringPrintf;
 
 template<size_t kAlignment>
 size_t SpaceBitmap<kAlignment>::ComputeBitmapSize(uint64_t capacity) {
+  // Number of space (heap) bytes covered by one bitmap word.
+  // (Word size in bytes = `sizeof(intptr_t)`, which is expected to be
+  // 4 on a 32-bit architecture and 8 on a 64-bit one.)
   const uint64_t kBytesCoveredPerWord = kAlignment * kBitsPerIntPtrT;
+  // Calculate the number of words required to cover a space (heap)
+  // having a size of `capacity` bytes.
   return (RoundUp(capacity, kBytesCoveredPerWord) / kBytesCoveredPerWord) * sizeof(intptr_t);
 }
 
@@ -74,7 +79,8 @@ SpaceBitmap<kAlignment>::~SpaceBitmap() {}
 template<size_t kAlignment>
 SpaceBitmap<kAlignment>* SpaceBitmap<kAlignment>::Create(
     const std::string& name, uint8_t* heap_begin, size_t heap_capacity) {
-  // Round up since heap_capacity is not necessarily a multiple of kAlignment * kBitsPerWord.
+  // Round up since `heap_capacity` is not necessarily a multiple of `kAlignment * kBitsPerIntPtrT`
+  // (we represent one word as an `intptr_t`).
   const size_t bitmap_size = ComputeBitmapSize(heap_capacity);
   std::string error_msg;
   std::unique_ptr<MemMap> mem_map(MemMap::MapAnonymous(name.c_str(), nullptr, bitmap_size,
@@ -116,7 +122,7 @@ template<size_t kAlignment>
 void SpaceBitmap<kAlignment>::ClearRange(const mirror::Object* begin, const mirror::Object* end) {
   uintptr_t begin_offset = reinterpret_cast<uintptr_t>(begin) - heap_begin_;
   uintptr_t end_offset = reinterpret_cast<uintptr_t>(end) - heap_begin_;
-  // Align begin and end to word boundaries.
+  // Align begin and end to bitmap word boundaries.
   while (begin_offset < end_offset && OffsetBitIndex(begin_offset) != 0) {
     Clear(reinterpret_cast<mirror::Object*>(heap_begin_ + begin_offset));
     begin_offset += kAlignment;
@@ -125,6 +131,7 @@ void SpaceBitmap<kAlignment>::ClearRange(const mirror::Object* begin, const mirr
     end_offset -= kAlignment;
     Clear(reinterpret_cast<mirror::Object*>(heap_begin_ + end_offset));
   }
+  // Bitmap word boundaries.
   const uintptr_t start_index = OffsetToIndex(begin_offset);
   const uintptr_t end_index = OffsetToIndex(end_offset);
   ZeroAndReleasePages(reinterpret_cast<uint8_t*>(&bitmap_begin_[start_index]),
