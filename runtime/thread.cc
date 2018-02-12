@@ -663,8 +663,8 @@ void Thread::CreateNativeThread(JNIEnv* env, jobject java_peer, size_t stack_siz
   child_thread->tlsPtr_.jpeer = env->NewGlobalRef(java_peer);
   stack_size = FixStackSize(stack_size);
 
-  // Thread.start is synchronized, so we know that nativePeer is 0, and know that we're not racing to
-  // assign it.
+  // Thread.start is synchronized, so we know that nativePeer is 0, and know that we're not racing
+  // to assign it.
   env->SetLongField(java_peer, WellKnownClasses::java_lang_Thread_nativePeer,
                     reinterpret_cast<jlong>(child_thread));
 
@@ -839,7 +839,8 @@ Thread* Thread::Attach(const char* thread_name,
     if (create_peer) {
       self->CreatePeer(thread_name, as_daemon, thread_group);
       if (self->IsExceptionPending()) {
-        // We cannot keep the exception around, as we're deleting self. Try to be helpful and log it.
+        // We cannot keep the exception around, as we're deleting self. Try to be helpful and log
+        // it.
         {
           ScopedObjectAccess soa(self);
           LOG(ERROR) << "Exception creating thread peer:";

@@ -347,8 +347,9 @@ class ConcurrentCopying::ThreadFlipVisitor : public Closure, public RootVisitor 
         // This must come before the revoke.
         size_t thread_local_objects = thread->GetThreadLocalObjectsAllocated();
         concurrent_copying_->region_space_->RevokeThreadLocalBuffers(thread);
-        reinterpret_cast<Atomic<size_t>*>(&concurrent_copying_->from_space_num_objects_at_first_pause_)->
-            FetchAndAddSequentiallyConsistent(thread_local_objects);
+        reinterpret_cast<Atomic<size_t>*>(
+            &concurrent_copying_->from_space_num_objects_at_first_pause_)->
+                FetchAndAddSequentiallyConsistent(thread_local_objects);
       } else {
         concurrent_copying_->region_space_->RevokeThreadLocalBuffers(thread);
       }
@@ -1534,7 +1535,8 @@ inline void ConcurrentCopying::ProcessMarkStackRef(mirror::Object* to_ref) {
                 !IsInToSpace(referent)))) {
     // Leave this reference gray in the queue so that GetReferent() will trigger a read barrier. We
     // will change it to white later in ReferenceQueue::DequeuePendingReference().
-    DCHECK(to_ref->AsReference()->GetPendingNext() != nullptr) << "Left unenqueued ref gray " << to_ref;
+    DCHECK(to_ref->AsReference()->GetPendingNext() != nullptr)
+        << "Left unenqueued ref gray " << to_ref;
   } else {
     // We may occasionally leave a reference white in the queue if its referent happens to be
     // concurrently marked after the Scan() call above has enqueued the Reference, in which case the
@@ -1552,7 +1554,7 @@ inline void ConcurrentCopying::ProcessMarkStackRef(mirror::Object* to_ref) {
 #endif
 
   if (add_to_live_bytes) {
-    // Add to the live bytes per unevacuated from space. Note this code is always run by the
+    // Add to the live bytes per unevacuated from-space. Note this code is always run by the
     // GC-running thread (no synchronization required).
     DCHECK(region_space_bitmap_->Test(to_ref));
     size_t obj_size = to_ref->SizeOf<kDefaultVerifyFlags>();
@@ -1774,17 +1776,20 @@ void ConcurrentCopying::ReclaimPhase() {
     if (kVerboseMode) {
       LOG(INFO) << "RecordFree:"
                 << " from_bytes=" << from_bytes << " from_objects=" << from_objects
-                << " unevac_from_bytes=" << unevac_from_bytes << " unevac_from_objects=" << unevac_from_objects
+                << " unevac_from_bytes=" << unevac_from_bytes
+                << " unevac_from_objects=" << unevac_from_objects
                 << " to_bytes=" << to_bytes << " to_objects=" << to_objects
                 << " freed_bytes=" << freed_bytes << " freed_objects=" << freed_objects
                 << " from_space size=" << region_space_->FromSpaceSize()
                 << " unevac_from_space size=" << region_space_->UnevacFromSpaceSize()
                 << " to_space size=" << region_space_->ToSpaceSize();
-      LOG(INFO) << "(before) num_bytes_allocated=" << heap_->num_bytes_allocated_.LoadSequentiallyConsistent();
+      LOG(INFO) << "(before) num_bytes_allocated="
+                << heap_->num_bytes_allocated_.LoadSequentiallyConsistent();
     }
     RecordFree(ObjectBytePair(freed_objects, freed_bytes));
     if (kVerboseMode) {
-      LOG(INFO) << "(after) num_bytes_allocated=" << heap_->num_bytes_allocated_.LoadSequentiallyConsistent();
+      LOG(INFO) << "(after) num_bytes_allocated="
+                << heap_->num_bytes_allocated_.LoadSequentiallyConsistent();
     }
   }
 
@@ -2051,11 +2056,13 @@ void ConcurrentCopying::AssertToSpaceInvariantInNonMovingSpace(mirror::Object* o
         (is_los && los_bitmap->Test(ref))) {
       // OK.
     } else {
-      // If ref is on the allocation stack, then it may not be
+      // If `ref` is on the allocation stack, then it may not be
       // marked live, but considered marked/alive (but not
       // necessarily on the live stack).
-      CHECK(IsOnAllocStack(ref)) << "Unmarked ref that's not on the allocation stack. "
-                                 << "obj=" << obj << " ref=" << ref;
+      CHECK(IsOnAllocStack(ref)) << "Unmarked ref that's not on the allocation stack."
+                                 << " obj=" << obj
+                                 << " ref=" << ref
+                                 << " is_los=" << std::boolalpha << is_los << std::noboolalpha;
     }
   }
 }
@@ -2136,7 +2143,7 @@ inline void ConcurrentCopying::Process(mirror::Object* obj, MemberOffset offset)
       // It was updated by the mutator.
       break;
     }
-    // Use release cas to make sure threads reading the reference see contents of copied objects.
+    // Use release CAS to make sure threads reading the reference see contents of copied objects.
   } while (!obj->CasFieldWeakReleaseObjectWithoutWriteBarrier<false, false, kVerifyNone>(
       offset,
       expected_ref,
