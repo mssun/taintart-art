@@ -434,6 +434,7 @@ Heap::Heap(size_t initial_size,
   // Create other spaces based on whether or not we have a moving GC.
   if (foreground_collector_type_ == kCollectorTypeCC) {
     CHECK(separate_non_moving_space);
+    // Reserve twice the capacity, to allow evacuating every region for explicit GCs.
     MemMap* region_space_mem_map = space::RegionSpace::CreateMemMap(kRegionSpaceName,
                                                                     capacity_ * 2,
                                                                     request_begin);
@@ -517,7 +518,7 @@ Heap::Heap(size_t initial_size,
   // Since we don't know where in the low_4gb the app image will be located, make the card table
   // cover the whole low_4gb. TODO: Extend the card table in AddSpace.
   UNUSED(heap_capacity);
-  // Start at 64 KB, we can be sure there are no spaces mapped this low since the address range is
+  // Start at 4 KB, we can be sure there are no spaces mapped this low since the address range is
   // reserved by the kernel.
   static constexpr size_t kMinHeapAddress = 4 * KB;
   card_table_.reset(accounting::CardTable::Create(reinterpret_cast<uint8_t*>(kMinHeapAddress),

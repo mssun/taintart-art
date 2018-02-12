@@ -389,8 +389,12 @@ class MemMapSpace : public ContinuousSpace {
   }
 
  protected:
-  MemMapSpace(const std::string& name, MemMap* mem_map, uint8_t* begin, uint8_t* end,
-              uint8_t* limit, GcRetentionPolicy gc_retention_policy)
+  MemMapSpace(const std::string& name,
+              MemMap* mem_map,
+              uint8_t* begin,
+              uint8_t* end,
+              uint8_t* limit,
+              GcRetentionPolicy gc_retention_policy)
       : ContinuousSpace(name, gc_retention_policy, begin, end, limit),
         mem_map_(mem_map) {
   }
@@ -420,7 +424,10 @@ class ContinuousMemMapAllocSpace : public MemMapSpace, public AllocSpace {
   }
 
   bool HasBoundBitmaps() const REQUIRES(Locks::heap_bitmap_lock_);
+  // Make the mark bitmap an alias of the live bitmap. Save the current mark bitmap into
+  // `temp_bitmap_`, so that we can restore it later in ContinuousMemMapAllocSpace::UnBindBitmaps.
   void BindLiveToMarkBitmap() REQUIRES(Locks::heap_bitmap_lock_);
+  // Unalias the mark bitmap from the live bitmap and restore the old mark bitmap.
   void UnBindBitmaps() REQUIRES(Locks::heap_bitmap_lock_);
   // Swap the live and mark bitmaps of this space. This is used by the GC for concurrent sweeping.
   void SwapBitmaps();

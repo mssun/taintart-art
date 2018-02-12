@@ -55,6 +55,10 @@ class SpaceBitmap {
 
   ~SpaceBitmap();
 
+  // Return the bitmap word index corresponding to memory offset (relative to
+  // `HeapBegin()`) `offset`.
+  // See also SpaceBitmap::OffsetBitIndex.
+  //
   // <offset> is the difference from .base to a pointer address.
   // <index> is the index of .bits that contains the bit representing
   //         <offset>.
@@ -62,24 +66,32 @@ class SpaceBitmap {
     return offset / kAlignment / kBitsPerIntPtrT;
   }
 
+  // Return the memory offset (relative to `HeapBegin()`) corresponding to
+  // bitmap word index `index`.
   template<typename T>
   static constexpr T IndexToOffset(T index) {
     return static_cast<T>(index * kAlignment * kBitsPerIntPtrT);
   }
 
+  // Return the bit within the bitmap word index corresponding to
+  // memory offset (relative to `HeapBegin()`) `offset`.
+  // See also SpaceBitmap::OffsetToIndex.
   ALWAYS_INLINE static constexpr uintptr_t OffsetBitIndex(uintptr_t offset) {
     return (offset / kAlignment) % kBitsPerIntPtrT;
   }
 
+  // Return the word-wide bit mask corresponding to `OffsetBitIndex(offset)`.
   // Bits are packed in the obvious way.
   static constexpr uintptr_t OffsetToMask(uintptr_t offset) {
     return static_cast<size_t>(1) << OffsetBitIndex(offset);
   }
 
+  // Set the bit corresponding to `obj` in the bitmap and return the previous value of that bit.
   bool Set(const mirror::Object* obj) ALWAYS_INLINE {
     return Modify<true>(obj);
   }
 
+  // Clear the bit corresponding to `obj` in the bitmap and return the previous value of that bit.
   bool Clear(const mirror::Object* obj) ALWAYS_INLINE {
     return Modify<false>(obj);
   }
@@ -90,9 +102,14 @@ class SpaceBitmap {
   // Fill the bitmap with zeroes.  Returns the bitmap's memory to the system as a side-effect.
   void Clear();
 
-  // Clear a covered by the bitmap using madvise if possible.
+  // Clear a range covered by the bitmap using madvise if possible.
   void ClearRange(const mirror::Object* begin, const mirror::Object* end);
 
+  // Test whether `obj` is part of the bitmap (i.e. return whether the bit
+  // corresponding to `obj` has been set in the bitmap).
+  //
+  // Precondition: `obj` is within the range of pointers that this bitmap could
+  // potentially cover (i.e. `this->HasAddress(obj)` is true)
   bool Test(const mirror::Object* obj) const;
 
   // Return true iff <obj> is within the range of pointers that this bitmap could potentially cover,
@@ -204,6 +221,8 @@ class SpaceBitmap {
               const void* heap_begin,
               size_t heap_capacity);
 
+  // Change the value of the bit corresponding to `obj` in the bitmap
+  // to `kSetBit` and return the previous value of that bit.
   template<bool kSetBit>
   bool Modify(const mirror::Object* obj);
 
