@@ -161,7 +161,7 @@
 363c363
 <  doTest ()V 122 59
 ---
->  doTest ()V 119 59
+>  doTest ()V 120 59
 376c376
 <  baz (IIILart/ControlData;)Ljava/lang/Object; 9 34
 ---
@@ -325,15 +325,15 @@
 598c598
 <  doTest ()V 127 61
 ---
->  doTest ()V 124 61
+>  doTest ()V 125 61
 630c630
 <  doTest ()V 112 54
 ---
->  doTest ()V 109 54
+>  doTest ()V 110 54
 677c677
 <  doTest ()V 117 56
 ---
->  doTest ()V 114 56
+>  doTest ()V 115 56
 687c687
 <  baz (IIILart/ControlData;)Ljava/lang/Object; 9 34
 ---
