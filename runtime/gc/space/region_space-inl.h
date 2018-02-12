@@ -258,7 +258,7 @@ inline mirror::Object* RegionSpace::AllocLarge(size_t num_bytes,
       return nullptr;
     }
   }
-  // Find a large enough contiguous free regions.
+  // Find a large enough set of contiguous free regions.
   size_t left = 0;
   while (left + num_regs - 1 < num_regions_) {
     bool found = true;
