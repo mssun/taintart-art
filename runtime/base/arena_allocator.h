@@ -62,6 +62,7 @@ enum ArenaAllocKind {
   kArenaAllocConstructorFenceInputs,
   kArenaAllocInvokeInputs,
   kArenaAllocPhiInputs,
+  kArenaAllocTypeCheckInputs,
   kArenaAllocLoopInfo,
   kArenaAllocLoopInfoBackEdges,
   kArenaAllocTryCatchInfo,
