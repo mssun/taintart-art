@@ -53,6 +53,19 @@
            "org.apache.harmony.jpda.tests.jdwp.VirtualMachine.CapabilitiesNewTest#testCapabilitiesNew001" ]
 },
 {
+  description: "Test is flaky",
+  result: EXEC_FAILED,
+  bug: 69121056,
+  name: "org.apache.harmony.jpda.tests.jdwp.ObjectReference.IsCollectedTest#testIsCollected001"
+},
+{
+  description: "Test is flaky",
+  result: EXEC_FAILED,
+  bug: 70958370,
+  names: [ "org.apache.harmony.jpda.tests.jdwp.ObjectReference.EnableCollectionTest#testEnableCollection001",
+           "org.apache.harmony.jpda.tests.jdwp.MultiSession.EnableCollectionTest#testEnableCollection001" ]
+},
+{
   description: "Test times out on fugu-debug",
   result: EXEC_FAILED,
   bug: 70459916,
