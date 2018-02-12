@@ -1761,13 +1761,14 @@ void ConcurrentCopying::ReclaimPhase() {
     }
     CHECK_LE(to_objects, from_objects);
     CHECK_LE(to_bytes, from_bytes);
-    // cleared_bytes and cleared_objects may be greater than the from space equivalents since
-    // ClearFromSpace may clear empty unevac regions.
+    // Cleared bytes and objects, populated by the call to RegionSpace::ClearFromSpace below.
     uint64_t cleared_bytes;
     uint64_t cleared_objects;
     {
       TimingLogger::ScopedTiming split4("ClearFromSpace", GetTimings());
       region_space_->ClearFromSpace(&cleared_bytes, &cleared_objects);
+      // `cleared_bytes` and `cleared_objects` may be greater than the from space equivalents since
+      // RegionSpace::ClearFromSpace may clear empty unevac regions.
       CHECK_GE(cleared_bytes, from_bytes);
       CHECK_GE(cleared_objects, from_objects);
     }
@@ -2103,7 +2104,6 @@ class ConcurrentCopying::RefFieldsVisitor {
   ConcurrentCopying* const collector_;
 };
 
-// Scan ref fields of an object.
 inline void ConcurrentCopying::Scan(mirror::Object* to_ref) {
   if (kDisallowReadBarrierDuringScan && !Runtime::Current()->IsActiveTransaction()) {
     // Avoid all read barriers during visit references to help performance.
@@ -2122,7 +2122,6 @@ inline void ConcurrentCopying::Scan(mirror::Object* to_ref) {
   }
 }
 
-// Process a field.
 inline void ConcurrentCopying::Process(mirror::Object* obj, MemberOffset offset) {
   DCHECK_EQ(Thread::Current(), thread_running_gc_);
   mirror::Object* ref = obj->GetFieldObject<
