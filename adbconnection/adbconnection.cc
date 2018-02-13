@@ -488,7 +488,6 @@ android::base::unique_fd AdbConnectionState::ReadFdFromAdb() {
 bool AdbConnectionState::SetupAdbConnection() {
   int        sleep_ms     = 500;
   const int  sleep_max_ms = 2*1000;
-  char       buff[sizeof(pid_t) + 1];
 
   android::base::unique_fd sock(socket(AF_UNIX, SOCK_SEQPACKET, 0));
   if (sock < 0) {
@@ -499,8 +498,7 @@ bool AdbConnectionState::SetupAdbConnection() {
   timeout.tv_sec = kControlSockSendTimeout;
   timeout.tv_usec = 0;
   setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
-  snprintf(buff, sizeof(buff), "%04x", getpid());
-  buff[sizeof(pid_t)] = 0;
+  int32_t pid = getpid();
 
   while (!shutting_down_) {
     // If adbd isn't running, because USB debugging was disabled or
@@ -529,9 +527,9 @@ bool AdbConnectionState::SetupAdbConnection() {
         return false;
       }
       /* now try to send our pid to the ADB daemon */
-      ret = TEMP_FAILURE_RETRY(send(sock, buff, sizeof(pid_t), 0));
-      if (ret == sizeof(pid_t)) {
-        VLOG(jdwp) << "PID " << getpid() << " send to adb";
+      ret = TEMP_FAILURE_RETRY(send(sock, &pid, sizeof(pid), 0));
+      if (ret == sizeof(pid)) {
+        VLOG(jdwp) << "PID " << pid << " sent to adb";
         control_sock_ = std::move(sock);
         return true;
       } else {
