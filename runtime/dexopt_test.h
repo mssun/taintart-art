@@ -46,7 +46,8 @@ class DexoptTest : public Dex2oatEnvironmentTest {
                           CompilerFilter::Filter filter,
                           bool relocate,
                           bool pic,
-                          bool with_alternate_image);
+                          bool with_alternate_image,
+                          const char* compilation_reason = nullptr);
 
   // Generate a non-PIC odex file for the purposes of test.
   // The generated odex file will be un-relocated.
@@ -56,7 +57,8 @@ class DexoptTest : public Dex2oatEnvironmentTest {
 
   void GeneratePicOdexForTest(const std::string& dex_location,
                               const std::string& odex_location,
-                              CompilerFilter::Filter filter);
+                              CompilerFilter::Filter filter,
+                              const char* compilation_reason = nullptr);
 
   // Generate an oat file for the given dex location in its oat location (under
   // the dalvik cache).

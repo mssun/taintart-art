@@ -226,6 +226,20 @@ class OatFileAssistant {
   // dex file. The returned description is for debugging purposes only.
   std::string GetStatusDump();
 
+  // Computes the optimization status of the given dex file. The result is
+  // returned via the two output parameters.
+  //   - out_compilation_filter: the level of optimizations (compiler filter)
+  //   - out_compilation_reason: the optimization reason. The reason might
+  //        be "unknown" if the compiler artifacts were not annotated during optimizations.
+  //
+  // This method will try to mimic the runtime effect of loading the dex file.
+  // For example, if there is no usable oat file, the compiler filter will be set
+  // to "run-from-apk".
+  static void GetOptimizationStatus(const std::string& filename,
+                                    InstructionSet isa,
+                                    std::string* out_compilation_filter,
+                                    std::string* out_compilation_reason);
+
   // Open and returns an image space associated with the oat file.
   static std::unique_ptr<gc::space::ImageSpace> OpenImageSpace(const OatFile* oat_file);
 
