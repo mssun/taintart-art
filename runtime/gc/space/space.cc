@@ -107,7 +107,6 @@ collector::ObjectBytePair ContinuousMemMapAllocSpace::Sweep(bool swap_bitmaps) {
   return scc.freed;
 }
 
-// Returns the old mark bitmap.
 void ContinuousMemMapAllocSpace::BindLiveToMarkBitmap() {
   CHECK(!HasBoundBitmaps());
   accounting::ContinuousSpaceBitmap* live_bitmap = GetLiveBitmap();
@@ -125,7 +124,7 @@ bool ContinuousMemMapAllocSpace::HasBoundBitmaps() const {
 
 void ContinuousMemMapAllocSpace::UnBindBitmaps() {
   CHECK(HasBoundBitmaps());
-  // At this point, the temp_bitmap holds our old mark bitmap.
+  // At this point, `temp_bitmap_` holds our old mark bitmap.
   accounting::ContinuousSpaceBitmap* new_bitmap = temp_bitmap_.release();
   Runtime::Current()->GetHeap()->GetMarkBitmap()->ReplaceBitmap(mark_bitmap_.get(), new_bitmap);
   CHECK_EQ(mark_bitmap_.release(), live_bitmap_.get());

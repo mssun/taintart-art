@@ -27,7 +27,7 @@ namespace space {
 
 // If a region has live objects whose size is less than this percent
 // value of the region size, evaculate the region.
-static constexpr uint kEvaculateLivePercentThreshold = 75U;
+static constexpr uint kEvacuateLivePercentThreshold = 75U;
 
 // If we protect the cleared regions.
 // Only protect for target builds to prevent flaky test failures (b/63131961).
@@ -158,14 +158,14 @@ size_t RegionSpace::ToSpaceSize() {
 
 inline bool RegionSpace::Region::ShouldBeEvacuated() {
   DCHECK((IsAllocated() || IsLarge()) && IsInToSpace());
-  // if the region was allocated after the start of the
-  // previous GC or the live ratio is below threshold, evacuate
-  // it.
+  // The region should be evacuated if:
+  // - the region was allocated after the start of the previous GC (newly allocated region); or
+  // - the live ratio is below threshold (`kEvacuateLivePercentThreshold`).
   bool result;
   if (is_newly_allocated_) {
     result = true;
   } else {
-    bool is_live_percent_valid = live_bytes_ != static_cast<size_t>(-1);
+    bool is_live_percent_valid = (live_bytes_ != static_cast<size_t>(-1));
     if (is_live_percent_valid) {
       DCHECK(IsInToSpace());
       DCHECK(!IsLargeTail());
@@ -177,10 +177,10 @@ inline bool RegionSpace::Region::ShouldBeEvacuated() {
         // Side node: live_percent == 0 does not necessarily mean
         // there's no live objects due to rounding (there may be a
         // few).
-        result = live_bytes_ * 100U < kEvaculateLivePercentThreshold * bytes_allocated;
+        result = (live_bytes_ * 100U < kEvacuateLivePercentThreshold * bytes_allocated);
       } else {
         DCHECK(IsLarge());
-        result = live_bytes_ == 0U;
+        result = (live_bytes_ == 0U);
       }
     } else {
       result = false;
@@ -198,7 +198,10 @@ void RegionSpace::SetFromSpace(accounting::ReadBarrierTable* rb_table, bool forc
     rb_table->SetAll();
   }
   MutexLock mu(Thread::Current(), region_lock_);
-  size_t num_expected_large_tails = 0;
+  // Counter for the number of expected large tail regions following a large region.
+  size_t num_expected_large_tails = 0U;
+  // Flag to store whether the previously seen large region has been evacuated.
+  // This is used to apply the same evacuation policy to related large tail regions.
   bool prev_large_evacuated = false;
   VerifyNonFreeRegionLimit();
   const size_t iter_limit = kUseTableLookupReadBarrier
@@ -260,7 +263,8 @@ static void ZeroAndProtectRegion(uint8_t* begin, uint8_t* end) {
   }
 }
 
-void RegionSpace::ClearFromSpace(uint64_t* cleared_bytes, uint64_t* cleared_objects) {
+void RegionSpace::ClearFromSpace(/* out */ uint64_t* cleared_bytes,
+                                 /* out */ uint64_t* cleared_objects) {
   DCHECK(cleared_bytes != nullptr);
   DCHECK(cleared_objects != nullptr);
   *cleared_bytes = 0;
@@ -272,18 +276,32 @@ void RegionSpace::ClearFromSpace(uint64_t* cleared_bytes, uint64_t* cleared_obje
   // Update max of peak non free region count before reclaiming evacuated regions.
   max_peak_num_non_free_regions_ = std::max(max_peak_num_non_free_regions_,
                                             num_non_free_regions_);
-  // Combine zeroing and releasing pages to reduce how often madvise is called. This helps
-  // reduce contention on the mmap semaphore. b/62194020
-  // clear_region adds a region to the current block. If the region is not adjacent, the
-  // clear block is zeroed, released, and a new block begins.
+
+  // Lambda expression `clear_region` clears a region and adds a region to the
+  // "clear block".
+  //
+  // As we sweep regions to clear them, we maintain a "clear block", composed of
+  // adjacent cleared regions and whose bounds are `clear_block_begin` and
+  // `clear_block_end`. When processing a new region which is not adjacent to
+  // the clear block (discontinuity in cleared regions), the clear block
+  // is zeroed and released and the clear block is reset (to the most recent
+  // cleared region).
+  //
+  // This is done in order to combine zeroing and releasing pages to reduce how
+  // often madvise is called. This helps reduce contention on the mmap semaphore
+  // (see b/62194020).
   uint8_t* clear_block_begin = nullptr;
   uint8_t* clear_block_end = nullptr;
   auto clear_region = [&clear_block_begin, &clear_block_end](Region* r) {
     r->Clear(/*zero_and_release_pages*/false);
     if (clear_block_end != r->Begin()) {
+      // Region `r` is not adjacent to the current clear block; zero and release
+      // pages within the current block and restart a new clear block at the
+      // beginning of region `r`.
       ZeroAndProtectRegion(clear_block_begin, clear_block_end);
       clear_block_begin = r->Begin();
     }
+    // Add region `r` to the clear block.
     clear_block_end = r->End();
   };
   for (size_t i = 0; i < std::min(num_regions_, non_free_region_index_limit_); ++i) {
@@ -334,12 +352,22 @@ void RegionSpace::ClearFromSpace(uint64_t* cleared_bytes, uint64_t* cleared_obje
           ++regions_to_clear_bitmap;
         }
 
+        // Optimization: If the live bytes are *all* live in a region
+        // then the live-bit information for these objects is superfluous:
+        // - We can determine that these objects are all live by using
+        //   Region::AllAllocatedBytesAreLive (which just checks whether
+        //   `LiveBytes() == static_cast<size_t>(Top() - Begin())`.
+        // - We can visit the objects in this region using
+        //   RegionSpace::GetNextObject, i.e. without resorting to the
+        //   live bits (see RegionSpace::WalkInternal).
+        // Therefore, we can clear the bits for these objects in the
+        // (live) region space bitmap (and release the corresponding pages).
         GetLiveBitmap()->ClearRange(
             reinterpret_cast<mirror::Object*>(r->Begin()),
             reinterpret_cast<mirror::Object*>(r->Begin() + regions_to_clear_bitmap * kRegionSize));
-        // Skip over extra regions we cleared the bitmaps: we don't need to clear them, as they
-        // are unevac region sthat are live.
-        // Subtract one for the for loop.
+        // Skip over extra regions for which we cleared the bitmaps: we shall not clear them,
+        // as they are unevac regions that are live.
+        // Subtract one for the for-loop.
         i += regions_to_clear_bitmap - 1;
       }
     }
@@ -432,7 +460,7 @@ void RegionSpace::ClampGrowthLimit(size_t new_capacity) {
 
 void RegionSpace::Dump(std::ostream& os) const {
   os << GetName() << " "
-      << reinterpret_cast<void*>(Begin()) << "-" << reinterpret_cast<void*>(Limit());
+     << reinterpret_cast<void*>(Begin()) << "-" << reinterpret_cast<void*>(Limit());
 }
 
 void RegionSpace::DumpRegionForObject(std::ostream& os, mirror::Object* obj) {
@@ -532,13 +560,18 @@ void RegionSpace::AssertAllThreadLocalBuffersAreRevoked() {
 }
 
 void RegionSpace::Region::Dump(std::ostream& os) const {
-  os << "Region[" << idx_ << "]=" << reinterpret_cast<void*>(begin_) << "-"
-     << reinterpret_cast<void*>(Top())
+  os << "Region[" << idx_ << "]="
+     << reinterpret_cast<void*>(begin_)
+     << "-" << reinterpret_cast<void*>(Top())
      << "-" << reinterpret_cast<void*>(end_)
-     << " state=" << static_cast<uint>(state_) << " type=" << static_cast<uint>(type_)
+     << " state=" << state_
+     << " type=" << type_
      << " objects_allocated=" << objects_allocated_
-     << " alloc_time=" << alloc_time_ << " live_bytes=" << live_bytes_
-     << " is_newly_allocated=" << is_newly_allocated_ << " is_a_tlab=" << is_a_tlab_ << " thread=" << thread_ << "\n";
+     << " alloc_time=" << alloc_time_
+     << " live_bytes=" << live_bytes_
+     << " is_newly_allocated=" << std::boolalpha << is_newly_allocated_ << std::noboolalpha
+     << " is_a_tlab=" << std::boolalpha << is_a_tlab_ << std::noboolalpha
+     << " thread=" << thread_ << '\n';
 }
 
 size_t RegionSpace::AllocationSizeNonvirtual(mirror::Object* obj, size_t* usable_size) {

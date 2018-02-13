@@ -653,6 +653,7 @@
         "description": ["Test is designed to only check --compiler-filter=speed"]
     },
     {
+        "test_patterns": [".*"],
         "description": ["Tests are timing out for weeks now, disable to fix."],
         "variant": "cdex-fast & redefine-stress"
     },

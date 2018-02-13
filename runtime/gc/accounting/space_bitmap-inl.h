@@ -62,7 +62,8 @@ inline bool SpaceBitmap<kAlignment>::Test(const mirror::Object* obj) const {
   return (bitmap_begin_[OffsetToIndex(offset)].LoadRelaxed() & OffsetToMask(offset)) != 0;
 }
 
-template<size_t kAlignment> template<typename Visitor>
+template<size_t kAlignment>
+template<typename Visitor>
 inline void SpaceBitmap<kAlignment>::VisitMarkedRange(uintptr_t visit_begin,
                                                       uintptr_t visit_end,
                                                       Visitor&& visitor) const {
@@ -121,6 +122,7 @@ inline void SpaceBitmap<kAlignment>::VisitMarkedRange(uintptr_t visit_begin,
       uintptr_t w = bitmap_begin_[i].LoadRelaxed();
       if (w != 0) {
         const uintptr_t ptr_base = IndexToOffset(i) + heap_begin_;
+        // Iterate on the bits set in word `w`, from the least to the most significant bit.
         do {
           const size_t shift = CTZ(w);
           mirror::Object* obj = reinterpret_cast<mirror::Object*>(ptr_base + shift * kAlignment);
@@ -147,6 +149,7 @@ inline void SpaceBitmap<kAlignment>::VisitMarkedRange(uintptr_t visit_begin,
   right_edge &= ((static_cast<uintptr_t>(1) << bit_end) - 1);
   if (right_edge != 0) {
     const uintptr_t ptr_base = IndexToOffset(index_end) + heap_begin_;
+    // Iterate on the bits set in word `right_edge`, from the least to the most significant bit.
     do {
       const size_t shift = CTZ(right_edge);
       mirror::Object* obj = reinterpret_cast<mirror::Object*>(ptr_base + shift * kAlignment);
@@ -157,7 +160,8 @@ inline void SpaceBitmap<kAlignment>::VisitMarkedRange(uintptr_t visit_begin,
 #endif
 }
 
-template<size_t kAlignment> template<typename Visitor>
+template<size_t kAlignment>
+template<typename Visitor>
 void SpaceBitmap<kAlignment>::Walk(Visitor&& visitor) {
   CHECK(bitmap_begin_ != nullptr);
 
@@ -177,7 +181,8 @@ void SpaceBitmap<kAlignment>::Walk(Visitor&& visitor) {
   }
 }
 
-template<size_t kAlignment> template<bool kSetBit>
+template<size_t kAlignment>
+template<bool kSetBit>
 inline bool SpaceBitmap<kAlignment>::Modify(const mirror::Object* obj) {
   uintptr_t addr = reinterpret_cast<uintptr_t>(obj);
   DCHECK_GE(addr, heap_begin_);

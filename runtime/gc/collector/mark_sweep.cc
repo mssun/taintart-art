@@ -191,7 +191,7 @@ void MarkSweep::PausePhase() {
     WriterMutexLock mu(self, *Locks::heap_bitmap_lock_);
     // Re-mark root set.
     ReMarkRoots();
-    // Scan dirty objects, this is only required if we are not doing concurrent GC.
+    // Scan dirty objects, this is only required if we are doing concurrent GC.
     RecursiveMarkDirtyObjects(true, accounting::CardTable::kCardDirty);
   }
   {
@@ -259,8 +259,30 @@ void MarkSweep::MarkingPhase() {
   BindBitmaps();
   FindDefaultSpaceBitmap();
   // Process dirty cards and add dirty cards to mod union tables.
-  // If the GC type is non sticky, then we just clear the cards instead of ageing them.
-  heap_->ProcessCards(GetTimings(), false, true, GetGcType() != kGcTypeSticky);
+  // If the GC type is non sticky, then we just clear the cards of the
+  // alloc space instead of aging them.
+  //
+  // Note that it is fine to clear the cards of the alloc space here,
+  // in the case of a concurrent (non-sticky) mark-sweep GC (whose
+  // marking phase _is_ performed concurrently with mutator threads
+  // running and possibly dirtying cards), as the whole alloc space
+  // will be traced in that case, starting *after* this call to
+  // Heap::ProcessCards (see calls to MarkSweep::MarkRoots and
+  // MarkSweep::MarkReachableObjects). References held by objects on
+  // cards that became dirty *after* the actual marking work started
+  // will be marked in the pause (see MarkSweep::PausePhase), in a
+  // *non-concurrent* way to prevent races with mutator threads.
+  //
+  // TODO: Do we need some sort of fence between the call to
+  // Heap::ProcessCard and the calls to MarkSweep::MarkRoot /
+  // MarkSweep::MarkReachableObjects below to make sure write
+  // operations in the card table clearing the alloc space's dirty
+  // cards (during the call to Heap::ProcessCard) are not reordered
+  // *after* marking actually starts?
+  heap_->ProcessCards(GetTimings(),
+                      /* use_rem_sets */ false,
+                      /* process_alloc_space_cards */ true,
+                      /* clear_alloc_space_cards */ GetGcType() != kGcTypeSticky);
   WriterMutexLock mu(self, *Locks::heap_bitmap_lock_);
   MarkRoots(self);
   MarkReachableObjects();

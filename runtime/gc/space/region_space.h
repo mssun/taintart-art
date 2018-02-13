@@ -46,24 +46,33 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
   static MemMap* CreateMemMap(const std::string& name, size_t capacity, uint8_t* requested_begin);
   static RegionSpace* Create(const std::string& name, MemMap* mem_map);
 
-  // Allocate num_bytes, returns null if the space is full.
-  mirror::Object* Alloc(Thread* self, size_t num_bytes, size_t* bytes_allocated,
-                        size_t* usable_size, size_t* bytes_tl_bulk_allocated)
+  // Allocate `num_bytes`, returns null if the space is full.
+  mirror::Object* Alloc(Thread* self,
+                        size_t num_bytes,
+                        /* out */ size_t* bytes_allocated,
+                        /* out */ size_t* usable_size,
+                        /* out */ size_t* bytes_tl_bulk_allocated)
       OVERRIDE REQUIRES(!region_lock_);
   // Thread-unsafe allocation for when mutators are suspended, used by the semispace collector.
-  mirror::Object* AllocThreadUnsafe(Thread* self, size_t num_bytes, size_t* bytes_allocated,
-                                    size_t* usable_size, size_t* bytes_tl_bulk_allocated)
+  mirror::Object* AllocThreadUnsafe(Thread* self,
+                                    size_t num_bytes,
+                                    /* out */ size_t* bytes_allocated,
+                                    /* out */ size_t* usable_size,
+                                    /* out */ size_t* bytes_tl_bulk_allocated)
       OVERRIDE REQUIRES(Locks::mutator_lock_) REQUIRES(!region_lock_);
   // The main allocation routine.
   template<bool kForEvac>
-  ALWAYS_INLINE mirror::Object* AllocNonvirtual(size_t num_bytes, size_t* bytes_allocated,
-                                                size_t* usable_size,
-                                                size_t* bytes_tl_bulk_allocated)
+  ALWAYS_INLINE mirror::Object* AllocNonvirtual(size_t num_bytes,
+                                                /* out */ size_t* bytes_allocated,
+                                                /* out */ size_t* usable_size,
+                                                /* out */ size_t* bytes_tl_bulk_allocated)
       REQUIRES(!region_lock_);
   // Allocate/free large objects (objects that are larger than the region size).
   template<bool kForEvac>
-  mirror::Object* AllocLarge(size_t num_bytes, size_t* bytes_allocated, size_t* usable_size,
-                             size_t* bytes_tl_bulk_allocated) REQUIRES(!region_lock_);
+  mirror::Object* AllocLarge(size_t num_bytes,
+                             /* out */ size_t* bytes_allocated,
+                             /* out */ size_t* usable_size,
+                             /* out */ size_t* bytes_tl_bulk_allocated) REQUIRES(!region_lock_);
   template<bool kForEvac>
   void FreeLarge(mirror::Object* large_obj, size_t bytes_allocated) REQUIRES(!region_lock_);
 
@@ -176,7 +185,7 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
   template <typename Visitor>
   ALWAYS_INLINE void WalkToSpace(Visitor&& visitor)
       REQUIRES(Locks::mutator_lock_) {
-    WalkInternal<true>(visitor);
+    WalkInternal<true /* kToSpaceOnly */>(visitor);
   }
 
   accounting::ContinuousSpaceBitmap::SweepCallback* GetSweepCallback() OVERRIDE {
@@ -230,13 +239,16 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
     return RegionType::kRegionTypeNone;
   }
 
+  // Determine which regions to evacuate and tag them as
+  // from-space. Tag the rest as unevacuated from-space.
   void SetFromSpace(accounting::ReadBarrierTable* rb_table, bool force_evacuate_all)
       REQUIRES(!region_lock_);
 
   size_t FromSpaceSize() REQUIRES(!region_lock_);
   size_t UnevacFromSpaceSize() REQUIRES(!region_lock_);
   size_t ToSpaceSize() REQUIRES(!region_lock_);
-  void ClearFromSpace(uint64_t* cleared_bytes, uint64_t* cleared_objects) REQUIRES(!region_lock_);
+  void ClearFromSpace(/* out */ uint64_t* cleared_bytes, /* out */ uint64_t* cleared_objects)
+      REQUIRES(!region_lock_);
 
   void AddLiveBytes(mirror::Object* ref, size_t alloc_size) {
     Region* reg = RefToRegionUnlocked(ref);
@@ -303,12 +315,13 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
     void Clear(bool zero_and_release_pages);
 
-    ALWAYS_INLINE mirror::Object* Alloc(size_t num_bytes, size_t* bytes_allocated,
-                                        size_t* usable_size,
-                                        size_t* bytes_tl_bulk_allocated);
+    ALWAYS_INLINE mirror::Object* Alloc(size_t num_bytes,
+                                        /* out */ size_t* bytes_allocated,
+                                        /* out */ size_t* usable_size,
+                                        /* out */ size_t* bytes_tl_bulk_allocated);
 
     bool IsFree() const {
-      bool is_free = state_ == RegionState::kRegionStateFree;
+      bool is_free = (state_ == RegionState::kRegionStateFree);
       if (is_free) {
         DCHECK(IsInNoSpace());
         DCHECK_EQ(begin_, Top());
@@ -321,9 +334,11 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
     void Unfree(RegionSpace* region_space, uint32_t alloc_time)
         REQUIRES(region_space->region_lock_);
 
+    // Given a free region, declare it non-free (allocated) and large.
     void UnfreeLarge(RegionSpace* region_space, uint32_t alloc_time)
         REQUIRES(region_space->region_lock_);
 
+    // Given a free region, declare it non-free (allocated) and large tail.
     void UnfreeLargeTail(RegionSpace* region_space, uint32_t alloc_time)
         REQUIRES(region_space->region_lock_);
 
@@ -341,7 +356,7 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
     // Large allocated.
     bool IsLarge() const {
-      bool is_large = state_ == RegionState::kRegionStateLarge;
+      bool is_large = (state_ == RegionState::kRegionStateLarge);
       if (is_large) {
         DCHECK_LT(begin_ + kRegionSize, Top());
       }
@@ -350,7 +365,7 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
     // Large-tail allocated.
     bool IsLargeTail() const {
-      bool is_large_tail = state_ == RegionState::kRegionStateLargeTail;
+      bool is_large_tail = (state_ == RegionState::kRegionStateLargeTail);
       if (is_large_tail) {
         DCHECK_EQ(begin_, Top());
       }
@@ -381,23 +396,33 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
       return type_ == RegionType::kRegionTypeNone;
     }
 
+    // Set this region as evacuated from-space. At the end of the
+    // collection, RegionSpace::ClearFromSpace will clear and reclaim
+    // the space used by this region, and tag it as unallocated/free.
     void SetAsFromSpace() {
       DCHECK(!IsFree() && IsInToSpace());
       type_ = RegionType::kRegionTypeFromSpace;
       live_bytes_ = static_cast<size_t>(-1);
     }
 
+    // Set this region as unevacuated from-space. At the end of the
+    // collection, RegionSpace::ClearFromSpace will preserve the space
+    // used by this region, and tag it as to-space (see
+    // Region::SetUnevacFromSpaceAsToSpace below).
     void SetAsUnevacFromSpace() {
       DCHECK(!IsFree() && IsInToSpace());
       type_ = RegionType::kRegionTypeUnevacFromSpace;
       live_bytes_ = 0U;
     }
 
+    // Set this region as to-space. Used by RegionSpace::ClearFromSpace.
+    // This is only valid if it is currently an unevac from-space region.
     void SetUnevacFromSpaceAsToSpace() {
       DCHECK(!IsFree() && IsInUnevacFromSpace());
       type_ = RegionType::kRegionTypeToSpace;
     }
 
+    // Return whether this region should be evacuated. Used by RegionSpace::SetFromSpace.
     ALWAYS_INLINE bool ShouldBeEvacuated();
 
     void AddLiveBytes(size_t live_bytes) {
@@ -420,20 +445,7 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
     size_t BytesAllocated() const;
 
-    size_t ObjectsAllocated() const {
-      if (IsLarge()) {
-        DCHECK_LT(begin_ + kRegionSize, Top());
-        DCHECK_EQ(objects_allocated_.LoadRelaxed(), 0U);
-        return 1;
-      } else if (IsLargeTail()) {
-        DCHECK_EQ(begin_, Top());
-        DCHECK_EQ(objects_allocated_.LoadRelaxed(), 0U);
-        return 0;
-      } else {
-        DCHECK(IsAllocated()) << static_cast<uint>(state_);
-        return objects_allocated_;
-      }
-    }
+    size_t ObjectsAllocated() const;
 
     uint8_t* Begin() const {
       return begin_;
@@ -469,12 +481,17 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
    private:
     size_t idx_;                        // The region's index in the region space.
     uint8_t* begin_;                    // The begin address of the region.
+    // Note that `top_` can be higher than `end_` in the case of a
+    // large region, where an allocated object spans multiple regions
+    // (large region + one or more large tail regions).
     Atomic<uint8_t*> top_;              // The current position of the allocation.
     uint8_t* end_;                      // The end address of the region.
     RegionState state_;                 // The region state (see RegionState).
     RegionType type_;                   // The region type (see RegionType).
     Atomic<size_t> objects_allocated_;  // The number of objects allocated.
     uint32_t alloc_time_;               // The allocation time of the region.
+    // Note that newly allocated and evacuated regions use -1 as
+    // special value for `live_bytes_`.
     size_t live_bytes_;                 // The live bytes. Used to compute the live percent.
     bool is_newly_allocated_;           // True if it's allocated after the last collection.
     bool is_a_tlab_;                    // True if it's a tlab.
@@ -490,12 +507,12 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
   Region* RefToRegionUnlocked(mirror::Object* ref) NO_THREAD_SAFETY_ANALYSIS {
     // For a performance reason (this is frequently called via
-    // IsInFromSpace() etc.) we avoid taking a lock here. Note that
-    // since we only change a region from to-space to from-space only
-    // during a pause (SetFromSpace()) and from from-space to free
-    // (after GC is done) as long as ref is a valid reference into an
-    // allocated region, it's safe to access the region state without
-    // the lock.
+    // RegionSpace::IsInFromSpace, etc.) we avoid taking a lock here.
+    // Note that since we only change a region from to-space to (evac)
+    // from-space during a pause (in RegionSpace::SetFromSpace) and
+    // from (evac) from-space to free (after GC is done), as long as
+    // `ref` is a valid reference into an allocated region, it's safe
+    // to access the region state without the lock.
     return RefToRegionLocked(ref);
   }
 
@@ -510,6 +527,13 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
     return reg;
   }
 
+  // Return the object location following `obj` in the region space
+  // (i.e., the object location at `obj + obj->SizeOf()`).
+  //
+  // Note that
+  // - unless the region containing `obj` is fully used; and
+  // - `obj` is not the last object of that region;
+  // the returned location is not guaranteed to be a valid object.
   mirror::Object* GetNextObject(mirror::Object* obj)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -526,6 +550,8 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
     VerifyNonFreeRegionLimit();
   }
 
+  // Implementation of this invariant:
+  // for all `i >= non_free_region_index_limit_`, `regions_[i].IsFree()` is true.
   void VerifyNonFreeRegionLimit() REQUIRES(region_lock_) {
     if (kIsDebugBuild && non_free_region_index_limit_ < num_regions_) {
       for (size_t i = non_free_region_index_limit_; i < num_regions_; ++i) {
@@ -551,14 +577,18 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
   // regions are in non-free.
   size_t max_peak_num_non_free_regions_;
 
+  // The pointer to the region array.
   std::unique_ptr<Region[]> regions_ GUARDED_BY(region_lock_);
-                                   // The pointer to the region array.
+
   // The upper-bound index of the non-free regions. Used to avoid scanning all regions in
-  // SetFromSpace().  Invariant: for all i >= non_free_region_index_limit_, regions_[i].IsFree() is
-  // true.
+  // RegionSpace::SetFromSpace and RegionSpace::ClearFromSpace.
+  //
+  // Invariant (verified by RegionSpace::VerifyNonFreeRegionLimit):
+  //   for all `i >= non_free_region_index_limit_`, `regions_[i].IsFree()` is true.
   size_t non_free_region_index_limit_ GUARDED_BY(region_lock_);
-  Region* current_region_;         // The region that's being allocated currently.
-  Region* evac_region_;            // The region that's being evacuated to currently.
+
+  Region* current_region_;         // The region currently used for allocation.
+  Region* evac_region_;            // The region currently used for evacuation.
   Region full_region_;             // The dummy/sentinel region that looks full.
 
   // Mark bitmap used by the GC.

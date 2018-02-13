@@ -74,7 +74,7 @@ TEST_F(SpaceBitmapTest, ScanRange) {
     }
   }
   // Try every possible starting bit in the first word. Then for each starting bit, try each
-  // possible length up to a maximum of kBitsPerWord * 2 - 1 bits.
+  // possible length up to a maximum of `kBitsPerIntPtrT * 2 - 1` bits.
   // This handles all the cases, having runs which start and end on the same word, and different
   // words.
   for (size_t i = 0; i < static_cast<size_t>(kBitsPerIntPtrT); ++i) {

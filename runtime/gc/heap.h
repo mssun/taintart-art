@@ -1293,8 +1293,9 @@ class Heap {
   // Parallel GC data structures.
   std::unique_ptr<ThreadPool> thread_pool_;
 
-  // For a GC cycle, a bitmap that is set corresponding to the
+  // A bitmap that is set corresponding to the known live objects since the last GC cycle.
   std::unique_ptr<accounting::HeapBitmap> live_bitmap_ GUARDED_BY(Locks::heap_bitmap_lock_);
+  // A bitmap that is set corresponding to the marked objects in the current GC cycle.
   std::unique_ptr<accounting::HeapBitmap> mark_bitmap_ GUARDED_BY(Locks::heap_bitmap_lock_);
 
   // Mark stack that we reuse to avoid re-allocating the mark stack.
@@ -1320,6 +1321,7 @@ class Heap {
   // Temp space is the space which the semispace collector copies to.
   space::BumpPointerSpace* temp_space_;
 
+  // Region space, used by the concurrent collector.
   space::RegionSpace* region_space_;
 
   // Minimum free guarantees that you always have at least min_free_ free bytes after growing for
