@@ -90,7 +90,8 @@ static bool IsCallerInBootClassPath(Thread* self) REQUIRES_SHARED(Locks::mutator
 template<typename T>
 ALWAYS_INLINE static bool ShouldBlockAccessToMember(T* member, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  return hiddenapi::ShouldBlockAccessToMember(member, self, IsCallerInBootClassPath);
+  return hiddenapi::ShouldBlockAccessToMember(
+      member, self, IsCallerInBootClassPath, hiddenapi::kJNI);
 }
 
 // Helpers to call instrumentation functions for fields. These take jobjects so we don't need to set
