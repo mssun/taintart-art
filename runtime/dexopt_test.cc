@@ -20,6 +20,7 @@
 #include <backtrace/BacktraceMap.h>
 #include <gtest/gtest.h>
 
+#include "base/file_utils.h"
 #include "common_runtime_test.h"
 #include "compiler_callbacks.h"
 #include "dex2oat_environment_test.h"
@@ -197,8 +198,18 @@ void DexoptTest::GenerateOatForTest(const char* dex_location, CompilerFilter::Fi
 }
 
 bool DexoptTest::PreRelocateImage(const std::string& image_location, std::string* error_msg) {
-  std::string image;
-  if (!GetCachedImageFile(image_location, &image, error_msg)) {
+  std::string dalvik_cache;
+  bool have_android_data;
+  bool dalvik_cache_exists;
+  bool is_global_cache;
+  GetDalvikCache(GetInstructionSetString(kRuntimeISA),
+                 true,
+                 &dalvik_cache,
+                 &have_android_data,
+                 &dalvik_cache_exists,
+                 &is_global_cache);
+  if (!dalvik_cache_exists) {
+    *error_msg = "Failed to create dalvik cache";
     return false;
   }
 
@@ -208,7 +219,7 @@ bool DexoptTest::PreRelocateImage(const std::string& image_location, std::string
   std::vector<std::string> argv;
   argv.push_back(patchoat);
   argv.push_back("--input-image-location=" + image_location);
-  argv.push_back("--output-image-file=" + image);
+  argv.push_back("--output-image-directory=" + dalvik_cache);
   argv.push_back("--instruction-set=" + std::string(GetInstructionSetString(kRuntimeISA)));
   argv.push_back("--base-offset-delta=0x00008000");
   return Exec(argv, error_msg);
