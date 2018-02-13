@@ -1924,6 +1924,10 @@ std::string OatFile::GetClassLoaderContext() const {
   return GetOatHeader().GetStoreValueByKey(OatHeader::kClassPathKey);
 }
 
+const char* OatFile::GetCompilationReason() const {
+  return GetOatHeader().GetStoreValueByKey(OatHeader::kCompilationReasonKey);
+}
+
 OatFile::OatClass OatFile::FindOatClass(const DexFile& dex_file,
                                         uint16_t class_def_idx,
                                         bool* found) {

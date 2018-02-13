@@ -1731,4 +1731,54 @@ TEST_F(Dex2oatTest, StderrLoggerOutput) {
   EXPECT_NE(std::string::npos, output_.find("dex2oat took"));
 }
 
+TEST_F(Dex2oatTest, VerifyCompilationReason) {
+  std::string dex_location = GetScratchDir() + "/Dex2OatCompilationReason.jar";
+  std::string odex_location = GetOdexDir() + "/Dex2OatCompilationReason.odex";
+
+  // Test file doesn't matter.
+  Copy(GetDexSrc1(), dex_location);
+
+  GenerateOdexForTest(dex_location,
+                      odex_location,
+                      CompilerFilter::kVerify,
+                      { "--compilation-reason=install" },
+                      true);
+  std::string error_msg;
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(odex_location.c_str(),
+                                                   odex_location.c_str(),
+                                                   nullptr,
+                                                   nullptr,
+                                                   false,
+                                                   /*low_4gb*/false,
+                                                   dex_location.c_str(),
+                                                   &error_msg));
+  ASSERT_TRUE(odex_file != nullptr);
+  ASSERT_STREQ("install", odex_file->GetCompilationReason());
+}
+
+TEST_F(Dex2oatTest, VerifyNoCompilationReason) {
+  std::string dex_location = GetScratchDir() + "/Dex2OatNoCompilationReason.jar";
+  std::string odex_location = GetOdexDir() + "/Dex2OatNoCompilationReason.odex";
+
+  // Test file doesn't matter.
+  Copy(GetDexSrc1(), dex_location);
+
+  GenerateOdexForTest(dex_location,
+                      odex_location,
+                      CompilerFilter::kVerify,
+                      {},
+                      true);
+  std::string error_msg;
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(odex_location.c_str(),
+                                                   odex_location.c_str(),
+                                                   nullptr,
+                                                   nullptr,
+                                                   false,
+                                                   /*low_4gb*/false,
+                                                   dex_location.c_str(),
+                                                   &error_msg));
+  ASSERT_TRUE(odex_file != nullptr);
+  ASSERT_EQ(nullptr, odex_file->GetCompilationReason());
+}
+
 }  // namespace art
