@@ -19,6 +19,8 @@ package art;
 import java.util.Base64;
 public class Test1937 {
 
+  private static final boolean PRINT_MESSAGE = false;
+
   static class Transform {
     public void sayHi() {
       // Use lower 'h' to make sure the string will have a different string id
@@ -83,7 +85,10 @@ public class Test1937 {
     try {
       t.sayHi();
     } catch (Throwable e) {
-      System.out.println("Caught exception " + e.getClass().getName() + ": " + e.getMessage());
+      System.out.println("Caught exception " + e.getClass().getName());
+      if (PRINT_MESSAGE) {
+        System.out.println("Message: " + e.getMessage());
+      }
     }
   }
 }
