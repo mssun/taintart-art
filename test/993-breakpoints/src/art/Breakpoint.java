@@ -117,7 +117,7 @@ public class Breakpoint {
                                                  Thread thr);
   public static native void stopBreakpointWatch(Thread thr);
 
-  public static final class LineNumber {
+  public static final class LineNumber implements Comparable<LineNumber> {
     public final long location;
     public final int line;
 
