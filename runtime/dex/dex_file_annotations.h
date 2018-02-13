@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_DEX_DEX_FILE_ANNOTATIONS_H_
 #define ART_RUNTIME_DEX_DEX_FILE_ANNOTATIONS_H_
 
-#include "dex_file.h"
+#include "dex/dex_file.h"
 
 #include "handle.h"
 #include "mirror/dex_cache.h"

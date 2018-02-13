@@ -25,10 +25,10 @@
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/unix_file/fd_file.h"
-#include "compact_dex_file.h"
-#include "dex_file.h"
-#include "dex_file_verifier.h"
-#include "standard_dex_file.h"
+#include "dex/compact_dex_file.h"
+#include "dex/dex_file.h"
+#include "dex/dex_file_verifier.h"
+#include "dex/standard_dex_file.h"
 #include "zip_archive.h"
 
 namespace art {
