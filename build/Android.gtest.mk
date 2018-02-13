@@ -360,18 +360,28 @@ ifneq ($(ART_TEST_ANDROID_ROOT),)
   ART_GTEST_TARGET_ANDROID_ROOT := $(ART_TEST_ANDROID_ROOT)
 endif
 
-ART_VALGRIND_TARGET_DEPENDENCIES := \
+ART_VALGRIND_TARGET_DEPENDENCIES :=
+
+# Has to match list in external/valgrind/Android.build_one.mk
+ART_VALGRIND_SUPPORTED_ARCH := arm arm64 x86_64
+
+# Valgrind is not supported for x86
+ifneq (,$(filter $(ART_VALGRIND_SUPPORTED_ARCH),$(TARGET_ARCH)))
+ART_VALGRIND_TARGET_DEPENDENCIES += \
   $(TARGET_OUT_EXECUTABLES)/valgrind \
   $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/memcheck-$(TARGET_ARCH)-linux \
   $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/vgpreload_core-$(TARGET_ARCH)-linux.so \
   $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/vgpreload_memcheck-$(TARGET_ARCH)-linux.so \
   $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/default.supp
+endif
 
 ifdef TARGET_2ND_ARCH
+ifneq (,$(filter $(ART_VALGRIND_SUPPORTED_ARCH),$(TARGET_2ND_ARCH)))
 ART_VALGRIND_TARGET_DEPENDENCIES += \
   $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/memcheck-$(TARGET_2ND_ARCH)-linux \
   $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/vgpreload_core-$(TARGET_2ND_ARCH)-linux.so \
   $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/vgpreload_memcheck-$(TARGET_2ND_ARCH)-linux.so
+endif
 endif
 
 include $(CLEAR_VARS)
