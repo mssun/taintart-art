@@ -100,7 +100,7 @@ static void CheckSeparate(size_t max_length, size_t min_length) {
     }
 
     size_t min = count1 < count2 ? count1 : count2;
-    bool fill_same = r.next() % 1 == 1;
+    bool fill_same = r.next() % 2 == 1;
 
     if (fill_same) {
       for (size_t i = 0; i < min; ++i) {
