@@ -27,7 +27,15 @@ public class Test983 {
     doTest();
   }
 
+  private native static void setupLoadHook();
+
+  /* called from JNI */
+  public static void doPrintln(String str) {
+    System.out.println(str);
+  }
+
   public static void doTest() {
+    setupLoadHook();
     Redefinition.enableCommonRetransformation(true);
     Redefinition.doCommonClassRetransformation(Transform.class);
     Redefinition.doCommonClassRetransformation(Object.class);
