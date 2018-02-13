@@ -921,9 +921,7 @@ TEST_F(AssemblerX86Test, Cmpb) {
 }
 
 TEST_F(AssemblerX86Test, Cmpw) {
-  DriverStr(RepeatAI(&x86::X86Assembler::cmpw,
-                     /*imm_bytes*/ 1U,
-                     "cmpw ${imm}, {mem}"), "cmpw");  // TODO: only imm8?
+  DriverStr(RepeatAI(&x86::X86Assembler::cmpw, /*imm_bytes*/ 2U, "cmpw ${imm}, {mem}"), "cmpw");
 }
 
 }  // namespace art
