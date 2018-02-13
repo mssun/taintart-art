@@ -38,8 +38,7 @@
  *    domain stream socket (@jdwp-control) that is opened by the
  *    ADB daemon.
  *
- * 2/ it then sends the current process PID as a string of 4 hexadecimal
- *    chars (no terminating zero)
+ * 2/ it then sends the current process PID as an int32_t.
  *
  * 3/ then, it uses recvmsg to receive file descriptors from the
  *    daemon. each incoming file descriptor is a pass-through to
@@ -225,7 +224,6 @@ bool JdwpAdbState::Accept() {
   if (ControlSock() == -1) {
     int        sleep_ms     = 500;
     const int  sleep_max_ms = 2*1000;
-    char       buff[5];
 
     int sock = socket(AF_UNIX, SOCK_SEQPACKET, 0);
     if (sock < 0) {
@@ -247,8 +245,7 @@ bool JdwpAdbState::Accept() {
       }
     }
 
-    snprintf(buff, sizeof(buff), "%04x", getpid());
-    buff[4] = 0;
+    int32_t pid = getpid();
 
     for (;;) {
       /*
@@ -277,9 +274,9 @@ bool JdwpAdbState::Accept() {
 #endif
 
         /* now try to send our pid to the ADB daemon */
-        ret = TEMP_FAILURE_RETRY(send(control_sock, buff, 4, 0));
-        if (ret == 4) {
-          VLOG(jdwp) << StringPrintf("PID sent as '%.*s' to ADB", 4, buff);
+        ret = TEMP_FAILURE_RETRY(send(control_sock, &pid, sizeof(pid), 0));
+        if (ret == sizeof(pid)) {
+          VLOG(jdwp) << "PID " << pid << " sent to ADB";
           break;
         }
 
