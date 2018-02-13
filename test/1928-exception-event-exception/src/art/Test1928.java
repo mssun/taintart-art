@@ -22,7 +22,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 
 public class Test1928 {
-  public static boolean PRINT_FULL_EXCEPTION = true;
+  public static boolean PRINT_FULL_EXCEPTION = false;
   public static ExceptionHandler HANDLER = null;
 
   public static interface ExceptionHandler {
