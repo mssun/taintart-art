@@ -330,8 +330,8 @@ std::unique_ptr<RuntimeParser> ParsedOptions::MakeParser(bool ignore_unrecognize
       .Define("-Xtarget-sdk-version:_")
           .WithType<int>()
           .IntoKey(M::TargetSdkVersion)
-      .Define("-Xno-hidden-api-checks")
-          .IntoKey(M::NoHiddenApiChecks)
+      .Define("-Xhidden-api-checks")
+          .IntoKey(M::HiddenApiChecks)
       .Define("-Xuse-stderr-logger")
           .IntoKey(M::UseStderrLogger)
       .Ignore({
