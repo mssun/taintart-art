@@ -173,7 +173,7 @@ enum {
   DEBUG_JAVA_DEBUGGABLE           = 1 << 8,
   DISABLE_VERIFIER                = 1 << 9,
   ONLY_USE_SYSTEM_OAT_FILES       = 1 << 10,
-  DISABLE_HIDDEN_API_CHECKS       = 1 << 11,
+  ENABLE_HIDDEN_API_CHECKS        = 1 << 11,
   DEBUG_GENERATE_MINI_DEBUG_INFO  = 1 << 12,
 };
 
@@ -282,7 +282,7 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
   // Our system thread ID, etc, has changed so reset Thread state.
   thread->InitAfterFork();
   runtime_flags = EnableDebugFeatures(runtime_flags);
-  bool do_hidden_api_checks = true;
+  bool do_hidden_api_checks = false;
 
   if ((runtime_flags & DISABLE_VERIFIER) != 0) {
     Runtime::Current()->DisableVerifier();
@@ -294,9 +294,9 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
     runtime_flags &= ~ONLY_USE_SYSTEM_OAT_FILES;
   }
 
-  if ((runtime_flags & DISABLE_HIDDEN_API_CHECKS) != 0) {
-    do_hidden_api_checks = false;
-    runtime_flags &= ~DISABLE_HIDDEN_API_CHECKS;
+  if ((runtime_flags & ENABLE_HIDDEN_API_CHECKS) != 0) {
+    do_hidden_api_checks = true;
+    runtime_flags &= ~ENABLE_HIDDEN_API_CHECKS;
   }
 
   if (runtime_flags != 0) {
