@@ -283,7 +283,27 @@ uint32_t WellKnownClasses::StringInitToEntryPoint(ArtMethod* string_init) {
 }
 #undef STRING_INIT_LIST
 
+class ScopedHiddenApiExemption {
+ public:
+  explicit ScopedHiddenApiExemption(Runtime* runtime)
+      : runtime_(runtime),
+        initially_enabled_(runtime_->AreHiddenApiChecksEnabled()) {
+    runtime_->SetHiddenApiChecksEnabled(false);
+  }
+
+  ~ScopedHiddenApiExemption() {
+    runtime_->SetHiddenApiChecksEnabled(initially_enabled_);
+  }
+
+ private:
+  Runtime* runtime_;
+  const bool initially_enabled_;
+  DISALLOW_COPY_AND_ASSIGN(ScopedHiddenApiExemption);
+};
+
 void WellKnownClasses::Init(JNIEnv* env) {
+  ScopedHiddenApiExemption hiddenapi_exemption(Runtime::Current());
+
   dalvik_annotation_optimization_CriticalNative =
       CacheClass(env, "dalvik/annotation/optimization/CriticalNative");
   dalvik_annotation_optimization_FastNative = CacheClass(env, "dalvik/annotation/optimization/FastNative");
