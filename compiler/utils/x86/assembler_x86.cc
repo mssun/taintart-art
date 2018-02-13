@@ -1914,7 +1914,7 @@ void X86Assembler::cmpb(const Address& address, const Immediate& imm) {
 void X86Assembler::cmpw(const Address& address, const Immediate& imm) {
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitUint8(0x66);
-  EmitComplex(7, address, imm);
+  EmitComplex(7, address, imm, /* is_16_op */ true);
 }
 
 

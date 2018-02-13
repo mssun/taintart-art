@@ -967,9 +967,8 @@ TEST_F(AssemblerX86_64Test, MovbStore) {
 }
 
 TEST_F(AssemblerX86_64Test, Cmpw) {
-  DriverStr(RepeatAI(&x86_64::X86_64Assembler::cmpw,
-                     /*imm_bytes*/ 1U,
-                     "cmpw ${imm}, {mem}"), "cmpw");  // TODO: only imm8?
+  DriverStr(
+      RepeatAI(&x86_64::X86_64Assembler::cmpw, /*imm_bytes*/ 2U, "cmpw ${imm}, {mem}"), "cmpw");
 }
 
 TEST_F(AssemblerX86_64Test, MovqAddrImm) {

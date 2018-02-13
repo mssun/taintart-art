@@ -2199,7 +2199,7 @@ void X86_64Assembler::cmpw(const Address& address, const Immediate& imm) {
   CHECK(imm.is_int32());
   EmitOperandSizeOverride();
   EmitOptionalRex32(address);
-  EmitComplex(7, address, imm);
+  EmitComplex(7, address, imm, /* is_16_op */ true);
 }
 
 
