@@ -539,7 +539,9 @@ bool AdbConnectionState::SetupAdbConnection() {
         return false;
       }
     } else {
-      PLOG(ERROR) << "Can't connect to ADB control socket. Will retry.";
+      if (VLOG_IS_ON(jdwp)) {
+        PLOG(ERROR) << "Can't connect to ADB control socket. Will retry.";
+      }
 
       usleep(sleep_ms * 1000);
 
