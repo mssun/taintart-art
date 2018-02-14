@@ -68,6 +68,8 @@
 
 /* single-purpose registers, given names for clarity */
 #define rPC s0
+#define CFI_DEX 16  // DWARF register number of the register holding dex-pc (s0).
+#define CFI_TMP 4   // DWARF register number of the first argument register (a0).
 #define rFP s1
 #define rSELF s2
 #define rIBASE s3
@@ -788,7 +790,7 @@ ExecuteMterpImpl:
     EAS2(rREFS, rFP, a0)                          # point to reference array in shadow frame
     lw      a0, SHADOWFRAME_DEX_PC_OFFSET(a2)     # Get starting dex_pc
     EAS1(rPC, a1, a0)                             # Create direct pointer to 1st dex opcode
-    .cfi_register DPC_PSEUDO_REG, rPC
+    CFI_DEFINE_DEX_PC_WITH_OFFSET(CFI_TMP, CFI_DEX, 0)
 
     EXPORT_PC()
 

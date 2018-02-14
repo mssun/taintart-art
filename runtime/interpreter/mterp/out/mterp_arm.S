@@ -100,6 +100,8 @@ unspecified registers or condition codes.
 /* During bringup, we'll use the shadow frame model instead of rFP */
 /* single-purpose registers, given names for clarity */
 #define rPC      r4
+#define CFI_DEX  4  // DWARF register number of the register holding dex-pc (xPC).
+#define CFI_TMP  0  // DWARF register number of the first argument register (r0).
 #define rFP      r5
 #define rSELF    r6
 #define rINST    r7
@@ -375,7 +377,7 @@ ENTRY ExecuteMterpImpl
     VREG_INDEX_TO_ADDR rREFS, r0                   @ point to reference array in shadow frame
     ldr     r0, [r2, #SHADOWFRAME_DEX_PC_OFFSET]   @ Get starting dex_pc.
     add     rPC, r1, r0, lsl #1                    @ Create direct pointer to 1st dex opcode
-    .cfi_register DPC_PSEUDO_REG, rPC
+    CFI_DEFINE_DEX_PC_WITH_OFFSET(CFI_TMP, CFI_DEX, 0)
     EXPORT_PC
 
     /* Starting ibase */
