@@ -2,7 +2,7 @@ Test "art.Test1928$DoThrowClass": Running with handler "art.Test1928$DoNothingHa
 main: public static void art.Test1928.doThrow() @ line = 110 throws class art.Test1928$TestException: doThrow
 	Current Stack:
 		private static native art.StackTrace$StackFrameData[] art.StackTrace.nativeGetStackTrace(java.lang.Thread) @ line = -1
-		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 60
+		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 61
 		private static void art.Test1928.PrintStack() @ line = 35
 		public static void art.Test1928.ExceptionEvent(java.lang.Thread,java.lang.reflect.Executable,long,java.lang.Throwable,java.lang.reflect.Executable,long) @ line = 59
 		public static void art.Test1928.doThrow() @ line = 110
@@ -16,7 +16,7 @@ Test "art.Test1928$DoThrowCatchBaseTestException": Running with handler "art.Tes
 main: public static void art.Test1928.throwCatchBaseTestException() @ line = 119 throws class art.Test1928$TestException: throwCatchBaseTestException
 	Current Stack:
 		private static native art.StackTrace$StackFrameData[] art.StackTrace.nativeGetStackTrace(java.lang.Thread) @ line = -1
-		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 60
+		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 61
 		private static void art.Test1928.PrintStack() @ line = 35
 		public static void art.Test1928.ExceptionEvent(java.lang.Thread,java.lang.reflect.Executable,long,java.lang.Throwable,java.lang.reflect.Executable,long) @ line = 59
 		public static void art.Test1928.throwCatchBaseTestException() @ line = 119
@@ -31,7 +31,7 @@ Test "art.Test1928$DoThrowCatchTestException": Running with handler "art.Test192
 main: public static void art.Test1928.throwCatchTestException() @ line = 134 throws class art.Test1928$TestException: throwCatchTestException
 	Current Stack:
 		private static native art.StackTrace$StackFrameData[] art.StackTrace.nativeGetStackTrace(java.lang.Thread) @ line = -1
-		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 60
+		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 61
 		private static void art.Test1928.PrintStack() @ line = 35
 		public static void art.Test1928.ExceptionEvent(java.lang.Thread,java.lang.reflect.Executable,long,java.lang.Throwable,java.lang.reflect.Executable,long) @ line = 59
 		public static void art.Test1928.throwCatchTestException() @ line = 134
@@ -46,7 +46,7 @@ Test "art.Test1928$DoThrowCatchTestExceptionNoRethrow": Running with handler "ar
 main: public static void art.Test1928.throwCatchTestExceptionNoRethrow() @ line = 149 throws class art.Test1928$TestException: throwCatchTestExceptionNoRethrow
 	Current Stack:
 		private static native art.StackTrace$StackFrameData[] art.StackTrace.nativeGetStackTrace(java.lang.Thread) @ line = -1
-		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 60
+		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 61
 		private static void art.Test1928.PrintStack() @ line = 35
 		public static void art.Test1928.ExceptionEvent(java.lang.Thread,java.lang.reflect.Executable,long,java.lang.Throwable,java.lang.reflect.Executable,long) @ line = 59
 		public static void art.Test1928.throwCatchTestExceptionNoRethrow() @ line = 149
@@ -60,7 +60,7 @@ Test "art.Test1928$DoThrowClass": Running with handler "art.Test1928$ThrowCatchB
 main: public static void art.Test1928.doThrow() @ line = 110 throws class art.Test1928$TestException: doThrow
 	Current Stack:
 		private static native art.StackTrace$StackFrameData[] art.StackTrace.nativeGetStackTrace(java.lang.Thread) @ line = -1
-		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 60
+		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 61
 		private static void art.Test1928.PrintStack() @ line = 35
 		public static void art.Test1928.ExceptionEvent(java.lang.Thread,java.lang.reflect.Executable,long,java.lang.Throwable,java.lang.reflect.Executable,long) @ line = 59
 		public static void art.Test1928.doThrow() @ line = 110
@@ -75,7 +75,7 @@ Test "art.Test1928$DoThrowCatchBaseTestException": Running with handler "art.Tes
 main: public static void art.Test1928.throwCatchBaseTestException() @ line = 119 throws class art.Test1928$TestException: throwCatchBaseTestException
 	Current Stack:
 		private static native art.StackTrace$StackFrameData[] art.StackTrace.nativeGetStackTrace(java.lang.Thread) @ line = -1
-		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 60
+		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 61
 		private static void art.Test1928.PrintStack() @ line = 35
 		public static void art.Test1928.ExceptionEvent(java.lang.Thread,java.lang.reflect.Executable,long,java.lang.Throwable,java.lang.reflect.Executable,long) @ line = 59
 		public static void art.Test1928.throwCatchBaseTestException() @ line = 119
@@ -91,7 +91,7 @@ Test "art.Test1928$DoThrowCatchTestException": Running with handler "art.Test192
 main: public static void art.Test1928.throwCatchTestException() @ line = 134 throws class art.Test1928$TestException: throwCatchTestException
 	Current Stack:
 		private static native art.StackTrace$StackFrameData[] art.StackTrace.nativeGetStackTrace(java.lang.Thread) @ line = -1
-		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 60
+		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 61
 		private static void art.Test1928.PrintStack() @ line = 35
 		public static void art.Test1928.ExceptionEvent(java.lang.Thread,java.lang.reflect.Executable,long,java.lang.Throwable,java.lang.reflect.Executable,long) @ line = 59
 		public static void art.Test1928.throwCatchTestException() @ line = 134
@@ -107,7 +107,7 @@ Test "art.Test1928$DoThrowCatchTestExceptionNoRethrow": Running with handler "ar
 main: public static void art.Test1928.throwCatchTestExceptionNoRethrow() @ line = 149 throws class art.Test1928$TestException: throwCatchTestExceptionNoRethrow
 	Current Stack:
 		private static native art.StackTrace$StackFrameData[] art.StackTrace.nativeGetStackTrace(java.lang.Thread) @ line = -1
-		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 60
+		public static art.StackTrace$StackFrameData[] art.StackTrace.GetStackTrace(java.lang.Thread) @ line = 61
 		private static void art.Test1928.PrintStack() @ line = 35
 		public static void art.Test1928.ExceptionEvent(java.lang.Thread,java.lang.reflect.Executable,long,java.lang.Throwable,java.lang.reflect.Executable,long) @ line = 59
 		public static void art.Test1928.throwCatchTestExceptionNoRethrow() @ line = 149
