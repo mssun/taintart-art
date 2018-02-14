@@ -81,7 +81,6 @@ class ZygoteHeapTest : public CommonRuntimeTest {
   void SetUpRuntimeOptions(RuntimeOptions* options) {
     CommonRuntimeTest::SetUpRuntimeOptions(options);
     options->push_back(std::make_pair("-Xzygote", nullptr));
-    options->push_back(std::make_pair("-Xno-hidden-api-checks", nullptr));
   }
 };
 
