@@ -16,20 +16,15 @@
 
 package com.android.amm.test;
 
-import android.app.Activity;
-import android.os.Bundle;
+class SoCodeUse {
+  private int value;
 
-public class MainActivity extends Activity {
-
-  private BitmapUse mBitmapUse;
-  private SoCodeUse mSoCodeUse;
-
-  @Override
-  public void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-
-    mBitmapUse = new BitmapUse();
-    mSoCodeUse = new SoCodeUse();
+  public SoCodeUse() {
+    // TODO: Figure out how to cause the native library to be unloaded when
+    // the SoCodeUse instance goes away?
+    System.loadLibrary("ammtestjni");
+    value = nGetANumber();
   }
-}
 
+  private static native int nGetANumber();
+}

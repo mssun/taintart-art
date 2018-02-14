@@ -14,11 +14,20 @@
 
 LOCAL_PATH := $(call my-dir)
 
+# --- ammtestjni.so -------------
+include $(CLEAR_VARS)
+LOCAL_MODULE := libammtestjni
+LOCAL_SRC_FILES := $(call all-c-files-under, AmmTest/jni)
+LOCAL_SDK_VERSION := current
+include $(BUILD_SHARED_LIBRARY)
+
 # --- AmmTest.apk --------------
 include $(CLEAR_VARS)
 LOCAL_PACKAGE_NAME := AmmTest
 LOCAL_MODULE_TAGS := samples tests
 LOCAL_SRC_FILES := $(call all-java-files-under, AmmTest/src)
+LOCAL_SDK_VERSION := current
+LOCAL_JNI_SHARED_LIBRARIES := libammtestjni
 LOCAL_JAVA_RESOURCE_FILES := $(LOCAL_PATH)/AmmTest/aahat.png
 LOCAL_MANIFEST_FILE := AmmTest/AndroidManifest.xml
 include $(BUILD_PACKAGE)
