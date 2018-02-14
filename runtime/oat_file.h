@@ -130,6 +130,8 @@ class OatFile {
 
   std::string GetClassLoaderContext() const;
 
+  const char* GetCompilationReason() const;
+
   const std::string& GetLocation() const {
     return location_;
   }

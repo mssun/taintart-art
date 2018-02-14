@@ -456,6 +456,12 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("  --deduplicate-code=true|false: enable|disable code deduplication. Deduplicated");
   UsageError("      code will have an arbitrary symbol tagged with [DEDUPED].");
   UsageError("");
+  UsageError("  --compilation-reason=<string>: optional metadata specifying the reason for");
+  UsageError("      compiling the apk. If specified, the string will be embedded verbatim in");
+  UsageError("      the key value store of the oat file.");
+  UsageError("");
+  UsageError("      Example: --compilation-reason=install");
+  UsageError("");
   std::cerr << "See log for usage error information\n";
   exit(EXIT_FAILURE);
 }
@@ -1212,6 +1218,7 @@ class Dex2Oat FINAL {
     AssignIfExists(args, M::ClasspathDir, &classpath_dir_);
     AssignIfExists(args, M::DirtyImageObjects, &dirty_image_objects_filename_);
     AssignIfExists(args, M::ImageFormat, &image_storage_mode_);
+    AssignIfExists(args, M::CompilationReason, &compilation_reason_);
 
     AssignIfExists(args, M::Backend, &compiler_kind_);
     parser_options->requested_specific_compiler = args.Exists(M::Backend);
@@ -1510,6 +1517,10 @@ class Dex2Oat FINAL {
     CreateOatWriters();
     if (!AddDexFileSources()) {
       return dex2oat::ReturnCode::kOther;
+    }
+
+    if (!compilation_reason_.empty()) {
+      key_value_store_->Put(OatHeader::kCompilationReasonKey, compilation_reason_);
     }
 
     if (IsBootImage() && image_filenames_.size() > 1) {
@@ -2906,6 +2917,9 @@ class Dex2Oat FINAL {
 
   // Whether the given input vdex is also the output.
   bool update_input_vdex_ = false;
+
+  // The reason for invoking the compiler.
+  std::string compilation_reason_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(Dex2Oat);
 };
