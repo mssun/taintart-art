@@ -457,7 +457,7 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
                                                          VoidFunctor()));
 
   // Initialize the SubtypeCheck bitstring for java.lang.Object and java.lang.Class.
-  {
+  if (kBitstringSubtypeCheckEnabled) {
     // It might seem the lock here is unnecessary, however all the SubtypeCheck
     // functions are annotated to require locks all the way down.
     //
@@ -1856,7 +1856,7 @@ bool ClassLinker::AddImageSpace(
       visitor(root.Read());
     }
 
-    {
+    if (kBitstringSubtypeCheckEnabled) {
       // Every class in the app image has initially SubtypeCheckInfo in the
       // Uninitialized state.
       //
@@ -4484,6 +4484,14 @@ mirror::Class* ClassLinker::CreateProxyClass(ScopedObjectAccessAlreadyRunnable& 
 
   Runtime::Current()->GetRuntimeCallbacks()->ClassPrepare(temp_klass, klass);
 
+  // SubtypeCheckInfo::Initialized must happen-before any new-instance for that type.
+  // See also ClassLinker::EnsureInitialized().
+  if (kBitstringSubtypeCheckEnabled) {
+    MutexLock subtype_check_lock(Thread::Current(), *Locks::subtype_check_lock_);
+    SubtypeCheck<ObjPtr<mirror::Class>>::EnsureInitialized(klass.Get());
+    // TODO: Avoid taking subtype_check_lock_ if SubtypeCheck for j.l.r.Proxy is already assigned.
+  }
+
   {
     // Lock on klass is released. Lock new class object.
     ObjectLock<mirror::Class> initialization_lock(self, klass);
@@ -5231,7 +5239,7 @@ bool ClassLinker::EnsureInitialized(Thread* self,
   // can be used as a source for the IsSubClass check, and that all ancestors
   // of the class are Assigned (can be used as a target for IsSubClass check)
   // or Overflowed (can be used as a source for IsSubClass check).
-  {
+  if (kBitstringSubtypeCheckEnabled) {
     MutexLock subtype_check_lock(Thread::Current(), *Locks::subtype_check_lock_);
     SubtypeCheck<ObjPtr<mirror::Class>>::EnsureInitialized(c.Get());
     // TODO: Avoid taking subtype_check_lock_ if SubtypeCheck is already initialized.

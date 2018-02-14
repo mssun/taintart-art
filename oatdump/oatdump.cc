@@ -2394,9 +2394,11 @@ class ImageDumper {
     } else if (obj->IsClass()) {
       ObjPtr<mirror::Class> klass = obj->AsClass();
 
-      os << "SUBTYPE_CHECK_BITS: ";
-      SubtypeCheck<ObjPtr<mirror::Class>>::Dump(klass, os);
-      os << "\n";
+      if (kBitstringSubtypeCheckEnabled) {
+        os << "SUBTYPE_CHECK_BITS: ";
+        SubtypeCheck<ObjPtr<mirror::Class>>::Dump(klass, os);
+        os << "\n";
+      }
 
       if (klass->NumStaticFields() != 0) {
         os << "STATICS:\n";
