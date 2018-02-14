@@ -289,6 +289,7 @@ art_cc_defaults {
         "909-attach-agent/attach.cc",
         "912-classes/classes_art.cc",
         "936-search-onload/search_onload.cc",
+        "983-source-transform-verify/source_transform_art.cc",
         "1940-ddms-ext/ddm_ext.cc",
         "1944-sudden-exit/sudden_exit.cc",
     ],
@@ -313,21 +314,19 @@ art_cc_test_library {
     shared_libs: ["libartd"],
 }
 
-art_cc_test_library {
+cc_library_static {
     name: "libctstiagent",
     defaults: ["libtiagent-base-defaults"],
+    host_supported: false,
+    srcs: [
+        "983-source-transform-verify/source_transform_slicer.cc",
+    ],
     whole_static_libs: [
-        "libdexfile",
-        "libz",
-        "libziparchive",
+        "slicer",
+        "libz",  // for slicer (using adler32).
     ],
     static_libs: [
         "libbase",
-        "libcutils",
-        "libutils",
-    ],
-    shared_libs: [
-        "liblog",
     ],
     header_libs: [
         // This is needed to resolve the base/ header file in libdexfile. Unfortunately there are
