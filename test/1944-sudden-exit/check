@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2017 The Android Open Source Project
+# Copyright (C) 2018 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-sed -e 's/:.*$//' "$2" > "$2.tmp"
+# The number of paused background threads (and therefore InterruptedExceptions)
+# can change so we will just delete their lines from the log.
 
-./default-check "$1" "$2.tmp"
+# Pure virtual function can be printed because sudden exits are not really
+# supported. It is an error message but the test is to make sure that we exit
+# with the right exit code.
+cat "$2" \
+  | sed "/Pure virtual function called!/d" \
+  | diff --strip-trailing-cr -q "$1" - >/dev/null

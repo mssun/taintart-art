@@ -661,5 +661,11 @@
         "tests": "674-HelloWorld-Dm",
         "variant": "target",
         "description": ["Requires zip, which isn't available on device"]
+    },
+    {
+        "tests": "712-varhandle-invocations",
+        "variant": "speed-profile & debug & gcstress & target",
+        "bug": "b/73275005",
+        "description": ["Time out"]
     }
 ]

@@ -124,7 +124,7 @@ class TransformationFaultHandler FINAL : public art::FaultHandler {
         return std::find_if(initialized_class_definitions_.begin(),
                             initialized_class_definitions_.end(),
                             [&](const auto op) { return op->ContainsAddress(ptr); }) !=
-            uninitialized_class_definitions_.end();
+            initialized_class_definitions_.end();
       }
     }
 

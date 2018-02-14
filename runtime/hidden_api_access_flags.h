@@ -146,6 +146,24 @@ class HiddenApiAccessFlags {
   };
 };
 
+inline std::ostream& operator<<(std::ostream& os, HiddenApiAccessFlags::ApiList value) {
+  switch (value) {
+    case HiddenApiAccessFlags::kWhitelist:
+      os << "whitelist";
+      break;
+    case HiddenApiAccessFlags::kLightGreylist:
+      os << "light greylist";
+      break;
+    case HiddenApiAccessFlags::kDarkGreylist:
+      os << "dark greylist";
+      break;
+    case HiddenApiAccessFlags::kBlacklist:
+      os << "blacklist";
+      break;
+  }
+  return os;
+}
+
 }  // namespace art
 
 

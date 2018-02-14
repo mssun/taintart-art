@@ -267,12 +267,8 @@ art_cc_defaults {
         "1942-suspend-raw-monitor-exit/native_suspend_monitor.cc",
         "1943-suspend-raw-monitor-wait/native_suspend_monitor.cc",
     ],
-    shared_libs: [
-        "libdexfile",
-        "libbase",
-    ],
     header_libs: [
-        "libnativehelper_header_only",
+        "jni_headers",
         "libopenjdkjvmti_headers",
     ],
     include_dirs: ["art/test/ti-agent"],
@@ -294,6 +290,11 @@ art_cc_defaults {
         "936-search-onload/search_onload.cc",
         "983-source-transform-verify/source_transform.cc",
         "1940-ddms-ext/ddm_ext.cc",
+        "1944-sudden-exit/sudden_exit.cc",
+    ],
+    shared_libs: [
+        "libbase",
+        "libdexfile",
     ],
 }
 
@@ -310,6 +311,25 @@ art_cc_test_library {
         "libtiagent-defaults",
     ],
     shared_libs: ["libartd"],
+}
+
+art_cc_test_library {
+    name: "libctstiagent",
+    defaults: ["libtiagent-base-defaults"],
+    whole_static_libs: [
+        "libdexfile",
+        "libz",
+        "libziparchive",
+    ],
+    static_libs: [
+        "libbase",
+        "libcutils",
+        "libutils",
+    ],
+    shared_libs: [
+        "liblog",
+    ],
+    export_include_dirs: ["ti-agent"],
 }
 
 art_cc_defaults {
@@ -338,12 +358,6 @@ art_cc_test_library {
         "libtistress-defaults",
     ],
     shared_libs: ["libartd"],
-}
-
-art_cc_test_library {
-    name: "libctstiagent",
-    defaults: ["libtiagent-base-defaults"],
-    export_include_dirs: ["ti-agent"],
 }
 
 cc_defaults {
