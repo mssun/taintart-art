@@ -157,6 +157,8 @@ unspecified registers or condition codes.
 /* single-purpose registers, given names for clarity */
 #define rSELF    SELF_SPILL(%rsp)
 #define rPC      %r12
+#define CFI_DEX  12 // DWARF register number of the register holding dex-pc (rPC).
+#define CFI_TMP  5  // DWARF register number of the first argument register (rdi).
 #define rFP      %r13
 #define rINST    %ebx
 #define rINSTq   %rbx

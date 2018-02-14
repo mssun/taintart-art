@@ -46,7 +46,7 @@ ENTRY ExecuteMterpImpl
     add     xREFS, xFP, w0, lsl #2                 // point to reference array in shadow frame
     ldr     w0, [x2, #SHADOWFRAME_DEX_PC_OFFSET]   // Get starting dex_pc.
     add     xPC, x1, w0, lsl #1                    // Create direct pointer to 1st dex opcode
-    .cfi_register DPC_PSEUDO_REG, xPC
+    CFI_DEFINE_DEX_PC_WITH_OFFSET(CFI_TMP, CFI_DEX, 0)
     EXPORT_PC
 
     /* Starting ibase */

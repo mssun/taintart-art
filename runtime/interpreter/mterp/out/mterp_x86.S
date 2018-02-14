@@ -164,6 +164,8 @@ unspecified registers or condition codes.
 /* single-purpose registers, given names for clarity */
 #define rSELF    IN_ARG0(%esp)
 #define rPC      %esi
+#define CFI_DEX  6  // DWARF register number of the register holding dex-pc (esi).
+#define CFI_TMP  0  // DWARF register number of the first argument register (eax).
 #define rFP      %edi
 #define rINST    %ebx
 #define rINSTw   %bx
@@ -380,7 +382,7 @@ SYMBOL(ExecuteMterpImpl):
     leal    (rFP, %eax, 4), rREFS
     movl    SHADOWFRAME_DEX_PC_OFFSET(%edx), %eax
     lea     (%ecx, %eax, 2), rPC
-    .cfi_register DPC_PSEUDO_REG, rPC
+    CFI_DEFINE_DEX_PC_WITH_OFFSET(CFI_TMP, CFI_DEX, 0)
     EXPORT_PC
 
     /* Set up for backwards branches & osr profiling */

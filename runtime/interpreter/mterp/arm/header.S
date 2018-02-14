@@ -93,6 +93,8 @@ unspecified registers or condition codes.
 /* During bringup, we'll use the shadow frame model instead of rFP */
 /* single-purpose registers, given names for clarity */
 #define rPC      r4
+#define CFI_DEX  4  // DWARF register number of the register holding dex-pc (xPC).
+#define CFI_TMP  0  // DWARF register number of the first argument register (r0).
 #define rFP      r5
 #define rSELF    r6
 #define rINST    r7
