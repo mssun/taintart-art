@@ -53,7 +53,8 @@ public class StackTrace {
     // consistent we will suspend for the RI.
     boolean suspend_thread =
         !System.getProperty("java.vm.name").equals("Dalvik") &&
-        !thr.equals(Thread.currentThread());
+        !thr.equals(Thread.currentThread()) &&
+        !Suspension.isSuspended(thr);
     if (suspend_thread) {
       Suspension.suspend(thr);
     }
