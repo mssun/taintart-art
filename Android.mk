@@ -25,18 +25,6 @@ art_path := $(LOCAL_PATH)
 include $(art_path)/build/Android.common_path.mk
 include $(art_path)/build/Android.oat.mk
 
-# Following the example of build's dont_bother for clean targets.
-art_dont_bother := false
-ifneq (,$(filter clean-oat%,$(MAKECMDGOALS)))
-  art_dont_bother := true
-endif
-
-# Don't bother with tests unless there is a test-art*, build-art*, or related target.
-art_test_bother := false
-ifneq (,$(filter tests test-art% valgrind-test-art% build-art% checkbuild,$(MAKECMDGOALS)))
-  art_test_bother := true
-endif
-
 .PHONY: clean-oat
 clean-oat: clean-oat-host clean-oat-target
 
@@ -65,8 +53,6 @@ ifdef TARGET_2ND_ARCH
 	adb shell rm -rf system/app/$($(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_ARCH)
 endif
 	adb shell rm -rf data/run-test/test-*/dalvik-cache/*
-
-ifneq ($(art_dont_bother),true)
 
 ########################################################################
 # cpplint rules to style check art source files
@@ -102,8 +88,6 @@ endif
 
 ########################################################################
 # test rules
-
-ifeq ($(art_test_bother),true)
 
 # All the dependencies that must be built ahead of sync-ing them onto the target device.
 TEST_ART_TARGET_SYNC_DEPS :=
@@ -348,7 +332,6 @@ valgrind-test-art-target32: valgrind-test-art-target-gtest32
 valgrind-test-art-target64: valgrind-test-art-target-gtest64
 	$(hide) $(call ART_TEST_PREREQ_FINISHED,$@)
 
-endif  # art_test_bother
 
 #######################
 # Fake packages for ART
@@ -603,11 +586,7 @@ use-art-verify-none:
 
 ########################################################################
 
-endif # !art_dont_bother
-
 # Clear locally used variables.
-art_dont_bother :=
-art_test_bother :=
 TEST_ART_TARGET_SYNC_DEPS :=
 
 # Helper target that depends on boot image creation.
