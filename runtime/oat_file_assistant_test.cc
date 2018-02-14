@@ -43,7 +43,27 @@ namespace art {
 static const std::string kSpecialSharedLibrary = "&";  // NOLINT [runtime/string] [4]
 static ClassLoaderContext* kSpecialSharedLibraryContext = nullptr;
 
-class OatFileAssistantTest : public DexoptTest {};
+class OatFileAssistantTest : public DexoptTest {
+ public:
+  void VerifyOptimizationStatus(const std::string& file,
+                                const std::string& expected_filter,
+                                const std::string& expected_reason) {
+    std::string compilation_filter;
+    std::string compilation_reason;
+    OatFileAssistant::GetOptimizationStatus(
+        file, kRuntimeISA, &compilation_filter, &compilation_reason);
+
+    ASSERT_EQ(expected_filter, compilation_filter);
+    ASSERT_EQ(expected_reason, compilation_reason);
+  }
+
+  void VerifyOptimizationStatus(const std::string& file,
+                                CompilerFilter::Filter expected_filter,
+                                const std::string& expected_reason) {
+      VerifyOptimizationStatus(
+          file, CompilerFilter::NameOfFilter(expected_filter), expected_reason);
+  }
+};
 
 class OatFileAssistantNoDex2OatTest : public DexoptTest {
  public:
@@ -107,6 +127,8 @@ TEST_F(OatFileAssistantTest, DexNoOat) {
   EXPECT_EQ(OatFileAssistant::kOatCannotOpen, oat_file_assistant.OdexFileStatus());
   EXPECT_EQ(OatFileAssistant::kOatCannotOpen, oat_file_assistant.OatFileStatus());
   EXPECT_TRUE(oat_file_assistant.HasOriginalDexFiles());
+
+  VerifyOptimizationStatus(dex_location, "run-from-apk", "unknown");
 }
 
 // Case: We have no DEX file and no OAT file.
@@ -136,7 +158,7 @@ TEST_F(OatFileAssistantTest, OdexUpToDate) {
   std::string dex_location = GetScratchDir() + "/OdexUpToDate.jar";
   std::string odex_location = GetOdexDir() + "/OdexUpToDate.odex";
   Copy(GetDexSrc1(), dex_location);
-  GeneratePicOdexForTest(dex_location, odex_location, CompilerFilter::kSpeed);
+  GeneratePicOdexForTest(dex_location, odex_location, CompilerFilter::kSpeed, "install");
 
   // For the use of oat location by making the dex parent not writable.
   OatFileAssistant oat_file_assistant(dex_location.c_str(), kRuntimeISA, false);
@@ -154,6 +176,8 @@ TEST_F(OatFileAssistantTest, OdexUpToDate) {
   EXPECT_EQ(OatFileAssistant::kOatUpToDate, oat_file_assistant.OdexFileStatus());
   EXPECT_EQ(OatFileAssistant::kOatCannotOpen, oat_file_assistant.OatFileStatus());
   EXPECT_TRUE(oat_file_assistant.HasOriginalDexFiles());
+
+  VerifyOptimizationStatus(dex_location, CompilerFilter::kSpeed, "install");
 }
 
 // Case: We have a DEX file and a PIC ODEX file, but no OAT file. We load the dex
@@ -221,6 +245,8 @@ TEST_F(OatFileAssistantTest, OatUpToDate) {
   EXPECT_EQ(OatFileAssistant::kOatCannotOpen, oat_file_assistant.OdexFileStatus());
   EXPECT_EQ(OatFileAssistant::kOatUpToDate, oat_file_assistant.OatFileStatus());
   EXPECT_TRUE(oat_file_assistant.HasOriginalDexFiles());
+
+  VerifyOptimizationStatus(dex_location, CompilerFilter::kSpeed, "unknown");
 }
 
 // Case: Passing valid file descriptors of updated odex/vdex filesalong with
@@ -381,6 +407,8 @@ TEST_F(OatFileAssistantTest, VdexUpToDateNoOdex) {
   // Make sure we don't crash in this case when we dump the status. We don't
   // care what the actual dumped value is.
   oat_file_assistant.GetStatusDump();
+
+  VerifyOptimizationStatus(dex_location, "run-from-apk", "unknown");
 }
 
 // Case: We have a DEX file and empty VDEX and ODEX files.
