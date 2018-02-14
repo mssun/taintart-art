@@ -511,7 +511,7 @@ bool ProfileSaver::ProcessProfilingInfo(bool force_save, /*out*/uint16_t* number
       uint64_t last_save_number_of_methods = info.GetNumberOfMethods();
       uint64_t last_save_number_of_classes = info.GetNumberOfResolvedClasses();
 
-      info.AddMethods(profile_methods);
+      info.AddMethods(profile_methods, ProfileCompilationInfo::MethodHotness::kFlagPostStartup);
       auto profile_cache_it = profile_cache_.find(filename);
       if (profile_cache_it != profile_cache_.end()) {
         info.MergeWith(*(profile_cache_it->second));
