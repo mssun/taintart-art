@@ -266,7 +266,7 @@ Runtime::Runtime()
       oat_file_manager_(nullptr),
       is_low_memory_mode_(false),
       safe_mode_(false),
-      do_hidden_api_checks_(true),
+      do_hidden_api_checks_(false),
       pending_hidden_api_warning_(false),
       dedupe_hidden_api_warnings_(true),
       always_set_hidden_api_warning_flag_(false),
@@ -1182,14 +1182,7 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   // by default and we only enable them if:
   // (a) runtime was started with a flag that enables the checks, or
   // (b) Zygote forked a new process that is not exempt (see ZygoteHooks).
-  // TODO(dbrazdil): Turn the NoHiddenApiChecks negative flag into a positive one
-  // to clean up this logic.
-  if (kIsTargetBuild && IsAotCompiler() && !runtime_options.Exists(Opt::NoHiddenApiChecks)) {
-    // dex2oat on target without -Xno-hidden-api-checks.
-    do_hidden_api_checks_ = !IsCompilingBootImage();
-  } else {
-    do_hidden_api_checks_ = false;
-  }
+  do_hidden_api_checks_ = runtime_options.Exists(Opt::HiddenApiChecks);
   DCHECK(!is_zygote_ || !do_hidden_api_checks_)
       << "Zygote should not be started with hidden API checks";
 
