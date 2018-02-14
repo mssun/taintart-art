@@ -18,11 +18,15 @@ package com.android.amm.test;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.widget.LinearLayout;
 
 public class MainActivity extends Activity {
 
   private BitmapUse mBitmapUse;
   private SoCodeUse mSoCodeUse;
+  private TextureViewUse mTextureViewUse;
+  private SurfaceViewUse mSurfaceViewUse;
+  private ThreadedRendererUse mThreadedRendererUse;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -30,6 +34,13 @@ public class MainActivity extends Activity {
 
     mBitmapUse = new BitmapUse();
     mSoCodeUse = new SoCodeUse();
+
+    LinearLayout ll = new LinearLayout(this);
+    mTextureViewUse = new TextureViewUse(this, ll, 200, 500);
+    mSurfaceViewUse = new SurfaceViewUse(this, ll, 240, 250);
+    setContentView(ll);
+
+    mThreadedRendererUse = new ThreadedRendererUse(this, 122, 152);
   }
 }
 
