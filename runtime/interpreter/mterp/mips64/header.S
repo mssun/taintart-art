@@ -90,6 +90,8 @@ The following registers have fixed assignments:
 /* During bringup, we'll use the shadow frame model instead of rFP */
 /* single-purpose registers, given names for clarity */
 #define rPC      s0
+#define CFI_DEX  16  // DWARF register number of the register holding dex-pc (s0).
+#define CFI_TMP  4   // DWARF register number of the first argument register (a0).
 #define rFP      s1
 #define rSELF    s2
 #define rINST    s3
