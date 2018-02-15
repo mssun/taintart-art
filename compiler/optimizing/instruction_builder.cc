@@ -960,14 +960,18 @@ bool HInstructionBuilder::BuildInvoke(const Instruction& instruction,
         HInvokeStaticOrDirect::CodePtrLocation::kCallArtMethod,
         dchecked_integral_cast<uint64_t>(string_init_entry_point)
     };
-    MethodReference target_method(dex_file_, method_idx);
+    ScopedObjectAccess soa(Thread::Current());
+    MethodReference target_method(resolved_method->GetDexFile(),
+                                  resolved_method->GetDexMethodIndex());
+    // We pass null for the resolved_method to ensure optimizations
+    // don't rely on it.
     HInvoke* invoke = new (allocator_) HInvokeStaticOrDirect(
         allocator_,
         number_of_arguments - 1,
         DataType::Type::kReference /*return_type */,
         dex_pc,
         method_idx,
-        nullptr,
+        nullptr /* resolved_method */,
         dispatch_info,
         invoke_type,
         target_method,
