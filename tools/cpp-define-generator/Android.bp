@@ -28,7 +28,10 @@ cc_binary { // Do not use art_cc_binary because HOST_PREFER_32_BIT is incompatib
         "art_debug_defaults",
         "art_defaults",
     ],
-    include_dirs: ["art/runtime"],
+    include_dirs: [
+        "art/libdexfile",
+        "art/runtime",
+    ],
     srcs: ["main.cc"],
     shared_libs: [
         "libbase",

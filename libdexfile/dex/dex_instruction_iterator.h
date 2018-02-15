@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_DEX_DEX_INSTRUCTION_ITERATOR_H_
-#define ART_RUNTIME_DEX_DEX_INSTRUCTION_ITERATOR_H_
+#ifndef ART_LIBDEXFILE_DEX_DEX_INSTRUCTION_ITERATOR_H_
+#define ART_LIBDEXFILE_DEX_DEX_INSTRUCTION_ITERATOR_H_
 
 #include <iterator>
 
@@ -234,4 +234,4 @@ class SafeDexInstructionIterator : public DexInstructionIteratorBase {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_DEX_DEX_INSTRUCTION_ITERATOR_H_
+#endif  // ART_LIBDEXFILE_DEX_DEX_INSTRUCTION_ITERATOR_H_

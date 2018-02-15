@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_DEX_DEX_FILE_INL_H_
-#define ART_RUNTIME_DEX_DEX_FILE_INL_H_
+#ifndef ART_LIBDEXFILE_DEX_DEX_FILE_INL_H_
+#define ART_LIBDEXFILE_DEX_DEX_FILE_INL_H_
 
 #include "base/bit_utils.h"
 #include "base/casts.h"
@@ -518,4 +518,4 @@ inline const uint8_t* DexFile::GetCatchHandlerData(const DexInstructionIterator&
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_DEX_DEX_FILE_INL_H_
+#endif  // ART_LIBDEXFILE_DEX_DEX_FILE_INL_H_
