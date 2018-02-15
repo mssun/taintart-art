@@ -269,7 +269,20 @@ static void InstrumentationInstallStack(Thread* thread, void* arg)
         }
       } else {
         CHECK_NE(return_pc, 0U);
-        CHECK(!reached_existing_instrumentation_frames_);
+        if (UNLIKELY(reached_existing_instrumentation_frames_)) {
+          std::string thread_name;
+          GetThread()->GetThreadName(thread_name);
+          uint32_t dex_pc = dex::kDexNoIndex;
+          if (last_return_pc_ != 0 &&
+              GetCurrentOatQuickMethodHeader() != nullptr) {
+            dex_pc = GetCurrentOatQuickMethodHeader()->ToDexPc(m, last_return_pc_);
+          }
+          LOG(FATAL) << "While walking " << thread_name << " found existing instrumentation frames."
+                     << " method is " << GetMethod()->PrettyMethod()
+                     << " return_pc is " << std::hex << return_pc
+                     << " dex pc: " << dex_pc;
+          UNREACHABLE();
+        }
         InstrumentationStackFrame instrumentation_frame(
             m->IsRuntimeMethod() ? nullptr : GetThisObject(),
             m,
