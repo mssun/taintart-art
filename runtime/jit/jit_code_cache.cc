@@ -550,10 +550,7 @@ void JitCodeCache::FreeCode(const void* code_ptr) {
   // Notify native debugger that we are about to remove the code.
   // It does nothing if we are not using native debugger.
   MutexLock mu(Thread::Current(), *Locks::native_debug_interface_lock_);
-  JITCodeEntry* entry = GetJITCodeEntry(reinterpret_cast<uintptr_t>(code_ptr));
-  if (entry != nullptr) {
-    DecrementJITCodeEntryRefcount(entry, reinterpret_cast<uintptr_t>(code_ptr));
-  }
+  RemoveNativeDebugInfoForJit(code_ptr);
   if (OatQuickMethodHeader::FromCodePointer(code_ptr)->IsOptimized()) {
     FreeData(GetRootTable(code_ptr));
   }  // else this is a JNI stub without any data.
@@ -1828,7 +1825,7 @@ void JitCodeCache::Dump(std::ostream& os) {
   MutexLock mu2(Thread::Current(), *Locks::native_debug_interface_lock_);
   os << "Current JIT code cache size: " << PrettySize(used_memory_for_code_) << "\n"
      << "Current JIT data cache size: " << PrettySize(used_memory_for_data_) << "\n"
-     << "Current JIT mini-debug-info size: " << PrettySize(GetJITCodeEntryMemUsage()) << "\n"
+     << "Current JIT mini-debug-info size: " << PrettySize(GetJitNativeDebugInfoMemUsage()) << "\n"
      << "Current JIT capacity: " << PrettySize(current_capacity_) << "\n"
      << "Current number of JIT JNI stub entries: " << jni_stubs_map_.size() << "\n"
      << "Current number of JIT code cache entries: " << method_code_map_.size() << "\n"

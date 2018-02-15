@@ -1411,13 +1411,12 @@ void OptimizingCompiler::GenerateJitDebugInfo(ArtMethod* method, debug::MethodDe
       mini_debug_info,
       ArrayRef<const debug::MethodDebugInfo>(&info, 1));
   MutexLock mu(Thread::Current(), *Locks::native_debug_interface_lock_);
-  JITCodeEntry* entry = CreateJITCodeEntry(elf_file);
-  IncrementJITCodeEntryRefcount(entry, info.code_address);
+  AddNativeDebugInfoForJit(reinterpret_cast<const void*>(info.code_address), elf_file);
 
   VLOG(jit)
       << "JIT mini-debug-info added for " << ArtMethod::PrettyMethod(method)
       << " size=" << PrettySize(elf_file.size())
-      << " total_size=" << PrettySize(GetJITCodeEntryMemUsage());
+      << " total_size=" << PrettySize(GetJitNativeDebugInfoMemUsage());
 }
 
 }  // namespace art
