@@ -235,6 +235,20 @@ void UnstartedRuntime::UnstartedClassForNameLong(
   UnstartedClassForNameCommon(self, shadow_frame, result, arg_offset, true, "Class.forName");
 }
 
+void UnstartedRuntime::UnstartedClassGetPrimitiveClass(
+    Thread* self, ShadowFrame* shadow_frame, JValue* result, size_t arg_offset) {
+  ObjPtr<mirror::String> class_name = GetClassName(self, shadow_frame, arg_offset);
+  ObjPtr<mirror::Class> klass = mirror::Class::GetPrimitiveClass(class_name);
+  if (UNLIKELY(klass == nullptr)) {
+    DCHECK(self->IsExceptionPending());
+    AbortTransactionOrFail(self,
+                           "Class.getPrimitiveClass() failed: %s",
+                           self->GetException()->GetDetailMessage()->ToModifiedUtf8().c_str());
+    return;
+  }
+  result->SetL(klass);
+}
+
 void UnstartedRuntime::UnstartedClassClassForName(
     Thread* self, ShadowFrame* shadow_frame, JValue* result, size_t arg_offset) {
   UnstartedClassForNameCommon(self, shadow_frame, result, arg_offset, true, "Class.classForName");
@@ -736,12 +750,6 @@ void UnstartedRuntime::UnstartedVmClassLoaderFindLoadedClass(
       self->ClearException();
     }
   }
-}
-
-void UnstartedRuntime::UnstartedVoidLookupType(
-    Thread* self ATTRIBUTE_UNUSED, ShadowFrame* shadow_frame ATTRIBUTE_UNUSED, JValue* result,
-    size_t arg_offset ATTRIBUTE_UNUSED) {
-  result->SetL(Runtime::Current()->GetClassLinker()->FindPrimitiveClass('V'));
 }
 
 // Arraycopy emulation.

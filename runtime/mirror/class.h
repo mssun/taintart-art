@@ -1134,6 +1134,10 @@ class MANAGED Class FINAL : public Object {
   void VisitNativeRoots(Visitor& visitor, PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Get one of the primitive classes.
+  static ObjPtr<mirror::Class> GetPrimitiveClass(ObjPtr<mirror::String> name)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   // When class is verified, set the kAccSkipAccessChecks flag on each method.
   void SetSkipAccessChecksFlagOnAllMethods(PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
