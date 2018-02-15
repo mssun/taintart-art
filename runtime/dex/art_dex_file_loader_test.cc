@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#include "dex_file.h"
-
 #include <sys/mman.h>
 
 #include <memory>
@@ -23,12 +21,13 @@
 #include "art_dex_file_loader.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
-#include "base64_test_util.h"
-#include "code_item_accessors-inl.h"
 #include "common_runtime_test.h"
-#include "descriptors_names.h"
-#include "dex_file-inl.h"
-#include "dex_file_loader.h"
+#include "dex/base64_test_util.h"
+#include "dex/code_item_accessors-inl.h"
+#include "dex/descriptors_names.h"
+#include "dex/dex_file.h"
+#include "dex/dex_file-inl.h"
+#include "dex/dex_file_loader.h"
 #include "mem_map.h"
 #include "os.h"
 #include "scoped_thread_state_change-inl.h"

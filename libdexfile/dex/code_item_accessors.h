@@ -16,10 +16,9 @@
 
 // TODO: Dex helpers have ART specific APIs, we may want to refactor these for use in dexdump.
 
-#ifndef ART_RUNTIME_DEX_CODE_ITEM_ACCESSORS_H_
-#define ART_RUNTIME_DEX_CODE_ITEM_ACCESSORS_H_
+#ifndef ART_LIBDEXFILE_DEX_CODE_ITEM_ACCESSORS_H_
+#define ART_LIBDEXFILE_DEX_CODE_ITEM_ACCESSORS_H_
 
-#include "base/mutex.h"
 #include "compact_dex_file.h"
 #include "dex_file.h"
 #include "dex_instruction_iterator.h"
@@ -164,4 +163,4 @@ class CodeItemDebugInfoAccessor : public CodeItemDataAccessor {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_DEX_CODE_ITEM_ACCESSORS_H_
+#endif  // ART_LIBDEXFILE_DEX_CODE_ITEM_ACCESSORS_H_

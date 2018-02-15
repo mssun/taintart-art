@@ -22,8 +22,8 @@
 #include <string>
 #include <vector>
 
-#include "dex_file_loader.h"
 #include "base/macros.h"
+#include "dex/dex_file_loader.h"
 
 namespace art {
 
