@@ -225,7 +225,7 @@ class JavaVMExt : public JavaVM {
 
   // Extra checking.
   bool check_jni_;
-  bool force_copy_;
+  const bool force_copy_;
   const bool tracing_enabled_;
 
   // Extra diagnostics.
