@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_DEX_BASE64_TEST_UTIL_H_
-#define ART_RUNTIME_DEX_BASE64_TEST_UTIL_H_
+#ifndef ART_LIBDEXFILE_DEX_BASE64_TEST_UTIL_H_
+#define ART_LIBDEXFILE_DEX_BASE64_TEST_UTIL_H_
 
 #include <base/logging.h>
 #include <stdint.h>
@@ -96,4 +96,4 @@ static inline uint8_t* DecodeBase64(const char* src, size_t* dst_size) {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_DEX_BASE64_TEST_UTIL_H_
+#endif  // ART_LIBDEXFILE_DEX_BASE64_TEST_UTIL_H_

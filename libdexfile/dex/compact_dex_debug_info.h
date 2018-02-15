@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_DEX_COMPACT_DEX_DEBUG_INFO_H_
-#define ART_RUNTIME_DEX_COMPACT_DEX_DEBUG_INFO_H_
+#ifndef ART_LIBDEXFILE_DEX_COMPACT_DEX_DEBUG_INFO_H_
+#define ART_LIBDEXFILE_DEX_COMPACT_DEX_DEBUG_INFO_H_
 
 #include <cstdint>
 #include <vector>
@@ -62,4 +62,4 @@ class CompactDexDebugInfoOffsetTable {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_DEX_COMPACT_DEX_DEBUG_INFO_H_
+#endif  // ART_LIBDEXFILE_DEX_COMPACT_DEX_DEBUG_INFO_H_

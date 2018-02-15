@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_DEX_COMPACT_DEX_FILE_H_
-#define ART_RUNTIME_DEX_COMPACT_DEX_FILE_H_
+#ifndef ART_LIBDEXFILE_DEX_COMPACT_DEX_FILE_H_
+#define ART_LIBDEXFILE_DEX_COMPACT_DEX_FILE_H_
 
 #include "base/casts.h"
 #include "dex_file.h"
@@ -288,4 +288,4 @@ class CompactDexFile : public DexFile {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_DEX_COMPACT_DEX_FILE_H_
+#endif  // ART_LIBDEXFILE_DEX_COMPACT_DEX_FILE_H_
