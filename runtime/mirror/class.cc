@@ -72,6 +72,42 @@ void Class::VisitRoots(RootVisitor* visitor) {
   java_lang_Class_.VisitRootIfNonNull(visitor, RootInfo(kRootStickyClass));
 }
 
+ObjPtr<mirror::Class> Class::GetPrimitiveClass(ObjPtr<mirror::String> name) {
+  const char* expected_name = nullptr;
+  ClassLinker::ClassRoot class_root = ClassLinker::kJavaLangObject;  // Invalid.
+  if (name != nullptr && name->GetLength() >= 2) {
+    // Perfect hash for the expected values: from the second letters of the primitive types,
+    // only 'y' has the bit 0x10 set, so use it to change 'b' to 'B'.
+    char hash = name->CharAt(0) ^ ((name->CharAt(1) & 0x10) << 1);
+    switch (hash) {
+      case 'b': expected_name = "boolean"; class_root = ClassLinker::kPrimitiveBoolean; break;
+      case 'B': expected_name = "byte";    class_root = ClassLinker::kPrimitiveByte;    break;
+      case 'c': expected_name = "char";    class_root = ClassLinker::kPrimitiveChar;    break;
+      case 'd': expected_name = "double";  class_root = ClassLinker::kPrimitiveDouble;  break;
+      case 'f': expected_name = "float";   class_root = ClassLinker::kPrimitiveFloat;   break;
+      case 'i': expected_name = "int";     class_root = ClassLinker::kPrimitiveInt;     break;
+      case 'l': expected_name = "long";    class_root = ClassLinker::kPrimitiveLong;    break;
+      case 's': expected_name = "short";   class_root = ClassLinker::kPrimitiveShort;   break;
+      case 'v': expected_name = "void";    class_root = ClassLinker::kPrimitiveVoid;    break;
+      default: break;
+    }
+  }
+  if (expected_name != nullptr && name->Equals(expected_name)) {
+    ObjPtr<mirror::Class> klass = Runtime::Current()->GetClassLinker()->GetClassRoot(class_root);
+    DCHECK(klass != nullptr);
+    return klass;
+  } else {
+    Thread* self = Thread::Current();
+    if (name == nullptr) {
+      // Note: ThrowNullPointerException() requires a message which we deliberately want to omit.
+      self->ThrowNewException("Ljava/lang/NullPointerException;", /* msg */ nullptr);
+    } else {
+      self->ThrowNewException("Ljava/lang/ClassNotFoundException;", name->ToModifiedUtf8().c_str());
+    }
+    return nullptr;
+  }
+}
+
 ClassExt* Class::EnsureExtDataPresent(Thread* self) {
   ObjPtr<ClassExt> existing(GetExtData());
   if (!existing.IsNull()) {
