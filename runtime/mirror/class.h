@@ -81,7 +81,7 @@ class MANAGED Class FINAL : public Object {
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   ClassStatus GetStatus() REQUIRES_SHARED(Locks::mutator_lock_) {
     // Avoid including "subtype_check_bits_and_status.h" to get the field.
-    // The ClassStatus is always in the 4 most-significant of status_.
+    // The ClassStatus is always in the 4 most-significant bits of status_.
     return enum_cast<ClassStatus>(
         static_cast<uint32_t>(GetField32Volatile<kVerifyFlags>(StatusOffset())) >> (32 - 4));
   }
