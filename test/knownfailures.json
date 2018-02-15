@@ -667,5 +667,11 @@
         "variant": "speed-profile & debug & gcstress & target",
         "bug": "b/73275005",
         "description": ["Time out"]
+    },
+    {
+        "tests": ["130-hprof"],
+        "env_vars": {"SANITIZE_HOST": "address"},
+        "bug": "b/73060923",
+        "description": ["ASAN issue"]
     }
 ]
