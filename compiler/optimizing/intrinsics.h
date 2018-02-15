@@ -266,6 +266,14 @@ void IntrinsicCodeGenerator ## Arch::Visit ## Name(HInvoke* invoke) {    \
              << " should have been converted to HIR";                    \
 }
 #define UNREACHABLE_INTRINSICS(Arch)                            \
+UNREACHABLE_INTRINSIC(Arch, MathMinIntInt)                      \
+UNREACHABLE_INTRINSIC(Arch, MathMinLongLong)                    \
+UNREACHABLE_INTRINSIC(Arch, MathMinFloatFloat)                  \
+UNREACHABLE_INTRINSIC(Arch, MathMinDoubleDouble)                \
+UNREACHABLE_INTRINSIC(Arch, MathMaxIntInt)                      \
+UNREACHABLE_INTRINSIC(Arch, MathMaxLongLong)                    \
+UNREACHABLE_INTRINSIC(Arch, MathMaxFloatFloat)                  \
+UNREACHABLE_INTRINSIC(Arch, MathMaxDoubleDouble)                \
 UNREACHABLE_INTRINSIC(Arch, MathAbsInt)                         \
 UNREACHABLE_INTRINSIC(Arch, MathAbsLong)                        \
 UNREACHABLE_INTRINSIC(Arch, MathAbsFloat)                       \

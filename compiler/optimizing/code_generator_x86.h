@@ -225,6 +225,8 @@ class InstructionCodeGeneratorX86 : public InstructionCodeGenerator {
   void GenerateShlLong(const Location& loc, int shift);
   void GenerateShrLong(const Location& loc, int shift);
   void GenerateUShrLong(const Location& loc, int shift);
+  void GenerateMinMax(LocationSummary* locations, bool is_min, DataType::Type type);
+  void GenerateMinMaxFP(LocationSummary* locations, bool is_min, DataType::Type type);
 
   void HandleFieldSet(HInstruction* instruction,
                       const FieldInfo& field_info,

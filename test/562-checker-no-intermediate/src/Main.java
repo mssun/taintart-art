@@ -18,7 +18,7 @@ public class Main {
 
   /**
    * Check that the intermediate address computation is not reordered or merged
-   * across the call to Math.abs().
+   * across a method call.
    */
 
   /// CHECK-START-ARM: void Main.main(java.lang.String[]) instruction_simplifier_arm (before)
