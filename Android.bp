@@ -36,6 +36,7 @@ subdirs = [
     "dt_fd_forward",
     "dt_fd_forward/export",
     "imgdiag",
+    "libdexfile",
     "oatdump",
     "openjdkjvm",
     "openjdkjvmti",

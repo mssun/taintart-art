@@ -19,8 +19,7 @@
 #include <sys/mman.h>
 
 #include "base/file_utils.h"
-#include "descriptors_names.h"
-#include "dex_file.h"
+#include "dex/dex_file.h"
 
 namespace art {
 

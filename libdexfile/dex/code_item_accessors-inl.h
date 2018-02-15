@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_DEX_CODE_ITEM_ACCESSORS_INL_H_
-#define ART_RUNTIME_DEX_CODE_ITEM_ACCESSORS_INL_H_
+#ifndef ART_LIBDEXFILE_DEX_CODE_ITEM_ACCESSORS_INL_H_
+#define ART_LIBDEXFILE_DEX_CODE_ITEM_ACCESSORS_INL_H_
 
 #include "code_item_accessors.h"
 
@@ -201,4 +201,4 @@ inline bool CodeItemDebugInfoAccessor::DecodeDebugLocalInfo(bool is_static,
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_DEX_CODE_ITEM_ACCESSORS_INL_H_
+#endif  // ART_LIBDEXFILE_DEX_CODE_ITEM_ACCESSORS_INL_H_
