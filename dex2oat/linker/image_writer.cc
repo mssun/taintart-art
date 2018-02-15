@@ -2364,7 +2364,7 @@ void ImageWriter::FixupClass(mirror::Class* orig, mirror::Class* copy) {
   FixupClassVisitor visitor(this, copy);
   ObjPtr<mirror::Object>(orig)->VisitReferences(visitor, visitor);
 
-  if (compile_app_image_) {
+  if (kBitstringSubtypeCheckEnabled && compile_app_image_) {
     // When we call SubtypeCheck::EnsureInitialize, it Assigns new bitstring
     // values to the parent of that class.
     //
