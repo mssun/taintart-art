@@ -46,6 +46,7 @@
 #include "well_known_classes.h"
 
 namespace art {
+namespace {
 
 using android::base::StringAppendF;
 using android::base::StringPrintf;
@@ -1211,7 +1212,7 @@ class ScopedCheck {
     // this particular instance of JNIEnv.
     if (env != threadEnv) {
       // Get the thread owning the JNIEnv that's being used.
-      Thread* envThread = reinterpret_cast<JNIEnvExt*>(env)->self_;
+      Thread* envThread = reinterpret_cast<JNIEnvExt*>(env)->GetSelf();
       AbortF("thread %s using JNIEnv* from thread %s",
              ToStr<Thread>(*self).c_str(), ToStr<Thread>(*envThread).c_str());
       return false;
@@ -1223,7 +1224,7 @@ class ScopedCheck {
     case kFlag_CritOkay:    // okay to call this method
       break;
     case kFlag_CritBad:     // not okay to call
-      if (threadEnv->critical_ > 0) {
+      if (threadEnv->GetCritical() > 0) {
         AbortF("thread %s using JNI after critical get",
                ToStr<Thread>(*self).c_str());
         return false;
@@ -1231,25 +1232,25 @@ class ScopedCheck {
       break;
     case kFlag_CritGet:     // this is a "get" call
       // Don't check here; we allow nested gets.
-      if (threadEnv->critical_ == 0) {
-        threadEnv->critical_start_us_ = self->GetCpuMicroTime();
+      if (threadEnv->GetCritical() == 0) {
+        threadEnv->SetCriticalStartUs(self->GetCpuMicroTime());
       }
-      threadEnv->critical_++;
+      threadEnv->SetCritical(threadEnv->GetCritical() + 1);
       break;
     case kFlag_CritRelease:  // this is a "release" call
-      if (threadEnv->critical_ == 0) {
+      if (threadEnv->GetCritical() == 0) {
         AbortF("thread %s called too many critical releases",
                ToStr<Thread>(*self).c_str());
         return false;
-      } else if (threadEnv->critical_ == 1) {
+      } else if (threadEnv->GetCritical() == 1) {
         // Leaving the critical region, possibly warn about long critical regions.
-        uint64_t critical_duration_us = self->GetCpuMicroTime() - threadEnv->critical_start_us_;
+        uint64_t critical_duration_us = self->GetCpuMicroTime() - threadEnv->GetCriticalStartUs();
         if (critical_duration_us > kCriticalWarnTimeUs) {
           LOG(WARNING) << "JNI critical lock held for "
                        << PrettyDuration(UsToNs(critical_duration_us)) << " on " << *self;
         }
       }
-      threadEnv->critical_--;
+      threadEnv->SetCritical(threadEnv->GetCritical() - 1);
       break;
     default:
       LOG(FATAL) << "Bad flags (internal error): " << flags_;
@@ -2621,7 +2622,7 @@ class CheckJNI {
   }
 
   static const JNINativeInterface* baseEnv(JNIEnv* env) {
-    return reinterpret_cast<JNIEnvExt*>(env)->unchecked_functions_;
+    return reinterpret_cast<JNIEnvExt*>(env)->GetUncheckedFunctions();
   }
 
   static jobject NewRef(const char* function_name, JNIEnv* env, jobject obj, IndirectRefKind kind) {
@@ -3847,10 +3848,6 @@ const JNINativeInterface gCheckNativeInterface = {
   CheckJNI::GetObjectRefType,
 };
 
-const JNINativeInterface* GetCheckJniNativeInterface() {
-  return &gCheckNativeInterface;
-}
-
 class CheckJII {
  public:
   static jint DestroyJavaVM(JavaVM* vm) {
@@ -3921,6 +3918,12 @@ const JNIInvokeInterface gCheckInvokeInterface = {
   CheckJII::GetEnv,
   CheckJII::AttachCurrentThreadAsDaemon
 };
+
+}  // anonymous namespace
+
+const JNINativeInterface* GetCheckJniNativeInterface() {
+  return &gCheckNativeInterface;
+}
 
 const JNIInvokeInterface* GetCheckJniInvokeInterface() {
   return &gCheckInvokeInterface;
