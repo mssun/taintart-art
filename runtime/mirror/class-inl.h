@@ -550,7 +550,7 @@ inline bool Class::IsSubClass(ObjPtr<Class> klass) {
     current = current->GetSuperClass();
   } while (current != nullptr);
 
-  if (kIsDebugBuild) {
+  if (kIsDebugBuild && kBitstringSubtypeCheckEnabled) {
     ObjPtr<mirror::Class> dis(this);
 
     SubtypeCheckInfo::Result sc_result = SubtypeCheck<ObjPtr<Class>>::IsSubtypeOf(dis, klass);

@@ -24,6 +24,9 @@
 #include "mirror/class.h"
 #include "runtime.h"
 
+// Build flag for the bitstring subtype check runtime hooks.
+constexpr bool kBitstringSubtypeCheckEnabled = false;
+
 /**
  * Any node in a tree can have its path (from the root to the node) represented as a string by
  * concatenating the path of the parent to that of the current node.
