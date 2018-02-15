@@ -164,6 +164,8 @@ unspecified registers or condition codes.
 /* single-purpose registers, given names for clarity */
 #define rSELF    SELF_SPILL(%rsp)
 #define rPC      %r12
+#define CFI_DEX  12 // DWARF register number of the register holding dex-pc (rPC).
+#define CFI_TMP  5  // DWARF register number of the first argument register (rdi).
 #define rFP      %r13
 #define rINST    %ebx
 #define rINSTq   %rbx
@@ -363,7 +365,7 @@ SYMBOL(ExecuteMterpImpl):
     leaq    (rFP, %rax, 4), rREFS
     movl    SHADOWFRAME_DEX_PC_OFFSET(IN_ARG2), %eax
     leaq    (IN_ARG1, %rax, 2), rPC
-    .cfi_register DPC_PSEUDO_REG, rPC
+    CFI_DEFINE_DEX_PC_WITH_OFFSET(CFI_TMP, CFI_DEX, 0)
     EXPORT_PC
 
     /* Starting ibase */

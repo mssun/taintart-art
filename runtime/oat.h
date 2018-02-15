@@ -45,6 +45,7 @@ class PACKED(4) OatHeader {
   static constexpr const char* kClassPathKey = "classpath";
   static constexpr const char* kBootClassPathKey = "bootclasspath";
   static constexpr const char* kConcurrentCopying = "concurrent-copying";
+  static constexpr const char* kCompilationReasonKey = "compilation-reason";
 
   static constexpr const char kTrueValue[] = "true";
   static constexpr const char kFalseValue[] = "false";

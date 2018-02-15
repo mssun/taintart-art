@@ -44,12 +44,22 @@ public class Test1939 {
     public Object GetVar(Thread t, int depth);
   }
 
+  public static String SafeToString(Object o) {
+    if (o instanceof Method && Proxy.isProxyClass(((Method)o).getDeclaringClass())) {
+      // TODO This currently only really works on ART. It would be good if we could make it work for
+      // the RI as well.
+      return o.toString().replaceFirst("Proxy[0-9]+", "__PROXY__");
+    } else {
+      return o.toString();
+    }
+  }
+
   public static SafepointFunction NamedGet(final String type, final GetterFunction get) {
     return new SafepointFunction() {
       public void invoke(Thread t, Method method, int depth) {
         try {
           Object res = get.GetVar(t, depth);
-          System.out.println(this + " on " + method + " got value: " + res);
+          System.out.println(this + " on " + method + " got value: " + SafeToString(res));
         } catch (Exception e) {
           System.out.println(this + " on " + method + " failed due to " + e.getMessage());
         }
