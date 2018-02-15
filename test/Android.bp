@@ -238,6 +238,7 @@ art_cc_defaults {
         "931-agent-thread/agent_thread.cc",
         "933-misc-events/misc_events.cc",
         "945-obsolete-native/obsolete_native.cc",
+        "983-source-transform-verify/source_transform.cc",
         "984-obsolete-invoke/obsolete_invoke.cc",
         "986-native-method-bind/native_bind.cc",
         "987-agent-bind/agent_bind.cc",
@@ -288,7 +289,6 @@ art_cc_defaults {
         "909-attach-agent/attach.cc",
         "912-classes/classes_art.cc",
         "936-search-onload/search_onload.cc",
-        "983-source-transform-verify/source_transform.cc",
         "1940-ddms-ext/ddm_ext.cc",
         "1944-sudden-exit/sudden_exit.cc",
     ],
@@ -328,6 +328,13 @@ art_cc_test_library {
     ],
     shared_libs: [
         "liblog",
+    ],
+    header_libs: [
+        // This is needed to resolve the base/ header file in libdexfile. Unfortunately there are
+        // many problems with how we export headers that are making doing this the 'right' way
+        // difficult.
+        // TODO: move those headers to art/ rather than under runtime.
+        "libart_runtime_headers",
     ],
     export_include_dirs: ["ti-agent"],
 }
