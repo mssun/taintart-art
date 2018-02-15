@@ -96,6 +96,15 @@ class JNIEnvExt : public JNIEnv {
   }
 
   Thread* GetSelf() const { return self_; }
+  uint32_t GetCritical() const { return critical_; }
+  void SetCritical(uint32_t new_critical) { critical_ = new_critical; }
+  uint64_t GetCriticalStartUs() const { return critical_start_us_; }
+  void SetCriticalStartUs(uint64_t new_critical_start_us) {
+    critical_start_us_ = new_critical_start_us;
+  }
+  const JNINativeInterface* GetUncheckedFunctions() const {
+    return unchecked_functions_;
+  }
   JavaVMExt* GetVm() const { return vm_; }
 
   bool IsRuntimeDeleted() const { return runtime_deleted_; }
@@ -190,9 +199,7 @@ class JNIEnvExt : public JNIEnv {
   // If we are a JNI env for a daemon thread with a deleted runtime.
   bool runtime_deleted_;
 
-  friend class CheckJNI;
   friend class JNI;
-  friend class ScopedCheck;
   friend class ScopedJniEnvLocalRefState;
   friend class Thread;
   ART_FRIEND_TEST(JniInternalTest, JNIEnvExtOffsets);
