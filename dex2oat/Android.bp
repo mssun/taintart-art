@@ -248,6 +248,7 @@ art_cc_test {
         "libbase",
         "liblz4",
         "libsigchain",
+        "libziparchive",
     ],
     static_libs: [
         "libartd-dex2oat",
