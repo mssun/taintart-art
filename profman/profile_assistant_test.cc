@@ -75,31 +75,34 @@ class ProfileAssistantTest : public CommonRuntimeTest {
                     const ScratchFile& profile,
                     ProfileCompilationInfo* info,
                     uint16_t start_method_index = 0,
-                    bool reverse_dex_write_order = false) {
+                    bool reverse_dex_write_order = false,
+                    uint32_t number_of_methods1 = kMaxMethodIds,
+                    uint32_t number_of_methods2 = kMaxMethodIds) {
     for (uint16_t i = start_method_index; i < start_method_index + number_of_methods; i++) {
       // reverse_dex_write_order controls the order in which the dex files will be added to
       // the profile and thus written to disk.
       ProfileCompilationInfo::OfflineProfileMethodInfo pmi =
           GetOfflineProfileMethodInfo(dex_location1, dex_location_checksum1,
-                                      dex_location2, dex_location_checksum2);
+                                      dex_location2, dex_location_checksum2,
+                                      number_of_methods1, number_of_methods2);
       Hotness::Flag flags = Hotness::kFlagPostStartup;
       if (reverse_dex_write_order) {
         ASSERT_TRUE(info->AddMethod(
-            dex_location2, dex_location_checksum2, i, kMaxMethodIds, pmi, flags));
+            dex_location2, dex_location_checksum2, i, number_of_methods2, pmi, flags));
         ASSERT_TRUE(info->AddMethod(
-            dex_location1, dex_location_checksum1, i, kMaxMethodIds, pmi, flags));
+            dex_location1, dex_location_checksum1, i, number_of_methods1, pmi, flags));
       } else {
         ASSERT_TRUE(info->AddMethod(
-            dex_location1, dex_location_checksum1, i, kMaxMethodIds, pmi, flags));
+            dex_location1, dex_location_checksum1, i, number_of_methods1, pmi, flags));
         ASSERT_TRUE(info->AddMethod(
-            dex_location2, dex_location_checksum2, i, kMaxMethodIds, pmi, flags));
+            dex_location2, dex_location_checksum2, i, number_of_methods2, pmi, flags));
       }
     }
     for (uint16_t i = 0; i < number_of_classes; i++) {
       ASSERT_TRUE(info->AddClassIndex(dex_location1,
                                       dex_location_checksum1,
                                       dex::TypeIndex(i),
-                                      kMaxMethodIds));
+                                      number_of_methods1));
     }
 
     ASSERT_TRUE(info->Save(GetFd(profile)));
@@ -143,11 +146,12 @@ class ProfileAssistantTest : public CommonRuntimeTest {
 
   ProfileCompilationInfo::OfflineProfileMethodInfo GetOfflineProfileMethodInfo(
         const std::string& dex_location1, uint32_t dex_checksum1,
-        const std::string& dex_location2, uint32_t dex_checksum2) {
+        const std::string& dex_location2, uint32_t dex_checksum2,
+        uint32_t number_of_methods1 = kMaxMethodIds, uint32_t number_of_methods2 = kMaxMethodIds) {
     ProfileCompilationInfo::InlineCacheMap* ic_map = CreateInlineCacheMap();
     ProfileCompilationInfo::OfflineProfileMethodInfo pmi(ic_map);
-    pmi.dex_references.emplace_back(dex_location1, dex_checksum1, kMaxMethodIds);
-    pmi.dex_references.emplace_back(dex_location2, dex_checksum2, kMaxMethodIds);
+    pmi.dex_references.emplace_back(dex_location1, dex_checksum1, number_of_methods1);
+    pmi.dex_references.emplace_back(dex_location2, dex_checksum2, number_of_methods2);
 
     // Monomorphic
     for (uint16_t dex_pc = 0; dex_pc < 11; dex_pc++) {
@@ -1240,6 +1244,63 @@ TEST_F(ProfileAssistantTest, MergeProfilesWithFilter) {
   ASSERT_TRUE(expected.MergeWith(info2_filter));
 
   ASSERT_TRUE(expected.Equals(result));
+}
+
+TEST_F(ProfileAssistantTest, CopyAndUpdateProfileKey) {
+  ScratchFile profile1;
+  ScratchFile reference_profile;
+
+  // Use a real dex file to generate profile test data. During the copy-and-update the
+  // matching is done based on checksum so we have to match with the real thing.
+  std::vector<std::unique_ptr<const DexFile>> dex_files = OpenTestDexFiles("ProfileTestMultiDex");
+  const DexFile& d1 = *dex_files[0];
+  const DexFile& d2 = *dex_files[1];
+
+  ProfileCompilationInfo info1;
+  uint16_t num_methods_to_add = std::min(d1.NumMethodIds(), d2.NumMethodIds());
+  SetupProfile("fake-location1",
+               d1.GetLocationChecksum(),
+               "fake-location2",
+               d2.GetLocationChecksum(),
+               num_methods_to_add,
+               /*num_classes*/ 0,
+               profile1,
+               &info1,
+               /*start_method_index*/ 0,
+               /*reverse_dex_write_order*/ false,
+               /*number_of_methods1*/ d1.NumMethodIds(),
+               /*number_of_methods2*/ d2.NumMethodIds());
+
+  // Run profman and pass the dex file with --apk-fd.
+  android::base::unique_fd apk_fd(
+      open(GetTestDexFileName("ProfileTestMultiDex").c_str(), O_RDONLY));
+  ASSERT_GE(apk_fd.get(), 0);
+
+  std::string profman_cmd = GetProfmanCmd();
+  std::vector<std::string> argv_str;
+  argv_str.push_back(profman_cmd);
+  argv_str.push_back("--profile-file-fd=" + std::to_string(profile1.GetFd()));
+  argv_str.push_back("--reference-profile-file-fd=" + std::to_string(reference_profile.GetFd()));
+  argv_str.push_back("--apk-fd=" + std::to_string(apk_fd.get()));
+  argv_str.push_back("--copy-and-update-profile-key");
+  std::string error;
+
+  ASSERT_EQ(ExecAndReturnCode(argv_str, &error), 0) << error;
+
+  // Verify that we can load the result.
+  ProfileCompilationInfo result;
+  ASSERT_TRUE(reference_profile.GetFile()->ResetOffset());
+  ASSERT_TRUE(result.Load(reference_profile.GetFd()));
+
+  // Verify that the renaming was done.
+  for (uint16_t i = 0; i < num_methods_to_add; i ++) {
+      std::unique_ptr<ProfileCompilationInfo::OfflineProfileMethodInfo> pmi;
+      ASSERT_TRUE(result.GetMethod(d1.GetLocation(), d1.GetLocationChecksum(), i) != nullptr) << i;
+      ASSERT_TRUE(result.GetMethod(d2.GetLocation(), d2.GetLocationChecksum(), i) != nullptr) << i;
+
+      ASSERT_TRUE(result.GetMethod("fake-location1", d1.GetLocationChecksum(), i) == nullptr);
+      ASSERT_TRUE(result.GetMethod("fake-location2", d2.GetLocationChecksum(), i) == nullptr);
+  }
 }
 
 }  // namespace art
