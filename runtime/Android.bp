@@ -409,7 +409,6 @@ cc_defaults {
         "jni_platform_headers",
     ],
     shared_libs: [
-        "libdexfile",
         "libnativebridge",
         "libnativeloader",
         "libbacktrace",
@@ -430,10 +429,7 @@ cc_defaults {
     // ART's macros.h depends on libbase's macros.h.
     // Note: runtime_options.h depends on cmdline. But we don't really want to export this
     //       generically. dex2oat takes care of it itself.
-    export_shared_lib_headers: [
-        "libbase",
-        "libdexfile",
-    ],
+    export_shared_lib_headers: ["libbase"],
 }
 
 gensrcs {
@@ -490,6 +486,8 @@ art_cc_library {
     strip: {
         keep_symbols: true,
     },
+    shared_libs: ["libdexfile"],
+    export_shared_lib_headers: ["libdexfile"],
 }
 
 art_cc_library {
@@ -498,6 +496,8 @@ art_cc_library {
         "art_debug_defaults",
         "libart_defaults",
     ],
+    shared_libs: ["libdexfiled"],
+    export_shared_lib_headers: ["libdexfiled"],
 }
 
 art_cc_library {

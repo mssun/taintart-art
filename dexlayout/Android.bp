@@ -27,7 +27,6 @@ art_cc_defaults {
     ],
     export_include_dirs: ["."],
     shared_libs: [
-        "libdexfile",
         "libbase",
     ],
     static_libs: ["libz"],
@@ -36,7 +35,10 @@ art_cc_defaults {
 art_cc_library {
     name: "libart-dexlayout",
     defaults: ["libart-dexlayout-defaults"],
-    shared_libs: ["libart"],
+    shared_libs: [
+        "libart",
+        "libdexfile",
+    ],
 
     pgo: {
         instrumentation: true,
@@ -51,7 +53,10 @@ art_cc_library {
       "libart-dexlayout-defaults",
       "art_debug_defaults",
     ],
-    shared_libs: ["libartd"],
+    shared_libs: [
+        "libartd",
+        "libdexfiled",
+    ],
 }
 
 cc_defaults {
