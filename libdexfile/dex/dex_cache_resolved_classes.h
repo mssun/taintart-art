@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_DEX_CACHE_RESOLVED_CLASSES_H_
-#define ART_RUNTIME_DEX_CACHE_RESOLVED_CLASSES_H_
+#ifndef ART_LIBDEXFILE_DEX_DEX_CACHE_RESOLVED_CLASSES_H_
+#define ART_LIBDEXFILE_DEX_DEX_CACHE_RESOLVED_CLASSES_H_
 
 #include <string>
 #include <unordered_set>
@@ -90,4 +90,4 @@ inline bool operator<(const DexCacheResolvedClasses& a, const DexCacheResolvedCl
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_DEX_CACHE_RESOLVED_CLASSES_H_
+#endif  // ART_LIBDEXFILE_DEX_DEX_CACHE_RESOLVED_CLASSES_H_

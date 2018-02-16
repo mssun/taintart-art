@@ -19,7 +19,6 @@
 
 #include <string>
 
-#include "base/macros.h"
 #include "dex_file.h"
 
 namespace art {
