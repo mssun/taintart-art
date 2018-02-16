@@ -895,6 +895,17 @@ class ProfMan FINAL {
       method_str = line.substr(method_sep_index + kMethodSep.size());
     }
 
+    uint32_t flags = 0;
+    if (is_hot) {
+      flags |= ProfileCompilationInfo::MethodHotness::kFlagHot;
+    }
+    if (is_startup) {
+      flags |= ProfileCompilationInfo::MethodHotness::kFlagStartup;
+    }
+    if (is_post_startup) {
+      flags |= ProfileCompilationInfo::MethodHotness::kFlagPostStartup;
+    }
+
     TypeReference class_ref(/* dex_file */ nullptr, dex::TypeIndex());
     if (!FindClass(dex_files, klass, &class_ref)) {
       LOG(WARNING) << "Could not find class: " << klass;
@@ -930,7 +941,7 @@ class ProfMan FINAL {
         }
       }
       // TODO: Check return values?
-      profile->AddMethods(methods);
+      profile->AddMethods(methods, static_cast<ProfileCompilationInfo::MethodHotness::Flag>(flags));
       profile->AddClasses(resolved_class_set);
       return true;
     }
@@ -982,18 +993,12 @@ class ProfMan FINAL {
     }
     MethodReference ref(class_ref.dex_file, method_index);
     if (is_hot) {
-      profile->AddMethod(ProfileMethodInfo(ref, inline_caches));
-    }
-    uint32_t flags = 0;
-    using Hotness = ProfileCompilationInfo::MethodHotness;
-    if (is_startup) {
-      flags |= Hotness::kFlagStartup;
-    }
-    if (is_post_startup) {
-      flags |= Hotness::kFlagPostStartup;
+      profile->AddMethod(ProfileMethodInfo(ref, inline_caches),
+          static_cast<ProfileCompilationInfo::MethodHotness::Flag>(flags));
     }
     if (flags != 0) {
-      if (!profile->AddMethodIndex(static_cast<Hotness::Flag>(flags), ref)) {
+      if (!profile->AddMethodIndex(
+          static_cast<ProfileCompilationInfo::MethodHotness::Flag>(flags), ref)) {
         return false;
       }
       DCHECK(profile->GetMethodHotness(ref).IsInProfile());
