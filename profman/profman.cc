@@ -280,6 +280,8 @@ class ProfMan FINAL {
                         Usage);
       } else if (option.starts_with("--generate-test-profile-seed=")) {
         ParseUintOption(option, "--generate-test-profile-seed", &test_profile_seed_, Usage);
+      } else if (option.starts_with("--copy-and-update-profile-key")) {
+        copy_and_update_profile_key_ = true;
       } else {
         Usage("Unknown argument '%s'", option.data());
       }
@@ -405,9 +407,12 @@ class ProfMan FINAL {
         }
       }
     } else if (!apk_files_.empty()) {
-        if (dex_locations_.size() != apk_files_.size()) {
-            Usage("The number of apk-fds must match the number of dex-locations.");
-        }
+      if (dex_locations_.empty()) {
+        // If no dex locations are specified use the apk names as locations.
+        dex_locations_ = apk_files_;
+      } else if (dex_locations_.size() != apk_files_.size()) {
+          Usage("The number of apk-fds must match the number of dex-locations.");
+      }
     } else {
       // No APKs were specified.
       CHECK(dex_locations_.empty());
@@ -1178,7 +1183,7 @@ class ProfMan FINAL {
     return copy_and_update_profile_key_;
   }
 
-  bool CopyAndUpdateProfileKey() {
+  int32_t CopyAndUpdateProfileKey() {
     // Validate that at least one profile file was passed, as well as a reference profile.
     if (!(profile_files_.size() == 1 ^ profile_files_fd_.size() == 1)) {
       Usage("Only one profile file should be specified.");
@@ -1191,22 +1196,30 @@ class ProfMan FINAL {
       Usage("No apk files specified");
     }
 
+    static constexpr int32_t kErrorFailedToUpdateProfile = -1;
+    static constexpr int32_t kErrorFailedToSaveProfile = -2;
+    static constexpr int32_t kErrorFailedToLoadProfile = -3;
+
     bool use_fds = profile_files_fd_.size() == 1;
 
     ProfileCompilationInfo profile;
     // Do not clear if invalid. The input might be an archive.
-    if (profile.Load(profile_files_[0], /*clear_if_invalid*/ false)) {
+    bool load_ok = use_fds
+        ? profile.Load(profile_files_fd_[0])
+        : profile.Load(profile_files_[0], /*clear_if_invalid*/ false);
+    if (load_ok) {
       // Open the dex files to look up classes and methods.
       std::vector<std::unique_ptr<const DexFile>> dex_files;
       OpenApkFilesFromLocations(&dex_files);
       if (!profile.UpdateProfileKeys(dex_files)) {
-        return false;
+        return kErrorFailedToUpdateProfile;
       }
-      return use_fds
-        ? profile.Save(reference_profile_file_fd_)
-        : profile.Save(reference_profile_file_, /*bytes_written*/ nullptr);
+      bool result = use_fds
+          ? profile.Save(reference_profile_file_fd_)
+          : profile.Save(reference_profile_file_, /*bytes_written*/ nullptr);
+      return result ? 0 : kErrorFailedToSaveProfile;
     } else {
-      return false;
+      return kErrorFailedToLoadProfile;
     }
   }
 
@@ -1285,6 +1298,11 @@ static int profman(int argc, char** argv) {
   if (profman.ShouldCreateBootProfile()) {
     return profman.CreateBootProfile();
   }
+
+  if (profman.ShouldCopyAndUpdateProfileKey()) {
+    return profman.CopyAndUpdateProfileKey();
+  }
+
   // Process profile information and assess if we need to do a profile guided compilation.
   // This operation involves I/O.
   return profman.ProcessProfiles();
