@@ -40,6 +40,7 @@
 #include "dex/compact_dex_level.h"
 #include "dex_to_dex_decompiler.h"
 #include "dexlayout.h"
+#include "leb128.h"
 #include "oat_file.h"
 #include "vdex_file.h"
 
@@ -50,21 +51,41 @@ static void RecomputeDexChecksum(art::DexFile* dex_file) {
       dex_file->CalculateChecksum();
 }
 
-static void DoDexUnquicken(const art::DexFile& new_dex_file,
-                           const art::DexFile& original_dex_file) {
+static void UnhideApis(const art::DexFile& target_dex_file) {
+  for (uint32_t i = 0; i < target_dex_file.NumClassDefs(); ++i) {
+    const uint8_t* class_data = target_dex_file.GetClassData(target_dex_file.GetClassDef(i));
+    if (class_data != nullptr) {
+      for (art::ClassDataItemIterator class_it(target_dex_file, class_data);
+           class_it.HasNext();
+           class_it.Next()) {
+        art::DexFile::UnHideAccessFlags(class_it);
+      }
+    }
+  }
+}
+
+static const art::VdexFile* GetVdex(const art::DexFile& original_dex_file) {
   const art::OatDexFile* oat_dex = original_dex_file.GetOatDexFile();
   if (oat_dex == nullptr) {
-    return;
+    return nullptr;
   }
   const art::OatFile* oat_file = oat_dex->GetOatFile();
   if (oat_file == nullptr) {
-    return;
+    return nullptr;
   }
-  const art::VdexFile* vdex = oat_file->GetVdexFile();
-  if (vdex == nullptr) {
-    return;
+  return oat_file->GetVdexFile();
+}
+
+static void DoDexUnquicken(const art::DexFile& new_dex_file,
+                           const art::DexFile& original_dex_file) {
+  const art::VdexFile* vdex = GetVdex(original_dex_file);
+  if (vdex != nullptr) {
+    vdex->UnquickenDexFile(new_dex_file, original_dex_file, /* decompile_return_instruction */true);
+  } else {
+    // The dex file isn't quickened since it is being used directly. We might still have hiddenapis
+    // so we need to get rid of those.
+    UnhideApis(new_dex_file);
   }
-  vdex->UnquickenDexFile(new_dex_file, original_dex_file, /* decompile_return_instruction */true);
 }
 
 static void DCheckVerifyDexFile(const art::DexFile& dex) {

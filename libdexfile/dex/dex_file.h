@@ -35,6 +35,7 @@
 
 namespace art {
 
+class ClassDataItemIterator;
 class CompactDexFile;
 enum InvokeType : uint32_t;
 class MemMap;
@@ -999,6 +1000,9 @@ class DexFile {
   DexFileContainer* GetContainer() const {
     return container_.get();
   }
+
+  // Changes the dex file pointed to by class_it to not have any hiddenapi flags.
+  static void UnHideAccessFlags(ClassDataItemIterator& class_it);
 
  protected:
   // First Dex format version supporting default methods.
