@@ -405,18 +405,15 @@ static void PreloadDexCachesResolveMethod(ObjPtr<mirror::DexCache> dex_cache, ui
   }
   const DexFile* dex_file = dex_cache->GetDexFile();
   const DexFile::MethodId& method_id = dex_file->GetMethodId(method_idx);
-  ObjPtr<mirror::Class> klass = Runtime::Current()->GetClassLinker()->LookupResolvedType(
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+
+  ObjPtr<mirror::Class> klass = class_linker->LookupResolvedType(
       method_id.class_idx_, dex_cache, /* class_loader */ nullptr);
   if (klass == nullptr) {
     return;
   }
-  ArtMethod* method = klass->IsInterface()
-      ? klass->FindInterfaceMethod(dex_cache, method_idx, kRuntimePointerSize)
-      : klass->FindClassMethod(dex_cache, method_idx, kRuntimePointerSize);
-  if (method == nullptr) {
-    return;
-  }
-  dex_cache->SetResolvedMethod(method_idx, method, kRuntimePointerSize);
+  // Call FindResolvedMethod to populate the dex cache.
+  class_linker->FindResolvedMethod(klass, dex_cache, /* class_loader */ nullptr, method_idx);
 }
 
 struct DexCacheStats {
