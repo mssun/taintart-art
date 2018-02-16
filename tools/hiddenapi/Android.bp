@@ -30,7 +30,6 @@ cc_defaults {
     },
 
     shared_libs: [
-        "libdexfile",
         "libbase",
     ],
 }
@@ -40,6 +39,7 @@ art_cc_binary {
     defaults: ["hiddenapi-defaults"],
     shared_libs: [
         "libart",
+        "libdexfile",
     ],
 }
 
@@ -51,6 +51,7 @@ art_cc_binary {
     ],
     shared_libs: [
         "libartd",
+        "libdexfiled",
     ],
 }
 

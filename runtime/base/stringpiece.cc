@@ -23,13 +23,6 @@
 
 namespace art {
 
-#if !defined(NDEBUG)
-char StringPiece::operator[](size_type i) const {
-  CHECK_LT(i, length_);
-  return ptr_[i];
-}
-#endif
-
 void StringPiece::CopyToString(std::string* target) const {
   target->assign(ptr_, length_);
 }
