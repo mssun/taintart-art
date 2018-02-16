@@ -93,6 +93,14 @@ art_cc_library {
     },
 }
 
+art_cc_library {
+    name: "libdexfiled",
+    defaults: [
+        "art_debug_defaults",
+        "libdexfile_defaults",
+    ],
+}
+
 art_cc_test {
     name: "art_libdexfile_tests",
     defaults: [
