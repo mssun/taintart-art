@@ -110,6 +110,7 @@ test_count = 0
 total_test_count = 0
 verbose = False
 dry_run = False
+ignore_skips = False
 build = False
 gdb = False
 gdb_arg = ''
@@ -710,6 +711,8 @@ def is_test_disabled(test, variant_set):
     return True
   if test in env.EXTRA_DISABLED_TESTS:
     return True
+  if ignore_skips:
+    return False
   variants_list = DISABLED_TEST_CONTAINER.get(test, {})
   for variants in variants_list:
     variants_present = True
@@ -878,6 +881,7 @@ def get_default_threads(target):
 def parse_option():
   global verbose
   global dry_run
+  global ignore_skips
   global n_thread
   global build
   global gdb
@@ -897,6 +901,8 @@ def parse_option():
   parser.add_argument('--dry-run', action='store_true', dest='dry_run')
   parser.add_argument("--skip", action="append", dest="skips", default=[],
                       help="Skip the given test in all circumstances.")
+  parser.add_argument("--no-skips", dest="ignore_skips", action="store_true", default=False,
+                      help="Don't skip any run-test configurations listed in knownfailures.json.")
   parser.add_argument('--no-build-dependencies',
                       action='store_false', dest='build',
                       help="Don't build dependencies under any circumstances. This is the " +
@@ -935,6 +941,7 @@ def parse_option():
     verbose = True
   if options['n_thread']:
     n_thread = max(1, options['n_thread'])
+  ignore_skips = options['ignore_skips']
   if options['dry_run']:
     dry_run = True
     verbose = True
