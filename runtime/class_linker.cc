@@ -7939,6 +7939,38 @@ std::string DescribeLoaders(ObjPtr<mirror::ClassLoader> loader, const char* clas
   return oss.str();
 }
 
+ArtMethod* ClassLinker::FindResolvedMethod(ObjPtr<mirror::Class> klass,
+                                           ObjPtr<mirror::DexCache> dex_cache,
+                                           ObjPtr<mirror::ClassLoader> class_loader,
+                                           uint32_t method_idx) {
+  // Search for the method using dex_cache and method_idx. The Class::Find*Method()
+  // functions can optimize the search if the dex_cache is the same as the DexCache
+  // of the class, with fall-back to name and signature search otherwise.
+  ArtMethod* resolved = nullptr;
+  if (klass->IsInterface()) {
+    resolved = klass->FindInterfaceMethod(dex_cache, method_idx, image_pointer_size_);
+  } else {
+    resolved = klass->FindClassMethod(dex_cache, method_idx, image_pointer_size_);
+  }
+  DCHECK(resolved == nullptr || resolved->GetDeclaringClassUnchecked() != nullptr);
+  if (resolved != nullptr) {
+    // In case of jmvti, the dex file gets verified before being registered, so first
+    // check if it's registered before checking class tables.
+    const DexFile& dex_file = *dex_cache->GetDexFile();
+    CHECK(!IsDexFileRegistered(Thread::Current(), dex_file) ||
+          FindClassTable(Thread::Current(), dex_cache) == ClassTableForClassLoader(class_loader))
+        << "DexFile referrer: " << dex_file.GetLocation()
+        << " ClassLoader: " << DescribeLoaders(class_loader, "");
+    // Be a good citizen and update the dex cache to speed subsequent calls.
+    dex_cache->SetResolvedMethod(method_idx, resolved, image_pointer_size_);
+    const DexFile::MethodId& method_id = dex_file.GetMethodId(method_idx);
+    CHECK(LookupResolvedType(method_id.class_idx_, dex_cache, class_loader) != nullptr)
+        << "Class: " << klass->PrettyClass() << ", "
+        << "DexFile referrer: " << dex_file.GetLocation();
+  }
+  return resolved;
+}
+
 template <ClassLinker::ResolveMode kResolveMode>
 ArtMethod* ClassLinker::ResolveMethod(uint32_t method_idx,
                                       Handle<mirror::DexCache> dex_cache,
@@ -7971,6 +8003,7 @@ ArtMethod* ClassLinker::ResolveMethod(uint32_t method_idx,
           << resolved->PrettyMethod() << ";" << resolved
           << "/0x" << std::hex << resolved->GetAccessFlags()
           << " ReferencedClass: " << descriptor
+          << " DexFile referrer: " << dex_file.GetLocation()
           << " ClassLoader: " << DescribeLoaders(class_loader.Get(), descriptor);
     }
   } else {
@@ -7991,19 +8024,7 @@ ArtMethod* ClassLinker::ResolveMethod(uint32_t method_idx,
   }
 
   if (!valid_dex_cache_method) {
-    // Search for the method using dex_cache and method_idx. The Class::Find*Method()
-    // functions can optimize the search if the dex_cache is the same as the DexCache
-    // of the class, with fall-back to name and signature search otherwise.
-    if (klass->IsInterface()) {
-      resolved = klass->FindInterfaceMethod(dex_cache.Get(), method_idx, pointer_size);
-    } else {
-      resolved = klass->FindClassMethod(dex_cache.Get(), method_idx, pointer_size);
-    }
-    DCHECK(resolved == nullptr || resolved->GetDeclaringClassUnchecked() != nullptr);
-    if (resolved != nullptr) {
-      // Be a good citizen and update the dex cache to speed subsequent calls.
-      dex_cache->SetResolvedMethod(method_idx, resolved, pointer_size);
-    }
+    resolved = FindResolvedMethod(klass, dex_cache.Get(), class_loader.Get(), method_idx);
   }
 
   // Note: We can check for IllegalAccessError only if we have a referrer.
