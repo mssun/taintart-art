@@ -4567,7 +4567,7 @@ class HInvokeStaticOrDirect FINAL : public HInvoke {
                                                kFieldClinitCheckRequirementSize>;
 
   // Cached values of the resolved method, to avoid needing the mutator lock.
-  MethodReference target_method_;
+  const MethodReference target_method_;
   DispatchInfo dispatch_info_;
 };
 std::ostream& operator<<(std::ostream& os, HInvokeStaticOrDirect::MethodLoadKind rhs);

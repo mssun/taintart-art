@@ -3899,21 +3899,13 @@ ArtMethod* MethodVerifier::ResolveMethodAndCheckAccess(
   }
   ObjPtr<mirror::Class> klass = klass_type.GetClass();
   const RegType& referrer = GetDeclaringClass();
-  auto* cl = Runtime::Current()->GetClassLinker();
-  auto pointer_size = cl->GetImagePointerSize();
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  PointerSize pointer_size = class_linker->GetImagePointerSize();
 
   ArtMethod* res_method = dex_cache_->GetResolvedMethod(dex_method_idx, pointer_size);
   if (res_method == nullptr) {
-    // Try to find the method with the appropriate lookup for the klass type (interface or not).
-    // If this lookup does not match `method_type`, errors shall be reported below.
-    if (klass->IsInterface()) {
-      res_method = klass->FindInterfaceMethod(dex_cache_.Get(), dex_method_idx, pointer_size);
-    } else {
-      res_method = klass->FindClassMethod(dex_cache_.Get(), dex_method_idx, pointer_size);
-    }
-    if (res_method != nullptr) {
-      dex_cache_->SetResolvedMethod(dex_method_idx, res_method, pointer_size);
-    }
+    res_method = class_linker->FindResolvedMethod(
+        klass, dex_cache_.Get(), class_loader_.Get(), dex_method_idx);
   }
 
   // Record result of method resolution attempt. The klass resolution has recorded whether
