@@ -263,18 +263,6 @@ void VdexFile::UnquickenDexFile(const DexFile& target_dex_file,
   UnquickenDexFile(target_dex_file, source_dex_file.Begin(), decompile_return_instruction);
 }
 
-static void UpdateAccessFlags(uint8_t* data, uint32_t new_flag, bool is_method) {
-  // Go back 1 uleb to start.
-  data = ReverseSearchUnsignedLeb128(data);
-  if (is_method) {
-    // Methods have another uleb field before the access flags
-    data = ReverseSearchUnsignedLeb128(data);
-  }
-  DCHECK_EQ(HiddenApiAccessFlags::RemoveFromDex(DecodeUnsignedLeb128WithoutMovingCursor(data)),
-            new_flag);
-  UpdateUnsignedLeb128(data, new_flag);
-}
-
 void VdexFile::UnquickenDexFile(const DexFile& target_dex_file,
                                 const uint8_t* source_dex_begin,
                                 bool decompile_return_instruction) const {
@@ -312,14 +300,8 @@ void VdexFile::UnquickenDexFile(const DexFile& target_dex_file,
                 quicken_data,
                 decompile_return_instruction);
           }
-          UpdateAccessFlags(const_cast<uint8_t*>(class_it.DataPointer()),
-                            class_it.GetMemberAccessFlags(),
-                            /*is_method*/ true);
-        } else {
-          UpdateAccessFlags(const_cast<uint8_t*>(class_it.DataPointer()),
-                            class_it.GetMemberAccessFlags(),
-                            /*is_method*/ false);
         }
+        DexFile::UnHideAccessFlags(class_it);
       }
     }
   }
