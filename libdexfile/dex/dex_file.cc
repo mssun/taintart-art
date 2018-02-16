@@ -45,6 +45,21 @@ static_assert(std::is_trivially_copyable<dex::StringIndex>::value, "StringIndex 
 static_assert(sizeof(dex::TypeIndex) == sizeof(uint16_t), "TypeIndex size is wrong");
 static_assert(std::is_trivially_copyable<dex::TypeIndex>::value, "TypeIndex not trivial");
 
+void DexFile::UnHideAccessFlags(ClassDataItemIterator& class_it) {
+  uint8_t* data = const_cast<uint8_t*>(class_it.DataPointer());
+  uint32_t new_flag = class_it.GetMemberAccessFlags();
+  bool is_method = class_it.IsAtMethod();
+  // Go back 1 uleb to start.
+  data = ReverseSearchUnsignedLeb128(data);
+  if (is_method) {
+    // Methods have another uleb field before the access flags
+    data = ReverseSearchUnsignedLeb128(data);
+  }
+  DCHECK_EQ(HiddenApiAccessFlags::RemoveFromDex(DecodeUnsignedLeb128WithoutMovingCursor(data)),
+            new_flag);
+  UpdateUnsignedLeb128(data, new_flag);
+}
+
 uint32_t DexFile::CalculateChecksum() const {
   return CalculateChecksum(Begin(), Size());
 }
