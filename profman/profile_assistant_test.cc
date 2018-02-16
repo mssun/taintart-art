@@ -31,6 +31,8 @@
 
 namespace art {
 
+using Hotness = ProfileCompilationInfo::MethodHotness;
+
 static constexpr size_t kMaxMethodIds = 65535;
 
 class ProfileAssistantTest : public CommonRuntimeTest {
@@ -80,12 +82,17 @@ class ProfileAssistantTest : public CommonRuntimeTest {
       ProfileCompilationInfo::OfflineProfileMethodInfo pmi =
           GetOfflineProfileMethodInfo(dex_location1, dex_location_checksum1,
                                       dex_location2, dex_location_checksum2);
+      Hotness::Flag flags = Hotness::kFlagPostStartup;
       if (reverse_dex_write_order) {
-        ASSERT_TRUE(info->AddMethod(dex_location2, dex_location_checksum2, i, kMaxMethodIds, pmi));
-        ASSERT_TRUE(info->AddMethod(dex_location1, dex_location_checksum1, i, kMaxMethodIds, pmi));
+        ASSERT_TRUE(info->AddMethod(
+            dex_location2, dex_location_checksum2, i, kMaxMethodIds, pmi, flags));
+        ASSERT_TRUE(info->AddMethod(
+            dex_location1, dex_location_checksum1, i, kMaxMethodIds, pmi, flags));
       } else {
-        ASSERT_TRUE(info->AddMethod(dex_location1, dex_location_checksum1, i, kMaxMethodIds, pmi));
-        ASSERT_TRUE(info->AddMethod(dex_location2, dex_location_checksum2, i, kMaxMethodIds, pmi));
+        ASSERT_TRUE(info->AddMethod(
+            dex_location1, dex_location_checksum1, i, kMaxMethodIds, pmi, flags));
+        ASSERT_TRUE(info->AddMethod(
+            dex_location2, dex_location_checksum2, i, kMaxMethodIds, pmi, flags));
       }
     }
     for (uint16_t i = 0; i < number_of_classes; i++) {
@@ -109,7 +116,6 @@ class ProfileAssistantTest : public CommonRuntimeTest {
                          const ScratchFile& profile,
                          ProfileCompilationInfo* info) {
     std::string dex_location = "location1" + id;
-    using Hotness = ProfileCompilationInfo::MethodHotness;
     for (uint32_t idx : hot_methods) {
       info->AddMethodIndex(Hotness::kFlagHot, dex_location, checksum, idx, number_of_methods);
     }
@@ -1086,10 +1092,10 @@ TEST_F(ProfileAssistantTest, TestProfileCreateWithInvalidData) {
   ASSERT_EQ(1u, classes.size());
   ASSERT_TRUE(classes.find(invalid_class_index) != classes.end());
 
-  // Verify that the invalid method is in the profile.
-  ASSERT_EQ(2u, hot_methods.size());
+  // Verify that the invalid method did not get in the profile.
+  ASSERT_EQ(1u, hot_methods.size());
   uint16_t invalid_method_index = std::numeric_limits<uint16_t>::max() - 1;
-  ASSERT_TRUE(hot_methods.find(invalid_method_index) != hot_methods.end());
+  ASSERT_FALSE(hot_methods.find(invalid_method_index) != hot_methods.end());
 }
 
 TEST_F(ProfileAssistantTest, DumpOnly) {
