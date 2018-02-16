@@ -20,6 +20,8 @@
 #include <string.h>
 #include <string>
 
+#include <android-base/logging.h>
+
 namespace art {
 
 // A string-like object that points to a sized piece of memory.
@@ -84,13 +86,10 @@ class StringPiece {
     length_ = len;
   }
 
-#if defined(NDEBUG)
   char operator[](size_type i) const {
+    DCHECK_LT(i, length_);
     return ptr_[i];
   }
-#else
-  char operator[](size_type i) const;
-#endif
 
   void remove_prefix(size_type n) {
     ptr_ += n;
