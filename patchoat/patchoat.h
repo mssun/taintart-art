@@ -91,10 +91,9 @@ class PatchOat {
   // Was the .oat image at oat_in made with --compile-pic ?
   static MaybePic IsOatPic(const ElfFile* oat_in);
 
-  // Attempt to replace the file with a symlink
-  // Returns false if it fails
-  static bool ReplaceOatFileWithSymlink(const std::string& input_oat_filename,
-                                        const std::string& output_oat_filename);
+  static bool CreateVdexAndOatSymlinks(const std::string& input_image_filename,
+                                       const std::string& output_image_filename);
+
 
   void VisitObject(mirror::Object* obj)
       REQUIRES_SHARED(Locks::mutator_lock_);
