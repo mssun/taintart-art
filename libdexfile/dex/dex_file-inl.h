@@ -17,7 +17,6 @@
 #ifndef ART_LIBDEXFILE_DEX_DEX_FILE_INL_H_
 #define ART_LIBDEXFILE_DEX_DEX_FILE_INL_H_
 
-#include "base/bit_utils.h"
 #include "base/casts.h"
 #include "base/stringpiece.h"
 #include "compact_dex_file.h"

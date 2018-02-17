@@ -17,12 +17,13 @@
 #ifndef ART_LIBDEXFILE_DEX_BASE64_TEST_UTIL_H_
 #define ART_LIBDEXFILE_DEX_BASE64_TEST_UTIL_H_
 
-#include <base/logging.h>
 #include <stdint.h>
 #include <stdlib.h>
 
 #include <memory>
 #include <vector>
+
+#include <android-base/logging.h>
 
 namespace art {
 
