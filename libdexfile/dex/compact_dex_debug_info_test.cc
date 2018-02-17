@@ -16,7 +16,7 @@
 
 #include <vector>
 
-#include "base/logging.h"
+#include <android-base/logging.h>
 #include "dex/compact_dex_debug_info.h"
 #include "gtest/gtest.h"
 
@@ -74,7 +74,7 @@ TEST(CompactDexDebugInfoTest, TestBuildAndAccess) {
                                         /*out*/ &table_offset);
   EXPECT_LT(sorted_data.size(), data.size());
   {
-    ScopedLogSeverity sls(LogSeverity::INFO);
+    android::base::ScopedLogSeverity sls(android::base::LogSeverity::INFO);
     LOG(INFO) << "raw size " << before_size
               << " table size " << data.size()
               << " sorted table size " << sorted_data.size();
