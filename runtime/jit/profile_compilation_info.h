@@ -24,7 +24,7 @@
 #include "base/arena_containers.h"
 #include "base/arena_object.h"
 #include "bit_memory_region.h"
-#include "dex_cache_resolved_classes.h"
+#include "dex/dex_cache_resolved_classes.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_types.h"
 #include "method_reference.h"

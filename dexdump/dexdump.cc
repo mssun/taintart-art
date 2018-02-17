@@ -34,19 +34,14 @@
 
 #include "dexdump.h"
 
-#include <fcntl.h>
 #include <inttypes.h>
 #include <stdio.h>
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
-#include <iostream>
 #include <memory>
 #include <sstream>
 #include <vector>
 
+#include "android-base/file.h"
 #include "android-base/logging.h"
 #include "android-base/stringprintf.h"
 
@@ -1879,34 +1874,6 @@ static void processDexFile(const char* fileName,
   }
 }
 
-static bool openAndMapFile(const char* fileName,
-                           const uint8_t** base,
-                           size_t* size,
-                           std::string* error_msg) {
-  int fd = open(fileName, O_RDONLY);
-  if (fd < 0) {
-    *error_msg = "open failed";
-    return false;
-  }
-  struct stat st;
-  if (fstat(fd, &st) < 0) {
-    *error_msg = "stat failed";
-    return false;
-  }
-  *size = st.st_size;
-  if (*size == 0) {
-    *error_msg = "size == 0";
-    return false;
-  }
-  void* addr = mmap(nullptr /*addr*/, *size, PROT_READ, MAP_PRIVATE, fd, 0 /*offset*/);
-  if (addr == MAP_FAILED) {
-    *error_msg = "mmap failed";
-    return false;
-  }
-  *base = reinterpret_cast<const uint8_t*>(addr);
-  return true;
-}
-
 /*
  * Processes a single file (either direct .dex or indirect .zip/.jar/.apk).
  */
@@ -1918,17 +1885,22 @@ int processFile(const char* fileName) {
   // If the file is not a .dex file, the function tries .zip/.jar/.apk files,
   // all of which are Zip archives with "classes.dex" inside.
   const bool kVerifyChecksum = !gOptions.ignoreBadChecksum;
-  const uint8_t* base = nullptr;
-  size_t size = 0;
-  std::string error_msg;
-  if (!openAndMapFile(fileName, &base, &size, &error_msg)) {
-    LOG(ERROR) << error_msg;
+  std::string content;
+  // TODO: add an api to android::base to read a std::vector<uint8_t>.
+  if (!android::base::ReadFileToString(fileName, &content)) {
+    LOG(ERROR) << "ReadFileToString failed";
     return -1;
   }
   const DexFileLoader dex_file_loader;
+  std::string error_msg;
   std::vector<std::unique_ptr<const DexFile>> dex_files;
-  if (!dex_file_loader.OpenAll(
-        base, size, fileName, /*verify*/ true, kVerifyChecksum, &error_msg, &dex_files)) {
+  if (!dex_file_loader.OpenAll(reinterpret_cast<const uint8_t*>(content.data()),
+                               content.size(),
+                               fileName,
+                               /*verify*/ true,
+                               kVerifyChecksum,
+                               &error_msg,
+                               &dex_files)) {
     // Display returned error message to user. Note that this error behavior
     // differs from the error messages shown by the original Dalvik dexdump.
     LOG(ERROR) << error_msg;
