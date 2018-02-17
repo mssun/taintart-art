@@ -277,7 +277,10 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
                                             jlong token,
                                             jint runtime_flags,
                                             jboolean is_system_server,
+                                            jboolean is_zygote,
                                             jstring instruction_set) {
+  DCHECK(!(is_system_server && is_zygote));
+
   Thread* thread = reinterpret_cast<Thread*>(token);
   // Our system thread ID, etc, has changed so reset Thread state.
   thread->InitAfterFork();
@@ -346,12 +349,21 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
     }
   }
 
-  DCHECK(!is_system_server || !do_hidden_api_checks)
-      << "SystemServer should be forked with DISABLE_HIDDEN_API_CHECKS";
+  DCHECK(!(is_system_server && do_hidden_api_checks))
+      << "SystemServer should be forked with ENABLE_HIDDEN_API_CHECKS";
+  DCHECK(!(is_zygote && do_hidden_api_checks))
+      << "Child zygote processes should be forked with ENABLE_HIDDEN_API_CHECKS";
   Runtime::Current()->SetHiddenApiChecksEnabled(do_hidden_api_checks);
 
   // Clear the hidden API warning flag, in case it was set.
   Runtime::Current()->SetPendingHiddenApiWarning(false);
+
+  if (is_zygote) {
+    // If creating a child-zygote, do not call into the runtime's post-fork logic.
+    // Doing so would spin up threads for Binder and JDWP. Instead, the Java side
+    // of the child process will call a static main in a class specified by the parent.
+    return;
+  }
 
   if (instruction_set != nullptr && !is_system_server) {
     ScopedUtfChars isa_string(env, instruction_set);
@@ -380,7 +392,7 @@ static void ZygoteHooks_stopZygoteNoThreadCreation(JNIEnv* env ATTRIBUTE_UNUSED,
 
 static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(ZygoteHooks, nativePreFork, "()J"),
-  NATIVE_METHOD(ZygoteHooks, nativePostForkChild, "(JIZLjava/lang/String;)V"),
+  NATIVE_METHOD(ZygoteHooks, nativePostForkChild, "(JIZZLjava/lang/String;)V"),
   NATIVE_METHOD(ZygoteHooks, startZygoteNoThreadCreation, "()V"),
   NATIVE_METHOD(ZygoteHooks, stopZygoteNoThreadCreation, "()V"),
 };
