@@ -277,7 +277,7 @@ class CompactDexFile : public DexFile {
                  const std::string& location,
                  uint32_t location_checksum,
                  const OatDexFile* oat_dex_file,
-                 DexFileContainer* container);
+                 std::unique_ptr<DexFileContainer> container);
 
   CompactDexDebugInfoOffsetTable::Accessor debug_info_offsets_;
 

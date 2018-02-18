@@ -192,7 +192,7 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::Open(const std::string& locatio
                                                  verify,
                                                  verify_checksum,
                                                  error_msg,
-                                                 new MemMapContainer(std::move(map)),
+                                                 std::make_unique<MemMapContainer>(std::move(map)),
                                                  /*verify_result*/ nullptr);
   return dex_file;
 }
@@ -315,7 +315,7 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::OpenFile(int fd,
                                                  verify,
                                                  verify_checksum,
                                                  error_msg,
-                                                 new MemMapContainer(std::move(map)),
+                                                 std::make_unique<MemMapContainer>(std::move(map)),
                                                  /*verify_result*/ nullptr);
 
   return dex_file;
@@ -384,7 +384,7 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::OpenOneDexFileFromZip(
                                                  verify,
                                                  verify_checksum,
                                                  error_msg,
-                                                 new MemMapContainer(std::move(map)),
+                                                 std::make_unique<MemMapContainer>(std::move(map)),
                                                  &verify_result);
   if (dex_file == nullptr) {
     if (verify_result == VerifyResult::kVerifyNotAttempted) {
