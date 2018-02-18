@@ -398,6 +398,7 @@ public class Test912 {
     public static double dummy = Math.random();  // So it can't be compile-time initialized.
   }
 
+  @SuppressWarnings("RandomCast")
   private static class TestForInitFail {
     public static int dummy = ((int)Math.random())/0;  // So it throws when initializing.
   }

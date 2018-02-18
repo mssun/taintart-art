@@ -377,12 +377,6 @@
         "variant": "jvmti-stress & jit | redefine-stress & jit"
     },
     {
-        "test_patterns": ["674-hiddenapi"],
-        "description": ["hiddenapi test is failing with redefine stress cdex"],
-        "bug": "http://b/72610009",
-        "variant": "redefine-stress & cdex-fast"
-    },
-    {
         "test_patterns": ["616-cha"],
         "description": ["The test assumes a boot image exists."],
         "bug": "http://b/34193647",
@@ -423,21 +417,13 @@
         "variant": "redefine-stress & speed-profile | jvmti-stress & speed-profile"
     },
     {
-        "tests": [
-            "714-invoke-custom-lambda-metafactory",
-            "950-redefine-intrinsic",
-            "951-threaded-obsolete",
-            "952-invoke-custom",
-            "952-invoke-custom-kinds",
-            "953-invoke-polymorphic-compiler",
-            "954-invoke-polymorphic-verifier",
-            "955-methodhandles-smali",
-            "956-methodhandles",
-            "957-methodhandle-transforms",
-            "958-methodhandle-stackframe",
-            "959-invoke-polymorphic-accessors",
-            "979-const-method-handle",
-            "990-method-handle-and-mr"
+        "test_patterns": [
+            ".*invoke-custom.*",
+            ".*invoke-polymorphic.*",
+            ".*methodhandle.*",
+            ".*method-handle.*",
+            ".*varhandle.*",
+            ".*var-handle.*"
         ],
         "description": [
             "Tests that use invoke-polymorphic/invoke-custom which is not yet supported by",
@@ -460,9 +446,22 @@
     },
     {
         "tests": [
+            "132-daemon-locks-shutdown",
+            "607-daemon-stress",
+            "602-deoptimizeable",
+            "121-simple-suspend-check",
+            "083-compiler-regressions"
+        ],
+        "description": ["Tests that have failed on redefine stress for unknown reasons"],
+        "bug": "b/73177368",
+        "variant": "redefine-stress"
+    },
+    {
+        "tests": [
             "097-duplicate-method",
             "138-duplicate-classes-check2",
             "159-app-image-fields",
+            "674-hiddenapi",
             "649-vdex-duplicate-method",
             "804-class-extends-itself",
             "921-hello-failure"
@@ -481,6 +480,7 @@
             "626-const-class-linking",
             "629-vdex-speed",
             "647-jni-get-field-id",
+            "674-hiddenapi",
             "944-transform-classloaders"
         ],
         "description": [
@@ -494,7 +494,7 @@
             "004-ThreadStress"
         ],
         "description": "The thread stress test just takes too long with field-stress",
-        "variant": "jvmti-stress | field-stress | step-stress"
+        "variant": "jvmti-stress | field-stress | step-stress | redefine-stress"
     },
     {
         "tests": [
@@ -653,11 +653,6 @@
         "description": ["Test is designed to only check --compiler-filter=speed"]
     },
     {
-        "test_patterns": [".*"],
-        "description": ["Tests are timing out for weeks now, disable to fix."],
-        "variant": "cdex-fast & redefine-stress"
-    },
-    {
         "tests": "674-HelloWorld-Dm",
         "variant": "target",
         "description": ["Requires zip, which isn't available on device"]
@@ -667,5 +662,11 @@
         "variant": "speed-profile & debug & gcstress & target",
         "bug": "b/73275005",
         "description": ["Time out"]
+    },
+    {
+        "tests": ["130-hprof"],
+        "env_vars": {"SANITIZE_HOST": "address"},
+        "bug": "b/73060923",
+        "description": ["ASAN issue"]
     }
 ]

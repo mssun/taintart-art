@@ -24,7 +24,7 @@
 #include "base/arena_containers.h"
 #include "base/arena_object.h"
 #include "bit_memory_region.h"
-#include "dex_cache_resolved_classes.h"
+#include "dex/dex_cache_resolved_classes.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_types.h"
 #include "method_reference.h"
@@ -241,7 +241,7 @@ class ProfileCompilationInfo {
   ~ProfileCompilationInfo();
 
   // Add the given methods to the current profile object.
-  bool AddMethods(const std::vector<ProfileMethodInfo>& methods);
+  bool AddMethods(const std::vector<ProfileMethodInfo>& methods, MethodHotness::Flag flags);
 
   // Add the given classes to the current profile object.
   bool AddClasses(const std::set<DexCacheResolvedClasses>& resolved_classes);
@@ -278,7 +278,7 @@ class ProfileCompilationInfo {
   bool AddMethodIndex(MethodHotness::Flag flags, const MethodReference& ref);
 
   // Add a method to the profile using its online representation (containing runtime structures).
-  bool AddMethod(const ProfileMethodInfo& pmi);
+  bool AddMethod(const ProfileMethodInfo& pmi, MethodHotness::Flag flags);
 
   // Bulk add sampled methods and/or hot methods for a single dex, fast since it only has one
   // GetOrAddDexFileData call.
@@ -500,6 +500,7 @@ class ProfileCompilationInfo {
       }
     }
 
+    void SetMethodHotness(size_t index, MethodHotness::Flag flags);
     MethodHotness GetHotnessInfo(uint32_t dex_method_index) const;
 
     // The allocator used to allocate new inline cache maps.
@@ -559,7 +560,8 @@ class ProfileCompilationInfo {
                  uint32_t dex_checksum,
                  uint16_t method_index,
                  uint32_t num_method_ids,
-                 const OfflineProfileMethodInfo& pmi);
+                 const OfflineProfileMethodInfo& pmi,
+                 MethodHotness::Flag flags);
 
   // Add a class index to the profile.
   bool AddClassIndex(const std::string& dex_location,

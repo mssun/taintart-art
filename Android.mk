@@ -79,6 +79,7 @@ include $(art_path)/build/Android.cpplint.mk
 include $(art_path)/oatdump/Android.mk
 include $(art_path)/tools/Android.mk
 include $(art_path)/tools/ahat/Android.mk
+include $(art_path)/tools/amm/Android.mk
 include $(art_path)/tools/dexfuzz/Android.mk
 include $(art_path)/libart_fake/Android.mk
 
@@ -486,8 +487,10 @@ build-art-target-golem: dex2oat dalvikvm patchoat linker libstdc++ \
                         $(ART_TARGET_SHARED_LIBRARY_BENCHMARK) \
                         $(TARGET_CORE_IMG_OUT_BASE).art \
                         $(TARGET_CORE_IMG_OUT_BASE)-interpreter.art
+	# remove libartd.so and libdexfiled.so from public.libraries.txt because golem builds
+	# won't have it.
 	sed -i '/libartd.so/d' $(TARGET_OUT)/etc/public.libraries.txt
-	# remove libartd.so from public.libraries.txt because golem builds won't have it.
+	sed -i '/libdexfiled.so/d' $(TARGET_OUT)/etc/public.libraries.txt
 
 ########################################################################
 # Phony target for building what go/lem requires on host.

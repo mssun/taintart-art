@@ -72,6 +72,42 @@ void Class::VisitRoots(RootVisitor* visitor) {
   java_lang_Class_.VisitRootIfNonNull(visitor, RootInfo(kRootStickyClass));
 }
 
+ObjPtr<mirror::Class> Class::GetPrimitiveClass(ObjPtr<mirror::String> name) {
+  const char* expected_name = nullptr;
+  ClassLinker::ClassRoot class_root = ClassLinker::kJavaLangObject;  // Invalid.
+  if (name != nullptr && name->GetLength() >= 2) {
+    // Perfect hash for the expected values: from the second letters of the primitive types,
+    // only 'y' has the bit 0x10 set, so use it to change 'b' to 'B'.
+    char hash = name->CharAt(0) ^ ((name->CharAt(1) & 0x10) << 1);
+    switch (hash) {
+      case 'b': expected_name = "boolean"; class_root = ClassLinker::kPrimitiveBoolean; break;
+      case 'B': expected_name = "byte";    class_root = ClassLinker::kPrimitiveByte;    break;
+      case 'c': expected_name = "char";    class_root = ClassLinker::kPrimitiveChar;    break;
+      case 'd': expected_name = "double";  class_root = ClassLinker::kPrimitiveDouble;  break;
+      case 'f': expected_name = "float";   class_root = ClassLinker::kPrimitiveFloat;   break;
+      case 'i': expected_name = "int";     class_root = ClassLinker::kPrimitiveInt;     break;
+      case 'l': expected_name = "long";    class_root = ClassLinker::kPrimitiveLong;    break;
+      case 's': expected_name = "short";   class_root = ClassLinker::kPrimitiveShort;   break;
+      case 'v': expected_name = "void";    class_root = ClassLinker::kPrimitiveVoid;    break;
+      default: break;
+    }
+  }
+  if (expected_name != nullptr && name->Equals(expected_name)) {
+    ObjPtr<mirror::Class> klass = Runtime::Current()->GetClassLinker()->GetClassRoot(class_root);
+    DCHECK(klass != nullptr);
+    return klass;
+  } else {
+    Thread* self = Thread::Current();
+    if (name == nullptr) {
+      // Note: ThrowNullPointerException() requires a message which we deliberately want to omit.
+      self->ThrowNewException("Ljava/lang/NullPointerException;", /* msg */ nullptr);
+    } else {
+      self->ThrowNewException("Ljava/lang/ClassNotFoundException;", name->ToModifiedUtf8().c_str());
+    }
+    return nullptr;
+  }
+}
+
 ClassExt* Class::EnsureExtDataPresent(Thread* self) {
   ObjPtr<ClassExt> existing(GetExtData());
   if (!existing.IsNull()) {
@@ -156,9 +192,19 @@ void Class::SetStatus(Handle<Class> h_this, ClassStatus new_status, Thread* self
     self->AssertPendingException();
   }
 
-  {
+  if (kBitstringSubtypeCheckEnabled) {
+    // FIXME: This looks broken with respect to aborted transactions.
     ObjPtr<mirror::Class> h_this_ptr = h_this.Get();
     SubtypeCheck<ObjPtr<mirror::Class>>::WriteStatus(h_this_ptr, new_status);
+  } else {
+    // The ClassStatus is always in the 4 most-significant bits of status_.
+    static_assert(sizeof(status_) == sizeof(uint32_t), "Size of status_ not equal to uint32");
+    uint32_t new_status_value = static_cast<uint32_t>(new_status) << (32 - kClassStatusBitSize);
+    if (Runtime::Current()->IsActiveTransaction()) {
+      h_this->SetField32Volatile<true>(StatusOffset(), new_status_value);
+    } else {
+      h_this->SetField32Volatile<false>(StatusOffset(), new_status_value);
+    }
   }
 
   // Setting the object size alloc fast path needs to be after the status write so that if the

@@ -27,9 +27,9 @@
 #include "base/enums.h"
 #include "base/macros.h"
 #include "base/mutex.h"
+#include "dex/dex_cache_resolved_classes.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_types.h"
-#include "dex_cache_resolved_classes.h"
 #include "gc_root.h"
 #include "handle.h"
 #include "jni.h"
@@ -310,6 +310,13 @@ class ClassLinker {
   ArtMethod* LookupResolvedMethod(uint32_t method_idx,
                                   ObjPtr<mirror::DexCache> dex_cache,
                                   ObjPtr<mirror::ClassLoader> class_loader)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Find a method with the given index from class `klass`, and update the dex cache.
+  ArtMethod* FindResolvedMethod(ObjPtr<mirror::Class> klass,
+                                ObjPtr<mirror::DexCache> dex_cache,
+                                ObjPtr<mirror::ClassLoader> class_loader,
+                                uint32_t method_idx)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Resolve a method with a given ID from the DexFile associated with the given DexCache

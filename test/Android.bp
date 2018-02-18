@@ -62,7 +62,7 @@ art_cc_defaults {
         "libvixld-arm",
         "libvixld-arm64",
         "libart-gtest",
-        "libdexfile",
+        "libdexfiled",
 
         "libbase",
         "libicuuc",
@@ -114,7 +114,7 @@ art_cc_defaults {
     shared_libs: [
         "libartd",
         "libartd-compiler",
-        "libdexfile",
+        "libdexfiled",
     ],
     static_libs: [
         "libgtest",
@@ -151,7 +151,7 @@ art_cc_library {
     shared_libs: [
         "libartd",
         "libartd-compiler",
-        "libdexfile",
+        "libdexfiled",
         "libbase",
         "libbacktrace",
     ],
@@ -238,6 +238,7 @@ art_cc_defaults {
         "931-agent-thread/agent_thread.cc",
         "933-misc-events/misc_events.cc",
         "945-obsolete-native/obsolete_native.cc",
+        "983-source-transform-verify/source_transform.cc",
         "984-obsolete-invoke/obsolete_invoke.cc",
         "986-native-method-bind/native_bind.cc",
         "987-agent-bind/agent_bind.cc",
@@ -288,20 +289,22 @@ art_cc_defaults {
         "909-attach-agent/attach.cc",
         "912-classes/classes_art.cc",
         "936-search-onload/search_onload.cc",
-        "983-source-transform-verify/source_transform.cc",
+        "983-source-transform-verify/source_transform_art.cc",
         "1940-ddms-ext/ddm_ext.cc",
         "1944-sudden-exit/sudden_exit.cc",
     ],
     shared_libs: [
         "libbase",
-        "libdexfile",
     ],
 }
 
 art_cc_test_library {
     name: "libtiagent",
     defaults: ["libtiagent-defaults"],
-    shared_libs: ["libart"],
+    shared_libs: [
+        "libart",
+        "libdexfile",
+    ],
 }
 
 art_cc_test_library {
@@ -310,24 +313,32 @@ art_cc_test_library {
         "art_debug_defaults",
         "libtiagent-defaults",
     ],
-    shared_libs: ["libartd"],
+    shared_libs: [
+        "libartd",
+        "libdexfiled",
+    ],
 }
 
-art_cc_test_library {
+cc_library_static {
     name: "libctstiagent",
     defaults: ["libtiagent-base-defaults"],
+    host_supported: false,
+    srcs: [
+        "983-source-transform-verify/source_transform_slicer.cc",
+    ],
     whole_static_libs: [
-        "libdexfile",
-        "libz",
-        "libziparchive",
+        "slicer",
+        "libz",  // for slicer (using adler32).
     ],
     static_libs: [
         "libbase",
-        "libcutils",
-        "libutils",
     ],
-    shared_libs: [
-        "liblog",
+    header_libs: [
+        // This is needed to resolve the base/ header file in libdexfile. Unfortunately there are
+        // many problems with how we export headers that are making doing this the 'right' way
+        // difficult.
+        // TODO: move those headers to art/ rather than under runtime.
+        "libart_runtime_headers",
     ],
     export_include_dirs: ["ti-agent"],
 }
@@ -413,7 +424,6 @@ cc_defaults {
         "708-jit-cache-churn/jit.cc",
     ],
     shared_libs: [
-        "libdexfile",
         "libbacktrace",
         "libbase",
         "libnativehelper",
@@ -423,7 +433,10 @@ cc_defaults {
 art_cc_test_library {
     name: "libarttest",
     defaults: ["libarttest-defaults"],
-    shared_libs: ["libart"],
+    shared_libs: [
+        "libart",
+        "libdexfile",
+    ],
 }
 
 art_cc_test_library {
@@ -432,7 +445,10 @@ art_cc_test_library {
         "art_debug_defaults",
         "libarttest-defaults",
     ],
-    shared_libs: ["libartd"],
+    shared_libs: [
+        "libartd",
+        "libdexfiled",
+    ],
 }
 
 art_cc_test_library {

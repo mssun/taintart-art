@@ -14,30 +14,13 @@
  * limitations under the License.
  */
 
-#include <inttypes.h>
+#include "source_transform.h"
 
-#include <cstdio>
-#include <cstring>
-#include <iostream>
-#include <vector>
+#include "jni.h"
 
 #include "android-base/stringprintf.h"
-#include "jni.h"
 #include "jvmti.h"
-
-#include "base/macros.h"
-#include "bytecode_utils.h"
-#include "dex/code_item_accessors-inl.h"
-#include "dex/art_dex_file_loader.h"
-#include "dex/dex_file.h"
-#include "dex/dex_file_loader.h"
-#include "dex/dex_instruction.h"
-#include "jit/jit.h"
-#include "native_stack_dump.h"
-#include "runtime.h"
-#include "scoped_thread_state_change-inl.h"
-#include "thread-current-inl.h"
-#include "thread_list.h"
+#include "scoped_local_ref.h"
 
 // Test infrastructure
 #include "jvmti_helper.h"
@@ -48,9 +31,18 @@ namespace Test983SourceTransformVerify {
 
 constexpr bool kSkipInitialLoad = true;
 
+static void Println(JNIEnv* env, const char* msg) {
+  ScopedLocalRef<jclass> test_klass(env, env->FindClass("art/Test983"));
+  jmethodID println_method = env->GetStaticMethodID(test_klass.get(),
+                                                    "doPrintln",
+                                                    "(Ljava/lang/String;)V");
+  ScopedLocalRef<jstring> data(env, env->NewStringUTF(msg));
+  env->CallStaticVoidMethod(test_klass.get(), println_method, data.get());
+}
+
 // The hook we are using.
 void JNICALL CheckDexFileHook(jvmtiEnv* jvmti_env ATTRIBUTE_UNUSED,
-                              JNIEnv* jni_env ATTRIBUTE_UNUSED,
+                              JNIEnv* env,
                               jclass class_being_redefined,
                               jobject loader ATTRIBUTE_UNUSED,
                               const char* name,
@@ -60,78 +52,24 @@ void JNICALL CheckDexFileHook(jvmtiEnv* jvmti_env ATTRIBUTE_UNUSED,
                               jint* new_class_data_len ATTRIBUTE_UNUSED,
                               unsigned char** new_class_data ATTRIBUTE_UNUSED) {
   if (kSkipInitialLoad && class_being_redefined == nullptr) {
-    // Something got loaded concurrently. Just ignore it for now.
+    // Something got loaded concurrently. Just ignore it for now. To make sure the test is
+    // repeatable we only care about things that come from RetransformClasses.
     return;
   }
-  std::cout << "Dex file hook for " << name << std::endl;
+  Println(env, android::base::StringPrintf("Dex file hook for %s", name).c_str());
   if (IsJVM()) {
     return;
   }
 
-  // Due to b/72402467 the class_data_len might just be an estimate.
-  CHECK_GE(static_cast<size_t>(class_data_len), sizeof(DexFile::Header));
-  const DexFile::Header* header = reinterpret_cast<const DexFile::Header*>(class_data);
-  uint32_t header_file_size = header->file_size_;
-  CHECK_LE(static_cast<jint>(header_file_size), class_data_len);
-  class_data_len = static_cast<jint>(header_file_size);
-
-  const ArtDexFileLoader dex_file_loader;
-  std::string error;
-  std::unique_ptr<const DexFile> dex(dex_file_loader.Open(class_data,
-                                                          class_data_len,
-                                                          "fake_location.dex",
-                                                          /*location_checksum*/ 0,
-                                                          /*oat_dex_file*/ nullptr,
-                                                          /*verify*/ true,
-                                                          /*verify_checksum*/ true,
-                                                          &error));
-  if (dex.get() == nullptr) {
-    std::cout << "Failed to verify dex file for " << name << " because " << error << std::endl;
-    return;
-  }
-  for (uint32_t i = 0; i < dex->NumClassDefs(); i++) {
-    const DexFile::ClassDef& def = dex->GetClassDef(i);
-    const uint8_t* data_item = dex->GetClassData(def);
-    if (data_item == nullptr) {
-      continue;
-    }
-    for (ClassDataItemIterator it(*dex, data_item); it.HasNext(); it.Next()) {
-      if (!it.IsAtMethod() || it.GetMethodCodeItem() == nullptr) {
-        continue;
-      }
-      for (const DexInstructionPcPair& pair :
-          art::CodeItemInstructionAccessor(*dex, it.GetMethodCodeItem())) {
-        const Instruction& inst = pair.Inst();
-        int forbiden_flags = (Instruction::kVerifyError | Instruction::kVerifyRuntimeOnly);
-        if (inst.Opcode() == Instruction::RETURN_VOID_NO_BARRIER ||
-            (inst.GetVerifyExtraFlags() & forbiden_flags) != 0) {
-          std::cout << "Unexpected instruction found in " << dex->PrettyMethod(it.GetMemberIndex())
-                    << " [Dex PC: 0x" << std::hex << pair.DexPc() << std::dec << "] : "
-                    << inst.DumpString(dex.get()) << std::endl;
-          continue;
-        }
-      }
-    }
-  }
+  VerifyClassData(class_data_len, class_data);
 }
 
 // Get all capabilities except those related to retransformation.
-jint OnLoad(JavaVM* vm,
-            char* options ATTRIBUTE_UNUSED,
-            void* reserved ATTRIBUTE_UNUSED) {
-  if (vm->GetEnv(reinterpret_cast<void**>(&jvmti_env), JVMTI_VERSION_1_0)) {
-    printf("Unable to get jvmti env!\n");
-    return 1;
-  }
-  SetStandardCapabilities(jvmti_env);
+extern "C" JNIEXPORT void JNICALL Java_art_Test983_setupLoadHook(JNIEnv* env, jclass) {
   jvmtiEventCallbacks cb;
   memset(&cb, 0, sizeof(cb));
   cb.ClassFileLoadHook = CheckDexFileHook;
-  if (jvmti_env->SetEventCallbacks(&cb, sizeof(cb)) != JVMTI_ERROR_NONE) {
-    printf("Unable to set class file load hook cb!\n");
-    return 1;
-  }
-  return 0;
+  JvmtiErrorToException(env, jvmti_env, jvmti_env->SetEventCallbacks(&cb, sizeof(cb)));
 }
 
 }  // namespace Test983SourceTransformVerify

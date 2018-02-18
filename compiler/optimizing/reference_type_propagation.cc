@@ -537,14 +537,13 @@ void ReferenceTypePropagation::RTPVisitor::SetClassAsTypeInfo(HInstruction* inst
       Thread* self = Thread::Current();
       StackHandleScope<2> hs(self);
       const DexFile& dex_file = *invoke->GetTargetMethod().dex_file;
+      uint32_t dex_method_index = invoke->GetTargetMethod().index;
       Handle<mirror::DexCache> dex_cache(
           hs.NewHandle(FindDexCacheWithHint(self, dex_file, hint_dex_cache_)));
-      // Use a null loader. We should probably use the compiling method's class loader,
-      // but then we would need to pass it to RTPVisitor just for this debug check. Since
-      // the method is from the String class, the null loader is good enough.
+      // Use a null loader, the target method is in a boot classpath dex file.
       Handle<mirror::ClassLoader> loader(hs.NewHandle<mirror::ClassLoader>(nullptr));
       ArtMethod* method = cl->ResolveMethod<ClassLinker::ResolveMode::kNoChecks>(
-          invoke->GetDexMethodIndex(), dex_cache, loader, /* referrer */ nullptr, kDirect);
+          dex_method_index, dex_cache, loader, /* referrer */ nullptr, kDirect);
       DCHECK(method != nullptr);
       mirror::Class* declaring_class = method->GetDeclaringClass();
       DCHECK(declaring_class != nullptr);

@@ -1,0 +1,125 @@
+//
+// Copyright (C) 2011 The Android Open Source Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+cc_defaults {
+    name: "libdexfile_defaults",
+    defaults: ["art_defaults"],
+    host_supported: true,
+    srcs: [
+        "dex/compact_dex_debug_info.cc",
+        "dex/compact_dex_file.cc",
+        "dex/descriptors_names.cc",
+        "dex/dex_file.cc",
+        "dex/dex_file_exception_helpers.cc",
+        "dex/dex_file_loader.cc",
+        "dex/dex_file_tracking_registrar.cc",
+        "dex/dex_file_verifier.cc",
+        "dex/dex_instruction.cc",
+        "dex/modifiers.cc",
+        "dex/standard_dex_file.cc",
+        "dex/utf.cc",
+    ],
+
+    target: {
+        android: {
+            static_libs: [
+                "libziparchive",
+                "libz",
+                "libbase",
+            ],
+            shared_libs: [
+                "libutils",
+            ],
+        },
+        host: {
+            shared_libs: [
+                "libziparchive",
+                "libz",
+            ],
+        },
+    },
+    generated_sources: ["dexfile_operator_srcs"],
+    shared_libs: [
+        "liblog",
+        // For common macros.
+        "libbase",
+        "libz",
+    ],
+    header_libs: [
+        // This is needed to resolve the base/ header file inclusions here.
+        // TODO: move those headers to art/ rather than under runtime.
+        "libart_runtime_headers",
+    ],
+    export_include_dirs: ["."],
+    export_shared_lib_headers: [
+        "libbase",
+    ],
+}
+
+gensrcs {
+    name: "dexfile_operator_srcs",
+    cmd: "$(location generate-operator-out.py) art/libdexfile $(in) > $(out)",
+    tool_files: ["generate-operator-out.py"],
+    srcs: [
+        "dex/dex_file.h",
+        "dex/dex_instruction.h",
+        "dex/dex_instruction_utils.h",
+        "dex/invoke_type.h",
+    ],
+    output_extension: "operator_out.cc",
+}
+
+// TODO: add build support for libdexfiled, as we use DCHECK, etc.
+art_cc_library {
+    name: "libdexfile",
+    defaults: ["libdexfile_defaults"],
+    // Leave the symbols in the shared library so that stack unwinders can
+    // produce meaningful name resolution.
+    strip: {
+        keep_symbols: true,
+    },
+}
+
+art_cc_library {
+    name: "libdexfiled",
+    defaults: [
+        "art_debug_defaults",
+        "libdexfile_defaults",
+    ],
+}
+
+art_cc_test {
+    name: "art_libdexfile_tests",
+    defaults: [
+        "art_gtest_defaults",
+    ],
+    srcs: [
+        "dex/code_item_accessors_test.cc",
+        "dex/compact_dex_debug_info_test.cc",
+        "dex/compact_dex_file_test.cc",
+        "dex/dex_file_loader_test.cc",
+        "dex/dex_file_verifier_test.cc",
+        "dex/dex_instruction_test.cc",
+        "dex/utf_test.cc",
+    ],
+    shared_libs: [
+        "libbacktrace",
+        "libziparchive",
+    ],
+    include_dirs: [
+        "external/zlib",
+    ],
+}

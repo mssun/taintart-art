@@ -333,6 +333,7 @@ ART_TEST_MODULES := \
     art_dexoptanalyzer_tests \
     art_hiddenapi_tests \
     art_imgdiag_tests \
+    art_libdexfile_tests \
     art_oatdump_tests \
     art_patchoat_tests \
     art_profman_tests \
@@ -382,12 +383,14 @@ ART_VALGRIND_SUPPORTED_ARCH := arm arm64 x86_64
 
 # Valgrind is not supported for x86
 ifneq (,$(filter $(ART_VALGRIND_SUPPORTED_ARCH),$(TARGET_ARCH)))
+art_vg_arch := $(if $(filter x86_64,$(TARGET_ARCH)),amd64,$(TARGET_ARCH))
 ART_VALGRIND_TARGET_DEPENDENCIES += \
   $(TARGET_OUT_EXECUTABLES)/valgrind \
-  $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/memcheck-$(TARGET_ARCH)-linux \
-  $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/vgpreload_core-$(TARGET_ARCH)-linux.so \
-  $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/vgpreload_memcheck-$(TARGET_ARCH)-linux.so \
+  $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/memcheck-$(art_vg_arch)-linux \
+  $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/vgpreload_core-$(art_vg_arch)-linux.so \
+  $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/vgpreload_memcheck-$(art_vg_arch)-linux.so \
   $(TARGET_OUT_SHARED_LIBRARIES)/valgrind/default.supp
+art_vg_arch :=
 endif
 
 ifdef TARGET_2ND_ARCH

@@ -176,6 +176,12 @@ static jclass Class_classForName(JNIEnv* env, jclass, jstring javaName, jboolean
   return soa.AddLocalReference<jclass>(c.Get());
 }
 
+static jclass Class_getPrimitiveClass(JNIEnv* env, jclass, jstring name) {
+  ScopedFastNativeObjectAccess soa(env);
+  ObjPtr<mirror::Class> klass = mirror::Class::GetPrimitiveClass(soa.Decode<mirror::String>(name));
+  return soa.AddLocalReference<jclass>(klass);
+}
+
 static jstring Class_getNameNative(JNIEnv* env, jobject javaThis) {
   ScopedFastNativeObjectAccess soa(env);
   StackHandleScope<1> hs(soa.Self());
@@ -869,6 +875,7 @@ static JNINativeMethod gMethods[] = {
   FAST_NATIVE_METHOD(Class, getInnerClassFlags, "(I)I"),
   FAST_NATIVE_METHOD(Class, getInnerClassName, "()Ljava/lang/String;"),
   FAST_NATIVE_METHOD(Class, getInterfacesInternal, "()[Ljava/lang/Class;"),
+  FAST_NATIVE_METHOD(Class, getPrimitiveClass, "(Ljava/lang/String;)Ljava/lang/Class;"),
   FAST_NATIVE_METHOD(Class, getNameNative, "()Ljava/lang/String;"),
   FAST_NATIVE_METHOD(Class, getPublicDeclaredFields, "()[Ljava/lang/reflect/Field;"),
   FAST_NATIVE_METHOD(Class, getSignatureAnnotation, "()[Ljava/lang/String;"),

@@ -40,9 +40,8 @@ cc_defaults {
     },
     header_libs: [
         "libopenjdkjvmti_headers",
-        "libart_runtime_headers", // for dex_instruction_list.h only
-        // "libbase_headers",
     ],
+    include_dirs: ["art/libdexfile"], // for dex_instruction_list.h only
     multilib: {
         lib32: {
             suffix: "32",
