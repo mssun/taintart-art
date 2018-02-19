@@ -190,15 +190,17 @@ class OatTest : public CommonCompilerTest {
     OutputStream* oat_rodata = elf_writer->StartRoData();
     std::vector<std::unique_ptr<MemMap>> opened_dex_files_maps;
     std::vector<std::unique_ptr<const DexFile>> opened_dex_files;
-    if (!oat_writer.WriteAndOpenDexFiles(vdex_file,
-                                         oat_rodata,
-                                         compiler_driver_->GetInstructionSet(),
-                                         compiler_driver_->GetInstructionSetFeatures(),
-                                         &key_value_store,
-                                         verify,
-                                         /* update_input_vdex */ false,
-                                         &opened_dex_files_maps,
-                                         &opened_dex_files)) {
+    if (!oat_writer.WriteAndOpenDexFiles(
+        vdex_file,
+        oat_rodata,
+        compiler_driver_->GetInstructionSet(),
+        compiler_driver_->GetInstructionSetFeatures(),
+        &key_value_store,
+        verify,
+        /* update_input_vdex */ false,
+        compiler_driver_->GetCompilerOptions().GetCompilerFilter(),
+        &opened_dex_files_maps,
+        &opened_dex_files)) {
       return false;
     }
 

@@ -193,6 +193,19 @@ MemMap* ZipEntry::MapDirectlyFromFile(const char* zip_filename, std::string* err
   return map.release();
 }
 
+MemMap* ZipEntry::MapDirectlyOrExtract(const char* zip_filename,
+                                       const char* entry_filename,
+                                       std::string* error_msg) {
+  if (IsUncompressed() && GetFileDescriptor(handle_) >= 0) {
+    MemMap* ret = MapDirectlyFromFile(zip_filename, error_msg);
+    if (ret != nullptr) {
+      return ret;
+    }
+  }
+  // Fall back to extraction for the failure case.
+  return ExtractToMemMap(zip_filename, entry_filename, error_msg);
+}
+
 static void SetCloseOnExec(int fd) {
   // This dance is more portable than Linux's O_CLOEXEC open(2) flag.
   int flags = fcntl(fd, F_GETFD);
