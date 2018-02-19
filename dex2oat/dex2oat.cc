@@ -456,6 +456,9 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("  --deduplicate-code=true|false: enable|disable code deduplication. Deduplicated");
   UsageError("      code will have an arbitrary symbol tagged with [DEDUPED].");
   UsageError("");
+  UsageError("  --copying-dex-files=true|false: enable|disable copying the dex files into the");
+  UsageError("      output vdex.");
+  UsageError("");
   UsageError("  --compilation-reason=<string>: optional metadata specifying the reason for");
   UsageError("      compiling the apk. If specified, the string will be embedded verbatim in");
   UsageError("      the key value store of the oat file.");
@@ -1232,6 +1235,7 @@ class Dex2Oat FINAL {
     AssignTrueIfExists(args, M::Host, &is_host_);
     AssignTrueIfExists(args, M::AvoidStoringInvocation, &avoid_storing_invocation_);
     AssignTrueIfExists(args, M::MultiImage, &multi_image_);
+    AssignIfExists(args, M::CopyDexFiles, &copy_dex_files_);
 
     if (args.Exists(M::ForceDeterminism)) {
       if (!SupportsDeterministicCompilation()) {
@@ -1425,13 +1429,10 @@ class Dex2Oat FINAL {
         LOG(INFO) << "No " << VdexFile::kVdexNameInDmFile << " file in DexMetadata archive. "
                   << "Not doing fast verification.";
       } else {
-        std::unique_ptr<MemMap> input_file;
-        if (zip_entry->IsUncompressed()) {
-          input_file.reset(zip_entry->MapDirectlyFromFile(VdexFile::kVdexNameInDmFile, &error_msg));
-        } else {
-          input_file.reset(zip_entry->ExtractToMemMap(
-              kDexMetadata, VdexFile::kVdexNameInDmFile, &error_msg));
-        }
+        std::unique_ptr<MemMap> input_file(zip_entry->MapDirectlyOrExtract(
+            VdexFile::kVdexNameInDmFile,
+            kDexMetadata,
+            &error_msg));
         if (input_file == nullptr) {
           LOG(WARNING) << "Could not open vdex file in DexMetadata archive: " << error_msg;
         } else {
@@ -1618,6 +1619,7 @@ class Dex2Oat FINAL {
             key_value_store_.get(),
             verify,
             update_input_vdex_,
+            copy_dex_files_,
             &opened_dex_files_map,
             &opened_dex_files)) {
           return dex2oat::ReturnCode::kOther;
@@ -2917,6 +2919,9 @@ class Dex2Oat FINAL {
 
   // Whether the given input vdex is also the output.
   bool update_input_vdex_ = false;
+
+  // By default, copy the dex to the vdex file.
+  bool copy_dex_files_ = true;
 
   // The reason for invoking the compiler.
   std::string compilation_reason_;

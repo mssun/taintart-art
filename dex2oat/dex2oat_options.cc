@@ -233,6 +233,11 @@ static Parser CreateArgumentParser() {
           .IntoKey(M::VeryLargeAppThreshold)
       .Define("--force-determinism")
           .IntoKey(M::ForceDeterminism)
+      .Define("--copy-dex-files=_")
+          .WithType<bool>()
+          .WithValueMap({{"true", false},
+                         {"false", false}})
+          .IntoKey(M::CopyDexFiles)
       .Define("--classpath-dir=_")
           .WithType<std::string>()
           .IntoKey(M::ClasspathDir)
