@@ -368,7 +368,7 @@ OatWriter::OatWriter(bool compiling_boot_image,
     compiler_driver_(nullptr),
     image_writer_(nullptr),
     compiling_boot_image_(compiling_boot_image),
-    only_contains_uncompressed_zip_entries_(false),
+    extract_dex_files_into_vdex_(true),
     dex_files_(nullptr),
     vdex_size_(0u),
     vdex_dex_files_offset_(0u),
@@ -643,6 +643,7 @@ bool OatWriter::WriteAndOpenDexFiles(
     SafeMap<std::string, std::string>* key_value_store,
     bool verify,
     bool update_input_vdex,
+    bool copy_dex_files,
     /*out*/ std::vector<std::unique_ptr<MemMap>>* opened_dex_files_map,
     /*out*/ std::vector<std::unique_ptr<const DexFile>>* opened_dex_files) {
   CHECK(write_state_ == WriteState::kAddingDexFileSources);
@@ -669,7 +670,7 @@ bool OatWriter::WriteAndOpenDexFiles(
   std::unique_ptr<BufferedOutputStream> vdex_out =
       std::make_unique<BufferedOutputStream>(std::make_unique<FileOutputStream>(vdex_file));
   // Write DEX files into VDEX, mmap and open them.
-  if (!WriteDexFiles(vdex_out.get(), vdex_file, update_input_vdex) ||
+  if (!WriteDexFiles(vdex_out.get(), vdex_file, update_input_vdex, copy_dex_files) ||
       !OpenDexFiles(vdex_file, verify, &dex_files_map, &dex_files)) {
     return false;
   }
@@ -2749,7 +2750,7 @@ class OatWriter::WriteQuickeningInfoOffsetsMethodVisitor {
 };
 
 bool OatWriter::WriteQuickeningInfo(OutputStream* vdex_out) {
-  if (only_contains_uncompressed_zip_entries_) {
+  if (!extract_dex_files_into_vdex_) {
     // Nothing to write. Leave `vdex_size_` untouched and unaligned.
     vdex_quickening_info_offset_ = vdex_size_;
     size_quickening_info_alignment_ = 0;
@@ -3339,25 +3340,32 @@ bool OatWriter::RecordOatDataOffset(OutputStream* out) {
   return true;
 }
 
-bool OatWriter::WriteDexFiles(OutputStream* out, File* file, bool update_input_vdex) {
+bool OatWriter::WriteDexFiles(OutputStream* out,
+                              File* file,
+                              bool update_input_vdex,
+                              bool copy_dex_files) {
   TimingLogger::ScopedTiming split("Write Dex files", timings_);
 
   vdex_dex_files_offset_ = vdex_size_;
 
-  only_contains_uncompressed_zip_entries_ = true;
-  for (OatDexFile& oat_dex_file : oat_dex_files_) {
-    if (!oat_dex_file.source_.IsZipEntry()) {
-      only_contains_uncompressed_zip_entries_ = false;
-      break;
-    }
-    ZipEntry* entry = oat_dex_file.source_.GetZipEntry();
-    if (!entry->IsUncompressed() || !entry->IsAlignedToDexHeader()) {
-      only_contains_uncompressed_zip_entries_ = false;
-      break;
+  extract_dex_files_into_vdex_ = copy_dex_files;
+  // If extraction is enabled, only do it if not all the dex files are aligned and uncompressed.
+  if (extract_dex_files_into_vdex_) {
+    extract_dex_files_into_vdex_ = false;
+    for (OatDexFile& oat_dex_file : oat_dex_files_) {
+      if (!oat_dex_file.source_.IsZipEntry()) {
+        extract_dex_files_into_vdex_ = true;
+        break;
+      }
+      ZipEntry* entry = oat_dex_file.source_.GetZipEntry();
+      if (!entry->IsUncompressed() || !entry->IsAlignedToDexHeader()) {
+        extract_dex_files_into_vdex_ = true;
+        break;
+      }
     }
   }
 
-  if (!only_contains_uncompressed_zip_entries_) {
+  if (extract_dex_files_into_vdex_) {
     // Write dex files.
     for (OatDexFile& oat_dex_file : oat_dex_files_) {
       if (!WriteDexFile(out, file, &oat_dex_file, update_input_vdex)) {
@@ -3823,13 +3831,13 @@ bool OatWriter::OpenDexFiles(
     return true;
   }
 
-  if (only_contains_uncompressed_zip_entries_) {
+  if (!extract_dex_files_into_vdex_) {
     std::vector<std::unique_ptr<const DexFile>> dex_files;
     std::vector<std::unique_ptr<MemMap>> maps;
     for (OatDexFile& oat_dex_file : oat_dex_files_) {
       std::string error_msg;
-      MemMap* map = oat_dex_file.source_.GetZipEntry()->MapDirectlyFromFile(
-          oat_dex_file.dex_file_location_data_, &error_msg);
+      MemMap* map = oat_dex_file.source_.GetZipEntry()->MapDirectlyOrExtract(
+          oat_dex_file.dex_file_location_data_, "zipped dex", &error_msg);
       if (map == nullptr) {
         LOG(ERROR) << error_msg;
         return false;
