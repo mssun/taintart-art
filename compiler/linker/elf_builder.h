@@ -717,8 +717,10 @@ class ElfBuilder FINAL {
     Elf_Word oatdata = dynstr_.Add("oatdata");
     dynsym_.Add(oatdata, &rodata_, rodata_.GetAddress(), rodata_size, STB_GLOBAL, STT_OBJECT);
     if (text_size != 0u) {
+      // The runtime does not care about the size of this symbol (it uses the "lastword" symbol).
+      // We use size 0 (meaning "unknown size" in ELF) to prevent overlap with the debug symbols.
       Elf_Word oatexec = dynstr_.Add("oatexec");
-      dynsym_.Add(oatexec, &text_, text_.GetAddress(), text_size, STB_GLOBAL, STT_OBJECT);
+      dynsym_.Add(oatexec, &text_, text_.GetAddress(), /* size */ 0, STB_GLOBAL, STT_OBJECT);
       Elf_Word oatlastword = dynstr_.Add("oatlastword");
       Elf_Word oatlastword_address = text_.GetAddress() + text_size - 4;
       dynsym_.Add(oatlastword, &text_, oatlastword_address, 4, STB_GLOBAL, STT_OBJECT);
@@ -756,7 +758,7 @@ class ElfBuilder FINAL {
     }
     if (dex_size != 0u) {
       Elf_Word oatdex = dynstr_.Add("oatdex");
-      dynsym_.Add(oatdex, &dex_, dex_.GetAddress(), dex_size, STB_GLOBAL, STT_OBJECT);
+      dynsym_.Add(oatdex, &dex_, dex_.GetAddress(), /* size */ 0, STB_GLOBAL, STT_OBJECT);
       Elf_Word oatdexlastword = dynstr_.Add("oatdexlastword");
       Elf_Word oatdexlastword_address = dex_.GetAddress() + dex_size - 4;
       dynsym_.Add(oatdexlastword, &dex_, oatdexlastword_address, 4, STB_GLOBAL, STT_OBJECT);
