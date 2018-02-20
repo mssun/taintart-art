@@ -3436,7 +3436,7 @@ bool Thread::HoldsLock(ObjPtr<mirror::Object> object) const {
   return object != nullptr && object->GetLockOwnerThreadId() == GetThreadId();
 }
 
-extern "C" StackReference<mirror::Object>* artQuickGetProxyThisObjectReference(ArtMethod** sp)
+extern std::vector<StackReference<mirror::Object>*> GetProxyReferenceArguments(ArtMethod** sp)
     REQUIRES_SHARED(Locks::mutator_lock_);
 
 // RootVisitor parameters are: (const Object* obj, size_t vreg, const StackVisitor* visitor).
@@ -3482,7 +3482,7 @@ class ReferenceMapVisitor : public StackVisitor {
       }
     }
     // Mark lock count map required for structured locking checks.
-    shadow_frame->GetLockCountData().VisitMonitors(visitor_, -1, this);
+    shadow_frame->GetLockCountData().VisitMonitors(visitor_, /* vreg */ -1, this);
   }
 
  private:
@@ -3520,7 +3520,7 @@ class ReferenceMapVisitor : public StackVisitor {
         }
       }
       mirror::Object* new_ref = klass.Ptr();
-      visitor_(&new_ref, -1, this);
+      visitor_(&new_ref, /* vreg */ -1, this);
       if (new_ref != klass) {
         method->CASDeclaringClass(klass.Ptr(), new_ref->AsClass());
       }
@@ -3583,17 +3583,20 @@ class ReferenceMapVisitor : public StackVisitor {
           }
         }
       }
-    } else if (!m->IsStatic() && !m->IsRuntimeMethod() && m->IsProxyMethod()) {
-      // If this is a non-static proxy method, visit its target (`this` object).
+    } else if (!m->IsRuntimeMethod() && m->IsProxyMethod()) {
+      // If this is a proxy method, visit its reference arguments.
+      DCHECK(!m->IsStatic());
       DCHECK(!m->IsNative());
-      StackReference<mirror::Object>* ref_addr =
-          artQuickGetProxyThisObjectReference(cur_quick_frame);
-      mirror::Object* ref = ref_addr->AsMirrorPtr();
-      if (ref != nullptr) {
-        mirror::Object* new_ref = ref;
-        visitor_(&new_ref, -1, this);
-        if (ref != new_ref) {
-          ref_addr->Assign(new_ref);
+      std::vector<StackReference<mirror::Object>*> ref_addrs =
+          GetProxyReferenceArguments(cur_quick_frame);
+      for (StackReference<mirror::Object>* ref_addr : ref_addrs) {
+        mirror::Object* ref = ref_addr->AsMirrorPtr();
+        if (ref != nullptr) {
+          mirror::Object* new_ref = ref;
+          visitor_(&new_ref, /* vreg */ -1, this);
+          if (ref != new_ref) {
+            ref_addr->Assign(new_ref);
+          }
         }
       }
     }
