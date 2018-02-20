@@ -254,6 +254,9 @@ while true; do
     elif [ "x$1" = "x--gcstress" ]; then
         basic_verify="true"
         gc_stress="true"
+        # Save profiles when stressing the GC.
+        # This will verify the interactions between profile saving and GC.
+        run_args="${run_args} --save-profile"
         shift
     elif [ "x$1" = "x--jvmti-step-stress" ]; then
         jvmti_step_stress="true"
