@@ -618,14 +618,18 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
 
  protected:
   // Patch info used for recording locations of required linker patches and their targets,
-  // i.e. target method, string, type or code identified by their dex file and index.
+  // i.e. target method, string, type or code identified by their dex file and index,
+  // or .data.bimg.rel.ro entries identified by the boot image offset.
   template <typename LabelType>
   struct PatchInfo {
-    PatchInfo(const DexFile& target_dex_file, uint32_t target_index)
-        : dex_file(target_dex_file), index(target_index) { }
+    PatchInfo(const DexFile* dex_file, uint32_t off_or_idx)
+        : target_dex_file(dex_file), offset_or_index(off_or_idx), label() { }
 
-    const DexFile& dex_file;
-    uint32_t index;
+    // Target dex file or null for .data.bmig.rel.ro patches.
+    const DexFile* target_dex_file;
+    // Either the boot image offset (to write to .data.bmig.rel.ro) or string/type/method index.
+    uint32_t offset_or_index;
+    // Label for the instruction to patch.
     LabelType label;
   };
 

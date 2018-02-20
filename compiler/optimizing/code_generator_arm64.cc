@@ -1395,11 +1395,11 @@ CodeGeneratorARM64::CodeGeneratorARM64(HGraph* graph,
                        graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       uint64_literals_(std::less<uint64_t>(),
                        graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
-      pc_relative_method_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      boot_image_method_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       method_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
-      pc_relative_type_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      boot_image_type_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       type_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
-      pc_relative_string_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      boot_image_string_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       string_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       baker_read_barrier_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       jit_string_patches_(StringReferenceValueComparator(),
@@ -4447,11 +4447,11 @@ void CodeGeneratorARM64::GenerateStaticOrDirectCall(
     case HInvokeStaticOrDirect::MethodLoadKind::kBootImageLinkTimePcRelative: {
       DCHECK(GetCompilerOptions().IsBootImage());
       // Add ADRP with its PC-relative method patch.
-      vixl::aarch64::Label* adrp_label = NewPcRelativeMethodPatch(invoke->GetTargetMethod());
+      vixl::aarch64::Label* adrp_label = NewBootImageMethodPatch(invoke->GetTargetMethod());
       EmitAdrpPlaceholder(adrp_label, XRegisterFrom(temp));
       // Add ADD with its PC-relative method patch.
       vixl::aarch64::Label* add_label =
-          NewPcRelativeMethodPatch(invoke->GetTargetMethod(), adrp_label);
+          NewBootImageMethodPatch(invoke->GetTargetMethod(), adrp_label);
       EmitAddPlaceholder(add_label, XRegisterFrom(temp), XRegisterFrom(temp));
       break;
     }
@@ -4559,51 +4559,47 @@ void InstructionCodeGeneratorARM64::VisitInvokePolymorphic(HInvokePolymorphic* i
   codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
 }
 
-vixl::aarch64::Label* CodeGeneratorARM64::NewPcRelativeMethodPatch(
+vixl::aarch64::Label* CodeGeneratorARM64::NewBootImageMethodPatch(
     MethodReference target_method,
     vixl::aarch64::Label* adrp_label) {
-  return NewPcRelativePatch(*target_method.dex_file,
-                            target_method.index,
-                            adrp_label,
-                            &pc_relative_method_patches_);
+  return NewPcRelativePatch(
+      target_method.dex_file, target_method.index, adrp_label, &boot_image_method_patches_);
 }
 
 vixl::aarch64::Label* CodeGeneratorARM64::NewMethodBssEntryPatch(
     MethodReference target_method,
     vixl::aarch64::Label* adrp_label) {
-  return NewPcRelativePatch(*target_method.dex_file,
-                            target_method.index,
-                            adrp_label,
-                            &method_bss_entry_patches_);
+  return NewPcRelativePatch(
+      target_method.dex_file, target_method.index, adrp_label, &method_bss_entry_patches_);
 }
 
-vixl::aarch64::Label* CodeGeneratorARM64::NewPcRelativeTypePatch(
+vixl::aarch64::Label* CodeGeneratorARM64::NewBootImageTypePatch(
     const DexFile& dex_file,
     dex::TypeIndex type_index,
     vixl::aarch64::Label* adrp_label) {
-  return NewPcRelativePatch(dex_file, type_index.index_, adrp_label, &pc_relative_type_patches_);
+  return NewPcRelativePatch(&dex_file, type_index.index_, adrp_label, &boot_image_type_patches_);
 }
 
 vixl::aarch64::Label* CodeGeneratorARM64::NewBssEntryTypePatch(
     const DexFile& dex_file,
     dex::TypeIndex type_index,
     vixl::aarch64::Label* adrp_label) {
-  return NewPcRelativePatch(dex_file, type_index.index_, adrp_label, &type_bss_entry_patches_);
+  return NewPcRelativePatch(&dex_file, type_index.index_, adrp_label, &type_bss_entry_patches_);
 }
 
-vixl::aarch64::Label* CodeGeneratorARM64::NewPcRelativeStringPatch(
+vixl::aarch64::Label* CodeGeneratorARM64::NewBootImageStringPatch(
     const DexFile& dex_file,
     dex::StringIndex string_index,
     vixl::aarch64::Label* adrp_label) {
-  return
-      NewPcRelativePatch(dex_file, string_index.index_, adrp_label, &pc_relative_string_patches_);
+  return NewPcRelativePatch(
+      &dex_file, string_index.index_, adrp_label, &boot_image_string_patches_);
 }
 
 vixl::aarch64::Label* CodeGeneratorARM64::NewStringBssEntryPatch(
     const DexFile& dex_file,
     dex::StringIndex string_index,
     vixl::aarch64::Label* adrp_label) {
-  return NewPcRelativePatch(dex_file, string_index.index_, adrp_label, &string_bss_entry_patches_);
+  return NewPcRelativePatch(&dex_file, string_index.index_, adrp_label, &string_bss_entry_patches_);
 }
 
 vixl::aarch64::Label* CodeGeneratorARM64::NewBakerReadBarrierPatch(uint32_t custom_data) {
@@ -4612,7 +4608,7 @@ vixl::aarch64::Label* CodeGeneratorARM64::NewBakerReadBarrierPatch(uint32_t cust
 }
 
 vixl::aarch64::Label* CodeGeneratorARM64::NewPcRelativePatch(
-    const DexFile& dex_file,
+    const DexFile* dex_file,
     uint32_t offset_or_index,
     vixl::aarch64::Label* adrp_label,
     ArenaDeque<PcRelativePatchInfo>* patches) {
@@ -4679,7 +4675,7 @@ inline void CodeGeneratorARM64::EmitPcRelativeLinkerPatches(
     ArenaVector<linker::LinkerPatch>* linker_patches) {
   for (const PcRelativePatchInfo& info : infos) {
     linker_patches->push_back(Factory(info.label.GetLocation(),
-                                      &info.target_dex_file,
+                                      info.target_dex_file,
                                       info.pc_insn_label->GetLocation(),
                                       info.offset_or_index));
   }
@@ -4688,27 +4684,27 @@ inline void CodeGeneratorARM64::EmitPcRelativeLinkerPatches(
 void CodeGeneratorARM64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) {
   DCHECK(linker_patches->empty());
   size_t size =
-      pc_relative_method_patches_.size() +
+      boot_image_method_patches_.size() +
       method_bss_entry_patches_.size() +
-      pc_relative_type_patches_.size() +
+      boot_image_type_patches_.size() +
       type_bss_entry_patches_.size() +
-      pc_relative_string_patches_.size() +
+      boot_image_string_patches_.size() +
       string_bss_entry_patches_.size() +
       baker_read_barrier_patches_.size();
   linker_patches->reserve(size);
   if (GetCompilerOptions().IsBootImage()) {
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::RelativeMethodPatch>(
-        pc_relative_method_patches_, linker_patches);
+        boot_image_method_patches_, linker_patches);
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::RelativeTypePatch>(
-        pc_relative_type_patches_, linker_patches);
+        boot_image_type_patches_, linker_patches);
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::RelativeStringPatch>(
-        pc_relative_string_patches_, linker_patches);
+        boot_image_string_patches_, linker_patches);
   } else {
-    DCHECK(pc_relative_method_patches_.empty());
+    DCHECK(boot_image_method_patches_.empty());
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::TypeClassTablePatch>(
-        pc_relative_type_patches_, linker_patches);
+        boot_image_type_patches_, linker_patches);
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::StringInternTablePatch>(
-        pc_relative_string_patches_, linker_patches);
+        boot_image_string_patches_, linker_patches);
   }
   EmitPcRelativeLinkerPatches<linker::LinkerPatch::MethodBssEntryPatch>(
       method_bss_entry_patches_, linker_patches);
@@ -4876,11 +4872,11 @@ void InstructionCodeGeneratorARM64::VisitLoadClass(HLoadClass* cls) NO_THREAD_SA
       // Add ADRP with its PC-relative type patch.
       const DexFile& dex_file = cls->GetDexFile();
       dex::TypeIndex type_index = cls->GetTypeIndex();
-      vixl::aarch64::Label* adrp_label = codegen_->NewPcRelativeTypePatch(dex_file, type_index);
+      vixl::aarch64::Label* adrp_label = codegen_->NewBootImageTypePatch(dex_file, type_index);
       codegen_->EmitAdrpPlaceholder(adrp_label, out.X());
       // Add ADD with its PC-relative type patch.
       vixl::aarch64::Label* add_label =
-          codegen_->NewPcRelativeTypePatch(dex_file, type_index, adrp_label);
+          codegen_->NewBootImageTypePatch(dex_file, type_index, adrp_label);
       codegen_->EmitAddPlaceholder(add_label, out.X(), out.X());
       break;
     }
@@ -4897,11 +4893,11 @@ void InstructionCodeGeneratorARM64::VisitLoadClass(HLoadClass* cls) NO_THREAD_SA
       // Add ADRP with its PC-relative type patch.
       const DexFile& dex_file = cls->GetDexFile();
       dex::TypeIndex type_index = cls->GetTypeIndex();
-      vixl::aarch64::Label* adrp_label = codegen_->NewPcRelativeTypePatch(dex_file, type_index);
+      vixl::aarch64::Label* adrp_label = codegen_->NewBootImageTypePatch(dex_file, type_index);
       codegen_->EmitAdrpPlaceholder(adrp_label, out.X());
       // Add LDR with its PC-relative type patch.
       vixl::aarch64::Label* ldr_label =
-          codegen_->NewPcRelativeTypePatch(dex_file, type_index, adrp_label);
+          codegen_->NewBootImageTypePatch(dex_file, type_index, adrp_label);
       codegen_->EmitLdrOffsetPlaceholder(ldr_label, out.W(), out.X());
       // Extract the reference from the slot data, i.e. clear the hash bits.
       int32_t masked_hash = ClassTable::TableSlot::MaskHash(
@@ -5044,11 +5040,11 @@ void InstructionCodeGeneratorARM64::VisitLoadString(HLoadString* load) NO_THREAD
       // Add ADRP with its PC-relative String patch.
       const DexFile& dex_file = load->GetDexFile();
       const dex::StringIndex string_index = load->GetStringIndex();
-      vixl::aarch64::Label* adrp_label = codegen_->NewPcRelativeStringPatch(dex_file, string_index);
+      vixl::aarch64::Label* adrp_label = codegen_->NewBootImageStringPatch(dex_file, string_index);
       codegen_->EmitAdrpPlaceholder(adrp_label, out.X());
       // Add ADD with its PC-relative String patch.
       vixl::aarch64::Label* add_label =
-          codegen_->NewPcRelativeStringPatch(dex_file, string_index, adrp_label);
+          codegen_->NewBootImageStringPatch(dex_file, string_index, adrp_label);
       codegen_->EmitAddPlaceholder(add_label, out.X(), out.X());
       return;
     }
@@ -5064,11 +5060,11 @@ void InstructionCodeGeneratorARM64::VisitLoadString(HLoadString* load) NO_THREAD
       // Add ADRP with its PC-relative String patch.
       const DexFile& dex_file = load->GetDexFile();
       const dex::StringIndex string_index = load->GetStringIndex();
-      vixl::aarch64::Label* adrp_label = codegen_->NewPcRelativeStringPatch(dex_file, string_index);
+      vixl::aarch64::Label* adrp_label = codegen_->NewBootImageStringPatch(dex_file, string_index);
       codegen_->EmitAdrpPlaceholder(adrp_label, out.X());
       // Add LDR with its PC-relative String patch.
       vixl::aarch64::Label* ldr_label =
-          codegen_->NewPcRelativeStringPatch(dex_file, string_index, adrp_label);
+          codegen_->NewBootImageStringPatch(dex_file, string_index, adrp_label);
       codegen_->EmitLdrOffsetPlaceholder(ldr_label, out.W(), out.X());
       return;
     }
