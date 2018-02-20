@@ -137,32 +137,32 @@ class PatchoatTest : public DexoptTest {
   }
 
   bool RelocateBootImage(const std::string& input_image_location,
-                         const std::string& output_image_filename,
+                         const std::string& output_image_directory,
                          off_t base_offset_delta,
                          std::string* error_msg) {
     std::vector<std::string> argv = BasePatchoatCommand(input_image_location, base_offset_delta);
-    argv.push_back("--output-image-file=" + output_image_filename);
+    argv.push_back("--output-image-directory=" + output_image_directory);
 
     return RunDex2OatOrPatchoat(argv, error_msg);
   }
 
   bool VerifyBootImage(const std::string& input_image_location,
-                       const std::string& output_image_filename,
+                       const std::string& output_image_directory,
                        off_t base_offset_delta,
                        std::string* error_msg) {
     std::vector<std::string> argv = BasePatchoatCommand(input_image_location, base_offset_delta);
-    argv.push_back("--output-image-file=" + output_image_filename);
+    argv.push_back("--output-image-directory=" + output_image_directory);
     argv.push_back("--verify");
 
     return RunDex2OatOrPatchoat(argv, error_msg);
   }
 
   bool GenerateBootImageRelFile(const std::string& input_image_location,
-                                const std::string& output_rel_filename,
+                                const std::string& output_rel_directory,
                                 off_t base_offset_delta,
                                 std::string* error_msg) {
     std::vector<std::string> argv = BasePatchoatCommand(input_image_location, base_offset_delta);
-    argv.push_back("--output-image-relocation-file=" + output_rel_filename);
+    argv.push_back("--output-image-relocation-directory=" + output_rel_directory);
 
     return RunDex2OatOrPatchoat(argv, error_msg);
   }
@@ -375,7 +375,7 @@ TEST_F(PatchoatTest, PatchoatRelocationSameAsDex2oatRelocation) {
   ASSERT_EQ(0, symlink(dex2oat_orig_dir.c_str(), dex2oat_orig_with_arch_dir.c_str()));
   if (!RelocateBootImage(
       dex2oat_orig_dir + "/boot.art",
-      patchoat_dir + "/boot.art",
+      patchoat_dir,
       base_addr_delta,
       &error_msg)) {
     FAIL() << "RelocateBootImage failed: " << error_msg;
@@ -467,7 +467,7 @@ TEST_F(PatchoatTest, RelFileVerification) {
   off_t base_addr_delta = 0x100000;
   if (!GenerateBootImageRelFile(
       dex2oat_orig_dir + "/boot.art",
-      dex2oat_orig_dir + "/boot.art.rel",
+      dex2oat_orig_dir,
       base_addr_delta,
       &error_msg)) {
     FAIL() << "RelocateBootImage failed: " << error_msg;
@@ -483,7 +483,7 @@ TEST_F(PatchoatTest, RelFileVerification) {
   base_addr_delta -= 0x10000;
   if (!RelocateBootImage(
       dex2oat_orig_dir + "/boot.art",
-      relocated_dir + "/boot.art",
+      relocated_dir,
       base_addr_delta,
       &error_msg)) {
     FAIL() << "RelocateBootImage failed: " << error_msg;
@@ -524,7 +524,7 @@ TEST_F(PatchoatTest, RelFileVerification) {
   // Assert that verification works with the .rel files.
   if (!VerifyBootImage(
       dex2oat_orig_dir + "/boot.art",
-      relocated_dir + "/boot.art",
+      relocated_dir,
       base_addr_delta,
       &error_msg)) {
     FAIL() << "VerifyBootImage failed: " << error_msg;
