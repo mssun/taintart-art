@@ -1093,10 +1093,10 @@ NO_RETURN static void Usage(const char *fmt, ...) {
   UsageError("  --input-image-location=<file.art>: Specifies the 'location' of the image file to");
   UsageError("      be patched.");
   UsageError("");
-  UsageError("  --output-image-file=<file.art>: Specifies the exact file to write the patched");
-  UsageError("      image file to.");
+  UsageError("  --output-image-directory=<dir>: Specifies the directory to write the patched");
+  UsageError("      image file(s) to.");
   UsageError("");
-  UsageError("  --output-image-relocation-file=<file.art.rel>: Specifies the exact file to write");
+  UsageError("  --output-image-relocation-directory=<dir>: Specifies the directory to write");
   UsageError("      the image relocation information to.");
   UsageError("");
   UsageError("  --base-offset-delta=<delta>: Specify the amount to change the old base-offset by.");
@@ -1116,13 +1116,13 @@ static int patchoat_patch_image(TimingLogger& timings,
                                 InstructionSet isa,
                                 const std::string& input_image_location,
                                 const std::string& output_image_directory,
-                                const std::string& output_image_relocation_filename,
+                                const std::string& output_image_relocation_directory,
                                 off_t base_delta,
                                 bool base_delta_set,
                                 bool debug) {
   CHECK(!input_image_location.empty());
-  if ((output_image_directory.empty()) && (output_image_relocation_filename.empty())) {
-    Usage("Image patching requires --output-image-file or --output-image-relocation-file");
+  if ((output_image_directory.empty()) && (output_image_relocation_directory.empty())) {
+    Usage("Image patching requires --output-image-directory or --output-image-relocation-directory");
   }
 
   if (!base_delta_set) {
@@ -1141,9 +1141,6 @@ static int patchoat_patch_image(TimingLogger& timings,
 
   TimingLogger::ScopedTiming pt("patch image and oat", &timings);
 
-  std::string output_image_relocation_directory =
-      output_image_relocation_filename.substr(
-          0, output_image_relocation_filename.find_last_of('/'));
   bool ret =
       PatchOat::Patch(
           input_image_location,
@@ -1201,8 +1198,8 @@ static int patchoat(int argc, char **argv) {
   bool isa_set = false;
   InstructionSet isa = InstructionSet::kNone;
   std::string input_image_location;
-  std::string output_image_filename;
-  std::string output_image_relocation_filename;
+  std::string output_image_directory;
+  std::string output_image_relocation_directory;
   off_t base_delta = 0;
   bool base_delta_set = false;
   bool dump_timings = kIsDebugBuild;
@@ -1223,11 +1220,11 @@ static int patchoat(int argc, char **argv) {
       }
     } else if (option.starts_with("--input-image-location=")) {
       input_image_location = option.substr(strlen("--input-image-location=")).data();
-    } else if (option.starts_with("--output-image-file=")) {
-      output_image_filename = option.substr(strlen("--output-image-file=")).data();
-    } else if (option.starts_with("--output-image-relocation-file=")) {
-      output_image_relocation_filename =
-          option.substr(strlen("--output-image-relocation-file=")).data();
+    } else if (option.starts_with("--output-image-directory=")) {
+      output_image_directory = option.substr(strlen("--output-image-directory=")).data();
+    } else if (option.starts_with("--output-image-relocation-directory=")) {
+      output_image_relocation_directory =
+          option.substr(strlen("--output-image-relocation-directory=")).data();
     } else if (option.starts_with("--base-offset-delta=")) {
       const char* base_delta_str = option.substr(strlen("--base-offset-delta=")).data();
       base_delta_set = true;
@@ -1245,12 +1242,6 @@ static int patchoat(int argc, char **argv) {
     }
   }
 
-  // TODO: Have calls to patchoat pass in the output_image directory instead of
-  // the output_image_filename.
-  std::string output_image_directory;
-  if (!output_image_filename.empty())
-    output_image_directory = android::base::Dirname(output_image_filename);
-
   // The instruction set is mandatory. This simplifies things...
   if (!isa_set) {
     Usage("Instruction set must be set.");
@@ -1267,7 +1258,7 @@ static int patchoat(int argc, char **argv) {
                                isa,
                                input_image_location,
                                output_image_directory,
-                               output_image_relocation_filename,
+                               output_image_relocation_directory,
                                base_delta,
                                base_delta_set,
                                debug);
