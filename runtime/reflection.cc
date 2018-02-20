@@ -35,6 +35,7 @@
 #include "well_known_classes.h"
 
 namespace art {
+namespace {
 
 using android::base::StringPrintf;
 
@@ -157,6 +158,7 @@ class ArgArray {
           Append(args[args_offset].s);
           break;
         case 'I':
+          FALLTHROUGH_INTENDED;
         case 'F':
           Append(args[args_offset].i);
           break;
@@ -164,6 +166,7 @@ class ArgArray {
           Append(soa.Decode<mirror::Object>(args[args_offset].l));
           break;
         case 'D':
+          FALLTHROUGH_INTENDED;
         case 'J':
           AppendWide(args[args_offset].j);
           break;
@@ -361,7 +364,7 @@ class ArgArray {
   std::unique_ptr<uint32_t[]> large_arg_array_;
 };
 
-static void CheckMethodArguments(JavaVMExt* vm, ArtMethod* m, uint32_t* args)
+void CheckMethodArguments(JavaVMExt* vm, ArtMethod* m, uint32_t* args)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   const DexFile::TypeList* params = m->GetParameterTypeList();
   if (params == nullptr) {
@@ -436,13 +439,13 @@ static void CheckMethodArguments(JavaVMExt* vm, ArtMethod* m, uint32_t* args)
   }
 }
 
-static ArtMethod* FindVirtualMethod(ObjPtr<mirror::Object> receiver, ArtMethod* method)
+ArtMethod* FindVirtualMethod(ObjPtr<mirror::Object> receiver, ArtMethod* method)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return receiver->GetClass()->FindVirtualMethodForVirtualOrInterface(method, kRuntimePointerSize);
 }
 
 
-static void InvokeWithArgArray(const ScopedObjectAccessAlreadyRunnable& soa,
+void InvokeWithArgArray(const ScopedObjectAccessAlreadyRunnable& soa,
                                ArtMethod* method, ArgArray* arg_array, JValue* result,
                                const char* shorty)
     REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -452,6 +455,8 @@ static void InvokeWithArgArray(const ScopedObjectAccessAlreadyRunnable& soa,
   }
   method->Invoke(soa.Self(), args, arg_array->GetNumBytes(), result, shorty);
 }
+
+}  // anonymous namespace
 
 JValue InvokeWithVarArgs(const ScopedObjectAccessAlreadyRunnable& soa, jobject obj, jmethodID mid,
                          va_list args)
