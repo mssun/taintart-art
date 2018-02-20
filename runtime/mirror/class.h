@@ -186,6 +186,11 @@ class MANAGED Class FINAL : public Object {
 
   void SetAccessFlags(uint32_t new_access_flags) REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Returns true if the class is an enum.
+  ALWAYS_INLINE bool IsEnum() REQUIRES_SHARED(Locks::mutator_lock_) {
+    return (GetAccessFlags() & kAccEnum) != 0;
+  }
+
   // Returns true if the class is an interface.
   ALWAYS_INLINE bool IsInterface() REQUIRES_SHARED(Locks::mutator_lock_) {
     return (GetAccessFlags() & kAccInterface) != 0;

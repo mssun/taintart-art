@@ -295,6 +295,11 @@ inline const DexFile::ClassDef& ArtMethod::GetClassDef() {
   return GetDexFile()->GetClassDef(GetClassDefIndex());
 }
 
+inline size_t ArtMethod::GetNumberOfParameters() {
+  constexpr size_t return_type_count = 1u;
+  return strlen(GetShorty()) - return_type_count;
+}
+
 inline const char* ArtMethod::GetReturnTypeDescriptor() {
   DCHECK(!IsProxyMethod());
   const DexFile* dex_file = GetDexFile();

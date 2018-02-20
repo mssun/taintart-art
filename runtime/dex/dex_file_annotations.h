@@ -55,6 +55,8 @@ mirror::ObjectArray<mirror::Class>* GetExceptionTypesForMethod(ArtMethod* method
     REQUIRES_SHARED(Locks::mutator_lock_);
 mirror::ObjectArray<mirror::Object>* GetParameterAnnotations(ArtMethod* method)
     REQUIRES_SHARED(Locks::mutator_lock_);
+uint32_t GetNumberOfAnnotatedMethodParameters(ArtMethod* method)
+    REQUIRES_SHARED(Locks::mutator_lock_);
 mirror::Object* GetAnnotationForMethodParameter(ArtMethod* method,
                                                 uint32_t parameter_idx,
                                                 Handle<mirror::Class> annotation_class)
