@@ -29,7 +29,7 @@
  * questions.
  */
 
-#include "ti_class_loader.h"
+#include "ti_class_loader-inl.h"
 
 #include <limits>
 
@@ -134,45 +134,28 @@ art::ObjPtr<art::mirror::LongArray> ClassLoaderHelper::AllocateNewDexFileCookie(
   return new_cookie.Get();
 }
 
-// TODO This should return the actual source java.lang.DexFile object for the klass being loaded.
-art::ObjPtr<art::mirror::Object> ClassLoaderHelper::FindSourceDexFileObject(
-    art::Thread* self, art::Handle<art::mirror::ClassLoader> loader) {
-  const char* dex_path_list_element_array_name = "[Ldalvik/system/DexPathList$Element;";
-  const char* dex_path_list_element_name = "Ldalvik/system/DexPathList$Element;";
-  const char* dex_file_name = "Ldalvik/system/DexFile;";
-  const char* dex_path_list_name = "Ldalvik/system/DexPathList;";
-  const char* dex_class_loader_name = "Ldalvik/system/BaseDexClassLoader;";
+art::ObjPtr<art::mirror::ObjectArray<art::mirror::Object>> ClassLoaderHelper::GetDexElementList(
+    art::Thread* self,
+    art::Handle<art::mirror::ClassLoader> loader) {
+  art::StackHandleScope<4> hs(self);
 
-  CHECK(!self->IsExceptionPending());
-  art::StackHandleScope<5> hs(self);
-  art::ClassLinker* class_linker = art::Runtime::Current()->GetClassLinker();
-
-  art::Handle<art::mirror::ClassLoader> null_loader(hs.NewHandle<art::mirror::ClassLoader>(
-      nullptr));
-  art::Handle<art::mirror::Class> base_dex_loader_class(hs.NewHandle(class_linker->FindClass(
-      self, dex_class_loader_name, null_loader)));
+  art::Handle<art::mirror::Class>
+      base_dex_loader_class(hs.NewHandle(self->DecodeJObject(
+          art::WellKnownClasses::dalvik_system_BaseDexClassLoader)->AsClass()));
 
   // Get all the ArtFields so we can look in the BaseDexClassLoader
-  art::ArtField* path_list_field = base_dex_loader_class->FindDeclaredInstanceField(
-      "pathList", dex_path_list_name);
-  CHECK(path_list_field != nullptr);
-
+  art::ArtField* path_list_field = art::jni::DecodeArtField(
+      art::WellKnownClasses::dalvik_system_BaseDexClassLoader_pathList);
   art::ArtField* dex_path_list_element_field =
-      class_linker->FindClass(self, dex_path_list_name, null_loader)
-        ->FindDeclaredInstanceField("dexElements", dex_path_list_element_array_name);
-  CHECK(dex_path_list_element_field != nullptr);
-
-  art::ArtField* element_dex_file_field =
-      class_linker->FindClass(self, dex_path_list_element_name, null_loader)
-        ->FindDeclaredInstanceField("dexFile", dex_file_name);
-  CHECK(element_dex_file_field != nullptr);
+      art::jni::DecodeArtField(art::WellKnownClasses::dalvik_system_DexPathList_dexElements);
 
   // Check if loader is a BaseDexClassLoader
   art::Handle<art::mirror::Class> loader_class(hs.NewHandle(loader->GetClass()));
   // Currently only base_dex_loader is allowed to actually define classes but if this changes in the
   // future we should make sure to support all class loader types.
   if (!loader_class->IsSubClass(base_dex_loader_class.Get())) {
-    LOG(ERROR) << "The classloader is not a BaseDexClassLoader which is currently the only "
+    LOG(ERROR) << "The classloader " << loader_class->PrettyClass() << " is not a "
+               << base_dex_loader_class->PrettyClass() << " which is currently the only "
                << "supported class loader type!";
     return nullptr;
   }
@@ -180,28 +163,28 @@ art::ObjPtr<art::mirror::Object> ClassLoaderHelper::FindSourceDexFileObject(
   art::Handle<art::mirror::Object> path_list(
       hs.NewHandle(path_list_field->GetObject(loader.Get())));
   CHECK(path_list != nullptr);
-  CHECK(!self->IsExceptionPending());
-  art::Handle<art::mirror::ObjectArray<art::mirror::Object>> dex_elements_list(hs.NewHandle(
-      dex_path_list_element_field->GetObject(path_list.Get())->
-      AsObjectArray<art::mirror::Object>()));
-  CHECK(!self->IsExceptionPending());
-  CHECK(dex_elements_list != nullptr);
-  size_t num_elements = dex_elements_list->GetLength();
-  // Iterate over the DexPathList$Element to find the right one
-  for (size_t i = 0; i < num_elements; i++) {
-    art::ObjPtr<art::mirror::Object> current_element = dex_elements_list->Get(i);
-    CHECK(!current_element.IsNull());
-    // TODO It would be cleaner to put the art::DexFile into the dalvik.system.DexFile the class
-    // comes from but it is more annoying because we would need to find this class. It is not
-    // necessary for proper function since we just need to be in front of the classes old dex file
-    // in the path.
-    art::ObjPtr<art::mirror::Object> first_dex_file(
-        element_dex_file_field->GetObject(current_element));
-    if (!first_dex_file.IsNull()) {
-      return first_dex_file;
-    }
-  }
-  return nullptr;
+  art::ObjPtr<art::mirror::ObjectArray<art::mirror::Object>> dex_elements_list =
+      dex_path_list_element_field->GetObject(path_list.Get())->AsObjectArray<art::mirror::Object>();
+  return dex_elements_list;
+}
+
+// TODO This should return the actual source java.lang.DexFile object for the klass being loaded.
+art::ObjPtr<art::mirror::Object> ClassLoaderHelper::FindSourceDexFileObject(
+    art::Thread* self, art::Handle<art::mirror::ClassLoader> loader) {
+  art::ObjPtr<art::mirror::Object> res = nullptr;
+  VisitDexFileObjects(self,
+                      loader,
+                      [&] (art::ObjPtr<art::mirror::Object> dex_file) {
+                        res = dex_file;
+                        // Just stop at the first one.
+                        // TODO It would be cleaner to put the art::DexFile into the
+                        // dalvik.system.DexFile the class comes from but it is more annoying
+                        // because we would need to find this class. It is not necessary for proper
+                        // function since we just need to be in front of the classes old dex file in
+                        // the path.
+                        return false;
+                      });
+  return res;
 }
 
 }  // namespace openjdkjvmti
