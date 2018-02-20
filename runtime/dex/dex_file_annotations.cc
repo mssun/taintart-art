@@ -1121,6 +1121,21 @@ mirror::ObjectArray<mirror::Object>* GetParameterAnnotations(ArtMethod* method) 
   return ProcessAnnotationSetRefList(ClassData(method), set_ref_list, size);
 }
 
+uint32_t GetNumberOfAnnotatedMethodParameters(ArtMethod* method) {
+  const DexFile* dex_file = method->GetDexFile();
+  const DexFile::ParameterAnnotationsItem* parameter_annotations =
+      FindAnnotationsItemForMethod(method);
+  if (parameter_annotations == nullptr) {
+    return 0u;
+  }
+  const DexFile::AnnotationSetRefList* set_ref_list =
+      dex_file->GetParameterAnnotationSetRefList(parameter_annotations);
+  if (set_ref_list == nullptr) {
+    return 0u;
+  }
+  return set_ref_list->size_;
+}
+
 mirror::Object* GetAnnotationForMethodParameter(ArtMethod* method,
                                                 uint32_t parameter_idx,
                                                 Handle<mirror::Class> annotation_class) {
@@ -1141,7 +1156,9 @@ mirror::Object* GetAnnotationForMethodParameter(ArtMethod* method,
   const DexFile::AnnotationSetRefItem* annotation_set_ref = &set_ref_list->list_[parameter_idx];
   const DexFile::AnnotationSetItem* annotation_set =
      dex_file->GetSetRefItemItem(annotation_set_ref);
-
+  if (annotation_set == nullptr) {
+    return nullptr;
+  }
   return GetAnnotationObjectFromAnnotationSet(ClassData(method),
                                               annotation_set,
                                               DexFile::kDexVisibilityRuntime,

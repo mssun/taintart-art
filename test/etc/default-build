@@ -137,12 +137,14 @@ declare -A JAVAC_EXPERIMENTAL_ARGS
 JAVAC_EXPERIMENTAL_ARGS["default-methods"]="-source 1.8 -target 1.8"
 JAVAC_EXPERIMENTAL_ARGS["lambdas"]="-source 1.8 -target 1.8"
 JAVAC_EXPERIMENTAL_ARGS["method-handles"]="-source 1.8 -target 1.8"
+JAVAC_EXPERIMENTAL_ARGS["parameter-annotations"]="-source 1.8 -target 1.8"
 JAVAC_EXPERIMENTAL_ARGS["var-handles"]="-source 1.8 -target 1.8"
 JAVAC_EXPERIMENTAL_ARGS[${DEFAULT_EXPERIMENT}]="-source 1.8 -target 1.8"
 JAVAC_EXPERIMENTAL_ARGS["agents"]="-source 1.8 -target 1.8"
 
 declare -A DX_EXPERIMENTAL_ARGS
 DX_EXPERIMENTAL_ARGS["method-handles"]="--min-sdk-version=26"
+DX_EXPERIMENTAL_ARGS["parameter-annotations"]="--min-sdk-version=25"
 DX_EXPERIMENTAL_ARGS["var-handles"]="--min-sdk-version=26"
 
 while true; do
