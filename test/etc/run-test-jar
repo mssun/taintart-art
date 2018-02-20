@@ -75,6 +75,7 @@ JVMTI_REDEFINE_STRESS="n"
 VDEX_FILTER=""
 PROFILE="n"
 RANDOM_PROFILE="n"
+SAVE_PROFILE="n"
 # The normal dex2oat timeout.
 DEX2OAT_TIMEOUT="300" # 5 mins
 # The *hard* timeout where we really start trying to kill the dex2oat.
@@ -363,6 +364,9 @@ while true; do
         shift
     elif [ "x$1" = "x--random-profile" ]; then
         RANDOM_PROFILE="y"
+        shift
+    elif [ "x$1" = "x--save-profile" ]; then
+        SAVE_PROFILE="y"
         shift
     elif [ "x$1" = "x--set-stack-trace-dump-dir" ]; then
         SET_STACK_TRACE_DUMP_DIR="y"
@@ -680,6 +684,7 @@ if [ ${#VDEX_NAME} -gt $max_filename_size ]; then
     exit 1
 fi
 
+create_profile_cmdline="true"
 profman_cmdline="true"
 dex2oat_cmdline="true"
 vdex_cmdline="true"
@@ -687,6 +692,16 @@ dm_cmdline="true"
 mkdir_locations="${mkdir_locations} ${DEX_LOCATION}/dalvik-cache/$ISA"
 strip_cmdline="true"
 sync_cmdline="true"
+
+if [ "$SAVE_PROFILE" = "y" ]; then
+  profile_file="$DEX_LOCATION/$TEST_NAME.prof"
+  create_profile_cmdline="touch $DEX_LOCATION/$TEST_NAME.prof"
+  FLAGS="${FLAGS} -Xjitsaveprofilinginfo -Xps-profile-boot-class-path"
+  FLAGS="${FLAGS} -Xps-profile-path:${profile_file}"
+  # Use -Xjitinitialsize:32M to prevent profiling info creation failure.
+  # On debug build the code cache is too small.
+  FLAGS="${FLAGS} -Xjitinitialsize:32M"
+fi
 
 # PROFILE takes precedence over RANDOM_PROFILE, since PROFILE tests require a
 # specific profile to run properly.
@@ -801,6 +816,7 @@ dalvikvm_cmdline=$(echo $dalvikvm_cmdline)
 dm_cmdline=$(echo $dm_cmdline)
 vdex_cmdline=$(echo $vdex_cmdline)
 profman_cmdline=$(echo $profman_cmdline)
+create_profile_cmdline=$(echo $create_profile_cmdline)
 
 # Use an empty ASAN_OPTIONS to enable defaults.
 # Note: this is required as envsetup right now exports detect_leaks=0.
@@ -866,6 +882,7 @@ if [ "$HOST" = "n" ]; then
              mkdir -p ${mkdir_locations} && \
              export LD_LIBRARY_PATH=$LD_LIBRARY_PATH && \
              export PATH=$ANDROID_ROOT/bin:$PATH && \
+             $create_profile_cmdline && \
              $profman_cmdline && \
              $dex2oat_cmdline && \
              $dm_cmdline && \
@@ -962,6 +979,7 @@ else
     export ASAN_OPTIONS=$RUN_TEST_ASAN_OPTIONS
 
     mkdir -p ${mkdir_locations} || exit 1
+    $create_profile_cmdline || { echo "Failed to create profile." >&2 ; exit 2; }
     $profman_cmdline || { echo "Profman failed." >&2 ; exit 2; }
     $dex2oat_cmdline || { echo "Dex2oat failed." >&2 ; exit 2; }
     $dm_cmdline || { echo "Dex2oat failed." >&2 ; exit 2; }
