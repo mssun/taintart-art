@@ -7964,7 +7964,7 @@ ArtMethod* ClassLinker::FindResolvedMethod(ObjPtr<mirror::Class> klass,
     // Be a good citizen and update the dex cache to speed subsequent calls.
     dex_cache->SetResolvedMethod(method_idx, resolved, image_pointer_size_);
     const DexFile::MethodId& method_id = dex_file.GetMethodId(method_idx);
-    CHECK(LookupResolvedType(method_id.class_idx_, dex_cache, class_loader) != nullptr)
+    DCHECK(LookupResolvedType(method_id.class_idx_, dex_cache, class_loader) != nullptr)
         << "Method: " << resolved->PrettyMethod() << ", "
         << "Class: " << klass->PrettyClass() << " (" << klass->GetStatus() << "), "
         << "DexFile referrer: " << dex_file.GetLocation();
