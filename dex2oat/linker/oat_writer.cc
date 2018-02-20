@@ -3348,9 +3348,8 @@ bool OatWriter::WriteDexFiles(OutputStream* out,
 
   vdex_dex_files_offset_ = vdex_size_;
 
-  extract_dex_files_into_vdex_ = copy_dex_files;
   // If extraction is enabled, only do it if not all the dex files are aligned and uncompressed.
-  if (extract_dex_files_into_vdex_) {
+  if (copy_dex_files) {
     extract_dex_files_into_vdex_ = false;
     for (OatDexFile& oat_dex_file : oat_dex_files_) {
       if (!oat_dex_file.source_.IsZipEntry()) {
@@ -3363,6 +3362,8 @@ bool OatWriter::WriteDexFiles(OutputStream* out,
         break;
       }
     }
+  } else {
+    extract_dex_files_into_vdex_ = false;
   }
 
   if (extract_dex_files_into_vdex_) {
