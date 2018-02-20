@@ -410,11 +410,11 @@ class CodeGeneratorX86_64 : public CodeGenerator {
   void GenerateVirtualCall(
       HInvokeVirtual* invoke, Location temp, SlowPathCode* slow_path = nullptr) OVERRIDE;
 
-  void RecordBootMethodPatch(HInvokeStaticOrDirect* invoke);
-  Label* NewMethodBssEntryPatch(MethodReference target_method);
-  void RecordBootTypePatch(HLoadClass* load_class);
+  void RecordBootImageMethodPatch(HInvokeStaticOrDirect* invoke);
+  void RecordMethodBssEntryPatch(HInvokeStaticOrDirect* invoke);
+  void RecordBootImageTypePatch(HLoadClass* load_class);
   Label* NewTypeBssEntryPatch(HLoadClass* load_class);
-  void RecordBootStringPatch(HLoadString* load_string);
+  void RecordBootImageStringPatch(HLoadString* load_string);
   Label* NewStringBssEntryPatch(HLoadString* load_string);
   Label* NewJitRootStringPatch(const DexFile& dex_file,
                                dex::StringIndex string_index,
@@ -613,7 +613,7 @@ class CodeGeneratorX86_64 : public CodeGenerator {
   // Type patch locations for kBssEntry.
   ArenaDeque<PatchInfo<Label>> type_bss_entry_patches_;
   // String patch locations; type depends on configuration (intern table or boot image PIC).
-  ArenaDeque<PatchInfo<Label>> string_patches_;
+  ArenaDeque<PatchInfo<Label>> boot_image_string_patches_;
   // String patch locations for kBssEntry.
   ArenaDeque<PatchInfo<Label>> string_bss_entry_patches_;
 
