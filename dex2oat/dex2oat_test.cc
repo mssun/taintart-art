@@ -41,6 +41,8 @@
 #include "oat.h"
 #include "oat_file.h"
 #include "utils.h"
+#include "vdex_file.h"
+#include "ziparchive/zip_writer.h"
 
 namespace art {
 
@@ -1779,6 +1781,89 @@ TEST_F(Dex2oatTest, VerifyNoCompilationReason) {
                                                    &error_msg));
   ASSERT_TRUE(odex_file != nullptr);
   ASSERT_EQ(nullptr, odex_file->GetCompilationReason());
+}
+
+TEST_F(Dex2oatTest, DontExtract) {
+  std::unique_ptr<const DexFile> dex(OpenTestDexFile("ManyMethods"));
+  std::string error_msg;
+  const std::string out_dir = GetScratchDir();
+  const std::string dex_location = dex->GetLocation();
+  const std::string odex_location = out_dir + "/base.oat";
+  const std::string vdex_location = out_dir + "/base.vdex";
+  GenerateOdexForTest(dex_location,
+                      odex_location,
+                      CompilerFilter::Filter::kVerify,
+                      { "--copy-dex-files=false" },
+                      true,  // expect_success
+                      false,  // use_fd
+                      [](const OatFile&) {
+                      });
+  {
+    // Check the vdex doesn't have dex.
+    std::unique_ptr<VdexFile> vdex(VdexFile::Open(vdex_location.c_str(),
+                                                  /*writable*/ false,
+                                                  /*low_4gb*/ false,
+                                                  /*unquicken*/ false,
+                                                  &error_msg));
+    ASSERT_TRUE(vdex != nullptr);
+    EXPECT_EQ(vdex->GetHeader().GetDexSize(), 0u) << output_;
+  }
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(odex_location.c_str(),
+                                                   odex_location.c_str(),
+                                                   nullptr,
+                                                   nullptr,
+                                                   false,
+                                                   /*low_4gb*/ false,
+                                                   dex_location.c_str(),
+                                                   &error_msg));
+  ASSERT_TRUE(odex_file != nullptr) << dex_location;
+  std::vector<const OatDexFile*> oat_dex_files = odex_file->GetOatDexFiles();
+  ASSERT_EQ(oat_dex_files.size(), 1u);
+  // Verify that the oat file can still open the dex files.
+  for (const OatDexFile* oat_dex : oat_dex_files) {
+    std::unique_ptr<const DexFile> dex_file(oat_dex->OpenDexFile(&error_msg));
+    ASSERT_TRUE(dex_file != nullptr) << error_msg;
+  }
+  // Create a dm file and use it to verify.
+  // Add produced artifacts to a zip file that doesn't contain the classes.dex.
+  ScratchFile dm_file;
+  {
+    std::unique_ptr<File> vdex_file(OS::OpenFileForReading(vdex_location.c_str()));
+    ASSERT_TRUE(vdex_file != nullptr);
+    ASSERT_GT(vdex_file->GetLength(), 0u);
+    FILE* file = fdopen(dm_file.GetFd(), "w+b");
+    ZipWriter writer(file);
+    auto write_all_bytes = [&](File* file) {
+      std::unique_ptr<uint8_t[]> bytes(new uint8_t[file->GetLength()]);
+      ASSERT_TRUE(file->ReadFully(&bytes[0], file->GetLength()));
+      ASSERT_GE(writer.WriteBytes(&bytes[0], file->GetLength()), 0);
+    };
+    // Add vdex to zip.
+    writer.StartEntry(VdexFile::kVdexNameInDmFile, ZipWriter::kCompress);
+    write_all_bytes(vdex_file.get());
+    writer.FinishEntry();
+    writer.Finish();
+    ASSERT_EQ(dm_file.GetFile()->Flush(), 0);
+  }
+
+  // Generate a quickened dex by using the input dm file to verify.
+  GenerateOdexForTest(dex_location,
+                      odex_location,
+                      CompilerFilter::Filter::kQuicken,
+                      { "--dump-timings", "--dm-file=" + dm_file.GetFilename() },
+                      true,  // expect_success
+                      false,  // use_fd
+                      [](const OatFile& o) {
+                        CHECK(o.ContainsDexCode());
+                      });
+  std::istringstream iss(output_);
+  std::string line;
+  bool found_fast_verify = false;
+  const std::string kFastVerifyString = "Fast Verify";
+  while (std::getline(iss, line) && !found_fast_verify) {
+    found_fast_verify = found_fast_verify || line.find(kFastVerifyString) != std::string::npos;
+  }
+  EXPECT_TRUE(found_fast_verify) << "Expected to find " << kFastVerifyString << "\n" << output_;
 }
 
 }  // namespace art

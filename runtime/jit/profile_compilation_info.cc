@@ -1195,22 +1195,10 @@ ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::OpenSource(
       return kProfileLoadBadData;
     }
 
-    std::unique_ptr<MemMap> map;
-    if (zip_entry->IsUncompressed()) {
-      // Map uncompressed files within zip as file-backed to avoid a dirty copy.
-      map.reset(zip_entry->MapDirectlyFromFile(kDexMetadataProfileEntry, error));
-      if (map == nullptr) {
-        LOG(WARNING) << "Can't mmap profile directly; "
-                     << "is your ZIP file corrupted? Falling back to extraction.";
-        // Try again with Extraction which still has a chance of recovery.
-      }
-    }
-
-    if (map == nullptr) {
-      // Default path for compressed ZIP entries, and fallback for stored ZIP entries.
-      // TODO(calin) pass along file names to assist with debugging.
-      map.reset(zip_entry->ExtractToMemMap("profile file", kDexMetadataProfileEntry, error));
-    }
+    // TODO(calin) pass along file names to assist with debugging.
+    std::unique_ptr<MemMap> map(zip_entry->MapDirectlyOrExtract(kDexMetadataProfileEntry,
+                                                                "profile file",
+                                                                error));
 
     if (map != nullptr) {
       source->reset(ProfileSource::Create(std::move(map)));
