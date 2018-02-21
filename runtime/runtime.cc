@@ -844,6 +844,18 @@ bool Runtime::Start() {
                  0);
   }
 
+  // In case we have a profile path passed as a command line argument,
+  // register the current class path for profiling now. Note that we cannot do
+  // this before we create the JIT and having it here is the most convenient way.
+  // This is used when testing profiles with dalvikvm command as there is no
+  // framework to register the dex files for profiling.
+  if (jit_.get() != nullptr && jit_options_->GetSaveProfilingInfo() &&
+      !jit_options_->GetProfileSaverOptions().GetProfilePath().empty()) {
+    std::vector<std::string> dex_filenames;
+    Split(class_path_string_, ':', &dex_filenames);
+    RegisterAppInfo(dex_filenames, jit_options_->GetProfileSaverOptions().GetProfilePath());
+  }
+
   return true;
 }
 
@@ -2409,18 +2421,6 @@ void Runtime::CreateJit() {
   if (jit_.get() == nullptr) {
     LOG(WARNING) << "Failed to create JIT " << error_msg;
     return;
-  }
-
-  // In case we have a profile path passed as a command line argument,
-  // register the current class path for profiling now. Note that we cannot do
-  // this before we create the JIT and having it here is the most convenient way.
-  // This is used when testing profiles with dalvikvm command as there is no
-  // framework to register the dex files for profiling.
-  if (jit_options_->GetSaveProfilingInfo() &&
-      !jit_options_->GetProfileSaverOptions().GetProfilePath().empty()) {
-    std::vector<std::string> dex_filenames;
-    Split(class_path_string_, ':', &dex_filenames);
-    RegisterAppInfo(dex_filenames, jit_options_->GetProfileSaverOptions().GetProfilePath());
   }
 }
 
