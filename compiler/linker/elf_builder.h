@@ -201,7 +201,7 @@ class ElfBuilder FINAL {
       return section_index_ != 0;
     }
 
-   private:
+   protected:
     // Add this section to the list of generated ELF sections (if not there already).
     // It also ensures the alignment is sufficient to generate valid program headers,
     // since that depends on the previous section. It returns the required alignment.
@@ -345,7 +345,7 @@ class ElfBuilder FINAL {
                   type,
                   flags,
                   strtab,
-                  /* info */ 0,
+                  /* info */ 1,
                   sizeof(Elf_Off),
                   sizeof(Elf_Sym)) {
       syms_.push_back(Elf_Sym());  // The symbol table always has to start with NULL symbol.
@@ -386,6 +386,11 @@ class ElfBuilder FINAL {
       sym.st_shndx = section_index;
       sym.st_info = (binding << 4) + (type & 0xf);
       syms_.push_back(sym);
+
+      // The sh_info file must be set to index one-past the last local symbol.
+      if (binding == STB_LOCAL) {
+        this->header_.sh_info = syms_.size();
+      }
     }
 
     Elf_Word GetCacheSize() { return syms_.size() * sizeof(Elf_Sym); }
