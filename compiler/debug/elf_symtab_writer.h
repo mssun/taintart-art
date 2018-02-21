@@ -37,7 +37,8 @@ namespace debug {
 // exist, but it will still work well without them.
 // However, these extra symbols take space, so let's just generate
 // one symbol which marks the whole .text section as code.
-constexpr bool kGenerateSingleArmMappingSymbol = true;
+// Note that ARM's Streamline requires it to match function symbol.
+constexpr bool kGenerateArmMappingSymbol = true;
 
 // Magic name for .symtab symbols which enumerate dex files used
 // by this ELF file (currently mmapped inside the .dex section).
@@ -48,6 +49,7 @@ static void WriteDebugSymbols(linker::ElfBuilder<ElfTypes>* builder,
                               bool mini_debug_info,
                               const DebugInfo& debug_info) {
   uint64_t mapping_symbol_address = std::numeric_limits<uint64_t>::max();
+  const auto* text = builder->GetText();
   auto* strtab = builder->GetStrTab();
   auto* symtab = builder->GetSymTab();
 
@@ -62,10 +64,19 @@ static void WriteDebugSymbols(linker::ElfBuilder<ElfTypes>* builder,
     if (info.deduped) {
       deduped_addresses.insert(info.code_address);
     }
+    if (kGenerateArmMappingSymbol && info.isa == InstructionSet::kThumb2) {
+      uint64_t address = info.code_address;
+      address += info.is_code_address_text_relative ? text->GetAddress() : 0;
+      mapping_symbol_address = std::min(mapping_symbol_address, address);
+    }
   }
 
   strtab->Start();
   strtab->Write("");  // strtab should start with empty string.
+  // Generate ARM mapping symbols. ELF local symbols must be added first.
+  if (mapping_symbol_address != std::numeric_limits<uint64_t>::max()) {
+    symtab->Add(strtab->Write("$t"), text, mapping_symbol_address, 0, STB_LOCAL, STT_NOTYPE);
+  }
   // Add symbols for compiled methods.
   for (const MethodDebugInfo& info : debug_info.compiled_methods) {
     if (info.deduped) {
@@ -83,23 +94,11 @@ static void WriteDebugSymbols(linker::ElfBuilder<ElfTypes>* builder,
       name_offset = strtab->Write(name);
     }
 
-    const auto* text = builder->GetText();
     uint64_t address = info.code_address;
     address += info.is_code_address_text_relative ? text->GetAddress() : 0;
     // Add in code delta, e.g., thumb bit 0 for Thumb2 code.
     address += CompiledMethod::CodeDelta(info.isa);
     symtab->Add(name_offset, text, address, info.code_size, STB_GLOBAL, STT_FUNC);
-
-    // Conforming to aaelf, add $t mapping symbol to indicate start of a sequence of thumb2
-    // instructions, so that disassembler tools can correctly disassemble.
-    // Note that even if we generate just a single mapping symbol, ARM's Streamline
-    // requires it to match function symbol.  Just address 0 does not work.
-    if (info.isa == InstructionSet::kThumb2) {
-      if (address < mapping_symbol_address || !kGenerateSingleArmMappingSymbol) {
-        symtab->Add(strtab->Write("$t"), text, address & ~1, 0, STB_LOCAL, STT_NOTYPE);
-        mapping_symbol_address = address;
-      }
-    }
   }
   // Add symbols for dex files.
   if (!debug_info.dex_files.empty() && builder->GetDex()->Exists()) {
