@@ -835,6 +835,73 @@ TEST_F(JniInternalTest, CallVoidMethodNullReceiver) {
   check_jni_abort_catcher.Check("null");
 }
 
+TEST_F(JniInternalTest, CallVarArgMethodBadPrimitive) {
+  // Check that bad primitive values cause check JNI to abort when
+  // passed out-of-range primitive value var args. As var args can't
+  // differentiate type sizes less than an int, and this isn't
+  // corrected by JNI, this helps ensure JNI code is valid.
+#define DoCall(boxed_type, shorty, c_type, bad_value)                   \
+  {                                                                     \
+    jclass prim_class = env_->FindClass("java/lang/" #boxed_type);      \
+    jmethodID method = env_->GetStaticMethodID(prim_class, "valueOf",   \
+                                               "(" #shorty ")Ljava/lang/" #boxed_type ";"); \
+    EXPECT_NE(nullptr, method);                                         \
+    EXPECT_FALSE(env_->ExceptionCheck());                               \
+    CheckJniAbortCatcher check_jni_abort_catcher;                       \
+    env_->CallStaticObjectMethod(prim_class, method, bad_value);        \
+    check_jni_abort_catcher.Check("unexpected " #c_type " value: " #bad_value); \
+  }
+
+  DoCall(Boolean, Z, jboolean, 2);
+  DoCall(Byte, B, jbyte, 128);
+  DoCall(Byte, B, jbyte, -129);
+  DoCall(Short, S, jshort, 32768);
+  DoCall(Short, S, jshort, -32769);
+  DoCall(Character, C, jchar, 65536);
+  DoCall(Character, C, jchar, -1);
+#undef DoCall
+}
+
+TEST_F(JniInternalTest, CallJValueMethodBadPrimitive) {
+  // Check that bad primitive values, passed as jvalues, cause check
+  // JNI to abort. Unlike with var args, sizes less than an int should
+  // be truncated or sign extended and not cause an abort except for
+  // jbooleans that are passed as bytes.
+#define DoFailCall(boxed_type, shorty, c_type, bad_value)               \
+  {                                                                     \
+    jclass prim_class = env_->FindClass("java/lang/" #boxed_type);      \
+    jmethodID method = env_->GetStaticMethodID(prim_class, "valueOf",   \
+                                               "(" #shorty ")Ljava/lang/" #boxed_type ";"); \
+    EXPECT_NE(nullptr, method);                                         \
+    EXPECT_FALSE(env_->ExceptionCheck());                               \
+    CheckJniAbortCatcher check_jni_abort_catcher;                       \
+    jvalue jval;                                                        \
+    jval.i = bad_value;                                                 \
+    env_->CallStaticObjectMethodA(prim_class, method, &jval);           \
+    check_jni_abort_catcher.Check("unexpected " #c_type " value: " #bad_value); \
+  }
+#define DoGoodCall(boxed_type, shorty, c_type, bad_value)               \
+  {                                                                     \
+    jclass prim_class = env_->FindClass("java/lang/" #boxed_type);      \
+    jmethodID method = env_->GetStaticMethodID(prim_class, "valueOf",   \
+                                               "(" #shorty ")Ljava/lang/" #boxed_type ";"); \
+    EXPECT_NE(nullptr, method);                                         \
+    EXPECT_FALSE(env_->ExceptionCheck());                               \
+    jvalue jval;                                                        \
+    jval.i = bad_value;                                                 \
+    env_->CallStaticObjectMethodA(prim_class, method, &jval);           \
+  }
+
+  DoFailCall(Boolean, Z, jboolean, 2);
+  DoGoodCall(Byte, B, jbyte, 128);
+  DoGoodCall(Byte, B, jbyte, -129);
+  DoGoodCall(Short, S, jshort, 32768);
+  DoGoodCall(Short, S, jshort, -32769);
+  DoGoodCall(Character, C, jchar, 65536);
+  DoGoodCall(Character, C, jchar, -1);
+#undef DoCall
+}
+
 TEST_F(JniInternalTest, GetStaticMethodID) {
   jclass jlobject = env_->FindClass("java/lang/Object");
   jclass jlnsme = env_->FindClass("java/lang/NoSuchMethodError");
