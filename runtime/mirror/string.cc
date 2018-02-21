@@ -21,6 +21,7 @@
 #include "base/array_ref.h"
 #include "base/stl_util.h"
 #include "class-inl.h"
+#include "dex/descriptors_names.h"
 #include "dex/utf-inl.h"
 #include "gc/accounting/card_table-inl.h"
 #include "gc_root-inl.h"

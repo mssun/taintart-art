@@ -42,6 +42,7 @@
 #include "compiler.h"
 #include "compiler_callbacks.h"
 #include "compiler_driver-inl.h"
+#include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_annotations.h"
 #include "dex/dex_instruction-inl.h"

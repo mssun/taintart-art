@@ -59,6 +59,7 @@
 #include "debug/elf_debug_writer.h"
 #include "debug/method_debug_info.h"
 #include "dexlayout.h"
+#include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
 #include "dex/quick_compiler_callbacks.h"
 #include "dex/verification_results.h"

@@ -23,6 +23,7 @@
 #include "base/enums.h"
 #include "class_linker-inl.h"
 #include "common_throws.h"
+#include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_annotations.h"
 #include "dex/utf.h"

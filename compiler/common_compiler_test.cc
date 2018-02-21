@@ -23,6 +23,7 @@
 #include "base/enums.h"
 #include "class_linker.h"
 #include "compiled_method-inl.h"
+#include "dex/descriptors_names.h"
 #include "dex/quick_compiler_callbacks.h"
 #include "dex/verification_results.h"
 #include "driver/compiler_driver.h"
