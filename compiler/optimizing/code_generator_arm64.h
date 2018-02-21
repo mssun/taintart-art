@@ -565,8 +565,8 @@ class CodeGeneratorARM64 : public CodeGenerator {
   // to be bound before the instruction. The instruction will be either the
   // ADRP (pass `adrp_label = null`) or the ADD (pass `adrp_label` pointing
   // to the associated ADRP patch label).
-  vixl::aarch64::Label* NewPcRelativeMethodPatch(MethodReference target_method,
-                                                 vixl::aarch64::Label* adrp_label = nullptr);
+  vixl::aarch64::Label* NewBootImageMethodPatch(MethodReference target_method,
+                                                vixl::aarch64::Label* adrp_label = nullptr);
 
   // Add a new .bss entry method patch for an instruction and return
   // the label to be bound before the instruction. The instruction will be
@@ -579,9 +579,9 @@ class CodeGeneratorARM64 : public CodeGenerator {
   // to be bound before the instruction. The instruction will be either the
   // ADRP (pass `adrp_label = null`) or the ADD (pass `adrp_label` pointing
   // to the associated ADRP patch label).
-  vixl::aarch64::Label* NewPcRelativeTypePatch(const DexFile& dex_file,
-                                               dex::TypeIndex type_index,
-                                               vixl::aarch64::Label* adrp_label = nullptr);
+  vixl::aarch64::Label* NewBootImageTypePatch(const DexFile& dex_file,
+                                              dex::TypeIndex type_index,
+                                              vixl::aarch64::Label* adrp_label = nullptr);
 
   // Add a new .bss entry type patch for an instruction and return the label
   // to be bound before the instruction. The instruction will be either the
@@ -595,9 +595,9 @@ class CodeGeneratorARM64 : public CodeGenerator {
   // to be bound before the instruction. The instruction will be either the
   // ADRP (pass `adrp_label = null`) or the ADD (pass `adrp_label` pointing
   // to the associated ADRP patch label).
-  vixl::aarch64::Label* NewPcRelativeStringPatch(const DexFile& dex_file,
-                                                 dex::StringIndex string_index,
-                                                 vixl::aarch64::Label* adrp_label = nullptr);
+  vixl::aarch64::Label* NewBootImageStringPatch(const DexFile& dex_file,
+                                                dex::StringIndex string_index,
+                                                vixl::aarch64::Label* adrp_label = nullptr);
 
   // Add a new .bss entry string patch for an instruction and return the label
   // to be bound before the instruction. The instruction will be either the
@@ -777,17 +777,12 @@ class CodeGeneratorARM64 : public CodeGenerator {
   vixl::aarch64::Literal<uint32_t>* DeduplicateUint32Literal(uint32_t value);
   vixl::aarch64::Literal<uint64_t>* DeduplicateUint64Literal(uint64_t value);
 
-  // The PcRelativePatchInfo is used for PC-relative addressing of dex cache arrays
-  // and boot image strings/types. The only difference is the interpretation of the
-  // offset_or_index.
-  struct PcRelativePatchInfo {
-    PcRelativePatchInfo(const DexFile& dex_file, uint32_t off_or_idx)
-        : target_dex_file(dex_file), offset_or_index(off_or_idx), label(), pc_insn_label() { }
+  // The PcRelativePatchInfo is used for PC-relative addressing of methods/strings/types,
+  // whether through .data.bimg.rel.ro, .bss, or directly in the boot image.
+  struct PcRelativePatchInfo : PatchInfo<vixl::aarch64::Label> {
+    PcRelativePatchInfo(const DexFile* dex_file, uint32_t off_or_idx)
+        : PatchInfo<vixl::aarch64::Label>(dex_file, off_or_idx), pc_insn_label() { }
 
-    const DexFile& target_dex_file;
-    // Either the dex cache array element offset or the string/type index.
-    uint32_t offset_or_index;
-    vixl::aarch64::Label label;
     vixl::aarch64::Label* pc_insn_label;
   };
 
@@ -798,7 +793,7 @@ class CodeGeneratorARM64 : public CodeGenerator {
     uint32_t custom_data;
   };
 
-  vixl::aarch64::Label* NewPcRelativePatch(const DexFile& dex_file,
+  vixl::aarch64::Label* NewPcRelativePatch(const DexFile* dex_file,
                                            uint32_t offset_or_index,
                                            vixl::aarch64::Label* adrp_label,
                                            ArenaDeque<PcRelativePatchInfo>* patches);
@@ -826,15 +821,15 @@ class CodeGeneratorARM64 : public CodeGenerator {
   // Deduplication map for 64-bit literals, used for non-patchable method address or method code.
   Uint64ToLiteralMap uint64_literals_;
   // PC-relative method patch info for kBootImageLinkTimePcRelative.
-  ArenaDeque<PcRelativePatchInfo> pc_relative_method_patches_;
+  ArenaDeque<PcRelativePatchInfo> boot_image_method_patches_;
   // PC-relative method patch info for kBssEntry.
   ArenaDeque<PcRelativePatchInfo> method_bss_entry_patches_;
   // PC-relative type patch info for kBootImageLinkTimePcRelative.
-  ArenaDeque<PcRelativePatchInfo> pc_relative_type_patches_;
+  ArenaDeque<PcRelativePatchInfo> boot_image_type_patches_;
   // PC-relative type patch info for kBssEntry.
   ArenaDeque<PcRelativePatchInfo> type_bss_entry_patches_;
   // PC-relative String patch info; type depends on configuration (intern table or boot image PIC).
-  ArenaDeque<PcRelativePatchInfo> pc_relative_string_patches_;
+  ArenaDeque<PcRelativePatchInfo> boot_image_string_patches_;
   // PC-relative String patch info for kBssEntry.
   ArenaDeque<PcRelativePatchInfo> string_bss_entry_patches_;
   // Baker read barrier patch info.

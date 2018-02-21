@@ -1028,7 +1028,7 @@ CodeGeneratorX86::CodeGeneratorX86(HGraph* graph,
       method_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       boot_image_type_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       type_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
-      string_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
+      boot_image_string_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       string_bss_entry_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       jit_string_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
       jit_class_patches_(graph->GetAllocator()->Adapter(kArenaAllocCodeGenerator)),
@@ -4528,7 +4528,7 @@ void CodeGeneratorX86::GenerateStaticOrDirectCall(
       Register base_reg = GetInvokeStaticOrDirectExtraParameter(invoke,
                                                                 temp.AsRegister<Register>());
       __ leal(temp.AsRegister<Register>(), Address(base_reg, CodeGeneratorX86::kDummy32BitOffset));
-      RecordBootMethodPatch(invoke);
+      RecordBootImageMethodPatch(invoke);
       break;
     }
     case HInvokeStaticOrDirect::MethodLoadKind::kDirectAddress:
@@ -4538,10 +4538,7 @@ void CodeGeneratorX86::GenerateStaticOrDirectCall(
       Register base_reg = GetInvokeStaticOrDirectExtraParameter(invoke,
                                                                 temp.AsRegister<Register>());
       __ movl(temp.AsRegister<Register>(), Address(base_reg, kDummy32BitOffset));
-      // Bind a new fixup label at the end of the "movl" insn.
-      __ Bind(NewMethodBssEntryPatch(
-          invoke->InputAt(invoke->GetSpecialInputIndex())->AsX86ComputeBaseMethodAddress(),
-          MethodReference(&GetGraph()->GetDexFile(), invoke->GetDexMethodIndex())));
+      RecordMethodBssEntryPatch(invoke);
       break;
     }
     case HInvokeStaticOrDirect::MethodLoadKind::kRuntimeCall: {
@@ -4598,56 +4595,55 @@ void CodeGeneratorX86::GenerateVirtualCall(
   RecordPcInfo(invoke, invoke->GetDexPc(), slow_path);
 }
 
-void CodeGeneratorX86::RecordBootMethodPatch(HInvokeStaticOrDirect* invoke) {
+void CodeGeneratorX86::RecordBootImageMethodPatch(HInvokeStaticOrDirect* invoke) {
   DCHECK_EQ(invoke->InputCount(), invoke->GetNumberOfArguments() + 1u);
-  HX86ComputeBaseMethodAddress* address =
+  HX86ComputeBaseMethodAddress* method_address =
       invoke->InputAt(invoke->GetSpecialInputIndex())->AsX86ComputeBaseMethodAddress();
-  boot_image_method_patches_.emplace_back(address,
-                                          *invoke->GetTargetMethod().dex_file,
-                                          invoke->GetTargetMethod().index);
+  boot_image_method_patches_.emplace_back(
+      method_address, invoke->GetTargetMethod().dex_file, invoke->GetTargetMethod().index);
   __ Bind(&boot_image_method_patches_.back().label);
 }
 
-Label* CodeGeneratorX86::NewMethodBssEntryPatch(
-    HX86ComputeBaseMethodAddress* method_address,
-    MethodReference target_method) {
+void CodeGeneratorX86::RecordMethodBssEntryPatch(HInvokeStaticOrDirect* invoke) {
+  DCHECK_EQ(invoke->InputCount(), invoke->GetNumberOfArguments() + 1u);
+  HX86ComputeBaseMethodAddress* method_address =
+      invoke->InputAt(invoke->GetSpecialInputIndex())->AsX86ComputeBaseMethodAddress();
   // Add the patch entry and bind its label at the end of the instruction.
-  method_bss_entry_patches_.emplace_back(method_address,
-                                         *target_method.dex_file,
-                                         target_method.index);
-  return &method_bss_entry_patches_.back().label;
+  method_bss_entry_patches_.emplace_back(
+      method_address, &GetGraph()->GetDexFile(), invoke->GetDexMethodIndex());
+  __ Bind(&method_bss_entry_patches_.back().label);
 }
 
-void CodeGeneratorX86::RecordBootTypePatch(HLoadClass* load_class) {
-  HX86ComputeBaseMethodAddress* address = load_class->InputAt(0)->AsX86ComputeBaseMethodAddress();
-  boot_image_type_patches_.emplace_back(address,
-                                        load_class->GetDexFile(),
-                                        load_class->GetTypeIndex().index_);
+void CodeGeneratorX86::RecordBootImageTypePatch(HLoadClass* load_class) {
+  HX86ComputeBaseMethodAddress* method_address =
+      load_class->InputAt(0)->AsX86ComputeBaseMethodAddress();
+  boot_image_type_patches_.emplace_back(
+      method_address, &load_class->GetDexFile(), load_class->GetTypeIndex().index_);
   __ Bind(&boot_image_type_patches_.back().label);
 }
 
 Label* CodeGeneratorX86::NewTypeBssEntryPatch(HLoadClass* load_class) {
-  HX86ComputeBaseMethodAddress* address =
+  HX86ComputeBaseMethodAddress* method_address =
       load_class->InputAt(0)->AsX86ComputeBaseMethodAddress();
   type_bss_entry_patches_.emplace_back(
-      address, load_class->GetDexFile(), load_class->GetTypeIndex().index_);
+      method_address, &load_class->GetDexFile(), load_class->GetTypeIndex().index_);
   return &type_bss_entry_patches_.back().label;
 }
 
-void CodeGeneratorX86::RecordBootStringPatch(HLoadString* load_string) {
-  HX86ComputeBaseMethodAddress* address = load_string->InputAt(0)->AsX86ComputeBaseMethodAddress();
-  string_patches_.emplace_back(address,
-                               load_string->GetDexFile(),
-                               load_string->GetStringIndex().index_);
-  __ Bind(&string_patches_.back().label);
+void CodeGeneratorX86::RecordBootImageStringPatch(HLoadString* load_string) {
+  HX86ComputeBaseMethodAddress* method_address =
+      load_string->InputAt(0)->AsX86ComputeBaseMethodAddress();
+  boot_image_string_patches_.emplace_back(
+      method_address, &load_string->GetDexFile(), load_string->GetStringIndex().index_);
+  __ Bind(&boot_image_string_patches_.back().label);
 }
 
 Label* CodeGeneratorX86::NewStringBssEntryPatch(HLoadString* load_string) {
   DCHECK(!GetCompilerOptions().IsBootImage());
-  HX86ComputeBaseMethodAddress* address =
+  HX86ComputeBaseMethodAddress* method_address =
       load_string->InputAt(0)->AsX86ComputeBaseMethodAddress();
   string_bss_entry_patches_.emplace_back(
-      address, load_string->GetDexFile(), load_string->GetStringIndex().index_);
+      method_address, &load_string->GetDexFile(), load_string->GetStringIndex().index_);
   return &string_bss_entry_patches_.back().label;
 }
 
@@ -4661,8 +4657,10 @@ inline void CodeGeneratorX86::EmitPcRelativeLinkerPatches(
     ArenaVector<linker::LinkerPatch>* linker_patches) {
   for (const X86PcRelativePatchInfo& info : infos) {
     uint32_t literal_offset = info.label.Position() - kLabelPositionToLiteralOffsetAdjustment;
-    linker_patches->push_back(Factory(
-        literal_offset, &info.dex_file, GetMethodAddressOffset(info.method_address), info.index));
+    linker_patches->push_back(Factory(literal_offset,
+                                      info.target_dex_file,
+                                      GetMethodAddressOffset(info.method_address),
+                                      info.offset_or_index));
   }
 }
 
@@ -4673,7 +4671,7 @@ void CodeGeneratorX86::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linke
       method_bss_entry_patches_.size() +
       boot_image_type_patches_.size() +
       type_bss_entry_patches_.size() +
-      string_patches_.size() +
+      boot_image_string_patches_.size() +
       string_bss_entry_patches_.size();
   linker_patches->reserve(size);
   if (GetCompilerOptions().IsBootImage()) {
@@ -4682,13 +4680,13 @@ void CodeGeneratorX86::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linke
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::RelativeTypePatch>(
         boot_image_type_patches_, linker_patches);
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::RelativeStringPatch>(
-        string_patches_, linker_patches);
+        boot_image_string_patches_, linker_patches);
   } else {
     DCHECK(boot_image_method_patches_.empty());
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::TypeClassTablePatch>(
         boot_image_type_patches_, linker_patches);
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::StringInternTablePatch>(
-        string_patches_, linker_patches);
+        boot_image_string_patches_, linker_patches);
   }
   EmitPcRelativeLinkerPatches<linker::LinkerPatch::MethodBssEntryPatch>(
       method_bss_entry_patches_, linker_patches);
@@ -6118,7 +6116,7 @@ Label* CodeGeneratorX86::NewJitRootClassPatch(const DexFile& dex_file,
                                               Handle<mirror::Class> handle) {
   ReserveJitClassRoot(TypeReference(&dex_file, type_index), handle);
   // Add a patch entry and return the label.
-  jit_class_patches_.emplace_back(dex_file, type_index.index_);
+  jit_class_patches_.emplace_back(&dex_file, type_index.index_);
   PatchInfo<Label>* info = &jit_class_patches_.back();
   return &info->label;
 }
@@ -6160,7 +6158,7 @@ void InstructionCodeGeneratorX86::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAFE
       DCHECK_EQ(read_barrier_option, kWithoutReadBarrier);
       Register method_address = locations->InAt(0).AsRegister<Register>();
       __ leal(out, Address(method_address, CodeGeneratorX86::kDummy32BitOffset));
-      codegen_->RecordBootTypePatch(cls);
+      codegen_->RecordBootImageTypePatch(cls);
       break;
     }
     case HLoadClass::LoadKind::kBootImageAddress: {
@@ -6175,7 +6173,7 @@ void InstructionCodeGeneratorX86::VisitLoadClass(HLoadClass* cls) NO_THREAD_SAFE
       DCHECK(!codegen_->GetCompilerOptions().IsBootImage());
       Register method_address = locations->InAt(0).AsRegister<Register>();
       __ movl(out, Address(method_address, CodeGeneratorX86::kDummy32BitOffset));
-      codegen_->RecordBootTypePatch(cls);
+      codegen_->RecordBootImageTypePatch(cls);
       // Extract the reference from the slot data, i.e. clear the hash bits.
       int32_t masked_hash = ClassTable::TableSlot::MaskHash(
           ComputeModifiedUtf8Hash(cls->GetDexFile().StringByTypeIdx(cls->GetTypeIndex())));
@@ -6307,7 +6305,7 @@ Label* CodeGeneratorX86::NewJitRootStringPatch(const DexFile& dex_file,
                                                Handle<mirror::String> handle) {
   ReserveJitStringRoot(StringReference(&dex_file, string_index), handle);
   // Add a patch entry and return the label.
-  jit_string_patches_.emplace_back(dex_file, string_index.index_);
+  jit_string_patches_.emplace_back(&dex_file, string_index.index_);
   PatchInfo<Label>* info = &jit_string_patches_.back();
   return &info->label;
 }
@@ -6324,7 +6322,7 @@ void InstructionCodeGeneratorX86::VisitLoadString(HLoadString* load) NO_THREAD_S
       DCHECK(codegen_->GetCompilerOptions().IsBootImage());
       Register method_address = locations->InAt(0).AsRegister<Register>();
       __ leal(out, Address(method_address, CodeGeneratorX86::kDummy32BitOffset));
-      codegen_->RecordBootStringPatch(load);
+      codegen_->RecordBootImageStringPatch(load);
       return;
     }
     case HLoadString::LoadKind::kBootImageAddress: {
@@ -6338,7 +6336,7 @@ void InstructionCodeGeneratorX86::VisitLoadString(HLoadString* load) NO_THREAD_S
       DCHECK(!codegen_->GetCompilerOptions().IsBootImage());
       Register method_address = locations->InAt(0).AsRegister<Register>();
       __ movl(out, Address(method_address, CodeGeneratorX86::kDummy32BitOffset));
-      codegen_->RecordBootStringPatch(load);
+      codegen_->RecordBootImageStringPatch(load);
       return;
     }
     case HLoadString::LoadKind::kBssEntry: {
@@ -7830,13 +7828,13 @@ void CodeGeneratorX86::PatchJitRootUse(uint8_t* code,
 
 void CodeGeneratorX86::EmitJitRootPatches(uint8_t* code, const uint8_t* roots_data) {
   for (const PatchInfo<Label>& info : jit_string_patches_) {
-    StringReference string_reference(&info.dex_file, dex::StringIndex(info.index));
+    StringReference string_reference(info.target_dex_file, dex::StringIndex(info.offset_or_index));
     uint64_t index_in_table = GetJitStringRootIndex(string_reference);
     PatchJitRootUse(code, roots_data, info, index_in_table);
   }
 
   for (const PatchInfo<Label>& info : jit_class_patches_) {
-    TypeReference type_reference(&info.dex_file, dex::TypeIndex(info.index));
+    TypeReference type_reference(info.target_dex_file, dex::TypeIndex(info.offset_or_index));
     uint64_t index_in_table = GetJitClassRootIndex(type_reference);
     PatchJitRootUse(code, roots_data, info, index_in_table);
   }

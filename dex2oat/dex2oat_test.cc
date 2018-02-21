@@ -1850,12 +1850,17 @@ TEST_F(Dex2oatTest, DontExtract) {
   GenerateOdexForTest(dex_location,
                       odex_location,
                       CompilerFilter::Filter::kQuicken,
-                      { "--dump-timings", "--dm-file=" + dm_file.GetFilename() },
+                      { "--dump-timings",
+                        "--dm-file=" + dm_file.GetFilename(),
+                        // Pass -Xuse-stderr-logger have dex2oat output in output_ on target.
+                        "--runtime-arg",
+                        "-Xuse-stderr-logger" },
                       true,  // expect_success
                       false,  // use_fd
                       [](const OatFile& o) {
                         CHECK(o.ContainsDexCode());
                       });
+  // Check the output for "Fast verify", this is printed from --dump-timings.
   std::istringstream iss(output_);
   std::string line;
   bool found_fast_verify = false;
