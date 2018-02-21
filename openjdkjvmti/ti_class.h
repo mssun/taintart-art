@@ -75,6 +75,11 @@ class ClassUtil {
                                           jint* class_count_ptr,
                                           jclass** classes_ptr);
 
+  static jvmtiError GetClassLoaderClassDescriptors(jvmtiEnv* env,
+                                                   jobject loader,
+                                                   jint* count_ptr,
+                                                   char*** classes);
+
   static jvmtiError IsInterface(jvmtiEnv* env, jclass klass, jboolean* is_interface_ptr);
   static jvmtiError IsArrayClass(jvmtiEnv* env, jclass klass, jboolean* is_array_class_ptr);
 
