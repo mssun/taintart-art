@@ -156,14 +156,25 @@ static std::vector<uint8_t> MakeElfFileForJITInternal(
   // No program headers since the ELF file is not linked and has no allocated sections.
   builder->Start(false /* write_program_headers */);
   if (mini_debug_info) {
-    std::vector<uint8_t> mdi = MakeMiniDebugInfo(isa,
-                                                 features,
-                                                 min_address,
-                                                 max_address - min_address,
-                                                 /* dex_section_address */ 0,
-                                                 /* dex_section_size */ 0,
-                                                 debug_info);
-    builder->WriteSection(".gnu_debugdata", &mdi);
+    if (method_infos.size() > 1) {
+      std::vector<uint8_t> mdi = MakeMiniDebugInfo(isa,
+                                                   features,
+                                                   min_address,
+                                                   max_address - min_address,
+                                                   /* dex_section_address */ 0,
+                                                   /* dex_section_size */ 0,
+                                                   debug_info);
+      builder->WriteSection(".gnu_debugdata", &mdi);
+    } else {
+      // The compression is great help for multiple methods but it is not worth it for a
+      // single method due to the overheads so skip the compression here for performance.
+      builder->GetText()->AllocateVirtualMemory(min_address, max_address - min_address);
+      WriteDebugSymbols(builder.get(), true /* mini-debug-info */, debug_info);
+      WriteCFISection(builder.get(),
+                      debug_info.compiled_methods,
+                      dwarf::DW_DEBUG_FRAME_FORMAT,
+                      false /* write_oat_paches */);
+    }
   } else {
     builder->GetText()->AllocateVirtualMemory(min_address, max_address - min_address);
     WriteDebugInfo(builder.get(),
