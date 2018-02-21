@@ -17,12 +17,12 @@
 #include <vector>
 
 #include <android-base/logging.h>
-#include "dex/compact_dex_debug_info.h"
+#include "dex/compact_offset_table.h"
 #include "gtest/gtest.h"
 
 namespace art {
 
-TEST(CompactDexDebugInfoTest, TestBuildAndAccess) {
+TEST(CompactOffsetTableTest, TestBuildAndAccess) {
   const size_t kDebugInfoMinOffset = 1234567;
   std::vector<uint32_t> offsets = {
       0, 17, 2, 3, 11, 0, 0, 0, 0, 1, 0, 1552, 100, 122, 44, 1234567, 0, 0,
@@ -38,13 +38,10 @@ TEST(CompactDexDebugInfoTest, TestBuildAndAccess) {
   }
 
   std::vector<uint8_t> data;
-  uint32_t base_offset = 0;
+  uint32_t min_offset = 0;
   uint32_t table_offset = 0;
-  CompactDexDebugInfoOffsetTable::Build(offsets,
-                                        /*out*/ &data,
-                                        /*out*/ &base_offset,
-                                        /*out*/ &table_offset);
-  EXPECT_GE(base_offset, kDebugInfoMinOffset);
+  CompactOffsetTable::Build(offsets, /*out*/ &data, /*out*/ &min_offset, /*out*/ &table_offset);
+  EXPECT_GE(min_offset, kDebugInfoMinOffset);
   EXPECT_LT(table_offset, data.size());
   ASSERT_GT(data.size(), 0u);
   const size_t before_size = offsets.size() * sizeof(offsets.front());
@@ -57,21 +54,19 @@ TEST(CompactDexDebugInfoTest, TestBuildAndAccess) {
   std::vector<uint8_t> fake_dex(data.size() + kExtraOffset);
   std::copy(data.begin(), data.end(), fake_dex.data() + kExtraOffset);
 
-  CompactDexDebugInfoOffsetTable::Accessor accessor(fake_dex.data() + kExtraOffset,
-                                                    base_offset,
-                                                    table_offset);
+  CompactOffsetTable::Accessor accessor(fake_dex.data() + kExtraOffset, min_offset, table_offset);
   for (size_t i = 0; i < offsets.size(); ++i) {
-    EXPECT_EQ(offsets[i], accessor.GetDebugInfoOffset(i));
+    EXPECT_EQ(offsets[i], accessor.GetOffset(i));
   }
 
   // Sort to produce a try and produce a smaller table. This happens because the leb diff is smaller
   // for sorted increasing order.
   std::sort(offsets.begin(), offsets.end());
   std::vector<uint8_t> sorted_data;
-  CompactDexDebugInfoOffsetTable::Build(offsets,
-                                        /*out*/ &sorted_data,
-                                        /*out*/ &base_offset,
-                                        /*out*/ &table_offset);
+  CompactOffsetTable::Build(offsets,
+                            /*out*/ &sorted_data,
+                            /*out*/ &min_offset,
+                            /*out*/ &table_offset);
   EXPECT_LT(sorted_data.size(), data.size());
   {
     android::base::ScopedLogSeverity sls(android::base::LogSeverity::INFO);
