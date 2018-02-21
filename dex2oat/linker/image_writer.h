@@ -267,7 +267,7 @@ class ImageWriter FINAL {
 
     // Create the image sections into the out sections variable, returns the size of the image
     // excluding the bitmap.
-    size_t CreateImageSections(ImageSection* out_sections, bool app_image) const;
+    size_t CreateImageSections(ImageSection* out_sections) const;
 
     size_t GetStubOffset(StubType stub_type) const {
       DCHECK_LT(static_cast<size_t>(stub_type), kNumberOfStubTypes);

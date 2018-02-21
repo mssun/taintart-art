@@ -81,20 +81,14 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
   }
 
   void VisitLoadClass(HLoadClass* load_class) OVERRIDE {
-    HLoadClass::LoadKind load_kind = load_class->GetLoadKind();
-    if (load_kind == HLoadClass::LoadKind::kBootImageLinkTimePcRelative ||
-        load_kind == HLoadClass::LoadKind::kBootImageClassTable ||
-        load_kind == HLoadClass::LoadKind::kBssEntry) {
+    if (load_class->HasPcRelativeLoadKind()) {
       HX86ComputeBaseMethodAddress* method_address = GetPCRelativeBasePointer(load_class);
       load_class->AddSpecialInput(method_address);
     }
   }
 
   void VisitLoadString(HLoadString* load_string) OVERRIDE {
-    HLoadString::LoadKind load_kind = load_string->GetLoadKind();
-    if (load_kind == HLoadString::LoadKind::kBootImageLinkTimePcRelative ||
-        load_kind == HLoadString::LoadKind::kBootImageInternTable ||
-        load_kind == HLoadString::LoadKind::kBssEntry) {
+    if (load_string->HasPcRelativeLoadKind()) {
       HX86ComputeBaseMethodAddress* method_address = GetPCRelativeBasePointer(load_string);
       load_string->AddSpecialInput(method_address);
     }

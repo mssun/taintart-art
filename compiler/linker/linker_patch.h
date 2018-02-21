@@ -47,10 +47,8 @@ class LinkerPatch {
     kCall,
     kCallRelative,            // NOTE: Actual patching is instruction_set-dependent.
     kTypeRelative,            // NOTE: Actual patching is instruction_set-dependent.
-    kTypeClassTable,          // NOTE: Actual patching is instruction_set-dependent.
     kTypeBssEntry,            // NOTE: Actual patching is instruction_set-dependent.
     kStringRelative,          // NOTE: Actual patching is instruction_set-dependent.
-    kStringInternTable,       // NOTE: Actual patching is instruction_set-dependent.
     kStringBssEntry,          // NOTE: Actual patching is instruction_set-dependent.
     kBakerReadBarrierBranch,  // NOTE: Actual patching is instruction_set-dependent.
   };
@@ -110,16 +108,6 @@ class LinkerPatch {
     return patch;
   }
 
-  static LinkerPatch TypeClassTablePatch(size_t literal_offset,
-                                         const DexFile* target_dex_file,
-                                         uint32_t pc_insn_offset,
-                                         uint32_t target_type_idx) {
-    LinkerPatch patch(literal_offset, Type::kTypeClassTable, target_dex_file);
-    patch.type_idx_ = target_type_idx;
-    patch.pc_insn_offset_ = pc_insn_offset;
-    return patch;
-  }
-
   static LinkerPatch TypeBssEntryPatch(size_t literal_offset,
                                        const DexFile* target_dex_file,
                                        uint32_t pc_insn_offset,
@@ -135,16 +123,6 @@ class LinkerPatch {
                                          uint32_t pc_insn_offset,
                                          uint32_t target_string_idx) {
     LinkerPatch patch(literal_offset, Type::kStringRelative, target_dex_file);
-    patch.string_idx_ = target_string_idx;
-    patch.pc_insn_offset_ = pc_insn_offset;
-    return patch;
-  }
-
-  static LinkerPatch StringInternTablePatch(size_t literal_offset,
-                                            const DexFile* target_dex_file,
-                                            uint32_t pc_insn_offset,
-                                            uint32_t target_string_idx) {
-    LinkerPatch patch(literal_offset, Type::kStringInternTable, target_dex_file);
     patch.string_idx_ = target_string_idx;
     patch.pc_insn_offset_ = pc_insn_offset;
     return patch;
@@ -187,10 +165,8 @@ class LinkerPatch {
       case Type::kMethodBssEntry:
       case Type::kCallRelative:
       case Type::kTypeRelative:
-      case Type::kTypeClassTable:
       case Type::kTypeBssEntry:
       case Type::kStringRelative:
-      case Type::kStringInternTable:
       case Type::kStringBssEntry:
       case Type::kBakerReadBarrierBranch:
         return true;
@@ -214,28 +190,24 @@ class LinkerPatch {
 
   const DexFile* TargetTypeDexFile() const {
     DCHECK(patch_type_ == Type::kTypeRelative ||
-           patch_type_ == Type::kTypeClassTable ||
            patch_type_ == Type::kTypeBssEntry);
     return target_dex_file_;
   }
 
   dex::TypeIndex TargetTypeIndex() const {
     DCHECK(patch_type_ == Type::kTypeRelative ||
-           patch_type_ == Type::kTypeClassTable ||
            patch_type_ == Type::kTypeBssEntry);
     return dex::TypeIndex(type_idx_);
   }
 
   const DexFile* TargetStringDexFile() const {
     DCHECK(patch_type_ == Type::kStringRelative ||
-           patch_type_ == Type::kStringInternTable ||
            patch_type_ == Type::kStringBssEntry);
     return target_dex_file_;
   }
 
   dex::StringIndex TargetStringIndex() const {
     DCHECK(patch_type_ == Type::kStringRelative ||
-           patch_type_ == Type::kStringInternTable ||
            patch_type_ == Type::kStringBssEntry);
     return dex::StringIndex(string_idx_);
   }
@@ -245,10 +217,8 @@ class LinkerPatch {
            patch_type_ == Type::kMethodRelative ||
            patch_type_ == Type::kMethodBssEntry ||
            patch_type_ == Type::kTypeRelative ||
-           patch_type_ == Type::kTypeClassTable ||
            patch_type_ == Type::kTypeBssEntry ||
            patch_type_ == Type::kStringRelative ||
-           patch_type_ == Type::kStringInternTable ||
            patch_type_ == Type::kStringBssEntry);
     return pc_insn_offset_;
   }

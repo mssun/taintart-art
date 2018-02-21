@@ -412,37 +412,6 @@ inline static bool ReadOatDexFileData(const OatFile& oat_file,
   return true;
 }
 
-static inline bool MapConstantTables(const gc::space::ImageSpace* space,
-                                     uint8_t* address) {
-  // If MREMAP_DUP is ever merged to Linux kernel, use it to avoid the unnecessary open()/close().
-  // Note: The current approach relies on the filename still referencing the same inode.
-
-  File file(space->GetImageFilename(), O_RDONLY, /* checkUsage */ false);
-  if (!file.IsOpened()) {
-    LOG(ERROR) << "Failed to open boot image file " << space->GetImageFilename();
-    return false;
-  }
-
-  uint32_t offset = space->GetImageHeader().GetBootImageConstantTablesOffset();
-  uint32_t size = space->GetImageHeader().GetBootImageConstantTablesSize();
-  std::string error_msg;
-  std::unique_ptr<MemMap> mem_map(MemMap::MapFileAtAddress(address,
-                                                           size,
-                                                           PROT_READ,
-                                                           MAP_PRIVATE,
-                                                           file.Fd(),
-                                                           offset,
-                                                           /* low_4gb */ false,
-                                                           /* reuse */ true,
-                                                           file.GetPath().c_str(),
-                                                           &error_msg));
-  if (mem_map == nullptr) {
-    LOG(ERROR) << "Failed to mmap boot image tables from file " << space->GetImageFilename();
-    return false;
-  }
-  return true;
-}
-
 static bool ReadIndexBssMapping(OatFile* oat_file,
                                 /*inout*/const uint8_t** oat,
                                 size_t dex_file_index,
@@ -588,12 +557,15 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
     return false;
   }
 
-  uint8_t* after_tables =
-      (bss_methods_ != nullptr) ? bss_methods_ : bss_roots_;  // May be null.
-  uint8_t* boot_image_tables = (bss_begin_ == after_tables) ? nullptr : bss_begin_;
-  uint8_t* boot_image_tables_end =
-      (bss_begin_ == after_tables) ? nullptr : (after_tables != nullptr) ? after_tables : bss_end_;
-  DCHECK_EQ(boot_image_tables != nullptr, boot_image_tables_end != nullptr);
+  if (bss_methods_ != nullptr && bss_methods_ != bss_begin_) {
+    *error_msg = StringPrintf("In oat file '%s' found unexpected .bss gap before 'oatbssmethods': "
+                                  "begin = %p, methods = %p",
+                              GetLocation().c_str(),
+                              bss_begin_,
+                              bss_methods_);
+    return false;
+  }
+
   uint32_t dex_file_count = GetOatHeader().GetDexFileCount();
   oat_dex_files_storage_.reserve(dex_file_count);
   for (size_t i = 0; i < dex_file_count; i++) {
@@ -895,38 +867,6 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
     }
   }
 
-  if (boot_image_tables != nullptr) {
-    if (UNLIKELY(runtime == nullptr)) {
-      // This must be oatdump without boot image. Make sure the .bss is inaccessible.
-      CheckedCall(mprotect, "protect bss", const_cast<uint8_t*>(BssBegin()), BssSize(), PROT_NONE);
-    } else if (!IsExecutable()) {
-      // Do not try to mmap boot image tables into .bss if the oat file is not executable.
-    } else {
-      // Map boot image tables into the .bss. The reserved size must match size of the tables.
-      size_t reserved_size = static_cast<size_t>(boot_image_tables_end - boot_image_tables);
-      size_t tables_size = 0u;
-      for (gc::space::ImageSpace* space : runtime->GetHeap()->GetBootImageSpaces()) {
-        tables_size += space->GetImageHeader().GetBootImageConstantTablesSize();
-        DCHECK_ALIGNED(tables_size, kPageSize);
-      }
-      if (tables_size != reserved_size) {
-        *error_msg = StringPrintf("In oat file '%s' found unexpected boot image table sizes, "
-                                      " %zu bytes, should be %zu.",
-                                  GetLocation().c_str(),
-                                  reserved_size,
-                                  tables_size);
-        return false;
-      }
-      for (gc::space::ImageSpace* space : Runtime::Current()->GetHeap()->GetBootImageSpaces()) {
-        uint32_t current_tables_size = space->GetImageHeader().GetBootImageConstantTablesSize();
-        if (current_tables_size != 0u && !MapConstantTables(space, boot_image_tables)) {
-          return false;
-        }
-        boot_image_tables += current_tables_size;
-      }
-      DCHECK(boot_image_tables == boot_image_tables_end);
-    }
-  }
   return true;
 }
 
