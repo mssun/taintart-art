@@ -71,8 +71,8 @@ cc_defaults {
 
 gensrcs {
     name: "dexfile_operator_srcs",
-    cmd: "$(location generate-operator-out.py) art/libdexfile $(in) > $(out)",
-    tool_files: ["generate-operator-out.py"],
+    cmd: "$(location generate_operator_out) art/libdexfile $(in) > $(out)",
+    tools: ["generate_operator_out"],
     srcs: [
         "dex/dex_file.h",
         "dex/dex_instruction.h",
