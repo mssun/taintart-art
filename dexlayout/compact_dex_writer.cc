@@ -19,8 +19,8 @@
 #include "android-base/stringprintf.h"
 #include "base/logging.h"
 #include "base/time_utils.h"
-#include "dex/compact_dex_debug_info.h"
 #include "dex/compact_dex_file.h"
+#include "dex/compact_offset_table.h"
 #include "dexlayout.h"
 
 namespace art {
@@ -76,12 +76,12 @@ uint32_t CompactDexWriter::WriteDebugInfoOffsetTable(Stream* stream) {
   std::vector<uint8_t> data;
   debug_info_base_ = 0u;
   debug_info_offsets_table_offset_ = 0u;
-  CompactDexDebugInfoOffsetTable::Build(debug_info_offsets,
-                                        &data,
-                                        &debug_info_base_,
-                                        &debug_info_offsets_table_offset_);
+  CompactOffsetTable::Build(debug_info_offsets,
+                            &data,
+                            &debug_info_base_,
+                            &debug_info_offsets_table_offset_);
   // Align the table and write it out.
-  stream->AlignTo(CompactDexDebugInfoOffsetTable::kAlignment);
+  stream->AlignTo(CompactOffsetTable::kAlignment);
   debug_info_offsets_pos_ = stream->Tell();
   stream->Write(data.data(), data.size());
 
@@ -90,12 +90,12 @@ uint32_t CompactDexWriter::WriteDebugInfoOffsetTable(Stream* stream) {
   if (kMeasureAndTestOutput && !debug_info_offsets.empty()) {
     uint64_t start_time = NanoTime();
     stream->Begin();
-    CompactDexDebugInfoOffsetTable::Accessor accessor(stream->Begin() + debug_info_offsets_pos_,
-                                                      debug_info_base_,
-                                                      debug_info_offsets_table_offset_);
+    CompactOffsetTable::Accessor accessor(stream->Begin() + debug_info_offsets_pos_,
+                                          debug_info_base_,
+                                          debug_info_offsets_table_offset_);
 
     for (size_t i = 0; i < debug_info_offsets.size(); ++i) {
-      CHECK_EQ(accessor.GetDebugInfoOffset(i), debug_info_offsets[i]);
+      CHECK_EQ(accessor.GetOffset(i), debug_info_offsets[i]);
     }
     uint64_t end_time = NanoTime();
     VLOG(dex) << "Average lookup time (ns) for debug info offsets: "

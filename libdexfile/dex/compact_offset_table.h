@@ -14,44 +14,44 @@
  * limitations under the License.
  */
 
-#ifndef ART_LIBDEXFILE_DEX_COMPACT_DEX_DEBUG_INFO_H_
-#define ART_LIBDEXFILE_DEX_COMPACT_DEX_DEBUG_INFO_H_
+#ifndef ART_LIBDEXFILE_DEX_COMPACT_OFFSET_TABLE_H_
+#define ART_LIBDEXFILE_DEX_COMPACT_OFFSET_TABLE_H_
 
 #include <cstdint>
 #include <vector>
 
 namespace art {
 
-// Debug offset table for compact dex, aims to minimize size while still providing reasonable
-// speed (10-20ns average time per lookup on host).
-class CompactDexDebugInfoOffsetTable {
+// Compact offset table that aims to minimize size while still providing reasonable speed (10-20ns
+// average time per lookup on host).
+class CompactOffsetTable {
  public:
   // This value is coupled with the leb chunk bitmask. That logic must also be adjusted when the
   // integer is modified.
   static constexpr size_t kElementsPerIndex = 16;
 
   // Leb block format:
-  // [uint16_t] 16 bit mask for what method ids actually have a debug info offset for the chunk.
+  // [uint16_t] 16 bit mask for what indexes actually have a non zero offset for the chunk.
   // [lebs] Up to 16 lebs encoded using leb128, one leb bit. The leb specifies how the offset
   // changes compared to the previous index.
 
   class Accessor {
    public:
     Accessor(const uint8_t* data_begin,
-             uint32_t debug_info_base,
-             uint32_t debug_info_table_offset);
+             uint32_t minimum_offset,
+             uint32_t table_offset);
 
-    // Return the debug info for a method index (or 0 if it doesn't have one).
-    uint32_t GetDebugInfoOffset(uint32_t method_idx) const;
+    // Return the offset for the index.
+    uint32_t GetOffset(uint32_t index) const;
 
    private:
     const uint32_t* const table_;
-    const uint32_t debug_info_base_;
+    const uint32_t minimum_offset_;
     const uint8_t* const data_begin_;
   };
 
-  // Returned offsets are all relative to debug_info_offsets.
-  static void Build(const std::vector<uint32_t>& debug_info_offsets,
+  // Returned offsets are all relative to out_min_offset.
+  static void Build(const std::vector<uint32_t>& offsets,
                     std::vector<uint8_t>* out_data,
                     uint32_t* out_min_offset,
                     uint32_t* out_table_offset);
@@ -62,4 +62,4 @@ class CompactDexDebugInfoOffsetTable {
 
 }  // namespace art
 
-#endif  // ART_LIBDEXFILE_DEX_COMPACT_DEX_DEBUG_INFO_H_
+#endif  // ART_LIBDEXFILE_DEX_COMPACT_OFFSET_TABLE_H_
