@@ -19,7 +19,7 @@
 
 #include "base/casts.h"
 #include "dex_file.h"
-#include "dex/compact_dex_debug_info.h"
+#include "dex/compact_offset_table.h"
 
 namespace art {
 
@@ -260,7 +260,7 @@ class CompactDexFile : public DexFile {
   uint32_t GetCodeItemSize(const DexFile::CodeItem& item) const OVERRIDE;
 
   uint32_t GetDebugInfoOffset(uint32_t dex_method_index) const {
-    return debug_info_offsets_.GetDebugInfoOffset(dex_method_index);
+    return debug_info_offsets_.GetOffset(dex_method_index);
   }
 
   static uint32_t CalculateChecksum(const uint8_t* base_begin,
@@ -279,7 +279,7 @@ class CompactDexFile : public DexFile {
                  const OatDexFile* oat_dex_file,
                  DexFileContainer* container);
 
-  CompactDexDebugInfoOffsetTable::Accessor debug_info_offsets_;
+  CompactOffsetTable::Accessor debug_info_offsets_;
 
   friend class DexFile;
   friend class DexFileLoader;
