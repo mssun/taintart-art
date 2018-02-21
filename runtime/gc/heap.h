@@ -1331,7 +1331,7 @@ class Heap {
   // The ideal maximum free size, when we grow the heap for utilization.
   size_t max_free_;
 
-  // Target ideal heap utilization ratio
+  // Target ideal heap utilization ratio.
   double target_utilization_;
 
   // How much more we grow the heap when we are a foreground app instead of background.
