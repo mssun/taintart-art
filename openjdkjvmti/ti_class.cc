@@ -69,7 +69,7 @@
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
 #include "thread_list.h"
-#include "ti_class_loader.h"
+#include "ti_class_loader-inl.h"
 #include "ti_phase.h"
 #include "ti_redefine.h"
 #include "utils.h"
@@ -860,6 +860,108 @@ jvmtiError ClassUtil::GetClassLoader(jvmtiEnv* env ATTRIBUTE_UNUSED,
   *classloader_ptr = soa.AddLocalReference<jobject>(klass->GetClassLoader());
 
   return ERR(NONE);
+}
+
+// Copies unique class descriptors into the classes list from dex_files.
+static jvmtiError CopyClassDescriptors(jvmtiEnv* env,
+                                       const std::vector<const art::DexFile*>& dex_files,
+                                       /*out*/jint* count_ptr,
+                                       /*out*/char*** classes) {
+  jvmtiError res = OK;
+  std::set<art::StringPiece> unique_descriptors;
+  std::vector<const char*> descriptors;
+  auto add_descriptor = [&](const char* desc) {
+    // Don't add duplicates.
+    if (res == OK && unique_descriptors.find(desc) == unique_descriptors.end()) {
+      // The desc will remain valid since we hold a ref to the class_loader.
+      unique_descriptors.insert(desc);
+      descriptors.push_back(CopyString(env, desc, &res).release());
+    }
+  };
+  for (const art::DexFile* dex_file : dex_files) {
+    uint32_t num_defs = dex_file->NumClassDefs();
+    for (uint32_t i = 0; i < num_defs; i++) {
+      add_descriptor(dex_file->GetClassDescriptor(dex_file->GetClassDef(i)));
+    }
+  }
+  char** out_data = nullptr;
+  if (res == OK) {
+    res = env->Allocate(sizeof(char*) * descriptors.size(),
+                        reinterpret_cast<unsigned char**>(&out_data));
+  }
+  if (res != OK) {
+    env->Deallocate(reinterpret_cast<unsigned char*>(out_data));
+    // Failed to allocate. Cleanup everything.
+    for (const char* data : descriptors) {
+      env->Deallocate(reinterpret_cast<unsigned char*>(const_cast<char*>(data)));
+    }
+    descriptors.clear();
+    return res;
+  }
+  // Everything is good.
+  memcpy(out_data, descriptors.data(), sizeof(char*) * descriptors.size());
+  *count_ptr = static_cast<jint>(descriptors.size());
+  *classes = out_data;
+  return OK;
+}
+
+jvmtiError ClassUtil::GetClassLoaderClassDescriptors(jvmtiEnv* env,
+                                                     jobject loader,
+                                                     /*out*/jint* count_ptr,
+                                                     /*out*/char*** classes) {
+  art::Thread* self = art::Thread::Current();
+  if (env == nullptr) {
+    return ERR(INVALID_ENVIRONMENT);
+  } else if (self == nullptr) {
+    return ERR(UNATTACHED_THREAD);
+  } else if (count_ptr == nullptr || classes == nullptr) {
+    return ERR(NULL_POINTER);
+  }
+  art::JNIEnvExt* jnienv = self->GetJniEnv();
+  if (loader == nullptr ||
+      jnienv->IsInstanceOf(loader, art::WellKnownClasses::java_lang_BootClassLoader)) {
+    // We can just get the dex files directly for the boot class path.
+    return CopyClassDescriptors(env,
+                                art::Runtime::Current()->GetClassLinker()->GetBootClassPath(),
+                                count_ptr,
+                                classes);
+  }
+  if (!jnienv->IsInstanceOf(loader, art::WellKnownClasses::java_lang_ClassLoader)) {
+    return ERR(ILLEGAL_ARGUMENT);
+  } else if (!jnienv->IsInstanceOf(loader,
+                                   art::WellKnownClasses::dalvik_system_BaseDexClassLoader)) {
+    LOG(ERROR) << "GetClassLoaderClassDescriptors is only implemented for BootClassPath and "
+               << "dalvik.system.BaseDexClassLoader class loaders";
+    // TODO Possibly return OK With no classes would  be better since these ones cannot have any
+    // real classes associated with them.
+    return ERR(NOT_IMPLEMENTED);
+  }
+
+  art::ScopedObjectAccess soa(self);
+  art::StackHandleScope<1> hs(self);
+  art::Handle<art::mirror::ClassLoader> class_loader(
+      hs.NewHandle(soa.Decode<art::mirror::ClassLoader>(loader)));
+  std::vector<const art::DexFile*> dex_files;
+  ClassLoaderHelper::VisitDexFileObjects(
+      self,
+      class_loader,
+      [&] (art::ObjPtr<art::mirror::Object> dex_file) REQUIRES_SHARED(art::Locks::mutator_lock_) {
+        art::StackHandleScope<2> hs(self);
+        art::Handle<art::mirror::Object> h_dex_file(hs.NewHandle(dex_file));
+        art::Handle<art::mirror::LongArray> cookie(
+            hs.NewHandle(ClassLoaderHelper::GetDexFileCookie(h_dex_file)));
+        size_t num_elements = cookie->GetLength();
+        // We need to skip over the oat_file that's the first element. The other elements are all
+        // dex files.
+        for (size_t i = 1; i < num_elements; i++) {
+          dex_files.push_back(
+              reinterpret_cast<const art::DexFile*>(static_cast<uintptr_t>(cookie->Get(i))));
+        }
+        // Iterate over all dex files.
+        return true;
+      });
+  // We hold the loader so the dex files won't go away until after this call at worst.
+  return CopyClassDescriptors(env, dex_files, count_ptr, classes);
 }
 
 jvmtiError ClassUtil::GetClassLoaderClasses(jvmtiEnv* env,
