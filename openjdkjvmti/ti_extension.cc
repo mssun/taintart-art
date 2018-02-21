@@ -36,6 +36,7 @@
 #include "art_jvmti.h"
 #include "events.h"
 #include "ti_allocator.h"
+#include "ti_class.h"
 #include "ti_ddms.h"
 #include "ti_heap.h"
 #include "thread-inl.h"
@@ -226,6 +227,31 @@ jvmtiError ExtensionUtil::GetExtensionFunctions(jvmtiEnv* env,
     return error;
   }
 
+  // GetClassLoaderClassDescriptors extension
+  error = add_extension(
+      reinterpret_cast<jvmtiExtensionFunction>(ClassUtil::GetClassLoaderClassDescriptors),
+      "com.android.art.class.get_class_loader_class_descriptors",
+      "Retrieves a list of all the classes (as class descriptors) that the given class loader is"
+      " capable of being the defining class loader for. The return format is a list of"
+      " null-terminated descriptor strings of the form \"L/java/lang/Object;\". Each descriptor"
+      " will be in the list at most once. If the class_loader is null the bootclassloader will be"
+      " used. If the class_loader is not null it must either be a java.lang.BootClassLoader, a"
+      " dalvik.system.BaseDexClassLoader or a derived type. The data_out list and all elements"
+      " must be deallocated by the caller.",
+      {
+        { "class_loader", JVMTI_KIND_IN, JVMTI_TYPE_JOBJECT, true },
+        { "class_descriptor_count_out", JVMTI_KIND_OUT, JVMTI_TYPE_JINT, false },
+        { "data_out", JVMTI_KIND_ALLOC_ALLOC_BUF, JVMTI_TYPE_CCHAR, false },
+      },
+      {
+        ERR(NULL_POINTER),
+        ERR(ILLEGAL_ARGUMENT),
+        ERR(OUT_OF_MEMORY),
+        ERR(NOT_IMPLEMENTED),
+      });
+  if (error != ERR(NONE)) {
+    return error;
+  }
   // Copy into output buffer.
 
   *extension_count_ptr = ext_vector.size();
