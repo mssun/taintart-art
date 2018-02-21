@@ -321,31 +321,6 @@ class DexLayoutTest : public CommonRuntimeTest {
     return true;
   }
 
-  template <typename Mutator>
-  bool MutateDexFile(File* output_dex, const std::string& input_jar, const Mutator& mutator) {
-    std::vector<std::unique_ptr<const DexFile>> dex_files;
-    std::string error_msg;
-    const ArtDexFileLoader dex_file_loader;
-    CHECK(dex_file_loader.Open(input_jar.c_str(),
-                               input_jar.c_str(),
-                               /*verify*/ true,
-                               /*verify_checksum*/ true,
-                               &error_msg,
-                               &dex_files)) << error_msg;
-    EXPECT_EQ(dex_files.size(), 1u) << "Only one input dex is supported";
-    for (const std::unique_ptr<const DexFile>& dex : dex_files) {
-      CHECK(dex->EnableWrite()) << "Failed to enable write";
-      mutator(const_cast<DexFile*>(dex.get()));
-      if (!output_dex->WriteFully(dex->Begin(), dex->Size())) {
-        return false;
-      }
-    }
-    if (output_dex->Flush() != 0) {
-      PLOG(FATAL) << "Could not flush the output file.";
-    }
-    return true;
-  }
-
   // Create a profile with some subset of methods and classes.
   void CreateProfile(const std::string& input_dex,
                      const std::string& out_profile,

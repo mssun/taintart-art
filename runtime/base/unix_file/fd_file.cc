@@ -459,12 +459,13 @@ int FdFile::Compare(FdFile* other) {
   static const size_t kBufferSize = 4096;
   std::unique_ptr<uint8_t[]> buffer1(new uint8_t[kBufferSize]);
   std::unique_ptr<uint8_t[]> buffer2(new uint8_t[kBufferSize]);
+  size_t offset = 0;
   while (length > 0) {
     size_t len = std::min(kBufferSize, static_cast<size_t>(length));
-    if (!ReadFully(&buffer1[0], len)) {
+    if (!PreadFully(&buffer1[0], len, offset)) {
       return -1;
     }
-    if (!other->ReadFully(&buffer2[0], len)) {
+    if (!other->PreadFully(&buffer2[0], len, offset)) {
       return 1;
     }
     int result = memcmp(&buffer1[0], &buffer2[0], len);
@@ -472,6 +473,7 @@ int FdFile::Compare(FdFile* other) {
       return result;
     }
     length -= len;
+    offset += len;
   }
   return 0;
 }

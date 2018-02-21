@@ -26,6 +26,8 @@
 
 #include "arch/instruction_set.h"
 #include "base/mutex.h"
+#include "base/unix_file/fd_file.h"
+#include "dex/art_dex_file_loader.h"
 #include "dex/compact_dex_level.h"
 #include "globals.h"
 // TODO: Add inl file and avoid including inl.
@@ -118,6 +120,32 @@ class CommonRuntimeTestImpl {
       REQUIRES_SHARED(Locks::mutator_lock_);
   // A helper to set up a small heap (4M) to make FillHeap faster.
   static void SetUpRuntimeOptionsForFillHeap(RuntimeOptions *options);
+
+  template <typename Mutator>
+  bool MutateDexFile(File* output_dex, const std::string& input_jar, const Mutator& mutator) {
+    std::vector<std::unique_ptr<const DexFile>> dex_files;
+    std::string error_msg;
+    const ArtDexFileLoader dex_file_loader;
+    CHECK(dex_file_loader.Open(input_jar.c_str(),
+                               input_jar.c_str(),
+                               /*verify*/ true,
+                               /*verify_checksum*/ true,
+                               &error_msg,
+                               &dex_files)) << error_msg;
+    EXPECT_EQ(dex_files.size(), 1u) << "Only one input dex is supported";
+    const std::unique_ptr<const DexFile>& dex = dex_files[0];
+    CHECK(dex->EnableWrite()) << "Failed to enable write";
+    DexFile* dex_file = const_cast<DexFile*>(dex.get());
+    mutator(dex_file);
+    const_cast<DexFile::Header&>(dex_file->GetHeader()).checksum_ = dex_file->CalculateChecksum();
+    if (!output_dex->WriteFully(dex->Begin(), dex->Size())) {
+      return false;
+    }
+    if (output_dex->Flush() != 0) {
+      PLOG(FATAL) << "Could not flush the output file.";
+    }
+    return true;
+  }
 
  protected:
   // Allow subclases such as CommonCompilerTest to add extra options.

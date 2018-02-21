@@ -22,6 +22,7 @@
 
 #include "base/array_ref.h"
 #include "base/macros.h"
+#include "dex/compact_offset_table.h"
 #include "mem_map.h"
 #include "os.h"
 #include "quicken_info.h"
@@ -238,13 +239,12 @@ class VdexFile {
                         const uint8_t* source_dex_begin,
                         bool decompile_return_instruction) const;
 
-  QuickenInfoOffsetTableAccessor GetQuickenInfoOffsetTable(
+  CompactOffsetTable::Accessor GetQuickenInfoOffsetTable(
         const DexFile& dex_file,
         const ArrayRef<const uint8_t>& quickening_info) const;
 
-  QuickenInfoOffsetTableAccessor GetQuickenInfoOffsetTable(
+  CompactOffsetTable::Accessor GetQuickenInfoOffsetTable(
       const uint8_t* source_dex_begin,
-      uint32_t num_method_ids,
       const ArrayRef<const uint8_t>& quickening_info) const;
 
   bool ContainsDexFile(const DexFile& dex_file) const;
