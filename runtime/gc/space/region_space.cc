@@ -92,7 +92,8 @@ RegionSpace::RegionSpace(const std::string& name, MemMap* mem_map)
       max_peak_num_non_free_regions_(0U),
       non_free_region_index_limit_(0U),
       current_region_(&full_region_),
-      evac_region_(nullptr) {
+      evac_region_(nullptr),
+      cyclic_alloc_region_index_(0U) {
   CHECK_ALIGNED(mem_map->Size(), kRegionSize);
   CHECK_ALIGNED(mem_map->Begin(), kRegionSize);
   DCHECK_GT(num_regions_, 0U);
@@ -437,6 +438,7 @@ void RegionSpace::Clear() {
     r->Clear(/*zero_and_release_pages*/true);
   }
   SetNonFreeRegionLimit(0);
+  DCHECK_EQ(num_non_free_regions_, 0u);
   current_region_ = &full_region_;
   evac_region_ = &full_region_;
 }
@@ -450,6 +452,9 @@ void RegionSpace::ClampGrowthLimit(size_t new_capacity) {
     return;
   }
   num_regions_ = new_num_regions;
+  if (kCyclicRegionAllocation && cyclic_alloc_region_index_ >= num_regions_) {
+    cyclic_alloc_region_index_ = 0u;
+  }
   SetLimit(Begin() + new_capacity);
   if (Size() > new_capacity) {
     SetEnd(Limit());
@@ -608,7 +613,14 @@ RegionSpace::Region* RegionSpace::AllocateRegion(bool for_evac) {
     return nullptr;
   }
   for (size_t i = 0; i < num_regions_; ++i) {
-    Region* r = &regions_[i];
+    // When using the cyclic region allocation strategy, try to
+    // allocate a region starting from the last cyclic allocated
+    // region marker. Otherwise, try to allocate a region starting
+    // from the beginning of the region space.
+    size_t region_index = kCyclicRegionAllocation
+        ? ((cyclic_alloc_region_index_ + i) % num_regions_)
+        : i;
+    Region* r = &regions_[region_index];
     if (r->IsFree()) {
       r->Unfree(this, time_);
       if (for_evac) {
@@ -617,6 +629,11 @@ RegionSpace::Region* RegionSpace::AllocateRegion(bool for_evac) {
       } else {
         r->SetNewlyAllocated();
         ++num_non_free_regions_;
+      }
+      if (kCyclicRegionAllocation) {
+        // Move the cyclic allocation region marker to the region
+        // following the one that was just allocated.
+        cyclic_alloc_region_index_ = (region_index + 1) % num_regions_;
       }
       return r;
     }
