@@ -4,8 +4,10 @@ global:
   AddSpecialSignalHandlerFn;
   RemoveSpecialSignalHandlerFn;
   sigaction;
+  sigaction64;
   signal;
   sigprocmask;
+  sigprocmask64;
 local:
   *;
 };
