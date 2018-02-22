@@ -16,8 +16,6 @@
 
 cc_library {
     name: "libsigchain",
-    cpp_std: "gnu++17",
-
     host_supported: true,
     defaults: ["art_defaults"],
     shared: {
