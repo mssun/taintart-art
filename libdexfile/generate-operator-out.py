@@ -1,1 +1,0 @@
-../tools/generate-operator-out.py
