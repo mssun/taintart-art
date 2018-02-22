@@ -78,16 +78,11 @@ void BreakpointUtil::RemoveBreakpointsInClass(ArtJvmTiEnv* env, art::mirror::Cla
       env->breakpoints.erase(it);
     }
   }
-  if (!to_remove.empty()) {
-    LOG(WARNING) << "Methods with breakpoints potentially not being un-deoptimized.";
+  DeoptManager* deopt = DeoptManager::Get();
+  for (const Breakpoint& b : to_remove) {
+    // TODO It might be good to send these all at once instead.
+    deopt->RemoveMethodBreakpoint(b.GetMethod());
   }
-  // TODO Figure out how to do this.
-  // DeoptManager* deopt = DeoptManager::Get();
-  // for (const Breakpoint& b : to_remove) {
-  //   // TODO It might be good to send these all at once instead.
-  //   // deopt->RemoveMethodBreakpointSuspended(b.GetMethod());
-  //   LOG(WARNING) << "not un-deopting methods! :-0";
-  // }
 }
 
 jvmtiError BreakpointUtil::SetBreakpoint(jvmtiEnv* jenv, jmethodID method, jlocation location) {
