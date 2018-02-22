@@ -868,13 +868,9 @@ class BuildQuickArgumentVisitor FINAL : public QuickArgumentVisitor {
 
   void Visit() REQUIRES_SHARED(Locks::mutator_lock_) OVERRIDE;
 
-  void FixupReferences() REQUIRES_SHARED(Locks::mutator_lock_);
-
  private:
   ScopedObjectAccessUnchecked* const soa_;
   std::vector<jvalue>* const args_;
-  // References which we must update when exiting in case the GC moved the objects.
-  std::vector<std::pair<jobject, StackReference<mirror::Object>*>> references_;
 
   DISALLOW_COPY_AND_ASSIGN(BuildQuickArgumentVisitor);
 };
@@ -887,7 +883,6 @@ void BuildQuickArgumentVisitor::Visit() {
       StackReference<mirror::Object>* stack_ref =
           reinterpret_cast<StackReference<mirror::Object>*>(GetParamAddress());
       val.l = soa_->AddLocalReference<jobject>(stack_ref->AsMirrorPtr());
-      references_.push_back(std::make_pair(val.l, stack_ref));
       break;
     }
     case Primitive::kPrimLong:  // Fall-through.
@@ -913,13 +908,6 @@ void BuildQuickArgumentVisitor::Visit() {
   args_->push_back(val);
 }
 
-void BuildQuickArgumentVisitor::FixupReferences() {
-  // Fixup any references which may have changed.
-  for (const auto& pair : references_) {
-    pair.second->Assign(soa_->Decode<mirror::Object>(pair.first));
-    soa_->Env()->DeleteLocalRef(pair.first);
-  }
-}
 // Handler for invocation on proxy methods. On entry a frame will exist for the proxy object method
 // which is responsible for recording callee save registers. We explicitly place into jobjects the
 // incoming reference arguments (so they survive GC). We invoke the invocation handler, which is a
@@ -974,8 +962,6 @@ extern "C" uint64_t artQuickProxyInvokeHandler(
   // All naked Object*s should now be in jobjects, so its safe to go into the main invoke code
   // that performs allocations.
   JValue result = InvokeProxyInvocationHandler(soa, shorty, rcvr_jobj, interface_method_jobj, args);
-  // Restore references which might have moved.
-  local_ref_visitor.FixupReferences();
   return result.GetJ();
 }
 
