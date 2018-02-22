@@ -199,7 +199,7 @@ class Redefiner {
 
     void UnregisterBreakpoints() REQUIRES_SHARED(art::Locks::mutator_lock_);
     // This should be done with all threads suspended.
-    void UnregisterJvmtiBreakpoints() REQUIRES(art::Locks::mutator_lock_);
+    void UnregisterJvmtiBreakpoints() REQUIRES_SHARED(art::Locks::mutator_lock_);
 
    private:
     Redefiner* driver_;

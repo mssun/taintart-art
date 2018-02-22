@@ -1215,7 +1215,9 @@ void Redefiner::ClassRedefinition::UnregisterJvmtiBreakpoints() {
 }
 
 void Redefiner::ClassRedefinition::UnregisterBreakpoints() {
-  DCHECK(art::Dbg::IsDebuggerActive());
+  if (LIKELY(!art::Dbg::IsDebuggerActive())) {
+    return;
+  }
   art::JDWP::JdwpState* state = art::Dbg::GetJdwpState();
   if (state != nullptr) {
     state->UnregisterLocationEventsOnClass(GetMirrorClass());
@@ -1223,11 +1225,9 @@ void Redefiner::ClassRedefinition::UnregisterBreakpoints() {
 }
 
 void Redefiner::UnregisterAllBreakpoints() {
-  if (LIKELY(!art::Dbg::IsDebuggerActive())) {
-    return;
-  }
   for (Redefiner::ClassRedefinition& redef : redefinitions_) {
     redef.UnregisterBreakpoints();
+    redef.UnregisterJvmtiBreakpoints();
   }
 }
 
@@ -1356,7 +1356,6 @@ jvmtiError Redefiner::Run() {
     // TODO Rewrite so we don't do a stack walk for each and every class.
     redef.FindAndAllocateObsoleteMethods(klass);
     redef.UpdateClass(klass, data.GetNewDexCache(), data.GetOriginalDexFile());
-    redef.UnregisterJvmtiBreakpoints();
   }
   RestoreObsoleteMethodMapsIfUnneeded(holder);
   // TODO We should check for if any of the redefined methods are intrinsic methods here and, if any
