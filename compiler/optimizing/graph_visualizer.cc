@@ -27,6 +27,7 @@
 #include "code_generator.h"
 #include "data_type-inl.h"
 #include "dead_code_elimination.h"
+#include "dex/descriptors_names.h"
 #include "disassembler.h"
 #include "inliner.h"
 #include "licm.h"

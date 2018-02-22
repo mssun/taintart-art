@@ -110,6 +110,7 @@ art_cc_test {
         "dex/code_item_accessors_test.cc",
         "dex/compact_dex_file_test.cc",
         "dex/compact_offset_table_test.cc",
+        "dex/descriptors_names_test.cc",
         "dex/dex_file_loader_test.cc",
         "dex/dex_file_verifier_test.cc",
         "dex/dex_instruction_test.cc",

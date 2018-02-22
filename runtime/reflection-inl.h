@@ -22,6 +22,7 @@
 #include "android-base/stringprintf.h"
 
 #include "common_throws.h"
+#include "dex/descriptors_names.h"
 #include "jvalue-inl.h"
 #include "mirror/object-inl.h"
 #include "obj_ptr-inl.h"

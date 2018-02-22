@@ -47,6 +47,7 @@
 #include "base/to_str.h"
 #include "class_linker-inl.h"
 #include "debugger.h"
+#include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_annotations.h"
 #include "dex/dex_file_types.h"

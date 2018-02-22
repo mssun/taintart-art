@@ -37,62 +37,7 @@
 
 namespace art {
 
-std::string PrettyArguments(const char* signature);
-std::string PrettyReturnType(const char* signature);
-
 class UtilsTest : public CommonRuntimeTest {};
-
-TEST_F(UtilsTest, PrettyDescriptor_ArrayReferences) {
-  EXPECT_EQ("java.lang.Class[]", PrettyDescriptor("[Ljava/lang/Class;"));
-  EXPECT_EQ("java.lang.Class[][]", PrettyDescriptor("[[Ljava/lang/Class;"));
-}
-
-TEST_F(UtilsTest, PrettyDescriptor_ScalarReferences) {
-  EXPECT_EQ("java.lang.String", PrettyDescriptor("Ljava.lang.String;"));
-  EXPECT_EQ("java.lang.String", PrettyDescriptor("Ljava/lang/String;"));
-}
-
-TEST_F(UtilsTest, PrettyDescriptor_Primitive) {
-  EXPECT_EQ("boolean", PrettyDescriptor(Primitive::kPrimBoolean));
-  EXPECT_EQ("byte", PrettyDescriptor(Primitive::kPrimByte));
-  EXPECT_EQ("char", PrettyDescriptor(Primitive::kPrimChar));
-  EXPECT_EQ("short", PrettyDescriptor(Primitive::kPrimShort));
-  EXPECT_EQ("int", PrettyDescriptor(Primitive::kPrimInt));
-  EXPECT_EQ("float", PrettyDescriptor(Primitive::kPrimFloat));
-  EXPECT_EQ("long", PrettyDescriptor(Primitive::kPrimLong));
-  EXPECT_EQ("double", PrettyDescriptor(Primitive::kPrimDouble));
-  EXPECT_EQ("void", PrettyDescriptor(Primitive::kPrimVoid));
-}
-
-TEST_F(UtilsTest, PrettyDescriptor_PrimitiveArrays) {
-  EXPECT_EQ("boolean[]", PrettyDescriptor("[Z"));
-  EXPECT_EQ("boolean[][]", PrettyDescriptor("[[Z"));
-  EXPECT_EQ("byte[]", PrettyDescriptor("[B"));
-  EXPECT_EQ("byte[][]", PrettyDescriptor("[[B"));
-  EXPECT_EQ("char[]", PrettyDescriptor("[C"));
-  EXPECT_EQ("char[][]", PrettyDescriptor("[[C"));
-  EXPECT_EQ("double[]", PrettyDescriptor("[D"));
-  EXPECT_EQ("double[][]", PrettyDescriptor("[[D"));
-  EXPECT_EQ("float[]", PrettyDescriptor("[F"));
-  EXPECT_EQ("float[][]", PrettyDescriptor("[[F"));
-  EXPECT_EQ("int[]", PrettyDescriptor("[I"));
-  EXPECT_EQ("int[][]", PrettyDescriptor("[[I"));
-  EXPECT_EQ("long[]", PrettyDescriptor("[J"));
-  EXPECT_EQ("long[][]", PrettyDescriptor("[[J"));
-  EXPECT_EQ("short[]", PrettyDescriptor("[S"));
-  EXPECT_EQ("short[][]", PrettyDescriptor("[[S"));
-}
-
-TEST_F(UtilsTest, PrettyDescriptor_PrimitiveScalars) {
-  EXPECT_EQ("boolean", PrettyDescriptor("Z"));
-  EXPECT_EQ("byte", PrettyDescriptor("B"));
-  EXPECT_EQ("char", PrettyDescriptor("C"));
-  EXPECT_EQ("double", PrettyDescriptor("D"));
-  EXPECT_EQ("float", PrettyDescriptor("F"));
-  EXPECT_EQ("int", PrettyDescriptor("I"));
-  EXPECT_EQ("long", PrettyDescriptor("J"));
-  EXPECT_EQ("short", PrettyDescriptor("S"));
-}
 
 TEST_F(UtilsTest, PrettyTypeOf) {
   ScopedObjectAccess soa(Thread::Current());
@@ -161,15 +106,6 @@ TEST_F(UtilsTest, PrettySize) {
   EXPECT_EQ("10B", PrettySize(10));
   EXPECT_EQ("100B", PrettySize(100));
   EXPECT_EQ("512B", PrettySize(512));
-}
-
-TEST_F(UtilsTest, MangleForJni) {
-  ScopedObjectAccess soa(Thread::Current());
-  EXPECT_EQ("hello_00024world", MangleForJni("hello$world"));
-  EXPECT_EQ("hello_000a9world", MangleForJni("hello\xc2\xa9world"));
-  EXPECT_EQ("hello_1world", MangleForJni("hello_world"));
-  EXPECT_EQ("Ljava_lang_String_2", MangleForJni("Ljava/lang/String;"));
-  EXPECT_EQ("_3C", MangleForJni("[C"));
 }
 
 TEST_F(UtilsTest, JniShortName_JniLongName) {
@@ -263,140 +199,6 @@ TEST_F(UtilsTest, Split) {
   EXPECT_EQ(expected, actual);
 }
 
-TEST_F(UtilsTest, GetDalvikCacheFilename) {
-  std::string name;
-  std::string error;
-
-  EXPECT_TRUE(GetDalvikCacheFilename("/system/app/Foo.apk", "/foo", &name, &error)) << error;
-  EXPECT_EQ("/foo/system@app@Foo.apk@classes.dex", name);
-
-  EXPECT_TRUE(GetDalvikCacheFilename("/data/app/foo-1.apk", "/foo", &name, &error)) << error;
-  EXPECT_EQ("/foo/data@app@foo-1.apk@classes.dex", name);
-
-  EXPECT_TRUE(GetDalvikCacheFilename("/system/framework/core.jar", "/foo", &name, &error)) << error;
-  EXPECT_EQ("/foo/system@framework@core.jar@classes.dex", name);
-
-  EXPECT_TRUE(GetDalvikCacheFilename("/system/framework/boot.art", "/foo", &name, &error)) << error;
-  EXPECT_EQ("/foo/system@framework@boot.art", name);
-
-  EXPECT_TRUE(GetDalvikCacheFilename("/system/framework/boot.oat", "/foo", &name, &error)) << error;
-  EXPECT_EQ("/foo/system@framework@boot.oat", name);
-}
-
-TEST_F(UtilsTest, GetDalvikCache) {
-  EXPECT_STREQ("", GetDalvikCache("should-not-exist123").c_str());
-
-  EXPECT_STREQ((android_data_ + "/dalvik-cache/.").c_str(), GetDalvikCache(".").c_str());
-}
-
-
-TEST_F(UtilsTest, GetSystemImageFilename) {
-  EXPECT_STREQ("/system/framework/arm/boot.art",
-               GetSystemImageFilename("/system/framework/boot.art", InstructionSet::kArm).c_str());
-}
-
-TEST_F(UtilsTest, ExecSuccess) {
-  std::vector<std::string> command;
-  if (kIsTargetBuild) {
-    std::string android_root(GetAndroidRoot());
-    command.push_back(android_root + "/bin/id");
-  } else {
-    command.push_back("/usr/bin/id");
-  }
-  std::string error_msg;
-  if (!(RUNNING_ON_MEMORY_TOOL && kMemoryToolDetectsLeaks)) {
-    // Running on valgrind fails due to some memory that leaks in thread alternate signal stacks.
-    EXPECT_TRUE(Exec(command, &error_msg));
-  }
-  EXPECT_EQ(0U, error_msg.size()) << error_msg;
-}
-
-TEST_F(UtilsTest, ExecError) {
-  // This will lead to error messages in the log.
-  ScopedLogSeverity sls(LogSeverity::FATAL);
-
-  std::vector<std::string> command;
-  command.push_back("bogus");
-  std::string error_msg;
-  if (!(RUNNING_ON_MEMORY_TOOL && kMemoryToolDetectsLeaks)) {
-    // Running on valgrind fails due to some memory that leaks in thread alternate signal stacks.
-    EXPECT_FALSE(Exec(command, &error_msg));
-    EXPECT_FALSE(error_msg.empty());
-  }
-}
-
-TEST_F(UtilsTest, EnvSnapshotAdditionsAreNotVisible) {
-  static constexpr const char* kModifiedVariable = "EXEC_SHOULD_NOT_EXPORT_THIS";
-  static constexpr int kOverwrite = 1;
-  // Set an variable in the current environment.
-  EXPECT_EQ(setenv(kModifiedVariable, "NEVER", kOverwrite), 0);
-  // Test that it is not exported.
-  std::vector<std::string> command;
-  if (kIsTargetBuild) {
-    std::string android_root(GetAndroidRoot());
-    command.push_back(android_root + "/bin/printenv");
-  } else {
-    command.push_back("/usr/bin/printenv");
-  }
-  command.push_back(kModifiedVariable);
-  std::string error_msg;
-  if (!(RUNNING_ON_MEMORY_TOOL && kMemoryToolDetectsLeaks)) {
-    // Running on valgrind fails due to some memory that leaks in thread alternate signal stacks.
-    EXPECT_FALSE(Exec(command, &error_msg));
-    EXPECT_NE(0U, error_msg.size()) << error_msg;
-  }
-}
-
-TEST_F(UtilsTest, EnvSnapshotDeletionsAreNotVisible) {
-  static constexpr const char* kDeletedVariable = "PATH";
-  static constexpr int kOverwrite = 1;
-  // Save the variable's value.
-  const char* save_value = getenv(kDeletedVariable);
-  EXPECT_NE(save_value, nullptr);
-  // Delete the variable.
-  EXPECT_EQ(unsetenv(kDeletedVariable), 0);
-  // Test that it is not exported.
-  std::vector<std::string> command;
-  if (kIsTargetBuild) {
-    std::string android_root(GetAndroidRoot());
-    command.push_back(android_root + "/bin/printenv");
-  } else {
-    command.push_back("/usr/bin/printenv");
-  }
-  command.push_back(kDeletedVariable);
-  std::string error_msg;
-  if (!(RUNNING_ON_MEMORY_TOOL && kMemoryToolDetectsLeaks)) {
-    // Running on valgrind fails due to some memory that leaks in thread alternate signal stacks.
-    EXPECT_TRUE(Exec(command, &error_msg));
-    EXPECT_EQ(0U, error_msg.size()) << error_msg;
-  }
-  // Restore the variable's value.
-  EXPECT_EQ(setenv(kDeletedVariable, save_value, kOverwrite), 0);
-}
-
-TEST_F(UtilsTest, IsValidDescriptor) {
-  std::vector<uint8_t> descriptor(
-      { 'L', 'a', '/', 'b', '$', 0xed, 0xa0, 0x80, 0xed, 0xb0, 0x80, ';', 0x00 });
-  EXPECT_TRUE(IsValidDescriptor(reinterpret_cast<char*>(&descriptor[0])));
-
-  std::vector<uint8_t> unpaired_surrogate(
-      { 'L', 'a', '/', 'b', '$', 0xed, 0xa0, 0x80, ';', 0x00 });
-  EXPECT_FALSE(IsValidDescriptor(reinterpret_cast<char*>(&unpaired_surrogate[0])));
-
-  std::vector<uint8_t> unpaired_surrogate_at_end(
-      { 'L', 'a', '/', 'b', '$', 0xed, 0xa0, 0x80, 0x00 });
-  EXPECT_FALSE(IsValidDescriptor(reinterpret_cast<char*>(&unpaired_surrogate_at_end[0])));
-
-  std::vector<uint8_t> invalid_surrogate(
-      { 'L', 'a', '/', 'b', '$', 0xed, 0xb0, 0x80, ';', 0x00 });
-  EXPECT_FALSE(IsValidDescriptor(reinterpret_cast<char*>(&invalid_surrogate[0])));
-
-  std::vector<uint8_t> unpaired_surrogate_with_multibyte_sequence(
-      { 'L', 'a', '/', 'b', '$', 0xed, 0xb0, 0x80, 0xf0, 0x9f, 0x8f, 0xa0, ';', 0x00 });
-  EXPECT_FALSE(
-      IsValidDescriptor(reinterpret_cast<char*>(&unpaired_surrogate_with_multibyte_sequence[0])));
-}
-
 TEST_F(UtilsTest, ArrayCount) {
   int i[64];
   EXPECT_EQ(ArrayCount(i), 64u);
@@ -414,42 +216,6 @@ TEST_F(UtilsTest, BoundsCheckedCast) {
             reinterpret_cast<const uint64_t*>(buffer + 56));
   EXPECT_EQ(BoundsCheckedCast<const uint64_t*>(buffer - 1, buffer, buffer_end), nullptr);
   EXPECT_EQ(BoundsCheckedCast<const uint64_t*>(buffer + 57, buffer, buffer_end), nullptr);
-}
-
-TEST_F(UtilsTest, GetAndroidRootSafe) {
-  std::string error_msg;
-
-  // We don't expect null returns for most cases, so don't check and let std::string crash.
-
-  // CommonRuntimeTest sets ANDROID_ROOT, so expect this to be the same.
-  std::string android_root = GetAndroidRootSafe(&error_msg);
-  std::string android_root_env = getenv("ANDROID_ROOT");
-  EXPECT_EQ(android_root, android_root_env);
-
-  // Set ANDROID_ROOT to something else (but the directory must exist). So use dirname.
-  char* root_dup = strdup(android_root_env.c_str());
-  char* dir = dirname(root_dup);
-  ASSERT_EQ(0, setenv("ANDROID_ROOT", dir, 1 /* overwrite */));
-  std::string android_root2 = GetAndroidRootSafe(&error_msg);
-  EXPECT_STREQ(dir, android_root2.c_str());
-  free(root_dup);
-
-  // Set a bogus value for ANDROID_ROOT. This should be an error.
-  ASSERT_EQ(0, setenv("ANDROID_ROOT", "/this/is/obviously/bogus", 1 /* overwrite */));
-  EXPECT_TRUE(GetAndroidRootSafe(&error_msg) == nullptr);
-
-  // Unset ANDROID_ROOT and see that it still returns something (as libart code is running).
-  ASSERT_EQ(0, unsetenv("ANDROID_ROOT"));
-  std::string android_root3 = GetAndroidRootSafe(&error_msg);
-  // This should be the same as the other root (modulo realpath), otherwise the test setup is
-  // broken.
-  UniqueCPtr<char> real_root(realpath(android_root.c_str(), nullptr));
-  UniqueCPtr<char> real_root3(realpath(android_root3.c_str(), nullptr));
-  EXPECT_STREQ(real_root.get(), real_root3.get());
-
-
-  // Reset ANDROID_ROOT, as other things may depend on it.
-  ASSERT_EQ(0, setenv("ANDROID_ROOT", android_root_env.c_str(), 1 /* overwrite */));
 }
 
 }  // namespace art
