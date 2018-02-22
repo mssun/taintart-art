@@ -74,6 +74,16 @@ TEST(CompactOffsetTableTest, TestBuildAndAccess) {
               << " table size " << data.size()
               << " sorted table size " << sorted_data.size();
   }
+
+  // Test constructor and accessor that serialize/read offsets.
+  {
+    std::vector<uint8_t> data2;
+    CompactOffsetTable::Build(offsets, /*out*/ &data2);
+    CompactOffsetTable::Accessor accessor2(&data2[0]);
+    for (size_t i = 0; i < offsets.size(); ++i) {
+      EXPECT_EQ(offsets[i], accessor2.GetOffset(i));
+    }
+  }
 }
 
 }  // namespace art
