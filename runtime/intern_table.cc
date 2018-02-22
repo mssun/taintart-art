@@ -371,7 +371,7 @@ size_t InternTable::Table::AddTableFromMemory(const uint8_t* ptr) {
     return read_count;
   }
   // TODO: Disable this for app images if app images have intern tables.
-  static constexpr bool kCheckDuplicates = true;
+  static constexpr bool kCheckDuplicates = kIsDebugBuild;
   if (kCheckDuplicates) {
     for (GcRoot<mirror::String>& string : set) {
       CHECK(Find(string.Read()) == nullptr) << "Already found " << string.Read()->ToModifiedUtf8();
