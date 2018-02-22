@@ -14,25 +14,25 @@
  * limitations under the License.
  */
 
-#include "compact_dex_debug_info.h"
+#include "compact_offset_table.h"
 
 #include "compact_dex_utils.h"
 #include "leb128.h"
 
 namespace art {
 
-constexpr size_t CompactDexDebugInfoOffsetTable::kElementsPerIndex;
+constexpr size_t CompactOffsetTable::kElementsPerIndex;
 
-CompactDexDebugInfoOffsetTable::Accessor::Accessor(const uint8_t* data_begin,
-                                                   uint32_t debug_info_base,
-                                                   uint32_t debug_info_table_offset)
-    : table_(reinterpret_cast<const uint32_t*>(data_begin + debug_info_table_offset)),
-      debug_info_base_(debug_info_base),
+CompactOffsetTable::Accessor::Accessor(const uint8_t* data_begin,
+                                       uint32_t minimum_offset,
+                                       uint32_t table_offset)
+    : table_(reinterpret_cast<const uint32_t*>(data_begin + table_offset)),
+      minimum_offset_(minimum_offset),
       data_begin_(data_begin) {}
 
-uint32_t CompactDexDebugInfoOffsetTable::Accessor::GetDebugInfoOffset(uint32_t method_idx) const {
-  const uint32_t offset = table_[method_idx / kElementsPerIndex];
-  const size_t bit_index = method_idx % kElementsPerIndex;
+uint32_t CompactOffsetTable::Accessor::GetOffset(uint32_t index) const {
+  const uint32_t offset = table_[index / kElementsPerIndex];
+  const size_t bit_index = index % kElementsPerIndex;
 
   const uint8_t* block = data_begin_ + offset;
   uint16_t bit_mask = *block;
@@ -40,14 +40,14 @@ uint32_t CompactDexDebugInfoOffsetTable::Accessor::GetDebugInfoOffset(uint32_t m
   bit_mask = (bit_mask << kBitsPerByte) | *block;
   ++block;
   if ((bit_mask & (1 << bit_index)) == 0) {
-    // Bit is not set means the offset is 0 for the debug info.
+    // Bit is not set means the offset is 0.
     return 0u;
   }
   // Trim off the bits above the index we want and count how many bits are set. This is how many
   // lebs we need to decode.
   size_t count = POPCOUNT(static_cast<uintptr_t>(bit_mask) << (kBitsPerIntPtrT - 1 - bit_index));
   DCHECK_GT(count, 0u);
-  uint32_t current_offset = debug_info_base_;
+  uint32_t current_offset = minimum_offset_;
   do {
     current_offset += DecodeUnsignedLeb128(&block);
     --count;
@@ -55,15 +55,15 @@ uint32_t CompactDexDebugInfoOffsetTable::Accessor::GetDebugInfoOffset(uint32_t m
   return current_offset;
 }
 
-void CompactDexDebugInfoOffsetTable::Build(const std::vector<uint32_t>& debug_info_offsets,
-                                           std::vector<uint8_t>* out_data,
-                                           uint32_t* out_min_offset,
-                                           uint32_t* out_table_offset) {
+void CompactOffsetTable::Build(const std::vector<uint32_t>& offsets,
+                               std::vector<uint8_t>* out_data,
+                               uint32_t* out_min_offset,
+                               uint32_t* out_table_offset) {
   DCHECK(out_data != nullptr);
   DCHECK(out_data->empty());
   // Calculate the base offset and return it.
   *out_min_offset = std::numeric_limits<uint32_t>::max();
-  for (const uint32_t offset : debug_info_offsets) {
+  for (const uint32_t offset : offsets) {
     if (offset != 0u) {
       *out_min_offset = std::min(*out_min_offset, offset);
     }
@@ -74,17 +74,17 @@ void CompactDexDebugInfoOffsetTable::Build(const std::vector<uint32_t>& debug_in
   std::vector<uint32_t> offset_table;
 
   // Write data first then the table.
-  while (block_start < debug_info_offsets.size()) {
+  while (block_start < offsets.size()) {
     // Write the offset of the block for each block.
     offset_table.push_back(out_data->size());
 
     // Block size of up to kElementsPerIndex
-    const size_t block_size = std::min(debug_info_offsets.size() - block_start, kElementsPerIndex);
+    const size_t block_size = std::min(offsets.size() - block_start, kElementsPerIndex);
 
     // Calculate bit mask since need to write that first.
     uint16_t bit_mask = 0u;
     for (size_t i = 0; i < block_size; ++i) {
-      if (debug_info_offsets[block_start + i] != 0u) {
+      if (offsets[block_start + i] != 0u) {
         bit_mask |= 1 << i;
       }
     }
@@ -92,14 +92,14 @@ void CompactDexDebugInfoOffsetTable::Build(const std::vector<uint32_t>& debug_in
     out_data->push_back(static_cast<uint8_t>(bit_mask >> kBitsPerByte));
     out_data->push_back(static_cast<uint8_t>(bit_mask));
 
-    // Write debug info offsets relative to the current offset.
-    uint32_t current_offset = *out_min_offset;
+    // Write offsets relative to the previous offset.
+    uint32_t prev_offset = *out_min_offset;
     for (size_t i = 0; i < block_size; ++i) {
-      const uint32_t debug_info_offset = debug_info_offsets[block_start + i];
-      if (debug_info_offset != 0u) {
-        uint32_t delta = debug_info_offset - current_offset;
+      const uint32_t offset = offsets[block_start + i];
+      if (offset != 0u) {
+        uint32_t delta = offset - prev_offset;
         EncodeUnsignedLeb128(out_data, delta);
-        current_offset = debug_info_offset;
+        prev_offset = offset;
       }
     }
 

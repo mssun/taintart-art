@@ -1121,10 +1121,6 @@ void HEnvironment::RemoveAsUserOfInput(size_t index) const {
   user->FixUpUserRecordsAfterEnvUseRemoval(before_env_use_node);
 }
 
-HInstruction::InstructionKind HInstruction::GetKind() const {
-  return GetKindInternal();
-}
-
 HInstruction* HInstruction::GetNextDisregardingMoves() const {
   HInstruction* next = GetNext();
   while (next != nullptr && next->IsParallelMove()) {

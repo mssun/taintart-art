@@ -82,6 +82,14 @@ class ClassLoaderHelper {
       art::Thread* self, art::Handle<art::mirror::ClassLoader> loader)
       REQUIRES_SHARED(art::Locks::mutator_lock_);
 
+  // Calls visitor on each java.lang.DexFile associated with the given loader. The visitor should
+  // return true to continue on to the next DexFile or false to stop iterating.
+  template<typename Visitor>
+  static inline void VisitDexFileObjects(art::Thread* self,
+                                         art::Handle<art::mirror::ClassLoader> loader,
+                                         const Visitor& visitor)
+      REQUIRES_SHARED(art::Locks::mutator_lock_);
+
   static art::ObjPtr<art::mirror::LongArray> GetDexFileCookie(
       art::Handle<art::mirror::Object> java_dex_file) REQUIRES_SHARED(art::Locks::mutator_lock_);
 
@@ -93,6 +101,11 @@ class ClassLoaderHelper {
   static void UpdateJavaDexFile(art::ObjPtr<art::mirror::Object> java_dex_file,
                                 art::ObjPtr<art::mirror::LongArray> new_cookie)
       REQUIRES(art::Roles::uninterruptible_) REQUIRES_SHARED(art::Locks::mutator_lock_);
+
+ private:
+  static art::ObjPtr<art::mirror::ObjectArray<art::mirror::Object>> GetDexElementList(
+      art::Thread* self, art::Handle<art::mirror::ClassLoader> loader)
+        REQUIRES_SHARED(art::Locks::mutator_lock_);
 };
 
 }  // namespace openjdkjvmti

@@ -3453,7 +3453,8 @@ void Heap::GrowForUtilization(collector::GarbageCollector* collector_ran,
   if (gc_type != collector::kGcTypeSticky) {
     // Grow the heap for non sticky GC.
     ssize_t delta = bytes_allocated / GetTargetHeapUtilization() - bytes_allocated;
-    CHECK_GE(delta, 0);
+    CHECK_GE(delta, 0) << "bytes_allocated=" << bytes_allocated
+                       << " target_utilization_=" << target_utilization_;
     target_size = bytes_allocated + delta * multiplier;
     target_size = std::min(target_size, bytes_allocated + adjusted_max_free);
     target_size = std::max(target_size, bytes_allocated + adjusted_min_free);
