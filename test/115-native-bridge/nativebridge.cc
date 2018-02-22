@@ -224,22 +224,6 @@ static jint trampoline_Java_Main_testSignal(JNIEnv*, jclass) {
   sigaction(SIGILL, &tmp, nullptr);
   kill(getpid(), SIGILL);
 
-#if defined(__BIONIC__)
-  // Do the same again, but with sigaction64.
-  struct sigaction64 tmp2;
-  sigemptyset64(&tmp2.sa_mask);
-  tmp2.sa_sigaction = test_sigaction_handler;
-  tmp2.sa_restorer = nullptr;
-
-  sigaction64(SIGSEGV, &tmp2, nullptr);
-  sigaction64(SIGILL, &tmp2, nullptr);
-#endif
-
-  // Reraise SIGSEGV/SIGILL even on non-bionic, so that the expected output is
-  // the same.
-  raise_sigsegv();
-  kill(getpid(), SIGILL);
-
   return 1234;
 }
 

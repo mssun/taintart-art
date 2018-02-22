@@ -5,10 +5,8 @@ global:
   RemoveSpecialSignalHandlerFn;
   bsd_signal;
   sigaction;
-  sigaction64;
   signal;
   sigprocmask;
-  sigprocmask64;
 local:
   *;
 };
