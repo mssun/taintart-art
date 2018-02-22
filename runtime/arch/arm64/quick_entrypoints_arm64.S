@@ -323,7 +323,7 @@
     SAVE_TWO_REGS x11, x12, 352
     SAVE_TWO_REGS x13, x14, 368
     SAVE_TWO_REGS x15, x16, 384
-    SAVE_TWO_REGS x17, x18, 400
+    SAVE_REG x17, 400
     SAVE_TWO_REGS x19, x20, 416
     SAVE_TWO_REGS x21, x22, 432
     SAVE_TWO_REGS x23, x24, 448
@@ -386,7 +386,7 @@
     RESTORE_TWO_REGS x11, x12, 352
     RESTORE_TWO_REGS x13, x14, 368
     RESTORE_TWO_REGS x15, x16, 384
-    RESTORE_TWO_REGS x17, x18, 400
+    RESTORE_REG      x17,      400
     RESTORE_TWO_REGS x19, x20, 416
     RESTORE_TWO_REGS x21, x22, 432
     RESTORE_TWO_REGS x23, x24, 448
@@ -1181,7 +1181,9 @@ ENTRY art_quick_do_long_jump
     ldp x24, x25, [x0], #-16
     ldp x22, x23, [x0], #-16
     ldp x20, x21, [x0], #-16
-    ldp x18, x19, [x0], #-16         // X18 & xSELF
+    add x0, x0, #8
+    ldr x19, [x0]
+    sub x0, x0, #24
     ldp x16, x17, [x0], #-16
     ldp x14, x15, [x0], #-16
     ldp x12, x13, [x0], #-16
@@ -2580,7 +2582,7 @@ ENTRY \name
     SAVE_TWO_REGS x10, x11, 80
     SAVE_TWO_REGS x12, x13, 96
     SAVE_TWO_REGS x14, x15, 112
-    SAVE_TWO_REGS x17, x18, 128  // Skip x16, i.e. IP0.
+    SAVE_REG x17, 128  // Skip x16, i.e. IP0.
     SAVE_TWO_REGS x19, xLR, 144  // Save also return address.
     // Save all potentially live caller-save floating-point registers.
     stp   d0, d1,   [sp, #160]
@@ -2614,7 +2616,7 @@ ENTRY \name
     POP_REGS_NE x10, x11, 80,  \xreg
     POP_REGS_NE x12, x13, 96,  \xreg
     POP_REGS_NE x14, x15, 112, \xreg
-    POP_REGS_NE x17, x18, 128, \xreg
+    POP_REG_NE x17, 128, \xreg
     POP_REGS_NE x19, xLR, 144, \xreg  // Restore also return address.
     // Restore floating-point registers.
     ldp   d0, d1,   [sp, #160]
@@ -2699,7 +2701,7 @@ READ_BARRIER_MARK_REG art_quick_read_barrier_mark_reg29, w29, x29
     SELECT_X_OR_W_FOR_MACRO \macro_for_register, x15, w15, \xreg
     \macro_for_reserved_register  // IP0 is reserved
     \macro_for_reserved_register  // IP1 is reserved
-    SELECT_X_OR_W_FOR_MACRO \macro_for_register, x18, w18, \xreg
+    \macro_for_reserved_register  // X18 is reserved
     SELECT_X_OR_W_FOR_MACRO \macro_for_register, x19, w19, \xreg
     SELECT_X_OR_W_FOR_MACRO \macro_for_register, x20, w20, \xreg
     SELECT_X_OR_W_FOR_MACRO \macro_for_register, x21, w21, \xreg
@@ -2757,7 +2759,7 @@ READ_BARRIER_MARK_REG art_quick_read_barrier_mark_reg29, w29, x29
     SAVE_TWO_REGS x10, x11, 80
     SAVE_TWO_REGS x12, x13, 96
     SAVE_TWO_REGS x14, x15, 112
-    SAVE_TWO_REGS x18, x19, 128       // Skip x16, x17, i.e. IP0, IP1.
+    SAVE_REG x19, 136       // Skip x16, x17, i.e. IP0, IP1.
     SAVE_REG      xLR,      144       // Save return address, skip padding at 152.
     // Save all potentially live caller-save floating-point registers.
     stp   d0, d1,   [sp, #160]
@@ -2786,7 +2788,7 @@ READ_BARRIER_MARK_REG art_quick_read_barrier_mark_reg29, w29, x29
     RESTORE_TWO_REGS x10, x11, 80
     RESTORE_TWO_REGS x12, x13, 96
     RESTORE_TWO_REGS x14, x15, 112
-    RESTORE_TWO_REGS x18, x19, 128    // Skip x16, x17, i.e. IP0, IP1.
+    RESTORE_REG x19, 136    // Skip x16, x17, i.e. IP0, IP1.
     RESTORE_REG      xLR,      144    // Restore return address.
     // Restore caller-save floating-point registers.
     ldp   d0, d1,   [sp, #160]
