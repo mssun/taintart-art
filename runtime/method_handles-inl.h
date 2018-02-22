@@ -33,10 +33,9 @@ namespace art {
 
 inline bool ConvertArgumentValue(Handle<mirror::MethodType> callsite_type,
                                  Handle<mirror::MethodType> callee_type,
-                                 int index,
+                                 ObjPtr<mirror::Class> from_class,
+                                 ObjPtr<mirror::Class> to_class,
                                  JValue* value) REQUIRES_SHARED(Locks::mutator_lock_) {
-  ObjPtr<mirror::Class> from_class(callsite_type->GetPTypes()->GetWithoutChecks(index));
-  ObjPtr<mirror::Class> to_class(callee_type->GetPTypes()->GetWithoutChecks(index));
   if (from_class == to_class) {
     return true;
   }
@@ -53,6 +52,17 @@ inline bool ConvertArgumentValue(Handle<mirror::MethodType> callsite_type,
     value->SetJ(0);
     return false;
   }
+}
+
+inline bool ConvertArgumentValue(Handle<mirror::MethodType> callsite_type,
+                                 Handle<mirror::MethodType> callee_type,
+                                 int index,
+                                 JValue* value) REQUIRES_SHARED(Locks::mutator_lock_) {
+  return ConvertArgumentValue(callsite_type,
+                              callee_type,
+                              callsite_type->GetPTypes()->GetWithoutChecks(index),
+                              callee_type->GetPTypes()->GetWithoutChecks(index),
+                              value);
 }
 
 inline bool ConvertReturnValue(Handle<mirror::MethodType> callsite_type,
@@ -84,16 +94,17 @@ bool PerformConversions(Thread* self,
                         Handle<mirror::MethodType> callee_type,
                         G* getter,
                         S* setter,
-                        int32_t num_conversions) REQUIRES_SHARED(Locks::mutator_lock_) {
+                        int32_t start_index,
+                        int32_t end_index) REQUIRES_SHARED(Locks::mutator_lock_) {
   StackHandleScope<2> hs(self);
   Handle<mirror::ObjectArray<mirror::Class>> from_types(hs.NewHandle(callsite_type->GetPTypes()));
   Handle<mirror::ObjectArray<mirror::Class>> to_types(hs.NewHandle(callee_type->GetPTypes()));
 
-  for (int32_t i = 0; i < num_conversions; ++i) {
+  for (int32_t i = start_index; i < end_index; ++i) {
     ObjPtr<mirror::Class> from(from_types->GetWithoutChecks(i));
-    ObjPtr<mirror::Class> to(to_types->GetWithoutChecks(i));
-    const Primitive::Type from_type = from_types->GetWithoutChecks(i)->GetPrimitiveType();
-    const Primitive::Type to_type = to_types->GetWithoutChecks(i)->GetPrimitiveType();
+    ObjPtr<mirror::Class> to(to_types->GetWithoutChecks(i - start_index));
+    const Primitive::Type from_type = from->GetPrimitiveType();
+    const Primitive::Type to_type = to->GetPrimitiveType();
     if (from == to) {
       // Easy case - the types are identical. Nothing left to do except to pass
       // the arguments along verbatim.
@@ -106,7 +117,6 @@ bool PerformConversions(Thread* self,
       }
     } else {
       JValue value;
-
       if (Primitive::Is64BitType(from_type)) {
         value.SetJ(getter->GetLong());
       } else if (from_type == Primitive::kPrimNot) {
@@ -114,13 +124,11 @@ bool PerformConversions(Thread* self,
       } else {
         value.SetI(getter->Get());
       }
-
       // Caveat emptor - ObjPtr's not guaranteed valid after this call.
-      if (!ConvertArgumentValue(callsite_type, callee_type, i, &value)) {
+      if (!ConvertArgumentValue(callsite_type, callee_type, from, to, &value)) {
         DCHECK(self->IsExceptionPending());
         return false;
       }
-
       if (Primitive::Is64BitType(to_type)) {
         setter->SetLong(value.GetJ());
       } else if (to_type == Primitive::kPrimNot) {
@@ -130,8 +138,29 @@ bool PerformConversions(Thread* self,
       }
     }
   }
-
   return true;
+}
+
+template <typename G, typename S>
+bool PerformConversions(Thread* self,
+                        Handle<mirror::MethodType> callsite_type,
+                        Handle<mirror::MethodType> callee_type,
+                        G* getter,
+                        S* setter,
+                        int32_t num_conversions)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  return PerformConversions(self, callsite_type, callee_type, getter, setter, 0, num_conversions);
+}
+
+template <typename G, typename S>
+bool PerformConversions(Thread* self,
+                        Handle<mirror::MethodType> callsite_type,
+                        Handle<mirror::MethodType> callee_type,
+                        G* getter,
+                        S* setter)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  int32_t num_conversions = callee_type->GetPTypes()->GetLength();
+  return PerformConversions(self, callsite_type, callee_type, getter, setter, 0, num_conversions);
 }
 
 }  // namespace art

@@ -21,6 +21,7 @@
 #include "class-inl.h"
 #include "class_linker.h"
 #include "gc_root-inl.h"
+#include "intrinsics_enum.h"
 #include "jni_internal.h"
 #include "jvalue-inl.h"
 #include "method_handles.h"
@@ -1463,6 +1464,47 @@ bool VarHandle::IsMethodTypeCompatible(AccessMode access_mode, MethodType* metho
   return true;
 }
 
+bool VarHandle::IsInvokerMethodTypeCompatible(AccessMode access_mode,
+                                              MethodType* method_type) {
+  StackHandleScope<3> hs(Thread::Current());
+  Handle<Class> mt_rtype(hs.NewHandle(method_type->GetRType()));
+  Handle<VarHandle> vh(hs.NewHandle(this));
+  Handle<Class> var_type(hs.NewHandle(vh->GetVarType()));
+  AccessModeTemplate access_mode_template = GetAccessModeTemplate(access_mode);
+
+  // Check return type first.
+  if (mt_rtype->GetPrimitiveType() == Primitive::Type::kPrimVoid) {
+    // The result of the operation will be discarded. The return type
+    // of the VarHandle is immaterial.
+  } else {
+    ObjPtr<Class> vh_rtype(GetReturnType(access_mode_template, var_type.Get()));
+    if (!IsReturnTypeConvertible(vh_rtype, mt_rtype.Get())) {
+      return false;
+    }
+  }
+
+  // Check the number of parameters matches (ignoring the VarHandle parameter).
+  static const int32_t kVarHandleParameters = 1;
+  ObjPtr<Class> vh_ptypes[VarHandle::kMaxAccessorParameters];
+  const int32_t vh_ptypes_count = BuildParameterArray(vh_ptypes,
+                                                      access_mode_template,
+                                                      var_type.Get(),
+                                                      GetCoordinateType0(),
+                                                      GetCoordinateType1());
+  if (vh_ptypes_count != method_type->GetPTypes()->GetLength() - kVarHandleParameters) {
+    return false;
+  }
+
+  // Check the parameter types are compatible (ignoring the VarHandle parameter).
+  ObjPtr<ObjectArray<Class>> mt_ptypes = method_type->GetPTypes();
+  for (int32_t i = 0; i < vh_ptypes_count; ++i) {
+    if (!IsParameterTypeConvertible(mt_ptypes->Get(i + kVarHandleParameters), vh_ptypes[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 MethodType* VarHandle::GetMethodTypeForAccessMode(Thread* self,
                                                   ObjPtr<VarHandle> var_handle,
                                                   AccessMode access_mode) {
@@ -1535,6 +1577,53 @@ const char* VarHandle::GetReturnTypeDescriptor(const char* accessor_name) {
     case AccessModeTemplate::kSet:
       return "V";
   }
+}
+
+VarHandle::AccessMode VarHandle::GetAccessModeByIntrinsic(Intrinsics intrinsic) {
+#define VAR_HANDLE_ACCESS_MODE(V)               \
+    V(CompareAndExchange)                       \
+    V(CompareAndExchangeAcquire)                \
+    V(CompareAndExchangeRelease)                \
+    V(CompareAndSet)                            \
+    V(Get)                                      \
+    V(GetAcquire)                               \
+    V(GetAndAdd)                                \
+    V(GetAndAddAcquire)                         \
+    V(GetAndAddRelease)                         \
+    V(GetAndBitwiseAnd)                         \
+    V(GetAndBitwiseAndAcquire)                  \
+    V(GetAndBitwiseAndRelease)                  \
+    V(GetAndBitwiseOr)                          \
+    V(GetAndBitwiseOrAcquire)                   \
+    V(GetAndBitwiseOrRelease)                   \
+    V(GetAndBitwiseXor)                         \
+    V(GetAndBitwiseXorAcquire)                  \
+    V(GetAndBitwiseXorRelease)                  \
+    V(GetAndSet)                                \
+    V(GetAndSetAcquire)                         \
+    V(GetAndSetRelease)                         \
+    V(GetOpaque)                                \
+    V(GetVolatile)                              \
+    V(Set)                                      \
+    V(SetOpaque)                                \
+    V(SetRelease)                               \
+    V(SetVolatile)                              \
+    V(WeakCompareAndSet)                        \
+    V(WeakCompareAndSetAcquire)                 \
+    V(WeakCompareAndSetPlain)                   \
+    V(WeakCompareAndSetRelease)
+  switch (intrinsic) {
+#define INTRINSIC_CASE(Name)                    \
+    case Intrinsics::kVarHandle ## Name:        \
+      return VarHandle::AccessMode::k ## Name;
+    VAR_HANDLE_ACCESS_MODE(INTRINSIC_CASE)
+#undef INTRINSIC_CASE
+#undef VAR_HANDLE_ACCESS_MODE
+    default:
+      break;
+  }
+  LOG(FATAL) << "Unknown VarHandle instrinsic: " << static_cast<int>(intrinsic);
+  UNREACHABLE();
 }
 
 bool VarHandle::GetAccessModeByMethodName(const char* method_name, AccessMode* access_mode) {
