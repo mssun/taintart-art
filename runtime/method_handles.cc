@@ -24,6 +24,7 @@
 #include "mirror/emulated_stack_frame.h"
 #include "mirror/method_handle_impl-inl.h"
 #include "mirror/method_type.h"
+#include "mirror/var_handle.h"
 #include "reflection-inl.h"
 #include "reflection.h"
 #include "well_known_classes.h"
@@ -363,6 +364,11 @@ inline bool IsInvoke(const mirror::MethodHandle::Kind handle_kind) {
 inline bool IsInvokeTransform(const mirror::MethodHandle::Kind handle_kind) {
   return (handle_kind == mirror::MethodHandle::Kind::kInvokeTransform
           || handle_kind == mirror::MethodHandle::Kind::kInvokeCallSiteTransform);
+}
+
+inline bool IsInvokeVarHandle(const mirror::MethodHandle::Kind handle_kind) {
+  return (handle_kind == mirror::MethodHandle::Kind::kInvokeVarHandle ||
+          handle_kind == mirror::MethodHandle::Kind::kInvokeVarHandleExact);
 }
 
 inline bool IsFieldAccess(mirror::MethodHandle::Kind handle_kind) {
@@ -957,6 +963,118 @@ bool MethodHandleFieldAccess(Thread* self,
   }
 }
 
+bool DoVarHandleInvokeTranslationUnchecked(Thread* self,
+                                           ShadowFrame& shadow_frame,
+                                           mirror::VarHandle::AccessMode access_mode,
+                                           Handle<mirror::VarHandle> vh,
+                                           Handle<mirror::MethodType> vh_type,
+                                           Handle<mirror::MethodType> callsite_type,
+                                           const InstructionOperands* const operands,
+                                           JValue* result)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  DCHECK_EQ(operands->GetNumberOfOperands(), static_cast<uint32_t>(vh_type->GetNumberOfPTypes()));
+  DCHECK_EQ(operands->GetNumberOfOperands(),
+            static_cast<uint32_t>(callsite_type->GetNumberOfPTypes()));
+  const size_t vreg_count = vh_type->NumberOfVRegs();
+  ShadowFrameAllocaUniquePtr accessor_frame =
+      CREATE_SHADOW_FRAME(vreg_count, nullptr, shadow_frame.GetMethod(), shadow_frame.GetDexPC());
+  ShadowFrameGetter getter(shadow_frame, operands);
+  static const uint32_t kFirstAccessorReg = 0;
+  ShadowFrameSetter setter(accessor_frame.get(), kFirstAccessorReg);
+  if (!PerformConversions(self, callsite_type, vh_type, &getter, &setter)) {
+    return false;
+  }
+  RangeInstructionOperands accessor_operands(kFirstAccessorReg, kFirstAccessorReg + vreg_count);
+  if (!vh->Access(access_mode, accessor_frame.get(), &accessor_operands, result)) {
+    return false;
+  }
+  return ConvertReturnValue(callsite_type, vh_type, result);
+}
+
+bool DoVarHandleInvokeTranslation(Thread* self,
+                                  ShadowFrame& shadow_frame,
+                                  bool invokeExact,
+                                  Handle<mirror::MethodHandle> method_handle,
+                                  Handle<mirror::MethodType> callsite_type,
+                                  const InstructionOperands* const operands,
+                                  JValue* result)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  if (!invokeExact) {
+    // Exact invokes are checked for compatability higher up. The
+    // non-exact invoke path doesn't have a similar check due to
+    // transformers which have EmulatedStack frame arguments with the
+    // actual method type associated with the frame.
+    if (UNLIKELY(!callsite_type->IsConvertible(method_handle->GetMethodType()))) {
+      ThrowWrongMethodTypeException(method_handle->GetMethodType(), callsite_type.Get());
+      return false;
+    }
+  }
+
+  //
+  // Basic checks that apply in all cases.
+  //
+  StackHandleScope<6> hs(self);
+  Handle<mirror::ObjectArray<mirror::Class>>
+      callsite_ptypes(hs.NewHandle(callsite_type->GetPTypes()));
+  Handle<mirror::ObjectArray<mirror::Class>>
+         mh_ptypes(hs.NewHandle(method_handle->GetMethodType()->GetPTypes()));
+
+  // Check that the first parameter is a VarHandle
+  if (callsite_ptypes->GetLength() < 1 ||
+      !mh_ptypes->Get(0)->IsAssignableFrom(callsite_ptypes->Get(0)) ||
+      mh_ptypes->Get(0) != mirror::VarHandle::StaticClass()) {
+    ThrowWrongMethodTypeException(method_handle->GetMethodType(), callsite_type.Get());
+    return false;
+  }
+
+  // Get the receiver
+  mirror::Object* receiver = shadow_frame.GetVRegReference(operands->GetOperand(0));
+  if (receiver == nullptr) {
+    ThrowNullPointerException("Expected argument 1 to be a non-null VarHandle");
+    return false;
+  }
+
+  // Cast to VarHandle instance
+  Handle<mirror::VarHandle> vh(hs.NewHandle(down_cast<mirror::VarHandle*>(receiver)));
+  DCHECK(mirror::VarHandle::StaticClass()->IsAssignableFrom(vh->GetClass()));
+
+  // Determine the accessor kind to dispatch
+  ArtMethod* target_method = method_handle->GetTargetMethod();
+  int intrinsic_index = target_method->GetIntrinsic();
+  mirror::VarHandle::AccessMode access_mode =
+      mirror::VarHandle::GetAccessModeByIntrinsic(static_cast<Intrinsics>(intrinsic_index));
+  Handle<mirror::MethodType> vh_type =
+      hs.NewHandle(vh->GetMethodTypeForAccessMode(self, access_mode));
+  Handle<mirror::MethodType> mh_invoke_type = hs.NewHandle(
+      mirror::MethodType::CloneWithoutLeadingParameter(self, method_handle->GetMethodType()));
+  if (method_handle->GetHandleKind() == mirror::MethodHandle::Kind::kInvokeVarHandleExact) {
+    if (!mh_invoke_type->IsExactMatch(vh_type.Get())) {
+      ThrowWrongMethodTypeException(vh_type.Get(), mh_invoke_type.Get());
+      return false;
+    }
+  } else {
+    DCHECK_EQ(method_handle->GetHandleKind(), mirror::MethodHandle::Kind::kInvokeVarHandle);
+    if (!mh_invoke_type->IsConvertible(vh_type.Get())) {
+      ThrowWrongMethodTypeException(vh_type.Get(), mh_invoke_type.Get());
+      return false;
+    }
+  }
+
+  Handle<mirror::MethodType> callsite_type_without_varhandle =
+      hs.NewHandle(mirror::MethodType::CloneWithoutLeadingParameter(self, callsite_type.Get()));
+  NoReceiverInstructionOperands varhandle_operands(operands);
+  DCHECK_EQ(static_cast<int32_t>(varhandle_operands.GetNumberOfOperands()),
+            callsite_type_without_varhandle->GetPTypes()->GetLength());
+  return DoVarHandleInvokeTranslationUnchecked(self,
+                                               shadow_frame,
+                                               access_mode,
+                                               vh,
+                                               vh_type,
+                                               callsite_type_without_varhandle,
+                                               &varhandle_operands,
+                                               result);
+}
+
 static inline bool MethodHandleInvokeInternal(Thread* self,
                                               ShadowFrame& shadow_frame,
                                               Handle<mirror::MethodHandle> method_handle,
@@ -980,6 +1098,15 @@ static inline bool MethodHandleInvokeInternal(Thread* self,
         callsite_type,
         operands,
         result);
+  }
+  if (IsInvokeVarHandle(handle_kind)) {
+    return DoVarHandleInvokeTranslation(self,
+                                        shadow_frame,
+                                        /*invokeExact*/ false,
+                                        method_handle,
+                                        callsite_type,
+                                        operands,
+                                        result);
   }
   return DoInvokePolymorphicMethod(self,
                                    shadow_frame,
@@ -1016,13 +1143,22 @@ static inline bool MethodHandleInvokeExactInternal(
   }
 
   // Slow-path check.
-  if (IsInvokeTransform(handle_kind) || IsCallerTransformer(callsite_type)) {
+  if (IsInvokeTransform(handle_kind) ||
+      IsCallerTransformer(callsite_type)) {
     return DoInvokePolymorphicMethod(self,
                                      shadow_frame,
                                      method_handle,
                                      callsite_type,
                                      operands,
                                      result);
+  } else if (IsInvokeVarHandle(handle_kind)) {
+    return DoVarHandleInvokeTranslation(self,
+                                        shadow_frame,
+                                        /*invokeExact*/ true,
+                                        method_handle,
+                                        callsite_type,
+                                        operands,
+                                        result);
   }
 
   // On the fast-path. This is equivalent to DoCallPolymoprhic without the conversion paths.
