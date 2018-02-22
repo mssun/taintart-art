@@ -222,39 +222,25 @@ uint32_t VdexFile::GetQuickeningInfoTableOffset(const uint8_t* source_dex_begin)
   return reinterpret_cast<const QuickeningTableOffsetType*>(source_dex_begin)[-1];
 }
 
-QuickenInfoOffsetTableAccessor VdexFile::GetQuickenInfoOffsetTable(
+CompactOffsetTable::Accessor VdexFile::GetQuickenInfoOffsetTable(
     const uint8_t* source_dex_begin,
-    uint32_t num_method_ids,
     const ArrayRef<const uint8_t>& quickening_info) const {
   // The offset a is in preheader right before the dex file.
   const uint32_t offset = GetQuickeningInfoTableOffset(source_dex_begin);
-  return QuickenInfoOffsetTableAccessor(quickening_info.SubArray(offset), num_method_ids);
+  return CompactOffsetTable::Accessor(quickening_info.SubArray(offset).data());
 }
 
-QuickenInfoOffsetTableAccessor VdexFile::GetQuickenInfoOffsetTable(
+CompactOffsetTable::Accessor VdexFile::GetQuickenInfoOffsetTable(
     const DexFile& dex_file,
     const ArrayRef<const uint8_t>& quickening_info) const {
-  return GetQuickenInfoOffsetTable(dex_file.Begin(), dex_file.NumMethodIds(), quickening_info);
+  return GetQuickenInfoOffsetTable(dex_file.Begin(), quickening_info);
 }
 
 static ArrayRef<const uint8_t> GetQuickeningInfoAt(const ArrayRef<const uint8_t>& quickening_info,
                                                    uint32_t quickening_offset) {
-  ArrayRef<const uint8_t> remaining = quickening_info.SubArray(quickening_offset);
+  // Subtract offset of one since 0 represents unused and cannot be in the table.
+  ArrayRef<const uint8_t> remaining = quickening_info.SubArray(quickening_offset - 1);
   return remaining.SubArray(0u, QuickenInfoTable::SizeInBytes(remaining));
-}
-
-static uint32_t GetQuickeningInfoOffset(const QuickenInfoOffsetTableAccessor& table,
-                                        uint32_t dex_method_index,
-                                        const ArrayRef<const uint8_t>& quickening_info) {
-  DCHECK(!quickening_info.empty());
-  uint32_t remainder;
-  uint32_t offset = table.ElementOffset(dex_method_index, &remainder);
-  // Decode the sizes for the remainder offsets (not covered by the table).
-  while (remainder != 0) {
-    offset += GetQuickeningInfoAt(quickening_info, offset).size();
-    --remainder;
-  }
-  return offset;
 }
 
 void VdexFile::UnquickenDexFile(const DexFile& target_dex_file,
@@ -267,13 +253,15 @@ void VdexFile::UnquickenDexFile(const DexFile& target_dex_file,
                                 const uint8_t* source_dex_begin,
                                 bool decompile_return_instruction) const {
   ArrayRef<const uint8_t> quickening_info = GetQuickeningInfo();
-  if (quickening_info.size() == 0 && !decompile_return_instruction) {
-    // Bail early if there is no quickening info and no need to decompile
-    // RETURN_VOID_NO_BARRIER instructions to RETURN_VOID instructions.
+  if (quickening_info.empty()) {
+    // Bail early if there is no quickening info and no need to decompile. This means there is also
+    // no RETURN_VOID to decompile since the empty table takes a non zero amount of space.
     return;
   }
   // Make sure to not unquicken the same code item multiple times.
   std::unordered_set<const DexFile::CodeItem*> unquickened_code_item;
+  CompactOffsetTable::Accessor accessor(GetQuickenInfoOffsetTable(source_dex_begin,
+                                                                  quickening_info));
   for (uint32_t i = 0; i < target_dex_file.NumClassDefs(); ++i) {
     const DexFile::ClassDef& class_def = target_dex_file.GetClassDef(i);
     const uint8_t* class_data = target_dex_file.GetClassData(class_def);
@@ -284,21 +272,16 @@ void VdexFile::UnquickenDexFile(const DexFile& target_dex_file,
         if (class_it.IsAtMethod()) {
           const DexFile::CodeItem* code_item = class_it.GetMethodCodeItem();
           if (code_item != nullptr && unquickened_code_item.emplace(code_item).second) {
-            ArrayRef<const uint8_t> quicken_data;
-            if (!quickening_info.empty()) {
-              const uint32_t quickening_offset = GetQuickeningInfoOffset(
-                  GetQuickenInfoOffsetTable(source_dex_begin,
-                                            target_dex_file.NumMethodIds(),
-                                            quickening_info),
-                  class_it.GetMemberIndex(),
-                  quickening_info);
-              quicken_data = GetQuickeningInfoAt(quickening_info, quickening_offset);
+            const uint32_t offset = accessor.GetOffset(class_it.GetMemberIndex());
+            // Offset being 0 means not quickened.
+            if (offset != 0u) {
+              ArrayRef<const uint8_t> quicken_data = GetQuickeningInfoAt(quickening_info, offset);
+              optimizer::ArtDecompileDEX(
+                  target_dex_file,
+                  *code_item,
+                  quicken_data,
+                  decompile_return_instruction);
             }
-            optimizer::ArtDecompileDEX(
-                target_dex_file,
-                *code_item,
-                quicken_data,
-                decompile_return_instruction);
           }
         }
         DexFile::UnHideAccessFlags(class_it);
@@ -313,10 +296,11 @@ ArrayRef<const uint8_t> VdexFile::GetQuickenedInfoOf(const DexFile& dex_file,
   if (quickening_info.empty()) {
     return ArrayRef<const uint8_t>();
   }
-  const uint32_t quickening_offset = GetQuickeningInfoOffset(
-      GetQuickenInfoOffsetTable(dex_file, quickening_info),
-      dex_method_idx,
-      quickening_info);
+  const uint32_t quickening_offset =
+      GetQuickenInfoOffsetTable(dex_file, quickening_info).GetOffset(dex_method_idx);
+  if (quickening_offset == 0u) {
+    return ArrayRef<const uint8_t>();
+  }
   return GetQuickeningInfoAt(quickening_info, quickening_offset);
 }
 
