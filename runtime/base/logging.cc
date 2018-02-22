@@ -22,7 +22,6 @@
 
 #include "aborting.h"
 #include "mutex.h"
-#include "thread-current-inl.h"
 #include "utils.h"
 
 // Headers for LogMessage::LogLine.

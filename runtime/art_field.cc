@@ -18,6 +18,7 @@
 
 #include "art_field-inl.h"
 #include "class_linker-inl.h"
+#include "dex/descriptors_names.h"
 #include "gc/accounting/card_table-inl.h"
 #include "handle_scope.h"
 #include "mirror/class-inl.h"

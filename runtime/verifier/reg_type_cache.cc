@@ -25,6 +25,7 @@
 #include "base/scoped_arena_allocator.h"
 #include "base/stl_util.h"
 #include "class_linker-inl.h"
+#include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
