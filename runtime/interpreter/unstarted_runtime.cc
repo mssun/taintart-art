@@ -35,6 +35,7 @@
 #include "base/macros.h"
 #include "class_linker.h"
 #include "common_throws.h"
+#include "dex/descriptors_names.h"
 #include "entrypoints/entrypoint_utils-inl.h"
 #include "gc/reference_processor.h"
 #include "handle_scope-inl.h"

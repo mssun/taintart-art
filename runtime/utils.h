@@ -67,43 +67,8 @@ static inline uint32_t PointerToLowMemUInt32(const void* p) {
   return intp & 0xFFFFFFFFU;
 }
 
-// Used to implement PrettyClass, PrettyField, PrettyMethod, and PrettyTypeOf,
-// one of which is probably more useful to you.
-// Returns a human-readable equivalent of 'descriptor'. So "I" would be "int",
-// "[[I" would be "int[][]", "[Ljava/lang/String;" would be
-// "java.lang.String[]", and so forth.
-void AppendPrettyDescriptor(const char* descriptor, std::string* result);
-std::string PrettyDescriptor(const char* descriptor);
-std::string PrettyDescriptor(Primitive::Type type);
-
 // Returns a human-readable size string such as "1MB".
 std::string PrettySize(int64_t size_in_bytes);
-
-// Performs JNI name mangling as described in section 11.3 "Linking Native Methods"
-// of the JNI spec.
-std::string MangleForJni(const std::string& s);
-
-std::string GetJniShortName(const std::string& class_name, const std::string& method_name);
-
-// Turn "java.lang.String" into "Ljava/lang/String;".
-std::string DotToDescriptor(const char* class_name);
-
-// Turn "Ljava/lang/String;" into "java.lang.String" using the conventions of
-// java.lang.Class.getName().
-std::string DescriptorToDot(const char* descriptor);
-
-// Turn "Ljava/lang/String;" into "java/lang/String" using the opposite conventions of
-// java.lang.Class.getName().
-std::string DescriptorToName(const char* descriptor);
-
-// Tests for whether 's' is a valid class name in the three common forms:
-bool IsValidBinaryClassName(const char* s);  // "java.lang.String"
-bool IsValidJniClassName(const char* s);     // "java/lang/String"
-bool IsValidDescriptor(const char* s);       // "Ljava/lang/String;"
-
-// Returns whether the given string is a valid field or method name,
-// additionally allowing names that begin with '<' and end with '>'.
-bool IsValidMemberName(const char* s);
 
 // Splits a string using the given separator character into a vector of
 // strings. Empty strings will be omitted.

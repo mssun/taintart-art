@@ -20,6 +20,7 @@
 #include "art_method-inl.h"
 #include "base/unix_file/fd_file.h"
 #include "common_runtime_test.h"
+#include "dex/descriptors_names.h"
 #include "exec_utils.h"
 #include "jit/profile_compilation_info.h"
 #include "linear_alloc.h"
