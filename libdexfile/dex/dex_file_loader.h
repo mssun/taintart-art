@@ -170,7 +170,7 @@ class DexFileLoader {
                                              bool verify,
                                              bool verify_checksum,
                                              std::string* error_msg,
-                                             DexFileContainer* container,
+                                             std::unique_ptr<DexFileContainer> container,
                                              VerifyResult* verify_result);
 
  private:

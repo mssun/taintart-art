@@ -100,7 +100,7 @@ DexFile::DexFile(const uint8_t* base,
                  const std::string& location,
                  uint32_t location_checksum,
                  const OatDexFile* oat_dex_file,
-                 DexFileContainer* container,
+                 std::unique_ptr<DexFileContainer> container,
                  bool is_compact_dex)
     : begin_(base),
       size_(size),
@@ -120,7 +120,7 @@ DexFile::DexFile(const uint8_t* base,
       call_site_ids_(nullptr),
       num_call_site_ids_(0),
       oat_dex_file_(oat_dex_file),
-      container_(container),
+      container_(std::move(container)),
       is_compact_dex_(is_compact_dex) {
   CHECK(begin_ != nullptr) << GetLocation();
   CHECK_GT(size_, 0U) << GetLocation();
