@@ -17,7 +17,12 @@
 # Run normal. This will be the debug build.
 echo "libartd run."
 ${RUN} "${@}"
+return_status1=$?
 
 # Run non-debug.
 echo "libart run."
 ${RUN} "${@/#libartd.so/libart.so}"
+return_status2=$?
+
+# Make sure we don't silently ignore an early failure.
+(exit $return_status1) && (exit $return_status2)
