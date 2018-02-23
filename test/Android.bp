@@ -440,6 +440,7 @@ cc_defaults {
         "667-jit-jni-stub/jit_jni_stub_test.cc",
         "674-hiddenapi/hiddenapi.cc",
         "708-jit-cache-churn/jit.cc",
+        "909-attach-agent/disallow_debugging.cc",
         "1947-breakpoint-redefine-deopt/check_deopt.cc",
         "common/runtime_state.cc",
         "common/stack_inspect.cc",
