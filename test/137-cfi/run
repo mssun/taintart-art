@@ -21,6 +21,7 @@
 ${RUN} "$@" -Xcompiler-option --generate-debug-info \
   --runtime-option -Xjitthreshold:0 \
   --args --full-signatures --args --test-local --args --test-remote
+return_status1=$?
 
 # Test with minimal compressed debugging information.
 # Check only method names (parameters are omitted to save space).
@@ -28,3 +29,7 @@ ${RUN} "$@" -Xcompiler-option --generate-debug-info \
 ${RUN} "$@" -Xcompiler-option --generate-mini-debug-info \
   --runtime-option -Xjitthreshold:0 \
   --args --test-remote
+return_status2=$?
+
+# Make sure we don't silently ignore an early failure.
+(exit $return_status1) && (exit $return_status2)
