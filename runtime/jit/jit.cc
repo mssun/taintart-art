@@ -718,7 +718,9 @@ void Jit::MethodEntered(Thread* thread, ArtMethod* method) {
   Runtime* runtime = Runtime::Current();
   if (UNLIKELY(runtime->UseJitCompilation() && runtime->GetJit()->JitAtFirstUse())) {
     // The compiler requires a ProfilingInfo object.
-    ProfilingInfo::Create(thread, method, /* retry_allocation */ true);
+    ProfilingInfo::Create(thread,
+                          method->GetInterfaceMethodIfProxy(kRuntimePointerSize),
+                          /* retry_allocation */ true);
     JitCompileTask compile_task(method, JitCompileTask::kCompile);
     compile_task.Run(thread);
     return;
