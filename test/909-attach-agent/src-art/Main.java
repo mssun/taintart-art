@@ -24,23 +24,36 @@ import java.io.File;
 import java.io.IOException;
 
 public class Main {
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
+    System.loadLibrary(args[0]);
     System.out.println("Hello, world!");
+    String agent = null;
+    // By default allow debugging
+    boolean debugging_allowed = true;
     for(String a : args) {
       if(a.startsWith("agent:")) {
-        String agent = a.substring(6);
-        try {
-          VMDebug.attachAgent(agent);
-        } catch(IOException e) {
-          System.out.println(e.getMessage());
-        }
+        agent = a.substring(6);
+      } else if (a.equals("disallow-debugging")) {
+        debugging_allowed = false;
       }
+    }
+    if (agent == null) {
+      throw new Error("Could not find agent: argument!");
+    }
+    setDebuggingAllowed(debugging_allowed);
+    // Setup is finished. Try to attach agent in 2 ways.
+    try {
+      VMDebug.attachAgent(agent);
+    } catch(SecurityException e) {
+      System.out.println(e.getMessage());
     }
     attachWithClassLoader(args);
     System.out.println("Goodbye!");
   }
 
-  private static void attachWithClassLoader(String[] args) {
+  private static native void setDebuggingAllowed(boolean val);
+
+  private static void attachWithClassLoader(String[] args) throws Exception {
     for(String a : args) {
       if(a.startsWith("agent:")) {
         String agentName = a.substring(6, a.indexOf('='));
@@ -56,7 +69,7 @@ public class Main {
               Main.class.getClassLoader());
           try {
             VMDebug.attachAgent(agent, cl);
-          } catch(IOException e) {
+          } catch(SecurityException e) {
             System.out.println(e.getMessage());
           }
         } catch (Exception e) {
