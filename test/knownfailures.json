@@ -122,6 +122,11 @@
                         "non-deterministic. Same for 913."]
     },
     {
+        "tests": ["1946-list-descriptors"],
+        "variant": "gcverify | trace",
+        "description": "This test is rather slow and gcverify or trace often cause it to timeout."
+    },
+    {
         "tests": ["961-default-iface-resolution-gen",
                   "964-default-iface-init-gen",
                   "968-default-partial-compile-gen"],
