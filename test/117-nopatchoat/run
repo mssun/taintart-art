@@ -37,11 +37,17 @@ fi
 # Make sure we can run without relocation
 echo "Run without dex2oat/patchoat"
 ${RUN} ${flags} --runtime-option -Xnodex2oat
+return_status1=$?
 
 # Make sure we can run with the oat file.
 echo "Run with dexoat/patchoat"
 ${RUN} ${flags} --runtime-option -Xdex2oat
+return_status2=$?
 
 # Make sure we can run with the default settings.
 echo "Run default"
 ${RUN} ${flags}
+return_status3=$?
+
+# Make sure we don't silently ignore an early failure.
+(exit $return_status1) && (exit $return_status2) && (exit $return_status3)

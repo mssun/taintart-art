@@ -25,9 +25,15 @@ fi
                    --android-runtime-option -Xcompiler-option \
                    --android-runtime-option --debuggable \
                    --args agent:${agent}=909-attach-agent
+return_status1=$?
 
 ./default-run "$@" --android-runtime-option -Xcompiler-option \
                    --android-runtime-option --debuggable \
                    --args agent:${agent}=909-attach-agent
+return_status2=$?
 
 ./default-run "$@" --args agent:${agent}=909-attach-agent
+return_status3=$?
+
+# Make sure we don't silently ignore an early failure.
+(exit $return_status1) && (exit $return_status2) && (exit $return_status3)
