@@ -83,10 +83,14 @@ namespace interpreter {
 #define BRANCH_INSTRUMENTATION(offset)                                                         \
   do {                                                                                         \
     if (UNLIKELY(instrumentation->HasBranchListeners())) {                                     \
-      instrumentation->Branch(self, method, dex_pc, offset);                                   \
+      instrumentation->Branch(self, shadow_frame.GetMethod(), dex_pc, offset);                 \
     }                                                                                          \
     JValue result;                                                                             \
-    if (jit::Jit::MaybeDoOnStackReplacement(self, method, dex_pc, offset, &result)) {          \
+    if (jit::Jit::MaybeDoOnStackReplacement(self,                                              \
+                                            shadow_frame.GetMethod(),                          \
+                                            dex_pc,                                            \
+                                            offset,                                            \
+                                            &result)) {                                        \
       if (interpret_one_instruction) {                                                         \
         /* OSR has completed execution of the method.  Signal mterp to return to caller */     \
         shadow_frame.SetDexPC(dex::kDexNoIndex);                                               \
@@ -98,7 +102,7 @@ namespace interpreter {
 #define HOTNESS_UPDATE()                                                                       \
   do {                                                                                         \
     if (jit != nullptr) {                                                                      \
-      jit->AddSamples(self, method, 1, /*with_backedges*/ true);                               \
+      jit->AddSamples(self, shadow_frame.GetMethod(), 1, /*with_backedges*/ true);             \
     }                                                                                          \
   } while (false)
 
@@ -200,7 +204,6 @@ JValue ExecuteSwitchImpl(Thread* self, const CodeItemDataAccessor& accessor,
 
   uint32_t dex_pc = shadow_frame.GetDexPC();
   const auto* const instrumentation = Runtime::Current()->GetInstrumentation();
-  ArtMethod* method = shadow_frame.GetMethod();
   const uint16_t* const insns = accessor.Insns();
   const Instruction* inst = Instruction::At(insns + dex_pc);
   uint16_t inst_data;
@@ -390,7 +393,7 @@ JValue ExecuteSwitchImpl(Thread* self, const CodeItemDataAccessor& accessor,
         const size_t ref_idx = inst->VRegA_11x(inst_data);
         ObjPtr<mirror::Object> obj_result = shadow_frame.GetVRegReference(ref_idx);
         if (do_assignability_check && obj_result != nullptr) {
-          ObjPtr<mirror::Class> return_type = method->ResolveReturnType();
+          ObjPtr<mirror::Class> return_type = shadow_frame.GetMethod()->ResolveReturnType();
           // Re-load since it might have moved.
           obj_result = shadow_frame.GetVRegReference(ref_idx);
           if (return_type == nullptr) {
@@ -535,7 +538,9 @@ JValue ExecuteSwitchImpl(Thread* self, const CodeItemDataAccessor& accessor,
       case Instruction::CONST_METHOD_HANDLE: {
         PREAMBLE();
         ClassLinker* cl = Runtime::Current()->GetClassLinker();
-        ObjPtr<mirror::MethodHandle> mh = cl->ResolveMethodHandle(self, inst->VRegB_21c(), method);
+        ObjPtr<mirror::MethodHandle> mh = cl->ResolveMethodHandle(self,
+                                                                  inst->VRegB_21c(),
+                                                                  shadow_frame.GetMethod());
         if (UNLIKELY(mh == nullptr)) {
           HANDLE_PENDING_EXCEPTION();
         } else {
@@ -547,7 +552,9 @@ JValue ExecuteSwitchImpl(Thread* self, const CodeItemDataAccessor& accessor,
       case Instruction::CONST_METHOD_TYPE: {
         PREAMBLE();
         ClassLinker* cl = Runtime::Current()->GetClassLinker();
-        ObjPtr<mirror::MethodType> mt = cl->ResolveMethodType(self, inst->VRegB_21c(), method);
+        ObjPtr<mirror::MethodType> mt = cl->ResolveMethodType(self,
+                                                              inst->VRegB_21c(),
+                                                              shadow_frame.GetMethod());
         if (UNLIKELY(mt == nullptr)) {
           HANDLE_PENDING_EXCEPTION();
         } else {
