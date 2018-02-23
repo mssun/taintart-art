@@ -249,14 +249,14 @@ static jint Executable_compareMethodParametersInternal(JNIEnv* env,
   return 0;
 }
 
-static jobject Executable_getMethodNameInternal(JNIEnv* env, jobject javaMethod) {
+static jstring Executable_getMethodNameInternal(JNIEnv* env, jobject javaMethod) {
   ScopedFastNativeObjectAccess soa(env);
   ArtMethod* method = ArtMethod::FromReflectedMethod(soa, javaMethod);
   method = method->GetInterfaceMethodIfProxy(kRuntimePointerSize);
-  return soa.AddLocalReference<jobject>(method->GetNameAsString(soa.Self()));
+  return soa.AddLocalReference<jstring>(method->GetNameAsString(soa.Self()));
 }
 
-static jobject Executable_getMethodReturnTypeInternal(JNIEnv* env, jobject javaMethod) {
+static jclass Executable_getMethodReturnTypeInternal(JNIEnv* env, jobject javaMethod) {
   ScopedFastNativeObjectAccess soa(env);
   ArtMethod* method = ArtMethod::FromReflectedMethod(soa, javaMethod);
   method = method->GetInterfaceMethodIfProxy(kRuntimePointerSize);
@@ -266,7 +266,7 @@ static jobject Executable_getMethodReturnTypeInternal(JNIEnv* env, jobject javaM
     return nullptr;
   }
 
-  return soa.AddLocalReference<jobject>(return_type);
+  return soa.AddLocalReference<jclass>(return_type);
 }
 
 // TODO: Move this to mirror::Class ? Other mirror types that commonly appear

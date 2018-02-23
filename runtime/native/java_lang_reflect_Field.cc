@@ -460,10 +460,10 @@ static jlong Field_getArtField(JNIEnv* env, jobject javaField) {
   return reinterpret_cast<jlong>(field);
 }
 
-static jobject Field_getNameInternal(JNIEnv* env, jobject javaField) {
+static jstring Field_getNameInternal(JNIEnv* env, jobject javaField) {
   ScopedFastNativeObjectAccess soa(env);
   ArtField* field = soa.Decode<mirror::Field>(javaField)->GetArtField();
-  return soa.AddLocalReference<jobject>(
+  return soa.AddLocalReference<jstring>(
       field->GetStringName(soa.Self(), true /* resolve */));
 }
 
