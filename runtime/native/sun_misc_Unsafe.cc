@@ -198,14 +198,14 @@ static void Unsafe_putOrderedObject(JNIEnv* env, jobject, jobject javaObj, jlong
   obj->SetFieldObject<false>(MemberOffset(offset), newValue);
 }
 
-static jint Unsafe_getArrayBaseOffsetForComponentType(JNIEnv* env, jclass, jobject component_class) {
+static jint Unsafe_getArrayBaseOffsetForComponentType(JNIEnv* env, jclass, jclass component_class) {
   ScopedFastNativeObjectAccess soa(env);
   ObjPtr<mirror::Class> component = soa.Decode<mirror::Class>(component_class);
   Primitive::Type primitive_type = component->GetPrimitiveType();
   return mirror::Array::DataOffset(Primitive::ComponentSize(primitive_type)).Int32Value();
 }
 
-static jint Unsafe_getArrayIndexScaleForComponentType(JNIEnv* env, jclass, jobject component_class) {
+static jint Unsafe_getArrayIndexScaleForComponentType(JNIEnv* env, jclass, jclass component_class) {
   ScopedFastNativeObjectAccess soa(env);
   ObjPtr<mirror::Class> component = soa.Decode<mirror::Class>(component_class);
   Primitive::Type primitive_type = component->GetPrimitiveType();

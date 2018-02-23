@@ -442,7 +442,7 @@ enum class VMDebugRuntimeStatId {
   kNumRuntimeStats,
 };
 
-static jobject VMDebug_getRuntimeStatInternal(JNIEnv* env, jclass, jint statId) {
+static jstring VMDebug_getRuntimeStatInternal(JNIEnv* env, jclass, jint statId) {
   gc::Heap* heap = Runtime::Current()->GetHeap();
   switch (static_cast<VMDebugRuntimeStatId>(statId)) {
     case VMDebugRuntimeStatId::kArtGcGcCount: {

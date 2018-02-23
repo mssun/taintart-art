@@ -37,7 +37,7 @@ static jchar String_charAt(JNIEnv* env, jobject java_this, jint index) {
   return soa.Decode<mirror::String>(java_this)->CharAt(index);
 }
 
-static jint String_compareTo(JNIEnv* env, jobject java_this, jobject java_rhs) {
+static jint String_compareTo(JNIEnv* env, jobject java_this, jstring java_rhs) {
   ScopedFastNativeObjectAccess soa(env);
   if (UNLIKELY(java_rhs == nullptr)) {
     ThrowNullPointerException("rhs == null");
@@ -48,7 +48,7 @@ static jint String_compareTo(JNIEnv* env, jobject java_this, jobject java_rhs) {
   }
 }
 
-static jstring String_concat(JNIEnv* env, jobject java_this, jobject java_string_arg) {
+static jstring String_concat(JNIEnv* env, jobject java_this, jstring java_string_arg) {
   ScopedFastNativeObjectAccess soa(env);
   if (UNLIKELY(java_string_arg == nullptr)) {
     ThrowNullPointerException("string arg == null");

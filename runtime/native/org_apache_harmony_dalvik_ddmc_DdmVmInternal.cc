@@ -162,7 +162,7 @@ static jbyteArray DdmVmInternal_getThreadStats(JNIEnv* env, jclass) {
   return result;
 }
 
-static jint DdmVmInternal_heapInfoNotify(JNIEnv* env, jclass, jint when) {
+static jboolean DdmVmInternal_heapInfoNotify(JNIEnv* env, jclass, jint when) {
   ScopedFastNativeObjectAccess soa(env);
   return Dbg::DdmHandleHpifChunk(static_cast<Dbg::HpifWhen>(when));
 }
