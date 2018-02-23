@@ -28,10 +28,6 @@
 
 namespace art {
 
-extern "C" {
-  struct JITCodeEntry;
-}
-
 template <typename ElfTypes>
 class ElfFileImpl {
  public:
