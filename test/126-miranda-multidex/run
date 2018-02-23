@@ -15,7 +15,12 @@
 # limitations under the License.
 
 ${RUN} $@
+return_status1=$?
 
 # The problem was first exposed in a no-verify setting, as that changes the resolution path
 # taken. Make sure we also test in that environment.
 ${RUN} --no-verify ${@}
+return_status2=$?
+
+# Make sure we don't silently ignore an early failure.
+(exit $return_status1) && (exit $return_status2)
