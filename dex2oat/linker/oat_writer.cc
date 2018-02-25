@@ -2631,45 +2631,37 @@ class OatWriter::WriteQuickeningInfoMethodVisitor {
         out_(out) {}
 
   bool VisitDexMethods(const std::vector<const DexFile*>& dex_files) {
-    std::vector<uint8_t> empty_quicken_info;
-    {
-      // Since we need to be able to access by dex method index, put a one byte empty quicken info
-      // for any method that isn't quickened.
-      QuickenInfoTable::Builder empty_info(&empty_quicken_info, /*num_elements*/ 0u);
-      CHECK(!empty_quicken_info.empty());
-    }
+    // Map of offsets for quicken info related to method indices.
+    SafeMap<const uint8_t*, uint32_t> offset_map;
+    // Use method index order to minimize the encoded size of the offset table.
     for (const DexFile* dex_file : dex_files) {
       std::vector<uint32_t>* const offsets =
           &quicken_info_offset_indices_.Put(dex_file, std::vector<uint32_t>())->second;
-
-      // Every method needs an index in the table.
       for (uint32_t method_idx = 0; method_idx < dex_file->NumMethodIds(); ++method_idx) {
-        ArrayRef<const uint8_t> map(empty_quicken_info);
-
-        // Use the existing quicken info if it exists.
+        uint32_t offset = 0u;
         MethodReference method_ref(dex_file, method_idx);
         CompiledMethod* compiled_method = writer_->compiler_driver_->GetCompiledMethod(method_ref);
         if (compiled_method != nullptr && HasQuickeningInfo(compiled_method)) {
-          map = compiled_method->GetVmapTable();
-        }
+          ArrayRef<const uint8_t> map = compiled_method->GetVmapTable();
 
-        // The current approach prevents deduplication of quicken infos since each method index
-        // has one unique quicken info. Deduplication does not provide much savings for dex indices
-        // since they are rarely duplicated.
-        const uint32_t length = map.size() * sizeof(map.front());
-
-        // Record each index if required. written_bytes_ is the offset from the start of the
-        // quicken info data.
-        if (QuickenInfoOffsetTableAccessor::IsCoveredIndex(method_idx)) {
-          offsets->push_back(written_bytes_);
+          // Record each index if required. written_bytes_ is the offset from the start of the
+          // quicken info data.
+          // May be already inserted for deduplicate items.
+          // Add offset of one to make sure 0 represents unused.
+          auto pair = offset_map.emplace(map.data(), written_bytes_ + 1);
+          offset = pair.first->second;
+          // Write out the map if it's not already written.
+          if (pair.second) {
+            const uint32_t length = map.size() * sizeof(map.front());
+            if (!out_->WriteFully(map.data(), length)) {
+              PLOG(ERROR) << "Failed to write quickening info for " << method_ref.PrettyMethod()
+                          << " to " << out_->GetLocation();
+              return false;
+            }
+            written_bytes_ += length;
+          }
         }
-
-        if (!out_->WriteFully(map.data(), length)) {
-          PLOG(ERROR) << "Failed to write quickening info for " << method_ref.PrettyMethod()
-                      << " to " << out_->GetLocation();
-          return false;
-        }
-        written_bytes_ += length;
+        offsets->push_back(offset);
       }
     }
     return true;
@@ -2683,12 +2675,10 @@ class OatWriter::WriteQuickeningInfoMethodVisitor {
     return quicken_info_offset_indices_;
   }
 
-
  private:
   OatWriter* const writer_;
   OutputStream* const out_;
   size_t written_bytes_ = 0u;
-  // Map of offsets for quicken info related to method indices.
   SafeMap<const DexFile*, std::vector<uint32_t>> quicken_info_offset_indices_;
 };
 
@@ -2712,14 +2702,11 @@ class OatWriter::WriteQuickeningInfoOffsetsMethodVisitor {
       const std::vector<uint32_t>* const offsets = &it->second;
 
       const uint32_t current_offset = start_offset_ + written_bytes_;
-      CHECK_ALIGNED_PARAM(current_offset, QuickenInfoOffsetTableAccessor::Alignment());
+      CHECK_ALIGNED_PARAM(current_offset, CompactOffsetTable::kAlignment);
 
       // Generate and write the data.
       std::vector<uint8_t> table_data;
-      QuickenInfoOffsetTableAccessor::Builder builder(&table_data);
-      for (uint32_t offset : *offsets) {
-        builder.AddOffset(offset);
-      }
+      CompactOffsetTable::Build(*offsets, &table_data);
 
       // Store the offset since we need to put those after the dex file. Table offsets are relative
       // to the start of the quicken info section.
@@ -2780,7 +2767,7 @@ bool OatWriter::WriteQuickeningInfo(OutputStream* vdex_out) {
     uint32_t quicken_info_offset = write_quicken_info_visitor.GetNumberOfWrittenBytes();
     current_offset = current_offset + quicken_info_offset;
     uint32_t before_offset = current_offset;
-    current_offset = RoundUp(current_offset, QuickenInfoOffsetTableAccessor::Alignment());
+    current_offset = RoundUp(current_offset, CompactOffsetTable::kAlignment);
     const size_t extra_bytes = current_offset - before_offset;
     quicken_info_offset += extra_bytes;
     actual_offset = vdex_out->Seek(current_offset, kSeekSet);

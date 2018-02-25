@@ -741,7 +741,7 @@ class VarArgsInstructionOperands FINAL : public InstructionOperands {
 // existing InstructionOperands instance.
 class NoReceiverInstructionOperands FINAL : public InstructionOperands {
  public:
-  explicit NoReceiverInstructionOperands(InstructionOperands* inner)
+  explicit NoReceiverInstructionOperands(const InstructionOperands* const inner)
       : InstructionOperands(inner->GetNumberOfOperands() - 1), inner_(inner) {}
   ~NoReceiverInstructionOperands() {}
   uint32_t GetOperand(size_t operand_index) const OVERRIDE;

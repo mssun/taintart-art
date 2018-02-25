@@ -23,6 +23,7 @@
 #include "base/enums.h"
 #include "class_linker-inl.h"
 #include "common_throws.h"
+#include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_annotations.h"
 #include "dex/utf.h"
@@ -532,7 +533,7 @@ static jobjectArray Class_getDeclaredConstructorsInternal(
 }
 
 static jobject Class_getDeclaredMethodInternal(JNIEnv* env, jobject javaThis,
-                                               jobject name, jobjectArray args) {
+                                               jstring name, jobjectArray args) {
   ScopedFastNativeObjectAccess soa(env);
   DCHECK_EQ(Runtime::Current()->GetClassLinker()->GetImagePointerSize(), kRuntimePointerSize);
   DCHECK(!Runtime::Current()->IsActiveTransaction());

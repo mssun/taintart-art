@@ -24,6 +24,7 @@
 #include "base/memory_tool.h"
 #include "class_linker.h"
 #include "common_runtime_test.h"
+#include "dex/descriptors_names.h"
 #include "dex/dex_instruction.h"
 #include "handle.h"
 #include "handle_scope-inl.h"

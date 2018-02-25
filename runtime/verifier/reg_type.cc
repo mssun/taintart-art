@@ -22,6 +22,7 @@
 #include "base/bit_vector-inl.h"
 #include "base/casts.h"
 #include "class_linker-inl.h"
+#include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
 #include "method_verifier.h"
 #include "mirror/class-inl.h"

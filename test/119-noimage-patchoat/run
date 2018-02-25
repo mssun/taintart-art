@@ -31,16 +31,26 @@ fi
 
 # Make sure we can run without an image file.
 echo "Run -Xnoimage-dex2oat -Xpatchoat:/system/bin/false"
-${RUN} ${flags} ${BPATH} --runtime-option -Xnoimage-dex2oat --runtime-option -Xpatchoat:${false_bin}
+${RUN} ${flags} ${BPATH} --runtime-option -Xnoimage-dex2oat \
+  --runtime-option -Xpatchoat:${false_bin}
+return_status1=$?
 
 # Make sure we cannot run without an image file without fallback.
 echo "Run -Xnoimage-dex2oat -Xpatchoat:/system/bin/false -Xno-dex-file-fallback"
-${RUN} ${flags} ${BPATH} --runtime-option -Xnoimage-dex2oat --runtime-option -Xpatchoat:${false_bin} --runtime-option -Xno-dex-file-fallback
+${RUN} ${flags} ${BPATH} --runtime-option -Xnoimage-dex2oat \
+  --runtime-option -Xpatchoat:${false_bin} --runtime-option -Xno-dex-file-fallback
+# This second run is expected to fail: invert the return status of the previous command.
+return_status2=$((! $?))
 
 # Make sure we can run with the image file.
 echo "Run -Ximage-dex2oat"
 ${RUN} ${flags} ${BPATH} --runtime-option -Ximage-dex2oat
+return_status3=$?
 
 # Make sure we can run with the default settings.
 echo "Run default"
 ${RUN} ${flags} ${BPATH}
+return_status4=$?
+
+# Make sure we don't silently ignore an early failure.
+(exit $return_status1) && (exit $return_status2) && (exit $return_status3) && (exit $return_status4)

@@ -78,7 +78,7 @@ class BreakpointUtil {
   static jvmtiError ClearBreakpoint(jvmtiEnv* env, jmethodID method, jlocation location);
   // Used by class redefinition to remove breakpoints on redefined classes.
   static void RemoveBreakpointsInClass(ArtJvmTiEnv* env, art::mirror::Class* klass)
-      REQUIRES(art::Locks::mutator_lock_);
+      REQUIRES_SHARED(art::Locks::mutator_lock_);
 };
 
 }  // namespace openjdkjvmti

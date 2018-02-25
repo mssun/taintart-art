@@ -50,6 +50,7 @@
 #include "class_table-inl.h"
 #include "compiler_callbacks.h"
 #include "debugger.h"
+#include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_exception_helpers.h"
 #include "dex/dex_file_loader.h"
@@ -3433,7 +3434,8 @@ void ClassLinker::RegisterDexFileLocked(const DexFile& dex_file,
   data.weak_root = dex_cache_jweak;
   data.dex_file = dex_cache->GetDexFile();
   data.class_table = ClassTableForClassLoader(class_loader);
-  RegisterDexFileForNative(self, data.dex_file->Begin());
+  AddNativeDebugInfoForDex(self, ArrayRef<const uint8_t>(data.dex_file->Begin(),
+                                                         data.dex_file->Size()));
   DCHECK(data.class_table != nullptr);
   // Make sure to hold the dex cache live in the class table. This case happens for the boot class
   // path dex caches without an image.
@@ -7957,17 +7959,18 @@ ArtMethod* ClassLinker::FindResolvedMethod(ObjPtr<mirror::Class> klass,
     // In case of jmvti, the dex file gets verified before being registered, so first
     // check if it's registered before checking class tables.
     const DexFile& dex_file = *dex_cache->GetDexFile();
-    CHECK(!IsDexFileRegistered(Thread::Current(), dex_file) ||
-          FindClassTable(Thread::Current(), dex_cache) == ClassTableForClassLoader(class_loader))
+    DCHECK(!IsDexFileRegistered(Thread::Current(), dex_file) ||
+           FindClassTable(Thread::Current(), dex_cache) == ClassTableForClassLoader(class_loader))
         << "DexFile referrer: " << dex_file.GetLocation()
         << " ClassLoader: " << DescribeLoaders(class_loader, "");
     // Be a good citizen and update the dex cache to speed subsequent calls.
     dex_cache->SetResolvedMethod(method_idx, resolved, image_pointer_size_);
-    const DexFile::MethodId& method_id = dex_file.GetMethodId(method_idx);
-    DCHECK(LookupResolvedType(method_id.class_idx_, dex_cache, class_loader) != nullptr)
-        << "Method: " << resolved->PrettyMethod() << ", "
-        << "Class: " << klass->PrettyClass() << " (" << klass->GetStatus() << "), "
-        << "DexFile referrer: " << dex_file.GetLocation();
+    // Disable the following invariant check as the verifier breaks it. b/73760543
+    // const DexFile::MethodId& method_id = dex_file.GetMethodId(method_idx);
+    // DCHECK(LookupResolvedType(method_id.class_idx_, dex_cache, class_loader) != nullptr)
+    //    << "Method: " << resolved->PrettyMethod() << ", "
+    //    << "Class: " << klass->PrettyClass() << " (" << klass->GetStatus() << "), "
+    //    << "DexFile referrer: " << dex_file.GetLocation();
   }
   return resolved;
 }
@@ -7999,13 +8002,9 @@ ArtMethod* ClassLinker::ResolveMethod(uint32_t method_idx,
     DCHECK(resolved->GetDeclaringClassUnchecked() != nullptr) << resolved->GetDexMethodIndex();
     klass = LookupResolvedType(method_id.class_idx_, dex_cache.Get(), class_loader.Get());
     if (UNLIKELY(klass == nullptr)) {
-      const char* descriptor = dex_file.StringByTypeIdx(method_id.class_idx_);
-      LOG(FATAL) << "Check failed: klass != nullptr Bug: 64759619 Method: "
-          << resolved->PrettyMethod() << ";" << resolved
-          << "/0x" << std::hex << resolved->GetAccessFlags()
-          << " ReferencedClass: " << descriptor
-          << " DexFile referrer: " << dex_file.GetLocation()
-          << " ClassLoader: " << DescribeLoaders(class_loader.Get(), descriptor);
+      // We normaly should not end up here. However the verifier currently doesn't guarantee
+      // the invariant of having the klass in the class table. b/73760543
+      klass = ResolveType(method_id.class_idx_, dex_cache, class_loader);
     }
   } else {
     // The method was not in the DexCache, resolve the declaring class.

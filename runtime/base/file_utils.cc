@@ -45,15 +45,12 @@
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 
+#include "base/bit_utils.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
-#include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
-#include "dex/dex_instruction.h"
-#include "dex/utf-inl.h"
-#include "oat_quick_method_header.h"
+#include "globals.h"
 #include "os.h"
-#include "scoped_thread_state_change-inl.h"
 
 #if defined(__APPLE__)
 #include <crt_externs.h>

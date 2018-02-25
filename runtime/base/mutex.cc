@@ -1218,6 +1218,10 @@ void Locks::Init() {
     DCHECK(jni_function_table_lock_ == nullptr);
     jni_function_table_lock_ = new Mutex("JNI function table lock", current_lock_level);
 
+    UPDATE_CURRENT_LOCK_LEVEL(kNativeDebugInterfaceLock);
+    DCHECK(native_debug_interface_lock_ == nullptr);
+    native_debug_interface_lock_ = new Mutex("Native debug interface lock", current_lock_level);
+
     UPDATE_CURRENT_LOCK_LEVEL(kAbortLock);
     DCHECK(abort_lock_ == nullptr);
     abort_lock_ = new Mutex("abort lock", current_lock_level, true);
@@ -1229,10 +1233,6 @@ void Locks::Init() {
     UPDATE_CURRENT_LOCK_LEVEL(kUnexpectedSignalLock);
     DCHECK(unexpected_signal_lock_ == nullptr);
     unexpected_signal_lock_ = new Mutex("unexpected signal lock", current_lock_level, true);
-
-    UPDATE_CURRENT_LOCK_LEVEL(kNativeDebugInterfaceLock);
-    DCHECK(native_debug_interface_lock_ == nullptr);
-    native_debug_interface_lock_ = new Mutex("Native debug interface lock", current_lock_level);
 
     UPDATE_CURRENT_LOCK_LEVEL(kLoggingLock);
     DCHECK(logging_lock_ == nullptr);

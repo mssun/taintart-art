@@ -28,6 +28,7 @@
 #include "common_throws.h"
 #include "compiler_filter.h"
 #include "dex/art_dex_file_loader.h"
+#include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
 #include "jit/debugger_interface.h"
@@ -332,7 +333,8 @@ static jboolean DexFile_closeDexFile(JNIEnv* env, jclass, jobject cookie) {
     int32_t i = kDexFileIndexStart;  // Oat file is at index 0.
     for (const DexFile* dex_file : dex_files) {
       if (dex_file != nullptr) {
-        DeregisterDexFileForNative(soa.Self(), dex_file->Begin());
+        RemoveNativeDebugInfoForDex(soa.Self(), ArrayRef<const uint8_t>(dex_file->Begin(),
+                                                                        dex_file->Size()));
         // Only delete the dex file if the dex cache is not found to prevent runtime crashes if there
         // are calls to DexFile.close while the ART DexFile is still in use.
         if (!class_linker->IsDexFileRegistered(soa.Self(), *dex_file)) {

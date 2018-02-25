@@ -28,6 +28,8 @@ namespace art {
 template<class T> class Handle;
 class InstructionOperands;
 
+enum class Intrinsics;
+
 struct VarHandleOffsets;
 struct FieldVarHandleOffsets;
 struct ArrayElementVarHandleOffsets;
@@ -106,6 +108,13 @@ class MANAGED VarHandle : public Object {
   bool IsMethodTypeCompatible(AccessMode access_mode, MethodType* method_type)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Returns true if the MethodType specified is compatible with the
+  // specified access_mode if the first parameter of method_type is
+  // ignored. This is useful for comparing MethodType instances when
+  // invoking a VarHandleAccessor via a MethodHandle invoker.
+  bool IsInvokerMethodTypeCompatible(AccessMode access_mode, MethodType* method_type)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   // Allocates and returns the MethodType associated with the
   // AccessMode. No check is made for whether the AccessMode is a
   // supported operation so the MethodType can be used when raising a
@@ -126,10 +135,12 @@ class MANAGED VarHandle : public Object {
   // nullptr if accessor_method is not supported.
   static const char* GetReturnTypeDescriptor(const char* accessor_method);
 
+  // Returns the AccessMode corresponding to a VarHandle accessor intrinsic.
+  static AccessMode GetAccessModeByIntrinsic(Intrinsics ordinal);
+
   // Returns true and sets access_mode if method_name corresponds to a
   // VarHandle access method, such as "setOpaque". Returns false otherwise.
   static bool GetAccessModeByMethodName(const char* method_name, AccessMode* access_mode);
-
 
   static mirror::Class* StaticClass() REQUIRES_SHARED(Locks::mutator_lock_);
   static void SetClass(Class* klass) REQUIRES_SHARED(Locks::mutator_lock_);

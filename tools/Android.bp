@@ -19,4 +19,12 @@ python_binary_host {
   srcs: [
     "generate_operator_out.py",
   ],
+  version: {
+    py2: {
+      enabled: true,
+    },
+    py3: {
+      enabled: false,
+    },
+  },
 }

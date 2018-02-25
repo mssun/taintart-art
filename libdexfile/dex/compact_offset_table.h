@@ -37,9 +37,10 @@ class CompactOffsetTable {
 
   class Accessor {
    public:
-    Accessor(const uint8_t* data_begin,
-             uint32_t minimum_offset,
-             uint32_t table_offset);
+    // Read the minimum and table offsets from the data pointer.
+    explicit Accessor(const uint8_t* data_begin);
+
+    Accessor(const uint8_t* data_begin, uint32_t minimum_offset, uint32_t table_offset);
 
     // Return the offset for the index.
     uint32_t GetOffset(uint32_t index) const;
@@ -49,6 +50,9 @@ class CompactOffsetTable {
     const uint32_t minimum_offset_;
     const uint8_t* const data_begin_;
   };
+
+  // Version that also serializes the min offset and table offset.
+  static void Build(const std::vector<uint32_t>& offsets, std::vector<uint8_t>* out_data);
 
   // Returned offsets are all relative to out_min_offset.
   static void Build(const std::vector<uint32_t>& offsets,

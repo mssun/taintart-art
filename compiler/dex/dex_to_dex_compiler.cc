@@ -341,10 +341,8 @@ std::vector<uint8_t> DexToDexCompiler::CompilationState::Compile() {
     DCHECK_EQ(quicken_index_, existing_quicken_info_.NumIndices());
   }
 
-  if (GetQuickenedInfo().empty()) {
-    // No need to create a CompiledMethod if there are no quickened opcodes.
-    return std::vector<uint8_t>();
-  }
+  // Even if there are no indicies, generate an empty quicken info so that we know the method was
+  // quickened.
 
   std::vector<uint8_t> quicken_data;
   if (kIsDebugBuild) {

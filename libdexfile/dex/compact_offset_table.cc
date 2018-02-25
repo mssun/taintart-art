@@ -30,6 +30,11 @@ CompactOffsetTable::Accessor::Accessor(const uint8_t* data_begin,
       minimum_offset_(minimum_offset),
       data_begin_(data_begin) {}
 
+CompactOffsetTable::Accessor::Accessor(const uint8_t* data_begin)
+    : Accessor(data_begin + 2 * sizeof(uint32_t),
+               reinterpret_cast<const uint32_t*>(data_begin)[0],
+               reinterpret_cast<const uint32_t*>(data_begin)[1]) {}
+
 uint32_t CompactOffsetTable::Accessor::GetOffset(uint32_t index) const {
   const uint32_t offset = table_[index / kElementsPerIndex];
   const size_t bit_index = index % kElementsPerIndex;
@@ -53,6 +58,17 @@ uint32_t CompactOffsetTable::Accessor::GetOffset(uint32_t index) const {
     --count;
   } while (count > 0);
   return current_offset;
+}
+
+void CompactOffsetTable::Build(const std::vector<uint32_t>& offsets,
+                               std::vector<uint8_t>* out_data) {
+  static constexpr size_t kNumOffsets = 2;
+  uint32_t out_offsets[kNumOffsets] = {};
+  CompactOffsetTable::Build(offsets, out_data, &out_offsets[0], &out_offsets[1]);
+  // Write the offsets at the start of the debug info.
+  out_data->insert(out_data->begin(),
+                   reinterpret_cast<const uint8_t*>(&out_offsets[0]),
+                   reinterpret_cast<const uint8_t*>(&out_offsets[kNumOffsets]));
 }
 
 void CompactOffsetTable::Build(const std::vector<uint32_t>& offsets,
