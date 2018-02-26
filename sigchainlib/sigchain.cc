@@ -446,7 +446,7 @@ int __sigprocmask(int how, const SigsetType* new_set, SigsetType* old_set,
   if (new_set != nullptr) {
     tmpset = *new_set;
 
-    if (how == SIG_BLOCK) {
+    if (how == SIG_BLOCK || how == SIG_SETMASK) {
       // Don't allow claimed signals in the mask.  If a signal chain has been claimed
       // we can't allow the user to block that signal.
       for (int i = 0 ; i < _NSIG; ++i) {
