@@ -1073,7 +1073,7 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
   Handle<mirror::Object> object(hs.NewHandle(result.GetL()));
   if (UNLIKELY(object.IsNull())) {
     // This will typically be for LambdaMetafactory which is not supported.
-    ThrowNullPointerException("Bootstrap method returned null");
+    ThrowClassCastException("Bootstrap method returned null");
     return nullptr;
   }
 
@@ -1085,11 +1085,10 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
 
   Handle<mirror::CallSite> call_site =
       hs.NewHandle(ObjPtr<mirror::CallSite>::DownCast(ObjPtr<mirror::Object>(result.GetL())));
-
   // Check the call site target is not null as we're going to invoke it.
   Handle<mirror::MethodHandle> target = hs.NewHandle(call_site->GetTarget());
   if (UNLIKELY(target.IsNull())) {
-    ThrowNullPointerException("Target for call-site is null");
+    ThrowClassCastException("Bootstrap method did not return a callsite");
     return nullptr;
   }
 
