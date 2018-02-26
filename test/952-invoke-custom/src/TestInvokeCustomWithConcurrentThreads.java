@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
+import annotations.BootstrapMethod;
 import annotations.CalledByIndy;
-import annotations.LinkerMethodHandle;
-import annotations.MethodHandleKind;
 import java.lang.invoke.CallSite;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
@@ -66,16 +65,15 @@ public class TestInvokeCustomWithConcurrentThreads extends TestBase implements R
     }
 
     @CalledByIndy(
-        invokeMethodHandle =
-                @LinkerMethodHandle(
-                    kind = MethodHandleKind.INVOKE_STATIC,
+        bootstrapMethod =
+                @BootstrapMethod(
                     enclosingType = TestInvokeCustomWithConcurrentThreads.class,
                     name = "linkerMethod",
-                    argumentTypes = {MethodHandles.Lookup.class, String.class, MethodType.class}
+                    parameterTypes = {MethodHandles.Lookup.class, String.class, MethodType.class}
                 ),
-        name = "setCalled",
+        fieldOrMethodName = "setCalled",
         returnType = int.class,
-        argumentTypes = {int.class}
+        parameterTypes = {int.class}
     )
     private static int setCalled(int index) {
         called[index].getAndIncrement();

@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
+import annotations.BootstrapMethod;
 import annotations.CalledByIndy;
 import annotations.Constant;
-import annotations.LinkerMethodHandle;
-import annotations.MethodHandleKind;
 import java.lang.invoke.CallSite;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
@@ -29,12 +28,11 @@ public class TestLinkerMethodMultipleArgumentTypes extends TestBase {
     private static int bootstrapRunCount = 0;
 
     @CalledByIndy(
-        invokeMethodHandle =
-                @LinkerMethodHandle(
-                    kind = MethodHandleKind.INVOKE_STATIC,
+        bootstrapMethod =
+                @BootstrapMethod(
                     enclosingType = TestLinkerMethodMultipleArgumentTypes.class,
                     name = "linkerMethod",
-                    argumentTypes = {
+                    parameterTypes = {
                         MethodHandles.Lookup.class,
                         String.class,
                         MethodType.class,
@@ -50,7 +48,10 @@ public class TestLinkerMethodMultipleArgumentTypes extends TestBase {
                         long.class
                     }
                 ),
-        methodHandleExtraArgs = {
+        fieldOrMethodName = "_add",
+        returnType = int.class,
+        parameterTypes = {int.class, int.class},
+        constantArgumentsForBootstrapMethod = {
             @Constant(intValue = -1),
             @Constant(intValue = 1),
             @Constant(intValue = (int) 'a'),
@@ -61,10 +62,7 @@ public class TestLinkerMethodMultipleArgumentTypes extends TestBase {
             @Constant(stringValue = "Hello"),
             @Constant(classValue = TestLinkerMethodMultipleArgumentTypes.class),
             @Constant(longValue = 123456789L)
-        },
-        name = "_add",
-        returnType = int.class,
-        argumentTypes = {int.class, int.class}
+        }
     )
     private static int add(int a, int b) {
         assertNotReached();
