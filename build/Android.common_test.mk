@@ -20,14 +20,11 @@ ART_ANDROID_COMMON_TEST_MK = true
 include art/build/Android.common_path.mk
 
 # Directory used for temporary test files on the host.
-ifneq ($(TMPDIR),)
-ART_HOST_TEST_DIR := $(TMPDIR)/test-art-$(shell echo $$PPID)
-else
 # Use a BSD checksum calculated from CWD and USER as one of the path
 # components for the test output. This should allow us to run tests from
 # multiple repositories at the same time.
-ART_HOST_TEST_DIR := /tmp/test-art-$(shell echo $$CWD-${USER} | sum | cut -d ' ' -f1)
-endif
+ART_TMPDIR := $(if $(TMPDIR),$(TMPDIR),/tmp)
+ART_HOST_TEST_DIR := $(ART_TMPDIR)/test-art-$(shell echo $$CWD-${USER} | sum | cut -d ' ' -f1)
 
 # List of known broken tests that we won't attempt to execute. The test name must be the full
 # rule name such as test-art-host-oat-optimizing-HelloWorld64.
