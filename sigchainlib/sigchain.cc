@@ -284,7 +284,9 @@ class SignalChain {
   SigchainAction special_handlers_[2];
 };
 
-static SignalChain chains[_NSIG];
+// _NSIG is 1 greater than the highest valued signal, but signals start from 1.
+// Leave an empty element at index 0 for convenience.
+static SignalChain chains[_NSIG + 1];
 
 void SignalChain::Handler(int signo, siginfo_t* siginfo, void* ucontext_raw) {
   // Try the special handlers first.
@@ -358,7 +360,7 @@ static int __sigaction(int signal, const SigactionType* new_action,
   // action but don't pass it on to the kernel.
   // Note that we check that the signal number is in range here.  An out of range signal
   // number should behave exactly as the libc sigaction.
-  if (signal < 0 || signal >= _NSIG) {
+  if (signal <= 0 || signal >= _NSIG) {
     errno = EINVAL;
     return -1;
   }
@@ -396,7 +398,7 @@ extern "C" int sigaction64(int signal, const struct sigaction64* new_action,
 extern "C" sighandler_t signal(int signo, sighandler_t handler) {
   InitializeSignalChain();
 
-  if (signo < 0 || signo > _NSIG) {
+  if (signo <= 0 || signo >= _NSIG) {
     errno = EINVAL;
     return SIG_ERR;
   }
@@ -449,7 +451,7 @@ int __sigprocmask(int how, const SigsetType* new_set, SigsetType* old_set,
     if (how == SIG_BLOCK || how == SIG_SETMASK) {
       // Don't allow claimed signals in the mask.  If a signal chain has been claimed
       // we can't allow the user to block that signal.
-      for (int i = 0 ; i < _NSIG; ++i) {
+      for (int i = 1; i < _NSIG; ++i) {
         if (chains[i].IsClaimed() && sigismember(&tmpset, i)) {
           sigdelset(&tmpset, i);
         }
