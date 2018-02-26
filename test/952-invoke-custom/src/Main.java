@@ -17,7 +17,6 @@
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.MutableCallSite;
-import java.lang.reflect.InvocationTargetException;
 
 public class Main extends TestBase {
 
@@ -85,6 +84,7 @@ public class Main extends TestBase {
         TestUninitializedCallSite();
         TestLinkerMethodMinimalArguments();
         TestLinkerMethodMultipleArgumentTypes();
+        TestLinkerUnrelatedBSM.test();
         TestInvokeCustomWithConcurrentThreads();
     }
 }

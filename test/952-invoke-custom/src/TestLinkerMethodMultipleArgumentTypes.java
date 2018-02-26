@@ -67,7 +67,8 @@ public class TestLinkerMethodMultipleArgumentTypes extends TestBase {
         argumentTypes = {int.class, int.class}
     )
     private static int add(int a, int b) {
-        throw new UnsupportedOperationException("Should be invoking _add(a, b)");
+        assertNotReached();
+        return -1;
     }
 
     @SuppressWarnings("unused")
