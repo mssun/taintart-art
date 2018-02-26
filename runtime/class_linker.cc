@@ -267,7 +267,9 @@ static void WrapExceptionInInitializer(Handle<mirror::Class> klass)
   // cannot in general be guaranteed, but in all likelihood leads to breakage down the line.
   if (klass->GetClassLoader() == nullptr && !Runtime::Current()->IsAotCompiler()) {
     std::string tmp;
-    LOG(kIsDebugBuild ? FATAL : WARNING) << klass->GetDescriptor(&tmp) << " failed initialization";
+    LOG(kIsDebugBuild ? FATAL : WARNING) << klass->GetDescriptor(&tmp)
+                                         << " failed initialization: "
+                                         << self->GetException()->Dump();
   }
 
   env->ExceptionClear();
