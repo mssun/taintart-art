@@ -18,11 +18,12 @@
 #define ART_RUNTIME_GC_ACCOUNTING_MOD_UNION_TABLE_H_
 
 #include "base/allocator.h"
+#include "base/safe_map.h"
+#include "base/tracking_safe_map.h"
 #include "bitmap.h"
 #include "card_table.h"
 #include "globals.h"
 #include "mirror/object_reference.h"
-#include "safe_map.h"
 
 #include <set>
 #include <vector>

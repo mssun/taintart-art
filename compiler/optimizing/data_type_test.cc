@@ -20,7 +20,7 @@
 
 #include "base/array_ref.h"
 #include "base/macros.h"
-#include "primitive.h"
+#include "dex/primitive.h"
 
 namespace art {
 

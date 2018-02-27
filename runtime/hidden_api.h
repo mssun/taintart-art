@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_HIDDEN_API_H_
 #define ART_RUNTIME_HIDDEN_API_H_
 
-#include "hidden_api_access_flags.h"
+#include "dex/hidden_api_access_flags.h"
 #include "reflection.h"
 #include "runtime.h"
 

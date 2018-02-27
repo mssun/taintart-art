@@ -37,6 +37,7 @@
 #include "base/file_utils.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/mutex.h"
+#include "base/safe_map.h"
 #include "base/scoped_flock.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
@@ -45,7 +46,6 @@
 #include "dex/dex_file_loader.h"
 #include "jit/profiling_info.h"
 #include "os.h"
-#include "safe_map.h"
 #include "utils.h"
 #include "zip_archive.h"
 

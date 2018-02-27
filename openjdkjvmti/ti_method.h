@@ -32,9 +32,9 @@
 #ifndef ART_OPENJDKJVMTI_TI_METHOD_H_
 #define ART_OPENJDKJVMTI_TI_METHOD_H_
 
+#include "dex/primitive.h"
 #include "jni.h"
 #include "jvmti.h"
-#include "primitive.h"
 
 namespace openjdkjvmti {
 

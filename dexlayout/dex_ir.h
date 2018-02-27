@@ -24,11 +24,11 @@
 #include <map>
 #include <vector>
 
+#include "base/leb128.h"
 #include "base/stl_util.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_types.h"
 #include "dex/utf.h"
-#include "leb128.h"
 
 namespace art {
 namespace dex_ir {

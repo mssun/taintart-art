@@ -18,9 +18,9 @@
 #define ART_RUNTIME_QUICKEN_INFO_H_
 
 #include "base/array_ref.h"
+#include "base/leb128.h"
 #include "dex/compact_offset_table.h"
 #include "dex/dex_instruction.h"
-#include "leb128.h"
 
 namespace art {
 

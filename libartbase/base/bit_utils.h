@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_BASE_BIT_UTILS_H_
-#define ART_RUNTIME_BASE_BIT_UTILS_H_
+#ifndef ART_LIBARTBASE_BASE_BIT_UTILS_H_
+#define ART_LIBARTBASE_BASE_BIT_UTILS_H_
 
 #include <limits>
 #include <type_traits>
@@ -501,4 +501,4 @@ inline static constexpr T BitFieldExtract(T value, size_t lsb, size_t width) {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_BASE_BIT_UTILS_H_
+#endif  // ART_LIBARTBASE_BASE_BIT_UTILS_H_
