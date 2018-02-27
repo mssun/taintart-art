@@ -334,8 +334,6 @@ std::unique_ptr<RuntimeParser> ParsedOptions::MakeParser(bool ignore_unrecognize
           .IntoKey(M::HiddenApiChecks)
       .Define("-Xuse-stderr-logger")
           .IntoKey(M::UseStderrLogger)
-      .Define("-Xonly-use-system-oat-files")
-          .IntoKey(M::OnlyUseSystemOatFiles)
       .Ignore({
           "-ea", "-da", "-enableassertions", "-disableassertions", "--runtime-arg", "-esa",
           "-dsa", "-enablesystemassertions", "-disablesystemassertions", "-Xrs", "-Xint:_",
