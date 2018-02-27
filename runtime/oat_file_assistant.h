@@ -508,9 +508,6 @@ class OatFileAssistant {
 
   // Whether only oat files on /system are loaded executable.
   const bool only_load_system_executable_ = false;
-  // Whether the potential zip file only contains uncompressed dex.
-  // Will be set during GetRequiredDexChecksums.
-  bool zip_file_only_contains_uncompressed_dex_ = true;
 
   // Cached value of the required dex checksums.
   // This should be accessed only by the GetRequiredDexChecksums() method.

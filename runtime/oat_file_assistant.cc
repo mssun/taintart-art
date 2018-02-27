@@ -515,18 +515,6 @@ OatFileAssistant::OatStatus OatFileAssistant::GivenOatFileStatus(const OatFile& 
     VLOG(oat) << "Image checksum test skipped for compiler filter " << current_compiler_filter;
   }
 
-  // zip_file_only_contains_uncompressed_dex_ is only set during fetching the dex checksums.
-  DCHECK(required_dex_checksums_attempted_);
-  if (only_load_system_executable_ &&
-      !LocationIsOnSystem(file.GetLocation().c_str()) &&
-      file.ContainsDexCode() &&
-      zip_file_only_contains_uncompressed_dex_) {
-    LOG(ERROR) << "Not loading "
-               << dex_location_
-               << ": oat file has dex code, but APK has uncompressed dex code";
-    return kOatDexOutOfDate;
-  }
-
   if (CompilerFilter::IsAotCompilationEnabled(current_compiler_filter)) {
     if (!file.IsPic()) {
       const ImageInfo* image_info = GetImageInfo();
@@ -891,8 +879,7 @@ const std::vector<uint32_t>* OatFileAssistant::GetRequiredDexChecksums() {
     if (dex_file_loader.GetMultiDexChecksums(dex_location_.c_str(),
                                              &cached_required_dex_checksums_,
                                              &error_msg,
-                                             zip_fd_,
-                                             &zip_file_only_contains_uncompressed_dex_)) {
+                                             zip_fd_)) {
       required_dex_checksums_found_ = true;
       has_original_dex_files_ = true;
     } else {
