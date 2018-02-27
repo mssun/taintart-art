@@ -68,7 +68,7 @@ class ThreadList {
   bool Resume(Thread* thread, SuspendReason reason = SuspendReason::kInternal)
       REQUIRES(!Locks::thread_suspend_count_lock_) WARN_UNUSED;
 
-  // Suspends all threads and gets exclusive access to the mutator_lock_.
+  // Suspends all threads and gets exclusive access to the mutator lock.
   // If long_suspend is true, then other threads who try to suspend will never timeout.
   // long_suspend is currenly used for hprof since large heaps take a long time.
   void SuspendAll(const char* cause, bool long_suspend = false)
@@ -240,7 +240,7 @@ class ThreadList {
   DISALLOW_COPY_AND_ASSIGN(ThreadList);
 };
 
-// Helper for suspending all threads and
+// Helper for suspending all threads and getting exclusive access to the mutator lock.
 class ScopedSuspendAll : public ValueObject {
  public:
   explicit ScopedSuspendAll(const char* cause, bool long_suspend = false)

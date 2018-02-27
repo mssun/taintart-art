@@ -149,7 +149,7 @@ bool ImageWriter::PrepareImageAddressSpace() {
       ComputeLazyFieldsForImageClasses();  // Add useful information
     }
   }
-  heap->CollectGarbage(false);  // Remove garbage.
+  heap->CollectGarbage(/* clear_soft_references */ false);  // Remove garbage.
 
   if (kIsDebugBuild) {
     ScopedObjectAccess soa(Thread::Current());

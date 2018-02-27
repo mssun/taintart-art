@@ -1414,7 +1414,8 @@ bool ConcurrentCopying::ProcessMarkStackOnce() {
   MarkStackMode mark_stack_mode = mark_stack_mode_.LoadRelaxed();
   if (mark_stack_mode == kMarkStackModeThreadLocal) {
     // Process the thread-local mark stacks and the GC mark stack.
-    count += ProcessThreadLocalMarkStacks(false, nullptr);
+    count += ProcessThreadLocalMarkStacks(/* disable_weak_ref_access */ false,
+                                          /* checkpoint_callback */ nullptr);
     while (!gc_mark_stack_->IsEmpty()) {
       mirror::Object* to_ref = gc_mark_stack_->PopBack();
       ProcessMarkStackRef(to_ref);
@@ -1602,7 +1603,7 @@ void ConcurrentCopying::SwitchToSharedMarkStackMode() {
   DisableWeakRefAccessCallback dwrac(this);
   // Process the thread local mark stacks one last time after switching to the shared mark stack
   // mode and disable weak ref accesses.
-  ProcessThreadLocalMarkStacks(true, &dwrac);
+  ProcessThreadLocalMarkStacks(/* disable_weak_ref_access */ true, &dwrac);
   if (kVerboseMode) {
     LOG(INFO) << "Switched to shared mark stack mode and disabled weak ref access";
   }

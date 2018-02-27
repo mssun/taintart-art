@@ -142,7 +142,7 @@ TEST_F(SystemWeakTest, Keep) {
   cswh.Set(GcRoot<mirror::Object>(s.Get()));
 
   // Trigger a GC.
-  Runtime::Current()->GetHeap()->CollectGarbage(false);
+  Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references */ false);
 
   // Expect the holder to have been called.
   EXPECT_EQ(CollectorDoesAllowOrBroadcast() ? 1U : 0U, cswh.allow_count_);
@@ -163,7 +163,7 @@ TEST_F(SystemWeakTest, Discard) {
   cswh.Set(GcRoot<mirror::Object>(mirror::String::AllocFromModifiedUtf8(soa.Self(), "ABC")));
 
   // Trigger a GC.
-  Runtime::Current()->GetHeap()->CollectGarbage(false);
+  Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references */ false);
 
   // Expect the holder to have been called.
   EXPECT_EQ(CollectorDoesAllowOrBroadcast() ? 1U : 0U, cswh.allow_count_);
@@ -187,7 +187,7 @@ TEST_F(SystemWeakTest, Remove) {
   cswh.Set(GcRoot<mirror::Object>(s.Get()));
 
   // Trigger a GC.
-  Runtime::Current()->GetHeap()->CollectGarbage(false);
+  Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references */ false);
 
   // Expect the holder to have been called.
   ASSERT_EQ(CollectorDoesAllowOrBroadcast() ? 1U : 0U, cswh.allow_count_);
@@ -202,7 +202,7 @@ TEST_F(SystemWeakTest, Remove) {
   Runtime::Current()->RemoveSystemWeakHolder(&cswh);
 
   // Trigger another GC.
-  Runtime::Current()->GetHeap()->CollectGarbage(false);
+  Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references */ false);
 
   // Expectation: no change in the numbers.
   EXPECT_EQ(CollectorDoesAllowOrBroadcast() ? 1U : 0U, cswh.allow_count_);
