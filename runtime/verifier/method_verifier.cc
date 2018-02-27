@@ -4206,14 +4206,19 @@ bool MethodVerifier::CheckCallSite(uint32_t call_site_idx) {
   if (it.Size() < 3) {
     Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "Call site #" << call_site_idx
                                       << " has too few arguments: "
-                                      << it.Size() << "< 3";
+                                      << it.Size() << " < 3";
     return false;
   }
 
   // Get and check the first argument: the method handle (index range
   // checked by the dex file verifier).
   uint32_t method_handle_idx = static_cast<uint32_t>(it.GetJavaValue().i);
-  it.Next();
+  if (method_handle_idx > dex_file_->NumMethodHandles()) {
+    Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "Call site id #" << call_site_idx
+                                      << " method handle index invalid " << method_handle_idx
+                                      << " >= "  << dex_file_->NumMethodHandles();
+    return false;
+  }
 
   const DexFile::MethodHandleItem& mh = dex_file_->GetMethodHandle(method_handle_idx);
   if (mh.method_handle_type_ != static_cast<uint16_t>(DexFile::MethodHandleType::kInvokeStatic)) {
@@ -4221,93 +4226,6 @@ bool MethodVerifier::CheckCallSite(uint32_t call_site_idx) {
                                       << " argument 0 method handle type is not InvokeStatic: "
                                       << mh.method_handle_type_;
     return false;
-  }
-
-  // Skip the second argument, the name to resolve, as checked by the
-  // dex file verifier.
-  it.Next();
-
-  // Skip the third argument, the method type expected, as checked by
-  // the dex file verifier.
-  it.Next();
-
-  // Check the bootstrap method handle and remaining arguments.
-  const DexFile::MethodId& method_id = dex_file_->GetMethodId(mh.field_or_method_idx_);
-  uint32_t length;
-  const char* shorty = dex_file_->GetMethodShorty(method_id, &length);
-
-  if (it.Size() < length - 1) {
-    Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "Call site #" << call_site_idx
-                                      << " too few arguments for bootstrap method: "
-                                      << it.Size() << " < " << (length - 1);
-    return false;
-  }
-
-  // Check the return type and first 3 arguments are references
-  // (CallSite, Lookup, String, MethodType). If they are not of the
-  // expected types (or subtypes), it will trigger a
-  // WrongMethodTypeException during execution.
-  if (shorty[0] != 'L') {
-    Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "Call site #" << call_site_idx
-                                      << " bootstrap return type is not a reference";
-    return false;
-  }
-
-  for (uint32_t i = 1; i < 4; ++i) {
-    if (shorty[i] != 'L') {
-      Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "Call site #" << call_site_idx
-                                        << " bootstrap method argument " << (i - 1)
-                                        << " is not a reference";
-      return false;
-    }
-  }
-
-  // Check the optional arguments.
-  for (uint32_t i = 4; i < length; ++i, it.Next()) {
-    bool match = false;
-    switch (it.GetValueType()) {
-      case EncodedArrayValueIterator::ValueType::kBoolean:
-      case EncodedArrayValueIterator::ValueType::kByte:
-      case EncodedArrayValueIterator::ValueType::kShort:
-      case EncodedArrayValueIterator::ValueType::kChar:
-      case EncodedArrayValueIterator::ValueType::kInt:
-        // These all fit within one register and encoders do not seem
-        // too exacting on the encoding type they use (ie using
-        // integer for all of these).
-        match = (strchr("ZBCSI", shorty[i]) != nullptr);
-        break;
-      case EncodedArrayValueIterator::ValueType::kLong:
-        match = ('J' == shorty[i]);
-        break;
-      case EncodedArrayValueIterator::ValueType::kFloat:
-        match = ('F' == shorty[i]);
-        break;
-      case EncodedArrayValueIterator::ValueType::kDouble:
-        match = ('D' == shorty[i]);
-        break;
-      case EncodedArrayValueIterator::ValueType::kMethodType:
-      case EncodedArrayValueIterator::ValueType::kMethodHandle:
-      case EncodedArrayValueIterator::ValueType::kString:
-      case EncodedArrayValueIterator::ValueType::kType:
-      case EncodedArrayValueIterator::ValueType::kNull:
-        match = ('L' == shorty[i]);
-        break;
-      case EncodedArrayValueIterator::ValueType::kField:
-      case EncodedArrayValueIterator::ValueType::kMethod:
-      case EncodedArrayValueIterator::ValueType::kEnum:
-      case EncodedArrayValueIterator::ValueType::kArray:
-      case EncodedArrayValueIterator::ValueType::kAnnotation:
-        // Unreachable based on current EncodedArrayValueIterator::Next().
-        UNREACHABLE();
-    }
-
-    if (!match) {
-      Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "Call site #" << call_site_idx
-                                        << " bootstrap method argument " << (i - 1)
-                                        << " expected " << shorty[i]
-                                        << " got value type: " << it.GetValueType();
-      return false;
-    }
   }
   return true;
 }

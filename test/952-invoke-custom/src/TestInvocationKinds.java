@@ -173,6 +173,7 @@ class TestInvocationKinds extends TestBase {
 
     static class Widget {
         int value;
+
         public Widget(int value) {}
     }
 

@@ -934,7 +934,6 @@
           "946-obsolete-throw",
           "948-change-annotations",
           "950-redefine-intrinsic",
-          "952-invoke-custom",
           "954-invoke-polymorphic-verifier",
           "955-methodhandles-smali",
           "956-methodhandles",

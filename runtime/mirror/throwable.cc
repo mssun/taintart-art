@@ -75,6 +75,10 @@ bool Throwable::IsCheckedException() {
   return !InstanceOf(WellKnownClasses::ToClass(WellKnownClasses::java_lang_RuntimeException));
 }
 
+bool Throwable::IsError() {
+  return InstanceOf(WellKnownClasses::ToClass(WellKnownClasses::java_lang_Error));
+}
+
 int32_t Throwable::GetStackDepth() {
   ObjPtr<Object> stack_state = GetStackState();
   if (stack_state == nullptr || !stack_state->IsObjectArray()) {
