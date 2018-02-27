@@ -54,6 +54,7 @@ Arm64FeaturesUniquePtr Arm64InstructionSetFeatures::FromVariant(
         "cortex-a35",
         "exynos-m1",
         "exynos-m2",
+        "exynos-m3",
         "denver64",
         "kryo"
     };
