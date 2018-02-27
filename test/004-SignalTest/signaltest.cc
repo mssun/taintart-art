@@ -99,6 +99,15 @@ static void signalhandler(int sig ATTRIBUTE_UNUSED, siginfo_t* info ATTRIBUTE_UN
 
 static struct sigaction oldaction;
 
+bool compare_sigaction(const struct sigaction* lhs, const struct sigaction* rhs) {
+  // bionic's definition of `struct sigaction` has internal padding bytes, so we can't just do a
+  // naive memcmp of the entire struct.
+  return memcmp(&lhs->sa_mask, &rhs->sa_mask, sizeof(lhs->sa_mask)) == 0 &&
+         lhs->sa_sigaction == rhs->sa_sigaction &&
+         lhs->sa_flags == rhs->sa_flags &&
+         lhs->sa_restorer == rhs->sa_restorer;
+}
+
 extern "C" JNIEXPORT void JNICALL Java_Main_initSignalTest(JNIEnv*, jclass) {
   struct sigaction action;
   action.sa_sigaction = signalhandler;
@@ -112,8 +121,15 @@ extern "C" JNIEXPORT void JNICALL Java_Main_initSignalTest(JNIEnv*, jclass) {
   sigaction(SIGSEGV, &action, &oldaction);
   struct sigaction check;
   sigaction(SIGSEGV, nullptr, &check);
-  if (memcmp(&action, &check, sizeof(action)) != 0) {
+  if (!compare_sigaction(&check, &action)) {
     printf("sigaction returned different value\n");
+    printf("action.sa_mask = %p, check.sa_mask = %p\n",
+           *reinterpret_cast<void**>(&action.sa_mask),
+           *reinterpret_cast<void**>(&check.sa_mask));
+    printf("action.sa_sigaction = %p, check.sa_sigaction = %p\n",
+           action.sa_sigaction, check.sa_sigaction);
+    printf("action.sa_flags = %x, check.sa_flags = %x\n",
+           action.sa_flags, check.sa_flags);
   }
   signal(BLOCKED_SIGNAL, blocked_signal);
   signal(UNBLOCKED_SIGNAL, unblocked_signal);
