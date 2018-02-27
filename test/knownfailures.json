@@ -1,11 +1,5 @@
 [
     {
-        "tests": "1934-jvmti-signal-thread",
-        "description": ["Disables 1934-jvmti-signal-thread in tracing configurations"],
-        "variant": "trace | stream",
-        "bug": "http://b/67384421"
-    },
-    {
         "tests": "153-reference-stress",
         "description": ["Disable 153-reference-stress temporarily until a fix",
                         "arrives."],
