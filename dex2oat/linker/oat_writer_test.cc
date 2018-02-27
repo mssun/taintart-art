@@ -198,7 +198,7 @@ class OatTest : public CommonCompilerTest {
         &key_value_store,
         verify,
         /* update_input_vdex */ false,
-        compiler_driver_->GetCompilerOptions().GetCompilerFilter(),
+        CopyOption::kOnlyIfCompressed,
         &opened_dex_files_maps,
         &opened_dex_files)) {
       return false;

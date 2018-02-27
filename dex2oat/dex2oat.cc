@@ -457,7 +457,7 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("  --deduplicate-code=true|false: enable|disable code deduplication. Deduplicated");
   UsageError("      code will have an arbitrary symbol tagged with [DEDUPED].");
   UsageError("");
-  UsageError("  --copying-dex-files=true|false: enable|disable copying the dex files into the");
+  UsageError("  --copy-dex-files=true|false: enable|disable copying the dex files into the");
   UsageError("      output vdex.");
   UsageError("");
   UsageError("  --compilation-reason=<string>: optional metadata specifying the reason for");
@@ -2921,8 +2921,9 @@ class Dex2Oat FINAL {
   // Whether the given input vdex is also the output.
   bool update_input_vdex_ = false;
 
-  // By default, copy the dex to the vdex file.
-  bool copy_dex_files_ = true;
+  // By default, copy the dex to the vdex file only if dex files are
+  // compressed in APK.
+  CopyOption copy_dex_files_ = CopyOption::kOnlyIfCompressed;
 
   // The reason for invoking the compiler.
   std::string compilation_reason_;
