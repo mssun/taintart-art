@@ -1675,10 +1675,10 @@ class OatDumper {
     if ((method_access_flags & kAccNative) == 0) {
       ScopedObjectAccess soa(Thread::Current());
       Runtime* const runtime = Runtime::Current();
-      Handle<mirror::DexCache> dex_cache(
-          hs->NewHandle(runtime->GetClassLinker()->RegisterDexFile(*dex_file, nullptr)));
-      CHECK(dex_cache != nullptr);
       DCHECK(options_.class_loader_ != nullptr);
+      Handle<mirror::DexCache> dex_cache = hs->NewHandle(
+          runtime->GetClassLinker()->RegisterDexFile(*dex_file, options_.class_loader_->Get()));
+      CHECK(dex_cache != nullptr);
       return verifier::MethodVerifier::VerifyMethodAndDump(
           soa.Self(), vios, dex_method_idx, dex_file, dex_cache, *options_.class_loader_,
           class_def, code_item, nullptr, method_access_flags);
@@ -2997,7 +2997,7 @@ static jobject InstallOatFile(Runtime* runtime,
   // Need well-known-classes.
   WellKnownClasses::Init(self->GetJniEnv());
 
-  // Need to register dex files to get a working dex cache.
+  // Open dex files.
   OatFile* oat_file_ptr = oat_file.get();
   ClassLinker* class_linker = runtime->GetClassLinker();
   runtime->GetOatFileManager().RegisterOatFile(std::move(oat_file));
@@ -3005,9 +3005,6 @@ static jobject InstallOatFile(Runtime* runtime,
     std::string error_msg;
     const DexFile* const dex_file = OpenDexFile(odf, &error_msg);
     CHECK(dex_file != nullptr) << error_msg;
-    ObjPtr<mirror::DexCache> dex_cache =
-        class_linker->RegisterDexFile(*dex_file, nullptr);
-    CHECK(dex_cache != nullptr);
     class_path->push_back(dex_file);
   }
 
@@ -3017,6 +3014,13 @@ static jobject InstallOatFile(Runtime* runtime,
   interpreter::UnstartedRuntime::Initialize();
 
   jobject class_loader = class_linker->CreatePathClassLoader(self, *class_path);
+
+  // Need to register dex files to get a working dex cache.
+  for (const DexFile* dex_file : *class_path) {
+    ObjPtr<mirror::DexCache> dex_cache = class_linker->RegisterDexFile(
+        *dex_file, self->DecodeJObject(class_loader)->AsClassLoader());
+    CHECK(dex_cache != nullptr);
+  }
 
   return class_loader;
 }
