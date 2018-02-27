@@ -108,7 +108,8 @@ class DexFileLoader {
   virtual bool GetMultiDexChecksums(const char* filename,
                                     std::vector<uint32_t>* checksums,
                                     std::string* error_msg,
-                                    int zip_fd = -1) const;
+                                    int zip_fd = -1,
+                                    bool* zip_file_only_contains_uncompress_dex = nullptr) const;
 
   // Opens .dex file, backed by existing memory
   virtual std::unique_ptr<const DexFile> Open(const uint8_t* base,
