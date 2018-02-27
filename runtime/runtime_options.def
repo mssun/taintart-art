@@ -152,6 +152,4 @@ RUNTIME_OPTIONS_KEY (bool,                SlowDebug,                      false)
 RUNTIME_OPTIONS_KEY (unsigned int,        GlobalRefAllocStackTraceLimit,  0)  // 0 = off
 RUNTIME_OPTIONS_KEY (Unit,                UseStderrLogger)
 
-RUNTIME_OPTIONS_KEY (Unit,                OnlyUseSystemOatFiles)
-
 #undef RUNTIME_OPTIONS_KEY
