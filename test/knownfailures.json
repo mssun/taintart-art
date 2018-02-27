@@ -12,6 +12,12 @@
         "bug": "http://b/33389022"
     },
     {
+        "tests": "579-inline-infinite",
+        "description": ["This test seems to fail often on redefine-stress for unknown reasons"],
+        "variant": "redefine-stress",
+        "bug": "http://b/73871735"
+    },
+    {
         "tests": "080-oom-fragmentation",
         "description": "Disable 080-oom-fragmentation due to flakes.",
         "bug": "http://b/33795328"
