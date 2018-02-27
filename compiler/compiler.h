@@ -39,12 +39,6 @@ template<class T> class Handle;
 class OatWriter;
 class Thread;
 
-enum class CopyOption {
-  kNever,
-  kAlways,
-  kOnlyIfCompressed
-};
-
 class Compiler {
  public:
   enum Kind {
