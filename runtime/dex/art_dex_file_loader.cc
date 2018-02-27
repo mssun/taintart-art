@@ -85,7 +85,8 @@ static constexpr OatDexFile* kNoOatDexFile = nullptr;
 bool ArtDexFileLoader::GetMultiDexChecksums(const char* filename,
                                             std::vector<uint32_t>* checksums,
                                             std::string* error_msg,
-                                            int zip_fd) const {
+                                            int zip_fd,
+                                            bool* zip_file_only_contains_uncompressed_dex) const {
   CHECK(checksums != nullptr);
   uint32_t magic;
 
@@ -119,7 +120,17 @@ bool ArtDexFileLoader::GetMultiDexChecksums(const char* filename,
       return false;
     }
 
+    if (zip_file_only_contains_uncompressed_dex != nullptr) {
+      // Start by assuming everything is uncompressed.
+      *zip_file_only_contains_uncompressed_dex = true;
+    }
+
     do {
+      if (zip_file_only_contains_uncompressed_dex != nullptr) {
+        if (!(zip_entry->IsUncompressed() && zip_entry->IsAlignedToDexHeader())) {
+          *zip_file_only_contains_uncompressed_dex = false;
+        }
+      }
       checksums->push_back(zip_entry->GetCrc32());
       zip_entry_name = GetMultiDexClassesDexName(i++);
       zip_entry.reset(zip_archive->Find(zip_entry_name.c_str(), error_msg));

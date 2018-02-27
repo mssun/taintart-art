@@ -673,5 +673,10 @@
         "env_vars": {"SANITIZE_HOST": "address"},
         "bug": "b/73060923",
         "description": ["ASAN issue"]
+    },
+    {
+        "tests": "677-fsi",
+        "variant": "no-dex2oat | no-image | no-prebuild | relocate-npatchoat",
+        "description": ["Test requires a successful dex2oat invocation"]
     }
 ]
