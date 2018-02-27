@@ -166,17 +166,22 @@ public class Test1926 {
   public static void doRecurTestWith(final int times, int watch_frame) throws Exception {
     final String target_method_name_start = "recurTimes";
     final ThreadPauser safepoint = new ThreadPauser();
-    Thread target = new Thread(() -> {
-      recurTimesA(times, () -> {
-        safepoint.run();
-        disableFramePop(null);
-      });
-      System.out.println("Ran recurTimes(" + times + ") without errors after disabling " +
-          "frame pop event!");
-      System.out.println("renabling frame pop event with similar stack.");
-      recurTimesB(times, () -> { reenableFramePop(null); });
-      System.out.println("Ran recurTimes(" + times + ") without errors!");
-    });
+    // We need to make the stack bigger since ASAN causes SOE if we don't.
+    Thread target = new Thread(
+        /*thread Group*/ null,
+        () -> {
+          recurTimesA(times, () -> {
+            safepoint.run();
+            disableFramePop(null);
+          });
+          System.out.println("Ran recurTimes(" + times + ") without errors after disabling " +
+              "frame pop event!");
+          System.out.println("renabling frame pop event with similar stack.");
+          recurTimesB(times, () -> { reenableFramePop(null); });
+          System.out.println("Ran recurTimes(" + times + ") without errors!");
+        },
+        "Test1926-Thread",
+        /*10 mb stack*/10 * 1024 * 1024);
     target.start();
     safepoint.waitForOtherThreadToPause();
     Suspension.suspend(target);
