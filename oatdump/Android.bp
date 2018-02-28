@@ -121,6 +121,7 @@ art_cc_test {
         "art_gtest_defaults",
     ],
     srcs: [
+        "oatdump_app_test.cc",
         "oatdump_test.cc",
         "oatdump_image_test.cc",
     ],
