@@ -1,7 +1,7 @@
 device_config = {
 # Configuration syntax:
 #
-#  device: The value of ro.product.name or 'host'
+#  device: The value of ro.product.name or 'host' or 'jvm'
 #  properties: (Use one or more of these).
 #     * run-test-args: additional run-test-args
 #
