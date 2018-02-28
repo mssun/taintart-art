@@ -973,7 +973,7 @@
     },
     {
         "tests": "677-fsi",
-        "variant": "no-dex2oat | no-image | no-prebuild | relocate-npatchoat",
+        "variant": "no-dex2oat | no-image | no-prebuild | relocate-npatchoat | jvm",
         "description": ["Test requires a successful dex2oat invocation"]
     }
 ]
