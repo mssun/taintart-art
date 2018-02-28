@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
+import annotations.BootstrapMethod;
 import annotations.CalledByIndy;
-import annotations.LinkerMethodHandle;
-import annotations.MethodHandleKind;
 import java.lang.invoke.CallSite;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
@@ -32,16 +31,15 @@ public class TestLinkerMethodMinimalArguments extends TestBase {
     static final int FAILURE_TYPE_TARGET_METHOD_THROWS = 3;
 
     @CalledByIndy(
-        invokeMethodHandle =
-                @LinkerMethodHandle(
-                    kind = MethodHandleKind.INVOKE_STATIC,
+        bootstrapMethod =
+                @BootstrapMethod(
                     enclosingType = TestLinkerMethodMinimalArguments.class,
-                    argumentTypes = {MethodHandles.Lookup.class, String.class, MethodType.class},
+                    parameterTypes = {MethodHandles.Lookup.class, String.class, MethodType.class},
                     name = "linkerMethod"
                 ),
-        name = "_add",
+        fieldOrMethodName = "_add",
         returnType = int.class,
-        argumentTypes = {int.class, int.class}
+        parameterTypes = {int.class, int.class}
     )
     private static int add(int a, int b) {
         assertNotReached();

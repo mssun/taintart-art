@@ -21,16 +21,25 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.invoke.CallSite;
+import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.invoke.MethodType;
 
-/** Describe a linker method to a field. */
+/**
+ * Describes a bootstrap method that performs method handle resolution on behalf of an
+ * invoke-dynamic instruction.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.ANNOTATION_TYPE)
-public @interface LinkerFieldHandle {
-    MethodHandleKind kind();
-
+public @interface BootstrapMethod {
+    /** The class containing the bootstrap method. */
     Class<?> enclosingType();
 
+    /** The bootstrap method name. */
     String name();
 
-    Class<?> type() default CallSite.class;
+    /** The return type of the bootstrap method. */
+    Class<?> returnType() default CallSite.class;
+
+    /** The parameter types of the bootstrap method. */
+    Class<?>[] parameterTypes() default {Lookup.class, String.class, MethodType.class};
 }

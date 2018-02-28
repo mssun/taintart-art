@@ -86,5 +86,6 @@ public class Main extends TestBase {
         TestLinkerMethodMultipleArgumentTypes();
         TestLinkerUnrelatedBSM.test();
         TestInvokeCustomWithConcurrentThreads();
+        TestInvocationKinds.test();
     }
 }
