@@ -204,10 +204,12 @@ std::string DexFileLoader::GetDexCanonicalLocation(const char* dex_location) {
 // All of the implementations here should be independent of the runtime.
 // TODO: implement all the virtual methods.
 
-bool DexFileLoader::GetMultiDexChecksums(const char* filename ATTRIBUTE_UNUSED,
-                                         std::vector<uint32_t>* checksums ATTRIBUTE_UNUSED,
-                                         std::string* error_msg,
-                                         int zip_fd ATTRIBUTE_UNUSED) const {
+bool DexFileLoader::GetMultiDexChecksums(
+    const char* filename ATTRIBUTE_UNUSED,
+    std::vector<uint32_t>* checksums ATTRIBUTE_UNUSED,
+    std::string* error_msg,
+    int zip_fd ATTRIBUTE_UNUSED,
+    bool* zip_file_only_contains_uncompress_dex ATTRIBUTE_UNUSED) const {
   *error_msg = "UNIMPLEMENTED";
   return false;
 }
