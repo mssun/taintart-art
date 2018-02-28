@@ -17,12 +17,15 @@
 #
 # Calls javac with the -bootclasspath values passed in automatically.
 # (This avoids having to manually set a boot class path).
+# If $JAVAC is set, it will call that instead of 'javac'.
 #
 #
 # Script-specific args:
-#   --mode=[host|target]: Select between host or target bootclasspath (default target).
+#   --mode=[host|target|jvm]:
+#                         Select between host,target,jvm bootclasspath (default target).
 #   --core-only:          Use only "core" bootclasspath (e.g. do not include framework).
-#   --show-commands:      Print the desugar command being executed.
+#                         Ignored with --mode=jvm.
+#   --show-commands:      Print the javac command being executed.
 #   --help:               Print above list of args.
 #
 # All other args are forwarded to javac
@@ -41,14 +44,23 @@ showcommands=n
 while true; do
   case $1 in
     --help)
-      echo "Usage: $0 [--mode=host|target] [--core-only] [--show-commands] <javac args>"
+      echo "Usage: $0 [--mode=host|target|jvm] [--core-only] [--show-commands] <javac args>"
       exit 0
       ;;
     --mode=host)
       bootjars_args="$bootjars_args --host"
+      mode=host
       ;;
     --mode=target)
       bootjars_args="$bootjars_args --target"
+      mode=target
+      ;;
+    --mode=jvm)
+      mode=jvm
+      ;;
+    --mode=*)
+      echo "Unsupported $0 usage with --mode=$1" >&2
+      exit 1
       ;;
     --core-only)
       bootjars_args="$bootjars_args --core"
@@ -63,22 +75,28 @@ while true; do
   shift
 done
 
-javac_bootclasspath=()
-boot_class_path_list=$($TOP/art/tools/bootjars.sh $bootjars_args --path)
+if [[ $mode == jvm ]]; then
+  # For --mode=jvm:
+  # Do not prepend a -bootclasspath, which will use the default bootclasspath instead.
+  javac_args=()
+else
+  # For --mode=host or --mode=target, look up the correct -bootclasspath for libcore.
+  javac_bootclasspath=()
+  boot_class_path_list=$($TOP/art/tools/bootjars.sh $bootjars_args --path)
 
+  for path in $boot_class_path_list; do
+    javac_bootclasspath+=("$path")
+  done
 
-for path in $boot_class_path_list; do
-  javac_bootclasspath+=("$path")
-done
+  if [[ ${#javac_bootclasspath[@]} -eq 0 ]]; then
+    echo "FATAL: Missing bootjars.sh file path list" >&2
+    exit 1
+  fi
 
-if [[ ${#javac_bootclasspath[@]} -eq 0 ]]; then
-  echo "FATAL: Missing bootjars.sh file path list" >&2
-  exit 1
+  function join_by { local IFS="$1"; shift; echo "$*"; }
+  bcp_arg="$(join_by ":" "${javac_bootclasspath[@]}")"
+  javac_args=(-bootclasspath "$bcp_arg")
 fi
-
-function join_by { local IFS="$1"; shift; echo "$*"; }
-bcp_arg="$(join_by ":" "${javac_bootclasspath[@]}")"
-javac_args=(-bootclasspath "$bcp_arg")
 
 if [[ $showcommands == y ]]; then
   echo ${JAVAC} "${javac_args[@]}" "$@"

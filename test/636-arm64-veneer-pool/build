@@ -24,4 +24,4 @@ export USE_JACK=false
 # on a platform build compiled with ANDROID_COMPILE_WITH_JACK=true.
 export USE_DESUGAR=false
 
-./default-build
+./default-build "$@"
