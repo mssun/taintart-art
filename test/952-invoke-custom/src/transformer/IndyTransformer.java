@@ -15,11 +15,9 @@
  */
 package transformer;
 
+import annotations.BootstrapMethod;
 import annotations.CalledByIndy;
 import annotations.Constant;
-import annotations.LinkerFieldHandle;
-import annotations.LinkerMethodHandle;
-import annotations.MethodHandleKind;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.invoke.MethodType;
@@ -43,18 +41,17 @@ import org.objectweb.asm.Type;
 /**
  * Class for inserting invoke-dynamic instructions in annotated Java class files.
  *
- * This class replaces static method invocations of annotated methods
- * with invoke-dynamic instructions. Suppose a method is annotated as:
+ * <p>This class replaces static method invocations of annotated methods with invoke-dynamic
+ * instructions. Suppose a method is annotated as: <code>
  *
  * @CalledByIndy(
- *     invokeMethodHandle =
- *         @LinkerMethodHandle(
- *              kind = MethodHandleKind.INVOKE_STATIC,
- *                  enclosingType = TestLinkerMethodMinimalArguments.class,
- *                  argumentTypes = {MethodHandles.Lookup.class, String.class, MethodType.class},
- *                  name = "linkerMethod"
- *              ),
- *     name = "magicAdd",
+ *      bootstrapMethod =
+ *          @BootstrapMethod(
+ *               enclosingType = TestLinkerMethodMinimalArguments.class,
+ *               parameterTypes = {MethodHandles.Lookup.class, String.class, MethodType.class},
+ *               name = "linkerMethod"
+ *     ),
+ *     fieldOdMethodName = "magicAdd",
  *     returnType = int.class,
  *     argumentTypes = {int.class, int.class}
  * )
@@ -66,13 +63,11 @@ import org.objectweb.asm.Type;
  *    return x + y;
  * }
  *
- * Then invokestatic bytecodes targeting the add() method will be
- * replaced invokedynamic instructions targetting the CallSite that is
- * construction by the bootstrap method described by the @CalledByIndy
- * annotation.
+ * </code> Then invokestatic bytecodes targeting the add() method will be replaced invokedynamic
+ * instructions targetting the CallSite that is construction by the bootstrap method described by
+ * the @CalledByIndy annotation.
  *
- * In the example above, this results in add() being replaced by
- * invocations of magicAdd().
+ * <p>In the example above, this results in add() being replaced by invocations of magicAdd().
  */
 class IndyTransformer {
 
@@ -101,7 +96,7 @@ class IndyTransformer {
                     if (opcode == org.objectweb.asm.Opcodes.INVOKESTATIC) {
                         CalledByIndy callsite = callsiteMap.get(name);
                         if (callsite != null) {
-                            insertIndy(callsite.name(), desc, callsite);
+                            insertIndy(callsite.fieldOrMethodName(), desc, callsite);
                             return;
                         }
                     }
@@ -109,80 +104,26 @@ class IndyTransformer {
                 }
 
                 private void insertIndy(String name, String desc, CalledByIndy callsite) {
-                    Handle bsm = buildBootstrapMethodHandle(callsite);
-                    Object[] bsmArgs = buildBootstrapArguments(callsite);
+                    Handle bsm = buildBootstrapMethodHandle(callsite.bootstrapMethod()[0]);
+                    Object[] bsmArgs =
+                            buildBootstrapArguments(callsite.constantArgumentsForBootstrapMethod());
                     mv.visitInvokeDynamicInsn(name, desc, bsm, bsmArgs);
                 }
 
-                private Handle buildBootstrapMethodHandle(CalledByIndy callsite) {
-                    MethodHandleKind kind;
-                    if (callsite.fieldMethodHandle().length != 0) {
-                        return buildBootstrapMethodHandleForField(callsite.fieldMethodHandle()[0]);
-                    } else if (callsite.invokeMethodHandle().length != 0) {
-                        return buildBootstrapMethodHandleForMethod(
-                                callsite.invokeMethodHandle()[0]);
-                    } else {
-                        throw new Error("Missing linker method handle in CalledByIndy annotation");
-                    }
-                }
-
-                private Handle buildBootstrapMethodHandleForField(LinkerFieldHandle fieldHandle) {
-                    int handleKind;
-                    switch (fieldHandle.kind()) {
-                        case GET_FIELD:
-                            handleKind = Opcodes.H_GETFIELD;
-                            break;
-                        case GET_STATIC:
-                            handleKind = Opcodes.H_GETSTATIC;
-                            break;
-                        case PUT_FIELD:
-                            handleKind = Opcodes.H_PUTFIELD;
-                            break;
-                        case PUT_STATIC:
-                            handleKind = Opcodes.H_PUTSTATIC;
-                            break;
-                        default:
-                            throw new Error("Unknown field invocation kind: " + fieldHandle.kind());
-                    }
-                    Class<?> resolverClass = fieldHandle.enclosingType();
-                    String resolverMethod = fieldHandle.name();
-                    Class<?> resolverReturnType = fieldHandle.type();
-
-                    // TODO: arguments types to invoke resolver with (default + extra args).
-                    throw new Error("WIP");
-                }
-
-                private Handle buildBootstrapMethodHandleForMethod(
-                        LinkerMethodHandle methodHandle) {
-                    int handleKind;
-                    switch (methodHandle.kind()) {
-                        case INVOKE_CONSTRUCTOR:
-                            handleKind = Opcodes.H_NEWINVOKESPECIAL;
-                            break;
-                        case INVOKE_INTERFACE:
-                            handleKind = Opcodes.H_INVOKEINTERFACE;
-                            break;
-                        case INVOKE_SPECIAL:
-                            handleKind = Opcodes.H_INVOKESPECIAL;
-                            break;
-                        case INVOKE_STATIC:
-                            handleKind = Opcodes.H_INVOKESTATIC;
-                            break;
-                        case INVOKE_VIRTUAL:
-                            handleKind = Opcodes.H_INVOKEVIRTUAL;
-                            break;
-                        default:
-                            throw new Error(
-                                    "Unknown method invocation kind: " + methodHandle.kind());
-                    }
-                    String className = Type.getInternalName(methodHandle.enclosingType());
-                    String methodName = methodHandle.name();
+                private Handle buildBootstrapMethodHandle(BootstrapMethod bootstrapMethod) {
+                    String className = Type.getInternalName(bootstrapMethod.enclosingType());
+                    String methodName = bootstrapMethod.name();
                     String methodType =
                             MethodType.methodType(
-                                            methodHandle.returnType(), methodHandle.argumentTypes())
+                                            bootstrapMethod.returnType(),
+                                            bootstrapMethod.parameterTypes())
                                     .toMethodDescriptorString();
                     return new Handle(
-                            handleKind, className, methodName, methodType, false /* itf */);
+                            Opcodes.H_INVOKESTATIC,
+                            className,
+                            methodName,
+                            methodType,
+                            false /* itf */);
                 }
 
                 private Object decodeConstant(int index, Constant constant) {
@@ -211,11 +152,10 @@ class IndyTransformer {
                     }
                 }
 
-                private Object[] buildBootstrapArguments(CalledByIndy callsite) {
-                    Constant[] rawArgs = callsite.methodHandleExtraArgs();
-                    Object[] args = new Object[rawArgs.length];
-                    for (int i = 0; i < rawArgs.length; ++i) {
-                        args[i] = decodeConstant(i, rawArgs[i]);
+                private Object[] buildBootstrapArguments(Constant[] bootstrapMethodArguments) {
+                    Object[] args = new Object[bootstrapMethodArguments.length];
+                    for (int i = 0; i < bootstrapMethodArguments.length; ++i) {
+                        args[i] = decodeConstant(i, bootstrapMethodArguments[i]);
                     }
                     return args;
                 }
@@ -237,8 +177,8 @@ class IndyTransformer {
             if (calledByIndy == null) {
                 continue;
             }
-            if (calledByIndy.name() == null) {
-                throw new Error("CallByIndy annotation does not specify name");
+            if (calledByIndy.fieldOrMethodName() == null) {
+                throw new Error("CallByIndy annotation does not specify a field or method name");
             }
             final int PRIVATE_STATIC = Modifier.STATIC | Modifier.PRIVATE;
             if ((m.getModifiers() & PRIVATE_STATIC) != PRIVATE_STATIC) {

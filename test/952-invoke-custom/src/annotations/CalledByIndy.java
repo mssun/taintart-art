@@ -28,15 +28,17 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface CalledByIndy {
-    LinkerMethodHandle[] invokeMethodHandle() default {};
+    /** Resolver metadata for bootstrapping */
+    BootstrapMethod[] bootstrapMethod() default {};
 
-    LinkerFieldHandle[] fieldMethodHandle() default {};
+    /** Field or method name. */
+    String fieldOrMethodName();
 
-    String name();
-
+    /** Return type of method() or field getter() */
     Class<?> returnType() default void.class;
 
-    Class<?>[] argumentTypes() default {};
+    /** Types of parameters for method or field setter() */
+    Class<?>[] parameterTypes() default {};
 
-    Constant[] methodHandleExtraArgs() default {};
+    Constant[] constantArgumentsForBootstrapMethod() default {};
 }

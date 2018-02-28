@@ -14,20 +14,18 @@
  * limitations under the License.
  */
 
+import annotations.BootstrapMethod;
 import annotations.CalledByIndy;
 import annotations.Constant;
-import annotations.LinkerMethodHandle;
-import annotations.MethodHandleKind;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
 class TestLinkerUnrelatedBSM extends TestBase {
     @CalledByIndy(
-        invokeMethodHandle =
-                @LinkerMethodHandle(
-                    kind = MethodHandleKind.INVOKE_STATIC,
+        bootstrapMethod =
+                @BootstrapMethod(
                     enclosingType = UnrelatedBSM.class,
-                    argumentTypes = {
+                    parameterTypes = {
                         MethodHandles.Lookup.class,
                         String.class,
                         MethodType.class,
@@ -35,10 +33,10 @@ class TestLinkerUnrelatedBSM extends TestBase {
                     },
                     name = "bsm"
                 ),
-        methodHandleExtraArgs = {@Constant(classValue = TestLinkerUnrelatedBSM.class)},
-        name = "_addf",
+        fieldOrMethodName = "_addf",
         returnType = float.class,
-        argumentTypes = {float.class, float.class}
+        parameterTypes = {float.class, float.class},
+        constantArgumentsForBootstrapMethod = {@Constant(classValue = TestLinkerUnrelatedBSM.class)}
     )
     private static float addf(float a, float b) {
         assertNotReached();
@@ -50,11 +48,10 @@ class TestLinkerUnrelatedBSM extends TestBase {
     }
 
     @CalledByIndy(
-        invokeMethodHandle =
-                @LinkerMethodHandle(
-                    kind = MethodHandleKind.INVOKE_STATIC,
+        bootstrapMethod =
+                @BootstrapMethod(
                     enclosingType = UnrelatedBSM.class,
-                    argumentTypes = {
+                    parameterTypes = {
                         MethodHandles.Lookup.class,
                         String.class,
                         MethodType.class,
@@ -62,10 +59,10 @@ class TestLinkerUnrelatedBSM extends TestBase {
                     },
                     name = "bsm"
                 ),
-        methodHandleExtraArgs = {@Constant(classValue = TestLinkerUnrelatedBSM.class)},
-        name = "_subf",
+        fieldOrMethodName = "_subf",
         returnType = float.class,
-        argumentTypes = {float.class, float.class}
+        parameterTypes = {float.class, float.class},
+        constantArgumentsForBootstrapMethod = {@Constant(classValue = TestLinkerUnrelatedBSM.class)}
     )
     private static float subf(float a, float b) {
         assertNotReached();
