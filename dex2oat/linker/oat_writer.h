@@ -24,6 +24,7 @@
 
 #include "base/array_ref.h"
 #include "base/dchecked_vector.h"
+#include "compiler.h"
 #include "dex/compact_dex_level.h"
 #include "debug/debug_info.h"
 #include "linker/relative_patcher.h"  // For RelativePatcherTargetProvider.
@@ -168,7 +169,6 @@ class OatWriter {
   // This is generally the case, and should only be false for tests.
   // If `update_input_vdex` is true, then this method won't actually write the dex files,
   // and the compiler will just re-use the existing vdex file.
-  // If `copy_dex_files` is true, copy the input dex files into the vdex file.
   bool WriteAndOpenDexFiles(File* vdex_file,
                             OutputStream* oat_rodata,
                             InstructionSet instruction_set,
@@ -176,7 +176,7 @@ class OatWriter {
                             SafeMap<std::string, std::string>* key_value_store,
                             bool verify,
                             bool update_input_vdex,
-                            bool copy_dex_files,
+                            CopyOption copy_dex_files,
                             /*out*/ std::vector<std::unique_ptr<MemMap>>* opened_dex_files_map,
                             /*out*/ std::vector<std::unique_ptr<const DexFile>>* opened_dex_files);
   bool WriteQuickeningInfo(OutputStream* vdex_out);
@@ -288,7 +288,7 @@ class OatWriter {
   bool WriteDexFiles(OutputStream* out,
                      File* file,
                      bool update_input_vdex,
-                     bool copy_dex_files);
+                     CopyOption copy_dex_files);
   bool WriteDexFile(OutputStream* out,
                     File* file,
                     OatDexFile* oat_dex_file,
