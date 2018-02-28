@@ -763,7 +763,7 @@ bool ReaderWriterMutex::ExclusiveLockWithTimeout(Thread* self, int64_t ms, int32
 #if ART_USE_FUTEXES
 void ReaderWriterMutex::HandleSharedLockContention(Thread* self, int32_t cur_state) {
   // Owner holds it exclusively, hang up.
-  ScopedContentionRecorder scr(this, GetExclusiveOwnerTid(), SafeGetTid(self));
+  ScopedContentionRecorder scr(this, SafeGetTid(self), GetExclusiveOwnerTid());
   ++num_pending_readers_;
   if (UNLIKELY(should_respond_to_empty_checkpoint_request_)) {
     self->CheckEmptyCheckpointFromMutex();
