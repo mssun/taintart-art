@@ -601,7 +601,10 @@ END art_quick_invoke_stub_internal
      */
 ENTRY art_quick_osr_stub
     SPILL_ALL_CALLEE_SAVE_GPRS             @ Spill regs (9)
+    SAVE_SIZE=9*4
     mov    r11, sp                         @ Save the stack pointer
+    .cfi_def_cfa r11, SAVE_SIZE            @ CFA = r11 + SAVE_SIZE
+    .cfi_remember_state
     mov    r10, r1                         @ Save size of stack
     ldr    r9, [r11, #40]                  @ Move managed thread pointer into r9
     REFRESH_MARKING_REGISTER
@@ -614,14 +617,18 @@ ENTRY art_quick_osr_stub
     str    r3, [sp, #8]                    @ Save JValue* result
     mov    ip, #0
     str    ip, [sp]                        @ Store null for ArtMethod* at bottom of frame
-    sub    sp, sp, r1                      @ Reserve space for callee stack
-    mov    r2, r1
-    mov    r1, r0
-    mov    r0, sp
-    bl     memcpy                          @ memcpy (dest r0, src r1, bytes r2)
+    // r11 isn't properly spilled in the osr method, so we need use DWARF expression.
+    // NB: the CFI must be before the call since this is the address gdb will lookup.
+    // NB: gdb expects that cfa_expression returns the CFA value (not address to it).
+    .cfi_escape                            /* CFA = [sp + 4] + SAVE_SIZE */ \
+      0x0f, 6,                             /* DW_CFA_def_cfa_expression(len) */ \
+      0x92, 13, 4,                         /* DW_OP_bregx(reg,offset) */ \
+      0x06,                                /* DW_OP_deref */ \
+      0x23, SAVE_SIZE                      /* DW_OP_plus_uconst(val) */
     bl     .Losr_entry                     @ Call the method
     ldr    r10, [sp, #8]                   @ Restore JValue* result
     ldr    sp, [sp, #4]                    @ Restore saved stack pointer
+    .cfi_def_cfa sp, SAVE_SIZE             @ CFA = sp + SAVE_SIZE
     ldr    r4, [sp, #36]                   @ load shorty
     ldrb   r4, [r4, #0]                    @ load return type
     cmp    r4, #68                         @ Test if result type char == 'D'.
@@ -635,8 +642,15 @@ ENTRY art_quick_osr_stub
 .Losr_exit:
     pop    {r4, r5, r6, r7, r8, r9, r10, r11, pc}
 .Losr_entry:
+    .cfi_restore_state
+    .cfi_def_cfa r11, SAVE_SIZE            @ CFA = r11 + SAVE_SIZE
+    sub sp, sp, r10                        @ Reserve space for callee stack
     sub r10, r10, #4
-    str lr, [sp, r10]                     @ Store link register per the compiler ABI
+    str lr, [sp, r10]                      @ Store link register per the compiler ABI
+    mov r2, r10
+    mov r1, r0
+    mov r0, sp
+    bl  memcpy                             @ memcpy (dest r0, src r1, bytes r2)
     bx r6
 END art_quick_osr_stub
 
