@@ -50,7 +50,8 @@ class ArtDexFileLoader : public DexFileLoader {
   bool GetMultiDexChecksums(const char* filename,
                             std::vector<uint32_t>* checksums,
                             std::string* error_msg,
-                            int zip_fd = -1) const OVERRIDE;
+                            int zip_fd = -1,
+                            bool* only_contains_uncompressed_dex = nullptr) const OVERRIDE;
 
   // Opens .dex file, backed by existing memory
   std::unique_ptr<const DexFile> Open(const uint8_t* base,
