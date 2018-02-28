@@ -136,7 +136,7 @@ def gather_test_info():
   # TODO: Avoid duplication of the variant names in different lists.
   VARIANT_TYPE_DICT['pictest'] = {'pictest', 'npictest'}
   VARIANT_TYPE_DICT['run'] = {'ndebug', 'debug'}
-  VARIANT_TYPE_DICT['target'] = {'target', 'host'}
+  VARIANT_TYPE_DICT['target'] = {'target', 'host', 'jvm'}
   VARIANT_TYPE_DICT['trace'] = {'trace', 'ntrace', 'stream'}
   VARIANT_TYPE_DICT['image'] = {'picimage', 'no-image', 'multipicimage'}
   VARIANT_TYPE_DICT['debuggable'] = {'ndebuggable', 'debuggable'}
@@ -193,7 +193,7 @@ def setup_test_env():
     _user_input_variants['jvmti'].add('no-jvmti')
 
   # By default we run all 'compiler' variants.
-  if not _user_input_variants['compiler']:
+  if not _user_input_variants['compiler'] and _user_input_variants['target'] != 'jvm':
     _user_input_variants['compiler'].add('optimizing')
     _user_input_variants['compiler'].add('jit')
     _user_input_variants['compiler'].add('interpreter')
@@ -214,7 +214,6 @@ def setup_test_env():
 
   if not _user_input_variants['image']: # Default
     _user_input_variants['image'].add('picimage')
-
 
   if not _user_input_variants['pictest']: # Default
     _user_input_variants['pictest'].add('npictest')
@@ -269,11 +268,10 @@ def find_extra_device_arguments(target):
   """
   Gets any extra arguments from the device_config.
   """
-  if target == 'host':
-    return device_config.get(target, { 'run-test-args' : [] })['run-test-args']
-  else:
-    device = get_device_name()
-    return device_config.get(device, { 'run-test-args' : [] })['run-test-args']
+  device_name = target
+  if target == 'target':
+    device_name = get_device_name()
+  return device_config.get(device_name, { 'run-test-args' : [] })['run-test-args']
 
 def get_device_name():
   """
@@ -308,15 +306,27 @@ def run_tests(tests):
     tests: The set of tests to be run.
   """
   options_all = ''
+
+  # jvm does not run with all these combinations,
+  # or at least it doesn't make sense for most of them.
+  # TODO: support some jvm variants like jvmti ?
+  target_input_variants = _user_input_variants['target']
+  uncombinated_target_input_variants = []
+  if 'jvm' in target_input_variants:
+    _user_input_variants['target'].remove('jvm')
+    uncombinated_target_input_variants.append('jvm')
+
   global total_test_count
   total_test_count = len(tests)
-  for variant_type in VARIANT_TYPE_DICT:
-    if not (variant_type == 'target' or 'address_sizes' in variant_type):
-      total_test_count *= len(_user_input_variants[variant_type])
+  if target_input_variants:
+    for variant_type in VARIANT_TYPE_DICT:
+      if not (variant_type == 'target' or 'address_sizes' in variant_type):
+        total_test_count *= len(_user_input_variants[variant_type])
   target_address_combinations = 0
-  for target in _user_input_variants['target']:
+  for target in target_input_variants:
     for address_size in _user_input_variants['address_sizes_target'][target]:
       target_address_combinations += 1
+  target_address_combinations += len(uncombinated_target_input_variants)
   total_test_count *= target_address_combinations
 
   if env.ART_TEST_WITH_STRACE:
@@ -339,17 +349,32 @@ def run_tests(tests):
   if dex2oat_jobs != -1:
     options_all += ' --dex2oat-jobs ' + str(dex2oat_jobs)
 
-  config = itertools.product(tests, _user_input_variants['target'], _user_input_variants['run'],
-                             _user_input_variants['prebuild'], _user_input_variants['compiler'],
-                             _user_input_variants['relocate'], _user_input_variants['trace'],
-                             _user_input_variants['gc'], _user_input_variants['jni'],
-                             _user_input_variants['image'], _user_input_variants['pictest'],
-                             _user_input_variants['debuggable'], _user_input_variants['jvmti'],
-                             _user_input_variants['cdex_level'])
+  def iter_config(tests, input_variants, user_input_variants):
+    config = itertools.product(tests, input_variants, user_input_variants['run'],
+                                 user_input_variants['prebuild'], user_input_variants['compiler'],
+                                 user_input_variants['relocate'], user_input_variants['trace'],
+                                 user_input_variants['gc'], user_input_variants['jni'],
+                                 user_input_variants['image'], user_input_variants['pictest'],
+                                 user_input_variants['debuggable'], user_input_variants['jvmti'],
+                                 user_input_variants['cdex_level'])
+    return config
 
-  for test, target, run, prebuild, compiler, relocate, trace, gc, \
-      jni, image, pictest, debuggable, jvmti, cdex_level in config:
-    for address_size in _user_input_variants['address_sizes_target'][target]:
+  # [--host, --target] combines with all the other user input variants.
+  config = iter_config(tests, target_input_variants, _user_input_variants)
+  # [--jvm] currently combines with nothing else. most of the extra flags we'd insert
+  # would be unrecognizable by the 'java' binary, so avoid inserting any extra flags for now.
+  uncombinated_config = iter_config(tests, uncombinated_target_input_variants, { 'run': [''],
+      'prebuild': [''], 'compiler': [''],
+      'relocate': [''], 'trace': [''],
+      'gc': [''], 'jni': [''],
+      'image': [''], 'pictest': [''],
+      'debuggable': [''], 'jvmti': [''],
+      'cdex_level': ['']})
+
+  def start_combination(config_tuple, address_size):
+      test, target, run, prebuild, compiler, relocate, trace, gc, \
+      jni, image, pictest, debuggable, jvmti, cdex_level = config_tuple
+
       if stop_testrunner:
         # When ART_TEST_KEEP_GOING is set to false, then as soon as a test
         # fails, stop_testrunner is set to True. When this happens, the method
@@ -384,6 +409,8 @@ def run_tests(tests):
 
       if target == 'host':
         options_test += ' --host'
+      elif target == 'jvm':
+        options_test += ' --jvm'
 
       if run == 'ndebug':
         options_test += ' -O'
@@ -487,6 +514,14 @@ def run_tests(tests):
       worker = threading.Thread(target=run_test, args=(command, test, variant_set, test_name))
       worker.daemon = True
       worker.start()
+
+  for config_tuple in config:
+    target = config_tuple[1]
+    for address_size in _user_input_variants['address_sizes_target'][target]:
+      start_combination(config_tuple, address_size)
+
+  for config_tuple in uncombinated_config:
+      start_combination(config_tuple, "")  # no address size
 
   while threading.active_count() > 2:
     time.sleep(0.1)
@@ -969,6 +1004,8 @@ def main():
       build_targets += 'test-art-host-run-test-dependencies'
     if 'target' in _user_input_variants['target']:
       build_targets += 'test-art-target-run-test-dependencies'
+    if 'jvm' in _user_input_variants['target']:
+      build_targets += 'test-art-host-run-test-dependencies'
     build_command = 'make'
     build_command += ' DX='
     build_command += ' -j'

@@ -339,6 +339,7 @@ ART_TEST_MODULES := \
     art_profman_tests \
     art_runtime_tests \
     art_runtime_compiler_tests \
+    art_sigchain_tests \
 
 ART_TARGET_GTEST_FILES := $(foreach m,$(ART_TEST_MODULES),\
     $(ART_TEST_LIST_device_$(TARGET_ARCH)_$(m)))
