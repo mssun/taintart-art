@@ -1929,8 +1929,8 @@ void InstructionCodeGeneratorMIPS::GenerateClassInitializationCheck(SlowPathCode
       enum_cast<uint32_t>(ClassStatus::kInitialized) << (status_lsb_position % kBitsPerByte);
 
   __ LoadFromOffset(kLoadUnsignedByte, TMP, class_reg, status_byte_offset);
-  __ LoadConst32(AT, shifted_initialized_value);
-  __ Bltu(TMP, AT, slow_path->GetEntryLabel());
+  __ Sltiu(TMP, TMP, shifted_initialized_value);
+  __ Bnez(TMP, slow_path->GetEntryLabel());
   // Even if the initialized flag is set, we need to ensure consistent memory ordering.
   __ Sync(0);
   __ Bind(slow_path->GetExitLabel());
@@ -7635,10 +7635,6 @@ void InstructionCodeGeneratorMIPS::VisitInvokeInterface(HInvokeInterface* invoke
   uint32_t class_offset = mirror::Object::ClassOffset().Int32Value();
   Offset entry_point = ArtMethod::EntryPointFromQuickCompiledCodeOffset(kMipsPointerSize);
 
-  // Set the hidden argument.
-  __ LoadConst32(invoke->GetLocations()->GetTemp(1).AsRegister<Register>(),
-                 invoke->GetDexMethodIndex());
-
   // temp = object->GetClass();
   if (receiver.IsStackSlot()) {
     __ LoadFromOffset(kLoadWord, temp, SP, receiver.GetStackIndex());
@@ -7663,6 +7659,9 @@ void InstructionCodeGeneratorMIPS::VisitInvokeInterface(HInvokeInterface* invoke
   __ LoadFromOffset(kLoadWord, temp, temp, method_offset);
   // T9 = temp->GetEntryPoint();
   __ LoadFromOffset(kLoadWord, T9, temp, entry_point.Int32Value());
+  // Set the hidden argument.
+  __ LoadConst32(invoke->GetLocations()->GetTemp(1).AsRegister<Register>(),
+                 invoke->GetDexMethodIndex());
   // T9();
   __ Jalr(T9);
   __ NopIfNoReordering();
