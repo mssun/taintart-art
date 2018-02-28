@@ -2678,7 +2678,7 @@ void CompilerDriver::InitializeClasses(jobject class_loader,
   }
   if (GetCompilerOptions().IsBootImage()) {
     // Prune garbage objects created during aborted transactions.
-    Runtime::Current()->GetHeap()->CollectGarbage(true);
+    Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references */ true);
   }
 }
 

@@ -1748,7 +1748,7 @@ class Dex2Oat FINAL {
           soa.Self(),
           soa.Decode<mirror::ClassLoader>(class_loader));
       soa.Env()->GetVm()->DeleteGlobalRef(soa.Self(), class_loader);
-      runtime_->GetHeap()->CollectGarbage(/*clear_soft_references*/ true);
+      runtime_->GetHeap()->CollectGarbage(/* clear_soft_references */ true);
       ObjPtr<mirror::ClassLoader> decoded_weak = soa.Decode<mirror::ClassLoader>(weak_class_loader);
       if (decoded_weak != nullptr) {
         LOG(FATAL) << "Failed to unload class loader, path from root set: "
