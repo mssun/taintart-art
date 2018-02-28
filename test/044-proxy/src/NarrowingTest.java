@@ -48,6 +48,7 @@ class NarrowingTest {
        Main.registerProxyClassName(proxy.getClass().getCanonicalName());
 
        Method[] methods = proxy.getClass().getDeclaredMethods();
+       Arrays.sort(methods, new MethodComparator());
        System.out.println("Proxy methods: " +
                           Main.replaceProxyClassNamesForOutput(Arrays.deepToString(methods)));
 
