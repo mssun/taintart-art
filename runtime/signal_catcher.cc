@@ -207,7 +207,7 @@ void SignalCatcher::HandleSigQuit() {
 
 void SignalCatcher::HandleSigUsr1() {
   LOG(INFO) << "SIGUSR1 forcing GC (no HPROF) and profile save";
-  Runtime::Current()->GetHeap()->CollectGarbage(false);
+  Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references */ false);
   ProfileSaver::ForceProcessProfiles();
 }
 
