@@ -507,13 +507,19 @@ define define-art-gtest-rule-host
     $$(gtest_exe) \
     $$(ART_GTEST_$(1)_HOST_DEPS) \
     $(foreach file,$(ART_GTEST_$(1)_DEX_DEPS),$(ART_TEST_HOST_GTEST_$(file)_DEX))
+  ifneq (,$(DIST_DIR))
+    gtest_xml_output := --gtest_output=xml:$(DIST_DIR)/gtest/$(1)$$($(3)ART_PHONY_TEST_HOST_SUFFIX).xml
+  else
+    gtest_xml_output :=
+  endif
 
   ART_TEST_HOST_GTEST_DEPENDENCIES += $$(gtest_deps)
 
 .PHONY: $$(gtest_rule)
 ifeq (,$(SANITIZE_HOST))
+$$(gtest_rule): PRIVATE_XML_OUTPUT := $$(gtest_xml_output)
 $$(gtest_rule): $$(gtest_exe) $$(gtest_deps)
-	$(hide) ($$(call ART_TEST_SKIP,$$@) && $$< && \
+	$(hide) ($$(call ART_TEST_SKIP,$$@) && $$< $$(PRIVATE_XML_OUTPUT) && \
 		$$(call ART_TEST_PASSED,$$@)) || $$(call ART_TEST_FAILED,$$@)
 else
 # Note: envsetup currently exports ASAN_OPTIONS=detect_leaks=0 to suppress leak detection, as some
@@ -523,9 +529,10 @@ else
 # (with the x86-64 ABI, as this allows symbolization of both x86 and x86-64). We don't do this in
 # general as it loses all the color output, and we have our own symbolization step when not running
 # under ASAN.
+$$(gtest_rule): PRIVATE_XML_OUTPUT := $$(gtest_xml_output)
 $$(gtest_rule): $$(gtest_exe) $$(gtest_deps)
 	$(hide) ($$(call ART_TEST_SKIP,$$@) && set -o pipefail && \
-		ASAN_OPTIONS=detect_leaks=1 $$< 2>&1 | tee $$<.tmp.out >&2 && \
+		ASAN_OPTIONS=detect_leaks=1 $$< $$(PRIVATE_XML_OUTPUT) 2>&1 | tee $$<.tmp.out >&2 && \
 		{ $$(call ART_TEST_PASSED,$$@) ; rm $$<.tmp.out ; }) || \
 		( grep -q AddressSanitizer $$<.tmp.out && export ANDROID_BUILD_TOP=`pwd` && \
 			{ echo "ABI: 'x86_64'" | cat - $$<.tmp.out | development/scripts/stack | tail -n 3000 ; } ; \
