@@ -59,7 +59,7 @@ TEST_F(HeapTest, GarbageCollectClassLinkerInit) {
       }
     }
   }
-  Runtime::Current()->GetHeap()->CollectGarbage(false);
+  Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references */ false);
 }
 
 TEST_F(HeapTest, HeapBitmapCapacityTest) {

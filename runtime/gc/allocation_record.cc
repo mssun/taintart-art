@@ -289,7 +289,7 @@ void AllocRecordObjectMap::RecordAllocation(Thread* self,
     return;
   }
 
-  // Wait for GC's sweeping to complete and allow new records
+  // Wait for GC's sweeping to complete and allow new records.
   while (UNLIKELY((!kUseReadBarrier && !allow_new_record_) ||
                   (kUseReadBarrier && !self->GetWeakRefAccessEnabled()))) {
     // Check and run the empty checkpoint before blocking so the empty checkpoint will work in the

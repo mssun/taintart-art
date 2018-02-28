@@ -311,7 +311,7 @@ JNIEXPORT void JVM_GC(void) {
       LOG(INFO) << "Explicit GC skipped.";
       return;
   }
-  art::Runtime::Current()->GetHeap()->CollectGarbage(false);
+  art::Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references */ false);
 }
 
 JNIEXPORT __attribute__((noreturn)) void JVM_Exit(jint status) {
