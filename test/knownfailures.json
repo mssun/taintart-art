@@ -970,7 +970,10 @@
         "variant": "jvm",
         "bug": "b/73888836",
         "description": ["Failing on JVM. Needs further investigating."]
+    },
+    {
+        "tests": "677-fsi",
+        "variant": "no-dex2oat | no-image | no-prebuild | relocate-npatchoat",
+        "description": ["Test requires a successful dex2oat invocation"]
     }
-
-
 ]
