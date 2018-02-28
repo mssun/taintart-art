@@ -6665,6 +6665,60 @@ void InstructionCodeGeneratorMIPS64::VisitRem(HRem* instruction) {
   }
 }
 
+void LocationsBuilderMIPS64::VisitAbs(HAbs* abs) {
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(abs);
+  switch (abs->GetResultType()) {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+      locations->SetInAt(0, Location::RequiresRegister());
+      locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
+      break;
+    default:
+      LOG(FATAL) << "Unexpected abs type " << abs->GetResultType();
+  }
+}
+
+void InstructionCodeGeneratorMIPS64::VisitAbs(HAbs* abs) {
+  LocationSummary* locations = abs->GetLocations();
+  switch (abs->GetResultType()) {
+    case DataType::Type::kInt32: {
+      GpuRegister in  = locations->InAt(0).AsRegister<GpuRegister>();
+      GpuRegister out = locations->Out().AsRegister<GpuRegister>();
+      __ Sra(AT, in, 31);
+      __ Xor(out, in, AT);
+      __ Subu(out, out, AT);
+      break;
+    }
+    case DataType::Type::kInt64: {
+      GpuRegister in  = locations->InAt(0).AsRegister<GpuRegister>();
+      GpuRegister out = locations->Out().AsRegister<GpuRegister>();
+      __ Dsra32(AT, in, 31);
+      __ Xor(out, in, AT);
+      __ Dsubu(out, out, AT);
+      break;
+    }
+    case DataType::Type::kFloat32: {
+      FpuRegister in = locations->InAt(0).AsFpuRegister<FpuRegister>();
+      FpuRegister out = locations->Out().AsFpuRegister<FpuRegister>();
+      __ AbsS(out, in);
+      break;
+    }
+    case DataType::Type::kFloat64: {
+      FpuRegister in = locations->InAt(0).AsFpuRegister<FpuRegister>();
+      FpuRegister out = locations->Out().AsFpuRegister<FpuRegister>();
+      __ AbsD(out, in);
+      break;
+    }
+    default:
+      LOG(FATAL) << "Unexpected abs type " << abs->GetResultType();
+  }
+}
+
 void LocationsBuilderMIPS64::VisitConstructorFence(HConstructorFence* constructor_fence) {
   constructor_fence->SetLocations(nullptr);
 }

@@ -153,14 +153,18 @@ public class Main {
     return result;
   }
 
-  /// CHECK-START: int Main.invariantBoundIntrinsic(int) licm (before)
+
+  /// CHECK-START: int Main.invariantBoundIntrinsic(int) instruction_simplifier (before)
   /// CHECK-DAG: InvokeStaticOrDirect loop:{{B\d+}}
+  //
+  /// CHECK-START: int Main.invariantBoundIntrinsic(int) licm (before)
+  /// CHECK-DAG: Abs loop:{{B\d+}}
 
   /// CHECK-START: int Main.invariantBoundIntrinsic(int) licm (after)
-  /// CHECK-NOT: InvokeStaticOrDirect loop:{{B\d+}}
+  /// CHECK-NOT: Abs loop:{{B\d+}}
 
   /// CHECK-START: int Main.invariantBoundIntrinsic(int) licm (after)
-  /// CHECK-DAG: InvokeStaticOrDirect loop:none
+  /// CHECK-DAG: Abs loop:none
 
   public static int invariantBoundIntrinsic(int x) {
     int result = 0;

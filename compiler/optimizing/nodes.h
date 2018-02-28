@@ -1337,6 +1337,7 @@ class HLoopInformationOutwardIterator : public ValueObject {
 #define FOR_EACH_CONCRETE_INSTRUCTION_COMMON(M)                         \
   M(Above, Condition)                                                   \
   M(AboveOrEqual, Condition)                                            \
+  M(Abs, UnaryOperation)                                                \
   M(Add, BinaryOperation)                                               \
   M(And, BinaryOperation)                                               \
   M(ArrayGet, Instruction)                                              \
@@ -5013,6 +5014,47 @@ class HRem FINAL : public HBinaryOperation {
 
  protected:
   DEFAULT_COPY_CONSTRUCTOR(Rem);
+};
+
+class HAbs FINAL : public HUnaryOperation {
+ public:
+  HAbs(DataType::Type result_type, HInstruction* input, uint32_t dex_pc = kNoDexPc)
+      : HUnaryOperation(kAbs, result_type, input, dex_pc) {}
+
+  // Evaluation for integral values.
+  template <typename T> static T ComputeIntegral(T x) {
+    return x < 0 ? -x : x;
+  }
+
+  // Evaluation for floating-point values.
+  // Note, as a "quality of implementation", rather than pure "spec compliance",
+  // we require that Math.abs() clears the sign bit (but changes nothing else)
+  // for all floating-point numbers, including NaN (signaling NaN may become quiet though).
+  // http://b/30758343
+  template <typename T, typename S> static T ComputeFP(T x) {
+    S bits = bit_cast<S, T>(x);
+    return bit_cast<T, S>(bits & std::numeric_limits<S>::max());
+  }
+
+  HConstant* Evaluate(HIntConstant* x) const OVERRIDE {
+    return GetBlock()->GetGraph()->GetIntConstant(ComputeIntegral(x->GetValue()), GetDexPc());
+  }
+  HConstant* Evaluate(HLongConstant* x) const OVERRIDE {
+    return GetBlock()->GetGraph()->GetLongConstant(ComputeIntegral(x->GetValue()), GetDexPc());
+  }
+  HConstant* Evaluate(HFloatConstant* x) const OVERRIDE {
+    return GetBlock()->GetGraph()->GetFloatConstant(
+        ComputeFP<float, int32_t>(x->GetValue()), GetDexPc());
+  }
+  HConstant* Evaluate(HDoubleConstant* x) const OVERRIDE {
+    return GetBlock()->GetGraph()->GetDoubleConstant(
+        ComputeFP<double, int64_t>(x->GetValue()), GetDexPc());
+  }
+
+  DECLARE_INSTRUCTION(Abs);
+
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(Abs);
 };
 
 class HDivZeroCheck FINAL : public HExpression<1> {

@@ -24,7 +24,7 @@ public class Main {
   /// CHECK-DAG:                 Return [<<Select>>]
   //
   /// CHECK-START: int Main.sad1(char, char) instruction_simplifier$after_inlining (after)
-  /// CHECK-DAG: <<Intrin:i\d+>> InvokeStaticOrDirect intrinsic:MathAbsInt
+  /// CHECK-DAG: <<Intrin:i\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static int sad1(char x, char y) {
     return x >= y ? x - y : y - x;
@@ -35,7 +35,7 @@ public class Main {
   /// CHECK-DAG:                 Return [<<Select>>]
   //
   /// CHECK-START: int Main.sad2(char, char) instruction_simplifier$after_inlining (after)
-  /// CHECK-DAG: <<Intrin:i\d+>> InvokeStaticOrDirect intrinsic:MathAbsInt
+  /// CHECK-DAG: <<Intrin:i\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static int sad2(char x, char y) {
     int diff = x - y;
@@ -48,7 +48,7 @@ public class Main {
   /// CHECK-DAG:                 Return [<<Select>>]
   //
   /// CHECK-START: int Main.sad3(char, char) instruction_simplifier$after_inlining (after)
-  /// CHECK-DAG: <<Intrin:i\d+>> InvokeStaticOrDirect intrinsic:MathAbsInt
+  /// CHECK-DAG: <<Intrin:i\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static int sad3(char x, char y) {
     int diff = x - y;
@@ -60,7 +60,7 @@ public class Main {
   /// CHECK-DAG:                 Return [<<Select>>]
   //
   /// CHECK-START: int Main.sad3Alt(char, char) instruction_simplifier$after_inlining (after)
-  /// CHECK-DAG: <<Intrin:i\d+>> InvokeStaticOrDirect intrinsic:MathAbsInt
+  /// CHECK-DAG: <<Intrin:i\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static int sad3Alt(char x, char y) {
     int diff = x - y;
@@ -72,7 +72,7 @@ public class Main {
   /// CHECK-DAG:                 Return [<<Select>>]
   //
   /// CHECK-START: long Main.sadL1(char, char) instruction_simplifier$after_inlining (after)
-  /// CHECK-DAG: <<Intrin:j\d+>> InvokeStaticOrDirect intrinsic:MathAbsLong
+  /// CHECK-DAG: <<Intrin:j\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static long sadL1(char x, char y) {
     long xl = x;
@@ -85,7 +85,7 @@ public class Main {
   /// CHECK-DAG:                 Return [<<Select>>]
   //
   /// CHECK-START: long Main.sadL2(char, char) instruction_simplifier$after_inlining (after)
-  /// CHECK-DAG: <<Intrin:j\d+>> InvokeStaticOrDirect intrinsic:MathAbsLong
+  /// CHECK-DAG: <<Intrin:j\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static long sadL2(char x, char y) {
     long diff = x - y;
@@ -98,7 +98,7 @@ public class Main {
   /// CHECK-DAG:                 Return [<<Select>>]
   //
   /// CHECK-START: long Main.sadL3(char, char) instruction_simplifier$after_inlining (after)
-  /// CHECK-DAG: <<Intrin:j\d+>> InvokeStaticOrDirect intrinsic:MathAbsLong
+  /// CHECK-DAG: <<Intrin:j\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static long sadL3(char x, char y) {
     long diff = x - y;
@@ -110,7 +110,7 @@ public class Main {
   /// CHECK-DAG:                 Return [<<Select>>]
   //
   /// CHECK-START: long Main.sadL3Alt(char, char) instruction_simplifier$after_inlining (after)
-  /// CHECK-DAG: <<Intrin:j\d+>> InvokeStaticOrDirect intrinsic:MathAbsLong
+  /// CHECK-DAG: <<Intrin:j\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static long sadL3Alt(char x, char y) {
     long diff = x - y;

@@ -28,7 +28,7 @@ public class Main {
   /// CHECK-DAG:                 Return [<<Select>>]
   //
   /// CHECK-START: long Main.sad1(long, long) instruction_simplifier$after_inlining (after)
-  /// CHECK-NOT: InvokeStaticOrDirect intrinsic:MathAbsLong
+  /// CHECK-NOT: Abs
   //
   // NOTE: for direct 64-bit operands, this is not an ABS.
   static long sad1(long x, long y) {
@@ -40,7 +40,7 @@ public class Main {
   /// CHECK-DAG:                 Return [<<Select>>]
   //
   /// CHECK-START: long Main.sad2(long, long) instruction_simplifier$after_inlining (after)
-  /// CHECK-DAG: <<Intrin:j\d+>> InvokeStaticOrDirect intrinsic:MathAbsLong
+  /// CHECK-DAG: <<Intrin:j\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static long sad2(long x, long y) {
     long diff = x - y;
@@ -53,7 +53,7 @@ public class Main {
   /// CHECK-DAG:                 Return [<<Select>>]
   //
   /// CHECK-START: long Main.sad3(long, long) instruction_simplifier$after_inlining (after)
-  /// CHECK-DAG: <<Intrin:j\d+>> InvokeStaticOrDirect intrinsic:MathAbsLong
+  /// CHECK-DAG: <<Intrin:j\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static long sad3(long x, long y) {
     long diff = x - y;
@@ -65,7 +65,7 @@ public class Main {
   /// CHECK-DAG:                 Return [<<Select>>]
   //
   /// CHECK-START: long Main.sad3Alt(long, long) instruction_simplifier$after_inlining (after)
-  /// CHECK-DAG: <<Intrin:j\d+>> InvokeStaticOrDirect intrinsic:MathAbsLong
+  /// CHECK-DAG: <<Intrin:j\d+>> Abs
   /// CHECK-DAG:                 Return [<<Intrin>>]
   static long sad3Alt(long x, long y) {
     long diff = x - y;

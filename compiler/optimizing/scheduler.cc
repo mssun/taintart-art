@@ -667,7 +667,8 @@ bool HScheduler::IsSchedulable(const HInstruction* instruction) const {
   // HUnaryOperation (or HBinaryOperation), check in debug mode that we have
   // the exhaustive lists here.
   if (instruction->IsUnaryOperation()) {
-    DCHECK(instruction->IsBooleanNot() ||
+    DCHECK(instruction->IsAbs() ||
+           instruction->IsBooleanNot() ||
            instruction->IsNot() ||
            instruction->IsNeg()) << "unexpected instruction " << instruction->DebugName();
     return true;

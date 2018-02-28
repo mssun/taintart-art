@@ -40,7 +40,7 @@ public class Main {
   /// CHECK: StaticFieldGet
   /// CHECK: StaticFieldGet
   /// CHECK: Mul
-  /// CHECK: InvokeStaticOrDirect
+  /// CHECK: Abs
   /// CHECK: StaticFieldGet
   /// CHECK: StaticFieldGet
   /// CHECK: Mul
@@ -50,7 +50,7 @@ public class Main {
   /// CHECK: StaticFieldGet
   /// CHECK: StaticFieldGet
   /// CHECK: Mul
-  /// CHECK: InvokeStaticOrDirect
+  /// CHECK: Abs
   /// CHECK-NOT: StaticFieldGet
   /// CHECK-NOT: StaticFieldGet
   /// CHECK-NOT: Mul
@@ -66,13 +66,13 @@ public class Main {
   }
 
   /// CHECK-START: int Main.directIntrinsic(int) GVN (before)
-  /// CHECK: InvokeStaticOrDirect
-  /// CHECK: InvokeStaticOrDirect
+  /// CHECK: Abs
+  /// CHECK: Abs
   /// CHECK: Add
 
   /// CHECK-START: int Main.directIntrinsic(int) GVN (after)
-  /// CHECK: InvokeStaticOrDirect
-  /// CHECK-NOT: InvokeStaticOrDirect
+  /// CHECK: Abs
+  /// CHECK-NOT: Abs
   /// CHECK: Add
 
   public static int directIntrinsic(int x) {
