@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2013 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,24 +14,19 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_BASE_ENUMS_H_
-#define ART_RUNTIME_BASE_ENUMS_H_
+#ifndef ART_RUNTIME_BASE_TRACKING_SAFE_MAP_H_
+#define ART_RUNTIME_BASE_TRACKING_SAFE_MAP_H_
 
-#include <cstddef>
-#include <ostream>
+#include "base/allocator.h"
+#include "base/safe_map.h"
 
 namespace art {
 
-enum class PointerSize : size_t {
-  k32 = 4,
-  k64 = 8
+template<class Key, class T, AllocatorTag kTag, class Compare = std::less<Key>>
+class AllocationTrackingSafeMap : public SafeMap<
+    Key, T, Compare, TrackingAllocator<std::pair<const Key, T>, kTag>> {
 };
-std::ostream& operator<<(std::ostream& os, const PointerSize& rhs);
-
-static constexpr PointerSize kRuntimePointerSize = sizeof(void*) == 8U
-                                                       ? PointerSize::k64
-                                                       : PointerSize::k32;
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_BASE_ENUMS_H_
+#endif  // ART_RUNTIME_BASE_TRACKING_SAFE_MAP_H_

@@ -24,14 +24,14 @@
 #include <android-base/logging.h>
 
 #include "base/bit_utils.h"
+#include "base/leb128.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
+#include "dex/hidden_api_access_flags.h"
 #include "dex_to_dex_decompiler.h"
-#include "hidden_api_access_flags.h"
-#include "leb128.h"
 #include "quicken_info.h"
 
 namespace art {

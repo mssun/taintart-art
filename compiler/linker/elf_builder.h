@@ -24,9 +24,9 @@
 #include "base/array_ref.h"
 #include "base/bit_utils.h"
 #include "base/casts.h"
+#include "base/leb128.h"
 #include "base/unix_file/fd_file.h"
 #include "elf_utils.h"
-#include "leb128.h"
 #include "linker/error_delaying_output_stream.h"
 
 namespace art {

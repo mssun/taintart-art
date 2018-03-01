@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_BASE_VALUE_OBJECT_H_
-#define ART_RUNTIME_BASE_VALUE_OBJECT_H_
+#ifndef ART_LIBARTBASE_BASE_VALUE_OBJECT_H_
+#define ART_LIBARTBASE_BASE_VALUE_OBJECT_H_
 
 #include "base/macros.h"
 
@@ -28,4 +28,4 @@ class ValueObject {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_BASE_VALUE_OBJECT_H_
+#endif  // ART_LIBARTBASE_BASE_VALUE_OBJECT_H_

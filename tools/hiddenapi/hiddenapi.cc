@@ -24,7 +24,7 @@
 #include "base/unix_file/fd_file.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/dex_file-inl.h"
-#include "hidden_api_access_flags.h"
+#include "dex/hidden_api_access_flags.h"
 #include "mem_map.h"
 #include "os.h"
 

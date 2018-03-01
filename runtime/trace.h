@@ -28,10 +28,10 @@
 
 #include "atomic.h"
 #include "base/macros.h"
+#include "base/safe_map.h"
 #include "globals.h"
 #include "instrumentation.h"
 #include "os.h"
-#include "safe_map.h"
 
 namespace art {
 

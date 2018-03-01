@@ -24,8 +24,8 @@
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 
+#include "base/leb128.h"
 #include "dexopt_test.h"
-#include "leb128.h"
 #include "runtime.h"
 
 #include <gtest/gtest.h>

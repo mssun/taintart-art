@@ -23,8 +23,8 @@
 #include "base/casts.h"
 #include "base/macros.h"
 #include "base/scoped_arena_containers.h"
+#include "dex/primitive.h"
 #include "gc_root.h"
-#include "primitive.h"
 
 namespace art {
 namespace mirror {

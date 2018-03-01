@@ -23,12 +23,12 @@
 
 #include "class_linker.h"
 #include "dex/dex_file-inl.h"
+#include "dex/primitive.h"
 #include "gc/accounting/card_table-inl.h"
 #include "gc_root-inl.h"
 #include "jvalue.h"
 #include "mirror/dex_cache-inl.h"
 #include "mirror/object-inl.h"
-#include "primitive.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
 
