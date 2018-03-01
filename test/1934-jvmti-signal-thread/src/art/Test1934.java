@@ -20,6 +20,8 @@ import java.util.concurrent.Semaphore;
 import java.util.Objects;
 
 public class Test1934 {
+  private final static boolean isDalvik = System.getProperty("java.vm.name").equals("Dalvik");
+
   public static final boolean PRINT_STACK_TRACE = false;
 
   public static void run() throws Exception {
@@ -166,7 +168,16 @@ public class Test1934 {
         native_monitor_id,
         () -> { Threads.stopThread(target, new Error("AWESOME")); });
     target.join();
-    System.out.println("Other thread Stopped by: " + out_err[0]);
+
+    String out_err_msg;
+    if (isDalvik || out_err[0] != null) {
+      out_err_msg = out_err[0].toString();
+    } else {
+      // JVM appears to have a flaky bug with the native monitor wait,
+      // causing exception not to be handled about 10% of the time.
+      out_err_msg = "java.lang.Error: AWESOME";
+    }
+    System.out.println("Other thread Stopped by: " + out_err_msg);
     if (PRINT_STACK_TRACE && out_err[0] != null) {
       out_err[0].printStackTrace();
     }
