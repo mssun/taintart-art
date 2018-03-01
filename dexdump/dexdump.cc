@@ -1882,10 +1882,11 @@ int processFile(const char* fileName) {
     fprintf(gOutFile, "Processing '%s'...\n", fileName);
   }
 
+  const bool kVerifyChecksum = !gOptions.ignoreBadChecksum;
+  const bool kVerify = !gOptions.disableVerifier;
+  std::string content;
   // If the file is not a .dex file, the function tries .zip/.jar/.apk files,
   // all of which are Zip archives with "classes.dex" inside.
-  const bool kVerifyChecksum = !gOptions.ignoreBadChecksum;
-  std::string content;
   // TODO: add an api to android::base to read a std::vector<uint8_t>.
   if (!android::base::ReadFileToString(fileName, &content)) {
     LOG(ERROR) << "ReadFileToString failed";
@@ -1897,7 +1898,7 @@ int processFile(const char* fileName) {
   if (!dex_file_loader.OpenAll(reinterpret_cast<const uint8_t*>(content.data()),
                                content.size(),
                                fileName,
-                               /*verify*/ true,
+                               kVerify,
                                kVerifyChecksum,
                                &error_msg,
                                &dex_files)) {
