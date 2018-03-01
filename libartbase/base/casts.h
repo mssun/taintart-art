@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_BASE_CASTS_H_
-#define ART_RUNTIME_BASE_CASTS_H_
+#ifndef ART_LIBARTBASE_BASE_CASTS_H_
+#define ART_LIBARTBASE_BASE_CASTS_H_
 
 #include <assert.h>
 #include <stdint.h>
@@ -167,4 +167,4 @@ inline Dest reinterpret_cast64(Source* ptr) {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_BASE_CASTS_H_
+#endif  // ART_LIBARTBASE_BASE_CASTS_H_

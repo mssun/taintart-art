@@ -17,7 +17,7 @@
 #include "compact_offset_table.h"
 
 #include "compact_dex_utils.h"
-#include "leb128.h"
+#include "base/leb128.h"
 
 namespace art {
 

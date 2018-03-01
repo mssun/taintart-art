@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_BASE_ITERATION_RANGE_H_
-#define ART_RUNTIME_BASE_ITERATION_RANGE_H_
+#ifndef ART_LIBARTBASE_BASE_ITERATION_RANGE_H_
+#define ART_LIBARTBASE_BASE_ITERATION_RANGE_H_
 
 #include <iterator>
 
@@ -67,4 +67,4 @@ inline auto ReverseRange(T (&array)[size]) {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_BASE_ITERATION_RANGE_H_
+#endif  // ART_LIBARTBASE_BASE_ITERATION_RANGE_H_

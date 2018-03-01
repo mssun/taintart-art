@@ -23,6 +23,7 @@
 #include <android-base/logging.h>
 
 #include "base/casts.h"
+#include "base/leb128.h"
 #include "compiled_method.h"
 #include "debug/elf_debug_writer.h"
 #include "debug/method_debug_info.h"
@@ -30,7 +31,6 @@
 #include "elf.h"
 #include "elf_utils.h"
 #include "globals.h"
-#include "leb128.h"
 #include "linker/buffered_output_stream.h"
 #include "linker/elf_builder.h"
 #include "linker/file_output_stream.h"

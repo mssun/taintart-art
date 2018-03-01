@@ -18,11 +18,11 @@
 #define ART_RUNTIME_JIT_PROFILE_SAVER_H_
 
 #include "base/mutex.h"
+#include "base/safe_map.h"
 #include "jit_code_cache.h"
 #include "method_reference.h"
 #include "profile_compilation_info.h"
 #include "profile_saver_options.h"
-#include "safe_map.h"
 
 namespace art {
 

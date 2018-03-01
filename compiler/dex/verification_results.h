@@ -23,9 +23,9 @@
 #include "base/dchecked_vector.h"
 #include "base/macros.h"
 #include "base/mutex.h"
+#include "base/safe_map.h"
 #include "class_reference.h"
 #include "method_reference.h"
-#include "safe_map.h"
 #include "utils/atomic_dex_ref_map.h"
 
 namespace art {

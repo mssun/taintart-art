@@ -19,7 +19,7 @@
 
 #include <string>
 
-#include "primitive.h"
+#include "dex/primitive.h"
 
 namespace art {
 

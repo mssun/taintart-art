@@ -18,8 +18,9 @@
 #define ART_RUNTIME_GC_SPACE_LARGE_OBJECT_SPACE_H_
 
 #include "base/allocator.h"
+#include "base/safe_map.h"
+#include "base/tracking_safe_map.h"
 #include "dlmalloc_space.h"
-#include "safe_map.h"
 #include "space.h"
 
 #include <set>

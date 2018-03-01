@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_BASE_HASH_MAP_H_
-#define ART_RUNTIME_BASE_HASH_MAP_H_
+#ifndef ART_LIBARTBASE_BASE_HASH_MAP_H_
+#define ART_LIBARTBASE_BASE_HASH_MAP_H_
 
 #include <utility>
 
@@ -71,4 +71,4 @@ class HashMap : public HashSet<std::pair<Key, Value>,
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_BASE_HASH_MAP_H_
+#endif  // ART_LIBARTBASE_BASE_HASH_MAP_H_

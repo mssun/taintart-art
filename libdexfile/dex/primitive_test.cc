@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "primitive.h"
+#include "dex/primitive.h"
 
 #include "gtest/gtest.h"
 
