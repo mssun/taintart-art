@@ -39,7 +39,7 @@ static const char* gProgName = "dexdump";
  */
 static void usage(void) {
   LOG(ERROR) << "Copyright (C) 2007 The Android Open Source Project\n";
-  LOG(ERROR) << gProgName << ": [-a] [-c] [-d] [-e] [-f] [-h] [-i] [-l layout] [-o outfile]"
+  LOG(ERROR) << gProgName << ": [-a] [-c] [-d] [-e] [-f] [-h] [-i] [-j] [-l layout] [-o outfile]"
                   " dexfile...\n";
   LOG(ERROR) << " -a : display annotations";
   LOG(ERROR) << " -c : verify checksum and exit";
@@ -49,6 +49,7 @@ static void usage(void) {
   LOG(ERROR) << " -g : display CFG for dex";
   LOG(ERROR) << " -h : display file header details";
   LOG(ERROR) << " -i : ignore checksum failures";
+  LOG(ERROR) << " -j : disable dex file verification";
   LOG(ERROR) << " -l : output layout, either 'plain' or 'xml'";
   LOG(ERROR) << " -o : output file name (defaults to stdout)";
 }
@@ -64,7 +65,7 @@ int dexdumpDriver(int argc, char** argv) {
 
   // Parse all arguments.
   while (1) {
-    const int ic = getopt(argc, argv, "acdefghil:o:");
+    const int ic = getopt(argc, argv, "acdefghijl:o:");
     if (ic < 0) {
       break;  // done
     }
@@ -92,6 +93,9 @@ int dexdumpDriver(int argc, char** argv) {
         break;
       case 'i':  // continue even if checksum is bad
         gOptions.ignoreBadChecksum = true;
+        break;
+      case 'j':  // disable dex file verification
+        gOptions.disableVerifier = true;
         break;
       case 'l':  // layout
         if (strcmp(optarg, "plain") == 0) {
