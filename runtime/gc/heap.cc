@@ -3931,7 +3931,7 @@ void Heap::CheckGcStressMode(Thread* self, ObjPtr<mirror::Object>* obj) {
     if (new_backtrace) {
       StackHandleScope<1> hs(self);
       auto h = hs.NewHandleWrapper(obj);
-      CollectGarbage(false);
+      CollectGarbage(/* clear_soft_references */ false);
       unique_backtrace_count_.FetchAndAddSequentiallyConsistent(1);
     } else {
       seen_backtrace_count_.FetchAndAddSequentiallyConsistent(1);

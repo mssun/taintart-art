@@ -1383,7 +1383,7 @@ jvmtiError HeapUtil::GetLoadedClasses(jvmtiEnv* env,
 }
 
 jvmtiError HeapUtil::ForceGarbageCollection(jvmtiEnv* env ATTRIBUTE_UNUSED) {
-  art::Runtime::Current()->GetHeap()->CollectGarbage(false);
+  art::Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references */ false);
 
   return ERR(NONE);
 }

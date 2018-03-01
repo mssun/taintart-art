@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2017 The Android Open Source Project
+# Copyright (C) 2018 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,9 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Stop if something fails.
-set -e
-
-${DX} --dex --min-sdk-version=26 --output=classes.dex classes
-
-zip $TEST_NAME.jar classes.dex
+# Redirect logger to stderr, as the test relies on error
+# messages being printed there.
+exec ${RUN} $@ -Xcompiler-option --copy-dex-files=always --runtime-option -Xonly-use-system-oat-files --runtime-option -Xuse-stderr-logger

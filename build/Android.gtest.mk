@@ -184,6 +184,7 @@ ART_GTEST_unstarted_runtime_test_DEX_DEPS := Nested
 ART_GTEST_heap_verification_test_DEX_DEPS := ProtoCompare ProtoCompare2 StaticsFromCode XandY
 ART_GTEST_verifier_deps_test_DEX_DEPS := VerifierDeps VerifierDepsMulti MultiDex
 ART_GTEST_dex_to_dex_decompiler_test_DEX_DEPS := VerifierDeps DexToDexDecompiler
+ART_GTEST_oatdump_app_test_DEX_DEPS := ProfileTestMultiDex
 
 # The elf writer test has dependencies on core.oat.
 ART_GTEST_elf_writer_test_HOST_DEPS := $(HOST_CORE_IMAGE_DEFAULT_64) $(HOST_CORE_IMAGE_DEFAULT_32)
@@ -303,6 +304,11 @@ ART_GTEST_oatdump_test_TARGET_DEPS := \
   oatdumpd-target
 ART_GTEST_oatdump_image_test_HOST_DEPS := $(ART_GTEST_oatdump_test_HOST_DEPS)
 ART_GTEST_oatdump_image_test_TARGET_DEPS := $(ART_GTEST_oatdump_test_TARGET_DEPS)
+ART_GTEST_oatdump_app_test_HOST_DEPS := $(ART_GTEST_oatdump_test_HOST_DEPS) \
+  dex2oatd-host \
+  dex2oatds-host
+ART_GTEST_oatdump_app_test_TARGET_DEPS := $(ART_GTEST_oatdump_test_TARGET_DEPS) \
+  dex2oatd-target
 
 ART_GTEST_patchoat_test_HOST_DEPS := \
   $(ART_GTEST_dex2oat_environment_tests_HOST_DEPS)
@@ -507,13 +513,19 @@ define define-art-gtest-rule-host
     $$(gtest_exe) \
     $$(ART_GTEST_$(1)_HOST_DEPS) \
     $(foreach file,$(ART_GTEST_$(1)_DEX_DEPS),$(ART_TEST_HOST_GTEST_$(file)_DEX))
+  ifneq (,$(DIST_DIR))
+    gtest_xml_output := --gtest_output=xml:$(DIST_DIR)/gtest/$(1)$$($(3)ART_PHONY_TEST_HOST_SUFFIX).xml
+  else
+    gtest_xml_output :=
+  endif
 
   ART_TEST_HOST_GTEST_DEPENDENCIES += $$(gtest_deps)
 
 .PHONY: $$(gtest_rule)
 ifeq (,$(SANITIZE_HOST))
+$$(gtest_rule): PRIVATE_XML_OUTPUT := $$(gtest_xml_output)
 $$(gtest_rule): $$(gtest_exe) $$(gtest_deps)
-	$(hide) ($$(call ART_TEST_SKIP,$$@) && $$< && \
+	$(hide) ($$(call ART_TEST_SKIP,$$@) && $$< $$(PRIVATE_XML_OUTPUT) && \
 		$$(call ART_TEST_PASSED,$$@)) || $$(call ART_TEST_FAILED,$$@)
 else
 # Note: envsetup currently exports ASAN_OPTIONS=detect_leaks=0 to suppress leak detection, as some
@@ -523,9 +535,10 @@ else
 # (with the x86-64 ABI, as this allows symbolization of both x86 and x86-64). We don't do this in
 # general as it loses all the color output, and we have our own symbolization step when not running
 # under ASAN.
+$$(gtest_rule): PRIVATE_XML_OUTPUT := $$(gtest_xml_output)
 $$(gtest_rule): $$(gtest_exe) $$(gtest_deps)
 	$(hide) ($$(call ART_TEST_SKIP,$$@) && set -o pipefail && \
-		ASAN_OPTIONS=detect_leaks=1 $$< 2>&1 | tee $$<.tmp.out >&2 && \
+		ASAN_OPTIONS=detect_leaks=1 $$< $$(PRIVATE_XML_OUTPUT) 2>&1 | tee $$<.tmp.out >&2 && \
 		{ $$(call ART_TEST_PASSED,$$@) ; rm $$<.tmp.out ; }) || \
 		( grep -q AddressSanitizer $$<.tmp.out && export ANDROID_BUILD_TOP=`pwd` && \
 			{ echo "ABI: 'x86_64'" | cat - $$<.tmp.out | development/scripts/stack | tail -n 3000 ; } ; \

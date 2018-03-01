@@ -13,3 +13,8 @@ Linking _add (int,int)int
 9000
 TestLinkerUnrelatedBSM
 Winners 1 Votes 16
+TestInvocationKinds
+testStaticFieldAccessors
+testInstanceFieldAccessors
+testInvokeVirtual => max(77, -3) = 77
+testConstructor => class TestInvocationKinds$Widget

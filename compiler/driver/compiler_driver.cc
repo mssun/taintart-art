@@ -936,13 +936,13 @@ void CompilerDriver::PreCompile(jobject class_loader,
     // instances of this thread's stack.
     LOG(FATAL_WITHOUT_ABORT) << "Had a hard failure verifying all classes, and was asked to abort "
                              << "in such situations. Please check the log.";
-    abort();
+    _exit(1);
   } else if (number_of_soft_verifier_failures_ > 0 &&
              GetCompilerOptions().AbortOnSoftVerifierFailure()) {
     LOG(FATAL_WITHOUT_ABORT) << "Had " << number_of_soft_verifier_failures_ << " soft failure(s) "
                              << "verifying all classes, and was asked to abort in such situations. "
                              << "Please check the log.";
-    abort();
+    _exit(1);
   }
 
   if (compiler_options_->IsAnyCompilationEnabled()) {
@@ -2678,7 +2678,7 @@ void CompilerDriver::InitializeClasses(jobject class_loader,
   }
   if (GetCompilerOptions().IsBootImage()) {
     // Prune garbage objects created during aborted transactions.
-    Runtime::Current()->GetHeap()->CollectGarbage(true);
+    Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references */ true);
   }
 }
 

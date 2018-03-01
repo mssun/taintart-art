@@ -303,6 +303,12 @@ void* Trace::RunSamplingThread(void* arg) {
       }
     }
     {
+      // Avoid a deadlock between a thread doing garbage collection
+      // and the profile sampling thread, by blocking GC when sampling
+      // thread stacks (see b/73624630).
+      gc::ScopedGCCriticalSection gcs(self,
+                                      art::gc::kGcCauseInstrumentation,
+                                      art::gc::kCollectorTypeInstrumentation);
       ScopedSuspendAll ssa(__FUNCTION__);
       MutexLock mu(self, *Locks::thread_list_lock_);
       runtime->GetThreadList()->ForEach(GetSample, the_trace);

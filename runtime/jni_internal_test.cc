@@ -1484,7 +1484,8 @@ TEST_F(JniInternalTest, StaleWeakGlobal) {
   jweak weak_global = env_->NewWeakGlobalRef(local_ref);
   ASSERT_NE(weak_global, nullptr);
   env_->DeleteLocalRef(local_ref);
-  Runtime::Current()->GetHeap()->CollectGarbage(false);  // GC should clear the weak global.
+  // GC should clear the weak global.
+  Runtime::Current()->GetHeap()->CollectGarbage(/* clear_soft_references */ false);
   jobject new_global_ref = env_->NewGlobalRef(weak_global);
   EXPECT_EQ(new_global_ref, nullptr);
   jobject new_local_ref = env_->NewLocalRef(weak_global);

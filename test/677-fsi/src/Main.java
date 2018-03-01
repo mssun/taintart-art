@@ -14,17 +14,8 @@
  * limitations under the License.
  */
 
-package annotations;
-
-/** MethodHandle invocations kinds supported by invokedynamic */
-public enum MethodHandleKind {
-    GET_FIELD,
-    GET_STATIC,
-    PUT_FIELD,
-    PUT_STATIC,
-    INVOKE_VIRTUAL,
-    INVOKE_STATIC,
-    INVOKE_SPECIAL,
-    INVOKE_CONSTRUCTOR,
-    INVOKE_INTERFACE
+public class Main {
+  public static void main(String[] args) {
+    System.out.println("Hello World");
+  }
 }
