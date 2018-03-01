@@ -30,6 +30,9 @@ art_cc_defaults {
     shared_libs: [
         "libbase",
     ],
+    header_libs: [
+        "art_libartbase_headers",
+    ],
     export_include_dirs: ["."],
 }
 

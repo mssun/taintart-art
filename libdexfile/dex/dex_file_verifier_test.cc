@@ -22,6 +22,7 @@
 #include <memory>
 
 #include "base/bit_utils.h"
+#include "base/leb128.h"
 #include "base/macros.h"
 #include "base64_test_util.h"
 #include "descriptors_names.h"
@@ -29,7 +30,6 @@
 #include "dex_file_loader.h"
 #include "dex_file_types.h"
 #include "gtest/gtest.h"
-#include "leb128.h"
 #include "standard_dex_file.h"
 
 namespace art {

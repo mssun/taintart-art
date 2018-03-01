@@ -24,6 +24,7 @@
 #include "art_method-inl.h"
 #include "base/aborting.h"
 #include "base/enums.h"
+#include "base/leb128.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/mutex-inl.h"
 #include "base/stl_util.h"
@@ -41,7 +42,6 @@
 #include "handle_scope-inl.h"
 #include "indenter.h"
 #include "intern_table.h"
-#include "leb128.h"
 #include "mirror/class-inl.h"
 #include "mirror/class.h"
 #include "mirror/dex_cache-inl.h"

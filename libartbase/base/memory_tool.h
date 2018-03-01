@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_BASE_MEMORY_TOOL_H_
-#define ART_RUNTIME_BASE_MEMORY_TOOL_H_
+#ifndef ART_LIBARTBASE_BASE_MEMORY_TOOL_H_
+#define ART_LIBARTBASE_BASE_MEMORY_TOOL_H_
 
 #include <stddef.h>
 
@@ -68,4 +68,4 @@ constexpr size_t kMemoryToolStackGuardSizeScale = 1;
 
 #endif
 
-#endif  // ART_RUNTIME_BASE_MEMORY_TOOL_H_
+#endif  // ART_LIBARTBASE_BASE_MEMORY_TOOL_H_

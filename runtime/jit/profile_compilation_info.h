@@ -23,13 +23,13 @@
 #include "atomic.h"
 #include "base/arena_containers.h"
 #include "base/arena_object.h"
+#include "base/safe_map.h"
 #include "bit_memory_region.h"
 #include "dex/dex_cache_resolved_classes.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_types.h"
 #include "method_reference.h"
 #include "mem_map.h"
-#include "safe_map.h"
 #include "type_reference.h"
 
 namespace art {

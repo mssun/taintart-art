@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_HIDDEN_API_ACCESS_FLAGS_H_
-#define ART_RUNTIME_HIDDEN_API_ACCESS_FLAGS_H_
+#ifndef ART_LIBDEXFILE_DEX_HIDDEN_API_ACCESS_FLAGS_H_
+#define ART_LIBDEXFILE_DEX_HIDDEN_API_ACCESS_FLAGS_H_
 
 #include "base/bit_utils.h"
 #include "dex/modifiers.h"
@@ -167,4 +167,4 @@ inline std::ostream& operator<<(std::ostream& os, HiddenApiAccessFlags::ApiList 
 }  // namespace art
 
 
-#endif  // ART_RUNTIME_HIDDEN_API_ACCESS_FLAGS_H_
+#endif  // ART_LIBDEXFILE_DEX_HIDDEN_API_ACCESS_FLAGS_H_

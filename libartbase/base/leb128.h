@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_LEB128_H_
-#define ART_RUNTIME_LEB128_H_
+#ifndef ART_LIBARTBASE_BASE_LEB128_H_
+#define ART_LIBARTBASE_BASE_LEB128_H_
 
 #include <vector>
 
 #include <android-base/logging.h>
 
 #include "base/bit_utils.h"
+#include "base/globals.h"
 #include "base/macros.h"
-#include "globals.h"
 
 namespace art {
 
@@ -374,4 +374,4 @@ class Leb128EncodingVector FINAL : private Vector,
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_LEB128_H_
+#endif  // ART_LIBARTBASE_BASE_LEB128_H_

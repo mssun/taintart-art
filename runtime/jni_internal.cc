@@ -30,6 +30,7 @@
 #include "base/enums.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/mutex.h"
+#include "base/safe_map.h"
 #include "base/stl_util.h"
 #include "class_linker-inl.h"
 #include "dex/dex_file-inl.h"
@@ -55,7 +56,6 @@
 #include "parsed_options.h"
 #include "reflection.h"
 #include "runtime.h"
-#include "safe_map.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread.h"
 #include "well_known_classes.h"

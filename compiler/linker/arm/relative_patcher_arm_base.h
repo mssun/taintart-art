@@ -20,9 +20,9 @@
 #include <deque>
 #include <vector>
 
+#include "base/safe_map.h"
 #include "linker/relative_patcher.h"
 #include "method_reference.h"
-#include "safe_map.h"
 
 namespace art {
 namespace linker {

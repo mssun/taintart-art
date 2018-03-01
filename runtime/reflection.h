@@ -18,9 +18,9 @@
 #define ART_RUNTIME_REFLECTION_H_
 
 #include "base/mutex.h"
+#include "dex/primitive.h"
 #include "jni.h"
 #include "obj_ptr.h"
-#include "primitive.h"
 
 namespace art {
 namespace mirror {
