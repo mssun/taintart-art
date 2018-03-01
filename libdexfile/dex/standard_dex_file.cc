@@ -17,9 +17,9 @@
 #include "standard_dex_file.h"
 
 #include "base/casts.h"
+#include "base/leb128.h"
 #include "code_item_accessors-inl.h"
 #include "dex_file-inl.h"
-#include "leb128.h"
 
 namespace art {
 

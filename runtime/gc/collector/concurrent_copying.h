@@ -18,12 +18,12 @@
 #define ART_RUNTIME_GC_COLLECTOR_CONCURRENT_COPYING_H_
 
 #include "barrier.h"
+#include "base/safe_map.h"
 #include "garbage_collector.h"
 #include "immune_spaces.h"
 #include "jni.h"
 #include "mirror/object_reference.h"
 #include "offsets.h"
-#include "safe_map.h"
 
 #include <unordered_map>
 #include <vector>

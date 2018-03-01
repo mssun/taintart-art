@@ -18,8 +18,8 @@
 #define ART_RUNTIME_GC_ACCOUNTING_REMEMBERED_SET_H_
 
 #include "base/allocator.h"
+#include "base/safe_map.h"
 #include "globals.h"
-#include "safe_map.h"
 
 #include <set>
 #include <vector>

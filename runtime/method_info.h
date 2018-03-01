@@ -19,8 +19,8 @@
 
 #include <android-base/logging.h>
 
+#include "base/leb128.h"
 #include "base/macros.h"
-#include "leb128.h"
 #include "memory_region.h"
 
 namespace art {

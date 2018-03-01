@@ -18,10 +18,10 @@
 #define ART_DEX2OAT_LINKER_MULTI_OAT_RELATIVE_PATCHER_H_
 
 #include "arch/instruction_set.h"
+#include "base/safe_map.h"
 #include "debug/method_debug_info.h"
 #include "method_reference.h"
 #include "linker/relative_patcher.h"
-#include "safe_map.h"
 
 namespace art {
 

@@ -18,7 +18,7 @@
 #define ART_COMPILER_OPTIMIZING_DATA_TYPE_INL_H_
 
 #include "data_type.h"
-#include "primitive.h"
+#include "dex/primitive.h"
 
 namespace art {
 

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_BASE_MACROS_H_
-#define ART_RUNTIME_BASE_MACROS_H_
+#ifndef ART_LIBARTBASE_BASE_MACROS_H_
+#define ART_LIBARTBASE_BASE_MACROS_H_
 
 #include <stddef.h>  // for size_t
 #include <unistd.h>  // for TEMP_FAILURE_RETRY
@@ -98,4 +98,4 @@ template<typename T> ART_FRIEND_TEST(test_set_name, individual_test)
 #define LOCKABLE CAPABILITY("mutex")
 #define SHARED_LOCKABLE SHARED_CAPABILITY("mutex")
 
-#endif  // ART_RUNTIME_BASE_MACROS_H_
+#endif  // ART_LIBARTBASE_BASE_MACROS_H_

@@ -19,8 +19,8 @@
 
 #include <android-base/logging.h>
 
+#include "base/globals.h"
 #include "base/macros.h"
-#include "globals.h"
 
 typedef uint8_t uint4_t;
 typedef int8_t int4_t;

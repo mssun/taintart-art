@@ -27,10 +27,10 @@
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "base/stringpiece.h"
+#include "dex/primitive.h"
 #include "gc_root.h"
 #include "handle_scope.h"
 #include "obj_ptr.h"
-#include "primitive.h"
 
 namespace art {
 namespace mirror {

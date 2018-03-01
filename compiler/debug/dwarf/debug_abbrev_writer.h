@@ -22,10 +22,10 @@
 #include <unordered_map>
 
 #include "base/casts.h"
+#include "base/leb128.h"
 #include "base/stl_util.h"
 #include "debug/dwarf/dwarf_constants.h"
 #include "debug/dwarf/writer.h"
-#include "leb128.h"
 
 namespace art {
 namespace dwarf {

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_PRIMITIVE_H_
-#define ART_RUNTIME_PRIMITIVE_H_
+#ifndef ART_LIBDEXFILE_DEX_PRIMITIVE_H_
+#define ART_LIBDEXFILE_DEX_PRIMITIVE_H_
 
 #include <sys/types.h>
 
@@ -223,4 +223,4 @@ std::ostream& operator<<(std::ostream& os, Primitive::Type state);
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_PRIMITIVE_H_
+#endif  // ART_LIBDEXFILE_DEX_PRIMITIVE_H_
