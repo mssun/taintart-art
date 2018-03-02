@@ -29,9 +29,9 @@
 #include "base/casts.h"
 #include "base/stl_util.h"
 #include "base/time_utils.h"
+#include "base/utils.h"
 #include "runtime.h"
 #include "thread-current-inl.h"
-#include "utils.h"
 
 namespace art {
 

@@ -21,7 +21,7 @@
 
 #include <android-base/logging.h>
 
-#include "atomic.h"
+#include "base/atomic.h"
 #include "base/bit_utils.h"
 #include "mem_map.h"
 #include "space_bitmap.h"

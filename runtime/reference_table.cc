@@ -19,6 +19,7 @@
 #include "android-base/stringprintf.h"
 
 #include "base/mutex.h"
+#include "base/utils.h"
 #include "gc/allocation_record.h"
 #include "gc/heap.h"
 #include "indirect_reference_table.h"
@@ -30,7 +31,6 @@
 #include "mirror/string-inl.h"
 #include "runtime-inl.h"
 #include "thread.h"
-#include "utils.h"
 
 namespace art {
 

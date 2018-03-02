@@ -22,7 +22,7 @@
 #include "array-inl.h"
 #include "art_field.h"
 #include "art_method.h"
-#include "atomic.h"
+#include "base/atomic.h"
 #include "class-inl.h"
 #include "class_flags.h"
 #include "class_linker.h"

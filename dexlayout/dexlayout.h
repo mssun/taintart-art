@@ -31,7 +31,6 @@
 #include "dex_container.h"
 #include "dex/dex_file_layout.h"
 #include "dex_ir.h"
-#include "mem_map.h"
 
 namespace art {
 

@@ -20,7 +20,7 @@
 #include <deque>
 #include <memory>  // For unique_ptr.
 
-#include "atomic.h"
+#include "base/atomic.h"
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "garbage_collector.h"

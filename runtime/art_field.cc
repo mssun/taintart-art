@@ -17,6 +17,7 @@
 #include "art_field.h"
 
 #include "art_field-inl.h"
+#include "base/utils.h"
 #include "class_linker-inl.h"
 #include "dex/descriptors_names.h"
 #include "gc/accounting/card_table-inl.h"
@@ -26,7 +27,6 @@
 #include "mirror/object_array-inl.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
-#include "utils.h"
 #include "well_known_classes.h"
 
 namespace art {

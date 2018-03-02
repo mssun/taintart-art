@@ -24,13 +24,13 @@
 #include "android-base/stringprintf.h"
 
 #include "arch/instruction_set.h"
+#include "base/os.h"
+#include "base/utils.h"
 #include "common_runtime_test.h"
 #include "exec_utils.h"
 #include "gc/heap.h"
 #include "gc/space/image_space.h"
-#include "os.h"
 #include "runtime.h"
-#include "utils.h"
 
 namespace art {
 

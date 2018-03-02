@@ -31,8 +31,8 @@
 #include <iomanip>
 
 #include "base/dumpable.h"
+#include "base/utils.h"
 #include "native_stack_dump.h"
-#include "utils.h"
 
 namespace art {
 

@@ -20,9 +20,9 @@
 #include <set>
 #include <vector>
 
-#include "atomic.h"
 #include "base/arena_containers.h"
 #include "base/arena_object.h"
+#include "base/atomic.h"
 #include "base/safe_map.h"
 #include "bit_memory_region.h"
 #include "dex/dex_cache_resolved_classes.h"

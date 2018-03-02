@@ -28,7 +28,7 @@
 
 #include "arch/context.h"
 #include "arch/instruction_set.h"
-#include "atomic.h"
+#include "base/atomic.h"
 #include "base/enums.h"
 #include "base/macros.h"
 #include "base/mutex.h"

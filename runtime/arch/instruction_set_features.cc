@@ -19,7 +19,7 @@
 #include "android-base/strings.h"
 
 #include "base/casts.h"
-#include "utils.h"
+#include "base/utils.h"
 
 #include "arm/instruction_set_features_arm.h"
 #include "arm64/instruction_set_features_arm64.h"

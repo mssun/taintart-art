@@ -46,12 +46,15 @@
 #include "base/file_utils.h"
 #include "base/leb128.h"
 #include "base/macros.h"
+#include "base/mutex.h"
+#include "base/os.h"
 #include "base/scoped_flock.h"
 #include "base/stl_util.h"
 #include "base/stringpiece.h"
 #include "base/time_utils.h"
 #include "base/timing_logger.h"
 #include "base/unix_file/fd_file.h"
+#include "base/utils.h"
 #include "class_linker.h"
 #include "class_loader_context.h"
 #include "cmdline_parser.h"
@@ -89,11 +92,9 @@
 #include "mirror/object_array-inl.h"
 #include "oat_file.h"
 #include "oat_file_assistant.h"
-#include "os.h"
 #include "runtime.h"
 #include "runtime_options.h"
 #include "scoped_thread_state_change-inl.h"
-#include "utils.h"
 #include "vdex_file.h"
 #include "verifier/verifier_deps.h"
 #include "well_known_classes.h"
@@ -1164,6 +1165,7 @@ class Dex2Oat FINAL {
     original_argc = argc;
     original_argv = argv;
 
+    Locks::Init();
     InitLogging(argv, Runtime::Abort);
 
     compiler_options_.reset(new CompilerOptions());

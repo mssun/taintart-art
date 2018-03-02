@@ -21,10 +21,10 @@
 
 #include <android-base/logging.h>
 
+#include "base/utils.h"
 #include "compiled_method.h"
 #include "linker/linker_patch.h"
 #include "thread-current-inl.h"
-#include "utils.h"
 #include "utils/dedupe_set-inl.h"
 #include "utils/swap_space.h"
 

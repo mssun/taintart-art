@@ -17,10 +17,7 @@
 #include "file_utils.h"
 
 #include <inttypes.h>
-#include <pthread.h>
-#include <sys/mman.h>  // For madvise
 #include <sys/stat.h>
-#include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -47,10 +44,10 @@
 
 #include "base/bit_utils.h"
 #include "base/stl_util.h"
+#include "base/os.h"
 #include "base/unix_file/fd_file.h"
 #include "dex/dex_file_loader.h"
 #include "globals.h"
-#include "os.h"
 
 #if defined(__APPLE__)
 #include <crt_externs.h>
@@ -308,19 +305,6 @@ std::string GetSystemImageFilename(const char* location, const InstructionSet is
   return filename;
 }
 
-bool FileExists(const std::string& filename) {
-  struct stat buffer;
-  return stat(filename.c_str(), &buffer) == 0;
-}
-
-bool FileExistsAndNotEmpty(const std::string& filename) {
-  struct stat buffer;
-  if (stat(filename.c_str(), &buffer) != 0) {
-    return false;
-  }
-  return buffer.st_size > 0;
-}
-
 std::string ReplaceFileExtension(const std::string& filename, const std::string& new_extension) {
   const size_t last_ext = filename.find_last_of('.');
   if (last_ext == std::string::npos) {
@@ -328,26 +312,6 @@ std::string ReplaceFileExtension(const std::string& filename, const std::string&
   } else {
     return filename.substr(0, last_ext + 1) + new_extension;
   }
-}
-
-int64_t GetFileSizeBytes(const std::string& filename) {
-  struct stat stat_buf;
-  int rc = stat(filename.c_str(), &stat_buf);
-  return rc == 0 ? stat_buf.st_size : -1;
-}
-
-int MadviseLargestPageAlignedRegion(const uint8_t* begin, const uint8_t* end, int advice) {
-  DCHECK_LE(begin, end);
-  begin = AlignUp(begin, kPageSize);
-  end = AlignDown(end, kPageSize);
-  if (begin < end) {
-    int result = madvise(const_cast<uint8_t*>(begin), end - begin, advice);
-    if (result != 0) {
-      PLOG(WARNING) << "madvise failed " << result;
-    }
-    return result;
-  }
-  return 0;
 }
 
 bool LocationIsOnSystem(const char* location) {
