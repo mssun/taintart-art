@@ -59,6 +59,10 @@ while true; do
     --mode=target)
       bootjars_args="$bootjars_args --target"
       ;;
+    --mode=*)
+      echo "Unsupported $0 usage with --mode=$1" >&2
+      exit 1
+      ;;
     --core-only)
       bootjars_args="$bootjars_args --core"
       ;;
