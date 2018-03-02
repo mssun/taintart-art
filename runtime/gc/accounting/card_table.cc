@@ -19,13 +19,13 @@
 #include <sys/mman.h>
 
 #include "base/systrace.h"
+#include "base/utils.h"
 #include "card_table-inl.h"
 #include "gc/heap.h"
 #include "gc/space/space.h"
 #include "heap_bitmap.h"
 #include "mem_map.h"
 #include "runtime.h"
-#include "utils.h"
 
 namespace art {
 namespace gc {

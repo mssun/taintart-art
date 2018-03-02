@@ -29,13 +29,13 @@
 #include "base/file_utils.h"
 #include "base/macros.h"
 #include "base/unix_file/fd_file.h"
+#include "base/utils.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
 #include "jit/profile_compilation_info.h"
 #include "method_reference.h"
 #include "runtime.h"
-#include "utils.h"
 
 namespace art {
 
@@ -129,9 +129,9 @@ class Dex2oatImageTest : public CommonRuntimeTest {
     std::string art_file = scratch.GetFilename() + ".art";
     std::string oat_file = scratch.GetFilename() + ".oat";
     std::string vdex_file = scratch.GetFilename() + ".vdex";
-    ret.art_size = GetFileSizeBytes(art_file);
-    ret.oat_size = GetFileSizeBytes(oat_file);
-    ret.vdex_size = GetFileSizeBytes(vdex_file);
+    ret.art_size = OS::GetFileSizeBytes(art_file.c_str());
+    ret.oat_size = OS::GetFileSizeBytes(oat_file.c_str());
+    ret.vdex_size = OS::GetFileSizeBytes(vdex_file.c_str());
     CHECK_GT(ret.art_size, 0u) << art_file;
     CHECK_GT(ret.oat_size, 0u) << oat_file;
     CHECK_GT(ret.vdex_size, 0u) << vdex_file;

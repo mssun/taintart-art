@@ -20,7 +20,7 @@
 #include <memory>
 #include <string>
 
-#include "atomic.h"
+#include "base/atomic.h"
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "gc/accounting/space_bitmap.h"

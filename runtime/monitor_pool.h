@@ -22,7 +22,7 @@
 #include "base/allocator.h"
 #ifdef __LP64__
 #include <stdint.h>
-#include "atomic.h"
+#include "base/atomic.h"
 #include "runtime.h"
 #else
 #include "base/stl_util.h"     // STLDeleteElements

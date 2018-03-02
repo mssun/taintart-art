@@ -24,9 +24,9 @@
 
 #include <jni.h>
 
+#include "base/utils.h"
 #include "exec_utils.h"
 #include "jvmti.h"
-#include "utils.h"
 
 #pragma clang diagnostic push
 

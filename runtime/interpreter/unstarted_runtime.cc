@@ -33,6 +33,7 @@
 #include "base/casts.h"
 #include "base/enums.h"
 #include "base/macros.h"
+#include "base/quasi_atomic.h"
 #include "class_linker.h"
 #include "common_throws.h"
 #include "dex/descriptors_names.h"

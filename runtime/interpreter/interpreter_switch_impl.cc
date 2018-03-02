@@ -17,6 +17,7 @@
 #include "interpreter_switch_impl.h"
 
 #include "base/enums.h"
+#include "base/quasi_atomic.h"
 #include "dex/dex_file_types.h"
 #include "experimental_flags.h"
 #include "interpreter_common.h"

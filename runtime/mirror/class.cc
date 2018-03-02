@@ -21,6 +21,7 @@
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "base/logging.h"  // For VLOG.
+#include "base/utils.h"
 #include "class-inl.h"
 #include "class_ext.h"
 #include "class_linker-inl.h"
@@ -40,7 +41,6 @@
 #include "runtime.h"
 #include "thread.h"
 #include "throwable.h"
-#include "utils.h"
 #include "well_known_classes.h"
 
 namespace art {

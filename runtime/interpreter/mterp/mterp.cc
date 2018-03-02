@@ -18,6 +18,8 @@
  * Mterp entry point and support functions.
  */
 #include "mterp.h"
+
+#include "base/quasi_atomic.h"
 #include "debugger.h"
 #include "entrypoints/entrypoint_utils-inl.h"
 #include "interpreter/interpreter_common.h"

@@ -24,6 +24,7 @@
 
 #include "nativehelper/jni_macros.h"
 
+#include "base/quasi_atomic.h"
 #include "common_throws.h"
 #include "gc/accounting/card_table-inl.h"
 #include "jni_internal.h"

@@ -59,8 +59,8 @@ static void art_heap_usage_error(const char* function, void* p) {
 
 #include <sys/mman.h>
 
-#include "globals.h"
-#include "utils.h"
+#include "base/globals.h"
+#include "base/utils.h"
 
 extern "C" void DlmallocMadviseCallback(void* start, void* end, size_t used_bytes, void* arg) {
   // Is this chunk in use?

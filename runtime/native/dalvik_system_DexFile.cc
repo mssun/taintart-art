@@ -22,7 +22,9 @@
 
 #include "base/file_utils.h"
 #include "base/logging.h"
+#include "base/os.h"
 #include "base/stl_util.h"
+#include "base/utils.h"
 #include "class_linker.h"
 #include <class_loader_context.h>
 #include "common_throws.h"
@@ -43,10 +45,8 @@
 #include "oat_file.h"
 #include "oat_file_assistant.h"
 #include "oat_file_manager.h"
-#include "os.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
-#include "utils.h"
 #include "well_known_classes.h"
 #include "zip_archive.h"
 

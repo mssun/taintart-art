@@ -19,7 +19,7 @@
 
 #include <memory>
 
-#include "atomic.h"
+#include "base/atomic.h"
 #include "barrier.h"
 #include "base/macros.h"
 #include "base/mutex.h"

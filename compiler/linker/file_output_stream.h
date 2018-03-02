@@ -17,9 +17,9 @@
 #ifndef ART_COMPILER_LINKER_FILE_OUTPUT_STREAM_H_
 #define ART_COMPILER_LINKER_FILE_OUTPUT_STREAM_H_
 
-#include "output_stream.h"
+#include "base/os.h"
 
-#include "os.h"
+#include "output_stream.h"
 
 namespace art {
 namespace linker {

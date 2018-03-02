@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-#include "atomic.h"
+#include "base/atomic.h"
 #include "base/mutex.h"
 #include "base/timing_logger.h"
 #include "globals.h"

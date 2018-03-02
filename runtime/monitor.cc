@@ -23,6 +23,7 @@
 #include "art_method-inl.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/mutex.h"
+#include "base/quasi_atomic.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/time_utils.h"

@@ -44,6 +44,7 @@
 #include "base/array_ref.h"
 #include "base/macros.h"
 #include "base/mutex.h"
+#include "base/os.h"
 #include "base/safe_map.h"
 #include "base/time_utils.h"
 #include "base/unix_file/fd_file.h"
@@ -64,7 +65,6 @@
 #include "mirror/class-inl.h"
 #include "mirror/class.h"
 #include "mirror/object-refvisitor-inl.h"
-#include "os.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread_list.h"
 

@@ -27,6 +27,7 @@
 #include "base/enums.h"
 #include "base/file_magic.h"
 #include "base/logging.h"  // For VLOG
+#include "base/os.h"
 #include "base/safe_map.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
@@ -60,7 +61,6 @@
 #include "mirror/dex_cache-inl.h"
 #include "mirror/object-inl.h"
 #include "oat_quick_method_header.h"
-#include "os.h"
 #include "quicken_info.h"
 #include "scoped_thread_state_change-inl.h"
 #include "type_lookup_table.h"
