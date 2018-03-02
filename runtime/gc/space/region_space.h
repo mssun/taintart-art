@@ -231,12 +231,21 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
     return false;
   }
 
+  // If `ref` is in the region space, return the type of its region;
+  // otherwise, return `RegionType::kRegionTypeNone`.
   RegionType GetRegionType(mirror::Object* ref) {
     if (HasAddress(ref)) {
-      Region* r = RefToRegionUnlocked(ref);
-      return r->Type();
+      return GetRegionTypeUnsafe(ref);
     }
     return RegionType::kRegionTypeNone;
+  }
+
+  // Unsafe version of RegionSpace::GetRegionType.
+  // Precondition: `ref` is in the region space.
+  RegionType GetRegionTypeUnsafe(mirror::Object* ref) {
+    DCHECK(HasAddress(ref)) << ref;
+    Region* r = RefToRegionUnlocked(ref);
+    return r->Type();
   }
 
   // Determine which regions to evacuate and tag them as
@@ -530,8 +539,8 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
   // Return the object location following `obj` in the region space
   // (i.e., the object location at `obj + obj->SizeOf()`).
   //
-  // Note that
-  // - unless the region containing `obj` is fully used; and
+  // Note that unless
+  // - the region containing `obj` is fully used; and
   // - `obj` is not the last object of that region;
   // the returned location is not guaranteed to be a valid object.
   mirror::Object* GetNextObject(mirror::Object* obj)

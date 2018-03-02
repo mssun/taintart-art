@@ -23,6 +23,7 @@
 #include "gc/accounting/space_bitmap-inl.h"
 #include "gc/heap.h"
 #include "gc/space/region_space.h"
+#include "gc/verification.h"
 #include "lock_word.h"
 #include "mirror/object-readbarrier-inl.h"
 
@@ -123,34 +124,39 @@ inline mirror::Object* ConcurrentCopying::Mark(mirror::Object* from_ref,
     return from_ref;
   }
   DCHECK(region_space_ != nullptr) << "Read barrier slow path taken when CC isn't running?";
-  space::RegionSpace::RegionType rtype = region_space_->GetRegionType(from_ref);
-  switch (rtype) {
-    case space::RegionSpace::RegionType::kRegionTypeToSpace:
-      // It's already marked.
-      return from_ref;
-    case space::RegionSpace::RegionType::kRegionTypeFromSpace: {
-      mirror::Object* to_ref = GetFwdPtr(from_ref);
-      if (to_ref == nullptr) {
-        // It isn't marked yet. Mark it by copying it to the to-space.
-        to_ref = Copy(from_ref, holder, offset);
+  if (region_space_->HasAddress(from_ref)) {
+    space::RegionSpace::RegionType rtype = region_space_->GetRegionTypeUnsafe(from_ref);
+    switch (rtype) {
+      case space::RegionSpace::RegionType::kRegionTypeToSpace:
+        // It's already marked.
+        return from_ref;
+      case space::RegionSpace::RegionType::kRegionTypeFromSpace: {
+        mirror::Object* to_ref = GetFwdPtr(from_ref);
+        if (to_ref == nullptr) {
+          // It isn't marked yet. Mark it by copying it to the to-space.
+          to_ref = Copy(from_ref, holder, offset);
+        }
+        // The copy should either be in a to-space region, or in the
+        // non-moving space, if it could not fit in a to-space region.
+        DCHECK(region_space_->IsInToSpace(to_ref) || heap_->non_moving_space_->HasAddress(to_ref))
+            << "from_ref=" << from_ref << " to_ref=" << to_ref;
+        return to_ref;
       }
-      // The copy should either be in a to-space region, or in the
-      // non-moving space, if it could not fit in a to-space region.
-      DCHECK(region_space_->IsInToSpace(to_ref) || heap_->non_moving_space_->HasAddress(to_ref))
-          << "from_ref=" << from_ref << " to_ref=" << to_ref;
-      return to_ref;
+      case space::RegionSpace::RegionType::kRegionTypeUnevacFromSpace:
+        return MarkUnevacFromSpaceRegion(from_ref, region_space_bitmap_);
+      default:
+        // The reference is in an unused region.
+        region_space_->DumpNonFreeRegions(LOG_STREAM(FATAL_WITHOUT_ABORT));
+        LOG(FATAL_WITHOUT_ABORT) << DumpHeapReference(holder, offset, from_ref);
+        heap_->GetVerification()->LogHeapCorruption(holder, offset, from_ref, /* fatal */ true);
+        UNREACHABLE();
     }
-    case space::RegionSpace::RegionType::kRegionTypeUnevacFromSpace: {
-      return MarkUnevacFromSpaceRegion(from_ref, region_space_bitmap_);
+  } else {
+    if (immune_spaces_.ContainsObject(from_ref)) {
+      return MarkImmuneSpace<kGrayImmuneObject>(from_ref);
+    } else {
+      return MarkNonMoving(from_ref, holder, offset);
     }
-    case space::RegionSpace::RegionType::kRegionTypeNone:
-      if (immune_spaces_.ContainsObject(from_ref)) {
-        return MarkImmuneSpace<kGrayImmuneObject>(from_ref);
-      } else {
-        return MarkNonMoving(from_ref, holder, offset);
-      }
-    default:
-      UNREACHABLE();
   }
 }
 
