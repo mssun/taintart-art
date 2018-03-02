@@ -1857,7 +1857,7 @@ void ConcurrentCopying::AssertToSpaceInvariant(mirror::Object* obj,
     if (region_space_->HasAddress(ref)) {
       // Check to-space invariant in region space (moving space).
       using RegionType = space::RegionSpace::RegionType;
-      space::RegionSpace::RegionType type = region_space_->GetRegionType(ref);
+      space::RegionSpace::RegionType type = region_space_->GetRegionTypeUnsafe(ref);
       if (type == RegionType::kRegionTypeToSpace) {
         // OK.
         return;
@@ -1935,7 +1935,7 @@ void ConcurrentCopying::AssertToSpaceInvariant(GcRootSource* gc_root_source,
     if (region_space_->HasAddress(ref)) {
       // Check to-space invariant in region space (moving space).
       using RegionType = space::RegionSpace::RegionType;
-      space::RegionSpace::RegionType type = region_space_->GetRegionType(ref);
+      space::RegionSpace::RegionType type = region_space_->GetRegionTypeUnsafe(ref);
       if (type == RegionType::kRegionTypeToSpace) {
         // OK.
         return;
