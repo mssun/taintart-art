@@ -1773,8 +1773,8 @@ void InstructionCodeGeneratorMIPS64::GenerateClassInitializationCheck(SlowPathCo
       enum_cast<uint32_t>(ClassStatus::kInitialized) << (status_lsb_position % kBitsPerByte);
 
   __ LoadFromOffset(kLoadUnsignedByte, TMP, class_reg, status_byte_offset);
-  __ LoadConst32(AT, shifted_initialized_value);
-  __ Bltuc(TMP, AT, slow_path->GetEntryLabel());
+  __ Sltiu(TMP, TMP, shifted_initialized_value);
+  __ Bnezc(TMP, slow_path->GetEntryLabel());
   // Even if the initialized flag is set, we need to ensure consistent memory ordering.
   __ Sync(0);
   __ Bind(slow_path->GetExitLabel());
