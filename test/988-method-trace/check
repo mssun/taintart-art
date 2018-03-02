@@ -14,8 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Jack uses @hide API which gives it wrong method trace in the expected.txt
-if [[ "$USE_JACK" == true ]]; then
+# Building for libcore, this uses @hide API which gives it wrong method trace in the expected.txt
+# TODO: would be nice if we could build against core_current jars in the future to avoid this.
+if [[ "$NEED_DEX" == true ]]; then
   patch -p0 expected.txt < expected_jack.diff >/dev/null
 fi
 

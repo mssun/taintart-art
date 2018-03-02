@@ -17,6 +17,12 @@
 # Stop if something fails.
 set -e
 
+if [[ $# -le 0 ]]; then
+  echo 'Error:' '$0 should have the parameters from the "build" script forwarded to it' >&2
+  echo 'Error: An example of how do it correctly is ./default-build "$@"'
+  exit 1
+fi
+
 # Set default values for directories.
 if [ -d smali ]; then
   HAS_SMALI=true
@@ -150,8 +156,6 @@ while true; do
     option="$1"
     DX_VM_FLAGS="${DX_VM_FLAGS} $option"
     shift
-  elif [ "x$1" = "x--jvm" ]; then
-    shift
   elif [ "x$1" = "x--no-src" ]; then
     HAS_SRC=false
     shift
@@ -193,6 +197,9 @@ while true; do
   elif [ "x$1" = "x--target" ]; then
     BUILD_MODE="target"
     shift
+  elif [ "x$1" = "x--jvm" ]; then
+    BUILD_MODE="jvm"
+    shift
   elif [ "x$1" = "x--dev" ]; then
     DEV_MODE="yes"
     shift
@@ -203,6 +210,13 @@ while true; do
     break
   fi
 done
+
+if [[ $BUILD_MODE == jvm ]]; then
+  # Does not need desugar on jvm because it supports the latest functionality.
+  USE_DESUGAR=false
+  # Do not attempt to build src-art directories on jvm, it would fail without libcore.
+  HAS_SRC_ART=false
+fi
 
 # Be sure to get any default arguments if not doing any experiments.
 EXPERIMENTAL="${EXPERIMENTAL} ${DEFAULT_EXPERIMENT}"
@@ -261,10 +275,7 @@ function make_jasmin() {
 }
 
 function desugar() {
-  local desugar_args=--mode=host
-  if [[ $BUILD_MODE == target ]]; then
-    desugar_args=--mode=target
-  fi
+  local desugar_args="--mode=$BUILD_MODE"
 
   if [[ $DEV_MODE == yes ]]; then
     desugar_args="$desugar_args --show-commands"
@@ -273,18 +284,16 @@ function desugar() {
   "$DESUGAR" --core-only $desugar_args "$@"
 }
 
-# Like regular javac but includes libcore on the bootclasspath.
+# Like regular javac but may include libcore on the bootclasspath.
 function javac_with_bootclasspath {
-  local javac_args=--mode=host
-  if [[ $BUILD_MODE == target ]]; then
-    javac_args=--mode=target
-  fi
+  local helper_args="--mode=$BUILD_MODE"
 
   if [[ $DEV_MODE == yes ]]; then
-    javac_args="$javac_args --show-commands"
+    helper_args="$helper_args --show-commands"
   fi
 
-  "$ANDROID_BUILD_TOP/art/tools/javac-helper.sh" --core-only $javac_args "$@"
+  # build with libcore for host and target, or openjdk for jvm
+  "$ANDROID_BUILD_TOP/art/tools/javac-helper.sh" --core-only $helper_args ${JAVAC_ARGS} "$@"
 }
 
 # Make a "dex" file given a directory of classes in $1.
@@ -373,10 +382,10 @@ function has_multidex() {
 }
 
 if [ ${HAS_SRC_DEX2OAT_UNRESOLVED} = "true" ]; then
-  mkdir classes
+  mkdir -p classes
   mkdir classes-ex
-  ${JAVAC} ${JAVAC_ARGS} -implicit:none -sourcepath src-dex2oat-unresolved -d classes `find src -name '*.java'`
-  ${JAVAC} ${JAVAC_ARGS} -implicit:none -sourcepath src -d classes-ex `find src-dex2oat-unresolved -name '*.java'`
+  javac_with_bootclasspath -implicit:none -sourcepath src-dex2oat-unresolved -d classes `find src -name '*.java'`
+  javac_with_bootclasspath -implicit:none -sourcepath src -d classes-ex `find src-dex2oat-unresolved -name '*.java'`
   if [ ${USE_JACK} = "true" ]; then
     jar cf classes.jill.jar -C classes .
     jar cf classes-ex.jill.jar -C classes-ex .
@@ -424,18 +433,18 @@ else
   else
     # Legacy toolchain with javac+dx
     if [ "${HAS_SRC}" = "true" ]; then
-      mkdir classes
-      ${JAVAC} ${JAVAC_ARGS} -implicit:none -classpath src-multidex -d classes `find src -name '*.java'`
+      mkdir -p classes
+      javac_with_bootclasspath -implicit:none -classpath src-multidex -d classes `find src -name '*.java'`
     fi
 
     if [ "${HAS_SRC_ART}" = "true" ]; then
       mkdir -p classes
-      javac_with_bootclasspath ${JAVAC_ARGS} -implicit:none -classpath src-multidex -d classes `find src-art -name '*.java'`
+      javac_with_bootclasspath -implicit:none -classpath src-multidex -d classes `find src-art -name '*.java'`
     fi
 
     if [ "${HAS_SRC_MULTIDEX}" = "true" ]; then
       mkdir classes2
-      ${JAVAC} ${JAVAC_ARGS} -implicit:none -classpath src -d classes2 `find src-multidex -name '*.java'`
+      javac_with_bootclasspath -implicit:none -classpath src -d classes2 `find src-multidex -name '*.java'`
       if [ ${NEED_DEX} = "true" ]; then
         make_dex classes2
       fi
@@ -443,7 +452,7 @@ else
 
     if [ "${HAS_SRC2}" = "true" ]; then
       mkdir -p classes
-      ${JAVAC} ${JAVAC_ARGS} -classpath classes -d classes `find src2 -name '*.java'`
+      javac_with_bootclasspath -classpath classes -d classes `find src2 -name '*.java'`
     fi
 
     if [[ "${HAS_SRC}" == "true" || "${HAS_SRC2}" == "true" || "${HAS_SRC_ART}" == "true" ]]; then
@@ -516,27 +525,28 @@ if [ ${HAS_SRC_EX} = "true" ]; then
     # Includes 'src', 'src-art' source when compiling classes-ex, but exclude their .class files.
     if [[ "${HAS_SRC}" == "true" ]]; then
       mkdir -p classes-tmp-for-ex
-      ${JAVAC} ${JAVAC_ARGS} -d classes-tmp-for-ex `find src -name '*.java'`
+      javac_with_bootclasspath -d classes-tmp-for-ex `find src -name '*.java'`
       src_tmp_for_ex="-cp classes-tmp-for-ex"
     fi
     if [[ "${HAS_SRC_ART}" == "true" ]]; then
       mkdir -p classes-tmp-for-ex
-      javac_with_bootclasspath ${JAVAC_ARGS} -d classes-tmp-for-ex `find src-art -name '*.java'`
+      javac_with_bootclasspath -d classes-tmp-for-ex `find src-art -name '*.java'`
       src_tmp_for_ex="-cp classes-tmp-for-ex"
     fi
     mkdir classes-ex
-    ${JAVAC} ${JAVAC_ARGS} -d classes-ex $src_tmp_for_ex `find src-ex -name '*.java'`
-    if [ ${NEED_DEX} = "true" ]; then
-      make_dex classes-ex
-
-      # quick shuffle so that the stored name is "classes.dex"
-      mv classes.dex classes-1.dex
-      mv classes-ex.dex classes.dex
-      zip $TEST_NAME-ex.jar classes.dex
-      mv classes.dex classes-ex.dex
-      mv classes-1.dex classes.dex
-    fi
+    javac_with_bootclasspath -d classes-ex $src_tmp_for_ex `find src-ex -name '*.java'`
   fi
+fi
+
+if [[ -d classes-ex ]] && [ ${NEED_DEX} = "true" ]; then
+  make_dex classes-ex
+
+  # quick shuffle so that the stored name is "classes.dex"
+  mv classes.dex classes-1.dex
+  mv classes-ex.dex classes.dex
+  zip $TEST_NAME-ex.jar classes.dex
+  mv classes.dex classes-ex.dex
+  mv classes-1.dex classes.dex
 fi
 
 # Apply hiddenapi on the dex files if the test has API list file(s).

@@ -27,7 +27,7 @@ public class Main {
   /// CHECK: ReturnVoid
   public static void typedCopy(Object o, byte[] foo) {
     System.arraycopy(o, 1, o, 0, 1);
-    System.arraycopy(foo, 1, foo, 0, 1);
+    System.arraycopy((Object)foo, 1, (Object)foo, 0, 1);  // Don't use the @hide byte[] overload.
   }
 
   public static void untypedCopy(Object o, Object foo) {
