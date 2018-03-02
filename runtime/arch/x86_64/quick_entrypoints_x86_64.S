@@ -2365,12 +2365,16 @@ DEFINE_FUNCTION art_quick_osr_stub
     PUSH r15
 
     pushq LITERAL(0)              // Push null for ArtMethod*.
+    CFI_ADJUST_CFA_OFFSET(8)
     movl %esi, %ecx               // rcx := size of stack
     movq %rdi, %rsi               // rsi := stack to copy
+    movq %rsp, %rbp               // Save stack pointer to RBP for CFI use in .Losr_entry.
     call .Losr_entry
+    CFI_REMEMBER_STATE
 
     // Restore stack and callee-saves.
     addq LITERAL(8), %rsp
+    CFI_ADJUST_CFA_OFFSET(-8)
     POP r15
     POP r14
     POP r13
@@ -2392,6 +2396,9 @@ DEFINE_FUNCTION art_quick_osr_stub
     movss %xmm0, (%rcx)            // Store the floating point result.
     ret
 .Losr_entry:
+    CFI_RESTORE_STATE             // Restore CFI state; however, since the call has pushed the
+    CFI_DEF_CFA_REGISTER(rbp)     // return address we need to switch the CFA register to RBP.
+
     subl LITERAL(8), %ecx         // Given stack size contains pushed frame pointer, substract it.
     subq %rcx, %rsp
     movq %rsp, %rdi               // rdi := beginning of stack
