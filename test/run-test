@@ -195,7 +195,6 @@ while true; do
         NEED_DEX="false"
         USE_JACK="false"
         run_args="${run_args} --jvm"
-        build_args="${build_args} --jvm"
         shift
     elif [ "x$1" = "x-O" ]; then
         lib="libart.so"
@@ -836,10 +835,16 @@ if ! ulimit -f 128000; then
   err_echo "ulimit file size setting failed"
 fi
 
+# Tell the build script which mode (target, host, jvm) we are building for
+# to determine the bootclasspath at build time.
 if [[ "$target_mode" == "yes" ]]; then
   build_args="$build_args --target"
 else
-  build_args="$build_args --host"
+  if [[ $runtime == "jvm" ]]; then
+    build_args="$build_args --jvm"
+  else
+    build_args="$build_args --host"
+  fi
 fi
 
 if [[ "$dev_mode" == "yes" ]]; then
