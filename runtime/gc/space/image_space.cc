@@ -1531,15 +1531,20 @@ std::unique_ptr<ImageSpace> ImageSpace::CreateBootImage(const char* image_locati
                                            &has_cache,
                                            &cache_filename);
 
-  if (is_zygote && dalvik_cache_exists) {
+  bool dex2oat_enabled = Runtime::Current()->IsImageDex2OatEnabled();
+
+  if (is_zygote && dalvik_cache_exists && !secondary_image) {
+    // Extra checks for the zygote. These only apply when loading the first image, explained below.
     DCHECK(!dalvik_cache.empty());
     std::string local_error_msg;
     // All secondary images are verified when the primary image is verified.
-    bool verified = secondary_image || VerifyImage(image_location,
-                                                   dalvik_cache.c_str(),
-                                                   image_isa,
-                                                   &local_error_msg);
-    if (!(verified && CheckSpace(dalvik_cache, &local_error_msg))) {
+    bool verified = VerifyImage(image_location, dalvik_cache.c_str(), image_isa, &local_error_msg);
+    // If we prune for space at a secondary image, we may end up in a crash loop with the _exit
+    // path.
+    bool check_space = CheckSpace(dalvik_cache, &local_error_msg);
+    if (!verified || !check_space) {
+      // Note: it is important to only prune for space on the primary image, or we will hit the
+      //       restart path.
       LOG(WARNING) << local_error_msg << " Preemptively pruning the dalvik cache.";
       PruneDalvikCache(image_isa);
 
@@ -1553,6 +1558,10 @@ std::unique_ptr<ImageSpace> ImageSpace::CreateBootImage(const char* image_locati
                                           &is_global_cache,
                                           &has_cache,
                                           &cache_filename);
+    }
+    if (!check_space) {
+      // Disable compilation/patching - we do not want to fill up the space again.
+      dex2oat_enabled = false;
     }
   }
 
@@ -1620,7 +1629,7 @@ std::unique_ptr<ImageSpace> ImageSpace::CreateBootImage(const char* image_locati
   //           secondary image.
   if (found_image && has_system && relocate) {
     std::string local_error_msg;
-    if (!Runtime::Current()->IsImageDex2OatEnabled()) {
+    if (!dex2oat_enabled) {
       local_error_msg = "Patching disabled.";
     } else if (secondary_image) {
       // We really want a working image. Prune and restart.
@@ -1652,7 +1661,7 @@ std::unique_ptr<ImageSpace> ImageSpace::CreateBootImage(const char* image_locati
   //         cache. This step fails if this is a secondary image.
   if (!has_system) {
     std::string local_error_msg;
-    if (!Runtime::Current()->IsImageDex2OatEnabled()) {
+    if (!dex2oat_enabled) {
       local_error_msg = "Image compilation disabled.";
     } else if (secondary_image) {
       local_error_msg = "Cannot compile a secondary image.";
