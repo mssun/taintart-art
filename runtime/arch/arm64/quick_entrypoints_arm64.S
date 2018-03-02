@@ -1062,38 +1062,33 @@ END art_quick_invoke_static_stub
  *                                    Thread *self)                x5
  */
 ENTRY art_quick_osr_stub
-SAVE_SIZE=15*8   // x3, x4, x19, x20, x21, x22, x23, x24, x25, x26, x27, x28, SP, LR, FP saved.
-    mov x9, sp                             // Save stack pointer.
-    .cfi_register sp,x9
+SAVE_SIZE=14*8   // x3, x4, x19, x20, x21, x22, x23, x24, x25, x26, x27, x28, FP, LR saved.
+    SAVE_TWO_REGS_INCREASE_FRAME x3, x4, SAVE_SIZE
+    SAVE_TWO_REGS x19, x20, 16
+    SAVE_TWO_REGS x21, x22, 32
+    SAVE_TWO_REGS x23, x24, 48
+    SAVE_TWO_REGS x25, x26, 64
+    SAVE_TWO_REGS x27, x28, 80
+    SAVE_TWO_REGS xFP, xLR, 96
 
-    sub x10, sp, # SAVE_SIZE
-    and x10, x10, # ~0xf                   // Enforce 16 byte stack alignment.
-    mov sp, x10                            // Set new SP.
-
-    str x28, [sp, #112]
-    stp x26, x27, [sp, #96]
-    stp x24, x25, [sp, #80]
-    stp x22, x23, [sp, #64]
-    stp x20, x21, [sp, #48]
-    stp x9, x19, [sp, #32]                // Save old stack pointer and x19.
-    stp x3, x4, [sp, #16]                 // Save result and shorty addresses.
-    stp xFP, xLR, [sp]                    // Store LR & FP.
     mov xSELF, x5                         // Move thread pointer into SELF register.
     REFRESH_MARKING_REGISTER
 
-    sub sp, sp, #16
+    INCREASE_FRAME 16
     str xzr, [sp]                         // Store null for ArtMethod* slot
     // Branch to stub.
     bl .Losr_entry
-    add sp, sp, #16
+    .cfi_remember_state
+    DECREASE_FRAME 16
 
-    // Restore return value address and shorty address.
-    ldp x3,x4, [sp, #16]
-    ldr x28, [sp, #112]
-    ldp x26, x27, [sp, #96]
-    ldp x24, x25, [sp, #80]
-    ldp x22, x23, [sp, #64]
-    ldp x20, x21, [sp, #48]
+    // Restore saved registers including value address and shorty address.
+    RESTORE_TWO_REGS x19, x20, 16
+    RESTORE_TWO_REGS x21, x22, 32
+    RESTORE_TWO_REGS x23, x24, 48
+    RESTORE_TWO_REGS x25, x26, 64
+    RESTORE_TWO_REGS x27, x28, 80
+    RESTORE_TWO_REGS xFP, xLR, 96
+    RESTORE_TWO_REGS_DECREASE_FRAME x3, x4, SAVE_SIZE
 
     // Store result (w0/x0/s0/d0) appropriately, depending on resultType.
     ldrb w10, [x4]
@@ -1103,29 +1098,30 @@ SAVE_SIZE=15*8   // x3, x4, x19, x20, x21, x22, x23, x24, x25, x26, x27, x28, SP
     // Don't set anything for a void type.
     cmp w10, #'V'
     beq .Losr_exit
-
     // Is it a double?
     cmp w10, #'D'
-    bne .Lno_double
-    str d0, [x3]
-    b .Losr_exit
-
-.Lno_double:  // Is it a float?
+    beq .Losr_return_double
+    // Is it a float?
     cmp w10, #'F'
-    bne .Lno_float
-    str s0, [x3]
-    b .Losr_exit
-
-.Lno_float:  // Just store x0. Doesn't matter if it is 64 or 32 bits.
+    beq .Losr_return_float
+    // Just store x0. Doesn't matter if it is 64 or 32 bits.
     str x0, [x3]
-
-.Losr_exit:  // Finish up.
-    ldp x2, x19, [sp, #32]   // Restore stack pointer and x19.
-    ldp xFP, xLR, [sp]    // Restore old frame pointer and link register.
-    mov sp, x2
+.Losr_exit:
+    ret
+.Losr_return_double:
+    str d0, [x3]
+    ret
+.Losr_return_float:
+    str s0, [x3]
     ret
 
 .Losr_entry:
+    .cfi_restore_state                     // Reset unwind info so following code unwinds.
+    .cfi_def_cfa_offset (SAVE_SIZE+16)     // workaround for clang bug: 31975598
+
+    mov x9, sp                             // Save stack pointer.
+    .cfi_def_cfa_register x9
+
     // Update stack pointer for the callee
     sub sp, sp, x1
 
@@ -1141,8 +1137,7 @@ SAVE_SIZE=15*8   // x3, x4, x19, x20, x21, x22, x23, x24, x25, x26, x27, x28, SP
     // SP - destination address.
     // W10 - temporary
 .Losr_loop_entry:
-    cmp w1, #0
-    beq .Losr_loop_exit
+    cbz w1, .Losr_loop_exit
     sub w1, w1, #4
     ldr w10, [x0, x1]
     str w10, [sp, x1]
