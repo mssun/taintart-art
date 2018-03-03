@@ -60,7 +60,7 @@ class Plugin {
   Plugin(const Plugin& other);
 
   // Create move constructor for putting this in a list
-  Plugin(Plugin&& other)
+  Plugin(Plugin&& other) noexcept
       : library_(other.library_),
         dlopen_handle_(other.dlopen_handle_) {
     other.dlopen_handle_ = nullptr;
