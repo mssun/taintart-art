@@ -28,10 +28,7 @@ const char* PLUGIN_INITIALIZATION_FUNCTION_NAME = "ArtPlugin_Initialize";
 const char* PLUGIN_DEINITIALIZATION_FUNCTION_NAME = "ArtPlugin_Deinitialize";
 
 Plugin::Plugin(const Plugin& other) : library_(other.library_), dlopen_handle_(nullptr) {
-  if (other.IsLoaded()) {
-    std::string err;
-    Load(&err);
-  }
+  CHECK(!other.IsLoaded()) << "Should not copy loaded plugins.";
 }
 
 bool Plugin::Load(/*out*/std::string* error_msg) {
