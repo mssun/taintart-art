@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_BASE_STL_UTIL_H_
-#define ART_RUNTIME_BASE_STL_UTIL_H_
+#ifndef ART_LIBARTBASE_BASE_STL_UTIL_H_
+#define ART_LIBARTBASE_BASE_STL_UTIL_H_
 
 #include <algorithm>
 #include <set>
@@ -155,4 +155,4 @@ static inline std::vector<T*> MakeNonOwningPointerVector(const std::vector<std::
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_BASE_STL_UTIL_H_
+#endif  // ART_LIBARTBASE_BASE_STL_UTIL_H_

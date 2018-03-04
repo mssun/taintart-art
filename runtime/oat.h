@@ -21,9 +21,9 @@
 
 #include "arch/instruction_set.h"
 #include "base/macros.h"
+#include "base/safe_map.h"
 #include "compiler_filter.h"
 #include "dex/dex_file.h"
-#include "safe_map.h"
 
 namespace art {
 

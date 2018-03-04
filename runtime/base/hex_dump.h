@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_BASE_HEX_DUMP_H_
 #define ART_RUNTIME_BASE_HEX_DUMP_H_
 
-#include "macros.h"
+#include "base/macros.h"
 
 #include <ostream>
 

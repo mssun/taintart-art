@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,11 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_BASE_VALUE_OBJECT_H_
-#define ART_RUNTIME_BASE_VALUE_OBJECT_H_
+import java.lang.reflect.Method;
+import java.util.Comparator;
 
-#include "base/macros.h"
-
-namespace art {
-
-class ValueObject {
- private:
-  DISALLOW_ALLOCATION();
-};
-
-}  // namespace art
-
-#endif  // ART_RUNTIME_BASE_VALUE_OBJECT_H_
+public class MethodComparator implements Comparator<Method> {
+    public int compare(Method m1, Method m2) {
+        return m1.toString().compareTo(m2.toString());
+    }
+}

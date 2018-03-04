@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Remove part of message containing the JDWP log (only on target)
-sed -s '/^.*JDWP support\./d' "$2" > "$2.tmp"
+# Only keep the lines we're interested in.
+sed -s '/^.*: oat file has dex code, but APK has uncompressed dex code\|Hello World/!d' "$2" > "$2.tmp"
 
 # Remove part of message containing filename.
 sed -s 's/^.*: //' "$2.tmp" > "$2.tmp2"

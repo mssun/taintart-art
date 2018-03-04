@@ -33,6 +33,7 @@
 #include "art_method-inl.h"
 #include "base/dumpable.h"
 #include "base/file_utils.h"
+#include "base/leb128.h"
 #include "base/logging.h"  // For InitLogging.
 #include "base/memory_tool.h"
 #include "base/scoped_flock.h"
@@ -45,7 +46,6 @@
 #include "gc/space/image_space.h"
 #include "image-inl.h"
 #include "intern_table.h"
-#include "leb128.h"
 #include "mirror/dex_cache.h"
 #include "mirror/executable.h"
 #include "mirror/method.h"

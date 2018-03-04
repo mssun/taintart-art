@@ -24,9 +24,9 @@
 #include "base/histogram-inl.h"
 #include "base/macros.h"
 #include "base/mutex.h"
+#include "base/safe_map.h"
 #include "gc_root.h"
 #include "method_reference.h"
-#include "safe_map.h"
 
 namespace art {
 

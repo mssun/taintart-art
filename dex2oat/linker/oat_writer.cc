@@ -27,6 +27,7 @@
 #include "base/enums.h"
 #include "base/file_magic.h"
 #include "base/logging.h"  // For VLOG
+#include "base/safe_map.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "class_linker.h"
@@ -61,7 +62,6 @@
 #include "oat_quick_method_header.h"
 #include "os.h"
 #include "quicken_info.h"
-#include "safe_map.h"
 #include "scoped_thread_state_change-inl.h"
 #include "type_lookup_table.h"
 #include "utils/dex_cache_arrays_layout-inl.h"
@@ -3372,6 +3372,7 @@ bool OatWriter::WriteDexFiles(OutputStream* out,
       CHECK(!update_input_vdex) << "Update input vdex should have empty dex container";
       DexContainer::Section* const section = dex_container_->GetDataSection();
       if (section->Size() > 0) {
+        CHECK(compact_dex_level_ != CompactDexLevel::kCompactDexLevelNone);
         const off_t existing_offset = out->Seek(0, kSeekCurrent);
         if (static_cast<uint32_t>(existing_offset) != vdex_dex_shared_data_offset_) {
           PLOG(ERROR) << "Expected offset " << vdex_dex_shared_data_offset_ << " but got "
@@ -3395,7 +3396,10 @@ bool OatWriter::WriteDexFiles(OutputStream* out,
             PLOG(ERROR) << "Failed to read dex header for updating";
             return false;
           }
-          CHECK(CompactDexFile::IsMagicValid(header.magic_)) << "Must be compact dex";
+          if (!CompactDexFile::IsMagicValid(header.magic_)) {
+            // Non-compact dex file, probably failed to convert due to duplicate methods.
+            continue;
+          }
           CHECK_GT(vdex_dex_shared_data_offset_, oat_dex_file.dex_file_offset_);
           // Offset is from the dex file base.
           header.data_off_ = vdex_dex_shared_data_offset_ - oat_dex_file.dex_file_offset_;

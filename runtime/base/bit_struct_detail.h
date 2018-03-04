@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_BASE_BIT_STRUCT_DETAIL_H_
 #define ART_RUNTIME_BASE_BIT_STRUCT_DETAIL_H_
 
-#include "bit_utils.h"
+#include "base/bit_utils.h"
 #include "globals.h"
 
 #include <type_traits>

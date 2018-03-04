@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_SAFE_MAP_H_
-#define ART_RUNTIME_SAFE_MAP_H_
+#ifndef ART_LIBARTBASE_BASE_SAFE_MAP_H_
+#define ART_LIBARTBASE_BASE_SAFE_MAP_H_
 
 #include <map>
 #include <memory>
@@ -23,14 +23,12 @@
 
 #include <android-base/logging.h>
 
-#include "base/allocator.h"
-
 namespace art {
 
 // Equivalent to std::map, but without operator[] and its bug-prone semantics (in particular,
 // the implicit insertion of a default-constructed value on failed lookups).
 template <typename K, typename V, typename Comparator = std::less<K>,
-          typename Allocator = TrackingAllocator<std::pair<const K, V>, kAllocatorTagSafeMap>>
+          typename Allocator = std::allocator<std::pair<const K, V>>>
 class SafeMap {
  private:
   typedef SafeMap<K, V, Comparator, Allocator> Self;
@@ -177,11 +175,6 @@ bool operator!=(const SafeMap<K, V, Comparator, Allocator>& lhs,
   return !(lhs == rhs);
 }
 
-template<class Key, class T, AllocatorTag kTag, class Compare = std::less<Key>>
-class AllocationTrackingSafeMap : public SafeMap<
-    Key, T, Compare, TrackingAllocator<std::pair<const Key, T>, kTag>> {
-};
-
 }  // namespace art
 
-#endif  // ART_RUNTIME_SAFE_MAP_H_
+#endif  // ART_LIBARTBASE_BASE_SAFE_MAP_H_

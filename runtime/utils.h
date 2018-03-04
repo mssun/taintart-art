@@ -28,8 +28,8 @@
 #include "arch/instruction_set.h"
 #include "base/casts.h"
 #include "base/stringpiece.h"
+#include "dex/primitive.h"
 #include "globals.h"
-#include "primitive.h"
 
 namespace art {
 

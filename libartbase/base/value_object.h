@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 The Android Open Source Project
+ * Copyright (C) 2014 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,18 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_GLOBALS_H_
-#define ART_RUNTIME_GLOBALS_H_
+#ifndef ART_LIBARTBASE_BASE_VALUE_OBJECT_H_
+#define ART_LIBARTBASE_BASE_VALUE_OBJECT_H_
 
-// TODO: remove this file in favor of libartbase/base/globals.h
-#include "base/globals.h"
+#include "base/macros.h"
 
-#endif  // ART_RUNTIME_GLOBALS_H_
+namespace art {
+
+class ValueObject {
+ private:
+  DISALLOW_ALLOCATION();
+};
+
+}  // namespace art
+
+#endif  // ART_LIBARTBASE_BASE_VALUE_OBJECT_H_

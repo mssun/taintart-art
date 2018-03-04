@@ -25,11 +25,11 @@
 #include "android-base/strings.h"
 
 #include "arch/instruction_set.h"
+#include "base/leb128.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "elf_file_impl.h"
 #include "elf_utils.h"
-#include "leb128.h"
 #include "utils.h"
 
 namespace art {
