@@ -28,7 +28,7 @@ public class Main {
   /// CHECK-DAG: <<Get1:j\d+>>   ArrayGet [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:j\d+>>   ArrayGet [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Sub:j\d+>>    Sub [<<Get1>>,<<Get2>>]        loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Intrin:j\d+>> InvokeStaticOrDirect [<<Sub>>] intrinsic:MathAbsLong loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Intrin:j\d+>> Abs [<<Sub>>]                  loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
   //
@@ -90,7 +90,7 @@ public class Main {
   /// CHECK-DAG: <<Get1:j\d+>>   ArrayGet [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:j\d+>>   ArrayGet [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Sub:j\d+>>    Sub [<<Get1>>,<<Get2>>]        loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Intrin:j\d+>> InvokeStaticOrDirect [<<Sub>>] intrinsic:MathAbsLong loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Intrin:j\d+>> Abs [<<Sub>>]                  loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
   //
@@ -127,7 +127,7 @@ public class Main {
   /// CHECK-DAG: <<Get1:j\d+>>   ArrayGet [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:j\d+>>   ArrayGet [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Sub:j\d+>>    Sub [<<Get1>>,<<Get2>>]        loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Intrin:j\d+>> InvokeStaticOrDirect [<<Sub>>] intrinsic:MathAbsLong loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Intrin:j\d+>> Abs [<<Sub>>]                  loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
   //

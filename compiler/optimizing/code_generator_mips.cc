@@ -8779,6 +8779,117 @@ void InstructionCodeGeneratorMIPS::VisitRem(HRem* instruction) {
   }
 }
 
+void LocationsBuilderMIPS::VisitAbs(HAbs* abs) {
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(abs);
+  switch (abs->GetResultType()) {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+      locations->SetInAt(0, Location::RequiresRegister());
+      locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
+      break;
+    default:
+      LOG(FATAL) << "Unexpected abs type " << abs->GetResultType();
+  }
+}
+
+void InstructionCodeGeneratorMIPS::GenerateAbsFP(LocationSummary* locations,
+                                                 DataType::Type type,
+                                                 bool isR2OrNewer,
+                                                 bool isR6) {
+  FRegister in = locations->InAt(0).AsFpuRegister<FRegister>();
+  FRegister out = locations->Out().AsFpuRegister<FRegister>();
+
+  // Note, as a "quality of implementation", rather than pure "spec compliance", we require that
+  // Math.abs() clears the sign bit (but changes nothing else) for all numbers, including NaN
+  // (signaling NaN may become quiet though).
+  //
+  // The ABS.fmt instructions (abs.s and abs.d) do exactly that when NAN2008=1 (R6). For this case,
+  // both regular floating point numbers and NAN values are treated alike, only the sign bit is
+  // affected by this instruction.
+  // But when NAN2008=0 (R2 and before), the ABS.fmt instructions can't be used. For this case, any
+  // NaN operand signals invalid operation. This means that other bits (not just sign bit) might be
+  // changed when doing abs(NaN). Because of that, we clear sign bit in a different way.
+  if (isR6) {
+    if (type == DataType::Type::kFloat64) {
+      __ AbsD(out, in);
+    } else {
+      DCHECK_EQ(type, DataType::Type::kFloat32);
+      __ AbsS(out, in);
+    }
+  } else {
+    if (type == DataType::Type::kFloat64) {
+      if (in != out) {
+        __ MovD(out, in);
+      }
+      __ MoveFromFpuHigh(TMP, in);
+      // ins instruction is not available for R1.
+      if (isR2OrNewer) {
+        __ Ins(TMP, ZERO, 31, 1);
+      } else {
+        __ Sll(TMP, TMP, 1);
+        __ Srl(TMP, TMP, 1);
+      }
+      __ MoveToFpuHigh(TMP, out);
+    } else {
+      DCHECK_EQ(type, DataType::Type::kFloat32);
+      __ Mfc1(TMP, in);
+      // ins instruction is not available for R1.
+      if (isR2OrNewer) {
+        __ Ins(TMP, ZERO, 31, 1);
+      } else {
+        __ Sll(TMP, TMP, 1);
+        __ Srl(TMP, TMP, 1);
+      }
+      __ Mtc1(TMP, out);
+    }
+  }
+}
+
+void InstructionCodeGeneratorMIPS::VisitAbs(HAbs* abs) {
+  LocationSummary* locations = abs->GetLocations();
+  bool isR2OrNewer = codegen_->GetInstructionSetFeatures().IsMipsIsaRevGreaterThanEqual2();
+  bool isR6 = codegen_->GetInstructionSetFeatures().IsR6();
+  switch (abs->GetResultType()) {
+    case DataType::Type::kInt32: {
+      Register in = locations->InAt(0).AsRegister<Register>();
+      Register out = locations->Out().AsRegister<Register>();
+      __ Sra(AT, in, 31);
+      __ Xor(out, in, AT);
+      __ Subu(out, out, AT);
+      break;
+    }
+    case DataType::Type::kInt64: {
+      Register in_lo = locations->InAt(0).AsRegisterPairLow<Register>();
+      Register in_hi = locations->InAt(0).AsRegisterPairHigh<Register>();
+      Register out_lo = locations->Out().AsRegisterPairLow<Register>();
+      Register out_hi = locations->Out().AsRegisterPairHigh<Register>();
+      // The comments in this section show the analogous operations which would
+      // be performed if we had 64-bit registers "in", and "out".
+      // __ Dsra32(AT, in, 31);
+      __ Sra(AT, in_hi, 31);
+      // __ Xor(out, in, AT);
+      __ Xor(TMP, in_lo, AT);
+      __ Xor(out_hi, in_hi, AT);
+      // __ Dsubu(out, out, AT);
+      __ Subu(out_lo, TMP, AT);
+      __ Sltu(TMP, out_lo, TMP);
+      __ Addu(out_hi, out_hi, TMP);
+      break;
+    }
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      GenerateAbsFP(locations, abs->GetResultType(), isR2OrNewer, isR6);
+      break;
+    default:
+      LOG(FATAL) << "Unexpected abs type " << abs->GetResultType();
+  }
+}
+
 void LocationsBuilderMIPS::VisitConstructorFence(HConstructorFence* constructor_fence) {
   constructor_fence->SetLocations(nullptr);
 }

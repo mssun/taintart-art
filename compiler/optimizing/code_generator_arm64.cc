@@ -5462,6 +5462,46 @@ void InstructionCodeGeneratorARM64::VisitRem(HRem* rem) {
   }
 }
 
+void LocationsBuilderARM64::VisitAbs(HAbs* abs) {
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(abs);
+  switch (abs->GetResultType()) {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+      locations->SetInAt(0, Location::RequiresRegister());
+      locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for abs operation " << abs->GetResultType();
+  }
+}
+
+void InstructionCodeGeneratorARM64::VisitAbs(HAbs* abs) {
+  switch (abs->GetResultType()) {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64: {
+      Register in_reg = InputRegisterAt(abs, 0);
+      Register out_reg = OutputRegister(abs);
+      __ Cmp(in_reg, Operand(0));
+      __ Cneg(out_reg, in_reg, lt);
+      break;
+    }
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64: {
+      FPRegister in_reg = InputFPRegisterAt(abs, 0);
+      FPRegister out_reg = OutputFPRegister(abs);
+      __ Fabs(out_reg, in_reg);
+      break;
+    }
+    default:
+      LOG(FATAL) << "Unexpected type for abs operation " << abs->GetResultType();
+  }
+}
+
 void LocationsBuilderARM64::VisitConstructorFence(HConstructorFence* constructor_fence) {
   constructor_fence->SetLocations(nullptr);
 }

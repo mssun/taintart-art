@@ -120,6 +120,7 @@ class InstructionSimplifierVisitor : public HGraphDelegateVisitor {
   void SimplifyReturnThis(HInvoke* invoke);
   void SimplifyAllocationIntrinsic(HInvoke* invoke);
   void SimplifyMemBarrier(HInvoke* invoke, MemBarrierKind barrier_kind);
+  void SimplifyAbs(HInvoke* invoke, DataType::Type type);
 
   CodeGenerator* codegen_;
   CompilerDriver* compiler_driver_;
@@ -850,34 +851,10 @@ static HInstruction* NewIntegralAbs(ArenaAllocator* allocator,
                                     HInstruction* x,
                                     HInstruction* cursor) {
   DataType::Type type = x->GetType();
-  DCHECK(type == DataType::Type::kInt32 || type ==  DataType::Type::kInt64);
-  // Construct a fake intrinsic with as much context as is needed to allocate one.
-  // The intrinsic will always be lowered into code later anyway.
-  // TODO: b/65164101 : moving towards a real HAbs node makes more sense.
-  HInvokeStaticOrDirect::DispatchInfo dispatch_info = {
-    HInvokeStaticOrDirect::MethodLoadKind::kDirectAddress,
-    HInvokeStaticOrDirect::CodePtrLocation::kCallArtMethod,
-    0u
-  };
-  HInvokeStaticOrDirect* invoke = new (allocator) HInvokeStaticOrDirect(
-      allocator,
-      1,
-      type,
-      x->GetDexPc(),
-      /*method_idx*/ -1,
-      /*resolved_method*/ nullptr,
-      dispatch_info,
-      kStatic,
-      MethodReference(nullptr, dex::kDexNoIndex),
-      HInvokeStaticOrDirect::ClinitCheckRequirement::kNone);
-  invoke->SetArgumentAt(0, x);
-  invoke->SetIntrinsic(type == DataType::Type::kInt32 ? Intrinsics::kMathAbsInt
-                                                      : Intrinsics::kMathAbsLong,
-                       kNoEnvironmentOrCache,
-                       kNoSideEffects,
-                       kNoThrow);
-  cursor->GetBlock()->InsertInstructionBefore(invoke, cursor);
-  return invoke;
+  DCHECK(type == DataType::Type::kInt32 || type == DataType::Type::kInt64);
+  HAbs* abs = new (allocator) HAbs(type, x, x->GetDexPc());
+  cursor->GetBlock()->InsertInstructionBefore(abs, cursor);
+  return abs;
 }
 
 // Returns true if operands a and b consists of widening type conversions
@@ -2430,6 +2407,13 @@ void InstructionSimplifierVisitor::SimplifyMemBarrier(HInvoke* invoke,
   invoke->GetBlock()->ReplaceAndRemoveInstructionWith(invoke, mem_barrier);
 }
 
+void InstructionSimplifierVisitor::SimplifyAbs(HInvoke* invoke, DataType::Type type) {
+  DCHECK(invoke->IsInvokeStaticOrDirect());
+  HAbs* abs = new (GetGraph()->GetAllocator())
+      HAbs(type, invoke->InputAt(0), invoke->GetDexPc());
+  invoke->GetBlock()->ReplaceAndRemoveInstructionWith(invoke, abs);
+}
+
 void InstructionSimplifierVisitor::VisitInvoke(HInvoke* instruction) {
   switch (instruction->GetIntrinsic()) {
     case Intrinsics::kStringEquals:
@@ -2512,6 +2496,18 @@ void InstructionSimplifierVisitor::VisitInvoke(HInvoke* instruction) {
       break;
     case Intrinsics::kVarHandleStoreStoreFence:
       SimplifyMemBarrier(instruction, MemBarrierKind::kStoreStore);
+      break;
+    case Intrinsics::kMathAbsInt:
+      SimplifyAbs(instruction, DataType::Type::kInt32);
+      break;
+    case Intrinsics::kMathAbsLong:
+      SimplifyAbs(instruction, DataType::Type::kInt64);
+      break;
+    case Intrinsics::kMathAbsFloat:
+      SimplifyAbs(instruction, DataType::Type::kFloat32);
+      break;
+    case Intrinsics::kMathAbsDouble:
+      SimplifyAbs(instruction, DataType::Type::kFloat64);
       break;
     default:
       break;

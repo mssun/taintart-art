@@ -3802,6 +3802,96 @@ void InstructionCodeGeneratorX86::VisitRem(HRem* rem) {
   }
 }
 
+void LocationsBuilderX86::VisitAbs(HAbs* abs) {
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(abs);
+  switch (abs->GetResultType()) {
+    case DataType::Type::kInt32:
+      locations->SetInAt(0, Location::RegisterLocation(EAX));
+      locations->SetOut(Location::SameAsFirstInput());
+      locations->AddTemp(Location::RegisterLocation(EDX));
+      break;
+    case DataType::Type::kInt64:
+      locations->SetInAt(0, Location::RequiresRegister());
+      locations->SetOut(Location::RequiresRegister(), Location::kOutputOverlap);
+      locations->AddTemp(Location::RequiresRegister());
+      break;
+    case DataType::Type::kFloat32:
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetOut(Location::SameAsFirstInput());
+      locations->AddTemp(Location::RequiresFpuRegister());
+      locations->AddTemp(Location::RequiresRegister());
+      break;
+    case DataType::Type::kFloat64:
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetOut(Location::SameAsFirstInput());
+      locations->AddTemp(Location::RequiresFpuRegister());
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for HAbs " << abs->GetResultType();
+  }
+}
+
+void InstructionCodeGeneratorX86::VisitAbs(HAbs* abs) {
+  LocationSummary* locations = abs->GetLocations();
+  switch (abs->GetResultType()) {
+    case DataType::Type::kInt32: {
+      Register out = locations->Out().AsRegister<Register>();
+      DCHECK_EQ(out, EAX);
+      Register temp = locations->GetTemp(0).AsRegister<Register>();
+      DCHECK_EQ(temp, EDX);
+      // Sign extend EAX into EDX.
+      __ cdq();
+      // XOR EAX with sign.
+      __ xorl(EAX, EDX);
+      // Subtract out sign to correct.
+      __ subl(EAX, EDX);
+      // The result is in EAX.
+      break;
+    }
+    case DataType::Type::kInt64: {
+      Location input = locations->InAt(0);
+      Register input_lo = input.AsRegisterPairLow<Register>();
+      Register input_hi = input.AsRegisterPairHigh<Register>();
+      Location output = locations->Out();
+      Register output_lo = output.AsRegisterPairLow<Register>();
+      Register output_hi = output.AsRegisterPairHigh<Register>();
+      Register temp = locations->GetTemp(0).AsRegister<Register>();
+      // Compute the sign into the temporary.
+      __ movl(temp, input_hi);
+      __ sarl(temp, Immediate(31));
+      // Store the sign into the output.
+      __ movl(output_lo, temp);
+      __ movl(output_hi, temp);
+      // XOR the input to the output.
+      __ xorl(output_lo, input_lo);
+      __ xorl(output_hi, input_hi);
+      // Subtract the sign.
+      __ subl(output_lo, temp);
+      __ sbbl(output_hi, temp);
+      break;
+    }
+    case DataType::Type::kFloat32: {
+      XmmRegister out = locations->Out().AsFpuRegister<XmmRegister>();
+      XmmRegister temp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
+      Register constant = locations->GetTemp(1).AsRegister<Register>();
+      __ movl(constant, Immediate(INT32_C(0x7FFFFFFF)));
+      __ movd(temp, constant);
+      __ andps(out, temp);
+      break;
+    }
+    case DataType::Type::kFloat64: {
+      XmmRegister out = locations->Out().AsFpuRegister<XmmRegister>();
+      XmmRegister temp = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
+      // TODO: Use a constant from the constant table (requires extra input).
+      __ LoadLongConstant(temp, INT64_C(0x7FFFFFFFFFFFFFFF));
+      __ andpd(out, temp);
+      break;
+    }
+    default:
+      LOG(FATAL) << "Unexpected type for HAbs " << abs->GetResultType();
+  }
+}
+
 void LocationsBuilderX86::VisitDivZeroCheck(HDivZeroCheck* instruction) {
   LocationSummary* locations = codegen_->CreateThrowingSlowPathLocations(instruction);
   switch (instruction->GetType()) {
