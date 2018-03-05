@@ -39,7 +39,6 @@ cc_defaults {
             static_libs: [
                 "libziparchive",
                 "libz",
-                "libbase",
             ],
             shared_libs: [
                 "libutils",

@@ -365,7 +365,6 @@ cc_defaults {
                 // ZipArchive support, the order matters here to get all symbols.
                 "libziparchive",
                 "libz",
-                "libbase",
             ],
         },
         android_arm: {
