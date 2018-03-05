@@ -234,6 +234,8 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
     switch (invoke->GetIntrinsic()) {
       case Intrinsics::kMathAbsDouble:
       case Intrinsics::kMathAbsFloat:
+        LOG(FATAL) << "Unreachable abs";
+        UNREACHABLE();
       case Intrinsics::kMathMaxDoubleDouble:
       case Intrinsics::kMathMaxFloatFloat:
       case Intrinsics::kMathMinDoubleDouble:
