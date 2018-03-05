@@ -529,68 +529,6 @@ void IntrinsicCodeGeneratorARM64::VisitLongLowestOneBit(HInvoke* invoke) {
   GenLowestOneBit(invoke, DataType::Type::kInt64, GetVIXLAssembler());
 }
 
-static void CreateFPToFPLocations(ArenaAllocator* allocator, HInvoke* invoke) {
-  LocationSummary* locations =
-      new (allocator) LocationSummary(invoke, LocationSummary::kNoCall, kIntrinsified);
-  locations->SetInAt(0, Location::RequiresFpuRegister());
-  locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
-}
-
-static void MathAbsFP(LocationSummary* locations, bool is64bit, MacroAssembler* masm) {
-  Location in = locations->InAt(0);
-  Location out = locations->Out();
-
-  FPRegister in_reg = is64bit ? DRegisterFrom(in) : SRegisterFrom(in);
-  FPRegister out_reg = is64bit ? DRegisterFrom(out) : SRegisterFrom(out);
-
-  __ Fabs(out_reg, in_reg);
-}
-
-void IntrinsicLocationsBuilderARM64::VisitMathAbsDouble(HInvoke* invoke) {
-  CreateFPToFPLocations(allocator_, invoke);
-}
-
-void IntrinsicCodeGeneratorARM64::VisitMathAbsDouble(HInvoke* invoke) {
-  MathAbsFP(invoke->GetLocations(), /* is64bit */ true, GetVIXLAssembler());
-}
-
-void IntrinsicLocationsBuilderARM64::VisitMathAbsFloat(HInvoke* invoke) {
-  CreateFPToFPLocations(allocator_, invoke);
-}
-
-void IntrinsicCodeGeneratorARM64::VisitMathAbsFloat(HInvoke* invoke) {
-  MathAbsFP(invoke->GetLocations(), /* is64bit */ false, GetVIXLAssembler());
-}
-
-static void GenAbsInteger(LocationSummary* locations,
-                          bool is64bit,
-                          MacroAssembler* masm) {
-  Location in = locations->InAt(0);
-  Location output = locations->Out();
-
-  Register in_reg = is64bit ? XRegisterFrom(in) : WRegisterFrom(in);
-  Register out_reg = is64bit ? XRegisterFrom(output) : WRegisterFrom(output);
-
-  __ Cmp(in_reg, Operand(0));
-  __ Cneg(out_reg, in_reg, lt);
-}
-
-void IntrinsicLocationsBuilderARM64::VisitMathAbsInt(HInvoke* invoke) {
-  CreateIntToIntLocations(allocator_, invoke);
-}
-
-void IntrinsicCodeGeneratorARM64::VisitMathAbsInt(HInvoke* invoke) {
-  GenAbsInteger(invoke->GetLocations(), /* is64bit */ false, GetVIXLAssembler());
-}
-
-void IntrinsicLocationsBuilderARM64::VisitMathAbsLong(HInvoke* invoke) {
-  CreateIntToIntLocations(allocator_, invoke);
-}
-
-void IntrinsicCodeGeneratorARM64::VisitMathAbsLong(HInvoke* invoke) {
-  GenAbsInteger(invoke->GetLocations(), /* is64bit */ true, GetVIXLAssembler());
-}
-
 static void GenMinMaxFP(LocationSummary* locations,
                         bool is_min,
                         bool is_double,
@@ -696,6 +634,13 @@ void IntrinsicLocationsBuilderARM64::VisitMathMaxLongLong(HInvoke* invoke) {
 
 void IntrinsicCodeGeneratorARM64::VisitMathMaxLongLong(HInvoke* invoke) {
   GenMinMax(invoke->GetLocations(), /* is_min */ false, /* is_long */ true, GetVIXLAssembler());
+}
+
+static void CreateFPToFPLocations(ArenaAllocator* allocator, HInvoke* invoke) {
+  LocationSummary* locations =
+      new (allocator) LocationSummary(invoke, LocationSummary::kNoCall, kIntrinsified);
+  locations->SetInAt(0, Location::RequiresFpuRegister());
+  locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
 }
 
 void IntrinsicLocationsBuilderARM64::VisitMathSqrt(HInvoke* invoke) {

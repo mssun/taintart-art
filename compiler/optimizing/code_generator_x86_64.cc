@@ -3821,6 +3821,70 @@ void InstructionCodeGeneratorX86_64::VisitRem(HRem* rem) {
   }
 }
 
+void LocationsBuilderX86_64::VisitAbs(HAbs* abs) {
+  LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(abs);
+  switch (abs->GetResultType()) {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+      locations->SetInAt(0, Location::RequiresRegister());
+      locations->SetOut(Location::SameAsFirstInput());
+      locations->AddTemp(Location::RequiresRegister());
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetOut(Location::SameAsFirstInput());
+      locations->AddTemp(Location::RequiresFpuRegister());
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for HAbs " << abs->GetResultType();
+  }
+}
+
+void InstructionCodeGeneratorX86_64::VisitAbs(HAbs* abs) {
+  LocationSummary* locations = abs->GetLocations();
+  switch (abs->GetResultType()) {
+    case DataType::Type::kInt32: {
+      CpuRegister out = locations->Out().AsRegister<CpuRegister>();
+      CpuRegister mask = locations->GetTemp(0).AsRegister<CpuRegister>();
+      // Create mask.
+      __ movl(mask, out);
+      __ sarl(mask, Immediate(31));
+      // Add mask.
+      __ addl(out, mask);
+      __ xorl(out, mask);
+      break;
+    }
+    case DataType::Type::kInt64: {
+      CpuRegister out = locations->Out().AsRegister<CpuRegister>();
+      CpuRegister mask = locations->GetTemp(0).AsRegister<CpuRegister>();
+      // Create mask.
+      __ movq(mask, out);
+      __ sarq(mask, Immediate(63));
+      // Add mask.
+      __ addq(out, mask);
+      __ xorq(out, mask);
+      break;
+    }
+    case DataType::Type::kFloat32: {
+      XmmRegister out = locations->Out().AsFpuRegister<XmmRegister>();
+      XmmRegister mask = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
+      __ movss(mask, codegen_->LiteralInt32Address(INT32_C(0x7FFFFFFF)));
+      __ andps(out, mask);
+      break;
+    }
+    case DataType::Type::kFloat64: {
+      XmmRegister out = locations->Out().AsFpuRegister<XmmRegister>();
+      XmmRegister mask = locations->GetTemp(0).AsFpuRegister<XmmRegister>();
+      __ movsd(mask, codegen_->LiteralInt64Address(INT64_C(0x7FFFFFFFFFFFFFFF)));
+      __ andpd(out, mask);
+      break;
+    }
+    default:
+      LOG(FATAL) << "Unexpected type for HAbs " << abs->GetResultType();
+  }
+}
+
 void LocationsBuilderX86_64::VisitDivZeroCheck(HDivZeroCheck* instruction) {
   LocationSummary* locations = codegen_->CreateThrowingSlowPathLocations(instruction);
   locations->SetInAt(0, Location::Any());
