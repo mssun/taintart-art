@@ -28,6 +28,11 @@ else
   JAVA_LIBRARIES=${ANDROID_PRODUCT_OUT}/../../common/obj/JAVA_LIBRARIES
 fi
 
+android_root="/system"
+if [ -n "$ART_TEST_ANDROID_ROOT" ]; then
+  android_root="$ART_TEST_ANDROID_ROOT"
+fi
+
 function classes_jar_path {
   local var="$1"
   local suffix="jar"
@@ -103,7 +108,7 @@ debug=false
 while true; do
   if [[ "$1" == "--mode=device" ]]; then
     vogar_args="$vogar_args --device-dir=/data/local/tmp"
-    vogar_args="$vogar_args --vm-command=/data/local/tmp/system/bin/art"
+    vogar_args="$vogar_args --vm-command=$android_root/bin/art"
     vogar_args="$vogar_args --vm-arg -Ximage:/data/art-test/core.art"
     shift
   elif [[ "$1" == "--mode=host" ]]; then

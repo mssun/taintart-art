@@ -26,12 +26,17 @@ if [ -z "$ANDROID_HOST_OUT" ] ; then
   ANDROID_HOST_OUT=${OUT_DIR-$ANDROID_BUILD_TOP/out}/host/linux-x86
 fi
 
+android_root="/system"
+if [ -n "$ART_TEST_ANDROID_ROOT" ]; then
+  android_root="$ART_TEST_ANDROID_ROOT"
+fi
+
 java_lib_location="${ANDROID_HOST_OUT}/../common/obj/JAVA_LIBRARIES"
 make_target_name="apache-harmony-jdwp-tests-hostdex"
 
 vm_args=""
-art="/data/local/tmp/system/bin/art"
-art_debugee="sh /data/local/tmp/system/bin/art"
+art="$android_root/bin/art"
+art_debugee="sh $android_root/bin/art"
 args=$@
 debuggee_args="-Xcompiler-option --debuggable"
 device_dir="--device-dir=/data/local/tmp"
