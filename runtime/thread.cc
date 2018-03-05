@@ -1161,10 +1161,9 @@ void Thread::ShortDump(std::ostream& os) const {
      << "]";
 }
 
-void Thread::Dump(std::ostream& os, bool dump_native_stack, BacktraceMap* backtrace_map,
-                  bool force_dump_stack) const {
+void Thread::Dump(std::ostream& os, BacktraceMap* backtrace_map, bool force_dump_stack) const {
   DumpState(os);
-  DumpStack(os, dump_native_stack, backtrace_map, force_dump_stack);
+  DumpStack(os, backtrace_map, force_dump_stack);
 }
 
 mirror::String* Thread::GetThreadName() const {
@@ -1964,10 +1963,7 @@ void Thread::DumpJavaStack(std::ostream& os, bool check_suspended, bool dump_loc
   }
 }
 
-void Thread::DumpStack(std::ostream& os,
-                       bool dump_native_stack,
-                       BacktraceMap* backtrace_map,
-                       bool force_dump_stack) const {
+void Thread::DumpStack(std::ostream& os, BacktraceMap* backtrace_map, bool force_dump_stack) const {
   // TODO: we call this code when dying but may not have suspended the thread ourself. The
   //       IsSuspended check is therefore racy with the use for dumping (normally we inhibit
   //       the race with the thread_suspend_count_lock_).
@@ -1980,7 +1976,7 @@ void Thread::DumpStack(std::ostream& os,
   }
   if (safe_to_dump || force_dump_stack) {
     // If we're currently in native code, dump that stack before dumping the managed stack.
-    if (dump_native_stack && (dump_for_abort || force_dump_stack || ShouldShowNativeStack(this))) {
+    if (dump_for_abort || force_dump_stack || ShouldShowNativeStack(this)) {
       DumpKernelStack(os, GetTid(), "  kernel: ", false);
       ArtMethod* method =
           GetCurrentMethod(nullptr,
