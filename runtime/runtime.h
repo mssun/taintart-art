@@ -651,10 +651,6 @@ class Runtime {
     safe_mode_ = mode;
   }
 
-  bool GetDumpNativeStackOnSigQuit() const {
-    return dump_native_stack_on_sig_quit_;
-  }
-
   bool GetPrunedDalvikCache() const {
     return pruned_dalvik_cache_;
   }
@@ -1004,9 +1000,6 @@ class Runtime {
   // framework to show a UI warning. If this flag is set, always set the flag
   // when there is a warning. This is only used for testing.
   bool always_set_hidden_api_warning_flag_;
-
-  // Whether threads should dump their native stack on SIGQUIT.
-  bool dump_native_stack_on_sig_quit_;
 
   // Whether the dalvik cache was pruned when initializing the runtime.
   bool pruned_dalvik_cache_;
