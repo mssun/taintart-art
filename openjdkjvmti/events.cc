@@ -1004,6 +1004,27 @@ bool EventHandler::OtherMonitorEventsEnabledAnywhere(ArtJvmtiEvent event) {
   return false;
 }
 
+void EventHandler::SetupFramePopTraceListener(bool enable) {
+  if (enable) {
+    frame_pop_enabled = true;
+    SetupTraceListener(method_trace_listener_.get(), ArtJvmtiEvent::kFramePop, enable);
+  } else {
+    // remove the listener if we have no outstanding frames.
+    {
+      art::ReaderMutexLock mu(art::Thread::Current(), envs_lock_);
+      for (ArtJvmTiEnv* env : envs) {
+        art::ReaderMutexLock event_mu(art::Thread::Current(), env->event_info_mutex_);
+        if (!env->notify_frames.empty()) {
+          // Leaving FramePop listener since there are unsent FramePop events.
+          return;
+        }
+      }
+      frame_pop_enabled = false;
+    }
+    SetupTraceListener(method_trace_listener_.get(), ArtJvmtiEvent::kFramePop, enable);
+  }
+}
+
 // Handle special work for the given event type, if necessary.
 void EventHandler::HandleEventType(ArtJvmtiEvent event, bool enable) {
   switch (event) {
@@ -1018,14 +1039,14 @@ void EventHandler::HandleEventType(ArtJvmtiEvent event, bool enable) {
     case ArtJvmtiEvent::kGarbageCollectionFinish:
       SetupGcPauseTracking(gc_pause_listener_.get(), event, enable);
       return;
-    // FramePop can never be disabled once it's been turned on since we would either need to deal
-    // with dangling pointers or have missed events.
-    // TODO We really need to make this not the case anymore.
+    // FramePop can never be disabled once it's been turned on if it was turned off with outstanding
+    // pop-events since we would either need to deal with dangling pointers or have missed events.
     case ArtJvmtiEvent::kFramePop:
-      if (!enable || (enable && frame_pop_enabled)) {
+      if (enable && frame_pop_enabled) {
+        // The frame-pop event was held on by pending events so we don't need to do anything.
         break;
       } else {
-        SetupTraceListener(method_trace_listener_.get(), event, enable);
+        SetupFramePopTraceListener(enable);
         break;
       }
     case ArtJvmtiEvent::kMethodEntry:
