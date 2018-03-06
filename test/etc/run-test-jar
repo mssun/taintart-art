@@ -792,7 +792,6 @@ dalvikvm_cmdline="$INVOKE_WITH $GDB $ANDROID_ROOT/bin/$DALVIKVM \
                   $DEBUGGER_OPTS \
                   $DALVIKVM_BOOT_OPT \
                   $TMP_DIR_OPTION \
-                  -XX:DumpNativeStackOnSigQuit:false \
                   -cp $DEX_LOCATION/$TEST_NAME.jar$SECONDARY_DEX $MAIN $ARGS"
 
 # Remove whitespace.
