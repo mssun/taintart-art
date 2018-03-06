@@ -39,6 +39,7 @@
 #include "art_jvmti.h"
 #include "base/array_ref.h"
 #include "base/macros.h"
+#include "base/utils.h"
 #include "class_linker.h"
 #include "class_loader_utils.h"
 #include "class_table-inl.h"
@@ -73,7 +74,6 @@
 #include "ti_class_loader-inl.h"
 #include "ti_phase.h"
 #include "ti_redefine.h"
-#include "utils.h"
 #include "well_known_classes.h"
 
 namespace openjdkjvmti {

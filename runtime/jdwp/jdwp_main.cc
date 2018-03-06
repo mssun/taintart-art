@@ -22,7 +22,7 @@
 
 #include "android-base/stringprintf.h"
 
-#include "atomic.h"
+#include "base/atomic.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/time_utils.h"
 #include "debugger.h"

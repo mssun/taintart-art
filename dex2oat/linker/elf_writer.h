@@ -25,8 +25,8 @@
 #include "base/array_ref.h"
 #include "base/macros.h"
 #include "base/mutex.h"
+#include "base/os.h"
 #include "debug/debug_info.h"
-#include "os.h"
 
 namespace art {
 

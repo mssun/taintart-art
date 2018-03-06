@@ -21,6 +21,8 @@
 #include "base/casts.h"
 #include "base/enums.h"
 #include "base/iteration_range.h"
+#include "base/stride_iterator.h"
+#include "base/utils.h"
 #include "class_flags.h"
 #include "class_status.h"
 #include "dex/dex_file.h"
@@ -33,9 +35,7 @@
 #include "object.h"
 #include "object_array.h"
 #include "read_barrier_option.h"
-#include "stride_iterator.h"
 #include "thread.h"
-#include "utils.h"
 
 namespace art {
 

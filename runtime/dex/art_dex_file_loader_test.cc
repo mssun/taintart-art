@@ -19,6 +19,7 @@
 #include <memory>
 
 #include "art_dex_file_loader.h"
+#include "base/os.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "common_runtime_test.h"
@@ -29,7 +30,6 @@
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
 #include "mem_map.h"
-#include "os.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
 

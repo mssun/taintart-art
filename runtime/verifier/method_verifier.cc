@@ -30,6 +30,7 @@
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/time_utils.h"
+#include "base/utils.h"
 #include "class_linker.h"
 #include "compiler_callbacks.h"
 #include "dex/descriptors_names.h"
@@ -55,7 +56,6 @@
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
-#include "utils.h"
 #include "verifier_compiler_binding.h"
 #include "verifier_deps.h"
 

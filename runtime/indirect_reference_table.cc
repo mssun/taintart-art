@@ -18,6 +18,7 @@
 
 #include "base/dumpable-inl.h"
 #include "base/systrace.h"
+#include "base/utils.h"
 #include "java_vm_ext.h"
 #include "jni_internal.h"
 #include "nth_caller_visitor.h"
@@ -25,7 +26,6 @@
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread.h"
-#include "utils.h"
 
 #include <cstdlib>
 

@@ -24,6 +24,7 @@
 
 #include "base/array_ref.h"
 #include "base/dchecked_vector.h"
+#include "base/os.h"
 #include "base/safe_map.h"
 #include "compiler.h"
 #include "dex/compact_dex_level.h"
@@ -33,7 +34,6 @@
 #include "method_reference.h"
 #include "mirror/class.h"
 #include "oat.h"
-#include "os.h"
 #include "string_reference.h"
 #include "type_reference.h"
 

@@ -23,6 +23,7 @@
 #include "art_method.h"
 #include "base/array_slice.h"
 #include "base/length_prefixed_array.h"
+#include "base/utils.h"
 #include "class_linker.h"
 #include "class_loader.h"
 #include "common_throws.h"
@@ -39,7 +40,6 @@
 #include "reference-inl.h"
 #include "runtime.h"
 #include "string.h"
-#include "utils.h"
 
 namespace art {
 namespace mirror {

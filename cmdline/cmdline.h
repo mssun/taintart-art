@@ -28,6 +28,7 @@
 
 #include "base/file_utils.h"
 #include "base/logging.h"
+#include "base/mutex.h"
 #include "base/stringpiece.h"
 #include "noop_compiler_callbacks.h"
 #include "runtime.h"
@@ -303,6 +304,7 @@ struct CmdlineArgs {
 template <typename Args = CmdlineArgs>
 struct CmdlineMain {
   int Main(int argc, char** argv) {
+    Locks::Init();
     InitLogging(argv, Runtime::Abort);
     std::unique_ptr<Args> args = std::unique_ptr<Args>(CreateArguments());
     args_ = args.get();

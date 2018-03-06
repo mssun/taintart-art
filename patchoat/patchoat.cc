@@ -35,11 +35,14 @@
 #include "base/file_utils.h"
 #include "base/leb128.h"
 #include "base/logging.h"  // For InitLogging.
+#include "base/mutex.h"
 #include "base/memory_tool.h"
+#include "base/os.h"
 #include "base/scoped_flock.h"
 #include "base/stringpiece.h"
 #include "base/unix_file/fd_file.h"
 #include "base/unix_file/random_access_file_utils.h"
+#include "base/utils.h"
 #include "elf_file.h"
 #include "elf_file_impl.h"
 #include "elf_utils.h"
@@ -54,11 +57,9 @@
 #include "mirror/reference.h"
 #include "noop_compiler_callbacks.h"
 #include "offsets.h"
-#include "os.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread.h"
-#include "utils.h"
 
 namespace art {
 
@@ -1177,6 +1178,7 @@ static int patchoat_verify_image(TimingLogger& timings,
 }
 
 static int patchoat(int argc, char **argv) {
+  Locks::Init();
   InitLogging(argv, Runtime::Abort);
   MemMap::Init();
   const bool debug = kIsDebugBuild;

@@ -26,12 +26,12 @@
 #include <unordered_map>
 #include <vector>
 
-#include "atomic.h"
+#include "base/atomic.h"
 #include "base/macros.h"
+#include "base/os.h"
 #include "base/safe_map.h"
 #include "globals.h"
 #include "instrumentation.h"
-#include "os.h"
 
 namespace art {
 

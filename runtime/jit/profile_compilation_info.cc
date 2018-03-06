@@ -37,16 +37,16 @@
 #include "base/file_utils.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/mutex.h"
+#include "base/os.h"
 #include "base/safe_map.h"
 #include "base/scoped_flock.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/time_utils.h"
 #include "base/unix_file/fd_file.h"
+#include "base/utils.h"
 #include "dex/dex_file_loader.h"
 #include "jit/profiling_info.h"
-#include "os.h"
-#include "utils.h"
 #include "zip_archive.h"
 
 namespace art {
@@ -278,7 +278,7 @@ bool ProfileCompilationInfo::Save(const std::string& filename, uint64_t* bytes_w
   // access and fail immediately if we can't.
   bool result = Save(fd);
   if (result) {
-    int64_t size = GetFileSizeBytes(filename);
+    int64_t size = OS::GetFileSizeBytes(filename.c_str());
     if (size != -1) {
       VLOG(profiler)
         << "Successfully saved profile info to " << filename << " Size: "
