@@ -504,6 +504,7 @@
     {
         "tests": [
             "031-class-attributes",
+            "715-clinit-implicit-parameter-annotations",
             "911-get-stack-trace"
         ],
         "description": [
