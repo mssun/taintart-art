@@ -26,7 +26,7 @@ public class Main {
   /// CHECK-DAG:           <<Array:l\d+>>         NullCheck
   /// CHECK-DAG:           <<Index:i\d+>>         BoundsCheck
   /// CHECK-DAG:           <<ArrayGet:i\d+>>      ArrayGet [<<Array>>,<<Index>>]
-  /// CHECK-DAG:           <<AbsM42:i\d+>>        InvokeStaticOrDirect [<<ConstM42>>] intrinsic:MathAbsInt
+  /// CHECK-DAG:           <<AbsM42:i\d+>>        InvokeStaticOrDirect [<<ConstM42>>{{(,[ij]\d+)?}}] method_name:Main.$noinline$abs
   /// CHECK-DAG:           <<Add:i\d+>>           Add [<<ArrayGet>>,<<AbsM42>>]
   /// CHECK-DAG:                                  ArraySet [<<Array>>,<<Index>>,<<Add>>]
 
@@ -37,7 +37,7 @@ public class Main {
   /// CHECK-DAG:           <<Index:i\d+>>         BoundsCheck
   /// CHECK-DAG:           <<Address1:i\d+>>      IntermediateAddress [<<Array>>,<<DataOffset>>]
   /// CHECK-DAG:           <<ArrayGet:i\d+>>      ArrayGet [<<Address1>>,<<Index>>]
-  /// CHECK-DAG:           <<AbsM42:i\d+>>        InvokeStaticOrDirect [<<ConstM42>>] intrinsic:MathAbsInt
+  /// CHECK-DAG:           <<AbsM42:i\d+>>        InvokeStaticOrDirect [<<ConstM42>>{{(,[ij]\d+)?}}] method_name:Main.$noinline$abs
   /// CHECK-DAG:           <<Add:i\d+>>           Add [<<ArrayGet>>,<<AbsM42>>]
   /// CHECK-DAG:           <<Address2:i\d+>>      IntermediateAddress [<<Array>>,<<DataOffset>>]
   /// CHECK-DAG:                                  ArraySet [<<Address2>>,<<Index>>,<<Add>>]
@@ -49,7 +49,7 @@ public class Main {
   /// CHECK-DAG:           <<Index:i\d+>>         BoundsCheck
   /// CHECK-DAG:           <<Address1:i\d+>>      IntermediateAddress [<<Array>>,<<DataOffset>>]
   /// CHECK-DAG:           <<ArrayGet:i\d+>>      ArrayGet [<<Address1>>,<<Index>>]
-  /// CHECK-DAG:           <<AbsM42:i\d+>>        InvokeStaticOrDirect [<<ConstM42>>] intrinsic:MathAbsInt
+  /// CHECK-DAG:           <<AbsM42:i\d+>>        InvokeStaticOrDirect [<<ConstM42>>{{(,[ij]\d+)?}}] method_name:Main.$noinline$abs
   /// CHECK-DAG:           <<Add:i\d+>>           Add [<<ArrayGet>>,<<AbsM42>>]
   /// CHECK-DAG:           <<Address2:i\d+>>      IntermediateAddress [<<Array>>,<<DataOffset>>]
   /// CHECK-DAG:                                  ArraySet [<<Address2>>,<<Index>>,<<Add>>]
@@ -60,7 +60,7 @@ public class Main {
   /// CHECK-DAG:           <<Array:l\d+>>         NullCheck
   /// CHECK-DAG:           <<Index:i\d+>>         BoundsCheck
   /// CHECK-DAG:           <<ArrayGet:i\d+>>      ArrayGet [<<Array>>,<<Index>>]
-  /// CHECK-DAG:           <<AbsM42:i\d+>>        InvokeStaticOrDirect [<<ConstM42>>] intrinsic:MathAbsInt
+  /// CHECK-DAG:           <<AbsM42:i\d+>>        InvokeStaticOrDirect [<<ConstM42>>{{(,[ij]\d+)?}}] method_name:Main.$noinline$abs
   /// CHECK-DAG:           <<Add:i\d+>>           Add [<<ArrayGet>>,<<AbsM42>>]
   /// CHECK-DAG:                                  ArraySet [<<Array>>,<<Index>>,<<Add>>]
 
@@ -71,7 +71,7 @@ public class Main {
   /// CHECK-DAG:           <<Index:i\d+>>         BoundsCheck
   /// CHECK-DAG:           <<Address1:i\d+>>      IntermediateAddress [<<Array>>,<<DataOffset>>]
   /// CHECK-DAG:           <<ArrayGet:i\d+>>      ArrayGet [<<Address1>>,<<Index>>]
-  /// CHECK-DAG:           <<AbsM42:i\d+>>        InvokeStaticOrDirect [<<ConstM42>>] intrinsic:MathAbsInt
+  /// CHECK-DAG:           <<AbsM42:i\d+>>        InvokeStaticOrDirect [<<ConstM42>>{{(,[ij]\d+)?}}] method_name:Main.$noinline$abs
   /// CHECK-DAG:           <<Add:i\d+>>           Add [<<ArrayGet>>,<<AbsM42>>]
   /// CHECK-DAG:           <<Address2:i\d+>>      IntermediateAddress [<<Array>>,<<DataOffset>>]
   /// CHECK-DAG:                                  ArraySet [<<Address2>>,<<Index>>,<<Add>>]
@@ -83,13 +83,17 @@ public class Main {
   /// CHECK-DAG:           <<Index:i\d+>>         BoundsCheck
   /// CHECK-DAG:           <<Address1:i\d+>>      IntermediateAddress [<<Array>>,<<DataOffset>>]
   /// CHECK-DAG:           <<ArrayGet:i\d+>>      ArrayGet [<<Address1>>,<<Index>>]
-  /// CHECK-DAG:           <<AbsM42:i\d+>>        InvokeStaticOrDirect [<<ConstM42>>] intrinsic:MathAbsInt
+  /// CHECK-DAG:           <<AbsM42:i\d+>>        InvokeStaticOrDirect [<<ConstM42>>{{(,[ij]\d+)?}}] method_name:Main.$noinline$abs
   /// CHECK-DAG:           <<Add:i\d+>>           Add [<<ArrayGet>>,<<AbsM42>>]
   /// CHECK-DAG:           <<Address2:i\d+>>      IntermediateAddress [<<Array>>,<<DataOffset>>]
   /// CHECK-DAG:                                  ArraySet [<<Address2>>,<<Index>>,<<Add>>]
 
   public static void main(String[] args) {
-    array[index] += Math.abs(-42);
+    array[index] += $noinline$abs(-42);
+  }
+
+  public static int $noinline$abs(int value) {
+    return Math.abs(value);
   }
 
   static int index = 0;
