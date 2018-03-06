@@ -34,6 +34,7 @@
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
 #include "class_linker.h"
+#include "class_loader_utils.h"
 #include "compiler_callbacks.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/dex_file-inl.h"
@@ -541,58 +542,23 @@ std::vector<const DexFile*> CommonRuntimeTestImpl::GetDexFiles(jobject jclass_lo
 std::vector<const DexFile*> CommonRuntimeTestImpl::GetDexFiles(
     ScopedObjectAccess& soa,
     Handle<mirror::ClassLoader> class_loader) {
-  std::vector<const DexFile*> ret;
-
   DCHECK(
       (class_loader->GetClass() ==
           soa.Decode<mirror::Class>(WellKnownClasses::dalvik_system_PathClassLoader)) ||
       (class_loader->GetClass() ==
           soa.Decode<mirror::Class>(WellKnownClasses::dalvik_system_DelegateLastClassLoader)));
 
-  // The class loader is a PathClassLoader which inherits from BaseDexClassLoader.
-  // We need to get the DexPathList and loop through it.
-  ArtField* cookie_field = jni::DecodeArtField(WellKnownClasses::dalvik_system_DexFile_cookie);
-  ArtField* dex_file_field =
-      jni::DecodeArtField(WellKnownClasses::dalvik_system_DexPathList__Element_dexFile);
-  ObjPtr<mirror::Object> dex_path_list =
-      jni::DecodeArtField(WellKnownClasses::dalvik_system_BaseDexClassLoader_pathList)->
-          GetObject(class_loader.Get());
-  if (dex_path_list != nullptr && dex_file_field!= nullptr && cookie_field != nullptr) {
-    // DexPathList has an array dexElements of Elements[] which each contain a dex file.
-    ObjPtr<mirror::Object> dex_elements_obj =
-        jni::DecodeArtField(WellKnownClasses::dalvik_system_DexPathList_dexElements)->
-            GetObject(dex_path_list);
-    // Loop through each dalvik.system.DexPathList$Element's dalvik.system.DexFile and look
-    // at the mCookie which is a DexFile vector.
-    if (dex_elements_obj != nullptr) {
-      StackHandleScope<1> hs(soa.Self());
-      Handle<mirror::ObjectArray<mirror::Object>> dex_elements =
-          hs.NewHandle(dex_elements_obj->AsObjectArray<mirror::Object>());
-      for (int32_t i = 0; i < dex_elements->GetLength(); ++i) {
-        ObjPtr<mirror::Object> element = dex_elements->GetWithoutChecks(i);
-        if (element == nullptr) {
-          // Should never happen, fall back to java code to throw a NPE.
-          break;
-        }
-        ObjPtr<mirror::Object> dex_file = dex_file_field->GetObject(element);
-        if (dex_file != nullptr) {
-          ObjPtr<mirror::LongArray> long_array = cookie_field->GetObject(dex_file)->AsLongArray();
-          DCHECK(long_array != nullptr);
-          int32_t long_array_size = long_array->GetLength();
-          for (int32_t j = kDexFileIndexStart; j < long_array_size; ++j) {
-            const DexFile* cp_dex_file = reinterpret_cast<const DexFile*>(static_cast<uintptr_t>(
-                long_array->GetWithoutChecks(j)));
-            if (cp_dex_file == nullptr) {
-              LOG(WARNING) << "Null DexFile";
-              continue;
-            }
-            ret.push_back(cp_dex_file);
-          }
-        }
-      }
-    }
-  }
-
+  std::vector<const DexFile*> ret;
+  VisitClassLoaderDexFiles(soa,
+                           class_loader,
+                           [&](const DexFile* cp_dex_file) {
+                             if (cp_dex_file == nullptr) {
+                               LOG(WARNING) << "Null DexFile";
+                             } else {
+                               ret.push_back(cp_dex_file);
+                             }
+                             return true;
+                           });
   return ret;
 }
 
