@@ -24,6 +24,7 @@
 #include "android-base/stringprintf.h"
 
 #include "array-inl.h"
+#include "base/utils.h"
 #include "class.h"
 #include "gc/heap.h"
 #include "handle_scope-inl.h"
@@ -31,7 +32,6 @@
 #include "object-inl.h"
 #include "runtime.h"
 #include "thread.h"
-#include "utils.h"
 
 namespace art {
 namespace mirror {

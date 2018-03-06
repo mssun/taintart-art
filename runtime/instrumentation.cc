@@ -21,7 +21,7 @@
 #include "arch/context.h"
 #include "art_field-inl.h"
 #include "art_method-inl.h"
-#include "atomic.h"
+#include "base/atomic.h"
 #include "base/callee_save_type.h"
 #include "class_linker.h"
 #include "debugger.h"

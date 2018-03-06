@@ -17,11 +17,11 @@
 #include "gvn.h"
 
 #include "base/arena_bit_vector.h"
+#include "base/bit_vector-inl.h"
 #include "base/scoped_arena_allocator.h"
 #include "base/scoped_arena_containers.h"
-#include "base/bit_vector-inl.h"
+#include "base/utils.h"
 #include "side_effects_analysis.h"
-#include "utils.h"
 
 namespace art {
 

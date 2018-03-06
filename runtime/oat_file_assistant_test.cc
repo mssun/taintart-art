@@ -27,16 +27,16 @@
 #include "android-base/strings.h"
 
 #include "art_field-inl.h"
+#include "base/os.h"
+#include "base/utils.h"
 #include "class_linker-inl.h"
 #include "class_loader_context.h"
 #include "common_runtime_test.h"
 #include "dexopt_test.h"
 #include "oat_file.h"
 #include "oat_file_manager.h"
-#include "os.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
-#include "utils.h"
 
 namespace art {
 

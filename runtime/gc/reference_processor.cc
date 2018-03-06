@@ -17,6 +17,7 @@
 #include "reference_processor.h"
 
 #include "base/time_utils.h"
+#include "base/utils.h"
 #include "collector/garbage_collector.h"
 #include "java_vm_ext.h"
 #include "mirror/class-inl.h"
@@ -28,7 +29,6 @@
 #include "reflection.h"
 #include "scoped_thread_state_change-inl.h"
 #include "task_processor.h"
-#include "utils.h"
 #include "well_known_classes.h"
 
 namespace art {

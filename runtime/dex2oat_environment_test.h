@@ -24,7 +24,9 @@
 #include <gtest/gtest.h>
 
 #include "base/file_utils.h"
+#include "base/os.h"
 #include "base/stl_util.h"
+#include "base/utils.h"
 #include "common_runtime_test.h"
 #include "compiler_callbacks.h"
 #include "dex/art_dex_file_loader.h"
@@ -33,9 +35,7 @@
 #include "gc/heap.h"
 #include "gc/space/image_space.h"
 #include "oat_file_assistant.h"
-#include "os.h"
 #include "runtime.h"
-#include "utils.h"
 
 namespace art {
 

@@ -24,6 +24,7 @@
 
 #include "base/casts.h"
 #include "base/leb128.h"
+#include "base/utils.h"
 #include "compiled_method.h"
 #include "debug/elf_debug_writer.h"
 #include "debug/method_debug_info.h"
@@ -36,7 +37,6 @@
 #include "linker/file_output_stream.h"
 #include "thread-current-inl.h"
 #include "thread_pool.h"
-#include "utils.h"
 
 namespace art {
 namespace linker {

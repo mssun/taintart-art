@@ -29,6 +29,7 @@
 
 #include "base/macros.h"
 #include "base/mutex-inl.h"
+#include "base/utils.h"
 #include "bytecode_utils.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/base64_test_util.h"
@@ -40,7 +41,6 @@
 #include "jit/profile_compilation_info.h"
 #include "oat.h"
 #include "oat_file.h"
-#include "utils.h"
 #include "vdex_file.h"
 #include "ziparchive/zip_writer.h"
 

@@ -19,13 +19,13 @@
 #include "art_method-inl.h"
 #include "base/casts.h"
 #include "base/enums.h"
+#include "base/utils.h"
 #include "class-inl.h"
 #include "dex/dex_file-inl.h"
 #include "gc/accounting/card_table-inl.h"
 #include "object-inl.h"
 #include "object_array.h"
 #include "stack_trace_element.h"
-#include "utils.h"
 #include "well_known_classes.h"
 
 namespace art {

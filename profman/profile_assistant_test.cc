@@ -19,6 +19,7 @@
 #include "android-base/strings.h"
 #include "art_method-inl.h"
 #include "base/unix_file/fd_file.h"
+#include "base/utils.h"
 #include "common_runtime_test.h"
 #include "dex/descriptors_names.h"
 #include "exec_utils.h"
@@ -28,7 +29,6 @@
 #include "obj_ptr-inl.h"
 #include "profile_assistant.h"
 #include "scoped_thread_state_change-inl.h"
-#include "utils.h"
 
 namespace art {
 

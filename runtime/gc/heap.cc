@@ -32,6 +32,7 @@
 #include "base/histogram-inl.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/memory_tool.h"
+#include "base/os.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/time_utils.h"
@@ -81,7 +82,6 @@
 #include "mirror/reference-inl.h"
 #include "nativehelper/scoped_local_ref.h"
 #include "obj_ptr-inl.h"
-#include "os.h"
 #include "reflection.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"

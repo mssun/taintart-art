@@ -19,7 +19,7 @@
 
 #include "object.h"
 
-#include "atomic.h"
+#include "base/atomic.h"
 #include "heap_poisoning.h"
 #include "lock_word-inl.h"
 #include "object_reference-inl.h"

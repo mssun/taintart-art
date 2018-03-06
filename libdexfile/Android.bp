@@ -24,6 +24,7 @@ cc_defaults {
         "dex/descriptors_names.cc",
         "dex/dex_file.cc",
         "dex/dex_file_exception_helpers.cc",
+        "dex/dex_file_layout.cc",
         "dex/dex_file_loader.cc",
         "dex/dex_file_tracking_registrar.cc",
         "dex/dex_file_verifier.cc",
@@ -54,6 +55,9 @@ cc_defaults {
     },
     generated_sources: ["dexfile_operator_srcs"],
     shared_libs: [
+        // Important note: relying on libartbase's header_lib is perfectly acceptable.
+        // However, relying on the libartbase shared library introduces further, possibly cyclic,
+	// dependencies for clients outside of ART.
         "liblog",
         // For common macros.
         "libbase",
@@ -77,6 +81,7 @@ gensrcs {
     tools: ["generate_operator_out"],
     srcs: [
         "dex/dex_file.h",
+        "dex/dex_file_layout.h",
         "dex/dex_instruction.h",
         "dex/dex_instruction_utils.h",
         "dex/invoke_type.h",

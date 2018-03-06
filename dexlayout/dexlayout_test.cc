@@ -22,6 +22,7 @@
 #include <unistd.h>
 
 #include "base/unix_file/fd_file.h"
+#include "base/utils.h"
 #include "common_runtime_test.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/base64_test_util.h"
@@ -31,7 +32,6 @@
 #include "dexlayout.h"
 #include "exec_utils.h"
 #include "jit/profile_compilation_info.h"
-#include "utils.h"
 
 namespace art {
 

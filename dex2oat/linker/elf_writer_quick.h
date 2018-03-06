@@ -20,8 +20,8 @@
 #include <memory>
 
 #include "arch/instruction_set.h"
+#include "base/os.h"
 #include "elf_writer.h"
-#include "os.h"
 
 namespace art {
 

@@ -18,6 +18,7 @@
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
+#include "base/utils.h"
 #include "class_linker.h"
 #include "dex/invoke_type.h"
 #include "driver/compiler_driver.h"
@@ -26,7 +27,6 @@
 #include "nodes.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
-#include "utils.h"
 
 namespace art {
 

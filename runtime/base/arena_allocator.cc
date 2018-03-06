@@ -25,9 +25,9 @@
 
 #include <android-base/logging.h>
 
+#include "base/systrace.h"
 #include "mem_map.h"
 #include "mutex.h"
-#include "systrace.h"
 #include "thread-current-inl.h"
 
 namespace art {

@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include "arch/instruction_set.h"
 #include "base/variant_map.h"
 #include "cmdline_types.h"  // TODO: don't need to include this file here
 #include "compiler.h"

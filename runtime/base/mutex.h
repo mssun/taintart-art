@@ -26,10 +26,10 @@
 
 #include <android-base/logging.h>
 
-#include "atomic.h"
 #include "base/aborting.h"
+#include "base/atomic.h"
+#include "base/globals.h"
 #include "base/macros.h"
-#include "globals.h"
 
 #if defined(__APPLE__)
 #define ART_USE_FUTEXES 0
@@ -50,6 +50,7 @@ class SHARED_LOCKABLE ReaderWriterMutex;
 class SHARED_LOCKABLE MutatorMutex;
 class ScopedContentionRecorder;
 class Thread;
+class Mutex;
 
 // LockLevel is used to impose a lock hierarchy [1] where acquisition of a Mutex at a higher or
 // equal level to a lock a thread holds is invalid. The lock hierarchy achieves a cycle free
