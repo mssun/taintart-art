@@ -672,7 +672,7 @@ class ImageSpaceLoader {
     // Loaded the map, use the image header from the file now in case we patch it with
     // RelocateInPlace.
     image_header = reinterpret_cast<ImageHeader*>(map->Begin());
-    const uint32_t bitmap_index = ImageSpace::bitmap_index_.FetchAndAddSequentiallyConsistent(1);
+    const uint32_t bitmap_index = ImageSpace::bitmap_index_.fetch_add(1, std::memory_order_seq_cst);
     std::string bitmap_name(StringPrintf("imagespace %s live-bitmap %u",
                                          image_filename,
                                          bitmap_index));

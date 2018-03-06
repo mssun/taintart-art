@@ -122,7 +122,7 @@ void ZygoteSpace::SweepCallback(size_t num_ptrs, mirror::Object** ptrs, void* ar
     // Need to mark the card since this will update the mod-union table next GC cycle.
     card_table->MarkCard(ptrs[i]);
   }
-  zygote_space->objects_allocated_.FetchAndSubSequentiallyConsistent(num_ptrs);
+  zygote_space->objects_allocated_.fetch_sub(num_ptrs, std::memory_order_seq_cst);
 }
 
 }  // namespace space

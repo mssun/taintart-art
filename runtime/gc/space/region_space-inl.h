@@ -100,13 +100,13 @@ inline mirror::Object* RegionSpace::Region::Alloc(size_t num_bytes,
   uint8_t* old_top;
   uint8_t* new_top;
   do {
-    old_top = top_.LoadRelaxed();
+    old_top = top_.load(std::memory_order_relaxed);
     new_top = old_top + num_bytes;
     if (UNLIKELY(new_top > end_)) {
       return nullptr;
     }
   } while (!top_.CompareAndSetWeakRelaxed(old_top, new_top));
-  objects_allocated_.FetchAndAddRelaxed(1);
+  objects_allocated_.fetch_add(1, std::memory_order_relaxed);
   DCHECK_LE(Top(), end_);
   DCHECK_LT(old_top, end_);
   DCHECK_LE(new_top, end_);
@@ -365,11 +365,11 @@ inline size_t RegionSpace::Region::BytesAllocated() const {
 inline size_t RegionSpace::Region::ObjectsAllocated() const {
   if (IsLarge()) {
     DCHECK_LT(begin_ + kRegionSize, Top());
-    DCHECK_EQ(objects_allocated_.LoadRelaxed(), 0U);
+    DCHECK_EQ(objects_allocated_.load(std::memory_order_relaxed), 0U);
     return 1;
   } else if (IsLargeTail()) {
     DCHECK_EQ(begin_, Top());
-    DCHECK_EQ(objects_allocated_.LoadRelaxed(), 0U);
+    DCHECK_EQ(objects_allocated_.load(std::memory_order_relaxed), 0U);
     return 0;
   } else {
     DCHECK(IsAllocated()) << "state=" << state_;

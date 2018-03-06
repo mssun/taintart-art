@@ -154,7 +154,7 @@ inline CallSite* DexCache::GetResolvedCallSite(uint32_t call_site_idx) {
   GcRoot<mirror::CallSite>& target = GetResolvedCallSites()[call_site_idx];
   Atomic<GcRoot<mirror::CallSite>>& ref =
       reinterpret_cast<Atomic<GcRoot<mirror::CallSite>>&>(target);
-  return ref.LoadSequentiallyConsistent().Read();
+  return ref.load(std::memory_order_seq_cst).Read();
 }
 
 inline CallSite* DexCache::SetResolvedCallSite(uint32_t call_site_idx, CallSite* call_site) {

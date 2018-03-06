@@ -140,7 +140,7 @@ int32_t Monitor::GetHashCode() {
     }
   }
   DCHECK(HasHashCode());
-  return hash_code_.LoadRelaxed();
+  return hash_code_.load(std::memory_order_relaxed);
 }
 
 bool Monitor::Install(Thread* self) {
@@ -155,7 +155,7 @@ bool Monitor::Install(Thread* self) {
       break;
     }
     case LockWord::kHashCode: {
-      CHECK_EQ(hash_code_.LoadRelaxed(), static_cast<int32_t>(lw.GetHashCode()));
+      CHECK_EQ(hash_code_.load(std::memory_order_relaxed), static_cast<int32_t>(lw.GetHashCode()));
       break;
     }
     case LockWord::kFatLocked: {

@@ -251,6 +251,7 @@ inline ThreadState Thread::TransitionFromSuspendedToRunnable() {
       union StateAndFlags new_state_and_flags;
       new_state_and_flags.as_int = old_state_and_flags.as_int;
       new_state_and_flags.as_struct.state = kRunnable;
+
       // CAS the value with a memory barrier.
       if (LIKELY(tls32_.state_and_flags.as_atomic_int.CompareAndSetWeakAcquire(
                                                  old_state_and_flags.as_int,

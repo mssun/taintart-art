@@ -74,8 +74,8 @@ class AtomicStack {
   void Reset() {
     DCHECK(mem_map_.get() != nullptr);
     DCHECK(begin_ != nullptr);
-    front_index_.StoreRelaxed(0);
-    back_index_.StoreRelaxed(0);
+    front_index_.store(0, std::memory_order_relaxed);
+    back_index_.store(0, std::memory_order_relaxed);
     debug_is_sorted_ = true;
     mem_map_->MadviseDontNeedAndZero();
   }
@@ -103,7 +103,7 @@ class AtomicStack {
     int32_t index;
     int32_t new_index;
     do {
-      index = back_index_.LoadRelaxed();
+      index = back_index_.load(std::memory_order_relaxed);
       new_index = index + num_slots;
       if (UNLIKELY(static_cast<size_t>(new_index) >= growth_limit_)) {
         // Stack overflow.
@@ -134,31 +134,32 @@ class AtomicStack {
     if (kIsDebugBuild) {
       debug_is_sorted_ = false;
     }
-    const int32_t index = back_index_.LoadRelaxed();
+    const int32_t index = back_index_.load(std::memory_order_relaxed);
     DCHECK_LT(static_cast<size_t>(index), growth_limit_);
-    back_index_.StoreRelaxed(index + 1);
+    back_index_.store(index + 1, std::memory_order_relaxed);
     begin_[index].Assign(value);
   }
 
   T* PopBack() REQUIRES_SHARED(Locks::mutator_lock_) {
-    DCHECK_GT(back_index_.LoadRelaxed(), front_index_.LoadRelaxed());
+    DCHECK_GT(back_index_.load(std::memory_order_relaxed),
+              front_index_.load(std::memory_order_relaxed));
     // Decrement the back index non atomically.
-    back_index_.StoreRelaxed(back_index_.LoadRelaxed() - 1);
-    return begin_[back_index_.LoadRelaxed()].AsMirrorPtr();
+    back_index_.store(back_index_.load(std::memory_order_relaxed) - 1, std::memory_order_relaxed);
+    return begin_[back_index_.load(std::memory_order_relaxed)].AsMirrorPtr();
   }
 
   // Take an item from the front of the stack.
   T PopFront() {
-    int32_t index = front_index_.LoadRelaxed();
-    DCHECK_LT(index, back_index_.LoadRelaxed());
-    front_index_.StoreRelaxed(index + 1);
+    int32_t index = front_index_.load(std::memory_order_relaxed);
+    DCHECK_LT(index, back_index_.load(std::memory_order_relaxed));
+    front_index_.store(index + 1, std::memory_order_relaxed);
     return begin_[index];
   }
 
   // Pop a number of elements.
   void PopBackCount(int32_t n) {
     DCHECK_GE(Size(), static_cast<size_t>(n));
-    back_index_.StoreRelaxed(back_index_.LoadRelaxed() - n);
+    back_index_.store(back_index_.load(std::memory_order_relaxed) - n, std::memory_order_relaxed);
   }
 
   bool IsEmpty() const {
@@ -170,15 +171,17 @@ class AtomicStack {
   }
 
   size_t Size() const {
-    DCHECK_LE(front_index_.LoadRelaxed(), back_index_.LoadRelaxed());
-    return back_index_.LoadRelaxed() - front_index_.LoadRelaxed();
+    DCHECK_LE(front_index_.load(std::memory_order_relaxed),
+              back_index_.load(std::memory_order_relaxed));
+    return
+        back_index_.load(std::memory_order_relaxed) - front_index_.load(std::memory_order_relaxed);
   }
 
   StackReference<T>* Begin() const {
-    return begin_ + front_index_.LoadRelaxed();
+    return begin_ + front_index_.load(std::memory_order_relaxed);
   }
   StackReference<T>* End() const {
-    return begin_ + back_index_.LoadRelaxed();
+    return begin_ + back_index_.load(std::memory_order_relaxed);
   }
 
   size_t Capacity() const {
@@ -193,11 +196,11 @@ class AtomicStack {
   }
 
   void Sort() {
-    int32_t start_back_index = back_index_.LoadRelaxed();
-    int32_t start_front_index = front_index_.LoadRelaxed();
+    int32_t start_back_index = back_index_.load(std::memory_order_relaxed);
+    int32_t start_front_index = front_index_.load(std::memory_order_relaxed);
     std::sort(Begin(), End(), ObjectComparator());
-    CHECK_EQ(start_back_index, back_index_.LoadRelaxed());
-    CHECK_EQ(start_front_index, front_index_.LoadRelaxed());
+    CHECK_EQ(start_back_index, back_index_.load(std::memory_order_relaxed));
+    CHECK_EQ(start_front_index, front_index_.load(std::memory_order_relaxed));
     if (kIsDebugBuild) {
       debug_is_sorted_ = true;
     }
@@ -236,7 +239,7 @@ class AtomicStack {
     }
     int32_t index;
     do {
-      index = back_index_.LoadRelaxed();
+      index = back_index_.load(std::memory_order_relaxed);
       if (UNLIKELY(static_cast<size_t>(index) >= limit)) {
         // Stack overflow.
         return false;

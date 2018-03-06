@@ -37,7 +37,7 @@ inline bool Bitmap::AtomicTestAndSetBit(uintptr_t bit_index) {
   auto* atomic_entry = reinterpret_cast<Atomic<uintptr_t>*>(&bitmap_begin_[word_index]);
   uintptr_t old_word;
   do {
-    old_word = atomic_entry->LoadRelaxed();
+    old_word = atomic_entry->load(std::memory_order_relaxed);
     // Fast path: The bit is already set.
     if ((old_word & word_mask) != 0) {
       DCHECK(TestBit(bit_index));

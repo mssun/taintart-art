@@ -78,13 +78,13 @@ inline mirror::Object* ConcurrentCopying::MarkImmuneSpace(mirror::Object* ref) {
     if (kIsDebugBuild) {
       if (Thread::Current() == thread_running_gc_) {
         DCHECK(!kGrayImmuneObject ||
-               updated_all_immune_objects_.LoadRelaxed() ||
+               updated_all_immune_objects_.load(std::memory_order_relaxed) ||
                gc_grays_immune_objects_);
       } else {
         DCHECK(kGrayImmuneObject);
       }
     }
-    if (!kGrayImmuneObject || updated_all_immune_objects_.LoadRelaxed()) {
+    if (!kGrayImmuneObject || updated_all_immune_objects_.load(std::memory_order_relaxed)) {
       return ref;
     }
     // This may or may not succeed, which is ok because the object may already be gray.
