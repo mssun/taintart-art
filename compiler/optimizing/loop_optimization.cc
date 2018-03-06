@@ -1297,40 +1297,35 @@ bool HLoopOptimization::VectorizeUse(LoopNode* node,
         return true;
       }
     }
+  } else if (instruction->IsAbs()) {
+    // Deal with vector restrictions.
+    HInstruction* opa = instruction->InputAt(0);
+    HInstruction* r = opa;
+    bool is_unsigned = false;
+    if (HasVectorRestrictions(restrictions, kNoAbs)) {
+      return false;
+    } else if (HasVectorRestrictions(restrictions, kNoHiBits) &&
+               (!IsNarrowerOperand(opa, type, &r, &is_unsigned) || is_unsigned)) {
+      return false;  // reject, unless operand is sign-extension narrower
+    }
+    // Accept ABS(x) for vectorizable operand.
+    DCHECK(r != nullptr);
+    if (generate_code && vector_mode_ != kVector) {  // de-idiom
+      r = opa;
+    }
+    if (VectorizeUse(node, r, generate_code, type, restrictions)) {
+      if (generate_code) {
+        GenerateVecOp(instruction,
+                      vector_map_->Get(r),
+                      nullptr,
+                      HVecOperation::ToProperType(type, is_unsigned));
+      }
+      return true;
+    }
   } else if (instruction->IsInvokeStaticOrDirect()) {
     // Accept particular intrinsics.
     HInvokeStaticOrDirect* invoke = instruction->AsInvokeStaticOrDirect();
     switch (invoke->GetIntrinsic()) {
-      case Intrinsics::kMathAbsInt:
-      case Intrinsics::kMathAbsLong:
-      case Intrinsics::kMathAbsFloat:
-      case Intrinsics::kMathAbsDouble: {
-        // Deal with vector restrictions.
-        HInstruction* opa = instruction->InputAt(0);
-        HInstruction* r = opa;
-        bool is_unsigned = false;
-        if (HasVectorRestrictions(restrictions, kNoAbs)) {
-          return false;
-        } else if (HasVectorRestrictions(restrictions, kNoHiBits) &&
-                   (!IsNarrowerOperand(opa, type, &r, &is_unsigned) || is_unsigned)) {
-          return false;  // reject, unless operand is sign-extension narrower
-        }
-        // Accept ABS(x) for vectorizable operand.
-        DCHECK(r != nullptr);
-        if (generate_code && vector_mode_ != kVector) {  // de-idiom
-          r = opa;
-        }
-        if (VectorizeUse(node, r, generate_code, type, restrictions)) {
-          if (generate_code) {
-            GenerateVecOp(instruction,
-                          vector_map_->Get(r),
-                          nullptr,
-                          HVecOperation::ToProperType(type, is_unsigned));
-          }
-          return true;
-        }
-        return false;
-      }
       case Intrinsics::kMathMinIntInt:
       case Intrinsics::kMathMinLongLong:
       case Intrinsics::kMathMinFloatFloat:
@@ -1811,18 +1806,15 @@ void HLoopOptimization::GenerateVecOp(HInstruction* org,
       GENERATE_VEC(
         new (global_allocator_) HVecUShr(global_allocator_, opa, opb, type, vector_length_, dex_pc),
         new (global_allocator_) HUShr(org_type, opa, opb, dex_pc));
+    case HInstruction::kAbs:
+      DCHECK(opb == nullptr);
+      GENERATE_VEC(
+        new (global_allocator_) HVecAbs(global_allocator_, opa, type, vector_length_, dex_pc),
+        new (global_allocator_) HAbs(org_type, opa, dex_pc));
     case HInstruction::kInvokeStaticOrDirect: {
       HInvokeStaticOrDirect* invoke = org->AsInvokeStaticOrDirect();
       if (vector_mode_ == kVector) {
         switch (invoke->GetIntrinsic()) {
-          case Intrinsics::kMathAbsInt:
-          case Intrinsics::kMathAbsLong:
-          case Intrinsics::kMathAbsFloat:
-          case Intrinsics::kMathAbsDouble:
-            DCHECK(opb == nullptr);
-            vector = new (global_allocator_)
-                HVecAbs(global_allocator_, opa, type, vector_length_, dex_pc);
-            break;
           case Intrinsics::kMathMinIntInt:
           case Intrinsics::kMathMinLongLong:
           case Intrinsics::kMathMinFloatFloat:
@@ -1998,9 +1990,7 @@ bool HLoopOptimization::VectorizeSADIdiom(LoopNode* node,
   HInstruction* v = instruction->InputAt(1);
   HInstruction* a = nullptr;
   HInstruction* b = nullptr;
-  if (v->IsInvokeStaticOrDirect() &&
-       (v->AsInvokeStaticOrDirect()->GetIntrinsic() == Intrinsics::kMathAbsInt ||
-        v->AsInvokeStaticOrDirect()->GetIntrinsic() == Intrinsics::kMathAbsLong)) {
+  if (v->GetType() == reduction_type && v->IsAbs()) {
     HInstruction* x = v->InputAt(0);
     if (x->GetType() == reduction_type) {
       int64_t c = 0;
@@ -2054,14 +2044,13 @@ bool HLoopOptimization::VectorizeSADIdiom(LoopNode* node,
       VectorizeUse(node, r, generate_code, sub_type, restrictions) &&
       VectorizeUse(node, s, generate_code, sub_type, restrictions)) {
     if (generate_code) {
-      reduction_type = HVecOperation::ToProperType(reduction_type, is_unsigned);
       if (vector_mode_ == kVector) {
         vector_map_->Put(instruction, new (global_allocator_) HVecSADAccumulate(
             global_allocator_,
             vector_map_->Get(q),
             vector_map_->Get(r),
             vector_map_->Get(s),
-            reduction_type,
+            HVecOperation::ToProperType(reduction_type, is_unsigned),
             GetOtherVL(reduction_type, sub_type, vector_length_),
             kNoDexPc));
         MaybeRecordStat(stats_, MethodCompilationStat::kLoopVectorizedIdiom);
