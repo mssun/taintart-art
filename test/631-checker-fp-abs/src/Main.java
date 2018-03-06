@@ -23,6 +23,9 @@
  */
 public class Main {
 
+  private final static boolean isDalvik =
+      System.getProperty("java.vm.name").equals("Dalvik");
+
   private static final int SPQUIET = 1 << 22;
   private static final long DPQUIET = 1L << 51;
 
@@ -73,13 +76,16 @@ public class Main {
 
     // A few NaN numbers.
     int[] spnans = {
-      0x7f800001,
+      0x7f800001,  // signaling
       0x7fa00000,
-      0x7fc00000,
+      0x7fbfffff,
+      0x7fc00000,  // quiet
+      0x7fc00001,
       0x7fffffff,
-      0xff800001,
+      0xff800001,  // signaling
       0xffa00000,
-      0xffc00000,
+      0xffbfffff,
+      0xffc00000,  // quiet
       0xffffffff
     };
     for (int i = 0; i < spnans.length; i++) {
@@ -142,6 +148,13 @@ public class Main {
   // We allow that an expected NaN result has become quiet.
   private static void expectEqualsNaN32(int expected, int result) {
     if (expected != result && (expected | SPQUIET) != result) {
+      if (!isDalvik) {
+        // If not on ART, relax the expected value more towards just
+        // "spec compliance" and allow sign bit to remain set for NaN.
+        if (expected == (result & Integer.MAX_VALUE)) {
+          return;
+        }
+      }
       throw new Error("Expected: 0x" + Integer.toHexString(expected)
           + ", found: 0x" + Integer.toHexString(result));
     }
@@ -157,6 +170,13 @@ public class Main {
   // We allow that an expected NaN result has become quiet.
   private static void expectEqualsNaN64(long expected, long result) {
     if (expected != result && (expected | DPQUIET) != result) {
+      if (!isDalvik) {
+        // If not on ART, relax the expected value more towards just
+        // "spec compliance" and allow sign bit to remain set for NaN.
+        if (expected == (result & Long.MAX_VALUE)) {
+          return;
+        }
+      }
       throw new Error("Expected: 0x" + Long.toHexString(expected)
           + ", found: 0x" + Long.toHexString(result));
     }
