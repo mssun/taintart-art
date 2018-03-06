@@ -1263,10 +1263,14 @@ std::unique_ptr<OatFile> OatFileAssistant::OatFileInfo::ReleaseFileForUse() {
 
   switch (Status()) {
     case kOatBootImageOutOfDate:
+      // OutOfDate may be either a mismatched image, or a missing image.
       if (oat_file_assistant_->HasOriginalDexFiles()) {
-        // If there are original dex files, it is better to use them.
+        // If there are original dex files, it is better to use them (to avoid a potential
+        // quickening mismatch because the boot image changed).
         break;
       }
+      // If we do not accept the oat file, we may not have access to dex bytecode at all. Grudgingly
+      // go forward.
       FALLTHROUGH_INTENDED;
 
     case kOatRelocationOutOfDate:
