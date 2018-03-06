@@ -33,7 +33,9 @@
 #include "base/enums.h"
 #include "base/length_prefixed_array.h"
 #include "base/macros.h"
+#include "base/os.h"
 #include "base/safe_map.h"
+#include "base/utils.h"
 #include "class_table.h"
 #include "driver/compiler_driver.h"
 #include "image.h"
@@ -43,8 +45,6 @@
 #include "mirror/dex_cache.h"
 #include "oat_file.h"
 #include "obj_ptr.h"
-#include "os.h"
-#include "utils.h"
 
 namespace art {
 namespace gc {

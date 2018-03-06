@@ -19,6 +19,7 @@
 
 #include "read_barrier.h"
 
+#include "base/utils.h"
 #include "gc/accounting/read_barrier_table.h"
 #include "gc/collector/concurrent_copying-inl.h"
 #include "gc/heap.h"
@@ -26,7 +27,6 @@
 #include "mirror/object_reference.h"
 #include "mirror/reference.h"
 #include "runtime.h"
-#include "utils.h"
 
 namespace art {
 

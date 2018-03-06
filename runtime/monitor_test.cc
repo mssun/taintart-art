@@ -18,7 +18,7 @@
 
 #include <string>
 
-#include "atomic.h"
+#include "base/atomic.h"
 #include "barrier.h"
 #include "base/time_utils.h"
 #include "class_linker-inl.h"

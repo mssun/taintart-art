@@ -21,9 +21,9 @@
 #include <string>
 
 #include "base/macros.h"
+#include "base/os.h"
 // Explicitly include our own elf.h to avoid Linux and other dependencies.
 #include "./elf.h"
-#include "os.h"
 
 namespace art {
 template <typename ElfTypes>

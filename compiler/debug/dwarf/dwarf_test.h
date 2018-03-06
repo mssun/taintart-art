@@ -26,12 +26,12 @@
 #include <set>
 #include <string>
 
+#include "base/os.h"
 #include "base/unix_file/fd_file.h"
 #include "common_runtime_test.h"
 #include "gtest/gtest.h"
 #include "linker/elf_builder.h"
 #include "linker/file_output_stream.h"
-#include "os.h"
 
 namespace art {
 namespace dwarf {

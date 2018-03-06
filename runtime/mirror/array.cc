@@ -16,6 +16,7 @@
 
 #include "array-inl.h"
 
+#include "base/utils.h"
 #include "class-inl.h"
 #include "class.h"
 #include "class_linker-inl.h"
@@ -26,7 +27,6 @@
 #include "object-inl.h"
 #include "object_array-inl.h"
 #include "thread.h"
-#include "utils.h"
 
 namespace art {
 namespace mirror {

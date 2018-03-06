@@ -17,7 +17,7 @@
 #ifndef ART_COMPILER_UTILS_ATOMIC_DEX_REF_MAP_H_
 #define ART_COMPILER_UTILS_ATOMIC_DEX_REF_MAP_H_
 
-#include "atomic.h"
+#include "base/atomic.h"
 #include "base/dchecked_vector.h"
 #include "base/safe_map.h"
 #include "dex/dex_file_reference.h"

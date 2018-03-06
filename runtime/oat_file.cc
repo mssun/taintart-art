@@ -40,9 +40,11 @@
 #include "base/enums.h"
 #include "base/file_utils.h"
 #include "base/logging.h"  // For VLOG_IS_ON.
+#include "base/os.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/unix_file/fd_file.h"
+#include "base/utils.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/dex_file_loader.h"
 #include "dex/dex_file_types.h"
@@ -58,10 +60,8 @@
 #include "oat.h"
 #include "oat_file-inl.h"
 #include "oat_file_manager.h"
-#include "os.h"
 #include "runtime.h"
 #include "type_lookup_table.h"
-#include "utils.h"
 #include "vdex_file.h"
 
 namespace art {
@@ -1812,9 +1812,9 @@ void OatDexFile::MadviseDexFile(const DexFile& dex_file, MadviseState state) {
     // Default every dex file to MADV_RANDOM when its loaded by default for low ram devices.
     // Other devices have enough page cache to get performance benefits from loading more pages
     // into the page cache.
-    MadviseLargestPageAlignedRegion(dex_file.Begin(),
-                                    dex_file.Begin() + dex_file.Size(),
-                                    MADV_RANDOM);
+    DexLayoutSection::MadviseLargestPageAlignedRegion(dex_file.Begin(),
+                                                      dex_file.Begin() + dex_file.Size(),
+                                                      MADV_RANDOM);
   }
   const OatFile::OatDexFile* oat_dex_file = dex_file.GetOatDexFile();
   if (oat_dex_file != nullptr) {

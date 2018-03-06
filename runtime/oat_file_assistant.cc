@@ -25,7 +25,9 @@
 
 #include "base/file_utils.h"
 #include "base/logging.h"  // For VLOG.
+#include "base/os.h"
 #include "base/stl_util.h"
+#include "base/utils.h"
 #include "class_linker.h"
 #include "compiler_filter.h"
 #include "dex/art_dex_file_loader.h"
@@ -35,10 +37,8 @@
 #include "gc/space/image_space.h"
 #include "image.h"
 #include "oat.h"
-#include "os.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
-#include "utils.h"
 #include "vdex_file.h"
 #include "class_loader_context.h"
 

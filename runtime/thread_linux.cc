@@ -19,7 +19,7 @@
 #include <signal.h>
 
 #include "base/logging.h"  // For VLOG.
-#include "utils.h"
+#include "base/utils.h"
 
 namespace art {
 

@@ -34,6 +34,8 @@
 #include "android-base/stringprintf.h"
 
 #include "base/logging.h"  // For VLOG_IS_ON.
+#include "base/os.h"
+#include "base/utils.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
@@ -48,8 +50,6 @@
 #include "dex_writer.h"
 #include "jit/profile_compilation_info.h"
 #include "mem_map.h"
-#include "os.h"
-#include "utils.h"
 
 namespace art {
 

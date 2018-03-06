@@ -30,6 +30,8 @@
 #include "base/file_utils.h"
 #include "base/logging.h"
 #include "base/macros.h"
+#include "base/mutex.h"
+#include "base/os.h"
 #include "base/runtime_debug.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
@@ -52,7 +54,6 @@
 #include "mirror/class_loader.h"
 #include "native/dalvik_system_DexFile.h"
 #include "noop_compiler_callbacks.h"
-#include "os.h"
 #include "runtime-inl.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread.h"
@@ -64,6 +65,7 @@ int main(int argc, char **argv) {
   // everything else. In case you want to see all messages, comment out the line.
   setenv("ANDROID_LOG_TAGS", "*:e", 1);
 
+  art::Locks::Init();
   art::InitLogging(argv, art::Runtime::Abort);
   LOG(INFO) << "Running main() from common_runtime_test.cc...";
   testing::InitGoogleTest(&argc, argv);

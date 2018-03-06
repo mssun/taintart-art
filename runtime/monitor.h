@@ -25,8 +25,8 @@
 #include <list>
 #include <vector>
 
-#include "atomic.h"
 #include "base/allocator.h"
+#include "base/atomic.h"
 #include "base/mutex.h"
 #include "gc_root.h"
 #include "lock_word.h"

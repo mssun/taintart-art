@@ -28,6 +28,7 @@
 #include "art_method-inl.h"
 #include "base/file_utils.h"
 #include "base/unix_file/fd_file.h"
+#include "base/utils.h"
 #include "class_linker-inl.h"
 #include "common_compiler_test.h"
 #include "compiler_callbacks.h"
@@ -46,7 +47,6 @@
 #include "oat_writer.h"
 #include "scoped_thread_state_change-inl.h"
 #include "signal_catcher.h"
-#include "utils.h"
 
 namespace art {
 namespace linker {

@@ -21,6 +21,7 @@
 #include "art_method-inl.h"
 #include "base/callee_save_type.h"
 #include "base/enums.h"
+#include "base/utils.h"
 #include "class_linker.h"
 #include "compiled_method-inl.h"
 #include "dex/descriptors_names.h"
@@ -36,7 +37,6 @@
 #include "oat_quick_method_header.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"
-#include "utils.h"
 
 namespace art {
 

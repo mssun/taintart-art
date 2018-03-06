@@ -21,12 +21,12 @@
 #include "base/enums.h"
 #include "base/macros.h"
 #include "base/mutex.h"
+#include "base/os.h"
 #include "elf_file.h"
 #include "elf_utils.h"
 #include "gc/accounting/space_bitmap.h"
 #include "gc/heap.h"
 #include "gc/space/image_space.h"
-#include "os.h"
 #include "runtime.h"
 
 namespace art {

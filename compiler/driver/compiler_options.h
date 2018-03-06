@@ -22,10 +22,10 @@
 #include <vector>
 
 #include "base/macros.h"
+#include "base/utils.h"
 #include "compiler_filter.h"
 #include "globals.h"
 #include "optimizing/register_allocator.h"
-#include "utils.h"
 
 namespace art {
 
