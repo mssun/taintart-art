@@ -143,6 +143,10 @@ static constexpr bool kLogAllGCs = false;
 static constexpr size_t kPartialTlabSize = 16 * KB;
 static constexpr bool kUsePartialTlabs = true;
 
+// Use Max heap for 2 seconds, this is smaller than the usual 5s window since we don't want to leave
+// allocate with relaxed ergonomics for that long.
+static constexpr size_t kPostForkMaxHeapDurationMS = 2000;
+
 #if defined(__LP64__) || !defined(ADDRESS_SANITIZER)
 // 300 MB (0x12c00000) - (default non-moving space capacity).
 static uint8_t* const kPreferredAllocSpaceBegin =
@@ -3539,6 +3543,12 @@ void Heap::ClampGrowthLimit() {
 }
 
 void Heap::ClearGrowthLimit() {
+  if (max_allowed_footprint_ == growth_limit_ && growth_limit_ < capacity_) {
+    max_allowed_footprint_ = capacity_;
+    concurrent_start_bytes_ =
+         std::max(max_allowed_footprint_, kMinConcurrentRemainingBytes) -
+         kMinConcurrentRemainingBytes;
+  }
   growth_limit_ = capacity_;
   ScopedObjectAccess soa(Thread::Current());
   for (const auto& space : continuous_spaces_) {
@@ -4108,6 +4118,33 @@ const Verification* Heap::GetVerification() const {
 void Heap::VlogHeapGrowth(size_t max_allowed_footprint, size_t new_footprint, size_t alloc_size) {
   VLOG(heap) << "Growing heap from " << PrettySize(max_allowed_footprint) << " to "
              << PrettySize(new_footprint) << " for a " << PrettySize(alloc_size) << " allocation";
+}
+
+class Heap::TriggerPostForkCCGcTask : public HeapTask {
+ public:
+  explicit TriggerPostForkCCGcTask(uint64_t target_time) : HeapTask(target_time) {}
+  void Run(Thread* self) OVERRIDE {
+    gc::Heap* heap = Runtime::Current()->GetHeap();
+    // Trigger a GC, if not already done. The first GC after fork, whenever
+    // takes place, will adjust the thresholds to normal levels.
+    if (heap->max_allowed_footprint_ == heap->growth_limit_) {
+      heap->RequestConcurrentGC(self, kGcCauseBackground, false);
+    }
+  }
+};
+
+void Heap::PostForkChildAction(Thread* self) {
+  // Temporarily increase max_allowed_footprint_ and concurrent_start_bytes_ to
+  // max values to avoid GC during app launch.
+  if (collector_type_ == kCollectorTypeCC && !IsLowMemoryMode()) {
+    // Set max_allowed_footprint_ to the largest allowed value.
+    SetIdealFootprint(growth_limit_);
+    // Set concurrent_start_bytes_ to half of the heap size.
+    concurrent_start_bytes_ = std::max(max_allowed_footprint_ / 2, GetBytesAllocated());
+
+    GetTaskProcessor()->AddTask(
+        self, new TriggerPostForkCCGcTask(NanoTime() + MsToNs(kPostForkMaxHeapDurationMS)));
+  }
 }
 
 }  // namespace gc

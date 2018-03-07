@@ -306,6 +306,8 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
     LOG(ERROR) << StringPrintf("Unknown bits set in runtime_flags: %#x", runtime_flags);
   }
 
+  Runtime::Current()->GetHeap()->PostForkChildAction(thread);
+
   // Update tracing.
   if (Trace::GetMethodTracingMode() != TracingMode::kTracingInactive) {
     Trace::TraceOutputMode output_mode = Trace::GetOutputMode();
