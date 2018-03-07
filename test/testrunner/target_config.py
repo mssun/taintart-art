@@ -69,7 +69,13 @@ target_config = {
         }
     },
     'art-gcstress-gcverify': {
-        'run-test': ['--gcstress',
+        # Don't include --interpreter, because it takes too long to run all
+        # the tests on the build bot (b/74225325)
+        'run-test': ['--interp-ac',
+                     '--jit',
+                     '--optimizing',
+                     '--speed-profile',
+                     '--gcstress',
                      '--gcverify'],
         'env' : {
             'ART_USE_READ_BARRIER' : 'false',
