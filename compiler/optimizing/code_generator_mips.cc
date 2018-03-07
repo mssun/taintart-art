@@ -8799,10 +8799,10 @@ static void CreateMinMaxLocations(ArenaAllocator* allocator, HBinaryOperation* m
   }
 }
 
-void InstructionCodeGeneratorMIPS::GenerateMinMax(LocationSummary* locations,
-                                                  bool is_min,
-                                                  bool isR6,
-                                                  DataType::Type type) {
+void InstructionCodeGeneratorMIPS::GenerateMinMaxInt(LocationSummary* locations,
+                                                     bool is_min,
+                                                     bool isR6,
+                                                     DataType::Type type) {
   if (isR6) {
     // Some architectures, such as ARM and MIPS (prior to r6), have a
     // conditional move instruction which only changes the target
@@ -9130,24 +9130,29 @@ void InstructionCodeGeneratorMIPS::GenerateMinMaxFP(LocationSummary* locations,
   }
 }
 
+void InstructionCodeGeneratorMIPS::GenerateMinMax(HBinaryOperation* minmax, bool is_min) {
+  bool isR6 = codegen_->GetInstructionSetFeatures().IsR6();
+  DataType::Type type = minmax->GetResultType();
+  switch (type) {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+      GenerateMinMaxInt(minmax->GetLocations(), is_min, isR6, type);
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      GenerateMinMaxFP(minmax->GetLocations(), is_min, isR6, type);
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for HMinMax " << type;
+  }
+}
+
 void LocationsBuilderMIPS::VisitMin(HMin* min) {
   CreateMinMaxLocations(GetGraph()->GetAllocator(), min);
 }
 
 void InstructionCodeGeneratorMIPS::VisitMin(HMin* min) {
-  bool isR6 = codegen_->GetInstructionSetFeatures().IsR6();
-  switch (min->GetResultType()) {
-    case DataType::Type::kInt32:
-    case DataType::Type::kInt64:
-      GenerateMinMax(min->GetLocations(), /*is_min*/ true, isR6, min->GetResultType());
-      break;
-    case DataType::Type::kFloat32:
-    case DataType::Type::kFloat64:
-      GenerateMinMaxFP(min->GetLocations(), /*is_min*/ true, isR6, min->GetResultType());
-      break;
-    default:
-      LOG(FATAL) << "Unexpected type for HMin " << min->GetResultType();
-  }
+  GenerateMinMax(min, /*is_min*/ true);
 }
 
 void LocationsBuilderMIPS::VisitMax(HMax* max) {
@@ -9155,19 +9160,7 @@ void LocationsBuilderMIPS::VisitMax(HMax* max) {
 }
 
 void InstructionCodeGeneratorMIPS::VisitMax(HMax* max) {
-  bool isR6 = codegen_->GetInstructionSetFeatures().IsR6();
-  switch (max->GetResultType()) {
-    case DataType::Type::kInt32:
-    case DataType::Type::kInt64:
-      GenerateMinMax(max->GetLocations(), /*is_min*/ false, isR6, max->GetResultType());
-      break;
-    case DataType::Type::kFloat32:
-    case DataType::Type::kFloat64:
-      GenerateMinMaxFP(max->GetLocations(), /*is_min*/ false, isR6, max->GetResultType());
-      break;
-    default:
-      LOG(FATAL) << "Unexpected type for HMax " << max->GetResultType();
-  }
+  GenerateMinMax(max, /*is_min*/ false);
 }
 
 void LocationsBuilderMIPS::VisitAbs(HAbs* abs) {

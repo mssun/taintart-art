@@ -4719,7 +4719,7 @@ static void CreateMinMaxLocations(ArenaAllocator* allocator, HBinaryOperation* m
   }
 }
 
-void InstructionCodeGeneratorARMVIXL::GenerateMinMax(LocationSummary* locations, bool is_min) {
+void InstructionCodeGeneratorARMVIXL::GenerateMinMaxInt(LocationSummary* locations, bool is_min) {
   Location op1_loc = locations->InAt(0);
   Location op2_loc = locations->InAt(1);
   Location out_loc = locations->Out();
@@ -4780,8 +4780,8 @@ void InstructionCodeGeneratorARMVIXL::GenerateMinMaxLong(LocationSummary* locati
   }
 }
 
-void InstructionCodeGeneratorARMVIXL::GenerateMinMaxFloat(HInstruction* min_max, bool is_min) {
-  LocationSummary* locations = min_max->GetLocations();
+void InstructionCodeGeneratorARMVIXL::GenerateMinMaxFloat(HInstruction* minmax, bool is_min) {
+  LocationSummary* locations = minmax->GetLocations();
   Location op1_loc = locations->InAt(0);
   Location op2_loc = locations->InAt(1);
   Location out_loc = locations->Out();
@@ -4800,7 +4800,7 @@ void InstructionCodeGeneratorARMVIXL::GenerateMinMaxFloat(HInstruction* min_max,
   const vixl32::Register temp1 = temps.Acquire();
   vixl32::Register temp2 = RegisterFrom(locations->GetTemp(0));
   vixl32::Label nan, done;
-  vixl32::Label* final_label = codegen_->GetFinalLabel(min_max, &done);
+  vixl32::Label* final_label = codegen_->GetFinalLabel(minmax, &done);
 
   DCHECK(op1.Is(out));
 
@@ -4841,8 +4841,8 @@ void InstructionCodeGeneratorARMVIXL::GenerateMinMaxFloat(HInstruction* min_max,
   }
 }
 
-void InstructionCodeGeneratorARMVIXL::GenerateMinMaxDouble(HInstruction* min_max, bool is_min) {
-  LocationSummary* locations = min_max->GetLocations();
+void InstructionCodeGeneratorARMVIXL::GenerateMinMaxDouble(HInstruction* minmax, bool is_min) {
+  LocationSummary* locations = minmax->GetLocations();
   Location op1_loc = locations->InAt(0);
   Location op2_loc = locations->InAt(1);
   Location out_loc = locations->Out();
@@ -4857,7 +4857,7 @@ void InstructionCodeGeneratorARMVIXL::GenerateMinMaxDouble(HInstruction* min_max
   vixl32::DRegister op2 = DRegisterFrom(op2_loc);
   vixl32::DRegister out = DRegisterFrom(out_loc);
   vixl32::Label handle_nan_eq, done;
-  vixl32::Label* final_label = codegen_->GetFinalLabel(min_max, &done);
+  vixl32::Label* final_label = codegen_->GetFinalLabel(minmax, &done);
 
   DCHECK(op1.Is(out));
 
@@ -4892,27 +4892,32 @@ void InstructionCodeGeneratorARMVIXL::GenerateMinMaxDouble(HInstruction* min_max
   }
 }
 
+void InstructionCodeGeneratorARMVIXL::GenerateMinMax(HBinaryOperation* minmax, bool is_min) {
+  DataType::Type type = minmax->GetResultType();
+  switch (type) {
+    case DataType::Type::kInt32:
+      GenerateMinMaxInt(minmax->GetLocations(), is_min);
+      break;
+    case DataType::Type::kInt64:
+      GenerateMinMaxLong(minmax->GetLocations(), is_min);
+      break;
+    case DataType::Type::kFloat32:
+      GenerateMinMaxFloat(minmax, is_min);
+      break;
+    case DataType::Type::kFloat64:
+      GenerateMinMaxDouble(minmax, is_min);
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for HMinMax " << type;
+  }
+}
+
 void LocationsBuilderARMVIXL::VisitMin(HMin* min) {
   CreateMinMaxLocations(GetGraph()->GetAllocator(), min);
 }
 
 void InstructionCodeGeneratorARMVIXL::VisitMin(HMin* min) {
-  switch (min->GetResultType()) {
-    case DataType::Type::kInt32:
-      GenerateMinMax(min->GetLocations(), /*is_min*/ true);
-      break;
-    case DataType::Type::kInt64:
-      GenerateMinMaxLong(min->GetLocations(), /*is_min*/ true);
-      break;
-    case DataType::Type::kFloat32:
-      GenerateMinMaxFloat(min, /*is_min*/ true);
-      break;
-    case DataType::Type::kFloat64:
-      GenerateMinMaxDouble(min, /*is_min*/ true);
-      break;
-    default:
-      LOG(FATAL) << "Unexpected type for HMin " << min->GetResultType();
-  }
+  GenerateMinMax(min, /*is_min*/ true);
 }
 
 void LocationsBuilderARMVIXL::VisitMax(HMax* max) {
@@ -4920,22 +4925,7 @@ void LocationsBuilderARMVIXL::VisitMax(HMax* max) {
 }
 
 void InstructionCodeGeneratorARMVIXL::VisitMax(HMax* max) {
-  switch (max->GetResultType()) {
-    case DataType::Type::kInt32:
-      GenerateMinMax(max->GetLocations(), /*is_min*/ false);
-      break;
-    case DataType::Type::kInt64:
-      GenerateMinMaxLong(max->GetLocations(), /*is_min*/ false);
-      break;
-    case DataType::Type::kFloat32:
-      GenerateMinMaxFloat(max, /*is_min*/ false);
-      break;
-    case DataType::Type::kFloat64:
-      GenerateMinMaxDouble(max, /*is_min*/ false);
-      break;
-    default:
-      LOG(FATAL) << "Unexpected type for HMax " << max->GetResultType();
-  }
+  GenerateMinMax(max, /*is_min*/ false);
 }
 
 void LocationsBuilderARMVIXL::VisitAbs(HAbs* abs) {

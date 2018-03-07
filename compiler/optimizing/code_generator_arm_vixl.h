@@ -349,10 +349,11 @@ class InstructionCodeGeneratorARMVIXL : public InstructionCodeGenerator {
                       bool value_can_be_null);
   void HandleFieldGet(HInstruction* instruction, const FieldInfo& field_info);
 
-  void GenerateMinMax(LocationSummary* locations, bool is_min);
+  void GenerateMinMaxInt(LocationSummary* locations, bool is_min);
   void GenerateMinMaxLong(LocationSummary* locations, bool is_min);
-  void GenerateMinMaxFloat(HInstruction* min_max, bool is_min);
-  void GenerateMinMaxDouble(HInstruction* min_max, bool is_min);
+  void GenerateMinMaxFloat(HInstruction* minmax, bool is_min);
+  void GenerateMinMaxDouble(HInstruction* minmax, bool is_min);
+  void GenerateMinMax(HBinaryOperation* minmax, bool is_min);
 
   // Generate a heap reference load using one register `out`:
   //
