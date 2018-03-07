@@ -31,7 +31,7 @@
 #else
 #include <algorithm>
 #include "base/stl_util.h"
-#include "globals.h"
+#include "base/globals.h"
 #endif
 
 namespace unix_file {
