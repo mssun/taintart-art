@@ -234,12 +234,13 @@ class PCRelativeHandlerVisitor : public HGraphVisitor {
     switch (invoke->GetIntrinsic()) {
       case Intrinsics::kMathAbsDouble:
       case Intrinsics::kMathAbsFloat:
-        LOG(FATAL) << "Unreachable abs";
-        UNREACHABLE();
       case Intrinsics::kMathMaxDoubleDouble:
       case Intrinsics::kMathMaxFloatFloat:
       case Intrinsics::kMathMinDoubleDouble:
       case Intrinsics::kMathMinFloatFloat:
+        LOG(FATAL) << "Unreachable min/max/abs: intrinsics should have been lowered "
+                      "to IR nodes by instruction simplifier";
+        UNREACHABLE();
       case Intrinsics::kMathRoundFloat:
         if (!base_added) {
           DCHECK(invoke_static_or_direct != nullptr);

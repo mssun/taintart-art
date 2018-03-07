@@ -6665,6 +6665,188 @@ void InstructionCodeGeneratorMIPS64::VisitRem(HRem* instruction) {
   }
 }
 
+static void CreateMinMaxLocations(ArenaAllocator* allocator, HBinaryOperation* minmax) {
+  LocationSummary* locations = new (allocator) LocationSummary(minmax);
+  switch (minmax->GetResultType()) {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+      locations->SetInAt(0, Location::RequiresRegister());
+      locations->SetInAt(1, Location::RequiresRegister());
+      locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetInAt(1, Location::RequiresFpuRegister());
+      locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for HMinMax " << minmax->GetResultType();
+  }
+}
+
+void InstructionCodeGeneratorMIPS64::GenerateMinMax(LocationSummary* locations, bool is_min) {
+  GpuRegister lhs = locations->InAt(0).AsRegister<GpuRegister>();
+  GpuRegister rhs = locations->InAt(1).AsRegister<GpuRegister>();
+  GpuRegister out = locations->Out().AsRegister<GpuRegister>();
+
+  if (lhs == rhs) {
+    if (out != lhs) {
+      __ Move(out, lhs);
+    }
+  } else {
+    // Some architectures, such as ARM and MIPS (prior to r6), have a
+    // conditional move instruction which only changes the target
+    // (output) register if the condition is true (MIPS prior to r6 had
+    // MOVF, MOVT, and MOVZ). The SELEQZ and SELNEZ instructions always
+    // change the target (output) register.  If the condition is true the
+    // output register gets the contents of the "rs" register; otherwise,
+    // the output register is set to zero. One consequence of this is
+    // that to implement something like "rd = c==0 ? rs : rt" MIPS64r6
+    // needs to use a pair of SELEQZ/SELNEZ instructions.  After
+    // executing this pair of instructions one of the output registers
+    // from the pair will necessarily contain zero. Then the code ORs the
+    // output registers from the SELEQZ/SELNEZ instructions to get the
+    // final result.
+    //
+    // The initial test to see if the output register is same as the
+    // first input register is needed to make sure that value in the
+    // first input register isn't clobbered before we've finished
+    // computing the output value. The logic in the corresponding else
+    // clause performs the same task but makes sure the second input
+    // register isn't clobbered in the event that it's the same register
+    // as the output register; the else clause also handles the case
+    // where the output register is distinct from both the first, and the
+    // second input registers.
+    if (out == lhs) {
+      __ Slt(AT, rhs, lhs);
+      if (is_min) {
+        __ Seleqz(out, lhs, AT);
+        __ Selnez(AT, rhs, AT);
+      } else {
+        __ Selnez(out, lhs, AT);
+        __ Seleqz(AT, rhs, AT);
+      }
+    } else {
+      __ Slt(AT, lhs, rhs);
+      if (is_min) {
+        __ Seleqz(out, rhs, AT);
+        __ Selnez(AT, lhs, AT);
+      } else {
+        __ Selnez(out, rhs, AT);
+        __ Seleqz(AT, lhs, AT);
+      }
+    }
+    __ Or(out, out, AT);
+  }
+}
+
+void InstructionCodeGeneratorMIPS64::GenerateMinMaxFP(LocationSummary* locations,
+                                                      bool is_min,
+                                                      DataType::Type type) {
+  FpuRegister a = locations->InAt(0).AsFpuRegister<FpuRegister>();
+  FpuRegister b = locations->InAt(1).AsFpuRegister<FpuRegister>();
+  FpuRegister out = locations->Out().AsFpuRegister<FpuRegister>();
+
+  Mips64Label noNaNs;
+  Mips64Label done;
+  FpuRegister ftmp = ((out != a) && (out != b)) ? out : FTMP;
+
+  // When Java computes min/max it prefers a NaN to a number; the
+  // behavior of MIPSR6 is to prefer numbers to NaNs, i.e., if one of
+  // the inputs is a NaN and the other is a valid number, the MIPS
+  // instruction will return the number; Java wants the NaN value
+  // returned. This is why there is extra logic preceding the use of
+  // the MIPS min.fmt/max.fmt instructions. If either a, or b holds a
+  // NaN, return the NaN, otherwise return the min/max.
+  if (type == DataType::Type::kFloat64) {
+    __ CmpUnD(FTMP, a, b);
+    __ Bc1eqz(FTMP, &noNaNs);
+
+    // One of the inputs is a NaN
+    __ CmpEqD(ftmp, a, a);
+    // If a == a then b is the NaN, otherwise a is the NaN.
+    __ SelD(ftmp, a, b);
+
+    if (ftmp != out) {
+      __ MovD(out, ftmp);
+    }
+
+    __ Bc(&done);
+
+    __ Bind(&noNaNs);
+
+    if (is_min) {
+      __ MinD(out, a, b);
+    } else {
+      __ MaxD(out, a, b);
+    }
+  } else {
+    DCHECK_EQ(type, DataType::Type::kFloat32);
+    __ CmpUnS(FTMP, a, b);
+    __ Bc1eqz(FTMP, &noNaNs);
+
+    // One of the inputs is a NaN
+    __ CmpEqS(ftmp, a, a);
+    // If a == a then b is the NaN, otherwise a is the NaN.
+    __ SelS(ftmp, a, b);
+
+    if (ftmp != out) {
+      __ MovS(out, ftmp);
+    }
+
+    __ Bc(&done);
+
+    __ Bind(&noNaNs);
+
+    if (is_min) {
+      __ MinS(out, a, b);
+    } else {
+      __ MaxS(out, a, b);
+    }
+  }
+
+  __ Bind(&done);
+}
+
+void LocationsBuilderMIPS64::VisitMin(HMin* min) {
+  CreateMinMaxLocations(GetGraph()->GetAllocator(), min);
+}
+
+void InstructionCodeGeneratorMIPS64::VisitMin(HMin* min) {
+  switch (min->GetResultType()) {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+      GenerateMinMax(min->GetLocations(), /*is_min*/ true);
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      GenerateMinMaxFP(min->GetLocations(), /*is_min*/ true, min->GetResultType());
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for HMin " << min->GetResultType();
+  }
+}
+
+void LocationsBuilderMIPS64::VisitMax(HMax* max) {
+  CreateMinMaxLocations(GetGraph()->GetAllocator(), max);
+}
+
+void InstructionCodeGeneratorMIPS64::VisitMax(HMax* max) {
+  switch (max->GetResultType()) {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+      GenerateMinMax(max->GetLocations(), /*is_min*/ false);
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      GenerateMinMaxFP(max->GetLocations(), /*is_min*/ false, max->GetResultType());
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for HMax " << max->GetResultType();
+  }
+}
+
 void LocationsBuilderMIPS64::VisitAbs(HAbs* abs) {
   LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(abs);
   switch (abs->GetResultType()) {

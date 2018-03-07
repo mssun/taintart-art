@@ -23,7 +23,7 @@ public class Main {
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get1:b\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:b\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Min:i\d+>>  InvokeStaticOrDirect [<<Get1>>,<<Get2>>] intrinsic:MathMinIntInt loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Min:i\d+>>  Min [<<Get1>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Cnv:b\d+>>  TypeConversion [<<Min>>]            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
@@ -54,7 +54,7 @@ public class Main {
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get1:a\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:a\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Min:i\d+>>  InvokeStaticOrDirect [<<Get1>>,<<Get2>>] intrinsic:MathMinIntInt loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Min:i\d+>>  Min [<<Get1>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Cnv:b\d+>>  TypeConversion [<<Min>>]            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
@@ -74,7 +74,7 @@ public class Main {
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get1:b\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:b\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Max:i\d+>>  InvokeStaticOrDirect [<<Get1>>,<<Get2>>] intrinsic:MathMaxIntInt loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Max:i\d+>>  Max [<<Get1>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Cnv:b\d+>>  TypeConversion [<<Max>>]            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
@@ -105,7 +105,7 @@ public class Main {
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get1:a\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:a\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Max:i\d+>>  InvokeStaticOrDirect [<<Get1>>,<<Get2>>] intrinsic:MathMaxIntInt loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Max:i\d+>>  Max [<<Get1>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Cnv:b\d+>>  TypeConversion [<<Max>>]            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
@@ -125,7 +125,7 @@ public class Main {
   /// CHECK-DAG: <<I100:i\d+>> IntConstant 100                     loop:none
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get:b\d+>>  ArrayGet                            loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Min:i\d+>>  InvokeStaticOrDirect [<<Get>>,<<I100>>] intrinsic:MathMinIntInt loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Min:i\d+>>  Min [<<Get>>,<<I100>>]              loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Cnv:b\d+>>  TypeConversion [<<Min>>]            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //

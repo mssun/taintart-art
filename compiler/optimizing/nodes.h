@@ -1384,7 +1384,9 @@ class HLoopInformationOutwardIterator : public ValueObject {
   M(LoadException, Instruction)                                         \
   M(LoadString, Instruction)                                            \
   M(LongConstant, Constant)                                             \
+  M(Max, Instruction)                                                   \
   M(MemoryBarrier, Instruction)                                         \
+  M(Min, BinaryOperation)                                               \
   M(MonitorOperation, Instruction)                                      \
   M(Mul, BinaryOperation)                                               \
   M(NativeDebugInfo, Instruction)                                       \
@@ -5015,6 +5017,76 @@ class HRem FINAL : public HBinaryOperation {
 
  protected:
   DEFAULT_COPY_CONSTRUCTOR(Rem);
+};
+
+class HMin FINAL : public HBinaryOperation {
+ public:
+  HMin(DataType::Type result_type,
+       HInstruction* left,
+       HInstruction* right,
+       uint32_t dex_pc)
+      : HBinaryOperation(kMin, result_type, left, right, SideEffects::None(), dex_pc) {}
+
+  bool IsCommutative() const OVERRIDE { return true; }
+
+  // Evaluation for integral values.
+  template <typename T> static T ComputeIntegral(T x, T y) {
+    return (x <= y) ? x : y;
+  }
+
+  HConstant* Evaluate(HIntConstant* x, HIntConstant* y) const OVERRIDE {
+    return GetBlock()->GetGraph()->GetIntConstant(
+        ComputeIntegral(x->GetValue(), y->GetValue()), GetDexPc());
+  }
+  HConstant* Evaluate(HLongConstant* x, HLongConstant* y) const OVERRIDE {
+    return GetBlock()->GetGraph()->GetLongConstant(
+        ComputeIntegral(x->GetValue(), y->GetValue()), GetDexPc());
+  }
+  // TODO: Evaluation for floating-point values.
+  HConstant* Evaluate(HFloatConstant* x ATTRIBUTE_UNUSED,
+                      HFloatConstant* y ATTRIBUTE_UNUSED) const OVERRIDE { return nullptr; }
+  HConstant* Evaluate(HDoubleConstant* x ATTRIBUTE_UNUSED,
+                      HDoubleConstant* y ATTRIBUTE_UNUSED) const OVERRIDE { return nullptr; }
+
+  DECLARE_INSTRUCTION(Min);
+
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(Min);
+};
+
+class HMax FINAL : public HBinaryOperation {
+ public:
+  HMax(DataType::Type result_type,
+       HInstruction* left,
+       HInstruction* right,
+       uint32_t dex_pc)
+      : HBinaryOperation(kMax, result_type, left, right, SideEffects::None(), dex_pc) {}
+
+  bool IsCommutative() const OVERRIDE { return true; }
+
+  // Evaluation for integral values.
+  template <typename T> static T ComputeIntegral(T x, T y) {
+    return (x >= y) ? x : y;
+  }
+
+  HConstant* Evaluate(HIntConstant* x, HIntConstant* y) const OVERRIDE {
+    return GetBlock()->GetGraph()->GetIntConstant(
+        ComputeIntegral(x->GetValue(), y->GetValue()), GetDexPc());
+  }
+  HConstant* Evaluate(HLongConstant* x, HLongConstant* y) const OVERRIDE {
+    return GetBlock()->GetGraph()->GetLongConstant(
+        ComputeIntegral(x->GetValue(), y->GetValue()), GetDexPc());
+  }
+  // TODO: Evaluation for floating-point values.
+  HConstant* Evaluate(HFloatConstant* x ATTRIBUTE_UNUSED,
+                      HFloatConstant* y ATTRIBUTE_UNUSED) const OVERRIDE { return nullptr; }
+  HConstant* Evaluate(HDoubleConstant* x ATTRIBUTE_UNUSED,
+                      HDoubleConstant* y ATTRIBUTE_UNUSED) const OVERRIDE { return nullptr; }
+
+  DECLARE_INSTRUCTION(Max);
+
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(Max);
 };
 
 class HAbs FINAL : public HUnaryOperation {

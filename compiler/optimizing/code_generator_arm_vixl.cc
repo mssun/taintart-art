@@ -4690,6 +4690,254 @@ void InstructionCodeGeneratorARMVIXL::VisitRem(HRem* rem) {
   }
 }
 
+static void CreateMinMaxLocations(ArenaAllocator* allocator, HBinaryOperation* minmax) {
+  LocationSummary* locations = new (allocator) LocationSummary(minmax);
+  switch (minmax->GetResultType()) {
+    case DataType::Type::kInt32:
+      locations->SetInAt(0, Location::RequiresRegister());
+      locations->SetInAt(1, Location::RequiresRegister());
+      locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
+      break;
+    case DataType::Type::kInt64:
+      locations->SetInAt(0, Location::RequiresRegister());
+      locations->SetInAt(1, Location::RequiresRegister());
+      locations->SetOut(Location::SameAsFirstInput());
+      break;
+    case DataType::Type::kFloat32:
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetInAt(1, Location::RequiresFpuRegister());
+      locations->SetOut(Location::SameAsFirstInput());
+      locations->AddTemp(Location::RequiresRegister());
+      break;
+    case DataType::Type::kFloat64:
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetInAt(1, Location::RequiresFpuRegister());
+      locations->SetOut(Location::SameAsFirstInput());
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for HMinMax " << minmax->GetResultType();
+  }
+}
+
+void InstructionCodeGeneratorARMVIXL::GenerateMinMax(LocationSummary* locations, bool is_min) {
+  Location op1_loc = locations->InAt(0);
+  Location op2_loc = locations->InAt(1);
+  Location out_loc = locations->Out();
+
+  vixl32::Register op1 = RegisterFrom(op1_loc);
+  vixl32::Register op2 = RegisterFrom(op2_loc);
+  vixl32::Register out = RegisterFrom(out_loc);
+
+  __ Cmp(op1, op2);
+
+  {
+    ExactAssemblyScope aas(GetVIXLAssembler(),
+                           3 * kMaxInstructionSizeInBytes,
+                           CodeBufferCheckScope::kMaximumSize);
+
+    __ ite(is_min ? lt : gt);
+    __ mov(is_min ? lt : gt, out, op1);
+    __ mov(is_min ? ge : le, out, op2);
+  }
+}
+
+void InstructionCodeGeneratorARMVIXL::GenerateMinMaxLong(LocationSummary* locations, bool is_min) {
+  Location op1_loc = locations->InAt(0);
+  Location op2_loc = locations->InAt(1);
+  Location out_loc = locations->Out();
+
+  // Optimization: don't generate any code if inputs are the same.
+  if (op1_loc.Equals(op2_loc)) {
+    DCHECK(out_loc.Equals(op1_loc));  // out_loc is set as SameAsFirstInput() in location builder.
+    return;
+  }
+
+  vixl32::Register op1_lo = LowRegisterFrom(op1_loc);
+  vixl32::Register op1_hi = HighRegisterFrom(op1_loc);
+  vixl32::Register op2_lo = LowRegisterFrom(op2_loc);
+  vixl32::Register op2_hi = HighRegisterFrom(op2_loc);
+  vixl32::Register out_lo = LowRegisterFrom(out_loc);
+  vixl32::Register out_hi = HighRegisterFrom(out_loc);
+  UseScratchRegisterScope temps(GetVIXLAssembler());
+  const vixl32::Register temp = temps.Acquire();
+
+  DCHECK(op1_lo.Is(out_lo));
+  DCHECK(op1_hi.Is(out_hi));
+
+  // Compare op1 >= op2, or op1 < op2.
+  __ Cmp(out_lo, op2_lo);
+  __ Sbcs(temp, out_hi, op2_hi);
+
+  // Now GE/LT condition code is correct for the long comparison.
+  {
+    vixl32::ConditionType cond = is_min ? ge : lt;
+    ExactAssemblyScope it_scope(GetVIXLAssembler(),
+                                3 * kMaxInstructionSizeInBytes,
+                                CodeBufferCheckScope::kMaximumSize);
+    __ itt(cond);
+    __ mov(cond, out_lo, op2_lo);
+    __ mov(cond, out_hi, op2_hi);
+  }
+}
+
+void InstructionCodeGeneratorARMVIXL::GenerateMinMaxFloat(HInstruction* min_max, bool is_min) {
+  LocationSummary* locations = min_max->GetLocations();
+  Location op1_loc = locations->InAt(0);
+  Location op2_loc = locations->InAt(1);
+  Location out_loc = locations->Out();
+
+  // Optimization: don't generate any code if inputs are the same.
+  if (op1_loc.Equals(op2_loc)) {
+    DCHECK(out_loc.Equals(op1_loc));  // out_loc is set as SameAsFirstInput() in location builder.
+    return;
+  }
+
+  vixl32::SRegister op1 = SRegisterFrom(op1_loc);
+  vixl32::SRegister op2 = SRegisterFrom(op2_loc);
+  vixl32::SRegister out = SRegisterFrom(out_loc);
+
+  UseScratchRegisterScope temps(GetVIXLAssembler());
+  const vixl32::Register temp1 = temps.Acquire();
+  vixl32::Register temp2 = RegisterFrom(locations->GetTemp(0));
+  vixl32::Label nan, done;
+  vixl32::Label* final_label = codegen_->GetFinalLabel(min_max, &done);
+
+  DCHECK(op1.Is(out));
+
+  __ Vcmp(op1, op2);
+  __ Vmrs(RegisterOrAPSR_nzcv(kPcCode), FPSCR);
+  __ B(vs, &nan, /* far_target */ false);  // if un-ordered, go to NaN handling.
+
+  // op1 <> op2
+  vixl32::ConditionType cond = is_min ? gt : lt;
+  {
+    ExactAssemblyScope it_scope(GetVIXLAssembler(),
+                                2 * kMaxInstructionSizeInBytes,
+                                CodeBufferCheckScope::kMaximumSize);
+    __ it(cond);
+    __ vmov(cond, F32, out, op2);
+  }
+  // for <>(not equal), we've done min/max calculation.
+  __ B(ne, final_label, /* far_target */ false);
+
+  // handle op1 == op2, max(+0.0,-0.0), min(+0.0,-0.0).
+  __ Vmov(temp1, op1);
+  __ Vmov(temp2, op2);
+  if (is_min) {
+    __ Orr(temp1, temp1, temp2);
+  } else {
+    __ And(temp1, temp1, temp2);
+  }
+  __ Vmov(out, temp1);
+  __ B(final_label);
+
+  // handle NaN input.
+  __ Bind(&nan);
+  __ Movt(temp1, High16Bits(kNanFloat));  // 0x7FC0xxxx is a NaN.
+  __ Vmov(out, temp1);
+
+  if (done.IsReferenced()) {
+    __ Bind(&done);
+  }
+}
+
+void InstructionCodeGeneratorARMVIXL::GenerateMinMaxDouble(HInstruction* min_max, bool is_min) {
+  LocationSummary* locations = min_max->GetLocations();
+  Location op1_loc = locations->InAt(0);
+  Location op2_loc = locations->InAt(1);
+  Location out_loc = locations->Out();
+
+  // Optimization: don't generate any code if inputs are the same.
+  if (op1_loc.Equals(op2_loc)) {
+    DCHECK(out_loc.Equals(op1_loc));  // out_loc is set as SameAsFirstInput() in.
+    return;
+  }
+
+  vixl32::DRegister op1 = DRegisterFrom(op1_loc);
+  vixl32::DRegister op2 = DRegisterFrom(op2_loc);
+  vixl32::DRegister out = DRegisterFrom(out_loc);
+  vixl32::Label handle_nan_eq, done;
+  vixl32::Label* final_label = codegen_->GetFinalLabel(min_max, &done);
+
+  DCHECK(op1.Is(out));
+
+  __ Vcmp(op1, op2);
+  __ Vmrs(RegisterOrAPSR_nzcv(kPcCode), FPSCR);
+  __ B(vs, &handle_nan_eq, /* far_target */ false);  // if un-ordered, go to NaN handling.
+
+  // op1 <> op2
+  vixl32::ConditionType cond = is_min ? gt : lt;
+  {
+    ExactAssemblyScope it_scope(GetVIXLAssembler(),
+                                2 * kMaxInstructionSizeInBytes,
+                                CodeBufferCheckScope::kMaximumSize);
+    __ it(cond);
+    __ vmov(cond, F64, out, op2);
+  }
+  // for <>(not equal), we've done min/max calculation.
+  __ B(ne, final_label, /* far_target */ false);
+
+  // handle op1 == op2, max(+0.0,-0.0).
+  if (!is_min) {
+    __ Vand(F64, out, op1, op2);
+    __ B(final_label);
+  }
+
+  // handle op1 == op2, min(+0.0,-0.0), NaN input.
+  __ Bind(&handle_nan_eq);
+  __ Vorr(F64, out, op1, op2);  // assemble op1/-0.0/NaN.
+
+  if (done.IsReferenced()) {
+    __ Bind(&done);
+  }
+}
+
+void LocationsBuilderARMVIXL::VisitMin(HMin* min) {
+  CreateMinMaxLocations(GetGraph()->GetAllocator(), min);
+}
+
+void InstructionCodeGeneratorARMVIXL::VisitMin(HMin* min) {
+  switch (min->GetResultType()) {
+    case DataType::Type::kInt32:
+      GenerateMinMax(min->GetLocations(), /*is_min*/ true);
+      break;
+    case DataType::Type::kInt64:
+      GenerateMinMaxLong(min->GetLocations(), /*is_min*/ true);
+      break;
+    case DataType::Type::kFloat32:
+      GenerateMinMaxFloat(min, /*is_min*/ true);
+      break;
+    case DataType::Type::kFloat64:
+      GenerateMinMaxDouble(min, /*is_min*/ true);
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for HMin " << min->GetResultType();
+  }
+}
+
+void LocationsBuilderARMVIXL::VisitMax(HMax* max) {
+  CreateMinMaxLocations(GetGraph()->GetAllocator(), max);
+}
+
+void InstructionCodeGeneratorARMVIXL::VisitMax(HMax* max) {
+  switch (max->GetResultType()) {
+    case DataType::Type::kInt32:
+      GenerateMinMax(max->GetLocations(), /*is_min*/ false);
+      break;
+    case DataType::Type::kInt64:
+      GenerateMinMaxLong(max->GetLocations(), /*is_min*/ false);
+      break;
+    case DataType::Type::kFloat32:
+      GenerateMinMaxFloat(max, /*is_min*/ false);
+      break;
+    case DataType::Type::kFloat64:
+      GenerateMinMaxDouble(max, /*is_min*/ false);
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for HMax " << max->GetResultType();
+  }
+}
+
 void LocationsBuilderARMVIXL::VisitAbs(HAbs* abs) {
   LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(abs);
   switch (abs->GetResultType()) {

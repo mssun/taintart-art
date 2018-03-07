@@ -23,7 +23,7 @@ public class Main {
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get1:j\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:j\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Min:j\d+>>  InvokeStaticOrDirect [<<Get1>>,<<Get2>>] intrinsic:MathMinLongLong loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Min:j\d+>>  Min [<<Get1>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Min>>] loop:<<Loop>>      outer_loop:none
   //
   // Not directly supported for longs.
@@ -48,7 +48,7 @@ public class Main {
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get1:j\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:j\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Max:j\d+>>  InvokeStaticOrDirect [<<Get1>>,<<Get2>>] intrinsic:MathMaxLongLong loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Max:j\d+>>  Max [<<Get1>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Max>>] loop:<<Loop>>      outer_loop:none
   //
   // Not directly supported for longs.

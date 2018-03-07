@@ -242,6 +242,9 @@ class InstructionCodeGeneratorMIPS64 : public InstructionCodeGenerator {
                       bool value_can_be_null);
   void HandleFieldGet(HInstruction* instruction, const FieldInfo& field_info);
 
+  void GenerateMinMax(LocationSummary* locations, bool is_min);
+  void GenerateMinMaxFP(LocationSummary* locations, bool is_min, DataType::Type type);
+
   // Generate a heap reference load using one register `out`:
   //
   //   out <- *(out + offset)
