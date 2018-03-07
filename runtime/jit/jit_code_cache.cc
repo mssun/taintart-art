@@ -328,32 +328,19 @@ const void* JitCodeCache::GetJniStubCode(ArtMethod* method) {
 
 class ScopedCodeCacheWrite : ScopedTrace {
  public:
-  explicit ScopedCodeCacheWrite(MemMap* code_map, bool only_for_tlb_shootdown = false)
+  explicit ScopedCodeCacheWrite(MemMap* code_map)
       : ScopedTrace("ScopedCodeCacheWrite"),
-        code_map_(code_map),
-        only_for_tlb_shootdown_(only_for_tlb_shootdown) {
+        code_map_(code_map) {
     ScopedTrace trace("mprotect all");
-    CheckedCall(mprotect,
-                "make code writable",
-                code_map_->Begin(),
-                only_for_tlb_shootdown_ ? kPageSize : code_map_->Size(),
-                kProtAll);
+    CheckedCall(mprotect, "make code writable", code_map_->Begin(), code_map_->Size(), kProtAll);
   }
   ~ScopedCodeCacheWrite() {
     ScopedTrace trace("mprotect code");
-    CheckedCall(mprotect,
-                "make code protected",
-                code_map_->Begin(),
-                only_for_tlb_shootdown_ ? kPageSize : code_map_->Size(),
-                kProtCode);
+    CheckedCall(mprotect, "make code protected", code_map_->Begin(), code_map_->Size(), kProtCode);
   }
 
  private:
   MemMap* const code_map_;
-
-  // If we're using ScopedCacheWrite only for TLB shootdown, we limit the scope of mprotect to
-  // one page.
-  const bool only_for_tlb_shootdown_;
 
   DISALLOW_COPY_AND_ASSIGN(ScopedCodeCacheWrite);
 };
@@ -812,8 +799,6 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
       FillRootTable(roots_data, roots);
       {
         // Flush data cache, as compiled code references literals in it.
-        // We also need a TLB shootdown to act as memory barrier across cores.
-        ScopedCodeCacheWrite ccw(code_map_.get(), /* only_for_tlb_shootdown */ true);
         FlushDataCache(reinterpret_cast<char*>(roots_data),
                        reinterpret_cast<char*>(roots_data + data_size));
       }
