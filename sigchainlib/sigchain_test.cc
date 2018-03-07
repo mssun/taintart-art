@@ -50,7 +50,7 @@ static int sigismember64(sigset64_t* set, int member) {
 
 static int RealSigprocmask(int how, const sigset64_t* new_sigset, sigset64_t* old_sigset) {
   // glibc's sigset_t is overly large, so sizeof(*new_sigset) doesn't work.
-  return syscall(__NR_rt_sigprocmask, how, new_sigset, old_sigset, 8);
+  return syscall(__NR_rt_sigprocmask, how, new_sigset, old_sigset, NSIG/8);
 }
 
 class SigchainTest : public ::testing::Test {
