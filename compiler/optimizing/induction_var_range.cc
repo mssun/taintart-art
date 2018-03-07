@@ -78,16 +78,10 @@ static bool IsGEZero(HInstruction* instruction) {
   DCHECK(instruction != nullptr);
   if (instruction->IsArrayLength()) {
     return true;
-  } else if (instruction->IsInvokeStaticOrDirect()) {
-    switch (instruction->AsInvoke()->GetIntrinsic()) {
-      case Intrinsics::kMathMinIntInt:
-      case Intrinsics::kMathMinLongLong:
-        // Instruction MIN(>=0, >=0) is >= 0.
-        return IsGEZero(instruction->InputAt(0)) &&
-               IsGEZero(instruction->InputAt(1));
-      default:
-        break;
-    }
+  } else if (instruction->IsMin()) {
+    // Instruction MIN(>=0, >=0) is >= 0.
+    return IsGEZero(instruction->InputAt(0)) &&
+           IsGEZero(instruction->InputAt(1));
   } else if (instruction->IsAbs()) {
     // Instruction ABS(>=0) is >= 0.
     // NOTE: ABS(minint) = minint prevents assuming
@@ -101,21 +95,14 @@ static bool IsGEZero(HInstruction* instruction) {
 /** Hunts "under the hood" for a suitable instruction at the hint. */
 static bool IsMaxAtHint(
     HInstruction* instruction, HInstruction* hint, /*out*/HInstruction** suitable) {
-  if (instruction->IsInvokeStaticOrDirect()) {
-    switch (instruction->AsInvoke()->GetIntrinsic()) {
-      case Intrinsics::kMathMinIntInt:
-      case Intrinsics::kMathMinLongLong:
-        // For MIN(x, y), return most suitable x or y as maximum.
-        return IsMaxAtHint(instruction->InputAt(0), hint, suitable) ||
-               IsMaxAtHint(instruction->InputAt(1), hint, suitable);
-      default:
-        break;
-    }
+  if (instruction->IsMin()) {
+    // For MIN(x, y), return most suitable x or y as maximum.
+    return IsMaxAtHint(instruction->InputAt(0), hint, suitable) ||
+           IsMaxAtHint(instruction->InputAt(1), hint, suitable);
   } else {
     *suitable = instruction;
     return HuntForDeclaration(instruction) == hint;
   }
-  return false;
 }
 
 /** Post-analysis simplification of a minimum value that makes the bound more useful to clients. */
@@ -364,11 +351,11 @@ void InductionVarRange::Replace(HInstruction* instruction,
   }
 }
 
-bool InductionVarRange::IsFinite(HLoopInformation* loop, /*out*/ int64_t* tc) const {
+bool InductionVarRange::IsFinite(HLoopInformation* loop, /*out*/ int64_t* trip_count) const {
   HInductionVarAnalysis::InductionInfo *trip =
       induction_analysis_->LookupInfo(loop, GetLoopControl(loop));
   if (trip != nullptr && !IsUnsafeTripCount(trip)) {
-    IsConstant(trip->op_a, kExact, tc);
+    IsConstant(trip->op_a, kExact, trip_count);
     return true;
   }
   return false;

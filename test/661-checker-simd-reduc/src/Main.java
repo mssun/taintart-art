@@ -378,7 +378,7 @@ public class Main {
   /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]      loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<ConsM>>,{{i\d+}}]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get:i\d+>>    ArrayGet [{{l\d+}},<<Phi1>>]  loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG:                 InvokeStaticOrDirect [<<Phi2>>,<<Get>>] intrinsic:MathMinIntInt loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:                 Min [<<Phi2>>,<<Get>>]        loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Return [<<Phi2>>]             loop:none
   //
@@ -438,7 +438,7 @@ public class Main {
   /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]      loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<ConsM>>,{{i\d+}}]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get:i\d+>>    ArrayGet [{{l\d+}},<<Phi1>>]  loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG:                 InvokeStaticOrDirect [<<Phi2>>,<<Get>>] intrinsic:MathMaxIntInt loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:                 Max [<<Phi2>>,<<Get>>]        loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:                 Return [<<Phi2>>]             loop:none
   //

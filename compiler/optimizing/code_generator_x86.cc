@@ -51,6 +51,9 @@ static constexpr int kC2ConditionMask = 0x400;
 
 static constexpr int kFakeReturnRegister = Register(8);
 
+static constexpr int64_t kDoubleNaN = INT64_C(0x7FF8000000000000);
+static constexpr int32_t kFloatNaN = INT32_C(0x7FC00000);
+
 // NOLINT on __ macro to suppress wrong warning/fix (misc-macro-parentheses) from clang-tidy.
 #define __ down_cast<X86Assembler*>(codegen->GetAssembler())->  // NOLINT
 #define QUICK_ENTRY_POINT(x) QUICK_ENTRYPOINT_OFFSET(kX86PointerSize, x).Int32Value()
@@ -3799,6 +3802,217 @@ void InstructionCodeGeneratorX86::VisitRem(HRem* rem) {
     }
     default:
       LOG(FATAL) << "Unexpected rem type " << type;
+  }
+}
+
+static void CreateMinMaxLocations(ArenaAllocator* allocator, HBinaryOperation* minmax) {
+  LocationSummary* locations = new (allocator) LocationSummary(minmax);
+  switch (minmax->GetResultType()) {
+    case DataType::Type::kInt32:
+      locations->SetInAt(0, Location::RequiresRegister());
+      locations->SetInAt(1, Location::RequiresRegister());
+      locations->SetOut(Location::SameAsFirstInput());
+      break;
+    case DataType::Type::kInt64:
+      locations->SetInAt(0, Location::RequiresRegister());
+      locations->SetInAt(1, Location::RequiresRegister());
+      locations->SetOut(Location::SameAsFirstInput());
+      // Register to use to perform a long subtract to set cc.
+      locations->AddTemp(Location::RequiresRegister());
+      break;
+    case DataType::Type::kFloat32:
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetInAt(1, Location::RequiresFpuRegister());
+      locations->SetOut(Location::SameAsFirstInput());
+      locations->AddTemp(Location::RequiresRegister());
+      break;
+    case DataType::Type::kFloat64:
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetInAt(1, Location::RequiresFpuRegister());
+      locations->SetOut(Location::SameAsFirstInput());
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for HMinMax " << minmax->GetResultType();
+  }
+}
+
+void InstructionCodeGeneratorX86::GenerateMinMax(LocationSummary* locations,
+                                                 bool is_min,
+                                                 DataType::Type type) {
+  Location op1_loc = locations->InAt(0);
+  Location op2_loc = locations->InAt(1);
+
+  // Shortcut for same input locations.
+  if (op1_loc.Equals(op2_loc)) {
+    // Can return immediately, as op1_loc == out_loc.
+    // Note: if we ever support separate registers, e.g., output into memory, we need to check for
+    //       a copy here.
+    DCHECK(locations->Out().Equals(op1_loc));
+    return;
+  }
+
+  if (type == DataType::Type::kInt64) {
+    // Need to perform a subtract to get the sign right.
+    // op1 is already in the same location as the output.
+    Location output = locations->Out();
+    Register output_lo = output.AsRegisterPairLow<Register>();
+    Register output_hi = output.AsRegisterPairHigh<Register>();
+
+    Register op2_lo = op2_loc.AsRegisterPairLow<Register>();
+    Register op2_hi = op2_loc.AsRegisterPairHigh<Register>();
+
+    // The comparison is performed by subtracting the second operand from
+    // the first operand and then setting the status flags in the same
+    // manner as the SUB instruction."
+    __ cmpl(output_lo, op2_lo);
+
+    // Now use a temp and the borrow to finish the subtraction of op2_hi.
+    Register temp = locations->GetTemp(0).AsRegister<Register>();
+    __ movl(temp, output_hi);
+    __ sbbl(temp, op2_hi);
+
+    // Now the condition code is correct.
+    Condition cond = is_min ? Condition::kGreaterEqual : Condition::kLess;
+    __ cmovl(cond, output_lo, op2_lo);
+    __ cmovl(cond, output_hi, op2_hi);
+  } else {
+    DCHECK_EQ(type, DataType::Type::kInt32);
+    Register out = locations->Out().AsRegister<Register>();
+    Register op2 = op2_loc.AsRegister<Register>();
+
+    //  (out := op1)
+    //  out <=? op2
+    //  if out is min jmp done
+    //  out := op2
+    // done:
+
+    __ cmpl(out, op2);
+    Condition cond = is_min ? Condition::kGreater : Condition::kLess;
+    __ cmovl(cond, out, op2);
+  }
+}
+
+void InstructionCodeGeneratorX86::GenerateMinMaxFP(LocationSummary* locations,
+                                                   bool is_min,
+                                                   DataType::Type type) {
+  Location op1_loc = locations->InAt(0);
+  Location op2_loc = locations->InAt(1);
+  Location out_loc = locations->Out();
+  XmmRegister out = out_loc.AsFpuRegister<XmmRegister>();
+
+  // Shortcut for same input locations.
+  if (op1_loc.Equals(op2_loc)) {
+    DCHECK(out_loc.Equals(op1_loc));
+    return;
+  }
+
+  //  (out := op1)
+  //  out <=? op2
+  //  if Nan jmp Nan_label
+  //  if out is min jmp done
+  //  if op2 is min jmp op2_label
+  //  handle -0/+0
+  //  jmp done
+  // Nan_label:
+  //  out := NaN
+  // op2_label:
+  //  out := op2
+  // done:
+  //
+  // This removes one jmp, but needs to copy one input (op1) to out.
+  //
+  // TODO: This is straight from Quick (except literal pool). Make NaN an out-of-line slowpath?
+
+  XmmRegister op2 = op2_loc.AsFpuRegister<XmmRegister>();
+
+  NearLabel nan, done, op2_label;
+  if (type == DataType::Type::kFloat64) {
+    __ ucomisd(out, op2);
+  } else {
+    DCHECK_EQ(type, DataType::Type::kFloat32);
+    __ ucomiss(out, op2);
+  }
+
+  __ j(Condition::kParityEven, &nan);
+
+  __ j(is_min ? Condition::kAbove : Condition::kBelow, &op2_label);
+  __ j(is_min ? Condition::kBelow : Condition::kAbove, &done);
+
+  // Handle 0.0/-0.0.
+  if (is_min) {
+    if (type == DataType::Type::kFloat64) {
+      __ orpd(out, op2);
+    } else {
+      __ orps(out, op2);
+    }
+  } else {
+    if (type == DataType::Type::kFloat64) {
+      __ andpd(out, op2);
+    } else {
+      __ andps(out, op2);
+    }
+  }
+  __ jmp(&done);
+
+  // NaN handling.
+  __ Bind(&nan);
+  if (type == DataType::Type::kFloat64) {
+    // TODO: Use a constant from the constant table (requires extra input).
+    __ LoadLongConstant(out, kDoubleNaN);
+  } else {
+    Register constant = locations->GetTemp(0).AsRegister<Register>();
+    __ movl(constant, Immediate(kFloatNaN));
+    __ movd(out, constant);
+  }
+  __ jmp(&done);
+
+  // out := op2;
+  __ Bind(&op2_label);
+  if (type == DataType::Type::kFloat64) {
+    __ movsd(out, op2);
+  } else {
+    __ movss(out, op2);
+  }
+
+  // Done.
+  __ Bind(&done);
+}
+
+void LocationsBuilderX86::VisitMin(HMin* min) {
+  CreateMinMaxLocations(GetGraph()->GetAllocator(), min);
+}
+
+void InstructionCodeGeneratorX86::VisitMin(HMin* min) {
+  switch (min->GetResultType()) {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+      GenerateMinMax(min->GetLocations(), /*is_min*/ true, min->GetResultType());
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      GenerateMinMaxFP(min->GetLocations(), /*is_min*/ true, min->GetResultType());
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for HMin " << min->GetResultType();
+  }
+}
+
+void LocationsBuilderX86::VisitMax(HMax* max) {
+  CreateMinMaxLocations(GetGraph()->GetAllocator(), max);
+}
+
+void InstructionCodeGeneratorX86::VisitMax(HMax* max) {
+  switch (max->GetResultType()) {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+      GenerateMinMax(max->GetLocations(), /*is_min*/ false, max->GetResultType());
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      GenerateMinMaxFP(max->GetLocations(), /*is_min*/ false, max->GetResultType());
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for HMax " << max->GetResultType();
   }
 }
 
