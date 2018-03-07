@@ -1261,18 +1261,33 @@ std::unique_ptr<OatFile> OatFileAssistant::OatFileInfo::ReleaseFileForUse() {
     return ReleaseFile();
   }
 
-  if (Status() == kOatRelocationOutOfDate) {
-    // We are loading an oat file for runtime use that needs relocation.
-    // Reload the file non-executable to ensure that we interpret out of the
-    // dex code in the oat file rather than trying to execute the unrelocated
-    // compiled code.
-    oat_file_assistant_->load_executable_ = false;
-    Reset();
-    if (IsUseable()) {
-      CHECK(!IsExecutable());
-      return ReleaseFile();
-    }
+  switch (Status()) {
+    case kOatBootImageOutOfDate:
+      if (oat_file_assistant_->HasOriginalDexFiles()) {
+        // If there are original dex files, it is better to use them.
+        break;
+      }
+      FALLTHROUGH_INTENDED;
+
+    case kOatRelocationOutOfDate:
+      // We are loading an oat file for runtime use that needs relocation.
+      // Reload the file non-executable to ensure that we interpret out of the
+      // dex code in the oat file rather than trying to execute the unrelocated
+      // compiled code.
+      oat_file_assistant_->load_executable_ = false;
+      Reset();
+      if (IsUseable()) {
+        CHECK(!IsExecutable());
+        return ReleaseFile();
+      }
+      break;
+
+    case kOatUpToDate:
+    case kOatCannotOpen:
+    case kOatDexOutOfDate:
+      break;
   }
+
   return std::unique_ptr<OatFile>();
 }
 
