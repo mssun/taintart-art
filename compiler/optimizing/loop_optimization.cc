@@ -334,29 +334,14 @@ static bool IsAddConst(HInstruction* instruction,
 // Detect reductions of the following forms,
 //   x = x_phi + ..
 //   x = x_phi - ..
-//   x = max(x_phi, ..)
 //   x = min(x_phi, ..)
+//   x = max(x_phi, ..)
 static bool HasReductionFormat(HInstruction* reduction, HInstruction* phi) {
-  if (reduction->IsAdd()) {
+  if (reduction->IsAdd() || reduction->IsMin() || reduction->IsMax()) {
     return (reduction->InputAt(0) == phi && reduction->InputAt(1) != phi) ||
            (reduction->InputAt(0) != phi && reduction->InputAt(1) == phi);
   } else if (reduction->IsSub()) {
     return (reduction->InputAt(0) == phi && reduction->InputAt(1) != phi);
-  } else if (reduction->IsInvokeStaticOrDirect()) {
-    switch (reduction->AsInvokeStaticOrDirect()->GetIntrinsic()) {
-      case Intrinsics::kMathMinIntInt:
-      case Intrinsics::kMathMinLongLong:
-      case Intrinsics::kMathMinFloatFloat:
-      case Intrinsics::kMathMinDoubleDouble:
-      case Intrinsics::kMathMaxIntInt:
-      case Intrinsics::kMathMaxLongLong:
-      case Intrinsics::kMathMaxFloatFloat:
-      case Intrinsics::kMathMaxDoubleDouble:
-        return (reduction->InputAt(0) == phi && reduction->InputAt(1) != phi) ||
-               (reduction->InputAt(0) != phi && reduction->InputAt(1) == phi);
-      default:
-        return false;
-    }
   }
   return false;
 }
@@ -1322,50 +1307,34 @@ bool HLoopOptimization::VectorizeUse(LoopNode* node,
       }
       return true;
     }
-  } else if (instruction->IsInvokeStaticOrDirect()) {
-    // Accept particular intrinsics.
-    HInvokeStaticOrDirect* invoke = instruction->AsInvokeStaticOrDirect();
-    switch (invoke->GetIntrinsic()) {
-      case Intrinsics::kMathMinIntInt:
-      case Intrinsics::kMathMinLongLong:
-      case Intrinsics::kMathMinFloatFloat:
-      case Intrinsics::kMathMinDoubleDouble:
-      case Intrinsics::kMathMaxIntInt:
-      case Intrinsics::kMathMaxLongLong:
-      case Intrinsics::kMathMaxFloatFloat:
-      case Intrinsics::kMathMaxDoubleDouble: {
-        // Deal with vector restrictions.
-        HInstruction* opa = instruction->InputAt(0);
-        HInstruction* opb = instruction->InputAt(1);
-        HInstruction* r = opa;
-        HInstruction* s = opb;
-        bool is_unsigned = false;
-        if (HasVectorRestrictions(restrictions, kNoMinMax)) {
-          return false;
-        } else if (HasVectorRestrictions(restrictions, kNoHiBits) &&
-                   !IsNarrowerOperands(opa, opb, type, &r, &s, &is_unsigned)) {
-          return false;  // reject, unless all operands are same-extension narrower
-        }
-        // Accept MIN/MAX(x, y) for vectorizable operands.
-        DCHECK(r != nullptr);
-        DCHECK(s != nullptr);
-        if (generate_code && vector_mode_ != kVector) {  // de-idiom
-          r = opa;
-          s = opb;
-        }
-        if (VectorizeUse(node, r, generate_code, type, restrictions) &&
-            VectorizeUse(node, s, generate_code, type, restrictions)) {
-          if (generate_code) {
-            GenerateVecOp(
-                instruction, vector_map_->Get(r), vector_map_->Get(s), type, is_unsigned);
-          }
-          return true;
-        }
-        return false;
+  } else if (instruction->IsMin() || instruction->IsMax()) {
+    // Deal with vector restrictions.
+    HInstruction* opa = instruction->InputAt(0);
+    HInstruction* opb = instruction->InputAt(1);
+    HInstruction* r = opa;
+    HInstruction* s = opb;
+    bool is_unsigned = false;
+    if (HasVectorRestrictions(restrictions, kNoMinMax)) {
+      return false;
+    } else if (HasVectorRestrictions(restrictions, kNoHiBits) &&
+               !IsNarrowerOperands(opa, opb, type, &r, &s, &is_unsigned)) {
+      return false;  // reject, unless all operands are same-extension narrower
+    }
+    // Accept MIN/MAX(x, y) for vectorizable operands.
+    DCHECK(r != nullptr);
+    DCHECK(s != nullptr);
+    if (generate_code && vector_mode_ != kVector) {  // de-idiom
+      r = opa;
+      s = opb;
+    }
+    if (VectorizeUse(node, r, generate_code, type, restrictions) &&
+        VectorizeUse(node, s, generate_code, type, restrictions)) {
+      if (generate_code) {
+        GenerateVecOp(
+            instruction, vector_map_->Get(r), vector_map_->Get(s), type, is_unsigned);
       }
-      default:
-        return false;
-    }  // switch
+      return true;
+    }
   }
   return false;
 }
@@ -1806,80 +1775,29 @@ void HLoopOptimization::GenerateVecOp(HInstruction* org,
       GENERATE_VEC(
         new (global_allocator_) HVecUShr(global_allocator_, opa, opb, type, vector_length_, dex_pc),
         new (global_allocator_) HUShr(org_type, opa, opb, dex_pc));
+    case HInstruction::kMin:
+      GENERATE_VEC(
+        new (global_allocator_) HVecMin(global_allocator_,
+                                        opa,
+                                        opb,
+                                        HVecOperation::ToProperType(type, is_unsigned),
+                                        vector_length_,
+                                        dex_pc),
+        new (global_allocator_) HMin(org_type, opa, opb, dex_pc));
+    case HInstruction::kMax:
+      GENERATE_VEC(
+        new (global_allocator_) HVecMax(global_allocator_,
+                                        opa,
+                                        opb,
+                                        HVecOperation::ToProperType(type, is_unsigned),
+                                        vector_length_,
+                                        dex_pc),
+        new (global_allocator_) HMax(org_type, opa, opb, dex_pc));
     case HInstruction::kAbs:
       DCHECK(opb == nullptr);
       GENERATE_VEC(
         new (global_allocator_) HVecAbs(global_allocator_, opa, type, vector_length_, dex_pc),
         new (global_allocator_) HAbs(org_type, opa, dex_pc));
-    case HInstruction::kInvokeStaticOrDirect: {
-      HInvokeStaticOrDirect* invoke = org->AsInvokeStaticOrDirect();
-      if (vector_mode_ == kVector) {
-        switch (invoke->GetIntrinsic()) {
-          case Intrinsics::kMathMinIntInt:
-          case Intrinsics::kMathMinLongLong:
-          case Intrinsics::kMathMinFloatFloat:
-          case Intrinsics::kMathMinDoubleDouble: {
-            vector = new (global_allocator_)
-                HVecMin(global_allocator_,
-                        opa,
-                        opb,
-                        HVecOperation::ToProperType(type, is_unsigned),
-                        vector_length_,
-                        dex_pc);
-            break;
-          }
-          case Intrinsics::kMathMaxIntInt:
-          case Intrinsics::kMathMaxLongLong:
-          case Intrinsics::kMathMaxFloatFloat:
-          case Intrinsics::kMathMaxDoubleDouble: {
-            vector = new (global_allocator_)
-                HVecMax(global_allocator_,
-                        opa,
-                        opb,
-                        HVecOperation::ToProperType(type, is_unsigned),
-                        vector_length_,
-                        dex_pc);
-            break;
-          }
-          default:
-            LOG(FATAL) << "Unsupported SIMD intrinsic " << org->GetId();
-            UNREACHABLE();
-        }  // switch invoke
-      } else {
-        // In scalar code, simply clone the method invoke, and replace its operands with the
-        // corresponding new scalar instructions in the loop. The instruction will get an
-        // environment while being inserted from the instruction map in original program order.
-        DCHECK(vector_mode_ == kSequential);
-        size_t num_args = invoke->GetNumberOfArguments();
-        HInvokeStaticOrDirect* new_invoke = new (global_allocator_) HInvokeStaticOrDirect(
-            global_allocator_,
-            num_args,
-            invoke->GetType(),
-            invoke->GetDexPc(),
-            invoke->GetDexMethodIndex(),
-            invoke->GetResolvedMethod(),
-            invoke->GetDispatchInfo(),
-            invoke->GetInvokeType(),
-            invoke->GetTargetMethod(),
-            invoke->GetClinitCheckRequirement());
-        HInputsRef inputs = invoke->GetInputs();
-        size_t num_inputs = inputs.size();
-        DCHECK_LE(num_args, num_inputs);
-        DCHECK_EQ(num_inputs, new_invoke->GetInputs().size());  // both invokes agree
-        for (size_t index = 0; index < num_inputs; ++index) {
-          HInstruction* new_input = index < num_args
-              ? vector_map_->Get(inputs[index])
-              : inputs[index];  // beyond arguments: just pass through
-          new_invoke->SetArgumentAt(index, new_input);
-        }
-        new_invoke->SetIntrinsic(invoke->GetIntrinsic(),
-                                 kNeedsEnvironmentOrCache,
-                                 kNoSideEffects,
-                                 kNoThrow);
-        vector = new_invoke;
-      }
-      break;
-    }
     default:
       break;
   }  // switch

@@ -8779,6 +8779,397 @@ void InstructionCodeGeneratorMIPS::VisitRem(HRem* instruction) {
   }
 }
 
+static void CreateMinMaxLocations(ArenaAllocator* allocator, HBinaryOperation* minmax) {
+  LocationSummary* locations = new (allocator) LocationSummary(minmax);
+  switch (minmax->GetResultType()) {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+      locations->SetInAt(0, Location::RequiresRegister());
+      locations->SetInAt(1, Location::RequiresRegister());
+      locations->SetOut(Location::RequiresRegister(), Location::kNoOutputOverlap);
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      locations->SetInAt(0, Location::RequiresFpuRegister());
+      locations->SetInAt(1, Location::RequiresFpuRegister());
+      locations->SetOut(Location::RequiresFpuRegister(), Location::kOutputOverlap);
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for HMinMax " << minmax->GetResultType();
+  }
+}
+
+void InstructionCodeGeneratorMIPS::GenerateMinMax(LocationSummary* locations,
+                                                  bool is_min,
+                                                  bool isR6,
+                                                  DataType::Type type) {
+  if (isR6) {
+    // Some architectures, such as ARM and MIPS (prior to r6), have a
+    // conditional move instruction which only changes the target
+    // (output) register if the condition is true (MIPS prior to r6 had
+    // MOVF, MOVT, MOVN, and MOVZ). The SELEQZ and SELNEZ instructions
+    // always change the target (output) register.  If the condition is
+    // true the output register gets the contents of the "rs" register;
+    // otherwise, the output register is set to zero. One consequence
+    // of this is that to implement something like "rd = c==0 ? rs : rt"
+    // MIPS64r6 needs to use a pair of SELEQZ/SELNEZ instructions.
+    // After executing this pair of instructions one of the output
+    // registers from the pair will necessarily contain zero. Then the
+    // code ORs the output registers from the SELEQZ/SELNEZ instructions
+    // to get the final result.
+    //
+    // The initial test to see if the output register is same as the
+    // first input register is needed to make sure that value in the
+    // first input register isn't clobbered before we've finished
+    // computing the output value. The logic in the corresponding else
+    // clause performs the same task but makes sure the second input
+    // register isn't clobbered in the event that it's the same register
+    // as the output register; the else clause also handles the case
+    // where the output register is distinct from both the first, and the
+    // second input registers.
+    if (type == DataType::Type::kInt64) {
+      Register a_lo = locations->InAt(0).AsRegisterPairLow<Register>();
+      Register a_hi = locations->InAt(0).AsRegisterPairHigh<Register>();
+      Register b_lo = locations->InAt(1).AsRegisterPairLow<Register>();
+      Register b_hi = locations->InAt(1).AsRegisterPairHigh<Register>();
+      Register out_lo = locations->Out().AsRegisterPairLow<Register>();
+      Register out_hi = locations->Out().AsRegisterPairHigh<Register>();
+
+      MipsLabel compare_done;
+
+      if (a_lo == b_lo) {
+        if (out_lo != a_lo) {
+          __ Move(out_lo, a_lo);
+          __ Move(out_hi, a_hi);
+        }
+      } else {
+        __ Slt(TMP, b_hi, a_hi);
+        __ Bne(b_hi, a_hi, &compare_done);
+
+        __ Sltu(TMP, b_lo, a_lo);
+
+        __ Bind(&compare_done);
+
+        if (is_min) {
+          __ Seleqz(AT, a_lo, TMP);
+          __ Selnez(out_lo, b_lo, TMP);  // Safe even if out_lo == a_lo/b_lo
+                                         // because at this point we're
+                                         // done using a_lo/b_lo.
+        } else {
+          __ Selnez(AT, a_lo, TMP);
+          __ Seleqz(out_lo, b_lo, TMP);  // ditto
+        }
+        __ Or(out_lo, out_lo, AT);
+        if (is_min) {
+          __ Seleqz(AT, a_hi, TMP);
+          __ Selnez(out_hi, b_hi, TMP);  // ditto but for out_hi & a_hi/b_hi
+        } else {
+          __ Selnez(AT, a_hi, TMP);
+          __ Seleqz(out_hi, b_hi, TMP);  // ditto but for out_hi & a_hi/b_hi
+        }
+        __ Or(out_hi, out_hi, AT);
+      }
+    } else {
+      DCHECK_EQ(type, DataType::Type::kInt32);
+      Register a = locations->InAt(0).AsRegister<Register>();
+      Register b = locations->InAt(1).AsRegister<Register>();
+      Register out = locations->Out().AsRegister<Register>();
+
+      if (a == b) {
+        if (out != a) {
+          __ Move(out, a);
+        }
+      } else {
+        __ Slt(AT, b, a);
+        if (is_min) {
+          __ Seleqz(TMP, a, AT);
+          __ Selnez(AT, b, AT);
+        } else {
+          __ Selnez(TMP, a, AT);
+          __ Seleqz(AT, b, AT);
+        }
+        __ Or(out, TMP, AT);
+      }
+    }
+  } else {  // !isR6
+    if (type == DataType::Type::kInt64) {
+      Register a_lo = locations->InAt(0).AsRegisterPairLow<Register>();
+      Register a_hi = locations->InAt(0).AsRegisterPairHigh<Register>();
+      Register b_lo = locations->InAt(1).AsRegisterPairLow<Register>();
+      Register b_hi = locations->InAt(1).AsRegisterPairHigh<Register>();
+      Register out_lo = locations->Out().AsRegisterPairLow<Register>();
+      Register out_hi = locations->Out().AsRegisterPairHigh<Register>();
+
+      MipsLabel compare_done;
+
+      if (a_lo == b_lo) {
+        if (out_lo != a_lo) {
+          __ Move(out_lo, a_lo);
+          __ Move(out_hi, a_hi);
+        }
+      } else {
+        __ Slt(TMP, a_hi, b_hi);
+        __ Bne(a_hi, b_hi, &compare_done);
+
+        __ Sltu(TMP, a_lo, b_lo);
+
+        __ Bind(&compare_done);
+
+        if (is_min) {
+          if (out_lo != a_lo) {
+            __ Movn(out_hi, a_hi, TMP);
+            __ Movn(out_lo, a_lo, TMP);
+          }
+          if (out_lo != b_lo) {
+            __ Movz(out_hi, b_hi, TMP);
+            __ Movz(out_lo, b_lo, TMP);
+          }
+        } else {
+          if (out_lo != a_lo) {
+            __ Movz(out_hi, a_hi, TMP);
+            __ Movz(out_lo, a_lo, TMP);
+          }
+          if (out_lo != b_lo) {
+            __ Movn(out_hi, b_hi, TMP);
+            __ Movn(out_lo, b_lo, TMP);
+          }
+        }
+      }
+    } else {
+      DCHECK_EQ(type, DataType::Type::kInt32);
+      Register a = locations->InAt(0).AsRegister<Register>();
+      Register b = locations->InAt(1).AsRegister<Register>();
+      Register out = locations->Out().AsRegister<Register>();
+
+      if (a == b) {
+        if (out != a) {
+          __ Move(out, a);
+        }
+      } else {
+        __ Slt(AT, a, b);
+        if (is_min) {
+          if (out != a) {
+            __ Movn(out, a, AT);
+          }
+          if (out != b) {
+            __ Movz(out, b, AT);
+          }
+        } else {
+          if (out != a) {
+            __ Movz(out, a, AT);
+          }
+          if (out != b) {
+            __ Movn(out, b, AT);
+          }
+        }
+      }
+    }
+  }
+}
+
+void InstructionCodeGeneratorMIPS::GenerateMinMaxFP(LocationSummary* locations,
+                                                    bool is_min,
+                                                    bool isR6,
+                                                    DataType::Type type) {
+  FRegister out = locations->Out().AsFpuRegister<FRegister>();
+  FRegister a = locations->InAt(0).AsFpuRegister<FRegister>();
+  FRegister b = locations->InAt(1).AsFpuRegister<FRegister>();
+
+  if (isR6) {
+    MipsLabel noNaNs;
+    MipsLabel done;
+    FRegister ftmp = ((out != a) && (out != b)) ? out : FTMP;
+
+    // When Java computes min/max it prefers a NaN to a number; the
+    // behavior of MIPSR6 is to prefer numbers to NaNs, i.e., if one of
+    // the inputs is a NaN and the other is a valid number, the MIPS
+    // instruction will return the number; Java wants the NaN value
+    // returned. This is why there is extra logic preceding the use of
+    // the MIPS min.fmt/max.fmt instructions. If either a, or b holds a
+    // NaN, return the NaN, otherwise return the min/max.
+    if (type == DataType::Type::kFloat64) {
+      __ CmpUnD(FTMP, a, b);
+      __ Bc1eqz(FTMP, &noNaNs);
+
+      // One of the inputs is a NaN
+      __ CmpEqD(ftmp, a, a);
+      // If a == a then b is the NaN, otherwise a is the NaN.
+      __ SelD(ftmp, a, b);
+
+      if (ftmp != out) {
+        __ MovD(out, ftmp);
+      }
+
+      __ B(&done);
+
+      __ Bind(&noNaNs);
+
+      if (is_min) {
+        __ MinD(out, a, b);
+      } else {
+        __ MaxD(out, a, b);
+      }
+    } else {
+      DCHECK_EQ(type, DataType::Type::kFloat32);
+      __ CmpUnS(FTMP, a, b);
+      __ Bc1eqz(FTMP, &noNaNs);
+
+      // One of the inputs is a NaN
+      __ CmpEqS(ftmp, a, a);
+      // If a == a then b is the NaN, otherwise a is the NaN.
+      __ SelS(ftmp, a, b);
+
+      if (ftmp != out) {
+        __ MovS(out, ftmp);
+      }
+
+      __ B(&done);
+
+      __ Bind(&noNaNs);
+
+      if (is_min) {
+        __ MinS(out, a, b);
+      } else {
+        __ MaxS(out, a, b);
+      }
+    }
+
+    __ Bind(&done);
+
+  } else {  // !isR6
+    MipsLabel ordered;
+    MipsLabel compare;
+    MipsLabel select;
+    MipsLabel done;
+
+    if (type == DataType::Type::kFloat64) {
+      __ CunD(a, b);
+    } else {
+      DCHECK_EQ(type, DataType::Type::kFloat32);
+      __ CunS(a, b);
+    }
+    __ Bc1f(&ordered);
+
+    // a or b (or both) is a NaN. Return one, which is a NaN.
+    if (type == DataType::Type::kFloat64) {
+      __ CeqD(b, b);
+    } else {
+      __ CeqS(b, b);
+    }
+    __ B(&select);
+
+    __ Bind(&ordered);
+
+    // Neither is a NaN.
+    // a == b? (-0.0 compares equal with +0.0)
+    // If equal, handle zeroes, else compare further.
+    if (type == DataType::Type::kFloat64) {
+      __ CeqD(a, b);
+    } else {
+      __ CeqS(a, b);
+    }
+    __ Bc1f(&compare);
+
+    // a == b either bit for bit or one is -0.0 and the other is +0.0.
+    if (type == DataType::Type::kFloat64) {
+      __ MoveFromFpuHigh(TMP, a);
+      __ MoveFromFpuHigh(AT, b);
+    } else {
+      __ Mfc1(TMP, a);
+      __ Mfc1(AT, b);
+    }
+
+    if (is_min) {
+      // -0.0 prevails over +0.0.
+      __ Or(TMP, TMP, AT);
+    } else {
+      // +0.0 prevails over -0.0.
+      __ And(TMP, TMP, AT);
+    }
+
+    if (type == DataType::Type::kFloat64) {
+      __ Mfc1(AT, a);
+      __ Mtc1(AT, out);
+      __ MoveToFpuHigh(TMP, out);
+    } else {
+      __ Mtc1(TMP, out);
+    }
+    __ B(&done);
+
+    __ Bind(&compare);
+
+    if (type == DataType::Type::kFloat64) {
+      if (is_min) {
+        // return (a <= b) ? a : b;
+        __ ColeD(a, b);
+      } else {
+        // return (a >= b) ? a : b;
+        __ ColeD(b, a);  // b <= a
+      }
+    } else {
+      if (is_min) {
+        // return (a <= b) ? a : b;
+        __ ColeS(a, b);
+      } else {
+        // return (a >= b) ? a : b;
+        __ ColeS(b, a);  // b <= a
+      }
+    }
+
+    __ Bind(&select);
+
+    if (type == DataType::Type::kFloat64) {
+      __ MovtD(out, a);
+      __ MovfD(out, b);
+    } else {
+      __ MovtS(out, a);
+      __ MovfS(out, b);
+    }
+
+    __ Bind(&done);
+  }
+}
+
+void LocationsBuilderMIPS::VisitMin(HMin* min) {
+  CreateMinMaxLocations(GetGraph()->GetAllocator(), min);
+}
+
+void InstructionCodeGeneratorMIPS::VisitMin(HMin* min) {
+  bool isR6 = codegen_->GetInstructionSetFeatures().IsR6();
+  switch (min->GetResultType()) {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+      GenerateMinMax(min->GetLocations(), /*is_min*/ true, isR6, min->GetResultType());
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      GenerateMinMaxFP(min->GetLocations(), /*is_min*/ true, isR6, min->GetResultType());
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for HMin " << min->GetResultType();
+  }
+}
+
+void LocationsBuilderMIPS::VisitMax(HMax* max) {
+  CreateMinMaxLocations(GetGraph()->GetAllocator(), max);
+}
+
+void InstructionCodeGeneratorMIPS::VisitMax(HMax* max) {
+  bool isR6 = codegen_->GetInstructionSetFeatures().IsR6();
+  switch (max->GetResultType()) {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+      GenerateMinMax(max->GetLocations(), /*is_min*/ false, isR6, max->GetResultType());
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      GenerateMinMaxFP(max->GetLocations(), /*is_min*/ false, isR6, max->GetResultType());
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for HMax " << max->GetResultType();
+  }
+}
+
 void LocationsBuilderMIPS::VisitAbs(HAbs* abs) {
   LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(abs);
   switch (abs->GetResultType()) {
