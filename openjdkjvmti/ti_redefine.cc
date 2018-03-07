@@ -1402,13 +1402,6 @@ void Redefiner::ClassRedefinition::UpdateMethods(art::ObjPtr<art::mirror::Class>
     method.SetCodeItemOffset(dex_file_->FindCodeItemOffset(class_def, dex_method_idx));
     // Clear all the intrinsics related flags.
     method.SetNotIntrinsic();
-    // Notify the jit that this method is redefined.
-    art::jit::Jit* jit = driver_->runtime_->GetJit();
-    // Non-invokable methods don't have any JIT data associated with them so we don't need to tell
-    // the jit about them.
-    if (jit != nullptr && method.IsInvokable()) {
-      jit->GetCodeCache()->NotifyMethodRedefined(&method);
-    }
   }
 }
 
@@ -1450,6 +1443,23 @@ void Redefiner::ClassRedefinition::UpdateClass(
   art::ObjPtr<art::mirror::ClassExt> ext(mclass->GetExtData());
   CHECK(!ext.IsNull());
   ext->SetOriginalDexFile(original_dex_file);
+
+  // Notify the jit that all the methods in this class were redefined. Need to do this last since
+  // the jit relies on the dex_file_ being correct (for native methods at least) to find the method
+  // meta-data.
+  art::jit::Jit* jit = driver_->runtime_->GetJit();
+  if (jit != nullptr) {
+    art::PointerSize image_pointer_size =
+        driver_->runtime_->GetClassLinker()->GetImagePointerSize();
+    auto code_cache = jit->GetCodeCache();
+    // Non-invokable methods don't have any JIT data associated with them so we don't need to tell
+    // the jit about them.
+    for (art::ArtMethod& method : mclass->GetDeclaredMethods(image_pointer_size)) {
+      if (method.IsInvokable()) {
+        code_cache->NotifyMethodRedefined(&method);
+      }
+    }
+  }
 }
 
 // Restores the old obsolete methods maps if it turns out they weren't needed (ie there were no new
