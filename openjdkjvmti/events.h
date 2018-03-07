@@ -247,6 +247,9 @@ class EventHandler {
  private:
   void SetupTraceListener(JvmtiMethodTraceListener* listener, ArtJvmtiEvent event, bool enable);
 
+  // Specifically handle the FramePop event which it might not always be possible to turn off.
+  void SetupFramePopTraceListener(bool enable);
+
   template <ArtJvmtiEvent kEvent, typename ...Args>
   ALWAYS_INLINE
   inline std::vector<impl::EventHandlerFunc<kEvent>> CollectEvents(art::Thread* thread,
