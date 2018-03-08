@@ -613,56 +613,18 @@ INVOKE_TRAMPOLINE art_quick_invoke_virtual_trampoline_with_access_check, artInvo
 
 
 .macro INVOKE_STUB_CREATE_FRAME
+SAVE_SIZE=6*8   // x4, x5, x19, x20, FP, LR saved.
+    SAVE_TWO_REGS_INCREASE_FRAME x4, x5, SAVE_SIZE
+    SAVE_TWO_REGS x19, x20, 16
+    SAVE_TWO_REGS xFP, xLR, 32
 
-SAVE_SIZE=15*8   // x4, x5, x19, x20, x21, x22, x23, x24, x25, x26, x27, x28, SP, LR, FP saved.
-SAVE_SIZE_AND_METHOD=SAVE_SIZE+8
+    mov xFP, sp                            // Use xFP for frame pointer, as it's callee-saved.
+    .cfi_def_cfa_register xFP
 
+    add x10, x2, #(__SIZEOF_POINTER__ + 0xf) // Reserve space for ArtMethod*, arguments and
+    and x10, x10, # ~0xf                   // round up for 16-byte stack alignment.
+    sub sp, sp, x10                        // Adjust SP for ArtMethod*, args and alignment padding.
 
-    mov x9, sp                             // Save stack pointer.
-    .cfi_register sp,x9
-
-    add x10, x2, # SAVE_SIZE_AND_METHOD    // calculate size of frame.
-    sub x10, sp, x10                       // Calculate SP position - saves + ArtMethod* + args
-    and x10, x10, # ~0xf                   // Enforce 16 byte stack alignment.
-    mov sp, x10                            // Set new SP.
-
-    sub x10, x9, #SAVE_SIZE                // Calculate new FP (later). Done here as we must move SP
-    .cfi_def_cfa_register x10              // before this.
-    .cfi_adjust_cfa_offset SAVE_SIZE
-
-    str x28, [x10, #112]
-    .cfi_rel_offset x28, 112
-
-    stp x26, x27, [x10, #96]
-    .cfi_rel_offset x26, 96
-    .cfi_rel_offset x27, 104
-
-    stp x24, x25, [x10, #80]
-    .cfi_rel_offset x24, 80
-    .cfi_rel_offset x25, 88
-
-    stp x22, x23, [x10, #64]
-    .cfi_rel_offset x22, 64
-    .cfi_rel_offset x23, 72
-
-    stp x20, x21, [x10, #48]
-    .cfi_rel_offset x20, 48
-    .cfi_rel_offset x21, 56
-
-    stp x9, x19, [x10, #32]                // Save old stack pointer and x19.
-    .cfi_rel_offset sp, 32
-    .cfi_rel_offset x19, 40
-
-    stp x4, x5, [x10, #16]                 // Save result and shorty addresses.
-    .cfi_rel_offset x4, 16
-    .cfi_rel_offset x5, 24
-
-    stp xFP, xLR, [x10]                    // Store LR & FP.
-    .cfi_rel_offset x29, 0
-    .cfi_rel_offset x30, 8
-
-    mov xFP, x10                           // Use xFP now, as it's callee-saved.
-    .cfi_def_cfa_register x29
     mov xSELF, x3                          // Move thread pointer into SELF register.
 
     // Copy arguments into stack frame.
@@ -677,12 +639,10 @@ SAVE_SIZE_AND_METHOD=SAVE_SIZE+8
     // Copy parameters into the stack. Use numeric label as this is a macro and Clang's assembler
     // does not have unique-id variables.
 1:
-    cmp w2, #0
-    beq 2f
+    cbz w2, 2f
     sub w2, w2, #4      // Need 65536 bytes of range.
     ldr w10, [x1, x2]
     str w10, [x9, x2]
-
     b 1b
 
 2:
@@ -699,29 +659,14 @@ SAVE_SIZE_AND_METHOD=SAVE_SIZE+8
     // Branch to method.
     blr x9
 
-    // Restore return value address and shorty address.
-    ldp x4, x5, [xFP, #16]
-    .cfi_restore x4
-    .cfi_restore x5
+    // Pop the ArtMethod* (null), arguments and alignment padding from the stack.
+    mov sp, xFP
+    .cfi_def_cfa_register sp
 
-    ldr x28, [xFP, #112]
-    .cfi_restore x28
-
-    ldp x26, x27, [xFP, #96]
-    .cfi_restore x26
-    .cfi_restore x27
-
-    ldp x24, x25, [xFP, #80]
-    .cfi_restore x24
-    .cfi_restore x25
-
-    ldp x22, x23, [xFP, #64]
-    .cfi_restore x22
-    .cfi_restore x23
-
-    ldp x20, x21, [xFP, #48]
-    .cfi_restore x20
-    .cfi_restore x21
+    // Restore saved registers including value address and shorty address.
+    RESTORE_TWO_REGS x19, x20, 16
+    RESTORE_TWO_REGS xFP, xLR, 32
+    RESTORE_TWO_REGS_DECREASE_FRAME x4, x5, SAVE_SIZE
 
     // Store result (w0/x0/s0/d0) appropriately, depending on resultType.
     ldrb w10, [x5]
@@ -731,33 +676,28 @@ SAVE_SIZE_AND_METHOD=SAVE_SIZE+8
 
     // Don't set anything for a void type.
     cmp w10, #'V'
-    beq 3f
+    beq 1f
 
     // Is it a double?
     cmp w10, #'D'
-    bne 1f
-    str d0, [x4]
-    b 3f
+    beq 2f
 
-1:  // Is it a float?
+    // Is it a float?
     cmp w10, #'F'
-    bne 2f
-    str s0, [x4]
-    b 3f
+    beq 3f
 
-2:  // Just store x0. Doesn't matter if it is 64 or 32 bits.
+    // Just store x0. Doesn't matter if it is 64 or 32 bits.
     str x0, [x4]
 
-3:  // Finish up.
-    ldp x2, x19, [xFP, #32]   // Restore stack pointer and x19.
-    .cfi_restore x19
-    mov sp, x2
-    .cfi_restore sp
+1:  // Finish up.
+    ret
 
-    ldp xFP, xLR, [xFP]    // Restore old frame pointer and link register.
-    .cfi_restore x29
-    .cfi_restore x30
+2:  // Store double.
+    str d0, [x4]
+    ret
 
+3:  // Store float.
+    str s0, [x4]
     ret
 
 .endm
@@ -1056,7 +996,7 @@ END art_quick_invoke_static_stub
 
 /*  extern"C" void art_quick_osr_stub(void** stack,                x0
  *                                    size_t stack_size_in_bytes,  x1
- *                                    const uin8_t* native_pc,     x2
+ *                                    const uint8_t* native_pc,    x2
  *                                    JValue *result,              x3
  *                                    char   *shorty,              x4
  *                                    Thread *self)                x5
