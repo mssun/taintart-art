@@ -756,6 +756,11 @@ class MipsAssembler FINAL : public Assembler, public JNIMacroAssembler<PointerSi
   void Hadd_uW(VectorRegister wd, VectorRegister ws, VectorRegister wt);
   void Hadd_uD(VectorRegister wd, VectorRegister ws, VectorRegister wt);
 
+  void PcntB(VectorRegister wd, VectorRegister ws);
+  void PcntH(VectorRegister wd, VectorRegister ws);
+  void PcntW(VectorRegister wd, VectorRegister ws);
+  void PcntD(VectorRegister wd, VectorRegister ws);
+
   // Helper for replicating floating point value in all destination elements.
   void ReplicateFPToVectorRegister(VectorRegister dst, FRegister src, bool is_double);
 

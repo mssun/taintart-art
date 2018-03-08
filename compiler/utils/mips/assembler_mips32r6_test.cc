@@ -2277,6 +2277,22 @@ TEST_F(AssemblerMIPS32r6Test, FillW) {
   DriverStr(RepeatVR(&mips::MipsAssembler::FillW, "fill.w ${reg1}, ${reg2}"), "fill.w");
 }
 
+TEST_F(AssemblerMIPS32r6Test, PcntB) {
+  DriverStr(RepeatVV(&mips::MipsAssembler::PcntB, "pcnt.b ${reg1}, ${reg2}"), "pcnt.b");
+}
+
+TEST_F(AssemblerMIPS32r6Test, PcntH) {
+  DriverStr(RepeatVV(&mips::MipsAssembler::PcntH, "pcnt.h ${reg1}, ${reg2}"), "pcnt.h");
+}
+
+TEST_F(AssemblerMIPS32r6Test, PcntW) {
+  DriverStr(RepeatVV(&mips::MipsAssembler::PcntW, "pcnt.w ${reg1}, ${reg2}"), "pcnt.w");
+}
+
+TEST_F(AssemblerMIPS32r6Test, PcntD) {
+  DriverStr(RepeatVV(&mips::MipsAssembler::PcntD, "pcnt.d ${reg1}, ${reg2}"), "pcnt.d");
+}
+
 TEST_F(AssemblerMIPS32r6Test, LdiB) {
   DriverStr(RepeatVIb(&mips::MipsAssembler::LdiB, -8, "ldi.b ${reg}, {imm}"), "ldi.b");
 }
