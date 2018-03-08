@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright 2017, The Android Open Source Project
 #
@@ -45,9 +45,9 @@ options = parser.parse_args()
 ##########
 
 if options.list:
-  print "List of all known build_target: "
-  for k in sorted(target_config.iterkeys()):
-    print " * " + k
+  print("List of all known build_target: ")
+  for k in sorted(target_config.keys()):
+    print(" * " + k)
   # TODO: would be nice if this was the same order as the target config file.
   sys.exit(1)
 
@@ -59,10 +59,10 @@ target = target_config[options.build_target]
 n_threads = options.n_threads
 custom_env = target.get('env', {})
 custom_env['SOONG_ALLOW_MISSING_DEPENDENCIES'] = 'true'
-print custom_env
+print(custom_env)
 os.environ.update(custom_env)
 
-if target.has_key('make'):
+if 'make' in target:
   build_command = 'make'
   build_command += ' DX='
   build_command += ' -j' + str(n_threads)
@@ -75,7 +75,7 @@ if target.has_key('make'):
   if subprocess.call(build_command.split()):
     sys.exit(1)
 
-if target.has_key('golem'):
+if 'golem' in target:
   machine_type = target.get('golem')
   # use art-opt-cc by default since it mimics the default preopt config.
   default_golem_config = 'art-opt-cc'
@@ -93,7 +93,7 @@ if target.has_key('golem'):
   if subprocess.call(cmd):
     sys.exit(1)
 
-if target.has_key('run-test'):
+if 'run-test' in target:
   run_test_command = [os.path.join(env.ANDROID_BUILD_TOP,
                                    'art/test/testrunner/testrunner.py')]
   test_flags = target.get('run-test', [])
