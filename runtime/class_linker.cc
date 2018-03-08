@@ -3361,9 +3361,10 @@ void ClassLinker::RegisterDexFileLocked(const DexFile& dex_file,
   CHECK_EQ(dex_cache_location, dex_file_suffix);
   const OatFile* oat_file =
       (dex_file.GetOatDexFile() != nullptr) ? dex_file.GetOatDexFile()->GetOatFile() : nullptr;
-  // Clean up pass to remove null dex caches. Also check if we need to initialize OatFile .bss.
-  // Null dex caches can occur due to class unloading and we are lazily removing null entries.
-  bool initialize_oat_file_bss = (oat_file != nullptr);
+  // Clean up pass to remove null dex caches; null dex caches can occur due to class unloading
+  // and we are lazily removing null entries. Also check if we need to initialize OatFile data
+  // (.data.bimg.rel.ro and .bss sections) needed for code execution.
+  bool initialize_oat_file_data = (oat_file != nullptr) && oat_file->IsExecutable();
   JavaVMExt* const vm = self->GetJniEnv()->GetVm();
   for (auto it = dex_caches_.begin(); it != dex_caches_.end(); ) {
     DexCacheData data = *it;
@@ -3371,15 +3372,36 @@ void ClassLinker::RegisterDexFileLocked(const DexFile& dex_file,
       vm->DeleteWeakGlobalRef(self, data.weak_root);
       it = dex_caches_.erase(it);
     } else {
-      if (initialize_oat_file_bss &&
+      if (initialize_oat_file_data &&
           it->dex_file->GetOatDexFile() != nullptr &&
           it->dex_file->GetOatDexFile()->GetOatFile() == oat_file) {
-        initialize_oat_file_bss = false;  // Already initialized.
+        initialize_oat_file_data = false;  // Already initialized.
       }
       ++it;
     }
   }
-  if (initialize_oat_file_bss) {
+  if (initialize_oat_file_data) {
+    // Initialize the .data.bimg.rel.ro section.
+    if (!oat_file->GetBootImageRelocations().empty()) {
+      uint8_t* reloc_begin = const_cast<uint8_t*>(oat_file->DataBimgRelRoBegin());
+      CheckedCall(mprotect,
+                  "un-protect boot image relocations",
+                  reloc_begin,
+                  oat_file->DataBimgRelRoSize(),
+                  PROT_READ | PROT_WRITE);
+      uint32_t boot_image_begin = dchecked_integral_cast<uint32_t>(reinterpret_cast<uintptr_t>(
+          Runtime::Current()->GetHeap()->GetBootImageSpaces().front()->Begin()));
+      for (const uint32_t& relocation : oat_file->GetBootImageRelocations()) {
+        const_cast<uint32_t&>(relocation) += boot_image_begin;
+      }
+      CheckedCall(mprotect,
+                  "protect boot image relocations",
+                  reloc_begin,
+                  oat_file->DataBimgRelRoSize(),
+                  PROT_READ);
+    }
+
+    // Initialize the .bss section.
     // TODO: Pre-initialize from boot/app image?
     ArtMethod* resolution_method = Runtime::Current()->GetResolutionMethod();
     for (ArtMethod*& entry : oat_file->GetBssMethods()) {

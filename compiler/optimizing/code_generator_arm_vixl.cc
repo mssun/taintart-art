@@ -9194,6 +9194,14 @@ void CodeGeneratorARMVIXL::GenerateStaticOrDirectCall(
     case HInvokeStaticOrDirect::MethodLoadKind::kDirectAddress:
       __ Mov(RegisterFrom(temp), Operand::From(invoke->GetMethodAddress()));
       break;
+    case HInvokeStaticOrDirect::MethodLoadKind::kBootImageRelRo: {
+      uint32_t boot_image_offset = invoke->GetDispatchInfo().method_load_data;
+      PcRelativePatchInfo* labels = NewBootImageRelRoPatch(boot_image_offset);
+      vixl32::Register temp_reg = RegisterFrom(temp);
+      EmitMovwMovtPlaceholder(labels, temp_reg);
+      GetAssembler()->LoadFromOffset(kLoadWord, temp_reg, temp_reg, /* offset*/ 0);
+      break;
+    }
     case HInvokeStaticOrDirect::MethodLoadKind::kBssEntry: {
       PcRelativePatchInfo* labels = NewMethodBssEntryPatch(
           MethodReference(&GetGraph()->GetDexFile(), invoke->GetDexMethodIndex()));
@@ -9291,6 +9299,13 @@ void CodeGeneratorARMVIXL::GenerateVirtualCall(
   }
 }
 
+CodeGeneratorARMVIXL::PcRelativePatchInfo* CodeGeneratorARMVIXL::NewBootImageRelRoPatch(
+    uint32_t boot_image_offset) {
+  return NewPcRelativePatch(/* dex_file */ nullptr,
+                            boot_image_offset,
+                            &boot_image_method_patches_);
+}
+
 CodeGeneratorARMVIXL::PcRelativePatchInfo* CodeGeneratorARMVIXL::NewBootImageMethodPatch(
     MethodReference target_method) {
   return NewPcRelativePatch(
@@ -9381,6 +9396,14 @@ inline void CodeGeneratorARMVIXL::EmitPcRelativeLinkerPatches(
   }
 }
 
+linker::LinkerPatch DataBimgRelRoPatchAdapter(size_t literal_offset,
+                                              const DexFile* target_dex_file,
+                                              uint32_t pc_insn_offset,
+                                              uint32_t boot_image_offset) {
+  DCHECK(target_dex_file == nullptr);  // Unused for DataBimgRelRoPatch(), should be null.
+  return linker::LinkerPatch::DataBimgRelRoPatch(literal_offset, pc_insn_offset, boot_image_offset);
+}
+
 void CodeGeneratorARMVIXL::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) {
   DCHECK(linker_patches->empty());
   size_t size =
@@ -9400,7 +9423,8 @@ void CodeGeneratorARMVIXL::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* l
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::RelativeStringPatch>(
         boot_image_string_patches_, linker_patches);
   } else {
-    DCHECK(boot_image_method_patches_.empty());
+    EmitPcRelativeLinkerPatches<DataBimgRelRoPatchAdapter>(
+        boot_image_method_patches_, linker_patches);
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::TypeClassTablePatch>(
         boot_image_type_patches_, linker_patches);
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::StringInternTablePatch>(

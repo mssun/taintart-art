@@ -4460,12 +4460,23 @@ void CodeGeneratorARM64::GenerateStaticOrDirectCall(
       // Load method address from literal pool.
       __ Ldr(XRegisterFrom(temp), DeduplicateUint64Literal(invoke->GetMethodAddress()));
       break;
+    case HInvokeStaticOrDirect::MethodLoadKind::kBootImageRelRo: {
+      // Add ADRP with its PC-relative .data.bimg.rel.ro patch.
+      uint32_t boot_image_offset = invoke->GetDispatchInfo().method_load_data;
+      vixl::aarch64::Label* adrp_label = NewBootImageRelRoPatch(boot_image_offset);
+      EmitAdrpPlaceholder(adrp_label, XRegisterFrom(temp));
+      // Add LDR with its PC-relative .data.bimg.rel.ro patch.
+      vixl::aarch64::Label* ldr_label = NewBootImageRelRoPatch(boot_image_offset, adrp_label);
+      // Note: Boot image is in the low 4GiB and the entry is 32-bit, so emit a 32-bit load.
+      EmitLdrOffsetPlaceholder(ldr_label, WRegisterFrom(temp), XRegisterFrom(temp));
+      break;
+    }
     case HInvokeStaticOrDirect::MethodLoadKind::kBssEntry: {
-      // Add ADRP with its PC-relative DexCache access patch.
+      // Add ADRP with its PC-relative .bss entry patch.
       MethodReference target_method(&GetGraph()->GetDexFile(), invoke->GetDexMethodIndex());
       vixl::aarch64::Label* adrp_label = NewMethodBssEntryPatch(target_method);
       EmitAdrpPlaceholder(adrp_label, XRegisterFrom(temp));
-      // Add LDR with its PC-relative DexCache access patch.
+      // Add LDR with its PC-relative .bss entry patch.
       vixl::aarch64::Label* ldr_label =
           NewMethodBssEntryPatch(target_method, adrp_label);
       EmitLdrOffsetPlaceholder(ldr_label, XRegisterFrom(temp), XRegisterFrom(temp));
@@ -4558,6 +4569,13 @@ void LocationsBuilderARM64::VisitInvokePolymorphic(HInvokePolymorphic* invoke) {
 void InstructionCodeGeneratorARM64::VisitInvokePolymorphic(HInvokePolymorphic* invoke) {
   codegen_->GenerateInvokePolymorphicCall(invoke);
   codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+}
+
+vixl::aarch64::Label* CodeGeneratorARM64::NewBootImageRelRoPatch(
+    uint32_t boot_image_offset,
+    vixl::aarch64::Label* adrp_label) {
+  return NewPcRelativePatch(
+      /* dex_file */ nullptr, boot_image_offset, adrp_label, &boot_image_method_patches_);
 }
 
 vixl::aarch64::Label* CodeGeneratorARM64::NewBootImageMethodPatch(
@@ -4682,6 +4700,14 @@ inline void CodeGeneratorARM64::EmitPcRelativeLinkerPatches(
   }
 }
 
+linker::LinkerPatch DataBimgRelRoPatchAdapter(size_t literal_offset,
+                                              const DexFile* target_dex_file,
+                                              uint32_t pc_insn_offset,
+                                              uint32_t boot_image_offset) {
+  DCHECK(target_dex_file == nullptr);  // Unused for DataBimgRelRoPatch(), should be null.
+  return linker::LinkerPatch::DataBimgRelRoPatch(literal_offset, pc_insn_offset, boot_image_offset);
+}
+
 void CodeGeneratorARM64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) {
   DCHECK(linker_patches->empty());
   size_t size =
@@ -4701,7 +4727,8 @@ void CodeGeneratorARM64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* lin
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::RelativeStringPatch>(
         boot_image_string_patches_, linker_patches);
   } else {
-    DCHECK(boot_image_method_patches_.empty());
+    EmitPcRelativeLinkerPatches<DataBimgRelRoPatchAdapter>(
+        boot_image_method_patches_, linker_patches);
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::TypeClassTablePatch>(
         boot_image_type_patches_, linker_patches);
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::StringInternTablePatch>(

@@ -216,10 +216,9 @@ class OatTest : public CommonCompilerTest {
                                     instruction_set_features_.get());
     oat_writer.Initialize(compiler_driver_.get(), nullptr, dex_files);
     oat_writer.PrepareLayout(&patcher);
-    size_t rodata_size = oat_writer.GetOatHeader().GetExecutableOffset();
-    size_t text_size = oat_writer.GetOatSize() - rodata_size;
-    elf_writer->PrepareDynamicSection(rodata_size,
-                                      text_size,
+    elf_writer->PrepareDynamicSection(oat_writer.GetOatHeader().GetExecutableOffset(),
+                                      oat_writer.GetCodeSize(),
+                                      oat_writer.GetDataBimgRelRoSize(),
                                       oat_writer.GetBssSize(),
                                       oat_writer.GetBssMethodsOffset(),
                                       oat_writer.GetBssRootsOffset(),
@@ -247,6 +246,14 @@ class OatTest : public CommonCompilerTest {
       return false;
     }
     elf_writer->EndText(text);
+
+    if (oat_writer.GetDataBimgRelRoSize() != 0u) {
+      OutputStream* data_bimg_rel_ro = elf_writer->StartDataBimgRelRo();
+      if (!oat_writer.WriteDataBimgRelRo(data_bimg_rel_ro)) {
+        return false;
+      }
+      elf_writer->EndDataBimgRelRo(data_bimg_rel_ro);
+    }
 
     if (!oat_writer.WriteHeader(elf_writer->GetStream(), 42U, 4096U, 0)) {
       return false;

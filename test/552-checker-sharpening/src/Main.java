@@ -195,6 +195,32 @@ public class Main {
     return Other.class;
   }
 
+  /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: java.lang.String Main.$noinline$toHexString(int) builder (after)
+  /// CHECK:                InvokeStaticOrDirect method_load_kind:RuntimeCall
+
+  /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: java.lang.String Main.$noinline$toHexString(int) sharpening (after)
+  // Note: load kind depends on PIC/non-PIC
+  /// CHECK:                InvokeStaticOrDirect method_load_kind:{{BootImageRelRo|DirectAddress}}
+  public static String $noinline$toHexString(int value) {
+    return Integer.toString(value, 16);
+  }
+
+  /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: java.lang.String Main.$noinline$toHexStringIndirect(int) builder (after)
+  /// CHECK:                InvokeStaticOrDirect method_load_kind:RuntimeCall
+
+  /// CHECK-START-{ARM,ARM64,MIPS,MIPS64,X86,X86_64}: java.lang.String Main.$noinline$toHexStringIndirect(int) sharpening (after)
+  /// CHECK:                InvokeStaticOrDirect method_load_kind:BssEntry
+
+  /// CHECK-START-X86: java.lang.String Main.$noinline$toHexStringIndirect(int) pc_relative_fixups_x86 (before)
+  /// CHECK-NOT:            X86ComputeBaseMethodAddress
+
+  /// CHECK-START-X86: java.lang.String Main.$noinline$toHexStringIndirect(int) pc_relative_fixups_x86 (after)
+  /// CHECK-DAG:            X86ComputeBaseMethodAddress
+  /// CHECK-DAG:            InvokeStaticOrDirect method_load_kind:BssEntry
+  public static String $noinline$toHexStringIndirect(int value) {
+    return $noinline$toHexString(value);
+  }
+
   public static void main(String[] args) {
     assertIntEquals(1, testSimple(1));
     assertIntEquals(1, testDiamond(false, 1));
@@ -208,6 +234,8 @@ public class Main {
     assertStringEquals("non-boot-image-string", $noinline$getNonBootImageString());
     assertClassEquals(String.class, $noinline$getStringClass());
     assertClassEquals(Other.class, $noinline$getOtherClass());
+    assertStringEquals("12345678", $noinline$toHexString(0x12345678));
+    assertStringEquals("76543210", $noinline$toHexStringIndirect(0x76543210));
   }
 }
 

@@ -4431,6 +4431,10 @@ class HInvokeStaticOrDirect FINAL : public HInvoke {
     // Used for app->boot calls with non-relocatable image and for JIT-compiled calls.
     kDirectAddress,
 
+    // Load from an entry in the .data.bimg.rel.ro using a PC-relative load.
+    // Used for app->boot calls with relocatable image.
+    kBootImageRelRo,
+
     // Load from an entry in the .bss section using a PC-relative load.
     // Used for classes outside boot image when .bss is accessible with a PC-relative load.
     kBssEntry,
@@ -4563,6 +4567,7 @@ class HInvokeStaticOrDirect FINAL : public HInvoke {
   bool HasMethodAddress() const { return GetMethodLoadKind() == MethodLoadKind::kDirectAddress; }
   bool HasPcRelativeMethodLoadKind() const {
     return GetMethodLoadKind() == MethodLoadKind::kBootImageLinkTimePcRelative ||
+           GetMethodLoadKind() == MethodLoadKind::kBootImageRelRo ||
            GetMethodLoadKind() == MethodLoadKind::kBssEntry;
   }
   bool HasCurrentMethodInput() const {

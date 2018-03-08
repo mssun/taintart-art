@@ -529,6 +529,8 @@ class ElfBuilder FINAL {
         stream_(output),
         rodata_(this, ".rodata", SHT_PROGBITS, SHF_ALLOC, nullptr, 0, kPageSize, 0),
         text_(this, ".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, nullptr, 0, kPageSize, 0),
+        data_bimg_rel_ro_(
+            this, ".data.bimg.rel.ro", SHT_PROGBITS, SHF_ALLOC, nullptr, 0, kPageSize, 0),
         bss_(this, ".bss", SHT_NOBITS, SHF_ALLOC, nullptr, 0, kPageSize, 0),
         dex_(this, ".dex", SHT_NOBITS, SHF_ALLOC, nullptr, 0, kPageSize, 0),
         dynstr_(this, ".dynstr", SHF_ALLOC, kPageSize),
@@ -552,6 +554,7 @@ class ElfBuilder FINAL {
         loaded_size_(0u),
         virtual_address_(0) {
     text_.phdr_flags_ = PF_R | PF_X;
+    data_bimg_rel_ro_.phdr_flags_ = PF_R | PF_W;  // Shall be made read-only at run time.
     bss_.phdr_flags_ = PF_R | PF_W;
     dex_.phdr_flags_ = PF_R;
     dynamic_.phdr_flags_ = PF_R | PF_W;
@@ -566,6 +569,7 @@ class ElfBuilder FINAL {
   BuildIdSection* GetBuildId() { return &build_id_; }
   Section* GetRoData() { return &rodata_; }
   Section* GetText() { return &text_; }
+  Section* GetDataBimgRelRo() { return &data_bimg_rel_ro_; }
   Section* GetBss() { return &bss_; }
   Section* GetDex() { return &dex_; }
   StringSection* GetStrTab() { return &strtab_; }
@@ -694,6 +698,7 @@ class ElfBuilder FINAL {
   void PrepareDynamicSection(const std::string& elf_file_path,
                              Elf_Word rodata_size,
                              Elf_Word text_size,
+                             Elf_Word data_bimg_rel_ro_size,
                              Elf_Word bss_size,
                              Elf_Word bss_methods_offset,
                              Elf_Word bss_roots_offset,
@@ -707,6 +712,9 @@ class ElfBuilder FINAL {
     // Allocate all pre-dynamic sections.
     rodata_.AllocateVirtualMemory(rodata_size);
     text_.AllocateVirtualMemory(text_size);
+    if (data_bimg_rel_ro_size != 0) {
+      data_bimg_rel_ro_.AllocateVirtualMemory(data_bimg_rel_ro_size);
+    }
     if (bss_size != 0) {
       bss_.AllocateVirtualMemory(bss_size);
     }
@@ -734,6 +742,24 @@ class ElfBuilder FINAL {
       Elf_Word oatlastword = dynstr_.Add("oatlastword");
       Elf_Word oatlastword_address = rodata_.GetAddress() + rodata_size - 4;
       dynsym_.Add(oatlastword, &rodata_, oatlastword_address, 4, STB_GLOBAL, STT_OBJECT);
+    }
+    if (data_bimg_rel_ro_size != 0u) {
+      Elf_Word oatdatabimgrelro = dynstr_.Add("oatdatabimgrelro");
+      dynsym_.Add(oatdatabimgrelro,
+                  &data_bimg_rel_ro_,
+                  data_bimg_rel_ro_.GetAddress(),
+                  data_bimg_rel_ro_size,
+                  STB_GLOBAL,
+                  STT_OBJECT);
+      Elf_Word oatdatabimgrelrolastword = dynstr_.Add("oatdatabimgrelrolastword");
+      Elf_Word oatdatabimgrelrolastword_address =
+          data_bimg_rel_ro_.GetAddress() + data_bimg_rel_ro_size - 4;
+      dynsym_.Add(oatdatabimgrelrolastword,
+                  &data_bimg_rel_ro_,
+                  oatdatabimgrelrolastword_address,
+                  4,
+                  STB_GLOBAL,
+                  STT_OBJECT);
     }
     DCHECK_LE(bss_roots_offset, bss_size);
     if (bss_size != 0u) {
@@ -1010,6 +1036,7 @@ class ElfBuilder FINAL {
 
   Section rodata_;
   Section text_;
+  Section data_bimg_rel_ro_;
   Section bss_;
   Section dex_;
   CachedStringSection dynstr_;

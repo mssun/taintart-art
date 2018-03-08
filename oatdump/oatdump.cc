@@ -172,6 +172,7 @@ class OatSymbolizer FINAL {
     builder_->PrepareDynamicSection(elf_file->GetPath(),
                                     rodata_size,
                                     text_size,
+                                    oat_file_->DataBimgRelRoSize(),
                                     oat_file_->BssSize(),
                                     oat_file_->BssMethodsOffset(),
                                     oat_file_->BssRootsOffset(),
