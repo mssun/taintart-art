@@ -39,6 +39,7 @@
 #include <sys/types.h>
 
 #include "android-base/stringprintf.h"
+#include "android-base/strings.h"
 
 #include "arch/instruction_set.h"
 #include "base/aborting.h"
@@ -217,8 +218,10 @@ static void Addr2line(const std::string& map_src,
                       std::unique_ptr<Addr2linePipe>* pipe /* inout */) {
   DCHECK(pipe != nullptr);
 
-  if (map_src == "[vdso]") {
-    // Special-case this, our setup has problems with this.
+  if (map_src == "[vdso]" || android::base::EndsWith(map_src, ".vdex")) {
+    // addr2line will not work on the vdso.
+    // vdex files are special frames injected for the interpreter
+    // so they don't have any line number information available.
     return;
   }
 
