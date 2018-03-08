@@ -13,12 +13,6 @@
   name: "org.apache.harmony.jpda.tests.jdwp.ThreadReference.ThreadGroup002Test#testThreadGroup002"
 },
 {
-  description: "Test fails due to modifiers not including ACC_SUPER",
-  result: EXEC_FAILED,
-  bug: 66906055,
-  name: "org.apache.harmony.jpda.tests.jdwp.ReferenceType.ModifiersTest#testModifiers001"
-},
-{
   description: "Test fails due to static values not being set correctly.",
   result: EXEC_FAILED,
   bug: 66905894,
