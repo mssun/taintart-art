@@ -129,12 +129,15 @@ class Dex2oatImageTest : public CommonRuntimeTest {
     std::string art_file = scratch.GetFilename() + ".art";
     std::string oat_file = scratch.GetFilename() + ".oat";
     std::string vdex_file = scratch.GetFilename() + ".vdex";
-    ret.art_size = OS::GetFileSizeBytes(art_file.c_str());
-    ret.oat_size = OS::GetFileSizeBytes(oat_file.c_str());
-    ret.vdex_size = OS::GetFileSizeBytes(vdex_file.c_str());
-    CHECK_GT(ret.art_size, 0u) << art_file;
-    CHECK_GT(ret.oat_size, 0u) << oat_file;
-    CHECK_GT(ret.vdex_size, 0u) << vdex_file;
+    int64_t art_size = OS::GetFileSizeBytes(art_file.c_str());
+    int64_t oat_size = OS::GetFileSizeBytes(oat_file.c_str());
+    int64_t vdex_size = OS::GetFileSizeBytes(vdex_file.c_str());
+    CHECK_GT(art_size, 0u) << art_file;
+    CHECK_GT(oat_size, 0u) << oat_file;
+    CHECK_GT(vdex_size, 0u) << vdex_file;
+    ret.art_size = art_size;
+    ret.oat_size = oat_size;
+    ret.vdex_size = vdex_size;
     scratch.Close();
     // Clear image files since we compile the image multiple times and don't want to leave any
     // artifacts behind.
@@ -228,7 +231,7 @@ class Dex2oatImageTest : public CommonRuntimeTest {
   }
 };
 
-TEST_F(Dex2oatImageTest, DISABLED_TestModesAndFilters) {
+TEST_F(Dex2oatImageTest, TestModesAndFilters) {
   if (kIsTargetBuild) {
     // This test is too slow for target builds.
     return;
