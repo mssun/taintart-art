@@ -273,8 +273,9 @@ class InstructionCodeGeneratorARM64 : public InstructionCodeGenerator {
   void HandleFieldGet(HInstruction* instruction, const FieldInfo& field_info);
   void HandleCondition(HCondition* instruction);
 
-  void GenerateMinMax(LocationSummary* locations, bool is_min, DataType::Type type);
+  void GenerateMinMaxInt(LocationSummary* locations, bool is_min, DataType::Type type);
   void GenerateMinMaxFP(LocationSummary* locations, bool is_min, DataType::Type type);
+  void GenerateMinMax(HBinaryOperation* minmax, bool is_min);
 
   // Generate a heap reference load using one register `out`:
   //
