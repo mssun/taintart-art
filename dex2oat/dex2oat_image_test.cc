@@ -228,7 +228,7 @@ class Dex2oatImageTest : public CommonRuntimeTest {
   }
 };
 
-TEST_F(Dex2oatImageTest, TestModesAndFilters) {
+TEST_F(Dex2oatImageTest, DISABLED_TestModesAndFilters) {
   if (kIsTargetBuild) {
     // This test is too slow for target builds.
     return;
