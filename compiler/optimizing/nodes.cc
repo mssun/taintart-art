@@ -2891,6 +2891,8 @@ std::ostream& operator<<(std::ostream& os, HInvokeStaticOrDirect::MethodLoadKind
       return os << "BootImageLinkTimePcRelative";
     case HInvokeStaticOrDirect::MethodLoadKind::kDirectAddress:
       return os << "DirectAddress";
+    case HInvokeStaticOrDirect::MethodLoadKind::kBootImageRelRo:
+      return os << "BootImageRelRo";
     case HInvokeStaticOrDirect::MethodLoadKind::kBssEntry:
       return os << "BssEntry";
     case HInvokeStaticOrDirect::MethodLoadKind::kRuntimeCall:

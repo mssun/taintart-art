@@ -41,6 +41,7 @@ class LinkerPatch {
   // choose to squeeze the Type into fewer than 8 bits, we'll have to declare
   // patch_type_ as an uintN_t and do explicit static_cast<>s.
   enum class Type : uint8_t {
+    kDataBimgRelRo,           // NOTE: Actual patching is instruction_set-dependent.
     kMethodRelative,          // NOTE: Actual patching is instruction_set-dependent.
     kMethodBssEntry,          // NOTE: Actual patching is instruction_set-dependent.
     kCall,
@@ -53,6 +54,15 @@ class LinkerPatch {
     kStringBssEntry,          // NOTE: Actual patching is instruction_set-dependent.
     kBakerReadBarrierBranch,  // NOTE: Actual patching is instruction_set-dependent.
   };
+
+  static LinkerPatch DataBimgRelRoPatch(size_t literal_offset,
+                                        uint32_t pc_insn_offset,
+                                        uint32_t boot_image_offset) {
+    LinkerPatch patch(literal_offset, Type::kDataBimgRelRo, /* target_dex_file */ nullptr);
+    patch.boot_image_offset_ = boot_image_offset;
+    patch.pc_insn_offset_ = pc_insn_offset;
+    return patch;
+  }
 
   static LinkerPatch RelativeMethodPatch(size_t literal_offset,
                                          const DexFile* target_dex_file,
@@ -172,6 +182,7 @@ class LinkerPatch {
 
   bool IsPcRelative() const {
     switch (GetType()) {
+      case Type::kDataBimgRelRo:
       case Type::kMethodRelative:
       case Type::kMethodBssEntry:
       case Type::kCallRelative:
@@ -186,6 +197,11 @@ class LinkerPatch {
       default:
         return false;
     }
+  }
+
+  uint32_t BootImageOffset() const {
+    DCHECK(patch_type_ == Type::kDataBimgRelRo);
+    return boot_image_offset_;
   }
 
   MethodReference TargetMethod() const {
@@ -225,7 +241,8 @@ class LinkerPatch {
   }
 
   uint32_t PcInsnOffset() const {
-    DCHECK(patch_type_ == Type::kMethodRelative ||
+    DCHECK(patch_type_ == Type::kDataBimgRelRo ||
+           patch_type_ == Type::kMethodRelative ||
            patch_type_ == Type::kMethodBssEntry ||
            patch_type_ == Type::kTypeRelative ||
            patch_type_ == Type::kTypeClassTable ||
@@ -263,10 +280,11 @@ class LinkerPatch {
   uint32_t literal_offset_ : 24;  // Method code size up to 16MiB.
   Type patch_type_ : 8;
   union {
-    uint32_t cmp1_;             // Used for relational operators.
-    uint32_t method_idx_;       // Method index for Call/Method patches.
-    uint32_t type_idx_;         // Type index for Type patches.
-    uint32_t string_idx_;       // String index for String patches.
+    uint32_t cmp1_;               // Used for relational operators.
+    uint32_t boot_image_offset_;  // Data to write to the .data.bimg.rel.ro entry.
+    uint32_t method_idx_;         // Method index for Call/Method patches.
+    uint32_t type_idx_;           // Type index for Type patches.
+    uint32_t string_idx_;         // String index for String patches.
     uint32_t baker_custom_value1_;
     static_assert(sizeof(method_idx_) == sizeof(cmp1_), "needed by relational operators");
     static_assert(sizeof(type_idx_) == sizeof(cmp1_), "needed by relational operators");
