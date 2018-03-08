@@ -3843,9 +3843,9 @@ static void CreateMinMaxLocations(ArenaAllocator* allocator, HBinaryOperation* m
   }
 }
 
-void InstructionCodeGeneratorX86_64::GenerateMinMax(LocationSummary* locations,
-                                                    bool is_min,
-                                                    DataType::Type type) {
+void InstructionCodeGeneratorX86_64::GenerateMinMaxInt(LocationSummary* locations,
+                                                       bool is_min,
+                                                       DataType::Type type) {
   Location op1_loc = locations->InAt(0);
   Location op2_loc = locations->InAt(1);
 
@@ -3960,23 +3960,28 @@ void InstructionCodeGeneratorX86_64::GenerateMinMaxFP(LocationSummary* locations
   __ Bind(&done);
 }
 
+void InstructionCodeGeneratorX86_64::GenerateMinMax(HBinaryOperation* minmax, bool is_min) {
+  DataType::Type type = minmax->GetResultType();
+  switch (type) {
+    case DataType::Type::kInt32:
+    case DataType::Type::kInt64:
+      GenerateMinMaxInt(minmax->GetLocations(), is_min, type);
+      break;
+    case DataType::Type::kFloat32:
+    case DataType::Type::kFloat64:
+      GenerateMinMaxFP(minmax->GetLocations(), is_min, type);
+      break;
+    default:
+      LOG(FATAL) << "Unexpected type for HMinMax " << type;
+  }
+}
+
 void LocationsBuilderX86_64::VisitMin(HMin* min) {
   CreateMinMaxLocations(GetGraph()->GetAllocator(), min);
 }
 
 void InstructionCodeGeneratorX86_64::VisitMin(HMin* min) {
-  switch (min->GetResultType()) {
-    case DataType::Type::kInt32:
-    case DataType::Type::kInt64:
-      GenerateMinMax(min->GetLocations(), /*is_min*/ true, min->GetResultType());
-      break;
-    case DataType::Type::kFloat32:
-    case DataType::Type::kFloat64:
-      GenerateMinMaxFP(min->GetLocations(), /*is_min*/ true, min->GetResultType());
-      break;
-    default:
-      LOG(FATAL) << "Unexpected type for HMin " << min->GetResultType();
-  }
+  GenerateMinMax(min, /*is_min*/ true);
 }
 
 void LocationsBuilderX86_64::VisitMax(HMax* max) {
@@ -3984,18 +3989,7 @@ void LocationsBuilderX86_64::VisitMax(HMax* max) {
 }
 
 void InstructionCodeGeneratorX86_64::VisitMax(HMax* max) {
-  switch (max->GetResultType()) {
-    case DataType::Type::kInt32:
-    case DataType::Type::kInt64:
-      GenerateMinMax(max->GetLocations(), /*is_min*/ false, max->GetResultType());
-      break;
-    case DataType::Type::kFloat32:
-    case DataType::Type::kFloat64:
-      GenerateMinMaxFP(max->GetLocations(), /*is_min*/ false, max->GetResultType());
-      break;
-    default:
-      LOG(FATAL) << "Unexpected type for HMax " << max->GetResultType();
-  }
+  GenerateMinMax(max, /*is_min*/ false);
 }
 
 void LocationsBuilderX86_64::VisitAbs(HAbs* abs) {
