@@ -89,9 +89,11 @@ bool OS::DirectoryExists(const char* name) {
 int64_t OS::GetFileSizeBytes(const char* name) {
   struct stat st;
   if (stat(name, &st) == 0) {
-    return -1;  // TODO: Deal with symlinks?
+    return st.st_size;  // TODO: Deal with symlinks? According to the documentation,
+                        // the st_size for a symlink is "the length of the pathname
+                        // it contains, without a terminating null byte."
   } else {
-    return st.st_size;
+    return -1;
   }
 }
 
