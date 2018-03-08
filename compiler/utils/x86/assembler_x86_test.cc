@@ -600,6 +600,38 @@ TEST_F(AssemblerX86Test, PSubQ) {
   DriverStr(RepeatFF(&x86::X86Assembler::psubq, "psubq %{reg2}, %{reg1}"), "psubq");
 }
 
+TEST_F(AssemblerX86Test, PAddUSB) {
+  DriverStr(RepeatFF(&x86::X86Assembler::paddusb, "paddusb %{reg2}, %{reg1}"), "paddusb");
+}
+
+TEST_F(AssemblerX86Test, PAddSB) {
+  DriverStr(RepeatFF(&x86::X86Assembler::paddsb, "paddsb %{reg2}, %{reg1}"), "paddsb");
+}
+
+TEST_F(AssemblerX86Test, PAddUSW) {
+  DriverStr(RepeatFF(&x86::X86Assembler::paddusw, "paddusw %{reg2}, %{reg1}"), "paddusw");
+}
+
+TEST_F(AssemblerX86Test, PAddSW) {
+  DriverStr(RepeatFF(&x86::X86Assembler::psubsw, "psubsw %{reg2}, %{reg1}"), "psubsw");
+}
+
+TEST_F(AssemblerX86Test, PSubUSB) {
+  DriverStr(RepeatFF(&x86::X86Assembler::psubusb, "psubusb %{reg2}, %{reg1}"), "psubusb");
+}
+
+TEST_F(AssemblerX86Test, PSubSB) {
+  DriverStr(RepeatFF(&x86::X86Assembler::psubsb, "psubsb %{reg2}, %{reg1}"), "psubsb");
+}
+
+TEST_F(AssemblerX86Test, PSubUSW) {
+  DriverStr(RepeatFF(&x86::X86Assembler::psubusw, "psubusw %{reg2}, %{reg1}"), "psubusw");
+}
+
+TEST_F(AssemblerX86Test, PSubSW) {
+  DriverStr(RepeatFF(&x86::X86Assembler::psubsw, "psubsw %{reg2}, %{reg1}"), "psubsw");
+}
+
 TEST_F(AssemblerX86Test, XorPD) {
   DriverStr(RepeatFF(&x86::X86Assembler::xorpd, "xorpd %{reg2}, %{reg1}"), "xorpd");
 }
