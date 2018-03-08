@@ -485,6 +485,15 @@ class X86_64Assembler FINAL : public Assembler {
   void paddq(XmmRegister dst, XmmRegister src);
   void psubq(XmmRegister dst, XmmRegister src);
 
+  void paddusb(XmmRegister dst, XmmRegister src);
+  void paddsb(XmmRegister dst, XmmRegister src);
+  void paddusw(XmmRegister dst, XmmRegister src);
+  void paddsw(XmmRegister dst, XmmRegister src);
+  void psubusb(XmmRegister dst, XmmRegister src);
+  void psubsb(XmmRegister dst, XmmRegister src);
+  void psubusw(XmmRegister dst, XmmRegister src);
+  void psubsw(XmmRegister dst, XmmRegister src);
+
   void cvtsi2ss(XmmRegister dst, CpuRegister src);  // Note: this is the r/m32 version.
   void cvtsi2ss(XmmRegister dst, CpuRegister src, bool is64bit);
   void cvtsi2ss(XmmRegister dst, const Address& src, bool is64bit);
