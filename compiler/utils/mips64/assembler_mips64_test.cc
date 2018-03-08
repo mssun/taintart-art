@@ -3529,6 +3529,22 @@ TEST_F(AssemblerMIPS64Test, FillD) {
   DriverStr(RepeatVR(&mips64::Mips64Assembler::FillD, "fill.d ${reg1}, ${reg2}"), "fill.d");
 }
 
+TEST_F(AssemblerMIPS64Test, PcntB) {
+  DriverStr(RepeatVV(&mips64::Mips64Assembler::PcntB, "pcnt.b ${reg1}, ${reg2}"), "pcnt.b");
+}
+
+TEST_F(AssemblerMIPS64Test, PcntH) {
+  DriverStr(RepeatVV(&mips64::Mips64Assembler::PcntH, "pcnt.h ${reg1}, ${reg2}"), "pcnt.h");
+}
+
+TEST_F(AssemblerMIPS64Test, PcntW) {
+  DriverStr(RepeatVV(&mips64::Mips64Assembler::PcntW, "pcnt.w ${reg1}, ${reg2}"), "pcnt.w");
+}
+
+TEST_F(AssemblerMIPS64Test, PcntD) {
+  DriverStr(RepeatVV(&mips64::Mips64Assembler::PcntD, "pcnt.d ${reg1}, ${reg2}"), "pcnt.d");
+}
+
 TEST_F(AssemblerMIPS64Test, LdiB) {
   DriverStr(RepeatVIb(&mips64::Mips64Assembler::LdiB, -8, "ldi.b ${reg}, {imm}"), "ldi.b");
 }

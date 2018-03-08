@@ -2279,6 +2279,26 @@ void Mips64Assembler::Hadd_uD(VectorRegister wd, VectorRegister ws, VectorRegist
   EmitMsa3R(0x5, 0x3, wt, ws, wd, 0x15);
 }
 
+void Mips64Assembler::PcntB(VectorRegister wd, VectorRegister ws) {
+  CHECK(HasMsa());
+  EmitMsa2R(0xc1, 0x0, ws, wd, 0x1e);
+}
+
+void Mips64Assembler::PcntH(VectorRegister wd, VectorRegister ws) {
+  CHECK(HasMsa());
+  EmitMsa2R(0xc1, 0x1, ws, wd, 0x1e);
+}
+
+void Mips64Assembler::PcntW(VectorRegister wd, VectorRegister ws) {
+  CHECK(HasMsa());
+  EmitMsa2R(0xc1, 0x2, ws, wd, 0x1e);
+}
+
+void Mips64Assembler::PcntD(VectorRegister wd, VectorRegister ws) {
+  CHECK(HasMsa());
+  EmitMsa2R(0xc1, 0x3, ws, wd, 0x1e);
+}
+
 void Mips64Assembler::ReplicateFPToVectorRegister(VectorRegister dst,
                                                   FpuRegister src,
                                                   bool is_double) {

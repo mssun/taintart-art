@@ -71,6 +71,7 @@ class IntrinsicCodeGeneratorMIPS FINAL : public IntrinsicVisitor {
   bool IsR2OrNewer() const;
   bool IsR6() const;
   bool Is32BitFPU() const;
+  bool HasMsa() const;
 
  private:
   MipsAssembler* GetAssembler();

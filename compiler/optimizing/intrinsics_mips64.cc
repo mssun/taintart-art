@@ -46,6 +46,10 @@ ArenaAllocator* IntrinsicCodeGeneratorMIPS64::GetAllocator() {
   return codegen_->GetGraph()->GetAllocator();
 }
 
+inline bool IntrinsicCodeGeneratorMIPS64::HasMsa() const {
+  return codegen_->GetInstructionSetFeatures().HasMsa();
+}
+
 #define __ codegen->GetAssembler()->
 
 static void MoveFromReturnRegister(Location trg,
@@ -386,6 +390,7 @@ static void CreateFPToFPLocations(ArenaAllocator* allocator, HInvoke* invoke) {
 
 static void GenBitCount(LocationSummary* locations,
                         const DataType::Type type,
+                        const bool hasMsa,
                         Mips64Assembler* assembler) {
   GpuRegister out = locations->Out().AsRegister<GpuRegister>();
   GpuRegister in = locations->InAt(0).AsRegister<GpuRegister>();
@@ -414,41 +419,52 @@ static void GenBitCount(LocationSummary* locations,
   // bits are set but the algorithm here attempts to minimize the total
   // number of instructions executed even when a large number of bits
   // are set.
-
-  if (type == DataType::Type::kInt32) {
-    __ Srl(TMP, in, 1);
-    __ LoadConst32(AT, 0x55555555);
-    __ And(TMP, TMP, AT);
-    __ Subu(TMP, in, TMP);
-    __ LoadConst32(AT, 0x33333333);
-    __ And(out, TMP, AT);
-    __ Srl(TMP, TMP, 2);
-    __ And(TMP, TMP, AT);
-    __ Addu(TMP, out, TMP);
-    __ Srl(out, TMP, 4);
-    __ Addu(out, out, TMP);
-    __ LoadConst32(AT, 0x0F0F0F0F);
-    __ And(out, out, AT);
-    __ LoadConst32(TMP, 0x01010101);
-    __ MulR6(out, out, TMP);
-    __ Srl(out, out, 24);
-  } else if (type == DataType::Type::kInt64) {
-    __ Dsrl(TMP, in, 1);
-    __ LoadConst64(AT, 0x5555555555555555L);
-    __ And(TMP, TMP, AT);
-    __ Dsubu(TMP, in, TMP);
-    __ LoadConst64(AT, 0x3333333333333333L);
-    __ And(out, TMP, AT);
-    __ Dsrl(TMP, TMP, 2);
-    __ And(TMP, TMP, AT);
-    __ Daddu(TMP, out, TMP);
-    __ Dsrl(out, TMP, 4);
-    __ Daddu(out, out, TMP);
-    __ LoadConst64(AT, 0x0F0F0F0F0F0F0F0FL);
-    __ And(out, out, AT);
-    __ LoadConst64(TMP, 0x0101010101010101L);
-    __ Dmul(out, out, TMP);
-    __ Dsrl32(out, out, 24);
+  if (hasMsa) {
+    if (type == DataType::Type::kInt32) {
+      __ Mtc1(in, FTMP);
+      __ PcntW(static_cast<VectorRegister>(FTMP), static_cast<VectorRegister>(FTMP));
+      __ Mfc1(out, FTMP);
+    } else {
+      __ Dmtc1(in, FTMP);
+      __ PcntD(static_cast<VectorRegister>(FTMP), static_cast<VectorRegister>(FTMP));
+      __ Dmfc1(out, FTMP);
+    }
+  } else {
+    if (type == DataType::Type::kInt32) {
+      __ Srl(TMP, in, 1);
+      __ LoadConst32(AT, 0x55555555);
+      __ And(TMP, TMP, AT);
+      __ Subu(TMP, in, TMP);
+      __ LoadConst32(AT, 0x33333333);
+      __ And(out, TMP, AT);
+      __ Srl(TMP, TMP, 2);
+      __ And(TMP, TMP, AT);
+      __ Addu(TMP, out, TMP);
+      __ Srl(out, TMP, 4);
+      __ Addu(out, out, TMP);
+      __ LoadConst32(AT, 0x0F0F0F0F);
+      __ And(out, out, AT);
+      __ LoadConst32(TMP, 0x01010101);
+      __ MulR6(out, out, TMP);
+      __ Srl(out, out, 24);
+    } else {
+      __ Dsrl(TMP, in, 1);
+      __ LoadConst64(AT, 0x5555555555555555L);
+      __ And(TMP, TMP, AT);
+      __ Dsubu(TMP, in, TMP);
+      __ LoadConst64(AT, 0x3333333333333333L);
+      __ And(out, TMP, AT);
+      __ Dsrl(TMP, TMP, 2);
+      __ And(TMP, TMP, AT);
+      __ Daddu(TMP, out, TMP);
+      __ Dsrl(out, TMP, 4);
+      __ Daddu(out, out, TMP);
+      __ LoadConst64(AT, 0x0F0F0F0F0F0F0F0FL);
+      __ And(out, out, AT);
+      __ LoadConst64(TMP, 0x0101010101010101L);
+      __ Dmul(out, out, TMP);
+      __ Dsrl32(out, out, 24);
+    }
   }
 }
 
@@ -458,7 +474,7 @@ void IntrinsicLocationsBuilderMIPS64::VisitIntegerBitCount(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorMIPS64::VisitIntegerBitCount(HInvoke* invoke) {
-  GenBitCount(invoke->GetLocations(), DataType::Type::kInt32, GetAssembler());
+  GenBitCount(invoke->GetLocations(), DataType::Type::kInt32, HasMsa(), GetAssembler());
 }
 
 // int java.lang.Long.bitCount(long)
@@ -467,7 +483,7 @@ void IntrinsicLocationsBuilderMIPS64::VisitLongBitCount(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorMIPS64::VisitLongBitCount(HInvoke* invoke) {
-  GenBitCount(invoke->GetLocations(), DataType::Type::kInt64, GetAssembler());
+  GenBitCount(invoke->GetLocations(), DataType::Type::kInt64, HasMsa(), GetAssembler());
 }
 
 // double java.lang.Math.sqrt(double)
