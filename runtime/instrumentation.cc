@@ -256,7 +256,7 @@ static void InstrumentationInstallStack(Thread* thread, void* arg)
         }
 
         // We've reached a frame which has already been installed with instrumentation exit stub.
-        // We should have already installed instrumentation on previous frames.
+        // We should have already installed instrumentation or be interpreter on previous frames.
         reached_existing_instrumentation_frames_ = true;
 
         const InstrumentationStackFrame& frame =
@@ -269,7 +269,9 @@ static void InstrumentationInstallStack(Thread* thread, void* arg)
         }
       } else {
         CHECK_NE(return_pc, 0U);
-        if (UNLIKELY(reached_existing_instrumentation_frames_)) {
+        if (UNLIKELY(reached_existing_instrumentation_frames_ && !m->IsRuntimeMethod())) {
+          // We already saw an existing instrumentation frame so this should be a runtime-method
+          // inserted by the interpreter or runtime.
           std::string thread_name;
           GetThread()->GetThreadName(thread_name);
           uint32_t dex_pc = dex::kDexNoIndex;
@@ -277,7 +279,8 @@ static void InstrumentationInstallStack(Thread* thread, void* arg)
               GetCurrentOatQuickMethodHeader() != nullptr) {
             dex_pc = GetCurrentOatQuickMethodHeader()->ToDexPc(m, last_return_pc_);
           }
-          LOG(FATAL) << "While walking " << thread_name << " found existing instrumentation frames."
+          LOG(FATAL) << "While walking " << thread_name << " found unexpected non-runtime method"
+                     << " without instrumentation exit return or interpreter frame."
                      << " method is " << GetMethod()->PrettyMethod()
                      << " return_pc is " << std::hex << return_pc
                      << " dex pc: " << dex_pc;
