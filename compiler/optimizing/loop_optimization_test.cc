@@ -227,11 +227,14 @@ TEST_F(LoopOptimizationTest, SimplifyLoopReoderPredecessors) {
   graph_->ClearDominanceInformation();
   graph_->BuildDominatorTree();
 
+  // BuildDominatorTree inserts a block beetween loop header and entry block.
+  EXPECT_EQ(header->GetPredecessors()[0]->GetSinglePredecessor(), entry_block_);
+
   // Check that after optimizations in BuildDominatorTree()/SimplifyCFG() phi inputs
   // are still mapped correctly to the block predecessors.
   for (size_t i = 0, e = phi->InputCount(); i < e; i++) {
     HInstruction* input = phi->InputAt(i);
-    ASSERT_TRUE(input->GetBlock()->Dominates(header->GetPredecessors()[i]));
+    EXPECT_TRUE(input->GetBlock()->Dominates(header->GetPredecessors()[i]));
   }
 }
 
