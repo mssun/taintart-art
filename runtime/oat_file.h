@@ -275,6 +275,10 @@ class OatFile {
     return p >= Begin() && p < End();
   }
 
+  size_t DataBimgRelRoSize() const {
+    return DataBimgRelRoEnd() - DataBimgRelRoBegin();
+  }
+
   size_t BssSize() const {
     return BssEnd() - BssBegin();
   }
@@ -300,15 +304,19 @@ class OatFile {
   const uint8_t* Begin() const;
   const uint8_t* End() const;
 
-  const uint8_t* BssBegin() const;
-  const uint8_t* BssEnd() const;
+  const uint8_t* DataBimgRelRoBegin() const { return data_bimg_rel_ro_begin_; }
+  const uint8_t* DataBimgRelRoEnd() const { return data_bimg_rel_ro_end_; }
 
-  const uint8_t* VdexBegin() const;
-  const uint8_t* VdexEnd() const;
+  const uint8_t* BssBegin() const { return bss_begin_; }
+  const uint8_t* BssEnd() const { return bss_end_; }
+
+  const uint8_t* VdexBegin() const { return vdex_begin_; }
+  const uint8_t* VdexEnd() const { return vdex_end_; }
 
   const uint8_t* DexBegin() const;
   const uint8_t* DexEnd() const;
 
+  ArrayRef<const uint32_t> GetBootImageRelocations() const;
   ArrayRef<ArtMethod*> GetBssMethods() const;
   ArrayRef<GcRoot<mirror::Object>> GetBssGcRoots() const;
 
@@ -354,6 +362,12 @@ class OatFile {
 
   // Pointer to end of oat region for bounds checking.
   const uint8_t* end_;
+
+  // Pointer to the .data.bimg.rel.ro section, if present, otherwise null.
+  const uint8_t* data_bimg_rel_ro_begin_;
+
+  // Pointer to the end of the .data.bimg.rel.ro section, if present, otherwise null.
+  const uint8_t* data_bimg_rel_ro_end_;
 
   // Pointer to the .bss section, if present, otherwise null.
   uint8_t* bss_begin_;

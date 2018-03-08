@@ -565,7 +565,14 @@ class CodeGeneratorARM64 : public CodeGenerator {
     UNIMPLEMENTED(FATAL);
   }
 
-  // Add a new PC-relative method patch for an instruction and return the label
+  // Add a new boot image relocation patch for an instruction and return the label
+  // to be bound before the instruction. The instruction will be either the
+  // ADRP (pass `adrp_label = null`) or the LDR (pass `adrp_label` pointing
+  // to the associated ADRP patch label).
+  vixl::aarch64::Label* NewBootImageRelRoPatch(uint32_t boot_image_offset,
+                                               vixl::aarch64::Label* adrp_label = nullptr);
+
+  // Add a new boot image method patch for an instruction and return the label
   // to be bound before the instruction. The instruction will be either the
   // ADRP (pass `adrp_label = null`) or the ADD (pass `adrp_label` pointing
   // to the associated ADRP patch label).
@@ -579,7 +586,7 @@ class CodeGeneratorARM64 : public CodeGenerator {
   vixl::aarch64::Label* NewMethodBssEntryPatch(MethodReference target_method,
                                                vixl::aarch64::Label* adrp_label = nullptr);
 
-  // Add a new PC-relative type patch for an instruction and return the label
+  // Add a new boot image type patch for an instruction and return the label
   // to be bound before the instruction. The instruction will be either the
   // ADRP (pass `adrp_label = null`) or the ADD (pass `adrp_label` pointing
   // to the associated ADRP patch label).
@@ -595,7 +602,7 @@ class CodeGeneratorARM64 : public CodeGenerator {
                                              dex::TypeIndex type_index,
                                              vixl::aarch64::Label* adrp_label = nullptr);
 
-  // Add a new PC-relative string patch for an instruction and return the label
+  // Add a new boot image string patch for an instruction and return the label
   // to be bound before the instruction. The instruction will be either the
   // ADRP (pass `adrp_label = null`) or the ADD (pass `adrp_label` pointing
   // to the associated ADRP patch label).
@@ -824,7 +831,7 @@ class CodeGeneratorARM64 : public CodeGenerator {
   Uint32ToLiteralMap uint32_literals_;
   // Deduplication map for 64-bit literals, used for non-patchable method address or method code.
   Uint64ToLiteralMap uint64_literals_;
-  // PC-relative method patch info for kBootImageLinkTimePcRelative.
+  // PC-relative method patch info for kBootImageLinkTimePcRelative/BootImageRelRo.
   ArenaDeque<PcRelativePatchInfo> boot_image_method_patches_;
   // PC-relative method patch info for kBssEntry.
   ArenaDeque<PcRelativePatchInfo> method_bss_entry_patches_;

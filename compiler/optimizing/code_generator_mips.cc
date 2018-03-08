@@ -1597,6 +1597,14 @@ inline void CodeGeneratorMIPS::EmitPcRelativeLinkerPatches(
   }
 }
 
+linker::LinkerPatch DataBimgRelRoPatchAdapter(size_t literal_offset,
+                                              const DexFile* target_dex_file,
+                                              uint32_t pc_insn_offset,
+                                              uint32_t boot_image_offset) {
+  DCHECK(target_dex_file == nullptr);  // Unused for DataBimgRelRoPatch(), should be null.
+  return linker::LinkerPatch::DataBimgRelRoPatch(literal_offset, pc_insn_offset, boot_image_offset);
+}
+
 void CodeGeneratorMIPS::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) {
   DCHECK(linker_patches->empty());
   size_t size =
@@ -1615,7 +1623,8 @@ void CodeGeneratorMIPS::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* link
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::RelativeStringPatch>(
         boot_image_string_patches_, linker_patches);
   } else {
-    DCHECK(boot_image_method_patches_.empty());
+    EmitPcRelativeLinkerPatches<DataBimgRelRoPatchAdapter>(
+        boot_image_method_patches_, linker_patches);
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::TypeClassTablePatch>(
         boot_image_type_patches_, linker_patches);
     EmitPcRelativeLinkerPatches<linker::LinkerPatch::StringInternTablePatch>(
@@ -1628,6 +1637,13 @@ void CodeGeneratorMIPS::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* link
   EmitPcRelativeLinkerPatches<linker::LinkerPatch::StringBssEntryPatch>(
       string_bss_entry_patches_, linker_patches);
   DCHECK_EQ(size, linker_patches->size());
+}
+
+CodeGeneratorMIPS::PcRelativePatchInfo* CodeGeneratorMIPS::NewBootImageRelRoPatch(
+    uint32_t boot_image_offset,
+    const PcRelativePatchInfo* info_high) {
+  return NewPcRelativePatch(
+      /* dex_file */ nullptr, boot_image_offset, info_high, &boot_image_method_patches_);
 }
 
 CodeGeneratorMIPS::PcRelativePatchInfo* CodeGeneratorMIPS::NewBootImageMethodPatch(
@@ -7835,6 +7851,15 @@ void CodeGeneratorMIPS::GenerateStaticOrDirectCall(
     case HInvokeStaticOrDirect::MethodLoadKind::kDirectAddress:
       __ LoadConst32(temp.AsRegister<Register>(), invoke->GetMethodAddress());
       break;
+    case HInvokeStaticOrDirect::MethodLoadKind::kBootImageRelRo: {
+      uint32_t boot_image_offset = invoke->GetDispatchInfo().method_load_data;
+      PcRelativePatchInfo* info_high = NewBootImageRelRoPatch(boot_image_offset);
+      PcRelativePatchInfo* info_low = NewBootImageRelRoPatch(boot_image_offset, info_high);
+      Register temp_reg = temp.AsRegister<Register>();
+      EmitPcRelativeAddressPlaceholderHigh(info_high, TMP, base_reg);
+      __ Lw(temp_reg, TMP, /* placeholder */ 0x5678, &info_low->label);
+      break;
+    }
     case HInvokeStaticOrDirect::MethodLoadKind::kBssEntry: {
       PcRelativePatchInfo* info_high = NewMethodBssEntryPatch(
           MethodReference(&GetGraph()->GetDexFile(), invoke->GetDexMethodIndex()));

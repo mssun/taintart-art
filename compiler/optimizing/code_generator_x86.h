@@ -417,6 +417,8 @@ class CodeGeneratorX86 : public CodeGenerator {
   void GenerateVirtualCall(
       HInvokeVirtual* invoke, Location temp, SlowPathCode* slow_path = nullptr) OVERRIDE;
 
+  void RecordBootImageRelRoPatch(HX86ComputeBaseMethodAddress* method_address,
+                                 uint32_t boot_image_offset);
   void RecordBootImageMethodPatch(HInvokeStaticOrDirect* invoke);
   void RecordMethodBssEntryPatch(HInvokeStaticOrDirect* invoke);
   void RecordBootImageTypePatch(HLoadClass* load_class);
@@ -634,7 +636,7 @@ class CodeGeneratorX86 : public CodeGenerator {
   X86Assembler assembler_;
   const X86InstructionSetFeatures& isa_features_;
 
-  // PC-relative method patch info for kBootImageLinkTimePcRelative.
+  // PC-relative method patch info for kBootImageLinkTimePcRelative/kBootImageRelRo.
   ArenaDeque<X86PcRelativePatchInfo> boot_image_method_patches_;
   // PC-relative method patch info for kBssEntry.
   ArenaDeque<X86PcRelativePatchInfo> method_bss_entry_patches_;

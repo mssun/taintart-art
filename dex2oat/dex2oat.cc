@@ -2069,11 +2069,9 @@ class Dex2Oat FINAL {
         std::unique_ptr<linker::OatWriter>& oat_writer = oat_writers_[i];
 
         oat_writer->PrepareLayout(&patcher);
-
-        size_t rodata_size = oat_writer->GetOatHeader().GetExecutableOffset();
-        size_t text_size = oat_writer->GetOatSize() - rodata_size;
-        elf_writer->PrepareDynamicSection(rodata_size,
-                                          text_size,
+        elf_writer->PrepareDynamicSection(oat_writer->GetOatHeader().GetExecutableOffset(),
+                                          oat_writer->GetCodeSize(),
+                                          oat_writer->GetDataBimgRelRoSize(),
                                           oat_writer->GetBssSize(),
                                           oat_writer->GetBssMethodsOffset(),
                                           oat_writer->GetBssRootsOffset(),
@@ -2122,6 +2120,16 @@ class Dex2Oat FINAL {
           return false;
         }
         elf_writer->EndText(text);
+
+        if (oat_writer->GetDataBimgRelRoSize() != 0u) {
+          linker::OutputStream* data_bimg_rel_ro = elf_writer->StartDataBimgRelRo();
+          if (!oat_writer->WriteDataBimgRelRo(data_bimg_rel_ro)) {
+            LOG(ERROR) << "Failed to write .data.bimg.rel.ro section to the ELF file "
+                << oat_file->GetPath();
+            return false;
+          }
+          elf_writer->EndDataBimgRelRo(data_bimg_rel_ro);
+        }
 
         if (!oat_writer->WriteHeader(elf_writer->GetStream(),
                                      image_file_location_oat_checksum_,
