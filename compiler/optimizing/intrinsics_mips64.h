@@ -68,6 +68,8 @@ class IntrinsicCodeGeneratorMIPS64 FINAL : public IntrinsicVisitor {
 #undef INTRINSICS_LIST
 #undef OPTIMIZING_INTRINSICS
 
+  bool HasMsa() const;
+
  private:
   Mips64Assembler* GetAssembler();
 

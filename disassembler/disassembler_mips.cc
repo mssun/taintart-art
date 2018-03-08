@@ -487,6 +487,7 @@ static const MipsInstruction gMipsInstructions[] = {
   { kMsaMask | (0xf << 22), kMsa | (0x3 << 22) | 0x19, "copy_u", "yX" },
   { kMsaMask | (0xf << 22), kMsa | (0x4 << 22) | 0x19, "insert", "YD" },
   { kMsaMask | (0xff << 18), kMsa | (0xc0 << 18) | 0x1e, "fill", "vkD" },
+  { kMsaMask | (0xff << 18), kMsa | (0xc1 << 18) | 0x1e, "pcnt", "vkm" },
   { kMsaMask | (0x7 << 23), kMsa | (0x6 << 23) | 0x7, "ldi", "kx" },
   { kMsaSpecialMask | (0xf << 2), kMsa | (0x8 << 2), "ld", "kw" },
   { kMsaSpecialMask | (0xf << 2), kMsa | (0x9 << 2), "st", "kw" },

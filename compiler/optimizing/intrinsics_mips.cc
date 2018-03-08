@@ -58,6 +58,10 @@ inline bool IntrinsicCodeGeneratorMIPS::Is32BitFPU() const {
   return codegen_->GetInstructionSetFeatures().Is32BitFloatingPoint();
 }
 
+inline bool IntrinsicCodeGeneratorMIPS::HasMsa() const {
+  return codegen_->GetInstructionSetFeatures().HasMsa();
+}
+
 #define __ codegen->GetAssembler()->
 
 static void MoveFromReturnRegister(Location trg,
@@ -612,6 +616,7 @@ static void CreateFPToFPLocations(ArenaAllocator* allocator, HInvoke* invoke) {
 static void GenBitCount(LocationSummary* locations,
                         DataType::Type type,
                         bool isR6,
+                        bool hasMsa,
                         MipsAssembler* assembler) {
   Register out = locations->Out().AsRegister<Register>();
 
@@ -637,85 +642,102 @@ static void GenBitCount(LocationSummary* locations,
   // instructions compared to a loop-based algorithm which required 47
   // instructions.
 
-  if (type == DataType::Type::kInt32) {
-    Register in = locations->InAt(0).AsRegister<Register>();
-
-    __ Srl(TMP, in, 1);
-    __ LoadConst32(AT, 0x55555555);
-    __ And(TMP, TMP, AT);
-    __ Subu(TMP, in, TMP);
-    __ LoadConst32(AT, 0x33333333);
-    __ And(out, TMP, AT);
-    __ Srl(TMP, TMP, 2);
-    __ And(TMP, TMP, AT);
-    __ Addu(TMP, out, TMP);
-    __ Srl(out, TMP, 4);
-    __ Addu(out, out, TMP);
-    __ LoadConst32(AT, 0x0F0F0F0F);
-    __ And(out, out, AT);
-    __ LoadConst32(TMP, 0x01010101);
-    if (isR6) {
-      __ MulR6(out, out, TMP);
+  if (hasMsa) {
+    if (type == DataType::Type::kInt32) {
+      Register in = locations->InAt(0).AsRegister<Register>();
+      __ Mtc1(in, FTMP);
+      __ PcntW(static_cast<VectorRegister>(FTMP), static_cast<VectorRegister>(FTMP));
+      __ Mfc1(out, FTMP);
     } else {
-      __ MulR2(out, out, TMP);
+      DCHECK_EQ(type, DataType::Type::kInt64);
+      Register in_lo = locations->InAt(0).AsRegisterPairLow<Register>();
+      Register in_hi = locations->InAt(0).AsRegisterPairHigh<Register>();
+      __ Mtc1(in_lo, FTMP);
+      __ Mthc1(in_hi, FTMP);
+      __ PcntD(static_cast<VectorRegister>(FTMP), static_cast<VectorRegister>(FTMP));
+      __ Mfc1(out, FTMP);
     }
-    __ Srl(out, out, 24);
   } else {
-    DCHECK_EQ(type, DataType::Type::kInt64);
-    Register in_lo = locations->InAt(0).AsRegisterPairLow<Register>();
-    Register in_hi = locations->InAt(0).AsRegisterPairHigh<Register>();
-    Register tmp_hi = locations->GetTemp(0).AsRegister<Register>();
-    Register out_hi = locations->GetTemp(1).AsRegister<Register>();
-    Register tmp_lo = TMP;
-    Register out_lo = out;
+    if (type == DataType::Type::kInt32) {
+      Register in = locations->InAt(0).AsRegister<Register>();
 
-    __ Srl(tmp_lo, in_lo, 1);
-    __ Srl(tmp_hi, in_hi, 1);
-
-    __ LoadConst32(AT, 0x55555555);
-
-    __ And(tmp_lo, tmp_lo, AT);
-    __ Subu(tmp_lo, in_lo, tmp_lo);
-
-    __ And(tmp_hi, tmp_hi, AT);
-    __ Subu(tmp_hi, in_hi, tmp_hi);
-
-    __ LoadConst32(AT, 0x33333333);
-
-    __ And(out_lo, tmp_lo, AT);
-    __ Srl(tmp_lo, tmp_lo, 2);
-    __ And(tmp_lo, tmp_lo, AT);
-    __ Addu(tmp_lo, out_lo, tmp_lo);
-
-    __ And(out_hi, tmp_hi, AT);
-    __ Srl(tmp_hi, tmp_hi, 2);
-    __ And(tmp_hi, tmp_hi, AT);
-    __ Addu(tmp_hi, out_hi, tmp_hi);
-
-    // Here we deviate from the original algorithm a bit. We've reached
-    // the stage where the bitfields holding the subtotals are large
-    // enough to hold the combined subtotals for both the low word, and
-    // the high word. This means that we can add the subtotals for the
-    // the high, and low words into a single word, and compute the final
-    // result for both the high, and low words using fewer instructions.
-    __ LoadConst32(AT, 0x0F0F0F0F);
-
-    __ Addu(TMP, tmp_hi, tmp_lo);
-
-    __ Srl(out, TMP, 4);
-    __ And(out, out, AT);
-    __ And(TMP, TMP, AT);
-    __ Addu(out, out, TMP);
-
-    __ LoadConst32(AT, 0x01010101);
-
-    if (isR6) {
-      __ MulR6(out, out, AT);
+      __ Srl(TMP, in, 1);
+      __ LoadConst32(AT, 0x55555555);
+      __ And(TMP, TMP, AT);
+      __ Subu(TMP, in, TMP);
+      __ LoadConst32(AT, 0x33333333);
+      __ And(out, TMP, AT);
+      __ Srl(TMP, TMP, 2);
+      __ And(TMP, TMP, AT);
+      __ Addu(TMP, out, TMP);
+      __ Srl(out, TMP, 4);
+      __ Addu(out, out, TMP);
+      __ LoadConst32(AT, 0x0F0F0F0F);
+      __ And(out, out, AT);
+      __ LoadConst32(TMP, 0x01010101);
+      if (isR6) {
+        __ MulR6(out, out, TMP);
+      } else {
+        __ MulR2(out, out, TMP);
+      }
+      __ Srl(out, out, 24);
     } else {
-      __ MulR2(out, out, AT);
-    }
+      DCHECK_EQ(type, DataType::Type::kInt64);
+      Register in_lo = locations->InAt(0).AsRegisterPairLow<Register>();
+      Register in_hi = locations->InAt(0).AsRegisterPairHigh<Register>();
+      Register tmp_hi = locations->GetTemp(0).AsRegister<Register>();
+      Register out_hi = locations->GetTemp(1).AsRegister<Register>();
+      Register tmp_lo = TMP;
+      Register out_lo = out;
 
-    __ Srl(out, out, 24);
+      __ Srl(tmp_lo, in_lo, 1);
+      __ Srl(tmp_hi, in_hi, 1);
+
+      __ LoadConst32(AT, 0x55555555);
+
+      __ And(tmp_lo, tmp_lo, AT);
+      __ Subu(tmp_lo, in_lo, tmp_lo);
+
+      __ And(tmp_hi, tmp_hi, AT);
+      __ Subu(tmp_hi, in_hi, tmp_hi);
+
+      __ LoadConst32(AT, 0x33333333);
+
+      __ And(out_lo, tmp_lo, AT);
+      __ Srl(tmp_lo, tmp_lo, 2);
+      __ And(tmp_lo, tmp_lo, AT);
+      __ Addu(tmp_lo, out_lo, tmp_lo);
+
+      __ And(out_hi, tmp_hi, AT);
+      __ Srl(tmp_hi, tmp_hi, 2);
+      __ And(tmp_hi, tmp_hi, AT);
+      __ Addu(tmp_hi, out_hi, tmp_hi);
+
+      // Here we deviate from the original algorithm a bit. We've reached
+      // the stage where the bitfields holding the subtotals are large
+      // enough to hold the combined subtotals for both the low word, and
+      // the high word. This means that we can add the subtotals for the
+      // the high, and low words into a single word, and compute the final
+      // result for both the high, and low words using fewer instructions.
+      __ LoadConst32(AT, 0x0F0F0F0F);
+
+      __ Addu(TMP, tmp_hi, tmp_lo);
+
+      __ Srl(out, TMP, 4);
+      __ And(out, out, AT);
+      __ And(TMP, TMP, AT);
+      __ Addu(out, out, TMP);
+
+      __ LoadConst32(AT, 0x01010101);
+
+      if (isR6) {
+        __ MulR6(out, out, AT);
+      } else {
+        __ MulR2(out, out, AT);
+      }
+
+      __ Srl(out, out, 24);
+    }
   }
 }
 
@@ -725,7 +747,7 @@ void IntrinsicLocationsBuilderMIPS::VisitIntegerBitCount(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitIntegerBitCount(HInvoke* invoke) {
-  GenBitCount(invoke->GetLocations(), DataType::Type::kInt32, IsR6(), GetAssembler());
+  GenBitCount(invoke->GetLocations(), DataType::Type::kInt32, IsR6(), HasMsa(), GetAssembler());
 }
 
 // int java.lang.Long.bitCount(int)
@@ -739,7 +761,7 @@ void IntrinsicLocationsBuilderMIPS::VisitLongBitCount(HInvoke* invoke) {
 }
 
 void IntrinsicCodeGeneratorMIPS::VisitLongBitCount(HInvoke* invoke) {
-  GenBitCount(invoke->GetLocations(), DataType::Type::kInt64, IsR6(), GetAssembler());
+  GenBitCount(invoke->GetLocations(), DataType::Type::kInt64, IsR6(), HasMsa(), GetAssembler());
 }
 
 // double java.lang.Math.sqrt(double)
