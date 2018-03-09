@@ -610,16 +610,17 @@ class CodeGeneratorX86_64 : public CodeGenerator {
   int constant_area_start_;
 
   // PC-relative method patch info for kBootImageLinkTimePcRelative/kBootImageRelRo.
+  // Also used for type/string patches for kBootImageRelRo (same linker patch as for methods).
   ArenaDeque<PatchInfo<Label>> boot_image_method_patches_;
   // PC-relative method patch info for kBssEntry.
   ArenaDeque<PatchInfo<Label>> method_bss_entry_patches_;
   // PC-relative type patch info for kBootImageLinkTimePcRelative.
   ArenaDeque<PatchInfo<Label>> boot_image_type_patches_;
-  // Type patch locations for kBssEntry.
+  // PC-relative type patch info for kBssEntry.
   ArenaDeque<PatchInfo<Label>> type_bss_entry_patches_;
-  // String patch locations; type depends on configuration (intern table or boot image PIC).
+  // PC-relative String patch info for kBootImageLinkTimePcRelative.
   ArenaDeque<PatchInfo<Label>> boot_image_string_patches_;
-  // String patch locations for kBssEntry.
+  // PC-relative String patch info for kBssEntry.
   ArenaDeque<PatchInfo<Label>> string_bss_entry_patches_;
 
   // Patches for string literals in JIT compiled code.

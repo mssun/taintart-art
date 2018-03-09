@@ -1002,7 +1002,7 @@ void CodeGeneratorX86_64::GenerateStaticOrDirectCall(
       // Note: Boot image is in the low 4GiB and the entry is 32-bit, so emit a 32-bit load.
       __ movl(temp.AsRegister<CpuRegister>(),
               Address::Absolute(kDummy32BitOffset, /* no_rip */ false));
-      RecordBootImageRelRoPatch(invoke->GetDispatchInfo().method_load_data);
+      RecordBootImageRelRoPatch(GetBootImageOffset(invoke));
       break;
     }
     case HInvokeStaticOrDirect::MethodLoadKind::kBssEntry: {
@@ -1150,10 +1150,8 @@ void CodeGeneratorX86_64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* li
   } else {
     EmitPcRelativeLinkerPatches<DataBimgRelRoPatchAdapter>(
         boot_image_method_patches_, linker_patches);
-    EmitPcRelativeLinkerPatches<linker::LinkerPatch::TypeClassTablePatch>(
-        boot_image_type_patches_, linker_patches);
-    EmitPcRelativeLinkerPatches<linker::LinkerPatch::StringInternTablePatch>(
-        boot_image_string_patches_, linker_patches);
+    DCHECK(boot_image_type_patches_.empty());
+    DCHECK(boot_image_string_patches_.empty());
   }
   EmitPcRelativeLinkerPatches<linker::LinkerPatch::MethodBssEntryPatch>(
       method_bss_entry_patches_, linker_patches);
@@ -5727,7 +5725,7 @@ HLoadClass::LoadKind CodeGeneratorX86_64::GetSupportedLoadClassKind(
     case HLoadClass::LoadKind::kReferrersClass:
       break;
     case HLoadClass::LoadKind::kBootImageLinkTimePcRelative:
-    case HLoadClass::LoadKind::kBootImageClassTable:
+    case HLoadClass::LoadKind::kBootImageRelRo:
     case HLoadClass::LoadKind::kBssEntry:
       DCHECK(!Runtime::Current()->UseJitCompilation());
       break;
@@ -5835,16 +5833,10 @@ void InstructionCodeGeneratorX86_64::VisitLoadClass(HLoadClass* cls) NO_THREAD_S
       __ movl(out, Immediate(static_cast<int32_t>(address)));  // Zero-extended.
       break;
     }
-    case HLoadClass::LoadKind::kBootImageClassTable: {
+    case HLoadClass::LoadKind::kBootImageRelRo: {
       DCHECK(!codegen_->GetCompilerOptions().IsBootImage());
       __ movl(out, Address::Absolute(CodeGeneratorX86_64::kDummy32BitOffset, /* no_rip */ false));
-      codegen_->RecordBootImageTypePatch(cls);
-      // Extract the reference from the slot data, i.e. clear the hash bits.
-      int32_t masked_hash = ClassTable::TableSlot::MaskHash(
-          ComputeModifiedUtf8Hash(cls->GetDexFile().StringByTypeIdx(cls->GetTypeIndex())));
-      if (masked_hash != 0) {
-        __ subl(out, Immediate(masked_hash));
-      }
+      codegen_->RecordBootImageRelRoPatch(codegen_->GetBootImageOffset(cls));
       break;
     }
     case HLoadClass::LoadKind::kBssEntry: {
@@ -5909,7 +5901,7 @@ HLoadString::LoadKind CodeGeneratorX86_64::GetSupportedLoadStringKind(
     HLoadString::LoadKind desired_string_load_kind) {
   switch (desired_string_load_kind) {
     case HLoadString::LoadKind::kBootImageLinkTimePcRelative:
-    case HLoadString::LoadKind::kBootImageInternTable:
+    case HLoadString::LoadKind::kBootImageRelRo:
     case HLoadString::LoadKind::kBssEntry:
       DCHECK(!Runtime::Current()->UseJitCompilation());
       break;
@@ -5975,10 +5967,10 @@ void InstructionCodeGeneratorX86_64::VisitLoadString(HLoadString* load) NO_THREA
       __ movl(out, Immediate(static_cast<int32_t>(address)));  // Zero-extended.
       return;
     }
-    case HLoadString::LoadKind::kBootImageInternTable: {
+    case HLoadString::LoadKind::kBootImageRelRo: {
       DCHECK(!codegen_->GetCompilerOptions().IsBootImage());
       __ movl(out, Address::Absolute(CodeGeneratorX86_64::kDummy32BitOffset, /* no_rip */ false));
-      codegen_->RecordBootImageStringPatch(load);
+      codegen_->RecordBootImageRelRoPatch(codegen_->GetBootImageOffset(load));
       return;
     }
     case HLoadString::LoadKind::kBssEntry: {

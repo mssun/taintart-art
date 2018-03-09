@@ -1807,21 +1807,6 @@ bool ClassLinker::AddImageSpace(
     header.VisitPackedArtMethods(&visitor, space->Begin(), image_pointer_size_);
   }
 
-  if (!app_image) {
-    // Make the string intern table and class table immutable for boot image.
-    // PIC app oat files may mmap a read-only copy into their own .bss section,
-    // so enforce that the data in the boot image tables remains unchanged.
-    //
-    // We cannot do that for app image even after the fixup as some interned
-    // String references may actually end up pointing to moveable Strings.
-    uint8_t* const_section_begin = space->Begin() + header.GetBootImageConstantTablesOffset();
-    CheckedCall(mprotect,
-                "protect constant tables",
-                const_section_begin,
-                header.GetBootImageConstantTablesSize(),
-                PROT_READ);
-  }
-
   ClassTable* class_table = nullptr;
   {
     WriterMutexLock mu(self, *Locks::classlinker_classes_lock_);

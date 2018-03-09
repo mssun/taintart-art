@@ -637,16 +637,17 @@ class CodeGeneratorX86 : public CodeGenerator {
   const X86InstructionSetFeatures& isa_features_;
 
   // PC-relative method patch info for kBootImageLinkTimePcRelative/kBootImageRelRo.
+  // Also used for type/string patches for kBootImageRelRo (same linker patch as for methods).
   ArenaDeque<X86PcRelativePatchInfo> boot_image_method_patches_;
   // PC-relative method patch info for kBssEntry.
   ArenaDeque<X86PcRelativePatchInfo> method_bss_entry_patches_;
   // PC-relative type patch info for kBootImageLinkTimePcRelative.
   ArenaDeque<X86PcRelativePatchInfo> boot_image_type_patches_;
-  // Type patch locations for kBssEntry.
+  // PC-relative type patch info for kBssEntry.
   ArenaDeque<X86PcRelativePatchInfo> type_bss_entry_patches_;
-  // String patch locations; type depends on configuration (intern table or boot image PIC).
+  // PC-relative String patch info for kBootImageLinkTimePcRelative.
   ArenaDeque<X86PcRelativePatchInfo> boot_image_string_patches_;
-  // String patch locations for kBssEntry.
+  // PC-relative String patch info for kBssEntry.
   ArenaDeque<X86PcRelativePatchInfo> string_bss_entry_patches_;
 
   // Patches for string root accesses in JIT compiled code.

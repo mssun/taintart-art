@@ -295,7 +295,6 @@ class ClassTable {
   std::vector<const OatFile*> oat_files_ GUARDED_BY(lock_);
 
   friend class linker::ImageWriter;  // for InsertWithoutLocks.
-  friend class linker::OatWriter;  // for boot class TableSlot address lookup.
 };
 
 }  // namespace art
