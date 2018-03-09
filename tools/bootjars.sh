@@ -21,7 +21,7 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 TOP="$DIR/../.."
 
-source "${TOP}/build/envsetup.sh" >&/dev/null # import get_build_var
+source "${TOP}/art/tools/build/var_cache.sh" >&/dev/null # import get_build_var
 
 selected_env_var=
 core_jars_only=n
