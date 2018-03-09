@@ -16,10 +16,10 @@
 
 #include "dex_compilation_unit.h"
 
+#include "base/utils.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/descriptors_names.h"
 #include "mirror/dex_cache.h"
-#include "utils.h"
 
 namespace art {
 

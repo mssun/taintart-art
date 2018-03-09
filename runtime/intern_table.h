@@ -19,7 +19,7 @@
 
 #include <unordered_set>
 
-#include "atomic.h"
+#include "base/atomic.h"
 #include "base/allocator.h"
 #include "base/hash_set.h"
 #include "base/mutex.h"

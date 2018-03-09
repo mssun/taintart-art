@@ -17,12 +17,12 @@
 #include "zygote_space.h"
 
 #include "base/mutex-inl.h"
+#include "base/utils.h"
 #include "gc/accounting/card_table-inl.h"
 #include "gc/accounting/space_bitmap-inl.h"
 #include "gc/heap.h"
 #include "runtime.h"
 #include "thread-current-inl.h"
-#include "utils.h"
 
 namespace art {
 namespace gc {

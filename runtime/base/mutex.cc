@@ -21,7 +21,7 @@
 
 #include "android-base/stringprintf.h"
 
-#include "atomic.h"
+#include "base/atomic.h"
 #include "base/logging.h"
 #include "base/systrace.h"
 #include "base/time_utils.h"

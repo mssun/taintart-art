@@ -56,16 +56,20 @@
 #include "art_method-inl.h"
 #include "asm_support.h"
 #include "asm_support_check.h"
-#include "atomic.h"
 #include "base/aborting.h"
 #include "base/arena_allocator.h"
+#include "base/atomic.h"
 #include "base/dumpable.h"
 #include "base/enums.h"
 #include "base/file_utils.h"
 #include "base/memory_tool.h"
+#include "base/mutex.h"
+#include "base/os.h"
+#include "base/quasi_atomic.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/unix_file/fd_file.h"
+#include "base/utils.h"
 #include "class_linker-inl.h"
 #include "compiler_callbacks.h"
 #include "debugger.h"
@@ -141,7 +145,6 @@
 #include "oat_file.h"
 #include "oat_file_manager.h"
 #include "object_callbacks.h"
-#include "os.h"
 #include "parsed_options.h"
 #include "quick/quick_method_frame_info.h"
 #include "reflection.h"
@@ -157,7 +160,6 @@
 #include "ti/agent.h"
 #include "trace.h"
 #include "transaction.h"
-#include "utils.h"
 #include "vdex_file.h"
 #include "verifier/method_verifier.h"
 #include "well_known_classes.h"
@@ -621,6 +623,7 @@ void Runtime::SweepSystemWeaks(IsMarkedVisitor* visitor) {
 bool Runtime::ParseOptions(const RuntimeOptions& raw_options,
                            bool ignore_unrecognized,
                            RuntimeArgumentMap* runtime_options) {
+  Locks::Init();
   InitLogging(/* argv */ nullptr, Abort);  // Calls Locks::Init() as a side effect.
   bool parsed = ParsedOptions::Parse(raw_options, ignore_unrecognized, runtime_options);
   if (!parsed) {
@@ -2215,7 +2218,7 @@ void Runtime::RegisterAppInfo(const std::vector<std::string>& code_paths,
     LOG(WARNING) << "JIT profile information will not be recorded: profile filename is empty.";
     return;
   }
-  if (!FileExists(profile_output_filename)) {
+  if (!OS::FileExists(profile_output_filename.c_str(), false /*check_file_type*/)) {
     LOG(WARNING) << "JIT profile information will not be recorded: profile file does not exits.";
     return;
   }

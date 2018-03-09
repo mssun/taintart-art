@@ -18,6 +18,7 @@
 #include <memory>
 
 #include "base/macros.h"
+#include "base/utils.h"
 #include "builder.h"
 #include "codegen_test_utils.h"
 #include "dex/dex_file.h"
@@ -26,7 +27,6 @@
 #include "nodes.h"
 #include "optimizing_unit_test.h"
 #include "register_allocator_linear_scan.h"
-#include "utils.h"
 #include "utils/arm/assembler_arm_vixl.h"
 #include "utils/arm/managed_register_arm.h"
 #include "utils/mips/managed_register_mips.h"

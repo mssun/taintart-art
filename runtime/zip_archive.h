@@ -23,11 +23,11 @@
 
 #include <android-base/logging.h>
 
+#include "base/os.h"
 #include "base/safe_map.h"
 #include "base/unix_file/random_access_file.h"
 #include "globals.h"
 #include "mem_map.h"
-#include "os.h"
 
 // system/core/zip_archive definitions.
 struct ZipEntry;

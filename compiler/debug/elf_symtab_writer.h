@@ -20,12 +20,12 @@
 #include <map>
 #include <unordered_set>
 
+#include "base/utils.h"
 #include "debug/debug_info.h"
 #include "debug/method_debug_info.h"
 #include "dex/dex_file-inl.h"
 #include "dex/code_item_accessors.h"
 #include "linker/elf_builder.h"
-#include "utils.h"
 
 namespace art {
 namespace debug {

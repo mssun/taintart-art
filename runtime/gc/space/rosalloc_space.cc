@@ -19,6 +19,7 @@
 
 #include "base/logging.h"  // For VLOG.
 #include "base/time_utils.h"
+#include "base/utils.h"
 #include "gc/accounting/card_table.h"
 #include "gc/accounting/space_bitmap-inl.h"
 #include "gc/heap.h"
@@ -29,7 +30,6 @@
 #include "scoped_thread_state_change-inl.h"
 #include "thread.h"
 #include "thread_list.h"
-#include "utils.h"
 
 namespace art {
 namespace gc {

@@ -17,19 +17,19 @@
 #include <string>
 
 #include "base/logging.h"  // For InitLogging.
+#include "base/mutex.h"
+#include "base/os.h"
+#include "base/utils.h"
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 #include "base/file_utils.h"
-#include "base/logging.h"  // For InitLogging.
 #include "compiler_filter.h"
 #include "class_loader_context.h"
 #include "dex/dex_file.h"
 #include "noop_compiler_callbacks.h"
 #include "oat_file_assistant.h"
-#include "os.h"
 #include "runtime.h"
 #include "thread-inl.h"
-#include "utils.h"
 
 namespace art {
 
@@ -142,6 +142,7 @@ class DexoptAnalyzer FINAL {
     original_argc = argc;
     original_argv = argv;
 
+    Locks::Init();
     InitLogging(argv, Runtime::Abort);
     // Skip over the command name.
     argv++;

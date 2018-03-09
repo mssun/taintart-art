@@ -19,6 +19,7 @@
 #include "android-base/stringprintf.h"
 
 #include "base/logging.h"  // For VLOG
+#include "base/utils.h"
 #include "gc/accounting/card_table-inl.h"
 #include "gc/accounting/space_bitmap-inl.h"
 #include "gc/heap.h"
@@ -30,7 +31,6 @@
 #include "runtime.h"
 #include "thread.h"
 #include "thread_list.h"
-#include "utils.h"
 
 namespace art {
 namespace gc {

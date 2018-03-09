@@ -22,13 +22,12 @@
 #include <functional>
 #include <memory>  // For unique_ptr
 
+#include "base/os.h"
 #include "base/unix_file/fd_file.h"
 #include "dex/compact_dex_level.h"
 #include "dex_container.h"
 #include "dex/dex_file.h"
 #include "dex_ir.h"
-#include "mem_map.h"
-#include "os.h"
 
 #include <queue>
 

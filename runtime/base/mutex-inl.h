@@ -21,9 +21,9 @@
 
 #include "mutex.h"
 
+#include "base/utils.h"
 #include "base/value_object.h"
 #include "thread.h"
-#include "utils.h"
 
 #if ART_USE_FUTEXES
 #include "linux/futex.h"

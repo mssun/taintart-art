@@ -27,6 +27,7 @@
 #include "base/enums.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/macros.h"
+#include "base/utils.h"
 #include "calling_convention.h"
 #include "class_linker.h"
 #include "debug/dwarf/debug_frame_opcode_writer.h"
@@ -37,7 +38,6 @@
 #include "jni_env_ext.h"
 #include "memory_region.h"
 #include "thread.h"
-#include "utils.h"
 #include "utils/arm/managed_register_arm.h"
 #include "utils/arm64/managed_register_arm64.h"
 #include "utils/assembler.h"

@@ -19,8 +19,8 @@
 
 #include "instrumentation.h"
 
-#include "atomic.h"
 #include "base/arena_containers.h"
+#include "base/atomic.h"
 #include "base/histogram-inl.h"
 #include "base/macros.h"
 #include "base/mutex.h"

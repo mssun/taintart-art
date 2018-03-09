@@ -22,8 +22,8 @@
 #include <memory>  // For unique_ptr
 #include <unordered_map>
 
+#include "base/utils.h"
 #include "dex_writer.h"
-#include "utils.h"
 
 namespace art {
 

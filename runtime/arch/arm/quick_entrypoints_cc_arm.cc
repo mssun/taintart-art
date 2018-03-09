@@ -15,7 +15,7 @@
  */
 
 #include "art_method.h"
-#include "utils.h"  // For RoundUp().
+#include "base/utils.h"  // For RoundUp().
 
 namespace art {
 
