@@ -176,8 +176,9 @@ class ArtMethod FINAL {
     return (GetAccessFlags() & kAccFinal) != 0;
   }
 
+  template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   bool IsIntrinsic() {
-    return (GetAccessFlags() & kAccIntrinsic) != 0;
+    return (GetAccessFlags<kReadBarrierOption>() & kAccIntrinsic) != 0;
   }
 
   ALWAYS_INLINE void SetIntrinsic(uint32_t intrinsic) REQUIRES_SHARED(Locks::mutator_lock_);
@@ -315,12 +316,13 @@ class ArtMethod FINAL {
     return (GetAccessFlags() & kAccPreviouslyWarm) != 0;
   }
 
+  template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   void SetPreviouslyWarm() {
-    if (IsIntrinsic()) {
+    if (IsIntrinsic<kReadBarrierOption>()) {
       // kAccPreviouslyWarm overlaps with kAccIntrinsicBits.
       return;
     }
-    AddAccessFlags(kAccPreviouslyWarm);
+    AddAccessFlags<kReadBarrierOption>(kAccPreviouslyWarm);
   }
 
   // Should this method be run in the interpreter and count locks (e.g., failed structured-
@@ -839,8 +841,11 @@ class ArtMethod FINAL {
   }
 
   // This setter guarantees atomicity.
+  template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   void AddAccessFlags(uint32_t flag) {
-    DCHECK(!IsIntrinsic() || !OverlapsIntrinsicBits(flag) || IsValidIntrinsicUpdate(flag));
+    DCHECK(!IsIntrinsic<kReadBarrierOption>() ||
+           !OverlapsIntrinsicBits(flag) ||
+           IsValidIntrinsicUpdate(flag));
     uint32_t old_access_flags;
     uint32_t new_access_flags;
     do {
