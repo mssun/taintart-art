@@ -40,6 +40,14 @@ class MANAGED MethodType : public Object {
                                                   ObjPtr<MethodType> method_type)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Collects trailing parameter types into an array. Assumes caller
+  // has checked trailing arguments are all of the same type.
+  static MethodType* CollectTrailingArguments(Thread* const self,
+                                              ObjPtr<MethodType> method_type,
+                                              ObjPtr<Class> collector_array_class,
+                                              int32_t start_index)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   static Class* StaticClass() REQUIRES_SHARED(Locks::mutator_lock_) {
     return static_class_.Read();
   }
