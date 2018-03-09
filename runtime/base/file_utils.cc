@@ -306,8 +306,8 @@ std::string GetSystemImageFilename(const char* location, const InstructionSet is
 }
 
 std::string ReplaceFileExtension(const std::string& filename, const std::string& new_extension) {
-  const size_t last_ext = filename.find_last_of('.');
-  if (last_ext == std::string::npos) {
+  const size_t last_ext = filename.find_last_of("./");
+  if (last_ext == std::string::npos || filename[last_ext] != '.') {
     return filename + "." + new_extension;
   } else {
     return filename.substr(0, last_ext + 1) + new_extension;
