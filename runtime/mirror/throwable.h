@@ -44,6 +44,7 @@ class MANAGED Throwable : public Object {
   void SetCause(ObjPtr<Throwable> cause) REQUIRES_SHARED(Locks::mutator_lock_);
   void SetStackState(ObjPtr<Object> state) REQUIRES_SHARED(Locks::mutator_lock_);
   bool IsCheckedException() REQUIRES_SHARED(Locks::mutator_lock_);
+  bool IsError() REQUIRES_SHARED(Locks::mutator_lock_);
 
   static Class* GetJavaLangThrowable() REQUIRES_SHARED(Locks::mutator_lock_) {
     DCHECK(!java_lang_Throwable_.IsNull());
