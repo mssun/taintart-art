@@ -51,6 +51,8 @@
 #include "dex/verified_method.h"
 #include "driver/compiler_driver.h"
 #include "graph_visualizer.h"
+#include "image.h"
+#include "gc/space/image_space.h"
 #include "intern_table.h"
 #include "intrinsics.h"
 #include "mirror/array-inl.h"
@@ -720,6 +722,47 @@ void CodeGenerator::GenerateLoadClassRuntimeCall(HLoadClass* cls) {
     CheckEntrypointTypes<kQuickInitializeType, void*, uint32_t>();
     InvokeRuntime(kQuickInitializeType, cls, cls->GetDexPc());
   }
+}
+
+static uint32_t GetBootImageOffsetImpl(const void* object, ImageHeader::ImageSections section) {
+  Runtime* runtime = Runtime::Current();
+  DCHECK(runtime->IsAotCompiler());
+  const std::vector<gc::space::ImageSpace*>& boot_image_spaces =
+      runtime->GetHeap()->GetBootImageSpaces();
+  // Check that the `object` is in the expected section of one of the boot image files.
+  DCHECK(std::any_of(boot_image_spaces.begin(),
+                     boot_image_spaces.end(),
+                     [object, section](gc::space::ImageSpace* space) {
+                       uintptr_t begin = reinterpret_cast<uintptr_t>(space->Begin());
+                       uintptr_t offset = reinterpret_cast<uintptr_t>(object) - begin;
+                       return space->GetImageHeader().GetImageSection(section).Contains(offset);
+                     }));
+  uintptr_t begin = reinterpret_cast<uintptr_t>(boot_image_spaces.front()->Begin());
+  uintptr_t offset = reinterpret_cast<uintptr_t>(object) - begin;
+  return dchecked_integral_cast<uint32_t>(offset);
+}
+
+// NO_THREAD_SAFETY_ANALYSIS: Avoid taking the mutator lock, boot image classes are non-moveable.
+uint32_t CodeGenerator::GetBootImageOffset(HLoadClass* load_class) NO_THREAD_SAFETY_ANALYSIS {
+  DCHECK_EQ(load_class->GetLoadKind(), HLoadClass::LoadKind::kBootImageRelRo);
+  ObjPtr<mirror::Class> klass = load_class->GetClass().Get();
+  DCHECK(klass != nullptr);
+  return GetBootImageOffsetImpl(klass.Ptr(), ImageHeader::kSectionObjects);
+}
+
+// NO_THREAD_SAFETY_ANALYSIS: Avoid taking the mutator lock, boot image strings are non-moveable.
+uint32_t CodeGenerator::GetBootImageOffset(HLoadString* load_string) NO_THREAD_SAFETY_ANALYSIS {
+  DCHECK_EQ(load_string->GetLoadKind(), HLoadString::LoadKind::kBootImageRelRo);
+  ObjPtr<mirror::String> string = load_string->GetString().Get();
+  DCHECK(string != nullptr);
+  return GetBootImageOffsetImpl(string.Ptr(), ImageHeader::kSectionObjects);
+}
+
+uint32_t CodeGenerator::GetBootImageOffset(HInvokeStaticOrDirect* invoke) {
+  DCHECK_EQ(invoke->GetMethodLoadKind(), HInvokeStaticOrDirect::MethodLoadKind::kBootImageRelRo);
+  ArtMethod* method = invoke->GetResolvedMethod();
+  DCHECK(method != nullptr);
+  return GetBootImageOffsetImpl(method, ImageHeader::kSectionArtMethods);
 }
 
 void CodeGenerator::BlockIfInRegister(Location location, bool is_out) const {

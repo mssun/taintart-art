@@ -227,7 +227,6 @@ class InternTable {
     // modifying the zygote intern table. The back of table is modified when strings are interned.
     std::vector<UnorderedSet> tables_;
 
-    friend class linker::OatWriter;  // for boot image string table slot address lookup.
     ART_FRIEND_TEST(InternTableTest, CrossHash);
   };
 
@@ -287,7 +286,6 @@ class InternTable {
   // Weak root state, used for concurrent system weak processing and more.
   gc::WeakRootState weak_root_state_ GUARDED_BY(Locks::intern_table_lock_);
 
-  friend class linker::OatWriter;  // for boot image string table slot address lookup.
   friend class Transaction;
   ART_FRIEND_TEST(InternTableTest, CrossHash);
   DISALLOW_COPY_AND_ASSIGN(InternTable);
