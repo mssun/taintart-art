@@ -94,4 +94,11 @@ TEST_F(FileUtilsTest, GetAndroidRootSafe) {
   ASSERT_EQ(0, setenv("ANDROID_ROOT", android_root_env.c_str(), 1 /* overwrite */));
 }
 
+TEST_F(FileUtilsTest, ReplaceFileExtension) {
+  EXPECT_EQ("/directory/file.vdex", ReplaceFileExtension("/directory/file.oat", "vdex"));
+  EXPECT_EQ("/.directory/file.vdex", ReplaceFileExtension("/.directory/file.oat", "vdex"));
+  EXPECT_EQ("/directory/file.vdex", ReplaceFileExtension("/directory/file", "vdex"));
+  EXPECT_EQ("/.directory/file.vdex", ReplaceFileExtension("/.directory/file", "vdex"));
+}
+
 }  // namespace art
