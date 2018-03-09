@@ -2374,8 +2374,8 @@ DEFINE_FUNCTION art_quick_osr_stub
     mov 8+16(%esp), %ecx           // ECX = size of args
     mov 12+16(%esp), %ebx          // EBX = pc to call
     mov %esp, %ebp                 // Save stack pointer
-    .cfi_def_cfa ebp, SAVE_SIZE    // CFA = ebp + SAVE_SIZE
-    .cfi_remember_state
+    CFI_DEF_CFA(ebp, SAVE_SIZE)    // CFA = ebp + SAVE_SIZE
+    CFI_REMEMBER_STATE
     andl LITERAL(0xFFFFFFF0), %esp // Align stack
     pushl %ebp                     // Save old stack pointer
     subl LITERAL(12), %esp         // Align stack
@@ -2383,14 +2383,14 @@ DEFINE_FUNCTION art_quick_osr_stub
     // ebp isn't properly spilled in the osr method, so we need use DWARF expression.
     // NB: the CFI must be before the call since this is the address gdb will lookup.
     // NB: gdb expects that cfa_expression returns the CFA value (not address to it).
-    .cfi_escape                    /* cfa = [sp + 12] + SAVE_SIZE */ \
+    CFI_ESCAPE(                    /* cfa = [sp + 12] + SAVE_SIZE */ \
       0x0f, 6,                     /* DW_CFA_def_cfa_expression(len) */ \
       0x92, 4, 12,                 /* DW_OP_bregx(reg,offset) */ \
       0x06,                        /* DW_OP_deref */ \
-      0x23, SAVE_SIZE              /* DW_OP_plus_uconst(val) */
+      0x23, SAVE_SIZE)             /* DW_OP_plus_uconst(val) */
     call .Losr_entry
     mov 12(%esp), %esp             // Restore stack pointer.
-    .cfi_def_cfa esp, SAVE_SIZE    // CFA = esp + SAVE_SIZE
+    CFI_DEF_CFA(esp, SAVE_SIZE)    // CFA = esp + SAVE_SIZE
 
     // Restore callee saves.
     POP edi
@@ -2413,8 +2413,8 @@ DEFINE_FUNCTION art_quick_osr_stub
     movss %xmm0, (%ecx)           // Store the floating point result
     ret
 .Losr_entry:
-    .cfi_restore_state
-    .cfi_def_cfa ebp, SAVE_SIZE   // CFA = ebp + SAVE_SIZE
+    CFI_RESTORE_STATE
+    CFI_DEF_CFA(ebp, SAVE_SIZE)   // CFA = ebp + SAVE_SIZE
     subl LITERAL(4), %ecx         // Given stack size contains pushed frame pointer, substract it.
     subl %ecx, %esp
     mov %esp, %edi                // EDI = beginning of stack

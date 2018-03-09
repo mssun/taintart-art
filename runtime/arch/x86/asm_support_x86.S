@@ -79,6 +79,7 @@
     #define CFI_REL_OFFSET(reg,size) .cfi_rel_offset reg,size
     #define CFI_RESTORE_STATE .cfi_restore_state
     #define CFI_REMEMBER_STATE .cfi_remember_state
+    #define CFI_ESCAPE(...) .cfi_escape __VA_ARGS__
 #else
     // Mac OS' doesn't like cfi_* directives.
     #define CFI_STARTPROC
@@ -90,6 +91,7 @@
     #define CFI_REL_OFFSET(reg,size)
     #define CFI_RESTORE_STATE
     #define CFI_REMEMBER_STATE
+    #define CFI_ESCAPE(...)
 #endif
 
     // Symbols. On a Mac, we need a leading underscore.
