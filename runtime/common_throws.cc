@@ -884,8 +884,8 @@ void ThrowVerifyError(ObjPtr<mirror::Class> referrer, const char* fmt, ...) {
 
 // WrongMethodTypeException
 
-void ThrowWrongMethodTypeException(mirror::MethodType* expected_type,
-                                   mirror::MethodType* actual_type) {
+void ThrowWrongMethodTypeException(ObjPtr<mirror::MethodType> expected_type,
+                                   ObjPtr<mirror::MethodType> actual_type) {
   ThrowException("Ljava/lang/invoke/WrongMethodTypeException;",
                  nullptr,
                  StringPrintf("Expected %s but was %s",

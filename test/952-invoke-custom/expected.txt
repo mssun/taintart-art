@@ -18,3 +18,67 @@ testStaticFieldAccessors
 testInstanceFieldAccessors
 testInvokeVirtual => max(77, -3) = 77
 testConstructor => class TestInvocationKinds$Widget
+TestDynamicArguments
+bsm
+0, One, 3.141592653589793
+bsm
+1, Two, 2.718281828459045
+bsm
+2, Three, 0.0
+0, One, 3.141592653589793
+1, Two, 2.718281828459045
+2, Three, 0.0
+TestBadBootstrapArguments
+bsm(class TestBadBootstrapArguments, happy, ()void, -1, very)
+happy
+invokeWrongParameterTypes => class java.lang.NoSuchMethodError
+invokeMissingParameterTypes => class java.lang.NoSuchMethodError
+invokeExtraArguments => class java.lang.BootstrapMethodError => class java.lang.invoke.WrongMethodTypeException
+invokeWrongArguments => class java.lang.BootstrapMethodError => class java.lang.ClassCastException
+invokeWrongArguments => class java.lang.BootstrapMethodError => class java.lang.ClassCastException
+invokeWrongArgumentsAgain => class java.lang.BootstrapMethodError => class java.lang.ClassCastException
+invokeNarrowArguments => class java.lang.BootstrapMethodError => class java.lang.ClassCastException
+bsmDJ(..., 1.7976931348623157E308, 2147483647)
+wideningArguments
+bsmDoubleLong(..., 1.7976931348623157E308, 9223372036854775807)
+boxingArguments
+invokeWideningBoxingArguments => class java.lang.BootstrapMethodError => class java.lang.ClassCastException
+bsm returning void value.
+invokeVoidReturnType() => class java.lang.BootstrapMethodError => class java.lang.ClassCastException
+bsm returning Object value.
+invokeObjectReturnType() => class java.lang.BootstrapMethodError => class java.lang.ClassCastException
+bsm returning Integer value.
+invokeIntegerReturnType() => class java.lang.BootstrapMethodError => class java.lang.ClassCastException
+Hello!
+bsmWithStringArray(TestVariableArityLinkerMethod, methodA, ()void, [Aachen, Aalborg, Aalto]);
+methodA
+bsmWithStringArray(TestVariableArityLinkerMethod, methodB, ()void, [barium]);
+methodB
+bsmWithStringArray(TestVariableArityLinkerMethod, methodC, ()void, []);
+methodC
+methodA
+methodB
+methodC
+bsmWithIntAndStringArray(TestVariableArityLinkerMethod, methodD, ()void, 101, [zoo, zoogene, zoogenic]);
+methodD
+bsmWithIntAndStringArray(TestVariableArityLinkerMethod, methodE, ()void, 102, [zonic]);
+methodE
+bsmWithIntAndStringArray(TestVariableArityLinkerMethod, methodF, ()void, 103, []);
+methodF
+methodD
+methodE
+methodF
+bsmWithLongAndIntArray(TestVariableArityLinkerMethod, methodG, ()void, 81985529216486895, [1, -1, 2, -2]);
+methodG
+bsmWithFloatAndLongArray(TestVariableArityLinkerMethod, methodH, ()void, -2.7182817, [999999999999, -8888888888888]);
+methodH
+bsmWithClassAndFloatArray(TestVariableArityLinkerMethod, methodI, ()void, class java.lang.Throwable, [3.4028235E38, 1.4E-45, 3.1415927, -3.1415927]);
+methodI
+bsmWithDoubleArray(TestVariableArityLinkerMethod, methodJ, ()void, [1.7976931348623157E308, 4.9E-324, 2.718281828459045, -3.141592653589793]);
+methodJ
+bsmWithClassArray(TestVariableArityLinkerMethod, methodK, ()void, [class java.lang.Integer, class java.lang.invoke.MethodHandles, class java.util.Arrays]);
+methodK
+methodO => class java.lang.BootstrapMethodError => class java.lang.ClassCastException
+methodP => class java.lang.BootstrapMethodError => class java.lang.ClassCastException
+methodQ => class java.lang.BootstrapMethodError => class java.lang.invoke.WrongMethodTypeException
+methodR => class java.lang.BootstrapMethodError => class java.lang.invoke.WrongMethodTypeException

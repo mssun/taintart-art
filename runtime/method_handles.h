@@ -174,17 +174,24 @@ class ShadowFrameSetter {
       : shadow_frame_(shadow_frame), arg_index_(first_dst_reg) {}
 
   ALWAYS_INLINE void Set(uint32_t value) REQUIRES_SHARED(Locks::mutator_lock_) {
+    DCHECK_LT(arg_index_, shadow_frame_->NumberOfVRegs());
     shadow_frame_->SetVReg(arg_index_++, value);
   }
 
   ALWAYS_INLINE void SetReference(ObjPtr<mirror::Object> value)
       REQUIRES_SHARED(Locks::mutator_lock_) {
+    DCHECK_LT(arg_index_, shadow_frame_->NumberOfVRegs());
     shadow_frame_->SetVRegReference(arg_index_++, value.Ptr());
   }
 
   ALWAYS_INLINE void SetLong(int64_t value) REQUIRES_SHARED(Locks::mutator_lock_) {
+    DCHECK_LT(arg_index_, shadow_frame_->NumberOfVRegs());
     shadow_frame_->SetVRegLong(arg_index_, value);
     arg_index_ += 2;
+  }
+
+  ALWAYS_INLINE bool Done() const {
+    return arg_index_ == shadow_frame_->NumberOfVRegs();
   }
 
  private:

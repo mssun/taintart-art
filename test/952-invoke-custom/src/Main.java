@@ -74,18 +74,15 @@ public class Main extends TestBase {
                 TestLinkerMethodMinimalArguments.FAILURE_TYPE_NONE, 10, 13);
     }
 
-    private static void TestInvokeCustomWithConcurrentThreads() throws Throwable {
-        // This is a concurrency test that attempts to run invoke-custom on the same
-        // call site.
-        TestInvokeCustomWithConcurrentThreads.test();
-    }
-
     public static void main(String[] args) throws Throwable {
         TestUninitializedCallSite();
         TestLinkerMethodMinimalArguments();
         TestLinkerMethodMultipleArgumentTypes();
         TestLinkerUnrelatedBSM.test();
-        TestInvokeCustomWithConcurrentThreads();
+        TestInvokeCustomWithConcurrentThreads.test();
         TestInvocationKinds.test();
+        TestDynamicBootstrapArguments.test();
+        TestBadBootstrapArguments.test();
+        TestVariableArityLinkerMethod.test();
     }
 }
