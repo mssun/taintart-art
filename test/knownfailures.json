@@ -75,13 +75,6 @@
                         "--relocate"]
     },
     {
-        "tests": "137-cfi",
-        "variant": "interp-ac",
-        "description": ["Temporarily disable some broken tests when forcing",
-                        "access checks in interpreter"],
-        "bug": "http://b/22414682"
-    },
-    {
         "tests" : "629-vdex-speed",
         "variant": "interp-ac | no-dex2oat | interpreter | jit | relocate-npatchoat",
         "description": "629 requires compilation."

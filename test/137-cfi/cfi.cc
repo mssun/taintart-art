@@ -128,7 +128,6 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindInProcess(
   // "mini-debug-info" does not include parameters to save space.
   std::vector<std::string> seq = {
       "Java_Main_unwindInProcess",                   // This function.
-      "Main.unwindInProcess",                        // The corresponding Java native method frame.
       "java.util.Arrays.binarySearch0",              // Framework method.
       "Base.runBase",                                // Method in other dex file.
       "Main.main"                                    // The Java entry method.
@@ -225,11 +224,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_unwindOtherProcess(
     // See comment in unwindInProcess for non-exact stack matching.
     // "mini-debug-info" does not include parameters to save space.
     std::vector<std::string> seq = {
-        // "Java_Main_sleep",                        // The sleep function being executed in the
-                                                     // other runtime.
-                                                     // Note: For some reason, the name isn't
-                                                     // resolved, so don't look for it right now.
-        "Main.sleep",                                // The corresponding Java native method frame.
+        "Java_Main_sleep",                           // The sleep function in the other process.
         "java.util.Arrays.binarySearch0",            // Framework method.
         "Base.runBase",                              // Method in other dex file.
         "Main.main"                                  // The Java entry method.
