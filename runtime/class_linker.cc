@@ -268,9 +268,13 @@ static void WrapExceptionInInitializer(Handle<mirror::Class> klass)
   // cannot in general be guaranteed, but in all likelihood leads to breakage down the line.
   if (klass->GetClassLoader() == nullptr && !Runtime::Current()->IsAotCompiler()) {
     std::string tmp;
-    LOG(kIsDebugBuild ? FATAL : WARNING) << klass->GetDescriptor(&tmp)
-                                         << " failed initialization: "
-                                         << self->GetException()->Dump();
+    // We want to LOG(FATAL) on debug builds since this really shouldn't be happening but we need to
+    // make sure to only do it if we don't have AsyncExceptions being thrown around since those
+    // could have caused the error.
+    bool known_impossible = kIsDebugBuild && !Runtime::Current()->AreAsyncExceptionsThrown();
+    LOG(known_impossible ? FATAL : WARNING) << klass->GetDescriptor(&tmp)
+                                            << " failed initialization: "
+                                            << self->GetException()->Dump();
   }
 
   env->ExceptionClear();
