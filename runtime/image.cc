@@ -26,7 +26,7 @@
 namespace art {
 
 const uint8_t ImageHeader::kImageMagic[] = { 'a', 'r', 't', '\n' };
-const uint8_t ImageHeader::kImageVersion[] = { '0', '5', '5', '\0' };  // Bitstring type check off.
+const uint8_t ImageHeader::kImageVersion[] = { '0', '5', '6', '\0' };  // No image tables in .bss.
 
 ImageHeader::ImageHeader(uint32_t image_begin,
                          uint32_t image_size,

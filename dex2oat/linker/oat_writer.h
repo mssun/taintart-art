@@ -364,12 +364,6 @@ class OatWriter {
     return dex_files_ != nullptr && extract_dex_files_into_vdex_;
   }
 
-  // Find the address of the GcRoot<String> in the InternTable for a boot image string.
-  const uint8_t* LookupBootImageInternTableSlot(const DexFile& dex_file,
-                                                dex::StringIndex string_idx);
-  // Find the address of the ClassTable::TableSlot for a boot image class.
-  const uint8_t* LookupBootImageClassTableSlot(const DexFile& dex_file, dex::TypeIndex type_idx);
-
   enum class WriteState {
     kAddingDexFileSources,
     kPrepareLayout,
@@ -468,10 +462,6 @@ class OatWriter {
   // string in the dex file with the "string value comparator" for deduplication. The value
   // is the target offset for patching, starting at `bss_start_ + bss_roots_offset_`.
   SafeMap<StringReference, size_t, StringReferenceValueComparator> bss_string_entries_;
-
-  // Whether boot image tables should be mapped to the .bss. This is needed for compiled
-  // code that reads from these tables with PC-relative instructions.
-  bool map_boot_image_tables_to_bss_;
 
   // Offset of the oat data from the start of the mmapped region of the elf file.
   size_t oat_data_offset_;
