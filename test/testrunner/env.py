@@ -17,6 +17,16 @@ import re
 import tempfile
 import subprocess
 
+# begin import $ANDROID_BUILD_TOP/art/tools/build/var_cache.py
+_THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+_TOP = os.path.join(_THIS_DIR, "../../..")
+_VAR_CACHE_DIR = os.path.join(_TOP, "art/tools/build/")
+
+import sys
+sys.path.append(_VAR_CACHE_DIR)
+import var_cache
+# end import var_cache.py
+
 _env = dict(os.environ)
 
 def _getEnvBoolean(var, default):
@@ -28,55 +38,8 @@ def _getEnvBoolean(var, default):
       return False
   return default
 
-_DUMP_MANY_VARS_LIST = ['HOST_2ND_ARCH_PREFIX',
-                        'TARGET_2ND_ARCH',
-                        'TARGET_ARCH',
-                        'HOST_PREFER_32_BIT',
-                        'HOST_OUT_EXECUTABLES',
-                        'ANDROID_JAVA_TOOLCHAIN',
-                        'ANDROID_COMPILE_WITH_JACK',
-                        'USE_D8_BY_DEFAULT']
-_DUMP_MANY_VARS = None  # To be set to a dictionary with above list being the keys,
-                        # and the build variable being the value.
-def _dump_many_vars(var_name):
-  """
-  Reach into the Android build system to dump many build vars simultaneously.
-  Since the make system is so slow, we want to avoid calling into build frequently.
-  """
-  global _DUMP_MANY_VARS
-  global _DUMP_MANY_VARS_LIST
-
-  # Look up var from cache.
-  if _DUMP_MANY_VARS:
-    return _DUMP_MANY_VARS[var_name]
-
-  all_vars=" ".join(_DUMP_MANY_VARS_LIST)
-
-  # The command is taken from build/envsetup.sh to fetch build variables.
-  command = ("build/soong/soong_ui.bash --dumpvars-mode --vars=\"%s\"") % (all_vars)
-
-  config = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            universal_newlines=True,
-                            shell=True,
-                            cwd=ANDROID_BUILD_TOP).communicate()[0] # read until EOF, select stdin
-  # Prints out something like:
-  # TARGET_ARCH='arm64'
-  # HOST_ARCH='x86_64'
-  _DUMP_MANY_VARS = {}
-  for line in config.split("\n"):
-    # Split out "$key='$value'" via regex.
-    match = re.search("([^=]+)='([^']*)", line)
-    if not match:
-      continue
-    key = match.group(1)
-    value = match.group(2)
-    _DUMP_MANY_VARS[key] = value
-
-  return _DUMP_MANY_VARS[var_name]
-
 def _get_build_var(var_name):
-  return _dump_many_vars(var_name)
+  return var_cache.get_build_var(var_name)
 
 def _get_build_var_boolean(var, default):
   val = _get_build_var(var)
