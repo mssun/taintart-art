@@ -1276,7 +1276,7 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   jdwp_provider_ = runtime_options.GetOrDefault(Opt::JdwpProvider);
   switch (jdwp_provider_) {
     case JdwpProvider::kNone: {
-      LOG(INFO) << "Disabling all JDWP support.";
+      VLOG(jdwp) << "Disabling all JDWP support.";
       if (!jdwp_options_.empty()) {
         bool has_transport = jdwp_options_.find("transport") != std::string::npos;
         const char* transport_internal = !has_transport ? "transport=dt_android_adb," : "";
