@@ -229,7 +229,9 @@ static jint trampoline_Java_Main_testSignal(JNIEnv*, jclass) {
   struct sigaction64 tmp2;
   sigemptyset64(&tmp2.sa_mask);
   tmp2.sa_sigaction = test_sigaction_handler;
+#if defined(SA_RESTORER)
   tmp2.sa_restorer = nullptr;
+#endif
 
   sigaction64(SIGSEGV, &tmp2, nullptr);
   sigaction64(SIGILL, &tmp2, nullptr);

@@ -80,7 +80,7 @@ static void log(const char* format, ...) {
 
 #define fatal(...) log(__VA_ARGS__); abort()
 
-#if defined(__BIONIC__) && !defined(__LP64__)
+#if defined(__BIONIC__) && !defined(__LP64__) && !defined(__mips__)
 static int sigismember(const sigset64_t* sigset, int signum) {
   return sigismember64(sigset, signum);
 }
@@ -223,7 +223,9 @@ class SignalChain {
       SigactionType result;
       result.sa_flags = action_.sa_flags;
       result.sa_handler = action_.sa_handler;
+#if defined(SA_RESTORER)
       result.sa_restorer = action_.sa_restorer;
+#endif
       memcpy(&result.sa_mask, &action_.sa_mask,
              std::min(sizeof(action_.sa_mask), sizeof(result.sa_mask)));
       return result;
@@ -237,7 +239,9 @@ class SignalChain {
     } else {
       action_.sa_flags = new_action->sa_flags;
       action_.sa_handler = new_action->sa_handler;
+#if defined(SA_RESTORER)
       action_.sa_restorer = new_action->sa_restorer;
+#endif
       sigemptyset(&action_.sa_mask);
       memcpy(&action_.sa_mask, &new_action->sa_mask,
              std::min(sizeof(action_.sa_mask), sizeof(new_action->sa_mask)));

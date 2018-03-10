@@ -102,10 +102,14 @@ static struct sigaction oldaction;
 bool compare_sigaction(const struct sigaction* lhs, const struct sigaction* rhs) {
   // bionic's definition of `struct sigaction` has internal padding bytes, so we can't just do a
   // naive memcmp of the entire struct.
+#if defined(SA_RESTORER)
+  if (lhs->sa_restorer != rhs->sa_restorer) {
+    return false;
+  }
+#endif
   return memcmp(&lhs->sa_mask, &rhs->sa_mask, sizeof(lhs->sa_mask)) == 0 &&
          lhs->sa_sigaction == rhs->sa_sigaction &&
-         lhs->sa_flags == rhs->sa_flags &&
-         lhs->sa_restorer == rhs->sa_restorer;
+         lhs->sa_flags == rhs->sa_flags;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_Main_initSignalTest(JNIEnv*, jclass) {
