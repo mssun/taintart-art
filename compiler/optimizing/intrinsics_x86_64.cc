@@ -2737,6 +2737,14 @@ void IntrinsicCodeGeneratorX86_64::VisitThreadInterrupted(HInvoke* invoke) {
   __ Bind(&done);
 }
 
+void IntrinsicLocationsBuilderX86_64::VisitReachabilityFence(HInvoke* invoke) {
+  LocationSummary* locations =
+      new (allocator_) LocationSummary(invoke, LocationSummary::kNoCall, kIntrinsified);
+  locations->SetInAt(0, Location::Any());
+}
+
+void IntrinsicCodeGeneratorX86_64::VisitReachabilityFence(HInvoke* invoke ATTRIBUTE_UNUSED) { }
+
 UNIMPLEMENTED_INTRINSIC(X86_64, ReferenceGetReferent)
 UNIMPLEMENTED_INTRINSIC(X86_64, FloatIsInfinite)
 UNIMPLEMENTED_INTRINSIC(X86_64, DoubleIsInfinite)

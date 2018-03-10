@@ -2928,6 +2928,13 @@ void IntrinsicCodeGeneratorX86::VisitThreadInterrupted(HInvoke* invoke) {
   __ Bind(&done);
 }
 
+void IntrinsicLocationsBuilderX86::VisitReachabilityFence(HInvoke* invoke) {
+  LocationSummary* locations =
+      new (allocator_) LocationSummary(invoke, LocationSummary::kNoCall, kIntrinsified);
+  locations->SetInAt(0, Location::Any());
+}
+
+void IntrinsicCodeGeneratorX86::VisitReachabilityFence(HInvoke* invoke ATTRIBUTE_UNUSED) { }
 
 UNIMPLEMENTED_INTRINSIC(X86, MathRoundDouble)
 UNIMPLEMENTED_INTRINSIC(X86, ReferenceGetReferent)
