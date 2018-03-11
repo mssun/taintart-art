@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_MIRROR_OBJECT_REFERENCE_H_
 #define ART_RUNTIME_MIRROR_OBJECT_REFERENCE_H_
 
-#include "atomic.h"
+#include "base/atomic.h"
 #include "base/mutex.h"  // For Locks::mutator_lock_.
 #include "globals.h"
 #include "heap_poisoning.h"

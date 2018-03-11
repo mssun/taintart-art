@@ -31,11 +31,11 @@
 
 #include "base/file_utils.h"
 #include "base/macros.h"
+#include "base/utils.h"
 #include "gc/heap.h"
 #include "gc/space/image_space.h"
 #include "oat_file.h"
 #include "runtime.h"
-#include "utils.h"
 
 namespace art {
 

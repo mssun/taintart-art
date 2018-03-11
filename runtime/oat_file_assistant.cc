@@ -25,7 +25,9 @@
 
 #include "base/file_utils.h"
 #include "base/logging.h"  // For VLOG.
+#include "base/os.h"
 #include "base/stl_util.h"
+#include "base/utils.h"
 #include "class_linker.h"
 #include "compiler_filter.h"
 #include "dex/art_dex_file_loader.h"
@@ -35,10 +37,8 @@
 #include "gc/space/image_space.h"
 #include "image.h"
 #include "oat.h"
-#include "os.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
-#include "utils.h"
 #include "vdex_file.h"
 #include "class_loader_context.h"
 
@@ -1263,10 +1263,14 @@ std::unique_ptr<OatFile> OatFileAssistant::OatFileInfo::ReleaseFileForUse() {
 
   switch (Status()) {
     case kOatBootImageOutOfDate:
+      // OutOfDate may be either a mismatched image, or a missing image.
       if (oat_file_assistant_->HasOriginalDexFiles()) {
-        // If there are original dex files, it is better to use them.
+        // If there are original dex files, it is better to use them (to avoid a potential
+        // quickening mismatch because the boot image changed).
         break;
       }
+      // If we do not accept the oat file, we may not have access to dex bytecode at all. Grudgingly
+      // go forward.
       FALLTHROUGH_INTENDED;
 
     case kOatRelocationOutOfDate:

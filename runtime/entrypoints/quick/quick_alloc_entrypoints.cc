@@ -18,6 +18,7 @@
 
 #include "art_method-inl.h"
 #include "base/enums.h"
+#include "base/quasi_atomic.h"
 #include "callee_save_frame.h"
 #include "dex/dex_file_types.h"
 #include "entrypoints/entrypoint_utils-inl.h"

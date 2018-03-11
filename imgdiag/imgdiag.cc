@@ -30,6 +30,7 @@
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
+#include "base/os.h"
 #include "base/unix_file/fd_file.h"
 #include "class_linker.h"
 #include "gc/heap.h"
@@ -40,7 +41,6 @@
 #include "oat.h"
 #include "oat_file.h"
 #include "oat_file_manager.h"
-#include "os.h"
 #include "scoped_thread_state_change-inl.h"
 
 #include "backtrace/BacktraceMap.h"

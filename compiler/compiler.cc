@@ -19,10 +19,10 @@
 #include <android-base/logging.h>
 
 #include "base/macros.h"
+#include "base/utils.h"
 #include "dex/code_item_accessors-inl.h"
 #include "driver/compiler_driver.h"
 #include "optimizing/optimizing_compiler.h"
-#include "utils.h"
 
 namespace art {
 

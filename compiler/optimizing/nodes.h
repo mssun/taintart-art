@@ -26,6 +26,7 @@
 #include "base/arena_object.h"
 #include "base/array_ref.h"
 #include "base/iteration_range.h"
+#include "base/quasi_atomic.h"
 #include "base/stl_util.h"
 #include "base/transform_array_ref.h"
 #include "data_type.h"

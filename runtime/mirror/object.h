@@ -17,7 +17,7 @@
 #ifndef ART_RUNTIME_MIRROR_OBJECT_H_
 #define ART_RUNTIME_MIRROR_OBJECT_H_
 
-#include "atomic.h"
+#include "base/atomic.h"
 #include "base/casts.h"
 #include "base/enums.h"
 #include "globals.h"

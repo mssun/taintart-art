@@ -787,5 +787,23 @@ TEST_F(ObjectTest, ObjectPointer) {
   }
 }
 
+TEST_F(ObjectTest, PrettyTypeOf) {
+  ScopedObjectAccess soa(Thread::Current());
+  EXPECT_EQ("null", mirror::Object::PrettyTypeOf(nullptr));
+
+  StackHandleScope<2> hs(soa.Self());
+  Handle<mirror::String> s(hs.NewHandle(mirror::String::AllocFromModifiedUtf8(soa.Self(), "")));
+  EXPECT_EQ("java.lang.String", mirror::Object::PrettyTypeOf(s.Get()));
+
+  Handle<mirror::ShortArray> a(hs.NewHandle(mirror::ShortArray::Alloc(soa.Self(), 2)));
+  EXPECT_EQ("short[]", mirror::Object::PrettyTypeOf(a.Get()));
+
+  mirror::Class* c = class_linker_->FindSystemClass(soa.Self(), "[Ljava/lang/String;");
+  ASSERT_TRUE(c != nullptr);
+  mirror::Object* o = mirror::ObjectArray<mirror::String>::Alloc(soa.Self(), c, 0);
+  EXPECT_EQ("java.lang.String[]", mirror::Object::PrettyTypeOf(o));
+  EXPECT_EQ("java.lang.Class<java.lang.String[]>", mirror::Object::PrettyTypeOf(o->GetClass()));
+}
+
 }  // namespace mirror
 }  // namespace art

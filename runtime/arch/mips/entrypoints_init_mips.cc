@@ -17,8 +17,9 @@
 #include <string.h>
 
 #include "arch/mips/asm_support_mips.h"
-#include "atomic.h"
+#include "base/atomic.h"
 #include "base/logging.h"
+#include "base/quasi_atomic.h"
 #include "entrypoints/entrypoint_utils.h"
 #include "entrypoints/jni/jni_entrypoints.h"
 #include "entrypoints/math_entrypoints.h"

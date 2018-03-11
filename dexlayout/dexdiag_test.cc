@@ -20,9 +20,9 @@
 #include "common_runtime_test.h"
 
 #include "base/file_utils.h"
+#include "base/os.h"
 #include "exec_utils.h"
 #include "oat_file.h"
-#include "os.h"
 
 namespace art {
 

@@ -18,7 +18,7 @@
 
 #include <string>
 
-#include "atomic.h"
+#include "base/atomic.h"
 #include "common_runtime_test.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-inl.h"

@@ -32,23 +32,25 @@
 #include <vector>
 
 #include <linux/unistd.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <sys/time.h>
 #include <sys/types.h>
 
 #include "android-base/stringprintf.h"
+#include "android-base/strings.h"
 
 #include "arch/instruction_set.h"
 #include "base/aborting.h"
 #include "base/file_utils.h"
 #include "base/memory_tool.h"
 #include "base/mutex.h"
+#include "base/os.h"
 #include "base/unix_file/fd_file.h"
+#include "base/utils.h"
 #include "oat_quick_method_header.h"
-#include "os.h"
 #include "thread-current-inl.h"
-#include "utils.h"
 
 #endif
 
@@ -145,21 +147,14 @@ static void Drain(size_t expected,
   bool prefix_written = false;
 
   for (;;) {
-    constexpr uint32_t kWaitTimeExpectedMicros = 500 * 1000;
-    constexpr uint32_t kWaitTimeUnexpectedMicros = 50 * 1000;
+    constexpr uint32_t kWaitTimeExpectedMilli = 500;
+    constexpr uint32_t kWaitTimeUnexpectedMilli = 50;
 
-    struct timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = expected > 0 ? kWaitTimeExpectedMicros : kWaitTimeUnexpectedMicros;
-
-    fd_set rfds;
-    FD_ZERO(&rfds);
-    FD_SET(in, &rfds);
-
-    int retval = TEMP_FAILURE_RETRY(select(in + 1, &rfds, nullptr, nullptr, &tv));
-
-    if (retval < 0) {
-      // Other side may have crashed or other errors.
+    int timeout = expected > 0 ? kWaitTimeExpectedMilli : kWaitTimeUnexpectedMilli;
+    struct pollfd read_fd{in, POLLIN, 0};
+    int retval = TEMP_FAILURE_RETRY(poll(&read_fd, 1, timeout));
+    if (retval == -1) {
+      // An error occurred.
       pipe->reset();
       return;
     }
@@ -169,19 +164,23 @@ static void Drain(size_t expected,
       return;
     }
 
-    DCHECK_EQ(retval, 1);
+    if (!(read_fd.revents & POLLIN)) {
+      // addr2line call exited.
+      pipe->reset();
+      return;
+    }
 
     constexpr size_t kMaxBuffer = 128;  // Relatively small buffer. Should be OK as we're on an
     // alt stack, but just to be sure...
     char buffer[kMaxBuffer];
     memset(buffer, 0, kMaxBuffer);
     int bytes_read = TEMP_FAILURE_RETRY(read(in, buffer, kMaxBuffer - 1));
-
-    if (bytes_read < 0) {
+    if (bytes_read <= 0) {
       // This should not really happen...
       pipe->reset();
       return;
     }
+    buffer[bytes_read] = '\0';
 
     char* tmp = buffer;
     while (*tmp != 0) {
@@ -219,8 +218,10 @@ static void Addr2line(const std::string& map_src,
                       std::unique_ptr<Addr2linePipe>* pipe /* inout */) {
   DCHECK(pipe != nullptr);
 
-  if (map_src == "[vdso]") {
-    // Special-case this, our setup has problems with this.
+  if (map_src == "[vdso]" || android::base::EndsWith(map_src, ".vdex")) {
+    // addr2line will not work on the vdso.
+    // vdex files are special frames injected for the interpreter
+    // so they don't have any line number information available.
     return;
   }
 

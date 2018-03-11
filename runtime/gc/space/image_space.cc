@@ -32,10 +32,12 @@
 #include "base/enums.h"
 #include "base/file_utils.h"
 #include "base/macros.h"
+#include "base/os.h"
 #include "base/scoped_flock.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/time_utils.h"
+#include "base/utils.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/dex_file_loader.h"
 #include "exec_utils.h"
@@ -46,10 +48,8 @@
 #include "mirror/object-inl.h"
 #include "mirror/object-refvisitor-inl.h"
 #include "oat_file.h"
-#include "os.h"
 #include "runtime.h"
 #include "space-inl.h"
-#include "utils.h"
 
 namespace art {
 namespace gc {

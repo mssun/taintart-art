@@ -21,10 +21,10 @@
 #include <stdint.h>
 
 #include "base/bit_utils.h"
+#include "base/debug_stack.h"
+#include "base/dchecked_vector.h"
 #include "base/macros.h"
 #include "base/memory_tool.h"
-#include "dchecked_vector.h"
-#include "debug_stack.h"
 #include "mutex.h"
 
 namespace art {
