@@ -286,11 +286,6 @@
         "variant": "npictest"
     },
     {
-        "tests": "639-checker-code-sinking",
-        "variant": "pictest",
-        "bug": "http://b/65366606"
-    },
-    {
         "tests": "055-enum-performance",
         "variant": "optimizing | regalloc_gc",
         "description": ["055: Exceeds run time limits due to heap poisoning ",
