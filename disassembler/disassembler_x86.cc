@@ -1194,11 +1194,19 @@ DISASSEMBLER_ENTRY(cmp,
           opcode1 = opcode_tmp.c_str();
         }
         break;
+      case 0xD8:
+      case 0xD9:
       case 0xDA:
+      case 0xDC:
+      case 0xDD:
       case 0xDE:
       case 0xE0:
       case 0xE3:
+      case 0xE8:
+      case 0xE9:
       case 0xEA:
+      case 0xEC:
+      case 0xED:
       case 0xEE:
         if (prefix[2] == 0x66) {
           src_reg_file = dst_reg_file = SSE;
@@ -1207,11 +1215,19 @@ DISASSEMBLER_ENTRY(cmp,
           src_reg_file = dst_reg_file = MMX;
         }
         switch (*instr) {
+          case 0xD8: opcode1 = "psubusb"; break;
+          case 0xD9: opcode1 = "psubusw"; break;
           case 0xDA: opcode1 = "pminub"; break;
+          case 0xDC: opcode1 = "paddusb"; break;
+          case 0xDD: opcode1 = "paddusw"; break;
           case 0xDE: opcode1 = "pmaxub"; break;
           case 0xE0: opcode1 = "pavgb"; break;
           case 0xE3: opcode1 = "pavgw"; break;
+          case 0xE8: opcode1 = "psubsb"; break;
+          case 0xE9: opcode1 = "psubsw"; break;
           case 0xEA: opcode1 = "pminsw"; break;
+          case 0xEC: opcode1 = "paddsb"; break;
+          case 0xED: opcode1 = "paddsw"; break;
           case 0xEE: opcode1 = "pmaxsw"; break;
         }
         prefix[2] = 0;
