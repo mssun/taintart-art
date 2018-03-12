@@ -17,7 +17,11 @@
 # We push art and its dependencies to '/data/local/tmp', but the 'stack'
 # script expect things to be in '/'. So we just remove the
 # '/data/local/tmp' prefix.
-adb logcat -d | sed 's,/data/local/tmp,,g' | development/scripts/stack
+if [[ -n "$1" ]]; then
+  cat $1
+else
+  adb logcat -d
+fi | sed 's,/data/local/tmp,,g' | development/scripts/stack
 
 # Always return 0 to avoid having the buildbot complain about wrong stacks.
 exit 0
