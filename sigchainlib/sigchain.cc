@@ -14,13 +14,6 @@
  * limitations under the License.
  */
 
-#ifdef ART_TARGET_ANDROID
-#include <android/log.h>
-#else
-#include <stdarg.h>
-#include <iostream>
-#endif
-
 #include <dlfcn.h>
 #include <errno.h>
 #include <pthread.h>
@@ -35,6 +28,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "log.h"
 #include "sigchain.h"
 
 #if defined(__APPLE__)
@@ -64,21 +58,6 @@
 //  ~SA_RESTART: unimplemented, maybe we can reserve an RT signal, register an empty handler that
 //               doesn't have SA_RESTART, and raise the signal to avoid restarting syscalls that are
 //               expected to be interrupted?
-
-static void log(const char* format, ...) {
-  char buf[256];
-  va_list ap;
-  va_start(ap, format);
-  vsnprintf(buf, sizeof(buf), format, ap);
-#ifdef ART_TARGET_ANDROID
-  __android_log_write(ANDROID_LOG_ERROR, "libsigchain", buf);
-#else
-  std::cout << buf << "\n";
-#endif
-  va_end(ap);
-}
-
-#define fatal(...) log(__VA_ARGS__); abort()
 
 #if defined(__BIONIC__) && !defined(__LP64__) && !defined(__mips__)
 static int sigismember(const sigset64_t* sigset, int signum) {

@@ -35,7 +35,7 @@ cc_library {
         },
 
         android: {
-            shared_libs: ["liblog"],
+            whole_static_libs: ["libasync_safe"],
         },
     },
     // Sigchainlib is whole-statically linked into binaries. For Android.mk-based binaries,
@@ -56,7 +56,7 @@ cc_library_static {
     srcs: ["sigchain_dummy.cc"],
     target: {
         android: {
-            shared_libs: ["liblog"],
+            whole_static_libs: ["libasync_safe"],
         },
     },
 }

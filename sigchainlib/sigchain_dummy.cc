@@ -17,13 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifdef ART_TARGET_ANDROID
-#include <android/log.h>
-#else
-#include <stdarg.h>
-#include <iostream>
-#endif
-
+#include "log.h"
 #include "sigchain.h"
 
 #define ATTRIBUTE_UNUSED __attribute__((__unused__))
@@ -32,19 +26,6 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunknown-pragmas"
 #pragma GCC diagnostic ignored "-Wmissing-noreturn"
-
-static void log(const char* format, ...) {
-  char buf[256];
-  va_list ap;
-  va_start(ap, format);
-  vsnprintf(buf, sizeof(buf), format, ap);
-#ifdef ART_TARGET_ANDROID
-  __android_log_write(ANDROID_LOG_ERROR, "libsigchain", buf);
-#else
-  std::cout << buf << "\n";
-#endif
-  va_end(ap);
-}
 
 namespace art {
 
