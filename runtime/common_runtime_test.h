@@ -332,12 +332,6 @@ class CheckJniAbortCatcher {
     return; \
   }
 
-#define TEST_DISABLED_FOR_COMPACT_DEX() \
-  if (kDefaultCompactDexLevel != CompactDexLevel::kCompactDexLevelNone) { \
-    printf("WARNING: TEST DISABLED FOR COMPACT DEX\n"); \
-    return; \
-  }
-
 #define TEST_DISABLED_FOR_HEAP_POISONING() \
   if (kPoisonHeapReferences) { \
     printf("WARNING: TEST DISABLED FOR HEAP POISONING\n"); \
