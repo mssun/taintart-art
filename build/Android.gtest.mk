@@ -170,6 +170,7 @@ ART_GTEST_dexoptanalyzer_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_
 ART_GTEST_image_space_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS)
 ART_GTEST_oat_file_test_DEX_DEPS := Main MultiDex MainUncompressed MultiDexUncompressed
 ART_GTEST_oat_test_DEX_DEPS := Main
+ART_GTEST_oat_writer_test_DEX_DEPS := Main
 ART_GTEST_object_test_DEX_DEPS := ProtoCompare ProtoCompare2 StaticsFromCode XandY
 ART_GTEST_patchoat_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS)
 ART_GTEST_proxy_test_DEX_DEPS := Interfaces
