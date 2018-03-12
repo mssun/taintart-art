@@ -70,36 +70,22 @@ target_config = {
     },
     'art-gcstress-gcverify': {
         'run-test': ['--gcstress',
-                     '--gcverify'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'false',
-            'ART_DEFAULT_GC_TYPE' : 'SS'
-        }
+                     '--gcverify']
     },
     'art-interpreter-gcstress' : {
         'run-test' : ['--interpreter',
-                      '--gcstress'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'false',
-            'ART_DEFAULT_GC_TYPE' : 'SS'
-        }
+                      '--gcstress']
     },
     'art-optimizing-gcstress' : {
         'run-test' : ['--gcstress',
-                      '--optimizing'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'false',
-            'ART_DEFAULT_GC_TYPE' : 'SS'
-        }
+                      '--optimizing']
     },
     'art-jit-gcstress' : {
         'run-test' : ['--jit',
-                      '--gcstress'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'false',
-            'ART_DEFAULT_GC_TYPE' : 'SS'
-        }
+                      '--gcstress']
     },
+    # TODO: Rename or repurpose this configuration as
+    # 'art-read-barrier-heap-poisoning' (b/62611253).
     'art-read-barrier' : {
         'run-test': ['--interpreter',
                   '--optimizing'],
@@ -108,6 +94,9 @@ target_config = {
             'ART_HEAP_POISONING' : 'true'
         }
     },
+    # TODO: Remove or disable this configuration, as it is now covered
+    # by 'art-interpreter-gcstress' and 'art-optimizing-gcstress' --
+    # except for heap poisoning, but that's fine (b/62611253).
     'art-read-barrier-gcstress' : {
         'run-test' : ['--interpreter',
                       '--optimizing',
