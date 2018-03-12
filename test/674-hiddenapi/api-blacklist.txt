@@ -1,9 +1,11 @@
 LNullaryConstructorBlacklist;-><init>()V
 LParentClass;->fieldPublicBlacklist:I
+LParentClass;->fieldPublicBlacklistB:I
 LParentClass;->fieldPackageBlacklist:I
 LParentClass;->fieldProtectedBlacklist:I
 LParentClass;->fieldPrivateBlacklist:I
 LParentClass;->fieldPublicStaticBlacklist:I
+LParentClass;->fieldPublicStaticBlacklistB:I
 LParentClass;->fieldPackageStaticBlacklist:I
 LParentClass;->fieldProtectedStaticBlacklist:I
 LParentClass;->fieldPrivateStaticBlacklist:I

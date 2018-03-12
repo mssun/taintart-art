@@ -120,7 +120,7 @@ public class ChildClass {
           // Check whether one can use a class constructor.
           checkConstructor(ParentClass.class, visibility, hiddenness, expected);
 
-          // Check whether you can use an interface default method.
+          // Check whether one can use an interface default method.
           String name = "method" + visibility.name() + "Default" + hiddenness.name();
           checkMethod(ParentInterface.class, name, /*isStatic*/ false, visibility, expected);
         }
@@ -389,7 +389,7 @@ public class ChildClass {
   private static void checkLinking(String className, boolean takesParameter, Behaviour behaviour)
       throws Exception {
     boolean canAccess = (behaviour != Behaviour.Denied);
-    boolean setsWarning = false;  // we do not set the flag in verifier or at runtime
+    boolean setsWarning = (behaviour == Behaviour.Warning);
 
     clearWarning();
     if (Linking.canAccess(className, takesParameter) != canAccess) {
