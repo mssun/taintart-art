@@ -1170,7 +1170,7 @@ extern "C" TwoWordReturn artInstrumentationMethodExitFromCode(Thread* self,
   instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
   TwoWordReturn return_or_deoptimize_pc = instrumentation->PopInstrumentationStackFrame(
       self, return_pc, gpr_result, fpr_result);
-  if (self->IsExceptionPending()) {
+  if (self->IsExceptionPending() || self->ObserveAsyncException()) {
     return GetTwoWordFailureValue();
   }
   return return_or_deoptimize_pc;

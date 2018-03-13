@@ -143,14 +143,14 @@ class CatchBlockStackVisitor FINAL : public StackVisitor {
 
 void QuickExceptionHandler::FindCatch(ObjPtr<mirror::Throwable> exception) {
   DCHECK(!is_deoptimization_);
-  if (kDebugExceptionDelivery) {
-    mirror::String* msg = exception->GetDetailMessage();
-    std::string str_msg(msg != nullptr ? msg->ToModifiedUtf8() : "");
-    self_->DumpStack(LOG_STREAM(INFO) << "Delivering exception: " << exception->PrettyTypeOf()
-                     << ": " << str_msg << "\n");
-  }
   StackHandleScope<1> hs(self_);
   Handle<mirror::Throwable> exception_ref(hs.NewHandle(exception));
+  if (kDebugExceptionDelivery) {
+    ObjPtr<mirror::String> msg = exception_ref->GetDetailMessage();
+    std::string str_msg(msg != nullptr ? msg->ToModifiedUtf8() : "");
+    self_->DumpStack(LOG_STREAM(INFO) << "Delivering exception: " << exception_ref->PrettyTypeOf()
+                     << ": " << str_msg << "\n");
+  }
 
   // Walk the stack to find catch handler.
   CatchBlockStackVisitor visitor(self_, context_, &exception_ref, this);
