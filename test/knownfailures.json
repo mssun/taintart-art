@@ -665,12 +665,6 @@
         "description": ["Time out"]
     },
     {
-        "tests": ["130-hprof"],
-        "env_vars": {"SANITIZE_HOST": "address"},
-        "bug": "b/73060923",
-        "description": ["ASAN issue"]
-    },
-    {
         "tests": ["1941-dispose-stress", "522-checker-regression-monitor-exit"],
         "variant": "jvm",
         "bug": "b/73888836",
