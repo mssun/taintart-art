@@ -927,33 +927,40 @@ def parse_option():
 
   parser = argparse.ArgumentParser(description="Runs all or a subset of the ART test suite.")
   parser.add_argument('-t', '--test', action='append', dest='tests', help='name(s) of the test(s)')
-  parser.add_argument('-j', type=int, dest='n_thread')
-  parser.add_argument('--timeout', default=timeout, type=int, dest='timeout')
-  for variant in TOTAL_VARIANTS_SET:
-    flag = '--' + variant
-    parser.add_argument(flag, action='store_true', dest=variant)
-  parser.add_argument('--verbose', '-v', action='store_true', dest='verbose')
-  parser.add_argument('--dry-run', action='store_true', dest='dry_run')
-  parser.add_argument("--skip", action="append", dest="skips", default=[],
-                      help="Skip the given test in all circumstances.")
-  parser.add_argument("--no-skips", dest="ignore_skips", action="store_true", default=False,
-                      help="Don't skip any run-test configurations listed in knownfailures.json.")
-  parser.add_argument('--no-build-dependencies',
-                      action='store_false', dest='build',
-                      help="Don't build dependencies under any circumstances. This is the " +
-                           "behavior if ART_TEST_RUN_TEST_ALWAYS_BUILD is not set to 'true'.")
-  parser.add_argument('-b', '--build-dependencies',
-                      action='store_true', dest='build',
-                      help="Build dependencies under all circumstances. By default we will " +
-                           "not build dependencies unless ART_TEST_RUN_TEST_BUILD=true.")
-  parser.add_argument('--build-target', dest='build_target', help='master-art-host targets')
-  parser.set_defaults(build = env.ART_TEST_RUN_TEST_BUILD)
-  parser.add_argument('--gdb', action='store_true', dest='gdb')
-  parser.add_argument('--gdb-arg', dest='gdb_arg')
-  parser.add_argument('--dex2oat-jobs', type=int, dest='dex2oat_jobs',
-                      help='Number of dex2oat jobs')
-  parser.add_argument('-a', '--all', action='store_true', dest='run_all',
-                      help="Run all the possible configurations for the input test set")
+  global_group = parser.add_argument_group('Global options',
+                                           'Options that affect all tests being run')
+  global_group.add_argument('-j', type=int, dest='n_thread')
+  global_group.add_argument('--timeout', default=timeout, type=int, dest='timeout')
+  global_group.add_argument('--verbose', '-v', action='store_true', dest='verbose')
+  global_group.add_argument('--dry-run', action='store_true', dest='dry_run')
+  global_group.add_argument("--skip", action="append", dest="skips", default=[],
+                            help="Skip the given test in all circumstances.")
+  global_group.add_argument("--no-skips", dest="ignore_skips", action="store_true", default=False,
+                            help="""Don't skip any run-test configurations listed in
+                            knownfailures.json.""")
+  global_group.add_argument('--no-build-dependencies',
+                            action='store_false', dest='build',
+                            help="""Don't build dependencies under any circumstances. This is the
+                            behavior if ART_TEST_RUN_TEST_ALWAYS_BUILD is not set to 'true'.""")
+  global_group.add_argument('-b', '--build-dependencies',
+                            action='store_true', dest='build',
+                            help="""Build dependencies under all circumstances. By default we will
+                            not build dependencies unless ART_TEST_RUN_TEST_BUILD=true.""")
+  global_group.add_argument('--build-target', dest='build_target', help='master-art-host targets')
+  global_group.set_defaults(build = env.ART_TEST_RUN_TEST_BUILD)
+  global_group.add_argument('--gdb', action='store_true', dest='gdb')
+  global_group.add_argument('--gdb-arg', dest='gdb_arg')
+  global_group.add_argument('--dex2oat-jobs', type=int, dest='dex2oat_jobs',
+                            help='Number of dex2oat jobs')
+  global_group.add_argument('-a', '--all', action='store_true', dest='run_all',
+                            help="Run all the possible configurations for the input test set")
+  for variant_type, variant_set in VARIANT_TYPE_DICT.items():
+    var_group = parser.add_argument_group(
+        '{}-type Options'.format(variant_type),
+        "Options that control the '{}' variants.".format(variant_type))
+    for variant in variant_set:
+      flag = '--' + variant
+      var_group.add_argument(flag, action='store_true', dest=variant)
 
   options = vars(parser.parse_args())
   if options['build_target']:
