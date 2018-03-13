@@ -24,10 +24,7 @@ target_config = {
 
     'art-test' : {
         'make' : 'test-art-host-gtest',
-        'run-test' : [],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'true'
-        }
+        'run-test' : []
     },
 
     'art-test-javac' : {
@@ -38,35 +35,20 @@ target_config = {
     # (calls testrunner which builds and then runs the test targets)
 
     'art-ndebug' : {
-        'run-test' : ['--ndebug'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'true'
-        }
+        'run-test' : ['--ndebug']
     },
     'art-interpreter' : {
-        'run-test' : ['--interpreter'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'true'
-        }
+        'run-test' : ['--interpreter']
     },
     'art-interpreter-access-checks' : {
-        'run-test' : ['--interp-ac'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'true'
-        }
+        'run-test' : ['--interp-ac']
     },
     'art-jit' : {
-        'run-test' : ['--jit'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'true'
-        }
+        'run-test' : ['--jit']
     },
     'art-pictest' : {
         'run-test' : ['--pictest',
-                      '--optimizing'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'true'
-        }
+                      '--optimizing']
     },
     'art-gcstress-gcverify': {
         'run-test': ['--gcstress',
@@ -90,7 +72,6 @@ target_config = {
         'run-test': ['--interpreter',
                   '--optimizing'],
         'env' : {
-            'ART_USE_READ_BARRIER' : 'true',
             'ART_HEAP_POISONING' : 'true'
         }
     },
@@ -102,7 +83,6 @@ target_config = {
                       '--optimizing',
                       '--gcstress'],
         'env' : {
-            'ART_USE_READ_BARRIER' : 'true',
             'ART_HEAP_POISONING' : 'true'
         }
     },
@@ -110,7 +90,6 @@ target_config = {
         'run-test' : ['--interpreter',
                       '--optimizing'],
         'env' : {
-            'ART_USE_READ_BARRIER' : 'true',
             'ART_READ_BARRIER_TYPE' : 'TABLELOOKUP',
             'ART_HEAP_POISONING' : 'true'
         }
@@ -162,54 +141,30 @@ target_config = {
         }
     },
     'art-tracing' : {
-        'run-test' : ['--trace'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'true'
-        }
+        'run-test' : ['--trace']
     },
     'art-interpreter-tracing' : {
         'run-test' : ['--interpreter',
-                      '--trace'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'true',
-        }
+                      '--trace']
     },
     'art-forcecopy' : {
-        'run-test' : ['--forcecopy'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'true',
-        }
+        'run-test' : ['--forcecopy']
     },
     'art-no-prebuild' : {
-        'run-test' : ['--no-prebuild'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'true',
-        }
+        'run-test' : ['--no-prebuild']
     },
     'art-no-image' : {
-        'run-test' : ['--no-image'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'true',
-        }
+        'run-test' : ['--no-image']
     },
     'art-interpreter-no-image' : {
         'run-test' : ['--interpreter',
-                      '--no-image'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'true',
-        }
+                      '--no-image']
     },
     'art-relocate-no-patchoat' : {
-        'run-test' : ['--relocate-npatchoat'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'true',
-        }
+        'run-test' : ['--relocate-npatchoat']
     },
     'art-no-dex2oat' : {
-        'run-test' : ['--no-dex2oat'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'true',
-        }
+        'run-test' : ['--no-dex2oat']
     },
     'art-heap-poisoning' : {
         'run-test' : ['--interpreter',
@@ -229,32 +184,24 @@ target_config = {
         'run-test' : ['--pictest',
                       '--prebuild',
                       '--relocate',
-                      '--jit'],
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'true'
-        }
+                      '--jit']
     },
 
     # ART gtest configurations
     # (calls make 'target' which builds and then runs the gtests).
 
     'art-gtest' : {
-        'make' :  'test-art-host-gtest',
-        'env' : {
-            'ART_USE_READ_BARRIER' : 'true'
-        }
+        'make' :  'test-art-host-gtest'
     },
     'art-gtest-read-barrier': {
         'make' :  'test-art-host-gtest',
         'env' : {
-            'ART_USE_READ_BARRIER' : 'true',
             'ART_HEAP_POISONING' : 'true'
         }
     },
     'art-gtest-read-barrier-table-lookup': {
         'make' :  'test-art-host-gtest',
         'env': {
-            'ART_USE_READ_BARRIER' : 'true',
             'ART_READ_BARRIER_TYPE' : 'TABLELOOKUP',
             'ART_HEAP_POISONING' : 'true'
         }
