@@ -514,6 +514,18 @@ class OatDumper {
       os << StringPrintf("0x%08x\n\n", resolved_addr2instr_);
     }
 
+    // Dump .data.bimg.rel.ro entries.
+    DumpDataBimgRelRoEntries(os);
+
+    // Dump .bss summary, individual entries are dumped per dex file.
+    os << ".bss: ";
+    if (oat_file_.GetBssMethods().empty() && oat_file_.GetBssGcRoots().empty()) {
+      os << "empty.\n\n";
+    } else {
+      os << oat_file_.GetBssMethods().size() << " methods, ";
+      os << oat_file_.GetBssGcRoots().size() << " GC roots.\n\n";
+    }
+
     // Dumping the dex file overview is compact enough to do even if header only.
     DexFileData cumulative;
     for (size_t i = 0; i < oat_dex_files_.size(); i++) {
@@ -1906,6 +1918,66 @@ class OatDumper {
         offset += disassembler_->Dump(vios->Stream(), quick_native_pc + offset);
       }
     }
+  }
+
+  void DumpDataBimgRelRoEntries(std::ostream& os) {
+    os << ".data.bimg.rel.ro: ";
+    if (oat_file_.GetBootImageRelocations().empty()) {
+      os << "empty.\n\n";
+      return;
+    }
+
+    os << oat_file_.GetBootImageRelocations().size() << " entries.\n";
+    Runtime* runtime = Runtime::Current();
+    if (runtime != nullptr && !runtime->GetHeap()->GetBootImageSpaces().empty()) {
+      const std::vector<gc::space::ImageSpace*>& boot_image_spaces =
+          runtime->GetHeap()->GetBootImageSpaces();
+      ScopedObjectAccess soa(Thread::Current());
+      for (const uint32_t& object_offset : oat_file_.GetBootImageRelocations()) {
+        uint32_t entry_index = &object_offset - oat_file_.GetBootImageRelocations().data();
+        uint32_t entry_offset = entry_index * sizeof(oat_file_.GetBootImageRelocations()[0]);
+        os << StringPrintf("  0x%x: 0x%08x", entry_offset, object_offset);
+        uint8_t* object = boot_image_spaces[0]->Begin() + object_offset;
+        bool found = false;
+        for (gc::space::ImageSpace* space : boot_image_spaces) {
+          uint64_t local_offset = object - space->Begin();
+          if (local_offset < space->GetImageHeader().GetImageSize()) {
+            if (space->GetImageHeader().GetObjectsSection().Contains(local_offset)) {
+              ObjPtr<mirror::Object> o = reinterpret_cast<mirror::Object*>(object);
+              if (o->IsString()) {
+                os << "   String: " << o->AsString()->ToModifiedUtf8();
+              } else if (o->IsClass()) {
+                os << "   Class: " << o->AsClass()->PrettyDescriptor();
+              } else {
+                os << StringPrintf("   0x%08x %s",
+                                   object_offset,
+                                   o->GetClass()->PrettyDescriptor().c_str());
+              }
+            } else if (space->GetImageHeader().GetMethodsSection().Contains(local_offset)) {
+              ArtMethod* m = reinterpret_cast<ArtMethod*>(object);
+              os << "   ArtMethod: " << m->PrettyMethod();
+            } else {
+              os << StringPrintf("   0x%08x <unexpected section in %s>",
+                                 object_offset,
+                                 space->GetImageFilename().c_str());
+            }
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          os << StringPrintf("   0x%08x <outside boot image spaces>", object_offset);
+        }
+        os << "\n";
+      }
+    } else {
+      for (const uint32_t& object_offset : oat_file_.GetBootImageRelocations()) {
+        uint32_t entry_index = &object_offset - oat_file_.GetBootImageRelocations().data();
+        uint32_t entry_offset = entry_index * sizeof(oat_file_.GetBootImageRelocations()[0]);
+        os << StringPrintf("  0x%x: 0x%08x\n", entry_offset, object_offset);
+      }
+    }
+    os << "\n";
   }
 
   template <typename NameGetter>
