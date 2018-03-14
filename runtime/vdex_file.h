@@ -97,7 +97,8 @@ class VdexFile {
 
     // The format version of the dex section header and the dex section, containing
     // both the dex code and the quickening data.
-    static constexpr uint8_t kDexSectionVersion[] = { '0', '0', '1', '\0' };
+    // Last update: Add owned section for CompactDex.
+    static constexpr uint8_t kDexSectionVersion[] = { '0', '0', '2', '\0' };
 
     // If the .vdex file has no dex section (hence no dex code nor quickening data),
     // we encode this magic version.
