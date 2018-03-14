@@ -36,32 +36,52 @@
 
 namespace art {
 
-constexpr uint8_t VdexFile::Header::kVdexInvalidMagic[4];
-constexpr uint8_t VdexFile::Header::kVdexMagic[4];
-constexpr uint8_t VdexFile::Header::kVdexVersion[4];
+constexpr uint8_t VdexFile::VerifierDepsHeader::kVdexInvalidMagic[4];
+constexpr uint8_t VdexFile::VerifierDepsHeader::kVdexMagic[4];
+constexpr uint8_t VdexFile::VerifierDepsHeader::kVerifierDepsVersion[4];
+constexpr uint8_t VdexFile::VerifierDepsHeader::kDexSectionVersion[4];
+constexpr uint8_t VdexFile::VerifierDepsHeader::kDexSectionVersionEmpty[4];
 
-bool VdexFile::Header::IsMagicValid() const {
+bool VdexFile::VerifierDepsHeader::IsMagicValid() const {
   return (memcmp(magic_, kVdexMagic, sizeof(kVdexMagic)) == 0);
 }
 
-bool VdexFile::Header::IsVersionValid() const {
-  return (memcmp(version_, kVdexVersion, sizeof(kVdexVersion)) == 0);
+bool VdexFile::VerifierDepsHeader::IsVerifierDepsVersionValid() const {
+  return (memcmp(verifier_deps_version_, kVerifierDepsVersion, sizeof(kVerifierDepsVersion)) == 0);
 }
 
-VdexFile::Header::Header(uint32_t number_of_dex_files,
-                         uint32_t dex_size,
-                         uint32_t dex_shared_data_size,
-                         uint32_t verifier_deps_size,
-                         uint32_t quickening_info_size)
+bool VdexFile::VerifierDepsHeader::IsDexSectionVersionValid() const {
+  return (memcmp(dex_section_version_, kDexSectionVersion, sizeof(kDexSectionVersion)) == 0) ||
+      (memcmp(dex_section_version_, kDexSectionVersionEmpty, sizeof(kDexSectionVersionEmpty)) == 0);
+}
+
+bool VdexFile::VerifierDepsHeader::HasDexSection() const {
+  return (memcmp(dex_section_version_, kDexSectionVersion, sizeof(kDexSectionVersion)) == 0);
+}
+
+VdexFile::VerifierDepsHeader::VerifierDepsHeader(uint32_t number_of_dex_files,
+                                                 uint32_t verifier_deps_size,
+                                                 bool has_dex_section)
     : number_of_dex_files_(number_of_dex_files),
-      dex_size_(dex_size),
-      dex_shared_data_size_(dex_shared_data_size),
-      verifier_deps_size_(verifier_deps_size),
-      quickening_info_size_(quickening_info_size) {
+      verifier_deps_size_(verifier_deps_size) {
   memcpy(magic_, kVdexMagic, sizeof(kVdexMagic));
-  memcpy(version_, kVdexVersion, sizeof(kVdexVersion));
+  memcpy(verifier_deps_version_, kVerifierDepsVersion, sizeof(kVerifierDepsVersion));
+  if (has_dex_section) {
+    memcpy(dex_section_version_, kDexSectionVersion, sizeof(kDexSectionVersion));
+  } else {
+    memcpy(dex_section_version_, kDexSectionVersionEmpty, sizeof(kDexSectionVersionEmpty));
+  }
   DCHECK(IsMagicValid());
-  DCHECK(IsVersionValid());
+  DCHECK(IsVerifierDepsVersionValid());
+  DCHECK(IsDexSectionVersionValid());
+}
+
+VdexFile::DexSectionHeader::DexSectionHeader(uint32_t dex_size,
+                                             uint32_t dex_shared_data_size,
+                                             uint32_t quickening_info_size)
+    : dex_size_(dex_size),
+      dex_shared_data_size_(dex_shared_data_size),
+      quickening_info_size_(quickening_info_size) {
 }
 
 std::unique_ptr<VdexFile> VdexFile::OpenAtAddress(uint8_t* mmap_addr,
@@ -145,7 +165,7 @@ std::unique_ptr<VdexFile> VdexFile::OpenAtAddress(uint8_t* mmap_addr,
     return nullptr;
   }
 
-  if (unquicken) {
+  if (unquicken && vdex->HasDexSection()) {
     std::vector<std::unique_ptr<const DexFile>> unique_ptr_dex_files;
     if (!vdex->OpenAllDexFiles(&unique_ptr_dex_files, error_msg)) {
       return nullptr;
@@ -153,7 +173,8 @@ std::unique_ptr<VdexFile> VdexFile::OpenAtAddress(uint8_t* mmap_addr,
     vdex->Unquicken(MakeNonOwningPointerVector(unique_ptr_dex_files),
                     /* decompile_return_instruction */ false);
     // Update the quickening info size to pretend there isn't any.
-    reinterpret_cast<Header*>(vdex->mmap_->Begin())->quickening_info_size_ = 0;
+    size_t offset = vdex->GetDexSectionHeaderOffset();
+    reinterpret_cast<DexSectionHeader*>(vdex->mmap_->Begin() + offset)->quickening_info_size_ = 0;
   }
 
   *error_msg = "Success";

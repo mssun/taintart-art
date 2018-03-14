@@ -1398,8 +1398,8 @@ class Dex2Oat FINAL {
       std::unique_ptr<linker::BufferedOutputStream> vdex_out =
           std::make_unique<linker::BufferedOutputStream>(
               std::make_unique<linker::FileOutputStream>(vdex_files_.back().get()));
-      if (!vdex_out->WriteFully(&VdexFile::Header::kVdexInvalidMagic,
-                                arraysize(VdexFile::Header::kVdexInvalidMagic))) {
+      if (!vdex_out->WriteFully(&VdexFile::VerifierDepsHeader::kVdexInvalidMagic,
+                                arraysize(VdexFile::VerifierDepsHeader::kVdexInvalidMagic))) {
         PLOG(ERROR) << "Failed to invalidate vdex header. File: " << vdex_out->GetLocation();
         return false;
       }
