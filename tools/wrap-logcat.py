@@ -35,8 +35,13 @@ def main():
                       finishes.""")
   parser.add_argument('command',
                       action='store',
+                      nargs=argparse.REMAINDER,
                       help='The command to run with logcat in the background.')
   args = parser.parse_args()
+  if len(args.command) == 0:
+    print("Must have some command to run.", file=sys.stderr)
+    parser.print_help(file=sys.stderr)
+    return 1
   # Send all output from logcat to the file.
   with subprocess.Popen(shlex.split(args.logcat_invoke),
                                     stdout=args.output,
@@ -44,7 +49,7 @@ def main():
                                     shell=False,
                                     universal_newlines=True) as logcat_proc:
     # Let the run-test-proc inherit our stdout FDs
-    with subprocess.Popen(shlex.split(args.command),
+    with subprocess.Popen(shlex.split(args.command[0]) if len(args.command) == 1 else args.command,
                           stdout=None,
                           stderr=None,
                           shell=False) as run_test_proc:
