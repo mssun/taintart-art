@@ -21,11 +21,13 @@
 
 #include "art_method-inl.h"
 #include "base/enums.h"
+#include "common_throws.h"
 #include "dex/dex_file-inl.h"
 #include "instrumentation.h"
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"
 #include "jit/profiling_info.h"
+#include "jni/jni_internal.h"
 #include "mirror/class-inl.h"
 #include "nativehelper/ScopedUtfChars.h"
 #include "oat_file.h"
@@ -195,6 +197,56 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_hasJitCompiledCode(JNIEnv* env,
   return jit->GetCodeCache()->ContainsMethod(method);
 }
 
+static void ForceJitCompiled(Thread* self, ArtMethod* method) REQUIRES(!Locks::mutator_lock_) {
+  {
+    ScopedObjectAccess soa(self);
+    if (method->IsNative()) {
+      std::string msg(method->PrettyMethod());
+      msg += ": is native";
+      ThrowIllegalArgumentException(msg.c_str());
+      return;
+    } else if (!Runtime::Current()->GetRuntimeCallbacks()->IsMethodSafeToJit(method)) {
+      std::string msg(method->PrettyMethod());
+      msg += ": is not safe to jit!";
+      ThrowIllegalStateException(msg.c_str());
+      return;
+    }
+  }
+  jit::Jit* jit = GetJitIfEnabled();
+  jit::JitCodeCache* code_cache = jit->GetCodeCache();
+  // Update the code cache to make sure the JIT code does not get deleted.
+  // Note: this will apply to all JIT compilations.
+  code_cache->SetGarbageCollectCode(false);
+  while (true) {
+    if (code_cache->WillExecuteJitCode(method)) {
+      break;
+    } else {
+      // Sleep to yield to the compiler thread.
+      usleep(1000);
+      ScopedObjectAccess soa(self);
+      // Make sure there is a profiling info, required by the compiler.
+      ProfilingInfo::Create(self, method, /* retry_allocation */ true);
+      // Will either ensure it's compiled or do the compilation itself.
+      jit->CompileMethod(method, self, /* osr */ false);
+    }
+  }
+}
+
+extern "C" JNIEXPORT void JNICALL Java_Main_ensureMethodJitCompiled(JNIEnv*, jclass, jobject meth) {
+  jit::Jit* jit = GetJitIfEnabled();
+  if (jit == nullptr) {
+    return;
+  }
+
+  Thread* self = Thread::Current();
+  ArtMethod* method;
+  {
+    ScopedObjectAccess soa(self);
+    method = ArtMethod::FromReflectedMethod(soa, meth);
+  }
+  ForceJitCompiled(self, method);
+}
+
 extern "C" JNIEXPORT void JNICALL Java_Main_ensureJitCompiled(JNIEnv* env,
                                                              jclass,
                                                              jclass cls,
@@ -219,24 +271,7 @@ extern "C" JNIEXPORT void JNICALL Java_Main_ensureJitCompiled(JNIEnv* env,
     }
     DCHECK(method != nullptr) << "Unable to find method called " << chars.c_str();
   }
-
-  jit::JitCodeCache* code_cache = jit->GetCodeCache();
-  // Update the code cache to make sure the JIT code does not get deleted.
-  // Note: this will apply to all JIT compilations.
-  code_cache->SetGarbageCollectCode(false);
-  while (true) {
-    if (code_cache->WillExecuteJitCode(method)) {
-      break;
-    } else {
-      // Sleep to yield to the compiler thread.
-      usleep(1000);
-      ScopedObjectAccess soa(self);
-      // Make sure there is a profiling info, required by the compiler.
-      ProfilingInfo::Create(self, method, /* retry_allocation */ true);
-      // Will either ensure it's compiled or do the compilation itself.
-      jit->CompileMethod(method, self, /* osr */ false);
-    }
-  }
+  ForceJitCompiled(self, method);
 }
 
 extern "C" JNIEXPORT jboolean JNICALL Java_Main_hasSingleImplementation(JNIEnv* env,
