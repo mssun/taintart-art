@@ -568,7 +568,7 @@ class OatDumper {
 
     if (!options_.dump_header_only_) {
       VariableIndentationOutputStream vios(&os);
-      VdexFile::Header vdex_header = oat_file_.GetVdexFile()->GetHeader();
+      VdexFile::VerifierDepsHeader vdex_header = oat_file_.GetVdexFile()->GetVerifierDepsHeader();
       if (vdex_header.IsValid()) {
         std::string error_msg;
         std::vector<const DexFile*> dex_files;
@@ -585,8 +585,10 @@ class OatDumper {
       } else {
         os << "UNRECOGNIZED vdex file, magic "
            << vdex_header.GetMagic()
-           << ", version "
-           << vdex_header.GetVersion()
+           << ", verifier deps version "
+           << vdex_header.GetVerifierDepsVersion()
+           << ", dex section version "
+           << vdex_header.GetDexSectionVersion()
            << "\n";
       }
       for (size_t i = 0; i < oat_dex_files_.size(); i++) {
