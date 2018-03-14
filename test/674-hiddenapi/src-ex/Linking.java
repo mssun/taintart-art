@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import java.lang.reflect.Method;
 import java.lang.reflect.InvocationTargetException;
 
 public class Linking {
@@ -33,6 +34,16 @@ public class Linking {
         throw ex;
       }
     }
+  }
+
+  public static boolean canOverride(String methodName) throws Exception {
+    // ParentClass returns only positive numbers, OverrideClass only negative.
+    // This way we can tell if OverrideClass managed to override the original
+    // method or not.
+    Method method = ParentClass.class.getDeclaredMethod(methodName);
+    int result1 = (int) method.invoke(new ParentClass());
+    int result2 = (int) method.invoke(new OverrideClass());
+    return (result1 > 0) && (result2 < 0);
   }
 }
 
