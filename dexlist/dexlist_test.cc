@@ -60,7 +60,7 @@ TEST_F(DexListTest, NoInputFileGiven) {
 
 TEST_F(DexListTest, CantOpenOutput) {
   std::string error_msg;
-  ASSERT_FALSE(Exec({"-o", "/joho", dex_file_}, &error_msg)) << error_msg;
+  ASSERT_FALSE(Exec({"-o", "/non/existent/path", dex_file_}, &error_msg)) << error_msg;
 }
 
 TEST_F(DexListTest, IllFormedMethod) {
