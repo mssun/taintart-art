@@ -515,6 +515,18 @@ inline const uint8_t* DexFile::GetCatchHandlerData(const DexInstructionIterator&
   return handler_data + offset;
 }
 
+template <typename Visitor>
+inline void DexFile::ClassDef::VisitMethods(const DexFile* dex_file, const Visitor& visitor) const {
+  const uint8_t* class_data = dex_file->GetClassData(*this);
+  if (class_data != nullptr) {
+    ClassDataItemIterator it(*dex_file, class_data);
+    it.SkipAllFields();
+    for (; it.HasNext(); it.Next()) {
+      visitor(it);
+    }
+  }
+}
+
 }  // namespace art
 
 #endif  // ART_LIBDEXFILE_DEX_DEX_FILE_INL_H_
