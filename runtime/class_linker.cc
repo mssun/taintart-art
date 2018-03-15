@@ -7934,6 +7934,10 @@ ArtMethod* ClassLinker::FindResolvedMethod(ObjPtr<mirror::Class> klass,
     resolved = klass->FindClassMethod(dex_cache, method_idx, image_pointer_size_);
   }
   DCHECK(resolved == nullptr || resolved->GetDeclaringClassUnchecked() != nullptr);
+  if (resolved != nullptr &&
+      hiddenapi::ShouldBlockAccessToMember(resolved, class_loader, hiddenapi::kLinking)) {
+    resolved = nullptr;
+  }
   if (resolved != nullptr) {
     // In case of jmvti, the dex file gets verified before being registered, so first
     // check if it's registered before checking class tables.
@@ -8072,7 +8076,10 @@ ArtMethod* ClassLinker::ResolveMethodWithoutInvokeType(uint32_t method_idx,
   } else {
     resolved = klass->FindClassMethod(dex_cache.Get(), method_idx, image_pointer_size_);
   }
-
+  if (resolved != nullptr &&
+      hiddenapi::ShouldBlockAccessToMember(resolved, class_loader.Get(), hiddenapi::kLinking)) {
+    resolved = nullptr;
+  }
   return resolved;
 }
 
@@ -8146,11 +8153,16 @@ ArtField* ClassLinker::ResolveField(uint32_t field_idx,
     } else {
       resolved = klass->FindInstanceField(name, type);
     }
-    if (resolved == nullptr) {
-      ThrowNoSuchFieldError(is_static ? "static " : "instance ", klass, type, name);
-      return nullptr;
-    }
   }
+
+  if (resolved == nullptr ||
+      hiddenapi::ShouldBlockAccessToMember(resolved, class_loader.Get(), hiddenapi::kLinking)) {
+    const char* name = dex_file.GetFieldName(field_id);
+    const char* type = dex_file.GetFieldTypeDescriptor(field_id);
+    ThrowNoSuchFieldError(is_static ? "static " : "instance ", klass, type, name);
+    return nullptr;
+  }
+
   dex_cache->SetResolvedField(field_idx, resolved, image_pointer_size_);
   return resolved;
 }
@@ -8176,6 +8188,10 @@ ArtField* ClassLinker::ResolveFieldJLS(uint32_t field_idx,
   StringPiece name(dex_file.GetFieldName(field_id));
   StringPiece type(dex_file.GetFieldTypeDescriptor(field_id));
   resolved = mirror::Class::FindField(self, klass, name, type);
+  if (resolved != nullptr &&
+      hiddenapi::ShouldBlockAccessToMember(resolved, class_loader.Get(), hiddenapi::kLinking)) {
+    resolved = nullptr;
+  }
   if (resolved != nullptr) {
     dex_cache->SetResolvedField(field_idx, resolved, image_pointer_size_);
   } else {
