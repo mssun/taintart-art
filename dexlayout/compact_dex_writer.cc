@@ -298,6 +298,8 @@ void CompactDexWriter::WriteHeader(Stream* stream) {
   header.class_defs_off_ = collections.ClassDefsOffset();
   header.data_size_ = header_->DataSize();
   header.data_off_ = header_->DataOffset();
+  header.owned_data_begin_ = owned_data_begin_;
+  header.owned_data_end_ = owned_data_end_;
 
   // Compact dex specific flags.
   header.debug_info_offsets_pos_ = debug_info_offsets_pos_;
@@ -426,6 +428,7 @@ bool CompactDexWriter::Write(DexContainer* output, std::string* error_msg)  {
     // Data section.
     data_stream->AlignTo(kDataSectionAlignment);
   }
+  owned_data_begin_ = data_stream->Tell();
 
   // Write code item first to minimize the space required for encoded methods.
   // For cdex, the code items don't depend on the debug info.
@@ -490,6 +493,7 @@ bool CompactDexWriter::Write(DexContainer* output, std::string* error_msg)  {
   WriteDebugInfoOffsetTable(data_stream);
 
   data_stream->AlignTo(kDataSectionAlignment);
+  owned_data_end_ = data_stream->Tell();
   if (compute_offsets_) {
     header_->SetDataSize(data_stream->Tell());
     if (header_->DataSize() != 0) {
@@ -497,7 +501,6 @@ bool CompactDexWriter::Write(DexContainer* output, std::string* error_msg)  {
       main_stream->AlignTo(kDataSectionAlignment);
       // For now, default to saying the data is right after the main stream.
       header_->SetDataOffset(main_stream->Tell());
-      header_->SetDataOffset(0u);
     } else {
       header_->SetDataOffset(0u);
     }
