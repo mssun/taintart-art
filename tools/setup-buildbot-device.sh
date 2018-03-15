@@ -57,6 +57,16 @@ echo -e "${green}Setting local loopback${nc}"
 adb shell ifconfig lo up
 adb shell ifconfig
 
+# When netd is running, some libcore and JDWP tests fail with this
+# exception (b/74725685):
+#
+#   android.system.ErrnoException: connect failed: EBADMSG (Not a data message)
+#
+# Turn it off to make these tests pass.
+echo -e "${green}Turning off netd${nc}"
+adb shell stop netd
+adb shell getprop init.svc.netd
+
 echo -e "${green}List properties${nc}"
 adb shell getprop
 
