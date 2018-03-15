@@ -319,8 +319,74 @@ void* Trace::RunSamplingThread(void* arg) {
   return nullptr;
 }
 
-void Trace::Start(const char* trace_filename, int trace_fd, size_t buffer_size, int flags,
-                  TraceOutputMode output_mode, TraceMode trace_mode, int interval_us) {
+void Trace::Start(const char* trace_filename,
+                  size_t buffer_size,
+                  int flags,
+                  TraceOutputMode output_mode,
+                  TraceMode trace_mode,
+                  int interval_us) {
+  std::unique_ptr<File> file(OS::CreateEmptyFileWriteOnly(trace_filename));
+  if (file == nullptr) {
+    std::string msg = android::base::StringPrintf("Unable to open trace file '%s'", trace_filename);
+    PLOG(ERROR) << msg;
+    ScopedObjectAccess soa(Thread::Current());
+    Thread::Current()->ThrowNewException("Ljava/lang/RuntimeException;", msg.c_str());
+    return;
+  }
+  Start(std::move(file), buffer_size, flags, output_mode, trace_mode, interval_us);
+}
+
+void Trace::Start(int trace_fd,
+                  size_t buffer_size,
+                  int flags,
+                  TraceOutputMode output_mode,
+                  TraceMode trace_mode,
+                  int interval_us) {
+  if (trace_fd < 0) {
+    std::string msg = android::base::StringPrintf("Unable to start tracing with invalid fd %d",
+                                                  trace_fd);
+    LOG(ERROR) << msg;
+    ScopedObjectAccess soa(Thread::Current());
+    Thread::Current()->ThrowNewException("Ljava/lang/RuntimeException;", msg.c_str());
+    return;
+  }
+  std::unique_ptr<File> file(new File(trace_fd, "tracefile"));
+  Start(std::move(file), buffer_size, flags, output_mode, trace_mode, interval_us);
+}
+
+void Trace::StartDDMS(size_t buffer_size,
+                      int flags,
+                      TraceMode trace_mode,
+                      int interval_us) {
+  Start(std::unique_ptr<File>(),
+        buffer_size,
+        flags,
+        TraceOutputMode::kDDMS,
+        trace_mode,
+        interval_us);
+}
+
+void Trace::Start(std::unique_ptr<File>&& trace_file_in,
+                  size_t buffer_size,
+                  int flags,
+                  TraceOutputMode output_mode,
+                  TraceMode trace_mode,
+                  int interval_us) {
+  // We own trace_file now and are responsible for closing it. To account for error situations, use
+  // a specialized unique_ptr to ensure we close it on the way out (if it hasn't been passed to a
+  // Trace instance).
+  auto deleter = [](File* file) {
+    if (file != nullptr) {
+      file->MarkUnchecked();  // Don't deal with flushing requirements.
+      int result ATTRIBUTE_UNUSED = file->Close();
+      delete file;
+    }
+  };
+  std::unique_ptr<File, decltype(deleter)> trace_file(trace_file_in.release(), deleter);
+  if (trace_file != nullptr) {
+    trace_file->DisableAutoClose();
+  }
+
   Thread* self = Thread::Current();
   {
     MutexLock mu(self, *Locks::trace_lock_);
@@ -336,23 +402,6 @@ void Trace::Start(const char* trace_filename, int trace_fd, size_t buffer_size, 
     ScopedObjectAccess soa(self);
     ThrowRuntimeException("Invalid sampling interval: %d", interval_us);
     return;
-  }
-
-  // Open trace file if not going directly to ddms.
-  std::unique_ptr<File> trace_file;
-  if (output_mode != TraceOutputMode::kDDMS) {
-    if (trace_fd < 0) {
-      trace_file.reset(OS::CreateEmptyFileWriteOnly(trace_filename));
-    } else {
-      trace_file.reset(new File(trace_fd, "tracefile"));
-      trace_file->DisableAutoClose();
-    }
-    if (trace_file.get() == nullptr) {
-      PLOG(ERROR) << "Unable to open trace file '" << trace_filename << "'";
-      ScopedObjectAccess soa(self);
-      ThrowRuntimeException("Unable to open trace file '%s'", trace_filename);
-      return;
-    }
   }
 
   Runtime* runtime = Runtime::Current();
@@ -372,8 +421,7 @@ void Trace::Start(const char* trace_filename, int trace_fd, size_t buffer_size, 
       LOG(ERROR) << "Trace already in progress, ignoring this request";
     } else {
       enable_stats = (flags && kTraceCountAllocs) != 0;
-      the_trace_ = new Trace(trace_file.release(), trace_filename, buffer_size, flags, output_mode,
-                             trace_mode);
+      the_trace_ = new Trace(trace_file.release(), buffer_size, flags, output_mode, trace_mode);
       if (trace_mode == TraceMode::kSampling) {
         CHECK_PTHREAD_CALL(pthread_create, (&sampling_pthread_, nullptr, &RunSamplingThread,
                                             reinterpret_cast<void*>(interval_us)),
@@ -595,8 +643,11 @@ TracingMode Trace::GetMethodTracingMode() {
 
 static constexpr size_t kMinBufSize = 18U;  // Trace header is up to 18B.
 
-Trace::Trace(File* trace_file, const char* trace_name, size_t buffer_size, int flags,
-             TraceOutputMode output_mode, TraceMode trace_mode)
+Trace::Trace(File* trace_file,
+             size_t buffer_size,
+             int flags,
+             TraceOutputMode output_mode,
+             TraceMode trace_mode)
     : trace_file_(trace_file),
       buf_(new uint8_t[std::max(kMinBufSize, buffer_size)]()),
       flags_(flags), trace_output_mode_(output_mode), trace_mode_(trace_mode),
@@ -605,6 +656,8 @@ Trace::Trace(File* trace_file, const char* trace_name, size_t buffer_size, int f
       start_time_(MicroTime()), clock_overhead_ns_(GetClockOverheadNanoSeconds()), cur_offset_(0),
       overflow_(false), interval_us_(0), streaming_lock_(nullptr),
       unique_methods_lock_(new Mutex("unique methods lock", kTracingUniqueMethodsLock)) {
+  CHECK(trace_file != nullptr || output_mode == TraceOutputMode::kDDMS);
+
   uint16_t trace_version = GetTraceVersion(clock_source_);
   if (output_mode == TraceOutputMode::kStreaming) {
     trace_version |= 0xF0U;
@@ -625,7 +678,6 @@ Trace::Trace(File* trace_file, const char* trace_name, size_t buffer_size, int f
   cur_offset_.StoreRelaxed(kTraceHeaderLength);
 
   if (output_mode == TraceOutputMode::kStreaming) {
-    streaming_file_name_ = trace_name;
     streaming_lock_ = new Mutex("tracing lock", LockLevel::kTracingStreamingLock);
     seen_threads_.reset(new ThreadIDBitSet());
   }

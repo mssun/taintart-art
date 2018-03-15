@@ -338,7 +338,6 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
 
       std::string trace_file = StringPrintf("/data/misc/trace/%s.trace.bin", proc_name.c_str());
       Trace::Start(trace_file.c_str(),
-                   -1,
                    buffer_size,
                    0,   // TODO: Expose flags.
                    output_mode,
