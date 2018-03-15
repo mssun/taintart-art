@@ -169,6 +169,10 @@ class CompactDexWriter : public DexWriter {
   // Base offset of where debug info starts in the dex file.
   uint32_t debug_info_base_ = 0u;
 
+  // Part of the shared data section owned by this file.
+  uint32_t owned_data_begin_ = 0u;
+  uint32_t owned_data_end_ = 0u;
+
   // State for where we are deduping.
   Deduper* code_item_dedupe_ = nullptr;
   Deduper* data_item_dedupe_ = nullptr;
