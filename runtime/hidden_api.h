@@ -38,6 +38,7 @@ enum AccessMethod {
   kReflection,
   kJNI,
   kLinking,
+  kOverride,
 };
 
 inline std::ostream& operator<<(std::ostream& os, AccessMethod value) {
@@ -50,6 +51,9 @@ inline std::ostream& operator<<(std::ostream& os, AccessMethod value) {
       break;
     case kLinking:
       os << "linking";
+      break;
+    case kOverride:
+      os << "override";
       break;
   }
   return os;
