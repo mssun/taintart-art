@@ -17,7 +17,10 @@
 #ifndef ART_RUNTIME_HIDDEN_API_H_
 #define ART_RUNTIME_HIDDEN_API_H_
 
+#include "art_field-inl.h"
+#include "art_method-inl.h"
 #include "dex/hidden_api_access_flags.h"
+#include "mirror/class-inl.h"
 #include "reflection.h"
 #include "runtime.h"
 
@@ -33,7 +36,8 @@ enum Action {
 
 enum AccessMethod {
   kReflection,
-  kJNI
+  kJNI,
+  kLinking,
 };
 
 inline std::ostream& operator<<(std::ostream& os, AccessMethod value) {
@@ -43,6 +47,9 @@ inline std::ostream& operator<<(std::ostream& os, AccessMethod value) {
       break;
     case kJNI:
       os << "JNI";
+      break;
+    case kLinking:
+      os << "linking";
       break;
   }
   return os;
@@ -88,7 +95,7 @@ inline void WarnAboutMemberAccess(ArtMethod* method, AccessMethod access_method)
 // class path or not. Because different users of this function determine this
 // in a different way, `fn_caller_in_boot(self)` is called and should return
 // true if the caller is in boot class path.
-// This function might print warnings into the log if the member is greylisted.
+// This function might print warnings into the log if the member is hidden.
 template<typename T>
 inline bool ShouldBlockAccessToMember(T* member,
                                       Thread* self,
@@ -145,27 +152,19 @@ inline bool ShouldBlockAccessToMember(T* member,
   return false;
 }
 
-// Returns true if access to member with `access_flags` should be denied to `caller`.
-// This function should be called on statically linked uses of hidden API.
-inline bool ShouldBlockAccessToMember(uint32_t access_flags, mirror::Class* caller)
+// Returns true if access to `member` should be denied to a caller loaded with
+// `caller_class_loader`.
+// This function might print warnings into the log if the member is hidden.
+template<typename T>
+inline bool ShouldBlockAccessToMember(T* member,
+                                      ObjPtr<mirror::ClassLoader> caller_class_loader,
+                                      AccessMethod access_method)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  if (!Runtime::Current()->AreHiddenApiChecksEnabled()) {
-    // Exit early. Nothing to enforce.
-    return false;
-  }
-
-  // Only continue if we want to deny access. Warnings are *not* printed.
-  if (GetMemberAction(access_flags) != kDeny) {
-    return false;
-  }
-
-  // Member is hidden. Check if the caller is in boot class path.
-  if (caller == nullptr) {
-    // The caller is unknown. We assume that this is *not* boot class path.
-    return true;
-  }
-
-  return !caller->IsBootStrapClassLoaded();
+  bool caller_in_boot = (caller_class_loader.IsNull());
+  return ShouldBlockAccessToMember(member,
+                                   /* thread */ nullptr,
+                                   [caller_in_boot] (Thread*) { return caller_in_boot; },
+                                   access_method);
 }
 
 }  // namespace hiddenapi
