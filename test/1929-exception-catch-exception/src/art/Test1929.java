@@ -152,49 +152,58 @@ public class Test1929 {
   // dx/d8/jack all do an optimization around catch blocks that (while legal) breaks assumptions
   // this test relies on so we have the actual implementation be corrected smali. This does work
   // for RI however.
-  public static final class Impl {
-    private Impl() {}
-    public static void throwCatchBaseTestExceptionTwiceImpl() {
-      try {
-        try {
-          throw new TestException("throwCatchBaseTestExceptionTwice");
-        } catch (BaseTestException t) {
-          System.out.println("Caught " + t.getClass().getName() + ": \"" + t.getMessage() + "\"");
-          if (PRINT_FULL_EXCEPTION) {
-            t.printStackTrace(System.out);
-          }
-        }
-      } catch (BaseTestException t) {
-        System.out.println("2nd Caught " + t.getClass().getName() + ": \"" + t.getMessage() + "\"");
-        if (PRINT_FULL_EXCEPTION) {
-          t.printStackTrace(System.out);
-        }
-      }
-    }
 
-    public static void throwCatchTestExceptionTwiceImpl() {
-      try {
-        try {
-          throw new TestException("throwCatchTestExceptionTwice");
-        } catch (TestException t) {
-          System.out.println("Caught " + t.getClass().getName() + ": \"" + t.getMessage() + "\"");
-          if (PRINT_FULL_EXCEPTION) {
-            t.printStackTrace(System.out);
-          }
-        }
-      } catch (TestException t) {
-        System.out.println("2nd Caught " + t.getClass().getName() + ": \"" + t.getMessage() + "\"");
-        if (PRINT_FULL_EXCEPTION) {
-          t.printStackTrace(System.out);
-        }
-      }
-    }
-  }
+  // For reference:
+
+  // public static final class Impl {
+  //   private Impl() {}
+  //   public static void throwCatchBaseTestExceptionTwiceImpl() {
+  //     try {
+  //       try {
+  //         throw new TestException("throwCatchBaseTestExceptionTwice");
+  //       } catch (BaseTestException t) {
+  //         System.out.println("Caught " + t.getClass().getName() + ": \"" + t.getMessage() + "\"");
+  //         if (PRINT_FULL_EXCEPTION) {
+  //           t.printStackTrace(System.out);
+  //         }
+  //       }
+  //     } catch (BaseTestException t) {
+  //       System.out.println("2nd Caught " + t.getClass().getName() + ": \"" + t.getMessage() + "\"");
+  //       if (PRINT_FULL_EXCEPTION) {
+  //         t.printStackTrace(System.out);
+  //       }
+  //     }
+  //   }
+
+  //   public static void throwCatchTestExceptionTwiceImpl() {
+  //     try {
+  //       try {
+  //         throw new TestException("throwCatchTestExceptionTwice");
+  //       } catch (TestException t) {
+  //         System.out.println("Caught " + t.getClass().getName() + ": \"" + t.getMessage() + "\"");
+  //         if (PRINT_FULL_EXCEPTION) {
+  //           t.printStackTrace(System.out);
+  //         }
+  //       }
+  //     } catch (TestException t) {
+  //       System.out.println("2nd Caught " + t.getClass().getName() + ": \"" + t.getMessage() + "\"");
+  //       if (PRINT_FULL_EXCEPTION) {
+  //         t.printStackTrace(System.out);
+  //       }
+  //     }
+  //   }
+  // }
 
   public static void throwCatchBaseTestExceptionTwice() {
     // The implementation of this has to change depending upon the runtime slightly due to compiler
     // optimizations present in DX/D8/Jack.
-    Impl.throwCatchBaseTestExceptionTwiceImpl();
+    try {
+      Class<?> Impl = Class.forName("art.Test1929$Impl");
+      Method m = Impl.getMethod("throwCatchBaseTestExceptionTwiceImpl");
+      m.invoke(null);
+    } catch (Exception e) {
+      e.printStackTrace(System.out);
+    }
   }
 
   public static class DoThrowCatchBaseTestExceptionTwice implements Runnable {
@@ -219,7 +228,13 @@ public class Test1929 {
   public static void throwCatchTestExceptionTwice() {
     // The implementation of this has to change depending upon the runtime slightly due to compiler
     // optimizations present in DX/D8/Jack.
-    Impl.throwCatchTestExceptionTwiceImpl();
+    try {
+      Class<?> Impl = Class.forName("art.Test1929$Impl");
+      Method m = Impl.getMethod("throwCatchTestExceptionTwiceImpl");
+      m.invoke(null);
+    } catch (Exception e) {
+      e.printStackTrace(System.out);
+    }
   }
 
   public static class DoThrowCatchTestExceptionTwice implements Runnable {
