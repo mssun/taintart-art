@@ -3,3 +3,4 @@ Hello World! And Hello Zog
 Hello World! And Hello Zorba
 name is HoverFly
 2.718281828459045
+Attempting to set Math.E raised IAE
