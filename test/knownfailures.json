@@ -344,10 +344,8 @@
         "variant": "optimizing | regalloc_gc"
     },
     {
-        "tests": ["537-checker-arraycopy",
-                  "641-checker-arraycopy"],
-        "env_vars": {"ART_USE_READ_BARRIER": "true"},
-        "variant": "interpreter | optimizing | regalloc_gc | jit"
+        "tests": ["537-checker-arraycopy"],
+        "env_vars": {"ART_READ_BARRIER_TYPE": "TABLELOOKUP"}
     },
     {
         "tests": ["476-clinit-inline-static-invoke",
