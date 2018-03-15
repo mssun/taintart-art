@@ -854,9 +854,27 @@ static HInstruction* NewIntegralAbs(ArenaAllocator* allocator,
                                     HInstruction* cursor) {
   DataType::Type type = x->GetType();
   DCHECK(type == DataType::Type::kInt32 || type == DataType::Type::kInt64);
-  HAbs* abs = new (allocator) HAbs(type, x, x->GetDexPc());
+  HAbs* abs = new (allocator) HAbs(type, x, cursor->GetDexPc());
   cursor->GetBlock()->InsertInstructionBefore(abs, cursor);
   return abs;
+}
+
+// Constructs a new MIN/MAX(x, y) node in the HIR.
+static HInstruction* NewIntegralMinMax(ArenaAllocator* allocator,
+                                       HInstruction* x,
+                                       HInstruction* y,
+                                       HInstruction* cursor,
+                                       bool is_min) {
+  DataType::Type type = x->GetType();
+  DCHECK(type == DataType::Type::kInt32 || type == DataType::Type::kInt64);
+  HBinaryOperation* minmax = nullptr;
+  if (is_min) {
+    minmax = new (allocator) HMin(type, x, y, cursor->GetDexPc());
+  } else {
+    minmax = new (allocator) HMax(type, x, y, cursor->GetDexPc());
+  }
+  cursor->GetBlock()->InsertInstructionBefore(minmax, cursor);
+  return minmax;
 }
 
 // Returns true if operands a and b consists of widening type conversions
@@ -924,8 +942,15 @@ void InstructionSimplifierVisitor::VisitSelect(HSelect* select) {
     // Test if both values are same-typed int or long.
     if (t_type == f_type &&
         (t_type == DataType::Type::kInt32 || t_type == DataType::Type::kInt64)) {
-      // Try to replace typical integral ABS constructs.
-      if (true_value->IsNeg()) {
+      // Try to replace typical integral MIN/MAX/ABS constructs.
+      if ((cmp == kCondLT || cmp == kCondLE || cmp == kCondGT || cmp == kCondGE) &&
+          ((a == true_value && b == false_value) ||
+           (b == true_value && a == false_value))) {
+        // Found a < b ? a : b (MIN) or a < b ? b : a (MAX)
+        //    or a > b ? a : b (MAX) or a > b ? b : a (MIN).
+        bool is_min = (cmp == kCondLT || cmp == kCondLE) == (a == true_value);
+        replace_with = NewIntegralMinMax(GetGraph()->GetAllocator(), a, b, select, is_min);
+      } else if (true_value->IsNeg()) {
         HInstruction* negated = true_value->InputAt(0);
         if ((cmp == kCondLT || cmp == kCondLE) &&
             (a == negated && a == false_value && IsInt64Value(b, 0))) {
