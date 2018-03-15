@@ -88,13 +88,18 @@ ArtMethod* ArtMethod::GetNonObsoleteMethod() {
   }
 }
 
+template <ReadBarrierOption kReadBarrierOption>
 ArtMethod* ArtMethod::GetSingleImplementation(PointerSize pointer_size) {
-  if (!IsAbstract()) {
+  if (!IsAbstract<kReadBarrierOption>()) {
     // A non-abstract's single implementation is itself.
     return this;
   }
   return reinterpret_cast<ArtMethod*>(GetDataPtrSize(pointer_size));
 }
+template ArtMethod* ArtMethod::GetSingleImplementation<ReadBarrierOption::kWithReadBarrier>(
+    PointerSize pointer_size);
+template ArtMethod* ArtMethod::GetSingleImplementation<ReadBarrierOption::kWithoutReadBarrier>(
+    PointerSize pointer_size);
 
 ArtMethod* ArtMethod::FromReflectedMethod(const ScopedObjectAccessAlreadyRunnable& soa,
                                           jobject jlr_method) {
