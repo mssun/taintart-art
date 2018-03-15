@@ -53,12 +53,12 @@ public class Main {
     WeakReference<ClassLoader> loader = result.cl;
     long methodPtr = result.methodPtr;
     // Check that the classloader is indeed unloaded.
-    System.out.println(loader.get());
+    if (loader.get() != null) {
+      throw new Error("Expected class loader to be unloaded");
+    }
 
-    // Reuse the linear alloc so old pointers so it becomes invalid.
-    boolean ret = tryReuseArenaOfMethod(methodPtr, 10);
-    // Check that we indeed reused it.
-    System.out.println(ret);
+    // Reuse the linear alloc used by the unloaded class loader.
+    reuseArenaOfMethod(methodPtr);
 
     // Try to JIT-compile under dangerous conditions.
     ensureJitCompiled(Main.class, "targetMethodForJit");
@@ -117,5 +117,5 @@ public class Main {
 
   private static native void ensureJitCompiled(Class<?> itf, String method_name);
   private static native long getArtMethod(Object javaMethod);
-  private static native boolean tryReuseArenaOfMethod(long artMethod, int tries_count);
+  private static native void reuseArenaOfMethod(long artMethod);
 }
