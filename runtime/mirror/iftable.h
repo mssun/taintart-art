@@ -25,8 +25,11 @@ namespace mirror {
 
 class MANAGED IfTable FINAL : public ObjectArray<Object> {
  public:
+  template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
+           ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   ALWAYS_INLINE Class* GetInterface(int32_t i) REQUIRES_SHARED(Locks::mutator_lock_) {
-    Class* interface = GetWithoutChecks((i * kMax) + kInterface)->AsClass();
+    Class* interface =
+        GetWithoutChecks<kVerifyFlags, kReadBarrierOption>((i * kMax) + kInterface)->AsClass();
     DCHECK(interface != nullptr);
     return interface;
   }
