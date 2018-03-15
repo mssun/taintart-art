@@ -87,7 +87,7 @@ codes.
  * to expand the macros into assembler assignment statements.
  */
 #include "asm_support.h"
-#include "interpreter/mterp/cfi_asm_support.h"
+#include "interpreter/cfi_asm_support.h"
 
 #define MTERP_PROFILE_BRANCHES 1
 #define MTERP_LOGGING 0

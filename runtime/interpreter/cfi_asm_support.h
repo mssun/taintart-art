@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_INTERPRETER_MTERP_CFI_ASM_SUPPORT_H_
-#define ART_RUNTIME_INTERPRETER_MTERP_CFI_ASM_SUPPORT_H_
+#ifndef ART_RUNTIME_INTERPRETER_CFI_ASM_SUPPORT_H_
+#define ART_RUNTIME_INTERPRETER_CFI_ASM_SUPPORT_H_
 
 /*
  * Define the DEX PC (memory address of the currently interpreted bytecode)
@@ -44,4 +44,4 @@
   0x13 /* DW_OP_drop */,                                                     \
   0x92 /* DW_OP_bregx */, dexReg, (dexOffset & 0x7F) /* 1-byte SLEB128 */
 
-#endif  // ART_RUNTIME_INTERPRETER_MTERP_CFI_ASM_SUPPORT_H_
+#endif  // ART_RUNTIME_INTERPRETER_CFI_ASM_SUPPORT_H_
