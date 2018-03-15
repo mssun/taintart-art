@@ -22,7 +22,7 @@
 import sys, string, re, time
 from string import Template
 
-interp_defs_file = "../../dex/dex_instruction_list.h" # need opcode list
+interp_defs_file = "../../../libdexfile/dex/dex_instruction_list.h" # need opcode list
 kNumPackedOpcodes = 256
 
 splitops = False

@@ -15,6 +15,7 @@
  */
 
 #include "asm_support_arm.S"
+#include "interpreter/cfi_asm_support.h"
 
 #include "arch/quick_alloc_entrypoints.S"
 
@@ -2719,3 +2720,18 @@ ENTRY art_quick_invoke_polymorphic
     HANDLER_TABLE_OFFSET(.Lstore_boolean_result)  // Z (boolean)
 .purgem HANDLER_TABLE_OFFSET
 END art_quick_invoke_polymorphic
+
+// Wrap ExecuteSwitchImpl in assembly method which specifies DEX PC for unwinding.
+//  Argument 0: r0: The context pointer for ExecuteSwitchImpl.
+//  Argument 1: r1: Pointer to the templated ExecuteSwitchImpl to call.
+//  Argument 2: r2: The value of DEX PC (memory address of the methods bytecode).
+ENTRY ExecuteSwitchImplAsm
+    push {r4, lr}                                 // 2 words of callee saves.
+    .cfi_adjust_cfa_offset 8
+    .cfi_rel_offset r4, 0
+    .cfi_rel_offset lr, 4
+    mov r4, r2                                    // r4 = DEX PC
+    CFI_DEFINE_DEX_PC_WITH_OFFSET(0 /* r0 */, 4 /* r4 */, 0)
+    blx r1                                        // Call the wrapped method.
+    pop {r4, pc}
+END ExecuteSwitchImplAsm

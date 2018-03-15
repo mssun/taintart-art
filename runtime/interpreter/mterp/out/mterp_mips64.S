@@ -111,7 +111,7 @@ The following registers have fixed assignments:
  * to expand the macros into assembler assignment statements.
  */
 #include "asm_support.h"
-#include "interpreter/mterp/cfi_asm_support.h"
+#include "interpreter/cfi_asm_support.h"
 
 /*
  * Instead of holding a pointer to the shadow frame, we keep rFP at the base of the vregs.  So,
