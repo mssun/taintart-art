@@ -1,4 +1,2 @@
 JNI_OnLoad called
-null
-true
 Done
