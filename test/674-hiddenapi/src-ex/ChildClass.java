@@ -123,6 +123,9 @@ public class ChildClass {
           // Check whether one can use an interface default method.
           String name = "method" + visibility.name() + "Default" + hiddenness.name();
           checkMethod(ParentInterface.class, name, /*isStatic*/ false, visibility, expected);
+
+          // Check whether one can override this method.
+          checkOverriding(suffix, isStatic, visibility, expected);
         }
 
         // Test whether static linking succeeds.
@@ -400,6 +403,37 @@ public class ChildClass {
     if (canAccess && hasPendingWarning() != setsWarning) {
       throwWarningException(
           Class.forName(className), "access", false, "static linking", setsWarning);
+    }
+  }
+
+  private static void checkOverriding(String suffix,
+                                      boolean isStatic,
+                                      Visibility visibility,
+                                      Behaviour behaviour) throws Exception {
+    if (isStatic || visibility == Visibility.Private) {
+      // Does not make sense to override a static or private method.
+      return;
+    }
+
+    // The classes are in the same package, but will be able to access each
+    // other only if loaded with the same class loader, here the boot class loader.
+    boolean canAccess = (visibility != Visibility.Package) || (isParentInBoot && isChildInBoot);
+    boolean setsWarning = false;  // warnings may be set during vtable linking
+
+    String methodName = "callMethod" + visibility.name() + suffix;
+
+    // Force the test class to link its vtable, which may cause warnings, before
+    // the actual test.
+    new OverrideClass().methodPublicWhitelist();
+
+    clearWarning();
+    if (Linking.canOverride(methodName) != canAccess) {
+      throw new RuntimeException("Expected to " + (canAccess ? "" : "not ") +
+          "be able to override " + methodName + "." +
+          "isParentInBoot = " + isParentInBoot + ", " + "isChildInBoot = " + isChildInBoot);
+    }
+    if (canAccess && hasPendingWarning() != setsWarning) {
+      throwWarningException(ParentClass.class, methodName, false, "static linking", setsWarning);
     }
   }
 
