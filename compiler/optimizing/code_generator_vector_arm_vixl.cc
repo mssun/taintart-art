@@ -46,7 +46,7 @@ void LocationsBuilderARMVIXL::VisitVecReplicateScalar(HVecReplicateScalar* instr
       locations->SetOut(Location::RequiresFpuRegister());
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -71,7 +71,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecReplicateScalar(HVecReplicateScala
       __ Vdup(Untyped32, dst, InputRegisterAt(instruction, 0));
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -84,7 +84,7 @@ void LocationsBuilderARMVIXL::VisitVecExtractScalar(HVecExtractScalar* instructi
       locations->SetOut(Location::RequiresRegister());
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -98,7 +98,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecExtractScalar(HVecExtractScalar* i
       __ Vmov(OutputRegister(instruction), DRegisterLane(src, 0));
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -122,7 +122,7 @@ static void CreateVecUnOpLocations(ArenaAllocator* allocator, HVecUnaryOperation
       locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -151,7 +151,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecReduce(HVecReduce* instruction) {
       }
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -188,7 +188,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecNeg(HVecNeg* instruction) {
       __ Vneg(DataTypeValue::S32, dst, src);
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -215,7 +215,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecAbs(HVecAbs* instruction) {
       __ Vabs(DataTypeValue::S32, dst, src);
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -242,7 +242,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecNot(HVecNot* instruction) {
       __ Vmvn(I8, dst, src);  // lanes do not matter
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -262,7 +262,7 @@ static void CreateVecBinOpLocations(ArenaAllocator* allocator, HVecBinaryOperati
       locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -292,7 +292,39 @@ void InstructionCodeGeneratorARMVIXL::VisitVecAdd(HVecAdd* instruction) {
       __ Vadd(I32, dst, lhs, rhs);
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
+      UNREACHABLE();
+  }
+}
+
+void LocationsBuilderARMVIXL::VisitVecSaturationAdd(HVecSaturationAdd* instruction) {
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
+}
+
+void InstructionCodeGeneratorARMVIXL::VisitVecSaturationAdd(HVecSaturationAdd* instruction) {
+  LocationSummary* locations = instruction->GetLocations();
+  vixl32::DRegister lhs = DRegisterFrom(locations->InAt(0));
+  vixl32::DRegister rhs = DRegisterFrom(locations->InAt(1));
+  vixl32::DRegister dst = DRegisterFrom(locations->Out());
+  switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
+      DCHECK_EQ(8u, instruction->GetVectorLength());
+      __ Vqadd(DataTypeValue::U8, dst, lhs, rhs);
+      break;
+    case DataType::Type::kInt8:
+      DCHECK_EQ(8u, instruction->GetVectorLength());
+      __ Vqadd(DataTypeValue::S8, dst, lhs, rhs);
+      break;
+    case DataType::Type::kUint16:
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      __ Vqadd(DataTypeValue::U16, dst, lhs, rhs);
+      break;
+    case DataType::Type::kInt16:
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      __ Vqadd(DataTypeValue::S16, dst, lhs, rhs);
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -332,7 +364,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecHalvingAdd(HVecHalvingAdd* instruc
           : __ Vhadd(DataTypeValue::S16, dst, lhs, rhs);
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -362,7 +394,39 @@ void InstructionCodeGeneratorARMVIXL::VisitVecSub(HVecSub* instruction) {
       __ Vsub(I32, dst, lhs, rhs);
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
+      UNREACHABLE();
+  }
+}
+
+void LocationsBuilderARMVIXL::VisitVecSaturationSub(HVecSaturationSub* instruction) {
+  CreateVecBinOpLocations(GetGraph()->GetAllocator(), instruction);
+}
+
+void InstructionCodeGeneratorARMVIXL::VisitVecSaturationSub(HVecSaturationSub* instruction) {
+  LocationSummary* locations = instruction->GetLocations();
+  vixl32::DRegister lhs = DRegisterFrom(locations->InAt(0));
+  vixl32::DRegister rhs = DRegisterFrom(locations->InAt(1));
+  vixl32::DRegister dst = DRegisterFrom(locations->Out());
+  switch (instruction->GetPackedType()) {
+    case DataType::Type::kUint8:
+      DCHECK_EQ(8u, instruction->GetVectorLength());
+      __ Vqsub(DataTypeValue::U8, dst, lhs, rhs);
+      break;
+    case DataType::Type::kInt8:
+      DCHECK_EQ(8u, instruction->GetVectorLength());
+      __ Vqsub(DataTypeValue::S8, dst, lhs, rhs);
+      break;
+    case DataType::Type::kUint16:
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      __ Vqsub(DataTypeValue::U16, dst, lhs, rhs);
+      break;
+    case DataType::Type::kInt16:
+      DCHECK_EQ(4u, instruction->GetVectorLength());
+      __ Vqsub(DataTypeValue::S16, dst, lhs, rhs);
+      break;
+    default:
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -392,7 +456,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecMul(HVecMul* instruction) {
       __ Vmul(I32, dst, lhs, rhs);
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -440,7 +504,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecMin(HVecMin* instruction) {
       __ Vmin(DataTypeValue::S32, dst, lhs, rhs);
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -480,7 +544,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecMax(HVecMax* instruction) {
       __ Vmax(DataTypeValue::S32, dst, lhs, rhs);
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -505,7 +569,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecAnd(HVecAnd* instruction) {
       __ Vand(I8, dst, lhs, rhs);
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -537,7 +601,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecOr(HVecOr* instruction) {
       __ Vorr(I8, dst, lhs, rhs);
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -561,7 +625,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecXor(HVecXor* instruction) {
       __ Veor(I8, dst, lhs, rhs);
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -580,7 +644,7 @@ static void CreateVecShiftLocations(ArenaAllocator* allocator, HVecBinaryOperati
       locations->SetOut(Location::RequiresFpuRegister(), Location::kNoOutputOverlap);
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -610,7 +674,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecShl(HVecShl* instruction) {
       __ Vshl(I32, dst, lhs, value);
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -640,7 +704,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecShr(HVecShr* instruction) {
       __ Vshr(DataTypeValue::S32, dst, lhs, value);
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -670,7 +734,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecUShr(HVecUShr* instruction) {
       __ Vshr(DataTypeValue::U32, dst, lhs, value);
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -690,7 +754,7 @@ void LocationsBuilderARMVIXL::VisitVecSetScalars(HVecSetScalars* instruction) {
       locations->SetOut(Location::RequiresFpuRegister());
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -716,7 +780,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecSetScalars(HVecSetScalars* instruc
       __ Vmov(Untyped32, DRegisterLane(dst, 0), InputRegisterAt(instruction, 0));
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -737,7 +801,7 @@ static void CreateVecAccumLocations(ArenaAllocator* allocator, HVecOperation* in
       locations->SetOut(Location::SameAsFirstInput());
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -780,12 +844,12 @@ void InstructionCodeGeneratorARMVIXL::VisitVecSADAccumulate(HVecSADAccumulate* i
           break;
         }
         default:
-          LOG(FATAL) << "Unsupported SIMD type";
+          LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
           UNREACHABLE();
       }
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -817,7 +881,7 @@ static void CreateVecMemLocations(ArenaAllocator* allocator,
       }
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -923,7 +987,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecLoad(HVecLoad* instruction) {
       }
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }
@@ -971,7 +1035,7 @@ void InstructionCodeGeneratorARMVIXL::VisitVecStore(HVecStore* instruction) {
       }
       break;
     default:
-      LOG(FATAL) << "Unsupported SIMD type";
+      LOG(FATAL) << "Unsupported SIMD type: " << instruction->GetPackedType();
       UNREACHABLE();
   }
 }

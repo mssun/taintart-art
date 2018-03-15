@@ -80,6 +80,7 @@ class HLoopOptimization : public HOptimization {
     kNoReduction     = 1 << 10,  // no reduction
     kNoSAD           = 1 << 11,  // no sum of absolute differences (SAD)
     kNoWideSAD       = 1 << 12,  // no sum of absolute differences (SAD) with operand widening
+    kNoSaturation    = 1 << 13,  // no saturation arithmetic
   };
 
   /*
@@ -177,6 +178,11 @@ class HLoopOptimization : public HOptimization {
                      bool is_unsigned = false);
 
   // Vectorization idioms.
+  bool VectorizeSaturationIdiom(LoopNode* node,
+                                HInstruction* instruction,
+                                bool generate_code,
+                                DataType::Type type,
+                                uint64_t restrictions);
   bool VectorizeHalvingAddIdiom(LoopNode* node,
                                 HInstruction* instruction,
                                 bool generate_code,

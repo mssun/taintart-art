@@ -530,6 +530,31 @@ class HVecAdd FINAL : public HVecBinaryOperation {
   DEFAULT_COPY_CONSTRUCTOR(VecAdd);
 };
 
+// Adds every component in the two vectors using saturation arithmetic,
+// viz. [ x1, .. , xn ] + [ y1, .. , yn ] = [ x1 +_sat y1, .. , xn +_sat yn ]
+// for either both signed or both unsigned operands x, y (reflected in packed_type).
+class HVecSaturationAdd FINAL : public HVecBinaryOperation {
+ public:
+  HVecSaturationAdd(ArenaAllocator* allocator,
+                    HInstruction* left,
+                    HInstruction* right,
+                    DataType::Type packed_type,
+                    size_t vector_length,
+                    uint32_t dex_pc)
+      : HVecBinaryOperation(
+          kVecSaturationAdd, allocator, left, right, packed_type, vector_length, dex_pc) {
+    DCHECK(HasConsistentPackedTypes(left, packed_type));
+    DCHECK(HasConsistentPackedTypes(right, packed_type));
+  }
+
+  bool CanBeMoved() const OVERRIDE { return true; }
+
+  DECLARE_INSTRUCTION(VecSaturationAdd);
+
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(VecSaturationAdd);
+};
+
 // Performs halving add on every component in the two vectors, viz.
 // rounded   [ x1, .. , xn ] hradd [ y1, .. , yn ] = [ (x1 + y1 + 1) >> 1, .. , (xn + yn + 1) >> 1 ]
 // truncated [ x1, .. , xn ] hadd  [ y1, .. , yn ] = [ (x1 + y1)     >> 1, .. , (xn + yn )    >> 1 ]
@@ -593,6 +618,31 @@ class HVecSub FINAL : public HVecBinaryOperation {
 
  protected:
   DEFAULT_COPY_CONSTRUCTOR(VecSub);
+};
+
+// Subtracts every component in the two vectors using saturation arithmetic,
+// viz. [ x1, .. , xn ] + [ y1, .. , yn ] = [ x1 -_sat y1, .. , xn -_sat yn ]
+// for either both signed or both unsigned operands x, y (reflected in packed_type).
+class HVecSaturationSub FINAL : public HVecBinaryOperation {
+ public:
+  HVecSaturationSub(ArenaAllocator* allocator,
+                    HInstruction* left,
+                    HInstruction* right,
+                    DataType::Type packed_type,
+                    size_t vector_length,
+                    uint32_t dex_pc)
+      : HVecBinaryOperation(
+          kVecSaturationSub, allocator, left, right, packed_type, vector_length, dex_pc) {
+    DCHECK(HasConsistentPackedTypes(left, packed_type));
+    DCHECK(HasConsistentPackedTypes(right, packed_type));
+  }
+
+  bool CanBeMoved() const OVERRIDE { return true; }
+
+  DECLARE_INSTRUCTION(VecSaturationSub);
+
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(VecSaturationSub);
 };
 
 // Multiplies every component in the two vectors,
