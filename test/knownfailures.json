@@ -949,7 +949,17 @@
         ],
         "variant": "jvm",
         "bug": "b/73888836",
-        "description": ["Failing on JVM. Needs further investigating."]
+        "description": ["Failing on RI. Needs further investigating."]
+    },
+    {
+        "tests": ["616-cha-unloading"],
+        "variant": "jvm",
+        "description": ["Doesn't run on RI."]
+    },
+    {
+        "tests": ["616-cha-unloading"],
+        "variant": "trace",
+        "description": ["Trace prevents class unloading."]
     },
     {
         "tests": "677-fsi",
