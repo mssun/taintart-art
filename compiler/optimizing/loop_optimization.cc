@@ -36,10 +36,6 @@ static constexpr bool kEnableVectorization = true;
 // No loop unrolling factor (just one copy of the loop-body).
 static constexpr uint32_t kNoUnrollingFactor = 1;
 
-// Values that indicate unbounded end.
-static constexpr int64_t kNoLo = std::numeric_limits<int64_t>::min();
-static constexpr int64_t kNoHi = std::numeric_limits<int64_t>::max();
-
 //
 // Static helpers.
 //
@@ -338,33 +334,28 @@ static bool IsAddConst(HInstruction* instruction,
 // Detect clipped [lo, hi] range for nested MIN-MAX operations on a clippee,
 // such as MIN(hi, MAX(lo, clippee)) for an arbitrary clippee expression.
 // Example: MIN(10, MIN(20, MAX(0, x))) yields [0, 10] with clippee x.
-static bool IsClipped(HInstruction* instruction,
-                      /*out*/ int64_t* lo,
-                      /*out*/ int64_t* hi,
-                      /*out*/ HInstruction** clippee) {
-  // Recurse into MIN-MAX expressions and 'tighten' the range [lo, hi].
-  if (instruction->IsMin() || instruction->IsMax()) {
-    // Find MIN-MAX(const, ..) or MIN-MAX(.., const).
-    for (int i = 0; i < 2; i++) {
-      int64_t c = 0;
-      if (IsInt64AndGet(instruction->InputAt(i), &c)) {
-        if (instruction->IsMin()) {
-          *hi = std::min(*hi, c);
-        } else {
-          *lo = std::max(*lo, c);
-        }
-        return IsClipped(instruction->InputAt(1 - i), lo, hi, clippee);
-      }
+static HInstruction* FindClippee(HInstruction* instruction,
+                                 /*out*/ int64_t* lo,
+                                 /*out*/ int64_t* hi) {
+  // Iterate into MIN(.., c)-MAX(.., c) expressions and 'tighten' the range [lo, hi].
+  while (instruction->IsMin() || instruction->IsMax()) {
+    HBinaryOperation* min_max = instruction->AsBinaryOperation();
+    DCHECK(min_max->GetType() == DataType::Type::kInt32 ||
+           min_max->GetType() == DataType::Type::kInt64);
+    // Process the constant.
+    HConstant* right = min_max->GetConstantRight();
+    if (right == nullptr) {
+      break;
+    } else if (instruction->IsMin()) {
+      *hi = std::min(*hi, Int64FromConstant(right));
+    } else {
+      *lo = std::max(*lo, Int64FromConstant(right));
     }
-    // Recursion fails at any MIN/MAX that does not have one constant
-    // argument, e.g. MIN(x, y) or MAX(2 * x, f()).
-    return false;
+    instruction = min_max->GetLeastConstantLeft();
   }
-  // Recursion ends in any other expression. At this point we record the leaf
-  // expression as the clippee and report success on the range [lo, hi].
-  DCHECK(*clippee == nullptr);
-  *clippee = instruction;
-  return true;
+  // Iteration ends in any other expression (possibly MIN/MAX without constant).
+  // This leaf expression is the clippee with range [lo, hi].
+  return instruction;
 }
 
 // Accept various saturated addition forms.
@@ -1896,15 +1887,15 @@ bool HLoopOptimization::VectorizeSaturationIdiom(LoopNode* node,
   if (HasVectorRestrictions(restrictions, kNoSaturation)) {
     return false;
   }
-  // Search for clipping of a clippee.
-  int64_t lo = kNoLo;
-  int64_t hi = kNoHi;
-  HInstruction* clippee = nullptr;
-  if (!IsClipped(instruction, &lo, &hi, &clippee)) {
+  // Restrict type (generalize if one day we generalize allowed MIN/MAX integral types).
+  if (instruction->GetType() != DataType::Type::kInt32 &&
+      instruction->GetType() != DataType::Type::kInt64) {
     return false;
   }
-  CHECK(clippee != nullptr);
   // Clipped addition or subtraction?
+  int64_t lo = std::numeric_limits<int64_t>::min();
+  int64_t hi = std::numeric_limits<int64_t>::max();
+  HInstruction* clippee = FindClippee(instruction, &lo, &hi);
   bool is_add = true;
   if (clippee->IsAdd()) {
     is_add = true;
