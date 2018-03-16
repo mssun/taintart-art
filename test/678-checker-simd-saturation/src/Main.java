@@ -200,6 +200,110 @@ public class Main {
   }
 
   //
+  // Single clipping signed 8-bit saturation.
+  //
+
+  /// CHECK-START-{ARM,ARM64}: void Main.satAddPConstSByte(byte[], byte[]) loop_optimization (after)
+  /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationAdd [<<Get2>>,<<Get1>>] packed_type:Int8 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>> outer_loop:none
+  public static void satAddPConstSByte(byte[] a, byte[] b) {
+    int n = Math.min(a.length, b.length);
+    for (int i = 0; i < n; i++) {
+      b[i] = (byte) Math.min(a[i] + 15, 127);
+    }
+  }
+
+  /// CHECK-START-{ARM,ARM64}: void Main.satAddNConstSByte(byte[], byte[]) loop_optimization (after)
+  /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationAdd [<<Get2>>,<<Get1>>] packed_type:Int8 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>> outer_loop:none
+  public static void satAddNConstSByte(byte[] a, byte[] b) {
+    int n = Math.min(a.length, b.length);
+    for (int i = 0; i < n; i++) {
+      b[i] = (byte) Math.max(a[i] - 15, -128);
+    }
+  }
+
+  /// CHECK-START-{ARM,ARM64}: void Main.satSubPConstSByte(byte[], byte[]) loop_optimization (after)
+  /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationSub [<<Get1>>,<<Get2>>] packed_type:Int8 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>> outer_loop:none
+  public static void satSubPConstSByte(byte[] a, byte[] b) {
+    int n = Math.min(a.length, b.length);
+    for (int i = 0; i < n; i++) {
+      b[i] = (byte) Math.min(15 - a[i], 127);
+    }
+  }
+
+  /// CHECK-START-{ARM,ARM64}: void Main.satSubNConstSByte(byte[], byte[]) loop_optimization (after)
+  /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationSub [<<Get1>>,<<Get2>>] packed_type:Int8 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>> outer_loop:none
+  public static void satSubNConstSByte(byte[] a, byte[] b) {
+    int n = Math.min(a.length, b.length);
+    for (int i = 0; i < n; i++) {
+      b[i] = (byte) Math.max(-15 - a[i], -128);
+    }
+  }
+
+  //
+  // Single clipping signed 16-bit saturation.
+  //
+
+  /// CHECK-START-{ARM,ARM64}: void Main.satAddPConstSShort(short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationAdd [<<Get2>>,<<Get1>>] packed_type:Int16 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>> outer_loop:none
+  public static void satAddPConstSShort(short[] a, short[] b) {
+    int n = Math.min(a.length, b.length);
+    for (int i = 0; i < n; i++) {
+      b[i] = (short) Math.min(a[i] + 15, 32767);
+    }
+  }
+
+  /// CHECK-START-{ARM,ARM64}: void Main.satAddNConstSShort(short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationAdd [<<Get2>>,<<Get1>>] packed_type:Int16 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>> outer_loop:none
+  public static void satAddNConstSShort(short[] a, short[] b) {
+    int n = Math.min(a.length, b.length);
+    for (int i = 0; i < n; i++) {
+      b[i] = (short) Math.max(a[i] - 15, -32768);
+    }
+  }
+
+  /// CHECK-START-{ARM,ARM64}: void Main.satSubPConstSShort(short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationSub [<<Get1>>,<<Get2>>] packed_type:Int16 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>> outer_loop:none
+  public static void satSubPConstSShort(short[] a, short[] b) {
+    int n = Math.min(a.length, b.length);
+    for (int i = 0; i < n; i++) {
+      b[i] = (short) Math.min(15 - a[i], 32767);
+    }
+  }
+
+  /// CHECK-START-{ARM,ARM64}: void Main.satSubNConstSShort(short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationSub [<<Get1>>,<<Get2>>] packed_type:Int16 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>> outer_loop:none
+  public static void satSubNConstSShort(short[] a, short[] b) {
+    int n = Math.min(a.length, b.length);
+    for (int i = 0; i < n; i++) {
+      b[i] = (short) Math.max(-15 - a[i], -32768);
+    }
+  }
+
+  //
   // Alternatives.
   //
 
@@ -257,6 +361,87 @@ public class Main {
     }
   }
 
+  /// CHECK-START-{ARM,ARM64}: void Main.usatAlt1(short[], short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Get1:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi>>]           loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationAdd [<<Get1>>,<<Get2>>] packed_type:Uint16 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>>      outer_loop:none
+  public static void usatAlt1(short[] a, short[] b, short[] c) {
+    int n = Math.min(a.length, Math.min(b.length, c.length));
+    for (int i = 0; i < n; i++) {
+      int t = (0xffff & a[i]) + (0xffff & b[i]);
+      c[i] = (short) (t <= 65535 ? t : 65535);
+    }
+  }
+
+  /// CHECK-START-{ARM,ARM64}: void Main.usatAlt2(short[], short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Get1:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi>>]           loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationAdd [<<Get1>>,<<Get2>>] packed_type:Uint16 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>>      outer_loop:none
+  public static void usatAlt2(short[] a, short[] b, short[] c) {
+    int n = Math.min(a.length, Math.min(b.length, c.length));
+    for (int i = 0; i < n; i++) {
+      int t = (a[i] & 0xffff) + (b[i] & 0xffff);
+      c[i] = (short) (t < 65535 ? t : 65535);
+    }
+  }
+
+  /// CHECK-START-{ARM,ARM64}: void Main.usatAlt3(short[], short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Get1:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi>>]           loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationAdd [<<Get2>>,<<Get1>>] packed_type:Uint16 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>>      outer_loop:none
+  public static void usatAlt3(short[] a, short[] b, short[] c) {
+    int n = Math.min(a.length, Math.min(b.length, c.length));
+    for (int i = 0; i < n; i++) {
+      int x = (a[i] & 0xffff);
+      int y = (b[i] & 0xffff);
+      int t = y + x ;
+      if (t >= 65535) t = 65535;
+      c[i] = (short) t;
+    }
+  }
+
+  /// CHECK-START-{ARM,ARM64}: void Main.usatAlt4(short[], short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Get1:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi>>]           loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationAdd [<<Get2>>,<<Get1>>] packed_type:Uint16 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>>      outer_loop:none
+  public static void usatAlt4(short[] a, short[] b, short[] c) {
+    int n = Math.min(a.length, Math.min(b.length, c.length));
+    for (int i = 0; i < n; i++) {
+      int x = (a[i] & 0xffff);
+      int y = (b[i] & 0xffff);
+      int t = y + x ;
+      if (t > 65535) t = 65535;
+      c[i] = (short) t;
+    }
+  }
+
+  /// CHECK-START-{ARM,ARM64}: void Main.satRedundantClip(short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationAdd [<<Get2>>,<<Get1>>] packed_type:Int16 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>> outer_loop:none
+  public static void satRedundantClip(short[] a, short[] b) {
+    int n = Math.min(a.length, b.length);
+    for (int i = 0; i < n; i++) {
+      // Max clipping redundant.
+      b[i] = (short) Math.max(Math.min(a[i] + 15, 32767), -32768 + 15);
+    }
+  }
+
+  /// CHECK-START: void Main.satNonRedundantClip(short[], short[]) loop_optimization (after)
+  /// CHECK-NOT: VecSaturationAdd
+  public static void satNonRedundantClip(short[] a, short[] b) {
+    int n = Math.min(a.length, b.length);
+    for (int i = 0; i < n; i++) {
+      // Max clipping not redundant (one off).
+      b[i] = (short) Math.max(Math.min(a[i] + 15, 32767), -32768 + 16);
+    }
+  }
+
   //
   // Test drivers.
   //
@@ -295,6 +480,27 @@ public class Main {
     satSubSByte(b1, b2, out);
     for (int i = 0; i < m; i++) {
       byte e = (byte) Math.max(Math.min(b1[i] - b2[i], 127), -128);
+      expectEquals(e, out[i]);
+    }
+    // Single clipping.
+    satAddPConstSByte(b1, out);
+    for (int i = 0; i < m; i++) {
+      byte e = (byte) Math.min(b1[i] + 15, 127);
+      expectEquals(e, out[i]);
+    }
+    satAddNConstSByte(b1, out);
+    for (int i = 0; i < m; i++) {
+      byte e = (byte) Math.max(b1[i] - 15, -128);
+      expectEquals(e, out[i]);
+    }
+    satSubPConstSByte(b1, out);
+    for (int i = 0; i < m; i++) {
+      byte e = (byte) Math.min(15 - b1[i], 127);
+      expectEquals(e, out[i]);
+    }
+    satSubNConstSByte(b1, out);
+    for (int i = 0; i < m; i++) {
+      byte e = (byte) Math.max(-15 - b1[i], -128);
       expectEquals(e, out[i]);
     }
   }
@@ -357,6 +563,27 @@ public class Main {
       short e = (short) Math.max(Math.min(s1[i] - s2[i], 32767), -32768);
       expectEquals(e, out[i]);
     }
+    // Single clipping.
+    satAddPConstSShort(s1, out);
+    for (int i = 0; i < m; i++) {
+      short e = (short) Math.min(s1[i] + 15, 32767);
+      expectEquals(e, out[i]);
+    }
+    satAddNConstSShort(s1, out);
+    for (int i = 0; i < m; i++) {
+      short e = (short) Math.max(s1[i] - 15, -32768);
+      expectEquals(e, out[i]);
+    }
+    satSubPConstSShort(s1, out);
+    for (int i = 0; i < m; i++) {
+      short e = (short) Math.min(15 - s1[i], 32767);
+      expectEquals(e, out[i]);
+    }
+    satSubNConstSShort(s1, out);
+    for (int i = 0; i < m; i++) {
+      short e = (short) Math.max(-15 - s1[i], -32768);
+      expectEquals(e, out[i]);
+    }
     // Alternatives.
     satAlt1(s1, s2, out);
     for (int i = 0; i < m; i++) {
@@ -371,6 +598,36 @@ public class Main {
     satAlt3(s1, s2, out);
     for (int i = 0; i < m; i++) {
       short e = (short) Math.max(Math.min(s1[i] + s2[i], 32767), -32768);
+      expectEquals(e, out[i]);
+    }
+    usatAlt1(s1, s2, out);
+    for (int i = 0; i < m; i++) {
+      short e = (short) Math.min((s1[i] & 0xffff) + (s2[i] & 0xffff), 65535);
+      expectEquals(e, out[i]);
+    }
+    usatAlt2(s1, s2, out);
+    for (int i = 0; i < m; i++) {
+      short e = (short) Math.min((s1[i] & 0xffff) + (s2[i] & 0xffff), 65535);
+      expectEquals(e, out[i]);
+    }
+    usatAlt3(s1, s2, out);
+    for (int i = 0; i < m; i++) {
+      short e = (short) Math.min((s1[i] & 0xffff) + (s2[i] & 0xffff), 65535);
+      expectEquals(e, out[i]);
+    }
+    usatAlt4(s1, s2, out);
+    for (int i = 0; i < m; i++) {
+      short e = (short) Math.min((s1[i] & 0xffff) + (s2[i] & 0xffff), 65535);
+      expectEquals(e, out[i]);
+    }
+    satRedundantClip(s1, out);
+    for (int i = 0; i < m; i++) {
+      short e = (short) Math.min(s1[i] + 15, 32767);
+      expectEquals(e, out[i]);
+    }
+    satNonRedundantClip(s1, out);
+    for (int i = 0; i < m; i++) {
+      short e = (short) Math.max(Math.min(s1[i] + 15, 32767), -32752);
       expectEquals(e, out[i]);
     }
   }
