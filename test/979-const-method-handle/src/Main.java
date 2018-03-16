@@ -73,6 +73,17 @@ class Main {
         return null;
     }
 
+    @ConstantMethodHandle(
+        kind = ConstantMethodHandle.STATIC_PUT,
+        owner = "java/lang/Math",
+        fieldOrMethodName = "E",
+        descriptor = "D"
+    )
+    private static MethodHandle putMathE() {
+        unreachable();
+        return null;
+    }
+
     public static void main(String[] args) throws Throwable {
         System.out.println(methodType0());
         printHelloHandle().invokeExact("Zog");
@@ -81,5 +92,11 @@ class Main {
         System.out.print("name is ");
         System.out.println(name);
         System.out.println(getMathE().invoke());
+        try {
+            putMathE().invokeExact(Math.PI);
+            unreachable();
+        } catch (IllegalAccessError expected) {
+            System.out.println("Attempting to set Math.E raised IAE");
+        }
     }
 }
