@@ -337,7 +337,8 @@
         "variant": "optimizing | regalloc_gc"
     },
     {
-        "tests": ["537-checker-arraycopy"],
+        "tests": ["537-checker-arraycopy",
+                  "641-checker-arraycopy"],
         "env_vars": {"ART_READ_BARRIER_TYPE": "TABLELOOKUP"}
     },
     {
