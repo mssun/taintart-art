@@ -19,6 +19,7 @@
 
 #include "art_field-inl.h"
 #include "art_method-inl.h"
+#include "base/dumpable.h"
 #include "dex/hidden_api_access_flags.h"
 #include "mirror/class-inl.h"
 #include "reflection.h"
@@ -107,27 +108,78 @@ inline Action GetMemberAction(uint32_t access_flags) {
   }
 }
 
-// Issue a warning about field access.
-inline void WarnAboutMemberAccess(ArtField* field, AccessMethod access_method)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  std::string tmp;
-  LOG(WARNING) << "Accessing hidden field "
-               << field->GetDeclaringClass()->GetDescriptor(&tmp) << "->"
-               << field->GetName() << ":" << field->GetTypeDescriptor()
-               << " (" << HiddenApiAccessFlags::DecodeFromRuntime(field->GetAccessFlags())
-               << ", " << access_method << ")";
-}
 
-// Issue a warning about method access.
-inline void WarnAboutMemberAccess(ArtMethod* method, AccessMethod access_method)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  std::string tmp;
-  LOG(WARNING) << "Accessing hidden method "
-               << method->GetDeclaringClass()->GetDescriptor(&tmp) << "->"
-               << method->GetName() << method->GetSignature().ToString()
-               << " (" << HiddenApiAccessFlags::DecodeFromRuntime(method->GetAccessFlags())
-               << ", " << access_method << ")";
-}
+// Class to encapsulate the signature of a member (ArtField or ArtMethod). This
+// is used as a helper when matching prefixes, and when logging the signature.
+class MemberSignature {
+ private:
+  std::string member_type_;
+  std::vector<std::string> signature_parts_;
+  std::string tmp_;
+
+ public:
+  explicit MemberSignature(ArtField* field) REQUIRES_SHARED(Locks::mutator_lock_) {
+    member_type_ = "field";
+    signature_parts_ = {
+      field->GetDeclaringClass()->GetDescriptor(&tmp_),
+      "->",
+      field->GetName(),
+      ":",
+      field->GetTypeDescriptor()
+    };
+  }
+
+  explicit MemberSignature(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_) {
+    member_type_ = "method";
+    signature_parts_ = {
+      method->GetDeclaringClass()->GetDescriptor(&tmp_),
+      "->",
+      method->GetName(),
+      method->GetSignature().ToString()
+    };
+  }
+
+  const std::vector<std::string>& Parts() const {
+    return signature_parts_;
+  }
+
+  void Dump(std::ostream& os) const {
+    for (std::string part : signature_parts_) {
+      os << part;
+    }
+  }
+  // Performs prefix match on this member. Since the full member signature is
+  // composed of several parts, we match each part in turn (rather than
+  // building the entire thing in memory and performing a simple prefix match)
+  bool DoesPrefixMatch(const std::string& prefix) const {
+    size_t pos = 0;
+    for (const std::string& part : signature_parts_) {
+      size_t count = std::min(prefix.length() - pos, part.length());
+      if (prefix.compare(pos, count, part, 0, count) == 0) {
+        pos += count;
+      } else {
+        return false;
+      }
+    }
+    // We have a complete match if all parts match (we exit the loop without
+    // returning) AND we've matched the whole prefix.
+    return pos == prefix.length();
+  }
+
+  bool IsExempted(const std::vector<std::string>& exemptions) {
+    for (const std::string& exemption : exemptions) {
+      if (DoesPrefixMatch(exemption)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void WarnAboutAccess(AccessMethod access_method, HiddenApiAccessFlags::ApiList list) {
+    LOG(WARNING) << "Accessing hidden " << member_type_ << " " << Dumpable<MemberSignature>(*this)
+                 << " (" << list << ", " << access_method << ")";
+  }
+};
 
 // Returns true if access to `member` should be denied to the caller of the
 // reflective query. The decision is based on whether the caller is in boot
@@ -158,9 +210,29 @@ inline bool ShouldBlockAccessToMember(T* member,
 
   // Member is hidden and we are not in the boot class path.
 
+  // Get the signature, we need it later.
+  MemberSignature member_signature(member);
+
+  Runtime* runtime = Runtime::Current();
+
+  if (action == kDeny) {
+    // If we were about to deny, check for an exemption first.
+    // Exempted APIs are treated as light grey list.
+    if (member_signature.IsExempted(runtime->GetHiddenApiExemptions())) {
+      action = kAllowButWarn;
+      // Avoid re-examining the exemption list next time.
+      // Note this results in the warning below showing "light greylist", which
+      // seems like what one would expect. Exemptions effectively add new members to
+      // the light greylist.
+      member->SetAccessFlags(HiddenApiAccessFlags::EncodeForRuntime(
+              member->GetAccessFlags(), HiddenApiAccessFlags::kLightGreylist));
+    }
+  }
+
   // Print a log message with information about this class member access.
   // We do this regardless of whether we block the access or not.
-  WarnAboutMemberAccess(member, access_method);
+  member_signature.WarnAboutAccess(access_method,
+      HiddenApiAccessFlags::DecodeFromRuntime(member->GetAccessFlags()));
 
   if (action == kDeny) {
     // Block access
@@ -169,8 +241,6 @@ inline bool ShouldBlockAccessToMember(T* member,
 
   // Allow access to this member but print a warning.
   DCHECK(action == kAllowButWarn || action == kAllowButWarnAndToast);
-
-  Runtime* runtime = Runtime::Current();
 
   // Depending on a runtime flag, we might move the member into whitelist and
   // skip the warning the next time the member is accessed.
