@@ -408,7 +408,7 @@ bool OatFileAssistant::DexChecksumUpToDate(const VdexFile& file, std::string* er
     return true;
   }
 
-  uint32_t number_of_dex_files = file.GetHeader().GetNumberOfDexFiles();
+  uint32_t number_of_dex_files = file.GetVerifierDepsHeader().GetNumberOfDexFiles();
   if (required_dex_checksums->size() != number_of_dex_files) {
     *error_msg = StringPrintf("expected %zu dex files but found %u",
                               required_dex_checksums->size(),

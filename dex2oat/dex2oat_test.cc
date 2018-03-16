@@ -1834,7 +1834,7 @@ TEST_F(Dex2oatTest, DontExtract) {
                                                   /*unquicken*/ false,
                                                   &error_msg));
     ASSERT_TRUE(vdex != nullptr);
-    EXPECT_EQ(vdex->GetHeader().GetDexSize(), 0u) << output_;
+    EXPECT_FALSE(vdex->HasDexSection()) << output_;
   }
   std::unique_ptr<OatFile> odex_file(OatFile::Open(odex_location.c_str(),
                                                    odex_location.c_str(),
