@@ -206,10 +206,7 @@ else
   if [[ "$mode" == "host" ]]; then
     dump_command="/bin/kill -3"
   else
-    # TODO It would be great to be able to use this on target too but we need to
-    # be able to walk /proc to figure out what the actual child pid is.
-    dump_command="/system/bin/true"
-    # dump_command="/system/xbin/su root /data/local/tmp/system/bin/debuggerd -b"
+    dump_command="/system/xbin/su root /data/local/tmp/system/bin/debuggerd"
   fi
   if [[ $has_gdb = "yes" ]]; then
     if [[ $mode == "target" ]]; then
