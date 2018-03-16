@@ -37,20 +37,16 @@ extern "C" JNIEXPORT jlong JNICALL Java_Main_getArtMethod(JNIEnv* env,
   return static_cast<jlong>(reinterpret_cast<uintptr_t>(method));
 }
 
-extern "C" JNIEXPORT jboolean JNICALL Java_Main_tryReuseArenaOfMethod(JNIEnv*,
-                                                                      jclass,
-                                                                      jlong art_method,
-                                                                      jint tries_count) {
+extern "C" JNIEXPORT void JNICALL Java_Main_reuseArenaOfMethod(JNIEnv*,
+                                                               jclass,
+                                                               jlong art_method) {
   // Create a new allocation and use it to request a specified amount of arenas.
   // Hopefully one of them is a reused one, the one that covers the art_method pointer.
   std::unique_ptr<LinearAlloc> alloc(Runtime::Current()->CreateLinearAlloc());
-  for (int i = static_cast<int>(tries_count); i > 0; --i) {
+  do {
     // Ask for a byte - it's sufficient to get an arena and not have issues with size.
     alloc->Alloc(Thread::Current(), 1);
-  }
-  bool retval = alloc->Contains(reinterpret_cast<void*>(static_cast<uintptr_t>(art_method)));
-
-  return retval;
+  } while (!alloc->Contains(reinterpret_cast<void*>(static_cast<uintptr_t>(art_method))));
 }
 
 }  // namespace
