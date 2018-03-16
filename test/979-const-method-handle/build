@@ -1,12 +1,12 @@
 #!/bin/bash
 #
-# Copyright (C) 2017 The Android Open Source Project
+# Copyright 2018 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#      http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,9 +14,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Stop if something fails.
+# make us exit on a failure
 set -e
 
-${DX} --dex --min-sdk-version=28 --output=classes.dex classes
+ASM_JAR="${ANDROID_BUILD_TOP}/prebuilts/misc/common/asm/asm-6.0.jar"
+INTERMEDIATE_CLASSES=classes-intermediate
+TRANSFORMER_CLASSES=classes-transformer
+CLASSES=classes
 
-zip $TEST_NAME.jar classes.dex
+DEXER="${DX:-dx}"
+if [ "${USE_D8=false}" = "true" ]; then
+  DEXER="${ANDROID_HOST_OUT}/bin/d8-compat-dx"
+fi
+
+# Create directories for classes
+for class_dir in "${INTERMEDIATE_CLASSES}" "${TRANSFORMER_CLASSES}" "${CLASSES}"; do
+  rm -rf "${class_dir}"
+  mkdir "${class_dir}"
+done
+
+# Build transformer
+${JAVAC:-javac} ${JAVAC_ARGS} -cp "${ASM_JAR}" -d ${TRANSFORMER_CLASSES} $(find util-src -name '*.java')
+
+# Generate intermediate classes that will allow transform to be applied to test classes
+JAVAC_ARGS="${JAVAC_ARGS} -source 1.8 -target 1.8"
+${JAVAC:-javac} ${JAVAC_ARGS} -cp ${TRANSFORMER_CLASSES} -d ${INTERMEDIATE_CLASSES} $(find src -name '*.java')
+
+# Run transform
+for class in ${INTERMEDIATE_CLASSES}/*.class ; do
+  transformed_class=${CLASSES}/$(basename ${class})
+  ${JAVA:-java} -cp "${ASM_JAR}:${TRANSFORMER_CLASSES}" \
+      transformer.ConstantTransformer ${class} ${transformed_class}
+done
+
+# Create DEX
+DX_FLAGS="${DX_FLAGS} --min-sdk-version=28 --debug --dump-width=1000"
+${DEXER} -JXmx256m --dex ${DX_FLAGS} --dump-to=${CLASSES}.lst --output=classes.dex ${CLASSES} ${TRANSFORMER_CLASSES}
+
+# Zip DEX to file name expected by test runner
+zip ${TEST_NAME:-classes-dex}.jar classes.dex

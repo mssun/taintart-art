@@ -1,2 +1,5 @@
-MethodHandle MethodHandle(Object)Class => class java.lang.Float
-MethodType (char,short,int,long,float,double,Object)boolean
+(int,Integer,System)String
+Hello World! And Hello Zog
+Hello World! And Hello Zorba
+name is HoverFly
+2.718281828459045
