@@ -325,7 +325,7 @@ class HVecReplicateScalar FINAL : public HVecUnaryOperation {
                       uint32_t dex_pc)
       : HVecUnaryOperation(
             kVecReplicateScalar, allocator, scalar, packed_type, vector_length, dex_pc) {
-    DCHECK(!scalar->IsVecOperation());
+    DCHECK(!ReturnsSIMDValue(scalar));
   }
 
   // A replicate needs to stay in place, since SIMD registers are not
