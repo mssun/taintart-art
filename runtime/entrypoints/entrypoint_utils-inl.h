@@ -81,13 +81,14 @@ inline ArtMethod* GetResolvedMethod(ArtMethod* outer_method,
 
   // Lookup the declaring class of the inlined method.
   ObjPtr<mirror::DexCache> dex_cache = caller->GetDexCache();
-  const DexFile* dex_file = dex_cache->GetDexFile();
-  const DexFile::MethodId& method_id = dex_file->GetMethodId(method_index);
   ArtMethod* inlined_method = dex_cache->GetResolvedMethod(method_index, kRuntimePointerSize);
   if (inlined_method != nullptr) {
     DCHECK(!inlined_method->IsRuntimeMethod());
     return inlined_method;
   }
+  // TODO: Use ClassLoader::LookupResolvedMethod() instead.
+  const DexFile* dex_file = dex_cache->GetDexFile();
+  const DexFile::MethodId& method_id = dex_file->GetMethodId(method_index);
   const char* descriptor = dex_file->StringByTypeIdx(method_id.class_idx_);
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   Thread* self = Thread::Current();

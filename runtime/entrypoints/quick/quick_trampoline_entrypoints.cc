@@ -1175,6 +1175,97 @@ extern "C" TwoWordReturn artInstrumentationMethodExitFromCode(Thread* self,
   return return_or_deoptimize_pc;
 }
 
+static std::string DumpInstruction(ArtMethod* method, uint32_t dex_pc)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  if (dex_pc == static_cast<uint32_t>(-1)) {
+    CHECK(method == jni::DecodeArtMethod(WellKnownClasses::java_lang_String_charAt));
+    return "<native>";
+  } else {
+    CodeItemInstructionAccessor accessor = method->DexInstructions();
+    CHECK_LT(dex_pc, accessor.InsnsSizeInCodeUnits());
+    return accessor.InstructionAt(dex_pc).DumpString(method->GetDexFile());
+  }
+}
+
+static void DumpB74410240DebugData(ArtMethod** sp) REQUIRES_SHARED(Locks::mutator_lock_) {
+  // Mimick the search for the caller and dump some data while doing so.
+  LOG(FATAL_WITHOUT_ABORT) << "Dumping debugging data for b/74410240.";
+
+  constexpr CalleeSaveType type = CalleeSaveType::kSaveRefsAndArgs;
+  CHECK_EQ(*sp, Runtime::Current()->GetCalleeSaveMethod(type));
+
+  const size_t callee_frame_size = GetCalleeSaveFrameSize(kRuntimeISA, type);
+  auto** caller_sp = reinterpret_cast<ArtMethod**>(
+      reinterpret_cast<uintptr_t>(sp) + callee_frame_size);
+  const size_t callee_return_pc_offset = GetCalleeSaveReturnPcOffset(kRuntimeISA, type);
+  uintptr_t caller_pc = *reinterpret_cast<uintptr_t*>(
+      (reinterpret_cast<uint8_t*>(sp) + callee_return_pc_offset));
+  ArtMethod* outer_method = *caller_sp;
+
+  if (UNLIKELY(caller_pc == reinterpret_cast<uintptr_t>(GetQuickInstrumentationExitPc()))) {
+    LOG(FATAL_WITHOUT_ABORT) << "Method: " << outer_method->PrettyMethod()
+        << " native pc: " << caller_pc << " Instrumented!";
+    return;
+  }
+
+  const OatQuickMethodHeader* current_code = outer_method->GetOatQuickMethodHeader(caller_pc);
+  CHECK(current_code != nullptr);
+  CHECK(current_code->IsOptimized());
+  uintptr_t native_pc_offset = current_code->NativeQuickPcOffset(caller_pc);
+  CodeInfo code_info = current_code->GetOptimizedCodeInfo();
+  MethodInfo method_info = current_code->GetOptimizedMethodInfo();
+  CodeInfoEncoding encoding = code_info.ExtractEncoding();
+  StackMap stack_map = code_info.GetStackMapForNativePcOffset(native_pc_offset, encoding);
+  CHECK(stack_map.IsValid());
+  uint32_t dex_pc = stack_map.GetDexPc(encoding.stack_map.encoding);
+
+  // Log the outer method and its associated dex file and class table pointer which can be used
+  // to find out if the inlined methods were defined by other dex file(s) or class loader(s).
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  LOG(FATAL_WITHOUT_ABORT) << "Outer: " << outer_method->PrettyMethod()
+      << " native pc: " << caller_pc
+      << " dex pc: " << dex_pc
+      << " dex file: " << outer_method->GetDexFile()->GetLocation()
+      << " class table: " << class_linker->ClassTableForClassLoader(outer_method->GetClassLoader());
+  LOG(FATAL_WITHOUT_ABORT) << "  instruction: " << DumpInstruction(outer_method, dex_pc);
+
+  ArtMethod* caller = outer_method;
+  if (stack_map.HasInlineInfo(encoding.stack_map.encoding)) {
+    InlineInfo inline_info = code_info.GetInlineInfoOf(stack_map, encoding);
+    const InlineInfoEncoding& inline_info_encoding = encoding.inline_info.encoding;
+    size_t depth = inline_info.GetDepth(inline_info_encoding);
+    for (size_t d = 0; d < depth; ++d) {
+      const char* tag = "";
+      dex_pc = inline_info.GetDexPcAtDepth(inline_info_encoding, d);
+      if (inline_info.EncodesArtMethodAtDepth(inline_info_encoding, d)) {
+        tag = "encoded ";
+        caller = inline_info.GetArtMethodAtDepth(inline_info_encoding, d);
+      } else {
+        uint32_t method_index = inline_info.GetMethodIndexAtDepth(inline_info_encoding,
+                                                                  method_info,
+                                                                  d);
+        if (dex_pc == static_cast<uint32_t>(-1)) {
+          tag = "special ";
+          CHECK_EQ(d + 1u, depth);
+          caller = jni::DecodeArtMethod(WellKnownClasses::java_lang_String_charAt);
+          CHECK_EQ(caller->GetDexMethodIndex(), method_index);
+        } else {
+          ObjPtr<mirror::DexCache> dex_cache = caller->GetDexCache();
+          ObjPtr<mirror::ClassLoader> class_loader = caller->GetClassLoader();
+          caller = class_linker->LookupResolvedMethod(method_index, dex_cache, class_loader);
+          CHECK(caller != nullptr);
+        }
+      }
+      LOG(FATAL_WITHOUT_ABORT) << "Inlined method #" << d << ": " << tag << caller->PrettyMethod()
+          << " dex pc: " << dex_pc
+          << " dex file: " << caller->GetDexFile()->GetLocation()
+          << " class table: "
+          << class_linker->ClassTableForClassLoader(outer_method->GetClassLoader());
+      LOG(FATAL_WITHOUT_ABORT) << "  instruction: " << DumpInstruction(caller, dex_pc);
+    }
+  }
+}
+
 // Lazily resolve a method for quick. Called by stub code.
 extern "C" const void* artQuickResolutionTrampoline(
     ArtMethod* called, mirror::Object* receiver, Thread* self, ArtMethod** sp)
@@ -1255,6 +1346,7 @@ extern "C" const void* artQuickResolutionTrampoline(
           is_range = true;
           break;
         default:
+          DumpB74410240DebugData(sp);
           LOG(FATAL) << "Unexpected call into trampoline: " << instr.DumpString(nullptr);
           UNREACHABLE();
       }
