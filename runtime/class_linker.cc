@@ -8287,29 +8287,34 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForField(
   DexFile::MethodHandleType handle_type =
       static_cast<DexFile::MethodHandleType>(method_handle.method_handle_type_);
   mirror::MethodHandle::Kind kind;
+  bool is_put;
   bool is_static;
   int32_t num_params;
   switch (handle_type) {
     case DexFile::MethodHandleType::kStaticPut: {
       kind = mirror::MethodHandle::Kind::kStaticPut;
+      is_put = true;
       is_static = true;
       num_params = 1;
       break;
     }
     case DexFile::MethodHandleType::kStaticGet: {
       kind = mirror::MethodHandle::Kind::kStaticGet;
+      is_put = false;
       is_static = true;
       num_params = 0;
       break;
     }
     case DexFile::MethodHandleType::kInstancePut: {
       kind = mirror::MethodHandle::Kind::kInstancePut;
+      is_put = true;
       is_static = false;
       num_params = 2;
       break;
     }
     case DexFile::MethodHandleType::kInstanceGet: {
       kind = mirror::MethodHandle::Kind::kInstanceGet;
+      is_put = false;
       is_static = false;
       num_params = 1;
       break;
@@ -8328,6 +8333,10 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForField(
     ObjPtr<mirror::Class> target_class = target_field->GetDeclaringClass();
     ObjPtr<mirror::Class> referring_class = referrer->GetDeclaringClass();
     if (UNLIKELY(!referring_class->CanAccessMember(target_class, target_field->GetAccessFlags()))) {
+      ThrowIllegalAccessErrorField(referring_class, target_field);
+      return nullptr;
+    }
+    if (UNLIKELY(is_put && target_field->IsFinal())) {
       ThrowIllegalAccessErrorField(referring_class, target_field);
       return nullptr;
     }
