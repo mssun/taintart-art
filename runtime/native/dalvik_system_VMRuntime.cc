@@ -78,6 +78,21 @@ static jboolean VMRuntime_hasUsedHiddenApi(JNIEnv*, jobject) {
   return Runtime::Current()->HasPendingHiddenApiWarning() ? JNI_TRUE : JNI_FALSE;
 }
 
+static void VMRuntime_setHiddenApiExemptions(JNIEnv* env,
+                                            jclass,
+                                            jobjectArray exemptions) {
+  std::vector<std::string> exemptions_vec;
+  int exemptions_length = env->GetArrayLength(exemptions);
+  for (int i = 0; i < exemptions_length; i++) {
+    jstring exemption = reinterpret_cast<jstring>(env->GetObjectArrayElement(exemptions, i));
+    const char* raw_exemption = env->GetStringUTFChars(exemption, nullptr);
+    exemptions_vec.push_back(raw_exemption);
+    env->ReleaseStringUTFChars(exemption, raw_exemption);
+  }
+
+  Runtime::Current()->SetHiddenApiExemptions(exemptions_vec);
+}
+
 static jobject VMRuntime_newNonMovableArray(JNIEnv* env, jobject, jclass javaElementClass,
                                             jint length) {
   ScopedFastNativeObjectAccess soa(env);
@@ -672,6 +687,7 @@ static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(VMRuntime, concurrentGC, "()V"),
   NATIVE_METHOD(VMRuntime, disableJitCompilation, "()V"),
   NATIVE_METHOD(VMRuntime, hasUsedHiddenApi, "()Z"),
+  NATIVE_METHOD(VMRuntime, setHiddenApiExemptions, "([Ljava/lang/String;)V"),
   NATIVE_METHOD(VMRuntime, getTargetHeapUtilization, "()F"),
   FAST_NATIVE_METHOD(VMRuntime, isDebuggerActive, "()Z"),
   FAST_NATIVE_METHOD(VMRuntime, isNativeDebuggable, "()Z"),
