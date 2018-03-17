@@ -25,6 +25,7 @@
 
 #include "base/file_utils.h"
 #include "base/logging.h"  // For VLOG.
+#include "base/macros.h"
 #include "base/os.h"
 #include "base/stl_util.h"
 #include "base/utils.h"
@@ -1303,18 +1304,49 @@ void OatFileAssistant::GetOptimizationStatus(
     InstructionSet isa,
     std::string* out_compilation_filter,
     std::string* out_compilation_reason) {
-  // Try to load the oat file as we would do at runtime.
-  OatFileAssistant oat_file_assistant(filename.c_str(), isa, true /* load_executable */);
+  // It may not be possible to load an oat file executable (e.g., selinux restrictions). Load
+  // non-executable and check the status manually.
+  OatFileAssistant oat_file_assistant(filename.c_str(), isa, false /* load_executable */);
   std::unique_ptr<OatFile> oat_file = oat_file_assistant.GetBestOatFile();
 
   if (oat_file == nullptr) {
     *out_compilation_filter = "run-from-apk";
     *out_compilation_reason = "unknown";
-  } else  {
-    *out_compilation_filter = CompilerFilter::NameOfFilter(oat_file->GetCompilerFilter());
-    const char* reason = oat_file->GetCompilationReason();
-    *out_compilation_reason = reason == nullptr ? "unknown" : reason;
+    return;
   }
+
+  OatStatus status = oat_file_assistant.GivenOatFileStatus(*oat_file);
+  const char* reason = oat_file->GetCompilationReason();
+  *out_compilation_reason = reason == nullptr ? "unknown" : reason;
+  switch (status) {
+    case OatStatus::kOatUpToDate:
+      *out_compilation_filter = CompilerFilter::NameOfFilter(oat_file->GetCompilerFilter());
+      return;
+
+    case kOatCannotOpen:  // This should never happen, but be robust.
+      *out_compilation_filter = "error";
+      *out_compilation_reason = "error";
+      return;
+
+    // kOatBootImageOutOfDate - The oat file is up to date with respect to the
+    // dex file, but is out of date with respect to the boot image.
+    case kOatBootImageOutOfDate:
+      FALLTHROUGH_INTENDED;
+    case kOatDexOutOfDate:
+      if (oat_file_assistant.HasOriginalDexFiles()) {
+        *out_compilation_filter = "run-from-apk-fallback";
+      } else {
+        *out_compilation_filter = "run-from-vdex-fallback";
+      }
+      return;
+
+    case kOatRelocationOutOfDate:
+      // On relocation-out-of-date, we'd run the dex code.
+      *out_compilation_filter = "run-from-vdex-fallback";
+      return;
+  }
+  LOG(FATAL) << "Unreachable";
+  UNREACHABLE();
 }
 
 }  // namespace art
