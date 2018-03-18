@@ -21,6 +21,7 @@
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"
 #include "linear_alloc.h"
+#include "mirror/class_loader.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
@@ -73,6 +74,106 @@ void ClassHierarchyAnalysis::RemoveDependentsWithMethodHeaders(
       map_it = cha_dependency_map_.erase(map_it);
     } else {
       map_it++;
+    }
+  }
+}
+
+void ClassHierarchyAnalysis::ResetSingleImplementationInHierarchy(ObjPtr<mirror::Class> klass,
+                                                                  const LinearAlloc* alloc,
+                                                                  const PointerSize pointer_size)
+                                                                  const {
+  // Presumably called from some sort of class visitor, no null pointers expected.
+  DCHECK(klass != nullptr);
+  DCHECK(alloc != nullptr);
+
+  // Skip interfaces since they cannot provide SingleImplementations to work with.
+  if (klass->IsInterface()) {
+    return;
+  }
+
+  // This method is called while visiting classes in the class table of a class loader.
+  // That means, some 'klass'es can belong to other classloaders. Argument 'alloc'
+  // allows to explicitly indicate a classloader, which is going to be deleted.
+  // Filter out classes, that do not belong to it.
+  if (!alloc->ContainsUnsafe(klass->GetMethodsPtr())) {
+    return;
+  }
+
+  // CHA analysis is only applied to resolved classes.
+  if (!klass->IsResolved()) {
+    return;
+  }
+
+  ObjPtr<mirror::Class> super = klass->GetSuperClass<kDefaultVerifyFlags, kWithoutReadBarrier>();
+
+  // Skip Object class and primitive classes.
+  if (super == nullptr) {
+    return;
+  }
+
+  // The class is going to be deleted. Iterate over the virtual methods of its superclasses to see
+  // if they have SingleImplementations methods defined by 'klass'.
+  // Skip all virtual methods that do not override methods from super class since they cannot be
+  // SingleImplementations for anything.
+  int32_t vtbl_size = super->GetVTableLength<kDefaultVerifyFlags, kWithoutReadBarrier>();
+  ObjPtr<mirror::ClassLoader> loader =
+      klass->GetClassLoader<kDefaultVerifyFlags, kWithoutReadBarrier>();
+  for (int vtbl_index = 0; vtbl_index < vtbl_size; ++vtbl_index) {
+    ArtMethod* method =
+        klass->GetVTableEntry<kDefaultVerifyFlags, kWithoutReadBarrier>(vtbl_index, pointer_size);
+    if (!alloc->ContainsUnsafe(method)) {
+      continue;
+    }
+
+    // Find all occurrences of virtual methods in parents' SingleImplementations fields
+    // and reset them.
+    // No need to reset SingleImplementations for the method itself (it will be cleared anyways),
+    // so start with a superclass and move up looking into a corresponding vtbl slot.
+    for (ObjPtr<mirror::Class> super_it = super;
+         super_it != nullptr &&
+             super_it->GetVTableLength<kDefaultVerifyFlags, kWithoutReadBarrier>() > vtbl_index;
+         super_it = super_it->GetSuperClass<kDefaultVerifyFlags, kWithoutReadBarrier>()) {
+      // Skip superclasses that are also going to be unloaded.
+      ObjPtr<mirror::ClassLoader> super_loader = super_it->
+          GetClassLoader<kDefaultVerifyFlags, kWithoutReadBarrier>();
+      if (super_loader == loader) {
+        continue;
+      }
+
+      ArtMethod* super_method = super_it->
+          GetVTableEntry<kDefaultVerifyFlags, kWithoutReadBarrier>(vtbl_index, pointer_size);
+      if (super_method->IsAbstract<kWithoutReadBarrier>() &&
+          super_method->HasSingleImplementation<kWithoutReadBarrier>() &&
+          super_method->GetSingleImplementation<kWithoutReadBarrier>(pointer_size) == method) {
+        // Do like there was no single implementation defined previously
+        // for this method of the superclass.
+        super_method->SetSingleImplementation<kWithoutReadBarrier>(nullptr, pointer_size);
+      } else {
+        // No related SingleImplementations could possibly be found any further.
+        DCHECK(!super_method->HasSingleImplementation<kWithoutReadBarrier>());
+        break;
+      }
+    }
+  }
+
+  // Check all possible interface methods too.
+  ObjPtr<mirror::IfTable> iftable = klass->GetIfTable<kDefaultVerifyFlags, kWithoutReadBarrier>();
+  const size_t ifcount = klass->GetIfTableCount<kDefaultVerifyFlags, kWithoutReadBarrier>();
+  for (size_t i = 0; i < ifcount; ++i) {
+    ObjPtr<mirror::Class> interface =
+        iftable->GetInterface<kDefaultVerifyFlags, kWithoutReadBarrier>(i);
+    for (size_t j = 0,
+         count = iftable->GetMethodArrayCount<kDefaultVerifyFlags, kWithoutReadBarrier>(i);
+         j < count;
+         ++j) {
+      ArtMethod* method = interface->GetVirtualMethod(j, pointer_size);
+      if (method->HasSingleImplementation<kWithoutReadBarrier>() &&
+          alloc->ContainsUnsafe(
+              method->GetSingleImplementation<kWithoutReadBarrier>(pointer_size)) &&
+          !method->IsDefault<kWithoutReadBarrier>()) {
+        // Do like there was no single implementation defined previously for this method.
+        method->SetSingleImplementation<kWithoutReadBarrier>(nullptr, pointer_size);
+      }
     }
   }
 }

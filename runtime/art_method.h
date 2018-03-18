@@ -172,12 +172,14 @@ class ArtMethod FINAL {
     return (GetAccessFlags() & synchonized) != 0;
   }
 
+  template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   bool IsFinal() {
-    return (GetAccessFlags() & kAccFinal) != 0;
+    return (GetAccessFlags<kReadBarrierOption>() & kAccFinal) != 0;
   }
 
+  template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   bool IsIntrinsic() {
-    return (GetAccessFlags() & kAccIntrinsic) != 0;
+    return (GetAccessFlags<kReadBarrierOption>() & kAccIntrinsic) != 0;
   }
 
   ALWAYS_INLINE void SetIntrinsic(uint32_t intrinsic) REQUIRES_SHARED(Locks::mutator_lock_);
@@ -241,10 +243,11 @@ class ArtMethod FINAL {
   }
 
   // This is set by the class linker.
+  template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   bool IsDefault() {
     static_assert((kAccDefault & (kAccIntrinsic | kAccIntrinsicBits)) == 0,
                   "kAccDefault conflicts with intrinsic modifier");
-    return (GetAccessFlags() & kAccDefault) != 0;
+    return (GetAccessFlags<kReadBarrierOption>() & kAccDefault) != 0;
   }
 
   template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
@@ -279,8 +282,9 @@ class ArtMethod FINAL {
     return (GetAccessFlags() & mask) == mask;
   }
 
+  template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   bool IsAbstract() {
-    return (GetAccessFlags() & kAccAbstract) != 0;
+    return (GetAccessFlags<kReadBarrierOption>() & kAccAbstract) != 0;
   }
 
   bool IsSynthetic() {
@@ -315,12 +319,13 @@ class ArtMethod FINAL {
     return (GetAccessFlags() & kAccPreviouslyWarm) != 0;
   }
 
+  template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   void SetPreviouslyWarm() {
-    if (IsIntrinsic()) {
+    if (IsIntrinsic<kReadBarrierOption>()) {
       // kAccPreviouslyWarm overlaps with kAccIntrinsicBits.
       return;
     }
-    AddAccessFlags(kAccPreviouslyWarm);
+    AddAccessFlags<kReadBarrierOption>(kAccPreviouslyWarm);
   }
 
   // Should this method be run in the interpreter and count locks (e.g., failed structured-
@@ -494,6 +499,7 @@ class ArtMethod FINAL {
     return DataOffset(kRuntimePointerSize);
   }
 
+  template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   ALWAYS_INLINE bool HasSingleImplementation() REQUIRES_SHARED(Locks::mutator_lock_);
 
   ALWAYS_INLINE void SetHasSingleImplementation(bool single_impl) {
@@ -511,12 +517,15 @@ class ArtMethod FINAL {
   ArtMethod* GetCanonicalMethod(PointerSize pointer_size = kRuntimePointerSize)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   ArtMethod* GetSingleImplementation(PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   ALWAYS_INLINE void SetSingleImplementation(ArtMethod* method, PointerSize pointer_size) {
-    DCHECK(!IsNative());
-    DCHECK(IsAbstract());  // Non-abstract method's single implementation is just itself.
+    DCHECK(!IsNative<kReadBarrierOption>());
+    // Non-abstract method's single implementation is just itself.
+    DCHECK(IsAbstract<kReadBarrierOption>());
     SetDataPtrSize(method, pointer_size);
   }
 
@@ -839,8 +848,11 @@ class ArtMethod FINAL {
   }
 
   // This setter guarantees atomicity.
+  template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   void AddAccessFlags(uint32_t flag) {
-    DCHECK(!IsIntrinsic() || !OverlapsIntrinsicBits(flag) || IsValidIntrinsicUpdate(flag));
+    DCHECK(!IsIntrinsic<kReadBarrierOption>() ||
+           !OverlapsIntrinsicBits(flag) ||
+           IsValidIntrinsicUpdate(flag));
     uint32_t old_access_flags;
     uint32_t new_access_flags;
     do {

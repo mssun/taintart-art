@@ -1465,14 +1465,14 @@ TEST_F(Dex2oatTest, LayoutSections) {
 
 // Test that generating compact dex works.
 TEST_F(Dex2oatTest, GenerateCompactDex) {
-  std::unique_ptr<const DexFile> dex(OpenTestDexFile("ManyMethods"));
   // Generate a compact dex based odex.
   const std::string dir = GetScratchDir();
   const std::string oat_filename = dir + "/base.oat";
   const std::string vdex_filename = dir + "/base.vdex";
+  const std::string dex_location = GetTestDexFileName("MultiDex");
   std::string error_msg;
   const int res = GenerateOdexForTestWithStatus(
-      {dex->GetLocation()},
+      { dex_location },
       oat_filename,
       CompilerFilter::Filter::kQuicken,
       &error_msg,
@@ -1485,16 +1485,43 @@ TEST_F(Dex2oatTest, GenerateCompactDex) {
                                                    nullptr,
                                                    false,
                                                    /*low_4gb*/false,
-                                                   dex->GetLocation().c_str(),
+                                                   dex_location.c_str(),
                                                    &error_msg));
   ASSERT_TRUE(odex_file != nullptr);
   std::vector<const OatDexFile*> oat_dex_files = odex_file->GetOatDexFiles();
-  ASSERT_EQ(oat_dex_files.size(), 1u);
-  // Check that each dex is a compact dex.
+  ASSERT_GT(oat_dex_files.size(), 1u);
+  // Check that each dex is a compact dex file.
+  std::vector<std::unique_ptr<const CompactDexFile>> compact_dex_files;
   for (const OatDexFile* oat_dex : oat_dex_files) {
     std::unique_ptr<const DexFile> dex_file(oat_dex->OpenDexFile(&error_msg));
     ASSERT_TRUE(dex_file != nullptr) << error_msg;
     ASSERT_TRUE(dex_file->IsCompactDexFile());
+    compact_dex_files.push_back(
+        std::unique_ptr<const CompactDexFile>(dex_file.release()->AsCompactDexFile()));
+  }
+  for (const std::unique_ptr<const CompactDexFile>& dex_file : compact_dex_files) {
+    // Test that every code item is in the owned section.
+    const CompactDexFile::Header& header = dex_file->GetHeader();
+    EXPECT_LE(header.OwnedDataBegin(), header.OwnedDataEnd());
+    EXPECT_LE(header.OwnedDataBegin(), header.data_size_);
+    EXPECT_LE(header.OwnedDataEnd(), header.data_size_);
+    for (uint32_t i = 0; i < dex_file->NumClassDefs(); ++i) {
+      const DexFile::ClassDef& class_def = dex_file->GetClassDef(i);
+      class_def.VisitMethods(dex_file.get(), [&](const ClassDataItemIterator& it) {
+        if (it.GetMethodCodeItemOffset() != 0u) {
+          ASSERT_GE(it.GetMethodCodeItemOffset(), header.OwnedDataBegin());
+          ASSERT_LT(it.GetMethodCodeItemOffset(), header.OwnedDataEnd());
+        }
+      });
+    }
+    // Test that the owned sections don't overlap.
+    for (const std::unique_ptr<const CompactDexFile>& other_dex : compact_dex_files) {
+      if (dex_file != other_dex) {
+        ASSERT_TRUE(
+            (dex_file->GetHeader().OwnedDataBegin() >= other_dex->GetHeader().OwnedDataEnd()) ||
+            (dex_file->GetHeader().OwnedDataEnd() <= other_dex->GetHeader().OwnedDataBegin()));
+      }
+    }
   }
 }
 
@@ -1834,7 +1861,7 @@ TEST_F(Dex2oatTest, DontExtract) {
                                                   /*unquicken*/ false,
                                                   &error_msg));
     ASSERT_TRUE(vdex != nullptr);
-    EXPECT_EQ(vdex->GetHeader().GetDexSize(), 0u) << output_;
+    EXPECT_FALSE(vdex->HasDexSection()) << output_;
   }
   std::unique_ptr<OatFile> odex_file(OatFile::Open(odex_location.c_str(),
                                                    odex_location.c_str(),

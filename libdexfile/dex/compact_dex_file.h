@@ -51,6 +51,16 @@ class CompactDexFile : public DexFile {
       return data_size_;
     }
 
+    // Range of the shared data section owned by the dex file. Owned in this context refers to data
+    // for this DEX that was not deduplicated to another DEX.
+    uint32_t OwnedDataBegin() const {
+      return owned_data_begin_;
+    }
+
+    uint32_t OwnedDataEnd() const {
+      return owned_data_end_;
+    }
+
    private:
     uint32_t feature_flags_ = 0u;
 
@@ -62,6 +72,10 @@ class CompactDexFile : public DexFile {
 
     // Base offset of where debug info starts in the dex file.
     uint32_t debug_info_base_ = 0u;
+
+    // Range of the shared data section owned by the dex file.
+    uint32_t owned_data_begin_ = 0u;
+    uint32_t owned_data_end_ = 0u;
 
     friend class CompactDexFile;
     friend class CompactDexWriter;

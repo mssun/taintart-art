@@ -35,50 +35,52 @@ class DexFile;
 // memory and provides tools for accessing its individual sections.
 //
 // File format:
-//   VdexFile::Header    fixed-length header
+//   VdexFile::VerifierDepsHeader    fixed-length header
+//      Dex file checksums
 //
-//   quicken_table_off[0]  offset into QuickeningInfo section for offset table for DEX[0].
-//   DEX[0]                array of the input DEX files, the bytecode may have been quickened.
-//   quicken_table_off[1]
-//   DEX[1]
-//   ...
-//   DEX[D]
+//   Optionally:
+//      VdexFile::DexSectionHeader   fixed-length header
+//
+//      quicken_table_off[0]  offset into QuickeningInfo section for offset table for DEX[0].
+//      DEX[0]                array of the input DEX files, the bytecode may have been quickened.
+//      quicken_table_off[1]
+//      DEX[1]
+//      ...
+//      DEX[D]
+//
 //   VerifierDeps
 //      uint8[D][]                 verification dependencies
-//   QuickeningInfo
-//     uint8[D][]                  quickening data
-//     uint32[D][]                 quickening data offset tables
+//
+//   Optionally:
+//      QuickeningInfo
+//        uint8[D][]                  quickening data
+//        uint32[D][]                 quickening data offset tables
 
 class VdexFile {
  public:
-  struct Header {
+  struct VerifierDepsHeader {
    public:
-    Header(uint32_t number_of_dex_files_,
-           uint32_t dex_size,
-           uint32_t dex_shared_data_size,
-           uint32_t verifier_deps_size,
-           uint32_t quickening_info_size);
+    VerifierDepsHeader(uint32_t number_of_dex_files_,
+                       uint32_t verifier_deps_size,
+                       bool has_dex_section);
 
     const char* GetMagic() const { return reinterpret_cast<const char*>(magic_); }
-    const char* GetVersion() const { return reinterpret_cast<const char*>(version_); }
-    bool IsMagicValid() const;
-    bool IsVersionValid() const;
-    bool IsValid() const { return IsMagicValid() && IsVersionValid(); }
-
-    uint32_t GetDexSize() const { return dex_size_; }
-    uint32_t GetDexSharedDataSize() const { return dex_shared_data_size_; }
-    uint32_t GetVerifierDepsSize() const { return verifier_deps_size_; }
-    uint32_t GetQuickeningInfoSize() const { return quickening_info_size_; }
-    uint32_t GetNumberOfDexFiles() const { return number_of_dex_files_; }
-
-    size_t GetComputedFileSize() const {
-      return sizeof(Header) +
-             GetSizeOfChecksumsSection() +
-             GetDexSize() +
-             GetDexSharedDataSize() +
-             GetVerifierDepsSize() +
-             GetQuickeningInfoSize();
+    const char* GetVerifierDepsVersion() const {
+      return reinterpret_cast<const char*>(verifier_deps_version_);
     }
+    const char* GetDexSectionVersion() const {
+      return reinterpret_cast<const char*>(dex_section_version_);
+    }
+    bool IsMagicValid() const;
+    bool IsVerifierDepsVersionValid() const;
+    bool IsDexSectionVersionValid() const;
+    bool IsValid() const {
+      return IsMagicValid() && IsVerifierDepsVersionValid() && IsDexSectionVersionValid();
+    }
+    bool HasDexSection() const;
+
+    uint32_t GetVerifierDepsSize() const { return verifier_deps_size_; }
+    uint32_t GetNumberOfDexFiles() const { return number_of_dex_files_; }
 
     size_t GetSizeOfChecksumsSection() const {
       return sizeof(VdexChecksum) * GetNumberOfDexFiles();
@@ -88,19 +90,62 @@ class VdexFile {
 
    private:
     static constexpr uint8_t kVdexMagic[] = { 'v', 'd', 'e', 'x' };
-    // Last update: Change quickening info table format.
-    static constexpr uint8_t kVdexVersion[] = { '0', '1', '8', '\0' };
+
+    // The format version of the verifier deps header and the verifier deps.
+    // Last update: Add DexSectionHeader
+    static constexpr uint8_t kVerifierDepsVersion[] = { '0', '1', '9', '\0' };
+
+    // The format version of the dex section header and the dex section, containing
+    // both the dex code and the quickening data.
+    // Last update: Add owned section for CompactDex.
+    static constexpr uint8_t kDexSectionVersion[] = { '0', '0', '2', '\0' };
+
+    // If the .vdex file has no dex section (hence no dex code nor quickening data),
+    // we encode this magic version.
+    static constexpr uint8_t kDexSectionVersionEmpty[] = { '0', '0', '0', '\0' };
 
     uint8_t magic_[4];
-    uint8_t version_[4];
+    uint8_t verifier_deps_version_[4];
+    uint8_t dex_section_version_[4];
     uint32_t number_of_dex_files_;
+    uint32_t verifier_deps_size_;
+  };
+
+  struct DexSectionHeader {
+   public:
+    DexSectionHeader(uint32_t dex_size,
+                     uint32_t dex_shared_data_size,
+                     uint32_t quickening_info_size);
+
+    uint32_t GetDexSize() const { return dex_size_; }
+    uint32_t GetDexSharedDataSize() const { return dex_shared_data_size_; }
+    uint32_t GetQuickeningInfoSize() const { return quickening_info_size_; }
+
+    size_t GetDexSectionSize() const {
+      return sizeof(DexSectionHeader) +
+           GetDexSize() +
+           GetDexSharedDataSize();
+    }
+
+   private:
     uint32_t dex_size_;
     uint32_t dex_shared_data_size_;
-    uint32_t verifier_deps_size_;
     uint32_t quickening_info_size_;
 
-    friend class VdexFile;
+    friend class VdexFile;  // For updatig quickening_info_size_.
   };
+
+  size_t GetComputedFileSize() const {
+    size_t size = sizeof(VerifierDepsHeader);
+    const VerifierDepsHeader& header = GetVerifierDepsHeader();
+    size += header.GetVerifierDepsSize();
+    size += header.GetSizeOfChecksumsSection();
+    if (header.HasDexSection()) {
+      size += GetDexSectionHeader().GetDexSectionSize();
+      size += GetDexSectionHeader().GetQuickeningInfoSize();
+    }
+    return size;
+  }
 
   // Note: The file is called "primary" to match the naming with profiles.
   static const constexpr char* kVdexNameInDmFile = "primary.vdex";
@@ -174,24 +219,48 @@ class VdexFile {
   const uint8_t* End() const { return mmap_->End(); }
   size_t Size() const { return mmap_->Size(); }
 
-  const Header& GetHeader() const {
-    return *reinterpret_cast<const Header*>(Begin());
+  const VerifierDepsHeader& GetVerifierDepsHeader() const {
+    return *reinterpret_cast<const VerifierDepsHeader*>(Begin());
+  }
+
+  uint32_t GetDexSectionHeaderOffset() const {
+    return sizeof(VerifierDepsHeader) + GetVerifierDepsHeader().GetSizeOfChecksumsSection();
+  }
+
+  const DexSectionHeader& GetDexSectionHeader() const {
+    DCHECK(GetVerifierDepsHeader().HasDexSection());
+    return *reinterpret_cast<const DexSectionHeader*>(Begin() + GetDexSectionHeaderOffset());
+  }
+
+  const uint8_t* GetVerifierDepsStart() const {
+    const uint8_t* result = Begin() + GetDexSectionHeaderOffset();
+    if (GetVerifierDepsHeader().HasDexSection()) {
+      // When there is a dex section, the verifier deps are after it, but before the quickening.
+      return result + GetDexSectionHeader().GetDexSectionSize();
+    } else {
+      // When there is no dex section, the verifier deps are just after the header.
+      return result;
+    }
   }
 
   ArrayRef<const uint8_t> GetVerifierDepsData() const {
     return ArrayRef<const uint8_t>(
-        DexBegin() + GetHeader().GetDexSize() + GetHeader().GetDexSharedDataSize(),
-        GetHeader().GetVerifierDepsSize());
+        GetVerifierDepsStart(),
+        GetVerifierDepsHeader().GetVerifierDepsSize());
   }
 
   ArrayRef<const uint8_t> GetQuickeningInfo() const {
-    return ArrayRef<const uint8_t>(
-        GetVerifierDepsData().data() + GetHeader().GetVerifierDepsSize(),
-        GetHeader().GetQuickeningInfoSize());
+    if (GetVerifierDepsHeader().HasDexSection()) {
+      return ArrayRef<const uint8_t>(
+          GetVerifierDepsData().data() + GetVerifierDepsHeader().GetVerifierDepsSize(),
+          GetDexSectionHeader().GetQuickeningInfoSize());
+    } else {
+      return ArrayRef<const uint8_t>();
+    }
   }
 
   bool IsValid() const {
-    return mmap_->Size() >= sizeof(Header) && GetHeader().IsValid();
+    return mmap_->Size() >= sizeof(VerifierDepsHeader) && GetVerifierDepsHeader().IsValid();
   }
 
   // This method is for iterating over the dex files in the vdex. If `cursor` is null,
@@ -202,8 +271,8 @@ class VdexFile {
 
   // Get the location checksum of the dex file number `dex_file_index`.
   uint32_t GetLocationChecksum(uint32_t dex_file_index) const {
-    DCHECK_LT(dex_file_index, GetHeader().GetNumberOfDexFiles());
-    return reinterpret_cast<const uint32_t*>(Begin() + sizeof(Header))[dex_file_index];
+    DCHECK_LT(dex_file_index, GetVerifierDepsHeader().GetNumberOfDexFiles());
+    return reinterpret_cast<const uint32_t*>(Begin() + sizeof(VerifierDepsHeader))[dex_file_index];
   }
 
   // Open all the dex files contained in this vdex file.
@@ -228,7 +297,7 @@ class VdexFile {
                                              uint32_t dex_method_idx) const;
 
   bool HasDexSection() const {
-    return GetHeader().GetDexSize() != 0;
+    return GetVerifierDepsHeader().HasDexSection();
   }
 
  private:
@@ -250,11 +319,13 @@ class VdexFile {
   bool ContainsDexFile(const DexFile& dex_file) const;
 
   const uint8_t* DexBegin() const {
-    return Begin() + sizeof(Header) + GetHeader().GetSizeOfChecksumsSection();
+    DCHECK(HasDexSection());
+    return Begin() + GetDexSectionHeaderOffset() + sizeof(DexSectionHeader);
   }
 
   const uint8_t* DexEnd() const {
-    return DexBegin() + GetHeader().GetDexSize();
+    DCHECK(HasDexSection());
+    return DexBegin() + GetDexSectionHeader().GetDexSize();
   }
 
   std::unique_ptr<MemMap> mmap_;
