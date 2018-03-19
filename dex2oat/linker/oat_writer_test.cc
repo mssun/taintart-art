@@ -28,6 +28,7 @@
 #include "debug/method_debug_info.h"
 #include "dex/dex_file_loader.h"
 #include "dex/quick_compiler_callbacks.h"
+#include "dex/test_dex_file_builder.h"
 #include "dex/verification_results.h"
 #include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
@@ -45,7 +46,6 @@
 #include "oat_file-inl.h"
 #include "oat_writer.h"
 #include "scoped_thread_state_change-inl.h"
-#include "utils/test_dex_file_builder.h"
 #include "vdex_file.h"
 
 namespace art {

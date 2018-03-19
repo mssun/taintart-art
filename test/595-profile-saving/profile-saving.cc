@@ -17,10 +17,10 @@
 #include "dex/dex_file.h"
 
 #include "art_method-inl.h"
+#include "dex/method_reference.h"
 #include "jit/profile_compilation_info.h"
 #include "jit/profile_saver.h"
 #include "jni.h"
-#include "method_reference.h"
 #include "mirror/class-inl.h"
 #include "mirror/executable.h"
 #include "nativehelper/ScopedUtfChars.h"

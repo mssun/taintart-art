@@ -28,9 +28,9 @@
 #include "dex/dex_cache_resolved_classes.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_types.h"
-#include "method_reference.h"
+#include "dex/method_reference.h"
+#include "dex/type_reference.h"
 #include "mem_map.h"
-#include "type_reference.h"
 
 namespace art {
 

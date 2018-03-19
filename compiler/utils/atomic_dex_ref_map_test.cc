@@ -20,7 +20,7 @@
 
 #include "common_runtime_test.h"
 #include "dex/dex_file-inl.h"
-#include "method_reference.h"
+#include "dex/method_reference.h"
 #include "scoped_thread_state_change-inl.h"
 
 namespace art {

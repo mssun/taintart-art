@@ -23,7 +23,7 @@
 #include "arch/instruction_set_features.h"
 #include "base/array_ref.h"
 #include "base/macros.h"
-#include "method_reference.h"
+#include "dex/method_reference.h"
 
 namespace art {
 
