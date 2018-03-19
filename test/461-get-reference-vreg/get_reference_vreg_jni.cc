@@ -37,21 +37,21 @@ class TestVisitor : public StackVisitor {
     ArtMethod* m = GetMethod();
     std::string m_name(m->GetName());
 
-    if (m_name.compare("testThisWithInstanceCall") == 0) {
+    if (m_name.compare("$noinline$testThisWithInstanceCall") == 0) {
       found_method_index_ = 1;
       uint32_t value = 0;
       CHECK(GetVReg(m, 1, kReferenceVReg, &value));
       CHECK_EQ(reinterpret_cast<mirror::Object*>(value), this_value_);
       CHECK_EQ(GetThisObject(), this_value_);
-    } else if (m_name.compare("testThisWithStaticCall") == 0) {
+    } else if (m_name.compare("$noinline$testThisWithStaticCall") == 0) {
       found_method_index_ = 2;
       uint32_t value = 0;
       CHECK(GetVReg(m, 1, kReferenceVReg, &value));
-    } else if (m_name.compare("testParameter") == 0) {
+    } else if (m_name.compare("$noinline$testParameter") == 0) {
       found_method_index_ = 3;
       uint32_t value = 0;
       CHECK(GetVReg(m, 1, kReferenceVReg, &value));
-    } else if (m_name.compare("testObjectInScope") == 0) {
+    } else if (m_name.compare("$noinline$testObjectInScope") == 0) {
       found_method_index_ = 4;
       uint32_t value = 0;
       CHECK(GetVReg(m, 0, kReferenceVReg, &value));

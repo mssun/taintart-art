@@ -61,51 +61,71 @@ public class Main {
   }
 
   public static int $noinline$returnInt() {
-    if (doThrow) throw new Error("");
+    // If we are running in non-JIT mode, or were unlucky enough to get this method
+    // already JITted, skip the wait for OSR code.
+    boolean interpreting = isInInterpreter("$noinline$returnInt");
     int i = 0;
     for (; i < 100000; ++i) {
     }
-    while (!isInOsrCode("$noinline$returnInt")) {}
+    if (interpreting) {
+      while (!isInOsrCode("$noinline$returnInt")) {}
+    }
     System.out.println(i);
     return 53;
   }
 
   public static float $noinline$returnFloat() {
-    if (doThrow) throw new Error("");
+    // If we are running in non-JIT mode, or were unlucky enough to get this method
+    // already JITted, skip the wait for OSR code.
+    boolean interpreting = isInInterpreter("$noinline$returnFloat");
     int i = 0;
     for (; i < 200000; ++i) {
     }
-    while (!isInOsrCode("$noinline$returnFloat")) {}
+    if (interpreting) {
+      while (!isInOsrCode("$noinline$returnFloat")) {}
+    }
     System.out.println(i);
     return 42.2f;
   }
 
   public static double $noinline$returnDouble() {
-    if (doThrow) throw new Error("");
+    // If we are running in non-JIT mode, or were unlucky enough to get this method
+    // already JITted, skip the wait for OSR code.
+    boolean interpreting = isInInterpreter("$noinline$returnDouble");
     int i = 0;
     for (; i < 300000; ++i) {
     }
-    while (!isInOsrCode("$noinline$returnDouble")) {}
+    if (interpreting) {
+      while (!isInOsrCode("$noinline$returnDouble")) {}
+    }
     System.out.println(i);
     return Double.longBitsToDouble(0xF000000000001111L);
   }
 
   public static long $noinline$returnLong() {
-    if (doThrow) throw new Error("");
+    // If we are running in non-JIT mode, or were unlucky enough to get this method
+    // already JITted, skip the wait for OSR code.
+    boolean interpreting = isInInterpreter("$noinline$returnLong");
     int i = 0;
     for (; i < 400000; ++i) {
     }
-    while (!isInOsrCode("$noinline$returnLong")) {}
+    if (interpreting) {
+      while (!isInOsrCode("$noinline$returnLong")) {}
+    }
     System.out.println(i);
     return 0xFFFF000000001111L;
   }
 
   public static void $noinline$deopt() {
-    if (doThrow) throw new Error("");
+    // If we are running in non-JIT mode, or were unlucky enough to get this method
+    // already JITted, skip the wait for OSR code.
+    boolean interpreting = isInInterpreter("$noinline$deopt");
     int i = 0;
     for (; i < 100000; ++i) {
     }
-    while (!isInOsrCode("$noinline$deopt")) {}
+    if (interpreting) {
+      while (!isInOsrCode("$noinline$deopt")) {}
+    }
     DeoptimizationController.startDeoptimization();
   }
 
@@ -242,7 +262,6 @@ public class Main {
 
   public static void $opt$noinline$testOsrInlineLoop(String[] args) {
     // Regression test for inlining a method with a loop to a method without a loop in OSR mode.
-    if (doThrow) throw new Error();
     assertIntEquals(12, $opt$inline$testRemoveSuspendCheck(12, 5));
     // Since we cannot have a loop directly in this method, we need to force the OSR
     // compilation from native code.
@@ -280,8 +299,6 @@ public class Main {
   public static native boolean isInInterpreter(String methodName);
   public static native void ensureHasProfilingInfo(String methodName);
   public static native void ensureHasOsrCode(String methodName);
-
-  public static boolean doThrow = false;
 }
 
 class SubMain extends Main {
