@@ -16,9 +16,9 @@
 
 #include "aot_class_linker.h"
 
-#include "class_reference.h"
 #include "class_status.h"
 #include "compiler_callbacks.h"
+#include "dex/class_reference.h"
 #include "handle_scope-inl.h"
 #include "mirror/class-inl.h"
 #include "runtime.h"

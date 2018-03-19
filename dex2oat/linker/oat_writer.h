@@ -27,15 +27,15 @@
 #include "base/os.h"
 #include "base/safe_map.h"
 #include "compiler.h"
-#include "dex/compact_dex_level.h"
 #include "debug/debug_info.h"
+#include "dex/compact_dex_level.h"
+#include "dex/method_reference.h"
+#include "dex/string_reference.h"
+#include "dex/type_reference.h"
 #include "linker/relative_patcher.h"  // For RelativePatcherTargetProvider.
 #include "mem_map.h"
-#include "method_reference.h"
 #include "mirror/class.h"
 #include "oat.h"
-#include "string_reference.h"
-#include "type_reference.h"
 
 namespace art {
 

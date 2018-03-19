@@ -84,6 +84,7 @@ gensrcs {
         "dex/dex_instruction.h",
         "dex/dex_instruction_utils.h",
         "dex/invoke_type.h",
+        "dex/method_reference.h",
     ],
     output_extension: "operator_out.cc",
 }
@@ -116,10 +117,12 @@ art_cc_test {
         "dex/compact_dex_file_test.cc",
         "dex/compact_offset_table_test.cc",
         "dex/descriptors_names_test.cc",
+        "dex/test_dex_file_builder_test.cc",
         "dex/dex_file_loader_test.cc",
         "dex/dex_file_verifier_test.cc",
         "dex/dex_instruction_test.cc",
         "dex/primitive_test.cc",
+        "dex/string_reference_test.cc",
         "dex/utf_test.cc",
     ],
     shared_libs: [

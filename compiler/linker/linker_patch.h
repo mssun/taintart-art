@@ -23,7 +23,7 @@
 #include <android-base/logging.h>
 
 #include "base/bit_utils.h"
-#include "method_reference.h"
+#include "dex/method_reference.h"
 
 namespace art {
 
