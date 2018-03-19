@@ -358,40 +358,92 @@ static HInstruction* FindClippee(HInstruction* instruction,
   return instruction;
 }
 
-// Accept various saturated addition forms.
-static bool IsSaturatedAdd(DataType::Type type, int64_t lo, int64_t hi, bool is_unsigned) {
-  //     MIN(r + s, 255)        => SAT_ADD_unsigned
-  // MAX(MIN(r + s, 127), -128) => SAT_ADD_signed etc.
+// Set value range for type (or fail).
+static bool CanSetRange(DataType::Type type,
+                        /*out*/ int64_t* uhi,
+                        /*out*/ int64_t* slo,
+                        /*out*/ int64_t* shi) {
   if (DataType::Size(type) == 1) {
-    return is_unsigned
-        ? (lo <= 0 && hi == std::numeric_limits<uint8_t>::max())
-        : (lo == std::numeric_limits<int8_t>::min() &&
-           hi == std::numeric_limits<int8_t>::max());
+    *uhi = std::numeric_limits<uint8_t>::max();
+    *slo = std::numeric_limits<int8_t>::min();
+    *shi = std::numeric_limits<int8_t>::max();
+    return true;
   } else if (DataType::Size(type) == 2) {
-    return is_unsigned
-        ? (lo <= 0 && hi == std::numeric_limits<uint16_t>::max())
-        : (lo == std::numeric_limits<int16_t>::min() &&
-           hi == std::numeric_limits<int16_t>::max());
+    *uhi = std::numeric_limits<uint16_t>::max();
+    *slo = std::numeric_limits<int16_t>::min();
+    *shi = std::numeric_limits<int16_t>::max();
+    return true;
   }
   return false;
 }
 
-// Accept various saturated subtraction forms.
-static bool IsSaturatedSub(DataType::Type type, int64_t lo, int64_t hi, bool is_unsigned) {
-  //     MAX(r - s, 0)          => SAT_SUB_unsigned
-  // MIN(MAX(r - s, -128), 127) => SAT_ADD_signed etc.
-  if (DataType::Size(type) == 1) {
-    return is_unsigned
-        ? (lo == 0 && hi >= std::numeric_limits<uint8_t>::max())
-        : (lo == std::numeric_limits<int8_t>::min() &&
-           hi == std::numeric_limits<int8_t>::max());
-  } else if (DataType::Size(type) == 2) {
-    return is_unsigned
-        ? (lo == 0 && hi >= std::numeric_limits<uint16_t>::min())
-        : (lo == std::numeric_limits<int16_t>::min() &&
-           hi == std::numeric_limits<int16_t>::max());
+// Accept various saturated addition forms.
+static bool IsSaturatedAdd(HInstruction* clippee,
+                           DataType::Type type,
+                           int64_t lo,
+                           int64_t hi,
+                           bool is_unsigned) {
+  int64_t ulo = 0, uhi = 0, slo = 0, shi = 0;
+  if (!CanSetRange(type, &uhi, &slo, &shi)) {
+    return false;
   }
-  return false;
+  // Tighten the range for signed single clipping on constant.
+  if (!is_unsigned) {
+    int64_t c = 0;
+    HInstruction* notused = nullptr;
+    if (IsAddConst(clippee, &notused, &c)) {
+      // For c in proper range and narrower operand r:
+      //    MIN(r + c,  127) c > 0
+      // or MAX(r + c, -128) c < 0 (and possibly redundant bound).
+      if (0 < c && c <= shi && hi == shi) {
+        if (lo <= (slo + c)) {
+          return true;
+        }
+      } else if (slo <= c && c < 0 && lo == slo) {
+        if (hi >= (shi + c)) {
+          return true;
+        }
+      }
+    }
+  }
+  // Detect for narrower operands r and s:
+  //     MIN(r + s, 255)        => SAT_ADD_unsigned
+  // MAX(MIN(r + s, 127), -128) => SAT_ADD_signed.
+  return is_unsigned ? (lo <= ulo && hi == uhi) : (lo == slo && hi == shi);
+}
+
+// Accept various saturated subtraction forms.
+static bool IsSaturatedSub(HInstruction* clippee,
+                           DataType::Type type,
+                           int64_t lo,
+                           int64_t hi,
+                           bool is_unsigned) {
+  int64_t ulo = 0, uhi = 0, slo = 0, shi = 0;
+  if (!CanSetRange(type, &uhi, &slo, &shi)) {
+    return false;
+  }
+  // Tighten the range for signed single clipping on constant.
+  if (!is_unsigned) {
+    int64_t c = 0;
+    if (IsInt64AndGet(clippee->InputAt(0), /*out*/ &c)) {
+      // For c in proper range and narrower operand r:
+      //    MIN(c - r,  127) c > 0
+      // or MAX(c - r, -128) c < 0 (and possibly redundant bound).
+      if (0 < c && c <= shi && hi == shi) {
+        if (lo <= (c - shi)) {
+          return true;
+        }
+      } else if (slo <= c && c < 0 && lo == slo) {
+        if (hi >= (c - slo)) {
+          return true;
+        }
+      }
+    }
+  }
+  // Detect for narrower operands r and s:
+  //     MAX(r - s, 0)          => SAT_SUB_unsigned
+  // MIN(MAX(r - s, -128), 127) => SAT_ADD_signed.
+  return is_unsigned ? (lo == ulo && hi >= uhi) : (lo == slo && hi == shi);
 }
 
 // Detect reductions of the following forms,
@@ -1909,8 +1961,8 @@ bool HLoopOptimization::VectorizeSaturationIdiom(LoopNode* node,
   HInstruction* s = nullptr;
   bool is_unsigned = false;
   if (IsNarrowerOperands(clippee->InputAt(0), clippee->InputAt(1), type, &r, &s, &is_unsigned) &&
-      (is_add ? IsSaturatedAdd(type, lo, hi, is_unsigned)
-              : IsSaturatedSub(type, lo, hi, is_unsigned))) {
+      (is_add ? IsSaturatedAdd(clippee, type, lo, hi, is_unsigned)
+              : IsSaturatedSub(clippee, type, lo, hi, is_unsigned))) {
     DCHECK(r != nullptr);
     DCHECK(s != nullptr);
   } else {
