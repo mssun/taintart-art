@@ -24,8 +24,8 @@
 #include "base/bit_vector.h"
 #include "dex/dex_file.h"
 #include "dex/invoke_type.h"
+#include "dex/method_reference.h"
 #include "handle.h"
-#include "method_reference.h"
 #include "quicken_info.h"
 
 namespace art {
