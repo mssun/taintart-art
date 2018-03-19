@@ -19,9 +19,9 @@
 
 #include "boot_image_profile.h"
 #include "dex/dex_file-inl.h"
+#include "dex/method_reference.h"
+#include "dex/type_reference.h"
 #include "jit/profile_compilation_info.h"
-#include "method_reference.h"
-#include "type_reference.h"
 
 namespace art {
 
