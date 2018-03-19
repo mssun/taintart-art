@@ -43,6 +43,7 @@
 #include "mirror/object_array-inl.h"
 #include "mirror/string.h"
 #include "oat_file-inl.h"
+#include "quicken_info.h"
 #include "runtime_callbacks.h"
 #include "scoped_thread_state_change-inl.h"
 #include "vdex_file.h"
@@ -576,6 +577,24 @@ ArrayRef<const uint8_t> ArtMethod::GetQuickenedInfo() {
   }
   return oat_dex_file->GetOatFile()->GetVdexFile()->GetQuickenedInfoOf(dex_file,
                                                                        GetDexMethodIndex());
+}
+
+uint16_t ArtMethod::GetIndexFromQuickening(uint32_t dex_pc) {
+  ArrayRef<const uint8_t> data = GetQuickenedInfo();
+  if (data.empty()) {
+    return DexFile::kDexNoIndex16;
+  }
+  QuickenInfoTable table(data);
+  uint32_t quicken_index = 0;
+  for (const DexInstructionPcPair& pair : DexInstructions()) {
+    if (pair.DexPc() == dex_pc) {
+      return table.GetData(quicken_index);
+    }
+    if (QuickenInfoTable::NeedsIndexForInstruction(&pair.Inst())) {
+      ++quicken_index;
+    }
+  }
+  return DexFile::kDexNoIndex16;
 }
 
 const OatQuickMethodHeader* ArtMethod::GetOatQuickMethodHeader(uintptr_t pc) {

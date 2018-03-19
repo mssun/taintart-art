@@ -953,7 +953,8 @@
         "description": ["Failing on RI. Needs further investigating."]
     },
     {
-        "tests": ["616-cha-unloading"],
+        "tests": ["616-cha-unloading",
+                  "678-quickening"],
         "variant": "jvm",
         "description": ["Doesn't run on RI."]
     },
