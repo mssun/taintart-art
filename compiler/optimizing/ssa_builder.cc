@@ -16,8 +16,8 @@
 
 #include "ssa_builder.h"
 
-#include "bytecode_utils.h"
 #include "data_type-inl.h"
+#include "dex/bytecode_utils.h"
 #include "mirror/class-inl.h"
 #include "nodes.h"
 #include "reference_type_propagation.h"

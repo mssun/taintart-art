@@ -19,8 +19,8 @@
 
 #include "base/mutex.h"
 #include "base/safe_map.h"
+#include "dex/method_reference.h"
 #include "jit_code_cache.h"
-#include "method_reference.h"
 #include "profile_compilation_info.h"
 #include "profile_saver_options.h"
 

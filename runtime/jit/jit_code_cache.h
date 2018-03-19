@@ -25,8 +25,8 @@
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "base/safe_map.h"
+#include "dex/method_reference.h"
 #include "gc_root.h"
-#include "method_reference.h"
 
 namespace art {
 

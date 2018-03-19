@@ -24,6 +24,8 @@
 #include "base/bit_field.h"
 #include "base/bit_utils.h"
 #include "base/enums.h"
+#include "dex/string_reference.h"
+#include "dex/type_reference.h"
 #include "globals.h"
 #include "graph_visualizer.h"
 #include "locations.h"
@@ -33,8 +35,6 @@
 #include "read_barrier_option.h"
 #include "stack.h"
 #include "stack_map.h"
-#include "string_reference.h"
-#include "type_reference.h"
 #include "utils/label.h"
 
 namespace art {

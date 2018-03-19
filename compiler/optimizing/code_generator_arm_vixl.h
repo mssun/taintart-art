@@ -20,11 +20,11 @@
 #include "base/enums.h"
 #include "code_generator.h"
 #include "common_arm.h"
+#include "dex/string_reference.h"
+#include "dex/type_reference.h"
 #include "driver/compiler_options.h"
 #include "nodes.h"
 #include "parallel_move_resolver.h"
-#include "string_reference.h"
-#include "type_reference.h"
 #include "utils/arm/assembler_arm_vixl.h"
 
 // TODO(VIXL): make vixl clean wrt -Wshadow.

@@ -18,7 +18,7 @@
 #define ART_RUNTIME_COMPILER_CALLBACKS_H_
 
 #include "base/mutex.h"
-#include "class_reference.h"
+#include "dex/class_reference.h"
 #include "class_status.h"
 
 namespace art {

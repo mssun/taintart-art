@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_UTILS_TEST_DEX_FILE_BUILDER_H_
-#define ART_COMPILER_UTILS_TEST_DEX_FILE_BUILDER_H_
+#ifndef ART_LIBDEXFILE_DEX_TEST_DEX_FILE_BUILDER_H_
+#define ART_LIBDEXFILE_DEX_TEST_DEX_FILE_BUILDER_H_
 
 #include <zlib.h>
 
@@ -26,8 +26,6 @@
 
 #include <android-base/logging.h>
 
-#include "base/bit_utils.h"
-#include "dex/art_dex_file_loader.h"
 #include "dex/dex_file_loader.h"
 #include "dex/standard_dex_file.h"
 
@@ -234,7 +232,7 @@ class TestDexFileBuilder {
     static constexpr bool kVerify = false;
     static constexpr bool kVerifyChecksum = false;
     std::string error_msg;
-    const ArtDexFileLoader dex_file_loader;
+    const DexFileLoader dex_file_loader;
     std::unique_ptr<const DexFile> dex_file(dex_file_loader.Open(
         &dex_file_data_[0],
         dex_file_data_.size(),
@@ -399,4 +397,4 @@ class TestDexFileBuilder {
 
 }  // namespace art
 
-#endif  // ART_COMPILER_UTILS_TEST_DEX_FILE_BUILDER_H_
+#endif  // ART_LIBDEXFILE_DEX_TEST_DEX_FILE_BUILDER_H_
