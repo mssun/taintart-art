@@ -16,6 +16,6 @@
 
 # In order to test deoptimizing at quick-to-interpreter bridge,
 # we want to run in debuggable mode with jit compilation.
-# We also bump up the jit threshold to 10 to make sure that the method
+# We also bump up the jit threshold to 10000 to make sure that the method
 # that should be interpreted is not compiled.
-exec ${RUN} --jit --runtime-option -Xjitthreshold:10000 -Xcompiler-option --debuggable "${@}"
+exec ${RUN} "${@}" --jit --runtime-option -Xjitthreshold:10000 -Xcompiler-option --debuggable
