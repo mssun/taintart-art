@@ -23,14 +23,14 @@
 #include "common_runtime_test.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
+#include "dex/method_reference.h"
+#include "dex/type_reference.h"
 #include "handle_scope-inl.h"
 #include "jit/profile_compilation_info.h"
 #include "linear_alloc.h"
-#include "method_reference.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
 #include "scoped_thread_state_change-inl.h"
-#include "type_reference.h"
 #include "ziparchive/zip_writer.h"
 
 namespace art {

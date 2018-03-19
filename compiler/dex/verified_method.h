@@ -22,7 +22,7 @@
 #include "base/mutex.h"
 #include "base/safe_map.h"
 #include "dex/dex_file.h"
-#include "method_reference.h"
+#include "dex/method_reference.h"
 
 namespace art {
 

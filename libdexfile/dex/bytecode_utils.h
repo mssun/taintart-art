@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_BYTECODE_UTILS_H_
-#define ART_RUNTIME_BYTECODE_UTILS_H_
+#ifndef ART_LIBDEXFILE_DEX_BYTECODE_UTILS_H_
+#define ART_LIBDEXFILE_DEX_BYTECODE_UTILS_H_
 
-#include "base/arena_object.h"
+#include "base/value_object.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file.h"
 #include "dex/dex_instruction-inl.h"
@@ -144,4 +144,4 @@ inline bool IsThrowingDexInstruction(const Instruction& instruction) {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_BYTECODE_UTILS_H_
+#endif  // ART_LIBDEXFILE_DEX_BYTECODE_UTILS_H_

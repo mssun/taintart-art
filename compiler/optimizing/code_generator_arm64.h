@@ -21,11 +21,11 @@
 #include "code_generator.h"
 #include "common_arm64.h"
 #include "dex/dex_file_types.h"
+#include "dex/string_reference.h"
+#include "dex/type_reference.h"
 #include "driver/compiler_options.h"
 #include "nodes.h"
 #include "parallel_move_resolver.h"
-#include "string_reference.h"
-#include "type_reference.h"
 #include "utils/arm64/assembler_arm64.h"
 
 // TODO(VIXL): Make VIXL compile with -Wshadow.

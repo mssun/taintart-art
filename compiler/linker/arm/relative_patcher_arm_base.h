@@ -21,8 +21,8 @@
 #include <vector>
 
 #include "base/safe_map.h"
+#include "dex/method_reference.h"
 #include "linker/relative_patcher.h"
-#include "method_reference.h"
 
 namespace art {
 namespace linker {
