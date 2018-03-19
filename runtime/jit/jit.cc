@@ -717,12 +717,14 @@ void Jit::AddSamples(Thread* self, ArtMethod* method, uint16_t count, bool with_
 void Jit::MethodEntered(Thread* thread, ArtMethod* method) {
   Runtime* runtime = Runtime::Current();
   if (UNLIKELY(runtime->UseJitCompilation() && runtime->GetJit()->JitAtFirstUse())) {
-    // The compiler requires a ProfilingInfo object.
-    ProfilingInfo::Create(thread,
-                          method->GetInterfaceMethodIfProxy(kRuntimePointerSize),
-                          /* retry_allocation */ true);
-    JitCompileTask compile_task(method, JitCompileTask::kCompile);
-    compile_task.Run(thread);
+    ArtMethod* np_method = method->GetInterfaceMethodIfProxy(kRuntimePointerSize);
+    DCHECK(!np_method->IsNative());
+    if (np_method->IsCompilable()) {
+      // The compiler requires a ProfilingInfo object.
+      ProfilingInfo::Create(thread, np_method, /* retry_allocation */ true);
+      JitCompileTask compile_task(method, JitCompileTask::kCompile);
+      compile_task.Run(thread);
+    }
     return;
   }
 
