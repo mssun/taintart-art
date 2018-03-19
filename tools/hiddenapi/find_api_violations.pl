@@ -52,6 +52,10 @@ get all packages names, you should process the logcat from device boot time.
 
 Process a bugreport, rather than raw logcat
 
+=item --short|-s
+
+Output API signatures only, don't include CSV header/package names/list name.
+
 =item --help
 
 =back
@@ -62,12 +66,14 @@ my $lightgrey = 1;
 my $darkgrey = 1;
 my $black = 1;
 my $bugreport = 0;
+my $short = 0;
 my $help = 0;
 
 GetOptions("lightgrey!"  => \$lightgrey,
            "darkgrey!"   => \$darkgrey,
            "black!"      => \$black,
            "bugreport|b" => \$bugreport,
+           "short|s"     => \$short,
            "help"        => \$help)
   or pod2usage(q(-verbose) => 1);
 
@@ -90,7 +96,7 @@ if ($bugreport) {
 }
 
 my $procmap = {};
-print "package,symbol,list\n";
+print "package,symbol,list\n" unless $short;
 while (my $line = <>) {
   chomp $line;
   last if $bugreport and $line =~ m/^------ \d+\.\d+s was the duration of 'SYSTEM LOG' ------/;
@@ -110,14 +116,17 @@ while (my $line = <>) {
     }
     $procmap->{$new_pid} = $package;
   }
-  if ($tag eq "zygote" || $tag eq "zygote64") {
-    if ($msg =~ m/Accessing hidden (\w+) (L.*?) \((.*list), (.*?)\)/) {
-      my ($member_type, $symbol, $list, $access_type) = ($1, $2, $3, $4);
-      my $package = $procmap->{$pid} || "unknown($pid)";
-      print "$package,$symbol,$list\n"
-        if (($list =~ m/light/ && $lightgrey)
-          || ($list =~ m/dark/ && $darkgrey)
-          || ($list =~ m/black/ && $black));
+  if ($msg =~ m/Accessing hidden (\w+) (L.*?) \((.*list), (.*?)\)/) {
+    my ($member_type, $symbol, $list, $access_type) = ($1, $2, $3, $4);
+    my $package = $procmap->{$pid} || "unknown($pid)";
+    if (($list =~ m/light/ && $lightgrey)
+      || ($list =~ m/dark/ && $darkgrey)
+      || ($list =~ m/black/ && $black)) {
+      if ($short) {
+        print "$symbol\n";
+      } else {
+        print "$package,$symbol,$list\n"
+      }
     }
   }
 }
