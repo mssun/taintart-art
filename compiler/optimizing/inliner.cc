@@ -147,10 +147,11 @@ void HInliner::Run() {
   //   that this method is actually inlined;
   // - if a method's name contains the substring "$noinline$", do not
   //   inline that method.
-  // We limit this to AOT compilation, as the JIT may or may not inline
+  // We limit the latter to AOT compilation, as the JIT may or may not inline
   // depending on the state of classes at runtime.
-  const bool honor_inlining_directives =
-      IsCompilingWithCoreImage() && Runtime::Current()->IsAotCompiler();
+  const bool honor_noinline_directives = IsCompilingWithCoreImage();
+  const bool honor_inline_directives =
+      honor_noinline_directives && Runtime::Current()->IsAotCompiler();
 
   // Keep a copy of all blocks when starting the visit.
   ArenaVector<HBasicBlock*> blocks = graph_->GetReversePostOrder();
@@ -164,18 +165,19 @@ void HInliner::Run() {
       HInvoke* call = instruction->AsInvoke();
       // As long as the call is not intrinsified, it is worth trying to inline.
       if (call != nullptr && call->GetIntrinsic() == Intrinsics::kNone) {
-        if (honor_inlining_directives) {
+        if (honor_noinline_directives) {
           // Debugging case: directives in method names control or assert on inlining.
           std::string callee_name = outer_compilation_unit_.GetDexFile()->PrettyMethod(
               call->GetDexMethodIndex(), /* with_signature */ false);
           // Tests prevent inlining by having $noinline$ in their method names.
           if (callee_name.find("$noinline$") == std::string::npos) {
-            if (!TryInline(call)) {
+            if (!TryInline(call) && honor_inline_directives) {
               bool should_have_inlined = (callee_name.find("$inline$") != std::string::npos);
               CHECK(!should_have_inlined) << "Could not inline " << callee_name;
             }
           }
         } else {
+          DCHECK(!honor_inline_directives);
           // Normal case: try to inline.
           TryInline(call);
         }
