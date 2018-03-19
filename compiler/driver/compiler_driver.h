@@ -371,9 +371,18 @@ class CompilerDriver {
   // Is `boot_image_filename` the name of a core image (small boot
   // image used for ART testing only)?
   static bool IsCoreImageFilename(const std::string& boot_image_filename) {
-    // TODO: This is under-approximating...
-    return android::base::EndsWith(boot_image_filename, "core.art")
-        || android::base::EndsWith(boot_image_filename, "core-optimizing.art");
+    // Look for "core.art" or "core-*.art".
+    if (android::base::EndsWith(boot_image_filename, "core.art")) {
+      return true;
+    }
+    if (!android::base::EndsWith(boot_image_filename, ".art")) {
+      return false;
+    }
+    size_t dash_pos = boot_image_filename.find_last_of("-/");
+    if (dash_pos == std::string::npos || boot_image_filename[dash_pos] != '-') {
+      return false;
+    }
+    return (dash_pos >= 4u) && (boot_image_filename.compare(dash_pos - 4u, 4u, "core") == 0);
   }
 
   optimizer::DexToDexCompiler& GetDexToDexCompiler() {
