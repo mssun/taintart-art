@@ -16,6 +16,6 @@
 
 # Need to pull out the describeException ouput since that won't be there on
 # device.
-sed -e '/\t.*$/d' "$2" | sed -e '/java.lang.ArrayIndexOutOfBoundsException:.*$/d' > "$2.tmp"
+./remove_error.py "$2" "./expected_error.txt" > "$2.tmp"
 
 ./default-check "$1" "$2.tmp"
