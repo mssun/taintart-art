@@ -1,9 +1,11 @@
 LNullaryConstructorDarkGreylist;-><init>()V
 LParentClass;->fieldPublicDarkGreylist:I
+LParentClass;->fieldPublicDarkGreylistB:I
 LParentClass;->fieldPackageDarkGreylist:I
 LParentClass;->fieldProtectedDarkGreylist:I
 LParentClass;->fieldPrivateDarkGreylist:I
 LParentClass;->fieldPublicStaticDarkGreylist:I
+LParentClass;->fieldPublicStaticDarkGreylistB:I
 LParentClass;->fieldPackageStaticDarkGreylist:I
 LParentClass;->fieldProtectedStaticDarkGreylist:I
 LParentClass;->fieldPrivateStaticDarkGreylist:I

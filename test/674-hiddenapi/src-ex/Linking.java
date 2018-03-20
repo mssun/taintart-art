@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import java.lang.reflect.Method;
 import java.lang.reflect.InvocationTargetException;
 
 public class Linking {
@@ -27,12 +28,22 @@ public class Linking {
       }
       return true;
     } catch (InvocationTargetException ex) {
-      if (ex.getCause() instanceof IllegalAccessError) {
+      if (ex.getCause() instanceof NoSuchFieldError || ex.getCause() instanceof NoSuchMethodError) {
         return false;
       } else {
         throw ex;
       }
     }
+  }
+
+  public static boolean canOverride(String methodName) throws Exception {
+    // ParentClass returns only positive numbers, OverrideClass only negative.
+    // This way we can tell if OverrideClass managed to override the original
+    // method or not.
+    Method method = ParentClass.class.getDeclaredMethod(methodName);
+    int result1 = (int) method.invoke(new ParentClass());
+    int result2 = (int) method.invoke(new OverrideClass());
+    return (result1 > 0) && (result2 < 0);
   }
 }
 
@@ -66,25 +77,29 @@ class LinkFieldGetBlacklist {
 
 class LinkFieldSetWhitelist {
   public static void access(int x) {
-    new ParentClass().fieldPublicWhitelist = x;
+    // Need to use a different field from the getter to bypass DexCache.
+    new ParentClass().fieldPublicWhitelistB = x;
   }
 }
 
 class LinkFieldSetLightGreylist {
   public static void access(int x) {
-    new ParentClass().fieldPublicLightGreylist = x;
+    // Need to use a different field from the getter to bypass DexCache.
+    new ParentClass().fieldPublicLightGreylistB = x;
   }
 }
 
 class LinkFieldSetDarkGreylist {
   public static void access(int x) {
-    new ParentClass().fieldPublicDarkGreylist = x;
+    // Need to use a different field from the getter to bypass DexCache.
+    new ParentClass().fieldPublicDarkGreylistB = x;
   }
 }
 
 class LinkFieldSetBlacklist {
   public static void access(int x) {
-    new ParentClass().fieldPublicBlacklist = x;
+    // Need to use a different field from the getter to bypass DexCache.
+    new ParentClass().fieldPublicBlacklistB = x;
   }
 }
 
@@ -118,25 +133,29 @@ class LinkFieldGetStaticBlacklist {
 
 class LinkFieldSetStaticWhitelist {
   public static void access(int x) {
-    ParentClass.fieldPublicStaticWhitelist = x;
+    // Need to use a different field from the getter to bypass DexCache.
+    ParentClass.fieldPublicStaticWhitelistB = x;
   }
 }
 
 class LinkFieldSetStaticLightGreylist {
   public static void access(int x) {
-    ParentClass.fieldPublicStaticLightGreylist = x;
+    // Need to use a different field from the getter to bypass DexCache.
+    ParentClass.fieldPublicStaticLightGreylistB = x;
   }
 }
 
 class LinkFieldSetStaticDarkGreylist {
   public static void access(int x) {
-    ParentClass.fieldPublicStaticDarkGreylist = x;
+    // Need to use a different field from the getter to bypass DexCache.
+    ParentClass.fieldPublicStaticDarkGreylistB = x;
   }
 }
 
 class LinkFieldSetStaticBlacklist {
   public static void access(int x) {
-    ParentClass.fieldPublicStaticBlacklist = x;
+    // Need to use a different field from the getter to bypass DexCache.
+    ParentClass.fieldPublicStaticBlacklistB = x;
   }
 }
 
