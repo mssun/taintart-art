@@ -20,7 +20,7 @@
 #include "arch/instruction_set.h"
 #include "base/safe_map.h"
 #include "debug/method_debug_info.h"
-#include "method_reference.h"
+#include "dex/method_reference.h"
 #include "linker/relative_patcher.h"
 
 namespace art {

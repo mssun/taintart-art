@@ -19,8 +19,8 @@
 #include <memory>
 
 #include "dex/dex_file_types.h"
+#include "dex/test_dex_file_builder.h"
 #include "gtest/gtest.h"
-#include "utils/test_dex_file_builder.h"
 
 namespace art {
 

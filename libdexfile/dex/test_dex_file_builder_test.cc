@@ -16,7 +16,6 @@
 
 #include "test_dex_file_builder.h"
 
-#include "base/utils.h"
 #include "dex/dex_file-inl.h"
 #include "gtest/gtest.h"
 

@@ -24,8 +24,8 @@
 #include "base/logging.h"  // For VLOG
 #include "base/macros.h"
 #include "base/mutex.h"
-#include "bytecode_utils.h"
 #include "compiled_method.h"
+#include "dex/bytecode_utils.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_instruction-inl.h"
 #include "dex_to_dex_decompiler.h"

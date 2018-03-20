@@ -21,10 +21,10 @@
 
 #include <type_traits>
 
-#include "class_reference.h"
+#include "dex/class_reference.h"
 #include "dex/dex_file-inl.h"
-#include "method_reference.h"
-#include "type_reference.h"
+#include "dex/method_reference.h"
+#include "dex/type_reference.h"
 
 namespace art {
 

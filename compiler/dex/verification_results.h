@@ -24,8 +24,8 @@
 #include "base/macros.h"
 #include "base/mutex.h"
 #include "base/safe_map.h"
-#include "class_reference.h"
-#include "method_reference.h"
+#include "dex/class_reference.h"
+#include "dex/method_reference.h"
 #include "utils/atomic_dex_ref_map.h"
 
 namespace art {
