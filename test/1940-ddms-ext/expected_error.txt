@@ -1,0 +1,4 @@
+java.lang.ArrayIndexOutOfBoundsException: byte[] offset=12 length=55 src.length=1
+	at art.Test1940.processChunk(Native Method)
+	at art.Test1940.run(Test1940.java:156)
+	at Main.main(Main.java:19)
