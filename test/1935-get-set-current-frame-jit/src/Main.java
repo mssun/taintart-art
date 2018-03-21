@@ -64,9 +64,9 @@ public class Main {
         Main.ensureJitCompiled(IntRunner.class, "run");
         i++;
       }
-      // We shouldn't be doing OSR since we are using JVMTI and the get/set local will push us to
-      // interpreter.
-      System.out.println("isInterpreted? " + Main.isInterpreted());
+      // We shouldn't be doing OSR since we are using JVMTI and the get/set prevents OSR.
+      // Set local will also push us to interpreter but the get local may remain in compiled code.
+      System.out.println("isInOsrCode? " + (hasJit() && Main.isInOsrCode("run")));
       reportValue(TARGET);
     }
     public void waitForBusyLoopStart() { while (!inBusyLoop) {} }
@@ -159,4 +159,6 @@ public class Main {
 
   public static native void ensureJitCompiled(Class k, String f);
   public static native boolean isInterpreted();
+  public static native boolean isInOsrCode(String methodName);
+  public static native boolean hasJit();
 }
