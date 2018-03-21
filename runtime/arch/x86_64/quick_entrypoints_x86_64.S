@@ -15,6 +15,7 @@
  */
 
 #include "asm_support_x86_64.S"
+#include "interpreter/cfi_asm_support.h"
 
 #include "arch/quick_alloc_entrypoints.S"
 
@@ -2481,3 +2482,18 @@ END_MACRO
     RESTORE_SAVE_REFS_AND_ARGS_FRAME
     RETURN_OR_DELIVER_PENDING_EXCEPTION
 END_FUNCTION art_quick_invoke_polymorphic
+
+// Wrap ExecuteSwitchImpl in assembly method which specifies DEX PC for unwinding.
+//  Argument 0: RDI: The context pointer for ExecuteSwitchImpl.
+//  Argument 1: RSI: Pointer to the templated ExecuteSwitchImpl to call.
+//  Argument 2: RDX: The value of DEX PC (memory address of the methods bytecode).
+DEFINE_FUNCTION ExecuteSwitchImplAsm
+    PUSH rbx                 // Spill RBX
+    movq %rdx, %rbx          // RBX = DEX PC (callee save register)
+    CFI_DEFINE_DEX_PC_WITH_OFFSET(0 /* RAX */, 3 /* RBX */, 0)
+
+    call *%rsi               // Call the wrapped function
+
+    POP rbx                  // Restore RBX
+    ret
+END_FUNCTION ExecuteSwitchImplAsm
