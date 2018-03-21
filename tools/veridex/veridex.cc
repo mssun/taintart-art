@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 
+#include "veridex.h"
+
 #include <android-base/file.h>
 
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
+#include "resolver.h"
 
 #include <sstream>
 
@@ -108,6 +111,18 @@ class Veridex {
         return 1;
       }
     }
+
+    // Resolve classes/methods/fields defined in each dex file.
+
+    // Cache of types we've seen. This is used in case of duplicate classes.
+    TypeMap type_map;
+
+    std::vector<VeridexResolver> boot_resolvers;
+    Resolve(boot_dex_files, type_map, &boot_resolvers);
+
+    std::vector<VeridexResolver> app_resolvers;
+    Resolve(app_dex_files, type_map, &app_resolvers);
+
     return 0;
   }
 
@@ -141,6 +156,18 @@ class Veridex {
     }
 
     return true;
+  }
+
+  static void Resolve(const std::vector<std::unique_ptr<const DexFile>>& dex_files,
+                      TypeMap& type_map,
+                      std::vector<VeridexResolver>* resolvers) {
+    for (const std::unique_ptr<const DexFile>& dex_file : dex_files) {
+      resolvers->push_back(VeridexResolver(*dex_file.get(), type_map));
+    }
+
+    for (VeridexResolver& resolver : *resolvers) {
+      resolver.Run();
+    }
   }
 };
 
