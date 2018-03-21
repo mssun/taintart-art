@@ -23,21 +23,25 @@ public class ParentClass {
   int fieldPackageWhitelist = 212;
   protected int fieldProtectedWhitelist = 213;
   private int fieldPrivateWhitelist = 214;
+  public int fieldPublicWhitelistB = 215;
 
   public int fieldPublicLightGreylist = 221;
   int fieldPackageLightGreylist = 222;
   protected int fieldProtectedLightGreylist = 223;
   private int fieldPrivateLightGreylist = 224;
+  public int fieldPublicLightGreylistB = 225;
 
   public int fieldPublicDarkGreylist = 231;
   int fieldPackageDarkGreylist = 232;
   protected int fieldProtectedDarkGreylist = 233;
   private int fieldPrivateDarkGreylist = 234;
+  public int fieldPublicDarkGreylistB = 235;
 
   public int fieldPublicBlacklist = 241;
   int fieldPackageBlacklist = 242;
   protected int fieldProtectedBlacklist = 243;
   private int fieldPrivateBlacklist = 244;
+  public int fieldPublicBlacklistB = 245;
 
   // STATIC FIELD
 
@@ -45,21 +49,25 @@ public class ParentClass {
   static int fieldPackageStaticWhitelist = 112;
   protected static int fieldProtectedStaticWhitelist = 113;
   private static int fieldPrivateStaticWhitelist = 114;
+  public static int fieldPublicStaticWhitelistB = 115;
 
   public static int fieldPublicStaticLightGreylist = 121;
   static int fieldPackageStaticLightGreylist = 122;
   protected static int fieldProtectedStaticLightGreylist = 123;
   private static int fieldPrivateStaticLightGreylist = 124;
+  public static int fieldPublicStaticLightGreylistB = 125;
 
   public static int fieldPublicStaticDarkGreylist = 131;
   static int fieldPackageStaticDarkGreylist = 132;
   protected static int fieldProtectedStaticDarkGreylist = 133;
   private static int fieldPrivateStaticDarkGreylist = 134;
+  public static int fieldPublicStaticDarkGreylistB = 135;
 
   public static int fieldPublicStaticBlacklist = 141;
   static int fieldPackageStaticBlacklist = 142;
   protected static int fieldProtectedStaticBlacklist = 143;
   private static int fieldPrivateStaticBlacklist = 144;
+  public static int fieldPublicStaticBlacklistB = 145;
 
   // INSTANCE METHOD
 
@@ -130,4 +138,23 @@ public class ParentClass {
   ParentClass(float x, char y) {}
   protected ParentClass(long x, char y) {}
   private ParentClass(double x, char y) {}
+
+  // HELPERS
+
+  public int callMethodPublicWhitelist() { return methodPublicWhitelist(); }
+  public int callMethodPackageWhitelist() { return methodPackageWhitelist(); }
+  public int callMethodProtectedWhitelist() { return methodProtectedWhitelist(); }
+
+  public int callMethodPublicLightGreylist() { return methodPublicLightGreylist(); }
+  public int callMethodPackageLightGreylist() { return methodPackageLightGreylist(); }
+  public int callMethodProtectedLightGreylist() { return methodProtectedLightGreylist(); }
+
+  public int callMethodPublicDarkGreylist() { return methodPublicDarkGreylist(); }
+  public int callMethodPackageDarkGreylist() { return methodPackageDarkGreylist(); }
+  public int callMethodProtectedDarkGreylist() { return methodProtectedDarkGreylist(); }
+
+  public int callMethodPublicBlacklist() { return methodPublicBlacklist(); }
+  public int callMethodPackageBlacklist() { return methodPackageBlacklist(); }
+  public int callMethodProtectedBlacklist() { return methodProtectedBlacklist(); }
+
 }
