@@ -2338,10 +2338,6 @@ extern "C" TwoWordReturn artQuickGenericJniTrampoline(Thread* self, ArtMethod** 
   ArtMethod* called = *sp;
   DCHECK(called->IsNative()) << called->PrettyMethod(true);
   Runtime* runtime = Runtime::Current();
-  jit::Jit* jit = runtime->GetJit();
-  if (jit != nullptr) {
-    jit->AddSamples(self, called, 1u, /*with_backedges*/ false);
-  }
   uint32_t shorty_len = 0;
   const char* shorty = called->GetShorty(&shorty_len);
   bool critical_native = called->IsCriticalNative();
@@ -2366,6 +2362,12 @@ extern "C" TwoWordReturn artQuickGenericJniTrampoline(Thread* self, ArtMethod** 
   self->SetTopOfStackTagged(sp);
 
   self->VerifyStack();
+
+  // We can now walk the stack if needed by JIT GC from MethodEntered() for JIT-on-first-use.
+  jit::Jit* jit = runtime->GetJit();
+  if (jit != nullptr) {
+    jit->MethodEntered(self, called);
+  }
 
   uint32_t cookie;
   uint32_t* sp32;

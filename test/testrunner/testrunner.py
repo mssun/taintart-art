@@ -114,6 +114,7 @@ ignore_skips = False
 build = False
 gdb = False
 gdb_arg = ''
+runtime_option = ''
 stop_testrunner = False
 dex2oat_jobs = -1   # -1 corresponds to default threads for dex2oat
 run_all_configs = False
@@ -345,6 +346,10 @@ def run_tests(tests):
     options_all += ' --gdb'
     if gdb_arg:
       options_all += ' --gdb-arg ' + gdb_arg
+
+  if runtime_option:
+    for opt in runtime_option:
+      options_all += ' --runtime-option ' + opt
 
   if dex2oat_jobs != -1:
     options_all += ' --dex2oat-jobs ' + str(dex2oat_jobs)
@@ -921,6 +926,7 @@ def parse_option():
   global build
   global gdb
   global gdb_arg
+  global runtime_option
   global timeout
   global dex2oat_jobs
   global run_all_configs
@@ -933,9 +939,9 @@ def parse_option():
   global_group.add_argument('--timeout', default=timeout, type=int, dest='timeout')
   global_group.add_argument('--verbose', '-v', action='store_true', dest='verbose')
   global_group.add_argument('--dry-run', action='store_true', dest='dry_run')
-  global_group.add_argument("--skip", action="append", dest="skips", default=[],
+  global_group.add_argument("--skip", action='append', dest="skips", default=[],
                             help="Skip the given test in all circumstances.")
-  global_group.add_argument("--no-skips", dest="ignore_skips", action="store_true", default=False,
+  global_group.add_argument("--no-skips", dest="ignore_skips", action='store_true', default=False,
                             help="""Don't skip any run-test configurations listed in
                             knownfailures.json.""")
   global_group.add_argument('--no-build-dependencies',
@@ -950,6 +956,10 @@ def parse_option():
   global_group.set_defaults(build = env.ART_TEST_RUN_TEST_BUILD)
   global_group.add_argument('--gdb', action='store_true', dest='gdb')
   global_group.add_argument('--gdb-arg', dest='gdb_arg')
+  global_group.add_argument('--runtime-option', action='append', dest='runtime_option',
+                            help="""Pass an option to the runtime. Runtime options
+                            starting with a '-' must be separated by a '=', for
+                            example '--runtime-option=-Xjitthreshold:0'.""")
   global_group.add_argument('--dex2oat-jobs', type=int, dest='dex2oat_jobs',
                             help='Number of dex2oat jobs')
   global_group.add_argument('-a', '--all', action='store_true', dest='run_all',
@@ -993,6 +1003,7 @@ def parse_option():
     gdb = True
     if options['gdb_arg']:
       gdb_arg = options['gdb_arg']
+  runtime_option = options['runtime_option'];
   timeout = options['timeout']
   if options['dex2oat_jobs']:
     dex2oat_jobs = options['dex2oat_jobs']
