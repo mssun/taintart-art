@@ -136,9 +136,8 @@ HOST_OUT_EXECUTABLES = os.path.join(ANDROID_BUILD_TOP,
                                     _get_build_var("HOST_OUT_EXECUTABLES"))
 
 # Set up default values for $JACK, $DX, $SMALI, etc to the $HOST_OUT_EXECUTABLES/$name path.
-for tool in ['jack', 'dx', 'smali', 'jasmin', 'dxmerger']:
-  binary = tool if tool != 'dxmerger' else 'dexmerger'
-  os.environ.setdefault(tool.upper(), HOST_OUT_EXECUTABLES + '/' + binary)
+for tool in ['jack', 'dx', 'smali', 'jasmin', 'd8']:
+  os.environ.setdefault(tool.upper(), HOST_OUT_EXECUTABLES + '/' + tool)
 
 ANDROID_JAVA_TOOLCHAIN = os.path.join(ANDROID_BUILD_TOP,
                                      _get_build_var('ANDROID_JAVA_TOOLCHAIN'))
