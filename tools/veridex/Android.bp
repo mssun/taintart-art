@@ -15,7 +15,10 @@
 art_cc_binary {
     name: "veridex",
     host_supported: true,
-    srcs: ["veridex.cc"],
+    srcs: [
+        "resolver.cc",
+        "veridex.cc",
+    ],
     cflags: ["-Wall", "-Werror"],
     shared_libs: ["libdexfile", "libbase"],
     header_libs: [
