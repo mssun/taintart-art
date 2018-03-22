@@ -26,6 +26,28 @@
 
 namespace art {
 
+static VeriClass z_(Primitive::Type::kPrimBoolean, 0, nullptr);
+static VeriClass b_(Primitive::Type::kPrimByte, 0, nullptr);
+static VeriClass c_(Primitive::Type::kPrimChar, 0, nullptr);
+static VeriClass s_(Primitive::Type::kPrimShort, 0, nullptr);
+static VeriClass i_(Primitive::Type::kPrimInt, 0, nullptr);
+static VeriClass f_(Primitive::Type::kPrimFloat, 0, nullptr);
+static VeriClass d_(Primitive::Type::kPrimDouble, 0, nullptr);
+static VeriClass j_(Primitive::Type::kPrimLong, 0, nullptr);
+static VeriClass v_(Primitive::Type::kPrimVoid, 0, nullptr);
+
+VeriClass* VeriClass::boolean_ = &z_;
+VeriClass* VeriClass::byte_ = &b_;
+VeriClass* VeriClass::char_ = &c_;
+VeriClass* VeriClass::short_ = &s_;
+VeriClass* VeriClass::integer_ = &i_;
+VeriClass* VeriClass::float_ = &f_;
+VeriClass* VeriClass::double_ = &d_;
+VeriClass* VeriClass::long_ = &j_;
+VeriClass* VeriClass::void_ = &v_;
+// Will be set after boot classpath has been resolved.
+VeriClass* VeriClass::object_ = nullptr;
+
 struct VeridexOptions {
   const char* dex_file = nullptr;
   const char* core_stubs = nullptr;
@@ -114,14 +136,35 @@ class Veridex {
 
     // Resolve classes/methods/fields defined in each dex file.
 
-    // Cache of types we've seen. This is used in case of duplicate classes.
+    // Cache of types we've seen, for quick class name lookups.
     TypeMap type_map;
+    // Add internally defined primitives.
+    type_map["Z"] = VeriClass::boolean_;
+    type_map["B"] = VeriClass::byte_;
+    type_map["S"] = VeriClass::short_;
+    type_map["C"] = VeriClass::char_;
+    type_map["I"] = VeriClass::integer_;
+    type_map["F"] = VeriClass::float_;
+    type_map["D"] = VeriClass::double_;
+    type_map["J"] = VeriClass::long_;
+    type_map["V"] = VeriClass::void_;
 
-    std::vector<VeridexResolver> boot_resolvers;
-    Resolve(boot_dex_files, type_map, &boot_resolvers);
+    // Cache of resolvers, to easily query address in memory to VeridexResolver.
+    DexResolverMap resolver_map;
 
-    std::vector<VeridexResolver> app_resolvers;
-    Resolve(app_dex_files, type_map, &app_resolvers);
+    std::vector<std::unique_ptr<VeridexResolver>> boot_resolvers;
+    Resolve(boot_dex_files, resolver_map, type_map, &boot_resolvers);
+
+    // Now that boot classpath has been resolved, fill j.l.Object.
+    VeriClass::object_ = type_map["Ljava/lang/Object;"];
+
+    std::vector<std::unique_ptr<VeridexResolver>> app_resolvers;
+    Resolve(app_dex_files, resolver_map, type_map, &app_resolvers);
+
+    // Resolve all type_id/method_id/field_id of app dex files.
+    for (const std::unique_ptr<VeridexResolver>& resolver : app_resolvers) {
+      resolver->ResolveAll();
+    }
 
     return 0;
   }
@@ -159,14 +202,18 @@ class Veridex {
   }
 
   static void Resolve(const std::vector<std::unique_ptr<const DexFile>>& dex_files,
+                      DexResolverMap& resolver_map,
                       TypeMap& type_map,
-                      std::vector<VeridexResolver>* resolvers) {
+                      std::vector<std::unique_ptr<VeridexResolver>>* resolvers) {
     for (const std::unique_ptr<const DexFile>& dex_file : dex_files) {
-      resolvers->push_back(VeridexResolver(*dex_file.get(), type_map));
+      VeridexResolver* resolver =
+          new VeridexResolver(*dex_file.get(), resolver_map, type_map);
+      resolvers->emplace_back(resolver);
+      resolver_map[reinterpret_cast<uintptr_t>(dex_file->Begin())] = resolver;
     }
 
-    for (VeridexResolver& resolver : *resolvers) {
-      resolver.Run();
+    for (const std::unique_ptr<VeridexResolver>& resolver : *resolvers) {
+      resolver->Run();
     }
   }
 };
