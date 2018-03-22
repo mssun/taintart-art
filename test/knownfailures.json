@@ -954,7 +954,8 @@
     },
     {
         "tests": ["616-cha-unloading",
-                  "678-quickening"],
+                  "678-quickening",
+                  "679-locks"],
         "variant": "jvm",
         "description": ["Doesn't run on RI."]
     },

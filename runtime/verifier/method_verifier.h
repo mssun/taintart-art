@@ -209,12 +209,12 @@ class MethodVerifier {
 
   const RegType& ResolveCheckedClass(dex::TypeIndex class_idx)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  // Returns the method of a quick invoke or null if it cannot be found.
-  ArtMethod* GetQuickInvokedMethod(const Instruction* inst, bool is_range)
+  // Returns the method index of an invoke instruction.
+  uint16_t GetMethodIdxOfInvoke(const Instruction* inst)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  // Returns the access field of a quick field access (iget/iput-quick) or null
-  // if it cannot be found.
-  ArtField* GetQuickAccessedField() REQUIRES_SHARED(Locks::mutator_lock_);
+  // Returns the field index of a field access instruction.
+  uint16_t GetFieldIdxOfFieldAccess(const Instruction* inst, bool is_static)
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
   uint32_t GetEncounteredFailureTypes() {
     return encountered_failure_types_;
@@ -575,10 +575,6 @@ class MethodVerifier {
                            bool is_primitive, bool is_static)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  template <FieldAccessType kAccType>
-  void VerifyQuickFieldAccess(const Instruction* inst, const RegType& insn_type, bool is_primitive)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
   enum class CheckAccess {  // private.
     kYes,
     kNo,
@@ -641,9 +637,6 @@ class MethodVerifier {
                                                       MethodType method_type, bool is_range,
                                                       ArtMethod* res_method)
       REQUIRES_SHARED(Locks::mutator_lock_);
-
-  ArtMethod* VerifyInvokeVirtualQuickArgs(const Instruction* inst, bool is_range)
-  REQUIRES_SHARED(Locks::mutator_lock_);
 
   /*
    * Verify the arguments present for a call site. Returns "true" if all is well, "false" otherwise.
