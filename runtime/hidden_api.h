@@ -27,6 +27,23 @@
 namespace art {
 namespace hiddenapi {
 
+// Hidden API enforcement policy
+// This must be kept in sync with ApplicationInfo.ApiEnforcementPolicy in
+// frameworks/base/core/java/android/content/pm/ApplicationInfo.java
+enum class EnforcementPolicy {
+  kNoChecks             = 0,
+  kAllLists             = 1,  // ban anything but whitelist
+  kDarkGreyAndBlackList = 2,  // ban dark grey & blacklist
+  kBlacklistOnly        = 3,  // ban blacklist violations only
+  kMax = kBlacklistOnly,
+};
+
+inline EnforcementPolicy EnforcementPolicyFromInt(int api_policy_int) {
+  DCHECK_GE(api_policy_int, 0);
+  DCHECK_LE(api_policy_int, static_cast<int>(EnforcementPolicy::kMax));
+  return static_cast<EnforcementPolicy>(api_policy_int);
+}
+
 enum Action {
   kAllow,
   kAllowButWarn,
@@ -59,16 +76,38 @@ inline std::ostream& operator<<(std::ostream& os, AccessMethod value) {
   return os;
 }
 
+static constexpr bool EnumsEqual(EnforcementPolicy policy, HiddenApiAccessFlags::ApiList apiList) {
+  return static_cast<int>(policy) == static_cast<int>(apiList);
+}
+
 inline Action GetMemberAction(uint32_t access_flags) {
-  switch (HiddenApiAccessFlags::DecodeFromRuntime(access_flags)) {
-    case HiddenApiAccessFlags::kWhitelist:
-      return kAllow;
-    case HiddenApiAccessFlags::kLightGreylist:
-      return kAllowButWarn;
-    case HiddenApiAccessFlags::kDarkGreylist:
-      return kAllowButWarnAndToast;
-    case HiddenApiAccessFlags::kBlacklist:
-      return kDeny;
+  EnforcementPolicy policy = Runtime::Current()->GetHiddenApiEnforcementPolicy();
+  if (policy == EnforcementPolicy::kNoChecks) {
+    // Exit early. Nothing to enforce.
+    return kAllow;
+  }
+
+  HiddenApiAccessFlags::ApiList api_list = HiddenApiAccessFlags::DecodeFromRuntime(access_flags);
+  if (api_list == HiddenApiAccessFlags::kWhitelist) {
+    return kAllow;
+  }
+  // The logic below relies on equality of values in the enums EnforcementPolicy and
+  // HiddenApiAccessFlags::ApiList, and their ordering. Assert that this is as expected.
+  static_assert(
+      EnumsEqual(EnforcementPolicy::kAllLists, HiddenApiAccessFlags::kLightGreylist) &&
+      EnumsEqual(EnforcementPolicy::kDarkGreyAndBlackList, HiddenApiAccessFlags::kDarkGreylist) &&
+      EnumsEqual(EnforcementPolicy::kBlacklistOnly, HiddenApiAccessFlags::kBlacklist),
+      "Mismatch between EnforcementPolicy and ApiList enums");
+  static_assert(
+      EnforcementPolicy::kAllLists < EnforcementPolicy::kDarkGreyAndBlackList &&
+      EnforcementPolicy::kDarkGreyAndBlackList < EnforcementPolicy::kBlacklistOnly,
+      "EnforcementPolicy values ordering not correct");
+  if (static_cast<int>(policy) > static_cast<int>(api_list)) {
+    return api_list == HiddenApiAccessFlags::kDarkGreylist
+        ? kAllowButWarnAndToast
+        : kAllowButWarn;
+  } else {
+    return kDeny;
   }
 }
 
@@ -107,12 +146,6 @@ inline bool ShouldBlockAccessToMember(T* member,
                                       AccessMethod access_method)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(member != nullptr);
-  Runtime* runtime = Runtime::Current();
-
-  if (!runtime->AreHiddenApiChecksEnabled()) {
-    // Exit early. Nothing to enforce.
-    return false;
-  }
 
   Action action = GetMemberAction(member->GetAccessFlags());
   if (action == kAllow) {
@@ -133,13 +166,15 @@ inline bool ShouldBlockAccessToMember(T* member,
   // We do this regardless of whether we block the access or not.
   WarnAboutMemberAccess(member, access_method);
 
-  // Block access if on blacklist.
   if (action == kDeny) {
+    // Block access
     return true;
   }
 
   // Allow access to this member but print a warning.
   DCHECK(action == kAllowButWarn || action == kAllowButWarnAndToast);
+
+  Runtime* runtime = Runtime::Current();
 
   // Depending on a runtime flag, we might move the member into whitelist and
   // skip the warning the next time the member is accessed.
@@ -150,7 +185,7 @@ inline bool ShouldBlockAccessToMember(T* member,
 
   // If this action requires a UI warning, set the appropriate flag.
   if (action == kAllowButWarnAndToast || runtime->ShouldAlwaysSetHiddenApiWarningFlag()) {
-    Runtime::Current()->SetPendingHiddenApiWarning(true);
+    runtime->SetPendingHiddenApiWarning(true);
   }
 
   return false;
