@@ -718,10 +718,11 @@ void Jit::MethodEntered(Thread* thread, ArtMethod* method) {
   Runtime* runtime = Runtime::Current();
   if (UNLIKELY(runtime->UseJitCompilation() && runtime->GetJit()->JitAtFirstUse())) {
     ArtMethod* np_method = method->GetInterfaceMethodIfProxy(kRuntimePointerSize);
-    DCHECK(!np_method->IsNative());
     if (np_method->IsCompilable()) {
-      // The compiler requires a ProfilingInfo object.
-      ProfilingInfo::Create(thread, np_method, /* retry_allocation */ true);
+      if (!np_method->IsNative()) {
+        // The compiler requires a ProfilingInfo object for non-native methods.
+        ProfilingInfo::Create(thread, np_method, /* retry_allocation */ true);
+      }
       JitCompileTask compile_task(method, JitCompileTask::kCompile);
       compile_task.Run(thread);
     }
