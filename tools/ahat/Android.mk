@@ -37,23 +37,10 @@ LOCAL_COMPATIBILITY_SUITE := general-tests
 
 include $(BUILD_HOST_JAVA_LIBRARY)
 AHAT_JAR := $(LOCAL_BUILT_MODULE)
-AHAT_API := $(intermediates.COMMON)/ahat_api.txt
-AHAT_REMOVED_API := $(intermediates.COMMON)/ahat_removed_api.txt
 
 # --- api check for ahat.jar ----------
-include $(CLEAR_VARS)
-LOCAL_SRC_FILES := $(call all-java-files-under, src/main)
-LOCAL_IS_HOST_MODULE := true
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE_CLASS := JAVA_LIBRARIES
-LOCAL_MODULE := ahat
-LOCAL_DROIDDOC_OPTIONS := \
-  -stubpackages com.android.ahat:com.android.ahat.* \
-  -api $(AHAT_API) \
-  -removedApi $(AHAT_REMOVED_API)
-LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR := external/doclava/res/assets/templates-sdk
-include $(BUILD_DROIDDOC)
-$(AHAT_API): $(full_target)
+AHAT_API := $(INTERNAL_PLATFORM_AHAT_API_FILE)
+AHAT_REMOVED_API := $(INTERNAL_PLATFORM_AHAT_REMOVED_API_FILE)
 
 $(eval $(call check-api, \
   ahat-check-api, \
