@@ -49,8 +49,8 @@
 
 namespace art {
 
-// Returns true if the first non-ClassClass caller up the stack is in boot class path.
-static bool IsCallerInBootClassPath(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_) {
+// Returns true if the first non-ClassClass caller up the stack is in a platform dex file.
+static bool IsCallerInPlatformDex(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_) {
   // Walk the stack and find the first frame not from java.lang.Class.
   // This is very expensive. Save this till the last.
   struct FirstNonClassClassCallerVisitor : public StackVisitor {
@@ -82,7 +82,7 @@ static bool IsCallerInBootClassPath(Thread* self) REQUIRES_SHARED(Locks::mutator
   FirstNonClassClassCallerVisitor visitor(self);
   visitor.WalkStack();
   return visitor.caller != nullptr &&
-         visitor.caller->GetDeclaringClass()->IsBootStrapClassLoaded();
+         hiddenapi::IsCallerInPlatformDex(visitor.caller->GetDeclaringClass());
 }
 
 // Returns true if the first non-ClassClass caller up the stack is not allowed to
@@ -90,7 +90,7 @@ static bool IsCallerInBootClassPath(Thread* self) REQUIRES_SHARED(Locks::mutator
 ALWAYS_INLINE static bool ShouldEnforceHiddenApi(Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   hiddenapi::EnforcementPolicy policy = Runtime::Current()->GetHiddenApiEnforcementPolicy();
-  return policy != hiddenapi::EnforcementPolicy::kNoChecks && !IsCallerInBootClassPath(self);
+  return policy != hiddenapi::EnforcementPolicy::kNoChecks && !IsCallerInPlatformDex(self);
 }
 
 // Returns true if the first non-ClassClass caller up the stack should not be
@@ -99,7 +99,7 @@ template<typename T>
 ALWAYS_INLINE static bool ShouldBlockAccessToMember(T* member, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return hiddenapi::ShouldBlockAccessToMember(
-      member, self, IsCallerInBootClassPath, hiddenapi::kReflection);
+      member, self, IsCallerInPlatformDex, hiddenapi::kReflection);
 }
 
 // Returns true if a class member should be discoverable with reflection given
