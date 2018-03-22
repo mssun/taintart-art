@@ -2013,4 +2013,37 @@ TEST_F(Dex2oatTest, QuickenedInput) {
   ASSERT_EQ(vdex_unquickened->FlushCloseOrErase(), 0) << "Could not flush and close";
 }
 
+// Test that compact dex generation with invalid dex files doesn't crash dex2oat. b/75970654
+TEST_F(Dex2oatTest, CompactDexInvalidSource) {
+  ScratchFile invalid_dex;
+  {
+    FILE* file = fdopen(invalid_dex.GetFd(), "w+b");
+    ZipWriter writer(file);
+    writer.StartEntry("classes.dex", ZipWriter::kAlign32);
+    DexFile::Header header = {};
+    StandardDexFile::WriteMagic(header.magic_);
+    StandardDexFile::WriteCurrentVersion(header.magic_);
+    header.file_size_ = 4 * KB;
+    header.data_size_ = 4 * KB;
+    header.data_off_ = 10 * MB;
+    header.map_off_ = 10 * MB;
+    header.class_defs_off_ = 10 * MB;
+    header.class_defs_size_ = 10000;
+    ASSERT_GE(writer.WriteBytes(&header, sizeof(header)), 0);
+    writer.FinishEntry();
+    writer.Finish();
+    ASSERT_EQ(invalid_dex.GetFile()->Flush(), 0);
+  }
+  const std::string dex_location = invalid_dex.GetFilename();
+  const std::string odex_location = GetOdexDir() + "/output.odex";
+  std::string error_msg;
+  int status = GenerateOdexForTestWithStatus(
+      {dex_location},
+      odex_location,
+      CompilerFilter::kQuicken,
+      &error_msg,
+      { "--compact-dex-level=fast" });
+  ASSERT_TRUE(WIFEXITED(status) && WEXITSTATUS(status) != 0) << status << " " << output_;
+}
+
 }  // namespace art
