@@ -35,6 +35,11 @@ namespace art {
 // TODO: Maybe give this a better name.
 class Barrier {
  public:
+  enum LockHandling {
+    kAllowHoldingLocks,
+    kDisallowHoldingLocks,
+  };
+
   explicit Barrier(int count);
   virtual ~Barrier();
 
@@ -50,7 +55,9 @@ class Barrier {
   // If these calls are made in that situation, the offending thread is likely to go back
   // to sleep, resulting in a deadlock.
 
-  // Increment the count by delta, wait on condition if count is non zero.
+  // Increment the count by delta, wait on condition if count is non zero.  If LockHandling is
+  // kAllowHoldingLocks we will not check that all locks are released when waiting.
+  template <Barrier::LockHandling locks = kDisallowHoldingLocks>
   void Increment(Thread* self, int delta) REQUIRES(!lock_);
 
   // Increment the count by delta, wait on condition if count is non zero, with a timeout. Returns

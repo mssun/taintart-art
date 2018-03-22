@@ -42,6 +42,7 @@
 #include "dex/dex_file_types.h"
 #include "dex/modifiers.h"
 #include "events-inl.h"
+#include "gc_root-inl.h"
 #include "jit/jit.h"
 #include "jni_internal.h"
 #include "mirror/class-inl.h"
@@ -546,13 +547,12 @@ jvmtiError MethodUtil::IsMethodSynthetic(jvmtiEnv* env, jmethodID m, jboolean* i
 
 class CommonLocalVariableClosure : public art::Closure {
  public:
-  CommonLocalVariableClosure(art::Thread* caller,
-                             jint depth,
-                             jint slot)
-      : result_(ERR(INTERNAL)), caller_(caller), depth_(depth), slot_(slot) {}
+  CommonLocalVariableClosure(jint depth, jint slot)
+      : result_(ERR(INTERNAL)), depth_(depth), slot_(slot) {}
 
   void Run(art::Thread* self) OVERRIDE REQUIRES(art::Locks::mutator_lock_) {
     art::Locks::mutator_lock_->AssertSharedHeld(art::Thread::Current());
+    art::ScopedAssertNoThreadSuspension sants("CommonLocalVariableClosure::Run");
     std::unique_ptr<art::Context> context(art::Context::Create());
     FindFrameAtDepthVisitor visitor(self, context.get(), depth_);
     visitor.WalkStack();
@@ -597,17 +597,17 @@ class CommonLocalVariableClosure : public art::Closure {
     }
   }
 
-  jvmtiError GetResult() const {
+  virtual jvmtiError GetResult() {
     return result_;
   }
 
  protected:
   virtual jvmtiError Execute(art::ArtMethod* method, art::StackVisitor& visitor)
-      REQUIRES(art::Locks::mutator_lock_) = 0;
+      REQUIRES_SHARED(art::Locks::mutator_lock_) = 0;
   virtual jvmtiError GetTypeError(art::ArtMethod* method,
                                   art::Primitive::Type type,
                                   const std::string& descriptor)
-      REQUIRES(art::Locks::mutator_lock_)  = 0;
+      REQUIRES_SHARED(art::Locks::mutator_lock_)  = 0;
 
   jvmtiError GetSlotType(art::ArtMethod* method,
                          uint32_t dex_pc,
@@ -674,25 +674,35 @@ class CommonLocalVariableClosure : public art::Closure {
   }
 
   jvmtiError result_;
-  art::Thread* caller_;
   jint depth_;
   jint slot_;
 };
 
 class GetLocalVariableClosure : public CommonLocalVariableClosure {
  public:
-  GetLocalVariableClosure(art::Thread* caller,
-                          jint depth,
+  GetLocalVariableClosure(jint depth,
                           jint slot,
                           art::Primitive::Type type,
                           jvalue* val)
-      : CommonLocalVariableClosure(caller, depth, slot), type_(type), val_(val) {}
+      : CommonLocalVariableClosure(depth, slot),
+        type_(type),
+        val_(val),
+        obj_val_(nullptr) {}
+
+  virtual jvmtiError GetResult() REQUIRES_SHARED(art::Locks::mutator_lock_) {
+    if (result_ == OK && type_ == art::Primitive::kPrimNot) {
+      val_->l = obj_val_.IsNull()
+          ? nullptr
+          : art::Thread::Current()->GetJniEnv()->AddLocalReference<jobject>(obj_val_.Read());
+    }
+    return CommonLocalVariableClosure::GetResult();
+  }
 
  protected:
   jvmtiError GetTypeError(art::ArtMethod* method ATTRIBUTE_UNUSED,
                           art::Primitive::Type slot_type,
                           const std::string& descriptor ATTRIBUTE_UNUSED)
-      OVERRIDE REQUIRES(art::Locks::mutator_lock_) {
+      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
     switch (slot_type) {
       case art::Primitive::kPrimByte:
       case art::Primitive::kPrimChar:
@@ -712,7 +722,7 @@ class GetLocalVariableClosure : public CommonLocalVariableClosure {
   }
 
   jvmtiError Execute(art::ArtMethod* method, art::StackVisitor& visitor)
-      OVERRIDE REQUIRES(art::Locks::mutator_lock_) {
+      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
     switch (type_) {
       case art::Primitive::kPrimNot: {
         uint32_t ptr_val;
@@ -722,8 +732,8 @@ class GetLocalVariableClosure : public CommonLocalVariableClosure {
                              &ptr_val)) {
           return ERR(OPAQUE_FRAME);
         }
-        art::ObjPtr<art::mirror::Object> obj(reinterpret_cast<art::mirror::Object*>(ptr_val));
-        val_->l = obj.IsNull() ? nullptr : caller_->GetJniEnv()->AddLocalReference<jobject>(obj);
+        obj_val_ = art::GcRoot<art::mirror::Object>(
+            reinterpret_cast<art::mirror::Object*>(ptr_val));
         break;
       }
       case art::Primitive::kPrimInt:
@@ -760,6 +770,7 @@ class GetLocalVariableClosure : public CommonLocalVariableClosure {
  private:
   art::Primitive::Type type_;
   jvalue* val_;
+  art::GcRoot<art::mirror::Object> obj_val_;
 };
 
 jvmtiError MethodUtil::GetLocalVariableGeneric(jvmtiEnv* env ATTRIBUTE_UNUSED,
@@ -782,9 +793,12 @@ jvmtiError MethodUtil::GetLocalVariableGeneric(jvmtiEnv* env ATTRIBUTE_UNUSED,
     art::Locks::thread_list_lock_->ExclusiveUnlock(self);
     return err;
   }
-  GetLocalVariableClosure c(self, depth, slot, type, val);
-  // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
-  if (!ThreadUtil::RequestGCSafeSynchronousCheckpoint(target, &c)) {
+  art::ScopedAssertNoThreadSuspension sants("Performing GetLocalVariable");
+  GetLocalVariableClosure c(depth, slot, type, val);
+  // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.  We
+  // need to avoid suspending as we wait for the checkpoint to occur since we are (potentially)
+  // transfering a GcRoot across threads.
+  if (!target->RequestSynchronousCheckpoint(&c, art::ThreadState::kRunnable)) {
     return ERR(THREAD_NOT_ALIVE);
   } else {
     return c.GetResult();
@@ -798,13 +812,13 @@ class SetLocalVariableClosure : public CommonLocalVariableClosure {
                           jint slot,
                           art::Primitive::Type type,
                           jvalue val)
-      : CommonLocalVariableClosure(caller, depth, slot), type_(type), val_(val) {}
+      : CommonLocalVariableClosure(depth, slot), caller_(caller), type_(type), val_(val) {}
 
  protected:
   jvmtiError GetTypeError(art::ArtMethod* method,
                           art::Primitive::Type slot_type,
                           const std::string& descriptor)
-      OVERRIDE REQUIRES(art::Locks::mutator_lock_) {
+      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
     switch (slot_type) {
       case art::Primitive::kPrimNot: {
         if (type_ != art::Primitive::kPrimNot) {
@@ -840,7 +854,7 @@ class SetLocalVariableClosure : public CommonLocalVariableClosure {
   }
 
   jvmtiError Execute(art::ArtMethod* method, art::StackVisitor& visitor)
-      OVERRIDE REQUIRES(art::Locks::mutator_lock_) {
+      OVERRIDE REQUIRES_SHARED(art::Locks::mutator_lock_) {
     switch (type_) {
       case art::Primitive::kPrimNot: {
         uint32_t ptr_val;
@@ -887,6 +901,7 @@ class SetLocalVariableClosure : public CommonLocalVariableClosure {
   }
 
  private:
+  art::Thread* caller_;
   art::Primitive::Type type_;
   jvalue val_;
 };
@@ -913,7 +928,7 @@ jvmtiError MethodUtil::SetLocalVariableGeneric(jvmtiEnv* env ATTRIBUTE_UNUSED,
   }
   SetLocalVariableClosure c(self, depth, slot, type, val);
   // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
-  if (!ThreadUtil::RequestGCSafeSynchronousCheckpoint(target, &c)) {
+  if (!target->RequestSynchronousCheckpoint(&c)) {
     return ERR(THREAD_NOT_ALIVE);
   } else {
     return c.GetResult();
@@ -922,13 +937,13 @@ jvmtiError MethodUtil::SetLocalVariableGeneric(jvmtiEnv* env ATTRIBUTE_UNUSED,
 
 class GetLocalInstanceClosure : public art::Closure {
  public:
-  GetLocalInstanceClosure(art::Thread* caller, jint depth, jobject* val)
+  explicit GetLocalInstanceClosure(jint depth)
       : result_(ERR(INTERNAL)),
-        caller_(caller),
         depth_(depth),
-        val_(val) {}
+        val_(nullptr) {}
 
   void Run(art::Thread* self) OVERRIDE REQUIRES(art::Locks::mutator_lock_) {
+    art::ScopedAssertNoThreadSuspension sants("GetLocalInstanceClosure::Run");
     art::Locks::mutator_lock_->AssertSharedHeld(art::Thread::Current());
     std::unique_ptr<art::Context> context(art::Context::Create());
     FindFrameAtDepthVisitor visitor(self, context.get(), depth_);
@@ -939,19 +954,22 @@ class GetLocalInstanceClosure : public art::Closure {
       return;
     }
     result_ = OK;
-    art::ObjPtr<art::mirror::Object> obj = visitor.GetThisObject();
-    *val_ = obj.IsNull() ? nullptr : caller_->GetJniEnv()->AddLocalReference<jobject>(obj);
+    val_ = art::GcRoot<art::mirror::Object>(visitor.GetThisObject());
   }
 
-  jvmtiError GetResult() const {
+  jvmtiError GetResult(jobject* data_out) REQUIRES_SHARED(art::Locks::mutator_lock_) {
+    if (result_ == OK) {
+      *data_out = val_.IsNull()
+          ? nullptr
+          : art::Thread::Current()->GetJniEnv()->AddLocalReference<jobject>(val_.Read());
+    }
     return result_;
   }
 
  private:
   jvmtiError result_;
-  art::Thread* caller_;
   jint depth_;
-  jobject* val_;
+  art::GcRoot<art::mirror::Object> val_;
 };
 
 jvmtiError MethodUtil::GetLocalInstance(jvmtiEnv* env ATTRIBUTE_UNUSED,
@@ -970,12 +988,15 @@ jvmtiError MethodUtil::GetLocalInstance(jvmtiEnv* env ATTRIBUTE_UNUSED,
     art::Locks::thread_list_lock_->ExclusiveUnlock(self);
     return err;
   }
-  GetLocalInstanceClosure c(self, depth, data);
-  // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
-  if (!ThreadUtil::RequestGCSafeSynchronousCheckpoint(target, &c)) {
+  art::ScopedAssertNoThreadSuspension sants("Performing GetLocalInstance");
+  GetLocalInstanceClosure c(depth);
+  // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.  We
+  // need to avoid suspending as we wait for the checkpoint to occur since we are (potentially)
+  // transfering a GcRoot across threads.
+  if (!target->RequestSynchronousCheckpoint(&c, art::ThreadState::kRunnable)) {
     return ERR(THREAD_NOT_ALIVE);
   } else {
-    return c.GetResult();
+    return c.GetResult(data);
   }
 }
 
