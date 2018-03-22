@@ -341,8 +341,26 @@ function make_dexmerge() {
     shift
   done
 
-  # Should have at least 1 dex_files_to_merge here, otherwise dxmerger will print the help.
-  ${DXMERGER} "$dst_file" "${dex_files_to_merge[@]}"
+  # Skip merge if we are not merging anything. IE: input = output.
+  if [[ "${#dex_files_to_merge[@]}" -eq "1" ]]; then
+    local single_input=${dex_files_to_merge[0]}
+    if [[ "$dst_file" != "$single_input" ]]; then
+     mv "$single_input" "$dst_file";
+     return
+    fi
+  fi
+
+  # We assume the dexer did all the API level checks and just merge away.
+  mkdir d8_merge_out
+  ${DXMERGER} --min-api 1000 --output ./d8_merge_out "${dex_files_to_merge[@]}"
+
+  if [[ -e "./d8_merge_out/classes2.dex" ]]; then
+    echo "Cannot merge all dex files into a single dex"
+    exit 1
+  fi
+
+  mv ./d8_merge_out/classes.dex "$dst_file";
+  rmdir d8_merge_out
 }
 
 function make_hiddenapi() {
