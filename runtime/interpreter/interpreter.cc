@@ -243,11 +243,13 @@ static inline JValue Execute(
     const CodeItemDataAccessor& accessor,
     ShadowFrame& shadow_frame,
     JValue result_register,
-    bool stay_in_interpreter = false) REQUIRES_SHARED(Locks::mutator_lock_) {
+    bool stay_in_interpreter = false,
+    bool from_deoptimize = false) REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(!shadow_frame.GetMethod()->IsAbstract());
   DCHECK(!shadow_frame.GetMethod()->IsNative());
-  if (LIKELY(shadow_frame.GetDexPC() == 0)) {  // Entering the method, but not via deoptimization.
+  if (LIKELY(!from_deoptimize)) {  // Entering the method, but not via deoptimization.
     if (kIsDebugBuild) {
+      CHECK_EQ(shadow_frame.GetDexPC(), 0u);
       self->AssertNoPendingException();
     }
     instrumentation::Instrumentation* instrumentation = Runtime::Current()->GetInstrumentation();
@@ -568,7 +570,12 @@ void EnterInterpreterFromDeoptimize(Thread* self,
     }
     if (new_dex_pc != dex::kDexNoIndex) {
       shadow_frame->SetDexPC(new_dex_pc);
-      value = Execute(self, accessor, *shadow_frame, value);
+      value = Execute(self,
+                      accessor,
+                      *shadow_frame,
+                      value,
+                      /* stay_in_interpreter */ true,
+                      /* from_deoptimize */ true);
     }
     ShadowFrame* old_frame = shadow_frame;
     shadow_frame = shadow_frame->GetLink();
