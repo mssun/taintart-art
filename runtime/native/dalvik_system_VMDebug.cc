@@ -89,17 +89,27 @@ static void VMDebug_resetAllocCount(JNIEnv*, jclass, jint kinds) {
 
 static void VMDebug_startMethodTracingDdmsImpl(JNIEnv*, jclass, jint bufferSize, jint flags,
                                                jboolean samplingEnabled, jint intervalUs) {
-  Trace::Start("[DDMS]", -1, bufferSize, flags, Trace::TraceOutputMode::kDDMS,
-               samplingEnabled ? Trace::TraceMode::kSampling : Trace::TraceMode::kMethodTracing,
-               intervalUs);
+  Trace::StartDDMS(bufferSize,
+                   flags,
+                   samplingEnabled ? Trace::TraceMode::kSampling : Trace::TraceMode::kMethodTracing,
+                   intervalUs);
 }
 
-static void VMDebug_startMethodTracingFd(JNIEnv* env, jclass, jstring javaTraceFilename,
-                                         jint javaFd, jint bufferSize, jint flags,
-                                         jboolean samplingEnabled, jint intervalUs,
+static void VMDebug_startMethodTracingFd(JNIEnv* env,
+                                         jclass,
+                                         jstring javaTraceFilename ATTRIBUTE_UNUSED,
+                                         jint javaFd,
+                                         jint bufferSize,
+                                         jint flags,
+                                         jboolean samplingEnabled,
+                                         jint intervalUs,
                                          jboolean streamingOutput) {
   int originalFd = javaFd;
   if (originalFd < 0) {
+    ScopedObjectAccess soa(env);
+    soa.Self()->ThrowNewExceptionF("Ljava/lang/RuntimeException;",
+                                   "Trace fd is invalid: %d",
+                                   originalFd);
     return;
   }
 
@@ -107,18 +117,20 @@ static void VMDebug_startMethodTracingFd(JNIEnv* env, jclass, jstring javaTraceF
   if (fd < 0) {
     ScopedObjectAccess soa(env);
     soa.Self()->ThrowNewExceptionF("Ljava/lang/RuntimeException;",
-                                   "dup(%d) failed: %s", originalFd, strerror(errno));
+                                   "dup(%d) failed: %s",
+                                   originalFd,
+                                   strerror(errno));
     return;
   }
 
-  ScopedUtfChars traceFilename(env, javaTraceFilename);
-  if (traceFilename.c_str() == nullptr) {
-    return;
-  }
+  // Ignore the traceFilename.
   Trace::TraceOutputMode outputMode = streamingOutput
                                           ? Trace::TraceOutputMode::kStreaming
                                           : Trace::TraceOutputMode::kFile;
-  Trace::Start(traceFilename.c_str(), fd, bufferSize, flags, outputMode,
+  Trace::Start(fd,
+               bufferSize,
+               flags,
+               outputMode,
                samplingEnabled ? Trace::TraceMode::kSampling : Trace::TraceMode::kMethodTracing,
                intervalUs);
 }
@@ -130,7 +142,10 @@ static void VMDebug_startMethodTracingFilename(JNIEnv* env, jclass, jstring java
   if (traceFilename.c_str() == nullptr) {
     return;
   }
-  Trace::Start(traceFilename.c_str(), -1, bufferSize, flags, Trace::TraceOutputMode::kFile,
+  Trace::Start(traceFilename.c_str(),
+               bufferSize,
+               flags,
+               Trace::TraceOutputMode::kFile,
                samplingEnabled ? Trace::TraceMode::kSampling : Trace::TraceMode::kMethodTracing,
                intervalUs);
 }

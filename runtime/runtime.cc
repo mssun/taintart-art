@@ -839,7 +839,6 @@ bool Runtime::Start() {
   if (trace_config_.get() != nullptr && trace_config_->trace_file != "") {
     ScopedThreadStateChange tsc(self, kWaitingForMethodTracingStart);
     Trace::Start(trace_config_->trace_file.c_str(),
-                 -1,
                  static_cast<int>(trace_config_->trace_file_size),
                  0,
                  trace_config_->trace_output_mode,
