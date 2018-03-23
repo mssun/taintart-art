@@ -205,6 +205,12 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::Open(const std::string& locatio
                                                  error_msg,
                                                  std::make_unique<MemMapContainer>(std::move(map)),
                                                  /*verify_result*/ nullptr);
+  // Opening CompactDex is only supported from vdex files.
+  if (dex_file != nullptr && dex_file->IsCompactDexFile()) {
+    *error_msg = StringPrintf("Opening CompactDex file '%s' is only supported from vdex files",
+                              location.c_str());
+    return nullptr;
+  }
   return dex_file;
 }
 
@@ -329,6 +335,12 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::OpenFile(int fd,
                                                  std::make_unique<MemMapContainer>(std::move(map)),
                                                  /*verify_result*/ nullptr);
 
+  // Opening CompactDex is only supported from vdex files.
+  if (dex_file != nullptr && dex_file->IsCompactDexFile()) {
+    *error_msg = StringPrintf("Opening CompactDex file '%s' is only supported from vdex files",
+                              location.c_str());
+    return nullptr;
+  }
   return dex_file;
 }
 
@@ -397,6 +409,11 @@ std::unique_ptr<const DexFile> ArtDexFileLoader::OpenOneDexFileFromZip(
                                                  error_msg,
                                                  std::make_unique<MemMapContainer>(std::move(map)),
                                                  &verify_result);
+  if (dex_file != nullptr && dex_file->IsCompactDexFile()) {
+    *error_msg = StringPrintf("Opening CompactDex file '%s' is only supported from vdex files",
+                              location.c_str());
+    return nullptr;
+  }
   if (dex_file == nullptr) {
     if (verify_result == VerifyResult::kVerifyNotAttempted) {
       *error_code = ZipOpenErrorCode::kDexFileError;
