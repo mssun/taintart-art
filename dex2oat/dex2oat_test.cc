@@ -2046,4 +2046,51 @@ TEST_F(Dex2oatTest, CompactDexInvalidSource) {
   ASSERT_TRUE(WIFEXITED(status) && WEXITSTATUS(status) != 0) << status << " " << output_;
 }
 
+// Test that dex2oat with a CompactDex file in the APK fails.
+TEST_F(Dex2oatTest, CompactDexInZip) {
+  CompactDexFile::Header header = {};
+  CompactDexFile::WriteMagic(header.magic_);
+  CompactDexFile::WriteCurrentVersion(header.magic_);
+  header.file_size_ = sizeof(CompactDexFile::Header);
+  header.data_off_ = 10 * MB;
+  header.map_off_ = 10 * MB;
+  header.class_defs_off_ = 10 * MB;
+  header.class_defs_size_ = 10000;
+  // Create a zip containing the invalid dex.
+  ScratchFile invalid_dex_zip;
+  {
+    FILE* file = fdopen(invalid_dex_zip.GetFd(), "w+b");
+    ZipWriter writer(file);
+    writer.StartEntry("classes.dex", ZipWriter::kCompress);
+    ASSERT_GE(writer.WriteBytes(&header, sizeof(header)), 0);
+    writer.FinishEntry();
+    writer.Finish();
+    ASSERT_EQ(invalid_dex_zip.GetFile()->Flush(), 0);
+  }
+  // Create the dex file directly.
+  ScratchFile invalid_dex;
+  {
+    ASSERT_GE(invalid_dex.GetFile()->WriteFully(&header, sizeof(header)), 0);
+    ASSERT_EQ(invalid_dex.GetFile()->Flush(), 0);
+  }
+  std::string error_msg;
+  int status = 0u;
+
+  status = GenerateOdexForTestWithStatus(
+      { invalid_dex_zip.GetFilename() },
+      GetOdexDir() + "/output_apk.odex",
+      CompilerFilter::kQuicken,
+      &error_msg,
+      { "--compact-dex-level=fast" });
+  ASSERT_TRUE(WIFEXITED(status) && WEXITSTATUS(status) != 0) << status << " " << output_;
+
+  status = GenerateOdexForTestWithStatus(
+      { invalid_dex.GetFilename() },
+      GetOdexDir() + "/output.odex",
+      CompilerFilter::kQuicken,
+      &error_msg,
+      { "--compact-dex-level=fast" });
+  ASSERT_TRUE(WIFEXITED(status) && WEXITSTATUS(status) != 0) << status << " " << output_;
+}
+
 }  // namespace art
