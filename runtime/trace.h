@@ -33,6 +33,10 @@
 #include "globals.h"
 #include "instrumentation.h"
 
+namespace unix_file {
+class FdFile;
+}  // namespace unix_file
+
 namespace art {
 
 class ArtField;
@@ -115,10 +119,37 @@ class Trace FINAL : public instrumentation::InstrumentationListener {
 
   static void SetDefaultClockSource(TraceClockSource clock_source);
 
-  static void Start(const char* trace_filename, int trace_fd, size_t buffer_size, int flags,
-                    TraceOutputMode output_mode, TraceMode trace_mode, int interval_us)
+  static void Start(const char* trace_filename,
+                    size_t buffer_size,
+                    int flags,
+                    TraceOutputMode output_mode,
+                    TraceMode trace_mode,
+                    int interval_us)
       REQUIRES(!Locks::mutator_lock_, !Locks::thread_list_lock_, !Locks::thread_suspend_count_lock_,
                !Locks::trace_lock_);
+  static void Start(int trace_fd,
+                    size_t buffer_size,
+                    int flags,
+                    TraceOutputMode output_mode,
+                    TraceMode trace_mode,
+                    int interval_us)
+      REQUIRES(!Locks::mutator_lock_, !Locks::thread_list_lock_, !Locks::thread_suspend_count_lock_,
+               !Locks::trace_lock_);
+  static void Start(std::unique_ptr<unix_file::FdFile>&& file,
+                    size_t buffer_size,
+                    int flags,
+                    TraceOutputMode output_mode,
+                    TraceMode trace_mode,
+                    int interval_us)
+      REQUIRES(!Locks::mutator_lock_, !Locks::thread_list_lock_, !Locks::thread_suspend_count_lock_,
+               !Locks::trace_lock_);
+  static void StartDDMS(size_t buffer_size,
+                        int flags,
+                        TraceMode trace_mode,
+                        int interval_us)
+      REQUIRES(!Locks::mutator_lock_, !Locks::thread_list_lock_, !Locks::thread_suspend_count_lock_,
+               !Locks::trace_lock_);
+
   static void Pause() REQUIRES(!Locks::trace_lock_, !Locks::thread_list_lock_);
   static void Resume() REQUIRES(!Locks::trace_lock_);
 
@@ -212,8 +243,11 @@ class Trace FINAL : public instrumentation::InstrumentationListener {
   static bool IsTracingEnabled() REQUIRES(!Locks::trace_lock_);
 
  private:
-  Trace(File* trace_file, const char* trace_name, size_t buffer_size, int flags,
-        TraceOutputMode output_mode, TraceMode trace_mode);
+  Trace(File* trace_file,
+        size_t buffer_size,
+        int flags,
+        TraceOutputMode output_mode,
+        TraceMode trace_mode);
 
   // The sampling interval in microseconds is passed as an argument.
   static void* RunSamplingThread(void* arg) REQUIRES(!Locks::trace_lock_);
@@ -318,7 +352,6 @@ class Trace FINAL : public instrumentation::InstrumentationListener {
   int interval_us_;
 
   // Streaming mode data.
-  std::string streaming_file_name_;
   Mutex* streaming_lock_;
   std::map<const DexFile*, DexIndexBitSet*> seen_methods_;
   std::unique_ptr<ThreadIDBitSet> seen_threads_;
