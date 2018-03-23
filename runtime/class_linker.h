@@ -152,6 +152,8 @@ class ClassLinker {
     kClassRootsMax,
   };
 
+  static constexpr bool kAppImageMayContainStrings = false;
+
   explicit ClassLinker(InternTable* intern_table);
   virtual ~ClassLinker();
 
