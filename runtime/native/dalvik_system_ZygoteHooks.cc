@@ -162,19 +162,24 @@ static void CollectNonDebuggableClasses() REQUIRES(!Locks::mutator_lock_) {
 
 // Must match values in com.android.internal.os.Zygote.
 enum {
-  DEBUG_ENABLE_JDWP               = 1,
-  DEBUG_ENABLE_CHECKJNI           = 1 << 1,
-  DEBUG_ENABLE_ASSERT             = 1 << 2,
-  DEBUG_ENABLE_SAFEMODE           = 1 << 3,
-  DEBUG_ENABLE_JNI_LOGGING        = 1 << 4,
-  DEBUG_GENERATE_DEBUG_INFO       = 1 << 5,
-  DEBUG_ALWAYS_JIT                = 1 << 6,
-  DEBUG_NATIVE_DEBUGGABLE         = 1 << 7,
-  DEBUG_JAVA_DEBUGGABLE           = 1 << 8,
-  DISABLE_VERIFIER                = 1 << 9,
-  ONLY_USE_SYSTEM_OAT_FILES       = 1 << 10,
-  ENABLE_HIDDEN_API_CHECKS        = 1 << 11,
-  DEBUG_GENERATE_MINI_DEBUG_INFO  = 1 << 12,
+  DEBUG_ENABLE_JDWP                  = 1,
+  DEBUG_ENABLE_CHECKJNI              = 1 << 1,
+  DEBUG_ENABLE_ASSERT                = 1 << 2,
+  DEBUG_ENABLE_SAFEMODE              = 1 << 3,
+  DEBUG_ENABLE_JNI_LOGGING           = 1 << 4,
+  DEBUG_GENERATE_DEBUG_INFO          = 1 << 5,
+  DEBUG_ALWAYS_JIT                   = 1 << 6,
+  DEBUG_NATIVE_DEBUGGABLE            = 1 << 7,
+  DEBUG_JAVA_DEBUGGABLE              = 1 << 8,
+  DISABLE_VERIFIER                   = 1 << 9,
+  ONLY_USE_SYSTEM_OAT_FILES          = 1 << 10,
+  DEBUG_GENERATE_MINI_DEBUG_INFO     = 1 << 11,
+  HIDDEN_API_ENFORCEMENT_POLICY_MASK = (1 << 12)
+                                     | (1 << 13),
+
+  // bits to shift (flags & HIDDEN_API_ENFORCEMENT_POLICY_MASK) by to get a value
+  // corresponding to hiddenapi::EnforcementPolicy
+  API_ENFORCEMENT_POLICY_SHIFT = CTZ(HIDDEN_API_ENFORCEMENT_POLICY_MASK),
 };
 
 static uint32_t EnableDebugFeatures(uint32_t runtime_flags) {
@@ -285,7 +290,8 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
   // Our system thread ID, etc, has changed so reset Thread state.
   thread->InitAfterFork();
   runtime_flags = EnableDebugFeatures(runtime_flags);
-  bool do_hidden_api_checks = false;
+  hiddenapi::EnforcementPolicy api_enforcement_policy = hiddenapi::EnforcementPolicy::kNoChecks;
+  bool dedupe_hidden_api_warnings = true;
 
   if ((runtime_flags & DISABLE_VERIFIER) != 0) {
     Runtime::Current()->DisableVerifier();
@@ -297,10 +303,9 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
     runtime_flags &= ~ONLY_USE_SYSTEM_OAT_FILES;
   }
 
-  if ((runtime_flags & ENABLE_HIDDEN_API_CHECKS) != 0) {
-    do_hidden_api_checks = true;
-    runtime_flags &= ~ENABLE_HIDDEN_API_CHECKS;
-  }
+  api_enforcement_policy = hiddenapi::EnforcementPolicyFromInt(
+      (runtime_flags & HIDDEN_API_ENFORCEMENT_POLICY_MASK) >> API_ENFORCEMENT_POLICY_SHIFT);
+  runtime_flags &= ~HIDDEN_API_ENFORCEMENT_POLICY_MASK;
 
   if (runtime_flags != 0) {
     LOG(ERROR) << StringPrintf("Unknown bits set in runtime_flags: %#x", runtime_flags);
@@ -350,11 +355,13 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
     }
   }
 
+  bool do_hidden_api_checks = api_enforcement_policy != hiddenapi::EnforcementPolicy::kNoChecks;
   DCHECK(!(is_system_server && do_hidden_api_checks))
-      << "SystemServer should be forked with ENABLE_HIDDEN_API_CHECKS";
+      << "SystemServer should be forked with EnforcementPolicy::kDisable";
   DCHECK(!(is_zygote && do_hidden_api_checks))
-      << "Child zygote processes should be forked with ENABLE_HIDDEN_API_CHECKS";
-  Runtime::Current()->SetHiddenApiChecksEnabled(do_hidden_api_checks);
+      << "Child zygote processes should be forked with EnforcementPolicy::kDisable";
+  Runtime::Current()->SetHiddenApiEnforcementPolicy(api_enforcement_policy);
+  Runtime::Current()->SetDedupeHiddenApiWarnings(dedupe_hidden_api_warnings);
 
   // Clear the hidden API warning flag, in case it was set.
   Runtime::Current()->SetPendingHiddenApiWarning(false);
