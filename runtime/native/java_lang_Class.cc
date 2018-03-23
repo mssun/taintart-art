@@ -89,8 +89,8 @@ static bool IsCallerInBootClassPath(Thread* self) REQUIRES_SHARED(Locks::mutator
 // access hidden APIs. This can be *very* expensive. Never call this in a loop.
 ALWAYS_INLINE static bool ShouldEnforceHiddenApi(Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  return Runtime::Current()->AreHiddenApiChecksEnabled() &&
-         !IsCallerInBootClassPath(self);
+  hiddenapi::EnforcementPolicy policy = Runtime::Current()->GetHiddenApiEnforcementPolicy();
+  return policy != hiddenapi::EnforcementPolicy::kNoChecks && !IsCallerInBootClassPath(self);
 }
 
 // Returns true if the first non-ClassClass caller up the stack should not be

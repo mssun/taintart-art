@@ -16,6 +16,7 @@
 
 #include "class_linker.h"
 #include "dex/art_dex_file_loader.h"
+#include "hidden_api.h"
 #include "jni.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
@@ -27,7 +28,7 @@ namespace Test674HiddenApi {
 
 extern "C" JNIEXPORT void JNICALL Java_Main_init(JNIEnv*, jclass) {
   Runtime* runtime = Runtime::Current();
-  runtime->SetHiddenApiChecksEnabled(true);
+  runtime->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kBlacklistOnly);
   runtime->SetDedupeHiddenApiWarnings(false);
   runtime->AlwaysSetHiddenApiWarningFlag();
 }
