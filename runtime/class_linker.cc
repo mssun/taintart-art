@@ -5863,14 +5863,6 @@ bool ClassLinker::LinkVirtualMethods(
       // smaller as we go on.
       uint32_t hash_index = hash_table.FindAndRemove(&super_method_name_comparator);
       if (hash_index != hash_table.GetNotFoundIndex()) {
-        // Run a check whether we are going to override a method which is hidden
-        // to `klass`, but ignore the result as we only warn at the moment.
-        // We cannot do this test earlier because we need to establish that
-        // a method is being overridden first. ShouldBlockAccessToMember would
-        // print bogus warnings otherwise.
-        hiddenapi::ShouldBlockAccessToMember(
-            super_method, klass->GetClassLoader(), hiddenapi::kOverride);
-
         ArtMethod* virtual_method = klass->GetVirtualMethodDuringLinking(
             hash_index, image_pointer_size_);
         if (super_method->IsFinal()) {
