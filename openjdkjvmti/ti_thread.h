@@ -134,16 +134,6 @@ class ThreadUtil {
     REQUIRES(!art::Locks::user_code_suspension_lock_,
              !art::Locks::thread_suspend_count_lock_);
 
-  // This will request a synchronous checkpoint in such a way as to prevent gc races if a local
-  // variable is taken from one thread's stack and placed in the stack of another thread.
-  // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution. This is
-  // due to the fact that Thread::Current() needs to go to sleep to allow the targeted thread to
-  // execute the checkpoint for us if it is Runnable.
-  static bool RequestGCSafeSynchronousCheckpoint(art::Thread* thr, art::Closure* function)
-      REQUIRES_SHARED(art::Locks::mutator_lock_)
-      RELEASE(art::Locks::thread_list_lock_)
-      REQUIRES(!art::Locks::thread_suspend_count_lock_);
-
  private:
   // We need to make sure only one thread tries to suspend threads at a time so we can get the
   // 'suspend-only-once' behavior the spec requires. Internally, ART considers suspension to be a
