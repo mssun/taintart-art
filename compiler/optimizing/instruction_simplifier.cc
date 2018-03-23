@@ -852,7 +852,7 @@ void InstructionSimplifierVisitor::VisitBooleanNot(HBooleanNot* bool_not) {
 static HInstruction* NewIntegralAbs(ArenaAllocator* allocator,
                                     HInstruction* x,
                                     HInstruction* cursor) {
-  DataType::Type type = x->GetType();
+  DataType::Type type = DataType::Kind(x->GetType());
   DCHECK(type == DataType::Type::kInt32 || type == DataType::Type::kInt64);
   HAbs* abs = new (allocator) HAbs(type, x, cursor->GetDexPc());
   cursor->GetBlock()->InsertInstructionBefore(abs, cursor);
@@ -865,7 +865,7 @@ static HInstruction* NewIntegralMinMax(ArenaAllocator* allocator,
                                        HInstruction* y,
                                        HInstruction* cursor,
                                        bool is_min) {
-  DataType::Type type = x->GetType();
+  DataType::Type type = DataType::Kind(x->GetType());
   DCHECK(type == DataType::Type::kInt32 || type == DataType::Type::kInt64);
   HBinaryOperation* minmax = nullptr;
   if (is_min) {
@@ -939,9 +939,9 @@ void InstructionSimplifierVisitor::VisitSelect(HSelect* select) {
     DataType::Type t_type = true_value->GetType();
     DataType::Type f_type = false_value->GetType();
     // Here we have a <cmp> b ? true_value : false_value.
-    // Test if both values are same-typed int or long.
-    if (t_type == f_type &&
-        (t_type == DataType::Type::kInt32 || t_type == DataType::Type::kInt64)) {
+    // Test if both values are compatible integral types (resulting
+    // MIN/MAX/ABS type will be int or long, like the condition).
+    if (DataType::IsIntegralType(t_type) && DataType::Kind(t_type) == DataType::Kind(f_type)) {
       // Try to replace typical integral MIN/MAX/ABS constructs.
       if ((cmp == kCondLT || cmp == kCondLE || cmp == kCondGT || cmp == kCondGE) &&
           ((a == true_value && b == false_value) ||
