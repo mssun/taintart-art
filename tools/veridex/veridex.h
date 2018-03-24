@@ -47,6 +47,21 @@ class VeriClass {
     return dimensions_ != 0;
   }
 
+  Primitive::Type GetKind() const { return kind_; }
+  uint8_t GetDimensions() const { return dimensions_; }
+  const DexFile::ClassDef* GetClassDef() const { return class_def_; }
+
+  static VeriClass* object_;
+  static VeriClass* boolean_;
+  static VeriClass* byte_;
+  static VeriClass* char_;
+  static VeriClass* short_;
+  static VeriClass* integer_;
+  static VeriClass* float_;
+  static VeriClass* double_;
+  static VeriClass* long_;
+  static VeriClass* void_;
+
  private:
   Primitive::Type kind_;
   uint8_t dimensions_;
@@ -65,6 +80,9 @@ using VeriField = const uint8_t*;
  */
 using VeriMethod = const uint8_t*;
 
+/**
+ * Map from name to VeriClass to quickly lookup classes.
+ */
 using TypeMap = std::map<std::string, VeriClass*>;
 
 }  // namespace art
