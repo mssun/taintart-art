@@ -104,7 +104,11 @@ class ClassLoaderContext {
   //    - the class loader from the same position have the same classpath
   //      (the order and checksum of the dex files matches)
   // This should be called after OpenDexFiles().
-  bool VerifyClassLoaderContextMatch(const std::string& context_spec) const;
+  // Names are only verified if verify_names is true.
+  // Checksums are only verified if verify_checksums is true.
+  bool VerifyClassLoaderContextMatch(const std::string& context_spec,
+                                     bool verify_names = true,
+                                     bool verify_checksums = true) const;
 
   // Creates the class loader context from the given string.
   // The format: ClassLoaderType1[ClasspathElem1:ClasspathElem2...];ClassLoaderType2[...]...
