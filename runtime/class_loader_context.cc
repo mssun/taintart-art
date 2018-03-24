@@ -649,12 +649,16 @@ static bool IsAbsoluteLocation(const std::string& location) {
   return !location.empty() && location[0] == '/';
 }
 
-bool ClassLoaderContext::VerifyClassLoaderContextMatch(const std::string& context_spec) const {
-  DCHECK(dex_files_open_attempted_);
-  DCHECK(dex_files_open_result_);
+bool ClassLoaderContext::VerifyClassLoaderContextMatch(const std::string& context_spec,
+                                                       bool verify_names,
+                                                       bool verify_checksums) const {
+  if (verify_names || verify_checksums) {
+    DCHECK(dex_files_open_attempted_);
+    DCHECK(dex_files_open_result_);
+  }
 
   ClassLoaderContext expected_context;
-  if (!expected_context.Parse(context_spec, /*parse_checksums*/ true)) {
+  if (!expected_context.Parse(context_spec, verify_checksums)) {
     LOG(WARNING) << "Invalid class loader context: " << context_spec;
     return false;
   }
@@ -693,8 +697,14 @@ bool ClassLoaderContext::VerifyClassLoaderContextMatch(const std::string& contex
       return false;
     }
 
-    DCHECK_EQ(info.classpath.size(), info.checksums.size());
-    DCHECK_EQ(expected_info.classpath.size(), expected_info.checksums.size());
+    if (verify_checksums) {
+      DCHECK_EQ(info.classpath.size(), info.checksums.size());
+      DCHECK_EQ(expected_info.classpath.size(), expected_info.checksums.size());
+    }
+
+    if (!verify_names) {
+      continue;
+    }
 
     for (size_t k = 0; k < info.classpath.size(); k++) {
       // Compute the dex location that must be compared.
