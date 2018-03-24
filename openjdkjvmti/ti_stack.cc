@@ -484,7 +484,7 @@ jvmtiError StackUtil::GetThreadListStackTraces(jvmtiEnv* env,
     *stack_info_ptr = nullptr;
     return ERR(NONE);
   }
-  if (stack_info_ptr == nullptr || stack_info_ptr == nullptr) {
+  if (thread_list == nullptr || stack_info_ptr == nullptr) {
     return ERR(NULL_POINTER);
   }
 
@@ -971,7 +971,7 @@ jvmtiError StackUtil::GetOwnedMonitorInfo(jvmtiEnv* env,
                                           jthread thread,
                                           jint* owned_monitor_count_ptr,
                                           jobject** owned_monitors_ptr) {
-  if (owned_monitors_ptr == nullptr || owned_monitors_ptr == nullptr) {
+  if (owned_monitor_count_ptr == nullptr || owned_monitors_ptr == nullptr) {
     return ERR(NULL_POINTER);
   }
   auto handle_fun = [&] (art::ScopedObjectAccess& soa, MonitorVisitor& visitor)
