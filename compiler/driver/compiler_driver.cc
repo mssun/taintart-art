@@ -2317,6 +2317,7 @@ class InitializeClassVisitor : public CompilationVisitor {
             // The boot image case doesn't need to recursively initialize the dependencies with
             // special logic since the class linker already does this.
             can_init_static_fields =
+                ClassLinker::kAppImageMayContainStrings &&
                 !soa.Self()->IsExceptionPending() &&
                 is_superclass_initialized &&
                 NoClinitInDependency(klass, soa.Self(), &class_loader);
