@@ -16,6 +16,7 @@ art_cc_binary {
     name: "veridex",
     host_supported: true,
     srcs: [
+        "hidden_api.cc",
         "resolver.cc",
         "veridex.cc",
     ],
