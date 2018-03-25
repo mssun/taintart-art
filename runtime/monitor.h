@@ -130,7 +130,7 @@ class Monitor {
   bool IsLocked() REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!monitor_lock_);
 
   bool HasHashCode() const {
-    return hash_code_.LoadRelaxed() != 0;
+    return hash_code_.load(std::memory_order_relaxed) != 0;
   }
 
   MonitorId GetMonitorId() const {

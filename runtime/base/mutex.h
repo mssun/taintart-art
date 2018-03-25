@@ -224,7 +224,7 @@ class BaseMutex {
  public:
   bool HasEverContended() const {
     if (kLogLockContentions) {
-      return contention_log_data_->contention_count.LoadSequentiallyConsistent() > 0;
+      return contention_log_data_->contention_count.load(std::memory_order_seq_cst) > 0;
     }
     return false;
   }

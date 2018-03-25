@@ -496,7 +496,7 @@ class Heap {
 
   // Returns the number of bytes currently allocated.
   size_t GetBytesAllocated() const {
-    return num_bytes_allocated_.LoadSequentiallyConsistent();
+    return num_bytes_allocated_.load(std::memory_order_seq_cst);
   }
 
   // Returns the number of objects currently allocated.
@@ -546,7 +546,7 @@ class Heap {
   // Returns how much free memory we have until we need to grow the heap to perform an allocation.
   // Similar to GetFreeMemoryUntilGC. Implements java.lang.Runtime.freeMemory.
   size_t GetFreeMemory() const {
-    size_t byte_allocated = num_bytes_allocated_.LoadSequentiallyConsistent();
+    size_t byte_allocated = num_bytes_allocated_.load(std::memory_order_seq_cst);
     size_t total_memory = GetTotalMemory();
     // Make sure we don't get a negative number.
     return total_memory - std::min(total_memory, byte_allocated);
@@ -775,11 +775,11 @@ class Heap {
   // Allocation tracking support
   // Callers to this function use double-checked locking to ensure safety on allocation_records_
   bool IsAllocTrackingEnabled() const {
-    return alloc_tracking_enabled_.LoadRelaxed();
+    return alloc_tracking_enabled_.load(std::memory_order_relaxed);
   }
 
   void SetAllocTrackingEnabled(bool enabled) REQUIRES(Locks::alloc_tracker_lock_) {
-    alloc_tracking_enabled_.StoreRelaxed(enabled);
+    alloc_tracking_enabled_.store(enabled, std::memory_order_relaxed);
   }
 
   AllocRecordObjectMap* GetAllocationRecords() const
@@ -825,7 +825,7 @@ class Heap {
   void SetGcPauseListener(GcPauseListener* l);
   // Get the currently installed gc pause listener, or null.
   GcPauseListener* GetGcPauseListener() {
-    return gc_pause_listener_.LoadAcquire();
+    return gc_pause_listener_.load(std::memory_order_acquire);
   }
   // Remove a gc pause listener. Note: the listener must not be deleted, as for performance
   // reasons, we assume it stays valid when we read it (so that we don't require a lock).

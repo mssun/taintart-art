@@ -53,14 +53,14 @@ class ClassTable {
    public:
     TableSlot() : data_(0u) {}
 
-    TableSlot(const TableSlot& copy) : data_(copy.data_.LoadRelaxed()) {}
+    TableSlot(const TableSlot& copy) : data_(copy.data_.load(std::memory_order_relaxed)) {}
 
     explicit TableSlot(ObjPtr<mirror::Class> klass);
 
     TableSlot(ObjPtr<mirror::Class> klass, uint32_t descriptor_hash);
 
     TableSlot& operator=(const TableSlot& copy) {
-      data_.StoreRelaxed(copy.data_.LoadRelaxed());
+      data_.store(copy.data_.load(std::memory_order_relaxed), std::memory_order_relaxed);
       return *this;
     }
 
@@ -69,7 +69,7 @@ class ClassTable {
     }
 
     uint32_t Hash() const {
-      return MaskHash(data_.LoadRelaxed());
+      return MaskHash(data_.load(std::memory_order_relaxed));
     }
 
     static uint32_t MaskHash(uint32_t hash) {

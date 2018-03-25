@@ -43,7 +43,7 @@ static inline bool byte_cas(uint8_t old_value, uint8_t new_value, uint8_t* addre
   Atomic<uintptr_t>* word_atomic = reinterpret_cast<Atomic<uintptr_t>*>(address);
 
   // Word with the byte we are trying to cas cleared.
-  const uintptr_t cur_word = word_atomic->LoadRelaxed() &
+  const uintptr_t cur_word = word_atomic->load(std::memory_order_relaxed) &
       ~(static_cast<uintptr_t>(0xFF) << shift_in_bits);
   const uintptr_t old_word = cur_word | (static_cast<uintptr_t>(old_value) << shift_in_bits);
   const uintptr_t new_word = cur_word | (static_cast<uintptr_t>(new_value) << shift_in_bits);

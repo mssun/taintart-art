@@ -729,7 +729,7 @@ int64_t JdwpState::LastDebuggerActivity() {
     return -1;
   }
 
-  int64_t last = last_activity_time_ms_.LoadSequentiallyConsistent();
+  int64_t last = last_activity_time_ms_.load(std::memory_order_seq_cst);
 
   /* initializing or in the middle of something? */
   if (last == 0) {

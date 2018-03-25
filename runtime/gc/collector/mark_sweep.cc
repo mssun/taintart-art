@@ -116,21 +116,21 @@ void MarkSweep::InitializePhase() {
   mark_stack_ = heap_->GetMarkStack();
   DCHECK(mark_stack_ != nullptr);
   immune_spaces_.Reset();
-  no_reference_class_count_.StoreRelaxed(0);
-  normal_count_.StoreRelaxed(0);
-  class_count_.StoreRelaxed(0);
-  object_array_count_.StoreRelaxed(0);
-  other_count_.StoreRelaxed(0);
-  reference_count_.StoreRelaxed(0);
-  large_object_test_.StoreRelaxed(0);
-  large_object_mark_.StoreRelaxed(0);
-  overhead_time_ .StoreRelaxed(0);
-  work_chunks_created_.StoreRelaxed(0);
-  work_chunks_deleted_.StoreRelaxed(0);
-  mark_null_count_.StoreRelaxed(0);
-  mark_immune_count_.StoreRelaxed(0);
-  mark_fastpath_count_.StoreRelaxed(0);
-  mark_slowpath_count_.StoreRelaxed(0);
+  no_reference_class_count_.store(0, std::memory_order_relaxed);
+  normal_count_.store(0, std::memory_order_relaxed);
+  class_count_.store(0, std::memory_order_relaxed);
+  object_array_count_.store(0, std::memory_order_relaxed);
+  other_count_.store(0, std::memory_order_relaxed);
+  reference_count_.store(0, std::memory_order_relaxed);
+  large_object_test_.store(0, std::memory_order_relaxed);
+  large_object_mark_.store(0, std::memory_order_relaxed);
+  overhead_time_ .store(0, std::memory_order_relaxed);
+  work_chunks_created_.store(0, std::memory_order_relaxed);
+  work_chunks_deleted_.store(0, std::memory_order_relaxed);
+  mark_null_count_.store(0, std::memory_order_relaxed);
+  mark_immune_count_.store(0, std::memory_order_relaxed);
+  mark_fastpath_count_.store(0, std::memory_order_relaxed);
+  mark_slowpath_count_.store(0, std::memory_order_relaxed);
   {
     // TODO: I don't think we should need heap bitmap lock to Get the mark bitmap.
     ReaderMutexLock mu(Thread::Current(), *Locks::heap_bitmap_lock_);
@@ -724,7 +724,7 @@ class MarkSweep::MarkStackTask : public Task {
         if (kUseFinger) {
           std::atomic_thread_fence(std::memory_order_seq_cst);
           if (reinterpret_cast<uintptr_t>(ref) >=
-              static_cast<uintptr_t>(mark_sweep_->atomic_finger_.LoadRelaxed())) {
+              static_cast<uintptr_t>(mark_sweep_->atomic_finger_.load(std::memory_order_relaxed))) {
             return;
           }
         }
@@ -1046,7 +1046,7 @@ void MarkSweep::RecursiveMark() {
           // This function does not handle heap end increasing, so we must use the space end.
           uintptr_t begin = reinterpret_cast<uintptr_t>(space->Begin());
           uintptr_t end = reinterpret_cast<uintptr_t>(space->End());
-          atomic_finger_.StoreRelaxed(AtomicInteger::MaxValue());
+          atomic_finger_.store(AtomicInteger::MaxValue(), std::memory_order_relaxed);
 
           // Create a few worker tasks.
           const size_t n = thread_count * 2;
@@ -1405,8 +1405,8 @@ void MarkSweep::ProcessMarkStackParallel(size_t thread_count) {
   thread_pool->Wait(self, true, true);
   thread_pool->StopWorkers(self);
   mark_stack_->Reset();
-  CHECK_EQ(work_chunks_created_.LoadSequentiallyConsistent(),
-           work_chunks_deleted_.LoadSequentiallyConsistent())
+  CHECK_EQ(work_chunks_created_.load(std::memory_order_seq_cst),
+           work_chunks_deleted_.load(std::memory_order_seq_cst))
       << " some of the work chunks were leaked";
 }
 
@@ -1462,28 +1462,32 @@ void MarkSweep::FinishPhase() {
   if (kCountScannedTypes) {
     VLOG(gc)
         << "MarkSweep scanned"
-        << " no reference objects=" << no_reference_class_count_.LoadRelaxed()
-        << " normal objects=" << normal_count_.LoadRelaxed()
-        << " classes=" << class_count_.LoadRelaxed()
-        << " object arrays=" << object_array_count_.LoadRelaxed()
-        << " references=" << reference_count_.LoadRelaxed()
-        << " other=" << other_count_.LoadRelaxed();
+        << " no reference objects=" << no_reference_class_count_.load(std::memory_order_relaxed)
+        << " normal objects=" << normal_count_.load(std::memory_order_relaxed)
+        << " classes=" << class_count_.load(std::memory_order_relaxed)
+        << " object arrays=" << object_array_count_.load(std::memory_order_relaxed)
+        << " references=" << reference_count_.load(std::memory_order_relaxed)
+        << " other=" << other_count_.load(std::memory_order_relaxed);
   }
   if (kCountTasks) {
-    VLOG(gc) << "Total number of work chunks allocated: " << work_chunks_created_.LoadRelaxed();
+    VLOG(gc)
+        << "Total number of work chunks allocated: "
+        << work_chunks_created_.load(std::memory_order_relaxed);
   }
   if (kMeasureOverhead) {
-    VLOG(gc) << "Overhead time " << PrettyDuration(overhead_time_.LoadRelaxed());
+    VLOG(gc) << "Overhead time " << PrettyDuration(overhead_time_.load(std::memory_order_relaxed));
   }
   if (kProfileLargeObjects) {
-    VLOG(gc) << "Large objects tested " << large_object_test_.LoadRelaxed()
-        << " marked " << large_object_mark_.LoadRelaxed();
+    VLOG(gc)
+        << "Large objects tested " << large_object_test_.load(std::memory_order_relaxed)
+        << " marked " << large_object_mark_.load(std::memory_order_relaxed);
   }
   if (kCountMarkedObjects) {
-    VLOG(gc) << "Marked: null=" << mark_null_count_.LoadRelaxed()
-        << " immune=" <<  mark_immune_count_.LoadRelaxed()
-        << " fastpath=" << mark_fastpath_count_.LoadRelaxed()
-        << " slowpath=" << mark_slowpath_count_.LoadRelaxed();
+    VLOG(gc)
+        << "Marked: null=" << mark_null_count_.load(std::memory_order_relaxed)
+        << " immune=" <<  mark_immune_count_.load(std::memory_order_relaxed)
+        << " fastpath=" << mark_fastpath_count_.load(std::memory_order_relaxed)
+        << " slowpath=" << mark_slowpath_count_.load(std::memory_order_relaxed);
   }
   CHECK(mark_stack_->IsEmpty());  // Ensure that the mark stack is empty.
   mark_stack_->Reset();

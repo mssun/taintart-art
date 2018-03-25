@@ -489,7 +489,7 @@ void RegionSpace::DumpNonFreeRegions(std::ostream& os) {
 void RegionSpace::RecordAlloc(mirror::Object* ref) {
   CHECK(ref != nullptr);
   Region* r = RefToRegion(ref);
-  r->objects_allocated_.FetchAndAddSequentiallyConsistent(1);
+  r->objects_allocated_.fetch_add(1, std::memory_order_seq_cst);
 }
 
 bool RegionSpace::AllocNewTlab(Thread* self, size_t min_bytes) {
@@ -589,10 +589,10 @@ size_t RegionSpace::AllocationSizeNonvirtual(mirror::Object* obj, size_t* usable
 }
 
 void RegionSpace::Region::Clear(bool zero_and_release_pages) {
-  top_.StoreRelaxed(begin_);
+  top_.store(begin_, std::memory_order_relaxed);
   state_ = RegionState::kRegionStateFree;
   type_ = RegionType::kRegionTypeNone;
-  objects_allocated_.StoreRelaxed(0);
+  objects_allocated_.store(0, std::memory_order_relaxed);
   alloc_time_ = 0;
   live_bytes_ = static_cast<size_t>(-1);
   if (zero_and_release_pages) {

@@ -272,7 +272,7 @@ class ContinuousSpace : public Space {
 
   // Current address at which the space ends, which may vary as the space is filled.
   uint8_t* End() const {
-    return end_.LoadRelaxed();
+    return end_.load(std::memory_order_relaxed);
   }
 
   // The end of the address range covered by the space.
@@ -283,7 +283,7 @@ class ContinuousSpace : public Space {
   // Change the end of the space. Be careful with use since changing the end of a space to an
   // invalid value may break the GC.
   void SetEnd(uint8_t* end) {
-    end_.StoreRelaxed(end);
+    end_.store(end, std::memory_order_relaxed);
   }
 
   void SetLimit(uint8_t* limit) {
