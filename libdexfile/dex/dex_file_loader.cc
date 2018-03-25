@@ -348,6 +348,8 @@ std::unique_ptr<DexFile> DexFileLoader::OpenCommon(const uint8_t* base,
                                       location_checksum,
                                       oat_dex_file,
                                       std::move(container)));
+    // Disable verification for CompactDex input.
+    verify = false;
   } else {
     *error_msg = "Invalid or truncated dex file";
   }
