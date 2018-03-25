@@ -1280,7 +1280,7 @@ bool Thread::ModifySuspendCountInternal(Thread* self,
     AtomicClearFlag(kSuspendRequest);
   } else {
     // Two bits might be set simultaneously.
-    tls32_.state_and_flags.as_atomic_int.FetchAndBitwiseOrSequentiallyConsistent(flags);
+    tls32_.state_and_flags.as_atomic_int.fetch_or(flags, std::memory_order_seq_cst);
     TriggerSuspend();
   }
   return true;
@@ -1318,7 +1318,7 @@ bool Thread::PassActiveSuspendBarriers(Thread* self) {
     if (pending_threads != nullptr) {
       bool done = false;
       do {
-        int32_t cur_val = pending_threads->LoadRelaxed();
+        int32_t cur_val = pending_threads->load(std::memory_order_relaxed);
         CHECK_GT(cur_val, 0) << "Unexpected value for PassActiveSuspendBarriers(): " << cur_val;
         // Reduce value by 1.
         done = pending_threads->CompareAndSetWeakRelaxed(cur_val, cur_val - 1);
@@ -1562,7 +1562,7 @@ Closure* Thread::GetFlipFunction() {
   Atomic<Closure*>* atomic_func = reinterpret_cast<Atomic<Closure*>*>(&tlsPtr_.flip_function);
   Closure* func;
   do {
-    func = atomic_func->LoadRelaxed();
+    func = atomic_func->load(std::memory_order_relaxed);
     if (func == nullptr) {
       return nullptr;
     }
@@ -1574,7 +1574,7 @@ Closure* Thread::GetFlipFunction() {
 void Thread::SetFlipFunction(Closure* function) {
   CHECK(function != nullptr);
   Atomic<Closure*>* atomic_func = reinterpret_cast<Atomic<Closure*>*>(&tlsPtr_.flip_function);
-  atomic_func->StoreSequentiallyConsistent(function);
+  atomic_func->store(function, std::memory_order_seq_cst);
 }
 
 void Thread::FullSuspendCheck() {
@@ -2106,7 +2106,7 @@ Thread::Thread(bool daemon)
                 "art::Thread has a size which is not a multiple of 4.");
   tls32_.state_and_flags.as_struct.flags = 0;
   tls32_.state_and_flags.as_struct.state = kNative;
-  tls32_.interrupted.StoreRelaxed(false);
+  tls32_.interrupted.store(false, std::memory_order_relaxed);
   memset(&tlsPtr_.held_mutexes[0], 0, sizeof(tlsPtr_.held_mutexes));
   std::fill(tlsPtr_.rosalloc_runs,
             tlsPtr_.rosalloc_runs + kNumRosAllocThreadLocalSizeBracketsInThread,
@@ -2401,24 +2401,24 @@ bool Thread::IsJWeakCleared(jweak obj) const {
 bool Thread::Interrupted() {
   DCHECK_EQ(Thread::Current(), this);
   // No other thread can concurrently reset the interrupted flag.
-  bool interrupted = tls32_.interrupted.LoadSequentiallyConsistent();
+  bool interrupted = tls32_.interrupted.load(std::memory_order_seq_cst);
   if (interrupted) {
-    tls32_.interrupted.StoreSequentiallyConsistent(false);
+    tls32_.interrupted.store(false, std::memory_order_seq_cst);
   }
   return interrupted;
 }
 
 // Implements java.lang.Thread.isInterrupted.
 bool Thread::IsInterrupted() {
-  return tls32_.interrupted.LoadSequentiallyConsistent();
+  return tls32_.interrupted.load(std::memory_order_seq_cst);
 }
 
 void Thread::Interrupt(Thread* self) {
   MutexLock mu(self, *wait_mutex_);
-  if (tls32_.interrupted.LoadSequentiallyConsistent()) {
+  if (tls32_.interrupted.load(std::memory_order_seq_cst)) {
     return;
   }
-  tls32_.interrupted.StoreSequentiallyConsistent(true);
+  tls32_.interrupted.store(true, std::memory_order_seq_cst);
   NotifyLocked(self);
 }
 

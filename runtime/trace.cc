@@ -675,7 +675,7 @@ Trace::Trace(File* trace_file,
   static_assert(18 <= kMinBufSize, "Minimum buffer size not large enough for trace header");
 
   // Update current offset.
-  cur_offset_.StoreRelaxed(kTraceHeaderLength);
+  cur_offset_.store(kTraceHeaderLength, std::memory_order_relaxed);
 
   if (output_mode == TraceOutputMode::kStreaming) {
     streaming_lock_ = new Mutex("tracing lock", LockLevel::kTracingStreamingLock);
@@ -717,7 +717,7 @@ void Trace::FinishTracing() {
     // Clean up.
     STLDeleteValues(&seen_methods_);
   } else {
-    final_offset = cur_offset_.LoadRelaxed();
+    final_offset = cur_offset_.load(std::memory_order_relaxed);
     GetVisitedMethods(final_offset, &visited_methods);
   }
 
@@ -944,7 +944,7 @@ std::string Trace::GetMethodLine(ArtMethod* method) {
 }
 
 void Trace::WriteToBuf(const uint8_t* src, size_t src_size) {
-  int32_t old_offset = cur_offset_.LoadRelaxed();
+  int32_t old_offset = cur_offset_.load(std::memory_order_relaxed);
   int32_t new_offset = old_offset + static_cast<int32_t>(src_size);
   if (dchecked_integral_cast<size_t>(new_offset) > buffer_size_) {
     // Flush buffer.
@@ -957,24 +957,24 @@ void Trace::WriteToBuf(const uint8_t* src, size_t src_size) {
       if (!trace_file_->WriteFully(src, src_size)) {
         PLOG(WARNING) << "Failed streaming a tracing event.";
       }
-      cur_offset_.StoreRelease(0);  // Buffer is empty now.
+      cur_offset_.store(0, std::memory_order_release);  // Buffer is empty now.
       return;
     }
 
     old_offset = 0;
     new_offset = static_cast<int32_t>(src_size);
   }
-  cur_offset_.StoreRelease(new_offset);
+  cur_offset_.store(new_offset, std::memory_order_release);
   // Fill in data.
   memcpy(buf_.get() + old_offset, src, src_size);
 }
 
 void Trace::FlushBuf() {
-  int32_t offset = cur_offset_.LoadRelaxed();
+  int32_t offset = cur_offset_.load(std::memory_order_relaxed);
   if (!trace_file_->WriteFully(buf_.get(), offset)) {
     PLOG(WARNING) << "Failed flush the remaining data in streaming.";
   }
-  cur_offset_.StoreRelease(0);
+  cur_offset_.store(0, std::memory_order_release);
 }
 
 void Trace::LogMethodTraceEvent(Thread* thread, ArtMethod* method,
@@ -990,7 +990,7 @@ void Trace::LogMethodTraceEvent(Thread* thread, ArtMethod* method,
   // We do a busy loop here trying to acquire the next offset.
   if (trace_output_mode_ != TraceOutputMode::kStreaming) {
     do {
-      old_offset = cur_offset_.LoadRelaxed();
+      old_offset = cur_offset_.load(std::memory_order_relaxed);
       new_offset = old_offset + GetRecordSize(clock_source_);
       if (static_cast<size_t>(new_offset) > buffer_size_) {
         overflow_ = true;

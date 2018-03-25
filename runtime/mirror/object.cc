@@ -87,16 +87,18 @@ Object* Object::CopyObject(ObjPtr<mirror::Object> dest,
     DCHECK_ALIGNED(dst_bytes, sizeof(uintptr_t));
     // Use word sized copies to begin.
     while (num_bytes >= sizeof(uintptr_t)) {
-      reinterpret_cast<Atomic<uintptr_t>*>(dst_bytes)->StoreRelaxed(
-          reinterpret_cast<Atomic<uintptr_t>*>(src_bytes)->LoadRelaxed());
+      reinterpret_cast<Atomic<uintptr_t>*>(dst_bytes)->store(
+          reinterpret_cast<Atomic<uintptr_t>*>(src_bytes)->load(std::memory_order_relaxed),
+          std::memory_order_relaxed);
       src_bytes += sizeof(uintptr_t);
       dst_bytes += sizeof(uintptr_t);
       num_bytes -= sizeof(uintptr_t);
     }
     // Copy possible 32 bit word.
     if (sizeof(uintptr_t) != sizeof(uint32_t) && num_bytes >= sizeof(uint32_t)) {
-      reinterpret_cast<Atomic<uint32_t>*>(dst_bytes)->StoreRelaxed(
-          reinterpret_cast<Atomic<uint32_t>*>(src_bytes)->LoadRelaxed());
+      reinterpret_cast<Atomic<uint32_t>*>(dst_bytes)->store(
+          reinterpret_cast<Atomic<uint32_t>*>(src_bytes)->load(std::memory_order_relaxed),
+          std::memory_order_relaxed);
       src_bytes += sizeof(uint32_t);
       dst_bytes += sizeof(uint32_t);
       num_bytes -= sizeof(uint32_t);
@@ -104,8 +106,9 @@ Object* Object::CopyObject(ObjPtr<mirror::Object> dest,
     // Copy remaining bytes, avoid going past the end of num_bytes since there may be a redzone
     // there.
     while (num_bytes > 0) {
-      reinterpret_cast<Atomic<uint8_t>*>(dst_bytes)->StoreRelaxed(
-          reinterpret_cast<Atomic<uint8_t>*>(src_bytes)->LoadRelaxed());
+      reinterpret_cast<Atomic<uint8_t>*>(dst_bytes)->store(
+          reinterpret_cast<Atomic<uint8_t>*>(src_bytes)->load(std::memory_order_relaxed),
+          std::memory_order_relaxed);
       src_bytes += sizeof(uint8_t);
       dst_bytes += sizeof(uint8_t);
       num_bytes -= sizeof(uint8_t);
@@ -173,7 +176,7 @@ Object* Object::Clone(Thread* self) {
 uint32_t Object::GenerateIdentityHashCode() {
   uint32_t expected_value, new_value;
   do {
-    expected_value = hash_code_seed.LoadRelaxed();
+    expected_value = hash_code_seed.load(std::memory_order_relaxed);
     new_value = expected_value * 1103515245 + 12345;
   } while (!hash_code_seed.CompareAndSetWeakRelaxed(expected_value, new_value) ||
       (expected_value & LockWord::kHashMask) == 0);
@@ -181,7 +184,7 @@ uint32_t Object::GenerateIdentityHashCode() {
 }
 
 void Object::SetHashCodeSeed(uint32_t new_seed) {
-  hash_code_seed.StoreRelaxed(new_seed);
+  hash_code_seed.store(new_seed, std::memory_order_relaxed);
 }
 
 int32_t Object::IdentityHashCode() {

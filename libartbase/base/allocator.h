@@ -84,15 +84,15 @@ extern Atomic<uint64_t> g_total_bytes_used[kAllocatorTagCount];
 void Dump(std::ostream& os);
 
 inline void RegisterAllocation(AllocatorTag tag, size_t bytes) {
-  g_total_bytes_used[tag].FetchAndAddSequentiallyConsistent(bytes);
-  size_t new_bytes = g_bytes_used[tag].FetchAndAddSequentiallyConsistent(bytes) + bytes;
+  g_total_bytes_used[tag].fetch_add(bytes, std::memory_order_seq_cst);
+  size_t new_bytes = g_bytes_used[tag].fetch_add(bytes, std::memory_order_seq_cst) + bytes;
   if (g_max_bytes_used[tag] < new_bytes) {
     g_max_bytes_used[tag] = new_bytes;
   }
 }
 
 inline void RegisterFree(AllocatorTag tag, size_t bytes) {
-  g_bytes_used[tag].FetchAndSubSequentiallyConsistent(bytes);
+  g_bytes_used[tag].fetch_sub(bytes, std::memory_order_seq_cst);
 }
 
 }  // namespace TrackedAllocators

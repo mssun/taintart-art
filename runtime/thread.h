@@ -556,7 +556,7 @@ class Thread {
   bool IsInterrupted();
   void Interrupt(Thread* self) REQUIRES(!*wait_mutex_);
   void SetInterrupted(bool i) {
-    tls32_.interrupted.StoreSequentiallyConsistent(i);
+    tls32_.interrupted.store(i, std::memory_order_seq_cst);
   }
   void Notify() REQUIRES(!*wait_mutex_);
 
@@ -1110,11 +1110,11 @@ class Thread {
   }
 
   void AtomicSetFlag(ThreadFlag flag) {
-    tls32_.state_and_flags.as_atomic_int.FetchAndBitwiseOrSequentiallyConsistent(flag);
+    tls32_.state_and_flags.as_atomic_int.fetch_or(flag, std::memory_order_seq_cst);
   }
 
   void AtomicClearFlag(ThreadFlag flag) {
-    tls32_.state_and_flags.as_atomic_int.FetchAndBitwiseAndSequentiallyConsistent(-1 ^ flag);
+    tls32_.state_and_flags.as_atomic_int.fetch_and(-1 ^ flag, std::memory_order_seq_cst);
   }
 
   void ResetQuickAllocEntryPointsForThread(bool is_marking);

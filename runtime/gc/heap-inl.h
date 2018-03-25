@@ -156,7 +156,7 @@ inline mirror::Object* Heap::AllocObjectWithAllocator(Thread* self,
     pre_fence_visitor(obj, usable_size);
     QuasiAtomic::ThreadFenceForConstructor();
     size_t num_bytes_allocated_before =
-        num_bytes_allocated_.FetchAndAddRelaxed(bytes_tl_bulk_allocated);
+        num_bytes_allocated_.fetch_add(bytes_tl_bulk_allocated, std::memory_order_relaxed);
     new_num_bytes_allocated = num_bytes_allocated_before + bytes_tl_bulk_allocated;
     if (bytes_tl_bulk_allocated > 0) {
       // Only trace when we get an increase in the number of bytes allocated. This happens when
@@ -187,7 +187,7 @@ inline mirror::Object* Heap::AllocObjectWithAllocator(Thread* self,
       DCHECK(allocation_records_ != nullptr);
       allocation_records_->RecordAllocation(self, &obj, bytes_allocated);
     }
-    AllocationListener* l = alloc_listener_.LoadSequentiallyConsistent();
+    AllocationListener* l = alloc_listener_.load(std::memory_order_seq_cst);
     if (l != nullptr) {
       // Same as above. We assume that a listener that was once stored will never be deleted.
       // Otherwise we'd have to perform this under a lock.
@@ -393,7 +393,7 @@ inline bool Heap::ShouldAllocLargeObject(ObjPtr<mirror::Class> c, size_t byte_co
 inline bool Heap::IsOutOfMemoryOnAllocation(AllocatorType allocator_type,
                                             size_t alloc_size,
                                             bool grow) {
-  size_t new_footprint = num_bytes_allocated_.LoadSequentiallyConsistent() + alloc_size;
+  size_t new_footprint = num_bytes_allocated_.load(std::memory_order_seq_cst) + alloc_size;
   if (UNLIKELY(new_footprint > max_allowed_footprint_)) {
     if (UNLIKELY(new_footprint > growth_limit_)) {
       return true;

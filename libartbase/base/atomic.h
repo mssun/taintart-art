@@ -35,92 +35,26 @@ class PACKED(sizeof(T)) Atomic : public std::atomic<T> {
 
   explicit Atomic<T>(T value) : std::atomic<T>(value) { }
 
-  // Load from memory without ordering or synchronization constraints.
-  T LoadRelaxed() const {
-    return this->load(std::memory_order_relaxed);
-  }
-
-  // Load from memory with acquire ordering.
-  T LoadAcquire() const {
-    return this->load(std::memory_order_acquire);
-  }
-
-  // Word tearing allowed, but may race.
-  // TODO: Optimize?
-  // There has been some discussion of eventually disallowing word
-  // tearing for Java data loads.
+  // Load data from an atomic variable with Java data memory order semantics.
+  //
+  // Promises memory access semantics of ordinary Java data.
+  // Does not order other memory accesses.
+  // Long and double accesses may be performed 32 bits at a time.
+  // There are no "cache coherence" guarantees; e.g. loads from the same location may be reordered.
+  // In contrast to normal C++ accesses, racing accesses are allowed.
   T LoadJavaData() const {
     return this->load(std::memory_order_relaxed);
   }
 
-  // Load from memory with a total ordering.
-  // Corresponds exactly to a Java volatile load.
-  T LoadSequentiallyConsistent() const {
-    return this->load(std::memory_order_seq_cst);
-  }
-
-  // Store to memory without ordering or synchronization constraints.
-  void StoreRelaxed(T desired_value) {
-    this->store(desired_value, std::memory_order_relaxed);
-  }
-
-  // Word tearing allowed, but may race.
+  // Store data in an atomic variable with Java data memory ordering semantics.
+  //
+  // Promises memory access semantics of ordinary Java data.
+  // Does not order other memory accesses.
+  // Long and double accesses may be performed 32 bits at a time.
+  // There are no "cache coherence" guarantees; e.g. loads from the same location may be reordered.
+  // In contrast to normal C++ accesses, racing accesses are allowed.
   void StoreJavaData(T desired_value) {
     this->store(desired_value, std::memory_order_relaxed);
-  }
-
-  // Store to memory with release ordering.
-  void StoreRelease(T desired_value) {
-    this->store(desired_value, std::memory_order_release);
-  }
-
-  // Store to memory with a total ordering.
-  void StoreSequentiallyConsistent(T desired_value) {
-    this->store(desired_value, std::memory_order_seq_cst);
-  }
-
-  // Atomically replace the value with desired_value.
-  T ExchangeRelaxed(T desired_value) {
-    return this->exchange(desired_value, std::memory_order_relaxed);
-  }
-
-  // Atomically replace the value with desired_value.
-  T ExchangeSequentiallyConsistent(T desired_value) {
-    return this->exchange(desired_value, std::memory_order_seq_cst);
-  }
-
-  // Atomically replace the value with desired_value.
-  T ExchangeAcquire(T desired_value) {
-    return this->exchange(desired_value, std::memory_order_acquire);
-  }
-
-  // Atomically replace the value with desired_value.
-  T ExchangeRelease(T desired_value) {
-    return this->exchange(desired_value, std::memory_order_release);
-  }
-
-  // Atomically replace the value with desired_value if it matches the expected_value.
-  // Participates in total ordering of atomic operations. Returns true on success, false otherwise.
-  // If the value does not match, updates the expected_value argument with the value that was
-  // atomically read for the failed comparison.
-  bool CompareAndExchangeStrongSequentiallyConsistent(T* expected_value, T desired_value) {
-    return this->compare_exchange_strong(*expected_value, desired_value, std::memory_order_seq_cst);
-  }
-
-  // Atomically replace the value with desired_value if it matches the expected_value.
-  // Participates in total ordering of atomic operations. Returns true on success, false otherwise.
-  // If the value does not match, updates the expected_value argument with the value that was
-  // atomically read for the failed comparison.
-  bool CompareAndExchangeStrongAcquire(T* expected_value, T desired_value) {
-    return this->compare_exchange_strong(*expected_value, desired_value, std::memory_order_acquire);
-  }
-
-  // Atomically replace the value with desired_value if it matches the expected_value.
-  // Participates in total ordering of atomic operations. Returns true on success, false otherwise.
-  // If the value does not match, updates the expected_value argument with the value that was
-  // atomically read for the failed comparison.
-  bool CompareAndExchangeStrongRelease(T* expected_value, T desired_value) {
-    return this->compare_exchange_strong(*expected_value, desired_value, std::memory_order_release);
   }
 
   // Atomically replace the value with desired_value if it matches the expected_value.
@@ -166,66 +100,8 @@ class PACKED(sizeof(T)) Atomic : public std::atomic<T> {
     return this->compare_exchange_weak(expected_value, desired_value, std::memory_order_release);
   }
 
-  T FetchAndAddSequentiallyConsistent(const T value) {
-    return this->fetch_add(value, std::memory_order_seq_cst);  // Return old_value.
-  }
-
-  T FetchAndAddRelaxed(const T value) {
-    return this->fetch_add(value, std::memory_order_relaxed);  // Return old_value.
-  }
-
-  T FetchAndAddAcquire(const T value) {
-    return this->fetch_add(value, std::memory_order_acquire);  // Return old_value.
-  }
-
-  T FetchAndAddRelease(const T value) {
-    return this->fetch_add(value, std::memory_order_acquire);  // Return old_value.
-  }
-
-  T FetchAndSubSequentiallyConsistent(const T value) {
-    return this->fetch_sub(value, std::memory_order_seq_cst);  // Return old value.
-  }
-
-  T FetchAndSubRelaxed(const T value) {
-    return this->fetch_sub(value, std::memory_order_relaxed);  // Return old value.
-  }
-
-  T FetchAndBitwiseAndSequentiallyConsistent(const T value) {
-    return this->fetch_and(value, std::memory_order_seq_cst);  // Return old_value.
-  }
-
-  T FetchAndBitwiseAndAcquire(const T value) {
-    return this->fetch_and(value, std::memory_order_acquire);  // Return old_value.
-  }
-
-  T FetchAndBitwiseAndRelease(const T value) {
-    return this->fetch_and(value, std::memory_order_release);  // Return old_value.
-  }
-
-  T FetchAndBitwiseOrSequentiallyConsistent(const T value) {
-    return this->fetch_or(value, std::memory_order_seq_cst);  // Return old_value.
-  }
-
-  T FetchAndBitwiseOrAcquire(const T value) {
-    return this->fetch_or(value, std::memory_order_acquire);  // Return old_value.
-  }
-
-  T FetchAndBitwiseOrRelease(const T value) {
-    return this->fetch_or(value, std::memory_order_release);  // Return old_value.
-  }
-
-  T FetchAndBitwiseXorSequentiallyConsistent(const T value) {
-    return this->fetch_xor(value, std::memory_order_seq_cst);  // Return old_value.
-  }
-
-  T FetchAndBitwiseXorAcquire(const T value) {
-    return this->fetch_xor(value, std::memory_order_acquire);  // Return old_value.
-  }
-
-  T FetchAndBitwiseXorRelease(const T value) {
-    return this->fetch_xor(value, std::memory_order_release);  // Return old_value.
-  }
-
+  // Returns the address of the current atomic variable. This is only used by futex() which is
+  // declared to take a volatile address (see base/mutex-inl.h).
   volatile T* Address() {
     return reinterpret_cast<T*>(this);
   }

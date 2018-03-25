@@ -1555,7 +1555,7 @@ class ParallelCompilationManager {
     self->AssertNoPendingException();
     CHECK_GT(work_units, 0U);
 
-    index_.StoreRelaxed(begin);
+    index_.store(begin, std::memory_order_relaxed);
     for (size_t i = 0; i < work_units; ++i) {
       thread_pool_->AddTask(self, new ForAllClosureLambda<Fn>(this, end, fn));
     }
@@ -1573,7 +1573,7 @@ class ParallelCompilationManager {
   }
 
   size_t NextIndex() {
-    return index_.FetchAndAddSequentiallyConsistent(1);
+    return index_.fetch_add(1, std::memory_order_seq_cst);
   }
 
  private:
@@ -2838,7 +2838,8 @@ void CompilerDriver::AddCompiledMethod(const MethodReference& method_ref,
                                                               /*expected*/ nullptr,
                                                               compiled_method);
   CHECK(result == MethodTable::kInsertResultSuccess);
-  non_relative_linker_patch_count_.FetchAndAddRelaxed(non_relative_linker_patch_count);
+  non_relative_linker_patch_count_.fetch_add(non_relative_linker_patch_count,
+                                             std::memory_order_relaxed);
   DCHECK(GetCompiledMethod(method_ref) != nullptr) << method_ref.PrettyMethod();
 }
 
@@ -2949,7 +2950,7 @@ bool CompilerDriver::IsMethodVerifiedWithoutFailures(uint32_t method_idx,
 }
 
 size_t CompilerDriver::GetNonRelativeLinkerPatchCount() const {
-  return non_relative_linker_patch_count_.LoadRelaxed();
+  return non_relative_linker_patch_count_.load(std::memory_order_relaxed);
 }
 
 void CompilerDriver::SetRequiresConstructorBarrier(Thread* self,

@@ -291,14 +291,14 @@ void ConcurrentCopying::InitializePhase() {
   rb_mark_bit_stack_full_ = false;
   mark_from_read_barrier_measurements_ = measure_read_barrier_slow_path_;
   if (measure_read_barrier_slow_path_) {
-    rb_slow_path_ns_.StoreRelaxed(0);
-    rb_slow_path_count_.StoreRelaxed(0);
-    rb_slow_path_count_gc_.StoreRelaxed(0);
+    rb_slow_path_ns_.store(0, std::memory_order_relaxed);
+    rb_slow_path_count_.store(0, std::memory_order_relaxed);
+    rb_slow_path_count_gc_.store(0, std::memory_order_relaxed);
   }
 
   immune_spaces_.Reset();
-  bytes_moved_.StoreRelaxed(0);
-  objects_moved_.StoreRelaxed(0);
+  bytes_moved_.store(0, std::memory_order_relaxed);
+  objects_moved_.store(0, std::memory_order_relaxed);
   GcCause gc_cause = GetCurrentIteration()->GetGcCause();
   if (gc_cause == kGcCauseExplicit ||
       gc_cause == kGcCauseCollectorTransition ||
@@ -308,7 +308,7 @@ void ConcurrentCopying::InitializePhase() {
     force_evacuate_all_ = false;
   }
   if (kUseBakerReadBarrier) {
-    updated_all_immune_objects_.StoreRelaxed(false);
+    updated_all_immune_objects_.store(false, std::memory_order_relaxed);
     // GC may gray immune objects in the thread flip.
     gc_grays_immune_objects_ = true;
     if (kIsDebugBuild) {
@@ -350,7 +350,7 @@ class ConcurrentCopying::ThreadFlipVisitor : public Closure, public RootVisitor 
         concurrent_copying_->region_space_->RevokeThreadLocalBuffers(thread);
         reinterpret_cast<Atomic<size_t>*>(
             &concurrent_copying_->from_space_num_objects_at_first_pause_)->
-                FetchAndAddSequentiallyConsistent(thread_local_objects);
+                fetch_add(thread_local_objects, std::memory_order_seq_cst);
       } else {
         concurrent_copying_->region_space_->RevokeThreadLocalBuffers(thread);
       }
@@ -430,7 +430,8 @@ class ConcurrentCopying::FlipCallback : public Closure {
       cc->from_space_num_bytes_at_first_pause_ = cc->region_space_->GetBytesAllocated();
     }
     cc->is_marking_ = true;
-    cc->mark_stack_mode_.StoreRelaxed(ConcurrentCopying::kMarkStackModeThreadLocal);
+    cc->mark_stack_mode_.store(ConcurrentCopying::kMarkStackModeThreadLocal,
+                               std::memory_order_relaxed);
     if (kIsDebugBuild) {
       cc->region_space_->AssertAllRegionLiveBytesZeroOrCleared();
     }
@@ -728,7 +729,7 @@ void ConcurrentCopying::GrayAllNewlyDirtyImmuneObjects() {
   }
   // Since all of the objects that may point to other spaces are gray, we can avoid all the read
   // barriers in the immune spaces.
-  updated_all_immune_objects_.StoreRelaxed(true);
+  updated_all_immune_objects_.store(true, std::memory_order_relaxed);
 }
 
 void ConcurrentCopying::SwapStacks() {
@@ -816,7 +817,7 @@ void ConcurrentCopying::MarkingPhase() {
   if (kUseBakerReadBarrier) {
     // This release fence makes the field updates in the above loop visible before allowing mutator
     // getting access to immune objects without graying it first.
-    updated_all_immune_objects_.StoreRelease(true);
+    updated_all_immune_objects_.store(true, std::memory_order_release);
     // Now whiten immune objects concurrently accessed and grayed by mutators. We can't do this in
     // the above loop because we would incorrectly disable the read barrier by whitening an object
     // which may point to an unscanned, white object, breaking the to-space invariant.
@@ -1018,8 +1019,8 @@ void ConcurrentCopying::DisableMarking() {
     heap_->rb_table_->ClearAll();
     DCHECK(heap_->rb_table_->IsAllCleared());
   }
-  is_mark_stack_push_disallowed_.StoreSequentiallyConsistent(1);
-  mark_stack_mode_.StoreSequentiallyConsistent(kMarkStackModeOff);
+  is_mark_stack_push_disallowed_.store(1, std::memory_order_seq_cst);
+  mark_stack_mode_.store(kMarkStackModeOff, std::memory_order_seq_cst);
 }
 
 void ConcurrentCopying::PushOntoFalseGrayStack(mirror::Object* ref) {
@@ -1069,11 +1070,11 @@ void ConcurrentCopying::ExpandGcMarkStack() {
 }
 
 void ConcurrentCopying::PushOntoMarkStack(mirror::Object* to_ref) {
-  CHECK_EQ(is_mark_stack_push_disallowed_.LoadRelaxed(), 0)
+  CHECK_EQ(is_mark_stack_push_disallowed_.load(std::memory_order_relaxed), 0)
       << " " << to_ref << " " << mirror::Object::PrettyTypeOf(to_ref);
   Thread* self = Thread::Current();  // TODO: pass self as an argument from call sites?
   CHECK(thread_running_gc_ != nullptr);
-  MarkStackMode mark_stack_mode = mark_stack_mode_.LoadRelaxed();
+  MarkStackMode mark_stack_mode = mark_stack_mode_.load(std::memory_order_relaxed);
   if (LIKELY(mark_stack_mode == kMarkStackModeThreadLocal)) {
     if (LIKELY(self == thread_running_gc_)) {
       // If GC-running thread, use the GC mark stack instead of a thread-local mark stack.
@@ -1412,7 +1413,7 @@ bool ConcurrentCopying::ProcessMarkStackOnce() {
   CHECK(self == thread_running_gc_);
   CHECK(self->GetThreadLocalMarkStack() == nullptr);
   size_t count = 0;
-  MarkStackMode mark_stack_mode = mark_stack_mode_.LoadRelaxed();
+  MarkStackMode mark_stack_mode = mark_stack_mode_.load(std::memory_order_relaxed);
   if (mark_stack_mode == kMarkStackModeThreadLocal) {
     // Process the thread-local mark stacks and the GC mark stack.
     count += ProcessThreadLocalMarkStacks(/* disable_weak_ref_access */ false,
@@ -1597,10 +1598,10 @@ void ConcurrentCopying::SwitchToSharedMarkStackMode() {
   CHECK(thread_running_gc_ != nullptr);
   CHECK_EQ(self, thread_running_gc_);
   CHECK(self->GetThreadLocalMarkStack() == nullptr);
-  MarkStackMode before_mark_stack_mode = mark_stack_mode_.LoadRelaxed();
+  MarkStackMode before_mark_stack_mode = mark_stack_mode_.load(std::memory_order_relaxed);
   CHECK_EQ(static_cast<uint32_t>(before_mark_stack_mode),
            static_cast<uint32_t>(kMarkStackModeThreadLocal));
-  mark_stack_mode_.StoreRelaxed(kMarkStackModeShared);
+  mark_stack_mode_.store(kMarkStackModeShared, std::memory_order_relaxed);
   DisableWeakRefAccessCallback dwrac(this);
   // Process the thread local mark stacks one last time after switching to the shared mark stack
   // mode and disable weak ref accesses.
@@ -1615,10 +1616,10 @@ void ConcurrentCopying::SwitchToGcExclusiveMarkStackMode() {
   CHECK(thread_running_gc_ != nullptr);
   CHECK_EQ(self, thread_running_gc_);
   CHECK(self->GetThreadLocalMarkStack() == nullptr);
-  MarkStackMode before_mark_stack_mode = mark_stack_mode_.LoadRelaxed();
+  MarkStackMode before_mark_stack_mode = mark_stack_mode_.load(std::memory_order_relaxed);
   CHECK_EQ(static_cast<uint32_t>(before_mark_stack_mode),
            static_cast<uint32_t>(kMarkStackModeShared));
-  mark_stack_mode_.StoreRelaxed(kMarkStackModeGcExclusive);
+  mark_stack_mode_.store(kMarkStackModeGcExclusive, std::memory_order_relaxed);
   QuasiAtomic::ThreadFenceForConstructor();
   if (kVerboseMode) {
     LOG(INFO) << "Switched to GC exclusive mark stack mode";
@@ -1630,7 +1631,7 @@ void ConcurrentCopying::CheckEmptyMarkStack() {
   CHECK(thread_running_gc_ != nullptr);
   CHECK_EQ(self, thread_running_gc_);
   CHECK(self->GetThreadLocalMarkStack() == nullptr);
-  MarkStackMode mark_stack_mode = mark_stack_mode_.LoadRelaxed();
+  MarkStackMode mark_stack_mode = mark_stack_mode_.load(std::memory_order_relaxed);
   if (mark_stack_mode == kMarkStackModeThreadLocal) {
     // Thread-local mark stack mode.
     RevokeThreadLocalMarkStacks(false, nullptr);
@@ -1738,9 +1739,9 @@ void ConcurrentCopying::ReclaimPhase() {
     }
     IssueEmptyCheckpoint();
     // Disable the check.
-    is_mark_stack_push_disallowed_.StoreSequentiallyConsistent(0);
+    is_mark_stack_push_disallowed_.store(0, std::memory_order_seq_cst);
     if (kUseBakerReadBarrier) {
-      updated_all_immune_objects_.StoreSequentiallyConsistent(false);
+      updated_all_immune_objects_.store(false, std::memory_order_seq_cst);
     }
     CheckEmptyMarkStack();
   }
@@ -1753,10 +1754,10 @@ void ConcurrentCopying::ReclaimPhase() {
     const uint64_t from_objects = region_space_->GetObjectsAllocatedInFromSpace();
     const uint64_t unevac_from_bytes = region_space_->GetBytesAllocatedInUnevacFromSpace();
     const uint64_t unevac_from_objects = region_space_->GetObjectsAllocatedInUnevacFromSpace();
-    uint64_t to_bytes = bytes_moved_.LoadSequentiallyConsistent();
-    cumulative_bytes_moved_.FetchAndAddRelaxed(to_bytes);
-    uint64_t to_objects = objects_moved_.LoadSequentiallyConsistent();
-    cumulative_objects_moved_.FetchAndAddRelaxed(to_objects);
+    uint64_t to_bytes = bytes_moved_.load(std::memory_order_seq_cst);
+    cumulative_bytes_moved_.fetch_add(to_bytes, std::memory_order_relaxed);
+    uint64_t to_objects = objects_moved_.load(std::memory_order_seq_cst);
+    cumulative_objects_moved_.fetch_add(to_objects, std::memory_order_relaxed);
     if (kEnableFromSpaceAccountingCheck) {
       CHECK_EQ(from_space_num_objects_at_first_pause_, from_objects + unevac_from_objects);
       CHECK_EQ(from_space_num_bytes_at_first_pause_, from_bytes + unevac_from_bytes);
@@ -1787,12 +1788,12 @@ void ConcurrentCopying::ReclaimPhase() {
                 << " unevac_from_space size=" << region_space_->UnevacFromSpaceSize()
                 << " to_space size=" << region_space_->ToSpaceSize();
       LOG(INFO) << "(before) num_bytes_allocated="
-                << heap_->num_bytes_allocated_.LoadSequentiallyConsistent();
+                << heap_->num_bytes_allocated_.load(std::memory_order_seq_cst);
     }
     RecordFree(ObjectBytePair(freed_objects, freed_bytes));
     if (kVerboseMode) {
       LOG(INFO) << "(after) num_bytes_allocated="
-                << heap_->num_bytes_allocated_.LoadSequentiallyConsistent();
+                << heap_->num_bytes_allocated_.load(std::memory_order_seq_cst);
     }
   }
 
@@ -2042,7 +2043,7 @@ void ConcurrentCopying::AssertToSpaceInvariantInNonMovingSpace(mirror::Object* o
       if (Thread::Current() == thread_running_gc_ && !gc_grays_immune_objects_) {
         return;
       }
-      bool updated_all_immune_objects = updated_all_immune_objects_.LoadSequentiallyConsistent();
+      bool updated_all_immune_objects = updated_all_immune_objects_.load(std::memory_order_seq_cst);
       CHECK(updated_all_immune_objects || ref->GetReadBarrierState() == ReadBarrier::GrayState())
           << "Unmarked immune space ref. obj=" << obj << " rb_state="
           << (obj != nullptr ? obj->GetReadBarrierState() : 0U)
@@ -2165,7 +2166,7 @@ inline void ConcurrentCopying::VisitRoots(
     mirror::Object* expected_ref = ref;
     mirror::Object* new_ref = to_ref;
     do {
-      if (expected_ref != addr->LoadRelaxed()) {
+      if (expected_ref != addr->load(std::memory_order_relaxed)) {
         // It was updated by the mutator.
         break;
       }
@@ -2184,7 +2185,7 @@ inline void ConcurrentCopying::MarkRoot(mirror::CompressedReference<mirror::Obje
     auto new_ref = mirror::CompressedReference<mirror::Object>::FromMirrorPtr(to_ref);
     // If the cas fails, then it was updated by the mutator.
     do {
-      if (ref != addr->LoadRelaxed().AsMirrorPtr()) {
+      if (ref != addr->load(std::memory_order_relaxed).AsMirrorPtr()) {
         // It was updated by the mutator.
         break;
       }
@@ -2378,8 +2379,9 @@ mirror::Object* ConcurrentCopying::Copy(mirror::Object* from_ref,
       fall_back_to_non_moving = true;
       if (kVerboseMode) {
         LOG(INFO) << "Out of memory in the to-space. Fall back to non-moving. skipped_bytes="
-                  << to_space_bytes_skipped_.LoadSequentiallyConsistent()
-                  << " skipped_objects=" << to_space_objects_skipped_.LoadSequentiallyConsistent();
+                  << to_space_bytes_skipped_.load(std::memory_order_seq_cst)
+                  << " skipped_objects="
+                  << to_space_objects_skipped_.load(std::memory_order_seq_cst);
       }
       fall_back_to_non_moving = true;
       to_ref = heap_->non_moving_space_->Alloc(Thread::Current(), obj_size,
@@ -2431,9 +2433,9 @@ mirror::Object* ConcurrentCopying::Copy(mirror::Object* from_ref,
           region_space_->FreeLarge</*kForEvac*/ true>(to_ref, bytes_allocated);
         } else {
           // Record the lost copy for later reuse.
-          heap_->num_bytes_allocated_.FetchAndAddSequentiallyConsistent(bytes_allocated);
-          to_space_bytes_skipped_.FetchAndAddSequentiallyConsistent(bytes_allocated);
-          to_space_objects_skipped_.FetchAndAddSequentiallyConsistent(1);
+          heap_->num_bytes_allocated_.fetch_add(bytes_allocated, std::memory_order_seq_cst);
+          to_space_bytes_skipped_.fetch_add(bytes_allocated, std::memory_order_seq_cst);
+          to_space_objects_skipped_.fetch_add(1, std::memory_order_seq_cst);
           MutexLock mu(Thread::Current(), skipped_blocks_lock_);
           skipped_blocks_map_.insert(std::make_pair(bytes_allocated,
                                                     reinterpret_cast<uint8_t*>(to_ref)));
@@ -2477,8 +2479,8 @@ mirror::Object* ConcurrentCopying::Copy(mirror::Object* from_ref,
     bool success = from_ref->CasLockWordWeakRelaxed(old_lock_word, new_lock_word);
     if (LIKELY(success)) {
       // The CAS succeeded.
-      objects_moved_.FetchAndAddRelaxed(1);
-      bytes_moved_.FetchAndAddRelaxed(region_space_alloc_size);
+      objects_moved_.fetch_add(1, std::memory_order_relaxed);
+      bytes_moved_.fetch_add(region_space_alloc_size, std::memory_order_relaxed);
       if (LIKELY(!fall_back_to_non_moving)) {
         DCHECK(region_space_->IsInToSpace(to_ref));
       } else {
@@ -2704,9 +2706,10 @@ void ConcurrentCopying::FinishPhase() {
   }
   if (measure_read_barrier_slow_path_) {
     MutexLock mu(self, rb_slow_path_histogram_lock_);
-    rb_slow_path_time_histogram_.AdjustAndAddValue(rb_slow_path_ns_.LoadRelaxed());
-    rb_slow_path_count_total_ += rb_slow_path_count_.LoadRelaxed();
-    rb_slow_path_count_gc_total_ += rb_slow_path_count_gc_.LoadRelaxed();
+    rb_slow_path_time_histogram_.AdjustAndAddValue(
+        rb_slow_path_ns_.load(std::memory_order_relaxed));
+    rb_slow_path_count_total_ += rb_slow_path_count_.load(std::memory_order_relaxed);
+    rb_slow_path_count_gc_total_ += rb_slow_path_count_gc_.load(std::memory_order_relaxed);
   }
 }
 
@@ -2760,15 +2763,15 @@ void ConcurrentCopying::RevokeAllThreadLocalBuffers() {
 
 mirror::Object* ConcurrentCopying::MarkFromReadBarrierWithMeasurements(mirror::Object* from_ref) {
   if (Thread::Current() != thread_running_gc_) {
-    rb_slow_path_count_.FetchAndAddRelaxed(1u);
+    rb_slow_path_count_.fetch_add(1u, std::memory_order_relaxed);
   } else {
-    rb_slow_path_count_gc_.FetchAndAddRelaxed(1u);
+    rb_slow_path_count_gc_.fetch_add(1u, std::memory_order_relaxed);
   }
   ScopedTrace tr(__FUNCTION__);
   const uint64_t start_time = measure_read_barrier_slow_path_ ? NanoTime() : 0u;
   mirror::Object* ret = Mark(from_ref);
   if (measure_read_barrier_slow_path_) {
-    rb_slow_path_ns_.FetchAndAddRelaxed(NanoTime() - start_time);
+    rb_slow_path_ns_.fetch_add(NanoTime() - start_time, std::memory_order_relaxed);
   }
   return ret;
 }
@@ -2787,8 +2790,10 @@ void ConcurrentCopying::DumpPerformanceInfo(std::ostream& os) {
   if (rb_slow_path_count_gc_total_ > 0) {
     os << "GC slow path count " << rb_slow_path_count_gc_total_ << "\n";
   }
-  os << "Cumulative bytes moved " << cumulative_bytes_moved_.LoadRelaxed() << "\n";
-  os << "Cumulative objects moved " << cumulative_objects_moved_.LoadRelaxed() << "\n";
+  os << "Cumulative bytes moved "
+     << cumulative_bytes_moved_.load(std::memory_order_relaxed) << "\n";
+  os << "Cumulative objects moved "
+     << cumulative_objects_moved_.load(std::memory_order_relaxed) << "\n";
 
   os << "Peak regions allocated "
      << region_space_->GetMaxPeakNumNonFreeRegions() << " ("

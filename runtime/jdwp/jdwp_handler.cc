@@ -1625,7 +1625,7 @@ size_t JdwpState::ProcessRequest(Request* request, ExpandBuf* pReply, bool* skip
      * so waitForDebugger() doesn't return if we stall for a bit here.
      */
     Dbg::GoActive();
-    last_activity_time_ms_.StoreSequentiallyConsistent(0);
+    last_activity_time_ms_.store(0, std::memory_order_seq_cst);
   }
 
   /*
@@ -1703,7 +1703,7 @@ size_t JdwpState::ProcessRequest(Request* request, ExpandBuf* pReply, bool* skip
    * the initial setup.  Only update if this is a non-DDMS packet.
    */
   if (request->GetCommandSet() != kJDWPDdmCmdSet) {
-    last_activity_time_ms_.StoreSequentiallyConsistent(MilliTime());
+    last_activity_time_ms_.store(MilliTime(), std::memory_order_seq_cst);
   }
 
   return replyLength;
