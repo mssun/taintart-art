@@ -145,7 +145,7 @@ void SpaceBitmap<kAlignment>::CopyFrom(SpaceBitmap* source_bitmap) {
   Atomic<uintptr_t>* const src = source_bitmap->Begin();
   Atomic<uintptr_t>* const dest = Begin();
   for (size_t i = 0; i < count; ++i) {
-    dest[i].StoreRelaxed(src[i].LoadRelaxed());
+    dest[i].store(src[i].load(std::memory_order_relaxed), std::memory_order_relaxed);
   }
 }
 
@@ -184,7 +184,8 @@ void SpaceBitmap<kAlignment>::SweepWalk(const SpaceBitmap<kAlignment>& live_bitm
   Atomic<uintptr_t>* live = live_bitmap.bitmap_begin_;
   Atomic<uintptr_t>* mark = mark_bitmap.bitmap_begin_;
   for (size_t i = start; i <= end; i++) {
-    uintptr_t garbage = live[i].LoadRelaxed() & ~mark[i].LoadRelaxed();
+    uintptr_t garbage =
+        live[i].load(std::memory_order_relaxed) & ~mark[i].load(std::memory_order_relaxed);
     if (UNLIKELY(garbage != 0)) {
       uintptr_t ptr_base = IndexToOffset(i) + live_bitmap.heap_begin_;
       do {

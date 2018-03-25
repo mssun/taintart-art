@@ -300,11 +300,11 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
     void Init(size_t idx, uint8_t* begin, uint8_t* end) {
       idx_ = idx;
       begin_ = begin;
-      top_.StoreRelaxed(begin);
+      top_.store(begin, std::memory_order_relaxed);
       end_ = end;
       state_ = RegionState::kRegionStateFree;
       type_ = RegionType::kRegionTypeNone;
-      objects_allocated_.StoreRelaxed(0);
+      objects_allocated_.store(0, std::memory_order_relaxed);
       alloc_time_ = 0;
       live_bytes_ = static_cast<size_t>(-1);
       is_newly_allocated_ = false;
@@ -334,7 +334,7 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
       if (is_free) {
         DCHECK(IsInNoSpace());
         DCHECK_EQ(begin_, Top());
-        DCHECK_EQ(objects_allocated_.LoadRelaxed(), 0U);
+        DCHECK_EQ(objects_allocated_.load(std::memory_order_relaxed), 0U);
       }
       return is_free;
     }
@@ -461,11 +461,11 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
     }
 
     ALWAYS_INLINE uint8_t* Top() const {
-      return top_.LoadRelaxed();
+      return top_.load(std::memory_order_relaxed);
     }
 
     void SetTop(uint8_t* new_top) {
-      top_.StoreRelaxed(new_top);
+      top_.store(new_top, std::memory_order_relaxed);
     }
 
     uint8_t* End() const {
@@ -480,10 +480,10 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
     void RecordThreadLocalAllocations(size_t num_objects, size_t num_bytes) {
       DCHECK(IsAllocated());
-      DCHECK_EQ(objects_allocated_.LoadRelaxed(), 0U);
+      DCHECK_EQ(objects_allocated_.load(std::memory_order_relaxed), 0U);
       DCHECK_EQ(Top(), end_);
-      objects_allocated_.StoreRelaxed(num_objects);
-      top_.StoreRelaxed(begin_ + num_bytes);
+      objects_allocated_.store(num_objects, std::memory_order_relaxed);
+      top_.store(begin_ + num_bytes, std::memory_order_relaxed);
       DCHECK_LE(Top(), end_);
     }
 

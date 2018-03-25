@@ -130,7 +130,7 @@ inline MirrorType* ReadBarrier::BarrierForRoot(MirrorType** root,
         ref = reinterpret_cast<MirrorType*>(Mark(old_ref));
         // Update the field atomically. This may fail if mutator updates before us, but it's ok.
         if (ref != old_ref) {
-          Atomic<mirror::Object*>* atomic_root = reinterpret_cast<Atomic<mirror::Object*>*>(root);
+          Atomic<MirrorType*>* atomic_root = reinterpret_cast<Atomic<MirrorType*>*>(root);
           atomic_root->CompareAndSetStrongRelaxed(old_ref, ref);
         }
       }

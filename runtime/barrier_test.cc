@@ -69,18 +69,18 @@ TEST_F(BarrierTest, CheckWait) {
     thread_pool.AddTask(self, new CheckWaitTask(&barrier, &count1, &count2));
   }
   thread_pool.StartWorkers(self);
-  while (count1.LoadRelaxed() != num_threads) {
+  while (count1.load(std::memory_order_relaxed) != num_threads) {
     timeout_barrier.Increment(self, 1, 100);  // sleep 100 msecs
   }
   // Count 2 should still be zero since no thread should have gone past the barrier.
-  EXPECT_EQ(0, count2.LoadRelaxed());
+  EXPECT_EQ(0, count2.load(std::memory_order_relaxed));
   // Perform one additional Wait(), allowing pool threads to proceed.
   barrier.Wait(self);
   // Wait for all the threads to finish.
   thread_pool.Wait(self, true, false);
   // Both counts should be equal to num_threads now.
-  EXPECT_EQ(count1.LoadRelaxed(), num_threads);
-  EXPECT_EQ(count2.LoadRelaxed(), num_threads);
+  EXPECT_EQ(count1.load(std::memory_order_relaxed), num_threads);
+  EXPECT_EQ(count2.load(std::memory_order_relaxed), num_threads);
   timeout_barrier.Init(self, 0);  // Reset to zero for destruction.
 }
 
@@ -124,7 +124,7 @@ TEST_F(BarrierTest, CheckPass) {
   // Wait for all the tasks to complete using the barrier.
   barrier.Increment(self, expected_total_tasks);
   // The total number of completed tasks should be equal to expected_total_tasks.
-  EXPECT_EQ(count.LoadRelaxed(), expected_total_tasks);
+  EXPECT_EQ(count.load(std::memory_order_relaxed), expected_total_tasks);
 }
 
 }  // namespace art

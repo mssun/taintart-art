@@ -67,7 +67,7 @@ class ZygoteSpace FINAL : public ContinuousMemMapAllocSpace {
   }
 
   uint64_t GetObjectsAllocated() {
-    return objects_allocated_.LoadSequentiallyConsistent();
+    return objects_allocated_.load(std::memory_order_seq_cst);
   }
 
   void Clear() OVERRIDE;

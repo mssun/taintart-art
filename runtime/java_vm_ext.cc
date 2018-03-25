@@ -736,14 +736,14 @@ void JavaVMExt::DisallowNewWeakGlobals() {
   // mutator lock exclusively held so that we don't have any threads in the middle of
   // DecodeWeakGlobal.
   Locks::mutator_lock_->AssertExclusiveHeld(self);
-  allow_accessing_weak_globals_.StoreSequentiallyConsistent(false);
+  allow_accessing_weak_globals_.store(false, std::memory_order_seq_cst);
 }
 
 void JavaVMExt::AllowNewWeakGlobals() {
   CHECK(!kUseReadBarrier);
   Thread* self = Thread::Current();
   MutexLock mu(self, *Locks::jni_weak_globals_lock_);
-  allow_accessing_weak_globals_.StoreSequentiallyConsistent(true);
+  allow_accessing_weak_globals_.store(true, std::memory_order_seq_cst);
   weak_globals_add_condition_.Broadcast(self);
 }
 
@@ -770,7 +770,7 @@ inline bool JavaVMExt::MayAccessWeakGlobalsUnlocked(Thread* self) const {
   DCHECK(self != nullptr);
   return kUseReadBarrier ?
       self->GetWeakRefAccessEnabled() :
-      allow_accessing_weak_globals_.LoadSequentiallyConsistent();
+      allow_accessing_weak_globals_.load(std::memory_order_seq_cst);
 }
 
 ObjPtr<mirror::Object> JavaVMExt::DecodeWeakGlobal(Thread* self, IndirectRef ref) {
@@ -809,7 +809,7 @@ ObjPtr<mirror::Object> JavaVMExt::DecodeWeakGlobalDuringShutdown(Thread* self, I
   }
   // self can be null during a runtime shutdown. ~Runtime()->~ClassLinker()->DecodeWeakGlobal().
   if (!kUseReadBarrier) {
-    DCHECK(allow_accessing_weak_globals_.LoadSequentiallyConsistent());
+    DCHECK(allow_accessing_weak_globals_.load(std::memory_order_seq_cst));
   }
   return weak_globals_.SynchronizedGet(ref);
 }

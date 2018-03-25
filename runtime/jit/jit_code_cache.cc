@@ -623,7 +623,7 @@ void JitCodeCache::RemoveMethodsIn(Thread* self, const LinearAlloc& alloc) {
 bool JitCodeCache::IsWeakAccessEnabled(Thread* self) const {
   return kUseReadBarrier
       ? self->GetWeakRefAccessEnabled()
-      : is_weak_access_enabled_.LoadSequentiallyConsistent();
+      : is_weak_access_enabled_.load(std::memory_order_seq_cst);
 }
 
 void JitCodeCache::WaitUntilInlineCacheAccessible(Thread* self) {
@@ -645,13 +645,13 @@ void JitCodeCache::BroadcastForInlineCacheAccess() {
 
 void JitCodeCache::AllowInlineCacheAccess() {
   DCHECK(!kUseReadBarrier);
-  is_weak_access_enabled_.StoreSequentiallyConsistent(true);
+  is_weak_access_enabled_.store(true, std::memory_order_seq_cst);
   BroadcastForInlineCacheAccess();
 }
 
 void JitCodeCache::DisallowInlineCacheAccess() {
   DCHECK(!kUseReadBarrier);
-  is_weak_access_enabled_.StoreSequentiallyConsistent(false);
+  is_weak_access_enabled_.store(false, std::memory_order_seq_cst);
 }
 
 void JitCodeCache::CopyInlineCacheInto(const InlineCache& ic,
@@ -820,7 +820,7 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
       // code.
       GetLiveBitmap()->AtomicTestAndSet(FromCodeToAllocation(code_ptr));
     }
-    last_update_time_ns_.StoreRelease(NanoTime());
+    last_update_time_ns_.store(NanoTime(), std::memory_order_release);
     VLOG(jit)
         << "JIT added (osr=" << std::boolalpha << osr << std::noboolalpha << ") "
         << ArtMethod::PrettyMethod(method) << "@" << method
@@ -1647,7 +1647,7 @@ void JitCodeCache::GetProfiledMethods(const std::set<std::string>& dex_base_loca
 }
 
 uint64_t JitCodeCache::GetLastUpdateTimeNs() const {
-  return last_update_time_ns_.LoadAcquire();
+  return last_update_time_ns_.load(std::memory_order_acquire);
 }
 
 bool JitCodeCache::IsOsrCompiled(ArtMethod* method) {

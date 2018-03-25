@@ -70,7 +70,7 @@ inline bool AtomicDexRefMap<DexFileReferenceType, Value>::Get(const DexFileRefer
   if (array == nullptr) {
     return false;
   }
-  *out = (*array)[ref.index].LoadRelaxed();
+  *out = (*array)[ref.index].load(std::memory_order_relaxed);
   return true;
 }
 
@@ -81,8 +81,8 @@ inline bool AtomicDexRefMap<DexFileReferenceType, Value>::Remove(const DexFileRe
   if (array == nullptr) {
     return false;
   }
-  *out = (*array)[ref.index].LoadRelaxed();
-  (*array)[ref.index].StoreSequentiallyConsistent(nullptr);
+  *out = (*array)[ref.index].load(std::memory_order_relaxed);
+  (*array)[ref.index].store(nullptr, std::memory_order_seq_cst);
   return true;
 }
 
@@ -121,7 +121,7 @@ inline void AtomicDexRefMap<DexFileReferenceType, Value>::Visit(const Visitor& v
     const DexFile* dex_file = pair.first;
     const ElementArray& elements = pair.second;
     for (size_t i = 0; i < elements.size(); ++i) {
-      visitor(DexFileReference(dex_file, i), elements[i].LoadRelaxed());
+      visitor(DexFileReference(dex_file, i), elements[i].load(std::memory_order_relaxed));
     }
   }
 }
@@ -130,7 +130,7 @@ template <typename DexFileReferenceType, typename Value>
 inline void AtomicDexRefMap<DexFileReferenceType, Value>::ClearEntries() {
   for (auto& it : arrays_) {
     for (auto& element : it.second) {
-      element.StoreRelaxed(nullptr);
+      element.store(nullptr, std::memory_order_relaxed);
     }
   }
 }

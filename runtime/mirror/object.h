@@ -730,7 +730,7 @@ class MANAGED LOCKABLE Object {
     uint8_t* raw_addr = reinterpret_cast<uint8_t*>(this) + field_offset.Int32Value();
     kSize* addr = reinterpret_cast<kSize*>(raw_addr);
     if (kIsVolatile) {
-      reinterpret_cast<Atomic<kSize>*>(addr)->StoreSequentiallyConsistent(new_value);
+      reinterpret_cast<Atomic<kSize>*>(addr)->store(new_value, std::memory_order_seq_cst);
     } else {
       reinterpret_cast<Atomic<kSize>*>(addr)->StoreJavaData(new_value);
     }
@@ -742,7 +742,7 @@ class MANAGED LOCKABLE Object {
     const uint8_t* raw_addr = reinterpret_cast<const uint8_t*>(this) + field_offset.Int32Value();
     const kSize* addr = reinterpret_cast<const kSize*>(raw_addr);
     if (kIsVolatile) {
-      return reinterpret_cast<const Atomic<kSize>*>(addr)->LoadSequentiallyConsistent();
+      return reinterpret_cast<const Atomic<kSize>*>(addr)->load(std::memory_order_seq_cst);
     } else {
       return reinterpret_cast<const Atomic<kSize>*>(addr)->LoadJavaData();
     }
