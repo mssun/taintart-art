@@ -1950,34 +1950,6 @@ void InstructionCodeGeneratorMIPS::GenerateClassInitializationCheck(SlowPathCode
   __ Bind(slow_path->GetExitLabel());
 }
 
-void InstructionCodeGeneratorMIPS::GenerateBitstringTypeCheckCompare(HTypeCheckInstruction* check,
-                                                                     Register temp) {
-  uint32_t path_to_root = check->GetBitstringPathToRoot();
-  uint32_t mask = check->GetBitstringMask();
-  DCHECK(IsPowerOfTwo(mask + 1));
-  size_t mask_bits = WhichPowerOf2(mask + 1);
-
-  if (mask_bits == 16u) {
-    // Load only the bitstring part of the status word.
-    __ LoadFromOffset(
-        kLoadUnsignedHalfword, temp, temp, mirror::Class::StatusOffset().Int32Value());
-    // Compare the bitstring bits using XOR.
-    __ Xori(temp, temp, dchecked_integral_cast<uint16_t>(path_to_root));
-  } else {
-    // /* uint32_t */ temp = temp->status_
-    __ LoadFromOffset(kLoadWord, temp, temp, mirror::Class::StatusOffset().Int32Value());
-    // Compare the bitstring bits using XOR.
-    if (IsUint<16>(path_to_root)) {
-      __ Xori(temp, temp, dchecked_integral_cast<uint16_t>(path_to_root));
-    } else {
-      __ LoadConst32(TMP, path_to_root);
-      __ Xor(temp, temp, TMP);
-    }
-    // Shift out bits that do not contribute to the comparison.
-    __ Sll(temp, temp, 32 - mask_bits);
-  }
-}
-
 void InstructionCodeGeneratorMIPS::GenerateMemoryBarrier(MemBarrierKind kind ATTRIBUTE_UNUSED) {
   __ Sync(0);  // Only stype 0 is supported.
 }
@@ -3329,13 +3301,7 @@ void LocationsBuilderMIPS::VisitCheckCast(HCheckCast* instruction) {
   LocationSummary* locations =
       new (GetGraph()->GetAllocator()) LocationSummary(instruction, call_kind);
   locations->SetInAt(0, Location::RequiresRegister());
-  if (type_check_kind == TypeCheckKind::kBitstringCheck) {
-    locations->SetInAt(1, Location::ConstantLocation(instruction->InputAt(1)->AsConstant()));
-    locations->SetInAt(2, Location::ConstantLocation(instruction->InputAt(2)->AsConstant()));
-    locations->SetInAt(3, Location::ConstantLocation(instruction->InputAt(3)->AsConstant()));
-  } else {
-    locations->SetInAt(1, Location::RequiresRegister());
-  }
+  locations->SetInAt(1, Location::RequiresRegister());
   locations->AddRegisterTemps(NumberOfCheckCastTemps(type_check_kind));
 }
 
@@ -3344,7 +3310,7 @@ void InstructionCodeGeneratorMIPS::VisitCheckCast(HCheckCast* instruction) {
   LocationSummary* locations = instruction->GetLocations();
   Location obj_loc = locations->InAt(0);
   Register obj = obj_loc.AsRegister<Register>();
-  Location cls = locations->InAt(1);
+  Register cls = locations->InAt(1).AsRegister<Register>();
   Location temp_loc = locations->GetTemp(0);
   Register temp = temp_loc.AsRegister<Register>();
   const size_t num_temps = NumberOfCheckCastTemps(type_check_kind);
@@ -3383,7 +3349,7 @@ void InstructionCodeGeneratorMIPS::VisitCheckCast(HCheckCast* instruction) {
                                         kWithoutReadBarrier);
       // Jump to slow path for throwing the exception or doing a
       // more involved array check.
-      __ Bne(temp, cls.AsRegister<Register>(), slow_path->GetEntryLabel());
+      __ Bne(temp, cls, slow_path->GetEntryLabel());
       break;
     }
 
@@ -3409,7 +3375,7 @@ void InstructionCodeGeneratorMIPS::VisitCheckCast(HCheckCast* instruction) {
       // exception.
       __ Beqz(temp, slow_path->GetEntryLabel());
       // Otherwise, compare the classes.
-      __ Bne(temp, cls.AsRegister<Register>(), &loop);
+      __ Bne(temp, cls, &loop);
       break;
     }
 
@@ -3424,7 +3390,7 @@ void InstructionCodeGeneratorMIPS::VisitCheckCast(HCheckCast* instruction) {
       // Walk over the class hierarchy to find a match.
       MipsLabel loop;
       __ Bind(&loop);
-      __ Beq(temp, cls.AsRegister<Register>(), &done);
+      __ Beq(temp, cls, &done);
       // /* HeapReference<Class> */ temp = temp->super_class_
       GenerateReferenceLoadOneRegister(instruction,
                                        temp_loc,
@@ -3447,7 +3413,7 @@ void InstructionCodeGeneratorMIPS::VisitCheckCast(HCheckCast* instruction) {
                                         maybe_temp2_loc,
                                         kWithoutReadBarrier);
       // Do an exact check.
-      __ Beq(temp, cls.AsRegister<Register>(), &done);
+      __ Beq(temp, cls, &done);
       // Otherwise, we need to check that the object's class is a non-primitive array.
       // /* HeapReference<Class> */ temp = temp->component_type_
       GenerateReferenceLoadOneRegister(instruction,
@@ -3506,21 +3472,7 @@ void InstructionCodeGeneratorMIPS::VisitCheckCast(HCheckCast* instruction) {
       // Go to next interface.
       __ Addiu(TMP, TMP, -2);
       // Compare the classes and continue the loop if they do not match.
-      __ Bne(AT, cls.AsRegister<Register>(), &loop);
-      break;
-    }
-
-    case TypeCheckKind::kBitstringCheck: {
-      // /* HeapReference<Class> */ temp = obj->klass_
-      GenerateReferenceLoadTwoRegisters(instruction,
-                                        temp_loc,
-                                        obj_loc,
-                                        class_offset,
-                                        maybe_temp2_loc,
-                                        kWithoutReadBarrier);
-
-      GenerateBitstringTypeCheckCompare(instruction, temp);
-      __ Bnez(temp, slow_path->GetEntryLabel());
+      __ Bne(AT, cls, &loop);
       break;
     }
   }
@@ -7463,8 +7415,6 @@ void LocationsBuilderMIPS::VisitInstanceOf(HInstanceOf* instruction) {
     case TypeCheckKind::kInterfaceCheck:
       call_kind = LocationSummary::kCallOnSlowPath;
       break;
-    case TypeCheckKind::kBitstringCheck:
-      break;
   }
 
   LocationSummary* locations =
@@ -7473,13 +7423,7 @@ void LocationsBuilderMIPS::VisitInstanceOf(HInstanceOf* instruction) {
     locations->SetCustomSlowPathCallerSaves(RegisterSet::Empty());  // No caller-save registers.
   }
   locations->SetInAt(0, Location::RequiresRegister());
-  if (type_check_kind == TypeCheckKind::kBitstringCheck) {
-    locations->SetInAt(1, Location::ConstantLocation(instruction->InputAt(1)->AsConstant()));
-    locations->SetInAt(2, Location::ConstantLocation(instruction->InputAt(2)->AsConstant()));
-    locations->SetInAt(3, Location::ConstantLocation(instruction->InputAt(3)->AsConstant()));
-  } else {
-    locations->SetInAt(1, Location::RequiresRegister());
-  }
+  locations->SetInAt(1, Location::RequiresRegister());
   // The output does overlap inputs.
   // Note that TypeCheckSlowPathMIPS uses this register too.
   locations->SetOut(Location::RequiresRegister(), Location::kOutputOverlap);
@@ -7491,7 +7435,7 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
   LocationSummary* locations = instruction->GetLocations();
   Location obj_loc = locations->InAt(0);
   Register obj = obj_loc.AsRegister<Register>();
-  Location cls = locations->InAt(1);
+  Register cls = locations->InAt(1).AsRegister<Register>();
   Location out_loc = locations->Out();
   Register out = out_loc.AsRegister<Register>();
   const size_t num_temps = NumberOfInstanceOfTemps(type_check_kind);
@@ -7523,7 +7467,7 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
                                         maybe_temp_loc,
                                         read_barrier_option);
       // Classes must be equal for the instanceof to succeed.
-      __ Xor(out, out, cls.AsRegister<Register>());
+      __ Xor(out, out, cls);
       __ Sltiu(out, out, 1);
       break;
     }
@@ -7550,7 +7494,7 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
                                        read_barrier_option);
       // If `out` is null, we use it for the result, and jump to `done`.
       __ Beqz(out, &done);
-      __ Bne(out, cls.AsRegister<Register>(), &loop);
+      __ Bne(out, cls, &loop);
       __ LoadConst32(out, 1);
       break;
     }
@@ -7568,7 +7512,7 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
       // Walk over the class hierarchy to find a match.
       MipsLabel loop, success;
       __ Bind(&loop);
-      __ Beq(out, cls.AsRegister<Register>(), &success);
+      __ Beq(out, cls, &success);
       // /* HeapReference<Class> */ out = out->super_class_
       GenerateReferenceLoadOneRegister(instruction,
                                        out_loc,
@@ -7595,7 +7539,7 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
                                         read_barrier_option);
       // Do an exact check.
       MipsLabel success;
-      __ Beq(out, cls.AsRegister<Register>(), &success);
+      __ Beq(out, cls, &success);
       // Otherwise, we need to check that the object's class is a non-primitive array.
       // /* HeapReference<Class> */ out = out->component_type_
       GenerateReferenceLoadOneRegister(instruction,
@@ -7627,7 +7571,7 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
       slow_path = new (codegen_->GetScopedAllocator()) TypeCheckSlowPathMIPS(
           instruction, /* is_fatal */ false);
       codegen_->AddSlowPath(slow_path);
-      __ Bne(out, cls.AsRegister<Register>(), slow_path->GetEntryLabel());
+      __ Bne(out, cls, slow_path->GetEntryLabel());
       __ LoadConst32(out, 1);
       break;
     }
@@ -7657,20 +7601,6 @@ void InstructionCodeGeneratorMIPS::VisitInstanceOf(HInstanceOf* instruction) {
           instruction, /* is_fatal */ false);
       codegen_->AddSlowPath(slow_path);
       __ B(slow_path->GetEntryLabel());
-      break;
-    }
-
-    case TypeCheckKind::kBitstringCheck: {
-      // /* HeapReference<Class> */ temp = obj->klass_
-      GenerateReferenceLoadTwoRegisters(instruction,
-                                        out_loc,
-                                        obj_loc,
-                                        class_offset,
-                                        maybe_temp_loc,
-                                        kWithoutReadBarrier);
-
-      GenerateBitstringTypeCheckCompare(instruction, out);
-      __ Sltiu(out, out, 1);
       break;
     }
   }

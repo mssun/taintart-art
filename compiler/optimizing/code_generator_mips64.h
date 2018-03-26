@@ -233,7 +233,6 @@ class InstructionCodeGeneratorMIPS64 : public InstructionCodeGenerator {
 
  private:
   void GenerateClassInitializationCheck(SlowPathCodeMIPS64* slow_path, GpuRegister class_reg);
-  void GenerateBitstringTypeCheckCompare(HTypeCheckInstruction* check, GpuRegister temp);
   void GenerateSuspendCheck(HSuspendCheck* check, HBasicBlock* successor);
   void HandleBinaryOp(HBinaryOperation* operation);
   void HandleCondition(HCondition* instruction);
