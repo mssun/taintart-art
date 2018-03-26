@@ -248,7 +248,6 @@ JitCodeCache::JitCodeCache(MemMap* code_map,
       code_end_(initial_code_capacity),
       data_end_(initial_data_capacity),
       last_collection_increased_code_cache_(false),
-      last_update_time_ns_(0),
       garbage_collect_code_(garbage_collect_code),
       used_memory_for_data_(0),
       used_memory_for_code_(0),
@@ -820,7 +819,6 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
       // code.
       GetLiveBitmap()->AtomicTestAndSet(FromCodeToAllocation(code_ptr));
     }
-    last_update_time_ns_.store(NanoTime(), std::memory_order_release);
     VLOG(jit)
         << "JIT added (osr=" << std::boolalpha << osr << std::noboolalpha << ") "
         << ArtMethod::PrettyMethod(method) << "@" << method
@@ -1644,10 +1642,6 @@ void JitCodeCache::GetProfiledMethods(const std::set<std::string>& dex_base_loca
     methods.emplace_back(/*ProfileMethodInfo*/
         MethodReference(dex_file, method->GetDexMethodIndex()), inline_caches);
   }
-}
-
-uint64_t JitCodeCache::GetLastUpdateTimeNs() const {
-  return last_update_time_ns_.load(std::memory_order_acquire);
 }
 
 bool JitCodeCache::IsOsrCompiled(ArtMethod* method) {
