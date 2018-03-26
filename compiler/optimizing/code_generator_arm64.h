@@ -264,6 +264,8 @@ class InstructionCodeGeneratorARM64 : public InstructionCodeGenerator {
  private:
   void GenerateClassInitializationCheck(SlowPathCodeARM64* slow_path,
                                         vixl::aarch64::Register class_reg);
+  void GenerateBitstringTypeCheckCompare(HTypeCheckInstruction* check,
+                                         vixl::aarch64::Register temp);
   void GenerateSuspendCheck(HSuspendCheck* instruction, HBasicBlock* successor);
   void HandleBinaryOp(HBinaryOperation* instr);
 

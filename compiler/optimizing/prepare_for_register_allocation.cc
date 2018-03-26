@@ -34,6 +34,20 @@ void PrepareForRegisterAllocation::Run() {
   }
 }
 
+void PrepareForRegisterAllocation::VisitCheckCast(HCheckCast* check_cast) {
+  // Record only those bitstring type checks that make it to the codegen stage.
+  if (check_cast->GetTypeCheckKind() == TypeCheckKind::kBitstringCheck) {
+    MaybeRecordStat(stats_, MethodCompilationStat::kBitstringTypeCheck);
+  }
+}
+
+void PrepareForRegisterAllocation::VisitInstanceOf(HInstanceOf* instance_of) {
+  // Record only those bitstring type checks that make it to the codegen stage.
+  if (instance_of->GetTypeCheckKind() == TypeCheckKind::kBitstringCheck) {
+    MaybeRecordStat(stats_, MethodCompilationStat::kBitstringTypeCheck);
+  }
+}
+
 void PrepareForRegisterAllocation::VisitNullCheck(HNullCheck* check) {
   check->ReplaceWith(check->InputAt(0));
 }
