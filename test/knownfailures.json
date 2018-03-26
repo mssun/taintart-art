@@ -276,7 +276,8 @@
     },
     {
         "tests": "596-app-images",
-        "variant": "npictest"
+        "description": "Code being tested has been disabled",
+        "bug": "b/70734839"
     },
     {
         "tests": "055-enum-performance",
