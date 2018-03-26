@@ -6178,8 +6178,7 @@ class HLoadClass FINAL : public HInstruction {
         special_input_(HUserRecord<HInstruction*>(current_method)),
         type_index_(type_index),
         dex_file_(dex_file),
-        klass_(klass),
-        loaded_class_rti_(ReferenceTypeInfo::CreateInvalid()) {
+        klass_(klass) {
     // Referrers class should not need access check. We never inline unverified
     // methods so we can't possibly end up in this situation.
     DCHECK(!is_referrers_class || !needs_access_check);
@@ -6189,6 +6188,7 @@ class HLoadClass FINAL : public HInstruction {
     SetPackedFlag<kFlagNeedsAccessCheck>(needs_access_check);
     SetPackedFlag<kFlagIsInBootImage>(false);
     SetPackedFlag<kFlagGenerateClInitCheck>(false);
+    SetPackedFlag<kFlagValidLoadedClassRTI>(false);
   }
 
   bool IsClonable() const OVERRIDE { return true; }
@@ -6243,13 +6243,18 @@ class HLoadClass FINAL : public HInstruction {
   }
 
   ReferenceTypeInfo GetLoadedClassRTI() {
-    return loaded_class_rti_;
+    if (GetPackedFlag<kFlagValidLoadedClassRTI>()) {
+      // Note: The is_exact flag from the return value should not be used.
+      return ReferenceTypeInfo::CreateUnchecked(klass_, /* is_exact */ true);
+    } else {
+      return ReferenceTypeInfo::CreateInvalid();
+    }
   }
 
-  void SetLoadedClassRTI(ReferenceTypeInfo rti) {
-    // Make sure we only set exact types (the loaded class should never be merged).
-    DCHECK(rti.IsExact());
-    loaded_class_rti_ = rti;
+  // Loaded class RTI is marked as valid by RTP if the klass_ is admissible.
+  void SetValidLoadedClassRTI() REQUIRES_SHARED(Locks::mutator_lock_) {
+    DCHECK(klass_ != nullptr);
+    SetPackedFlag<kFlagValidLoadedClassRTI>(true);
   }
 
   dex::TypeIndex GetTypeIndex() const { return type_index_; }
@@ -6302,7 +6307,8 @@ class HLoadClass FINAL : public HInstruction {
   static constexpr size_t kFieldLoadKind           = kFlagGenerateClInitCheck + 1;
   static constexpr size_t kFieldLoadKindSize =
       MinimumBitsToStore(static_cast<size_t>(LoadKind::kLast));
-  static constexpr size_t kNumberOfLoadClassPackedBits = kFieldLoadKind + kFieldLoadKindSize;
+  static constexpr size_t kFlagValidLoadedClassRTI = kFieldLoadKind + kFieldLoadKindSize;
+  static constexpr size_t kNumberOfLoadClassPackedBits = kFlagValidLoadedClassRTI + 1;
   static_assert(kNumberOfLoadClassPackedBits < kMaxNumberOfPackedBits, "Too many packed fields.");
   using LoadKindField = BitField<LoadKind, kFieldLoadKind, kFieldLoadKindSize>;
 
@@ -6329,8 +6335,6 @@ class HLoadClass FINAL : public HInstruction {
   const DexFile& dex_file_;
 
   Handle<mirror::Class> klass_;
-
-  ReferenceTypeInfo loaded_class_rti_;
 };
 std::ostream& operator<<(std::ostream& os, HLoadClass::LoadKind rhs);
 
@@ -6882,49 +6886,145 @@ enum class TypeCheckKind {
   kInterfaceCheck,        // No optimization yet when checking against an interface.
   kArrayObjectCheck,      // Can just check if the array is not primitive.
   kArrayCheck,            // No optimization yet when checking against a generic array.
+  kBitstringCheck,        // Compare the type check bitstring.
   kLast = kArrayCheck
 };
 
 std::ostream& operator<<(std::ostream& os, TypeCheckKind rhs);
 
-class HInstanceOf FINAL : public HExpression<2> {
+// Note: HTypeCheckInstruction is just a helper class, not an abstract instruction with an
+// `IsTypeCheckInstruction()`. (New virtual methods in the HInstruction class have a high cost.)
+class HTypeCheckInstruction : public HVariableInputSizeInstruction {
  public:
-  HInstanceOf(HInstruction* object,
-              HLoadClass* target_class,
-              TypeCheckKind check_kind,
-              uint32_t dex_pc)
-      : HExpression(kInstanceOf,
-                    DataType::Type::kBool,
-                    SideEffectsForArchRuntimeCalls(check_kind),
-                    dex_pc) {
+  HTypeCheckInstruction(InstructionKind kind,
+                        HInstruction* object,
+                        HInstruction* target_class_or_null,
+                        TypeCheckKind check_kind,
+                        Handle<mirror::Class> klass,
+                        uint32_t dex_pc,
+                        ArenaAllocator* allocator,
+                        HIntConstant* bitstring_path_to_root,
+                        HIntConstant* bitstring_mask,
+                        SideEffects side_effects)
+      : HVariableInputSizeInstruction(
+          kind,
+          side_effects,
+          dex_pc,
+          allocator,
+          /* number_of_inputs */ check_kind == TypeCheckKind::kBitstringCheck ? 4u : 2u,
+          kArenaAllocTypeCheckInputs),
+        klass_(klass) {
     SetPackedField<TypeCheckKindField>(check_kind);
     SetPackedFlag<kFlagMustDoNullCheck>(true);
+    SetPackedFlag<kFlagValidTargetClassRTI>(false);
     SetRawInputAt(0, object);
-    SetRawInputAt(1, target_class);
+    SetRawInputAt(1, target_class_or_null);
+    DCHECK_EQ(check_kind == TypeCheckKind::kBitstringCheck, bitstring_path_to_root != nullptr);
+    DCHECK_EQ(check_kind == TypeCheckKind::kBitstringCheck, bitstring_mask != nullptr);
+    if (check_kind == TypeCheckKind::kBitstringCheck) {
+      DCHECK(target_class_or_null->IsNullConstant());
+      SetRawInputAt(2, bitstring_path_to_root);
+      SetRawInputAt(3, bitstring_mask);
+    } else {
+      DCHECK(target_class_or_null->IsLoadClass());
+    }
   }
 
   HLoadClass* GetTargetClass() const {
+    DCHECK_NE(GetTypeCheckKind(), TypeCheckKind::kBitstringCheck);
     HInstruction* load_class = InputAt(1);
     DCHECK(load_class->IsLoadClass());
     return load_class->AsLoadClass();
   }
 
+  uint32_t GetBitstringPathToRoot() const {
+    DCHECK_EQ(GetTypeCheckKind(), TypeCheckKind::kBitstringCheck);
+    HInstruction* path_to_root = InputAt(2);
+    DCHECK(path_to_root->IsIntConstant());
+    return static_cast<uint32_t>(path_to_root->AsIntConstant()->GetValue());
+  }
+
+  uint32_t GetBitstringMask() const {
+    DCHECK_EQ(GetTypeCheckKind(), TypeCheckKind::kBitstringCheck);
+    HInstruction* mask = InputAt(3);
+    DCHECK(mask->IsIntConstant());
+    return static_cast<uint32_t>(mask->AsIntConstant()->GetValue());
+  }
+
   bool IsClonable() const OVERRIDE { return true; }
   bool CanBeMoved() const OVERRIDE { return true; }
 
-  bool InstructionDataEquals(const HInstruction* other ATTRIBUTE_UNUSED) const OVERRIDE {
-    return true;
+  bool InstructionDataEquals(const HInstruction* other) const OVERRIDE {
+    DCHECK(other->IsInstanceOf() || other->IsCheckCast()) << other->DebugName();
+    return GetPackedFields() == down_cast<const HTypeCheckInstruction*>(other)->GetPackedFields();
   }
 
-  bool NeedsEnvironment() const OVERRIDE {
-    return CanCallRuntime(GetTypeCheckKind());
-  }
-
-  // Used only in code generation.
   bool MustDoNullCheck() const { return GetPackedFlag<kFlagMustDoNullCheck>(); }
   void ClearMustDoNullCheck() { SetPackedFlag<kFlagMustDoNullCheck>(false); }
   TypeCheckKind GetTypeCheckKind() const { return GetPackedField<TypeCheckKindField>(); }
   bool IsExactCheck() const { return GetTypeCheckKind() == TypeCheckKind::kExactCheck; }
+
+  ReferenceTypeInfo GetTargetClassRTI() {
+    if (GetPackedFlag<kFlagValidTargetClassRTI>()) {
+      // Note: The is_exact flag from the return value should not be used.
+      return ReferenceTypeInfo::CreateUnchecked(klass_, /* is_exact */ true);
+    } else {
+      return ReferenceTypeInfo::CreateInvalid();
+    }
+  }
+
+  // Target class RTI is marked as valid by RTP if the klass_ is admissible.
+  void SetValidTargetClassRTI() REQUIRES_SHARED(Locks::mutator_lock_) {
+    DCHECK(klass_ != nullptr);
+    SetPackedFlag<kFlagValidTargetClassRTI>(true);
+  }
+
+  Handle<mirror::Class> GetClass() const {
+    return klass_;
+  }
+
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(TypeCheckInstruction);
+
+ private:
+  static constexpr size_t kFieldTypeCheckKind = kNumberOfGenericPackedBits;
+  static constexpr size_t kFieldTypeCheckKindSize =
+      MinimumBitsToStore(static_cast<size_t>(TypeCheckKind::kLast));
+  static constexpr size_t kFlagMustDoNullCheck = kFieldTypeCheckKind + kFieldTypeCheckKindSize;
+  static constexpr size_t kFlagValidTargetClassRTI = kFlagMustDoNullCheck + 1;
+  static constexpr size_t kNumberOfInstanceOfPackedBits = kFlagValidTargetClassRTI + 1;
+  static_assert(kNumberOfInstanceOfPackedBits <= kMaxNumberOfPackedBits, "Too many packed fields.");
+  using TypeCheckKindField = BitField<TypeCheckKind, kFieldTypeCheckKind, kFieldTypeCheckKindSize>;
+
+  Handle<mirror::Class> klass_;
+};
+
+class HInstanceOf FINAL : public HTypeCheckInstruction {
+ public:
+  HInstanceOf(HInstruction* object,
+              HInstruction* target_class_or_null,
+              TypeCheckKind check_kind,
+              Handle<mirror::Class> klass,
+              uint32_t dex_pc,
+              ArenaAllocator* allocator,
+              HIntConstant* bitstring_path_to_root,
+              HIntConstant* bitstring_mask)
+      : HTypeCheckInstruction(kInstanceOf,
+                              object,
+                              target_class_or_null,
+                              check_kind,
+                              klass,
+                              dex_pc,
+                              allocator,
+                              bitstring_path_to_root,
+                              bitstring_mask,
+                              SideEffectsForArchRuntimeCalls(check_kind)) {}
+
+  DataType::Type GetType() const OVERRIDE { return DataType::Type::kBool; }
+
+  bool NeedsEnvironment() const OVERRIDE {
+    return CanCallRuntime(GetTypeCheckKind());
+  }
 
   static bool CanCallRuntime(TypeCheckKind check_kind) {
     // Mips currently does runtime calls for any other checks.
@@ -6939,15 +7039,6 @@ class HInstanceOf FINAL : public HExpression<2> {
 
  protected:
   DEFAULT_COPY_CONSTRUCTOR(InstanceOf);
-
- private:
-  static constexpr size_t kFieldTypeCheckKind = kNumberOfExpressionPackedBits;
-  static constexpr size_t kFieldTypeCheckKindSize =
-      MinimumBitsToStore(static_cast<size_t>(TypeCheckKind::kLast));
-  static constexpr size_t kFlagMustDoNullCheck = kFieldTypeCheckKind + kFieldTypeCheckKindSize;
-  static constexpr size_t kNumberOfInstanceOfPackedBits = kFlagMustDoNullCheck + 1;
-  static_assert(kNumberOfInstanceOfPackedBits <= kMaxNumberOfPackedBits, "Too many packed fields.");
-  using TypeCheckKindField = BitField<TypeCheckKind, kFieldTypeCheckKind, kFieldTypeCheckKindSize>;
 };
 
 class HBoundType FINAL : public HExpression<1> {
@@ -6997,31 +7088,26 @@ class HBoundType FINAL : public HExpression<1> {
   ReferenceTypeInfo upper_bound_;
 };
 
-class HCheckCast FINAL : public HTemplateInstruction<2> {
+class HCheckCast FINAL : public HTypeCheckInstruction {
  public:
   HCheckCast(HInstruction* object,
-             HLoadClass* target_class,
+             HInstruction* target_class_or_null,
              TypeCheckKind check_kind,
-             uint32_t dex_pc)
-      : HTemplateInstruction(kCheckCast, SideEffects::CanTriggerGC(), dex_pc) {
-    SetPackedField<TypeCheckKindField>(check_kind);
-    SetPackedFlag<kFlagMustDoNullCheck>(true);
-    SetRawInputAt(0, object);
-    SetRawInputAt(1, target_class);
-  }
-
-  HLoadClass* GetTargetClass() const {
-    HInstruction* load_class = InputAt(1);
-    DCHECK(load_class->IsLoadClass());
-    return load_class->AsLoadClass();
-  }
-
-  bool IsClonable() const OVERRIDE { return true; }
-  bool CanBeMoved() const OVERRIDE { return true; }
-
-  bool InstructionDataEquals(const HInstruction* other ATTRIBUTE_UNUSED) const OVERRIDE {
-    return true;
-  }
+             Handle<mirror::Class> klass,
+             uint32_t dex_pc,
+             ArenaAllocator* allocator,
+             HIntConstant* bitstring_path_to_root,
+             HIntConstant* bitstring_mask)
+      : HTypeCheckInstruction(kCheckCast,
+                              object,
+                              target_class_or_null,
+                              check_kind,
+                              klass,
+                              dex_pc,
+                              allocator,
+                              bitstring_path_to_root,
+                              bitstring_mask,
+                              SideEffects::CanTriggerGC()) {}
 
   bool NeedsEnvironment() const OVERRIDE {
     // Instruction may throw a CheckCastError.
@@ -7030,24 +7116,10 @@ class HCheckCast FINAL : public HTemplateInstruction<2> {
 
   bool CanThrow() const OVERRIDE { return true; }
 
-  bool MustDoNullCheck() const { return GetPackedFlag<kFlagMustDoNullCheck>(); }
-  void ClearMustDoNullCheck() { SetPackedFlag<kFlagMustDoNullCheck>(false); }
-  TypeCheckKind GetTypeCheckKind() const { return GetPackedField<TypeCheckKindField>(); }
-  bool IsExactCheck() const { return GetTypeCheckKind() == TypeCheckKind::kExactCheck; }
-
   DECLARE_INSTRUCTION(CheckCast);
 
  protected:
   DEFAULT_COPY_CONSTRUCTOR(CheckCast);
-
- private:
-  static constexpr size_t kFieldTypeCheckKind = kNumberOfGenericPackedBits;
-  static constexpr size_t kFieldTypeCheckKindSize =
-      MinimumBitsToStore(static_cast<size_t>(TypeCheckKind::kLast));
-  static constexpr size_t kFlagMustDoNullCheck = kFieldTypeCheckKind + kFieldTypeCheckKindSize;
-  static constexpr size_t kNumberOfCheckCastPackedBits = kFlagMustDoNullCheck + 1;
-  static_assert(kNumberOfCheckCastPackedBits <= kMaxNumberOfPackedBits, "Too many packed fields.");
-  using TypeCheckKindField = BitField<TypeCheckKind, kFieldTypeCheckKind, kFieldTypeCheckKindSize>;
 };
 
 /**
