@@ -449,6 +449,7 @@ gensrcs {
         "thread.h",
         "thread_state.h",
         "ti/agent.h",
+        "trace.h",
         "verifier/verifier_enums.h",
     ],
     output_extension: "operator_out.cc",

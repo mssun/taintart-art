@@ -52,9 +52,10 @@ using ThreadIDBitSet = std::bitset<kMaxThreadIdNumber>;
 
 enum TracingMode {
   kTracingInactive,
-  kMethodTracingActive,
-  kSampleProfilingActive,
+  kMethodTracingActive,  // Trace activity synchronous with method progress.
+  kSampleProfilingActive,  // Trace activity captured by sampling thread.
 };
+std::ostream& operator<<(std::ostream& os, const TracingMode& rhs);
 
 // File format:
 //     header
@@ -98,6 +99,9 @@ enum TraceAction {
     kTraceMethodActionMask = 0x03,  // two bits
 };
 
+// Class for recording event traces. Trace data is either collected
+// synchronously during execution (TracingMode::kMethodTracingActive),
+// or by a separate sampling thread (TracingMode::kSampleProfilingActive).
 class Trace FINAL : public instrumentation::InstrumentationListener {
  public:
   enum TraceFlag {
@@ -316,7 +320,10 @@ class Trace FINAL : public instrumentation::InstrumentationListener {
   // File to write trace data out to, null if direct to ddms.
   std::unique_ptr<File> trace_file_;
 
-  // Buffer to store trace data.
+  // Buffer to store trace data. In streaming mode, this is protected
+  // by the streaming_lock_. In non-streaming mode, reserved regions
+  // are atomically allocated (using cur_offset_) for log entries to
+  // be written.
   std::unique_ptr<uint8_t[]> buf_;
 
   // Flags enabling extra tracing of things such as alloc counts.
@@ -339,7 +346,27 @@ class Trace FINAL : public instrumentation::InstrumentationListener {
   // Clock overhead.
   const uint32_t clock_overhead_ns_;
 
-  // Offset into buf_.
+  // Offset into buf_. The field is atomic to allow multiple writers
+  // to concurrently reserve space in the buffer. The newly written
+  // buffer contents are not read without some other form of thread
+  // synchronization, such as suspending all potential writers or
+  // acquiring *streaming_lock_. Reading cur_offset_ is thus never
+  // used to ensure visibility of any other objects, and all accesses
+  // are memory_order_relaxed.
+  //
+  // All accesses to buf_ in streaming mode occur whilst holding the
+  // streaming lock. In streaming mode, the buffer may be written out
+  // so cur_offset_ can move forwards and backwards.
+  //
+  // When not in streaming mode, the buf_ writes can come from
+  // multiple threads when the trace mode is kMethodTracing. When
+  // trace mode is kSampling, writes only come from the sampling
+  // thread.
+  //
+  // Reads to the buffer happen after the event sources writing to the
+  // buffer have been shutdown and all stores have completed. The
+  // stores are made visible in StopTracing() when execution leaves
+  // the ScopedSuspendAll block.
   AtomicInteger cur_offset_;
 
   // Did we overflow the buffer recording traces?
@@ -353,8 +380,8 @@ class Trace FINAL : public instrumentation::InstrumentationListener {
 
   // Streaming mode data.
   Mutex* streaming_lock_;
-  std::map<const DexFile*, DexIndexBitSet*> seen_methods_;
-  std::unique_ptr<ThreadIDBitSet> seen_threads_;
+  std::map<const DexFile*, DexIndexBitSet*> seen_methods_ GUARDED_BY(streaming_lock_);
+  std::unique_ptr<ThreadIDBitSet> seen_threads_ GUARDED_BY(streaming_lock_);
 
   // Bijective map from ArtMethod* to index.
   // Map from ArtMethod* to index in unique_methods_;
