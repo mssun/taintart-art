@@ -3103,8 +3103,6 @@ std::ostream& operator<<(std::ostream& os, TypeCheckKind rhs) {
       return os << "array_object_check";
     case TypeCheckKind::kArrayCheck:
       return os << "array_check";
-    case TypeCheckKind::kBitstringCheck:
-      return os << "bitstring_check";
     default:
       LOG(FATAL) << "Unknown TypeCheckKind: " << static_cast<int>(rhs);
       UNREACHABLE();
