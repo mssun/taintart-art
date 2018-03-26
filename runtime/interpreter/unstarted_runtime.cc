@@ -184,7 +184,6 @@ static ALWAYS_INLINE bool ShouldBlockAccessToMember(T* member, ShadowFrame* fram
   return hiddenapi::ShouldBlockAccessToMember(
       member,
       frame->GetMethod()->GetDeclaringClass()->GetClassLoader(),
-      frame->GetMethod()->GetDeclaringClass()->GetDexCache(),
       hiddenapi::kReflection);  // all uses in this file are from reflection
 }
 

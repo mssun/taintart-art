@@ -22,7 +22,6 @@
 #include "android-base/stringprintf.h"
 
 #include "base/file_magic.h"
-#include "base/file_utils.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/unix_file/fd_file.h"
@@ -504,41 +503,6 @@ bool ArtDexFileLoader::OpenAllDexFilesFromZip(
 
     return true;
   }
-}
-
-std::unique_ptr<DexFile> ArtDexFileLoader::OpenCommon(const uint8_t* base,
-                                                      size_t size,
-                                                      const uint8_t* data_base,
-                                                      size_t data_size,
-                                                      const std::string& location,
-                                                      uint32_t location_checksum,
-                                                      const OatDexFile* oat_dex_file,
-                                                      bool verify,
-                                                      bool verify_checksum,
-                                                      std::string* error_msg,
-                                                      std::unique_ptr<DexFileContainer> container,
-                                                      VerifyResult* verify_result) {
-  std::unique_ptr<DexFile> dex_file = DexFileLoader::OpenCommon(base,
-                                                                size,
-                                                                data_base,
-                                                                data_size,
-                                                                location,
-                                                                location_checksum,
-                                                                oat_dex_file,
-                                                                verify,
-                                                                verify_checksum,
-                                                                error_msg,
-                                                                std::move(container),
-                                                                verify_result);
-
-  // Check if this dex file is located in the framework directory.
-  // If it is, set a flag on the dex file. This is used by hidden API
-  // policy decision logic.
-  if (dex_file != nullptr && LocationIsOnSystemFramework(location.c_str())) {
-    dex_file->SetIsPlatformDexFile();
-  }
-
-  return dex_file;
 }
 
 }  // namespace art

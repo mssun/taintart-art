@@ -130,15 +130,15 @@ inline void WarnAboutMemberAccess(ArtMethod* method, AccessMethod access_method)
 }
 
 // Returns true if access to `member` should be denied to the caller of the
-// reflective query. The decision is based on whether the caller is in the
-// platform or not. Because different users of this function determine this
-// in a different way, `fn_caller_in_platform(self)` is called and should
-// return true if the caller is located in the platform.
+// reflective query. The decision is based on whether the caller is in boot
+// class path or not. Because different users of this function determine this
+// in a different way, `fn_caller_in_boot(self)` is called and should return
+// true if the caller is in boot class path.
 // This function might print warnings into the log if the member is hidden.
 template<typename T>
 inline bool ShouldBlockAccessToMember(T* member,
                                       Thread* self,
-                                      std::function<bool(Thread*)> fn_caller_in_platform,
+                                      std::function<bool(Thread*)> fn_caller_in_boot,
                                       AccessMethod access_method)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(member != nullptr);
@@ -149,14 +149,14 @@ inline bool ShouldBlockAccessToMember(T* member,
     return false;
   }
 
-  // Member is hidden. Invoke `fn_caller_in_platform` and find the origin of the access.
+  // Member is hidden. Walk the stack to find the caller.
   // This can be *very* expensive. Save it for last.
-  if (fn_caller_in_platform(self)) {
-    // Caller in the platform. Exit.
+  if (fn_caller_in_boot(self)) {
+    // Caller in boot class path. Exit.
     return false;
   }
 
-  // Member is hidden and caller is not in the platform.
+  // Member is hidden and we are not in the boot class path.
 
   // Print a log message with information about this class member access.
   // We do this regardless of whether we block the access or not.
@@ -187,39 +187,18 @@ inline bool ShouldBlockAccessToMember(T* member,
   return false;
 }
 
-// Returns true if the caller is either loaded by the boot strap class loader or comes from
-// a dex file located in ${ANDROID_ROOT}/framework/.
-inline bool IsCallerInPlatformDex(ObjPtr<mirror::ClassLoader> caller_class_loader,
-                                  ObjPtr<mirror::DexCache> caller_dex_cache)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  if (caller_class_loader.IsNull()) {
-    return true;
-  } else if (caller_dex_cache.IsNull()) {
-    return false;
-  } else {
-    const DexFile* caller_dex_file = caller_dex_cache->GetDexFile();
-    return caller_dex_file != nullptr && caller_dex_file->IsPlatformDexFile();
-  }
-}
-
-inline bool IsCallerInPlatformDex(ObjPtr<mirror::Class> caller)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  return !caller.IsNull() && IsCallerInPlatformDex(caller->GetClassLoader(), caller->GetDexCache());
-}
-
 // Returns true if access to `member` should be denied to a caller loaded with
 // `caller_class_loader`.
 // This function might print warnings into the log if the member is hidden.
 template<typename T>
 inline bool ShouldBlockAccessToMember(T* member,
                                       ObjPtr<mirror::ClassLoader> caller_class_loader,
-                                      ObjPtr<mirror::DexCache> caller_dex_cache,
                                       AccessMethod access_method)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  bool caller_in_platform = IsCallerInPlatformDex(caller_class_loader, caller_dex_cache);
+  bool caller_in_boot = (caller_class_loader.IsNull());
   return ShouldBlockAccessToMember(member,
                                    /* thread */ nullptr,
-                                   [caller_in_platform] (Thread*) { return caller_in_platform; },
+                                   [caller_in_boot] (Thread*) { return caller_in_boot; },
                                    access_method);
 }
 

@@ -319,11 +319,4 @@ bool LocationIsOnSystem(const char* location) {
   return path != nullptr && android::base::StartsWith(path.get(), GetAndroidRoot().c_str());
 }
 
-bool LocationIsOnSystemFramework(const char* location) {
-  UniqueCPtr<const char[]> path(realpath(location, nullptr));
-  std::string framework_path = GetAndroidRoot() + "/framework/";
-  return path != nullptr &&
-         android::base::StartsWith(path.get(), framework_path.c_str());
-}
-
 }  // namespace art
