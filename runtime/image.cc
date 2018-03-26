@@ -26,7 +26,7 @@
 namespace art {
 
 const uint8_t ImageHeader::kImageMagic[] = { 'a', 'r', 't', '\n' };
-const uint8_t ImageHeader::kImageVersion[] = { '0', '5', '7', '\0' };  // R^2 Bitstring type check.
+const uint8_t ImageHeader::kImageVersion[] = { '0', '5', '8', '\0' };  // R^3 Bitstring type check.
 
 ImageHeader::ImageHeader(uint32_t image_begin,
                          uint32_t image_size,
