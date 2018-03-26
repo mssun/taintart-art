@@ -960,6 +960,13 @@
         "description": ["Doesn't run on RI."]
     },
     {
+        "tests": ["121-modifiers",
+                  "1929-exception-catch-exception"],
+        "variant": "jvm",
+        "bug": "b/76399183",
+        "description": ["New failures to be investigated."]
+    },
+    {
         "tests": ["616-cha-unloading"],
         "variant": "trace",
         "description": ["Trace prevents class unloading."]
