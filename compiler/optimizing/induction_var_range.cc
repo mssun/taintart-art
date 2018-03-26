@@ -352,13 +352,15 @@ void InductionVarRange::Replace(HInstruction* instruction,
 }
 
 bool InductionVarRange::IsFinite(HLoopInformation* loop, /*out*/ int64_t* trip_count) const {
-  HInductionVarAnalysis::InductionInfo *trip =
-      induction_analysis_->LookupInfo(loop, GetLoopControl(loop));
-  if (trip != nullptr && !IsUnsafeTripCount(trip)) {
-    IsConstant(trip->op_a, kExact, trip_count);
-    return true;
-  }
-  return false;
+  bool is_constant_unused = false;
+  return CheckForFiniteAndConstantProps(loop, &is_constant_unused, trip_count);
+}
+
+bool InductionVarRange::HasKnownTripCount(HLoopInformation* loop,
+                                          /*out*/ int64_t* trip_count) const {
+  bool is_constant = false;
+  CheckForFiniteAndConstantProps(loop, &is_constant, trip_count);
+  return is_constant;
 }
 
 bool InductionVarRange::IsUnitStride(HInstruction* context,
@@ -416,6 +418,18 @@ HInstruction* InductionVarRange::GenerateTripCount(HLoopInformation* loop,
 //
 // Private class methods.
 //
+
+bool InductionVarRange::CheckForFiniteAndConstantProps(HLoopInformation* loop,
+                                                       /*out*/ bool* is_constant,
+                                                       /*out*/ int64_t* trip_count) const {
+  HInductionVarAnalysis::InductionInfo *trip =
+      induction_analysis_->LookupInfo(loop, GetLoopControl(loop));
+  if (trip != nullptr && !IsUnsafeTripCount(trip)) {
+    *is_constant = IsConstant(trip->op_a, kExact, trip_count);
+    return true;
+  }
+  return false;
+}
 
 bool InductionVarRange::IsConstant(HInductionVarAnalysis::InductionInfo* info,
                                    ConstantRequest request,

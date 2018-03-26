@@ -70,6 +70,7 @@ art_cc_defaults {
         "optimizing/load_store_analysis.cc",
         "optimizing/load_store_elimination.cc",
         "optimizing/locations.cc",
+        "optimizing/loop_analysis.cc",
         "optimizing/loop_optimization.cc",
         "optimizing/nodes.cc",
         "optimizing/optimization.cc",
