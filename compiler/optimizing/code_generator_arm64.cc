@@ -2129,26 +2129,6 @@ void InstructionCodeGeneratorARM64::GenerateClassInitializationCheck(SlowPathCod
   __ Bind(slow_path->GetExitLabel());
 }
 
-void InstructionCodeGeneratorARM64::GenerateBitstringTypeCheckCompare(
-    HTypeCheckInstruction* check, vixl::aarch64::Register temp) {
-  uint32_t path_to_root = check->GetBitstringPathToRoot();
-  uint32_t mask = check->GetBitstringMask();
-  DCHECK(IsPowerOfTwo(mask + 1));
-  size_t mask_bits = WhichPowerOf2(mask + 1);
-
-  if (mask_bits == 16u) {
-    // Load only the bitstring part of the status word.
-    __ Ldrh(temp, HeapOperand(temp, mirror::Class::StatusOffset()));
-  } else {
-    // /* uint32_t */ temp = temp->status_
-    __ Ldr(temp, HeapOperand(temp, mirror::Class::StatusOffset()));
-    // Extract the bitstring bits.
-    __ Ubfx(temp, temp, 0, mask_bits);
-  }
-  // Compare the bitstring bits to `path_to_root`.
-  __ Cmp(temp, path_to_root);
-}
-
 void CodeGeneratorARM64::GenerateMemoryBarrier(MemBarrierKind kind) {
   BarrierType type = BarrierAll;
 
@@ -3886,8 +3866,6 @@ void LocationsBuilderARM64::VisitInstanceOf(HInstanceOf* instruction) {
     case TypeCheckKind::kInterfaceCheck:
       call_kind = LocationSummary::kCallOnSlowPath;
       break;
-    case TypeCheckKind::kBitstringCheck:
-      break;
   }
 
   LocationSummary* locations =
@@ -3896,13 +3874,7 @@ void LocationsBuilderARM64::VisitInstanceOf(HInstanceOf* instruction) {
     locations->SetCustomSlowPathCallerSaves(RegisterSet::Empty());  // No caller-save registers.
   }
   locations->SetInAt(0, Location::RequiresRegister());
-  if (type_check_kind == TypeCheckKind::kBitstringCheck) {
-    locations->SetInAt(1, Location::ConstantLocation(instruction->InputAt(1)->AsConstant()));
-    locations->SetInAt(2, Location::ConstantLocation(instruction->InputAt(2)->AsConstant()));
-    locations->SetInAt(3, Location::ConstantLocation(instruction->InputAt(3)->AsConstant()));
-  } else {
-    locations->SetInAt(1, Location::RequiresRegister());
-  }
+  locations->SetInAt(1, Location::RequiresRegister());
   // The "out" register is used as a temporary, so it overlaps with the inputs.
   // Note that TypeCheckSlowPathARM64 uses this register too.
   locations->SetOut(Location::RequiresRegister(), Location::kOutputOverlap);
@@ -3915,9 +3887,7 @@ void InstructionCodeGeneratorARM64::VisitInstanceOf(HInstanceOf* instruction) {
   LocationSummary* locations = instruction->GetLocations();
   Location obj_loc = locations->InAt(0);
   Register obj = InputRegisterAt(instruction, 0);
-  Register cls = (type_check_kind == TypeCheckKind::kBitstringCheck)
-      ? Register()
-      : InputRegisterAt(instruction, 1);
+  Register cls = InputRegisterAt(instruction, 1);
   Location out_loc = locations->Out();
   Register out = OutputRegister(instruction);
   const size_t num_temps = NumberOfInstanceOfTemps(type_check_kind);
@@ -4103,23 +4073,6 @@ void InstructionCodeGeneratorARM64::VisitInstanceOf(HInstanceOf* instruction) {
       }
       break;
     }
-
-    case TypeCheckKind::kBitstringCheck: {
-      // /* HeapReference<Class> */ temp = obj->klass_
-      GenerateReferenceLoadTwoRegisters(instruction,
-                                        out_loc,
-                                        obj_loc,
-                                        class_offset,
-                                        maybe_temp_loc,
-                                        kWithoutReadBarrier);
-
-      GenerateBitstringTypeCheckCompare(instruction, out);
-      __ Cset(out, eq);
-      if (zero.IsLinked()) {
-        __ B(&done);
-      }
-      break;
-    }
   }
 
   if (zero.IsLinked()) {
@@ -4142,13 +4095,7 @@ void LocationsBuilderARM64::VisitCheckCast(HCheckCast* instruction) {
   LocationSummary* locations =
       new (GetGraph()->GetAllocator()) LocationSummary(instruction, call_kind);
   locations->SetInAt(0, Location::RequiresRegister());
-  if (type_check_kind == TypeCheckKind::kBitstringCheck) {
-    locations->SetInAt(1, Location::ConstantLocation(instruction->InputAt(1)->AsConstant()));
-    locations->SetInAt(2, Location::ConstantLocation(instruction->InputAt(2)->AsConstant()));
-    locations->SetInAt(3, Location::ConstantLocation(instruction->InputAt(3)->AsConstant()));
-  } else {
-    locations->SetInAt(1, Location::RequiresRegister());
-  }
+  locations->SetInAt(1, Location::RequiresRegister());
   // Add temps for read barriers and other uses. One is used by TypeCheckSlowPathARM64.
   locations->AddRegisterTemps(NumberOfCheckCastTemps(type_check_kind));
 }
@@ -4158,9 +4105,7 @@ void InstructionCodeGeneratorARM64::VisitCheckCast(HCheckCast* instruction) {
   LocationSummary* locations = instruction->GetLocations();
   Location obj_loc = locations->InAt(0);
   Register obj = InputRegisterAt(instruction, 0);
-  Register cls = (type_check_kind == TypeCheckKind::kBitstringCheck)
-      ? Register()
-      : InputRegisterAt(instruction, 1);
+  Register cls = InputRegisterAt(instruction, 1);
   const size_t num_temps = NumberOfCheckCastTemps(type_check_kind);
   DCHECK_GE(num_temps, 1u);
   DCHECK_LE(num_temps, 3u);
@@ -4339,20 +4284,6 @@ void InstructionCodeGeneratorARM64::VisitCheckCast(HCheckCast* instruction) {
       // Compare the classes and continue the loop if they do not match.
       __ Cmp(cls, WRegisterFrom(maybe_temp3_loc));
       __ B(ne, &start_loop);
-      break;
-    }
-
-    case TypeCheckKind::kBitstringCheck: {
-      // /* HeapReference<Class> */ temp = obj->klass_
-      GenerateReferenceLoadTwoRegisters(instruction,
-                                        temp_loc,
-                                        obj_loc,
-                                        class_offset,
-                                        maybe_temp2_loc,
-                                        kWithoutReadBarrier);
-
-      GenerateBitstringTypeCheckCompare(instruction, temp);
-      __ B(ne, type_check_slow_path->GetEntryLabel());
       break;
     }
   }

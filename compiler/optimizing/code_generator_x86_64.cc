@@ -5716,26 +5716,6 @@ void InstructionCodeGeneratorX86_64::GenerateClassInitializationCheck(
   // No need for memory fence, thanks to the x86-64 memory model.
 }
 
-void InstructionCodeGeneratorX86_64::GenerateBitstringTypeCheckCompare(HTypeCheckInstruction* check,
-                                                                       CpuRegister temp) {
-  uint32_t path_to_root = check->GetBitstringPathToRoot();
-  uint32_t mask = check->GetBitstringMask();
-  DCHECK(IsPowerOfTwo(mask + 1));
-  size_t mask_bits = WhichPowerOf2(mask + 1);
-
-  if (mask_bits == 16u) {
-    // Compare the bitstring in memory.
-    __ cmpw(Address(temp, mirror::Class::StatusOffset()), Immediate(path_to_root));
-  } else {
-    // /* uint32_t */ temp = temp->status_
-    __ movl(temp, Address(temp, mirror::Class::StatusOffset()));
-    // Compare the bitstring bits using SUB.
-    __ subl(temp, Immediate(path_to_root));
-    // Shift out bits that do not contribute to the comparison.
-    __ shll(temp, Immediate(32u - mask_bits));
-  }
-}
-
 HLoadClass::LoadKind CodeGeneratorX86_64::GetSupportedLoadClassKind(
     HLoadClass::LoadKind desired_class_load_kind) {
   switch (desired_class_load_kind) {
@@ -6102,8 +6082,6 @@ void LocationsBuilderX86_64::VisitInstanceOf(HInstanceOf* instruction) {
     case TypeCheckKind::kInterfaceCheck:
       call_kind = LocationSummary::kCallOnSlowPath;
       break;
-    case TypeCheckKind::kBitstringCheck:
-      break;
   }
 
   LocationSummary* locations =
@@ -6112,13 +6090,7 @@ void LocationsBuilderX86_64::VisitInstanceOf(HInstanceOf* instruction) {
     locations->SetCustomSlowPathCallerSaves(RegisterSet::Empty());  // No caller-save registers.
   }
   locations->SetInAt(0, Location::RequiresRegister());
-  if (type_check_kind == TypeCheckKind::kBitstringCheck) {
-    locations->SetInAt(1, Location::ConstantLocation(instruction->InputAt(1)->AsConstant()));
-    locations->SetInAt(2, Location::ConstantLocation(instruction->InputAt(2)->AsConstant()));
-    locations->SetInAt(3, Location::ConstantLocation(instruction->InputAt(3)->AsConstant()));
-  } else {
-    locations->SetInAt(1, Location::Any());
-  }
+  locations->SetInAt(1, Location::Any());
   // Note that TypeCheckSlowPathX86_64 uses this "out" register too.
   locations->SetOut(Location::RequiresRegister());
   // When read barriers are enabled, we need a temporary register for
@@ -6347,27 +6319,6 @@ void InstructionCodeGeneratorX86_64::VisitInstanceOf(HInstanceOf* instruction) {
       }
       break;
     }
-
-    case TypeCheckKind::kBitstringCheck: {
-      // /* HeapReference<Class> */ temp = obj->klass_
-      GenerateReferenceLoadTwoRegisters(instruction,
-                                        out_loc,
-                                        obj_loc,
-                                        class_offset,
-                                        kWithoutReadBarrier);
-
-      GenerateBitstringTypeCheckCompare(instruction, out);
-      if (zero.IsLinked()) {
-        __ j(kNotEqual, &zero);
-        __ movl(out, Immediate(1));
-        __ jmp(&done);
-      } else {
-        __ setcc(kEqual, out);
-        // setcc only sets the low byte.
-        __ andl(out, Immediate(1));
-      }
-      break;
-    }
   }
 
   if (zero.IsLinked()) {
@@ -6394,10 +6345,6 @@ void LocationsBuilderX86_64::VisitCheckCast(HCheckCast* instruction) {
     // Require a register for the interface check since there is a loop that compares the class to
     // a memory address.
     locations->SetInAt(1, Location::RequiresRegister());
-  } else if (type_check_kind == TypeCheckKind::kBitstringCheck) {
-    locations->SetInAt(1, Location::ConstantLocation(instruction->InputAt(1)->AsConstant()));
-    locations->SetInAt(2, Location::ConstantLocation(instruction->InputAt(2)->AsConstant()));
-    locations->SetInAt(3, Location::ConstantLocation(instruction->InputAt(3)->AsConstant()));
   } else {
     locations->SetInAt(1, Location::Any());
   }
@@ -6584,7 +6531,7 @@ void InstructionCodeGeneratorX86_64::VisitCheckCast(HCheckCast* instruction) {
       break;
     }
 
-    case TypeCheckKind::kInterfaceCheck: {
+    case TypeCheckKind::kInterfaceCheck:
       // Fast path for the interface check. Try to avoid read barriers to improve the fast path.
       // We can not get false positives by doing this.
       // /* HeapReference<Class> */ temp = obj->klass_
@@ -6620,20 +6567,6 @@ void InstructionCodeGeneratorX86_64::VisitCheckCast(HCheckCast* instruction) {
       // If `cls` was poisoned above, unpoison it.
       __ MaybeUnpoisonHeapReference(cls.AsRegister<CpuRegister>());
       break;
-    }
-
-    case TypeCheckKind::kBitstringCheck: {
-      // /* HeapReference<Class> */ temp = obj->klass_
-      GenerateReferenceLoadTwoRegisters(instruction,
-                                        temp_loc,
-                                        obj_loc,
-                                        class_offset,
-                                        kWithoutReadBarrier);
-
-      GenerateBitstringTypeCheckCompare(instruction, temp);
-      __ j(kNotEqual, type_check_slow_path->GetEntryLabel());
-      break;
-    }
   }
 
   if (done.IsLinked()) {
