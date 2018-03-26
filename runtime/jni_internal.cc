@@ -80,15 +80,18 @@ namespace art {
 // things not rendering correctly. E.g. b/16858794
 static constexpr bool kWarnJniAbort = false;
 
-static bool IsCallerInPlatformDex(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_) {
-  return hiddenapi::IsCallerInPlatformDex(GetCallingClass(self, /* num_frames */ 1));
+static bool IsCallerInBootClassPath(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_) {
+  ObjPtr<mirror::Class> klass = GetCallingClass(self, /* num_frames */ 1);
+  // If `klass` is null, it is an unattached native thread. Assume this is
+  // *not* boot class path.
+  return klass != nullptr && klass->IsBootStrapClassLoaded();
 }
 
 template<typename T>
 ALWAYS_INLINE static bool ShouldBlockAccessToMember(T* member, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return hiddenapi::ShouldBlockAccessToMember(
-      member, self, IsCallerInPlatformDex, hiddenapi::kJNI);
+      member, self, IsCallerInBootClassPath, hiddenapi::kJNI);
 }
 
 // Helpers to call instrumentation functions for fields. These take jobjects so we don't need to set
