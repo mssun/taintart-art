@@ -1403,10 +1403,6 @@ DEFINE_FUNCTION art_quick_unlock_object_no_inline
 END_FUNCTION art_quick_unlock_object_no_inline
 
 DEFINE_FUNCTION art_quick_check_instance_of
-    // Type check using the bit string passes null as the target class. In that case just throw.
-    testl %esi, %esi
-    jz .Lthrow_class_cast_exception_for_bitstring_check
-
     // We could check the super classes here but that is usually already checked in the caller.
     PUSH rdi                          // Save args for exc
     PUSH rsi
@@ -1430,7 +1426,6 @@ DEFINE_FUNCTION art_quick_check_instance_of
     POP rsi                           // Pop arguments
     POP rdi
 
-.Lthrow_class_cast_exception_for_bitstring_check:
     SETUP_SAVE_ALL_CALLEE_SAVES_FRAME // save all registers as basis for long jump context
     mov %gs:THREAD_SELF_OFFSET, %rdx  // pass Thread::Current()
     call SYMBOL(artThrowClassCastExceptionForObject)  // (Object* src, Class* dest, Thread*)

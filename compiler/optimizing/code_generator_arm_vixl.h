@@ -322,9 +322,6 @@ class InstructionCodeGeneratorARMVIXL : public InstructionCodeGenerator {
   void GenerateSuspendCheck(HSuspendCheck* instruction, HBasicBlock* successor);
   void GenerateClassInitializationCheck(LoadClassSlowPathARMVIXL* slow_path,
                                         vixl32::Register class_reg);
-  void GenerateBitstringTypeCheckCompare(HTypeCheckInstruction* check,
-                                         vixl::aarch32::Register temp,
-                                         vixl::aarch32::FlagsUpdate flags_update);
   void GenerateAndConst(vixl::aarch32::Register out, vixl::aarch32::Register first, uint32_t value);
   void GenerateOrrConst(vixl::aarch32::Register out, vixl::aarch32::Register first, uint32_t value);
   void GenerateEorConst(vixl::aarch32::Register out, vixl::aarch32::Register first, uint32_t value);

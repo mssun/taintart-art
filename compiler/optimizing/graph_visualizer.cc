@@ -390,23 +390,16 @@ class HGraphVisualizerPrinter : public HGraphDelegateVisitor {
     StartAttributeStream("load_kind") << load_string->GetLoadKind();
   }
 
-  void HandleTypeCheckInstruction(HTypeCheckInstruction* check) {
-    StartAttributeStream("check_kind") << check->GetTypeCheckKind();
-    StartAttributeStream("must_do_null_check") << std::boolalpha
-        << check->MustDoNullCheck() << std::noboolalpha;
-    if (check->GetTypeCheckKind() == TypeCheckKind::kBitstringCheck) {
-      StartAttributeStream("path_to_root") << std::hex
-          << "0x" << check->GetBitstringPathToRoot() << std::dec;
-      StartAttributeStream("mask") << std::hex << "0x" << check->GetBitstringMask() << std::dec;
-    }
-  }
-
   void VisitCheckCast(HCheckCast* check_cast) OVERRIDE {
-    HandleTypeCheckInstruction(check_cast);
+    StartAttributeStream("check_kind") << check_cast->GetTypeCheckKind();
+    StartAttributeStream("must_do_null_check") << std::boolalpha
+        << check_cast->MustDoNullCheck() << std::noboolalpha;
   }
 
   void VisitInstanceOf(HInstanceOf* instance_of) OVERRIDE {
-    HandleTypeCheckInstruction(instance_of);
+    StartAttributeStream("check_kind") << instance_of->GetTypeCheckKind();
+    StartAttributeStream("must_do_null_check") << std::boolalpha
+        << instance_of->MustDoNullCheck() << std::noboolalpha;
   }
 
   void VisitArrayLength(HArrayLength* array_length) OVERRIDE {
@@ -648,32 +641,20 @@ class HGraphVisualizerPrinter : public HGraphDelegateVisitor {
           << std::boolalpha << loop_info->IsIrreducible() << std::noboolalpha;
     }
 
-    // For the builder and the inliner, we want to add extra information on HInstructions
-    // that have reference types, and also HInstanceOf/HCheckcast.
     if ((IsPass(HGraphBuilder::kBuilderPassName)
         || IsPass(HInliner::kInlinerPassName))
-        && (instruction->GetType() == DataType::Type::kReference ||
-            instruction->IsInstanceOf() ||
-            instruction->IsCheckCast())) {
-      ReferenceTypeInfo info = (instruction->GetType() == DataType::Type::kReference)
-          ? instruction->IsLoadClass()
-              ? instruction->AsLoadClass()->GetLoadedClassRTI()
-              : instruction->GetReferenceTypeInfo()
-          : instruction->IsInstanceOf()
-              ? instruction->AsInstanceOf()->GetTargetClassRTI()
-              : instruction->AsCheckCast()->GetTargetClassRTI();
+        && (instruction->GetType() == DataType::Type::kReference)) {
+      ReferenceTypeInfo info = instruction->IsLoadClass()
+        ? instruction->AsLoadClass()->GetLoadedClassRTI()
+        : instruction->GetReferenceTypeInfo();
       ScopedObjectAccess soa(Thread::Current());
       if (info.IsValid()) {
         StartAttributeStream("klass")
             << mirror::Class::PrettyDescriptor(info.GetTypeHandle().Get());
-        if (instruction->GetType() == DataType::Type::kReference) {
-          StartAttributeStream("can_be_null")
-              << std::boolalpha << instruction->CanBeNull() << std::noboolalpha;
-        }
+        StartAttributeStream("can_be_null")
+            << std::boolalpha << instruction->CanBeNull() << std::noboolalpha;
         StartAttributeStream("exact") << std::boolalpha << info.IsExact() << std::noboolalpha;
-      } else if (instruction->IsLoadClass() ||
-                 instruction->IsInstanceOf() ||
-                 instruction->IsCheckCast()) {
+      } else if (instruction->IsLoadClass()) {
         StartAttributeStream("klass") << "unresolved";
       } else {
         // The NullConstant may be added to the graph during other passes that happen between
