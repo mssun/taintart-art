@@ -31,7 +31,6 @@
 
 #include "base/leb128.h"
 #include "fixed_up_dex_file.h"
-#include "dex/art_dex_file_loader.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_loader.h"
 #include "dex/dex_file_verifier.h"
@@ -108,7 +107,12 @@ std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& origi
   std::vector<unsigned char> data;
   std::unique_ptr<const art::DexFile> new_dex_file;
   std::string error;
-  const art::ArtDexFileLoader dex_file_loader;
+
+  // Do not use ArtDexFileLoader here. This code runs in a signal handler and
+  // its stack is too small to invoke the required LocationIsOnSystemFramework
+  // (b/76429651). Instead, we use DexFileLoader and copy the IsPlatformDexFile
+  // property from `original` to `new_dex_file`.
+  const art::DexFileLoader dex_file_loader;
 
   if (original.IsCompactDexFile()) {
     // Since we are supposed to return a standard dex, convert back using dexlayout. It's OK to do
@@ -157,6 +161,10 @@ std::unique_ptr<FixedUpDexFile> FixedUpDexFile::Create(const art::DexFile& origi
   if (new_dex_file  == nullptr) {
     LOG(ERROR) << "Unable to open dex file from memory for unquickening! error: " << error;
     return nullptr;
+  }
+
+  if (original.IsPlatformDexFile()) {
+    const_cast<art::DexFile*>(new_dex_file.get())->SetIsPlatformDexFile();
   }
 
   DoDexUnquicken(*new_dex_file, original);
