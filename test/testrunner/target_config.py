@@ -46,6 +46,10 @@ target_config = {
     'art-jit' : {
         'run-test' : ['--jit']
     },
+    'art-jit-on-first-use' : {
+        'run-test' : ['--jit',
+                      '--runtime-option=-Xjitthreshold:0']
+    },
     'art-pictest' : {
         'run-test' : ['--pictest',
                       '--optimizing']
@@ -65,6 +69,11 @@ target_config = {
     'art-jit-gcstress' : {
         'run-test' : ['--jit',
                       '--gcstress']
+    },
+    'art-jit-on-first-use-gcstress' : {
+        'run-test' : ['--jit',
+                      '--gcstress',
+                      '--runtime-option=-Xjitthreshold:0']
     },
     # TODO: Rename or repurpose this configuration as
     # 'art-read-barrier-heap-poisoning' (b/62611253).
