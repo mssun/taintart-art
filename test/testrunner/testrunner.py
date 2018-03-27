@@ -504,9 +504,6 @@ def run_tests(tests):
       elif env.ANDROID_COMPILE_WITH_JACK == False:
         options_test += ' --build-with-javac-dx'
 
-      if env.USE_D8_BY_DEFAULT == True:
-        options_test += ' --build-with-d8'
-
       # TODO(http://36039166): This is a temporary solution to
       # fix build breakages.
       options_test = (' --output-path %s') % (
