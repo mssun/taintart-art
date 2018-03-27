@@ -16,9 +16,11 @@
 
 #include <sys/mman.h>
 
+#include <fstream>
 #include <memory>
 
 #include "art_dex_file_loader.h"
+#include "base/file_utils.h"
 #include "base/os.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
@@ -35,7 +37,40 @@
 
 namespace art {
 
-class ArtDexFileLoaderTest : public CommonRuntimeTest {};
+static void Copy(const std::string& src, const std::string& dst) {
+  std::ifstream  src_stream(src, std::ios::binary);
+  std::ofstream  dst_stream(dst, std::ios::binary);
+  dst_stream << src_stream.rdbuf();
+}
+
+class ArtDexFileLoaderTest : public CommonRuntimeTest {
+ public:
+  virtual void SetUp() {
+    CommonRuntimeTest::SetUp();
+
+    std::string dex_location = GetTestDexFileName("Main");
+
+    data_location_path_ = android_data_ + "/foo.jar";
+    system_location_path_ = GetAndroidRoot() + "/foo.jar";
+    system_framework_location_path_ = GetAndroidRoot() + "/framework/foo.jar";
+
+    Copy(dex_location, data_location_path_);
+    Copy(dex_location, system_location_path_);
+    Copy(dex_location, system_framework_location_path_);
+  }
+
+  virtual void TearDown() {
+    remove(data_location_path_.c_str());
+    remove(system_location_path_.c_str());
+    remove(system_framework_location_path_.c_str());
+    CommonRuntimeTest::TearDown();
+  }
+
+ protected:
+  std::string data_location_path_;
+  std::string system_location_path_;
+  std::string system_framework_location_path_;
+};
 
 // TODO: Port OpenTestDexFile(s) need to be ported to use non-ART utilities, and
 // the tests that depend upon them should be moved to dex_file_loader_test.cc
@@ -302,6 +337,59 @@ TEST_F(ArtDexFileLoaderTest, GetDexCanonicalLocation) {
             DexFileLoader::GetDexCanonicalLocation(multidex_location_sym.c_str()));
 
   ASSERT_EQ(0, unlink(dex_location_sym.c_str()));
+}
+
+TEST_F(ArtDexFileLoaderTest, IsPlatformDexFile) {
+  ArtDexFileLoader loader;
+  bool success;
+  std::string error_msg;
+  std::vector<std::unique_ptr<const DexFile>> dex_files;
+
+  // Load file from a non-system directory and check that it is not flagged as framework.
+  ASSERT_FALSE(LocationIsOnSystemFramework(data_location_path_.c_str()));
+  success = loader.Open(data_location_path_.c_str(),
+                        data_location_path_,
+                        /* verify */ false,
+                        /* verify_checksum */ false,
+                        &error_msg,
+                        &dex_files);
+  ASSERT_TRUE(success);
+  ASSERT_GE(dex_files.size(), 1u);
+  for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
+    ASSERT_FALSE(dex_file->IsPlatformDexFile());
+  }
+
+  dex_files.clear();
+
+  // Load file from a system, non-framework directory and check that it is not flagged as framework.
+  ASSERT_FALSE(LocationIsOnSystemFramework(system_location_path_.c_str()));
+  success = loader.Open(system_location_path_.c_str(),
+                        system_location_path_,
+                        /* verify */ false,
+                        /* verify_checksum */ false,
+                        &error_msg,
+                        &dex_files);
+  ASSERT_TRUE(success);
+  ASSERT_GE(dex_files.size(), 1u);
+  for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
+    ASSERT_FALSE(dex_file->IsPlatformDexFile());
+  }
+
+  dex_files.clear();
+
+  // Load file from a system/framework directory and check that it is flagged as a framework dex.
+  ASSERT_TRUE(LocationIsOnSystemFramework(system_framework_location_path_.c_str()));
+  success = loader.Open(system_framework_location_path_.c_str(),
+                        system_framework_location_path_,
+                        /* verify */ false,
+                        /* verify_checksum */ false,
+                        &error_msg,
+                        &dex_files);
+  ASSERT_TRUE(success);
+  ASSERT_GE(dex_files.size(), 1u);
+  for (std::unique_ptr<const DexFile>& dex_file : dex_files) {
+    ASSERT_TRUE(dex_file->IsPlatformDexFile());
+  }
 }
 
 }  // namespace art
