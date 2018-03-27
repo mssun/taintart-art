@@ -407,10 +407,6 @@ class JitCodeCache {
   // Whether the last collection round increased the code cache.
   bool last_collection_increased_code_cache_ GUARDED_BY(lock_);
 
-  // Last time the the code_cache was updated.
-  // It is atomic to avoid locking when reading it.
-  Atomic<uint64_t> last_update_time_ns_;
-
   // Whether we can do garbage collection. Not 'const' as tests may override this.
   bool garbage_collect_code_;
 
