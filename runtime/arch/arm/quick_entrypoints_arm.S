@@ -809,6 +809,9 @@ END art_quick_unlock_object_no_inline
     .extern artInstanceOfFromCode
     .extern artThrowClassCastExceptionForObject
 ENTRY art_quick_check_instance_of
+    // Type check using the bit string passes null as the target class. In that case just throw.
+    cbz r1, .Lthrow_class_cast_exception_for_bitstring_check
+
     push {r0-r2, lr}                    @ save arguments, padding (r2) and link register
     .cfi_adjust_cfa_offset 16
     .cfi_rel_offset r0, 0
@@ -827,6 +830,7 @@ ENTRY art_quick_check_instance_of
     .cfi_restore r2
     .cfi_restore lr
 
+.Lthrow_class_cast_exception_for_bitstring_check:
     SETUP_SAVE_ALL_CALLEE_SAVES_FRAME r2       @ save all registers as basis for long jump context
     mov r2, r9                      @ pass Thread::Current
     bl  artThrowClassCastExceptionForObject  @ (Object*, Class*, Thread*)
