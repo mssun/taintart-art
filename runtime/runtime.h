@@ -536,6 +536,14 @@ class Runtime {
     pending_hidden_api_warning_ = value;
   }
 
+  void SetHiddenApiExemptions(const std::vector<std::string>& exemptions) {
+    hidden_api_exemptions_ = exemptions;
+  }
+
+  const std::vector<std::string>& GetHiddenApiExemptions() {
+    return hidden_api_exemptions_;
+  }
+
   bool HasPendingHiddenApiWarning() const {
     return pending_hidden_api_warning_;
   }
@@ -995,6 +1003,9 @@ class Runtime {
 
   // Whether access checks on hidden API should be performed.
   hiddenapi::EnforcementPolicy hidden_api_policy_;
+
+  // List of signature prefixes of methods that have been removed from the blacklist
+  std::vector<std::string> hidden_api_exemptions_;
 
   // Whether the application has used an API which is not restricted but we
   // should issue a warning about it.
