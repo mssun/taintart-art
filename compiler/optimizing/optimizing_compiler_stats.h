@@ -99,6 +99,7 @@ enum class MethodCompilationStat {
   kConstructorFenceRemovedLSE,
   kConstructorFenceRemovedPFRA,
   kConstructorFenceRemovedCFRE,
+  kBitstringTypeCheck,
   kJitOutOfMemoryForCommit,
   kLastStat
 };
