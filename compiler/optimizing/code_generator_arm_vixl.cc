@@ -7523,6 +7523,67 @@ void InstructionCodeGeneratorARMVIXL::GenerateClassInitializationCheck(
   __ Bind(slow_path->GetExitLabel());
 }
 
+void InstructionCodeGeneratorARMVIXL::GenerateBitstringTypeCheckCompare(
+    HTypeCheckInstruction* check,
+    vixl32::Register temp,
+    vixl32::FlagsUpdate flags_update) {
+  uint32_t path_to_root = check->GetBitstringPathToRoot();
+  uint32_t mask = check->GetBitstringMask();
+  DCHECK(IsPowerOfTwo(mask + 1));
+  size_t mask_bits = WhichPowerOf2(mask + 1);
+
+  // Note that HInstanceOf shall check for zero value in `temp` but HCheckCast needs
+  // the Z flag for BNE. This is indicated by the `flags_update` parameter.
+  if (mask_bits == 16u) {
+    // Load only the bitstring part of the status word.
+    __ Ldrh(temp, MemOperand(temp, mirror::Class::StatusOffset().Int32Value()));
+    // Check if the bitstring bits are equal to `path_to_root`.
+    if (flags_update == SetFlags) {
+      __ Cmp(temp, path_to_root);
+    } else {
+      __ Sub(temp, temp, path_to_root);
+    }
+  } else {
+    // /* uint32_t */ temp = temp->status_
+    __ Ldr(temp, MemOperand(temp, mirror::Class::StatusOffset().Int32Value()));
+    if (GetAssembler()->ShifterOperandCanHold(SUB, path_to_root)) {
+      // Compare the bitstring bits using SUB.
+      __ Sub(temp, temp, path_to_root);
+      // Shift out bits that do not contribute to the comparison.
+      __ Lsl(flags_update, temp, temp, dchecked_integral_cast<uint32_t>(32u - mask_bits));
+    } else if (IsUint<16>(path_to_root)) {
+      if (temp.IsLow()) {
+        // Note: Optimized for size but contains one more dependent instruction than necessary.
+        //       MOVW+SUB(register) would be 8 bytes unless we find a low-reg temporary but the
+        //       macro assembler would use the high reg IP for the constant by default.
+        // Compare the bitstring bits using SUB.
+        __ Sub(temp, temp, path_to_root & 0x00ffu);  // 16-bit SUB (immediate) T2
+        __ Sub(temp, temp, path_to_root & 0xff00u);  // 32-bit SUB (immediate) T3
+        // Shift out bits that do not contribute to the comparison.
+        __ Lsl(flags_update, temp, temp, dchecked_integral_cast<uint32_t>(32u - mask_bits));
+      } else {
+        // Extract the bitstring bits.
+        __ Ubfx(temp, temp, 0, mask_bits);
+        // Check if the bitstring bits are equal to `path_to_root`.
+        if (flags_update == SetFlags) {
+          __ Cmp(temp, path_to_root);
+        } else {
+          __ Sub(temp, temp, path_to_root);
+        }
+      }
+    } else {
+      // Shift out bits that do not contribute to the comparison.
+      __ Lsl(temp, temp, dchecked_integral_cast<uint32_t>(32u - mask_bits));
+      // Check if the shifted bitstring bits are equal to `path_to_root << (32u - mask_bits)`.
+      if (flags_update == SetFlags) {
+        __ Cmp(temp, path_to_root << (32u - mask_bits));
+      } else {
+        __ Sub(temp, temp, path_to_root << (32u - mask_bits));
+      }
+    }
+  }
+}
+
 HLoadString::LoadKind CodeGeneratorARMVIXL::GetSupportedLoadStringKind(
     HLoadString::LoadKind desired_string_load_kind) {
   switch (desired_string_load_kind) {
@@ -7714,6 +7775,8 @@ void LocationsBuilderARMVIXL::VisitInstanceOf(HInstanceOf* instruction) {
     case TypeCheckKind::kInterfaceCheck:
       call_kind = LocationSummary::kCallOnSlowPath;
       break;
+    case TypeCheckKind::kBitstringCheck:
+      break;
   }
 
   LocationSummary* locations =
@@ -7722,7 +7785,13 @@ void LocationsBuilderARMVIXL::VisitInstanceOf(HInstanceOf* instruction) {
     locations->SetCustomSlowPathCallerSaves(RegisterSet::Empty());  // No caller-save registers.
   }
   locations->SetInAt(0, Location::RequiresRegister());
-  locations->SetInAt(1, Location::RequiresRegister());
+  if (type_check_kind == TypeCheckKind::kBitstringCheck) {
+    locations->SetInAt(1, Location::ConstantLocation(instruction->InputAt(1)->AsConstant()));
+    locations->SetInAt(2, Location::ConstantLocation(instruction->InputAt(2)->AsConstant()));
+    locations->SetInAt(3, Location::ConstantLocation(instruction->InputAt(3)->AsConstant()));
+  } else {
+    locations->SetInAt(1, Location::RequiresRegister());
+  }
   // The "out" register is used as a temporary, so it overlaps with the inputs.
   // Note that TypeCheckSlowPathARM uses this register too.
   locations->SetOut(Location::RequiresRegister(), Location::kOutputOverlap);
@@ -7737,7 +7806,9 @@ void InstructionCodeGeneratorARMVIXL::VisitInstanceOf(HInstanceOf* instruction) 
   LocationSummary* locations = instruction->GetLocations();
   Location obj_loc = locations->InAt(0);
   vixl32::Register obj = InputRegisterAt(instruction, 0);
-  vixl32::Register cls = InputRegisterAt(instruction, 1);
+  vixl32::Register cls = (type_check_kind == TypeCheckKind::kBitstringCheck)
+      ? vixl32::Register()
+      : InputRegisterAt(instruction, 1);
   Location out_loc = locations->Out();
   vixl32::Register out = OutputRegister(instruction);
   const size_t num_temps = NumberOfInstanceOfTemps(type_check_kind);
@@ -7977,6 +8048,26 @@ void InstructionCodeGeneratorARMVIXL::VisitInstanceOf(HInstanceOf* instruction) 
       __ B(slow_path->GetEntryLabel());
       break;
     }
+
+    case TypeCheckKind::kBitstringCheck: {
+      // /* HeapReference<Class> */ temp = obj->klass_
+      GenerateReferenceLoadTwoRegisters(instruction,
+                                        out_loc,
+                                        obj_loc,
+                                        class_offset,
+                                        maybe_temp_loc,
+                                        kWithoutReadBarrier);
+
+      GenerateBitstringTypeCheckCompare(instruction, out, DontCare);
+      // If `out` is a low reg and we would have another low reg temp, we could
+      // optimize this as RSBS+ADC, see GenerateConditionWithZero().
+      //
+      // Also, in some cases when `out` is a low reg and we're loading a constant to IP
+      // it would make sense to use CMP+MOV+IT+MOV instead of SUB+CLZ+LSR as the code size
+      // would be the same and we would have fewer direct data dependencies.
+      codegen_->GenerateConditionWithZero(kCondEQ, out, out);  // CLZ+LSR
+      break;
+    }
   }
 
   if (done.IsReferenced()) {
@@ -7994,7 +8085,13 @@ void LocationsBuilderARMVIXL::VisitCheckCast(HCheckCast* instruction) {
   LocationSummary* locations =
       new (GetGraph()->GetAllocator()) LocationSummary(instruction, call_kind);
   locations->SetInAt(0, Location::RequiresRegister());
-  locations->SetInAt(1, Location::RequiresRegister());
+  if (type_check_kind == TypeCheckKind::kBitstringCheck) {
+    locations->SetInAt(1, Location::ConstantLocation(instruction->InputAt(1)->AsConstant()));
+    locations->SetInAt(2, Location::ConstantLocation(instruction->InputAt(2)->AsConstant()));
+    locations->SetInAt(3, Location::ConstantLocation(instruction->InputAt(3)->AsConstant()));
+  } else {
+    locations->SetInAt(1, Location::RequiresRegister());
+  }
   locations->AddRegisterTemps(NumberOfCheckCastTemps(type_check_kind));
 }
 
@@ -8003,7 +8100,9 @@ void InstructionCodeGeneratorARMVIXL::VisitCheckCast(HCheckCast* instruction) {
   LocationSummary* locations = instruction->GetLocations();
   Location obj_loc = locations->InAt(0);
   vixl32::Register obj = InputRegisterAt(instruction, 0);
-  vixl32::Register cls = InputRegisterAt(instruction, 1);
+  vixl32::Register cls = (type_check_kind == TypeCheckKind::kBitstringCheck)
+      ? vixl32::Register()
+      : InputRegisterAt(instruction, 1);
   Location temp_loc = locations->GetTemp(0);
   vixl32::Register temp = RegisterFrom(temp_loc);
   const size_t num_temps = NumberOfCheckCastTemps(type_check_kind);
@@ -8186,6 +8285,20 @@ void InstructionCodeGeneratorARMVIXL::VisitCheckCast(HCheckCast* instruction) {
       // Compare the classes and continue the loop if they do not match.
       __ Cmp(cls, RegisterFrom(maybe_temp3_loc));
       __ B(ne, &start_loop, /* far_target */ false);
+      break;
+    }
+
+    case TypeCheckKind::kBitstringCheck: {
+      // /* HeapReference<Class> */ temp = obj->klass_
+      GenerateReferenceLoadTwoRegisters(instruction,
+                                        temp_loc,
+                                        obj_loc,
+                                        class_offset,
+                                        maybe_temp2_loc,
+                                        kWithoutReadBarrier);
+
+      GenerateBitstringTypeCheckCompare(instruction, temp, SetFlags);
+      __ B(ne, type_check_slow_path->GetEntryLabel());
       break;
     }
   }

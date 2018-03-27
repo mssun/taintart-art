@@ -87,6 +87,7 @@ class ReferenceTypePropagation::RTPVisitor : public HGraphDelegateVisitor {
   void VisitDeoptimize(HDeoptimize* deopt) OVERRIDE;
   void VisitNewInstance(HNewInstance* new_instance) OVERRIDE;
   void VisitLoadClass(HLoadClass* load_class) OVERRIDE;
+  void VisitInstanceOf(HInstanceOf* load_class) OVERRIDE;
   void VisitClinitCheck(HClinitCheck* clinit_check) OVERRIDE;
   void VisitLoadString(HLoadString* instr) OVERRIDE;
   void VisitLoadException(HLoadException* instr) OVERRIDE;
@@ -171,6 +172,12 @@ void ReferenceTypePropagation::ValidateTypes() {
                 << "NullCheck " << instr->GetReferenceTypeInfo()
                 << "Input(0) " << instr->InputAt(0)->GetReferenceTypeInfo();
           }
+        } else if (instr->IsInstanceOf()) {
+          HInstanceOf* iof = instr->AsInstanceOf();
+          DCHECK(!iof->GetTargetClassRTI().IsValid() || iof->GetTargetClassRTI().IsExact());
+        } else if (instr->IsCheckCast()) {
+          HCheckCast* check = instr->AsCheckCast();
+          DCHECK(!check->GetTargetClassRTI().IsValid() || check->GetTargetClassRTI().IsExact());
         }
       }
     }
@@ -499,8 +506,7 @@ void ReferenceTypePropagation::RTPVisitor::BoundTypeForIfInstanceOf(HBasicBlock*
     return;
   }
 
-  HLoadClass* load_class = instanceOf->InputAt(1)->AsLoadClass();
-  ReferenceTypeInfo class_rti = load_class->GetLoadedClassRTI();
+  ReferenceTypeInfo class_rti = instanceOf->GetTargetClassRTI();
   if (!class_rti.IsValid()) {
     // He have loaded an unresolved class. Don't bother bounding the type.
     return;
@@ -643,13 +649,18 @@ void ReferenceTypePropagation::RTPVisitor::VisitUnresolvedStaticFieldGet(
 
 void ReferenceTypePropagation::RTPVisitor::VisitLoadClass(HLoadClass* instr) {
   ScopedObjectAccess soa(Thread::Current());
-  Handle<mirror::Class> resolved_class = instr->GetClass();
-  if (IsAdmissible(resolved_class.Get())) {
-    instr->SetLoadedClassRTI(ReferenceTypeInfo::Create(
-        resolved_class, /* is_exact */ true));
+  if (IsAdmissible(instr->GetClass().Get())) {
+    instr->SetValidLoadedClassRTI();
   }
   instr->SetReferenceTypeInfo(
       ReferenceTypeInfo::Create(handle_cache_->GetClassClassHandle(), /* is_exact */ true));
+}
+
+void ReferenceTypePropagation::RTPVisitor::VisitInstanceOf(HInstanceOf* instr) {
+  ScopedObjectAccess soa(Thread::Current());
+  if (IsAdmissible(instr->GetClass().Get())) {
+    instr->SetValidTargetClassRTI();
+  }
 }
 
 void ReferenceTypePropagation::RTPVisitor::VisitClinitCheck(HClinitCheck* instr) {
@@ -719,8 +730,6 @@ void ReferenceTypePropagation::RTPVisitor::VisitBoundType(HBoundType* instr) {
 }
 
 void ReferenceTypePropagation::RTPVisitor::VisitCheckCast(HCheckCast* check_cast) {
-  HLoadClass* load_class = check_cast->InputAt(1)->AsLoadClass();
-  ReferenceTypeInfo class_rti = load_class->GetLoadedClassRTI();
   HBoundType* bound_type = check_cast->GetNext()->AsBoundType();
   if (bound_type == nullptr || bound_type->GetUpperBound().IsValid()) {
     // The next instruction is not an uninitialized BoundType. This must be
@@ -729,12 +738,14 @@ void ReferenceTypePropagation::RTPVisitor::VisitCheckCast(HCheckCast* check_cast
   }
   DCHECK_EQ(bound_type->InputAt(0), check_cast->InputAt(0));
 
-  if (class_rti.IsValid()) {
+  ScopedObjectAccess soa(Thread::Current());
+  Handle<mirror::Class> klass = check_cast->GetClass();
+  if (IsAdmissible(klass.Get())) {
     DCHECK(is_first_run_);
-    ScopedObjectAccess soa(Thread::Current());
+    check_cast->SetValidTargetClassRTI();
     // This is the first run of RTP and class is resolved.
-    bool is_exact = class_rti.GetTypeHandle()->CannotBeAssignedFromOtherTypes();
-    bound_type->SetUpperBound(ReferenceTypeInfo::Create(class_rti.GetTypeHandle(), is_exact),
+    bool is_exact = klass->CannotBeAssignedFromOtherTypes();
+    bound_type->SetUpperBound(ReferenceTypeInfo::Create(klass, is_exact),
                               /* CheckCast succeeds for nulls. */ true);
   } else {
     // This is the first run of RTP and class is unresolved. Remove the binding.
