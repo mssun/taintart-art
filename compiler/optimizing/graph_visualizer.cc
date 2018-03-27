@@ -576,6 +576,11 @@ class HGraphVisualizerPrinter : public HGraphDelegateVisitor {
       }
       StartAttributeStream() << input_list;
     }
+    if (instruction->GetDexPc() != kNoDexPc) {
+      StartAttributeStream("dex_pc") << instruction->GetDexPc();
+    } else {
+      StartAttributeStream("dex_pc") << "n/a";
+    }
     instruction->Accept(this);
     if (instruction->HasEnvironment()) {
       StringList envs;
