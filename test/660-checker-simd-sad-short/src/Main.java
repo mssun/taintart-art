@@ -19,6 +19,10 @@
  */
 public class Main {
 
+  private static int $inline$seven() {
+    return 7;
+  }
+
   // TODO: lower precision still coming, b/64091002
 
   private static short sadShort2Short(short[] s1, short[] s2) {
@@ -153,6 +157,102 @@ public class Main {
     return sad;
   }
 
+  /// CHECK-START: int Main.sadShort2IntConstant1(short[]) loop_optimization (before)
+  /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
+  /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
+  /// CHECK-DAG: <<Cons:i\d+>>   IntConstant -7                 loop:none
+  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get1:s\d+>>   ArrayGet [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Add:i\d+>>    Add [<<Get1>>,<<Cons>>]        loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Intrin:i\d+>> Abs [<<Add>>]                  loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-START-{ARM64,MIPS64}: int Main.sadShort2IntConstant1(short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
+  /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
+  /// CHECK-DAG: <<Cons:i\d+>>   IntConstant 7                  loop:none
+  /// CHECK-DAG: <<Cons8:i\d+>>  IntConstant 8                  loop:none
+  /// CHECK-DAG: <<Rep:d\d+>>    VecReplicateScalar [<<Cons>>]  loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [<<Cons0>>]      loop:none
+  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Phi2:d\d+>>   Phi [<<Set>>,{{d\d+}}]         loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Load1:d\d+>>  VecLoad [{{l\d+}},<<Phi1>>]    loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<SAD:d\d+>>    VecSADAccumulate [<<Phi2>>,<<Load1>>,<<Rep>>] loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons8>>]       loop:<<Loop>>      outer_loop:none
+  private static int sadShort2IntConstant1(short[] s) {
+    int sad = 0;
+    for (int i = 0; i < s.length; i++) {
+      sad += Math.abs(s[i] - 7);  // s[i] + -7
+    }
+    return sad;
+  }
+
+  /// CHECK-START: int Main.sadShort2IntConstant2(short[]) loop_optimization (before)
+  /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
+  /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
+  /// CHECK-DAG: <<Cons:i\d+>>   IntConstant 7                  loop:none
+  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get1:s\d+>>   ArrayGet [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Sub:i\d+>>    Sub [<<Get1>>,<<Cons>>]        loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Intrin:i\d+>> Abs [<<Sub>>]                  loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-START-{ARM64,MIPS64}: int Main.sadShort2IntConstant2(short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
+  /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
+  /// CHECK-DAG: <<Cons:i\d+>>   IntConstant 7                  loop:none
+  /// CHECK-DAG: <<Cons8:i\d+>>  IntConstant 8                  loop:none
+  /// CHECK-DAG: <<Rep:d\d+>>    VecReplicateScalar [<<Cons>>]  loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [<<Cons0>>]      loop:none
+  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Phi2:d\d+>>   Phi [<<Set>>,{{d\d+}}]         loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Load1:d\d+>>  VecLoad [{{l\d+}},<<Phi1>>]    loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<SAD:d\d+>>    VecSADAccumulate [<<Phi2>>,<<Load1>>,<<Rep>>] loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons8>>]       loop:<<Loop>>      outer_loop:none
+  private static int sadShort2IntConstant2(short[] s) {
+    int sad = 0;
+    for (int i = 0; i < s.length; i++) {
+      sad += Math.abs(s[i] - $inline$seven());  // s[i] - 7
+    }
+    return sad;
+  }
+
+  /// CHECK-START: int Main.sadShort2IntConstant3(short[]) loop_optimization (before)
+  /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
+  /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
+  /// CHECK-DAG: <<Cons:i\d+>>   IntConstant 7                  loop:none
+  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Phi2:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get1:s\d+>>   ArrayGet [{{l\d+}},<<Phi1>>]   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Add:i\d+>>    Add [<<Get1>>,<<Cons>>]        loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Intrin:i\d+>> Abs [<<Add>>]                  loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Add [<<Phi2>>,<<Intrin>>]      loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons1>>]       loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-START-{ARM64,MIPS64}: int Main.sadShort2IntConstant3(short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
+  /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
+  /// CHECK-DAG: <<Cons:i\d+>>   IntConstant -7                 loop:none
+  /// CHECK-DAG: <<Cons8:i\d+>>  IntConstant 8                  loop:none
+  /// CHECK-DAG: <<Rep:d\d+>>    VecReplicateScalar [<<Cons>>]  loop:none
+  /// CHECK-DAG: <<Set:d\d+>>    VecSetScalars [<<Cons0>>]      loop:none
+  /// CHECK-DAG: <<Phi1:i\d+>>   Phi [<<Cons0>>,{{i\d+}}]       loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Phi2:d\d+>>   Phi [<<Set>>,{{d\d+}}]         loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Load1:d\d+>>  VecLoad [{{l\d+}},<<Phi1>>]    loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<SAD:d\d+>>    VecSADAccumulate [<<Phi2>>,<<Load1>>,<<Rep>>] loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:                 Add [<<Phi1>>,<<Cons8>>]       loop:<<Loop>>      outer_loop:none
+  private static int sadShort2IntConstant3(short[] s) {
+    int sad = 0;
+    for (int i = 0; i < s.length; i++) {
+      sad += Math.abs(s[i] + $inline$seven());  // hidden s[i] - (-7)
+    }
+    return sad;
+  }
+
   /// CHECK-START: long Main.sadShort2Long(short[], short[]) loop_optimization (before)
   /// CHECK-DAG: <<Cons0:i\d+>>  IntConstant 0                  loop:none
   /// CHECK-DAG: <<Cons1:i\d+>>  IntConstant 1                  loop:none
@@ -243,6 +343,9 @@ public class Main {
     expectEquals(65535, sadShort2IntAlt(s2, s1));
     expectEquals(65535, sadShort2IntAlt2(s1, s2));
     expectEquals(65535, sadShort2IntAlt2(s2, s1));
+    expectEquals(32880, sadShort2IntConstant1(s1));
+    expectEquals(32880, sadShort2IntConstant2(s1));
+    expectEquals(32866, sadShort2IntConstant3(s1));
     expectEquals(65535L, sadShort2Long(s1, s2));
     expectEquals(65535L, sadShort2Long(s2, s1));
     expectEquals(65536L, sadShort2LongAt1(s1, s2));
@@ -279,6 +382,9 @@ public class Main {
     expectEquals(1291788, sadShort2Int(s1, s2));
     expectEquals(1291788, sadShort2IntAlt(s1, s2));
     expectEquals(1291788, sadShort2IntAlt2(s1, s2));
+    expectEquals(823907, sadShort2IntConstant1(s1));
+    expectEquals(823907, sadShort2IntConstant2(s1));
+    expectEquals(823953, sadShort2IntConstant3(s1));
     expectEquals(1291788L, sadShort2Long(s1, s2));
     expectEquals(1291789L, sadShort2LongAt1(s1, s2));
 
