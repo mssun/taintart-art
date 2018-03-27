@@ -44,12 +44,10 @@ class HSharpening : public HOptimization {
 
   static constexpr const char* kSharpeningPassName = "sharpening";
 
-  // Used by the builder.
-  static void ProcessLoadString(HLoadString* load_string,
-                                CodeGenerator* codegen,
-                                CompilerDriver* compiler_driver,
-                                const DexCompilationUnit& dex_compilation_unit,
-                                VariableSizedHandleScope* handles);
+  // Used by Sharpening and InstructionSimplifier.
+  static void SharpenInvokeStaticOrDirect(HInvokeStaticOrDirect* invoke,
+                                          CodeGenerator* codegen,
+                                          CompilerDriver* compiler_driver);
 
   // Used by the builder and the inliner.
   static HLoadClass::LoadKind ComputeLoadClassKind(HLoadClass* load_class,
@@ -58,10 +56,19 @@ class HSharpening : public HOptimization {
                                                    const DexCompilationUnit& dex_compilation_unit)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Used by Sharpening and InstructionSimplifier.
-  static void SharpenInvokeStaticOrDirect(HInvokeStaticOrDirect* invoke,
-                                          CodeGenerator* codegen,
-                                          CompilerDriver* compiler_driver);
+  // Used by the builder.
+  static TypeCheckKind ComputeTypeCheckKind(ObjPtr<mirror::Class> klass,
+                                            CodeGenerator* codegen,
+                                            CompilerDriver* compiler_driver,
+                                            bool needs_access_check)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Used by the builder.
+  static void ProcessLoadString(HLoadString* load_string,
+                                CodeGenerator* codegen,
+                                CompilerDriver* compiler_driver,
+                                const DexCompilationUnit& dex_compilation_unit,
+                                VariableSizedHandleScope* handles);
 
  private:
   CodeGenerator* codegen_;
