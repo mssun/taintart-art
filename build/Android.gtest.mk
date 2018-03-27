@@ -37,6 +37,7 @@ GTEST_DEX_DIRECTORIES := \
   ExceptionHandle \
   GetMethodSignature \
   HiddenApi \
+  HiddenApiSignatures \
   ImageLayoutA \
   ImageLayoutB \
   IMTA \
@@ -160,6 +161,7 @@ ART_GTEST_dex2oat_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEP
 ART_GTEST_dex2oat_image_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS) Statics VerifierDeps
 ART_GTEST_exception_test_DEX_DEPS := ExceptionHandle
 ART_GTEST_hiddenapi_test_DEX_DEPS := HiddenApi
+ART_GTEST_hidden_api_test_DEX_DEPS := HiddenApiSignatures
 ART_GTEST_image_test_DEX_DEPS := ImageLayoutA ImageLayoutB DefaultMethods
 ART_GTEST_imtable_test_DEX_DEPS := IMTA IMTB
 ART_GTEST_instrumentation_test_DEX_DEPS := Instrumentation
