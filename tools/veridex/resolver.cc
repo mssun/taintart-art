@@ -18,6 +18,7 @@
 
 #include "dex/dex_file-inl.h"
 #include "dex/primitive.h"
+#include "hidden_api.h"
 #include "veridex.h"
 
 namespace art {
@@ -276,8 +277,10 @@ VeriField VeridexResolver::GetField(uint32_t field_index) {
   return field_info;
 }
 
-void VeridexResolver::ResolveAll() {
+void VeridexResolver::ResolveAll(const HiddenApi& hidden_api) {
   for (uint32_t i = 0; i < dex_file_.NumTypeIds(); ++i) {
+    // Note: we don't look at HiddenApi for types, as the lists don't contain
+    // classes.
     if (GetVeriClass(dex::TypeIndex(i)) == nullptr) {
       LOG(WARNING) << "Unresolved " << dex_file_.PrettyType(dex::TypeIndex(i));
     }
@@ -285,13 +288,17 @@ void VeridexResolver::ResolveAll() {
 
   for (uint32_t i = 0; i < dex_file_.NumMethodIds(); ++i) {
     if (GetMethod(i) == nullptr) {
-      LOG(WARNING) << "Unresolved: " << dex_file_.PrettyMethod(i);
+      if (!hidden_api.LogIfInList(HiddenApi::GetApiMethodName(dex_file_, i), "Linking")) {
+        LOG(WARNING) << "Unresolved: " << dex_file_.PrettyMethod(i);
+      }
     }
   }
 
   for (uint32_t i = 0; i < dex_file_.NumFieldIds(); ++i) {
     if (GetField(i) == nullptr) {
-      LOG(WARNING) << "Unresolved: " << dex_file_.PrettyField(i);
+      if (!hidden_api.LogIfInList(HiddenApi::GetApiFieldName(dex_file_, i), "Linking")) {
+        LOG(WARNING) << "Unresolved: " << dex_file_.PrettyField(i);
+      }
     }
   }
 }
