@@ -1,0 +1,2 @@
+Regression test for deoptimization at dex pc 0 causing infinite recursion
+for JIT-at-first-use.
