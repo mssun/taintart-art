@@ -476,6 +476,13 @@ art_cc_library {
     export_shared_lib_headers: [
         "libdexfile",
     ],
+    target: {
+        android: {
+            lto: {
+                 thin: true,
+            },
+        },
+    },
 }
 
 art_cc_library {
