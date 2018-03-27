@@ -976,5 +976,11 @@
         "tests": "677-fsi",
         "variant": "no-dex2oat | no-image | no-prebuild | relocate-npatchoat | jvm",
         "description": ["Test requires a successful dex2oat invocation"]
+    },
+    {
+        "tests": ["990-field-trace",
+                  "991-field-trace-2"],
+        "variant": "gcstress & debug & target",
+        "description": ["Test can time out on gcstress with debug"]
     }
 ]
