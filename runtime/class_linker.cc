@@ -72,6 +72,7 @@
 #include "gc/space/space-inl.h"
 #include "gc_root-inl.h"
 #include "handle_scope-inl.h"
+#include "hidden_api.h"
 #include "image-inl.h"
 #include "imt_conflict_table.h"
 #include "imtable-inl.h"
