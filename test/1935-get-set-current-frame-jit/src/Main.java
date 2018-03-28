@@ -49,9 +49,11 @@ public class Main {
   public static class IntRunner implements Runnable {
     private volatile boolean continueBusyLoop;
     private volatile boolean inBusyLoop;
-    public IntRunner() {
+    private final boolean expectOsr;
+    public IntRunner(boolean expectOsr) {
       this.continueBusyLoop = true;
       this.inBusyLoop = false;
+      this.expectOsr = expectOsr;
     }
     public void run() {
       int TARGET = 42;
@@ -64,9 +66,16 @@ public class Main {
         Main.ensureJitCompiled(IntRunner.class, "run");
         i++;
       }
-      // We shouldn't be doing OSR since we are using JVMTI and the get/set prevents OSR.
+      // We shouldn't be doing OSR since we are using JVMTI and the set prevents OSR.
       // Set local will also push us to interpreter but the get local may remain in compiled code.
-      System.out.println("isInOsrCode? " + (hasJit() && Main.isInOsrCode("run")));
+      if (hasJit()) {
+        boolean inOsr = Main.isInOsrCode("run");
+        if (expectOsr && !inOsr) {
+          throw new Error("Expected to be in OSR but was not.");
+        } else if (!expectOsr && inOsr) {
+          throw new Error("Expected not to be in OSR but was.");
+        }
+      }
       reportValue(TARGET);
     }
     public void waitForBusyLoopStart() { while (!inBusyLoop) {} }
@@ -78,7 +87,7 @@ public class Main {
   public static void runGet() throws Exception {
     Method target = IntRunner.class.getDeclaredMethod("run");
     // Get Int
-    IntRunner int_runner = new IntRunner();
+    IntRunner int_runner = new IntRunner(true);
     Thread target_get = new Thread(int_runner, "GetLocalInt - Target");
     target_get.start();
     int_runner.waitForBusyLoopStart();
@@ -108,7 +117,7 @@ public class Main {
   public static void runSet() throws Exception {
     Method target = IntRunner.class.getDeclaredMethod("run");
     // Set Int
-    IntRunner int_runner = new IntRunner();
+    IntRunner int_runner = new IntRunner(false);
     Thread target_set = new Thread(int_runner, "SetLocalInt - Target");
     target_set.start();
     int_runner.waitForBusyLoopStart();

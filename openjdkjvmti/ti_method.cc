@@ -915,6 +915,9 @@ jvmtiError MethodUtil::SetLocalVariableGeneric(jvmtiEnv* env ATTRIBUTE_UNUSED,
   if (depth < 0) {
     return ERR(ILLEGAL_ARGUMENT);
   }
+  // Make sure that we know not to do any OSR anymore.
+  // TODO We should really keep track of this at the Frame granularity.
+  DeoptManager::Get()->SetLocalsUpdated();
   art::Thread* self = art::Thread::Current();
   // Suspend JIT since it can get confused if we deoptimize methods getting jitted.
   art::jit::ScopedJitSuspend suspend_jit;
