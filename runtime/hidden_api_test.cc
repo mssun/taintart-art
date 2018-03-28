@@ -21,6 +21,8 @@
 
 namespace art {
 
+using hiddenapi::detail::MemberSignature;
+
 class HiddenApiTest : public CommonRuntimeTest {
  protected:
   void SetUp() OVERRIDE {
@@ -102,172 +104,172 @@ TEST_F(HiddenApiTest, CheckMembersRead) {
 TEST_F(HiddenApiTest, CheckEverythingMatchesL) {
   ScopedObjectAccess soa(self_);
   std::string prefix("L");
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_init_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class12_field1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class12_method1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method12_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class2_field1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class2_method1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class2_method1_i_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class3_field1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class3_method1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class3_method1_i_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_init_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class12_field1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class12_method1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method12_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class2_field1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class2_method1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class2_method1_i_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class3_field1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class3_method1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class3_method1_i_).DoesPrefixMatch(prefix));
 }
 
 TEST_F(HiddenApiTest, CheckPackageMatch) {
   ScopedObjectAccess soa(self_);
   std::string prefix("Lmypackage/packagea/");
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_init_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method12_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class12_field1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class12_method1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class2_field1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class2_method1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class2_method1_i_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class3_field1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class3_method1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class3_method1_i_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_init_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method12_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class12_field1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class12_method1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class2_field1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class2_method1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class2_method1_i_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class3_field1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class3_method1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class3_method1_i_).DoesPrefixMatch(prefix));
 }
 
 TEST_F(HiddenApiTest, CheckClassMatch) {
   ScopedObjectAccess soa(self_);
   std::string prefix("Lmypackage/packagea/Class1");
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_init_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method12_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class12_field1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class12_method1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class2_field1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class2_method1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class2_method1_i_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_init_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method12_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class12_field1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class12_method1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class2_field1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class2_method1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class2_method1_i_).DoesPrefixMatch(prefix));
 }
 
 TEST_F(HiddenApiTest, CheckClassExactMatch) {
   ScopedObjectAccess soa(self_);
   std::string prefix("Lmypackage/packagea/Class1;");
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_init_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class12_field1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class12_method1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class2_field1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class2_method1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class2_method1_i_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_init_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class12_field1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class12_method1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class2_field1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class2_method1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class2_method1_i_).DoesPrefixMatch(prefix));
 }
 
 TEST_F(HiddenApiTest, CheckMethodMatch) {
   ScopedObjectAccess soa(self_);
   std::string prefix("Lmypackage/packagea/Class1;->method1");
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_init_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method12_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class12_field1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class12_method1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_init_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method12_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class12_field1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class12_method1_).DoesPrefixMatch(prefix));
 }
 
 TEST_F(HiddenApiTest, CheckMethodExactMatch) {
   ScopedObjectAccess soa(self_);
   std::string prefix("Lmypackage/packagea/Class1;->method1(");
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_init_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_method12_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_init_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_method12_).DoesPrefixMatch(prefix));
 }
 
 TEST_F(HiddenApiTest, CheckMethodSignatureMatch) {
   ScopedObjectAccess soa(self_);
   std::string prefix("Lmypackage/packagea/Class1;->method1(I)");
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_method12_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_method12_).DoesPrefixMatch(prefix));
 }
 
 TEST_F(HiddenApiTest, CheckMethodSignatureAndReturnMatch) {
   ScopedObjectAccess soa(self_);
   std::string prefix("Lmypackage/packagea/Class1;->method1()V");
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_method12_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_method12_).DoesPrefixMatch(prefix));
 }
 
 TEST_F(HiddenApiTest, CheckFieldMatch) {
   ScopedObjectAccess soa(self_);
   std::string prefix("Lmypackage/packagea/Class1;->field1");
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_method12_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_method1_i_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_method12_).DoesPrefixMatch(prefix));
 }
 
 TEST_F(HiddenApiTest, CheckFieldExactMatch) {
   ScopedObjectAccess soa(self_);
   std::string prefix("Lmypackage/packagea/Class1;->field1:");
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
 }
 
 TEST_F(HiddenApiTest, CheckFieldTypeMatch) {
   ScopedObjectAccess soa(self_);
   std::string prefix("Lmypackage/packagea/Class1;->field1:I");
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_field12_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
 }
 
 TEST_F(HiddenApiTest, CheckConstructorMatch) {
   ScopedObjectAccess soa(self_);
   std::string prefix("Lmypackage/packagea/Class1;-><init>");
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_init_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_init_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
 }
 
 TEST_F(HiddenApiTest, CheckConstructorExactMatch) {
   ScopedObjectAccess soa(self_);
   std::string prefix("Lmypackage/packagea/Class1;-><init>()V");
-  ASSERT_TRUE(hiddenapi::MemberSignature(class1_init_).DoesPrefixMatch(prefix));
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
+  ASSERT_TRUE(MemberSignature(class1_init_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
 }
 
 TEST_F(HiddenApiTest, CheckMethodSignatureTrailingCharsNoMatch) {
   ScopedObjectAccess soa(self_);
   std::string prefix("Lmypackage/packagea/Class1;->method1()Vfoo");
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_method1_).DoesPrefixMatch(prefix));
 }
 
 TEST_F(HiddenApiTest, CheckConstructorTrailingCharsNoMatch) {
   ScopedObjectAccess soa(self_);
   std::string prefix("Lmypackage/packagea/Class1;-><init>()Vfoo");
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_init_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_init_).DoesPrefixMatch(prefix));
 }
 
 TEST_F(HiddenApiTest, CheckFieldTrailingCharsNoMatch) {
   ScopedObjectAccess soa(self_);
   std::string prefix("Lmypackage/packagea/Class1;->field1:Ifoo");
-  ASSERT_FALSE(hiddenapi::MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
+  ASSERT_FALSE(MemberSignature(class1_field1_).DoesPrefixMatch(prefix));
 }
 
 }  // namespace art

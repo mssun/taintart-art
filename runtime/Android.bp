@@ -87,6 +87,7 @@ cc_defaults {
         "gc/space/zygote_space.cc",
         "gc/task_processor.cc",
         "gc/verification.cc",
+        "hidden_api.cc",
         "hprof/hprof.cc",
         "image.cc",
         "index_bss_mapping.cc",
