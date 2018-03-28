@@ -4354,9 +4354,11 @@ bool Dbg::DdmHandleChunk(JNIEnv* env,
           WellKnownClasses::org_apache_harmony_dalvik_ddmc_DdmServer_dispatch,
           type, dataArray.get(), 0, data.size()));
   if (env->ExceptionCheck()) {
-    LOG(INFO) << StringPrintf("Exception thrown by dispatcher for 0x%08x", type);
-    env->ExceptionDescribe();
-    env->ExceptionClear();
+    Thread* self = Thread::Current();
+    ScopedObjectAccess soa(self);
+    LOG(INFO) << StringPrintf("Exception thrown by dispatcher for 0x%08x", type) << std::endl
+              << self->GetException()->Dump();
+    self->ClearException();
     return false;
   }
 
@@ -4400,10 +4402,11 @@ bool Dbg::DdmHandleChunk(JNIEnv* env,
                           reinterpret_cast<jbyte*>(out_data->data()));
 
   if (env->ExceptionCheck()) {
+    Thread* self = Thread::Current();
+    ScopedObjectAccess soa(self);
     LOG(INFO) << StringPrintf("Exception thrown when reading response data from dispatcher 0x%08x",
-                              type);
-    env->ExceptionDescribe();
-    env->ExceptionClear();
+                              type) << std::endl << self->GetException()->Dump();
+    self->ClearException();
     return false;
   }
 
