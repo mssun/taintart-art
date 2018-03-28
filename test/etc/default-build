@@ -317,7 +317,7 @@ function make_dex() {
   fi
 
   local dexer="${DX}"
-  if [[ "${USE_D8}" != "false" ]]; then
+  if [ ${USE_D8} = "true" ]; then
     dexer="${ANDROID_HOST_OUT}/bin/d8-compat-dx"
   fi
 
