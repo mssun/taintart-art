@@ -19,14 +19,6 @@
  */
 public class Main {
 
-  static final int $inline$p15() {
-    return 15;
-  }
-
-  static final int $inline$m15() {
-    return -15;
-  }
-
   //
   // Direct min-max.
   //
@@ -238,8 +230,8 @@ public class Main {
   /// CHECK-START-{ARM,ARM64}: void Main.satSubPConstSByte(byte[], byte[]) loop_optimization (after)
   /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
   /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Sub:d\d+>>  VecSaturationSub [<<Get1>>,<<Get2>>] packed_type:Int8 loop:<<Loop>> outer_loop:none
-  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Sub>>]  loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationSub [<<Get1>>,<<Get2>>] packed_type:Int8 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>> outer_loop:none
   public static void satSubPConstSByte(byte[] a, byte[] b) {
     int n = Math.min(a.length, b.length);
     for (int i = 0; i < n; i++) {
@@ -250,8 +242,8 @@ public class Main {
   /// CHECK-START-{ARM,ARM64}: void Main.satSubNConstSByte(byte[], byte[]) loop_optimization (after)
   /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
   /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Sub:d\d+>>  VecSaturationSub [<<Get1>>,<<Get2>>] packed_type:Int8 loop:<<Loop>> outer_loop:none
-  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Sub>>]  loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationSub [<<Get1>>,<<Get2>>] packed_type:Int8 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>> outer_loop:none
   public static void satSubNConstSByte(byte[] a, byte[] b) {
     int n = Math.min(a.length, b.length);
     for (int i = 0; i < n; i++) {
@@ -290,8 +282,8 @@ public class Main {
   /// CHECK-START-{ARM,ARM64}: void Main.satSubPConstSShort(short[], short[]) loop_optimization (after)
   /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
   /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Sub:d\d+>>  VecSaturationSub [<<Get1>>,<<Get2>>] packed_type:Int16 loop:<<Loop>> outer_loop:none
-  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Sub>>]  loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationSub [<<Get1>>,<<Get2>>] packed_type:Int16 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>> outer_loop:none
   public static void satSubPConstSShort(short[] a, short[] b) {
     int n = Math.min(a.length, b.length);
     for (int i = 0; i < n; i++) {
@@ -302,8 +294,8 @@ public class Main {
   /// CHECK-START-{ARM,ARM64}: void Main.satSubNConstSShort(short[], short[]) loop_optimization (after)
   /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
   /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Sub:d\d+>>  VecSaturationSub [<<Get1>>,<<Get2>>] packed_type:Int16 loop:<<Loop>> outer_loop:none
-  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Sub>>]  loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationSub [<<Get1>>,<<Get2>>] packed_type:Int16 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>> outer_loop:none
   public static void satSubNConstSShort(short[] a, short[] b) {
     int n = Math.min(a.length, b.length);
     for (int i = 0; i < n; i++) {
@@ -312,59 +304,7 @@ public class Main {
   }
 
   //
-  // Alternatives 8-bit clipping.
-  //
-
-  /// CHECK-START-{ARM,ARM64}: void Main.usatAddConst(byte[], byte[]) loop_optimization (after)
-  /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
-  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationAdd [<<Get2>>,<<Get1>>] packed_type:Uint8 loop:<<Loop>> outer_loop:none
-  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>> outer_loop:none
-  public static void usatAddConst(byte[] a, byte[] b) {
-    int n = Math.min(a.length, b.length);
-    for (int i = 0; i < n; i++) {
-      b[i] = (byte) Math.min((a[i] & 0xff) + $inline$p15(), 255);
-    }
-  }
-
-  /// CHECK-START-{ARM,ARM64}: void Main.usatAddConstAlt(byte[], byte[]) loop_optimization (after)
-  /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
-  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationAdd [<<Get2>>,<<Get1>>] packed_type:Uint8 loop:<<Loop>> outer_loop:none
-  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>> outer_loop:none
-  public static void usatAddConstAlt(byte[] a, byte[] b) {
-    int n = Math.min(a.length, b.length);
-    for (int i = 0; i < n; i++) {
-      b[i] = (byte) Math.min((a[i] & 0xff) - $inline$m15(), 255);
-    }
-  }
-
-  /// CHECK-START-{ARM,ARM64}: void Main.usatSubConst(byte[], byte[]) loop_optimization (after)
-  /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
-  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Sub:d\d+>>  VecSaturationSub [<<Get2>>,<<Get1>>] packed_type:Uint8 loop:<<Loop>> outer_loop:none
-  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Sub>>]  loop:<<Loop>> outer_loop:none
-  public static void usatSubConst(byte[] a, byte[] b) {
-    int n = Math.min(a.length, b.length);
-    for (int i = 0; i < n; i++) {
-      b[i] = (byte) Math.max((a[i] & 0xff) - $inline$p15(), 0);
-    }
-  }
-
-  /// CHECK-START-{ARM,ARM64}: void Main.usatSubConstAlt(byte[], byte[]) loop_optimization (after)
-  /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
-  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Sub:d\d+>>  VecSaturationSub [<<Get2>>,<<Get1>>] packed_type:Uint8 loop:<<Loop>> outer_loop:none
-  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Sub>>]  loop:<<Loop>> outer_loop:none
-  public static void usatSubConstAlt(byte[] a, byte[] b) {
-    int n = Math.min(a.length, b.length);
-    for (int i = 0; i < n; i++) {
-      b[i] = (byte) Math.max((a[i] & 0xff) + $inline$m15(), 0);
-    }
-  }
-
-  //
-  // Alternatives 16-bit clipping.
+  // Alternatives.
   //
 
   /// CHECK-START: void Main.satAlt1(short[], short[], short[]) loop_optimization (before)
@@ -502,34 +442,6 @@ public class Main {
     }
   }
 
-  /// CHECK-START-{ARM,ARM64}: void Main.usatSubConst(short[], short[]) loop_optimization (after)
-  /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
-  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Sub:d\d+>>  VecSaturationSub [<<Get2>>,<<Get1>>] packed_type:Uint16 loop:<<Loop>> outer_loop:none
-  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Sub>>]  loop:<<Loop>> outer_loop:none
-  public static void usatSubConst(short[] a, short[] b) {
-    int n = Math.min(a.length, b.length);
-    for (int i = 0; i < n; i++) {
-      int t = a[i] & 0xffff;
-      int s = t - $inline$p15();
-      b[i] = (short)(s > 0 ? s : 0);
-    }
-  }
-
-  /// CHECK-START-{ARM,ARM64}: void Main.usatSubConstAlt(short[], short[]) loop_optimization (after)
-  /// CHECK-DAG: <<Get1:d\d+>> VecReplicateScalar                   loop:none
-  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Sub:d\d+>>  VecSaturationSub [<<Get2>>,<<Get1>>] packed_type:Uint16 loop:<<Loop>> outer_loop:none
-  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Sub>>]  loop:<<Loop>> outer_loop:none
-  public static void usatSubConstAlt(short[] a, short[] b) {
-    int n = Math.min(a.length, b.length);
-    for (int i = 0; i < n; i++) {
-      int t = a[i] & 0xffff;
-      int s = t + $inline$m15();
-      b[i] = (short)(s > 0 ? s : 0);
-    }
-  }
-
   //
   // Test drivers.
   //
@@ -589,27 +501,6 @@ public class Main {
     satSubNConstSByte(b1, out);
     for (int i = 0; i < m; i++) {
       byte e = (byte) Math.max(-15 - b1[i], -128);
-      expectEquals(e, out[i]);
-    }
-    // Alternatives.
-    usatAddConst(b1, out);
-    for (int i = 0; i < m; i++) {
-      byte e = (byte) Math.min((b1[i] & 0xff) + 15, 255);
-      expectEquals(e, out[i]);
-    }
-    usatAddConstAlt(b1, out);
-    for (int i = 0; i < m; i++) {
-      byte e = (byte) Math.min((b1[i] & 0xff) + 15, 255);
-      expectEquals(e, out[i]);
-    }
-    usatSubConst(b1, out);
-    for (int i = 0; i < m; i++) {
-      byte e = (byte) Math.max((b1[i] & 0xff) - 15, 0);
-      expectEquals(e, out[i]);
-    }
-    usatSubConstAlt(b1, out);
-    for (int i = 0; i < m; i++) {
-      byte e = (byte) Math.max((b1[i] & 0xff) - 15, 0);
       expectEquals(e, out[i]);
     }
   }
@@ -737,16 +628,6 @@ public class Main {
     satNonRedundantClip(s1, out);
     for (int i = 0; i < m; i++) {
       short e = (short) Math.max(Math.min(s1[i] + 15, 32767), -32752);
-      expectEquals(e, out[i]);
-    }
-    usatSubConst(s1, out);
-    for (int i = 0; i < m; i++) {
-      short e = (short) Math.max((s1[i] & 0xffff) - 15, 0);
-      expectEquals(e, out[i]);
-    }
-    usatSubConstAlt(s1, out);
-    for (int i = 0; i < m; i++) {
-      short e = (short) Math.max((s1[i] & 0xffff) - 15, 0);
       expectEquals(e, out[i]);
     }
   }
