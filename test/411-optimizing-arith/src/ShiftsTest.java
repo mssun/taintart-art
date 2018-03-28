@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-public class Main {
+public class ShiftsTest {
 
   public static void expectEquals(int expected, int result) {
     if (expected != result) {
@@ -28,7 +28,7 @@ public class Main {
     }
   }
 
-  public static void main(String[] args) {
+  public static void main() {
     testShlInt();
     testShlLong();
     testShrInt();

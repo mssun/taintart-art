@@ -17,7 +17,7 @@
 // Note that $opt$ is a marker for the optimizing compiler to test
 // it does compile the method, and that $noinline$ is a marker to
 // test that it does not inline it.
-public class Main {
+public class NegTest {
 
   public static void assertEquals(int expected, int result) {
     if (expected != result) {
@@ -67,7 +67,7 @@ public class Main {
     }
   }
 
-  public static void main(String[] args) {
+  public static void main() {
     negInt();
     $opt$noinline$InplaceNegOneInt(1);
 
@@ -169,55 +169,29 @@ public class Main {
   }
 
 
-  static boolean doThrow = false;
-
   private static void $opt$noinline$InplaceNegOneInt(int a) {
-    if (doThrow) {
-      // Try defeating inlining.
-      throw new Error();
-    }
     a = -a;
     assertEquals(-1, a);
   }
 
   private static void $opt$noinline$InplaceNegOneLong(long a) {
-    if (doThrow) {
-      // Try defeating inlining.
-      throw new Error();
-    }
     a = -a;
     assertEquals(-1L, a);
   }
 
   private static int $opt$noinline$NegInt(int a){
-    if (doThrow) {
-      // Try defeating inlining.
-      throw new Error();
-    }
     return -a;
   }
 
   private static long $opt$noinline$NegLong(long a){
-    if (doThrow) {
-      // Try defeating inlining.
-      throw new Error();
-    }
     return -a;
   }
 
   private static float $opt$noinline$NegFloat(float a){
-    if (doThrow) {
-      // Try defeating inlining.
-      throw new Error();
-    }
     return -a;
   }
 
   private static double $opt$noinline$NegDouble(double a){
-    if (doThrow) {
-      // Try defeating inlining.
-      throw new Error();
-    }
     return -a;
   }
 }
