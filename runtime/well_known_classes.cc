@@ -24,6 +24,7 @@
 #include <android-base/stringprintf.h>
 
 #include "entrypoints/quick/quick_entrypoints_enum.h"
+#include "hidden_api.h"
 #include "jni_internal.h"
 #include "mirror/class.h"
 #include "mirror/throwable.h"
@@ -287,17 +288,17 @@ class ScopedHiddenApiExemption {
  public:
   explicit ScopedHiddenApiExemption(Runtime* runtime)
       : runtime_(runtime),
-        initially_enabled_(runtime_->AreHiddenApiChecksEnabled()) {
-    runtime_->SetHiddenApiChecksEnabled(false);
+        initial_policy_(runtime_->GetHiddenApiEnforcementPolicy()) {
+    runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kNoChecks);
   }
 
   ~ScopedHiddenApiExemption() {
-    runtime_->SetHiddenApiChecksEnabled(initially_enabled_);
+    runtime_->SetHiddenApiEnforcementPolicy(initial_policy_);
   }
 
  private:
   Runtime* runtime_;
-  const bool initially_enabled_;
+  const hiddenapi::EnforcementPolicy initial_policy_;
   DISALLOW_COPY_AND_ASSIGN(ScopedHiddenApiExemption);
 };
 
