@@ -227,7 +227,6 @@ static bool IsNarrowerOperands(HInstruction* a,
                                /*out*/ HInstruction** r,
                                /*out*/ HInstruction** s,
                                /*out*/ bool* is_unsigned) {
-  DCHECK(a != nullptr && b != nullptr);
   // Look for a matching sign extension.
   DataType::Type stype = HVecOperation::ToSignedType(type);
   if (IsSignExtensionAndGet(a, stype, r) && IsSignExtensionAndGet(b, stype, s)) {
@@ -248,7 +247,6 @@ static bool IsNarrowerOperand(HInstruction* a,
                               DataType::Type type,
                               /*out*/ HInstruction** r,
                               /*out*/ bool* is_unsigned) {
-  DCHECK(a != nullptr);
   // Look for a matching sign extension.
   DataType::Type stype = HVecOperation::ToSignedType(type);
   if (IsSignExtensionAndGet(a, stype, r)) {
@@ -272,28 +270,20 @@ static uint32_t GetOtherVL(DataType::Type other_type, DataType::Type vector_type
   return vl >> (DataType::SizeShift(other_type) - DataType::SizeShift(vector_type));
 }
 
-// Detect up to two added operands a and b and an acccumulated constant c.
-static bool IsAddConst(HInstruction* instruction,
-                       /*out*/ HInstruction** a,
-                       /*out*/ HInstruction** b,
-                       /*out*/ int64_t* c,
-                       int32_t depth = 8) {  // don't search too deep
+// Detect up to two instructions a and b, and an acccumulated constant c.
+static bool IsAddConstHelper(HInstruction* instruction,
+                             /*out*/ HInstruction** a,
+                             /*out*/ HInstruction** b,
+                             /*out*/ int64_t* c,
+                             int32_t depth) {
+  static constexpr int32_t kMaxDepth = 8;  // don't search too deep
   int64_t value = 0;
-  // Enter add/sub while still within reasonable depth.
-  if (depth > 0) {
-    if (instruction->IsAdd()) {
-      return IsAddConst(instruction->InputAt(0), a, b, c, depth - 1) &&
-             IsAddConst(instruction->InputAt(1), a, b, c, depth - 1);
-    } else if (instruction->IsSub() &&
-               IsInt64AndGet(instruction->InputAt(1), &value)) {
-      *c -= value;
-      return IsAddConst(instruction->InputAt(0), a, b, c, depth - 1);
-    }
-  }
-  // Otherwise, deal with leaf nodes.
   if (IsInt64AndGet(instruction, &value)) {
     *c += value;
     return true;
+  } else if (instruction->IsAdd() && depth <= kMaxDepth) {
+    return IsAddConstHelper(instruction->InputAt(0), a, b, c, depth + 1) &&
+           IsAddConstHelper(instruction->InputAt(1), a, b, c, depth + 1);
   } else if (*a == nullptr) {
     *a = instruction;
     return true;
@@ -301,40 +291,42 @@ static bool IsAddConst(HInstruction* instruction,
     *b = instruction;
     return true;
   }
-  return false;  // too many operands
+  return false;  // too many non-const operands
 }
 
-// Detect a + b + c with optional constant c.
-static bool IsAddConst2(HGraph* graph,
-                        HInstruction* instruction,
-                        /*out*/ HInstruction** a,
-                        /*out*/ HInstruction** b,
-                        /*out*/ int64_t* c) {
-  if (IsAddConst(instruction, a, b, c) && *a != nullptr) {
-    if (*b == nullptr) {
-      // Constant is usually already present, unless accumulated.
-      *b = graph->GetConstant(instruction->GetType(), (*c));
-      *c = 0;
+// Detect a + b + c for an optional constant c.
+static bool IsAddConst(HInstruction* instruction,
+                       /*out*/ HInstruction** a,
+                       /*out*/ HInstruction** b,
+                       /*out*/ int64_t* c) {
+  if (instruction->IsAdd()) {
+    // Try to find a + b and accumulated c.
+    if (IsAddConstHelper(instruction->InputAt(0), a, b, c, /*depth*/ 0) &&
+        IsAddConstHelper(instruction->InputAt(1), a, b, c, /*depth*/ 0) &&
+        *b != nullptr) {
+      return true;
     }
+    // Found a + b.
+    *a = instruction->InputAt(0);
+    *b = instruction->InputAt(1);
+    *c = 0;
     return true;
   }
   return false;
 }
 
-// Detect a direct a - b or a hidden a - (-c).
-static bool IsSubConst2(HGraph* graph,
-                        HInstruction* instruction,
-                        /*out*/ HInstruction** a,
-                        /*out*/ HInstruction** b) {
-  int64_t c = 0;
-  if (instruction->IsSub()) {
-    *a = instruction->InputAt(0);
-    *b = instruction->InputAt(1);
-    return true;
-  } else if (IsAddConst(instruction, a, b, &c) && *a != nullptr && *b == nullptr) {
-    // Constant for the hidden subtraction.
-    *b = graph->GetConstant(instruction->GetType(), -c);
-    return true;
+// Detect a + c for constant c.
+static bool IsAddConst(HInstruction* instruction,
+                       /*out*/ HInstruction** a,
+                       /*out*/ int64_t* c) {
+  if (instruction->IsAdd()) {
+    if (IsInt64AndGet(instruction->InputAt(0), c)) {
+      *a = instruction->InputAt(1);
+      return true;
+    } else if (IsInt64AndGet(instruction->InputAt(1), c)) {
+      *a = instruction->InputAt(0);
+      return true;
+    }
   }
   return false;
 }
@@ -386,8 +378,7 @@ static bool CanSetRange(DataType::Type type,
 }
 
 // Accept various saturated addition forms.
-static bool IsSaturatedAdd(HInstruction* a,
-                           HInstruction* b,
+static bool IsSaturatedAdd(HInstruction* clippee,
                            DataType::Type type,
                            int64_t lo,
                            int64_t hi,
@@ -399,7 +390,8 @@ static bool IsSaturatedAdd(HInstruction* a,
   // Tighten the range for signed single clipping on constant.
   if (!is_unsigned) {
     int64_t c = 0;
-    if (IsInt64AndGet(a, &c) || IsInt64AndGet(b, &c)) {
+    HInstruction* notused = nullptr;
+    if (IsAddConst(clippee, &notused, &c)) {
       // For c in proper range and narrower operand r:
       //    MIN(r + c,  127) c > 0
       // or MAX(r + c, -128) c < 0 (and possibly redundant bound).
@@ -421,7 +413,7 @@ static bool IsSaturatedAdd(HInstruction* a,
 }
 
 // Accept various saturated subtraction forms.
-static bool IsSaturatedSub(HInstruction* a,
+static bool IsSaturatedSub(HInstruction* clippee,
                            DataType::Type type,
                            int64_t lo,
                            int64_t hi,
@@ -433,7 +425,7 @@ static bool IsSaturatedSub(HInstruction* a,
   // Tighten the range for signed single clipping on constant.
   if (!is_unsigned) {
     int64_t c = 0;
-    if (IsInt64AndGet(a, /*out*/ &c)) {
+    if (IsInt64AndGet(clippee->InputAt(0), /*out*/ &c)) {
       // For c in proper range and narrower operand r:
       //    MIN(c - r,  127) c > 0
       // or MAX(c - r, -128) c < 0 (and possibly redundant bound).
@@ -1529,7 +1521,8 @@ bool HLoopOptimization::VectorizeUse(LoopNode* node,
       return false;  // reject, unless all operands are same-extension narrower
     }
     // Accept MIN/MAX(x, y) for vectorizable operands.
-    DCHECK(r != nullptr && s != nullptr);
+    DCHECK(r != nullptr);
+    DCHECK(s != nullptr);
     if (generate_code && vector_mode_ != kVector) {  // de-idiom
       r = opa;
       s = opb;
@@ -2033,37 +2026,31 @@ bool HLoopOptimization::VectorizeSaturationIdiom(LoopNode* node,
       instruction->GetType() != DataType::Type::kInt64) {
     return false;
   }
-  // Clipped addition or subtraction on narrower operands? We will try both
-  // formats since, e.g., x+c can be interpreted as x+c and x-(-c), depending
-  // on what clipping values are used, to get most benefits.
+  // Clipped addition or subtraction?
   int64_t lo = std::numeric_limits<int64_t>::min();
   int64_t hi = std::numeric_limits<int64_t>::max();
   HInstruction* clippee = FindClippee(instruction, &lo, &hi);
-  HInstruction* a = nullptr;
-  HInstruction* b = nullptr;
+  bool is_add = true;
+  if (clippee->IsAdd()) {
+    is_add = true;
+  } else if (clippee->IsSub()) {
+    is_add = false;
+  } else {
+    return false;  // clippee is not add/sub
+  }
+  // Addition or subtraction on narrower operands?
   HInstruction* r = nullptr;
   HInstruction* s = nullptr;
   bool is_unsigned = false;
-  bool is_add = true;
-  int64_t c = 0;
-  // First try for saturated addition.
-  if (IsAddConst2(graph_, clippee, /*out*/ &a, /*out*/ &b, /*out*/ &c) && c == 0 &&
-      IsNarrowerOperands(a, b, type, &r, &s, &is_unsigned) &&
-      IsSaturatedAdd(r, s, type, lo, hi, is_unsigned)) {
-    is_add = true;
+  if (IsNarrowerOperands(clippee->InputAt(0), clippee->InputAt(1), type, &r, &s, &is_unsigned) &&
+      (is_add ? IsSaturatedAdd(clippee, type, lo, hi, is_unsigned)
+              : IsSaturatedSub(clippee, type, lo, hi, is_unsigned))) {
+    DCHECK(r != nullptr);
+    DCHECK(s != nullptr);
   } else {
-    // Then try again for saturated subtraction.
-    a = b = r = s = nullptr;
-    if (IsSubConst2(graph_, clippee, /*out*/ &a, /*out*/ &b) &&
-        IsNarrowerOperands(a, b, type, &r, &s, &is_unsigned) &&
-        IsSaturatedSub(r, type, lo, hi, is_unsigned)) {
-      is_add = false;
-    } else {
-      return false;
-    }
+    return false;
   }
   // Accept saturation idiom for vectorizable operands.
-  DCHECK(r != nullptr && s != nullptr);
   if (generate_code && vector_mode_ != kVector) {  // de-idiom
     r = instruction->InputAt(0);
     s = instruction->InputAt(1);
@@ -2114,7 +2101,8 @@ bool HLoopOptimization::VectorizeHalvingAddIdiom(LoopNode* node,
     HInstruction* a = nullptr;
     HInstruction* b = nullptr;
     int64_t       c = 0;
-    if (IsAddConst2(graph_, instruction->InputAt(0), /*out*/ &a, /*out*/ &b, /*out*/ &c)) {
+    if (IsAddConst(instruction->InputAt(0), /*out*/ &a, /*out*/ &b, /*out*/ &c)) {
+      DCHECK(a != nullptr && b != nullptr);
       // Accept c == 1 (rounded) or c == 0 (not rounded).
       bool is_rounded = false;
       if (c == 1) {
@@ -2136,7 +2124,8 @@ bool HLoopOptimization::VectorizeHalvingAddIdiom(LoopNode* node,
       }
       // Accept recognized halving add for vectorizable operands. Vectorized code uses the
       // shorthand idiomatic operation. Sequential code uses the original scalar expressions.
-      DCHECK(r != nullptr && s != nullptr);
+      DCHECK(r != nullptr);
+      DCHECK(s != nullptr);
       if (generate_code && vector_mode_ != kVector) {  // de-idiom
         r = instruction->InputAt(0);
         s = instruction->InputAt(1);
@@ -2186,11 +2175,19 @@ bool HLoopOptimization::VectorizeSADIdiom(LoopNode* node,
   HInstruction* v = instruction->InputAt(1);
   HInstruction* a = nullptr;
   HInstruction* b = nullptr;
-  if (v->IsAbs() &&
-      v->GetType() == reduction_type &&
-      IsSubConst2(graph_, v->InputAt(0), /*out*/ &a, /*out*/ &b)) {
-    DCHECK(a != nullptr && b != nullptr);
-  } else {
+  if (v->GetType() == reduction_type && v->IsAbs()) {
+    HInstruction* x = v->InputAt(0);
+    if (x->GetType() == reduction_type) {
+      int64_t c = 0;
+      if (x->IsSub()) {
+        a = x->InputAt(0);
+        b = x->InputAt(1);
+      } else if (IsAddConst(x, /*out*/ &a, /*out*/ &c)) {
+        b = graph_->GetConstant(reduction_type, -c);  // hidden SUB!
+      }
+    }
+  }
+  if (a == nullptr || b == nullptr) {
     return false;
   }
   // Accept same-type or consistent sign extension for narrower-type on operands a and b.
@@ -2223,7 +2220,8 @@ bool HLoopOptimization::VectorizeSADIdiom(LoopNode* node,
   }
   // Accept SAD idiom for vectorizable operands. Vectorized code uses the shorthand
   // idiomatic operation. Sequential code uses the original scalar expressions.
-  DCHECK(r != nullptr && s != nullptr);
+  DCHECK(r != nullptr);
+  DCHECK(s != nullptr);
   if (generate_code && vector_mode_ != kVector) {  // de-idiom
     r = s = v->InputAt(0);
   }
