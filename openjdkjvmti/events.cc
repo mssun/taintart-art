@@ -940,9 +940,6 @@ void EventHandler::SetupTraceListener(JvmtiMethodTraceListener* listener,
   }
   art::ScopedThreadStateChange stsc(art::Thread::Current(), art::ThreadState::kNative);
   art::instrumentation::Instrumentation* instr = art::Runtime::Current()->GetInstrumentation();
-  art::gc::ScopedGCCriticalSection gcs(art::Thread::Current(),
-                                       art::gc::kGcCauseInstrumentation,
-                                       art::gc::kCollectorTypeInstrumentation);
   art::ScopedSuspendAll ssa("jvmti method tracing installation");
   if (enable) {
     instr->AddListener(listener, new_events);

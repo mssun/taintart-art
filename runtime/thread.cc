@@ -1438,8 +1438,12 @@ class BarrierClosure : public Closure {
     barrier_.Pass(self);
   }
 
-  void Wait(Thread* self) {
-    barrier_.Increment(self, 1);
+  void Wait(Thread* self, ThreadState suspend_state) {
+    if (suspend_state != ThreadState::kRunnable) {
+      barrier_.Increment<Barrier::kDisallowHoldingLocks>(self, 1);
+    } else {
+      barrier_.Increment<Barrier::kAllowHoldingLocks>(self, 1);
+    }
   }
 
  private:
@@ -1448,7 +1452,7 @@ class BarrierClosure : public Closure {
 };
 
 // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
-bool Thread::RequestSynchronousCheckpoint(Closure* function) {
+bool Thread::RequestSynchronousCheckpoint(Closure* function, ThreadState suspend_state) {
   Thread* self = Thread::Current();
   if (this == Thread::Current()) {
     Locks::thread_list_lock_->AssertExclusiveHeld(self);
@@ -1496,8 +1500,8 @@ bool Thread::RequestSynchronousCheckpoint(Closure* function) {
         // Relinquish the thread-list lock. We should not wait holding any locks. We cannot
         // reacquire it since we don't know if 'this' hasn't been deleted yet.
         Locks::thread_list_lock_->ExclusiveUnlock(self);
-        ScopedThreadSuspension sts(self, ThreadState::kWaiting);
-        barrier_closure.Wait(self);
+        ScopedThreadStateChange sts(self, suspend_state);
+        barrier_closure.Wait(self, suspend_state);
         return true;
       }
       // Fall-through.
@@ -1521,7 +1525,7 @@ bool Thread::RequestSynchronousCheckpoint(Closure* function) {
       // that we can call ModifySuspendCount without racing against ThreadList::Unregister.
       ScopedThreadListLockUnlock stllu(self);
       {
-        ScopedThreadSuspension sts(self, ThreadState::kWaiting);
+        ScopedThreadStateChange sts(self, suspend_state);
         while (GetState() == ThreadState::kRunnable) {
           // We became runnable again. Wait till the suspend triggered in ModifySuspendCount
           // moves us to suspended.
