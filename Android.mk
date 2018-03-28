@@ -67,6 +67,7 @@ include $(art_path)/tools/Android.mk
 include $(art_path)/tools/ahat/Android.mk
 include $(art_path)/tools/amm/Android.mk
 include $(art_path)/tools/dexfuzz/Android.mk
+include $(art_path)/tools/veridex/Android.mk
 include $(art_path)/libart_fake/Android.mk
 
 ART_HOST_DEPENDENCIES := \
