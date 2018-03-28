@@ -121,7 +121,8 @@ DexFile::DexFile(const uint8_t* base,
       num_call_site_ids_(0),
       oat_dex_file_(oat_dex_file),
       container_(std::move(container)),
-      is_compact_dex_(is_compact_dex) {
+      is_compact_dex_(is_compact_dex),
+      is_platform_dex_(false) {
   CHECK(begin_ != nullptr) << GetLocation();
   CHECK_GT(size_, 0U) << GetLocation();
   // Check base (=header) alignment.
