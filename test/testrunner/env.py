@@ -71,6 +71,9 @@ ANDROID_BUILD_TOP = _get_android_build_top()
 # Compiling with jack? Possible values in (True, False, 'default')
 ANDROID_COMPILE_WITH_JACK = _get_build_var_boolean('ANDROID_COMPILE_WITH_JACK', 'default')
 
+# Follow the build system's D8 usage.
+USE_D8_BY_DEFAULT = _get_build_var_boolean('USE_D8_BY_DEFAULT', False)
+
 # Directory used for temporary test files on the host.
 ART_HOST_TEST_DIR = tempfile.mkdtemp(prefix = 'test-art-')
 
