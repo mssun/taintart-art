@@ -91,7 +91,7 @@ BINARY_II_INTRINSIC(MterpIntegerRotateLeft, (Rot<int32_t, true>), SetI);
 // java.lang.Integer.signum(I)I
 UNARY_INTRINSIC(MterpIntegerSignum, Signum, GetVReg, SetI);
 
-// java.lang.Long.reverse(I)I
+// java.lang.Long.reverse(J)J
 UNARY_INTRINSIC(MterpLongReverse, ReverseBits64, GetVRegLong, SetJ);
 
 // java.lang.Long.reverseBytes(J)J
