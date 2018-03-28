@@ -17,54 +17,54 @@
 /**
  * Tests for MIN/MAX vectorization.
  */
-public class Main {
+public class FloatSimdMinMax {
 
-  /// CHECK-START: void Main.doitMin(double[], double[], double[]) loop_optimization (before)
+  /// CHECK-START: void FloatSimdMinMax.doitMin(float[], float[], float[]) loop_optimization (before)
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Get1:d\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Get2:d\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Min:d\d+>>  Min [<<Get1>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get1:f\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get2:f\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Min:f\d+>>  Min [<<Get1>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Min>>] loop:<<Loop>>      outer_loop:none
   //
   // TODO x86: 0.0 vs -0.0?
   // TODO MIPS64: min(x, NaN)?
   //
-  /// CHECK-START-ARM64: void Main.doitMin(double[], double[], double[]) loop_optimization (after)
+  /// CHECK-START-ARM64: void FloatSimdMinMax.doitMin(float[], float[], float[]) loop_optimization (after)
   /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Min:d\d+>>  VecMin [<<Get1>>,<<Get2>>]           loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               VecStore [{{l\d+}},{{i\d+}},<<Min>>] loop:<<Loop>>      outer_loop:none
-  private static void doitMin(double[] x, double[] y, double[] z) {
+  private static void doitMin(float[] x, float[] y, float[] z) {
     int min = Math.min(x.length, Math.min(y.length, z.length));
     for (int i = 0; i < min; i++) {
       x[i] = Math.min(y[i], z[i]);
     }
   }
 
-  /// CHECK-START: void Main.doitMax(double[], double[], double[]) loop_optimization (before)
+  /// CHECK-START: void FloatSimdMinMax.doitMax(float[], float[], float[]) loop_optimization (before)
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Get1:d\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Get2:d\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Max:d\d+>>  Max [<<Get1>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get1:f\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get2:f\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Max:f\d+>>  Max [<<Get1>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Max>>] loop:<<Loop>>      outer_loop:none
   //
   // TODO x86: 0.0 vs -0.0?
   // TODO MIPS64: max(x, NaN)?
   //
-  /// CHECK-START-ARM64: void Main.doitMax(double[], double[], double[]) loop_optimization (after)
+  /// CHECK-START-ARM64: void FloatSimdMinMax.doitMax(float[], float[], float[]) loop_optimization (after)
   /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Max:d\d+>>  VecMax [<<Get1>>,<<Get2>>]           loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               VecStore [{{l\d+}},{{i\d+}},<<Max>>] loop:<<Loop>>      outer_loop:none
-  private static void doitMax(double[] x, double[] y, double[] z) {
+  private static void doitMax(float[] x, float[] y, float[] z) {
     int min = Math.min(x.length, Math.min(y.length, z.length));
     for (int i = 0; i < min; i++) {
       x[i] = Math.max(y[i], z[i]);
     }
   }
 
-  public static void main(String[] args) {
-    double[] interesting = {
+  public static void main() {
+    float[] interesting = {
       -0.0f,
       +0.0f,
       -1.0f,
@@ -75,18 +75,18 @@ public class Main {
       +100.0f,
       -4444.44f,
       +4444.44f,
-      Double.MIN_NORMAL,
-      Double.MIN_VALUE,
-      Double.MAX_VALUE,
-      Double.NEGATIVE_INFINITY,
-      Double.POSITIVE_INFINITY,
-      Double.NaN
+      Float.MIN_NORMAL,
+      Float.MIN_VALUE,
+      Float.MAX_VALUE,
+      Float.NEGATIVE_INFINITY,
+      Float.POSITIVE_INFINITY,
+      Float.NaN
     };
     // Initialize cross-values for the interesting values.
     int total = interesting.length * interesting.length;
-    double[] x = new double[total];
-    double[] y = new double[total];
-    double[] z = new double[total];
+    float[] x = new float[total];
+    float[] y = new float[total];
+    float[] z = new float[total];
     int k = 0;
     for (int i = 0; i < interesting.length; i++) {
       for (int j = 0; j < interesting.length; j++) {
@@ -100,27 +100,27 @@ public class Main {
     // And test.
     doitMin(x, y, z);
     for (int i = 0; i < total; i++) {
-      double expected = Math.min(y[i], z[i]);
+      float expected = Math.min(y[i], z[i]);
       expectEquals(expected, x[i]);
     }
     doitMax(x, y, z);
     for (int i = 0; i < total; i++) {
-      double expected = Math.max(y[i], z[i]);
+      float expected = Math.max(y[i], z[i]);
       expectEquals(expected, x[i]);
     }
 
-    System.out.println("passed");
+    System.out.println("FloatSimdMinMax passed");
   }
 
-  private static void expectEquals(double expected, double result) {
+  private static void expectEquals(float expected, float result) {
     // Tests the bits directly. This distinguishes correctly between +0.0
     // and -0.0 and returns a canonical representation for all NaN.
-    long expected_bits = Double.doubleToLongBits(expected);
-    long result_bits = Double.doubleToLongBits(result);
+    int expected_bits = Float.floatToIntBits(expected);
+    int result_bits = Float.floatToIntBits(result);
     if (expected_bits != result_bits) {
       throw new Error("Expected: " + expected +
-          "(0x" + Long.toHexString(expected_bits) + "), found: " + result +
-          "(0x" + Long.toHexString(result_bits) + ")");
+          "(0x" + Integer.toHexString(expected_bits) + "), found: " + result +
+          "(0x" + Integer.toHexString(result_bits) + ")");
     }
   }
 }

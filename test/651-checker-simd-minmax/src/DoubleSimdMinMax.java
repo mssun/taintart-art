@@ -17,77 +17,76 @@
 /**
  * Tests for MIN/MAX vectorization.
  */
-public class Main {
+public class DoubleSimdMinMax {
 
-  /// CHECK-START: void Main.doitMin(long[], long[], long[]) loop_optimization (before)
+  /// CHECK-START: void DoubleSimdMinMax.doitMin(double[], double[], double[]) loop_optimization (before)
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Get1:j\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Get2:j\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Min:j\d+>>  Min [<<Get1>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get1:d\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Min:d\d+>>  Min [<<Get1>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Min>>] loop:<<Loop>>      outer_loop:none
   //
-  // Not directly supported for longs.
+  // TODO x86: 0.0 vs -0.0?
+  // TODO MIPS64: min(x, NaN)?
   //
-  /// CHECK-START-ARM64: void Main.doitMin(long[], long[], long[]) loop_optimization (after)
-  /// CHECK-NOT: VecMin
-  //
-  /// CHECK-START-MIPS64: void Main.doitMin(long[], long[], long[]) loop_optimization (after)
+  /// CHECK-START-ARM64: void DoubleSimdMinMax.doitMin(double[], double[], double[]) loop_optimization (after)
   /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Min:d\d+>>  VecMin [<<Get1>>,<<Get2>>]           loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               VecStore [{{l\d+}},{{i\d+}},<<Min>>] loop:<<Loop>>      outer_loop:none
-
-  private static void doitMin(long[] x, long[] y, long[] z) {
+  private static void doitMin(double[] x, double[] y, double[] z) {
     int min = Math.min(x.length, Math.min(y.length, z.length));
     for (int i = 0; i < min; i++) {
       x[i] = Math.min(y[i], z[i]);
     }
   }
 
-  /// CHECK-START: void Main.doitMax(long[], long[], long[]) loop_optimization (before)
+  /// CHECK-START: void DoubleSimdMinMax.doitMax(double[], double[], double[]) loop_optimization (before)
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: <<Get1:j\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Get2:j\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: <<Max:j\d+>>  Max [<<Get1>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get1:d\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Max:d\d+>>  Max [<<Get1>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Max>>] loop:<<Loop>>      outer_loop:none
   //
-  // Not directly supported for longs.
+  // TODO x86: 0.0 vs -0.0?
+  // TODO MIPS64: max(x, NaN)?
   //
-  /// CHECK-START-ARM64: void Main.doitMax(long[], long[], long[]) loop_optimization (after)
-  /// CHECK-NOT: VecMax
-  //
-  /// CHECK-START-MIPS64: void Main.doitMax(long[], long[], long[]) loop_optimization (after)
+  /// CHECK-START-ARM64: void DoubleSimdMinMax.doitMax(double[], double[], double[]) loop_optimization (after)
   /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Max:d\d+>>  VecMax [<<Get1>>,<<Get2>>]           loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               VecStore [{{l\d+}},{{i\d+}},<<Max>>] loop:<<Loop>>      outer_loop:none
-  private static void doitMax(long[] x, long[] y, long[] z) {
+  private static void doitMax(double[] x, double[] y, double[] z) {
     int min = Math.min(x.length, Math.min(y.length, z.length));
     for (int i = 0; i < min; i++) {
       x[i] = Math.max(y[i], z[i]);
     }
   }
 
-  public static void main(String[] args) {
-    long[] interesting = {
-      0x0000000000000000L, 0x0000000000000001L, 0x000000007fffffffL,
-      0x0000000080000000L, 0x0000000080000001L, 0x00000000ffffffffL,
-      0x0000000100000000L, 0x0000000100000001L, 0x000000017fffffffL,
-      0x0000000180000000L, 0x0000000180000001L, 0x00000001ffffffffL,
-      0x7fffffff00000000L, 0x7fffffff00000001L, 0x7fffffff7fffffffL,
-      0x7fffffff80000000L, 0x7fffffff80000001L, 0x7fffffffffffffffL,
-      0x8000000000000000L, 0x8000000000000001L, 0x800000007fffffffL,
-      0x8000000080000000L, 0x8000000080000001L, 0x80000000ffffffffL,
-      0x8000000100000000L, 0x8000000100000001L, 0x800000017fffffffL,
-      0x8000000180000000L, 0x8000000180000001L, 0x80000001ffffffffL,
-      0xffffffff00000000L, 0xffffffff00000001L, 0xffffffff7fffffffL,
-      0xffffffff80000000L, 0xffffffff80000001L, 0xffffffffffffffffL
+  public static void main() {
+    double[] interesting = {
+      -0.0f,
+      +0.0f,
+      -1.0f,
+      +1.0f,
+      -3.14f,
+      +3.14f,
+      -100.0f,
+      +100.0f,
+      -4444.44f,
+      +4444.44f,
+      Double.MIN_NORMAL,
+      Double.MIN_VALUE,
+      Double.MAX_VALUE,
+      Double.NEGATIVE_INFINITY,
+      Double.POSITIVE_INFINITY,
+      Double.NaN
     };
     // Initialize cross-values for the interesting values.
     int total = interesting.length * interesting.length;
-    long[] x = new long[total];
-    long[] y = new long[total];
-    long[] z = new long[total];
+    double[] x = new double[total];
+    double[] y = new double[total];
+    double[] z = new double[total];
     int k = 0;
     for (int i = 0; i < interesting.length; i++) {
       for (int j = 0; j < interesting.length; j++) {
@@ -101,21 +100,27 @@ public class Main {
     // And test.
     doitMin(x, y, z);
     for (int i = 0; i < total; i++) {
-      long expected = Math.min(y[i], z[i]);
+      double expected = Math.min(y[i], z[i]);
       expectEquals(expected, x[i]);
     }
     doitMax(x, y, z);
     for (int i = 0; i < total; i++) {
-      long expected = Math.max(y[i], z[i]);
+      double expected = Math.max(y[i], z[i]);
       expectEquals(expected, x[i]);
     }
 
-    System.out.println("passed");
+    System.out.println("DoubleSimdMinMax passed");
   }
 
-  private static void expectEquals(long expected, long result) {
-    if (expected != result) {
-      throw new Error("Expected: " + expected + ", found: " + result);
+  private static void expectEquals(double expected, double result) {
+    // Tests the bits directly. This distinguishes correctly between +0.0
+    // and -0.0 and returns a canonical representation for all NaN.
+    long expected_bits = Double.doubleToLongBits(expected);
+    long result_bits = Double.doubleToLongBits(result);
+    if (expected_bits != result_bits) {
+      throw new Error("Expected: " + expected +
+          "(0x" + Long.toHexString(expected_bits) + "), found: " + result +
+          "(0x" + Long.toHexString(result_bits) + ")");
     }
   }
 }

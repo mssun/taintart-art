@@ -17,16 +17,16 @@
 /**
  * Tests for MIN/MAX vectorization.
  */
-public class Main {
+public class IntSimdMinMax {
 
-  /// CHECK-START: void Main.doitMin(int[], int[], int[]) loop_optimization (before)
+  /// CHECK-START: void IntSimdMinMax.doitMin(int[], int[], int[]) loop_optimization (before)
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get1:i\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:i\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Min:i\d+>>  Min [<<Get1>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Min>>] loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-{ARM,ARM64,MIPS64}: void Main.doitMin(int[], int[], int[]) loop_optimization (after)
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void IntSimdMinMax.doitMin(int[], int[], int[]) loop_optimization (after)
   /// CHECK-DAG: <<Get1:d\d+>> VecLoad                                      loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get2:d\d+>> VecLoad                                      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Min:d\d+>>  VecMin [<<Get1>>,<<Get2>>] packed_type:Int32 loop:<<Loop>>      outer_loop:none
@@ -38,14 +38,14 @@ public class Main {
     }
   }
 
-  /// CHECK-START: void Main.doitMax(int[], int[], int[]) loop_optimization (before)
+  /// CHECK-START: void IntSimdMinMax.doitMax(int[], int[], int[]) loop_optimization (before)
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get1:i\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:i\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Max:i\d+>>  Max [<<Get1>>,<<Get2>>]             loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Max>>] loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-{ARM,ARM64,MIPS64}: void Main.doitMax(int[], int[], int[]) loop_optimization (after)
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void IntSimdMinMax.doitMax(int[], int[], int[]) loop_optimization (after)
   /// CHECK-DAG: <<Get1:d\d+>> VecLoad                                      loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get2:d\d+>> VecLoad                                      loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Max:d\d+>>  VecMax [<<Get1>>,<<Get2>>] packed_type:Int32 loop:<<Loop>>      outer_loop:none
@@ -57,7 +57,7 @@ public class Main {
     }
   }
 
-  public static void main(String[] args) {
+  public static void main() {
     int[] interesting = {
       0x00000000, 0x00000001, 0x00007fff, 0x00008000, 0x00008001, 0x0000ffff,
       0x00010000, 0x00010001, 0x00017fff, 0x00018000, 0x00018001, 0x0001ffff,
@@ -93,7 +93,7 @@ public class Main {
       expectEquals(expected, x[i]);
     }
 
-    System.out.println("passed");
+    System.out.println("IntSimdMinMax passed");
   }
 
   private static void expectEquals(int expected, int result) {
