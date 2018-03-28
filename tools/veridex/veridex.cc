@@ -20,6 +20,7 @@
 
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
+#include "hidden_api.h"
 #include "resolver.h"
 
 #include <sstream>
@@ -162,8 +163,9 @@ class Veridex {
     Resolve(app_dex_files, resolver_map, type_map, &app_resolvers);
 
     // Resolve all type_id/method_id/field_id of app dex files.
+    HiddenApi hidden_api(options.blacklist, options.dark_greylist, options.light_greylist);
     for (const std::unique_ptr<VeridexResolver>& resolver : app_resolvers) {
-      resolver->ResolveAll();
+      resolver->ResolveAll(hidden_api);
     }
 
     return 0;

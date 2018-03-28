@@ -22,6 +22,7 @@
 
 namespace art {
 
+class HiddenApi;
 class VeridexResolver;
 
 /**
@@ -65,8 +66,9 @@ class VeridexResolver {
                           const char* field_name,
                           const char* field_type);
 
-  // Resolve all type_id/method_id/field_id.
-  void ResolveAll();
+  // Resolve all type_id/method_id/field_id. Log for unresolved
+  // entities, or entities part of a hidden API list.
+  void ResolveAll(const HiddenApi& hidden_api);
 
  private:
   // Return the resolver where `kls` is from.
