@@ -429,7 +429,8 @@ void DumpNativeStack(std::ostream& os ATTRIBUTE_UNUSED,
                      BacktraceMap* existing_map ATTRIBUTE_UNUSED,
                      const char* prefix ATTRIBUTE_UNUSED,
                      ArtMethod* current_method ATTRIBUTE_UNUSED,
-                     void* ucontext_ptr ATTRIBUTE_UNUSED) {
+                     void* ucontext_ptr ATTRIBUTE_UNUSED,
+                     bool skip_frames ATTRIBUTE_UNUSED) {
 }
 
 void DumpKernelStack(std::ostream& os ATTRIBUTE_UNUSED,
