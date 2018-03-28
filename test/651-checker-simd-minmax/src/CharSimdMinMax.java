@@ -17,9 +17,9 @@
 /**
  * Tests for MIN/MAX vectorization.
  */
-public class Main {
+public class CharSimdMinMax {
 
-  /// CHECK-START: void Main.doitMin(char[], char[], char[]) loop_optimization (before)
+  /// CHECK-START: void CharSimdMinMax.doitMin(char[], char[], char[]) loop_optimization (before)
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get1:c\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:c\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
@@ -27,7 +27,7 @@ public class Main {
   /// CHECK-DAG: <<Cnv:c\d+>>  TypeConversion [<<Min>>]            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-{ARM,ARM64,MIPS64}: void Main.doitMin(char[], char[], char[]) loop_optimization (after)
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void CharSimdMinMax.doitMin(char[], char[], char[]) loop_optimization (after)
   /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Min:d\d+>>  VecMin [<<Get1>>,<<Get2>>] packed_type:Uint16 loop:<<Loop>> outer_loop:none
@@ -39,7 +39,7 @@ public class Main {
     }
   }
 
-  /// CHECK-START: void Main.doitMax(char[], char[], char[]) loop_optimization (before)
+  /// CHECK-START: void CharSimdMinMax.doitMax(char[], char[], char[]) loop_optimization (before)
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get1:c\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:c\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
@@ -47,7 +47,7 @@ public class Main {
   /// CHECK-DAG: <<Cnv:c\d+>>  TypeConversion [<<Max>>]            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-{ARM,ARM64,MIPS64}: void Main.doitMax(char[], char[], char[]) loop_optimization (after)
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void CharSimdMinMax.doitMax(char[], char[], char[]) loop_optimization (after)
   /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Max:d\d+>>  VecMax [<<Get1>>,<<Get2>>] packed_type:Uint16 loop:<<Loop>> outer_loop:none
@@ -59,7 +59,7 @@ public class Main {
     }
   }
 
-  /// CHECK-START: void Main.doitMin100(char[], char[]) loop_optimization (before)
+  /// CHECK-START: void CharSimdMinMax.doitMin100(char[], char[]) loop_optimization (before)
   /// CHECK-DAG: <<I100:i\d+>> IntConstant 100                     loop:none
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get:c\d+>>  ArrayGet                            loop:<<Loop>>      outer_loop:none
@@ -67,7 +67,7 @@ public class Main {
   /// CHECK-DAG: <<Cnv:c\d+>>  TypeConversion [<<Min>>]            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-{ARM64,MIPS64}: void Main.doitMin100(char[], char[]) loop_optimization (after)
+  /// CHECK-START-{ARM64,MIPS64}: void CharSimdMinMax.doitMin100(char[], char[]) loop_optimization (after)
   /// CHECK-DAG: <<I100:i\d+>> IntConstant 100                      loop:none
   /// CHECK-DAG: <<Repl:d\d+>> VecReplicateScalar [<<I100>>]        loop:none
   /// CHECK-DAG: <<Get:d\d+>>  VecLoad                              loop:<<Loop:B\d+>>    outer_loop:none
@@ -80,7 +80,7 @@ public class Main {
     }
   }
 
-  public static void main(String[] args) {
+  public static void main() {
     char[] interesting = {
       0x0000, 0x0001, 0x007f, 0x0080, 0x0081, 0x00ff,
       0x0100, 0x0101, 0x017f, 0x0180, 0x0181, 0x01ff,
@@ -121,7 +121,7 @@ public class Main {
       expectEquals(expected, x[i]);
     }
 
-    System.out.println("passed");
+    System.out.println("CharSimdMinMax passed");
   }
 
   private static void expectEquals(char expected, char result) {
