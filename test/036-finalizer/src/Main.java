@@ -70,17 +70,15 @@ public class Main {
         return s[0];
     }
 
-    public static void main(String[] args) {
-        WeakReference<FinalizerTest> wimp = makeRef();
+    private static void printWeakReference(WeakReference<FinalizerTest> wimp) {
         // Reference ft so we are sure the WeakReference cannot be cleared.
-        // Note: This is very fragile. It was previously in a helper function but that
-        // doesn't work for JIT-on-first-use with --gcstress where the object would be
-        // collected when JIT internally allocates an array. Also adding a scope around
-        // the keepLive lifetime somehow keeps a non-null `keepLive` around and makes
-        // the test fail (even when keeping the `null` assignment). b/76454261
         FinalizerTest keepLive = wimp.get();
         System.out.println("wimp: " + wimpString(wimp));
-        keepLive = null;  // Clear the reference.
+    }
+
+    public static void main(String[] args) {
+        WeakReference<FinalizerTest> wimp = makeRef();
+        printWeakReference(wimp);
 
         /* this will try to collect and finalize ft */
         System.out.println("gc");
