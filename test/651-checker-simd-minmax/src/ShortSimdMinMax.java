@@ -17,9 +17,9 @@
 /**
  * Tests for MIN/MAX vectorization.
  */
-public class Main {
+public class ShortSimdMinMax {
 
-  /// CHECK-START: void Main.doitMin(short[], short[], short[]) loop_optimization (before)
+  /// CHECK-START: void ShortSimdMinMax.doitMin(short[], short[], short[]) loop_optimization (before)
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get1:s\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:s\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
@@ -27,7 +27,7 @@ public class Main {
   /// CHECK-DAG: <<Cnv:s\d+>>  TypeConversion [<<Min>>]            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-{ARM,ARM64,MIPS64}: void Main.doitMin(short[], short[], short[]) loop_optimization (after)
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void ShortSimdMinMax.doitMin(short[], short[], short[]) loop_optimization (after)
   /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop:B\d+>>    outer_loop:none
   /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>         outer_loop:none
   /// CHECK-DAG: <<Min:d\d+>>  VecMin [<<Get1>>,<<Get2>>] packed_type:Int16 loop:<<Loop>> outer_loop:none
@@ -39,7 +39,7 @@ public class Main {
     }
   }
 
-  /// CHECK-START: void Main.doitMinUnsigned(short[], short[], short[]) instruction_simplifier (before)
+  /// CHECK-START: void ShortSimdMinMax.doitMinUnsigned(short[], short[], short[]) instruction_simplifier (before)
   /// CHECK-DAG: <<IMAX:i\d+>> IntConstant 65535                   loop:none
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get1:s\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
@@ -50,7 +50,7 @@ public class Main {
   /// CHECK-DAG: <<Cnv:s\d+>>  TypeConversion [<<Min>>]            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},{{i\d+}},<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START: void Main.doitMinUnsigned(short[], short[], short[]) loop_optimization (before)
+  /// CHECK-START: void ShortSimdMinMax.doitMinUnsigned(short[], short[], short[]) loop_optimization (before)
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get1:c\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:c\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
@@ -58,7 +58,7 @@ public class Main {
   /// CHECK-DAG: <<Cnv:s\d+>>  TypeConversion [<<Min>>]            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-{ARM,ARM64,MIPS64}: void Main.doitMinUnsigned(short[], short[], short[]) loop_optimization (after)
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void ShortSimdMinMax.doitMinUnsigned(short[], short[], short[]) loop_optimization (after)
   /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop:B\d+>>     outer_loop:none
   /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>          outer_loop:none
   /// CHECK-DAG: <<Min:d\d+>>  VecMin [<<Get1>>,<<Get2>>] packed_type:Uint16 loop:<<Loop>> outer_loop:none
@@ -70,7 +70,7 @@ public class Main {
     }
   }
 
-  /// CHECK-START: void Main.doitMax(short[], short[], short[]) loop_optimization (before)
+  /// CHECK-START: void ShortSimdMinMax.doitMax(short[], short[], short[]) loop_optimization (before)
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get1:s\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:s\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
@@ -78,7 +78,7 @@ public class Main {
   /// CHECK-DAG: <<Cnv:s\d+>>  TypeConversion [<<Max>>]            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-{ARM,ARM64,MIPS64}: void Main.doitMax(short[], short[], short[]) loop_optimization (after)
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void ShortSimdMinMax.doitMax(short[], short[], short[]) loop_optimization (after)
   /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop:B\d+>>    outer_loop:none
   /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>         outer_loop:none
   /// CHECK-DAG: <<Max:d\d+>>  VecMax [<<Get1>>,<<Get2>>] packed_type:Int16 loop:<<Loop>> outer_loop:none
@@ -90,7 +90,7 @@ public class Main {
     }
   }
 
-  /// CHECK-START: void Main.doitMaxUnsigned(short[], short[], short[]) instruction_simplifier (before)
+  /// CHECK-START: void ShortSimdMinMax.doitMaxUnsigned(short[], short[], short[]) instruction_simplifier (before)
   /// CHECK-DAG: <<IMAX:i\d+>> IntConstant 65535                   loop:none
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get1:s\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
@@ -101,7 +101,7 @@ public class Main {
   /// CHECK-DAG: <<Cnv:s\d+>>  TypeConversion [<<Max>>]            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},{{i\d+}},<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START: void Main.doitMaxUnsigned(short[], short[], short[]) loop_optimization (before)
+  /// CHECK-START: void ShortSimdMinMax.doitMaxUnsigned(short[], short[], short[]) loop_optimization (before)
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get1:c\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG: <<Get2:c\d+>> ArrayGet                            loop:<<Loop>>      outer_loop:none
@@ -109,7 +109,7 @@ public class Main {
   /// CHECK-DAG: <<Cnv:s\d+>>  TypeConversion [<<Max>>]            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-{ARM,ARM64,MIPS64}: void Main.doitMaxUnsigned(short[], short[], short[]) loop_optimization (after)
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void ShortSimdMinMax.doitMaxUnsigned(short[], short[], short[]) loop_optimization (after)
   /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop:B\d+>>     outer_loop:none
   /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>          outer_loop:none
   /// CHECK-DAG: <<Max:d\d+>>  VecMax [<<Get1>>,<<Get2>>] packed_type:Uint16 loop:<<Loop>> outer_loop:none
@@ -121,7 +121,7 @@ public class Main {
     }
   }
 
-  /// CHECK-START: void Main.doitMin100(short[], short[]) loop_optimization (before)
+  /// CHECK-START: void ShortSimdMinMax.doitMin100(short[], short[]) loop_optimization (before)
   /// CHECK-DAG: <<I100:i\d+>> IntConstant 100                     loop:none
   /// CHECK-DAG: <<Phi:i\d+>>  Phi                                 loop:<<Loop:B\d+>> outer_loop:none
   /// CHECK-DAG: <<Get:s\d+>>  ArrayGet                            loop:<<Loop>>      outer_loop:none
@@ -129,7 +129,7 @@ public class Main {
   /// CHECK-DAG: <<Cnv:s\d+>>  TypeConversion [<<Min>>]            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-{ARM64,MIPS64}: void Main.doitMin100(short[], short[]) loop_optimization (after)
+  /// CHECK-START-{ARM64,MIPS64}: void ShortSimdMinMax.doitMin100(short[], short[]) loop_optimization (after)
   /// CHECK-DAG: <<I100:i\d+>> IntConstant 100                      loop:none
   /// CHECK-DAG: <<Repl:d\d+>> VecReplicateScalar [<<I100>>]        loop:none
   /// CHECK-DAG: <<Get:d\d+>>  VecLoad                              loop:<<Loop:B\d+>>   outer_loop:none
@@ -142,7 +142,7 @@ public class Main {
     }
   }
 
-  public static void main(String[] args) {
+  public static void main() {
     short[] interesting = {
       (short) 0x0000, (short) 0x0001, (short) 0x007f,
       (short) 0x0080, (short) 0x0081, (short) 0x00ff,
@@ -199,7 +199,7 @@ public class Main {
       expectEquals(expected, x[i]);
     }
 
-    System.out.println("passed");
+    System.out.println("ShortSimdMinMax passed");
   }
 
   private static void expectEquals(short expected, short result) {
