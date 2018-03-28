@@ -18,6 +18,7 @@
 #define ART_LIBDEXFILE_DEX_HIDDEN_API_ACCESS_FLAGS_H_
 
 #include "base/bit_utils.h"
+#include "base/macros.h"
 #include "dex/modifiers.h"
 
 namespace art {
