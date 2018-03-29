@@ -81,8 +81,7 @@ inline bool AtomicDexRefMap<DexFileReferenceType, Value>::Remove(const DexFileRe
   if (array == nullptr) {
     return false;
   }
-  *out = (*array)[ref.index].load(std::memory_order_relaxed);
-  (*array)[ref.index].store(nullptr, std::memory_order_seq_cst);
+  *out = (*array)[ref.index].exchange(nullptr, std::memory_order_seq_cst);
   return true;
 }
 
