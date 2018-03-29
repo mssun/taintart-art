@@ -319,4 +319,21 @@ bool LocationIsOnSystem(const char* location) {
   return path != nullptr && android::base::StartsWith(path.get(), GetAndroidRoot().c_str());
 }
 
+bool LocationIsOnSystemFramework(const char* location) {
+  std::string error_msg;
+  std::string root_path = GetAndroidRootSafe(&error_msg);
+  if (root_path.empty()) {
+    // Could not find Android root.
+    // TODO(dbrazdil): change to stricter GetAndroidRoot() once b/76452688 is resolved.
+    return false;
+  }
+  std::string framework_path = root_path + "/framework/";
+
+  // Warning: Bionic implementation of realpath() allocates > 12KB on the stack.
+  // Do not run this code on a small stack, e.g. in signal handler.
+  UniqueCPtr<const char[]> path(realpath(location, nullptr));
+  return path != nullptr &&
+         android::base::StartsWith(path.get(), framework_path.c_str());
+}
+
 }  // namespace art

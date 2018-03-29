@@ -75,6 +75,9 @@ std::string ReplaceFileExtension(const std::string& filename, const std::string&
 // Return whether the location is on system (i.e. android root).
 bool LocationIsOnSystem(const char* location);
 
+// Return whether the location is on system/framework (i.e. android_root/framework).
+bool LocationIsOnSystemFramework(const char* location);
+
 }  // namespace art
 
 #endif  // ART_RUNTIME_BASE_FILE_UTILS_H_
