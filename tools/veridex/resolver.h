@@ -66,9 +66,13 @@ class VeridexResolver {
                           const char* field_name,
                           const char* field_type);
 
-  // Resolve all type_id/method_id/field_id. Log for unresolved
-  // entities, or entities part of a hidden API list.
-  void ResolveAll(const HiddenApi& hidden_api);
+  // Resolve all type_id/method_id/field_id.
+  void ResolveAll();
+
+  // The dex file this resolver is associated to.
+  const DexFile& GetDexFile() const {
+    return dex_file_;
+  }
 
  private:
   // Return the resolver where `kls` is from.
