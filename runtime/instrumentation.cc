@@ -139,14 +139,10 @@ static void UpdateEntrypoints(ArtMethod* method, const void* quick_code)
 
 bool Instrumentation::NeedDebugVersionFor(ArtMethod* method) const
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  art::Runtime* runtime = Runtime::Current();
-  return runtime->IsJavaDebuggable() &&
+  return Runtime::Current()->IsJavaDebuggable() &&
          !method->IsNative() &&
          !method->IsProxyMethod() &&
-         // If we don't have a jit this can push us to the pre-compiled version of methods which is
-         // not something we want since we are debuggable.
-         (UNLIKELY(runtime->GetJit() == nullptr) ||
-          runtime->GetRuntimeCallbacks()->IsMethodBeingInspected(method));
+         Runtime::Current()->GetRuntimeCallbacks()->IsMethodBeingInspected(method);
 }
 
 void Instrumentation::InstallStubsForMethod(ArtMethod* method) {
