@@ -17,6 +17,9 @@
 #ifndef ART_TOOLS_VERIDEX_HIDDEN_API_H_
 #define ART_TOOLS_VERIDEX_HIDDEN_API_H_
 
+#include "dex/hidden_api_access_flags.h"
+
+#include <ostream>
 #include <set>
 #include <string>
 
@@ -35,10 +38,20 @@ class HiddenApi {
     FillList(blacklist, blacklist_);
   }
 
-  bool LogIfInList(const std::string& name, const char* access_kind) const {
-    return LogIfIn(name, blacklist_, "Blacklist", access_kind) ||
-        LogIfIn(name, dark_greylist_, "Dark greylist", access_kind) ||
-        LogIfIn(name, light_greylist_, "Light greylist", access_kind);
+  HiddenApiAccessFlags::ApiList GetApiList(const std::string& name) const {
+    if (IsInList(name, blacklist_)) {
+      return HiddenApiAccessFlags::kBlacklist;
+    } else if (IsInList(name, dark_greylist_)) {
+      return HiddenApiAccessFlags::kDarkGreylist;
+    } else if (IsInList(name, light_greylist_)) {
+      return HiddenApiAccessFlags::kLightGreylist;
+    } else {
+      return HiddenApiAccessFlags::kWhitelist;
+    }
+  }
+
+  bool IsInRestrictionList(const std::string& name) const {
+    return GetApiList(name) != HiddenApiAccessFlags::kWhitelist;
   }
 
   static std::string GetApiMethodName(const DexFile& dex_file, uint32_t method_index);
@@ -46,10 +59,9 @@ class HiddenApi {
   static std::string GetApiFieldName(const DexFile& dex_file, uint32_t field_index);
 
  private:
-  static bool LogIfIn(const std::string& name,
-                      const std::set<std::string>& list,
-                      const std::string& log,
-                      const std::string& access_kind);
+  static bool IsInList(const std::string& name, const std::set<std::string>& list) {
+    return list.find(name) != list.end();
+  }
 
   static void FillList(const char* filename, std::set<std::string>& entries);
 
