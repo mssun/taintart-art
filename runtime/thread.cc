@@ -2877,6 +2877,17 @@ jobjectArray Thread::CreateAnnotatedStackTrace(const ScopedObjectAccessAlreadyRu
 
   Handle<mirror::Class> h_aste_class(hs.NewHandle<mirror::Class>(
       h_aste_array_class->GetComponentType()));
+
+  // Make sure the AnnotatedStackTraceElement.class is initialized, b/76208924 .
+  class_linker->EnsureInitialized(soa.Self(),
+                                  h_aste_class,
+                                  /* can_init_fields */ true,
+                                  /* can_init_parents */ true);
+  if (soa.Self()->IsExceptionPending()) {
+    // This should not fail in a healthy runtime.
+    return nullptr;
+  }
+
   ArtField* stack_trace_element_field = h_aste_class->FindField(
       soa.Self(), h_aste_class.Get(), "stackTraceElement", "Ljava/lang/StackTraceElement;");
   DCHECK(stack_trace_element_field != nullptr);
