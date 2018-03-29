@@ -16,7 +16,7 @@
 
 // Note that $opt$ is a marker for the optimizing compiler to test
 // it does compile the method.
-public class Main {
+public class SubTest {
 
   public static void expectEquals(int expected, int result) {
     if (expected != result) {
@@ -70,7 +70,7 @@ public class Main {
     }
   }
 
-  public static void main(String[] args) {
+  public static void main() {
     subInt();
     subLong();
     subFloat();

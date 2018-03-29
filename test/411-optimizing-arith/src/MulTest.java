@@ -16,7 +16,7 @@
 
 // Note that $opt$ is a marker for the optimizing compiler to test
 // it does compile the method.
-public class Main {
+public class MulTest {
 
   public static void expectEquals(int expected, int result) {
     if (expected != result) {
@@ -72,11 +72,7 @@ public class Main {
     }
   }
 
-  public static void main(String[] args) {
-    mul();
-  }
-
-  public static void mul() {
+  public static void main() {
     mulInt();
     mulLong();
     mulFloat();
@@ -129,9 +125,12 @@ public class Main {
     expectEquals(Float.NEGATIVE_INFINITY, $opt$Mul(-2F, 3.40282346638528860e+38F));
     expectEquals(Float.NEGATIVE_INFINITY, $opt$Mul(2F, Float.NEGATIVE_INFINITY));
     expectEquals(Float.POSITIVE_INFINITY, $opt$Mul(-2F, Float.NEGATIVE_INFINITY));
-    expectEquals(Float.NEGATIVE_INFINITY, $opt$Mul(Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY));
-    expectEquals(Float.POSITIVE_INFINITY, $opt$Mul(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY));
-    expectEquals(Float.POSITIVE_INFINITY, $opt$Mul(Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY));
+    expectEquals(Float.NEGATIVE_INFINITY,
+                 $opt$Mul(Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY));
+    expectEquals(Float.POSITIVE_INFINITY,
+                 $opt$Mul(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY));
+    expectEquals(Float.POSITIVE_INFINITY,
+                 $opt$Mul(Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY));
   }
 
   private static void mulDouble() {

@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-public class Main {
+public class RemTest {
 
-  public static void main(String[] args) {
+  public static void main() {
     remInt();
     remLong();
   }
