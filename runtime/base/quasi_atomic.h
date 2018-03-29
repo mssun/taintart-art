@@ -152,24 +152,12 @@ class QuasiAtomic {
     return NeedSwapMutexes(isa);
   }
 
-  static void ThreadFenceAcquire() {
-    std::atomic_thread_fence(std::memory_order_acquire);
-  }
-
-  static void ThreadFenceRelease() {
-    std::atomic_thread_fence(std::memory_order_release);
-  }
-
   static void ThreadFenceForConstructor() {
     #if defined(__aarch64__)
       __asm__ __volatile__("dmb ishst" : : : "memory");
     #else
       std::atomic_thread_fence(std::memory_order_release);
     #endif
-  }
-
-  static void ThreadFenceSequentiallyConsistent() {
-    std::atomic_thread_fence(std::memory_order_seq_cst);
   }
 
  private:

@@ -2471,7 +2471,7 @@ mirror::Object* ConcurrentCopying::Copy(mirror::Object* from_ref,
 
     // Do a fence to prevent the field CAS in ConcurrentCopying::Process from possibly reordering
     // before the object copy.
-    QuasiAtomic::ThreadFenceRelease();
+    std::atomic_thread_fence(std::memory_order_release);
 
     LockWord new_lock_word = LockWord::FromForwardingAddress(reinterpret_cast<size_t>(to_ref));
 
@@ -2566,7 +2566,7 @@ mirror::Object* ConcurrentCopying::IsMarked(mirror::Object* from_ref) {
 
 bool ConcurrentCopying::IsOnAllocStack(mirror::Object* ref) {
   // TODO: Explain why this is here. What release operation does it pair with?
-  QuasiAtomic::ThreadFenceAcquire();
+  std::atomic_thread_fence(std::memory_order_acquire);
   accounting::ObjectStack* alloc_stack = GetAllocationStack();
   return alloc_stack->Contains(ref);
 }

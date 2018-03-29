@@ -1101,7 +1101,7 @@ mirror::Object* Monitor::MonitorEnter(Thread* self, mirror::Object* obj, bool tr
       case LockWord::kFatLocked: {
         // We should have done an acquire read of the lockword initially, to ensure
         // visibility of the monitor data structure. Use an explicit fence instead.
-        QuasiAtomic::ThreadFenceAcquire();
+        std::atomic_thread_fence(std::memory_order_acquire);
         Monitor* mon = lock_word.FatLockMonitor();
         if (trylock) {
           return mon->TryLock(self) ? h_obj.Get() : nullptr;
