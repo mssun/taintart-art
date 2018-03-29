@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
@@ -80,6 +81,7 @@ public class Main {
         // the test fail (even when keeping the `null` assignment). b/76454261
         FinalizerTest keepLive = wimp.get();
         System.out.println("wimp: " + wimpString(wimp));
+        Reference.reachabilityFence(keepLive);
         keepLive = null;  // Clear the reference.
 
         /* this will try to collect and finalize ft */
