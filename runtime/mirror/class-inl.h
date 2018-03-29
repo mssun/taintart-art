@@ -31,7 +31,6 @@
 #include "dex/invoke_type.h"
 #include "dex_cache.h"
 #include "gc/heap-inl.h"
-#include "hidden_api.h"
 #include "iftable.h"
 #include "subtype_check.h"
 #include "object-inl.h"
