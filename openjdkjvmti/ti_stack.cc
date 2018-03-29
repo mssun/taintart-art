@@ -925,7 +925,9 @@ static jvmtiError GetOwnedMonitorInfoCommon(const art::ScopedObjectAccessAlready
     if (target != self) {
       called_method = true;
       // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
-      if (!target->RequestSynchronousCheckpoint(&closure)) {
+      // Since this deals with object references we need to avoid going to sleep.
+      art::ScopedAssertNoThreadSuspension sants("Getting owned monitor usage");
+      if (!target->RequestSynchronousCheckpoint(&closure, art::ThreadState::kRunnable)) {
         return ERR(THREAD_NOT_ALIVE);
       }
     } else {
