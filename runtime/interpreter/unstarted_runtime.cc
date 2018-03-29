@@ -1538,7 +1538,7 @@ void UnstartedRuntime::UnstartedUnsafePutOrderedObject(
   }
   int64_t offset = shadow_frame->GetVRegLong(arg_offset + 2);
   mirror::Object* newValue = shadow_frame->GetVRegReference(arg_offset + 4);
-  QuasiAtomic::ThreadFenceRelease();
+  std::atomic_thread_fence(std::memory_order_release);
   if (Runtime::Current()->IsActiveTransaction()) {
     obj->SetFieldObject<true>(MemberOffset(offset), newValue);
   } else {
