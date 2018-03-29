@@ -3730,13 +3730,21 @@ void Heap::RequestTrim(Thread* self) {
   task_processor_->AddTask(self, added_task);
 }
 
+void Heap::IncrementNumberOfBytesFreedRevoke(size_t freed_bytes_revoke) {
+  size_t previous_num_bytes_freed_revoke =
+      num_bytes_freed_revoke_.fetch_add(freed_bytes_revoke, std::memory_order_seq_cst);
+  // Check the updated value is less than the number of bytes allocated. There is a risk of
+  // execution being suspended between the increment above and the CHECK below, leading to
+  // the use of previous_num_bytes_freed_revoke in the comparison.
+  CHECK_GE(num_bytes_allocated_.load(std::memory_order_relaxed),
+           previous_num_bytes_freed_revoke + freed_bytes_revoke);
+}
+
 void Heap::RevokeThreadLocalBuffers(Thread* thread) {
   if (rosalloc_space_ != nullptr) {
     size_t freed_bytes_revoke = rosalloc_space_->RevokeThreadLocalBuffers(thread);
     if (freed_bytes_revoke > 0U) {
-      num_bytes_freed_revoke_.fetch_add(freed_bytes_revoke, std::memory_order_seq_cst);
-      CHECK_GE(num_bytes_allocated_.load(std::memory_order_relaxed),
-               num_bytes_freed_revoke_.load(std::memory_order_relaxed));
+      IncrementNumberOfBytesFreedRevoke(freed_bytes_revoke);
     }
   }
   if (bump_pointer_space_ != nullptr) {
@@ -3751,9 +3759,7 @@ void Heap::RevokeRosAllocThreadLocalBuffers(Thread* thread) {
   if (rosalloc_space_ != nullptr) {
     size_t freed_bytes_revoke = rosalloc_space_->RevokeThreadLocalBuffers(thread);
     if (freed_bytes_revoke > 0U) {
-      num_bytes_freed_revoke_.fetch_add(freed_bytes_revoke, std::memory_order_seq_cst);
-      CHECK_GE(num_bytes_allocated_.load(std::memory_order_relaxed),
-               num_bytes_freed_revoke_.load(std::memory_order_relaxed));
+      IncrementNumberOfBytesFreedRevoke(freed_bytes_revoke);
     }
   }
 }
@@ -3762,9 +3768,7 @@ void Heap::RevokeAllThreadLocalBuffers() {
   if (rosalloc_space_ != nullptr) {
     size_t freed_bytes_revoke = rosalloc_space_->RevokeAllThreadLocalBuffers();
     if (freed_bytes_revoke > 0U) {
-      num_bytes_freed_revoke_.fetch_add(freed_bytes_revoke, std::memory_order_seq_cst);
-      CHECK_GE(num_bytes_allocated_.load(std::memory_order_relaxed),
-               num_bytes_freed_revoke_.load(std::memory_order_relaxed));
+      IncrementNumberOfBytesFreedRevoke(freed_bytes_revoke);
     }
   }
   if (bump_pointer_space_ != nullptr) {
