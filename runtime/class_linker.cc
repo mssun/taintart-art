@@ -6179,7 +6179,7 @@ ArtMethod* ClassLinker::AddMethodToConflictTable(ObjPtr<mirror::Class> klass,
   // Note that there is a race in the presence of multiple threads and we may leak
   // memory from the LinearAlloc, but that's a tradeoff compared to using
   // atomic operations.
-  QuasiAtomic::ThreadFenceRelease();
+  std::atomic_thread_fence(std::memory_order_release);
   new_conflict_method->SetImtConflictTable(new_table, image_pointer_size_);
   return new_conflict_method;
 }
