@@ -31,15 +31,12 @@ public class Main {
         System.loadLibrary(args[0]);
         if (hasJit()) {
             byte[] array = { 0, 1, 2, 3 };
-            while (!hasJitCompiledEntrypoint(Main.class, "$noinline$getInt")) {
-                for (int i = 0; i < 10000; ++i) {
-                    if ($noinline$getInt(array, 0) != 0x03020100) {
-                        throw new Error();
-                    }
-                }
-                try {
-                    Thread.sleep(200);
-                } catch (InterruptedException ignored) {}
+            ensureJitCompiled(Main.class, "$noinline$getInt");
+            if (!hasJitCompiledEntrypoint(Main.class, "$noinline$getInt")) {
+                throw new Error("Unexpected entrypoint!");
+            }
+            if ($noinline$getInt(array, 0) != 0x03020100) {
+                throw new Error();
             }
             try {
                 // The HDeoptimize at dex pc 0 was previously handled poorly as the dex pc 0
@@ -56,4 +53,5 @@ public class Main {
 
     public static native boolean hasJit();
     public native static boolean hasJitCompiledEntrypoint(Class<?> cls, String methodName);
+    public native static void ensureJitCompiled(Class<?> cls, String methodName);
 }
