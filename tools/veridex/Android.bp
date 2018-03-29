@@ -17,6 +17,7 @@ cc_binary {
     host_supported: true,
     srcs: [
         "hidden_api.cc",
+        "hidden_api_finder.cc",
         "resolver.cc",
         "veridex.cc",
     ],
