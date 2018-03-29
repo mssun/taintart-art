@@ -174,56 +174,37 @@ def setup_test_env():
 
   global _user_input_variants
   global run_all_configs
+  # These are the default variant-options we will use if nothing in the group is specified.
+  default_variants = {
+      'target': {'host', 'target'},
+      'pictest': {'npictest'},
+      'prebuild': {'prebuild'},
+      'cdex_level': {'cdex-fast'},
+      'jvmti': { 'no-jvmti'},
+      'compiler': {'optimizing',
+                   'jit',
+                   'interpreter',
+                   'interp-ac',
+                   'speed-profile'},
+      'relocate': {'no-relocate'},
+      'trace': {'ntrace'},
+      'gc': {'cms'},
+      'jni': {'checkjni'},
+      'image': {'picimage'},
+      'pictest': {'pictest'},
+      'debuggable': {'ndebuggable'},
+      'run': {'debug'},
+      # address_sizes_target depends on the target so it is dealt with below.
+  }
+  # We want to pull these early since the full VARIANT_TYPE_DICT has a few additional ones we don't
+  # want to pick up if we pass --all.
+  default_variants_keys = default_variants.keys()
   if run_all_configs:
-    target_types = _user_input_variants['target']
-    _user_input_variants = VARIANT_TYPE_DICT
-    _user_input_variants['target'] = target_types
+    default_variants = VARIANT_TYPE_DICT
 
-  if not _user_input_variants['target']:
-    _user_input_variants['target'].add('host')
-    _user_input_variants['target'].add('target')
-
-  if not _user_input_variants['prebuild']: # Default
-    _user_input_variants['prebuild'].add('prebuild')
-
-  if not _user_input_variants['cdex_level']: # Default
-    _user_input_variants['cdex_level'].add('cdex-fast')
-
-  # By default only run without jvmti
-  if not _user_input_variants['jvmti']:
-    _user_input_variants['jvmti'].add('no-jvmti')
-
-  # By default we run all 'compiler' variants.
-  if not _user_input_variants['compiler'] and _user_input_variants['target'] != 'jvm':
-    _user_input_variants['compiler'].add('optimizing')
-    _user_input_variants['compiler'].add('jit')
-    _user_input_variants['compiler'].add('interpreter')
-    _user_input_variants['compiler'].add('interp-ac')
-    _user_input_variants['compiler'].add('speed-profile')
-
-  if not _user_input_variants['relocate']: # Default
-    _user_input_variants['relocate'].add('no-relocate')
-
-  if not _user_input_variants['trace']: # Default
-    _user_input_variants['trace'].add('ntrace')
-
-  if not _user_input_variants['gc']: # Default
-    _user_input_variants['gc'].add('cms')
-
-  if not _user_input_variants['jni']: # Default
-    _user_input_variants['jni'].add('checkjni')
-
-  if not _user_input_variants['image']: # Default
-    _user_input_variants['image'].add('picimage')
-
-  if not _user_input_variants['pictest']: # Default
-    _user_input_variants['pictest'].add('npictest')
-
-  if not _user_input_variants['debuggable']: # Default
-    _user_input_variants['debuggable'].add('ndebuggable')
-
-  if not _user_input_variants['run']: # Default
-    _user_input_variants['run'].add('debug')
+  for key in default_variants_keys:
+    if not _user_input_variants[key]:
+      _user_input_variants[key] = default_variants[key]
 
   _user_input_variants['address_sizes_target'] = collections.defaultdict(set)
   if not _user_input_variants['address_sizes']:
