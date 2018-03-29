@@ -16,7 +16,7 @@
 
 // Note that $opt$ is a marker for the optimizing compiler to test
 // it does compile the method.
-public class Main {
+public class DivTest {
 
   public static void expectEquals(int expected, int result) {
     if (expected != result) {
@@ -98,11 +98,7 @@ public class Main {
     }
   }
 
-  public static void main(String[] args) {
-    div();
-  }
-
-  public static void div() {
+  public static void main() {
     divInt();
     divLong();
     divFloat();
