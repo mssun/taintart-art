@@ -21,7 +21,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.time.Instant;
 import java.util.concurrent.Semaphore;
 import java.util.Arrays;
 import java.util.Collection;
@@ -50,11 +49,9 @@ public class Main {
   public static class IntRunner implements Runnable {
     private volatile boolean continueBusyLoop;
     private volatile boolean inBusyLoop;
-    private final boolean expectOsr;
-    public IntRunner(boolean expectOsr) {
+    public IntRunner() {
       this.continueBusyLoop = true;
       this.inBusyLoop = false;
-      this.expectOsr = expectOsr;
     }
     public void run() {
       int TARGET = 42;
@@ -62,22 +59,14 @@ public class Main {
       while (continueBusyLoop) {
         inBusyLoop = true;
       }
-      // Wait up to 300 seconds for OSR to kick in if we expect it. If we don't give up after only
-      // 3 seconds.
-      Instant osrDeadline = Instant.now().plusSeconds(expectOsr ? 600 : 3);
-      do {
+      int i = 0;
+      while (Main.isInterpreted() && i < 10000) {
         Main.ensureJitCompiled(IntRunner.class, "run");
-      } while (hasJit() && !Main.isInOsrCode("run") && osrDeadline.compareTo(Instant.now()) > 0);
-      // We shouldn't be doing OSR since we are using JVMTI and the set prevents OSR.
-      // Set local will also push us to interpreter but the get local may remain in compiled code.
-      if (hasJit()) {
-        boolean inOsr = Main.isInOsrCode("run");
-        if (expectOsr && !inOsr) {
-          throw new Error("Expected to be in OSR but was not.");
-        } else if (!expectOsr && inOsr) {
-          throw new Error("Expected not to be in OSR but was.");
-        }
+        i++;
       }
+      // We shouldn't be doing OSR since we are using JVMTI and the get/set prevents OSR.
+      // Set local will also push us to interpreter but the get local may remain in compiled code.
+      System.out.println("isInOsrCode? " + (hasJit() && Main.isInOsrCode("run")));
       reportValue(TARGET);
     }
     public void waitForBusyLoopStart() { while (!inBusyLoop) {} }
@@ -89,7 +78,7 @@ public class Main {
   public static void runGet() throws Exception {
     Method target = IntRunner.class.getDeclaredMethod("run");
     // Get Int
-    IntRunner int_runner = new IntRunner(true);
+    IntRunner int_runner = new IntRunner();
     Thread target_get = new Thread(int_runner, "GetLocalInt - Target");
     target_get.start();
     int_runner.waitForBusyLoopStart();
@@ -119,7 +108,7 @@ public class Main {
   public static void runSet() throws Exception {
     Method target = IntRunner.class.getDeclaredMethod("run");
     // Set Int
-    IntRunner int_runner = new IntRunner(false);
+    IntRunner int_runner = new IntRunner();
     Thread target_set = new Thread(int_runner, "SetLocalInt - Target");
     target_set.start();
     int_runner.waitForBusyLoopStart();
