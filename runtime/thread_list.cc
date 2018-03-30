@@ -152,8 +152,9 @@ void ThreadList::DumpForSigQuit(std::ostream& os) {
       suspend_all_historam_.PrintConfidenceIntervals(os, 0.99, data);  // Dump time to suspend.
     }
   }
-  Dump(os);
-  DumpUnattachedThreads(os, kDumpUnattachedThreadNativeStackForSigQuit);
+  bool dump_native_stack = Runtime::Current()->GetDumpNativeStackOnSigQuit();
+  Dump(os, dump_native_stack);
+  DumpUnattachedThreads(os, dump_native_stack && kDumpUnattachedThreadNativeStackForSigQuit);
 }
 
 static void DumpUnattachedThread(std::ostream& os, pid_t tid, bool dump_native_stack)
@@ -200,10 +201,11 @@ static constexpr uint32_t kDumpWaitTimeout = kIsTargetBuild ? 100000 : 20000;
 // A closure used by Thread::Dump.
 class DumpCheckpoint FINAL : public Closure {
  public:
-  explicit DumpCheckpoint(std::ostream* os)
+  DumpCheckpoint(std::ostream* os, bool dump_native_stack)
       : os_(os),
         barrier_(0),
-        backtrace_map_(BacktraceMap::Create(getpid())) {
+        backtrace_map_(dump_native_stack ? BacktraceMap::Create(getpid()) : nullptr),
+        dump_native_stack_(dump_native_stack) {
     if (backtrace_map_ != nullptr) {
       backtrace_map_->SetSuffixesToIgnore(std::vector<std::string> { "oat", "odex" });
     }
@@ -217,7 +219,7 @@ class DumpCheckpoint FINAL : public Closure {
     std::ostringstream local_os;
     {
       ScopedObjectAccess soa(self);
-      thread->Dump(local_os, backtrace_map_.get());
+      thread->Dump(local_os, dump_native_stack_, backtrace_map_.get());
     }
     {
       // Use the logging lock to ensure serialization when writing to the common ostream.
@@ -245,16 +247,18 @@ class DumpCheckpoint FINAL : public Closure {
   Barrier barrier_;
   // A backtrace map, so that all threads use a shared info and don't reacquire/parse separately.
   std::unique_ptr<BacktraceMap> backtrace_map_;
+  // Whether we should dump the native stack.
+  const bool dump_native_stack_;
 };
 
-void ThreadList::Dump(std::ostream& os) {
+void ThreadList::Dump(std::ostream& os, bool dump_native_stack) {
   Thread* self = Thread::Current();
   {
     MutexLock mu(self, *Locks::thread_list_lock_);
     os << "DALVIK THREADS (" << list_.size() << "):\n";
   }
   if (self != nullptr) {
-    DumpCheckpoint checkpoint(&os);
+    DumpCheckpoint checkpoint(&os, dump_native_stack);
     size_t threads_running_checkpoint;
     {
       // Use SOA to prevent deadlocks if multiple threads are calling Dump() at the same time.
@@ -265,7 +269,7 @@ void ThreadList::Dump(std::ostream& os) {
       checkpoint.WaitForThreadsToRunThroughCheckpoint(threads_running_checkpoint);
     }
   } else {
-    DumpUnattachedThreads(os, /* dump_native_stack */ true);
+    DumpUnattachedThreads(os, dump_native_stack);
   }
 }
 
@@ -487,6 +491,7 @@ void ThreadList::RunEmptyCheckpoint() {
               // Found a runnable thread that hasn't responded to the empty checkpoint request.
               // Assume it's stuck and safe to dump its stack.
               thread->Dump(LOG_STREAM(FATAL_WITHOUT_ABORT),
+                           /*dump_native_stack*/ true,
                            /*backtrace_map*/ nullptr,
                            /*force_dump_stack*/ true);
             }
