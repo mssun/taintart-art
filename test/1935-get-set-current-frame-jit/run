@@ -15,4 +15,5 @@
 # limitations under the License.
 
 # Ask for stack traces to be dumped to a file rather than to stdout.
-./default-run "$@" --jvmti
+# Ensure the test is not subject to code collection
+./default-run "$@" --jvmti --runtime-option -Xjitinitialsize:32M
