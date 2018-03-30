@@ -125,11 +125,6 @@ class OptimizingCompilerStats {
   }
 
   void Log() const {
-    if (!kIsDebugBuild && !VLOG_IS_ON(compiler)) {
-      // Log only in debug builds or if the compiler is verbose.
-      return;
-    }
-
     uint32_t compiled_intrinsics = GetStat(MethodCompilationStat::kCompiledIntrinsic);
     uint32_t compiled_native_stubs = GetStat(MethodCompilationStat::kCompiledNativeStub);
     uint32_t bytecode_attempts =
