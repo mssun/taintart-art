@@ -48,10 +48,7 @@ public class Main {
   }
 
   /// CHECK-START: void Main.doitChar(char[]) loop_optimization (before)
-  /// CHECK-DAG: Phi       loop:<<Loop:B\d+>> outer_loop:none
-  /// CHECK-DAG: ArrayGet  loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: Abs       loop:<<Loop>>      outer_loop:none
-  /// CHECK-DAG: ArraySet  loop:<<Loop>>      outer_loop:none
+  /// CHECK-NOT: Abs
   //
   /// CHECK-START: void Main.doitChar(char[]) loop_optimization (after)
   /// CHECK-NOT: VecAbs
