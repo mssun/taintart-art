@@ -41,6 +41,7 @@ namespace art {
 using android::base::StringPrintf;
 
 static constexpr bool kUseSigRTTimeout = true;
+static constexpr bool kDumpNativeStackOnTimeout = true;
 
 const char* GetSignalName(int signal_number) {
   switch (signal_number) {
@@ -440,7 +441,7 @@ void HandleUnexpectedSignalCommon(int signal_number,
       // Special timeout signal. Try to dump all threads.
       // Note: Do not use DumpForSigQuit, as that might disable native unwind, but the native parts
       //       are of value here.
-      runtime->GetThreadList()->Dump(std::cerr);
+      runtime->GetThreadList()->Dump(std::cerr, kDumpNativeStackOnTimeout);
       std::cerr << std::endl;
     }
 
