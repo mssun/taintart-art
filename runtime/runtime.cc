@@ -86,6 +86,7 @@
 #include "gc/space/space-inl.h"
 #include "gc/system_weak.h"
 #include "handle_scope-inl.h"
+#include "hidden_api.h"
 #include "image-inl.h"
 #include "instrumentation.h"
 #include "intern_table.h"

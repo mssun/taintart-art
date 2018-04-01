@@ -27,6 +27,7 @@
 #include "base/mutex.h"
 #include "base/runtime_debug.h"
 #include "debugger.h"
+#include "hidden_api.h"
 #include "java_vm_ext.h"
 #include "jit/jit.h"
 #include "jni_internal.h"
