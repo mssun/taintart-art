@@ -81,8 +81,7 @@ inline bool AtomicDexRefMap<DexFileReferenceType, Value>::Remove(const DexFileRe
   if (array == nullptr) {
     return false;
   }
-  *out = (*array)[ref.index].LoadRelaxed();
-  (*array)[ref.index].StoreSequentiallyConsistent(nullptr);
+  *out = (*array)[ref.index].ExchangeSequentiallyConsistent(nullptr);
   return true;
 }
 
