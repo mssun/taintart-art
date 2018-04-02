@@ -1,5 +1,7 @@
 JNI_OnLoad called
 From GetLocalInt(), value is 42
+isInOsrCode? false
 	Value is '42'
 Setting TARGET to 1337
+isInOsrCode? false
 	Value is '1337'
