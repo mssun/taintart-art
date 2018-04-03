@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import dalvik.system.VMRuntime;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -21,11 +22,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
-
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.type.PrimitiveType;
-import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeVisitor;
+import java.util.function.Consumer;
 
 public class ChildClass {
   enum PrimitiveType {
@@ -136,6 +133,47 @@ public class ChildClass {
     }
   }
 
+  static final class RecordingConsumer implements Consumer<String> {
+      public String recordedValue = null;
+
+      @Override
+      public void accept(String value) {
+          recordedValue = value;
+      }
+  }
+
+  private static void checkMemberCallback(Class<?> klass, String name,
+          boolean isPublic, boolean isField) {
+      try {
+          RecordingConsumer consumer = new RecordingConsumer();
+          VMRuntime.setNonSdkApiUsageConsumer(consumer);
+          try {
+              if (isPublic) {
+                  if (isField) {
+                      klass.getField(name);
+                  } else {
+                      klass.getMethod(name);
+                  }
+              } else {
+                  if (isField) {
+                      klass.getDeclaredField(name);
+                  } else {
+                      klass.getDeclaredMethod(name);
+                  }
+              }
+          } catch (NoSuchFieldException|NoSuchMethodException ignored) {
+              // We're not concerned whether an exception is thrown or not - we're
+              // only interested in whether the callback is invoked.
+          }
+
+          if (consumer.recordedValue == null || !consumer.recordedValue.contains(name)) {
+              throw new RuntimeException("No callback for member: " + name);
+          }
+      } finally {
+          VMRuntime.setNonSdkApiUsageConsumer(null);
+      }
+  }
+
   private static void checkField(Class<?> klass, String name, boolean isStatic,
       Visibility visibility, Behaviour behaviour) throws Exception {
 
@@ -174,48 +212,52 @@ public class ChildClass {
 
     // Finish here if we could not discover the field.
 
-    if (!canDiscover) {
-      return;
+    if (canDiscover) {
+      // Test that modifiers are unaffected.
+
+      if (Reflection.canObserveFieldHiddenAccessFlags(klass, name)) {
+        throwModifiersException(klass, name, true);
+      }
+
+      // Test getters and setters when meaningful.
+
+      clearWarning();
+      if (!Reflection.canGetField(klass, name)) {
+        throwAccessException(klass, name, true, "Field.getInt()");
+      }
+      if (hasPendingWarning() != setsWarning) {
+        throwWarningException(klass, name, true, "Field.getInt()", setsWarning);
+      }
+
+      clearWarning();
+      if (!Reflection.canSetField(klass, name)) {
+        throwAccessException(klass, name, true, "Field.setInt()");
+      }
+      if (hasPendingWarning() != setsWarning) {
+        throwWarningException(klass, name, true, "Field.setInt()", setsWarning);
+      }
+
+      clearWarning();
+      if (!JNI.canGetField(klass, name, isStatic)) {
+        throwAccessException(klass, name, true, "getIntField");
+      }
+      if (hasPendingWarning() != setsWarning) {
+        throwWarningException(klass, name, true, "getIntField", setsWarning);
+      }
+
+      clearWarning();
+      if (!JNI.canSetField(klass, name, isStatic)) {
+        throwAccessException(klass, name, true, "setIntField");
+      }
+      if (hasPendingWarning() != setsWarning) {
+        throwWarningException(klass, name, true, "setIntField", setsWarning);
+      }
     }
 
-    // Test that modifiers are unaffected.
-
-    if (Reflection.canObserveFieldHiddenAccessFlags(klass, name)) {
-      throwModifiersException(klass, name, true);
-    }
-
-    // Test getters and setters when meaningful.
-
+    // Test that callbacks are invoked correctly.
     clearWarning();
-    if (!Reflection.canGetField(klass, name)) {
-      throwAccessException(klass, name, true, "Field.getInt()");
-    }
-    if (hasPendingWarning() != setsWarning) {
-      throwWarningException(klass, name, true, "Field.getInt()", setsWarning);
-    }
-
-    clearWarning();
-    if (!Reflection.canSetField(klass, name)) {
-      throwAccessException(klass, name, true, "Field.setInt()");
-    }
-    if (hasPendingWarning() != setsWarning) {
-      throwWarningException(klass, name, true, "Field.setInt()", setsWarning);
-    }
-
-    clearWarning();
-    if (!JNI.canGetField(klass, name, isStatic)) {
-      throwAccessException(klass, name, true, "getIntField");
-    }
-    if (hasPendingWarning() != setsWarning) {
-      throwWarningException(klass, name, true, "getIntField", setsWarning);
-    }
-
-    clearWarning();
-    if (!JNI.canSetField(klass, name, isStatic)) {
-      throwAccessException(klass, name, true, "setIntField");
-    }
-    if (hasPendingWarning() != setsWarning) {
-      throwWarningException(klass, name, true, "setIntField", setsWarning);
+    if (setsWarning || !canDiscover) {
+      checkMemberCallback(klass, name, isPublic, true /* isField */);
     }
   }
 
@@ -257,42 +299,46 @@ public class ChildClass {
 
     // Finish here if we could not discover the field.
 
-    if (!canDiscover) {
-      return;
+    if (canDiscover) {
+      // Test that modifiers are unaffected.
+
+      if (Reflection.canObserveMethodHiddenAccessFlags(klass, name)) {
+        throwModifiersException(klass, name, false);
+      }
+
+      // Test whether we can invoke the method. This skips non-static interface methods.
+
+      if (!klass.isInterface() || isStatic) {
+        clearWarning();
+        if (!Reflection.canInvokeMethod(klass, name)) {
+          throwAccessException(klass, name, false, "invoke()");
+        }
+        if (hasPendingWarning() != setsWarning) {
+          throwWarningException(klass, name, false, "invoke()", setsWarning);
+        }
+
+        clearWarning();
+        if (!JNI.canInvokeMethodA(klass, name, isStatic)) {
+          throwAccessException(klass, name, false, "CallMethodA");
+        }
+        if (hasPendingWarning() != setsWarning) {
+          throwWarningException(klass, name, false, "CallMethodA()", setsWarning);
+        }
+
+        clearWarning();
+        if (!JNI.canInvokeMethodV(klass, name, isStatic)) {
+          throwAccessException(klass, name, false, "CallMethodV");
+        }
+        if (hasPendingWarning() != setsWarning) {
+          throwWarningException(klass, name, false, "CallMethodV()", setsWarning);
+        }
+      }
     }
 
-    // Test that modifiers are unaffected.
-
-    if (Reflection.canObserveMethodHiddenAccessFlags(klass, name)) {
-      throwModifiersException(klass, name, false);
-    }
-
-    // Test whether we can invoke the method. This skips non-static interface methods.
-
-    if (!klass.isInterface() || isStatic) {
-      clearWarning();
-      if (!Reflection.canInvokeMethod(klass, name)) {
-        throwAccessException(klass, name, false, "invoke()");
-      }
-      if (hasPendingWarning() != setsWarning) {
-        throwWarningException(klass, name, false, "invoke()", setsWarning);
-      }
-
-      clearWarning();
-      if (!JNI.canInvokeMethodA(klass, name, isStatic)) {
-        throwAccessException(klass, name, false, "CallMethodA");
-      }
-      if (hasPendingWarning() != setsWarning) {
-        throwWarningException(klass, name, false, "CallMethodA()", setsWarning);
-      }
-
-      clearWarning();
-      if (!JNI.canInvokeMethodV(klass, name, isStatic)) {
-        throwAccessException(klass, name, false, "CallMethodV");
-      }
-      if (hasPendingWarning() != setsWarning) {
-        throwWarningException(klass, name, false, "CallMethodV()", setsWarning);
-      }
+    // Test that callbacks are invoked correctly.
+    clearWarning();
+    if (setsWarning || !canDiscover) {
+        checkMemberCallback(klass, name, isPublic, false /* isField */);
     }
   }
 
