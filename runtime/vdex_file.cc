@@ -317,6 +317,7 @@ ArrayRef<const uint8_t> VdexFile::GetQuickenedInfoOf(const DexFile& dex_file,
   if (quickening_info.empty()) {
     return ArrayRef<const uint8_t>();
   }
+  CHECK_LT(dex_method_idx, dex_file.NumMethodIds());
   const uint32_t quickening_offset =
       GetQuickenInfoOffsetTable(dex_file, quickening_info).GetOffset(dex_method_idx);
   if (quickening_offset == 0u) {
