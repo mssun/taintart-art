@@ -903,6 +903,30 @@ static bool AreLowerPrecisionArgs(DataType::Type to_type, HInstruction* a, HInst
           to_type == DataType::Type::kInt64);
 }
 
+// Returns an acceptable substitution for "a" on the select
+// construct "a <cmp> b ? c : .."  during MIN/MAX recognition.
+static HInstruction* AllowInMinMax(IfCondition cmp,
+                                   HInstruction* a,
+                                   HInstruction* b,
+                                   HInstruction* c) {
+  int64_t value = 0;
+  if (IsInt64AndGet(b, /*out*/ &value) &&
+      (((cmp == kCondLT || cmp == kCondLE) && c->IsMax()) ||
+       ((cmp == kCondGT || cmp == kCondGE) && c->IsMin()))) {
+    HConstant* other = c->AsBinaryOperation()->GetConstantRight();
+    if (other != nullptr && a == c->AsBinaryOperation()->GetLeastConstantLeft()) {
+      int64_t other_value = Int64FromConstant(other);
+      bool is_max = (cmp == kCondLT || cmp == kCondLE);
+      // Allow the max for a <  100 ? max(a, -100) : ..
+      //    or the min for a > -100 ? min(a,  100) : ..
+      if (is_max ? (value >= other_value) : (value <= other_value)) {
+        return c;
+      }
+    }
+  }
+  return nullptr;
+}
+
 void InstructionSimplifierVisitor::VisitSelect(HSelect* select) {
   HInstruction* replace_with = nullptr;
   HInstruction* condition = select->GetCondition();
@@ -946,9 +970,17 @@ void InstructionSimplifierVisitor::VisitSelect(HSelect* select) {
     DataType::Type t_type = true_value->GetType();
     DataType::Type f_type = false_value->GetType();
     // Here we have a <cmp> b ? true_value : false_value.
-    // Test if both values are compatible integral types (resulting
-    // MIN/MAX/ABS type will be int or long, like the condition).
+    // Test if both values are compatible integral types (resulting MIN/MAX/ABS
+    // type will be int or long, like the condition). Replacements are general,
+    // but assume conditions prefer constants on the right.
     if (DataType::IsIntegralType(t_type) && DataType::Kind(t_type) == DataType::Kind(f_type)) {
+      // Allow a <  100 ? max(a, -100) : ..
+      //    or a > -100 ? min(a,  100) : ..
+      // to use min/max instead of a to detect nested min/max expressions.
+      HInstruction* new_a = AllowInMinMax(cmp, a, b, true_value);
+      if (new_a != nullptr) {
+        a = new_a;
+      }
       // Try to replace typical integral MIN/MAX/ABS constructs.
       if ((cmp == kCondLT || cmp == kCondLE || cmp == kCondGT || cmp == kCondGE) &&
           ((a == true_value && b == false_value) ||
@@ -957,19 +989,16 @@ void InstructionSimplifierVisitor::VisitSelect(HSelect* select) {
         //    or a > b ? a : b (MAX) or a > b ? b : a (MIN).
         bool is_min = (cmp == kCondLT || cmp == kCondLE) == (a == true_value);
         replace_with = NewIntegralMinMax(GetGraph()->GetAllocator(), a, b, select, is_min);
-      } else if (true_value->IsNeg()) {
-        HInstruction* negated = true_value->InputAt(0);
-        if ((cmp == kCondLT || cmp == kCondLE) &&
-            (a == negated && a == false_value && IsInt64Value(b, 0))) {
-          // Found a < 0 ? -a : a which can be replaced by ABS(a).
-          replace_with = NewIntegralAbs(GetGraph()->GetAllocator(), false_value, select);
-        }
-      } else if (false_value->IsNeg()) {
-        HInstruction* negated = false_value->InputAt(0);
-        if ((cmp == kCondGT || cmp == kCondGE) &&
-            (a == true_value && a == negated && IsInt64Value(b, 0))) {
-          // Found a > 0 ? a : -a which can be replaced by ABS(a).
-          replace_with = NewIntegralAbs(GetGraph()->GetAllocator(), true_value, select);
+      } else if (((cmp == kCondLT || cmp == kCondLE) && true_value->IsNeg()) ||
+                 ((cmp == kCondGT || cmp == kCondGE) && false_value->IsNeg())) {
+        bool negLeft = (cmp == kCondLT || cmp == kCondLE);
+        HInstruction* the_negated = negLeft ? true_value->InputAt(0) : false_value->InputAt(0);
+        HInstruction* not_negated = negLeft ? false_value : true_value;
+        if (a == the_negated && a == not_negated && IsInt64Value(b, 0)) {
+          // Found a < 0 ? -a :  a
+          //    or a > 0 ?  a : -a
+          // which can be replaced by ABS(a).
+          replace_with = NewIntegralAbs(GetGraph()->GetAllocator(), a, select);
         }
       } else if (true_value->IsSub() && false_value->IsSub()) {
         HInstruction* true_sub1 = true_value->InputAt(0);
@@ -981,8 +1010,8 @@ void InstructionSimplifierVisitor::VisitSelect(HSelect* select) {
              ((cmp == kCondLT || cmp == kCondLE) &&
               (a == true_sub2 && b == true_sub1 && a == false_sub1 && b == false_sub2))) &&
             AreLowerPrecisionArgs(t_type, a, b)) {
-          // Found a > b ? a - b  : b - a   or
-          //       a < b ? b - a  : a - b
+          // Found a > b ? a - b  : b - a
+          //    or a < b ? b - a  : a - b
           // which can be replaced by ABS(a - b) for lower precision operands a, b.
           replace_with = NewIntegralAbs(GetGraph()->GetAllocator(), true_value, select);
         }

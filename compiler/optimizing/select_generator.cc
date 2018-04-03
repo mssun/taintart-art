@@ -43,12 +43,16 @@ static bool IsSimpleBlock(HBasicBlock* block) {
   for (HInstructionIterator it(block->GetInstructions()); !it.Done(); it.Advance()) {
     HInstruction* instruction = it.Current();
     if (instruction->IsControlFlow()) {
-      if (num_instructions > kMaxInstructionsInBranch) {
-        return false;
-      }
       return instruction->IsGoto() || instruction->IsReturn();
     } else if (instruction->CanBeMoved() && !instruction->HasSideEffects()) {
-      num_instructions++;
+      if (instruction->IsSelect() &&
+          instruction->AsSelect()->GetCondition()->GetBlock() == block) {
+        // Count one HCondition and HSelect in the same block as a single instruction.
+        // This enables finding nested selects.
+        continue;
+      } else if (++num_instructions > kMaxInstructionsInBranch) {
+        return false;  // bail as soon as we exceed number of allowed instructions
+      }
     } else {
       return false;
     }
@@ -97,6 +101,7 @@ void HSelectGenerator::Run() {
     HBasicBlock* true_block = if_instruction->IfTrueSuccessor();
     HBasicBlock* false_block = if_instruction->IfFalseSuccessor();
     DCHECK_NE(true_block, false_block);
+
     if (!IsSimpleBlock(true_block) ||
         !IsSimpleBlock(false_block) ||
         !BlocksMergeTogether(true_block, false_block)) {
@@ -107,10 +112,10 @@ void HSelectGenerator::Run() {
     // If the branches are not empty, move instructions in front of the If.
     // TODO(dbrazdil): This puts an instruction between If and its condition.
     //                 Implement moving of conditions to first users if possible.
-    if (!true_block->IsSingleGoto() && !true_block->IsSingleReturn()) {
+    while (!true_block->IsSingleGoto() && !true_block->IsSingleReturn()) {
       true_block->GetFirstInstruction()->MoveBefore(if_instruction);
     }
-    if (!false_block->IsSingleGoto() && !false_block->IsSingleReturn()) {
+    while (!false_block->IsSingleGoto() && !false_block->IsSingleReturn()) {
       false_block->GetFirstInstruction()->MoveBefore(if_instruction);
     }
     DCHECK(true_block->IsSingleGoto() || true_block->IsSingleReturn());
