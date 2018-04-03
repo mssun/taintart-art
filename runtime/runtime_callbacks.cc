@@ -106,6 +106,15 @@ bool RuntimeCallbacks::IsMethodBeingInspected(ArtMethod* m) {
   return false;
 }
 
+bool RuntimeCallbacks::MethodNeedsDebugVersion(ArtMethod* m) {
+  for (MethodInspectionCallback* cb : method_inspection_callbacks_) {
+    if (cb->MethodNeedsDebugVersion(m)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void RuntimeCallbacks::AddThreadLifecycleCallback(ThreadLifecycleCallback* cb) {
   thread_callbacks_.push_back(cb);
 }
