@@ -19,6 +19,10 @@
  */
 public class Main {
 
+  //
+  // Different types.
+  //
+
   /// CHECK-START: int Main.min1(int, int) instruction_simplifier$after_inlining (before)
   /// CHECK-DAG: <<Cnd:z\d+>> GreaterThanOrEqual [<<Op1:i\d+>>,<<Op2:i\d+>>]
   /// CHECK-DAG: <<Sel:i\d+>> Select [<<Op1>>,<<Op2>>,<<Cnd>>]
@@ -229,7 +233,116 @@ public class Main {
     return a >= b ? a : b;
   }
 
+
+  //
+  // Complications.
+  //
+
+  // TODO: coming soon, under discussion
+  public static int min0(int[] a, int[] b) {
+    // Repeat of array references needs finding the common subexpressions
+    // prior to doing the select and min/max recognition.
+    return a[0] <= b[0] ? a[0] : b[0];
+  }
+
+  // TODO: coming soon, under discussion
+  public static int max0(int[] a, int[] b) {
+    // Repeat of array references needs finding the common subexpressions
+    // prior to doing the select and min/max recognition.
+    return a[0] >= b[0] ? a[0] : b[0];
+  }
+
+  /// CHECK-START: int Main.minmax1(int) instruction_simplifier$after_inlining (before)
+  /// CHECK-DAG: <<Par:i\d+>>  ParameterValue
+  /// CHECK-DAG: <<P100:i\d+>> IntConstant 100
+  /// CHECK-DAG: <<M100:i\d+>> IntConstant -100
+  /// CHECK-DAG: <<Cnd1:z\d+>> LessThanOrEqual [<<Par>>,<<P100>>]
+  /// CHECK-DAG: <<Sel1:i\d+>> Select [<<P100>>,<<Par>>,<<Cnd1>>]
+  /// CHECK-DAG: <<Cnd2:z\d+>> GreaterThanOrEqual [<<Sel1>>,<<M100>>]
+  /// CHECK-DAG: <<Sel2:i\d+>> Select [<<M100>>,<<Sel1>>,<<Cnd2>>]
+  /// CHECK-DAG:               Return [<<Sel2>>]
+  //
+  /// CHECK-START: int Main.minmax1(int) instruction_simplifier$after_inlining (after)
+  /// CHECK-DAG: <<Par:i\d+>>  ParameterValue
+  /// CHECK-DAG: <<P100:i\d+>> IntConstant 100
+  /// CHECK-DAG: <<M100:i\d+>> IntConstant -100
+  /// CHECK-DAG: <<Min:i\d+>>  Min [<<Par>>,<<P100>>]
+  /// CHECK-DAG: <<Max:i\d+>>  Max [<<Min>>,<<M100>>]
+  /// CHECK-DAG:               Return [<<Max>>]
+  //
+  /// CHECK-START: int Main.minmax1(int) instruction_simplifier$after_inlining (after)
+  /// CHECK-NOT:               Select
+  public static int minmax1(int x) {
+    // Simple if-if gives clean select sequence.
+    if (x > 100) {
+      x = 100;
+    }
+    if (x < -100) {
+      x = -100;
+    }
+    return x;
+  }
+
+  /// CHECK-START: int Main.minmax2(int) instruction_simplifier$after_inlining (before)
+  /// CHECK-DAG: <<Par:i\d+>>  ParameterValue
+  /// CHECK-DAG: <<P100:i\d+>> IntConstant 100
+  /// CHECK-DAG: <<M100:i\d+>> IntConstant -100
+  /// CHECK-DAG: <<Cnd1:z\d+>> LessThanOrEqual [<<Par>>,<<P100>>]
+  /// CHECK-DAG: <<Cnd2:z\d+>> GreaterThanOrEqual [<<Par>>,<<M100>>]
+  /// CHECK-DAG: <<Sel1:i\d+>> Select [<<M100>>,<<Par>>,<<Cnd2>>]
+  /// CHECK-DAG: <<Sel2:i\d+>> Select [<<P100>>,<<Sel1>>,<<Cnd1>>]
+  /// CHECK-DAG:               Return [<<Sel2>>]
+  //
+  /// CHECK-START: int Main.minmax2(int) instruction_simplifier$after_inlining (after)
+  /// CHECK-DAG: <<Par:i\d+>>  ParameterValue
+  /// CHECK-DAG: <<P100:i\d+>> IntConstant 100
+  /// CHECK-DAG: <<M100:i\d+>> IntConstant -100
+  /// CHECK-DAG: <<Max:i\d+>>  Max [<<Par>>,<<M100>>]
+  /// CHECK-DAG: <<Min:i\d+>>  Min [<<Max>>,<<P100>>]
+  /// CHECK-DAG:               Return [<<Min>>]
+  //
+  /// CHECK-START: int Main.minmax2(int) instruction_simplifier$after_inlining (after)
+  /// CHECK-NOT:               Select
+  public static int minmax2(int x) {
+    // Simple if-else requires inspecting bounds of resulting selects.
+    if (x > 100) {
+      x = 100;
+    } else if (x < -100) {
+      x = -100;
+    }
+    return x;
+  }
+
+  /// CHECK-START: int Main.minmax3(int) instruction_simplifier$after_inlining (after)
+  /// CHECK-DAG: <<Par:i\d+>>  ParameterValue
+  /// CHECK-DAG: <<P100:i\d+>> IntConstant 100
+  /// CHECK-DAG: <<M100:i\d+>> IntConstant -100
+  /// CHECK-DAG: <<Max:i\d+>>  Max [<<Par>>,<<M100>>]
+  /// CHECK-DAG: <<Min:i\d+>>  Min [<<Max>>,<<P100>>]
+  /// CHECK-DAG:               Return [<<Min>>]
+  //
+  /// CHECK-START: int Main.minmax3(int) instruction_simplifier$after_inlining (after)
+  /// CHECK-NOT:               Select
+  public static int minmax3(int x) {
+    return (x > 100) ? 100 : ((x < -100) ? -100 : x);
+  }
+
+  /// CHECK-START: int Main.minmax4(int) instruction_simplifier$after_inlining (after)
+  /// CHECK-DAG: <<Par:i\d+>>  ParameterValue
+  /// CHECK-DAG: <<P100:i\d+>> IntConstant 100
+  /// CHECK-DAG: <<M100:i\d+>> IntConstant -100
+  /// CHECK-DAG: <<Min:i\d+>>  Min [<<Par>>,<<P100>>]
+  /// CHECK-DAG: <<Max:i\d+>>  Max [<<Min>>,<<M100>>]
+  /// CHECK-DAG:               Return [<<Max>>]
+  //
+  /// CHECK-START: int Main.minmax4(int) instruction_simplifier$after_inlining (after)
+  /// CHECK-NOT:               Select
+  public static int minmax4(int x) {
+    return (x < -100) ? -100 : ((x > 100) ? 100 : x);
+  }
+
   public static void main(String[] args) {
+    // Types.
     expectEquals(10, min1(10, 20));
     expectEquals(10, min2(10, 20));
     expectEquals(10, min3(10, 20));
@@ -244,6 +357,23 @@ public class Main {
     expectEquals(20, max5((short) 10, (short) 20));
     expectEquals(20, max6((byte) 10, (byte) 20));
     expectEquals(20L, max7(10L, 20L));
+    // Complications.
+    int[] a = { 10 };
+    int[] b = { 20 };
+    expectEquals(10, min0(a, b));
+    expectEquals(20, max0(a, b));
+    expectEquals(-100, minmax1(-200));
+    expectEquals(10, minmax1(10));
+    expectEquals(100, minmax1(200));
+    expectEquals(-100, minmax2(-200));
+    expectEquals(10, minmax2(10));
+    expectEquals(100, minmax2(200));
+    expectEquals(-100, minmax3(-200));
+    expectEquals(10, minmax3(10));
+    expectEquals(100, minmax3(200));
+    expectEquals(-100, minmax4(-200));
+    expectEquals(10, minmax4(10));
+    expectEquals(100, minmax4(200));
     System.out.println("passed");
   }
 
