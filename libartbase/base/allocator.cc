@@ -76,7 +76,7 @@ namespace TrackedAllocators {
 
 // These globals are safe since they don't have any non-trivial destructors.
 Atomic<size_t> g_bytes_used[kAllocatorTagCount];
-volatile size_t g_max_bytes_used[kAllocatorTagCount];
+Atomic<size_t> g_max_bytes_used[kAllocatorTagCount];
 Atomic<uint64_t> g_total_bytes_used[kAllocatorTagCount];
 
 void Dump(std::ostream& os) {
@@ -84,7 +84,7 @@ void Dump(std::ostream& os) {
     os << "Dumping native memory usage\n";
     for (size_t i = 0; i < kAllocatorTagCount; ++i) {
       uint64_t bytes_used = g_bytes_used[i].load(std::memory_order_relaxed);
-      uint64_t max_bytes_used = g_max_bytes_used[i];
+      uint64_t max_bytes_used = g_max_bytes_used[i].load(std::memory_order_relaxed);
       uint64_t total_bytes_used = g_total_bytes_used[i].load(std::memory_order_relaxed);
       if (total_bytes_used != 0) {
         os << static_cast<AllocatorTag>(i) << " active=" << bytes_used << " max="
