@@ -397,7 +397,22 @@ public class Main {
     }
   }
 
-  // TODO: recognize the more common if-else too.
+  /// CHECK-START: void Main.satAlt2(short[], short[], short[]) loop_optimization (before)
+  /// CHECK-DAG: <<Clp1:i\d+>> IntConstant -32768                   loop:none
+  /// CHECK-DAG: <<Clp2:i\d+>> IntConstant  32767                   loop:none
+  /// CHECK-DAG: <<Get1:s\d+>> ArrayGet [{{l\d+}},<<Phi:i\d+>>]     loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get2:s\d+>> ArrayGet [{{l\d+}},<<Phi>>]          loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Add:i\d+>>  Add [<<Get1>>,<<Get2>>]              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Max:i\d+>>  Max [<<Add>>,<<Clp1>>]               loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Min:i\d+>>  Min [<<Max>>,<<Clp2>>]               loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Conv:s\d+>> TypeConversion [<<Min>>]             loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Conv>>] loop:<<Loop>>      outer_loop:none
+  //
+  /// CHECK-START-{ARM,ARM64}: void Main.satAlt2(short[], short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Get1:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi>>]           loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationAdd [<<Get1>>,<<Get2>>] packed_type:Int16 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>>      outer_loop:none
   public static void satAlt2(short[] a, short[] b, short[] c) {
     int n = Math.min(a.length, Math.min(b.length, c.length));
     for (int i = 0; i < n; i++) {
@@ -411,7 +426,11 @@ public class Main {
     }
   }
 
-  // TODO: recognize conditional too.
+  /// CHECK-START-{ARM,ARM64}: void Main.satAlt3(short[], short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<Get1:d\d+>> VecLoad [{{l\d+}},<<Phi:i\d+>>]      loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad [{{l\d+}},<<Phi>>]           loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Add:d\d+>>  VecSaturationAdd [<<Get1>>,<<Get2>>] packed_type:Int16 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},<<Phi>>,<<Add>>]  loop:<<Loop>>      outer_loop:none
   public static void satAlt3(short[] a, short[] b, short[] c) {
     int n = Math.min(a.length, Math.min(b.length, c.length));
     for (int i = 0; i < n; i++) {
