@@ -85,7 +85,6 @@ struct WellKnownClasses {
   static jclass java_lang_Throwable;
   static jclass java_util_ArrayList;
   static jclass java_util_Collections;
-  static jclass java_util_function_Consumer;
   static jclass java_nio_ByteBuffer;
   static jclass java_nio_DirectByteBuffer;
   static jclass libcore_reflect_AnnotationFactory;
@@ -126,7 +125,6 @@ struct WellKnownClasses {
   static jmethodID java_lang_ThreadGroup_add;
   static jmethodID java_lang_ThreadGroup_removeThread;
   static jmethodID java_nio_DirectByteBuffer_init;
-  static jmethodID java_util_function_Consumer_accept;
   static jmethodID libcore_reflect_AnnotationFactory_createAnnotation;
   static jmethodID libcore_reflect_AnnotationMember_init;
   static jmethodID org_apache_harmony_dalvik_ddmc_DdmServer_broadcast;
@@ -137,7 +135,6 @@ struct WellKnownClasses {
   static jfieldID dalvik_system_DexFile_fileName;
   static jfieldID dalvik_system_DexPathList_dexElements;
   static jfieldID dalvik_system_DexPathList__Element_dexFile;
-  static jfieldID dalvik_system_VMRuntime_nonSdkApiUsageConsumer;
   static jfieldID java_lang_reflect_Executable_artMethod;
   static jfieldID java_lang_reflect_Proxy_h;
   static jfieldID java_lang_Thread_daemon;
