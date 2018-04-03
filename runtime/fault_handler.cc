@@ -37,7 +37,9 @@ namespace art {
 // Static fault manger object accessed by signal handler.
 FaultManager fault_manager;
 
-extern "C" __attribute__((visibility("default"))) void art_sigsegv_fault() {
+// This needs to be NO_INLINE since some debuggers do not read the inline-info to set a breakpoint
+// if it isn't.
+extern "C" NO_INLINE __attribute__((visibility("default"))) void art_sigsegv_fault() {
   // Set a breakpoint here to be informed when a SIGSEGV is unhandled by ART.
   VLOG(signals)<< "Caught unknown SIGSEGV in ART fault handler - chaining to next handler.";
 }
