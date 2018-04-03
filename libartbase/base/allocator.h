@@ -71,12 +71,14 @@ std::ostream& operator<<(std::ostream& os, const AllocatorTag& tag);
 
 namespace TrackedAllocators {
 
+// We use memory_order_relaxed updates of the following counters. Values are treated as approximate
+// wherever concurrent updates are possible.
 // Running count of number of bytes used for this kind of allocation. Increased by allocations,
 // decreased by deallocations.
 extern Atomic<size_t> g_bytes_used[kAllocatorTagCount];
 
 // Largest value of bytes used seen.
-extern volatile size_t g_max_bytes_used[kAllocatorTagCount];
+extern Atomic<size_t> g_max_bytes_used[kAllocatorTagCount];
 
 // Total number of bytes allocated of this kind.
 extern Atomic<uint64_t> g_total_bytes_used[kAllocatorTagCount];
@@ -84,15 +86,17 @@ extern Atomic<uint64_t> g_total_bytes_used[kAllocatorTagCount];
 void Dump(std::ostream& os);
 
 inline void RegisterAllocation(AllocatorTag tag, size_t bytes) {
-  g_total_bytes_used[tag].fetch_add(bytes, std::memory_order_seq_cst);
-  size_t new_bytes = g_bytes_used[tag].fetch_add(bytes, std::memory_order_seq_cst) + bytes;
-  if (g_max_bytes_used[tag] < new_bytes) {
-    g_max_bytes_used[tag] = new_bytes;
+  g_total_bytes_used[tag].fetch_add(bytes, std::memory_order_relaxed);
+  size_t new_bytes = g_bytes_used[tag].fetch_add(bytes, std::memory_order_relaxed) + bytes;
+  size_t max_bytes = g_max_bytes_used[tag].load(std::memory_order_relaxed);
+  while (max_bytes < new_bytes
+    && !g_max_bytes_used[tag].compare_exchange_weak(max_bytes /* updated */, new_bytes,
+                                                    std::memory_order_relaxed)) {
   }
 }
 
 inline void RegisterFree(AllocatorTag tag, size_t bytes) {
-  g_bytes_used[tag].fetch_sub(bytes, std::memory_order_seq_cst);
+  g_bytes_used[tag].fetch_sub(bytes, std::memory_order_relaxed);
 }
 
 }  // namespace TrackedAllocators
