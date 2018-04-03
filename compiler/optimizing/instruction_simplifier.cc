@@ -67,7 +67,6 @@ class InstructionSimplifierVisitor : public HGraphDelegateVisitor {
   bool TryCombineVecMultiplyAccumulate(HVecMul* mul);
 
   void VisitShift(HBinaryOperation* shift);
-
   void VisitEqual(HEqual* equal) OVERRIDE;
   void VisitNotEqual(HNotEqual* equal) OVERRIDE;
   void VisitBooleanNot(HBooleanNot* bool_not) OVERRIDE;
@@ -78,6 +77,7 @@ class InstructionSimplifierVisitor : public HGraphDelegateVisitor {
   void VisitNullCheck(HNullCheck* instruction) OVERRIDE;
   void VisitArrayLength(HArrayLength* instruction) OVERRIDE;
   void VisitCheckCast(HCheckCast* instruction) OVERRIDE;
+  void VisitAbs(HAbs* instruction) OVERRIDE;
   void VisitAdd(HAdd* instruction) OVERRIDE;
   void VisitAnd(HAnd* instruction) OVERRIDE;
   void VisitCondition(HCondition* instruction) OVERRIDE;
@@ -1267,6 +1267,17 @@ void InstructionSimplifierVisitor::VisitTypeConversion(HTypeConversion* instruct
     instruction->GetBlock()->RemoveInstruction(instruction);
     RecordSimplification();
     return;
+  }
+}
+
+void InstructionSimplifierVisitor::VisitAbs(HAbs* instruction) {
+  HInstruction* input = instruction->GetInput();
+  if (DataType::IsZeroExtension(input->GetType(), instruction->GetResultType())) {
+    // Zero extension from narrow to wide can never set sign bit in the wider
+    // operand, making the subsequent Abs redundant (e.g., abs(b & 0xff) for byte b).
+    instruction->ReplaceWith(input);
+    instruction->GetBlock()->RemoveInstruction(instruction);
+    RecordSimplification();
   }
 }
 

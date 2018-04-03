@@ -210,6 +210,12 @@ class DataType {
   static bool IsTypeConversionImplicit(Type input_type, Type result_type);
   static bool IsTypeConversionImplicit(int64_t value, Type result_type);
 
+  static bool IsZeroExtension(Type input_type, Type result_type) {
+    return IsIntOrLongType(result_type) &&
+        IsUnsignedType(input_type) &&
+        Size(result_type) > Size(input_type);
+  }
+
   static const char* PrettyDescriptor(Type type);
 
  private:
