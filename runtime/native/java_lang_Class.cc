@@ -535,18 +535,19 @@ static jobjectArray Class_getDeclaredConstructorsInternal(
 static jobject Class_getDeclaredMethodInternal(JNIEnv* env, jobject javaThis,
                                                jstring name, jobjectArray args) {
   ScopedFastNativeObjectAccess soa(env);
+  StackHandleScope<1> hs(soa.Self());
   DCHECK_EQ(Runtime::Current()->GetClassLinker()->GetImagePointerSize(), kRuntimePointerSize);
   DCHECK(!Runtime::Current()->IsActiveTransaction());
-  ObjPtr<mirror::Method> result =
+  Handle<mirror::Method> result = hs.NewHandle(
       mirror::Class::GetDeclaredMethodInternal<kRuntimePointerSize, false>(
           soa.Self(),
           DecodeClass(soa, javaThis),
           soa.Decode<mirror::String>(name),
-          soa.Decode<mirror::ObjectArray<mirror::Class>>(args));
+          soa.Decode<mirror::ObjectArray<mirror::Class>>(args)));
   if (result == nullptr || ShouldBlockAccessToMember(result->GetArtMethod(), soa.Self())) {
     return nullptr;
   }
-  return soa.AddLocalReference<jobject>(result);
+  return soa.AddLocalReference<jobject>(result.Get());
 }
 
 static jobjectArray Class_getDeclaredMethodsUnchecked(JNIEnv* env, jobject javaThis,

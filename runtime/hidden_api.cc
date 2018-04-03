@@ -16,7 +16,11 @@
 
 #include "hidden_api.h"
 
+#include <nativehelper/scoped_local_ref.h>
+
 #include "base/dumpable.h"
+#include "thread-current-inl.h"
+#include "well_known_classes.h"
 
 namespace art {
 namespace hiddenapi {
@@ -135,6 +139,35 @@ bool ShouldBlockAccessToMemberImpl(T* member, Action action, AccessMethod access
   // We do this regardless of whether we block the access or not.
   member_signature.WarnAboutAccess(access_method,
       HiddenApiAccessFlags::DecodeFromRuntime(member->GetAccessFlags()));
+
+  // We're now not in the boot classpath and have decided to warn, show
+  // a toast or deny access. Let strict mode know if a callback is set.
+  //
+  // For consistency of reasoning, we assume that a callback is never set
+  // when running unstarted with dex2oat.
+  if (access_method == kReflection && !runtime->IsAotCompiler()) {
+    ScopedObjectAccessUnchecked soa(Thread::Current());
+
+    ScopedLocalRef<jobject> consumer_object(soa.Env(),
+        soa.Env()->GetStaticObjectField(
+            WellKnownClasses::dalvik_system_VMRuntime,
+            WellKnownClasses::dalvik_system_VMRuntime_nonSdkApiUsageConsumer));
+    // If the consumer is non-null, we call back to it to let it know that we
+    // have encountered an API that's in one of our lists.
+    if (consumer_object != nullptr) {
+      std::ostringstream member_signature_str;
+      member_signature.Dump(member_signature_str);
+
+      ScopedLocalRef<jobject> signature_str(
+          soa.Env(),
+          soa.Env()->NewStringUTF(member_signature_str.str().c_str()));
+
+      // Call through to Consumer.accept(String memberSignature);
+      soa.Env()->CallVoidMethod(consumer_object.get(),
+                                WellKnownClasses::java_util_function_Consumer_accept,
+                                signature_str.get());
+    }
+  }
 
   if (action == kDeny) {
     // Block access
