@@ -16,7 +16,11 @@
 
 #include "hidden_api.h"
 
+#include <nativehelper/scoped_local_ref.h>
+
 #include "base/dumpable.h"
+#include "thread-current-inl.h"
+#include "well_known_classes.h"
 
 namespace art {
 namespace hiddenapi {
@@ -111,7 +115,7 @@ void MemberSignature::WarnAboutAccess(AccessMethod access_method,
 }
 
 template<typename T>
-bool ShouldBlockAccessToMemberImpl(T* member, Action action, AccessMethod access_method) {
+Action GetMemberActionImpl(T* member, Action action, AccessMethod access_method) {
   // Get the signature, we need it later.
   MemberSignature member_signature(member);
 
@@ -138,7 +142,7 @@ bool ShouldBlockAccessToMemberImpl(T* member, Action action, AccessMethod access
 
   if (action == kDeny) {
     // Block access
-    return true;
+    return action;
   }
 
   // Allow access to this member but print a warning.
@@ -156,17 +160,49 @@ bool ShouldBlockAccessToMemberImpl(T* member, Action action, AccessMethod access
     runtime->SetPendingHiddenApiWarning(true);
   }
 
-  return false;
+  return action;
 }
 
 // Need to instantiate this.
-template bool ShouldBlockAccessToMemberImpl<ArtField>(ArtField* member,
-                                                      Action action,
-                                                      AccessMethod access_method);
-template bool ShouldBlockAccessToMemberImpl<ArtMethod>(ArtMethod* member,
-                                                       Action action,
-                                                       AccessMethod access_method);
-
+template Action GetMemberActionImpl<ArtField>(ArtField* member,
+                                              Action action,
+                                              AccessMethod access_method);
+template Action GetMemberActionImpl<ArtMethod>(ArtMethod* member,
+                                               Action action,
+                                               AccessMethod access_method);
 }  // namespace detail
+
+template<typename T>
+void NotifyHiddenApiListener(T* member) {
+  Runtime* runtime = Runtime::Current();
+  if (!runtime->IsAotCompiler()) {
+    ScopedObjectAccessUnchecked soa(Thread::Current());
+
+    ScopedLocalRef<jobject> consumer_object(soa.Env(),
+        soa.Env()->GetStaticObjectField(
+            WellKnownClasses::dalvik_system_VMRuntime,
+            WellKnownClasses::dalvik_system_VMRuntime_nonSdkApiUsageConsumer));
+    // If the consumer is non-null, we call back to it to let it know that we
+    // have encountered an API that's in one of our lists.
+    if (consumer_object != nullptr) {
+      detail::MemberSignature member_signature(member);
+      std::ostringstream member_signature_str;
+      member_signature.Dump(member_signature_str);
+
+      ScopedLocalRef<jobject> signature_str(
+          soa.Env(),
+          soa.Env()->NewStringUTF(member_signature_str.str().c_str()));
+
+      // Call through to Consumer.accept(String memberSignature);
+      soa.Env()->CallVoidMethod(consumer_object.get(),
+                                WellKnownClasses::java_util_function_Consumer_accept,
+                                signature_str.get());
+    }
+  }
+}
+
+template void NotifyHiddenApiListener<ArtMethod>(ArtMethod* member);
+template void NotifyHiddenApiListener<ArtField>(ArtField* member);
+
 }  // namespace hiddenapi
 }  // namespace art
