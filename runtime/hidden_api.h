@@ -52,11 +52,22 @@ enum Action {
   kDeny
 };
 
+// Do not change the values of items in this enum, as they are written to the
+// event log for offline analysis. Any changes will interfere with that analysis.
 enum AccessMethod {
-  kNone,  // internal test that does not correspond to an actual access by app
-  kReflection,
-  kJNI,
-  kLinking,
+  kNone = 0,  // internal test that does not correspond to an actual access by app
+  kReflection = 1,
+  kJNI = 2,
+  kLinking = 3,
+};
+
+// Do not change the values of items in this enum, as they are written to the
+// event log for offline analysis. Any changes will interfere with that analysis.
+enum AccessContextFlags {
+  // Accessed member is a field if this bit is set, else a method
+  kMemberIsField = 1 << 0,
+  // Indicates if access was denied to the member, instead of just printing a warning.
+  kAccessDenied  = 1 << 1,
 };
 
 inline Action GetActionFromAccessFlags(uint32_t access_flags) {
@@ -93,9 +104,18 @@ namespace detail {
 // is used as a helper when matching prefixes, and when logging the signature.
 class MemberSignature {
  private:
-  std::string member_type_;
-  std::vector<std::string> signature_parts_;
+  enum MemberType {
+    kField,
+    kMethod,
+  };
+
+  std::string class_name_;
+  std::string member_name_;
+  std::string type_signature_;
   std::string tmp_;
+  MemberType type_;
+
+  inline std::vector<const char*> GetSignatureParts() const;
 
  public:
   explicit MemberSignature(ArtField* field) REQUIRES_SHARED(Locks::mutator_lock_);
@@ -111,6 +131,8 @@ class MemberSignature {
   bool IsExempted(const std::vector<std::string>& exemptions);
 
   void WarnAboutAccess(AccessMethod access_method, HiddenApiAccessFlags::ApiList list);
+
+  void LogAccessToEventLog(AccessMethod access_method, Action action_taken);
 };
 
 template<typename T>
