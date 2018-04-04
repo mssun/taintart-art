@@ -141,7 +141,7 @@ class LinkerPatch {
   static LinkerPatch BakerReadBarrierBranchPatch(size_t literal_offset,
                                                  uint32_t custom_value1 = 0u,
                                                  uint32_t custom_value2 = 0u) {
-    LinkerPatch patch(literal_offset, Type::kBakerReadBarrierBranch, /* target_dex_file */ nullptr);
+    LinkerPatch patch(literal_offset, Type::kBakerReadBarrierBranch, nullptr);
     patch.baker_custom_value1_ = custom_value1;
     patch.baker_custom_value2_ = custom_value2;
     return patch;

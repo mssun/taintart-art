@@ -58,10 +58,7 @@ class RelativePatcherTest : public testing::Test {
         instruction_set_(instruction_set),
         features_(InstructionSetFeatures::FromVariant(instruction_set, variant, &error_msg_)),
         method_offset_map_(),
-        patcher_(RelativePatcher::Create(instruction_set,
-                                         features_.get(),
-                                         &thunk_provider_,
-                                         &method_offset_map_)),
+        patcher_(RelativePatcher::Create(instruction_set, features_.get(), &method_offset_map_)),
         bss_begin_(0u),
         compiled_method_refs_(),
         compiled_methods_(),
@@ -251,72 +248,6 @@ class RelativePatcherTest : public testing::Test {
     LOG(ERROR) << " " << diff_indicator_str;
   }
 
-  class ThunkProvider : public RelativePatcherThunkProvider {
-   public:
-    ThunkProvider() {}
-
-    void SetThunkCode(const LinkerPatch& patch,
-                      ArrayRef<const uint8_t> code,
-                      const std::string& debug_name) {
-      thunk_map_.emplace(ThunkKey(patch), ThunkValue(code, debug_name));
-    }
-
-    void GetThunkCode(const LinkerPatch& patch,
-                      /*out*/ ArrayRef<const uint8_t>* code,
-                      /*out*/ std::string* debug_name) OVERRIDE {
-      auto it = thunk_map_.find(ThunkKey(patch));
-      CHECK(it != thunk_map_.end());
-      const ThunkValue& value = it->second;
-      CHECK(code != nullptr);
-      *code = value.GetCode();
-      CHECK(debug_name != nullptr);
-      *debug_name = value.GetDebugName();
-    }
-
-   private:
-    class ThunkKey {
-     public:
-      explicit ThunkKey(const LinkerPatch& patch)
-          : type_(patch.GetType()),
-            custom_value1_(patch.GetType() == LinkerPatch::Type::kBakerReadBarrierBranch
-                               ? patch.GetBakerCustomValue1() : 0u),
-            custom_value2_(patch.GetType() == LinkerPatch::Type::kBakerReadBarrierBranch
-                               ? patch.GetBakerCustomValue2() : 0u) {
-        CHECK(patch.GetType() == LinkerPatch::Type::kBakerReadBarrierBranch ||
-              patch.GetType() == LinkerPatch::Type::kCallRelative);
-      }
-
-      bool operator<(const ThunkKey& other) const {
-        if (custom_value1_ != other.custom_value1_) {
-          return custom_value1_ < other.custom_value1_;
-        }
-        if (custom_value2_ != other.custom_value2_) {
-          return custom_value2_ < other.custom_value2_;
-        }
-        return type_ < other.type_;
-      }
-
-     private:
-      const LinkerPatch::Type type_;
-      const uint32_t custom_value1_;
-      const uint32_t custom_value2_;
-    };
-
-    class ThunkValue {
-     public:
-      ThunkValue(ArrayRef<const uint8_t> code, const std::string& debug_name)
-          : code_(code.begin(), code.end()), debug_name_(debug_name) {}
-      ArrayRef<const uint8_t> GetCode() const { return ArrayRef<const uint8_t>(code_); }
-      const std::string& GetDebugName() const { return debug_name_; }
-
-     private:
-      const std::vector<uint8_t> code_;
-      const std::string debug_name_;
-    };
-
-    std::map<ThunkKey, ThunkValue> thunk_map_;
-  };
-
   // Map method reference to assinged offset.
   // Wrap the map in a class implementing RelativePatcherTargetProvider.
   class MethodOffsetMap FINAL : public RelativePatcherTargetProvider {
@@ -341,7 +272,6 @@ class RelativePatcherTest : public testing::Test {
   std::string error_msg_;
   InstructionSet instruction_set_;
   std::unique_ptr<const InstructionSetFeatures> features_;
-  ThunkProvider thunk_provider_;
   MethodOffsetMap method_offset_map_;
   std::unique_ptr<RelativePatcher> patcher_;
   uint32_t bss_begin_;

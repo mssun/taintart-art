@@ -213,8 +213,7 @@ class OatTest : public CommonCompilerTest {
       class_linker->RegisterDexFile(*dex_file, nullptr);
     }
     MultiOatRelativePatcher patcher(compiler_driver_->GetInstructionSet(),
-                                    instruction_set_features_.get(),
-                                    compiler_driver_->GetCompiledMethodStorage());
+                                    instruction_set_features_.get());
     oat_writer.Initialize(compiler_driver_.get(), nullptr, dex_files);
     oat_writer.PrepareLayout(&patcher);
     elf_writer->PrepareDynamicSection(oat_writer.GetOatHeader().GetExecutableOffset(),

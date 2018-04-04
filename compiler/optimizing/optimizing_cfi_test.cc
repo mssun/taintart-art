@@ -105,15 +105,15 @@ class OptimizingCFITest : public CFITest, public OptimizingUnitTestHelper {
              const std::vector<uint8_t>& expected_asm,
              const std::vector<uint8_t>& expected_cfi) {
     // Get the outputs.
-    ArrayRef<const uint8_t> actual_asm = code_allocator_.GetMemory();
+    const std::vector<uint8_t>& actual_asm = code_allocator_.GetMemory();
     Assembler* opt_asm = code_gen_->GetAssembler();
-    ArrayRef<const uint8_t> actual_cfi(*(opt_asm->cfi().data()));
+    const std::vector<uint8_t>& actual_cfi = *(opt_asm->cfi().data());
 
     if (kGenerateExpected) {
       GenerateExpected(stdout, isa, isa_str, actual_asm, actual_cfi);
     } else {
-      EXPECT_EQ(ArrayRef<const uint8_t>(expected_asm), actual_asm);
-      EXPECT_EQ(ArrayRef<const uint8_t>(expected_cfi), actual_cfi);
+      EXPECT_EQ(expected_asm, actual_asm);
+      EXPECT_EQ(expected_cfi, actual_cfi);
     }
   }
 
@@ -140,7 +140,7 @@ class OptimizingCFITest : public CFITest, public OptimizingUnitTestHelper {
       return memory_.data();
     }
 
-    ArrayRef<const uint8_t> GetMemory() const OVERRIDE { return ArrayRef<const uint8_t>(memory_); }
+    const std::vector<uint8_t>& GetMemory() { return memory_; }
 
    private:
     std::vector<uint8_t> memory_;
