@@ -70,22 +70,18 @@ class OatDumpTest : public CommonRuntimeTest {
     kStatic,   // oatdump(d)s, dex2oat(d)s
   };
 
-  // Returns path to the oatdump/dex2oat/dexdump binary.
-  std::string GetExecutableFilePath(const char* name, bool is_debug, bool is_static) {
+  // Returns path to the oatdump/dex2oat binary.
+  std::string GetExecutableFilePath(Flavor flavor, const char* name) {
     std::string root = GetTestAndroidRoot();
     root += "/bin/";
     root += name;
-    if (is_debug) {
+    if (kIsDebugBuild) {
       root += "d";
     }
-    if (is_static) {
+    if (flavor == kStatic) {
       root += "s";
     }
     return root;
-  }
-
-  std::string GetExecutableFilePath(Flavor flavor, const char* name) {
-    return GetExecutableFilePath(name, kIsDebugBuild, flavor == kStatic);
   }
 
   enum Mode {
@@ -131,7 +127,17 @@ class OatDumpTest : public CommonRuntimeTest {
     };
     exec_argv.insert(exec_argv.end(), args.begin(), args.end());
 
-    return ForkAndExecAndWait(exec_argv, error_msg);
+    pid_t pid;
+    int pipe_fd;
+    bool result = ForkAndExec(exec_argv, &pid, &pipe_fd, error_msg);
+    if (result) {
+      close(pipe_fd);
+      int status = 0;
+      if (waitpid(pid, &status, 0) != -1) {
+        result = (status == 0);
+      }
+    }
+    return result;
   }
 
   // Run the test with custom arguments.
@@ -292,21 +298,6 @@ class OatDumpTest : public CommonRuntimeTest {
       *pipe_fd = link[0];
       return true;
     }
-  }
-
-  bool ForkAndExecAndWait(const std::vector<std::string>& exec_argv,
-                          /*out*/ std::string* error_msg) {
-    pid_t pid;
-    int pipe_fd;
-    bool result = ForkAndExec(exec_argv, &pid, &pipe_fd, error_msg);
-    if (result) {
-      close(pipe_fd);
-      int status = 0;
-      if (waitpid(pid, &status, 0) != -1) {
-        result = (status == 0);
-      }
-    }
-    return result;
   }
 
   std::string tmp_dir_;
