@@ -129,7 +129,7 @@ public class ByteSimdMinMax {
   /// CHECK-DAG: <<Cnv:b\d+>>  TypeConversion [<<Min>>]            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-{ARM64,MIPS64}: void ByteSimdMinMax.doitMin100(byte[], byte[]) loop_optimization (after)
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void ByteSimdMinMax.doitMin100(byte[], byte[]) loop_optimization (after)
   /// CHECK-DAG: <<I100:i\d+>> IntConstant 100                      loop:none
   /// CHECK-DAG: <<Repl:d\d+>> VecReplicateScalar [<<I100>>]        loop:none
   /// CHECK-DAG: <<Get:d\d+>>  VecLoad                              loop:<<Loop:B\d+>>  outer_loop:none
@@ -139,6 +139,38 @@ public class ByteSimdMinMax {
     int min = Math.min(x.length, y.length);
     for (int i = 0; i < min; i++) {
       x[i] = (byte) Math.min(y[i], 100);
+    }
+  }
+
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void ByteSimdMinMax.doitMinMax(byte[], byte[]) loop_optimization (after)
+  /// CHECK-DAG: <<I11:i\d+>>  IntConstant -11                      loop:none
+  /// CHECK-DAG: <<I23:i\d+>>  IntConstant 23                       loop:none
+  /// CHECK-DAG: <<Rpl1:d\d+>> VecReplicateScalar [<<I23>>]         loop:none
+  /// CHECK-DAG: <<Rpl2:d\d+>> VecReplicateScalar [<<I11>>]         loop:none
+  /// CHECK-DAG: <<Get:d\d+>>  VecLoad                              loop:<<Loop:B\d+>>  outer_loop:none
+  /// CHECK-DAG: <<Min:d\d+>>  VecMin [<<Get>>,<<Rpl1>>] packed_type:Int8 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Max:d\d+>>  VecMax [<<Min>>,<<Rpl2>>] packed_type:Int8 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},{{i\d+}},<<Max>>] loop:<<Loop>>       outer_loop:none
+  private static void doitMinMax(byte[] x, byte[] y) {
+    int n = Math.min(x.length, y.length);
+    for (int i = 0; i < n; i++) {
+      x[i] = (byte) Math.max(-11, Math.min(y[i], 23));
+    }
+  }
+
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void ByteSimdMinMax.doitMinMaxUnsigned(byte[], byte[]) loop_optimization (after)
+  /// CHECK-DAG: <<I11:i\d+>>  IntConstant 11                       loop:none
+  /// CHECK-DAG: <<I23:i\d+>>  IntConstant 23                       loop:none
+  /// CHECK-DAG: <<Rpl1:d\d+>> VecReplicateScalar [<<I23>>]         loop:none
+  /// CHECK-DAG: <<Rpl2:d\d+>> VecReplicateScalar [<<I11>>]         loop:none
+  /// CHECK-DAG: <<Get:d\d+>>  VecLoad                              loop:<<Loop:B\d+>>  outer_loop:none
+  /// CHECK-DAG: <<Min:d\d+>>  VecMin [<<Get>>,<<Rpl1>>] packed_type:Uint8 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Max:d\d+>>  VecMax [<<Min>>,<<Rpl2>>] packed_type:Uint8 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},{{i\d+}},<<Max>>] loop:<<Loop>>       outer_loop:none
+  private static void doitMinMaxUnsigned(byte[] x, byte[] y) {
+    int n = Math.min(x.length, y.length);
+    for (int i = 0; i < n; i++) {
+      x[i] = (byte) Math.max(11, Math.min(y[i] & 0xff, 23));
     }
   }
 
@@ -182,6 +214,18 @@ public class ByteSimdMinMax {
     doitMin100(x, y);
     for (int i = 0; i < total; i++) {
       byte expected = (byte) Math.min(y[i], 100);
+      expectEquals(expected, x[i]);
+    }
+    doitMinMax(x, y);
+    for (int i = 0; i < total; i++) {
+      int s = y[i];
+      byte expected = (byte) (s < -11 ? -11 : (s > 23 ? 23 : s));
+      expectEquals(expected, x[i]);
+    }
+    doitMinMaxUnsigned(x, y);
+    for (int i = 0; i < total; i++) {
+      int u = y[i] & 0xff;
+      byte expected = (byte) (u < 11 ? 11 : (u > 23 ? 23 : u));
       expectEquals(expected, x[i]);
     }
 

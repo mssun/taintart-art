@@ -153,6 +153,18 @@ static bool IsSignExtensionAndGet(HInstruction* instruction,
         return false;
     }
   }
+  // A MIN-MAX on narrower operands qualifies as well
+  // (returning the operator itself).
+  if (instruction->IsMin() || instruction->IsMax()) {
+    HBinaryOperation* min_max = instruction->AsBinaryOperation();
+    DCHECK(min_max->GetType() == DataType::Type::kInt32 ||
+           min_max->GetType() == DataType::Type::kInt64);
+    if (IsSignExtensionAndGet(min_max->InputAt(0), type, operand) &&
+        IsSignExtensionAndGet(min_max->InputAt(1), type, operand)) {
+      *operand = min_max;
+      return true;
+    }
+  }
   return false;
 }
 
@@ -214,6 +226,18 @@ static bool IsZeroExtensionAndGet(HInstruction* instruction,
                IsSignExtensionAndGet(instruction->InputAt(0), type, /*out*/ operand);
       default:
         return false;
+    }
+  }
+  // A MIN-MAX on narrower operands qualifies as well
+  // (returning the operator itself).
+  if (instruction->IsMin() || instruction->IsMax()) {
+    HBinaryOperation* min_max = instruction->AsBinaryOperation();
+    DCHECK(min_max->GetType() == DataType::Type::kInt32 ||
+           min_max->GetType() == DataType::Type::kInt64);
+    if (IsZeroExtensionAndGet(min_max->InputAt(0), type, operand) &&
+        IsZeroExtensionAndGet(min_max->InputAt(1), type, operand)) {
+      *operand = min_max;
+      return true;
     }
   }
   return false;
