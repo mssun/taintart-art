@@ -20,6 +20,82 @@
 public class Main {
 
   //
+  // Direct intrinsics.
+  //
+
+  /// CHECK-START: int Main.minI(int) instruction_simplifier (before)
+  /// CHECK-DAG: <<Par:i\d+>> ParameterValue
+  /// CHECK-DAG: <<Con:i\d+>> IntConstant 20
+  /// CHECK-DAG: <<Min:i\d+>> InvokeStaticOrDirect [<<Par>>,<<Con>>] intrinsic:MathMinIntInt
+  /// CHECK-DAG:              Return [<<Min>>]
+  //
+  /// CHECK-START: int Main.minI(int) instruction_simplifier (after)
+  /// CHECK-DAG: <<Par:i\d+>> ParameterValue
+  /// CHECK-DAG: <<Con:i\d+>> IntConstant 20
+  /// CHECK-DAG: <<Min:i\d+>> Min [<<Par>>,<<Con>>]
+  /// CHECK-DAG:              Return [<<Min>>]
+  //
+  /// CHECK-START: int Main.minI(int) instruction_simplifier (after)
+  /// CHECK-NOT:              InvokeStaticOrDirect
+  public static int minI(int a) {
+    return Math.min(a, 20);
+  }
+
+  /// CHECK-START: long Main.minL(long) instruction_simplifier (before)
+  /// CHECK-DAG: <<Par:j\d+>> ParameterValue
+  /// CHECK-DAG: <<Con:j\d+>> LongConstant 20
+  /// CHECK-DAG: <<Min:j\d+>> InvokeStaticOrDirect [<<Par>>,<<Con>>] intrinsic:MathMinLongLong
+  /// CHECK-DAG:              Return [<<Min>>]
+  //
+  /// CHECK-START: long Main.minL(long) instruction_simplifier (after)
+  /// CHECK-DAG: <<Par:j\d+>> ParameterValue
+  /// CHECK-DAG: <<Con:j\d+>> LongConstant 20
+  /// CHECK-DAG: <<Min:j\d+>> Min [<<Par>>,<<Con>>]
+  /// CHECK-DAG:              Return [<<Min>>]
+  //
+  /// CHECK-START: long Main.minL(long) instruction_simplifier (after)
+  /// CHECK-NOT:              InvokeStaticOrDirect
+  public static long minL(long a) {
+    return Math.min(a, 20L);
+  }
+
+  /// CHECK-START: int Main.maxI(int) instruction_simplifier (before)
+  /// CHECK-DAG: <<Par:i\d+>> ParameterValue
+  /// CHECK-DAG: <<Con:i\d+>> IntConstant 20
+  /// CHECK-DAG: <<Max:i\d+>> InvokeStaticOrDirect [<<Par>>,<<Con>>] intrinsic:MathMaxIntInt
+  /// CHECK-DAG:              Return [<<Max>>]
+  //
+  /// CHECK-START: int Main.maxI(int) instruction_simplifier (after)
+  /// CHECK-DAG: <<Par:i\d+>> ParameterValue
+  /// CHECK-DAG: <<Con:i\d+>> IntConstant 20
+  /// CHECK-DAG: <<Max:i\d+>> Max [<<Par>>,<<Con>>]
+  /// CHECK-DAG:              Return [<<Max>>]
+  //
+  /// CHECK-START: int Main.maxI(int) instruction_simplifier (after)
+  /// CHECK-NOT:              InvokeStaticOrDirect
+  public static int maxI(int a) {
+    return Math.max(a, 20);
+  }
+
+  /// CHECK-START: long Main.maxL(long) instruction_simplifier (before)
+  /// CHECK-DAG: <<Par:j\d+>> ParameterValue
+  /// CHECK-DAG: <<Con:j\d+>> LongConstant 20
+  /// CHECK-DAG: <<Max:j\d+>> InvokeStaticOrDirect [<<Par>>,<<Con>>] intrinsic:MathMaxLongLong
+  /// CHECK-DAG:              Return [<<Max>>]
+  //
+  /// CHECK-START: long Main.maxL(long) instruction_simplifier (after)
+  /// CHECK-DAG: <<Par:j\d+>> ParameterValue
+  /// CHECK-DAG: <<Con:j\d+>> LongConstant 20
+  /// CHECK-DAG: <<Max:j\d+>> Max [<<Par>>,<<Con>>]
+  /// CHECK-DAG:              Return [<<Max>>]
+  //
+  /// CHECK-START: long Main.maxL(long) instruction_simplifier (after)
+  /// CHECK-NOT:              InvokeStaticOrDirect
+  public static long maxL(long a) {
+    return Math.max(a, 20L);
+  }
+
+  //
   // Different types.
   //
 
@@ -343,6 +419,14 @@ public class Main {
 
   public static void main(String[] args) {
     // Types.
+    expectEquals(10, minI(10));
+    expectEquals(20, minI(25));
+    expectEquals(10L, minL(10L));
+    expectEquals(20L, minL(25L));
+    expectEquals(20, maxI(10));
+    expectEquals(25, maxI(25));
+    expectEquals(20L, maxL(10L));
+    expectEquals(25L, maxL(25L));
     expectEquals(10, min1(10, 20));
     expectEquals(10, min2(10, 20));
     expectEquals(10, min3(10, 20));
