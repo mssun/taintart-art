@@ -129,7 +129,7 @@ public class ShortSimdMinMax {
   /// CHECK-DAG: <<Cnv:s\d+>>  TypeConversion [<<Min>>]            loop:<<Loop>>      outer_loop:none
   /// CHECK-DAG:               ArraySet [{{l\d+}},<<Phi>>,<<Cnv>>] loop:<<Loop>>      outer_loop:none
   //
-  /// CHECK-START-{ARM64,MIPS64}: void ShortSimdMinMax.doitMin100(short[], short[]) loop_optimization (after)
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void ShortSimdMinMax.doitMin100(short[], short[]) loop_optimization (after)
   /// CHECK-DAG: <<I100:i\d+>> IntConstant 100                      loop:none
   /// CHECK-DAG: <<Repl:d\d+>> VecReplicateScalar [<<I100>>]        loop:none
   /// CHECK-DAG: <<Get:d\d+>>  VecLoad                              loop:<<Loop:B\d+>>   outer_loop:none
@@ -139,6 +139,38 @@ public class ShortSimdMinMax {
     int min = Math.min(x.length, y.length);
     for (int i = 0; i < min; i++) {
       x[i] = (short) Math.min(y[i], 100);
+    }
+  }
+
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void ShortSimdMinMax.doitMinMax(short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<I11:i\d+>>  IntConstant -1111                    loop:none
+  /// CHECK-DAG: <<I23:i\d+>>  IntConstant 2323                     loop:none
+  /// CHECK-DAG: <<Rpl1:d\d+>> VecReplicateScalar [<<I23>>]         loop:none
+  /// CHECK-DAG: <<Rpl2:d\d+>> VecReplicateScalar [<<I11>>]         loop:none
+  /// CHECK-DAG: <<Get:d\d+>>  VecLoad                              loop:<<Loop:B\d+>>  outer_loop:none
+  /// CHECK-DAG: <<Min:d\d+>>  VecMin [<<Get>>,<<Rpl1>>] packed_type:Int16 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Max:d\d+>>  VecMax [<<Min>>,<<Rpl2>>] packed_type:Int16 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},{{i\d+}},<<Max>>] loop:<<Loop>>       outer_loop:none
+  private static void doitMinMax(short[] x, short[] y) {
+    int n = Math.min(x.length, y.length);
+    for (int i = 0; i < n; i++) {
+      x[i] = (short) Math.max(-1111, Math.min(y[i], 2323));
+    }
+  }
+
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void ShortSimdMinMax.doitMinMaxUnsigned(short[], short[]) loop_optimization (after)
+  /// CHECK-DAG: <<I11:i\d+>>  IntConstant 1111                     loop:none
+  /// CHECK-DAG: <<I23:i\d+>>  IntConstant 2323                     loop:none
+  /// CHECK-DAG: <<Rpl1:d\d+>> VecReplicateScalar [<<I23>>]         loop:none
+  /// CHECK-DAG: <<Rpl2:d\d+>> VecReplicateScalar [<<I11>>]         loop:none
+  /// CHECK-DAG: <<Get:d\d+>>  VecLoad                              loop:<<Loop:B\d+>>  outer_loop:none
+  /// CHECK-DAG: <<Min:d\d+>>  VecMin [<<Get>>,<<Rpl1>>] packed_type:Uint16 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG: <<Max:d\d+>>  VecMax [<<Min>>,<<Rpl2>>] packed_type:Uint16 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},{{i\d+}},<<Max>>] loop:<<Loop>>       outer_loop:none
+  private static void doitMinMaxUnsigned(short[] x, short[] y) {
+    int n = Math.min(x.length, y.length);
+    for (int i = 0; i < n; i++) {
+      x[i] = (short) Math.max(1111, Math.min(y[i] & 0xffff, 2323));
     }
   }
 
@@ -196,6 +228,18 @@ public class ShortSimdMinMax {
     doitMin100(x, y);
     for (int i = 0; i < total; i++) {
       short expected = (short) Math.min(y[i], 100);
+      expectEquals(expected, x[i]);
+    }
+    doitMinMax(x, y);
+    for (int i = 0; i < total; i++) {
+      int s = y[i];
+      short expected = (short) (s < -1111 ? -1111 : (s > 2323 ? 2323 : s));
+      expectEquals(expected, x[i]);
+    }
+    doitMinMaxUnsigned(x, y);
+    for (int i = 0; i < total; i++) {
+      int u = y[i] & 0xffff;
+      short expected = (short) (u < 1111 ? 1111 : (u > 2323 ? 2323 : u));
       expectEquals(expected, x[i]);
     }
 
