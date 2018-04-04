@@ -45,7 +45,7 @@ export JAVAC="javac -g -Xlint:-options"
 export RUN="${progdir}/etc/run-test-jar"
 export DEX_LOCATION=/data/run-test/${test_dir}
 export NEED_DEX="true"
-export USE_D8="false"
+export USE_D8="true"
 export USE_JACK="false"
 export USE_DESUGAR="true"
 export SMALI_ARGS=""
@@ -364,9 +364,6 @@ while true; do
         shift
     elif [ "x$1" = "x--build-only" ]; then
         build_only="yes"
-        shift
-    elif [ "x$1" = "x--build-with-d8" ]; then
-        USE_D8="true"
         shift
     elif [ "x$1" = "x--build-with-javac-dx" ]; then
         USE_JACK="false"
