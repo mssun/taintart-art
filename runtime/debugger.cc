@@ -364,6 +364,11 @@ bool DebuggerActiveMethodInspectionCallback::IsMethodSafeToJit(ArtMethod* m) {
   return !Dbg::MethodHasAnyBreakpoints(m);
 }
 
+bool DebuggerActiveMethodInspectionCallback::MethodNeedsDebugVersion(
+    ArtMethod* m ATTRIBUTE_UNUSED) {
+  return Dbg::IsDebuggerActive();
+}
+
 void InternalDebuggerControlCallback::StartDebugger() {
   // Release the mutator lock.
   ScopedThreadStateChange stsc(art::Thread::Current(), kNative);
