@@ -299,7 +299,8 @@ inline void CompilationHelper::Compile(CompilerDriver* driver,
       DCHECK_EQ(vdex_files.size(), oat_files.size());
       for (size_t i = 0, size = oat_files.size(); i != size; ++i) {
         MultiOatRelativePatcher patcher(driver->GetInstructionSet(),
-                                        driver->GetInstructionSetFeatures());
+                                        driver->GetInstructionSetFeatures(),
+                                        driver->GetCompiledMethodStorage());
         OatWriter* const oat_writer = oat_writers[i].get();
         ElfWriter* const elf_writer = elf_writers[i].get();
         std::vector<const DexFile*> cur_dex_files(1u, class_path[i]);

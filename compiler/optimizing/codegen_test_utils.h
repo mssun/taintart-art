@@ -195,7 +195,9 @@ class InternalCodeAllocator : public CodeAllocator {
   }
 
   size_t GetSize() const { return size_; }
-  uint8_t* GetMemory() const { return memory_.get(); }
+  ArrayRef<const uint8_t> GetMemory() const OVERRIDE {
+    return ArrayRef<const uint8_t>(memory_.get(), size_);
+  }
 
  private:
   size_t size_;
@@ -269,8 +271,8 @@ static void Run(const InternalCodeAllocator& allocator,
   InstructionSet target_isa = codegen.GetInstructionSet();
 
   typedef Expected (*fptr)();
-  CommonCompilerTest::MakeExecutable(allocator.GetMemory(), allocator.GetSize());
-  fptr f = reinterpret_cast<fptr>(allocator.GetMemory());
+  CommonCompilerTest::MakeExecutable(allocator.GetMemory().data(), allocator.GetMemory().size());
+  fptr f = reinterpret_cast<fptr>(reinterpret_cast<uintptr_t>(allocator.GetMemory().data()));
   if (target_isa == InstructionSet::kThumb2) {
     // For thumb we need the bottom bit set.
     f = reinterpret_cast<fptr>(reinterpret_cast<uintptr_t>(f) + 1);

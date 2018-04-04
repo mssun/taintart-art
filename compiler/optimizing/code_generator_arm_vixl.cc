@@ -94,9 +94,6 @@ constexpr bool kBakerReadBarrierLinkTimeThunksEnableForFields = true;
 constexpr bool kBakerReadBarrierLinkTimeThunksEnableForArrays = true;
 constexpr bool kBakerReadBarrierLinkTimeThunksEnableForGcRoots = true;
 
-// The reserved entrypoint register for link-time generated thunks.
-const vixl32::Register kBakerCcEntrypointRegister = r4;
-
 // Using a base helps identify when we hit Marking Register check breakpoints.
 constexpr int kMarkingRegisterCheckBreakCodeBaseCode = 0x10;
 
@@ -116,8 +113,6 @@ static inline void ExcludeIPAndBakerCcEntrypointRegister(UseScratchRegisterScope
   DCHECK(temps->IsAvailable(ip));
   temps->Exclude(ip);
   DCHECK(!temps->IsAvailable(kBakerCcEntrypointRegister));
-  DCHECK_EQ(kBakerCcEntrypointRegister.GetCode(),
-            linker::Thumb2RelativePatcher::kBakerCcEntrypointRegister);
   DCHECK_NE(instruction->GetLocations()->GetTempCount(), 0u);
   DCHECK(RegisterFrom(instruction->GetLocations()->GetTemp(
       instruction->GetLocations()->GetTempCount() - 1u)).Is(kBakerCcEntrypointRegister));
@@ -2422,6 +2417,80 @@ void CodeGeneratorARMVIXL::Finalize(CodeAllocator* allocator) {
   FixJumpTables();
   GetAssembler()->FinalizeCode();
   CodeGenerator::Finalize(allocator);
+
+  // Verify Baker read barrier linker patches.
+  if (kIsDebugBuild) {
+    ArrayRef<const uint8_t> code = allocator->GetMemory();
+    for (const BakerReadBarrierPatchInfo& info : baker_read_barrier_patches_) {
+      DCHECK(info.label.IsBound());
+      uint32_t literal_offset = info.label.GetLocation();
+      DCHECK_ALIGNED(literal_offset, 2u);
+
+      auto GetInsn16 = [&code](uint32_t offset) {
+        DCHECK_ALIGNED(offset, 2u);
+        return (static_cast<uint32_t>(code[offset + 0]) << 0) +
+               (static_cast<uint32_t>(code[offset + 1]) << 8);
+      };
+      auto GetInsn32 = [=](uint32_t offset) {
+        return (GetInsn16(offset) << 16) + (GetInsn16(offset + 2u) << 0);
+      };
+
+      uint32_t encoded_data = info.custom_data;
+      BakerReadBarrierKind kind = BakerReadBarrierKindField::Decode(encoded_data);
+      // Check that the next instruction matches the expected LDR.
+      switch (kind) {
+        case BakerReadBarrierKind::kField: {
+          BakerReadBarrierWidth width = BakerReadBarrierWidthField::Decode(encoded_data);
+          if (width == BakerReadBarrierWidth::kWide) {
+            DCHECK_GE(code.size() - literal_offset, 8u);
+            uint32_t next_insn = GetInsn32(literal_offset + 4u);
+            // LDR (immediate), encoding T3, with correct base_reg.
+            CheckValidReg((next_insn >> 12) & 0xfu);  // Check destination register.
+            const uint32_t base_reg = BakerReadBarrierFirstRegField::Decode(encoded_data);
+            CHECK_EQ(next_insn & 0xffff0000u, 0xf8d00000u | (base_reg << 16));
+          } else {
+            DCHECK_GE(code.size() - literal_offset, 6u);
+            uint32_t next_insn = GetInsn16(literal_offset + 4u);
+            // LDR (immediate), encoding T1, with correct base_reg.
+            CheckValidReg(next_insn & 0x7u);  // Check destination register.
+            const uint32_t base_reg = BakerReadBarrierFirstRegField::Decode(encoded_data);
+            CHECK_EQ(next_insn & 0xf838u, 0x6800u | (base_reg << 3));
+          }
+          break;
+        }
+        case BakerReadBarrierKind::kArray: {
+          DCHECK_GE(code.size() - literal_offset, 8u);
+          uint32_t next_insn = GetInsn32(literal_offset + 4u);
+          // LDR (register) with correct base_reg, S=1 and option=011 (LDR Wt, [Xn, Xm, LSL #2]).
+          CheckValidReg((next_insn >> 12) & 0xfu);  // Check destination register.
+          const uint32_t base_reg = BakerReadBarrierFirstRegField::Decode(encoded_data);
+          CHECK_EQ(next_insn & 0xffff0ff0u, 0xf8500020u | (base_reg << 16));
+          CheckValidReg(next_insn & 0xf);  // Check index register
+          break;
+        }
+        case BakerReadBarrierKind::kGcRoot: {
+          BakerReadBarrierWidth width = BakerReadBarrierWidthField::Decode(encoded_data);
+          if (width == BakerReadBarrierWidth::kWide) {
+            DCHECK_GE(literal_offset, 4u);
+            uint32_t prev_insn = GetInsn32(literal_offset - 4u);
+            // LDR (immediate), encoding T3, with correct root_reg.
+            const uint32_t root_reg = BakerReadBarrierFirstRegField::Decode(encoded_data);
+            CHECK_EQ(prev_insn & 0xfff0f000u, 0xf8d00000u | (root_reg << 12));
+          } else {
+            DCHECK_GE(literal_offset, 2u);
+            uint32_t prev_insn = GetInsn16(literal_offset - 2u);
+            // LDR (immediate), encoding T1, with correct root_reg.
+            const uint32_t root_reg = BakerReadBarrierFirstRegField::Decode(encoded_data);
+            CHECK_EQ(prev_insn & 0xf807u, 0x6800u | root_reg);
+          }
+          break;
+        }
+        default:
+          LOG(FATAL) << "Unexpected kind: " << static_cast<uint32_t>(kind);
+          UNREACHABLE();
+      }
+    }
+  }
 }
 
 void CodeGeneratorARMVIXL::SetupBlockedRegisters() const {
@@ -7413,11 +7482,11 @@ void InstructionCodeGeneratorARMVIXL::VisitLoadClass(HLoadClass* cls) NO_THREAD_
       DCHECK(!cls->MustGenerateClinitCheck());
       // /* GcRoot<mirror::Class> */ out = current_method->declaring_class_
       vixl32::Register current_method = InputRegisterAt(cls, 0);
-      GenerateGcRootFieldLoad(cls,
-                              out_loc,
-                              current_method,
-                              ArtMethod::DeclaringClassOffset().Int32Value(),
-                              read_barrier_option);
+      codegen_->GenerateGcRootFieldLoad(cls,
+                                        out_loc,
+                                        current_method,
+                                        ArtMethod::DeclaringClassOffset().Int32Value(),
+                                        read_barrier_option);
       break;
     }
     case HLoadClass::LoadKind::kBootImageLinkTimePcRelative: {
@@ -7448,7 +7517,7 @@ void InstructionCodeGeneratorARMVIXL::VisitLoadClass(HLoadClass* cls) NO_THREAD_
       CodeGeneratorARMVIXL::PcRelativePatchInfo* labels =
           codegen_->NewTypeBssEntryPatch(cls->GetDexFile(), cls->GetTypeIndex());
       codegen_->EmitMovwMovtPlaceholder(labels, out);
-      GenerateGcRootFieldLoad(cls, out_loc, out, /* offset */ 0, read_barrier_option);
+      codegen_->GenerateGcRootFieldLoad(cls, out_loc, out, /* offset */ 0, read_barrier_option);
       generate_null_check = true;
       break;
     }
@@ -7457,7 +7526,7 @@ void InstructionCodeGeneratorARMVIXL::VisitLoadClass(HLoadClass* cls) NO_THREAD_
                                                        cls->GetTypeIndex(),
                                                        cls->GetClass()));
       // /* GcRoot<mirror::Class> */ out = *out
-      GenerateGcRootFieldLoad(cls, out_loc, out, /* offset */ 0, read_barrier_option);
+      codegen_->GenerateGcRootFieldLoad(cls, out_loc, out, /* offset */ 0, read_barrier_option);
       break;
     }
     case HLoadClass::LoadKind::kRuntimeCall:
@@ -7665,7 +7734,8 @@ void InstructionCodeGeneratorARMVIXL::VisitLoadString(HLoadString* load) NO_THRE
       CodeGeneratorARMVIXL::PcRelativePatchInfo* labels =
           codegen_->NewStringBssEntryPatch(load->GetDexFile(), load->GetStringIndex());
       codegen_->EmitMovwMovtPlaceholder(labels, out);
-      GenerateGcRootFieldLoad(load, out_loc, out, /* offset */ 0, kCompilerReadBarrierOption);
+      codegen_->GenerateGcRootFieldLoad(
+          load, out_loc, out, /* offset */ 0, kCompilerReadBarrierOption);
       LoadStringSlowPathARMVIXL* slow_path =
           new (codegen_->GetScopedAllocator()) LoadStringSlowPathARMVIXL(load);
       codegen_->AddSlowPath(slow_path);
@@ -7679,7 +7749,8 @@ void InstructionCodeGeneratorARMVIXL::VisitLoadString(HLoadString* load) NO_THRE
                                                         load->GetStringIndex(),
                                                         load->GetString()));
       // /* GcRoot<mirror::String> */ out = *out
-      GenerateGcRootFieldLoad(load, out_loc, out, /* offset */ 0, kCompilerReadBarrierOption);
+      codegen_->GenerateGcRootFieldLoad(
+          load, out_loc, out, /* offset */ 0, kCompilerReadBarrierOption);
       return;
     }
     default:
@@ -8730,7 +8801,7 @@ void InstructionCodeGeneratorARMVIXL::GenerateReferenceLoadTwoRegisters(
   }
 }
 
-void InstructionCodeGeneratorARMVIXL::GenerateGcRootFieldLoad(
+void CodeGeneratorARMVIXL::GenerateGcRootFieldLoad(
     HInstruction* instruction,
     Location root,
     vixl32::Register obj,
@@ -8761,9 +8832,8 @@ void InstructionCodeGeneratorARMVIXL::GenerateGcRootFieldLoad(
         UseScratchRegisterScope temps(GetVIXLAssembler());
         ExcludeIPAndBakerCcEntrypointRegister(&temps, instruction);
         bool narrow = CanEmitNarrowLdr(root_reg, obj, offset);
-        uint32_t custom_data = linker::Thumb2RelativePatcher::EncodeBakerReadBarrierGcRootData(
-            root_reg.GetCode(), narrow);
-        vixl32::Label* bne_label = codegen_->NewBakerReadBarrierPatch(custom_data);
+        uint32_t custom_data = EncodeBakerReadBarrierGcRootData(root_reg.GetCode(), narrow);
+        vixl32::Label* bne_label = NewBakerReadBarrierPatch(custom_data);
 
         vixl::EmissionCheckScope guard(GetVIXLAssembler(), 4 * vixl32::kMaxInstructionSizeInBytes);
         vixl32::Label return_address;
@@ -8774,7 +8844,7 @@ void InstructionCodeGeneratorARMVIXL::GenerateGcRootFieldLoad(
         DCHECK_LT(offset, kReferenceLoadMinFarOffset);
         ptrdiff_t old_offset = GetVIXLAssembler()->GetBuffer()->GetCursorOffset();
         __ ldr(EncodingSize(narrow ? Narrow : Wide), root_reg, MemOperand(obj, offset));
-        EmitPlaceholderBne(codegen_, bne_label);
+        EmitPlaceholderBne(this, bne_label);
         __ Bind(&return_address);
         DCHECK_EQ(old_offset - GetVIXLAssembler()->GetBuffer()->GetCursorOffset(),
                   narrow ? BAKER_MARK_INTROSPECTION_GC_ROOT_LDR_NARROW_OFFSET
@@ -8794,8 +8864,8 @@ void InstructionCodeGeneratorARMVIXL::GenerateGcRootFieldLoad(
         // Slow path marking the GC root `root`. The entrypoint will
         // be loaded by the slow path code.
         SlowPathCodeARMVIXL* slow_path =
-            new (codegen_->GetScopedAllocator()) ReadBarrierMarkSlowPathARMVIXL(instruction, root);
-        codegen_->AddSlowPath(slow_path);
+            new (GetScopedAllocator()) ReadBarrierMarkSlowPathARMVIXL(instruction, root);
+        AddSlowPath(slow_path);
 
         // /* GcRoot<mirror::Object> */ root = *(obj + offset)
         GetAssembler()->LoadFromOffset(kLoadWord, root_reg, obj, offset);
@@ -8816,7 +8886,7 @@ void InstructionCodeGeneratorARMVIXL::GenerateGcRootFieldLoad(
       // /* GcRoot<mirror::Object>* */ root = obj + offset
       __ Add(root_reg, obj, offset);
       // /* mirror::Object* */ root = root->Read()
-      codegen_->GenerateReadBarrierForRootSlow(instruction, root, root);
+      GenerateReadBarrierForRootSlow(instruction, root, root);
     }
   } else {
     // Plain GC root load with no read barrier.
@@ -8825,7 +8895,7 @@ void InstructionCodeGeneratorARMVIXL::GenerateGcRootFieldLoad(
     // Note that GC roots are not affected by heap poisoning, thus we
     // do not have to unpoison `root_reg` here.
   }
-  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ 18);
+  MaybeGenerateMarkingRegisterCheck(/* code */ 18);
 }
 
 void CodeGeneratorARMVIXL::MaybeAddBakerCcEntrypointTempForFields(LocationSummary* locations) {
@@ -8886,8 +8956,7 @@ void CodeGeneratorARMVIXL::GenerateFieldLoadWithBakerReadBarrier(HInstruction* i
     }
     UseScratchRegisterScope temps(GetVIXLAssembler());
     ExcludeIPAndBakerCcEntrypointRegister(&temps, instruction);
-    uint32_t custom_data = linker::Thumb2RelativePatcher::EncodeBakerReadBarrierFieldData(
-        base.GetCode(), obj.GetCode(), narrow);
+    uint32_t custom_data = EncodeBakerReadBarrierFieldData(base.GetCode(), obj.GetCode(), narrow);
     vixl32::Label* bne_label = NewBakerReadBarrierPatch(custom_data);
 
     {
@@ -8973,8 +9042,7 @@ void CodeGeneratorARMVIXL::GenerateArrayLoadWithBakerReadBarrier(HInstruction* i
 
     UseScratchRegisterScope temps(GetVIXLAssembler());
     ExcludeIPAndBakerCcEntrypointRegister(&temps, instruction);
-    uint32_t custom_data =
-        linker::Thumb2RelativePatcher::EncodeBakerReadBarrierArrayData(data_reg.GetCode());
+    uint32_t custom_data = EncodeBakerReadBarrierArrayData(data_reg.GetCode());
     vixl32::Label* bne_label = NewBakerReadBarrierPatch(custom_data);
 
     __ Add(data_reg, obj, Operand(data_offset));
@@ -9111,7 +9179,7 @@ void CodeGeneratorARMVIXL::UpdateReferenceFieldWithBakerReadBarrier(HInstruction
 
 void CodeGeneratorARMVIXL::GenerateRawReferenceLoad(HInstruction* instruction,
                                                     Location ref,
-                                                    vixl::aarch32::Register obj,
+                                                    vixl32::Register obj,
                                                     uint32_t offset,
                                                     Location index,
                                                     ScaleFactor scale_factor,
@@ -9451,7 +9519,7 @@ CodeGeneratorARMVIXL::PcRelativePatchInfo* CodeGeneratorARMVIXL::NewPcRelativePa
   return &patches->back();
 }
 
-vixl::aarch32::Label* CodeGeneratorARMVIXL::NewBakerReadBarrierPatch(uint32_t custom_data) {
+vixl32::Label* CodeGeneratorARMVIXL::NewBakerReadBarrierPatch(uint32_t custom_data) {
   baker_read_barrier_patches_.emplace_back(custom_data);
   return &baker_read_barrier_patches_.back().label;
 }
@@ -9546,6 +9614,45 @@ void CodeGeneratorARMVIXL::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* l
         info.label.GetLocation(), info.custom_data));
   }
   DCHECK_EQ(size, linker_patches->size());
+}
+
+bool CodeGeneratorARMVIXL::NeedsThunkCode(const linker::LinkerPatch& patch) const {
+  return patch.GetType() == linker::LinkerPatch::Type::kBakerReadBarrierBranch ||
+         patch.GetType() == linker::LinkerPatch::Type::kCallRelative;
+}
+
+void CodeGeneratorARMVIXL::EmitThunkCode(const linker::LinkerPatch& patch,
+                                         /*out*/ ArenaVector<uint8_t>* code,
+                                         /*out*/ std::string* debug_name) {
+  arm::ArmVIXLAssembler assembler(GetGraph()->GetAllocator());
+  switch (patch.GetType()) {
+    case linker::LinkerPatch::Type::kCallRelative:
+      // The thunk just uses the entry point in the ArtMethod. This works even for calls
+      // to the generic JNI and interpreter trampolines.
+      assembler.LoadFromOffset(
+          arm::kLoadWord,
+          vixl32::pc,
+          vixl32::r0,
+          ArtMethod::EntryPointFromQuickCompiledCodeOffset(kArmPointerSize).Int32Value());
+      assembler.GetVIXLAssembler()->Bkpt(0);
+      if (GetCompilerOptions().GenerateAnyDebugInfo()) {
+        *debug_name = "MethodCallThunk";
+      }
+      break;
+    case linker::LinkerPatch::Type::kBakerReadBarrierBranch:
+      DCHECK_EQ(patch.GetBakerCustomValue2(), 0u);
+      CompileBakerReadBarrierThunk(assembler, patch.GetBakerCustomValue1(), debug_name);
+      break;
+    default:
+      LOG(FATAL) << "Unexpected patch type " << patch.GetType();
+      UNREACHABLE();
+  }
+
+  // Ensure we emit the literal pool if any.
+  assembler.FinalizeCode();
+  code->resize(assembler.CodeSize());
+  MemoryRegion code_region(code->data(), code->size());
+  assembler.FinalizeInstructions(code_region);
 }
 
 VIXLUInt32Literal* CodeGeneratorARMVIXL::DeduplicateUint32Literal(
@@ -9791,6 +9898,211 @@ void CodeGeneratorARMVIXL::EmitMovwMovtPlaceholder(
 #undef __
 #undef QUICK_ENTRY_POINT
 #undef TODO_VIXL32
+
+#define __ assembler.GetVIXLAssembler()->
+
+static void EmitGrayCheckAndFastPath(ArmVIXLAssembler& assembler,
+                                     vixl32::Register base_reg,
+                                     vixl32::MemOperand& lock_word,
+                                     vixl32::Label* slow_path,
+                                     int32_t raw_ldr_offset) {
+  // Load the lock word containing the rb_state.
+  __ Ldr(ip, lock_word);
+  // Given the numeric representation, it's enough to check the low bit of the rb_state.
+  static_assert(ReadBarrier::WhiteState() == 0, "Expecting white to have value 0");
+  static_assert(ReadBarrier::GrayState() == 1, "Expecting gray to have value 1");
+  __ Tst(ip, Operand(LockWord::kReadBarrierStateMaskShifted));
+  __ B(ne, slow_path, /* is_far_target */ false);
+  __ Add(lr, lr, raw_ldr_offset);
+  // Introduce a dependency on the lock_word including rb_state,
+  // to prevent load-load reordering, and without using
+  // a memory barrier (which would be more expensive).
+  __ Add(base_reg, base_reg, Operand(ip, LSR, 32));
+  __ Bx(lr);          // And return back to the function.
+  // Note: The fake dependency is unnecessary for the slow path.
+}
+
+// Load the read barrier introspection entrypoint in register `entrypoint`
+static void LoadReadBarrierMarkIntrospectionEntrypoint(ArmVIXLAssembler& assembler,
+                                                       vixl32::Register entrypoint) {
+  // The register where the read barrier introspection entrypoint is loaded
+  // is fixed: `Thumb2RelativePatcher::kBakerCcEntrypointRegister` (R4).
+  DCHECK(entrypoint.Is(kBakerCcEntrypointRegister));
+  // entrypoint = Thread::Current()->pReadBarrierMarkReg12, i.e. pReadBarrierMarkIntrospection.
+  DCHECK_EQ(ip.GetCode(), 12u);
+  const int32_t entry_point_offset =
+      Thread::ReadBarrierMarkEntryPointsOffset<kArmPointerSize>(ip.GetCode());
+  __ Ldr(entrypoint, MemOperand(tr, entry_point_offset));
+}
+
+void CodeGeneratorARMVIXL::CompileBakerReadBarrierThunk(ArmVIXLAssembler& assembler,
+                                                        uint32_t encoded_data,
+                                                        /*out*/ std::string* debug_name) {
+  BakerReadBarrierKind kind = BakerReadBarrierKindField::Decode(encoded_data);
+  switch (kind) {
+    case BakerReadBarrierKind::kField: {
+      // Check if the holder is gray and, if not, add fake dependency to the base register
+      // and return to the LDR instruction to load the reference. Otherwise, use introspection
+      // to load the reference and call the entrypoint (in kBakerCcEntrypointRegister)
+      // that performs further checks on the reference and marks it if needed.
+      vixl32::Register base_reg(BakerReadBarrierFirstRegField::Decode(encoded_data));
+      CheckValidReg(base_reg.GetCode());
+      vixl32::Register holder_reg(BakerReadBarrierSecondRegField::Decode(encoded_data));
+      CheckValidReg(holder_reg.GetCode());
+      BakerReadBarrierWidth width = BakerReadBarrierWidthField::Decode(encoded_data);
+      UseScratchRegisterScope temps(assembler.GetVIXLAssembler());
+      temps.Exclude(ip);
+      // If base_reg differs from holder_reg, the offset was too large and we must have
+      // emitted an explicit null check before the load. Otherwise, we need to null-check
+      // the holder as we do not necessarily do that check before going to the thunk.
+      vixl32::Label throw_npe;
+      if (holder_reg.Is(base_reg)) {
+        __ CompareAndBranchIfZero(holder_reg, &throw_npe, /* is_far_target */ false);
+      }
+      vixl32::Label slow_path;
+      MemOperand lock_word(holder_reg, mirror::Object::MonitorOffset().Int32Value());
+      const int32_t raw_ldr_offset = (width == BakerReadBarrierWidth::kWide)
+          ? BAKER_MARK_INTROSPECTION_FIELD_LDR_WIDE_OFFSET
+          : BAKER_MARK_INTROSPECTION_FIELD_LDR_NARROW_OFFSET;
+      EmitGrayCheckAndFastPath(assembler, base_reg, lock_word, &slow_path, raw_ldr_offset);
+      __ Bind(&slow_path);
+      const int32_t ldr_offset = /* Thumb state adjustment (LR contains Thumb state). */ -1 +
+                                 raw_ldr_offset;
+      vixl32::Register ep_reg(kBakerCcEntrypointRegister);
+      LoadReadBarrierMarkIntrospectionEntrypoint(assembler, ep_reg);
+      if (width == BakerReadBarrierWidth::kWide) {
+        MemOperand ldr_half_address(lr, ldr_offset + 2);
+        __ Ldrh(ip, ldr_half_address);        // Load the LDR immediate half-word with "Rt | imm12".
+        __ Ubfx(ip, ip, 0, 12);               // Extract the offset imm12.
+        __ Ldr(ip, MemOperand(base_reg, ip));   // Load the reference.
+      } else {
+        MemOperand ldr_address(lr, ldr_offset);
+        __ Ldrh(ip, ldr_address);             // Load the LDR immediate, encoding T1.
+        __ Add(ep_reg,                        // Adjust the entrypoint address to the entrypoint
+               ep_reg,                        // for narrow LDR.
+               Operand(BAKER_MARK_INTROSPECTION_FIELD_LDR_NARROW_ENTRYPOINT_OFFSET));
+        __ Ubfx(ip, ip, 6, 5);                // Extract the imm5, i.e. offset / 4.
+        __ Ldr(ip, MemOperand(base_reg, ip, LSL, 2));   // Load the reference.
+      }
+      // Do not unpoison. With heap poisoning enabled, the entrypoint expects a poisoned reference.
+      __ Bx(ep_reg);                          // Jump to the entrypoint.
+      if (holder_reg.Is(base_reg)) {
+        // Add null check slow path. The stack map is at the address pointed to by LR.
+        __ Bind(&throw_npe);
+        int32_t offset = GetThreadOffset<kArmPointerSize>(kQuickThrowNullPointer).Int32Value();
+        __ Ldr(ip, MemOperand(/* Thread* */ vixl32::r9, offset));
+        __ Bx(ip);
+      }
+      break;
+    }
+    case BakerReadBarrierKind::kArray: {
+      vixl32::Register base_reg(BakerReadBarrierFirstRegField::Decode(encoded_data));
+      CheckValidReg(base_reg.GetCode());
+      DCHECK_EQ(kBakerReadBarrierInvalidEncodedReg,
+                BakerReadBarrierSecondRegField::Decode(encoded_data));
+      DCHECK(BakerReadBarrierWidthField::Decode(encoded_data) == BakerReadBarrierWidth::kWide);
+      UseScratchRegisterScope temps(assembler.GetVIXLAssembler());
+      temps.Exclude(ip);
+      vixl32::Label slow_path;
+      int32_t data_offset =
+          mirror::Array::DataOffset(Primitive::ComponentSize(Primitive::kPrimNot)).Int32Value();
+      MemOperand lock_word(base_reg, mirror::Object::MonitorOffset().Int32Value() - data_offset);
+      DCHECK_LT(lock_word.GetOffsetImmediate(), 0);
+      const int32_t raw_ldr_offset = BAKER_MARK_INTROSPECTION_ARRAY_LDR_OFFSET;
+      EmitGrayCheckAndFastPath(assembler, base_reg, lock_word, &slow_path, raw_ldr_offset);
+      __ Bind(&slow_path);
+      const int32_t ldr_offset = /* Thumb state adjustment (LR contains Thumb state). */ -1 +
+                                 raw_ldr_offset;
+      MemOperand ldr_address(lr, ldr_offset + 2);
+      __ Ldrb(ip, ldr_address);               // Load the LDR (register) byte with "00 | imm2 | Rm",
+                                              // i.e. Rm+32 because the scale in imm2 is 2.
+      vixl32::Register ep_reg(kBakerCcEntrypointRegister);
+      LoadReadBarrierMarkIntrospectionEntrypoint(assembler, ep_reg);
+      __ Bfi(ep_reg, ip, 3, 6);               // Insert ip to the entrypoint address to create
+                                              // a switch case target based on the index register.
+      __ Mov(ip, base_reg);                   // Move the base register to ip0.
+      __ Bx(ep_reg);                          // Jump to the entrypoint's array switch case.
+      break;
+    }
+    case BakerReadBarrierKind::kGcRoot: {
+      // Check if the reference needs to be marked and if so (i.e. not null, not marked yet
+      // and it does not have a forwarding address), call the correct introspection entrypoint;
+      // otherwise return the reference (or the extracted forwarding address).
+      // There is no gray bit check for GC roots.
+      vixl32::Register root_reg(BakerReadBarrierFirstRegField::Decode(encoded_data));
+      CheckValidReg(root_reg.GetCode());
+      DCHECK_EQ(kBakerReadBarrierInvalidEncodedReg,
+                BakerReadBarrierSecondRegField::Decode(encoded_data));
+      BakerReadBarrierWidth width = BakerReadBarrierWidthField::Decode(encoded_data);
+      UseScratchRegisterScope temps(assembler.GetVIXLAssembler());
+      temps.Exclude(ip);
+      vixl32::Label return_label, not_marked, forwarding_address;
+      __ CompareAndBranchIfZero(root_reg, &return_label, /* is_far_target */ false);
+      MemOperand lock_word(root_reg, mirror::Object::MonitorOffset().Int32Value());
+      __ Ldr(ip, lock_word);
+      __ Tst(ip, LockWord::kMarkBitStateMaskShifted);
+      __ B(eq, &not_marked);
+      __ Bind(&return_label);
+      __ Bx(lr);
+      __ Bind(&not_marked);
+      static_assert(LockWord::kStateShift == 30 && LockWord::kStateForwardingAddress == 3,
+                    "To use 'CMP ip, #modified-immediate; BHS', we need the lock word state in "
+                    " the highest bits and the 'forwarding address' state to have all bits set");
+      __ Cmp(ip, Operand(0xc0000000));
+      __ B(hs, &forwarding_address);
+      vixl32::Register ep_reg(kBakerCcEntrypointRegister);
+      LoadReadBarrierMarkIntrospectionEntrypoint(assembler, ep_reg);
+      // Adjust the art_quick_read_barrier_mark_introspection address in kBakerCcEntrypointRegister
+      // to art_quick_read_barrier_mark_introspection_gc_roots.
+      int32_t entrypoint_offset = (width == BakerReadBarrierWidth::kWide)
+          ? BAKER_MARK_INTROSPECTION_GC_ROOT_LDR_WIDE_ENTRYPOINT_OFFSET
+          : BAKER_MARK_INTROSPECTION_GC_ROOT_LDR_NARROW_ENTRYPOINT_OFFSET;
+      __ Add(ep_reg, ep_reg, Operand(entrypoint_offset));
+      __ Mov(ip, root_reg);
+      __ Bx(ep_reg);
+      __ Bind(&forwarding_address);
+      __ Lsl(root_reg, ip, LockWord::kForwardingAddressShift);
+      __ Bx(lr);
+      break;
+    }
+    default:
+      LOG(FATAL) << "Unexpected kind: " << static_cast<uint32_t>(kind);
+      UNREACHABLE();
+  }
+
+  if (GetCompilerOptions().GenerateAnyDebugInfo()) {
+    std::ostringstream oss;
+    oss << "BakerReadBarrierThunk";
+    switch (kind) {
+      case BakerReadBarrierKind::kField:
+        oss << "Field";
+        if (BakerReadBarrierWidthField::Decode(encoded_data) == BakerReadBarrierWidth::kWide) {
+          oss << "Wide";
+        }
+        oss << "_r" << BakerReadBarrierFirstRegField::Decode(encoded_data)
+            << "_r" << BakerReadBarrierSecondRegField::Decode(encoded_data);
+        break;
+      case BakerReadBarrierKind::kArray:
+        oss << "Array_r" << BakerReadBarrierFirstRegField::Decode(encoded_data);
+        DCHECK_EQ(kBakerReadBarrierInvalidEncodedReg,
+                  BakerReadBarrierSecondRegField::Decode(encoded_data));
+        DCHECK(BakerReadBarrierWidthField::Decode(encoded_data) == BakerReadBarrierWidth::kWide);
+        break;
+      case BakerReadBarrierKind::kGcRoot:
+        oss << "GcRoot";
+        if (BakerReadBarrierWidthField::Decode(encoded_data) == BakerReadBarrierWidth::kWide) {
+          oss << "Wide";
+        }
+        oss << "_r" << BakerReadBarrierFirstRegField::Decode(encoded_data);
+        DCHECK_EQ(kBakerReadBarrierInvalidEncodedReg,
+                  BakerReadBarrierSecondRegField::Decode(encoded_data));
+        break;
+    }
+    *debug_name = oss.str();
+  }
+}
+
+#undef __
 
 }  // namespace arm
 }  // namespace art
