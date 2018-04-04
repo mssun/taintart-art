@@ -2093,4 +2093,36 @@ TEST_F(Dex2oatTest, CompactDexInZip) {
   ASSERT_TRUE(WIFEXITED(status) && WEXITSTATUS(status) != 0) << status << " " << output_;
 }
 
+TEST_F(Dex2oatTest, AppImageNoProfile) {
+  ScratchFile app_image_file;
+  const std::string out_dir = GetScratchDir();
+  const std::string odex_location = out_dir + "/base.odex";
+  GenerateOdexForTest(GetTestDexFileName("ManyMethods"),
+                      odex_location,
+                      CompilerFilter::Filter::kSpeedProfile,
+                      { "--app-image-fd=" + std::to_string(app_image_file.GetFd()) },
+                      true,  // expect_success
+                      false,  // use_fd
+                      [](const OatFile&) {});
+  // Open our generated oat file.
+  std::string error_msg;
+  std::unique_ptr<OatFile> odex_file(OatFile::Open(odex_location.c_str(),
+                                                   odex_location.c_str(),
+                                                   nullptr,
+                                                   nullptr,
+                                                   false,
+                                                   /*low_4gb*/false,
+                                                   odex_location.c_str(),
+                                                   &error_msg));
+  ASSERT_TRUE(odex_file != nullptr);
+  ImageHeader header = {};
+  ASSERT_TRUE(app_image_file.GetFile()->PreadFully(
+      reinterpret_cast<void*>(&header),
+      sizeof(header),
+      /*offset*/ 0u)) << app_image_file.GetFile()->GetLength();
+  EXPECT_GT(header.GetImageSection(ImageHeader::kSectionObjects).Size(), 0u);
+  EXPECT_EQ(header.GetImageSection(ImageHeader::kSectionArtMethods).Size(), 0u);
+  EXPECT_EQ(header.GetImageSection(ImageHeader::kSectionArtFields).Size(), 0u);
+}
+
 }  // namespace art
