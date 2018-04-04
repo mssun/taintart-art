@@ -20,6 +20,7 @@
 #include "arch/arm64/instruction_set_features_arm64.h"
 #include "art_method.h"
 #include "base/bit_utils.h"
+#include "base/malloc_arena_pool.h"
 #include "compiled_method-inl.h"
 #include "driver/compiler_driver.h"
 #include "entrypoints/quick/quick_entrypoints_enum.h"
@@ -511,7 +512,7 @@ void Arm64RelativePatcher::CompileBakerReadBarrierThunk(arm64::Arm64Assembler& a
 }
 
 std::vector<uint8_t> Arm64RelativePatcher::CompileThunk(const ThunkKey& key) {
-  ArenaPool pool;
+  MallocArenaPool pool;
   ArenaAllocator allocator(&pool);
   arm64::Arm64Assembler assembler(&allocator);
 

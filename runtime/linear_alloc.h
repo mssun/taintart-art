@@ -18,6 +18,7 @@
 #define ART_RUNTIME_LINEAR_ALLOC_H_
 
 #include "base/arena_allocator.h"
+#include "base/mutex.h"
 
 namespace art {
 

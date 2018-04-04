@@ -62,6 +62,8 @@
 #include "base/dumpable.h"
 #include "base/enums.h"
 #include "base/file_utils.h"
+#include "base/malloc_arena_pool.h"
+#include "base/mem_map_arena_pool.h"
 #include "base/memory_tool.h"
 #include "base/mutex.h"
 #include "base/os.h"
@@ -1332,13 +1334,17 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   // Use MemMap arena pool for jit, malloc otherwise. Malloc arenas are faster to allocate but
   // can't be trimmed as easily.
   const bool use_malloc = IsAotCompiler();
-  arena_pool_.reset(new ArenaPool(use_malloc, /* low_4gb */ false));
-  jit_arena_pool_.reset(
-      new ArenaPool(/* use_malloc */ false, /* low_4gb */ false, "CompilerMetadata"));
+  if (use_malloc) {
+    arena_pool_.reset(new MallocArenaPool());
+    jit_arena_pool_.reset(new MallocArenaPool());
+  } else {
+    arena_pool_.reset(new MemMapArenaPool(/* low_4gb */ false));
+    jit_arena_pool_.reset(new MemMapArenaPool(/* low_4gb */ false, "CompilerMetadata"));
+  }
 
   if (IsAotCompiler() && Is64BitInstructionSet(kRuntimeISA)) {
     // 4gb, no malloc. Explanation in header.
-    low_4gb_arena_pool_.reset(new ArenaPool(/* use_malloc */ false, /* low_4gb */ true));
+    low_4gb_arena_pool_.reset(new MemMapArenaPool(/* low_4gb */ true));
   }
   linear_alloc_.reset(CreateLinearAlloc());
 

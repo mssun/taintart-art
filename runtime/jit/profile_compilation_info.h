@@ -23,6 +23,7 @@
 #include "base/arena_containers.h"
 #include "base/arena_object.h"
 #include "base/atomic.h"
+#include "base/malloc_arena_pool.h"
 #include "base/safe_map.h"
 #include "bit_memory_region.h"
 #include "dex/dex_cache_resolved_classes.h"
@@ -792,7 +793,7 @@ class ProfileCompilationInfo {
   friend class ProfileAssistantTest;
   friend class Dex2oatLayoutTest;
 
-  ArenaPool default_arena_pool_;
+  MallocArenaPool default_arena_pool_;
   ArenaAllocator allocator_;
 
   // Vector containing the actual profile info.

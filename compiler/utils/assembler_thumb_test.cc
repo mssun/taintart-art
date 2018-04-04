@@ -27,6 +27,7 @@
 #include "utils/arm/jni_macro_assembler_arm_vixl.h"
 
 #include "base/hex_dump.h"
+#include "base/malloc_arena_pool.h"
 #include "common_runtime_test.h"
 
 namespace art {
@@ -169,7 +170,7 @@ class ArmVIXLAssemblerTest : public ::testing::Test {
  public:
   ArmVIXLAssemblerTest() : pool(), allocator(&pool), assembler(&allocator) { }
 
-  ArenaPool pool;
+  MallocArenaPool pool;
   ArenaAllocator allocator;
   ArmVIXLJNIMacroAssembler assembler;
 };

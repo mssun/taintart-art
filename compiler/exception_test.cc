@@ -20,6 +20,7 @@
 #include "base/callee_save_type.h"
 #include "base/enums.h"
 #include "base/leb128.h"
+#include "base/malloc_arena_pool.h"
 #include "class_linker.h"
 #include "common_runtime_test.h"
 #include "dex/code_item_accessors-inl.h"
@@ -67,7 +68,7 @@ class ExceptionTest : public CommonRuntimeTest {
       fake_code_.push_back(0x70 | i);
     }
 
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaStack arena_stack(&pool);
     ScopedArenaAllocator allocator(&arena_stack);
     StackMapStream stack_maps(&allocator, kRuntimeISA);

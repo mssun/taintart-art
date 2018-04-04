@@ -17,13 +17,14 @@
 #include "assembler_x86.h"
 
 #include "base/arena_allocator.h"
+#include "base/malloc_arena_pool.h"
 #include "base/stl_util.h"
 #include "utils/assembler_test.h"
 
 namespace art {
 
 TEST(AssemblerX86, CreateBuffer) {
-  ArenaPool pool;
+  MallocArenaPool pool;
   ArenaAllocator allocator(&pool);
   AssemblerBuffer buffer(&allocator);
   AssemblerBuffer::EnsureCapacity ensured(&buffer);
