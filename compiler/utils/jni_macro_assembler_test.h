@@ -20,6 +20,7 @@
 #include "jni_macro_assembler.h"
 
 #include "assembler_test_base.h"
+#include "base/malloc_arena_pool.h"
 #include "common_runtime_test.h"  // For ScratchFile
 
 #include <sys/stat.h>
@@ -139,7 +140,7 @@ class JNIMacroAssemblerTest : public testing::Test {
     test_helper_->Driver(*data, assembly_text, test_name);
   }
 
-  ArenaPool pool_;
+  MallocArenaPool pool_;
   std::unique_ptr<ArenaAllocator> allocator_;
   std::unique_ptr<Ass> assembler_;
   std::unique_ptr<AssemblerTestInfrastructure> test_helper_;

@@ -36,6 +36,7 @@
 #include "base/dumpable.h"
 #include "base/file_utils.h"
 #include "base/logging.h"  // For VLOG.
+#include "base/malloc_arena_pool.h"
 #include "base/mutex.h"
 #include "base/os.h"
 #include "base/safe_map.h"
@@ -90,7 +91,7 @@ ProfileCompilationInfo::ProfileCompilationInfo(ArenaPool* custom_arena_pool)
 }
 
 ProfileCompilationInfo::ProfileCompilationInfo()
-    : default_arena_pool_(/*use_malloc*/true, /*low_4gb*/false, "ProfileCompilationInfo"),
+    : default_arena_pool_(),
       allocator_(&default_arena_pool_),
       info_(allocator_.Adapter(kArenaAllocProfile)),
       profile_key_map_(std::less<const std::string>(), allocator_.Adapter(kArenaAllocProfile)) {

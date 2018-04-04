@@ -27,6 +27,7 @@
 #include "base/enums.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/macros.h"
+#include "base/malloc_arena_pool.h"
 #include "base/utils.h"
 #include "calling_convention.h"
 #include "class_linker.h"
@@ -174,7 +175,7 @@ static JniCompiledMethod ArtJniCompileMethodInternal(CompilerDriver* driver,
     }
   }
 
-  ArenaPool pool;
+  MallocArenaPool pool;
   ArenaAllocator allocator(&pool);
 
   // Calling conventions used to iterate over parameters to method

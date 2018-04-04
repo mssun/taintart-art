@@ -21,6 +21,7 @@
 #include "arch/arm/asm_support_arm.h"
 #include "art_method.h"
 #include "base/bit_utils.h"
+#include "base/malloc_arena_pool.h"
 #include "compiled_method.h"
 #include "entrypoints/quick/quick_entrypoints_enum.h"
 #include "linker/linker_patch.h"
@@ -355,7 +356,7 @@ void Thumb2RelativePatcher::CompileBakerReadBarrierThunk(arm::ArmVIXLAssembler& 
 }
 
 std::vector<uint8_t> Thumb2RelativePatcher::CompileThunk(const ThunkKey& key) {
-  ArenaPool pool;
+  MallocArenaPool pool;
   ArenaAllocator allocator(&pool);
   arm::ArmVIXLAssembler assembler(&allocator);
 

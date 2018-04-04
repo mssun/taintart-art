@@ -25,7 +25,6 @@
 #include "base/dchecked_vector.h"
 #include "base/macros.h"
 #include "base/memory_tool.h"
-#include "mutex.h"
 
 namespace art {
 
@@ -236,7 +235,8 @@ class Arena {
   uint8_t* memory_;
   size_t size_;
   Arena* next_;
-  friend class ArenaPool;
+  friend class MallocArenaPool;
+  friend class MemMapArenaPool;
   friend class ArenaAllocator;
   friend class ArenaStack;
   friend class ScopedArenaAllocator;
@@ -250,25 +250,20 @@ class Arena {
 
 class ArenaPool {
  public:
-  explicit ArenaPool(bool use_malloc = true,
-                     bool low_4gb = false,
-                     const char* name = "LinearAlloc");
-  ~ArenaPool();
-  Arena* AllocArena(size_t size) REQUIRES(!lock_);
-  void FreeArenaChain(Arena* first) REQUIRES(!lock_);
-  size_t GetBytesAllocated() const REQUIRES(!lock_);
-  void ReclaimMemory() NO_THREAD_SAFETY_ANALYSIS;
-  void LockReclaimMemory() REQUIRES(!lock_);
-  // Trim the maps in arenas by madvising, used by JIT to reduce memory usage. This only works
-  // use_malloc is false.
-  void TrimMaps() REQUIRES(!lock_);
+  virtual ~ArenaPool() = default;
+
+  virtual Arena* AllocArena(size_t size) = 0;
+  virtual void FreeArenaChain(Arena* first) = 0;
+  virtual size_t GetBytesAllocated() const = 0;
+  virtual void ReclaimMemory() = 0;
+  virtual void LockReclaimMemory() = 0;
+  // Trim the maps in arenas by madvising, used by JIT to reduce memory usage.
+  virtual void TrimMaps() = 0;
+
+ protected:
+  ArenaPool() = default;
 
  private:
-  const bool use_malloc_;
-  mutable Mutex lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
-  Arena* free_arenas_ GUARDED_BY(lock_);
-  const bool low_4gb_;
-  const char* name_;
   DISALLOW_COPY_AND_ASSIGN(ArenaPool);
 };
 
