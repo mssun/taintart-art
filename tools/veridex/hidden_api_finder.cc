@@ -58,6 +58,16 @@ void HiddenApiFinder::CheckField(uint32_t field_id,
 
 void HiddenApiFinder::CollectAccesses(VeridexResolver* resolver) {
   const DexFile& dex_file = resolver->GetDexFile();
+  // Look at all types referenced in this dex file. Any of these
+  // types can lead to being used through reflection.
+  for (uint32_t i = 0; i < dex_file.NumTypeIds(); ++i) {
+    std::string name(dex_file.StringByTypeIdx(dex::TypeIndex(i)));
+    if (hidden_api_.IsInRestrictionList(name)) {
+      classes_.insert(name);
+    }
+  }
+  // Note: we collect strings constants only referenced in code items as the string table
+  // contains other kind of strings (eg types).
   size_t class_def_count = dex_file.NumClassDefs();
   for (size_t class_def_index = 0; class_def_index < class_def_count; ++class_def_index) {
     const DexFile::ClassDef& class_def = dex_file.GetClassDef(class_def_index);
@@ -76,15 +86,6 @@ void HiddenApiFinder::CollectAccesses(VeridexResolver* resolver) {
       CodeItemDataAccessor code_item_accessor(dex_file, code_item);
       for (const DexInstructionPcPair& inst : code_item_accessor) {
         switch (inst->Opcode()) {
-          case Instruction::CONST_CLASS: {
-            dex::TypeIndex type_index(inst->VRegB_21c());
-            std::string name = dex_file.StringByTypeIdx(type_index);
-            // Only keep classes that are in a restriction list.
-            if (hidden_api_.IsInRestrictionList(name)) {
-              classes_.insert(name);
-            }
-            break;
-          }
           case Instruction::CONST_STRING: {
             dex::StringIndex string_index(inst->VRegB_21c());
             std::string name = std::string(dex_file.StringDataByIdx(string_index));

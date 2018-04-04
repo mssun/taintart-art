@@ -61,6 +61,11 @@ void HiddenApi::FillList(const char* filename, std::set<std::string>& entries) {
         // Add the class->method name (so stripping the signature).
         entries.insert(str.substr(0, pos));
       }
+      pos = str.find(':');
+      if (pos != std::string::npos) {
+        // Add the class->field name (so stripping the type).
+        entries.insert(str.substr(0, pos));
+      }
     }
   }
 }
