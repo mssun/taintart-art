@@ -1180,17 +1180,6 @@ class OatDumper {
       }
     }
 
-    // Update header for shared section.
-    uint32_t shared_section_offset = 0u;
-    uint32_t shared_section_size = 0u;
-    if (dex_file->IsCompactDexFile()) {
-      CompactDexFile::Header* const header =
-          reinterpret_cast<CompactDexFile::Header*>(const_cast<uint8_t*>(dex_file->Begin()));
-      shared_section_offset = header->data_off_;
-      shared_section_size = header->data_size_;
-      // The shared section will be serialized right after the dex file.
-      header->data_off_ = header->file_size_;
-    }
     // Verify output directory exists
     if (!OS::DirectoryExists(options_.export_dex_location_)) {
       // TODO: Extend OS::DirectoryExists if symlink support is required
@@ -1237,20 +1226,14 @@ class OatDumper {
       return false;
     }
 
-    bool success = file->WriteFully(dex_file->Begin(), fsize);
+    bool success = false;
+      success = file->WriteFully(dex_file->Begin(), fsize);
+    // }
+
     if (!success) {
       os << "Failed to write dex file";
       file->Erase();
       return false;
-    }
-
-    if (shared_section_size != 0) {
-      success = file->WriteFully(dex_file->Begin() + shared_section_offset, shared_section_size);
-      if (!success) {
-        os << "Failed to write shared data section";
-        file->Erase();
-        return false;
-      }
     }
 
     if (file->FlushCloseOrErase() != 0) {
