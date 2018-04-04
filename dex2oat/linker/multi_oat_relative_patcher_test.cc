@@ -122,7 +122,7 @@ class MultiOatRelativePatcherTest : public testing::Test {
 
   MultiOatRelativePatcherTest()
       : instruction_set_features_(InstructionSetFeatures::FromCppDefines()),
-        patcher_(kRuntimeISA, instruction_set_features_.get(), /* storage */ nullptr) {
+        patcher_(kRuntimeISA, instruction_set_features_.get()) {
     std::unique_ptr<MockPatcher> mock(new MockPatcher());
     mock_ = mock.get();
     patcher_.relative_patcher_ = std::move(mock);

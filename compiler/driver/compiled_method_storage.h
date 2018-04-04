@@ -18,7 +18,6 @@
 #define ART_COMPILER_DRIVER_COMPILED_METHOD_STORAGE_H_
 
 #include <iosfwd>
-#include <map>
 #include <memory>
 
 #include "base/array_ref.h"
@@ -68,29 +67,7 @@ class CompiledMethodStorage {
       const ArrayRef<const linker::LinkerPatch>& linker_patches);
   void ReleaseLinkerPatches(const LengthPrefixedArray<linker::LinkerPatch>* linker_patches);
 
-  // Returns the code associated with the given patch.
-  // If the code has not been set, returns empty data.
-  // If `debug_name` is not null, stores the associated debug name in `*debug_name`.
-  ArrayRef<const uint8_t> GetThunkCode(const linker::LinkerPatch& linker_patch,
-                                       /*out*/ std::string* debug_name = nullptr);
-
-  // Sets the code and debug name associated with the given patch.
-  void SetThunkCode(const linker::LinkerPatch& linker_patch,
-                    ArrayRef<const uint8_t> code,
-                    const std::string& debug_name);
-
  private:
-  class ThunkMapKey;
-  class ThunkMapValue;
-  using ThunkMapValueType = std::pair<const ThunkMapKey, ThunkMapValue>;
-  using ThunkMap = std::map<ThunkMapKey,
-                            ThunkMapValue,
-                            std::less<ThunkMapKey>,
-                            SwapAllocator<ThunkMapValueType>>;
-  static_assert(std::is_same<ThunkMapValueType, ThunkMap::value_type>::value, "Value type check.");
-
-  static ThunkMapKey GetThunkMapKey(const linker::LinkerPatch& linker_patch);
-
   template <typename T, typename DedupeSetType>
   const LengthPrefixedArray<T>* AllocateOrDeduplicateArray(const ArrayRef<const T>& data,
                                                            DedupeSetType* dedupe_set);
@@ -124,9 +101,6 @@ class CompiledMethodStorage {
   ArrayDedupeSet<uint8_t> dedupe_vmap_table_;
   ArrayDedupeSet<uint8_t> dedupe_cfi_info_;
   ArrayDedupeSet<linker::LinkerPatch> dedupe_linker_patches_;
-
-  Mutex thunk_map_lock_;
-  ThunkMap thunk_map_ GUARDED_BY(thunk_map_lock_);
 
   DISALLOW_COPY_AND_ASSIGN(CompiledMethodStorage);
 };

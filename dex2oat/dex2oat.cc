@@ -2068,9 +2068,7 @@ class Dex2Oat FINAL {
 
     {
       TimingLogger::ScopedTiming t2("dex2oat Write ELF", timings_);
-      linker::MultiOatRelativePatcher patcher(instruction_set_,
-                                              instruction_set_features_.get(),
-                                              driver_->GetCompiledMethodStorage());
+      linker::MultiOatRelativePatcher patcher(instruction_set_, instruction_set_features_.get());
       for (size_t i = 0, size = oat_files_.size(); i != size; ++i) {
         std::unique_ptr<linker::ElfWriter>& elf_writer = elf_writers_[i];
         std::unique_ptr<linker::OatWriter>& oat_writer = oat_writers_[i];

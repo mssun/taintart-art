@@ -30,6 +30,7 @@
 #include "heap_poisoning.h"
 #include "intrinsics.h"
 #include "intrinsics_arm64.h"
+#include "linker/arm64/relative_patcher_arm64.h"
 #include "linker/linker_patch.h"
 #include "lock_word.h"
 #include "mirror/array-inl.h"
@@ -1424,62 +1425,6 @@ void CodeGeneratorARM64::Finalize(CodeAllocator* allocator) {
   __ FinalizeCode();
 
   CodeGenerator::Finalize(allocator);
-
-  // Verify Baker read barrier linker patches.
-  if (kIsDebugBuild) {
-    ArrayRef<const uint8_t> code = allocator->GetMemory();
-    for (const BakerReadBarrierPatchInfo& info : baker_read_barrier_patches_) {
-      DCHECK(info.label.IsBound());
-      uint32_t literal_offset = info.label.GetLocation();
-      DCHECK_ALIGNED(literal_offset, 4u);
-
-      auto GetInsn = [&code](uint32_t offset) {
-        DCHECK_ALIGNED(offset, 4u);
-        return
-            (static_cast<uint32_t>(code[offset + 0]) << 0) +
-            (static_cast<uint32_t>(code[offset + 1]) << 8) +
-            (static_cast<uint32_t>(code[offset + 2]) << 16)+
-            (static_cast<uint32_t>(code[offset + 3]) << 24);
-      };
-
-      const uint32_t encoded_data = info.custom_data;
-      BakerReadBarrierKind kind = BakerReadBarrierKindField::Decode(encoded_data);
-      // Check that the next instruction matches the expected LDR.
-      switch (kind) {
-        case BakerReadBarrierKind::kField: {
-          DCHECK_GE(code.size() - literal_offset, 8u);
-          uint32_t next_insn = GetInsn(literal_offset + 4u);
-          // LDR (immediate) with correct base_reg.
-          CheckValidReg(next_insn & 0x1fu);  // Check destination register.
-          const uint32_t base_reg = BakerReadBarrierFirstRegField::Decode(encoded_data);
-          CHECK_EQ(next_insn & 0xffc003e0u, 0xb9400000u | (base_reg << 5));
-          break;
-        }
-        case BakerReadBarrierKind::kArray: {
-          DCHECK_GE(code.size() - literal_offset, 8u);
-          uint32_t next_insn = GetInsn(literal_offset + 4u);
-          // LDR (register) with the correct base_reg, size=10 (32-bit), option=011 (extend = LSL),
-          // and S=1 (shift amount = 2 for 32-bit version), i.e. LDR Wt, [Xn, Xm, LSL #2].
-          CheckValidReg(next_insn & 0x1fu);  // Check destination register.
-          const uint32_t base_reg = BakerReadBarrierFirstRegField::Decode(encoded_data);
-          CHECK_EQ(next_insn & 0xffe0ffe0u, 0xb8607800u | (base_reg << 5));
-          CheckValidReg((next_insn >> 16) & 0x1f);  // Check index register
-          break;
-        }
-        case BakerReadBarrierKind::kGcRoot: {
-          DCHECK_GE(literal_offset, 4u);
-          uint32_t prev_insn = GetInsn(literal_offset - 4u);
-          // LDR (immediate) with correct root_reg.
-          const uint32_t root_reg = BakerReadBarrierFirstRegField::Decode(encoded_data);
-          CHECK_EQ(prev_insn & 0xffc0001fu, 0xb9400000u | root_reg);
-          break;
-        }
-        default:
-          LOG(FATAL) << "Unexpected kind: " << static_cast<uint32_t>(kind);
-          UNREACHABLE();
-      }
-    }
-  }
 }
 
 void ParallelMoveResolverARM64::PrepareForEmitNativeCode() {
@@ -4869,44 +4814,6 @@ void CodeGeneratorARM64::EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* lin
   DCHECK_EQ(size, linker_patches->size());
 }
 
-bool CodeGeneratorARM64::NeedsThunkCode(const linker::LinkerPatch& patch) const {
-  return patch.GetType() == linker::LinkerPatch::Type::kBakerReadBarrierBranch ||
-         patch.GetType() == linker::LinkerPatch::Type::kCallRelative;
-}
-
-void CodeGeneratorARM64::EmitThunkCode(const linker::LinkerPatch& patch,
-                                       /*out*/ ArenaVector<uint8_t>* code,
-                                       /*out*/ std::string* debug_name) {
-  Arm64Assembler assembler(GetGraph()->GetAllocator());
-  switch (patch.GetType()) {
-    case linker::LinkerPatch::Type::kCallRelative: {
-      // The thunk just uses the entry point in the ArtMethod. This works even for calls
-      // to the generic JNI and interpreter trampolines.
-      Offset offset(ArtMethod::EntryPointFromQuickCompiledCodeOffset(
-          kArm64PointerSize).Int32Value());
-      assembler.JumpTo(ManagedRegister(arm64::X0), offset, ManagedRegister(arm64::IP0));
-      if (GetCompilerOptions().GenerateAnyDebugInfo()) {
-        *debug_name = "MethodCallThunk";
-      }
-      break;
-    }
-    case linker::LinkerPatch::Type::kBakerReadBarrierBranch: {
-      DCHECK_EQ(patch.GetBakerCustomValue2(), 0u);
-      CompileBakerReadBarrierThunk(assembler, patch.GetBakerCustomValue1(), debug_name);
-      break;
-    }
-    default:
-      LOG(FATAL) << "Unexpected patch type " << patch.GetType();
-      UNREACHABLE();
-  }
-
-  // Ensure we emit the literal pool if any.
-  assembler.FinalizeCode();
-  code->resize(assembler.CodeSize());
-  MemoryRegion code_region(code->data(), code->size());
-  assembler.FinalizeInstructions(code_region);
-}
-
 vixl::aarch64::Literal<uint32_t>* CodeGeneratorARM64::DeduplicateUint32Literal(uint32_t value) {
   return uint32_literals_.GetOrCreate(
       value,
@@ -5047,12 +4954,12 @@ void InstructionCodeGeneratorARM64::VisitLoadClass(HLoadClass* cls) NO_THREAD_SA
       DCHECK(!cls->MustGenerateClinitCheck());
       // /* GcRoot<mirror::Class> */ out = current_method->declaring_class_
       Register current_method = InputRegisterAt(cls, 0);
-      codegen_->GenerateGcRootFieldLoad(cls,
-                                        out_loc,
-                                        current_method,
-                                        ArtMethod::DeclaringClassOffset().Int32Value(),
-                                        /* fixup_label */ nullptr,
-                                        read_barrier_option);
+      GenerateGcRootFieldLoad(cls,
+                              out_loc,
+                              current_method,
+                              ArtMethod::DeclaringClassOffset().Int32Value(),
+                              /* fixup_label */ nullptr,
+                              read_barrier_option);
       break;
     }
     case HLoadClass::LoadKind::kBootImageLinkTimePcRelative: {
@@ -5099,12 +5006,12 @@ void InstructionCodeGeneratorARM64::VisitLoadClass(HLoadClass* cls) NO_THREAD_SA
       vixl::aarch64::Label* ldr_label =
           codegen_->NewBssEntryTypePatch(dex_file, type_index, adrp_label);
       // /* GcRoot<mirror::Class> */ out = *(base_address + offset)  /* PC-relative */
-      codegen_->GenerateGcRootFieldLoad(cls,
-                                        out_loc,
-                                        temp,
-                                        /* offset placeholder */ 0u,
-                                        ldr_label,
-                                        read_barrier_option);
+      GenerateGcRootFieldLoad(cls,
+                              out_loc,
+                              temp,
+                              /* offset placeholder */ 0u,
+                              ldr_label,
+                              read_barrier_option);
       generate_null_check = true;
       break;
     }
@@ -5112,12 +5019,12 @@ void InstructionCodeGeneratorARM64::VisitLoadClass(HLoadClass* cls) NO_THREAD_SA
       __ Ldr(out, codegen_->DeduplicateJitClassLiteral(cls->GetDexFile(),
                                                        cls->GetTypeIndex(),
                                                        cls->GetClass()));
-      codegen_->GenerateGcRootFieldLoad(cls,
-                                        out_loc,
-                                        out.X(),
-                                        /* offset */ 0,
-                                        /* fixup_label */ nullptr,
-                                        read_barrier_option);
+      GenerateGcRootFieldLoad(cls,
+                              out_loc,
+                              out.X(),
+                              /* offset */ 0,
+                              /* fixup_label */ nullptr,
+                              read_barrier_option);
       break;
     }
     case HLoadClass::LoadKind::kRuntimeCall:
@@ -5260,12 +5167,12 @@ void InstructionCodeGeneratorARM64::VisitLoadString(HLoadString* load) NO_THREAD
       vixl::aarch64::Label* ldr_label =
           codegen_->NewStringBssEntryPatch(dex_file, string_index, adrp_label);
       // /* GcRoot<mirror::String> */ out = *(base_address + offset)  /* PC-relative */
-      codegen_->GenerateGcRootFieldLoad(load,
-                                        out_loc,
-                                        temp,
-                                        /* offset placeholder */ 0u,
-                                        ldr_label,
-                                        kCompilerReadBarrierOption);
+      GenerateGcRootFieldLoad(load,
+                              out_loc,
+                              temp,
+                              /* offset placeholder */ 0u,
+                              ldr_label,
+                              kCompilerReadBarrierOption);
       SlowPathCodeARM64* slow_path =
           new (codegen_->GetScopedAllocator()) LoadStringSlowPathARM64(load);
       codegen_->AddSlowPath(slow_path);
@@ -5278,12 +5185,12 @@ void InstructionCodeGeneratorARM64::VisitLoadString(HLoadString* load) NO_THREAD
       __ Ldr(out, codegen_->DeduplicateJitStringLiteral(load->GetDexFile(),
                                                         load->GetStringIndex(),
                                                         load->GetString()));
-      codegen_->GenerateGcRootFieldLoad(load,
-                                        out_loc,
-                                        out.X(),
-                                        /* offset */ 0,
-                                        /* fixup_label */ nullptr,
-                                        kCompilerReadBarrierOption);
+      GenerateGcRootFieldLoad(load,
+                              out_loc,
+                              out.X(),
+                              /* offset */ 0,
+                              /* fixup_label */ nullptr,
+                              kCompilerReadBarrierOption);
       return;
     }
     default:
@@ -6232,7 +6139,7 @@ void InstructionCodeGeneratorARM64::GenerateReferenceLoadTwoRegisters(
   }
 }
 
-void CodeGeneratorARM64::GenerateGcRootFieldLoad(
+void InstructionCodeGeneratorARM64::GenerateGcRootFieldLoad(
     HInstruction* instruction,
     Location root,
     Register obj,
@@ -6266,8 +6173,9 @@ void CodeGeneratorARM64::GenerateGcRootFieldLoad(
         DCHECK(temps.IsAvailable(ip0));
         DCHECK(temps.IsAvailable(ip1));
         temps.Exclude(ip0, ip1);
-        uint32_t custom_data = EncodeBakerReadBarrierGcRootData(root_reg.GetCode());
-        vixl::aarch64::Label* cbnz_label = NewBakerReadBarrierPatch(custom_data);
+        uint32_t custom_data =
+            linker::Arm64RelativePatcher::EncodeBakerReadBarrierGcRootData(root_reg.GetCode());
+        vixl::aarch64::Label* cbnz_label = codegen_->NewBakerReadBarrierPatch(custom_data);
 
         EmissionCheckScope guard(GetVIXLAssembler(), 3 * vixl::aarch64::kInstructionSize);
         vixl::aarch64::Label return_address;
@@ -6296,14 +6204,14 @@ void CodeGeneratorARM64::GenerateGcRootFieldLoad(
         // Slow path marking the GC root `root`. The entrypoint will
         // be loaded by the slow path code.
         SlowPathCodeARM64* slow_path =
-            new (GetScopedAllocator()) ReadBarrierMarkSlowPathARM64(instruction, root);
-        AddSlowPath(slow_path);
+            new (codegen_->GetScopedAllocator()) ReadBarrierMarkSlowPathARM64(instruction, root);
+        codegen_->AddSlowPath(slow_path);
 
         // /* GcRoot<mirror::Object> */ root = *(obj + offset)
         if (fixup_label == nullptr) {
           __ Ldr(root_reg, MemOperand(obj, offset));
         } else {
-          EmitLdrOffsetPlaceholder(fixup_label, root_reg, obj);
+          codegen_->EmitLdrOffsetPlaceholder(fixup_label, root_reg, obj);
         }
         static_assert(
             sizeof(mirror::CompressedReference<mirror::Object>) == sizeof(GcRoot<mirror::Object>),
@@ -6323,10 +6231,10 @@ void CodeGeneratorARM64::GenerateGcRootFieldLoad(
       if (fixup_label == nullptr) {
         __ Add(root_reg.X(), obj.X(), offset);
       } else {
-        EmitAddPlaceholder(fixup_label, root_reg.X(), obj.X());
+        codegen_->EmitAddPlaceholder(fixup_label, root_reg.X(), obj.X());
       }
       // /* mirror::Object* */ root = root->Read()
-      GenerateReadBarrierForRootSlow(instruction, root, root);
+      codegen_->GenerateReadBarrierForRootSlow(instruction, root, root);
     }
   } else {
     // Plain GC root load with no read barrier.
@@ -6334,12 +6242,12 @@ void CodeGeneratorARM64::GenerateGcRootFieldLoad(
     if (fixup_label == nullptr) {
       __ Ldr(root_reg, MemOperand(obj, offset));
     } else {
-      EmitLdrOffsetPlaceholder(fixup_label, root_reg, obj.X());
+      codegen_->EmitLdrOffsetPlaceholder(fixup_label, root_reg, obj.X());
     }
     // Note that GC roots are not affected by heap poisoning, thus we
     // do not have to unpoison `root_reg` here.
   }
-  MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
+  codegen_->MaybeGenerateMarkingRegisterCheck(/* code */ __LINE__);
 }
 
 void CodeGeneratorARM64::GenerateFieldLoadWithBakerReadBarrier(HInstruction* instruction,
@@ -6388,7 +6296,9 @@ void CodeGeneratorARM64::GenerateFieldLoadWithBakerReadBarrier(HInstruction* ins
     DCHECK(temps.IsAvailable(ip0));
     DCHECK(temps.IsAvailable(ip1));
     temps.Exclude(ip0, ip1);
-    uint32_t custom_data = EncodeBakerReadBarrierFieldData(base.GetCode(), obj.GetCode());
+    uint32_t custom_data = linker::Arm64RelativePatcher::EncodeBakerReadBarrierFieldData(
+        base.GetCode(),
+        obj.GetCode());
     vixl::aarch64::Label* cbnz_label = NewBakerReadBarrierPatch(custom_data);
 
     {
@@ -6473,7 +6383,8 @@ void CodeGeneratorARM64::GenerateArrayLoadWithBakerReadBarrier(HInstruction* ins
     DCHECK(temps.IsAvailable(ip0));
     DCHECK(temps.IsAvailable(ip1));
     temps.Exclude(ip0, ip1);
-    uint32_t custom_data = EncodeBakerReadBarrierArrayData(temp.GetCode());
+    uint32_t custom_data =
+        linker::Arm64RelativePatcher::EncodeBakerReadBarrierArrayData(temp.GetCode());
     vixl::aarch64::Label* cbnz_label = NewBakerReadBarrierPatch(custom_data);
 
     __ Add(temp.X(), obj.X(), Operand(data_offset));
@@ -6832,177 +6743,6 @@ void CodeGeneratorARM64::EmitJitRootPatches(uint8_t* code, const uint8_t* roots_
 
 #undef __
 #undef QUICK_ENTRY_POINT
-
-#define __ assembler.GetVIXLAssembler()->
-
-static void EmitGrayCheckAndFastPath(arm64::Arm64Assembler& assembler,
-                                     vixl::aarch64::Register base_reg,
-                                     vixl::aarch64::MemOperand& lock_word,
-                                     vixl::aarch64::Label* slow_path) {
-  // Load the lock word containing the rb_state.
-  __ Ldr(ip0.W(), lock_word);
-  // Given the numeric representation, it's enough to check the low bit of the rb_state.
-  static_assert(ReadBarrier::WhiteState() == 0, "Expecting white to have value 0");
-  static_assert(ReadBarrier::GrayState() == 1, "Expecting gray to have value 1");
-  __ Tbnz(ip0.W(), LockWord::kReadBarrierStateShift, slow_path);
-  static_assert(
-      BAKER_MARK_INTROSPECTION_ARRAY_LDR_OFFSET == BAKER_MARK_INTROSPECTION_FIELD_LDR_OFFSET,
-      "Field and array LDR offsets must be the same to reuse the same code.");
-  // Adjust the return address back to the LDR (1 instruction; 2 for heap poisoning).
-  static_assert(BAKER_MARK_INTROSPECTION_FIELD_LDR_OFFSET == (kPoisonHeapReferences ? -8 : -4),
-                "Field LDR must be 1 instruction (4B) before the return address label; "
-                " 2 instructions (8B) for heap poisoning.");
-  __ Add(lr, lr, BAKER_MARK_INTROSPECTION_FIELD_LDR_OFFSET);
-  // Introduce a dependency on the lock_word including rb_state,
-  // to prevent load-load reordering, and without using
-  // a memory barrier (which would be more expensive).
-  __ Add(base_reg, base_reg, Operand(ip0, LSR, 32));
-  __ Br(lr);          // And return back to the function.
-  // Note: The fake dependency is unnecessary for the slow path.
-}
-
-// Load the read barrier introspection entrypoint in register `entrypoint`.
-static void LoadReadBarrierMarkIntrospectionEntrypoint(arm64::Arm64Assembler& assembler,
-                                                       vixl::aarch64::Register entrypoint) {
-  // entrypoint = Thread::Current()->pReadBarrierMarkReg16, i.e. pReadBarrierMarkIntrospection.
-  DCHECK_EQ(ip0.GetCode(), 16u);
-  const int32_t entry_point_offset =
-      Thread::ReadBarrierMarkEntryPointsOffset<kArm64PointerSize>(ip0.GetCode());
-  __ Ldr(entrypoint, MemOperand(tr, entry_point_offset));
-}
-
-void CodeGeneratorARM64::CompileBakerReadBarrierThunk(Arm64Assembler& assembler,
-                                                      uint32_t encoded_data,
-                                                      /*out*/ std::string* debug_name) {
-  BakerReadBarrierKind kind = BakerReadBarrierKindField::Decode(encoded_data);
-  switch (kind) {
-    case BakerReadBarrierKind::kField: {
-      // Check if the holder is gray and, if not, add fake dependency to the base register
-      // and return to the LDR instruction to load the reference. Otherwise, use introspection
-      // to load the reference and call the entrypoint (in IP1) that performs further checks
-      // on the reference and marks it if needed.
-      auto base_reg =
-          Register::GetXRegFromCode(BakerReadBarrierFirstRegField::Decode(encoded_data));
-      CheckValidReg(base_reg.GetCode());
-      auto holder_reg =
-          Register::GetXRegFromCode(BakerReadBarrierSecondRegField::Decode(encoded_data));
-      CheckValidReg(holder_reg.GetCode());
-      UseScratchRegisterScope temps(assembler.GetVIXLAssembler());
-      temps.Exclude(ip0, ip1);
-      // If base_reg differs from holder_reg, the offset was too large and we must have
-      // emitted an explicit null check before the load. Otherwise, we need to null-check
-      // the holder as we do not necessarily do that check before going to the thunk.
-      vixl::aarch64::Label throw_npe;
-      if (holder_reg.Is(base_reg)) {
-        __ Cbz(holder_reg.W(), &throw_npe);
-      }
-      vixl::aarch64::Label slow_path;
-      MemOperand lock_word(holder_reg, mirror::Object::MonitorOffset().Int32Value());
-      EmitGrayCheckAndFastPath(assembler, base_reg, lock_word, &slow_path);
-      __ Bind(&slow_path);
-      MemOperand ldr_address(lr, BAKER_MARK_INTROSPECTION_FIELD_LDR_OFFSET);
-      __ Ldr(ip0.W(), ldr_address);         // Load the LDR (immediate) unsigned offset.
-      LoadReadBarrierMarkIntrospectionEntrypoint(assembler, ip1);
-      __ Ubfx(ip0.W(), ip0.W(), 10, 12);    // Extract the offset.
-      __ Ldr(ip0.W(), MemOperand(base_reg, ip0, LSL, 2));   // Load the reference.
-      // Do not unpoison. With heap poisoning enabled, the entrypoint expects a poisoned reference.
-      __ Br(ip1);                           // Jump to the entrypoint.
-      if (holder_reg.Is(base_reg)) {
-        // Add null check slow path. The stack map is at the address pointed to by LR.
-        __ Bind(&throw_npe);
-        int32_t offset = GetThreadOffset<kArm64PointerSize>(kQuickThrowNullPointer).Int32Value();
-        __ Ldr(ip0, MemOperand(/* Thread* */ vixl::aarch64::x19, offset));
-        __ Br(ip0);
-      }
-      break;
-    }
-    case BakerReadBarrierKind::kArray: {
-      auto base_reg =
-          Register::GetXRegFromCode(BakerReadBarrierFirstRegField::Decode(encoded_data));
-      CheckValidReg(base_reg.GetCode());
-      DCHECK_EQ(kBakerReadBarrierInvalidEncodedReg,
-                BakerReadBarrierSecondRegField::Decode(encoded_data));
-      UseScratchRegisterScope temps(assembler.GetVIXLAssembler());
-      temps.Exclude(ip0, ip1);
-      vixl::aarch64::Label slow_path;
-      int32_t data_offset =
-          mirror::Array::DataOffset(Primitive::ComponentSize(Primitive::kPrimNot)).Int32Value();
-      MemOperand lock_word(base_reg, mirror::Object::MonitorOffset().Int32Value() - data_offset);
-      DCHECK_LT(lock_word.GetOffset(), 0);
-      EmitGrayCheckAndFastPath(assembler, base_reg, lock_word, &slow_path);
-      __ Bind(&slow_path);
-      MemOperand ldr_address(lr, BAKER_MARK_INTROSPECTION_ARRAY_LDR_OFFSET);
-      __ Ldr(ip0.W(), ldr_address);         // Load the LDR (register) unsigned offset.
-      LoadReadBarrierMarkIntrospectionEntrypoint(assembler, ip1);
-      __ Ubfx(ip0, ip0, 16, 6);             // Extract the index register, plus 32 (bit 21 is set).
-      __ Bfi(ip1, ip0, 3, 6);               // Insert ip0 to the entrypoint address to create
-                                            // a switch case target based on the index register.
-      __ Mov(ip0, base_reg);                // Move the base register to ip0.
-      __ Br(ip1);                           // Jump to the entrypoint's array switch case.
-      break;
-    }
-    case BakerReadBarrierKind::kGcRoot: {
-      // Check if the reference needs to be marked and if so (i.e. not null, not marked yet
-      // and it does not have a forwarding address), call the correct introspection entrypoint;
-      // otherwise return the reference (or the extracted forwarding address).
-      // There is no gray bit check for GC roots.
-      auto root_reg =
-          Register::GetWRegFromCode(BakerReadBarrierFirstRegField::Decode(encoded_data));
-      CheckValidReg(root_reg.GetCode());
-      DCHECK_EQ(kBakerReadBarrierInvalidEncodedReg,
-                BakerReadBarrierSecondRegField::Decode(encoded_data));
-      UseScratchRegisterScope temps(assembler.GetVIXLAssembler());
-      temps.Exclude(ip0, ip1);
-      vixl::aarch64::Label return_label, not_marked, forwarding_address;
-      __ Cbz(root_reg, &return_label);
-      MemOperand lock_word(root_reg.X(), mirror::Object::MonitorOffset().Int32Value());
-      __ Ldr(ip0.W(), lock_word);
-      __ Tbz(ip0.W(), LockWord::kMarkBitStateShift, &not_marked);
-      __ Bind(&return_label);
-      __ Br(lr);
-      __ Bind(&not_marked);
-      __ Tst(ip0.W(), Operand(ip0.W(), LSL, 1));
-      __ B(&forwarding_address, mi);
-      LoadReadBarrierMarkIntrospectionEntrypoint(assembler, ip1);
-      // Adjust the art_quick_read_barrier_mark_introspection address in IP1 to
-      // art_quick_read_barrier_mark_introspection_gc_roots.
-      __ Add(ip1, ip1, Operand(BAKER_MARK_INTROSPECTION_GC_ROOT_ENTRYPOINT_OFFSET));
-      __ Mov(ip0.W(), root_reg);
-      __ Br(ip1);
-      __ Bind(&forwarding_address);
-      __ Lsl(root_reg, ip0.W(), LockWord::kForwardingAddressShift);
-      __ Br(lr);
-      break;
-    }
-    default:
-      LOG(FATAL) << "Unexpected kind: " << static_cast<uint32_t>(kind);
-      UNREACHABLE();
-  }
-
-  if (GetCompilerOptions().GenerateAnyDebugInfo()) {
-    std::ostringstream oss;
-    oss << "BakerReadBarrierThunk";
-    switch (kind) {
-      case BakerReadBarrierKind::kField:
-        oss << "Field_r" << BakerReadBarrierFirstRegField::Decode(encoded_data)
-            << "_r" << BakerReadBarrierSecondRegField::Decode(encoded_data);
-        break;
-      case BakerReadBarrierKind::kArray:
-        oss << "Array_r" << BakerReadBarrierFirstRegField::Decode(encoded_data);
-        DCHECK_EQ(kBakerReadBarrierInvalidEncodedReg,
-                  BakerReadBarrierSecondRegField::Decode(encoded_data));
-        break;
-      case BakerReadBarrierKind::kGcRoot:
-        oss << "GcRoot_r" << BakerReadBarrierFirstRegField::Decode(encoded_data);
-        DCHECK_EQ(kBakerReadBarrierInvalidEncodedReg,
-                  BakerReadBarrierSecondRegField::Decode(encoded_data));
-        break;
-    }
-    *debug_name = oss.str();
-  }
-}
-
-#undef __
 
 }  // namespace arm64
 }  // namespace art
