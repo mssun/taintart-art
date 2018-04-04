@@ -22,6 +22,7 @@
 #include "dex/dex_file_loader.h"
 #include "hidden_api.h"
 #include "hidden_api_finder.h"
+#include "precise_hidden_api_finder.h"
 #include "resolver.h"
 
 #include <sstream>
@@ -47,8 +48,18 @@ VeriClass* VeriClass::float_ = &f_;
 VeriClass* VeriClass::double_ = &d_;
 VeriClass* VeriClass::long_ = &j_;
 VeriClass* VeriClass::void_ = &v_;
+
 // Will be set after boot classpath has been resolved.
 VeriClass* VeriClass::object_ = nullptr;
+VeriClass* VeriClass::class_ = nullptr;
+VeriClass* VeriClass::string_ = nullptr;
+VeriClass* VeriClass::throwable_ = nullptr;
+VeriMethod VeriClass::forName_ = nullptr;
+VeriMethod VeriClass::getField_ = nullptr;
+VeriMethod VeriClass::getDeclaredField_ = nullptr;
+VeriMethod VeriClass::getMethod_ = nullptr;
+VeriMethod VeriClass::getDeclaredMethod_ = nullptr;
+VeriMethod VeriClass::getClass_ = nullptr;
 
 struct VeridexOptions {
   const char* dex_file = nullptr;
@@ -56,6 +67,7 @@ struct VeridexOptions {
   const char* blacklist = nullptr;
   const char* light_greylist = nullptr;
   const char* dark_greylist = nullptr;
+  bool precise = true;
 };
 
 static const char* Substr(const char* str, int index) {
@@ -76,6 +88,7 @@ static void ParseArgs(VeridexOptions* options, int argc, char** argv) {
   static const char* kBlacklistOption = "--blacklist=";
   static const char* kDarkGreylistOption = "--dark-greylist=";
   static const char* kLightGreylistOption = "--light-greylist=";
+  static const char* kImprecise = "--imprecise";
 
   for (int i = 0; i < argc; ++i) {
     if (StartsWith(argv[i], kDexFileOption)) {
@@ -88,6 +101,8 @@ static void ParseArgs(VeridexOptions* options, int argc, char** argv) {
       options->dark_greylist = Substr(argv[i], strlen(kDarkGreylistOption));
     } else if (StartsWith(argv[i], kLightGreylistOption)) {
       options->light_greylist = Substr(argv[i], strlen(kLightGreylistOption));
+    } else if (strcmp(argv[i], kImprecise) == 0) {
+      options->precise = false;
     }
   }
 }
@@ -157,21 +172,70 @@ class Veridex {
     std::vector<std::unique_ptr<VeridexResolver>> boot_resolvers;
     Resolve(boot_dex_files, resolver_map, type_map, &boot_resolvers);
 
-    // Now that boot classpath has been resolved, fill j.l.Object.
+    // Now that boot classpath has been resolved, fill classes and reflection
+    // methods.
     VeriClass::object_ = type_map["Ljava/lang/Object;"];
+    VeriClass::class_ = type_map["Ljava/lang/Class;"];
+    VeriClass::string_ = type_map["Ljava/lang/String;"];
+    VeriClass::throwable_ = type_map["Ljava/lang/Throwable;"];
+    VeriClass::forName_ = boot_resolvers[0]->LookupDeclaredMethodIn(
+        *VeriClass::class_, "forName", "(Ljava/lang/String;)Ljava/lang/Class;");
+    VeriClass::getField_ = boot_resolvers[0]->LookupDeclaredMethodIn(
+        *VeriClass::class_, "getField", "(Ljava/lang/String;)Ljava/lang/reflect/Field;");
+    VeriClass::getDeclaredField_ = boot_resolvers[0]->LookupDeclaredMethodIn(
+        *VeriClass::class_, "getDeclaredField", "(Ljava/lang/String;)Ljava/lang/reflect/Field;");
+    VeriClass::getMethod_ = boot_resolvers[0]->LookupDeclaredMethodIn(
+        *VeriClass::class_,
+        "getMethod",
+        "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;");
+    VeriClass::getDeclaredMethod_ = boot_resolvers[0]->LookupDeclaredMethodIn(
+        *VeriClass::class_,
+        "getDeclaredMethod",
+        "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;");
+    VeriClass::getClass_ = boot_resolvers[0]->LookupDeclaredMethodIn(
+        *VeriClass::object_, "getClass", "()Ljava/lang/Class;");
 
     std::vector<std::unique_ptr<VeridexResolver>> app_resolvers;
     Resolve(app_dex_files, resolver_map, type_map, &app_resolvers);
 
     // Find and log uses of hidden APIs.
     HiddenApi hidden_api(options.blacklist, options.dark_greylist, options.light_greylist);
+    HiddenApiStats stats;
+
     HiddenApiFinder api_finder(hidden_api);
     api_finder.Run(app_resolvers);
+    api_finder.Dump(std::cout, &stats, !options.precise);
+
+    if (options.precise) {
+      PreciseHiddenApiFinder precise_api_finder(hidden_api);
+      precise_api_finder.Run(app_resolvers);
+      precise_api_finder.Dump(std::cout, &stats);
+    }
+
+    DumpSummaryStats(std::cout, stats);
+
+    if (options.precise) {
+      std::cout << "To run an analysis that can give more reflection accesses, " << std::endl
+                << "but could include false positives, pass the --imprecise flag. " << std::endl;
+    }
 
     return 0;
   }
 
  private:
+  static void DumpSummaryStats(std::ostream& os, const HiddenApiStats& stats) {
+    static const char* kPrefix = "       ";
+    os << stats.count << " hidden API(s) used: "
+       << stats.linking_count << " linked against, "
+       << stats.reflection_count << " through reflection" << std::endl;
+    os << kPrefix << stats.api_counts[HiddenApiAccessFlags::kBlacklist]
+       << " in blacklist" << std::endl;
+    os << kPrefix << stats.api_counts[HiddenApiAccessFlags::kDarkGreylist]
+       << " in dark greylist" << std::endl;
+    os << kPrefix << stats.api_counts[HiddenApiAccessFlags::kLightGreylist]
+       << " in light greylist" << std::endl;
+  }
+
   static bool Load(const std::string& filename,
                    std::string& content,
                    std::vector<std::unique_ptr<const DexFile>>* dex_files,

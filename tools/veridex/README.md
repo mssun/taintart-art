@@ -11,4 +11,4 @@ To build it:
 > make appcompat
 
 To run it:
-> ./art/tools/veridex/appcompat.sh test.apk
+> ./art/tools/veridex/appcompat.sh --dex-file=test.apk

@@ -59,6 +59,14 @@ void VeridexResolver::Run() {
 static bool HasSameNameAndSignature(const DexFile& dex_file,
                                     const DexFile::MethodId& method_id,
                                     const char* method_name,
+                                    const char* type) {
+  return strcmp(method_name, dex_file.GetMethodName(method_id)) == 0 &&
+      strcmp(type, dex_file.GetMethodSignature(method_id).ToString().c_str()) == 0;
+}
+
+static bool HasSameNameAndSignature(const DexFile& dex_file,
+                                    const DexFile::MethodId& method_id,
+                                    const char* method_name,
                                     const Signature& signature) {
   return strcmp(method_name, dex_file.GetMethodName(method_id)) == 0 &&
       dex_file.GetMethodSignature(method_id) == signature;
@@ -235,6 +243,34 @@ VeriField VeridexResolver::LookupFieldIn(const VeriClass& kls,
       VeriField super_field = resolver->LookupFieldIn(*super, field_name, field_type);
       if (super_field != nullptr) {
         return super_field;
+      }
+    }
+  }
+  return nullptr;
+}
+
+VeriMethod VeridexResolver::LookupDeclaredMethodIn(const VeriClass& kls,
+                                                   const char* method_name,
+                                                   const char* type) const {
+  if (kls.IsPrimitive()) {
+    return nullptr;
+  }
+  if (kls.IsArray()) {
+    return nullptr;
+  }
+  VeridexResolver* resolver = GetResolverOf(kls);
+  const DexFile& other_dex_file = resolver->dex_file_;
+  const uint8_t* class_data = other_dex_file.GetClassData(*kls.GetClassDef());
+  if (class_data != nullptr) {
+    ClassDataItemIterator it(other_dex_file, class_data);
+    it.SkipAllFields();
+    for (; it.HasNextMethod(); it.Next()) {
+      const DexFile::MethodId& other_method_id = other_dex_file.GetMethodId(it.GetMemberIndex());
+      if (HasSameNameAndSignature(other_dex_file,
+                                  other_method_id,
+                                  method_name,
+                                  type)) {
+        return it.DataPointer();
       }
     }
   }
