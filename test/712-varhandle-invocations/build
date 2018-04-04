@@ -35,5 +35,8 @@ python3 ./util-src/generate_java.py "${GENERATED_SRC}" ${MANUAL_TESTS}
 # Desugar is not happy with our Java 9 byte code, it shouldn't be necessary here anyway.
 export USE_DESUGAR=false
 
+# See b/65168732
+export USE_D8=false
+
 # Invoke default build with increased heap size for dx
 ./default-build "$@" --experimental var-handles --dx-vm-option -JXmx384m
