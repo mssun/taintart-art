@@ -19,6 +19,16 @@ if [ ! -d libcore ]; then
   exit 1
 fi
 
+# Prevent JDWP tests from running on the following devices running
+# Android O (they are failing because of a network-related issue), as
+# a workaround for b/74725685:
+# - FA7BN1A04406 (walleye device testing configuration aosp-poison/volantis-armv7-poison-debug)
+# - FA7BN1A04412 (walleye device testing configuration aosp-poison/volantis-armv8-poison-ndebug)
+# - FA7BN1A04433 (walleye device testing configuration aosp-poison/volantis-armv8-poison-debug)
+case "$ANDROID_SERIAL" in
+  (FA7BN1A04406|FA7BN1A04412|FA7BN1A04433) exit 0;;
+esac
+
 source build/envsetup.sh >&/dev/null # for get_build_var, setpaths
 setpaths # include platform prebuilt java, javac, etc in $PATH.
 

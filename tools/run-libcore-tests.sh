@@ -161,6 +161,16 @@ if [[ $gcstress ]]; then
   fi
 fi
 
+# Disable network-related libcore tests that are failing on the following
+# devices running Android O, as a workaround for b/74725685:
+# - FA7BN1A04406 (walleye device testing configuration aosp-poison/volantis-armv7-poison-debug)
+# - FA7BN1A04412 (walleye device testing configuration aosp-poison/volantis-armv8-poison-ndebug)
+# - FA7BN1A04433 (walleye device testing configuration aosp-poison/volantis-armv8-poison-debug)
+case "$ANDROID_SERIAL" in
+  (FA7BN1A04406|FA7BN1A04412|FA7BN1A04433)
+    expectations="$expectations --expectations art/tools/libcore_network_failures.txt";;
+esac
+
 # Run the tests using vogar.
 echo "Running tests for the following test packages:"
 echo ${working_packages[@]} | tr " " "\n"
