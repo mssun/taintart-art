@@ -82,10 +82,9 @@ inline uint32_t MaxExtraSpace(size_t num_adrp, size_t code_size) {
 
 }  // anonymous namespace
 
-Arm64RelativePatcher::Arm64RelativePatcher(RelativePatcherThunkProvider* thunk_provider,
-                                           RelativePatcherTargetProvider* target_provider,
+Arm64RelativePatcher::Arm64RelativePatcher(RelativePatcherTargetProvider* provider,
                                            const Arm64InstructionSetFeatures* features)
-    : ArmBaseRelativePatcher(thunk_provider, target_provider, InstructionSet::kArm64),
+    : ArmBaseRelativePatcher(provider, InstructionSet::kArm64),
       fix_cortex_a53_843419_(features->NeedFixCortexA53_843419()),
       reserved_adrp_thunks_(0u),
       processed_adrp_thunks_(0u) {
@@ -314,6 +313,44 @@ void Arm64RelativePatcher::PatchBakerReadBarrierBranch(std::vector<uint8_t>* cod
   uint32_t insn = GetInsn(code, literal_offset);
   DCHECK_EQ(insn & 0xffffffe0u, 0xb5000000);  // CBNZ Xt, +0 (unpatched)
   ThunkKey key = GetBakerThunkKey(patch);
+  if (kIsDebugBuild) {
+    const uint32_t encoded_data = key.GetCustomValue1();
+    BakerReadBarrierKind kind = BakerReadBarrierKindField::Decode(encoded_data);
+    // Check that the next instruction matches the expected LDR.
+    switch (kind) {
+      case BakerReadBarrierKind::kField: {
+        DCHECK_GE(code->size() - literal_offset, 8u);
+        uint32_t next_insn = GetInsn(code, literal_offset + 4u);
+        // LDR (immediate) with correct base_reg.
+        CheckValidReg(next_insn & 0x1fu);  // Check destination register.
+        const uint32_t base_reg = BakerReadBarrierFirstRegField::Decode(encoded_data);
+        CHECK_EQ(next_insn & 0xffc003e0u, 0xb9400000u | (base_reg << 5));
+        break;
+      }
+      case BakerReadBarrierKind::kArray: {
+        DCHECK_GE(code->size() - literal_offset, 8u);
+        uint32_t next_insn = GetInsn(code, literal_offset + 4u);
+        // LDR (register) with the correct base_reg, size=10 (32-bit), option=011 (extend = LSL),
+        // and S=1 (shift amount = 2 for 32-bit version), i.e. LDR Wt, [Xn, Xm, LSL #2].
+        CheckValidReg(next_insn & 0x1fu);  // Check destination register.
+        const uint32_t base_reg = BakerReadBarrierFirstRegField::Decode(encoded_data);
+        CHECK_EQ(next_insn & 0xffe0ffe0u, 0xb8607800u | (base_reg << 5));
+        CheckValidReg((next_insn >> 16) & 0x1f);  // Check index register
+        break;
+      }
+      case BakerReadBarrierKind::kGcRoot: {
+        DCHECK_GE(literal_offset, 4u);
+        uint32_t prev_insn = GetInsn(code, literal_offset - 4u);
+        // LDR (immediate) with correct root_reg.
+        const uint32_t root_reg = BakerReadBarrierFirstRegField::Decode(encoded_data);
+        CHECK_EQ(prev_insn & 0xffc0001fu, 0xb9400000u | root_reg);
+        break;
+      }
+      default:
+        LOG(FATAL) << "Unexpected kind: " << static_cast<uint32_t>(kind);
+        UNREACHABLE();
+    }
+  }
   uint32_t target_offset = GetThunkTargetOffset(key, patch_offset);
   DCHECK_ALIGNED(target_offset, 4u);
   uint32_t disp = target_offset - patch_offset;
@@ -321,6 +358,216 @@ void Arm64RelativePatcher::PatchBakerReadBarrierBranch(std::vector<uint8_t>* cod
   insn |= (disp << (5 - 2)) & 0x00ffffe0u;              // Shift bits 2-20 to 5-23.
   SetInsn(code, literal_offset, insn);
 }
+
+#define __ assembler.GetVIXLAssembler()->
+
+static void EmitGrayCheckAndFastPath(arm64::Arm64Assembler& assembler,
+                                     vixl::aarch64::Register base_reg,
+                                     vixl::aarch64::MemOperand& lock_word,
+                                     vixl::aarch64::Label* slow_path) {
+  using namespace vixl::aarch64;  // NOLINT(build/namespaces)
+  // Load the lock word containing the rb_state.
+  __ Ldr(ip0.W(), lock_word);
+  // Given the numeric representation, it's enough to check the low bit of the rb_state.
+  static_assert(ReadBarrier::WhiteState() == 0, "Expecting white to have value 0");
+  static_assert(ReadBarrier::GrayState() == 1, "Expecting gray to have value 1");
+  __ Tbnz(ip0.W(), LockWord::kReadBarrierStateShift, slow_path);
+  static_assert(
+      BAKER_MARK_INTROSPECTION_ARRAY_LDR_OFFSET == BAKER_MARK_INTROSPECTION_FIELD_LDR_OFFSET,
+      "Field and array LDR offsets must be the same to reuse the same code.");
+  // Adjust the return address back to the LDR (1 instruction; 2 for heap poisoning).
+  static_assert(BAKER_MARK_INTROSPECTION_FIELD_LDR_OFFSET == (kPoisonHeapReferences ? -8 : -4),
+                "Field LDR must be 1 instruction (4B) before the return address label; "
+                " 2 instructions (8B) for heap poisoning.");
+  __ Add(lr, lr, BAKER_MARK_INTROSPECTION_FIELD_LDR_OFFSET);
+  // Introduce a dependency on the lock_word including rb_state,
+  // to prevent load-load reordering, and without using
+  // a memory barrier (which would be more expensive).
+  __ Add(base_reg, base_reg, Operand(ip0, LSR, 32));
+  __ Br(lr);          // And return back to the function.
+  // Note: The fake dependency is unnecessary for the slow path.
+}
+
+// Load the read barrier introspection entrypoint in register `entrypoint`.
+static void LoadReadBarrierMarkIntrospectionEntrypoint(arm64::Arm64Assembler& assembler,
+                                                       vixl::aarch64::Register entrypoint) {
+  using vixl::aarch64::MemOperand;
+  using vixl::aarch64::ip0;
+  // Thread Register.
+  const vixl::aarch64::Register tr = vixl::aarch64::x19;
+
+  // entrypoint = Thread::Current()->pReadBarrierMarkReg16, i.e. pReadBarrierMarkIntrospection.
+  DCHECK_EQ(ip0.GetCode(), 16u);
+  const int32_t entry_point_offset =
+      Thread::ReadBarrierMarkEntryPointsOffset<kArm64PointerSize>(ip0.GetCode());
+  __ Ldr(entrypoint, MemOperand(tr, entry_point_offset));
+}
+
+void Arm64RelativePatcher::CompileBakerReadBarrierThunk(arm64::Arm64Assembler& assembler,
+                                                        uint32_t encoded_data) {
+  using namespace vixl::aarch64;  // NOLINT(build/namespaces)
+  BakerReadBarrierKind kind = BakerReadBarrierKindField::Decode(encoded_data);
+  switch (kind) {
+    case BakerReadBarrierKind::kField: {
+      // Check if the holder is gray and, if not, add fake dependency to the base register
+      // and return to the LDR instruction to load the reference. Otherwise, use introspection
+      // to load the reference and call the entrypoint (in IP1) that performs further checks
+      // on the reference and marks it if needed.
+      auto base_reg =
+          Register::GetXRegFromCode(BakerReadBarrierFirstRegField::Decode(encoded_data));
+      CheckValidReg(base_reg.GetCode());
+      auto holder_reg =
+          Register::GetXRegFromCode(BakerReadBarrierSecondRegField::Decode(encoded_data));
+      CheckValidReg(holder_reg.GetCode());
+      UseScratchRegisterScope temps(assembler.GetVIXLAssembler());
+      temps.Exclude(ip0, ip1);
+      // If base_reg differs from holder_reg, the offset was too large and we must have
+      // emitted an explicit null check before the load. Otherwise, we need to null-check
+      // the holder as we do not necessarily do that check before going to the thunk.
+      vixl::aarch64::Label throw_npe;
+      if (holder_reg.Is(base_reg)) {
+        __ Cbz(holder_reg.W(), &throw_npe);
+      }
+      vixl::aarch64::Label slow_path;
+      MemOperand lock_word(holder_reg, mirror::Object::MonitorOffset().Int32Value());
+      EmitGrayCheckAndFastPath(assembler, base_reg, lock_word, &slow_path);
+      __ Bind(&slow_path);
+      MemOperand ldr_address(lr, BAKER_MARK_INTROSPECTION_FIELD_LDR_OFFSET);
+      __ Ldr(ip0.W(), ldr_address);         // Load the LDR (immediate) unsigned offset.
+      LoadReadBarrierMarkIntrospectionEntrypoint(assembler, ip1);
+      __ Ubfx(ip0.W(), ip0.W(), 10, 12);    // Extract the offset.
+      __ Ldr(ip0.W(), MemOperand(base_reg, ip0, LSL, 2));   // Load the reference.
+      // Do not unpoison. With heap poisoning enabled, the entrypoint expects a poisoned reference.
+      __ Br(ip1);                           // Jump to the entrypoint.
+      if (holder_reg.Is(base_reg)) {
+        // Add null check slow path. The stack map is at the address pointed to by LR.
+        __ Bind(&throw_npe);
+        int32_t offset = GetThreadOffset<kArm64PointerSize>(kQuickThrowNullPointer).Int32Value();
+        __ Ldr(ip0, MemOperand(/* Thread* */ vixl::aarch64::x19, offset));
+        __ Br(ip0);
+      }
+      break;
+    }
+    case BakerReadBarrierKind::kArray: {
+      auto base_reg =
+          Register::GetXRegFromCode(BakerReadBarrierFirstRegField::Decode(encoded_data));
+      CheckValidReg(base_reg.GetCode());
+      DCHECK_EQ(kInvalidEncodedReg, BakerReadBarrierSecondRegField::Decode(encoded_data));
+      UseScratchRegisterScope temps(assembler.GetVIXLAssembler());
+      temps.Exclude(ip0, ip1);
+      vixl::aarch64::Label slow_path;
+      int32_t data_offset =
+          mirror::Array::DataOffset(Primitive::ComponentSize(Primitive::kPrimNot)).Int32Value();
+      MemOperand lock_word(base_reg, mirror::Object::MonitorOffset().Int32Value() - data_offset);
+      DCHECK_LT(lock_word.GetOffset(), 0);
+      EmitGrayCheckAndFastPath(assembler, base_reg, lock_word, &slow_path);
+      __ Bind(&slow_path);
+      MemOperand ldr_address(lr, BAKER_MARK_INTROSPECTION_ARRAY_LDR_OFFSET);
+      __ Ldr(ip0.W(), ldr_address);         // Load the LDR (register) unsigned offset.
+      LoadReadBarrierMarkIntrospectionEntrypoint(assembler, ip1);
+      __ Ubfx(ip0, ip0, 16, 6);             // Extract the index register, plus 32 (bit 21 is set).
+      __ Bfi(ip1, ip0, 3, 6);               // Insert ip0 to the entrypoint address to create
+                                            // a switch case target based on the index register.
+      __ Mov(ip0, base_reg);                // Move the base register to ip0.
+      __ Br(ip1);                           // Jump to the entrypoint's array switch case.
+      break;
+    }
+    case BakerReadBarrierKind::kGcRoot: {
+      // Check if the reference needs to be marked and if so (i.e. not null, not marked yet
+      // and it does not have a forwarding address), call the correct introspection entrypoint;
+      // otherwise return the reference (or the extracted forwarding address).
+      // There is no gray bit check for GC roots.
+      auto root_reg =
+          Register::GetWRegFromCode(BakerReadBarrierFirstRegField::Decode(encoded_data));
+      CheckValidReg(root_reg.GetCode());
+      DCHECK_EQ(kInvalidEncodedReg, BakerReadBarrierSecondRegField::Decode(encoded_data));
+      UseScratchRegisterScope temps(assembler.GetVIXLAssembler());
+      temps.Exclude(ip0, ip1);
+      vixl::aarch64::Label return_label, not_marked, forwarding_address;
+      __ Cbz(root_reg, &return_label);
+      MemOperand lock_word(root_reg.X(), mirror::Object::MonitorOffset().Int32Value());
+      __ Ldr(ip0.W(), lock_word);
+      __ Tbz(ip0.W(), LockWord::kMarkBitStateShift, &not_marked);
+      __ Bind(&return_label);
+      __ Br(lr);
+      __ Bind(&not_marked);
+      __ Tst(ip0.W(), Operand(ip0.W(), LSL, 1));
+      __ B(&forwarding_address, mi);
+      LoadReadBarrierMarkIntrospectionEntrypoint(assembler, ip1);
+      // Adjust the art_quick_read_barrier_mark_introspection address in IP1 to
+      // art_quick_read_barrier_mark_introspection_gc_roots.
+      __ Add(ip1, ip1, Operand(BAKER_MARK_INTROSPECTION_GC_ROOT_ENTRYPOINT_OFFSET));
+      __ Mov(ip0.W(), root_reg);
+      __ Br(ip1);
+      __ Bind(&forwarding_address);
+      __ Lsl(root_reg, ip0.W(), LockWord::kForwardingAddressShift);
+      __ Br(lr);
+      break;
+    }
+    default:
+      LOG(FATAL) << "Unexpected kind: " << static_cast<uint32_t>(kind);
+      UNREACHABLE();
+  }
+}
+
+std::vector<uint8_t> Arm64RelativePatcher::CompileThunk(const ThunkKey& key) {
+  ArenaPool pool;
+  ArenaAllocator allocator(&pool);
+  arm64::Arm64Assembler assembler(&allocator);
+
+  switch (key.GetType()) {
+    case ThunkType::kMethodCall: {
+      // The thunk just uses the entry point in the ArtMethod. This works even for calls
+      // to the generic JNI and interpreter trampolines.
+      Offset offset(ArtMethod::EntryPointFromQuickCompiledCodeOffset(
+          kArm64PointerSize).Int32Value());
+      assembler.JumpTo(ManagedRegister(arm64::X0), offset, ManagedRegister(arm64::IP0));
+      break;
+    }
+    case ThunkType::kBakerReadBarrier: {
+      CompileBakerReadBarrierThunk(assembler, key.GetCustomValue1());
+      break;
+    }
+  }
+
+  // Ensure we emit the literal pool.
+  assembler.FinalizeCode();
+  std::vector<uint8_t> thunk_code(assembler.CodeSize());
+  MemoryRegion code(thunk_code.data(), thunk_code.size());
+  assembler.FinalizeInstructions(code);
+  return thunk_code;
+}
+
+std::string Arm64RelativePatcher::GetThunkDebugName(const ThunkKey& key) {
+  switch (key.GetType()) {
+    case ThunkType::kMethodCall:
+      return "MethodCallThunk";
+
+    case ThunkType::kBakerReadBarrier: {
+      uint32_t encoded_data = key.GetCustomValue1();
+      BakerReadBarrierKind kind = BakerReadBarrierKindField::Decode(encoded_data);
+      std::ostringstream oss;
+      oss << "BakerReadBarrierThunk";
+      switch (kind) {
+        case BakerReadBarrierKind::kField:
+          oss << "Field_r" << BakerReadBarrierFirstRegField::Decode(encoded_data)
+              << "_r" << BakerReadBarrierSecondRegField::Decode(encoded_data);
+          break;
+        case BakerReadBarrierKind::kArray:
+          oss << "Array_r" << BakerReadBarrierFirstRegField::Decode(encoded_data);
+          DCHECK_EQ(kInvalidEncodedReg, BakerReadBarrierSecondRegField::Decode(encoded_data));
+          break;
+        case BakerReadBarrierKind::kGcRoot:
+          oss << "GcRoot_r" << BakerReadBarrierFirstRegField::Decode(encoded_data);
+          DCHECK_EQ(kInvalidEncodedReg, BakerReadBarrierSecondRegField::Decode(encoded_data));
+          break;
+      }
+      return oss.str();
+    }
+  }
+}
+
+#undef __
 
 uint32_t Arm64RelativePatcher::MaxPositiveDisplacement(const ThunkKey& key) {
   switch (key.GetType()) {

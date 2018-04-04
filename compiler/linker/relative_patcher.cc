@@ -43,8 +43,7 @@ namespace linker {
 std::unique_ptr<RelativePatcher> RelativePatcher::Create(
     InstructionSet instruction_set,
     const InstructionSetFeatures* features,
-    RelativePatcherThunkProvider* thunk_provider,
-    RelativePatcherTargetProvider* target_provider) {
+    RelativePatcherTargetProvider* provider) {
   class RelativePatcherNone FINAL : public RelativePatcher {
    public:
     RelativePatcherNone() { }
@@ -93,8 +92,7 @@ std::unique_ptr<RelativePatcher> RelativePatcher::Create(
   };
 
   UNUSED(features);
-  UNUSED(thunk_provider);
-  UNUSED(target_provider);
+  UNUSED(provider);
   switch (instruction_set) {
 #ifdef ART_ENABLE_CODEGEN_x86
     case InstructionSet::kX86:
@@ -108,15 +106,12 @@ std::unique_ptr<RelativePatcher> RelativePatcher::Create(
     case InstructionSet::kArm:
       // Fall through: we generate Thumb2 code for "arm".
     case InstructionSet::kThumb2:
-      return std::unique_ptr<RelativePatcher>(
-          new Thumb2RelativePatcher(thunk_provider, target_provider));
+      return std::unique_ptr<RelativePatcher>(new Thumb2RelativePatcher(provider));
 #endif
 #ifdef ART_ENABLE_CODEGEN_arm64
     case InstructionSet::kArm64:
       return std::unique_ptr<RelativePatcher>(
-          new Arm64RelativePatcher(thunk_provider,
-                                   target_provider,
-                                   features->AsArm64InstructionSetFeatures()));
+          new Arm64RelativePatcher(provider, features->AsArm64InstructionSetFeatures()));
 #endif
 #ifdef ART_ENABLE_CODEGEN_mips
     case InstructionSet::kMips:

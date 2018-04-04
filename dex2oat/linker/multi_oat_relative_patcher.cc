@@ -20,28 +20,14 @@
 
 #include "base/bit_utils.h"
 #include "globals.h"
-#include "driver/compiled_method_storage.h"
 
 namespace art {
 namespace linker {
 
-void MultiOatRelativePatcher::ThunkProvider::GetThunkCode(const LinkerPatch& patch,
-                                                          /*out*/ ArrayRef<const uint8_t>* code,
-                                                          /*out*/ std::string* debug_name) {
-  *code = storage_->GetThunkCode(patch, debug_name);
-  DCHECK(!code->empty());
-}
-
-
 MultiOatRelativePatcher::MultiOatRelativePatcher(InstructionSet instruction_set,
-                                                 const InstructionSetFeatures* features,
-                                                 CompiledMethodStorage* storage)
-    : thunk_provider_(storage),
-      method_offset_map_(),
-      relative_patcher_(RelativePatcher::Create(instruction_set,
-                                                features,
-                                                &thunk_provider_,
-                                                &method_offset_map_)),
+                                                 const InstructionSetFeatures* features)
+    : method_offset_map_(),
+      relative_patcher_(RelativePatcher::Create(instruction_set, features, &method_offset_map_)),
       adjustment_(0u),
       instruction_set_(instruction_set),
       start_size_code_alignment_(0u),
