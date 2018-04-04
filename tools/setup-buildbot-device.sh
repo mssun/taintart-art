@@ -57,14 +57,19 @@ echo -e "${green}Setting local loopback${nc}"
 adb shell ifconfig lo up
 adb shell ifconfig
 
-# When netd is running, some libcore and JDWP tests fail with this
-# exception (b/74725685):
+# Ensure netd is running, as otherwise the logcat would be spammed
+# with the following messages on devices running Android O:
 #
-#   android.system.ErrnoException: connect failed: EBADMSG (Not a data message)
+#   E NetdConnector: Communications error: java.io.IOException: No such file or directory
+#   E mDnsConnector: Communications error: java.io.IOException: No such file or directory
 #
-# Turn it off to make these tests pass.
-echo -e "${green}Turning off netd${nc}"
-adb shell stop netd
+# Netd was initially disabled as an attempt to solve issues with
+# network-related libcore and JDWP tests failing on devices running
+# Android O (MR1) (see b/74725685). These tests are currently
+# disabled. When a better solution has been found, we should remove
+# the following lines.
+echo -e "${green}Turning on netd${nc}"
+adb shell start netd
 adb shell getprop init.svc.netd
 
 echo -e "${green}List properties${nc}"
