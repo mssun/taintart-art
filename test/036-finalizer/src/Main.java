@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
@@ -74,6 +75,7 @@ public class Main {
         // Reference ft so we are sure the WeakReference cannot be cleared.
         FinalizerTest keepLive = wimp.get();
         System.out.println("wimp: " + wimpString(wimp));
+        Reference.reachabilityFence(keepLive);
     }
 
     public static void main(String[] args) {

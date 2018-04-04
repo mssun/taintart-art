@@ -399,6 +399,16 @@ VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleWeakCompareAndSetAcquire)
 VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleWeakCompareAndSetPlain)
 VAR_HANDLE_ACCESSOR_INTRINSIC(VarHandleWeakCompareAndSetRelease)
 
+static ALWAYS_INLINE bool MterpReachabilityFence(ShadowFrame* shadow_frame ATTRIBUTE_UNUSED,
+                                                 const Instruction* inst ATTRIBUTE_UNUSED,
+                                                 uint16_t inst_data ATTRIBUTE_UNUSED,
+                                                 JValue* result_register ATTRIBUTE_UNUSED)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  // Do nothing; Its only purpose is to keep the argument reference live
+  // at preceding suspend points. That's automatic in the interpreter.
+  return true;
+}
+
 // Macro to help keep track of what's left to implement.
 #define UNIMPLEMENTED_CASE(name)    \
     case Intrinsics::k##name:       \
@@ -499,6 +509,7 @@ bool MterpHandleIntrinsic(ShadowFrame* shadow_frame,
     UNIMPLEMENTED_CASE(MemoryPokeIntNative /* (JI)V */)
     UNIMPLEMENTED_CASE(MemoryPokeLongNative /* (JJ)V */)
     UNIMPLEMENTED_CASE(MemoryPokeShortNative /* (JS)V */)
+    INTRINSIC_CASE(ReachabilityFence /* (Ljava/lang/Object;)V */)
     INTRINSIC_CASE(StringCharAt)
     INTRINSIC_CASE(StringCompareTo)
     INTRINSIC_CASE(StringEquals)
