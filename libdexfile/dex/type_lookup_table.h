@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_TYPE_LOOKUP_TABLE_H_
-#define ART_RUNTIME_TYPE_LOOKUP_TABLE_H_
+#ifndef ART_LIBDEXFILE_DEX_TYPE_LOOKUP_TABLE_H_
+#define ART_LIBDEXFILE_DEX_TYPE_LOOKUP_TABLE_H_
 
 #include "base/leb128.h"
 #include "dex/dex_file_types.h"
@@ -172,4 +172,4 @@ class TypeLookupTable {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_TYPE_LOOKUP_TABLE_H_
+#endif  // ART_LIBDEXFILE_DEX_TYPE_LOOKUP_TABLE_H_
