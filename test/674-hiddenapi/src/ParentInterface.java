@@ -23,9 +23,9 @@ public interface ParentInterface {
 
   // INSTANCE METHOD
   int methodPublicWhitelist();
-  int methodPublicBlacklist();
   int methodPublicLightGreylist();
   int methodPublicDarkGreylist();
+  int methodPublicBlacklist();
 
   // STATIC METHOD
   static int methodPublicStaticWhitelist() { return 21; }

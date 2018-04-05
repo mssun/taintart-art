@@ -53,6 +53,7 @@ enum Action {
 };
 
 enum AccessMethod {
+  kNone,  // internal test that does not correspond to an actual access by app
   kReflection,
   kJNI,
   kLinking,
