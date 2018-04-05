@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_BASE_ARENA_OBJECT_H_
-#define ART_RUNTIME_BASE_ARENA_OBJECT_H_
+#ifndef ART_LIBARTBASE_BASE_ARENA_OBJECT_H_
+#define ART_LIBARTBASE_BASE_ARENA_OBJECT_H_
 
 #include <android-base/logging.h>
 
@@ -69,4 +69,4 @@ class DeletableArenaObject {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_BASE_ARENA_OBJECT_H_
+#endif  // ART_LIBARTBASE_BASE_ARENA_OBJECT_H_

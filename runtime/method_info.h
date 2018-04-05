@@ -21,7 +21,7 @@
 
 #include "base/leb128.h"
 #include "base/macros.h"
-#include "memory_region.h"
+#include "base/memory_region.h"
 
 namespace art {
 

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_BASE_SCOPED_ARENA_ALLOCATOR_H_
-#define ART_RUNTIME_BASE_SCOPED_ARENA_ALLOCATOR_H_
+#ifndef ART_LIBARTBASE_BASE_SCOPED_ARENA_ALLOCATOR_H_
+#define ART_LIBARTBASE_BASE_SCOPED_ARENA_ALLOCATOR_H_
 
 #include <android-base/logging.h>
 
@@ -185,4 +185,4 @@ class ScopedArenaAllocator
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_BASE_SCOPED_ARENA_ALLOCATOR_H_
+#endif  // ART_LIBARTBASE_BASE_SCOPED_ARENA_ALLOCATOR_H_

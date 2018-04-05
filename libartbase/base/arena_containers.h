@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_BASE_ARENA_CONTAINERS_H_
-#define ART_RUNTIME_BASE_ARENA_CONTAINERS_H_
+#ifndef ART_LIBARTBASE_BASE_ARENA_CONTAINERS_H_
+#define ART_LIBARTBASE_BASE_ARENA_CONTAINERS_H_
 
 #include <deque>
 #include <queue>
@@ -241,4 +241,4 @@ inline ArenaAllocatorAdapter<void> ArenaAllocator::Adapter(ArenaAllocKind kind) 
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_BASE_ARENA_CONTAINERS_H_
+#endif  // ART_LIBARTBASE_BASE_ARENA_CONTAINERS_H_
