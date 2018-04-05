@@ -34,10 +34,8 @@
 
 #include "base/arena_allocator.h"
 #include "base/dumpable.h"
-#include "base/file_utils.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/malloc_arena_pool.h"
-#include "base/mutex.h"
 #include "base/os.h"
 #include "base/safe_map.h"
 #include "base/scoped_flock.h"

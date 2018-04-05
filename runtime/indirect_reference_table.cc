@@ -16,7 +16,7 @@
 
 #include "indirect_reference_table-inl.h"
 
-#include "base/dumpable-inl.h"
+#include "base/mutator_locked_dumpable.h"
 #include "base/systrace.h"
 #include "base/utils.h"
 #include "java_vm_ext.h"

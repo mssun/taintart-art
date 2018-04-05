@@ -38,8 +38,8 @@
 #include "x86_64/jni_macro_assembler_x86_64.h"
 #endif
 #include "base/casts.h"
+#include "base/memory_region.h"
 #include "globals.h"
-#include "memory_region.h"
 
 namespace art {
 

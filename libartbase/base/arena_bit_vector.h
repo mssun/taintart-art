@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_BASE_ARENA_BIT_VECTOR_H_
-#define ART_RUNTIME_BASE_ARENA_BIT_VECTOR_H_
+#ifndef ART_LIBARTBASE_BASE_ARENA_BIT_VECTOR_H_
+#define ART_LIBARTBASE_BASE_ARENA_BIT_VECTOR_H_
 
 #include "base/arena_object.h"
 #include "base/bit_vector.h"
@@ -55,4 +55,4 @@ class ArenaBitVector : public BitVector, public ArenaObject<kArenaAllocGrowableB
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_BASE_ARENA_BIT_VECTOR_H_
+#endif  // ART_LIBARTBASE_BASE_ARENA_BIT_VECTOR_H_

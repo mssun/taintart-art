@@ -28,6 +28,7 @@
 #include "base/logging.h"  // For VLOG.
 #include "base/macros.h"
 #include "base/malloc_arena_pool.h"
+#include "base/memory_region.h"
 #include "base/utils.h"
 #include "calling_convention.h"
 #include "class_linker.h"
@@ -37,7 +38,6 @@
 #include "driver/compiler_options.h"
 #include "entrypoints/quick/quick_entrypoints.h"
 #include "jni_env_ext.h"
-#include "memory_region.h"
 #include "thread.h"
 #include "utils/arm/managed_register_arm.h"
 #include "utils/arm64/managed_register_arm64.h"
