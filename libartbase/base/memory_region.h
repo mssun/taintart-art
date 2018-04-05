@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_MEMORY_REGION_H_
-#define ART_RUNTIME_MEMORY_REGION_H_
+#ifndef ART_LIBARTBASE_BASE_MEMORY_REGION_H_
+#define ART_LIBARTBASE_BASE_MEMORY_REGION_H_
 
 #include <stdint.h>
 #include <type_traits>
 
 #include <android-base/logging.h>
 
-#include "arch/instruction_set.h"
 #include "base/bit_utils.h"
 #include "base/casts.h"
+#include "base/enums.h"
 #include "base/macros.h"
 #include "base/value_object.h"
 #include "globals.h"
@@ -211,9 +211,8 @@ class MemoryRegion FINAL : public ValueObject {
 
   // Is `address` aligned on a machine word?
   template<typename T> static constexpr bool IsWordAligned(const T* address) {
-    // Word alignment in bytes.
-    size_t kWordAlignment = static_cast<size_t>(GetInstructionSetPointerSize(kRuntimeISA));
-    return IsAlignedParam(address, kWordAlignment);
+    // Word alignment in bytes.  Determined from pointer size.
+    return IsAligned<kRuntimePointerSize>(address);
   }
 
   void* pointer_;
@@ -222,4 +221,4 @@ class MemoryRegion FINAL : public ValueObject {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_MEMORY_REGION_H_
+#endif  // ART_LIBARTBASE_BASE_MEMORY_REGION_H_
