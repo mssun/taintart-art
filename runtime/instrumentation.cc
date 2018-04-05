@@ -139,10 +139,13 @@ static void UpdateEntrypoints(ArtMethod* method, const void* quick_code)
 
 bool Instrumentation::NeedDebugVersionFor(ArtMethod* method) const
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  return Runtime::Current()->IsJavaDebuggable() &&
+  art::Runtime* runtime = Runtime::Current();
+  // If anything says we need the debug version or we are debuggable we will need the debug version
+  // of the method.
+  return (runtime->GetRuntimeCallbacks()->MethodNeedsDebugVersion(method) ||
+          runtime->IsJavaDebuggable()) &&
          !method->IsNative() &&
-         !method->IsProxyMethod() &&
-         Runtime::Current()->GetRuntimeCallbacks()->IsMethodBeingInspected(method);
+         !method->IsProxyMethod();
 }
 
 void Instrumentation::InstallStubsForMethod(ArtMethod* method) {
