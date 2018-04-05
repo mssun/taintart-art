@@ -7936,8 +7936,8 @@ ArtMethod* ClassLinker::FindResolvedMethod(ObjPtr<mirror::Class> klass,
   }
   DCHECK(resolved == nullptr || resolved->GetDeclaringClassUnchecked() != nullptr);
   if (resolved != nullptr &&
-      hiddenapi::ShouldBlockAccessToMember(
-          resolved, class_loader, dex_cache, hiddenapi::kLinking)) {
+      hiddenapi::GetMemberAction(
+          resolved, class_loader, dex_cache, hiddenapi::kLinking) == hiddenapi::kDeny) {
     resolved = nullptr;
   }
   if (resolved != nullptr) {
@@ -8079,8 +8079,8 @@ ArtMethod* ClassLinker::ResolveMethodWithoutInvokeType(uint32_t method_idx,
     resolved = klass->FindClassMethod(dex_cache.Get(), method_idx, image_pointer_size_);
   }
   if (resolved != nullptr &&
-      hiddenapi::ShouldBlockAccessToMember(
-          resolved, class_loader.Get(), dex_cache.Get(), hiddenapi::kLinking)) {
+      hiddenapi::GetMemberAction(
+          resolved, class_loader.Get(), dex_cache.Get(), hiddenapi::kLinking) == hiddenapi::kDeny) {
     resolved = nullptr;
   }
   return resolved;
@@ -8159,8 +8159,8 @@ ArtField* ClassLinker::ResolveField(uint32_t field_idx,
   }
 
   if (resolved == nullptr ||
-      hiddenapi::ShouldBlockAccessToMember(
-          resolved, class_loader.Get(), dex_cache.Get(), hiddenapi::kLinking)) {
+      hiddenapi::GetMemberAction(
+          resolved, class_loader.Get(), dex_cache.Get(), hiddenapi::kLinking) == hiddenapi::kDeny) {
     const char* name = dex_file.GetFieldName(field_id);
     const char* type = dex_file.GetFieldTypeDescriptor(field_id);
     ThrowNoSuchFieldError(is_static ? "static " : "instance ", klass, type, name);
@@ -8193,8 +8193,8 @@ ArtField* ClassLinker::ResolveFieldJLS(uint32_t field_idx,
   StringPiece type(dex_file.GetFieldTypeDescriptor(field_id));
   resolved = mirror::Class::FindField(self, klass, name, type);
   if (resolved != nullptr &&
-      hiddenapi::ShouldBlockAccessToMember(
-          resolved, class_loader.Get(), dex_cache.Get(), hiddenapi::kLinking)) {
+      hiddenapi::GetMemberAction(
+          resolved, class_loader.Get(), dex_cache.Get(), hiddenapi::kLinking) == hiddenapi::kDeny) {
     resolved = nullptr;
   }
   if (resolved != nullptr) {
