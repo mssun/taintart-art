@@ -445,6 +445,11 @@ OatWriter::OatWriter(bool compiling_boot_image,
     absolute_patch_locations_(),
     profile_compilation_info_(info),
     compact_dex_level_(compact_dex_level) {
+  // If we have a profile, always use at least the default compact dex level. The reason behind
+  // this is that CompactDex conversion is not more expensive than normal dexlayout.
+  if (info != nullptr && compact_dex_level_ == CompactDexLevel::kCompactDexLevelNone) {
+    compact_dex_level_ = kDefaultCompactDexLevel;
+  }
 }
 
 static bool ValidateDexFileHeader(const uint8_t* raw_header, const char* location) {
