@@ -381,10 +381,8 @@ static void SetupCommonRedefine() {
 
 static void SetupCommonRetransform() {
   SetStandardCapabilities(jvmti_env);
-  jvmtiEventCallbacks cb;
-  memset(&cb, 0, sizeof(cb));
-  cb.ClassFileLoadHook = common_retransform::CommonClassFileLoadHookRetransformable;
-  jvmtiError res = jvmti_env->SetEventCallbacks(&cb, sizeof(cb));
+  current_callbacks.ClassFileLoadHook = common_retransform::CommonClassFileLoadHookRetransformable;
+  jvmtiError res = jvmti_env->SetEventCallbacks(&current_callbacks, sizeof(current_callbacks));
   CHECK_EQ(res, JVMTI_ERROR_NONE);
   common_retransform::gTransformations.clear();
 }
@@ -397,10 +395,8 @@ static void SetupCommonTransform() {
   jvmti_env->AddCapabilities(&caps);
 
   // Use the same callback as the retransform test.
-  jvmtiEventCallbacks cb;
-  memset(&cb, 0, sizeof(cb));
-  cb.ClassFileLoadHook = common_retransform::CommonClassFileLoadHookRetransformable;
-  jvmtiError res = jvmti_env->SetEventCallbacks(&cb, sizeof(cb));
+  current_callbacks.ClassFileLoadHook = common_retransform::CommonClassFileLoadHookRetransformable;
+  jvmtiError res = jvmti_env->SetEventCallbacks(&current_callbacks, sizeof(current_callbacks));
   CHECK_EQ(res, JVMTI_ERROR_NONE);
   common_retransform::gTransformations.clear();
 }

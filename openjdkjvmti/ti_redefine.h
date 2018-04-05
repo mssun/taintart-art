@@ -98,6 +98,10 @@ class Redefiner {
                                                        art::ArrayRef<const unsigned char> data,
                                                        std::string* error_msg);
 
+  // Helper for checking if redefinition/retransformation is allowed.
+  static jvmtiError GetClassRedefinitionError(jclass klass, /*out*/std::string* error_msg)
+      REQUIRES(!art::Locks::mutator_lock_);
+
  private:
   class ClassRedefinition {
    public:
