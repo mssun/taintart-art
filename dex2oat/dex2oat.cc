@@ -454,7 +454,9 @@ NO_RETURN static void Usage(const char* fmt, ...) {
   UsageError("      The image writer will group them together.");
   UsageError("");
   UsageError("  --compact-dex-level=none|fast: None avoids generating compact dex, fast");
-  UsageError("      generates compact dex with low compile time.");
+  UsageError("      generates compact dex with low compile time. If speed-profile is specified as");
+  UsageError("      the compiler filter and the profile is not empty, the default compact dex");
+  UsageError("      level is always used.");
   UsageError("");
   UsageError("  --deduplicate-code=true|false: enable|disable code deduplication. Deduplicated");
   UsageError("      code will have an arbitrary symbol tagged with [DEDUPED].");
