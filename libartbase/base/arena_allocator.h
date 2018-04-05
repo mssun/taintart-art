@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_BASE_ARENA_ALLOCATOR_H_
-#define ART_RUNTIME_BASE_ARENA_ALLOCATOR_H_
+#ifndef ART_LIBARTBASE_BASE_ARENA_ALLOCATOR_H_
+#define ART_LIBARTBASE_BASE_ARENA_ALLOCATOR_H_
 
 #include <stddef.h>
 #include <stdint.h>
@@ -423,4 +423,4 @@ class MemStats {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_BASE_ARENA_ALLOCATOR_H_
+#endif  // ART_LIBARTBASE_BASE_ARENA_ALLOCATOR_H_

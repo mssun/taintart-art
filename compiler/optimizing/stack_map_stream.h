@@ -19,9 +19,9 @@
 
 #include "base/bit_vector-inl.h"
 #include "base/hash_map.h"
+#include "base/memory_region.h"
 #include "base/scoped_arena_containers.h"
 #include "base/value_object.h"
-#include "memory_region.h"
 #include "method_info.h"
 #include "nodes.h"
 #include "stack_map.h"

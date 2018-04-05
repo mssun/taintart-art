@@ -17,8 +17,8 @@
 #include "assembler_x86.h"
 
 #include "base/casts.h"
+#include "base/memory_region.h"
 #include "entrypoints/quick/quick_entrypoints.h"
-#include "memory_region.h"
 #include "thread.h"
 
 namespace art {

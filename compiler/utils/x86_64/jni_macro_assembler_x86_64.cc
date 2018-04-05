@@ -17,8 +17,8 @@
 #include "jni_macro_assembler_x86_64.h"
 
 #include "base/casts.h"
+#include "base/memory_region.h"
 #include "entrypoints/quick/quick_entrypoints.h"
-#include "memory_region.h"
 #include "thread.h"
 
 namespace art {
