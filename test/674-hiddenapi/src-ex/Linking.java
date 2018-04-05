@@ -174,6 +174,32 @@ class LinkMethodBlacklist {
   }
 }
 
+// INVOKE INSTANCE INTERFACE METHOD
+
+class LinkMethodInterfaceWhitelist {
+  public static int access() {
+    return DummyClass.getInterfaceInstance().methodPublicWhitelist();
+  }
+}
+
+class LinkMethodInterfaceLightGreylist {
+  public static int access() {
+    return DummyClass.getInterfaceInstance().methodPublicLightGreylist();
+  }
+}
+
+class LinkMethodInterfaceDarkGreylist {
+  public static int access() {
+    return DummyClass.getInterfaceInstance().methodPublicDarkGreylist();
+  }
+}
+
+class LinkMethodInterfaceBlacklist {
+  public static int access() {
+    return DummyClass.getInterfaceInstance().methodPublicBlacklist();
+  }
+}
+
 // INVOKE STATIC METHOD
 
 class LinkMethodStaticWhitelist {
@@ -197,5 +223,31 @@ class LinkMethodStaticDarkGreylist {
 class LinkMethodStaticBlacklist {
   public static int access() {
     return ParentClass.methodPublicStaticBlacklist();
+  }
+}
+
+// INVOKE INTERFACE STATIC METHOD
+
+class LinkMethodInterfaceStaticWhitelist {
+  public static int access() {
+    return ParentInterface.methodPublicStaticWhitelist();
+  }
+}
+
+class LinkMethodInterfaceStaticLightGreylist {
+  public static int access() {
+    return ParentInterface.methodPublicStaticLightGreylist();
+  }
+}
+
+class LinkMethodInterfaceStaticDarkGreylist {
+  public static int access() {
+    return ParentInterface.methodPublicStaticDarkGreylist();
+  }
+}
+
+class LinkMethodInterfaceStaticBlacklist {
+  public static int access() {
+    return ParentInterface.methodPublicStaticBlacklist();
   }
 }
