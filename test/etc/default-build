@@ -145,7 +145,7 @@ JAVAC_EXPERIMENTAL_ARGS["agents"]="-source 1.8 -target 1.8"
 declare -A DX_EXPERIMENTAL_ARGS
 DX_EXPERIMENTAL_ARGS["method-handles"]="--min-sdk-version=26"
 DX_EXPERIMENTAL_ARGS["parameter-annotations"]="--min-sdk-version=25"
-DX_EXPERIMENTAL_ARGS["var-handles"]="--min-sdk-version=26"
+DX_EXPERIMENTAL_ARGS["var-handles"]="--min-sdk-version=28"
 
 while true; do
   if [ "x$1" = "x--dx-option" ]; then
