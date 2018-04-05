@@ -98,8 +98,13 @@ ALWAYS_INLINE static bool ShouldEnforceHiddenApi(Thread* self)
 template<typename T>
 ALWAYS_INLINE static bool ShouldBlockAccessToMember(T* member, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  return hiddenapi::ShouldBlockAccessToMember(
+  hiddenapi::Action action = hiddenapi::GetMemberAction(
       member, self, IsCallerInPlatformDex, hiddenapi::kReflection);
+  if (action != hiddenapi::kAllow) {
+    hiddenapi::NotifyHiddenApiListener(member);
+  }
+
+  return action == hiddenapi::kDeny;
 }
 
 // Returns true if a class member should be discoverable with reflection given
@@ -113,7 +118,8 @@ ALWAYS_INLINE static bool IsDiscoverable(bool public_only,
     return false;
   }
 
-  if (enforce_hidden_api && hiddenapi::GetMemberAction(access_flags) == hiddenapi::kDeny) {
+  if (enforce_hidden_api &&
+      hiddenapi::GetActionFromAccessFlags(access_flags) == hiddenapi::kDeny) {
     return false;
   }
 
@@ -433,12 +439,14 @@ static jobject Class_getPublicFieldRecursive(JNIEnv* env, jobject javaThis, jstr
     return nullptr;
   }
 
-  mirror::Field* field = GetPublicFieldRecursive(
-      soa.Self(), DecodeClass(soa, javaThis), name_string);
-  if (field == nullptr || ShouldBlockAccessToMember(field->GetArtField(), soa.Self())) {
+  StackHandleScope<1> hs(soa.Self());
+  Handle<mirror::Field> field = hs.NewHandle(GetPublicFieldRecursive(
+      soa.Self(), DecodeClass(soa, javaThis), name_string));
+  if (field.Get() == nullptr ||
+      ShouldBlockAccessToMember(field->GetArtField(), soa.Self())) {
     return nullptr;
   }
-  return soa.AddLocalReference<jobject>(field);
+  return soa.AddLocalReference<jobject>(field.Get());
 }
 
 static jobject Class_getDeclaredField(JNIEnv* env, jobject javaThis, jstring name) {
@@ -477,15 +485,17 @@ static jobject Class_getDeclaredConstructorInternal(
   ScopedFastNativeObjectAccess soa(env);
   DCHECK_EQ(Runtime::Current()->GetClassLinker()->GetImagePointerSize(), kRuntimePointerSize);
   DCHECK(!Runtime::Current()->IsActiveTransaction());
-  ObjPtr<mirror::Constructor> result =
+
+  StackHandleScope<1> hs(soa.Self());
+  Handle<mirror::Constructor> result = hs.NewHandle(
       mirror::Class::GetDeclaredConstructorInternal<kRuntimePointerSize, false>(
       soa.Self(),
       DecodeClass(soa, javaThis),
-      soa.Decode<mirror::ObjectArray<mirror::Class>>(args));
+      soa.Decode<mirror::ObjectArray<mirror::Class>>(args)));
   if (result == nullptr || ShouldBlockAccessToMember(result->GetArtMethod(), soa.Self())) {
     return nullptr;
   }
-  return soa.AddLocalReference<jobject>(result);
+  return soa.AddLocalReference<jobject>(result.Get());
 }
 
 static ALWAYS_INLINE inline bool MethodMatchesConstructor(
@@ -535,18 +545,19 @@ static jobjectArray Class_getDeclaredConstructorsInternal(
 static jobject Class_getDeclaredMethodInternal(JNIEnv* env, jobject javaThis,
                                                jstring name, jobjectArray args) {
   ScopedFastNativeObjectAccess soa(env);
+  StackHandleScope<1> hs(soa.Self());
   DCHECK_EQ(Runtime::Current()->GetClassLinker()->GetImagePointerSize(), kRuntimePointerSize);
   DCHECK(!Runtime::Current()->IsActiveTransaction());
-  ObjPtr<mirror::Method> result =
+  Handle<mirror::Method> result = hs.NewHandle(
       mirror::Class::GetDeclaredMethodInternal<kRuntimePointerSize, false>(
           soa.Self(),
           DecodeClass(soa, javaThis),
           soa.Decode<mirror::String>(name),
-          soa.Decode<mirror::ObjectArray<mirror::Class>>(args));
+          soa.Decode<mirror::ObjectArray<mirror::Class>>(args)));
   if (result == nullptr || ShouldBlockAccessToMember(result->GetArtMethod(), soa.Self())) {
     return nullptr;
   }
-  return soa.AddLocalReference<jobject>(result);
+  return soa.AddLocalReference<jobject>(result.Get());
 }
 
 static jobjectArray Class_getDeclaredMethodsUnchecked(JNIEnv* env, jobject javaThis,
