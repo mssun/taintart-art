@@ -26,6 +26,7 @@
 #include <fstream>
 #include <iterator>
 
+#include "base/malloc_arena_pool.h"
 #include "assembler_test_base.h"
 #include "common_runtime_test.h"  // For ScratchFile
 
@@ -1606,7 +1607,7 @@ class AssemblerTest : public testing::Test {
 
   static constexpr size_t kWarnManyCombinationsThreshold = 500;
 
-  ArenaPool pool_;
+  MallocArenaPool pool_;
   std::unique_ptr<ArenaAllocator> allocator_;
   std::unique_ptr<Ass> assembler_;
   std::unique_ptr<AssemblerTestInfrastructure> test_helper_;

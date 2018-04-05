@@ -16,6 +16,7 @@
 
 #include "base/arena_allocator-inl.h"
 #include "base/arena_bit_vector.h"
+#include "base/malloc_arena_pool.h"
 #include "base/memory_tool.h"
 #include "gtest/gtest.h"
 
@@ -33,7 +34,7 @@ class ArenaAllocatorTest : public testing::Test {
 };
 
 TEST_F(ArenaAllocatorTest, Test) {
-  ArenaPool pool;
+  MallocArenaPool pool;
   ArenaAllocator allocator(&pool);
   ArenaBitVector bv(&allocator, 10, true);
   bv.SetBit(5);
@@ -44,7 +45,7 @@ TEST_F(ArenaAllocatorTest, Test) {
 
 TEST_F(ArenaAllocatorTest, MakeDefined) {
   // Regression test to make sure we mark the allocated area defined.
-  ArenaPool pool;
+  MallocArenaPool pool;
   static constexpr size_t kSmallArraySize = 10;
   static constexpr size_t kLargeArraySize = 50;
   uint32_t* small_array;
@@ -71,7 +72,7 @@ TEST_F(ArenaAllocatorTest, LargeAllocations) {
   }
 
   {
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaAllocator allocator(&pool);
     // Note: Leaving some space for memory tool red zones.
     void* alloc1 = allocator.Alloc(arena_allocator::kArenaDefaultSize * 5 / 8);
@@ -80,7 +81,7 @@ TEST_F(ArenaAllocatorTest, LargeAllocations) {
     ASSERT_EQ(1u, NumberOfArenas(&allocator));
   }
   {
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaAllocator allocator(&pool);
     void* alloc1 = allocator.Alloc(arena_allocator::kArenaDefaultSize * 13 / 16);
     void* alloc2 = allocator.Alloc(arena_allocator::kArenaDefaultSize * 11 / 16);
@@ -92,7 +93,7 @@ TEST_F(ArenaAllocatorTest, LargeAllocations) {
     ASSERT_EQ(3u, NumberOfArenas(&allocator));
   }
   {
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaAllocator allocator(&pool);
     void* alloc1 = allocator.Alloc(arena_allocator::kArenaDefaultSize * 13 / 16);
     void* alloc2 = allocator.Alloc(arena_allocator::kArenaDefaultSize * 9 / 16);
@@ -105,7 +106,7 @@ TEST_F(ArenaAllocatorTest, LargeAllocations) {
     ASSERT_EQ(2u, NumberOfArenas(&allocator));
   }
   {
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaAllocator allocator(&pool);
     void* alloc1 = allocator.Alloc(arena_allocator::kArenaDefaultSize * 9 / 16);
     void* alloc2 = allocator.Alloc(arena_allocator::kArenaDefaultSize * 13 / 16);
@@ -118,7 +119,7 @@ TEST_F(ArenaAllocatorTest, LargeAllocations) {
     ASSERT_EQ(2u, NumberOfArenas(&allocator));
   }
   {
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaAllocator allocator(&pool);
     // Note: Leaving some space for memory tool red zones.
     for (size_t i = 0; i != 15; ++i) {
@@ -133,7 +134,7 @@ TEST_F(ArenaAllocatorTest, LargeAllocations) {
 }
 
 TEST_F(ArenaAllocatorTest, AllocAlignment) {
-  ArenaPool pool;
+  MallocArenaPool pool;
   ArenaAllocator allocator(&pool);
   for (size_t iterations = 0; iterations <= 10; ++iterations) {
     for (size_t size = 1; size <= ArenaAllocator::kAlignment + 1; ++size) {
@@ -153,7 +154,7 @@ TEST_F(ArenaAllocatorTest, ReallocReuse) {
 
   {
     // Case 1: small aligned allocation, aligned extend inside arena.
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaAllocator allocator(&pool);
 
     const size_t original_size = ArenaAllocator::kAlignment * 2;
@@ -166,7 +167,7 @@ TEST_F(ArenaAllocatorTest, ReallocReuse) {
 
   {
     // Case 2: small aligned allocation, non-aligned extend inside arena.
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaAllocator allocator(&pool);
 
     const size_t original_size = ArenaAllocator::kAlignment * 2;
@@ -179,7 +180,7 @@ TEST_F(ArenaAllocatorTest, ReallocReuse) {
 
   {
     // Case 3: small non-aligned allocation, aligned extend inside arena.
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaAllocator allocator(&pool);
 
     const size_t original_size = ArenaAllocator::kAlignment * 2 + (ArenaAllocator::kAlignment / 2);
@@ -192,7 +193,7 @@ TEST_F(ArenaAllocatorTest, ReallocReuse) {
 
   {
     // Case 4: small non-aligned allocation, aligned non-extend inside arena.
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaAllocator allocator(&pool);
 
     const size_t original_size = ArenaAllocator::kAlignment * 2 + (ArenaAllocator::kAlignment / 2);
@@ -208,7 +209,7 @@ TEST_F(ArenaAllocatorTest, ReallocReuse) {
 
   {
     // Case 5: large allocation, aligned extend into next arena.
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaAllocator allocator(&pool);
 
     const size_t original_size = arena_allocator::kArenaDefaultSize -
@@ -222,7 +223,7 @@ TEST_F(ArenaAllocatorTest, ReallocReuse) {
 
   {
     // Case 6: large allocation, non-aligned extend into next arena.
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaAllocator allocator(&pool);
 
     const size_t original_size = arena_allocator::kArenaDefaultSize -
@@ -241,7 +242,7 @@ TEST_F(ArenaAllocatorTest, ReallocReuse) {
 TEST_F(ArenaAllocatorTest, ReallocAlignment) {
   {
     // Case 1: small aligned allocation, aligned extend inside arena.
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaAllocator allocator(&pool);
 
     const size_t original_size = ArenaAllocator::kAlignment * 2;
@@ -258,7 +259,7 @@ TEST_F(ArenaAllocatorTest, ReallocAlignment) {
 
   {
     // Case 2: small aligned allocation, non-aligned extend inside arena.
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaAllocator allocator(&pool);
 
     const size_t original_size = ArenaAllocator::kAlignment * 2;
@@ -275,7 +276,7 @@ TEST_F(ArenaAllocatorTest, ReallocAlignment) {
 
   {
     // Case 3: small non-aligned allocation, aligned extend inside arena.
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaAllocator allocator(&pool);
 
     const size_t original_size = ArenaAllocator::kAlignment * 2 + (ArenaAllocator::kAlignment / 2);
@@ -292,7 +293,7 @@ TEST_F(ArenaAllocatorTest, ReallocAlignment) {
 
   {
     // Case 4: small non-aligned allocation, aligned non-extend inside arena.
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaAllocator allocator(&pool);
 
     const size_t original_size = ArenaAllocator::kAlignment * 2 + (ArenaAllocator::kAlignment / 2);
@@ -312,7 +313,7 @@ TEST_F(ArenaAllocatorTest, ReallocAlignment) {
 
   {
     // Case 5: large allocation, aligned extend into next arena.
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaAllocator allocator(&pool);
 
     const size_t original_size = arena_allocator::kArenaDefaultSize -
@@ -330,7 +331,7 @@ TEST_F(ArenaAllocatorTest, ReallocAlignment) {
 
   {
     // Case 6: large allocation, non-aligned extend into next arena.
-    ArenaPool pool;
+    MallocArenaPool pool;
     ArenaAllocator allocator(&pool);
 
     const size_t original_size = arena_allocator::kArenaDefaultSize -
