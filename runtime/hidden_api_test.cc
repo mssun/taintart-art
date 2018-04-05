@@ -22,6 +22,7 @@
 namespace art {
 
 using hiddenapi::detail::MemberSignature;
+using hiddenapi::GetActionFromAccessFlags;
 
 class HiddenApiTest : public CommonRuntimeTest {
  protected:
@@ -83,6 +84,39 @@ class HiddenApiTest : public CommonRuntimeTest {
   ArtMethod* class3_method1_;
   ArtMethod* class3_method1_i_;
 };
+
+TEST_F(HiddenApiTest, CheckGetActionFromRuntimeFlags) {
+  uint32_t whitelist = HiddenApiAccessFlags::EncodeForRuntime(0, HiddenApiAccessFlags::kWhitelist);
+  uint32_t lightgreylist =
+      HiddenApiAccessFlags::EncodeForRuntime(0, HiddenApiAccessFlags::kLightGreylist);
+  uint32_t darkgreylist =
+      HiddenApiAccessFlags::EncodeForRuntime(0, HiddenApiAccessFlags::kDarkGreylist);
+  uint32_t blacklist = HiddenApiAccessFlags::EncodeForRuntime(0, HiddenApiAccessFlags::kBlacklist);
+
+  runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kNoChecks);
+  ASSERT_EQ(GetActionFromAccessFlags(whitelist), hiddenapi::kAllow);
+  ASSERT_EQ(GetActionFromAccessFlags(lightgreylist), hiddenapi::kAllow);
+  ASSERT_EQ(GetActionFromAccessFlags(darkgreylist), hiddenapi::kAllow);
+  ASSERT_EQ(GetActionFromAccessFlags(blacklist), hiddenapi::kAllow);
+
+  runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kJustWarn);
+  ASSERT_EQ(GetActionFromAccessFlags(whitelist), hiddenapi::kAllow);
+  ASSERT_EQ(GetActionFromAccessFlags(lightgreylist), hiddenapi::kAllowButWarn);
+  ASSERT_EQ(GetActionFromAccessFlags(darkgreylist), hiddenapi::kAllowButWarn);
+  ASSERT_EQ(GetActionFromAccessFlags(blacklist), hiddenapi::kAllowButWarn);
+
+  runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kDarkGreyAndBlackList);
+  ASSERT_EQ(GetActionFromAccessFlags(whitelist), hiddenapi::kAllow);
+  ASSERT_EQ(GetActionFromAccessFlags(lightgreylist), hiddenapi::kAllowButWarn);
+  ASSERT_EQ(GetActionFromAccessFlags(darkgreylist), hiddenapi::kDeny);
+  ASSERT_EQ(GetActionFromAccessFlags(blacklist), hiddenapi::kDeny);
+
+  runtime_->SetHiddenApiEnforcementPolicy(hiddenapi::EnforcementPolicy::kBlacklistOnly);
+  ASSERT_EQ(GetActionFromAccessFlags(whitelist), hiddenapi::kAllow);
+  ASSERT_EQ(GetActionFromAccessFlags(lightgreylist), hiddenapi::kAllowButWarn);
+  ASSERT_EQ(GetActionFromAccessFlags(darkgreylist), hiddenapi::kAllowButWarnAndToast);
+  ASSERT_EQ(GetActionFromAccessFlags(blacklist), hiddenapi::kDeny);
+}
 
 TEST_F(HiddenApiTest, CheckMembersRead) {
   ASSERT_NE(nullptr, class1_field1_);
