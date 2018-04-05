@@ -48,6 +48,7 @@ cc_defaults {
         "class_table.cc",
         "common_throws.cc",
         "compiler_filter.cc",
+        "debug_print.cc",
         "debugger.cc",
         "dex/art_dex_file_loader.cc",
         "dex/dex_file_annotations.cc",
