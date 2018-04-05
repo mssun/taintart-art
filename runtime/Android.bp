@@ -35,6 +35,8 @@ cc_defaults {
         "base/arena_allocator.cc",
         "base/arena_bit_vector.cc",
         "base/file_utils.cc",
+        "base/malloc_arena_pool.cc",
+        "base/mem_map_arena_pool.cc",
         "base/mutex.cc",
         "base/quasi_atomic.cc",
         "base/scoped_arena_allocator.cc",
