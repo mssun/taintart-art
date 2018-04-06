@@ -16,8 +16,10 @@ cc_binary {
     name: "veridex",
     host_supported: true,
     srcs: [
+        "flow_analysis.cc",
         "hidden_api.cc",
         "hidden_api_finder.cc",
+        "precise_hidden_api_finder.cc",
         "resolver.cc",
         "veridex.cc",
     ],
