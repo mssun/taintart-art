@@ -48,4 +48,4 @@ ${ANDROID_HOST_OUT}/bin/veridex \
     --blacklist=${PACKAGING}/hiddenapi-blacklist.txt \
     --light-greylist=${PACKAGING}/hiddenapi-light-greylist.txt \
     --dark-greylist=${PACKAGING}/hiddenapi-dark-greylist.txt \
-    --dex-file=$1
+    $@
