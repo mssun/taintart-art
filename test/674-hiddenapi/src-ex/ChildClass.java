@@ -126,6 +126,7 @@ public class ChildClass {
         checkLinking("LinkFieldGet" + suffix, /*takesParameter*/ false, expected);
         checkLinking("LinkFieldSet" + suffix, /*takesParameter*/ true, expected);
         checkLinking("LinkMethod" + suffix, /*takesParameter*/ false, expected);
+        checkLinking("LinkMethodInterface" + suffix, /*takesParameter*/ false, expected);
       }
 
       // Check whether Class.newInstance succeeds.

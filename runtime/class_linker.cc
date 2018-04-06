@@ -7884,6 +7884,40 @@ ArtMethod* ClassLinker::FindResolvedMethod(ObjPtr<mirror::Class> klass,
   return resolved;
 }
 
+// Returns true if `method` is either null or hidden.
+// Does not print any warnings if it is hidden.
+static bool CheckNoSuchMethod(ArtMethod* method,
+                              ObjPtr<mirror::DexCache> dex_cache,
+                              ObjPtr<mirror::ClassLoader> class_loader)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+  return method == nullptr ||
+         hiddenapi::GetMemberAction(method,
+                                    class_loader,
+                                    dex_cache,
+                                    hiddenapi::kNone)  // do not print warnings
+             == hiddenapi::kDeny;
+}
+
+ArtMethod* ClassLinker::FindIncompatibleMethod(ObjPtr<mirror::Class> klass,
+                                               ObjPtr<mirror::DexCache> dex_cache,
+                                               ObjPtr<mirror::ClassLoader> class_loader,
+                                               uint32_t method_idx) {
+  if (klass->IsInterface()) {
+    ArtMethod* method = klass->FindClassMethod(dex_cache, method_idx, image_pointer_size_);
+    return CheckNoSuchMethod(method, dex_cache, class_loader) ? nullptr : method;
+  } else {
+    // If there was an interface method with the same signature, we would have
+    // found it in the "copied" methods. Only DCHECK that the interface method
+    // really does not exist.
+    if (kIsDebugBuild) {
+      ArtMethod* method =
+          klass->FindInterfaceMethod(dex_cache, method_idx, image_pointer_size_);
+      DCHECK(CheckNoSuchMethod(method, dex_cache, class_loader));
+    }
+    return nullptr;
+  }
+}
+
 template <ClassLinker::ResolveMode kResolveMode>
 ArtMethod* ClassLinker::ResolveMethod(uint32_t method_idx,
                                       Handle<mirror::DexCache> dex_cache,
@@ -7959,13 +7993,7 @@ ArtMethod* ClassLinker::ResolveMethod(uint32_t method_idx,
     // If we had a method, or if we can find one with another lookup type,
     // it's an incompatible-class-change error.
     if (resolved == nullptr) {
-      if (klass->IsInterface()) {
-        resolved = klass->FindClassMethod(dex_cache.Get(), method_idx, pointer_size);
-      } else {
-        // If there was an interface method with the same signature,
-        // we would have found it also in the "copied" methods.
-        DCHECK(klass->FindInterfaceMethod(dex_cache.Get(), method_idx, pointer_size) == nullptr);
-      }
+      resolved = FindIncompatibleMethod(klass, dex_cache.Get(), class_loader.Get(), method_idx);
     }
     if (resolved != nullptr) {
       ThrowIncompatibleClassChangeError(type, resolved->GetInvokeType(), resolved, referrer);
