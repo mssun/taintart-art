@@ -18,6 +18,7 @@
 #define ART_TOOLS_VERIDEX_HIDDEN_API_H_
 
 #include "dex/hidden_api_access_flags.h"
+#include "dex/method_reference.h"
 
 #include <ostream>
 #include <set>
@@ -58,6 +59,10 @@ class HiddenApi {
 
   static std::string GetApiFieldName(const DexFile& dex_file, uint32_t field_index);
 
+  static std::string GetApiMethodName(MethodReference ref) {
+    return HiddenApi::GetApiMethodName(*ref.dex_file, ref.index);
+  }
+
  private:
   static bool IsInList(const std::string& name, const std::set<std::string>& list) {
     return list.find(name) != list.end();
@@ -68,6 +73,13 @@ class HiddenApi {
   std::set<std::string> blacklist_;
   std::set<std::string> light_greylist_;
   std::set<std::string> dark_greylist_;
+};
+
+struct HiddenApiStats {
+  uint32_t count = 0;
+  uint32_t reflection_count = 0;
+  uint32_t linking_count = 0;
+  uint32_t api_counts[4] = { 0, 0, 0, 0 };
 };
 
 }  // namespace art
