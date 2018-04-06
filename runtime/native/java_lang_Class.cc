@@ -33,6 +33,7 @@
 #include "mirror/class_loader.h"
 #include "mirror/field-inl.h"
 #include "mirror/method.h"
+#include "mirror/method_handles_lookup.h"
 #include "mirror/object-inl.h"
 #include "mirror/object_array-inl.h"
 #include "mirror/string-inl.h"
@@ -49,12 +50,13 @@
 
 namespace art {
 
-// Returns true if the first non-ClassClass caller up the stack is in a platform dex file.
+// Returns true if the first caller outside of the Class class or java.lang.invoke package
+// is in a platform DEX file.
 static bool IsCallerInPlatformDex(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_) {
-  // Walk the stack and find the first frame not from java.lang.Class.
+  // Walk the stack and find the first frame not from java.lang.Class and not from java.lang.invoke.
   // This is very expensive. Save this till the last.
-  struct FirstNonClassClassCallerVisitor : public StackVisitor {
-    explicit FirstNonClassClassCallerVisitor(Thread* thread)
+  struct FirstExternalCallerVisitor : public StackVisitor {
+    explicit FirstExternalCallerVisitor(Thread* thread)
         : StackVisitor(thread, nullptr, StackVisitor::StackWalkKind::kIncludeInlinedFrames),
           caller(nullptr) {
     }
@@ -68,18 +70,30 @@ static bool IsCallerInPlatformDex(Thread* self) REQUIRES_SHARED(Locks::mutator_l
       } else if (m->IsRuntimeMethod()) {
         // Internal runtime method, continue walking the stack.
         return true;
-      } else if (m->GetDeclaringClass()->IsClassClass()) {
-        return true;
-      } else {
-        caller = m;
-        return false;
       }
+
+      ObjPtr<mirror::Class> declaring_class = m->GetDeclaringClass();
+      if (declaring_class->IsBootStrapClassLoaded()) {
+        if (declaring_class->IsClassClass()) {
+          return true;
+        }
+        ObjPtr<mirror::Class> lookup_class = mirror::MethodHandlesLookup::StaticClass();
+        if (declaring_class == lookup_class || declaring_class->IsInSamePackage(lookup_class)) {
+          // Check classes in the java.lang.invoke package. At the time of writing, the
+          // classes of interest are MethodHandles and MethodHandles.Lookup, but this
+          // is subject to change so conservatively cover the entire package.
+          return true;
+        }
+      }
+
+      caller = m;
+      return false;
     }
 
     ArtMethod* caller;
   };
 
-  FirstNonClassClassCallerVisitor visitor(self);
+  FirstExternalCallerVisitor visitor(self);
   visitor.WalkStack();
   return visitor.caller != nullptr &&
          hiddenapi::IsCallerInPlatformDex(visitor.caller->GetDeclaringClass());
