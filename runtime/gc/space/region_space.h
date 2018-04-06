@@ -31,6 +31,13 @@ class ReadBarrierTable;
 
 namespace space {
 
+// Cyclic region allocation strategy. If `true`, region allocation
+// will not try to allocate a new region from the beginning of the
+// region space, but from the last allocated region. This allocation
+// strategy reduces region reuse and should help catch some GC bugs
+// earlier.
+static constexpr bool kCyclicRegionAllocation = kIsDebugBuild;
+
 // A space that consists of equal-sized regions.
 class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
  public:
@@ -571,6 +578,23 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
 
   Region* AllocateRegion(bool for_evac) REQUIRES(region_lock_);
 
+  // Scan region range [`begin`, `end`) in increasing order to try to
+  // allocate a large region having a size of `num_regs` regions. If
+  // there is no space in the region space to allocate this large
+  // region, return null.
+  //
+  // If argument `next_region` is not null, use `*next_region` to
+  // return the index to the region next to the allocated large region
+  // returned by this method.
+  template<bool kForEvac>
+  mirror::Object* AllocLargeInRange(size_t num_regs,
+                                    size_t begin,
+                                    size_t end,
+                                    /* out */ size_t* bytes_allocated,
+                                    /* out */ size_t* usable_size,
+                                    /* out */ size_t* bytes_tl_bulk_allocated,
+                                    /* out */ size_t* next_region = nullptr) REQUIRES(region_lock_);
+
   Mutex region_lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
 
   uint32_t time_;                  // The time as the number of collections since the startup.
@@ -599,6 +623,11 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
   Region* current_region_;         // The region currently used for allocation.
   Region* evac_region_;            // The region currently used for evacuation.
   Region full_region_;             // The dummy/sentinel region that looks full.
+
+  // Index into the region array pointing to the starting region when
+  // trying to allocate a new region. Only used when
+  // `kCyclicRegionAllocation` is true.
+  size_t cyclic_alloc_region_index_ GUARDED_BY(region_lock_);
 
   // Mark bitmap used by the GC.
   std::unique_ptr<accounting::ContinuousSpaceBitmap> mark_bitmap_;
