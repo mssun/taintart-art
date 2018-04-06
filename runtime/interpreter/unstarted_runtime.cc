@@ -181,11 +181,13 @@ static mirror::String* GetClassName(Thread* self, ShadowFrame* shadow_frame, siz
 template<typename T>
 static ALWAYS_INLINE bool ShouldBlockAccessToMember(T* member, ShadowFrame* frame)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  return hiddenapi::ShouldBlockAccessToMember(
+  // All uses in this file are from reflection
+  constexpr hiddenapi::AccessMethod access_method = hiddenapi::kReflection;
+  return hiddenapi::GetMemberAction(
       member,
       frame->GetMethod()->GetDeclaringClass()->GetClassLoader(),
       frame->GetMethod()->GetDeclaringClass()->GetDexCache(),
-      hiddenapi::kReflection);  // all uses in this file are from reflection
+      access_method) == hiddenapi::kDeny;
 }
 
 void UnstartedRuntime::UnstartedClassForNameCommon(Thread* self,

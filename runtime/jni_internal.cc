@@ -87,8 +87,13 @@ static bool IsCallerInPlatformDex(Thread* self) REQUIRES_SHARED(Locks::mutator_l
 template<typename T>
 ALWAYS_INLINE static bool ShouldBlockAccessToMember(T* member, Thread* self)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  return hiddenapi::ShouldBlockAccessToMember(
+  hiddenapi::Action action = hiddenapi::GetMemberAction(
       member, self, IsCallerInPlatformDex, hiddenapi::kJNI);
+  if (action != hiddenapi::kAllow) {
+    hiddenapi::NotifyHiddenApiListener(member);
+  }
+
+  return action == hiddenapi::kDeny;
 }
 
 // Helpers to call instrumentation functions for fields. These take jobjects so we don't need to set
