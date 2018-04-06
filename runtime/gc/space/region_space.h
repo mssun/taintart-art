@@ -595,6 +595,11 @@ class RegionSpace FINAL : public ContinuousMemMapAllocSpace {
                                     /* out */ size_t* bytes_tl_bulk_allocated,
                                     /* out */ size_t* next_region = nullptr) REQUIRES(region_lock_);
 
+  // Poison memory areas used by dead objects within unevacuated
+  // region `r`. This is meant to detect dangling references to dead
+  // objects earlier in debug mode.
+  void PoisonDeadObjectsInUnevacuatedRegion(Region* r);
+
   Mutex region_lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
 
   uint32_t time_;                  // The time as the number of collections since the startup.
