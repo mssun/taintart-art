@@ -49,12 +49,11 @@ static constexpr bool EnumsEqual(EnforcementPolicy policy, HiddenApiAccessFlags:
 
 // GetMemberAction-related static_asserts.
 static_assert(
-    EnumsEqual(EnforcementPolicy::kAllLists, HiddenApiAccessFlags::kLightGreylist) &&
     EnumsEqual(EnforcementPolicy::kDarkGreyAndBlackList, HiddenApiAccessFlags::kDarkGreylist) &&
     EnumsEqual(EnforcementPolicy::kBlacklistOnly, HiddenApiAccessFlags::kBlacklist),
     "Mismatch between EnforcementPolicy and ApiList enums");
 static_assert(
-    EnforcementPolicy::kAllLists < EnforcementPolicy::kDarkGreyAndBlackList &&
+    EnforcementPolicy::kJustWarn < EnforcementPolicy::kDarkGreyAndBlackList &&
     EnforcementPolicy::kDarkGreyAndBlackList < EnforcementPolicy::kBlacklistOnly,
     "EnforcementPolicy values ordering not correct");
 
