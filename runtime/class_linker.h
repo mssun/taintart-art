@@ -321,6 +321,15 @@ class ClassLinker {
                                 uint32_t method_idx)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Find a method using the wrong lookup mechanism. If `klass` is an interface,
+  // search for a class method. If it is a class, search for an interface method.
+  // This is useful when throwing IncompatibleClassChangeError.
+  ArtMethod* FindIncompatibleMethod(ObjPtr<mirror::Class> klass,
+                                    ObjPtr<mirror::DexCache> dex_cache,
+                                    ObjPtr<mirror::ClassLoader> class_loader,
+                                    uint32_t method_idx)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   // Resolve a method with a given ID from the DexFile associated with the given DexCache
   // and ClassLoader, storing the result in DexCache. The ClassLinker and ClassLoader are
   // used as in ResolveType. What is unique is the method type argument which is used to
