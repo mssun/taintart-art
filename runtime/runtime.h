@@ -1004,7 +1004,8 @@ class Runtime {
   // Whether access checks on hidden API should be performed.
   hiddenapi::EnforcementPolicy hidden_api_policy_;
 
-  // List of signature prefixes of methods that have been removed from the blacklist
+  // List of signature prefixes of methods that have been removed from the blacklist, and treated
+  // as if whitelisted.
   std::vector<std::string> hidden_api_exemptions_;
 
   // Whether the application has used an API which is not restricted but we
