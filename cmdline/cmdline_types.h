@@ -416,8 +416,6 @@ static gc::CollectorType ParseCollectorType(const std::string& option) {
     return gc::kCollectorTypeGSS;
   } else if (option == "CC") {
     return gc::kCollectorTypeCC;
-  } else if (option == "MC") {
-    return gc::kCollectorTypeMC;
   } else {
     return gc::kCollectorTypeNone;
   }
