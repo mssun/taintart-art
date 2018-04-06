@@ -33,7 +33,7 @@ namespace hiddenapi {
 // frameworks/base/core/java/android/content/pm/ApplicationInfo.java
 enum class EnforcementPolicy {
   kNoChecks             = 0,
-  kAllLists             = 1,  // ban anything but whitelist
+  kJustWarn             = 1,  // keep checks enabled, but allow everything (enables logging)
   kDarkGreyAndBlackList = 2,  // ban dark grey & blacklist
   kBlacklistOnly        = 3,  // ban blacklist violations only
   kMax = kBlacklistOnly,
@@ -70,6 +70,11 @@ inline Action GetActionFromAccessFlags(uint32_t access_flags) {
   if (api_list == HiddenApiAccessFlags::kWhitelist) {
     return kAllow;
   }
+  // if policy is "just warn", always warn. We returned above for whitelist APIs.
+  if (policy == EnforcementPolicy::kJustWarn) {
+    return kAllowButWarn;
+  }
+  DCHECK(policy >= EnforcementPolicy::kDarkGreyAndBlackList);
   // The logic below relies on equality of values in the enums EnforcementPolicy and
   // HiddenApiAccessFlags::ApiList, and their ordering. Assertions are in hidden_api.cc.
   if (static_cast<int>(policy) > static_cast<int>(api_list)) {
