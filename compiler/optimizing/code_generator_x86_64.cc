@@ -6063,24 +6063,26 @@ void InstructionCodeGeneratorX86_64::VisitThrow(HThrow* instruction) {
   CheckEntrypointTypes<kQuickDeliverException, void, mirror::Object*>();
 }
 
-static bool CheckCastTypeCheckNeedsATemporary(TypeCheckKind type_check_kind) {
-  if (type_check_kind == TypeCheckKind::kInterfaceCheck) {
-    // We need a temporary for holding the iftable length.
-    return true;
-  }
-  return kEmitCompilerReadBarrier &&
+// Temp is used for read barrier.
+static size_t NumberOfInstanceOfTemps(TypeCheckKind type_check_kind) {
+  if (kEmitCompilerReadBarrier &&
       !kUseBakerReadBarrier &&
       (type_check_kind == TypeCheckKind::kAbstractClassCheck ||
        type_check_kind == TypeCheckKind::kClassHierarchyCheck ||
-       type_check_kind == TypeCheckKind::kArrayObjectCheck);
+       type_check_kind == TypeCheckKind::kArrayObjectCheck)) {
+    return 1;
+  }
+  return 0;
 }
 
-static bool InstanceOfTypeCheckNeedsATemporary(TypeCheckKind type_check_kind) {
-  return kEmitCompilerReadBarrier &&
-      !kUseBakerReadBarrier &&
-      (type_check_kind == TypeCheckKind::kAbstractClassCheck ||
-       type_check_kind == TypeCheckKind::kClassHierarchyCheck ||
-       type_check_kind == TypeCheckKind::kArrayObjectCheck);
+// Interface case has 2 temps, one for holding the number of interfaces, one for the current
+// interface pointer, the current interface is compared in memory.
+// The other checks have one temp for loading the object's class.
+static size_t NumberOfCheckCastTemps(TypeCheckKind type_check_kind) {
+  if (type_check_kind == TypeCheckKind::kInterfaceCheck) {
+    return 2;
+  }
+  return 1 + NumberOfInstanceOfTemps(type_check_kind);
 }
 
 void LocationsBuilderX86_64::VisitInstanceOf(HInstanceOf* instruction) {
@@ -6121,11 +6123,7 @@ void LocationsBuilderX86_64::VisitInstanceOf(HInstanceOf* instruction) {
   }
   // Note that TypeCheckSlowPathX86_64 uses this "out" register too.
   locations->SetOut(Location::RequiresRegister());
-  // When read barriers are enabled, we need a temporary register for
-  // some cases.
-  if (InstanceOfTypeCheckNeedsATemporary(type_check_kind)) {
-    locations->AddTemp(Location::RequiresRegister());
-  }
+  locations->AddRegisterTemps(NumberOfInstanceOfTemps(type_check_kind));
 }
 
 void InstructionCodeGeneratorX86_64::VisitInstanceOf(HInstanceOf* instruction) {
@@ -6136,9 +6134,9 @@ void InstructionCodeGeneratorX86_64::VisitInstanceOf(HInstanceOf* instruction) {
   Location cls = locations->InAt(1);
   Location out_loc =  locations->Out();
   CpuRegister out = out_loc.AsRegister<CpuRegister>();
-  Location maybe_temp_loc = InstanceOfTypeCheckNeedsATemporary(type_check_kind) ?
-      locations->GetTemp(0) :
-      Location::NoLocation();
+  const size_t num_temps = NumberOfInstanceOfTemps(type_check_kind);
+  DCHECK_LE(num_temps, 1u);
+  Location maybe_temp_loc = (num_temps >= 1u) ? locations->GetTemp(0) : Location::NoLocation();
   uint32_t class_offset = mirror::Object::ClassOffset().Int32Value();
   uint32_t super_offset = mirror::Class::SuperClassOffset().Int32Value();
   uint32_t component_offset = mirror::Class::ComponentTypeOffset().Int32Value();
@@ -6401,14 +6399,8 @@ void LocationsBuilderX86_64::VisitCheckCast(HCheckCast* instruction) {
   } else {
     locations->SetInAt(1, Location::Any());
   }
-
-  // Note that TypeCheckSlowPathX86_64 uses this "temp" register too.
-  locations->AddTemp(Location::RequiresRegister());
-  // When read barriers are enabled, we need an additional temporary
-  // register for some cases.
-  if (CheckCastTypeCheckNeedsATemporary(type_check_kind)) {
-    locations->AddTemp(Location::RequiresRegister());
-  }
+  // Add temps for read barriers and other uses. One is used by TypeCheckSlowPathX86.
+  locations->AddRegisterTemps(NumberOfCheckCastTemps(type_check_kind));
 }
 
 void InstructionCodeGeneratorX86_64::VisitCheckCast(HCheckCast* instruction) {
@@ -6419,9 +6411,10 @@ void InstructionCodeGeneratorX86_64::VisitCheckCast(HCheckCast* instruction) {
   Location cls = locations->InAt(1);
   Location temp_loc = locations->GetTemp(0);
   CpuRegister temp = temp_loc.AsRegister<CpuRegister>();
-  Location maybe_temp2_loc = CheckCastTypeCheckNeedsATemporary(type_check_kind) ?
-      locations->GetTemp(1) :
-      Location::NoLocation();
+  const size_t num_temps = NumberOfCheckCastTemps(type_check_kind);
+  DCHECK_GE(num_temps, 1u);
+  DCHECK_LE(num_temps, 2u);
+  Location maybe_temp2_loc = (num_temps >= 2u) ? locations->GetTemp(1) : Location::NoLocation();
   const uint32_t class_offset = mirror::Object::ClassOffset().Int32Value();
   const uint32_t super_offset = mirror::Class::SuperClassOffset().Int32Value();
   const uint32_t component_offset = mirror::Class::ComponentTypeOffset().Int32Value();
