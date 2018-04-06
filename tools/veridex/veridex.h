@@ -25,6 +25,18 @@
 namespace art {
 
 /**
+ * Abstraction for fields defined in dex files. Currently, that's a pointer into their
+ * `encoded_field` description.
+ */
+using VeriField = const uint8_t*;
+
+/**
+ * Abstraction for methods defined in dex files. Currently, that's a pointer into their
+ * `encoded_method` description.
+ */
+using VeriMethod = const uint8_t*;
+
+/**
  * Abstraction for classes defined, or implicitly defined (for arrays and primitives)
  * in dex files.
  */
@@ -52,6 +64,9 @@ class VeriClass {
   const DexFile::ClassDef* GetClassDef() const { return class_def_; }
 
   static VeriClass* object_;
+  static VeriClass* class_;
+  static VeriClass* string_;
+  static VeriClass* throwable_;
   static VeriClass* boolean_;
   static VeriClass* byte_;
   static VeriClass* char_;
@@ -62,23 +77,26 @@ class VeriClass {
   static VeriClass* long_;
   static VeriClass* void_;
 
+  static VeriMethod forName_;
+  static VeriMethod getField_;
+  static VeriMethod getDeclaredField_;
+  static VeriMethod getMethod_;
+  static VeriMethod getDeclaredMethod_;
+  static VeriMethod getClass_;
+
  private:
   Primitive::Type kind_;
   uint8_t dimensions_;
   const DexFile::ClassDef* class_def_;
 };
 
-/**
- * Abstraction for fields defined in dex files. Currently, that's a pointer into their
- * `encoded_field` description.
- */
-using VeriField = const uint8_t*;
+inline bool IsGetMethod(VeriMethod method) {
+  return method == VeriClass::getMethod_ || method == VeriClass::getDeclaredMethod_;
+}
 
-/**
- * Abstraction for methods defined in dex files. Currently, that's a pointer into their
- * `encoded_method` description.
- */
-using VeriMethod = const uint8_t*;
+inline bool IsGetField(VeriMethod method) {
+  return method == VeriClass::getField_ || method == VeriClass::getDeclaredField_;
+}
 
 /**
  * Map from name to VeriClass to quickly lookup classes.
