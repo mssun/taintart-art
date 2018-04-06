@@ -125,25 +125,29 @@ Action GetMemberActionImpl(T* member, Action action, AccessMethod access_method)
 
   Runtime* runtime = Runtime::Current();
 
-  if (action == kDeny) {
-    // If we were about to deny, check for an exemption first.
-    // Exempted APIs are treated as light grey list.
+  // Check for an exemption first. Exempted APIs are treated as white list.
+  // We only do this if we're about to deny, or if the app is debuggable. This is because:
+  // - we only print a warning for light greylist violations for debuggable apps
+  // - for non-debuggable apps, there is no distinction between light grey & whitelisted APIs.
+  // - we want to avoid the overhead of checking for exemptions for light greylisted APIs whenever
+  //   possible.
+  if (action == kDeny || runtime->IsJavaDebuggable()) {
     if (member_signature.IsExempted(runtime->GetHiddenApiExemptions())) {
-      action = kAllowButWarn;
+      action = kAllow;
       // Avoid re-examining the exemption list next time.
-      // Note this results in the warning below showing "light greylist", which
-      // seems like what one would expect. Exemptions effectively add new members to
-      // the light greylist.
+      // Note this results in no warning for the member, which seems like what one would expect.
+      // Exemptions effectively adds new members to the whitelist.
       member->SetAccessFlags(HiddenApiAccessFlags::EncodeForRuntime(
-              member->GetAccessFlags(), HiddenApiAccessFlags::kLightGreylist));
+              member->GetAccessFlags(), HiddenApiAccessFlags::kWhitelist));
+      return kAllow;
     }
-  }
 
-  if (access_method != kNone) {
-    // Print a log message with information about this class member access.
-    // We do this regardless of whether we block the access or not.
-    member_signature.WarnAboutAccess(access_method,
-        HiddenApiAccessFlags::DecodeFromRuntime(member->GetAccessFlags()));
+    if (access_method != kNone) {
+      // Print a log message with information about this class member access.
+      // We do this if we're about to block access, or the app is debuggable.
+      member_signature.WarnAboutAccess(access_method,
+          HiddenApiAccessFlags::DecodeFromRuntime(member->GetAccessFlags()));
+    }
   }
 
   if (action == kDeny) {
