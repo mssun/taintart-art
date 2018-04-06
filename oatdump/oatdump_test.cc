@@ -72,9 +72,16 @@ TEST_F(OatDumpTest, TestSymbolizeStatic) {
 }
 
 TEST_F(OatDumpTest, TestExportDex) {
+  // Test is failing on target, b/77469384.
+  TEST_DISABLED_FOR_TARGET();
   std::string error_msg;
   ASSERT_TRUE(Exec(kDynamic, kModeOat, {"--export-dex-to=" + tmp_dir_}, kListOnly, &error_msg))
       << error_msg;
+  const std::string dex_location = tmp_dir_+ "/core-oj-hostdex.jar_export.dex";
+  const std::string dexdump2 = GetExecutableFilePath("dexdump2",
+                                                     /*is_debug*/false,
+                                                     /*is_static*/false);
+  ASSERT_TRUE(ForkAndExecAndWait({dexdump2, "-d", dex_location}, &error_msg)) << error_msg;
 }
 TEST_F(OatDumpTest, TestExportDexStatic) {
   TEST_DISABLED_FOR_NON_STATIC_HOST_BUILDS();
