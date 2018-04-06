@@ -8869,6 +8869,15 @@ void ClassLinker::VisitClassLoaders(ClassLoaderVisitor* visitor) const {
   }
 }
 
+void ClassLinker::VisitAllocators(AllocatorVisitor* visitor) const {
+  for (const ClassLoaderData& data : class_loaders_) {
+    LinearAlloc* alloc = data.allocator;
+    if (alloc != nullptr && !visitor->Visit(alloc)) {
+        break;
+    }
+  }
+}
+
 void ClassLinker::InsertDexFileInToClassLoader(ObjPtr<mirror::Object> dex_file,
                                                ObjPtr<mirror::ClassLoader> class_loader) {
   DCHECK(dex_file != nullptr);

@@ -97,6 +97,14 @@ class ClassLoaderVisitor {
       REQUIRES_SHARED(Locks::classlinker_classes_lock_, Locks::mutator_lock_) = 0;
 };
 
+class AllocatorVisitor {
+ public:
+  virtual ~AllocatorVisitor() {}
+  // Return true to continue visiting.
+  virtual bool Visit(LinearAlloc* alloc)
+      REQUIRES_SHARED(Locks::classlinker_classes_lock_, Locks::mutator_lock_) = 0;
+};
+
 class ClassLinker {
  public:
   // Well known mirror::Class roots accessed via GetClassRoot.
@@ -672,6 +680,11 @@ class ClassLinker {
   void VisitClassTables(const Visitor& visitor)
       REQUIRES(!Locks::classlinker_classes_lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Visit all of the allocators that belong to classloaders except boot classloader.
+  // This is used by 616-cha-unloading test to confirm memory reuse.
+  void VisitAllocators(AllocatorVisitor* visitor) const
+      REQUIRES_SHARED(Locks::classlinker_classes_lock_, Locks::mutator_lock_);
 
   // Throw the class initialization failure recorded when first trying to initialize the given
   // class.
