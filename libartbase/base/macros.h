@@ -45,8 +45,6 @@ template<typename T> ART_FRIEND_TEST(test_set_name, individual_test)
   private: \
     void* operator new(size_t) = delete  // NOLINT
 
-#define SIZEOF_MEMBER(t, f) sizeof((reinterpret_cast<t*>(4096))->f)  // NOLINT
-
 #define OFFSETOF_MEMBER(t, f) \
   (reinterpret_cast<uintptr_t>(&reinterpret_cast<t*>(16)->f) - static_cast<uintptr_t>(16u))  // NOLINT
 
