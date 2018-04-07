@@ -700,6 +700,7 @@ bool PatchOat::Verify(const std::string& image_location,
 }
 
 bool PatchOat::WriteImage(File* out) {
+  CHECK(out != nullptr);
   TimingLogger::ScopedTiming t("Writing image File", timings_);
   std::string error_msg;
 
@@ -709,7 +710,6 @@ bool PatchOat::WriteImage(File* out) {
                                             true /* read_only_mode */, &error_msg);
 
   CHECK(image_ != nullptr);
-  CHECK(out != nullptr);
   size_t expect = image_->Size();
   if (out->WriteFully(reinterpret_cast<char*>(image_->Begin()), expect) &&
       out->SetLength(expect) == 0) {
