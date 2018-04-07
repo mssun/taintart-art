@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "zip_archive.h"
+#include "base/zip_archive.h"
 
 #include <fcntl.h>
 #include <stdio.h>
@@ -29,7 +29,6 @@
 
 #include "base/bit_utils.h"
 #include "base/unix_file/fd_file.h"
-#include "dex/dex_file.h"
 
 namespace art {
 
@@ -53,10 +52,6 @@ bool ZipEntry::IsUncompressed() {
 bool ZipEntry::IsAlignedTo(size_t alignment) const {
   DCHECK(IsPowerOfTwo(alignment)) << alignment;
   return IsAlignedParam(zip_entry_->offset, static_cast<int>(alignment));
-}
-
-bool ZipEntry::IsAlignedToDexHeader() const {
-  return IsAlignedTo(alignof(DexFile::Header));
 }
 
 ZipEntry::~ZipEntry() {

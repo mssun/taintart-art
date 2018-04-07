@@ -21,12 +21,12 @@
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 
+#include "base/mem_map.h"
 #include "base/os.h"
 #include "base/unix_file/fd_file.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/dex_file-inl.h"
 #include "dex/hidden_api_access_flags.h"
-#include "mem_map.h"
 
 namespace art {
 

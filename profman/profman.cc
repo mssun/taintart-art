@@ -40,6 +40,7 @@
 #include "base/time_utils.h"
 #include "base/unix_file/fd_file.h"
 #include "base/utils.h"
+#include "base/zip_archive.h"
 #include "boot_image_profile.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/bytecode_utils.h"
@@ -51,7 +52,6 @@
 #include "jit/profile_compilation_info.h"
 #include "profile_assistant.h"
 #include "runtime.h"
-#include "zip_archive.h"
 
 namespace art {
 

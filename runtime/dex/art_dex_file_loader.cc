@@ -26,11 +26,11 @@
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "base/unix_file/fd_file.h"
+#include "base/zip_archive.h"
 #include "dex/compact_dex_file.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_verifier.h"
 #include "dex/standard_dex_file.h"
-#include "zip_archive.h"
 
 namespace art {
 
@@ -128,7 +128,7 @@ bool ArtDexFileLoader::GetMultiDexChecksums(const char* filename,
 
     do {
       if (zip_file_only_contains_uncompressed_dex != nullptr) {
-        if (!(zip_entry->IsUncompressed() && zip_entry->IsAlignedToDexHeader())) {
+        if (!(zip_entry->IsUncompressed() && zip_entry->IsAlignedTo(alignof(DexFile::Header)))) {
           *zip_file_only_contains_uncompressed_dex = false;
         }
       }

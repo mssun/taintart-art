@@ -31,6 +31,7 @@
 #include "base/safe_map.h"
 #include "base/stl_util.h"
 #include "base/unix_file/fd_file.h"
+#include "base/zip_archive.h"
 #include "class_linker.h"
 #include "class_table-inl.h"
 #include "compiled_method-inl.h"
@@ -67,7 +68,6 @@
 #include "utils/dex_cache_arrays_layout-inl.h"
 #include "vdex_file.h"
 #include "verifier/verifier_deps.h"
-#include "zip_archive.h"
 
 namespace art {
 namespace linker {
@@ -3398,7 +3398,7 @@ bool OatWriter::WriteDexFiles(OutputStream* out,
         break;
       }
       ZipEntry* entry = oat_dex_file.source_.GetZipEntry();
-      if (!entry->IsUncompressed() || !entry->IsAlignedToDexHeader()) {
+      if (!entry->IsUncompressed() || !entry->IsAlignedTo(alignof(DexFile::Header))) {
         extract_dex_files_into_vdex_ = true;
         break;
       }

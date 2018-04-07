@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_ZIP_ARCHIVE_H_
-#define ART_RUNTIME_ZIP_ARCHIVE_H_
+#ifndef ART_LIBARTBASE_BASE_ZIP_ARCHIVE_H_
+#define ART_LIBARTBASE_BASE_ZIP_ARCHIVE_H_
 
 #include <stdint.h>
 #include <memory>
@@ -24,10 +24,10 @@
 #include <android-base/logging.h>
 
 #include "base/os.h"
+#include "base/mem_map.h"
 #include "base/safe_map.h"
 #include "base/unix_file/random_access_file.h"
 #include "globals.h"
-#include "mem_map.h"
 
 // system/core/zip_archive definitions.
 struct ZipEntry;
@@ -64,7 +64,6 @@ class ZipEntry {
 
   bool IsUncompressed();
   bool IsAlignedTo(size_t alignment) const;
-  bool IsAlignedToDexHeader() const;
 
  private:
   ZipEntry(ZipArchiveHandle handle,
@@ -102,4 +101,4 @@ class ZipArchive {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_ZIP_ARCHIVE_H_
+#endif  // ART_LIBARTBASE_BASE_ZIP_ARCHIVE_H_

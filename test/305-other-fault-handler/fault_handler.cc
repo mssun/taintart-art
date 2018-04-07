@@ -23,9 +23,9 @@
 #include <stdint.h>
 #include <sys/mman.h>
 
+#include "base/mem_map.h"
 #include "fault_handler.h"
 #include "globals.h"
-#include "mem_map.h"
 
 namespace art {
 
