@@ -66,6 +66,11 @@ class VeridexResolver {
                           const char* field_name,
                           const char* field_type);
 
+  // Lookup a method declared in `kls`.
+  VeriMethod LookupDeclaredMethodIn(const VeriClass& kls,
+                                    const char* method_name,
+                                    const char* signature) const;
+
   // Resolve all type_id/method_id/field_id.
   void ResolveAll();
 

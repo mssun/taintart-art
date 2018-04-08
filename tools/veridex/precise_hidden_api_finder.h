@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-#ifndef ART_TOOLS_VERIDEX_HIDDEN_API_FINDER_H_
-#define ART_TOOLS_VERIDEX_HIDDEN_API_FINDER_H_
+#ifndef ART_TOOLS_VERIDEX_PRECISE_HIDDEN_API_FINDER_H_
+#define ART_TOOLS_VERIDEX_PRECISE_HIDDEN_API_FINDER_H_
 
 #include "dex/method_reference.h"
+#include "flow_analysis.h"
 
 #include <iostream>
 #include <map>
@@ -31,31 +32,24 @@ struct HiddenApiStats;
 class VeridexResolver;
 
 /**
- * Reports potential uses of hidden APIs from static linking and reflection.
+ * Reports known uses of hidden APIs from reflection.
  */
-class HiddenApiFinder {
+class PreciseHiddenApiFinder {
  public:
-  explicit HiddenApiFinder(const HiddenApi& hidden_api) : hidden_api_(hidden_api) {}
+  explicit PreciseHiddenApiFinder(const HiddenApi& hidden_api) : hidden_api_(hidden_api) {}
 
   // Iterate over the dex files associated with the passed resolvers to report
   // hidden API uses.
   void Run(const std::vector<std::unique_ptr<VeridexResolver>>& app_resolvers);
 
-  void Dump(std::ostream& os, HiddenApiStats* stats, bool dump_reflection);
+  void Dump(std::ostream& os, HiddenApiStats* stats);
 
  private:
-  void CollectAccesses(VeridexResolver* resolver);
-  void CheckMethod(uint32_t method_idx, VeridexResolver* resolver, MethodReference ref);
-  void CheckField(uint32_t field_idx, VeridexResolver* resolver, MethodReference ref);
-
   const HiddenApi& hidden_api_;
-  std::set<std::string> classes_;
-  std::set<std::string> strings_;
-  std::map<std::string, std::vector<MethodReference>> reflection_locations_;
-  std::map<std::string, std::vector<MethodReference>> method_locations_;
-  std::map<std::string, std::vector<MethodReference>> field_locations_;
+  std::map<MethodReference, std::vector<std::pair<RegisterValue, RegisterValue>>> field_uses_;
+  std::map<MethodReference, std::vector<std::pair<RegisterValue, RegisterValue>>> method_uses_;
 };
 
 }  // namespace art
 
-#endif  // ART_TOOLS_VERIDEX_HIDDEN_API_FINDER_H_
+#endif  // ART_TOOLS_VERIDEX_PRECISE_HIDDEN_API_FINDER_H_

@@ -16,13 +16,20 @@
 
 #include "hidden_api.h"
 
+#include <nativehelper/scoped_local_ref.h>
+
 #include "base/dumpable.h"
+#include "thread-current-inl.h"
+#include "well_known_classes.h"
 
 namespace art {
 namespace hiddenapi {
 
 static inline std::ostream& operator<<(std::ostream& os, AccessMethod value) {
   switch (value) {
+    case kNone:
+      LOG(FATAL) << "Internal access to hidden API should not be logged";
+      UNREACHABLE();
     case kReflection:
       os << "reflection";
       break;
@@ -42,12 +49,11 @@ static constexpr bool EnumsEqual(EnforcementPolicy policy, HiddenApiAccessFlags:
 
 // GetMemberAction-related static_asserts.
 static_assert(
-    EnumsEqual(EnforcementPolicy::kAllLists, HiddenApiAccessFlags::kLightGreylist) &&
     EnumsEqual(EnforcementPolicy::kDarkGreyAndBlackList, HiddenApiAccessFlags::kDarkGreylist) &&
     EnumsEqual(EnforcementPolicy::kBlacklistOnly, HiddenApiAccessFlags::kBlacklist),
     "Mismatch between EnforcementPolicy and ApiList enums");
 static_assert(
-    EnforcementPolicy::kAllLists < EnforcementPolicy::kDarkGreyAndBlackList &&
+    EnforcementPolicy::kJustWarn < EnforcementPolicy::kDarkGreyAndBlackList &&
     EnforcementPolicy::kDarkGreyAndBlackList < EnforcementPolicy::kBlacklistOnly,
     "EnforcementPolicy values ordering not correct");
 
@@ -111,62 +117,104 @@ void MemberSignature::WarnAboutAccess(AccessMethod access_method,
 }
 
 template<typename T>
-bool ShouldBlockAccessToMemberImpl(T* member, Action action, AccessMethod access_method) {
+Action GetMemberActionImpl(T* member, Action action, AccessMethod access_method) {
+  DCHECK_NE(action, kAllow);
+
   // Get the signature, we need it later.
   MemberSignature member_signature(member);
 
   Runtime* runtime = Runtime::Current();
 
-  if (action == kDeny) {
-    // If we were about to deny, check for an exemption first.
-    // Exempted APIs are treated as light grey list.
+  // Check for an exemption first. Exempted APIs are treated as white list.
+  // We only do this if we're about to deny, or if the app is debuggable. This is because:
+  // - we only print a warning for light greylist violations for debuggable apps
+  // - for non-debuggable apps, there is no distinction between light grey & whitelisted APIs.
+  // - we want to avoid the overhead of checking for exemptions for light greylisted APIs whenever
+  //   possible.
+  if (action == kDeny || runtime->IsJavaDebuggable()) {
     if (member_signature.IsExempted(runtime->GetHiddenApiExemptions())) {
-      action = kAllowButWarn;
+      action = kAllow;
       // Avoid re-examining the exemption list next time.
-      // Note this results in the warning below showing "light greylist", which
-      // seems like what one would expect. Exemptions effectively add new members to
-      // the light greylist.
+      // Note this results in no warning for the member, which seems like what one would expect.
+      // Exemptions effectively adds new members to the whitelist.
       member->SetAccessFlags(HiddenApiAccessFlags::EncodeForRuntime(
-              member->GetAccessFlags(), HiddenApiAccessFlags::kLightGreylist));
+              member->GetAccessFlags(), HiddenApiAccessFlags::kWhitelist));
+      return kAllow;
+    }
+
+    if (access_method != kNone) {
+      // Print a log message with information about this class member access.
+      // We do this if we're about to block access, or the app is debuggable.
+      member_signature.WarnAboutAccess(access_method,
+          HiddenApiAccessFlags::DecodeFromRuntime(member->GetAccessFlags()));
     }
   }
 
-  // Print a log message with information about this class member access.
-  // We do this regardless of whether we block the access or not.
-  member_signature.WarnAboutAccess(access_method,
-      HiddenApiAccessFlags::DecodeFromRuntime(member->GetAccessFlags()));
-
   if (action == kDeny) {
     // Block access
-    return true;
+    return action;
   }
 
   // Allow access to this member but print a warning.
   DCHECK(action == kAllowButWarn || action == kAllowButWarnAndToast);
 
-  // Depending on a runtime flag, we might move the member into whitelist and
-  // skip the warning the next time the member is accessed.
-  if (runtime->ShouldDedupeHiddenApiWarnings()) {
-    member->SetAccessFlags(HiddenApiAccessFlags::EncodeForRuntime(
-        member->GetAccessFlags(), HiddenApiAccessFlags::kWhitelist));
+  if (access_method != kNone) {
+    // Depending on a runtime flag, we might move the member into whitelist and
+    // skip the warning the next time the member is accessed.
+    if (runtime->ShouldDedupeHiddenApiWarnings()) {
+      member->SetAccessFlags(HiddenApiAccessFlags::EncodeForRuntime(
+          member->GetAccessFlags(), HiddenApiAccessFlags::kWhitelist));
+    }
+
+    // If this action requires a UI warning, set the appropriate flag.
+    if (action == kAllowButWarnAndToast || runtime->ShouldAlwaysSetHiddenApiWarningFlag()) {
+      runtime->SetPendingHiddenApiWarning(true);
+    }
   }
 
-  // If this action requires a UI warning, set the appropriate flag.
-  if (action == kAllowButWarnAndToast || runtime->ShouldAlwaysSetHiddenApiWarningFlag()) {
-    runtime->SetPendingHiddenApiWarning(true);
-  }
-
-  return false;
+  return action;
 }
 
 // Need to instantiate this.
-template bool ShouldBlockAccessToMemberImpl<ArtField>(ArtField* member,
-                                                      Action action,
-                                                      AccessMethod access_method);
-template bool ShouldBlockAccessToMemberImpl<ArtMethod>(ArtMethod* member,
-                                                       Action action,
-                                                       AccessMethod access_method);
-
+template Action GetMemberActionImpl<ArtField>(ArtField* member,
+                                              Action action,
+                                              AccessMethod access_method);
+template Action GetMemberActionImpl<ArtMethod>(ArtMethod* member,
+                                               Action action,
+                                               AccessMethod access_method);
 }  // namespace detail
+
+template<typename T>
+void NotifyHiddenApiListener(T* member) {
+  Runtime* runtime = Runtime::Current();
+  if (!runtime->IsAotCompiler()) {
+    ScopedObjectAccessUnchecked soa(Thread::Current());
+
+    ScopedLocalRef<jobject> consumer_object(soa.Env(),
+        soa.Env()->GetStaticObjectField(
+            WellKnownClasses::dalvik_system_VMRuntime,
+            WellKnownClasses::dalvik_system_VMRuntime_nonSdkApiUsageConsumer));
+    // If the consumer is non-null, we call back to it to let it know that we
+    // have encountered an API that's in one of our lists.
+    if (consumer_object != nullptr) {
+      detail::MemberSignature member_signature(member);
+      std::ostringstream member_signature_str;
+      member_signature.Dump(member_signature_str);
+
+      ScopedLocalRef<jobject> signature_str(
+          soa.Env(),
+          soa.Env()->NewStringUTF(member_signature_str.str().c_str()));
+
+      // Call through to Consumer.accept(String memberSignature);
+      soa.Env()->CallVoidMethod(consumer_object.get(),
+                                WellKnownClasses::java_util_function_Consumer_accept,
+                                signature_str.get());
+    }
+  }
+}
+
+template void NotifyHiddenApiListener<ArtMethod>(ArtMethod* member);
+template void NotifyHiddenApiListener<ArtField>(ArtField* member);
+
 }  // namespace hiddenapi
 }  // namespace art

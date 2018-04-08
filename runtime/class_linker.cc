@@ -53,6 +53,7 @@
 #include "class_loader_utils.h"
 #include "class_table-inl.h"
 #include "compiler_callbacks.h"
+#include "debug_print.h"
 #include "debugger.h"
 #include "dex/descriptors_names.h"
 #include "dex/dex_file-inl.h"
@@ -1124,12 +1125,8 @@ static bool FlattenPathClassLoader(ObjPtr<mirror::ClassLoader> class_loader,
   DCHECK(out_dex_file_names != nullptr);
   DCHECK(error_msg != nullptr);
   ScopedObjectAccessUnchecked soa(Thread::Current());
-  ArtField* const dex_path_list_field =
-      jni::DecodeArtField(WellKnownClasses::dalvik_system_BaseDexClassLoader_pathList);
-  ArtField* const dex_elements_field =
-      jni::DecodeArtField(WellKnownClasses::dalvik_system_DexPathList_dexElements);
-  CHECK(dex_path_list_field != nullptr);
-  CHECK(dex_elements_field != nullptr);
+  StackHandleScope<1> hs(soa.Self());
+  Handle<mirror::ClassLoader> handle(hs.NewHandle(class_loader));
   while (!ClassLinker::IsBootClassLoader(soa, class_loader)) {
     if (soa.Decode<mirror::Class>(WellKnownClasses::dalvik_system_PathClassLoader) !=
         class_loader->GetClass()) {
@@ -1138,32 +1135,29 @@ static bool FlattenPathClassLoader(ObjPtr<mirror::ClassLoader> class_loader,
       // Unsupported class loader.
       return false;
     }
-    ObjPtr<mirror::Object> dex_path_list = dex_path_list_field->GetObject(class_loader);
-    if (dex_path_list != nullptr) {
-      // DexPathList has an array dexElements of Elements[] which each contain a dex file.
-      ObjPtr<mirror::Object> dex_elements_obj = dex_elements_field->GetObject(dex_path_list);
-      // Loop through each dalvik.system.DexPathList$Element's dalvik.system.DexFile and look
-      // at the mCookie which is a DexFile vector.
-      if (dex_elements_obj != nullptr) {
-        ObjPtr<mirror::ObjectArray<mirror::Object>> dex_elements =
-            dex_elements_obj->AsObjectArray<mirror::Object>();
-        // Reverse order since we insert the parent at the front.
-        for (int32_t i = dex_elements->GetLength() - 1; i >= 0; --i) {
-          ObjPtr<mirror::Object> element = dex_elements->GetWithoutChecks(i);
-          if (element == nullptr) {
-            *error_msg = StringPrintf("Null dex element at index %d", i);
-            return false;
-          }
-          ObjPtr<mirror::String> name;
-          if (!GetDexPathListElementName(element, &name)) {
-            *error_msg = StringPrintf("Invalid dex path list element at index %d", i);
-            return false;
-          }
-          if (name != nullptr) {
-            out_dex_file_names->push_front(name.Ptr());
-          }
-        }
+    // Get element names. Sets error to true on failure.
+    auto add_element_names = [&](ObjPtr<mirror::Object> element, bool* error)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      if (element == nullptr) {
+        *error_msg = "Null dex element";
+        *error = true;  // Null element is a critical error.
+        return false;   // Had an error, stop the visit.
       }
+      ObjPtr<mirror::String> name;
+      if (!GetDexPathListElementName(element, &name)) {
+        *error_msg = "Invalid dex path list element";
+        *error = false;  // Invalid element is not a critical error.
+        return false;    // Stop the visit.
+      }
+      if (name != nullptr) {
+        out_dex_file_names->push_front(name.Ptr());
+      }
+      return true;  // Continue with the next Element.
+    };
+    bool error = VisitClassLoaderDexElements(soa, handle, add_element_names, /* error */ false);
+    if (error) {
+      // An error occurred during DexPathList Element visiting.
+      return false;
     }
     class_loader = class_loader->GetParent();
   }
@@ -2473,71 +2467,33 @@ ObjPtr<mirror::Class> ClassLinker::FindClassInBaseDexClassLoaderClassPath(
     const char* descriptor,
     size_t hash,
     Handle<mirror::ClassLoader> class_loader) {
-  CHECK(IsPathOrDexClassLoader(soa, class_loader) || IsDelegateLastClassLoader(soa, class_loader))
+  DCHECK(IsPathOrDexClassLoader(soa, class_loader) || IsDelegateLastClassLoader(soa, class_loader))
       << "Unexpected class loader for descriptor " << descriptor;
 
-  Thread* self = soa.Self();
-  ArtField* const cookie_field =
-      jni::DecodeArtField(WellKnownClasses::dalvik_system_DexFile_cookie);
-  ArtField* const dex_file_field =
-      jni::DecodeArtField(WellKnownClasses::dalvik_system_DexPathList__Element_dexFile);
-  ObjPtr<mirror::Object> dex_path_list =
-      jni::DecodeArtField(WellKnownClasses::dalvik_system_BaseDexClassLoader_pathList)->
-          GetObject(class_loader.Get());
-  if (dex_path_list != nullptr && dex_file_field != nullptr && cookie_field != nullptr) {
-    // DexPathList has an array dexElements of Elements[] which each contain a dex file.
-    ObjPtr<mirror::Object> dex_elements_obj =
-        jni::DecodeArtField(WellKnownClasses::dalvik_system_DexPathList_dexElements)->
-            GetObject(dex_path_list);
-    // Loop through each dalvik.system.DexPathList$Element's dalvik.system.DexFile and look
-    // at the mCookie which is a DexFile vector.
-    if (dex_elements_obj != nullptr) {
-      StackHandleScope<1> hs(self);
-      Handle<mirror::ObjectArray<mirror::Object>> dex_elements =
-          hs.NewHandle(dex_elements_obj->AsObjectArray<mirror::Object>());
-      for (int32_t i = 0; i < dex_elements->GetLength(); ++i) {
-        ObjPtr<mirror::Object> element = dex_elements->GetWithoutChecks(i);
-        if (element == nullptr) {
-          // Should never happen, fall back to java code to throw a NPE.
-          break;
-        }
-        ObjPtr<mirror::Object> dex_file = dex_file_field->GetObject(element);
-        if (dex_file != nullptr) {
-          ObjPtr<mirror::LongArray> long_array = cookie_field->GetObject(dex_file)->AsLongArray();
-          if (long_array == nullptr) {
-            // This should never happen so log a warning.
-            LOG(WARNING) << "Null DexFile::mCookie for " << descriptor;
-            break;
-          }
-          int32_t long_array_size = long_array->GetLength();
-          // First element is the oat file.
-          for (int32_t j = kDexFileIndexStart; j < long_array_size; ++j) {
-            const DexFile* cp_dex_file = reinterpret_cast<const DexFile*>(static_cast<uintptr_t>(
-                long_array->GetWithoutChecks(j)));
-            const DexFile::ClassDef* dex_class_def =
-                OatDexFile::FindClassDef(*cp_dex_file, descriptor, hash);
-            if (dex_class_def != nullptr) {
-              ObjPtr<mirror::Class> klass = DefineClass(self,
-                                                        descriptor,
-                                                        hash,
-                                                        class_loader,
-                                                        *cp_dex_file,
-                                                        *dex_class_def);
-              if (klass == nullptr) {
-                CHECK(self->IsExceptionPending()) << descriptor;
-                self->ClearException();
-                // TODO: Is it really right to break here, and not check the other dex files?
-                return nullptr;
-              }
-              return klass;
-            }
-          }
-        }
+  ObjPtr<mirror::Class> ret;
+  auto define_class = [&](const DexFile* cp_dex_file) REQUIRES_SHARED(Locks::mutator_lock_) {
+    const DexFile::ClassDef* dex_class_def =
+        OatDexFile::FindClassDef(*cp_dex_file, descriptor, hash);
+    if (dex_class_def != nullptr) {
+      ObjPtr<mirror::Class> klass = DefineClass(soa.Self(),
+                                                descriptor,
+                                                hash,
+                                                class_loader,
+                                                *cp_dex_file,
+                                                *dex_class_def);
+      if (klass == nullptr) {
+        CHECK(soa.Self()->IsExceptionPending()) << descriptor;
+        soa.Self()->ClearException();
+        // TODO: Is it really right to break here, and not check the other dex files?
       }
+      ret = klass;
+      return false;  // Found a Class (or error == nullptr), stop visit.
     }
-    self->AssertNoPendingException();
-  }
-  return nullptr;
+    return true;  // Continue with the next DexFile.
+  };
+
+  VisitClassLoaderDexFiles(soa, class_loader, define_class);
+  return ret;
 }
 
 mirror::Class* ClassLinker::FindClass(Thread* self,
@@ -7878,106 +7834,6 @@ ObjPtr<mirror::Class> ClassLinker::DoResolveType(dex::TypeIndex type_idx,
   return resolved;
 }
 
-std::string DescribeSpace(ObjPtr<mirror::Class> klass) REQUIRES_SHARED(Locks::mutator_lock_) {
-  std::ostringstream oss;
-  gc::Heap* heap = Runtime::Current()->GetHeap();
-  gc::space::ContinuousSpace* cs = heap->FindContinuousSpaceFromAddress(klass.Ptr());
-  if (cs != nullptr) {
-    if (cs->IsImageSpace()) {
-      oss << "image;" << cs->GetName() << ";" << cs->AsImageSpace()->GetImageFilename();
-    } else {
-      oss << "continuous;" << cs->GetName();
-    }
-  } else {
-    gc::space::DiscontinuousSpace* ds =
-        heap->FindDiscontinuousSpaceFromObject(klass, /* fail_ok */ true);
-    if (ds != nullptr) {
-      oss << "discontinuous;" << ds->GetName();
-    } else {
-      oss << "invalid";
-    }
-  }
-  return oss.str();
-}
-
-std::string DescribeLoaders(ObjPtr<mirror::ClassLoader> loader, const char* class_descriptor)
-    REQUIRES_SHARED(Locks::mutator_lock_) {
-  std::ostringstream oss;
-  uint32_t hash = ComputeModifiedUtf8Hash(class_descriptor);
-  ObjPtr<mirror::Class> path_class_loader =
-      WellKnownClasses::ToClass(WellKnownClasses::dalvik_system_PathClassLoader);
-  ObjPtr<mirror::Class> dex_class_loader =
-      WellKnownClasses::ToClass(WellKnownClasses::dalvik_system_DexClassLoader);
-  ObjPtr<mirror::Class> delegate_last_class_loader =
-      WellKnownClasses::ToClass(WellKnownClasses::dalvik_system_DelegateLastClassLoader);
-
-  // Print the class loader chain.
-  bool found_class = false;
-  const char* loader_separator = "";
-  if (loader == nullptr) {
-    oss << "BootClassLoader";  // This would be unexpected.
-  }
-  for (; loader != nullptr; loader = loader->GetParent()) {
-    oss << loader_separator << loader->GetClass()->PrettyDescriptor();
-    loader_separator = ";";
-    // If we didn't find the interface yet, try to find it in the current class loader.
-    if (!found_class) {
-      ClassTable* table = Runtime::Current()->GetClassLinker()->ClassTableForClassLoader(loader);
-      ObjPtr<mirror::Class> klass =
-          (table != nullptr) ? table->Lookup(class_descriptor, hash) : nullptr;
-      if (klass != nullptr) {
-        found_class = true;
-        oss << "[hit:" << DescribeSpace(klass) << "]";
-      }
-    }
-
-    // For PathClassLoader, DexClassLoader or DelegateLastClassLoader
-    // also dump the dex file locations.
-    if (loader->GetClass() == path_class_loader ||
-        loader->GetClass() == dex_class_loader ||
-        loader->GetClass() == delegate_last_class_loader) {
-      ArtField* const cookie_field =
-          jni::DecodeArtField(WellKnownClasses::dalvik_system_DexFile_cookie);
-      ArtField* const dex_file_field =
-          jni::DecodeArtField(WellKnownClasses::dalvik_system_DexPathList__Element_dexFile);
-      ObjPtr<mirror::Object> dex_path_list =
-          jni::DecodeArtField(WellKnownClasses::dalvik_system_BaseDexClassLoader_pathList)->
-              GetObject(loader);
-      if (dex_path_list != nullptr && dex_file_field != nullptr && cookie_field != nullptr) {
-        ObjPtr<mirror::Object> dex_elements_obj =
-            jni::DecodeArtField(WellKnownClasses::dalvik_system_DexPathList_dexElements)->
-            GetObject(dex_path_list);
-        if (dex_elements_obj != nullptr) {
-          ObjPtr<mirror::ObjectArray<mirror::Object>> dex_elements =
-              dex_elements_obj->AsObjectArray<mirror::Object>();
-          oss << "(";
-          const char* path_separator = "";
-          for (int32_t i = 0; i != dex_elements->GetLength(); ++i) {
-            ObjPtr<mirror::Object> element = dex_elements->GetWithoutChecks(i);
-            ObjPtr<mirror::Object> dex_file =
-                (element != nullptr) ? dex_file_field->GetObject(element) : nullptr;
-            ObjPtr<mirror::LongArray> long_array =
-                (dex_file != nullptr) ? cookie_field->GetObject(dex_file)->AsLongArray() : nullptr;
-            if (long_array != nullptr) {
-              int32_t long_array_size = long_array->GetLength();
-              // First element is the oat file.
-              for (int32_t j = kDexFileIndexStart; j < long_array_size; ++j) {
-                const DexFile* cp_dex_file = reinterpret_cast<const DexFile*>(
-                    static_cast<uintptr_t>(long_array->GetWithoutChecks(j)));
-                oss << path_separator << cp_dex_file->GetLocation();
-                path_separator = ":";
-              }
-            }
-          }
-          oss << ")";
-        }
-      }
-    }
-  }
-
-  return oss.str();
-}
-
 ArtMethod* ClassLinker::FindResolvedMethod(ObjPtr<mirror::Class> klass,
                                            ObjPtr<mirror::DexCache> dex_cache,
                                            ObjPtr<mirror::ClassLoader> class_loader,
@@ -7993,8 +7849,8 @@ ArtMethod* ClassLinker::FindResolvedMethod(ObjPtr<mirror::Class> klass,
   }
   DCHECK(resolved == nullptr || resolved->GetDeclaringClassUnchecked() != nullptr);
   if (resolved != nullptr &&
-      hiddenapi::ShouldBlockAccessToMember(
-          resolved, class_loader, dex_cache, hiddenapi::kLinking)) {
+      hiddenapi::GetMemberAction(
+          resolved, class_loader, dex_cache, hiddenapi::kLinking) == hiddenapi::kDeny) {
     resolved = nullptr;
   }
   if (resolved != nullptr) {
@@ -8015,6 +7871,40 @@ ArtMethod* ClassLinker::FindResolvedMethod(ObjPtr<mirror::Class> klass,
     //    << "DexFile referrer: " << dex_file.GetLocation();
   }
   return resolved;
+}
+
+// Returns true if `method` is either null or hidden.
+// Does not print any warnings if it is hidden.
+static bool CheckNoSuchMethod(ArtMethod* method,
+                              ObjPtr<mirror::DexCache> dex_cache,
+                              ObjPtr<mirror::ClassLoader> class_loader)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+  return method == nullptr ||
+         hiddenapi::GetMemberAction(method,
+                                    class_loader,
+                                    dex_cache,
+                                    hiddenapi::kNone)  // do not print warnings
+             == hiddenapi::kDeny;
+}
+
+ArtMethod* ClassLinker::FindIncompatibleMethod(ObjPtr<mirror::Class> klass,
+                                               ObjPtr<mirror::DexCache> dex_cache,
+                                               ObjPtr<mirror::ClassLoader> class_loader,
+                                               uint32_t method_idx) {
+  if (klass->IsInterface()) {
+    ArtMethod* method = klass->FindClassMethod(dex_cache, method_idx, image_pointer_size_);
+    return CheckNoSuchMethod(method, dex_cache, class_loader) ? nullptr : method;
+  } else {
+    // If there was an interface method with the same signature, we would have
+    // found it in the "copied" methods. Only DCHECK that the interface method
+    // really does not exist.
+    if (kIsDebugBuild) {
+      ArtMethod* method =
+          klass->FindInterfaceMethod(dex_cache, method_idx, image_pointer_size_);
+      DCHECK(CheckNoSuchMethod(method, dex_cache, class_loader));
+    }
+    return nullptr;
+  }
 }
 
 template <ClassLinker::ResolveMode kResolveMode>
@@ -8092,13 +7982,7 @@ ArtMethod* ClassLinker::ResolveMethod(uint32_t method_idx,
     // If we had a method, or if we can find one with another lookup type,
     // it's an incompatible-class-change error.
     if (resolved == nullptr) {
-      if (klass->IsInterface()) {
-        resolved = klass->FindClassMethod(dex_cache.Get(), method_idx, pointer_size);
-      } else {
-        // If there was an interface method with the same signature,
-        // we would have found it also in the "copied" methods.
-        DCHECK(klass->FindInterfaceMethod(dex_cache.Get(), method_idx, pointer_size) == nullptr);
-      }
+      resolved = FindIncompatibleMethod(klass, dex_cache.Get(), class_loader.Get(), method_idx);
     }
     if (resolved != nullptr) {
       ThrowIncompatibleClassChangeError(type, resolved->GetInvokeType(), resolved, referrer);
@@ -8136,8 +8020,8 @@ ArtMethod* ClassLinker::ResolveMethodWithoutInvokeType(uint32_t method_idx,
     resolved = klass->FindClassMethod(dex_cache.Get(), method_idx, image_pointer_size_);
   }
   if (resolved != nullptr &&
-      hiddenapi::ShouldBlockAccessToMember(
-          resolved, class_loader.Get(), dex_cache.Get(), hiddenapi::kLinking)) {
+      hiddenapi::GetMemberAction(
+          resolved, class_loader.Get(), dex_cache.Get(), hiddenapi::kLinking) == hiddenapi::kDeny) {
     resolved = nullptr;
   }
   return resolved;
@@ -8216,8 +8100,8 @@ ArtField* ClassLinker::ResolveField(uint32_t field_idx,
   }
 
   if (resolved == nullptr ||
-      hiddenapi::ShouldBlockAccessToMember(
-          resolved, class_loader.Get(), dex_cache.Get(), hiddenapi::kLinking)) {
+      hiddenapi::GetMemberAction(
+          resolved, class_loader.Get(), dex_cache.Get(), hiddenapi::kLinking) == hiddenapi::kDeny) {
     const char* name = dex_file.GetFieldName(field_id);
     const char* type = dex_file.GetFieldTypeDescriptor(field_id);
     ThrowNoSuchFieldError(is_static ? "static " : "instance ", klass, type, name);
@@ -8250,8 +8134,8 @@ ArtField* ClassLinker::ResolveFieldJLS(uint32_t field_idx,
   StringPiece type(dex_file.GetFieldTypeDescriptor(field_id));
   resolved = mirror::Class::FindField(self, klass, name, type);
   if (resolved != nullptr &&
-      hiddenapi::ShouldBlockAccessToMember(
-          resolved, class_loader.Get(), dex_cache.Get(), hiddenapi::kLinking)) {
+      hiddenapi::GetMemberAction(
+          resolved, class_loader.Get(), dex_cache.Get(), hiddenapi::kLinking) == hiddenapi::kDeny) {
     resolved = nullptr;
   }
   if (resolved != nullptr) {

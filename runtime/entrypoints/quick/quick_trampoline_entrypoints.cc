@@ -19,6 +19,7 @@
 #include "base/enums.h"
 #include "callee_save_frame.h"
 #include "common_throws.h"
+#include "debug_print.h"
 #include "debugger.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_types.h"
@@ -1187,9 +1188,24 @@ static std::string DumpInstruction(ArtMethod* method, uint32_t dex_pc)
   }
 }
 
+static void DumpB74410240ClassData(ObjPtr<mirror::Class> klass)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  std::string storage;
+  const char* descriptor = klass->GetDescriptor(&storage);
+  LOG(FATAL_WITHOUT_ABORT) << "  " << DescribeLoaders(klass->GetClassLoader(), descriptor);
+  const OatDexFile* oat_dex_file = klass->GetDexFile().GetOatDexFile();
+  if (oat_dex_file != nullptr) {
+    const OatFile* oat_file = oat_dex_file->GetOatFile();
+    const char* dex2oat_cmdline =
+        oat_file->GetOatHeader().GetStoreValueByKey(OatHeader::kDex2OatCmdLineKey);
+    LOG(FATAL_WITHOUT_ABORT) << "    OatFile: " << oat_file->GetLocation()
+        << "; " << (dex2oat_cmdline != nullptr ? dex2oat_cmdline : "<not recorded>");
+  }
+}
+
 static void DumpB74410240DebugData(ArtMethod** sp) REQUIRES_SHARED(Locks::mutator_lock_) {
   // Mimick the search for the caller and dump some data while doing so.
-  LOG(FATAL_WITHOUT_ABORT) << "Dumping debugging data for b/74410240.";
+  LOG(FATAL_WITHOUT_ABORT) << "Dumping debugging data, please attach a bugreport to b/74410240.";
 
   constexpr CalleeSaveType type = CalleeSaveType::kSaveRefsAndArgs;
   CHECK_EQ(*sp, Runtime::Current()->GetCalleeSaveMethod(type));
@@ -1227,6 +1243,7 @@ static void DumpB74410240DebugData(ArtMethod** sp) REQUIRES_SHARED(Locks::mutato
       << " dex pc: " << dex_pc
       << " dex file: " << outer_method->GetDexFile()->GetLocation()
       << " class table: " << class_linker->ClassTableForClassLoader(outer_method->GetClassLoader());
+  DumpB74410240ClassData(outer_method->GetDeclaringClass());
   LOG(FATAL_WITHOUT_ABORT) << "  instruction: " << DumpInstruction(outer_method, dex_pc);
 
   ArtMethod* caller = outer_method;
@@ -1260,7 +1277,8 @@ static void DumpB74410240DebugData(ArtMethod** sp) REQUIRES_SHARED(Locks::mutato
           << " dex pc: " << dex_pc
           << " dex file: " << caller->GetDexFile()->GetLocation()
           << " class table: "
-          << class_linker->ClassTableForClassLoader(outer_method->GetClassLoader());
+          << class_linker->ClassTableForClassLoader(caller->GetClassLoader());
+      DumpB74410240ClassData(caller->GetDeclaringClass());
       LOG(FATAL_WITHOUT_ABORT) << "  instruction: " << DumpInstruction(caller, dex_pc);
     }
   }
