@@ -66,6 +66,21 @@ public class Main {
     public static final Lookup lookup = MethodHandles.lookup();
   }
 
+  private interface F {
+    public default void sayHi() {
+      System.out.println("F.sayHi()");
+    }
+  }
+
+  public static class G implements F {
+    public void sayHi() {
+      System.out.println("G.sayHi()");
+    }
+    public MethodHandles.Lookup getLookup() {
+      return MethodHandles.lookup();
+    }
+  }
+
   public static void main(String[] args) throws Throwable {
     testfindSpecial_invokeSuperBehaviour();
     testfindSpecial_invokeDirectBehaviour();
@@ -173,7 +188,7 @@ public class Main {
       handle.invokeExact("a", new Object());
       System.out.println("invokeExact(\"a\", new Object()) unexpectedly succeeded.");
     } catch (WrongMethodTypeException ex) {
-      System.out.println("Received exception: " + ex.getMessage());
+      System.out.println("Received WrongMethodTypeException exception");
     }
   }
 
@@ -528,6 +543,20 @@ public class Main {
     privateStaticField.set(null, "updatedStaticValue");
     mh.invokeExact("updatedStaticValue2");
     assertEquals("updatedStaticValue2", (String) privateStaticField.get(null));
+
+    // UnreflectSpecial testing - F is an interface that G implements
+
+    G g = new G();
+    g.sayHi();  // prints "G.sayHi()"
+
+    MethodHandles.Lookup lookup = g.getLookup();
+    Method methodInG = G.class.getDeclaredMethod("sayHi");
+    lookup.unreflectSpecial(methodInG, G.class).invoke(g); // prints "G.sayHi()"
+
+    Method methodInF = F.class.getDeclaredMethod("sayHi");
+    lookup.unreflect(methodInF).invoke(g);  // prints "G.sayHi()"
+    lookup.in(G.class).unreflectSpecial(methodInF, G.class).invoke(g);  // prints "F.sayHi()"
+    lookup.unreflectSpecial(methodInF, G.class).bindTo(g).invokeWithArguments();
   }
 
   // This method only exists to fool Jack's handling of types. See b/32536744.
