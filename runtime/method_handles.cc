@@ -674,15 +674,13 @@ ArtMethod* RefineTargetMethod(Thread* self,
       return WellKnownClasses::StringInitToStringFactory(target_method);
     }
   } else if (handle_kind == mirror::MethodHandle::Kind::kInvokeSuper) {
+    ObjPtr<mirror::Class> declaring_class = target_method->GetDeclaringClass();
+
     // Note that we're not dynamically dispatching on the type of the receiver
     // here. We use the static type of the "receiver" object that we've
     // recorded in the method handle's type, which will be the same as the
     // special caller that was specified at the point of lookup.
     ObjPtr<mirror::Class> referrer_class = handle_type->GetPTypes()->Get(0);
-    ObjPtr<mirror::Class> declaring_class = target_method->GetDeclaringClass();
-    if (referrer_class == declaring_class) {
-      return target_method;
-    }
     if (!declaring_class->IsInterface()) {
       ObjPtr<mirror::Class> super_class = referrer_class->GetSuperClass();
       uint16_t vtable_index = target_method->GetMethodIndex();
@@ -692,6 +690,8 @@ ArtMethod* RefineTargetMethod(Thread* self,
       // will always be declared by super_class (or one of its super classes).
       DCHECK_LT(vtable_index, super_class->GetVTableLength());
       return super_class->GetVTableEntry(vtable_index, kRuntimePointerSize);
+    } else {
+      return referrer_class->FindVirtualMethodForInterfaceSuper(target_method, kRuntimePointerSize);
     }
   }
   return target_method;
