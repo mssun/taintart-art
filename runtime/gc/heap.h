@@ -84,7 +84,6 @@ class RememberedSet;
 namespace collector {
 class ConcurrentCopying;
 class GarbageCollector;
-class MarkCompact;
 class MarkSweep;
 class SemiSpace;
 }  // namespace collector
@@ -883,7 +882,6 @@ class Heap {
         collector_type == kCollectorTypeGSS ||
         collector_type == kCollectorTypeCC ||
         collector_type == kCollectorTypeCCBackground ||
-        collector_type == kCollectorTypeMC ||
         collector_type == kCollectorTypeHomogeneousSpaceCompact;
   }
   bool ShouldAllocLargeObject(ObjPtr<mirror::Class> c, size_t byte_count) const
@@ -1354,7 +1352,6 @@ class Heap {
 
   std::vector<collector::GarbageCollector*> garbage_collectors_;
   collector::SemiSpace* semi_space_collector_;
-  collector::MarkCompact* mark_compact_collector_;
   collector::ConcurrentCopying* concurrent_copying_collector_;
 
   const bool is_running_on_memory_tool_;
@@ -1442,7 +1439,6 @@ class Heap {
 
   friend class CollectorTransitionTask;
   friend class collector::GarbageCollector;
-  friend class collector::MarkCompact;
   friend class collector::ConcurrentCopying;
   friend class collector::MarkSweep;
   friend class collector::SemiSpace;
