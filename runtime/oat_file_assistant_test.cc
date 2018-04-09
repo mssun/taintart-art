@@ -1487,7 +1487,7 @@ TEST_F(OatFileAssistantTest, SystemOdex) {
                                         true,
                                         false);
     int status = oat_file_assistant.MakeUpToDate(false, kSpecialSharedLibraryContext, &error_msg);
-    EXPECT_EQ(OatFileAssistant::kUpdateSucceeded, status) << error_msg;
+    ASSERT_EQ(OatFileAssistant::kUpdateSucceeded, status) << error_msg;
     EXPECT_TRUE(oat_file_assistant.GetBestOatFile()->IsExecutable());
   }
 
@@ -1497,7 +1497,7 @@ TEST_F(OatFileAssistantTest, SystemOdex) {
                                         true,
                                         true);
     int status = oat_file_assistant.MakeUpToDate(false, kSpecialSharedLibraryContext, &error_msg);
-    EXPECT_EQ(OatFileAssistant::kUpdateSucceeded, status) << error_msg;
+    ASSERT_EQ(OatFileAssistant::kUpdateSucceeded, status) << error_msg;
     EXPECT_FALSE(oat_file_assistant.GetBestOatFile()->IsExecutable());
   }
 
@@ -1510,7 +1510,7 @@ TEST_F(OatFileAssistantTest, SystemOdex) {
                                         true,
                                         false);
     int status = oat_file_assistant.MakeUpToDate(false, kSpecialSharedLibraryContext, &error_msg);
-    EXPECT_EQ(OatFileAssistant::kUpdateSucceeded, status) << error_msg;
+    ASSERT_EQ(OatFileAssistant::kUpdateSucceeded, status) << error_msg;
     EXPECT_TRUE(oat_file_assistant.GetBestOatFile()->IsExecutable());
   }
 
@@ -1520,7 +1520,7 @@ TEST_F(OatFileAssistantTest, SystemOdex) {
                                         true,
                                         true);
     int status = oat_file_assistant.MakeUpToDate(false, kSpecialSharedLibraryContext, &error_msg);
-    EXPECT_EQ(OatFileAssistant::kUpdateSucceeded, status) << error_msg;
+    ASSERT_EQ(OatFileAssistant::kUpdateSucceeded, status) << error_msg;
     EXPECT_TRUE(oat_file_assistant.GetBestOatFile()->IsExecutable());
   }
 }
