@@ -440,6 +440,9 @@ class ProfileCompilationInfo {
   // the method returns false. Otherwise it returns true.
   bool UpdateProfileKeys(const std::vector<std::unique_ptr<const DexFile>>& dex_files);
 
+  // Checks if the profile is empty.
+  bool IsEmpty() const;
+
  private:
   enum ProfileLoadStatus {
     kProfileLoadWouldOverwiteData,
@@ -586,9 +589,6 @@ class ProfileCompilationInfo {
   // Return the dex data associated with the given dex file or null if the profile doesn't contain
   // the key or the checksum mismatches.
   const DexFileData* FindDexData(const DexFile* dex_file) const;
-
-  // Checks if the profile is empty.
-  bool IsEmpty() const;
 
   // Inflate the input buffer (in_buffer) of size in_size. It returns a buffer of
   // compressed data for the input buffer of "compressed_data_size" size.

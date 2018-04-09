@@ -2524,7 +2524,10 @@ class Dex2Oat FINAL {
                                                              compiler_options_.get(),
                                                              oat_file.get()));
       elf_writers_.back()->Start();
-      const bool do_oat_writer_layout = DoDexLayoutOptimizations() || DoOatLayoutOptimizations();
+      bool do_oat_writer_layout = DoDexLayoutOptimizations() || DoOatLayoutOptimizations();
+      if (profile_compilation_info_ != nullptr && profile_compilation_info_->IsEmpty()) {
+        do_oat_writer_layout = false;
+      }
       oat_writers_.emplace_back(new linker::OatWriter(
           IsBootImage(),
           timings_,
