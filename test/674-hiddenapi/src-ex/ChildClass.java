@@ -15,13 +15,8 @@
  */
 
 import dalvik.system.VMRuntime;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.List;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.function.Consumer;
 
 public class ChildClass {
@@ -211,6 +206,37 @@ public class ChildClass {
       throwDiscoveryException(klass, name, true, "JNI", canDiscover);
     }
 
+    // Test discovery with MethodHandles.lookup() which is caller
+    // context sensitive.
+
+    final MethodHandles.Lookup lookup = MethodHandles.lookup();
+    if (JLI.canDiscoverWithLookupFindGetter(lookup, klass, name, int.class)
+        != canDiscover) {
+      throwDiscoveryException(klass, name, true, "MethodHandles.lookup().findGetter()",
+                              canDiscover);
+    }
+    if (JLI.canDiscoverWithLookupFindStaticGetter(lookup, klass, name, int.class)
+        != canDiscover) {
+      throwDiscoveryException(klass, name, true, "MethodHandles.lookup().findStaticGetter()",
+                              canDiscover);
+    }
+
+    // Test discovery with MethodHandles.publicLookup() which can only
+    // see public fields. Looking up setters here and fields in
+    // interfaces are implicitly final.
+
+    final MethodHandles.Lookup publicLookup = MethodHandles.publicLookup();
+    if (JLI.canDiscoverWithLookupFindSetter(publicLookup, klass, name, int.class)
+        != canDiscover) {
+      throwDiscoveryException(klass, name, true, "MethodHandles.publicLookup().findSetter()",
+                              canDiscover);
+    }
+    if (JLI.canDiscoverWithLookupFindStaticSetter(publicLookup, klass, name, int.class)
+        != canDiscover) {
+      throwDiscoveryException(klass, name, true, "MethodHandles.publicLookup().findStaticSetter()",
+                              canDiscover);
+    }
+
     // Finish here if we could not discover the field.
 
     if (canDiscover) {
@@ -298,7 +324,21 @@ public class ChildClass {
       throwDiscoveryException(klass, name, false, "JNI", canDiscover);
     }
 
-    // Finish here if we could not discover the field.
+    // Test discovery with MethodHandles.lookup().
+
+    final MethodHandles.Lookup lookup = MethodHandles.lookup();
+    final MethodType methodType = MethodType.methodType(int.class);
+    if (JLI.canDiscoverWithLookupFindVirtual(lookup, klass, name, methodType) != canDiscover) {
+      throwDiscoveryException(klass, name, false, "MethodHandles.lookup().findVirtual()",
+                              canDiscover);
+    }
+
+    if (JLI.canDiscoverWithLookupFindStatic(lookup, klass, name, methodType) != canDiscover) {
+      throwDiscoveryException(klass, name, false, "MethodHandles.lookup().findStatic()",
+                              canDiscover);
+    }
+
+    // Finish here if we could not discover the method.
 
     if (canDiscover) {
       // Test that modifiers are unaffected.
@@ -354,6 +394,7 @@ public class ChildClass {
                                     hiddenness.mAssociatedType.mClass };
     Object initargs[] = new Object[] { visibility.mAssociatedType.mDefaultValue,
                                        hiddenness.mAssociatedType.mDefaultValue };
+    MethodType methodType = MethodType.methodType(void.class, args);
 
     boolean canDiscover = (behaviour != Behaviour.Denied);
     boolean setsWarning = (behaviour == Behaviour.Warning);
@@ -384,7 +425,22 @@ public class ChildClass {
       throwDiscoveryException(klass, fullName, false, "JNI", canDiscover);
     }
 
-    // Finish here if we could not discover the field.
+    // Test discovery with MethodHandles.lookup()
+
+    final MethodHandles.Lookup lookup = MethodHandles.lookup();
+    if (JLI.canDiscoverWithLookupFindConstructor(lookup, klass, methodType) != canDiscover) {
+      throwDiscoveryException(klass, fullName, false, "MethodHandles.lookup().findConstructor",
+                              canDiscover);
+    }
+
+    final MethodHandles.Lookup publicLookup = MethodHandles.publicLookup();
+    if (JLI.canDiscoverWithLookupFindConstructor(publicLookup, klass, methodType) != canDiscover) {
+      throwDiscoveryException(klass, fullName, false,
+                              "MethodHandles.publicLookup().findConstructor",
+                              canDiscover);
+    }
+
+    // Finish here if we could not discover the constructor.
 
     if (!canDiscover) {
       return;
