@@ -125,19 +125,20 @@ ALWAYS_INLINE static bool ShouldBlockAccessToMember(T* member, Thread* self)
 // the criteria. Some reflection calls only return public members
 // (public_only == true), some members should be hidden from non-boot class path
 // callers (enforce_hidden_api == true).
+template<typename T>
 ALWAYS_INLINE static bool IsDiscoverable(bool public_only,
                                          bool enforce_hidden_api,
-                                         uint32_t access_flags) {
-  if (public_only && ((access_flags & kAccPublic) == 0)) {
+                                         T* member)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  if (public_only && ((member->GetAccessFlags() & kAccPublic) == 0)) {
     return false;
   }
 
-  if (enforce_hidden_api &&
-      hiddenapi::GetActionFromAccessFlags(access_flags) == hiddenapi::kDeny) {
-    return false;
-  }
-
-  return true;
+  return hiddenapi::GetMemberAction(member,
+                                    nullptr,
+                                    [enforce_hidden_api] (Thread*) { return !enforce_hidden_api; },
+                                    hiddenapi::kNone)
+      != hiddenapi::kDeny;
 }
 
 ALWAYS_INLINE static inline ObjPtr<mirror::Class> DecodeClass(
@@ -266,12 +267,12 @@ static mirror::ObjectArray<mirror::Field>* GetDeclaredFields(
   bool enforce_hidden_api = ShouldEnforceHiddenApi(self);
   // Lets go subtract all the non discoverable fields.
   for (ArtField& field : ifields) {
-    if (!IsDiscoverable(public_only, enforce_hidden_api, field.GetAccessFlags())) {
+    if (!IsDiscoverable(public_only, enforce_hidden_api, &field)) {
       --array_size;
     }
   }
   for (ArtField& field : sfields) {
-    if (!IsDiscoverable(public_only, enforce_hidden_api, field.GetAccessFlags())) {
+    if (!IsDiscoverable(public_only, enforce_hidden_api, &field)) {
       --array_size;
     }
   }
@@ -282,7 +283,7 @@ static mirror::ObjectArray<mirror::Field>* GetDeclaredFields(
     return nullptr;
   }
   for (ArtField& field : ifields) {
-    if (IsDiscoverable(public_only, enforce_hidden_api, field.GetAccessFlags())) {
+    if (IsDiscoverable(public_only, enforce_hidden_api, &field)) {
       auto* reflect_field = mirror::Field::CreateFromArtField<kRuntimePointerSize>(self,
                                                                                    &field,
                                                                                    force_resolve);
@@ -297,7 +298,7 @@ static mirror::ObjectArray<mirror::Field>* GetDeclaredFields(
     }
   }
   for (ArtField& field : sfields) {
-    if (IsDiscoverable(public_only, enforce_hidden_api, field.GetAccessFlags())) {
+    if (IsDiscoverable(public_only, enforce_hidden_api, &field)) {
       auto* reflect_field = mirror::Field::CreateFromArtField<kRuntimePointerSize>(self,
                                                                                    &field,
                                                                                    force_resolve);
@@ -518,7 +519,7 @@ static ALWAYS_INLINE inline bool MethodMatchesConstructor(
   DCHECK(m != nullptr);
   return m->IsConstructor() &&
          !m->IsStatic() &&
-         IsDiscoverable(public_only, enforce_hidden_api, m->GetAccessFlags());
+         IsDiscoverable(public_only, enforce_hidden_api, m);
 }
 
 static jobjectArray Class_getDeclaredConstructorsInternal(
@@ -588,7 +589,7 @@ static jobjectArray Class_getDeclaredMethodsUnchecked(JNIEnv* env, jobject javaT
     uint32_t modifiers = m.GetAccessFlags();
     // Add non-constructor declared methods.
     if ((modifiers & kAccConstructor) == 0 &&
-        IsDiscoverable(public_only, enforce_hidden_api, modifiers)) {
+        IsDiscoverable(public_only, enforce_hidden_api, &m)) {
       ++num_methods;
     }
   }
@@ -602,7 +603,7 @@ static jobjectArray Class_getDeclaredMethodsUnchecked(JNIEnv* env, jobject javaT
   for (ArtMethod& m : klass->GetDeclaredMethods(kRuntimePointerSize)) {
     uint32_t modifiers = m.GetAccessFlags();
     if ((modifiers & kAccConstructor) == 0 &&
-        IsDiscoverable(public_only, enforce_hidden_api, modifiers)) {
+        IsDiscoverable(public_only, enforce_hidden_api, &m)) {
       DCHECK_EQ(Runtime::Current()->GetClassLinker()->GetImagePointerSize(), kRuntimePointerSize);
       DCHECK(!Runtime::Current()->IsActiveTransaction());
       auto* method =
