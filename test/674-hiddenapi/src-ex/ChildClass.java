@@ -70,7 +70,7 @@ public class ChildClass {
   private static final boolean booleanValues[] = new boolean[] { false, true };
 
   public static void runTest(String libFileName, boolean expectedParentInBoot,
-      boolean expectedChildInBoot) throws Exception {
+      boolean expectedChildInBoot, boolean everythingWhitelisted) throws Exception {
     System.load(libFileName);
 
     // Check expectations about loading into boot class path.
@@ -84,13 +84,15 @@ public class ChildClass {
       throw new RuntimeException("Expected ChildClass " + (expectedChildInBoot ? "" : "not ") +
                                  "in boot class path");
     }
+    ChildClass.everythingWhitelisted = everythingWhitelisted;
 
     boolean isSameBoot = (isParentInBoot == isChildInBoot);
 
     // Run meaningful combinations of access flags.
     for (Hiddenness hiddenness : Hiddenness.values()) {
       final Behaviour expected;
-      if (isSameBoot || hiddenness == Hiddenness.Whitelist) {
+      if (isSameBoot || hiddenness == Hiddenness.Whitelist ||
+          (hiddenness == Hiddenness.Blacklist && everythingWhitelisted)) {
         expected = Behaviour.Granted;
       } else if (hiddenness == Hiddenness.Blacklist) {
         expected = Behaviour.Denied;
@@ -510,14 +512,16 @@ public class ChildClass {
       String fn, boolean canAccess) {
     throw new RuntimeException("Expected " + (isField ? "field " : "method ") + klass.getName() +
         "." + name + " to " + (canAccess ? "" : "not ") + "be discoverable with " + fn + ". " +
-        "isParentInBoot = " + isParentInBoot + ", " + "isChildInBoot = " + isChildInBoot);
+        "isParentInBoot = " + isParentInBoot + ", " + "isChildInBoot = " + isChildInBoot + ", " +
+        "everythingWhitelisted = " + everythingWhitelisted);
   }
 
   private static void throwAccessException(Class<?> klass, String name, boolean isField,
       String fn) {
     throw new RuntimeException("Expected to be able to access " + (isField ? "field " : "method ") +
         klass.getName() + "." + name + " using " + fn + ". " +
-        "isParentInBoot = " + isParentInBoot + ", " + "isChildInBoot = " + isChildInBoot);
+        "isParentInBoot = " + isParentInBoot + ", " + "isChildInBoot = " + isChildInBoot + ", " +
+        "everythingWhitelisted = " + everythingWhitelisted);
   }
 
   private static void throwWarningException(Class<?> klass, String name, boolean isField,
@@ -525,7 +529,8 @@ public class ChildClass {
     throw new RuntimeException("Expected access to " + (isField ? "field " : "method ") +
         klass.getName() + "." + name + " using " + fn + " to " + (setsWarning ? "" : "not ") +
         "set the warning flag. " +
-        "isParentInBoot = " + isParentInBoot + ", " + "isChildInBoot = " + isChildInBoot);
+        "isParentInBoot = " + isParentInBoot + ", " + "isChildInBoot = " + isChildInBoot + ", " +
+        "everythingWhitelisted = " + everythingWhitelisted);
   }
 
   private static void throwModifiersException(Class<?> klass, String name, boolean isField) {
@@ -535,6 +540,7 @@ public class ChildClass {
 
   private static boolean isParentInBoot;
   private static boolean isChildInBoot;
+  private static boolean everythingWhitelisted;
 
   private static native boolean hasPendingWarning();
   private static native void clearWarning();
