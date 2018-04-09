@@ -504,9 +504,6 @@ class DexFile {
 
   const TypeId* FindTypeId(const char* string) const;
 
-  // Looks up a string id for a given utf16 string.
-  const StringId* FindStringId(const uint16_t* string, size_t length) const;
-
   // Returns the number of type identifiers in the .dex file.
   uint32_t NumTypeIds() const {
     DCHECK(header_ != nullptr) << GetLocation();
