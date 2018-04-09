@@ -349,25 +349,6 @@ const DexFile::TypeId* DexFile::FindTypeId(const char* string) const {
   return nullptr;
 }
 
-const DexFile::StringId* DexFile::FindStringId(const uint16_t* string, size_t length) const {
-  int32_t lo = 0;
-  int32_t hi = NumStringIds() - 1;
-  while (hi >= lo) {
-    int32_t mid = (hi + lo) / 2;
-    const DexFile::StringId& str_id = GetStringId(dex::StringIndex(mid));
-    const char* str = GetStringData(str_id);
-    int compare = CompareModifiedUtf8ToUtf16AsCodePointValues(str, string, length);
-    if (compare > 0) {
-      lo = mid + 1;
-    } else if (compare < 0) {
-      hi = mid - 1;
-    } else {
-      return &str_id;
-    }
-  }
-  return nullptr;
-}
-
 const DexFile::TypeId* DexFile::FindTypeId(dex::StringIndex string_idx) const {
   int32_t lo = 0;
   int32_t hi = NumTypeIds() - 1;
