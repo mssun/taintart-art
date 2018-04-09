@@ -3,12 +3,7 @@ foo_A
 foo_A
 foo_B
 privateRyan_D
-Received WrongMethodTypeException exception
-G.sayHi()
-G.sayHi()
-G.sayHi()
-F.sayHi()
-F.sayHi()
+Received exception: Expected (java.lang.String, java.lang.String)java.lang.String but was (java.lang.String, java.lang.Object)void
 String constructors done.
 testReferenceReturnValueConversions done.
 testPrimitiveReturnValueConversions done.
