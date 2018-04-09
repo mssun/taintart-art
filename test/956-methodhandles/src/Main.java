@@ -30,6 +30,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import other.Chatty;
+
 public class Main {
 
   public static class A {
@@ -64,6 +66,30 @@ public class Main {
 
   public static class E extends D {
     public static final Lookup lookup = MethodHandles.lookup();
+  }
+
+  private interface F {
+    public default void sayHi() {
+      System.out.println("F.sayHi()");
+    }
+  }
+
+  public static class G implements F {
+    public void sayHi() {
+      System.out.println("G.sayHi()");
+    }
+    public MethodHandles.Lookup getLookup() {
+      return MethodHandles.lookup();
+    }
+  }
+
+  public static class H implements Chatty {
+    public void chatter() {
+      System.out.println("H.chatter()");
+    }
+    public MethodHandles.Lookup getLookup() {
+      return MethodHandles.lookup();
+    }
   }
 
   public static void main(String[] args) throws Throwable {
@@ -173,7 +199,7 @@ public class Main {
       handle.invokeExact("a", new Object());
       System.out.println("invokeExact(\"a\", new Object()) unexpectedly succeeded.");
     } catch (WrongMethodTypeException ex) {
-      System.out.println("Received exception: " + ex.getMessage());
+      System.out.println("Received WrongMethodTypeException exception");
     }
   }
 
@@ -528,6 +554,34 @@ public class Main {
     privateStaticField.set(null, "updatedStaticValue");
     mh.invokeExact("updatedStaticValue2");
     assertEquals("updatedStaticValue2", (String) privateStaticField.get(null));
+
+    // unreflectSpecial testing - F is an interface that G implements
+
+    G g = new G();
+    g.sayHi();  // prints "G.sayHi()"
+
+    MethodHandles.Lookup lookupInG = g.getLookup();
+    Method methodInG = G.class.getDeclaredMethod("sayHi");
+    lookupInG.unreflectSpecial(methodInG, G.class).invoke(g); // prints "G.sayHi()"
+
+    Method methodInF = F.class.getDeclaredMethod("sayHi");
+    lookupInG.unreflect(methodInF).invoke(g);  // prints "G.sayHi()"
+    lookupInG.in(G.class).unreflectSpecial(methodInF, G.class).invoke(g);  // prints "F.sayHi()"
+    lookupInG.unreflectSpecial(methodInF, G.class).bindTo(g).invokeWithArguments();
+
+    // unreflectSpecial testing - other.Chatty is an interface that H implements
+
+    H h = new H();
+    h.chatter();
+
+    MethodHandles.Lookup lookupInH = h.getLookup();
+    Method methodInH = H.class.getDeclaredMethod("chatter");
+    lookupInH.unreflectSpecial(methodInH, H.class).invoke(h);
+
+    Method methodInChatty = Chatty.class.getDeclaredMethod("chatter");
+    lookupInH.unreflect(methodInChatty).invoke(h);
+    lookupInH.in(H.class).unreflectSpecial(methodInChatty, H.class).invoke(h);
+    lookupInH.unreflectSpecial(methodInChatty, H.class).bindTo(h).invokeWithArguments();
   }
 
   // This method only exists to fool Jack's handling of types. See b/32536744.
