@@ -1353,6 +1353,11 @@ bool HLoopOptimization::VectorizeDef(LoopNode* node,
     HInstruction* index = instruction->InputAt(1);
     HInstruction* value = instruction->InputAt(2);
     HInstruction* offset = nullptr;
+    // For narrow types, explicit type conversion may have been
+    // optimized way, so set the no hi bits restriction here.
+    if (DataType::Size(type) <= 2) {
+      restrictions |= kNoHiBits;
+    }
     if (TrySetVectorType(type, &restrictions) &&
         node->loop_info->IsDefinedOutOfTheLoop(base) &&
         induction_range_.IsUnitStride(instruction, index, graph_, &offset) &&
