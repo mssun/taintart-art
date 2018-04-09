@@ -110,4 +110,50 @@ std::string DescribeLoaders(ObjPtr<mirror::ClassLoader> loader, const char* clas
   return oss.str();
 }
 
+void DumpB77342775DebugData(ObjPtr<mirror::Class> target_class, ObjPtr<mirror::Class> src_class) {
+  std::string target_descriptor_storage;
+  const char* target_descriptor = target_class->GetDescriptor(&target_descriptor_storage);
+  const char kCheckedPrefix[] = "Lorg/apache/http/";
+  // Avoid spam for other packages. (That spam would break some ART run-tests for example.)
+  if (strncmp(target_descriptor, kCheckedPrefix, sizeof(kCheckedPrefix) - 1) != 0) {
+    return;
+  }
+  auto matcher = [target_descriptor, target_class](ObjPtr<mirror::Class> klass)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    if (klass->DescriptorEquals(target_descriptor)) {
+      LOG(ERROR) << "    descriptor match in "
+          << DescribeLoaders(klass->GetClassLoader(), target_descriptor)
+          << " match? " << std::boolalpha << (klass == target_class);
+    }
+  };
+
+  std::string source_descriptor_storage;
+  const char* source_descriptor = src_class->GetDescriptor(&source_descriptor_storage);
+
+  if (target_class->IsInterface()) {
+    ObjPtr<mirror::IfTable> iftable = src_class->GetIfTable();
+    CHECK(iftable != nullptr);
+    size_t ifcount = iftable->Count();
+    LOG(ERROR) << "Maybe bug 77342775, looking for " << target_descriptor
+        << " with loader " << DescribeLoaders(src_class->GetClassLoader(), target_descriptor)
+        << " in interface table for " << source_descriptor << " ifcount=" << ifcount;
+    for (size_t i = 0; i != ifcount; ++i) {
+      ObjPtr<mirror::Class> iface = iftable->GetInterface(i);
+      CHECK(iface != nullptr);
+      LOG(ERROR) << "  iface #" << i << ": " << iface->PrettyDescriptor();
+      matcher(iface);
+    }
+  } else {
+    LOG(ERROR) << "Maybe bug 77342775, looking for " << target_descriptor
+        << " with loader " << DescribeLoaders(src_class->GetClassLoader(), target_descriptor)
+        << " in superclass chain for " << source_descriptor;
+    for (ObjPtr<mirror::Class> klass = src_class;
+         klass != nullptr;
+         klass = klass->GetSuperClass()) {
+      LOG(ERROR) << "  - " << klass->PrettyDescriptor();
+      matcher(klass);
+    }
+  }
+}
+
 }  // namespace art

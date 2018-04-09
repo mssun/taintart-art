@@ -20,6 +20,7 @@
 #include "register_line.h"
 
 #include "base/logging.h"  // For VLOG.
+#include "debug_print.h"
 #include "method_verifier.h"
 #include "reg_type_cache-inl.h"
 
@@ -147,6 +148,14 @@ inline bool RegisterLine::VerifyRegisterType(MethodVerifier* verifier, uint32_t 
     }
     verifier->Fail(fail_type) << "register v" << vsrc << " has type "
                                << src_type << " but expected " << check_type;
+    if (check_type.IsNonZeroReferenceTypes() &&
+        !check_type.IsUnresolvedTypes() &&
+        check_type.HasClass() &&
+        src_type.IsNonZeroReferenceTypes() &&
+        !src_type.IsUnresolvedTypes() &&
+        src_type.HasClass()) {
+      DumpB77342775DebugData(check_type.GetClass(), src_type.GetClass());
+    }
     return false;
   }
   if (check_type.IsLowHalf()) {
