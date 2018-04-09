@@ -575,19 +575,7 @@ void Runtime::Abort(const char* msg) {
     LOG(FATAL_WITHOUT_ABORT) << "Unexpectedly returned from abort hook!";
   }
 
-#if defined(__GLIBC__)
-  // TODO: we ought to be able to use pthread_kill(3) here (or abort(3),
-  // which POSIX defines in terms of raise(3), which POSIX defines in terms
-  // of pthread_kill(3)). On Linux, though, libcorkscrew can't unwind through
-  // libpthread, which means the stacks we dump would be useless. Calling
-  // tgkill(2) directly avoids that.
-  syscall(__NR_tgkill, getpid(), GetTid(), SIGABRT);
-  // TODO: LLVM installs it's own SIGABRT handler so exit to be safe... Can we disable that in LLVM?
-  // If not, we could use sigaction(3) before calling tgkill(2) and lose this call to exit(3).
-  exit(1);
-#else
   abort();
-#endif
   // notreached
 }
 
