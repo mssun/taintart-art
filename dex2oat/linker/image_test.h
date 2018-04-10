@@ -293,7 +293,7 @@ inline void CompilationHelper::Compile(CompilerDriver* driver,
           ASSERT_TRUE(cur_opened_dex_files.empty());
         }
       }
-      bool image_space_ok = writer->PrepareImageAddressSpace();
+      bool image_space_ok = writer->PrepareImageAddressSpace(&timings);
       ASSERT_TRUE(image_space_ok);
 
       DCHECK_EQ(vdex_files.size(), oat_files.size());

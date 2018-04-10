@@ -133,23 +133,31 @@ static void ClearDexFileCookies() REQUIRES_SHARED(Locks::mutator_lock_) {
   Runtime::Current()->GetHeap()->VisitObjects(visitor);
 }
 
-bool ImageWriter::PrepareImageAddressSpace() {
+bool ImageWriter::PrepareImageAddressSpace(TimingLogger* timings) {
   target_ptr_size_ = InstructionSetPointerSize(compiler_driver_.GetInstructionSet());
   gc::Heap* const heap = Runtime::Current()->GetHeap();
   {
     ScopedObjectAccess soa(Thread::Current());
-    PruneNonImageClasses();  // Remove junk
+    {
+      TimingLogger::ScopedTiming t("PruneNonImageClasses", timings);
+      PruneNonImageClasses();  // Remove junk
+    }
     if (compile_app_image_) {
+      TimingLogger::ScopedTiming t("ClearDexFileCookies", timings);
       // Clear dex file cookies for app images to enable app image determinism. This is required
       // since the cookie field contains long pointers to DexFiles which are not deterministic.
       // b/34090128
       ClearDexFileCookies();
     } else {
+      TimingLogger::ScopedTiming t("ComputeLazyFieldsForImageClasses", timings);
       // Avoid for app image since this may increase RAM and image size.
       ComputeLazyFieldsForImageClasses();  // Add useful information
     }
   }
-  heap->CollectGarbage(/* clear_soft_references */ false);  // Remove garbage.
+  {
+    TimingLogger::ScopedTiming t("CollectGarbage", timings);
+    heap->CollectGarbage(/* clear_soft_references */ false);  // Remove garbage.
+  }
 
   if (kIsDebugBuild) {
     ScopedObjectAccess soa(Thread::Current());
@@ -157,12 +165,14 @@ bool ImageWriter::PrepareImageAddressSpace() {
   }
 
   {
+    TimingLogger::ScopedTiming t("CalculateNewObjectOffsets", timings);
     ScopedObjectAccess soa(Thread::Current());
     CalculateNewObjectOffsets();
   }
 
   // This needs to happen after CalculateNewObjectOffsets since it relies on intern_table_bytes_ and
   // bin size sums being calculated.
+  TimingLogger::ScopedTiming t("AllocMemory", timings);
   if (!AllocMemory()) {
     return false;
   }
