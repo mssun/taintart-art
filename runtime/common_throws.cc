@@ -24,6 +24,7 @@
 #include "art_field-inl.h"
 #include "art_method-inl.h"
 #include "class_linker-inl.h"
+#include "debug_print.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_instruction-inl.h"
 #include "dex/invoke_type.h"
@@ -152,6 +153,7 @@ void ThrowWrappedBootstrapMethodError(const char* fmt, ...) {
 // ClassCastException
 
 void ThrowClassCastException(ObjPtr<mirror::Class> dest_type, ObjPtr<mirror::Class> src_type) {
+  DumpB77342775DebugData(dest_type, src_type);
   ThrowException("Ljava/lang/ClassCastException;", nullptr,
                  StringPrintf("%s cannot be cast to %s",
                               mirror::Class::PrettyDescriptor(src_type).c_str(),
@@ -279,6 +281,7 @@ void ThrowIncompatibleClassChangeErrorClassForInterfaceSuper(ArtMethod* method,
       << "' does not implement interface '" << mirror::Class::PrettyDescriptor(target_class)
       << "' in call to '"
       << ArtMethod::PrettyMethod(method) << "'";
+  DumpB77342775DebugData(target_class, this_object->GetClass());
   ThrowException("Ljava/lang/IncompatibleClassChangeError;",
                  referrer != nullptr ? referrer->GetDeclaringClass() : nullptr,
                  msg.str().c_str());
@@ -295,6 +298,7 @@ void ThrowIncompatibleClassChangeErrorClassForInterfaceDispatch(ArtMethod* inter
       << "' does not implement interface '"
       << mirror::Class::PrettyDescriptor(interface_method->GetDeclaringClass())
       << "' in call to '" << ArtMethod::PrettyMethod(interface_method) << "'";
+  DumpB77342775DebugData(interface_method->GetDeclaringClass(), this_object->GetClass());
   ThrowException("Ljava/lang/IncompatibleClassChangeError;",
                  referrer != nullptr ? referrer->GetDeclaringClass() : nullptr,
                  msg.str().c_str());
