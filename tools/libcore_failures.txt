@@ -214,12 +214,5 @@
   description: "java.io.IOException: Error writing ASN.1 encoding",
   result: EXEC_FAILED,
   names: ["libcore.javax.crypto.spec.AlgorithmParametersTestGCM#testEncoding"]
-},
-{
-  description: "Failure only on device. Blacklist it temporarily",
-  result: EXEC_FAILED,
-  modes: [device],
-  bug: 69023954,
-  names: ["libcore.libcore.io.OsTest#test_setgroups"]
 }
 ]
