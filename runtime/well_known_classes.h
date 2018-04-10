@@ -68,10 +68,6 @@ struct WellKnownClasses {
   static jclass java_lang_NoClassDefFoundError;
   static jclass java_lang_Object;
   static jclass java_lang_OutOfMemoryError;
-  static jclass java_lang_reflect_Constructor;
-  static jclass java_lang_reflect_Executable;
-  static jclass java_lang_reflect_Field;
-  static jclass java_lang_reflect_Method;
   static jclass java_lang_reflect_Parameter;
   static jclass java_lang_reflect_Parameter__array;
   static jclass java_lang_reflect_Proxy;
@@ -138,7 +134,6 @@ struct WellKnownClasses {
   static jfieldID dalvik_system_DexPathList_dexElements;
   static jfieldID dalvik_system_DexPathList__Element_dexFile;
   static jfieldID dalvik_system_VMRuntime_nonSdkApiUsageConsumer;
-  static jfieldID java_lang_reflect_Executable_artMethod;
   static jfieldID java_lang_reflect_Proxy_h;
   static jfieldID java_lang_Thread_daemon;
   static jfieldID java_lang_Thread_group;
