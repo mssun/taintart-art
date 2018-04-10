@@ -29,6 +29,9 @@ std::string DescribeSpace(ObjPtr<mirror::Class> klass)
 std::string DescribeLoaders(ObjPtr<mirror::ClassLoader> loader, const char* class_descriptor)
     REQUIRES_SHARED(Locks::mutator_lock_) COLD_ATTR;
 
+void DumpB77342775DebugData(ObjPtr<mirror::Class> target_class, ObjPtr<mirror::Class> src_class)
+    REQUIRES_SHARED(Locks::mutator_lock_) COLD_ATTR;
+
 }  // namespace art
 
 #endif  // ART_RUNTIME_DEBUG_PRINT_H_
