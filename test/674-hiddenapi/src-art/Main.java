@@ -16,6 +16,7 @@
 
 import dalvik.system.InMemoryDexClassLoader;
 import dalvik.system.PathClassLoader;
+import dalvik.system.VMRuntime;
 import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
@@ -34,26 +35,41 @@ public class Main {
     // Enable hidden API checks in case they are disabled by default.
     init();
 
+    // TODO there are sequential depencies between these test cases, and bugs
+    // in the production code may lead to subsequent tests to erroneously pass,
+    // or test the wrong thing. We rely on not deduping hidden API warnings
+    // here for the same reasons), meaning the code under test and production
+    // code are running in different configurations. Each test should be run in
+    // a fresh process to ensure that they are working correcting and not
+    // accidentally interfering with eachother.
+
     // Run test with both parent and child dex files loaded with class loaders.
     // The expectation is that hidden members in parent should be visible to
     // the child.
-    doTest(false, false);
+    doTest(false, false, false);
     doUnloading();
 
     // Now append parent dex file to boot class path and run again. This time
-    // the child dex file should not be able to access private APIs of the parent.
+    // the child dex file should not be able to access private APIs of the
+    // parent.
     appendToBootClassLoader(DEX_PARENT_BOOT);
-    doTest(true, false);
+    doTest(true, false, false);
+    doUnloading();
+
+    // Now run the same test again, but with the blacklist exmemptions list set
+    // to "L" which matches everything.
+    doTest(true, false, true);
     doUnloading();
 
     // And finally append to child to boot class path as well. With both in the
     // boot class path, access should be granted.
     appendToBootClassLoader(DEX_CHILD);
-    doTest(true, true);
+    doTest(true, true, false);
     doUnloading();
   }
 
-  private static void doTest(boolean parentInBoot, boolean childInBoot) throws Exception {
+  private static void doTest(boolean parentInBoot, boolean childInBoot, boolean whitelistAllApis)
+      throws Exception {
     // Load parent dex if it is not in boot class path.
     ClassLoader parentLoader = null;
     if (parentInBoot) {
@@ -78,12 +94,18 @@ public class Main {
     // be loaded once, but for some reason even classes from a class loader
     // cannot register their native methods against symbols in a shared library
     // loaded by their parent class loader.
-    String nativeLibCopy = createNativeLibCopy(parentInBoot, childInBoot);
+    String nativeLibCopy = createNativeLibCopy(parentInBoot, childInBoot, whitelistAllApis);
+
+    if (whitelistAllApis) {
+      VMRuntime.getRuntime().setHiddenApiExemptions(new String[]{"L"});
+    }
 
     // Invoke ChildClass.runTest
     Class.forName("ChildClass", true, childLoader)
-        .getDeclaredMethod("runTest", String.class, Boolean.TYPE, Boolean.TYPE)
-            .invoke(null, nativeLibCopy, parentInBoot, childInBoot);
+        .getDeclaredMethod("runTest", String.class, Boolean.TYPE, Boolean.TYPE, Boolean.TYPE)
+            .invoke(null, nativeLibCopy, parentInBoot, childInBoot, whitelistAllApis);
+
+    VMRuntime.getRuntime().setHiddenApiExemptions(new String[0]);
   }
 
   // Routine which tries to figure out the absolute path of our native library.
@@ -122,20 +144,21 @@ public class Main {
     return buffer;
   }
 
-  // Copy native library to a new file with a unique name so it does not conflict
-  // with other loaded instance of the same binary file.
-  private static String createNativeLibCopy(boolean parentInBoot, boolean childInBoot)
-      throws Exception {
+  // Copy native library to a new file with a unique name so it does not
+  // conflict with other loaded instance of the same binary file.
+  private static String createNativeLibCopy(
+      boolean parentInBoot, boolean childInBoot, boolean whitelistAllApis) throws Exception {
     String tempFileName = System.mapLibraryName(
-        "hiddenapitest_" + (parentInBoot ? "1" : "0") + (childInBoot ? "1" : "0"));
+        "hiddenapitest_" + (parentInBoot ? "1" : "0") + (childInBoot ? "1" : "0") +
+         (whitelistAllApis ? "1" : "0"));
     File tempFile = new File(System.getenv("DEX_LOCATION"), tempFileName);
     Files.copy(new File(nativeLibFileName).toPath(), tempFile.toPath());
     return tempFile.getAbsolutePath();
   }
 
   private static void doUnloading() {
-    // Do multiple GCs to prevent rare flakiness if some other thread is keeping the
-    // classloader live.
+    // Do multiple GCs to prevent rare flakiness if some other thread is
+    // keeping the classloader live.
     for (int i = 0; i < 5; ++i) {
        Runtime.getRuntime().gc();
     }
