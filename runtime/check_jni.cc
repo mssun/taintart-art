@@ -37,6 +37,8 @@
 #include "java_vm_ext.h"
 #include "jni_internal.h"
 #include "mirror/class-inl.h"
+#include "mirror/field.h"
+#include "mirror/method.h"
 #include "mirror/object-inl.h"
 #include "mirror/object_array-inl.h"
 #include "mirror/string-inl.h"
@@ -599,9 +601,8 @@ class ScopedCheck {
       AbortF("expected non-null method");
       return false;
     }
-    mirror::Class* c = method->GetClass();
-    if (soa.Decode<mirror::Class>(WellKnownClasses::java_lang_reflect_Method) != c &&
-        soa.Decode<mirror::Class>(WellKnownClasses::java_lang_reflect_Constructor) != c) {
+    ObjPtr<mirror::Class> c = method->GetClass();
+    if (mirror::Method::StaticClass() != c && mirror::Constructor::StaticClass() != c) {
       AbortF("expected java.lang.reflect.Method or "
           "java.lang.reflect.Constructor but got object of type %s: %p",
           method->PrettyTypeOf().c_str(), jmethod);
@@ -630,8 +631,8 @@ class ScopedCheck {
       AbortF("expected non-null java.lang.reflect.Field");
       return false;
     }
-    mirror::Class* c = field->GetClass();
-    if (soa.Decode<mirror::Class>(WellKnownClasses::java_lang_reflect_Field) != c) {
+    ObjPtr<mirror::Class> c = field->GetClass();
+    if (mirror::Field::StaticClass() != c) {
       AbortF("expected java.lang.reflect.Field but got object of type %s: %p",
              field->PrettyTypeOf().c_str(), jfield);
       return false;
