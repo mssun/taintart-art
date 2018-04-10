@@ -171,9 +171,12 @@ class HVecOperation : public HVariableInputSizeInstruction {
     if (instruction->IsVecOperation()) {
       return !instruction->IsVecExtractScalar();  // only scalar returning vec op
     } else if (instruction->IsPhi()) {
+      // Vectorizer only uses Phis in reductions, so checking for a 2-way phi
+      // with a direct vector operand as second argument suffices.
       return
           instruction->GetType() == kSIMDType &&
-          instruction->InputAt(1)->IsVecOperation();  // vectorizer does not go deeper
+          instruction->InputCount() == 2 &&
+          instruction->InputAt(1)->IsVecOperation();
     }
     return false;
   }
