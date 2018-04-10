@@ -77,11 +77,14 @@ static bool IsCallerInPlatformDex(Thread* self) REQUIRES_SHARED(Locks::mutator_l
         if (declaring_class->IsClassClass()) {
           return true;
         }
+        // Check classes in the java.lang.invoke package. At the time of writing, the
+        // classes of interest are MethodHandles and MethodHandles.Lookup, but this
+        // is subject to change so conservatively cover the entire package.
+        // NB Static initializers within java.lang.invoke are permitted and do not
+        // need further stack inspection.
         ObjPtr<mirror::Class> lookup_class = mirror::MethodHandlesLookup::StaticClass();
-        if (declaring_class == lookup_class || declaring_class->IsInSamePackage(lookup_class)) {
-          // Check classes in the java.lang.invoke package. At the time of writing, the
-          // classes of interest are MethodHandles and MethodHandles.Lookup, but this
-          // is subject to change so conservatively cover the entire package.
+        if ((declaring_class == lookup_class || declaring_class->IsInSamePackage(lookup_class))
+            && !m->IsClassInitializer()) {
           return true;
         }
       }
