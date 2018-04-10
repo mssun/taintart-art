@@ -752,7 +752,7 @@ class Dex2Oat FINAL {
     }
 
     if ((output_vdex_fd_ == -1) != (oat_fd_ == -1)) {
-      Usage("VDEX and OAT output must be specified either with one --oat-filename "
+      Usage("VDEX and OAT output must be specified either with one --oat-file "
             "or with --oat-fd and --output-vdex-fd file descriptors");
     }
 
