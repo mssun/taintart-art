@@ -1,7 +1,8 @@
 Test whether hidden API access flags are being enforced. The test is composed of
 two JARs. The first (parent) defines methods and fields and the second (child)
-tries to access them with reflection/JNI or link against them. Note that the
-first is compiled twice - once with and once without hidden access flags.
+tries to access them with reflection/JNI/MethodHandles or link against them.
+Note that the first is compiled twice - once with and once without hidden access
+flags.
 
 The test then proceeds to exercise the following combinations of class loading:
 (a) Both parent and child dex loaded with PathClassLoader, parent's class loader
