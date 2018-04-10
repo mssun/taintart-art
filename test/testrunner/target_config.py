@@ -55,20 +55,31 @@ target_config = {
                       '--optimizing']
     },
     'art-gcstress-gcverify': {
-        'run-test': ['--gcstress',
+        # Do not exercise '--interpreter', '--optimizing', nor '--jit' in this
+        # configuration, as they are covered by the 'art-interpreter-gcstress',
+        # 'art-optimizing-gcstress' and 'art-jit-gcstress' configurations below.
+        'run-test': ['--interp-ac',
+                     '--speed-profile',
+                     '--gcstress',
                      '--gcverify']
     },
+    # Rename this configuration as 'art-interpreter-gcstress-gcverify' (b/62611253).
     'art-interpreter-gcstress' : {
         'run-test' : ['--interpreter',
-                      '--gcstress']
+                      '--gcstress',
+                      '--gcverify']
     },
+    # Rename this configuration as 'art-optimizing-gcstress-gcverify' (b/62611253).
     'art-optimizing-gcstress' : {
-        'run-test' : ['--gcstress',
-                      '--optimizing']
+        'run-test' : ['--optimizing',
+                      '--gcstress',
+                      '--gcverify']
     },
+    # Rename this configuration as 'art-jit-gcstress-gcverify' (b/62611253).
     'art-jit-gcstress' : {
         'run-test' : ['--jit',
-                      '--gcstress']
+                      '--gcstress',
+                      '--gcverify']
     },
     'art-jit-on-first-use-gcstress' : {
         'run-test' : ['--jit',
