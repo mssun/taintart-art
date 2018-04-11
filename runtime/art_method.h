@@ -341,7 +341,9 @@ class ArtMethod FINAL {
     AddAccessFlags(kAccMustCountLocks);
   }
 
-  HiddenApiAccessFlags::ApiList GetHiddenApiAccessFlags();
+  HiddenApiAccessFlags::ApiList GetHiddenApiAccessFlags() {
+    return HiddenApiAccessFlags::DecodeFromRuntime(GetAccessFlags());
+  }
 
   // Returns true if this method could be overridden by a default method.
   bool IsOverridableByDefaultMethod() REQUIRES_SHARED(Locks::mutator_lock_);
@@ -870,6 +872,9 @@ class ArtMethod FINAL {
       new_access_flags = old_access_flags & ~flag;
     } while (!access_flags_.compare_exchange_weak(old_access_flags, new_access_flags));
   }
+
+  // Returns true if the given intrinsic is considered hidden.
+  bool IsHiddenIntrinsic(uint32_t ordinal);
 
   DISALLOW_COPY_AND_ASSIGN(ArtMethod);  // Need to use CopyFrom to deal with 32 vs 64 bits.
 };

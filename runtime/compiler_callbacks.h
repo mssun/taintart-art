@@ -42,7 +42,6 @@ class CompilerCallbacks {
  public:
   enum class CallbackMode {  // private
     kCompileBootImage,
-    kCompileCoreImage,
     kCompileApp
   };
 
@@ -68,15 +67,8 @@ class CompilerCallbacks {
   virtual void SetDoesClassUnloading(bool does_class_unloading ATTRIBUTE_UNUSED,
                                      CompilerDriver* compiler_driver ATTRIBUTE_UNUSED) {}
 
-  // Returns true if the compiler is compiling a boot image.
-  // Note that core image (a minimal boot image for testing) is also considered a boot image.
   bool IsBootImage() {
-    return mode_ == CallbackMode::kCompileBootImage || mode_ == CallbackMode::kCompileCoreImage;
-  }
-
-  // Returns true if the compiler is compiling a core image (a minimal boot image for testing).
-  bool IsCoreImage() {
-    return mode_ == CallbackMode::kCompileCoreImage;
+    return mode_ == CallbackMode::kCompileBootImage;
   }
 
   virtual void UpdateClassState(ClassReference ref ATTRIBUTE_UNUSED,
