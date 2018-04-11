@@ -21,6 +21,7 @@
 #include "arch/instruction_set_features.h"
 #include "base/arena_containers.h"
 #include "base/arena_object.h"
+#include "base/array_ref.h"
 #include "base/bit_field.h"
 #include "base/bit_utils.h"
 #include "base/enums.h"
@@ -74,6 +75,7 @@ class CodeAllocator {
   virtual ~CodeAllocator() {}
 
   virtual uint8_t* Allocate(size_t size) = 0;
+  virtual ArrayRef<const uint8_t> GetMemory() const = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CodeAllocator);
@@ -210,6 +212,10 @@ class CodeGenerator : public DeletableArenaObject<kArenaAllocCodeGenerator> {
   virtual void Initialize() = 0;
   virtual void Finalize(CodeAllocator* allocator);
   virtual void EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches);
+  virtual bool NeedsThunkCode(const linker::LinkerPatch& patch) const;
+  virtual void EmitThunkCode(const linker::LinkerPatch& patch,
+                             /*out*/ ArenaVector<uint8_t>* code,
+                             /*out*/ std::string* debug_name);
   virtual void GenerateFrameEntry() = 0;
   virtual void GenerateFrameExit() = 0;
   virtual void Bind(HBasicBlock* block) = 0;

@@ -36,6 +36,11 @@
 #pragma GCC diagnostic pop
 
 namespace art {
+
+namespace linker {
+class Thumb2RelativePatcherTest;
+}  // namespace linker
+
 namespace arm {
 
 // This constant is used as an approximate margin when emission of veneer and literal pools
@@ -107,6 +112,9 @@ static const vixl::aarch32::SRegister kRuntimeParameterFpuRegistersVIXL[] = {
 };
 static const size_t kRuntimeParameterFpuRegistersLengthVIXL =
     arraysize(kRuntimeParameterFpuRegistersVIXL);
+
+// The reserved entrypoint register for link-time generated thunks.
+const vixl::aarch32::Register kBakerCcEntrypointRegister = vixl32::r4;
 
 class LoadClassSlowPathARMVIXL;
 class CodeGeneratorARMVIXL;
@@ -388,16 +396,6 @@ class InstructionCodeGeneratorARMVIXL : public InstructionCodeGenerator {
                                          uint32_t offset,
                                          Location maybe_temp,
                                          ReadBarrierOption read_barrier_option);
-  // Generate a GC root reference load:
-  //
-  //   root <- *(obj + offset)
-  //
-  // while honoring read barriers based on read_barrier_option.
-  void GenerateGcRootFieldLoad(HInstruction* instruction,
-                               Location root,
-                               vixl::aarch32::Register obj,
-                               uint32_t offset,
-                               ReadBarrierOption read_barrier_option);
   void GenerateTestAndBranch(HInstruction* instruction,
                              size_t condition_input_index,
                              vixl::aarch32::Label* true_target,
@@ -606,6 +604,10 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
                                                 Handle<mirror::Class> handle);
 
   void EmitLinkerPatches(ArenaVector<linker::LinkerPatch>* linker_patches) OVERRIDE;
+  bool NeedsThunkCode(const linker::LinkerPatch& patch) const OVERRIDE;
+  void EmitThunkCode(const linker::LinkerPatch& patch,
+                     /*out*/ ArenaVector<uint8_t>* code,
+                     /*out*/ std::string* debug_name) OVERRIDE;
 
   void EmitJitRootPatches(uint8_t* code, const uint8_t* roots_data) OVERRIDE;
 
@@ -613,6 +615,16 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
   // is added only for AOT compilation if link-time generated thunks for fields are enabled.
   void MaybeAddBakerCcEntrypointTempForFields(LocationSummary* locations);
 
+  // Generate a GC root reference load:
+  //
+  //   root <- *(obj + offset)
+  //
+  // while honoring read barriers based on read_barrier_option.
+  void GenerateGcRootFieldLoad(HInstruction* instruction,
+                               Location root,
+                               vixl::aarch32::Register obj,
+                               uint32_t offset,
+                               ReadBarrierOption read_barrier_option);
   // Fast path implementation of ReadBarrier::Barrier for a heap
   // reference field load when Baker's read barriers are used.
   void GenerateFieldLoadWithBakerReadBarrier(HInstruction* instruction,
@@ -767,6 +779,83 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
                                  vixl::aarch32::Register temp = vixl32::Register());
 
  private:
+  // Encoding of thunk type and data for link-time generated thunks for Baker read barriers.
+
+  enum class BakerReadBarrierKind : uint8_t {
+    kField,   // Field get or array get with constant offset (i.e. constant index).
+    kArray,   // Array get with index in register.
+    kGcRoot,  // GC root load.
+    kLast = kGcRoot
+  };
+
+  enum class BakerReadBarrierWidth : uint8_t {
+    kWide,          // 32-bit LDR (and 32-bit NEG if heap poisoning is enabled).
+    kNarrow,        // 16-bit LDR (and 16-bit NEG if heap poisoning is enabled).
+    kLast = kNarrow
+  };
+
+  static constexpr uint32_t kBakerReadBarrierInvalidEncodedReg = /* pc is invalid */ 15u;
+
+  static constexpr size_t kBitsForBakerReadBarrierKind =
+      MinimumBitsToStore(static_cast<size_t>(BakerReadBarrierKind::kLast));
+  static constexpr size_t kBakerReadBarrierBitsForRegister =
+      MinimumBitsToStore(kBakerReadBarrierInvalidEncodedReg);
+  using BakerReadBarrierKindField =
+      BitField<BakerReadBarrierKind, 0, kBitsForBakerReadBarrierKind>;
+  using BakerReadBarrierFirstRegField =
+      BitField<uint32_t, kBitsForBakerReadBarrierKind, kBakerReadBarrierBitsForRegister>;
+  using BakerReadBarrierSecondRegField =
+      BitField<uint32_t,
+               kBitsForBakerReadBarrierKind + kBakerReadBarrierBitsForRegister,
+               kBakerReadBarrierBitsForRegister>;
+  static constexpr size_t kBitsForBakerReadBarrierWidth =
+      MinimumBitsToStore(static_cast<size_t>(BakerReadBarrierWidth::kLast));
+  using BakerReadBarrierWidthField =
+      BitField<BakerReadBarrierWidth,
+               kBitsForBakerReadBarrierKind + 2 * kBakerReadBarrierBitsForRegister,
+               kBitsForBakerReadBarrierWidth>;
+
+  static void CheckValidReg(uint32_t reg) {
+    DCHECK(reg < vixl::aarch32::ip.GetCode() && reg != kBakerCcEntrypointRegister.GetCode()) << reg;
+  }
+
+  static uint32_t EncodeBakerReadBarrierFieldData(uint32_t base_reg,
+                                                  uint32_t holder_reg,
+                                                  bool narrow) {
+    CheckValidReg(base_reg);
+    CheckValidReg(holder_reg);
+    DCHECK(!narrow || base_reg < 8u) << base_reg;
+    BakerReadBarrierWidth width =
+        narrow ? BakerReadBarrierWidth::kNarrow : BakerReadBarrierWidth::kWide;
+    return BakerReadBarrierKindField::Encode(BakerReadBarrierKind::kField) |
+           BakerReadBarrierFirstRegField::Encode(base_reg) |
+           BakerReadBarrierSecondRegField::Encode(holder_reg) |
+           BakerReadBarrierWidthField::Encode(width);
+  }
+
+  static uint32_t EncodeBakerReadBarrierArrayData(uint32_t base_reg) {
+    CheckValidReg(base_reg);
+    return BakerReadBarrierKindField::Encode(BakerReadBarrierKind::kArray) |
+           BakerReadBarrierFirstRegField::Encode(base_reg) |
+           BakerReadBarrierSecondRegField::Encode(kBakerReadBarrierInvalidEncodedReg) |
+           BakerReadBarrierWidthField::Encode(BakerReadBarrierWidth::kWide);
+  }
+
+  static uint32_t EncodeBakerReadBarrierGcRootData(uint32_t root_reg, bool narrow) {
+    CheckValidReg(root_reg);
+    DCHECK(!narrow || root_reg < 8u) << root_reg;
+    BakerReadBarrierWidth width =
+        narrow ? BakerReadBarrierWidth::kNarrow : BakerReadBarrierWidth::kWide;
+    return BakerReadBarrierKindField::Encode(BakerReadBarrierKind::kGcRoot) |
+           BakerReadBarrierFirstRegField::Encode(root_reg) |
+           BakerReadBarrierSecondRegField::Encode(kBakerReadBarrierInvalidEncodedReg) |
+           BakerReadBarrierWidthField::Encode(width);
+  }
+
+  void CompileBakerReadBarrierThunk(ArmVIXLAssembler& assembler,
+                                    uint32_t encoded_data,
+                                    /*out*/ std::string* debug_name);
+
   vixl::aarch32::Register GetInvokeStaticOrDirectExtraParameter(HInvokeStaticOrDirect* invoke,
                                                                 vixl::aarch32::Register temp);
 
@@ -829,6 +918,7 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
   // Patches for class literals in JIT compiled code.
   TypeToLiteralMap jit_class_patches_;
 
+  friend class linker::Thumb2RelativePatcherTest;
   DISALLOW_COPY_AND_ASSIGN(CodeGeneratorARMVIXL);
 };
 
