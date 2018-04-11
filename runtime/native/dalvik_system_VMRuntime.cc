@@ -93,6 +93,10 @@ static void VMRuntime_setHiddenApiExemptions(JNIEnv* env,
   Runtime::Current()->SetHiddenApiExemptions(exemptions_vec);
 }
 
+static void VMRuntime_setHiddenApiAccessLogSamplingRate(JNIEnv*, jclass, jint rate) {
+  Runtime::Current()->SetHiddenApiEventLogSampleRate(rate);
+}
+
 static jobject VMRuntime_newNonMovableArray(JNIEnv* env, jobject, jclass javaElementClass,
                                             jint length) {
   ScopedFastNativeObjectAccess soa(env);
@@ -688,6 +692,7 @@ static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(VMRuntime, disableJitCompilation, "()V"),
   NATIVE_METHOD(VMRuntime, hasUsedHiddenApi, "()Z"),
   NATIVE_METHOD(VMRuntime, setHiddenApiExemptions, "([Ljava/lang/String;)V"),
+  NATIVE_METHOD(VMRuntime, setHiddenApiAccessLogSamplingRate, "(I)V"),
   NATIVE_METHOD(VMRuntime, getTargetHeapUtilization, "()F"),
   FAST_NATIVE_METHOD(VMRuntime, isDebuggerActive, "()Z"),
   FAST_NATIVE_METHOD(VMRuntime, isNativeDebuggable, "()Z"),

@@ -274,6 +274,7 @@ Runtime::Runtime()
       pending_hidden_api_warning_(false),
       dedupe_hidden_api_warnings_(true),
       always_set_hidden_api_warning_flag_(false),
+      hidden_api_access_event_log_rate_(0),
       dump_native_stack_on_sig_quit_(true),
       pruned_dalvik_cache_(false),
       // Initially assume we perceive jank in case the process state is never updated.
