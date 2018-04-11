@@ -59,8 +59,6 @@ ifdef TARGET_2ND_ARCH
     ART_PHONY_TEST_TARGET_SUFFIX := 64
     2ND_ART_PHONY_TEST_TARGET_SUFFIX := 32
   else
-    # TODO: ???
-    $(warning Do not know what to do with this multi-target configuration!)
     ART_PHONY_TEST_TARGET_SUFFIX := 32
     2ND_ART_PHONY_TEST_TARGET_SUFFIX :=
   endif
