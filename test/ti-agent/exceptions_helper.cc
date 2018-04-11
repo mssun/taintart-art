@@ -147,11 +147,12 @@ extern "C" JNIEXPORT void JNICALL Java_art_Exceptions_setupExceptionTracing(
     return;
   }
 
-  jvmtiEventCallbacks cb;
-  memset(&cb, 0, sizeof(cb));
-  cb.Exception = exceptionCB;
-  cb.ExceptionCatch = exceptionCatchCB;
-  if (JvmtiErrorToException(env, jvmti_env, jvmti_env->SetEventCallbacks(&cb, sizeof(cb)))) {
+  current_callbacks.Exception = exceptionCB;
+  current_callbacks.ExceptionCatch = exceptionCatchCB;
+  if (JvmtiErrorToException(env,
+                            jvmti_env,
+                            jvmti_env->SetEventCallbacks(&current_callbacks,
+                                                         sizeof(current_callbacks)))) {
     return;
   }
 }
