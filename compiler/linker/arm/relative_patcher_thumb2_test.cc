@@ -16,12 +16,15 @@
 
 #include "linker/arm/relative_patcher_thumb2.h"
 
+#include "arch/arm/instruction_set_features_arm.h"
 #include "base/casts.h"
 #include "linker/relative_patcher_test.h"
 #include "lock_word.h"
 #include "mirror/array-inl.h"
 #include "mirror/object.h"
 #include "oat_quick_method_header.h"
+#include "optimizing/code_generator_arm_vixl.h"
+#include "optimizing/optimizing_unit_test.h"
 
 namespace art {
 namespace linker {
@@ -189,9 +192,42 @@ class Thumb2RelativePatcherTest : public RelativePatcherTest {
     return result.second - 1 /* thumb mode */;
   }
 
+  std::vector<uint8_t> CompileThunk(const LinkerPatch& patch,
+                                    /*out*/ std::string* debug_name = nullptr) {
+    OptimizingUnitTestHelper helper;
+    HGraph* graph = helper.CreateGraph();
+    std::string error_msg;
+    ArmFeaturesUniquePtr features =
+        ArmInstructionSetFeatures::FromVariant("default", &error_msg);
+    CompilerOptions options;
+    arm::CodeGeneratorARMVIXL codegen(graph, *features, options);
+    ArenaVector<uint8_t> code(helper.GetAllocator()->Adapter());
+    codegen.EmitThunkCode(patch, &code, debug_name);
+    return std::vector<uint8_t>(code.begin(), code.end());
+  }
+
+  void AddCompiledMethod(
+      MethodReference method_ref,
+      const ArrayRef<const uint8_t>& code,
+      const ArrayRef<const LinkerPatch>& patches = ArrayRef<const LinkerPatch>()) {
+    RelativePatcherTest::AddCompiledMethod(method_ref, code, patches);
+
+    // Make sure the ThunkProvider has all the necessary thunks.
+    for (const LinkerPatch& patch : patches) {
+      if (patch.GetType() == LinkerPatch::Type::kBakerReadBarrierBranch ||
+          patch.GetType() == LinkerPatch::Type::kCallRelative) {
+        std::string debug_name;
+        std::vector<uint8_t> thunk_code = CompileThunk(patch, &debug_name);
+        thunk_provider_.SetThunkCode(patch, ArrayRef<const uint8_t>(thunk_code), debug_name);
+      }
+    }
+  }
+
   std::vector<uint8_t> CompileMethodCallThunk() {
-    ArmBaseRelativePatcher::ThunkKey key = ArmBaseRelativePatcher::GetMethodCallKey();
-    return static_cast<Thumb2RelativePatcher*>(patcher_.get())->CompileThunk(key);
+    LinkerPatch patch = LinkerPatch::RelativeCodePatch(/* literal_offset */ 0u,
+                                                       /* target_dex_file*/ nullptr,
+                                                       /* target_method_idx */ 0u);
+    return CompileThunk(patch);
   }
 
   uint32_t MethodCallThunkSize() {
@@ -228,27 +264,38 @@ class Thumb2RelativePatcherTest : public RelativePatcherTest {
   void TestStringReference(uint32_t string_offset);
   void CheckPcRelativePatch(const ArrayRef<const LinkerPatch>& patches, uint32_t target_offset);
 
+  static uint32_t EncodeBakerReadBarrierFieldData(uint32_t base_reg,
+                                                  uint32_t holder_reg,
+                                                  bool narrow) {
+    return arm::CodeGeneratorARMVIXL::EncodeBakerReadBarrierFieldData(base_reg, holder_reg, narrow);
+  }
+
+  static uint32_t EncodeBakerReadBarrierArrayData(uint32_t base_reg) {
+    return arm::CodeGeneratorARMVIXL::EncodeBakerReadBarrierArrayData(base_reg);
+  }
+
+  static uint32_t EncodeBakerReadBarrierGcRootData(uint32_t root_reg, bool narrow) {
+    return arm::CodeGeneratorARMVIXL::EncodeBakerReadBarrierGcRootData(root_reg, narrow);
+  }
+
   std::vector<uint8_t> CompileBakerOffsetThunk(uint32_t base_reg,
                                                uint32_t holder_reg,
                                                bool narrow) {
     const LinkerPatch patch = LinkerPatch::BakerReadBarrierBranchPatch(
-        0u, Thumb2RelativePatcher::EncodeBakerReadBarrierFieldData(base_reg, holder_reg, narrow));
-    ArmBaseRelativePatcher::ThunkKey key = ArmBaseRelativePatcher::GetBakerThunkKey(patch);
-    return down_cast<Thumb2RelativePatcher*>(patcher_.get())->CompileThunk(key);
+        /* literal_offset */ 0u, EncodeBakerReadBarrierFieldData(base_reg, holder_reg, narrow));
+    return CompileThunk(patch);
   }
 
   std::vector<uint8_t> CompileBakerArrayThunk(uint32_t base_reg) {
     LinkerPatch patch = LinkerPatch::BakerReadBarrierBranchPatch(
-        0u, Thumb2RelativePatcher::EncodeBakerReadBarrierArrayData(base_reg));
-    ArmBaseRelativePatcher::ThunkKey key = ArmBaseRelativePatcher::GetBakerThunkKey(patch);
-    return down_cast<Thumb2RelativePatcher*>(patcher_.get())->CompileThunk(key);
+        /* literal_offset */ 0u, EncodeBakerReadBarrierArrayData(base_reg));
+    return CompileThunk(patch);
   }
 
   std::vector<uint8_t> CompileBakerGcRootThunk(uint32_t root_reg, bool narrow) {
     LinkerPatch patch = LinkerPatch::BakerReadBarrierBranchPatch(
-        0u, Thumb2RelativePatcher::EncodeBakerReadBarrierGcRootData(root_reg, narrow));
-    ArmBaseRelativePatcher::ThunkKey key = ArmBaseRelativePatcher::GetBakerThunkKey(patch);
-    return down_cast<Thumb2RelativePatcher*>(patcher_.get())->CompileThunk(key);
+        /* literal_offset */ 0u, EncodeBakerReadBarrierGcRootData(root_reg, narrow));
+    return CompileThunk(patch);
   }
 
   uint32_t GetOutputInsn32(uint32_t offset) {
@@ -594,7 +641,7 @@ void Thumb2RelativePatcherTest::TestBakerFieldWide(uint32_t offset, uint32_t ref
       const std::vector<uint8_t> raw_code = RawCode({kBneWPlus0, ldr});
       ASSERT_EQ(kMethodCodeSize, raw_code.size());
       ArrayRef<const uint8_t> code(raw_code);
-      uint32_t encoded_data = Thumb2RelativePatcher::EncodeBakerReadBarrierFieldData(
+      uint32_t encoded_data = EncodeBakerReadBarrierFieldData(
           base_reg, holder_reg, /* narrow */ false);
       const LinkerPatch patches[] = {
           LinkerPatch::BakerReadBarrierBranchPatch(kLiteralOffset, encoded_data),
@@ -696,7 +743,7 @@ void Thumb2RelativePatcherTest::TestBakerFieldNarrow(uint32_t offset, uint32_t r
       const std::vector<uint8_t> raw_code = RawCode({kBneWPlus0, ldr});
       ASSERT_EQ(kMethodCodeSize, raw_code.size());
       ArrayRef<const uint8_t> code(raw_code);
-      uint32_t encoded_data = Thumb2RelativePatcher::EncodeBakerReadBarrierFieldData(
+      uint32_t encoded_data = EncodeBakerReadBarrierFieldData(
           base_reg, holder_reg, /* narrow */ true);
       const LinkerPatch patches[] = {
           LinkerPatch::BakerReadBarrierBranchPatch(kLiteralOffset, encoded_data),
@@ -809,7 +856,7 @@ TEST_F(Thumb2RelativePatcherTest, BakerOffsetThunkInTheMiddle) {
   constexpr uint32_t kLiteralOffset1 = 6u;
   const std::vector<uint8_t> raw_code1 = RawCode({kNopWInsn, kNopInsn, kBneWPlus0, kLdrWInsn});
   ArrayRef<const uint8_t> code1(raw_code1);
-  uint32_t encoded_data = Thumb2RelativePatcher::EncodeBakerReadBarrierFieldData(
+  uint32_t encoded_data = EncodeBakerReadBarrierFieldData(
       /* base_reg */ 0, /* holder_reg */ 0, /* narrow */ false);
   const LinkerPatch patches1[] = {
       LinkerPatch::BakerReadBarrierBranchPatch(kLiteralOffset1, encoded_data),
@@ -877,7 +924,7 @@ TEST_F(Thumb2RelativePatcherTest, BakerOffsetThunkBeforeFiller) {
   constexpr uint32_t kLiteralOffset1 = 4u;
   const std::vector<uint8_t> raw_code1 = RawCode({kNopWInsn, kBneWPlus0, kLdrWInsn, kNopInsn});
   ArrayRef<const uint8_t> code1(raw_code1);
-  uint32_t encoded_data = Thumb2RelativePatcher::EncodeBakerReadBarrierFieldData(
+  uint32_t encoded_data = EncodeBakerReadBarrierFieldData(
       /* base_reg */ 0, /* holder_reg */ 0, /* narrow */ false);
   const LinkerPatch patches1[] = {
       LinkerPatch::BakerReadBarrierBranchPatch(kLiteralOffset1, encoded_data),
@@ -907,7 +954,7 @@ TEST_F(Thumb2RelativePatcherTest, BakerOffsetThunkInTheMiddleUnreachableFromLast
   constexpr uint32_t kLiteralOffset1 = 6u;
   const std::vector<uint8_t> raw_code1 = RawCode({kNopWInsn, kNopInsn, kBneWPlus0, kLdrWInsn});
   ArrayRef<const uint8_t> code1(raw_code1);
-  uint32_t encoded_data = Thumb2RelativePatcher::EncodeBakerReadBarrierFieldData(
+  uint32_t encoded_data = EncodeBakerReadBarrierFieldData(
       /* base_reg */ 0, /* holder_reg */ 0, /* narrow */ false);
   const LinkerPatch patches1[] = {
       LinkerPatch::BakerReadBarrierBranchPatch(kLiteralOffset1, encoded_data),
@@ -993,7 +1040,7 @@ TEST_F(Thumb2RelativePatcherTest, BakerArray) {
     ArrayRef<const uint8_t> code(raw_code);
     const LinkerPatch patches[] = {
         LinkerPatch::BakerReadBarrierBranchPatch(
-            kLiteralOffset, Thumb2RelativePatcher::EncodeBakerReadBarrierArrayData(base_reg)),
+            kLiteralOffset, EncodeBakerReadBarrierArrayData(base_reg)),
     };
     AddCompiledMethod(MethodRef(method_idx), code, ArrayRef<const LinkerPatch>(patches));
   }
@@ -1074,8 +1121,7 @@ TEST_F(Thumb2RelativePatcherTest, BakerGcRootWide) {
     ArrayRef<const uint8_t> code(raw_code);
     const LinkerPatch patches[] = {
         LinkerPatch::BakerReadBarrierBranchPatch(
-            kLiteralOffset,
-            Thumb2RelativePatcher::EncodeBakerReadBarrierGcRootData(root_reg, /* narrow */ false)),
+            kLiteralOffset, EncodeBakerReadBarrierGcRootData(root_reg, /* narrow */ false)),
     };
     AddCompiledMethod(MethodRef(method_idx), code, ArrayRef<const LinkerPatch>(patches));
   }
@@ -1134,8 +1180,7 @@ TEST_F(Thumb2RelativePatcherTest, BakerGcRootNarrow) {
     ArrayRef<const uint8_t> code(raw_code);
     const LinkerPatch patches[] = {
         LinkerPatch::BakerReadBarrierBranchPatch(
-            kLiteralOffset,
-            Thumb2RelativePatcher::EncodeBakerReadBarrierGcRootData(root_reg, /* narrow */ true)),
+            kLiteralOffset, EncodeBakerReadBarrierGcRootData(root_reg, /* narrow */ true)),
     };
     AddCompiledMethod(MethodRef(method_idx), code, ArrayRef<const LinkerPatch>(patches));
   }
@@ -1182,8 +1227,7 @@ TEST_F(Thumb2RelativePatcherTest, BakerGcRootOffsetBits) {
   patches.reserve(num_patches);
   const uint32_t ldr =
       kLdrWInsn | (/* offset */ 8) | (/* base_reg */ 0 << 16) | (/* root_reg */ 0 << 12);
-  uint32_t encoded_data =
-      Thumb2RelativePatcher::EncodeBakerReadBarrierGcRootData(/* root_reg */ 0, /* narrow */ false);
+  uint32_t encoded_data = EncodeBakerReadBarrierGcRootData(/* root_reg */ 0, /* narrow */ false);
   for (size_t i = 0; i != num_patches; ++i) {
     PushBackInsn(&code, ldr);
     PushBackInsn(&code, kBneWPlus0);
@@ -1264,10 +1308,8 @@ TEST_F(Thumb2RelativePatcherTest, BakerAndMethodCallInteraction) {
       ldr1, kBneWPlus0,                         // First GC root LDR with read barrier.
       ldr2, kBneWPlus0,                         // Second GC root LDR with read barrier.
   });
-  uint32_t encoded_data1 =
-      Thumb2RelativePatcher::EncodeBakerReadBarrierGcRootData(/* root_reg */ 1, /* narrow */ false);
-  uint32_t encoded_data2 =
-      Thumb2RelativePatcher::EncodeBakerReadBarrierGcRootData(/* root_reg */ 2, /* narrow */ false);
+  uint32_t encoded_data1 = EncodeBakerReadBarrierGcRootData(/* root_reg */ 1, /* narrow */ false);
+  uint32_t encoded_data2 = EncodeBakerReadBarrierGcRootData(/* root_reg */ 2, /* narrow */ false);
   const LinkerPatch last_method_patches[] = {
       LinkerPatch::BakerReadBarrierBranchPatch(kBakerLiteralOffset1, encoded_data1),
       LinkerPatch::BakerReadBarrierBranchPatch(kBakerLiteralOffset2, encoded_data2),

@@ -30,8 +30,9 @@ namespace linker {
 
 class ArmBaseRelativePatcher::ThunkData {
  public:
-  ThunkData(std::vector<uint8_t> code, uint32_t max_next_offset)
-      : code_(std::move(code)),
+  ThunkData(ArrayRef<const uint8_t> code, const std::string& debug_name, uint32_t max_next_offset)
+      : code_(code),
+        debug_name_(debug_name),
         offsets_(),
         max_next_offset_(max_next_offset),
         pending_offset_(0u) {
@@ -45,7 +46,11 @@ class ArmBaseRelativePatcher::ThunkData {
   }
 
   ArrayRef<const uint8_t> GetCode() const {
-    return ArrayRef<const uint8_t>(code_);
+    return code_;
+  }
+
+  const std::string& GetDebugName() const {
+    return debug_name_;
   }
 
   bool NeedsNextThunk() const {
@@ -142,10 +147,11 @@ class ArmBaseRelativePatcher::ThunkData {
   }
 
  private:
-  std::vector<uint8_t> code_;       // The code of the thunk.
-  std::vector<uint32_t> offsets_;   // Offsets at which the thunk needs to be written.
-  uint32_t max_next_offset_;        // The maximum offset at which the next thunk can be placed.
-  uint32_t pending_offset_;         // The index of the next offset to write.
+  const ArrayRef<const uint8_t> code_;  // The code of the thunk.
+  const std::string debug_name_;        // The debug name of the thunk.
+  std::vector<uint32_t> offsets_;       // Offsets at which the thunk needs to be written.
+  uint32_t max_next_offset_;            // The maximum offset at which the next thunk can be placed.
+  uint32_t pending_offset_;             // The index of the next offset to write.
 };
 
 class ArmBaseRelativePatcher::PendingThunkComparator {
@@ -239,14 +245,13 @@ std::vector<debug::MethodDebugInfo> ArmBaseRelativePatcher::GenerateThunkDebugIn
   std::vector<debug::MethodDebugInfo> result;
   result.reserve(number_of_thunks);
   for (auto&& entry : thunks_) {
-    const ThunkKey& key = entry.first;
     const ThunkData& data = entry.second;
     size_t start = data.IndexOfFirstThunkAtOrAfter(executable_offset);
     if (start == data.NumberOfThunks()) {
       continue;
     }
     // Get the base name to use for the first occurrence of the thunk.
-    std::string base_name = GetThunkDebugName(key);
+    std::string base_name = data.GetDebugName();
     for (size_t i = start, num = data.NumberOfThunks(); i != num; ++i) {
       debug::MethodDebugInfo info = {};
       if (i == 0u) {
@@ -267,9 +272,11 @@ std::vector<debug::MethodDebugInfo> ArmBaseRelativePatcher::GenerateThunkDebugIn
   return result;
 }
 
-ArmBaseRelativePatcher::ArmBaseRelativePatcher(RelativePatcherTargetProvider* provider,
+ArmBaseRelativePatcher::ArmBaseRelativePatcher(RelativePatcherThunkProvider* thunk_provider,
+                                               RelativePatcherTargetProvider* target_provider,
                                                InstructionSet instruction_set)
-    : provider_(provider),
+    : thunk_provider_(thunk_provider),
+      target_provider_(target_provider),
       instruction_set_(instruction_set),
       thunks_(),
       unprocessed_method_call_patches_(),
@@ -398,7 +405,7 @@ void ArmBaseRelativePatcher::ProcessPatches(const CompiledMethod* compiled_metho
       unprocessed_method_call_patches_.emplace_back(patch_offset, patch.TargetMethod());
       if (method_call_thunk_ == nullptr) {
         uint32_t max_next_offset = CalculateMaxNextOffset(patch_offset, key);
-        auto it = thunks_.Put(key, ThunkData(CompileThunk(key), max_next_offset));
+        auto it = thunks_.Put(key, ThunkDataForPatch(patch, max_next_offset));
         method_call_thunk_ = &it->second;
         AddUnreservedThunk(method_call_thunk_);
       } else {
@@ -409,7 +416,7 @@ void ArmBaseRelativePatcher::ProcessPatches(const CompiledMethod* compiled_metho
       auto lb = thunks_.lower_bound(key);
       if (lb == thunks_.end() || thunks_.key_comp()(key, lb->first)) {
         uint32_t max_next_offset = CalculateMaxNextOffset(patch_offset, key);
-        auto it = thunks_.PutBefore(lb, key, ThunkData(CompileThunk(key), max_next_offset));
+        auto it = thunks_.PutBefore(lb, key, ThunkDataForPatch(patch, max_next_offset));
         AddUnreservedThunk(&it->second);
       } else {
         old_data = &lb->second;
@@ -477,7 +484,7 @@ void ArmBaseRelativePatcher::ResolveMethodCalls(uint32_t quick_code_offset,
           break;
         }
       } else {
-        auto result = provider_->FindMethodOffset(target_method);
+        auto result = target_provider_->FindMethodOffset(target_method);
         if (!result.first) {
           break;
         }
@@ -516,6 +523,15 @@ inline uint32_t ArmBaseRelativePatcher::CalculateMaxNextOffset(uint32_t patch_of
                                                                const ThunkKey& key) {
   return RoundDown(patch_offset + MaxPositiveDisplacement(key),
                    GetInstructionSetAlignment(instruction_set_));
+}
+
+inline ArmBaseRelativePatcher::ThunkData ArmBaseRelativePatcher::ThunkDataForPatch(
+    const LinkerPatch& patch, uint32_t max_next_offset) {
+  ArrayRef<const uint8_t> code;
+  std::string debug_name;
+  thunk_provider_->GetThunkCode(patch, &code, &debug_name);
+  DCHECK(!code.empty());
+  return ThunkData(code, debug_name, max_next_offset);
 }
 
 }  // namespace linker
