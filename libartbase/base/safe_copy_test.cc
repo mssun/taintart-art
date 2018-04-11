@@ -16,14 +16,15 @@
 
 #include "safe_copy.h"
 
-#include "common_runtime_test.h"
-
 #include <errno.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/user.h>
 
-#include "globals.h"
+#include "android-base/logging.h"
+#include "base/globals.h"
+#include "gtest/gtest.h"
+
 
 namespace art {
 

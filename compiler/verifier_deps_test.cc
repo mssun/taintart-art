@@ -18,6 +18,7 @@
 #include "verifier/verifier_deps.h"
 
 #include "art_method-inl.h"
+#include "base/indenter.h"
 #include "class_linker.h"
 #include "common_compiler_test.h"
 #include "compiler_callbacks.h"
@@ -28,7 +29,6 @@
 #include "driver/compiler_driver-inl.h"
 #include "driver/compiler_options.h"
 #include "handle_scope-inl.h"
-#include "indenter.h"
 #include "mirror/class_loader.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"

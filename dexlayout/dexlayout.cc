@@ -49,7 +49,6 @@
 #include "dex_visualize.h"
 #include "dex_writer.h"
 #include "jit/profile_compilation_info.h"
-#include "mem_map.h"
 
 namespace art {
 
