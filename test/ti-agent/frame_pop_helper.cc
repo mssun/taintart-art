@@ -90,10 +90,11 @@ extern "C" JNIEXPORT void JNICALL Java_art_FramePop_enableFramePopEvent(
   if (JvmtiErrorToException(env, jvmti_env, jvmti_env->AddCapabilities(&caps))) {
     return;
   }
-  jvmtiEventCallbacks cb;
-  memset(&cb, 0, sizeof(cb));
-  cb.FramePop = framePopCB;
-  if (JvmtiErrorToException(env, jvmti_env, jvmti_env->SetEventCallbacks(&cb, sizeof(cb)))) {
+  current_callbacks.FramePop = framePopCB;
+  if (JvmtiErrorToException(env,
+                            jvmti_env,
+                            jvmti_env->SetEventCallbacks(&current_callbacks,
+                                                         sizeof(current_callbacks)))) {
     return;
   }
   JvmtiErrorToException(env,

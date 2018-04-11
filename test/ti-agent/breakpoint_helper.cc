@@ -172,10 +172,11 @@ extern "C" JNIEXPORT void JNICALL Java_art_Breakpoint_startBreakpointWatch(
   if (JvmtiErrorToException(env, jvmti_env, jvmti_env->SetEnvironmentLocalStorage(data))) {
     return;
   }
-  jvmtiEventCallbacks cb;
-  memset(&cb, 0, sizeof(cb));
-  cb.Breakpoint = breakpointCB;
-  if (JvmtiErrorToException(env, jvmti_env, jvmti_env->SetEventCallbacks(&cb, sizeof(cb)))) {
+  current_callbacks.Breakpoint = breakpointCB;
+  if (JvmtiErrorToException(env,
+                            jvmti_env,
+                            jvmti_env->SetEventCallbacks(&current_callbacks,
+                                                         sizeof(current_callbacks)))) {
     return;
   }
   if (JvmtiErrorToException(env,

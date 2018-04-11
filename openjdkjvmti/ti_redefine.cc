@@ -234,12 +234,39 @@ jvmtiError Redefiner::IsModifiableClass(jvmtiEnv* env ATTRIBUTE_UNUSED,
   art::Handle<art::mirror::Class> h_klass(hs.NewHandle(obj->AsClass()));
   std::string err_unused;
   *is_redefinable =
-      Redefiner::GetClassRedefinitionError(h_klass, &err_unused) == OK ? JNI_TRUE : JNI_FALSE;
+      Redefiner::GetClassRedefinitionError(h_klass, &err_unused) != ERR(UNMODIFIABLE_CLASS)
+      ? JNI_TRUE : JNI_FALSE;
   return OK;
+}
+
+jvmtiError Redefiner::GetClassRedefinitionError(jclass klass, /*out*/std::string* error_msg) {
+  art::Thread* self = art::Thread::Current();
+  art::ScopedObjectAccess soa(self);
+  art::StackHandleScope<1> hs(self);
+  art::ObjPtr<art::mirror::Object> obj(self->DecodeJObject(klass));
+  if (obj.IsNull()) {
+    return ERR(INVALID_CLASS);
+  }
+  art::Handle<art::mirror::Class> h_klass(hs.NewHandle(obj->AsClass()));
+  return Redefiner::GetClassRedefinitionError(h_klass, error_msg);
 }
 
 jvmtiError Redefiner::GetClassRedefinitionError(art::Handle<art::mirror::Class> klass,
                                                 /*out*/std::string* error_msg) {
+  if (!klass->IsResolved()) {
+    // It's only a problem to try to retransform/redefine a unprepared class if it's happening on
+    // the same thread as the class-linking process. If it's on another thread we will be able to
+    // wait for the preparation to finish and continue from there.
+    if (klass->GetLockOwnerThreadId() == art::Thread::Current()->GetThreadId()) {
+      *error_msg = "Modification of class " + klass->PrettyClass() +
+          " from within the classes ClassLoad callback is not supported to prevent deadlocks." +
+          " Please use ClassFileLoadHook directly instead.";
+      return ERR(INTERNAL);
+    } else {
+      LOG(WARNING) << klass->PrettyClass() << " is not yet resolved. Attempting to transform "
+                   << "it could cause arbitrary length waits as the class is being resolved.";
+    }
+  }
   if (klass->IsPrimitive()) {
     *error_msg = "Modification of primitive classes is not supported";
     return ERR(UNMODIFIABLE_CLASS);
@@ -332,12 +359,9 @@ jvmtiError Redefiner::RedefineClasses(ArtJvmTiEnv* env,
   std::vector<ArtClassDefinition> def_vector;
   def_vector.reserve(class_count);
   for (jint i = 0; i < class_count; i++) {
-    jboolean is_modifiable = JNI_FALSE;
-    jvmtiError res = env->IsModifiableClass(definitions[i].klass, &is_modifiable);
+    jvmtiError res = Redefiner::GetClassRedefinitionError(definitions[i].klass, error_msg);
     if (res != OK) {
       return res;
-    } else if (!is_modifiable) {
-      return ERR(UNMODIFIABLE_CLASS);
     }
     // We make a copy of the class_bytes to pass into the retransformation.
     // This makes cleanup easier (since we unambiguously own the bytes) and also is useful since we

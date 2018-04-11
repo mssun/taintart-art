@@ -14,21 +14,9 @@
  * limitations under the License.
  */
 
-#include "test_env.h"
-
-namespace art {
-
-jvmtiEnv* jvmti_env = nullptr;
-jvmtiEventCallbacks current_callbacks = {};
-
-static bool gRuntimeIsJVM = false;
-
-bool IsJVM() {
-  return gRuntimeIsJVM;
+// This class is caught during loading.
+public class Transform {
+  public String toString() {
+    return "NON Transformed Object";
+  }
 }
-
-void SetJVM(bool b) {
-  gRuntimeIsJVM = b;
-}
-
-}  // namespace art
