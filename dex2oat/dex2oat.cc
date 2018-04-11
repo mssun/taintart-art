@@ -1517,10 +1517,15 @@ class Dex2Oat FINAL {
 
     // Verification results are null since we don't know if we will need them yet as the compler
     // filter may change.
-    callbacks_.reset(new QuickCompilerCallbacks(
-        IsBootImage() ?
-            CompilerCallbacks::CallbackMode::kCompileBootImage :
-            CompilerCallbacks::CallbackMode::kCompileApp));
+    CompilerCallbacks::CallbackMode callback_mode = CompilerCallbacks::CallbackMode::kCompileApp;
+    if (IsBootImage()) {
+      if (IsCoreImage()) {
+        callback_mode = CompilerCallbacks::CallbackMode::kCompileCoreImage;
+      } else {
+        callback_mode = CompilerCallbacks::CallbackMode::kCompileBootImage;
+      }
+    }
+    callbacks_.reset(new QuickCompilerCallbacks(callback_mode));
 
     RuntimeArgumentMap runtime_options;
     if (!PrepareRuntimeOptions(&runtime_options, callbacks_.get())) {
@@ -2278,12 +2283,19 @@ class Dex2Oat FINAL {
     return IsAppImage() || IsBootImage();
   }
 
+  // Returns true if we are compiling an app image.
   bool IsAppImage() const {
     return compiler_options_->IsAppImage();
   }
 
+  // Returns true if we are compiling a boot image.
   bool IsBootImage() const {
     return compiler_options_->IsBootImage();
+  }
+
+  // Returns true if we are compiling a core image (a minimal boot image for testing).
+  bool IsCoreImage() const {
+    return compiler_options_->IsCoreImage();
   }
 
   bool IsHost() const {
