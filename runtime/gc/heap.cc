@@ -1203,7 +1203,8 @@ void Heap::ThrowOutOfMemoryError(Thread* self, size_t byte_count, AllocatorType 
   // If we're in a stack overflow, do not create a new exception. It would require running the
   // constructor, which will of course still be in a stack overflow.
   if (self->IsHandlingStackOverflow()) {
-    self->SetException(Runtime::Current()->GetPreAllocatedOutOfMemoryError());
+    self->SetException(
+        Runtime::Current()->GetPreAllocatedOutOfMemoryErrorWhenHandlingStackOverflow());
     return;
   }
 
