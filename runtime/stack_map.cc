@@ -19,7 +19,7 @@
 #include <stdint.h>
 
 #include "art_method.h"
-#include "indenter.h"
+#include "base/indenter.h"
 #include "scoped_thread_state_change-inl.h"
 
 namespace art {

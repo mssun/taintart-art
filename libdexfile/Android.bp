@@ -32,6 +32,7 @@ cc_defaults {
         "dex/modifiers.cc",
         "dex/primitive.cc",
         "dex/standard_dex_file.cc",
+        "dex/type_lookup_table.cc",
         "dex/utf.cc",
     ],
 
@@ -123,6 +124,7 @@ art_cc_test {
         "dex/dex_instruction_test.cc",
         "dex/primitive_test.cc",
         "dex/string_reference_test.cc",
+        "dex/type_lookup_table_test.cc",
         "dex/utf_test.cc",
     ],
     shared_libs: [

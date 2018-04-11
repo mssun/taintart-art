@@ -20,7 +20,6 @@
 #include <memory>
 
 #include "base/bit_utils.h"
-#include "base/utils.h"
 #include "dex/dex_file-inl.h"
 #include "dex/utf-inl.h"
 
