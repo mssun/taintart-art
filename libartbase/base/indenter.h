@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_INDENTER_H_
-#define ART_RUNTIME_INDENTER_H_
+#ifndef ART_LIBARTBASE_BASE_INDENTER_H_
+#define ART_LIBARTBASE_BASE_INDENTER_H_
 
 #include <ostream>
 #include <streambuf>
@@ -160,4 +160,4 @@ class ScopedIndentation {
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_INDENTER_H_
+#endif  // ART_LIBARTBASE_BASE_INDENTER_H_

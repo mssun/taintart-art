@@ -49,6 +49,7 @@
 #include "dex/dex_file_loader.h"
 #include "dex/dex_file_types.h"
 #include "dex/standard_dex_file.h"
+#include "dex/type_lookup_table.h"
 #include "dex/utf-inl.h"
 #include "elf_file.h"
 #include "elf_utils.h"
@@ -61,7 +62,6 @@
 #include "oat_file-inl.h"
 #include "oat_file_manager.h"
 #include "runtime.h"
-#include "type_lookup_table.h"
 #include "vdex_file.h"
 
 namespace art {
