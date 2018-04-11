@@ -95,7 +95,11 @@ class JNICFITest : public CFITest {
     const std::vector<uint8_t>& actual_cfi = *(jni_asm->cfi().data());
 
     if (kGenerateExpected) {
-      GenerateExpected(stdout, isa, isa_str, actual_asm, actual_cfi);
+      GenerateExpected(stdout,
+                       isa,
+                       isa_str,
+                       ArrayRef<const uint8_t>(actual_asm),
+                       ArrayRef<const uint8_t>(actual_cfi));
     } else {
       EXPECT_EQ(expected_asm, actual_asm);
       EXPECT_EQ(expected_cfi, actual_cfi);

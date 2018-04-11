@@ -75,22 +75,18 @@ static constexpr const char* kPassNameSeparator = "$";
 class CodeVectorAllocator FINAL : public CodeAllocator {
  public:
   explicit CodeVectorAllocator(ArenaAllocator* allocator)
-      : memory_(allocator->Adapter(kArenaAllocCodeBuffer)),
-        size_(0) {}
+      : memory_(allocator->Adapter(kArenaAllocCodeBuffer)) {}
 
   virtual uint8_t* Allocate(size_t size) {
-    size_ = size;
     memory_.resize(size);
     return &memory_[0];
   }
 
-  size_t GetSize() const { return size_; }
-  const ArenaVector<uint8_t>& GetMemory() const { return memory_; }
+  ArrayRef<const uint8_t> GetMemory() const OVERRIDE { return ArrayRef<const uint8_t>(memory_); }
   uint8_t* GetData() { return memory_.data(); }
 
  private:
   ArenaVector<uint8_t> memory_;
-  size_t size_;
 
   DISALLOW_COPY_AND_ASSIGN(CodeVectorAllocator);
 };
@@ -719,7 +715,7 @@ CompiledMethod* OptimizingCompiler::Emit(ArenaAllocator* allocator,
   CompiledMethod* compiled_method = CompiledMethod::SwapAllocCompiledMethod(
       GetCompilerDriver(),
       codegen->GetInstructionSet(),
-      ArrayRef<const uint8_t>(code_allocator->GetMemory()),
+      code_allocator->GetMemory(),
       // Follow Quick's behavior and set the frame size to zero if it is
       // considered "empty" (see the definition of
       // art::CodeGenerator::HasEmptyFrame).
@@ -730,6 +726,16 @@ CompiledMethod* OptimizingCompiler::Emit(ArenaAllocator* allocator,
       ArrayRef<const uint8_t>(stack_map),
       ArrayRef<const uint8_t>(*codegen->GetAssembler()->cfi().data()),
       ArrayRef<const linker::LinkerPatch>(linker_patches));
+
+  CompiledMethodStorage* storage = GetCompilerDriver()->GetCompiledMethodStorage();
+  for (const linker::LinkerPatch& patch : linker_patches) {
+    if (codegen->NeedsThunkCode(patch) && storage->GetThunkCode(patch).empty()) {
+      ArenaVector<uint8_t> code(allocator->Adapter());
+      std::string debug_name;
+      codegen->EmitThunkCode(patch, &code, &debug_name);
+      storage->SetThunkCode(patch, ArrayRef<const uint8_t>(code), debug_name);
+    }
+  }
 
   return compiled_method;
 }
@@ -1339,7 +1345,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
       codegen->GetCoreSpillMask(),
       codegen->GetFpuSpillMask(),
       code_allocator.GetMemory().data(),
-      code_allocator.GetSize(),
+      code_allocator.GetMemory().size(),
       data_size,
       osr,
       roots,
@@ -1369,7 +1375,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
     info.is_optimized = true;
     info.is_code_address_text_relative = false;
     info.code_address = code_address;
-    info.code_size = code_allocator.GetSize();
+    info.code_size = code_allocator.GetMemory().size();
     info.frame_size_in_bytes = method_header->GetFrameSizeInBytes();
     info.code_info = stack_map_size == 0 ? nullptr : stack_map_data;
     info.cfi = ArrayRef<const uint8_t>(*codegen->GetAssembler()->cfi().data());
@@ -1378,7 +1384,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
 
   Runtime::Current()->GetJit()->AddMemoryUsage(method, allocator.BytesUsed());
   if (jit_logger != nullptr) {
-    jit_logger->WriteLog(code, code_allocator.GetSize(), method);
+    jit_logger->WriteLog(code, code_allocator.GetMemory().size(), method);
   }
 
   if (kArenaAllocatorCountAllocations) {
