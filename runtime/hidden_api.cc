@@ -137,8 +137,10 @@ Action GetMemberActionImpl(T* member, Action action, AccessMethod access_method)
       // Avoid re-examining the exemption list next time.
       // Note this results in no warning for the member, which seems like what one would expect.
       // Exemptions effectively adds new members to the whitelist.
-      member->SetAccessFlags(HiddenApiAccessFlags::EncodeForRuntime(
-              member->GetAccessFlags(), HiddenApiAccessFlags::kWhitelist));
+      if (runtime->ShouldDedupeHiddenApiWarnings()) {
+        member->SetAccessFlags(HiddenApiAccessFlags::EncodeForRuntime(
+                member->GetAccessFlags(), HiddenApiAccessFlags::kWhitelist));
+      }
       return kAllow;
     }
 
