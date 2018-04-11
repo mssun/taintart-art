@@ -182,13 +182,14 @@ extern "C" JNIEXPORT void JNICALL Java_art_Monitors_setupMonitorEvents(
     return;
   }
 
-  jvmtiEventCallbacks cb;
-  memset(&cb, 0, sizeof(cb));
-  cb.MonitorContendedEnter = monitorEnterCB;
-  cb.MonitorContendedEntered = monitorEnteredCB;
-  cb.MonitorWait = monitorWaitCB;
-  cb.MonitorWaited = monitorWaitedCB;
-  if (JvmtiErrorToException(env, jvmti_env, jvmti_env->SetEventCallbacks(&cb, sizeof(cb)))) {
+  current_callbacks.MonitorContendedEnter = monitorEnterCB;
+  current_callbacks.MonitorContendedEntered = monitorEnteredCB;
+  current_callbacks.MonitorWait = monitorWaitCB;
+  current_callbacks.MonitorWaited = monitorWaitedCB;
+  if (JvmtiErrorToException(env,
+                            jvmti_env,
+                            jvmti_env->SetEventCallbacks(&current_callbacks,
+                                                         sizeof(current_callbacks)))) {
     return;
   }
   if (JvmtiErrorToException(env,

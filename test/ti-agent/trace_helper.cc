@@ -513,17 +513,18 @@ extern "C" JNIEXPORT void JNICALL Java_art_Trace_enableTracing2(
     return;
   }
 
-  jvmtiEventCallbacks cb;
-  memset(&cb, 0, sizeof(cb));
-  cb.MethodEntry = methodEntryCB;
-  cb.MethodExit = methodExitCB;
-  cb.FieldAccess = fieldAccessCB;
-  cb.FieldModification = fieldModificationCB;
-  cb.ClassPrepare = classPrepareCB;
-  cb.SingleStep = singleStepCB;
-  cb.ThreadStart = threadStartCB;
-  cb.ThreadEnd = threadEndCB;
-  if (JvmtiErrorToException(env, jvmti_env, jvmti_env->SetEventCallbacks(&cb, sizeof(cb)))) {
+  current_callbacks.MethodEntry = methodEntryCB;
+  current_callbacks.MethodExit = methodExitCB;
+  current_callbacks.FieldAccess = fieldAccessCB;
+  current_callbacks.FieldModification = fieldModificationCB;
+  current_callbacks.ClassPrepare = classPrepareCB;
+  current_callbacks.SingleStep = singleStepCB;
+  current_callbacks.ThreadStart = threadStartCB;
+  current_callbacks.ThreadEnd = threadEndCB;
+  if (JvmtiErrorToException(env,
+                            jvmti_env,
+                            jvmti_env->SetEventCallbacks(&current_callbacks,
+                                                         sizeof(current_callbacks)))) {
     return;
   }
   if (enter != nullptr &&
