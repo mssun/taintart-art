@@ -2125,4 +2125,33 @@ TEST_F(Dex2oatTest, AppImageNoProfile) {
   EXPECT_EQ(header.GetImageSection(ImageHeader::kSectionArtFields).Size(), 0u);
 }
 
+TEST_F(Dex2oatClassLoaderContextTest, StoredClassLoaderContext) {
+  const std::string out_dir = GetScratchDir();
+  const std::string odex_location = out_dir + "/base.odex";
+  const std::string valid_context = "PCL[" + GetUsedDexLocation() + "]";
+  const std::string stored_context = "PCL[/system/not_real_lib.jar]";
+  // The class path should not be valid and should fail being stored.
+  GenerateOdexForTest(GetTestDexFileName("ManyMethods"),
+                      odex_location,
+                      CompilerFilter::Filter::kQuicken,
+                      { "--class-loader-context=" + stored_context },
+                      true,  // expect_success
+                      false,  // use_fd
+                      [&](const OatFile& oat_file) {
+    EXPECT_NE(oat_file.GetClassLoaderContext(), stored_context);
+    EXPECT_NE(oat_file.GetClassLoaderContext(), valid_context);
+  });
+  // The stored context should match what we expect even though it's invalid.
+  GenerateOdexForTest(GetTestDexFileName("ManyMethods"),
+                      odex_location,
+                      CompilerFilter::Filter::kQuicken,
+                      { "--class-loader-context=" + valid_context,
+                        "--stored-class-loader-context=" + stored_context },
+                      true,  // expect_success
+                      false,  // use_fd
+                      [&](const OatFile& oat_file) {
+    EXPECT_EQ(oat_file.GetClassLoaderContext(), stored_context);
+  });
+}
+
 }  // namespace art
