@@ -245,6 +245,9 @@ static Parser CreateArgumentParser() {
       .Define("--class-loader-context=_")
           .WithType<std::string>()
           .IntoKey(M::ClassLoaderContext)
+      .Define("--stored-class-loader-context=_")
+          .WithType<std::string>()
+          .IntoKey(M::StoredClassLoaderContext)
       .Define("--compact-dex-level=_")
           .WithType<CompactDexLevel>()
           .WithValueMap({{"none", CompactDexLevel::kCompactDexLevelNone},
