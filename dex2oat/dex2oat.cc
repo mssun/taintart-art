@@ -2026,7 +2026,7 @@ class Dex2Oat FINAL {
 
       // We need to prepare method offsets in the image address space for direct method patching.
       TimingLogger::ScopedTiming t2("dex2oat Prepare image address space", timings_);
-      if (!image_writer_->PrepareImageAddressSpace()) {
+      if (!image_writer_->PrepareImageAddressSpace(timings_)) {
         LOG(ERROR) << "Failed to prepare image address space.";
         return false;
       }

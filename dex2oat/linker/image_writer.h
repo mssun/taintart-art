@@ -64,6 +64,7 @@ class ClassLoader;
 class ClassLoaderVisitor;
 class ImTable;
 class ImtConflictTable;
+class TimingLogger;
 
 static constexpr int kInvalidFd = -1;
 
@@ -81,7 +82,7 @@ class ImageWriter FINAL {
               const std::unordered_map<const DexFile*, size_t>& dex_file_oat_index_map,
               const std::unordered_set<std::string>* dirty_image_objects);
 
-  bool PrepareImageAddressSpace();
+  bool PrepareImageAddressSpace(TimingLogger* timings);
 
   bool IsImageAddressSpaceReady() const {
     DCHECK(!image_infos_.empty());
