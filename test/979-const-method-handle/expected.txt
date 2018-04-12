@@ -1,4 +1,6 @@
 (int,Integer,System)String
+repeatConstMethodType0((int,Integer,System)String)
+repeatConstMethodType1((LocalClass)void)
 Hello World! And Hello Zog
 Hello World! And Hello Zorba
 name is HoverFly

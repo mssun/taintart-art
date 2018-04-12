@@ -260,4 +260,19 @@ ArtMethod* GetCalleeSaveOuterMethod(Thread* self, CalleeSaveType type) {
   return DoGetCalleeSaveMethodOuterCallerAndPc(sp, type).first;
 }
 
+ObjPtr<mirror::MethodType> ResolveMethodTypeFromCode(ArtMethod* referrer,
+                                                     uint32_t proto_idx) {
+  Thread::PoisonObjectPointersIfDebug();
+  ObjPtr<mirror::MethodType> method_type =
+      referrer->GetDexCache()->GetResolvedMethodType(proto_idx);
+  if (UNLIKELY(method_type == nullptr)) {
+    StackHandleScope<2> hs(Thread::Current());
+    Handle<mirror::DexCache> dex_cache(hs.NewHandle(referrer->GetDexCache()));
+    Handle<mirror::ClassLoader> class_loader(hs.NewHandle(referrer->GetClassLoader()));
+    ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+    method_type = class_linker->ResolveMethodType(hs.Self(), proto_idx, dex_cache, class_loader);
+  }
+  return method_type;
+}
+
 }  // namespace art

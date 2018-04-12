@@ -41,6 +41,7 @@
 #include "intrinsics_enum.h"
 #include "locations.h"
 #include "mirror/class.h"
+#include "mirror/method_type.h"
 #include "offsets.h"
 #include "utils/intrusive_forward_list.h"
 
@@ -1382,6 +1383,7 @@ class HLoopInformationOutwardIterator : public ValueObject {
   M(LessThanOrEqual, Condition)                                         \
   M(LoadClass, Instruction)                                             \
   M(LoadException, Instruction)                                         \
+  M(LoadMethodType, Instruction)                                        \
   M(LoadString, Instruction)                                            \
   M(LongConstant, Constant)                                             \
   M(Max, Instruction)                                                   \
@@ -6497,6 +6499,50 @@ inline void HLoadString::AddSpecialInput(HInstruction* special_input) {
   special_input_ = HUserRecord<HInstruction*>(special_input);
   special_input->AddUseAt(this, 0);
 }
+
+class HLoadMethodType FINAL : public HInstruction {
+ public:
+  HLoadMethodType(HCurrentMethod* current_method,
+                  uint16_t proto_idx,
+                  const DexFile& dex_file,
+                  uint32_t dex_pc)
+      : HInstruction(kLoadMethodType,
+                     DataType::Type::kReference,
+                     SideEffectsForArchRuntimeCalls(),
+                     dex_pc),
+        special_input_(HUserRecord<HInstruction*>(current_method)),
+        proto_idx_(proto_idx),
+        dex_file_(dex_file) {
+  }
+
+  using HInstruction::GetInputRecords;  // Keep the const version visible.
+  ArrayRef<HUserRecord<HInstruction*>> GetInputRecords() OVERRIDE FINAL {
+    return ArrayRef<HUserRecord<HInstruction*>>(
+        &special_input_, (special_input_.GetInstruction() != nullptr) ? 1u : 0u);
+  }
+
+  bool IsClonable() const OVERRIDE { return true; }
+
+  uint16_t GetProtoIndex() const { return proto_idx_; }
+
+  const DexFile& GetDexFile() const { return dex_file_; }
+
+  static SideEffects SideEffectsForArchRuntimeCalls() {
+    return SideEffects::CanTriggerGC();
+  }
+
+  DECLARE_INSTRUCTION(LoadMethodType);
+
+ protected:
+  DEFAULT_COPY_CONSTRUCTOR(LoadMethodType);
+
+ private:
+  // The special input is the HCurrentMethod for kRuntimeCall.
+  HUserRecord<HInstruction*> special_input_;
+
+  uint16_t proto_idx_;
+  const DexFile& dex_file_;
+};
 
 /**
  * Performs an initialization check on its Class object input.
