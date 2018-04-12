@@ -6838,7 +6838,8 @@ void CodeGeneratorARM64::EmitJitRootPatches(uint8_t* code, const uint8_t* roots_
 static void EmitGrayCheckAndFastPath(arm64::Arm64Assembler& assembler,
                                      vixl::aarch64::Register base_reg,
                                      vixl::aarch64::MemOperand& lock_word,
-                                     vixl::aarch64::Label* slow_path) {
+                                     vixl::aarch64::Label* slow_path,
+                                     vixl::aarch64::Label* throw_npe = nullptr) {
   // Load the lock word containing the rb_state.
   __ Ldr(ip0.W(), lock_word);
   // Given the numeric representation, it's enough to check the low bit of the rb_state.
@@ -6848,6 +6849,10 @@ static void EmitGrayCheckAndFastPath(arm64::Arm64Assembler& assembler,
   static_assert(
       BAKER_MARK_INTROSPECTION_ARRAY_LDR_OFFSET == BAKER_MARK_INTROSPECTION_FIELD_LDR_OFFSET,
       "Field and array LDR offsets must be the same to reuse the same code.");
+  // To throw NPE, we return to the fast path; the artificial dependence below does not matter.
+  if (throw_npe != nullptr) {
+    __ Bind(throw_npe);
+  }
   // Adjust the return address back to the LDR (1 instruction; 2 for heap poisoning).
   static_assert(BAKER_MARK_INTROSPECTION_FIELD_LDR_OFFSET == (kPoisonHeapReferences ? -8 : -4),
                 "Field LDR must be 1 instruction (4B) before the return address label; "
@@ -6877,10 +6882,6 @@ void CodeGeneratorARM64::CompileBakerReadBarrierThunk(Arm64Assembler& assembler,
   BakerReadBarrierKind kind = BakerReadBarrierKindField::Decode(encoded_data);
   switch (kind) {
     case BakerReadBarrierKind::kField: {
-      // Check if the holder is gray and, if not, add fake dependency to the base register
-      // and return to the LDR instruction to load the reference. Otherwise, use introspection
-      // to load the reference and call the entrypoint (in IP1) that performs further checks
-      // on the reference and marks it if needed.
       auto base_reg =
           Register::GetXRegFromCode(BakerReadBarrierFirstRegField::Decode(encoded_data));
       CheckValidReg(base_reg.GetCode());
@@ -6889,16 +6890,22 @@ void CodeGeneratorARM64::CompileBakerReadBarrierThunk(Arm64Assembler& assembler,
       CheckValidReg(holder_reg.GetCode());
       UseScratchRegisterScope temps(assembler.GetVIXLAssembler());
       temps.Exclude(ip0, ip1);
-      // If base_reg differs from holder_reg, the offset was too large and we must have
-      // emitted an explicit null check before the load. Otherwise, we need to null-check
-      // the holder as we do not necessarily do that check before going to the thunk.
-      vixl::aarch64::Label throw_npe;
-      if (holder_reg.Is(base_reg)) {
-        __ Cbz(holder_reg.W(), &throw_npe);
+      // If base_reg differs from holder_reg, the offset was too large and we must have emitted
+      // an explicit null check before the load. Otherwise, for implicit null checks, we need to
+      // null-check the holder as we do not necessarily do that check before going to the thunk.
+      vixl::aarch64::Label throw_npe_label;
+      vixl::aarch64::Label* throw_npe = nullptr;
+      if (GetCompilerOptions().GetImplicitNullChecks() && holder_reg.Is(base_reg)) {
+        throw_npe = &throw_npe_label;
+        __ Cbz(holder_reg.W(), throw_npe);
       }
+      // Check if the holder is gray and, if not, add fake dependency to the base register
+      // and return to the LDR instruction to load the reference. Otherwise, use introspection
+      // to load the reference and call the entrypoint that performs further checks on the
+      // reference and marks it if needed.
       vixl::aarch64::Label slow_path;
       MemOperand lock_word(holder_reg, mirror::Object::MonitorOffset().Int32Value());
-      EmitGrayCheckAndFastPath(assembler, base_reg, lock_word, &slow_path);
+      EmitGrayCheckAndFastPath(assembler, base_reg, lock_word, &slow_path, throw_npe);
       __ Bind(&slow_path);
       MemOperand ldr_address(lr, BAKER_MARK_INTROSPECTION_FIELD_LDR_OFFSET);
       __ Ldr(ip0.W(), ldr_address);         // Load the LDR (immediate) unsigned offset.
@@ -6907,13 +6914,6 @@ void CodeGeneratorARM64::CompileBakerReadBarrierThunk(Arm64Assembler& assembler,
       __ Ldr(ip0.W(), MemOperand(base_reg, ip0, LSL, 2));   // Load the reference.
       // Do not unpoison. With heap poisoning enabled, the entrypoint expects a poisoned reference.
       __ Br(ip1);                           // Jump to the entrypoint.
-      if (holder_reg.Is(base_reg)) {
-        // Add null check slow path. The stack map is at the address pointed to by LR.
-        __ Bind(&throw_npe);
-        int32_t offset = GetThreadOffset<kArm64PointerSize>(kQuickThrowNullPointer).Int32Value();
-        __ Ldr(ip0, MemOperand(/* Thread* */ vixl::aarch64::x19, offset));
-        __ Br(ip0);
-      }
       break;
     }
     case BakerReadBarrierKind::kArray: {
