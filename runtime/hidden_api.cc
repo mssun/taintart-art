@@ -20,8 +20,6 @@
 
 #include <nativehelper/scoped_local_ref.h>
 
-#include "art_field-inl.h"
-#include "art_method-inl.h"
 #include "base/dumpable.h"
 #include "thread-current-inl.h"
 #include "well_known_classes.h"
