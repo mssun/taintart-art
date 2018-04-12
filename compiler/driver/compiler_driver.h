@@ -378,11 +378,11 @@ class CompilerDriver {
     if (!android::base::EndsWith(boot_image_filename, ".art")) {
       return false;
     }
-    size_t dash_pos = boot_image_filename.find_last_of("-/");
-    if (dash_pos == std::string::npos || boot_image_filename[dash_pos] != '-') {
-      return false;
+    size_t slash_pos = boot_image_filename.rfind('/');
+    if (slash_pos == std::string::npos) {
+      return android::base::StartsWith(boot_image_filename, "core-");
     }
-    return (dash_pos >= 4u) && (boot_image_filename.compare(dash_pos - 4u, 4u, "core") == 0);
+    return boot_image_filename.compare(slash_pos + 1, 5u, "core-") == 0;
   }
 
   optimizer::DexToDexCompiler& GetDexToDexCompiler() {
