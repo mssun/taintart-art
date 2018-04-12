@@ -470,23 +470,29 @@ void Trace::StopTracing(bool finish_tracing, bool flush_file) {
 
   if (the_trace != nullptr) {
     stop_alloc_counting = (the_trace->flags_ & Trace::kTraceCountAllocs) != 0;
+    // Stop the trace sources adding more entries to the trace buffer and synchronise stores.
+    {
+      gc::ScopedGCCriticalSection gcs(self,
+                                      gc::kGcCauseInstrumentation,
+                                      gc::kCollectorTypeInstrumentation);
+      ScopedSuspendAll ssa(__FUNCTION__);
+
+      if (the_trace->trace_mode_ == TraceMode::kSampling) {
+        MutexLock mu(self, *Locks::thread_list_lock_);
+        runtime->GetThreadList()->ForEach(ClearThreadStackTraceAndClockBase, nullptr);
+      } else {
+        runtime->GetInstrumentation()->DisableMethodTracing(kTracerInstrumentationKey);
+        runtime->GetInstrumentation()->RemoveListener(
+            the_trace, instrumentation::Instrumentation::kMethodEntered |
+            instrumentation::Instrumentation::kMethodExited |
+            instrumentation::Instrumentation::kMethodUnwind);
+      }
+    }
+    // At this point, code may read buf_ as it's writers are shutdown
+    // and the ScopedSuspendAll above has ensured all stores to buf_
+    // are now visible.
     if (finish_tracing) {
       the_trace->FinishTracing();
-    }
-    gc::ScopedGCCriticalSection gcs(self,
-                                    gc::kGcCauseInstrumentation,
-                                    gc::kCollectorTypeInstrumentation);
-    ScopedSuspendAll ssa(__FUNCTION__);
-
-    if (the_trace->trace_mode_ == TraceMode::kSampling) {
-      MutexLock mu(self, *Locks::thread_list_lock_);
-      runtime->GetThreadList()->ForEach(ClearThreadStackTraceAndClockBase, nullptr);
-    } else {
-      runtime->GetInstrumentation()->DisableMethodTracing(kTracerInstrumentationKey);
-      runtime->GetInstrumentation()->RemoveListener(
-          the_trace, instrumentation::Instrumentation::kMethodEntered |
-          instrumentation::Instrumentation::kMethodExited |
-          instrumentation::Instrumentation::kMethodUnwind);
     }
     if (the_trace->trace_file_.get() != nullptr) {
       // Do not try to erase, so flush and close explicitly.
@@ -653,7 +659,7 @@ Trace::Trace(File* trace_file,
       flags_(flags), trace_output_mode_(output_mode), trace_mode_(trace_mode),
       clock_source_(default_clock_source_),
       buffer_size_(std::max(kMinBufSize, buffer_size)),
-      start_time_(MicroTime()), clock_overhead_ns_(GetClockOverheadNanoSeconds()), cur_offset_(0),
+      start_time_(MicroTime()), clock_overhead_ns_(GetClockOverheadNanoSeconds()),
       overflow_(false), interval_us_(0), streaming_lock_(nullptr),
       unique_methods_lock_(new Mutex("unique methods lock", kTracingUniqueMethodsLock)) {
   CHECK(trace_file != nullptr || output_mode == TraceOutputMode::kDDMS);
@@ -674,7 +680,6 @@ Trace::Trace(File* trace_file,
   }
   static_assert(18 <= kMinBufSize, "Minimum buffer size not large enough for trace header");
 
-  // Update current offset.
   cur_offset_.store(kTraceHeaderLength, std::memory_order_relaxed);
 
   if (output_mode == TraceOutputMode::kStreaming) {
@@ -711,10 +716,10 @@ void Trace::DumpBuf(uint8_t* buf, size_t buf_size, TraceClockSource clock_source
 
 void Trace::FinishTracing() {
   size_t final_offset = 0;
-
   std::set<ArtMethod*> visited_methods;
   if (trace_output_mode_ == TraceOutputMode::kStreaming) {
     // Clean up.
+    MutexLock mu(Thread::Current(), *streaming_lock_);
     STLDeleteValues(&seen_methods_);
   } else {
     final_offset = cur_offset_.load(std::memory_order_relaxed);
@@ -759,7 +764,8 @@ void Trace::FinishTracing() {
   std::string header(os.str());
 
   if (trace_output_mode_ == TraceOutputMode::kStreaming) {
-    MutexLock mu(Thread::Current(), *streaming_lock_);  // To serialize writing.
+    // Protect access to buf_ and satisfy sanitizer for calls to WriteBuf / FlushBuf.
+    MutexLock mu(Thread::Current(), *streaming_lock_);
     // Write a special token to mark the end of trace records and the start of
     // trace summary.
     uint8_t buf[7];
@@ -944,6 +950,7 @@ std::string Trace::GetMethodLine(ArtMethod* method) {
 }
 
 void Trace::WriteToBuf(const uint8_t* src, size_t src_size) {
+  // Updates to cur_offset_ are done under the streaming_lock_ here as in streaming mode.
   int32_t old_offset = cur_offset_.load(std::memory_order_relaxed);
   int32_t new_offset = old_offset + static_cast<int32_t>(src_size);
   if (dchecked_integral_cast<size_t>(new_offset) > buffer_size_) {
@@ -957,46 +964,59 @@ void Trace::WriteToBuf(const uint8_t* src, size_t src_size) {
       if (!trace_file_->WriteFully(src, src_size)) {
         PLOG(WARNING) << "Failed streaming a tracing event.";
       }
-      cur_offset_.store(0, std::memory_order_release);  // Buffer is empty now.
+      cur_offset_.store(0, std::memory_order_relaxed);  // Buffer is empty now.
       return;
     }
 
     old_offset = 0;
     new_offset = static_cast<int32_t>(src_size);
   }
-  cur_offset_.store(new_offset, std::memory_order_release);
+  cur_offset_.store(new_offset, std::memory_order_relaxed);
   // Fill in data.
   memcpy(buf_.get() + old_offset, src, src_size);
 }
 
 void Trace::FlushBuf() {
+  // Updates to cur_offset_ are done under the streaming_lock_ here as in streaming mode.
   int32_t offset = cur_offset_.load(std::memory_order_relaxed);
   if (!trace_file_->WriteFully(buf_.get(), offset)) {
     PLOG(WARNING) << "Failed flush the remaining data in streaming.";
   }
-  cur_offset_.store(0, std::memory_order_release);
+  cur_offset_.store(0, std::memory_order_relaxed);
 }
 
 void Trace::LogMethodTraceEvent(Thread* thread, ArtMethod* method,
                                 instrumentation::Instrumentation::InstrumentationEvent event,
                                 uint32_t thread_clock_diff, uint32_t wall_clock_diff) {
+  // This method is called in both tracing modes (method and
+  // sampling). In sampling mode, this method is only called by the
+  // sampling thread. In method tracing mode, it can be called
+  // concurrently.
+
   // Ensure we always use the non-obsolete version of the method so that entry/exit events have the
   // same pointer value.
   method = method->GetNonObsoleteMethod();
+
   // Advance cur_offset_ atomically.
   int32_t new_offset;
   int32_t old_offset = 0;
 
-  // We do a busy loop here trying to acquire the next offset.
+  // In the non-streaming case, we do a busy loop here trying to get
+  // an offset to write our record and advance cur_offset_ for the
+  // next use.
   if (trace_output_mode_ != TraceOutputMode::kStreaming) {
+    // Although multiple threads can call this method concurrently,
+    // the compare_exchange_weak here is still atomic (by definition).
+    // A succeeding update is visible to other cores when they pass
+    // through this point.
+    old_offset = cur_offset_.load(std::memory_order_relaxed);  // Speculative read
     do {
-      old_offset = cur_offset_.load(std::memory_order_relaxed);
       new_offset = old_offset + GetRecordSize(clock_source_);
       if (static_cast<size_t>(new_offset) > buffer_size_) {
         overflow_ = true;
         return;
       }
-    } while (!cur_offset_.CompareAndSetWeakSequentiallyConsistent(old_offset, new_offset));
+    } while (!cur_offset_.compare_exchange_weak(old_offset, new_offset, std::memory_order_relaxed));
   }
 
   TraceAction action = kTraceMethodEnter;
@@ -1016,7 +1036,14 @@ void Trace::LogMethodTraceEvent(Thread* thread, ArtMethod* method,
 
   uint32_t method_value = EncodeTraceMethodAndAction(method, action);
 
-  // Write data
+  // Write data into the tracing buffer (if not streaming) or into a
+  // small buffer on the stack (if streaming) which we'll put into the
+  // tracing buffer below.
+  //
+  // These writes to the tracing buffer are synchronised with the
+  // future reads that (only) occur under FinishTracing(). The callers
+  // of FinishTracing() acquire locks and (implicitly) synchronise
+  // the buffer memory.
   uint8_t* ptr;
   static constexpr size_t kPacketSize = 14U;  // The maximum size of data in a packet.
   uint8_t stack_buf[kPacketSize];             // Space to store a packet when in streaming mode.
