@@ -1205,6 +1205,7 @@ void CodeGeneratorARM64::SetupBlockedRegisters() const {
   //      mr        : Runtime reserved.
   //      ip1       : VIXL core temp.
   //      ip0       : VIXL core temp.
+  //      x18       : Platform register.
   //
   // Blocked fp registers:
   //      d31       : VIXL fp temp.
@@ -1213,6 +1214,7 @@ void CodeGeneratorARM64::SetupBlockedRegisters() const {
   while (!reserved_core_registers.IsEmpty()) {
     blocked_core_registers_[reserved_core_registers.PopLowestIndex().GetCode()] = true;
   }
+  blocked_core_registers_[X18] = true;
 
   CPURegList reserved_fp_registers = vixl_reserved_fp_registers;
   while (!reserved_fp_registers.IsEmpty()) {

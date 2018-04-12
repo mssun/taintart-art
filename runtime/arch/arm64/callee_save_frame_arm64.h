@@ -54,7 +54,7 @@ static constexpr uint32_t kArm64CalleeSaveEverythingSpills =
     (1 << art::arm64::X9) | (1 << art::arm64::X10) | (1 << art::arm64::X11) |
     (1 << art::arm64::X12) | (1 << art::arm64::X13) | (1 << art::arm64::X14) |
     (1 << art::arm64::X15) | (1 << art::arm64::X16) | (1 << art::arm64::X17) |
-    (1 << art::arm64::X18) | (1 << art::arm64::X19);
+    (1 << art::arm64::X19);
 
 static constexpr uint32_t kArm64CalleeSaveFpAlwaysSpills = 0;
 static constexpr uint32_t kArm64CalleeSaveFpRefSpills = 0;
