@@ -24,7 +24,44 @@ art_cc_defaults {
         "linker/image_writer.cc",
         "linker/multi_oat_relative_patcher.cc",
         "linker/oat_writer.cc",
+        "linker/relative_patcher.cc",
     ],
+
+    codegen: {
+        arm: {
+            srcs: [
+                "linker/arm/relative_patcher_arm_base.cc",
+                "linker/arm/relative_patcher_thumb2.cc",
+            ],
+        },
+        arm64: {
+            srcs: [
+                "linker/arm64/relative_patcher_arm64.cc",
+            ],
+        },
+        mips: {
+            srcs: [
+                "linker/mips/relative_patcher_mips.cc",
+            ],
+        },
+        mips64: {
+            srcs: [
+                "linker/mips64/relative_patcher_mips64.cc",
+            ],
+        },
+        x86: {
+            srcs: [
+                "linker/x86/relative_patcher_x86.cc",
+                "linker/x86/relative_patcher_x86_base.cc",
+            ],
+        },
+        x86_64: {
+            srcs: [
+                "linker/x86_64/relative_patcher_x86_64.cc",
+            ],
+        },
+    },
+
     target: {
         android: {
             // For atrace.
@@ -245,6 +282,41 @@ art_cc_test {
         "linker/multi_oat_relative_patcher_test.cc",
         "linker/oat_writer_test.cc",
     ],
+
+    codegen: {
+        arm: {
+            srcs: [
+                "linker/arm/relative_patcher_thumb2_test.cc",
+            ],
+        },
+        arm64: {
+            srcs: [
+                "linker/arm64/relative_patcher_arm64_test.cc",
+            ],
+        },
+        mips: {
+            srcs: [
+                "linker/mips/relative_patcher_mips_test.cc",
+                "linker/mips/relative_patcher_mips32r6_test.cc",
+            ],
+        },
+        mips64: {
+            srcs: [
+                "linker/mips64/relative_patcher_mips64_test.cc",
+            ],
+        },
+        x86: {
+            srcs: [
+                "linker/x86/relative_patcher_x86_test.cc",
+            ],
+        },
+        x86_64: {
+            srcs: [
+                "linker/x86_64/relative_patcher_x86_64_test.cc",
+            ],
+        },
+    },
+
     header_libs: ["dex2oat_headers"],
     include_dirs: [
         "external/zlib",

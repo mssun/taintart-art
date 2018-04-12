@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2015 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_LINKER_MIPS64_RELATIVE_PATCHER_MIPS64_H_
-#define ART_COMPILER_LINKER_MIPS64_RELATIVE_PATCHER_MIPS64_H_
+#ifndef ART_DEX2OAT_LINKER_X86_RELATIVE_PATCHER_X86_BASE_H_
+#define ART_DEX2OAT_LINKER_X86_RELATIVE_PATCHER_X86_BASE_H_
 
 #include "linker/relative_patcher.h"
 
 namespace art {
 namespace linker {
 
-class Mips64RelativePatcher FINAL : public RelativePatcher {
+class X86BaseRelativePatcher : public RelativePatcher {
  public:
-  Mips64RelativePatcher() {}
-
   uint32_t ReserveSpace(uint32_t offset,
                         const CompiledMethod* compiled_method,
                         MethodReference method_ref) OVERRIDE;
@@ -35,20 +33,21 @@ class Mips64RelativePatcher FINAL : public RelativePatcher {
                  uint32_t literal_offset,
                  uint32_t patch_offset,
                  uint32_t target_offset) OVERRIDE;
-  void PatchPcRelativeReference(std::vector<uint8_t>* code,
-                                const LinkerPatch& patch,
-                                uint32_t patch_offset,
-                                uint32_t target_offset) OVERRIDE;
-  void PatchBakerReadBarrierBranch(std::vector<uint8_t>* code,
-                                   const LinkerPatch& patch,
-                                   uint32_t patch_offset) OVERRIDE;
   std::vector<debug::MethodDebugInfo> GenerateThunkDebugInfo(uint32_t executable_offset) OVERRIDE;
 
+ protected:
+  X86BaseRelativePatcher() { }
+
+  // PC displacement from patch location; the base address of x86/x86-64 relative
+  // calls and x86-64 RIP-relative addressing is the PC of the next instruction and
+  // the patch location is 4 bytes earlier.
+  static constexpr int32_t kPcDisplacement = 4;
+
  private:
-  DISALLOW_COPY_AND_ASSIGN(Mips64RelativePatcher);
+  DISALLOW_COPY_AND_ASSIGN(X86BaseRelativePatcher);
 };
 
 }  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_LINKER_MIPS64_RELATIVE_PATCHER_MIPS64_H_
+#endif  // ART_DEX2OAT_LINKER_X86_RELATIVE_PATCHER_X86_BASE_H_

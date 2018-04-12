@@ -29,7 +29,6 @@
 #include "gc/accounting/card_table.h"
 #include "heap_poisoning.h"
 #include "intrinsics_arm_vixl.h"
-#include "linker/arm/relative_patcher_thumb2.h"
 #include "linker/linker_patch.h"
 #include "mirror/array-inl.h"
 #include "mirror/class-inl.h"

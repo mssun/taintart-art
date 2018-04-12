@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_LINKER_ARM64_RELATIVE_PATCHER_ARM64_H_
-#define ART_COMPILER_LINKER_ARM64_RELATIVE_PATCHER_ARM64_H_
+#ifndef ART_DEX2OAT_LINKER_ARM64_RELATIVE_PATCHER_ARM64_H_
+#define ART_DEX2OAT_LINKER_ARM64_RELATIVE_PATCHER_ARM64_H_
 
 #include "base/array_ref.h"
 #include "linker/arm/relative_patcher_arm_base.h"
@@ -81,4 +81,4 @@ class Arm64RelativePatcher FINAL : public ArmBaseRelativePatcher {
 }  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_LINKER_ARM64_RELATIVE_PATCHER_ARM64_H_
+#endif  // ART_DEX2OAT_LINKER_ARM64_RELATIVE_PATCHER_ARM64_H_
