@@ -264,8 +264,6 @@ CompilerDriver::CompilerDriver(
     InstructionSet instruction_set,
     const InstructionSetFeatures* instruction_set_features,
     std::unordered_set<std::string>* image_classes,
-    std::unordered_set<std::string>* compiled_classes,
-    std::unordered_set<std::string>* compiled_methods,
     size_t thread_count,
     int swap_fd,
     const ProfileCompilationInfo* profile_compilation_info)
@@ -279,8 +277,6 @@ CompilerDriver::CompilerDriver(
       requires_constructor_barrier_lock_("constructor barrier lock"),
       non_relative_linker_patch_count_(0u),
       image_classes_(image_classes),
-      classes_to_compile_(compiled_classes),
-      methods_to_compile_(compiled_methods),
       number_of_soft_verifier_failures_(0),
       had_hard_verifier_failure_(false),
       parallel_thread_count_(thread_count),
@@ -638,7 +634,6 @@ static void CompileMethodQuick(
           (verified_method->GetEncounteredVerificationFailures() &
               (verifier::VERIFY_ERROR_FORCE_INTERPRETER | verifier::VERIFY_ERROR_LOCKING)) == 0 &&
               // Is eligable for compilation by methods-to-compile filter.
-              driver->IsMethodToCompile(method_ref) &&
               driver->ShouldCompileBasedOnProfile(method_ref);
 
       if (compile) {
@@ -1063,15 +1058,6 @@ bool CompilerDriver::IsClassToCompile(const char* descriptor) const {
     return true;
   }
   return classes_to_compile_->find(descriptor) != classes_to_compile_->end();
-}
-
-bool CompilerDriver::IsMethodToCompile(const MethodReference& method_ref) const {
-  if (methods_to_compile_ == nullptr) {
-    return true;
-  }
-
-  std::string tmp = method_ref.PrettyMethod();
-  return methods_to_compile_->find(tmp.c_str()) != methods_to_compile_->end();
 }
 
 bool CompilerDriver::ShouldCompileBasedOnProfile(const MethodReference& method_ref) const {
