@@ -172,6 +172,7 @@ ART_GTEST_class_loader_context_test_DEX_DEPS := Main MultiDex MyClass ForClassLo
 ART_GTEST_class_table_test_DEX_DEPS := XandY
 ART_GTEST_compiler_driver_test_DEX_DEPS := AbstractMethod StaticLeafMethods ProfileTestMultiDex
 ART_GTEST_dex_cache_test_DEX_DEPS := Main Packages MethodTypes
+ART_GTEST_dexanalyze_test_DEX_DEPS := MultiDex
 ART_GTEST_dexlayout_test_DEX_DEPS := ManyMethods
 ART_GTEST_dex2oat_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS) ManyMethods Statics VerifierDeps MainUncompressed EmptyUncompressed
 ART_GTEST_dex2oat_image_test_DEX_DEPS := $(ART_GTEST_dex2oat_environment_tests_DEX_DEPS) Statics VerifierDeps
@@ -311,6 +312,12 @@ ART_GTEST_imgdiag_test_TARGET_DEPS := \
   $(TARGET_CORE_IMAGE_DEFAULT_32) \
   imgdiagd-target
 
+# Dex analyze test requires dexanalyze.
+ART_GTEST_dexanalyze_test_HOST_DEPS := \
+  dexanalyze-host
+ART_GTEST_dexanalyze_test_TARGET_DEPS := \
+  dexanalyze-target
+
 # Oatdump test requires an image and oatfile to dump.
 ART_GTEST_oatdump_test_HOST_DEPS := \
   $(HOST_CORE_IMAGE_DEFAULT_64) \
@@ -353,6 +360,7 @@ ART_TEST_MODULES := \
     art_compiler_tests \
     art_compiler_host_tests \
     art_dex2oat_tests \
+    art_dexanalyze_tests \
     art_dexdiag_tests \
     art_dexdump_tests \
     art_dexlayout_tests \
@@ -798,6 +806,7 @@ ART_GTEST_jni_internal_test_DEX_DEPS :=
 ART_GTEST_oat_file_assistant_test_DEX_DEPS :=
 ART_GTEST_oat_file_assistant_test_HOST_DEPS :=
 ART_GTEST_oat_file_assistant_test_TARGET_DEPS :=
+ART_GTEST_dexanalyzer_test_DEX_DEPS :=
 ART_GTEST_dexoptanalyzer_test_DEX_DEPS :=
 ART_GTEST_dexoptanalyzer_test_HOST_DEPS :=
 ART_GTEST_dexoptanalyzer_test_TARGET_DEPS :=
