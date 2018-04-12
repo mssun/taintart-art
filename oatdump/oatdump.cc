@@ -1714,7 +1714,10 @@ class OatDumper {
       CHECK(dex_cache != nullptr);
       ArtMethod* method = runtime->GetClassLinker()->ResolveMethodWithoutInvokeType(
           dex_method_idx, dex_cache, *options_.class_loader_);
-      CHECK(method != nullptr);
+      if (method == nullptr) {
+        soa.Self()->ClearException();
+        return nullptr;
+      }
       return verifier::MethodVerifier::VerifyMethodAndDump(
           soa.Self(), vios, dex_method_idx, dex_file, dex_cache, *options_.class_loader_,
           class_def, code_item, method, method_access_flags);
