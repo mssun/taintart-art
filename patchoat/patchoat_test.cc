@@ -24,6 +24,7 @@
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 
+#include "base/hex_dump.h"
 #include "base/leb128.h"
 #include "dexopt_test.h"
 #include "runtime.h"
@@ -320,6 +321,12 @@ class PatchoatTest : public DexoptTest {
       if (image1[i] != image2[i]) {
         *error_msg =
             StringPrintf("%s and %s differ at offset %zu", filename1.c_str(), filename2.c_str(), i);
+        size_t hexdump_size = std::min<size_t>(16u, size - i);
+        HexDump dump1(&image1[i], hexdump_size, /* show_actual_addresses */ false, /* prefix */ "");
+        HexDump dump2(&image2[i], hexdump_size, /* show_actual_addresses */ false, /* prefix */ "");
+        std::ostringstream oss;
+        oss << "\n" << dump1 << "\n" << dump2;
+        *error_msg += oss.str();
         return true;
       }
     }
