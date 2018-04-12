@@ -29,6 +29,11 @@
 namespace art {
 namespace hiddenapi {
 
+// Set to true if we should always print a warning in logcat for all hidden API accesses, not just
+// dark grey and black. This can be set to true for developer preview / beta builds, but should be
+// false for public release builds.
+static constexpr bool kLogAllAccesses = true;
+
 static inline std::ostream& operator<<(std::ostream& os, AccessMethod value) {
   switch (value) {
     case kNone:
@@ -164,7 +169,7 @@ Action GetMemberActionImpl(T* member, Action action, AccessMethod access_method)
   // - for non-debuggable apps, there is no distinction between light grey & whitelisted APIs.
   // - we want to avoid the overhead of checking for exemptions for light greylisted APIs whenever
   //   possible.
-  if (action == kDeny || runtime->IsJavaDebuggable()) {
+  if (kLogAllAccesses || action == kDeny || runtime->IsJavaDebuggable()) {
     if (member_signature.IsExempted(runtime->GetHiddenApiExemptions())) {
       action = kAllow;
       // Avoid re-examining the exemption list next time.
