@@ -24,7 +24,6 @@
 #include "base/utils.h"
 #include "class_linker-inl.h"
 #include "common_throws.h"
-#include "compiler_callbacks.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file-inl.h"
 #include "dex/dex_file_annotations.h"
@@ -32,7 +31,6 @@
 #include "dex/invoke_type.h"
 #include "dex/primitive.h"
 #include "gc_root-inl.h"
-#include "hidden_api.h"
 #include "intrinsics_enum.h"
 #include "jit/profiling_info.h"
 #include "mirror/class-inl.h"
@@ -386,72 +384,19 @@ inline bool ArtMethod::HasSingleImplementation() {
   return (GetAccessFlags<kReadBarrierOption>() & kAccSingleImplementation) != 0;
 }
 
-inline HiddenApiAccessFlags::ApiList ArtMethod::GetHiddenApiAccessFlags() {
-  if (UNLIKELY(IsIntrinsic())) {
-    switch (static_cast<Intrinsics>(GetIntrinsic())) {
-      case Intrinsics::kSystemArrayCopyChar:
-      case Intrinsics::kStringGetCharsNoCheck:
-      case Intrinsics::kReferenceGetReferent:
-        return HiddenApiAccessFlags::kLightGreylist;
-      case Intrinsics::kVarHandleCompareAndExchange:
-      case Intrinsics::kVarHandleCompareAndExchangeAcquire:
-      case Intrinsics::kVarHandleCompareAndExchangeRelease:
-      case Intrinsics::kVarHandleCompareAndSet:
-      case Intrinsics::kVarHandleGet:
-      case Intrinsics::kVarHandleGetAcquire:
-      case Intrinsics::kVarHandleGetAndAdd:
-      case Intrinsics::kVarHandleGetAndAddAcquire:
-      case Intrinsics::kVarHandleGetAndAddRelease:
-      case Intrinsics::kVarHandleGetAndBitwiseAnd:
-      case Intrinsics::kVarHandleGetAndBitwiseAndAcquire:
-      case Intrinsics::kVarHandleGetAndBitwiseAndRelease:
-      case Intrinsics::kVarHandleGetAndBitwiseOr:
-      case Intrinsics::kVarHandleGetAndBitwiseOrAcquire:
-      case Intrinsics::kVarHandleGetAndBitwiseOrRelease:
-      case Intrinsics::kVarHandleGetAndBitwiseXor:
-      case Intrinsics::kVarHandleGetAndBitwiseXorAcquire:
-      case Intrinsics::kVarHandleGetAndBitwiseXorRelease:
-      case Intrinsics::kVarHandleGetAndSet:
-      case Intrinsics::kVarHandleGetAndSetAcquire:
-      case Intrinsics::kVarHandleGetAndSetRelease:
-      case Intrinsics::kVarHandleGetOpaque:
-      case Intrinsics::kVarHandleGetVolatile:
-      case Intrinsics::kVarHandleSet:
-      case Intrinsics::kVarHandleSetOpaque:
-      case Intrinsics::kVarHandleSetRelease:
-      case Intrinsics::kVarHandleSetVolatile:
-      case Intrinsics::kVarHandleWeakCompareAndSet:
-      case Intrinsics::kVarHandleWeakCompareAndSetAcquire:
-      case Intrinsics::kVarHandleWeakCompareAndSetPlain:
-      case Intrinsics::kVarHandleWeakCompareAndSetRelease:
-      case Intrinsics::kVarHandleFullFence:
-      case Intrinsics::kVarHandleAcquireFence:
-      case Intrinsics::kVarHandleReleaseFence:
-      case Intrinsics::kVarHandleLoadLoadFence:
-      case Intrinsics::kVarHandleStoreStoreFence:
-        return HiddenApiAccessFlags::kBlacklist;
-      default:
-        return HiddenApiAccessFlags::kWhitelist;
-    }
-  } else {
-    return HiddenApiAccessFlags::DecodeFromRuntime(GetAccessFlags());
-  }
-}
-
-// This is a temporary workaround for the fact that core image does not have
-// hidden API access flags. This function will return true if we know that the
-// process (or its forks) will not enforce the flags. (b/77733081).
-inline bool WillIgnoreHiddenApiAccessFlags() {
-  Runtime* runtime = Runtime::Current();
-
-  if (runtime->IsAotCompiler() && runtime->GetCompilerCallbacks()->IsBootImage()) {
-    // Do not ignore when compiling the regular boot image, only the core image.
-    return runtime->GetCompilerCallbacks()->IsCoreImage();
-  } else {
-    // Ignore if this runtime was started with disabled enforcement and
-    // will not fork into other processes.
-    return runtime->GetHiddenApiEnforcementPolicy() == hiddenapi::EnforcementPolicy::kNoChecks &&
-           !runtime->IsZygote();
+inline bool ArtMethod::IsHiddenIntrinsic(uint32_t ordinal) {
+  switch (static_cast<Intrinsics>(ordinal)) {
+    case Intrinsics::kReferenceGetReferent:
+    case Intrinsics::kSystemArrayCopyChar:
+    case Intrinsics::kStringGetCharsNoCheck:
+    case Intrinsics::kVarHandleFullFence:
+    case Intrinsics::kVarHandleAcquireFence:
+    case Intrinsics::kVarHandleReleaseFence:
+    case Intrinsics::kVarHandleLoadLoadFence:
+    case Intrinsics::kVarHandleStoreStoreFence:
+      return true;
+    default:
+      return false;
   }
 }
 
@@ -491,8 +436,14 @@ inline void ArtMethod::SetIntrinsic(uint32_t intrinsic) {
     DCHECK_EQ(is_default_conflict, IsDefaultConflicting());
     DCHECK_EQ(is_compilable, IsCompilable());
     DCHECK_EQ(must_count_locks, MustCountLocks());
-    if (!WillIgnoreHiddenApiAccessFlags()) {
-      DCHECK_EQ(hidden_api_list, GetHiddenApiAccessFlags());
+    if (kIsDebugBuild) {
+      if (IsHiddenIntrinsic(intrinsic)) {
+        // Special case some of our intrinsics because the access flags clash
+        // with the intrinsics ordinal.
+        DCHECK_EQ(HiddenApiAccessFlags::kWhitelist, GetHiddenApiAccessFlags());
+      } else {
+        DCHECK_EQ(hidden_api_list, GetHiddenApiAccessFlags());
+      }
     }
   } else {
     SetAccessFlags(new_value);
