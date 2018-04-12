@@ -73,11 +73,12 @@ std::string DescribeLoaders(ObjPtr<mirror::ClassLoader> loader, const char* clas
     oss << "BootClassLoader";  // This would be unexpected.
   }
   for (; loader != nullptr; loader = loader->GetParent()) {
-    oss << loader_separator << loader->GetClass()->PrettyDescriptor();
+    ClassTable* table = Runtime::Current()->GetClassLinker()->ClassTableForClassLoader(loader);
+    oss << loader_separator << loader->GetClass()->PrettyDescriptor()
+        << "/" << static_cast<const void*>(table);
     loader_separator = ";";
     // If we didn't find the class yet, try to find it in the current class loader.
     if (!found_class) {
-      ClassTable* table = Runtime::Current()->GetClassLinker()->ClassTableForClassLoader(loader);
       ObjPtr<mirror::Class> klass =
           (table != nullptr) ? table->Lookup(class_descriptor, hash) : nullptr;
       if (klass != nullptr) {
@@ -99,7 +100,8 @@ std::string DescribeLoaders(ObjPtr<mirror::ClassLoader> loader, const char* clas
       VisitClassLoaderDexFiles(soa,
                                handle,
                                [&](const DexFile* dex_file) {
-                                 oss << path_separator << dex_file->GetLocation();
+                                 oss << path_separator << dex_file->GetLocation()
+                                     << "/" << static_cast<const void*>(dex_file);
                                  path_separator = ":";
                                  return true;  // Continue with the next DexFile.
                                });
@@ -135,8 +137,9 @@ void DumpB77342775DebugData(ObjPtr<mirror::Class> target_class, ObjPtr<mirror::C
     CHECK(iftable != nullptr);
     size_t ifcount = iftable->Count();
     LOG(ERROR) << "Maybe bug 77342775, looking for " << target_descriptor
-        << " with loader " << DescribeLoaders(src_class->GetClassLoader(), target_descriptor)
-        << " in interface table for " << source_descriptor << " ifcount=" << ifcount;
+        << " with loader " << DescribeLoaders(target_class->GetClassLoader(), target_descriptor)
+        << " in interface table for " << source_descriptor << " ifcount=" << ifcount
+        << " with loader " << DescribeLoaders(src_class->GetClassLoader(), source_descriptor);
     for (size_t i = 0; i != ifcount; ++i) {
       ObjPtr<mirror::Class> iface = iftable->GetInterface(i);
       CHECK(iface != nullptr);
@@ -145,8 +148,9 @@ void DumpB77342775DebugData(ObjPtr<mirror::Class> target_class, ObjPtr<mirror::C
     }
   } else {
     LOG(ERROR) << "Maybe bug 77342775, looking for " << target_descriptor
-        << " with loader " << DescribeLoaders(src_class->GetClassLoader(), target_descriptor)
-        << " in superclass chain for " << source_descriptor;
+        << " with loader " << DescribeLoaders(target_class->GetClassLoader(), target_descriptor)
+        << " in superclass chain for " << source_descriptor
+        << " with loader " << DescribeLoaders(src_class->GetClassLoader(), source_descriptor);
     for (ObjPtr<mirror::Class> klass = src_class;
          klass != nullptr;
          klass = klass->GetSuperClass()) {
