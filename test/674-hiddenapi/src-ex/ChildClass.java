@@ -91,8 +91,7 @@ public class ChildClass {
     // Run meaningful combinations of access flags.
     for (Hiddenness hiddenness : Hiddenness.values()) {
       final Behaviour expected;
-      if (isSameBoot || hiddenness == Hiddenness.Whitelist ||
-          (hiddenness == Hiddenness.Blacklist && everythingWhitelisted)) {
+      if (isSameBoot || hiddenness == Hiddenness.Whitelist || everythingWhitelisted) {
         expected = Behaviour.Granted;
       } else if (hiddenness == Hiddenness.Blacklist) {
         expected = Behaviour.Denied;
