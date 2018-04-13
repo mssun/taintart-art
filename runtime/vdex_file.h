@@ -22,9 +22,9 @@
 
 #include "base/array_ref.h"
 #include "base/macros.h"
+#include "base/mem_map.h"
 #include "base/os.h"
 #include "dex/compact_offset_table.h"
-#include "mem_map.h"
 #include "quicken_info.h"
 
 namespace art {

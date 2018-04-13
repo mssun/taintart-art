@@ -28,6 +28,7 @@ cc_defaults {
         "base/logging.cc",
         "base/malloc_arena_pool.cc",
         "base/memory_region.cc",
+        "base/mem_map.cc",
         "base/os_linux.cc",
         "base/runtime_debug.cc",
         "base/safe_copy.cc",
@@ -37,13 +38,36 @@ cc_defaults {
         "base/unix_file/fd_file.cc",
         "base/unix_file/random_access_file_utils.cc",
         "base/utils.cc",
+        "base/zip_archive.cc",
     ],
+    target: {
+        android: {
+            static_libs: [
+                // ZipArchive support, the order matters here to get all symbols.
+                "libziparchive",
+                "libz",
+            ],
+	    shared_libs: [
+	        // For android::FileMap used by libziparchive.
+                "libutils",
+	    ],
+        },
+        host: {
+            shared_libs: [
+                "libziparchive",
+                "libz",
+            ],
+        },
+    },
     generated_sources: ["art_libartbase_operator_srcs"],
     cflags: ["-DBUILDING_LIBART=1"],
     shared_libs: [
+        "libbacktrace",
+        "liblog",
+	// For ashmem.
+        "libcutils",
         // For common macros.
         "libbase",
-        "liblog",
     ],
     export_include_dirs: ["."],
     // ART's macros.h depends on libbase's macros.h.
@@ -72,7 +96,10 @@ art_cc_library {
     strip: {
         keep_symbols: true,
     },
-    shared_libs: ["libbase"],
+    shared_libs: [
+        "libbase",
+        "libziparchive",
+    ],
     export_shared_lib_headers: ["libbase"],
 }
 
@@ -82,7 +109,10 @@ art_cc_library {
         "art_debug_defaults",
         "libartbase_defaults",
     ],
-    shared_libs: ["libbase"],
+    shared_libs: [
+        "libbase",
+        "libziparchive",
+    ],
     export_shared_lib_headers: ["libbase"],
 }
 
@@ -108,6 +138,7 @@ art_cc_test {
         "base/leb128_test.cc",
         "base/logging_test.cc",
         "base/memory_region_test.cc",
+        "base/mem_map_test.cc",
         "base/safe_copy_test.cc",
         "base/scoped_flock_test.cc",
         "base/time_utils_test.cc",
@@ -116,6 +147,7 @@ art_cc_test {
         "base/unix_file/fd_file_test.cc",
         "base/utils_test.cc",
         "base/variant_map_test.cc",
+        "base/zip_archive_test.cc",
     ],
     shared_libs: [
         "libbase",

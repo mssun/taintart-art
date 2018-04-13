@@ -25,13 +25,13 @@
 #include "base/atomic.h"
 #include "base/bit_memory_region.h"
 #include "base/malloc_arena_pool.h"
+#include "base/mem_map.h"
 #include "base/safe_map.h"
 #include "dex/dex_cache_resolved_classes.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_types.h"
 #include "dex/method_reference.h"
 #include "dex/type_reference.h"
-#include "mem_map.h"
 
 namespace art {
 

@@ -23,7 +23,7 @@
 
 #include "base/atomic.h"
 #include "base/bit_utils.h"
-#include "mem_map.h"
+#include "base/mem_map.h"
 #include "space_bitmap.h"
 
 namespace art {

@@ -34,7 +34,6 @@
 
 #include "base/allocator.h"
 #include "base/bit_utils.h"
-#include "base/file_utils.h"
 #include "base/globals.h"
 #include "base/logging.h"  // For VLOG_IS_ON.
 #include "base/memory_tool.h"
@@ -207,7 +206,8 @@ static bool CheckNonOverlapping(uintptr_t begin,
       *error_msg = StringPrintf("Requested region 0x%08" PRIxPTR "-0x%08" PRIxPTR " overlaps with "
                                 "existing map 0x%08" PRIxPTR "-0x%08" PRIxPTR " (%s)\n%s",
                                 begin, end,
-                                static_cast<uintptr_t>(entry->start), static_cast<uintptr_t>(entry->end),
+                                static_cast<uintptr_t>(entry->start),
+                                static_cast<uintptr_t>(entry->end),
                                 entry->name.c_str(),
                                 map_info.str().c_str());
       return false;
