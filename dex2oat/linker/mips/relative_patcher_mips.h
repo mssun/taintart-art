@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_LINKER_MIPS_RELATIVE_PATCHER_MIPS_H_
-#define ART_COMPILER_LINKER_MIPS_RELATIVE_PATCHER_MIPS_H_
+#ifndef ART_DEX2OAT_LINKER_MIPS_RELATIVE_PATCHER_MIPS_H_
+#define ART_DEX2OAT_LINKER_MIPS_RELATIVE_PATCHER_MIPS_H_
 
 #include "arch/mips/instruction_set_features_mips.h"
 #include "linker/relative_patcher.h"
@@ -55,4 +55,4 @@ class MipsRelativePatcher FINAL : public RelativePatcher {
 }  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_LINKER_MIPS_RELATIVE_PATCHER_MIPS_H_
+#endif  // ART_DEX2OAT_LINKER_MIPS_RELATIVE_PATCHER_MIPS_H_

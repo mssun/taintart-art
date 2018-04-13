@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_LINKER_RELATIVE_PATCHER_TEST_H_
-#define ART_COMPILER_LINKER_RELATIVE_PATCHER_TEST_H_
+#ifndef ART_DEX2OAT_LINKER_RELATIVE_PATCHER_TEST_H_
+#define ART_DEX2OAT_LINKER_RELATIVE_PATCHER_TEST_H_
 
 #include "arch/instruction_set.h"
 #include "arch/instruction_set_features.h"
@@ -30,9 +30,9 @@
 #include "globals.h"
 #include "gtest/gtest.h"
 #include "linker/relative_patcher.h"
+#include "linker/vector_output_stream.h"
 #include "oat.h"
 #include "oat_quick_method_header.h"
-#include "vector_output_stream.h"
 
 namespace art {
 namespace linker {
@@ -356,4 +356,4 @@ class RelativePatcherTest : public testing::Test {
 }  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_LINKER_RELATIVE_PATCHER_TEST_H_
+#endif  // ART_DEX2OAT_LINKER_RELATIVE_PATCHER_TEST_H_
