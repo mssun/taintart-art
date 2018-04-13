@@ -18,7 +18,10 @@ cc_defaults {
     name: "dexanalyze-defaults",
     defaults: ["art_defaults"],
     host_supported: true,
-    srcs: ["dexanalyze.cc"],
+    srcs: [
+        "dexanalyze.cc",
+        "dexanalyze_experiments.cc",
+    ],
     target: {
         android: {
             shared_libs: ["libcutils"],
