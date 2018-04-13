@@ -26,8 +26,8 @@
 #include <android-base/logging.h>
 
 #include "base/arena_allocator-inl.h"
+#include "base/mem_map.h"
 #include "base/systrace.h"
-#include "mem_map.h"
 
 namespace art {
 

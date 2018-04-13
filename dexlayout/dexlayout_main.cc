@@ -32,8 +32,8 @@
 #include <android-base/logging.h>
 
 #include "base/logging.h"  // For InitLogging.
+#include "base/mem_map.h"
 #include "jit/profile_compilation_info.h"
-#include "mem_map.h"
 #include "runtime.h"
 
 namespace art {

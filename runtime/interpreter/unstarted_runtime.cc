@@ -34,6 +34,7 @@
 #include "base/enums.h"
 #include "base/macros.h"
 #include "base/quasi_atomic.h"
+#include "base/zip_archive.h"
 #include "class_linker.h"
 #include "common_throws.h"
 #include "dex/descriptors_names.h"
@@ -56,7 +57,6 @@
 #include "thread-inl.h"
 #include "transaction.h"
 #include "well_known_classes.h"
-#include "zip_archive.h"
 
 namespace art {
 namespace interpreter {

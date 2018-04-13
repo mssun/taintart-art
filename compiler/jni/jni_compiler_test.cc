@@ -21,6 +21,7 @@
 
 #include "art_method-inl.h"
 #include "base/bit_utils.h"
+#include "base/mem_map.h"
 #include "class_linker.h"
 #include "common_compiler_test.h"
 #include "compiler.h"
@@ -29,7 +30,6 @@
 #include "indirect_reference_table.h"
 #include "java_vm_ext.h"
 #include "jni_internal.h"
-#include "mem_map.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
 #include "mirror/object-inl.h"
