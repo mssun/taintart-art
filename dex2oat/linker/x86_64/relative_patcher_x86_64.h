@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_LINKER_X86_RELATIVE_PATCHER_X86_H_
-#define ART_COMPILER_LINKER_X86_RELATIVE_PATCHER_X86_H_
+#ifndef ART_DEX2OAT_LINKER_X86_64_RELATIVE_PATCHER_X86_64_H_
+#define ART_DEX2OAT_LINKER_X86_64_RELATIVE_PATCHER_X86_64_H_
 
 #include "linker/x86/relative_patcher_x86_base.h"
 
 namespace art {
 namespace linker {
 
-class X86RelativePatcher FINAL : public X86BaseRelativePatcher {
+class X86_64RelativePatcher FINAL : public X86BaseRelativePatcher {
  public:
-  X86RelativePatcher() { }
+  X86_64RelativePatcher() { }
 
   void PatchPcRelativeReference(std::vector<uint8_t>* code,
                                 const LinkerPatch& patch,
@@ -38,4 +38,4 @@ class X86RelativePatcher FINAL : public X86BaseRelativePatcher {
 }  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_LINKER_X86_RELATIVE_PATCHER_X86_H_
+#endif  // ART_DEX2OAT_LINKER_X86_64_RELATIVE_PATCHER_X86_64_H_

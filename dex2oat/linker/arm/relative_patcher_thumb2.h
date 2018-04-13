@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_LINKER_ARM_RELATIVE_PATCHER_THUMB2_H_
-#define ART_COMPILER_LINKER_ARM_RELATIVE_PATCHER_THUMB2_H_
+#ifndef ART_DEX2OAT_LINKER_ARM_RELATIVE_PATCHER_THUMB2_H_
+#define ART_DEX2OAT_LINKER_ARM_RELATIVE_PATCHER_THUMB2_H_
 
 #include "arch/arm/registers_arm.h"
 #include "base/array_ref.h"
@@ -70,4 +70,4 @@ class Thumb2RelativePatcher FINAL : public ArmBaseRelativePatcher {
 }  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_LINKER_ARM_RELATIVE_PATCHER_THUMB2_H_
+#endif  // ART_DEX2OAT_LINKER_ARM_RELATIVE_PATCHER_THUMB2_H_

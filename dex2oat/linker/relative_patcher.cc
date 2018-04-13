@@ -35,7 +35,7 @@
 #ifdef ART_ENABLE_CODEGEN_x86_64
 #include "linker/x86_64/relative_patcher_x86_64.h"
 #endif
-#include "output_stream.h"
+#include "linker/output_stream.h"
 
 namespace art {
 namespace linker {
