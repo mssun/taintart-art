@@ -29,7 +29,6 @@
 #include "gc/accounting/card_table.h"
 #include "heap_poisoning.h"
 #include "intrinsics_arm_vixl.h"
-#include "linker/arm/relative_patcher_thumb2.h"
 #include "linker/linker_patch.h"
 #include "mirror/array-inl.h"
 #include "mirror/class-inl.h"
@@ -9905,7 +9904,8 @@ static void EmitGrayCheckAndFastPath(ArmVIXLAssembler& assembler,
                                      vixl32::Register base_reg,
                                      vixl32::MemOperand& lock_word,
                                      vixl32::Label* slow_path,
-                                     int32_t raw_ldr_offset) {
+                                     int32_t raw_ldr_offset,
+                                     vixl32::Label* throw_npe = nullptr) {
   // Load the lock word containing the rb_state.
   __ Ldr(ip, lock_word);
   // Given the numeric representation, it's enough to check the low bit of the rb_state.
@@ -9913,6 +9913,10 @@ static void EmitGrayCheckAndFastPath(ArmVIXLAssembler& assembler,
   static_assert(ReadBarrier::GrayState() == 1, "Expecting gray to have value 1");
   __ Tst(ip, Operand(LockWord::kReadBarrierStateMaskShifted));
   __ B(ne, slow_path, /* is_far_target */ false);
+  // To throw NPE, we return to the fast path; the artificial dependence below does not matter.
+  if (throw_npe != nullptr) {
+    __ Bind(throw_npe);
+  }
   __ Add(lr, lr, raw_ldr_offset);
   // Introduce a dependency on the lock_word including rb_state,
   // to prevent load-load reordering, and without using
@@ -9926,7 +9930,7 @@ static void EmitGrayCheckAndFastPath(ArmVIXLAssembler& assembler,
 static void LoadReadBarrierMarkIntrospectionEntrypoint(ArmVIXLAssembler& assembler,
                                                        vixl32::Register entrypoint) {
   // The register where the read barrier introspection entrypoint is loaded
-  // is fixed: `Thumb2RelativePatcher::kBakerCcEntrypointRegister` (R4).
+  // is fixed: `kBakerCcEntrypointRegister` (R4).
   DCHECK(entrypoint.Is(kBakerCcEntrypointRegister));
   // entrypoint = Thread::Current()->pReadBarrierMarkReg12, i.e. pReadBarrierMarkIntrospection.
   DCHECK_EQ(ip.GetCode(), 12u);
@@ -9941,10 +9945,6 @@ void CodeGeneratorARMVIXL::CompileBakerReadBarrierThunk(ArmVIXLAssembler& assemb
   BakerReadBarrierKind kind = BakerReadBarrierKindField::Decode(encoded_data);
   switch (kind) {
     case BakerReadBarrierKind::kField: {
-      // Check if the holder is gray and, if not, add fake dependency to the base register
-      // and return to the LDR instruction to load the reference. Otherwise, use introspection
-      // to load the reference and call the entrypoint (in kBakerCcEntrypointRegister)
-      // that performs further checks on the reference and marks it if needed.
       vixl32::Register base_reg(BakerReadBarrierFirstRegField::Decode(encoded_data));
       CheckValidReg(base_reg.GetCode());
       vixl32::Register holder_reg(BakerReadBarrierSecondRegField::Decode(encoded_data));
@@ -9952,19 +9952,26 @@ void CodeGeneratorARMVIXL::CompileBakerReadBarrierThunk(ArmVIXLAssembler& assemb
       BakerReadBarrierWidth width = BakerReadBarrierWidthField::Decode(encoded_data);
       UseScratchRegisterScope temps(assembler.GetVIXLAssembler());
       temps.Exclude(ip);
-      // If base_reg differs from holder_reg, the offset was too large and we must have
-      // emitted an explicit null check before the load. Otherwise, we need to null-check
-      // the holder as we do not necessarily do that check before going to the thunk.
-      vixl32::Label throw_npe;
-      if (holder_reg.Is(base_reg)) {
-        __ CompareAndBranchIfZero(holder_reg, &throw_npe, /* is_far_target */ false);
+      // If base_reg differs from holder_reg, the offset was too large and we must have emitted
+      // an explicit null check before the load. Otherwise, for implicit null checks, we need to
+      // null-check the holder as we do not necessarily do that check before going to the thunk.
+      vixl32::Label throw_npe_label;
+      vixl32::Label* throw_npe = nullptr;
+      if (GetCompilerOptions().GetImplicitNullChecks() && holder_reg.Is(base_reg)) {
+        throw_npe = &throw_npe_label;
+        __ CompareAndBranchIfZero(holder_reg, throw_npe, /* is_far_target */ false);
       }
+      // Check if the holder is gray and, if not, add fake dependency to the base register
+      // and return to the LDR instruction to load the reference. Otherwise, use introspection
+      // to load the reference and call the entrypoint that performs further checks on the
+      // reference and marks it if needed.
       vixl32::Label slow_path;
       MemOperand lock_word(holder_reg, mirror::Object::MonitorOffset().Int32Value());
       const int32_t raw_ldr_offset = (width == BakerReadBarrierWidth::kWide)
           ? BAKER_MARK_INTROSPECTION_FIELD_LDR_WIDE_OFFSET
           : BAKER_MARK_INTROSPECTION_FIELD_LDR_NARROW_OFFSET;
-      EmitGrayCheckAndFastPath(assembler, base_reg, lock_word, &slow_path, raw_ldr_offset);
+      EmitGrayCheckAndFastPath(
+          assembler, base_reg, lock_word, &slow_path, raw_ldr_offset, throw_npe);
       __ Bind(&slow_path);
       const int32_t ldr_offset = /* Thumb state adjustment (LR contains Thumb state). */ -1 +
                                  raw_ldr_offset;
@@ -9986,13 +9993,6 @@ void CodeGeneratorARMVIXL::CompileBakerReadBarrierThunk(ArmVIXLAssembler& assemb
       }
       // Do not unpoison. With heap poisoning enabled, the entrypoint expects a poisoned reference.
       __ Bx(ep_reg);                          // Jump to the entrypoint.
-      if (holder_reg.Is(base_reg)) {
-        // Add null check slow path. The stack map is at the address pointed to by LR.
-        __ Bind(&throw_npe);
-        int32_t offset = GetThreadOffset<kArmPointerSize>(kQuickThrowNullPointer).Int32Value();
-        __ Ldr(ip, MemOperand(/* Thread* */ vixl32::r9, offset));
-        __ Bx(ip);
-      }
       break;
     }
     case BakerReadBarrierKind::kArray: {

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_LINKER_RELATIVE_PATCHER_H_
-#define ART_COMPILER_LINKER_RELATIVE_PATCHER_H_
+#ifndef ART_DEX2OAT_LINKER_RELATIVE_PATCHER_H_
+#define ART_DEX2OAT_LINKER_RELATIVE_PATCHER_H_
 
 #include <vector>
 
@@ -167,4 +167,4 @@ class RelativePatcher {
 }  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_LINKER_RELATIVE_PATCHER_H_
+#endif  // ART_DEX2OAT_LINKER_RELATIVE_PATCHER_H_

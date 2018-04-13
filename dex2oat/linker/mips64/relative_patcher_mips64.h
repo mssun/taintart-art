@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 The Android Open Source Project
+ * Copyright (C) 2016 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,27 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_LINKER_X86_64_RELATIVE_PATCHER_X86_64_H_
-#define ART_COMPILER_LINKER_X86_64_RELATIVE_PATCHER_X86_64_H_
+#ifndef ART_DEX2OAT_LINKER_MIPS64_RELATIVE_PATCHER_MIPS64_H_
+#define ART_DEX2OAT_LINKER_MIPS64_RELATIVE_PATCHER_MIPS64_H_
 
-#include "linker/x86/relative_patcher_x86_base.h"
+#include "linker/relative_patcher.h"
 
 namespace art {
 namespace linker {
 
-class X86_64RelativePatcher FINAL : public X86BaseRelativePatcher {
+class Mips64RelativePatcher FINAL : public RelativePatcher {
  public:
-  X86_64RelativePatcher() { }
+  Mips64RelativePatcher() {}
 
+  uint32_t ReserveSpace(uint32_t offset,
+                        const CompiledMethod* compiled_method,
+                        MethodReference method_ref) OVERRIDE;
+  uint32_t ReserveSpaceEnd(uint32_t offset) OVERRIDE;
+  uint32_t WriteThunks(OutputStream* out, uint32_t offset) OVERRIDE;
+  void PatchCall(std::vector<uint8_t>* code,
+                 uint32_t literal_offset,
+                 uint32_t patch_offset,
+                 uint32_t target_offset) OVERRIDE;
   void PatchPcRelativeReference(std::vector<uint8_t>* code,
                                 const LinkerPatch& patch,
                                 uint32_t patch_offset,
@@ -33,9 +42,13 @@ class X86_64RelativePatcher FINAL : public X86BaseRelativePatcher {
   void PatchBakerReadBarrierBranch(std::vector<uint8_t>* code,
                                    const LinkerPatch& patch,
                                    uint32_t patch_offset) OVERRIDE;
+  std::vector<debug::MethodDebugInfo> GenerateThunkDebugInfo(uint32_t executable_offset) OVERRIDE;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Mips64RelativePatcher);
 };
 
 }  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_LINKER_X86_64_RELATIVE_PATCHER_X86_64_H_
+#endif  // ART_DEX2OAT_LINKER_MIPS64_RELATIVE_PATCHER_MIPS64_H_

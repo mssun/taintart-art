@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_COMPILER_LINKER_ARM_RELATIVE_PATCHER_ARM_BASE_H_
-#define ART_COMPILER_LINKER_ARM_RELATIVE_PATCHER_ARM_BASE_H_
+#ifndef ART_DEX2OAT_LINKER_ARM_RELATIVE_PATCHER_ARM_BASE_H_
+#define ART_DEX2OAT_LINKER_ARM_RELATIVE_PATCHER_ARM_BASE_H_
 
 #include <deque>
 #include <vector>
@@ -155,4 +155,4 @@ class ArmBaseRelativePatcher : public RelativePatcher {
 }  // namespace linker
 }  // namespace art
 
-#endif  // ART_COMPILER_LINKER_ARM_RELATIVE_PATCHER_ARM_BASE_H_
+#endif  // ART_DEX2OAT_LINKER_ARM_RELATIVE_PATCHER_ARM_BASE_H_
