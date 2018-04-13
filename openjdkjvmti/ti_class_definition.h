@@ -39,7 +39,7 @@
 #include "art_jvmti.h"
 
 #include "base/array_ref.h"
-#include "mem_map.h"
+#include "base/mem_map.h"
 
 namespace openjdkjvmti {
 

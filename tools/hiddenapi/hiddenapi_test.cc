@@ -17,11 +17,11 @@
 #include <fstream>
 
 #include "base/unix_file/fd_file.h"
+#include "base/zip_archive.h"
 #include "common_runtime_test.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/dex_file-inl.h"
 #include "exec_utils.h"
-#include "zip_archive.h"
 
 namespace art {
 

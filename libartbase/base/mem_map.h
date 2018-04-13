@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ART_RUNTIME_MEM_MAP_H_
-#define ART_RUNTIME_MEM_MAP_H_
+#ifndef ART_LIBARTBASE_BASE_MEM_MAP_H_
+#define ART_LIBARTBASE_BASE_MEM_MAP_H_
 
 #include <stddef.h>
 #include <sys/types.h>
@@ -25,6 +25,7 @@
 #include <string>
 
 #include "android-base/thread_annotations.h"
+#include "base/macros.h"
 
 namespace art {
 
@@ -297,4 +298,4 @@ void ZeroAndReleasePages(void* address, size_t length);
 
 }  // namespace art
 
-#endif  // ART_RUNTIME_MEM_MAP_H_
+#endif  // ART_LIBARTBASE_BASE_MEM_MAP_H_

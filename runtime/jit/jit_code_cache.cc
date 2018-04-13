@@ -22,6 +22,7 @@
 #include "art_method-inl.h"
 #include "base/enums.h"
 #include "base/logging.h"  // For VLOG.
+#include "base/mem_map.h"
 #include "base/quasi_atomic.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
@@ -37,7 +38,6 @@
 #include "jit/jit.h"
 #include "jit/profiling_info.h"
 #include "linear_alloc.h"
-#include "mem_map.h"
 #include "oat_file-inl.h"
 #include "oat_quick_method_header.h"
 #include "object_callbacks.h"

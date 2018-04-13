@@ -39,6 +39,7 @@
 
 #include "art_method.h"
 #include "base/array_ref.h"
+#include "base/mem_map.h"
 #include "class_linker.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_types.h"
@@ -51,7 +52,6 @@
 #include "jvalue.h"
 #include "jvmti.h"
 #include "linear_alloc.h"
-#include "mem_map.h"
 #include "mirror/array.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_ext.h"

@@ -25,9 +25,9 @@
 
 #include "base/logging.h"  // For VLOG
 #include "base/memory_tool.h"
+#include "base/mem_map.h"
 #include "base/mutex-inl.h"
 #include "gc/space/memory_tool_settings.h"
-#include "mem_map.h"
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
 #include "mirror/object.h"

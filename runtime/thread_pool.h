@@ -21,8 +21,8 @@
 #include <vector>
 
 #include "barrier.h"
+#include "base/mem_map.h"
 #include "base/mutex.h"
-#include "mem_map.h"
 
 namespace art {
 

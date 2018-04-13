@@ -40,6 +40,7 @@
 #include "base/enums.h"
 #include "base/file_utils.h"
 #include "base/logging.h"  // For VLOG_IS_ON.
+#include "base/mem_map.h"
 #include "base/os.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
@@ -55,7 +56,6 @@
 #include "elf_utils.h"
 #include "gc_root.h"
 #include "gc/space/image_space.h"
-#include "mem_map.h"
 #include "mirror/class.h"
 #include "mirror/object-inl.h"
 #include "oat.h"

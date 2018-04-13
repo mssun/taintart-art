@@ -44,9 +44,9 @@
 #include "base/time_utils.h"
 #include "base/unix_file/fd_file.h"
 #include "base/utils.h"
+#include "base/zip_archive.h"
 #include "dex/dex_file_loader.h"
 #include "jit/profiling_info.h"
-#include "zip_archive.h"
 
 namespace art {
 

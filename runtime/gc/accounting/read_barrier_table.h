@@ -20,10 +20,10 @@
 #include <sys/mman.h>  // For the PROT_* and MAP_* constants.
 
 #include "base/bit_utils.h"
+#include "base/mem_map.h"
 #include "base/mutex.h"
 #include "gc/space/space.h"
 #include "globals.h"
-#include "mem_map.h"
 
 namespace art {
 namespace gc {

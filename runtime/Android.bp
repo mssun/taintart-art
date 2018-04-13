@@ -119,7 +119,6 @@ cc_defaults {
         "jobject_comparator.cc",
         "linear_alloc.cc",
         "managed_stack.cc",
-        "mem_map.cc",
         "method_handles.cc",
         "mirror/array.cc",
         "mirror/call_site.cc",
@@ -208,7 +207,6 @@ cc_defaults {
         "verifier/verifier_deps.cc",
         "verify_object.cc",
         "well_known_classes.cc",
-        "zip_archive.cc",
 
         "arch/context.cc",
         "arch/instruction_set.cc",
@@ -579,7 +577,6 @@ art_cc_test {
         "jdwp/jdwp_options_test.cc",
         "java_vm_ext_test.cc",
         "jit/profile_compilation_info_test.cc",
-        "mem_map_test.cc",
         "method_handles_test.cc",
         "mirror/dex_cache_test.cc",
         "mirror/method_type_test.cc",
@@ -600,7 +597,6 @@ art_cc_test {
         "vdex_file_test.cc",
         "verifier/method_verifier_test.cc",
         "verifier/reg_type_test.cc",
-        "zip_archive_test.cc",
     ],
     shared_libs: [
         "libbacktrace",
