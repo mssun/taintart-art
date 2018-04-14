@@ -696,7 +696,7 @@ endef  # define-art-gtest-host-both
 
 ifeq ($(ART_BUILD_TARGET),true)
   $(foreach file,$(ART_TARGET_GTEST_FILES), $(eval $(call define-art-gtest-target,$(file),)))
-  ifdef TARGET_2ND_ARCH
+  ifdef 2ND_ART_PHONY_TEST_TARGET_SUFFIX
     $(foreach file,$(2ND_ART_TARGET_GTEST_FILES), $(eval $(call define-art-gtest-target,$(file),2ND_)))
   endif
   # Rules to run the different architecture versions of the gtest.
@@ -756,7 +756,7 @@ $(eval $(call define-test-art-gtest-combination,target,TARGET,,))
 $(eval $(call define-test-art-gtest-combination,target,TARGET,valgrind-,))
 $(eval $(call define-test-art-gtest-combination,target,TARGET,,$(ART_PHONY_TEST_TARGET_SUFFIX)))
 $(eval $(call define-test-art-gtest-combination,target,TARGET,valgrind-,$(ART_PHONY_TEST_TARGET_SUFFIX)))
-ifdef TARGET_2ND_ARCH
+ifdef 2ND_ART_PHONY_TEST_TARGET_SUFFIX
 $(eval $(call define-test-art-gtest-combination,target,TARGET,,$(2ND_ART_PHONY_TEST_TARGET_SUFFIX)))
 $(eval $(call define-test-art-gtest-combination,target,TARGET,valgrind-,$(2ND_ART_PHONY_TEST_TARGET_SUFFIX)))
 endif
