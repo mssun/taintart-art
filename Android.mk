@@ -298,7 +298,7 @@ test-art-target-jit$(ART_PHONY_TEST_TARGET_SUFFIX): test-art-target-run-test-jit
 	$(hide) $(call ART_TEST_PREREQ_FINISHED,$@)
 
 # Secondary target architecture variants:
-ifdef TARGET_2ND_ARCH
+ifdef 2ND_ART_PHONY_TEST_TARGET_SUFFIX
 .PHONY: test-art-target$(2ND_ART_PHONY_TEST_TARGET_SUFFIX)
 test-art-target$(2ND_ART_PHONY_TEST_TARGET_SUFFIX): test-art-target-gtest$(2ND_ART_PHONY_TEST_TARGET_SUFFIX) \
     test-art-target-run-test$(2ND_ART_PHONY_TEST_TARGET_SUFFIX)
