@@ -241,6 +241,9 @@ cc_defaults {
         "entrypoints/quick/quick_trampoline_entrypoints.cc",
     ],
 
+    // b/77976998, clang lld does not recognize the --keep-unique flag.
+    use_clang_lld: false,
+
     arch: {
         arm: {
             clang_asflags: ["-no-integrated-as"],
