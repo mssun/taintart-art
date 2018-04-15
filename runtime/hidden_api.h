@@ -17,6 +17,8 @@
 #ifndef ART_RUNTIME_HIDDEN_API_H_
 #define ART_RUNTIME_HIDDEN_API_H_
 
+#include "art_field-inl.h"
+#include "art_method-inl.h"
 #include "base/mutex.h"
 #include "dex/hidden_api_access_flags.h"
 #include "mirror/class-inl.h"
@@ -24,10 +26,6 @@
 #include "runtime.h"
 
 namespace art {
-
-class ArtField;
-class ArtMethod;
-
 namespace hiddenapi {
 
 // Hidden API enforcement policy
