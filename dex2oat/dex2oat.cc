@@ -629,10 +629,6 @@ class Dex2Oat FINAL {
       image_classes_zip_filename_(nullptr),
       image_classes_filename_(nullptr),
       image_storage_mode_(ImageHeader::kStorageModeUncompressed),
-      compiled_classes_zip_filename_(nullptr),
-      compiled_classes_filename_(nullptr),
-      compiled_methods_zip_filename_(nullptr),
-      compiled_methods_filename_(nullptr),
       passes_to_run_filename_(nullptr),
       dirty_image_objects_filename_(nullptr),
       multi_image_(false),
@@ -818,18 +814,6 @@ class Dex2Oat FINAL {
       Usage("--image-classes-zip should be used with --image-classes");
     }
 
-    if (compiled_classes_filename_ != nullptr && !IsBootImage()) {
-      Usage("--compiled-classes should only be used with --image");
-    }
-
-    if (compiled_classes_filename_ != nullptr && !boot_image_filename_.empty()) {
-      Usage("--compiled-classes should not be used with --boot-image");
-    }
-
-    if (compiled_classes_zip_filename_ != nullptr && compiled_classes_filename_ == nullptr) {
-      Usage("--compiled-classes-zip should be used with --compiled-classes");
-    }
-
     if (dex_filenames_.empty() && zip_fd_ == -1) {
       Usage("Input must be supplied with either --dex-file or --zip-fd");
     }
@@ -873,9 +857,7 @@ class Dex2Oat FINAL {
     }
 
     if (have_profile_file || have_profile_fd) {
-      if (compiled_classes_filename_ != nullptr ||
-          compiled_classes_zip_filename_ != nullptr ||
-          image_classes_filename_ != nullptr ||
+      if (image_classes_filename_ != nullptr ||
           image_classes_zip_filename_ != nullptr) {
         Usage("Profile based image creation is not supported with image or compiled classes");
       }
@@ -1210,10 +1192,6 @@ class Dex2Oat FINAL {
     AssignIfExists(args, M::Threads, &thread_count_);
     AssignIfExists(args, M::ImageClasses, &image_classes_filename_);
     AssignIfExists(args, M::ImageClassesZip, &image_classes_zip_filename_);
-    AssignIfExists(args, M::CompiledClasses, &compiled_classes_filename_);
-    AssignIfExists(args, M::CompiledClassesZip, &compiled_classes_zip_filename_);
-    AssignIfExists(args, M::CompiledMethods, &compiled_methods_filename_);
-    AssignIfExists(args, M::CompiledMethodsZip, &compiled_methods_zip_filename_);
     AssignIfExists(args, M::Passes, &passes_to_run_filename_);
     AssignIfExists(args, M::BootImage, &parser_options->boot_image_filename);
     AssignIfExists(args, M::AndroidRoot, &android_root_);
@@ -1535,8 +1513,7 @@ class Dex2Oat FINAL {
   dex2oat::ReturnCode Setup() {
     TimingLogger::ScopedTiming t("dex2oat Setup", timings_);
 
-    if (!PrepareImageClasses() || !PrepareCompiledClasses() || !PrepareCompiledMethods() ||
-        !PrepareDirtyObjects()) {
+    if (!PrepareImageClasses() || !PrepareDirtyObjects()) {
       return dex2oat::ReturnCode::kOther;
     }
 
@@ -1875,8 +1852,6 @@ class Dex2Oat FINAL {
                                      instruction_set_,
                                      instruction_set_features_.get(),
                                      image_classes_.release(),
-                                     compiled_classes_.release(),
-                                     compiled_methods_.release(),
                                      thread_count_,
                                      swap_fd_,
                                      profile_compilation_info_.get()));
@@ -2421,21 +2396,6 @@ class Dex2Oat FINAL {
     return true;
   }
 
-  bool PrepareCompiledClasses() {
-    // If --compiled-classes was specified, calculate the full list of classes to compile in the
-    // image.
-    if (compiled_classes_filename_ != nullptr) {
-      compiled_classes_ =
-          ReadClasses(compiled_classes_zip_filename_, compiled_classes_filename_, "compiled");
-      if (compiled_classes_ == nullptr) {
-        return false;
-      }
-    } else {
-      compiled_classes_.reset(nullptr);  // By default compile everything.
-    }
-    return true;
-  }
-
   static std::unique_ptr<std::unordered_set<std::string>> ReadClasses(const char* zip_filename,
                                                                       const char* classes_filename,
                                                                       const char* tag) {
@@ -2451,32 +2411,6 @@ class Dex2Oat FINAL {
                  << classes_filename << "': " << error_msg;
     }
     return classes;
-  }
-
-  bool PrepareCompiledMethods() {
-    // If --compiled-methods was specified, read the methods to compile from the given file(s).
-    if (compiled_methods_filename_ != nullptr) {
-      std::string error_msg;
-      if (compiled_methods_zip_filename_ != nullptr) {
-        compiled_methods_.reset(ReadCommentedInputFromZip<std::unordered_set<std::string>>(
-            compiled_methods_zip_filename_,
-            compiled_methods_filename_,
-            nullptr,            // No post-processing.
-            &error_msg));
-      } else {
-        compiled_methods_.reset(ReadCommentedInputFromFile<std::unordered_set<std::string>>(
-            compiled_methods_filename_,
-            nullptr));          // No post-processing.
-      }
-      if (compiled_methods_.get() == nullptr) {
-        LOG(ERROR) << "Failed to create list of compiled methods from '"
-            << compiled_methods_filename_ << "': " << error_msg;
-        return false;
-      }
-    } else {
-      compiled_methods_.reset(nullptr);  // By default compile everything.
-    }
-    return true;
   }
 
   bool PrepareDirtyObjects() {
@@ -2919,10 +2853,6 @@ class Dex2Oat FINAL {
   const char* image_classes_zip_filename_;
   const char* image_classes_filename_;
   ImageHeader::StorageMode image_storage_mode_;
-  const char* compiled_classes_zip_filename_;
-  const char* compiled_classes_filename_;
-  const char* compiled_methods_zip_filename_;
-  const char* compiled_methods_filename_;
   const char* passes_to_run_filename_;
   const char* dirty_image_objects_filename_;
   std::unique_ptr<std::unordered_set<std::string>> image_classes_;

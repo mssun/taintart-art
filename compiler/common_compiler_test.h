@@ -67,14 +67,6 @@ class CommonCompilerTest : public CommonRuntimeTest {
   // driver assumes ownership of the set, so the test should properly release the set.
   virtual std::unordered_set<std::string>* GetImageClasses();
 
-  // Get the set of compiled classes given to the compiler-driver in SetUp. Note: the compiler
-  // driver assumes ownership of the set, so the test should properly release the set.
-  virtual std::unordered_set<std::string>* GetCompiledClasses();
-
-  // Get the set of compiled methods given to the compiler-driver in SetUp. Note: the compiler
-  // driver assumes ownership of the set, so the test should properly release the set.
-  virtual std::unordered_set<std::string>* GetCompiledMethods();
-
   virtual ProfileCompilationInfo* GetProfileCompilationInfo();
 
   virtual CompilerFilter::Filter GetCompilerFilter() const {

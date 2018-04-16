@@ -142,8 +142,6 @@ JitCompiler::JitCompiler() {
       instruction_set,
       instruction_set_features_.get(),
       /* image_classes */ nullptr,
-      /* compiled_classes */ nullptr,
-      /* compiled_methods */ nullptr,
       /* thread_count */ 1,
       /* swap_fd */ -1,
       /* profile_compilation_info */ nullptr));

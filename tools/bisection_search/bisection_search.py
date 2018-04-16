@@ -166,10 +166,6 @@ class Dex2OatWrapperTestable(object):
     """Prepare command to run."""
     cmd = self._base_cmd[0:self._arguments_position]
     # insert additional arguments before the first argument
-    if compiled_methods is not None:
-      self._test_env.WriteLines(self._compiled_methods_path, compiled_methods)
-      cmd += ['-Xcompiler-option', '--compiled-methods={0}'.format(
-          self._compiled_methods_path)]
     if passes_to_run is not None:
       self._test_env.WriteLines(self._passes_to_run_path, passes_to_run)
       cmd += ['-Xcompiler-option', '--run-passes={0}'.format(

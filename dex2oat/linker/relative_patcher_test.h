@@ -49,8 +49,6 @@ class RelativePatcherTest : public testing::Test {
                 instruction_set,
                 /* instruction_set_features*/ nullptr,
                 /* image_classes */ nullptr,
-                /* compiled_classes */ nullptr,
-                /* compiled_methods */ nullptr,
                 /* thread_count */ 1u,
                 /* swap_fd */ -1,
                 /* profile_compilation_info */ nullptr),
