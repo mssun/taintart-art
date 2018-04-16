@@ -29,9 +29,18 @@ namespace space {
 // value of the region size, evaculate the region.
 static constexpr uint kEvacuateLivePercentThreshold = 75U;
 
-// If we protect the cleared regions.
+// Whether we protect the cleared regions.
 // Only protect for target builds to prevent flaky test failures (b/63131961).
 static constexpr bool kProtectClearedRegions = kIsTargetBuild;
+
+// Wether we poison memory areas occupied by dead objects in unevacuated regions.
+static constexpr bool kPoisonDeadObjectsInUnevacuatedRegions = kIsDebugBuild;
+
+// Special 32-bit value used to poison memory areas occupied by dead
+// objects in unevacuated regions. Dereferencing this value is expected
+// to trigger a memory protection fault, as it is unlikely that it
+// points to a valid, non-protected memory area.
+static constexpr uint32_t kPoisonDeadObject = 0xBADDB01D;  // "BADDROID"
 
 MemMap* RegionSpace::CreateMemMap(const std::string& name, size_t capacity,
                                   uint8_t* requested_begin) {
@@ -370,6 +379,13 @@ void RegionSpace::ClearFromSpace(/* out */ uint64_t* cleared_bytes,
         // as they are unevac regions that are live.
         // Subtract one for the for-loop.
         i += regions_to_clear_bitmap - 1;
+      } else {
+        // Only some allocated bytes are live in this unevac region.
+        // This should only happen for an allocated non-large region.
+        DCHECK(r->IsAllocated()) << r->State();
+        if (kPoisonDeadObjectsInUnevacuatedRegions) {
+          PoisonDeadObjectsInUnevacuatedRegion(r);
+        }
       }
     }
     // Note r != last_checked_region if r->IsInUnevacFromSpace() was true above.
@@ -386,6 +402,55 @@ void RegionSpace::ClearFromSpace(/* out */ uint64_t* cleared_bytes,
   evac_region_ = nullptr;
   num_non_free_regions_ += num_evac_regions_;
   num_evac_regions_ = 0;
+}
+
+// Poison the memory area in range [`begin`, `end`) with value `kPoisonDeadObject`.
+static void PoisonUnevacuatedRange(uint8_t* begin, uint8_t* end) {
+  static constexpr size_t kPoisonDeadObjectSize = sizeof(kPoisonDeadObject);
+  static_assert(IsPowerOfTwo(kPoisonDeadObjectSize) &&
+                IsPowerOfTwo(RegionSpace::kAlignment) &&
+                (kPoisonDeadObjectSize < RegionSpace::kAlignment),
+                "RegionSpace::kAlignment should be a multiple of kPoisonDeadObjectSize"
+                " and both should be powers of 2");
+  DCHECK_ALIGNED(begin, kPoisonDeadObjectSize);
+  DCHECK_ALIGNED(end, kPoisonDeadObjectSize);
+  uint32_t* begin_addr = reinterpret_cast<uint32_t*>(begin);
+  uint32_t* end_addr = reinterpret_cast<uint32_t*>(end);
+  std::fill(begin_addr, end_addr, kPoisonDeadObject);
+}
+
+void RegionSpace::PoisonDeadObjectsInUnevacuatedRegion(Region* r) {
+  // The live byte count of `r` should be different from -1, as this
+  // region should neither be a newly allocated region nor an
+  // evacuated region.
+  DCHECK_NE(r->LiveBytes(), static_cast<size_t>(-1));
+
+  // Past-the-end address of the previously visited (live) object (or
+  // the beginning of the region, if `maybe_poison` has not run yet).
+  uint8_t* prev_obj_end = reinterpret_cast<uint8_t*>(r->Begin());
+
+  // Functor poisoning the space between `obj` and the previously
+  // visited (live) object (or the beginng of the region), if any.
+  auto maybe_poison = [this, &prev_obj_end](mirror::Object* obj) REQUIRES(Locks::mutator_lock_) {
+    DCHECK_ALIGNED(obj, kAlignment);
+    uint8_t* cur_obj_begin = reinterpret_cast<uint8_t*>(obj);
+    if (cur_obj_begin != prev_obj_end) {
+      // There is a gap (dead object(s)) between the previously
+      // visited (live) object (or the beginning of the region) and
+      // `obj`; poison that space.
+      PoisonUnevacuatedRange(prev_obj_end, cur_obj_begin);
+    }
+    prev_obj_end = reinterpret_cast<uint8_t*>(GetNextObject(obj));
+  };
+
+  // Visit live objects in `r` and poison gaps (dead objects) between them.
+  GetLiveBitmap()->VisitMarkedRange(reinterpret_cast<uintptr_t>(r->Begin()),
+                                    reinterpret_cast<uintptr_t>(r->Top()),
+                                    maybe_poison);
+  // Poison memory between the last live object and the end of the region, if any.
+  if (prev_obj_end < r->Top()) {
+    PoisonUnevacuatedRange(prev_obj_end, r->Top());
+  }
 }
 
 void RegionSpace::LogFragmentationAllocFailure(std::ostream& os,
