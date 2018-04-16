@@ -110,8 +110,6 @@ class OatTest : public CommonCompilerTest {
                                               insn_set,
                                               insn_features_.get(),
                                               /* image_classes */ nullptr,
-                                              /* compiled_classes */ nullptr,
-                                              /* compiled_methods */ nullptr,
                                               /* thread_count */ 2,
                                               /* swap_fd */ -1,
                                               /* profile_compilation_info */ nullptr));
