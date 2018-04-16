@@ -97,14 +97,27 @@ std::string DescribeLoaders(ObjPtr<mirror::ClassLoader> loader, const char* clas
       StackHandleScope<1> hs(soa.Self());
       Handle<mirror::ClassLoader> handle(hs.NewHandle(loader));
       const char* path_separator = "";
-      VisitClassLoaderDexFiles(soa,
-                               handle,
-                               [&](const DexFile* dex_file) {
-                                 oss << path_separator << dex_file->GetLocation()
-                                     << "/" << static_cast<const void*>(dex_file);
-                                 path_separator = ":";
-                                 return true;  // Continue with the next DexFile.
-                               });
+      const DexFile* base_dex_file = nullptr;
+      VisitClassLoaderDexFiles(
+          soa,
+          handle,
+          [&](const DexFile* dex_file) {
+              oss << path_separator;
+              path_separator = ":";
+              if (base_dex_file != nullptr &&
+                  dex_file->GetLocation().length() > base_dex_file->GetLocation().length() &&
+                  dex_file->GetLocation().compare(0u,
+                                                  base_dex_file->GetLocation().length(),
+                                                  base_dex_file->GetLocation()) == 0) {
+                // Replace the base location with "+" to shorten the output.
+                oss << "+" << dex_file->GetLocation().substr(base_dex_file->GetLocation().length());
+              } else {
+                oss << dex_file->GetLocation();
+                base_dex_file = dex_file;
+              }
+              oss << "/" << static_cast<const void*>(dex_file);
+              return true;  // Continue with the next DexFile.
+          });
       oss << ")";
     }
   }
@@ -132,13 +145,13 @@ void DumpB77342775DebugData(ObjPtr<mirror::Class> target_class, ObjPtr<mirror::C
   std::string source_descriptor_storage;
   const char* source_descriptor = src_class->GetDescriptor(&source_descriptor_storage);
 
+  LOG(ERROR) << "Maybe bug 77342775, looking for " << target_descriptor
+      << " with loader " << DescribeLoaders(target_class->GetClassLoader(), target_descriptor);
   if (target_class->IsInterface()) {
     ObjPtr<mirror::IfTable> iftable = src_class->GetIfTable();
     CHECK(iftable != nullptr);
     size_t ifcount = iftable->Count();
-    LOG(ERROR) << "Maybe bug 77342775, looking for " << target_descriptor
-        << " with loader " << DescribeLoaders(target_class->GetClassLoader(), target_descriptor)
-        << " in interface table for " << source_descriptor << " ifcount=" << ifcount
+    LOG(ERROR) << "  in interface table for " << source_descriptor << " ifcount=" << ifcount
         << " with loader " << DescribeLoaders(src_class->GetClassLoader(), source_descriptor);
     for (size_t i = 0; i != ifcount; ++i) {
       ObjPtr<mirror::Class> iface = iftable->GetInterface(i);
@@ -147,9 +160,7 @@ void DumpB77342775DebugData(ObjPtr<mirror::Class> target_class, ObjPtr<mirror::C
       matcher(iface);
     }
   } else {
-    LOG(ERROR) << "Maybe bug 77342775, looking for " << target_descriptor
-        << " with loader " << DescribeLoaders(target_class->GetClassLoader(), target_descriptor)
-        << " in superclass chain for " << source_descriptor
+    LOG(ERROR) << "  in superclass chain for " << source_descriptor
         << " with loader " << DescribeLoaders(src_class->GetClassLoader(), source_descriptor);
     for (ObjPtr<mirror::Class> klass = src_class;
          klass != nullptr;
