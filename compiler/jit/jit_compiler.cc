@@ -88,7 +88,7 @@ extern "C" void jit_types_loaded(void* handle, mirror::Class** types, size_t cou
 JitCompiler::JitCompiler() {
   compiler_options_.reset(new CompilerOptions());
   // Special case max code units for inlining, whose default is "unset" (implictly
-  // meaning no limit). Do this before parsing the actuall passed options.
+  // meaning no limit). Do this before parsing the actual passed options.
   compiler_options_->SetInlineMaxCodeUnits(CompilerOptions::kDefaultInlineMaxCodeUnits);
   {
     std::string error_msg;
