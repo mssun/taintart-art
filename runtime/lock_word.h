@@ -32,9 +32,9 @@ class Object;
 
 class Monitor;
 
-/* The lock value itself as stored in mirror::Object::monitor_.  The two most significant bits of
- * the state. The four possible states are fat locked, thin/unlocked, hash code, and forwarding
- * address.
+/* The lock value itself as stored in mirror::Object::monitor_.  The two most significant bits
+ * encode the state. The four possible states are fat locked, thin/unlocked, hash code, and
+ * forwarding address.
  *
  * When the lock word is in the "thin" state and its bits are formatted as follows:
  *
