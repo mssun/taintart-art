@@ -2126,10 +2126,26 @@ TEST_F(Dex2oatTest, AppImageNoProfile) {
 }
 
 TEST_F(Dex2oatClassLoaderContextTest, StoredClassLoaderContext) {
+  std::vector<std::unique_ptr<const DexFile>> dex_files = OpenTestDexFiles("MultiDex");
   const std::string out_dir = GetScratchDir();
   const std::string odex_location = out_dir + "/base.odex";
-  const std::string valid_context = "PCL[" + GetUsedDexLocation() + "]";
+  const std::string valid_context = "PCL[" + dex_files[0]->GetLocation() + "]";
   const std::string stored_context = "PCL[/system/not_real_lib.jar]";
+  std::string expected_stored_context = "PCL[";
+  size_t index = 1;
+  for (const std::unique_ptr<const DexFile>& dex_file : dex_files) {
+    const bool is_first = index == 1u;
+    if (!is_first) {
+      expected_stored_context += ":";
+    }
+    expected_stored_context += "/system/not_real_lib.jar";
+    if (!is_first) {
+      expected_stored_context += "!classes" + std::to_string(index) + ".dex";
+    }
+    expected_stored_context += "*" + std::to_string(dex_file->GetLocationChecksum());
+    ++index;
+  }
+  expected_stored_context +=    + "]";
   // The class path should not be valid and should fail being stored.
   GenerateOdexForTest(GetTestDexFileName("ManyMethods"),
                       odex_location,
@@ -2138,8 +2154,8 @@ TEST_F(Dex2oatClassLoaderContextTest, StoredClassLoaderContext) {
                       true,  // expect_success
                       false,  // use_fd
                       [&](const OatFile& oat_file) {
-    EXPECT_NE(oat_file.GetClassLoaderContext(), stored_context);
-    EXPECT_NE(oat_file.GetClassLoaderContext(), valid_context);
+    EXPECT_NE(oat_file.GetClassLoaderContext(), stored_context) << output_;
+    EXPECT_NE(oat_file.GetClassLoaderContext(), valid_context) << output_;
   });
   // The stored context should match what we expect even though it's invalid.
   GenerateOdexForTest(GetTestDexFileName("ManyMethods"),
@@ -2150,7 +2166,7 @@ TEST_F(Dex2oatClassLoaderContextTest, StoredClassLoaderContext) {
                       true,  // expect_success
                       false,  // use_fd
                       [&](const OatFile& oat_file) {
-    EXPECT_EQ(oat_file.GetClassLoaderContext(), stored_context);
+    EXPECT_EQ(oat_file.GetClassLoaderContext(), expected_stored_context) << output_;
   });
 }
 
