@@ -28,11 +28,6 @@ using HInstructionMap = SuperblockCloner::HInstructionMap;
 using HBasicBlockSet = SuperblockCloner::HBasicBlockSet;
 using HEdgeSet = SuperblockCloner::HEdgeSet;
 
-// When doing peeling we can choose whether to keep original loop (made of original basic blocks)
-// and form a peeled iteration of the copy blocks (preserve the header) or transfer original loop
-// blocks to the peeled iteration and create new loop from the copy blocks. Similar for unrolling.
-static const bool kPeelUnrollPreserveHeader = true;
-
 void HEdge::Dump(std::ostream& stream) const {
   stream << "(" << from_ << "->" << to_ << ")";
 }
@@ -926,16 +921,12 @@ void CollectRemappingInfoForPeelUnroll(bool to_unroll,
       remap_orig_internal->Insert(e);
       remap_copy_internal->Insert(e);
     } else {
-      if (kPeelUnrollPreserveHeader) {
-        remap_copy_internal->Insert(e);
-      } else {
-        remap_orig_internal->Insert(e);
-      }
+      remap_copy_internal->Insert(e);
     }
   }
 
   // Set up remap_incoming edges set.
-  if (to_unroll != kPeelUnrollPreserveHeader) {
+  if (!to_unroll) {
     remap_incoming->Insert(HEdge(loop_info->GetPreHeader(), loop_header));
   }
 }
@@ -992,6 +983,9 @@ HBasicBlock* PeelUnrollHelper::DoPeelUnrollImpl(bool to_unroll) {
   DCHECK(!loop_info_->IsIrreducible());
 
   HBasicBlock* loop_header = loop_info_->GetHeader();
+  // Check that loop info is up-to-date.
+  DCHECK(loop_info_ == loop_header->GetLoopInformation());
+
   HGraph* graph = loop_header->GetGraph();
   ArenaAllocator allocator(graph->GetAllocator()->GetArenaPool());
 
@@ -1009,7 +1003,10 @@ HBasicBlock* PeelUnrollHelper::DoPeelUnrollImpl(bool to_unroll) {
   cloner_.Run();
   cloner_.CleanUp();
 
-  return kPeelUnrollPreserveHeader ? loop_header : cloner_.GetBlockCopy(loop_header);
+  // Check that loop info is preserved.
+  DCHECK(loop_info_ == loop_header->GetLoopInformation());
+
+  return loop_header;
 }
 
 PeelUnrollSimpleHelper::PeelUnrollSimpleHelper(HLoopInformation* info)

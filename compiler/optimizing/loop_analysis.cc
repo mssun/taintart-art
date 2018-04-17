@@ -16,6 +16,8 @@
 
 #include "loop_analysis.h"
 
+#include "base/bit_vector-inl.h"
+
 namespace art {
 
 void LoopAnalysis::CalculateLoopBasicProperties(HLoopInformation* loop_info,
@@ -33,13 +35,30 @@ void LoopAnalysis::CalculateLoopBasicProperties(HLoopInformation* loop_info,
 
     for (HInstructionIterator it(block->GetInstructions()); !it.Done(); it.Advance()) {
       HInstruction* instruction = it.Current();
-      if (MakesScalarUnrollingNonBeneficial(instruction)) {
+      if (MakesScalarPeelingUnrollingNonBeneficial(instruction)) {
+        analysis_results->has_instructions_preventing_scalar_peeling_ = true;
         analysis_results->has_instructions_preventing_scalar_unrolling_ = true;
       }
       analysis_results->instr_num_++;
     }
     analysis_results->bb_num_++;
   }
+}
+
+bool LoopAnalysis::HasLoopAtLeastOneInvariantExit(HLoopInformation* loop_info) {
+  HGraph* graph = loop_info->GetHeader()->GetGraph();
+  for (uint32_t block_id : loop_info->GetBlocks().Indexes()) {
+    HBasicBlock* block = graph->GetBlocks()[block_id];
+    DCHECK(block != nullptr);
+    if (block->EndsWithIf()) {
+      HIf* hif = block->GetLastInstruction()->AsIf();
+      HInstruction* input = hif->InputAt(0);
+      if (IsLoopExit(loop_info, hif) && !loop_info->Contains(*input->GetBlock())) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 class Arm64LoopHelper : public ArchDefaultLoopHelper {
@@ -60,7 +79,7 @@ class Arm64LoopHelper : public ArchDefaultLoopHelper {
   // Loop's maximum instruction count. Loops with higher count will not be unrolled.
   static constexpr uint32_t kArm64SimdHeuristicMaxBodySizeInstr = 50;
 
-  bool IsLoopTooBigForScalarUnrolling(LoopAnalysisInfo* loop_analysis_info) const OVERRIDE {
+  bool IsLoopTooBigForScalarPeelingUnrolling(LoopAnalysisInfo* loop_analysis_info) const OVERRIDE {
     size_t instr_num = loop_analysis_info->GetNumberOfInstructions();
     size_t bb_num = loop_analysis_info->GetNumberOfBasicBlocks();
     return (instr_num >= kArm64ScalarHeuristicMaxBodySizeInstr ||
@@ -76,6 +95,8 @@ class Arm64LoopHelper : public ArchDefaultLoopHelper {
 
     return desired_unrolling_factor;
   }
+
+  bool IsLoopPeelingEnabled() const OVERRIDE { return true; }
 
   uint32_t GetSIMDUnrollingFactor(HBasicBlock* block,
                                   int64_t trip_count,
