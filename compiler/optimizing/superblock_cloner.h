@@ -372,6 +372,9 @@ class PeelUnrollSimpleHelper : public ValueObject {
   HBasicBlock* DoUnrolling() { return helper_.DoUnrolling(); }
   HLoopInformation* GetRegionToBeAdjusted() const { return helper_.GetRegionToBeAdjusted(); }
 
+  const SuperblockCloner::HBasicBlockMap* GetBasicBlockMap() const { return &bb_map_; }
+  const SuperblockCloner::HInstructionMap* GetInstructionMap() const { return &hir_map_; }
+
  private:
   SuperblockCloner::HBasicBlockMap bb_map_;
   SuperblockCloner::HInstructionMap hir_map_;
