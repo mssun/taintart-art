@@ -52,6 +52,7 @@ VeriClass* VeriClass::void_ = &v_;
 // Will be set after boot classpath has been resolved.
 VeriClass* VeriClass::object_ = nullptr;
 VeriClass* VeriClass::class_ = nullptr;
+VeriClass* VeriClass::class_loader_ = nullptr;
 VeriClass* VeriClass::string_ = nullptr;
 VeriClass* VeriClass::throwable_ = nullptr;
 VeriMethod VeriClass::forName_ = nullptr;
@@ -60,6 +61,7 @@ VeriMethod VeriClass::getDeclaredField_ = nullptr;
 VeriMethod VeriClass::getMethod_ = nullptr;
 VeriMethod VeriClass::getDeclaredMethod_ = nullptr;
 VeriMethod VeriClass::getClass_ = nullptr;
+VeriMethod VeriClass::loadClass_ = nullptr;
 
 struct VeridexOptions {
   const char* dex_file = nullptr;
@@ -176,6 +178,7 @@ class Veridex {
     // methods.
     VeriClass::object_ = type_map["Ljava/lang/Object;"];
     VeriClass::class_ = type_map["Ljava/lang/Class;"];
+    VeriClass::class_loader_ = type_map["Ljava/lang/ClassLoader;"];
     VeriClass::string_ = type_map["Ljava/lang/String;"];
     VeriClass::throwable_ = type_map["Ljava/lang/Throwable;"];
     VeriClass::forName_ = boot_resolvers[0]->LookupDeclaredMethodIn(
@@ -194,6 +197,8 @@ class Veridex {
         "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;");
     VeriClass::getClass_ = boot_resolvers[0]->LookupDeclaredMethodIn(
         *VeriClass::object_, "getClass", "()Ljava/lang/Class;");
+    VeriClass::loadClass_ = boot_resolvers[0]->LookupDeclaredMethodIn(
+        *VeriClass::class_loader_, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
 
     std::vector<std::unique_ptr<VeridexResolver>> app_resolvers;
     Resolve(app_dex_files, resolver_map, type_map, &app_resolvers);
