@@ -77,6 +77,7 @@ const char* const ArenaAllocatorStatsImpl<kCount>::kAllocNames[] = {
   "SsaLiveness  ",
   "SsaPhiElim   ",
   "RefTypeProp  ",
+  "SelectGen    ",
   "SideEffects  ",
   "RegAllocator ",
   "RegAllocVldt ",

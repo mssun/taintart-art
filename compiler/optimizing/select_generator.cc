@@ -16,6 +16,7 @@
 
 #include "select_generator.h"
 
+#include "base/scoped_arena_containers.h"
 #include "reference_type_propagation.h"
 
 namespace art {
@@ -90,9 +91,13 @@ static HPhi* GetSingleChangedPhi(HBasicBlock* block, size_t index1, size_t index
 }
 
 void HSelectGenerator::Run() {
+  // Select cache with local allocator.
+  ScopedArenaAllocator allocator(graph_->GetArenaStack());
+  ScopedArenaSafeMap<HInstruction*, HSelect*> cache(
+      std::less<HInstruction*>(), allocator.Adapter(kArenaAllocSelectGenerator));
+
   // Iterate in post order in the unlikely case that removing one occurrence of
   // the selection pattern empties a branch block of another occurrence.
-  // Otherwise the order does not matter.
   for (HBasicBlock* block : graph_->GetPostOrder()) {
     if (!block->EndsWithIf()) continue;
 
@@ -143,7 +148,8 @@ void HSelectGenerator::Run() {
     DCHECK(both_successors_return || phi != nullptr);
 
     // Create the Select instruction and insert it in front of the If.
-    HSelect* select = new (graph_->GetAllocator()) HSelect(if_instruction->InputAt(0),
+    HInstruction* condition = if_instruction->InputAt(0);
+    HSelect* select = new (graph_->GetAllocator()) HSelect(condition,
                                                            true_value,
                                                            false_value,
                                                            if_instruction->GetDexPc());
@@ -179,6 +185,26 @@ void HSelectGenerator::Run() {
     }
 
     MaybeRecordStat(stats_, MethodCompilationStat::kSelectGenerated);
+
+    // Very simple way of finding common subexpressions in the generated HSelect statements
+    // (since this runs after GVN). Lookup by condition, and reuse latest one if possible
+    // (due to post order, latest select is most likely replacement). If needed, we could
+    // improve this by e.g. using the operands in the map as well.
+    auto it = cache.find(condition);
+    if (it == cache.end()) {
+      cache.Put(condition, select);
+    } else {
+      // Found cached value. See if latest can replace cached in the HIR.
+      HSelect* cached = it->second;
+      DCHECK_EQ(cached->GetCondition(), select->GetCondition());
+      if (cached->GetTrueValue() == select->GetTrueValue() &&
+          cached->GetFalseValue() == select->GetFalseValue() &&
+          select->StrictlyDominates(cached)) {
+       cached->ReplaceWith(select);
+       cached->GetBlock()->RemoveInstruction(cached);
+      }
+      it->second = select;  // always cache latest
+    }
 
     // No need to update dominance information, as we are simplifying
     // a simple diamond shape, where the join block is merged with the

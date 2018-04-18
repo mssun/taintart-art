@@ -174,6 +174,30 @@ public class ByteSimdMinMax {
     }
   }
 
+  /// CHECK-START-{ARM,ARM64}: void ByteSimdMinMax.doitMinAlt(byte[], byte[], byte[]) loop_optimization (after)
+  /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Min:d\d+>>  VecMin [<<Get1>>,<<Get2>>] packed_type:Int8 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},{{i\d+}},<<Min>>] loop:<<Loop>>      outer_loop:none
+  private static void doitMinAlt(byte[] x, byte[] y, byte[] z) {
+    int n = Math.min(x.length, Math.min(y.length, z.length));
+    for (int i = 0; i < n; ++i) {
+      x[i] = y[i] < z[i] ? y[i] : z[i];
+    }
+  }
+
+  /// CHECK-START-{ARM,ARM64,MIPS64}: void ByteSimdMinMax.doitMaxAlt(byte[], byte[], byte[]) loop_optimization (after)
+  /// CHECK-DAG: <<Get1:d\d+>> VecLoad                              loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get2:d\d+>> VecLoad                              loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Max:d\d+>>  VecMax [<<Get1>>,<<Get2>>] packed_type:Int8 loop:<<Loop>> outer_loop:none
+  /// CHECK-DAG:               VecStore [{{l\d+}},{{i\d+}},<<Max>>] loop:<<Loop>>      outer_loop:none
+  private static void doitMaxAlt(byte[] x, byte[] y, byte[] z) {
+    int n = Math.min(x.length, Math.min(y.length, z.length));
+    for (int i = 0; i < n; ++i) {
+      x[i] = y[i] > z[i] ? y[i] : z[i];
+    }
+  }
+
   public static void main() {
     // Initialize cross-values for all possible values.
     int total = 256 * 256;
@@ -228,7 +252,16 @@ public class ByteSimdMinMax {
       byte expected = (byte) (u < 11 ? 11 : (u > 23 ? 23 : u));
       expectEquals(expected, x[i]);
     }
-
+    doitMinAlt(x, y, z);
+    for (int i = 0; i < total; i++) {
+      byte expected = (byte) Math.min(y[i], z[i]);
+      expectEquals(expected, x[i]);
+    }
+    doitMaxAlt(x, y, z);
+    for (int i = 0; i < total; i++) {
+      byte expected = (byte) Math.max(y[i], z[i]);
+      expectEquals(expected, x[i]);
+    }
     System.out.println("ByteSimdMinMax passed");
   }
 

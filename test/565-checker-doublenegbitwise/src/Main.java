@@ -101,13 +101,13 @@ public class Main {
   /// CHECK-DAG:       <<Const1:i\d+>>      IntConstant 1
   /// CHECK-DAG:       <<Select1:i\d+>>     Select [<<Const1>>,<<Const0>>,<<P1>>]
   /// CHECK-DAG:       <<Select2:i\d+>>     Select [<<Const1>>,<<Const0>>,<<P2>>]
-  /// CHECK-DAG:       <<And:i\d+>>         And [<<Select2>>,<<Select1>>]
+  /// CHECK-DAG:       <<And:i\d+>>         And [<<Select1>>,<<Select2>>]
   /// CHECK-DAG:                            Return [<<And>>]
 
   /// CHECK-START: boolean Main.$opt$noinline$booleanAndToOr(boolean, boolean) instruction_simplifier$after_inlining (after)
   /// CHECK-DAG:       <<Cond1:z\d+>>       ParameterValue
   /// CHECK-DAG:       <<Cond2:z\d+>>       ParameterValue
-  /// CHECK-DAG:       <<Or:i\d+>>          Or [<<Cond2>>,<<Cond1>>]
+  /// CHECK-DAG:       <<Or:i\d+>>          Or [<<Cond1>>,<<Cond2>>]
   /// CHECK-DAG:       <<BooleanNot:z\d+>>  BooleanNot [<<Or>>]
   /// CHECK-DAG:                            Return [<<BooleanNot>>]
 
@@ -172,13 +172,13 @@ public class Main {
   /// CHECK-DAG:       <<Const1:i\d+>>      IntConstant 1
   /// CHECK-DAG:       <<Select1:i\d+>>     Select [<<Const1>>,<<Const0>>,<<P1>>]
   /// CHECK-DAG:       <<Select2:i\d+>>     Select [<<Const1>>,<<Const0>>,<<P2>>]
-  /// CHECK-DAG:       <<Or:i\d+>>          Or [<<Select2>>,<<Select1>>]
+  /// CHECK-DAG:       <<Or:i\d+>>          Or [<<Select1>>,<<Select2>>]
   /// CHECK-DAG:                            Return [<<Or>>]
 
   /// CHECK-START: boolean Main.$opt$noinline$booleanOrToAnd(boolean, boolean) instruction_simplifier$after_inlining (after)
   /// CHECK-DAG:       <<Cond1:z\d+>>       ParameterValue
   /// CHECK-DAG:       <<Cond2:z\d+>>       ParameterValue
-  /// CHECK-DAG:       <<And:i\d+>>         And [<<Cond2>>,<<Cond1>>]
+  /// CHECK-DAG:       <<And:i\d+>>         And [<<Cond1>>,<<Cond2>>]
   /// CHECK-DAG:       <<BooleanNot:z\d+>>  BooleanNot [<<And>>]
   /// CHECK-DAG:                            Return [<<BooleanNot>>]
 
@@ -282,13 +282,13 @@ public class Main {
   /// CHECK-DAG:       <<Const1:i\d+>>      IntConstant 1
   /// CHECK-DAG:       <<Select1:i\d+>>     Select [<<Const1>>,<<Const0>>,<<P1>>]
   /// CHECK-DAG:       <<Select2:i\d+>>     Select [<<Const1>>,<<Const0>>,<<P2>>]
-  /// CHECK-DAG:       <<Xor:i\d+>>         Xor [<<Select2>>,<<Select1>>]
+  /// CHECK-DAG:       <<Xor:i\d+>>         Xor [<<Select1>>,<<Select2>>]
   /// CHECK-DAG:                            Return [<<Xor>>]
 
   /// CHECK-START: boolean Main.$opt$noinline$booleanNotXorToXor(boolean, boolean) instruction_simplifier$after_inlining (after)
   /// CHECK-DAG:       <<Cond1:z\d+>>       ParameterValue
   /// CHECK-DAG:       <<Cond2:z\d+>>       ParameterValue
-  /// CHECK-DAG:       <<Xor:i\d+>>         Xor [<<Cond2>>,<<Cond1>>]
+  /// CHECK-DAG:       <<Xor:i\d+>>         Xor [<<Cond1>>,<<Cond2>>]
   /// CHECK-DAG:                            Return [<<Xor>>]
 
   /// CHECK-START: boolean Main.$opt$noinline$booleanNotXorToXor(boolean, boolean) instruction_simplifier$after_bce (after)

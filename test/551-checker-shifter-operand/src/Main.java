@@ -728,42 +728,17 @@ public class Main {
   /// CHECK:                            UShr
   /// CHECK-NOT:                        UShr
   //
-  // Note: simplification followed by GVN exposes the common subexpressions between shifts with larger distance
-  //       `b << 62`, `b << 63` etc. and the equivalent smaller distances.
-  //
-  /// CHECK-START: void Main.$opt$validateShiftInt(int, int) GVN (after)
-  /// CHECK:                            Shl
-  /// CHECK:                            Shl
-  /// CHECK:                            Shl
-  /// CHECK:                            Shl
-  /// CHECK:                            Shl
-  /// CHECK:                            Shl
-  /// CHECK:                            Shl
-  /// CHECK:                            Shl
-  /// CHECK:                            Shl
-  /// CHECK-NOT:                        Shl
-  /// CHECK:                            Shr
-  /// CHECK:                            Shr
-  /// CHECK:                            Shr
-  /// CHECK:                            Shr
-  /// CHECK:                            Shr
-  /// CHECK:                            Shr
-  /// CHECK:                            Shr
-  /// CHECK:                            Shr
-  /// CHECK:                            Shr
-  /// CHECK-NOT:                        Shl
-  /// CHECK:                            UShr
-  /// CHECK:                            UShr
-  /// CHECK:                            UShr
-  /// CHECK:                            UShr
-  /// CHECK:                            UShr
-  /// CHECK:                            UShr
-  /// CHECK:                            UShr
-  /// CHECK:                            UShr
-  /// CHECK:                            UShr
-  /// CHECK-NOT:                        UShr
+  // Note: running extra simplification before GVN would expose the common subexpressions between
+  // shifts with larger distance `b << 62`, `b << 63` etc. and the equivalent smaller distances.
+  // TODO: b/78171933
   //
   /// CHECK-START-ARM: void Main.$opt$validateShiftInt(int, int) instruction_simplifier_arm (after)
+  /// CHECK:                            DataProcWithShifterOp
+  /// CHECK:                            DataProcWithShifterOp
+  /// CHECK:                            DataProcWithShifterOp
+  /// CHECK:                            DataProcWithShifterOp
+  /// CHECK:                            DataProcWithShifterOp
+  /// CHECK:                            DataProcWithShifterOp
   /// CHECK:                            DataProcWithShifterOp
   /// CHECK:                            DataProcWithShifterOp
   /// CHECK:                            DataProcWithShifterOp
@@ -799,6 +774,12 @@ public class Main {
   /// CHECK-NOT:                        UShr
 
   /// CHECK-START-ARM64: void Main.$opt$validateShiftInt(int, int) instruction_simplifier_arm64 (after)
+  /// CHECK:                            DataProcWithShifterOp
+  /// CHECK:                            DataProcWithShifterOp
+  /// CHECK:                            DataProcWithShifterOp
+  /// CHECK:                            DataProcWithShifterOp
+  /// CHECK:                            DataProcWithShifterOp
+  /// CHECK:                            DataProcWithShifterOp
   /// CHECK:                            DataProcWithShifterOp
   /// CHECK:                            DataProcWithShifterOp
   /// CHECK:                            DataProcWithShifterOp
