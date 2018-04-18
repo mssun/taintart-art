@@ -19,6 +19,10 @@
  */
 public class Main {
 
+  //
+  // Intrinsics.
+  //
+
   /// CHECK-START: int Main.absI(int) instruction_simplifier (before)
   /// CHECK-DAG: <<Par:i\d+>> ParameterValue
   /// CHECK-DAG: <<Abs:i\d+>> InvokeStaticOrDirect [<<Par>>] intrinsic:MathAbsInt
@@ -50,6 +54,10 @@ public class Main {
   public static long absL(long a) {
     return Math.abs(a);
   }
+
+  //
+  // Types.
+  //
 
   /// CHECK-START: int Main.abs1(int) instruction_simplifier$after_inlining (before)
   /// CHECK-DAG: <<Par:i\d+>> ParameterValue
@@ -185,6 +193,29 @@ public class Main {
   }
 
   //
+  // Complications.
+  //
+
+  /// CHECK-START: int Main.abs0(int[]) instruction_simplifier$after_inlining (before)
+  /// CHECK-DAG: <<Zer:i\d+>> IntConstant 0
+  /// CHECK-DAG: <<Arr:i\d+>> ArrayGet [{{l\d+}},{{i\d+}}]
+  /// CHECK-DAG: <<Cnd:z\d+>> LessThan [<<Arr>>,<<Zer>>]
+  /// CHECK-DAG: <<Neg:i\d+>> [<<Arr>>]
+  /// CHECK-DAG: <<Sel:i\d+>> Select [<<Arr>>,<<Neg>>,<<Cnd>>]
+  /// CHECK-DAG:              Return [<<Sel>>]
+  //
+  /// CHECK-START: int Main.abs0(int[]) instruction_simplifier$after_inlining (after)
+  /// CHECK-DAG: <<Arr:i\d+>> ArrayGet [{{l\d+}},{{i\d+}}]
+  /// CHECK-DAG: <<Abs:i\d+>> Abs [<<Arr>>]
+  /// CHECK-DAG:              Return [<<Abs>>]
+  //
+  /// CHECK-START: int Main.abs0(int[]) instruction_simplifier$after_inlining (after)
+  /// CHECK-NOT:              Select
+  public static int abs0(int[] a) {
+    return a[0] >= 0 ? a[0] : -a[0];
+  }
+
+  //
   // Nop zero extension.
   //
 
@@ -248,10 +279,12 @@ public class Main {
   }
 
   public static void main(String[] args) {
+    // Intrinsics.
     expectEquals(10, absI(-10));
     expectEquals(20, absI(20));
     expectEquals(10L, absL(-10L));
     expectEquals(20L, absL(20L));
+    // Types.
     expectEquals(10, abs1(-10));
     expectEquals(20, abs1(20));
     expectEquals(10, abs2(-10));
@@ -266,6 +299,12 @@ public class Main {
     expectEquals(20, abs6((byte) 20));
     expectEquals(10L, abs7(-10L));
     expectEquals(20L, abs7(20L));
+    // Complications.
+    int[] a = { 13 };
+    int[] b = { -11 };
+    expectEquals(13, abs0(a));
+    expectEquals(11, abs0(b));
+    // Nop zero extension.
     expectEquals(1, zabs1((byte) 1));
     expectEquals(0xff, zabs1((byte) -1));
     expectEquals(1, zabs2((short) 1));
