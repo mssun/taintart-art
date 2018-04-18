@@ -74,9 +74,11 @@ public class Main {
       if (hasJit()) {
         boolean inOsr = Main.isInOsrCode("run");
         if (expectOsr && !inOsr) {
-          throw new Error("Expected to be in OSR but was not.");
+          throw new Error(
+              "Expected to be in OSR but was not. interpreter: " + Main.isInterpreted());
         } else if (!expectOsr && inOsr) {
-          throw new Error("Expected not to be in OSR but was.");
+          throw new Error(
+              "Expected not to be in OSR but was. interpreter: " + Main.isInterpreted());
         }
       }
       reportValue(TARGET);
