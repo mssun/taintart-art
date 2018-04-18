@@ -825,15 +825,6 @@ void AdbConnectionState::PerformHandshake() {
 
 void AdbConnectionState::AttachJdwpAgent(art::Thread* self) {
   art::Runtime* runtime = art::Runtime::Current();
-  if (runtime->GetJit() == nullptr && !runtime->GetInstrumentation()->IsForcedInterpretOnly()) {
-    // If we don't have a JIT we should try to start the jit for performance reasons.
-    runtime->CreateJit();
-    if (runtime->GetJit() == nullptr) {
-      LOG(WARNING) << "Could not start jit for debugging. This process might be quite slow as it "
-                   << "is running entirely in the interpreter. Try running 'setenforce 0' and "
-                   << "starting the debugging session over.";
-    }
-  }
   self->AssertNoPendingException();
   runtime->AttachAgent(/* JNIEnv */ nullptr,
                        MakeAgentArg(),
