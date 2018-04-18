@@ -63,6 +63,12 @@ class HiddenApi {
     return HiddenApi::GetApiMethodName(*ref.dex_file, ref.index);
   }
 
+  static std::string ToInternalName(const std::string& str) {
+    std::string val = str;
+    std::replace(val.begin(), val.end(), '.', '/');
+    return "L" + val + ";";
+  }
+
  private:
   static bool IsInList(const std::string& name, const std::set<std::string>& list) {
     return list.find(name) != list.end();
