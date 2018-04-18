@@ -233,9 +233,7 @@
 ## CHECK-DAG:     <<One:i\d+>>           IntConstant 1
 ## CHECK-DAG:     <<Sget:z\d+>>          StaticFieldGet
 ## CHECK-DAG:     <<Sel:i\d+>>           Select [<<Zero>>,<<One>>,<<Sget>>]
-## CHECK-DAG:     <<IToJ:j\d+>>          TypeConversion [<<Sel>>]
-## CHECK-DAG:     <<JToI:i\d+>>          TypeConversion [<<IToJ>>]
-## CHECK-DAG:                            Return [<<JToI>>]
+## CHECK-DAG:                            Return [<<Sel>>]
 
 ## CHECK-START: int SmaliTests.longToIntOfBoolean() instruction_simplifier$after_bce (after)
 ## CHECK-DAG:     <<Method:[ij]\d+>>     CurrentMethod
