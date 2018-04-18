@@ -65,6 +65,7 @@ class VeriClass {
 
   static VeriClass* object_;
   static VeriClass* class_;
+  static VeriClass* class_loader_;
   static VeriClass* string_;
   static VeriClass* throwable_;
   static VeriClass* boolean_;
@@ -83,6 +84,7 @@ class VeriClass {
   static VeriMethod getMethod_;
   static VeriMethod getDeclaredMethod_;
   static VeriMethod getClass_;
+  static VeriMethod loadClass_;
 
  private:
   Primitive::Type kind_;
