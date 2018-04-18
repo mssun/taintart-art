@@ -2572,7 +2572,7 @@ public class Main {
   /// CHECK-DAG:      <<Const1:i\d+>>   IntConstant 1
   /// CHECK-DAG:      <<Const255:i\d+>> IntConstant 255
   /// CHECK-DAG:      <<Select:i\d+>>   Select [<<Const0>>,<<Const1>>,<<Arg>>]
-  /// CHECK-DAG:      <<And:i\d+>>      And [<<Const255>>,<<Select>>]
+  /// CHECK-DAG:      <<And:i\d+>>      And [<<Select>>,<<Const255>>]
   /// CHECK-DAG:      <<Conv:b\d+>>     TypeConversion [<<And>>]
   /// CHECK-DAG:                        Return [<<Conv>>]
 

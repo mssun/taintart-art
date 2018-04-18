@@ -643,15 +643,13 @@ void OptimizingCompiler::RunOptimizations(HGraph* graph,
   MaybeRunInliner(graph, codegen, dex_compilation_unit, pass_observer, handles);
 
   OptimizationDef optimizations2[] = {
-    // SelectGenerator depends on the InstructionSimplifier removing
-    // redundant suspend checks to recognize empty blocks.
+    OptDef(OptimizationPass::kSideEffectsAnalysis,   "side_effects$before_gvn"),
+    OptDef(OptimizationPass::kGlobalValueNumbering),
     OptDef(OptimizationPass::kSelectGenerator),
-    // TODO: if we don't inline we can also skip fold2.
     OptDef(OptimizationPass::kConstantFolding,       "constant_folding$after_inlining"),
     OptDef(OptimizationPass::kInstructionSimplifier, "instruction_simplifier$after_inlining"),
     OptDef(OptimizationPass::kDeadCodeElimination,   "dead_code_elimination$after_inlining"),
-    OptDef(OptimizationPass::kSideEffectsAnalysis,   "side_effects$before_gvn"),
-    OptDef(OptimizationPass::kGlobalValueNumbering),
+    OptDef(OptimizationPass::kSideEffectsAnalysis,   "side_effects$before_licm"),
     OptDef(OptimizationPass::kInvariantCodeMotion),
     OptDef(OptimizationPass::kInductionVarAnalysis),
     OptDef(OptimizationPass::kBoundsCheckElimination),

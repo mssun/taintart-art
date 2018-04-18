@@ -57,6 +57,38 @@ public class IntSimdMinMax {
     }
   }
 
+  /// CHECK-START-{ARM,ARM64}: int IntSimdMinMax.findMin(int[]) loop_optimization (after)
+  /// CHECK-DAG: <<Rep:d\d+>>  VecReplicateScalar          loop:none
+  /// CHECK-DAG: <<VPhi:d\d+>> Phi [<<Rep>>,<<Max:d\d+>>]  loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get:d\d+>>  VecLoad [{{l\d+}},{{i\d+}}] loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Max>>       VecMin [<<Get>>,<<VPhi>>]   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Red:d\d+>>  VecReduce [<<VPhi>>]        loop:none
+  /// CHECK-DAG:               VecExtractScalar [<<Red>>]  loop:none
+  private static int findMin(int[] a) {
+    int x = Integer.MAX_VALUE;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] < x)
+        x = a[i];
+    }
+    return x;
+  }
+
+  /// CHECK-START-{ARM,ARM64}: int IntSimdMinMax.findMax(int[]) loop_optimization (after)
+  /// CHECK-DAG: <<Rep:d\d+>>  VecReplicateScalar          loop:none
+  /// CHECK-DAG: <<VPhi:d\d+>> Phi [<<Rep>>,<<Max:d\d+>>]  loop:<<Loop:B\d+>> outer_loop:none
+  /// CHECK-DAG: <<Get:d\d+>>  VecLoad [{{l\d+}},{{i\d+}}] loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Max>>       VecMax [<<Get>>,<<VPhi>>]   loop:<<Loop>>      outer_loop:none
+  /// CHECK-DAG: <<Red:d\d+>>  VecReduce [<<VPhi>>]        loop:none
+  /// CHECK-DAG:               VecExtractScalar [<<Red>>]  loop:none
+  private static int findMax(int[] a) {
+    int x = Integer.MIN_VALUE;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] > x)
+        x = a[i];
+    }
+    return x;
+  }
+
   public static void main() {
     int[] interesting = {
       0x00000000, 0x00000001, 0x00007fff, 0x00008000, 0x00008001, 0x0000ffff,
@@ -92,6 +124,12 @@ public class IntSimdMinMax {
       int expected = Math.max(y[i], z[i]);
       expectEquals(expected, x[i]);
     }
+    expectEquals(Integer.MIN_VALUE, findMin(x));
+    expectEquals(Integer.MAX_VALUE, findMax(x));
+    expectEquals(Integer.MIN_VALUE, findMin(y));
+    expectEquals(Integer.MAX_VALUE, findMax(y));
+    expectEquals(Integer.MIN_VALUE, findMin(z));
+    expectEquals(Integer.MAX_VALUE, findMax(z));
 
     System.out.println("IntSimdMinMax passed");
   }
