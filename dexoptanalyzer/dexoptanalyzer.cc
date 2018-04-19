@@ -247,11 +247,6 @@ class DexoptAnalyzer FINAL {
   }
 
   int GetDexOptNeeded() {
-    // If the file does not exist there's nothing to do.
-    // This is a fast path to avoid creating the runtime (b/34385298).
-    if (!OS::FileExists(dex_file_.c_str())) {
-      return kNoDexOptNeeded;
-    }
     if (!CreateRuntime()) {
       return kErrorCannotCreateRuntime;
     }
