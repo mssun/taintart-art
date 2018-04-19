@@ -41,7 +41,11 @@ bool VeriFlowAnalysis::IsBranchTarget(uint32_t dex_pc) {
 bool VeriFlowAnalysis::MergeRegisterValues(uint32_t dex_pc) {
   // TODO: Do the merging. Right now, just return that we should continue
   // the iteration if the instruction has not been visited.
-  return !instruction_infos_[dex_pc].has_been_visited;
+  if (!instruction_infos_[dex_pc].has_been_visited) {
+    dex_registers_[dex_pc]->assign(current_registers_.begin(), current_registers_.end());
+    return true;
+  }
+  return false;
 }
 
 void VeriFlowAnalysis::SetVisited(uint32_t dex_pc) {
@@ -260,6 +264,10 @@ void VeriFlowAnalysis::ProcessDexInstruction(const Instruction& instruction) {
         RegisterValue obj = GetRegister(args[0]);
         last_result_ = RegisterValue(
             obj.GetSource(), obj.GetDexFileReference(), VeriClass::class_);
+      } else if (method == VeriClass::loadClass_) {
+        RegisterValue value = GetRegister(args[1]);
+        last_result_ = RegisterValue(
+            value.GetSource(), value.GetDexFileReference(), VeriClass::class_);
       } else {
         last_result_ = GetReturnType(instruction.VRegB_35c());
       }
