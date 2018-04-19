@@ -74,7 +74,8 @@ class OatFile {
 
   // Opens an oat file contained within the given elf file. This is always opened as
   // non-executable at the moment.
-  static OatFile* OpenWithElfFile(ElfFile* elf_file,
+  static OatFile* OpenWithElfFile(int zip_fd,
+                                  ElfFile* elf_file,
                                   VdexFile* vdex_file,
                                   const std::string& location,
                                   const char* abs_dex_location,
@@ -83,7 +84,8 @@ class OatFile {
   // optionally be used to request where the file should be loaded.
   // See the ResolveRelativeEncodedDexLocation for a description of how the
   // abs_dex_location argument is used.
-  static OatFile* Open(const std::string& filename,
+  static OatFile* Open(int zip_fd,
+                       const std::string& filename,
                        const std::string& location,
                        uint8_t* requested_base,
                        uint8_t* oat_file_begin,
@@ -93,8 +95,10 @@ class OatFile {
                        std::string* error_msg);
 
   // Similar to OatFile::Open(const std::string...), but accepts input vdex and
-  // odex files as file descriptors.
-  static OatFile* Open(int vdex_fd,
+  // odex files as file descriptors. We also take zip_fd in case the vdex does not
+  // contain the dex code, and we need to read it from the zip file.
+  static OatFile* Open(int zip_fd,
+                       int vdex_fd,
                        int oat_fd,
                        const std::string& oat_location,
                        uint8_t* requested_base,
@@ -109,11 +113,15 @@ class OatFile {
   // where relocations may be required. Currently used from
   // ImageWriter which wants to open a writable version from an existing
   // file descriptor for patching.
-  static OatFile* OpenWritable(File* file, const std::string& location,
+  static OatFile* OpenWritable(int zip_fd,
+                               File* file,
+                               const std::string& location,
                                const char* abs_dex_location,
                                std::string* error_msg);
   // Open an oat file from an already opened File. Maps it PROT_READ, MAP_PRIVATE.
-  static OatFile* OpenReadable(File* file, const std::string& location,
+  static OatFile* OpenReadable(int zip_fd,
+                               File* file,
+                               const std::string& location,
                                const char* abs_dex_location,
                                std::string* error_msg);
 
