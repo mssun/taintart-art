@@ -384,19 +384,67 @@ inline bool ArtMethod::HasSingleImplementation() {
   return (GetAccessFlags<kReadBarrierOption>() & kAccSingleImplementation) != 0;
 }
 
-inline bool ArtMethod::IsHiddenIntrinsic(uint32_t ordinal) {
-  switch (static_cast<Intrinsics>(ordinal)) {
-    case Intrinsics::kReferenceGetReferent:
-    case Intrinsics::kSystemArrayCopyChar:
-    case Intrinsics::kStringGetCharsNoCheck:
-    case Intrinsics::kVarHandleFullFence:
-    case Intrinsics::kVarHandleAcquireFence:
-    case Intrinsics::kVarHandleReleaseFence:
-    case Intrinsics::kVarHandleLoadLoadFence:
-    case Intrinsics::kVarHandleStoreStoreFence:
-      return true;
-    default:
-      return false;
+inline HiddenApiAccessFlags::ApiList ArtMethod::GetHiddenApiAccessFlags() {
+  if (UNLIKELY(IsIntrinsic())) {
+    switch (static_cast<Intrinsics>(GetIntrinsic())) {
+      case Intrinsics::kSystemArrayCopyChar:
+      case Intrinsics::kStringGetCharsNoCheck:
+      case Intrinsics::kReferenceGetReferent:
+        // These intrinsics are on the light greylist and will fail a DCHECK in
+        // SetIntrinsic() if their flags change on the respective dex methods.
+        // Note that the DCHECK currently won't fail if the dex methods are
+        // whitelisted, e.g. in the core image (b/77733081). As a result, we
+        // might print warnings but we won't change the semantics.
+        return HiddenApiAccessFlags::kLightGreylist;
+      case Intrinsics::kVarHandleFullFence:
+      case Intrinsics::kVarHandleAcquireFence:
+      case Intrinsics::kVarHandleReleaseFence:
+      case Intrinsics::kVarHandleLoadLoadFence:
+      case Intrinsics::kVarHandleStoreStoreFence:
+      case Intrinsics::kVarHandleCompareAndExchange:
+      case Intrinsics::kVarHandleCompareAndExchangeAcquire:
+      case Intrinsics::kVarHandleCompareAndExchangeRelease:
+      case Intrinsics::kVarHandleCompareAndSet:
+      case Intrinsics::kVarHandleGet:
+      case Intrinsics::kVarHandleGetAcquire:
+      case Intrinsics::kVarHandleGetAndAdd:
+      case Intrinsics::kVarHandleGetAndAddAcquire:
+      case Intrinsics::kVarHandleGetAndAddRelease:
+      case Intrinsics::kVarHandleGetAndBitwiseAnd:
+      case Intrinsics::kVarHandleGetAndBitwiseAndAcquire:
+      case Intrinsics::kVarHandleGetAndBitwiseAndRelease:
+      case Intrinsics::kVarHandleGetAndBitwiseOr:
+      case Intrinsics::kVarHandleGetAndBitwiseOrAcquire:
+      case Intrinsics::kVarHandleGetAndBitwiseOrRelease:
+      case Intrinsics::kVarHandleGetAndBitwiseXor:
+      case Intrinsics::kVarHandleGetAndBitwiseXorAcquire:
+      case Intrinsics::kVarHandleGetAndBitwiseXorRelease:
+      case Intrinsics::kVarHandleGetAndSet:
+      case Intrinsics::kVarHandleGetAndSetAcquire:
+      case Intrinsics::kVarHandleGetAndSetRelease:
+      case Intrinsics::kVarHandleGetOpaque:
+      case Intrinsics::kVarHandleGetVolatile:
+      case Intrinsics::kVarHandleSet:
+      case Intrinsics::kVarHandleSetOpaque:
+      case Intrinsics::kVarHandleSetRelease:
+      case Intrinsics::kVarHandleSetVolatile:
+      case Intrinsics::kVarHandleWeakCompareAndSet:
+      case Intrinsics::kVarHandleWeakCompareAndSetAcquire:
+      case Intrinsics::kVarHandleWeakCompareAndSetPlain:
+      case Intrinsics::kVarHandleWeakCompareAndSetRelease:
+        // These intrinsics are on the blacklist and will fail a DCHECK in
+        // SetIntrinsic() if their flags change on the respective dex methods.
+        // Note that the DCHECK currently won't fail if the dex methods are
+        // whitelisted, e.g. in the core image (b/77733081). Given that they are
+        // exclusively VarHandle intrinsics, they should not be used outside
+        // tests that do not enable hidden API checks.
+        return HiddenApiAccessFlags::kBlacklist;
+      default:
+        // Remaining intrinsics are public API. We DCHECK that in SetIntrinsic().
+        return HiddenApiAccessFlags::kWhitelist;
+    }
+  } else {
+    return HiddenApiAccessFlags::DecodeFromRuntime(GetAccessFlags());
   }
 }
 
@@ -422,7 +470,7 @@ inline void ArtMethod::SetIntrinsic(uint32_t intrinsic) {
     bool is_default_conflict = IsDefaultConflicting();
     bool is_compilable = IsCompilable();
     bool must_count_locks = MustCountLocks();
-    HiddenApiAccessFlags::ApiList hidden_api_list = GetHiddenApiAccessFlags();
+    HiddenApiAccessFlags::ApiList hidden_api_flags = GetHiddenApiAccessFlags();
     SetAccessFlags(new_value);
     DCHECK_EQ(java_flags, (GetAccessFlags() & kAccJavaFlagsMask));
     DCHECK_EQ(is_constructor, IsConstructor());
@@ -436,14 +484,14 @@ inline void ArtMethod::SetIntrinsic(uint32_t intrinsic) {
     DCHECK_EQ(is_default_conflict, IsDefaultConflicting());
     DCHECK_EQ(is_compilable, IsCompilable());
     DCHECK_EQ(must_count_locks, MustCountLocks());
-    if (kIsDebugBuild) {
-      if (IsHiddenIntrinsic(intrinsic)) {
-        // Special case some of our intrinsics because the access flags clash
-        // with the intrinsics ordinal.
-        DCHECK_EQ(HiddenApiAccessFlags::kWhitelist, GetHiddenApiAccessFlags());
-      } else {
-        DCHECK_EQ(hidden_api_list, GetHiddenApiAccessFlags());
-      }
+    // Only DCHECK that we have preserved the hidden API access flags if the
+    // original method was not on the whitelist. This is because the core image
+    // does not have the access flags set (b/77733081). It is fine to hard-code
+    // these because (a) warnings on greylist do not change semantics, and
+    // (b) only VarHandle intrinsics are blacklisted at the moment and they
+    // should not be used outside tests with disabled API checks.
+    if (hidden_api_flags != HiddenApiAccessFlags::kWhitelist) {
+      DCHECK_EQ(hidden_api_flags, GetHiddenApiAccessFlags());
     }
   } else {
     SetAccessFlags(new_value);
