@@ -95,9 +95,7 @@ void HiddenApiFinder::CollectAccesses(VeridexResolver* resolver) {
               // Class names at the Java level are of the form x.y.z, but the list encodes
               // them of the form Lx/y/z;. Inner classes have '$' for both Java level class
               // names in strings, and hidden API lists.
-              std::string str = name;
-              std::replace(str.begin(), str.end(), '.', '/');
-              str = "L" + str + ";";
+              std::string str = HiddenApi::ToInternalName(name);
               // Note: we can query the lists directly, as HiddenApi added classes that own
               // private methods and fields in them.
               // We don't add class names to the `strings_` set as we know method/field names
