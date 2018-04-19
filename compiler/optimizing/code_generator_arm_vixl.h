@@ -113,9 +113,6 @@ static const vixl::aarch32::SRegister kRuntimeParameterFpuRegistersVIXL[] = {
 static const size_t kRuntimeParameterFpuRegistersLengthVIXL =
     arraysize(kRuntimeParameterFpuRegistersVIXL);
 
-// The reserved entrypoint register for link-time generated thunks.
-const vixl::aarch32::Register kBakerCcEntrypointRegister = vixl32::r4;
-
 class LoadClassSlowPathARMVIXL;
 class CodeGeneratorARMVIXL;
 
@@ -611,10 +608,6 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
 
   void EmitJitRootPatches(uint8_t* code, const uint8_t* roots_data) OVERRIDE;
 
-  // Maybe add the reserved entrypoint register as a temporary for field load. This temp
-  // is added only for AOT compilation if link-time generated thunks for fields are enabled.
-  void MaybeAddBakerCcEntrypointTempForFields(LocationSummary* locations);
-
   // Generate a GC root reference load:
   //
   //   root <- *(obj + offset)
@@ -816,7 +809,7 @@ class CodeGeneratorARMVIXL : public CodeGenerator {
                kBitsForBakerReadBarrierWidth>;
 
   static void CheckValidReg(uint32_t reg) {
-    DCHECK(reg < vixl::aarch32::ip.GetCode() && reg != kBakerCcEntrypointRegister.GetCode()) << reg;
+    DCHECK(reg < vixl::aarch32::ip.GetCode() && reg != mr.GetCode()) << reg;
   }
 
   static uint32_t EncodeBakerReadBarrierFieldData(uint32_t base_reg,
