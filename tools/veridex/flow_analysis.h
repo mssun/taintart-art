@@ -20,6 +20,7 @@
 #include "dex/code_item_accessors.h"
 #include "dex/dex_file_reference.h"
 #include "dex/method_reference.h"
+#include "hidden_api.h"
 #include "veridex.h"
 
 namespace art {
@@ -52,10 +53,19 @@ class RegisterValue {
   DexFileReference GetDexFileReference() const { return reference_; }
   const VeriClass* GetType() const { return type_; }
 
-  const char* ToString() const {
+  std::string ToString() const {
     switch (source_) {
-      case RegisterSource::kString:
-        return reference_.dex_file->StringDataByIdx(dex::StringIndex(reference_.index));
+      case RegisterSource::kString: {
+        const char* str = reference_.dex_file->StringDataByIdx(dex::StringIndex(reference_.index));
+        if (type_ == VeriClass::class_) {
+          // Class names at the Java level are of the form x.y.z, but the list encodes
+          // them of the form Lx/y/z;. Inner classes have '$' for both Java level class
+          // names in strings, and hidden API lists.
+          return HiddenApi::ToInternalName(str);
+        } else {
+          return str;
+        }
+      }
       case RegisterSource::kClass:
         return reference_.dex_file->StringByTypeIdx(dex::TypeIndex(reference_.index));
       default:
