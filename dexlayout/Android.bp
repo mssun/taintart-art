@@ -34,17 +34,15 @@ art_cc_defaults {
 
 art_cc_library {
     name: "libart-dexlayout",
-    defaults: ["libart-dexlayout-defaults"],
+    defaults: [
+        "libart-dexlayout-defaults",
+        "dex2oat-pgo-defaults",
+    ],
     shared_libs: [
         "libart",
         "libdexfile",
     ],
 
-    pgo: {
-        instrumentation: true,
-        profile_file: "art/dex2oat.profdata",
-        benchmarks: ["dex2oat"],
-    },
     target: {
         android: {
             lto: {

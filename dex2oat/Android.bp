@@ -149,10 +149,41 @@ cc_defaults {
     ],
 }
 
+cc_defaults {
+    name: "dex2oat-pgo-defaults",
+    pgo: {
+        instrumentation: true,
+        benchmarks: ["dex2oat"],
+    },
+    target: {
+        android_arm64: {
+            pgo: {
+                profile_file: "art/dex2oat_arm_arm64.profdata",
+            },
+        },
+        android_arm: {
+            pgo: {
+                profile_file: "art/dex2oat_arm_arm64.profdata",
+            },
+        },
+        android_x86_64: {
+            pgo: {
+                profile_file: "art/dex2oat_x86_x86_64.profdata",
+            },
+        },
+        android_x86: {
+            pgo: {
+                profile_file: "art/dex2oat_x86_x86_64.profdata",
+            },
+        },
+    },
+}
+
 art_cc_binary {
     name: "dex2oat",
     defaults: [
         "dex2oat-defaults",
+        "dex2oat-pgo-defaults",
     ],
     shared_libs: [
         "libart-compiler",
@@ -168,9 +199,7 @@ art_cc_binary {
     ],
 
     pgo: {
-        instrumentation: true,
-        profile_file: "art/dex2oat.profdata",
-        benchmarks: ["dex2oat"],
+        // Additional cflags just for dex2oat during PGO instrumentation
         cflags: [
             // Ignore frame-size increase resulting from instrumentation.
             "-Wno-frame-larger-than=",
