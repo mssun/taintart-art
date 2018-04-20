@@ -176,6 +176,16 @@ cc_defaults {
                 profile_file: "art/dex2oat_x86_x86_64.profdata",
             },
         },
+        android_mips64: {
+            pgo: {
+                profile_file: "art/dex2oat_mips_mips64.profdata",
+            },
+        },
+        android_mips: {
+            pgo: {
+                profile_file: "art/dex2oat_mips_mips64.profdata",
+            },
+        },
     },
 }
 
