@@ -403,22 +403,6 @@ bool IsValidDescriptor(const char* s) {
   return IsValidClassName<kDescriptor, '/'>(s);
 }
 
-void Split(const std::string& s, char separator, std::vector<std::string>* result) {
-  const char* p = s.data();
-  const char* end = p + s.size();
-  while (p != end) {
-    if (*p == separator) {
-      ++p;
-    } else {
-      const char* start = p;
-      while (++p != end && *p != separator) {
-        // Skip to the next occurrence of the separator.
-      }
-      result->push_back(std::string(start, p - start));
-    }
-  }
-}
-
 std::string PrettyDescriptor(Primitive::Type type) {
   return PrettyDescriptor(Primitive::Descriptor(type));
 }
