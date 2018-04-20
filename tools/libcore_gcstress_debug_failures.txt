@@ -17,5 +17,22 @@
           "libcore.java.util.TimeZoneTest#testSetDefaultDeadlock",
           "libcore.javax.crypto.CipherBasicsTest#testBasicEncryption",
           "org.apache.harmony.tests.java.util.TimerTest#testThrowingTaskKillsTimerThread"]
+},
+{
+  description: "Sometimes times out with gcstress and debug.",
+  result: EXEC_FAILED,
+  bug: 78228743,
+  names: [
+    "libcore.libcore.icu.RelativeDateTimeFormatterTest#test_combineDateAndTime_apostrophe",
+    "libcore.libcore.icu.RelativeDateTimeFormatterTest#test_getRelativeDateTimeString",
+    "libcore.libcore.icu.RelativeDateTimeFormatterTest#test_getRelativeDateTimeStringCTS",
+    "libcore.libcore.icu.RelativeDateTimeFormatterTest#test_getRelativeDateTimeStringDST",
+    "libcore.libcore.icu.RelativeDateTimeFormatterTest#test_getRelativeDateTimeStringItalian",
+    "libcore.libcore.icu.RelativeDateTimeFormatterTest#test_getRelativeTimeSpanString",
+    "libcore.libcore.icu.RelativeDateTimeFormatterTest#test_getRelativeTimeSpanStringAbbrev",
+    "libcore.libcore.icu.RelativeDateTimeFormatterTest#test_getRelativeTimeSpanStringCTS",
+    "libcore.libcore.icu.RelativeDateTimeFormatterTest#test_getRelativeTimeSpanStringFrench",
+    "libcore.libcore.icu.RelativeDateTimeFormatterTest#test_getRelativeTimeSpanStringGerman"
+  ]
 }
 ]
