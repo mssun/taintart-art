@@ -402,6 +402,7 @@ cc_defaults {
         "libbacktrace",
         "liblz4",
         "liblog",
+        "libmetricslogger",
         // For atrace, properties, ashmem, set_sched_policy and socket_peer_is_trusted.
         "libcutils",
         // For common macros.

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <log/log_event_list.h>
+#include <metricslogger/metrics_logger.h>
 
 #include "hidden_api.h"
 
@@ -23,6 +23,12 @@
 #include "base/dumpable.h"
 #include "thread-current-inl.h"
 #include "well_known_classes.h"
+
+using android::metricslogger::ComplexEventLogger;
+using android::metricslogger::ACTION_HIDDEN_API_ACCESSED;
+using android::metricslogger::FIELD_HIDDEN_API_ACCESS_METHOD;
+using android::metricslogger::FIELD_HIDDEN_API_ACCESS_DENIED;
+using android::metricslogger::FIELD_HIDDEN_API_SIGNATURE;
 
 namespace art {
 namespace hiddenapi {
@@ -65,10 +71,6 @@ static_assert(
     "EnforcementPolicy values ordering not correct");
 
 namespace detail {
-
-// This is the ID of the event log event. It is duplicated from
-// system/core/logcat/event.logtags
-constexpr int EVENT_LOG_TAG_art_hidden_api_access = 20004;
 
 MemberSignature::MemberSignature(ArtField* field) {
   class_name_ = field->GetDeclaringClass()->GetDescriptor(&tmp_);
@@ -128,6 +130,25 @@ void MemberSignature::WarnAboutAccess(AccessMethod access_method,
   LOG(WARNING) << "Accessing hidden " << (type_ == kField ? "field " : "method ")
                << Dumpable<MemberSignature>(*this) << " (" << list << ", " << access_method << ")";
 }
+// Convert an AccessMethod enum to a value for logging from the proto enum.
+// This method may look odd (the enum values are current the same), but it
+// prevents coupling the internal enum to the proto enum (which should never
+// be changed) so that we are free to change the internal one if necessary in
+// future.
+inline static int32_t GetEnumValueForLog(AccessMethod access_method) {
+  switch (access_method) {
+    case kNone:
+      return android::metricslogger::ACCESS_METHOD_NONE;
+    case kReflection:
+      return android::metricslogger::ACCESS_METHOD_REFLECTION;
+    case kJNI:
+      return android::metricslogger::ACCESS_METHOD_JNI;
+    case kLinking:
+      return android::metricslogger::ACCESS_METHOD_LINKING;
+    default:
+      DCHECK(false);
+  }
+}
 
 void MemberSignature::LogAccessToEventLog(AccessMethod access_method, Action action_taken) {
   if (access_method == kLinking) {
@@ -136,20 +157,15 @@ void MemberSignature::LogAccessToEventLog(AccessMethod access_method, Action act
     // not to log these in the event log.
     return;
   }
-  uint32_t flags = 0;
+  ComplexEventLogger log_maker(ACTION_HIDDEN_API_ACCESSED);
+  log_maker.AddTaggedData(FIELD_HIDDEN_API_ACCESS_METHOD, GetEnumValueForLog(access_method));
   if (action_taken == kDeny) {
-    flags |= kAccessDenied;
+    log_maker.AddTaggedData(FIELD_HIDDEN_API_ACCESS_DENIED, 1);
   }
-  if (type_ == kField) {
-    flags |= kMemberIsField;
-  }
-  android_log_event_list ctx(EVENT_LOG_TAG_art_hidden_api_access);
-  ctx << access_method;
-  ctx << flags;
-  ctx << class_name_;
-  ctx << member_name_;
-  ctx << type_signature_;
-  ctx << LOG_ID_EVENTS;
+  std::ostringstream signature_str;
+  Dump(signature_str);
+  log_maker.AddTaggedData(FIELD_HIDDEN_API_SIGNATURE, signature_str.str());
+  log_maker.Record();
 }
 
 template<typename T>
