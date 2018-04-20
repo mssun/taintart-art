@@ -32,6 +32,8 @@ static void Println(const char* c) {
   fflush(stdout);
 }
 
+static constexpr jint kArtTiVersion = JVMTI_VERSION_1_2 | 0x40000000;
+
 jint OnAttach(JavaVM* vm,
             char* options ATTRIBUTE_UNUSED,
             void* reserved ATTRIBUTE_UNUSED) {
@@ -47,7 +49,18 @@ jint OnAttach(JavaVM* vm,
     } \
   } while (false)
 
-  CHECK_CALL_SUCCESS(vm->GetEnv(reinterpret_cast<void**>(&env), JVMTI_VERSION_1_0));
+  if (vm->GetEnv(reinterpret_cast<void**>(&env), kArtTiVersion) == JNI_OK) {
+    Println("Created env for kArtTiVersion");
+    CHECK_CALL_SUCCESS(env->DisposeEnvironment());
+    env = nullptr;
+  } else {
+    Println("Failed to create env for kArtTiVersion");
+    return -1;
+  }
+  if (vm->GetEnv(reinterpret_cast<void**>(&env), JVMTI_VERSION_1_0) != JNI_OK) {
+    Println("Unable to create env for JVMTI_VERSION_1_0");
+    return 0;
+  }
   CHECK_CALL_SUCCESS(vm->GetEnv(reinterpret_cast<void**>(&env2), JVMTI_VERSION_1_0));
   if (env == env2) {
     Println("GetEnv returned same environment twice!");
