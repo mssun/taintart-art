@@ -36,6 +36,9 @@ namespace hiddenapi {
 // Set to true if we should always print a warning in logcat for all hidden API accesses, not just
 // dark grey and black. This can be set to true for developer preview / beta builds, but should be
 // false for public release builds.
+// Note that when flipping this flag, you must also update the expectations of test 674-hiddenapi
+// as it affects whether or not we warn for light grey APIs that have been added to the exemptions
+// list.
 static constexpr bool kLogAllAccesses = true;
 
 static inline std::ostream& operator<<(std::ostream& os, AccessMethod value) {
