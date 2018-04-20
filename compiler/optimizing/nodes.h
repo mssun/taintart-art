@@ -1272,8 +1272,6 @@ class HBasicBlock : public ArenaObject<kArenaAllocBasicBlock> {
   // the appropriate try entry will be returned.
   const HTryBoundary* ComputeTryEntryOfSuccessors() const;
 
-  bool HasThrowingInstructions() const;
-
   // Returns whether this block dominates the blocked passed as parameter.
   bool Dominates(HBasicBlock* block) const;
 
@@ -2132,6 +2130,7 @@ class HInstruction : public ArenaObject<kArenaAllocInstruction> {
         !CanThrow() &&
         !IsSuspendCheck() &&
         !IsControlFlow() &&
+        !IsDeoptimize() &&
         !IsNativeDebugInfo() &&
         !IsParameterValue() &&
         // If we added an explicit barrier then we should keep it.
@@ -3238,7 +3237,9 @@ class HDeoptimize FINAL : public HVariableInputSizeInstruction {
 
   bool NeedsEnvironment() const OVERRIDE { return true; }
 
-  bool CanThrow() const OVERRIDE { return true; }
+  // Even though deoptimize is often used for "exceptional cases" to go back to
+  // the interpreter, it never throws an exception.
+  bool CanThrow() const OVERRIDE { return false; }
 
   DeoptimizationKind GetDeoptimizationKind() const { return GetPackedField<DeoptimizeKindField>(); }
 
