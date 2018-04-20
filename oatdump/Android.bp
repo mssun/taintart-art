@@ -96,6 +96,9 @@ art_cc_binary {
         darwin: {
             enabled: false,
         },
+        linux_glibc_x86_64: {
+            use_clang_lld: true,
+        },
     },
     ldflags: [
         // We need this because GC stress mode makes use of
