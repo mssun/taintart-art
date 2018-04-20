@@ -24,6 +24,51 @@ public class Test906 {
     doTest();
   }
 
+  // Number of times we will try to count the heap in various ways. If we are unlucky and end up in
+  // the middle of a GC we could incorrectly fail. This is expected to be incredibly rare so 10
+  // retries should be more than sufficient.
+  private static final int ITERATE_RETRIES = 10;
+  private static void testHeapCount() throws Exception {
+    IllegalStateException lastThrow = new IllegalStateException(
+        "Failed to get consistent counts after " + ITERATE_RETRIES + " retries");
+    for (int i = 0; i < ITERATE_RETRIES; i++) {
+      try {
+        int all = iterateThroughHeapCount(0, null, Integer.MAX_VALUE);
+        int tagged = iterateThroughHeapCount(HEAP_FILTER_OUT_UNTAGGED, null, Integer.MAX_VALUE);
+        int untagged = iterateThroughHeapCount(HEAP_FILTER_OUT_TAGGED, null, Integer.MAX_VALUE);
+        int taggedClass = iterateThroughHeapCount(HEAP_FILTER_OUT_CLASS_UNTAGGED, null,
+            Integer.MAX_VALUE);
+        int untaggedClass = iterateThroughHeapCount(HEAP_FILTER_OUT_CLASS_TAGGED, null,
+            Integer.MAX_VALUE);
+
+        if (all != tagged + untagged) {
+          throw new IllegalStateException("Instances: " + all + " != " + tagged + " + " + untagged);
+        }
+        if (all != taggedClass + untaggedClass) {
+          throw new IllegalStateException("By class: " + all + " != " + taggedClass + " + " +
+              untaggedClass);
+        }
+        if (tagged != 6) {
+          throw new IllegalStateException(tagged + " tagged objects");
+        }
+        if (taggedClass != 2) {
+          throw new IllegalStateException(tagged + " objects with tagged class");
+        }
+        if (all == tagged) {
+          throw new IllegalStateException("All objects tagged");
+        }
+        if (all == taggedClass) {
+          throw new IllegalStateException("All objects have tagged class");
+        }
+        // Everything worked!
+        return;
+      } catch (IllegalStateException e) {
+        lastThrow.addSuppressed(e);
+      }
+    }
+    throw lastThrow;
+  }
+
   public static void doTest() throws Exception {
     A a = new A();
     B b = new B();
@@ -39,33 +84,7 @@ public class Test906 {
     setTag(s, 5);
     setTag(B.class, 100);
 
-    int all = iterateThroughHeapCount(0, null, Integer.MAX_VALUE);
-    int tagged = iterateThroughHeapCount(HEAP_FILTER_OUT_UNTAGGED, null, Integer.MAX_VALUE);
-    int untagged = iterateThroughHeapCount(HEAP_FILTER_OUT_TAGGED, null, Integer.MAX_VALUE);
-    int taggedClass = iterateThroughHeapCount(HEAP_FILTER_OUT_CLASS_UNTAGGED, null,
-        Integer.MAX_VALUE);
-    int untaggedClass = iterateThroughHeapCount(HEAP_FILTER_OUT_CLASS_TAGGED, null,
-        Integer.MAX_VALUE);
-
-    if (all != tagged + untagged) {
-      throw new IllegalStateException("Instances: " + all + " != " + tagged + " + " + untagged);
-    }
-    if (all != taggedClass + untaggedClass) {
-      throw new IllegalStateException("By class: " + all + " != " + taggedClass + " + " +
-          untaggedClass);
-    }
-    if (tagged != 6) {
-      throw new IllegalStateException(tagged + " tagged objects");
-    }
-    if (taggedClass != 2) {
-      throw new IllegalStateException(tagged + " objects with tagged class");
-    }
-    if (all == tagged) {
-      throw new IllegalStateException("All objects tagged");
-    }
-    if (all == taggedClass) {
-      throw new IllegalStateException("All objects have tagged class");
-    }
+    testHeapCount();
 
     long classTags[] = new long[100];
     long sizes[] = new long[100];
