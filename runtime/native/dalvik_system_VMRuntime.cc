@@ -682,6 +682,12 @@ static void VMRuntime_setSystemDaemonThreadPriority(JNIEnv* env ATTRIBUTE_UNUSED
 #endif
 }
 
+static void VMRuntime_setDedupeHiddenApiWarnings(JNIEnv* env ATTRIBUTE_UNUSED,
+                                                 jclass klass ATTRIBUTE_UNUSED,
+                                                 jboolean dedupe) {
+  Runtime::Current()->SetDedupeHiddenApiWarnings(dedupe);
+}
+
 static JNINativeMethod gMethods[] = {
   FAST_NATIVE_METHOD(VMRuntime, addressOf, "(Ljava/lang/Object;)J"),
   NATIVE_METHOD(VMRuntime, bootClassPath, "()Ljava/lang/String;"),
@@ -723,6 +729,7 @@ static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(VMRuntime, getCurrentInstructionSet, "()Ljava/lang/String;"),
   NATIVE_METHOD(VMRuntime, didPruneDalvikCache, "()Z"),
   NATIVE_METHOD(VMRuntime, setSystemDaemonThreadPriority, "()V"),
+  NATIVE_METHOD(VMRuntime, setDedupeHiddenApiWarnings, "(Z)V"),
 };
 
 void register_dalvik_system_VMRuntime(JNIEnv* env) {
