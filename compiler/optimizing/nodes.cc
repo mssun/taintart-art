@@ -1916,6 +1916,15 @@ const HTryBoundary* HBasicBlock::ComputeTryEntryOfSuccessors() const {
   }
 }
 
+bool HBasicBlock::HasThrowingInstructions() const {
+  for (HInstructionIterator it(GetInstructions()); !it.Done(); it.Advance()) {
+    if (it.Current()->CanThrow()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool HasOnlyOneInstruction(const HBasicBlock& block) {
   return block.GetPhis().IsEmpty()
       && !block.GetInstructions().IsEmpty()
