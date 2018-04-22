@@ -52,13 +52,11 @@ enum Action {
   kDeny
 };
 
-// Do not change the values of items in this enum, as they are written to the
-// event log for offline analysis. Any changes will interfere with that analysis.
 enum AccessMethod {
-  kNone = 0,  // internal test that does not correspond to an actual access by app
-  kReflection = 1,
-  kJNI = 2,
-  kLinking = 3,
+  kNone,  // internal test that does not correspond to an actual access by app
+  kReflection,
+  kJNI,
+  kLinking,
 };
 
 // Do not change the values of items in this enum, as they are written to the
