@@ -1675,6 +1675,7 @@ std::string ProfileCompilationInfo::DumpInfo(const std::vector<const DexFile*>* 
       os << (multidex_suffix.empty() ? kFirstDexFileKeySubstitute : multidex_suffix);
     }
     os << " [index=" << static_cast<uint32_t>(dex_data->profile_index) << "]";
+    os << " [checksum=" << std::hex << dex_data->checksum << "]" << std::dec;
     const DexFile* dex_file = nullptr;
     if (dex_files != nullptr) {
       for (size_t i = 0; i < dex_files->size(); i++) {
