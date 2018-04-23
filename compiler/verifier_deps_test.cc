@@ -236,6 +236,8 @@ class VerifierDepsTest : public CommonCompilerTest {
         if (cls == nullptr) {
           CHECK(soa.Self()->IsExceptionPending());
           soa.Self()->ClearException();
+        } else if (&cls->GetDexFile() != dex_file) {
+          // Ignore classes from different dex files.
         } else if (unverified_classes.find(class_def.class_idx_) == unverified_classes.end()) {
           ASSERT_EQ(cls->GetStatus(), ClassStatus::kVerified);
         } else {
