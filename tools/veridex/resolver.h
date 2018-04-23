@@ -79,6 +79,10 @@ class VeridexResolver {
     return dex_file_;
   }
 
+  const DexFile& GetDexFileOf(const VeriClass& kls) {
+    return GetResolverOf(kls)->dex_file_;
+  }
+
  private:
   // Return the resolver where `kls` is from.
   VeridexResolver* GetResolverOf(const VeriClass& kls) const;
