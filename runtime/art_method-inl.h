@@ -384,7 +384,8 @@ inline bool ArtMethod::HasSingleImplementation() {
   return (GetAccessFlags<kReadBarrierOption>() & kAccSingleImplementation) != 0;
 }
 
-inline HiddenApiAccessFlags::ApiList ArtMethod::GetHiddenApiAccessFlags() {
+inline HiddenApiAccessFlags::ApiList ArtMethod::GetHiddenApiAccessFlags()
+    REQUIRES_SHARED(Locks::mutator_lock_) {
   if (UNLIKELY(IsIntrinsic())) {
     switch (static_cast<Intrinsics>(GetIntrinsic())) {
       case Intrinsics::kSystemArrayCopyChar:
