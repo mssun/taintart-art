@@ -262,8 +262,17 @@ void VeriFlowAnalysis::ProcessDexInstruction(const Instruction& instruction) {
         last_result_ = GetReturnType(instruction.VRegB_35c());
       } else if (method == VeriClass::getClass_) {
         RegisterValue obj = GetRegister(args[0]);
-        last_result_ = RegisterValue(
-            obj.GetSource(), obj.GetDexFileReference(), VeriClass::class_);
+        const VeriClass* cls = obj.GetType();
+        if (cls != nullptr && cls->GetClassDef() != nullptr) {
+          const DexFile::ClassDef* def = cls->GetClassDef();
+          last_result_ = RegisterValue(
+              RegisterSource::kClass,
+              DexFileReference(&resolver_->GetDexFileOf(*cls), def->class_idx_.index_),
+              VeriClass::class_);
+        } else {
+          last_result_ = RegisterValue(
+              obj.GetSource(), obj.GetDexFileReference(), VeriClass::class_);
+        }
       } else if (method == VeriClass::loadClass_) {
         RegisterValue value = GetRegister(args[1]);
         last_result_ = RegisterValue(

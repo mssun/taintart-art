@@ -63,6 +63,7 @@ void PreciseHiddenApiFinder::Run(const std::vector<std::unique_ptr<VeridexResolv
 
 void PreciseHiddenApiFinder::Dump(std::ostream& os, HiddenApiStats* stats) {
   static const char* kPrefix = "       ";
+  std::map<std::string, std::vector<MethodReference>> uses;
   for (auto kinds : { field_uses_, method_uses_ }) {
     for (auto it : kinds) {
       MethodReference ref = it.first;
@@ -74,18 +75,25 @@ void PreciseHiddenApiFinder::Dump(std::ostream& os, HiddenApiStats* stats) {
           std::string name(info.second.ToString());
           std::string full_name = cls + "->" + name;
           HiddenApiAccessFlags::ApiList api_list = hidden_api_.GetApiList(full_name);
-          stats->api_counts[api_list]++;
           if (api_list != HiddenApiAccessFlags::kWhitelist) {
-            ++stats->reflection_count;
-            os << "#" << ++stats->count << ": Reflection " << api_list << " " << full_name
-               << " use:";
-            os << std::endl;
-            os << kPrefix << HiddenApi::GetApiMethodName(ref) << std::endl;
-            os << std::endl;
+            uses[full_name].push_back(ref);
           }
         }
       }
     }
+  }
+
+  for (auto it : uses) {
+    ++stats->reflection_count;
+    const std::string& full_name = it.first;
+    HiddenApiAccessFlags::ApiList api_list = hidden_api_.GetApiList(full_name);
+    stats->api_counts[api_list]++;
+    os << "#" << ++stats->count << ": Reflection " << api_list << " " << full_name << " use(s):";
+    os << std::endl;
+    for (const MethodReference& ref : it.second) {
+      os << kPrefix << HiddenApi::GetApiMethodName(ref) << std::endl;
+    }
+    os << std::endl;
   }
 }
 
