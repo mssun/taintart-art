@@ -1147,18 +1147,18 @@ TEST_F(ProfileAssistantTest, DumpOnly) {
   // Check the actual contents of the dump by looking at the offsets of the methods.
   for (uint32_t m : hot_methods) {
     const size_t pos = output.find(std::to_string(m) + "[],", hot_offset);
-    ASSERT_NE(pos, std::string::npos);
-    EXPECT_LT(pos, startup_offset);
+    ASSERT_NE(pos, std::string::npos) << output;
+    EXPECT_LT(pos, startup_offset) << output;
   }
   for (uint32_t m : startup_methods) {
     const size_t pos = output.find(std::to_string(m) + ",", startup_offset);
-    ASSERT_NE(pos, std::string::npos);
-    EXPECT_LT(pos, post_startup_offset);
+    ASSERT_NE(pos, std::string::npos) << output;
+    EXPECT_LT(pos, post_startup_offset) << output;
   }
   for (uint32_t m : post_startup_methods) {
     const size_t pos = output.find(std::to_string(m) + ",", post_startup_offset);
-    ASSERT_NE(pos, std::string::npos);
-    EXPECT_LT(pos, classes_offset);
+    ASSERT_NE(pos, std::string::npos) << output;
+    EXPECT_LT(pos, classes_offset) << output;
   }
 }
 
