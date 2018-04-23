@@ -963,6 +963,9 @@ else
     fi
 
     if [ "$DEV_MODE" = "y" ]; then
+      for var in ANDROID_PRINTF_LOG ANDROID_DATA ANDROID_ROOT LD_LIBRARY_PATH DYLD_LIBRARY_PATH PATH LD_USE_LOAD_BIAS; do
+        echo EXPORT $var=${!var}
+      done
       echo "mkdir -p ${mkdir_locations} && $profman_cmdline && $dex2oat_cmdline && $dm_cmdline && $vdex_cmdline && $strip_cmdline && $sync_cmdline && $cmdline"
     fi
 
