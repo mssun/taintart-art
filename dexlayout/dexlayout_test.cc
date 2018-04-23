@@ -31,7 +31,7 @@
 #include "dex/dex_file_loader.h"
 #include "dexlayout.h"
 #include "exec_utils.h"
-#include "jit/profile_compilation_info.h"
+#include "profile/profile_compilation_info.h"
 
 namespace art {
 

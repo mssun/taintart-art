@@ -33,7 +33,7 @@
 
 #include "base/logging.h"  // For InitLogging.
 #include "base/mem_map.h"
-#include "jit/profile_compilation_info.h"
+#include "profile/profile_compilation_info.h"
 #include "runtime.h"
 
 namespace art {

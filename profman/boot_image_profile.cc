@@ -21,7 +21,7 @@
 #include "dex/dex_file-inl.h"
 #include "dex/method_reference.h"
 #include "dex/type_reference.h"
-#include "jit/profile_compilation_info.h"
+#include "profile/profile_compilation_info.h"
 
 namespace art {
 
