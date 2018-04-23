@@ -134,7 +134,10 @@ class MemberSignature {
 };
 
 template<typename T>
-Action GetMemberActionImpl(T* member, Action action, AccessMethod access_method)
+Action GetMemberActionImpl(T* member,
+                           HiddenApiAccessFlags::ApiList api_list,
+                           Action action,
+                           AccessMethod access_method)
     REQUIRES_SHARED(Locks::mutator_lock_);
 
 // Returns true if the caller is either loaded by the boot strap class loader or comes from
@@ -191,7 +194,7 @@ inline Action GetMemberAction(T* member,
   }
 
   // Member is hidden and caller is not in the platform.
-  return detail::GetMemberActionImpl(member, action, access_method);
+  return detail::GetMemberActionImpl(member, api_list, action, access_method);
 }
 
 inline bool IsCallerInPlatformDex(ObjPtr<mirror::Class> caller)
