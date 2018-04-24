@@ -40,7 +40,11 @@ std::string DescribeSpace(ObjPtr<mirror::Class> klass) {
       heap->FindContinuousSpaceFromObject(klass.Ptr(), /* fail_ok */ true);
   if (cs != nullptr) {
     if (cs->IsImageSpace()) {
-      oss << "image;" << cs->GetName() << ";" << cs->AsImageSpace()->GetImageFilename();
+      gc::space::ImageSpace* ispace = cs->AsImageSpace();
+      oss << "image;" << ispace->GetName() << ";"
+          // If the file name is the same as the name, output "+" instead to shorten the output.
+          << (ispace->GetImageFilename() == cs->GetName() ? "+" : ispace->GetImageFilename())
+          << ";" << static_cast<const void*>(ispace->Begin());
     } else {
       oss << "continuous;" << cs->GetName();
     }
@@ -146,13 +150,20 @@ void DumpB77342775DebugData(ObjPtr<mirror::Class> target_class, ObjPtr<mirror::C
   const char* source_descriptor = src_class->GetDescriptor(&source_descriptor_storage);
 
   LOG(ERROR) << "Maybe bug 77342775, looking for " << target_descriptor
-      << " with loader " << DescribeLoaders(target_class->GetClassLoader(), target_descriptor);
+      << " " << target_class.Ptr() << "[" << DescribeSpace(target_class) << "]"
+      << " defined in " << target_class->GetDexFile().GetLocation()
+      << "/" << static_cast<const void*>(&target_class->GetDexFile())
+      << "\n  with loader: " << DescribeLoaders(target_class->GetClassLoader(), target_descriptor);
   if (target_class->IsInterface()) {
     ObjPtr<mirror::IfTable> iftable = src_class->GetIfTable();
     CHECK(iftable != nullptr);
     size_t ifcount = iftable->Count();
-    LOG(ERROR) << "  in interface table for " << source_descriptor << " ifcount=" << ifcount
-        << " with loader " << DescribeLoaders(src_class->GetClassLoader(), source_descriptor);
+    LOG(ERROR) << "  in interface table for " << source_descriptor
+        << " " << src_class.Ptr() << "[" << DescribeSpace(src_class) << "]"
+        << " defined in " << src_class->GetDexFile().GetLocation()
+        << "/" << static_cast<const void*>(&src_class->GetDexFile())
+        << " ifcount=" << ifcount
+        << "\n  with loader " << DescribeLoaders(src_class->GetClassLoader(), source_descriptor);
     for (size_t i = 0; i != ifcount; ++i) {
       ObjPtr<mirror::Class> iface = iftable->GetInterface(i);
       CHECK(iface != nullptr);
@@ -161,7 +172,10 @@ void DumpB77342775DebugData(ObjPtr<mirror::Class> target_class, ObjPtr<mirror::C
     }
   } else {
     LOG(ERROR) << "  in superclass chain for " << source_descriptor
-        << " with loader " << DescribeLoaders(src_class->GetClassLoader(), source_descriptor);
+        << " " << src_class.Ptr() << "[" << DescribeSpace(src_class) << "]"
+        << " defined in " << src_class->GetDexFile().GetLocation()
+        << "/" << static_cast<const void*>(&src_class->GetDexFile())
+        << "\n  with loader " << DescribeLoaders(src_class->GetClassLoader(), source_descriptor);
     for (ObjPtr<mirror::Class> klass = src_class;
          klass != nullptr;
          klass = klass->GetSuperClass()) {
