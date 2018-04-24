@@ -172,7 +172,10 @@ void MemberSignature::LogAccessToEventLog(AccessMethod access_method, Action act
 }
 
 template<typename T>
-Action GetMemberActionImpl(T* member, Action action, AccessMethod access_method) {
+Action GetMemberActionImpl(T* member,
+                           HiddenApiAccessFlags::ApiList api_list,
+                           Action action,
+                           AccessMethod access_method) {
   DCHECK_NE(action, kAllow);
 
   // Get the signature, we need it later.
@@ -202,8 +205,7 @@ Action GetMemberActionImpl(T* member, Action action, AccessMethod access_method)
     if (access_method != kNone) {
       // Print a log message with information about this class member access.
       // We do this if we're about to block access, or the app is debuggable.
-      member_signature.WarnAboutAccess(access_method,
-          HiddenApiAccessFlags::DecodeFromRuntime(member->GetAccessFlags()));
+      member_signature.WarnAboutAccess(access_method, api_list);
     }
   }
 
@@ -244,9 +246,11 @@ Action GetMemberActionImpl(T* member, Action action, AccessMethod access_method)
 
 // Need to instantiate this.
 template Action GetMemberActionImpl<ArtField>(ArtField* member,
+                                              HiddenApiAccessFlags::ApiList api_list,
                                               Action action,
                                               AccessMethod access_method);
 template Action GetMemberActionImpl<ArtMethod>(ArtMethod* member,
+                                               HiddenApiAccessFlags::ApiList api_list,
                                                Action action,
                                                AccessMethod access_method);
 }  // namespace detail
