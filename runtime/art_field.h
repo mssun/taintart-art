@@ -20,6 +20,7 @@
 #include <jni.h>
 
 #include "dex/dex_file_types.h"
+#include "dex/hidden_api_access_flags.h"
 #include "dex/modifiers.h"
 #include "dex/primitive.h"
 #include "gc_root.h"
@@ -177,6 +178,10 @@ class ArtField FINAL {
 
   bool IsVolatile() REQUIRES_SHARED(Locks::mutator_lock_) {
     return (GetAccessFlags() & kAccVolatile) != 0;
+  }
+
+  HiddenApiAccessFlags::ApiList GetHiddenApiAccessFlags() REQUIRES_SHARED(Locks::mutator_lock_) {
+    return HiddenApiAccessFlags::DecodeFromRuntime(GetAccessFlags());
   }
 
   // Returns an instance field with this offset in the given class or null if not found.
