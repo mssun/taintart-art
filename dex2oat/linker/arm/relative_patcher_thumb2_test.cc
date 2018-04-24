@@ -625,18 +625,23 @@ TEST_F(Thumb2RelativePatcherTest, StringReference4) {
   ASSERT_LT(GetMethodOffset(1u), 0xfcu);
 }
 
+const uint32_t kBakerValidRegs[] = {
+    0,  1,  2,  3,  4,  5,  6,  7,
+    9, 10, 11,                      // r8 (rMR), IP, SP, LR and PC are reserved.
+};
+
+const uint32_t kBakerValidRegsNarrow[] = {
+    0,  1,  2,  3,  4,  5,  6,  7,
+};
+
 void Thumb2RelativePatcherTest::TestBakerFieldWide(uint32_t offset, uint32_t ref_reg) {
-  uint32_t valid_regs[] = {
-      0,  1,  2,  3,      5,  6,  7,  // R4 is reserved for entrypoint address.
-      8,  9, 10, 11,                  // IP, SP, LR and PC are reserved.
-  };
   DCHECK_ALIGNED(offset, 4u);
   DCHECK_LT(offset, 4 * KB);
   constexpr size_t kMethodCodeSize = 8u;
   constexpr size_t kLiteralOffset = 0u;
   uint32_t method_idx = 0u;
-  for (uint32_t base_reg : valid_regs) {
-    for (uint32_t holder_reg : valid_regs) {
+  for (uint32_t base_reg : kBakerValidRegs) {
+    for (uint32_t holder_reg : kBakerValidRegs) {
       uint32_t ldr = kLdrWInsn | offset | (base_reg << 16) | (ref_reg << 12);
       const std::vector<uint8_t> raw_code = RawCode({kBneWPlus0, ldr});
       ASSERT_EQ(kMethodCodeSize, raw_code.size());
@@ -655,8 +660,8 @@ void Thumb2RelativePatcherTest::TestBakerFieldWide(uint32_t offset, uint32_t ref
   // All thunks are at the end.
   uint32_t thunk_offset = GetMethodOffset(method_idx) + RoundUp(kMethodCodeSize, kArmAlignment);
   method_idx = 0u;
-  for (uint32_t base_reg : valid_regs) {
-    for (uint32_t holder_reg : valid_regs) {
+  for (uint32_t base_reg : kBakerValidRegs) {
+    for (uint32_t holder_reg : kBakerValidRegs) {
       ++method_idx;
       uint32_t bne = BneWWithOffset(GetMethodOffset(method_idx) + kLiteralOffset, thunk_offset);
       uint32_t ldr = kLdrWInsn | offset | (base_reg << 16) | (ref_reg << 12);
@@ -725,20 +730,16 @@ void Thumb2RelativePatcherTest::TestBakerFieldWide(uint32_t offset, uint32_t ref
 }
 
 void Thumb2RelativePatcherTest::TestBakerFieldNarrow(uint32_t offset, uint32_t ref_reg) {
-  uint32_t valid_regs[] = {
-      0,  1,  2,  3,      5,  6,  7,  // R4 is reserved for entrypoint address.
-      8,  9, 10, 11,                  // IP, SP, LR and PC are reserved.
-  };
   DCHECK_ALIGNED(offset, 4u);
   DCHECK_LT(offset, 32u);
   constexpr size_t kMethodCodeSize = 6u;
   constexpr size_t kLiteralOffset = 0u;
   uint32_t method_idx = 0u;
-  for (uint32_t base_reg : valid_regs) {
+  for (uint32_t base_reg : kBakerValidRegs) {
     if (base_reg >= 8u) {
       continue;
     }
-    for (uint32_t holder_reg : valid_regs) {
+    for (uint32_t holder_reg : kBakerValidRegs) {
       uint32_t ldr = kLdrInsn | (offset << (6 - 2)) | (base_reg << 3) | ref_reg;
       const std::vector<uint8_t> raw_code = RawCode({kBneWPlus0, ldr});
       ASSERT_EQ(kMethodCodeSize, raw_code.size());
@@ -757,11 +758,11 @@ void Thumb2RelativePatcherTest::TestBakerFieldNarrow(uint32_t offset, uint32_t r
   // All thunks are at the end.
   uint32_t thunk_offset = GetMethodOffset(method_idx) + RoundUp(kMethodCodeSize, kArmAlignment);
   method_idx = 0u;
-  for (uint32_t base_reg : valid_regs) {
+  for (uint32_t base_reg : kBakerValidRegs) {
     if (base_reg >= 8u) {
       continue;
     }
-    for (uint32_t holder_reg : valid_regs) {
+    for (uint32_t holder_reg : kBakerValidRegs) {
       ++method_idx;
       uint32_t bne = BneWWithOffset(GetMethodOffset(method_idx) + kLiteralOffset, thunk_offset);
       uint32_t ldr = kLdrInsn | (offset << (6 - 2)) | (base_reg << 3) | ref_reg;
@@ -1021,10 +1022,6 @@ TEST_F(Thumb2RelativePatcherTest, BakerOffsetThunkInTheMiddleUnreachableFromLast
 }
 
 TEST_F(Thumb2RelativePatcherTest, BakerArray) {
-  uint32_t valid_regs[] = {
-      0,  1,  2,  3,      5,  6,  7,  // R4 is reserved for entrypoint address.
-      8,  9, 10, 11,                  // IP, SP, LR and PC are reserved.
-  };
   auto ldr = [](uint32_t base_reg) {
     uint32_t index_reg = (base_reg == 0u) ? 1u : 0u;
     uint32_t ref_reg = (base_reg == 2) ? 3u : 2u;
@@ -1033,7 +1030,7 @@ TEST_F(Thumb2RelativePatcherTest, BakerArray) {
   constexpr size_t kMethodCodeSize = 8u;
   constexpr size_t kLiteralOffset = 0u;
   uint32_t method_idx = 0u;
-  for (uint32_t base_reg : valid_regs) {
+  for (uint32_t base_reg : kBakerValidRegs) {
     ++method_idx;
     const std::vector<uint8_t> raw_code = RawCode({kBneWPlus0, ldr(base_reg)});
     ASSERT_EQ(kMethodCodeSize, raw_code.size());
@@ -1049,7 +1046,7 @@ TEST_F(Thumb2RelativePatcherTest, BakerArray) {
   // All thunks are at the end.
   uint32_t thunk_offset = GetMethodOffset(method_idx) + RoundUp(kMethodCodeSize, kArmAlignment);
   method_idx = 0u;
-  for (uint32_t base_reg : valid_regs) {
+  for (uint32_t base_reg : kBakerValidRegs) {
     ++method_idx;
     uint32_t bne = BneWWithOffset(GetMethodOffset(method_idx) + kLiteralOffset, thunk_offset);
     const std::vector<uint8_t> expected_code = RawCode({bne, ldr(base_reg)});
@@ -1106,14 +1103,10 @@ TEST_F(Thumb2RelativePatcherTest, BakerArray) {
 }
 
 TEST_F(Thumb2RelativePatcherTest, BakerGcRootWide) {
-  uint32_t valid_regs[] = {
-      0,  1,  2,  3,      5,  6,  7,  // R4 is reserved for entrypoint address.
-      8,  9, 10, 11,                  // IP, SP, LR and PC are reserved.
-  };
   constexpr size_t kMethodCodeSize = 8u;
   constexpr size_t kLiteralOffset = 4u;
   uint32_t method_idx = 0u;
-  for (uint32_t root_reg : valid_regs) {
+  for (uint32_t root_reg : kBakerValidRegs) {
     ++method_idx;
     uint32_t ldr = kLdrWInsn | (/* offset */ 8) | (/* base_reg */ 0 << 16) | (root_reg << 12);
     const std::vector<uint8_t> raw_code = RawCode({ldr, kBneWPlus0});
@@ -1130,7 +1123,7 @@ TEST_F(Thumb2RelativePatcherTest, BakerGcRootWide) {
   // All thunks are at the end.
   uint32_t thunk_offset = GetMethodOffset(method_idx) + RoundUp(kMethodCodeSize, kArmAlignment);
   method_idx = 0u;
-  for (uint32_t root_reg : valid_regs) {
+  for (uint32_t root_reg : kBakerValidRegs) {
     ++method_idx;
     uint32_t bne = BneWWithOffset(GetMethodOffset(method_idx) + kLiteralOffset, thunk_offset);
     uint32_t ldr = kLdrWInsn | (/* offset */ 8) | (/* base_reg */ 0 << 16) | (root_reg << 12);
@@ -1165,14 +1158,10 @@ TEST_F(Thumb2RelativePatcherTest, BakerGcRootWide) {
 }
 
 TEST_F(Thumb2RelativePatcherTest, BakerGcRootNarrow) {
-  uint32_t valid_regs[] = {
-      0,  1,  2,  3,      5,  6,  7,  // R4 is reserved for entrypoint address.
-                                      // Not appplicable to high registers.
-  };
   constexpr size_t kMethodCodeSize = 6u;
   constexpr size_t kLiteralOffset = 2u;
   uint32_t method_idx = 0u;
-  for (uint32_t root_reg : valid_regs) {
+  for (uint32_t root_reg : kBakerValidRegsNarrow) {
     ++method_idx;
     uint32_t ldr = kLdrInsn | (/* offset */ 8 << (6 - 2)) | (/* base_reg */ 0 << 3) | root_reg;
     const std::vector<uint8_t> raw_code = RawCode({ldr, kBneWPlus0});
@@ -1189,7 +1178,7 @@ TEST_F(Thumb2RelativePatcherTest, BakerGcRootNarrow) {
   // All thunks are at the end.
   uint32_t thunk_offset = GetMethodOffset(method_idx) + RoundUp(kMethodCodeSize, kArmAlignment);
   method_idx = 0u;
-  for (uint32_t root_reg : valid_regs) {
+  for (uint32_t root_reg : kBakerValidRegsNarrow) {
     ++method_idx;
     uint32_t bne = BneWWithOffset(GetMethodOffset(method_idx) + kLiteralOffset, thunk_offset);
     uint32_t ldr = kLdrInsn | (/* offset */ 8 << (6 - 2)) | (/* base_reg */ 0 << 3) | root_reg;
