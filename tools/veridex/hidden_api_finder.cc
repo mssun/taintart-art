@@ -31,11 +31,8 @@ namespace art {
 void HiddenApiFinder::CheckMethod(uint32_t method_id,
                                   VeridexResolver* resolver,
                                   MethodReference ref) {
-  // Cheap check that the method is resolved. If it is, we know it's not in
-  // a restricted list.
-  if (resolver->GetMethod(method_id) != nullptr) {
-    return;
-  }
+  // Note: we always query whether a method is in a list, as the app
+  // might define blacklisted APIs (which won't be used at runtime).
   std::string name = HiddenApi::GetApiMethodName(resolver->GetDexFile(), method_id);
   if (hidden_api_.IsInRestrictionList(name)) {
     method_locations_[name].push_back(ref);
@@ -45,11 +42,8 @@ void HiddenApiFinder::CheckMethod(uint32_t method_id,
 void HiddenApiFinder::CheckField(uint32_t field_id,
                                  VeridexResolver* resolver,
                                  MethodReference ref) {
-  // Cheap check that the field is resolved. If it is, we know it's not in
-  // a restricted list.
-  if (resolver->GetField(field_id) != nullptr) {
-    return;
-  }
+  // Note: we always query whether a field is in a list, as the app
+  // might define blacklisted APIs (which won't be used at runtime).
   std::string name = HiddenApi::GetApiFieldName(resolver->GetDexFile(), field_id);
   if (hidden_api_.IsInRestrictionList(name)) {
     field_locations_[name].push_back(ref);

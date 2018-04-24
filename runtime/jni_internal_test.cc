@@ -2517,4 +2517,32 @@ TEST_F(JniInternalTest, JNIEnvExtTableOverride) {
   env_->DeleteGlobalRef(global2);
 }
 
+TEST_F(JniInternalTest, NonAttachedThread) {
+  // This tests leads to warnings and errors in the log.
+  ScopedLogSeverity sls(LogSeverity::FATAL);
+  CheckJniAbortCatcher check_jni_abort_catcher;
+
+  auto callee = [](void* env_ptr) -> void* {
+    JNIEnv* env = reinterpret_cast<JNIEnv*>(env_ptr);
+    env->NewStringUTF("test");
+    return nullptr;
+  };
+
+  bool old_check_jni = vm_->SetCheckJniEnabled(false);
+  vm_->SetCheckJniEnabled(true);
+  {
+    pthread_t pthread;
+    int pthread_create_result = pthread_create(&pthread,
+                                               /* pthread_attr */ nullptr,
+                                               callee,
+                                               reinterpret_cast<void*>(env_));
+    CHECK_EQ(pthread_create_result, 0);
+    int pthread_join_result = pthread_join(pthread, /* thread_return */ nullptr);
+    CHECK_EQ(pthread_join_result, 0);
+  }
+  vm_->SetCheckJniEnabled(old_check_jni);
+
+  check_jni_abort_catcher.Check("is making JNI calls without being attached");
+}
+
 }  // namespace art
