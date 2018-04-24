@@ -3629,18 +3629,22 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
   const ArtDexFileLoader dex_file_loader;
   if (oat_dex_file->source_.IsZipEntry()) {
     ZipEntry* zip_entry = oat_dex_file->source_.GetZipEntry();
-    std::unique_ptr<MemMap> mem_map(
-        zip_entry->ExtractToMemMap(location.c_str(), "classes.dex", &error_msg));
+    std::unique_ptr<MemMap> mem_map;
+    {
+      TimingLogger::ScopedTiming extract("Unzip", timings_);
+      mem_map.reset(zip_entry->ExtractToMemMap(location.c_str(), "classes.dex", &error_msg));
+    }
     if (mem_map == nullptr) {
       LOG(ERROR) << "Failed to extract dex file to mem map for layout: " << error_msg;
       return false;
     }
+    TimingLogger::ScopedTiming extract("Open", timings_);
     dex_file = dex_file_loader.Open(location,
-                               zip_entry->GetCrc32(),
-                               std::move(mem_map),
-                               /* verify */ !compiling_boot_image_,
-                               /* verify_checksum */ true,
-                               &error_msg);
+                                    zip_entry->GetCrc32(),
+                                    std::move(mem_map),
+                                    /* verify */ !compiling_boot_image_,
+                                    /* verify_checksum */ true,
+                                    &error_msg);
   } else if (oat_dex_file->source_.IsRawFile()) {
     File* raw_file = oat_dex_file->source_.GetRawFile();
     int dup_fd = dup(raw_file->Fd());
@@ -3648,6 +3652,7 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
       PLOG(ERROR) << "Failed to dup dex file descriptor (" << raw_file->Fd() << ") at " << location;
       return false;
     }
+    TimingLogger::ScopedTiming extract("Open", timings_);
     dex_file = dex_file_loader.OpenDex(dup_fd, location,
                                        /* verify */ !compiling_boot_image_,
                                        /* verify_checksum */ true,
@@ -3682,21 +3687,31 @@ bool OatWriter::LayoutAndWriteDexFile(OutputStream* out, OatDexFile* oat_dex_fil
   options.update_checksum_ = true;
   DexLayout dex_layout(options, profile_compilation_info_, /*file*/ nullptr, /*header*/ nullptr);
   const uint8_t* dex_src = nullptr;
-  if (dex_layout.ProcessDexFile(location.c_str(), dex_file.get(), 0, &dex_container_, &error_msg)) {
-    oat_dex_file->dex_sections_layout_ = dex_layout.GetSections();
-    // Dex layout can affect the size of the dex file, so we update here what we have set
-    // when adding the dex file as a source.
-    const UnalignedDexFileHeader* header =
-        AsUnalignedDexFileHeader(dex_container_->GetMainSection()->Begin());
-    oat_dex_file->dex_file_size_ = header->file_size_;
-    dex_src = dex_container_->GetMainSection()->Begin();
-  } else {
-    LOG(WARNING) << "Failed to run dex layout, reason:" << error_msg;
-    // Since we failed to convert the dex, just copy the input dex.
-    dex_src = dex_file->Begin();
+  {
+    TimingLogger::ScopedTiming extract("ProcessDexFile", timings_);
+    if (dex_layout.ProcessDexFile(location.c_str(),
+                                  dex_file.get(),
+                                  0,
+                                  &dex_container_,
+                                  &error_msg)) {
+      oat_dex_file->dex_sections_layout_ = dex_layout.GetSections();
+      // Dex layout can affect the size of the dex file, so we update here what we have set
+      // when adding the dex file as a source.
+      const UnalignedDexFileHeader* header =
+          AsUnalignedDexFileHeader(dex_container_->GetMainSection()->Begin());
+      oat_dex_file->dex_file_size_ = header->file_size_;
+      dex_src = dex_container_->GetMainSection()->Begin();
+    } else {
+      LOG(WARNING) << "Failed to run dex layout, reason:" << error_msg;
+      // Since we failed to convert the dex, just copy the input dex.
+      dex_src = dex_file->Begin();
+    }
   }
-  if (!WriteDexFile(out, oat_dex_file, dex_src, /* update_input_vdex */ false)) {
-    return false;
+  {
+    TimingLogger::ScopedTiming extract("WriteDexFile", timings_);
+    if (!WriteDexFile(out, oat_dex_file, dex_src, /* update_input_vdex */ false)) {
+      return false;
+    }
   }
   if (dex_container_ != nullptr) {
     // Clear the main section in case we write more data into the container.
