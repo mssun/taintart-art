@@ -148,7 +148,9 @@ std::string RegisterLine::Dump(MethodVerifier* verifier) const {
     result += StringPrintf("{%d},", monitor);
   }
   for (auto& pairs : reg_to_lock_depths_) {
-    result += StringPrintf("<%d -> %x>", pairs.first, pairs.second);
+    result += StringPrintf("<%d -> %" PRIx64 ">",
+                           pairs.first,
+                           static_cast<uint64_t>(pairs.second));
   }
   return result;
 }
@@ -337,7 +339,7 @@ void RegisterLine::PushMonitor(MethodVerifier* verifier, uint32_t reg_idx, int32
   if (!reg_type.IsReferenceTypes()) {
     verifier->Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "monitor-enter on non-object ("
         << reg_type << ")";
-  } else if (monitors_.size() >= 32) {
+  } else if (monitors_.size() >= kMaxMonitorStackDepth) {
     verifier->Fail(VERIFY_ERROR_LOCKING);
     if (kDumpLockFailures) {
       VLOG(verifier) << "monitor-enter stack overflow while verifying "

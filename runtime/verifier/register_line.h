@@ -17,6 +17,7 @@
 #ifndef ART_RUNTIME_VERIFIER_REGISTER_LINE_H_
 #define ART_RUNTIME_VERIFIER_REGISTER_LINE_H_
 
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -62,8 +63,14 @@ enum class LockOp {
 // stack of entered monitors (identified by code unit offset).
 class RegisterLine {
  public:
+  using RegisterStackMask = uint32_t;
   // A map from register to a bit vector of indices into the monitors_ stack.
-  using RegToLockDepthsMap = ScopedArenaSafeMap<uint32_t, uint32_t>;
+  using RegToLockDepthsMap = ScopedArenaSafeMap<uint32_t, RegisterStackMask>;
+
+  // Maximum number of nested monitors to track before giving up and
+  // taking the slow path.
+  static constexpr size_t kMaxMonitorStackDepth =
+      std::numeric_limits<RegisterStackMask>::digits;
 
   // Create a register line of num_regs registers.
   static RegisterLine* Create(size_t num_regs, MethodVerifier* verifier);
@@ -391,7 +398,7 @@ class RegisterLine {
   }
 
   bool SetRegToLockDepth(size_t reg, size_t depth) {
-    CHECK_LT(depth, 32u);
+    CHECK_LT(depth, kMaxMonitorStackDepth);
     if (IsSetLockDepth(reg, depth)) {
       return false;  // Register already holds lock so locking twice is erroneous.
     }
