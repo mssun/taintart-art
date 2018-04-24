@@ -24,6 +24,7 @@
 #include <string>
 
 #include "android-base/stringprintf.h"
+#include "macros.h"
 
 namespace art {
 
@@ -75,7 +76,7 @@ class ScopedTraceNoStart {
 };
 
 #define SCOPED_TRACE \
-  ::art::ScopedTraceNoStart trace ## __LINE__; \
+  ::art::ScopedTraceNoStart APPEND_TOKENS_AFTER_EVAL(trace, __LINE__) ; \
   (ATRACE_ENABLED()) && ::art::ScopedTraceNoStart::ScopedTraceMessageHelper().stream()
 
 }  // namespace art
