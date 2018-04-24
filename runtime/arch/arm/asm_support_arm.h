@@ -32,8 +32,8 @@
 #define BAKER_MARK_INTROSPECTION_FIELD_LDR_NARROW_ENTRYPOINT_OFFSET 0x20
 // The offsets from art_quick_read_barrier_mark_introspection to the GC root entrypoints,
 // i.e. art_quick_read_barrier_mark_introspection_gc_roots_{wide,narrow}.
-#define BAKER_MARK_INTROSPECTION_GC_ROOT_LDR_WIDE_ENTRYPOINT_OFFSET 0x80
-#define BAKER_MARK_INTROSPECTION_GC_ROOT_LDR_NARROW_ENTRYPOINT_OFFSET 0xc0
+#define BAKER_MARK_INTROSPECTION_GC_ROOT_LDR_WIDE_ENTRYPOINT_OFFSET 0xc0
+#define BAKER_MARK_INTROSPECTION_GC_ROOT_LDR_NARROW_ENTRYPOINT_OFFSET 0xe0
 // The offset from art_quick_read_barrier_mark_introspection to the array switch cases,
 // i.e. art_quick_read_barrier_mark_introspection_arrays.
 #define BAKER_MARK_INTROSPECTION_ARRAY_SWITCH_OFFSET 0x100
