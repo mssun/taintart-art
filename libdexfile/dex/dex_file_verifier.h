@@ -87,13 +87,8 @@ class DexFileVerifier {
                                 uint32_t code_offset,
                                 ClassDataItemIterator* direct_it,
                                 bool expect_direct);
-  bool CheckOrderAndGetClassDef(bool is_field,
-                                const char* type_descr,
-                                uint32_t curr_index,
-                                uint32_t prev_index,
-                                bool* have_class,
-                                dex::TypeIndex* class_type_index,
-                                const DexFile::ClassDef** class_def);
+  ALWAYS_INLINE
+  bool CheckOrder(const char* type_descr, uint32_t curr_index, uint32_t prev_index);
   bool CheckStaticFieldTypes(const DexFile::ClassDef* class_def);
 
   bool CheckPadding(size_t offset, uint32_t aligned_offset, DexFile::MapItemType type);

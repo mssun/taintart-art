@@ -994,30 +994,15 @@ bool DexFileVerifier::FindClassIndexAndDef(uint32_t index,
   return false;
 }
 
-bool DexFileVerifier::CheckOrderAndGetClassDef(bool is_field,
-                                               const char* type_descr,
-                                               uint32_t curr_index,
-                                               uint32_t prev_index,
-                                               bool* have_class,
-                                               dex::TypeIndex* class_type_index,
-                                               const DexFile::ClassDef** class_def) {
-  if (curr_index < prev_index) {
+bool DexFileVerifier::CheckOrder(const char* type_descr,
+                                 uint32_t curr_index,
+                                 uint32_t prev_index) {
+  if (UNLIKELY(curr_index < prev_index)) {
     ErrorStringPrintf("out-of-order %s indexes %" PRIu32 " and %" PRIu32,
                       type_descr,
                       prev_index,
                       curr_index);
     return false;
-  }
-
-  if (!*have_class) {
-    *have_class = FindClassIndexAndDef(curr_index, is_field, class_type_index, class_def);
-    if (!*have_class) {
-      // Should have really found one.
-      ErrorStringPrintf("could not find declaring class for %s index %" PRIu32,
-                        type_descr,
-                        curr_index);
-      return false;
-    }
   }
   return true;
 }
@@ -1123,20 +1108,29 @@ bool DexFileVerifier::CheckIntraClassDataItemFields(ClassDataItemIterator* it,
                                                     dex::TypeIndex* class_type_index,
                                                     const DexFile::ClassDef** class_def) {
   DCHECK(it != nullptr);
+  constexpr const char* kTypeDescr = kStatic ? "static field" : "instance field";
+
   // These calls use the raw access flags to check whether the whole dex field is valid.
+
+  if (!*have_class && (kStatic ? it->HasNextStaticField() : it->HasNextInstanceField())) {
+    *have_class = FindClassIndexAndDef(it->GetMemberIndex(), true, class_type_index, class_def);
+    if (!*have_class) {
+      // Should have really found one.
+      ErrorStringPrintf("could not find declaring class for %s index %" PRIu32,
+                        kTypeDescr,
+                        it->GetMemberIndex());
+      return false;
+    }
+  }
+  DCHECK(*class_def != nullptr ||
+         !(kStatic ? it->HasNextStaticField() : it->HasNextInstanceField()));
+
   uint32_t prev_index = 0;
   for (; kStatic ? it->HasNextStaticField() : it->HasNextInstanceField(); it->Next()) {
     uint32_t curr_index = it->GetMemberIndex();
-    if (!CheckOrderAndGetClassDef(true,
-                                  kStatic ? "static field" : "instance field",
-                                  curr_index,
-                                  prev_index,
-                                  have_class,
-                                  class_type_index,
-                                  class_def)) {
+    if (!CheckOrder(kTypeDescr, curr_index, prev_index)) {
       return false;
     }
-    DCHECK(class_def != nullptr);
     if (!CheckClassDataItemField(curr_index,
                                  it->GetRawMemberAccessFlags(),
                                  (*class_def)->access_flags_,
@@ -1158,19 +1152,28 @@ bool DexFileVerifier::CheckIntraClassDataItemMethods(
     bool* have_class,
     dex::TypeIndex* class_type_index,
     const DexFile::ClassDef** class_def) {
+  DCHECK(it != nullptr);
+  constexpr const char* kTypeDescr = kDirect ? "direct method" : "virtual method";
+
+  if (!*have_class && (kDirect ? it->HasNextDirectMethod() : it->HasNextVirtualMethod())) {
+    *have_class = FindClassIndexAndDef(it->GetMemberIndex(), false, class_type_index, class_def);
+    if (!*have_class) {
+      // Should have really found one.
+      ErrorStringPrintf("could not find declaring class for %s index %" PRIu32,
+                        kTypeDescr,
+                        it->GetMemberIndex());
+      return false;
+    }
+  }
+  DCHECK(*class_def != nullptr ||
+         !(kDirect ? it->HasNextDirectMethod() : it->HasNextVirtualMethod()));
+
   uint32_t prev_index = 0;
   for (; kDirect ? it->HasNextDirectMethod() : it->HasNextVirtualMethod(); it->Next()) {
     uint32_t curr_index = it->GetMemberIndex();
-    if (!CheckOrderAndGetClassDef(false,
-                                  kDirect ? "direct method" : "virtual method",
-                                  curr_index,
-                                  prev_index,
-                                  have_class,
-                                  class_type_index,
-                                  class_def)) {
+    if (!CheckOrder(kTypeDescr, curr_index, prev_index)) {
       return false;
     }
-    DCHECK(class_def != nullptr);
     if (!CheckClassDataItemMethod(curr_index,
                                   it->GetRawMemberAccessFlags(),
                                   (*class_def)->access_flags_,
