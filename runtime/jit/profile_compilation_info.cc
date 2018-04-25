@@ -1351,7 +1351,7 @@ ProfileCompilationInfo::ProfileLoadStatus ProfileCompilationInfo::LoadInternal(
     if (!filter_fn(profile_line_headers[k].dex_location, profile_line_headers[k].checksum)) {
       // We have to skip the line. Advanced the current pointer of the buffer.
       size_t profile_line_size =
-           profile_line_headers[k].class_set_size +
+           profile_line_headers[k].class_set_size * sizeof(uint16_t) +
            profile_line_headers[k].method_region_size_bytes +
            DexFileData::ComputeBitmapStorage(profile_line_headers[k].num_method_ids);
       uncompressed_data.Advance(profile_line_size);
