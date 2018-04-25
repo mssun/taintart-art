@@ -841,7 +841,8 @@ class ProfMan FINAL {
 
     bool found_invoke = false;
     for (const DexInstructionPcPair& inst : CodeItemInstructionAccessor(*dex_file, code_item)) {
-      if (inst->Opcode() == Instruction::INVOKE_VIRTUAL) {
+      if (inst->Opcode() == Instruction::INVOKE_VIRTUAL ||
+          inst->Opcode() == Instruction::INVOKE_VIRTUAL_RANGE) {
         if (found_invoke) {
           LOG(ERROR) << "Multiple invoke INVOKE_VIRTUAL found: "
                      << dex_file->PrettyMethod(method_index);
@@ -1314,4 +1315,3 @@ static int profman(int argc, char** argv) {
 int main(int argc, char **argv) {
   return art::profman(argc, argv);
 }
-
