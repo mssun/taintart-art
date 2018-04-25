@@ -1300,7 +1300,19 @@ bool DexFileVerifier::CheckIntraCodeItem() {
     return false;
   }
 
-  std::unique_ptr<uint32_t[]> handler_offsets(new uint32_t[handlers_size]);
+  // Avoid an expensive allocation, if possible.
+  std::unique_ptr<uint32_t[]> handler_offsets_uptr;
+  uint32_t* handler_offsets;
+  constexpr size_t kAllocaMaxSize = 1024;
+  if (handlers_size < kAllocaMaxSize/sizeof(uint32_t)) {
+    handler_offsets =
+        AlignDown(reinterpret_cast<uint32_t*>(alloca((handlers_size + 1) * sizeof(uint32_t))),
+                  alignof(uint32_t[]));
+  } else {
+    handler_offsets_uptr.reset(new uint32_t[handlers_size]);
+    handler_offsets = handler_offsets_uptr.get();
+  }
+
   if (!CheckAndGetHandlerOffsets(code_item, &handler_offsets[0], handlers_size)) {
     return false;
   }
