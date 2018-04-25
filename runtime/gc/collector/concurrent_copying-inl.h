@@ -146,8 +146,8 @@ inline mirror::Object* ConcurrentCopying::Mark(mirror::Object* from_ref,
         return MarkUnevacFromSpaceRegion(from_ref, region_space_bitmap_);
       default:
         // The reference is in an unused region.
-        region_space_->DumpNonFreeRegions(LOG_STREAM(FATAL_WITHOUT_ABORT));
         LOG(FATAL_WITHOUT_ABORT) << DumpHeapReference(holder, offset, from_ref);
+        region_space_->DumpNonFreeRegions(LOG_STREAM(FATAL_WITHOUT_ABORT));
         heap_->GetVerification()->LogHeapCorruption(holder, offset, from_ref, /* fatal */ true);
         UNREACHABLE();
     }
