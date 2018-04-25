@@ -85,7 +85,7 @@ class DexFileVerifier {
                                 uint32_t class_access_flags,
                                 dex::TypeIndex class_type_index,
                                 uint32_t code_offset,
-                                std::unordered_set<uint32_t>* direct_method_indexes,
+                                ClassDataItemIterator* direct_it,
                                 bool expect_direct);
   bool CheckOrderAndGetClassDef(bool is_field,
                                 const char* type_descr,
@@ -113,7 +113,7 @@ class DexFileVerifier {
   // method, if necessary (and return it), or use the given values.
   template <bool kDirect>
   bool CheckIntraClassDataItemMethods(ClassDataItemIterator* it,
-                                      std::unordered_set<uint32_t>* direct_method_indexes,
+                                      ClassDataItemIterator* direct_it,
                                       bool* have_class,
                                       dex::TypeIndex* class_type_index,
                                       const DexFile::ClassDef** class_def);
