@@ -45,9 +45,18 @@ class PreciseHiddenApiFinder {
   void Dump(std::ostream& os, HiddenApiStats* stats);
 
  private:
+  // Run over all methods of all dex files, and call `action` on each.
+  void RunInternal(
+      const std::vector<std::unique_ptr<VeridexResolver>>& resolvers,
+      const std::function<void(VeridexResolver*, const ClassDataItemIterator&)>& action);
+
+  // Add uses found in method `ref`.
+  void AddUsesAt(const std::vector<ReflectAccessInfo>& accesses, MethodReference ref);
+
   const HiddenApi& hidden_api_;
-  std::map<MethodReference, std::vector<std::pair<RegisterValue, RegisterValue>>> field_uses_;
-  std::map<MethodReference, std::vector<std::pair<RegisterValue, RegisterValue>>> method_uses_;
+
+  std::map<MethodReference, std::vector<ReflectAccessInfo>> concrete_uses_;
+  std::map<MethodReference, std::vector<ReflectAccessInfo>> abstract_uses_;
 };
 
 }  // namespace art
