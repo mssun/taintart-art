@@ -2610,6 +2610,7 @@ art_quick_read_barrier_mark_introspection_gc_roots\label_suffix:
      *   art_quick_read_barrier_mark_introspection_arrays:            // @0x100
      *     Exactly 128 bytes for array load switch cases (16x2 instructions).
      */
+#if defined(USE_READ_BARRIER) && defined(USE_BAKER_READ_BARRIER)
     .balign 512
 ENTRY art_quick_read_barrier_mark_introspection
     // At this point, IP contains the reference, rMR is clobbered by the thunk
@@ -2676,6 +2677,11 @@ art_quick_read_barrier_mark_introspection_narrow:
 art_quick_read_barrier_mark_introspection_arrays:
     BRBMI_FOR_REGISTERS BRBMI_ARRAY_LOAD, BRBMI_BKPT_FILL_8B
 END art_quick_read_barrier_mark_introspection
+#else  // defined(USE_READ_BARRIER) && defined(USE_BAKER_READ_BARRIER)
+ENTRY art_quick_read_barrier_mark_introspection
+    bkpt                              // Unreachable.
+END art_quick_read_barrier_mark_introspection
+#endif  // defined(USE_READ_BARRIER) && defined(USE_BAKER_READ_BARRIER)
 
 .extern artInvokePolymorphic
 ENTRY art_quick_invoke_polymorphic
