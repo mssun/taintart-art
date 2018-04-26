@@ -1418,7 +1418,8 @@ class ImageSpaceLoader {
 
     CHECK(image_header.GetOatDataBegin() != nullptr);
 
-    std::unique_ptr<OatFile> oat_file(OatFile::Open(oat_filename,
+    std::unique_ptr<OatFile> oat_file(OatFile::Open(/* zip_fd */ -1,
+                                                    oat_filename,
                                                     oat_filename,
                                                     image_header.GetOatDataBegin(),
                                                     image_header.GetOatFileBegin(),
