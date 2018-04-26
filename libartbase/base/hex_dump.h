@@ -17,7 +17,7 @@
 #ifndef ART_LIBARTBASE_BASE_HEX_DUMP_H_
 #define ART_LIBARTBASE_BASE_HEX_DUMP_H_
 
-#include "base/macros.h"
+#include "macros.h"
 
 #include <ostream>
 

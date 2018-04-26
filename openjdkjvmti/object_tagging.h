@@ -34,8 +34,8 @@
 
 #include <unordered_map>
 
+#include "base/globals.h"
 #include "base/mutex.h"
-#include "globals.h"
 #include "jvmti.h"
 #include "jvmti_weak_table.h"
 #include "mirror/object.h"

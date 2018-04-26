@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "base/unix_file/fd_file.h"
+#include "fd_file.h"
 
 #include <errno.h>
 #include <sys/stat.h>
@@ -30,8 +30,8 @@
 #include <sys/sendfile.h>
 #else
 #include <algorithm>
-#include "base/stl_util.h"
 #include "base/globals.h"
+#include "base/stl_util.h"
 #endif
 
 namespace unix_file {

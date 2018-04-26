@@ -22,7 +22,7 @@
 
 #include <string>
 
-#include "base/macros.h"
+#include "macros.h"
 
 namespace art {
 

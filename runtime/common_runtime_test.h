@@ -25,12 +25,12 @@
 #include <android-base/logging.h>
 
 #include "arch/instruction_set.h"
+#include "base/globals.h"
 #include "base/mutex.h"
 #include "base/os.h"
 #include "base/unix_file/fd_file.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/compact_dex_level.h"
-#include "globals.h"
 // TODO: Add inl file and avoid including inl.
 #include "obj_ptr-inl.h"
 #include "scoped_thread_state_change-inl.h"

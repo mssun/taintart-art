@@ -16,7 +16,7 @@
 
 #include "managed_register_x86.h"
 
-#include "globals.h"
+#include "base/globals.h"
 #include "gtest/gtest.h"
 
 namespace art {

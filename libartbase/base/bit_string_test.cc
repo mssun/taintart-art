@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "base/bit_string.h"
+#include "bit_string.h"
 
 #include "gtest/gtest.h"
 #include "android-base/logging.h"

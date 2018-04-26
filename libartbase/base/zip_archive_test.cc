@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "base/zip_archive.h"
+#include "zip_archive.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -22,9 +22,9 @@
 #include <zlib.h>
 #include <memory>
 
-#include "base/os.h"
-#include "base/unix_file/fd_file.h"
 #include "common_runtime_test.h"
+#include "os.h"
+#include "unix_file/fd_file.h"
 
 namespace art {
 

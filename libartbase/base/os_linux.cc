@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "base/os.h"
+#include "os.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -25,7 +25,7 @@
 
 #include <android-base/logging.h>
 
-#include "base/unix_file/fd_file.h"
+#include "unix_file/fd_file.h"
 
 namespace art {
 

@@ -17,8 +17,8 @@
 #ifndef ART_LIBARTBASE_BASE_ARENA_BIT_VECTOR_H_
 #define ART_LIBARTBASE_BASE_ARENA_BIT_VECTOR_H_
 
-#include "base/arena_object.h"
-#include "base/bit_vector.h"
+#include "arena_object.h"
+#include "bit_vector.h"
 
 namespace art {
 

@@ -25,7 +25,7 @@
 
 #include "arch/arm/registers_arm.h"
 #include "base/casts.h"
-#include "globals.h"
+#include "base/globals.h"
 
 namespace art {
 namespace arm {

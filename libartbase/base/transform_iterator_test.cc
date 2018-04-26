@@ -21,8 +21,7 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-
-#include "base/transform_iterator.h"
+#include "transform_iterator.h"
 
 namespace art {
 

@@ -27,10 +27,10 @@
 #include <vector>
 
 #include "base/atomic.h"
+#include "base/globals.h"
 #include "base/macros.h"
 #include "base/os.h"
 #include "base/safe_map.h"
-#include "globals.h"
 #include "instrumentation.h"
 
 namespace unix_file {

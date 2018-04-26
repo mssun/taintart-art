@@ -25,10 +25,10 @@
 #include <utility>
 
 #include "arena_allocator.h"
-#include "base/dchecked_vector.h"
-#include "base/hash_map.h"
-#include "base/hash_set.h"
-#include "base/safe_map.h"
+#include "dchecked_vector.h"
+#include "hash_map.h"
+#include "hash_set.h"
+#include "safe_map.h"
 
 namespace art {
 

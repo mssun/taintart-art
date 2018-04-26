@@ -20,11 +20,11 @@
 
 #include "art_method.h"
 #include "base/enums.h"
+#include "base/globals.h"
 #include "base/hex_dump.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/macros.h"
 #include "base/safe_copy.h"
-#include "globals.h"
 #include "thread-current-inl.h"
 
 #if defined(__APPLE__)

@@ -22,8 +22,8 @@
 #include <android-base/logging.h>
 
 #include "arch/mips/registers_mips.h"
+#include "base/globals.h"
 #include "base/macros.h"
-#include "globals.h"
 
 namespace art {
 namespace mips {

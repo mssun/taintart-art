@@ -17,8 +17,8 @@
 #ifndef ART_LIBARTBASE_BASE_TRACKING_SAFE_MAP_H_
 #define ART_LIBARTBASE_BASE_TRACKING_SAFE_MAP_H_
 
-#include "base/allocator.h"
-#include "base/safe_map.h"
+#include "allocator.h"
+#include "safe_map.h"
 
 namespace art {
 

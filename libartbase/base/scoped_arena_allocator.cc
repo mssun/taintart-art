@@ -17,7 +17,7 @@
 #include "scoped_arena_allocator.h"
 
 #include "arena_allocator-inl.h"
-#include "base/memory_tool.h"
+#include "memory_tool.h"
 
 namespace art {
 

@@ -23,6 +23,7 @@
 #include <android-base/logging.h>
 
 #include "base/casts.h"
+#include "base/globals.h"
 #include "base/leb128.h"
 #include "base/utils.h"
 #include "compiled_method.h"
@@ -31,7 +32,6 @@
 #include "driver/compiler_options.h"
 #include "elf.h"
 #include "elf_utils.h"
-#include "globals.h"
 #include "linker/buffered_output_stream.h"
 #include "linker/elf_builder.h"
 #include "linker/file_output_stream.h"

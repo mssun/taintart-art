@@ -18,8 +18,8 @@
 
 #if defined(DEFINE_INCLUDE_DEPENDENCIES)
 #include <atomic>            // std::memory_order_relaxed
+#include "base/globals.h"    // art::kObjectAlignment
 #include "dex/modifiers.h"
-#include "globals.h"         // art::kObjectAlignment
 #endif
 
 DEFINE_EXPR(STD_MEMORY_ORDER_RELAXED, int32_t, std::memory_order_relaxed)

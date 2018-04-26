@@ -19,9 +19,9 @@
 #include <type_traits>
 
 #include "android-base/logging.h"
-#include "base/bit_utils.h"
-#include "base/macros.h"
+#include "bit_utils.h"
 #include "gtest/gtest.h"
+#include "macros.h"
 #include "runtime_debug.h"
 
 namespace art {

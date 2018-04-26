@@ -23,8 +23,8 @@
 #include <set>
 #include <vector>
 
+#include "base/globals.h"
 #include "base/mutex.h"
-#include "globals.h"
 
 namespace art {
 

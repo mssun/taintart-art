@@ -20,7 +20,7 @@
 #include "base/atomic.h"
 #include "base/casts.h"
 #include "base/enums.h"
-#include "globals.h"
+#include "base/globals.h"
 #include "obj_ptr.h"
 #include "object_reference.h"
 #include "offsets.h"

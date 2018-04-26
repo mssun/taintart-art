@@ -21,10 +21,10 @@
 #include <string>
 #include <vector>
 
+#include "base/globals.h"
 #include "base/macros.h"
 #include "base/utils.h"
 #include "compiler_filter.h"
-#include "globals.h"
 #include "optimizing/register_allocator.h"
 
 namespace art {

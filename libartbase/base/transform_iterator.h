@@ -20,7 +20,7 @@
 #include <iterator>
 #include <type_traits>
 
-#include "base/iteration_range.h"
+#include "iteration_range.h"
 
 namespace art {
 
