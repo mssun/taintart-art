@@ -97,7 +97,8 @@ class OatFileBase : public OatFile {
   virtual ~OatFileBase() {}
 
   template <typename kOatFileBaseSubType>
-  static OatFileBase* OpenOatFile(const std::string& vdex_filename,
+  static OatFileBase* OpenOatFile(int zip_fd,
+                                  const std::string& vdex_filename,
                                   const std::string& elf_filename,
                                   const std::string& location,
                                   uint8_t* requested_base,
@@ -109,7 +110,8 @@ class OatFileBase : public OatFile {
                                   std::string* error_msg);
 
   template <typename kOatFileBaseSubType>
-  static OatFileBase* OpenOatFile(int vdex_fd,
+  static OatFileBase* OpenOatFile(int zip_fd,
+                                  int vdex_fd,
                                   int oat_fd,
                                   const std::string& vdex_filename,
                                   const std::string& oat_filename,
@@ -160,7 +162,7 @@ class OatFileBase : public OatFile {
 
   virtual void PreSetup(const std::string& elf_filename) = 0;
 
-  bool Setup(const char* abs_dex_location, std::string* error_msg);
+  bool Setup(int zip_fd, const char* abs_dex_location, std::string* error_msg);
 
   // Setters exposed for ElfOatFile.
 
@@ -181,7 +183,8 @@ class OatFileBase : public OatFile {
 };
 
 template <typename kOatFileBaseSubType>
-OatFileBase* OatFileBase::OpenOatFile(const std::string& vdex_filename,
+OatFileBase* OatFileBase::OpenOatFile(int zip_fd,
+                                      const std::string& vdex_filename,
                                       const std::string& elf_filename,
                                       const std::string& location,
                                       uint8_t* requested_base,
@@ -214,7 +217,7 @@ OatFileBase* OatFileBase::OpenOatFile(const std::string& vdex_filename,
 
   ret->PreSetup(elf_filename);
 
-  if (!ret->Setup(abs_dex_location, error_msg)) {
+  if (!ret->Setup(zip_fd, abs_dex_location, error_msg)) {
     return nullptr;
   }
 
@@ -222,7 +225,8 @@ OatFileBase* OatFileBase::OpenOatFile(const std::string& vdex_filename,
 }
 
 template <typename kOatFileBaseSubType>
-OatFileBase* OatFileBase::OpenOatFile(int vdex_fd,
+OatFileBase* OatFileBase::OpenOatFile(int zip_fd,
+                                      int vdex_fd,
                                       int oat_fd,
                                       const std::string& vdex_location,
                                       const std::string& oat_location,
@@ -254,7 +258,7 @@ OatFileBase* OatFileBase::OpenOatFile(int vdex_fd,
 
   ret->PreSetup(oat_location);
 
-  if (!ret->Setup(abs_dex_location, error_msg)) {
+  if (!ret->Setup(zip_fd, abs_dex_location, error_msg)) {
     return nullptr;
   }
 
@@ -485,7 +489,7 @@ static void DCheckIndexToBssMapping(OatFile* oat_file,
   }
 }
 
-bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
+bool OatFileBase::Setup(int zip_fd, const char* abs_dex_location, std::string* error_msg) {
   if (!GetOatHeader().IsValid()) {
     std::string cause = GetOatHeader().GetValidationErrorMessage();
     *error_msg = StringPrintf("Invalid oat header for '%s': %s",
@@ -641,12 +645,23 @@ bool OatFileBase::Setup(const char* abs_dex_location, std::string* error_msg) {
         uncompressed_dex_files_.reset(new std::vector<std::unique_ptr<const DexFile>>());
         // No dex files, load it from location.
         const ArtDexFileLoader dex_file_loader;
-        if (!dex_file_loader.Open(dex_file_location.c_str(),
-                                  dex_file_location,
-                                  /* verify */ false,
-                                  /* verify_checksum */ false,
-                                  error_msg,
-                                  uncompressed_dex_files_.get())) {
+        bool loaded = false;
+        if (zip_fd != -1) {
+          loaded = dex_file_loader.OpenZip(zip_fd,
+                                           dex_file_location,
+                                           /* verify */ false,
+                                           /* verify_checksum */ false,
+                                           error_msg,
+                                           uncompressed_dex_files_.get());
+        } else {
+          loaded = dex_file_loader.Open(dex_file_location.c_str(),
+                                        dex_file_location,
+                                        /* verify */ false,
+                                        /* verify_checksum */ false,
+                                        error_msg,
+                                        uncompressed_dex_files_.get());
+        }
+        if (!loaded) {
           if (Runtime::Current() == nullptr) {
             // If there's no runtime, we're running oatdump, so return
             // a half constructed oat file that oatdump knows how to deal with.
@@ -1144,7 +1159,8 @@ class ElfOatFile FINAL : public OatFileBase {
  public:
   ElfOatFile(const std::string& filename, bool executable) : OatFileBase(filename, executable) {}
 
-  static ElfOatFile* OpenElfFile(File* file,
+  static ElfOatFile* OpenElfFile(int zip_fd,
+                                 File* file,
                                  const std::string& location,
                                  uint8_t* requested_base,
                                  uint8_t* oat_file_begin,  // Override base if not null
@@ -1154,7 +1170,8 @@ class ElfOatFile FINAL : public OatFileBase {
                                  const char* abs_dex_location,
                                  std::string* error_msg);
 
-  bool InitializeFromElfFile(ElfFile* elf_file,
+  bool InitializeFromElfFile(int zip_fd,
+                             ElfFile* elf_file,
                              VdexFile* vdex_file,
                              const char* abs_dex_location,
                              std::string* error_msg);
@@ -1204,7 +1221,8 @@ class ElfOatFile FINAL : public OatFileBase {
   DISALLOW_COPY_AND_ASSIGN(ElfOatFile);
 };
 
-ElfOatFile* ElfOatFile::OpenElfFile(File* file,
+ElfOatFile* ElfOatFile::OpenElfFile(int zip_fd,
+                                    File* file,
                                     const std::string& location,
                                     uint8_t* requested_base,
                                     uint8_t* oat_file_begin,  // Override base if not null
@@ -1231,14 +1249,15 @@ ElfOatFile* ElfOatFile::OpenElfFile(File* file,
     return nullptr;
   }
 
-  if (!oat_file->Setup(abs_dex_location, error_msg)) {
+  if (!oat_file->Setup(zip_fd, abs_dex_location, error_msg)) {
     return nullptr;
   }
 
   return oat_file.release();
 }
 
-bool ElfOatFile::InitializeFromElfFile(ElfFile* elf_file,
+bool ElfOatFile::InitializeFromElfFile(int zip_fd,
+                                       ElfFile* elf_file,
                                        VdexFile* vdex_file,
                                        const char* abs_dex_location,
                                        std::string* error_msg) {
@@ -1255,7 +1274,7 @@ bool ElfOatFile::InitializeFromElfFile(ElfFile* elf_file,
   SetBegin(elf_file->Begin() + offset);
   SetEnd(elf_file->Begin() + size + offset);
   // Ignore the optional .bss section when opening non-executable.
-  return Setup(abs_dex_location, error_msg);
+  return Setup(zip_fd, abs_dex_location, error_msg);
 }
 
 bool ElfOatFile::Load(const std::string& elf_filename,
@@ -1356,18 +1375,20 @@ static void CheckLocation(const std::string& location) {
   CHECK(!location.empty());
 }
 
-OatFile* OatFile::OpenWithElfFile(ElfFile* elf_file,
+OatFile* OatFile::OpenWithElfFile(int zip_fd,
+                                  ElfFile* elf_file,
                                   VdexFile* vdex_file,
                                   const std::string& location,
                                   const char* abs_dex_location,
                                   std::string* error_msg) {
   std::unique_ptr<ElfOatFile> oat_file(new ElfOatFile(location, false /* executable */));
-  return oat_file->InitializeFromElfFile(elf_file, vdex_file, abs_dex_location, error_msg)
+  return oat_file->InitializeFromElfFile(zip_fd, elf_file, vdex_file, abs_dex_location, error_msg)
       ? oat_file.release()
       : nullptr;
 }
 
-OatFile* OatFile::Open(const std::string& oat_filename,
+OatFile* OatFile::Open(int zip_fd,
+                       const std::string& oat_filename,
                        const std::string& oat_location,
                        uint8_t* requested_base,
                        uint8_t* oat_file_begin,
@@ -1392,7 +1413,8 @@ OatFile* OatFile::Open(const std::string& oat_filename,
 
   // Try dlopen first, as it is required for native debuggability. This will fail fast if dlopen is
   // disabled.
-  OatFile* with_dlopen = OatFileBase::OpenOatFile<DlOpenOatFile>(vdex_filename,
+  OatFile* with_dlopen = OatFileBase::OpenOatFile<DlOpenOatFile>(zip_fd,
+                                                                 vdex_filename,
                                                                  oat_filename,
                                                                  oat_location,
                                                                  requested_base,
@@ -1421,7 +1443,8 @@ OatFile* OatFile::Open(const std::string& oat_filename,
   //
   // Another independent reason is the absolute placement of boot.oat. dlopen on the host usually
   // does honor the virtual address encoded in the ELF file only for ET_EXEC files, not ET_DYN.
-  OatFile* with_internal = OatFileBase::OpenOatFile<ElfOatFile>(vdex_filename,
+  OatFile* with_internal = OatFileBase::OpenOatFile<ElfOatFile>(zip_fd,
+                                                                vdex_filename,
                                                                 oat_filename,
                                                                 oat_location,
                                                                 requested_base,
@@ -1434,7 +1457,8 @@ OatFile* OatFile::Open(const std::string& oat_filename,
   return with_internal;
 }
 
-OatFile* OatFile::Open(int vdex_fd,
+OatFile* OatFile::Open(int zip_fd,
+                       int vdex_fd,
                        int oat_fd,
                        const std::string& oat_location,
                        uint8_t* requested_base,
@@ -1447,7 +1471,8 @@ OatFile* OatFile::Open(int vdex_fd,
 
   std::string vdex_location = GetVdexFilename(oat_location);
 
-  OatFile* with_internal = OatFileBase::OpenOatFile<ElfOatFile>(vdex_fd,
+  OatFile* with_internal = OatFileBase::OpenOatFile<ElfOatFile>(zip_fd,
+                                                                vdex_fd,
                                                                 oat_fd,
                                                                 vdex_location,
                                                                 oat_location,
@@ -1461,12 +1486,14 @@ OatFile* OatFile::Open(int vdex_fd,
   return with_internal;
 }
 
-OatFile* OatFile::OpenWritable(File* file,
+OatFile* OatFile::OpenWritable(int zip_fd,
+                               File* file,
                                const std::string& location,
                                const char* abs_dex_location,
                                std::string* error_msg) {
   CheckLocation(location);
-  return ElfOatFile::OpenElfFile(file,
+  return ElfOatFile::OpenElfFile(zip_fd,
+                                 file,
                                  location,
                                  nullptr,
                                  nullptr,
@@ -1477,12 +1504,14 @@ OatFile* OatFile::OpenWritable(File* file,
                                  error_msg);
 }
 
-OatFile* OatFile::OpenReadable(File* file,
+OatFile* OatFile::OpenReadable(int zip_fd,
+                               File* file,
                                const std::string& location,
                                const char* abs_dex_location,
                                std::string* error_msg) {
   CheckLocation(location);
-  return ElfOatFile::OpenElfFile(file,
+  return ElfOatFile::OpenElfFile(zip_fd,
+                                 file,
                                  location,
                                  nullptr,
                                  nullptr,
