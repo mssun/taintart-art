@@ -99,6 +99,13 @@ class BitMemoryRegion FINAL : public ValueObject {
     return value & mask;
   }
 
+  // Load bits starting at given `bit_offset`, and advance the `bit_offset`.
+  ALWAYS_INLINE uint32_t LoadBitsAndAdvance(size_t* bit_offset, size_t bit_length) const {
+    uint32_t result = LoadBits(*bit_offset, bit_length);
+    *bit_offset += bit_length;
+    return result;
+  }
+
   // Store `bit_length` bits in `data` starting at given `bit_offset`.
   // The least significant bit is stored in the smallest memory offset.
   ALWAYS_INLINE void StoreBits(size_t bit_offset, uint32_t value, size_t bit_length) {
@@ -123,6 +130,12 @@ class BitMemoryRegion FINAL : public ValueObject {
       data[index + i] |= (value >> finished_bits);  // Set bits.
     }
     DCHECK_EQ(value, LoadBits(bit_offset, bit_length));
+  }
+
+  // Store bits starting at given `bit_offset`, and advance the `bit_offset`.
+  ALWAYS_INLINE void StoreBitsAndAdvance(size_t* bit_offset, uint32_t value, size_t bit_length) {
+    StoreBits(*bit_offset, value, bit_length);
+    *bit_offset += bit_length;
   }
 
   ALWAYS_INLINE bool Equals(const BitMemoryRegion& other) const {

@@ -21,12 +21,14 @@
 
 #include "arch/code_offset.h"
 #include "base/bit_memory_region.h"
+#include "base/bit_table.h"
 #include "base/bit_utils.h"
 #include "base/bit_vector.h"
 #include "base/leb128.h"
 #include "base/memory_region.h"
 #include "dex/dex_file_types.h"
 #include "method_info.h"
+#include "oat_quick_method_header.h"
 
 namespace art {
 
@@ -39,8 +41,6 @@ static constexpr ssize_t kFrameSlotSize = 4;
 
 class ArtMethod;
 class CodeInfo;
-class StackMapEncoding;
-struct CodeInfoEncoding;
 
 /**
  * Classes in the following file are wrapper on stack map information backed
@@ -454,30 +454,26 @@ class DexRegisterMap {
   // Get the surface kind of Dex register `dex_register_number`.
   DexRegisterLocation::Kind GetLocationKind(uint16_t dex_register_number,
                                             uint16_t number_of_dex_registers,
-                                            const CodeInfo& code_info,
-                                            const CodeInfoEncoding& enc) const {
+                                            const CodeInfo& code_info) const {
     return DexRegisterLocation::ConvertToSurfaceKind(
-        GetLocationInternalKind(dex_register_number, number_of_dex_registers, code_info, enc));
+        GetLocationInternalKind(dex_register_number, number_of_dex_registers, code_info));
   }
 
   // Get the internal kind of Dex register `dex_register_number`.
   DexRegisterLocation::Kind GetLocationInternalKind(uint16_t dex_register_number,
                                                     uint16_t number_of_dex_registers,
-                                                    const CodeInfo& code_info,
-                                                    const CodeInfoEncoding& enc) const;
+                                                    const CodeInfo& code_info) const;
 
   // Get the Dex register location `dex_register_number`.
   DexRegisterLocation GetDexRegisterLocation(uint16_t dex_register_number,
                                              uint16_t number_of_dex_registers,
-                                             const CodeInfo& code_info,
-                                             const CodeInfoEncoding& enc) const;
+                                             const CodeInfo& code_info) const;
 
   int32_t GetStackOffsetInBytes(uint16_t dex_register_number,
                                 uint16_t number_of_dex_registers,
-                                const CodeInfo& code_info,
-                                const CodeInfoEncoding& enc) const {
+                                const CodeInfo& code_info) const {
     DexRegisterLocation location =
-        GetDexRegisterLocation(dex_register_number, number_of_dex_registers, code_info, enc);
+        GetDexRegisterLocation(dex_register_number, number_of_dex_registers, code_info);
     DCHECK(location.GetKind() == DexRegisterLocation::Kind::kInStack);
     // GetDexRegisterLocation returns the offset in bytes.
     return location.GetValue();
@@ -485,20 +481,18 @@ class DexRegisterMap {
 
   int32_t GetConstant(uint16_t dex_register_number,
                       uint16_t number_of_dex_registers,
-                      const CodeInfo& code_info,
-                      const CodeInfoEncoding& enc) const {
+                      const CodeInfo& code_info) const {
     DexRegisterLocation location =
-        GetDexRegisterLocation(dex_register_number, number_of_dex_registers, code_info, enc);
+        GetDexRegisterLocation(dex_register_number, number_of_dex_registers, code_info);
     DCHECK_EQ(location.GetKind(), DexRegisterLocation::Kind::kConstant);
     return location.GetValue();
   }
 
   int32_t GetMachineRegister(uint16_t dex_register_number,
                              uint16_t number_of_dex_registers,
-                             const CodeInfo& code_info,
-                             const CodeInfoEncoding& enc) const {
+                             const CodeInfo& code_info) const {
     DexRegisterLocation location =
-        GetDexRegisterLocation(dex_register_number, number_of_dex_registers, code_info, enc);
+        GetDexRegisterLocation(dex_register_number, number_of_dex_registers, code_info);
     DCHECK(location.GetInternalKind() == DexRegisterLocation::Kind::kInRegister ||
            location.GetInternalKind() == DexRegisterLocation::Kind::kInRegisterHigh ||
            location.GetInternalKind() == DexRegisterLocation::Kind::kInFpuRegister ||
@@ -653,137 +647,6 @@ class DexRegisterMap {
   friend class StackMapStream;
 };
 
-// Represents bit range of bit-packed integer field.
-// We reuse the idea from ULEB128p1 to support encoding of -1 (aka 0xFFFFFFFF).
-// If min_value is set to -1, we implicitly subtract one from any loaded value,
-// and add one to any stored value. This is generalized to any negative values.
-// In other words, min_value acts as a base and the stored value is added to it.
-struct FieldEncoding {
-  FieldEncoding(size_t start_offset, size_t end_offset, int32_t min_value = 0)
-      : start_offset_(start_offset), end_offset_(end_offset), min_value_(min_value) {
-    DCHECK_LE(start_offset_, end_offset_);
-    DCHECK_LE(BitSize(), 32u);
-  }
-
-  ALWAYS_INLINE size_t BitSize() const { return end_offset_ - start_offset_; }
-
-  template <typename Region>
-  ALWAYS_INLINE int32_t Load(const Region& region) const {
-    DCHECK_LE(end_offset_, region.size_in_bits());
-    return static_cast<int32_t>(region.LoadBits(start_offset_, BitSize())) + min_value_;
-  }
-
-  template <typename Region>
-  ALWAYS_INLINE void Store(Region region, int32_t value) const {
-    region.StoreBits(start_offset_, static_cast<uint32_t>(value - min_value_), BitSize());
-    DCHECK_EQ(Load(region), value);
-  }
-
- private:
-  size_t start_offset_;
-  size_t end_offset_;
-  int32_t min_value_;
-};
-
-class StackMapEncoding {
- public:
-  StackMapEncoding()
-      : dex_pc_bit_offset_(0),
-        dex_register_map_bit_offset_(0),
-        inline_info_bit_offset_(0),
-        register_mask_index_bit_offset_(0),
-        stack_mask_index_bit_offset_(0),
-        total_bit_size_(0) {}
-
-  // Set stack map bit layout based on given sizes.
-  // Returns the size of stack map in bits.
-  size_t SetFromSizes(size_t native_pc_max,
-                      size_t dex_pc_max,
-                      size_t dex_register_map_size,
-                      size_t number_of_inline_info,
-                      size_t number_of_register_masks,
-                      size_t number_of_stack_masks) {
-    total_bit_size_ = 0;
-    DCHECK_EQ(kNativePcBitOffset, total_bit_size_);
-    total_bit_size_ += MinimumBitsToStore(native_pc_max);
-
-    dex_pc_bit_offset_ = total_bit_size_;
-    // Note: We're not encoding the dex pc if there is none. That's the case
-    // for an intrinsified native method, such as String.charAt().
-    if (dex_pc_max != dex::kDexNoIndex) {
-      total_bit_size_ += MinimumBitsToStore(1 /* kNoDexPc */ + dex_pc_max);
-    }
-
-    // We also need +1 for kNoDexRegisterMap, but since the size is strictly
-    // greater than any offset we might try to encode, we already implicitly have it.
-    dex_register_map_bit_offset_ = total_bit_size_;
-    total_bit_size_ += MinimumBitsToStore(dex_register_map_size);
-
-    // We also need +1 for kNoInlineInfo, but since the inline_info_size is strictly
-    // greater than the offset we might try to encode, we already implicitly have it.
-    // If inline_info_size is zero, we can encode only kNoInlineInfo (in zero bits).
-    inline_info_bit_offset_ = total_bit_size_;
-    total_bit_size_ += MinimumBitsToStore(number_of_inline_info);
-
-    register_mask_index_bit_offset_ = total_bit_size_;
-    total_bit_size_ += MinimumBitsToStore(number_of_register_masks);
-
-    stack_mask_index_bit_offset_ = total_bit_size_;
-    total_bit_size_ += MinimumBitsToStore(number_of_stack_masks);
-
-    return total_bit_size_;
-  }
-
-  ALWAYS_INLINE FieldEncoding GetNativePcEncoding() const {
-    return FieldEncoding(kNativePcBitOffset, dex_pc_bit_offset_);
-  }
-  ALWAYS_INLINE FieldEncoding GetDexPcEncoding() const {
-    return FieldEncoding(dex_pc_bit_offset_, dex_register_map_bit_offset_, -1 /* min_value */);
-  }
-  ALWAYS_INLINE FieldEncoding GetDexRegisterMapEncoding() const {
-    return FieldEncoding(dex_register_map_bit_offset_, inline_info_bit_offset_, -1 /* min_value */);
-  }
-  ALWAYS_INLINE FieldEncoding GetInlineInfoEncoding() const {
-    return FieldEncoding(inline_info_bit_offset_,
-                         register_mask_index_bit_offset_,
-                         -1 /* min_value */);
-  }
-  ALWAYS_INLINE FieldEncoding GetRegisterMaskIndexEncoding() const {
-    return FieldEncoding(register_mask_index_bit_offset_, stack_mask_index_bit_offset_);
-  }
-  ALWAYS_INLINE FieldEncoding GetStackMaskIndexEncoding() const {
-    return FieldEncoding(stack_mask_index_bit_offset_, total_bit_size_);
-  }
-  ALWAYS_INLINE size_t BitSize() const {
-    return total_bit_size_;
-  }
-
-  // Encode the encoding into the vector.
-  template<typename Vector>
-  void Encode(Vector* dest) const {
-    static_assert(alignof(StackMapEncoding) == 1, "Should not require alignment");
-    const uint8_t* ptr = reinterpret_cast<const uint8_t*>(this);
-    dest->insert(dest->end(), ptr, ptr + sizeof(*this));
-  }
-
-  // Decode the encoding from a pointer, updates the pointer.
-  void Decode(const uint8_t** ptr) {
-    *this = *reinterpret_cast<const StackMapEncoding*>(*ptr);
-    *ptr += sizeof(*this);
-  }
-
-  void Dump(VariableIndentationOutputStream* vios) const;
-
- private:
-  static constexpr size_t kNativePcBitOffset = 0;
-  uint8_t dex_pc_bit_offset_;
-  uint8_t dex_register_map_bit_offset_;
-  uint8_t inline_info_bit_offset_;
-  uint8_t register_mask_index_bit_offset_;
-  uint8_t stack_mask_index_bit_offset_;
-  uint8_t total_bit_size_;
-};
-
 /**
  * A Stack Map holds compilation information for a specific PC necessary for:
  * - Mapping it to a dex PC,
@@ -791,246 +654,101 @@ class StackMapEncoding {
  * - Knowing which registers hold objects,
  * - Knowing the inlining information,
  * - Knowing the values of dex registers.
- *
- * The information is of the form:
- *
- *   [native_pc_offset, dex_pc, dex_register_map_offset, inlining_info_index, register_mask_index,
- *   stack_mask_index].
  */
-class StackMap {
+class StackMap : public BitTable<6>::Accessor {
  public:
-  StackMap() {}
-  explicit StackMap(BitMemoryRegion region) : region_(region) {}
+  enum Field {
+    kNativePcOffset,
+    kDexPc,
+    kDexRegisterMapOffset,
+    kInlineInfoIndex,
+    kRegisterMaskIndex,
+    kStackMaskIndex,
+    kCount,
+  };
 
-  ALWAYS_INLINE bool IsValid() const { return region_.IsValid(); }
+  StackMap() : BitTable<kCount>::Accessor(nullptr, -1) {}
+  StackMap(const BitTable<kCount>* table, uint32_t row)
+    : BitTable<kCount>::Accessor(table, row) {}
 
-  ALWAYS_INLINE uint32_t GetDexPc(const StackMapEncoding& encoding) const {
-    return encoding.GetDexPcEncoding().Load(region_);
-  }
-
-  ALWAYS_INLINE void SetDexPc(const StackMapEncoding& encoding, uint32_t dex_pc) {
-    encoding.GetDexPcEncoding().Store(region_, dex_pc);
-  }
-
-  ALWAYS_INLINE uint32_t GetNativePcOffset(const StackMapEncoding& encoding,
-                                           InstructionSet instruction_set) const {
-    CodeOffset offset(
-        CodeOffset::FromCompressedOffset(encoding.GetNativePcEncoding().Load(region_)));
+  ALWAYS_INLINE uint32_t GetNativePcOffset(InstructionSet instruction_set) const {
+    CodeOffset offset(CodeOffset::FromCompressedOffset(Get<kNativePcOffset>()));
     return offset.Uint32Value(instruction_set);
   }
 
-  ALWAYS_INLINE void SetNativePcCodeOffset(const StackMapEncoding& encoding,
-                                           CodeOffset native_pc_offset) {
-    encoding.GetNativePcEncoding().Store(region_, native_pc_offset.CompressedValue());
-  }
+  uint32_t GetDexPc() const { return Get<kDexPc>(); }
 
-  ALWAYS_INLINE uint32_t GetDexRegisterMapOffset(const StackMapEncoding& encoding) const {
-    return encoding.GetDexRegisterMapEncoding().Load(region_);
-  }
+  uint32_t GetDexRegisterMapOffset() const { return Get<kDexRegisterMapOffset>(); }
+  bool HasDexRegisterMap() const { return GetDexRegisterMapOffset() != kNoValue; }
 
-  ALWAYS_INLINE void SetDexRegisterMapOffset(const StackMapEncoding& encoding, uint32_t offset) {
-    encoding.GetDexRegisterMapEncoding().Store(region_, offset);
-  }
+  uint32_t GetInlineInfoIndex() const { return Get<kInlineInfoIndex>(); }
+  bool HasInlineInfo() const { return GetInlineInfoIndex() != kNoValue; }
 
-  ALWAYS_INLINE uint32_t GetInlineInfoIndex(const StackMapEncoding& encoding) const {
-    return encoding.GetInlineInfoEncoding().Load(region_);
-  }
+  uint32_t GetRegisterMaskIndex() const { return Get<kRegisterMaskIndex>(); }
 
-  ALWAYS_INLINE void SetInlineInfoIndex(const StackMapEncoding& encoding, uint32_t index) {
-    encoding.GetInlineInfoEncoding().Store(region_, index);
-  }
+  uint32_t GetStackMaskIndex() const { return Get<kStackMaskIndex>(); }
 
-  ALWAYS_INLINE uint32_t GetRegisterMaskIndex(const StackMapEncoding& encoding) const {
-    return encoding.GetRegisterMaskIndexEncoding().Load(region_);
-  }
-
-  ALWAYS_INLINE void SetRegisterMaskIndex(const StackMapEncoding& encoding, uint32_t mask) {
-    encoding.GetRegisterMaskIndexEncoding().Store(region_, mask);
-  }
-
-  ALWAYS_INLINE uint32_t GetStackMaskIndex(const StackMapEncoding& encoding) const {
-    return encoding.GetStackMaskIndexEncoding().Load(region_);
-  }
-
-  ALWAYS_INLINE void SetStackMaskIndex(const StackMapEncoding& encoding, uint32_t mask) {
-    encoding.GetStackMaskIndexEncoding().Store(region_, mask);
-  }
-
-  ALWAYS_INLINE bool HasDexRegisterMap(const StackMapEncoding& encoding) const {
-    return GetDexRegisterMapOffset(encoding) != kNoDexRegisterMap;
-  }
-
-  ALWAYS_INLINE bool HasInlineInfo(const StackMapEncoding& encoding) const {
-    return GetInlineInfoIndex(encoding) != kNoInlineInfo;
-  }
-
-  ALWAYS_INLINE bool Equals(const StackMap& other) const {
-    return region_.Equals(other.region_);
-  }
-
+  static void DumpEncoding(const BitTable<6>& table, VariableIndentationOutputStream* vios);
   void Dump(VariableIndentationOutputStream* vios,
             const CodeInfo& code_info,
-            const CodeInfoEncoding& encoding,
             const MethodInfo& method_info,
             uint32_t code_offset,
             uint16_t number_of_dex_registers,
             InstructionSet instruction_set,
             const std::string& header_suffix = "") const;
-
-  // Special (invalid) offset for the DexRegisterMapOffset field meaning
-  // that there is no Dex register map for this stack map.
-  static constexpr uint32_t kNoDexRegisterMap = -1;
-
-  // Special (invalid) offset for the InlineDescriptorOffset field meaning
-  // that there is no inline info for this stack map.
-  static constexpr uint32_t kNoInlineInfo = -1;
-
- private:
-  static constexpr int kFixedSize = 0;
-
-  BitMemoryRegion region_;
-
-  friend class StackMapStream;
-};
-
-class InlineInfoEncoding {
- public:
-  void SetFromSizes(size_t method_index_idx_max,
-                    size_t dex_pc_max,
-                    size_t extra_data_max,
-                    size_t dex_register_map_size) {
-    total_bit_size_ = kMethodIndexBitOffset;
-    total_bit_size_ += MinimumBitsToStore(method_index_idx_max);
-
-    dex_pc_bit_offset_ = dchecked_integral_cast<uint8_t>(total_bit_size_);
-    // Note: We're not encoding the dex pc if there is none. That's the case
-    // for an intrinsified native method, such as String.charAt().
-    if (dex_pc_max != dex::kDexNoIndex) {
-      total_bit_size_ += MinimumBitsToStore(1 /* kNoDexPc */ + dex_pc_max);
-    }
-
-    extra_data_bit_offset_ = dchecked_integral_cast<uint8_t>(total_bit_size_);
-    total_bit_size_ += MinimumBitsToStore(extra_data_max);
-
-    // We also need +1 for kNoDexRegisterMap, but since the size is strictly
-    // greater than any offset we might try to encode, we already implicitly have it.
-    dex_register_map_bit_offset_ = dchecked_integral_cast<uint8_t>(total_bit_size_);
-    total_bit_size_ += MinimumBitsToStore(dex_register_map_size);
-  }
-
-  ALWAYS_INLINE FieldEncoding GetMethodIndexIdxEncoding() const {
-    return FieldEncoding(kMethodIndexBitOffset, dex_pc_bit_offset_);
-  }
-  ALWAYS_INLINE FieldEncoding GetDexPcEncoding() const {
-    return FieldEncoding(dex_pc_bit_offset_, extra_data_bit_offset_, -1 /* min_value */);
-  }
-  ALWAYS_INLINE FieldEncoding GetExtraDataEncoding() const {
-    return FieldEncoding(extra_data_bit_offset_, dex_register_map_bit_offset_);
-  }
-  ALWAYS_INLINE FieldEncoding GetDexRegisterMapEncoding() const {
-    return FieldEncoding(dex_register_map_bit_offset_, total_bit_size_, -1 /* min_value */);
-  }
-  ALWAYS_INLINE size_t BitSize() const {
-    return total_bit_size_;
-  }
-
-  void Dump(VariableIndentationOutputStream* vios) const;
-
-  // Encode the encoding into the vector.
-  template<typename Vector>
-  void Encode(Vector* dest) const {
-    static_assert(alignof(InlineInfoEncoding) == 1, "Should not require alignment");
-    const uint8_t* ptr = reinterpret_cast<const uint8_t*>(this);
-    dest->insert(dest->end(), ptr, ptr + sizeof(*this));
-  }
-
-  // Decode the encoding from a pointer, updates the pointer.
-  void Decode(const uint8_t** ptr) {
-    *this = *reinterpret_cast<const InlineInfoEncoding*>(*ptr);
-    *ptr += sizeof(*this);
-  }
-
- private:
-  static constexpr uint8_t kIsLastBitOffset = 0;
-  static constexpr uint8_t kMethodIndexBitOffset = 1;
-  uint8_t dex_pc_bit_offset_;
-  uint8_t extra_data_bit_offset_;
-  uint8_t dex_register_map_bit_offset_;
-  uint8_t total_bit_size_;
 };
 
 /**
- * Inline information for a specific PC. The information is of the form:
- *
- *   [is_last,
- *    method_index (or ArtMethod high bits),
- *    dex_pc,
- *    extra_data (ArtMethod low bits or 1),
- *    dex_register_map_offset]+.
+ * Inline information for a specific PC.
+ * The row referenced from the StackMap holds information at depth 0.
+ * Following rows hold information for further depths.
  */
-class InlineInfo {
+class InlineInfo : public BitTable<5>::Accessor {
  public:
-  explicit InlineInfo(BitMemoryRegion region) : region_(region) {}
+  enum Field {
+    kIsLast,  // Determines if there are further rows for further depths.
+    kMethodIndexIdx,  // Method index or ArtMethod high bits.
+    kDexPc,
+    kExtraData,  // ArtMethod low bits or 1.
+    kDexRegisterMapOffset,
+    kCount,
+  };
+  static constexpr uint32_t kLast = -1;
+  static constexpr uint32_t kMore = 0;
 
-  ALWAYS_INLINE uint32_t GetDepth(const InlineInfoEncoding& encoding) const {
+  InlineInfo(const BitTable<kCount>* table, uint32_t row)
+    : BitTable<kCount>::Accessor(table, row) {}
+
+  ALWAYS_INLINE InlineInfo AtDepth(uint32_t depth) const {
+    return InlineInfo(table_, this->row_ + depth);
+  }
+
+  uint32_t GetDepth() const {
     size_t depth = 0;
-    while (!GetRegionAtDepth(encoding, depth++).LoadBit(0)) { }  // Check is_last bit.
+    while (AtDepth(depth++).Get<kIsLast>() == kMore) { }
     return depth;
   }
 
-  ALWAYS_INLINE void SetDepth(const InlineInfoEncoding& encoding, uint32_t depth) {
-    DCHECK_GT(depth, 0u);
-    for (size_t d = 0; d < depth; ++d) {
-      GetRegionAtDepth(encoding, d).StoreBit(0, d == depth - 1);  // Set is_last bit.
-    }
+  uint32_t GetMethodIndexIdxAtDepth(uint32_t depth) const {
+    DCHECK(!EncodesArtMethodAtDepth(depth));
+    return AtDepth(depth).Get<kMethodIndexIdx>();
   }
 
-  ALWAYS_INLINE uint32_t GetMethodIndexIdxAtDepth(const InlineInfoEncoding& encoding,
-                                                  uint32_t depth) const {
-    DCHECK(!EncodesArtMethodAtDepth(encoding, depth));
-    return encoding.GetMethodIndexIdxEncoding().Load(GetRegionAtDepth(encoding, depth));
+  uint32_t GetMethodIndexAtDepth(const MethodInfo& method_info, uint32_t depth) const {
+    return method_info.GetMethodIndex(GetMethodIndexIdxAtDepth(depth));
   }
 
-  ALWAYS_INLINE void SetMethodIndexIdxAtDepth(const InlineInfoEncoding& encoding,
-                                              uint32_t depth,
-                                              uint32_t index) {
-    encoding.GetMethodIndexIdxEncoding().Store(GetRegionAtDepth(encoding, depth), index);
+  uint32_t GetDexPcAtDepth(uint32_t depth) const {
+    return AtDepth(depth).Get<kDexPc>();
   }
 
-
-  ALWAYS_INLINE uint32_t GetMethodIndexAtDepth(const InlineInfoEncoding& encoding,
-                                               const MethodInfo& method_info,
-                                               uint32_t depth) const {
-    return method_info.GetMethodIndex(GetMethodIndexIdxAtDepth(encoding, depth));
+  bool EncodesArtMethodAtDepth(uint32_t depth) const {
+    return (AtDepth(depth).Get<kExtraData>() & 1) == 0;
   }
 
-  ALWAYS_INLINE uint32_t GetDexPcAtDepth(const InlineInfoEncoding& encoding,
-                                         uint32_t depth) const {
-    return encoding.GetDexPcEncoding().Load(GetRegionAtDepth(encoding, depth));
-  }
-
-  ALWAYS_INLINE void SetDexPcAtDepth(const InlineInfoEncoding& encoding,
-                                     uint32_t depth,
-                                     uint32_t dex_pc) {
-    encoding.GetDexPcEncoding().Store(GetRegionAtDepth(encoding, depth), dex_pc);
-  }
-
-  ALWAYS_INLINE bool EncodesArtMethodAtDepth(const InlineInfoEncoding& encoding,
-                                             uint32_t depth) const {
-    return (encoding.GetExtraDataEncoding().Load(GetRegionAtDepth(encoding, depth)) & 1) == 0;
-  }
-
-  ALWAYS_INLINE void SetExtraDataAtDepth(const InlineInfoEncoding& encoding,
-                                         uint32_t depth,
-                                         uint32_t extra_data) {
-    encoding.GetExtraDataEncoding().Store(GetRegionAtDepth(encoding, depth), extra_data);
-  }
-
-  ALWAYS_INLINE ArtMethod* GetArtMethodAtDepth(const InlineInfoEncoding& encoding,
-                                               uint32_t depth) const {
-    uint32_t low_bits = encoding.GetExtraDataEncoding().Load(GetRegionAtDepth(encoding, depth));
-    uint32_t high_bits = encoding.GetMethodIndexIdxEncoding().Load(
-        GetRegionAtDepth(encoding, depth));
+  ArtMethod* GetArtMethodAtDepth(uint32_t depth) const {
+    uint32_t low_bits = AtDepth(depth).Get<kExtraData>();
+    uint32_t high_bits = AtDepth(depth).Get<kMethodIndexIdx>();
     if (high_bits == 0) {
       return reinterpret_cast<ArtMethod*>(low_bits);
     } else {
@@ -1040,411 +758,132 @@ class InlineInfo {
     }
   }
 
-  ALWAYS_INLINE uint32_t GetDexRegisterMapOffsetAtDepth(const InlineInfoEncoding& encoding,
-                                                        uint32_t depth) const {
-    return encoding.GetDexRegisterMapEncoding().Load(GetRegionAtDepth(encoding, depth));
+  uint32_t GetDexRegisterMapOffsetAtDepth(uint32_t depth) const {
+    return AtDepth(depth).Get<kDexRegisterMapOffset>();
   }
 
-  ALWAYS_INLINE void SetDexRegisterMapOffsetAtDepth(const InlineInfoEncoding& encoding,
-                                                    uint32_t depth,
-                                                    uint32_t offset) {
-    encoding.GetDexRegisterMapEncoding().Store(GetRegionAtDepth(encoding, depth), offset);
+  bool HasDexRegisterMapAtDepth(uint32_t depth) const {
+    return GetDexRegisterMapOffsetAtDepth(depth) != StackMap::kNoValue;
   }
 
-  ALWAYS_INLINE bool HasDexRegisterMapAtDepth(const InlineInfoEncoding& encoding,
-                                              uint32_t depth) const {
-    return GetDexRegisterMapOffsetAtDepth(encoding, depth) != StackMap::kNoDexRegisterMap;
-  }
-
+  static void DumpEncoding(const BitTable<5>& table, VariableIndentationOutputStream* vios);
   void Dump(VariableIndentationOutputStream* vios,
             const CodeInfo& info,
             const MethodInfo& method_info,
             uint16_t* number_of_dex_registers) const;
-
- private:
-  ALWAYS_INLINE BitMemoryRegion GetRegionAtDepth(const InlineInfoEncoding& encoding,
-                                                 uint32_t depth) const {
-    size_t entry_size = encoding.BitSize();
-    DCHECK_GT(entry_size, 0u);
-    return region_.Subregion(depth * entry_size, entry_size);
-  }
-
-  BitMemoryRegion region_;
 };
 
-// Bit sized region encoding, may be more than 255 bits.
-class BitRegionEncoding {
+class InvokeInfo : public BitTable<3>::Accessor {
  public:
-  uint32_t num_bits = 0;
+  enum Field {
+    kNativePcOffset,
+    kInvokeType,
+    kMethodIndexIdx,
+    kCount,
+  };
 
-  ALWAYS_INLINE size_t BitSize() const {
-    return num_bits;
-  }
+  InvokeInfo(const BitTable<kCount>* table, uint32_t row)
+    : BitTable<kCount>::Accessor(table, row) {}
 
-  template<typename Vector>
-  void Encode(Vector* dest) const {
-    EncodeUnsignedLeb128(dest, num_bits);  // Use leb in case num_bits is greater than 255.
-  }
-
-  void Decode(const uint8_t** ptr) {
-    num_bits = DecodeUnsignedLeb128(ptr);
-  }
-};
-
-// A table of bit sized encodings.
-template <typename Encoding>
-struct BitEncodingTable {
-  static constexpr size_t kInvalidOffset = static_cast<size_t>(-1);
-  // How the encoding is laid out (serialized).
-  Encoding encoding;
-
-  // Number of entries in the table (serialized).
-  size_t num_entries;
-
-  // Bit offset for the base of the table (computed).
-  size_t bit_offset = kInvalidOffset;
-
-  template<typename Vector>
-  void Encode(Vector* dest) const {
-    EncodeUnsignedLeb128(dest, num_entries);
-    encoding.Encode(dest);
-  }
-
-  ALWAYS_INLINE void Decode(const uint8_t** ptr) {
-    num_entries = DecodeUnsignedLeb128(ptr);
-    encoding.Decode(ptr);
-  }
-
-  // Set the bit offset in the table and adds the space used by the table to offset.
-  void UpdateBitOffset(size_t* offset) {
-    DCHECK(offset != nullptr);
-    bit_offset = *offset;
-    *offset += encoding.BitSize() * num_entries;
-  }
-
-  // Return the bit region for the map at index i.
-  ALWAYS_INLINE BitMemoryRegion BitRegion(MemoryRegion region, size_t index) const {
-    DCHECK_NE(bit_offset, kInvalidOffset) << "Invalid table offset";
-    DCHECK_LT(index, num_entries);
-    const size_t map_size = encoding.BitSize();
-    return BitMemoryRegion(region, bit_offset + index * map_size, map_size);
-  }
-};
-
-// A byte sized table of possible variable sized encodings.
-struct ByteSizedTable {
-  static constexpr size_t kInvalidOffset = static_cast<size_t>(-1);
-
-  // Number of entries in the table (serialized).
-  size_t num_entries = 0;
-
-  // Number of bytes of the table (serialized).
-  size_t num_bytes;
-
-  // Bit offset for the base of the table (computed).
-  size_t byte_offset = kInvalidOffset;
-
-  template<typename Vector>
-  void Encode(Vector* dest) const {
-    EncodeUnsignedLeb128(dest, num_entries);
-    EncodeUnsignedLeb128(dest, num_bytes);
-  }
-
-  ALWAYS_INLINE void Decode(const uint8_t** ptr) {
-    num_entries = DecodeUnsignedLeb128(ptr);
-    num_bytes = DecodeUnsignedLeb128(ptr);
-  }
-
-  // Set the bit offset of the table. Adds the total bit size of the table to offset.
-  void UpdateBitOffset(size_t* offset) {
-    DCHECK(offset != nullptr);
-    DCHECK_ALIGNED(*offset, kBitsPerByte);
-    byte_offset = *offset / kBitsPerByte;
-    *offset += num_bytes * kBitsPerByte;
-  }
-};
-
-// Format is [native pc, invoke type, method index].
-class InvokeInfoEncoding {
- public:
-  void SetFromSizes(size_t native_pc_max,
-                    size_t invoke_type_max,
-                    size_t method_index_max) {
-    total_bit_size_ = 0;
-    DCHECK_EQ(kNativePcBitOffset, total_bit_size_);
-    total_bit_size_ += MinimumBitsToStore(native_pc_max);
-    invoke_type_bit_offset_ = total_bit_size_;
-    total_bit_size_ += MinimumBitsToStore(invoke_type_max);
-    method_index_bit_offset_ = total_bit_size_;
-    total_bit_size_ += MinimumBitsToStore(method_index_max);
-  }
-
-  ALWAYS_INLINE FieldEncoding GetNativePcEncoding() const {
-    return FieldEncoding(kNativePcBitOffset, invoke_type_bit_offset_);
-  }
-
-  ALWAYS_INLINE FieldEncoding GetInvokeTypeEncoding() const {
-    return FieldEncoding(invoke_type_bit_offset_, method_index_bit_offset_);
-  }
-
-  ALWAYS_INLINE FieldEncoding GetMethodIndexEncoding() const {
-    return FieldEncoding(method_index_bit_offset_, total_bit_size_);
-  }
-
-  ALWAYS_INLINE size_t BitSize() const {
-    return total_bit_size_;
-  }
-
-  template<typename Vector>
-  void Encode(Vector* dest) const {
-    static_assert(alignof(InvokeInfoEncoding) == 1, "Should not require alignment");
-    const uint8_t* ptr = reinterpret_cast<const uint8_t*>(this);
-    dest->insert(dest->end(), ptr, ptr + sizeof(*this));
-  }
-
-  void Decode(const uint8_t** ptr) {
-    *this = *reinterpret_cast<const InvokeInfoEncoding*>(*ptr);
-    *ptr += sizeof(*this);
-  }
-
- private:
-  static constexpr uint8_t kNativePcBitOffset = 0;
-  uint8_t invoke_type_bit_offset_;
-  uint8_t method_index_bit_offset_;
-  uint8_t total_bit_size_;
-};
-
-class InvokeInfo {
- public:
-  explicit InvokeInfo(BitMemoryRegion region) : region_(region) {}
-
-  ALWAYS_INLINE uint32_t GetNativePcOffset(const InvokeInfoEncoding& encoding,
-                                           InstructionSet instruction_set) const {
-    CodeOffset offset(
-        CodeOffset::FromCompressedOffset(encoding.GetNativePcEncoding().Load(region_)));
+  ALWAYS_INLINE uint32_t GetNativePcOffset(InstructionSet instruction_set) const {
+    CodeOffset offset(CodeOffset::FromCompressedOffset(Get<kNativePcOffset>()));
     return offset.Uint32Value(instruction_set);
   }
 
-  ALWAYS_INLINE void SetNativePcCodeOffset(const InvokeInfoEncoding& encoding,
-                                           CodeOffset native_pc_offset) {
-    encoding.GetNativePcEncoding().Store(region_, native_pc_offset.CompressedValue());
+  uint32_t GetInvokeType() const { return Get<kInvokeType>(); }
+
+  uint32_t GetMethodIndexIdx() const { return Get<kMethodIndexIdx>(); }
+
+  uint32_t GetMethodIndex(MethodInfo method_info) const {
+    return method_info.GetMethodIndex(GetMethodIndexIdx());
   }
-
-  ALWAYS_INLINE uint32_t GetInvokeType(const InvokeInfoEncoding& encoding) const {
-    return encoding.GetInvokeTypeEncoding().Load(region_);
-  }
-
-  ALWAYS_INLINE void SetInvokeType(const InvokeInfoEncoding& encoding, uint32_t invoke_type) {
-    encoding.GetInvokeTypeEncoding().Store(region_, invoke_type);
-  }
-
-  ALWAYS_INLINE uint32_t GetMethodIndexIdx(const InvokeInfoEncoding& encoding) const {
-    return encoding.GetMethodIndexEncoding().Load(region_);
-  }
-
-  ALWAYS_INLINE void SetMethodIndexIdx(const InvokeInfoEncoding& encoding,
-                                       uint32_t method_index_idx) {
-    encoding.GetMethodIndexEncoding().Store(region_, method_index_idx);
-  }
-
-  ALWAYS_INLINE uint32_t GetMethodIndex(const InvokeInfoEncoding& encoding,
-                                        MethodInfo method_info) const {
-    return method_info.GetMethodIndex(GetMethodIndexIdx(encoding));
-  }
-
-  bool IsValid() const { return region_.IsValid(); }
-
- private:
-  BitMemoryRegion region_;
-};
-
-// Most of the fields are encoded as ULEB128 to save space.
-struct CodeInfoEncoding {
-  using SizeType = uint32_t;
-
-  static constexpr SizeType kInvalidSize = std::numeric_limits<SizeType>::max();
-
-  // Byte sized tables go first to avoid unnecessary alignment bits.
-  ByteSizedTable dex_register_map;
-  ByteSizedTable location_catalog;
-  BitEncodingTable<StackMapEncoding> stack_map;
-  BitEncodingTable<BitRegionEncoding> register_mask;
-  BitEncodingTable<BitRegionEncoding> stack_mask;
-  BitEncodingTable<InvokeInfoEncoding> invoke_info;
-  BitEncodingTable<InlineInfoEncoding> inline_info;
-
-  CodeInfoEncoding() {}
-
-  explicit CodeInfoEncoding(const void* data) {
-    const uint8_t* ptr = reinterpret_cast<const uint8_t*>(data);
-    dex_register_map.Decode(&ptr);
-    location_catalog.Decode(&ptr);
-    stack_map.Decode(&ptr);
-    register_mask.Decode(&ptr);
-    stack_mask.Decode(&ptr);
-    invoke_info.Decode(&ptr);
-    if (stack_map.encoding.GetInlineInfoEncoding().BitSize() > 0) {
-      inline_info.Decode(&ptr);
-    } else {
-      inline_info = BitEncodingTable<InlineInfoEncoding>();
-    }
-    cache_header_size =
-        dchecked_integral_cast<SizeType>(ptr - reinterpret_cast<const uint8_t*>(data));
-    ComputeTableOffsets();
-  }
-
-  // Compress is not const since it calculates cache_header_size. This is used by PrepareForFillIn.
-  template<typename Vector>
-  void Compress(Vector* dest) {
-    dex_register_map.Encode(dest);
-    location_catalog.Encode(dest);
-    stack_map.Encode(dest);
-    register_mask.Encode(dest);
-    stack_mask.Encode(dest);
-    invoke_info.Encode(dest);
-    if (stack_map.encoding.GetInlineInfoEncoding().BitSize() > 0) {
-      inline_info.Encode(dest);
-    }
-    cache_header_size = dest->size();
-  }
-
-  ALWAYS_INLINE void ComputeTableOffsets() {
-    // Skip the header.
-    size_t bit_offset = HeaderSize() * kBitsPerByte;
-    // The byte tables must be aligned so they must go first.
-    dex_register_map.UpdateBitOffset(&bit_offset);
-    location_catalog.UpdateBitOffset(&bit_offset);
-    // Other tables don't require alignment.
-    stack_map.UpdateBitOffset(&bit_offset);
-    register_mask.UpdateBitOffset(&bit_offset);
-    stack_mask.UpdateBitOffset(&bit_offset);
-    invoke_info.UpdateBitOffset(&bit_offset);
-    inline_info.UpdateBitOffset(&bit_offset);
-    cache_non_header_size = RoundUp(bit_offset, kBitsPerByte) / kBitsPerByte - HeaderSize();
-  }
-
-  ALWAYS_INLINE size_t HeaderSize() const {
-    DCHECK_NE(cache_header_size, kInvalidSize) << "Uninitialized";
-    return cache_header_size;
-  }
-
-  ALWAYS_INLINE size_t NonHeaderSize() const {
-    DCHECK_NE(cache_non_header_size, kInvalidSize) << "Uninitialized";
-    return cache_non_header_size;
-  }
-
- private:
-  // Computed fields (not serialized).
-  // Header size in bytes, cached to avoid needing to re-decoding the encoding in HeaderSize.
-  SizeType cache_header_size = kInvalidSize;
-  // Non header size in bytes, cached to avoid needing to re-decoding the encoding in NonHeaderSize.
-  SizeType cache_non_header_size = kInvalidSize;
 };
 
 /**
  * Wrapper around all compiler information collected for a method.
  * The information is of the form:
  *
- *   [CodeInfoEncoding, DexRegisterMap+, DexLocationCatalog+, StackMap+, RegisterMask+, StackMask+,
- *    InlineInfo*]
+ *   [BitTable<Header>, BitTable<StackMap>, BitTable<RegisterMask>, BitTable<InlineInfo>,
+ *    BitTable<InvokeInfo>, BitTable<StackMask>, DexRegisterMap, DexLocationCatalog]
  *
- * where CodeInfoEncoding is of the form:
- *
- *   [ByteSizedTable(dex_register_map), ByteSizedTable(location_catalog),
- *    BitEncodingTable<StackMapEncoding>, BitEncodingTable<BitRegionEncoding>,
- *    BitEncodingTable<BitRegionEncoding>, BitEncodingTable<InlineInfoEncoding>]
  */
 class CodeInfo {
  public:
-  explicit CodeInfo(MemoryRegion region) : region_(region) {
-  }
-
   explicit CodeInfo(const void* data) {
-    CodeInfoEncoding encoding = CodeInfoEncoding(data);
-    region_ = MemoryRegion(const_cast<void*>(data),
-                           encoding.HeaderSize() + encoding.NonHeaderSize());
+    Decode(reinterpret_cast<const uint8_t*>(data));
   }
 
-  CodeInfoEncoding ExtractEncoding() const {
-    CodeInfoEncoding encoding(region_.begin());
-    AssertValidStackMap(encoding);
-    return encoding;
+  explicit CodeInfo(MemoryRegion region) : CodeInfo(region.begin()) {
+    DCHECK_EQ(size_, region.size());
   }
 
-  bool HasInlineInfo(const CodeInfoEncoding& encoding) const {
-    return encoding.stack_map.encoding.GetInlineInfoEncoding().BitSize() > 0;
+  explicit CodeInfo(const OatQuickMethodHeader* header)
+    : CodeInfo(header->GetOptimizedCodeInfoPtr()) {
   }
 
-  DexRegisterLocationCatalog GetDexRegisterLocationCatalog(const CodeInfoEncoding& encoding) const {
-    return DexRegisterLocationCatalog(region_.Subregion(encoding.location_catalog.byte_offset,
-                                                        encoding.location_catalog.num_bytes));
+  size_t Size() const {
+    return size_;
   }
 
-  ALWAYS_INLINE size_t GetNumberOfStackMaskBits(const CodeInfoEncoding& encoding) const {
-    return encoding.stack_mask.encoding.BitSize();
+  bool HasInlineInfo() const {
+    return stack_maps_.NumColumnBits(StackMap::kInlineInfoIndex) != 0;
   }
 
-  ALWAYS_INLINE StackMap GetStackMapAt(size_t index, const CodeInfoEncoding& encoding) const {
-    return StackMap(encoding.stack_map.BitRegion(region_, index));
+  DexRegisterLocationCatalog GetDexRegisterLocationCatalog() const {
+    return DexRegisterLocationCatalog(location_catalog_);
   }
 
-  BitMemoryRegion GetStackMask(size_t index, const CodeInfoEncoding& encoding) const {
-    return encoding.stack_mask.BitRegion(region_, index);
+  ALWAYS_INLINE size_t GetNumberOfStackMaskBits() const {
+    return stack_mask_bits_;
   }
 
-  BitMemoryRegion GetStackMaskOf(const CodeInfoEncoding& encoding,
-                                 const StackMap& stack_map) const {
-    return GetStackMask(stack_map.GetStackMaskIndex(encoding.stack_map.encoding), encoding);
+  ALWAYS_INLINE StackMap GetStackMapAt(size_t index) const {
+    return StackMap(&stack_maps_, index);
   }
 
-  BitMemoryRegion GetRegisterMask(size_t index, const CodeInfoEncoding& encoding) const {
-    return encoding.register_mask.BitRegion(region_, index);
+  BitMemoryRegion GetStackMask(size_t index) const {
+    return stack_masks_.Subregion(index * stack_mask_bits_, stack_mask_bits_);
   }
 
-  uint32_t GetRegisterMaskOf(const CodeInfoEncoding& encoding, const StackMap& stack_map) const {
-    size_t index = stack_map.GetRegisterMaskIndex(encoding.stack_map.encoding);
-    return GetRegisterMask(index, encoding).LoadBits(0u, encoding.register_mask.encoding.BitSize());
+  BitMemoryRegion GetStackMaskOf(const StackMap& stack_map) const {
+    return GetStackMask(stack_map.GetStackMaskIndex());
   }
 
-  uint32_t GetNumberOfLocationCatalogEntries(const CodeInfoEncoding& encoding) const {
-    return encoding.location_catalog.num_entries;
+  uint32_t GetRegisterMaskOf(const StackMap& stack_map) const {
+    return register_masks_.Get(stack_map.GetRegisterMaskIndex());
   }
 
-  uint32_t GetDexRegisterLocationCatalogSize(const CodeInfoEncoding& encoding) const {
-    return encoding.location_catalog.num_bytes;
+  uint32_t GetNumberOfLocationCatalogEntries() const {
+    return location_catalog_entries_;
   }
 
-  uint32_t GetNumberOfStackMaps(const CodeInfoEncoding& encoding) const {
-    return encoding.stack_map.num_entries;
+  uint32_t GetDexRegisterLocationCatalogSize() const {
+    return location_catalog_.size();
   }
 
-  // Get the size of all the stack maps of this CodeInfo object, in bits. Not byte aligned.
-  ALWAYS_INLINE size_t GetStackMapsSizeInBits(const CodeInfoEncoding& encoding) const {
-    return encoding.stack_map.encoding.BitSize() * GetNumberOfStackMaps(encoding);
+  uint32_t GetNumberOfStackMaps() const {
+    return stack_maps_.NumRows();
   }
 
-  InvokeInfo GetInvokeInfo(const CodeInfoEncoding& encoding, size_t index) const {
-    return InvokeInfo(encoding.invoke_info.BitRegion(region_, index));
+  InvokeInfo GetInvokeInfo(size_t index) const {
+    return InvokeInfo(&invoke_infos_, index);
   }
 
   DexRegisterMap GetDexRegisterMapOf(StackMap stack_map,
-                                     const CodeInfoEncoding& encoding,
                                      size_t number_of_dex_registers) const {
-    if (!stack_map.HasDexRegisterMap(encoding.stack_map.encoding)) {
+    if (!stack_map.HasDexRegisterMap()) {
       return DexRegisterMap();
     }
-    const uint32_t offset = encoding.dex_register_map.byte_offset +
-        stack_map.GetDexRegisterMapOffset(encoding.stack_map.encoding);
-    size_t size = ComputeDexRegisterMapSizeOf(encoding, offset, number_of_dex_registers);
-    return DexRegisterMap(region_.Subregion(offset, size));
+    const uint32_t offset = stack_map.GetDexRegisterMapOffset();
+    size_t size = ComputeDexRegisterMapSizeOf(offset, number_of_dex_registers);
+    return DexRegisterMap(dex_register_maps_.Subregion(offset, size));
   }
 
-  size_t GetDexRegisterMapsSize(const CodeInfoEncoding& encoding,
-                                uint32_t number_of_dex_registers) const {
+  size_t GetDexRegisterMapsSize(uint32_t number_of_dex_registers) const {
     size_t total = 0;
-    for (size_t i = 0, e = GetNumberOfStackMaps(encoding); i < e; ++i) {
-      StackMap stack_map = GetStackMapAt(i, encoding);
-      DexRegisterMap map(GetDexRegisterMapOf(stack_map, encoding, number_of_dex_registers));
+    for (size_t i = 0, e = GetNumberOfStackMaps(); i < e; ++i) {
+      StackMap stack_map = GetStackMapAt(i);
+      DexRegisterMap map(GetDexRegisterMapOf(stack_map, number_of_dex_registers));
       total += map.Size();
     }
     return total;
@@ -1453,38 +892,30 @@ class CodeInfo {
   // Return the `DexRegisterMap` pointed by `inline_info` at depth `depth`.
   DexRegisterMap GetDexRegisterMapAtDepth(uint8_t depth,
                                           InlineInfo inline_info,
-                                          const CodeInfoEncoding& encoding,
                                           uint32_t number_of_dex_registers) const {
-    if (!inline_info.HasDexRegisterMapAtDepth(encoding.inline_info.encoding, depth)) {
+    if (!inline_info.HasDexRegisterMapAtDepth(depth)) {
       return DexRegisterMap();
     } else {
-      uint32_t offset = encoding.dex_register_map.byte_offset +
-          inline_info.GetDexRegisterMapOffsetAtDepth(encoding.inline_info.encoding, depth);
-      size_t size = ComputeDexRegisterMapSizeOf(encoding, offset, number_of_dex_registers);
-      return DexRegisterMap(region_.Subregion(offset, size));
+      uint32_t offset = inline_info.GetDexRegisterMapOffsetAtDepth(depth);
+      size_t size = ComputeDexRegisterMapSizeOf(offset, number_of_dex_registers);
+      return DexRegisterMap(dex_register_maps_.Subregion(offset, size));
     }
   }
 
-  InlineInfo GetInlineInfo(size_t index, const CodeInfoEncoding& encoding) const {
-    // Since we do not know the depth, we just return the whole remaining map. The caller may
-    // access the inline info for arbitrary depths. To return the precise inline info we would need
-    // to count the depth before returning.
-    // TODO: Clean this up.
-    const size_t bit_offset = encoding.inline_info.bit_offset +
-        index * encoding.inline_info.encoding.BitSize();
-    return InlineInfo(BitMemoryRegion(region_, bit_offset, region_.size_in_bits() - bit_offset));
+  InlineInfo GetInlineInfo(size_t index) const {
+    return InlineInfo(&inline_infos_, index);
   }
 
-  InlineInfo GetInlineInfoOf(StackMap stack_map, const CodeInfoEncoding& encoding) const {
-    DCHECK(stack_map.HasInlineInfo(encoding.stack_map.encoding));
-    uint32_t index = stack_map.GetInlineInfoIndex(encoding.stack_map.encoding);
-    return GetInlineInfo(index, encoding);
+  InlineInfo GetInlineInfoOf(StackMap stack_map) const {
+    DCHECK(stack_map.HasInlineInfo());
+    uint32_t index = stack_map.GetInlineInfoIndex();
+    return GetInlineInfo(index);
   }
 
-  StackMap GetStackMapForDexPc(uint32_t dex_pc, const CodeInfoEncoding& encoding) const {
-    for (size_t i = 0, e = GetNumberOfStackMaps(encoding); i < e; ++i) {
-      StackMap stack_map = GetStackMapAt(i, encoding);
-      if (stack_map.GetDexPc(encoding.stack_map.encoding) == dex_pc) {
+  StackMap GetStackMapForDexPc(uint32_t dex_pc) const {
+    for (size_t i = 0, e = GetNumberOfStackMaps(); i < e; ++i) {
+      StackMap stack_map = GetStackMapAt(i);
+      if (stack_map.GetDexPc() == dex_pc) {
         return stack_map;
       }
     }
@@ -1493,40 +924,39 @@ class CodeInfo {
 
   // Searches the stack map list backwards because catch stack maps are stored
   // at the end.
-  StackMap GetCatchStackMapForDexPc(uint32_t dex_pc, const CodeInfoEncoding& encoding) const {
-    for (size_t i = GetNumberOfStackMaps(encoding); i > 0; --i) {
-      StackMap stack_map = GetStackMapAt(i - 1, encoding);
-      if (stack_map.GetDexPc(encoding.stack_map.encoding) == dex_pc) {
+  StackMap GetCatchStackMapForDexPc(uint32_t dex_pc) const {
+    for (size_t i = GetNumberOfStackMaps(); i > 0; --i) {
+      StackMap stack_map = GetStackMapAt(i - 1);
+      if (stack_map.GetDexPc() == dex_pc) {
         return stack_map;
       }
     }
     return StackMap();
   }
 
-  StackMap GetOsrStackMapForDexPc(uint32_t dex_pc, const CodeInfoEncoding& encoding) const {
-    size_t e = GetNumberOfStackMaps(encoding);
+  StackMap GetOsrStackMapForDexPc(uint32_t dex_pc) const {
+    size_t e = GetNumberOfStackMaps();
     if (e == 0) {
       // There cannot be OSR stack map if there is no stack map.
       return StackMap();
     }
     // Walk over all stack maps. If two consecutive stack maps are identical, then we
     // have found a stack map suitable for OSR.
-    const StackMapEncoding& stack_map_encoding = encoding.stack_map.encoding;
     for (size_t i = 0; i < e - 1; ++i) {
-      StackMap stack_map = GetStackMapAt(i, encoding);
-      if (stack_map.GetDexPc(stack_map_encoding) == dex_pc) {
-        StackMap other = GetStackMapAt(i + 1, encoding);
-        if (other.GetDexPc(stack_map_encoding) == dex_pc &&
-            other.GetNativePcOffset(stack_map_encoding, kRuntimeISA) ==
-                stack_map.GetNativePcOffset(stack_map_encoding, kRuntimeISA)) {
-          DCHECK_EQ(other.GetDexRegisterMapOffset(stack_map_encoding),
-                    stack_map.GetDexRegisterMapOffset(stack_map_encoding));
-          DCHECK(!stack_map.HasInlineInfo(stack_map_encoding));
+      StackMap stack_map = GetStackMapAt(i);
+      if (stack_map.GetDexPc() == dex_pc) {
+        StackMap other = GetStackMapAt(i + 1);
+        if (other.GetDexPc() == dex_pc &&
+            other.GetNativePcOffset(kRuntimeISA) ==
+                stack_map.GetNativePcOffset(kRuntimeISA)) {
+          DCHECK_EQ(other.GetDexRegisterMapOffset(),
+                    stack_map.GetDexRegisterMapOffset());
+          DCHECK(!stack_map.HasInlineInfo());
           if (i < e - 2) {
             // Make sure there are not three identical stack maps following each other.
             DCHECK_NE(
-                stack_map.GetNativePcOffset(stack_map_encoding, kRuntimeISA),
-                GetStackMapAt(i + 2, encoding).GetNativePcOffset(stack_map_encoding, kRuntimeISA));
+                stack_map.GetNativePcOffset(kRuntimeISA),
+                GetStackMapAt(i + 2).GetNativePcOffset(kRuntimeISA));
           }
           return stack_map;
         }
@@ -1535,30 +965,27 @@ class CodeInfo {
     return StackMap();
   }
 
-  StackMap GetStackMapForNativePcOffset(uint32_t native_pc_offset,
-                                        const CodeInfoEncoding& encoding) const {
+  StackMap GetStackMapForNativePcOffset(uint32_t native_pc_offset) const {
     // TODO: Safepoint stack maps are sorted by native_pc_offset but catch stack
     //       maps are not. If we knew that the method does not have try/catch,
     //       we could do binary search.
-    for (size_t i = 0, e = GetNumberOfStackMaps(encoding); i < e; ++i) {
-      StackMap stack_map = GetStackMapAt(i, encoding);
-      if (stack_map.GetNativePcOffset(encoding.stack_map.encoding, kRuntimeISA) ==
-          native_pc_offset) {
+    for (size_t i = 0, e = GetNumberOfStackMaps(); i < e; ++i) {
+      StackMap stack_map = GetStackMapAt(i);
+      if (stack_map.GetNativePcOffset(kRuntimeISA) == native_pc_offset) {
         return stack_map;
       }
     }
     return StackMap();
   }
 
-  InvokeInfo GetInvokeInfoForNativePcOffset(uint32_t native_pc_offset,
-                                            const CodeInfoEncoding& encoding) {
-    for (size_t index = 0; index < encoding.invoke_info.num_entries; index++) {
-      InvokeInfo item = GetInvokeInfo(encoding, index);
-      if (item.GetNativePcOffset(encoding.invoke_info.encoding, kRuntimeISA) == native_pc_offset) {
+  InvokeInfo GetInvokeInfoForNativePcOffset(uint32_t native_pc_offset) {
+    for (size_t index = 0; index < invoke_infos_.NumRows(); index++) {
+      InvokeInfo item = GetInvokeInfo(index);
+      if (item.GetNativePcOffset(kRuntimeISA) == native_pc_offset) {
         return item;
       }
     }
-    return InvokeInfo(BitMemoryRegion());
+    return InvokeInfo(&invoke_infos_, -1);
   }
 
   // Dump this CodeInfo object on `os`.  `code_offset` is the (absolute)
@@ -1573,23 +1000,10 @@ class CodeInfo {
             InstructionSet instruction_set,
             const MethodInfo& method_info) const;
 
-  // Check that the code info has valid stack map and abort if it does not.
-  void AssertValidStackMap(const CodeInfoEncoding& encoding) const {
-    if (region_.size() != 0 && region_.size_in_bits() < GetStackMapsSizeInBits(encoding)) {
-      LOG(FATAL) << region_.size() << "\n"
-                 << encoding.HeaderSize() << "\n"
-                 << encoding.NonHeaderSize() << "\n"
-                 << encoding.location_catalog.num_entries << "\n"
-                 << encoding.stack_map.num_entries << "\n"
-                 << encoding.stack_map.encoding.BitSize();
-    }
-  }
-
  private:
   // Compute the size of the Dex register map associated to the stack map at
   // `dex_register_map_offset_in_code_info`.
-  size_t ComputeDexRegisterMapSizeOf(const CodeInfoEncoding& encoding,
-                                     uint32_t dex_register_map_offset_in_code_info,
+  size_t ComputeDexRegisterMapSizeOf(uint32_t dex_register_map_offset,
                                      uint16_t number_of_dex_registers) const {
     // Offset where the actual mapping data starts within art::DexRegisterMap.
     size_t location_mapping_data_offset_in_dex_register_map =
@@ -1597,12 +1011,12 @@ class CodeInfo {
     // Create a temporary art::DexRegisterMap to be able to call
     // art::DexRegisterMap::GetNumberOfLiveDexRegisters and
     DexRegisterMap dex_register_map_without_locations(
-        MemoryRegion(region_.Subregion(dex_register_map_offset_in_code_info,
-                                       location_mapping_data_offset_in_dex_register_map)));
+        MemoryRegion(dex_register_maps_.Subregion(dex_register_map_offset,
+                                        location_mapping_data_offset_in_dex_register_map)));
     size_t number_of_live_dex_registers =
         dex_register_map_without_locations.GetNumberOfLiveDexRegisters(number_of_dex_registers);
     size_t location_mapping_data_size_in_bits =
-        DexRegisterMap::SingleEntrySizeInBits(GetNumberOfLocationCatalogEntries(encoding))
+        DexRegisterMap::SingleEntrySizeInBits(GetNumberOfLocationCatalogEntries())
         * number_of_live_dex_registers;
     size_t location_mapping_data_size_in_bytes =
         RoundUp(location_mapping_data_size_in_bits, kBitsPerByte) / kBitsPerByte;
@@ -1611,37 +1025,42 @@ class CodeInfo {
     return dex_register_map_size;
   }
 
-  // Compute the size of a Dex register location catalog starting at offset `origin`
-  // in `region_` and containing `number_of_dex_locations` entries.
-  size_t ComputeDexRegisterLocationCatalogSize(uint32_t origin,
-                                               uint32_t number_of_dex_locations) const {
-    // TODO: Ideally, we would like to use art::DexRegisterLocationCatalog::Size or
-    // art::DexRegisterLocationCatalog::FindLocationOffset, but the
-    // DexRegisterLocationCatalog is not yet built.  Try to factor common code.
-    size_t offset = origin + DexRegisterLocationCatalog::kFixedSize;
-
-    // Skip the first `number_of_dex_locations - 1` entries.
-    for (uint16_t i = 0; i < number_of_dex_locations; ++i) {
-      // Read the first next byte and inspect its first 3 bits to decide
-      // whether it is a short or a large location.
-      DexRegisterLocationCatalog::ShortLocation first_byte =
-          region_.LoadUnaligned<DexRegisterLocationCatalog::ShortLocation>(offset);
-      DexRegisterLocation::Kind kind =
-          DexRegisterLocationCatalog::ExtractKindFromShortLocation(first_byte);
-      if (DexRegisterLocation::IsShortLocationKind(kind)) {
-        // Short location.  Skip the current byte.
-        offset += DexRegisterLocationCatalog::SingleShortEntrySize();
-      } else {
-        // Large location.  Skip the 5 next bytes.
-        offset += DexRegisterLocationCatalog::SingleLargeEntrySize();
-      }
-    }
-    size_t size = offset - origin;
-    return size;
+  MemoryRegion DecodeMemoryRegion(MemoryRegion& region, size_t* bit_offset) {
+    size_t length = DecodeVarintBits(BitMemoryRegion(region), bit_offset);
+    size_t offset = BitsToBytesRoundUp(*bit_offset);;
+    *bit_offset = (offset + length) * kBitsPerByte;
+    return region.Subregion(offset, length);
   }
 
-  MemoryRegion region_;
-  friend class StackMapStream;
+  void Decode(const uint8_t* data) {
+    size_t non_header_size = DecodeUnsignedLeb128(&data);
+    MemoryRegion region(const_cast<uint8_t*>(data), non_header_size);
+    BitMemoryRegion bit_region(region);
+    size_t bit_offset = 0;
+    size_ = UnsignedLeb128Size(non_header_size) + non_header_size;
+    dex_register_maps_ = DecodeMemoryRegion(region, &bit_offset);
+    location_catalog_entries_ = DecodeVarintBits(bit_region, &bit_offset);
+    location_catalog_ = DecodeMemoryRegion(region, &bit_offset);
+    stack_maps_.Decode(bit_region, &bit_offset);
+    invoke_infos_.Decode(bit_region, &bit_offset);
+    inline_infos_.Decode(bit_region, &bit_offset);
+    register_masks_.Decode(bit_region, &bit_offset);
+    stack_mask_bits_ = DecodeVarintBits(bit_region, &bit_offset);
+    stack_masks_ = bit_region.Subregion(bit_offset, non_header_size * kBitsPerByte - bit_offset);
+  }
+
+  size_t size_;
+  MemoryRegion dex_register_maps_;
+  uint32_t location_catalog_entries_;
+  MemoryRegion location_catalog_;
+  BitTable<StackMap::Field::kCount> stack_maps_;
+  BitTable<InvokeInfo::Field::kCount> invoke_infos_;
+  BitTable<InlineInfo::Field::kCount> inline_infos_;
+  BitTable<1> register_masks_;
+  uint32_t stack_mask_bits_ = 0;
+  BitMemoryRegion stack_masks_;
+
+  friend class OatDumper;
 };
 
 #undef ELEMENT_BYTE_OFFSET_AFTER
