@@ -1003,7 +1003,8 @@ static bool OpenDexFilesFromImage(const std::string& image_location,
       return false;
     }
     std::unique_ptr<const OatFile> oat_file(
-        OatFile::OpenWithElfFile(elf_file.release(),
+        OatFile::OpenWithElfFile(/* zip_fd */ -1,
+                                 elf_file.release(),
                                  vdex_file.release(),
                                  oat_location,
                                  nullptr,
