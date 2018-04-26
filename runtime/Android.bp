@@ -112,7 +112,6 @@ cc_defaults {
         "jit/debugger_interface.cc",
         "jit/jit.cc",
         "jit/jit_code_cache.cc",
-        "jit/profile_compilation_info.cc",
         "jit/profiling_info.cc",
         "jit/profile_saver.cc",
         "jni_internal.cc",
@@ -472,6 +471,7 @@ art_cc_library {
     ],
     shared_libs: [
         "libdexfile",
+        "libprofile",
     ],
     export_shared_lib_headers: [
         "libdexfile",
@@ -496,6 +496,7 @@ art_cc_library {
     ],
     shared_libs: [
         "libdexfiled",
+        "libprofiled",
     ],
     export_shared_lib_headers: [
         "libdexfiled",
@@ -580,7 +581,6 @@ art_cc_test {
         "interpreter/unstarted_runtime_test.cc",
         "jdwp/jdwp_options_test.cc",
         "java_vm_ext_test.cc",
-        "jit/profile_compilation_info_test.cc",
         "method_handles_test.cc",
         "mirror/dex_cache_test.cc",
         "mirror/method_type_test.cc",

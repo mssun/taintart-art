@@ -70,6 +70,7 @@ art_cc_defaults {
     },
     generated_sources: ["art_dex2oat_operator_srcs"],
     shared_libs: [
+        "libprofile",
         "libbase",
         "liblz4",
         "liblzma",
@@ -196,6 +197,7 @@ art_cc_binary {
         "dex2oat-pgo-defaults",
     ],
     shared_libs: [
+        "libprofile",
         "libart-compiler",
         "libart-dexlayout",
         "libart",
@@ -232,6 +234,7 @@ art_cc_binary {
         "dex2oat-defaults",
     ],
     shared_libs: [
+        "libprofiled",
         "libartd-compiler",
         "libartd-dexlayout",
         "libartd",
@@ -264,6 +267,7 @@ art_cc_binary {
         "-z muldefs",
     ],
     static_libs: [
+        "libprofile",
         "libart-dex2oat",
         "libart-compiler",
         "libart-dexlayout",
@@ -303,6 +307,7 @@ art_cc_binary {
         "libartd-compiler",
         "libartd-dexlayout",
         "libartd",
+        "libprofiled",
         "libdexfiled",
         "libvixld-arm",
         "libvixld-arm64",
@@ -364,6 +369,7 @@ art_cc_test {
         "external/zlib",
     ],
     shared_libs: [
+        "libprofiled",
         "libartd-compiler",
         "libartd-dexlayout",
         "libbase",
