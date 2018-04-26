@@ -41,7 +41,7 @@
 #include "oat_file-inl.h"
 #include "oat_quick_method_header.h"
 #include "object_callbacks.h"
-#include "profile_compilation_info.h"
+#include "profile/profile_compilation_info.h"
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
 #include "thread-current-inl.h"

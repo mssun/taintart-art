@@ -33,7 +33,7 @@
 
 #include "dex_ir.h"
 #include "dexlayout.h"
-#include "jit/profile_compilation_info.h"
+#include "profile/profile_compilation_info.h"
 
 namespace art {
 

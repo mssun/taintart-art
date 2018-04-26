@@ -46,7 +46,6 @@
 #include "base/utils.h"
 #include "base/zip_archive.h"
 #include "dex/dex_file_loader.h"
-#include "jit/profiling_info.h"
 
 namespace art {
 
@@ -70,12 +69,12 @@ static constexpr bool kDebugIgnoreChecksum = false;
 static constexpr uint8_t kIsMissingTypesEncoding = 6;
 static constexpr uint8_t kIsMegamorphicEncoding = 7;
 
-static_assert(sizeof(InlineCache::kIndividualCacheSize) == sizeof(uint8_t),
-              "InlineCache::kIndividualCacheSize does not have the expect type size");
-static_assert(InlineCache::kIndividualCacheSize < kIsMegamorphicEncoding,
-              "InlineCache::kIndividualCacheSize is larger than expected");
-static_assert(InlineCache::kIndividualCacheSize < kIsMissingTypesEncoding,
-              "InlineCache::kIndividualCacheSize is larger than expected");
+static_assert(sizeof(ProfileCompilationInfo::kIndividualInlineCacheSize) == sizeof(uint8_t),
+              "InlineCache::kIndividualInlineCacheSize does not have the expect type size");
+static_assert(ProfileCompilationInfo::kIndividualInlineCacheSize < kIsMegamorphicEncoding,
+              "InlineCache::kIndividualInlineCacheSize is larger than expected");
+static_assert(ProfileCompilationInfo::kIndividualInlineCacheSize < kIsMissingTypesEncoding,
+              "InlineCache::kIndividualInlineCacheSize is larger than expected");
 
 static bool ChecksumMatch(uint32_t dex_file_checksum, uint32_t checksum) {
   return kDebugIgnoreChecksum || dex_file_checksum == checksum;
@@ -120,7 +119,7 @@ void ProfileCompilationInfo::DexPcData::AddClass(uint16_t dex_profile_idx,
   }
 
   // Check if the adding the type will cause the cache to become megamorphic.
-  if (classes.size() + 1 >= InlineCache::kIndividualCacheSize) {
+  if (classes.size() + 1 >= ProfileCompilationInfo::kIndividualInlineCacheSize) {
     is_megamorphic = true;
     classes.clear();
     return;
@@ -503,7 +502,7 @@ void ProfileCompilationInfo::AddInlineCacheToBuffer(std::vector<uint8_t>* buffer
       continue;
     }
 
-    DCHECK_LT(classes.size(), InlineCache::kIndividualCacheSize);
+    DCHECK_LT(classes.size(), ProfileCompilationInfo::kIndividualInlineCacheSize);
     DCHECK_NE(classes.size(), 0u) << "InlineCache contains a dex_pc with 0 classes";
 
     SafeMap<uint8_t, std::vector<dex::TypeIndex>> dex_to_classes_map;

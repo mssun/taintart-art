@@ -33,7 +33,6 @@
 #include "driver/compiler_driver.h"
 #include "driver/compiler_options.h"
 #include "entrypoints/quick/quick_entrypoints.h"
-#include "jit/profile_compilation_info.h"
 #include "linker/buffered_output_stream.h"
 #include "linker/elf_writer.h"
 #include "linker/elf_writer_quick.h"
@@ -45,6 +44,7 @@
 #include "mirror/object_array-inl.h"
 #include "oat_file-inl.h"
 #include "oat_writer.h"
+#include "profile/profile_compilation_info.h"
 #include "scoped_thread_state_change-inl.h"
 #include "vdex_file.h"
 

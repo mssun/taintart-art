@@ -37,14 +37,19 @@
 #include "gc/collector_type.h"
 #include "gc/gc_cause.h"
 #include "gc/scoped_gc_critical_section.h"
-#include "jit/profile_compilation_info.h"
+#include "jit/profiling_info.h"
 #include "oat_file_manager.h"
+#include "profile/profile_compilation_info.h"
 #include "scoped_thread_state_change-inl.h"
 
 namespace art {
 
 ProfileSaver* ProfileSaver::instance_ = nullptr;
 pthread_t ProfileSaver::profiler_pthread_ = 0U;
+
+static_assert(ProfileCompilationInfo::kIndividualInlineCacheSize ==
+              InlineCache::kIndividualCacheSize,
+              "InlineCache and ProfileCompilationInfo do not agree on kIndividualCacheSize");
 
 // At what priority to schedule the saver threads. 9 is the lowest foreground priority on device.
 static constexpr int kProfileSaverPthreadPriority = 9;

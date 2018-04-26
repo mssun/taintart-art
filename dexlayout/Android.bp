@@ -41,6 +41,7 @@ art_cc_library {
     shared_libs: [
         "libart",
         "libdexfile",
+        "libprofile",
     ],
 
     target: {
@@ -61,6 +62,7 @@ art_cc_library {
     shared_libs: [
         "libartd",
         "libdexfiled",
+        "libprofiled",
     ],
 }
 
@@ -78,6 +80,7 @@ art_cc_binary {
     name: "dexlayout",
     defaults: ["dexlayout-defaults"],
     shared_libs: [
+        "libprofile",
         "libart",
         "libart-dexlayout",
     ],
@@ -90,6 +93,7 @@ art_cc_binary {
         "dexlayout-defaults",
     ],
     shared_libs: [
+        "libprofiled",
         "libartd",
         "libartd-dexlayout",
     ],
@@ -98,7 +102,10 @@ art_cc_binary {
 art_cc_test {
     name: "art_dexlayout_tests",
     defaults: ["art_gtest_defaults"],
-    shared_libs: ["libart-dexlayout"],
+    shared_libs: [
+        "libprofiled",
+        "libartd-dexlayout",
+    ],
     srcs: ["dexlayout_test.cc"],
 }
 

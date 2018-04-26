@@ -18,7 +18,6 @@
 
 #include "art_method-inl.h"
 #include "dex/method_reference.h"
-#include "jit/profile_compilation_info.h"
 #include "jit/profile_saver.h"
 #include "jni.h"
 #include "mirror/class-inl.h"
@@ -26,6 +25,7 @@
 #include "nativehelper/ScopedUtfChars.h"
 #include "oat_file_assistant.h"
 #include "oat_file_manager.h"
+#include "profile/profile_compilation_info.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread.h"
 
