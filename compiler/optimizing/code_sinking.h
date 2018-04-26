@@ -33,7 +33,7 @@ class CodeSinking : public HOptimization {
               const char* name = kCodeSinkingPassName)
       : HOptimization(graph, name, stats) {}
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 
   static constexpr const char* kCodeSinkingPassName = "code_sinking";
 

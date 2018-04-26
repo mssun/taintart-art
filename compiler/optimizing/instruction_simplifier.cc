@@ -42,7 +42,7 @@ class InstructionSimplifierVisitor : public HGraphDelegateVisitor {
         compiler_driver_(compiler_driver),
         stats_(stats) {}
 
-  void Run();
+  bool Run();
 
  private:
   void RecordSimplification() {
@@ -136,17 +136,18 @@ class InstructionSimplifierVisitor : public HGraphDelegateVisitor {
   static constexpr int kMaxSamePositionSimplifications = 50;
 };
 
-void InstructionSimplifier::Run() {
+bool InstructionSimplifier::Run() {
   if (kTestInstructionClonerExhaustively) {
     CloneAndReplaceInstructionVisitor visitor(graph_);
     visitor.VisitReversePostOrder();
   }
 
   InstructionSimplifierVisitor visitor(graph_, codegen_, compiler_driver_, stats_);
-  visitor.Run();
+  return visitor.Run();
 }
 
-void InstructionSimplifierVisitor::Run() {
+bool InstructionSimplifierVisitor::Run() {
+  bool didSimplify = false;
   // Iterate in reverse post order to open up more simplifications to users
   // of instructions that got simplified.
   for (HBasicBlock* block : GetGraph()->GetReversePostOrder()) {
@@ -156,10 +157,14 @@ void InstructionSimplifierVisitor::Run() {
     do {
       simplification_occurred_ = false;
       VisitBasicBlock(block);
+      if (simplification_occurred_) {
+        didSimplify = true;
+      }
     } while (simplification_occurred_ &&
              (simplifications_at_current_position_ < kMaxSamePositionSimplifications));
     simplifications_at_current_position_ = 0;
   }
+  return didSimplify;
 }
 
 namespace {

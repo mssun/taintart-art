@@ -250,13 +250,14 @@ class CFREVisitor : public HGraphVisitor {
   DISALLOW_COPY_AND_ASSIGN(CFREVisitor);
 };
 
-void ConstructorFenceRedundancyElimination::Run() {
+bool ConstructorFenceRedundancyElimination::Run() {
   CFREVisitor cfre_visitor(graph_, stats_);
 
   // Arbitrarily visit in reverse-post order.
   // The exact block visit order does not matter, as the algorithm
   // only operates on a single block at a time.
   cfre_visitor.VisitReversePostOrder();
+  return true;
 }
 
 }  // namespace art

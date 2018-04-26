@@ -34,7 +34,7 @@ class PcRelativeFixups : public HOptimization {
 
   static constexpr const char* kPcRelativeFixupsX86PassName  = "pc_relative_fixups_x86";
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 
  private:
   CodeGenerator* codegen_;

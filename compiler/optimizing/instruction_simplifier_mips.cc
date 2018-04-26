@@ -131,9 +131,10 @@ void InstructionSimplifierMipsVisitor::VisitArraySet(HArraySet* instruction) {
   }
 }
 
-void InstructionSimplifierMips::Run() {
+bool InstructionSimplifierMips::Run() {
   InstructionSimplifierMipsVisitor visitor(graph_, codegen_, stats_);
   visitor.VisitReversePostOrder();
+  return true;
 }
 
 }  // namespace mips

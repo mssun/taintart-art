@@ -40,7 +40,7 @@ class HSharpening : public HOptimization {
         codegen_(codegen),
         compiler_driver_(compiler_driver) { }
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 
   static constexpr const char* kSharpeningPassName = "sharpening";
 

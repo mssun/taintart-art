@@ -31,7 +31,7 @@ class SsaDeadPhiElimination : public HOptimization {
   explicit SsaDeadPhiElimination(HGraph* graph)
       : HOptimization(graph, kSsaDeadPhiEliminationPassName) {}
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 
   void MarkDeadPhis();
   void EliminateDeadPhis();
@@ -53,7 +53,7 @@ class SsaRedundantPhiElimination : public HOptimization {
   explicit SsaRedundantPhiElimination(HGraph* graph)
       : HOptimization(graph, kSsaRedundantPhiEliminationPassName) {}
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 
   static constexpr const char* kSsaRedundantPhiEliminationPassName = "redundant_phi_elimination";
 

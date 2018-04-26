@@ -31,7 +31,7 @@ class X86MemoryOperandGeneration : public HOptimization {
                              CodeGenerator* codegen,
                              OptimizingCompilerStats* stats);
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 
   static constexpr const char* kX86MemoryOperandGenerationPassName =
           "x86_memory_operand_generation";

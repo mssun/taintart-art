@@ -90,7 +90,8 @@ static HPhi* GetSingleChangedPhi(HBasicBlock* block, size_t index1, size_t index
   return select_phi;
 }
 
-void HSelectGenerator::Run() {
+bool HSelectGenerator::Run() {
+  bool didSelect = false;
   // Select cache with local allocator.
   ScopedArenaAllocator allocator(graph_->GetArenaStack());
   ScopedArenaSafeMap<HInstruction*, HSelect*> cache(
@@ -211,7 +212,9 @@ void HSelectGenerator::Run() {
     // entry block. Any following blocks would have had the join block
     // as a dominator, and `MergeWith` handles changing that to the
     // entry block.
+    didSelect = true;
   }
+  return didSelect;
 }
 
 }  // namespace art

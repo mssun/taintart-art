@@ -49,7 +49,7 @@ class InstructionSimplifier : public HOptimization {
 
   static constexpr const char* kInstructionSimplifierPassName = "instruction_simplifier";
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 
  private:
   CodeGenerator* codegen_;

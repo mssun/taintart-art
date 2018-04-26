@@ -283,9 +283,10 @@ void InstructionSimplifierArmVisitor::VisitUShr(HUShr* instruction) {
   }
 }
 
-void InstructionSimplifierArm::Run() {
+bool InstructionSimplifierArm::Run() {
   InstructionSimplifierArmVisitor visitor(graph_, stats_);
   visitor.VisitReversePostOrder();
+  return true;
 }
 
 }  // namespace arm

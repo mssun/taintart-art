@@ -948,22 +948,22 @@ class LSEVisitor : public HGraphDelegateVisitor {
   DISALLOW_COPY_AND_ASSIGN(LSEVisitor);
 };
 
-void LoadStoreElimination::Run() {
+bool LoadStoreElimination::Run() {
   if (graph_->IsDebuggable() || graph_->HasTryCatch()) {
     // Debugger may set heap values or trigger deoptimization of callers.
     // Try/catch support not implemented yet.
     // Skip this optimization.
-    return;
+    return false;
   }
   const HeapLocationCollector& heap_location_collector = lsa_.GetHeapLocationCollector();
   if (heap_location_collector.GetNumberOfHeapLocations() == 0) {
     // No HeapLocation information from LSA, skip this optimization.
-    return;
+    return false;
   }
 
   // TODO: analyze VecLoad/VecStore better.
   if (graph_->HasSIMD()) {
-    return;
+    return false;
   }
 
   LSEVisitor lse_visitor(graph_, heap_location_collector, side_effects_, stats_);
@@ -971,6 +971,7 @@ void LoadStoreElimination::Run() {
     lse_visitor.VisitBasicBlock(block);
   }
   lse_visitor.RemoveInstructions();
+  return true;
 }
 
 }  // namespace art

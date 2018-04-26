@@ -37,7 +37,7 @@ class SideEffectsAnalysis : public HOptimization {
   SideEffects GetBlockEffects(HBasicBlock* block) const;
 
   // Compute side effects of individual blocks and loops.
-  void Run();
+  bool Run();
 
   bool HasRun() const { return has_run_; }
 

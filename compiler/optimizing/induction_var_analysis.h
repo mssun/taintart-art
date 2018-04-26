@@ -37,7 +37,7 @@ class HInductionVarAnalysis : public HOptimization {
  public:
   explicit HInductionVarAnalysis(HGraph* graph, const char* name = kInductionPassName);
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 
   static constexpr const char* kInductionPassName = "induction_var_analysis";
 
