@@ -49,7 +49,7 @@
 #include "dex_verify.h"
 #include "dex_visualize.h"
 #include "dex_writer.h"
-#include "jit/profile_compilation_info.h"
+#include "profile/profile_compilation_info.h"
 
 namespace art {
 
