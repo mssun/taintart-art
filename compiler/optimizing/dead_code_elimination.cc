@@ -508,7 +508,7 @@ void HDeadCodeElimination::RemoveDeadInstructions() {
   }
 }
 
-void HDeadCodeElimination::Run() {
+bool HDeadCodeElimination::Run() {
   // Do not eliminate dead blocks if the graph has irreducible loops. We could
   // support it, but that would require changes in our loop representation to handle
   // multiple entry points. We decided it was not worth the complexity.
@@ -526,6 +526,7 @@ void HDeadCodeElimination::Run() {
   }
   SsaRedundantPhiElimination(graph_).Run();
   RemoveDeadInstructions();
+  return true;
 }
 
 }  // namespace art

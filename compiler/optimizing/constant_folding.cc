@@ -68,13 +68,14 @@ class InstructionWithAbsorbingInputSimplifier : public HGraphVisitor {
 };
 
 
-void HConstantFolding::Run() {
+bool HConstantFolding::Run() {
   HConstantFoldingVisitor visitor(graph_);
   // Process basic blocks in reverse post-order in the dominator tree,
   // so that an instruction turned into a constant, used as input of
   // another instruction, may possibly be used to turn that second
   // instruction into a constant as well.
   visitor.VisitReversePostOrder();
+  return true;
 }
 
 

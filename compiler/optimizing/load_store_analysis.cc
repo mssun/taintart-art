@@ -152,7 +152,7 @@ bool HeapLocationCollector::CanArrayElementsAlias(const HInstruction* idx1,
   return true;
 }
 
-void LoadStoreAnalysis::Run() {
+bool LoadStoreAnalysis::Run() {
   for (HBasicBlock* block : graph_->GetReversePostOrder()) {
     heap_location_collector_.VisitBasicBlock(block);
   }
@@ -160,22 +160,23 @@ void LoadStoreAnalysis::Run() {
   if (heap_location_collector_.GetNumberOfHeapLocations() > kMaxNumberOfHeapLocations) {
     // Bail out if there are too many heap locations to deal with.
     heap_location_collector_.CleanUp();
-    return;
+    return false;
   }
   if (!heap_location_collector_.HasHeapStores()) {
     // Without heap stores, this pass would act mostly as GVN on heap accesses.
     heap_location_collector_.CleanUp();
-    return;
+    return false;
   }
   if (heap_location_collector_.HasVolatile() || heap_location_collector_.HasMonitorOps()) {
     // Don't do load/store elimination if the method has volatile field accesses or
     // monitor operations, for now.
     // TODO: do it right.
     heap_location_collector_.CleanUp();
-    return;
+    return false;
   }
 
   heap_location_collector_.BuildAliasingMatrix();
+  return true;
 }
 
 }  // namespace art

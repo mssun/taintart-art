@@ -76,9 +76,10 @@ X86MemoryOperandGeneration::X86MemoryOperandGeneration(HGraph* graph,
       do_implicit_null_checks_(codegen->GetCompilerOptions().GetImplicitNullChecks()) {
 }
 
-void X86MemoryOperandGeneration::Run() {
+bool X86MemoryOperandGeneration::Run() {
   MemoryOperandVisitor visitor(graph_, do_implicit_null_checks_);
   visitor.VisitInsertionOrder();
+  return true;
 }
 
 }  // namespace x86

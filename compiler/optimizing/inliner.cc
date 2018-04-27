@@ -124,12 +124,17 @@ void HInliner::UpdateInliningBudget() {
   }
 }
 
-void HInliner::Run() {
-  if (graph_->IsDebuggable()) {
+bool HInliner::Run() {
+  if (compiler_driver_->GetCompilerOptions().GetInlineMaxCodeUnits() == 0) {
+    // Inlining effectively disabled.
+    return false;
+  } else if (graph_->IsDebuggable()) {
     // For simplicity, we currently never inline when the graph is debuggable. This avoids
     // doing some logic in the runtime to discover if a method could have been inlined.
-    return;
+    return false;
   }
+
+  bool didInline = false;
 
   // Initialize the number of instructions for the method being compiled. Recursive calls
   // to HInliner::Run have already updated the instruction count.
@@ -171,7 +176,9 @@ void HInliner::Run() {
               call->GetDexMethodIndex(), /* with_signature */ false);
           // Tests prevent inlining by having $noinline$ in their method names.
           if (callee_name.find("$noinline$") == std::string::npos) {
-            if (!TryInline(call) && honor_inline_directives) {
+            if (TryInline(call)) {
+              didInline = true;
+            } else {
               bool should_have_inlined = (callee_name.find("$inline$") != std::string::npos);
               CHECK(!should_have_inlined) << "Could not inline " << callee_name;
             }
@@ -179,12 +186,16 @@ void HInliner::Run() {
         } else {
           DCHECK(!honor_inline_directives);
           // Normal case: try to inline.
-          TryInline(call);
+          if (TryInline(call)) {
+            didInline = true;
+          }
         }
       }
       instruction = next;
     }
   }
+
+  return didInline;
 }
 
 static bool IsMethodOrDeclaringClassFinal(ArtMethod* method)

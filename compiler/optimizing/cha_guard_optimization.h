@@ -30,7 +30,7 @@ class CHAGuardOptimization : public HOptimization {
                                 const char* name = kCHAGuardOptimizationPassName)
       : HOptimization(graph, name) {}
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 
   static constexpr const char* kCHAGuardOptimizationPassName = "cha_guard_optimization";
 

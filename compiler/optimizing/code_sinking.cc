@@ -25,11 +25,11 @@
 
 namespace art {
 
-void CodeSinking::Run() {
+bool CodeSinking::Run() {
   HBasicBlock* exit = graph_->GetExitBlock();
   if (exit == nullptr) {
     // Infinite loop, just bail.
-    return;
+    return false;
   }
   // TODO(ngeoffray): we do not profile branches yet, so use throw instructions
   // as an indicator of an uncommon branch.
@@ -40,6 +40,7 @@ void CodeSinking::Run() {
       SinkCodeToUncommonBranch(exit_predecessor);
     }
   }
+  return true;
 }
 
 static bool IsInterestingInstruction(HInstruction* instruction) {

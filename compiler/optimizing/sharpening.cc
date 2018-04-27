@@ -36,7 +36,7 @@
 
 namespace art {
 
-void HSharpening::Run() {
+bool HSharpening::Run() {
   // We don't care about the order of the blocks here.
   for (HBasicBlock* block : graph_->GetReversePostOrder()) {
     for (HInstructionIterator it(block->GetInstructions()); !it.Done(); it.Advance()) {
@@ -51,6 +51,7 @@ void HSharpening::Run() {
       //       because we know the type better when inlining.
     }
   }
+  return true;
 }
 
 static bool IsInBootImage(ArtMethod* method) {

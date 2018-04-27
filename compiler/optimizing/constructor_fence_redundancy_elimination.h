@@ -52,7 +52,7 @@ class ConstructorFenceRedundancyElimination : public HOptimization {
                                         const char* name = kCFREPassName)
       : HOptimization(graph, name, stats) {}
 
-  void Run() OVERRIDE;
+  bool Run() OVERRIDE;
 
   static constexpr const char* kCFREPassName = "constructor_fence_redundancy_elimination";
 

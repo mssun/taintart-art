@@ -774,7 +774,7 @@ bool HScheduler::IsSchedulingBarrier(const HInstruction* instr) const {
       instr->IsSuspendCheck();
 }
 
-void HInstructionScheduling::Run(bool only_optimize_loop_blocks,
+bool HInstructionScheduling::Run(bool only_optimize_loop_blocks,
                                  bool schedule_randomly) {
 #if defined(ART_ENABLE_CODEGEN_arm64) || defined(ART_ENABLE_CODEGEN_arm)
   // Phase-local allocator that allocates scheduler internal data structures like
@@ -814,6 +814,7 @@ void HInstructionScheduling::Run(bool only_optimize_loop_blocks,
     default:
       break;
   }
+  return true;
 }
 
 }  // namespace art
