@@ -25,6 +25,10 @@
 #include <asm/prctl.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
+#elif defined(__Fuchsia__)
+#include <zircon/process.h>
+#include <zircon/syscalls.h>
+#include <zircon/syscalls/object.h>
 #endif
 
 namespace art {
@@ -40,6 +44,13 @@ void Thread::InitCpu() {
 
 #if defined(__linux__)
   arch_prctl(ARCH_SET_GS, this);
+#elif defined(__Fuchsia__)
+  Thread* thread_ptr = this;
+  zx_status_t status = zx_object_set_property(zx_thread_self(),
+                                              ZX_PROP_REGISTER_GS,
+                                              &thread_ptr,
+                                              sizeof(thread_ptr));
+  CHECK_EQ(status, ZX_OK) << "failed to set GS register";
 #else
   UNIMPLEMENTED(FATAL) << "Need to set GS";
 #endif
